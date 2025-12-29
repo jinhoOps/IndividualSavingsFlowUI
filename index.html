@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1"
+    />
+    <title>Individual Savings Flow</title>
+    <meta
+      name="description"
+      content="개인 자산 흐름을 노드/링크로 구성하고 요약 지표와 시뮬레이션을 확인하는 WebUI"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="ambient"></div>
+    <div class="page">
+      <header class="hero">
+        <div class="hero__copy">
+          <p class="eyebrow">Individual Savings Flow</p>
+          <h1>개인 자산 흐름 대시보드</h1>
+          <p class="lead">
+            노드와 링크로 월 흐름을 조합하고, 요약 카드와 빠른
+            시뮬레이션으로 의사결정 단위를 줄입니다.
+          </p>
+        </div>
+        <div class="panel panel--compact hero__panel">
+          <div class="status-line">
+            <span class="status-label">기준월</span>
+            <span id="baseMonthLabel" class="status-value">-</span>
+          </div>
+          <div class="status-line">
+            <span class="status-label">활성 노드</span>
+            <span id="nodeCountLabel" class="status-value">-</span>
+          </div>
+          <div class="status-line">
+            <span class="status-label">활성 링크</span>
+            <span id="linkCountLabel" class="status-value">-</span>
+          </div>
+          <div class="status-line">
+            <span class="status-label">표시 모드</span>
+            <span id="viewModeLabel" class="status-value">명목</span>
+          </div>
+        </div>
+      </header>
+
+      <main class="main">
+        <section class="panel controls">
+          <div class="control-group">
+            <label for="baseMonth">기준월</label>
+            <input id="baseMonth" type="month" />
+          </div>
+          <div class="control-group">
+            <label for="horizonYears">기간(년)</label>
+            <input id="horizonYears" type="number" min="1" max="40" />
+          </div>
+          <div class="control-group">
+            <label for="inflationRate">인플레이션(연, %)</label>
+            <input id="inflationRate" type="number" min="0" step="0.1" />
+          </div>
+          <div class="control-group">
+            <label for="salaryGrowthRate">월급 연봉상승률(연, %)</label>
+            <input id="salaryGrowthRate" type="number" min="0" max="30" step="0.1" />
+          </div>
+          <div class="control-group">
+            <label>표시 기준</label>
+            <div class="toggle" role="group" aria-label="표시 기준 선택">
+              <button type="button" class="toggle__btn" data-mode="nominal">
+                명목
+              </button>
+              <button type="button" class="toggle__btn" data-mode="real">
+                실질
+              </button>
+            </div>
+          </div>
+          <div class="control-actions">
+            <button id="sampleLoad" class="btn btn--primary" type="button">
+              샘플 로드
+            </button>
+            <button id="resetView" class="btn btn--ghost" type="button">
+              데이터만 초기화
+            </button>
+            <button id="resetAll" class="btn btn--outline" type="button">
+              전체 초기화
+            </button>
+          </div>
+        </section>
+
+        <section class="summary">
+          <div class="section-head">
+            <div>
+              <h2>핵심 지표</h2>
+              <p class="hint">링크 배분 기준으로 월 합계를 계산합니다.</p>
+            </div>
+          </div>
+          <div id="summaryCards" class="cards" aria-live="polite"></div>
+        </section>
+
+        <section class="workspace">
+          <div class="panel flow-panel">
+            <div class="panel__head">
+              <div>
+                <h3>흐름 그래프</h3>
+                <p class="hint">
+                  간단한 흐름 리스트로 현재 배분 구조를 보여줍니다.
+                </p>
+              </div>
+              <div id="flowMeta" class="panel__meta">-</div>
+            </div>
+            <div id="flowCanvas" class="flow-canvas"></div>
+          </div>
+
+          <div class="panel list-panel">
+            <div class="panel__head">
+              <div>
+                <h3>노드 &amp; 링크</h3>
+                <p class="hint">노드/링크를 직접 추가하고 배분 우선순위를 조정합니다.</p>
+              </div>
+              <div class="panel__actions">
+                <button id="addNode" class="btn btn--minor" type="button">
+                  노드 추가
+                </button>
+                <button id="addLink" class="btn btn--minor" type="button">
+                  링크 추가
+                </button>
+              </div>
+            </div>
+            <div class="panel__section">
+              <div class="section-head-sm">
+                <h4 id="nodeFormTitle">노드 추가</h4>
+                <p class="hint">필수 입력: 이름, 타입, 월 기준 금액</p>
+              </div>
+              <form id="nodeForm" class="form-grid">
+                <div class="form-group">
+                  <label for="nodeName">이름</label>
+                  <input id="nodeName" type="text" required />
+                </div>
+                <div class="form-group">
+                  <label for="nodeType">타입</label>
+                  <select id="nodeType">
+                    <option value="Income">수입</option>
+                    <option value="Expense">지출</option>
+                    <option value="Bucket">버킷</option>
+                    <option value="Invest">투자</option>
+                    <option value="Debt">부채</option>
+                    <option value="Transfer">분배</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="nodeMonthly">월 기준 금액</label>
+                  <input id="nodeMonthly" type="number" min="0" step="1000" />
+                </div>
+                <div class="form-group">
+                  <label for="nodeCurrency">통화</label>
+                  <select id="nodeCurrency">
+                    <option value="KRW">KRW</option>
+                    <option value="USD">USD</option>
+                  </select>
+                </div>
+                <div class="form-group" data-node-field="growth">
+                  <label for="nodeGrowthRate">연봉상승률(연, %)</label>
+                  <input id="nodeGrowthRate" type="number" min="0" max="30" step="0.1" />
+                </div>
+                <div class="form-group" data-node-field="cap">
+                  <label for="nodeCap">상한(버킷)</label>
+                  <input id="nodeCap" type="number" min="0" step="10000" />
+                </div>
+                <div class="form-group" data-node-field="current">
+                  <label for="nodeCurrent">현재 잔액(버킷)</label>
+                  <input id="nodeCurrent" type="number" min="0" step="10000" />
+                </div>
+                <div class="form-group form-group--wide">
+                  <label for="nodeMemo">메모</label>
+                  <textarea id="nodeMemo" rows="2"></textarea>
+                </div>
+                <div class="form-group form-group--inline">
+                  <label>
+                    <input id="nodeActive" type="checkbox" />
+                    활성
+                  </label>
+                </div>
+                <div id="nodeFormStatus" class="form-status" role="status"></div>
+                <div class="form-actions">
+                  <button id="nodeSave" class="btn btn--primary" type="submit">
+                    저장
+                  </button>
+                  <button id="nodeCancel" class="btn btn--ghost" type="button">
+                    초기화
+                  </button>
+                </div>
+              </form>
+              <h4>노드</h4>
+              <div id="nodeList" class="list"></div>
+            </div>
+            <div class="panel__section">
+              <div class="section-head-sm">
+                <h4 id="linkFormTitle">링크 추가</h4>
+                <p class="hint">From → To 흐름을 정의하고 우선순위를 조정합니다.</p>
+              </div>
+              <form id="linkForm" class="form-grid">
+                <div class="form-group">
+                  <label for="linkFrom">From</label>
+                  <select id="linkFrom"></select>
+                </div>
+                <div class="form-group">
+                  <label for="linkTo">To</label>
+                  <select id="linkTo"></select>
+                </div>
+                <div class="form-group">
+                  <label for="linkType">유형</label>
+                  <select id="linkType">
+                    <option value="Fixed">정액</option>
+                    <option value="Percent">비율</option>
+                    <option value="CapFill">상한 채우기</option>
+                    <option value="RuleBased">규칙</option>
+                  </select>
+                </div>
+                <div class="form-group" data-link-field="value">
+                  <label for="linkValue" id="linkValueLabel">값</label>
+                  <input id="linkValue" type="number" min="0" step="0.1" />
+                  <p id="linkValueHint" class="form-note"></p>
+                </div>
+                <div class="form-group">
+                  <label for="linkPriority">우선순위</label>
+                  <input id="linkPriority" type="number" min="1" step="1" />
+                </div>
+                <div class="form-group">
+                  <label for="linkMin">최소(클램프)</label>
+                  <input id="linkMin" type="number" min="0" step="1000" />
+                </div>
+                <div class="form-group">
+                  <label for="linkMax">최대(클램프)</label>
+                  <input id="linkMax" type="number" min="0" step="1000" />
+                </div>
+                <div class="form-group form-group--inline">
+                  <label>
+                    <input id="linkActive" type="checkbox" />
+                    활성
+                  </label>
+                </div>
+                <div id="linkFormStatus" class="form-status" role="status"></div>
+                <div class="form-actions">
+                  <button id="linkSave" class="btn btn--primary" type="submit">
+                    저장
+                  </button>
+                  <button id="linkCancel" class="btn btn--ghost" type="button">
+                    초기화
+                  </button>
+                </div>
+              </form>
+              <div id="linkWarnings" class="message message--warn" hidden></div>
+              <h4>링크</h4>
+              <div id="linkList" class="list"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel simulation">
+          <div class="panel__head">
+            <div>
+              <h3>시뮬레이션 요약</h3>
+              <p class="hint">
+                정액 가정 기반 빠른 추정치입니다.
+              </p>
+            </div>
+            <span id="viewModeBadge" class="badge">명목</span>
+          </div>
+          <div id="simulationSummary" class="simulation-grid"></div>
+          <div class="chart-placeholder">
+            차트/시계열 시각화는 다음 단계에서 연결됩니다.
+          </div>
+        </section>
+      </main>
+
+      <footer class="footer">
+        흐름 모델링 → 요약 확인 → 시뮬레이션 반복으로 빠른 의사결정을
+        지원합니다.
+      </footer>
+    </div>
+    <script src="app.js"></script>
+  </body>
+</html>
