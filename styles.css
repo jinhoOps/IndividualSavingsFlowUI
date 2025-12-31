@@ -32,6 +32,10 @@ body {
   line-height: 1.6;
 }
 
+body.has-drawer {
+  overflow: hidden;
+}
+
 .ambient {
   position: fixed;
   inset: -20%;
@@ -128,12 +132,50 @@ body {
   margin-top: 18px;
 }
 
-.panel__body[hidden] {
-  display: none;
+.drawer {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  justify-content: flex-end;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 50;
 }
 
-.panel.is-collapsed .panel__head {
-  margin-bottom: 0;
+.drawer.is-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.drawer__backdrop {
+  flex: 1;
+  background: rgba(31, 42, 50, 0.35);
+  backdrop-filter: blur(1px);
+}
+
+.drawer__panel {
+  width: min(420px, 94vw);
+  height: 100%;
+  background: var(--color-panel);
+  border-left: 1px solid var(--color-border);
+  padding: 20px;
+  box-shadow: -16px 0 32px rgba(31, 42, 50, 0.15);
+  transform: translateX(100%);
+  transition: transform 0.25s ease;
+  overflow-y: auto;
+}
+
+.drawer.is-open .drawer__panel {
+  transform: translateX(0);
+}
+
+.drawer__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
 }
 
 .section-head-sm {
@@ -629,9 +671,17 @@ body {
   stroke: rgba(31, 42, 50, 0.08);
 }
 
+.flow-donut__track--outer {
+  stroke: rgba(31, 42, 50, 0.12);
+}
+
 .flow-donut__arc {
   fill: none;
   stroke-linecap: round;
+}
+
+.flow-donut__arc--outer {
+  opacity: 0.9;
 }
 
 .flow-donut__arc.is-expense {

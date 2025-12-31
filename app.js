@@ -3,7 +3,6 @@ const DEFAULT_SETTINGS = {
   horizonYears: 10,
   inflationRate: 2.5,
   seedMoney: 0,
-  seedMoneyGrowthRate: 4.5,
   seedMoneyReturnRate: 11,
   viewMode: "nominal",
   currency: "KRW",
@@ -121,8 +120,7 @@ const state = {
   ui: {
     editingNodeId: null,
     editingLinkId: null,
-    nodePanelCollapsed: false,
-    linkPanelCollapsed: false,
+    activeDrawer: null,
     drag: {
       linkId: null,
       fromId: null,
@@ -142,12 +140,8 @@ const dom = {
   sampleLoad: document.getElementById("sampleLoad"),
   resetView: document.getElementById("resetView"),
   resetAll: document.getElementById("resetAll"),
-  nodePanel: document.getElementById("nodePanel"),
-  nodePanelBody: document.getElementById("nodePanelBody"),
-  nodePanelToggle: document.getElementById("toggleNodePanel"),
-  linkPanel: document.getElementById("linkPanel"),
-  linkPanelBody: document.getElementById("linkPanelBody"),
-  linkPanelToggle: document.getElementById("toggleLinkPanel"),
+  nodeDrawer: document.getElementById("nodeDrawer"),
+  linkDrawer: document.getElementById("linkDrawer"),
   addNode: document.getElementById("addNode"),
   addLink: document.getElementById("addLink"),
   summaryCards: document.getElementById("summaryCards"),
@@ -246,15 +240,7 @@ function bindControls() {
   }
 
   if (dom.seedMoneyGrowthRate) {
-    dom.seedMoneyGrowthRate.value = state.settings.seedMoneyGrowthRate;
-    const updateSeedGrowth = (event) => {
-      const value = clampNumber(event.target.value, 0, 20, 0, 1);
-      state.settings.seedMoneyGrowthRate = value;
-      dom.seedMoneyGrowthRate.value = value;
-      renderAll();
-    };
-    dom.seedMoneyGrowthRate.addEventListener("change", updateSeedGrowth);
-    dom.seedMoneyGrowthRate.addEventListener("input", updateSeedGrowth);
+    dom.seedMoneyGrowthRate.value = formatRate(getSeedMoneyCombinedRate(state.settings));
   }
 
   if (dom.seedMoneyReturnRate) {
@@ -324,7 +310,7 @@ function bindControls() {
   bindFlowFilters();
   bindFormControls();
   bindListActions();
-  bindPanelToggles();
+  bindDrawerControls();
 }
 
 function bindFlowFilters() {
@@ -432,61 +418,89 @@ function bindListActions() {
   }
 }
 
-function bindPanelToggles() {
+function bindDrawerControls() {
   ["node", "link"].forEach((key) => {
-    const { toggle, body } = getPanelConfig(key);
-    if (!toggle || !body) {
+    const { drawer } = getDrawerConfig(key);
+    if (!drawer) {
       return;
     }
-    toggle.addEventListener("click", () => {
-      setPanelCollapsed(key, !state.ui[`${key}PanelCollapsed`]);
+    drawer.addEventListener("click", (event) => {
+      const closeTarget = event.target.closest("[data-drawer-close]");
+      if (closeTarget) {
+        closeDrawer(key);
+      }
     });
-    updatePanelState(key);
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") {
+      return;
+    }
+    if (state.ui.activeDrawer) {
+      closeDrawer(state.ui.activeDrawer);
+    }
   });
 }
 
-function getPanelConfig(key) {
+function getDrawerConfig(key) {
   if (key === "node") {
     return {
-      toggle: dom.nodePanelToggle,
-      body: dom.nodePanelBody,
-      panel: dom.nodePanel,
+      drawer: dom.nodeDrawer,
+      focusTarget: dom.nodeName,
     };
   }
   if (key === "link") {
     return {
-      toggle: dom.linkPanelToggle,
-      body: dom.linkPanelBody,
-      panel: dom.linkPanel,
+      drawer: dom.linkDrawer,
+      focusTarget: dom.linkFrom,
     };
   }
   return {};
 }
 
-function updatePanelState(key) {
-  const { toggle, body, panel } = getPanelConfig(key);
-  const collapsed = state.ui[`${key}PanelCollapsed`];
-  if (body) {
-    body.hidden = collapsed;
+function openDrawer(key) {
+  const { drawer, focusTarget } = getDrawerConfig(key);
+  if (!drawer) {
+    return;
   }
-  if (toggle) {
-    toggle.textContent = collapsed ? "펼치기" : "접기";
-    toggle.setAttribute("aria-expanded", (!collapsed).toString());
-  }
+  ["node", "link"].forEach((otherKey) => {
+    if (otherKey !== key) {
+      closeDrawer(otherKey);
+    }
+  });
+  drawer.classList.add("is-open");
+  drawer.setAttribute("aria-hidden", "false");
+  document.body.classList.add("has-drawer");
+  state.ui.activeDrawer = key;
+  const panel = drawer.querySelector(".drawer__panel");
   if (panel) {
-    panel.classList.toggle("is-collapsed", collapsed);
+    panel.scrollTop = 0;
+  }
+  if (focusTarget) {
+    focusTarget.focus();
   }
 }
 
-function setPanelCollapsed(key, collapsed) {
-  state.ui[`${key}PanelCollapsed`] = collapsed;
-  updatePanelState(key);
+function closeDrawer(key) {
+  const { drawer } = getDrawerConfig(key);
+  if (!drawer) {
+    return;
+  }
+  drawer.classList.remove("is-open");
+  drawer.setAttribute("aria-hidden", "true");
+  if (state.ui.activeDrawer === key) {
+    state.ui.activeDrawer = null;
+  }
+  if (!isAnyDrawerOpen()) {
+    document.body.classList.remove("has-drawer");
+  }
 }
 
-function expandPanel(key) {
-  if (state.ui[`${key}PanelCollapsed`]) {
-    setPanelCollapsed(key, false);
-  }
+function isAnyDrawerOpen() {
+  return ["node", "link"].some((key) => {
+    const { drawer } = getDrawerConfig(key);
+    return drawer && drawer.classList.contains("is-open");
+  });
 }
 
 function loadSample() {
@@ -510,6 +524,7 @@ function renderAll() {
   renderMeta(nodeMap);
   syncToggleButtons();
   syncIncomeControls();
+  syncDerivedControls();
   syncForms();
   renderLinkWarnings(nodeMap);
 }
@@ -562,6 +577,12 @@ function syncIncomeControls() {
   dom.salaryGrowthRate.value = (rate * 100).toFixed(1);
 }
 
+function syncDerivedControls() {
+  if (dom.seedMoneyGrowthRate) {
+    dom.seedMoneyGrowthRate.value = formatRate(getSeedMoneyCombinedRate(state.settings));
+  }
+}
+
 function syncForms() {
   syncNodeForm();
   syncLinkForm();
@@ -569,14 +590,14 @@ function syncForms() {
 
 function startNodeCreate() {
   state.ui.editingNodeId = null;
-  expandPanel("node");
+  openDrawer("node");
   syncNodeForm();
   setFormStatus(dom.nodeFormStatus, "");
 }
 
 function startLinkCreate() {
   state.ui.editingLinkId = null;
-  expandPanel("link");
+  openDrawer("link");
   syncLinkForm();
   setFormStatus(dom.linkFormStatus, "");
 }
@@ -1154,6 +1175,14 @@ function buildFlowDonut(summary) {
   }
 
   const baseTotal = Math.max(expenseTotal, 1);
+  const remainderValue = Math.abs(summary.remaining || 0);
+  const remainderItem = remainderValue > 0
+    ? {
+        label: summary.remaining >= 0 ? "잔여금" : "적자",
+        value: remainderValue,
+        className: summary.remaining >= 0 ? "is-remaining" : "is-expense",
+      }
+    : null;
 
   const container = document.createElement("div");
   container.className = "flow-donut";
@@ -1202,6 +1231,36 @@ function buildFlowDonut(summary) {
     offset += dash;
   });
 
+  if (remainderItem && income > 0) {
+    const outerRadius = 70;
+    const outerStroke = 8;
+    const outerCircumference = 2 * Math.PI * outerRadius;
+    const outerFraction = Math.min(1, remainderItem.value / income);
+    const outerDash = outerCircumference * outerFraction;
+
+    const outerTrack = createSvgElement("circle", {
+      cx: centerX,
+      cy: centerY,
+      r: outerRadius,
+      class: "flow-donut__track flow-donut__track--outer",
+      "stroke-width": outerStroke,
+      fill: "none",
+    });
+    svg.appendChild(outerTrack);
+
+    const outerArc = createSvgElement("circle", {
+      cx: centerX,
+      cy: centerY,
+      r: outerRadius,
+      class: `flow-donut__arc ${remainderItem.className} flow-donut__arc--outer`,
+      "stroke-width": outerStroke,
+      fill: "none",
+    });
+    outerArc.style.strokeDasharray = `${outerDash} ${outerCircumference - outerDash}`;
+    outerArc.style.strokeDashoffset = "0";
+    svg.appendChild(outerArc);
+  }
+
   const center = document.createElement("div");
   center.className = "flow-donut__center";
   center.innerHTML = `
@@ -1215,7 +1274,8 @@ function buildFlowDonut(summary) {
 
   const legend = document.createElement("div");
   legend.className = "flow-donut__legend";
-  items.forEach((item) => {
+  const legendItems = remainderItem ? [...items, remainderItem] : items;
+  legendItems.forEach((item) => {
     const entry = document.createElement("div");
     entry.className = "flow-donut__legend-item";
     entry.innerHTML = `
@@ -1444,18 +1504,19 @@ function renderSimulationChart(simulation) {
   svg.innerHTML = "";
 
   const series = simulation.timeline || [];
-  const growthRate = Number(state.settings.seedMoneyGrowthRate) || 0;
   const returnRate = Number(state.settings.seedMoneyReturnRate) || 0;
   const inflationRate = Number(state.settings.inflationRate) || 0;
+  const combinedSeedRate = getSeedMoneyCombinedRate(state.settings);
   const steadyScenario = buildSteadyScenario(state.nodes, state.settings);
   const steadySimulation = simulateMonthly(
     steadyScenario.steadyNodes,
     state.links,
-    steadyScenario.steadySettings
+    steadyScenario.steadySettings,
+    steadyScenario.steadyOptions
   );
   const steadySeries = steadySimulation.timeline || [];
   if (dom.simulationChartMeta) {
-    dom.simulationChartMeta.textContent = `보유자산 성장률 연 ${growthRate.toFixed(1)}% · 보유자산 투자수익률 연 ${returnRate.toFixed(1)}% · 인플레이션 연 ${inflationRate.toFixed(1)}% · 성실 총자산: 저축/투자 성장률 0%, 보유자산 성장률=인플레이션, 실질 기준`;
+    dom.simulationChartMeta.textContent = `보유자산 성장률(자동) 연 ${formatRate(combinedSeedRate)}% (인플레이션 ${formatRate(inflationRate)}% + 보유자산 투자수익률 ${formatRate(returnRate)}%) · 성실 총자산: 저축/투자 성장률 0%, 보유자산 성장률=인플레이션-0.5%, 실질 기준`;
   }
   if (!series.length) {
     const empty = createSvgElement("text", {
@@ -1849,7 +1910,7 @@ function handleNodeListAction(event) {
 
   if (action === "node-edit") {
     state.ui.editingNodeId = nodeId;
-    expandPanel("node");
+    openDrawer("node");
     syncNodeForm();
     setFormStatus(dom.nodeFormStatus, "");
     return;
@@ -1886,7 +1947,7 @@ function handleLinkListAction(event) {
 
   if (action === "link-edit") {
     state.ui.editingLinkId = linkId;
-    expandPanel("link");
+    openDrawer("link");
     syncLinkForm();
     setFormStatus(dom.linkFormStatus, "");
     return;
@@ -2843,6 +2904,16 @@ function getMonthlyRateFactor(rate) {
   return getAnnualRateFactor(rate, 1);
 }
 
+function getSeedMoneyCombinedRate(settings, options = {}) {
+  const override = Number(options.seedMoneyAnnualRate);
+  if (Number.isFinite(override)) {
+    return override;
+  }
+  const inflationRate = Math.max(0, Number(settings.inflationRate) || 0);
+  const returnRate = Math.max(0, Number(settings.seedMoneyReturnRate) || 0);
+  return inflationRate + returnRate;
+}
+
 function getInflationFactor(ratePercent, monthsElapsed) {
   const rate = Math.max(0, Number(ratePercent) || 0) / 100;
   if (rate === 0) {
@@ -2879,10 +2950,8 @@ function simulateMonthly(nodes, links, settings, options = {}) {
   });
 
   const seedMoneyStart = Math.max(0, Number(settings.seedMoney) || 0);
-  const growthRate = Math.max(0, Number(settings.seedMoneyGrowthRate) || 0) / 100;
-  const returnRate = Math.max(0, Number(settings.seedMoneyReturnRate) || 0) / 100;
-  const combinedSeedRate = (1 + growthRate) * (1 + returnRate) - 1;
-  const seedMonthlyFactor = getMonthlyRateFactor(combinedSeedRate);
+  const combinedSeedRate = getSeedMoneyCombinedRate(settings, options);
+  const seedMonthlyFactor = getMonthlyRateFactor(combinedSeedRate / 100);
   const assetGrowthRate = Number(options.assetGrowthRate);
   const assetMonthlyFactor = Number.isFinite(assetGrowthRate) && assetGrowthRate !== 0
     ? getMonthlyRateFactor(assetGrowthRate / 100)
@@ -3030,9 +3099,9 @@ function simulateMonthly(nodes, links, settings, options = {}) {
 
 function buildSteadyScenario(nodes, settings) {
   const inflationRate = Number(settings.inflationRate) || 0;
+  const steadyAssetGrowthRate = Math.max(0, inflationRate - 0.5);
   const steadySettings = {
     ...settings,
-    seedMoneyGrowthRate: inflationRate,
     seedMoneyReturnRate: 0,
   };
   const steadyNodes = nodes.map((node) => {
@@ -3044,6 +3113,10 @@ function buildSteadyScenario(nodes, settings) {
   return {
     steadySettings,
     steadyNodes,
+    steadyOptions: {
+      assetGrowthRate: steadyAssetGrowthRate,
+      seedMoneyAnnualRate: 0,
+    },
   };
 }
 
@@ -3076,9 +3149,8 @@ function computeProjectionTotals(
     totals.remaining += summary.remaining * 12;
   }
 
-  const growthRate = Math.max(0, seedMoneyGrowthRate) / 100;
-  const returnRate = Math.max(0, seedMoneyReturnRate) / 100;
-  const seedFactor = Math.pow((1 + growthRate) * (1 + returnRate), horizon);
+  const combinedRate = Math.max(0, seedMoneyGrowthRate + seedMoneyReturnRate) / 100;
+  const seedFactor = Math.pow(1 + combinedRate, horizon);
   totals.seedMoneyFuture = seedMoney * seedFactor;
   totals.totalAssets = totals.totalSavingsInvest + totals.remaining + totals.seedMoneyFuture;
   return totals;
@@ -3156,6 +3228,14 @@ function formatKoreanCompact(value) {
 
 function formatPercent(value) {
   return `${(Number(value) * 100).toFixed(1)}%`;
+}
+
+function formatRate(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) {
+    return "0.0";
+  }
+  return numeric.toFixed(1);
 }
 
 function formatMonthLabel(value) {
@@ -3236,7 +3316,7 @@ function syncControlValues() {
     dom.seedMoney.value = formatManAmount(state.settings.seedMoney);
   }
   if (dom.seedMoneyGrowthRate) {
-    dom.seedMoneyGrowthRate.value = state.settings.seedMoneyGrowthRate;
+    dom.seedMoneyGrowthRate.value = formatRate(getSeedMoneyCombinedRate(state.settings));
   }
   if (dom.seedMoneyReturnRate) {
     dom.seedMoneyReturnRate.value = state.settings.seedMoneyReturnRate;
