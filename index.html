@@ -57,6 +57,7 @@
             저축/투자는 가용현금 범위 내에서만 반영됩니다.
             부채는 월 이자를 먼저 반영하고 상환액으로 차감하며, 현금이 음수면 부족분을 부채에 더합니다.
             저축/투자에는 월 수익률을 적용합니다.
+            실질 순자산(현재가치)은 기준금리(연)를 월 복리로 환산해 할인합니다.
           </div>
           <div class="table-wrap">
             <table id="projectionTable" class="projection-table">
@@ -73,6 +74,7 @@
                   <th>투자</th>
                   <th>부채</th>
                   <th>순자산</th>
+                  <th>실질 순자산(현재가치)</th>
                 </tr>
               </thead>
               <tbody></tbody>
@@ -129,21 +131,45 @@
             <details class="advanced-block">
               <summary>고급 설정 (생활비 상세 / 초기자산 / 증가율 / 수익률)</summary>
               <div class="controls-block">
-                <h3>생활비 상세 항목</h3>
+                <div class="block-head">
+                  <h3>생활비 상세 항목</h3>
+                  <button id="editExpenseItems" class="btn btn-ghost btn-sm" type="button">항목 편집</button>
+                </div>
                 <p class="hint">아래 항목 합계가 월 생활비로 자동 반영됩니다.</p>
                 <div id="expenseList" class="expense-list" aria-live="polite"></div>
+                <div id="expenseEditorActions" class="editor-actions" hidden>
+                  <button id="addExpenseItem" class="btn btn-ghost btn-sm" type="button">항목 추가</button>
+                  <button id="applyExpenseItems" class="btn btn-primary btn-sm" type="button">항목 변경 적용</button>
+                  <button id="cancelExpenseItems" class="btn btn-ghost btn-sm" type="button">편집 취소</button>
+                </div>
                 <p id="expenseTotalHint" class="hint"></p>
               </div>
               <div class="controls-block">
-                <h3>저축 상세 항목</h3>
+                <div class="block-head">
+                  <h3>저축 상세 항목</h3>
+                  <button id="editSavingsItems" class="btn btn-ghost btn-sm" type="button">항목 편집</button>
+                </div>
                 <p class="hint">아래 항목 합계가 월 저축으로 자동 반영됩니다.</p>
                 <div id="savingsList" class="savings-list" aria-live="polite"></div>
+                <div id="savingsEditorActions" class="editor-actions" hidden>
+                  <button id="addSavingsItem" class="btn btn-ghost btn-sm" type="button">항목 추가</button>
+                  <button id="applySavingsItems" class="btn btn-primary btn-sm" type="button">항목 변경 적용</button>
+                  <button id="cancelSavingsItems" class="btn btn-ghost btn-sm" type="button">편집 취소</button>
+                </div>
                 <p id="savingsTotalHint" class="hint"></p>
               </div>
               <div class="controls-block">
-                <h3>투자 상세 항목</h3>
+                <div class="block-head">
+                  <h3>투자 상세 항목</h3>
+                  <button id="editInvestItems" class="btn btn-ghost btn-sm" type="button">항목 편집</button>
+                </div>
                 <p class="hint">아래 항목 합계가 월 투자로 자동 반영됩니다.</p>
                 <div id="investList" class="invest-list" aria-live="polite"></div>
+                <div id="investEditorActions" class="editor-actions" hidden>
+                  <button id="addInvestItem" class="btn btn-ghost btn-sm" type="button">항목 추가</button>
+                  <button id="applyInvestItems" class="btn btn-primary btn-sm" type="button">항목 변경 적용</button>
+                  <button id="cancelInvestItems" class="btn btn-ghost btn-sm" type="button">편집 취소</button>
+                </div>
                 <p id="investTotalHint" class="hint"></p>
               </div>
               <div class="controls-grid controls-grid--advanced">

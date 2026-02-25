@@ -1,6 +1,7 @@
 const MONEY_UNIT = 10000;
 const STORAGE_KEY = "isf-rebuild-v1";
 const MAX_INCOME_ITEMS = 12;
+const MAX_ALLOCATION_ITEMS = 20;
 
 const DEFAULT_EXPENSE_ITEMS = [
   { id: "rent", name: "주거비(월세)", amount: 60 },
@@ -122,10 +123,25 @@ const dom = {
   incomeTotalHint: document.getElementById("incomeTotalHint"),
   expenseList: document.getElementById("expenseList"),
   expenseTotalHint: document.getElementById("expenseTotalHint"),
+  editExpenseItems: document.getElementById("editExpenseItems"),
+  expenseEditorActions: document.getElementById("expenseEditorActions"),
+  addExpenseItem: document.getElementById("addExpenseItem"),
+  applyExpenseItems: document.getElementById("applyExpenseItems"),
+  cancelExpenseItems: document.getElementById("cancelExpenseItems"),
   savingsList: document.getElementById("savingsList"),
   savingsTotalHint: document.getElementById("savingsTotalHint"),
+  editSavingsItems: document.getElementById("editSavingsItems"),
+  savingsEditorActions: document.getElementById("savingsEditorActions"),
+  addSavingsItem: document.getElementById("addSavingsItem"),
+  applySavingsItems: document.getElementById("applySavingsItems"),
+  cancelSavingsItems: document.getElementById("cancelSavingsItems"),
   investList: document.getElementById("investList"),
   investTotalHint: document.getElementById("investTotalHint"),
+  editInvestItems: document.getElementById("editInvestItems"),
+  investEditorActions: document.getElementById("investEditorActions"),
+  addInvestItem: document.getElementById("addInvestItem"),
+  applyInvestItems: document.getElementById("applyInvestItems"),
+  cancelInvestItems: document.getElementById("cancelInvestItems"),
   jumpToInputs: document.getElementById("jumpToInputs"),
   pendingBar: document.getElementById("pendingBar"),
   pendingSummary: document.getElementById("pendingSummary"),
@@ -148,6 +164,12 @@ const state = {
   inputs: sanitizeInputs({ ...DEFAULT_INPUTS, ...loadPersistedInputs() }),
   draftInputs: null,
   applyFeedbackTimer: null,
+  suspendInputTracking: false,
+  itemEditors: {
+    expense: { active: false, items: [] },
+    savings: { active: false, items: [] },
+    invest: { active: false, items: [] },
+  },
   snapshot: null,
 };
 
@@ -161,6 +183,9 @@ document.addEventListener("DOMContentLoaded", () => {
 function bindControls() {
   if (dom.inputsForm) {
     const handleInput = (event) => {
+      if (state.suspendInputTracking) {
+        return;
+      }
       const target = event.target;
       if (!(target instanceof HTMLInputElement) || !FORM_FIELD_KEYS.includes(target.name)) {
         return;
@@ -171,7 +196,6 @@ function bindControls() {
     };
 
     dom.inputsForm.addEventListener("input", handleInput);
-    dom.inputsForm.addEventListener("change", handleInput);
   }
 
   if (dom.addIncomeItem) {
@@ -189,6 +213,9 @@ function bindControls() {
 
   if (dom.incomeList) {
     dom.incomeList.addEventListener("input", (event) => {
+      if (state.suspendInputTracking) {
+        return;
+      }
       const target = event.target;
       if (!(target instanceof HTMLInputElement)) {
         return;
@@ -242,8 +269,36 @@ function bindControls() {
 
   if (dom.expenseList) {
     dom.expenseList.addEventListener("input", (event) => {
+      if (state.suspendInputTracking) {
+        return;
+      }
       const target = event.target;
       if (!(target instanceof HTMLInputElement)) {
+        return;
+      }
+
+      if (state.itemEditors.expense.active) {
+        const itemId = target.dataset.editorId;
+        const field = target.dataset.field;
+        if (!itemId || !field) {
+          return;
+        }
+        const item = state.itemEditors.expense.items.find((entry) => entry.id === itemId);
+        if (!item) {
+          return;
+        }
+        if (field === "name") {
+          const index = sanitizeInteger(target.dataset.index, 0, 0, 999);
+          item.name = normalizeAllocationName(target.value, "생활비", index);
+          target.value = item.name;
+        }
+        if (field === "amount") {
+          item.amount = sanitizeMoney(target.value, 0);
+        }
+        renderExpenseTotalHint(
+          toWon(getMonthlyAllocationTotalMan(state.itemEditors.expense.items)),
+          state.itemEditors.expense.items.length,
+        );
         return;
       }
 
@@ -261,12 +316,60 @@ function bindControls() {
       expense.amount = sanitizeMoney(target.value, 0);
       markPendingChanges();
     });
+
+    dom.expenseList.addEventListener("click", (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement) || !state.itemEditors.expense.active) {
+        return;
+      }
+      const removeId = target.dataset.removeEditorItem;
+      if (!removeId) {
+        return;
+      }
+      if (state.itemEditors.expense.items.length <= 1) {
+        return;
+      }
+      state.itemEditors.expense.items = state.itemEditors.expense.items.filter((item) => item.id !== removeId);
+      renderExpenseList(state.itemEditors.expense.items, { editing: true });
+      renderExpenseTotalHint(
+        toWon(getMonthlyAllocationTotalMan(state.itemEditors.expense.items)),
+        state.itemEditors.expense.items.length,
+      );
+    });
   }
 
   if (dom.savingsList) {
     dom.savingsList.addEventListener("input", (event) => {
+      if (state.suspendInputTracking) {
+        return;
+      }
       const target = event.target;
       if (!(target instanceof HTMLInputElement)) {
+        return;
+      }
+
+      if (state.itemEditors.savings.active) {
+        const itemId = target.dataset.editorId;
+        const field = target.dataset.field;
+        if (!itemId || !field) {
+          return;
+        }
+        const item = state.itemEditors.savings.items.find((entry) => entry.id === itemId);
+        if (!item) {
+          return;
+        }
+        if (field === "name") {
+          const index = sanitizeInteger(target.dataset.index, 0, 0, 999);
+          item.name = normalizeAllocationName(target.value, "저축", index);
+          target.value = item.name;
+        }
+        if (field === "amount") {
+          item.amount = sanitizeMoney(target.value, 0);
+        }
+        renderSavingsTotalHint(
+          toWon(getMonthlyAllocationTotalMan(state.itemEditors.savings.items)),
+          state.itemEditors.savings.items.length,
+        );
         return;
       }
 
@@ -284,12 +387,60 @@ function bindControls() {
       item.amount = sanitizeMoney(target.value, 0);
       markPendingChanges();
     });
+
+    dom.savingsList.addEventListener("click", (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement) || !state.itemEditors.savings.active) {
+        return;
+      }
+      const removeId = target.dataset.removeEditorItem;
+      if (!removeId) {
+        return;
+      }
+      if (state.itemEditors.savings.items.length <= 1) {
+        return;
+      }
+      state.itemEditors.savings.items = state.itemEditors.savings.items.filter((item) => item.id !== removeId);
+      renderSavingsList(state.itemEditors.savings.items, { editing: true });
+      renderSavingsTotalHint(
+        toWon(getMonthlyAllocationTotalMan(state.itemEditors.savings.items)),
+        state.itemEditors.savings.items.length,
+      );
+    });
   }
 
   if (dom.investList) {
     dom.investList.addEventListener("input", (event) => {
+      if (state.suspendInputTracking) {
+        return;
+      }
       const target = event.target;
       if (!(target instanceof HTMLInputElement)) {
+        return;
+      }
+
+      if (state.itemEditors.invest.active) {
+        const itemId = target.dataset.editorId;
+        const field = target.dataset.field;
+        if (!itemId || !field) {
+          return;
+        }
+        const item = state.itemEditors.invest.items.find((entry) => entry.id === itemId);
+        if (!item) {
+          return;
+        }
+        if (field === "name") {
+          const index = sanitizeInteger(target.dataset.index, 0, 0, 999);
+          item.name = normalizeAllocationName(target.value, "투자", index);
+          target.value = item.name;
+        }
+        if (field === "amount") {
+          item.amount = sanitizeMoney(target.value, 0);
+        }
+        renderInvestTotalHint(
+          toWon(getMonthlyAllocationTotalMan(state.itemEditors.invest.items)),
+          state.itemEditors.invest.items.length,
+        );
         return;
       }
 
@@ -307,6 +458,86 @@ function bindControls() {
       item.amount = sanitizeMoney(target.value, 0);
       markPendingChanges();
     });
+
+    dom.investList.addEventListener("click", (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement) || !state.itemEditors.invest.active) {
+        return;
+      }
+      const removeId = target.dataset.removeEditorItem;
+      if (!removeId) {
+        return;
+      }
+      if (state.itemEditors.invest.items.length <= 1) {
+        return;
+      }
+      state.itemEditors.invest.items = state.itemEditors.invest.items.filter((item) => item.id !== removeId);
+      renderInvestList(state.itemEditors.invest.items, { editing: true });
+      renderInvestTotalHint(
+        toWon(getMonthlyAllocationTotalMan(state.itemEditors.invest.items)),
+        state.itemEditors.invest.items.length,
+      );
+    });
+  }
+
+  if (dom.editExpenseItems) {
+    dom.editExpenseItems.addEventListener("click", () => {
+      if (state.itemEditors.expense.active) {
+        cancelItemEditor("expense");
+      } else {
+        startItemEditor("expense");
+      }
+    });
+  }
+
+  if (dom.editSavingsItems) {
+    dom.editSavingsItems.addEventListener("click", () => {
+      if (state.itemEditors.savings.active) {
+        cancelItemEditor("savings");
+      } else {
+        startItemEditor("savings");
+      }
+    });
+  }
+
+  if (dom.editInvestItems) {
+    dom.editInvestItems.addEventListener("click", () => {
+      if (state.itemEditors.invest.active) {
+        cancelItemEditor("invest");
+      } else {
+        startItemEditor("invest");
+      }
+    });
+  }
+
+  if (dom.addExpenseItem) {
+    dom.addExpenseItem.addEventListener("click", () => addItemToEditor("expense"));
+  }
+  if (dom.addSavingsItem) {
+    dom.addSavingsItem.addEventListener("click", () => addItemToEditor("savings"));
+  }
+  if (dom.addInvestItem) {
+    dom.addInvestItem.addEventListener("click", () => addItemToEditor("invest"));
+  }
+
+  if (dom.applyExpenseItems) {
+    dom.applyExpenseItems.addEventListener("click", () => applyItemEditor("expense"));
+  }
+  if (dom.applySavingsItems) {
+    dom.applySavingsItems.addEventListener("click", () => applyItemEditor("savings"));
+  }
+  if (dom.applyInvestItems) {
+    dom.applyInvestItems.addEventListener("click", () => applyItemEditor("invest"));
+  }
+
+  if (dom.cancelExpenseItems) {
+    dom.cancelExpenseItems.addEventListener("click", () => cancelItemEditor("expense"));
+  }
+  if (dom.cancelSavingsItems) {
+    dom.cancelSavingsItems.addEventListener("click", () => cancelItemEditor("savings"));
+  }
+  if (dom.cancelInvestItems) {
+    dom.cancelInvestItems.addEventListener("click", () => cancelItemEditor("invest"));
   }
 
   if (dom.loadSample) {
@@ -374,6 +605,152 @@ function ensureDraftInputs() {
   return state.draftInputs;
 }
 
+function getVisibleInputs() {
+  return state.draftInputs || state.inputs;
+}
+
+function getItemGroupMeta(groupKey) {
+  const map = {
+    expense: {
+      label: "생활비",
+      field: "expenseItems",
+      renderList: renderExpenseList,
+      renderHint: renderExpenseTotalHint,
+      editButton: dom.editExpenseItems,
+      actionWrap: dom.expenseEditorActions,
+      defaultItems: DEFAULT_EXPENSE_ITEMS,
+    },
+    savings: {
+      label: "저축",
+      field: "savingsItems",
+      renderList: renderSavingsList,
+      renderHint: renderSavingsTotalHint,
+      editButton: dom.editSavingsItems,
+      actionWrap: dom.savingsEditorActions,
+      defaultItems: DEFAULT_SAVINGS_ITEMS,
+    },
+    invest: {
+      label: "투자",
+      field: "investItems",
+      renderList: renderInvestList,
+      renderHint: renderInvestTotalHint,
+      editButton: dom.editInvestItems,
+      actionWrap: dom.investEditorActions,
+      defaultItems: DEFAULT_INVEST_ITEMS,
+    },
+  };
+  return map[groupKey];
+}
+
+function setItemEditorUi(groupKey, active) {
+  const meta = getItemGroupMeta(groupKey);
+  if (!meta) {
+    return;
+  }
+  if (meta.actionWrap) {
+    meta.actionWrap.hidden = !active;
+  }
+  if (meta.editButton) {
+    meta.editButton.textContent = active ? "편집 닫기" : "항목 편집";
+  }
+}
+
+function startItemEditor(groupKey) {
+  const meta = getItemGroupMeta(groupKey);
+  const editor = state.itemEditors[groupKey];
+  if (!meta || !editor) {
+    return;
+  }
+
+  closeAllItemEditors(groupKey);
+
+  const inputs = getVisibleInputs();
+  const sourceItems = Array.isArray(inputs[meta.field]) && inputs[meta.field].length > 0
+    ? inputs[meta.field]
+    : meta.defaultItems;
+
+  editor.active = true;
+  editor.items = sourceItems.map((item, index) => ({
+    id: typeof item?.id === "string" && item.id.trim()
+      ? item.id.trim()
+      : createAllocationItemId(groupKey, index),
+    name: normalizeAllocationName(item?.name, meta.label, index),
+    amount: sanitizeMoney(item?.amount, 0),
+  }));
+
+  meta.renderList(editor.items, { editing: true });
+  meta.renderHint(toWon(getMonthlyAllocationTotalMan(editor.items)), editor.items.length);
+  setItemEditorUi(groupKey, true);
+}
+
+function addItemToEditor(groupKey) {
+  const meta = getItemGroupMeta(groupKey);
+  const editor = state.itemEditors[groupKey];
+  if (!meta || !editor || !editor.active || editor.items.length >= MAX_ALLOCATION_ITEMS) {
+    return;
+  }
+
+  editor.items.push({
+    id: createAllocationItemId(groupKey, editor.items.length),
+    name: `${meta.label} ${editor.items.length + 1}`,
+    amount: 0,
+  });
+
+  meta.renderList(editor.items, { editing: true });
+  meta.renderHint(toWon(getMonthlyAllocationTotalMan(editor.items)), editor.items.length);
+}
+
+function applyItemEditor(groupKey) {
+  const meta = getItemGroupMeta(groupKey);
+  const editor = state.itemEditors[groupKey];
+  if (!meta || !editor || !editor.active) {
+    return;
+  }
+
+  const draftInputs = ensureDraftInputs();
+  const normalizedItems = sanitizeAllocationItems(editor.items, meta.defaultItems, 0, groupKey, meta.label);
+  draftInputs[meta.field] = normalizedItems;
+  state.draftInputs = sanitizeInputs(draftInputs);
+
+  editor.active = false;
+  editor.items = [];
+  setItemEditorUi(groupKey, false);
+
+  meta.renderList(state.draftInputs[meta.field]);
+  markPendingChanges();
+}
+
+function cancelItemEditor(groupKey) {
+  const meta = getItemGroupMeta(groupKey);
+  const editor = state.itemEditors[groupKey];
+  if (!meta || !editor) {
+    return;
+  }
+
+  editor.active = false;
+  editor.items = [];
+  setItemEditorUi(groupKey, false);
+
+  const inputs = getVisibleInputs();
+  const items = inputs[meta.field] || [];
+  meta.renderList(items);
+  meta.renderHint(toWon(getMonthlyAllocationTotalMan(items)), items.length);
+}
+
+function closeAllItemEditors(exceptGroupKey = "") {
+  ["expense", "savings", "invest"].forEach((groupKey) => {
+    if (groupKey === exceptGroupKey) {
+      return;
+    }
+    const editor = state.itemEditors[groupKey];
+    if (editor && editor.active) {
+      cancelItemEditor(groupKey);
+    } else {
+      setItemEditorUi(groupKey, false);
+    }
+  });
+}
+
 function markPendingChanges() {
   if (!state.draftInputs) {
     return;
@@ -389,7 +766,17 @@ function markPendingChanges() {
 }
 
 function setPendingBarVisible(visible) {
-  const shouldShow = visible && hasPendingChanges();
+  if (!visible) {
+    if (dom.pendingBar) {
+      dom.pendingBar.hidden = true;
+    }
+    if (dom.pendingSummary) {
+      dom.pendingSummary.textContent = "";
+    }
+    return;
+  }
+
+  const shouldShow = hasPendingChanges();
   if (dom.pendingBar) {
     dom.pendingBar.hidden = !shouldShow;
   }
@@ -400,12 +787,47 @@ function setPendingBarVisible(visible) {
   }
 }
 
+function withSuspendedInputTracking(fn) {
+  state.suspendInputTracking = true;
+  try {
+    return fn();
+  } finally {
+    state.suspendInputTracking = false;
+  }
+}
+
 function hasPendingChanges() {
   return Boolean(state.draftInputs) && !areInputsEqual(state.draftInputs, state.inputs);
 }
 
 function areInputsEqual(a, b) {
-  return JSON.stringify(sanitizeInputs(cloneInputs(a))) === JSON.stringify(sanitizeInputs(cloneInputs(b)));
+  const left = buildInputSignature(a);
+  const right = buildInputSignature(b);
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
+function buildInputSignature(inputs) {
+  const safe = sanitizeInputs(cloneInputs(inputs));
+  return {
+    incomes: safe.incomes.map((item) => ({
+      name: String(item?.name ?? "").trim().slice(0, 24),
+      amount: sanitizeMoney(item?.amount, 0),
+    })),
+    expenseItems: safe.expenseItems.map((item) => sanitizeMoney(item?.amount, 0)),
+    savingsItems: safe.savingsItems.map((item) => sanitizeMoney(item?.amount, 0)),
+    investItems: safe.investItems.map((item) => sanitizeMoney(item?.amount, 0)),
+    monthlyDebtPayment: safe.monthlyDebtPayment,
+    startCash: safe.startCash,
+    startSavings: safe.startSavings,
+    startInvest: safe.startInvest,
+    startDebt: safe.startDebt,
+    annualIncomeGrowth: safe.annualIncomeGrowth,
+    annualExpenseGrowth: safe.annualExpenseGrowth,
+    annualSavingsYield: safe.annualSavingsYield,
+    annualInvestReturn: safe.annualInvestReturn,
+    annualDebtInterest: safe.annualDebtInterest,
+    horizonYears: safe.horizonYears,
+  };
 }
 
 function getPendingSummaryText(inputs) {
@@ -431,13 +853,16 @@ function renderInputHints(inputs) {
 }
 
 function refreshInputsPanel(inputs) {
-  applyInputsToForm(inputs);
-  renderIncomeList(inputs.incomes);
-  renderExpenseList(inputs.expenseItems);
-  renderSavingsList(inputs.savingsItems);
-  renderInvestList(inputs.investItems);
-  syncDerivedMonthlyInputs(inputs);
-  renderInputHints(inputs);
+  closeAllItemEditors();
+  withSuspendedInputTracking(() => {
+    applyInputsToForm(inputs);
+    renderIncomeList(inputs.incomes);
+    renderExpenseList(inputs.expenseItems);
+    renderSavingsList(inputs.savingsItems);
+    renderInvestList(inputs.investItems);
+    syncDerivedMonthlyInputs(inputs);
+    renderInputHints(inputs);
+  });
 }
 
 function commitImmediateInputs(nextInputs) {
@@ -481,7 +906,7 @@ function renderAll() {
 
   renderCards(cards, state.inputs.horizonYears);
   renderSankey(snapshot);
-  renderProjectionTable(projection, state.inputs.horizonYears);
+  renderProjectionTable(projection, state.inputs.horizonYears, state.inputs.annualExpenseGrowth);
   renderInputHints(state.inputs);
 }
 
@@ -562,6 +987,7 @@ function simulateProjection(inputs) {
   const savingsFactor = toMonthlyFactor(inputs.annualSavingsYield);
   const investFactor = toMonthlyFactor(inputs.annualInvestReturn);
   const debtFactor = toMonthlyFactor(inputs.annualDebtInterest);
+  const purchasingPowerFactor = toMonthlyFactor(inputs.annualExpenseGrowth);
 
   let cash = toWon(inputs.startCash);
   let savings = toWon(inputs.startSavings);
@@ -580,6 +1006,7 @@ function simulateProjection(inputs) {
       savings,
       invest,
       debt,
+      realDiscountFactor: 1,
     }),
   ];
 
@@ -628,6 +1055,7 @@ function simulateProjection(inputs) {
         savings,
         invest,
         debt,
+        realDiscountFactor: Math.pow(purchasingPowerFactor, monthIndex),
       }),
     );
   }
@@ -646,7 +1074,11 @@ function buildProjectionRecord({
   savings,
   invest,
   debt,
+  realDiscountFactor = 1,
 }) {
+  const netAsset = cash + savings + invest - debt;
+  const realNetAsset = netAsset / Math.max(realDiscountFactor, 1e-9);
+
   return {
     monthIndex,
     monthlyIncome,
@@ -658,7 +1090,8 @@ function buildProjectionRecord({
     savings,
     invest,
     debt,
-    netAsset: cash + savings + invest - debt,
+    netAsset,
+    realNetAsset,
   };
 }
 
@@ -1097,7 +1530,7 @@ function renderSankeyLegend(data) {
   });
 }
 
-function renderProjectionTable(records, horizonYears) {
+function renderProjectionTable(records, horizonYears, annualBaseRate) {
   if (!dom.projectionTableBody) {
     return;
   }
@@ -1120,6 +1553,7 @@ function renderProjectionTable(records, horizonYears) {
       <td>${formatCurrency(row.invest)}</td>
       <td>${formatCurrency(row.debt)}</td>
       <td>${formatCurrency(row.netAsset)}</td>
+      <td>${formatCurrency(row.realNetAsset)}</td>
     `;
 
     dom.projectionTableBody.appendChild(tr);
@@ -1130,7 +1564,7 @@ function renderProjectionTable(records, horizonYears) {
     const debtHint = firstMonth && firstMonth.debtInterest > firstMonth.actualDebtPayment
       ? " 첫 달 기준 이자 > 실제상환이면 부채가 증가할 수 있습니다."
       : "";
-    dom.projectionMeta.textContent = `월 단위 ${records.length - 1}회 계산 결과를 연 단위 스냅샷으로 요약했습니다 (${horizonYears}년).${debtHint}`;
+    dom.projectionMeta.textContent = `월 단위 ${records.length - 1}회 계산 결과를 연 단위 스냅샷으로 요약했습니다 (${horizonYears}년). 실질 순자산은 기준금리 ${formatPercent(annualBaseRate)}를 디플레이터로 사용합니다.${debtHint}`;
   }
 }
 
@@ -1186,20 +1620,36 @@ function renderIncomeTotalHint(monthlyIncomeWon, count) {
   dom.incomeTotalHint.textContent = `현재 수입 항목 ${count}개 · 월 수입 합계 ${formatCurrency(monthlyIncomeWon)}`;
 }
 
-function renderExpenseList(expenseItems) {
+function renderExpenseList(expenseItems, options = {}) {
   if (!dom.expenseList) {
     return;
   }
 
   dom.expenseList.innerHTML = "";
+  const editing = Boolean(options.editing);
 
   expenseItems.forEach((item, index) => {
     const row = document.createElement("div");
-    row.className = "expense-row";
+    row.className = `expense-row${editing ? " is-editing" : ""}`;
 
-    const name = document.createElement("span");
-    name.className = "expense-name";
-    name.textContent = item.name;
+    let nameElement;
+    if (editing) {
+      const nameInput = document.createElement("input");
+      nameInput.type = "text";
+      nameInput.value = item.name;
+      nameInput.maxLength = 24;
+      nameInput.placeholder = "항목명";
+      nameInput.className = "expense-name-input";
+      nameInput.dataset.editorId = item.id;
+      nameInput.dataset.field = "name";
+      nameInput.dataset.index = String(index);
+      nameElement = nameInput;
+    } else {
+      const name = document.createElement("span");
+      name.className = "expense-name";
+      name.textContent = item.name;
+      nameElement = name;
+    }
 
     const amountInput = document.createElement("input");
     amountInput.type = "number";
@@ -1208,28 +1658,59 @@ function renderExpenseList(expenseItems) {
     amountInput.placeholder = "금액(만원)";
     amountInput.value = String(item.amount);
     amountInput.setAttribute("aria-label", `${item.name} 금액`);
-    amountInput.dataset.expenseId = item.id;
+    if (editing) {
+      amountInput.dataset.editorId = item.id;
+      amountInput.dataset.field = "amount";
+    } else {
+      amountInput.dataset.expenseId = item.id;
+    }
     amountInput.dataset.index = String(index);
 
-    row.append(name, amountInput);
+    row.append(nameElement, amountInput);
+
+    if (editing) {
+      const removeButton = document.createElement("button");
+      removeButton.type = "button";
+      removeButton.className = "btn btn-ghost btn-sm allocation-remove";
+      removeButton.dataset.removeEditorItem = item.id;
+      removeButton.textContent = "삭제";
+      row.appendChild(removeButton);
+    }
+
     dom.expenseList.appendChild(row);
   });
 }
 
-function renderSavingsList(savingsItems) {
+function renderSavingsList(savingsItems, options = {}) {
   if (!dom.savingsList) {
     return;
   }
 
   dom.savingsList.innerHTML = "";
+  const editing = Boolean(options.editing);
 
   savingsItems.forEach((item, index) => {
     const row = document.createElement("div");
-    row.className = "savings-row";
+    row.className = `savings-row${editing ? " is-editing" : ""}`;
 
-    const name = document.createElement("span");
-    name.className = "savings-name";
-    name.textContent = item.name;
+    let nameElement;
+    if (editing) {
+      const nameInput = document.createElement("input");
+      nameInput.type = "text";
+      nameInput.value = item.name;
+      nameInput.maxLength = 24;
+      nameInput.placeholder = "항목명";
+      nameInput.className = "savings-name-input";
+      nameInput.dataset.editorId = item.id;
+      nameInput.dataset.field = "name";
+      nameInput.dataset.index = String(index);
+      nameElement = nameInput;
+    } else {
+      const name = document.createElement("span");
+      name.className = "savings-name";
+      name.textContent = item.name;
+      nameElement = name;
+    }
 
     const amountInput = document.createElement("input");
     amountInput.type = "number";
@@ -1238,28 +1719,59 @@ function renderSavingsList(savingsItems) {
     amountInput.placeholder = "금액(만원)";
     amountInput.value = String(item.amount);
     amountInput.setAttribute("aria-label", `${item.name} 금액`);
-    amountInput.dataset.savingsId = item.id;
+    if (editing) {
+      amountInput.dataset.editorId = item.id;
+      amountInput.dataset.field = "amount";
+    } else {
+      amountInput.dataset.savingsId = item.id;
+    }
     amountInput.dataset.index = String(index);
 
-    row.append(name, amountInput);
+    row.append(nameElement, amountInput);
+
+    if (editing) {
+      const removeButton = document.createElement("button");
+      removeButton.type = "button";
+      removeButton.className = "btn btn-ghost btn-sm allocation-remove";
+      removeButton.dataset.removeEditorItem = item.id;
+      removeButton.textContent = "삭제";
+      row.appendChild(removeButton);
+    }
+
     dom.savingsList.appendChild(row);
   });
 }
 
-function renderInvestList(investItems) {
+function renderInvestList(investItems, options = {}) {
   if (!dom.investList) {
     return;
   }
 
   dom.investList.innerHTML = "";
+  const editing = Boolean(options.editing);
 
   investItems.forEach((item, index) => {
     const row = document.createElement("div");
-    row.className = "invest-row";
+    row.className = `invest-row${editing ? " is-editing" : ""}`;
 
-    const name = document.createElement("span");
-    name.className = "invest-name";
-    name.textContent = item.name;
+    let nameElement;
+    if (editing) {
+      const nameInput = document.createElement("input");
+      nameInput.type = "text";
+      nameInput.value = item.name;
+      nameInput.maxLength = 24;
+      nameInput.placeholder = "항목명";
+      nameInput.className = "invest-name-input";
+      nameInput.dataset.editorId = item.id;
+      nameInput.dataset.field = "name";
+      nameInput.dataset.index = String(index);
+      nameElement = nameInput;
+    } else {
+      const name = document.createElement("span");
+      name.className = "invest-name";
+      name.textContent = item.name;
+      nameElement = name;
+    }
 
     const amountInput = document.createElement("input");
     amountInput.type = "number";
@@ -1268,10 +1780,25 @@ function renderInvestList(investItems) {
     amountInput.placeholder = "금액(만원)";
     amountInput.value = String(item.amount);
     amountInput.setAttribute("aria-label", `${item.name} 금액`);
-    amountInput.dataset.investId = item.id;
+    if (editing) {
+      amountInput.dataset.editorId = item.id;
+      amountInput.dataset.field = "amount";
+    } else {
+      amountInput.dataset.investId = item.id;
+    }
     amountInput.dataset.index = String(index);
 
-    row.append(name, amountInput);
+    row.append(nameElement, amountInput);
+
+    if (editing) {
+      const removeButton = document.createElement("button");
+      removeButton.type = "button";
+      removeButton.className = "btn btn-ghost btn-sm allocation-remove";
+      removeButton.dataset.removeEditorItem = item.id;
+      removeButton.textContent = "삭제";
+      row.appendChild(removeButton);
+    }
+
     dom.investList.appendChild(row);
   });
 }
@@ -1434,36 +1961,60 @@ function getMonthlyIncomeTotalMan(incomes) {
 }
 
 function sanitizeExpenseItems(items, fallbackAmount) {
-  return sanitizeAllocationItems(items, DEFAULT_EXPENSE_ITEMS, fallbackAmount);
+  return sanitizeAllocationItems(items, DEFAULT_EXPENSE_ITEMS, fallbackAmount, "expense", "생활비");
 }
 
 function sanitizeSavingsItems(items, fallbackAmount) {
-  return sanitizeAllocationItems(items, DEFAULT_SAVINGS_ITEMS, fallbackAmount);
+  return sanitizeAllocationItems(items, DEFAULT_SAVINGS_ITEMS, fallbackAmount, "savings", "저축");
 }
 
 function sanitizeInvestItems(items, fallbackAmount) {
-  return sanitizeAllocationItems(items, DEFAULT_INVEST_ITEMS, fallbackAmount);
+  return sanitizeAllocationItems(items, DEFAULT_INVEST_ITEMS, fallbackAmount, "invest", "투자");
 }
 
-function sanitizeAllocationItems(items, defaultItems, fallbackAmount) {
+function sanitizeAllocationItems(items, defaultItems, fallbackAmount, prefix = "allocation", label = "항목") {
   if (!Array.isArray(items) || items.length === 0) {
     return scaleDefaultAllocationItemsToTotal(defaultItems, fallbackAmount);
   }
 
-  const sourceById = new Map(
-    items
-      .filter((item) => item && typeof item === "object")
-      .map((item) => [String(item.id || "").trim(), item]),
-  );
+  const usedIds = new Set();
+  const sanitized = items
+    .filter((item) => item && typeof item === "object")
+    .map((item, index) => {
+      let safeId = typeof item.id === "string" && item.id.trim()
+        ? item.id.trim()
+        : createAllocationItemId(prefix, index);
+      if (usedIds.has(safeId)) {
+        safeId = createAllocationItemId(prefix, index);
+      }
+      usedIds.add(safeId);
 
-  return defaultItems.map((template) => {
-    const source = sourceById.get(template.id);
-    return {
-      id: template.id,
-      name: template.name,
-      amount: sanitizeMoney(source?.amount, template.amount),
-    };
-  });
+      return {
+        id: safeId,
+        name: normalizeAllocationName(item.name, label, index),
+        amount: sanitizeMoney(item.amount, 0),
+      };
+    })
+    .filter((item) => item.name || item.amount > 0)
+    .slice(0, MAX_ALLOCATION_ITEMS);
+
+  if (sanitized.length > 0) {
+    return sanitized;
+  }
+
+  return scaleDefaultAllocationItemsToTotal(defaultItems, fallbackAmount);
+}
+
+function createAllocationItemId(prefix, index = 0) {
+  return `${prefix}-${Date.now()}-${index}-${Math.floor(Math.random() * 100000)}`;
+}
+
+function normalizeAllocationName(name, label, index) {
+  const text = String(name ?? "").trim();
+  if (!text) {
+    return `${label} ${index + 1}`;
+  }
+  return text.slice(0, 24);
 }
 
 function scaleDefaultAllocationItemsToTotal(defaultItems, totalAmount) {

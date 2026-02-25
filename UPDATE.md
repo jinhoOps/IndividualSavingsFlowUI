@@ -63,5 +63,29 @@
   - 적용 완료 시 `변경사항이 적용되었습니다.` 피드백이 잠시 표시된 뒤 자동으로 사라지도록 추가.
 - 타이포그래피 조정:
   - 메인 제목(`h1`) 폰트를 `Gowun Dodum` 계열(`var(--font-body)`)로 변경.
+- pendingBar 표시 조건 보정:
+  - 변경 감지 비교 대상을 내부 객체 전체(JSON)에서 사용자 입력 시그니처 중심으로 전환.
+  - 값이 실제로 바뀌지 않은 경우 `pendingBar`가 표시되지 않도록 수정.
+- 고급설정 상세 항목 편집 플로우 추가:
+  - 생활비/저축/투자 상세 항목에 `항목 편집` 버튼과 별도 편집 모드를 추가.
+  - 평소에는 기존처럼 금액만 즉시 수정하고, 항목명 변경/추가/삭제는 편집 모드에서만 가능하도록 분리.
+  - 편집 모드 내 `항목 변경 적용` 시에만 실제 입력 상태로 반영되도록 적용 흐름을 분리.
+  - 상세 항목 배열 정규화 로직을 고정 템플릿 매핑에서 동적 항목 기반으로 확장.
+- 자산 추이 계산 검증 실질가치 추가:
+  - 검증 표에 `실질 순자산(현재가치)` 컬럼을 추가.
+  - 실질값은 기준금리(생활비 증가율, 연 %)를 월 복리로 환산한 디플레이터로 할인 계산.
+  - 메타/공식 안내 문구에 실질가치 계산 기준을 명시.
+- pendingBar 적용 후 재표시 이슈 보정:
+  - 입력 변경 감지를 `input` 이벤트 중심으로 정리하고 `change` 후행 이벤트로 인한 재표시 경로를 제거.
+  - 적용 버튼 클릭 후 `pendingBar`가 다시 나타나는 케이스를 완화.
+- pendingBar 상시 노출 이슈 추가 보정:
+  - 프로그램적 폼 반영 시 입력 추적을 일시 중지해 불필요한 pending 감지가 발생하지 않도록 보정.
+  - `pendingBar[hidden] { display: none !important; }`를 추가해 숨김 상태를 강제.
 
 ## 커밋 메시지 추천
+1. `feat: add gated advanced-item editor flow for expense/savings/invest`
+2. `feat: require explicit edit mode to rename/add/remove allocation items`
+3. `refactor: support dynamic allocation item lists with apply-based editor UX`
+4. `feat: add real net-asset (present value) column to projection validation table`
+5. `feat: discount net asset by annual base rate in monthly projection snapshots`
+6. `refactor: extend projection records with inflation-adjusted real net asset`
