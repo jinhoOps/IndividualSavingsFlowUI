@@ -64,7 +64,4 @@
 - 타이포그래피 조정:
   - 메인 제목(`h1`) 폰트를 `Gowun Dodum` 계열(`var(--font-body)`)로 변경.
 
-## 커밋 메시지 추천 (Sankey 중심)
-1. `feat: redesign dashboard around single sankey flow and simplified input UX`
-2. `feat: replace multi-graph layout with sankey-first asset flow view`
-3. `refactor: consolidate cashflow visualization into one sankey and transparent debt metrics`
+## 커밋 메시지 추천
