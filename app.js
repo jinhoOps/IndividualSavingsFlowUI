@@ -1,3346 +1,1220 @@
-const DEFAULT_SETTINGS = {
-  baseMonth: getCurrentMonth(),
-  horizonYears: 10,
-  inflationRate: 2.5,
-  seedMoney: 0,
-  seedMoneyReturnRate: 11,
-  viewMode: "nominal",
-  currency: "KRW",
-  flowTypeFilter: "all",
-  flowCurrencyFilter: "all",
-  flowActiveOnly: true,
-};
-
 const MONEY_UNIT = 10000;
+const STORAGE_KEY = "isf-rebuild-v1";
+const MAX_INCOME_ITEMS = 12;
 
-const SAMPLE_DATA = {
-  nodes: [
-    {
-      id: "income-salary",
-      name: "월급",
-      type: "Income",
-      currency: "KRW",
-      monthlyAmount: 2900000,
-      annualGrowthRate: 0.04,
-      active: true,
-      memo: "고정 월급",
-    },
-    {
-      id: "expense-fixed",
-      name: "고정지출",
-      type: "Expense",
-      currency: "KRW",
-      monthlyAmount: 0,
-      active: true,
-      memo: "주거/보험/통신",
-    },
-    {
-      id: "expense-variable",
-      name: "변동지출",
-      type: "Expense",
-      currency: "KRW",
-      monthlyAmount: 0,
-      active: true,
-      memo: "식비/여가/이동",
-    },
-    {
-      id: "bucket-emergency",
-      name: "비상금",
-      type: "Bucket",
-      currency: "KRW",
-      monthlyAmount: 0,
-      active: true,
-      memo: "6개월치 목표",
-      cap: 5000000,
-      currentAmount: 1200000,
-    },
-    {
-      id: "invest-account",
-      name: "투자계좌",
-      type: "Invest",
-      currency: "KRW",
-      monthlyAmount: 0,
-      investReturnRate: 0,
-      active: true,
-      memo: "ETF 자동이체",
-    },
+const DEFAULT_EXPENSE_ITEMS = [
+  { id: "rent", name: "주거비(월세)", amount: 70 },
+  { id: "maintenance", name: "관리비", amount: 12 },
+  { id: "telecom", name: "통신비", amount: 8 },
+  { id: "transport", name: "교통비", amount: 10 },
+  { id: "food", name: "식비", amount: 35 },
+  { id: "etc", name: "기타생활비", amount: 45 },
+];
+
+const DEFAULT_INPUTS = {
+  incomes: [
+    { id: "income-main", name: "급여", amount: 290 },
   ],
-  links: [
-    {
-      id: "link-fixed-1",
-      from: "income-salary",
-      to: "expense-fixed",
-      type: "Fixed",
-      value: 1500000,
-      priority: 1,
-      active: true,
-    },
-    {
-      id: "link-fixed-2",
-      from: "income-salary",
-      to: "expense-variable",
-      type: "Fixed",
-      value: 200000,
-      priority: 2,
-      active: true,
-    },
-    {
-      id: "link-fixed-3",
-      from: "income-salary",
-      to: "bucket-emergency",
-      type: "Fixed",
-      value: 720000,
-      priority: 3,
-      active: true,
-    },
-  ],
+  expenseItems: DEFAULT_EXPENSE_ITEMS,
+  monthlyExpense: 180,
+  monthlySavings: 80,
+  monthlyInvest: 90,
+  monthlyDebtPayment: 30,
+  startCash: 500,
+  startSavings: 300,
+  startInvest: 1200,
+  startDebt: 1500,
+  annualIncomeGrowth: 3.0,
+  annualExpenseGrowth: 2.5,
+  annualSavingsYield: 2.0,
+  annualInvestReturn: 6.5,
+  annualDebtInterest: 4.2,
+  horizonYears: 10,
 };
 
-const NODE_TYPE_LABELS = {
-  Income: "수입",
-  Expense: "지출",
-  Bucket: "저축통",
-  Invest: "투자",
-  Debt: "부채",
-  Transfer: "분배",
+const SAMPLE_INPUTS = {
+  incomes: [
+    { id: "income-main", name: "급여", amount: 460 },
+    { id: "income-side", name: "부수입", amount: 60 },
+  ],
+  expenseItems: [
+    { id: "rent", name: "주거비(월세)", amount: 80 },
+    { id: "maintenance", name: "관리비", amount: 15 },
+    { id: "telecom", name: "통신비", amount: 10 },
+    { id: "transport", name: "교통비", amount: 15 },
+    { id: "food", name: "식비", amount: 60 },
+    { id: "etc", name: "기타생활비", amount: 30 },
+  ],
+  monthlyExpense: 210,
+  monthlySavings: 110,
+  monthlyInvest: 120,
+  monthlyDebtPayment: 35,
+  startCash: 600,
+  startSavings: 450,
+  startInvest: 1500,
+  startDebt: 1200,
+  annualIncomeGrowth: 3.5,
+  annualExpenseGrowth: 2.8,
+  annualSavingsYield: 2.2,
+  annualInvestReturn: 7.0,
+  annualDebtInterest: 4.0,
+  horizonYears: 12,
 };
 
-const LINK_TYPE_LABELS = {
-  Fixed: "금액",
-  Percent: "비율",
-  RuleBased: "규칙",
-  CapFill: "목표 채우기",
+const FORM_FIELD_KEYS = [
+  "monthlySavings",
+  "monthlyInvest",
+  "monthlyDebtPayment",
+  "startCash",
+  "startSavings",
+  "startInvest",
+  "startDebt",
+  "annualIncomeGrowth",
+  "annualExpenseGrowth",
+  "annualSavingsYield",
+  "annualInvestReturn",
+  "annualDebtInterest",
+  "horizonYears",
+];
+
+const TONE_COLORS = {
+  income: "#1e8b7c",
+  expense: "#c9573c",
+  savings: "#3175b6",
+  invest: "#5d4fb3",
+  debt: "#8c3d65",
+  surplus: "#2f9e44",
+  deficit: "#d6336c",
+};
+
+const currencyFormatter = new Intl.NumberFormat("ko-KR", {
+  style: "currency",
+  currency: "KRW",
+  maximumFractionDigits: 0,
+});
+
+const dom = {
+  inputsForm: document.getElementById("inputsForm"),
+  loadSample: document.getElementById("loadSample"),
+  resetInputs: document.getElementById("resetInputs"),
+  addIncomeItem: document.getElementById("addIncomeItem"),
+  incomeList: document.getElementById("incomeList"),
+  incomeTotalHint: document.getElementById("incomeTotalHint"),
+  expenseList: document.getElementById("expenseList"),
+  expenseTotalHint: document.getElementById("expenseTotalHint"),
+  jumpToInputs: document.getElementById("jumpToInputs"),
+  summaryCards: document.getElementById("summaryCards"),
+  cardMeta: document.getElementById("cardMeta"),
+  sankeySvg: document.getElementById("sankeySvg"),
+  sankeyWrap: document.getElementById("sankeyWrap"),
+  sankeyMeta: document.getElementById("sankeyMeta"),
+  sankeyLegend: document.getElementById("sankeyLegend"),
+  sankeyEmpty: document.getElementById("sankeyEmpty"),
+  sankeyTooltip: document.getElementById("sankeyTooltip"),
+  projectionTableBody: document.querySelector("#projectionTable tbody"),
+  projectionMeta: document.getElementById("projectionMeta"),
 };
 
 const state = {
-  nodes: [],
-  links: [],
-  settings: { ...DEFAULT_SETTINGS },
-  flows: [],
-  ui: {
-    editingNodeId: null,
-    editingLinkId: null,
-    activeDrawer: null,
-    drag: {
-      linkId: null,
-      fromId: null,
-    },
-  },
-};
-
-const dom = {
-  baseMonth: document.getElementById("baseMonth"),
-  horizonYears: document.getElementById("horizonYears"),
-  inflationRate: document.getElementById("inflationRate"),
-  seedMoney: document.getElementById("seedMoney"),
-  seedMoneyGrowthRate: document.getElementById("seedMoneyGrowthRate"),
-  seedMoneyReturnRate: document.getElementById("seedMoneyReturnRate"),
-  salaryGrowthRate: document.getElementById("salaryGrowthRate"),
-  toggleButtons: Array.from(document.querySelectorAll(".toggle__btn")),
-  sampleLoad: document.getElementById("sampleLoad"),
-  resetView: document.getElementById("resetView"),
-  resetAll: document.getElementById("resetAll"),
-  nodeDrawer: document.getElementById("nodeDrawer"),
-  linkDrawer: document.getElementById("linkDrawer"),
-  addNode: document.getElementById("addNode"),
-  addLink: document.getElementById("addLink"),
-  summaryCards: document.getElementById("summaryCards"),
-  flowCanvas: document.getElementById("flowCanvas"),
-  nodeList: document.getElementById("nodeList"),
-  linkList: document.getElementById("linkList"),
-  nodeForm: document.getElementById("nodeForm"),
-  nodeFormTitle: document.getElementById("nodeFormTitle"),
-  nodeFormStatus: document.getElementById("nodeFormStatus"),
-  nodeName: document.getElementById("nodeName"),
-  nodeType: document.getElementById("nodeType"),
-  nodeMonthly: document.getElementById("nodeMonthly"),
-  nodeCurrency: document.getElementById("nodeCurrency"),
-  nodeGrowthRate: document.getElementById("nodeGrowthRate"),
-  nodeInvestReturnRate: document.getElementById("nodeInvestReturnRate"),
-  nodeCap: document.getElementById("nodeCap"),
-  nodeCurrent: document.getElementById("nodeCurrent"),
-  nodeMemo: document.getElementById("nodeMemo"),
-  nodeActive: document.getElementById("nodeActive"),
-  nodeCancel: document.getElementById("nodeCancel"),
-  linkForm: document.getElementById("linkForm"),
-  linkFormTitle: document.getElementById("linkFormTitle"),
-  linkFormStatus: document.getElementById("linkFormStatus"),
-  linkFrom: document.getElementById("linkFrom"),
-  linkTo: document.getElementById("linkTo"),
-  linkType: document.getElementById("linkType"),
-  linkValue: document.getElementById("linkValue"),
-  linkValueLabelText: document.getElementById("linkValueLabelText"),
-  linkValueHint: document.getElementById("linkValueHint"),
-  linkPriority: document.getElementById("linkPriority"),
-  linkMin: document.getElementById("linkMin"),
-  linkMax: document.getElementById("linkMax"),
-  linkActive: document.getElementById("linkActive"),
-  linkCancel: document.getElementById("linkCancel"),
-  linkWarnings: document.getElementById("linkWarnings"),
-  simulationSummary: document.getElementById("simulationSummary"),
-  simulationChart: document.getElementById("simulationChart"),
-  simulationChartMeta: document.getElementById("simulationChartMeta"),
-  simulationChartTooltip: document.getElementById("simulationChartTooltip"),
-  baseMonthLabel: document.getElementById("baseMonthLabel"),
-  nodeCountLabel: document.getElementById("nodeCountLabel"),
-  linkCountLabel: document.getElementById("linkCountLabel"),
-  viewModeLabel: document.getElementById("viewModeLabel"),
-  viewModeBadge: document.getElementById("viewModeBadge"),
-  flowMeta: document.getElementById("flowMeta"),
-  flowTypeFilter: document.getElementById("flowTypeFilter"),
-  flowCurrencyFilter: document.getElementById("flowCurrencyFilter"),
-  flowActiveOnly: document.getElementById("flowActiveOnly"),
-  flowTooltip: document.getElementById("flowTooltip"),
-  flowSummary: document.getElementById("flowSummary"),
+  inputs: sanitizeInputs({ ...DEFAULT_INPUTS, ...loadPersistedInputs() }),
+  snapshot: null,
 };
 
 document.addEventListener("DOMContentLoaded", () => {
   bindControls();
-  loadSample();
+  applyInputsToForm(state.inputs);
+  renderIncomeList(state.inputs.incomes);
+  renderExpenseList(state.inputs.expenseItems);
   renderAll();
 });
 
 function bindControls() {
-  if (dom.baseMonth) {
-    dom.baseMonth.value = state.settings.baseMonth;
-    dom.baseMonth.addEventListener("change", (event) => {
-      state.settings.baseMonth = event.target.value || getCurrentMonth();
-      renderAll();
-    });
-  }
-
-  if (dom.horizonYears) {
-    dom.horizonYears.value = state.settings.horizonYears;
-    dom.horizonYears.addEventListener("change", (event) => {
-      const value = clampNumber(event.target.value, 1, 40, DEFAULT_SETTINGS.horizonYears);
-      state.settings.horizonYears = value;
-      dom.horizonYears.value = value;
-      renderAll();
-    });
-  }
-
-  if (dom.inflationRate) {
-    dom.inflationRate.value = state.settings.inflationRate;
-    dom.inflationRate.addEventListener("change", (event) => {
-      const value = clampNumber(event.target.value, 0, 20, DEFAULT_SETTINGS.inflationRate, 1);
-      state.settings.inflationRate = value;
-      dom.inflationRate.value = value;
-      renderAll();
-    });
-  }
-
-  if (dom.seedMoney) {
-    dom.seedMoney.value = formatManAmount(state.settings.seedMoney);
-    dom.seedMoney.addEventListener("change", (event) => {
-      const value = Math.max(0, parseManAmount(event.target.value, 0));
-      state.settings.seedMoney = value;
-      dom.seedMoney.value = formatManAmount(value);
-      renderAll();
-    });
-  }
-
-  if (dom.seedMoneyGrowthRate) {
-    dom.seedMoneyGrowthRate.value = formatRate(getSeedMoneyCombinedRate(state.settings));
-  }
-
-  if (dom.seedMoneyReturnRate) {
-    dom.seedMoneyReturnRate.value = state.settings.seedMoneyReturnRate;
-    const updateSeedReturn = (event) => {
-      const value = clampNumber(event.target.value, 0, 20, 0, 1);
-      state.settings.seedMoneyReturnRate = value;
-      dom.seedMoneyReturnRate.value = value;
-      renderAll();
-    };
-    dom.seedMoneyReturnRate.addEventListener("change", updateSeedReturn);
-    dom.seedMoneyReturnRate.addEventListener("input", updateSeedReturn);
-  }
-
-  if (dom.salaryGrowthRate) {
-    dom.salaryGrowthRate.addEventListener("change", (event) => {
-      const primaryIncome = getPrimaryIncomeNode();
-      if (!primaryIncome) {
+  if (dom.inputsForm) {
+    const handleInput = (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLInputElement) || !FORM_FIELD_KEYS.includes(target.name)) {
         return;
       }
-      const value = clampNumber(event.target.value, 0, 30, 0, 1);
-      primaryIncome.annualGrowthRate = value / 100;
-      dom.salaryGrowthRate.value = value;
+      state.inputs = sanitizeInputs(readInputsFromForm());
+      persistInputs(state.inputs);
+      renderAll();
+    };
+
+    dom.inputsForm.addEventListener("input", handleInput);
+    dom.inputsForm.addEventListener("change", handleInput);
+  }
+
+  if (dom.addIncomeItem) {
+    dom.addIncomeItem.addEventListener("click", () => {
+      if (state.inputs.incomes.length >= MAX_INCOME_ITEMS) {
+        return;
+      }
+      state.inputs.incomes.push(createIncomeItem({ name: `수입 ${state.inputs.incomes.length + 1}` }));
+      persistInputs(state.inputs);
+      renderIncomeList(state.inputs.incomes);
       renderAll();
     });
   }
 
-  dom.toggleButtons.forEach((button) => {
-    button.addEventListener("click", () => {
-      state.settings.viewMode = button.dataset.mode;
+  if (dom.incomeList) {
+    dom.incomeList.addEventListener("input", (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLInputElement)) {
+        return;
+      }
+
+      const itemId = target.dataset.incomeId;
+      const field = target.dataset.field;
+      if (!itemId || !field) {
+        return;
+      }
+
+      const income = state.inputs.incomes.find((item) => item.id === itemId);
+      if (!income) {
+        return;
+      }
+
+      if (field === "name") {
+        income.name = target.value;
+      }
+
+      if (field === "amount") {
+        income.amount = sanitizeMoney(target.value, 0);
+      }
+
+      persistInputs(state.inputs);
       renderAll();
     });
-  });
 
-  if (dom.sampleLoad) {
-    dom.sampleLoad.addEventListener("click", () => {
-      loadSample();
-      renderAll();
-    });
-  }
+    dom.incomeList.addEventListener("click", (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) {
+        return;
+      }
 
-  if (dom.resetView) {
-    dom.resetView.addEventListener("click", () => {
-      state.settings = {
-        ...state.settings,
-        baseMonth: getCurrentMonth(),
-        horizonYears: DEFAULT_SETTINGS.horizonYears,
-        inflationRate: DEFAULT_SETTINGS.inflationRate,
-      };
-      syncControlValues();
-      renderAll();
-    });
-  }
+      const removeId = target.dataset.removeIncome;
+      if (!removeId) {
+        return;
+      }
 
-  if (dom.resetAll) {
-    dom.resetAll.addEventListener("click", () => {
-      state.nodes = [];
-      state.links = [];
-      state.settings = { ...DEFAULT_SETTINGS, baseMonth: getCurrentMonth() };
-      state.ui.editingNodeId = null;
-      state.ui.editingLinkId = null;
-      syncControlValues();
-      renderAll();
-    });
-  }
+      if (state.inputs.incomes.length <= 1) {
+        return;
+      }
 
-  bindFlowFilters();
-  bindFormControls();
-  bindListActions();
-  bindDrawerControls();
-}
-
-function bindFlowFilters() {
-  if (dom.flowTypeFilter) {
-    dom.flowTypeFilter.value = state.settings.flowTypeFilter;
-    dom.flowTypeFilter.addEventListener("change", (event) => {
-      state.settings.flowTypeFilter = event.target.value;
-      renderAll();
-    });
-  }
-  if (dom.flowCurrencyFilter) {
-    dom.flowCurrencyFilter.value = state.settings.flowCurrencyFilter;
-    dom.flowCurrencyFilter.addEventListener("change", (event) => {
-      state.settings.flowCurrencyFilter = event.target.value;
+      state.inputs.incomes = state.inputs.incomes.filter((item) => item.id !== removeId);
+      state.inputs = sanitizeInputs(state.inputs);
+      persistInputs(state.inputs);
+      renderIncomeList(state.inputs.incomes);
       renderAll();
     });
   }
-  if (dom.flowActiveOnly) {
-    dom.flowActiveOnly.checked = state.settings.flowActiveOnly;
-    dom.flowActiveOnly.addEventListener("change", (event) => {
-      state.settings.flowActiveOnly = event.target.checked;
+
+  if (dom.expenseList) {
+    dom.expenseList.addEventListener("input", (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLInputElement)) {
+        return;
+      }
+
+      const itemId = target.dataset.expenseId;
+      if (!itemId) {
+        return;
+      }
+
+      const expense = state.inputs.expenseItems.find((item) => item.id === itemId);
+      if (!expense) {
+        return;
+      }
+
+      expense.amount = sanitizeMoney(target.value, 0);
+      state.inputs.monthlyExpense = getMonthlyExpenseTotalMan(state.inputs.expenseItems);
+      syncMonthlyExpenseField(state.inputs.monthlyExpense);
+      persistInputs(state.inputs);
       renderAll();
     });
   }
-}
 
-function bindFormControls() {
-  if (dom.addNode) {
-    dom.addNode.addEventListener("click", () => {
-      startNodeCreate();
+  if (dom.loadSample) {
+    dom.loadSample.addEventListener("click", () => {
+      state.inputs = sanitizeInputs({ ...SAMPLE_INPUTS });
+      applyInputsToForm(state.inputs);
+      renderIncomeList(state.inputs.incomes);
+      renderExpenseList(state.inputs.expenseItems);
+      persistInputs(state.inputs);
+      renderAll();
     });
   }
 
-  if (dom.addLink) {
-    dom.addLink.addEventListener("click", () => {
-      startLinkCreate();
+  if (dom.resetInputs) {
+    dom.resetInputs.addEventListener("click", () => {
+      state.inputs = sanitizeInputs({ ...DEFAULT_INPUTS });
+      applyInputsToForm(state.inputs);
+      renderIncomeList(state.inputs.incomes);
+      renderExpenseList(state.inputs.expenseItems);
+      persistInputs(state.inputs);
+      renderAll();
     });
   }
 
-  if (dom.nodeForm) {
-    dom.nodeForm.addEventListener("submit", handleNodeSubmit);
-    dom.nodeForm.addEventListener("focusout", handleNodeFieldBlur);
-    dom.nodeForm.addEventListener("keydown", handleNodeShortcutSave);
-  }
-
-  if (dom.nodeCancel) {
-    dom.nodeCancel.addEventListener("click", () => {
-      startNodeCreate();
-    });
-  }
-
-  if (dom.nodeType) {
-    dom.nodeType.addEventListener("change", () => {
-      updateNodeTypeFields(dom.nodeType.value);
-    });
-  }
-
-  if (dom.linkForm) {
-    dom.linkForm.addEventListener("submit", handleLinkSubmit);
-  }
-
-  if (dom.linkCancel) {
-    dom.linkCancel.addEventListener("click", () => {
-      startLinkCreate();
-    });
-  }
-
-  if (dom.linkType) {
-    dom.linkType.addEventListener("change", () => {
-      updateLinkTypeFields(dom.linkType.value);
-    });
-  }
-
-  if (dom.linkFrom) {
-    dom.linkFrom.addEventListener("change", () => {
-      if (!state.ui.editingLinkId) {
-        updateDefaultLinkPriority();
+  if (dom.jumpToInputs) {
+    dom.jumpToInputs.addEventListener("click", () => {
+      const inputSectionTitle = document.getElementById("inputsTitle");
+      if (inputSectionTitle) {
+        inputSectionTitle.scrollIntoView({ behavior: "smooth", block: "start" });
       }
     });
   }
 
-  if (dom.nodeForm) {
-    dom.nodeForm.addEventListener("input", handleFormFieldInput);
-    dom.nodeForm.addEventListener("change", handleFormFieldInput);
-  }
-
-  if (dom.linkForm) {
-    dom.linkForm.addEventListener("input", handleFormFieldInput);
-    dom.linkForm.addEventListener("change", handleFormFieldInput);
-  }
-}
-
-function bindListActions() {
-  if (dom.nodeList) {
-    dom.nodeList.addEventListener("click", handleNodeListAction);
-  }
-
-  if (dom.linkList) {
-    dom.linkList.addEventListener("click", handleLinkListAction);
-    dom.linkList.addEventListener("dragstart", handleLinkDragStart);
-    dom.linkList.addEventListener("dragover", handleLinkDragOver);
-    dom.linkList.addEventListener("dragleave", handleLinkDragLeave);
-    dom.linkList.addEventListener("drop", handleLinkDrop);
-    dom.linkList.addEventListener("dragend", handleLinkDragEnd);
-  }
-}
-
-function bindDrawerControls() {
-  ["node", "link"].forEach((key) => {
-    const { drawer } = getDrawerConfig(key);
-    if (!drawer) {
-      return;
+  window.addEventListener("resize", debounce(() => {
+    if (state.snapshot) {
+      renderSankey(state.snapshot);
     }
-    drawer.addEventListener("click", (event) => {
-      const closeTarget = event.target.closest("[data-drawer-close]");
-      if (closeTarget) {
-        closeDrawer(key);
-      }
-    });
-  });
-
-  document.addEventListener("keydown", (event) => {
-    if (event.key !== "Escape") {
-      return;
-    }
-    if (state.ui.activeDrawer) {
-      closeDrawer(state.ui.activeDrawer);
-    }
-  });
-}
-
-function getDrawerConfig(key) {
-  if (key === "node") {
-    return {
-      drawer: dom.nodeDrawer,
-      focusTarget: dom.nodeName,
-    };
-  }
-  if (key === "link") {
-    return {
-      drawer: dom.linkDrawer,
-      focusTarget: dom.linkFrom,
-    };
-  }
-  return {};
-}
-
-function openDrawer(key) {
-  const { drawer, focusTarget } = getDrawerConfig(key);
-  if (!drawer) {
-    return;
-  }
-  ["node", "link"].forEach((otherKey) => {
-    if (otherKey !== key) {
-      closeDrawer(otherKey);
-    }
-  });
-  drawer.classList.add("is-open");
-  drawer.setAttribute("aria-hidden", "false");
-  document.body.classList.add("has-drawer");
-  state.ui.activeDrawer = key;
-  const panel = drawer.querySelector(".drawer__panel");
-  if (panel) {
-    panel.scrollTop = 0;
-  }
-  if (focusTarget) {
-    focusTarget.focus();
-  }
-}
-
-function closeDrawer(key) {
-  const { drawer } = getDrawerConfig(key);
-  if (!drawer) {
-    return;
-  }
-  drawer.classList.remove("is-open");
-  drawer.setAttribute("aria-hidden", "true");
-  if (state.ui.activeDrawer === key) {
-    state.ui.activeDrawer = null;
-  }
-  if (!isAnyDrawerOpen()) {
-    document.body.classList.remove("has-drawer");
-  }
-}
-
-function isAnyDrawerOpen() {
-  return ["node", "link"].some((key) => {
-    const { drawer } = getDrawerConfig(key);
-    return drawer && drawer.classList.contains("is-open");
-  });
-}
-
-function loadSample() {
-  state.nodes = deepCopy(SAMPLE_DATA.nodes);
-  state.links = deepCopy(SAMPLE_DATA.links);
-  state.ui.editingNodeId = null;
-  state.ui.editingLinkId = null;
+  }, 120));
 }
 
 function renderAll() {
-  const nodeMap = buildNodeMap(state.nodes);
-  state.flows = computeFlows(state.nodes, state.links, nodeMap);
-  const summary = computeSummary(state.nodes, state.flows, nodeMap);
+  state.inputs.monthlyExpense = getMonthlyExpenseTotalMan(state.inputs.expenseItems);
+  syncMonthlyExpenseField(state.inputs.monthlyExpense);
 
-  renderSummaryCards(summary);
-  renderFlowCanvas(state.flows, nodeMap);
-  renderFlowSummary(summary);
-  renderNodeList(state.nodes, state.flows, nodeMap);
-  renderLinkList(state.links, nodeMap);
-  renderSimulation();
-  renderMeta(nodeMap);
-  syncToggleButtons();
-  syncIncomeControls();
-  syncDerivedControls();
-  syncForms();
-  renderLinkWarnings(nodeMap);
+  const snapshot = buildMonthlySnapshot(state.inputs);
+  const projection = simulateProjection(state.inputs);
+  const cards = buildSummaryCards(snapshot, projection, state.inputs.horizonYears);
+
+  state.snapshot = snapshot;
+
+  renderCards(cards, state.inputs.horizonYears);
+  renderSankey(snapshot);
+  renderProjectionTable(projection, state.inputs.horizonYears);
+  renderIncomeTotalHint(snapshot.income, state.inputs.incomes.length);
+  renderExpenseTotalHint(toWon(state.inputs.monthlyExpense), state.inputs.expenseItems.length);
 }
 
-function renderMeta(nodeMap) {
-  const activeNodes = state.nodes.filter((node) => node.active).length;
-  const activeLinks = state.links.filter((link) => link.active).length;
+function buildMonthlySnapshot(inputs) {
+  const income = toWon(getMonthlyIncomeTotalMan(inputs.incomes));
+  const expense = toWon(inputs.monthlyExpense);
+  const savings = toWon(inputs.monthlySavings);
+  const invest = toWon(inputs.monthlyInvest);
+  const debtPayment = toWon(inputs.monthlyDebtPayment);
 
-  if (dom.baseMonthLabel) {
-    dom.baseMonthLabel.textContent = formatMonthLabel(state.settings.baseMonth);
-  }
-  if (dom.nodeCountLabel) {
-    dom.nodeCountLabel.textContent = `${activeNodes} / ${state.nodes.length}`;
-  }
-  if (dom.linkCountLabel) {
-    dom.linkCountLabel.textContent = `${activeLinks} / ${state.links.length}`;
-  }
-  if (dom.viewModeLabel) {
-    dom.viewModeLabel.textContent = state.settings.viewMode === "real" ? "실질" : "명목";
-  }
-  if (dom.flowMeta) {
-    dom.flowMeta.textContent = `노드 ${state.nodes.length} · 링크 ${state.links.length}`;
-  }
-  if (dom.viewModeBadge) {
-    dom.viewModeBadge.textContent = state.settings.viewMode === "real" ? "실질" : "명목";
-  }
-}
+  const requiredOutflow = expense + savings + invest + debtPayment;
+  const netCashflow = income - requiredOutflow;
+  const surplus = Math.max(0, netCashflow);
+  const deficit = Math.max(0, -netCashflow);
 
-function getPrimaryIncomeNode() {
-  return (
-    state.nodes.find((node) => node.id === "income-salary") ||
-    state.nodes.find((node) => node.type === "Income")
-  );
-}
+  const targets = [
+    { id: "expense", label: "생활비", tone: "expense", value: expense },
+    { id: "savings", label: "저축", tone: "savings", value: savings },
+    { id: "invest", label: "투자", tone: "invest", value: invest },
+    { id: "debt", label: "부채상환", tone: "debt", value: debtPayment },
+  ].filter((item) => item.value > 0);
 
-function syncIncomeControls() {
-  if (!dom.salaryGrowthRate) {
-    return;
-  }
-  const primaryIncome = getPrimaryIncomeNode();
-  if (!primaryIncome) {
-    dom.salaryGrowthRate.value = "";
-    dom.salaryGrowthRate.placeholder = "수입 노드 없음";
-    dom.salaryGrowthRate.disabled = true;
-    return;
-  }
-  dom.salaryGrowthRate.disabled = false;
-  dom.salaryGrowthRate.placeholder = "0.0";
-  const rate = Number(primaryIncome.annualGrowthRate) || 0;
-  dom.salaryGrowthRate.value = (rate * 100).toFixed(1);
-}
-
-function syncDerivedControls() {
-  if (dom.seedMoneyGrowthRate) {
-    dom.seedMoneyGrowthRate.value = formatRate(getSeedMoneyCombinedRate(state.settings));
-  }
-}
-
-function syncForms() {
-  syncNodeForm();
-  syncLinkForm();
-}
-
-function startNodeCreate() {
-  state.ui.editingNodeId = null;
-  openDrawer("node");
-  syncNodeForm();
-  setFormStatus(dom.nodeFormStatus, "");
-}
-
-function startLinkCreate() {
-  state.ui.editingLinkId = null;
-  openDrawer("link");
-  syncLinkForm();
-  setFormStatus(dom.linkFormStatus, "");
-}
-
-function syncNodeForm() {
-  if (!dom.nodeForm) {
-    return;
-  }
-  clearFieldErrors(dom.nodeForm);
-  const node = state.nodes.find((item) => item.id === state.ui.editingNodeId);
-  const data = node ? node : getDefaultNodeData();
-  if (!node) {
-    state.ui.editingNodeId = null;
-  }
-  if (dom.nodeFormTitle) {
-    dom.nodeFormTitle.textContent = node ? "노드 수정" : "노드 추가";
-  }
-  fillNodeForm(data);
-}
-
-function syncLinkForm() {
-  if (!dom.linkForm) {
-    return;
-  }
-  clearFieldErrors(dom.linkForm);
-  const nodes = state.nodes;
-  if (!nodes.length) {
-    disableLinkForm("노드를 먼저 추가하세요.");
-    return;
+  if (surplus > 0) {
+    targets.push({ id: "surplus", label: "잉여현금", tone: "surplus", value: surplus });
   }
 
-  const link = state.links.find((item) => item.id === state.ui.editingLinkId);
-  const data = link ? link : getDefaultLinkData(nodes);
-  if (!link) {
-    state.ui.editingLinkId = null;
-  }
-  if (dom.linkFormTitle) {
-    dom.linkFormTitle.textContent = link ? "링크 수정" : "링크 추가";
-  }
-  enableLinkForm();
-  fillLinkForm(data, nodes);
-}
-
-function disableLinkForm(message) {
-  const fields = [
-    dom.linkFrom,
-    dom.linkTo,
-    dom.linkType,
-    dom.linkValue,
-    dom.linkPriority,
-    dom.linkMin,
-    dom.linkMax,
-    dom.linkActive,
-  ];
-  fields.forEach((field) => {
-    if (field) {
-      field.disabled = true;
-    }
-  });
-  if (dom.linkFormStatus) {
-    setFormStatus(dom.linkFormStatus, message, "error");
-  }
-}
-
-function enableLinkForm() {
-  const fields = [
-    dom.linkFrom,
-    dom.linkTo,
-    dom.linkType,
-    dom.linkValue,
-    dom.linkPriority,
-    dom.linkMin,
-    dom.linkMax,
-    dom.linkActive,
-  ];
-  fields.forEach((field) => {
-    if (field) {
-      field.disabled = false;
-    }
-  });
-}
-
-function getDefaultNodeData() {
   return {
-    name: "",
-    type: "Income",
-    currency: "KRW",
-    monthlyAmount: 0,
-    annualGrowthRate: 0,
-    investReturnRate: 0,
-    active: true,
-    memo: "",
-    cap: null,
-    currentAmount: null,
+    income,
+    expense,
+    savings,
+    invest,
+    debtPayment,
+    requiredOutflow,
+    netCashflow,
+    surplus,
+    deficit,
+    targets,
   };
 }
 
-function fillNodeForm(node) {
-  if (!dom.nodeName) {
-    return;
-  }
-  dom.nodeName.value = node.name || "";
-  dom.nodeType.value = node.type || "Income";
-  dom.nodeMonthly.value = formatManAmount(node.monthlyAmount);
-  dom.nodeCurrency.value = node.currency || "KRW";
-  dom.nodeGrowthRate.value = ((Number(node.annualGrowthRate) || 0) * 100).toFixed(1);
-  if (dom.nodeInvestReturnRate) {
-    dom.nodeInvestReturnRate.value = ((Number(node.investReturnRate) || 0) * 100).toFixed(1);
-  }
-  dom.nodeCap.value = node.cap === null || node.cap === undefined ? "" : formatManAmount(node.cap);
-  dom.nodeCurrent.value = node.currentAmount === null || node.currentAmount === undefined
-    ? ""
-    : formatManAmount(node.currentAmount);
-  dom.nodeMemo.value = node.memo || "";
-  dom.nodeActive.checked = node.active !== false;
-  updateNodeTypeFields(dom.nodeType.value);
-}
+function simulateProjection(inputs) {
+  const horizonMonths = Math.max(1, Math.round(inputs.horizonYears)) * 12;
+  const monthlyIncomeBase = toWon(getMonthlyIncomeTotalMan(inputs.incomes));
+  const monthlyExpenseBase = toWon(inputs.monthlyExpense);
+  const monthlySavings = toWon(inputs.monthlySavings);
+  const monthlyInvest = toWon(inputs.monthlyInvest);
+  const monthlyDebtPayment = toWon(inputs.monthlyDebtPayment);
 
-function updateNodeTypeFields(type) {
-  toggleFormField("growth", type === "Income");
-  toggleFormField("investReturn", type === "Invest");
-  toggleFormField("cap", type === "Bucket");
-  toggleFormField("current", type === "Bucket");
-  if (type !== "Income" && dom.nodeGrowthRate) {
-    clearFieldError(dom.nodeGrowthRate);
-  }
-  if (type !== "Invest" && dom.nodeInvestReturnRate) {
-    clearFieldError(dom.nodeInvestReturnRate);
-  }
-  if (type !== "Bucket") {
-    if (dom.nodeCap) {
-      clearFieldError(dom.nodeCap);
+  const incomeFactor = toMonthlyFactor(inputs.annualIncomeGrowth);
+  const expenseFactor = toMonthlyFactor(inputs.annualExpenseGrowth);
+  const savingsFactor = toMonthlyFactor(inputs.annualSavingsYield);
+  const investFactor = toMonthlyFactor(inputs.annualInvestReturn);
+  const debtFactor = toMonthlyFactor(inputs.annualDebtInterest);
+
+  let cash = toWon(inputs.startCash);
+  let savings = toWon(inputs.startSavings);
+  let invest = toWon(inputs.startInvest);
+  let debt = toWon(inputs.startDebt);
+
+  const records = [
+    buildProjectionRecord({
+      monthIndex: 0,
+      monthlyIncome: monthlyIncomeBase,
+      monthlyExpense: monthlyExpenseBase,
+      debtInterest: 0,
+      actualDebtPayment: 0,
+      newBorrowing: 0,
+      cash,
+      savings,
+      invest,
+      debt,
+    }),
+  ];
+
+  for (let monthIndex = 1; monthIndex <= horizonMonths; monthIndex += 1) {
+    const monthlyIncome = monthlyIncomeBase * Math.pow(incomeFactor, monthIndex - 1);
+    const monthlyExpense = monthlyExpenseBase * Math.pow(expenseFactor, monthIndex - 1);
+    const debtInterest = debt * (debtFactor - 1);
+    let debtBalance = debt + debtInterest;
+    let nextCash = cash + monthlyIncome;
+    nextCash -= monthlyExpense;
+    nextCash -= monthlySavings;
+    nextCash -= monthlyInvest;
+
+    const payableCash = Math.max(0, nextCash);
+    const actualDebtPayment = Math.min(debtBalance, monthlyDebtPayment, payableCash);
+    nextCash -= actualDebtPayment;
+    debtBalance -= actualDebtPayment;
+
+    savings += monthlySavings;
+    invest += monthlyInvest;
+
+    let newBorrowing = 0;
+    if (nextCash < 0) {
+      newBorrowing = -nextCash;
+      debtBalance += newBorrowing;
+      nextCash = 0;
     }
-    if (dom.nodeCurrent) {
-      clearFieldError(dom.nodeCurrent);
-    }
+
+    cash = nextCash;
+    savings *= savingsFactor;
+    invest *= investFactor;
+    debt = debtBalance;
+
+    records.push(
+      buildProjectionRecord({
+        monthIndex,
+        monthlyIncome,
+        monthlyExpense,
+        debtInterest,
+        actualDebtPayment,
+        newBorrowing,
+        cash,
+        savings,
+        invest,
+        debt,
+      }),
+    );
   }
+
+  return records;
 }
 
-function toggleFormField(field, isVisible) {
-  const element = document.querySelector(`[data-node-field="${field}"], [data-link-field="${field}"]`);
-  if (element) {
-    element.hidden = !isVisible;
-  }
-}
-
-function getDefaultLinkData(nodes) {
-  const firstNode = nodes[0];
-  const secondNode = nodes.find((node) => node.id !== firstNode?.id) || firstNode;
+function buildProjectionRecord({
+  monthIndex,
+  monthlyIncome,
+  monthlyExpense,
+  debtInterest = 0,
+  actualDebtPayment = 0,
+  newBorrowing = 0,
+  cash,
+  savings,
+  invest,
+  debt,
+}) {
   return {
-    from: firstNode?.id || "",
-    to: secondNode?.id || "",
-    type: "Fixed",
-    value: 0,
-    priority: getNextPriority(firstNode?.id),
-    active: true,
-    min: null,
-    max: null,
+    monthIndex,
+    monthlyIncome,
+    monthlyExpense,
+    debtInterest,
+    actualDebtPayment,
+    newBorrowing,
+    cash,
+    savings,
+    invest,
+    debt,
+    netAsset: cash + savings + invest - debt,
   };
 }
 
-function fillLinkForm(link, nodes) {
-  if (!dom.linkFrom || !dom.linkTo) {
-    return;
-  }
-  populateNodeSelect(dom.linkFrom, nodes, link.from);
-  populateNodeSelect(dom.linkTo, nodes, link.to);
-  dom.linkType.value = link.type || "Fixed";
-  dom.linkPriority.value = link.priority || getNextPriority(link.from);
-  dom.linkMin.value = link.min === null || link.min === undefined ? "" : formatManAmount(link.min);
-  dom.linkMax.value = link.max === null || link.max === undefined ? "" : formatManAmount(link.max);
-  dom.linkActive.checked = link.active !== false;
+function buildSummaryCards(snapshot, projection, horizonYears) {
+  const current = projection[0];
+  const last = projection[projection.length - 1];
+  const debtProbe = projection[1] || current;
+  const deltaNet = last.netAsset - current.netAsset;
+  const futureAllocation = snapshot.savings + snapshot.invest;
+  const savingsRate = snapshot.income > 0 ? futureAllocation / snapshot.income : 0;
+  const debtFreeMonth = projection.find((row) => row.monthIndex > 0 && row.debt <= 1);
 
-  if (link.type === "Percent") {
-    dom.linkValue.value = ((Number(link.value) || 0) * 100).toFixed(1);
-  } else {
-    dom.linkValue.value = formatManAmount(link.value);
-  }
+  let debtFreeText = "부채 없음";
+  let debtSub = "";
 
-  updateLinkTypeFields(dom.linkType.value);
-}
-
-function updateLinkTypeFields(type) {
-  if (!dom.linkValue || !dom.linkValueLabelText || !dom.linkValueHint) {
-    return;
-  }
-  if (type === "Fixed") {
-    dom.linkValueLabelText.textContent = "금액";
-    dom.linkValueHint.textContent = "월 기준 금액(만원 단위)을 입력합니다.";
-    dom.linkValue.disabled = false;
-    dom.linkValue.min = "0";
-    dom.linkValue.max = "";
-    dom.linkValue.step = "1";
-    toggleLinkValueField(true);
-  } else if (type === "Percent") {
-    dom.linkValueLabelText.textContent = "비율(%)";
-    dom.linkValueHint.textContent = "예: 20 입력 시 20% 배분";
-    dom.linkValue.disabled = false;
-    dom.linkValue.min = "0";
-    dom.linkValue.max = "100";
-    dom.linkValue.step = "0.1";
-    toggleLinkValueField(true);
-  } else if (type === "CapFill") {
-    dom.linkValueLabelText.textContent = "값";
-    dom.linkValueHint.textContent = "저축통 목표 상한까지 채웁니다.";
-    dom.linkValue.value = "";
-    dom.linkValue.disabled = true;
-    toggleLinkValueField(true);
-  } else {
-    dom.linkValueLabelText.textContent = "값";
-    dom.linkValueHint.textContent = "규칙 기반 링크는 다음 단계에서 구현됩니다.";
-    dom.linkValue.value = "";
-    dom.linkValue.disabled = true;
-    toggleLinkValueField(true);
-  }
-  clearFieldError(dom.linkValue);
-}
-
-function toggleLinkValueField(isVisible) {
-  const element = document.querySelector('[data-link-field="value"]');
-  if (element) {
-    element.hidden = !isVisible;
-  }
-}
-
-function updateDefaultLinkPriority() {
-  if (!dom.linkFrom || !dom.linkPriority) {
-    return;
-  }
-  const next = getNextPriority(dom.linkFrom.value);
-  dom.linkPriority.value = next;
-}
-
-function populateNodeSelect(select, nodes, selectedId) {
-  select.innerHTML = "";
-  nodes.forEach((node) => {
-    const option = document.createElement("option");
-    option.value = node.id;
-    option.textContent = `${node.name} (${NODE_TYPE_LABELS[node.type] || node.type})`;
-    if (node.id === selectedId) {
-      option.selected = true;
+  if (current.debt > 0) {
+    if (debtFreeMonth) {
+      debtFreeText = formatMonthSpan(debtFreeMonth.monthIndex);
+      debtSub = `시점: ${debtFreeMonth.monthIndex}개월`; 
+    } else {
+      debtFreeText = `${horizonYears}년 내 미소진`;
+      debtSub = `말 잔여부채 ${formatCurrency(last.debt)}`;
     }
-    select.appendChild(option);
-  });
-  if (select.options.length > 0 && !select.value) {
-    select.value = select.options[0].value;
   }
+
+  return [
+    {
+      label: "월 수입",
+      value: formatCurrency(snapshot.income),
+      sub: `연 ${formatCurrency(snapshot.income * 12)}`,
+      variant: "positive",
+    },
+    {
+      label: "월 총 배분",
+      value: formatCurrency(snapshot.requiredOutflow),
+      sub: `생활비+저축+투자+부채상환`,
+      variant: "",
+    },
+    {
+      label: "월 순현금흐름",
+      value: formatSignedCurrency(snapshot.netCashflow),
+      sub: snapshot.netCashflow >= 0 ? "흑자" : "적자(부족분은 부채 전환)",
+      variant: snapshot.netCashflow >= 0 ? "positive" : "negative",
+    },
+    {
+      label: "당월 부채이자",
+      value: formatCurrency(debtProbe.debtInterest),
+      sub: debtProbe.monthIndex > 0 ? `${debtProbe.monthIndex}개월차 기준` : "현재 기준",
+      variant: debtProbe.debtInterest > 0 ? "negative" : "positive",
+    },
+    {
+      label: "당월 실제상환",
+      value: formatCurrency(debtProbe.actualDebtPayment),
+      sub: `설정 상환 ${formatCurrency(snapshot.debtPayment)}`,
+      variant: debtProbe.actualDebtPayment > 0 ? "positive" : "",
+    },
+    {
+      label: "당월 신규차입",
+      value: formatCurrency(debtProbe.newBorrowing),
+      sub: debtProbe.newBorrowing > 0 ? "현금 부족분 전환" : "신규 차입 없음",
+      variant: debtProbe.newBorrowing > 0 ? "negative" : "positive",
+    },
+    {
+      label: "현재 순자산",
+      value: formatCurrency(current.netAsset),
+      sub: `현금 ${formatCurrency(current.cash)} · 부채 ${formatCurrency(current.debt)}`,
+      variant: current.netAsset >= 0 ? "positive" : "negative",
+    },
+    {
+      label: `${horizonYears}년 후 순자산`,
+      value: formatCurrency(last.netAsset),
+      sub: `변화 ${formatSignedCurrency(deltaNet)}`,
+      variant: deltaNet >= 0 ? "positive" : "negative",
+    },
+    {
+      label: "미래자산 투입률",
+      value: formatPercent(savingsRate * 100),
+      sub: `월 저축+투자 ${formatCurrency(futureAllocation)}`,
+      variant: "positive",
+    },
+    {
+      label: "부채 소진 예상",
+      value: debtFreeText,
+      sub: debtSub || "초기 부채가 없습니다.",
+      variant: debtFreeMonth || current.debt === 0 ? "positive" : "negative",
+    },
+  ];
 }
 
-function setFormStatus(element, message, variant) {
-  if (!element) {
-    return;
-  }
-  element.textContent = message;
-  element.classList.remove("is-error", "is-success");
-  if (variant === "error") {
-    element.classList.add("is-error");
-  }
-  if (variant === "success") {
-    element.classList.add("is-success");
-  }
-}
-
-function clearFieldErrors(form) {
-  if (!form) {
-    return;
-  }
-  form.querySelectorAll(".form-group").forEach((group) => {
-    group.classList.remove("is-error");
-    group.querySelectorAll("input, select, textarea").forEach((field) => {
-      field.classList.remove("is-invalid");
-      field.removeAttribute("aria-invalid");
-    });
-    const error = group.querySelector(".field-error");
-    if (error) {
-      error.textContent = "";
-    }
-  });
-}
-
-function applyFieldErrors(fieldErrors) {
-  Object.entries(fieldErrors).forEach(([fieldId, message]) => {
-    setFieldError(fieldId, message);
-  });
-}
-
-function setFieldError(fieldId, message) {
-  const field = document.getElementById(fieldId);
-  if (!field) {
-    return;
-  }
-  field.classList.add("is-invalid");
-  field.setAttribute("aria-invalid", "true");
-  const group = field.closest(".form-group");
-  if (!group) {
-    return;
-  }
-  group.classList.add("is-error");
-  const error = group.querySelector(".field-error");
-  if (error) {
-    error.textContent = message;
-  }
-}
-
-function handleFormFieldInput(event) {
-  const field = event.target;
-  if (!(field instanceof HTMLInputElement || field instanceof HTMLSelectElement || field instanceof HTMLTextAreaElement)) {
-    return;
-  }
-  clearFieldError(field);
-}
-
-function clearFieldError(field) {
-  if (!field) {
-    return;
-  }
-  field.classList.remove("is-invalid");
-  field.removeAttribute("aria-invalid");
-  const group = field.closest(".form-group");
-  if (!group) {
-    return;
-  }
-  group.classList.remove("is-error");
-  const error = group.querySelector(".field-error");
-  if (error) {
-    error.textContent = "";
-  }
-}
-
-function renderSummaryCards(summary) {
+function renderCards(cards, horizonYears) {
   if (!dom.summaryCards) {
     return;
   }
 
-  const cards = [
-    {
-      id: "totalExpense",
-      label: "월 총지출",
-      value: formatCurrency(summary.totalExpense),
-      sub: "생활지출 + 저축/투자 + 부채",
-      variant: "expense",
-    },
-    {
-      id: "savingRate",
-      label: "저축률",
-      value: formatPercent(summary.savingRate),
-      sub: "저축 ÷ 수입",
-      variant: "saving",
-    },
-    {
-      id: "investRate",
-      label: "투자율",
-      value: formatPercent(summary.investRate),
-      sub: "투자 ÷ 수입",
-      variant: "saving",
-    },
-    {
-      id: "remaining",
-      label: "잔여금",
-      value: formatCurrency(summary.remaining),
-      sub: "배분 후 남는 금액",
-      variant: "net",
-    },
-  ];
-
   dom.summaryCards.innerHTML = "";
-  cards.forEach((card, index) => {
-    const element = document.createElement("div");
-    element.className = "card";
-    element.dataset.variant = card.variant;
-    element.style.setProperty("--delay", `${index * 0.04}s`);
-    element.innerHTML = `
-      <div class="card__label">${card.label}</div>
-      <div class="card__value">${card.value}</div>
-      <div class="card__sub">${card.sub}</div>
-    `;
-    dom.summaryCards.appendChild(element);
-  });
-}
+  cards.forEach((card) => {
+    const item = document.createElement("article");
+    item.className = `card ${card.variant || ""}`.trim();
 
-function renderFlowCanvas(flows, nodeMap) {
-  if (!dom.flowCanvas) {
-    return;
-  }
+    const label = document.createElement("span");
+    label.className = "label";
+    label.textContent = card.label;
 
-  dom.flowCanvas.innerHTML = "";
+    const value = document.createElement("span");
+    value.className = "value";
+    value.textContent = card.value;
 
-  const filtered = filterFlows(flows, nodeMap);
-  if (!filtered.length) {
-    renderEmpty(dom.flowCanvas, "조건에 맞는 흐름이 없습니다.");
-    hideFlowTooltip();
-    return;
-  }
+    const sub = document.createElement("span");
+    sub.className = "sub";
+    sub.textContent = card.sub;
 
-  const graph = buildFlowGraph(filtered, nodeMap);
-  if (!graph.nodes.length || !graph.links.length) {
-    renderEmpty(dom.flowCanvas, "그래프를 표시할 데이터가 없습니다.");
-    hideFlowTooltip();
-    return;
-  }
-
-  const svg = buildFlowSvg(graph);
-  dom.flowCanvas.appendChild(svg);
-}
-
-function renderFlowSummary(summary) {
-  if (!dom.flowSummary) {
-    return;
-  }
-  dom.flowSummary.innerHTML = "";
-  dom.flowSummary.classList.remove("flow-summary-grid--single");
-
-  if (summary.totalIncome <= 0) {
-    const empty = document.createElement("div");
-    empty.className = "sankey-empty";
-    empty.textContent = "수입이 없어 흐름 요약을 표시할 수 없습니다.";
-    dom.flowSummary.appendChild(empty);
-    return;
-  }
-
-  const items = [
-    {
-      label: "생활지출",
-      value: summary.totalLivingExpense,
-      className: "is-expense",
-    },
-    {
-      label: "저축",
-      value: summary.totalSavings,
-      className: "is-savings",
-    },
-    {
-      label: "투자",
-      value: summary.totalInvest,
-      className: "is-savings",
-    },
-    {
-      label: "부채 상환",
-      value: summary.totalDebt,
-      className: "is-debt",
-    },
-    {
-      label: summary.remaining >= 0 ? "잔여금" : "적자",
-      value: Math.abs(summary.remaining),
-      className: summary.remaining >= 0 ? "is-remaining" : "is-expense",
-    },
-  ];
-
-  const visibleItems = items.filter((item) => item.value > 0);
-  if (!visibleItems.length) {
-    const empty = document.createElement("div");
-    empty.className = "sankey-empty";
-    empty.textContent = "표시할 항목이 없습니다.";
-    dom.flowSummary.appendChild(empty);
-    return;
-  }
-
-  const donut = buildFlowDonut(summary);
-  dom.flowSummary.classList.toggle("flow-summary-grid--single", !donut);
-  if (donut) {
-    dom.flowSummary.appendChild(donut);
-  }
-
-  const totalOutflow = visibleItems.reduce((sum, item) => sum + item.value, 0);
-  const itemCount = visibleItems.length;
-  const minBaseHeight = 320;
-  const maxBaseHeight = 640;
-  const bandGap = itemCount > 3 ? 16 : 18;
-  const edgePadding = 18;
-  const targetHeight = 240;
-  const maxBase = Math.max(summary.totalIncome, totalOutflow, 1);
-  const scale = targetHeight / maxBase;
-  const minHeight = 32;
-  let heights = visibleItems.map((item) => Math.max(minHeight, item.value * scale));
-  let sumHeights = heights.reduce((sum, height) => sum + height, 0);
-  const requiredHeight = sumHeights +
-    bandGap * Math.max(0, itemCount - 1) +
-    edgePadding * 2;
-  let baseHeight = clamp(Math.max(minBaseHeight, requiredHeight), minBaseHeight, maxBaseHeight);
-  let availableHeight = baseHeight -
-    bandGap * Math.max(0, itemCount - 1) -
-    edgePadding * 2;
-
-  const sankey = document.createElement("div");
-  sankey.className = "sankey";
-  sankey.style.setProperty("--sankey-height", `${baseHeight}px`);
-  sankey.style.height = `${baseHeight}px`;
-  sankey.style.minHeight = `${baseHeight}px`;
-
-  const leftColumn = document.createElement("div");
-  leftColumn.className = "sankey__column sankey__column--left";
-  const bands = document.createElement("div");
-  bands.className = "sankey__bands";
-  const rightColumn = document.createElement("div");
-  rightColumn.className = "sankey__column sankey__column--right";
-
-  if (requiredHeight > maxBaseHeight) {
-    const compress = availableHeight / sumHeights;
-    heights = heights.map((height) => height * compress);
-    sumHeights = heights.reduce((sum, height) => sum + height, 0);
-  }
-
-  const usedHeight = sumHeights + bandGap * Math.max(0, heights.length - 1);
-  const offsetY = edgePadding + Math.max(0, (availableHeight - sumHeights) / 2);
-  const leftHeight = usedHeight;
-  const incomeNode = document.createElement("div");
-  incomeNode.className = "sankey__node is-income";
-  incomeNode.style.height = `${leftHeight}px`;
-  incomeNode.style.top = `${offsetY}px`;
-  incomeNode.innerHTML = `
-    <span class="sankey__node-title">월 총수입</span>
-    <span class="sankey__node-value">${formatCurrency(summary.totalIncome)}</span>
-  `;
-  leftColumn.appendChild(incomeNode);
-
-  let currentTop = offsetY;
-  visibleItems.forEach((item, index) => {
-    const height = heights[index];
-    const band = document.createElement("div");
-    band.className = `sankey__band ${item.className}`;
-    band.style.top = `${currentTop}px`;
-    band.style.height = `${height}px`;
-    bands.appendChild(band);
-
-    const node = document.createElement("div");
-    node.className = `sankey__node ${item.className}`;
-    node.style.top = `${currentTop}px`;
-    node.style.height = `${height}px`;
-    node.innerHTML = `
-      <span class="sankey__node-title">${item.label}</span>
-      <span class="sankey__node-value">${formatCurrency(item.value)}</span>
-    `;
-    rightColumn.appendChild(node);
-    currentTop += height + bandGap;
+    item.append(label, value, sub);
+    dom.summaryCards.appendChild(item);
   });
 
-  sankey.appendChild(leftColumn);
-  sankey.appendChild(bands);
-  sankey.appendChild(rightColumn);
-  dom.flowSummary.appendChild(sankey);
+  if (dom.cardMeta) {
+    dom.cardMeta.textContent = `동일 엔진 계산 · ${horizonYears}년 예측 포함 · 부채 세부지표 노출`;
+  }
 }
 
-function buildFlowDonut(summary) {
-  const income = summary.totalIncome;
-  if (!Number.isFinite(income) || income <= 0) {
+function buildSankeyData(snapshot) {
+  const targets = snapshot.targets.filter((item) => item.value > 0);
+  if (!targets.length) {
     return null;
   }
 
-  const items = [
-    {
-      label: "생활지출",
-      value: summary.totalLivingExpense,
-      className: "is-expense",
-    },
-    {
-      label: "저축",
-      value: summary.totalSavings,
-      className: "is-savings",
-    },
-    {
-      label: "투자",
-      value: summary.totalInvest,
-      className: "is-savings",
-    },
-    {
-      label: "부채 상환",
-      value: summary.totalDebt,
-      className: "is-debt",
-    },
-  ].filter((item) => item.value > 0);
+  const sources = [{ id: "income", label: "월 수입", tone: "income", value: snapshot.income }];
+  const links = [];
 
-  const expenseTotal = items.reduce((sum, item) => sum + item.value, 0);
-  if (!items.length || expenseTotal <= 0) {
-    return null;
-  }
+  if (snapshot.deficit > 0) {
+    sources.push({ id: "deficit", label: "부족자금", tone: "deficit", value: snapshot.deficit });
 
-  const baseTotal = Math.max(expenseTotal, 1);
-  const remainderValue = Math.abs(summary.remaining || 0);
-  const remainderItem = remainderValue > 0
-    ? {
-        label: summary.remaining >= 0 ? "잔여금" : "적자",
-        value: remainderValue,
-        className: summary.remaining >= 0 ? "is-remaining" : "is-expense",
+    const totalTarget = targets.reduce((sum, item) => sum + item.value, 0);
+    const incomeCoverage = totalTarget > 0 ? Math.min(1, snapshot.income / totalTarget) : 0;
+
+    targets.forEach((target) => {
+      const incomeShare = target.value * incomeCoverage;
+      const deficitShare = target.value - incomeShare;
+
+      if (incomeShare > 0) {
+        links.push({ source: "income", target: target.id, value: incomeShare, tone: target.tone });
       }
-    : null;
-
-  const container = document.createElement("div");
-  container.className = "flow-donut";
-
-  const chartWrap = document.createElement("div");
-  chartWrap.className = "flow-donut__chart-wrap";
-
-  const svg = createSvgElement("svg", {
-    viewBox: "0 0 160 160",
-    class: "flow-donut__chart",
-    role: "img",
-    "aria-label": "지출 분포 도넛 차트",
-  });
-
-  const centerX = 80;
-  const centerY = 80;
-  const radius = 56;
-  const strokeWidth = 18;
-  const circumference = 2 * Math.PI * radius;
-
-  const track = createSvgElement("circle", {
-    cx: centerX,
-    cy: centerY,
-    r: radius,
-    class: "flow-donut__track",
-    "stroke-width": strokeWidth,
-    fill: "none",
-  });
-  svg.appendChild(track);
-
-  let offset = 0;
-  items.forEach((item) => {
-    const fraction = Math.max(0, item.value / baseTotal);
-    const dash = circumference * Math.min(1, fraction);
-    const circle = createSvgElement("circle", {
-      cx: centerX,
-      cy: centerY,
-      r: radius,
-      class: `flow-donut__arc ${item.className}`,
-      "stroke-width": strokeWidth,
-      fill: "none",
+      if (deficitShare > 0) {
+        links.push({ source: "deficit", target: target.id, value: deficitShare, tone: "deficit" });
+      }
     });
-    circle.style.strokeDasharray = `${dash} ${circumference - dash}`;
-    circle.style.strokeDashoffset = `${-offset}`;
-    svg.appendChild(circle);
-    offset += dash;
-  });
-
-  if (remainderItem && income > 0) {
-    const outerRadius = 70;
-    const outerStroke = 8;
-    const outerCircumference = 2 * Math.PI * outerRadius;
-    const outerFraction = Math.min(1, remainderItem.value / income);
-    const outerDash = outerCircumference * outerFraction;
-
-    const outerTrack = createSvgElement("circle", {
-      cx: centerX,
-      cy: centerY,
-      r: outerRadius,
-      class: "flow-donut__track flow-donut__track--outer",
-      "stroke-width": outerStroke,
-      fill: "none",
+  } else {
+    targets.forEach((target) => {
+      links.push({ source: "income", target: target.id, value: target.value, tone: target.tone });
     });
-    svg.appendChild(outerTrack);
-
-    const outerArc = createSvgElement("circle", {
-      cx: centerX,
-      cy: centerY,
-      r: outerRadius,
-      class: `flow-donut__arc ${remainderItem.className} flow-donut__arc--outer`,
-      "stroke-width": outerStroke,
-      fill: "none",
-    });
-    outerArc.style.strokeDasharray = `${outerDash} ${outerCircumference - outerDash}`;
-    outerArc.style.strokeDashoffset = "0";
-    svg.appendChild(outerArc);
   }
 
-  const center = document.createElement("div");
-  center.className = "flow-donut__center";
-  center.innerHTML = `
-    <div class="flow-donut__label">월 총수입</div>
-    <div class="flow-donut__value">${formatCurrency(income)}</div>
-  `;
-
-  chartWrap.appendChild(svg);
-  chartWrap.appendChild(center);
-  container.appendChild(chartWrap);
-
-  const legend = document.createElement("div");
-  legend.className = "flow-donut__legend";
-  const legendItems = remainderItem ? [...items, remainderItem] : items;
-  legendItems.forEach((item) => {
-    const entry = document.createElement("div");
-    entry.className = "flow-donut__legend-item";
-    entry.innerHTML = `
-      <span class="flow-donut__legend-label">
-        <span class="flow-donut__dot ${item.className}"></span>
-        ${item.label}
-      </span>
-      <span>${formatCurrency(item.value)}</span>
-    `;
-    legend.appendChild(entry);
-  });
-  container.appendChild(legend);
-
-  return container;
+  return { sources, targets, links };
 }
 
-function renderNodeList(nodes, flows, nodeMap) {
-  if (!dom.nodeList) {
+function renderSankey(snapshot) {
+  if (!dom.sankeySvg || !dom.sankeyWrap) {
     return;
   }
 
-  dom.nodeList.innerHTML = "";
+  hideSankeyTooltip();
 
-  if (!nodes.length) {
-    renderEmpty(dom.nodeList, "노드가 없습니다. 샘플 로드를 눌러보세요.");
-    return;
-  }
+  const data = buildSankeyData(snapshot);
+  dom.sankeySvg.innerHTML = "";
+  dom.sankeyLegend.innerHTML = "";
 
-    const stats = buildFlowStats(flows);
-
-    nodes.forEach((node) => {
-      const flowStat = stats.get(node.id) || { incoming: 0, outgoing: 0 };
-      const growthRate = Number(node.annualGrowthRate) || 0;
-      const growthInfo = node.type === "Income"
-        ? `<span>연봉상승률 ${formatPercent(growthRate)}</span>`
-        : "";
-      const investRate = Number(node.investReturnRate) || 0;
-      const investInfo = node.type === "Invest"
-        ? `<span>투자수익률 ${formatPercent(investRate)}</span>`
-        : "";
-      const item = document.createElement("div");
-      item.className = "list-item";
-      item.innerHTML = `
-        <div class="list-title">
-          <span>${node.name}</span>
-        <span class="pill${node.active ? "" : " inactive"}">
-          ${node.active ? "활성" : "비활성"}
-        </span>
-      </div>
-        <div class="list-meta">
-          <span>${NODE_TYPE_LABELS[node.type] || node.type}</span>
-          <span>월 기준 ${formatCurrency(node.monthlyAmount || 0)}</span>
-          ${growthInfo}
-          ${investInfo}
-          <span>유입 ${formatCurrency(flowStat.incoming)}</span>
-          <span>유출 ${formatCurrency(flowStat.outgoing)}</span>
-        </div>
-      <div class="list-actions">
-        <button class="action-btn action-btn--primary" data-action="node-edit" data-id="${node.id}">
-          편집
-        </button>
-        <button class="action-btn" data-action="node-duplicate" data-id="${node.id}">
-          복제
-        </button>
-        <button class="action-btn" data-action="node-toggle" data-id="${node.id}">
-          ${node.active ? "비활성" : "활성"}
-        </button>
-        <button class="action-btn action-btn--danger" data-action="node-delete" data-id="${node.id}">
-          삭제
-        </button>
-      </div>
-    `;
-    dom.nodeList.appendChild(item);
-  });
-}
-
-function renderLinkList(links, nodeMap) {
-  if (!dom.linkList) {
-    return;
-  }
-
-  dom.linkList.innerHTML = "";
-
-  if (!links.length) {
-    renderEmpty(dom.linkList, "링크가 없습니다. 샘플 로드를 눌러보세요.");
-    return;
-  }
-
-  const grouped = new Map();
-  links.forEach((link) => {
-    if (!grouped.has(link.from)) {
-      grouped.set(link.from, []);
+  if (!data || !data.links.length) {
+    dom.sankeyEmpty.hidden = false;
+    if (dom.sankeyMeta) {
+      dom.sankeyMeta.textContent = "수입/배분 데이터가 없습니다.";
     }
-    grouped.get(link.from).push(link);
+    return;
+  }
+
+  dom.sankeyEmpty.hidden = true;
+
+  if (dom.sankeyMeta) {
+    dom.sankeyMeta.textContent = `수입 ${formatCurrency(snapshot.income)} · 배분 ${formatCurrency(snapshot.requiredOutflow)} · 순현금흐름 ${formatSignedCurrency(snapshot.netCashflow)}`;
+  }
+
+  const width = Math.max(680, dom.sankeyWrap.clientWidth - 20);
+  const height = Math.max(300, data.targets.length * 56 + 60);
+  const nodeWidth = 18;
+  const sourceX = 120;
+  const targetX = width - 180;
+  const marginTop = 26;
+  const marginBottom = 26;
+  const targetGap = 14;
+
+  dom.sankeySvg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+
+  const totalFlow = data.targets.reduce((sum, target) => sum + target.value, 0);
+  const availableHeight = height - marginTop - marginBottom - targetGap * Math.max(0, data.targets.length - 1);
+  const scale = totalFlow > 0 ? availableHeight / totalFlow : 0;
+
+  if (!Number.isFinite(scale) || scale <= 0) {
+    dom.sankeyEmpty.hidden = false;
+    return;
+  }
+
+  const positionedTargets = [];
+  let currentTargetY = marginTop;
+  data.targets.forEach((target) => {
+    const h = target.value * scale;
+    positionedTargets.push({ ...target, x: targetX, y: currentTargetY, h });
+    currentTargetY += h + targetGap;
   });
 
-  const orderedLinks = [];
-  const positionMap = new Map();
-  const fromIds = Array.from(grouped.keys()).sort((a, b) => {
-    const nameA = nodeMap.get(a)?.name || "";
-    const nameB = nodeMap.get(b)?.name || "";
-    return nameA.localeCompare(nameB, "ko");
+  const sourceGap = 20;
+  const sourceNodes = data.sources
+    .filter((source) => source.value > 0)
+    .map((source) => ({ ...source, x: sourceX, h: source.value * scale }));
+
+  const sourceHeightTotal = sourceNodes.reduce((sum, source) => sum + source.h, 0)
+    + sourceGap * Math.max(0, sourceNodes.length - 1);
+  let currentSourceY = (height - sourceHeightTotal) / 2;
+
+  sourceNodes.forEach((source) => {
+    source.y = currentSourceY;
+    currentSourceY += source.h + sourceGap;
   });
 
-  fromIds.forEach((fromId) => {
-    const groupLinks = grouped.get(fromId) || [];
-    groupLinks
-      .slice()
-      .sort((a, b) => (a.priority ?? 0) - (b.priority ?? 0))
-      .forEach((link, index, array) => {
-        positionMap.set(link.id, { index, count: array.length });
-        orderedLinks.push(link);
-      });
+  const sourceMap = new Map(sourceNodes.map((node) => [node.id, node]));
+  const targetMap = new Map(positionedTargets.map((node) => [node.id, node]));
+
+  const sourceOrder = new Map(sourceNodes.map((node, index) => [node.id, index]));
+  const targetOrder = new Map(positionedTargets.map((node, index) => [node.id, index]));
+
+  const orderedLinks = [...data.links].sort((a, b) => {
+    const byTarget = (targetOrder.get(a.target) || 0) - (targetOrder.get(b.target) || 0);
+    if (byTarget !== 0) {
+      return byTarget;
+    }
+    return (sourceOrder.get(a.source) || 0) - (sourceOrder.get(b.source) || 0);
   });
+
+  const sourceOffsets = new Map(sourceNodes.map((node) => [node.id, 0]));
+  const targetOffsets = new Map(positionedTargets.map((node) => [node.id, 0]));
 
   orderedLinks.forEach((link) => {
-    const fromName = nodeMap.get(link.from)?.name || "알 수 없음";
-    const toName = nodeMap.get(link.to)?.name || "알 수 없음";
-    const position = positionMap.get(link.id) || { index: 0, count: 1 };
-    const item = document.createElement("div");
-    item.className = "list-item";
-    item.dataset.linkId = link.id;
-    item.dataset.fromId = link.from;
-    item.innerHTML = `
-      <div class="list-title">
-        <span class="title-left">
-          <span class="drag-handle" draggable="true" data-drag-handle="link" data-id="${link.id}" title="드래그로 우선순위 조정" aria-label="우선순위 드래그">↕</span>
-          <span>${fromName} → ${toName}</span>
-        </span>
-        <span class="pill${link.active ? "" : " inactive"}">
-          ${link.active ? "활성" : "비활성"}
-        </span>
-      </div>
-      <div class="list-meta">
-        <span>${LINK_TYPE_LABELS[link.type] || link.type}</span>
-        <span>${formatLinkValue(link, nodeMap)}</span>
-        <span>우선순위 ${link.priority ?? "-"}</span>
-      </div>
-      <div class="list-actions">
-        <button class="action-btn action-btn--primary" data-action="link-edit" data-id="${link.id}">
-          편집
-        </button>
-        <button class="action-btn" data-action="link-up" data-id="${link.id}" ${position.index === 0 ? "disabled" : ""}>
-          우선↑
-        </button>
-        <button class="action-btn" data-action="link-down" data-id="${link.id}" ${position.index === position.count - 1 ? "disabled" : ""}>
-          우선↓
-        </button>
-        <button class="action-btn" data-action="link-toggle" data-id="${link.id}">
-          ${link.active ? "비활성" : "활성"}
-        </button>
-        <button class="action-btn action-btn--danger" data-action="link-delete" data-id="${link.id}">
-          삭제
-        </button>
-      </div>
+    const source = sourceMap.get(link.source);
+    const target = targetMap.get(link.target);
+    if (!source || !target) {
+      return;
+    }
+
+    const thickness = link.value * scale;
+    const sourceOffset = sourceOffsets.get(source.id) || 0;
+    const targetOffset = targetOffsets.get(target.id) || 0;
+
+    const y0 = source.y + sourceOffset;
+    const y1 = y0 + thickness;
+    const y2 = target.y + targetOffset;
+    const y3 = y2 + thickness;
+
+    sourceOffsets.set(source.id, sourceOffset + thickness);
+    targetOffsets.set(target.id, targetOffset + thickness);
+
+    const path = createSvgElement("path", {
+      d: buildBandPath(source.x + nodeWidth, y0, y1, target.x, y2, y3),
+      class: `sankey-path tone-${link.tone}`,
+    });
+
+    path.addEventListener("mousemove", (event) => {
+      showSankeyTooltip(
+        event,
+        `${source.label} → ${target.label} · ${formatCurrency(link.value)}`,
+      );
+    });
+    path.addEventListener("mouseleave", hideSankeyTooltip);
+
+    dom.sankeySvg.appendChild(path);
+  });
+
+  sourceNodes.forEach((node) => drawNode(node, "source", nodeWidth));
+  positionedTargets.forEach((node) => drawNode(node, "target", nodeWidth));
+
+  renderSankeyLegend(data);
+}
+
+function drawNode(node, side, nodeWidth) {
+  const rect = createSvgElement("rect", {
+    x: node.x,
+    y: node.y,
+    width: nodeWidth,
+    height: Math.max(1, node.h),
+    class: `sankey-node tone-${node.tone}`,
+  });
+  dom.sankeySvg.appendChild(rect);
+
+  const labelX = side === "source" ? node.x - 10 : node.x + nodeWidth + 10;
+  const anchor = side === "source" ? "end" : "start";
+  const centerY = node.y + node.h / 2;
+
+  const label = createSvgElement("text", {
+    x: labelX,
+    y: centerY - 6,
+    class: "sankey-label",
+    "text-anchor": anchor,
+    "dominant-baseline": "middle",
+  });
+  label.textContent = node.label;
+
+  const value = createSvgElement("text", {
+    x: labelX,
+    y: centerY + 10,
+    class: "sankey-value",
+    "text-anchor": anchor,
+    "dominant-baseline": "middle",
+  });
+  value.textContent = formatCurrency(node.value);
+
+  dom.sankeySvg.appendChild(label);
+  dom.sankeySvg.appendChild(value);
+}
+
+function renderSankeyLegend(data) {
+  const items = [...data.targets];
+
+  if (data.sources.some((source) => source.id === "deficit" && source.value > 0)) {
+    items.push({
+      id: "deficit",
+      label: "부족자금",
+      tone: "deficit",
+      value: data.sources.find((source) => source.id === "deficit")?.value || 0,
+    });
+  }
+
+  items.forEach((item) => {
+    const chip = document.createElement("span");
+    chip.className = "legend-item";
+
+    const dot = document.createElement("span");
+    dot.className = "legend-dot";
+    dot.style.backgroundColor = TONE_COLORS[item.tone] || "#999";
+
+    const label = document.createElement("span");
+    label.textContent = `${item.label} ${formatCurrency(item.value)}`;
+
+    chip.append(dot, label);
+    dom.sankeyLegend.appendChild(chip);
+  });
+}
+
+function renderProjectionTable(records, horizonYears) {
+  if (!dom.projectionTableBody) {
+    return;
+  }
+
+  const yearlyRows = records.filter((row) => row.monthIndex % 12 === 0);
+  dom.projectionTableBody.innerHTML = "";
+
+  yearlyRows.forEach((row) => {
+    const tr = document.createElement("tr");
+
+    tr.innerHTML = `
+      <td>${row.monthIndex === 0 ? "현재" : `${row.monthIndex / 12}년`}</td>
+      <td>${formatCurrency(row.monthlyIncome)}</td>
+      <td>${formatCurrency(row.monthlyExpense)}</td>
+      <td>${formatCurrency(row.debtInterest)}</td>
+      <td>${formatCurrency(row.actualDebtPayment)}</td>
+      <td>${formatCurrency(row.newBorrowing)}</td>
+      <td>${formatCurrency(row.cash)}</td>
+      <td>${formatCurrency(row.savings)}</td>
+      <td>${formatCurrency(row.invest)}</td>
+      <td>${formatCurrency(row.debt)}</td>
+      <td>${formatCurrency(row.netAsset)}</td>
     `;
-    dom.linkList.appendChild(item);
+
+    dom.projectionTableBody.appendChild(tr);
+  });
+
+  if (dom.projectionMeta) {
+    dom.projectionMeta.textContent = `월 단위 ${records.length - 1}회 계산 결과를 연 단위 스냅샷으로 요약했습니다 (${horizonYears}년).`;
+  }
+}
+
+function renderIncomeList(incomes) {
+  if (!dom.incomeList) {
+    return;
+  }
+
+  dom.incomeList.innerHTML = "";
+
+  incomes.forEach((income, index) => {
+    const row = document.createElement("div");
+    row.className = "income-row";
+
+    const nameInput = document.createElement("input");
+    nameInput.type = "text";
+    nameInput.placeholder = "수입명";
+    nameInput.value = income.name;
+    nameInput.setAttribute("aria-label", `수입 항목 ${index + 1} 이름`);
+    nameInput.dataset.incomeId = income.id;
+    nameInput.dataset.field = "name";
+
+    const amountInput = document.createElement("input");
+    amountInput.type = "number";
+    amountInput.min = "0";
+    amountInput.step = "1";
+    amountInput.placeholder = "금액(만원)";
+    amountInput.value = String(income.amount);
+    amountInput.setAttribute("aria-label", `수입 항목 ${index + 1} 금액`);
+    amountInput.dataset.incomeId = income.id;
+    amountInput.dataset.field = "amount";
+
+    const removeButton = document.createElement("button");
+    removeButton.type = "button";
+    removeButton.className = "btn btn-ghost btn-sm income-remove";
+    removeButton.textContent = "삭제";
+    removeButton.dataset.removeIncome = income.id;
+    removeButton.disabled = incomes.length <= 1;
+
+    row.append(nameInput, amountInput, removeButton);
+    dom.incomeList.appendChild(row);
+  });
+
+  if (dom.addIncomeItem) {
+    dom.addIncomeItem.disabled = incomes.length >= MAX_INCOME_ITEMS;
+  }
+}
+
+function renderIncomeTotalHint(monthlyIncomeWon, count) {
+  if (!dom.incomeTotalHint) {
+    return;
+  }
+  dom.incomeTotalHint.textContent = `현재 수입 항목 ${count}개 · 월 수입 합계 ${formatCurrency(monthlyIncomeWon)}`;
+}
+
+function renderExpenseList(expenseItems) {
+  if (!dom.expenseList) {
+    return;
+  }
+
+  dom.expenseList.innerHTML = "";
+
+  expenseItems.forEach((item, index) => {
+    const row = document.createElement("div");
+    row.className = "expense-row";
+
+    const name = document.createElement("span");
+    name.className = "expense-name";
+    name.textContent = item.name;
+
+    const amountInput = document.createElement("input");
+    amountInput.type = "number";
+    amountInput.min = "0";
+    amountInput.step = "1";
+    amountInput.placeholder = "금액(만원)";
+    amountInput.value = String(item.amount);
+    amountInput.setAttribute("aria-label", `${item.name} 금액`);
+    amountInput.dataset.expenseId = item.id;
+    amountInput.dataset.index = String(index);
+
+    row.append(name, amountInput);
+    dom.expenseList.appendChild(row);
   });
 }
 
-function renderSimulation() {
-  const simulation = simulateMonthly(state.nodes, state.links, state.settings);
-  renderSimulationChart(simulation);
-
-  if (!dom.simulationSummary) {
+function renderExpenseTotalHint(monthlyExpenseWon, count) {
+  if (!dom.expenseTotalHint) {
     return;
   }
-
-  const totals = simulation.totals;
-  const isReal = state.settings.viewMode === "real";
-  const metrics = [
-    {
-      label: "보유자산(시드머니)",
-      value: totals.seedMoneyStart,
-      note: "기준월 보유 자산",
-    },
-    {
-      label: `${state.settings.horizonYears}년 후 보유자산`,
-      value: isReal ? totals.seedMoneyEndReal : totals.seedMoneyEnd,
-      note: "성장률/투자수익률 반영",
-    },
-    {
-      label: `${state.settings.horizonYears}년 누적 순현금흐름`,
-      value: isReal ? totals.netCashflowReal : totals.netCashflow,
-      note: "수입 - 생활지출 누적",
-    },
-    {
-      label: `${state.settings.horizonYears}년 누적 저축/투자`,
-      value: isReal ? totals.totalSavingsInvestReal : totals.totalSavingsInvest,
-      note: "저축통/투자 유입 누적",
-    },
-    {
-      label: `${state.settings.horizonYears}년 누적 잔여금`,
-      value: isReal ? totals.remainingReal : totals.remaining,
-      note: "배분 후 남는 금액 누적",
-    },
-    {
-      label: `${state.settings.horizonYears}년 후 총 자산(추정)`,
-      value: isReal ? totals.totalAssetsReal : totals.totalAssets,
-      note: "저축통/투자/잔여금 + 보유자산",
-    },
-  ];
-
-  dom.simulationSummary.innerHTML = "";
-  metrics.forEach((metric, index) => {
-    const element = document.createElement("div");
-    element.className = "card";
-    element.style.setProperty("--delay", `${index * 0.04}s`);
-    element.innerHTML = `
-        <div class="card__label">${metric.label}</div>
-        <div class="card__value">${formatCurrency(metric.value)}</div>
-        <div class="card__sub">${metric.note}</div>
-      `;
-    dom.simulationSummary.appendChild(element);
-  });
+  dom.expenseTotalHint.textContent = `생활비 항목 ${count}개 · 월 생활비 합계 ${formatCurrency(monthlyExpenseWon)}`;
 }
 
-function renderSimulationChart(simulation) {
-  if (!dom.simulationChart) {
-    return;
+function syncMonthlyExpenseField(monthlyExpenseMan) {
+  const field = dom.inputsForm?.elements?.monthlyExpense;
+  if (field) {
+    field.value = String(sanitizeMoney(monthlyExpenseMan, 0));
   }
-  const svg = dom.simulationChart;
-  const width = 720;
-  const height = 220;
-  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
-  svg.innerHTML = "";
+}
 
-  const series = simulation.timeline || [];
-  const returnRate = Number(state.settings.seedMoneyReturnRate) || 0;
-  const inflationRate = Number(state.settings.inflationRate) || 0;
-  const combinedSeedRate = getSeedMoneyCombinedRate(state.settings);
-  const steadyScenario = buildSteadyScenario(state.nodes, state.settings);
-  const steadySimulation = simulateMonthly(
-    steadyScenario.steadyNodes,
-    state.links,
-    steadyScenario.steadySettings,
-    steadyScenario.steadyOptions
-  );
-  const steadySeries = steadySimulation.timeline || [];
-  if (dom.simulationChartMeta) {
-    dom.simulationChartMeta.textContent = `보유자산 성장률(자동) 연 ${formatRate(combinedSeedRate)}% (인플레이션 ${formatRate(inflationRate)}% + 보유자산 투자수익률 ${formatRate(returnRate)}%) · 성실 총자산: 저축/투자 성장률 0%, 보유자산 성장률=인플레이션-0.5%, 실질 기준`;
-  }
-  if (!series.length) {
-    const empty = createSvgElement("text", {
-      x: width / 2,
-      y: height / 2,
-      class: "sim-empty",
-      "text-anchor": "middle",
-    });
-    empty.textContent = "데이터 없음";
-    svg.appendChild(empty);
-    return;
-  }
-
-  const padding = {
-    top: 18,
-    right: 220,
-    bottom: 28,
-    left: 96,
+function readInputsFromForm() {
+  const raw = {
+    incomes: state.inputs.incomes,
+    expenseItems: state.inputs.expenseItems,
+    monthlyExpense: state.inputs.monthlyExpense,
   };
-  const plotWidth = width - padding.left - padding.right;
-  const plotHeight = height - padding.top - padding.bottom;
-  const maxIndex = series[series.length - 1].monthIndex || 0;
 
-  const points = series.map((point) => {
-    const factor = getInflationFactor(state.settings.inflationRate, point.monthIndex);
-    const steadyPoint = steadySeries[point.monthIndex];
-    const steadyTotal = steadyPoint ? steadyPoint.totalAssets / factor : 0;
+  FORM_FIELD_KEYS.forEach((key) => {
+    const field = dom.inputsForm?.elements?.[key];
+    raw[key] = Number(field?.value);
+  });
+
+  return raw;
+}
+
+function applyInputsToForm(inputs) {
+  FORM_FIELD_KEYS.forEach((key) => {
+    const field = dom.inputsForm?.elements?.[key];
+    if (field) {
+      field.value = String(inputs[key]);
+    }
+  });
+}
+
+function sanitizeInputs(raw) {
+  const monthlyIncomeFallback = sanitizeMoney(raw.monthlyIncome, getMonthlyIncomeTotalMan(DEFAULT_INPUTS.incomes));
+  const monthlyExpenseFallback = sanitizeMoney(raw.monthlyExpense, getMonthlyExpenseTotalMan(DEFAULT_EXPENSE_ITEMS));
+  const expenseItems = sanitizeExpenseItems(raw.expenseItems, monthlyExpenseFallback);
+
+  return {
+    incomes: sanitizeIncomeItems(raw.incomes, monthlyIncomeFallback),
+    expenseItems,
+    monthlyExpense: getMonthlyExpenseTotalMan(expenseItems),
+    monthlySavings: sanitizeMoney(raw.monthlySavings, DEFAULT_INPUTS.monthlySavings),
+    monthlyInvest: sanitizeMoney(raw.monthlyInvest, DEFAULT_INPUTS.monthlyInvest),
+    monthlyDebtPayment: sanitizeMoney(raw.monthlyDebtPayment, DEFAULT_INPUTS.monthlyDebtPayment),
+    startCash: sanitizeMoney(raw.startCash, DEFAULT_INPUTS.startCash),
+    startSavings: sanitizeMoney(raw.startSavings, DEFAULT_INPUTS.startSavings),
+    startInvest: sanitizeMoney(raw.startInvest, DEFAULT_INPUTS.startInvest),
+    startDebt: sanitizeMoney(raw.startDebt, DEFAULT_INPUTS.startDebt),
+    annualIncomeGrowth: sanitizeRate(raw.annualIncomeGrowth, DEFAULT_INPUTS.annualIncomeGrowth, 30),
+    annualExpenseGrowth: sanitizeRate(raw.annualExpenseGrowth, DEFAULT_INPUTS.annualExpenseGrowth, 30),
+    annualSavingsYield: sanitizeRate(raw.annualSavingsYield, DEFAULT_INPUTS.annualSavingsYield, 20),
+    annualInvestReturn: sanitizeRate(raw.annualInvestReturn, DEFAULT_INPUTS.annualInvestReturn, 30),
+    annualDebtInterest: sanitizeRate(raw.annualDebtInterest, DEFAULT_INPUTS.annualDebtInterest, 30),
+    horizonYears: sanitizeInteger(raw.horizonYears, DEFAULT_INPUTS.horizonYears, 1, 40),
+  };
+}
+
+function sanitizeIncomeItems(items, fallbackAmount) {
+  if (!Array.isArray(items) || items.length === 0) {
+    return [createIncomeItem({ name: "급여", amount: fallbackAmount })];
+  }
+
+  const sanitized = items
+    .map((item, index) => {
+      const safeItem = item && typeof item === "object" ? item : {};
+      const safeName = normalizeIncomeName(safeItem.name, index);
+      const safeAmount = sanitizeMoney(safeItem.amount, 0);
+      const safeId = typeof safeItem.id === "string" && safeItem.id.trim()
+        ? safeItem.id.trim()
+        : createIncomeId();
+      return {
+        id: safeId,
+        name: safeName,
+        amount: safeAmount,
+      };
+    })
+    .filter((item) => item.name || item.amount > 0)
+    .slice(0, MAX_INCOME_ITEMS);
+
+  if (sanitized.length > 0) {
+    return sanitized;
+  }
+
+  return [createIncomeItem({ name: "급여", amount: fallbackAmount })];
+}
+
+function normalizeIncomeName(name, index) {
+  const text = String(name ?? "").trim();
+  if (!text) {
+    return `수입 ${index + 1}`;
+  }
+  return text.slice(0, 24);
+}
+
+function createIncomeId() {
+  return `income-${Date.now()}-${Math.floor(Math.random() * 100000)}`;
+}
+
+function createIncomeItem({ id, name, amount } = {}) {
+  return {
+    id: typeof id === "string" && id.trim() ? id.trim() : createIncomeId(),
+    name: normalizeIncomeName(name, 0),
+    amount: sanitizeMoney(amount, 0),
+  };
+}
+
+function getMonthlyIncomeTotalMan(incomes) {
+  if (!Array.isArray(incomes)) {
+    return 0;
+  }
+  return incomes.reduce((sum, income) => sum + sanitizeMoney(income?.amount, 0), 0);
+}
+
+function sanitizeExpenseItems(items, fallbackAmount) {
+  if (!Array.isArray(items) || items.length === 0) {
+    return scaleDefaultExpenseItemsToTotal(fallbackAmount);
+  }
+
+  const sourceById = new Map(
+    items
+      .filter((item) => item && typeof item === "object")
+      .map((item) => [String(item.id || "").trim(), item]),
+  );
+
+  const merged = DEFAULT_EXPENSE_ITEMS.map((template) => {
+    const source = sourceById.get(template.id);
     return {
-      x: maxIndex === 0 ? padding.left : padding.left + (plotWidth * point.monthIndex) / maxIndex,
-      nominal: point.totalAssets,
-      real: point.totalAssets / factor,
-      steady: steadyTotal,
+      id: template.id,
+      name: template.name,
+      amount: sanitizeMoney(source?.amount, template.amount),
     };
   });
 
-  const maxValue = points.reduce((max, point) => {
-    return Math.max(max, point.nominal, point.real, point.steady);
-  }, 0);
-
-  if (maxValue <= 0) {
-    const empty = createSvgElement("text", {
-      x: width / 2,
-      y: height / 2,
-      class: "sim-empty",
-      "text-anchor": "middle",
-    });
-    empty.textContent = "데이터 없음";
-    svg.appendChild(empty);
-    return;
-  }
-
-  const yScale = (value) => padding.top + (1 - value / maxValue) * plotHeight;
-  const axisTicks = [0, 0.5, 1];
-
-  axisTicks.forEach((tick) => {
-    const value = maxValue * tick;
-    const y = yScale(value);
-    const line = createSvgElement("line", {
-      x1: padding.left,
-      x2: width - padding.right,
-      y1: y,
-      y2: y,
-      class: "sim-grid",
-    });
-    svg.appendChild(line);
-    const label = createSvgElement("text", {
-      x: padding.left - 8,
-      y: y + 4,
-      class: "sim-axis-label",
-      "text-anchor": "end",
-    });
-    label.textContent = formatKoreanCompact(value);
-    svg.appendChild(label);
-  });
-
-  const buildPath = (key) =>
-    points
-      .map((point, index) => {
-        const command = index === 0 ? "M" : "L";
-        return `${command} ${point.x} ${yScale(point[key])}`;
-      })
-      .join(" ");
-
-  const nominalPath = createSvgElement("path", {
-    d: buildPath("nominal"),
-    class: "sim-line sim-line--nominal",
-  });
-  const realPath = createSvgElement("path", {
-    d: buildPath("real"),
-    class: "sim-line sim-line--real",
-  });
-  const steadyPath = createSvgElement("path", {
-    d: buildPath("steady"),
-    class: "sim-line sim-line--steady",
-  });
-
-  svg.appendChild(nominalPath);
-  svg.appendChild(realPath);
-  svg.appendChild(steadyPath);
-
-  const startLabel = formatMonthLabel(state.settings.baseMonth);
-  const endLabel = formatMonthLabel(addMonths(state.settings.baseMonth, simulation.months));
-  const axisY = height - 8;
-
-  const startText = createSvgElement("text", {
-    x: padding.left,
-    y: axisY,
-    class: "sim-axis-label",
-    "text-anchor": "start",
-  });
-  startText.textContent = startLabel;
-  svg.appendChild(startText);
-
-  const endText = createSvgElement("text", {
-    x: width - padding.right,
-    y: axisY,
-    class: "sim-axis-label",
-    "text-anchor": "end",
-  });
-  endText.textContent = endLabel;
-  svg.appendChild(endText);
-
-  const legend = createSvgElement("g", {
-    class: "sim-legend",
-    transform: `translate(${width - padding.right + 12}, ${padding.top})`,
-  });
-  const legendItems = [
-    { label: "명목 총자산", className: "sim-line--nominal" },
-    { label: "실질 총자산", className: "sim-line--real" },
-    { label: "성실 총자산(실질)", className: "sim-line--steady" },
-  ];
-  legendItems.forEach((item, index) => {
-    const y = index * 14;
-    const line = createSvgElement("line", {
-      x1: 0,
-      x2: 14,
-      y1: y,
-      y2: y,
-      class: `sim-legend-line ${item.className}`,
-    });
-    const text = createSvgElement("text", {
-      x: 20,
-      y: y + 4,
-      class: "sim-legend-label",
-    });
-    text.textContent = item.label;
-    legend.appendChild(line);
-    legend.appendChild(text);
-  });
-  svg.appendChild(legend);
-
-  const tooltip = dom.simulationChartTooltip;
-  if (tooltip) {
-    const plotLeft = padding.left;
-    const plotRight = width - padding.right;
-    const plotTop = padding.top;
-    const plotBottom = padding.top + plotHeight;
-
-    const showTooltip = (event) => {
-      const rect = svg.getBoundingClientRect();
-      const scaleX = width / rect.width;
-      const scaleY = height / rect.height;
-      const x = (event.clientX - rect.left) * scaleX;
-      const y = (event.clientY - rect.top) * scaleY;
-      if (x < plotLeft || x > plotRight || y < plotTop || y > plotBottom) {
-        tooltip.hidden = true;
-        return;
-      }
-      const ratio = clamp((x - plotLeft) / plotWidth, 0, 1);
-      const monthFloat = ratio * maxIndex;
-      const yearIndex = Math.round(monthFloat / 12);
-      const monthIndex = clamp(yearIndex * 12, 0, maxIndex);
-      const point = series[monthIndex];
-      if (!point) {
-        tooltip.hidden = true;
-        return;
-      }
-      const factor = getInflationFactor(state.settings.inflationRate, point.monthIndex);
-      const nominal = point.totalAssets;
-      const real = point.totalAssets / factor;
-      const steadyPoint = steadySeries[point.monthIndex];
-      const steadyTotal = steadyPoint ? steadyPoint.totalAssets / factor : 0;
-      const labelMonth = addMonths(state.settings.baseMonth, monthIndex);
-      const yearLabel = yearIndex === 0
-        ? `기준월 (${formatMonthLabel(labelMonth)})`
-        : `${yearIndex}년차 (${formatMonthLabel(labelMonth)})`;
-      tooltip.innerHTML = `
-        <div class="sim-tooltip__title">${yearLabel}</div>
-        <div class="sim-tooltip__row"><span>명목 총자산</span><span>${formatKoreanCompact(nominal)}</span></div>
-        <div class="sim-tooltip__row"><span>실질 총자산</span><span>${formatKoreanCompact(real)}</span></div>
-        <div class="sim-tooltip__row"><span>성실 총자산(실질)</span><span>${formatKoreanCompact(steadyTotal)}</span></div>
-      `;
-      tooltip.hidden = false;
-      const panelRect = tooltip.offsetParent?.getBoundingClientRect() || rect;
-      const tooltipRect = tooltip.getBoundingClientRect();
-      let left = event.clientX - panelRect.left + 12;
-      let top = event.clientY - panelRect.top - tooltipRect.height - 12;
-      if (left + tooltipRect.width > panelRect.width) {
-        left = panelRect.width - tooltipRect.width - 12;
-      }
-      if (top < 8) {
-        top = event.clientY - panelRect.top + 12;
-      }
-      tooltip.style.left = `${left}px`;
-      tooltip.style.top = `${top}px`;
-    };
-
-    svg.onmousemove = showTooltip;
-    svg.onmouseleave = () => {
-      tooltip.hidden = true;
-    };
-  }
+  return merged;
 }
 
-function handleNodeSubmit(event) {
-  event.preventDefault();
-  if (!dom.nodeName || !dom.nodeType || !dom.nodeMonthly) {
-    return;
+function scaleDefaultExpenseItemsToTotal(totalAmount) {
+  const safeTotal = sanitizeMoney(totalAmount, getMonthlyExpenseTotalMan(DEFAULT_EXPENSE_ITEMS));
+  const baseTotal = getMonthlyExpenseTotalMan(DEFAULT_EXPENSE_ITEMS);
+
+  if (baseTotal <= 0) {
+    return DEFAULT_EXPENSE_ITEMS.map((item) => ({ ...item, amount: 0 }));
   }
 
-  clearFieldErrors(dom.nodeForm);
-  const nodeData = buildNodeFormData();
+  const factor = safeTotal / baseTotal;
+  const scaled = DEFAULT_EXPENSE_ITEMS.map((item) => ({
+    id: item.id,
+    name: item.name,
+    amount: sanitizeMoney(item.amount * factor, 0),
+  }));
 
-  const validation = validateNodeData(nodeData);
-  if (validation.errors.length) {
-    applyFieldErrors(validation.fieldErrors);
-    setFormStatus(dom.nodeFormStatus, validation.errors.join(" / "), "error");
-    return;
-  }
+  const currentTotal = getMonthlyExpenseTotalMan(scaled);
+  const diff = safeTotal - currentTotal;
+  const etcIndex = scaled.findIndex((item) => item.id === "etc");
+  const targetIndex = etcIndex >= 0 ? etcIndex : scaled.length - 1;
+  scaled[targetIndex].amount = Math.max(0, scaled[targetIndex].amount + diff);
 
-  const isEdit = Boolean(state.ui.editingNodeId);
-  if (isEdit) {
-    const node = state.nodes.find((item) => item.id === state.ui.editingNodeId);
-    if (node) {
-      Object.assign(node, nodeData);
-    }
-  } else {
-    const newNode = { ...nodeData, id: createId("node") };
-    state.nodes.push(newNode);
-  }
-
-  if (!isEdit) {
-    state.ui.editingNodeId = null;
-  }
-
-  renderAll();
-  setFormStatus(
-    dom.nodeFormStatus,
-    isEdit ? "노드가 저장되었습니다." : "노드가 추가되었습니다.",
-    "success"
-  );
+  return scaled;
 }
 
-function handleNodeFieldBlur(event) {
-  const field = event.target;
-  if (!(field instanceof HTMLInputElement || field instanceof HTMLSelectElement || field instanceof HTMLTextAreaElement)) {
-    return;
+function getMonthlyExpenseTotalMan(expenseItems) {
+  if (!Array.isArray(expenseItems)) {
+    return 0;
   }
-  if (!dom.nodeForm || !dom.nodeForm.contains(field)) {
-    return;
-  }
-  if (field.closest("[hidden]")) {
-    return;
-  }
-  const nodeData = buildNodeFormData();
-  const validation = validateNodeData(nodeData);
-  const message = validation.fieldErrors[field.id];
-  if (message) {
-    setFieldError(field.id, message);
-  } else {
-    clearFieldError(field);
-  }
+  return expenseItems.reduce((sum, item) => sum + sanitizeMoney(item?.amount, 0), 0);
 }
 
-function handleNodeShortcutSave(event) {
-  if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
-    event.preventDefault();
-    if (dom.nodeForm && typeof dom.nodeForm.requestSubmit === "function") {
-      dom.nodeForm.requestSubmit();
-    }
+function sanitizeMoney(value, fallback) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) {
+    return fallback;
   }
+  return Math.max(0, Math.round(number));
 }
 
-function buildNodeFormData() {
-  const name = dom.nodeName?.value?.trim() || "";
-  const type = dom.nodeType?.value || "Income";
-  const currency = dom.nodeCurrency?.value || "KRW";
-  const monthlyAmount = parseManAmount(dom.nodeMonthly?.value, 0);
-  const growthPercent = parseNumber(dom.nodeGrowthRate?.value, 0);
-  const investReturnPercent = parseNumber(dom.nodeInvestReturnRate?.value, 0);
-  const cap = parseOptionalManAmount(dom.nodeCap?.value);
-  const currentAmount = parseOptionalManAmount(dom.nodeCurrent?.value);
-  const memo = dom.nodeMemo?.value?.trim() || "";
-  const active = dom.nodeActive?.checked ?? true;
-
-  return {
-    name,
-    type,
-    currency,
-    monthlyAmount,
-    annualGrowthRate: type === "Income" ? growthPercent / 100 : 0,
-    investReturnRate: type === "Invest" ? investReturnPercent / 100 : 0,
-    active,
-    memo,
-    cap: type === "Bucket" ? cap : null,
-    currentAmount: type === "Bucket" ? currentAmount : null,
-  };
+function sanitizeRate(value, fallback, max) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) {
+    return fallback;
+  }
+  return roundTo(Math.min(Math.max(number, 0), max), 1);
 }
 
-function handleLinkSubmit(event) {
-  event.preventDefault();
-  if (!dom.linkFrom || dom.linkFrom.disabled) {
-    return;
+function sanitizeInteger(value, fallback, min, max) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) {
+    return fallback;
   }
-
-  clearFieldErrors(dom.linkForm);
-  const from = dom.linkFrom.value;
-  const to = dom.linkTo.value;
-  const type = dom.linkType?.value || "Fixed";
-  const priority = Math.max(1, parseNumber(dom.linkPriority?.value, getNextPriority(from)));
-  const min = parseOptionalManAmount(dom.linkMin?.value);
-  const max = parseOptionalManAmount(dom.linkMax?.value);
-  const active = dom.linkActive?.checked ?? true;
-  let value = 0;
-
-  if (type === "Fixed") {
-    value = parseManAmount(dom.linkValue?.value, 0);
-  } else if (type === "Percent") {
-    const percent = parseNumber(dom.linkValue?.value, 0);
-    value = percent / 100;
-  }
-
-  const linkData = {
-    from,
-    to,
-    type,
-    value,
-    priority,
-    active,
-    min,
-    max,
-  };
-
-  const validation = validateLinkData(linkData);
-  if (validation.errors.length) {
-    applyFieldErrors(validation.fieldErrors);
-    setFormStatus(dom.linkFormStatus, validation.errors.join(" / "), "error");
-    return;
-  }
-
-  const isEdit = Boolean(state.ui.editingLinkId);
-  let previousFrom = null;
-  if (isEdit) {
-    const link = state.links.find((item) => item.id === state.ui.editingLinkId);
-    if (link) {
-      previousFrom = link.from;
-      Object.assign(link, linkData);
-    }
-  } else {
-    const newLink = { ...linkData, id: createId("link") };
-    state.links.push(newLink);
-  }
-
-  if (previousFrom && previousFrom !== from) {
-    normalizeLinkPriorities(previousFrom);
-  }
-  normalizeLinkPriorities(from);
-
-  if (!isEdit) {
-    state.ui.editingLinkId = null;
-  }
-
-  renderAll();
-  setFormStatus(
-    dom.linkFormStatus,
-    isEdit ? "링크가 저장되었습니다." : "링크가 추가되었습니다.",
-    "success"
-  );
+  return Math.min(max, Math.max(min, Math.round(number)));
 }
 
-function handleNodeListAction(event) {
-  const button = event.target.closest("button[data-action]");
-  if (!button) {
-    return;
-  }
-  const action = button.dataset.action;
-  const nodeId = button.dataset.id;
-  if (!nodeId) {
-    return;
-  }
-
-  if (action === "node-edit") {
-    state.ui.editingNodeId = nodeId;
-    openDrawer("node");
-    syncNodeForm();
-    setFormStatus(dom.nodeFormStatus, "");
-    return;
-  }
-
-  if (action === "node-duplicate") {
-    duplicateNode(nodeId);
-    renderAll();
-    return;
-  }
-
-  if (action === "node-toggle") {
-    toggleNodeActive(nodeId);
-    renderAll();
-    return;
-  }
-
-  if (action === "node-delete") {
-    deleteNode(nodeId);
-    renderAll();
-  }
+function toWon(manValue) {
+  return Number(manValue) * MONEY_UNIT;
 }
 
-function handleLinkListAction(event) {
-  const button = event.target.closest("button[data-action]");
-  if (!button) {
-    return;
-  }
-  const action = button.dataset.action;
-  const linkId = button.dataset.id;
-  if (!linkId) {
-    return;
-  }
-
-  if (action === "link-edit") {
-    state.ui.editingLinkId = linkId;
-    openDrawer("link");
-    syncLinkForm();
-    setFormStatus(dom.linkFormStatus, "");
-    return;
-  }
-
-  if (action === "link-up") {
-    moveLinkPriority(linkId, -1);
-    renderAll();
-    return;
-  }
-
-  if (action === "link-down") {
-    moveLinkPriority(linkId, 1);
-    renderAll();
-    return;
-  }
-
-  if (action === "link-toggle") {
-    toggleLinkActive(linkId);
-    renderAll();
-    return;
-  }
-
-  if (action === "link-delete") {
-    deleteLink(linkId);
-    renderAll();
-  }
+function toMonthlyFactor(annualPercent) {
+  const annualRate = Number(annualPercent) / 100;
+  return Math.pow(1 + annualRate, 1 / 12);
 }
 
-function handleLinkDragStart(event) {
-  const handle = event.target.closest("[data-drag-handle=\"link\"]");
-  if (!handle) {
-    return;
-  }
-  const linkId = handle.dataset.id;
-  const item = handle.closest(".list-item[data-link-id]");
-  if (!linkId || !item) {
-    return;
-  }
-  state.ui.drag.linkId = linkId;
-  state.ui.drag.fromId = item.dataset.fromId || null;
-  item.classList.add("is-dragging");
-  if (event.dataTransfer) {
-    event.dataTransfer.effectAllowed = "move";
-    event.dataTransfer.setData("text/plain", linkId);
-  }
+function formatCurrency(value) {
+  const safeValue = Number.isFinite(value) ? value : 0;
+  return currencyFormatter.format(Math.round(safeValue));
 }
 
-function handleLinkDragOver(event) {
-  const target = event.target.closest(".list-item[data-link-id]");
-  if (!target || !state.ui.drag.linkId) {
-    return;
+function formatSignedCurrency(value) {
+  if (!Number.isFinite(value)) {
+    return formatCurrency(0);
   }
-  if (target.dataset.fromId !== state.ui.drag.fromId) {
-    return;
+  if (value < 0) {
+    return `-${formatCurrency(Math.abs(value))}`;
   }
-  event.preventDefault();
-  if (event.dataTransfer) {
-    event.dataTransfer.dropEffect = "move";
+  return `+${formatCurrency(value)}`;
+}
+
+function formatPercent(percent) {
+  const safe = Number.isFinite(percent) ? percent : 0;
+  return `${roundTo(safe, 1).toLocaleString("ko-KR")} %`;
+}
+
+function formatMonthSpan(months) {
+  const year = Math.floor(months / 12);
+  const month = months % 12;
+
+  if (year <= 0) {
+    return `${month}개월`;
   }
-  clearDragIndicators();
-  applyAutoScroll(dom.linkList, event.clientY);
-  const rect = target.getBoundingClientRect();
-  const isAfter = event.clientY > rect.top + rect.height / 2;
-  target.classList.add(isAfter ? "drop-after" : "drop-before");
-}
-
-function handleLinkDragLeave(event) {
-  const target = event.target.closest(".list-item[data-link-id]");
-  if (!target) {
-    return;
+  if (month === 0) {
+    return `${year}년`;
   }
-  target.classList.remove("drop-before", "drop-after");
+  return `${year}년 ${month}개월`;
 }
 
-function handleLinkDrop(event) {
-  const target = event.target.closest(".list-item[data-link-id]");
-  if (!target || !state.ui.drag.linkId) {
-    return;
-  }
-  if (target.dataset.fromId !== state.ui.drag.fromId) {
-    clearDragIndicators();
-    return;
-  }
-  event.preventDefault();
-  const rect = target.getBoundingClientRect();
-  const insertAfter = event.clientY > rect.top + rect.height / 2;
-  reorderLinkWithinGroup(state.ui.drag.linkId, target.dataset.linkId, insertAfter);
-  clearDragIndicators();
-  renderAll();
+function buildBandPath(x0, y0, y1, x1, y2, y3) {
+  const curve = Math.max(40, (x1 - x0) * 0.42);
+  return [
+    `M ${x0} ${y0}`,
+    `C ${x0 + curve} ${y0}, ${x1 - curve} ${y2}, ${x1} ${y2}`,
+    `L ${x1} ${y3}`,
+    `C ${x1 - curve} ${y3}, ${x0 + curve} ${y1}, ${x0} ${y1}`,
+    "Z",
+  ].join(" ");
 }
 
-function handleLinkDragEnd() {
-  state.ui.drag.linkId = null;
-  state.ui.drag.fromId = null;
-  clearDragIndicators();
-  document.querySelectorAll(".list-item.is-dragging").forEach((item) => {
-    item.classList.remove("is-dragging");
-  });
-}
-
-function clearDragIndicators() {
-  document.querySelectorAll(".list-item.drop-before, .list-item.drop-after").forEach((item) => {
-    item.classList.remove("drop-before", "drop-after");
-  });
-}
-
-function applyAutoScroll(container, pointerY) {
-  if (!container) {
-    return;
-  }
-  const rect = container.getBoundingClientRect();
-  const threshold = 40;
-  const speed = 12;
-  if (pointerY < rect.top + threshold) {
-    container.scrollTop -= speed;
-  } else if (pointerY > rect.bottom - threshold) {
-    container.scrollTop += speed;
-  }
-}
-
-function filterFlows(flows, nodeMap) {
-  return flows.filter((flow) => {
-    const fromNode = nodeMap.get(flow.fromId);
-    const toNode = flow.toId ? nodeMap.get(flow.toId) : null;
-
-    if (!fromNode) {
-      return false;
-    }
-
-    if (state.settings.flowActiveOnly) {
-      if (!fromNode.active) {
-        return false;
-      }
-      if (toNode && !toNode.active) {
-        return false;
-      }
-    }
-
-    if (state.settings.flowTypeFilter !== "all") {
-      const matchesFrom = fromNode.type === state.settings.flowTypeFilter;
-      const matchesTo = toNode?.type === state.settings.flowTypeFilter;
-      if (!matchesFrom && !matchesTo) {
-        return false;
-      }
-    }
-
-    if (state.settings.flowCurrencyFilter !== "all") {
-      if (fromNode.currency !== state.settings.flowCurrencyFilter) {
-        return false;
-      }
-    }
-
-    return true;
-  });
-}
-
-function buildFlowGraph(flows, nodeMap) {
-  const nodes = new Map();
-  const links = [];
-  const stats = new Map();
-
-  function ensureStats(id) {
-    if (!stats.has(id)) {
-      stats.set(id, { incoming: 0, outgoing: 0 });
-    }
-    return stats.get(id);
-  }
-
-  flows.forEach((flow) => {
-    const fromNode = nodeMap.get(flow.fromId);
-    if (!fromNode) {
-      return;
-    }
-    const toNode = flow.toId ? nodeMap.get(flow.toId) : null;
-    nodes.set(fromNode.id, fromNode);
-    if (toNode) {
-      nodes.set(toNode.id, toNode);
-    } else {
-      nodes.set("residual", {
-        id: "residual",
-        name: "잔여금",
-        type: "Residual",
-        currency: fromNode.currency,
-        active: true,
-        monthlyAmount: 0,
-      });
-    }
-    links.push(flow);
-
-    const fromStat = ensureStats(fromNode.id);
-    fromStat.outgoing += flow.amount;
-    const toId = flow.toId || "residual";
-    const toStat = ensureStats(toId);
-    toStat.incoming += flow.amount;
-  });
-
-  const nodeList = Array.from(nodes.values());
-  const typeOrder = [
-    "Income",
-    "Transfer",
-    "Expense",
-    "Bucket",
-    "Invest",
-    "Debt",
-    "Residual",
-  ];
-  const availableTypes = typeOrder.filter((type) =>
-    nodeList.some((node) => node.type === type)
-  );
-  const columnTypes = availableTypes.length ? availableTypes : typeOrder;
-  const columnIndex = new Map(columnTypes.map((type, index) => [type, index]));
-
-  const columnGroups = new Map();
-  nodeList.forEach((node) => {
-    const column = columnIndex.get(node.type) ?? 1;
-    if (!columnGroups.has(column)) {
-      columnGroups.set(column, []);
-    }
-    columnGroups.get(column).push(node);
-  });
-
-  const nodePositions = new Map();
-  const containerWidth = dom.flowCanvas?.clientWidth || 760;
-  const columnCount = Math.max(1, columnTypes.length);
-  const marginX = 40;
-  const marginY = 30;
-  const minColumnWidth = 180;
-  const width = Math.max(
-    760,
-    Math.floor(containerWidth),
-    columnCount * minColumnWidth + marginX * 2
-  );
-  const nodeWidth = clampNumber(
-    ((width - marginX * 2) / columnCount) * 0.7,
-    120,
-    190,
-    160
-  );
-  let gapY = 18;
-  const spacingX =
-    columnCount > 1 ? (width - marginX * 2 - nodeWidth) / (columnCount - 1) : 0;
-
-  const volumes = nodeList.map((node) => {
-    const stat = stats.get(node.id) || { incoming: 0, outgoing: 0 };
-    return stat.incoming + stat.outgoing;
-  });
-  const maxVolume = Math.max(...volumes, 1);
-  let baseHeight = 34;
-  let extraHeight = 20;
-  const columnHeights = new Map();
-  const orderedColumns = Array.from(columnGroups.keys()).sort((a, b) => a - b);
-
-  orderedColumns.forEach((col) => {
-    const list = columnGroups.get(col) || [];
-    const sorted = list.slice().sort((a, b) => {
-      const statA = stats.get(a.id) || { incoming: 0, outgoing: 0 };
-      const statB = stats.get(b.id) || { incoming: 0, outgoing: 0 };
-      const volumeA = statA.incoming + statA.outgoing;
-      const volumeB = statB.incoming + statB.outgoing;
-      if (volumeB !== volumeA) {
-        return volumeB - volumeA;
-      }
-      return (a.name || "").localeCompare(b.name || "", "ko");
-    });
-    const heights = sorted.map((node) => {
-      const stat = stats.get(node.id) || { incoming: 0, outgoing: 0 };
-      const volume = stat.incoming + stat.outgoing;
-      return baseHeight + (volume / maxVolume) * extraHeight;
-    });
-    const columnHeight = heights.reduce((sum, height) => sum + height, 0) +
-      gapY * Math.max(0, heights.length - 1);
-    columnHeights.set(col, { nodes: sorted, heights, columnHeight });
-  });
-
-  let maxColumnHeight = Math.max(
-    ...Array.from(columnHeights.values()).map((entry) => entry.columnHeight),
-    0
-  );
-  const maxCanvasHeight = 560;
-  const minCanvasHeight = 320;
-  let height = Math.max(minCanvasHeight, maxColumnHeight + marginY * 2);
-  if (height > maxCanvasHeight) {
-    const scale = (maxCanvasHeight - marginY * 2) / Math.max(maxColumnHeight, 1);
-    baseHeight = Math.max(22, baseHeight * scale);
-    extraHeight = Math.max(8, extraHeight * scale);
-    gapY = Math.max(8, gapY * scale);
-    columnHeights.clear();
-    orderedColumns.forEach((col) => {
-      const list = columnGroups.get(col) || [];
-      const sorted = list.slice().sort((a, b) => {
-        const statA = stats.get(a.id) || { incoming: 0, outgoing: 0 };
-        const statB = stats.get(b.id) || { incoming: 0, outgoing: 0 };
-        const volumeA = statA.incoming + statA.outgoing;
-        const volumeB = statB.incoming + statB.outgoing;
-        if (volumeB !== volumeA) {
-          return volumeB - volumeA;
-        }
-        return (a.name || "").localeCompare(b.name || "", "ko");
-      });
-      const heights = sorted.map((node) => {
-        const stat = stats.get(node.id) || { incoming: 0, outgoing: 0 };
-        const volume = stat.incoming + stat.outgoing;
-        return baseHeight + (volume / maxVolume) * extraHeight;
-      });
-      const columnHeight = heights.reduce((sum, h) => sum + h, 0) +
-        gapY * Math.max(0, heights.length - 1);
-      columnHeights.set(col, { nodes: sorted, heights, columnHeight });
-    });
-    maxColumnHeight = Math.max(
-      ...Array.from(columnHeights.values()).map((entry) => entry.columnHeight),
-      0
-    );
-    height = Math.max(minCanvasHeight, Math.min(maxCanvasHeight, maxColumnHeight + marginY * 2));
-  }
-
-  orderedColumns.forEach((col) => {
-    const entry = columnHeights.get(col);
-    if (!entry) {
-      return;
-    }
-    const startY = marginY + (height - marginY * 2 - entry.columnHeight) / 2;
-    let currentY = startY;
-    entry.nodes.forEach((node, index) => {
-      const nodeHeight = entry.heights[index];
-      nodePositions.set(node.id, {
-        x: marginX + col * spacingX,
-        y: currentY,
-        width: nodeWidth,
-        height: nodeHeight,
-      });
-      currentY += nodeHeight + gapY;
-    });
-  });
-
-  return {
-    nodes: nodeList,
-    links,
-    positions: nodePositions,
-    width,
-    height,
-    stats,
-  };
-}
-
-function buildFlowSvg(graph) {
-  const svg = createSvgElement("svg", {
-    class: "flow-svg",
-    viewBox: `0 0 ${graph.width} ${graph.height}`,
-    role: "img",
-    "aria-label": "자산 흐름 그래프",
-  });
-
-  const maxAmount = Math.max(...graph.links.map((link) => link.amount), 1);
-  const graphNodeMap = new Map(graph.nodes.map((node) => [node.id, node]));
-
-  graph.links.forEach((link) => {
-    const fromPos = graph.positions.get(link.fromId);
-    const toId = link.toId || "residual";
-    const toPos = graph.positions.get(toId);
-    if (!fromPos || !toPos) {
-      return;
-    }
-    const fromNode = graphNodeMap.get(link.fromId);
-    const toNode = graphNodeMap.get(toId) || { name: "잔여금", type: "Residual" };
-    const startX = fromPos.x + fromPos.width;
-    const startY = fromPos.y + fromPos.height / 2;
-    const endX = toPos.x;
-    const endY = toPos.y + toPos.height / 2;
-    const controlOffset = Math.max(60, Math.abs(endX - startX) / 2);
-    const path = `M ${startX} ${startY} C ${startX + controlOffset} ${startY}, ${endX - controlOffset} ${endY}, ${endX} ${endY}`;
-    const strokeWidth = 1.5 + (link.amount / maxAmount) * 6;
-    const typeClass = String(toNode.type || "Residual").toLowerCase();
-    const pathEl = createSvgElement("path", {
-      d: path,
-      class: `flow-link flow-link--${typeClass}${link.type === "Residual" ? " is-residual" : ""}`,
-      strokeWidth: strokeWidth.toFixed(2),
-    });
-
-    pathEl.addEventListener("mousemove", (event) => {
-      showFlowTooltip(event, buildLinkTooltip(link, fromNode, toNode));
-    });
-    pathEl.addEventListener("mouseleave", hideFlowTooltip);
-
-    svg.appendChild(pathEl);
-  });
-
-  graph.nodes.forEach((node) => {
-    const pos = graph.positions.get(node.id);
-    if (!pos) {
-      return;
-    }
-    const group = createSvgElement("g", {});
-    const typeClass = String(node.type || "unknown").toLowerCase();
-    const rect = createSvgElement("rect", {
-      x: pos.x,
-      y: pos.y,
-      width: pos.width,
-      height: pos.height,
-      rx: 12,
-      ry: 12,
-      class: `flow-node flow-node--${typeClass}`,
-    });
-    const label = createSvgElement("text", {
-      x: pos.x + 12,
-      y: pos.y + pos.height / 2 + 4,
-      class: "flow-node-label",
-    });
-    label.textContent = node.name || "노드";
-
-    group.appendChild(rect);
-    group.appendChild(label);
-    group.addEventListener("mousemove", (event) => {
-      showFlowTooltip(event, buildNodeTooltip(node, graph.stats.get(node.id)));
-    });
-    group.addEventListener("mouseleave", hideFlowTooltip);
-
-    svg.appendChild(group);
-  });
-
-  return svg;
-}
-
-function buildNodeTooltip(node, stats) {
-  const typeLabel = NODE_TYPE_LABELS[node.type] || node.type;
-  const incoming = formatCurrency(stats?.incoming || 0);
-  const outgoing = formatCurrency(stats?.outgoing || 0);
-  return `${node.name}\n${typeLabel}\n유입 ${incoming} · 유출 ${outgoing}`;
-}
-
-function buildLinkTooltip(link, fromNode, toNode) {
-  const typeLabel = LINK_TYPE_LABELS[link.type] || link.type;
-  const amount = formatCurrency(link.amount || 0);
-  const fromName = fromNode?.name || "알 수 없음";
-  const toName = toNode?.name || "잔여금";
-  return `${fromName} → ${toName}\n${typeLabel} · ${amount}`;
-}
-
-function showFlowTooltip(event, text) {
-  if (!dom.flowTooltip) {
-    return;
-  }
-  dom.flowTooltip.hidden = false;
-  dom.flowTooltip.textContent = text;
-  const rect = dom.flowCanvas.getBoundingClientRect();
-  const x = event.clientX - rect.left;
-  const y = event.clientY - rect.top;
-  dom.flowTooltip.style.left = `${x}px`;
-  dom.flowTooltip.style.top = `${y}px`;
-}
-
-function hideFlowTooltip() {
-  if (!dom.flowTooltip) {
-    return;
-  }
-  dom.flowTooltip.hidden = true;
-}
-
-function createSvgElement(tag, attrs) {
-  const element = document.createElementNS("http://www.w3.org/2000/svg", tag);
+function createSvgElement(tagName, attrs) {
+  const element = document.createElementNS("http://www.w3.org/2000/svg", tagName);
   Object.entries(attrs).forEach(([key, value]) => {
-    element.setAttribute(key, String(value));
+    if (value !== undefined && value !== null) {
+      element.setAttribute(key, String(value));
+    }
   });
   return element;
 }
 
-function validateNodeData(node) {
-  const errors = [];
-  const fieldErrors = {};
+function showSankeyTooltip(event, text) {
+  if (!dom.sankeyTooltip || !dom.sankeyWrap) {
+    return;
+  }
 
-  if (!node.name) {
-    fieldErrors.nodeName = "노드 이름을 입력하세요.";
-    errors.push(fieldErrors.nodeName);
+  const wrapRect = dom.sankeyWrap.getBoundingClientRect();
+  const tooltip = dom.sankeyTooltip;
+
+  tooltip.hidden = false;
+  tooltip.textContent = text;
+
+  const maxX = Math.max(20, wrapRect.width - 250);
+  const maxY = Math.max(20, wrapRect.height - 70);
+  const x = Math.min(maxX, event.clientX - wrapRect.left + 12);
+  const y = Math.min(maxY, event.clientY - wrapRect.top + 12);
+
+  tooltip.style.left = `${x}px`;
+  tooltip.style.top = `${y}px`;
+}
+
+function hideSankeyTooltip() {
+  if (dom.sankeyTooltip) {
+    dom.sankeyTooltip.hidden = true;
   }
-  if (!node.type) {
-    fieldErrors.nodeType = "노드 타입을 선택하세요.";
-    errors.push(fieldErrors.nodeType);
+}
+
+function persistInputs(inputs) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(inputs));
+  } catch (_error) {
+    // Ignore storage errors to keep UI functional.
   }
-  if (node.monthlyAmount < 0) {
-    fieldErrors.nodeMonthly = "월 기준 금액은 0 이상이어야 합니다.";
-    errors.push(fieldErrors.nodeMonthly);
-  }
-  if (node.type === "Income" && (node.annualGrowthRate < 0 || node.annualGrowthRate > 0.3)) {
-    fieldErrors.nodeGrowthRate = "연봉상승률은 0~30% 범위입니다.";
-    errors.push(fieldErrors.nodeGrowthRate);
-  }
-  if (node.type === "Invest" && (node.investReturnRate < 0 || node.investReturnRate > 0.3)) {
-    fieldErrors.nodeInvestReturnRate = "투자수익률은 0~30% 범위입니다.";
-    errors.push(fieldErrors.nodeInvestReturnRate);
-  }
-  if (node.type === "Bucket") {
-    if (node.cap !== null && node.cap < 0) {
-      fieldErrors.nodeCap = "저축통 목표 상한은 0 이상이어야 합니다.";
-      errors.push(fieldErrors.nodeCap);
+}
+
+function loadPersistedInputs() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) {
+      return null;
     }
-    if (node.currentAmount !== null && node.currentAmount < 0) {
-      fieldErrors.nodeCurrent = "현재 잔액은 0 이상이어야 합니다.";
-      errors.push(fieldErrors.nodeCurrent);
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") {
+      return null;
     }
-    if (node.cap !== null && node.currentAmount !== null && node.currentAmount > node.cap) {
-      fieldErrors.nodeCurrent = "현재 잔액이 목표 상한보다 큽니다.";
-      errors.push(fieldErrors.nodeCurrent);
-    }
-  }
-
-  return { errors, fieldErrors };
-}
-
-function validateLinkData(link) {
-  const errors = [];
-  const fieldErrors = {};
-
-  if (!link.from) {
-    fieldErrors.linkFrom = "From 노드를 선택하세요.";
-    errors.push(fieldErrors.linkFrom);
-  }
-  if (!link.to) {
-    fieldErrors.linkTo = "To 노드를 선택하세요.";
-    errors.push(fieldErrors.linkTo);
-  }
-
-  const hasFrom = state.nodes.some((node) => node.id === link.from);
-  const hasTo = state.nodes.some((node) => node.id === link.to);
-  if ((link.from && !hasFrom) || (link.to && !hasTo)) {
-    fieldErrors.linkFrom = "선택한 노드를 찾을 수 없습니다.";
-    fieldErrors.linkTo = "선택한 노드를 찾을 수 없습니다.";
-    errors.push("선택한 노드를 찾을 수 없습니다.");
-  }
-
-  if (link.from && link.to && link.from === link.to) {
-    fieldErrors.linkTo = "From과 To는 동일할 수 없습니다.";
-    errors.push(fieldErrors.linkTo);
-  }
-  if (link.type === "Fixed" && link.value <= 0) {
-    fieldErrors.linkValue = "금액 값은 0보다 커야 합니다.";
-    errors.push(fieldErrors.linkValue);
-  }
-  if (link.type === "Percent" && (link.value <= 0 || link.value > 1)) {
-    fieldErrors.linkValue = "비율은 0~100% 범위입니다.";
-    errors.push(fieldErrors.linkValue);
-  }
-  if (link.priority < 1) {
-    fieldErrors.linkPriority = "우선순위는 1 이상이어야 합니다.";
-    errors.push(fieldErrors.linkPriority);
-  }
-  if (link.type === "CapFill") {
-    const target = state.nodes.find((node) => node.id === link.to);
-    if (target && target.type !== "Bucket") {
-      fieldErrors.linkTo = "목표 채우기는 저축통 노드에만 적용됩니다.";
-      errors.push(fieldErrors.linkTo);
-    }
-  }
-  if (link.min !== null && link.min < 0) {
-    fieldErrors.linkMin = "최소값은 0 이상이어야 합니다.";
-    errors.push(fieldErrors.linkMin);
-  }
-  if (link.max !== null && link.max < 0) {
-    fieldErrors.linkMax = "최대값은 0 이상이어야 합니다.";
-    errors.push(fieldErrors.linkMax);
-  }
-  if (link.min !== null && link.max !== null && link.min > link.max) {
-    fieldErrors.linkMin = "최소값이 최대값보다 큽니다.";
-    fieldErrors.linkMax = "최대값이 최소값보다 작습니다.";
-    errors.push("최소/최대 값을 확인하세요.");
-  }
-
-  return { errors, fieldErrors };
-}
-
-function duplicateNode(nodeId) {
-  const node = state.nodes.find((item) => item.id === nodeId);
-  if (!node) {
-    return;
-  }
-  const duplicated = {
-    ...node,
-    id: createId("node"),
-    name: `${node.name} 복제`,
-  };
-  state.nodes.push(duplicated);
-}
-
-function toggleNodeActive(nodeId) {
-  const node = state.nodes.find((item) => item.id === nodeId);
-  if (node) {
-    node.active = !node.active;
-  }
-}
-
-function deleteNode(nodeId) {
-  const linked = state.links.filter((link) => link.from === nodeId || link.to === nodeId);
-  if (linked.length) {
-    const confirmed = window.confirm(
-      "연결된 링크가 있습니다. 노드와 함께 삭제할까요?"
-    );
-    if (!confirmed) {
-      return;
-    }
-  }
-  state.nodes = state.nodes.filter((node) => node.id !== nodeId);
-  state.links = state.links.filter((link) => link.from !== nodeId && link.to !== nodeId);
-  normalizeAllLinkPriorities();
-  if (state.ui.editingNodeId === nodeId) {
-    state.ui.editingNodeId = null;
-  }
-  if (state.ui.editingLinkId && !state.links.some((link) => link.id === state.ui.editingLinkId)) {
-    state.ui.editingLinkId = null;
-  }
-}
-
-function toggleLinkActive(linkId) {
-  const link = state.links.find((item) => item.id === linkId);
-  if (link) {
-    link.active = !link.active;
-  }
-}
-
-function deleteLink(linkId) {
-  const link = state.links.find((item) => item.id === linkId);
-  if (!link) {
-    return;
-  }
-  const fromId = link.from;
-  state.links = state.links.filter((item) => item.id !== linkId);
-  normalizeLinkPriorities(fromId);
-  if (state.ui.editingLinkId === linkId) {
-    state.ui.editingLinkId = null;
-  }
-}
-
-function moveLinkPriority(linkId, direction) {
-  const link = state.links.find((item) => item.id === linkId);
-  if (!link) {
-    return;
-  }
-  const group = state.links
-    .filter((item) => item.from === link.from)
-    .slice()
-    .sort((a, b) => (a.priority ?? 0) - (b.priority ?? 0));
-  const index = group.findIndex((item) => item.id === linkId);
-  const swapIndex = index + direction;
-  if (swapIndex < 0 || swapIndex >= group.length) {
-    return;
-  }
-  const swapTarget = group[swapIndex];
-  const currentPriority = link.priority ?? index + 1;
-  link.priority = swapTarget.priority ?? swapIndex + 1;
-  swapTarget.priority = currentPriority;
-  normalizeLinkPriorities(link.from);
-}
-
-function reorderLinkWithinGroup(dragId, targetId, insertAfter) {
-  if (!dragId || !targetId || dragId === targetId) {
-    return;
-  }
-  const dragged = state.links.find((item) => item.id === dragId);
-  if (!dragged) {
-    return;
-  }
-  const group = state.links
-    .filter((item) => item.from === dragged.from)
-    .slice()
-    .sort((a, b) => (a.priority ?? 0) - (b.priority ?? 0));
-  const dragIndex = group.findIndex((item) => item.id === dragId);
-  const targetIndex = group.findIndex((item) => item.id === targetId);
-  if (dragIndex < 0 || targetIndex < 0) {
-    return;
-  }
-  const [moved] = group.splice(dragIndex, 1);
-  const adjustedTargetIndex = dragIndex < targetIndex ? targetIndex - 1 : targetIndex;
-  const insertIndex = insertAfter ? adjustedTargetIndex + 1 : adjustedTargetIndex;
-  group.splice(insertIndex, 0, moved);
-  group.forEach((item, index) => {
-    item.priority = index + 1;
-  });
-}
-
-function normalizeLinkPriorities(fromId) {
-  if (!fromId) {
-    return;
-  }
-  const group = state.links
-    .filter((link) => link.from === fromId)
-    .slice()
-    .sort((a, b) => (a.priority ?? 0) - (b.priority ?? 0));
-  group.forEach((link, index) => {
-    link.priority = index + 1;
-  });
-}
-
-function normalizeAllLinkPriorities() {
-  const fromIds = new Set(state.links.map((link) => link.from));
-  fromIds.forEach((fromId) => {
-    normalizeLinkPriorities(fromId);
-  });
-}
-
-function getNextPriority(fromId) {
-  if (!fromId) {
-    return 1;
-  }
-  return state.links
-    .filter((link) => link.from === fromId)
-    .reduce((max, link) => Math.max(max, link.priority ?? 0), 0) + 1;
-}
-
-function renderLinkWarnings(nodeMap) {
-  if (!dom.linkWarnings) {
-    return;
-  }
-  const cycle = findCyclePath(state.nodes, state.links);
-  if (!cycle) {
-    dom.linkWarnings.hidden = true;
-    dom.linkWarnings.textContent = "";
-    return;
-  }
-  const names = cycle
-    .map((id) => nodeMap.get(id)?.name || id)
-    .join(" → ");
-  dom.linkWarnings.hidden = false;
-  dom.linkWarnings.textContent = `순환 참조 감지: ${names}`;
-}
-
-function parseNumber(value, fallback) {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed)) {
-    return fallback;
-  }
-  return parsed;
-}
-
-function parseManAmount(value, fallbackMan = 0) {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed)) {
-    return fallbackMan * MONEY_UNIT;
-  }
-  return Math.round(parsed) * MONEY_UNIT;
-}
-
-function parseOptionalManAmount(value) {
-  if (value === null || value === undefined || value === "") {
+    return parsed;
+  } catch (_error) {
     return null;
   }
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? Math.round(parsed) * MONEY_UNIT : null;
 }
 
-function formatManAmount(value) {
-  const numeric = Number(value) || 0;
-  return Math.round(numeric / MONEY_UNIT);
+function roundTo(value, digit) {
+  const factor = 10 ** digit;
+  return Math.round(value * factor) / factor;
 }
 
-function findCyclePath(nodes, links) {
-  const adjacency = new Map();
-  links
-    .filter((link) => link.active)
-    .forEach((link) => {
-      if (!adjacency.has(link.from)) {
-        adjacency.set(link.from, []);
-      }
-      adjacency.get(link.from).push(link.to);
-    });
-
-  const visited = new Set();
-  const stack = new Set();
-  const parent = new Map();
-  let cycle = null;
-
-  function buildCycle(fromId, toId) {
-    const path = [toId];
-    let current = fromId;
-    while (current && current !== toId) {
-      path.push(current);
-      current = parent.get(current);
+function debounce(fn, delay) {
+  let timer = null;
+  return (...args) => {
+    if (timer) {
+      window.clearTimeout(timer);
     }
-    path.push(toId);
-    return path.reverse();
-  }
-
-  function dfs(nodeId) {
-    visited.add(nodeId);
-    stack.add(nodeId);
-    const neighbors = adjacency.get(nodeId) || [];
-    for (const next of neighbors) {
-      if (!visited.has(next)) {
-        parent.set(next, nodeId);
-        if (dfs(next)) {
-          return true;
-        }
-      } else if (stack.has(next)) {
-        cycle = buildCycle(nodeId, next);
-        return true;
-      }
-    }
-    stack.delete(nodeId);
-    return false;
-  }
-
-  for (const node of nodes) {
-    if (!visited.has(node.id)) {
-      if (dfs(node.id)) {
-        break;
-      }
-    }
-  }
-
-  return cycle;
-}
-
-function computeFlows(nodes, links, nodeMap) {
-  const groups = new Map();
-
-  links.forEach((link) => {
-    if (!link.active) {
-      return;
-    }
-    if (!groups.has(link.from)) {
-      groups.set(link.from, []);
-    }
-    groups.get(link.from).push(link);
-  });
-
-  const flows = [];
-
-  groups.forEach((groupLinks, fromId) => {
-    const fromNode = nodeMap.get(fromId);
-    if (!fromNode || !fromNode.active) {
-      return;
-    }
-
-    const baseAmount = Math.max(0, Number(fromNode.monthlyAmount) || 0);
-    let available = baseAmount;
-
-    groupLinks
-      .slice()
-      .sort((a, b) => (a.priority ?? 0) - (b.priority ?? 0))
-      .forEach((link) => {
-        if (available <= 0) {
-          return;
-        }
-        const amount = computeLinkAmount(link, fromNode, nodeMap, baseAmount, available);
-        if (amount <= 0) {
-          return;
-        }
-        const applied = Math.min(amount, available);
-        available -= applied;
-        flows.push({
-          fromId: link.from,
-          toId: link.to,
-          amount: applied,
-          type: link.type,
-          linkId: link.id,
-          priority: link.priority,
-        });
-      });
-
-    if (available > 0) {
-      flows.push({
-        fromId,
-        toId: null,
-        amount: available,
-        type: "Residual",
-        linkId: null,
-        priority: null,
-      });
-    }
-  });
-
-  return flows;
-}
-
-function computeLinkAmount(link, fromNode, nodeMap, baseAmount, available) {
-  let amount = 0;
-
-  if (link.type === "Fixed") {
-    amount = Number(link.value) || 0;
-  } else if (link.type === "Percent") {
-    amount = baseAmount * (Number(link.value) || 0);
-  } else if (link.type === "CapFill") {
-    const target = nodeMap.get(link.to);
-    const cap = Number(target?.cap) || 0;
-    const current = Number(target?.currentAmount) || 0;
-    const gap = Math.max(0, cap - current);
-    amount = Math.min(gap, available);
-  }
-
-  amount = clamp(amount, link.min, link.max);
-  return Math.max(0, amount);
-}
-
-function computeSummary(nodes, flows, nodeMap) {
-  const totalIncome = nodes.reduce((sum, node) => {
-    if (node.active && node.type === "Income") {
-      return sum + (Number(node.monthlyAmount) || 0);
-    }
-    return sum;
-  }, 0);
-
-  let totalLivingExpense = 0;
-  let totalSavings = 0;
-  let totalInvest = 0;
-  let totalDebt = 0;
-
-  flows.forEach((flow) => {
-    if (!flow.toId) {
-      return;
-    }
-    const target = nodeMap.get(flow.toId);
-    if (!target || !target.active) {
-      return;
-    }
-    if (target.type === "Expense") {
-      totalLivingExpense += flow.amount;
-    } else if (target.type === "Bucket") {
-      totalSavings += flow.amount;
-    } else if (target.type === "Invest") {
-      totalInvest += flow.amount;
-    } else if (target.type === "Debt") {
-      totalDebt += flow.amount;
-    }
-  });
-
-  const totalExpense = totalLivingExpense + totalSavings + totalInvest + totalDebt;
-  const netCashflow = totalIncome - totalLivingExpense;
-  const remaining = totalIncome - totalExpense;
-  const savingRate = totalIncome > 0 ? totalSavings / totalIncome : 0;
-  const investRate = totalIncome > 0 ? totalInvest / totalIncome : 0;
-  const totalSavingsInvest = totalSavings + totalInvest;
-
-  return {
-    totalIncome,
-    totalExpense,
-    totalLivingExpense,
-    totalSavings,
-    totalInvest,
-    netCashflow,
-    totalSavingsInvest,
-    savingRate,
-    investRate,
-    remaining,
-    totalDebt,
+    timer = window.setTimeout(() => {
+      fn(...args);
+    }, delay);
   };
-}
-
-function getAnnualRateFactor(rate, monthsElapsed) {
-  const normalized = Number(rate) || 0;
-  if (!Number.isFinite(normalized) || normalized === 0) {
-    return 1;
-  }
-  return Math.pow(1 + normalized, monthsElapsed / 12);
-}
-
-function getMonthlyRateFactor(rate) {
-  return getAnnualRateFactor(rate, 1);
-}
-
-function getSeedMoneyCombinedRate(settings, options = {}) {
-  const override = Number(options.seedMoneyAnnualRate);
-  if (Number.isFinite(override)) {
-    return override;
-  }
-  const inflationRate = Math.max(0, Number(settings.inflationRate) || 0);
-  const returnRate = Math.max(0, Number(settings.seedMoneyReturnRate) || 0);
-  return inflationRate + returnRate;
-}
-
-function getInflationFactor(ratePercent, monthsElapsed) {
-  const rate = Math.max(0, Number(ratePercent) || 0) / 100;
-  if (rate === 0) {
-    return 1;
-  }
-  return Math.pow(1 + rate, monthsElapsed / 12);
-}
-
-function sumMapValues(values) {
-  let total = 0;
-  values.forEach((value) => {
-    total += Number(value) || 0;
-  });
-  return total;
-}
-
-function simulateMonthly(nodes, links, settings, options = {}) {
-  const months = Math.max(1, Number(settings.horizonYears) || 1) * 12;
-  const baseNodes = nodes.map((node) => ({
-    ...node,
-    monthlyAmount: Number(node.monthlyAmount) || 0,
-    annualGrowthRate: Number(node.annualGrowthRate) || 0,
-    investReturnRate: Number(node.investReturnRate) || 0,
-  }));
-  const bucketBalances = new Map();
-  const investBalances = new Map();
-  baseNodes.forEach((node) => {
-    if (node.type === "Bucket") {
-      bucketBalances.set(node.id, Number(node.currentAmount) || 0);
-    }
-    if (node.type === "Invest") {
-      investBalances.set(node.id, Number(node.currentAmount) || 0);
-    }
-  });
-
-  const seedMoneyStart = Math.max(0, Number(settings.seedMoney) || 0);
-  const combinedSeedRate = getSeedMoneyCombinedRate(settings, options);
-  const seedMonthlyFactor = getMonthlyRateFactor(combinedSeedRate / 100);
-  const assetGrowthRate = Number(options.assetGrowthRate);
-  const assetMonthlyFactor = Number.isFinite(assetGrowthRate) && assetGrowthRate !== 0
-    ? getMonthlyRateFactor(assetGrowthRate / 100)
-    : 1;
-
-  let seedMoneyBalance = seedMoneyStart;
-  let cashBalance = 0;
-
-  const totals = {
-    netCashflow: 0,
-    totalSavingsInvest: 0,
-    remaining: 0,
-  };
-  const totalsReal = {
-    netCashflow: 0,
-    totalSavingsInvest: 0,
-    remaining: 0,
-  };
-
-  const timeline = [];
-  const initialBucket = sumMapValues(bucketBalances);
-  const initialInvest = sumMapValues(investBalances);
-  const initialAssets = seedMoneyBalance + cashBalance + initialBucket + initialInvest;
-  timeline.push({
-    monthIndex: 0,
-    bucketTotal: initialBucket,
-    investTotal: initialInvest,
-    totalAssets: initialAssets,
-    seedMoney: seedMoneyBalance,
-  });
-
-  for (let month = 1; month <= months; month += 1) {
-    const growthIndex = month - 1;
-    const monthNodes = baseNodes.map((node) => {
-      const factor = getAnnualRateFactor(node.annualGrowthRate, growthIndex);
-      const monthlyAmount = (Number(node.monthlyAmount) || 0) * factor;
-      let currentAmount = node.currentAmount ?? null;
-      if (node.type === "Bucket") {
-        currentAmount = bucketBalances.get(node.id) || 0;
-      } else if (node.type === "Invest") {
-        currentAmount = investBalances.get(node.id) || 0;
-      }
-      return {
-        ...node,
-        monthlyAmount,
-        currentAmount,
-      };
-    });
-
-    const nodeMap = buildNodeMap(monthNodes);
-    const flows = computeFlows(monthNodes, links, nodeMap);
-    const summary = computeSummary(monthNodes, flows, nodeMap);
-    const monthBucketAdds = new Map();
-    const monthInvestAdds = new Map();
-
-    flows.forEach((flow) => {
-      if (!flow.toId) {
-        return;
-      }
-      const target = nodeMap.get(flow.toId);
-      if (!target || !target.active) {
-        return;
-      }
-      if (target.type === "Bucket") {
-        monthBucketAdds.set(flow.toId, (monthBucketAdds.get(flow.toId) || 0) + flow.amount);
-      }
-      if (target.type === "Invest") {
-        monthInvestAdds.set(flow.toId, (monthInvestAdds.get(flow.toId) || 0) + flow.amount);
-      }
-    });
-
-    monthBucketAdds.forEach((value, id) => {
-      bucketBalances.set(id, (bucketBalances.get(id) || 0) + value);
-    });
-
-    monthNodes.forEach((node) => {
-      if (node.type !== "Invest") {
-        return;
-      }
-      const added = monthInvestAdds.get(node.id) || 0;
-      const baseBalance = (investBalances.get(node.id) || 0) + added;
-      const monthlyFactor = getMonthlyRateFactor(Math.max(0, Number(node.investReturnRate) || 0));
-      investBalances.set(node.id, baseBalance * monthlyFactor);
-    });
-
-    seedMoneyBalance *= seedMonthlyFactor;
-    cashBalance += summary.remaining;
-
-    if (assetMonthlyFactor !== 1) {
-      bucketBalances.forEach((value, id) => {
-        bucketBalances.set(id, value * assetMonthlyFactor);
-      });
-      investBalances.forEach((value, id) => {
-        investBalances.set(id, value * assetMonthlyFactor);
-      });
-      seedMoneyBalance *= assetMonthlyFactor;
-      cashBalance *= assetMonthlyFactor;
-    }
-
-    totals.netCashflow += summary.netCashflow;
-    totals.totalSavingsInvest += summary.totalSavingsInvest;
-    totals.remaining += summary.remaining;
-
-    const inflationFactor = getInflationFactor(settings.inflationRate, month);
-    totalsReal.netCashflow += summary.netCashflow / inflationFactor;
-    totalsReal.totalSavingsInvest += summary.totalSavingsInvest / inflationFactor;
-    totalsReal.remaining += summary.remaining / inflationFactor;
-
-    const bucketTotal = sumMapValues(bucketBalances);
-    const investTotal = sumMapValues(investBalances);
-    const totalAssets = bucketTotal + investTotal + cashBalance + seedMoneyBalance;
-    timeline.push({
-      monthIndex: month,
-      bucketTotal,
-      investTotal,
-      totalAssets,
-      seedMoney: seedMoneyBalance,
-    });
-  }
-
-  const finalAssets = timeline[timeline.length - 1]?.totalAssets || initialAssets;
-  const inflationFactorEnd = getInflationFactor(settings.inflationRate, months);
-
-  return {
-    months,
-    timeline,
-    totals: {
-      seedMoneyStart,
-      seedMoneyEnd: seedMoneyBalance,
-      seedMoneyEndReal: seedMoneyBalance / inflationFactorEnd,
-      netCashflow: totals.netCashflow,
-      netCashflowReal: totalsReal.netCashflow,
-      totalSavingsInvest: totals.totalSavingsInvest,
-      totalSavingsInvestReal: totalsReal.totalSavingsInvest,
-      remaining: totals.remaining,
-      remainingReal: totalsReal.remaining,
-      totalAssets: finalAssets,
-      totalAssetsReal: finalAssets / inflationFactorEnd,
-      bucketTotal: sumMapValues(bucketBalances),
-      investTotal: sumMapValues(investBalances),
-      cashBalance,
-    },
-  };
-}
-
-function buildSteadyScenario(nodes, settings) {
-  const inflationRate = Number(settings.inflationRate) || 0;
-  const steadyAssetGrowthRate = Math.max(0, inflationRate - 0.5);
-  const steadySettings = {
-    ...settings,
-    seedMoneyReturnRate: 0,
-  };
-  const steadyNodes = nodes.map((node) => {
-    if (node.type === "Invest") {
-      return { ...node, investReturnRate: 0 };
-    }
-    return node;
-  });
-  return {
-    steadySettings,
-    steadyNodes,
-    steadyOptions: {
-      assetGrowthRate: steadyAssetGrowthRate,
-      seedMoneyAnnualRate: 0,
-    },
-  };
-}
-
-function computeProjectionTotals(
-  nodes,
-  links,
-  years,
-  seedMoney = 0,
-  seedMoneyGrowthRate = 0,
-  seedMoneyReturnRate = 0
-) {
-  const totals = {
-    netCashflow: 0,
-    totalSavingsInvest: 0,
-    remaining: 0,
-    totalAssets: 0,
-    seedMoney,
-    seedMoneyFuture: seedMoney,
-  };
-  const horizon = Math.max(1, years);
-
-  for (let year = 0; year < horizon; year += 1) {
-    const adjustedNodes = applyGrowthToNodes(nodes, year);
-    const nodeMap = buildNodeMap(adjustedNodes);
-    const flows = computeFlows(adjustedNodes, links, nodeMap);
-    const summary = computeSummary(adjustedNodes, flows, nodeMap);
-
-    totals.netCashflow += summary.netCashflow * 12;
-    totals.totalSavingsInvest += summary.totalSavingsInvest * 12;
-    totals.remaining += summary.remaining * 12;
-  }
-
-  const combinedRate = Math.max(0, seedMoneyGrowthRate + seedMoneyReturnRate) / 100;
-  const seedFactor = Math.pow(1 + combinedRate, horizon);
-  totals.seedMoneyFuture = seedMoney * seedFactor;
-  totals.totalAssets = totals.totalSavingsInvest + totals.remaining + totals.seedMoneyFuture;
-  return totals;
-}
-
-function applyGrowthToNodes(nodes, yearIndex) {
-  return nodes.map((node) => {
-    const rate = Number(node.annualGrowthRate) || 0;
-    const factor = Math.pow(1 + rate, yearIndex);
-    return {
-      ...node,
-      monthlyAmount: (Number(node.monthlyAmount) || 0) * factor,
-    };
-  });
-}
-
-function buildFlowStats(flows) {
-  const stats = new Map();
-
-  flows.forEach((flow) => {
-    if (!flow.fromId || !flow.toId) {
-      return;
-    }
-    if (!stats.has(flow.fromId)) {
-      stats.set(flow.fromId, { incoming: 0, outgoing: 0 });
-    }
-    if (!stats.has(flow.toId)) {
-      stats.set(flow.toId, { incoming: 0, outgoing: 0 });
-    }
-    stats.get(flow.fromId).outgoing += flow.amount;
-    stats.get(flow.toId).incoming += flow.amount;
-  });
-
-  return stats;
-}
-
-function formatLinkValue(link, nodeMap) {
-  if (link.type === "Fixed") {
-    return formatCurrency(link.value);
-  }
-  if (link.type === "Percent") {
-    const percent = Number(link.value) || 0;
-    const base = Number(nodeMap.get(link.from)?.monthlyAmount) || 0;
-    return `${formatPercent(percent)} (${formatCurrency(base * percent)})`;
-  }
-  if (link.type === "CapFill") {
-    return "목표 채우기";
-  }
-  return "조건식";
-}
-
-function formatCurrency(value) {
-  const formatter = new Intl.NumberFormat("ko-KR", {
-    style: "currency",
-    currency: state.settings.currency,
-    maximumFractionDigits: 0,
-  });
-  return formatter.format(Number(value) || 0);
-}
-
-function formatKoreanCompact(value) {
-  const numeric = Number(value) || 0;
-  const sign = numeric < 0 ? "-" : "";
-  const totalMan = Math.round(Math.abs(numeric) / 10000);
-  const eok = Math.floor(totalMan / 10000);
-  const man = totalMan % 10000;
-  if (eok > 0) {
-    if (man === 0) {
-      return `${sign}${eok}억`;
-    }
-    return `${sign}${eok}억 ${man.toLocaleString("ko-KR")}만`;
-  }
-  return `${sign}${man.toLocaleString("ko-KR")}만`;
-}
-
-function formatPercent(value) {
-  return `${(Number(value) * 100).toFixed(1)}%`;
-}
-
-function formatRate(value) {
-  const numeric = Number(value);
-  if (!Number.isFinite(numeric)) {
-    return "0.0";
-  }
-  return numeric.toFixed(1);
-}
-
-function formatMonthLabel(value) {
-  if (!value) {
-    return "-";
-  }
-  const [year, month] = value.split("-");
-  return `${year}년 ${Number(month)}월`;
-}
-
-function addMonths(baseMonth, offset) {
-  if (!baseMonth) {
-    return baseMonth;
-  }
-  const [yearText, monthText] = baseMonth.split("-");
-  const year = Number(yearText);
-  const monthIndex = Number(monthText) - 1;
-  if (!Number.isFinite(year) || !Number.isFinite(monthIndex)) {
-    return baseMonth;
-  }
-  const date = new Date(year, monthIndex + offset, 1);
-  const nextYear = date.getFullYear();
-  const nextMonth = String(date.getMonth() + 1).padStart(2, "0");
-  return `${nextYear}-${nextMonth}`;
-}
-
-function buildNodeMap(nodes) {
-  return new Map(nodes.map((node) => [node.id, node]));
-}
-
-function renderEmpty(container, message) {
-  const element = document.createElement("div");
-  element.className = "empty";
-  element.textContent = message;
-  container.appendChild(element);
-}
-
-function clampNumber(value, min, max, fallback, decimals = 0) {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed)) {
-    return fallback;
-  }
-  const rounded = decimals > 0 ? Number(parsed.toFixed(decimals)) : Math.round(parsed);
-  return clamp(rounded, min, max);
-}
-
-function clamp(value, min, max) {
-  let result = value;
-  if (Number.isFinite(min)) {
-    result = Math.max(result, min);
-  }
-  if (Number.isFinite(max)) {
-    result = Math.min(result, max);
-  }
-  return result;
-}
-
-function deepCopy(data) {
-  return JSON.parse(JSON.stringify(data));
-}
-
-function createId(prefix) {
-  const random = Math.floor(Math.random() * 10000);
-  return `${prefix}-${Date.now()}-${random}`;
-}
-
-function syncControlValues() {
-  if (dom.baseMonth) {
-    dom.baseMonth.value = state.settings.baseMonth;
-  }
-  if (dom.horizonYears) {
-    dom.horizonYears.value = state.settings.horizonYears;
-  }
-  if (dom.inflationRate) {
-    dom.inflationRate.value = state.settings.inflationRate;
-  }
-  if (dom.seedMoney) {
-    dom.seedMoney.value = formatManAmount(state.settings.seedMoney);
-  }
-  if (dom.seedMoneyGrowthRate) {
-    dom.seedMoneyGrowthRate.value = formatRate(getSeedMoneyCombinedRate(state.settings));
-  }
-  if (dom.seedMoneyReturnRate) {
-    dom.seedMoneyReturnRate.value = state.settings.seedMoneyReturnRate;
-  }
-  if (dom.flowTypeFilter) {
-    dom.flowTypeFilter.value = state.settings.flowTypeFilter;
-  }
-  if (dom.flowCurrencyFilter) {
-    dom.flowCurrencyFilter.value = state.settings.flowCurrencyFilter;
-  }
-  if (dom.flowActiveOnly) {
-    dom.flowActiveOnly.checked = state.settings.flowActiveOnly;
-  }
-  syncIncomeControls();
-}
-
-function syncToggleButtons() {
-  dom.toggleButtons.forEach((button) => {
-    button.classList.toggle("is-active", button.dataset.mode === state.settings.viewMode);
-  });
-}
-
-function getCurrentMonth() {
-  const today = new Date();
-  const month = String(today.getMonth() + 1).padStart(2, "0");
-  return `${today.getFullYear()}-${month}`;
 }
