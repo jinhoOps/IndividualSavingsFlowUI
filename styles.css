@@ -72,7 +72,7 @@ main {
 
 .hero h1 {
   margin: 8px 0 10px;
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: clamp(2rem, 4.5vw, 3.3rem);
   letter-spacing: 0.02em;
 }
@@ -241,6 +241,43 @@ main {
   outline-offset: 1px;
 }
 
+.savings-list,
+.invest-list {
+  display: grid;
+  gap: 8px;
+}
+
+.savings-row,
+.invest-row {
+  display: grid;
+  grid-template-columns: 1fr 150px;
+  gap: 8px;
+  align-items: center;
+}
+
+.savings-name,
+.invest-name {
+  font-size: 0.82rem;
+  color: var(--ink);
+}
+
+.savings-row input,
+.invest-row input {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px 10px;
+  font: inherit;
+  color: var(--ink);
+  background: #fff;
+}
+
+.savings-row input:focus,
+.invest-row input:focus {
+  outline: 2px solid rgba(49, 117, 182, 0.32);
+  outline-offset: 1px;
+}
+
 .controls-grid {
   display: grid;
   gap: 10px;
@@ -361,16 +398,17 @@ main {
 }
 
 .sankey-path {
-  opacity: 0.76;
+  opacity: 0.56;
   transition: opacity 0.18s ease;
 }
 
 .sankey-path:hover {
-  opacity: 0.95;
+  opacity: 0.78;
 }
 
 .sankey-node {
-  stroke: rgba(16, 34, 32, 0.25);
+  opacity: 0.72;
+  stroke: rgba(16, 34, 32, 0.18);
   stroke-width: 1;
   rx: 4;
 }
@@ -426,6 +464,7 @@ main {
   color: var(--ink);
   box-shadow: 0 10px 20px rgba(16, 34, 32, 0.15);
   z-index: 3;
+  white-space: pre-line;
 }
 
 .sankey-legend {
@@ -444,6 +483,11 @@ main {
   padding: 4px 10px;
   font-size: 0.78rem;
   background: #fff;
+}
+
+.legend-item--detail {
+  background: rgba(255, 255, 255, 0.75);
+  border-style: dashed;
 }
 
 .legend-dot {
@@ -520,6 +564,56 @@ main {
   filter: brightness(1.05);
 }
 
+.pending-bar {
+  position: fixed;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(16, 34, 32, 0.24);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 12px 28px rgba(16, 34, 32, 0.2);
+}
+
+.pending-summary {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.pending-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.apply-feedback {
+  position: fixed;
+  left: 50%;
+  bottom: 78px;
+  transform: translateX(-50%);
+  z-index: 41;
+  padding: 8px 12px;
+  border: 1px solid rgba(30, 139, 124, 0.38);
+  border-radius: 999px;
+  background: rgba(235, 250, 246, 0.96);
+  color: #155247;
+  font-size: 0.78rem;
+  box-shadow: 0 8px 18px rgba(16, 34, 32, 0.14);
+  opacity: 0;
+  transition: opacity 0.16s ease;
+  pointer-events: none;
+}
+
+.apply-feedback.is-visible {
+  opacity: 1;
+}
+
 @media (max-width: 1080px) {
   .controls-grid--simple,
   .controls-grid--advanced {
@@ -549,6 +643,11 @@ main {
     grid-template-columns: 1fr;
   }
 
+  .savings-row,
+  .invest-row {
+    grid-template-columns: 1fr;
+  }
+
   .summary-cards {
     grid-template-columns: 1fr;
   }
@@ -571,5 +670,23 @@ main {
     bottom: 12px;
     padding: 9px 12px;
     font-size: 0.8rem;
+  }
+
+  .pending-bar {
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+    transform: none;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .pending-summary {
+    white-space: normal;
+  }
+
+  .apply-feedback {
+    bottom: 78px;
   }
 }

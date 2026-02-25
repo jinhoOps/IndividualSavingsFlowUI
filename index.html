@@ -54,7 +54,8 @@
             <br />
             매월: (수입 - 생활비 - 저축 - 투자 - 실제 부채상환액)을 현금에 반영합니다.
             (실제 부채상환액 = 설정 상환액, 부채잔액, 가용현금 중 최솟값)
-            부채는 월 이자를 먼저 반영하고 상환액으로 차감하며, 현금이 음수면 부족분을 신규부채로 더합니다.
+            저축/투자는 가용현금 범위 내에서만 반영됩니다.
+            부채는 월 이자를 먼저 반영하고 상환액으로 차감하며, 현금이 음수면 부족분을 부채에 더합니다.
             저축/투자에는 월 수익률을 적용합니다.
           </div>
           <div class="table-wrap">
@@ -66,7 +67,7 @@
                   <th>월 생활비</th>
                   <th>당월 이자</th>
                   <th>실제 상환액</th>
-                  <th>신규 차입</th>
+                  <th>부채 증가분</th>
                   <th>현금</th>
                   <th>저축</th>
                   <th>투자</th>
@@ -107,12 +108,12 @@
                   <input id="monthlyExpense" name="monthlyExpense" type="number" min="0" step="1" readonly />
                 </div>
                 <div class="control">
-                  <label for="monthlySavings">월 저축</label>
-                  <input id="monthlySavings" name="monthlySavings" type="number" min="0" step="1" />
+                  <label for="monthlySavings">월 저축(자동합산)</label>
+                  <input id="monthlySavings" name="monthlySavings" type="number" min="0" step="1" readonly />
                 </div>
                 <div class="control">
-                  <label for="monthlyInvest">월 투자</label>
-                  <input id="monthlyInvest" name="monthlyInvest" type="number" min="0" step="1" />
+                  <label for="monthlyInvest">월 투자(자동합산)</label>
+                  <input id="monthlyInvest" name="monthlyInvest" type="number" min="0" step="1" readonly />
                 </div>
                 <div class="control">
                   <label for="monthlyDebtPayment">월 부채상환</label>
@@ -132,6 +133,18 @@
                 <p class="hint">아래 항목 합계가 월 생활비로 자동 반영됩니다.</p>
                 <div id="expenseList" class="expense-list" aria-live="polite"></div>
                 <p id="expenseTotalHint" class="hint"></p>
+              </div>
+              <div class="controls-block">
+                <h3>저축 상세 항목</h3>
+                <p class="hint">아래 항목 합계가 월 저축으로 자동 반영됩니다.</p>
+                <div id="savingsList" class="savings-list" aria-live="polite"></div>
+                <p id="savingsTotalHint" class="hint"></p>
+              </div>
+              <div class="controls-block">
+                <h3>투자 상세 항목</h3>
+                <p class="hint">아래 항목 합계가 월 투자로 자동 반영됩니다.</p>
+                <div id="investList" class="invest-list" aria-live="polite"></div>
+                <p id="investTotalHint" class="hint"></p>
               </div>
               <div class="controls-grid controls-grid--advanced">
                 <div class="control">
@@ -155,7 +168,7 @@
                   <input id="annualIncomeGrowth" name="annualIncomeGrowth" type="number" min="0" max="30" step="0.1" />
                 </div>
                 <div class="control">
-                  <label for="annualExpenseGrowth">생활비 증가율(연, %)</label>
+                  <label for="annualExpenseGrowth">생활비 증가율(연, %, 기준금리)</label>
                   <input id="annualExpenseGrowth" name="annualExpenseGrowth" type="number" min="0" max="30" step="0.1" />
                 </div>
                 <div class="control">
@@ -179,6 +192,14 @@
     <button id="jumpToInputs" class="jump-inputs" type="button">
       입력값 섹터로 이동
     </button>
+    <div id="pendingBar" class="pending-bar" hidden>
+      <p id="pendingSummary" class="pending-summary"></p>
+      <div class="pending-actions">
+        <button id="applyChanges" class="btn btn-primary" type="button">적용</button>
+        <button id="cancelChanges" class="btn btn-ghost" type="button">취소</button>
+      </div>
+    </div>
+    <div id="applyFeedback" class="apply-feedback" hidden></div>
     <script src="app.js"></script>
   </body>
 </html>
