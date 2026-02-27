@@ -118,6 +118,9 @@ const currencyFormatter = new Intl.NumberFormat("ko-KR", {
   maximumFractionDigits: 0,
 });
 
+const sankeyTextMeasureCanvas = document.createElement("canvas");
+const sankeyTextMeasureContext = sankeyTextMeasureCanvas.getContext("2d");
+
 const dom = {
   inputsForm: document.getElementById("inputsForm"),
   copyShareLink: document.getElementById("copyShareLink"),
@@ -150,6 +153,11 @@ const dom = {
   addInvestItem: document.getElementById("addInvestItem"),
   applyInvestItems: document.getElementById("applyInvestItems"),
   cancelInvestItems: document.getElementById("cancelInvestItems"),
+  advancedSettings: document.getElementById("advancedSettings"),
+  expenseAdvancedBlock: document.getElementById("expenseAdvancedBlock"),
+  savingsAdvancedBlock: document.getElementById("savingsAdvancedBlock"),
+  investAdvancedBlock: document.getElementById("investAdvancedBlock"),
+  jumpAdvancedFields: Array.from(document.querySelectorAll(".jump-advanced-field")),
   jumpToInputs: document.getElementById("jumpToInputs"),
   pendingBar: document.getElementById("pendingBar"),
   pendingSummary: document.getElementById("pendingSummary"),
@@ -207,6 +215,8 @@ function bindControls() {
 
     dom.inputsForm.addEventListener("input", handleInput);
   }
+
+  bindReadonlyAdvancedNavigation();
 
   if (dom.copyShareLink) {
     dom.copyShareLink.addEventListener("click", async () => {
@@ -701,6 +711,70 @@ function bindControls() {
       renderSankey(state.snapshot);
     }
   }, 120));
+}
+
+function bindReadonlyAdvancedNavigation() {
+  if (!Array.isArray(dom.jumpAdvancedFields) || dom.jumpAdvancedFields.length === 0) {
+    return;
+  }
+
+  dom.jumpAdvancedFields.forEach((field) => {
+    if (!(field instanceof HTMLInputElement)) {
+      return;
+    }
+    field.addEventListener("click", () => {
+      navigateToAdvancedGroup(field.dataset.advancedTarget);
+    });
+    field.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") {
+        return;
+      }
+      event.preventDefault();
+      navigateToAdvancedGroup(field.dataset.advancedTarget);
+    });
+  });
+}
+
+function navigateToAdvancedGroup(groupKey) {
+  const map = {
+    expense: {
+      block: dom.expenseAdvancedBlock,
+      button: dom.editExpenseItems,
+      label: "생활비 상세 항목",
+    },
+    savings: {
+      block: dom.savingsAdvancedBlock,
+      button: dom.editSavingsItems,
+      label: "저축 상세 항목",
+    },
+    invest: {
+      block: dom.investAdvancedBlock,
+      button: dom.editInvestItems,
+      label: "투자 상세 항목",
+    },
+  };
+  const target = map[groupKey];
+  if (!target) {
+    return;
+  }
+
+  if (dom.advancedSettings && !dom.advancedSettings.open) {
+    dom.advancedSettings.open = true;
+  }
+
+  if (target.block) {
+    target.block.scrollIntoView({ behavior: "smooth", block: "start" });
+  } else if (dom.advancedSettings) {
+    dom.advancedSettings.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  window.setTimeout(() => {
+    if (target.button instanceof HTMLElement) {
+      target.button.focus({ preventScroll: true });
+    }
+  }, 240);
+
+  showApplyFeedback(`${target.label}으로 이동했습니다.`);
 }
 
 function ensureDraftInputs() {
@@ -1498,18 +1572,44 @@ function renderSankey(snapshot) {
 
   const columns = [...new Set(data.nodes.map((node) => node.column))].sort((a, b) => a - b);
   const columnCount = columns.length;
-  const minWidth = columnCount >= 3 ? 860 : 680;
-  const width = Math.max(minWidth, dom.sankeyWrap.clientWidth - 20);
+  const firstColumn = columns[0];
+  const lastColumn = columns[columns.length - 1];
+  const isMobileViewport = window.matchMedia("(max-width: 760px)").matches;
+  const nodeWidth = isMobileViewport ? 16 : 18;
+  const labelGap = isMobileViewport ? 8 : 10;
+  const labelFontSize = isMobileViewport ? 10 : 12;
+  const valueFontSize = isMobileViewport ? 9 : 11;
+  const minColumnStep = isMobileViewport ? 96 : 140;
+
+  const getNodeTextWidth = (node) => Math.max(
+    measureSankeyTextWidth(node?.label, labelFontSize, 700),
+    measureSankeyTextWidth(formatCurrency(node?.value), valueFontSize, 400),
+  );
+
+  const leftLabelWidth = data.nodes
+    .filter((node) => node.column === firstColumn)
+    .reduce((max, node) => Math.max(max, getNodeTextWidth(node)), 0);
+  const rightLabelWidth = data.nodes
+    .filter((node) => node.column === lastColumn)
+    .reduce((max, node) => Math.max(max, getNodeTextWidth(node)), 0);
+
+  const marginLeft = Math.max(64, Math.ceil(leftLabelWidth + labelGap + 12));
+  const marginRight = Math.max(64, Math.ceil(rightLabelWidth + labelGap + 12));
+  const flowMinWidth = nodeWidth + Math.max(0, columnCount - 1) * minColumnStep;
+  const minWidth = Math.ceil(marginLeft + flowMinWidth + marginRight);
+  const wrapWidth = Math.max(0, dom.sankeyWrap.clientWidth - (isMobileViewport ? 12 : 20));
+  const width = Math.max(minWidth, wrapWidth);
   const maxCountPerColumn = columns.reduce((max, column) => {
     const count = data.nodes.filter((node) => node.column === column).length;
     return Math.max(max, count);
   }, 1);
-  const height = Math.max(320, 240 + maxCountPerColumn * 44);
-  const nodeWidth = 18;
-  const marginX = columnCount >= 3 ? 120 : 140;
-  const marginTop = 26;
-  const marginBottom = 26;
-  const nodeGap = 14;
+  const height = Math.max(
+    isMobileViewport ? 300 : 320,
+    (isMobileViewport ? 220 : 240) + maxCountPerColumn * (isMobileViewport ? 40 : 44),
+  );
+  const marginTop = isMobileViewport ? 20 : 26;
+  const marginBottom = isMobileViewport ? 20 : 26;
+  const nodeGap = isMobileViewport ? 12 : 14;
 
   dom.sankeySvg.setAttribute("viewBox", `0 0 ${width} ${height}`);
 
@@ -1542,9 +1642,8 @@ function renderSankey(snapshot) {
     return;
   }
 
-  const step = columnCount > 1
-    ? (width - marginX * 2 - nodeWidth) / (columnCount - 1)
-    : 0;
+  const usableWidth = Math.max(nodeWidth, width - marginLeft - marginRight - nodeWidth);
+  const step = columnCount > 1 ? usableWidth / (columnCount - 1) : 0;
 
   const positionedNodes = [];
   columns.forEach((column, index) => {
@@ -1552,7 +1651,7 @@ function renderSankey(snapshot) {
     const columnHeight = nodesInColumn.reduce((sum, node) => sum + node.displayValue * scale, 0)
       + nodeGap * Math.max(0, nodesInColumn.length - 1);
     let y = (height - columnHeight) / 2;
-    const x = marginX + index * step;
+    const x = marginLeft + index * step;
 
     nodesInColumn.forEach((node) => {
       const h = node.displayValue * scale;
@@ -1562,7 +1661,6 @@ function renderSankey(snapshot) {
   });
 
   const nodeMap = new Map(positionedNodes.map((node) => [node.id, node]));
-  const lastColumn = columns[columns.length - 1];
 
   const orderedLinks = [...data.links].sort((a, b) => {
     const sourceA = nodeMap.get(a.source);
@@ -1618,13 +1716,13 @@ function renderSankey(snapshot) {
 
   positionedNodes.forEach((node) => {
     const side = node.column === lastColumn ? "target" : "source";
-    drawNode(node, side, nodeWidth);
+    drawNode(node, side, nodeWidth, labelGap);
   });
 
   renderSankeyLegend(data);
 }
 
-function drawNode(node, side, nodeWidth) {
+function drawNode(node, side, nodeWidth, labelGap = 10) {
   const rect = createSvgElement("rect", {
     x: node.x,
     y: node.y,
@@ -1634,7 +1732,7 @@ function drawNode(node, side, nodeWidth) {
   });
   dom.sankeySvg.appendChild(rect);
 
-  const labelX = side === "source" ? node.x - 10 : node.x + nodeWidth + 10;
+  const labelX = side === "source" ? node.x - labelGap : node.x + nodeWidth + labelGap;
   const anchor = side === "source" ? "end" : "start";
   const centerY = node.y + node.h / 2;
 
@@ -2309,6 +2407,25 @@ function createSvgElement(tagName, attrs) {
     }
   });
   return element;
+}
+
+function measureSankeyTextWidth(text, fontSizePx = 12, fontWeight = 400) {
+  const content = String(text ?? "");
+  if (!content) {
+    return 0;
+  }
+
+  const bodyFont = window.getComputedStyle(document.body).fontFamily || "sans-serif";
+  if (!sankeyTextMeasureContext) {
+    return content.length * Math.max(8, fontSizePx * 0.95);
+  }
+
+  sankeyTextMeasureContext.font = `${fontWeight} ${fontSizePx}px ${bodyFont}`;
+  const metrics = sankeyTextMeasureContext.measureText(content);
+  if (!Number.isFinite(metrics.width)) {
+    return content.length * Math.max(8, fontSizePx * 0.95);
+  }
+  return metrics.width;
 }
 
 function showSankeyTooltip(event, text) {

@@ -111,15 +111,15 @@
               <div class="controls-grid controls-grid--simple">
                 <div class="control">
                   <label for="monthlyExpense">월 생활비(자동합산)</label>
-                  <input id="monthlyExpense" name="monthlyExpense" type="number" min="0" step="1" readonly />
+                  <input id="monthlyExpense" name="monthlyExpense" type="number" min="0" step="1" readonly class="jump-advanced-field" data-advanced-target="expense" title="클릭하면 고급 설정의 생활비 상세 항목으로 이동" />
                 </div>
                 <div class="control">
                   <label for="monthlySavings">월 저축(자동합산)</label>
-                  <input id="monthlySavings" name="monthlySavings" type="number" min="0" step="1" readonly />
+                  <input id="monthlySavings" name="monthlySavings" type="number" min="0" step="1" readonly class="jump-advanced-field" data-advanced-target="savings" title="클릭하면 고급 설정의 저축 상세 항목으로 이동" />
                 </div>
                 <div class="control">
                   <label for="monthlyInvest">월 투자(자동합산)</label>
-                  <input id="monthlyInvest" name="monthlyInvest" type="number" min="0" step="1" readonly />
+                  <input id="monthlyInvest" name="monthlyInvest" type="number" min="0" step="1" readonly class="jump-advanced-field" data-advanced-target="invest" title="클릭하면 고급 설정의 투자 상세 항목으로 이동" />
                 </div>
                 <div class="control">
                   <label for="monthlyDebtPayment">월 부채상환</label>
@@ -130,11 +130,12 @@
                   <input id="horizonYears" name="horizonYears" type="number" min="1" max="40" step="1" />
                 </div>
               </div>
+              <p class="hint">생활비/저축/투자 칸을 클릭하면 고급 설정의 상세 항목으로 이동합니다.</p>
             </div>
 
-            <details class="advanced-block">
+            <details id="advancedSettings" class="advanced-block">
               <summary>고급 설정 (생활비 상세 / 초기자산 / 증가율 / 수익률)</summary>
-              <div class="controls-block">
+              <div id="expenseAdvancedBlock" class="controls-block">
                 <div class="block-head">
                   <h3>생활비 상세 항목</h3>
                   <button id="editExpenseItems" class="btn btn-ghost btn-sm" type="button">항목 편집</button>
@@ -148,7 +149,7 @@
                 </div>
                 <p id="expenseTotalHint" class="hint"></p>
               </div>
-              <div class="controls-block">
+              <div id="savingsAdvancedBlock" class="controls-block">
                 <div class="block-head">
                   <h3>저축 상세 항목</h3>
                   <button id="editSavingsItems" class="btn btn-ghost btn-sm" type="button">항목 편집</button>
@@ -162,7 +163,7 @@
                 </div>
                 <p id="savingsTotalHint" class="hint"></p>
               </div>
-              <div class="controls-block">
+              <div id="investAdvancedBlock" class="controls-block">
                 <div class="block-head">
                   <h3>투자 상세 항목</h3>
                   <button id="editInvestItems" class="btn btn-ghost btn-sm" type="button">항목 편집</button>
