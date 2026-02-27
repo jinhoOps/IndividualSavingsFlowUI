@@ -81,6 +81,12 @@
 - pendingBar 상시 노출 이슈 추가 보정:
   - 프로그램적 폼 반영 시 입력 추적을 일시 중지해 불필요한 pending 감지가 발생하지 않도록 보정.
   - `pendingBar[hidden] { display: none !important; }`를 추가해 숨김 상태를 강제.
+- README 사용자용 단순화:
+  - 복잡한 기획/도메인 설명을 제거하고 일반 사용자 기준 `클론→실행→기능` 중심으로 재작성.
+  - 설치 없이 `index.html` 실행 가능한 사용법과 핵심 기능 요약만 남겨 가독성을 개선.
+- README 문제정의/목표 복원:
+  - 클론 URL을 `https://github.com/jinhoOps/IndividualSavingsFlowUI.git`로 명시.
+  - 사용자 친화 문체를 유지하면서 `문제 정의`와 `목표` 섹션을 다시 추가.
 
 ## 커밋 메시지 추천
 1. `feat: add gated advanced-item editor flow for expense/savings/invest`
@@ -89,3 +95,4 @@
 4. `feat: add real net-asset (present value) column to projection validation table`
 5. `feat: discount net asset by annual base rate in monthly projection snapshots`
 6. `refactor: extend projection records with inflation-adjusted real net asset`
+7. `docs: simplify README for end users with clone-and-run quick start`
