@@ -21,16 +21,7 @@ git clone https://github.com/jinhoOps/IndividualSavingsFlowUI.git
 cd IndividualSavingsFlowUI
 ```
 
-그 다음 아래 중 하나:
-
-1. 파일 탐색기에서 `index.html` 더블클릭
-2. (권장) 간단한 로컬 서버 실행
-
-```bash
-python -m http.server 5500
-```
-
-브라우저에서 `http://localhost:5500` 접속
+파일 탐색기에서 `index.html` 더블클릭하면 바로 실행됩니다.
 
 ## 4) 무엇을 할 수 있나요?
 

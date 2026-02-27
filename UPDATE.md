@@ -87,6 +87,9 @@
 - README 문제정의/목표 복원:
   - 클론 URL을 `https://github.com/jinhoOps/IndividualSavingsFlowUI.git`로 명시.
   - 사용자 친화 문체를 유지하면서 `문제 정의`와 `목표` 섹션을 다시 추가.
+- README 실행 안내 단순화(2차):
+  - `바로 실행` 섹션에서 `python -m http.server` 안내를 제거.
+  - 실행 방법을 `index.html 더블클릭` 단일 경로로 정리.
 
 ## 커밋 메시지 추천
 1. `feat: add gated advanced-item editor flow for expense/savings/invest`
