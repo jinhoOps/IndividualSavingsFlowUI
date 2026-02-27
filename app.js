@@ -166,9 +166,9 @@ const state = {
   applyFeedbackTimer: null,
   suspendInputTracking: false,
   itemEditors: {
-    expense: { active: false, items: [] },
-    savings: { active: false, items: [] },
-    invest: { active: false, items: [] },
+    expense: { active: false, items: [], baselineSignature: "" },
+    savings: { active: false, items: [], baselineSignature: "" },
+    invest: { active: false, items: [], baselineSignature: "" },
   },
   snapshot: null,
 };
@@ -299,6 +299,7 @@ function bindControls() {
           toWon(getMonthlyAllocationTotalMan(state.itemEditors.expense.items)),
           state.itemEditors.expense.items.length,
         );
+        setItemEditorUi("expense", true);
         return;
       }
 
@@ -335,6 +336,7 @@ function bindControls() {
         toWon(getMonthlyAllocationTotalMan(state.itemEditors.expense.items)),
         state.itemEditors.expense.items.length,
       );
+      setItemEditorUi("expense", true);
     });
   }
 
@@ -370,6 +372,7 @@ function bindControls() {
           toWon(getMonthlyAllocationTotalMan(state.itemEditors.savings.items)),
           state.itemEditors.savings.items.length,
         );
+        setItemEditorUi("savings", true);
         return;
       }
 
@@ -406,6 +409,7 @@ function bindControls() {
         toWon(getMonthlyAllocationTotalMan(state.itemEditors.savings.items)),
         state.itemEditors.savings.items.length,
       );
+      setItemEditorUi("savings", true);
     });
   }
 
@@ -441,6 +445,7 @@ function bindControls() {
           toWon(getMonthlyAllocationTotalMan(state.itemEditors.invest.items)),
           state.itemEditors.invest.items.length,
         );
+        setItemEditorUi("invest", true);
         return;
       }
 
@@ -477,6 +482,7 @@ function bindControls() {
         toWon(getMonthlyAllocationTotalMan(state.itemEditors.invest.items)),
         state.itemEditors.invest.items.length,
       );
+      setItemEditorUi("invest", true);
     });
   }
 
@@ -590,6 +596,10 @@ function bindControls() {
     });
   }
 
+  if (dom.sankeyWrap) {
+    dom.sankeyWrap.addEventListener("mouseleave", hideSankeyTooltip);
+  }
+
   window.addEventListener("resize", debounce(() => {
     if (state.snapshot) {
       renderSankey(state.snapshot);
@@ -618,6 +628,9 @@ function getItemGroupMeta(groupKey) {
       renderHint: renderExpenseTotalHint,
       editButton: dom.editExpenseItems,
       actionWrap: dom.expenseEditorActions,
+      addButton: dom.addExpenseItem,
+      applyButton: dom.applyExpenseItems,
+      cancelButton: dom.cancelExpenseItems,
       defaultItems: DEFAULT_EXPENSE_ITEMS,
     },
     savings: {
@@ -627,6 +640,9 @@ function getItemGroupMeta(groupKey) {
       renderHint: renderSavingsTotalHint,
       editButton: dom.editSavingsItems,
       actionWrap: dom.savingsEditorActions,
+      addButton: dom.addSavingsItem,
+      applyButton: dom.applySavingsItems,
+      cancelButton: dom.cancelSavingsItems,
       defaultItems: DEFAULT_SAVINGS_ITEMS,
     },
     invest: {
@@ -636,22 +652,58 @@ function getItemGroupMeta(groupKey) {
       renderHint: renderInvestTotalHint,
       editButton: dom.editInvestItems,
       actionWrap: dom.investEditorActions,
+      addButton: dom.addInvestItem,
+      applyButton: dom.applyInvestItems,
+      cancelButton: dom.cancelInvestItems,
       defaultItems: DEFAULT_INVEST_ITEMS,
     },
   };
   return map[groupKey];
 }
 
+function getItemEditorSignature(groupKey, items) {
+  const meta = getItemGroupMeta(groupKey);
+  if (!meta) {
+    return "";
+  }
+  const normalizedItems = sanitizeAllocationItems(items, meta.defaultItems, 0, groupKey, meta.label);
+  return JSON.stringify(normalizedItems.map((item, index) => ({
+    id: String(item.id || "").trim(),
+    name: normalizeAllocationName(item.name, meta.label, index),
+    amount: sanitizeMoney(item.amount, 0),
+  })));
+}
+
+function hasItemEditorChanges(groupKey) {
+  const editor = state.itemEditors[groupKey];
+  if (!editor || !editor.active) {
+    return false;
+  }
+  const currentSignature = getItemEditorSignature(groupKey, editor.items);
+  return currentSignature !== editor.baselineSignature;
+}
+
 function setItemEditorUi(groupKey, active) {
   const meta = getItemGroupMeta(groupKey);
+  const editor = state.itemEditors[groupKey];
   if (!meta) {
     return;
   }
+  const hasChanges = Boolean(active && editor && hasItemEditorChanges(groupKey));
   if (meta.actionWrap) {
-    meta.actionWrap.hidden = !active;
+    meta.actionWrap.hidden = !hasChanges;
   }
   if (meta.editButton) {
     meta.editButton.textContent = active ? "편집 닫기" : "항목 편집";
+  }
+  if (meta.addButton) {
+    meta.addButton.hidden = !hasChanges;
+  }
+  if (meta.applyButton) {
+    meta.applyButton.hidden = !hasChanges;
+  }
+  if (meta.cancelButton) {
+    meta.cancelButton.hidden = !hasChanges;
   }
 }
 
@@ -677,6 +729,7 @@ function startItemEditor(groupKey) {
     name: normalizeAllocationName(item?.name, meta.label, index),
     amount: sanitizeMoney(item?.amount, 0),
   }));
+  editor.baselineSignature = getItemEditorSignature(groupKey, editor.items);
 
   meta.renderList(editor.items, { editing: true });
   meta.renderHint(toWon(getMonthlyAllocationTotalMan(editor.items)), editor.items.length);
@@ -698,6 +751,7 @@ function addItemToEditor(groupKey) {
 
   meta.renderList(editor.items, { editing: true });
   meta.renderHint(toWon(getMonthlyAllocationTotalMan(editor.items)), editor.items.length);
+  setItemEditorUi(groupKey, true);
 }
 
 function applyItemEditor(groupKey) {
@@ -714,6 +768,7 @@ function applyItemEditor(groupKey) {
 
   editor.active = false;
   editor.items = [];
+  editor.baselineSignature = "";
   setItemEditorUi(groupKey, false);
 
   meta.renderList(state.draftInputs[meta.field]);
@@ -729,6 +784,7 @@ function cancelItemEditor(groupKey) {
 
   editor.active = false;
   editor.items = [];
+  editor.baselineSignature = "";
   setItemEditorUi(groupKey, false);
 
   const inputs = getVisibleInputs();
@@ -2147,8 +2203,25 @@ function showSankeyTooltip(event, text) {
   if (!dom.sankeyTooltip || !dom.sankeyWrap) {
     return;
   }
+  if (!text || !String(text).trim()) {
+    hideSankeyTooltip();
+    return;
+  }
+  if (dom.sankeyEmpty && !dom.sankeyEmpty.hidden) {
+    hideSankeyTooltip();
+    return;
+  }
+  const target = event?.target;
+  if (!(target instanceof SVGPathElement) || !target.classList.contains("sankey-path")) {
+    hideSankeyTooltip();
+    return;
+  }
 
   const wrapRect = dom.sankeyWrap.getBoundingClientRect();
+  if (wrapRect.width <= 0 || wrapRect.height <= 0) {
+    hideSankeyTooltip();
+    return;
+  }
   const tooltip = dom.sankeyTooltip;
 
   tooltip.hidden = false;

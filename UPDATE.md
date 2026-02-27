@@ -3,7 +3,7 @@
 ## 운영 원칙
 - 개발 시작 전에 항상 `UPDATE.md`를 먼저 확인한다.
 - 모든 변경 사항/개발 사항은 작업 종료 시 `UPDATE.md`에 요약 기록한다.
-- 상세 로그가 길어지면 날짜 단위가 아니라 기능 단위로 압축해 유지한다.
+- 상세 로그가 길어지면 기능 단위로 압축하되, 날짜 소제목은 유지해 구분한다.
 
 ## 압축 이력 (기존 내역)
 ### 2025-12-29 ~ 2026-01-26
@@ -12,7 +12,7 @@
 - 시뮬레이션 엔진은 월 단위 계산(수입 성장, 저축/투자 반영, 인플레이션/명목·실질 토글, 보유자산 가정)을 단계적으로 고도화.
 - 입력/표현 체계를 만원 단위 중심으로 통일하고, 핵심 카드/요약 뷰/초기화 동작 등 UX를 지속 정리.
 
-## 리디자인 이후 압축 (최초)
+## 리디자인 이후 이력
 ### 2026-02-25
 - UI를 전면 리디자인: 복수 그래프/복잡 편집 중심에서 `핵심 카드 + 단일 Sankey + 계산 검증 표` 중심 구조로 재편.
 - 입력 UX를 단순화: 간편 입력 + 고급 설정 접기 구조로 변경하고, 수입은 항목 추가/삭제 방식으로 전환.
@@ -52,6 +52,7 @@
 - Sankey 톤 조정:
   - 생키 링크/노드 색상을 더 옅은 투명 톤으로 조정해 과한 채도를 완화.
   - 호버 시에도 기존보다 부드럽게 강조되도록 불투명도 범위를 조정.
+### 2026-02-26
 - 기본값/입력 UX 업데이트:
   - 기본 입력값을 캡처 기준으로 조정:
     - 월 수입 `300`, 생활비(60/10/5/10/40/20), 저축(70/5), 투자(30/30/3)
@@ -81,6 +82,7 @@
 - pendingBar 상시 노출 이슈 추가 보정:
   - 프로그램적 폼 반영 시 입력 추적을 일시 중지해 불필요한 pending 감지가 발생하지 않도록 보정.
   - `pendingBar[hidden] { display: none !important; }`를 추가해 숨김 상태를 강제.
+### 2026-02-27
 - README 사용자용 단순화:
   - 복잡한 기획/도메인 설명을 제거하고 일반 사용자 기준 `클론→실행→기능` 중심으로 재작성.
   - 설치 없이 `index.html` 실행 가능한 사용법과 핵심 기능 요약만 남겨 가독성을 개선.
@@ -90,12 +92,15 @@
 - README 실행 안내 단순화(2차):
   - `바로 실행` 섹션에서 `python -m http.server` 안내를 제거.
   - 실행 방법을 `index.html 더블클릭` 단일 경로로 정리.
+- 고급 설정 편집 적용 버튼 노출 조건 보정:
+  - 생활비/저축/투자 `항목 편집` 모드에서 실제 변경이 생긴 경우에만 `항목 변경 적용` 버튼이 표시되도록 수정.
+  - 편집 중 원복 시 버튼이 다시 숨겨지도록 항목 시그니처 비교 기반으로 변경 감지를 추가.
+- 고급 설정 편집 액션 버튼 노출 조건 확장:
+  - `항목 추가`, `편집 취소`도 `항목 변경 적용`과 동일하게 실제 변경사항이 있을 때만 표시되도록 통일.
+- Sankey 툴팁 표시 예외 처리:
+  - 차트가 비어있는 상태 또는 유효한 링크 hover가 아닌 경우 `sankeyTooltip`을 표시하지 않도록 가드 로직을 추가.
+  - 차트 영역 이탈(`mouseleave`) 시 툴팁이 즉시 숨겨지도록 처리.
 
 ## 커밋 메시지 추천
-1. `feat: add gated advanced-item editor flow for expense/savings/invest`
-2. `feat: require explicit edit mode to rename/add/remove allocation items`
-3. `refactor: support dynamic allocation item lists with apply-based editor UX`
-4. `feat: add real net-asset (present value) column to projection validation table`
-5. `feat: discount net asset by annual base rate in monthly projection snapshots`
-6. `refactor: extend projection records with inflation-adjusted real net asset`
-7. `docs: simplify README for end users with clone-and-run quick start`
+1. `fix: guard sankey tooltip visibility and hide on chart leave`
+2. `fix: show advanced editor action buttons only when item changes exist`
