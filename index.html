@@ -86,10 +86,14 @@
           <div class="section-head">
             <h2 id="inputsTitle">입력값</h2>
             <div class="actions">
+              <button id="copyShareLink" class="btn btn-ghost" type="button">링크 복사</button>
+              <button id="exportJson" class="btn btn-ghost" type="button">JSON 저장</button>
+              <button id="importJson" class="btn btn-ghost" type="button">JSON 불러오기</button>
               <button id="loadSample" class="btn btn-primary" type="button">샘플</button>
               <button id="resetInputs" class="btn btn-ghost" type="button">초기화</button>
             </div>
           </div>
+          <input id="importJsonFile" type="file" accept=".json,application/json" hidden />
           <p class="hint">금액 단위: 만원(예: 450 = 4,500,000원) · 기본값만 입력해도 바로 계산됩니다.</p>
           <form id="inputsForm" autocomplete="off">
             <div class="controls-block">

@@ -114,7 +114,14 @@
   - 배포 방법 설명 대신 `https://jinhoops.github.io/IndividualSavingsFlowUI/` 직접 접속 안내 문구를 추가.
 - 핵심 카드 0값 자동 숨김:
   - 부채가 없는 사용자 기준으로 `당월 부채이자`, `당월 실제상환`, `당월 부채증가분`, `부채 소진 예상` 카드가 0일 때는 표시하지 않도록 조건 필터를 추가.
+- 상태 저장/백업 체계 확장:
+  - 상태 저장 우선순위를 `URL 해시(#) -> localStorage -> 기본값`으로 조정해 해시 기반 상태 복원을 메인 경로로 적용.
+  - 입력값 액션에 `링크 복사`, `JSON 저장`, `JSON 불러오기`를 추가.
+  - URL 해시는 `s` 파라미터(base64url 인코딩)로 동기화하고, 길이 초과 시 사용자 피드백을 노출.
+  - JSON은 앱 식별자/스키마 버전/내보낸 시각을 포함한 envelope 형식으로 내보내고 불러오기 검증을 추가.
+  - 해시 변경(`hashchange`) 시 링크 상태를 다시 불러오도록 동기화 처리.
 
 ## 커밋 메시지 추천
 1. `fix: guard sankey tooltip visibility and hide on chart leave`
 2. `fix: show advanced editor action buttons only when item changes exist`
+3. `feat: use URL hash as primary state storage with JSON backup import/export`

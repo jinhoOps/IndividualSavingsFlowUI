@@ -1,5 +1,9 @@
 const MONEY_UNIT = 10000;
 const STORAGE_KEY = "isf-rebuild-v1";
+const SHARE_STATE_KEY = "my-household-flow";
+const SHARE_STATE_SCHEMA = 1;
+const HASH_STATE_PARAM = "s";
+const HASH_STATE_MAX_LENGTH = 6000;
 const MAX_INCOME_ITEMS = 12;
 const MAX_ALLOCATION_ITEMS = 20;
 
@@ -116,6 +120,10 @@ const currencyFormatter = new Intl.NumberFormat("ko-KR", {
 
 const dom = {
   inputsForm: document.getElementById("inputsForm"),
+  copyShareLink: document.getElementById("copyShareLink"),
+  exportJson: document.getElementById("exportJson"),
+  importJson: document.getElementById("importJson"),
+  importJsonFile: document.getElementById("importJsonFile"),
   loadSample: document.getElementById("loadSample"),
   resetInputs: document.getElementById("resetInputs"),
   addIncomeItem: document.getElementById("addIncomeItem"),
@@ -161,10 +169,11 @@ const dom = {
 };
 
 const state = {
-  inputs: sanitizeInputs({ ...DEFAULT_INPUTS, ...loadPersistedInputs() }),
+  inputs: resolveInitialInputs(),
   draftInputs: null,
   applyFeedbackTimer: null,
   suspendInputTracking: false,
+  isApplyingHashState: false,
   itemEditors: {
     expense: { active: false, items: [], baselineSignature: "" },
     savings: { active: false, items: [], baselineSignature: "" },
@@ -178,6 +187,7 @@ document.addEventListener("DOMContentLoaded", () => {
   refreshInputsPanel(state.inputs);
   setPendingBarVisible(false);
   renderAll();
+  syncHashState(state.inputs);
 });
 
 function bindControls() {
@@ -196,6 +206,64 @@ function bindControls() {
     };
 
     dom.inputsForm.addEventListener("input", handleInput);
+  }
+
+  if (dom.copyShareLink) {
+    dom.copyShareLink.addEventListener("click", async () => {
+      const shareLink = buildShareLink(state.inputs);
+      if (!shareLink) {
+        showApplyFeedback("링크 길이 초과로 공유 링크 생성이 제한됩니다. JSON 저장을 사용하세요.");
+        return;
+      }
+      try {
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(shareLink);
+          showApplyFeedback("공유 링크를 복사했습니다.");
+          return;
+        }
+      } catch (_error) {
+        // Fallback below.
+      }
+      window.prompt("아래 링크를 복사해 공유하세요.", shareLink);
+    });
+  }
+
+  if (dom.exportJson) {
+    dom.exportJson.addEventListener("click", () => {
+      exportInputsAsJson(state.inputs);
+      showApplyFeedback("JSON 백업 파일을 저장했습니다.");
+    });
+  }
+
+  if (dom.importJson) {
+    dom.importJson.addEventListener("click", () => {
+      if (dom.importJsonFile) {
+        dom.importJsonFile.click();
+      }
+    });
+  }
+
+  if (dom.importJsonFile) {
+    dom.importJsonFile.addEventListener("change", async (event) => {
+      const file = event.target instanceof HTMLInputElement ? event.target.files?.[0] : null;
+      if (!file) {
+        return;
+      }
+      try {
+        const text = await file.text();
+        const imported = parseImportedInputs(text);
+        const hashSynced = commitImmediateInputs(imported);
+        showApplyFeedback(hashSynced
+          ? "JSON 데이터를 불러와 적용했습니다."
+          : "JSON 적용 완료 · 링크 길이 초과로 해시 저장은 생략되었습니다.");
+      } catch (_error) {
+        showApplyFeedback("JSON 파일 형식이 올바르지 않습니다.");
+      } finally {
+        if (event.target instanceof HTMLInputElement) {
+          event.target.value = "";
+        }
+      }
+    });
   }
 
   if (dom.addIncomeItem) {
@@ -569,9 +637,11 @@ function bindControls() {
       state.draftInputs = null;
       setPendingBarVisible(false);
       refreshInputsPanel(state.inputs);
-      persistInputs(state.inputs);
+      const hashSynced = persistPrimaryState(state.inputs);
       renderAll();
-      showApplyFeedback("변경사항이 적용되었습니다.");
+      showApplyFeedback(hashSynced
+        ? "변경사항이 적용되었습니다."
+        : "변경사항 적용 완료 · 링크 길이 초과로 해시 저장은 생략되었습니다.");
     });
   }
 
@@ -599,6 +669,32 @@ function bindControls() {
   if (dom.sankeyWrap) {
     dom.sankeyWrap.addEventListener("mouseleave", hideSankeyTooltip);
   }
+
+  window.addEventListener("hashchange", () => {
+    if (state.isApplyingHashState) {
+      return;
+    }
+    const hashInputs = loadInputsFromHash();
+    if (!hashInputs) {
+      return;
+    }
+    const nextInputs = sanitizeInputs({ ...DEFAULT_INPUTS, ...hashInputs });
+    if (areInputsEqual(nextInputs, state.inputs)) {
+      return;
+    }
+    state.isApplyingHashState = true;
+    try {
+      state.inputs = nextInputs;
+      state.draftInputs = null;
+      setPendingBarVisible(false);
+      refreshInputsPanel(state.inputs);
+      persistPrimaryState(state.inputs);
+      renderAll();
+      showApplyFeedback("링크 상태를 불러왔습니다.");
+    } finally {
+      state.isApplyingHashState = false;
+    }
+  });
 
   window.addEventListener("resize", debounce(() => {
     if (state.snapshot) {
@@ -926,8 +1022,9 @@ function commitImmediateInputs(nextInputs) {
   state.draftInputs = null;
   setPendingBarVisible(false);
   refreshInputsPanel(state.inputs);
-  persistInputs(state.inputs);
+  const hashSynced = persistPrimaryState(state.inputs);
   renderAll();
+  return hashSynced;
 }
 
 function showApplyFeedback(message) {
@@ -2255,6 +2352,144 @@ function hideSankeyTooltip() {
   if (dom.sankeyTooltip) {
     dom.sankeyTooltip.hidden = true;
   }
+}
+
+function resolveInitialInputs() {
+  const hashInputs = loadInputsFromHash();
+  if (hashInputs) {
+    return sanitizeInputs({ ...DEFAULT_INPUTS, ...hashInputs });
+  }
+  return sanitizeInputs({ ...DEFAULT_INPUTS, ...loadPersistedInputs() });
+}
+
+function buildStateEnvelope(inputs) {
+  return {
+    app: SHARE_STATE_KEY,
+    schemaVersion: SHARE_STATE_SCHEMA,
+    exportedAt: new Date().toISOString(),
+    data: sanitizeInputs(cloneInputs(inputs)),
+  };
+}
+
+function parseStateEnvelope(parsed) {
+  if (!parsed || typeof parsed !== "object") {
+    return null;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(parsed, "data")) {
+    const app = typeof parsed.app === "string" ? parsed.app.trim() : "";
+    if (app && app !== SHARE_STATE_KEY) {
+      return null;
+    }
+    if (!parsed.data || typeof parsed.data !== "object") {
+      return null;
+    }
+    return sanitizeInputs({ ...DEFAULT_INPUTS, ...parsed.data });
+  }
+
+  return sanitizeInputs({ ...DEFAULT_INPUTS, ...parsed });
+}
+
+function encodeBase64Url(text) {
+  const safeText = String(text ?? "");
+  const bytes = new TextEncoder().encode(safeText);
+  let binary = "";
+  bytes.forEach((byte) => {
+    binary += String.fromCharCode(byte);
+  });
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+function decodeBase64Url(value) {
+  const normalized = String(value ?? "").replace(/-/g, "+").replace(/_/g, "/");
+  const padded = normalized + "=".repeat((4 - (normalized.length % 4)) % 4);
+  const binary = atob(padded);
+  const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
+}
+
+function encodeInputsForHash(inputs) {
+  try {
+    const encoded = encodeBase64Url(JSON.stringify(buildStateEnvelope(inputs)));
+    if (!encoded || encoded.length > HASH_STATE_MAX_LENGTH) {
+      return null;
+    }
+    return encoded;
+  } catch (_error) {
+    return null;
+  }
+}
+
+function loadInputsFromHash() {
+  try {
+    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+    const encoded = hashParams.get(HASH_STATE_PARAM);
+    if (!encoded) {
+      return null;
+    }
+    const decoded = decodeBase64Url(encoded);
+    const parsed = JSON.parse(decoded);
+    return parseStateEnvelope(parsed);
+  } catch (_error) {
+    return null;
+  }
+}
+
+function syncHashState(inputs) {
+  const encoded = encodeInputsForHash(inputs);
+  if (!encoded) {
+    return false;
+  }
+
+  const currentParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  const current = currentParams.get(HASH_STATE_PARAM);
+  if (current === encoded) {
+    return true;
+  }
+
+  currentParams.set(HASH_STATE_PARAM, encoded);
+  const nextUrl = `${window.location.pathname}${window.location.search}#${currentParams.toString()}`;
+  history.replaceState(null, "", nextUrl);
+  return true;
+}
+
+function persistPrimaryState(inputs) {
+  persistInputs(inputs);
+  return syncHashState(inputs);
+}
+
+function buildShareLink(inputs) {
+  const encoded = encodeInputsForHash(inputs);
+  if (!encoded) {
+    return "";
+  }
+  const params = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  params.set(HASH_STATE_PARAM, encoded);
+  return `${window.location.origin}${window.location.pathname}${window.location.search}#${params.toString()}`;
+}
+
+function exportInputsAsJson(inputs) {
+  const blob = new Blob([JSON.stringify(buildStateEnvelope(inputs), null, 2)], {
+    type: "application/json;charset=utf-8",
+  });
+  const url = URL.createObjectURL(blob);
+  const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `my-household-flow-backup-${datePart}.json`;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
+function parseImportedInputs(text) {
+  const parsed = JSON.parse(String(text ?? ""));
+  const inputs = parseStateEnvelope(parsed);
+  if (!inputs) {
+    throw new Error("invalid-json");
+  }
+  return inputs;
 }
 
 function cloneInputs(inputs) {
