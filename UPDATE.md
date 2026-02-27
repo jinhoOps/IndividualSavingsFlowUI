@@ -5,6 +5,9 @@
 - 모든 변경 사항/개발 사항은 작업 종료 시 `UPDATE.md`에 요약 기록한다.
 - 상세 로그가 길어지면 기능 단위로 압축하되, 날짜 소제목은 유지해 구분한다.
 
+## 투두
+- 이해가 어려운 단어 표현 개선
+
 ## 압축 이력 (기존 내역)
 ### 2025-12-29 ~ 2026-01-26
 - Vanilla HTML/CSS/JS 기반 개인 자산흐름 대시보드 MVP를 구축하고, 노드/링크 CRUD, 유효성 검증, 우선순위 정렬, 드로어 UI를 포함한 편집 워크플로를 완성.
@@ -100,6 +103,15 @@
 - Sankey 툴팁 표시 예외 처리:
   - 차트가 비어있는 상태 또는 유효한 링크 hover가 아닌 경우 `sankeyTooltip`을 표시하지 않도록 가드 로직을 추가.
   - 차트 영역 이탈(`mouseleave`) 시 툴팁이 즉시 숨겨지도록 처리.
+- Sankey 빈 상태 문구 상시 노출 이슈 보정:
+  - `.empty` 클래스의 `display: grid`가 `hidden` 속성을 덮어쓰던 문제를 수정.
+  - `.empty[hidden] { display: none !important; }`를 추가해 `표시할 흐름이 없습니다.` 문구가 조건부로만 노출되도록 보정.
+- 프로젝트 1단계 네이밍/목표 재정의:
+  - 스켈레톤 명칭을 `나의 가계 흐름`으로 정리하고 부제를 `이렇게 벌고, 이렇게 쓴다`로 통일.
+  - 상위 프로젝트를 `개인 자산 흐름 (IndividualSavings Flow UIUX)`로 두고, 현재 버전을 1단계 UIUX 기반으로 정의.
+  - `README`/`index.html`의 제목, 소개 문구, 섹션명을 위 기준에 맞춰 일괄 갱신.
+- README 접속 안내 보강:
+  - 배포 방법 설명 대신 `https://jinhoops.github.io/IndividualSavingsFlowUI/` 직접 접속 안내 문구를 추가.
 
 ## 커밋 메시지 추천
 1. `fix: guard sankey tooltip visibility and hide on chart leave`

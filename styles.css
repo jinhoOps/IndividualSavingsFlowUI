@@ -541,6 +541,10 @@ main {
   font-size: 0.92rem;
 }
 
+.empty[hidden] {
+  display: none !important;
+}
+
 .formula {
   border: 1px dashed var(--line);
   border-radius: 12px;

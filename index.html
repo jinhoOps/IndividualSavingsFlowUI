@@ -3,10 +3,10 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>개인 자산흐름 리디자인</title>
+    <title>나의 가계 흐름</title>
     <meta
       name="description"
-      content="개인 자산흐름을 핵심 카드와 단일 생키차트로 보여주는 재구성 UI"
+      content="개인 자산 흐름 프로젝트의 1단계로, 월 가계 흐름을 카드와 단일 생키차트로 보여주는 UI"
     />
     <link rel="stylesheet" href="styles.css" />
   </head>
@@ -14,11 +14,11 @@
     <div class="ambient" aria-hidden="true"></div>
     <div class="page">
       <header class="hero panel">
-        <p class="eyebrow">Individual Savings Flow</p>
-        <h1>개인 자산흐름, 한 장으로</h1>
+        <p class="eyebrow">IndividualSavings Flow UIUX · Step 1</p>
+        <h1>나의 가계 흐름</h1>
         <p class="lead">
-          핵심 카드는 유지하고, 하단 그래프는 단일 생키차트로 통합했습니다.
-          자산 추이는 같은 계산 엔진으로 월 단위 시뮬레이션해 검증 테이블로 제공합니다.
+          이렇게 벌고, 이렇게 쓴다.
+          월 단위 가계 흐름을 카드와 단일 생키차트로 빠르게 확인할 수 있습니다.
         </p>
       </header>
 
@@ -33,11 +33,11 @@
 
         <section class="panel sankey-panel" aria-labelledby="sankeyTitle">
           <div class="section-head">
-            <h2 id="sankeyTitle">월 자산흐름 생키차트</h2>
+            <h2 id="sankeyTitle">월 가계 흐름 생키차트</h2>
             <p id="sankeyMeta" class="hint"></p>
           </div>
           <div id="sankeyWrap" class="sankey-wrap">
-            <svg id="sankeySvg" role="img" aria-label="월 자산흐름 생키차트"></svg>
+            <svg id="sankeySvg" role="img" aria-label="월 가계 흐름 생키차트"></svg>
             <p id="sankeyEmpty" class="empty" hidden>표시할 흐름이 없습니다.</p>
             <div id="sankeyTooltip" class="sankey-tooltip" hidden></div>
           </div>
@@ -46,7 +46,7 @@
 
         <section class="panel" aria-labelledby="projectionTitle">
           <div class="section-head">
-            <h2 id="projectionTitle">자산 추이 계산 검증</h2>
+            <h2 id="projectionTitle">가계 추이 계산 검증</h2>
             <p id="projectionMeta" class="hint"></p>
           </div>
           <div class="formula">
