@@ -112,6 +112,8 @@
   - `README`/`index.html`의 제목, 소개 문구, 섹션명을 위 기준에 맞춰 일괄 갱신.
 - README 접속 안내 보강:
   - 배포 방법 설명 대신 `https://jinhoops.github.io/IndividualSavingsFlowUI/` 직접 접속 안내 문구를 추가.
+- 핵심 카드 0값 자동 숨김:
+  - 부채가 없는 사용자 기준으로 `당월 부채이자`, `당월 실제상환`, `당월 부채증가분`, `부채 소진 예상` 카드가 0일 때는 표시하지 않도록 조건 필터를 추가.
 
 ## 커밋 메시지 추천
 1. `fix: guard sankey tooltip visibility and hide on chart leave`

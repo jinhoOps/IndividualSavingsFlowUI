@@ -1173,7 +1173,7 @@ function buildSummaryCards(snapshot, projection, horizonYears) {
     }
   }
 
-  return [
+  const cards = [
     {
       label: "월 수입",
       value: formatCurrency(snapshot.income),
@@ -1197,18 +1197,24 @@ function buildSummaryCards(snapshot, projection, horizonYears) {
       value: formatCurrency(debtProbe.debtInterest),
       sub: debtProbe.monthIndex > 0 ? `${debtProbe.monthIndex}개월차 기준` : "현재 기준",
       variant: debtProbe.debtInterest > 0 ? "negative" : "positive",
+      metric: debtProbe.debtInterest,
+      hideIfZero: true,
     },
     {
       label: "당월 실제상환",
       value: formatCurrency(debtProbe.actualDebtPayment),
       sub: `설정 상환 ${formatCurrency(snapshot.debtPayment)}`,
       variant: debtProbe.actualDebtPayment > 0 ? "positive" : "",
+      metric: debtProbe.actualDebtPayment,
+      hideIfZero: true,
     },
     {
       label: "당월 부채증가분",
       value: formatCurrency(debtProbe.newBorrowing),
       sub: debtProbe.newBorrowing > 0 ? "현금 부족분이 부채로 전환됨" : "부채 증가분 없음",
       variant: debtProbe.newBorrowing > 0 ? "negative" : "positive",
+      metric: debtProbe.newBorrowing,
+      hideIfZero: true,
     },
     {
       label: "현재 순자산",
@@ -1233,8 +1239,17 @@ function buildSummaryCards(snapshot, projection, horizonYears) {
       value: debtFreeText,
       sub: debtSub || "초기 부채가 없습니다.",
       variant: debtFreeMonth || current.debt === 0 ? "positive" : "negative",
+      metric: current.debt,
+      hideIfZero: true,
     },
   ];
+
+  return cards.filter((card) => {
+    if (!card.hideIfZero) {
+      return true;
+    }
+    return Math.abs(Number(card.metric) || 0) > 0;
+  });
 }
 
 function renderCards(cards, horizonYears) {
