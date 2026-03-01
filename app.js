@@ -6,6 +6,13 @@ const HASH_STATE_PARAM = "s";
 const HASH_STATE_MAX_LENGTH = 6000;
 const MAX_INCOME_ITEMS = 12;
 const MAX_ALLOCATION_ITEMS = 20;
+const SANKEY_VALUE_MODES = {
+  AMOUNT: "amount",
+  PERCENT: "percent",
+};
+const SANKEY_ZOOM_MIN = 1;
+const SANKEY_ZOOM_MAX = 2.6;
+const SANKEY_ZOOM_STEP = 0.2;
 
 const DEFAULT_EXPENSE_ITEMS = [
   { id: "rent", name: "주거비(월세)", amount: 60 },
@@ -17,8 +24,8 @@ const DEFAULT_EXPENSE_ITEMS = [
 ];
 
 const DEFAULT_SAVINGS_ITEMS = [
-  { id: "youth-saving", name: "청년적금", amount: 70 },
-  { id: "housing-subscription", name: "주택청약", amount: 5 },
+  { id: "youth-saving", name: "청년적금", amount: 70, annualRate: 3.6 },
+  { id: "housing-subscription", name: "주택청약", amount: 5, annualRate: 2.9 },
 ];
 
 const DEFAULT_INVEST_ITEMS = [
@@ -64,8 +71,8 @@ const SAMPLE_INPUTS = {
     { id: "etc", name: "기타생활비", amount: 30 },
   ],
   savingsItems: [
-    { id: "youth-saving", name: "청년적금", amount: 70 },
-    { id: "housing-subscription", name: "주택청약", amount: 40 },
+    { id: "youth-saving", name: "청년적금", amount: 70, annualRate: 3.8 },
+    { id: "housing-subscription", name: "주택청약", amount: 40, annualRate: 2.4 },
   ],
   investItems: [
     { id: "global-stock", name: "해외주식", amount: 60 },
@@ -170,6 +177,12 @@ const dom = {
   sankeyWrap: document.getElementById("sankeyWrap"),
   sankeyMeta: document.getElementById("sankeyMeta"),
   sankeyLegend: document.getElementById("sankeyLegend"),
+  sankeyViewAmount: document.getElementById("sankeyViewAmount"),
+  sankeyViewPercent: document.getElementById("sankeyViewPercent"),
+  sankeyZoomOut: document.getElementById("sankeyZoomOut"),
+  sankeyZoomIn: document.getElementById("sankeyZoomIn"),
+  sankeyZoomReset: document.getElementById("sankeyZoomReset"),
+  sankeyZoomLabel: document.getElementById("sankeyZoomLabel"),
   sankeyEmpty: document.getElementById("sankeyEmpty"),
   sankeyTooltip: document.getElementById("sankeyTooltip"),
   projectionTableBody: document.querySelector("#projectionTable tbody"),
@@ -182,6 +195,8 @@ const state = {
   applyFeedbackTimer: null,
   suspendInputTracking: false,
   isApplyingHashState: false,
+  sankeyValueMode: SANKEY_VALUE_MODES.AMOUNT,
+  sankeyZoom: 1,
   itemEditors: {
     expense: { active: false, items: [], baselineSignature: "" },
     savings: { active: false, items: [], baselineSignature: "" },
@@ -192,6 +207,8 @@ const state = {
 
 document.addEventListener("DOMContentLoaded", () => {
   bindControls();
+  syncSankeyValueModeUi();
+  syncSankeyZoomUi();
   refreshInputsPanel(state.inputs);
   setPendingBarVisible(false);
   renderAll();
@@ -217,6 +234,36 @@ function bindControls() {
   }
 
   bindReadonlyAdvancedNavigation();
+
+  if (dom.sankeyViewAmount) {
+    dom.sankeyViewAmount.addEventListener("click", () => {
+      setSankeyValueMode(SANKEY_VALUE_MODES.AMOUNT);
+    });
+  }
+
+  if (dom.sankeyViewPercent) {
+    dom.sankeyViewPercent.addEventListener("click", () => {
+      setSankeyValueMode(SANKEY_VALUE_MODES.PERCENT);
+    });
+  }
+
+  if (dom.sankeyZoomIn) {
+    dom.sankeyZoomIn.addEventListener("click", () => {
+      setSankeyZoom(state.sankeyZoom + SANKEY_ZOOM_STEP);
+    });
+  }
+
+  if (dom.sankeyZoomOut) {
+    dom.sankeyZoomOut.addEventListener("click", () => {
+      setSankeyZoom(state.sankeyZoom - SANKEY_ZOOM_STEP);
+    });
+  }
+
+  if (dom.sankeyZoomReset) {
+    dom.sankeyZoomReset.addEventListener("click", () => {
+      setSankeyZoom(1);
+    });
+  }
 
   if (dom.copyShareLink) {
     dom.copyShareLink.addEventListener("click", async () => {
@@ -446,6 +493,10 @@ function bindControls() {
         if (field === "amount") {
           item.amount = sanitizeMoney(target.value, 0);
         }
+        if (field === "annualRate") {
+          item.annualRate = sanitizeSavingsAnnualRate(target.value, getVisibleInputs().annualSavingsYield);
+          target.value = String(item.annualRate);
+        }
         renderSavingsTotalHint(
           toWon(getMonthlyAllocationTotalMan(state.itemEditors.savings.items)),
           state.itemEditors.savings.items.length,
@@ -455,7 +506,8 @@ function bindControls() {
       }
 
       const itemId = target.dataset.savingsId;
-      if (!itemId) {
+      const field = target.dataset.field;
+      if (!itemId || !field) {
         return;
       }
 
@@ -465,7 +517,13 @@ function bindControls() {
         return;
       }
 
-      item.amount = sanitizeMoney(target.value, 0);
+      if (field === "amount") {
+        item.amount = sanitizeMoney(target.value, 0);
+      }
+      if (field === "annualRate") {
+        item.annualRate = sanitizeSavingsAnnualRate(target.value, draftInputs.annualSavingsYield);
+        target.value = String(item.annualRate);
+      }
       markPendingChanges();
     });
 
@@ -777,6 +835,75 @@ function navigateToAdvancedGroup(groupKey) {
   showApplyFeedback(`${target.label}으로 이동했습니다.`);
 }
 
+function normalizeSankeyValueMode(mode) {
+  const safeMode = String(mode ?? "").trim();
+  if (safeMode === SANKEY_VALUE_MODES.PERCENT) {
+    return SANKEY_VALUE_MODES.PERCENT;
+  }
+  return SANKEY_VALUE_MODES.AMOUNT;
+}
+
+function setSankeyValueMode(nextMode) {
+  const safeMode = normalizeSankeyValueMode(nextMode);
+  if (state.sankeyValueMode === safeMode) {
+    syncSankeyValueModeUi();
+    return;
+  }
+  state.sankeyValueMode = safeMode;
+  syncSankeyValueModeUi();
+  if (state.snapshot) {
+    renderSankey(state.snapshot);
+  }
+}
+
+function syncSankeyValueModeUi() {
+  const currentMode = normalizeSankeyValueMode(state.sankeyValueMode);
+  const buttons = [dom.sankeyViewAmount, dom.sankeyViewPercent];
+  buttons.forEach((button) => {
+    if (!(button instanceof HTMLButtonElement)) {
+      return;
+    }
+    const buttonMode = normalizeSankeyValueMode(button.dataset.sankeyView);
+    const isActive = buttonMode === currentMode;
+    button.classList.toggle("is-active", isActive);
+    button.setAttribute("aria-pressed", isActive ? "true" : "false");
+  });
+}
+
+function normalizeSankeyZoom(zoom) {
+  const safeZoom = Number(zoom);
+  if (!Number.isFinite(safeZoom)) {
+    return 1;
+  }
+  return roundTo(Math.min(SANKEY_ZOOM_MAX, Math.max(SANKEY_ZOOM_MIN, safeZoom)), 1);
+}
+
+function setSankeyZoom(nextZoom) {
+  const safeZoom = normalizeSankeyZoom(nextZoom);
+  if (safeZoom === state.sankeyZoom) {
+    syncSankeyZoomUi();
+    return;
+  }
+  state.sankeyZoom = safeZoom;
+  syncSankeyZoomUi();
+  if (state.snapshot) {
+    renderSankey(state.snapshot);
+  }
+}
+
+function syncSankeyZoomUi() {
+  const safeZoom = normalizeSankeyZoom(state.sankeyZoom);
+  if (dom.sankeyZoomLabel) {
+    dom.sankeyZoomLabel.textContent = `${Math.round(safeZoom * 100)}%`;
+  }
+  if (dom.sankeyZoomOut) {
+    dom.sankeyZoomOut.disabled = safeZoom <= SANKEY_ZOOM_MIN;
+  }
+  if (dom.sankeyZoomIn) {
+    dom.sankeyZoomIn.disabled = safeZoom >= SANKEY_ZOOM_MAX;
+  }
+}
+
 function ensureDraftInputs() {
   if (state.draftInputs) {
     return state.draftInputs;
@@ -836,11 +963,17 @@ function getItemEditorSignature(groupKey, items) {
   if (!meta) {
     return "";
   }
-  const normalizedItems = sanitizeAllocationItems(items, meta.defaultItems, 0, groupKey, meta.label);
+  const fallbackSavingsRate = getVisibleInputs().annualSavingsYield;
+  const normalizedItems = groupKey === "savings"
+    ? sanitizeSavingsItems(items, 0, fallbackSavingsRate)
+    : sanitizeAllocationItems(items, meta.defaultItems, 0, groupKey, meta.label);
   return JSON.stringify(normalizedItems.map((item, index) => ({
     id: String(item.id || "").trim(),
     name: normalizeAllocationName(item.name, meta.label, index),
     amount: sanitizeMoney(item.amount, 0),
+    ...(groupKey === "savings"
+      ? { annualRate: sanitizeSavingsAnnualRate(item.annualRate, fallbackSavingsRate) }
+      : {}),
   })));
 }
 
@@ -892,13 +1025,19 @@ function startItemEditor(groupKey) {
     : meta.defaultItems;
 
   editor.active = true;
-  editor.items = sourceItems.map((item, index) => ({
-    id: typeof item?.id === "string" && item.id.trim()
-      ? item.id.trim()
-      : createAllocationItemId(groupKey, index),
-    name: normalizeAllocationName(item?.name, meta.label, index),
-    amount: sanitizeMoney(item?.amount, 0),
-  }));
+  editor.items = sourceItems.map((item, index) => {
+    const baseItem = {
+      id: typeof item?.id === "string" && item.id.trim()
+        ? item.id.trim()
+        : createAllocationItemId(groupKey, index),
+      name: normalizeAllocationName(item?.name, meta.label, index),
+      amount: sanitizeMoney(item?.amount, 0),
+    };
+    if (groupKey === "savings") {
+      baseItem.annualRate = sanitizeSavingsAnnualRate(item?.annualRate, inputs.annualSavingsYield);
+    }
+    return baseItem;
+  });
   editor.baselineSignature = getItemEditorSignature(groupKey, editor.items);
 
   meta.renderList(editor.items, { editing: true });
@@ -913,11 +1052,15 @@ function addItemToEditor(groupKey) {
     return;
   }
 
-  editor.items.push({
+  const item = {
     id: createAllocationItemId(groupKey, editor.items.length),
     name: `${meta.label} ${editor.items.length + 1}`,
     amount: 0,
-  });
+  };
+  if (groupKey === "savings") {
+    item.annualRate = sanitizeSavingsAnnualRate(getVisibleInputs().annualSavingsYield, DEFAULT_INPUTS.annualSavingsYield);
+  }
+  editor.items.push(item);
 
   meta.renderList(editor.items, { editing: true });
   meta.renderHint(toWon(getMonthlyAllocationTotalMan(editor.items)), editor.items.length);
@@ -932,7 +1075,9 @@ function applyItemEditor(groupKey) {
   }
 
   const draftInputs = ensureDraftInputs();
-  const normalizedItems = sanitizeAllocationItems(editor.items, meta.defaultItems, 0, groupKey, meta.label);
+  const normalizedItems = groupKey === "savings"
+    ? sanitizeSavingsItems(editor.items, 0, draftInputs.annualSavingsYield)
+    : sanitizeAllocationItems(editor.items, meta.defaultItems, 0, groupKey, meta.label);
   draftInputs[meta.field] = normalizedItems;
   state.draftInputs = sanitizeInputs(draftInputs);
 
@@ -1040,7 +1185,10 @@ function buildInputSignature(inputs) {
       amount: sanitizeMoney(item?.amount, 0),
     })),
     expenseItems: safe.expenseItems.map((item) => sanitizeMoney(item?.amount, 0)),
-    savingsItems: safe.savingsItems.map((item) => sanitizeMoney(item?.amount, 0)),
+    savingsItems: safe.savingsItems.map((item) => ({
+      amount: sanitizeMoney(item?.amount, 0),
+      annualRate: sanitizeSavingsAnnualRate(item?.annualRate, safe.annualSavingsYield),
+    })),
     investItems: safe.investItems.map((item) => sanitizeMoney(item?.amount, 0)),
     monthlyDebtPayment: safe.monthlyDebtPayment,
     startCash: safe.startCash,
@@ -1201,6 +1349,45 @@ function buildMonthlySnapshot(inputs) {
   };
 }
 
+function allocateByWeights(totalAmount, weights) {
+  if (!Array.isArray(weights) || weights.length === 0) {
+    return [];
+  }
+
+  const safeTotal = Math.max(0, Number(totalAmount) || 0);
+  if (safeTotal <= 0) {
+    return weights.map(() => 0);
+  }
+
+  const safeWeights = weights.map((weight) => Math.max(0, Number(weight) || 0));
+  const weightTotal = safeWeights.reduce((sum, weight) => sum + weight, 0);
+  if (weightTotal <= 0) {
+    const equal = safeTotal / safeWeights.length;
+    return safeWeights.map(() => equal);
+  }
+
+  return safeWeights.map((weight) => safeTotal * (weight / weightTotal));
+}
+
+function buildSavingsBuckets(inputs) {
+  const fallbackRate = sanitizeSavingsAnnualRate(inputs.annualSavingsYield, DEFAULT_INPUTS.annualSavingsYield);
+  const savingsItems = Array.isArray(inputs.savingsItems) && inputs.savingsItems.length > 0
+    ? inputs.savingsItems
+    : DEFAULT_SAVINGS_ITEMS;
+  const monthlyTargets = savingsItems.map((item) => toWon(sanitizeMoney(item?.amount, 0)));
+  const initialBalances = allocateByWeights(toWon(inputs.startSavings), monthlyTargets);
+
+  return savingsItems.map((item, index) => ({
+    id: typeof item?.id === "string" && item.id.trim()
+      ? item.id.trim()
+      : createAllocationItemId("savings", index),
+    monthlyTarget: monthlyTargets[index] || 0,
+    annualRate: sanitizeSavingsAnnualRate(item?.annualRate, fallbackRate),
+    monthlyFactor: toMonthlyFactor(sanitizeSavingsAnnualRate(item?.annualRate, fallbackRate)),
+    balance: initialBalances[index] || 0,
+  }));
+}
+
 function simulateProjection(inputs) {
   const horizonMonths = Math.max(1, Math.round(inputs.horizonYears)) * 12;
   const monthlyIncomeBase = toWon(getMonthlyIncomeTotalMan(inputs.incomes));
@@ -1211,13 +1398,14 @@ function simulateProjection(inputs) {
 
   const incomeFactor = toMonthlyFactor(inputs.annualIncomeGrowth);
   const expenseFactor = toMonthlyFactor(inputs.annualExpenseGrowth);
-  const savingsFactor = toMonthlyFactor(inputs.annualSavingsYield);
   const investFactor = toMonthlyFactor(inputs.annualInvestReturn);
   const debtFactor = toMonthlyFactor(inputs.annualDebtInterest);
   const purchasingPowerFactor = toMonthlyFactor(inputs.annualExpenseGrowth);
 
+  const savingsBuckets = buildSavingsBuckets(inputs);
+
   let cash = toWon(inputs.startCash);
-  let savings = toWon(inputs.startSavings);
+  let savings = savingsBuckets.reduce((sum, bucket) => sum + bucket.balance, 0);
   let invest = toWon(inputs.startInvest);
   let debt = toWon(inputs.startDebt);
 
@@ -1252,7 +1440,17 @@ function simulateProjection(inputs) {
 
     const savingsAdd = Math.min(Math.max(0, nextCash), monthlySavings);
     nextCash -= savingsAdd;
-    savings += savingsAdd;
+
+    const savingsAddsByItem = allocateByWeights(
+      savingsAdd,
+      savingsBuckets.map((bucket) => bucket.monthlyTarget),
+    );
+    savingsBuckets.forEach((bucket, index) => {
+      const addAmount = savingsAddsByItem[index] || 0;
+      bucket.balance += addAmount;
+      bucket.balance *= bucket.monthlyFactor;
+    });
+    savings = savingsBuckets.reduce((sum, bucket) => sum + bucket.balance, 0);
 
     const investAdd = Math.min(Math.max(0, nextCash), monthlyInvest);
     nextCash -= investAdd;
@@ -1266,7 +1464,6 @@ function simulateProjection(inputs) {
     }
 
     cash = nextCash;
-    savings *= savingsFactor;
     invest *= investFactor;
     debt = debtBalance;
 
@@ -1538,6 +1735,7 @@ function buildSankeyData(snapshot) {
     nodes,
     links,
     splitGroups,
+    totalValue: totalTarget,
   };
 }
 
@@ -1561,13 +1759,17 @@ function renderSankey(snapshot) {
   }
 
   dom.sankeyEmpty.hidden = true;
+  const valueMode = normalizeSankeyValueMode(state.sankeyValueMode);
 
   if (dom.sankeyMeta) {
     const splitCount = Array.isArray(data.splitGroups)
       ? data.splitGroups.reduce((sum, group) => sum + group.breakdown.length, 0)
       : 0;
     const splitText = splitCount > 0 ? ` · 상세 분기 ${splitCount}개` : "";
-    dom.sankeyMeta.textContent = `수입 ${formatCurrency(snapshot.income)} · 배분 ${formatCurrency(snapshot.requiredOutflow)} · 순현금흐름 ${formatSignedCurrency(snapshot.netCashflow)}${splitText}`;
+    const valueModeText = valueMode === SANKEY_VALUE_MODES.PERCENT ? "표시 %" : "표시 금액";
+    const isMobileViewport = window.matchMedia("(max-width: 760px)").matches;
+    const zoomText = isMobileViewport ? ` · 확대 ${Math.round(normalizeSankeyZoom(state.sankeyZoom) * 100)}%` : "";
+    dom.sankeyMeta.textContent = `수입 ${formatCurrency(snapshot.income)} · 배분 ${formatCurrency(snapshot.requiredOutflow)} · 순현금흐름 ${formatSignedCurrency(snapshot.netCashflow)}${splitText} · ${valueModeText}${zoomText}`;
   }
 
   const columns = [...new Set(data.nodes.map((node) => node.column))].sort((a, b) => a - b);
@@ -1575,10 +1777,11 @@ function renderSankey(snapshot) {
   const firstColumn = columns[0];
   const lastColumn = columns[columns.length - 1];
   const isMobileViewport = window.matchMedia("(max-width: 760px)").matches;
+  const mobileSankeyZoom = isMobileViewport ? normalizeSankeyZoom(state.sankeyZoom) : 1;
   const nodeWidth = isMobileViewport ? 16 : 18;
   const labelGap = isMobileViewport ? 8 : 10;
-  const labelFontSize = isMobileViewport ? 10 : 12;
-  const valueFontSize = isMobileViewport ? 9 : 11;
+  const labelFontSize = isMobileViewport ? 11 : 12;
+  const valueFontSize = isMobileViewport ? 10 : 11;
   const minColumnStep = isMobileViewport ? 96 : 140;
 
   const getNodeTextWidth = (node) => Math.max(
@@ -1612,6 +1815,8 @@ function renderSankey(snapshot) {
   const nodeGap = isMobileViewport ? 12 : 14;
 
   dom.sankeySvg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  dom.sankeySvg.style.width = `${Math.round(mobileSankeyZoom * 100)}%`;
+  dom.sankeySvg.style.maxWidth = "none";
 
   const inTotals = new Map();
   const outTotals = new Map();
@@ -1702,11 +1907,11 @@ function renderSankey(snapshot) {
     path.addEventListener("mousemove", (event) => {
       const splitGroup = (data.splitGroups || []).find((group) => link.target === group.parentId);
       const detailText = splitGroup
-        ? formatAllocationBreakdownText(splitGroup.breakdown)
+        ? formatAllocationBreakdownText(splitGroup.breakdown, data.totalValue, valueMode)
         : "";
       showSankeyTooltip(
         event,
-        `${source.label} → ${target.label} · ${formatCurrency(link.value)}${detailText ? `\n${detailText}` : ""}`,
+        `${source.label} → ${target.label} · ${formatSankeyDisplayValue(link.value, data.totalValue, valueMode)}${detailText ? `\n${detailText}` : ""}`,
       );
     });
     path.addEventListener("mouseleave", hideSankeyTooltip);
@@ -1716,13 +1921,13 @@ function renderSankey(snapshot) {
 
   positionedNodes.forEach((node) => {
     const side = node.column === lastColumn ? "target" : "source";
-    drawNode(node, side, nodeWidth, labelGap);
+    drawNode(node, side, nodeWidth, labelGap, data.totalValue, valueMode);
   });
 
-  renderSankeyLegend(data);
+  renderSankeyLegend(data, valueMode);
 }
 
-function drawNode(node, side, nodeWidth, labelGap = 10) {
+function drawNode(node, side, nodeWidth, labelGap = 10, totalValue = 0, valueMode = SANKEY_VALUE_MODES.AMOUNT) {
   const rect = createSvgElement("rect", {
     x: node.x,
     y: node.y,
@@ -1752,13 +1957,13 @@ function drawNode(node, side, nodeWidth, labelGap = 10) {
     "text-anchor": anchor,
     "dominant-baseline": "middle",
   });
-  value.textContent = formatCurrency(node.value);
+  value.textContent = formatSankeyDisplayValue(node.value, totalValue, valueMode);
 
   dom.sankeySvg.appendChild(label);
   dom.sankeySvg.appendChild(value);
 }
 
-function renderSankeyLegend(data) {
+function renderSankeyLegend(data, valueMode = SANKEY_VALUE_MODES.AMOUNT) {
   const items = data.nodes
     .filter((node) => node.column === 1)
     .map((node) => ({
@@ -1789,7 +1994,7 @@ function renderSankeyLegend(data) {
     dot.style.backgroundColor = TONE_COLORS[item.tone] || "#999";
 
     const label = document.createElement("span");
-    label.textContent = `${item.label} ${formatCurrency(item.value)}`;
+    label.textContent = `${item.label} ${formatSankeyDisplayValue(item.value, data.totalValue, valueMode)}`;
 
     chip.append(dot, label);
     dom.sankeyLegend.appendChild(chip);
@@ -1954,6 +2159,7 @@ function renderSavingsList(savingsItems, options = {}) {
 
   dom.savingsList.innerHTML = "";
   const editing = Boolean(options.editing);
+  const fallbackRate = getVisibleInputs().annualSavingsYield;
 
   savingsItems.forEach((item, index) => {
     const row = document.createElement("div");
@@ -1990,10 +2196,28 @@ function renderSavingsList(savingsItems, options = {}) {
       amountInput.dataset.field = "amount";
     } else {
       amountInput.dataset.savingsId = item.id;
+      amountInput.dataset.field = "amount";
     }
     amountInput.dataset.index = String(index);
 
-    row.append(nameElement, amountInput);
+    const rateInput = document.createElement("input");
+    rateInput.type = "number";
+    rateInput.min = "0";
+    rateInput.max = "20";
+    rateInput.step = "0.1";
+    rateInput.placeholder = "이자율(연, %)";
+    rateInput.value = String(sanitizeSavingsAnnualRate(item?.annualRate, fallbackRate));
+    rateInput.setAttribute("aria-label", `${item.name} 연 이자율`);
+    if (editing) {
+      rateInput.dataset.editorId = item.id;
+      rateInput.dataset.field = "annualRate";
+    } else {
+      rateInput.dataset.savingsId = item.id;
+      rateInput.dataset.field = "annualRate";
+    }
+    rateInput.dataset.index = String(index);
+
+    row.append(nameElement, amountInput, rateInput);
 
     if (editing) {
       const removeButton = document.createElement("button");
@@ -2144,8 +2368,9 @@ function sanitizeInputs(raw) {
   const monthlyExpenseFallback = sanitizeMoney(raw.monthlyExpense, getMonthlyAllocationTotalMan(DEFAULT_EXPENSE_ITEMS));
   const monthlySavingsFallback = sanitizeMoney(raw.monthlySavings, getMonthlyAllocationTotalMan(DEFAULT_SAVINGS_ITEMS));
   const monthlyInvestFallback = sanitizeMoney(raw.monthlyInvest, getMonthlyAllocationTotalMan(DEFAULT_INVEST_ITEMS));
+  const annualSavingsYield = sanitizeRate(raw.annualSavingsYield, DEFAULT_INPUTS.annualSavingsYield, 20);
   const expenseItems = sanitizeExpenseItems(raw.expenseItems, monthlyExpenseFallback);
-  const savingsItems = sanitizeSavingsItems(raw.savingsItems, monthlySavingsFallback);
+  const savingsItems = sanitizeSavingsItems(raw.savingsItems, monthlySavingsFallback, annualSavingsYield);
   const investItems = sanitizeInvestItems(raw.investItems, monthlyInvestFallback);
 
   return {
@@ -2163,7 +2388,7 @@ function sanitizeInputs(raw) {
     startDebt: sanitizeMoney(raw.startDebt, DEFAULT_INPUTS.startDebt),
     annualIncomeGrowth: sanitizeRate(raw.annualIncomeGrowth, DEFAULT_INPUTS.annualIncomeGrowth, 30),
     annualExpenseGrowth: sanitizeRate(raw.annualExpenseGrowth, DEFAULT_INPUTS.annualExpenseGrowth, 30),
-    annualSavingsYield: sanitizeRate(raw.annualSavingsYield, DEFAULT_INPUTS.annualSavingsYield, 20),
+    annualSavingsYield,
     annualInvestReturn: sanitizeRate(raw.annualInvestReturn, DEFAULT_INPUTS.annualInvestReturn, 30),
     annualDebtInterest: sanitizeRate(raw.annualDebtInterest, DEFAULT_INPUTS.annualDebtInterest, 30),
     horizonYears: sanitizeInteger(raw.horizonYears, DEFAULT_INPUTS.horizonYears, 1, 40),
@@ -2230,8 +2455,36 @@ function sanitizeExpenseItems(items, fallbackAmount) {
   return sanitizeAllocationItems(items, DEFAULT_EXPENSE_ITEMS, fallbackAmount, "expense", "생활비");
 }
 
-function sanitizeSavingsItems(items, fallbackAmount) {
-  return sanitizeAllocationItems(items, DEFAULT_SAVINGS_ITEMS, fallbackAmount, "savings", "저축");
+function sanitizeSavingsAnnualRate(value, fallbackRate = DEFAULT_INPUTS.annualSavingsYield) {
+  const safeFallback = sanitizeRate(fallbackRate, DEFAULT_INPUTS.annualSavingsYield, 20);
+  return sanitizeRate(value, safeFallback, 20);
+}
+
+function sanitizeSavingsItems(items, fallbackAmount, fallbackRate = DEFAULT_INPUTS.annualSavingsYield) {
+  const safeFallbackRate = sanitizeSavingsAnnualRate(fallbackRate, DEFAULT_INPUTS.annualSavingsYield);
+  const normalized = sanitizeAllocationItems(items, DEFAULT_SAVINGS_ITEMS, fallbackAmount, "savings", "저축");
+  const rateById = new Map();
+
+  if (Array.isArray(items)) {
+    items.forEach((rawItem) => {
+      const safeItem = rawItem && typeof rawItem === "object" ? rawItem : null;
+      if (!safeItem) {
+        return;
+      }
+      const itemId = typeof safeItem.id === "string" ? safeItem.id.trim() : "";
+      if (!itemId || rateById.has(itemId)) {
+        return;
+      }
+      rateById.set(itemId, sanitizeSavingsAnnualRate(safeItem.annualRate, safeFallbackRate));
+    });
+  }
+
+  return normalized.map((item) => ({
+    ...item,
+    annualRate: rateById.has(item.id)
+      ? rateById.get(item.id)
+      : sanitizeSavingsAnnualRate(item?.annualRate, safeFallbackRate),
+  }));
 }
 
 function sanitizeInvestItems(items, fallbackAmount) {
@@ -2255,11 +2508,15 @@ function sanitizeAllocationItems(items, defaultItems, fallbackAmount, prefix = "
       }
       usedIds.add(safeId);
 
-      return {
+      const normalizedItem = {
         id: safeId,
         name: normalizeAllocationName(item.name, label, index),
         amount: sanitizeMoney(item.amount, 0),
       };
+      if (Object.prototype.hasOwnProperty.call(item, "annualRate")) {
+        normalizedItem.annualRate = item.annualRate;
+      }
+      return normalizedItem;
     })
     .filter((item) => item.name || item.amount > 0)
     .slice(0, MAX_ALLOCATION_ITEMS);
@@ -2292,11 +2549,15 @@ function scaleDefaultAllocationItemsToTotal(defaultItems, totalAmount) {
   }
 
   const factor = safeTotal / baseTotal;
-  const scaled = defaultItems.map((item) => ({
-    id: item.id,
-    name: item.name,
-    amount: sanitizeMoney(item.amount * factor, 0),
-  }));
+  const scaled = defaultItems.map((item) => {
+    const safeItem = item && typeof item === "object" ? item : {};
+    return {
+      ...safeItem,
+      id: safeItem.id,
+      name: safeItem.name,
+      amount: sanitizeMoney(safeItem.amount * factor, 0),
+    };
+  });
 
   const currentTotal = getMonthlyAllocationTotalMan(scaled);
   const diff = safeTotal - currentTotal;
@@ -2379,12 +2640,25 @@ function formatMonthSpan(months) {
   return `${year}년 ${month}개월`;
 }
 
-function formatAllocationBreakdownText(items) {
+function formatSankeyDisplayValue(value, totalValue, valueMode = SANKEY_VALUE_MODES.AMOUNT) {
+  const safeValue = Math.max(0, Number(value) || 0);
+  if (normalizeSankeyValueMode(valueMode) === SANKEY_VALUE_MODES.PERCENT) {
+    const safeTotal = Math.max(0, Number(totalValue) || 0);
+    if (safeTotal <= 0) {
+      return "0 %";
+    }
+    const percent = roundTo((safeValue / safeTotal) * 100, 1);
+    return `${percent.toLocaleString("ko-KR")} %`;
+  }
+  return formatCurrency(safeValue);
+}
+
+function formatAllocationBreakdownText(items, totalValue, valueMode = SANKEY_VALUE_MODES.AMOUNT) {
   if (!Array.isArray(items) || items.length === 0) {
     return "";
   }
   return items
-    .map((item) => `${item.label} ${formatCurrency(item.value)}`)
+    .map((item) => `${item.label} ${formatSankeyDisplayValue(item.value, totalValue, valueMode)}`)
     .join("\n");
 }
 

@@ -32,9 +32,37 @@
         </section>
 
         <section class="panel sankey-panel" aria-labelledby="sankeyTitle">
-          <div class="section-head">
+          <div class="section-head section-head--sankey">
             <h2 id="sankeyTitle">월 가계 흐름 생키차트</h2>
-            <p id="sankeyMeta" class="hint"></p>
+            <div class="sankey-head-tools">
+              <p id="sankeyMeta" class="hint"></p>
+              <div class="sankey-view-toggle" role="group" aria-label="생키 표기 방식">
+                <button
+                  id="sankeyViewAmount"
+                  class="btn btn-ghost btn-sm sankey-view-btn is-active"
+                  type="button"
+                  data-sankey-view="amount"
+                  aria-pressed="true"
+                >
+                  금액
+                </button>
+                <button
+                  id="sankeyViewPercent"
+                  class="btn btn-ghost btn-sm sankey-view-btn"
+                  type="button"
+                  data-sankey-view="percent"
+                  aria-pressed="false"
+                >
+                  %
+                </button>
+              </div>
+              <div class="sankey-zoom-tools" role="group" aria-label="생키 확대 제어">
+                <button id="sankeyZoomOut" class="btn btn-ghost btn-sm" type="button" aria-label="생키 축소">-</button>
+                <button id="sankeyZoomIn" class="btn btn-ghost btn-sm" type="button" aria-label="생키 확대">+</button>
+                <button id="sankeyZoomReset" class="btn btn-ghost btn-sm" type="button">기본 크기</button>
+                <span id="sankeyZoomLabel" class="sankey-zoom-label" aria-live="polite">100%</span>
+              </div>
+            </div>
           </div>
           <div id="sankeyWrap" class="sankey-wrap">
             <svg id="sankeySvg" role="img" aria-label="월 가계 흐름 생키차트"></svg>
@@ -56,7 +84,7 @@
             (실제 부채상환액 = 설정 상환액, 부채잔액, 가용현금 중 최솟값)
             저축/투자는 가용현금 범위 내에서만 반영됩니다.
             부채는 월 이자를 먼저 반영하고 상환액으로 차감하며, 현금이 음수면 부족분을 부채에 더합니다.
-            저축/투자에는 월 수익률을 적용합니다.
+            저축은 항목별 월 수익률, 투자는 설정 월 수익률을 적용합니다.
             실질 순자산(현재가치)은 기준금리(연)를 월 복리로 환산해 할인합니다.
           </div>
           <div class="table-wrap">
@@ -154,7 +182,7 @@
                   <h3>저축 상세 항목</h3>
                   <button id="editSavingsItems" class="btn btn-ghost btn-sm" type="button">항목 편집</button>
                 </div>
-                <p class="hint">아래 항목 합계가 월 저축으로 자동 반영됩니다.</p>
+                <p class="hint">아래 항목 합계가 월 저축으로 자동 반영되며, 항목별 연 이자율을 각각 입력할 수 있습니다.</p>
                 <div id="savingsList" class="savings-list" aria-live="polite"></div>
                 <div id="savingsEditorActions" class="editor-actions" hidden>
                   <button id="addSavingsItem" class="btn btn-ghost btn-sm" type="button">항목 추가</button>
@@ -203,7 +231,7 @@
                   <input id="annualExpenseGrowth" name="annualExpenseGrowth" type="number" min="0" max="30" step="0.1" />
                 </div>
                 <div class="control">
-                  <label for="annualSavingsYield">저축 수익률(연, %)</label>
+                  <label for="annualSavingsYield">저축 기본 수익률(연, %, 항목 기본값)</label>
                   <input id="annualSavingsYield" name="annualSavingsYield" type="number" min="0" max="20" step="0.1" />
                 </div>
                 <div class="control">

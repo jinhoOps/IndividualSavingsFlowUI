@@ -244,9 +244,12 @@ main {
 }
 
 .expense-row.is-editing,
-.savings-row.is-editing,
 .invest-row.is-editing {
   grid-template-columns: minmax(140px, 1fr) 130px auto;
+}
+
+.savings-row.is-editing {
+  grid-template-columns: minmax(140px, 1fr) 130px 120px auto;
 }
 
 .expense-row.is-editing input[type="text"],
@@ -278,7 +281,13 @@ main {
   gap: 8px;
 }
 
-.savings-row,
+.savings-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) 130px 120px;
+  gap: 8px;
+  align-items: center;
+}
+
 .invest-row {
   display: grid;
   grid-template-columns: 1fr 150px;
@@ -426,6 +435,55 @@ main {
   color: var(--deficit);
 }
 
+.section-head--sankey {
+  align-items: flex-start;
+}
+
+.sankey-head-tools {
+  display: grid;
+  justify-items: end;
+  gap: 6px;
+}
+
+.sankey-view-toggle {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 2px;
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.sankey-view-btn {
+  min-width: 50px;
+  border: 0;
+  background: transparent;
+}
+
+.sankey-view-btn.is-active {
+  background: rgba(16, 34, 32, 0.9);
+  color: #fff;
+}
+
+.sankey-zoom-tools {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.sankey-zoom-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 52px;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.85);
+  font-size: 0.78rem;
+  color: var(--ink);
+}
+
 .sankey-panel {
   overflow: hidden;
 }
@@ -437,11 +495,14 @@ main {
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(247, 249, 246, 0.94) 100%);
   padding: 8px;
   min-height: 330px;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 #sankeySvg {
   display: block;
   width: 100%;
+  height: auto;
   min-height: 314px;
 }
 
@@ -690,39 +751,146 @@ main {
 }
 
 @media (max-width: 760px) {
+  body {
+    font-size: 16px;
+  }
+
   .page {
     padding: 16px 10px 36px;
   }
 
+  main {
+    gap: 14px;
+  }
+
   .panel {
     padding: 14px;
+    border-radius: 14px;
+  }
+
+  .hero h1 {
+    font-size: clamp(1.8rem, 9vw, 2.4rem);
+  }
+
+  .section-head h2 {
+    font-size: 1.25rem;
+  }
+
+  .hint {
+    font-size: 0.95rem;
+    line-height: 1.45;
+  }
+
+  .controls-block {
+    padding: 11px 10px;
+    gap: 10px;
+  }
+
+  .controls-block h3 {
+    font-size: 1.03rem;
+  }
+
+  .btn {
+    min-height: 40px;
+    font-size: 0.95rem;
+  }
+
+  .btn-sm {
+    font-size: 0.88rem;
+  }
+
+  .control label {
+    font-size: 0.92rem;
+  }
+
+  .control input {
+    min-height: 40px;
+    font-size: 1rem;
+    padding: 10px 12px;
+  }
+
+  .income-row input,
+  .expense-row input,
+  .savings-row input,
+  .invest-row input {
+    font-size: 1rem;
+    padding: 10px 12px;
+  }
+
+  .income-remove,
+  .allocation-remove {
+    font-size: 0.88rem;
+  }
+
+  .sankey-head-tools {
+    width: 100%;
+    justify-items: start;
+    gap: 8px;
+  }
+
+  .sankey-view-toggle {
+    width: 100%;
+  }
+
+  .sankey-view-btn {
+    flex: 1;
+  }
+
+  .sankey-zoom-tools {
+    width: 100%;
+  }
+
+  .sankey-zoom-tools .btn {
+    min-width: 58px;
+  }
+
+  .sankey-zoom-label {
+    margin-left: auto;
+    font-size: 0.86rem;
   }
 
   .sankey-wrap {
-    min-height: 260px;
+    min-height: 320px;
     padding: 6px;
   }
 
   #sankeySvg {
-    min-height: 240px;
+    min-height: 300px;
   }
 
   .sankey-label {
-    font-size: 10px;
+    font-size: 12px;
   }
 
   .sankey-value {
-    font-size: 9px;
+    font-size: 11px;
+  }
+
+  .sankey-tooltip {
+    font-size: 0.88rem;
+    max-width: min(320px, 92vw);
+  }
+
+  .sankey-legend {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .legend-item {
+    width: 100%;
+    border-radius: 12px;
+    font-size: 0.88rem;
+    padding: 7px 10px;
   }
 
   .projection-table {
-    min-width: 820px;
+    min-width: 840px;
   }
 
   .projection-table th,
   .projection-table td {
-    font-size: 0.76rem;
-    padding: 6px;
+    font-size: 0.84rem;
+    padding: 7px;
   }
 
   .controls-grid--simple,
@@ -766,7 +934,7 @@ main {
   .actions {
     width: 100%;
     display: grid;
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
   }
 
@@ -774,11 +942,15 @@ main {
     width: 100%;
   }
 
+  .actions .btn-primary {
+    grid-column: 1 / -1;
+  }
+
   .jump-inputs {
     right: 12px;
     bottom: 12px;
     padding: 9px 12px;
-    font-size: 0.8rem;
+    font-size: 0.9rem;
   }
 
   .pending-bar {
@@ -793,9 +965,37 @@ main {
 
   .pending-summary {
     white-space: normal;
+    font-size: 0.9rem;
+  }
+
+  .pending-actions {
+    width: 100%;
+  }
+
+  .pending-actions .btn {
+    flex: 1;
   }
 
   .apply-feedback {
     bottom: 78px;
+    font-size: 0.85rem;
+  }
+}
+
+@media (max-width: 520px) {
+  .summary-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .actions {
+    grid-template-columns: 1fr;
+  }
+
+  .sankey-wrap {
+    min-height: 290px;
+  }
+
+  #sankeySvg {
+    min-height: 270px;
   }
 }
