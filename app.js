@@ -13,6 +13,12 @@ const SANKEY_VALUE_MODES = {
 const SANKEY_ZOOM_MIN = 1;
 const SANKEY_ZOOM_MAX = 2.6;
 const SANKEY_ZOOM_STEP = 0.2;
+const SANKEY_MOBILE_BASE_ZOOM = 0.85;
+const SANKEY_MOBILE_HEIGHT_RATIO = 0.62;
+const SANKEY_MOBILE_WIDTH_SCALE = 1.38;
+const SANKEY_MOBILE_MIN_COLUMN_STEP = 126;
+const SANKEY_MOBILE_MIN_COLUMN_STEP_WITH_INFLOW = 110;
+const MOBILE_LAYOUT_QUERY = "(max-width: 760px)";
 
 const DEFAULT_EXPENSE_ITEMS = [
   { id: "rent", name: "주거비(월세)", amount: 60 },
@@ -59,41 +65,93 @@ const DEFAULT_INPUTS = {
 
 const SAMPLE_INPUTS = {
   incomes: [
-    { id: "income-main", name: "급여", amount: 460 },
-    { id: "income-side", name: "부수입", amount: 60 },
+    { id: "income-main", name: "급여", amount: 310 },
+    { id: "income-side", name: "부수입", amount: 20 },
   ],
   expenseItems: [
-    { id: "rent", name: "주거비(월세)", amount: 80 },
-    { id: "maintenance", name: "관리비", amount: 15 },
-    { id: "telecom", name: "통신비", amount: 10 },
-    { id: "transport", name: "교통비", amount: 15 },
-    { id: "food", name: "식비", amount: 60 },
-    { id: "etc", name: "기타생활비", amount: 30 },
+    { id: "rent", name: "주거비(월세)", amount: 65 },
+    { id: "maintenance", name: "관리비", amount: 12 },
+    { id: "telecom", name: "통신비", amount: 6 },
+    { id: "transport", name: "교통비", amount: 12 },
+    { id: "food", name: "식비", amount: 45 },
+    { id: "etc", name: "기타생활비", amount: 20 },
   ],
   savingsItems: [
-    { id: "youth-saving", name: "청년적금", amount: 70, annualRate: 3.8 },
-    { id: "housing-subscription", name: "주택청약", amount: 40, annualRate: 2.4 },
+    { id: "youth-saving", name: "청년적금", amount: 70, annualRate: 3.3 },
+    { id: "housing-subscription", name: "주택청약", amount: 20, annualRate: 2.8 },
   ],
   investItems: [
-    { id: "global-stock", name: "해외주식", amount: 60 },
-    { id: "isa", name: "ISA", amount: 40 },
-    { id: "gold-spot", name: "금현물", amount: 20 },
+    { id: "global-stock", name: "해외주식", amount: 30 },
+    { id: "isa", name: "ISA", amount: 15 },
+    { id: "gold-spot", name: "금현물", amount: 5 },
   ],
-  monthlyExpense: 210,
-  monthlySavings: 110,
-  monthlyInvest: 120,
-  monthlyDebtPayment: 35,
-  startCash: 600,
-  startSavings: 450,
-  startInvest: 1500,
-  startDebt: 1200,
-  annualIncomeGrowth: 3.5,
-  annualExpenseGrowth: 2.8,
-  annualSavingsYield: 2.2,
-  annualInvestReturn: 7.0,
-  annualDebtInterest: 4.0,
-  horizonYears: 12,
+  monthlyExpense: 160,
+  monthlySavings: 90,
+  monthlyInvest: 50,
+  monthlyDebtPayment: 15,
+  startCash: 120,
+  startSavings: 800,
+  startInvest: 500,
+  startDebt: 300,
+  annualIncomeGrowth: 3.0,
+  annualExpenseGrowth: 2.5,
+  annualSavingsYield: 3.0,
+  annualInvestReturn: 6.5,
+  annualDebtInterest: 4.5,
+  horizonYears: 5,
 };
+
+function createResetInputs(baseInputs = DEFAULT_INPUTS) {
+  const safeBase = baseInputs && typeof baseInputs === "object" ? baseInputs : DEFAULT_INPUTS;
+  return {
+    incomes: Array.isArray(safeBase.incomes) && safeBase.incomes.length > 0
+      ? safeBase.incomes.map((item, index) => createIncomeItem({
+        id: item?.id,
+        name: item?.name ?? `수입 ${index + 1}`,
+        amount: item?.amount,
+      }))
+      : cloneInputs(DEFAULT_INPUTS.incomes),
+    expenseItems: (Array.isArray(safeBase.expenseItems) ? safeBase.expenseItems : DEFAULT_EXPENSE_ITEMS)
+      .map((item, index) => ({
+        id: typeof item?.id === "string" && item.id.trim()
+          ? item.id.trim()
+          : createAllocationItemId("expense", index),
+        name: normalizeAllocationName(item?.name, "생활비", index),
+        amount: 0,
+      })),
+    savingsItems: (Array.isArray(safeBase.savingsItems) ? safeBase.savingsItems : DEFAULT_SAVINGS_ITEMS)
+      .map((item, index) => ({
+        id: typeof item?.id === "string" && item.id.trim()
+          ? item.id.trim()
+          : createAllocationItemId("savings", index),
+        name: normalizeAllocationName(item?.name, "저축", index),
+        amount: 0,
+        annualRate: sanitizeSavingsAnnualRate(item?.annualRate, safeBase.annualSavingsYield),
+      })),
+    investItems: (Array.isArray(safeBase.investItems) ? safeBase.investItems : DEFAULT_INVEST_ITEMS)
+      .map((item, index) => ({
+        id: typeof item?.id === "string" && item.id.trim()
+          ? item.id.trim()
+          : createAllocationItemId("invest", index),
+        name: normalizeAllocationName(item?.name, "투자", index),
+        amount: 0,
+      })),
+    monthlyExpense: 0,
+    monthlySavings: 0,
+    monthlyInvest: 0,
+    monthlyDebtPayment: 0,
+    startCash: 0,
+    startSavings: 0,
+    startInvest: 0,
+    startDebt: 0,
+    annualIncomeGrowth: sanitizeRate(safeBase.annualIncomeGrowth, DEFAULT_INPUTS.annualIncomeGrowth, 30),
+    annualExpenseGrowth: sanitizeRate(safeBase.annualExpenseGrowth, DEFAULT_INPUTS.annualExpenseGrowth, 30),
+    annualSavingsYield: sanitizeRate(safeBase.annualSavingsYield, DEFAULT_INPUTS.annualSavingsYield, 20),
+    annualInvestReturn: sanitizeRate(safeBase.annualInvestReturn, DEFAULT_INPUTS.annualInvestReturn, 30),
+    annualDebtInterest: sanitizeRate(safeBase.annualDebtInterest, DEFAULT_INPUTS.annualDebtInterest, 30),
+    horizonYears: 3,
+  };
+}
 
 const FORM_FIELD_KEYS = [
   "monthlyDebtPayment",
@@ -127,9 +185,13 @@ const currencyFormatter = new Intl.NumberFormat("ko-KR", {
 
 const sankeyTextMeasureCanvas = document.createElement("canvas");
 const sankeyTextMeasureContext = sankeyTextMeasureCanvas.getContext("2d");
+const mobileLayoutMediaQuery = window.matchMedia(MOBILE_LAYOUT_QUERY);
 
 const dom = {
+  controlsPanel: document.querySelector(".controls-panel"),
   inputsForm: document.getElementById("inputsForm"),
+  inputsPanelContent: document.getElementById("inputsPanelContent"),
+  toggleInputsMobile: document.getElementById("toggleInputsMobile"),
   copyShareLink: document.getElementById("copyShareLink"),
   exportJson: document.getElementById("exportJson"),
   importJson: document.getElementById("importJson"),
@@ -166,6 +228,7 @@ const dom = {
   investAdvancedBlock: document.getElementById("investAdvancedBlock"),
   jumpAdvancedFields: Array.from(document.querySelectorAll(".jump-advanced-field")),
   jumpToInputs: document.getElementById("jumpToInputs"),
+  jumpToTop: document.getElementById("jumpToTop"),
   pendingBar: document.getElementById("pendingBar"),
   pendingSummary: document.getElementById("pendingSummary"),
   applyChanges: document.getElementById("applyChanges"),
@@ -203,6 +266,7 @@ const state = {
     invest: { active: false, items: [], baselineSignature: "" },
   },
   snapshot: null,
+  mobileInputsCollapsed: false,
 };
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -240,6 +304,19 @@ function bindControls() {
       setSankeyValueMode(SANKEY_VALUE_MODES.AMOUNT);
     });
   }
+
+  if (dom.toggleInputsMobile) {
+    dom.toggleInputsMobile.addEventListener("click", () => {
+      if (!mobileLayoutMediaQuery.matches) {
+        return;
+      }
+      state.mobileInputsCollapsed = !state.mobileInputsCollapsed;
+      syncMobileInputsPanelVisibility();
+    });
+  }
+
+  bindMobileLayoutWatcher();
+  syncMobileInputsPanelVisibility();
 
   if (dom.sankeyViewPercent) {
     dom.sankeyViewPercent.addEventListener("click", () => {
@@ -494,8 +571,12 @@ function bindControls() {
           item.amount = sanitizeMoney(target.value, 0);
         }
         if (field === "annualRate") {
-          item.annualRate = sanitizeSavingsAnnualRate(target.value, getVisibleInputs().annualSavingsYield);
-          target.value = String(item.annualRate);
+          const parsedRate = parseSavingsAnnualRateInput(target.value, getVisibleInputs().annualSavingsYield);
+          if (parsedRate === null) {
+            delete item.annualRate;
+          } else {
+            item.annualRate = parsedRate;
+          }
         }
         renderSavingsTotalHint(
           toWon(getMonthlyAllocationTotalMan(state.itemEditors.savings.items)),
@@ -521,8 +602,12 @@ function bindControls() {
         item.amount = sanitizeMoney(target.value, 0);
       }
       if (field === "annualRate") {
-        item.annualRate = sanitizeSavingsAnnualRate(target.value, draftInputs.annualSavingsYield);
-        target.value = String(item.annualRate);
+        const parsedRate = parseSavingsAnnualRateInput(target.value, draftInputs.annualSavingsYield);
+        if (parsedRate === null) {
+          delete item.annualRate;
+        } else {
+          item.annualRate = parsedRate;
+        }
       }
       markPendingChanges();
     });
@@ -690,7 +775,7 @@ function bindControls() {
 
   if (dom.resetInputs) {
     dom.resetInputs.addEventListener("click", () => {
-      commitImmediateInputs({ ...DEFAULT_INPUTS });
+      commitImmediateInputs(createResetInputs(DEFAULT_INPUTS));
     });
   }
 
@@ -727,10 +812,16 @@ function bindControls() {
 
   if (dom.jumpToInputs) {
     dom.jumpToInputs.addEventListener("click", () => {
-      const inputSectionTitle = document.getElementById("inputsTitle");
-      if (inputSectionTitle) {
-        inputSectionTitle.scrollIntoView({ behavior: "smooth", block: "start" });
+      const summarySectionTitle = document.getElementById("cardsTitle");
+      if (summarySectionTitle) {
+        summarySectionTitle.scrollIntoView({ behavior: "smooth", block: "start" });
       }
+    });
+  }
+
+  if (dom.jumpToTop) {
+    dom.jumpToTop.addEventListener("click", () => {
+      window.scrollTo({ top: 0, behavior: "smooth" });
     });
   }
 
@@ -769,6 +860,42 @@ function bindControls() {
       renderSankey(state.snapshot);
     }
   }, 120));
+}
+
+function bindMobileLayoutWatcher() {
+  if (!mobileLayoutMediaQuery) {
+    return;
+  }
+  const handleMobileLayoutChange = () => {
+    if (!mobileLayoutMediaQuery.matches) {
+      state.mobileInputsCollapsed = false;
+    }
+    syncMobileInputsPanelVisibility();
+  };
+  if (typeof mobileLayoutMediaQuery.addEventListener === "function") {
+    mobileLayoutMediaQuery.addEventListener("change", handleMobileLayoutChange);
+    return;
+  }
+  if (typeof mobileLayoutMediaQuery.addListener === "function") {
+    mobileLayoutMediaQuery.addListener(handleMobileLayoutChange);
+  }
+}
+
+function syncMobileInputsPanelVisibility() {
+  const isMobile = mobileLayoutMediaQuery.matches;
+  const isCollapsed = isMobile && state.mobileInputsCollapsed;
+
+  if (dom.inputsPanelContent) {
+    dom.inputsPanelContent.hidden = isCollapsed;
+  }
+  if (dom.toggleInputsMobile) {
+    dom.toggleInputsMobile.hidden = !isMobile;
+    dom.toggleInputsMobile.textContent = isCollapsed ? "펼치기" : "접기";
+    dom.toggleInputsMobile.setAttribute("aria-expanded", String(!isCollapsed));
+  }
+  if (dom.controlsPanel) {
+    dom.controlsPanel.classList.toggle("is-mobile-collapsed", isCollapsed);
+  }
 }
 
 function bindReadonlyAdvancedNavigation() {
@@ -878,6 +1005,14 @@ function normalizeSankeyZoom(zoom) {
   return roundTo(Math.min(SANKEY_ZOOM_MAX, Math.max(SANKEY_ZOOM_MIN, safeZoom)), 1);
 }
 
+function getEffectiveSankeyZoom(isMobileViewport = window.matchMedia(MOBILE_LAYOUT_QUERY).matches) {
+  const baseZoom = normalizeSankeyZoom(state.sankeyZoom);
+  if (!isMobileViewport) {
+    return baseZoom;
+  }
+  return roundTo(baseZoom * SANKEY_MOBILE_BASE_ZOOM, 2);
+}
+
 function setSankeyZoom(nextZoom) {
   const safeZoom = normalizeSankeyZoom(nextZoom);
   if (safeZoom === state.sankeyZoom) {
@@ -892,9 +1027,11 @@ function setSankeyZoom(nextZoom) {
 }
 
 function syncSankeyZoomUi() {
+  const isMobileViewport = window.matchMedia(MOBILE_LAYOUT_QUERY).matches;
   const safeZoom = normalizeSankeyZoom(state.sankeyZoom);
+  const displayZoom = isMobileViewport ? getEffectiveSankeyZoom(true) : safeZoom;
   if (dom.sankeyZoomLabel) {
-    dom.sankeyZoomLabel.textContent = `${Math.round(safeZoom * 100)}%`;
+    dom.sankeyZoomLabel.textContent = `${Math.round(displayZoom * 100)}%`;
   }
   if (dom.sankeyZoomOut) {
     dom.sankeyZoomOut.disabled = safeZoom <= SANKEY_ZOOM_MIN;
@@ -1034,7 +1171,10 @@ function startItemEditor(groupKey) {
       amount: sanitizeMoney(item?.amount, 0),
     };
     if (groupKey === "savings") {
-      baseItem.annualRate = sanitizeSavingsAnnualRate(item?.annualRate, inputs.annualSavingsYield);
+      const parsedRate = parseSavingsAnnualRateInput(item?.annualRate, inputs.annualSavingsYield);
+      if (parsedRate !== null) {
+        baseItem.annualRate = parsedRate;
+      }
     }
     return baseItem;
   });
@@ -1057,9 +1197,6 @@ function addItemToEditor(groupKey) {
     name: `${meta.label} ${editor.items.length + 1}`,
     amount: 0,
   };
-  if (groupKey === "savings") {
-    item.annualRate = sanitizeSavingsAnnualRate(getVisibleInputs().annualSavingsYield, DEFAULT_INPUTS.annualSavingsYield);
-  }
   editor.items.push(item);
 
   meta.renderList(editor.items, { editing: true });
@@ -1287,6 +1424,14 @@ function renderAll() {
 
 function buildMonthlySnapshot(inputs) {
   const income = toWon(getMonthlyIncomeTotalMan(inputs.incomes));
+  const incomeBreakdown = (Array.isArray(inputs.incomes) ? inputs.incomes : [])
+    .map((item, index) => ({
+      id: `income-${item?.id || index + 1}`,
+      label: String(item?.name || `수입 ${index + 1}`),
+      tone: "income",
+      value: toWon(sanitizeMoney(item?.amount, 0)),
+    }))
+    .filter((item) => item.value > 0);
   const expenseBreakdown = (Array.isArray(inputs.expenseItems) ? inputs.expenseItems : [])
     .map((item, index) => ({
       id: `expense-${item?.id || index + 1}`,
@@ -1334,6 +1479,7 @@ function buildMonthlySnapshot(inputs) {
 
   return {
     income,
+    incomeBreakdown,
     expense,
     expenseBreakdown,
     savingsBreakdown,
@@ -1658,6 +1804,8 @@ function buildSankeyData(snapshot) {
   }
 
   const totalTarget = level1Targets.reduce((sum, item) => sum + item.value, 0);
+  const incomeSources = (snapshot.incomeBreakdown || []).filter((item) => item.value > 0);
+  const showIncomeInflow = incomeSources.length >= 2;
   const splitConfigs = [
     {
       parentId: "expense",
@@ -1688,14 +1836,27 @@ function buildSankeyData(snapshot) {
     })
     .filter(Boolean);
 
+  const sourceColumn = showIncomeInflow ? 1 : 0;
+  const targetColumn = showIncomeInflow ? 2 : 1;
+  const detailColumn = showIncomeInflow ? 3 : 2;
+
   const nodes = [
-    { id: "fund", label: "월 배분총액", tone: "income", value: totalTarget, column: 0 },
+    ...(showIncomeInflow
+      ? incomeSources.map((item) => ({
+        id: item.id,
+        label: item.label,
+        tone: "income",
+        value: item.value,
+        column: 0,
+      }))
+      : []),
+    { id: "fund", label: "월 배분총액", tone: "income", value: totalTarget, column: sourceColumn },
     ...level1Targets.map((item) => ({
       id: item.id,
       label: item.label,
       tone: item.tone,
       value: item.value,
-      column: 1,
+      column: targetColumn,
     })),
   ];
 
@@ -1706,12 +1867,20 @@ function buildSankeyData(snapshot) {
         label: item.label,
         tone: group.tone,
         value: item.value,
-        column: 2,
+        column: detailColumn,
       })),
     );
   });
 
   const links = [
+    ...(showIncomeInflow
+      ? incomeSources.map((source) => ({
+        source: source.id,
+        target: "fund",
+        value: source.value,
+        tone: "income",
+      }))
+      : []),
     ...level1Targets.map((target) => ({
       source: "fund",
       target: target.id,
@@ -1736,6 +1905,8 @@ function buildSankeyData(snapshot) {
     links,
     splitGroups,
     totalValue: totalTarget,
+    topLevelTargetIds: level1Targets.map((item) => item.id),
+    hasIncomeInflow: showIncomeInflow,
   };
 }
 
@@ -1768,7 +1939,7 @@ function renderSankey(snapshot) {
     const splitText = splitCount > 0 ? ` · 상세 분기 ${splitCount}개` : "";
     const valueModeText = valueMode === SANKEY_VALUE_MODES.PERCENT ? "표시 %" : "표시 금액";
     const isMobileViewport = window.matchMedia("(max-width: 760px)").matches;
-    const zoomText = isMobileViewport ? ` · 확대 ${Math.round(normalizeSankeyZoom(state.sankeyZoom) * 100)}%` : "";
+    const zoomText = isMobileViewport ? ` · 확대 ${Math.round(getEffectiveSankeyZoom(true) * 100)}%` : "";
     dom.sankeyMeta.textContent = `수입 ${formatCurrency(snapshot.income)} · 배분 ${formatCurrency(snapshot.requiredOutflow)} · 순현금흐름 ${formatSignedCurrency(snapshot.netCashflow)}${splitText} · ${valueModeText}${zoomText}`;
   }
 
@@ -1776,21 +1947,25 @@ function renderSankey(snapshot) {
   const columnCount = columns.length;
   const firstColumn = columns[0];
   const lastColumn = columns[columns.length - 1];
+  const hasIncomeInflow = Boolean(data.hasIncomeInflow);
   const isMobileViewport = window.matchMedia("(max-width: 760px)").matches;
-  const mobileSankeyZoom = isMobileViewport ? normalizeSankeyZoom(state.sankeyZoom) : 1;
+  const mobileSankeyZoom = isMobileViewport ? getEffectiveSankeyZoom(true) : 1;
   const nodeWidth = isMobileViewport ? 16 : 18;
   const labelGap = isMobileViewport ? 8 : 10;
   const labelFontSize = isMobileViewport ? 11 : 12;
   const valueFontSize = isMobileViewport ? 10 : 11;
-  const minColumnStep = isMobileViewport ? 96 : 140;
+  const minColumnStep = isMobileViewport
+    ? (hasIncomeInflow ? SANKEY_MOBILE_MIN_COLUMN_STEP_WITH_INFLOW : SANKEY_MOBILE_MIN_COLUMN_STEP)
+    : 140;
 
   const getNodeTextWidth = (node) => Math.max(
     measureSankeyTextWidth(node?.label, labelFontSize, 700),
     measureSankeyTextWidth(formatCurrency(node?.value), valueFontSize, 400),
   );
 
+  const leftLabelColumn = hasIncomeInflow && columnCount > 1 ? columns[1] : firstColumn;
   const leftLabelWidth = data.nodes
-    .filter((node) => node.column === firstColumn)
+    .filter((node) => node.column === leftLabelColumn)
     .reduce((max, node) => Math.max(max, getNodeTextWidth(node)), 0);
   const rightLabelWidth = data.nodes
     .filter((node) => node.column === lastColumn)
@@ -1801,15 +1976,20 @@ function renderSankey(snapshot) {
   const flowMinWidth = nodeWidth + Math.max(0, columnCount - 1) * minColumnStep;
   const minWidth = Math.ceil(marginLeft + flowMinWidth + marginRight);
   const wrapWidth = Math.max(0, dom.sankeyWrap.clientWidth - (isMobileViewport ? 12 : 20));
-  const width = Math.max(minWidth, wrapWidth);
+  const widthTarget = isMobileViewport
+    ? Math.ceil(wrapWidth * SANKEY_MOBILE_WIDTH_SCALE)
+    : wrapWidth;
+  const width = Math.max(minWidth, widthTarget);
   const maxCountPerColumn = columns.reduce((max, column) => {
     const count = data.nodes.filter((node) => node.column === column).length;
     return Math.max(max, count);
   }, 1);
-  const height = Math.max(
+  const baseHeight = Math.max(
     isMobileViewport ? 300 : 320,
     (isMobileViewport ? 220 : 240) + maxCountPerColumn * (isMobileViewport ? 40 : 44),
   );
+  const mobileAspectHeight = isMobileViewport ? Math.round(width * SANKEY_MOBILE_HEIGHT_RATIO) : 0;
+  const height = Math.max(baseHeight, mobileAspectHeight);
   const marginTop = isMobileViewport ? 20 : 26;
   const marginBottom = isMobileViewport ? 20 : 26;
   const nodeGap = isMobileViewport ? 12 : 14;
@@ -1817,6 +1997,7 @@ function renderSankey(snapshot) {
   dom.sankeySvg.setAttribute("viewBox", `0 0 ${width} ${height}`);
   dom.sankeySvg.style.width = `${Math.round(mobileSankeyZoom * 100)}%`;
   dom.sankeySvg.style.maxWidth = "none";
+  dom.sankeySvg.style.margin = isMobileViewport ? "0 auto" : "0";
 
   const inTotals = new Map();
   const outTotals = new Map();
@@ -1920,7 +2101,9 @@ function renderSankey(snapshot) {
   });
 
   positionedNodes.forEach((node) => {
-    const side = node.column === lastColumn ? "target" : "source";
+    const side = (hasIncomeInflow && node.column === firstColumn) || node.column === lastColumn
+      ? "target"
+      : "source";
     drawNode(node, side, nodeWidth, labelGap, data.totalValue, valueMode);
   });
 
@@ -1964,8 +2147,9 @@ function drawNode(node, side, nodeWidth, labelGap = 10, totalValue = 0, valueMod
 }
 
 function renderSankeyLegend(data, valueMode = SANKEY_VALUE_MODES.AMOUNT) {
+  const targetIdSet = new Set(Array.isArray(data.topLevelTargetIds) ? data.topLevelTargetIds : []);
   const items = data.nodes
-    .filter((node) => node.column === 1)
+    .filter((node) => targetIdSet.has(node.id))
     .map((node) => ({
       id: node.id,
       label: node.label,
@@ -1973,21 +2157,17 @@ function renderSankeyLegend(data, valueMode = SANKEY_VALUE_MODES.AMOUNT) {
       value: node.value,
     }));
 
+  const splitGroupMap = new Map();
   (data.splitGroups || []).forEach((group) => {
-    group.breakdown.forEach((item) => {
-      items.push({
-        id: `${group.parentId}-detail-${item.id}`,
-        label: `${group.parentLabel} · ${item.label}`,
-        tone: group.tone,
-        value: item.value,
-        isDetail: true,
-      });
-    });
+    splitGroupMap.set(group.parentId, group);
   });
 
   items.forEach((item) => {
+    const groupWrap = document.createElement("div");
+    groupWrap.className = "legend-group";
+
     const chip = document.createElement("span");
-    chip.className = `legend-item${item.isDetail ? " legend-item--detail" : ""}`;
+    chip.className = "legend-item";
 
     const dot = document.createElement("span");
     dot.className = "legend-dot";
@@ -1997,7 +2177,19 @@ function renderSankeyLegend(data, valueMode = SANKEY_VALUE_MODES.AMOUNT) {
     label.textContent = `${item.label} ${formatSankeyDisplayValue(item.value, data.totalValue, valueMode)}`;
 
     chip.append(dot, label);
-    dom.sankeyLegend.appendChild(chip);
+    groupWrap.appendChild(chip);
+
+    const splitGroup = splitGroupMap.get(item.id);
+    if (splitGroup && Array.isArray(splitGroup.breakdown) && splitGroup.breakdown.length > 0) {
+      const detail = document.createElement("p");
+      detail.className = "legend-group-details";
+      detail.textContent = splitGroup.breakdown
+        .map((entry) => `${entry.label} ${formatSankeyDisplayValue(entry.value, data.totalValue, valueMode)}`)
+        .join(" · ");
+      groupWrap.appendChild(detail);
+    }
+
+    dom.sankeyLegend.appendChild(groupWrap);
   });
 }
 
@@ -2205,8 +2397,9 @@ function renderSavingsList(savingsItems, options = {}) {
     rateInput.min = "0";
     rateInput.max = "20";
     rateInput.step = "0.1";
-    rateInput.placeholder = "이자율(연, %)";
-    rateInput.value = String(sanitizeSavingsAnnualRate(item?.annualRate, fallbackRate));
+    rateInput.placeholder = "저축기본수익률";
+    const parsedRate = parseSavingsAnnualRateInput(item?.annualRate, fallbackRate);
+    rateInput.value = parsedRate === null ? "" : String(parsedRate);
     rateInput.setAttribute("aria-label", `${item.name} 연 이자율`);
     if (editing) {
       rateInput.dataset.editorId = item.id;
@@ -2460,6 +2653,14 @@ function sanitizeSavingsAnnualRate(value, fallbackRate = DEFAULT_INPUTS.annualSa
   return sanitizeRate(value, safeFallback, 20);
 }
 
+function parseSavingsAnnualRateInput(value, fallbackRate = DEFAULT_INPUTS.annualSavingsYield) {
+  const text = String(value ?? "").trim();
+  if (!text) {
+    return null;
+  }
+  return sanitizeSavingsAnnualRate(text, fallbackRate);
+}
+
 function sanitizeSavingsItems(items, fallbackAmount, fallbackRate = DEFAULT_INPUTS.annualSavingsYield) {
   const safeFallbackRate = sanitizeSavingsAnnualRate(fallbackRate, DEFAULT_INPUTS.annualSavingsYield);
   const normalized = sanitizeAllocationItems(items, DEFAULT_SAVINGS_ITEMS, fallbackAmount, "savings", "저축");
@@ -2475,16 +2676,28 @@ function sanitizeSavingsItems(items, fallbackAmount, fallbackRate = DEFAULT_INPU
       if (!itemId || rateById.has(itemId)) {
         return;
       }
-      rateById.set(itemId, sanitizeSavingsAnnualRate(safeItem.annualRate, safeFallbackRate));
+      if (!Object.prototype.hasOwnProperty.call(safeItem, "annualRate")) {
+        return;
+      }
+      rateById.set(itemId, parseSavingsAnnualRateInput(safeItem.annualRate, safeFallbackRate));
     });
   }
 
-  return normalized.map((item) => ({
-    ...item,
-    annualRate: rateById.has(item.id)
+  return normalized.map((item) => {
+    const parsedRate = rateById.has(item.id)
       ? rateById.get(item.id)
-      : sanitizeSavingsAnnualRate(item?.annualRate, safeFallbackRate),
-  }));
+      : parseSavingsAnnualRateInput(item?.annualRate, safeFallbackRate);
+
+    if (parsedRate === null) {
+      const { annualRate: _annualRate, ...rest } = item;
+      return rest;
+    }
+
+    return {
+      ...item,
+      annualRate: parsedRate,
+    };
+  });
 }
 
 function sanitizeInvestItems(items, fallbackAmount) {

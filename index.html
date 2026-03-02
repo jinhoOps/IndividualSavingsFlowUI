@@ -23,7 +23,7 @@
       </header>
 
       <main>
-        <section class="panel" aria-labelledby="cardsTitle">
+        <section class="panel summary-panel" aria-labelledby="cardsTitle">
           <div class="section-head">
             <h2 id="cardsTitle">핵심 카드</h2>
             <p id="cardMeta" class="hint"></p>
@@ -72,7 +72,7 @@
           <div id="sankeyLegend" class="sankey-legend"></div>
         </section>
 
-        <section class="panel" aria-labelledby="projectionTitle">
+        <section class="panel projection-panel" aria-labelledby="projectionTitle">
           <div class="section-head">
             <h2 id="projectionTitle">가계 추이 계산 검증</h2>
             <p id="projectionMeta" class="hint"></p>
@@ -112,7 +112,18 @@
 
         <section class="panel controls-panel" aria-labelledby="inputsTitle">
           <div class="section-head">
-            <h2 id="inputsTitle">입력값</h2>
+            <h2 id="inputsTitle">
+              입력값
+              <button
+                id="toggleInputsMobile"
+                class="mobile-input-toggle"
+                type="button"
+                aria-expanded="true"
+                aria-controls="inputsPanelContent"
+              >
+                접기
+              </button>
+            </h2>
             <div class="actions">
               <button id="copyShareLink" class="btn btn-ghost" type="button">링크 복사</button>
               <button id="exportJson" class="btn btn-ghost" type="button">JSON 저장</button>
@@ -122,8 +133,9 @@
             </div>
           </div>
           <input id="importJsonFile" type="file" accept=".json,application/json" hidden />
-          <p class="hint">금액 단위: 만원(예: 450 = 4,500,000원) · 기본값만 입력해도 바로 계산됩니다.</p>
-          <form id="inputsForm" autocomplete="off">
+          <div id="inputsPanelContent">
+            <p class="hint">금액 단위: 만원(예: 450 = 4,500,000원) · 기본값만 입력해도 바로 계산됩니다.</p>
+            <form id="inputsForm" autocomplete="off">
             <div class="controls-block">
               <div class="block-head">
                 <h3>월 수입 항목</h3>
@@ -182,7 +194,8 @@
                   <h3>저축 상세 항목</h3>
                   <button id="editSavingsItems" class="btn btn-ghost btn-sm" type="button">항목 편집</button>
                 </div>
-                <p class="hint">아래 항목 합계가 월 저축으로 자동 반영되며, 항목별 연 이자율을 각각 입력할 수 있습니다.</p>
+                <p class="hint">아래 항목 합계가 월 저축으로 자동 반영됩니다. 항목별 연 이자율을 비우면 저축 기본 수익률이 적용됩니다.</p>
+                <p class="hint">저축 기본 수익률은 자유적립식/목돈 저축의 연 이자 적립 계산 기준입니다.</p>
                 <div id="savingsList" class="savings-list" aria-live="polite"></div>
                 <div id="savingsEditorActions" class="editor-actions" hidden>
                   <button id="addSavingsItem" class="btn btn-ghost btn-sm" type="button">항목 추가</button>
@@ -231,8 +244,18 @@
                   <input id="annualExpenseGrowth" name="annualExpenseGrowth" type="number" min="0" max="30" step="0.1" />
                 </div>
                 <div class="control">
-                  <label for="annualSavingsYield">저축 기본 수익률(연, %, 항목 기본값)</label>
-                  <input id="annualSavingsYield" name="annualSavingsYield" type="number" min="0" max="20" step="0.1" />
+                  <div class="label-row">
+                    <label for="annualSavingsYield">저축 기본 수익률(연, %, 항목 기본값)</label>
+                    <button
+                      type="button"
+                      class="inline-tip"
+                      aria-label="저축 기본 수익률 설명"
+                      data-tooltip="저축 상세 항목의 연 이자율을 비워둔 항목에 적용됩니다."
+                    >
+                      ?
+                    </button>
+                  </div>
+                  <input id="annualSavingsYield" name="annualSavingsYield" type="number" min="0" max="20" step="0.1" placeholder="저축기본수익률" />
                 </div>
                 <div class="control">
                   <label for="annualInvestReturn">투자 수익률(연, %)</label>
@@ -244,12 +267,16 @@
                 </div>
               </div>
             </details>
-          </form>
+            </form>
+          </div>
         </section>
       </main>
     </div>
-    <button id="jumpToInputs" class="jump-inputs" type="button">
-      입력값 섹터로 이동
+    <button id="jumpToInputs" class="floating-btn floating-btn--left" type="button" aria-label="핵심카드 섹터로 이동">
+      ★
+    </button>
+    <button id="jumpToTop" class="floating-btn floating-btn--right" type="button" aria-label="맨 위로 이동">
+      ▲
     </button>
     <div id="pendingBar" class="pending-bar" hidden>
       <p id="pendingSummary" class="pending-summary"></p>
