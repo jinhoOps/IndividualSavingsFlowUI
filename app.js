@@ -493,9 +493,7 @@ function bindControls() {
           return;
         }
         if (field === "name") {
-          const index = sanitizeInteger(target.dataset.index, 0, 0, 999);
-          item.name = normalizeAllocationName(target.value, "생활비", index);
-          target.value = item.name;
+          item.name = target.value.slice(0, 24);
         }
         if (field === "amount") {
           item.amount = sanitizeMoney(target.value, 0);
@@ -566,9 +564,7 @@ function bindControls() {
           return;
         }
         if (field === "name") {
-          const index = sanitizeInteger(target.dataset.index, 0, 0, 999);
-          item.name = normalizeAllocationName(target.value, "저축", index);
-          target.value = item.name;
+          item.name = target.value.slice(0, 24);
         }
         if (field === "amount") {
           item.amount = sanitizeMoney(target.value, 0);
@@ -658,9 +654,7 @@ function bindControls() {
           return;
         }
         if (field === "name") {
-          const index = sanitizeInteger(target.dataset.index, 0, 0, 999);
-          item.name = normalizeAllocationName(target.value, "투자", index);
-          target.value = item.name;
+          item.name = target.value.slice(0, 24);
         }
         if (field === "amount") {
           item.amount = sanitizeMoney(target.value, 0);
@@ -1325,12 +1319,19 @@ function buildInputSignature(inputs) {
       name: String(item?.name ?? "").trim().slice(0, 24),
       amount: sanitizeMoney(item?.amount, 0),
     })),
-    expenseItems: safe.expenseItems.map((item) => sanitizeMoney(item?.amount, 0)),
+    expenseItems: safe.expenseItems.map((item) => ({
+      name: String(item?.name ?? "").trim().slice(0, 24),
+      amount: sanitizeMoney(item?.amount, 0),
+    })),
     savingsItems: safe.savingsItems.map((item) => ({
+      name: String(item?.name ?? "").trim().slice(0, 24),
       amount: sanitizeMoney(item?.amount, 0),
       annualRate: sanitizeSavingsAnnualRate(item?.annualRate, safe.annualSavingsYield),
     })),
-    investItems: safe.investItems.map((item) => sanitizeMoney(item?.amount, 0)),
+    investItems: safe.investItems.map((item) => ({
+      name: String(item?.name ?? "").trim().slice(0, 24),
+      amount: sanitizeMoney(item?.amount, 0),
+    })),
     monthlyDebtPayment: safe.monthlyDebtPayment,
     startCash: safe.startCash,
     startSavings: safe.startSavings,
@@ -1953,7 +1954,7 @@ function renderSankey(snapshot) {
   const lastColumn = columns[columns.length - 1];
   const hasIncomeInflow = Boolean(data.hasIncomeInflow);
   const isMobileViewport = window.matchMedia("(max-width: 760px)").matches;
-  const mobileSankeyZoom = isMobileViewport ? getEffectiveSankeyZoom(true) : 1;
+  const effectiveSankeyZoom = getEffectiveSankeyZoom(isMobileViewport);
   const nodeWidth = isMobileViewport ? 16 : 18;
   const labelGap = isMobileViewport ? 8 : 10;
   const labelFontSize = isMobileViewport ? 11 : 12;
@@ -1999,7 +2000,7 @@ function renderSankey(snapshot) {
   const nodeGap = isMobileViewport ? 12 : 14;
 
   dom.sankeySvg.setAttribute("viewBox", `0 0 ${width} ${height}`);
-  dom.sankeySvg.style.width = `${Math.round(mobileSankeyZoom * 100)}%`;
+  dom.sankeySvg.style.width = `${Math.round(effectiveSankeyZoom * 100)}%`;
   dom.sankeySvg.style.maxWidth = "none";
   dom.sankeySvg.style.margin = isMobileViewport ? "0 auto" : "0";
 
