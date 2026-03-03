@@ -291,6 +291,9 @@ function bindControls() {
       }
       const baseInputs = ensureDraftInputs();
       state.draftInputs = sanitizeInputs(readInputsFromForm(baseInputs));
+      if (target.name === "annualSavingsYield") {
+        updateSavingsRateInputHints(state.draftInputs.annualSavingsYield);
+      }
       markPendingChanges();
     };
 
@@ -1131,19 +1134,20 @@ function setItemEditorUi(groupKey, active) {
   }
   const hasChanges = Boolean(active && editor && hasItemEditorChanges(groupKey));
   if (meta.actionWrap) {
-    meta.actionWrap.hidden = !hasChanges;
+    meta.actionWrap.hidden = !active;
   }
   if (meta.editButton) {
     meta.editButton.textContent = active ? "편집 닫기" : "항목 편집";
   }
   if (meta.addButton) {
-    meta.addButton.hidden = !hasChanges;
+    meta.addButton.hidden = !active;
   }
   if (meta.applyButton) {
-    meta.applyButton.hidden = !hasChanges;
+    meta.applyButton.hidden = !active;
+    meta.applyButton.disabled = active ? !hasChanges : false;
   }
   if (meta.cancelButton) {
-    meta.cancelButton.hidden = !hasChanges;
+    meta.cancelButton.hidden = !active;
   }
 }
 
@@ -2352,6 +2356,7 @@ function renderSavingsList(savingsItems, options = {}) {
   dom.savingsList.innerHTML = "";
   const editing = Boolean(options.editing);
   const fallbackRate = getVisibleInputs().annualSavingsYield;
+  const fallbackRatePlaceholder = getSavingsFallbackRatePlaceholder(fallbackRate);
 
   savingsItems.forEach((item, index) => {
     const row = document.createElement("div");
@@ -2397,7 +2402,8 @@ function renderSavingsList(savingsItems, options = {}) {
     rateInput.min = "0";
     rateInput.max = "20";
     rateInput.step = "0.1";
-    rateInput.placeholder = "저축기본수익률";
+    rateInput.placeholder = fallbackRatePlaceholder;
+    rateInput.title = fallbackRatePlaceholder;
     const parsedRate = parseSavingsAnnualRateInput(item?.annualRate, fallbackRate);
     rateInput.value = parsedRate === null ? "" : String(parsedRate);
     rateInput.setAttribute("aria-label", `${item.name} 연 이자율`);
@@ -2422,6 +2428,29 @@ function renderSavingsList(savingsItems, options = {}) {
     }
 
     dom.savingsList.appendChild(row);
+  });
+}
+
+function getSavingsFallbackRatePlaceholder(rate) {
+  const safeRate = sanitizeSavingsAnnualRate(rate, DEFAULT_INPUTS.annualSavingsYield);
+  const displayRate = Number.isInteger(safeRate)
+    ? String(safeRate)
+    : roundTo(safeRate, 1).toLocaleString("ko-KR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  return `${displayRate}%(저축기본수익률)`;
+}
+
+function updateSavingsRateInputHints(baseRate) {
+  if (!dom.savingsList) {
+    return;
+  }
+  const placeholderText = getSavingsFallbackRatePlaceholder(baseRate);
+  const rateInputs = dom.savingsList.querySelectorAll("input[data-field='annualRate']");
+  rateInputs.forEach((input) => {
+    if (!(input instanceof HTMLInputElement)) {
+      return;
+    }
+    input.placeholder = placeholderText;
+    input.title = placeholderText;
   });
 }
 
