@@ -6,6 +6,7 @@ const HASH_STATE_PARAM = "s";
 const HASH_STATE_MAX_LENGTH = 6000;
 const VIEW_MODE_QUERY_PARAM = "view";
 const VIEW_MODE_QUERY_VALUE = "1";
+const VIEW_MODE_GUIDE_DISMISSED_KEY = "isf-view-guide-dismissed-v1";
 const MAX_INCOME_ITEMS = 12;
 const MAX_ALLOCATION_ITEMS = 20;
 const SANKEY_VALUE_MODES = {
@@ -195,7 +196,6 @@ const dom = {
   inputsPanelContent: document.getElementById("inputsPanelContent"),
   toggleInputsMobile: document.getElementById("toggleInputsMobile"),
   copyShareLink: document.getElementById("copyShareLink"),
-  copyViewLink: document.getElementById("copyViewLink"),
   exportJson: document.getElementById("exportJson"),
   importJson: document.getElementById("importJson"),
   importJsonFile: document.getElementById("importJsonFile"),
@@ -231,6 +231,10 @@ const dom = {
   investAdvancedBlock: document.getElementById("investAdvancedBlock"),
   jumpAdvancedFields: Array.from(document.querySelectorAll(".jump-advanced-field")),
   jumpToInputs: document.getElementById("jumpToInputs"),
+  saveViewToLocal: document.getElementById("saveViewToLocal"),
+  viewModeGuide: document.getElementById("viewModeGuide"),
+  viewModeGuideDontShow: document.getElementById("viewModeGuideDontShow"),
+  dismissViewModeGuide: document.getElementById("dismissViewModeGuide"),
   jumpToTop: document.getElementById("jumpToTop"),
   pendingBar: document.getElementById("pendingBar"),
   pendingSummary: document.getElementById("pendingSummary"),
@@ -271,10 +275,13 @@ const state = {
   },
   snapshot: null,
   mobileInputsCollapsed: false,
+  viewModeGuideClosedTemporarily: false,
 };
 
 document.addEventListener("DOMContentLoaded", () => {
   bindControls();
+  syncViewModeUi();
+  syncViewModeGuideUi();
   syncSankeyValueModeUi();
   syncSankeyZoomUi();
   refreshInputsPanel(state.inputs);
@@ -354,41 +361,39 @@ function bindControls() {
 
   if (dom.copyShareLink) {
     dom.copyShareLink.addEventListener("click", async () => {
-      const shareLink = buildShareLink(state.inputs);
+      const shareLink = buildShareLink(state.inputs, { viewMode: true });
       if (!shareLink) {
-        showApplyFeedback("링크 길이 초과로 공유 링크 생성이 제한됩니다. JSON 저장을 사용하세요.");
-        return;
-      }
-      try {
-        if (navigator.clipboard?.writeText) {
-          await navigator.clipboard.writeText(shareLink);
-          showApplyFeedback("공유 링크를 복사했습니다.");
-          return;
-        }
-      } catch (_error) {
-        // Fallback below.
-      }
-      window.prompt("아래 링크를 복사해 공유하세요.", shareLink);
-    });
-  }
-
-  if (dom.copyViewLink) {
-    dom.copyViewLink.addEventListener("click", async () => {
-      const viewLink = buildShareLink(state.inputs, { viewMode: true });
-      if (!viewLink) {
         showApplyFeedback("링크 길이 초과로 보기 링크 생성이 제한됩니다. JSON 저장을 사용하세요.");
         return;
       }
       try {
         if (navigator.clipboard?.writeText) {
-          await navigator.clipboard.writeText(viewLink);
+          await navigator.clipboard.writeText(shareLink);
           showApplyFeedback("보기 모드 링크를 복사했습니다.");
           return;
         }
       } catch (_error) {
         // Fallback below.
       }
-      window.prompt("아래 보기 모드 링크를 복사해 공유하세요.", viewLink);
+      window.prompt("아래 보기 모드 링크를 복사해 공유하세요.", shareLink);
+    });
+  }
+
+  if (dom.saveViewToLocal) {
+    dom.saveViewToLocal.addEventListener("click", () => {
+      if (!state.isViewMode || !hasShareHashState()) {
+        return;
+      }
+      const localInputs = sanitizeInputs(cloneInputs(getVisibleInputs()));
+      persistInputs(localInputs);
+      switchToNormalMode();
+      showApplyFeedback("현재 보기 상태를 로컬 저장소에 저장하고 일반 모드로 전환했습니다.");
+    });
+  }
+
+  if (dom.dismissViewModeGuide) {
+    dom.dismissViewModeGuide.addEventListener("click", () => {
+      dismissViewModeGuide();
     });
   }
 
@@ -854,6 +859,8 @@ function bindControls() {
   }
 
   window.addEventListener("hashchange", () => {
+    syncViewModeUi();
+    syncViewModeGuideUi();
     if (state.isApplyingHashState) {
       return;
     }
@@ -884,6 +891,11 @@ function bindControls() {
       renderSankey(state.snapshot);
     }
   }, 120));
+
+  window.addEventListener("popstate", () => {
+    syncViewModeUi();
+    syncViewModeGuideUi();
+  });
 }
 
 function bindMobileLayoutWatcher() {
@@ -920,6 +932,81 @@ function syncMobileInputsPanelVisibility() {
   if (dom.controlsPanel) {
     dom.controlsPanel.classList.toggle("is-mobile-collapsed", isCollapsed);
   }
+}
+
+function syncViewModeUi() {
+  const wasViewMode = state.isViewMode;
+  const isViewModeByUrl = detectViewMode();
+  state.isViewMode = isViewModeByUrl;
+  if (!isViewModeByUrl || (!wasViewMode && isViewModeByUrl)) {
+    state.viewModeGuideClosedTemporarily = false;
+  }
+  const isViewLink = isViewModeByUrl && hasShareHashState();
+  if (dom.saveViewToLocal) {
+    dom.saveViewToLocal.hidden = !isViewLink;
+    dom.saveViewToLocal.disabled = !isViewLink;
+  }
+}
+
+function syncViewModeGuideUi() {
+  if (!dom.viewModeGuide) {
+    return;
+  }
+  dom.viewModeGuide.hidden = !shouldShowViewModeGuide();
+}
+
+function shouldShowViewModeGuide() {
+  return state.isViewMode
+    && hasShareHashState()
+    && !isViewModeGuideDismissed()
+    && !state.viewModeGuideClosedTemporarily;
+}
+
+function isViewModeGuideDismissed() {
+  try {
+    return localStorage.getItem(VIEW_MODE_GUIDE_DISMISSED_KEY) === "1";
+  } catch (_error) {
+    return false;
+  }
+}
+
+function dismissViewModeGuide() {
+  const dontShowAgain = Boolean(
+    dom.viewModeGuideDontShow instanceof HTMLInputElement
+      ? dom.viewModeGuideDontShow.checked
+      : false,
+  );
+  try {
+    if (dontShowAgain) {
+      localStorage.setItem(VIEW_MODE_GUIDE_DISMISSED_KEY, "1");
+    } else {
+      localStorage.removeItem(VIEW_MODE_GUIDE_DISMISSED_KEY);
+    }
+  } catch (_error) {
+    // Ignore storage errors; guide will show again next time.
+  }
+  state.viewModeGuideClosedTemporarily = true;
+  syncViewModeGuideUi();
+}
+
+function hasShareHashState() {
+  try {
+    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+    return Boolean(hashParams.get(HASH_STATE_PARAM));
+  } catch (_error) {
+    return false;
+  }
+}
+
+function switchToNormalMode() {
+  state.isViewMode = false;
+  const searchParams = new URLSearchParams(window.location.search);
+  searchParams.delete(VIEW_MODE_QUERY_PARAM);
+  const searchText = searchParams.toString();
+  const nextUrl = `${window.location.pathname}${searchText ? `?${searchText}` : ""}${window.location.hash}`;
+  history.replaceState(null, "", nextUrl);
+  syncViewModeUi();
+  syncViewModeGuideUi();
 }
 
 function bindReadonlyAdvancedNavigation() {

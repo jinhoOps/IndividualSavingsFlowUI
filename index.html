@@ -21,6 +21,25 @@
           월 단위 가계 흐름을 카드와 단일 Sankey Diagram으로 빠르게 확인할 수 있습니다.
         </p>
       </header>
+      <section id="viewModeGuide" class="panel view-mode-guide" aria-live="polite" hidden>
+        <p class="view-mode-guide__text">
+          이 페이지는 공유 페이지입니다. 저장을 원하면 좌측 하단 저장 아이콘을 눌러 현재 상태를 로컬 브라우저에 저장할 수 있습니다.
+        </p>
+        <div class="view-mode-guide__actions">
+          <label class="view-mode-guide__dont-show" for="viewModeGuideDontShow">
+            <input id="viewModeGuideDontShow" type="checkbox" />
+            다시 보지 않기
+          </label>
+          <button
+            id="dismissViewModeGuide"
+            class="btn btn-ghost btn-sm"
+            type="button"
+            aria-label="공유 페이지 안내 닫기"
+          >
+            확인
+          </button>
+        </div>
+      </section>
 
       <main>
         <section class="panel summary-panel" aria-labelledby="cardsTitle">
@@ -126,7 +145,6 @@
             </h2>
             <div class="actions">
               <button id="copyShareLink" class="btn btn-ghost" type="button">링크 복사</button>
-              <button id="copyViewLink" class="btn btn-ghost" type="button">보기 링크 복사</button>
               <button id="exportJson" class="btn btn-ghost" type="button">JSON 저장</button>
               <button id="importJson" class="btn btn-ghost" type="button">JSON 불러오기</button>
               <button id="loadSample" class="btn btn-primary" type="button">샘플</button>
@@ -275,6 +293,13 @@
     </div>
     <button id="jumpToInputs" class="floating-btn floating-btn--left" type="button" aria-label="핵심카드 섹터로 이동">
       ★
+    </button>
+    <button id="saveViewToLocal" class="floating-btn floating-btn--left-save" type="button" aria-label="현재 보기 상태를 로컬 저장소에 저장" hidden>
+      <svg class="floating-btn-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M5 3h11l3 3v15H5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"></path>
+        <path d="M8 3v6h8V4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"></path>
+        <rect x="8" y="13" width="8" height="6" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.8"></rect>
+      </svg>
     </button>
     <button id="jumpToTop" class="floating-btn floating-btn--right" type="button" aria-label="맨 위로 이동">
       ▲

@@ -95,6 +95,48 @@ main {
   letter-spacing: 0.02em;
 }
 
+.view-mode-guide {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-style: dashed;
+  background: rgba(255, 251, 236, 0.92);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.view-mode-guide__text {
+  margin: 0;
+  font-size: 0.84rem;
+  color: var(--ink);
+}
+
+.view-mode-guide__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.view-mode-guide__dont-show {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.view-mode-guide__dont-show input {
+  margin: 0;
+  accent-color: var(--ink);
+}
+
+.view-mode-guide[hidden] {
+  display: none !important;
+}
+
 .eyebrow {
   margin: 0;
   font-size: 0.76rem;
@@ -828,8 +870,22 @@ main {
   background: rgba(16, 34, 32, 0.5);
 }
 
+.floating-btn-icon {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+
+#saveViewToLocal[hidden] {
+  display: none !important;
+}
+
 .floating-btn--left {
   left: 18px;
+}
+
+.floating-btn--left-save {
+  left: 68px;
 }
 
 .floating-btn--right {
@@ -921,6 +977,21 @@ main {
 
   .hero h1 {
     font-size: clamp(1.8rem, 9vw, 2.4rem);
+  }
+
+  .view-mode-guide {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .view-mode-guide__actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .view-mode-guide .btn {
+    align-self: flex-end;
   }
 
   .section-head h2 {
@@ -1129,6 +1200,10 @@ main {
 
   .floating-btn--left {
     left: 12px;
+  }
+
+  .floating-btn--left-save {
+    left: 60px;
   }
 
   .floating-btn--right {
