@@ -6,7 +6,7 @@
     <title>나의 가계 흐름</title>
     <meta
       name="description"
-      content="개인 자산 흐름 프로젝트의 1단계로, 월 가계 흐름을 카드와 단일 생키차트로 보여주는 UI"
+      content="개인 자산 흐름 프로젝트의 1단계로, 월 가계 흐름을 카드와 단일 Sankey Diagram으로 보여주는 UI"
     />
     <link rel="stylesheet" href="styles.css" />
   </head>
@@ -18,7 +18,7 @@
         <h1>나의 가계 흐름</h1>
         <p class="lead">
           이렇게 벌고, 이렇게 쓴다.
-          월 단위 가계 흐름을 카드와 단일 생키차트로 빠르게 확인할 수 있습니다.
+          월 단위 가계 흐름을 카드와 단일 Sankey Diagram으로 빠르게 확인할 수 있습니다.
         </p>
       </header>
 
@@ -33,10 +33,10 @@
 
         <section class="panel sankey-panel" aria-labelledby="sankeyTitle">
           <div class="section-head section-head--sankey">
-            <h2 id="sankeyTitle">월 가계 흐름 생키차트</h2>
+            <h2 id="sankeyTitle">월 가계 흐름 Sankey Diagram</h2>
             <div class="sankey-head-tools">
               <p id="sankeyMeta" class="hint"></p>
-              <div class="sankey-view-toggle" role="group" aria-label="생키 표기 방식">
+              <div class="sankey-view-toggle" role="group" aria-label="Sankey Diagram 표기 방식">
                 <button
                   id="sankeyViewAmount"
                   class="btn btn-ghost btn-sm sankey-view-btn is-active"
@@ -56,16 +56,16 @@
                   %
                 </button>
               </div>
-              <div class="sankey-zoom-tools" role="group" aria-label="생키 확대 제어">
-                <button id="sankeyZoomOut" class="btn btn-ghost btn-sm" type="button" aria-label="생키 축소">-</button>
-                <button id="sankeyZoomIn" class="btn btn-ghost btn-sm" type="button" aria-label="생키 확대">+</button>
+              <div class="sankey-zoom-tools" role="group" aria-label="Sankey Diagram 확대 제어">
+                <button id="sankeyZoomOut" class="btn btn-ghost btn-sm" type="button" aria-label="Sankey Diagram 축소">-</button>
+                <button id="sankeyZoomIn" class="btn btn-ghost btn-sm" type="button" aria-label="Sankey Diagram 확대">+</button>
                 <button id="sankeyZoomReset" class="btn btn-ghost btn-sm" type="button">기본 크기</button>
                 <span id="sankeyZoomLabel" class="sankey-zoom-label" aria-live="polite">100%</span>
               </div>
             </div>
           </div>
           <div id="sankeyWrap" class="sankey-wrap">
-            <svg id="sankeySvg" role="img" aria-label="월 가계 흐름 생키차트"></svg>
+            <svg id="sankeySvg" role="img" aria-label="월 가계 흐름 Sankey Diagram"></svg>
             <p id="sankeyEmpty" class="empty" hidden>표시할 흐름이 없습니다.</p>
             <div id="sankeyTooltip" class="sankey-tooltip" hidden></div>
           </div>
@@ -126,6 +126,7 @@
             </h2>
             <div class="actions">
               <button id="copyShareLink" class="btn btn-ghost" type="button">링크 복사</button>
+              <button id="copyViewLink" class="btn btn-ghost" type="button">보기 링크 복사</button>
               <button id="exportJson" class="btn btn-ghost" type="button">JSON 저장</button>
               <button id="importJson" class="btn btn-ghost" type="button">JSON 불러오기</button>
               <button id="loadSample" class="btn btn-primary" type="button">샘플</button>

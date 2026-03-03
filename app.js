@@ -4,6 +4,8 @@ const SHARE_STATE_KEY = "my-household-flow";
 const SHARE_STATE_SCHEMA = 1;
 const HASH_STATE_PARAM = "s";
 const HASH_STATE_MAX_LENGTH = 6000;
+const VIEW_MODE_QUERY_PARAM = "view";
+const VIEW_MODE_QUERY_VALUE = "1";
 const MAX_INCOME_ITEMS = 12;
 const MAX_ALLOCATION_ITEMS = 20;
 const SANKEY_VALUE_MODES = {
@@ -193,6 +195,7 @@ const dom = {
   inputsPanelContent: document.getElementById("inputsPanelContent"),
   toggleInputsMobile: document.getElementById("toggleInputsMobile"),
   copyShareLink: document.getElementById("copyShareLink"),
+  copyViewLink: document.getElementById("copyViewLink"),
   exportJson: document.getElementById("exportJson"),
   importJson: document.getElementById("importJson"),
   importJsonFile: document.getElementById("importJsonFile"),
@@ -253,6 +256,7 @@ const dom = {
 };
 
 const state = {
+  isViewMode: detectViewMode(),
   inputs: resolveInitialInputs(),
   draftInputs: null,
   applyFeedbackTimer: null,
@@ -277,6 +281,9 @@ document.addEventListener("DOMContentLoaded", () => {
   setPendingBarVisible(false);
   renderAll();
   syncHashState(state.inputs);
+  if (state.isViewMode) {
+    showApplyFeedback("보기 모드로 열었습니다. 로컬 저장값은 변경되지 않습니다.");
+  }
 });
 
 function bindControls() {
@@ -362,6 +369,26 @@ function bindControls() {
         // Fallback below.
       }
       window.prompt("아래 링크를 복사해 공유하세요.", shareLink);
+    });
+  }
+
+  if (dom.copyViewLink) {
+    dom.copyViewLink.addEventListener("click", async () => {
+      const viewLink = buildShareLink(state.inputs, { viewMode: true });
+      if (!viewLink) {
+        showApplyFeedback("링크 길이 초과로 보기 링크 생성이 제한됩니다. JSON 저장을 사용하세요.");
+        return;
+      }
+      try {
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(viewLink);
+          showApplyFeedback("보기 모드 링크를 복사했습니다.");
+          return;
+        }
+      } catch (_error) {
+        // Fallback below.
+      }
+      window.prompt("아래 보기 모드 링크를 복사해 공유하세요.", viewLink);
     });
   }
 
@@ -3088,18 +3115,28 @@ function syncHashState(inputs) {
 }
 
 function persistPrimaryState(inputs) {
-  persistInputs(inputs);
+  if (!state.isViewMode) {
+    persistInputs(inputs);
+  }
   return syncHashState(inputs);
 }
 
-function buildShareLink(inputs) {
+function buildShareLink(inputs, options = {}) {
   const encoded = encodeInputsForHash(inputs);
   if (!encoded) {
     return "";
   }
+  const safeOptions = options && typeof options === "object" ? options : {};
+  const searchParams = new URLSearchParams(window.location.search);
+  if (safeOptions.viewMode) {
+    searchParams.set(VIEW_MODE_QUERY_PARAM, VIEW_MODE_QUERY_VALUE);
+  } else {
+    searchParams.delete(VIEW_MODE_QUERY_PARAM);
+  }
   const params = new URLSearchParams(window.location.hash.replace(/^#/, ""));
   params.set(HASH_STATE_PARAM, encoded);
-  return `${window.location.origin}${window.location.pathname}${window.location.search}#${params.toString()}`;
+  const searchText = searchParams.toString();
+  return `${window.location.origin}${window.location.pathname}${searchText ? `?${searchText}` : ""}#${params.toString()}`;
 }
 
 function exportInputsAsJson(inputs) {
@@ -3154,6 +3191,16 @@ function loadPersistedInputs() {
     return parsed;
   } catch (_error) {
     return null;
+  }
+}
+
+function detectViewMode() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const raw = String(params.get(VIEW_MODE_QUERY_PARAM) || "").trim().toLowerCase();
+    return raw === VIEW_MODE_QUERY_VALUE || raw === "true" || raw === "view";
+  } catch (_error) {
+    return false;
   }
 }
 
