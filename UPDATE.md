@@ -230,6 +230,11 @@
   - PWA 오프라인 재진입 지원 내용을 기능 목록에 추가.
 - 앱 아이콘 보정:
   - PWA 아이콘(`192/512`) 내부의 원화 표기 배지를 제거해 심볼을 단순화.
+- 백업 UI 보정(PC/모바일 공통):
+  - 입력 헤더의 액션/백업 영역 구조를 `controls-head-tools` 래퍼로 재정렬해 PC에서 비정상 줄바꿈/정렬 이슈를 완화.
+  - 기존 상시 노출 백업 안내 문구를 제거하고, `?` 아이콘(`backupHelp`) 툴팁으로 전환.
+  - 툴팁에는 저장 위치(IndexedDB), 자동 백업 주기(12시간), 보관 개수(최대 60), 현재 백업 개수/최신 백업 시점, View 모드 제한 정보를 동적으로 노출.
+  - `inline-tip`은 hover뿐 아니라 click/focus에서도 표시되도록 상호작용 상태를 확장.
 
 ## 커밋 메시지 추천
 1. `fix: guard sankey tooltip visibility and hide on chart leave`

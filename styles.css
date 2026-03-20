@@ -168,6 +168,18 @@ main {
   font-size: 1.15rem;
 }
 
+.section-head--controls {
+  align-items: flex-start;
+}
+
+.controls-head-tools {
+  margin-left: auto;
+  min-width: min(620px, 100%);
+  display: grid;
+  gap: 8px;
+  justify-items: end;
+}
+
 .hint {
   margin: 0;
   color: var(--muted);
@@ -183,10 +195,10 @@ main {
 }
 
 .backup-tools {
-  margin-top: 8px;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
+  margin-top: 0;
+  display: grid;
+  grid-template-columns: auto minmax(240px, 300px) auto auto;
+  justify-content: end;
   align-items: center;
   gap: 8px;
 }
@@ -207,9 +219,11 @@ main {
   opacity: 0.6;
 }
 
-.backup-hint {
-  margin-top: 6px;
-  text-align: right;
+.backup-help-tip {
+  width: 24px;
+  height: 24px;
+  font-size: 0.76rem;
+  justify-self: end;
 }
 
 .mobile-input-toggle {
@@ -534,6 +548,8 @@ main {
 
 .inline-tip:hover::before,
 .inline-tip:hover::after,
+.inline-tip:focus::before,
+.inline-tip:focus::after,
 .inline-tip:focus-visible::before,
 .inline-tip:focus-visible::after {
   opacity: 1;
@@ -1206,6 +1222,12 @@ main {
     align-items: flex-start;
   }
 
+  .controls-head-tools {
+    width: 100%;
+    min-width: 0;
+    justify-items: stretch;
+  }
+
   .actions {
     width: 100%;
     display: grid;
@@ -1224,7 +1246,7 @@ main {
   .backup-tools {
     width: 100%;
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr) minmax(0, 1fr) auto;
     gap: 8px;
   }
 
@@ -1233,8 +1255,9 @@ main {
     width: 100%;
   }
 
-  .backup-hint {
-    text-align: left;
+  .backup-help-tip {
+    width: 28px;
+    height: 28px;
   }
 
   .floating-btn {

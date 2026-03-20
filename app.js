@@ -218,7 +218,7 @@ const dom = {
   backupNow: document.getElementById("backupNow"),
   backupSelect: document.getElementById("backupSelect"),
   restoreBackup: document.getElementById("restoreBackup"),
-  backupHint: document.getElementById("backupHint"),
+  backupHelp: document.getElementById("backupHelp"),
   loadSample: document.getElementById("loadSample"),
   resetInputs: document.getElementById("resetInputs"),
   addIncomeItem: document.getElementById("addIncomeItem"),
@@ -3646,26 +3646,33 @@ function formatBackupOptionText(entry) {
   return `${modeLabel} · ${formatBackupTimestamp(entry.createdAt)} · ${sourceLabel}`;
 }
 
-function buildBackupHintText(entries) {
+function buildBackupTooltipText(entries) {
   if (state.backupStoreError) {
-    return "백업 저장소 초기화에 실패했습니다. 브라우저 설정(시크릿/스토리지 차단) 확인이 필요합니다.";
+    return "백업 저장소 초기화에 실패했습니다. 브라우저 설정(시크릿 모드/스토리지 차단)을 확인하세요.";
   }
 
   if (!state.backupStoreReady) {
-    return "백업 저장소를 준비 중입니다.";
+    return "백업 저장소를 준비 중입니다. 잠시 후 자동/수동 백업을 사용할 수 있습니다.";
   }
+
+  const parts = [
+    "저장 위치: 이 브라우저 IndexedDB",
+    `보관 정책: 최신 ${MAX_BACKUP_ENTRIES}개`,
+    "자동 백업: 12시간 간격(일 2회)",
+    `현재 백업: ${entries.length}개`,
+  ];
 
   if (state.isViewMode) {
-    return "보기 모드에서는 자동/수동 백업이 중지됩니다. 좌측 저장 아이콘으로 로컬 저장 후 사용하세요.";
+    parts.push("보기 모드에서는 자동/수동 백업이 중지됩니다. 좌측 하단 저장 아이콘으로 일반 모드 전환 후 사용하세요.");
   }
 
-  if (!Array.isArray(entries) || entries.length === 0) {
-    return `로컬 백업 없음 · 자동 백업은 12시간 간격으로 최대 ${MAX_BACKUP_ENTRIES}개 보관됩니다.`;
+  if (Array.isArray(entries) && entries.length > 0) {
+    const latest = entries[0];
+    const latestMode = latest.type === "manual" ? "수동" : "자동";
+    parts.push(`최신 백업: ${latestMode} ${formatBackupTimestamp(latest.createdAt)}`);
   }
 
-  const latest = entries[0];
-  const latestMode = latest.type === "manual" ? "수동" : "자동";
-  return `로컬 백업 ${entries.length}개 · 최신 ${latestMode} ${formatBackupTimestamp(latest.createdAt)} · 자동 백업 12시간 간격`;
+  return parts.join(" · ");
 }
 
 function syncBackupUi() {
@@ -3678,7 +3685,13 @@ function syncBackupUi() {
 
     const placeholderOption = document.createElement("option");
     placeholderOption.value = "";
-    placeholderOption.textContent = hasEntries ? "백업 선택" : "백업 없음";
+    if (!state.backupStoreReady && !state.backupStoreError) {
+      placeholderOption.textContent = "백업 준비중";
+    } else if (state.backupStoreError) {
+      placeholderOption.textContent = "백업 사용 불가";
+    } else {
+      placeholderOption.textContent = hasEntries ? "백업 선택" : "백업 없음";
+    }
     dom.backupSelect.appendChild(placeholderOption);
 
     entries.forEach((entry) => {
@@ -3713,8 +3726,10 @@ function syncBackupUi() {
     dom.restoreBackup.disabled = !canUseBackupActions || !selectedBackupId;
   }
 
-  if (dom.backupHint) {
-    dom.backupHint.textContent = buildBackupHintText(entries);
+  if (dom.backupHelp) {
+    const tooltipText = buildBackupTooltipText(entries);
+    dom.backupHelp.setAttribute("data-tooltip", tooltipText);
+    dom.backupHelp.setAttribute("title", tooltipText);
   }
 }
 
