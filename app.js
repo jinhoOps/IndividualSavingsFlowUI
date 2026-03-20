@@ -7,6 +7,13 @@ const HASH_STATE_MAX_LENGTH = 6000;
 const VIEW_MODE_QUERY_PARAM = "view";
 const VIEW_MODE_QUERY_VALUE = "1";
 const VIEW_MODE_GUIDE_DISMISSED_KEY = "isf-view-guide-dismissed-v1";
+const BACKUP_STORAGE_KEY = "isf-local-backups-v1";
+const BACKUP_SCHEMA_VERSION = 1;
+const BACKUP_DB_NAME = "isf-backup-db-v1";
+const BACKUP_DB_VERSION = 1;
+const BACKUP_DB_STORE = "backupEntries";
+const AUTO_BACKUP_INTERVAL_MS = 12 * 60 * 60 * 1000;
+const MAX_BACKUP_ENTRIES = 60;
 const MAX_INCOME_ITEMS = 12;
 const MAX_ALLOCATION_ITEMS = 20;
 const SANKEY_VALUE_MODES = {
@@ -185,10 +192,19 @@ const currencyFormatter = new Intl.NumberFormat("ko-KR", {
   currency: "KRW",
   maximumFractionDigits: 0,
 });
+const backupTimestampFormatter = new Intl.DateTimeFormat("ko-KR", {
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+});
 
 const sankeyTextMeasureCanvas = document.createElement("canvas");
 const sankeyTextMeasureContext = sankeyTextMeasureCanvas.getContext("2d");
 const mobileLayoutMediaQuery = window.matchMedia(MOBILE_LAYOUT_QUERY);
+let backupDbPromise = null;
 
 const dom = {
   controlsPanel: document.querySelector(".controls-panel"),
@@ -199,6 +215,10 @@ const dom = {
   exportJson: document.getElementById("exportJson"),
   importJson: document.getElementById("importJson"),
   importJsonFile: document.getElementById("importJsonFile"),
+  backupNow: document.getElementById("backupNow"),
+  backupSelect: document.getElementById("backupSelect"),
+  restoreBackup: document.getElementById("restoreBackup"),
+  backupHint: document.getElementById("backupHint"),
   loadSample: document.getElementById("loadSample"),
   resetInputs: document.getElementById("resetInputs"),
   addIncomeItem: document.getElementById("addIncomeItem"),
@@ -262,6 +282,9 @@ const dom = {
 const state = {
   isViewMode: detectViewMode(),
   inputs: resolveInitialInputs(),
+  backupEntries: [],
+  backupStoreReady: false,
+  backupStoreError: false,
   draftInputs: null,
   applyFeedbackTimer: null,
   suspendInputTracking: false,
@@ -282,12 +305,15 @@ document.addEventListener("DOMContentLoaded", () => {
   bindControls();
   syncViewModeUi();
   syncViewModeGuideUi();
+  syncBackupUi();
   syncSankeyValueModeUi();
   syncSankeyZoomUi();
   refreshInputsPanel(state.inputs);
   setPendingBarVisible(false);
   renderAll();
   syncHashState(state.inputs);
+  initializeBackupStore();
+  registerServiceWorker();
   if (state.isViewMode) {
     showApplyFeedback("보기 모드로 열었습니다. 로컬 저장값은 변경되지 않습니다.");
   }
@@ -380,12 +406,13 @@ function bindControls() {
   }
 
   if (dom.saveViewToLocal) {
-    dom.saveViewToLocal.addEventListener("click", () => {
+    dom.saveViewToLocal.addEventListener("click", async () => {
       if (!state.isViewMode || !hasShareHashState()) {
         return;
       }
       const localInputs = sanitizeInputs(cloneInputs(getVisibleInputs()));
       persistInputs(localInputs);
+      await createBackupEntry(localInputs, { type: "manual", source: "view-save" });
       switchToNormalMode();
       showApplyFeedback("현재 보기 상태를 로컬 저장소에 저장하고 일반 모드로 전환했습니다.");
     });
@@ -432,6 +459,34 @@ function bindControls() {
           event.target.value = "";
         }
       }
+    });
+  }
+
+  if (dom.backupNow) {
+    dom.backupNow.addEventListener("click", async () => {
+      if (state.isViewMode) {
+        showApplyFeedback("보기 모드에서는 자동/수동 백업이 중지됩니다. 먼저 저장 아이콘으로 로컬 저장하세요.");
+        return;
+      }
+      if (!state.backupStoreReady) {
+        showApplyFeedback("백업 저장소를 준비 중입니다. 잠시 후 다시 시도하세요.");
+        return;
+      }
+      const inputs = sanitizeInputs(cloneInputs(getVisibleInputs()));
+      const result = await createBackupEntry(inputs, { type: "manual", source: "normal", allowDuplicate: true });
+      showApplyFeedback(result.created ? "로컬 백업을 저장했습니다." : "백업 저장에 실패했습니다.");
+    });
+  }
+
+  if (dom.restoreBackup) {
+    dom.restoreBackup.addEventListener("click", async () => {
+      await restoreSelectedBackup();
+    });
+  }
+
+  if (dom.backupSelect) {
+    dom.backupSelect.addEventListener("change", () => {
+      syncBackupUi();
     });
   }
 
@@ -946,6 +1001,7 @@ function syncViewModeUi() {
     dom.saveViewToLocal.hidden = !isViewLink;
     dom.saveViewToLocal.disabled = !isViewLink;
   }
+  syncBackupUi();
 }
 
 function syncViewModeGuideUi() {
@@ -1495,12 +1551,16 @@ function refreshInputsPanel(inputs) {
   });
 }
 
-function commitImmediateInputs(nextInputs) {
+function commitImmediateInputs(nextInputs, options = {}) {
+  const safeOptions = options && typeof options === "object" ? options : {};
   state.inputs = sanitizeInputs(nextInputs);
   state.draftInputs = null;
   setPendingBarVisible(false);
   refreshInputsPanel(state.inputs);
-  const hashSynced = persistPrimaryState(state.inputs);
+  const hashSynced = persistPrimaryState(state.inputs, {
+    skipAutoBackup: Boolean(safeOptions.skipAutoBackup),
+    reason: safeOptions.reason || "commit",
+  });
   renderAll();
   return hashSynced;
 }
@@ -3201,9 +3261,13 @@ function syncHashState(inputs) {
   return true;
 }
 
-function persistPrimaryState(inputs) {
+function persistPrimaryState(inputs, options = {}) {
+  const safeOptions = options && typeof options === "object" ? options : {};
   if (!state.isViewMode) {
     persistInputs(inputs);
+    if (!safeOptions.skipAutoBackup) {
+      void maybeCreateAutoBackupIfDue({ inputs, reason: safeOptions.reason || "persist" });
+    }
   }
   return syncHashState(inputs);
 }
@@ -3289,6 +3353,492 @@ function detectViewMode() {
   } catch (_error) {
     return false;
   }
+}
+
+function isIndexedDbAvailable() {
+  return typeof window !== "undefined" && typeof window.indexedDB !== "undefined";
+}
+
+function shouldUseServiceWorker() {
+  if (typeof window === "undefined") {
+    return false;
+  }
+  if (!("serviceWorker" in navigator)) {
+    return false;
+  }
+  if (window.location.protocol === "file:") {
+    return false;
+  }
+  if (window.location.protocol === "https:") {
+    return true;
+  }
+  const host = String(window.location.hostname || "").trim();
+  return host === "localhost" || host === "127.0.0.1";
+}
+
+function registerServiceWorker() {
+  if (!shouldUseServiceWorker()) {
+    return;
+  }
+  navigator.serviceWorker.register("./sw.js").catch(() => {
+    // Ignore registration errors to keep UI functional.
+  });
+}
+
+function initializeBackupStore() {
+  if (!isIndexedDbAvailable()) {
+    state.backupStoreError = true;
+    state.backupStoreReady = false;
+    syncBackupUi();
+    return;
+  }
+
+  void (async () => {
+    const loadedEntries = await loadBackupEntries();
+    if (loadedEntries === null) {
+      state.backupStoreError = true;
+      state.backupStoreReady = false;
+      syncBackupUi();
+      return;
+    }
+
+    state.backupEntries = loadedEntries;
+    state.backupStoreError = false;
+    state.backupStoreReady = true;
+    syncBackupUi();
+
+    await maybeCreateAutoBackupIfDue({ reason: "startup" });
+  })();
+}
+
+function getBackupDb() {
+  if (!isIndexedDbAvailable()) {
+    return Promise.reject(new Error("indexeddb-not-supported"));
+  }
+  if (backupDbPromise) {
+    return backupDbPromise;
+  }
+
+  backupDbPromise = new Promise((resolve, reject) => {
+    const request = window.indexedDB.open(BACKUP_DB_NAME, BACKUP_DB_VERSION);
+
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains(BACKUP_DB_STORE)) {
+        db.createObjectStore(BACKUP_DB_STORE, { keyPath: "id" });
+      }
+    };
+
+    request.onsuccess = () => {
+      const db = request.result;
+      db.onversionchange = () => {
+        db.close();
+        backupDbPromise = null;
+      };
+      resolve(db);
+    };
+
+    request.onerror = () => {
+      backupDbPromise = null;
+      reject(request.error || new Error("indexeddb-open-failed"));
+    };
+
+    request.onblocked = () => {
+      backupDbPromise = null;
+      reject(new Error("indexeddb-open-blocked"));
+    };
+  });
+
+  return backupDbPromise;
+}
+
+function idbRequestToPromise(request) {
+  return new Promise((resolve, reject) => {
+    request.onsuccess = () => {
+      resolve(request.result);
+    };
+    request.onerror = () => {
+      reject(request.error || new Error("indexeddb-request-failed"));
+    };
+  });
+}
+
+function idbTransactionDone(transaction) {
+  return new Promise((resolve, reject) => {
+    transaction.oncomplete = () => {
+      resolve();
+    };
+    transaction.onabort = () => {
+      reject(transaction.error || new Error("indexeddb-transaction-aborted"));
+    };
+    transaction.onerror = () => {
+      reject(transaction.error || new Error("indexeddb-transaction-failed"));
+    };
+  });
+}
+
+async function loadBackupEntries() {
+  const dbEntries = await loadBackupEntriesFromDb();
+  if (dbEntries === null) {
+    return null;
+  }
+  if (dbEntries.length > 0) {
+    return dbEntries;
+  }
+
+  const legacyEntries = loadLegacyBackupEntries();
+  if (legacyEntries.length === 0) {
+    return [];
+  }
+
+  const migrated = await persistBackupEntries(legacyEntries);
+  if (!migrated) {
+    return null;
+  }
+
+  clearLegacyBackupEntries();
+  return legacyEntries;
+}
+
+function loadLegacyBackupEntries() {
+  try {
+    const raw = localStorage.getItem(BACKUP_STORAGE_KEY);
+    if (!raw) {
+      return [];
+    }
+    const parsed = JSON.parse(raw);
+    const items = Array.isArray(parsed)
+      ? parsed
+      : Array.isArray(parsed?.items)
+        ? parsed.items
+        : [];
+    return normalizeBackupEntries(items);
+  } catch (_error) {
+    return [];
+  }
+}
+
+function clearLegacyBackupEntries() {
+  try {
+    localStorage.removeItem(BACKUP_STORAGE_KEY);
+  } catch (_error) {
+    // Ignore migration cleanup errors.
+  }
+}
+
+async function loadBackupEntriesFromDb() {
+  try {
+    const db = await getBackupDb();
+    const tx = db.transaction(BACKUP_DB_STORE, "readonly");
+    const done = idbTransactionDone(tx);
+    const store = tx.objectStore(BACKUP_DB_STORE);
+    const rawEntries = await idbRequestToPromise(store.getAll());
+    await done;
+    return normalizeBackupEntries(rawEntries);
+  } catch (_error) {
+    return null;
+  }
+}
+
+function normalizeBackupEntries(entries) {
+  return (Array.isArray(entries) ? entries : [])
+    .map((item) => normalizeBackupEntry(item))
+    .filter((item) => item !== null)
+    .sort((left, right) => getBackupTimestampMs(right) - getBackupTimestampMs(left))
+    .slice(0, MAX_BACKUP_ENTRIES);
+}
+
+async function persistBackupEntries(entries) {
+  const safeEntries = normalizeBackupEntries(entries).map((item) => ({
+    id: item.id,
+    type: item.type,
+    source: item.source,
+    createdAt: item.createdAt,
+    signature: item.signature,
+    data: sanitizeInputs(cloneInputs(item.data)),
+    app: SHARE_STATE_KEY,
+    schemaVersion: SHARE_STATE_SCHEMA,
+    backupSchemaVersion: BACKUP_SCHEMA_VERSION,
+  }));
+
+  try {
+    const db = await getBackupDb();
+    const tx = db.transaction(BACKUP_DB_STORE, "readwrite");
+    const done = idbTransactionDone(tx);
+    const store = tx.objectStore(BACKUP_DB_STORE);
+    store.clear();
+    safeEntries.forEach((item) => {
+      store.put(item);
+    });
+    await done;
+    return true;
+  } catch (_error) {
+    return false;
+  }
+}
+
+function normalizeBackupEntry(entry) {
+  if (!entry || typeof entry !== "object") {
+    return null;
+  }
+
+  const rawCreatedAt = typeof entry.createdAt === "string" ? entry.createdAt : "";
+  const createdMs = Date.parse(rawCreatedAt);
+  const createdAt = Number.isFinite(createdMs)
+    ? new Date(createdMs).toISOString()
+    : new Date().toISOString();
+
+  const inputs = parseStateEnvelope(entry.data);
+  if (!inputs) {
+    return null;
+  }
+
+  const id = typeof entry.id === "string" && entry.id.trim()
+    ? entry.id.trim()
+    : createBackupEntryId();
+  const type = entry.type === "manual" ? "manual" : "auto";
+  const source = entry.source === "view-save" ? "view-save" : "normal";
+  const signature = typeof entry.signature === "string" && entry.signature.trim()
+    ? entry.signature.trim()
+    : buildBackupSignature(inputs);
+
+  return {
+    id,
+    type,
+    source,
+    createdAt,
+    signature,
+    data: sanitizeInputs(cloneInputs(inputs)),
+  };
+}
+
+function createBackupEntryId() {
+  return `bkp-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function getBackupTimestampMs(entry) {
+  if (!entry || typeof entry !== "object") {
+    return 0;
+  }
+  const parsed = Date.parse(String(entry.createdAt || ""));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function buildBackupSignature(inputs) {
+  try {
+    return JSON.stringify(buildInputSignature(inputs));
+  } catch (_error) {
+    return "";
+  }
+}
+
+function formatBackupTimestamp(dateText) {
+  const parsed = Date.parse(String(dateText || ""));
+  if (!Number.isFinite(parsed)) {
+    return "-";
+  }
+  return backupTimestampFormatter.format(new Date(parsed));
+}
+
+function formatBackupOptionText(entry) {
+  const modeLabel = entry.type === "manual" ? "수동" : "자동";
+  const sourceLabel = entry.source === "view-save" ? "보기저장" : "일반";
+  return `${modeLabel} · ${formatBackupTimestamp(entry.createdAt)} · ${sourceLabel}`;
+}
+
+function buildBackupHintText(entries) {
+  if (state.backupStoreError) {
+    return "백업 저장소 초기화에 실패했습니다. 브라우저 설정(시크릿/스토리지 차단) 확인이 필요합니다.";
+  }
+
+  if (!state.backupStoreReady) {
+    return "백업 저장소를 준비 중입니다.";
+  }
+
+  if (state.isViewMode) {
+    return "보기 모드에서는 자동/수동 백업이 중지됩니다. 좌측 저장 아이콘으로 로컬 저장 후 사용하세요.";
+  }
+
+  if (!Array.isArray(entries) || entries.length === 0) {
+    return `로컬 백업 없음 · 자동 백업은 12시간 간격으로 최대 ${MAX_BACKUP_ENTRIES}개 보관됩니다.`;
+  }
+
+  const latest = entries[0];
+  const latestMode = latest.type === "manual" ? "수동" : "자동";
+  return `로컬 백업 ${entries.length}개 · 최신 ${latestMode} ${formatBackupTimestamp(latest.createdAt)} · 자동 백업 12시간 간격`;
+}
+
+function syncBackupUi() {
+  const entries = Array.isArray(state.backupEntries) ? state.backupEntries : [];
+  const hasEntries = entries.length > 0;
+
+  if (dom.backupSelect instanceof HTMLSelectElement) {
+    const previousValue = dom.backupSelect.value;
+    dom.backupSelect.innerHTML = "";
+
+    const placeholderOption = document.createElement("option");
+    placeholderOption.value = "";
+    placeholderOption.textContent = hasEntries ? "백업 선택" : "백업 없음";
+    dom.backupSelect.appendChild(placeholderOption);
+
+    entries.forEach((entry) => {
+      const option = document.createElement("option");
+      option.value = entry.id;
+      option.textContent = formatBackupOptionText(entry);
+      dom.backupSelect.appendChild(option);
+    });
+
+    if (hasEntries) {
+      const selectedValue = entries.some((entry) => entry.id === previousValue)
+        ? previousValue
+        : entries[0].id;
+      dom.backupSelect.value = selectedValue;
+    } else {
+      dom.backupSelect.value = "";
+    }
+  }
+
+  const selectedBackupId = dom.backupSelect instanceof HTMLSelectElement ? dom.backupSelect.value : "";
+  const canUseBackupActions = state.backupStoreReady && !state.isViewMode && hasEntries;
+
+  if (dom.backupNow) {
+    dom.backupNow.disabled = !state.backupStoreReady || state.isViewMode;
+  }
+
+  if (dom.backupSelect instanceof HTMLSelectElement) {
+    dom.backupSelect.disabled = !state.backupStoreReady || state.isViewMode || !hasEntries;
+  }
+
+  if (dom.restoreBackup) {
+    dom.restoreBackup.disabled = !canUseBackupActions || !selectedBackupId;
+  }
+
+  if (dom.backupHint) {
+    dom.backupHint.textContent = buildBackupHintText(entries);
+  }
+}
+
+async function createBackupEntry(inputs, options = {}) {
+  const safeOptions = options && typeof options === "object" ? options : {};
+  const safeType = safeOptions.type === "manual" ? "manual" : "auto";
+  const safeSource = safeOptions.source === "view-save" ? "view-save" : "normal";
+  const allowDuplicate = Boolean(safeOptions.allowDuplicate);
+
+  if (!state.backupStoreReady) {
+    return { created: false, reason: "store-not-ready" };
+  }
+
+  if (safeSource === "normal" && state.isViewMode) {
+    return { created: false, reason: "view-mode" };
+  }
+
+  const safeInputs = sanitizeInputs(cloneInputs(inputs));
+  const signature = buildBackupSignature(safeInputs);
+  const latestEntry = Array.isArray(state.backupEntries) && state.backupEntries.length > 0
+    ? state.backupEntries[0]
+    : null;
+
+  if (!allowDuplicate && latestEntry && latestEntry.signature === signature) {
+    return { created: false, reason: "duplicate" };
+  }
+
+  const nextEntry = {
+    id: createBackupEntryId(),
+    type: safeType,
+    source: safeSource,
+    createdAt: new Date().toISOString(),
+    signature,
+    data: safeInputs,
+  };
+
+  const nextEntries = [nextEntry, ...(Array.isArray(state.backupEntries) ? state.backupEntries : [])]
+    .slice(0, MAX_BACKUP_ENTRIES);
+
+  if (!await persistBackupEntries(nextEntries)) {
+    state.backupStoreError = true;
+    state.backupStoreReady = false;
+    syncBackupUi();
+    return { created: false, reason: "storage-error" };
+  }
+
+  state.backupEntries = nextEntries;
+  state.backupStoreError = false;
+  state.backupStoreReady = true;
+  syncBackupUi();
+  return { created: true, entry: nextEntry };
+}
+
+async function maybeCreateAutoBackupIfDue(options = {}) {
+  if (!state.backupStoreReady) {
+    return { created: false, reason: "store-not-ready" };
+  }
+
+  if (state.isViewMode) {
+    return { created: false, reason: "view-mode" };
+  }
+
+  const safeOptions = options && typeof options === "object" ? options : {};
+  const backupInputs = safeOptions.inputs && typeof safeOptions.inputs === "object"
+    ? safeOptions.inputs
+    : state.inputs;
+
+  const latestAuto = (Array.isArray(state.backupEntries) ? state.backupEntries : [])
+    .find((entry) => entry.type === "auto");
+  if (latestAuto) {
+    const elapsed = Date.now() - getBackupTimestampMs(latestAuto);
+    if (Number.isFinite(elapsed) && elapsed < AUTO_BACKUP_INTERVAL_MS) {
+      return { created: false, reason: "interval" };
+    }
+  }
+
+  return createBackupEntry(backupInputs, {
+    type: "auto",
+    source: "normal",
+    allowDuplicate: false,
+  });
+}
+
+async function restoreSelectedBackup() {
+  if (!state.backupStoreReady) {
+    showApplyFeedback("백업 저장소가 아직 준비되지 않았습니다.");
+    return;
+  }
+
+  if (state.isViewMode) {
+    showApplyFeedback("보기 모드에서는 복원을 사용할 수 없습니다. 로컬 저장 후 일반 모드에서 복원하세요.");
+    return;
+  }
+
+  if (!(dom.backupSelect instanceof HTMLSelectElement)) {
+    return;
+  }
+
+  const backupId = String(dom.backupSelect.value || "").trim();
+  if (!backupId) {
+    showApplyFeedback("복원할 백업을 선택하세요.");
+    return;
+  }
+
+  const entry = (Array.isArray(state.backupEntries) ? state.backupEntries : [])
+    .find((item) => item.id === backupId);
+  if (!entry) {
+    showApplyFeedback("선택한 백업을 찾을 수 없습니다.");
+    syncBackupUi();
+    return;
+  }
+
+  const confirmed = window.confirm(
+    `선택한 백업(${formatBackupTimestamp(entry.createdAt)})으로 복원할까요? 현재 상태는 복원 전에 수동 백업됩니다.`,
+  );
+  if (!confirmed) {
+    return;
+  }
+
+  await createBackupEntry(state.inputs, { type: "manual", source: "normal", allowDuplicate: true });
+  const hashSynced = commitImmediateInputs(entry.data, { skipAutoBackup: true });
+  showApplyFeedback(hashSynced
+    ? "선택한 백업으로 복원했습니다."
+    : "백업 복원 완료 · 링크 길이 초과로 해시 저장은 생략되었습니다.");
 }
 
 function roundTo(value, digit) {

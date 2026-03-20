@@ -194,6 +194,43 @@
   - 사용자 노출 문구에서 `생키차트/생키다이어그램` 표현을 `Sankey Diagram`으로 통일.
   - 적용 범위: 메인 화면 제목/접근성 라벨, README 기능 설명, TODO 진행/버그 항목.
 
+### 2026-03-16
+- 로컬 자동백업/복원 기능 추가:
+  - 입력값 액션 아래에 `백업 저장 / 백업 선택 / 선택 복원` UI를 추가.
+  - 백업은 `localStorage(isf-local-backups-v1)`에 저장되며, 자동백업은 `12시간 간격`으로 실행.
+  - 보관 개수는 최대 `60개`로 제한하고, 최신순으로 유지.
+  - 복원 시 현재 상태를 먼저 수동 백업한 뒤 선택 백업으로 롤백하도록 구성.
+- View 모드 데이터 보호 강화:
+  - View 모드(`?view=1`)에서는 자동/수동 백업이 중지되도록 가드 추가.
+  - View 모드에서 `저장` 버튼으로 로컬 저장 시, 일반 모드 전환과 함께 수동 백업(출처: view-save)을 같이 남기도록 보강.
+- 상태 저장 흐름 확장:
+  - `persistPrimaryState`에 자동백업 체크를 통합해 `적용/샘플/초기화/JSON 불러오기/해시 반영` 등 상태 반영 경로에서 동일 정책을 사용.
+  - `commitImmediateInputs`에 옵션을 추가해 백업 복원 시 자동백업 중복 생성은 건너뛸 수 있도록 처리.
+- 문서 업데이트:
+  - `README.md`에 자동백업/복원 기능과 View 링크 데이터 보호 동작을 반영.
+  - 브라우저 보안 정책상 임의 파일 자동 저장은 불가하며, 자동백업은 브라우저 로컬 저장소 기반임을 명시.
+
+### 2026-03-20
+- TODO 조정:
+  - `TODO.md`의 `PWA 적용` 단일 항목을 아래 2개 항목으로 분리/교체.
+  - `PWA 오프라인 캐시(Service Worker + manifest) 적용`
+  - `백업 저장소 localStorage -> IndexedDB 확장(기존 백업 마이그레이션 포함)`
+- PWA 적용:
+  - `manifest.webmanifest` 추가(`start_url/scope/display/theme/icon` 설정).
+  - `sw.js` 추가: 앱 셸 캐시(install), 구버전 캐시 정리(activate), 네비게이션 network-first + 정적 리소스 cache-first 전략 적용.
+  - `index.html` head에 `manifest/theme-color/icon` 링크를 연결.
+  - `app.js`에서 HTTP(S) 환경일 때만 서비스워커 등록하도록 추가(`file://` 실행 경로는 자동 제외).
+- 백업 저장소 IndexedDB 전환:
+  - 백업 저장소를 `IndexedDB(isf-backup-db-v1 / backupEntries)`로 전환.
+  - 기존 `localStorage(isf-local-backups-v1)` 백업이 있으면 첫 초기화 시 자동 마이그레이션 후 legacy 키 제거.
+  - 백업 로직을 비동기 처리로 변경(수동 백업/복원/자동 백업).
+  - 저장소 준비 전/실패 상태를 UI 힌트에 반영하고 버튼 활성 조건에 적용.
+- 문서 반영:
+  - `README.md`의 백업 저장소 설명을 `IndexedDB` 기준으로 갱신.
+  - PWA 오프라인 재진입 지원 내용을 기능 목록에 추가.
+- 앱 아이콘 보정:
+  - PWA 아이콘(`192/512`) 내부의 원화 표기 배지를 제거해 심볼을 단순화.
+
 ## 커밋 메시지 추천
 1. `fix: guard sankey tooltip visibility and hide on chart leave`
 2. `fix: show advanced editor action buttons only when item changes exist`

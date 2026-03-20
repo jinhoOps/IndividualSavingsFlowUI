@@ -182,6 +182,36 @@ main {
   gap: 8px;
 }
 
+.backup-tools {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+}
+
+.backup-select {
+  min-width: 220px;
+  max-width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font: inherit;
+  font-size: 0.82rem;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.backup-select:disabled {
+  opacity: 0.6;
+}
+
+.backup-hint {
+  margin-top: 6px;
+  text-align: right;
+}
+
 .mobile-input-toggle {
   display: none;
   margin-left: 8px;
@@ -1189,6 +1219,22 @@ main {
 
   .actions .btn {
     width: 100%;
+  }
+
+  .backup-tools {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .backup-select {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .backup-hint {
+    text-align: left;
   }
 
   .floating-btn {

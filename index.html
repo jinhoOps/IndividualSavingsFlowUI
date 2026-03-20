@@ -8,6 +8,10 @@
       name="description"
       content="개인 자산 흐름 프로젝트의 1단계로, 월 가계 흐름을 카드와 단일 Sankey Diagram으로 보여주는 UI"
     />
+    <meta name="theme-color" content="#ea5b2a" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="icons/icon-192.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="icons/icon-192.svg" />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -150,6 +154,12 @@
               <button id="loadSample" class="btn btn-primary" type="button">샘플</button>
               <button id="resetInputs" class="btn btn-ghost" type="button">초기화</button>
             </div>
+            <div class="backup-tools" role="group" aria-label="로컬 백업 관리">
+              <button id="backupNow" class="btn btn-ghost btn-sm" type="button">백업 저장</button>
+              <select id="backupSelect" class="backup-select" aria-label="로컬 백업 선택"></select>
+              <button id="restoreBackup" class="btn btn-ghost btn-sm" type="button">선택 복원</button>
+            </div>
+            <p id="backupHint" class="hint backup-hint" aria-live="polite"></p>
           </div>
           <input id="importJsonFile" type="file" accept=".json,application/json" hidden />
           <div id="inputsPanelContent">
