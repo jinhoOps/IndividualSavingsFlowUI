@@ -13,6 +13,7 @@ const BACKUP_DB_NAME = "isf-backup-db-v1";
 const BACKUP_DB_VERSION = 1;
 const BACKUP_DB_STORE = "backupEntries";
 const AUTO_BACKUP_INTERVAL_MS = 12 * 60 * 60 * 1000;
+const MANUAL_BACKUP_WINDOW_MS = 60 * 1000;
 const MAX_BACKUP_ENTRIES = 60;
 const MAX_INCOME_ITEMS = 12;
 const MAX_ALLOCATION_ITEMS = 20;
@@ -215,6 +216,8 @@ const dom = {
   exportJson: document.getElementById("exportJson"),
   importJson: document.getElementById("importJson"),
   importJsonFile: document.getElementById("importJsonFile"),
+  backupMenu: document.getElementById("backupMenu"),
+  moreActionsMenu: document.getElementById("moreActionsMenu"),
   backupNow: document.getElementById("backupNow"),
   backupSelect: document.getElementById("backupSelect"),
   restoreBackup: document.getElementById("restoreBackup"),
@@ -319,7 +322,50 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 });
 
+function closeActionMenus() {
+  if (dom.backupMenu instanceof HTMLDetailsElement) {
+    dom.backupMenu.open = false;
+  }
+  if (dom.moreActionsMenu instanceof HTMLDetailsElement) {
+    dom.moreActionsMenu.open = false;
+  }
+}
+
+function bindActionMenus() {
+  if (dom.backupMenu instanceof HTMLDetailsElement) {
+    dom.backupMenu.addEventListener("toggle", () => {
+      if (dom.backupMenu.open && dom.moreActionsMenu instanceof HTMLDetailsElement) {
+        dom.moreActionsMenu.open = false;
+      }
+    });
+  }
+
+  if (dom.moreActionsMenu instanceof HTMLDetailsElement) {
+    dom.moreActionsMenu.addEventListener("toggle", () => {
+      if (dom.moreActionsMenu.open && dom.backupMenu instanceof HTMLDetailsElement) {
+        dom.backupMenu.open = false;
+      }
+    });
+  }
+
+  document.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!(target instanceof Node)) {
+      return;
+    }
+    if (!(dom.controlsPanel instanceof HTMLElement)) {
+      return;
+    }
+    if (dom.controlsPanel.contains(target)) {
+      return;
+    }
+    closeActionMenus();
+  });
+}
+
 function bindControls() {
+  bindActionMenus();
+
   if (dom.inputsForm) {
     const handleInput = (event) => {
       if (state.suspendInputTracking) {
@@ -396,12 +442,14 @@ function bindControls() {
         if (navigator.clipboard?.writeText) {
           await navigator.clipboard.writeText(shareLink);
           showApplyFeedback("보기 모드 링크를 복사했습니다.");
+          closeActionMenus();
           return;
         }
       } catch (_error) {
         // Fallback below.
       }
       window.prompt("아래 보기 모드 링크를 복사해 공유하세요.", shareLink);
+      closeActionMenus();
     });
   }
 
@@ -428,6 +476,7 @@ function bindControls() {
     dom.exportJson.addEventListener("click", () => {
       exportInputsAsJson(state.inputs);
       showApplyFeedback("JSON 백업 파일을 저장했습니다.");
+      closeActionMenus();
     });
   }
 
@@ -436,6 +485,7 @@ function bindControls() {
       if (dom.importJsonFile) {
         dom.importJsonFile.click();
       }
+      closeActionMenus();
     });
   }
 
@@ -473,14 +523,38 @@ function bindControls() {
         return;
       }
       const inputs = sanitizeInputs(cloneInputs(getVisibleInputs()));
-      const result = await createBackupEntry(inputs, { type: "manual", source: "normal", allowDuplicate: true });
-      showApplyFeedback(result.created ? "로컬 백업을 저장했습니다." : "백업 저장에 실패했습니다.");
+      const result = await createBackupEntry(inputs, {
+        type: "manual",
+        source: "normal",
+        allowDuplicate: true,
+        replaceRecentManualWithinMs: MANUAL_BACKUP_WINDOW_MS,
+        promptOnRecentManualOverwrite: true,
+      });
+
+      if (result.created) {
+        showApplyFeedback(result.replaced ? "최근 1분 수동 백업을 덮어썼습니다." : "로컬 백업을 저장했습니다.");
+        closeActionMenus();
+        return;
+      }
+
+      if (result.reason === "overwrite-cancelled") {
+        showApplyFeedback("백업 저장을 취소했습니다.");
+        return;
+      }
+
+      if (result.reason === "duplicate-recent") {
+        showApplyFeedback("1분 이내 동일 내용 백업이 이미 있습니다.");
+        return;
+      }
+
+      showApplyFeedback("백업 저장에 실패했습니다.");
     });
   }
 
   if (dom.restoreBackup) {
     dom.restoreBackup.addEventListener("click", async () => {
       await restoreSelectedBackup();
+      closeActionMenus();
     });
   }
 
@@ -854,12 +928,14 @@ function bindControls() {
   if (dom.loadSample) {
     dom.loadSample.addEventListener("click", () => {
       commitImmediateInputs({ ...SAMPLE_INPUTS });
+      closeActionMenus();
     });
   }
 
   if (dom.resetInputs) {
     dom.resetInputs.addEventListener("click", () => {
       commitImmediateInputs(createResetInputs(DEFAULT_INPUTS));
+      closeActionMenus();
     });
   }
 
@@ -3659,6 +3735,7 @@ function buildBackupTooltipText(entries) {
     "저장 위치: 이 브라우저 IndexedDB",
     `보관 정책: 최신 ${MAX_BACKUP_ENTRIES}개`,
     "자동 백업: 12시간 간격(일 2회)",
+    "수동 백업: 1분당 1개(1분 내 재저장 시 덮어쓰기)",
     `현재 백업: ${entries.length}개`,
   ];
 
@@ -3738,6 +3815,8 @@ async function createBackupEntry(inputs, options = {}) {
   const safeType = safeOptions.type === "manual" ? "manual" : "auto";
   const safeSource = safeOptions.source === "view-save" ? "view-save" : "normal";
   const allowDuplicate = Boolean(safeOptions.allowDuplicate);
+  const replaceRecentManualWithinMs = Math.max(0, Number(safeOptions.replaceRecentManualWithinMs) || 0);
+  const promptOnRecentManualOverwrite = Boolean(safeOptions.promptOnRecentManualOverwrite);
 
   if (!state.backupStoreReady) {
     return { created: false, reason: "store-not-ready" };
@@ -3749,6 +3828,53 @@ async function createBackupEntry(inputs, options = {}) {
 
   const safeInputs = sanitizeInputs(cloneInputs(inputs));
   const signature = buildBackupSignature(safeInputs);
+  const entries = Array.isArray(state.backupEntries) ? state.backupEntries : [];
+
+  if (safeType === "manual" && replaceRecentManualWithinMs > 0) {
+    const latestManualEntry = entries.find((entry) => entry.type === "manual" && entry.source === safeSource);
+    if (latestManualEntry) {
+      const elapsed = Date.now() - getBackupTimestampMs(latestManualEntry);
+      if (Number.isFinite(elapsed) && elapsed >= 0 && elapsed < replaceRecentManualWithinMs) {
+        if (latestManualEntry.signature === signature) {
+          return { created: false, reason: "duplicate-recent" };
+        }
+
+        if (promptOnRecentManualOverwrite) {
+          const shouldOverwrite = window.confirm(
+            "최근 1분 이내 수동 백업이 있습니다. 기존 백업을 덮어쓸까요?",
+          );
+          if (!shouldOverwrite) {
+            return { created: false, reason: "overwrite-cancelled" };
+          }
+        }
+
+        const replacedEntry = {
+          ...latestManualEntry,
+          createdAt: new Date().toISOString(),
+          signature,
+          data: safeInputs,
+        };
+        const nextEntries = normalizeBackupEntries([
+          replacedEntry,
+          ...entries.filter((entry) => entry.id !== latestManualEntry.id),
+        ]);
+
+        if (!await persistBackupEntries(nextEntries)) {
+          state.backupStoreError = true;
+          state.backupStoreReady = false;
+          syncBackupUi();
+          return { created: false, reason: "storage-error" };
+        }
+
+        state.backupEntries = nextEntries;
+        state.backupStoreError = false;
+        state.backupStoreReady = true;
+        syncBackupUi();
+        return { created: true, entry: replacedEntry, replaced: true };
+      }
+    }
+  }
+
   const latestEntry = Array.isArray(state.backupEntries) && state.backupEntries.length > 0
     ? state.backupEntries[0]
     : null;
@@ -3766,8 +3892,7 @@ async function createBackupEntry(inputs, options = {}) {
     data: safeInputs,
   };
 
-  const nextEntries = [nextEntry, ...(Array.isArray(state.backupEntries) ? state.backupEntries : [])]
-    .slice(0, MAX_BACKUP_ENTRIES);
+  const nextEntries = [nextEntry, ...entries].slice(0, MAX_BACKUP_ENTRIES);
 
   if (!await persistBackupEntries(nextEntries)) {
     state.backupStoreError = true;

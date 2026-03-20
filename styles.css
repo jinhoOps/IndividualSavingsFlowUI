@@ -194,6 +194,51 @@ main {
   gap: 8px;
 }
 
+.actions--primary {
+  align-items: flex-start;
+}
+
+.action-menu {
+  position: relative;
+}
+
+.action-menu > summary {
+  list-style: none;
+}
+
+.action-menu > summary::-webkit-details-marker {
+  display: none;
+}
+
+.action-menu-panel {
+  margin-top: 8px;
+  padding: 10px;
+  border: 1px solid rgba(16, 34, 32, 0.14);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 10px 24px rgba(16, 34, 32, 0.12);
+  min-width: min(520px, 86vw);
+  display: none;
+}
+
+.action-menu[open] .action-menu-panel {
+  display: grid;
+  gap: 8px;
+}
+
+.action-menu-panel--more {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  min-width: min(360px, 76vw);
+}
+
+.action-menu-panel--more .btn {
+  width: 100%;
+}
+
+.action-menu-panel.backup-tools {
+  min-width: min(560px, 90vw);
+}
+
 .backup-tools {
   margin-top: 0;
   display: grid;
@@ -1235,6 +1280,10 @@ main {
     gap: 8px;
   }
 
+  .actions--primary {
+    align-items: stretch;
+  }
+
   .controls-panel.is-mobile-collapsed .actions {
     margin-top: 2px;
   }
@@ -1243,11 +1292,29 @@ main {
     width: 100%;
   }
 
+  .action-menu {
+    width: 100%;
+  }
+
+  .action-menu > summary.btn {
+    width: 100%;
+  }
+
+  .action-menu-panel {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .action-menu-panel--more {
+    grid-template-columns: 1fr;
+  }
+
   .backup-tools {
     width: 100%;
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr) minmax(0, 1fr) auto;
+    grid-template-columns: 1fr;
     gap: 8px;
+    justify-content: stretch;
   }
 
   .backup-select {
@@ -1258,6 +1325,7 @@ main {
   .backup-help-tip {
     width: 28px;
     height: 28px;
+    justify-self: start;
   }
 
   .floating-btn {

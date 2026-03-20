@@ -148,26 +148,34 @@
               </button>
             </h2>
             <div class="controls-head-tools">
-              <div class="actions">
+              <div class="actions actions--primary">
                 <button id="copyShareLink" class="btn btn-ghost" type="button">링크 복사</button>
-                <button id="exportJson" class="btn btn-ghost" type="button">JSON 저장</button>
-                <button id="importJson" class="btn btn-ghost" type="button">JSON 불러오기</button>
-                <button id="loadSample" class="btn btn-primary" type="button">샘플</button>
-                <button id="resetInputs" class="btn btn-ghost" type="button">초기화</button>
-              </div>
-              <div class="backup-tools" role="group" aria-label="로컬 백업 관리">
-                <button id="backupNow" class="btn btn-ghost btn-sm" type="button">백업 저장</button>
-                <select id="backupSelect" class="backup-select" aria-label="로컬 백업 선택"></select>
-                <button id="restoreBackup" class="btn btn-ghost btn-sm" type="button">선택 복원</button>
-                <button
-                  id="backupHelp"
-                  class="inline-tip backup-help-tip"
-                  type="button"
-                  aria-label="백업 안내"
-                  data-tooltip="백업 안내를 불러오는 중입니다."
-                >
-                  ?
-                </button>
+                <details id="backupMenu" class="action-menu">
+                  <summary class="btn btn-ghost">백업</summary>
+                  <div class="action-menu-panel backup-tools" role="group" aria-label="로컬 백업 관리">
+                    <button id="backupNow" class="btn btn-ghost btn-sm" type="button">백업 저장</button>
+                    <select id="backupSelect" class="backup-select" aria-label="로컬 백업 선택"></select>
+                    <button id="restoreBackup" class="btn btn-ghost btn-sm" type="button">선택 복원</button>
+                    <button
+                      id="backupHelp"
+                      class="inline-tip backup-help-tip"
+                      type="button"
+                      aria-label="백업 안내"
+                      data-tooltip="백업 안내를 불러오는 중입니다."
+                    >
+                      ?
+                    </button>
+                  </div>
+                </details>
+                <details id="moreActionsMenu" class="action-menu">
+                  <summary class="btn btn-ghost">더보기</summary>
+                  <div class="action-menu-panel action-menu-panel--more" role="group" aria-label="추가 입력값 액션">
+                    <button id="exportJson" class="btn btn-ghost" type="button">JSON 저장</button>
+                    <button id="importJson" class="btn btn-ghost" type="button">JSON 불러오기</button>
+                    <button id="loadSample" class="btn btn-primary" type="button">샘플</button>
+                    <button id="resetInputs" class="btn btn-ghost" type="button">초기화</button>
+                  </div>
+                </details>
               </div>
             </div>
           </div>
