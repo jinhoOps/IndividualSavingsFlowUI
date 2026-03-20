@@ -198,6 +198,12 @@ main {
   align-items: flex-start;
 }
 
+.actions--primary .btn {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .action-menu {
   position: relative;
 }
@@ -206,12 +212,21 @@ main {
   list-style: none;
 }
 
+.action-menu > summary.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .action-menu > summary::-webkit-details-marker {
   display: none;
 }
 
 .action-menu-panel {
-  margin-top: 8px;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  margin-top: 0;
   padding: 10px;
   border: 1px solid rgba(16, 34, 32, 0.14);
   border-radius: 12px;
@@ -236,13 +251,14 @@ main {
 }
 
 .action-menu-panel.backup-tools {
-  min-width: min(560px, 90vw);
+  min-width: min(680px, 92vw);
+  width: min(680px, 92vw);
 }
 
 .backup-tools {
   margin-top: 0;
   display: grid;
-  grid-template-columns: auto minmax(240px, 300px) auto auto;
+  grid-template-columns: auto minmax(300px, 1fr) auto auto;
   justify-content: end;
   align-items: center;
   gap: 8px;
@@ -257,11 +273,18 @@ main {
   font: inherit;
   font-size: 0.82rem;
   color: var(--ink);
+  -webkit-text-fill-color: var(--ink);
+  line-height: 1.35;
   background: rgba(255, 255, 255, 0.92);
 }
 
 .backup-select:disabled {
   opacity: 0.6;
+}
+
+.backup-select option {
+  color: var(--ink);
+  background: #ffffff;
 }
 
 .backup-help-tip {
@@ -1282,6 +1305,11 @@ main {
 
   .actions--primary {
     align-items: stretch;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .actions--primary .action-menu:last-child {
+    grid-column: 1 / -1;
   }
 
   .controls-panel.is-mobile-collapsed .actions {
@@ -1302,6 +1330,10 @@ main {
 
   .action-menu-panel {
     min-width: 0;
+    position: static;
+    top: auto;
+    right: auto;
+    margin-top: 8px;
     width: 100%;
   }
 

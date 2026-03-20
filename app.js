@@ -3716,10 +3716,24 @@ function formatBackupTimestamp(dateText) {
   return backupTimestampFormatter.format(new Date(parsed));
 }
 
-function formatBackupOptionText(entry) {
+function formatBackupTimestampCompact(dateText) {
+  const parsed = Date.parse(String(dateText || ""));
+  if (!Number.isFinite(parsed)) {
+    return "--:--";
+  }
+  const safeDate = new Date(parsed);
+  const month = String(safeDate.getMonth() + 1).padStart(2, "0");
+  const day = String(safeDate.getDate()).padStart(2, "0");
+  const hour = String(safeDate.getHours()).padStart(2, "0");
+  const minute = String(safeDate.getMinutes()).padStart(2, "0");
+  return `${month}-${day} ${hour}:${minute}`;
+}
+
+function formatBackupOptionText(entry, index = 0) {
   const modeLabel = entry.type === "manual" ? "수동" : "자동";
-  const sourceLabel = entry.source === "view-save" ? "보기저장" : "일반";
-  return `${modeLabel} · ${formatBackupTimestamp(entry.createdAt)} · ${sourceLabel}`;
+  const sourceLabel = entry.source === "view-save" ? "보기" : "일반";
+  const sequence = index + 1;
+  return `#${sequence} ${modeLabel} ${formatBackupTimestampCompact(entry.createdAt)} ${sourceLabel}`;
 }
 
 function buildBackupTooltipText(entries) {
@@ -3771,10 +3785,10 @@ function syncBackupUi() {
     }
     dom.backupSelect.appendChild(placeholderOption);
 
-    entries.forEach((entry) => {
+    entries.forEach((entry, index) => {
       const option = document.createElement("option");
       option.value = entry.id;
-      option.textContent = formatBackupOptionText(entry);
+      option.textContent = formatBackupOptionText(entry, index);
       dom.backupSelect.appendChild(option);
     });
 
