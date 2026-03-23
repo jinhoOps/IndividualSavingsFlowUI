@@ -235,6 +235,7 @@
                 <button id="advancedTabExpense" class="advanced-tab is-active" type="button" role="tab" aria-selected="true" aria-controls="expenseAdvancedBlock" data-advanced-tab="expense">생활비</button>
                 <button id="advancedTabSavings" class="advanced-tab" type="button" role="tab" aria-selected="false" aria-controls="savingsAdvancedBlock" data-advanced-tab="savings">저축</button>
                 <button id="advancedTabInvest" class="advanced-tab" type="button" role="tab" aria-selected="false" aria-controls="investAdvancedBlock" data-advanced-tab="invest">투자</button>
+                <button id="advancedTabRates" class="advanced-tab advanced-tab--mobile-only" type="button" role="tab" aria-selected="false" aria-controls="ratesAdvancedBlock" data-advanced-tab="rates">수익률</button>
               </div>
               <div id="expenseAdvancedBlock" class="controls-block" data-advanced-block="expense">
                 <div class="block-head">
@@ -282,52 +283,55 @@
               <datalist id="expenseGroupOptions"></datalist>
               <datalist id="savingsGroupOptions"></datalist>
               <datalist id="investGroupOptions"></datalist>
-              <div class="controls-grid controls-grid--advanced">
-                <div class="control">
-                  <label for="startCash">초기 현금</label>
-                  <input id="startCash" name="startCash" type="number" min="0" step="1" />
-                </div>
-                <div class="control">
-                  <label for="startSavings">초기 저축잔액</label>
-                  <input id="startSavings" name="startSavings" type="number" min="0" step="1" />
-                </div>
-                <div class="control">
-                  <label for="startInvest">초기 투자잔액</label>
-                  <input id="startInvest" name="startInvest" type="number" min="0" step="1" />
-                </div>
-                <div class="control">
-                  <label for="startDebt">초기 부채</label>
-                  <input id="startDebt" name="startDebt" type="number" min="0" step="1" />
-                </div>
-                <div class="control">
-                  <label for="annualIncomeGrowth">수입 증가율(연, %)</label>
-                  <input id="annualIncomeGrowth" name="annualIncomeGrowth" type="number" min="0" max="30" step="0.1" />
-                </div>
-                <div class="control">
-                  <label for="annualExpenseGrowth">생활비 증가율(연, %, 기준금리)</label>
-                  <input id="annualExpenseGrowth" name="annualExpenseGrowth" type="number" min="0" max="30" step="0.1" />
-                </div>
-                <div class="control">
-                  <div class="label-row">
-                    <label for="annualSavingsYield">저축 기본 수익률(연, %, 항목 기본값)</label>
-                    <button
-                      type="button"
-                      class="inline-tip"
-                      aria-label="저축 기본 수익률 설명"
-                      data-tooltip="저축 상세 항목의 연 이자율을 비워둔 항목에 적용됩니다."
-                    >
-                      ?
-                    </button>
+              <div id="ratesAdvancedBlock" class="controls-block controls-block--rates">
+                <h3>초기자산 / 증가율 / 수익률</h3>
+                <div class="controls-grid controls-grid--advanced">
+                  <div class="control">
+                    <label for="startCash">초기 현금</label>
+                    <input id="startCash" name="startCash" type="number" min="0" step="1" />
                   </div>
-                  <input id="annualSavingsYield" name="annualSavingsYield" type="number" min="0" max="20" step="0.1" placeholder="저축기본수익률" />
-                </div>
-                <div class="control">
-                  <label for="annualInvestReturn">투자 수익률(연, %)</label>
-                  <input id="annualInvestReturn" name="annualInvestReturn" type="number" min="0" max="30" step="0.1" />
-                </div>
-                <div class="control">
-                  <label for="annualDebtInterest">부채 이자율(연, %)</label>
-                  <input id="annualDebtInterest" name="annualDebtInterest" type="number" min="0" max="30" step="0.1" />
+                  <div class="control">
+                    <label for="startSavings">초기 저축잔액</label>
+                    <input id="startSavings" name="startSavings" type="number" min="0" step="1" />
+                  </div>
+                  <div class="control">
+                    <label for="startInvest">초기 투자잔액</label>
+                    <input id="startInvest" name="startInvest" type="number" min="0" step="1" />
+                  </div>
+                  <div class="control">
+                    <label for="startDebt">초기 부채</label>
+                    <input id="startDebt" name="startDebt" type="number" min="0" step="1" />
+                  </div>
+                  <div class="control">
+                    <label for="annualIncomeGrowth">수입 증가율(연, %)</label>
+                    <input id="annualIncomeGrowth" name="annualIncomeGrowth" type="number" min="0" max="30" step="0.1" />
+                  </div>
+                  <div class="control">
+                    <label for="annualExpenseGrowth">생활비 증가율(연, %, 기준금리)</label>
+                    <input id="annualExpenseGrowth" name="annualExpenseGrowth" type="number" min="0" max="30" step="0.1" />
+                  </div>
+                  <div class="control">
+                    <div class="label-row">
+                      <label for="annualSavingsYield">저축 기본 수익률(연, %, 항목 기본값)</label>
+                      <button
+                        type="button"
+                        class="inline-tip"
+                        aria-label="저축 기본 수익률 설명"
+                        data-tooltip="저축 상세 항목의 연 이자율을 비워둔 항목에 적용됩니다."
+                      >
+                        ?
+                      </button>
+                    </div>
+                    <input id="annualSavingsYield" name="annualSavingsYield" type="number" min="0" max="20" step="0.1" placeholder="저축기본수익률" />
+                  </div>
+                  <div class="control">
+                    <label for="annualInvestReturn">투자 수익률(연, %)</label>
+                    <input id="annualInvestReturn" name="annualInvestReturn" type="number" min="0" max="30" step="0.1" />
+                  </div>
+                  <div class="control">
+                    <label for="annualDebtInterest">부채 이자율(연, %)</label>
+                    <input id="annualDebtInterest" name="annualDebtInterest" type="number" min="0" max="30" step="0.1" />
+                  </div>
                 </div>
               </div>
             </details>

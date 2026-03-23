@@ -270,9 +270,11 @@ const dom = {
   advancedTabExpense: document.getElementById("advancedTabExpense"),
   advancedTabSavings: document.getElementById("advancedTabSavings"),
   advancedTabInvest: document.getElementById("advancedTabInvest"),
+  advancedTabRates: document.getElementById("advancedTabRates"),
   expenseAdvancedBlock: document.getElementById("expenseAdvancedBlock"),
   savingsAdvancedBlock: document.getElementById("savingsAdvancedBlock"),
   investAdvancedBlock: document.getElementById("investAdvancedBlock"),
+  ratesAdvancedBlock: document.getElementById("ratesAdvancedBlock"),
   expenseSortMode: document.getElementById("expenseSortMode"),
   savingsSortMode: document.getElementById("savingsSortMode"),
   investSortMode: document.getElementById("investSortMode"),
@@ -450,6 +452,15 @@ function bindControls() {
   if (dom.advancedTabInvest) {
     dom.advancedTabInvest.addEventListener("click", () => {
       navigateToAdvancedGroup("invest", {
+        scroll: false,
+        focusEditButton: false,
+        showFeedback: false,
+      });
+    });
+  }
+  if (dom.advancedTabRates) {
+    dom.advancedTabRates.addEventListener("click", () => {
+      navigateToAdvancedGroup("rates", {
         scroll: false,
         focusEditButton: false,
         showFeedback: false,
@@ -1152,6 +1163,9 @@ function bindMobileLayoutWatcher() {
   const handleMobileLayoutChange = () => {
     if (!mobileLayoutMediaQuery.matches) {
       state.mobileInputsCollapsed = false;
+      if (state.activeAdvancedTab === "rates") {
+        setActiveAdvancedTab("expense");
+      }
     }
     syncMobileInputsPanelVisibility();
     syncAdvancedTabBlockVisibility();
@@ -1443,13 +1457,14 @@ function syncItemSortModeUi() {
 }
 
 function setActiveAdvancedTab(groupKey) {
-  const safeGroupKey = ["expense", "savings", "invest"].includes(groupKey) ? groupKey : "expense";
+  const safeGroupKey = ["expense", "savings", "invest", "rates"].includes(groupKey) ? groupKey : "expense";
   state.activeAdvancedTab = safeGroupKey;
 
   const tabMap = {
     expense: dom.advancedTabExpense,
     savings: dom.advancedTabSavings,
     invest: dom.advancedTabInvest,
+    rates: dom.advancedTabRates,
   };
   Object.entries(tabMap).forEach(([key, button]) => {
     if (!(button instanceof HTMLButtonElement)) {
@@ -1463,6 +1478,8 @@ function setActiveAdvancedTab(groupKey) {
 }
 
 function syncAdvancedTabBlockVisibility() {
+  const isMobile = mobileLayoutMediaQuery.matches;
+  const isRatesActive = state.activeAdvancedTab === "rates";
   const blockMap = {
     expense: dom.expenseAdvancedBlock,
     savings: dom.savingsAdvancedBlock,
@@ -1477,6 +1494,12 @@ function syncAdvancedTabBlockVisibility() {
     block.classList.toggle("is-active", isActive);
     block.hidden = !isActive;
   });
+
+  if (dom.ratesAdvancedBlock instanceof HTMLElement) {
+    const showRates = isMobile ? isRatesActive : true;
+    dom.ratesAdvancedBlock.classList.toggle("is-active", showRates);
+    dom.ratesAdvancedBlock.hidden = !showRates;
+  }
 }
 
 function navigateToAdvancedGroup(groupKey, options = {}) {
@@ -1500,6 +1523,11 @@ function navigateToAdvancedGroup(groupKey, options = {}) {
       block: dom.investAdvancedBlock,
       button: dom.editInvestItems,
       label: "투자 상세 항목",
+    },
+    rates: {
+      block: dom.ratesAdvancedBlock,
+      button: null,
+      label: "수익률 설정",
     },
   };
   const target = map[groupKey];
@@ -3160,6 +3188,18 @@ function renderIncomeTotalHint(monthlyIncomeWon, count) {
   dom.incomeTotalHint.textContent = `현재 수입 항목 ${count}개 · 월 수입 합계 ${formatCurrency(monthlyIncomeWon)}`;
 }
 
+function createEditorField(labelText, control, className = "") {
+  const field = document.createElement("label");
+  field.className = `editor-field${className ? ` ${className}` : ""}`;
+
+  const caption = document.createElement("span");
+  caption.className = "editor-field-label";
+  caption.textContent = labelText;
+
+  field.append(caption, control);
+  return field;
+}
+
 function renderExpenseList(expenseItems, options = {}) {
   if (!dom.expenseList) {
     return;
@@ -3184,7 +3224,7 @@ function renderExpenseList(expenseItems, options = {}) {
       nameInput.dataset.editorId = item.id;
       nameInput.dataset.field = "name";
       nameInput.dataset.index = String(index);
-      nameElement = nameInput;
+      nameElement = createEditorField("항목명", nameInput, "editor-field--name");
     } else {
       const wrap = document.createElement("div");
       wrap.className = "allocation-label";
@@ -3217,7 +3257,11 @@ function renderExpenseList(expenseItems, options = {}) {
     }
     amountInput.dataset.index = String(index);
 
-    row.append(nameElement, amountInput);
+    if (editing) {
+      row.append(nameElement, createEditorField("금액(만원)", amountInput, "editor-field--amount"));
+    } else {
+      row.append(nameElement, amountInput);
+    }
 
     if (editing) {
       const groupInput = document.createElement("input");
@@ -3230,7 +3274,7 @@ function renderExpenseList(expenseItems, options = {}) {
       groupInput.dataset.field = "group";
       groupInput.dataset.index = String(index);
       groupInput.setAttribute("aria-label", `${item.name} 그룹`);
-      row.appendChild(groupInput);
+      row.appendChild(createEditorField("그룹", groupInput, "editor-field--group"));
     }
 
     if (editing) {
@@ -3272,7 +3316,7 @@ function renderSavingsList(savingsItems, options = {}) {
       nameInput.dataset.editorId = item.id;
       nameInput.dataset.field = "name";
       nameInput.dataset.index = String(index);
-      nameElement = nameInput;
+      nameElement = createEditorField("항목명", nameInput, "editor-field--name");
     } else {
       const wrap = document.createElement("div");
       wrap.className = "allocation-label";
@@ -3325,7 +3369,15 @@ function renderSavingsList(savingsItems, options = {}) {
     }
     rateInput.dataset.index = String(index);
 
-    row.append(nameElement, amountInput, rateInput);
+    if (editing) {
+      row.append(
+        nameElement,
+        createEditorField("금액(만원)", amountInput, "editor-field--amount"),
+        createEditorField("연 이자율(%)", rateInput, "editor-field--rate"),
+      );
+    } else {
+      row.append(nameElement, amountInput, rateInput);
+    }
 
     if (editing) {
       const maturityInput = document.createElement("input");
@@ -3336,7 +3388,7 @@ function renderSavingsList(savingsItems, options = {}) {
       maturityInput.dataset.field = "maturityMonth";
       maturityInput.dataset.index = String(index);
       maturityInput.setAttribute("aria-label", `${item.name} 만기 해지월`);
-      row.appendChild(maturityInput);
+      row.appendChild(createEditorField("만기 해지월", maturityInput, "editor-field--maturity"));
 
       const groupInput = document.createElement("input");
       groupInput.type = "text";
@@ -3348,7 +3400,7 @@ function renderSavingsList(savingsItems, options = {}) {
       groupInput.dataset.field = "group";
       groupInput.dataset.index = String(index);
       groupInput.setAttribute("aria-label", `${item.name} 그룹`);
-      row.appendChild(groupInput);
+      row.appendChild(createEditorField("그룹", groupInput, "editor-field--group"));
     }
 
     if (editing) {
@@ -3411,7 +3463,7 @@ function renderInvestList(investItems, options = {}) {
       nameInput.dataset.editorId = item.id;
       nameInput.dataset.field = "name";
       nameInput.dataset.index = String(index);
-      nameElement = nameInput;
+      nameElement = createEditorField("항목명", nameInput, "editor-field--name");
     } else {
       const wrap = document.createElement("div");
       wrap.className = "allocation-label";
@@ -3444,7 +3496,11 @@ function renderInvestList(investItems, options = {}) {
     }
     amountInput.dataset.index = String(index);
 
-    row.append(nameElement, amountInput);
+    if (editing) {
+      row.append(nameElement, createEditorField("금액(만원)", amountInput, "editor-field--amount"));
+    } else {
+      row.append(nameElement, amountInput);
+    }
 
     if (editing) {
       const maturityInput = document.createElement("input");
@@ -3455,7 +3511,7 @@ function renderInvestList(investItems, options = {}) {
       maturityInput.dataset.field = "maturityMonth";
       maturityInput.dataset.index = String(index);
       maturityInput.setAttribute("aria-label", `${item.name} 만기 해지월`);
-      row.appendChild(maturityInput);
+      row.appendChild(createEditorField("만기 해지월", maturityInput, "editor-field--maturity"));
 
       const groupInput = document.createElement("input");
       groupInput.type = "text";
@@ -3467,7 +3523,7 @@ function renderInvestList(investItems, options = {}) {
       groupInput.dataset.field = "group";
       groupInput.dataset.index = String(index);
       groupInput.setAttribute("aria-label", `${item.name} 그룹`);
-      row.appendChild(groupInput);
+      row.appendChild(createEditorField("그룹", groupInput, "editor-field--group"));
     }
 
     if (editing) {

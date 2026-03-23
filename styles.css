@@ -429,6 +429,10 @@ main {
   color: #fff;
 }
 
+.advanced-tab--mobile-only {
+  display: none;
+}
+
 .income-list {
   display: grid;
   gap: 8px;
@@ -444,6 +448,10 @@ main {
 
 .advanced-block .controls-block[hidden] {
   display: none !important;
+}
+
+.controls-block--rates h3 {
+  margin: 0;
 }
 
 .income-row {
@@ -517,6 +525,25 @@ main {
 .allocation-meta {
   font-size: 0.73rem;
   color: var(--muted);
+}
+
+.editor-field {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.editor-field-label {
+  display: none;
+  font-size: 0.72rem;
+  color: var(--muted);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.editor-field > input,
+.editor-field > select {
+  width: 100%;
 }
 
 .expense-row input {
@@ -1453,6 +1480,10 @@ main {
     gap: 6px;
   }
 
+  .advanced-tab--mobile-only {
+    display: inline-flex;
+  }
+
   .income-row {
     grid-template-columns: minmax(0, 1fr) minmax(96px, 118px) auto;
     align-items: center;
@@ -1487,6 +1518,21 @@ main {
   .savings-row.is-editing,
   .invest-row.is-editing {
     grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 10px;
+    border: 1px solid rgba(16, 34, 32, 0.12);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.9);
+  }
+
+  .editor-field-label {
+    display: block;
+  }
+
+  .allocation-remove {
+    justify-self: end;
+    min-height: 36px;
+    padding: 6px 10px;
   }
 
   .summary-cards {
