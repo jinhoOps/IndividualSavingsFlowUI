@@ -79,6 +79,15 @@
                   %
                 </button>
               </div>
+              <label class="sankey-sort" for="sankeySortMode">
+                <span>정렬</span>
+                <select id="sankeySortMode" class="sankey-sort-select" aria-label="Sankey Diagram 정렬 기준">
+                  <option value="group">기본(그룹 묶음)</option>
+                  <option value="amount-desc">금액 큰순</option>
+                  <option value="amount-asc">금액 작은순</option>
+                  <option value="name-asc">이름순</option>
+                </select>
+              </label>
               <div class="sankey-zoom-tools" role="group" aria-label="Sankey Diagram 확대 제어">
                 <button id="sankeyZoomOut" class="btn btn-ghost btn-sm" type="button" aria-label="Sankey Diagram 축소">-</button>
                 <button id="sankeyZoomIn" class="btn btn-ghost btn-sm" type="button" aria-label="Sankey Diagram 확대">+</button>
@@ -222,12 +231,17 @@
 
             <details id="advancedSettings" class="advanced-block">
               <summary>고급 설정 (생활비 상세 / 초기자산 / 증가율 / 수익률)</summary>
+              <div class="advanced-nav" role="tablist" aria-label="상세 항목 탭">
+                <button id="advancedTabExpense" class="advanced-tab is-active" type="button" role="tab" aria-selected="true" aria-controls="expenseAdvancedBlock" data-advanced-tab="expense">생활비</button>
+                <button id="advancedTabSavings" class="advanced-tab" type="button" role="tab" aria-selected="false" aria-controls="savingsAdvancedBlock" data-advanced-tab="savings">저축</button>
+                <button id="advancedTabInvest" class="advanced-tab" type="button" role="tab" aria-selected="false" aria-controls="investAdvancedBlock" data-advanced-tab="invest">투자</button>
+              </div>
               <div id="expenseAdvancedBlock" class="controls-block">
                 <div class="block-head">
                   <h3>생활비 상세 항목</h3>
                   <button id="editExpenseItems" class="btn btn-ghost btn-sm" type="button">항목 편집</button>
                 </div>
-                <p class="hint">아래 항목 합계가 월 생활비로 자동 반영됩니다.</p>
+                <p class="hint">아래 항목 합계가 월 생활비로 자동 반영됩니다. 편집 모드에서 그룹(예: 공과금)을 설정하면 적용 시 그룹끼리 자동으로 묶입니다. 기존 그룹명은 추천되고 신규 직접 입력도 가능합니다.</p>
                 <div id="expenseList" class="expense-list" aria-live="polite"></div>
                 <div id="expenseEditorActions" class="editor-actions" hidden>
                   <button id="addExpenseItem" class="btn btn-ghost btn-sm" type="button">항목 추가</button>
@@ -242,7 +256,7 @@
                   <button id="editSavingsItems" class="btn btn-ghost btn-sm" type="button">항목 편집</button>
                 </div>
                 <p class="hint">아래 항목 합계가 월 저축으로 자동 반영됩니다. 항목별 연 이자율을 비우면 저축 기본 수익률이 적용됩니다.</p>
-                <p class="hint">저축 기본 수익률은 자유적립식/목돈 저축의 연 이자 적립 계산 기준입니다.</p>
+                <p class="hint">편집 모드에서 그룹(예: 단기예적금)과 만기 해지월(YYYY-MM)을 설정하면 적용 시 그룹끼리 자동으로 묶입니다. 기존 그룹명은 추천되고 신규 직접 입력도 가능합니다.</p>
                 <div id="savingsList" class="savings-list" aria-live="polite"></div>
                 <div id="savingsEditorActions" class="editor-actions" hidden>
                   <button id="addSavingsItem" class="btn btn-ghost btn-sm" type="button">항목 추가</button>
@@ -256,7 +270,7 @@
                   <h3>투자 상세 항목</h3>
                   <button id="editInvestItems" class="btn btn-ghost btn-sm" type="button">항목 편집</button>
                 </div>
-                <p class="hint">아래 항목 합계가 월 투자로 자동 반영됩니다.</p>
+                <p class="hint">아래 항목 합계가 월 투자로 자동 반영됩니다. 편집 모드에서 그룹과 만기 해지월(YYYY-MM)을 설정하면 적용 시 그룹끼리 자동으로 묶입니다. 기존 그룹명은 추천되고 신규 직접 입력도 가능합니다.</p>
                 <div id="investList" class="invest-list" aria-live="polite"></div>
                 <div id="investEditorActions" class="editor-actions" hidden>
                   <button id="addInvestItem" class="btn btn-ghost btn-sm" type="button">항목 추가</button>
@@ -265,6 +279,9 @@
                 </div>
                 <p id="investTotalHint" class="hint"></p>
               </div>
+              <datalist id="expenseGroupOptions"></datalist>
+              <datalist id="savingsGroupOptions"></datalist>
+              <datalist id="investGroupOptions"></datalist>
               <div class="controls-grid controls-grid--advanced">
                 <div class="control">
                   <label for="startCash">초기 현금</label>

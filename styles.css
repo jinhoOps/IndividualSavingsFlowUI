@@ -373,6 +373,62 @@ main {
   gap: 8px;
 }
 
+.block-head-tools {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.item-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.item-sort-select {
+  min-width: 92px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 5px 8px;
+  font: inherit;
+  color: var(--ink);
+  background: #fff;
+}
+
+.item-sort-select:focus {
+  outline: 2px solid rgba(49, 117, 182, 0.28);
+  outline-offset: 1px;
+}
+
+.advanced-nav {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 4px 0 10px;
+}
+
+.advanced-tab {
+  border: 1px solid rgba(16, 34, 32, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.75);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.8rem;
+  line-height: 1;
+  padding: 7px 10px;
+  cursor: pointer;
+}
+
+.advanced-tab.is-active,
+.advanced-tab[aria-selected="true"] {
+  background: rgba(16, 34, 32, 0.88);
+  border-color: rgba(16, 34, 32, 0);
+  color: #fff;
+}
+
 .income-list {
   display: grid;
   gap: 8px;
@@ -425,6 +481,16 @@ main {
   color: var(--ink);
 }
 
+.allocation-label {
+  display: grid;
+  gap: 2px;
+}
+
+.allocation-meta {
+  font-size: 0.73rem;
+  color: var(--muted);
+}
+
 .expense-row input {
   width: 100%;
   border: 1px solid var(--line);
@@ -440,13 +506,16 @@ main {
   outline-offset: 1px;
 }
 
-.expense-row.is-editing,
-.invest-row.is-editing {
-  grid-template-columns: minmax(140px, 1fr) 130px auto;
+.expense-row.is-editing {
+  grid-template-columns: minmax(140px, 1fr) 130px 120px auto;
 }
 
 .savings-row.is-editing {
-  grid-template-columns: minmax(140px, 1fr) 130px 120px auto;
+  grid-template-columns: minmax(140px, 1fr) 118px 108px 132px 120px auto;
+}
+
+.invest-row.is-editing {
+  grid-template-columns: minmax(140px, 1fr) 128px 132px 120px auto;
 }
 
 .expense-row.is-editing input[type="text"],
@@ -511,6 +580,25 @@ main {
 
 .savings-row input:focus,
 .invest-row input:focus {
+  outline: 2px solid rgba(49, 117, 182, 0.32);
+  outline-offset: 1px;
+}
+
+.expense-row select,
+.savings-row select,
+.invest-row select {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px 10px;
+  font: inherit;
+  color: var(--ink);
+  background: #fff;
+}
+
+.expense-row select:focus,
+.savings-row select:focus,
+.invest-row select:focus {
   outline: 2px solid rgba(49, 117, 182, 0.32);
   outline-offset: 1px;
 }
@@ -737,6 +825,29 @@ main {
 .sankey-view-btn.is-active {
   background: rgba(16, 34, 32, 0.9);
   color: #fff;
+}
+
+.sankey-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.sankey-sort-select {
+  min-width: 156px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 6px 9px;
+  font: inherit;
+  color: var(--ink);
+  background: #fff;
+}
+
+.sankey-sort-select:focus {
+  outline: 2px solid rgba(49, 117, 182, 0.3);
+  outline-offset: 1px;
 }
 
 .sankey-zoom-tools {
@@ -1182,6 +1293,16 @@ main {
     flex: 1;
   }
 
+  .sankey-sort {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .sankey-sort-select {
+    min-width: 0;
+    width: min(220px, 64vw);
+  }
+
   .sankey-zoom-tools {
     width: 100%;
     display: grid;
@@ -1260,6 +1381,20 @@ main {
   .block-head {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .block-head-tools {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .item-sort {
+    flex-wrap: wrap;
+  }
+
+  .advanced-nav {
+    grid-template-columns: 1fr;
+    gap: 6px;
   }
 
   .income-row {
