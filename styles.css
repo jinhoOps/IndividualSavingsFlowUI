@@ -434,6 +434,18 @@ main {
   gap: 8px;
 }
 
+.advanced-block .controls-block[data-advanced-block] {
+  display: none;
+}
+
+.advanced-block .controls-block[data-advanced-block].is-active {
+  display: grid;
+}
+
+.advanced-block .controls-block[hidden] {
+  display: none !important;
+}
+
 .income-row {
   display: grid;
   grid-template-columns: 1.2fr 0.9fr auto;
