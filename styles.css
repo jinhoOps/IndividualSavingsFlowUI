@@ -175,6 +175,7 @@ main {
 .controls-head-tools {
   margin-left: auto;
   min-width: min(620px, 100%);
+  position: relative;
   display: grid;
   gap: 8px;
   justify-items: end;
@@ -244,6 +245,17 @@ main {
 .action-menu-panel--more {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   min-width: min(360px, 76vw);
+}
+
+#moreActionsMenu {
+  position: static;
+}
+
+#moreActionsMenu .action-menu-panel--more {
+  right: 0;
+  width: 100%;
+  min-width: 0;
+  max-width: none;
 }
 
 .action-menu-panel--more .btn {
@@ -1605,6 +1617,10 @@ main {
 
   .action-menu-panel--more {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    box-sizing: border-box;
   }
 
   .action-menu-panel--more .btn:last-child {
@@ -1685,6 +1701,10 @@ main {
 
   .actions {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .actions--primary {
+    grid-template-columns: 1fr;
   }
 
   .sankey-wrap {

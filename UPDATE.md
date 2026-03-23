@@ -102,6 +102,17 @@
   - 고급설정 네비 탭에 `수익률` 탭을 **모바일에서만** 노출.
   - 모바일에서 `수익률` 탭 선택 시 `초기자산/증가율/수익률` 블록을 탭 전환 대상으로 표시.
   - 데스크톱에서는 `수익률` 탭을 숨기고 기존처럼 해당 블록을 항상 표시.
+- 모바일 `더보기` 패널 폭 정렬:
+  - `action-menu-panel--more`에 `width:100% / min-width:0 / max-width:none / box-sizing:border-box`를 명시해,
+    `controls-panel` 내부 가로폭을 `백업` 패널과 동일하게 꽉 채우도록 보정.
 - 고급설정 탭 표시 버그 수정:
   - `controls-block { display:grid; }` 규칙이 `hidden` 상태를 덮어 탭 블록이 전부 보이던 문제를 수정.
   - `data-advanced-block`은 기본 숨김, 활성 탭만 표시하도록 CSS 규칙을 명시해 웹/모바일 탭 전환이 정상 동작하도록 복구.
+- `더보기` 패널 폭 기준 보정:
+  - `#moreActionsMenu` 패널의 기준 앵커를 버튼 자체가 아닌 `controls-head-tools`로 변경.
+  - `action-menu-panel--more`를 해당 컨테이너 폭 `100%`로 열어 작게 보이던 문제를 완화.
+- 모바일 `더보기` 협폭 재수정:
+  - `@media (max-width:520px)`에서 `.actions { grid-template-columns: repeat(3, ...) }`가 `actions--primary`에도 적용되며
+    `더보기` 부모 폭이 축소되던 충돌을 확인.
+  - 동일 구간에 `.actions--primary { grid-template-columns: 1fr; }`를 재명시해,
+    `더보기` 패널이 `controls-head-tools` 가로폭을 안정적으로 사용하도록 보정.
