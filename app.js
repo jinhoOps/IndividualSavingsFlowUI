@@ -349,6 +349,7 @@ document.addEventListener("DOMContentLoaded", () => {
   syncSankeyZoomUi();
   syncItemSortModeUi();
   setActiveAdvancedTab(state.activeAdvancedTab);
+  syncAdvancedTabBlockVisibility();
   refreshInputsPanel(state.inputs);
   syncGroupOptionsAll();
   setPendingBarVisible(false);
@@ -430,17 +431,29 @@ function bindControls() {
 
   if (dom.advancedTabExpense) {
     dom.advancedTabExpense.addEventListener("click", () => {
-      navigateToAdvancedGroup("expense");
+      navigateToAdvancedGroup("expense", {
+        scroll: false,
+        focusEditButton: false,
+        showFeedback: false,
+      });
     });
   }
   if (dom.advancedTabSavings) {
     dom.advancedTabSavings.addEventListener("click", () => {
-      navigateToAdvancedGroup("savings");
+      navigateToAdvancedGroup("savings", {
+        scroll: false,
+        focusEditButton: false,
+        showFeedback: false,
+      });
     });
   }
   if (dom.advancedTabInvest) {
     dom.advancedTabInvest.addEventListener("click", () => {
-      navigateToAdvancedGroup("invest");
+      navigateToAdvancedGroup("invest", {
+        scroll: false,
+        focusEditButton: false,
+        showFeedback: false,
+      });
     });
   }
 
@@ -1141,6 +1154,7 @@ function bindMobileLayoutWatcher() {
       state.mobileInputsCollapsed = false;
     }
     syncMobileInputsPanelVisibility();
+    syncAdvancedTabBlockVisibility();
   };
   if (typeof mobileLayoutMediaQuery.addEventListener === "function") {
     mobileLayoutMediaQuery.addEventListener("change", handleMobileLayoutChange);
@@ -1445,9 +1459,32 @@ function setActiveAdvancedTab(groupKey) {
     button.classList.toggle("is-active", active);
     button.setAttribute("aria-selected", active ? "true" : "false");
   });
+  syncAdvancedTabBlockVisibility();
 }
 
-function navigateToAdvancedGroup(groupKey) {
+function syncAdvancedTabBlockVisibility() {
+  const blockMap = {
+    expense: dom.expenseAdvancedBlock,
+    savings: dom.savingsAdvancedBlock,
+    invest: dom.investAdvancedBlock,
+  };
+
+  Object.entries(blockMap).forEach(([key, block]) => {
+    if (!(block instanceof HTMLElement)) {
+      return;
+    }
+    const isActive = key === state.activeAdvancedTab;
+    block.classList.toggle("is-active", isActive);
+    block.hidden = !isActive;
+  });
+}
+
+function navigateToAdvancedGroup(groupKey, options = {}) {
+  const safeOptions = options && typeof options === "object" ? options : {};
+  const shouldScroll = safeOptions.scroll !== false;
+  const shouldFocusEditButton = safeOptions.focusEditButton !== false;
+  const shouldShowFeedback = safeOptions.showFeedback !== false;
+
   const map = {
     expense: {
       block: dom.expenseAdvancedBlock,
@@ -1475,19 +1512,23 @@ function navigateToAdvancedGroup(groupKey) {
     dom.advancedSettings.open = true;
   }
 
-  if (target.block) {
+  if (shouldScroll && target.block) {
     target.block.scrollIntoView({ behavior: "smooth", block: "start" });
-  } else if (dom.advancedSettings) {
+  } else if (shouldScroll && dom.advancedSettings) {
     dom.advancedSettings.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
-  window.setTimeout(() => {
-    if (target.button instanceof HTMLElement) {
-      target.button.focus({ preventScroll: true });
-    }
-  }, 240);
+  if (shouldFocusEditButton) {
+    window.setTimeout(() => {
+      if (target.button instanceof HTMLElement) {
+        target.button.focus({ preventScroll: true });
+      }
+    }, 240);
+  }
 
-  showApplyFeedback(`${target.label}으로 이동했습니다.`);
+  if (shouldShowFeedback) {
+    showApplyFeedback(`${target.label}으로 이동했습니다.`);
+  }
 }
 
 function normalizeSankeySortMode(mode) {
@@ -2976,24 +3017,47 @@ function renderSankeyLegend(data, valueMode = SANKEY_VALUE_MODES.AMOUNT) {
 
     const splitGroup = splitGroupMap.get(item.id);
     if (splitGroup && Array.isArray(splitGroup.breakdown) && splitGroup.breakdown.length > 0) {
-      const detail = document.createElement("p");
-      detail.className = "legend-group-details";
       const groupedTexts = Array.isArray(splitGroup.grouped)
         ? splitGroup.grouped
           .map((groupEntry) => {
             const childrenText = (groupEntry.items || [])
               .map((entry) => `${entry.label} ${formatSankeyDisplayValue(entry.value, data.totalValue, valueMode)}`)
-              .join(", ");
+            .join(", ");
             return childrenText ? `${groupEntry.label}: ${childrenText}` : "";
           })
+          .filter(Boolean)
+        : [];
+      const groupedSummaryTexts = Array.isArray(splitGroup.grouped)
+        ? splitGroup.grouped
+          .map((groupEntry) => `${groupEntry.label} ${formatSankeyDisplayValue(groupEntry.value, data.totalValue, valueMode)}`)
           .filter(Boolean)
         : [];
       const ungroupedTexts = Array.isArray(splitGroup.ungrouped)
         ? splitGroup.ungrouped
           .map((entry) => `${entry.label} ${formatSankeyDisplayValue(entry.value, data.totalValue, valueMode)}`)
         : [];
-      detail.textContent = [...groupedTexts, ...ungroupedTexts].join(" · ");
-      groupWrap.appendChild(detail);
+
+      if (groupedSummaryTexts.length > 0) {
+        const details = document.createElement("details");
+        details.className = "legend-group-toggle";
+
+        const summary = document.createElement("summary");
+        summary.className = "legend-group-summary";
+        const collapsedParts = [...groupedSummaryTexts, ...ungroupedTexts];
+        summary.textContent = collapsedParts.join(" · ");
+
+        const detail = document.createElement("p");
+        detail.className = "legend-group-details";
+        detail.textContent = [...groupedTexts, ...ungroupedTexts].join(" · ");
+
+        details.append(summary, detail);
+        groupWrap.appendChild(details);
+      } else {
+        const detail = document.createElement("p");
+        detail.className = "legend-group-details";
+        detail.textContent = ungroupedTexts.join(" · ");
+        groupWrap.appendChild(detail);
+      }
     }
 
     dom.sankeyLegend.appendChild(groupWrap);

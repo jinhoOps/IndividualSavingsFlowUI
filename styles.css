@@ -1002,6 +1002,34 @@ main {
   overflow-wrap: anywhere;
 }
 
+.legend-group-toggle {
+  display: grid;
+  gap: 4px;
+}
+
+.legend-group-summary {
+  margin-left: 14px;
+  color: var(--muted);
+  font-size: 0.73rem;
+  line-height: 1.35;
+  cursor: pointer;
+  list-style: none;
+}
+
+.legend-group-summary::-webkit-details-marker {
+  display: none;
+}
+
+.legend-group-summary::after {
+  content: " (전체 보기)";
+  color: rgba(16, 34, 32, 0.58);
+  font-size: 0.7rem;
+}
+
+.legend-group-toggle[open] .legend-group-summary::after {
+  content: " (접기)";
+}
+
 .legend-item > span:last-child {
   min-width: 0;
   overflow-wrap: anywhere;
@@ -1443,10 +1471,6 @@ main {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .actions--primary .action-menu:last-child {
-    grid-column: 1 / -1;
-  }
-
   .controls-panel.is-mobile-collapsed .actions {
     margin-top: 2px;
   }
@@ -1461,6 +1485,22 @@ main {
 
   .action-menu > summary.btn {
     width: 100%;
+    min-height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  .action-menu > summary.btn::after {
+    content: "▾";
+    font-size: 0.72rem;
+    color: rgba(16, 34, 32, 0.72);
+    transform: translateY(-1px);
+  }
+
+  .action-menu[open] > summary.btn::after {
+    content: "▴";
   }
 
   .action-menu-panel {
