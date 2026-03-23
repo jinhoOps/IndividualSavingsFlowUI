@@ -456,7 +456,23 @@ main {
 }
 
 .income-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
   color: #9b2c2c;
+}
+
+.income-remove-icon {
+  display: none;
+  width: 15px;
+  height: 15px;
+  fill: currentColor;
+  flex-shrink: 0;
+}
+
+.income-remove-text {
+  display: inline;
 }
 
 .income-remove:disabled {
@@ -1426,7 +1442,24 @@ main {
   }
 
   .income-row {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(96px, 118px) auto;
+    align-items: center;
+  }
+
+  .income-remove {
+    min-width: 38px;
+    width: 38px;
+    min-height: 40px;
+    padding: 0;
+    border-radius: 10px;
+  }
+
+  .income-remove-icon {
+    display: block;
+  }
+
+  .income-remove-text {
+    display: none;
   }
 
   .expense-row {
@@ -1468,7 +1501,7 @@ main {
 
   .actions--primary {
     align-items: stretch;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: 1fr;
   }
 
   .controls-panel.is-mobile-collapsed .actions {
@@ -1513,7 +1546,11 @@ main {
   }
 
   .action-menu-panel--more {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .action-menu-panel--more .btn:last-child {
+    grid-column: 1 / -1;
   }
 
   .backup-tools {

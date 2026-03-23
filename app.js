@@ -3134,7 +3134,13 @@ function renderIncomeList(incomes) {
     const removeButton = document.createElement("button");
     removeButton.type = "button";
     removeButton.className = "btn btn-ghost btn-sm income-remove";
-    removeButton.textContent = "삭제";
+    removeButton.setAttribute("aria-label", `수입 항목 ${index + 1} 삭제`);
+    removeButton.innerHTML = `
+      <svg class="income-remove-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M9 3h6l1 2h4v2H4V5h4l1-2zm1 6h2v8h-2V9zm4 0h2v8h-2V9zM7 9h2v8H7V9z"></path>
+      </svg>
+      <span class="income-remove-text">삭제</span>
+    `;
     removeButton.dataset.removeIncome = income.id;
     removeButton.disabled = incomes.length <= 1;
 
