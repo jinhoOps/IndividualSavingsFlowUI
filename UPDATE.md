@@ -172,3 +172,22 @@
   - 루트 `index.html`은 기존 URL 호환을 위해 `apps/step1`로 자동 리다이렉트하도록 변경.
   - `apps/step2` 스캐폴드(`index.html`, `styles.css`, `app.js`)를 추가해 Step2 작업 기준점을 마련.
   - `shared/README.md`를 추가해 공통 모듈(IndexedDB 스키마/브리지) 배치 경로를 고정.
+
+### 2026-03-24 (권장1 구조 고정 + Step2 MVP 확장 1차)
+- 공통 IndexedDB 허브 레이어 도입:
+  - `shared/storage/hub-storage.js`를 추가해 `isf-hub-db-v1` 접근 API를 공통화.
+  - 스토어 계약:
+    - `step1Snapshots { id, createdAt, updatedAt, data }`
+    - `step2Portfolios { id, name, targetAllocations, notes, updatedAt }`
+    - `bridgeStep1ToStep2 { id, step1SnapshotId, payload, createdAt }`
+- Step1 -> Step2 브리지 기록 연결:
+  - Step1 `persistPrimaryState`(적용 경로)에서 허브 DB에 Step1 스냅샷 저장 후 브리지 payload를 기록.
+  - 브리지 payload 필수 필드 고정:
+    - `monthlyInvestCapacity`, `currentCash`, `currentInvest`, `currentSavings`, `timestamp`
+- Step2 MVP 구현:
+  - 포트폴리오 편집 UI(자산군 이름/목표비중/메모 CRUD)와 비중 합계(100%) 검증을 구현.
+  - 포트폴리오 저장/불러오기/삭제를 `step2Portfolios`와 연동.
+  - `Step1 데이터 가져오기` 버튼으로 최신 브리지 payload를 수동 반영하고 덮어쓰기 확인 UX를 추가.
+- 구조/문서 정합:
+  - Step1/Step2에서 공통 허브 스크립트를 로드하도록 엔트리 HTML 경로를 연결.
+  - README/TODO/shared 문서에 구조 고정, 허브 스키마, Step2 MVP 범위를 반영.

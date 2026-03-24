@@ -4628,8 +4628,52 @@ function persistPrimaryState(inputs, options = {}) {
     if (!safeOptions.skipAutoBackup) {
       void maybeCreateAutoBackupIfDue({ inputs, reason: safeOptions.reason || "persist" });
     }
+    void persistStep1BridgeSnapshot(inputs);
   }
   return syncHashStateIfPresent(inputs);
+}
+
+function getHubStorage() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  const hub = window.IsfHubStorage;
+  if (!hub || typeof hub !== "object") {
+    return null;
+  }
+  if (typeof hub.saveStep1Snapshot !== "function" || typeof hub.saveBridgeStep1ToStep2 !== "function") {
+    return null;
+  }
+  return hub;
+}
+
+function buildStep1BridgePayload(inputs) {
+  const safeInputs = sanitizeInputs(cloneInputs(inputs));
+  return {
+    monthlyInvestCapacity: toWon(sanitizeMoney(safeInputs.monthlyInvest, 0)),
+    currentCash: toWon(sanitizeMoney(safeInputs.startCash, 0)),
+    currentInvest: toWon(sanitizeMoney(safeInputs.startInvest, 0)),
+    currentSavings: toWon(sanitizeMoney(safeInputs.startSavings, 0)),
+    timestamp: new Date().toISOString(),
+  };
+}
+
+async function persistStep1BridgeSnapshot(inputs) {
+  const hub = getHubStorage();
+  if (!hub || state.isViewMode) {
+    return;
+  }
+  try {
+    const safeInputs = sanitizeInputs(cloneInputs(inputs));
+    const snapshot = await hub.saveStep1Snapshot(safeInputs);
+    if (!snapshot || !snapshot.id) {
+      return;
+    }
+    const payload = buildStep1BridgePayload(safeInputs);
+    await hub.saveBridgeStep1ToStep2(snapshot.id, payload);
+  } catch (_error) {
+    // Ignore bridge snapshot failures to keep Step1 flow functional.
+  }
 }
 
 function normalizeShareId(value) {

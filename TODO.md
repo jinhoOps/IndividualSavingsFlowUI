@@ -15,6 +15,9 @@
 - [X] 모바일 PWA 신규 버전 감지/안내(standalone 실행 중 원격 manifest 버전 체크)
 - [X] 모바일 PWA 버전 감지 주기 조정(포그라운드 복귀 + 1일 1회) 및 수동 최신버전 체크 버튼
 - [X] 단일 레포 다중 단계 구조 전환(`apps/step1`, `apps/step2`, `shared`)
+- [X] 공통 IndexedDB 허브 스키마 도입(`isf-hub-db-v1`: step1Snapshots/step2Portfolios/bridgeStep1ToStep2)
+- [X] Step1 적용 시 Step2 브리지 payload 기록(월투자여력/현재자산/기준시점)
+- [X] Step2 MVP: 포트폴리오 편집/비중검증/저장·불러오기/삭제 + Step1 데이터 수동 가져오기
 
 
 
