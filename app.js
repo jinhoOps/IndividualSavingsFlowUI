@@ -14,6 +14,8 @@ const BACKUP_DB_NAME = "isf-backup-db-v1";
 const BACKUP_DB_VERSION = 1;
 const BACKUP_DB_STORE = "backupEntries";
 const PWA_STANDALONE_NOTICE_KEY = "isf-pwa-standalone-notice-v1";
+const PWA_REMOTE_VERSION_NOTICE_KEY = "isf-pwa-remote-version-notice-v1";
+const PWA_REMOTE_VERSION_CHECK_INTERVAL_MS = 10 * 60 * 1000;
 const AUTO_BACKUP_INTERVAL_MS = 12 * 60 * 60 * 1000;
 const MANUAL_BACKUP_WINDOW_MS = 60 * 1000;
 const MAX_BACKUP_ENTRIES = 60;
@@ -349,6 +351,7 @@ const state = {
   snapshot: null,
   mobileInputsCollapsed: false,
   viewModeGuideClosedTemporarily: false,
+  pwaVersionLastCheckedAt: 0,
 };
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -371,6 +374,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initializeBackupStore();
   registerServiceWorker();
   maybeShowStandaloneLaunchFeedback();
+  bindPwaVersionAwareness();
   if (state.isViewMode) {
     showApplyFeedback("보기 모드로 열었습니다. 로컬 저장값은 변경되지 않습니다.");
   }
@@ -4457,6 +4461,126 @@ function bindPwaLifecycleFeedback() {
   window.addEventListener("appinstalled", () => {
     showApplyFeedback(`웹앱 설치가 완료되었습니다. v${APP_VERSION}`);
   });
+}
+
+function parseSemver(version) {
+  const safe = String(version ?? "").trim();
+  if (!safe) {
+    return null;
+  }
+  const parts = safe.split(".").map((token) => Number.parseInt(token, 10));
+  if (parts.length !== 3 || parts.some((part) => !Number.isFinite(part) || part < 0)) {
+    return null;
+  }
+  return parts;
+}
+
+function compareSemver(left, right) {
+  const a = parseSemver(left);
+  const b = parseSemver(right);
+  if (!a || !b) {
+    return 0;
+  }
+  for (let index = 0; index < 3; index += 1) {
+    if (a[index] > b[index]) {
+      return 1;
+    }
+    if (a[index] < b[index]) {
+      return -1;
+    }
+  }
+  return 0;
+}
+
+function shouldCheckRemotePwaVersion() {
+  if (typeof window === "undefined" || typeof document === "undefined") {
+    return false;
+  }
+  if (state.isViewMode) {
+    return false;
+  }
+  if (!isStandaloneDisplayMode() || !mobileLayoutMediaQuery.matches) {
+    return false;
+  }
+  return window.location.protocol === "https:";
+}
+
+async function maybeTriggerServiceWorkerUpdateCheck() {
+  if (!shouldUseServiceWorker()) {
+    return;
+  }
+  try {
+    const registration = await navigator.serviceWorker.getRegistration("./");
+    if (registration) {
+      await registration.update();
+    }
+  } catch (_error) {
+    // Ignore update check errors to keep UI functional.
+  }
+}
+
+async function maybeCheckRemotePwaVersion(options = {}) {
+  const safeOptions = options && typeof options === "object" ? options : {};
+  const force = safeOptions.force === true;
+  if (!shouldCheckRemotePwaVersion()) {
+    return;
+  }
+  const now = Date.now();
+  if (!force && now - state.pwaVersionLastCheckedAt < 15000) {
+    return;
+  }
+  state.pwaVersionLastCheckedAt = now;
+
+  try {
+    await maybeTriggerServiceWorkerUpdateCheck();
+    const response = await fetch(`./manifest.webmanifest?vchk=${now}`, {
+      cache: "no-store",
+    });
+    if (!response.ok) {
+      return;
+    }
+    const manifest = await response.json();
+    const remoteVersion = String(manifest?.version || "").trim();
+    if (!remoteVersion || compareSemver(remoteVersion, APP_VERSION) <= 0) {
+      return;
+    }
+
+    try {
+      const noticedVersion = localStorage.getItem(PWA_REMOTE_VERSION_NOTICE_KEY);
+      if (noticedVersion === remoteVersion) {
+        return;
+      }
+      localStorage.setItem(PWA_REMOTE_VERSION_NOTICE_KEY, remoteVersion);
+    } catch (_error) {
+      // Ignore storage errors to keep UI functional.
+    }
+
+    showApplyFeedback(`새 버전 v${remoteVersion} 감지 · 앱을 다시 열면 반영됩니다.`);
+  } catch (_error) {
+    // Ignore manifest check errors to keep UI functional.
+  }
+}
+
+function bindPwaVersionAwareness() {
+  if (!shouldUseServiceWorker()) {
+    return;
+  }
+  void maybeCheckRemotePwaVersion({ force: true });
+
+  window.addEventListener("focus", () => {
+    void maybeCheckRemotePwaVersion();
+  });
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "visible") {
+      return;
+    }
+    void maybeCheckRemotePwaVersion();
+  });
+
+  window.setInterval(() => {
+    void maybeCheckRemotePwaVersion();
+  }, PWA_REMOTE_VERSION_CHECK_INTERVAL_MS);
 }
 
 function maybeShowStandaloneLaunchFeedback() {
