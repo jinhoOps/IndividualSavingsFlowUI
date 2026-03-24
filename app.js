@@ -1,4 +1,5 @@
 const MONEY_UNIT = 10000;
+const APP_VERSION = "0.1.1";
 const STORAGE_KEY = "isf-rebuild-v1";
 const SHARE_STATE_KEY = "my-household-flow";
 const SHARE_STATE_SCHEMA = 1;
@@ -12,6 +13,7 @@ const BACKUP_SCHEMA_VERSION = 1;
 const BACKUP_DB_NAME = "isf-backup-db-v1";
 const BACKUP_DB_VERSION = 1;
 const BACKUP_DB_STORE = "backupEntries";
+const PWA_STANDALONE_NOTICE_KEY = "isf-pwa-standalone-notice-v1";
 const AUTO_BACKUP_INTERVAL_MS = 12 * 60 * 60 * 1000;
 const MANUAL_BACKUP_WINDOW_MS = 60 * 1000;
 const MAX_BACKUP_ENTRIES = 60;
@@ -343,6 +345,7 @@ const state = {
 
 document.addEventListener("DOMContentLoaded", () => {
   bindControls();
+  bindPwaLifecycleFeedback();
   syncViewModeUi();
   syncViewModeGuideUi();
   syncBackupUi();
@@ -359,6 +362,7 @@ document.addEventListener("DOMContentLoaded", () => {
   syncHashState(state.inputs);
   initializeBackupStore();
   registerServiceWorker();
+  maybeShowStandaloneLaunchFeedback();
   if (state.isViewMode) {
     showApplyFeedback("보기 모드로 열었습니다. 로컬 저장값은 변경되지 않습니다.");
   }
@@ -4331,13 +4335,77 @@ function shouldUseServiceWorker() {
   return host === "localhost" || host === "127.0.0.1";
 }
 
+function isStandaloneDisplayMode() {
+  if (typeof window === "undefined") {
+    return false;
+  }
+  if (typeof window.matchMedia === "function" && window.matchMedia("(display-mode: standalone)").matches) {
+    return true;
+  }
+  return Boolean(window.navigator.standalone);
+}
+
+function bindPwaLifecycleFeedback() {
+  if (typeof window === "undefined") {
+    return;
+  }
+  window.addEventListener("appinstalled", () => {
+    showApplyFeedback(`웹앱 설치가 완료되었습니다. v${APP_VERSION}`);
+  });
+}
+
+function maybeShowStandaloneLaunchFeedback() {
+  if (state.isViewMode || !isStandaloneDisplayMode()) {
+    return;
+  }
+  try {
+    const notifiedVersion = localStorage.getItem(PWA_STANDALONE_NOTICE_KEY);
+    if (notifiedVersion === APP_VERSION) {
+      return;
+    }
+    localStorage.setItem(PWA_STANDALONE_NOTICE_KEY, APP_VERSION);
+  } catch (_error) {
+    // Ignore storage errors to keep UI functional.
+  }
+  showApplyFeedback(`앱 모드로 실행 중입니다. v${APP_VERSION}`);
+}
+
+function bindServiceWorkerUpdateFeedback(registration) {
+  if (!registration || typeof registration !== "object") {
+    return;
+  }
+  const notifyUpdateReady = () => {
+    showApplyFeedback(`업데이트가 준비되었습니다. 새로고침하면 v${APP_VERSION}이 적용됩니다.`);
+  };
+
+  if (registration.waiting) {
+    notifyUpdateReady();
+  }
+
+  registration.addEventListener("updatefound", () => {
+    const installingWorker = registration.installing;
+    if (!installingWorker) {
+      return;
+    }
+    installingWorker.addEventListener("statechange", () => {
+      if (installingWorker.state === "installed" && navigator.serviceWorker.controller) {
+        notifyUpdateReady();
+      }
+    });
+  });
+}
+
 function registerServiceWorker() {
   if (!shouldUseServiceWorker()) {
     return;
   }
-  navigator.serviceWorker.register("./sw.js").catch(() => {
-    // Ignore registration errors to keep UI functional.
-  });
+  navigator.serviceWorker.register("./sw.js")
+    .then((registration) => {
+      bindServiceWorkerUpdateFeedback(registration);
+    })
+    .catch(() => {
+      // Ignore registration errors to keep UI functional.
+    });
 }
 
 function initializeBackupStore() {

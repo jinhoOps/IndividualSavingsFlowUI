@@ -4,6 +4,9 @@
 - 개발 시작 전에 항상 `UPDATE.md`를 먼저 확인한다.
 - 모든 변경 사항/개발 사항은 작업 종료 시 `UPDATE.md`에 요약 기록한다.
 - 커밋 기준 확인은 `git log -1`로 최신 1건을 먼저 확인한다.
+- 버전은 당분간 `0.x`(pre-1.0)로 관리한다.
+- 버전 증분 규칙: `feat => minor up (0.x.0)`, `fix/chore/docs/refactor => patch up (0.x.y)`.
+- PWA 관련 변경 시 `app.js(APP_VERSION)` / `sw.js(CACHE_NAME)` / `manifest.webmanifest(version)`을 같은 버전으로 동기화한다.
 - 이력이 길어지면 기능 단위로 압축하고, 날짜 구간은 유지해 구분한다.
 
 ## 투두
@@ -116,3 +119,12 @@
     `더보기` 부모 폭이 축소되던 충돌을 확인.
   - 동일 구간에 `.actions--primary { grid-template-columns: 1fr; }`를 재명시해,
     `더보기` 패널이 `controls-head-tools` 가로폭을 안정적으로 사용하도록 보정.
+
+### 2026-03-24 (버전 정책 도입 + PWA 설치 피드백)
+- 버전 정책 도입:
+  - 앱 버전을 `0.1.1`으로 설정하고 pre-1.0 버전 관리 체계를 시작.
+  - `manifest.webmanifest`에 `version`을 명시하고, `sw.js` 캐시 키를 `v0.1.1`로 동기화.
+- PWA 설치/업데이트 피드백 보강:
+  - `appinstalled` 이벤트 수신 시 설치 완료 토스트를 표시.
+  - standalone(display-mode) 실행 시 버전 안내 토스트를 1회 표시해 설치 후 무반응 체감을 완화.
+  - 서비스워커 업데이트 감지(`waiting`, `updatefound`) 시 새로고침 안내 토스트를 표시.
