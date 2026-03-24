@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>나의 가계 흐름</title>
+    <meta
+      name="description"
+      content="개인 자산 흐름 프로젝트의 1단계로, 월 가계 흐름을 카드와 단일 Sankey Diagram으로 보여주는 UI"
+    />
+    <meta name="theme-color" content="#ea5b2a" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="icons/icon-192.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="icons/icon-192.svg" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="ambient" aria-hidden="true"></div>
+    <div class="page">
+      <header class="hero panel">
+        <p class="eyebrow">IndividualSavings Flow UIUX · Step 1</p>
+        <h1>나의 가계 흐름</h1>
+        <p class="lead">
+          이렇게 벌고, 이렇게 쓴다.
+          월 단위 가계 흐름을 카드와 단일 Sankey Diagram으로 빠르게 확인할 수 있습니다.
+        </p>
+      </header>
+      <section id="viewModeGuide" class="panel view-mode-guide" aria-live="polite" hidden>
+        <p class="view-mode-guide__text">
+          이 페이지는 공유 페이지입니다. 저장을 원하면 좌측 하단 저장 아이콘을 눌러 현재 상태를 로컬 브라우저에 저장할 수 있습니다.
+        </p>
+        <div class="view-mode-guide__actions">
+          <label class="view-mode-guide__dont-show" for="viewModeGuideDontShow">
+            <input id="viewModeGuideDontShow" type="checkbox" />
+            다시 보지 않기
+          </label>
+          <button
+            id="dismissViewModeGuide"
+            class="btn btn-ghost btn-sm"
+            type="button"
+            aria-label="공유 페이지 안내 닫기"
+          >
+            확인
+          </button>
+        </div>
+      </section>
+
+      <main>
+        <section class="panel summary-panel" aria-labelledby="cardsTitle">
+          <div class="section-head">
+            <h2 id="cardsTitle">핵심 카드</h2>
+            <p id="cardMeta" class="hint"></p>
+          </div>
+          <div id="summaryCards" class="summary-cards" aria-live="polite"></div>
+        </section>
+
+        <section class="panel sankey-panel" aria-labelledby="sankeyTitle">
+          <div class="section-head section-head--sankey">
+            <h2 id="sankeyTitle">월 가계 흐름 Sankey Diagram</h2>
+            <div class="sankey-head-tools">
+              <p id="sankeyMeta" class="hint"></p>
+              <div class="sankey-view-toggle" role="group" aria-label="Sankey Diagram 표기 방식">
+                <button
+                  id="sankeyViewAmount"
+                  class="btn btn-ghost btn-sm sankey-view-btn is-active"
+                  type="button"
+                  data-sankey-view="amount"
+                  aria-pressed="true"
+                >
+                  금액
+                </button>
+                <button
+                  id="sankeyViewPercent"
+                  class="btn btn-ghost btn-sm sankey-view-btn"
+                  type="button"
+                  data-sankey-view="percent"
+                  aria-pressed="false"
+                >
+                  %
+                </button>
+              </div>
+              <label class="sankey-sort" for="sankeySortMode">
+                <span>정렬</span>
+                <select id="sankeySortMode" class="sankey-sort-select" aria-label="Sankey Diagram 정렬 기준">
+                  <option value="group">기본(그룹 묶음)</option>
+                  <option value="amount-desc">금액 큰순</option>
+                  <option value="amount-asc">금액 작은순</option>
+                  <option value="name-asc">이름순</option>
+                </select>
+              </label>
+              <div class="sankey-zoom-tools" role="group" aria-label="Sankey Diagram 확대 제어">
+                <button id="sankeyZoomOut" class="btn btn-ghost btn-sm" type="button" aria-label="Sankey Diagram 축소">-</button>
+                <button id="sankeyZoomIn" class="btn btn-ghost btn-sm" type="button" aria-label="Sankey Diagram 확대">+</button>
+                <button id="sankeyZoomReset" class="btn btn-ghost btn-sm" type="button">기본 크기</button>
+                <span id="sankeyZoomLabel" class="sankey-zoom-label" aria-live="polite">100%</span>
+              </div>
+            </div>
+          </div>
+          <div id="sankeyWrap" class="sankey-wrap">
+            <svg id="sankeySvg" role="img" aria-label="월 가계 흐름 Sankey Diagram"></svg>
+            <p id="sankeyEmpty" class="empty" hidden>표시할 흐름이 없습니다.</p>
+            <div id="sankeyTooltip" class="sankey-tooltip" hidden></div>
+          </div>
+          <div id="sankeyLegend" class="sankey-legend"></div>
+        </section>
+
+        <section class="panel projection-panel" aria-labelledby="projectionTitle">
+          <div class="section-head">
+            <h2 id="projectionTitle">가계 추이 계산 검증</h2>
+            <p id="projectionMeta" class="hint"></p>
+          </div>
+          <p class="hint projection-brief">요약: 순자산 = 현금 + 저축 + 투자 - 부채</p>
+          <details class="formula formula-toggle">
+            <summary>자세히 보기</summary>
+            <div class="formula-body">
+              매월: (수입 - 생활비 - 저축 - 투자 - 실제 부채상환액)을 현금에 반영합니다.
+              (실제 부채상환액 = 설정 상환액, 부채잔액, 가용현금 중 최솟값)
+              저축/투자는 가용현금 범위 내에서만 반영됩니다.
+              부채는 월 이자를 먼저 반영하고 상환액으로 차감하며, 현금이 음수면 부족분을 부채에 더합니다.
+              저축은 항목별 월 수익률, 투자는 설정 월 수익률을 적용합니다.
+              실질 순자산(현재가치)은 기준금리(연)를 월 복리로 환산해 할인합니다.
+            </div>
+          </details>
+          <div class="table-wrap">
+            <table id="projectionTable" class="projection-table">
+              <thead>
+                <tr>
+                  <th>시점</th>
+                  <th>월 수입</th>
+                  <th>월 생활비</th>
+                  <th>당월 이자</th>
+                  <th>실제 상환액</th>
+                  <th>부채 증가분</th>
+                  <th>현금</th>
+                  <th>저축</th>
+                  <th>투자</th>
+                  <th>부채</th>
+                  <th>순자산</th>
+                  <th>실질 순자산(현재가치)</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel controls-panel" aria-labelledby="inputsTitle">
+          <div class="section-head section-head--controls">
+            <h2 id="inputsTitle">
+              입력값
+              <button
+                id="toggleInputsMobile"
+                class="mobile-input-toggle"
+                type="button"
+                aria-expanded="true"
+                aria-controls="inputsPanelContent"
+              >
+                접기
+              </button>
+            </h2>
+            <div class="controls-head-tools">
+              <div class="actions actions--primary">
+                <details id="backupMenu" class="action-menu">
+                  <summary class="btn btn-ghost">백업</summary>
+                  <div class="action-menu-panel backup-tools" role="group" aria-label="로컬 백업 관리">
+                    <button id="backupNow" class="btn btn-ghost btn-sm" type="button">백업 저장</button>
+                    <select id="backupSelect" class="backup-select" aria-label="로컬 백업 선택"></select>
+                    <button id="restoreBackup" class="btn btn-ghost btn-sm" type="button">선택 복원</button>
+                    <button
+                      id="backupHelp"
+                      class="inline-tip backup-help-tip"
+                      type="button"
+                      aria-label="백업 안내"
+                      data-tooltip="백업 안내를 불러오는 중입니다."
+                    >
+                      ?
+                    </button>
+                  </div>
+                </details>
+                <details id="moreActionsMenu" class="action-menu">
+                  <summary class="btn btn-ghost">더보기</summary>
+                  <div class="action-menu-panel action-menu-panel--more" role="group" aria-label="추가 입력값 액션">
+                    <button id="copyShareLink" class="btn btn-ghost" type="button">링크 복사</button>
+                    <button id="exportJson" class="btn btn-ghost" type="button">JSON 저장</button>
+                    <button id="importJson" class="btn btn-ghost" type="button">JSON 불러오기</button>
+                    <button id="loadSample" class="btn btn-primary" type="button">샘플</button>
+                    <button id="resetInputs" class="btn btn-ghost" type="button">초기화</button>
+                  </div>
+                </details>
+              </div>
+            </div>
+          </div>
+          <input id="importJsonFile" type="file" accept=".json,application/json" hidden />
+          <div id="inputsPanelContent">
+            <p class="hint">금액 단위: 만원(예: 350 = 3,500,000원) · 기본값만 입력해도 바로 계산됩니다.</p>
+            <form id="inputsForm" autocomplete="off">
+            <div class="controls-block">
+              <div class="block-head">
+                <h3>월 수입 항목</h3>
+                <button id="addIncomeItem" class="btn btn-ghost btn-sm" type="button">수입 추가</button>
+              </div>
+              <p class="hint">수입 항목은 여러 개 추가할 수 있고, 자동 합산됩니다.</p>
+              <div id="incomeList" class="income-list" aria-live="polite"></div>
+              <p id="incomeTotalHint" class="hint"></p>
+            </div>
+
+            <div class="controls-block">
+              <h3>간편 입력</h3>
+              <div class="controls-grid controls-grid--simple">
+                <div class="control">
+                  <label for="monthlyExpense">월 생활비(자동합산)</label>
+                  <input id="monthlyExpense" name="monthlyExpense" type="number" min="0" step="1" readonly class="jump-advanced-field" data-advanced-target="expense" title="클릭하면 고급 설정의 생활비 상세 항목으로 이동" />
+                </div>
+                <div class="control">
+                  <label for="monthlySavings">월 저축(자동합산)</label>
+                  <input id="monthlySavings" name="monthlySavings" type="number" min="0" step="1" readonly class="jump-advanced-field" data-advanced-target="savings" title="클릭하면 고급 설정의 저축 상세 항목으로 이동" />
+                </div>
+                <div class="control">
+                  <label for="monthlyInvest">월 투자(자동합산)</label>
+                  <input id="monthlyInvest" name="monthlyInvest" type="number" min="0" step="1" readonly class="jump-advanced-field" data-advanced-target="invest" title="클릭하면 고급 설정의 투자 상세 항목으로 이동" />
+                </div>
+                <div class="control">
+                  <label for="monthlyDebtPayment">월 부채상환</label>
+                  <input id="monthlyDebtPayment" name="monthlyDebtPayment" type="number" min="0" step="1" />
+                </div>
+                <div class="control">
+                  <label for="horizonYears">시뮬레이션 기간(년)</label>
+                  <input id="horizonYears" name="horizonYears" type="number" min="1" max="40" step="1" />
+                </div>
+              </div>
+              <p class="hint">생활비/저축/투자 칸을 클릭하면 고급 설정의 상세 항목으로 이동합니다.</p>
+            </div>
+
+            <details id="advancedSettings" class="advanced-block">
+              <summary>고급 설정 (생활비 상세 / 초기자산 / 증가율 / 수익률)</summary>
+              <div class="advanced-nav" role="tablist" aria-label="상세 항목 탭">
+                <button id="advancedTabExpense" class="advanced-tab is-active" type="button" role="tab" aria-selected="true" aria-controls="expenseAdvancedBlock" data-advanced-tab="expense">생활비</button>
+                <button id="advancedTabSavings" class="advanced-tab" type="button" role="tab" aria-selected="false" aria-controls="savingsAdvancedBlock" data-advanced-tab="savings">저축</button>
+                <button id="advancedTabInvest" class="advanced-tab" type="button" role="tab" aria-selected="false" aria-controls="investAdvancedBlock" data-advanced-tab="invest">투자</button>
+                <button id="advancedTabRates" class="advanced-tab advanced-tab--mobile-only" type="button" role="tab" aria-selected="false" aria-controls="ratesAdvancedBlock" data-advanced-tab="rates">수익률</button>
+              </div>
+              <div id="expenseAdvancedBlock" class="controls-block" data-advanced-block="expense">
+                <div class="block-head">
+                  <h3>생활비 상세 항목</h3>
+                  <button id="editExpenseItems" class="btn btn-ghost btn-sm" type="button">항목 편집</button>
+                </div>
+                <p class="hint">아래 항목 합계가 월 생활비로 자동 반영됩니다. 편집 모드에서 그룹(예: 공과금)을 설정하면 적용 시 그룹끼리 자동으로 묶입니다. 기존 그룹명은 추천되고 신규 직접 입력도 가능합니다.</p>
+                <div id="expenseList" class="expense-list" aria-live="polite"></div>
+                <div id="expenseEditorActions" class="editor-actions" hidden>
+                  <button id="addExpenseItem" class="btn btn-ghost btn-sm" type="button">항목 추가</button>
+                  <button id="applyExpenseItems" class="btn btn-primary btn-sm" type="button">항목 변경 적용</button>
+                  <button id="cancelExpenseItems" class="btn btn-ghost btn-sm" type="button">편집 취소</button>
+                </div>
+                <p id="expenseTotalHint" class="hint"></p>
+              </div>
+              <div id="savingsAdvancedBlock" class="controls-block" data-advanced-block="savings">
+                <div class="block-head">
+                  <h3>저축 상세 항목</h3>
+                  <button id="editSavingsItems" class="btn btn-ghost btn-sm" type="button">항목 편집</button>
+                </div>
+                <p class="hint">아래 항목 합계가 월 저축으로 자동 반영됩니다. 항목별 연 이자율을 비우면 저축 기본 수익률이 적용됩니다.</p>
+                <p class="hint">편집 모드에서 그룹(예: 단기예적금)과 만기 해지월(YYYY-MM)을 설정하면 적용 시 그룹끼리 자동으로 묶입니다. 기존 그룹명은 추천되고 신규 직접 입력도 가능합니다.</p>
+                <div id="savingsList" class="savings-list" aria-live="polite"></div>
+                <div id="savingsEditorActions" class="editor-actions" hidden>
+                  <button id="addSavingsItem" class="btn btn-ghost btn-sm" type="button">항목 추가</button>
+                  <button id="applySavingsItems" class="btn btn-primary btn-sm" type="button">항목 변경 적용</button>
+                  <button id="cancelSavingsItems" class="btn btn-ghost btn-sm" type="button">편집 취소</button>
+                </div>
+                <p id="savingsTotalHint" class="hint"></p>
+              </div>
+              <div id="investAdvancedBlock" class="controls-block" data-advanced-block="invest">
+                <div class="block-head">
+                  <h3>투자 상세 항목</h3>
+                  <button id="editInvestItems" class="btn btn-ghost btn-sm" type="button">항목 편집</button>
+                </div>
+                <p class="hint">아래 항목 합계가 월 투자로 자동 반영됩니다. 편집 모드에서 그룹과 만기 해지월(YYYY-MM)을 설정하면 적용 시 그룹끼리 자동으로 묶입니다. 기존 그룹명은 추천되고 신규 직접 입력도 가능합니다.</p>
+                <div id="investList" class="invest-list" aria-live="polite"></div>
+                <div id="investEditorActions" class="editor-actions" hidden>
+                  <button id="addInvestItem" class="btn btn-ghost btn-sm" type="button">항목 추가</button>
+                  <button id="applyInvestItems" class="btn btn-primary btn-sm" type="button">항목 변경 적용</button>
+                  <button id="cancelInvestItems" class="btn btn-ghost btn-sm" type="button">편집 취소</button>
+                </div>
+                <p id="investTotalHint" class="hint"></p>
+              </div>
+              <datalist id="expenseGroupOptions"></datalist>
+              <datalist id="savingsGroupOptions"></datalist>
+              <datalist id="investGroupOptions"></datalist>
+              <div id="ratesAdvancedBlock" class="controls-block controls-block--rates">
+                <h3>초기자산 / 증가율 / 수익률</h3>
+                <div class="controls-grid controls-grid--advanced">
+                  <div class="control">
+                    <label for="startCash">초기 현금</label>
+                    <input id="startCash" name="startCash" type="number" min="0" step="1" />
+                  </div>
+                  <div class="control">
+                    <label for="startSavings">초기 저축잔액</label>
+                    <input id="startSavings" name="startSavings" type="number" min="0" step="1" />
+                  </div>
+                  <div class="control">
+                    <label for="startInvest">초기 투자잔액</label>
+                    <input id="startInvest" name="startInvest" type="number" min="0" step="1" />
+                  </div>
+                  <div class="control">
+                    <label for="startDebt">초기 부채</label>
+                    <input id="startDebt" name="startDebt" type="number" min="0" step="1" />
+                  </div>
+                  <div class="control">
+                    <label for="annualIncomeGrowth">수입 증가율(연, %)</label>
+                    <input id="annualIncomeGrowth" name="annualIncomeGrowth" type="number" min="0" max="30" step="0.1" />
+                  </div>
+                  <div class="control">
+                    <label for="annualExpenseGrowth">생활비 증가율(연, %, 기준금리)</label>
+                    <input id="annualExpenseGrowth" name="annualExpenseGrowth" type="number" min="0" max="30" step="0.1" />
+                  </div>
+                  <div class="control">
+                    <div class="label-row">
+                      <label for="annualSavingsYield">저축 기본 수익률(연, %, 항목 기본값)</label>
+                      <button
+                        type="button"
+                        class="inline-tip"
+                        aria-label="저축 기본 수익률 설명"
+                        data-tooltip="저축 상세 항목의 연 이자율을 비워둔 항목에 적용됩니다."
+                      >
+                        ?
+                      </button>
+                    </div>
+                    <input id="annualSavingsYield" name="annualSavingsYield" type="number" min="0" max="20" step="0.1" placeholder="저축기본수익률" />
+                  </div>
+                  <div class="control">
+                    <label for="annualInvestReturn">투자 수익률(연, %)</label>
+                    <input id="annualInvestReturn" name="annualInvestReturn" type="number" min="0" max="30" step="0.1" />
+                  </div>
+                  <div class="control">
+                    <label for="annualDebtInterest">부채 이자율(연, %)</label>
+                    <input id="annualDebtInterest" name="annualDebtInterest" type="number" min="0" max="30" step="0.1" />
+                  </div>
+                </div>
+              </div>
+            </details>
+            </form>
+          </div>
+        </section>
+      </main>
+    </div>
+    <div id="mobileEditorFab" class="mobile-editor-fab" hidden>
+      <span id="mobileEditorFabLabel" class="mobile-editor-fab-label" aria-live="polite"></span>
+      <div class="mobile-editor-fab-actions" role="group" aria-label="모바일 항목 편집 액션">
+        <button id="mobileEditorAdd" class="mobile-editor-fab-btn mobile-editor-fab-btn--add" type="button" aria-label="항목 추가">+</button>
+        <button id="mobileEditorApply" class="mobile-editor-fab-btn mobile-editor-fab-btn--apply" type="button">적용</button>
+        <button id="mobileEditorCancel" class="mobile-editor-fab-btn mobile-editor-fab-btn--cancel" type="button" aria-label="편집 취소">×</button>
+      </div>
+    </div>
+    <button id="checkLatestVersion" class="version-check-trigger" type="button" hidden>최신버전 체크</button>
+    <button id="jumpToInputs" class="floating-btn floating-btn--left" type="button" aria-label="핵심카드 섹터로 이동">
+      ★
+    </button>
+    <button id="saveViewToLocal" class="floating-btn floating-btn--left-save" type="button" aria-label="현재 보기 상태를 로컬 저장소에 저장" hidden>
+      <svg class="floating-btn-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M5 3h11l3 3v15H5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"></path>
+        <path d="M8 3v6h8V4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"></path>
+        <rect x="8" y="13" width="8" height="6" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.8"></rect>
+      </svg>
+    </button>
+    <button id="jumpToTop" class="floating-btn floating-btn--right" type="button" aria-label="맨 위로 이동">
+      ▲
+    </button>
+    <div id="pendingBar" class="pending-bar" hidden>
+      <p id="pendingSummary" class="pending-summary"></p>
+      <div class="pending-actions">
+        <button id="applyChanges" class="btn btn-primary" type="button">적용</button>
+        <button id="cancelChanges" class="btn btn-ghost" type="button">취소</button>
+      </div>
+    </div>
+    <div id="applyFeedback" class="apply-feedback" hidden></div>
+    <script src="app.js"></script>
+  </body>
+</html>

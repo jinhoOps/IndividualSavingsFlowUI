@@ -1,10 +1,14 @@
-# 나의 가계 흐름
+# IndividualSavings Flow UIUX
 
 `개인 자산 흐름 (IndividualSavings Flow UIUX)` 프로젝트는  
 개인의 월간 현금흐름 점검부터 중장기 자산 변화 시뮬레이션까지 연결하는 UIUX를 기획 중입니다.  
-이 저장소는 그중 1단계 프로토타입 `나의 가계 흐름`입니다.
+현재는 단일 레포 내 다중 단계 구조로 운영합니다.
 
-이렇게 벌고, 이렇게 쓴다. 를 쉽게 파악할 수 있습니다.
+## 구조
+
+- `apps/step1`: `나의 가계 흐름` (현재 운영중인 1단계)
+- `apps/step2`: 투자 포트폴리오 구성(스캐폴드/기획 진행)
+- `shared`: Step1/Step2 공통 모듈 위치(IndexedDB 스키마/브리지 예정)
 
 ## 문제 정의
 
@@ -13,7 +17,10 @@
 
 ## 배포 페이지에서 바로 사용
 
-- 접속: https://jinhoops.github.io/IndividualSavingsFlowUI/
+- 접속:
+  - 루트(자동 Step1 이동): https://jinhoops.github.io/IndividualSavingsFlowUI/
+  - Step1 직접: https://jinhoops.github.io/IndividualSavingsFlowUI/apps/step1/
+  - Step2 직접: https://jinhoops.github.io/IndividualSavingsFlowUI/apps/step2/
 - 금액 단위: `만원` (예: `350` = `3,500,000원`)
 - 기본 흐름:
   1. `입력값`에서 수입/지출/저축/투자/부채상환 값을 입력
@@ -51,4 +58,6 @@ git clone https://github.com/jinhoOps/IndividualSavingsFlowUI.git
 cd IndividualSavingsFlowUI
 ```
 
-`index.html`을 브라우저에서 열면 실행됩니다.
+- 루트 `index.html`: Step1으로 자동 이동
+- Step1 직접 실행: `apps/step1/index.html`
+- Step2 직접 실행: `apps/step2/index.html`

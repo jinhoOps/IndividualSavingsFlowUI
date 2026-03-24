@@ -1,0 +1,63 @@
+:root {
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Pretendard", "Noto Sans KR", sans-serif;
+  background: #f3f4ef;
+  color: #102220;
+}
+
+.page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 16px 40px;
+  display: grid;
+  gap: 16px;
+}
+
+.eyebrow {
+  margin: 0;
+  font-size: 0.78rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(16, 34, 32, 0.66);
+}
+
+h1, h2 {
+  margin: 0;
+}
+
+.lead {
+  margin: 8px 0 0;
+  color: rgba(16, 34, 32, 0.8);
+}
+
+.panel {
+  border: 1px solid rgba(16, 34, 32, 0.16);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.92);
+  padding: 14px;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.btn {
+  border: 1px solid rgba(16, 34, 32, 0.26);
+  border-radius: 999px;
+  background: #fff;
+  color: #102220;
+  text-decoration: none;
+  padding: 8px 14px;
+  font: inherit;
+  cursor: pointer;
+}

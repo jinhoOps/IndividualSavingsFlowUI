@@ -167,3 +167,8 @@
   - Step1 환경(서버 DB 미연동)에서는 `#s=...` 압축 해시 fallback을 자동 포함해 기존 공유 호환성을 유지.
   - 입력 상태 자동 동기화는 `해시가 이미 있을 때만` 갱신하도록 조정해 기본 URL 노출을 단순화.
   - README 저장/공유 섹션에 단계별 구조와 압축 해시 정책을 명시.
+- 레포 구조 전환(권장안 1):
+  - 실행 파일을 `apps/step1`로 이동(`index.html`, `app.js`, `styles.css`, `sw.js`, `manifest`, `icons`).
+  - 루트 `index.html`은 기존 URL 호환을 위해 `apps/step1`로 자동 리다이렉트하도록 변경.
+  - `apps/step2` 스캐폴드(`index.html`, `styles.css`, `app.js`)를 추가해 Step2 작업 기준점을 마련.
+  - `shared/README.md`를 추가해 공통 모듈(IndexedDB 스키마/브리지) 배치 경로를 고정.
