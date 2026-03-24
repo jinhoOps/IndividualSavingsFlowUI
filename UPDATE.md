@@ -155,3 +155,8 @@
   - standalone + 모바일 환경에서 `manifest.webmanifest(version)`을 주기/포그라운드 시점에 원격 확인.
   - 원격 버전이 현재 `APP_VERSION`보다 높으면 `새 버전 감지` 토스트를 1회 표시.
   - 버전 확인 시 `registration.update()`를 함께 호출해 서비스워커 업데이트 체크를 동시 수행.
+- 모바일 PWA 버전 감지 정책 조정:
+  - 자동 감지는 `포그라운드 복귀(visibilitychange: visible)` 중심으로 유지하고, 점검 주기를 `1일 1회`로 완화.
+  - 마지막 점검 시각을 localStorage(`isf-pwa-remote-version-last-check-v1`)에 저장해 세션이 바뀌어도 주기를 유지.
+  - 최하단에 저대비 `최신버전 체크` 버튼을 추가해 사용자가 수동으로 즉시 확인 가능하도록 보강.
+  - 수동 체크는 최신/실패 상태도 토스트로 명시(`최신 버전`, `확인 실패`).

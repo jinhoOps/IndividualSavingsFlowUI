@@ -1236,6 +1236,34 @@ main {
   line-height: 1;
 }
 
+.version-check-trigger {
+  position: fixed;
+  left: 50%;
+  bottom: calc(2px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  z-index: 18;
+  min-height: 24px;
+  padding: 2px 10px;
+  border: 1px solid rgba(16, 34, 32, 0.08);
+  border-radius: 999px;
+  background: rgba(243, 244, 239, 0.82);
+  color: rgba(16, 34, 32, 0.36);
+  font: inherit;
+  font-size: 0.68rem;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  display: none;
+}
+
+.version-check-trigger[hidden] {
+  display: none !important;
+}
+
+.version-check-trigger:focus-visible {
+  outline: 1px solid rgba(16, 34, 32, 0.25);
+  outline-offset: 1px;
+}
+
 .table-wrap {
   overflow-x: auto;
 }
@@ -1801,6 +1829,17 @@ main {
     opacity: 0;
     pointer-events: none;
     transform: translateY(10px);
+  }
+
+  body.is-item-editor-active .version-check-trigger {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .version-check-trigger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 }
 
