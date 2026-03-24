@@ -96,11 +96,14 @@ const SAMPLE_INPUTS = {
   ],
   expenseItems: [
     { id: "rent", name: "주거비(월세)", amount: 65 },
-    { id: "maintenance", name: "관리비", amount: 12 },
+    { id: "general-maintenance", name: "일반관리비", amount: 8, group: "공과금" },
+    { id: "electricity", name: "전기세", amount: 6, group: "공과금" },
+    { id: "water", name: "수도세", amount: 3, group: "공과금" },
+    { id: "gas", name: "가스비", amount: 5, group: "공과금" },
     { id: "telecom", name: "통신비", amount: 6 },
     { id: "transport", name: "교통비", amount: 12 },
     { id: "food", name: "식비", amount: 45 },
-    { id: "etc", name: "기타생활비", amount: 20 },
+    { id: "etc", name: "기타생활비", amount: 10 },
   ],
   savingsItems: [
     { id: "youth-saving", name: "청년적금", amount: 70, annualRate: 3.3 },
@@ -1840,8 +1843,12 @@ function syncMobileItemEditorFab() {
 }
 
 function syncItemEditorModeState() {
+  const isItemEditorActive = Boolean(getActiveItemEditorGroupKey());
   if (dom.controlsPanel instanceof HTMLElement) {
-    dom.controlsPanel.classList.toggle("is-item-editor-active", Boolean(getActiveItemEditorGroupKey()));
+    dom.controlsPanel.classList.toggle("is-item-editor-active", isItemEditorActive);
+  }
+  if (document.body instanceof HTMLElement) {
+    document.body.classList.toggle("is-item-editor-active", isItemEditorActive);
   }
 }
 
