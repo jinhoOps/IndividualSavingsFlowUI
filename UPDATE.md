@@ -6,6 +6,8 @@
 - 커밋 기준 확인은 `git log -1`로 최신 1건을 먼저 확인한다.
 - 버전은 당분간 `0.x`(pre-1.0)로 관리한다.
 - 버전 증분 규칙: `feat => minor up (0.x.0)`, `fix/chore/docs/refactor => patch up (0.x.y)`.
+- 커밋 태그 규칙(기본 고정): `feat:` / `fix:` / `docs:` / `chore:`만 사용한다.
+- 예외적으로 성격이 명확할 때만 `refactor:` / `test:` / `perf:`를 사용한다.
 - PWA 관련 변경 시 `app.js(APP_VERSION)` / `sw.js(CACHE_NAME)` / `manifest.webmanifest(version)`을 같은 버전으로 동기화한다.
 - 이력이 길어지면 기능 단위로 압축하고, 날짜 구간은 유지해 구분한다.
 
