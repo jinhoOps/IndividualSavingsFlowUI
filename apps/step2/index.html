@@ -9,10 +9,10 @@
   </head>
   <body>
     <main class="page">
-      <header class="panel">
+      <header class="hero panel">
         <p class="eyebrow">INDIVIDUALSAVINGS FLOW UIUX · STEP 2</p>
         <h1>투자 포트폴리오 구성</h1>
-        <p class="lead">계좌별 월 납입 계획과 자산군 비중을 동시에 설계하고, 종합/계좌별 도넛으로 바로 확인합니다.</p>
+        <p class="lead">월 투자 가능 금액을 기준으로 계좌/종목 비중만 조절하면, 남는 금액은 자동으로 현금 처리됩니다.</p>
         <div class="actions">
           <a class="btn btn-ghost" href="../step1/">Step1으로 이동</a>
           <button id="loadStep1Data" class="btn btn-primary" type="button">Step1 데이터 가져오기</button>
@@ -57,7 +57,7 @@
             </button>
           </div>
         </div>
-        <p id="chartMeta" class="muted">종합 도넛은 계좌별 월 납입액 가중합 기준으로 표시합니다.</p>
+        <p id="chartMeta" class="muted">종합 도넛은 월 투자 가능 금액 기준 계좌/종목 비중으로 계산됩니다.</p>
 
         <div id="summaryChartPane" class="chart-pane" data-chart-pane="summary">
           <div class="chart-stage">
@@ -88,8 +88,8 @@
             <textarea id="portfolioNotes" rows="3" maxlength="500"></textarea>
           </label>
           <label class="control">
-            <span>미배분 월 투자여력(원)</span>
-            <input id="unallocatedMonthlyInvest" type="number" min="0" step="10000" />
+            <span>월 투자 가능 금액(원, Step1 가져오기 자동 반영)</span>
+            <input id="totalMonthlyInvestCapacity" type="number" min="0" step="10000" />
           </label>
         </div>
       </section>
@@ -101,7 +101,7 @@
         </div>
         <div class="account-table-head">
           <span>계좌명</span>
-          <span>월 납입액(원)</span>
+          <span>계좌 비중(%)</span>
           <span>편집</span>
           <span>관리</span>
         </div>

@@ -38,13 +38,13 @@
 - 로컬 백업: 12시간 간격 자동 백업(최대 60개) + 선택 복원
 - PWA 기본 적용: Service Worker + Web App Manifest(오프라인 재진입 지원)
 - Step2 포트폴리오:
-  - 계좌 중심 편집: `계좌명/월 납입액` + 계좌 내 자산군 비중 CRUD
-  - Step2 금액 단위: `원` (계좌 월 납입액, 미배분 월 투자여력)
+  - 계좌 중심 편집: `계좌명/계좌 비중(%)` + 계좌 내 자산군 비중 CRUD
+  - Step2 금액 단위: `원` (월 투자 가능 금액 1개 입력, 계좌 금액은 비중으로 자동 계산)
   - 검증: 계좌별 자산 비중 합계 100% 검증(실패 시 저장 차단)
-  - 도넛 시각화: `종합 도넛(월 납입액 가중합 + 미배분)` / `계좌별 도넛` 탭 전환
+  - 도넛 시각화: `종합 도넛(월 투자 가능 금액 기준 + 자동 현금)` / `계좌별 도넛` 탭 전환
   - 기본 샘플 계좌: `국내주식`, `ISA`, `해외주식`
   - IndexedDB 저장/불러오기/삭제 + v1(`targetAllocations`) 자동 마이그레이션
-  - Step1 브리지 데이터 수동 가져오기(월 투자여력 -> 미배분 반영, 덮어쓰기 확인)
+  - Step1 브리지 데이터 수동 가져오기(월 투자여력 -> Step2 월 투자 가능 금액 반영, 덮어쓰기 확인)
 
 ## 저장 방식
 
@@ -58,7 +58,7 @@
   - `bridgeStep1ToStep2`: Step2 전달용 최소 payload
     - `monthlyInvestCapacity`, `currentCash`, `currentInvest`, `currentSavings`, `timestamp`
   - `step2Portfolios`:
-    - v2(현재): `{ id, modelVersion, name, accounts, unallocatedMonthlyInvest, notes, updatedAt }`
+    - v2(현재): `{ id, modelVersion, name, totalMonthlyInvestCapacity, accounts, notes, updatedAt }`
     - v1(레거시): `{ id, name, targetAllocations, notes, updatedAt }` (로드 시 자동 변환)
 - 예외 모드(fallback):
   - DB 없이도 공유가 가능하도록 `#s=...` 압축 해시를 함께 사용할 수 있습니다.

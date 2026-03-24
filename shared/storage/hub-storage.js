@@ -178,6 +178,21 @@
     };
   }
 
+  function sanitizeWeight(value) {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) {
+      return 0;
+    }
+    const rounded = Math.round(numeric * 100) / 100;
+    if (rounded < 0) {
+      return 0;
+    }
+    if (rounded > 100) {
+      return 100;
+    }
+    return rounded;
+  }
+
   function sanitizeStep2Account(source, index) {
     const safe = source && typeof source === "object" ? source : {};
     const rawAllocations = Array.isArray(safe.allocations) ? safe.allocations : [];
@@ -185,6 +200,7 @@
     return {
       id: typeof safe.id === "string" && safe.id.trim() ? safe.id.trim() : createId(`account-${index}`),
       name: String(safe.name || "").trim() || `계좌 ${index + 1}`,
+      accountWeight: sanitizeWeight(safe.accountWeight),
       monthlyContribution: sanitizeNonNegativeNumber(safe.monthlyContribution),
       allocations,
     };
@@ -209,6 +225,7 @@
         modelVersion: 2,
         name: safeName,
         notes: safeNotes,
+        totalMonthlyInvestCapacity: sanitizeNonNegativeNumber(source.totalMonthlyInvestCapacity),
         unallocatedMonthlyInvest: sanitizeNonNegativeNumber(source.unallocatedMonthlyInvest),
         bridgeContext: source.bridgeContext && typeof source.bridgeContext === "object" ? source.bridgeContext : null,
         accounts: Array.isArray(source.accounts)

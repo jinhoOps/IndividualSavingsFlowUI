@@ -7,7 +7,7 @@
   const DEFAULT_ACCOUNT_TEMPLATES = [
     {
       name: "국내주식",
-      monthlyContribution: 0,
+      accountWeight: 34,
       allocations: [
         { key: "kr-samsung", label: "삼성전자", targetWeight: 40, memo: "" },
         { key: "kr-sk-hynix", label: "SK하이닉스", targetWeight: 35, memo: "" },
@@ -16,7 +16,7 @@
     },
     {
       name: "ISA",
-      monthlyContribution: 0,
+      accountWeight: 33,
       allocations: [
         { key: "fund-kospi", label: "코스피", targetWeight: 30, memo: "" },
         { key: "fund-nasdaq100", label: "나스닥100", targetWeight: 40, memo: "" },
@@ -25,7 +25,7 @@
     },
     {
       name: "해외주식",
-      monthlyContribution: 0,
+      accountWeight: 33,
       allocations: [
         { key: "us-nasdaq100", label: "나스닥100", targetWeight: 60, memo: "" },
         { key: "us-tesla", label: "Tesla", targetWeight: 20, memo: "" },
@@ -64,7 +64,7 @@
     focusedAccountTitle: document.getElementById("focusedAccountTitle"),
     portfolioName: document.getElementById("portfolioName"),
     portfolioNotes: document.getElementById("portfolioNotes"),
-    unallocatedMonthlyInvest: document.getElementById("unallocatedMonthlyInvest"),
+    totalMonthlyInvestCapacity: document.getElementById("totalMonthlyInvestCapacity"),
     addAccount: document.getElementById("addAccount"),
     accountList: document.getElementById("accountList"),
     accountSummary: document.getElementById("accountSummary"),
@@ -181,7 +181,7 @@
     return {
       id: String(safe.id || "").trim() || createId("account"),
       name: String(safe.name || "").trim() || "계좌",
-      monthlyContribution: sanitizeAmount(safe.monthlyContribution),
+      accountWeight: sanitizeWeight(safe.accountWeight),
       allocations: allocations.length > 0 ? allocations : [createDraftAllocation({ label: "자산군 1", targetWeight: 100 })],
     };
   }
@@ -195,7 +195,7 @@
       modelVersion: MODEL_VERSION,
       name: "내 포트폴리오",
       notes: "",
-      unallocatedMonthlyInvest: 0,
+      totalMonthlyInvestCapacity: 0,
       accounts: createDefaultAccounts(),
       bridgeContext: null,
     };
@@ -279,8 +279,33 @@
     return Math.abs(getAllocationWeightTotal(account) - 100) <= 0.01;
   }
 
-  function getTotalAccountContribution() {
-    return state.draft.accounts.reduce((sum, account) => sum + sanitizeAmount(account.monthlyContribution), 0);
+  function getTotalAccountWeight() {
+    return state.draft.accounts.reduce((sum, account) => sum + sanitizeWeight(account.accountWeight), 0);
+  }
+
+  function getTotalMonthlyInvestCapacity() {
+    return sanitizeAmount(state.draft.totalMonthlyInvestCapacity);
+  }
+
+  function getAccountAllocatedAmount(account) {
+    const totalCapacity = getTotalMonthlyInvestCapacity();
+    const accountWeight = sanitizeWeight(account?.accountWeight);
+    if (totalCapacity <= 0 || accountWeight <= 0) {
+      return 0;
+    }
+    return Math.round((totalCapacity * accountWeight) / 100);
+  }
+
+  function getAutoCashAmount() {
+    const totalCapacity = getTotalMonthlyInvestCapacity();
+    if (totalCapacity <= 0) {
+      return 0;
+    }
+    const totalWeight = getTotalAccountWeight();
+    if (totalWeight >= 100) {
+      return 0;
+    }
+    return Math.round((totalCapacity * (100 - totalWeight)) / 100);
   }
 
   function validateDraft() {
@@ -288,8 +313,8 @@
       return { valid: false, message: "포트폴리오 이름을 입력하세요." };
     }
 
-    if (!Number.isFinite(Number(state.draft.unallocatedMonthlyInvest)) || Number(state.draft.unallocatedMonthlyInvest) < 0) {
-      return { valid: false, message: "미배분 월 투자여력은 0 이상이어야 합니다." };
+    if (!Number.isFinite(Number(state.draft.totalMonthlyInvestCapacity)) || Number(state.draft.totalMonthlyInvestCapacity) < 0) {
+      return { valid: false, message: "월 투자 가능 금액은 0 이상이어야 합니다." };
     }
 
     if (!Array.isArray(state.draft.accounts) || state.draft.accounts.length === 0) {
@@ -302,8 +327,9 @@
       if (!String(account.name || "").trim()) {
         return { valid: false, message: `${accountLabel}: 계좌명을 입력하세요.` };
       }
-      if (sanitizeAmount(account.monthlyContribution) < 0) {
-        return { valid: false, message: `${accountLabel}: 월 납입액은 0 이상이어야 합니다.` };
+      const accountWeight = sanitizeWeight(account.accountWeight);
+      if (accountWeight < 0 || accountWeight > 100) {
+        return { valid: false, message: `${accountLabel}: 계좌 비중은 0~100%여야 합니다.` };
       }
       if (!Array.isArray(account.allocations) || account.allocations.length === 0) {
         return { valid: false, message: `${accountLabel}: 자산군을 1개 이상 입력하세요.` };
@@ -314,6 +340,10 @@
       if (!isAllocationTotalValid(account)) {
         return { valid: false, message: `${accountLabel}: 비중 합계가 100%여야 합니다.` };
       }
+    }
+
+    if (getTotalAccountWeight() > 100.01) {
+      return { valid: false, message: "계좌 비중 합계가 100%를 초과했습니다." };
     }
 
     return { valid: true, message: "" };
@@ -353,9 +383,9 @@
       });
     }
 
-    if (dom.unallocatedMonthlyInvest) {
-      dom.unallocatedMonthlyInvest.addEventListener("input", () => {
-        state.draft.unallocatedMonthlyInvest = sanitizeAmount(dom.unallocatedMonthlyInvest.value);
+    if (dom.totalMonthlyInvestCapacity) {
+      dom.totalMonthlyInvestCapacity.addEventListener("input", () => {
+        state.draft.totalMonthlyInvestCapacity = sanitizeAmount(dom.totalMonthlyInvestCapacity.value);
         markDirty();
         renderAccountSummary();
         renderCharts();
@@ -364,7 +394,7 @@
 
     if (dom.addAccount) {
       dom.addAccount.addEventListener("click", () => {
-        const next = createDraftAccount({ name: `계좌 ${state.draft.accounts.length + 1}`, monthlyContribution: 0 });
+        const next = createDraftAccount({ name: `계좌 ${state.draft.accounts.length + 1}`, accountWeight: 0 });
         state.draft.accounts.push(next);
         state.activeAccountId = next.id;
         markDirty();
@@ -393,8 +423,8 @@
         if (target.dataset.field === "accountName") {
           account.name = target.value;
         }
-        if (target.dataset.field === "monthlyContribution") {
-          account.monthlyContribution = sanitizeAmount(target.value);
+        if (target.dataset.field === "accountWeight") {
+          account.accountWeight = sanitizeWeight(target.value);
         }
 
         markDirty();
@@ -575,8 +605,8 @@
     if (dom.portfolioNotes) {
       dom.portfolioNotes.value = state.draft.notes;
     }
-    if (dom.unallocatedMonthlyInvest) {
-      dom.unallocatedMonthlyInvest.value = String(sanitizeAmount(state.draft.unallocatedMonthlyInvest));
+    if (dom.totalMonthlyInvestCapacity) {
+      dom.totalMonthlyInvestCapacity.value = String(sanitizeAmount(state.draft.totalMonthlyInvestCapacity));
     }
     renderChartTabs();
     renderAccountList();
@@ -606,7 +636,7 @@
     }
     if (dom.chartMeta) {
       dom.chartMeta.textContent = isSummary
-        ? "종합 도넛은 계좌별 월 납입액 가중합 + 미배분 투자여력 기준입니다."
+        ? "종합 도넛은 월 투자 가능 금액에서 계좌/종목 비중으로 계산하고, 남는 금액은 자동 현금 처리합니다."
         : "계좌별 도넛은 선택 계좌의 자산 비중(%) 기준입니다.";
     }
   }
@@ -623,7 +653,7 @@
       row.setAttribute("data-account-id", account.id);
       row.innerHTML = `
         <input type="text" data-field="accountName" value="${escapeHtml(account.name)}" aria-label="계좌 ${index + 1} 이름" />
-        <input type="number" min="0" step="10000" data-field="monthlyContribution" value="${sanitizeAmount(account.monthlyContribution)}" aria-label="계좌 ${index + 1} 월 납입액" />
+        <input type="number" min="0" max="100" step="0.01" data-field="accountWeight" value="${formatWeight(account.accountWeight)}" aria-label="계좌 ${index + 1} 비중" />
         <div class="account-row-actions">
           <button type="button" class="btn btn-ghost btn-sm" data-select-account-id="${escapeHtml(account.id)}">${account.id === state.activeAccountId ? "편집중" : "선택"}</button>
         </div>
@@ -673,13 +703,15 @@
     if (!(dom.accountSummary instanceof HTMLElement)) {
       return;
     }
-    const totalMonthly = getTotalAccountContribution();
-    const unallocated = sanitizeAmount(state.draft.unallocatedMonthlyInvest);
+    const totalCapacity = getTotalMonthlyInvestCapacity();
+    const totalWeight = getTotalAccountWeight();
+    const autoCash = getAutoCashAmount();
     const invalidCount = state.draft.accounts.filter((account) => !isAllocationTotalValid(account)).length;
-    dom.accountSummary.textContent = `계좌 월 납입 합계 ${formatCurrency(totalMonthly)} · 미배분 ${formatCurrency(unallocated)} · 전체 ${formatCurrency(totalMonthly + unallocated)}`;
-    dom.accountSummary.classList.toggle("is-error", invalidCount > 0);
-    if (invalidCount > 0) {
-      dom.accountSummary.textContent += ` · 비중 검증 실패 계좌 ${invalidCount}개`;
+    const overweight = totalWeight > 100.01;
+    dom.accountSummary.textContent = `월 투자 가능 금액 ${formatCurrency(totalCapacity)} · 계좌 비중 합계 ${totalWeight.toFixed(2)}% · 자동 현금 ${formatCurrency(autoCash)}`;
+    dom.accountSummary.classList.toggle("is-error", invalidCount > 0 || overweight);
+    if (invalidCount > 0 || overweight) {
+      dom.accountSummary.textContent += ` · 검증 실패 계좌 ${invalidCount}개${overweight ? " · 계좌 비중 100% 초과" : ""}`;
     }
   }
 
@@ -721,15 +753,19 @@
 
   function buildSummarySlices() {
     const bucket = new Map();
+    const totalCapacity = getTotalMonthlyInvestCapacity();
+    if (totalCapacity <= 0) {
+      return [];
+    }
 
     state.draft.accounts.forEach((account) => {
-      const monthly = sanitizeAmount(account.monthlyContribution);
-      if (monthly <= 0) {
+      const accountBudget = getAccountAllocatedAmount(account);
+      if (accountBudget <= 0) {
         return;
       }
       account.allocations.forEach((allocation) => {
         const weight = sanitizeWeight(allocation.targetWeight);
-        const amount = Math.round((monthly * weight) / 100);
+        const amount = Math.round((accountBudget * weight) / 100);
         if (amount <= 0) {
           return;
         }
@@ -745,9 +781,9 @@
     });
 
     const slices = Array.from(bucket.values()).sort((a, b) => b.value - a.value);
-    const unallocated = sanitizeAmount(state.draft.unallocatedMonthlyInvest);
-    if (unallocated > 0) {
-      slices.push({ key: UNALLOCATED_ASSET_KEY, label: "미배분", value: unallocated, color: getAssetColor(UNALLOCATED_ASSET_KEY, "미배분") });
+    const autoCash = getAutoCashAmount();
+    if (autoCash > 0) {
+      slices.push({ key: UNALLOCATED_ASSET_KEY, label: "현금(자동)", value: autoCash, color: getAssetColor(UNALLOCATED_ASSET_KEY, "현금") });
     }
     return slices;
   }
@@ -765,7 +801,7 @@
           key,
           label,
           value,
-          expectedAmount: Math.round((sanitizeAmount(account.monthlyContribution) * value) / 100),
+          expectedAmount: Math.round((getAccountAllocatedAmount(account) * value) / 100),
           color: getAssetColor(key, label),
         };
       })
@@ -780,7 +816,7 @@
     const slices = buildSummarySlices();
     const total = slices.reduce((sum, slice) => sum + slice.value, 0);
     renderDonutChart(dom.summaryDonut, slices, {
-      centerTitle: "월 납입 합계",
+      centerTitle: "월 투자금 합계",
       centerValue: total > 0 ? formatCurrency(total) : "데이터 없음",
       ringColor: "rgba(16, 34, 32, 0.1)",
       outerRadius: 95,
@@ -813,8 +849,9 @@
 
     const slices = buildAccountSlices(account);
     const totalWeight = slices.reduce((sum, slice) => sum + slice.value, 0);
+    const accountBudget = getAccountAllocatedAmount(account);
     if (dom.focusedAccountTitle) {
-      dom.focusedAccountTitle.textContent = `${account.name} · 월 납입 ${formatCurrency(account.monthlyContribution)}`;
+      dom.focusedAccountTitle.textContent = `${account.name} · 계좌 비중 ${formatWeight(account.accountWeight)}% · ${formatCurrency(accountBudget)}`;
     }
 
     renderDonutChart(dom.accountDonut, slices, {
@@ -841,7 +878,7 @@
           <p class="account-chart-card-title">${escapeHtml(account.name)}</p>
           <button type="button" class="btn btn-ghost btn-sm" data-focus-account-id="${escapeHtml(account.id)}">보기</button>
         </div>
-        <p class="account-chart-card-meta">월 납입 ${formatCurrency(account.monthlyContribution)}</p>
+        <p class="account-chart-card-meta">계좌 비중 ${formatWeight(account.accountWeight)}% · ${formatCurrency(getAccountAllocatedAmount(account))}</p>
         <svg class="account-mini-chart" viewBox="0 0 120 120" role="img" aria-label="${escapeHtml(account.name)} 미니 도넛"></svg>
       `;
       dom.accountChartCards.appendChild(card);
@@ -976,12 +1013,12 @@
       modelVersion: MODEL_VERSION,
       name: String(state.draft.name || "포트폴리오").trim() || "포트폴리오",
       notes: String(state.draft.notes || ""),
-      unallocatedMonthlyInvest: sanitizeAmount(state.draft.unallocatedMonthlyInvest),
+      totalMonthlyInvestCapacity: sanitizeAmount(state.draft.totalMonthlyInvestCapacity),
       bridgeContext: state.draft.bridgeContext && typeof state.draft.bridgeContext === "object" ? state.draft.bridgeContext : null,
       accounts: state.draft.accounts.map((account) => ({
         id: String(account.id || "").trim() || createId("account"),
         name: String(account.name || "").trim() || "계좌",
-        monthlyContribution: sanitizeAmount(account.monthlyContribution),
+        accountWeight: sanitizeWeight(account.accountWeight),
         allocations: account.allocations.map((allocation) => ({
           id: String(allocation.id || "").trim() || createId("alloc"),
           key: String(allocation.key || "").trim() || createId("asset"),
@@ -996,7 +1033,39 @@
     const raw = source && typeof source === "object" ? source : {};
     const isV2 = Number(raw.modelVersion) === MODEL_VERSION && Array.isArray(raw.accounts);
 
+    function deriveDraftAccounts(rawAccounts, fallbackTotal) {
+      const safeAccounts = Array.isArray(rawAccounts) ? rawAccounts : [];
+      if (safeAccounts.length === 0) {
+        return createDefaultAccounts();
+      }
+      const hasAccountWeight = safeAccounts.some((account) => Number.isFinite(Number(account?.accountWeight)));
+      if (hasAccountWeight) {
+        return safeAccounts.map((account) => createDraftAccount(account));
+      }
+
+      const totalContribution = safeAccounts.reduce((sum, account) => sum + sanitizeAmount(account?.monthlyContribution), 0);
+      const totalBudget = sanitizeAmount(fallbackTotal);
+      const base = Math.max(totalContribution, totalBudget);
+      if (base <= 0) {
+        const evenWeight = Math.round((100 / safeAccounts.length) * 100) / 100;
+        return safeAccounts.map((account) => createDraftAccount({ ...account, accountWeight: evenWeight, monthlyContribution: undefined }));
+      }
+      return safeAccounts.map((account) => {
+        const monthly = sanitizeAmount(account?.monthlyContribution);
+        return createDraftAccount({
+          ...account,
+          accountWeight: (monthly / base) * 100,
+          monthlyContribution: undefined,
+        });
+      });
+    }
+
     if (isV2) {
+      const totalFromContribution = Array.isArray(raw.accounts)
+        ? raw.accounts.reduce((sum, account) => sum + sanitizeAmount(account?.monthlyContribution), 0)
+        : 0;
+      const fallbackTotal = sanitizeAmount(raw.totalMonthlyInvestCapacity || 0)
+        || (sanitizeAmount(raw.unallocatedMonthlyInvest || 0) + totalFromContribution);
       return {
         migrated: false,
         id: String(raw.id || ""),
@@ -1005,9 +1074,9 @@
           modelVersion: MODEL_VERSION,
           name: String(raw.name || "포트폴리오"),
           notes: String(raw.notes || ""),
-          unallocatedMonthlyInvest: sanitizeAmount(raw.unallocatedMonthlyInvest),
+          totalMonthlyInvestCapacity: fallbackTotal,
           bridgeContext: raw.bridgeContext && typeof raw.bridgeContext === "object" ? raw.bridgeContext : null,
-          accounts: raw.accounts.length > 0 ? raw.accounts.map((account) => createDraftAccount(account)) : createDefaultAccounts(),
+          accounts: deriveDraftAccounts(raw.accounts, fallbackTotal),
         },
       };
     }
@@ -1024,12 +1093,12 @@
         modelVersion: MODEL_VERSION,
         name: String(raw.name || "포트폴리오"),
         notes: String(raw.notes || ""),
-        unallocatedMonthlyInvest: 0,
+        totalMonthlyInvestCapacity: 0,
         bridgeContext: null,
         accounts: [
           createDraftAccount({
             name: "통합계좌",
-            monthlyContribution: 0,
+            accountWeight: 100,
             allocations: legacyAllocations,
           }),
         ],
@@ -1260,7 +1329,7 @@
       state.currentPortfolioId = "";
       state.draft = createEmptyDraft();
       state.draft.name = `Step1 연계 포트폴리오 (${new Date().toISOString().slice(0, 10)})`;
-      state.draft.unallocatedMonthlyInvest = sanitizeAmount(payload.monthlyInvestCapacity);
+      state.draft.totalMonthlyInvestCapacity = sanitizeAmount(payload.monthlyInvestCapacity);
       state.draft.bridgeContext = {
         timestamp: String(payload.timestamp || ""),
         currentCash: sanitizeAmount(payload.currentCash),
@@ -1275,7 +1344,7 @@
       renderDraft();
       renderBridgeInfo(bridge, "Step1 최신 데이터를 편집기에 반영했습니다.");
       renderPortfolioMeta("Step1 브리지 데이터 반영 완료");
-      showFeedback("Step1 월 투자여력을 미배분 금액으로 반영했습니다.", false);
+      showFeedback("Step1 월 투자여력을 Step2 월 투자 가능 금액으로 반영했습니다.", false);
     } catch (_error) {
       showFeedback("Step1 데이터 가져오기에 실패했습니다.", true);
     }

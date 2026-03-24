@@ -23,6 +23,7 @@
 - [X] Step2 기본 샘플 계좌/종목 구성(국내주식·ISA·해외주식)
 - [X] Step2 v1(`targetAllocations`) -> v2 자동 마이그레이션
 - [X] Step 공통 테마 CSS 도입(`shared/styles/step-theme.css`) 및 Step2 적용
+- [X] Step2 입력 단순화: 월 투자 가능 금액 1개 + 계좌/종목 비중 조절 + 자동 현금 처리
 
 
 

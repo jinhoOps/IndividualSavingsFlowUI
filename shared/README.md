@@ -13,7 +13,7 @@ Step1/Step2 공통 모듈을 배치하는 폴더입니다.
 - 스토어 계약:
   - `step1Snapshots`: `{ id, createdAt, updatedAt, data }`
   - `step2Portfolios`:
-    - v2(현재): `{ id, modelVersion, name, accounts[], unallocatedMonthlyInvest, notes, updatedAt }`
+    - v2(현재): `{ id, modelVersion, name, totalMonthlyInvestCapacity, accounts[], notes, updatedAt }`
     - v1(레거시): `{ id, name, targetAllocations, notes, updatedAt }`
   - `bridgeStep1ToStep2`: `{ id, step1SnapshotId, payload, createdAt }`
 
