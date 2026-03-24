@@ -109,16 +109,18 @@
             <h2 id="projectionTitle">가계 추이 계산 검증</h2>
             <p id="projectionMeta" class="hint"></p>
           </div>
-          <div class="formula">
-            순자산 = 현금 + 저축 + 투자 - 부채
-            <br />
-            매월: (수입 - 생활비 - 저축 - 투자 - 실제 부채상환액)을 현금에 반영합니다.
-            (실제 부채상환액 = 설정 상환액, 부채잔액, 가용현금 중 최솟값)
-            저축/투자는 가용현금 범위 내에서만 반영됩니다.
-            부채는 월 이자를 먼저 반영하고 상환액으로 차감하며, 현금이 음수면 부족분을 부채에 더합니다.
-            저축은 항목별 월 수익률, 투자는 설정 월 수익률을 적용합니다.
-            실질 순자산(현재가치)은 기준금리(연)를 월 복리로 환산해 할인합니다.
-          </div>
+          <p class="hint projection-brief">요약: 순자산 = 현금 + 저축 + 투자 - 부채</p>
+          <details class="formula formula-toggle">
+            <summary>자세히 보기</summary>
+            <div class="formula-body">
+              매월: (수입 - 생활비 - 저축 - 투자 - 실제 부채상환액)을 현금에 반영합니다.
+              (실제 부채상환액 = 설정 상환액, 부채잔액, 가용현금 중 최솟값)
+              저축/투자는 가용현금 범위 내에서만 반영됩니다.
+              부채는 월 이자를 먼저 반영하고 상환액으로 차감하며, 현금이 음수면 부족분을 부채에 더합니다.
+              저축은 항목별 월 수익률, 투자는 설정 월 수익률을 적용합니다.
+              실질 순자산(현재가치)은 기준금리(연)를 월 복리로 환산해 할인합니다.
+            </div>
+          </details>
           <div class="table-wrap">
             <table id="projectionTable" class="projection-table">
               <thead>
@@ -339,6 +341,14 @@
           </div>
         </section>
       </main>
+    </div>
+    <div id="mobileEditorFab" class="mobile-editor-fab" hidden>
+      <span id="mobileEditorFabLabel" class="mobile-editor-fab-label" aria-live="polite"></span>
+      <div class="mobile-editor-fab-actions" role="group" aria-label="모바일 항목 편집 액션">
+        <button id="mobileEditorAdd" class="mobile-editor-fab-btn mobile-editor-fab-btn--add" type="button" aria-label="항목 추가">+</button>
+        <button id="mobileEditorApply" class="mobile-editor-fab-btn mobile-editor-fab-btn--apply" type="button">적용</button>
+        <button id="mobileEditorCancel" class="mobile-editor-fab-btn mobile-editor-fab-btn--cancel" type="button" aria-label="편집 취소">×</button>
+      </div>
     </div>
     <button id="jumpToInputs" class="floating-btn floating-btn--left" type="button" aria-label="핵심카드 섹터로 이동">
       ★

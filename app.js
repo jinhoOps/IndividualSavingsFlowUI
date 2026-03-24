@@ -268,6 +268,11 @@ const dom = {
   addInvestItem: document.getElementById("addInvestItem"),
   applyInvestItems: document.getElementById("applyInvestItems"),
   cancelInvestItems: document.getElementById("cancelInvestItems"),
+  mobileEditorFab: document.getElementById("mobileEditorFab"),
+  mobileEditorFabLabel: document.getElementById("mobileEditorFabLabel"),
+  mobileEditorAdd: document.getElementById("mobileEditorAdd"),
+  mobileEditorApply: document.getElementById("mobileEditorApply"),
+  mobileEditorCancel: document.getElementById("mobileEditorCancel"),
   advancedSettings: document.getElementById("advancedSettings"),
   advancedTabExpense: document.getElementById("advancedTabExpense"),
   advancedTabSavings: document.getElementById("advancedTabSavings"),
@@ -1056,6 +1061,34 @@ function bindControls() {
     dom.cancelInvestItems.addEventListener("click", () => cancelItemEditor("invest"));
   }
 
+  if (dom.mobileEditorAdd) {
+    dom.mobileEditorAdd.addEventListener("click", () => {
+      const activeGroupKey = getActiveItemEditorGroupKey();
+      if (!activeGroupKey) {
+        return;
+      }
+      addItemToEditor(activeGroupKey);
+    });
+  }
+  if (dom.mobileEditorApply) {
+    dom.mobileEditorApply.addEventListener("click", () => {
+      const activeGroupKey = getActiveItemEditorGroupKey();
+      if (!activeGroupKey) {
+        return;
+      }
+      applyItemEditor(activeGroupKey);
+    });
+  }
+  if (dom.mobileEditorCancel) {
+    dom.mobileEditorCancel.addEventListener("click", () => {
+      const activeGroupKey = getActiveItemEditorGroupKey();
+      if (!activeGroupKey) {
+        return;
+      }
+      cancelItemEditor(activeGroupKey);
+    });
+  }
+
   if (dom.loadSample) {
     dom.loadSample.addEventListener("click", () => {
       commitImmediateInputs({ ...SAMPLE_INPUTS });
@@ -1173,6 +1206,7 @@ function bindMobileLayoutWatcher() {
     }
     syncMobileInputsPanelVisibility();
     syncAdvancedTabBlockVisibility();
+    syncAllItemEditorUi();
   };
   if (typeof mobileLayoutMediaQuery.addEventListener === "function") {
     mobileLayoutMediaQuery.addEventListener("change", handleMobileLayoutChange);
@@ -1686,6 +1720,7 @@ function getItemGroupMeta(groupKey) {
     expense: {
       label: "생활비",
       field: "expenseItems",
+      block: dom.expenseAdvancedBlock,
       renderList: renderExpenseList,
       renderHint: renderExpenseTotalHint,
       editButton: dom.editExpenseItems,
@@ -1698,6 +1733,7 @@ function getItemGroupMeta(groupKey) {
     savings: {
       label: "저축",
       field: "savingsItems",
+      block: dom.savingsAdvancedBlock,
       renderList: renderSavingsList,
       renderHint: renderSavingsTotalHint,
       editButton: dom.editSavingsItems,
@@ -1710,6 +1746,7 @@ function getItemGroupMeta(groupKey) {
     invest: {
       label: "투자",
       field: "investItems",
+      block: dom.investAdvancedBlock,
       renderList: renderInvestList,
       renderHint: renderInvestTotalHint,
       editButton: dom.editInvestItems,
@@ -1762,30 +1799,91 @@ function hasItemEditorChanges(groupKey) {
   return currentSignature !== editor.baselineSignature;
 }
 
+function getActiveItemEditorGroupKey() {
+  const groupKeys = ["expense", "savings", "invest"];
+  return groupKeys.find((groupKey) => Boolean(state.itemEditors[groupKey]?.active)) || "";
+}
+
+function syncMobileItemEditorFab() {
+  if (!(dom.mobileEditorFab instanceof HTMLElement)) {
+    return;
+  }
+  const activeGroupKey = getActiveItemEditorGroupKey();
+  const isMobile = mobileLayoutMediaQuery.matches;
+  const shouldShow = isMobile && Boolean(activeGroupKey);
+  dom.mobileEditorFab.hidden = !shouldShow;
+  if (!shouldShow) {
+    if (dom.mobileEditorFabLabel) {
+      dom.mobileEditorFabLabel.textContent = "";
+    }
+    return;
+  }
+
+  const meta = getItemGroupMeta(activeGroupKey);
+  const editor = state.itemEditors[activeGroupKey];
+  if (!meta || !editor) {
+    dom.mobileEditorFab.hidden = true;
+    return;
+  }
+
+  const canAddItem = editor.items.length < MAX_ALLOCATION_ITEMS;
+  const hasChanges = hasItemEditorChanges(activeGroupKey);
+  if (dom.mobileEditorFabLabel) {
+    dom.mobileEditorFabLabel.textContent = `${meta.label} 항목 편집 중`;
+  }
+  if (dom.mobileEditorAdd) {
+    dom.mobileEditorAdd.disabled = !canAddItem;
+  }
+  if (dom.mobileEditorApply) {
+    dom.mobileEditorApply.disabled = !hasChanges;
+  }
+}
+
+function syncItemEditorModeState() {
+  if (dom.controlsPanel instanceof HTMLElement) {
+    dom.controlsPanel.classList.toggle("is-item-editor-active", Boolean(getActiveItemEditorGroupKey()));
+  }
+}
+
+function syncAllItemEditorUi() {
+  ["expense", "savings", "invest"].forEach((groupKey) => {
+    const editor = state.itemEditors[groupKey];
+    setItemEditorUi(groupKey, Boolean(editor?.active));
+  });
+}
+
 function setItemEditorUi(groupKey, active) {
   const meta = getItemGroupMeta(groupKey);
   const editor = state.itemEditors[groupKey];
   if (!meta) {
     return;
   }
+  const isMobile = mobileLayoutMediaQuery.matches;
   const hasChanges = Boolean(active && editor && hasItemEditorChanges(groupKey));
   if (meta.actionWrap) {
-    meta.actionWrap.hidden = !active;
+    meta.actionWrap.hidden = !active || isMobile;
   }
   if (meta.editButton) {
+    meta.editButton.hidden = isMobile && active;
     meta.editButton.textContent = active ? "편집 닫기" : "항목 편집";
   }
   if (meta.addButton) {
-    meta.addButton.hidden = !active;
+    meta.addButton.hidden = !active || isMobile;
+    meta.addButton.disabled = active ? (editor?.items?.length ?? 0) >= MAX_ALLOCATION_ITEMS : false;
   }
   if (meta.applyButton) {
-    meta.applyButton.hidden = !active;
+    meta.applyButton.hidden = !active || isMobile;
     meta.applyButton.disabled = active ? !hasChanges : false;
   }
   if (meta.cancelButton) {
-    meta.cancelButton.hidden = !active;
+    meta.cancelButton.hidden = !active || isMobile;
+  }
+  if (meta.block) {
+    meta.block.classList.toggle("is-editor-active", Boolean(active));
   }
   syncGroupOptionsFor(groupKey);
+  syncItemEditorModeState();
+  syncMobileItemEditorFab();
 }
 
 function startItemEditor(groupKey) {
@@ -3130,7 +3228,7 @@ function renderProjectionTable(records, horizonYears, annualBaseRate) {
     const debtHint = firstMonth && firstMonth.debtInterest > firstMonth.actualDebtPayment
       ? " 첫 달 기준 이자 > 실제상환이면 부채가 증가할 수 있습니다."
       : "";
-    dom.projectionMeta.textContent = `월 단위 ${records.length - 1}회 계산 결과를 연 단위 스냅샷으로 요약했습니다 (${horizonYears}년). 실질 순자산은 기준금리 ${formatPercent(annualBaseRate)}를 디플레이터로 사용합니다.${debtHint}`;
+    dom.projectionMeta.textContent = `월 계산 ${records.length - 1}회를 연 단위(${horizonYears}년)로 요약했습니다. 할인 기준금리: ${formatPercent(annualBaseRate)}.${debtHint}`;
   }
 }
 

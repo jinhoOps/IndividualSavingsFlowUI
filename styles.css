@@ -1136,6 +1136,106 @@ main {
   margin-bottom: 10px;
 }
 
+.projection-brief {
+  margin-bottom: 8px;
+}
+
+.formula-toggle {
+  padding: 8px 10px;
+}
+
+.formula-toggle > summary {
+  cursor: pointer;
+  color: var(--ink);
+  font-size: 0.8rem;
+  font-weight: 600;
+  list-style: none;
+}
+
+.formula-toggle > summary::-webkit-details-marker {
+  display: none;
+}
+
+.formula-toggle > summary::after {
+  content: " ▾";
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.formula-toggle[open] > summary::after {
+  content: " ▴";
+}
+
+.formula-body {
+  margin-top: 8px;
+  line-height: 1.5;
+}
+
+.controls-panel.is-item-editor-active .controls-block.is-editor-active {
+  border-color: rgba(49, 117, 182, 0.34);
+  background: rgba(237, 245, 255, 0.68);
+}
+
+.mobile-editor-fab {
+  position: fixed;
+  left: 50%;
+  bottom: 86px;
+  transform: translateX(-50%);
+  z-index: 44;
+  width: min(360px, calc(100vw - 24px));
+  padding: 8px;
+  border: 1px solid rgba(16, 34, 32, 0.16);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 10px 22px rgba(16, 34, 32, 0.2);
+  display: none;
+  gap: 6px;
+}
+
+.mobile-editor-fab[hidden] {
+  display: none !important;
+}
+
+.mobile-editor-fab-label {
+  display: block;
+  font-size: 0.74rem;
+  color: var(--muted);
+  text-align: center;
+}
+
+.mobile-editor-fab-actions {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) 42px;
+  gap: 8px;
+}
+
+.mobile-editor-fab-btn {
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.mobile-editor-fab-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.mobile-editor-fab-btn--apply {
+  background: rgba(30, 139, 124, 0.12);
+  border-color: rgba(30, 139, 124, 0.38);
+  color: #16584f;
+}
+
+.mobile-editor-fab-btn--cancel {
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
 .table-wrap {
   overflow-x: auto;
 }
@@ -1691,6 +1791,10 @@ main {
   .apply-feedback {
     bottom: 78px;
     font-size: 0.8rem;
+  }
+
+  .mobile-editor-fab {
+    display: grid;
   }
 }
 
