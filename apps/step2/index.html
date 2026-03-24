@@ -63,17 +63,15 @@
           <div class="chart-stage">
             <svg id="summaryDonut" viewBox="0 0 260 260" role="img" aria-label="종합 포트폴리오 도넛"></svg>
           </div>
-          <div id="summaryLegend" class="legend-list" aria-live="polite"></div>
         </div>
 
         <div id="accountChartPane" class="chart-pane" data-chart-pane="account" hidden>
           <div id="accountChartCards" class="account-chart-cards" aria-live="polite"></div>
-          <div class="chart-stage chart-stage--account">
-            <h3 id="focusedAccountTitle">계좌 선택</h3>
-            <svg id="accountDonut" viewBox="0 0 260 260" role="img" aria-label="선택 계좌 도넛"></svg>
-            <div id="accountLegend" class="legend-list" aria-live="polite"></div>
-          </div>
         </div>
+        <details class="amount-details">
+          <summary>금액 보기</summary>
+          <div id="amountBreakdown" class="amount-breakdown" aria-live="polite"></div>
+        </details>
       </section>
 
       <section class="panel">
@@ -99,6 +97,10 @@
           <h2>계좌 편집</h2>
           <button id="addAccount" class="btn btn-ghost btn-sm" type="button">계좌 추가</button>
         </div>
+        <label class="mobile-account-picker" for="mobileAccountSelect">
+          <span>모바일 계좌 전환</span>
+          <select id="mobileAccountSelect" aria-label="모바일 계좌 전환"></select>
+        </label>
         <div class="account-table-head">
           <span>계좌명</span>
           <span>계좌 비중(%)</span>

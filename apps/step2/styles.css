@@ -78,6 +78,10 @@ header.panel {
   min-height: 88px;
 }
 
+.mobile-account-picker {
+  display: none;
+}
+
 .chart-panel {
   display: grid;
   gap: 12px;
@@ -118,9 +122,14 @@ header.panel {
   gap: 10px;
 }
 
+.chart-pane[hidden],
+.chart-pane.is-hidden {
+  display: none !important;
+}
+
 .chart-pane[data-chart-pane="summary"] {
-  grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
-  align-items: center;
+  grid-template-columns: 1fr;
+  justify-items: center;
 }
 
 .chart-stage {
@@ -134,59 +143,9 @@ header.panel {
   height: auto;
 }
 
-.chart-stage--account {
-  border: 1px dashed var(--line);
-  border-radius: 12px;
-  padding: 10px;
-  background: rgba(255, 255, 255, 0.84);
-}
-
-#focusedAccountTitle {
-  font-size: 1rem;
-}
-
-.legend-list {
-  display: grid;
-  gap: 6px;
-  max-height: 300px;
-  overflow: auto;
-  padding-right: 2px;
-}
-
-.legend-item {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 8px;
-  align-items: center;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 6px 8px;
-  background: rgba(255, 255, 255, 0.85);
-  font-size: 0.78rem;
-}
-
-.legend-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 999px;
-}
-
-.legend-label {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.legend-value {
-  color: var(--muted);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
 .account-chart-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
   gap: 8px;
 }
 
@@ -223,9 +182,63 @@ header.panel {
 }
 
 .account-mini-chart {
-  width: 92px;
-  height: 92px;
+  width: 110px;
+  height: 110px;
   margin: 0 auto;
+}
+
+.amount-details {
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.amount-details > summary {
+  cursor: pointer;
+  font-size: 0.78rem;
+  color: var(--muted);
+  user-select: none;
+}
+
+.amount-breakdown-list {
+  margin: 10px 0 6px;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 6px;
+}
+
+.amount-breakdown-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 8px;
+  align-items: center;
+  font-size: 0.78rem;
+}
+
+.amount-breakdown-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.amount-breakdown-percent {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.amount-breakdown-value {
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.amount-breakdown-total {
+  margin: 0;
+  text-align: right;
+  font-size: 0.78rem;
+  color: var(--muted);
 }
 
 .account-table-head,
@@ -316,22 +329,51 @@ header.panel {
     display: none;
   }
 
-  .account-row,
-  .allocation-row {
-    grid-template-columns: 1fr;
+  .mobile-account-picker {
+    display: grid;
+    gap: 5px;
+    margin-bottom: 2px;
+  }
+
+  .mobile-account-picker span {
+    font-size: 0.75rem;
+    color: var(--muted);
+  }
+
+  .mobile-account-picker select {
+    width: 100%;
+    padding: 9px 10px;
+  }
+
+  .account-list .account-row:not(.is-active) {
+    display: none;
+  }
+
+  .account-row {
+    grid-template-columns: minmax(0, 1.7fr) minmax(88px, 1fr) auto;
+    align-items: center;
   }
 
   .account-row-actions {
-    justify-content: space-between;
+    display: none;
+  }
+
+  .allocation-row {
+    grid-template-columns: minmax(0, 1.8fr) minmax(88px, 1fr) auto;
+    align-items: center;
+  }
+
+  .allocation-row input[data-field="memo"] {
+    display: none;
+  }
+
+  .allocation-row .btn {
+    justify-self: end;
   }
 
   .chart-head {
     flex-direction: column;
     align-items: flex-start;
-  }
-
-  .chart-pane[data-chart-pane="summary"] {
-    grid-template-columns: 1fr;
   }
 
   .chart-tabs {

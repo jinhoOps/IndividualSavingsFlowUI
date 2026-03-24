@@ -57,15 +57,13 @@
     summaryChartPane: document.getElementById("summaryChartPane"),
     accountChartPane: document.getElementById("accountChartPane"),
     summaryDonut: document.getElementById("summaryDonut"),
-    accountDonut: document.getElementById("accountDonut"),
-    summaryLegend: document.getElementById("summaryLegend"),
-    accountLegend: document.getElementById("accountLegend"),
     accountChartCards: document.getElementById("accountChartCards"),
-    focusedAccountTitle: document.getElementById("focusedAccountTitle"),
+    amountBreakdown: document.getElementById("amountBreakdown"),
     portfolioName: document.getElementById("portfolioName"),
     portfolioNotes: document.getElementById("portfolioNotes"),
     totalMonthlyInvestCapacity: document.getElementById("totalMonthlyInvestCapacity"),
     addAccount: document.getElementById("addAccount"),
+    mobileAccountSelect: document.getElementById("mobileAccountSelect"),
     accountList: document.getElementById("accountList"),
     accountSummary: document.getElementById("accountSummary"),
     allocationEditorTitle: document.getElementById("allocationEditorTitle"),
@@ -142,6 +140,10 @@
 
   function formatWeight(value) {
     return sanitizeWeight(value).toFixed(2);
+  }
+
+  function formatPercentInteger(value) {
+    return String(Math.round(sanitizeWeight(value)));
   }
 
   function formatCurrency(value) {
@@ -259,6 +261,7 @@
     }
     state.activeAccountId = account.id;
     renderAccountList();
+    renderMobileAccountPicker();
     renderAllocationEditor();
     renderCharts();
   }
@@ -399,9 +402,20 @@
         state.activeAccountId = next.id;
         markDirty();
         renderAccountList();
+        renderMobileAccountPicker();
         renderAllocationEditor();
         renderAccountSummary();
         renderCharts();
+      });
+    }
+
+    if (dom.mobileAccountSelect) {
+      dom.mobileAccountSelect.addEventListener("change", () => {
+        const selectedId = String(dom.mobileAccountSelect.value || "");
+        if (!selectedId) {
+          return;
+        }
+        setActiveAccount(selectedId);
       });
     }
 
@@ -459,6 +473,7 @@
         }
         markDirty();
         renderAccountList();
+        renderMobileAccountPicker();
         renderAllocationEditor();
         renderAccountSummary();
         renderCharts();
@@ -610,6 +625,7 @@
     }
     renderChartTabs();
     renderAccountList();
+    renderMobileAccountPicker();
     renderAllocationEditor();
     renderAccountSummary();
     renderCharts();
@@ -630,14 +646,18 @@
     }
     if (dom.summaryChartPane) {
       dom.summaryChartPane.hidden = !isSummary;
+      dom.summaryChartPane.classList.toggle("is-hidden", !isSummary);
+      dom.summaryChartPane.setAttribute("aria-hidden", String(!isSummary));
     }
     if (dom.accountChartPane) {
       dom.accountChartPane.hidden = isSummary;
+      dom.accountChartPane.classList.toggle("is-hidden", isSummary);
+      dom.accountChartPane.setAttribute("aria-hidden", String(isSummary));
     }
     if (dom.chartMeta) {
       dom.chartMeta.textContent = isSummary
         ? "종합 도넛은 월 투자 가능 금액에서 계좌/종목 비중으로 계산하고, 남는 금액은 자동 현금 처리합니다."
-        : "계좌별 도넛은 선택 계좌의 자산 비중(%) 기준입니다.";
+        : "계좌별 도넛은 계좌별 비중/금액을 각각 분리해서 보여줍니다.";
     }
   }
 
@@ -661,6 +681,22 @@
       `;
       dom.accountList.appendChild(row);
     });
+  }
+
+  function renderMobileAccountPicker() {
+    if (!(dom.mobileAccountSelect instanceof HTMLSelectElement)) {
+      return;
+    }
+    dom.mobileAccountSelect.innerHTML = "";
+    state.draft.accounts.forEach((account) => {
+      const option = document.createElement("option");
+      option.value = account.id;
+      option.textContent = `${account.name} · ${formatWeight(account.accountWeight)}%`;
+      dom.mobileAccountSelect.appendChild(option);
+    });
+    if (state.activeAccountId) {
+      dom.mobileAccountSelect.value = state.activeAccountId;
+    }
   }
 
   function renderAllocationEditor() {
@@ -810,58 +846,35 @@
   function renderCharts() {
     renderSummaryChart();
     renderAccountChart();
+    renderAmountBreakdown();
   }
 
   function renderSummaryChart() {
     const slices = buildSummarySlices();
     const total = slices.reduce((sum, slice) => sum + slice.value, 0);
+    const cashValue = slices.reduce((sum, slice) => {
+      return sum + (slice.key === UNALLOCATED_ASSET_KEY ? Number(slice.value || 0) : 0);
+    }, 0);
+    const stockValue = Math.max(0, total - cashValue);
+    const stockPercent = total > 0 ? Math.round((stockValue / total) * 100) : 0;
+    const cashPercent = total > 0 ? Math.max(0, 100 - stockPercent) : 0;
     renderDonutChart(dom.summaryDonut, slices, {
-      centerTitle: "월 투자금 합계",
-      centerValue: total > 0 ? formatCurrency(total) : "데이터 없음",
+      centerTitle: total > 0 ? "주식/현금" : "데이터 없음",
+      centerValue: total > 0 ? `${stockPercent}% / ${cashPercent}%` : "",
       ringColor: "rgba(16, 34, 32, 0.1)",
       outerRadius: 95,
       innerRadius: 58,
-    });
-    renderLegend(dom.summaryLegend, slices, total, (slice) => {
-      const percent = total > 0 ? ((slice.value / total) * 100).toFixed(1) : "0.0";
-      return `${formatCurrency(slice.value)} · ${percent}%`;
     });
   }
 
   function renderAccountChart() {
-    renderAccountChartCards();
-
-    const account = ensureActiveAccountSelected();
-    if (!account) {
-      renderDonutChart(dom.accountDonut, [], {
-        centerTitle: "계좌 없음",
-        centerValue: "데이터 없음",
-        ringColor: "rgba(16, 34, 32, 0.1)",
-        outerRadius: 95,
-        innerRadius: 58,
-      });
-      renderLegend(dom.accountLegend, [], 0, () => "-");
-      if (dom.focusedAccountTitle) {
-        dom.focusedAccountTitle.textContent = "계좌 선택";
+    if (state.activeChartTab !== "account") {
+      if (dom.accountChartCards instanceof HTMLElement) {
+        dom.accountChartCards.innerHTML = "";
       }
       return;
     }
-
-    const slices = buildAccountSlices(account);
-    const totalWeight = slices.reduce((sum, slice) => sum + slice.value, 0);
-    const accountBudget = getAccountAllocatedAmount(account);
-    if (dom.focusedAccountTitle) {
-      dom.focusedAccountTitle.textContent = `${account.name} · 계좌 비중 ${formatWeight(account.accountWeight)}% · ${formatCurrency(accountBudget)}`;
-    }
-
-    renderDonutChart(dom.accountDonut, slices, {
-      centerTitle: "계좌 비중",
-      centerValue: totalWeight > 0 ? `${totalWeight.toFixed(2)}%` : "데이터 없음",
-      ringColor: "rgba(16, 34, 32, 0.1)",
-      outerRadius: 95,
-      innerRadius: 58,
-    });
-    renderLegend(dom.accountLegend, slices, totalWeight, (slice) => `${slice.value.toFixed(2)}% · ${formatCurrency(slice.expectedAmount)}`);
+    renderAccountChartCards();
   }
 
   function renderAccountChartCards() {
@@ -876,48 +889,54 @@
       card.innerHTML = `
         <div class="account-chart-card-head">
           <p class="account-chart-card-title">${escapeHtml(account.name)}</p>
-          <button type="button" class="btn btn-ghost btn-sm" data-focus-account-id="${escapeHtml(account.id)}">보기</button>
+          <button type="button" class="btn btn-ghost btn-sm" data-focus-account-id="${escapeHtml(account.id)}">선택</button>
         </div>
-        <p class="account-chart-card-meta">계좌 비중 ${formatWeight(account.accountWeight)}% · ${formatCurrency(getAccountAllocatedAmount(account))}</p>
+        <p class="account-chart-card-meta">계좌 비중 ${formatWeight(account.accountWeight)}%</p>
         <svg class="account-mini-chart" viewBox="0 0 120 120" role="img" aria-label="${escapeHtml(account.name)} 미니 도넛"></svg>
       `;
       dom.accountChartCards.appendChild(card);
 
       const miniChart = card.querySelector("svg");
       renderDonutChart(miniChart, buildAccountSlices(account), {
-        centerTitle: "",
-        centerValue: "",
+        centerTitle: "계좌",
+        centerValue: `${formatPercentInteger(account.accountWeight)}%`,
         ringColor: "rgba(16, 34, 32, 0.1)",
-        outerRadius: 42,
-        innerRadius: 25,
+        outerRadius: 43,
+        innerRadius: 24,
       });
     });
   }
 
-  function renderLegend(container, slices, total, formatter) {
-    if (!(container instanceof HTMLElement)) {
-      return;
-    }
-    container.innerHTML = "";
-
-    if (!Array.isArray(slices) || slices.length === 0 || total <= 0) {
-      const empty = document.createElement("p");
-      empty.className = "muted";
-      empty.textContent = "표시할 데이터가 없습니다.";
-      container.appendChild(empty);
+  function renderAmountBreakdown() {
+    if (!(dom.amountBreakdown instanceof HTMLElement)) {
       return;
     }
 
-    slices.forEach((slice) => {
-      const item = document.createElement("div");
-      item.className = "legend-item";
-      item.innerHTML = `
-        <span class="legend-dot" style="background:${escapeHtml(slice.color)}"></span>
-        <span class="legend-label">${escapeHtml(slice.label)}</span>
-        <span class="legend-value">${escapeHtml(formatter(slice))}</span>
-      `;
-      container.appendChild(item);
-    });
+    const slices = buildSummarySlices();
+    const total = slices.reduce((sum, slice) => sum + Number(slice.value || 0), 0);
+    if (total <= 0) {
+      dom.amountBreakdown.innerHTML = '<p class="muted">입력값이 없어서 표시할 금액이 없습니다.</p>';
+      return;
+    }
+
+    const rows = slices
+      .map((slice) => {
+        const value = sanitizeAmount(slice.value);
+        const percent = total > 0 ? ((value / total) * 100).toFixed(1) : "0.0";
+        return `
+          <li class="amount-breakdown-row">
+            <span class="amount-breakdown-label">${escapeHtml(slice.label)}</span>
+            <span class="amount-breakdown-percent">${percent}%</span>
+            <strong class="amount-breakdown-value">${formatCurrency(value)}</strong>
+          </li>
+        `;
+      })
+      .join("");
+
+    dom.amountBreakdown.innerHTML = `
+      <ul class="amount-breakdown-list">${rows}</ul>
+      <p class="amount-breakdown-total">합계 ${formatCurrency(total)}</p>
+    `;
   }
 
   function renderDonutChart(svgElement, slices, options) {
