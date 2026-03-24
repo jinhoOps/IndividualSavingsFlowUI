@@ -18,6 +18,11 @@
 - [X] 공통 IndexedDB 허브 스키마 도입(`isf-hub-db-v1`: step1Snapshots/step2Portfolios/bridgeStep1ToStep2)
 - [X] Step1 적용 시 Step2 브리지 payload 기록(월투자여력/현재자산/기준시점)
 - [X] Step2 MVP: 포트폴리오 편집/비중검증/저장·불러오기/삭제 + Step1 데이터 수동 가져오기
+- [X] Step2 계좌형 모델(v2) 전환: `accounts[] + unallocatedMonthlyInvest`
+- [X] Step2 도넛 차트 탭(`종합/계좌별`) 및 계좌 카드형 미니 도넛 추가
+- [X] Step2 기본 샘플 계좌/종목 구성(국내주식·ISA·해외주식)
+- [X] Step2 v1(`targetAllocations`) -> v2 자동 마이그레이션
+- [X] Step 공통 테마 CSS 도입(`shared/styles/step-theme.css`) 및 Step2 적용
 
 
 

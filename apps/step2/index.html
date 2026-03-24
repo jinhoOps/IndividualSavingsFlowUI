@@ -4,19 +4,21 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Step2 | 투자 포트폴리오 구성</title>
+    <link rel="stylesheet" href="../../shared/styles/step-theme.css" />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <main class="page">
-      <header>
+      <header class="panel">
         <p class="eyebrow">INDIVIDUALSAVINGS FLOW UIUX · STEP 2</p>
         <h1>투자 포트폴리오 구성</h1>
-        <p class="lead">Step1 데이터(월 투자여력/기존 자산)를 바탕으로 포트폴리오 구성을 설계하는 단계입니다.</p>
+        <p class="lead">계좌별 월 납입 계획과 자산군 비중을 동시에 설계하고, 종합/계좌별 도넛으로 바로 확인합니다.</p>
         <div class="actions">
           <a class="btn btn-ghost" href="../step1/">Step1으로 이동</a>
           <button id="loadStep1Data" class="btn btn-primary" type="button">Step1 데이터 가져오기</button>
         </div>
       </header>
+
       <section class="panel">
         <h2>Step1 브리지 데이터</h2>
         <p id="bridgeStatus" class="muted">최신 Step1 브리지 데이터를 확인합니다.</p>
@@ -29,8 +31,53 @@
         </div>
       </section>
 
+      <section class="panel chart-panel">
+        <div class="chart-head">
+          <h2>포트폴리오 도넛</h2>
+          <div class="chart-tabs" role="tablist" aria-label="도넛 보기 탭">
+            <button
+              id="chartTabSummary"
+              class="chart-tab is-active"
+              type="button"
+              role="tab"
+              aria-selected="true"
+              aria-controls="summaryChartPane"
+            >
+              종합 도넛
+            </button>
+            <button
+              id="chartTabAccount"
+              class="chart-tab"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="accountChartPane"
+            >
+              계좌별 도넛
+            </button>
+          </div>
+        </div>
+        <p id="chartMeta" class="muted">종합 도넛은 계좌별 월 납입액 가중합 기준으로 표시합니다.</p>
+
+        <div id="summaryChartPane" class="chart-pane" data-chart-pane="summary">
+          <div class="chart-stage">
+            <svg id="summaryDonut" viewBox="0 0 260 260" role="img" aria-label="종합 포트폴리오 도넛"></svg>
+          </div>
+          <div id="summaryLegend" class="legend-list" aria-live="polite"></div>
+        </div>
+
+        <div id="accountChartPane" class="chart-pane" data-chart-pane="account" hidden>
+          <div id="accountChartCards" class="account-chart-cards" aria-live="polite"></div>
+          <div class="chart-stage chart-stage--account">
+            <h3 id="focusedAccountTitle">계좌 선택</h3>
+            <svg id="accountDonut" viewBox="0 0 260 260" role="img" aria-label="선택 계좌 도넛"></svg>
+            <div id="accountLegend" class="legend-list" aria-live="polite"></div>
+          </div>
+        </div>
+      </section>
+
       <section class="panel">
-        <h2>포트폴리오 편집</h2>
+        <h2>포트폴리오 기본 정보</h2>
         <div class="form-grid">
           <label class="control">
             <span>포트폴리오 이름</span>
@@ -40,21 +87,44 @@
             <span>메모</span>
             <textarea id="portfolioNotes" rows="3" maxlength="500"></textarea>
           </label>
+          <label class="control">
+            <span>미배분 월 투자여력(원)</span>
+            <input id="unallocatedMonthlyInvest" type="number" min="0" step="10000" />
+          </label>
         </div>
+      </section>
 
-        <div class="asset-head">
-          <h3>자산군 구성</h3>
-          <button id="addAsset" class="btn btn-ghost btn-sm" type="button">자산군 추가</button>
+      <section class="panel">
+        <div class="section-head">
+          <h2>계좌 편집</h2>
+          <button id="addAccount" class="btn btn-ghost btn-sm" type="button">계좌 추가</button>
         </div>
-        <div class="asset-table-head">
+        <div class="account-table-head">
+          <span>계좌명</span>
+          <span>월 납입액(원)</span>
+          <span>편집</span>
+          <span>관리</span>
+        </div>
+        <div id="accountList" class="account-list" aria-live="polite"></div>
+        <p id="accountSummary" class="muted"></p>
+      </section>
+
+      <section class="panel">
+        <div class="section-head">
+          <h2 id="allocationEditorTitle">자산군 구성</h2>
+          <button id="addAllocation" class="btn btn-ghost btn-sm" type="button">자산군 추가</button>
+        </div>
+        <div class="allocation-table-head">
           <span>자산군 이름</span>
           <span>목표 비중(%)</span>
           <span>메모</span>
           <span>관리</span>
         </div>
-        <div id="assetList" class="asset-list" aria-live="polite"></div>
-        <p id="assetSummary" class="muted"></p>
+        <div id="allocationList" class="allocation-list" aria-live="polite"></div>
+        <p id="allocationSummary" class="muted"></p>
+      </section>
 
+      <section class="panel">
         <div class="actions">
           <button id="savePortfolio" class="btn btn-primary" type="button">포트폴리오 저장</button>
           <button id="resetPortfolio" class="btn btn-ghost" type="button">새 포트폴리오</button>

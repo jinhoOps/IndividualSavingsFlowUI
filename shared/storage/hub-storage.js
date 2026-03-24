@@ -159,15 +159,77 @@
     return getLatestByIndex(HUB_STORE_BRIDGE, "createdAt");
   }
 
-  async function saveStep2Portfolio(portfolio) {
-    const source = portfolio && typeof portfolio === "object" ? portfolio : {};
-    const entry = {
-      id: typeof source.id === "string" && source.id.trim() ? source.id.trim() : createId("pf"),
-      name: String(source.name || "포트폴리오").trim() || "포트폴리오",
-      targetAllocations: Array.isArray(source.targetAllocations) ? source.targetAllocations : [],
-      notes: String(source.notes || ""),
-      updatedAt: Date.now(),
+  function sanitizeNonNegativeNumber(value) {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) {
+      return 0;
+    }
+    return Math.max(0, Math.round(numeric));
+  }
+
+  function sanitizeStep2Allocation(source, index) {
+    const safe = source && typeof source === "object" ? source : {};
+    return {
+      id: typeof safe.id === "string" && safe.id.trim() ? safe.id.trim() : createId(`alloc-${index}`),
+      key: String(safe.key || "").trim() || createId(`asset-${index}`),
+      label: String(safe.label || "").trim() || `자산군 ${index + 1}`,
+      targetWeight: Math.max(0, Math.min(100, Number.isFinite(Number(safe.targetWeight)) ? Math.round(Number(safe.targetWeight) * 100) / 100 : 0)),
+      memo: String(safe.memo || ""),
     };
+  }
+
+  function sanitizeStep2Account(source, index) {
+    const safe = source && typeof source === "object" ? source : {};
+    const rawAllocations = Array.isArray(safe.allocations) ? safe.allocations : [];
+    const allocations = rawAllocations.map((allocation, allocIndex) => sanitizeStep2Allocation(allocation, allocIndex));
+    return {
+      id: typeof safe.id === "string" && safe.id.trim() ? safe.id.trim() : createId(`account-${index}`),
+      name: String(safe.name || "").trim() || `계좌 ${index + 1}`,
+      monthlyContribution: sanitizeNonNegativeNumber(safe.monthlyContribution),
+      allocations,
+    };
+  }
+
+  function sanitizeLegacyTargetAllocations(source) {
+    const raw = Array.isArray(source) ? source : [];
+    return raw.map((allocation, index) => sanitizeStep2Allocation(allocation, index));
+  }
+
+  function normalizeStep2PortfolioEntry(portfolio) {
+    const source = portfolio && typeof portfolio === "object" ? portfolio : {};
+    const safeId = typeof source.id === "string" && source.id.trim() ? source.id.trim() : createId("pf");
+    const safeName = String(source.name || "포트폴리오").trim() || "포트폴리오";
+    const safeNotes = String(source.notes || "");
+    const safeUpdatedAt = Number.isFinite(Number(source.updatedAt)) ? Number(source.updatedAt) : Date.now();
+    const isV2 = Number(source.modelVersion) === 2 || Array.isArray(source.accounts);
+
+    if (isV2) {
+      return {
+        id: safeId,
+        modelVersion: 2,
+        name: safeName,
+        notes: safeNotes,
+        unallocatedMonthlyInvest: sanitizeNonNegativeNumber(source.unallocatedMonthlyInvest),
+        bridgeContext: source.bridgeContext && typeof source.bridgeContext === "object" ? source.bridgeContext : null,
+        accounts: Array.isArray(source.accounts)
+          ? source.accounts.map((account, index) => sanitizeStep2Account(account, index))
+          : [],
+        updatedAt: safeUpdatedAt,
+      };
+    }
+
+    return {
+      id: safeId,
+      name: safeName,
+      targetAllocations: sanitizeLegacyTargetAllocations(source.targetAllocations),
+      notes: safeNotes,
+      updatedAt: safeUpdatedAt,
+    };
+  }
+
+  async function saveStep2Portfolio(portfolio) {
+    const entry = normalizeStep2PortfolioEntry(portfolio);
+    entry.updatedAt = Date.now();
 
     const db = await openHubDb();
     const transaction = db.transaction(HUB_STORE_STEP2, "readwrite");
@@ -183,6 +245,7 @@
     const rows = await idbRequestToPromise(request);
     return Array.isArray(rows)
       ? rows
+        .map((row) => normalizeStep2PortfolioEntry(row))
         .slice()
         .sort((left, right) => Number(right?.updatedAt || 0) - Number(left?.updatedAt || 0))
       : [];
@@ -197,7 +260,7 @@
     const transaction = db.transaction(HUB_STORE_STEP2, "readonly");
     const request = transaction.objectStore(HUB_STORE_STEP2).get(safeId);
     const entry = await idbRequestToPromise(request);
-    return entry || null;
+    return entry ? normalizeStep2PortfolioEntry(entry) : null;
   }
 
   async function deleteStep2Portfolio(id) {

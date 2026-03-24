@@ -1,0 +1,139 @@
+@import url("https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Gowun+Dodum:wght@400;700&display=swap");
+
+:root {
+  color-scheme: light;
+  --bg: #f3f4ef;
+  --panel: rgba(255, 255, 255, 0.9);
+  --ink: #102220;
+  --muted: rgba(16, 34, 32, 0.66);
+  --line: rgba(16, 34, 32, 0.18);
+  --line-strong: rgba(16, 34, 32, 0.3);
+  --tone-primary: #ea5b2a;
+  --tone-accent: #1e8b7c;
+  --font-display: "Black Han Sans", "Gowun Dodum", sans-serif;
+  --font-body: "Gowun Dodum", "Nanum Gothic", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  line-height: 1.45;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  color: var(--ink);
+}
+
+h1 {
+  font-family: var(--font-display);
+}
+
+.page {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 18px 14px 32px;
+  display: grid;
+  gap: 14px;
+}
+
+.panel {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel);
+  backdrop-filter: saturate(1.1) blur(3px);
+  box-shadow: 0 8px 24px rgba(16, 34, 32, 0.06);
+  padding: 14px;
+}
+
+.eyebrow {
+  margin: 0;
+  font-size: 0.78rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.lead,
+.muted,
+.hint {
+  margin: 0;
+  color: var(--muted);
+}
+
+.btn {
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font: inherit;
+  font-size: 0.86rem;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.95);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.btn:hover {
+  border-color: rgba(16, 34, 32, 0.45);
+}
+
+.btn:focus-visible {
+  outline: 2px solid rgba(49, 117, 182, 0.38);
+  outline-offset: 2px;
+}
+
+.btn-primary {
+  color: #fff;
+  border-color: rgba(16, 34, 32, 0);
+  background: linear-gradient(135deg, var(--tone-primary), var(--tone-accent));
+}
+
+.btn-ghost {
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.btn-sm {
+  padding: 6px 11px;
+  font-size: 0.78rem;
+}
+
+input,
+textarea,
+select {
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+}
+
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid rgba(49, 117, 182, 0.36);
+  outline-offset: 1px;
+}
+
+.feedback {
+  margin: 0;
+  border: 1px solid rgba(30, 139, 124, 0.35);
+  border-radius: 10px;
+  background: rgba(235, 250, 246, 0.95);
+  color: #155247;
+  padding: 9px 10px;
+  font-size: 0.84rem;
+}
+
+.feedback.is-error {
+  border-color: rgba(174, 56, 56, 0.35);
+  background: rgba(253, 240, 240, 0.95);
+  color: #8b2f2f;
+}

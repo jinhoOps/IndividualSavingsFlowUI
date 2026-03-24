@@ -7,8 +7,8 @@
 ## 구조
 
 - `apps/step1`: `나의 가계 흐름` (현재 운영중인 1단계)
-- `apps/step2`: 투자 포트폴리오 구성(MVP: 편집/비중검증/저장/불러오기)
-- `shared`: Step1/Step2 공통 모듈(IndexedDB 허브 스키마/브리지)
+- `apps/step2`: 투자 포트폴리오 구성(MVP: 계좌형 편집/도넛 시각화/저장/불러오기)
+- `shared`: Step1/Step2 공통 모듈(IndexedDB 허브 스키마/브리지/공통 테마)
 
 ## 문제 정의
 
@@ -38,9 +38,13 @@
 - 로컬 백업: 12시간 간격 자동 백업(최대 60개) + 선택 복원
 - PWA 기본 적용: Service Worker + Web App Manifest(오프라인 재진입 지원)
 - Step2 포트폴리오:
-  - 자산군 CRUD(이름/목표비중/메모), 목표비중 합계 100% 검증
-  - IndexedDB 저장/불러오기/삭제
-  - Step1 브리지 데이터 수동 가져오기(덮어쓰기 확인)
+  - 계좌 중심 편집: `계좌명/월 납입액` + 계좌 내 자산군 비중 CRUD
+  - Step2 금액 단위: `원` (계좌 월 납입액, 미배분 월 투자여력)
+  - 검증: 계좌별 자산 비중 합계 100% 검증(실패 시 저장 차단)
+  - 도넛 시각화: `종합 도넛(월 납입액 가중합 + 미배분)` / `계좌별 도넛` 탭 전환
+  - 기본 샘플 계좌: `국내주식`, `ISA`, `해외주식`
+  - IndexedDB 저장/불러오기/삭제 + v1(`targetAllocations`) 자동 마이그레이션
+  - Step1 브리지 데이터 수동 가져오기(월 투자여력 -> 미배분 반영, 덮어쓰기 확인)
 
 ## 저장 방식
 
@@ -53,7 +57,9 @@
   - `step1Snapshots`: Step1 적용 시점 상태 스냅샷
   - `bridgeStep1ToStep2`: Step2 전달용 최소 payload
     - `monthlyInvestCapacity`, `currentCash`, `currentInvest`, `currentSavings`, `timestamp`
-  - `step2Portfolios`: Step2 포트폴리오 저장 데이터
+  - `step2Portfolios`:
+    - v2(현재): `{ id, modelVersion, name, accounts, unallocatedMonthlyInvest, notes, updatedAt }`
+    - v1(레거시): `{ id, name, targetAllocations, notes, updatedAt }` (로드 시 자동 변환)
 - 예외 모드(fallback):
   - DB 없이도 공유가 가능하도록 `#s=...` 압축 해시를 함께 사용할 수 있습니다.
   - 해시는 `LZ 기반 압축 + URI safe` 인코딩을 사용합니다.

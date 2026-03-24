@@ -191,3 +191,23 @@
 - 구조/문서 정합:
   - Step1/Step2에서 공통 허브 스크립트를 로드하도록 엔트리 HTML 경로를 연결.
   - README/TODO/shared 문서에 구조 고정, 허브 스키마, Step2 MVP 범위를 반영.
+
+### 2026-03-24 (Step2 계좌형 MVP + 도넛 시각화 + 공통 테마)
+- Step2를 계좌 중심(v2)으로 확장:
+  - 저장 스키마를 `modelVersion:2` 기반으로 확장(`accounts[]`, `unallocatedMonthlyInvest`, `notes`, `updatedAt`).
+  - 계좌별 `월 납입액 + 자산군 비중(합 100%)` 편집/검증/저장 흐름을 구현.
+- 차트/UX 확장:
+  - `종합 도넛`/`계좌별 도넛` 탭 전환 UI를 추가.
+  - 종합 도넛은 계좌 월납입 가중합 + 미배분 금액으로 계산, 계좌별은 비중 기준으로 렌더링.
+  - 계좌 카드형 미니 도넛과 범례를 함께 제공.
+- 기본 샘플 템플릿 갱신:
+  - `국내주식(삼성전자/SK하이닉스/현대차)`, `ISA(코스피/나스닥100/미국배당다우존스)`, `해외주식(나스닥100/Tesla/AMD)`.
+- Step1 연동 반영:
+  - Step1 가져오기 시 `monthlyInvestCapacity`를 Step2 `미배분 월 투자여력`으로 반영.
+  - `currentCash/currentInvest/currentSavings/timestamp`는 브리지 정보/메모에 반영.
+- 호환성 보강:
+  - Step2 v1 포트폴리오(`targetAllocations`)를 로드 시 `통합계좌` 1개 구조로 자동 마이그레이션 후 v2로 재저장.
+- 공통 스타일 계층 추가:
+  - `shared/styles/step-theme.css`를 신설해 Step1 톤(폰트/토큰/버튼/패널)을 Step2에 적용.
+- 문서 동기화:
+  - `README.md`, `TODO.md`, `shared/README.md`를 최신 Step2 구조/계약으로 갱신.
