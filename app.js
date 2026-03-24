@@ -5,6 +5,11 @@ const SHARE_STATE_KEY = "my-household-flow";
 const SHARE_STATE_SCHEMA = 1;
 const HASH_STATE_PARAM = "s";
 const HASH_STATE_MAX_LENGTH = 6000;
+const HASH_COMPRESSED_PREFIX = "z:";
+const SHARE_ID_QUERY_PARAM = "sid";
+const SHARE_DB_NAME = "isf-share-pointer-db-v1";
+const SHARE_DB_VERSION = 1;
+const SHARE_DB_STORE = "shareSnapshots";
 const VIEW_MODE_QUERY_PARAM = "view";
 const VIEW_MODE_QUERY_VALUE = "1";
 const VIEW_MODE_GUIDE_DISMISSED_KEY = "isf-view-guide-dismissed-v1";
@@ -232,6 +237,7 @@ const sankeyTextMeasureCanvas = document.createElement("canvas");
 const sankeyTextMeasureContext = sankeyTextMeasureCanvas.getContext("2d");
 const mobileLayoutMediaQuery = window.matchMedia(MOBILE_LAYOUT_QUERY);
 let backupDbPromise = null;
+let shareDbPromise = null;
 
 const dom = {
   controlsPanel: document.querySelector(".controls-panel"),
@@ -372,8 +378,9 @@ document.addEventListener("DOMContentLoaded", () => {
   syncGroupOptionsAll();
   setPendingBarVisible(false);
   renderAll();
-  syncHashState(state.inputs);
+  syncHashStateIfPresent(state.inputs);
   initializeBackupStore();
+  void initializeInputsFromShareId();
   registerServiceWorker();
   maybeShowStandaloneLaunchFeedback();
   bindPwaVersionAwareness();
@@ -553,7 +560,7 @@ function bindControls() {
 
   if (dom.copyShareLink) {
     dom.copyShareLink.addEventListener("click", async () => {
-      const shareLink = buildShareLink(state.inputs, { viewMode: true });
+      const shareLink = await buildShareLink(state.inputs, { viewMode: true });
       if (!shareLink) {
         showApplyFeedback("링크 길이 초과로 보기 링크 생성이 제한됩니다. JSON 저장을 사용하세요.");
         return;
@@ -575,7 +582,7 @@ function bindControls() {
 
   if (dom.saveViewToLocal) {
     dom.saveViewToLocal.addEventListener("click", async () => {
-      if (!state.isViewMode || !hasShareHashState()) {
+      if (!state.isViewMode || !hasShareState()) {
         return;
       }
       const localInputs = sanitizeInputs(cloneInputs(getVisibleInputs()));
@@ -1257,7 +1264,7 @@ function syncViewModeUi() {
   if (!isViewModeByUrl || (!wasViewMode && isViewModeByUrl)) {
     state.viewModeGuideClosedTemporarily = false;
   }
-  const isViewLink = isViewModeByUrl && hasShareHashState();
+  const isViewLink = isViewModeByUrl && hasShareState();
   if (dom.saveViewToLocal) {
     dom.saveViewToLocal.hidden = !isViewLink;
     dom.saveViewToLocal.disabled = !isViewLink;
@@ -1275,7 +1282,7 @@ function syncViewModeGuideUi() {
 
 function shouldShowViewModeGuide() {
   return state.isViewMode
-    && hasShareHashState()
+    && hasShareState()
     && !isViewModeGuideDismissed()
     && !state.viewModeGuideClosedTemporarily;
 }
@@ -1307,10 +1314,12 @@ function dismissViewModeGuide() {
   syncViewModeGuideUi();
 }
 
-function hasShareHashState() {
+function hasShareState() {
   try {
+    const searchParams = new URLSearchParams(window.location.search);
+    const sid = normalizeShareId(searchParams.get(SHARE_ID_QUERY_PARAM));
     const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
-    return Boolean(hashParams.get(HASH_STATE_PARAM));
+    return Boolean(sid) || Boolean(hashParams.get(HASH_STATE_PARAM));
   } catch (_error) {
     return false;
   }
@@ -4241,9 +4250,13 @@ function hideSankeyTooltip() {
 }
 
 function resolveInitialInputs() {
+  const sid = getShareIdFromUrl();
   const hashInputs = loadInputsFromHash();
   if (hashInputs) {
     return sanitizeInputs({ ...DEFAULT_INPUTS, ...hashInputs });
+  }
+  if (sid && detectViewMode()) {
+    return sanitizeInputs({ ...DEFAULT_INPUTS });
   }
   return sanitizeInputs({ ...DEFAULT_INPUTS, ...loadPersistedInputs() });
 }
@@ -4294,13 +4307,265 @@ function decodeBase64Url(value) {
   return new TextDecoder().decode(bytes);
 }
 
-function encodeInputsForHash(inputs) {
-  try {
-    const encoded = encodeBase64Url(JSON.stringify(buildStateEnvelope(inputs)));
-    if (!encoded || encoded.length > HASH_STATE_MAX_LENGTH) {
+const LZ_URI_SAFE_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-$";
+const LZ_URI_SAFE_REVERSE_MAP = new Map(
+  Array.from(LZ_URI_SAFE_ALPHABET).map((char, index) => [char, index]),
+);
+
+function lzCompressToUriComponent(input) {
+  if (input === null || input === undefined) {
+    return "";
+  }
+  return lzCompress(String(input), 6, (value) => LZ_URI_SAFE_ALPHABET.charAt(value));
+}
+
+function lzDecompressFromUriComponent(input) {
+  if (input === null || input === undefined) {
+    return "";
+  }
+  const normalized = String(input).replace(/ /g, "+");
+  if (!normalized) {
+    return "";
+  }
+  return lzDecompress(normalized.length, 32, (index) => {
+    const char = normalized.charAt(index);
+    return LZ_URI_SAFE_REVERSE_MAP.has(char) ? LZ_URI_SAFE_REVERSE_MAP.get(char) : 0;
+  });
+}
+
+function lzCompress(uncompressed, bitsPerChar, getCharFromInt) {
+  if (uncompressed === null || uncompressed === undefined || uncompressed === "") {
+    return "";
+  }
+
+  const dictionary = Object.create(null);
+  const dictionaryToCreate = Object.create(null);
+  let c = "";
+  let wc = "";
+  let w = "";
+  let enlargeIn = 2;
+  let dictSize = 3;
+  let numBits = 2;
+  const data = [];
+  let dataVal = 0;
+  let dataPosition = 0;
+
+  const pushBit = (bit) => {
+    dataVal = (dataVal << 1) | (bit & 1);
+    if (dataPosition === bitsPerChar - 1) {
+      dataPosition = 0;
+      data.push(getCharFromInt(dataVal));
+      dataVal = 0;
+      return;
+    }
+    dataPosition += 1;
+  };
+
+  const pushBits = (value, bitCount) => {
+    let localValue = value;
+    for (let index = 0; index < bitCount; index += 1) {
+      pushBit(localValue & 1);
+      localValue >>= 1;
+    }
+  };
+
+  for (let index = 0; index < uncompressed.length; index += 1) {
+    c = uncompressed.charAt(index);
+    if (!Object.prototype.hasOwnProperty.call(dictionary, c)) {
+      dictionary[c] = dictSize;
+      dictSize += 1;
+      dictionaryToCreate[c] = true;
+    }
+
+    wc = `${w}${c}`;
+    if (Object.prototype.hasOwnProperty.call(dictionary, wc)) {
+      w = wc;
+      continue;
+    }
+
+    if (Object.prototype.hasOwnProperty.call(dictionaryToCreate, w)) {
+      if (w.charCodeAt(0) < 256) {
+        pushBits(0, numBits);
+        pushBits(w.charCodeAt(0), 8);
+      } else {
+        pushBits(1, numBits);
+        pushBits(w.charCodeAt(0), 16);
+      }
+      enlargeIn -= 1;
+      if (enlargeIn === 0) {
+        enlargeIn = 2 ** numBits;
+        numBits += 1;
+      }
+      delete dictionaryToCreate[w];
+    } else {
+      pushBits(dictionary[w], numBits);
+    }
+
+    enlargeIn -= 1;
+    if (enlargeIn === 0) {
+      enlargeIn = 2 ** numBits;
+      numBits += 1;
+    }
+    dictionary[wc] = dictSize;
+    dictSize += 1;
+    w = String(c);
+  }
+
+  if (w !== "") {
+    if (Object.prototype.hasOwnProperty.call(dictionaryToCreate, w)) {
+      if (w.charCodeAt(0) < 256) {
+        pushBits(0, numBits);
+        pushBits(w.charCodeAt(0), 8);
+      } else {
+        pushBits(1, numBits);
+        pushBits(w.charCodeAt(0), 16);
+      }
+      enlargeIn -= 1;
+      if (enlargeIn === 0) {
+        enlargeIn = 2 ** numBits;
+        numBits += 1;
+      }
+      delete dictionaryToCreate[w];
+    } else {
+      pushBits(dictionary[w], numBits);
+    }
+
+    enlargeIn -= 1;
+    if (enlargeIn === 0) {
+      enlargeIn = 2 ** numBits;
+      numBits += 1;
+    }
+  }
+
+  pushBits(2, numBits);
+
+  while (true) {
+    dataVal <<= 1;
+    if (dataPosition === bitsPerChar - 1) {
+      data.push(getCharFromInt(dataVal));
+      break;
+    }
+    dataPosition += 1;
+  }
+  return data.join("");
+}
+
+function lzDecompress(length, resetValue, getNextValue) {
+  const dictionary = [];
+  const result = [];
+  const data = {
+    val: getNextValue(0),
+    position: resetValue,
+    index: 1,
+  };
+  let enlargeIn = 4;
+  let dictSize = 4;
+  let numBits = 3;
+  let entry = "";
+  let w = "";
+  let bits = 0;
+  let c;
+
+  const readBits = (bitCount) => {
+    let localBits = 0;
+    let maxpower = 2 ** bitCount;
+    let power = 1;
+    while (power !== maxpower) {
+      const resb = data.val & data.position;
+      data.position >>= 1;
+      if (data.position === 0) {
+        data.position = resetValue;
+        data.val = getNextValue(data.index);
+        data.index += 1;
+      }
+      localBits |= (resb > 0 ? 1 : 0) * power;
+      power <<= 1;
+    }
+    return localBits;
+  };
+
+  for (let index = 0; index < 3; index += 1) {
+    dictionary[index] = index;
+  }
+
+  bits = readBits(2);
+  switch (bits) {
+    case 0:
+      c = String.fromCharCode(readBits(8));
+      break;
+    case 1:
+      c = String.fromCharCode(readBits(16));
+      break;
+    case 2:
+      return "";
+    default:
+      c = "";
+  }
+
+  dictionary[3] = c;
+  w = c;
+  result.push(c);
+
+  while (true) {
+    if (data.index > length) {
+      return "";
+    }
+    const code = readBits(numBits);
+    let currentCode = code;
+
+    if (currentCode === 0) {
+      dictionary[dictSize] = String.fromCharCode(readBits(8));
+      currentCode = dictSize;
+      dictSize += 1;
+      enlargeIn -= 1;
+    } else if (currentCode === 1) {
+      dictionary[dictSize] = String.fromCharCode(readBits(16));
+      currentCode = dictSize;
+      dictSize += 1;
+      enlargeIn -= 1;
+    } else if (currentCode === 2) {
+      return result.join("");
+    }
+
+    if (enlargeIn === 0) {
+      enlargeIn = 2 ** numBits;
+      numBits += 1;
+    }
+
+    if (dictionary[currentCode]) {
+      entry = dictionary[currentCode];
+    } else if (currentCode === dictSize) {
+      entry = w + w.charAt(0);
+    } else {
       return null;
     }
-    return encoded;
+
+    result.push(entry);
+    dictionary[dictSize] = w + entry.charAt(0);
+    dictSize += 1;
+    enlargeIn -= 1;
+    w = entry;
+
+    if (enlargeIn === 0) {
+      enlargeIn = 2 ** numBits;
+      numBits += 1;
+    }
+  }
+}
+
+function encodeInputsForHash(inputs) {
+  try {
+    const serialized = JSON.stringify(buildStateEnvelope(inputs));
+    const compressed = lzCompressToUriComponent(serialized);
+    const compressedPayload = `${HASH_COMPRESSED_PREFIX}${compressed}`;
+    if (compressed && compressedPayload.length <= HASH_STATE_MAX_LENGTH) {
+      return compressedPayload;
+    }
+    const legacyEncoded = encodeBase64Url(serialized);
+    if (!legacyEncoded || legacyEncoded.length > HASH_STATE_MAX_LENGTH) {
+      return null;
+    }
+    return legacyEncoded;
   } catch (_error) {
     return null;
   }
@@ -4313,12 +4578,29 @@ function loadInputsFromHash() {
     if (!encoded) {
       return null;
     }
-    const decoded = decodeBase64Url(encoded);
+    const decoded = encoded.startsWith(HASH_COMPRESSED_PREFIX)
+      ? lzDecompressFromUriComponent(encoded.slice(HASH_COMPRESSED_PREFIX.length))
+      : decodeBase64Url(encoded);
+    if (!decoded) {
+      return null;
+    }
     const parsed = JSON.parse(decoded);
     return parseStateEnvelope(parsed);
   } catch (_error) {
     return null;
   }
+}
+
+function syncHashStateIfPresent(inputs) {
+  try {
+    const params = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+    if (!params.get(HASH_STATE_PARAM)) {
+      return true;
+    }
+  } catch (_error) {
+    return false;
+  }
+  return syncHashState(inputs);
 }
 
 function syncHashState(inputs) {
@@ -4347,14 +4629,48 @@ function persistPrimaryState(inputs, options = {}) {
       void maybeCreateAutoBackupIfDue({ inputs, reason: safeOptions.reason || "persist" });
     }
   }
-  return syncHashState(inputs);
+  return syncHashStateIfPresent(inputs);
 }
 
-function buildShareLink(inputs, options = {}) {
-  const encoded = encodeInputsForHash(inputs);
-  if (!encoded) {
+function normalizeShareId(value) {
+  const text = String(value ?? "").trim();
+  if (!text) {
     return "";
   }
+  if (!/^[a-zA-Z0-9_-]{8,48}$/.test(text)) {
+    return "";
+  }
+  return text;
+}
+
+function getShareIdFromUrl() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    return normalizeShareId(params.get(SHARE_ID_QUERY_PARAM));
+  } catch (_error) {
+    return "";
+  }
+}
+
+function createShareId(length = 12) {
+  const safeLength = Math.max(8, Math.min(48, Number.parseInt(String(length), 10) || 12));
+  const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  const buffer = new Uint8Array(safeLength);
+  if (window.crypto?.getRandomValues) {
+    window.crypto.getRandomValues(buffer);
+  } else {
+    for (let index = 0; index < safeLength; index += 1) {
+      buffer[index] = Math.floor(Math.random() * 256);
+    }
+  }
+  return Array.from(buffer, (byte) => chars[byte % chars.length]).join("");
+}
+
+function canResolveShareSidAcrossDevices() {
+  return false;
+}
+
+async function buildShareLink(inputs, options = {}) {
   const safeOptions = options && typeof options === "object" ? options : {};
   const searchParams = new URLSearchParams(window.location.search);
   if (safeOptions.viewMode) {
@@ -4362,10 +4678,29 @@ function buildShareLink(inputs, options = {}) {
   } else {
     searchParams.delete(VIEW_MODE_QUERY_PARAM);
   }
+
+  let sid = "";
+  sid = await saveShareSnapshot(inputs);
+  if (sid) {
+    searchParams.set(SHARE_ID_QUERY_PARAM, sid);
+  } else {
+    searchParams.delete(SHARE_ID_QUERY_PARAM);
+  }
+
+  const shouldUseHashFallback = !sid || !canResolveShareSidAcrossDevices();
   const params = new URLSearchParams(window.location.hash.replace(/^#/, ""));
-  params.set(HASH_STATE_PARAM, encoded);
+  if (shouldUseHashFallback) {
+    const encoded = encodeInputsForHash(inputs);
+    if (!encoded) {
+      return "";
+    }
+    params.set(HASH_STATE_PARAM, encoded);
+  } else {
+    params.delete(HASH_STATE_PARAM);
+  }
   const searchText = searchParams.toString();
-  return `${window.location.origin}${window.location.pathname}${searchText ? `?${searchText}` : ""}#${params.toString()}`;
+  const hashText = params.toString();
+  return `${window.location.origin}${window.location.pathname}${searchText ? `?${searchText}` : ""}${hashText ? `#${hashText}` : ""}`;
 }
 
 function exportInputsAsJson(inputs) {
@@ -4682,6 +5017,104 @@ function registerServiceWorker() {
     .catch(() => {
       // Ignore registration errors to keep UI functional.
     });
+}
+
+function getShareDb() {
+  if (!isIndexedDbAvailable()) {
+    return Promise.reject(new Error("indexeddb-not-supported"));
+  }
+  if (shareDbPromise) {
+    return shareDbPromise;
+  }
+
+  shareDbPromise = new Promise((resolve, reject) => {
+    const request = window.indexedDB.open(SHARE_DB_NAME, SHARE_DB_VERSION);
+
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains(SHARE_DB_STORE)) {
+        const store = db.createObjectStore(SHARE_DB_STORE, { keyPath: "id" });
+        store.createIndex("updatedAt", "updatedAt", { unique: false });
+      }
+    };
+
+    request.onsuccess = () => {
+      const db = request.result;
+      db.onversionchange = () => {
+        db.close();
+        shareDbPromise = null;
+      };
+      resolve(db);
+    };
+
+    request.onerror = () => {
+      shareDbPromise = null;
+      reject(request.error || new Error("share-indexeddb-open-failed"));
+    };
+
+    request.onblocked = () => {
+      shareDbPromise = null;
+      reject(new Error("share-indexeddb-open-blocked"));
+    };
+  });
+
+  return shareDbPromise;
+}
+
+async function saveShareSnapshot(inputs) {
+  if (!isIndexedDbAvailable()) {
+    return "";
+  }
+  try {
+    const db = await getShareDb();
+    const sid = createShareId();
+    const entry = {
+      id: sid,
+      createdAt: new Date().toISOString(),
+      updatedAt: Date.now(),
+      data: sanitizeInputs(cloneInputs(inputs)),
+    };
+    const transaction = db.transaction(SHARE_DB_STORE, "readwrite");
+    transaction.objectStore(SHARE_DB_STORE).put(entry);
+    await idbTransactionDone(transaction);
+    return sid;
+  } catch (_error) {
+    return "";
+  }
+}
+
+async function loadShareSnapshotById(sid) {
+  const safeSid = normalizeShareId(sid);
+  if (!safeSid || !isIndexedDbAvailable()) {
+    return null;
+  }
+  try {
+    const db = await getShareDb();
+    const transaction = db.transaction(SHARE_DB_STORE, "readonly");
+    const request = transaction.objectStore(SHARE_DB_STORE).get(safeSid);
+    const entry = await idbRequestToPromise(request);
+    if (!entry || !entry.data || typeof entry.data !== "object") {
+      return null;
+    }
+    return sanitizeInputs({ ...DEFAULT_INPUTS, ...entry.data });
+  } catch (_error) {
+    return null;
+  }
+}
+
+async function initializeInputsFromShareId() {
+  const sid = getShareIdFromUrl();
+  if (!sid) {
+    return;
+  }
+  const sidInputs = await loadShareSnapshotById(sid);
+  if (!sidInputs || areInputsEqual(sidInputs, state.inputs)) {
+    return;
+  }
+  const hashSynced = commitImmediateInputs(sidInputs, { reason: "share-sid-load" });
+  showApplyFeedback(hashSynced
+    ? "공유 포인터(sid) 데이터를 불러왔습니다."
+    : "공유 포인터 데이터를 불러왔습니다. 해시 저장은 생략되었습니다.");
 }
 
 function initializeBackupStore() {
