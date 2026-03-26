@@ -350,6 +350,7 @@ const state = {
 
 document.addEventListener("DOMContentLoaded", () => {
   bindControls();
+  bindPwaLifecycleFeedback();
   syncViewModeUi();
   syncViewModeGuideUi();
   syncBackupUi();
@@ -365,15 +366,9 @@ document.addEventListener("DOMContentLoaded", () => {
   renderAll();
   initializeBackupStore();
   void initializeInputsFromShareId();
-  const pwaManager = new IsfPwaManager({
-    appVersion: "0.1.1",
-    onFeedback: (message) => IsfFeedback.showFeedback(dom.applyFeedback, message),
-    isViewMode: () => state.isViewMode,
-    swPath: "../../sw.js",
-    manifestPath: "../../manifest.webmanifest",
-    versionCheckTriggerElement: dom.checkLatestVersion,
-  });
-  pwaManager.init();
+  registerServiceWorker();
+  maybeShowStandaloneLaunchFeedback();
+  bindPwaVersionAwareness();
   if (state.isViewMode) {
     IsfFeedback.showFeedback(dom.applyFeedback, "보기 모드로 열었습니다. 로컬 저장값은 변경되지 않습니다.");
   }
@@ -579,7 +574,7 @@ function bindControls() {
       }
       const localInputs = sanitizeInputs(cloneInputs(getVisibleInputs()));
       persistInputs(localInputs);
-      const res = await IsfBackupManager.createBackupEntry(state.backupEntries, localInputs, { type: "manual", source: "view-save" , appKey: SHARE_STATE_KEY}); if(res.created) { state.backupEntries = res.nextEntries; syncBackupUi(); }
+      await createBackupEntry(localInputs, { type: "manual", source: "view-save" });
       switchToNormalMode();
       IsfFeedback.showFeedback(dom.applyFeedback, "현재 보기 상태를 로컬 저장소에 저장하고 일반 모드로 전환했습니다.");
     });
@@ -640,12 +635,13 @@ function bindControls() {
         return;
       }
       const inputs = sanitizeInputs(cloneInputs(getVisibleInputs()));
-      const res = await IsfBackupManager.createBackupEntry(state.backupEntries, inputs, {
+      const result = await createBackupEntry(inputs, {
         type: "manual",
         source: "normal",
         allowDuplicate: true,
         replaceRecentManualWithinMs: MANUAL_BACKUP_WINDOW_MS,
-        promptOnRecentManualOverwrite: true, appKey: IsfShare.SHARE_STATE_KEY}); if(res.created) { state.backupEntries = res.nextEntries; syncBackupUi(); }
+        promptOnRecentManualOverwrite: true,
+      });
 
       if (result.created) {
         IsfFeedback.showFeedback(dom.applyFeedback, result.replaced ? "최근 1분 수동 백업을 덮어썼습니다." : "로컬 백업을 저장했습니다.");
@@ -779,9 +775,9 @@ function bindControls() {
           item.group = normalizeAllocationGroupName(target.value);
         }
         renderExpenseTotalHint(
-          IsfUtils.toWon(getMonthlyAllocationTotalMan(state.itemEditors.expense.items)),
+          toWon(getMonthlyAllocationTotalMan(state.itemEditors.expense.items)),
           state.itemEditors.expense.items.length,
-        );
+
         setItemEditorUi("expense", true);
         return;
       }
@@ -816,9 +812,9 @@ function bindControls() {
       state.itemEditors.expense.items = state.itemEditors.expense.items.filter((item) => item.id !== removeId);
       renderExpenseList(state.itemEditors.expense.items, { editing: true });
       renderExpenseTotalHint(
-        IsfUtils.toWon(getMonthlyAllocationTotalMan(state.itemEditors.expense.items)),
+        toWon(getMonthlyAllocationTotalMan(state.itemEditors.expense.items)),
         state.itemEditors.expense.items.length,
-      );
+
       setItemEditorUi("expense", true);
     });
   }
@@ -869,9 +865,9 @@ function bindControls() {
           }
         }
         renderSavingsTotalHint(
-          IsfUtils.toWon(getMonthlyAllocationTotalMan(state.itemEditors.savings.items)),
+          toWon(getMonthlyAllocationTotalMan(state.itemEditors.savings.items)),
           state.itemEditors.savings.items.length,
-        );
+
         setItemEditorUi("savings", true);
         return;
       }
@@ -917,9 +913,9 @@ function bindControls() {
       state.itemEditors.savings.items = state.itemEditors.savings.items.filter((item) => item.id !== removeId);
       renderSavingsList(state.itemEditors.savings.items, { editing: true });
       renderSavingsTotalHint(
-        IsfUtils.toWon(getMonthlyAllocationTotalMan(state.itemEditors.savings.items)),
+        toWon(getMonthlyAllocationTotalMan(state.itemEditors.savings.items)),
         state.itemEditors.savings.items.length,
-      );
+
       setItemEditorUi("savings", true);
     });
   }
@@ -962,9 +958,9 @@ function bindControls() {
           }
         }
         renderInvestTotalHint(
-          IsfUtils.toWon(getMonthlyAllocationTotalMan(state.itemEditors.invest.items)),
+          toWon(getMonthlyAllocationTotalMan(state.itemEditors.invest.items)),
           state.itemEditors.invest.items.length,
-        );
+
         setItemEditorUi("invest", true);
         return;
       }
@@ -999,9 +995,9 @@ function bindControls() {
       state.itemEditors.invest.items = state.itemEditors.invest.items.filter((item) => item.id !== removeId);
       renderInvestList(state.itemEditors.invest.items, { editing: true });
       renderInvestTotalHint(
-        IsfUtils.toWon(getMonthlyAllocationTotalMan(state.itemEditors.invest.items)),
+        toWon(getMonthlyAllocationTotalMan(state.itemEditors.invest.items)),
         state.itemEditors.invest.items.length,
-      );
+
       setItemEditorUi("invest", true);
     });
   }
@@ -1094,7 +1090,11 @@ function bindControls() {
     });
   }
 
-  
+  if (dom.checkLatestVersion) {
+    dom.checkLatestVersion.addEventListener("click", () => {
+      void maybeCheckRemotePwaVersion({ force: true, showUpToDateFeedback: true });
+    });
+  }
 
   if (dom.loadSample) {
     dom.loadSample.addEventListener("click", async () => {
@@ -1254,7 +1254,7 @@ function bindMobileLayoutWatcher() {
     syncMobileInputsPanelVisibility();
     syncAdvancedTabBlockVisibility();
     syncAllItemEditorUi();
-    
+    syncVersionCheckTriggerVisibility();
   };
   if (typeof mobileLayoutMediaQuery.addEventListener === "function") {
     mobileLayoutMediaQuery.addEventListener("change", handleMobileLayoutChange);
@@ -1295,7 +1295,7 @@ function syncViewModeUi() {
     dom.saveViewToLocal.disabled = !isViewLink;
   }
   syncBackupUi();
-  
+  syncVersionCheckTriggerVisibility();
 }
 
 function syncViewModeGuideUi() {
@@ -1325,7 +1325,7 @@ function dismissViewModeGuide() {
     dom.viewModeGuideDontShow instanceof HTMLInputElement
       ? dom.viewModeGuideDontShow.checked
       : false,
-  );
+
   try {
     if (dontShowAgain) {
       localStorage.setItem(VIEW_MODE_GUIDE_DISMISSED_KEY, "1");
@@ -1826,7 +1826,7 @@ function getItemEditorSignature(groupKey, items) {
       groupKey,
       meta.label,
       { allowMaturity: groupKey === "invest" },
-    );
+
   return JSON.stringify(normalizedItems.map((item, index) => ({
     id: String(item.id || "").trim(),
     name: normalizeAllocationName(item.name, meta.label, index),
@@ -1986,7 +1986,7 @@ function startItemEditor(groupKey) {
   editor.baselineSignature = getItemEditorSignature(groupKey, editor.items);
 
   meta.renderList(editor.items, { editing: true });
-  meta.renderHint(IsfUtils.toWon(getMonthlyAllocationTotalMan(editor.items)), editor.items.length);
+  meta.renderHint(toWon(getMonthlyAllocationTotalMan(editor.items)), editor.items.length);
   setItemEditorUi(groupKey, true);
 }
 
@@ -2007,7 +2007,7 @@ function addItemToEditor(groupKey) {
   editor.items.push(item);
 
   meta.renderList(editor.items, { editing: true });
-  meta.renderHint(IsfUtils.toWon(getMonthlyAllocationTotalMan(editor.items)), editor.items.length);
+  meta.renderHint(toWon(getMonthlyAllocationTotalMan(editor.items)), editor.items.length);
   setItemEditorUi(groupKey, true);
 }
 
@@ -2028,7 +2028,7 @@ function applyItemEditor(groupKey) {
       groupKey,
       meta.label,
       { allowMaturity: groupKey === "invest" },
-    );
+
   draftInputs[meta.field] = clusterAllocationItemsByGroup(normalizedItems);
   state.draftInputs = sanitizeInputs(draftInputs);
 
@@ -2056,7 +2056,7 @@ function cancelItemEditor(groupKey) {
   const inputs = getVisibleInputs();
   const items = inputs[meta.field] || [];
   meta.renderList(items);
-  meta.renderHint(IsfUtils.toWon(getMonthlyAllocationTotalMan(items)), items.length);
+  meta.renderHint(toWon(getMonthlyAllocationTotalMan(items)), items.length);
 }
 
 function closeAllItemEditors(exceptGroupKey = "") {
@@ -2168,9 +2168,9 @@ function buildInputSignature(inputs) {
 }
 
 function getPendingSummaryText(inputs) {
-  const monthlyIncome = IsfUtils.toWon(getMonthlyIncomeTotalMan(inputs.incomes));
+  const monthlyIncome = toWon(getMonthlyIncomeTotalMan(inputs.incomes));
   const monthlyOutflowMan = inputs.monthlyExpense + inputs.monthlySavings + inputs.monthlyInvest + inputs.monthlyDebtPayment;
-  return `미적용 변경사항 · 월 수입 ${formatCurrency(monthlyIncome)} / 월 배분 ${formatCurrency(IsfUtils.toWon(monthlyOutflowMan))}`;
+  return `미적용 변경사항 · 월 수입 ${formatCurrency(monthlyIncome)} / 월 배분 ${formatCurrency(toWon(monthlyOutflowMan))}`;
 }
 
 function syncDerivedMonthlyInputs(inputs) {
@@ -2183,10 +2183,10 @@ function syncDerivedMonthlyInputs(inputs) {
 }
 
 function renderInputHints(inputs) {
-  renderIncomeTotalHint(IsfUtils.toWon(getMonthlyIncomeTotalMan(inputs.incomes)), inputs.incomes.length);
-  renderExpenseTotalHint(IsfUtils.toWon(inputs.monthlyExpense), inputs.expenseItems.length);
-  renderSavingsTotalHint(IsfUtils.toWon(inputs.monthlySavings), inputs.savingsItems.length);
-  renderInvestTotalHint(IsfUtils.toWon(inputs.monthlyInvest), inputs.investItems.length);
+  renderIncomeTotalHint(toWon(getMonthlyIncomeTotalMan(inputs.incomes)), inputs.incomes.length);
+  renderExpenseTotalHint(toWon(inputs.monthlyExpense), inputs.expenseItems.length);
+  renderSavingsTotalHint(toWon(inputs.monthlySavings), inputs.savingsItems.length);
+  renderInvestTotalHint(toWon(inputs.monthlyInvest), inputs.investItems.length);
 }
 
 function refreshInputsPanel(inputs) {
@@ -2234,13 +2234,13 @@ function renderAll() {
 }
 
 function buildMonthlySnapshot(inputs) {
-  const income = IsfUtils.toWon(getMonthlyIncomeTotalMan(inputs.incomes));
+  const income = toWon(getMonthlyIncomeTotalMan(inputs.incomes));
   const incomeBreakdown = (Array.isArray(inputs.incomes) ? inputs.incomes : [])
     .map((item, index) => ({
       id: `income-${item?.id || index + 1}`,
       label: String(item?.name || `수입 ${index + 1}`),
       tone: "income",
-      value: IsfUtils.toWon(IsfUtils.sanitizeMoney(item?.amount, 0)),
+      value: toWon(IsfUtils.sanitizeMoney(item?.amount, 0)),
     }))
     .filter((item) => item.value > 0);
   const expenseBreakdown = (Array.isArray(inputs.expenseItems) ? inputs.expenseItems : [])
@@ -2248,7 +2248,7 @@ function buildMonthlySnapshot(inputs) {
       id: `expense-${item?.id || index + 1}`,
       label: String(item?.name || `생활비 ${index + 1}`),
       tone: "expense",
-      value: IsfUtils.toWon(IsfUtils.sanitizeMoney(item?.amount, 0)),
+      value: toWon(IsfUtils.sanitizeMoney(item?.amount, 0)),
       group: normalizeAllocationGroupName(item?.group),
     }))
     .filter((item) => item.value > 0);
@@ -2257,7 +2257,7 @@ function buildMonthlySnapshot(inputs) {
       id: `savings-${item?.id || index + 1}`,
       label: String(item?.name || `저축 ${index + 1}`),
       tone: "savings",
-      value: IsfUtils.toWon(IsfUtils.sanitizeMoney(item?.amount, 0)),
+      value: toWon(IsfUtils.sanitizeMoney(item?.amount, 0)),
       group: normalizeAllocationGroupName(item?.group),
     }))
     .filter((item) => item.value > 0);
@@ -2266,14 +2266,14 @@ function buildMonthlySnapshot(inputs) {
       id: `invest-${item?.id || index + 1}`,
       label: String(item?.name || `투자 ${index + 1}`),
       tone: "invest",
-      value: IsfUtils.toWon(IsfUtils.sanitizeMoney(item?.amount, 0)),
+      value: toWon(IsfUtils.sanitizeMoney(item?.amount, 0)),
       group: normalizeAllocationGroupName(item?.group),
     }))
     .filter((item) => item.value > 0);
   const expense = expenseBreakdown.reduce((sum, item) => sum + item.value, 0);
   const savings = savingsBreakdown.reduce((sum, item) => sum + item.value, 0);
   const invest = investBreakdown.reduce((sum, item) => sum + item.value, 0);
-  const debtPayment = IsfUtils.toWon(inputs.monthlyDebtPayment);
+  const debtPayment = toWon(inputs.monthlyDebtPayment);
 
   const requiredOutflow = expense + savings + invest + debtPayment;
   const netCashflow = income - requiredOutflow;
@@ -2334,8 +2334,8 @@ function buildSavingsBuckets(inputs) {
   const savingsItems = Array.isArray(inputs.savingsItems) && inputs.savingsItems.length > 0
     ? inputs.savingsItems
     : DEFAULT_SAVINGS_ITEMS;
-  const monthlyTargets = savingsItems.map((item) => IsfUtils.toWon(IsfUtils.sanitizeMoney(item?.amount, 0)));
-  const initialBalances = allocateByWeights(IsfUtils.toWon(inputs.startSavings), monthlyTargets);
+  const monthlyTargets = savingsItems.map((item) => toWon(IsfUtils.sanitizeMoney(item?.amount, 0)));
+  const initialBalances = allocateByWeights(toWon(inputs.startSavings), monthlyTargets);
 
   return savingsItems.map((item, index) => ({
     id: typeof item?.id === "string" && item.id.trim()
@@ -2355,8 +2355,8 @@ function buildInvestBuckets(inputs) {
   const investItems = Array.isArray(inputs.investItems) && inputs.investItems.length > 0
     ? inputs.investItems
     : DEFAULT_INVEST_ITEMS;
-  const monthlyTargets = investItems.map((item) => IsfUtils.toWon(IsfUtils.sanitizeMoney(item?.amount, 0)));
-  const initialBalances = allocateByWeights(IsfUtils.toWon(inputs.startInvest), monthlyTargets);
+  const monthlyTargets = investItems.map((item) => toWon(IsfUtils.sanitizeMoney(item?.amount, 0)));
+  const initialBalances = allocateByWeights(toWon(inputs.startInvest), monthlyTargets);
   const monthlyFactor = toMonthlyFactor(inputs.annualInvestReturn);
 
   return investItems.map((item, index) => ({
@@ -2374,11 +2374,11 @@ function buildInvestBuckets(inputs) {
 
 function simulateProjection(inputs) {
   const horizonMonths = Math.max(1, Math.round(inputs.horizonYears)) * 12;
-  const monthlyIncomeBase = IsfUtils.toWon(getMonthlyIncomeTotalMan(inputs.incomes));
-  const monthlyExpenseBase = IsfUtils.toWon(inputs.monthlyExpense);
-  const monthlySavings = IsfUtils.toWon(inputs.monthlySavings);
-  const monthlyInvest = IsfUtils.toWon(inputs.monthlyInvest);
-  const monthlyDebtPayment = IsfUtils.toWon(inputs.monthlyDebtPayment);
+  const monthlyIncomeBase = toWon(getMonthlyIncomeTotalMan(inputs.incomes));
+  const monthlyExpenseBase = toWon(inputs.monthlyExpense);
+  const monthlySavings = toWon(inputs.monthlySavings);
+  const monthlyInvest = toWon(inputs.monthlyInvest);
+  const monthlyDebtPayment = toWon(inputs.monthlyDebtPayment);
 
   const incomeFactor = toMonthlyFactor(inputs.annualIncomeGrowth);
   const expenseFactor = toMonthlyFactor(inputs.annualExpenseGrowth);
@@ -2388,10 +2388,10 @@ function simulateProjection(inputs) {
   const savingsBuckets = buildSavingsBuckets(inputs);
   const investBuckets = buildInvestBuckets(inputs);
 
-  let cash = IsfUtils.toWon(inputs.startCash);
+  let cash = toWon(inputs.startCash);
   let savings = savingsBuckets.reduce((sum, bucket) => sum + bucket.balance, 0);
   let invest = investBuckets.reduce((sum, bucket) => sum + bucket.balance, 0);
-  let debt = IsfUtils.toWon(inputs.startDebt);
+  let debt = toWon(inputs.startDebt);
 
   savingsBuckets.forEach((bucket) => {
     if (bucket.maturityMonthIndex !== null && bucket.maturityMonthIndex <= 0 && !bucket.closed) {
@@ -2505,7 +2505,7 @@ function simulateProjection(inputs) {
         debt,
         realDiscountFactor: Math.pow(purchasingPowerFactor, monthIndex),
       }),
-    );
+
   }
 
   return records;
@@ -2808,7 +2808,7 @@ function buildSankeyData(snapshot) {
           value: entry.value,
           column: groupColumn,
         })),
-      );
+
     }
 
     const detailNodes = hasGroupLayer
@@ -2823,7 +2823,7 @@ function buildSankeyData(snapshot) {
         value: item.value,
         column: detailColumn,
       })),
-    );
+
   });
 
   const links = [
@@ -2852,7 +2852,7 @@ function buildSankeyData(snapshot) {
           value: entry.value,
           tone: group.tone,
         })),
-      );
+
       links.push(
         ...group.grouped.flatMap((entry) => entry.items.map((item) => ({
           source: entry.nodeId,
@@ -2860,7 +2860,7 @@ function buildSankeyData(snapshot) {
           value: item.value,
           tone: group.tone,
         }))),
-      );
+
       links.push(
         ...group.ungrouped.map((item) => ({
           source: group.parentId,
@@ -2868,7 +2868,7 @@ function buildSankeyData(snapshot) {
           value: item.value,
           tone: group.tone,
         })),
-      );
+
       return;
     }
 
@@ -2879,7 +2879,7 @@ function buildSankeyData(snapshot) {
         value: item.value,
         tone: group.tone,
       })),
-    );
+
   });
 
   return {
@@ -2954,7 +2954,7 @@ function renderSankey(snapshot) {
   const getNodeTextWidth = (node) => Math.max(
     measureSankeyTextWidth(node?.label, labelFontSize, 700),
     measureSankeyTextWidth(formatCurrency(node?.value), valueFontSize, 400),
-  );
+
 
   const leftLabelColumn = hasIncomeInflow && columnCount > 1 ? columns[1] : firstColumn;
   const leftLabelWidth = data.nodes
@@ -2983,7 +2983,7 @@ function renderSankey(snapshot) {
   const baseHeight = Math.max(
     isMobileViewport ? 320 : 360,
     (isMobileViewport ? 230 : 260) + maxCountPerColumn * nodeHeightUnit,
-  );
+
   const mobileAspectHeight = isMobileViewport ? Math.round(width * SANKEY_MOBILE_HEIGHT_RATIO) : 0;
   const height = Math.max(baseHeight, mobileAspectHeight);
   const marginTop = isMobileViewport ? 20 : 26;
@@ -3091,7 +3091,7 @@ function renderSankey(snapshot) {
       showSankeyTooltip(
         event,
         `${source.label} → ${target.label} · ${formatSankeyDisplayValue(link.value, data.totalValue, valueMode)}${detailText ? `\n${detailText}` : ""}`,
-      );
+
     });
     path.addEventListener("mouseleave", hideSankeyTooltip);
 
@@ -3511,7 +3511,7 @@ function renderSavingsList(savingsItems, options = {}) {
         nameElement,
         createEditorField("금액(만원)", amountInput, "editor-field--amount"),
         createEditorField("연 이자율(%)", rateInput, "editor-field--rate"),
-      );
+
     } else {
       row.append(nameElement, amountInput, rateInput);
     }
@@ -3860,7 +3860,7 @@ function sanitizeSavingsItems(items, fallbackAmount, fallbackRate = DEFAULT_INPU
     "savings",
     "저축",
     { allowMaturity: true },
-  );
+
   const rateById = new Map();
 
   if (Array.isArray(items)) {
@@ -3905,7 +3905,7 @@ function sanitizeInvestItems(items, fallbackAmount) {
     "invest",
     "투자",
     { allowMaturity: true },
-  );
+
 }
 
 function sanitizeAllocationItems(
@@ -4089,6 +4089,9 @@ function sanitizeInteger(value, fallback, min, max) {
   return Math.min(max, Math.max(min, Math.round(number)));
 }
 
+function toWon(manValue) {
+  return Number(manValue) * MONEY_UNIT;
+}
 
 function toMonthlyFactor(annualPercent) {
   const annualRate = Number(annualPercent) / 100;
@@ -4238,7 +4241,7 @@ function hideSankeyTooltip() {
 }
 
 function resolveInitialInputs() {
-  const sid = IsfShare.getShareIdFromUrl();
+  const sid = getShareIdFromUrl();
   const hashInputs = IsfShare.decodePayloadFromHash(new URLSearchParams(window.location.hash.replace(/^#/, "")).get(IsfShare.HASH_STATE_PARAM), SHARE_STATE_KEY);
   if (hashInputs) {
     return sanitizeInputs({ ...DEFAULT_INPUTS, ...hashInputs });
@@ -4253,6 +4256,8 @@ function resolveInitialInputs() {
 
 
 
+  
+
 
 
 
@@ -4265,7 +4270,7 @@ function persistPrimaryState(inputs, options = {}) {
   if (!state.isViewMode) {
     persistInputs(inputs);
     if (!safeOptions.skipAutoBackup) {
-      void IsfBackupManager.maybeCreateAutoBackupIfDue(state.backupEntries, inputs, IsfShare.SHARE_STATE_KEY).then(r => { if(r.created) { state.backupEntries = r.nextEntries; syncBackupUi(); } });
+      void maybeCreateAutoBackupIfDue({ inputs, reason: safeOptions.reason || "persist" });
     }
     void persistStep1BridgeSnapshot(inputs);
   }
@@ -4289,10 +4294,10 @@ function getHubStorage() {
 function buildStep1BridgePayload(inputs) {
   const safeInputs = sanitizeInputs(cloneInputs(inputs));
   return {
-    monthlyInvestCapacity: IsfUtils.toWon(IsfUtils.sanitizeMoney(safeInputs.monthlyInvest, 0)),
-    currentCash: IsfUtils.toWon(IsfUtils.sanitizeMoney(safeInputs.startCash, 0)),
-    currentInvest: IsfUtils.toWon(IsfUtils.sanitizeMoney(safeInputs.startInvest, 0)),
-    currentSavings: IsfUtils.toWon(IsfUtils.sanitizeMoney(safeInputs.startSavings, 0)),
+    monthlyInvestCapacity: toWon(IsfUtils.sanitizeMoney(safeInputs.monthlyInvest, 0)),
+    currentCash: toWon(IsfUtils.sanitizeMoney(safeInputs.startCash, 0)),
+    currentInvest: toWon(IsfUtils.sanitizeMoney(safeInputs.startInvest, 0)),
+    currentSavings: toWon(IsfUtils.sanitizeMoney(safeInputs.startSavings, 0)),
     timestamp: new Date().toISOString(),
   };
 }
@@ -4432,7 +4437,7 @@ function isIndexedDbAvailable() {
 
 
 function getShareDb() {
-  if (!IsfBackupManager.isIndexedDbAvailable()) {
+  if (!isIndexedDbAvailable()) {
     return Promise.reject(new Error("indexeddb-not-supported"));
   }
   if (shareDbPromise) {
@@ -4473,22 +4478,8 @@ function getShareDb() {
   return shareDbPromise;
 }
 
-function idbRequestToPromise(request) {
-  return new Promise((resolve, reject) => {
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
-}
-function idbTransactionDone(transaction) {
-  return new Promise((resolve, reject) => {
-    transaction.oncomplete = () => resolve();
-    transaction.onerror = () => reject(transaction.error);
-    transaction.onabort = () => reject(new Error("Transaction aborted"));
-  });
-}
-
 async function saveShareSnapshot(inputs) {
-  if (!IsfBackupManager.isIndexedDbAvailable()) {
+  if (!isIndexedDbAvailable()) {
     return "";
   }
   try {
@@ -4511,7 +4502,7 @@ async function saveShareSnapshot(inputs) {
 
 async function loadShareSnapshotById(sid) {
   const safeSid = normalizeShareId(sid);
-  if (!safeSid || !IsfBackupManager.isIndexedDbAvailable()) {
+  if (!safeSid || !isIndexedDbAvailable()) {
     return null;
   }
   try {
@@ -4529,7 +4520,7 @@ async function loadShareSnapshotById(sid) {
 }
 
 async function initializeInputsFromShareId() {
-  const sid = IsfShare.getShareIdFromUrl();
+  const sid = getShareIdFromUrl();
   const hasHash = window.location.hash.includes(HASH_STATE_PARAM);
 
   if (sid) {
@@ -4546,7 +4537,7 @@ async function initializeInputsFromShareId() {
 }
 
 function initializeBackupStore() {
-  if (!IsfBackupManager.isIndexedDbAvailable()) {
+  if (!isIndexedDbAvailable()) {
     state.backupStoreError = true;
     state.backupStoreReady = false;
     syncBackupUi();
@@ -4554,7 +4545,7 @@ function initializeBackupStore() {
   }
 
   void (async () => {
-    const loadedEntries = await IsfBackupManager.loadBackupEntriesFromDb(SHARE_STATE_KEY);
+    const loadedEntries = await loadBackupEntries();
     if (loadedEntries === null) {
       state.backupStoreError = true;
       state.backupStoreReady = false;
@@ -4567,7 +4558,7 @@ function initializeBackupStore() {
     state.backupStoreReady = true;
     syncBackupUi();
 
-    const res = await IsfBackupManager.maybeCreateAutoBackupIfDue(state.backupEntries, state.inputs || state.portfolio, SHARE_STATE_KEY); if(res.created) { state.backupEntries = res.nextEntries; syncBackupUi(); }
+    await maybeCreateAutoBackupIfDue({ reason: "startup" });
   })();
 }
 
@@ -4733,12 +4724,12 @@ async function restoreSelectedBackup() {
 
   const confirmed = window.confirm(
     `선택한 백업(${formatBackupTimestamp(entry.createdAt)})으로 복원할까요? 현재 상태는 복원 전에 수동 백업됩니다.`,
-  );
+
   if (!confirmed) {
     return;
   }
 
-  const res = await IsfBackupManager.createBackupEntry(state.backupEntries, state.inputs, { type: "manual", source: "normal", allowDuplicate: true , appKey: SHARE_STATE_KEY}); if(res.created) { state.backupEntries = res.nextEntries; syncBackupUi(); }
+  await createBackupEntry(state.inputs, { type: "manual", source: "normal", allowDuplicate: true });
   commitImmediateInputs(entry.data, { skipAutoBackup: true });
   IsfFeedback.showFeedback(dom.applyFeedback, "선택한 백업으로 복원했습니다.");
 }
@@ -4759,4 +4750,3 @@ function debounce(fn, delay) {
     }, delay);
   };
 }
-

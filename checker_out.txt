@@ -1,0 +1,25 @@
+d:\jhkSandBox\CODE\IndividualSavingsFlowUI\apps\step1\app.js:643 : createBackupEntry -> const result = await createBackupEntry(inputs, {
+d:\jhkSandBox\CODE\IndividualSavingsFlowUI\apps\step1\app.js:1100 : maybeCheckRemotePwaVersion -> void maybeCheckRemotePwaVersion({ force: true, showUpToDateFeedback: true });
+d:\jhkSandBox\CODE\IndividualSavingsFlowUI\apps\step1\app.js:1262 : syncVersionCheckTriggerVisibility -> syncVersionCheckTriggerVisibility();
+d:\jhkSandBox\CODE\IndividualSavingsFlowUI\apps\step1\app.js:1303 : syncVersionCheckTriggerVisibility -> syncVersionCheckTriggerVisibility();
+d:\jhkSandBox\CODE\IndividualSavingsFlowUI\apps\step1\app.js:4273 : maybeCreateAutoBackupIfDue -> void maybeCreateAutoBackupIfDue({ inputs, reason: safeOptions.reason || "persist" });
+d:\jhkSandBox\CODE\IndividualSavingsFlowUI\apps\step1\app.js:4496 : idbTransactionDone -> await idbTransactionDone(transaction);
+d:\jhkSandBox\CODE\IndividualSavingsFlowUI\apps\step1\app.js:4512 : idbRequestToPromise -> const entry = await idbRequestToPromise(request);
+d:\jhkSandBox\CODE\IndividualSavingsFlowUI\apps\step2\app.js:130 : createId -> function createId(prefix) {
+d:\jhkSandBox\CODE\IndividualSavingsFlowUI\apps\step2\app.js:171 : sanitizeWeight -> function sanitizeWeight(value) {
+d:\jhkSandBox\CODE\IndividualSavingsFlowUI\apps\step2\app.js:186 : formatWeight -> function formatWeight(value) {
+d:\jhkSandBox\CODE\IndividualSavingsFlowUI\apps\step2\app.js:251 : escapeHtml -> function escapeHtml(value) {
+d:\jhkSandBox\CODE\IndividualSavingsFlowUI\apps\step2\app.js:782 : escapeHtml -> <input type="text" data-field="accountName" value="${escapeHtml(account.name)}" aria-label="계좌 ${index + 1} 이름" />
+d:\jhkSandBox\CODE\IndividualSavingsFlowUI\apps\step2\app.js:783 : formatWeight -> <input type="number" min="0" max="100" step="0.01" data-field="accountWeight" value="${formatWeight(account.accountWeight)}" aria-label="계좌 ${index + 1} 비중" />
+d:\jhkSandBox\CODE\IndividualSavingsFlowUI\apps\step2\app.js:785 : escapeHtml -> <button type="button" class="btn btn-ghost btn-sm" data-select-account-id="${escapeHtml(account.id)}">${account.id === state.activeAccountId ? "편집중" : "선택"}</button>
+d:\jhkSandBox\CODE\IndividualSavingsFlowUI\apps\step2\app.js:787 : escapeHtml -> <button type="button" class="btn btn-ghost btn-sm" data-remove-account-id="${escapeHtml(account.id)}">삭제</button>
+d:\jhkSandBox\CODE\IndividualSavingsFlowUI\apps\step2\app.js:807 : formatWeight -> option.textContent = `${account.name} · ${formatWeight(account.accountWeight)}%`;
+d:\jhkSandBox\CODE\IndividualSavingsFlowUI\apps\step2\app.js:840 : escapeHtml -> <input type="text" data-field="label" value="${escapeHtml(allocation.label)}" aria-label="자산군 ${index + 1} 이름" />
+d:\jhkSandBox\CODE\IndividualSavingsFlowUI\apps\step2\app.js:841 : formatWeight -> <input type="number" min="0" max="100" step="0.01" data-field="targetWeight" value="${formatWeight(allocation.targetWeight)}" aria-label="자산군 ${index + 1} 목표 비중" />
+d:\jhkSandBox\CODE\IndividualSavingsFlowUI\apps\step2\app.js:842 : escapeHtml -> <input type="text" data-field="memo" value="${escapeHtml(allocation.memo)}" aria-label="자산군 ${index + 1} 메모" />
+d:\jhkSandBox\CODE\IndividualSavingsFlowUI\apps\step2\app.js:843 : escapeHtml -> <button type="button" class="btn btn-ghost btn-sm" data-remove-allocation-id="${escapeHtml(allocation.id)}">삭제</button>
+d:\jhkSandBox\CODE\IndividualSavingsFlowUI\apps\step2\app.js:1004 : escapeHtml -> <p class="account-chart-card-title">${escapeHtml(account.name)}</p>
+d:\jhkSandBox\CODE\IndividualSavingsFlowUI\apps\step2\app.js:1005 : escapeHtml -> <button type="button" class="btn btn-ghost btn-sm" data-focus-account-id="${escapeHtml(account.id)}">선택</button>
+d:\jhkSandBox\CODE\IndividualSavingsFlowUI\apps\step2\app.js:1007 : formatWeight -> <p class="account-chart-card-meta">계좌 비중 ${formatWeight(account.accountWeight)}%</p>
+d:\jhkSandBox\CODE\IndividualSavingsFlowUI\apps\step2\app.js:1008 : escapeHtml -> <svg class="account-mini-chart" viewBox="0 0 120 120" role="img" aria-label="${escapeHtml(account.name)} 미니 도넛"></svg>
+d:\jhkSandBox\CODE\IndividualSavingsFlowUI\apps\step2\app.js:1041 : escapeHtml -> <span class="amount-breakdown-label">${escapeHtml(slice.label)}</span>

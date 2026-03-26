@@ -184,11 +184,11 @@
   }
 
   function formatWeight(value) {
-    return sanitizeWeight(value).toFixed(2);
+    return IsfUtils.sanitizeWeight(value).toFixed(2);
   }
 
   function formatPercentInteger(value) {
-    return String(Math.round(sanitizeWeight(value)));
+    return String(Math.round(IsfUtils.sanitizeWeight(value)));
   }
 
   function formatCurrency(value) {
@@ -213,10 +213,10 @@
   function createDraftAllocation(source) {
     const safe = source && typeof source === "object" ? source : {};
     return {
-      id: String(safe.id || "").trim() || createId("alloc"),
-      key: String(safe.key || "").trim() || createId("asset"),
+      id: String(safe.id || "").trim() || IsfUtils.createId("alloc"),
+      key: String(safe.key || "").trim() || IsfUtils.createId("asset"),
       label: String(safe.label || "").trim() || "자산군",
-      targetWeight: sanitizeWeight(safe.targetWeight),
+      targetWeight: IsfUtils.sanitizeWeight(safe.targetWeight),
       memo: String(safe.memo || ""),
     };
   }
@@ -226,9 +226,9 @@
     const rawAllocations = Array.isArray(safe.allocations) ? safe.allocations : FALLBACK_ALLOCATIONS;
     const allocations = rawAllocations.map((item) => createDraftAllocation(item));
     return {
-      id: String(safe.id || "").trim() || createId("account"),
+      id: String(safe.id || "").trim() || IsfUtils.createId("account"),
       name: String(safe.name || "").trim() || "계좌",
-      accountWeight: sanitizeWeight(safe.accountWeight),
+      accountWeight: IsfUtils.sanitizeWeight(safe.accountWeight),
       allocations: allocations.length > 0 ? allocations : [createDraftAllocation({ label: "자산군 1", targetWeight: 100 })],
     };
   }
@@ -320,7 +320,7 @@
     if (!account || !Array.isArray(account.allocations)) {
       return 0;
     }
-    return account.allocations.reduce((sum, allocation) => sum + sanitizeWeight(allocation.targetWeight), 0);
+    return account.allocations.reduce((sum, allocation) => sum + IsfUtils.sanitizeWeight(allocation.targetWeight), 0);
   }
 
   function isAllocationTotalValid(account) {
@@ -328,7 +328,7 @@
   }
 
   function getTotalAccountWeight() {
-    return state.draft.accounts.reduce((sum, account) => sum + sanitizeWeight(account.accountWeight), 0);
+    return state.draft.accounts.reduce((sum, account) => sum + IsfUtils.sanitizeWeight(account.accountWeight), 0);
   }
 
   function getTotalMonthlyInvestCapacity() {
@@ -337,7 +337,7 @@
 
   function getAccountAllocatedAmount(account) {
     const totalCapacity = getTotalMonthlyInvestCapacity();
-    const accountWeight = sanitizeWeight(account?.accountWeight);
+    const accountWeight = IsfUtils.sanitizeWeight(account?.accountWeight);
     if (totalCapacity <= 0 || accountWeight <= 0) {
       return 0;
     }
@@ -375,7 +375,7 @@
       if (!String(account.name || "").trim()) {
         return { valid: false, message: `${accountLabel}: 계좌명을 입력하세요.` };
       }
-      const accountWeight = sanitizeWeight(account.accountWeight);
+      const accountWeight = IsfUtils.sanitizeWeight(account.accountWeight);
       if (accountWeight < 0 || accountWeight > 100) {
         return { valid: false, message: `${accountLabel}: 계좌 비중은 0~100%여야 합니다.` };
       }
@@ -480,7 +480,7 @@
           account.name = target.value;
         }
         if (target.dataset.field === "accountWeight") {
-          account.accountWeight = sanitizeWeight(target.value);
+          account.accountWeight = IsfUtils.sanitizeWeight(target.value);
         }
 
         markDirty();
@@ -560,7 +560,7 @@
           allocation.label = target.value;
         }
         if (target.dataset.field === "targetWeight") {
-          allocation.targetWeight = sanitizeWeight(target.value);
+          allocation.targetWeight = IsfUtils.sanitizeWeight(target.value);
         }
         if (target.dataset.field === "memo") {
           allocation.memo = target.value;
@@ -913,7 +913,7 @@
         return;
       }
       account.allocations.forEach((allocation) => {
-        const weight = sanitizeWeight(allocation.targetWeight);
+        const weight = IsfUtils.sanitizeWeight(allocation.targetWeight);
         const amount = Math.round((accountBudget * weight) / 100);
         if (amount <= 0) {
           return;
@@ -945,7 +945,7 @@
       .map((allocation) => {
         const label = String(allocation.label || "").trim() || "자산군";
         const key = String(allocation.key || "").trim() || label;
-        const value = sanitizeWeight(allocation.targetWeight);
+        const value = IsfUtils.sanitizeWeight(allocation.targetWeight);
         return {
           key,
           label,
@@ -1148,14 +1148,14 @@
       totalMonthlyInvestCapacity: sanitizeAmount(state.draft.totalMonthlyInvestCapacity),
       bridgeContext: state.draft.bridgeContext && typeof state.draft.bridgeContext === "object" ? state.draft.bridgeContext : null,
       accounts: state.draft.accounts.map((account) => ({
-        id: String(account.id || "").trim() || createId("account"),
+        id: String(account.id || "").trim() || IsfUtils.createId("account"),
         name: String(account.name || "").trim() || "계좌",
-        accountWeight: sanitizeWeight(account.accountWeight),
+        accountWeight: IsfUtils.sanitizeWeight(account.accountWeight),
         allocations: account.allocations.map((allocation) => ({
-          id: String(allocation.id || "").trim() || createId("alloc"),
-          key: String(allocation.key || "").trim() || createId("asset"),
+          id: String(allocation.id || "").trim() || IsfUtils.createId("alloc"),
+          key: String(allocation.key || "").trim() || IsfUtils.createId("asset"),
           label: String(allocation.label || "").trim() || "자산군",
-          targetWeight: sanitizeWeight(allocation.targetWeight),
+          targetWeight: IsfUtils.sanitizeWeight(allocation.targetWeight),
           memo: String(allocation.memo || ""),
         })),
       })),

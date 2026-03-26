@@ -150,8 +150,14 @@
       </section>
 
       <p id="step2Feedback" class="feedback" aria-live="polite" hidden></p>
-    </main>
+    <!-- Shared Utilities & Components -->
+    <script src="../../shared/core/utils.js"></script>
+    <script src="../../shared/core/share-utils.js"></script>
     <script src="../../shared/storage/hub-storage.js"></script>
-    <script src="app.js"></script>
+    <script src="../../shared/storage/backup-manager.js"></script>
+    <script src="../../shared/components/feedback-manager.js"></script>
+    
+    <!-- App Logic -->
+    <script src="./app.js" defer></script>
   </body>
 </html>
