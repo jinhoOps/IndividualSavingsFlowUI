@@ -17,15 +17,10 @@
 - [X] 단일 레포 다중 단계 구조 전환(`apps/step1`, `apps/step2`, `shared`)
 - [X] 공통 IndexedDB 허브 스키마 도입(`isf-hub-db-v1`: step1Snapshots/step2Portfolios/bridgeStep1ToStep2)
 - [X] Step1 적용 시 Step2 브리지 payload 기록(월투자여력/현재자산/기준시점)
-- [X] Step2 MVP: 포트폴리오 편집/비중검증/저장·불러오기/삭제 + Step1 데이터 수동 가져오기
-- [X] Step2 계좌형 모델(v2) 전환: `accounts[] + unallocatedMonthlyInvest`
-- [X] Step2 도넛 차트 탭(`종합/계좌별`) 및 계좌 카드형 미니 도넛 추가
-- [X] Step2 기본 샘플 계좌/종목 구성(국내주식·ISA·해외주식)
-- [X] Step2 v1(`targetAllocations`) -> v2 자동 마이그레이션
-- [X] Step 공통 테마 CSS 도입(`shared/styles/step-theme.css`) 및 Step2 적용
-- [X] Step2 입력 단순화: 월 투자 가능 금액 1개 + 계좌/종목 비중 조절 + 자동 현금 처리
-
-
+- [X] 샘플/초기화 기능 실행 시 기존 데이터 덮어쓰기 방지(Confirm 대신 View 모드 연동으로 안전하게 진입)
+- [X] 공유/샘플 로드 시에만 URL 해시를 활용하고, 일반 모드에서는 URL을 깔끔하게 정리(로컬 스토리지 단일 저장)
+- [ ] step 1 sankey diagram 확대배율 축소기능, 모바일 가로모드일때 한 화면에서 확인 불가.
+- [ ] step 1 sankey diagram 추후 계획 : 아예 사용자 화면 크기에 맞추어 최적화하는 기능 추가 (버튼 누르면 화면에 맞게 최적화되는 기능 필요)
 
 # Bug
 

@@ -249,6 +249,7 @@ const dom = {
   importJson: document.getElementById("importJson"),
   importJsonFile: document.getElementById("importJsonFile"),
   backupMenu: document.getElementById("backupMenu"),
+  shareMenu: document.getElementById("shareMenu"),
   moreActionsMenu: document.getElementById("moreActionsMenu"),
   backupNow: document.getElementById("backupNow"),
   backupSelect: document.getElementById("backupSelect"),
@@ -256,6 +257,7 @@ const dom = {
   backupHelp: document.getElementById("backupHelp"),
   loadSample: document.getElementById("loadSample"),
   resetInputs: document.getElementById("resetInputs"),
+  easterEgg: document.getElementById("easterEgg"),
   addIncomeItem: document.getElementById("addIncomeItem"),
   incomeList: document.getElementById("incomeList"),
   incomeTotalHint: document.getElementById("incomeTotalHint"),
@@ -330,6 +332,7 @@ const dom = {
   sankeyTooltip: document.getElementById("sankeyTooltip"),
   projectionTableBody: document.querySelector("#projectionTable tbody"),
   projectionMeta: document.getElementById("projectionMeta"),
+  appTitle: document.querySelector("h1"),
 };
 
 const state = {
@@ -378,7 +381,6 @@ document.addEventListener("DOMContentLoaded", () => {
   syncGroupOptionsAll();
   setPendingBarVisible(false);
   renderAll();
-  syncHashStateIfPresent(state.inputs);
   initializeBackupStore();
   void initializeInputsFromShareId();
   registerServiceWorker();
@@ -393,27 +395,29 @@ function closeActionMenus() {
   if (dom.backupMenu instanceof HTMLDetailsElement) {
     dom.backupMenu.open = false;
   }
+  if (dom.shareMenu instanceof HTMLDetailsElement) {
+    dom.shareMenu.open = false;
+  }
   if (dom.moreActionsMenu instanceof HTMLDetailsElement) {
     dom.moreActionsMenu.open = false;
   }
 }
 
 function bindActionMenus() {
-  if (dom.backupMenu instanceof HTMLDetailsElement) {
-    dom.backupMenu.addEventListener("toggle", () => {
-      if (dom.backupMenu.open && dom.moreActionsMenu instanceof HTMLDetailsElement) {
-        dom.moreActionsMenu.open = false;
-      }
-    });
-  }
+  const menus = [dom.backupMenu, dom.shareMenu, dom.moreActionsMenu].filter(Boolean);
 
-  if (dom.moreActionsMenu instanceof HTMLDetailsElement) {
-    dom.moreActionsMenu.addEventListener("toggle", () => {
-      if (dom.moreActionsMenu.open && dom.backupMenu instanceof HTMLDetailsElement) {
-        dom.backupMenu.open = false;
+  menus.forEach((menu) => {
+    if (!(menu instanceof HTMLDetailsElement)) return;
+    menu.addEventListener("toggle", () => {
+      if (menu.open) {
+        menus.forEach((other) => {
+          if (other !== menu && other instanceof HTMLDetailsElement) {
+            other.open = false;
+          }
+        });
       }
     });
-  }
+  });
 
   document.addEventListener("click", (event) => {
     const target = event.target;
@@ -625,10 +629,8 @@ function bindControls() {
       try {
         const text = await file.text();
         const imported = parseImportedInputs(text);
-        const hashSynced = commitImmediateInputs(imported);
-        showApplyFeedback(hashSynced
-          ? "JSON 데이터를 불러와 적용했습니다."
-          : "JSON 적용 완료 · 링크 길이 초과로 해시 저장은 생략되었습니다.");
+        commitImmediateInputs(imported);
+        showApplyFeedback("JSON 데이터를 불러와 적용했습니다.");
       } catch (_error) {
         showApplyFeedback("JSON 파일 형식이 올바르지 않습니다.");
       } finally {
@@ -1112,16 +1114,37 @@ function bindControls() {
   }
 
   if (dom.loadSample) {
-    dom.loadSample.addEventListener("click", () => {
-      commitImmediateInputs({ ...SAMPLE_INPUTS });
+    dom.loadSample.addEventListener("click", async () => {
       closeActionMenus();
+      const link = await buildShareLink({ ...SAMPLE_INPUTS }, { viewMode: true });
+      if (link) {
+        window.location.href = link;
+      }
     });
   }
 
   if (dom.resetInputs) {
     dom.resetInputs.addEventListener("click", () => {
-      commitImmediateInputs(createResetInputs(DEFAULT_INPUTS));
       closeActionMenus();
+      if (state.isViewMode) {
+        showApplyFeedback("보기 모드에서는 초기화를 사용할 수 없습니다.");
+        return;
+      }
+      if (hasPendingChanges() && !window.confirm("적용하지 않은 변경사항이 있습니다. 무시하고 모든 입력값을 초기화할까요?")) {
+        return;
+      }
+      if (!window.confirm("현재 입력한 항목 구조는 유지하고 모든 금액을 0으로 초기화합니다. 계속할까요?")) {
+        return;
+      }
+      commitImmediateInputs(createResetInputs(getVisibleInputs()));
+      showApplyFeedback("모든 금액을 초기화했습니다.");
+    });
+  }
+
+  if (dom.easterEgg) {
+    dom.easterEgg.addEventListener("click", () => {
+      closeActionMenus();
+      showApplyFeedback("🐣 이스터에그를 발견하셨습니다! (준비중)");
     });
   }
 
@@ -1136,11 +1159,9 @@ function bindControls() {
       state.draftInputs = null;
       setPendingBarVisible(false);
       refreshInputsPanel(state.inputs);
-      const hashSynced = persistPrimaryState(state.inputs);
+      persistPrimaryState(state.inputs);
       renderAll();
-      showApplyFeedback(hashSynced
-        ? "변경사항이 적용되었습니다."
-        : "변경사항 적용 완료 · 링크 길이 초과로 해시 저장은 생략되었습니다.");
+      showApplyFeedback("변경사항이 적용되었습니다.");
     });
   }
 
@@ -1153,6 +1174,21 @@ function bindControls() {
       setPendingBarVisible(false);
       refreshInputsPanel(state.inputs);
       renderAll();
+    });
+  }
+
+  if (dom.appTitle) {
+    dom.appTitle.style.cursor = "pointer";
+    dom.appTitle.title = "내 로컬 데이터로 돌아가기";
+    dom.appTitle.addEventListener("click", () => {
+      const hasUrlParams = window.location.search || window.location.hash;
+      if (!hasUrlParams) {
+        return;
+      }
+      if (hasPendingChanges() && !state.isViewMode && !window.confirm("적용하지 않은 변경사항이 있습니다. 무시하고 내 데이터로 돌아갈까요?")) {
+        return;
+      }
+      window.location.href = window.location.pathname;
     });
   }
 
@@ -1187,6 +1223,9 @@ function bindControls() {
     }
     const nextInputs = sanitizeInputs({ ...DEFAULT_INPUTS, ...hashInputs });
     if (areInputsEqual(nextInputs, state.inputs)) {
+      if (!state.isViewMode) {
+        history.replaceState(null, "", window.location.pathname);
+      }
       return;
     }
     state.isApplyingHashState = true;
@@ -1198,6 +1237,9 @@ function bindControls() {
       persistPrimaryState(state.inputs);
       renderAll();
       showApplyFeedback("링크 상태를 불러왔습니다.");
+      if (!state.isViewMode) {
+        history.replaceState(null, "", window.location.pathname);
+      }
     } finally {
       state.isApplyingHashState = false;
     }
@@ -2184,12 +2226,12 @@ function commitImmediateInputs(nextInputs, options = {}) {
   state.draftInputs = null;
   setPendingBarVisible(false);
   refreshInputsPanel(state.inputs);
-  const hashSynced = persistPrimaryState(state.inputs, {
+  persistPrimaryState(state.inputs, {
     skipAutoBackup: Boolean(safeOptions.skipAutoBackup),
     reason: safeOptions.reason || "commit",
   });
   renderAll();
-  return hashSynced;
+  return true;
 }
 
 function showApplyFeedback(message) {
@@ -4591,36 +4633,6 @@ function loadInputsFromHash() {
   }
 }
 
-function syncHashStateIfPresent(inputs) {
-  try {
-    const params = new URLSearchParams(window.location.hash.replace(/^#/, ""));
-    if (!params.get(HASH_STATE_PARAM)) {
-      return true;
-    }
-  } catch (_error) {
-    return false;
-  }
-  return syncHashState(inputs);
-}
-
-function syncHashState(inputs) {
-  const encoded = encodeInputsForHash(inputs);
-  if (!encoded) {
-    return false;
-  }
-
-  const currentParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
-  const current = currentParams.get(HASH_STATE_PARAM);
-  if (current === encoded) {
-    return true;
-  }
-
-  currentParams.set(HASH_STATE_PARAM, encoded);
-  const nextUrl = `${window.location.pathname}${window.location.search}#${currentParams.toString()}`;
-  history.replaceState(null, "", nextUrl);
-  return true;
-}
-
 function persistPrimaryState(inputs, options = {}) {
   const safeOptions = options && typeof options === "object" ? options : {};
   if (!state.isViewMode) {
@@ -4630,7 +4642,7 @@ function persistPrimaryState(inputs, options = {}) {
     }
     void persistStep1BridgeSnapshot(inputs);
   }
-  return syncHashStateIfPresent(inputs);
+  return true;
 }
 
 function getHubStorage() {
@@ -5148,17 +5160,19 @@ async function loadShareSnapshotById(sid) {
 
 async function initializeInputsFromShareId() {
   const sid = getShareIdFromUrl();
-  if (!sid) {
-    return;
+  const hasHash = window.location.hash.includes(HASH_STATE_PARAM);
+
+  if (sid) {
+    const sidInputs = await loadShareSnapshotById(sid);
+    if (sidInputs && !areInputsEqual(sidInputs, state.inputs)) {
+      commitImmediateInputs(sidInputs, { reason: "share-sid-load" });
+      showApplyFeedback("공유 포인터(sid) 데이터를 불러왔습니다.");
+    }
   }
-  const sidInputs = await loadShareSnapshotById(sid);
-  if (!sidInputs || areInputsEqual(sidInputs, state.inputs)) {
-    return;
+
+  if (!state.isViewMode && (sid || hasHash)) {
+    history.replaceState(null, "", window.location.pathname);
   }
-  const hashSynced = commitImmediateInputs(sidInputs, { reason: "share-sid-load" });
-  showApplyFeedback(hashSynced
-    ? "공유 포인터(sid) 데이터를 불러왔습니다."
-    : "공유 포인터 데이터를 불러왔습니다. 해시 저장은 생략되었습니다.");
 }
 
 function initializeBackupStore() {
@@ -5689,10 +5703,8 @@ async function restoreSelectedBackup() {
   }
 
   await createBackupEntry(state.inputs, { type: "manual", source: "normal", allowDuplicate: true });
-  const hashSynced = commitImmediateInputs(entry.data, { skipAutoBackup: true });
-  showApplyFeedback(hashSynced
-    ? "선택한 백업으로 복원했습니다."
-    : "백업 복원 완료 · 링크 길이 초과로 해시 저장은 생략되었습니다.");
+  commitImmediateInputs(entry.data, { skipAutoBackup: true });
+  showApplyFeedback("선택한 백업으로 복원했습니다.");
 }
 
 function roundTo(value, digit) {
