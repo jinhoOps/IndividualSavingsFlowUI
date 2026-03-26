@@ -3,6 +3,8 @@
 
   const MODEL_VERSION = 2;
   const UNALLOCATED_ASSET_KEY = "__unallocated__";
+  const STEP1_UNIT_TO_WON = 10000;
+  const STEP1_LOCAL_STORAGE_KEY = "isf-rebuild-v1";
 
   const DEFAULT_ACCOUNT_TEMPLATES = [
     {
@@ -121,6 +123,32 @@
       return 0;
     }
     return Math.max(0, Math.round(numeric));
+  }
+
+  function step1AmountToWon(value) {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) {
+      return 0;
+    }
+    return Math.max(0, Math.round(numeric * STEP1_UNIT_TO_WON));
+  }
+
+  function buildBridgePayloadFromStep1Inputs(inputs, timestamp) {
+    const safeInputs = inputs && typeof inputs === "object" ? inputs : null;
+    if (!safeInputs) {
+      return null;
+    }
+    const hasKnownFields = ["monthlyInvest", "startCash", "startInvest", "startSavings"].some((fieldName) => fieldName in safeInputs);
+    if (!hasKnownFields) {
+      return null;
+    }
+    return {
+      monthlyInvestCapacity: step1AmountToWon(safeInputs.monthlyInvest),
+      currentCash: step1AmountToWon(safeInputs.startCash),
+      currentInvest: step1AmountToWon(safeInputs.startInvest),
+      currentSavings: step1AmountToWon(safeInputs.startSavings),
+      timestamp: String(timestamp || new Date().toISOString()),
+    };
   }
 
   function sanitizeWeight(value) {
@@ -1283,14 +1311,19 @@
 
   async function refreshBridgeSummary() {
     const hub = getHubStorage();
-    if (!hub) {
-      renderBridgeInfo(null, "공통 저장소를 사용할 수 없습니다.");
-      return;
-    }
-
     try {
-      const bridge = await hub.getLatestBridgeStep1ToStep2();
-      renderBridgeInfo(bridge, bridge ? "" : "Step1 브리지 데이터가 없습니다.");
+      const resolved = await resolveLatestBridgePayload(hub);
+      if (!resolved.bridge) {
+        renderBridgeInfo(null, hub ? "Step1 브리지 데이터가 없습니다." : "공통 저장소를 찾지 못했고 Step1 로컬 데이터도 없습니다.");
+        return;
+      }
+      const statusBySource = {
+        bridge: "",
+        "snapshot-fallback": "브리지 기록이 없어 Step1 스냅샷에서 복원했습니다.",
+        "local-storage-fallback": "브리지/스냅샷을 찾지 못해 Step1 로컬 저장값에서 복원했습니다.",
+      };
+      const statusText = statusBySource[resolved.source] || "";
+      renderBridgeInfo(resolved.bridge, statusText);
     } catch (_error) {
       renderBridgeInfo(null, "Step1 브리지 데이터를 읽을 수 없습니다.");
     }
@@ -1329,15 +1362,108 @@
     ].join("\n");
   }
 
-  async function importLatestBridgeIntoDraft() {
-    const hub = getHubStorage();
-    if (!hub) {
-      showFeedback("공통 저장소를 사용할 수 없습니다.", true);
-      return;
+  function buildBridgePayloadFromStep1Snapshot(snapshot) {
+    const safeSnapshot = snapshot && typeof snapshot === "object" ? snapshot : null;
+    const data = safeSnapshot && safeSnapshot.data && typeof safeSnapshot.data === "object" ? safeSnapshot.data : null;
+    return buildBridgePayloadFromStep1Inputs(data, safeSnapshot?.createdAt);
+  }
+
+  function buildBridgePayloadFromStep1LocalStorage() {
+    if (typeof window === "undefined" || !window.localStorage) {
+      return null;
+    }
+    try {
+      const raw = window.localStorage.getItem(STEP1_LOCAL_STORAGE_KEY);
+      if (!raw) {
+        return null;
+      }
+      const parsed = JSON.parse(raw);
+      return buildBridgePayloadFromStep1Inputs(parsed, new Date().toISOString());
+    } catch (_error) {
+      return null;
+    }
+  }
+
+  async function resolveLatestBridgePayload(hub) {
+    const safeHub = hub && typeof hub === "object" ? hub : null;
+    if (!safeHub) {
+      const localFallbackPayload = buildBridgePayloadFromStep1LocalStorage();
+      if (!localFallbackPayload) {
+        return { bridge: null, source: "none" };
+      }
+      return {
+        source: "local-storage-fallback",
+        bridge: {
+          id: "local-storage-fallback",
+          step1SnapshotId: "",
+          createdAt: localFallbackPayload.timestamp,
+          payload: localFallbackPayload,
+        },
+      };
     }
 
     try {
-      const bridge = await hub.getLatestBridgeStep1ToStep2();
+      const bridge = await safeHub.getLatestBridgeStep1ToStep2();
+      if (bridge && bridge.payload && typeof bridge.payload === "object") {
+        return { bridge, source: "bridge" };
+      }
+    } catch (_error) {
+      // Continue with fallback path.
+    }
+
+    if (typeof safeHub.getLatestStep1Snapshot !== "function") {
+      return { bridge: null, source: "none" };
+    }
+
+    try {
+      const snapshot = await safeHub.getLatestStep1Snapshot();
+      const fallbackPayload = buildBridgePayloadFromStep1Snapshot(snapshot);
+      if (!fallbackPayload) {
+        const localFallbackPayload = buildBridgePayloadFromStep1LocalStorage();
+        if (!localFallbackPayload) {
+          return { bridge: null, source: "none" };
+        }
+        return {
+          source: "local-storage-fallback",
+          bridge: {
+            id: "local-storage-fallback",
+            step1SnapshotId: "",
+            createdAt: localFallbackPayload.timestamp,
+            payload: localFallbackPayload,
+          },
+        };
+      }
+      return {
+        source: "snapshot-fallback",
+        bridge: {
+          id: `snapshot-fallback-${String(snapshot?.id || "latest")}`,
+          step1SnapshotId: String(snapshot?.id || ""),
+          createdAt: String(snapshot?.createdAt || ""),
+          payload: fallbackPayload,
+        },
+      };
+    } catch (_error) {
+      const localFallbackPayload = buildBridgePayloadFromStep1LocalStorage();
+      if (!localFallbackPayload) {
+        return { bridge: null, source: "none" };
+      }
+      return {
+        source: "local-storage-fallback",
+        bridge: {
+          id: "local-storage-fallback",
+          step1SnapshotId: "",
+          createdAt: localFallbackPayload.timestamp,
+          payload: localFallbackPayload,
+        },
+      };
+    }
+  }
+
+  async function importLatestBridgeIntoDraft() {
+    const hub = getHubStorage();
+    try {
+      const resolved = await resolveLatestBridgePayload(hub);
+      const bridge = resolved.bridge;
       if (!bridge || !bridge.payload || typeof bridge.payload !== "object") {
         showFeedback("가져올 Step1 데이터가 없습니다.", true);
         await refreshBridgeSummary();
@@ -1361,7 +1487,12 @@
       setActiveChartTab("summary");
       markClean();
       renderDraft();
-      renderBridgeInfo(bridge, "Step1 최신 데이터를 편집기에 반영했습니다.");
+      const importStatusBySource = {
+        bridge: "Step1 최신 데이터를 편집기에 반영했습니다.",
+        "snapshot-fallback": "Step1 스냅샷 기반으로 최신 데이터를 반영했습니다.",
+        "local-storage-fallback": "Step1 로컬 저장값 기반으로 데이터를 반영했습니다.",
+      };
+      renderBridgeInfo(bridge, importStatusBySource[resolved.source] || "Step1 데이터를 편집기에 반영했습니다.");
       renderPortfolioMeta("Step1 브리지 데이터 반영 완료");
       showFeedback("Step1 월 투자여력을 Step2 월 투자 가능 금액으로 반영했습니다.", false);
     } catch (_error) {

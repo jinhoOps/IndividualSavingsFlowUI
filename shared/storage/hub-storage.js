@@ -2,7 +2,7 @@
   "use strict";
 
   const HUB_DB_NAME = "isf-hub-db-v1";
-  const HUB_DB_VERSION = 1;
+  const HUB_DB_VERSION = 2;
   const HUB_STORE_STEP1 = "step1Snapshots";
   const HUB_STORE_STEP2 = "step2Portfolios";
   const HUB_STORE_BRIDGE = "bridgeStep1ToStep2";
@@ -52,6 +52,31 @@
     });
   }
 
+  function ensureStoreWithIndexes(db, transaction, storeName, keyPath, indexes) {
+    let store = null;
+    if (!db.objectStoreNames.contains(storeName)) {
+      store = db.createObjectStore(storeName, { keyPath });
+    } else if (transaction) {
+      store = transaction.objectStore(storeName);
+    }
+    if (!store) {
+      return null;
+    }
+    const safeIndexes = Array.isArray(indexes) ? indexes : [];
+    safeIndexes.forEach((indexDef) => {
+      const safeDef = indexDef && typeof indexDef === "object" ? indexDef : {};
+      const indexName = String(safeDef.name || "").trim();
+      const indexKeyPath = String(safeDef.keyPath || "").trim();
+      if (!indexName || !indexKeyPath) {
+        return;
+      }
+      if (!store.indexNames.contains(indexName)) {
+        store.createIndex(indexName, indexKeyPath, { unique: Boolean(safeDef.unique) });
+      }
+    });
+    return store;
+  }
+
   function openHubDb() {
     if (!isIndexedDbAvailable()) {
       return Promise.reject(new Error("indexeddb-not-supported"));
@@ -65,21 +90,10 @@
 
       request.onupgradeneeded = function onUpgradeNeeded() {
         const db = request.result;
-
-        if (!db.objectStoreNames.contains(HUB_STORE_STEP1)) {
-          const step1Store = db.createObjectStore(HUB_STORE_STEP1, { keyPath: "id" });
-          step1Store.createIndex("updatedAt", "updatedAt", { unique: false });
-        }
-
-        if (!db.objectStoreNames.contains(HUB_STORE_STEP2)) {
-          const step2Store = db.createObjectStore(HUB_STORE_STEP2, { keyPath: "id" });
-          step2Store.createIndex("updatedAt", "updatedAt", { unique: false });
-        }
-
-        if (!db.objectStoreNames.contains(HUB_STORE_BRIDGE)) {
-          const bridgeStore = db.createObjectStore(HUB_STORE_BRIDGE, { keyPath: "id" });
-          bridgeStore.createIndex("createdAt", "createdAt", { unique: false });
-        }
+        const transaction = request.transaction;
+        ensureStoreWithIndexes(db, transaction, HUB_STORE_STEP1, "id", [{ name: "updatedAt", keyPath: "updatedAt", unique: false }]);
+        ensureStoreWithIndexes(db, transaction, HUB_STORE_STEP2, "id", [{ name: "updatedAt", keyPath: "updatedAt", unique: false }]);
+        ensureStoreWithIndexes(db, transaction, HUB_STORE_BRIDGE, "id", [{ name: "createdAt", keyPath: "createdAt", unique: false }]);
       };
 
       request.onsuccess = function onSuccess() {
@@ -105,21 +119,54 @@
     return hubDbPromise;
   }
 
-  async function getLatestByIndex(storeName, indexName) {
+  function getComparableTimestamp(value) {
+    if (Number.isFinite(Number(value))) {
+      return Number(value);
+    }
+    const parsed = Date.parse(String(value || ""));
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+    return 0;
+  }
+
+  async function getLatestByScan(storeName, orderKey) {
     const db = await openHubDb();
     const transaction = db.transaction(storeName, "readonly");
-    const index = transaction.objectStore(storeName).index(indexName);
-    const request = index.openCursor(null, "prev");
+    const request = transaction.objectStore(storeName).getAll();
+    const rows = await idbRequestToPromise(request);
+    if (!Array.isArray(rows) || rows.length === 0) {
+      return null;
+    }
+    const safeOrderKey = String(orderKey || "").trim();
+    return rows
+      .slice()
+      .sort((left, right) => getComparableTimestamp(right?.[safeOrderKey]) - getComparableTimestamp(left?.[safeOrderKey]))[0] || null;
+  }
 
-    return new Promise((resolve, reject) => {
-      request.onsuccess = function onSuccess() {
-        const cursor = request.result;
-        resolve(cursor ? cursor.value : null);
-      };
-      request.onerror = function onError() {
-        reject(request.error || new Error("indexeddb-cursor-failed"));
-      };
-    });
+  async function getLatestByIndex(storeName, indexName) {
+    const db = await openHubDb();
+    try {
+      const transaction = db.transaction(storeName, "readonly");
+      const objectStore = transaction.objectStore(storeName);
+      if (!objectStore.indexNames.contains(indexName)) {
+        return getLatestByScan(storeName, indexName);
+      }
+      const index = objectStore.index(indexName);
+      const request = index.openCursor(null, "prev");
+
+      return await new Promise((resolve, reject) => {
+        request.onsuccess = function onSuccess() {
+          const cursor = request.result;
+          resolve(cursor ? cursor.value : null);
+        };
+        request.onerror = function onError() {
+          reject(request.error || new Error("indexeddb-cursor-failed"));
+        };
+      });
+    } catch (_error) {
+      return getLatestByScan(storeName, indexName);
+    }
   }
 
   async function saveStep1Snapshot(data) {
