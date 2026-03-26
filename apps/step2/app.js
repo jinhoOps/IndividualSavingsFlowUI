@@ -69,6 +69,7 @@
     accountList: document.getElementById("accountList"),
     accountSummary: document.getElementById("accountSummary"),
     allocationEditorTitle: document.getElementById("allocationEditorTitle"),
+    allocationPanel: document.getElementById("allocationPanel"),
     addAllocation: document.getElementById("addAllocation"),
     allocationList: document.getElementById("allocationList"),
     allocationSummary: document.getElementById("allocationSummary"),
@@ -79,6 +80,10 @@
     deletePortfolio: document.getElementById("deletePortfolio"),
     portfolioMeta: document.getElementById("portfolioMeta"),
     step2Feedback: document.getElementById("step2Feedback"),
+    exportJson: document.getElementById("exportJson"),
+    importJsonTrigger: document.getElementById("importJsonTrigger"),
+    importJsonFile: document.getElementById("importJsonFile"),
+    copyShareLink: document.getElementById("copyShareLink"),
   };
 
   const state = {
@@ -94,6 +99,18 @@
 
   document.addEventListener("DOMContentLoaded", () => {
     state.draft = createEmptyDraft();
+    const hash = window.location.hash;
+    if (hash && hash.startsWith("#s=")) {
+      try {
+        const decoded = decodeURIComponent(atob(hash.substring(3)));
+        const parsed = JSON.parse(decoded);
+        const normalized = normalizeLoadedPortfolio(parsed);
+        state.draft = normalized.draft;
+        state.currentPortfolioId = normalized.id || "";
+      } catch (_error) {
+        showFeedback("공유 링크 복원에 실패했습니다.", true);
+      }
+    }
     bindEvents();
     ensureActiveAccountSelected();
     renderDraft();
@@ -277,17 +294,17 @@
     if (current) {
       return current;
     }
-    const first = state.draft.accounts[0] || null;
-    state.activeAccountId = first ? first.id : "";
-    return first;
+    state.activeAccountId = "";
+    return null;
   }
 
-  function setActiveAccount(accountId) {
-    const account = getAccountById(accountId);
-    if (!account) {
-      return;
+  function setActiveAccount(accountId, toggle = false) {
+    if (toggle && state.activeAccountId === accountId) {
+      state.activeAccountId = "";
+    } else {
+      const account = getAccountById(accountId);
+      state.activeAccountId = account ? account.id : "";
     }
-    state.activeAccountId = account.id;
     renderAccountList();
     renderMobileAccountPicker();
     renderAllocationEditor();
@@ -440,10 +457,7 @@
     if (dom.mobileAccountSelect) {
       dom.mobileAccountSelect.addEventListener("change", () => {
         const selectedId = String(dom.mobileAccountSelect.value || "");
-        if (!selectedId) {
-          return;
-        }
-        setActiveAccount(selectedId);
+        setActiveAccount(selectedId, false);
       });
     }
 
@@ -482,7 +496,7 @@
         }
         const selectId = String(target.getAttribute("data-select-account-id") || "");
         if (selectId) {
-          setActiveAccount(selectId);
+          setActiveAccount(selectId, true);
           return;
         }
 
@@ -497,7 +511,7 @@
 
         state.draft.accounts = state.draft.accounts.filter((account) => account.id !== removeId);
         if (state.activeAccountId === removeId) {
-          state.activeAccountId = state.draft.accounts[0] ? state.draft.accounts[0].id : "";
+          state.activeAccountId = "";
         }
         markDirty();
         renderAccountList();
@@ -590,7 +604,7 @@
         if (!accountId) {
           return;
         }
-        setActiveAccount(accountId);
+        setActiveAccount(accountId, false);
         setActiveChartTab("account");
       });
     }
@@ -636,6 +650,71 @@
           return;
         }
         await deletePortfolioById(selectedId);
+      });
+    }
+
+    if (dom.exportJson) {
+      dom.exportJson.addEventListener("click", () => {
+        const payload = toPortablePortfolio();
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(payload, null, 2));
+        const anchor = document.createElement("a");
+        anchor.setAttribute("href", dataStr);
+        anchor.setAttribute("download", `portfolio_v2_${payload.id || Date.now()}.json`);
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        showFeedback("JSON 파일로 저장했습니다.", false);
+      });
+    }
+
+    if (dom.importJsonTrigger && dom.importJsonFile) {
+      dom.importJsonTrigger.addEventListener("click", () => {
+        dom.importJsonFile.click();
+      });
+
+      dom.importJsonFile.addEventListener("change", async (event) => {
+        const file = event.target instanceof HTMLInputElement ? event.target.files?.[0] : null;
+        if (!file) {
+          return;
+        }
+        try {
+          const text = await file.text();
+          const parsed = JSON.parse(text);
+          const normalized = normalizeLoadedPortfolio(parsed);
+          state.currentPortfolioId = normalized.id || "";
+          state.draft = normalized.draft;
+          ensureActiveAccountSelected();
+          markDirty();
+          renderDraft();
+          showFeedback("JSON 데이터를 성공적으로 불러왔습니다.", false);
+        } catch (_error) {
+          showFeedback("JSON 파일 형식이 올바르지 않습니다.", true);
+        } finally {
+          if (event.target instanceof HTMLInputElement) {
+            event.target.value = "";
+          }
+        }
+      });
+    }
+
+    if (dom.copyShareLink) {
+      dom.copyShareLink.addEventListener("click", () => {
+        try {
+          const payload = toPortablePortfolio();
+          const str = JSON.stringify(payload);
+          const encoded = btoa(encodeURIComponent(str));
+          const url = new URL(window.location.href);
+          url.hash = `s=${encoded}`;
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(url.toString()).then(() => {
+              showFeedback("공유용 단축 링크가 클립보드에 복사되었습니다.", false);
+            });
+          } else {
+            window.prompt("아래 링크를 복사하여 공유하세요.", url.toString());
+          }
+        } catch (_error) {
+          showFeedback("링크 복사에 실패했습니다.", true);
+        }
       });
     }
   }
@@ -716,19 +795,29 @@
       return;
     }
     dom.mobileAccountSelect.innerHTML = "";
+
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = "편집할 계좌 선택";
+    dom.mobileAccountSelect.appendChild(placeholder);
+
     state.draft.accounts.forEach((account) => {
       const option = document.createElement("option");
       option.value = account.id;
       option.textContent = `${account.name} · ${formatWeight(account.accountWeight)}%`;
       dom.mobileAccountSelect.appendChild(option);
     });
-    if (state.activeAccountId) {
-      dom.mobileAccountSelect.value = state.activeAccountId;
-    }
+
+    dom.mobileAccountSelect.value = state.activeAccountId || "";
   }
 
   function renderAllocationEditor() {
     const account = ensureActiveAccountSelected();
+
+    if (dom.allocationPanel) {
+      dom.allocationPanel.hidden = !account;
+    }
+
     if (dom.allocationEditorTitle) {
       dom.allocationEditorTitle.textContent = account ? `자산군 구성 · ${account.name}` : "자산군 구성";
     }
@@ -739,10 +828,6 @@
     dom.allocationList.innerHTML = "";
 
     if (!account) {
-      const empty = document.createElement("p");
-      empty.className = "muted";
-      empty.textContent = "편집할 계좌가 없습니다.";
-      dom.allocationList.appendChild(empty);
       renderAllocationSummary();
       return;
     }

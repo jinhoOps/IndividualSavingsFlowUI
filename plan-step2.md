@@ -1,13 +1,13 @@
 # Step2: 포트폴리오 구성 - 개발 계획
 
-기준 시점: `2026-03-26`, 기준 커밋: `c81a98f`
+기준 시점: `2026-03-26`, 기준 커밋: `eae9755`
 
 ## 1) 현재 상태 요약
 - 모델: `modelVersion:2` 계좌형 구조(`totalMonthlyInvestCapacity`, `accounts[]`, `notes`, `updatedAt`)가 기본 저장 포맷.
 - 편집: 계좌 비중 + 계좌 내 자산군 비중 편집, 계좌/자산군 CRUD, 합계 검증(저장 차단) 동작.
 - 시각화: `종합 도넛`/`계좌별 도넛` 탭 분리와 퍼센트 정수 표기, 금액 패널 렌더 안정화 반영.
 - 모바일: `mobileAccountSelect` 기반 단일 계좌 집중 편집으로 스크롤 길이 축소.
-- 연동: Step1 브리지(`monthlyInvestCapacity/currentCash/currentInvest/currentSavings/timestamp`) 수동 가져오기 가능.
+- 연동: Step1 브리지 데이터 수동 가져오기 보강 (hub 조회 실패 시 step1Snapshots → isf-rebuild-v1 로컬 포맷 순으로 자동 fallback 복원).
 - 호환: v1(`targetAllocations`) 로드 시 v2 `통합계좌`로 런타임 변환 후 저장 가능.
 
 ## 2) 다음 MVP+ 범위

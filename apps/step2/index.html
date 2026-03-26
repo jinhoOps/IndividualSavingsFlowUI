@@ -111,7 +111,7 @@
         <p id="accountSummary" class="muted"></p>
       </section>
 
-      <section class="panel">
+      <section id="allocationPanel" class="panel" hidden>
         <div class="section-head">
           <h2 id="allocationEditorTitle">자산군 구성</h2>
           <button id="addAllocation" class="btn btn-ghost btn-sm" type="button">자산군 추가</button>
@@ -128,9 +128,15 @@
 
       <section class="panel">
         <div class="actions">
-          <button id="savePortfolio" class="btn btn-primary" type="button">포트폴리오 저장</button>
+          <button id="savePortfolio" class="btn btn-primary" type="button">브라우저 저장</button>
           <button id="resetPortfolio" class="btn btn-ghost" type="button">새 포트폴리오</button>
         </div>
+        <div class="actions" style="margin-top: 1rem;">
+          <button id="exportJson" class="btn btn-ghost btn-sm" type="button">JSON 내보내기</button>
+          <button id="importJsonTrigger" class="btn btn-ghost btn-sm" type="button">JSON 불러오기</button>
+          <button id="copyShareLink" class="btn btn-ghost btn-sm" type="button">공유 링크 복사</button>
+        </div>
+        <input id="importJsonFile" type="file" accept=".json,application/json" hidden />
       </section>
 
       <section class="panel">
