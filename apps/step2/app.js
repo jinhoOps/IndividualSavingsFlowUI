@@ -81,9 +81,14 @@
     portfolioMeta: document.getElementById("portfolioMeta"),
     step2Feedback: document.getElementById("step2Feedback"),
     exportJson: document.getElementById("exportJson"),
-    importJsonTrigger: document.getElementById("importJsonTrigger"),
+        importJsonTrigger: document.getElementById("importJsonTrigger"),
+    pendingBar: document.getElementById("pendingBar"),
+    pendingSummary: document.getElementById("pendingSummary"),
+    saveChanges: document.getElementById("saveChanges"),
+    discardChanges: document.getElementById("discardChanges"),
     importJsonFile: document.getElementById("importJsonFile"),
     copyShareLink: document.getElementById("copyShareLink"),
+    applyFeedback: document.getElementById("applyFeedback"),
   };
 
   const state = {
@@ -263,6 +268,7 @@
     dom.step2Feedback.hidden = false;
     dom.step2Feedback.textContent = message;
     dom.step2Feedback.classList.toggle("is-error", Boolean(isError));
+    IsfFeedback.showFeedback(dom.applyFeedback, message, isError);
   }
 
   function clearFeedback() {
@@ -274,12 +280,14 @@
     dom.step2Feedback.classList.remove("is-error");
   }
 
-  function markDirty() {
+    function markDirty() {
     state.dirty = true;
+    IsfFeedback.markPendingBar(dom.pendingBar, dom.pendingSummary, true);
   }
 
-  function markClean() {
+    function markClean() {
     state.dirty = false;
+    IsfFeedback.markPendingBar(dom.pendingBar, dom.pendingSummary, false);
   }
   function getAccountById(accountId) {
     const safeId = String(accountId || "").trim();
@@ -324,7 +332,7 @@
   }
 
   function isAllocationTotalValid(account) {
-    return Math.abs(getAllocationWeightTotal(account) - 100) <= 0.01;
+    return getAllocationWeightTotal(account) <= 100.01;
   }
 
   function getTotalAccountWeight() {
@@ -615,6 +623,24 @@
       });
     }
 
+    if (dom.saveChanges) {
+      dom.saveChanges.addEventListener("click", async () => {
+        await saveCurrentPortfolio();
+      });
+    }
+
+    if (dom.discardChanges) {
+      dom.discardChanges.addEventListener("click", async () => {
+        if (state.currentPortfolioId) {
+          await loadPortfolioById(state.currentPortfolioId, { skipConfirm: true });
+          showFeedback("변경사항을 취소하고 마지막 저장 상태로 되돌렸습니다.", false);
+        } else {
+          resetDraft();
+          showFeedback("변경사항을 취소했습니다.", false);
+        }
+      });
+    }
+
     if (dom.resetPortfolio) {
       dom.resetPortfolio.addEventListener("click", () => {
         if (state.dirty) {
@@ -875,11 +901,22 @@
       return;
     }
     const totalWeight = getAllocationWeightTotal(account);
-    const valid = isAllocationTotalValid(account);
-    dom.allocationSummary.textContent = valid
-      ? `비중 합계 ${totalWeight.toFixed(2)}% (정상)`
-      : `비중 합계 ${totalWeight.toFixed(2)}% (100% 기준 미충족)`;
-    dom.allocationSummary.classList.toggle("is-error", !valid);
+    const overweight = totalWeight > 100.01;
+    const underweight = totalWeight < 99.99;
+    
+    if (overweight) {
+      dom.allocationSummary.textContent = `비중 합계 ${totalWeight.toFixed(2)}% (비중합계 100% 초과합니다)`;
+      dom.allocationSummary.classList.add("is-error");
+      dom.allocationSummary.classList.remove("is-warning");
+    } else if (underweight) {
+      dom.allocationSummary.textContent = `비중 합계 ${totalWeight.toFixed(2)}% (설정하지 않은 비중은 현금으로 처리됩니다)`;
+      dom.allocationSummary.classList.remove("is-error");
+      dom.allocationSummary.classList.add("is-warning");
+    } else {
+      dom.allocationSummary.textContent = `비중 합계 ${totalWeight.toFixed(2)}% (정상)`;
+      dom.allocationSummary.classList.remove("is-error");
+      dom.allocationSummary.classList.remove("is-warning");
+    }
   }
 
   function getAssetColor(assetKey, fallbackLabel) {
@@ -1313,14 +1350,15 @@
     });
   }
 
-  async function loadPortfolioById(portfolioId) {
+  async function loadPortfolioById(portfolioId, options) {
+    const safeOptions = options && typeof options === "object" ? options : {};
     const hub = getHubStorage();
     if (!hub) {
       showFeedback("브라우저 저장소를 사용할 수 없습니다.", true);
       return;
     }
 
-    if (state.dirty) {
+    if (state.dirty && !safeOptions.skipConfirm) {
       const shouldOverwrite = window.confirm("편집 중인 내용이 있습니다. 선택한 포트폴리오를 불러올까요?");
       if (!shouldOverwrite) {
         return;
@@ -1569,9 +1607,10 @@
       state.draft.notes = buildBridgeMemo(payload);
 
       ensureActiveAccountSelected();
-      setActiveChartTab("summary");
-      markClean();
+            setActiveChartTab("summary");
+      markDirty();
       renderDraft();
+      await saveCurrentPortfolio();
       const importStatusBySource = {
         bridge: "Step1 최신 데이터를 편집기에 반영했습니다.",
         "snapshot-fallback": "Step1 스냅샷 기반으로 최신 데이터를 반영했습니다.",
@@ -1584,4 +1623,12 @@
       showFeedback("Step1 데이터 가져오기에 실패했습니다.", true);
     }
   }
+
+  window.addEventListener("beforeunload", (e) => {
+    if (state.dirty) {
+      e.preventDefault();
+      e.returnValue = "변경사항이 있습니다. 나가시겠습니까?";
+    }
+  });
+
 })();

@@ -1,21 +1,24 @@
 (function initIsfFeedback(global) {
   "use strict";
 
-  // Using a class-like closure for multiple feedback instances or singletons
-  // Both step1 and step2 have a floating feedback container.
-  // We can pass the DOM element to the generic show method.
-
   let applyFeedbackTimer = null;
 
-  function showFeedback(domElement, message, isError = false, timeoutMs = 3500) {
+  /**
+   * 플로팅 토스트 피드백을 일시적으로 표시합니다.
+   * @param {HTMLElement} domElement - 토스트 요소 (예: #applyFeedback)
+   * @param {string} message - 표시할 메시지
+   * @param {boolean} isError - 에러 여부
+   * @param {number} timeoutMs - 자동 숨김 시간(ms)
+   */
+  function showFeedback(domElement, message, isError, timeoutMs) {
     if (!domElement) return;
-    
-    // Clear existing timer
+
     if (applyFeedbackTimer) {
       window.clearTimeout(applyFeedbackTimer);
       applyFeedbackTimer = null;
     }
 
+    const safeTimeout = typeof timeoutMs === "number" && timeoutMs > 0 ? timeoutMs : 3500;
     const content = typeof message === "string" ? message.trim() : "";
     if (!content) {
       domElement.hidden = true;
@@ -24,36 +27,48 @@
 
     domElement.textContent = content;
     domElement.hidden = false;
-    domElement.style.background = isError ? "var(--color-danger)" : "var(--color-accent)";
-    domElement.style.color = "var(--color-bg)";
 
-    // Fallback animation trigger if css defines it
-    domElement.classList.remove("fade-out");
-    void domElement.offsetWidth; // trigger reflow
-    domElement.classList.add("fade-in");
+    if (isError) {
+      domElement.style.borderColor = "rgba(174, 56, 56, 0.38)";
+      domElement.style.background = "rgba(253, 240, 240, 0.96)";
+      domElement.style.color = "#8b2f2f";
+    } else {
+      domElement.style.borderColor = "";
+      domElement.style.background = "";
+      domElement.style.color = "";
+    }
 
     applyFeedbackTimer = window.setTimeout(() => {
       domElement.hidden = true;
-    }, timeoutMs);
+    }, safeTimeout);
   }
 
-  function markPendingBar(barElement, summaryElement, isPending, message = "") {
+  /**
+   * 하단 대기 바의 표시/숨김을 제어합니다.
+   * @param {HTMLElement} barElement - 대기 바 요소 (예: #pendingBar)
+   * @param {HTMLElement} summaryElement - 요약 텍스트 요소 (예: #pendingSummary)
+   * @param {boolean} isPending - 대기 상태 여부
+   * @param {string} message - 대기 바에 표시할 메시지
+   */
+  function markPendingBar(barElement, summaryElement, isPending, message) {
     if (!barElement) return;
     if (isPending) {
-      barElement.classList.add("visible");
+      barElement.hidden = false;
       barElement.setAttribute("aria-hidden", "false");
-      if (summaryElement && message) {
-        summaryElement.textContent = message;
+      if (summaryElement) {
+        summaryElement.textContent = message || "변경사항 대기 중";
       }
     } else {
-      barElement.classList.remove("visible");
+      barElement.hidden = true;
       barElement.setAttribute("aria-hidden", "true");
+      if (summaryElement) {
+        summaryElement.textContent = "";
+      }
     }
   }
 
   global.IsfFeedback = {
     showFeedback,
-    markPendingBar
+    markPendingBar,
   };
-
 })(window);

@@ -149,6 +149,19 @@
         <p id="portfolioMeta" class="muted"></p>
       </section>
 
+      <div id="pendingBar" class="pending-bar" aria-hidden="true" hidden>
+        <div class="pending-content">
+          <span class="pending-icon">⚠️</span>
+          <span id="pendingSummary" class="pending-summary">변경사항 대기 중</span>
+        </div>
+        <div class="pending-actions">
+          <button id="discardChanges" class="btn btn-ghost btn-sm">취소</button>
+          <button id="saveChanges" class="btn btn-primary btn-sm">저장</button>
+        </div>
+      </div>
+
+      <div id="applyFeedback" class="apply-feedback" hidden></div>
+
       <p id="step2Feedback" class="feedback" aria-live="polite" hidden></p>
     <!-- Shared Utilities & Components -->
     <script src="../../shared/core/utils.js"></script>

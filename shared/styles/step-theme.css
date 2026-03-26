@@ -149,3 +149,83 @@ select:focus-visible {
   background: rgba(253, 240, 240, 0.95);
   color: #8b2f2f;
 }
+
+/* 공통 하단 플로팅 대기 바 */
+.pending-bar {
+  position: fixed;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(16, 34, 32, 0.24);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 12px 28px rgba(16, 34, 32, 0.2);
+}
+
+.pending-bar[hidden] {
+  display: none !important;
+}
+
+.pending-summary {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.pending-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* 공통 플로팅 토스트 피드백 */
+.apply-feedback {
+  position: fixed;
+  left: 50%;
+  bottom: 78px;
+  transform: translateX(-50%);
+  z-index: 41;
+  padding: 8px 14px;
+  border: 1px solid rgba(30, 139, 124, 0.38);
+  border-radius: 999px;
+  background: rgba(235, 250, 246, 0.96);
+  color: #155247;
+  font-size: 0.78rem;
+  box-shadow: 0 8px 18px rgba(16, 34, 32, 0.14);
+  white-space: nowrap;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+.apply-feedback[hidden] {
+  display: none !important;
+}
+
+.is-warning {
+  color: #c46200 !important;
+}
+
+@media (max-width: 760px) {
+  .pending-bar {
+    width: min(340px, calc(100vw - 20px));
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 12px;
+  }
+  .pending-summary {
+    white-space: normal;
+    font-size: 0.82rem;
+  }
+  .pending-actions {
+    width: 100%;
+  }
+  .pending-actions .btn {
+    flex: 1;
+  }
+}
