@@ -14,6 +14,14 @@
 ## 투두
 - 상세 TODO는 `TODO.md`를 사용한다.
 
+### 2026-03-26 (v0.2.0 - 공통 인프라 추출 및 Step2 UX 고도화)
+- `refactor`: 앱 간 중복 로직을 `shared/` 모듈로 통합 (`IsfUtils`, `IsfShare`, `IsfBackupManager`, `IsfFeedback`, `IsfPwaManager`).
+- `feat`: PWA (`sw.js`, `manifest.webmanifest`)를 루트로 승격하여 Step1/Step2 통합 캐싱 체계 구축.
+- `feat`, `ux`: Step2에 하단 **플로팅 대기 바(Pending Bar)** 및 **액션 피드백 토스트** 도입.
+- `fix`: 자산군 비중 합계 100% 미만 케이스를 '에러'가 아닌 '주의(현금 처리)'로 완화하여 저장 가능케 수정.
+- `ux`: Step1 데이터 가져오기 직후 IndexedDB 자동 백업을 수행해 데이터 영속성 보장.
+- `docs`: Obsidian 경로(`G:\내 드라이브\SecondBrain\03_PROJECT\01_Active\IndividualSavingsFlowUI`)에 QA 가이드 문서 신설.
+
 ### 2026-03-26 (Step2 공유 기능 및 계좌 편집 UX 개선)
 - `fix`, `ux`: Step2 계좌 편집 시 한 계좌가 무조건 강제 포커스되던 문제를 수정 (`편집중` 명시적 진입 전에 자산군 구성 숨김 처리).
 - `feat`: Step2에도 공유/복원 기능(JSON 내보내기/불러오기, 링크 복사)을 연동.
