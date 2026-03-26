@@ -393,8 +393,9 @@
       if (account.allocations.some((allocation) => !String(allocation.label || "").trim())) {
         return { valid: false, message: `${accountLabel}: 자산군 이름이 비어 있습니다.` };
       }
-      if (!isAllocationTotalValid(account)) {
-        return { valid: false, message: `${accountLabel}: 비중 합계가 100%여야 합니다.` };
+      const allocationTotal = getAllocationWeightTotal(account);
+      if (allocationTotal > 100.01) {
+        return { valid: false, message: `${accountLabel}: 자산군 비중 합계가 100%를 초과합니다.` };
       }
     }
 
