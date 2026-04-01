@@ -62,6 +62,7 @@
       this.swPath = config.swPath || "/sw.js";
       this.manifestPath = config.manifestPath || "/manifest.webmanifest";
       this.versionCheckTriggerElement = config.versionCheckTriggerElement || null;
+      this.getCurrentData = config.getCurrentData || (() => null);
       this.pwaVersionLastCheckedAt = 0;
     }
 
@@ -212,7 +213,7 @@
     bindServiceWorkerUpdateFeedback(registration) {
       if (!registration || typeof registration !== "object") return;
       const notifyUpdateReady = () => {
-        this.onFeedback(`업데이트가 준비되었습니다. 새로고침하면 v${this.appVersion}이 적용됩니다.`);
+        void this.triggerAutoBackupAndUpgrade(registration);
       };
 
       if (registration.waiting) notifyUpdateReady();
@@ -228,8 +229,40 @@
       });
     }
 
+    async triggerAutoBackupAndUpgrade(registration) {
+      if (!registration || !registration.waiting) return;
+
+      this.onFeedback("새 버전 감지: 데이터를 안전하게 자동 백업하고 업데이트를 진행합니다...");
+
+      try {
+        const data = this.getCurrentData();
+        if (data && global.IsfBackupManager) {
+          // currentEntries가 없어도 createBackupEntry가 DB에서 로드할 수 있도록 빈 배열 전달
+          // 실제 BackupManager는 내부적으로 persist 시 합칩니다.
+          await global.IsfBackupManager.createBackupEntry([], data, {
+            type: "auto",
+            source: "pwa-update",
+            appKey: "isf-hub",
+            allowDuplicate: true
+          });
+        }
+      } catch (error) {
+        console.error("PWA 업데이트 전 백업 실패:", error);
+      }
+
+      registration.waiting.postMessage({ type: "SKIP_WAITING" });
+    }
+
     registerServiceWorker() {
       if (!shouldUseServiceWorker()) return;
+
+      let refreshing = false;
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+        if (refreshing) return;
+        refreshing = true;
+        window.location.reload();
+      });
+
       navigator.serviceWorker.register(this.swPath)
         .then((registration) => {
           this.bindServiceWorkerUpdateFeedback(registration);

@@ -372,6 +372,7 @@ document.addEventListener("DOMContentLoaded", () => {
     swPath: "../../sw.js",
     manifestPath: "../../manifest.webmanifest",
     versionCheckTriggerElement: dom.checkLatestVersion,
+    getCurrentData: () => state.inputs,
   });
   pwaManager.init();
   if (state.isViewMode) {

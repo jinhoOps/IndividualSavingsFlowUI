@@ -121,6 +121,17 @@
     renderDraft();
     void refreshBridgeSummary();
     void refreshPortfolioList();
+
+    const pwaManager = new IsfPwaManager({
+      appVersion: "0.2.0",
+      onFeedback: (message) => IsfFeedback.showFeedback(dom.applyFeedback, message),
+      isViewMode: () => false,
+      swPath: "../../sw.js",
+      manifestPath: "../../manifest.webmanifest",
+      versionCheckTriggerElement: dom.checkLatestVersion,
+      getCurrentData: () => state.draft,
+    });
+    pwaManager.init();
   });
 
   function getHubStorage() {
