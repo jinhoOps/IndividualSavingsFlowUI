@@ -1201,7 +1201,7 @@ function bindControls() {
     if (state.isApplyingHashState) {
       return;
     }
-    const hashInputs = IsfShare.decodePayloadFromHash(new URLSearchParams(window.location.hash.replace(/^#/, "")).get(IsfShare.HASH_STATE_PARAM), SHARE_STATE_KEY);
+    const hashInputs = IsfShare.decodePayloadFromHash(new URLSearchParams(window.location.hash.replace(/^#/, "")).get(HASH_STATE_PARAM), SHARE_STATE_KEY);
     if (!hashInputs) {
       return;
     }
