@@ -581,7 +581,11 @@ function bindControls() {
       }
       const localInputs = sanitizeInputs(cloneInputs(getVisibleInputs()));
       persistInputs(localInputs);
-      const res = await IsfBackupManager.createBackupEntry(state.backupEntries, localInputs, { type: "manual", source: "view-save" , appKey: SHARE_STATE_KEY}); if(res.created) { state.backupEntries = res.nextEntries; syncBackupUi(); }
+      const res = await IsfBackupManager.createBackupEntry(state.backupEntries, localInputs, { type: "manual", source: "view-save" , appKey: SHARE_STATE_KEY});
+      if (res.created) {
+        state.backupEntries = res.nextEntries;
+        syncBackupUi();
+      }
       switchToNormalMode();
       IsfFeedback.showFeedback(dom.applyFeedback, "현재 보기 상태를 로컬 저장소에 저장하고 일반 모드로 전환했습니다.");
     });
@@ -4271,7 +4275,13 @@ function persistPrimaryState(inputs, options = {}) {
   if (!state.isViewMode) {
     persistInputs(inputs);
     if (!safeOptions.skipAutoBackup) {
-      void IsfBackupManager.maybeCreateAutoBackupIfDue(state.backupEntries, inputs, SHARE_STATE_KEY).then(r => { if(r.created) { state.backupEntries = r.nextEntries; syncBackupUi(); } });
+      (async () => {
+        const res = await IsfBackupManager.maybeCreateAutoBackupIfDue(state.backupEntries, inputs, SHARE_STATE_KEY);
+        if (res.created) {
+          state.backupEntries = res.nextEntries;
+          syncBackupUi();
+        }
+      })();
     }
     void persistStep1BridgeSnapshot(inputs);
   }
@@ -4744,7 +4754,11 @@ async function restoreSelectedBackup() {
     return;
   }
 
-  const res = await IsfBackupManager.createBackupEntry(state.backupEntries, state.inputs, { type: "manual", source: "normal", allowDuplicate: true , appKey: SHARE_STATE_KEY}); if(res.created) { state.backupEntries = res.nextEntries; syncBackupUi(); }
+  const res = await IsfBackupManager.createBackupEntry(state.backupEntries, state.inputs, { type: "manual", source: "normal", allowDuplicate: true , appKey: SHARE_STATE_KEY});
+  if(res.created) {
+    state.backupEntries = res.nextEntries;
+    syncBackupUi();
+  }
   commitImmediateInputs(entry.data, { skipAutoBackup: true });
   IsfFeedback.showFeedback(dom.applyFeedback, "선택한 백업으로 복원했습니다.");
 }

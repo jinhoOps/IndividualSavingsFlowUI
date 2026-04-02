@@ -1,3 +1,5 @@
+import sys
+import os
 import re
 
 def check_file(filepath):
@@ -27,5 +29,13 @@ def check_file(filepath):
             if re.search(r'(?<!IsfUtils\.)(?<!IsfShare\.)(?<!IsfFeedback\.)(?<!IsfBackupManager\.)\b' + func + r'\(', line):
                 print(f"{filepath}:{i+1} : {func} -> {line.strip()}")
 
-check_file(r'd:\jhkSandBox\CODE\IndividualSavingsFlowUI\apps\step1\app.js')
-check_file(r'd:\jhkSandBox\CODE\IndividualSavingsFlowUI\apps\step2\app.js')
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print(f"Usage: python {os.path.basename(__file__)} <file1> <file2> ...")
+        sys.exit(1)
+    
+    for filepath in sys.argv[1:]:
+        if os.path.exists(filepath):
+            check_file(filepath)
+        else:
+            print(f"Error: File not found at {filepath}")
