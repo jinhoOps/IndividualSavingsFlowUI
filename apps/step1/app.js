@@ -4266,7 +4266,7 @@ function persistPrimaryState(inputs, options = {}) {
   if (!state.isViewMode) {
     persistInputs(inputs);
     if (!safeOptions.skipAutoBackup) {
-      void IsfBackupManager.maybeCreateAutoBackupIfDue(state.backupEntries, inputs, IsfShare.SHARE_STATE_KEY).then(r => { if(r.created) { state.backupEntries = r.nextEntries; syncBackupUi(); } });
+      void IsfBackupManager.maybeCreateAutoBackupIfDue(state.backupEntries, inputs, SHARE_STATE_KEY).then(r => { if(r.created) { state.backupEntries = r.nextEntries; syncBackupUi(); } });
     }
     void persistStep1BridgeSnapshot(inputs);
   }
