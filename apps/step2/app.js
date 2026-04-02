@@ -123,8 +123,27 @@
     bindEvents();
     ensureActiveAccountSelected();
     renderDraft();
-    void refreshBridgeSummary();
     void refreshPortfolioList();
+
+    const hub = getHubStorage();
+    if (!hash && hub) {
+      resolveLatestBridgePayload(hub).then(resolved => {
+        const bridge = resolved.bridge;
+        if (bridge && bridge.payload && state.draft.totalMonthlyInvestCapacity === 0) {
+          state.draft.totalMonthlyInvestCapacity = IsfUtils.sanitizeMoney(bridge.payload.monthlyInvestCapacity);
+          state.draft.bridgeContext = {
+            timestamp: String(bridge.payload.timestamp || ""),
+            currentCash: IsfUtils.sanitizeMoney(bridge.payload.currentCash),
+            currentInvest: IsfUtils.sanitizeMoney(bridge.payload.currentInvest),
+            currentSavings: IsfUtils.sanitizeMoney(bridge.payload.currentSavings),
+          };
+          renderDraft();
+        }
+        renderBridgeInfo(bridge, bridge ? "초기 진입 시 Step1 투자여력을 자동 반영했습니다." : "");
+      }).catch(() => refreshBridgeSummary());
+    } else {
+      void refreshBridgeSummary();
+    }
 
     const pwaManager = new IsfPwaManager({
       appVersion: "0.2.0",
@@ -300,6 +319,7 @@
   function setActiveChartTab(tabKey) {
     state.activeChartTab = tabKey === "account" ? "account" : "summary";
     renderChartTabs();
+    requestAnimationFrame(() => renderCharts());
   }
 
   function getAllocationWeightTotal(account) {
@@ -1605,6 +1625,12 @@
     if (state.dirty) {
       e.preventDefault();
       e.returnValue = "변경사항이 있습니다. 나가시겠습니까?";
+    }
+  });
+
+  window.addEventListener("pageshow", (event) => {
+    if (event.persisted) {
+      requestAnimationFrame(() => renderCharts());
     }
   });
 
