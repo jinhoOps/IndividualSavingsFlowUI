@@ -110,7 +110,7 @@
     const hash = window.location.hash;
     if (hash) {
       try {
-        const hashInputs = IsfShare.decodePayloadFromHash(new URLSearchParams(window.location.hash.replace(/^#/, "")).get(HASH_STATE_PARAM) || hash.substring(3), SHARE_STATE_KEY);
+        const hashInputs = IsfShare.decodePayloadFromHash(new URLSearchParams(window.location.hash.replace(/^#/, "")).get(HASH_STATE_PARAM), SHARE_STATE_KEY);
         if (hashInputs) {
           const normalized = normalizeLoadedPortfolio(hashInputs);
           state.draft = normalized.draft;
@@ -661,13 +661,7 @@
     if (dom.exportJson) {
       dom.exportJson.addEventListener("click", () => {
         const payload = toPortablePortfolio();
-        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(payload, null, 2));
-        const anchor = document.createElement("a");
-        anchor.setAttribute("href", dataStr);
-        anchor.setAttribute("download", `portfolio_v2_${payload.id || Date.now()}.json`);
-        document.body.appendChild(anchor);
-        anchor.click();
-        anchor.remove();
+        IsfShare.exportAsJson(IsfShare.buildStateEnvelope(SHARE_STATE_KEY, SHARE_STATE_SCHEMA, payload), "portfolio_v2");
         showFeedback("JSON 파일로 저장했습니다.", false);
       });
     }

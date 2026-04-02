@@ -27,7 +27,8 @@
       request.onupgradeneeded = () => {
         const db = request.result;
         if (!db.objectStoreNames.contains(BACKUP_DB_STORE)) {
-          db.createObjectStore(BACKUP_DB_STORE, { keyPath: "id" });
+          const store = db.createObjectStore(BACKUP_DB_STORE, { keyPath: "id" });
+          store.createIndex("app", "app", { unique: false });
         }
       };
 
@@ -113,7 +114,9 @@
       const tx = db.transaction(BACKUP_DB_STORE, "readonly");
       const done = idbTransactionDone(tx);
       const store = tx.objectStore(BACKUP_DB_STORE);
-      const rawEntries = await idbRequestToPromise(store.getAll());
+      const rawEntries = await idbRequestToPromise(
+        appKey ? store.index("app").getAll(appKey) : store.getAll()
+      );
       await done;
       return normalizeBackupEntries(rawEntries, appKey);
     } catch (_error) {

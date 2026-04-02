@@ -125,7 +125,7 @@
       if (!shouldUseServiceWorker()) return;
       try {
         // Find existing registration (from root)
-        const registration = await navigator.serviceWorker.getRegistration(this.swPath);
+        const registration = await navigator.serviceWorker.getRegistration();
         if (registration) {
           await registration.update();
         }
@@ -156,7 +156,7 @@
 
       try {
         await this.maybeTriggerServiceWorkerUpdateCheck();
-        const manifestUrl = this.manifestPath.startsWith("/") ? this.manifestPath : `/${this.manifestPath}`;
+        const manifestUrl = this.manifestPath;
         const response = await fetch(`${manifestUrl}?vchk=${now}`, {
           cache: "no-store",
         });
