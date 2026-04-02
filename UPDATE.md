@@ -14,6 +14,9 @@
 ## 투두
 - 상세 TODO는 `TODO.md`를 사용한다.
 
+### 2026-04-02 (v0.2.1 - Step2 도넛 렌더링 버그 핫픽스)
+- `hotfix`: step2 포트폴리오 도넛 렌더링 버그 수정 (앱 진입 시 데이터 자동 로드, 탭 전환 시 화면 갱신, 뒤로 가기 시 차트 복원 누락 해결).
+
 ### 2026-03-26 (v0.2.0 - 공통 인프라 추출 및 Step2 UX 고도화)
 - `refactor`: 앱 간 중복 로직을 `shared/` 모듈로 통합 (`IsfUtils`, `IsfShare`, `IsfBackupManager`, `IsfFeedback`, `IsfPwaManager`).
 - `feat`: PWA (`sw.js`, `manifest.webmanifest`)를 루트로 승격하여 Step1/Step2 통합 캐싱 체계 구축.
