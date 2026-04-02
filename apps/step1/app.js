@@ -647,20 +647,24 @@ function bindControls() {
         source: "normal",
         allowDuplicate: true,
         replaceRecentManualWithinMs: MANUAL_BACKUP_WINDOW_MS,
-        promptOnRecentManualOverwrite: true, appKey: IsfShare.SHARE_STATE_KEY}); if(res.created) { state.backupEntries = res.nextEntries; syncBackupUi(); }
+        appKey: SHARE_STATE_KEY,
+        onRecentManualOverwriteConfirm: () => window.confirm("최근 1분 이내 수동 백업이 있습니다. 기존 백업을 덮어쓸까요?"),
+      });
 
-      if (result.created) {
-        IsfFeedback.showFeedback(dom.applyFeedback, result.replaced ? "최근 1분 수동 백업을 덮어썼습니다." : "로컬 백업을 저장했습니다.");
+      if (res.created) {
+        state.backupEntries = res.nextEntries;
+        syncBackupUi();
+        IsfFeedback.showFeedback(dom.applyFeedback, res.replaced ? "최근 1분 수동 백업을 덮어썼습니다." : "로컬 백업을 저장했습니다.");
         closeActionMenus();
         return;
       }
 
-      if (result.reason === "overwrite-cancelled") {
+      if (res.reason === "overwrite-cancelled") {
         IsfFeedback.showFeedback(dom.applyFeedback, "백업 저장을 취소했습니다.");
         return;
       }
 
-      if (result.reason === "duplicate-recent") {
+      if (res.reason === "duplicate-recent") {
         IsfFeedback.showFeedback(dom.applyFeedback, "1분 이내 동일 내용 백업이 이미 있습니다.");
         return;
       }

@@ -148,21 +148,6 @@
     return required.every((name) => typeof hub[name] === "function") ? hub : null;
   }
 
-  function createId(prefix) {
-    if (window.crypto && typeof window.crypto.randomUUID === "function") {
-      return `${prefix}-${window.crypto.randomUUID()}`;
-    }
-    return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
-  }
-
-  function sanitizeAmount(value) {
-    const numeric = Number(value);
-    if (!Number.isFinite(numeric)) {
-      return 0;
-    }
-    return Math.max(0, Math.round(numeric));
-  }
-
   function step1AmountToWon(value) {
     const numeric = Number(value);
     if (!Number.isFinite(numeric)) {
@@ -189,21 +174,6 @@
     };
   }
 
-  function sanitizeWeight(value) {
-    const numeric = Number(value);
-    if (!Number.isFinite(numeric)) {
-      return 0;
-    }
-    const rounded = Math.round(numeric * 100) / 100;
-    if (rounded < 0) {
-      return 0;
-    }
-    if (rounded > 100) {
-      return 100;
-    }
-    return rounded;
-  }
-
   function formatWeight(value) {
     return IsfUtils.sanitizeWeight(value).toFixed(2);
   }
@@ -213,7 +183,7 @@
   }
 
   function formatCurrency(value) {
-    return new Intl.NumberFormat("ko-KR", { style: "currency", currency: "KRW", maximumFractionDigits: 0 }).format(sanitizeAmount(value));
+    return new Intl.NumberFormat("ko-KR", { style: "currency", currency: "KRW", maximumFractionDigits: 0 }).format(IsfUtils.sanitizeMoney(value));
   }
 
   function formatDateTime(value) {
@@ -267,14 +237,6 @@
       accounts: createDefaultAccounts(),
       bridgeContext: null,
     };
-  }
-
-  function escapeHtml(value) {
-    return String(value || "")
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/\"/g, "&quot;");
   }
 
   function showFeedback(message, isError) {
@@ -356,7 +318,7 @@
   }
 
   function getTotalMonthlyInvestCapacity() {
-    return sanitizeAmount(state.draft.totalMonthlyInvestCapacity);
+    return IsfUtils.sanitizeMoney(state.draft.totalMonthlyInvestCapacity);
   }
 
   function getAccountAllocatedAmount(account) {
@@ -458,7 +420,7 @@
 
     if (dom.totalMonthlyInvestCapacity) {
       dom.totalMonthlyInvestCapacity.addEventListener("input", () => {
-        state.draft.totalMonthlyInvestCapacity = sanitizeAmount(dom.totalMonthlyInvestCapacity.value);
+        state.draft.totalMonthlyInvestCapacity = IsfUtils.sanitizeMoney(dom.totalMonthlyInvestCapacity.value);
         markDirty();
         renderAccountSummary();
         renderCharts();
@@ -775,7 +737,7 @@
       dom.portfolioNotes.value = state.draft.notes;
     }
     if (dom.totalMonthlyInvestCapacity) {
-      dom.totalMonthlyInvestCapacity.value = String(sanitizeAmount(state.draft.totalMonthlyInvestCapacity));
+      dom.totalMonthlyInvestCapacity.value = String(IsfUtils.sanitizeMoney(state.draft.totalMonthlyInvestCapacity));
     }
     renderChartTabs();
     renderAccountList();
@@ -826,12 +788,12 @@
       row.className = "account-row" + (account.id === state.activeAccountId ? " is-active" : "");
       row.setAttribute("data-account-id", account.id);
       row.innerHTML = `
-        <input type="text" data-field="accountName" value="${escapeHtml(account.name)}" aria-label="계좌 ${index + 1} 이름" />
+        <input type="text" data-field="accountName" value="${IsfUtils.escapeHtml(account.name)}" aria-label="계좌 ${index + 1} 이름" />
         <input type="number" min="0" max="100" step="0.01" data-field="accountWeight" value="${formatWeight(account.accountWeight)}" aria-label="계좌 ${index + 1} 비중" />
         <div class="account-row-actions">
-          <button type="button" class="btn btn-ghost btn-sm" data-select-account-id="${escapeHtml(account.id)}">${account.id === state.activeAccountId ? "편집중" : "선택"}</button>
+          <button type="button" class="btn btn-ghost btn-sm" data-select-account-id="${IsfUtils.escapeHtml(account.id)}">${account.id === state.activeAccountId ? "편집중" : "선택"}</button>
         </div>
-        <button type="button" class="btn btn-ghost btn-sm" data-remove-account-id="${escapeHtml(account.id)}">삭제</button>
+        <button type="button" class="btn btn-ghost btn-sm" data-remove-account-id="${IsfUtils.escapeHtml(account.id)}">삭제</button>
       `;
       dom.accountList.appendChild(row);
     });
@@ -884,10 +846,10 @@
       row.className = "allocation-row";
       row.setAttribute("data-allocation-id", allocation.id);
       row.innerHTML = `
-        <input type="text" data-field="label" value="${escapeHtml(allocation.label)}" aria-label="자산군 ${index + 1} 이름" />
+        <input type="text" data-field="label" value="${IsfUtils.escapeHtml(allocation.label)}" aria-label="자산군 ${index + 1} 이름" />
         <input type="number" min="0" max="100" step="0.01" data-field="targetWeight" value="${formatWeight(allocation.targetWeight)}" aria-label="자산군 ${index + 1} 목표 비중" />
-        <input type="text" data-field="memo" value="${escapeHtml(allocation.memo)}" aria-label="자산군 ${index + 1} 메모" />
-        <button type="button" class="btn btn-ghost btn-sm" data-remove-allocation-id="${escapeHtml(allocation.id)}">삭제</button>
+        <input type="text" data-field="memo" value="${IsfUtils.escapeHtml(allocation.memo)}" aria-label="자산군 ${index + 1} 메모" />
+        <button type="button" class="btn btn-ghost btn-sm" data-remove-allocation-id="${IsfUtils.escapeHtml(allocation.id)}">삭제</button>
       `;
       dom.allocationList.appendChild(row);
     });
@@ -1059,11 +1021,11 @@
       card.className = "account-chart-card" + (account.id === state.activeAccountId ? " is-active" : "");
       card.innerHTML = `
         <div class="account-chart-card-head">
-          <p class="account-chart-card-title">${escapeHtml(account.name)}</p>
-          <button type="button" class="btn btn-ghost btn-sm" data-focus-account-id="${escapeHtml(account.id)}">선택</button>
+          <p class="account-chart-card-title">${IsfUtils.escapeHtml(account.name)}</p>
+          <button type="button" class="btn btn-ghost btn-sm" data-focus-account-id="${IsfUtils.escapeHtml(account.id)}">선택</button>
         </div>
         <p class="account-chart-card-meta">계좌 비중 ${formatWeight(account.accountWeight)}%</p>
-        <svg class="account-mini-chart" viewBox="0 0 120 120" role="img" aria-label="${escapeHtml(account.name)} 미니 도넛"></svg>
+        <svg class="account-mini-chart" viewBox="0 0 120 120" role="img" aria-label="${IsfUtils.escapeHtml(account.name)} 미니 도넛"></svg>
       `;
       dom.accountChartCards.appendChild(card);
 
@@ -1092,11 +1054,11 @@
 
     const rows = slices
       .map((slice) => {
-        const value = sanitizeAmount(slice.value);
+        const value = IsfUtils.sanitizeMoney(slice.value);
         const percent = total > 0 ? ((value / total) * 100).toFixed(1) : "0.0";
         return `
           <li class="amount-breakdown-row">
-            <span class="amount-breakdown-label">${escapeHtml(slice.label)}</span>
+            <span class="amount-breakdown-label">${IsfUtils.escapeHtml(slice.label)}</span>
             <span class="amount-breakdown-percent">${percent}%</span>
             <strong class="amount-breakdown-value">${formatCurrency(value)}</strong>
           </li>
@@ -1203,7 +1165,7 @@
       modelVersion: MODEL_VERSION,
       name: String(state.draft.name || "포트폴리오").trim() || "포트폴리오",
       notes: String(state.draft.notes || ""),
-      totalMonthlyInvestCapacity: sanitizeAmount(state.draft.totalMonthlyInvestCapacity),
+      totalMonthlyInvestCapacity: IsfUtils.sanitizeMoney(state.draft.totalMonthlyInvestCapacity),
       bridgeContext: state.draft.bridgeContext && typeof state.draft.bridgeContext === "object" ? state.draft.bridgeContext : null,
       accounts: state.draft.accounts.map((account) => ({
         id: String(account.id || "").trim() || IsfUtils.createId("account"),
@@ -1233,15 +1195,15 @@
         return safeAccounts.map((account) => createDraftAccount(account));
       }
 
-      const totalContribution = safeAccounts.reduce((sum, account) => sum + sanitizeAmount(account?.monthlyContribution), 0);
-      const totalBudget = sanitizeAmount(fallbackTotal);
+      const totalContribution = safeAccounts.reduce((sum, account) => sum + IsfUtils.sanitizeMoney(account?.monthlyContribution), 0);
+      const totalBudget = IsfUtils.sanitizeMoney(fallbackTotal);
       const base = Math.max(totalContribution, totalBudget);
       if (base <= 0) {
         const evenWeight = Math.round((100 / safeAccounts.length) * 100) / 100;
         return safeAccounts.map((account) => createDraftAccount({ ...account, accountWeight: evenWeight, monthlyContribution: undefined }));
       }
       return safeAccounts.map((account) => {
-        const monthly = sanitizeAmount(account?.monthlyContribution);
+        const monthly = IsfUtils.sanitizeMoney(account?.monthlyContribution);
         return createDraftAccount({
           ...account,
           accountWeight: (monthly / base) * 100,
@@ -1252,10 +1214,10 @@
 
     if (isV2) {
       const totalFromContribution = Array.isArray(raw.accounts)
-        ? raw.accounts.reduce((sum, account) => sum + sanitizeAmount(account?.monthlyContribution), 0)
+        ? raw.accounts.reduce((sum, account) => sum + IsfUtils.sanitizeMoney(account?.monthlyContribution), 0)
         : 0;
-      const fallbackTotal = sanitizeAmount(raw.totalMonthlyInvestCapacity || 0)
-        || (sanitizeAmount(raw.unallocatedMonthlyInvest || 0) + totalFromContribution);
+      const fallbackTotal = IsfUtils.sanitizeMoney(raw.totalMonthlyInvestCapacity || 0)
+        || (IsfUtils.sanitizeMoney(raw.unallocatedMonthlyInvest || 0) + totalFromContribution);
       return {
         migrated: false,
         id: String(raw.id || ""),
@@ -1618,12 +1580,12 @@
       state.currentPortfolioId = "";
       state.draft = createEmptyDraft();
       state.draft.name = `Step1 연계 포트폴리오 (${new Date().toISOString().slice(0, 10)})`;
-      state.draft.totalMonthlyInvestCapacity = sanitizeAmount(payload.monthlyInvestCapacity);
+      state.draft.totalMonthlyInvestCapacity = IsfUtils.sanitizeMoney(payload.monthlyInvestCapacity);
       state.draft.bridgeContext = {
         timestamp: String(payload.timestamp || ""),
-        currentCash: sanitizeAmount(payload.currentCash),
-        currentInvest: sanitizeAmount(payload.currentInvest),
-        currentSavings: sanitizeAmount(payload.currentSavings),
+        currentCash: IsfUtils.sanitizeMoney(payload.currentCash),
+        currentInvest: IsfUtils.sanitizeMoney(payload.currentInvest),
+        currentSavings: IsfUtils.sanitizeMoney(payload.currentSavings),
       };
       state.draft.notes = buildBridgeMemo(payload);
 
