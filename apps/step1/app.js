@@ -366,7 +366,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initializeBackupStore();
   void initializeInputsFromShareId();
   const pwaManager = new IsfPwaManager({
-    appVersion: "0.1.1",
+    appVersion: "0.2.0",
     onFeedback: (message) => IsfFeedback.showFeedback(dom.applyFeedback, message),
     isViewMode: () => state.isViewMode,
     swPath: "../../sw.js",
