@@ -11,6 +11,9 @@ kanban-plugin: basic
 - [ ] (all) 사용자 커스텀 - 항목별 텍스트 색상 및 중요도(Priority) 표시 기능 추가
 
 ## Done
+- [X] persistBackupEntries 고아 데이터 삭제 동기화 로직 추가
+- [X] PWA 업데이트 자동 백업 시 빈 배열 로드 버그 수정 및 동적 appKey 적용
+- [X] Step2 공유 링크 기능에 IsfShare 인코딩(LZ 압축) 공통 유틸리티 적용
 - [X] 기능 검증 (버전 업그레이드 시뮬레이션 및 백업 확인)
 - [X] PWA 업데이트 전 자동 데이터 백업 및 업데이트 진행 (SW 제어 및 BackupManager 연동)
 - [X] 모바일 환경 css 재구성

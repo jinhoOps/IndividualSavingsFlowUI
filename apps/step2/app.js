@@ -5,6 +5,9 @@
   const UNALLOCATED_ASSET_KEY = "__unallocated__";
   const STEP1_UNIT_TO_WON = 10000;
   const STEP1_LOCAL_STORAGE_KEY = "isf-rebuild-v1";
+  const SHARE_STATE_KEY = "my-portfolio-flow";
+  const SHARE_STATE_SCHEMA = 2;
+  const HASH_STATE_PARAM = "s";
 
   const DEFAULT_ACCOUNT_TEMPLATES = [
     {
@@ -105,13 +108,14 @@
   document.addEventListener("DOMContentLoaded", () => {
     state.draft = createEmptyDraft();
     const hash = window.location.hash;
-    if (hash && hash.startsWith("#s=")) {
+    if (hash) {
       try {
-        const decoded = decodeURIComponent(atob(hash.substring(3)));
-        const parsed = JSON.parse(decoded);
-        const normalized = normalizeLoadedPortfolio(parsed);
-        state.draft = normalized.draft;
-        state.currentPortfolioId = normalized.id || "";
+        const hashInputs = IsfShare.decodePayloadFromHash(new URLSearchParams(window.location.hash.replace(/^#/, "")).get(HASH_STATE_PARAM) || hash.substring(3), SHARE_STATE_KEY);
+        if (hashInputs) {
+          const normalized = normalizeLoadedPortfolio(hashInputs);
+          state.draft = normalized.draft;
+          state.currentPortfolioId = normalized.id || "";
+        }
       } catch (_error) {
         showFeedback("공유 링크 복원에 실패했습니다.", true);
       }
@@ -124,6 +128,7 @@
 
     const pwaManager = new IsfPwaManager({
       appVersion: "0.2.0",
+      appKey: SHARE_STATE_KEY,
       onFeedback: (message) => IsfFeedback.showFeedback(dom.applyFeedback, message),
       isViewMode: () => false,
       swPath: "../../sw.js",
@@ -739,10 +744,14 @@
       dom.copyShareLink.addEventListener("click", () => {
         try {
           const payload = toPortablePortfolio();
-          const str = JSON.stringify(payload);
-          const encoded = btoa(encodeURIComponent(str));
+          const envelope = IsfShare.buildStateEnvelope(SHARE_STATE_KEY, SHARE_STATE_SCHEMA, payload);
+          const encoded = IsfShare.encodePayloadForHash(envelope);
+          if (!encoded) {
+             showFeedback("링크 길이를 초과했습니다. JSON 내보내기를 이용해주세요.", true);
+             return;
+          }
           const url = new URL(window.location.href);
-          url.hash = `s=${encoded}`;
+          url.hash = `${HASH_STATE_PARAM}=${encoded}`;
           if (navigator.clipboard && navigator.clipboard.writeText) {
             navigator.clipboard.writeText(url.toString()).then(() => {
               showFeedback("공유용 단축 링크가 클립보드에 복사되었습니다.", false);

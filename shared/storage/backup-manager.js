@@ -144,11 +144,15 @@
       const done = idbTransactionDone(tx);
       const store = tx.objectStore(BACKUP_DB_STORE);
       
-      // We only delete entries for THIS appKey, but IDB getAll() + clear() clears everything.
-      // So instead of clear(), we rewrite them. Actually, simpler: just put() them,
-      // and let the caller manage truncation, or we do a full query, filter, and rewrite,
-      // but without clear() we might leave old orphaned items.
-      // For now, assume global rewrite from caller or just use put for each.
+      const existingEntries = await idbRequestToPromise(store.getAll());
+      const safeEntryIds = new Set(safeEntries.map((item) => item.id));
+      
+      existingEntries.forEach((entry) => {
+        if (entry.app === appKey && !safeEntryIds.has(entry.id)) {
+          store.delete(entry.id);
+        }
+      });
+
       safeEntries.forEach((item) => {
         store.put(item);
       });

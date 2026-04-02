@@ -63,6 +63,7 @@
       this.manifestPath = config.manifestPath || "/manifest.webmanifest";
       this.versionCheckTriggerElement = config.versionCheckTriggerElement || null;
       this.getCurrentData = config.getCurrentData || (() => null);
+      this.appKey = config.appKey || "isf-hub";
       this.pwaVersionLastCheckedAt = 0;
     }
 
@@ -237,12 +238,11 @@
       try {
         const data = this.getCurrentData();
         if (data && global.IsfBackupManager) {
-          // currentEntries가 없어도 createBackupEntry가 DB에서 로드할 수 있도록 빈 배열 전달
-          // 실제 BackupManager는 내부적으로 persist 시 합칩니다.
-          await global.IsfBackupManager.createBackupEntry([], data, {
+          const currentEntries = await global.IsfBackupManager.loadBackupEntriesFromDb(this.appKey) || [];
+          await global.IsfBackupManager.createBackupEntry(currentEntries, data, {
             type: "auto",
             source: "pwa-update",
-            appKey: "isf-hub",
+            appKey: this.appKey,
             allowDuplicate: true
           });
         }
