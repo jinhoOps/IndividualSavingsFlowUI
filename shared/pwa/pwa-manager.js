@@ -238,7 +238,8 @@
       try {
         const data = this.getCurrentData();
         if (data && global.IsfBackupManager) {
-          const currentEntries = await global.IsfBackupManager.loadBackupEntriesFromDb(this.appKey) || [];
+          const currentEntries = await global.IsfBackupManager.loadBackupEntriesFromDb(this.appKey);
+          if (currentEntries === null) return;
           await global.IsfBackupManager.createBackupEntry(currentEntries, data, {
             type: "auto",
             source: "pwa-update",

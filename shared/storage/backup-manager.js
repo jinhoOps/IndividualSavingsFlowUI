@@ -147,11 +147,11 @@
       const done = idbTransactionDone(tx);
       const store = tx.objectStore(BACKUP_DB_STORE);
       
-      const existingEntries = await idbRequestToPromise(store.getAll());
+      const existingEntries = await idbRequestToPromise(store.index("app").getAll(appKey));
       const safeEntryIds = new Set(safeEntries.map((item) => item.id));
       
       existingEntries.forEach((entry) => {
-        if (entry.app === appKey && !safeEntryIds.has(entry.id)) {
+        if (!safeEntryIds.has(entry.id)) {
           store.delete(entry.id);
         }
       });
