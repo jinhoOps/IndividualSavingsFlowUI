@@ -6,6 +6,7 @@
   const HUB_STORE_STEP1 = "step1Snapshots";
   const HUB_STORE_STEP2 = "step2Portfolios";
   const HUB_STORE_BRIDGE = "bridgeStep1ToStep2";
+  const MAX_HUB_SNAPSHOTS = 20;
 
   let hubDbPromise = null;
 
@@ -169,6 +170,39 @@
     }
   }
 
+  async function enforceStoreLimit(storeName, indexName, maxEntries) {
+    try {
+      const db = await openHubDb();
+      const countTx = db.transaction(storeName, "readonly");
+      const countStore = countTx.objectStore(storeName);
+      const count = await idbRequestToPromise(countStore.count());
+
+      if (count <= maxEntries) return;
+
+      let itemsToDelete = count - maxEntries;
+      const tx = db.transaction(storeName, "readwrite");
+      const store = tx.objectStore(storeName);
+      const index = store.index(indexName);
+
+      await new Promise((resolve, reject) => {
+        const cursorRequest = index.openCursor();
+        cursorRequest.onsuccess = () => {
+          const cursor = cursorRequest.result;
+          if (cursor && itemsToDelete > 0) {
+            store.delete(cursor.primaryKey);
+            itemsToDelete--;
+            cursor.continue();
+          } else {
+            resolve();
+          }
+        };
+        cursorRequest.onerror = () => reject(cursorRequest.error);
+      });
+      await idbTransactionDone(tx);
+    } catch (_error) {}
+  }
+
+
   async function saveStep1Snapshot(data) {
     const nowIso = new Date().toISOString();
     const entry = {
@@ -181,6 +215,7 @@
     const transaction = db.transaction(HUB_STORE_STEP1, "readwrite");
     transaction.objectStore(HUB_STORE_STEP1).put(entry);
     await idbTransactionDone(transaction);
+    void enforceStoreLimit(HUB_STORE_STEP1, "updatedAt", MAX_HUB_SNAPSHOTS);
     return entry;
   }
 
@@ -199,6 +234,7 @@
     const transaction = db.transaction(HUB_STORE_BRIDGE, "readwrite");
     transaction.objectStore(HUB_STORE_BRIDGE).put(entry);
     await idbTransactionDone(transaction);
+    void enforceStoreLimit(HUB_STORE_BRIDGE, "createdAt", MAX_HUB_SNAPSHOTS);
     return entry;
   }
 

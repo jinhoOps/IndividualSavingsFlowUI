@@ -4583,7 +4583,11 @@ function initializeBackupStore() {
     state.backupStoreReady = true;
     syncBackupUi();
 
-    const res = await IsfBackupManager.maybeCreateAutoBackupIfDue(state.backupEntries, state.inputs || state.portfolio, SHARE_STATE_KEY); if(res.created) { state.backupEntries = res.nextEntries; syncBackupUi(); }
+    const res = await IsfBackupManager.maybeCreateAutoBackupIfDue(state.backupEntries, state.inputs, SHARE_STATE_KEY);
+    if(res.created) {
+      state.backupEntries = res.nextEntries;
+      syncBackupUi();
+    }
   })();
 }
 
