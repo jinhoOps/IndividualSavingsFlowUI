@@ -14,7 +14,48 @@
 ## 투두
 - 상세 TODO는 `TODO.md`를 사용한다.
 
-## 압축 이력
+### 2026-03-26 (v0.2.0 - 공통 인프라 추출 및 Step2 UX 고도화)
+- `refactor`: 앱 간 중복 로직을 `shared/` 모듈로 통합 (`IsfUtils`, `IsfShare`, `IsfBackupManager`, `IsfFeedback`, `IsfPwaManager`).
+- `feat`: PWA (`sw.js`, `manifest.webmanifest`)를 루트로 승격하여 Step1/Step2 통합 캐싱 체계 구축.
+- `feat`, `ux`: Step2에 하단 **플로팅 대기 바(Pending Bar)** 및 **액션 피드백 토스트** 도입.
+- `fix`: 자산군 비중 합계 100% 미만 케이스를 '에러'가 아닌 '주의(현금 처리)'로 완화하여 저장 가능케 수정.
+- `ux`: Step1 데이터 가져오기 직후 IndexedDB 자동 백업을 수행해 데이터 영속성 보장.
+- `docs`: Obsidian 경로(`G:\내 드라이브\SecondBrain\03_PROJECT\01_Active\IndividualSavingsFlowUI`)에 QA 가이드 문서 신설.
+
+### 2026-03-26 (Step2 공유 기능 및 계좌 편집 UX 개선)
+- `fix`, `ux`: Step2 계좌 편집 시 한 계좌가 무조건 강제 포커스되던 문제를 수정 (`편집중` 명시적 진입 전에 자산군 구성 숨김 처리).
+- `feat`: Step2에도 공유/복원 기능(JSON 내보내기/불러오기, 링크 복사)을 연동.
+  - Step1과 유사하게 `#s=` 형태의 URL 해시를 활용해 Step2 상태를 문자열로 직렬화하여 URL 링크로 공유 가능하도록 구현.
+  - 화면 하단 액션 버튼 그룹에 `JSON 내보내기`, `JSON 불러오기`, `공유 링크 복사` 버튼 추가.
+
+### 2026-03-26 (문서 기준 커밋 최신화)
+- `docs`: `plan-step1.md`, `plan-step2.md`의 기준 커밋을 `eae9755`로 최신화 및 Step2 브리지 fallback 기능 내용 보강.
+
+### 2026-03-26 (계획 문서 재정리 + Step2 브리지 불러오기 버그 수정)
+- `docs`: `plan-step1.md`, `plan-step2.md`를 최신 기준으로 재작성.
+  - Step1/Step2 현재 상태, 기술부채/UX 후보, 안정화 체크리스트, 우선순위(High/Med/Low), 예상 난이도, 수용 기준(AC)을 명시.
+  - Step2에 MVP+ 범위(입력 단순화/모바일 UX/시각화 고도화/저장·복원)와 스키마 호환 리스크/마이그레이션 원칙을 구체화.
+- `fix`: Step2 `Step1 데이터 가져오기` 실패 케이스를 보강.
+  - `shared/storage/hub-storage.js`: 허브 DB 버전을 `2`로 상향하고, 업그레이드 시 누락된 스토어/인덱스(`bridgeStep1ToStep2.createdAt`)를 자동 복구하도록 보강.
+  - `shared/storage/hub-storage.js`: 인덱스 조회 실패 시 전체 스캔 fallback으로 최신 레코드 조회 가능하게 보강.
+  - `apps/step2/app.js`: 브리지 레코드가 없거나 읽기 실패해도 `step1Snapshots` 최신 데이터에서 payload를 복원해 가져오기 가능하도록 fallback 경로 추가.
+  - `apps/step2/app.js`: hub 접근 자체가 실패해도 Step1 로컬 저장소(`isf-rebuild-v1`)에서 직접 payload를 복원하는 2차 fallback을 추가.
+  - `apps/step2/app.js`: 브리지/스냅샷/로컬 저장 중 어떤 소스로 복원했는지 상태 문구를 분리해 디버깅 가능성을 높임.
+
+### 2026-03-25 (UX 개선)
+- `fix`: '초기화' 버튼의 동작을 '보기 모드' 진입에서 `confirm` 확인 후 현재 항목 구조를 유지하며 금액만 0으로 초기화하는 방식으로 변경했습니다. '샘플 불러오기'는 데이터 유실 방지를 위해 기존 '보기 모드' 방식을 유지합니다.
+- `feat`: 상단 타이틀(`h1`)을 클릭하면 공유 모드(`?view=1`)나 샘플 해시(`#s=...`) 상태에서 벗어나 **내 로컬 기본 데이터(홈)로 즉시 돌아가는 기능**을 추가했습니다.
+- `feat`: 상단 액션 메뉴를 **[백업 / 공유 / 더보기]** 3가지 그룹으로 분리 및 재배치했습니다.
+  - **공유**: 공유 링크 복사, JSON 내보내기/불러오기
+  - **더보기**: 샘플 불러오기, 모든 입력값 초기화, 이스터에그
+- `refactor`: 일반적인 앱 사용 시 주소창에 불필요한 해시 데이터가 남지 않도록 **클린 URL 정책**을 도입했습니다.
+  - 공유 링크(sid, 해시)를 통해 진입하여 로컬에 데이터를 불러온 직후에는 주소창 파라미터를 삭제해 깔끔한 기본 URL(`pathname`)로 돌아갑니다.
+
+### 2026-03-25 (프로젝트 계획 문서화)
+- Step1 및 Step2의 향후 개발 방향을 정의하는 `plan-step1.md`, `plan-step2.md` 신설.
+- 현재 상태 요약, 기술 부채, 스키마 호환성 리스크 파악 및 기능 구현 우선순위 확립.
+- 샘플 데이터 적용 및 초기화 과정에서 실수로 인한 기존 데이터 유실을 방지하기 위해 확인(confirm) 절차 개발 계획(TODO) 추가.
+
 ### 2025-12-29 ~ 2026-01-26 (MVP 구축)
 - Vanilla HTML/CSS/JS 단일 페이지 기반으로 개인 자산 흐름 대시보드 MVP를 구축.
 - 입력/편집 워크플로(항목 CRUD, 검증, 적용/취소)와 핵심 시각화(Sankey 포함) 기반을 완성.
@@ -167,3 +208,72 @@
   - Step1 환경(서버 DB 미연동)에서는 `#s=...` 압축 해시 fallback을 자동 포함해 기존 공유 호환성을 유지.
   - 입력 상태 자동 동기화는 `해시가 이미 있을 때만` 갱신하도록 조정해 기본 URL 노출을 단순화.
   - README 저장/공유 섹션에 단계별 구조와 압축 해시 정책을 명시.
+- 레포 구조 전환(권장안 1):
+  - 실행 파일을 `apps/step1`로 이동(`index.html`, `app.js`, `styles.css`, `sw.js`, `manifest`, `icons`).
+  - 루트 `index.html`은 기존 URL 호환을 위해 `apps/step1`로 자동 리다이렉트하도록 변경.
+  - `apps/step2` 스캐폴드(`index.html`, `styles.css`, `app.js`)를 추가해 Step2 작업 기준점을 마련.
+  - `shared/README.md`를 추가해 공통 모듈(IndexedDB 스키마/브리지) 배치 경로를 고정.
+
+### 2026-03-24 (권장1 구조 고정 + Step2 MVP 확장 1차)
+- 공통 IndexedDB 허브 레이어 도입:
+  - `shared/storage/hub-storage.js`를 추가해 `isf-hub-db-v1` 접근 API를 공통화.
+  - 스토어 계약:
+    - `step1Snapshots { id, createdAt, updatedAt, data }`
+    - `step2Portfolios { id, name, targetAllocations, notes, updatedAt }`
+    - `bridgeStep1ToStep2 { id, step1SnapshotId, payload, createdAt }`
+- Step1 -> Step2 브리지 기록 연결:
+  - Step1 `persistPrimaryState`(적용 경로)에서 허브 DB에 Step1 스냅샷 저장 후 브리지 payload를 기록.
+  - 브리지 payload 필수 필드 고정:
+    - `monthlyInvestCapacity`, `currentCash`, `currentInvest`, `currentSavings`, `timestamp`
+- Step2 MVP 구현:
+  - 포트폴리오 편집 UI(자산군 이름/목표비중/메모 CRUD)와 비중 합계(100%) 검증을 구현.
+  - 포트폴리오 저장/불러오기/삭제를 `step2Portfolios`와 연동.
+  - `Step1 데이터 가져오기` 버튼으로 최신 브리지 payload를 수동 반영하고 덮어쓰기 확인 UX를 추가.
+- 구조/문서 정합:
+  - Step1/Step2에서 공통 허브 스크립트를 로드하도록 엔트리 HTML 경로를 연결.
+  - README/TODO/shared 문서에 구조 고정, 허브 스키마, Step2 MVP 범위를 반영.
+
+### 2026-03-24 (Step2 계좌형 MVP + 도넛 시각화 + 공통 테마)
+- Step2를 계좌 중심(v2)으로 확장:
+  - 저장 스키마를 `modelVersion:2` 기반으로 확장(`accounts[]`, `unallocatedMonthlyInvest`, `notes`, `updatedAt`).
+  - 계좌별 `월 납입액 + 자산군 비중(합 100%)` 편집/검증/저장 흐름을 구현.
+- 차트/UX 확장:
+  - `종합 도넛`/`계좌별 도넛` 탭 전환 UI를 추가.
+  - 종합 도넛은 계좌 월납입 가중합 + 미배분 금액으로 계산, 계좌별은 비중 기준으로 렌더링.
+  - 계좌 카드형 미니 도넛과 범례를 함께 제공.
+- 기본 샘플 템플릿 갱신:
+  - `국내주식(삼성전자/SK하이닉스/현대차)`, `ISA(코스피/나스닥100/미국배당다우존스)`, `해외주식(나스닥100/Tesla/AMD)`.
+- Step1 연동 반영:
+  - Step1 가져오기 시 `monthlyInvestCapacity`를 Step2 `미배분 월 투자여력`으로 반영.
+  - `currentCash/currentInvest/currentSavings/timestamp`는 브리지 정보/메모에 반영.
+- 호환성 보강:
+  - Step2 v1 포트폴리오(`targetAllocations`)를 로드 시 `통합계좌` 1개 구조로 자동 마이그레이션 후 v2로 재저장.
+- 공통 스타일 계층 추가:
+  - `shared/styles/step-theme.css`를 신설해 Step1 톤(폰트/토큰/버튼/패널)을 Step2에 적용.
+- 문서 동기화:
+  - `README.md`, `TODO.md`, `shared/README.md`를 최신 Step2 구조/계약으로 갱신.
+- Step2 헤더 타이포 보정:
+  - 공통 테마(`shared/styles/step-theme.css`)에서 `h1/lead`를 Step1 기준으로 재정렬.
+  - `hero h1` 규칙(간격/크기/자간)을 추가하고, `lead`를 저대비 텍스트에서 본문 톤으로 분리.
+  - Step2 헤더에 `hero` 클래스를 적용해 Step1과 동일한 헤더 패널 타이포 톤으로 통일.
+- Step2 입력 단순화(사용자 피드백 반영):
+  - 계좌별 `월 납입액` 입력을 제거하고 `계좌 비중(%)` 중심 편집으로 전환.
+  - Step2 기본 입력은 `월 투자 가능 금액` 1개로 축소(Step1 가져오기 시 자동 반영).
+  - 계좌 비중 합계가 100% 미만이면 남는 금액은 `현금(자동)`으로 종합 도넛/범례에 자동 반영.
+  - 계좌 카드/계좌별 도넛의 금액 표시는 `월 투자 가능 금액 x 계좌 비중` 계산값으로 통일.
+  - 저장 스키마 v2 설명을 `totalMonthlyInvestCapacity` 중심으로 문서화 업데이트.
+- Step2 도넛 뷰 분리 강화:
+  - `종합 도넛` 탭은 종합 도넛 1개만 노출하도록 단순화(추가 상세 도넛 제거).
+  - `계좌별 도넛` 탭은 계좌 카드 도넛 목록만 노출하도록 분리.
+- Step2 모바일 편집 UIUX 개편:
+  - `계좌 편집`에 모바일 전용 계좌 전환 드롭다운(`mobileAccountSelect`)을 추가.
+  - 모바일에서는 활성 계좌 1개만 편집 행으로 노출해 스크롤 길이를 축소.
+  - 모바일 `계좌 편집/자산군 구성`을 한 줄 입력 중심(`이름/비중/삭제`)으로 압축.
+  - 모바일 자산군 메모 입력은 기본 숨김 처리해 핵심 입력(이름/비중)에 집중하도록 조정.
+- Step2 도넛 탭 표시 안정화:
+  - `종합/계좌별` 탭 전환 시 각 pane에 `hidden + is-hidden + aria-hidden`을 동시 반영해 표시 충돌을 방지.
+  - `종합 도넛` 탭에서는 계좌 카드 렌더를 중단하고 DOM을 비워, 개별 계좌 도넛이 함께 보이지 않도록 고정.
+  - 누락된 `renderAmountBreakdown()`을 추가해 `금액 보기` 패널을 정상 렌더링하고 런타임 오류를 제거.
+- Step2 도넛 퍼센트 표기 단순화:
+  - 종합 도넛 중앙의 `주식/현금` 퍼센트를 소수점 없이 정수(%)로 표시.
+  - 계좌별 미니 도넛 중앙의 계좌 비중 퍼센트도 정수(%)로 표시.

@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Step2 | 투자 포트폴리오 구성</title>
+    <meta name="description" content="개인 자산 흐름 프로젝트의 2단계로, 투자 포트폴리오를 구성하고 백업하는 UI" />
+    <meta name="theme-color" content="#ea5b2a" />
+    <link rel="manifest" href="../../manifest.webmanifest" />
+    <link rel="icon" href="../../icons/icon-192.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="../../icons/icon-192.svg" />
+    <link rel="stylesheet" href="../../shared/styles/step-theme.css" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="page">
+      <header class="hero panel">
+        <p class="eyebrow">INDIVIDUALSAVINGS FLOW UIUX · STEP 2</p>
+        <h1>투자 포트폴리오 구성</h1>
+        <p class="lead">월 투자 가능 금액을 기준으로 계좌/종목 비중만 조절하면, 남는 금액은 자동으로 현금 처리됩니다.</p>
+        <div class="actions">
+          <a class="btn btn-ghost" href="../step1/">Step1으로 이동</a>
+          <button id="loadStep1Data" class="btn btn-primary" type="button">Step1 데이터 가져오기</button>
+        </div>
+      </header>
+
+      <section class="panel">
+        <h2>Step1 브리지 데이터</h2>
+        <p id="bridgeStatus" class="muted">최신 Step1 브리지 데이터를 확인합니다.</p>
+        <div class="bridge-grid">
+          <p><strong>기준시점</strong><span id="bridgeTimestamp">-</span></p>
+          <p><strong>월 투자여력</strong><span id="bridgeMonthlyInvestCapacity">-</span></p>
+          <p><strong>현재 현금</strong><span id="bridgeCurrentCash">-</span></p>
+          <p><strong>현재 투자</strong><span id="bridgeCurrentInvest">-</span></p>
+          <p><strong>현재 저축</strong><span id="bridgeCurrentSavings">-</span></p>
+        </div>
+      </section>
+
+      <section class="panel chart-panel">
+        <div class="chart-head">
+          <h2>포트폴리오 도넛</h2>
+          <div class="chart-tabs" role="tablist" aria-label="도넛 보기 탭">
+            <button
+              id="chartTabSummary"
+              class="chart-tab is-active"
+              type="button"
+              role="tab"
+              aria-selected="true"
+              aria-controls="summaryChartPane"
+            >
+              종합 도넛
+            </button>
+            <button
+              id="chartTabAccount"
+              class="chart-tab"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="accountChartPane"
+            >
+              계좌별 도넛
+            </button>
+          </div>
+        </div>
+        <p id="chartMeta" class="muted">종합 도넛은 월 투자 가능 금액 기준 계좌/종목 비중으로 계산됩니다.</p>
+
+        <div id="summaryChartPane" class="chart-pane" data-chart-pane="summary">
+          <div class="chart-stage">
+            <svg id="summaryDonut" viewBox="0 0 260 260" role="img" aria-label="종합 포트폴리오 도넛"></svg>
+          </div>
+        </div>
+
+        <div id="accountChartPane" class="chart-pane" data-chart-pane="account" hidden>
+          <div id="accountChartCards" class="account-chart-cards" aria-live="polite"></div>
+        </div>
+        <details class="amount-details">
+          <summary>금액 보기</summary>
+          <div id="amountBreakdown" class="amount-breakdown" aria-live="polite"></div>
+        </details>
+      </section>
+
+      <section class="panel">
+        <h2>포트폴리오 기본 정보</h2>
+        <div class="form-grid">
+          <label class="control">
+            <span>포트폴리오 이름</span>
+            <input id="portfolioName" type="text" maxlength="60" />
+          </label>
+          <label class="control">
+            <span>메모</span>
+            <textarea id="portfolioNotes" rows="3" maxlength="500"></textarea>
+          </label>
+          <label class="control">
+            <span>월 투자 가능 금액(원, Step1 가져오기 자동 반영)</span>
+            <input id="totalMonthlyInvestCapacity" type="number" min="0" step="10000" />
+          </label>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="section-head">
+          <h2>계좌 편집</h2>
+          <button id="addAccount" class="btn btn-ghost btn-sm" type="button">계좌 추가</button>
+        </div>
+        <label class="mobile-account-picker" for="mobileAccountSelect">
+          <span>모바일 계좌 전환</span>
+          <select id="mobileAccountSelect" aria-label="모바일 계좌 전환"></select>
+        </label>
+        <div class="account-table-head">
+          <span>계좌명</span>
+          <span>계좌 비중(%)</span>
+          <span>편집</span>
+          <span>관리</span>
+        </div>
+        <div id="accountList" class="account-list" aria-live="polite"></div>
+        <p id="accountSummary" class="muted"></p>
+      </section>
+
+      <section id="allocationPanel" class="panel" hidden>
+        <div class="section-head">
+          <h2 id="allocationEditorTitle">자산군 구성</h2>
+          <button id="addAllocation" class="btn btn-ghost btn-sm" type="button">자산군 추가</button>
+        </div>
+        <div class="allocation-table-head">
+          <span>자산군 이름</span>
+          <span>목표 비중(%)</span>
+          <span>메모</span>
+          <span>관리</span>
+        </div>
+        <div id="allocationList" class="allocation-list" aria-live="polite"></div>
+        <p id="allocationSummary" class="muted"></p>
+      </section>
+
+      <section class="panel">
+        <div class="actions">
+          <button id="savePortfolio" class="btn btn-primary" type="button">브라우저 저장</button>
+          <button id="resetPortfolio" class="btn btn-ghost" type="button">새 포트폴리오</button>
+        </div>
+        <div class="actions" style="margin-top: 1rem;">
+          <button id="exportJson" class="btn btn-ghost btn-sm" type="button">JSON 내보내기</button>
+          <button id="importJsonTrigger" class="btn btn-ghost btn-sm" type="button">JSON 불러오기</button>
+          <button id="copyShareLink" class="btn btn-ghost btn-sm" type="button">공유 링크 복사</button>
+        </div>
+        <input id="importJsonFile" type="file" accept=".json,application/json" hidden />
+      </section>
+
+      <section class="panel">
+        <h2>저장된 포트폴리오</h2>
+        <div class="load-row">
+          <select id="portfolioSelect" aria-label="저장된 포트폴리오 선택"></select>
+          <button id="loadPortfolio" class="btn btn-ghost" type="button">불러오기</button>
+          <button id="deletePortfolio" class="btn btn-ghost" type="button">삭제</button>
+        </div>
+        <p id="portfolioMeta" class="muted"></p>
+      </section>
+
+      <div id="pendingBar" class="pending-bar" aria-hidden="true" hidden>
+        <div class="pending-content">
+          <span class="pending-icon">⚠️</span>
+          <span id="pendingSummary" class="pending-summary">변경사항 대기 중</span>
+        </div>
+        <div class="pending-actions">
+          <button id="discardChanges" class="btn btn-ghost btn-sm">취소</button>
+          <button id="saveChanges" class="btn btn-primary btn-sm">저장</button>
+        </div>
+      </div>
+
+      <div id="applyFeedback" class="apply-feedback" hidden></div>
+
+      <p id="step2Feedback" class="feedback" aria-live="polite" hidden></p>
+    <!-- Shared Utilities & Components -->
+    <script src="../../shared/core/utils.js"></script>
+    <script src="../../shared/core/share-utils.js"></script>
+    <script src="../../shared/storage/hub-storage.js"></script>
+    <script src="../../shared/storage/backup-manager.js"></script>
+    <script src="../../shared/components/feedback-manager.js"></script>
+    <script src="../../shared/pwa/pwa-manager.js"></script>
+    
+    <!-- App Logic -->
+    <script src="./app.js" defer></script>
+  </body>
+</html>

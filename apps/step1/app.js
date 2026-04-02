@@ -1,30 +1,13 @@
 const MONEY_UNIT = 10000;
-const APP_VERSION = "0.1.1";
 const STORAGE_KEY = "isf-rebuild-v1";
 const SHARE_STATE_KEY = "my-household-flow";
 const SHARE_STATE_SCHEMA = 1;
 const HASH_STATE_PARAM = "s";
-const HASH_STATE_MAX_LENGTH = 6000;
-const HASH_COMPRESSED_PREFIX = "z:";
-const SHARE_ID_QUERY_PARAM = "sid";
 const SHARE_DB_NAME = "isf-share-pointer-db-v1";
 const SHARE_DB_VERSION = 1;
 const SHARE_DB_STORE = "shareSnapshots";
-const VIEW_MODE_QUERY_PARAM = "view";
-const VIEW_MODE_QUERY_VALUE = "1";
 const VIEW_MODE_GUIDE_DISMISSED_KEY = "isf-view-guide-dismissed-v1";
-const BACKUP_STORAGE_KEY = "isf-local-backups-v1";
-const BACKUP_SCHEMA_VERSION = 1;
-const BACKUP_DB_NAME = "isf-backup-db-v1";
-const BACKUP_DB_VERSION = 1;
-const BACKUP_DB_STORE = "backupEntries";
-const PWA_STANDALONE_NOTICE_KEY = "isf-pwa-standalone-notice-v1";
-const PWA_REMOTE_VERSION_NOTICE_KEY = "isf-pwa-remote-version-notice-v1";
-const PWA_REMOTE_VERSION_LAST_CHECK_KEY = "isf-pwa-remote-version-last-check-v1";
-const PWA_REMOTE_VERSION_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
-const AUTO_BACKUP_INTERVAL_MS = 12 * 60 * 60 * 1000;
 const MANUAL_BACKUP_WINDOW_MS = 60 * 1000;
-const MAX_BACKUP_ENTRIES = 60;
 const MAX_INCOME_ITEMS = 12;
 const MAX_ALLOCATION_ITEMS = 20;
 const SANKEY_VALUE_MODES = {
@@ -186,11 +169,11 @@ function createResetInputs(baseInputs = DEFAULT_INPUTS) {
     startSavings: 0,
     startInvest: 0,
     startDebt: 0,
-    annualIncomeGrowth: sanitizeRate(safeBase.annualIncomeGrowth, DEFAULT_INPUTS.annualIncomeGrowth, 30),
-    annualExpenseGrowth: sanitizeRate(safeBase.annualExpenseGrowth, DEFAULT_INPUTS.annualExpenseGrowth, 30),
-    annualSavingsYield: sanitizeRate(safeBase.annualSavingsYield, DEFAULT_INPUTS.annualSavingsYield, 20),
-    annualInvestReturn: sanitizeRate(safeBase.annualInvestReturn, DEFAULT_INPUTS.annualInvestReturn, 30),
-    annualDebtInterest: sanitizeRate(safeBase.annualDebtInterest, DEFAULT_INPUTS.annualDebtInterest, 30),
+    annualIncomeGrowth: IsfUtils.sanitizeRate(safeBase.annualIncomeGrowth, DEFAULT_INPUTS.annualIncomeGrowth, 30),
+    annualExpenseGrowth: IsfUtils.sanitizeRate(safeBase.annualExpenseGrowth, DEFAULT_INPUTS.annualExpenseGrowth, 30),
+    annualSavingsYield: IsfUtils.sanitizeRate(safeBase.annualSavingsYield, DEFAULT_INPUTS.annualSavingsYield, 20),
+    annualInvestReturn: IsfUtils.sanitizeRate(safeBase.annualInvestReturn, DEFAULT_INPUTS.annualInvestReturn, 30),
+    annualDebtInterest: IsfUtils.sanitizeRate(safeBase.annualDebtInterest, DEFAULT_INPUTS.annualDebtInterest, 30),
     horizonYears: 3,
   };
 }
@@ -249,6 +232,7 @@ const dom = {
   importJson: document.getElementById("importJson"),
   importJsonFile: document.getElementById("importJsonFile"),
   backupMenu: document.getElementById("backupMenu"),
+  shareMenu: document.getElementById("shareMenu"),
   moreActionsMenu: document.getElementById("moreActionsMenu"),
   backupNow: document.getElementById("backupNow"),
   backupSelect: document.getElementById("backupSelect"),
@@ -256,6 +240,7 @@ const dom = {
   backupHelp: document.getElementById("backupHelp"),
   loadSample: document.getElementById("loadSample"),
   resetInputs: document.getElementById("resetInputs"),
+  easterEgg: document.getElementById("easterEgg"),
   addIncomeItem: document.getElementById("addIncomeItem"),
   incomeList: document.getElementById("incomeList"),
   incomeTotalHint: document.getElementById("incomeTotalHint"),
@@ -330,10 +315,11 @@ const dom = {
   sankeyTooltip: document.getElementById("sankeyTooltip"),
   projectionTableBody: document.querySelector("#projectionTable tbody"),
   projectionMeta: document.getElementById("projectionMeta"),
+  appTitle: document.querySelector("h1"),
 };
 
 const state = {
-  isViewMode: detectViewMode(),
+  isViewMode: IsfShare.detectViewMode(),
   inputs: resolveInitialInputs(),
   backupEntries: [],
   backupStoreReady: false,
@@ -364,7 +350,6 @@ const state = {
 
 document.addEventListener("DOMContentLoaded", () => {
   bindControls();
-  bindPwaLifecycleFeedback();
   syncViewModeUi();
   syncViewModeGuideUi();
   syncBackupUi();
@@ -378,14 +363,21 @@ document.addEventListener("DOMContentLoaded", () => {
   syncGroupOptionsAll();
   setPendingBarVisible(false);
   renderAll();
-  syncHashStateIfPresent(state.inputs);
   initializeBackupStore();
   void initializeInputsFromShareId();
-  registerServiceWorker();
-  maybeShowStandaloneLaunchFeedback();
-  bindPwaVersionAwareness();
+  const pwaManager = new IsfPwaManager({
+    appVersion: "0.2.0",
+    appKey: SHARE_STATE_KEY,
+    onFeedback: (message) => IsfFeedback.showFeedback(dom.applyFeedback, message),
+    isViewMode: () => state.isViewMode,
+    swPath: "../../sw.js",
+    manifestPath: "../../manifest.webmanifest",
+    versionCheckTriggerElement: dom.checkLatestVersion,
+    getCurrentData: () => state.inputs,
+  });
+  pwaManager.init();
   if (state.isViewMode) {
-    showApplyFeedback("보기 모드로 열었습니다. 로컬 저장값은 변경되지 않습니다.");
+    IsfFeedback.showFeedback(dom.applyFeedback, "보기 모드로 열었습니다. 로컬 저장값은 변경되지 않습니다.");
   }
 });
 
@@ -393,27 +385,29 @@ function closeActionMenus() {
   if (dom.backupMenu instanceof HTMLDetailsElement) {
     dom.backupMenu.open = false;
   }
+  if (dom.shareMenu instanceof HTMLDetailsElement) {
+    dom.shareMenu.open = false;
+  }
   if (dom.moreActionsMenu instanceof HTMLDetailsElement) {
     dom.moreActionsMenu.open = false;
   }
 }
 
 function bindActionMenus() {
-  if (dom.backupMenu instanceof HTMLDetailsElement) {
-    dom.backupMenu.addEventListener("toggle", () => {
-      if (dom.backupMenu.open && dom.moreActionsMenu instanceof HTMLDetailsElement) {
-        dom.moreActionsMenu.open = false;
-      }
-    });
-  }
+  const menus = [dom.backupMenu, dom.shareMenu, dom.moreActionsMenu].filter(Boolean);
 
-  if (dom.moreActionsMenu instanceof HTMLDetailsElement) {
-    dom.moreActionsMenu.addEventListener("toggle", () => {
-      if (dom.moreActionsMenu.open && dom.backupMenu instanceof HTMLDetailsElement) {
-        dom.backupMenu.open = false;
+  menus.forEach((menu) => {
+    if (!(menu instanceof HTMLDetailsElement)) return;
+    menu.addEventListener("toggle", () => {
+      if (menu.open) {
+        menus.forEach((other) => {
+          if (other !== menu && other instanceof HTMLDetailsElement) {
+            other.open = false;
+          }
+        });
       }
     });
-  }
+  });
 
   document.addEventListener("click", (event) => {
     const target = event.target;
@@ -562,13 +556,13 @@ function bindControls() {
     dom.copyShareLink.addEventListener("click", async () => {
       const shareLink = await buildShareLink(state.inputs, { viewMode: true });
       if (!shareLink) {
-        showApplyFeedback("링크 길이 초과로 보기 링크 생성이 제한됩니다. JSON 저장을 사용하세요.");
+        IsfFeedback.showFeedback(dom.applyFeedback, "링크 길이 초과로 보기 링크 생성이 제한됩니다. JSON 저장을 사용하세요.");
         return;
       }
       try {
         if (navigator.clipboard?.writeText) {
           await navigator.clipboard.writeText(shareLink);
-          showApplyFeedback("보기 모드 링크를 복사했습니다.");
+          IsfFeedback.showFeedback(dom.applyFeedback, "보기 모드 링크를 복사했습니다.");
           closeActionMenus();
           return;
         }
@@ -587,9 +581,13 @@ function bindControls() {
       }
       const localInputs = sanitizeInputs(cloneInputs(getVisibleInputs()));
       persistInputs(localInputs);
-      await createBackupEntry(localInputs, { type: "manual", source: "view-save" });
+      const res = await IsfBackupManager.createBackupEntry(state.backupEntries, localInputs, { type: "manual", source: "view-save" , appKey: SHARE_STATE_KEY});
+      if (res.created) {
+        state.backupEntries = res.nextEntries;
+        syncBackupUi();
+      }
       switchToNormalMode();
-      showApplyFeedback("현재 보기 상태를 로컬 저장소에 저장하고 일반 모드로 전환했습니다.");
+      IsfFeedback.showFeedback(dom.applyFeedback, "현재 보기 상태를 로컬 저장소에 저장하고 일반 모드로 전환했습니다.");
     });
   }
 
@@ -601,8 +599,8 @@ function bindControls() {
 
   if (dom.exportJson) {
     dom.exportJson.addEventListener("click", () => {
-      exportInputsAsJson(state.inputs);
-      showApplyFeedback("JSON 백업 파일을 저장했습니다.");
+      IsfShare.exportAsJson(IsfShare.buildStateEnvelope(SHARE_STATE_KEY, SHARE_STATE_SCHEMA, state.inputs), "my-household-flow-backup");
+      IsfFeedback.showFeedback(dom.applyFeedback, "JSON 백업 파일을 저장했습니다.");
       closeActionMenus();
     });
   }
@@ -624,13 +622,11 @@ function bindControls() {
       }
       try {
         const text = await file.text();
-        const imported = parseImportedInputs(text);
-        const hashSynced = commitImmediateInputs(imported);
-        showApplyFeedback(hashSynced
-          ? "JSON 데이터를 불러와 적용했습니다."
-          : "JSON 적용 완료 · 링크 길이 초과로 해시 저장은 생략되었습니다.");
+        const imported = IsfShare.parseImportedJson(text, SHARE_STATE_KEY);
+        commitImmediateInputs(imported);
+        IsfFeedback.showFeedback(dom.applyFeedback, "JSON 데이터를 불러와 적용했습니다.");
       } catch (_error) {
-        showApplyFeedback("JSON 파일 형식이 올바르지 않습니다.");
+        IsfFeedback.showFeedback(dom.applyFeedback, "JSON 파일 형식이 올바르지 않습니다.");
       } finally {
         if (event.target instanceof HTMLInputElement) {
           event.target.value = "";
@@ -642,39 +638,42 @@ function bindControls() {
   if (dom.backupNow) {
     dom.backupNow.addEventListener("click", async () => {
       if (state.isViewMode) {
-        showApplyFeedback("보기 모드에서는 자동/수동 백업이 중지됩니다. 먼저 저장 아이콘으로 로컬 저장하세요.");
+        IsfFeedback.showFeedback(dom.applyFeedback, "보기 모드에서는 자동/수동 백업이 중지됩니다. 먼저 저장 아이콘으로 로컬 저장하세요.");
         return;
       }
       if (!state.backupStoreReady) {
-        showApplyFeedback("백업 저장소를 준비 중입니다. 잠시 후 다시 시도하세요.");
+        IsfFeedback.showFeedback(dom.applyFeedback, "백업 저장소를 준비 중입니다. 잠시 후 다시 시도하세요.");
         return;
       }
       const inputs = sanitizeInputs(cloneInputs(getVisibleInputs()));
-      const result = await createBackupEntry(inputs, {
+      const res = await IsfBackupManager.createBackupEntry(state.backupEntries, inputs, {
         type: "manual",
         source: "normal",
         allowDuplicate: true,
         replaceRecentManualWithinMs: MANUAL_BACKUP_WINDOW_MS,
-        promptOnRecentManualOverwrite: true,
+        appKey: SHARE_STATE_KEY,
+        onRecentManualOverwriteConfirm: () => window.confirm("최근 1분 이내 수동 백업이 있습니다. 기존 백업을 덮어쓸까요?"),
       });
 
-      if (result.created) {
-        showApplyFeedback(result.replaced ? "최근 1분 수동 백업을 덮어썼습니다." : "로컬 백업을 저장했습니다.");
+      if (res.created) {
+        state.backupEntries = res.nextEntries;
+        syncBackupUi();
+        IsfFeedback.showFeedback(dom.applyFeedback, res.replaced ? "최근 1분 수동 백업을 덮어썼습니다." : "로컬 백업을 저장했습니다.");
         closeActionMenus();
         return;
       }
 
-      if (result.reason === "overwrite-cancelled") {
-        showApplyFeedback("백업 저장을 취소했습니다.");
+      if (res.reason === "overwrite-cancelled") {
+        IsfFeedback.showFeedback(dom.applyFeedback, "백업 저장을 취소했습니다.");
         return;
       }
 
-      if (result.reason === "duplicate-recent") {
-        showApplyFeedback("1분 이내 동일 내용 백업이 이미 있습니다.");
+      if (res.reason === "duplicate-recent") {
+        IsfFeedback.showFeedback(dom.applyFeedback, "1분 이내 동일 내용 백업이 이미 있습니다.");
         return;
       }
 
-      showApplyFeedback("백업 저장에 실패했습니다.");
+      IsfFeedback.showFeedback(dom.applyFeedback, "백업 저장에 실패했습니다.");
     });
   }
 
@@ -731,7 +730,7 @@ function bindControls() {
       }
 
       if (field === "amount") {
-        income.amount = sanitizeMoney(target.value, 0);
+        income.amount = IsfUtils.sanitizeMoney(target.value, 0);
       }
 
       markPendingChanges();
@@ -784,13 +783,13 @@ function bindControls() {
           item.name = target.value.slice(0, 24);
         }
         if (field === "amount") {
-          item.amount = sanitizeMoney(target.value, 0);
+          item.amount = IsfUtils.sanitizeMoney(target.value, 0);
         }
         if (field === "group") {
           item.group = normalizeAllocationGroupName(target.value);
         }
         renderExpenseTotalHint(
-          toWon(getMonthlyAllocationTotalMan(state.itemEditors.expense.items)),
+          IsfUtils.toWon(getMonthlyAllocationTotalMan(state.itemEditors.expense.items)),
           state.itemEditors.expense.items.length,
         );
         setItemEditorUi("expense", true);
@@ -808,7 +807,7 @@ function bindControls() {
         return;
       }
 
-      expense.amount = sanitizeMoney(target.value, 0);
+      expense.amount = IsfUtils.sanitizeMoney(target.value, 0);
       markPendingChanges();
     });
 
@@ -827,7 +826,7 @@ function bindControls() {
       state.itemEditors.expense.items = state.itemEditors.expense.items.filter((item) => item.id !== removeId);
       renderExpenseList(state.itemEditors.expense.items, { editing: true });
       renderExpenseTotalHint(
-        toWon(getMonthlyAllocationTotalMan(state.itemEditors.expense.items)),
+        IsfUtils.toWon(getMonthlyAllocationTotalMan(state.itemEditors.expense.items)),
         state.itemEditors.expense.items.length,
       );
       setItemEditorUi("expense", true);
@@ -858,7 +857,7 @@ function bindControls() {
           item.name = target.value.slice(0, 24);
         }
         if (field === "amount") {
-          item.amount = sanitizeMoney(target.value, 0);
+          item.amount = IsfUtils.sanitizeMoney(target.value, 0);
         }
         if (field === "annualRate") {
           const parsedRate = parseSavingsAnnualRateInput(target.value, getVisibleInputs().annualSavingsYield);
@@ -880,7 +879,7 @@ function bindControls() {
           }
         }
         renderSavingsTotalHint(
-          toWon(getMonthlyAllocationTotalMan(state.itemEditors.savings.items)),
+          IsfUtils.toWon(getMonthlyAllocationTotalMan(state.itemEditors.savings.items)),
           state.itemEditors.savings.items.length,
         );
         setItemEditorUi("savings", true);
@@ -900,7 +899,7 @@ function bindControls() {
       }
 
       if (field === "amount") {
-        item.amount = sanitizeMoney(target.value, 0);
+        item.amount = IsfUtils.sanitizeMoney(target.value, 0);
       }
       if (field === "annualRate") {
         const parsedRate = parseSavingsAnnualRateInput(target.value, draftInputs.annualSavingsYield);
@@ -928,7 +927,7 @@ function bindControls() {
       state.itemEditors.savings.items = state.itemEditors.savings.items.filter((item) => item.id !== removeId);
       renderSavingsList(state.itemEditors.savings.items, { editing: true });
       renderSavingsTotalHint(
-        toWon(getMonthlyAllocationTotalMan(state.itemEditors.savings.items)),
+        IsfUtils.toWon(getMonthlyAllocationTotalMan(state.itemEditors.savings.items)),
         state.itemEditors.savings.items.length,
       );
       setItemEditorUi("savings", true);
@@ -959,7 +958,7 @@ function bindControls() {
           item.name = target.value.slice(0, 24);
         }
         if (field === "amount") {
-          item.amount = sanitizeMoney(target.value, 0);
+          item.amount = IsfUtils.sanitizeMoney(target.value, 0);
         }
         if (field === "group") {
           item.group = normalizeAllocationGroupName(target.value);
@@ -973,7 +972,7 @@ function bindControls() {
           }
         }
         renderInvestTotalHint(
-          toWon(getMonthlyAllocationTotalMan(state.itemEditors.invest.items)),
+          IsfUtils.toWon(getMonthlyAllocationTotalMan(state.itemEditors.invest.items)),
           state.itemEditors.invest.items.length,
         );
         setItemEditorUi("invest", true);
@@ -991,7 +990,7 @@ function bindControls() {
         return;
       }
 
-      item.amount = sanitizeMoney(target.value, 0);
+      item.amount = IsfUtils.sanitizeMoney(target.value, 0);
       markPendingChanges();
     });
 
@@ -1010,7 +1009,7 @@ function bindControls() {
       state.itemEditors.invest.items = state.itemEditors.invest.items.filter((item) => item.id !== removeId);
       renderInvestList(state.itemEditors.invest.items, { editing: true });
       renderInvestTotalHint(
-        toWon(getMonthlyAllocationTotalMan(state.itemEditors.invest.items)),
+        IsfUtils.toWon(getMonthlyAllocationTotalMan(state.itemEditors.invest.items)),
         state.itemEditors.invest.items.length,
       );
       setItemEditorUi("invest", true);
@@ -1105,23 +1104,40 @@ function bindControls() {
     });
   }
 
-  if (dom.checkLatestVersion) {
-    dom.checkLatestVersion.addEventListener("click", () => {
-      void maybeCheckRemotePwaVersion({ force: true, showUpToDateFeedback: true });
-    });
-  }
+  
 
   if (dom.loadSample) {
-    dom.loadSample.addEventListener("click", () => {
-      commitImmediateInputs({ ...SAMPLE_INPUTS });
+    dom.loadSample.addEventListener("click", async () => {
       closeActionMenus();
+      const link = await buildShareLink({ ...SAMPLE_INPUTS }, { viewMode: true });
+      if (link) {
+        window.location.href = link;
+      }
     });
   }
 
   if (dom.resetInputs) {
     dom.resetInputs.addEventListener("click", () => {
-      commitImmediateInputs(createResetInputs(DEFAULT_INPUTS));
       closeActionMenus();
+      if (state.isViewMode) {
+        IsfFeedback.showFeedback(dom.applyFeedback, "보기 모드에서는 초기화를 사용할 수 없습니다.");
+        return;
+      }
+      if (hasPendingChanges() && !window.confirm("적용하지 않은 변경사항이 있습니다. 무시하고 모든 입력값을 초기화할까요?")) {
+        return;
+      }
+      if (!window.confirm("현재 입력한 항목 구조는 유지하고 모든 금액을 0으로 초기화합니다. 계속할까요?")) {
+        return;
+      }
+      commitImmediateInputs(createResetInputs(getVisibleInputs()));
+      IsfFeedback.showFeedback(dom.applyFeedback, "모든 금액을 초기화했습니다.");
+    });
+  }
+
+  if (dom.easterEgg) {
+    dom.easterEgg.addEventListener("click", () => {
+      closeActionMenus();
+      IsfFeedback.showFeedback(dom.applyFeedback, "🐣 이스터에그를 발견하셨습니다! (준비중)");
     });
   }
 
@@ -1136,11 +1152,9 @@ function bindControls() {
       state.draftInputs = null;
       setPendingBarVisible(false);
       refreshInputsPanel(state.inputs);
-      const hashSynced = persistPrimaryState(state.inputs);
+      persistPrimaryState(state.inputs);
       renderAll();
-      showApplyFeedback(hashSynced
-        ? "변경사항이 적용되었습니다."
-        : "변경사항 적용 완료 · 링크 길이 초과로 해시 저장은 생략되었습니다.");
+      IsfFeedback.showFeedback(dom.applyFeedback, "변경사항이 적용되었습니다.");
     });
   }
 
@@ -1153,6 +1167,21 @@ function bindControls() {
       setPendingBarVisible(false);
       refreshInputsPanel(state.inputs);
       renderAll();
+    });
+  }
+
+  if (dom.appTitle) {
+    dom.appTitle.style.cursor = "pointer";
+    dom.appTitle.title = "내 로컬 데이터로 돌아가기";
+    dom.appTitle.addEventListener("click", () => {
+      const hasUrlParams = window.location.search || window.location.hash;
+      if (!hasUrlParams) {
+        return;
+      }
+      if (hasPendingChanges() && !state.isViewMode && !window.confirm("적용하지 않은 변경사항이 있습니다. 무시하고 내 데이터로 돌아갈까요?")) {
+        return;
+      }
+      window.location.href = window.location.pathname;
     });
   }
 
@@ -1181,12 +1210,15 @@ function bindControls() {
     if (state.isApplyingHashState) {
       return;
     }
-    const hashInputs = loadInputsFromHash();
+    const hashInputs = IsfShare.decodePayloadFromHash(new URLSearchParams(window.location.hash.replace(/^#/, "")).get(HASH_STATE_PARAM), SHARE_STATE_KEY);
     if (!hashInputs) {
       return;
     }
     const nextInputs = sanitizeInputs({ ...DEFAULT_INPUTS, ...hashInputs });
     if (areInputsEqual(nextInputs, state.inputs)) {
+      if (!state.isViewMode) {
+        history.replaceState(null, "", window.location.pathname);
+      }
       return;
     }
     state.isApplyingHashState = true;
@@ -1197,7 +1229,10 @@ function bindControls() {
       refreshInputsPanel(state.inputs);
       persistPrimaryState(state.inputs);
       renderAll();
-      showApplyFeedback("링크 상태를 불러왔습니다.");
+      IsfFeedback.showFeedback(dom.applyFeedback, "링크 상태를 불러왔습니다.");
+      if (!state.isViewMode) {
+        history.replaceState(null, "", window.location.pathname);
+      }
     } finally {
       state.isApplyingHashState = false;
     }
@@ -1229,7 +1264,7 @@ function bindMobileLayoutWatcher() {
     syncMobileInputsPanelVisibility();
     syncAdvancedTabBlockVisibility();
     syncAllItemEditorUi();
-    syncVersionCheckTriggerVisibility();
+    
   };
   if (typeof mobileLayoutMediaQuery.addEventListener === "function") {
     mobileLayoutMediaQuery.addEventListener("change", handleMobileLayoutChange);
@@ -1259,7 +1294,7 @@ function syncMobileInputsPanelVisibility() {
 
 function syncViewModeUi() {
   const wasViewMode = state.isViewMode;
-  const isViewModeByUrl = detectViewMode();
+  const isViewModeByUrl = IsfShare.detectViewMode();
   state.isViewMode = isViewModeByUrl;
   if (!isViewModeByUrl || (!wasViewMode && isViewModeByUrl)) {
     state.viewModeGuideClosedTemporarily = false;
@@ -1270,7 +1305,7 @@ function syncViewModeUi() {
     dom.saveViewToLocal.disabled = !isViewLink;
   }
   syncBackupUi();
-  syncVersionCheckTriggerVisibility();
+  
 }
 
 function syncViewModeGuideUi() {
@@ -1317,7 +1352,7 @@ function dismissViewModeGuide() {
 function hasShareState() {
   try {
     const searchParams = new URLSearchParams(window.location.search);
-    const sid = normalizeShareId(searchParams.get(SHARE_ID_QUERY_PARAM));
+    const sid = normalizeShareId(searchParams.get(IsfShare.SHARE_ID_QUERY_PARAM));
     const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
     return Boolean(sid) || Boolean(hashParams.get(HASH_STATE_PARAM));
   } catch (_error) {
@@ -1328,7 +1363,7 @@ function hasShareState() {
 function switchToNormalMode() {
   state.isViewMode = false;
   const searchParams = new URLSearchParams(window.location.search);
-  searchParams.delete(VIEW_MODE_QUERY_PARAM);
+  searchParams.delete(IsfShare.VIEW_MODE_QUERY_PARAM);
   const searchText = searchParams.toString();
   const nextUrl = `${window.location.pathname}${searchText ? `?${searchText}` : ""}${window.location.hash}`;
   history.replaceState(null, "", nextUrl);
@@ -1474,7 +1509,7 @@ function sortAllocationItemsForRender(groupKey, items) {
     const rightName = String(right?.name || "").trim();
     return leftName.localeCompare(rightName, "ko-KR", { sensitivity: "base" });
   };
-  const byAmountAsc = (left, right) => sanitizeMoney(left?.amount, 0) - sanitizeMoney(right?.amount, 0);
+  const byAmountAsc = (left, right) => IsfUtils.sanitizeMoney(left?.amount, 0) - IsfUtils.sanitizeMoney(right?.amount, 0);
 
   if (mode === ITEM_SORT_MODES.AMOUNT_ASC) {
     safeItems.sort((left, right) => byAmountAsc(left, right) || byNameAsc(left, right));
@@ -1619,7 +1654,7 @@ function navigateToAdvancedGroup(groupKey, options = {}) {
   }
 
   if (shouldShowFeedback) {
-    showApplyFeedback(`${target.label}으로 이동했습니다.`);
+    IsfFeedback.showFeedback(dom.applyFeedback, `${target.label}으로 이동했습니다.`);
   }
 }
 
@@ -1805,7 +1840,7 @@ function getItemEditorSignature(groupKey, items) {
   return JSON.stringify(normalizedItems.map((item, index) => ({
     id: String(item.id || "").trim(),
     name: normalizeAllocationName(item.name, meta.label, index),
-    amount: sanitizeMoney(item.amount, 0),
+    amount: IsfUtils.sanitizeMoney(item.amount, 0),
     group: normalizeAllocationGroupName(item.group),
     ...(groupKey === "savings" || groupKey === "invest"
       ? { maturityMonth: normalizeMaturityMonth(item.maturityMonth) }
@@ -1937,7 +1972,7 @@ function startItemEditor(groupKey) {
         ? item.id.trim()
         : createAllocationItemId(groupKey, index),
       name: normalizeAllocationName(item?.name, meta.label, index),
-      amount: sanitizeMoney(item?.amount, 0),
+      amount: IsfUtils.sanitizeMoney(item?.amount, 0),
       ...(normalizeAllocationGroupName(item?.group) ? { group: normalizeAllocationGroupName(item?.group) } : {}),
     };
     if (groupKey === "savings") {
@@ -1961,7 +1996,7 @@ function startItemEditor(groupKey) {
   editor.baselineSignature = getItemEditorSignature(groupKey, editor.items);
 
   meta.renderList(editor.items, { editing: true });
-  meta.renderHint(toWon(getMonthlyAllocationTotalMan(editor.items)), editor.items.length);
+  meta.renderHint(IsfUtils.toWon(getMonthlyAllocationTotalMan(editor.items)), editor.items.length);
   setItemEditorUi(groupKey, true);
 }
 
@@ -1982,7 +2017,7 @@ function addItemToEditor(groupKey) {
   editor.items.push(item);
 
   meta.renderList(editor.items, { editing: true });
-  meta.renderHint(toWon(getMonthlyAllocationTotalMan(editor.items)), editor.items.length);
+  meta.renderHint(IsfUtils.toWon(getMonthlyAllocationTotalMan(editor.items)), editor.items.length);
   setItemEditorUi(groupKey, true);
 }
 
@@ -2031,7 +2066,7 @@ function cancelItemEditor(groupKey) {
   const inputs = getVisibleInputs();
   const items = inputs[meta.field] || [];
   meta.renderList(items);
-  meta.renderHint(toWon(getMonthlyAllocationTotalMan(items)), items.length);
+  meta.renderHint(IsfUtils.toWon(getMonthlyAllocationTotalMan(items)), items.length);
 }
 
 function closeAllItemEditors(exceptGroupKey = "") {
@@ -2108,23 +2143,23 @@ function buildInputSignature(inputs) {
   return {
     incomes: safe.incomes.map((item) => ({
       name: String(item?.name ?? "").trim().slice(0, 24),
-      amount: sanitizeMoney(item?.amount, 0),
+      amount: IsfUtils.sanitizeMoney(item?.amount, 0),
     })),
     expenseItems: safe.expenseItems.map((item) => ({
       name: String(item?.name ?? "").trim().slice(0, 24),
-      amount: sanitizeMoney(item?.amount, 0),
+      amount: IsfUtils.sanitizeMoney(item?.amount, 0),
       group: normalizeAllocationGroupName(item?.group),
     })),
     savingsItems: safe.savingsItems.map((item) => ({
       name: String(item?.name ?? "").trim().slice(0, 24),
-      amount: sanitizeMoney(item?.amount, 0),
+      amount: IsfUtils.sanitizeMoney(item?.amount, 0),
       annualRate: sanitizeSavingsAnnualRate(item?.annualRate, safe.annualSavingsYield),
       group: normalizeAllocationGroupName(item?.group),
       maturityMonth: normalizeMaturityMonth(item?.maturityMonth),
     })),
     investItems: safe.investItems.map((item) => ({
       name: String(item?.name ?? "").trim().slice(0, 24),
-      amount: sanitizeMoney(item?.amount, 0),
+      amount: IsfUtils.sanitizeMoney(item?.amount, 0),
       group: normalizeAllocationGroupName(item?.group),
       maturityMonth: normalizeMaturityMonth(item?.maturityMonth),
     })),
@@ -2143,9 +2178,9 @@ function buildInputSignature(inputs) {
 }
 
 function getPendingSummaryText(inputs) {
-  const monthlyIncome = toWon(getMonthlyIncomeTotalMan(inputs.incomes));
+  const monthlyIncome = IsfUtils.toWon(getMonthlyIncomeTotalMan(inputs.incomes));
   const monthlyOutflowMan = inputs.monthlyExpense + inputs.monthlySavings + inputs.monthlyInvest + inputs.monthlyDebtPayment;
-  return `미적용 변경사항 · 월 수입 ${formatCurrency(monthlyIncome)} / 월 배분 ${formatCurrency(toWon(monthlyOutflowMan))}`;
+  return `미적용 변경사항 · 월 수입 ${formatCurrency(monthlyIncome)} / 월 배분 ${formatCurrency(IsfUtils.toWon(monthlyOutflowMan))}`;
 }
 
 function syncDerivedMonthlyInputs(inputs) {
@@ -2158,10 +2193,10 @@ function syncDerivedMonthlyInputs(inputs) {
 }
 
 function renderInputHints(inputs) {
-  renderIncomeTotalHint(toWon(getMonthlyIncomeTotalMan(inputs.incomes)), inputs.incomes.length);
-  renderExpenseTotalHint(toWon(inputs.monthlyExpense), inputs.expenseItems.length);
-  renderSavingsTotalHint(toWon(inputs.monthlySavings), inputs.savingsItems.length);
-  renderInvestTotalHint(toWon(inputs.monthlyInvest), inputs.investItems.length);
+  renderIncomeTotalHint(IsfUtils.toWon(getMonthlyIncomeTotalMan(inputs.incomes)), inputs.incomes.length);
+  renderExpenseTotalHint(IsfUtils.toWon(inputs.monthlyExpense), inputs.expenseItems.length);
+  renderSavingsTotalHint(IsfUtils.toWon(inputs.monthlySavings), inputs.savingsItems.length);
+  renderInvestTotalHint(IsfUtils.toWon(inputs.monthlyInvest), inputs.investItems.length);
 }
 
 function refreshInputsPanel(inputs) {
@@ -2184,34 +2219,14 @@ function commitImmediateInputs(nextInputs, options = {}) {
   state.draftInputs = null;
   setPendingBarVisible(false);
   refreshInputsPanel(state.inputs);
-  const hashSynced = persistPrimaryState(state.inputs, {
+  persistPrimaryState(state.inputs, {
     skipAutoBackup: Boolean(safeOptions.skipAutoBackup),
     reason: safeOptions.reason || "commit",
   });
   renderAll();
-  return hashSynced;
+  return true;
 }
 
-function showApplyFeedback(message) {
-  if (!dom.applyFeedback) {
-    return;
-  }
-  if (state.applyFeedbackTimer) {
-    window.clearTimeout(state.applyFeedbackTimer);
-  }
-  dom.applyFeedback.textContent = message;
-  dom.applyFeedback.hidden = false;
-  dom.applyFeedback.classList.add("is-visible");
-
-  state.applyFeedbackTimer = window.setTimeout(() => {
-    if (!dom.applyFeedback) {
-      return;
-    }
-    dom.applyFeedback.classList.remove("is-visible");
-    dom.applyFeedback.hidden = true;
-    state.applyFeedbackTimer = null;
-  }, 1300);
-}
 
 function renderAll() {
   syncDerivedMonthlyInputs(state.inputs);
@@ -2229,13 +2244,13 @@ function renderAll() {
 }
 
 function buildMonthlySnapshot(inputs) {
-  const income = toWon(getMonthlyIncomeTotalMan(inputs.incomes));
+  const income = IsfUtils.toWon(getMonthlyIncomeTotalMan(inputs.incomes));
   const incomeBreakdown = (Array.isArray(inputs.incomes) ? inputs.incomes : [])
     .map((item, index) => ({
       id: `income-${item?.id || index + 1}`,
       label: String(item?.name || `수입 ${index + 1}`),
       tone: "income",
-      value: toWon(sanitizeMoney(item?.amount, 0)),
+      value: IsfUtils.toWon(IsfUtils.sanitizeMoney(item?.amount, 0)),
     }))
     .filter((item) => item.value > 0);
   const expenseBreakdown = (Array.isArray(inputs.expenseItems) ? inputs.expenseItems : [])
@@ -2243,7 +2258,7 @@ function buildMonthlySnapshot(inputs) {
       id: `expense-${item?.id || index + 1}`,
       label: String(item?.name || `생활비 ${index + 1}`),
       tone: "expense",
-      value: toWon(sanitizeMoney(item?.amount, 0)),
+      value: IsfUtils.toWon(IsfUtils.sanitizeMoney(item?.amount, 0)),
       group: normalizeAllocationGroupName(item?.group),
     }))
     .filter((item) => item.value > 0);
@@ -2252,7 +2267,7 @@ function buildMonthlySnapshot(inputs) {
       id: `savings-${item?.id || index + 1}`,
       label: String(item?.name || `저축 ${index + 1}`),
       tone: "savings",
-      value: toWon(sanitizeMoney(item?.amount, 0)),
+      value: IsfUtils.toWon(IsfUtils.sanitizeMoney(item?.amount, 0)),
       group: normalizeAllocationGroupName(item?.group),
     }))
     .filter((item) => item.value > 0);
@@ -2261,14 +2276,14 @@ function buildMonthlySnapshot(inputs) {
       id: `invest-${item?.id || index + 1}`,
       label: String(item?.name || `투자 ${index + 1}`),
       tone: "invest",
-      value: toWon(sanitizeMoney(item?.amount, 0)),
+      value: IsfUtils.toWon(IsfUtils.sanitizeMoney(item?.amount, 0)),
       group: normalizeAllocationGroupName(item?.group),
     }))
     .filter((item) => item.value > 0);
   const expense = expenseBreakdown.reduce((sum, item) => sum + item.value, 0);
   const savings = savingsBreakdown.reduce((sum, item) => sum + item.value, 0);
   const invest = investBreakdown.reduce((sum, item) => sum + item.value, 0);
-  const debtPayment = toWon(inputs.monthlyDebtPayment);
+  const debtPayment = IsfUtils.toWon(inputs.monthlyDebtPayment);
 
   const requiredOutflow = expense + savings + invest + debtPayment;
   const netCashflow = income - requiredOutflow;
@@ -2329,8 +2344,8 @@ function buildSavingsBuckets(inputs) {
   const savingsItems = Array.isArray(inputs.savingsItems) && inputs.savingsItems.length > 0
     ? inputs.savingsItems
     : DEFAULT_SAVINGS_ITEMS;
-  const monthlyTargets = savingsItems.map((item) => toWon(sanitizeMoney(item?.amount, 0)));
-  const initialBalances = allocateByWeights(toWon(inputs.startSavings), monthlyTargets);
+  const monthlyTargets = savingsItems.map((item) => IsfUtils.toWon(IsfUtils.sanitizeMoney(item?.amount, 0)));
+  const initialBalances = allocateByWeights(IsfUtils.toWon(inputs.startSavings), monthlyTargets);
 
   return savingsItems.map((item, index) => ({
     id: typeof item?.id === "string" && item.id.trim()
@@ -2350,8 +2365,8 @@ function buildInvestBuckets(inputs) {
   const investItems = Array.isArray(inputs.investItems) && inputs.investItems.length > 0
     ? inputs.investItems
     : DEFAULT_INVEST_ITEMS;
-  const monthlyTargets = investItems.map((item) => toWon(sanitizeMoney(item?.amount, 0)));
-  const initialBalances = allocateByWeights(toWon(inputs.startInvest), monthlyTargets);
+  const monthlyTargets = investItems.map((item) => IsfUtils.toWon(IsfUtils.sanitizeMoney(item?.amount, 0)));
+  const initialBalances = allocateByWeights(IsfUtils.toWon(inputs.startInvest), monthlyTargets);
   const monthlyFactor = toMonthlyFactor(inputs.annualInvestReturn);
 
   return investItems.map((item, index) => ({
@@ -2369,11 +2384,11 @@ function buildInvestBuckets(inputs) {
 
 function simulateProjection(inputs) {
   const horizonMonths = Math.max(1, Math.round(inputs.horizonYears)) * 12;
-  const monthlyIncomeBase = toWon(getMonthlyIncomeTotalMan(inputs.incomes));
-  const monthlyExpenseBase = toWon(inputs.monthlyExpense);
-  const monthlySavings = toWon(inputs.monthlySavings);
-  const monthlyInvest = toWon(inputs.monthlyInvest);
-  const monthlyDebtPayment = toWon(inputs.monthlyDebtPayment);
+  const monthlyIncomeBase = IsfUtils.toWon(getMonthlyIncomeTotalMan(inputs.incomes));
+  const monthlyExpenseBase = IsfUtils.toWon(inputs.monthlyExpense);
+  const monthlySavings = IsfUtils.toWon(inputs.monthlySavings);
+  const monthlyInvest = IsfUtils.toWon(inputs.monthlyInvest);
+  const monthlyDebtPayment = IsfUtils.toWon(inputs.monthlyDebtPayment);
 
   const incomeFactor = toMonthlyFactor(inputs.annualIncomeGrowth);
   const expenseFactor = toMonthlyFactor(inputs.annualExpenseGrowth);
@@ -2383,10 +2398,10 @@ function simulateProjection(inputs) {
   const savingsBuckets = buildSavingsBuckets(inputs);
   const investBuckets = buildInvestBuckets(inputs);
 
-  let cash = toWon(inputs.startCash);
+  let cash = IsfUtils.toWon(inputs.startCash);
   let savings = savingsBuckets.reduce((sum, bucket) => sum + bucket.balance, 0);
   let invest = investBuckets.reduce((sum, bucket) => sum + bucket.balance, 0);
-  let debt = toWon(inputs.startDebt);
+  let debt = IsfUtils.toWon(inputs.startDebt);
 
   savingsBuckets.forEach((bucket) => {
     if (bucket.maturityMonthIndex !== null && bucket.maturityMonthIndex <= 0 && !bucket.closed) {
@@ -3695,21 +3710,21 @@ function renderInvestTotalHint(monthlyInvestWon, count) {
 function syncMonthlyExpenseField(monthlyExpenseMan) {
   const field = dom.inputsForm?.elements?.monthlyExpense;
   if (field) {
-    field.value = String(sanitizeMoney(monthlyExpenseMan, 0));
+    field.value = String(IsfUtils.sanitizeMoney(monthlyExpenseMan, 0));
   }
 }
 
 function syncMonthlySavingsField(monthlySavingsMan) {
   const field = dom.inputsForm?.elements?.monthlySavings;
   if (field) {
-    field.value = String(sanitizeMoney(monthlySavingsMan, 0));
+    field.value = String(IsfUtils.sanitizeMoney(monthlySavingsMan, 0));
   }
 }
 
 function syncMonthlyInvestField(monthlyInvestMan) {
   const field = dom.inputsForm?.elements?.monthlyInvest;
   if (field) {
-    field.value = String(sanitizeMoney(monthlyInvestMan, 0));
+    field.value = String(IsfUtils.sanitizeMoney(monthlyInvestMan, 0));
   }
 }
 
@@ -3742,11 +3757,11 @@ function applyInputsToForm(inputs) {
 }
 
 function sanitizeInputs(raw) {
-  const monthlyIncomeFallback = sanitizeMoney(raw.monthlyIncome, getMonthlyIncomeTotalMan(DEFAULT_INPUTS.incomes));
-  const monthlyExpenseFallback = sanitizeMoney(raw.monthlyExpense, getMonthlyAllocationTotalMan(DEFAULT_EXPENSE_ITEMS));
-  const monthlySavingsFallback = sanitizeMoney(raw.monthlySavings, getMonthlyAllocationTotalMan(DEFAULT_SAVINGS_ITEMS));
-  const monthlyInvestFallback = sanitizeMoney(raw.monthlyInvest, getMonthlyAllocationTotalMan(DEFAULT_INVEST_ITEMS));
-  const annualSavingsYield = sanitizeRate(raw.annualSavingsYield, DEFAULT_INPUTS.annualSavingsYield, 20);
+  const monthlyIncomeFallback = IsfUtils.sanitizeMoney(raw.monthlyIncome, getMonthlyIncomeTotalMan(DEFAULT_INPUTS.incomes));
+  const monthlyExpenseFallback = IsfUtils.sanitizeMoney(raw.monthlyExpense, getMonthlyAllocationTotalMan(DEFAULT_EXPENSE_ITEMS));
+  const monthlySavingsFallback = IsfUtils.sanitizeMoney(raw.monthlySavings, getMonthlyAllocationTotalMan(DEFAULT_SAVINGS_ITEMS));
+  const monthlyInvestFallback = IsfUtils.sanitizeMoney(raw.monthlyInvest, getMonthlyAllocationTotalMan(DEFAULT_INVEST_ITEMS));
+  const annualSavingsYield = IsfUtils.sanitizeRate(raw.annualSavingsYield, DEFAULT_INPUTS.annualSavingsYield, 20);
   const expenseItems = sanitizeExpenseItems(raw.expenseItems, monthlyExpenseFallback);
   const savingsItems = sanitizeSavingsItems(raw.savingsItems, monthlySavingsFallback, annualSavingsYield);
   const investItems = sanitizeInvestItems(raw.investItems, monthlyInvestFallback);
@@ -3759,16 +3774,16 @@ function sanitizeInputs(raw) {
     monthlyExpense: getMonthlyAllocationTotalMan(expenseItems),
     monthlySavings: getMonthlyAllocationTotalMan(savingsItems),
     monthlyInvest: getMonthlyAllocationTotalMan(investItems),
-    monthlyDebtPayment: sanitizeMoney(raw.monthlyDebtPayment, DEFAULT_INPUTS.monthlyDebtPayment),
-    startCash: sanitizeMoney(raw.startCash, DEFAULT_INPUTS.startCash),
-    startSavings: sanitizeMoney(raw.startSavings, DEFAULT_INPUTS.startSavings),
-    startInvest: sanitizeMoney(raw.startInvest, DEFAULT_INPUTS.startInvest),
-    startDebt: sanitizeMoney(raw.startDebt, DEFAULT_INPUTS.startDebt),
-    annualIncomeGrowth: sanitizeRate(raw.annualIncomeGrowth, DEFAULT_INPUTS.annualIncomeGrowth, 30),
-    annualExpenseGrowth: sanitizeRate(raw.annualExpenseGrowth, DEFAULT_INPUTS.annualExpenseGrowth, 30),
+    monthlyDebtPayment: IsfUtils.sanitizeMoney(raw.monthlyDebtPayment, DEFAULT_INPUTS.monthlyDebtPayment),
+    startCash: IsfUtils.sanitizeMoney(raw.startCash, DEFAULT_INPUTS.startCash),
+    startSavings: IsfUtils.sanitizeMoney(raw.startSavings, DEFAULT_INPUTS.startSavings),
+    startInvest: IsfUtils.sanitizeMoney(raw.startInvest, DEFAULT_INPUTS.startInvest),
+    startDebt: IsfUtils.sanitizeMoney(raw.startDebt, DEFAULT_INPUTS.startDebt),
+    annualIncomeGrowth: IsfUtils.sanitizeRate(raw.annualIncomeGrowth, DEFAULT_INPUTS.annualIncomeGrowth, 30),
+    annualExpenseGrowth: IsfUtils.sanitizeRate(raw.annualExpenseGrowth, DEFAULT_INPUTS.annualExpenseGrowth, 30),
     annualSavingsYield,
-    annualInvestReturn: sanitizeRate(raw.annualInvestReturn, DEFAULT_INPUTS.annualInvestReturn, 30),
-    annualDebtInterest: sanitizeRate(raw.annualDebtInterest, DEFAULT_INPUTS.annualDebtInterest, 30),
+    annualInvestReturn: IsfUtils.sanitizeRate(raw.annualInvestReturn, DEFAULT_INPUTS.annualInvestReturn, 30),
+    annualDebtInterest: IsfUtils.sanitizeRate(raw.annualDebtInterest, DEFAULT_INPUTS.annualDebtInterest, 30),
     horizonYears: sanitizeInteger(raw.horizonYears, DEFAULT_INPUTS.horizonYears, 1, 40),
   };
 }
@@ -3782,7 +3797,7 @@ function sanitizeIncomeItems(items, fallbackAmount) {
     .map((item, index) => {
       const safeItem = item && typeof item === "object" ? item : {};
       const safeName = normalizeIncomeName(safeItem.name, index);
-      const safeAmount = sanitizeMoney(safeItem.amount, 0);
+      const safeAmount = IsfUtils.sanitizeMoney(safeItem.amount, 0);
       const safeId = typeof safeItem.id === "string" && safeItem.id.trim()
         ? safeItem.id.trim()
         : createIncomeId();
@@ -3818,7 +3833,7 @@ function createIncomeItem({ id, name, amount } = {}) {
   return {
     id: typeof id === "string" && id.trim() ? id.trim() : createIncomeId(),
     name: normalizeIncomeName(name, 0),
-    amount: sanitizeMoney(amount, 0),
+    amount: IsfUtils.sanitizeMoney(amount, 0),
   };
 }
 
@@ -3826,7 +3841,7 @@ function getMonthlyIncomeTotalMan(incomes) {
   if (!Array.isArray(incomes)) {
     return 0;
   }
-  return incomes.reduce((sum, income) => sum + sanitizeMoney(income?.amount, 0), 0);
+  return incomes.reduce((sum, income) => sum + IsfUtils.sanitizeMoney(income?.amount, 0), 0);
 }
 
 function sanitizeExpenseItems(items, fallbackAmount) {
@@ -3834,8 +3849,8 @@ function sanitizeExpenseItems(items, fallbackAmount) {
 }
 
 function sanitizeSavingsAnnualRate(value, fallbackRate = DEFAULT_INPUTS.annualSavingsYield) {
-  const safeFallback = sanitizeRate(fallbackRate, DEFAULT_INPUTS.annualSavingsYield, 20);
-  return sanitizeRate(value, safeFallback, 20);
+  const safeFallback = IsfUtils.sanitizeRate(fallbackRate, DEFAULT_INPUTS.annualSavingsYield, 20);
+  return IsfUtils.sanitizeRate(value, safeFallback, 20);
 }
 
 function parseSavingsAnnualRateInput(value, fallbackRate = DEFAULT_INPUTS.annualSavingsYield) {
@@ -3932,7 +3947,7 @@ function sanitizeAllocationItems(
       const normalizedItem = {
         id: safeId,
         name: normalizeAllocationName(item.name, label, index),
-        amount: sanitizeMoney(item.amount, 0),
+        amount: IsfUtils.sanitizeMoney(item.amount, 0),
       };
       const normalizedGroup = normalizeAllocationGroupName(item.group);
       if (normalizedGroup) {
@@ -4041,7 +4056,7 @@ function buildAllocationMetaText(item, options = {}) {
 }
 
 function scaleDefaultAllocationItemsToTotal(defaultItems, totalAmount) {
-  const safeTotal = sanitizeMoney(totalAmount, getMonthlyAllocationTotalMan(defaultItems));
+  const safeTotal = IsfUtils.sanitizeMoney(totalAmount, getMonthlyAllocationTotalMan(defaultItems));
   const baseTotal = getMonthlyAllocationTotalMan(defaultItems);
 
   if (baseTotal <= 0) {
@@ -4055,7 +4070,7 @@ function scaleDefaultAllocationItemsToTotal(defaultItems, totalAmount) {
       ...safeItem,
       id: safeItem.id,
       name: safeItem.name,
-      amount: sanitizeMoney(safeItem.amount * factor, 0),
+      amount: IsfUtils.sanitizeMoney(safeItem.amount * factor, 0),
     };
   });
 
@@ -4071,24 +4086,10 @@ function getMonthlyAllocationTotalMan(items) {
   if (!Array.isArray(items)) {
     return 0;
   }
-  return items.reduce((sum, item) => sum + sanitizeMoney(item?.amount, 0), 0);
+  return items.reduce((sum, item) => sum + IsfUtils.sanitizeMoney(item?.amount, 0), 0);
 }
 
-function sanitizeMoney(value, fallback) {
-  const number = Number(value);
-  if (!Number.isFinite(number)) {
-    return fallback;
-  }
-  return Math.max(0, Math.round(number));
-}
 
-function sanitizeRate(value, fallback, max) {
-  const number = Number(value);
-  if (!Number.isFinite(number)) {
-    return fallback;
-  }
-  return roundTo(Math.min(Math.max(number, 0), max), 1);
-}
 
 function sanitizeInteger(value, fallback, min, max) {
   const number = Number(value);
@@ -4098,9 +4099,6 @@ function sanitizeInteger(value, fallback, min, max) {
   return Math.min(max, Math.max(min, Math.round(number)));
 }
 
-function toWon(manValue) {
-  return Number(manValue) * MONEY_UNIT;
-}
 
 function toMonthlyFactor(annualPercent) {
   const annualRate = Number(annualPercent) / 100;
@@ -4250,386 +4248,87 @@ function hideSankeyTooltip() {
 }
 
 function resolveInitialInputs() {
-  const sid = getShareIdFromUrl();
-  const hashInputs = loadInputsFromHash();
+  const sid = IsfShare.getShareIdFromUrl();
+  const hashInputs = IsfShare.decodePayloadFromHash(new URLSearchParams(window.location.hash.replace(/^#/, "")).get(IsfShare.HASH_STATE_PARAM), SHARE_STATE_KEY);
   if (hashInputs) {
     return sanitizeInputs({ ...DEFAULT_INPUTS, ...hashInputs });
   }
-  if (sid && detectViewMode()) {
+  if (sid && IsfShare.detectViewMode()) {
     return sanitizeInputs({ ...DEFAULT_INPUTS });
   }
   return sanitizeInputs({ ...DEFAULT_INPUTS, ...loadPersistedInputs() });
 }
 
-function buildStateEnvelope(inputs) {
-  return {
-    app: SHARE_STATE_KEY,
-    schemaVersion: SHARE_STATE_SCHEMA,
-    exportedAt: new Date().toISOString(),
-    data: sanitizeInputs(cloneInputs(inputs)),
-  };
-}
 
-function parseStateEnvelope(parsed) {
-  if (!parsed || typeof parsed !== "object") {
-    return null;
-  }
 
-  if (Object.prototype.hasOwnProperty.call(parsed, "data")) {
-    const app = typeof parsed.app === "string" ? parsed.app.trim() : "";
-    if (app && app !== SHARE_STATE_KEY) {
-      return null;
-    }
-    if (!parsed.data || typeof parsed.data !== "object") {
-      return null;
-    }
-    return sanitizeInputs({ ...DEFAULT_INPUTS, ...parsed.data });
-  }
 
-  return sanitizeInputs({ ...DEFAULT_INPUTS, ...parsed });
-}
 
-function encodeBase64Url(text) {
-  const safeText = String(text ?? "");
-  const bytes = new TextEncoder().encode(safeText);
-  let binary = "";
-  bytes.forEach((byte) => {
-    binary += String.fromCharCode(byte);
-  });
-  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
-}
 
-function decodeBase64Url(value) {
-  const normalized = String(value ?? "").replace(/-/g, "+").replace(/_/g, "/");
-  const padded = normalized + "=".repeat((4 - (normalized.length % 4)) % 4);
-  const binary = atob(padded);
-  const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
-  return new TextDecoder().decode(bytes);
-}
 
-const LZ_URI_SAFE_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-$";
-const LZ_URI_SAFE_REVERSE_MAP = new Map(
-  Array.from(LZ_URI_SAFE_ALPHABET).map((char, index) => [char, index]),
-);
 
-function lzCompressToUriComponent(input) {
-  if (input === null || input === undefined) {
-    return "";
-  }
-  return lzCompress(String(input), 6, (value) => LZ_URI_SAFE_ALPHABET.charAt(value));
-}
 
-function lzDecompressFromUriComponent(input) {
-  if (input === null || input === undefined) {
-    return "";
-  }
-  const normalized = String(input).replace(/ /g, "+");
-  if (!normalized) {
-    return "";
-  }
-  return lzDecompress(normalized.length, 32, (index) => {
-    const char = normalized.charAt(index);
-    return LZ_URI_SAFE_REVERSE_MAP.has(char) ? LZ_URI_SAFE_REVERSE_MAP.get(char) : 0;
-  });
-}
 
-function lzCompress(uncompressed, bitsPerChar, getCharFromInt) {
-  if (uncompressed === null || uncompressed === undefined || uncompressed === "") {
-    return "";
-  }
 
-  const dictionary = Object.create(null);
-  const dictionaryToCreate = Object.create(null);
-  let c = "";
-  let wc = "";
-  let w = "";
-  let enlargeIn = 2;
-  let dictSize = 3;
-  let numBits = 2;
-  const data = [];
-  let dataVal = 0;
-  let dataPosition = 0;
-
-  const pushBit = (bit) => {
-    dataVal = (dataVal << 1) | (bit & 1);
-    if (dataPosition === bitsPerChar - 1) {
-      dataPosition = 0;
-      data.push(getCharFromInt(dataVal));
-      dataVal = 0;
-      return;
-    }
-    dataPosition += 1;
-  };
-
-  const pushBits = (value, bitCount) => {
-    let localValue = value;
-    for (let index = 0; index < bitCount; index += 1) {
-      pushBit(localValue & 1);
-      localValue >>= 1;
-    }
-  };
-
-  for (let index = 0; index < uncompressed.length; index += 1) {
-    c = uncompressed.charAt(index);
-    if (!Object.prototype.hasOwnProperty.call(dictionary, c)) {
-      dictionary[c] = dictSize;
-      dictSize += 1;
-      dictionaryToCreate[c] = true;
-    }
-
-    wc = `${w}${c}`;
-    if (Object.prototype.hasOwnProperty.call(dictionary, wc)) {
-      w = wc;
-      continue;
-    }
-
-    if (Object.prototype.hasOwnProperty.call(dictionaryToCreate, w)) {
-      if (w.charCodeAt(0) < 256) {
-        pushBits(0, numBits);
-        pushBits(w.charCodeAt(0), 8);
-      } else {
-        pushBits(1, numBits);
-        pushBits(w.charCodeAt(0), 16);
-      }
-      enlargeIn -= 1;
-      if (enlargeIn === 0) {
-        enlargeIn = 2 ** numBits;
-        numBits += 1;
-      }
-      delete dictionaryToCreate[w];
-    } else {
-      pushBits(dictionary[w], numBits);
-    }
-
-    enlargeIn -= 1;
-    if (enlargeIn === 0) {
-      enlargeIn = 2 ** numBits;
-      numBits += 1;
-    }
-    dictionary[wc] = dictSize;
-    dictSize += 1;
-    w = String(c);
-  }
-
-  if (w !== "") {
-    if (Object.prototype.hasOwnProperty.call(dictionaryToCreate, w)) {
-      if (w.charCodeAt(0) < 256) {
-        pushBits(0, numBits);
-        pushBits(w.charCodeAt(0), 8);
-      } else {
-        pushBits(1, numBits);
-        pushBits(w.charCodeAt(0), 16);
-      }
-      enlargeIn -= 1;
-      if (enlargeIn === 0) {
-        enlargeIn = 2 ** numBits;
-        numBits += 1;
-      }
-      delete dictionaryToCreate[w];
-    } else {
-      pushBits(dictionary[w], numBits);
-    }
-
-    enlargeIn -= 1;
-    if (enlargeIn === 0) {
-      enlargeIn = 2 ** numBits;
-      numBits += 1;
-    }
-  }
-
-  pushBits(2, numBits);
-
-  while (true) {
-    dataVal <<= 1;
-    if (dataPosition === bitsPerChar - 1) {
-      data.push(getCharFromInt(dataVal));
-      break;
-    }
-    dataPosition += 1;
-  }
-  return data.join("");
-}
-
-function lzDecompress(length, resetValue, getNextValue) {
-  const dictionary = [];
-  const result = [];
-  const data = {
-    val: getNextValue(0),
-    position: resetValue,
-    index: 1,
-  };
-  let enlargeIn = 4;
-  let dictSize = 4;
-  let numBits = 3;
-  let entry = "";
-  let w = "";
-  let bits = 0;
-  let c;
-
-  const readBits = (bitCount) => {
-    let localBits = 0;
-    let maxpower = 2 ** bitCount;
-    let power = 1;
-    while (power !== maxpower) {
-      const resb = data.val & data.position;
-      data.position >>= 1;
-      if (data.position === 0) {
-        data.position = resetValue;
-        data.val = getNextValue(data.index);
-        data.index += 1;
-      }
-      localBits |= (resb > 0 ? 1 : 0) * power;
-      power <<= 1;
-    }
-    return localBits;
-  };
-
-  for (let index = 0; index < 3; index += 1) {
-    dictionary[index] = index;
-  }
-
-  bits = readBits(2);
-  switch (bits) {
-    case 0:
-      c = String.fromCharCode(readBits(8));
-      break;
-    case 1:
-      c = String.fromCharCode(readBits(16));
-      break;
-    case 2:
-      return "";
-    default:
-      c = "";
-  }
-
-  dictionary[3] = c;
-  w = c;
-  result.push(c);
-
-  while (true) {
-    if (data.index > length) {
-      return "";
-    }
-    const code = readBits(numBits);
-    let currentCode = code;
-
-    if (currentCode === 0) {
-      dictionary[dictSize] = String.fromCharCode(readBits(8));
-      currentCode = dictSize;
-      dictSize += 1;
-      enlargeIn -= 1;
-    } else if (currentCode === 1) {
-      dictionary[dictSize] = String.fromCharCode(readBits(16));
-      currentCode = dictSize;
-      dictSize += 1;
-      enlargeIn -= 1;
-    } else if (currentCode === 2) {
-      return result.join("");
-    }
-
-    if (enlargeIn === 0) {
-      enlargeIn = 2 ** numBits;
-      numBits += 1;
-    }
-
-    if (dictionary[currentCode]) {
-      entry = dictionary[currentCode];
-    } else if (currentCode === dictSize) {
-      entry = w + w.charAt(0);
-    } else {
-      return null;
-    }
-
-    result.push(entry);
-    dictionary[dictSize] = w + entry.charAt(0);
-    dictSize += 1;
-    enlargeIn -= 1;
-    w = entry;
-
-    if (enlargeIn === 0) {
-      enlargeIn = 2 ** numBits;
-      numBits += 1;
-    }
-  }
-}
-
-function encodeInputsForHash(inputs) {
-  try {
-    const serialized = JSON.stringify(buildStateEnvelope(inputs));
-    const compressed = lzCompressToUriComponent(serialized);
-    const compressedPayload = `${HASH_COMPRESSED_PREFIX}${compressed}`;
-    if (compressed && compressedPayload.length <= HASH_STATE_MAX_LENGTH) {
-      return compressedPayload;
-    }
-    const legacyEncoded = encodeBase64Url(serialized);
-    if (!legacyEncoded || legacyEncoded.length > HASH_STATE_MAX_LENGTH) {
-      return null;
-    }
-    return legacyEncoded;
-  } catch (_error) {
-    return null;
-  }
-}
-
-function loadInputsFromHash() {
-  try {
-    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
-    const encoded = hashParams.get(HASH_STATE_PARAM);
-    if (!encoded) {
-      return null;
-    }
-    const decoded = encoded.startsWith(HASH_COMPRESSED_PREFIX)
-      ? lzDecompressFromUriComponent(encoded.slice(HASH_COMPRESSED_PREFIX.length))
-      : decodeBase64Url(encoded);
-    if (!decoded) {
-      return null;
-    }
-    const parsed = JSON.parse(decoded);
-    return parseStateEnvelope(parsed);
-  } catch (_error) {
-    return null;
-  }
-}
-
-function syncHashStateIfPresent(inputs) {
-  try {
-    const params = new URLSearchParams(window.location.hash.replace(/^#/, ""));
-    if (!params.get(HASH_STATE_PARAM)) {
-      return true;
-    }
-  } catch (_error) {
-    return false;
-  }
-  return syncHashState(inputs);
-}
-
-function syncHashState(inputs) {
-  const encoded = encodeInputsForHash(inputs);
-  if (!encoded) {
-    return false;
-  }
-
-  const currentParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
-  const current = currentParams.get(HASH_STATE_PARAM);
-  if (current === encoded) {
-    return true;
-  }
-
-  currentParams.set(HASH_STATE_PARAM, encoded);
-  const nextUrl = `${window.location.pathname}${window.location.search}#${currentParams.toString()}`;
-  history.replaceState(null, "", nextUrl);
-  return true;
-}
 
 function persistPrimaryState(inputs, options = {}) {
   const safeOptions = options && typeof options === "object" ? options : {};
   if (!state.isViewMode) {
     persistInputs(inputs);
     if (!safeOptions.skipAutoBackup) {
-      void maybeCreateAutoBackupIfDue({ inputs, reason: safeOptions.reason || "persist" });
+      (async () => {
+        const res = await IsfBackupManager.maybeCreateAutoBackupIfDue(state.backupEntries, inputs, SHARE_STATE_KEY);
+        if (res.created) {
+          state.backupEntries = res.nextEntries;
+          syncBackupUi();
+        }
+      })();
     }
+    void persistStep1BridgeSnapshot(inputs);
   }
-  return syncHashStateIfPresent(inputs);
+  return true;
+}
+
+function getHubStorage() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  const hub = window.IsfHubStorage;
+  if (!hub || typeof hub !== "object") {
+    return null;
+  }
+  if (typeof hub.saveStep1Snapshot !== "function" || typeof hub.saveBridgeStep1ToStep2 !== "function") {
+    return null;
+  }
+  return hub;
+}
+
+function buildStep1BridgePayload(inputs) {
+  const safeInputs = sanitizeInputs(cloneInputs(inputs));
+  return {
+    monthlyInvestCapacity: IsfUtils.toWon(IsfUtils.sanitizeMoney(safeInputs.monthlyInvest, 0)),
+    currentCash: IsfUtils.toWon(IsfUtils.sanitizeMoney(safeInputs.startCash, 0)),
+    currentInvest: IsfUtils.toWon(IsfUtils.sanitizeMoney(safeInputs.startInvest, 0)),
+    currentSavings: IsfUtils.toWon(IsfUtils.sanitizeMoney(safeInputs.startSavings, 0)),
+    timestamp: new Date().toISOString(),
+  };
+}
+
+async function persistStep1BridgeSnapshot(inputs) {
+  const hub = getHubStorage();
+  if (!hub || state.isViewMode) {
+    return;
+  }
+  try {
+    const safeInputs = sanitizeInputs(cloneInputs(inputs));
+    const snapshot = await hub.saveStep1Snapshot(safeInputs);
+    if (!snapshot || !snapshot.id) {
+      return;
+    }
+    const payload = buildStep1BridgePayload(safeInputs);
+    await hub.saveBridgeStep1ToStep2(snapshot.id, payload);
+  } catch (_error) {
+    // Ignore bridge snapshot failures to keep Step1 flow functional.
+  }
 }
 
 function normalizeShareId(value) {
@@ -4643,14 +4342,6 @@ function normalizeShareId(value) {
   return text;
 }
 
-function getShareIdFromUrl() {
-  try {
-    const params = new URLSearchParams(window.location.search);
-    return normalizeShareId(params.get(SHARE_ID_QUERY_PARAM));
-  } catch (_error) {
-    return "";
-  }
-}
 
 function createShareId(length = 12) {
   const safeLength = Math.max(8, Math.min(48, Number.parseInt(String(length), 10) || 12));
@@ -4674,23 +4365,23 @@ async function buildShareLink(inputs, options = {}) {
   const safeOptions = options && typeof options === "object" ? options : {};
   const searchParams = new URLSearchParams(window.location.search);
   if (safeOptions.viewMode) {
-    searchParams.set(VIEW_MODE_QUERY_PARAM, VIEW_MODE_QUERY_VALUE);
+    searchParams.set(IsfShare.VIEW_MODE_QUERY_PARAM, IsfShare.VIEW_MODE_QUERY_VALUE);
   } else {
-    searchParams.delete(VIEW_MODE_QUERY_PARAM);
+    searchParams.delete(IsfShare.VIEW_MODE_QUERY_PARAM);
   }
 
   let sid = "";
   sid = await saveShareSnapshot(inputs);
   if (sid) {
-    searchParams.set(SHARE_ID_QUERY_PARAM, sid);
+    searchParams.set(IsfShare.SHARE_ID_QUERY_PARAM, sid);
   } else {
-    searchParams.delete(SHARE_ID_QUERY_PARAM);
+    searchParams.delete(IsfShare.SHARE_ID_QUERY_PARAM);
   }
 
   const shouldUseHashFallback = !sid || !canResolveShareSidAcrossDevices();
   const params = new URLSearchParams(window.location.hash.replace(/^#/, ""));
   if (shouldUseHashFallback) {
-    const encoded = encodeInputsForHash(inputs);
+    const encoded = IsfShare.encodePayloadForHash(IsfShare.buildStateEnvelope(SHARE_STATE_KEY, SHARE_STATE_SCHEMA, inputs));
     if (!encoded) {
       return "";
     }
@@ -4703,29 +4394,7 @@ async function buildShareLink(inputs, options = {}) {
   return `${window.location.origin}${window.location.pathname}${searchText ? `?${searchText}` : ""}${hashText ? `#${hashText}` : ""}`;
 }
 
-function exportInputsAsJson(inputs) {
-  const blob = new Blob([JSON.stringify(buildStateEnvelope(inputs), null, 2)], {
-    type: "application/json;charset=utf-8",
-  });
-  const url = URL.createObjectURL(blob);
-  const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = `my-household-flow-backup-${datePart}.json`;
-  document.body.appendChild(anchor);
-  anchor.click();
-  anchor.remove();
-  URL.revokeObjectURL(url);
-}
 
-function parseImportedInputs(text) {
-  const parsed = JSON.parse(String(text ?? ""));
-  const inputs = parseStateEnvelope(parsed);
-  if (!inputs) {
-    throw new Error("invalid-json");
-  }
-  return inputs;
-}
 
 function cloneInputs(inputs) {
   if (typeof structuredClone === "function") {
@@ -4758,269 +4427,28 @@ function loadPersistedInputs() {
   }
 }
 
-function detectViewMode() {
-  try {
-    const params = new URLSearchParams(window.location.search);
-    const raw = String(params.get(VIEW_MODE_QUERY_PARAM) || "").trim().toLowerCase();
-    return raw === VIEW_MODE_QUERY_VALUE || raw === "true" || raw === "view";
-  } catch (_error) {
-    return false;
-  }
-}
 
 function isIndexedDbAvailable() {
   return typeof window !== "undefined" && typeof window.indexedDB !== "undefined";
 }
 
-function shouldUseServiceWorker() {
-  if (typeof window === "undefined") {
-    return false;
-  }
-  if (!("serviceWorker" in navigator)) {
-    return false;
-  }
-  if (window.location.protocol === "file:") {
-    return false;
-  }
-  if (window.location.protocol === "https:") {
-    return true;
-  }
-  const host = String(window.location.hostname || "").trim();
-  return host === "localhost" || host === "127.0.0.1";
-}
 
-function isStandaloneDisplayMode() {
-  if (typeof window === "undefined") {
-    return false;
-  }
-  if (typeof window.matchMedia === "function" && window.matchMedia("(display-mode: standalone)").matches) {
-    return true;
-  }
-  return Boolean(window.navigator.standalone);
-}
 
-function bindPwaLifecycleFeedback() {
-  if (typeof window === "undefined") {
-    return;
-  }
-  window.addEventListener("appinstalled", () => {
-    showApplyFeedback(`웹앱 설치가 완료되었습니다. v${APP_VERSION}`);
-  });
-}
 
-function parseSemver(version) {
-  const safe = String(version ?? "").trim();
-  if (!safe) {
-    return null;
-  }
-  const parts = safe.split(".").map((token) => Number.parseInt(token, 10));
-  if (parts.length !== 3 || parts.some((part) => !Number.isFinite(part) || part < 0)) {
-    return null;
-  }
-  return parts;
-}
 
-function compareSemver(left, right) {
-  const a = parseSemver(left);
-  const b = parseSemver(right);
-  if (!a || !b) {
-    return 0;
-  }
-  for (let index = 0; index < 3; index += 1) {
-    if (a[index] > b[index]) {
-      return 1;
-    }
-    if (a[index] < b[index]) {
-      return -1;
-    }
-  }
-  return 0;
-}
 
-function syncVersionCheckTriggerVisibility() {
-  if (!(dom.checkLatestVersion instanceof HTMLButtonElement)) {
-    return;
-  }
-  dom.checkLatestVersion.hidden = !shouldCheckRemotePwaVersion();
-}
 
-function shouldCheckRemotePwaVersion() {
-  if (typeof window === "undefined" || typeof document === "undefined") {
-    return false;
-  }
-  if (state.isViewMode) {
-    return false;
-  }
-  if (!isStandaloneDisplayMode() || !mobileLayoutMediaQuery.matches) {
-    return false;
-  }
-  return window.location.protocol === "https:";
-}
 
-function getRemotePwaVersionLastCheckedAt() {
-  try {
-    const raw = localStorage.getItem(PWA_REMOTE_VERSION_LAST_CHECK_KEY);
-    const parsed = Number.parseInt(String(raw ?? ""), 10);
-    return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
-  } catch (_error) {
-    return 0;
-  }
-}
 
-function setRemotePwaVersionLastCheckedAt(value) {
-  const safeValue = Number.parseInt(String(value ?? 0), 10);
-  if (!Number.isFinite(safeValue) || safeValue <= 0) {
-    return;
-  }
-  try {
-    localStorage.setItem(PWA_REMOTE_VERSION_LAST_CHECK_KEY, String(safeValue));
-  } catch (_error) {
-    // Ignore storage errors to keep UI functional.
-  }
-}
 
-async function maybeTriggerServiceWorkerUpdateCheck() {
-  if (!shouldUseServiceWorker()) {
-    return;
-  }
-  try {
-    const registration = await navigator.serviceWorker.getRegistration("./");
-    if (registration) {
-      await registration.update();
-    }
-  } catch (_error) {
-    // Ignore update check errors to keep UI functional.
-  }
-}
 
-async function maybeCheckRemotePwaVersion(options = {}) {
-  const safeOptions = options && typeof options === "object" ? options : {};
-  const force = safeOptions.force === true;
-  const showUpToDateFeedback = safeOptions.showUpToDateFeedback === true;
-  if (!shouldCheckRemotePwaVersion()) {
-    if (showUpToDateFeedback) {
-      showApplyFeedback("현재 환경에서는 버전 확인을 지원하지 않습니다.");
-    }
-    return;
-  }
-  const now = Date.now();
-  const lastCheckedAt = Math.max(state.pwaVersionLastCheckedAt, getRemotePwaVersionLastCheckedAt());
-  if (!force && now - lastCheckedAt < PWA_REMOTE_VERSION_CHECK_INTERVAL_MS) {
-    return;
-  }
-  state.pwaVersionLastCheckedAt = now;
-  setRemotePwaVersionLastCheckedAt(now);
 
-  try {
-    await maybeTriggerServiceWorkerUpdateCheck();
-    const response = await fetch(`./manifest.webmanifest?vchk=${now}`, {
-      cache: "no-store",
-    });
-    if (!response.ok) {
-      return;
-    }
-    const manifest = await response.json();
-    const remoteVersion = String(manifest?.version || "").trim();
-    if (!remoteVersion || compareSemver(remoteVersion, APP_VERSION) <= 0) {
-      if (showUpToDateFeedback) {
-        showApplyFeedback(`최신 버전입니다. v${APP_VERSION}`);
-      }
-      return;
-    }
 
-    try {
-      const noticedVersion = localStorage.getItem(PWA_REMOTE_VERSION_NOTICE_KEY);
-      if (noticedVersion === remoteVersion) {
-        return;
-      }
-      localStorage.setItem(PWA_REMOTE_VERSION_NOTICE_KEY, remoteVersion);
-    } catch (_error) {
-      // Ignore storage errors to keep UI functional.
-    }
 
-    showApplyFeedback(`새 버전 v${remoteVersion} 감지 · 앱을 다시 열면 반영됩니다.`);
-  } catch (_error) {
-    // Ignore manifest check errors to keep UI functional.
-    if (showUpToDateFeedback) {
-      showApplyFeedback("버전 확인에 실패했습니다. 잠시 후 다시 시도하세요.");
-    }
-  }
-}
 
-function bindPwaVersionAwareness() {
-  syncVersionCheckTriggerVisibility();
-  if (!shouldUseServiceWorker() || typeof document === "undefined") {
-    return;
-  }
-
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState !== "visible") {
-      return;
-    }
-    void maybeCheckRemotePwaVersion();
-  });
-
-  window.setInterval(() => {
-    void maybeCheckRemotePwaVersion();
-  }, PWA_REMOTE_VERSION_CHECK_INTERVAL_MS);
-}
-
-function maybeShowStandaloneLaunchFeedback() {
-  if (state.isViewMode || !isStandaloneDisplayMode()) {
-    return;
-  }
-  try {
-    const notifiedVersion = localStorage.getItem(PWA_STANDALONE_NOTICE_KEY);
-    if (notifiedVersion === APP_VERSION) {
-      return;
-    }
-    localStorage.setItem(PWA_STANDALONE_NOTICE_KEY, APP_VERSION);
-  } catch (_error) {
-    // Ignore storage errors to keep UI functional.
-  }
-  showApplyFeedback(`앱 모드로 실행 중입니다. v${APP_VERSION}`);
-}
-
-function bindServiceWorkerUpdateFeedback(registration) {
-  if (!registration || typeof registration !== "object") {
-    return;
-  }
-  const notifyUpdateReady = () => {
-    showApplyFeedback(`업데이트가 준비되었습니다. 새로고침하면 v${APP_VERSION}이 적용됩니다.`);
-  };
-
-  if (registration.waiting) {
-    notifyUpdateReady();
-  }
-
-  registration.addEventListener("updatefound", () => {
-    const installingWorker = registration.installing;
-    if (!installingWorker) {
-      return;
-    }
-    installingWorker.addEventListener("statechange", () => {
-      if (installingWorker.state === "installed" && navigator.serviceWorker.controller) {
-        notifyUpdateReady();
-      }
-    });
-  });
-}
-
-function registerServiceWorker() {
-  if (!shouldUseServiceWorker()) {
-    return;
-  }
-  navigator.serviceWorker.register("./sw.js")
-    .then((registration) => {
-      bindServiceWorkerUpdateFeedback(registration);
-    })
-    .catch(() => {
-      // Ignore registration errors to keep UI functional.
-    });
-}
 
 function getShareDb() {
-  if (!isIndexedDbAvailable()) {
+  if (!IsfBackupManager.isIndexedDbAvailable()) {
     return Promise.reject(new Error("indexeddb-not-supported"));
   }
   if (shareDbPromise) {
@@ -5061,8 +4489,22 @@ function getShareDb() {
   return shareDbPromise;
 }
 
+function idbRequestToPromise(request) {
+  return new Promise((resolve, reject) => {
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+function idbTransactionDone(transaction) {
+  return new Promise((resolve, reject) => {
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error);
+    transaction.onabort = () => reject(new Error("Transaction aborted"));
+  });
+}
+
 async function saveShareSnapshot(inputs) {
-  if (!isIndexedDbAvailable()) {
+  if (!IsfBackupManager.isIndexedDbAvailable()) {
     return "";
   }
   try {
@@ -5085,7 +4527,7 @@ async function saveShareSnapshot(inputs) {
 
 async function loadShareSnapshotById(sid) {
   const safeSid = normalizeShareId(sid);
-  if (!safeSid || !isIndexedDbAvailable()) {
+  if (!safeSid || !IsfBackupManager.isIndexedDbAvailable()) {
     return null;
   }
   try {
@@ -5103,22 +4545,24 @@ async function loadShareSnapshotById(sid) {
 }
 
 async function initializeInputsFromShareId() {
-  const sid = getShareIdFromUrl();
-  if (!sid) {
-    return;
+  const sid = IsfShare.getShareIdFromUrl();
+  const hasHash = window.location.hash.includes(HASH_STATE_PARAM);
+
+  if (sid) {
+    const sidInputs = await loadShareSnapshotById(sid);
+    if (sidInputs && !areInputsEqual(sidInputs, state.inputs)) {
+      commitImmediateInputs(sidInputs, { reason: "share-sid-load" });
+      IsfFeedback.showFeedback(dom.applyFeedback, "공유 포인터(sid) 데이터를 불러왔습니다.");
+    }
   }
-  const sidInputs = await loadShareSnapshotById(sid);
-  if (!sidInputs || areInputsEqual(sidInputs, state.inputs)) {
-    return;
+
+  if (!state.isViewMode && (sid || hasHash)) {
+    history.replaceState(null, "", window.location.pathname);
   }
-  const hashSynced = commitImmediateInputs(sidInputs, { reason: "share-sid-load" });
-  showApplyFeedback(hashSynced
-    ? "공유 포인터(sid) 데이터를 불러왔습니다."
-    : "공유 포인터 데이터를 불러왔습니다. 해시 저장은 생략되었습니다.");
 }
 
 function initializeBackupStore() {
-  if (!isIndexedDbAvailable()) {
+  if (!IsfBackupManager.isIndexedDbAvailable()) {
     state.backupStoreError = true;
     state.backupStoreReady = false;
     syncBackupUi();
@@ -5126,7 +4570,7 @@ function initializeBackupStore() {
   }
 
   void (async () => {
-    const loadedEntries = await loadBackupEntries();
+    const loadedEntries = await IsfBackupManager.loadBackupEntriesFromDb(SHARE_STATE_KEY);
     if (loadedEntries === null) {
       state.backupStoreError = true;
       state.backupStoreReady = false;
@@ -5139,230 +4583,26 @@ function initializeBackupStore() {
     state.backupStoreReady = true;
     syncBackupUi();
 
-    await maybeCreateAutoBackupIfDue({ reason: "startup" });
+    const res = await IsfBackupManager.maybeCreateAutoBackupIfDue(state.backupEntries, state.inputs, SHARE_STATE_KEY);
+    if(res.created) {
+      state.backupEntries = res.nextEntries;
+      syncBackupUi();
+    }
   })();
 }
 
-function getBackupDb() {
-  if (!isIndexedDbAvailable()) {
-    return Promise.reject(new Error("indexeddb-not-supported"));
-  }
-  if (backupDbPromise) {
-    return backupDbPromise;
-  }
 
-  backupDbPromise = new Promise((resolve, reject) => {
-    const request = window.indexedDB.open(BACKUP_DB_NAME, BACKUP_DB_VERSION);
 
-    request.onupgradeneeded = () => {
-      const db = request.result;
-      if (!db.objectStoreNames.contains(BACKUP_DB_STORE)) {
-        db.createObjectStore(BACKUP_DB_STORE, { keyPath: "id" });
-      }
-    };
 
-    request.onsuccess = () => {
-      const db = request.result;
-      db.onversionchange = () => {
-        db.close();
-        backupDbPromise = null;
-      };
-      resolve(db);
-    };
 
-    request.onerror = () => {
-      backupDbPromise = null;
-      reject(request.error || new Error("indexeddb-open-failed"));
-    };
 
-    request.onblocked = () => {
-      backupDbPromise = null;
-      reject(new Error("indexeddb-open-blocked"));
-    };
-  });
 
-  return backupDbPromise;
-}
 
-function idbRequestToPromise(request) {
-  return new Promise((resolve, reject) => {
-    request.onsuccess = () => {
-      resolve(request.result);
-    };
-    request.onerror = () => {
-      reject(request.error || new Error("indexeddb-request-failed"));
-    };
-  });
-}
 
-function idbTransactionDone(transaction) {
-  return new Promise((resolve, reject) => {
-    transaction.oncomplete = () => {
-      resolve();
-    };
-    transaction.onabort = () => {
-      reject(transaction.error || new Error("indexeddb-transaction-aborted"));
-    };
-    transaction.onerror = () => {
-      reject(transaction.error || new Error("indexeddb-transaction-failed"));
-    };
-  });
-}
 
-async function loadBackupEntries() {
-  const dbEntries = await loadBackupEntriesFromDb();
-  if (dbEntries === null) {
-    return null;
-  }
-  if (dbEntries.length > 0) {
-    return dbEntries;
-  }
 
-  const legacyEntries = loadLegacyBackupEntries();
-  if (legacyEntries.length === 0) {
-    return [];
-  }
 
-  const migrated = await persistBackupEntries(legacyEntries);
-  if (!migrated) {
-    return null;
-  }
 
-  clearLegacyBackupEntries();
-  return legacyEntries;
-}
-
-function loadLegacyBackupEntries() {
-  try {
-    const raw = localStorage.getItem(BACKUP_STORAGE_KEY);
-    if (!raw) {
-      return [];
-    }
-    const parsed = JSON.parse(raw);
-    const items = Array.isArray(parsed)
-      ? parsed
-      : Array.isArray(parsed?.items)
-        ? parsed.items
-        : [];
-    return normalizeBackupEntries(items);
-  } catch (_error) {
-    return [];
-  }
-}
-
-function clearLegacyBackupEntries() {
-  try {
-    localStorage.removeItem(BACKUP_STORAGE_KEY);
-  } catch (_error) {
-    // Ignore migration cleanup errors.
-  }
-}
-
-async function loadBackupEntriesFromDb() {
-  try {
-    const db = await getBackupDb();
-    const tx = db.transaction(BACKUP_DB_STORE, "readonly");
-    const done = idbTransactionDone(tx);
-    const store = tx.objectStore(BACKUP_DB_STORE);
-    const rawEntries = await idbRequestToPromise(store.getAll());
-    await done;
-    return normalizeBackupEntries(rawEntries);
-  } catch (_error) {
-    return null;
-  }
-}
-
-function normalizeBackupEntries(entries) {
-  return (Array.isArray(entries) ? entries : [])
-    .map((item) => normalizeBackupEntry(item))
-    .filter((item) => item !== null)
-    .sort((left, right) => getBackupTimestampMs(right) - getBackupTimestampMs(left))
-    .slice(0, MAX_BACKUP_ENTRIES);
-}
-
-async function persistBackupEntries(entries) {
-  const safeEntries = normalizeBackupEntries(entries).map((item) => ({
-    id: item.id,
-    type: item.type,
-    source: item.source,
-    createdAt: item.createdAt,
-    signature: item.signature,
-    data: sanitizeInputs(cloneInputs(item.data)),
-    app: SHARE_STATE_KEY,
-    schemaVersion: SHARE_STATE_SCHEMA,
-    backupSchemaVersion: BACKUP_SCHEMA_VERSION,
-  }));
-
-  try {
-    const db = await getBackupDb();
-    const tx = db.transaction(BACKUP_DB_STORE, "readwrite");
-    const done = idbTransactionDone(tx);
-    const store = tx.objectStore(BACKUP_DB_STORE);
-    store.clear();
-    safeEntries.forEach((item) => {
-      store.put(item);
-    });
-    await done;
-    return true;
-  } catch (_error) {
-    return false;
-  }
-}
-
-function normalizeBackupEntry(entry) {
-  if (!entry || typeof entry !== "object") {
-    return null;
-  }
-
-  const rawCreatedAt = typeof entry.createdAt === "string" ? entry.createdAt : "";
-  const createdMs = Date.parse(rawCreatedAt);
-  const createdAt = Number.isFinite(createdMs)
-    ? new Date(createdMs).toISOString()
-    : new Date().toISOString();
-
-  const inputs = parseStateEnvelope(entry.data);
-  if (!inputs) {
-    return null;
-  }
-
-  const id = typeof entry.id === "string" && entry.id.trim()
-    ? entry.id.trim()
-    : createBackupEntryId();
-  const type = entry.type === "manual" ? "manual" : "auto";
-  const source = entry.source === "view-save" ? "view-save" : "normal";
-  const signature = typeof entry.signature === "string" && entry.signature.trim()
-    ? entry.signature.trim()
-    : buildBackupSignature(inputs);
-
-  return {
-    id,
-    type,
-    source,
-    createdAt,
-    signature,
-    data: sanitizeInputs(cloneInputs(inputs)),
-  };
-}
-
-function createBackupEntryId() {
-  return `bkp-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-}
-
-function getBackupTimestampMs(entry) {
-  if (!entry || typeof entry !== "object") {
-    return 0;
-  }
-  const parsed = Date.parse(String(entry.createdAt || ""));
-  return Number.isFinite(parsed) ? parsed : 0;
-}
-
-function buildBackupSignature(inputs) {
-  try {
-    return JSON.stringify(buildInputSignature(inputs));
-  } catch (_error) {
-    return "";
-  }
-}
 
 function formatBackupTimestamp(dateText) {
   const parsed = Date.parse(String(dateText || ""));
@@ -5480,142 +4720,16 @@ function syncBackupUi() {
   }
 }
 
-async function createBackupEntry(inputs, options = {}) {
-  const safeOptions = options && typeof options === "object" ? options : {};
-  const safeType = safeOptions.type === "manual" ? "manual" : "auto";
-  const safeSource = safeOptions.source === "view-save" ? "view-save" : "normal";
-  const allowDuplicate = Boolean(safeOptions.allowDuplicate);
-  const replaceRecentManualWithinMs = Math.max(0, Number(safeOptions.replaceRecentManualWithinMs) || 0);
-  const promptOnRecentManualOverwrite = Boolean(safeOptions.promptOnRecentManualOverwrite);
 
-  if (!state.backupStoreReady) {
-    return { created: false, reason: "store-not-ready" };
-  }
-
-  if (safeSource === "normal" && state.isViewMode) {
-    return { created: false, reason: "view-mode" };
-  }
-
-  const safeInputs = sanitizeInputs(cloneInputs(inputs));
-  const signature = buildBackupSignature(safeInputs);
-  const entries = Array.isArray(state.backupEntries) ? state.backupEntries : [];
-
-  if (safeType === "manual" && replaceRecentManualWithinMs > 0) {
-    const latestManualEntry = entries.find((entry) => entry.type === "manual" && entry.source === safeSource);
-    if (latestManualEntry) {
-      const elapsed = Date.now() - getBackupTimestampMs(latestManualEntry);
-      if (Number.isFinite(elapsed) && elapsed >= 0 && elapsed < replaceRecentManualWithinMs) {
-        if (latestManualEntry.signature === signature) {
-          return { created: false, reason: "duplicate-recent" };
-        }
-
-        if (promptOnRecentManualOverwrite) {
-          const shouldOverwrite = window.confirm(
-            "최근 1분 이내 수동 백업이 있습니다. 기존 백업을 덮어쓸까요?",
-          );
-          if (!shouldOverwrite) {
-            return { created: false, reason: "overwrite-cancelled" };
-          }
-        }
-
-        const replacedEntry = {
-          ...latestManualEntry,
-          createdAt: new Date().toISOString(),
-          signature,
-          data: safeInputs,
-        };
-        const nextEntries = normalizeBackupEntries([
-          replacedEntry,
-          ...entries.filter((entry) => entry.id !== latestManualEntry.id),
-        ]);
-
-        if (!await persistBackupEntries(nextEntries)) {
-          state.backupStoreError = true;
-          state.backupStoreReady = false;
-          syncBackupUi();
-          return { created: false, reason: "storage-error" };
-        }
-
-        state.backupEntries = nextEntries;
-        state.backupStoreError = false;
-        state.backupStoreReady = true;
-        syncBackupUi();
-        return { created: true, entry: replacedEntry, replaced: true };
-      }
-    }
-  }
-
-  const latestEntry = Array.isArray(state.backupEntries) && state.backupEntries.length > 0
-    ? state.backupEntries[0]
-    : null;
-
-  if (!allowDuplicate && latestEntry && latestEntry.signature === signature) {
-    return { created: false, reason: "duplicate" };
-  }
-
-  const nextEntry = {
-    id: createBackupEntryId(),
-    type: safeType,
-    source: safeSource,
-    createdAt: new Date().toISOString(),
-    signature,
-    data: safeInputs,
-  };
-
-  const nextEntries = [nextEntry, ...entries].slice(0, MAX_BACKUP_ENTRIES);
-
-  if (!await persistBackupEntries(nextEntries)) {
-    state.backupStoreError = true;
-    state.backupStoreReady = false;
-    syncBackupUi();
-    return { created: false, reason: "storage-error" };
-  }
-
-  state.backupEntries = nextEntries;
-  state.backupStoreError = false;
-  state.backupStoreReady = true;
-  syncBackupUi();
-  return { created: true, entry: nextEntry };
-}
-
-async function maybeCreateAutoBackupIfDue(options = {}) {
-  if (!state.backupStoreReady) {
-    return { created: false, reason: "store-not-ready" };
-  }
-
-  if (state.isViewMode) {
-    return { created: false, reason: "view-mode" };
-  }
-
-  const safeOptions = options && typeof options === "object" ? options : {};
-  const backupInputs = safeOptions.inputs && typeof safeOptions.inputs === "object"
-    ? safeOptions.inputs
-    : state.inputs;
-
-  const latestAuto = (Array.isArray(state.backupEntries) ? state.backupEntries : [])
-    .find((entry) => entry.type === "auto");
-  if (latestAuto) {
-    const elapsed = Date.now() - getBackupTimestampMs(latestAuto);
-    if (Number.isFinite(elapsed) && elapsed < AUTO_BACKUP_INTERVAL_MS) {
-      return { created: false, reason: "interval" };
-    }
-  }
-
-  return createBackupEntry(backupInputs, {
-    type: "auto",
-    source: "normal",
-    allowDuplicate: false,
-  });
-}
 
 async function restoreSelectedBackup() {
   if (!state.backupStoreReady) {
-    showApplyFeedback("백업 저장소가 아직 준비되지 않았습니다.");
+    IsfFeedback.showFeedback(dom.applyFeedback, "백업 저장소가 아직 준비되지 않았습니다.");
     return;
   }
 
   if (state.isViewMode) {
-    showApplyFeedback("보기 모드에서는 복원을 사용할 수 없습니다. 로컬 저장 후 일반 모드에서 복원하세요.");
+    IsfFeedback.showFeedback(dom.applyFeedback, "보기 모드에서는 복원을 사용할 수 없습니다. 로컬 저장 후 일반 모드에서 복원하세요.");
     return;
   }
 
@@ -5625,14 +4739,14 @@ async function restoreSelectedBackup() {
 
   const backupId = String(dom.backupSelect.value || "").trim();
   if (!backupId) {
-    showApplyFeedback("복원할 백업을 선택하세요.");
+    IsfFeedback.showFeedback(dom.applyFeedback, "복원할 백업을 선택하세요.");
     return;
   }
 
   const entry = (Array.isArray(state.backupEntries) ? state.backupEntries : [])
     .find((item) => item.id === backupId);
   if (!entry) {
-    showApplyFeedback("선택한 백업을 찾을 수 없습니다.");
+    IsfFeedback.showFeedback(dom.applyFeedback, "선택한 백업을 찾을 수 없습니다.");
     syncBackupUi();
     return;
   }
@@ -5644,11 +4758,13 @@ async function restoreSelectedBackup() {
     return;
   }
 
-  await createBackupEntry(state.inputs, { type: "manual", source: "normal", allowDuplicate: true });
-  const hashSynced = commitImmediateInputs(entry.data, { skipAutoBackup: true });
-  showApplyFeedback(hashSynced
-    ? "선택한 백업으로 복원했습니다."
-    : "백업 복원 완료 · 링크 길이 초과로 해시 저장은 생략되었습니다.");
+  const res = await IsfBackupManager.createBackupEntry(state.backupEntries, state.inputs, { type: "manual", source: "normal", allowDuplicate: true , appKey: SHARE_STATE_KEY});
+  if(res.created) {
+    state.backupEntries = res.nextEntries;
+    syncBackupUi();
+  }
+  commitImmediateInputs(entry.data, { skipAutoBackup: true });
+  IsfFeedback.showFeedback(dom.applyFeedback, "선택한 백업으로 복원했습니다.");
 }
 
 function roundTo(value, digit) {
@@ -5667,3 +4783,4 @@ function debounce(fn, delay) {
     }, delay);
   };
 }
+

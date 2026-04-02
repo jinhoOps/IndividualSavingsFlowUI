@@ -1,0 +1,231 @@
+@import url("https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Gowun+Dodum:wght@400;700&display=swap");
+
+:root {
+  color-scheme: light;
+  --bg: #f3f4ef;
+  --panel: rgba(255, 255, 255, 0.9);
+  --ink: #102220;
+  --muted: rgba(16, 34, 32, 0.66);
+  --line: rgba(16, 34, 32, 0.18);
+  --line-strong: rgba(16, 34, 32, 0.3);
+  --tone-primary: #ea5b2a;
+  --tone-accent: #1e8b7c;
+  --font-display: "Black Han Sans", "Gowun Dodum", sans-serif;
+  --font-body: "Gowun Dodum", "Nanum Gothic", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  line-height: 1.45;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  color: var(--ink);
+}
+
+h1 {
+  font-family: var(--font-body);
+}
+
+.hero h1 {
+  margin: 8px 0 10px;
+  font-family: var(--font-body);
+  font-size: clamp(2rem, 4.5vw, 3.3rem);
+  letter-spacing: 0.02em;
+}
+
+.page {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 18px 14px 32px;
+  display: grid;
+  gap: 14px;
+}
+
+.panel {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel);
+  backdrop-filter: saturate(1.1) blur(3px);
+  box-shadow: 0 8px 24px rgba(16, 34, 32, 0.06);
+  padding: 14px;
+}
+
+.eyebrow {
+  margin: 0;
+  font-size: 0.78rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.lead {
+  margin: 0;
+  max-width: 760px;
+  color: var(--ink);
+}
+
+.muted,
+.hint {
+  margin: 0;
+  color: var(--muted);
+}
+
+.btn {
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font: inherit;
+  font-size: 0.86rem;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.95);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.btn:hover {
+  border-color: rgba(16, 34, 32, 0.45);
+}
+
+.btn:focus-visible {
+  outline: 2px solid rgba(49, 117, 182, 0.38);
+  outline-offset: 2px;
+}
+
+.btn-primary {
+  color: #fff;
+  border-color: rgba(16, 34, 32, 0);
+  background: linear-gradient(135deg, var(--tone-primary), var(--tone-accent));
+}
+
+.btn-ghost {
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.btn-sm {
+  padding: 6px 11px;
+  font-size: 0.78rem;
+}
+
+input,
+textarea,
+select {
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+}
+
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid rgba(49, 117, 182, 0.36);
+  outline-offset: 1px;
+}
+
+.feedback {
+  margin: 0;
+  border: 1px solid rgba(30, 139, 124, 0.35);
+  border-radius: 10px;
+  background: rgba(235, 250, 246, 0.95);
+  color: #155247;
+  padding: 9px 10px;
+  font-size: 0.84rem;
+}
+
+.feedback.is-error {
+  border-color: rgba(174, 56, 56, 0.35);
+  background: rgba(253, 240, 240, 0.95);
+  color: #8b2f2f;
+}
+
+/* 공통 하단 플로팅 대기 바 */
+.pending-bar {
+  position: fixed;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(16, 34, 32, 0.24);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 12px 28px rgba(16, 34, 32, 0.2);
+}
+
+.pending-bar[hidden] {
+  display: none !important;
+}
+
+.pending-summary {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.pending-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* 공통 플로팅 토스트 피드백 */
+.apply-feedback {
+  position: fixed;
+  left: 50%;
+  bottom: 78px;
+  transform: translateX(-50%);
+  z-index: 41;
+  padding: 8px 14px;
+  border: 1px solid rgba(30, 139, 124, 0.38);
+  border-radius: 999px;
+  background: rgba(235, 250, 246, 0.96);
+  color: #155247;
+  font-size: 0.78rem;
+  box-shadow: 0 8px 18px rgba(16, 34, 32, 0.14);
+  white-space: nowrap;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+.apply-feedback[hidden] {
+  display: none !important;
+}
+
+.is-warning {
+  color: #c46200 !important;
+}
+
+@media (max-width: 760px) {
+  .pending-bar {
+    width: min(340px, calc(100vw - 20px));
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 12px;
+  }
+  .pending-summary {
+    white-space: normal;
+    font-size: 0.82rem;
+  }
+  .pending-actions {
+    width: 100%;
+  }
+  .pending-actions .btn {
+    flex: 1;
+  }
+}
