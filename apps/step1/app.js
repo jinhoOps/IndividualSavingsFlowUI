@@ -366,7 +366,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initializeBackupStore();
   void initializeInputsFromShareId();
   const pwaManager = new IsfPwaManager({
-    appVersion: "0.2.2",
+    appVersion: "0.2.3",
     appKey: SHARE_STATE_KEY,
     onFeedback: (message) => IsfFeedback.showFeedback(dom.applyFeedback, message),
     isViewMode: () => state.isViewMode,
