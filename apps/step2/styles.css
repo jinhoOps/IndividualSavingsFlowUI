@@ -141,6 +141,29 @@ header.panel {
 .chart-stage svg {
   width: min(100%, 260px);
   height: auto;
+  overflow: visible; /* To allow labels outside the viewBox if necessary, though we will stay inside */
+}
+
+.donut-label {
+  pointer-events: none;
+  font-family: inherit;
+  fill: var(--ink);
+}
+
+.donut-label-text {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.donut-label-percent {
+  font-size: 10px;
+  fill: var(--muted);
+}
+
+.donut-label-line {
+  stroke: var(--line);
+  stroke-width: 1px;
+  fill: none;
 }
 
 .account-chart-cards {
@@ -275,13 +298,31 @@ header.panel {
   box-shadow: inset 0 0 0 1px rgba(49, 117, 182, 0.2);
 }
 
+.allocation-row {
+  cursor: grab;
+  transition: transform 0.2s, box-shadow 0.2s, background-color 0.2s;
+  user-select: none;
+}
+
+.allocation-row.dragging {
+  opacity: 0.5;
+  background-color: var(--line) !important;
+  cursor: grabbing;
+}
+
+.allocation-row.drag-over {
+  border-top: 3px solid var(--tone-primary);
+  background-color: rgba(49, 117, 182, 0.05);
+}
+
 .account-row input,
 .allocation-row input {
   width: 100%;
   padding: 8px;
 }
 
-.account-row-actions {
+.account-row-actions,
+.allocation-row-actions {
   display: flex;
   align-items: center;
   gap: 6px;

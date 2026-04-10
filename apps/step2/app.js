@@ -225,7 +225,7 @@
     return {
       id: String(safe.id || "").trim() || IsfUtils.createId("alloc"),
       key: String(safe.key || "").trim() || IsfUtils.createId("asset"),
-      label: String(safe.label || "").trim() || "자산군",
+      label: String(safe.label || "").trim() || "종목",
       targetWeight: IsfUtils.sanitizeWeight(safe.targetWeight),
       memo: String(safe.memo || ""),
     };
@@ -239,7 +239,7 @@
       id: String(safe.id || "").trim() || IsfUtils.createId("account"),
       name: String(safe.name || "").trim() || "계좌",
       accountWeight: IsfUtils.sanitizeWeight(safe.accountWeight),
-      allocations: allocations.length > 0 ? allocations : [createDraftAllocation({ label: "자산군 1", targetWeight: 100 })],
+      allocations: allocations.length > 0 ? allocations : [createDraftAllocation({ label: "종목 1", targetWeight: 100 })],
     };
   }
 
@@ -386,14 +386,14 @@
         return { valid: false, message: `${accountLabel}: 계좌 비중은 0~100%여야 합니다.` };
       }
       if (!Array.isArray(account.allocations) || account.allocations.length === 0) {
-        return { valid: false, message: `${accountLabel}: 자산군을 1개 이상 입력하세요.` };
+        return { valid: false, message: `${accountLabel}: 종목을 1개 이상 입력하세요.` };
       }
       if (account.allocations.some((allocation) => !String(allocation.label || "").trim())) {
-        return { valid: false, message: `${accountLabel}: 자산군 이름이 비어 있습니다.` };
+        return { valid: false, message: `${accountLabel}: 종목 이름이 비어 있습니다.` };
       }
       const allocationTotal = getAllocationWeightTotal(account);
       if (allocationTotal > 100.01) {
-        return { valid: false, message: `${accountLabel}: 자산군 비중 합계가 100%를 초과합니다.` };
+        return { valid: false, message: `${accountLabel}: 종목 비중 합계가 100%를 초과합니다.` };
       }
     }
 
@@ -536,7 +536,7 @@
           showFeedback("먼저 계좌를 추가하세요.", true);
           return;
         }
-        account.allocations.push(createDraftAllocation({ label: `자산군 ${account.allocations.length + 1}`, targetWeight: 0 }));
+        account.allocations.push(createDraftAllocation({ label: `종목 ${account.allocations.length + 1}`, targetWeight: 0 }));
         markDirty();
         renderAllocationEditor();
         renderCharts();
@@ -583,6 +583,7 @@
         if (!(target instanceof HTMLElement)) {
           return;
         }
+
         const removeId = String(target.getAttribute("data-remove-allocation-id") || "");
         if (!removeId) {
           return;
@@ -592,13 +593,122 @@
           return;
         }
         if (account.allocations.length <= 1) {
-          showFeedback("자산군은 최소 1개 이상 필요합니다.", true);
+          showFeedback("종목은 최소 1개 이상 필요합니다.", true);
           return;
         }
         account.allocations = account.allocations.filter((allocation) => allocation.id !== removeId);
         markDirty();
         renderAllocationEditor();
         renderCharts();
+      });
+
+      // Drag and Drop implementation
+      let dragTimer = null;
+      let draggedId = null;
+
+      dom.allocationList.addEventListener("dragstart", (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) return;
+        const row = target.closest("[data-allocation-id]");
+        if (!row) return;
+
+        draggedId = row.getAttribute("data-allocation-id");
+        row.classList.add("dragging");
+        event.dataTransfer.effectAllowed = "move";
+      });
+
+      dom.allocationList.addEventListener("dragover", (event) => {
+        event.preventDefault();
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) return;
+        const row = target.closest("[data-allocation-id]");
+        if (!row || row.getAttribute("data-allocation-id") === draggedId) return;
+
+        row.classList.add("drag-over");
+        event.dataTransfer.dropEffect = "move";
+      });
+
+      dom.allocationList.addEventListener("dragleave", (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) return;
+        const row = target.closest("[data-allocation-id]");
+        if (row) row.classList.remove("drag-over");
+      });
+
+      dom.allocationList.addEventListener("drop", (event) => {
+        event.preventDefault();
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) return;
+        const row = target.closest("[data-allocation-id]");
+        if (!row) return;
+
+        const targetId = row.getAttribute("data-allocation-id");
+        row.classList.remove("drag-over");
+
+        if (draggedId && targetId && draggedId !== targetId) {
+          const account = ensureActiveAccountSelected();
+          if (account) {
+            const fromIndex = account.allocations.findIndex(a => a.id === draggedId);
+            const toIndex = account.allocations.findIndex(a => a.id === targetId);
+            if (fromIndex !== -1 && toIndex !== -1) {
+              const [movedItem] = account.allocations.splice(fromIndex, 1);
+              account.allocations.splice(toIndex, 0, movedItem);
+              markDirty();
+              renderAllocationEditor();
+              renderCharts();
+            }
+          }
+        }
+        draggedId = null;
+      });
+
+      dom.allocationList.addEventListener("dragend", (event) => {
+        const target = event.target;
+        if (target instanceof HTMLElement) {
+          const row = target.closest("[data-allocation-id]");
+          if (row) row.classList.remove("dragging");
+        }
+        draggedId = null;
+      });
+
+      // Long press for mobile
+      dom.allocationList.addEventListener("touchstart", (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) return;
+        // Don't trigger on input fields
+        if (target instanceof HTMLInputElement) return;
+
+        const row = target.closest("[data-allocation-id]");
+        if (!row) return;
+
+        dragTimer = setTimeout(() => {
+          row.setAttribute("draggable", "true");
+          // Visual feedback for long press
+          row.style.boxShadow = "0 0 15px rgba(234, 91, 42, 0.4)";
+        }, 500);
+      }, { passive: true });
+
+      dom.allocationList.addEventListener("touchend", () => {
+        if (dragTimer) {
+          clearTimeout(dragTimer);
+          dragTimer = null;
+        }
+      });
+
+      dom.allocationList.addEventListener("touchmove", () => {
+        if (dragTimer) {
+          clearTimeout(dragTimer);
+          dragTimer = null;
+        }
+      });
+
+      // Reset draggable on mouseup/touchend to prevent stuck state
+      document.addEventListener("mouseup", () => {
+        const rows = dom.allocationList.querySelectorAll("[data-allocation-id]");
+        rows.forEach(r => {
+          r.setAttribute("draggable", "false");
+          r.style.boxShadow = "";
+        });
       });
     }
     if (dom.accountChartCards) {
@@ -842,7 +952,7 @@
     }
 
     if (dom.allocationEditorTitle) {
-      dom.allocationEditorTitle.textContent = account ? `자산군 구성 · ${account.name}` : "자산군 구성";
+      dom.allocationEditorTitle.textContent = account ? `종목 구성 · ${account.name}` : "종목 구성";
     }
 
     if (!(dom.allocationList instanceof HTMLElement)) {
@@ -859,11 +969,24 @@
       const row = document.createElement("div");
       row.className = "allocation-row";
       row.setAttribute("data-allocation-id", allocation.id);
+      row.setAttribute("draggable", "false"); // Enabled on mousedown/longpress
+      
+      // Desktop mousedown and pointerdown to enable drag
+      row.onmousedown = (e) => {
+        if (e.target instanceof HTMLInputElement) {
+          row.setAttribute("draggable", "false");
+        } else {
+          row.setAttribute("draggable", "true");
+        }
+      };
+
       row.innerHTML = `
-        <input type="text" data-field="label" value="${IsfUtils.escapeHtml(allocation.label)}" aria-label="자산군 ${index + 1} 이름" />
-        <input type="number" min="0" max="100" step="0.01" data-field="targetWeight" value="${formatWeight(allocation.targetWeight)}" aria-label="자산군 ${index + 1} 목표 비중" />
-        <input type="text" data-field="memo" value="${IsfUtils.escapeHtml(allocation.memo)}" aria-label="자산군 ${index + 1} 메모" />
-        <button type="button" class="btn btn-ghost btn-sm" data-remove-allocation-id="${IsfUtils.escapeHtml(allocation.id)}">삭제</button>
+        <input type="text" data-field="label" value="${IsfUtils.escapeHtml(allocation.label)}" aria-label="종목 ${index + 1} 이름" />
+        <input type="number" min="0" max="100" step="0.01" data-field="targetWeight" value="${formatWeight(allocation.targetWeight)}" aria-label="종목 ${index + 1} 목표 비중" />
+        <input type="text" data-field="memo" value="${IsfUtils.escapeHtml(allocation.memo)}" aria-label="종목 ${index + 1} 메모" />
+        <div class="allocation-row-actions">
+          <button type="button" class="btn btn-ghost btn-sm" data-remove-allocation-id="${IsfUtils.escapeHtml(allocation.id)}">삭제</button>
+        </div>
       `;
       dom.allocationList.appendChild(row);
     });
@@ -953,7 +1076,7 @@
           return;
         }
         const key = String(allocation.key || "").trim() || String(allocation.label || "").trim() || "asset";
-        const label = String(allocation.label || "").trim() || "자산군";
+        const label = String(allocation.label || "").trim() || "종목";
         const prev = bucket.get(key);
         if (prev) {
           prev.value += amount;
@@ -963,12 +1086,46 @@
       });
     });
 
-    const slices = Array.from(bucket.values()).sort((a, b) => b.value - a.value);
+    const slices = Array.from(bucket.values());
     const autoCash = getAutoCashAmount();
-    if (autoCash > 0) {
-      slices.push({ key: UNALLOCATED_ASSET_KEY, label: "현금(자동)", value: autoCash, color: getAssetColor(UNALLOCATED_ASSET_KEY, "현금") });
+    const totalValue = slices.reduce((sum, s) => sum + s.value, 0);
+    const grandTotal = totalValue + autoCash;
+
+    if (grandTotal <= 0) return [];
+
+    const threshold = grandTotal * 0.01; // 1%
+    const smallItems = [];
+    const mainSlices = [];
+
+    slices.forEach((slice) => {
+      if (slice.value <= threshold) {
+        smallItems.push(slice);
+      } else {
+        mainSlices.push(slice);
+      }
+    });
+
+    if (smallItems.length > 0) {
+      const smallSum = smallItems.reduce((sum, s) => sum + s.value, 0);
+      mainSlices.push({
+        key: "others-group-auto",
+        label: `기타 ${smallItems.length}종`,
+        value: smallSum,
+        color: "#a0a5ad",
+        isGroup: true,
+      });
     }
-    return slices;
+
+    if (autoCash > 0) {
+      mainSlices.push({
+        key: UNALLOCATED_ASSET_KEY,
+        label: "현금(자동)",
+        value: autoCash,
+        color: getAssetColor(UNALLOCATED_ASSET_KEY, "현금"),
+      });
+    }
+
+    return mainSlices.sort((a, b) => b.value - a.value);
   }
 
   function buildAccountSlices(account) {
@@ -977,7 +1134,7 @@
     }
     return account.allocations
       .map((allocation) => {
-        const label = String(allocation.label || "").trim() || "자산군";
+        const label = String(allocation.label || "").trim() || "종목";
         const key = String(allocation.key || "").trim() || label;
         const value = IsfUtils.sanitizeWeight(allocation.targetWeight);
         return {
@@ -1009,8 +1166,8 @@
       centerTitle: total > 0 ? "주식/현금" : "데이터 없음",
       centerValue: total > 0 ? `${stockPercent}% / ${cashPercent}%` : "",
       ringColor: "rgba(16, 34, 32, 0.1)",
-      outerRadius: 95,
-      innerRadius: 58,
+      outerRadius: 110,
+      innerRadius: 65,
     });
   }
 
@@ -1120,7 +1277,8 @@
         if (value <= 0) {
           return;
         }
-        const dash = circumference * (value / total);
+        const ratio = value / total;
+        const dash = circumference * ratio;
         const arc = createSvgElement("circle", {
           cx: centerX,
           cy: centerY,
@@ -1133,6 +1291,41 @@
           transform: `rotate(-90 ${centerX} ${centerY})`,
         });
         svgElement.appendChild(arc);
+
+        // Add Label if slice is significant enough (> 3% to avoid too many labels)
+        if (!svgElement.classList.contains("account-mini-chart") && ratio > 0.03) {
+          const startAngle = (offset / circumference) * 2 * Math.PI - Math.PI / 2;
+          const endAngle = ((offset + dash) / circumference) * 2 * Math.PI - Math.PI / 2;
+          const midAngle = (startAngle + endAngle) / 2;
+          
+          const labelDist = outerRadius + 15;
+          const lx = centerX + labelDist * Math.cos(midAngle);
+          const ly = centerY + labelDist * Math.sin(midAngle);
+          
+          const textGroup = createSvgElement("g", { class: "donut-label" });
+          
+          const anchor = lx > centerX ? "start" : "end";
+          const labelText = createSvgElement("text", {
+            x: lx,
+            y: ly,
+            "text-anchor": anchor,
+            class: "donut-label-text"
+          });
+          labelText.textContent = slice.label;
+          textGroup.appendChild(labelText);
+          
+          const labelPercent = createSvgElement("text", {
+            x: lx,
+            y: ly + 14,
+            "text-anchor": anchor,
+            class: "donut-label-percent"
+          });
+          labelPercent.textContent = `${(ratio * 100).toFixed(1)}%`;
+          textGroup.appendChild(labelPercent);
+          
+          svgElement.appendChild(textGroup);
+        }
+
         offset += dash;
       });
     }
@@ -1188,7 +1381,7 @@
         allocations: account.allocations.map((allocation) => ({
           id: String(allocation.id || "").trim() || IsfUtils.createId("alloc"),
           key: String(allocation.key || "").trim() || IsfUtils.createId("asset"),
-          label: String(allocation.label || "").trim() || "자산군",
+          label: String(allocation.label || "").trim() || "종목",
           targetWeight: IsfUtils.sanitizeWeight(allocation.targetWeight),
           memo: String(allocation.memo || ""),
         })),
