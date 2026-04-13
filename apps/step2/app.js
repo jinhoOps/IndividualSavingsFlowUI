@@ -1823,7 +1823,10 @@
 
   window.addEventListener("pageshow", (event) => {
     if (event.persisted) {
-      requestAnimationFrame(() => renderCharts());
+      // bfcache 복원 후 DOM 렌더링이 완전히 안정화될 시간을 확보 (iOS Safari 등 대응)
+      setTimeout(() => {
+        requestAnimationFrame(() => renderCharts());
+      }, 150);
     }
   });
 
