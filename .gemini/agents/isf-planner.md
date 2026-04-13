@@ -7,7 +7,6 @@ tools:
   - grep_search
   - list_directory
   - glob
-  - agents
 model: gemini-3.1-pro
 temperature: 0.7
 ---
