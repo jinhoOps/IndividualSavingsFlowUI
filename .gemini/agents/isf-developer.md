@@ -9,6 +9,7 @@ tools:
   - run_shell_command
   - grep_search
   - list_directory
+  - agents
 model: gemini-3.1-pro
 temperature: 0.2
 ---

@@ -7,6 +7,7 @@ tools:
   - grep_search
   - run_shell_command
   - list_directory
+  - agents
 model: gemini-3-flash
 temperature: 0.1
 ---
