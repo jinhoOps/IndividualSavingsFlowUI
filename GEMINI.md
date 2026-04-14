@@ -40,6 +40,8 @@
 - 프로젝트 하네스: [[.gemini/skills/isf-harness/SKILL]]
 - 운영 원칙: [[.gemini/knowledge/wiki/Operating_Principles]]
 - 업데이트 이력: [[.gemini/knowledge/wiki/Project_History]]
+- Step1 개발 계획: [[.gemini/knowledge/wiki/Plan_Step1]]
+- Step2 개발 계획: [[.gemini/knowledge/wiki/Plan_Step2]]
 - 기능 백로그: [[TODO.md]]
 
 ---
