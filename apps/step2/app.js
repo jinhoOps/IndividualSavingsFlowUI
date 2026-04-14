@@ -8,6 +8,8 @@
   const SHARE_STATE_KEY = "my-portfolio-flow";
   const SHARE_STATE_SCHEMA = 2;
   const HASH_STATE_PARAM = "s";
+  const MAX_FINANCIAL_INCOME = 20000000;
+  const DEFAULT_TAX_RATE = 0.154; // 15.4%
 
   const DEFAULT_ACCOUNT_TEMPLATES = [
     {
@@ -92,6 +94,16 @@
     importJsonFile: document.getElementById("importJsonFile"),
     copyShareLink: document.getElementById("copyShareLink"),
     applyFeedback: document.getElementById("applyFeedback"),
+    toggleSimInputs: document.getElementById("toggleSimInputs"),
+    simInputsContainer: document.getElementById("simInputsContainer"),
+    simDividendYield: document.getElementById("simDividendYield"),
+    simDividendGrowth: document.getElementById("simDividendGrowth"),
+    simCapitalGrowth: document.getElementById("simCapitalGrowth"),
+    simHorizonYears: document.getElementById("simHorizonYears"),
+    simDrip: document.getElementById("simDrip"),
+    simChartSvg: document.getElementById("simChartSvg"),
+    simChartTooltip: document.getElementById("simChartTooltip"),
+    simTable: document.querySelector("#simTable tbody"),
   };
 
   const state = {
@@ -255,6 +267,7 @@
       totalMonthlyInvestCapacity: 0,
       accounts: createDefaultAccounts(),
       bridgeContext: null,
+      dividendSim: { yield: 3.5, growth: 5.0, capitalGrowth: 4.0, years: 10, drip: true }
     };
   }
 
@@ -405,6 +418,38 @@
   }
 
   function bindEvents() {
+    if (dom.toggleSimInputs) {
+      dom.toggleSimInputs.addEventListener("click", () => {
+        if (dom.simInputsContainer) {
+          dom.simInputsContainer.hidden = !dom.simInputsContainer.hidden;
+        }
+      });
+    }
+
+    const simInputs = [dom.simDividendYield, dom.simDividendGrowth, dom.simCapitalGrowth, dom.simHorizonYears];
+    simInputs.forEach(input => {
+      if (input) {
+        input.addEventListener("input", () => {
+          if (!state.draft.dividendSim) return;
+          state.draft.dividendSim.yield = Number(dom.simDividendYield.value || 0);
+          state.draft.dividendSim.growth = Number(dom.simDividendGrowth.value || 0);
+          state.draft.dividendSim.capitalGrowth = Number(dom.simCapitalGrowth.value || 0);
+          state.draft.dividendSim.years = Math.min(40, Math.max(1, Number(dom.simHorizonYears.value || 1)));
+          markDirty();
+          renderDividendSimulation();
+        });
+      }
+    });
+
+    if (dom.simDrip) {
+      dom.simDrip.addEventListener("change", () => {
+        if (!state.draft.dividendSim) return;
+        state.draft.dividendSim.drip = dom.simDrip.checked;
+        markDirty();
+        renderDividendSimulation();
+      });
+    }
+
     if (dom.loadStep1Data) {
       dom.loadStep1Data.addEventListener("click", async () => {
         if (state.dirty) {
@@ -863,6 +908,15 @@
     if (dom.totalMonthlyInvestCapacity) {
       dom.totalMonthlyInvestCapacity.value = String(IsfUtils.sanitizeMoney(state.draft.totalMonthlyInvestCapacity));
     }
+    if (state.draft.dividendSim) {
+      if (dom.simDividendYield) dom.simDividendYield.value = state.draft.dividendSim.yield;
+      if (dom.simDividendGrowth) dom.simDividendGrowth.value = state.draft.dividendSim.growth;
+      if (dom.simCapitalGrowth) dom.simCapitalGrowth.value = state.draft.dividendSim.capitalGrowth;
+      if (dom.simHorizonYears) dom.simHorizonYears.value = state.draft.dividendSim.years;
+      if (dom.simDrip) dom.simDrip.checked = state.draft.dividendSim.drip;
+    } else {
+      state.draft.dividendSim = { yield: 3.5, growth: 5.0, capitalGrowth: 4.0, years: 10, drip: true };
+    }
     renderChartTabs();
     renderAccountList();
     renderMobileAccountPicker();
@@ -1151,6 +1205,203 @@
     renderSummaryChart();
     renderAccountChart();
     renderAmountBreakdown();
+    renderDividendSimulation();
+  }
+
+  function calculateDividendProjection() {
+    if (!state.draft.dividendSim) return [];
+    
+    // We treat unallocated/automatic cash as 0% yield 0% growth unless they actually assigned it. For simplicity, we just use the entire monthly capacity if building a generic portfolio sim, or perhaps we ONLY use the allocated accounts?
+    // Let's use the total capacity for simplicity and consistent growth mapping, or maybe more accurately: Total stock portion!
+    const validTotalWeight = getTotalAccountWeight();
+    const allocatedRatio = Math.min(100, Math.max(0, validTotalWeight)) / 100;
+    const totalCapacity = getTotalMonthlyInvestCapacity();
+    const yearlyInvest = totalCapacity * 12 * allocatedRatio;
+    
+    let currentPrincipal = (state.draft.bridgeContext?.currentInvest || 0) * allocatedRatio;
+    let currentAssetValue = currentPrincipal;
+
+    const rateYield = state.draft.dividendSim.yield / 100;
+    const rateGrowth = state.draft.dividendSim.growth / 100;
+    const rateCapital = state.draft.dividendSim.capitalGrowth / 100;
+    const isDrip = state.draft.dividendSim.drip;
+    const years = state.draft.dividendSim.years;
+    
+    const results = [];
+    
+    for (let y = 1; y <= years; y++) {
+      currentPrincipal += yearlyInvest;
+      currentAssetValue += yearlyInvest;
+      
+      currentAssetValue *= (1 + rateCapital);
+      
+      let expectedDividend = currentAssetValue * rateYield * Math.pow(1 + rateGrowth, y - 1);
+      let afterTaxDividend = expectedDividend * (1 - DEFAULT_TAX_RATE);
+      
+      if (isDrip) {
+        currentPrincipal += afterTaxDividend;
+        currentAssetValue += afterTaxDividend;
+      }
+      
+      results.push({
+        year: y,
+        principal: currentPrincipal,
+        assetValue: currentAssetValue,
+        annualDiv: afterTaxDividend,
+        monthlyDiv: afterTaxDividend / 12,
+        isWarning: afterTaxDividend >= (MAX_FINANCIAL_INCOME * 0.9) && afterTaxDividend < MAX_FINANCIAL_INCOME,
+        isCritical: afterTaxDividend >= MAX_FINANCIAL_INCOME,
+      });
+    }
+    
+    return results;
+  }
+
+  function renderDividendSimulation() {
+    if (!dom.simTable || !(dom.simChartSvg instanceof SVGElement)) return;
+    const data = calculateDividendProjection();
+    
+    dom.simTable.innerHTML = "";
+    let maxDiv = 0;
+    let maxAsset = 0;
+    let maxRiskLevel = 0; // 0 = ok, 1 = warn, 2 = critical
+    
+    data.forEach(row => {
+      if (row.annualDiv > maxDiv) maxDiv = row.annualDiv;
+      if (row.assetValue > maxAsset) maxAsset = row.assetValue;
+      if (row.isCritical) maxRiskLevel = 2;
+      else if (row.isWarning && maxRiskLevel === 0) maxRiskLevel = 1;
+      
+      const tr = document.createElement("tr");
+      if (row.isCritical) tr.className = "status-critical";
+      else if (row.isWarning) tr.className = "status-warn";
+      
+      tr.innerHTML = `
+        <td>${row.year}년</td>
+        <td>${formatCurrency(row.principal)}</td>
+        <td>${formatCurrency(row.assetValue)}</td>
+        <td>${formatCurrency(row.annualDiv)}</td>
+        <td>${formatCurrency(row.monthlyDiv)}</td>
+        <td>${formatCurrency(row.assetValue)}</td>
+      `;
+      dom.simTable.appendChild(tr);
+    });
+    
+    if (maxRiskLevel === 2) {
+      dom.step2Feedback.classList.remove("is-warn");
+      showFeedback(`경고: 배당소득이 종합과세 대상(2천만원) 기준을 초과했습니다. 실제 운용 시 ISA/연금저축 등의 절세계좌를 우선적으로 검토하세요.`, true);
+    } else if (maxRiskLevel === 1) {
+      dom.step2Feedback.classList.add("is-warn"); // Assuming styling might use this later, currently error is true
+      showFeedback(`주의: 배당소득이 연간 1,800만원(종합과세 90% 수준)을 초과했습니다.`, true);
+    } else {
+      dom.step2Feedback.classList.remove("is-warn");
+      if (dom.step2Feedback.textContent.includes("종합과세")) clearFeedback();
+    }
+
+    dom.simChartSvg.innerHTML = "";
+    if (data.length === 0) return;
+    
+    const width = 600;
+    const height = 220;
+    const padX = 40;
+    const padY = 20;
+    const w = width - padX * 2;
+    const h = height - padY * 2;
+    
+    const barWidth = Math.min(30, w / data.length - 4);
+    const divScale = maxDiv > 0 ? h / maxDiv : 0;
+    const assetScale = maxAsset > 0 ? h / maxAsset : 0;
+    
+    const axisYGroup = createSvgElement("g", { stroke: "#e2e8f0", fill: "none" });
+    [0, 0.5, 1].forEach(tick => {
+       const y = height - padY - (h * tick);
+       axisYGroup.appendChild(createSvgElement("line", { x1: padX, y1: y, x2: width - padX, y2: y }));
+    });
+    dom.simChartSvg.appendChild(axisYGroup);
+
+    let linePath = "";
+    
+    // 툴팁 이벤트 헬퍼
+    const setupTooltip = (el, title, values) => {
+      if (!dom.simChartTooltip) return;
+      el.style.cursor = "pointer";
+      
+      el.addEventListener("mouseenter", (e) => {
+        dom.simChartTooltip.innerHTML = `<strong>${title}</strong><br/>${values.join('<br/>')}`;
+        dom.simChartTooltip.hidden = false;
+        
+        const rect = dom.simChartSvg.getBoundingClientRect();
+        dom.simChartTooltip.style.left = `${e.clientX - rect.left}px`;
+        dom.simChartTooltip.style.top = `${e.clientY - rect.top - 40}px`;
+      });
+      
+      el.addEventListener("mousemove", (e) => {
+        const rect = dom.simChartSvg.getBoundingClientRect();
+        const tW = dom.simChartTooltip.offsetWidth;
+        let left = e.clientX - rect.left + 15;
+        if (left + tW > rect.width) left = e.clientX - rect.left - tW - 15;
+        
+        dom.simChartTooltip.style.left = `${left}px`;
+        dom.simChartTooltip.style.top = `${e.clientY - rect.top - 20}px`;
+      });
+      
+      el.addEventListener("mouseleave", () => {
+        dom.simChartTooltip.hidden = true;
+      });
+    };
+
+    data.forEach((row, i) => {
+      const x = padX + (w / data.length) * i + (w / data.length) / 2;
+      const barH = Math.max(0, row.annualDiv * divScale);
+      const y = height - padY - barH;
+      
+      const barColor = row.isCritical ? "#ef4444" : (row.isWarning ? "#eab308" : "#3175b6");
+      
+      const rect = createSvgElement("rect", {
+        x: x - barWidth / 2,
+        y: y,
+        width: Math.max(0, barWidth),
+        height: barH,
+        fill: barColor,
+        rx: 2
+      });
+      setupTooltip(rect, `${row.year}년차 (배당)`, [
+        `연간 배당: ${formatCurrency(row.annualDiv)}`,
+        `월평균: ${formatCurrency(row.monthlyDiv)}`
+      ]);
+      dom.simChartSvg.appendChild(rect);
+      
+      const textX = createSvgElement("text", {
+        x: x,
+        y: height - padY + 14,
+        "text-anchor": "middle",
+        "font-size": "10",
+        fill: "#64748b"
+      });
+      textX.textContent = `${row.year}년`;
+      dom.simChartSvg.appendChild(textX);
+      
+      const assetY = height - padY - (row.assetValue * assetScale);
+      if (i === 0) linePath += `M ${x} ${assetY} `;
+      else linePath += `L ${x} ${assetY} `;
+      
+      const circle = createSvgElement("circle", { cx: x, cy: assetY, r: 4, fill: "#ea5b2a" });
+      setupTooltip(circle, `${row.year}년차 (자산)`, [
+        `자산 평가액: ${formatCurrency(row.assetValue)}`,
+        `누적 원금: ${formatCurrency(row.principal)}`
+      ]);
+      dom.simChartSvg.appendChild(circle);
+    });
+    
+    if (linePath) {
+      const pathLine = createSvgElement("path", {
+        d: linePath,
+        fill: "none",
+        stroke: "#ea5b2a",
+        "stroke-width": 2
+      });
+      dom.simChartSvg.insertBefore(pathLine, dom.simChartSvg.lastElementChild);
+    }
   }
 
   function renderSummaryChart() {
@@ -1374,6 +1625,7 @@
       notes: String(state.draft.notes || ""),
       totalMonthlyInvestCapacity: IsfUtils.sanitizeMoney(state.draft.totalMonthlyInvestCapacity),
       bridgeContext: state.draft.bridgeContext && typeof state.draft.bridgeContext === "object" ? state.draft.bridgeContext : null,
+      dividendSim: state.draft.dividendSim && typeof state.draft.dividendSim === "object" ? state.draft.dividendSim : null,
       accounts: state.draft.accounts.map((account) => ({
         id: String(account.id || "").trim() || IsfUtils.createId("account"),
         name: String(account.name || "").trim() || "계좌",
@@ -1435,6 +1687,7 @@
           notes: String(raw.notes || ""),
           totalMonthlyInvestCapacity: fallbackTotal,
           bridgeContext: raw.bridgeContext && typeof raw.bridgeContext === "object" ? raw.bridgeContext : null,
+          dividendSim: raw.dividendSim && typeof raw.dividendSim === "object" ? raw.dividendSim : { yield: 3.5, growth: 5.0, capitalGrowth: 4.0, years: 10, drip: true },
           accounts: deriveDraftAccounts(raw.accounts, fallbackTotal),
         },
       };
@@ -1454,6 +1707,7 @@
         notes: String(raw.notes || ""),
         totalMonthlyInvestCapacity: 0,
         bridgeContext: null,
+        dividendSim: { yield: 3.5, growth: 5.0, capitalGrowth: 4.0, years: 10, drip: true },
         accounts: [
           createDraftAccount({
             name: "통합계좌",

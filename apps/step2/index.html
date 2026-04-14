@@ -154,6 +154,62 @@
         <p id="portfolioMeta" class="muted"></p>
       </section>
 
+      <section class="panel simulation-panel">
+        <div class="section-head">
+          <h2>포트폴리오 배당 시뮬레이션</h2>
+          <button id="toggleSimInputs" class="btn btn-ghost btn-sm" type="button">가정 설정</button>
+        </div>
+        
+        <div id="simInputsContainer" class="sim-inputs-container" hidden>
+          <div class="form-grid">
+            <label class="control">
+              <span>기대 배당수익률(연, %)</span>
+              <input id="simDividendYield" type="number" min="0" max="100" step="0.1" value="3.5" />
+            </label>
+            <label class="control">
+              <span>배당 성장률(연, %)</span>
+              <input id="simDividendGrowth" type="number" min="0" max="100" step="0.1" value="5.0" />
+            </label>
+            <label class="control">
+              <span>주가 상승률(연, %)</span>
+              <input id="simCapitalGrowth" type="number" min="0" max="100" step="0.1" value="4.0" />
+            </label>
+            <label class="control">
+              <span>시뮬레이션 기간(년)</span>
+              <input id="simHorizonYears" type="number" min="1" max="40" step="1" value="10" />
+            </label>
+            <label class="control" style="justify-content: center; align-items: start; display: flex; flex-direction: column;">
+              <span>배당 재투자(연 단위)</span>
+              <label style="font-size:0.9rem;"><input id="simDrip" type="checkbox" checked /> 재투자함</label>
+            </label>
+          </div>
+          <p class="muted sim-disclaimer" style="margin-top: 8px;">※ 결과값은 예시이며 실제 성과를 보장하지 않습니다. 발생 배당금은 일괄 15.4%로 과세된다고 단순히 가정합니다. (계좌별 15%, 0% 선택 등은 추후 지원 예정)</p>
+        </div>
+
+        <div class="sim-dashboard">
+          <div class="sim-chart-wrap" style="position: relative; margin-top: 10px;">
+            <svg id="simChartSvg" viewBox="0 0 600 220" role="img" aria-label="연도별 배당금 추이"></svg>
+            <div id="simChartTooltip" class="sim-tooltip" hidden></div>
+          </div>
+          
+          <div class="table-wrap" style="margin-top: 16px; overflow-x: auto;">
+            <table id="simTable" class="projection-table">
+              <thead>
+                <tr>
+                  <th>연차</th>
+                  <th>누적 원금</th>
+                  <th>자산 평가액</th>
+                  <th>당해 배당금(세후)</th>
+                  <th>월평균 배당금</th>
+                  <th>총 지분 가치</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
       <div id="pendingBar" class="pending-bar" aria-hidden="true" hidden>
         <div class="pending-content">
           <span class="pending-icon">⚠️</span>

@@ -426,3 +426,74 @@ header.panel {
     grid-template-columns: 1fr;
   }
 }
+
+/* Simulation Panel */
+.simulation-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sim-inputs-container {
+  border: 1px dashed var(--line);
+  padding: 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.sim-dashboard {
+  display: flex;
+  flex-direction: column;
+}
+
+.projection-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.projection-table th,
+.projection-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+  text-align: right;
+}
+
+.projection-table th:first-child,
+.projection-table td:first-child {
+  text-align: center;
+}
+
+.projection-table th {
+  background: var(--tone-paper);
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.projection-table tr.status-warn td {
+  background: rgba(234, 179, 8, 0.15);
+  color: #a16207;
+}
+
+.projection-table tr.status-critical td {
+  background: rgba(239, 68, 68, 0.15);
+  color: #b91c1c;
+  font-weight: bold;
+}
+
+.sim-tooltip {
+  position: absolute;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  pointer-events: none;
+  z-index: 10;
+  white-space: nowrap;
+}
+
