@@ -223,6 +223,7 @@
       currentSavings: step1AmountToWon(safeInputs.startSavings),
       annualExpenseGrowth: Number(safeInputs.annualExpenseGrowth || 0),
       timestamp: String(timestamp || new Date().toISOString()),
+      investItems: Array.isArray(safeInputs.investItems) ? safeInputs.investItems : [],
     };
   }
 
@@ -2171,6 +2172,56 @@
         currentInvest: IsfUtils.sanitizeMoney(payload.currentInvest),
         currentSavings: IsfUtils.sanitizeMoney(payload.currentSavings),
       };
+
+      if (Array.isArray(payload.investItems) && payload.investItems.length > 0) {
+        const totalInvestAmount = payload.investItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+        if (totalInvestAmount > 0) {
+          const bridgedAccounts = payload.investItems.map((item) => ({
+            name: String(item.name || "투자 항목").trim(),
+            weight: ((Number(item.amount) || 0) / totalInvestAmount) * 100,
+          }));
+
+          let userChoice = "2";
+          if (state.draft.accounts.length > 0) {
+            const promptMsg = "Step1 계좌(투자 하위항목) 비중이 기존과 다릅니다. 어떻게 처리하시겠습니까?\n\n1. 가져온 데이터로 전부 덮어쓰기\n2. 기존 계좌 비율 조절하여 합계 100%로 정규화하기\n3. 취소";
+            userChoice = window.prompt(promptMsg, "1");
+          } else {
+            userChoice = "1";
+          }
+
+          if (userChoice === "pwacanceled" || userChoice === null || userChoice === "3") {
+            showFeedback("브리지 데이터 연동을 취소했습니다.", false);
+            return;
+          }
+
+          if (userChoice === "1") {
+            state.draft.accounts = bridgedAccounts.map((ba) => {
+              const existing = state.draft.accounts.find((a) => a.name === ba.name);
+              if (existing) {
+                existing.accountWeight = ba.weight;
+                return existing;
+              }
+              return createDraftAccount({ name: ba.name, accountWeight: ba.weight });
+            });
+          } else {
+            bridgedAccounts.forEach((ba) => {
+              const existing = state.draft.accounts.find((a) => a.name === ba.name);
+              if (existing) {
+                existing.accountWeight = ba.weight;
+              } else {
+                state.draft.accounts.push(createDraftAccount({ name: ba.name, accountWeight: ba.weight }));
+              }
+            });
+            const newTotal = state.draft.accounts.reduce((sum, acc) => sum + acc.accountWeight, 0);
+            if (newTotal > 0) {
+              state.draft.accounts.forEach((acc) => {
+                acc.accountWeight = (acc.accountWeight / newTotal) * 100;
+              });
+            }
+          }
+        }
+      }
+
 
       const newMemo = buildBridgeMemo(payload);
       if (!state.draft.notes) {
