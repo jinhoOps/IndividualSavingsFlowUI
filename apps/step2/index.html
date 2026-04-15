@@ -187,6 +187,16 @@
         </div>
 
         <div class="sim-dashboard">
+          <div class="sim-controls" style="margin-top: 10px; margin-bottom: 12px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <span class="muted" style="font-size: 0.8rem;">시뮬레이션 기간:</span>
+            <div class="chart-tabs" id="simYearsTabs" role="tablist">
+              <button class="chart-tab" data-years="5" role="tab">5년</button>
+              <button class="chart-tab is-active" data-years="10" role="tab" aria-selected="true">10년</button>
+              <button class="chart-tab" data-years="15" role="tab">15년</button>
+              <button class="chart-tab" data-years="20" role="tab">20년</button>
+            </div>
+          </div>
+
           <div class="sim-chart-wrap" style="position: relative; margin-top: 10px;">
             <svg id="simChartSvg" viewBox="0 0 600 220" role="img" aria-label="연도별 배당금 추이"></svg>
             <div id="simChartTooltip" class="sim-tooltip" hidden></div>
@@ -196,12 +206,19 @@
             <table id="simTable" class="projection-table">
               <thead>
                 <tr>
-                  <th>연차</th>
-                  <th>누적 원금</th>
-                  <th>자산 평가액</th>
-                  <th>당해 배당금(세후)</th>
-                  <th>월평균 배당금</th>
-                  <th>총 지분 가치</th>
+                  <th rowspan="2">연차</th>
+                  <th rowspan="2">누적 원금</th>
+                  <th colspan="2" style="text-align: center;">자산 평가액</th>
+                  <th colspan="2" style="text-align: center;">연 배당금(세후)</th>
+                  <th colspan="2" style="text-align: center;">월평균 배당금</th>
+                </tr>
+                <tr>
+                  <th>명목</th>
+                  <th>실질</th>
+                  <th>명목</th>
+                  <th>실질</th>
+                  <th>명목</th>
+                  <th>실질</th>
                 </tr>
               </thead>
               <tbody></tbody>

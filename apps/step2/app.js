@@ -104,6 +104,7 @@
     simChartSvg: document.getElementById("simChartSvg"),
     simChartTooltip: document.getElementById("simChartTooltip"),
     simTable: document.querySelector("#simTable tbody"),
+    simYearsTabs: document.getElementById("simYearsTabs"),
   };
 
   const state = {
@@ -201,6 +202,7 @@
       currentCash: step1AmountToWon(safeInputs.startCash),
       currentInvest: step1AmountToWon(safeInputs.startInvest),
       currentSavings: step1AmountToWon(safeInputs.startSavings),
+      annualExpenseGrowth: Number(safeInputs.annualExpenseGrowth || 0),
       timestamp: String(timestamp || new Date().toISOString()),
     };
   }
@@ -418,6 +420,24 @@
   }
 
   function bindEvents() {
+    if (dom.simYearsTabs) {
+      dom.simYearsTabs.addEventListener("click", (e) => {
+        const btn = e.target.closest(".chart-tab");
+        if (!btn) return;
+        const years = parseInt(btn.dataset.years, 10);
+        if (isNaN(years)) return;
+        
+        if (state.draft.dividendSim) {
+          state.draft.dividendSim.years = years;
+          if (dom.simHorizonYears) dom.simHorizonYears.value = years;
+        }
+        
+        syncSimYearsTabs(years);
+        renderDividendSimulation();
+        markDirty();
+      });
+    }
+
     if (dom.toggleSimInputs) {
       dom.toggleSimInputs.addEventListener("click", () => {
         if (dom.simInputsContainer) {
@@ -897,6 +917,16 @@
     }
   }
 
+  function syncSimYearsTabs(years) {
+    if (!dom.simYearsTabs) return;
+    Array.from(dom.simYearsTabs.querySelectorAll(".chart-tab")).forEach(b => {
+      const val = parseInt(b.dataset.years, 10);
+      const active = val === years;
+      b.classList.toggle("is-active", active);
+      b.setAttribute("aria-selected", active);
+    });
+  }
+
   function renderDraft() {
     ensureActiveAccountSelected();
     if (dom.portfolioName) {
@@ -914,8 +944,10 @@
       if (dom.simCapitalGrowth) dom.simCapitalGrowth.value = state.draft.dividendSim.capitalGrowth;
       if (dom.simHorizonYears) dom.simHorizonYears.value = state.draft.dividendSim.years;
       if (dom.simDrip) dom.simDrip.checked = state.draft.dividendSim.drip;
+      syncSimYearsTabs(state.draft.dividendSim.years);
     } else {
       state.draft.dividendSim = { yield: 3.5, growth: 5.0, capitalGrowth: 4.0, years: 10, drip: true };
+      syncSimYearsTabs(10);
     }
     renderChartTabs();
     renderAccountList();
@@ -1211,8 +1243,7 @@
   function calculateDividendProjection() {
     if (!state.draft.dividendSim) return [];
     
-    // We treat unallocated/automatic cash as 0% yield 0% growth unless they actually assigned it. For simplicity, we just use the entire monthly capacity if building a generic portfolio sim, or perhaps we ONLY use the allocated accounts?
-    // Let's use the total capacity for simplicity and consistent growth mapping, or maybe more accurately: Total stock portion!
+    // We treat unallocated/automatic cash as 0% yield 0% growth unless they actually assigned it.
     const validTotalWeight = getTotalAccountWeight();
     const allocatedRatio = Math.min(100, Math.max(0, validTotalWeight)) / 100;
     const totalCapacity = getTotalMonthlyInvestCapacity();
@@ -1226,6 +1257,8 @@
     const rateCapital = state.draft.dividendSim.capitalGrowth / 100;
     const isDrip = state.draft.dividendSim.drip;
     const years = state.draft.dividendSim.years;
+    
+    const annualInflation = Number(state.draft.bridgeContext?.annualExpenseGrowth || 0) / 100;
     
     const results = [];
     
@@ -1243,12 +1276,20 @@
         currentAssetValue += afterTaxDividend;
       }
       
+      // Real value calculation (Current Price)
+      const realDiscountFactor = Math.pow(1 + annualInflation, y);
+      const realAssetValue = currentAssetValue / Math.max(realDiscountFactor, 1e-9);
+      const realAnnualDiv = afterTaxDividend / Math.max(realDiscountFactor, 1e-9);
+      
       results.push({
         year: y,
         principal: currentPrincipal,
         assetValue: currentAssetValue,
+        realAssetValue: realAssetValue,
         annualDiv: afterTaxDividend,
+        realAnnualDiv: realAnnualDiv,
         monthlyDiv: afterTaxDividend / 12,
+        realMonthlyDiv: realAnnualDiv / 12,
         isWarning: afterTaxDividend >= (MAX_FINANCIAL_INCOME * 0.9) && afterTaxDividend < MAX_FINANCIAL_INCOME,
         isCritical: afterTaxDividend >= MAX_FINANCIAL_INCOME,
       });
@@ -1280,9 +1321,11 @@
         <td>${row.year}년</td>
         <td>${formatCurrency(row.principal)}</td>
         <td>${formatCurrency(row.assetValue)}</td>
+        <td>${formatCurrency(row.realAssetValue)}</td>
         <td>${formatCurrency(row.annualDiv)}</td>
+        <td>${formatCurrency(row.realAnnualDiv)}</td>
         <td>${formatCurrency(row.monthlyDiv)}</td>
-        <td>${formatCurrency(row.assetValue)}</td>
+        <td>${formatCurrency(row.realMonthlyDiv)}</td>
       `;
       dom.simTable.appendChild(tr);
     });

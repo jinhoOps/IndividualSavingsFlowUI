@@ -4309,6 +4309,7 @@ function buildStep1BridgePayload(inputs) {
     currentCash: IsfUtils.toWon(IsfUtils.sanitizeMoney(safeInputs.startCash, 0)),
     currentInvest: IsfUtils.toWon(IsfUtils.sanitizeMoney(safeInputs.startInvest, 0)),
     currentSavings: IsfUtils.toWon(IsfUtils.sanitizeMoney(safeInputs.startSavings, 0)),
+    annualExpenseGrowth: Number(safeInputs.annualExpenseGrowth || 0),
     timestamp: new Date().toISOString(),
   };
 }
