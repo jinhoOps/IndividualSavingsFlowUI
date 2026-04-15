@@ -1412,10 +1412,37 @@ main {
 
   .page {
     padding: 16px 10px 36px;
+    display: grid;
+  }
+
+  .hero {
+    order: 0;
+  }
+
+  .view-mode-guide {
+    order: 1;
   }
 
   main {
+    order: 2;
     gap: 14px;
+    display: grid;
+  }
+
+  .sankey-panel {
+    order: 1;
+  }
+
+  .summary-panel {
+    order: 2;
+  }
+
+  .projection-panel {
+    order: 3;
+  }
+
+  .controls-panel {
+    order: 4;
   }
 
   .panel {

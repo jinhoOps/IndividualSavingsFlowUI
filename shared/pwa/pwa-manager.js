@@ -79,6 +79,9 @@
           void this.maybeCheckRemotePwaVersion({ force: true, showUpToDateFeedback: true });
         });
       }
+
+      // 앱 실행(Cold Start) 시 즉시 버전 체크 수행
+      void this.maybeCheckRemotePwaVersion();
     }
 
     bindPwaLifecycleFeedback() {
@@ -98,9 +101,10 @@
       if (typeof window === "undefined" || typeof document === "undefined") return false;
       if (this.isViewMode()) return false;
       
-      const mobileLayoutMediaQuery = window.matchMedia("(max-width: 760px)");
-      if (!isStandaloneDisplayMode() || !mobileLayoutMediaQuery.matches) return false;
-      return window.location.protocol === "https:";
+      // 설치된 상태(Standalone)라면 데스크톱/모바일 구분 없이 체크 허용
+      if (!isStandaloneDisplayMode()) return false;
+      
+      return window.location.protocol === "https:" || window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
     }
 
     getRemotePwaVersionLastCheckedAt() {

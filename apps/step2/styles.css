@@ -142,7 +142,7 @@ header.panel {
 
 .chart-stage svg {
   width: 100%;
-  max-width: 400px;
+  max-width: 600px;
   height: auto;
   margin: 0 auto;
   display: block;
@@ -159,6 +159,9 @@ header.panel {
   .sim-chart-wrap svg {
     min-height: 180px;
   }
+  .chart-stage svg {
+    max-width: 100%;
+  }
 }
 
 .donut-label {
@@ -168,14 +171,26 @@ header.panel {
 }
 
 .donut-label-text {
-  font-size: 11px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.donut-label-halo {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 3px;
+  stroke-linejoin: round;
+  opacity: 0.8;
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .donut-label-percent {
-  font-size: 10px;
+  font-size: 11px;
   fill: var(--muted);
+  font-weight: 600;
 }
+
 
 .donut-label-line {
   stroke: var(--line);
@@ -321,6 +336,32 @@ header.panel {
   user-select: none;
 }
 
+.allocation-row.is-important {
+  border-left: 3px solid var(--tone-primary);
+  background-color: rgba(234, 91, 42, 0.04);
+}
+
+.btn-toggle-star {
+  background: none;
+  border: none;
+  font-size: 1.1rem;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s, transform 0.1s;
+}
+
+.btn-toggle-star:hover {
+  transform: scale(1.2);
+}
+
+.btn-toggle-star.is-active {
+  color: var(--tone-primary);
+}
+
 .allocation-row.dragging {
   opacity: 0.5;
   background-color: var(--line) !important;
@@ -348,10 +389,16 @@ header.panel {
 .allocation-table-head,
 .allocation-row {
   display: grid;
-  grid-template-columns: minmax(0, 1.8fr) minmax(0, 1fr) minmax(0, 1.5fr) auto;
+  grid-template-columns: 32px minmax(0, 1.8fr) minmax(0, 1fr) minmax(0, 1.5fr) auto;
   gap: 8px;
   align-items: center;
 }
+
+.amount-breakdown-row.is-important {
+  font-weight: 700;
+  color: var(--tone-primary);
+}
+
 
 .summary-invalid {
   color: #8b2f2f;
@@ -378,6 +425,42 @@ header.panel {
 }
 
 @media (max-width: 760px) {
+  .hero {
+    order: 0;
+  }
+
+  .chart-panel {
+    order: 1;
+  }
+
+  .bridge-panel {
+    order: 2;
+  }
+
+  .info-panel {
+    order: 3;
+  }
+
+  .account-panel {
+    order: 4;
+  }
+
+  #allocationPanel {
+    order: 5;
+  }
+
+  .simulation-panel {
+    order: 6;
+  }
+
+  .actions-panel {
+    order: 7;
+  }
+
+  .storage-panel {
+    order: 8;
+  }
+
   .form-grid {
     grid-template-columns: 1fr;
   }
@@ -417,7 +500,7 @@ header.panel {
   }
 
   .allocation-row {
-    grid-template-columns: minmax(0, 1.8fr) minmax(88px, 1fr) auto;
+    grid-template-columns: 32px minmax(0, 1.8fr) minmax(88px, 1fr) auto;
     align-items: center;
   }
 

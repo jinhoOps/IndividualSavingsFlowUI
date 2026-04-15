@@ -121,7 +121,26 @@
   document.addEventListener("DOMContentLoaded", () => {
     state.draft = createEmptyDraft();
     const hash = window.location.hash;
-    if (hash) {
+    const hub = getHubStorage();
+
+    // 1. Try to restore from Session Storage first (Prevent data loss on refresh)
+    const savedTmp = sessionStorage.getItem(TEMP_STORAGE_KEY);
+    if (savedTmp && !hash) {
+      try {
+        const parsed = JSON.parse(savedTmp);
+        if (parsed && parsed.draft) {
+          state.draft = parsed.draft;
+          state.currentPortfolioId = parsed.currentPortfolioId || "";
+          state.activeAccountId = parsed.activeAccountId || "";
+          state.dirty = true;
+          IsfFeedback.markPendingBar(dom.pendingBar, dom.pendingSummary, true);
+          showFeedback("편집 중이던 데이터를 복구했습니다.", false);
+        }
+      } catch (e) {
+        console.error("Failed to restore temp draft", e);
+      }
+    } else if (hash) {
+      // 2. Load from Hash
       try {
         const hashInputs = IsfShare.decodePayloadFromHash(new URLSearchParams(window.location.hash.replace(/^#/, "")).get(HASH_STATE_PARAM), SHARE_STATE_KEY);
         if (hashInputs) {
@@ -133,13 +152,13 @@
         showFeedback("공유 링크 복원에 실패했습니다.", true);
       }
     }
+    
     bindEvents();
     ensureActiveAccountSelected();
     renderDraft();
     void refreshPortfolioList();
 
-    const hub = getHubStorage();
-    if (!hash && hub) {
+    if (!hash && !savedTmp && hub) {
       resolveLatestBridgePayload(hub).then(resolved => {
         const bridge = resolved.bridge;
         if (bridge && bridge.payload && state.draft.totalMonthlyInvestCapacity === 0) {
@@ -159,7 +178,7 @@
     }
 
     const pwaManager = new IsfPwaManager({
-      appVersion: "0.2.1",
+      appVersion: "0.2.3",
       appKey: SHARE_STATE_KEY,
       onFeedback: (message) => IsfFeedback.showFeedback(dom.applyFeedback, message),
       isViewMode: () => false,
@@ -241,6 +260,7 @@
       key: String(safe.key || "").trim() || IsfUtils.createId("asset"),
       label: String(safe.label || "").trim() || "종목",
       targetWeight: IsfUtils.sanitizeWeight(safe.targetWeight),
+      isImportant: Boolean(safe.isImportant),
       memo: String(safe.memo || ""),
     };
   }
@@ -292,14 +312,27 @@
     dom.step2Feedback.classList.remove("is-error");
   }
 
-    function markDirty() {
+  const TEMP_STORAGE_KEY = "isf-step2-draft-tmp";
+
+  function markDirty() {
     state.dirty = true;
     IsfFeedback.markPendingBar(dom.pendingBar, dom.pendingSummary, true);
+    // Persist to session storage to prevent data loss on refresh
+    try {
+      sessionStorage.setItem(TEMP_STORAGE_KEY, JSON.stringify({
+        draft: state.draft,
+        currentPortfolioId: state.currentPortfolioId,
+        activeAccountId: state.activeAccountId
+      }));
+    } catch (e) {
+      console.warn("Failed to save temporary draft", e);
+    }
   }
 
-    function markClean() {
+  function markClean() {
     state.dirty = false;
     IsfFeedback.markPendingBar(dom.pendingBar, dom.pendingSummary, false);
+    sessionStorage.removeItem(TEMP_STORAGE_KEY);
   }
   function getAccountById(accountId) {
     const safeId = String(accountId || "").trim();
@@ -646,6 +679,21 @@
       dom.allocationList.addEventListener("click", (event) => {
         const target = event.target;
         if (!(target instanceof HTMLElement)) {
+          return;
+        }
+
+        const toggleId = String(target.getAttribute("data-toggle-important") || target.closest(".btn-toggle-star")?.getAttribute("data-toggle-important") || "");
+        if (toggleId) {
+          const account = ensureActiveAccountSelected();
+          if (account) {
+            const allocation = account.allocations.find((item) => item.id === toggleId);
+            if (allocation) {
+              allocation.isImportant = !allocation.isImportant;
+              markDirty();
+              renderAllocationEditor();
+              renderCharts();
+            }
+          }
           return;
         }
 
@@ -1054,12 +1102,12 @@
     account.allocations.forEach((allocation, index) => {
       const row = document.createElement("div");
       row.className = "allocation-row";
+      if (allocation.isImportant) row.classList.add("is-important");
       row.setAttribute("data-allocation-id", allocation.id);
-      row.setAttribute("draggable", "false"); // Enabled on mousedown/longpress
+      row.setAttribute("draggable", "false"); 
       
-      // Desktop mousedown and pointerdown to enable drag
       row.onmousedown = (e) => {
-        if (e.target instanceof HTMLInputElement) {
+        if (e.target instanceof HTMLInputElement || e.target.closest(".btn-toggle-star")) {
           row.setAttribute("draggable", "false");
         } else {
           row.setAttribute("draggable", "true");
@@ -1067,6 +1115,10 @@
       };
 
       row.innerHTML = `
+        <button type="button" class="btn-toggle-star ${allocation.isImportant ? "is-active" : ""}" 
+                data-toggle-important="${IsfUtils.escapeHtml(allocation.id)}" title="중요 종목 표시">
+          ${allocation.isImportant ? "★" : "☆"}
+        </button>
         <input type="text" data-field="label" value="${IsfUtils.escapeHtml(allocation.label)}" aria-label="종목 ${index + 1} 이름" />
         <input type="number" min="0" max="100" step="0.01" data-field="targetWeight" value="${formatWeight(allocation.targetWeight)}" aria-label="종목 ${index + 1} 목표 비중" />
         <input type="text" data-field="memo" value="${IsfUtils.escapeHtml(allocation.memo)}" aria-label="종목 ${index + 1} 메모" />
@@ -1166,8 +1218,15 @@
         const prev = bucket.get(key);
         if (prev) {
           prev.value += amount;
+          if (allocation.isImportant) prev.isImportant = true;
         } else {
-          bucket.set(key, { key, label, value: amount, color: getAssetColor(key, label) });
+          bucket.set(key, { 
+            key, 
+            label, 
+            value: amount, 
+            color: getAssetColor(key, label),
+            isImportant: Boolean(allocation.isImportant)
+          });
         }
       });
     });
@@ -1229,6 +1288,7 @@
           value,
           expectedAmount: Math.round((getAccountAllocatedAmount(account) * value) / 100),
           color: getAssetColor(key, label),
+          isImportant: Boolean(allocation.isImportant)
         };
       })
       .filter((slice) => slice.value > 0);
@@ -1486,7 +1546,7 @@
       card.className = "account-chart-card" + (account.id === state.activeAccountId ? " is-active" : "");
       card.innerHTML = `
         <div class="account-chart-card-head">
-          <p class="account-chart-card-title">${IsfUtils.escapeHtml(account.name)}</p>
+          <p class="account-chart-card-title">${IsfUtils.escapeHtml(account.name)}${account.allocations.some(a => a.isImportant) ? " <small>★</small>" : ""}</p>
           <button type="button" class="btn btn-ghost btn-sm" data-focus-account-id="${IsfUtils.escapeHtml(account.id)}">선택</button>
         </div>
         <p class="account-chart-card-meta">계좌 비중 ${formatWeight(account.accountWeight)}%</p>
@@ -1522,8 +1582,8 @@
         const value = IsfUtils.sanitizeMoney(slice.value);
         const percent = total > 0 ? ((value / total) * 100).toFixed(1) : "0.0";
         return `
-          <li class="amount-breakdown-row">
-            <span class="amount-breakdown-label">${IsfUtils.escapeHtml(slice.label)}</span>
+          <li class="amount-breakdown-row ${slice.isImportant ? "is-important" : ""}">
+            <span class="amount-breakdown-label">${slice.isImportant ? "★ " : ""}${IsfUtils.escapeHtml(slice.label)}</span>
             <span class="amount-breakdown-percent">${percent}%</span>
             <strong class="amount-breakdown-value">${formatCurrency(value)}</strong>
           </li>
@@ -1546,10 +1606,11 @@
     const isMini = svgElement.classList.contains("account-mini-chart");
     const isSummary = svgElement.id === "summaryDonut";
     
-    const centerX = isSummary ? 200 : (isMini ? 60 : 130);
-    const centerY = isSummary ? 150 : (isMini ? 60 : 130);
-    const outerRadius = Number(config.outerRadius) > 0 ? Number(config.outerRadius) : (isSummary ? 110 : 95);
-    const innerRadius = Number(config.innerRadius) > 0 ? Number(config.innerRadius) : (isSummary ? 70 : 58);
+    // 크기 대폭 확장
+    const centerX = isSummary ? 250 : (isMini ? 60 : 130);
+    const centerY = isSummary ? 200 : (isMini ? 60 : 130);
+    const outerRadius = Number(config.outerRadius) > 0 ? Number(config.outerRadius) : (isSummary ? 140 : 95);
+    const innerRadius = Number(config.innerRadius) > 0 ? Number(config.innerRadius) : (isSummary ? 95 : 58);
     
     const strokeWidth = outerRadius - innerRadius;
     const radius = innerRadius + strokeWidth / 2;
@@ -1558,12 +1619,17 @@
     const total = safeSlices.reduce((sum, slice) => sum + Number(slice.value || 0), 0);
 
     svgElement.innerHTML = "";
+    // 더 넉넉한 viewBox 설정 (라벨 공간 확보)
+    if (isSummary) {
+      svgElement.setAttribute("viewBox", "0 0 500 400");
+    }
+
     const track = createSvgElement("circle", {
       cx: centerX,
       cy: centerY,
       r: radius,
       fill: "none",
-      stroke: String(config.ringColor || "rgba(16, 34, 32, 0.12)"),
+      stroke: String(config.ringColor || "rgba(16, 34, 32, 0.08)"),
       "stroke-width": strokeWidth,
     });
     svgElement.appendChild(track);
@@ -1590,33 +1656,34 @@
         });
         svgElement.appendChild(arc);
 
-        // Add Label if slice is significant enough (> 3% to avoid too many labels)
-        if (isSummary && ratio > 0.03) {
+        // 라벨 가시성 개선
+        if (isSummary && ratio > 0.02) {
           const startAngle = (offset / circumference) * 2 * Math.PI - Math.PI / 2;
           const endAngle = ((offset + dash) / circumference) * 2 * Math.PI - Math.PI / 2;
           const midAngle = (startAngle + endAngle) / 2;
           
-          const labelDist = outerRadius + 20;
+          const labelDist = outerRadius + 15;
           const lx = centerX + labelDist * Math.cos(midAngle);
           const ly = centerY + labelDist * Math.sin(midAngle);
           
           const textGroup = createSvgElement("g", { class: "donut-label" });
-          
           const anchor = lx > centerX ? "start" : "end";
-          const labelText = createSvgElement("text", {
-            x: lx,
-            y: ly,
-            "text-anchor": anchor,
-            class: "donut-label-text"
+          
+          // 텍스트 강조를 위한 후광(Halo) 효과용 복사본
+          const labelTextHalo = createSvgElement("text", {
+            x: lx, y: ly, "text-anchor": anchor, class: "donut-label-halo"
           });
-          labelText.textContent = slice.label;
+          labelTextHalo.textContent = (slice.isImportant ? "★ " : "") + slice.label;
+          textGroup.appendChild(labelTextHalo);
+
+          const labelText = createSvgElement("text", {
+            x: lx, y: ly, "text-anchor": anchor, class: "donut-label-text"
+          });
+          labelText.textContent = (slice.isImportant ? "★ " : "") + slice.label;
           textGroup.appendChild(labelText);
           
           const labelPercent = createSvgElement("text", {
-            x: lx,
-            y: ly + 14,
-            "text-anchor": anchor,
-            class: "donut-label-percent"
+            x: lx, y: ly + 16, "text-anchor": anchor, class: "donut-label-percent"
           });
           labelPercent.textContent = `${(ratio * 100).toFixed(1)}%`;
           textGroup.appendChild(labelPercent);
@@ -1632,11 +1699,11 @@
       if (config.centerTitle) {
         const title = createSvgElement("text", {
           x: centerX,
-          y: centerY - 7,
+          y: centerY - 10,
           "text-anchor": "middle",
-          "font-size": isMini ? 10 : 13,
+          "font-size": isMini ? 10 : 15,
           "font-weight": "600",
-          fill: "rgba(16, 34, 32, 0.66)",
+          fill: "rgba(16, 34, 32, 0.5)",
         });
         title.textContent = String(config.centerTitle);
         svgElement.appendChild(title);
@@ -1644,10 +1711,10 @@
       if (config.centerValue) {
         const value = createSvgElement("text", {
           x: centerX,
-          y: centerY + 16,
+          y: centerY + 22,
           "text-anchor": "middle",
-          "font-size": isMini ? 10 : 15,
-          "font-weight": "700",
+          "font-size": isMini ? 11 : 22,
+          "font-weight": "800",
           fill: "#102220",
         });
         value.textContent = String(config.centerValue);
@@ -1684,6 +1751,7 @@
           key: String(allocation.key || "").trim() || IsfUtils.createId("asset"),
           label: String(allocation.label || "").trim() || "종목",
           targetWeight: IsfUtils.sanitizeWeight(allocation.targetWeight),
+          isImportant: Boolean(allocation.isImportant),
           memo: String(allocation.memo || ""),
         })),
       })),
