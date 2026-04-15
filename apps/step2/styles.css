@@ -130,18 +130,35 @@ header.panel {
 .chart-pane[data-chart-pane="summary"] {
   grid-template-columns: 1fr;
   justify-items: center;
+  padding: 20px 10px;
 }
 
 .chart-stage {
   display: grid;
   place-items: center;
   gap: 8px;
+  width: 100%;
 }
 
 .chart-stage svg {
-  width: min(100%, 260px);
+  width: 100%;
+  max-width: 400px;
   height: auto;
-  overflow: visible; /* To allow labels outside the viewBox if necessary, though we will stay inside */
+  margin: 0 auto;
+  display: block;
+  overflow: visible;
+}
+
+.sim-chart-wrap svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+@media (max-width: 600px) {
+  .sim-chart-wrap svg {
+    min-height: 180px;
+  }
 }
 
 .donut-label {

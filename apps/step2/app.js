@@ -1381,7 +1381,7 @@
       textX.textContent = `${row.year}년`;
       dom.simChartSvg.appendChild(textX);
       
-      const assetY = height - padY - (row.assetValue * assetScale);
+      const assetY = maxAsset > 0 ? height - padY - (row.assetValue * assetScale) : height - padY;
       if (i === 0) linePath += `M ${x} ${assetY} `;
       else linePath += `L ${x} ${assetY} `;
       
@@ -1500,10 +1500,14 @@
     }
 
     const config = options && typeof options === "object" ? options : {};
-    const centerX = svgElement.classList.contains("account-mini-chart") ? 60 : 130;
-    const centerY = svgElement.classList.contains("account-mini-chart") ? 60 : 130;
-    const outerRadius = Number(config.outerRadius) > 0 ? Number(config.outerRadius) : 95;
-    const innerRadius = Number(config.innerRadius) > 0 ? Number(config.innerRadius) : 58;
+    const isMini = svgElement.classList.contains("account-mini-chart");
+    const isSummary = svgElement.id === "summaryDonut";
+    
+    const centerX = isSummary ? 200 : (isMini ? 60 : 130);
+    const centerY = isSummary ? 150 : (isMini ? 60 : 130);
+    const outerRadius = Number(config.outerRadius) > 0 ? Number(config.outerRadius) : (isSummary ? 110 : 95);
+    const innerRadius = Number(config.innerRadius) > 0 ? Number(config.innerRadius) : (isSummary ? 70 : 58);
+    
     const strokeWidth = outerRadius - innerRadius;
     const radius = innerRadius + strokeWidth / 2;
     const circumference = 2 * Math.PI * radius;
@@ -1544,12 +1548,12 @@
         svgElement.appendChild(arc);
 
         // Add Label if slice is significant enough (> 3% to avoid too many labels)
-        if (!svgElement.classList.contains("account-mini-chart") && ratio > 0.03) {
+        if (isSummary && ratio > 0.03) {
           const startAngle = (offset / circumference) * 2 * Math.PI - Math.PI / 2;
           const endAngle = ((offset + dash) / circumference) * 2 * Math.PI - Math.PI / 2;
           const midAngle = (startAngle + endAngle) / 2;
           
-          const labelDist = outerRadius + 15;
+          const labelDist = outerRadius + 20;
           const lx = centerX + labelDist * Math.cos(midAngle);
           const ly = centerY + labelDist * Math.sin(midAngle);
           
@@ -1587,7 +1591,7 @@
           x: centerX,
           y: centerY - 7,
           "text-anchor": "middle",
-          "font-size": svgElement.classList.contains("account-mini-chart") ? 10 : 13,
+          "font-size": isMini ? 10 : 13,
           "font-weight": "600",
           fill: "rgba(16, 34, 32, 0.66)",
         });
@@ -1599,7 +1603,7 @@
           x: centerX,
           y: centerY + 16,
           "text-anchor": "middle",
-          "font-size": svgElement.classList.contains("account-mini-chart") ? 10 : 15,
+          "font-size": isMini ? 10 : 15,
           "font-weight": "700",
           fill: "#102220",
         });
@@ -1612,7 +1616,9 @@
   function createSvgElement(tagName, attrs) {
     const element = document.createElementNS("http://www.w3.org/2000/svg", tagName);
     Object.entries(attrs || {}).forEach(([key, value]) => {
-      element.setAttribute(key, String(value));
+      if (value !== undefined && value !== null && !Number.isNaN(value)) {
+        element.setAttribute(key, String(value));
+      }
     });
     return element;
   }
