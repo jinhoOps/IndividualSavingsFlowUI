@@ -2155,9 +2155,15 @@
       }
 
       const payload = bridge.payload;
-      state.currentPortfolioId = "";
-      state.draft = createEmptyDraft();
-      state.draft.name = `Step1 연계 포트폴리오 (${new Date().toISOString().slice(0, 10)})`;
+
+      if (!state.draft) {
+        state.draft = createEmptyDraft();
+      }
+
+      if (!state.draft.name || state.draft.name === "포트폴리오" || state.draft.name.startsWith("Step1 연계 포트폴리오")) {
+        state.draft.name = `Step1 연계 포트폴리오 (${new Date().toISOString().slice(0, 10)})`;
+      }
+
       state.draft.totalMonthlyInvestCapacity = IsfUtils.sanitizeMoney(payload.monthlyInvestCapacity);
       state.draft.bridgeContext = {
         timestamp: String(payload.timestamp || ""),
@@ -2165,7 +2171,18 @@
         currentInvest: IsfUtils.sanitizeMoney(payload.currentInvest),
         currentSavings: IsfUtils.sanitizeMoney(payload.currentSavings),
       };
-      state.draft.notes = buildBridgeMemo(payload);
+
+      const newMemo = buildBridgeMemo(payload);
+      if (!state.draft.notes) {
+        state.draft.notes = newMemo;
+      } else {
+        const memoRegex = /\[Step1 연계 메모\][\s\S]*?(?=\n\n|$)/;
+        if (memoRegex.test(state.draft.notes)) {
+          state.draft.notes = state.draft.notes.replace(memoRegex, newMemo);
+        } else {
+          state.draft.notes = state.draft.notes + "\n\n" + newMemo;
+        }
+      }
 
       ensureActiveAccountSelected();
             setActiveChartTab("summary");

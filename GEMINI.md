@@ -1,48 +1,31 @@
-# Individual Savings Flow UI (ISF) - Project Context
+# Individual Savings Flow UI (ISF) - Main Agent Router
 
-이 문서는 IndividualSavingsFlowUI 프로젝트의 구조와 운영 원칙을 정의하는 에이전트 전용 인덱스입니다. 모든 에이전트는 작업 시작 전 이 문서를 통해 프로젝트의 맥락을 동기화합니다.
+이 리포지토리는 "Individual Savings Flow UI" 어플리케이션을 개발하고 지식을 확장하는 에이전트의 세계입니다. 모든 에이전트 작업은 ఈ 라우터(Router)의 지휘를 받습니다.
 
-## 🎯 프로젝트 사명
-개인 저축 및 투자 흐름을 시각화하고 최적화하는 No-build 기반의 경량 웹 애플리케이션입니다. 사용자 데이터를 안전하게 로컬에 보관하며, 단계별(Step1/2) 데이터 브리지를 통해 통합된 투자 가이드를 제공합니다.
+## 🧭 파트너 스킬 / 역할 기반 라우팅
+이 파일은 프로젝트의 모든 규칙을 나열하지 않고, 상황에 맞는 특화 스킬(Skill)과 지식(Knowledge)으로 분기하는 "지도(Map)" 역할을 합니다. 당신의 현재 목적(Phase)에 맞춰서 올바른 문서를 참조하세요.
 
-## 🏛️ 아키텍처 원칙 (No-build Vanilla JS)
-- 순수 웹 표준: 빌드 도구 없이 브라우저에서 즉시 실행 가능한 ES6 Modules 및 Vanilla JS를 유지합니다.
-- Shared 우선: 기능 구현 전 shared/ 디렉토리의 공용 자산(utils, storage, components) 재활용 여부를 필수로 검토합니다.
-- 데이터 로컬리티: IndexedDB(isf-hub-db-v1)와 PWA 기술을 활용하여 오프라인 가용성과 데이터 주권을 보장합니다.
+### 1단계: Context Loading (맥락 로딩)
+어떤 작업을 시작하든, 가장 먼저 전체 프로젝트의 메타 지식이 담긴 마스터 인덱스를 읽어서 현재 컨텍스트를 로드하십시오.
+- **[필수 참조]** [[.gemini/knowledge/wiki/INDEX.md]] 
 
-## 📂 주요 디렉토리 인덱스
+### 2단계: Development & Architecture (개발 및 스펙 합의)
+사용자로부터 기능 추가, 리팩토링, 아키텍처 제어 등을 지시받았다면, 코드를 작성하기 전에 개발 관점의 스킬을 먼저 로드해야 합니다.
+- **[개발 특화 스킬]** [[.gemini/skills/core-developer/SKILL.md]]
+  *(이 안에는 No-build Vanilla JS 원칙, 컴포넌트 재사용 원칙, Generator-Evaluator 패턴 기반의 "스프린트 계약" 맺는 법 등이 정의되어 있습니다.)*
 
-### 1. Applications (apps/)
-- apps/step1/: 나의 가계 흐름(만원 단위) 시뮬레이션 및 현금 흐름 분석.
-- apps/step2/: 투자 포트폴리오(원 단위) 설계 및 자산 배분 전략.
-
-### 2. Shared Modules (shared/)
-- shared/core/: 유틸리티, 공유 함수, 압축 알고리즘.
-- shared/storage/: IndexedDB 인터페이스, 백업 관리자, 데이터 브리지.
-- shared/pwa/: 서비스 워커 및 PWA 가용성 제어.
-- shared/components/: 공통 UI 컴포넌트 (FeedbackManager 등).
-- shared/styles/: CSS 변수 기반의 통합 테마 시스템.
-
-### 3. Agent Knowledge Base (.gemini/knowledge/)
-- .gemini/knowledge/raw/: 처리 대기 중인 원본 데이터 및 스크랩.
-- .gemini/knowledge/wiki/: 정제 및 연결된 프로젝트 지식 노드.
-- .gemini/knowledge/output/: 에이전트가 생산한 최종 결과물.
-
-## 🛠️ 핵심 워크플로우
-
-### 지식 관리 (The Librarian Workflow)
-- Gather (.gemini/knowledge/raw/) -> Refine (.gemini/knowledge/wiki/) -> Archive (raw/archive/) -> Link (Wiki Nodes)
-
-### 에이전트 협업 (Collaboration Loop)
-- isf-planner (기획/설계) -> isf-developer (구현/리팩터링) -> isf-evaluator (검증/품질 보증)
-
-## 🔗 주요 참조 문서
-- 프로젝트 하네스: [[.gemini/skills/isf-harness/SKILL]]
-- 운영 원칙: [[.gemini/knowledge/wiki/Operating_Principles]]
-- 업데이트 이력: [[.gemini/knowledge/wiki/Project_History]]
-- Step1 개발 계획: [[.gemini/knowledge/wiki/Plan_Step1]]
-- Step2 개발 계획: [[.gemini/knowledge/wiki/Plan_Step2]]
-- 기능 백로그: [[TODO.md]]
+### 3단계: Wiki Indexing & Post-processing (지식 인덱싱 필수 절차)
+작업이 끝났다고 그대로 대화를 종료하지 마십시오. 새로운 패턴을 도출했거나 설계를 바꿨다면, 반드시 **에이전트의 영속적 기억**을 갱신하는 절차를 밟아야 합니다.
+- **[사서 및 인덱싱 스킬]** [[.gemini/skills/wiki-librarian/SKILL.md]]
+  *(이 스킬을 바탕으로, 알아낸 사실을 .gemini/knowledge/wiki/ 에 정리하고, 최종적으로 INDEX.md의 목차 구조(Topology)를 업데이트하세요.)*
 
 ---
-*모든 문서는 한국어(존댓말), UTF-8, 굵게/기울임 표시 지양 규칙을 준수합니다.*
+
+## 🛠️ 실무 참조 문서 (Reference Manuals)
+위의 1~3단계를 따르되, 구체적인 도메인 스펙이 필요할 때만 아래 문서들을 열어보세요. (필요하지 않으면 열지 마세요. 컨텍스트 윈도우는 희소한 자원입니다.)
+- 운영 원칙: [[.gemini/knowledge/wiki/Operating_Principles]]
+- UI 및 피드백 표준: `references/ui-standards.md`
+- 브리지 데이터 패턴 (문제 해결 지식): [[.gemini/knowledge/wiki/Data_Bridge_Import_Pattern.md]]
+- 기능 백로그 및 TODO: `TODO.md`
+
+(*주의사항: 모든 문서는 한국어(존댓말), UTF-8, 굵게/기울임 표시 지양 규칙을 준수합니다.*)
