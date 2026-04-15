@@ -21,8 +21,8 @@ IndividualSavingsFlowUI 프로젝트의 지속 가능한 개발과 일관성을 
   - `manifest.webmanifest` (version)
 
 ## 🏛️ 지식 베이스 운영 (The Librarian Workflow)
-- 모든 지식은 `.gemini/knowledge/` (raw/ -> wiki/ -> output/) 단계를 거쳐 관리됩니다.
-- 자세한 내용은 [[knowledge-harness]] 스킬을 참조하십시오.
+- 모든 지식은 `.gemini/knowledge/wiki/` 디렉토리에서 위키 노드 형태로 관리됩니다.
+- 자세한 내용은 [[Knowledge_Harness]] 문서를 참조하십시오.
 
 ---
 *연결 노드:* [[Project_History]]

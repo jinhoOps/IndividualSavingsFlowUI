@@ -13,6 +13,8 @@
 사용자로부터 기능 추가, 리팩토링, 아키텍처 제어 등을 지시받았다면, 코드를 작성하기 전에 개발 관점의 스킬을 먼저 로드해야 합니다.
 - **[개발 특화 스킬]** [[.gemini/skills/core-developer/SKILL.md]]
   *(이 안에는 No-build Vanilla JS 원칙, 컴포넌트 재사용 원칙, Generator-Evaluator 패턴 기반의 "스프린트 계약" 맺는 법 등이 정의되어 있습니다.)*
+- **[에이전트 협업 스킬]** [[.gemini/skills/orchestration/SKILL.md]]
+  *(기획(Planner), 구현(Developer), 평가(Evaluator) 간의 핸드오프 순서, 입출력 규격, 루프백 규칙이 정의되어 있습니다.)*
 
 ### 3단계: Wiki Indexing & Post-processing (지식 인덱싱 필수 절차)
 작업이 끝났다고 그대로 대화를 종료하지 마십시오. 새로운 패턴을 도출했거나 설계를 바꿨다면, 반드시 **에이전트의 영속적 기억**을 갱신하는 절차를 밟아야 합니다.
@@ -24,7 +26,9 @@
 ## 🛠️ 실무 참조 문서 (Reference Manuals)
 위의 1~3단계를 따르되, 구체적인 도메인 스펙이 필요할 때만 아래 문서들을 열어보세요. (필요하지 않으면 열지 마세요. 컨텍스트 윈도우는 희소한 자원입니다.)
 - 운영 원칙: [[.gemini/knowledge/wiki/Operating_Principles]]
-- UI 및 피드백 표준: `references/ui-standards.md`
+- 아키텍처 참조: [[.gemini/knowledge/wiki/Architecture_Reference.md]]
+- 데이터 모델 참조: [[.gemini/knowledge/wiki/Data_Model_Reference.md]]
+- UI 및 피드백 표준: [[.gemini/knowledge/wiki/UI_Standards_Reference.md]]
 - 브리지 데이터 패턴 (문제 해결 지식): [[.gemini/knowledge/wiki/Data_Bridge_Import_Pattern.md]]
 - 기능 백로그 및 TODO: `TODO.md`
 
