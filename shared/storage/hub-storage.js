@@ -259,6 +259,8 @@
       key: String(safe.key || "").trim() || createId(`asset-${index}`),
       label: String(safe.label || "").trim() || `자산군 ${index + 1}`,
       targetWeight: Math.max(0, Math.min(100, Number.isFinite(Number(safe.targetWeight)) ? Math.round(Number(safe.targetWeight) * 100) / 100 : 0)),
+      actualAmount: sanitizeNonNegativeNumber(safe.actualAmount),
+      isImportant: Boolean(safe.isImportant),
       memo: String(safe.memo || ""),
     };
   }
@@ -313,6 +315,7 @@
         totalMonthlyInvestCapacity: sanitizeNonNegativeNumber(source.totalMonthlyInvestCapacity),
         unallocatedMonthlyInvest: sanitizeNonNegativeNumber(source.unallocatedMonthlyInvest),
         bridgeContext: source.bridgeContext && typeof source.bridgeContext === "object" ? source.bridgeContext : null,
+        dividendSim: source.dividendSim && typeof source.dividendSim === "object" ? source.dividendSim : null,
         accounts: Array.isArray(source.accounts)
           ? source.accounts.map((account, index) => sanitizeStep2Account(account, index))
           : [],

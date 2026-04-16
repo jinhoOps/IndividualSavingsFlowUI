@@ -77,55 +77,31 @@
       </section>
 
       <section class="panel info-panel">
-        <h2>포트폴리오 기본 정보</h2>
+        <h2>기본 정보</h2>
         <div class="form-grid">
           <label class="control">
             <span>포트폴리오 이름</span>
-            <input id="portfolioName" type="text" maxlength="60" />
+            <input id="portfolioName" type="text" maxlength="60" placeholder="예: 나의 노후 대비 포트폴리오" />
+          </label>
+          <label class="control">
+            <span>월 투자 가능 금액(만원)</span>
+            <input id="totalMonthlyInvestCapacity" type="number" min="0" step="1" inputmode="decimal" />
           </label>
           <label class="control">
             <span>메모</span>
-            <textarea id="portfolioNotes" rows="3" maxlength="500"></textarea>
-          </label>
-          <label class="control">
-            <span>월 투자 가능 금액(원, Step1 가져오기 자동 반영)</span>
-            <input id="totalMonthlyInvestCapacity" type="number" min="0" step="10000" />
+            <textarea id="portfolioNotes" rows="1" maxlength="500" placeholder="전략적 목표를 적어보세요"></textarea>
           </label>
         </div>
       </section>
 
       <section class="panel account-panel">
         <div class="section-head">
-          <h2>계좌 편집</h2>
+          <h2>통합 포트폴리오 에디터</h2>
           <button id="addAccount" class="btn btn-ghost btn-sm" type="button">계좌 추가</button>
         </div>
-        <label class="mobile-account-picker" for="mobileAccountSelect">
-          <span>모바일 계좌 전환</span>
-          <select id="mobileAccountSelect" aria-label="모바일 계좌 전환"></select>
-        </label>
-        <div class="account-table-head">
-          <span>계좌명</span>
-          <span>계좌 비중(%)</span>
-          <span>편집</span>
-          <span>관리</span>
-        </div>
+        <p class="muted" style="margin-bottom: var(--sp-sm);">계좌를 눌러 상세 종목 비중과 현재 보유 금액을 편집하세요.</p>
         <div id="accountList" class="account-list" aria-live="polite"></div>
         <p id="accountSummary" class="muted"></p>
-      </section>
-
-      <section id="allocationPanel" class="panel" hidden>
-        <div class="section-head">
-          <h2 id="allocationEditorTitle">종목 구성</h2>
-          <button id="addAllocation" class="btn btn-ghost btn-sm" type="button">종목 추가</button>
-        </div>
-        <div class="allocation-table-head">
-          <span>종목 이름</span>
-          <span>목표 비중(%)</span>
-          <span>메모</span>
-          <span>관리</span>
-        </div>
-        <div id="allocationList" class="allocation-list" aria-live="polite"></div>
-        <p id="allocationSummary" class="muted"></p>
       </section>
 
       <section class="panel actions-panel">

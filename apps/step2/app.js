@@ -133,7 +133,7 @@
   function formatCurrency(v) { return new Intl.NumberFormat("ko-KR").format(IsfUtils.sanitizeMoney(v)) + " 만원"; }
   function formatDateTime(v) { return new Date(v).toLocaleString("ko-KR"); }
 
-  function createDraftAllocation(s) { return { id: s?.id || IsfUtils.createId("alloc"), key: s?.key || IsfUtils.createId("asset"), label: s?.label || "종목", targetWeight: IsfUtils.sanitizeWeight(s?.targetWeight), isImportant: Boolean(s?.isImportant), memo: s?.memo || "" }; }
+  function createDraftAllocation(s) { return { id: s?.id || IsfUtils.createId("alloc"), key: s?.key || IsfUtils.createId("asset"), label: s?.label || "종목", targetWeight: IsfUtils.sanitizeWeight(s?.targetWeight), actualAmount: IsfUtils.sanitizeMoney(s?.actualAmount || 0), isImportant: Boolean(s?.isImportant), memo: s?.memo || "" }; }
   function createDraftAccount(s) {
     const rawAllocations = Array.isArray(s?.allocations) ? s.allocations : FALLBACK_ALLOCATIONS;
     return { id: s?.id || IsfUtils.createId("acc"), name: s?.name || "계좌", accountWeight: IsfUtils.sanitizeWeight(s?.accountWeight), allocations: rawAllocations.map(a => createDraftAllocation(a)) };
@@ -158,29 +158,58 @@
     if (dom.addAccount) dom.addAccount.addEventListener("click", () => { const acc = createDraftAccount({ name: `계좌 ${state.draft.accounts.length + 1}` }); state.draft.accounts.push(acc); state.activeAccountId = acc.id; markDirty(); renderDraft(); });
     if (dom.accountList) {
       dom.accountList.addEventListener("input", (e) => {
-        const row = e.target.closest("[data-account-id]"); const acc = getAccountById(row?.dataset.accountId); if (!acc) return;
-        if (e.target.dataset.field === "accountName") acc.name = e.target.value;
-        if (e.target.dataset.field === "accountWeight") acc.accountWeight = IsfUtils.sanitizeWeight(e.target.value);
+        const accRow = e.target.closest("[data-account-id]");
+        const allocRow = e.target.closest("[data-allocation-id]");
+        const acc = getAccountById(accRow?.dataset.accountId); if (!acc) return;
+
+        if (allocRow) {
+          const al = acc.allocations.find(i => i.id === allocRow.dataset.allocationId); if (!al) return;
+          if (e.target.dataset.field === "label") al.label = e.target.value;
+          if (e.target.dataset.field === "targetWeight") al.targetWeight = IsfUtils.sanitizeWeight(e.target.value);
+          if (e.target.dataset.field === "actualAmount") al.actualAmount = IsfUtils.sanitizeMoney(e.target.value);
+          if (e.target.dataset.field === "memo") al.memo = e.target.value;
+        } else {
+          if (e.target.dataset.field === "accountName") acc.name = e.target.value;
+          if (e.target.dataset.field === "accountWeight") acc.accountWeight = IsfUtils.sanitizeWeight(e.target.value);
+        }
         markDirty(); renderAccountSummary(); renderCharts();
       });
       dom.accountList.addEventListener("click", (e) => {
-        const id = e.target.dataset.selectAccountId; if (id) { state.activeAccountId = (state.activeAccountId === id ? "" : id); renderDraft(); return; }
-        const rid = e.target.dataset.removeAccountId; if (rid && confirm("삭제하시겠습니까?")) { state.draft.accounts = state.draft.accounts.filter(a => a.id !== rid); if (state.activeAccountId === rid) state.activeAccountId = ""; markDirty(); renderDraft(); }
-      });
-    }
-    if (dom.addAllocation) dom.addAllocation.addEventListener("click", () => { const acc = getAccountById(state.activeAccountId); if (!acc) return; acc.allocations.push(createDraftAllocation({ label: `종목 ${acc.allocations.length + 1}` })); markDirty(); renderAllocationEditor(); renderCharts(); });
-    if (dom.allocationList) {
-      dom.allocationList.addEventListener("input", (e) => {
-        const row = e.target.closest("[data-allocation-id]"); const acc = getAccountById(state.activeAccountId); const al = acc?.allocations.find(i => i.id === row?.dataset.allocationId); if (!al) return;
-        if (e.target.dataset.field === "label") al.label = e.target.value;
-        if (e.target.dataset.field === "targetWeight") al.targetWeight = IsfUtils.sanitizeWeight(e.target.value);
-        if (e.target.dataset.field === "memo") al.memo = e.target.value;
-        markDirty(); renderAllocationSummary(); renderCharts();
-      });
-      dom.allocationList.addEventListener("click", (e) => {
+        const accRow = e.target.closest("[data-account-id]");
+        const accId = accRow?.dataset.accountId;
+        
+        const selId = e.target.dataset.selectAccountId || e.target.closest(".account-row-head")?.dataset.selectAccountId;
+        if (selId) { state.activeAccountId = (state.activeAccountId === selId ? "" : selId); renderAccountList(); return; }
+        
+        const rid = e.target.dataset.removeAccountId;
+        if (rid && confirm("계좌를 삭제하시겠습니까?")) {
+          state.draft.accounts = state.draft.accounts.filter(a => a.id !== rid);
+          if (state.activeAccountId === rid) state.activeAccountId = "";
+          markDirty(); renderDraft();
+          return;
+        }
+
+        const addAlId = e.target.dataset.addAllocationId;
+        if (addAlId) {
+          const acc = getAccountById(addAlId);
+          if (acc) { acc.allocations.push(createDraftAllocation({ label: `종목 ${acc.allocations.length + 1}` })); markDirty(); renderAccountList(); renderCharts(); }
+          return;
+        }
+
+        const remAlId = e.target.dataset.removeAllocationId;
+        if (remAlId) {
+          const acc = getAccountById(accId);
+          if (acc && confirm("종목을 삭제하시겠습니까?")) { acc.allocations = acc.allocations.filter(a => a.id !== remAlId); markDirty(); renderAccountList(); renderCharts(); }
+          return;
+        }
+
         const tid = e.target.dataset.toggleImportant || e.target.closest(".btn-toggle-star")?.dataset.toggleImportant;
-        if (tid) { const acc = getAccountById(state.activeAccountId); const al = acc?.allocations.find(i => i.id === tid); if (al) { al.isImportant = !al.isImportant; markDirty(); renderAllocationEditor(); renderCharts(); } return; }
-        const rid = e.target.dataset.removeAllocationId; if (rid && confirm("삭제하시겠습니까?")) { const acc = getAccountById(state.activeAccountId); acc.allocations = acc.allocations.filter(a => a.id !== rid); markDirty(); renderAllocationEditor(); renderCharts(); }
+        if (tid) {
+          const acc = getAccountById(accId);
+          const al = acc?.allocations.find(i => i.id === tid);
+          if (al) { al.isImportant = !al.isImportant; markDirty(); renderAccountList(); renderCharts(); }
+          return;
+        }
       });
     }
     if (dom.savePortfolio) dom.savePortfolio.addEventListener("click", saveCurrentPortfolio);
@@ -196,7 +225,7 @@
     if (dom.portfolioName) dom.portfolioName.value = state.draft.name;
     if (dom.portfolioNotes) dom.portfolioNotes.value = state.draft.notes;
     if (dom.totalMonthlyInvestCapacity) dom.totalMonthlyInvestCapacity.value = state.draft.totalMonthlyInvestCapacity;
-    renderChartTabs(); renderAccountList(); renderAllocationEditor(); renderAccountSummary(); renderCharts();
+    renderChartTabs(); renderAccountList(); renderAccountSummary(); renderCharts();
   }
 
   function renderChartTabs() {
@@ -206,40 +235,70 @@
   }
 
   function renderAccountList() {
-    dom.accountList.innerHTML = state.draft.accounts.map(a => `
-      <div class="account-row ${a.id === state.activeAccountId ? "is-active" : ""}" data-account-id="${a.id}">
-        <input type="text" data-field="accountName" value="${IsfUtils.escapeHtml(a.name)}" />
-        <input type="number" data-field="accountWeight" value="${a.accountWeight}" />
-        <div class="row-actions">
-           <button class="btn btn-ghost btn-sm" data-select-account-id="${a.id}">${a.id === state.activeAccountId ? "편집중" : "선택"}</button>
-           <button class="btn btn-ghost btn-sm" data-remove-account-id="${a.id}">삭제</button>
+    dom.accountList.innerHTML = state.draft.accounts.map(a => {
+      const isActive = a.id === state.activeAccountId;
+      const totalAlWeight = getAllocationWeightTotal(a);
+      return `
+      <div class="account-card ${isActive ? "is-active" : ""}" data-account-id="${a.id}">
+        <div class="account-row-head" data-select-account-id="${a.id}">
+          <div class="account-info">
+            <input type="text" data-field="accountName" value="${IsfUtils.escapeHtml(a.name)}" placeholder="계좌명" onclick="event.stopPropagation()"/>
+            <div class="account-meta">
+              <input type="number" data-field="accountWeight" value="${a.accountWeight}" step="0.1" onclick="event.stopPropagation()"/>
+              <span class="unit">%</span>
+            </div>
+          </div>
+          <div class="account-actions">
+            <button class="btn btn-ghost btn-sm" data-remove-account-id="${a.id}" onclick="event.stopPropagation()">삭제</button>
+            <span class="chevron">${isActive ? "▲" : "▼"}</span>
+          </div>
         </div>
+        
+        ${isActive ? `
+        <div class="allocation-editor">
+          <div class="allocation-table-head">
+            <span></span>
+            <span>종목명</span>
+            <span>목표(%)</span>
+            <span>현재액(만)</span>
+            <span></span>
+          </div>
+          <div class="allocation-list">
+            ${a.allocations.map(al => `
+              <div class="allocation-row ${al.isImportant ? "is-important" : ""}" data-allocation-id="${al.id}">
+                <button class="btn-toggle-star ${al.isImportant ? "is-active" : ""}" data-toggle-important="${al.id}">${al.isImportant ? "★" : "☆"}</button>
+                <input type="text" data-field="label" value="${IsfUtils.escapeHtml(al.label)}" placeholder="종목명" />
+                <input type="number" data-field="targetWeight" value="${al.targetWeight}" step="0.1" />
+                <input type="number" data-field="actualAmount" value="${al.actualAmount}" step="1" inputmode="decimal" />
+                <button class="btn btn-ghost btn-sm" data-remove-allocation-id="${al.id}">삭제</button>
+              </div>
+            `).join("")}
+          </div>
+          <div class="allocation-footer">
+            <span class="total ${totalAlWeight > 100.01 ? "is-error" : ""}">합계: ${totalAlWeight.toFixed(1)}%</span>
+            <button class="btn btn-ghost btn-sm" data-add-allocation-id="${a.id}">+ 종목 추가</button>
+          </div>
+        </div>
+        ` : ""}
       </div>
-    `).join("");
+    `}).join("");
   }
 
-  function renderAllocationEditor() {
-    const acc = getAccountById(state.activeAccountId); dom.allocationPanel.hidden = !acc; if (!acc) return;
-    dom.allocationEditorTitle.textContent = `종목 구성 (${acc.name})`;
-    dom.allocationList.innerHTML = acc.allocations.map(al => `
-      <div class="allocation-row ${al.isImportant ? "is-important" : ""}" data-allocation-id="${al.id}">
-        <button class="btn-toggle-star ${al.isImportant ? "is-active" : ""}" data-toggle-important="${al.id}">${al.isImportant ? "★" : "☆"}</button>
-        <input type="text" data-field="label" value="${IsfUtils.escapeHtml(al.label)}" />
-        <input type="number" data-field="targetWeight" value="${al.targetWeight}" />
-        <input type="text" data-field="memo" value="${IsfUtils.escapeHtml(al.memo)}" />
-        <button class="btn btn-ghost btn-sm" data-remove-allocation-id="${al.id}">삭제</button>
-      </div>
-    `).join("");
-    renderAllocationSummary();
-  }
-
-  function renderAccountSummary() { const total = getTotalAccountWeight(); dom.accountSummary.textContent = `비중 합계: ${total.toFixed(2)}% / 자동 현금: ${formatCurrency(getAutoCashAmount())}`; dom.accountSummary.classList.toggle("is-error", total > 100.01); }
-  function renderAllocationSummary() { const acc = getAccountById(state.activeAccountId); if (!acc) return; const total = getAllocationWeightTotal(acc); dom.allocationSummary.textContent = `종목 비중 합계: ${total.toFixed(2)}%`; dom.allocationSummary.classList.toggle("is-error", total > 100.01); }
+  function renderAccountSummary() { const total = getTotalAccountWeight(); dom.accountSummary.textContent = `전체 계좌 비중 합계: ${total.toFixed(2)}% / 자동 현금: ${formatCurrency(getAutoCashAmount())}`; dom.accountSummary.classList.toggle("is-error", total > 100.01); }
 
   function renderCharts() { renderSummaryChart(); renderAccountChartCards(); renderAmountBreakdown(); renderDividendSimulation(); }
   function renderSummaryChart() { const slices = buildSummarySlices(); renderDonutChart(dom.summaryDonut, slices, { centerValue: formatCurrency(getTotalMonthlyInvestCapacity()) }); }
-  function renderAccountChartCards() { dom.accountChartCards.innerHTML = state.draft.accounts.map(a => `<div class="account-chart-card ${a.id === state.activeAccountId ? "is-active" : ""}"><p>${a.name} (${a.accountWeight}%)</p><button class="btn btn-ghost btn-sm" data-focus-account-id="${a.id}">선택</button></div>`).join(""); }
-  function renderAmountBreakdown() { const slices = buildSummarySlices(); dom.amountBreakdown.innerHTML = slices.map(s => `<li class="amount-row"><span>${s.label}</span><strong>${formatCurrency(s.value)}</strong></li>`).join(""); }
+  function renderAccountChartCards() { dom.accountChartCards.innerHTML = state.draft.accounts.map(a => `<div class="account-chart-card ${a.id === state.activeAccountId ? "is-active" : ""}"><p>${a.name} (${a.accountWeight}%)</p><button class="btn btn-ghost btn-sm" data-select-account-id="${a.id}">선택</button></div>`).join(""); }
+  function renderAmountBreakdown() { 
+    const slices = buildSummarySlices(); 
+    dom.amountBreakdown.innerHTML = `<ul class="amount-breakdown-list">` + slices.map(s => `
+      <li class="amount-breakdown-row ${s.isImportant ? "is-important" : ""}">
+        <span class="amount-breakdown-label">${s.label}</span>
+        <span class="amount-breakdown-percent">${((s.value / getTotalMonthlyInvestCapacity()) * 100).toFixed(1)}%</span>
+        <strong class="amount-breakdown-value">${formatCurrency(s.value)}</strong>
+      </li>
+    `).join("") + `</ul>`; 
+  }
 
   async function refreshBridgeSummary() {
     const hub = getHubStorage(); const bridgePanel = document.getElementById("bridgePanel");

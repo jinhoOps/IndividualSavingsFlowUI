@@ -3,15 +3,6 @@
   --tone-paper: rgba(16, 34, 32, 0.04);
 }
 
-.page-intro {
-  text-align: center;
-  padding: var(--sp-lg) var(--sp-md);
-}
-
-.lead {
-  font-size: 1.02rem;
-}
-
 .section-head,
 .chart-head {
   display: flex;
@@ -22,7 +13,7 @@
 
 .bridge-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(150px, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--sp-sm);
 }
 
@@ -42,12 +33,12 @@
 }
 
 .bridge-grid span {
-  font-size: 0.9rem;
+  font-size: 0.86rem;
 }
 
 .form-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: 1.5fr 1fr 2fr;
   gap: var(--sp-md);
 }
 
@@ -70,42 +61,12 @@
 
 .control textarea {
   resize: vertical;
-  min-height: 88px;
-}
-
-.mobile-account-picker {
-  display: none;
+  min-height: 42px;
 }
 
 .chart-panel {
   display: grid;
   gap: 12px;
-}
-
-.chart-tabs {
-  display: inline-grid;
-  grid-template-columns: repeat(2, minmax(120px, auto));
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: 3px;
-  background: rgba(255, 255, 255, 0.84);
-}
-
-.chart-tab {
-  border: 0;
-  border-radius: 999px;
-  padding: 7px 10px;
-  font: inherit;
-  font-size: 0.8rem;
-  color: var(--ink);
-  background: rgba(255, 255, 255, 0);
-  cursor: pointer;
-}
-
-.chart-tab.is-active,
-.chart-tab[aria-selected="true"] {
-  color: #fff;
-  background: linear-gradient(135deg, var(--tone-primary), var(--tone-accent));
 }
 
 .chart-pane {
@@ -117,8 +78,7 @@
   gap: 10px;
 }
 
-.chart-pane[hidden],
-.chart-pane.is-hidden {
+.chart-pane[hidden] {
   display: none !important;
 }
 
@@ -128,403 +88,260 @@
   padding: 20px 10px;
 }
 
-.chart-stage {
-  display: grid;
-  place-items: center;
-  gap: 8px;
-  width: 100%;
-}
-
 .chart-stage svg {
   width: 100%;
-  max-width: 600px;
+  max-width: 500px;
   height: auto;
   margin: 0 auto;
   display: block;
   overflow: visible;
 }
 
-.sim-chart-wrap svg {
-  width: 100%;
-  height: auto;
-  display: block;
-}
-
-@media (max-width: 600px) {
-  .sim-chart-wrap svg { min-height: 180px; }
-  .chart-stage svg { max-width: 100%; }
-}
-
-/* 도넛 차트 라벨 */
-.donut-label {
-  pointer-events: none;
-  font-family: inherit;
-  fill: var(--ink);
-}
-
-.donut-label-text {
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.donut-label-halo {
-  fill: none;
-  stroke: #fff;
-  stroke-width: 3px;
-  stroke-linejoin: round;
-  opacity: 0.8;
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.donut-label-percent {
-  font-size: 11px;
-  fill: var(--muted);
-  font-weight: 600;
-}
-
-.donut-label-line {
-  stroke: var(--line);
-  stroke-width: 1px;
-  fill: none;
-}
-
-.account-chart-cards {
+/* 계좌 카드 및 아코디언 */
+.account-list {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-  gap: 8px;
+  gap: 12px;
 }
 
-.account-chart-card {
+.account-card {
   border: 1px solid var(--line);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.86);
-  padding: 8px;
-  display: grid;
-  gap: 6px;
+  border-radius: 14px;
+  background: #fff;
+  overflow: hidden;
+  transition: box-shadow 0.2s;
 }
 
-.account-chart-card.is-active {
-  border-color: rgba(49, 117, 182, 0.45);
-  box-shadow: inset 0 0 0 1px rgba(49, 117, 182, 0.2);
+.account-card.is-active {
+  border-color: var(--tone-primary);
+  box-shadow: var(--sh-float);
 }
 
-.account-chart-card-head {
+.account-row-head {
+  padding: 12px 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-}
-
-.account-chart-card-title {
-  margin: 0;
-  font-size: 0.84rem;
-}
-
-.account-chart-card-meta {
-  margin: 0;
-  font-size: 0.74rem;
-  color: var(--muted);
-}
-
-.account-mini-chart {
-  width: 110px;
-  height: 110px;
-  margin: 0 auto;
-}
-
-.amount-details {
-  border: 1px dashed var(--line);
-  border-radius: 10px;
-  padding: 8px 10px;
-  background: rgba(255, 255, 255, 0.78);
-}
-
-.amount-details > summary {
   cursor: pointer;
-  font-size: 0.78rem;
-  color: var(--muted);
-  user-select: none;
+  background: rgba(255, 255, 255, 0.5);
 }
 
-.amount-breakdown-list {
-  margin: 10px 0 6px;
-  padding: 0;
-  list-style: none;
+.account-row-head:hover {
+  background: rgba(234, 91, 42, 0.03);
+}
+
+.account-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
+.account-info input[data-field="accountName"] {
+  font-weight: 700;
+  border: none;
+  background: transparent;
+  padding: 4px;
+  font-size: 1rem;
+  width: 140px;
+}
+
+.account-meta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--tone-paper);
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
+.account-meta input {
+  width: 50px;
+  border: none;
+  background: transparent;
+  text-align: right;
+  font-weight: 600;
+}
+
+.account-meta .unit {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.account-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.chevron {
+  font-size: 0.7rem;
+  color: var(--muted);
+  width: 20px;
+  text-align: center;
+}
+
+/* 종목 에디터 (아코디언 내부) */
+.allocation-editor {
+  padding: 0 16px 16px;
+  background: linear-gradient(to bottom, rgba(234, 91, 42, 0.02), #fff);
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.allocation-table-head {
+  display: grid;
+  grid-template-columns: 30px 1.5fr 0.8fr 1fr 40px;
+  gap: 8px;
+  padding: 10px 0 6px;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.allocation-list {
   display: grid;
   gap: 6px;
 }
 
-.amount-breakdown-row {
+.allocation-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: 30px 1.5fr 0.8fr 1fr 40px;
   gap: 8px;
   align-items: center;
-  font-size: 0.78rem;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 4px 8px;
 }
 
-.amount-breakdown-row.is-important {
-  font-weight: 700;
+.allocation-row.is-important {
+  border-color: rgba(234, 91, 42, 0.3);
+  background: rgba(234, 91, 42, 0.02);
+}
+
+.allocation-row input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 6px;
+  font-size: 0.86rem;
+}
+
+.allocation-row input:focus {
+  background: rgba(0,0,0,0.03);
+  border-radius: 4px;
+}
+
+.allocation-footer {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.allocation-footer .total {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.allocation-footer .total.is-error {
   color: var(--tone-primary);
 }
 
-.amount-breakdown-label {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+/* 시각화 및 시뮬레이션 */
+.amount-breakdown-list {
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px;
+}
+
+.amount-breakdown-row {
+  border: 1px solid var(--line);
+  padding: 8px 10px;
+  border-radius: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.82rem;
+}
+
+.amount-breakdown-row.is-important {
+  border-color: var(--tone-primary);
+  background: rgba(234, 91, 42, 0.03);
 }
 
 .amount-breakdown-percent {
   color: var(--muted);
-  font-variant-numeric: tabular-nums;
-}
-
-.amount-breakdown-value {
-  font-size: 0.8rem;
-  font-variant-numeric: tabular-nums;
-}
-
-.amount-breakdown-total {
-  margin: 0;
-  text-align: right;
-  font-size: 0.78rem;
-  color: var(--muted);
-}
-
-/* 계좌 테이블 */
-.account-table-head,
-.account-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) auto auto;
-  gap: 8px;
-  align-items: center;
-}
-
-.account-table-head,
-.allocation-table-head {
-  font-size: 0.76rem;
-  color: var(--muted);
-  padding: 0 2px;
-}
-
-.account-list,
-.allocation-list {
-  display: grid;
-  gap: 8px;
-}
-
-.account-row,
-.allocation-row {
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.9);
-  padding: 8px;
-}
-
-.account-row.is-active {
-  border-color: rgba(49, 117, 182, 0.45);
-  box-shadow: inset 0 0 0 1px rgba(49, 117, 182, 0.2);
-}
-
-/* 종목 행 (드래그 핸들 포함) */
-.allocation-table-head,
-.allocation-row {
-  display: grid;
-  grid-template-columns: 32px minmax(0, 1.8fr) minmax(0, 1fr) minmax(0, 1.5fr) auto;
-  gap: 8px;
-  align-items: center;
-}
-
-.allocation-row {
-  cursor: grab;
-  transition: transform 0.2s, box-shadow 0.2s, background-color 0.2s;
-  user-select: none;
-}
-
-.allocation-row.is-important {
-  border-left: 3px solid var(--tone-primary);
-  background-color: rgba(234, 91, 42, 0.04);
-}
-
-/* 드래그앤드롭 */
-.allocation-row.dragging {
-  opacity: 0.5;
-  background-color: var(--line) !important;
-  cursor: grabbing;
-}
-
-.allocation-row.drag-over {
-  border-top: 3px solid var(--tone-primary);
-  background-color: rgba(49, 117, 182, 0.05);
-}
-
-.account-row input,
-.allocation-row input {
-  width: 100%;
-  padding: 8px;
-}
-
-.account-row-actions,
-.allocation-row-actions {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-/* 즐겨찾기 별 버튼 */
-.btn-toggle-star {
-  background: none;
-  border: none;
-  font-size: 1.1rem;
-  color: var(--muted);
-  cursor: pointer;
-  padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: color 0.2s, transform 0.1s;
-}
-
-.btn-toggle-star:hover { transform: scale(1.2); }
-.btn-toggle-star.is-active { color: var(--tone-primary); }
-
-.summary-invalid { color: #8b2f2f; }
-
-/* 저장된 포트폴리오 불러오기 행 */
-.load-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  gap: 8px;
-}
-
-.muted.is-error { color: #8b2f2f; }
-
-/* Simulation Panel */
-.simulation-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.sim-inputs-container {
-  border: 1px dashed var(--line);
-  padding: 10px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.6);
-}
-
-.sim-dashboard {
-  display: flex;
-  flex-direction: column;
+  font-size: 0.7rem;
+  margin-left: auto;
+  margin-right: 8px;
 }
 
 .projection-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.8rem;
-  background: #fff;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  overflow: hidden;
 }
 
-.projection-table th,
-.projection-table td {
-  padding: 8px 10px;
+.projection-table th, .projection-table td {
+  padding: 8px;
   border-bottom: 1px solid var(--line);
   text-align: right;
-}
-
-.projection-table th:first-child,
-.projection-table td:first-child {
-  text-align: center;
 }
 
 .projection-table th {
   background: var(--tone-paper);
   color: var(--muted);
-  font-weight: 600;
 }
 
-.projection-table tr.status-warn td {
-  background: rgba(234, 179, 8, 0.15);
-  color: #a16207;
+/* 별 버튼 */
+.btn-toggle-star {
+  background: none;
+  border: none;
+  font-size: 1rem;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 0;
 }
 
-.projection-table tr.status-critical td {
-  background: rgba(239, 68, 68, 0.15);
-  color: #b91c1c;
-  font-weight: bold;
+.btn-toggle-star.is-active {
+  color: var(--tone-primary);
 }
 
-.sim-tooltip {
-  position: absolute;
-  background: rgba(0, 0, 0, 0.8);
-  color: white;
-  padding: 6px 10px;
-  border-radius: 6px;
-  font-size: 0.75rem;
-  pointer-events: none;
-  z-index: 10;
-  white-space: nowrap;
+.load-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 8px;
 }
 
-@media (max-width: 1020px) {
-  .form-grid, .bridge-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 900px) {
+  .form-grid { grid-template-columns: 1fr 1fr; }
+  .bridge-grid { grid-template-columns: 1fr 1fr; }
 }
 
 @media (max-width: 760px) {
-  .hero { order: 0; }
+  .bridge-panel { order: 0; }
   .chart-panel { order: 1; }
-  .bridge-panel { order: 2; }
-  .info-panel { order: 3; }
-  .account-panel { order: 4; }
-  #allocationPanel { order: 5; }
-  .simulation-panel { order: 6; }
-  .actions-panel { order: 7; }
-  .storage-panel { order: 8; }
+  .info-panel { order: 2; }
+  .account-panel { order: 3; }
+  .simulation-panel { order: 4; }
+  .actions-panel { order: 5; }
+  .storage-panel { order: 6; }
 
   .form-grid, .bridge-grid { grid-template-columns: 1fr; }
 
-  .account-table-head, .allocation-table-head { display: none; }
+  .account-info { flex-wrap: wrap; }
+  .account-info input[data-field="accountName"] { width: 100%; }
 
-  .mobile-account-picker {
-    display: grid;
-    gap: 5px;
-    margin-bottom: 2px;
-  }
-
-  .mobile-account-picker span {
-    font-size: 0.75rem;
-    color: var(--muted);
-  }
-
-  .mobile-account-picker select {
-    width: 100%;
-    padding: 9px 10px;
-  }
-
-  .account-list .account-row:not(.is-active) { display: none; }
-
-  .account-row {
-    grid-template-columns: minmax(0, 1.7fr) minmax(88px, 1fr) auto;
-    align-items: center;
-  }
-
-  .account-row-actions { display: none; }
-
+  .allocation-table-head { display: none; }
   .allocation-row {
-    grid-template-columns: 32px minmax(0, 1.8fr) minmax(88px, 1fr) auto;
-    align-items: center;
+    grid-template-columns: 30px 1fr 1fr 1fr auto;
+    gap: 4px;
+    padding: 8px 4px;
   }
-
-  .allocation-row input[data-field="memo"] { display: none; }
-  .allocation-row .btn { justify-self: end; }
-
-  .chart-head { flex-direction: column; align-items: flex-start; }
-
-  .chart-tabs { width: 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-
+  .allocation-row input { padding: 4px; font-size: 0.8rem; }
+  
   .load-row { grid-template-columns: 1fr; }
 }

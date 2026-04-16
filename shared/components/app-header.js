@@ -19,12 +19,12 @@ export class AppHeader extends HTMLElement {
           <a href="/" class="app-header__logo">ISF UIUX</a>
           <nav class="app-header__nav">
             <a href="../step1/" class="nav-link ${this.currentStep === '1' ? 'is-active' : ''}" 
-               onclick="if(window.location.pathname.includes('step1')) { event.preventDefault(); } else { window.location.replace('../step1/'); event.preventDefault(); }">
-               Step 1. 가계 흐름
+               onclick="if(window.location.pathname.includes('step1')) { event.preventDefault(); } else { window.location.assign('../step1/'); event.preventDefault(); }">
+               현금 흐름
             </a>
             <a href="../step2/" class="nav-link ${this.currentStep === '2' ? 'is-active' : ''}"
-               onclick="if(window.location.pathname.includes('step2')) { event.preventDefault(); } else { window.location.replace('../step2/'); event.preventDefault(); }">
-               Step 2. 포트폴리오
+               onclick="if(window.location.pathname.includes('step2')) { event.preventDefault(); } else { window.location.assign('../step2/'); event.preventDefault(); }">
+               포트폴리오
             </a>
           </nav>
         </div>
