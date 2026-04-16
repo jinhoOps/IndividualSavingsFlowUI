@@ -30,9 +30,12 @@
     </header>
     <section id="viewModeGuide" class="panel view-mode-guide" aria-live="polite" hidden>
       <p class="view-mode-guide__text">
-        이 페이지는 공유 페이지입니다. 저장을 원하면 좌측 하단 저장 아이콘을 눌러 현재 상태를 로컬 브라우저에 저장할 수 있습니다.
+        이 페이지는 공유 페이지입니다. 현재 상태를 내 브라우저에 저장하거나, 내 기존 데이터로 돌아갈 수 있습니다.
       </p>
       <div class="view-mode-guide__actions">
+        <button id="returnToNormalMode" class="btn btn-ghost btn-sm" type="button">
+          내 데이터로 돌아가기
+        </button>
         <label class="view-mode-guide__dont-show" for="viewModeGuideDontShow">
           <input id="viewModeGuideDontShow" type="checkbox" />
           다시 보지 않기

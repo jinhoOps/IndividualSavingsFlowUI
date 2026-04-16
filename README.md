@@ -13,8 +13,9 @@
 ## Design Philosophy
 
 - **Mobile-First**: 모든 기능은 모바일 브라우저 및 PWA 환경에서의 가독성과 조작성을 최우선으로 설계합니다.
-- **Hybrid Desktop Support**: 웹(데스크톱) 환경에서는 모바일의 직관성을 유지하되, 확장된 화면 공간을 활용한 추가적인 정보(Dashboard)와 개선된 레이아웃을 제공합니다.
-- **No-Build & Vanilla**: 복잡한 빌드 도구 없이 순수 HTML/JS/CSS만으로 구현하여 유지보수성과 이식성을 극대화합니다.
+- **Style & Responsive Integrity**: UI/UX는 데이터만큼 중요합니다. 물리적 파일 구조(특히 `@media` 쿼리)를 엄격히 보존하고, 모바일 레이아웃의 파손을 방지하는 시각적 회귀 테스트를 거칩니다.
+- **Compounding Knowledge (LLM Wiki)**: AI 에이전트가 지식을 단순히 소비하지 않고, **복리로 적립(Compounding)**하며 개발합니다. 모든 설계 결정과 패턴은 프로젝트 내부 위키에 합성되어 시간이 흐를수록 더 견고하고 지능적인 시스템으로 진화합니다.
+- **No-Build & Vanilla**: 빌드 도구 없이 순수 HTML/JS/CSS만으로 구현하여 유지보수성과 이식성을 극대화하며, 브라우저 표준 기술만으로 최고의 퍼포먼스를 지향합니다.
 - **Data Continuity**: Step 1에서 Step 2로 이어지는 자산의 흐름을 데이터 무결성을 유지하며 매끄럽게 연결합니다.
 
 ## 문제 정의

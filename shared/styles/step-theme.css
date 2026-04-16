@@ -26,8 +26,17 @@
   --rd-lg: 999px;
 
   /* Shadow Tokens */
-  --sh-float: 0 8px 24px rgba(16, 34, 32, 0.08);
-  --sh-hover: 0 12px 32px rgba(16, 34, 32, 0.12);
+  /* Status & Node Colors */
+  --status-success: #2f9e44;
+  --status-error: #e03131;
+  --node-income: #1e8b7c;
+  --node-expense: #c9573c;
+  --node-saving: #3175b6;
+  --node-investment: #5d4fb3;
+  --node-debt: #8c3d65;
+  --node-surplus: #2f9e44;
+  --node-deficit: #d6336c;
+  --deficit: #d6336c;
 }
 
 * {

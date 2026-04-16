@@ -6,6 +6,18 @@ tags: [ui, feedback, theme, visualization, reference]
 
 # UI Standards Reference (UI 표준 참조)
 
+## CSS 구조 및 무결성 (CSS Structure & Integrity) - 중요!
+
+에이전트는 스타일 수정 시 파일의 물리적 구조를 보존하기 위해 다음 순서를 따릅니다.
+1. **변수 선언**: `:root` 블록 (상단)
+2. **기본 리셋 및 레이아웃**: `body`, `.page`, `main` 등
+3. **컴포넌트 스타일**: 각 섹션별 고유 클래스
+4. **반응형 쿼리 (@media)**: 파일의 **최하단**에 위치 (760px, 520px 등)
+
+**수정 규칙**:
+- `@media` 섹션을 수정할 때는 반드시 해당 블록 전체를 읽어들인 후 작업하십시오.
+- `apps/`별 전용 스타일과 `shared/`의 공통 테마 간의 우선순위를 고려하십시오.
+
 ## 테마 시스템
 
 - `shared/styles/step-theme.css`에 정의된 CSS Variables를 사용하여 일관된 색상과 타이포그래피를 유지합니다.

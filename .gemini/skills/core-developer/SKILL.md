@@ -12,10 +12,13 @@ description: ISF 프로젝트의 기술적 구현(Generator/Evaluator)을 담당
 
 1. **No-build 환경 (ES6 + Vanilla JS)**
    - 빌드 도구 도입 불가. 브라우저에서 즉시 실행 가능한 형태 유지.
-2. **Shared 우선 재활용 (Don't Repeat Yourself)**
+2. **스타일 및 반응형 무결성 (Style & Responsive Integrity) - 중요!**
+   - **물리적 무결성**: CSS/HTML 수정 시 파일 하단의 `@media` 쿼리나 유틸리티 클래스가 절삭(Truncate)되지 않았는지 수정 전후의 파일 크기와 구조를 반드시 대조하십시오.
+   - **반응형 보존**: 기능을 추가하거나 리팩터링할 때, 모바일 레이아웃(760px 이하)이 파손되지 않도록 주의하십시오.
+3. **Shared 우선 재활용 (Don't Repeat Yourself)**
    - 앱 고유 로직을 짜기 전에 `shared/core/`, `shared/storage/`, `shared/components/` (예: FeedbackManager) 등을 먼저 탐색하여 기존 유틸리티를 재활용 하십시오.
    - 데이터는 로컬 `IndexedDB (isf-hub-db-v1)` 기반으로 저장 및 브리징 됩니다.
-3. **PWA 동작 우선**
+4. **PWA 동작 우선**
    - 개발에 의해 Service Worker (`sw.js`) 캐싱이나 오프라인 가용성이 깨지지 않게 보수적으로 접근하세요.
 
 ## 🔍 레퍼런스 탐색(Progressive Disclosure) 지침

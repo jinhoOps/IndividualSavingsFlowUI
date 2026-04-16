@@ -26,11 +26,12 @@ tags: [plan, step1, roadmap]
 - [ ] 12시간 주기 자동 백업 및 60개 제한 정책 작동 확인.
 
 ## 4) 우선순위 및 실행 전략
-| ID | 우선순위 | 작업 항목 | 수용 기준 (AC) |
-|---|---|---|---|
-| S1-H1 | High | 모바일 Sankey 화면맞춤 | 모바일에서 1탭으로 전체 흐름 가독성 확보 |
+| ID | 우선순위 | 구분 | 상세 내용 |
+| :--- | :--- | :--- | :--- |
+| S1-H1 | High | Sankey 화면맞춤 | [완료] 모바일 0.65 배율 및 orientationchange 리셋 반영 |
 | S1-H2 | High | 목돈성 상품 입력 모델 | 초기원금+추가납입 모델 시뮬레이션 반영 |
-| S1-M1 | Med | app.js 모듈 분리 | Vanilla JS 기반 기능별 모듈화 (no-build 유지) |
+| S1-M1 | Med | app.js 모듈 분리 | [진행] v0.2.5에서 기본적인 피드백/상태 관리 모듈화 진행 |
+| S1-TD1 | Med | Sankey 정합성 | [완료] 결손 노드(Deficit) 도입으로 Total In=Out 보장 |
 
 ---
 *연결 노드:* [[Plan_Step2]], [[Operating_Principles]], [[Project_History]]

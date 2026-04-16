@@ -5,6 +5,7 @@
 ## 🧭 코어 시스템 (Core Systems)
 - [[Operating_Principles]] : 프로젝트 기본 운영 원칙
 - [[Knowledge_Harness]] : 지식 하네스 운영 체계 (위키 라이프사이클, 작성 규칙)
+- [[log]] : 프로젝트 연대기적 작업 로그 (LLM Wiki Audit Trail)
 
 ## 📐 서비스 / 아키텍처 기획 (Architecture & Plans)
 - [[Plan_Step1]] : Step1 설계 계획

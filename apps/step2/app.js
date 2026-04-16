@@ -178,7 +178,7 @@
     }
 
     const pwaManager = new IsfPwaManager({
-      appVersion: "0.2.4",
+      appVersion: "0.2.5",
       appKey: SHARE_STATE_KEY,
       onFeedback: (message) => IsfFeedback.showFeedback(dom.applyFeedback, message),
       isViewMode: () => false,

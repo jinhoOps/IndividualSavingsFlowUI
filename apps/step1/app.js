@@ -30,7 +30,7 @@ const ITEM_SORT_MODES = {
 const SANKEY_ZOOM_MIN = 1;
 const SANKEY_ZOOM_MAX = 2.6;
 const SANKEY_ZOOM_STEP = 0.2;
-const SANKEY_MOBILE_BASE_ZOOM = 0.85;
+const SANKEY_MOBILE_BASE_ZOOM = 0.65;
 const SANKEY_MOBILE_HEIGHT_RATIO = 0.62;
 const SANKEY_MOBILE_WIDTH_SCALE = 1.38;
 const SANKEY_MOBILE_MIN_COLUMN_STEP = 126;
@@ -292,6 +292,7 @@ const dom = {
   viewModeGuide: document.getElementById("viewModeGuide"),
   viewModeGuideDontShow: document.getElementById("viewModeGuideDontShow"),
   dismissViewModeGuide: document.getElementById("dismissViewModeGuide"),
+  returnToNormalMode: document.getElementById("returnToNormalMode"),
   jumpToTop: document.getElementById("jumpToTop"),
   pendingBar: document.getElementById("pendingBar"),
   pendingSummary: document.getElementById("pendingSummary"),
@@ -366,7 +367,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initializeBackupStore();
   void initializeInputsFromShareId();
   const pwaManager = new IsfPwaManager({
-    appVersion: "0.2.4",
+    appVersion: "0.2.5",
     appKey: SHARE_STATE_KEY,
     onFeedback: (message) => IsfFeedback.showFeedback(dom.applyFeedback, message),
     isViewMode: () => state.isViewMode,
@@ -594,6 +595,12 @@ function bindControls() {
   if (dom.dismissViewModeGuide) {
     dom.dismissViewModeGuide.addEventListener("click", () => {
       dismissViewModeGuide();
+    });
+  }
+
+  if (dom.returnToNormalMode) {
+    dom.returnToNormalMode.addEventListener("click", () => {
+      switchToNormalMode();
     });
   }
 
@@ -1273,6 +1280,15 @@ function bindMobileLayoutWatcher() {
   if (typeof mobileLayoutMediaQuery.addListener === "function") {
     mobileLayoutMediaQuery.addListener(handleMobileLayoutChange);
   }
+
+  window.addEventListener("orientationchange", () => {
+    window.setTimeout(() => {
+      if (dom.sankeySvg) {
+        dom.sankeySvg.removeAttribute("viewBox");
+      }
+      renderAll();
+    }, 200);
+  });
 }
 
 function syncMobileInputsPanelVisibility() {
@@ -2289,6 +2305,15 @@ function buildMonthlySnapshot(inputs) {
   const netCashflow = income - requiredOutflow;
   const surplus = Math.max(0, netCashflow);
   const deficit = Math.max(0, -netCashflow);
+
+  if (deficit > 0) {
+    incomeBreakdown.push({
+      id: "income-deficit",
+      label: "결손(부채/자산인출)",
+      tone: "deficit",
+      value: deficit,
+    });
+  }
 
   const targets = [
     { id: "expense", label: "생활비", tone: "expense", value: expense },
@@ -4273,17 +4298,23 @@ function resolveInitialInputs() {
 function persistPrimaryState(inputs, options = {}) {
   const safeOptions = options && typeof options === "object" ? options : {};
   if (!state.isViewMode) {
-    persistInputs(inputs);
-    if (!safeOptions.skipAutoBackup) {
-      (async () => {
-        const res = await IsfBackupManager.maybeCreateAutoBackupIfDue(state.backupEntries, inputs, SHARE_STATE_KEY);
-        if (res.created) {
-          state.backupEntries = res.nextEntries;
-          syncBackupUi();
-        }
-      })();
+    IsfFeedback.notifyAutoSave("saving");
+    try {
+      persistInputs(inputs);
+      if (!safeOptions.skipAutoBackup) {
+        (async () => {
+          const res = await IsfBackupManager.maybeCreateAutoBackupIfDue(state.backupEntries, inputs, SHARE_STATE_KEY);
+          if (res.created) {
+            state.backupEntries = res.nextEntries;
+            syncBackupUi();
+          }
+        })();
+      }
+      void persistStep1BridgeSnapshot(inputs);
+      IsfFeedback.notifyAutoSave("success");
+    } catch (e) {
+      IsfFeedback.notifyAutoSave("error");
     }
-    void persistStep1BridgeSnapshot(inputs);
   }
   return true;
 }

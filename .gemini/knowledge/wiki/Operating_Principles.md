@@ -7,7 +7,11 @@ tags: [operating_principles, governance]
 
 # 📝 Operating Principles (프로젝트 운영 원칙)
 
-IndividualSavingsFlowUI 프로젝트의 지속 가능한 개발과 일관성을 유지하기 위한 핵심 원칙입니다.
+IndividualSavingsFlowUI 프로젝트는 **"스타일 및 반응형 무결성"** 수호와 **"LLM Wiki 기반 지식 복리 적립"**을 최우선 가치로 삼습니다.
+
+## ⚖️ 핵심 헌법 (Core Pillars)
+- **스타일 및 반응형 무결성**: UI/UX는 데이터와 동등한 가치를 가집니다. 물리적 파일 구조(특히 `@media` 쿼리)를 보존하고 모바일 대응력을 유지하십시오.
+- **LLM Wiki 패러다임**: 모든 지식은 단순히 기록되는 것이 아니라, 기존 지식과 합성되어 복리로 축적되어야 합니다.
 
 ## 🚀 개발 및 커밋 원칙
 - **탐색 우선**: 개발 전 `.gemini/knowledge/wiki/` 및 `shared/` 디렉토리의 기존 자산을 먼저 확인합니다.

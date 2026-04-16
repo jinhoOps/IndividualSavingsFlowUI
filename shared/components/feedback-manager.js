@@ -63,8 +63,26 @@
     }
   }
 
+  /**
+   * 자동 저장 상태를 알림 바에 표시합니다.
+   * @param {'saving'|'success'|'error'} status - 저장 상태
+   */
+  function notifyAutoSave(status) {
+    const feedbackEl = document.getElementById("applyFeedback");
+    if (!feedbackEl) return;
+
+    if (status === "saving") {
+      showFeedback(feedbackEl, "변경사항을 저장 중입니다...", false, 10000);
+    } else if (status === "success") {
+      showFeedback(feedbackEl, "자동 저장되었습니다.", false, 2000);
+    } else if (status === "error") {
+      showFeedback(feedbackEl, "자동 저장에 실패했습니다.", true, 4000);
+    }
+  }
+
   global.IsfFeedback = {
     showFeedback,
     markPendingBar,
+    notifyAutoSave,
   };
 })(window);

@@ -1,11 +1,11 @@
 :root {
-  --income: #1e8b7c;
-  --expense: #c9573c;
-  --savings: #3175b6;
-  --invest: #5d4fb3;
-  --debt: #8c3d65;
-  --surplus: #2f9e44;
-  --deficit: #d6336c;
+  --income: var(--node-income, #1e8b7c);
+  --expense: var(--node-expense, #c9573c);
+  --savings: var(--node-saving, #3175b6);
+  --invest: var(--node-investment, #5d4fb3);
+  --debt: var(--node-debt, #8c3d65);
+  --surplus: var(--node-surplus, #2f9e44);
+  --deficit: var(--node-deficit, #d6336c);
 }
 
 html {
@@ -43,6 +43,10 @@ main {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+}
+
+.view-mode-guide[hidden] {
+  display: none !important;
 }
 
 .view-mode-guide__text {
@@ -281,6 +285,10 @@ main {
   z-index: 100;
 }
 
+.sankey-tooltip[hidden] {
+  display: none !important;
+}
+
 .floating-btn {
   position: fixed;
   bottom: var(--sp-lg);
@@ -449,6 +457,10 @@ main {
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
+}
+
+.editor-actions[hidden] {
+  display: none !important;
 }
 
 .editor-field {
