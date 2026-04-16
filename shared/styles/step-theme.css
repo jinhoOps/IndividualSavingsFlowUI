@@ -77,7 +77,8 @@ body {
 }
 
 .app-header__logo {
-  font-family: var(--font-display);
+  font-family: var(--font-body);
+  font-weight: 700;
   font-size: 1.15rem;
   color: var(--tone-primary);
   text-decoration: none;
