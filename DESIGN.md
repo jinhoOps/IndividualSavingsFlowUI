@@ -1,4 +1,4 @@
-# ISF UI/UX Design Guidelines (v0.3)
+# ISF UI/UX Design Guidelines (v0.4)
 
 이 문서는 Individual Savings Flow (ISF) 프로젝트의 설계 철학과 공통 UI 가이드라인을 정의합니다. 특히 Donald Norman의 **인간 중심 디자인(HCD) 6대 원칙**을 기반으로 사용자 경험을 설계합니다.
 
