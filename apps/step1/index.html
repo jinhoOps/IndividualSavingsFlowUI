@@ -13,10 +13,12 @@
   <link rel="stylesheet" href="../../shared/styles/step-theme.css" />
   <link rel="stylesheet" href="styles.css" />
   <script src="../../shared/components/app-header.js" type="module"></script>
+  <script src="../../shared/components/data-hub-modal.js" type="module"></script>
 </head>
 
 <body>
   <app-header current-step="1"></app-header>
+  <data-hub-modal current-step="1"></data-hub-modal>
   <div class="ambient" aria-hidden="true"></div>
   <div class="page">
     <section class="panel page-intro">
@@ -145,40 +147,7 @@
               접기
             </button>
           </h2>
-          <div class="controls-head-tools">
-            <div class="actions actions--primary">
-              <details id="backupMenu" class="action-menu">
-                <summary class="btn btn-ghost">백업</summary>
-                <div class="action-menu-panel backup-tools" role="group" aria-label="로컬 백업 관리">
-                  <button id="backupNow" class="btn btn-ghost btn-sm" type="button">백업 저장</button>
-                  <select id="backupSelect" class="backup-select" aria-label="로컬 백업 선택"></select>
-                  <button id="restoreBackup" class="btn btn-ghost btn-sm" type="button">선택 복원</button>
-                  <button id="backupHelp" class="inline-tip backup-help-tip" type="button" aria-label="백업 안내"
-                    data-tooltip="백업 안내를 불러오는 중입니다.">
-                    ?
-                  </button>
-                </div>
-              </details>
-              <details id="shareMenu" class="action-menu">
-                <summary class="btn btn-ghost">공유</summary>
-                <div class="action-menu-panel" role="group" aria-label="공유 및 내보내기">
-                  <button id="copyShareLink" class="btn btn-ghost" type="button">링크 복사</button>
-                  <button id="exportJson" class="btn btn-ghost" type="button">JSON 저장</button>
-                  <button id="importJson" class="btn btn-ghost" type="button">JSON 불러오기</button>
-                </div>
-              </details>
-              <details id="moreActionsMenu" class="action-menu">
-                <summary class="btn btn-ghost">더보기</summary>
-                <div class="action-menu-panel action-menu-panel--more" role="group" aria-label="추가 액션">
-                  <button id="loadSample" class="btn btn-primary" type="button">샘플</button>
-                  <button id="resetInputs" class="btn btn-ghost" type="button">초기화</button>
-                  <button id="easterEgg" class="btn btn-ghost" type="button">이스터에그</button>
-                </div>
-              </details>
-            </div>
-          </div>
         </div>
-        <input id="importJsonFile" type="file" accept=".json,application/json" hidden />
         <div id="inputsPanelContent">
           <p class="hint">금액 단위: 만원(예: 350 = 3,500,000원) · 기본값만 입력해도 바로 계산됩니다.</p>
           <form id="inputsForm" autocomplete="off">

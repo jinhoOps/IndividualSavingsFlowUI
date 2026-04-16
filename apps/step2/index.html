@@ -12,23 +12,26 @@
     <link rel="stylesheet" href="../../shared/styles/step-theme.css" />
     <link rel="stylesheet" href="styles.css" />
     <script src="../../shared/components/app-header.js" type="module"></script>
+    <script src="../../shared/components/data-hub-modal.js" type="module"></script>
     </head>
     <body>
     <app-header current-step="2"></app-header>
+    <data-hub-modal current-step="2"></data-hub-modal>
     <main class="page">
-      <section id="bridgePanel" class="panel bridge-panel" hidden>
-        <div class="section-head">
-          <h2>Step1 데이터 연결</h2>
-          <button id="loadStep1Data" class="btn btn-primary btn-sm" type="button">데이터 가져오기</button>
+      <div id="bridgeBanner" class="bridge-banner" hidden>
+        <div class="bridge-banner__content">
+          <span class="bridge-banner__icon">💡</span>
+          <p class="bridge-banner__text">Step 1에서 새로운 투자 여력 데이터를 가져왔습니다. 현재 포트폴리오에 적용할까요?</p>
+          <div class="bridge-banner__meta">
+            <span>기준: <strong id="bridgeTimestamp">-</strong></span>
+            <span>여력: <strong id="bridgeMonthlyInvestCapacity">-</strong></span>
+          </div>
         </div>
-        <p id="bridgeStatus" class="muted">Step1에서 설정한 최신 투자 여력을 가져올 수 있습니다.</p>
-        <div class="bridge-grid">
-          <p><strong>기준시점</strong><span id="bridgeTimestamp">-</span></p>
-          <p><strong>월 투자여력</strong><span id="bridgeMonthlyInvestCapacity">-</span></p>
-          <p><strong>현재 현금</strong><span id="bridgeCurrentCash">-</span></p>
-          <p><strong>현재 투자</strong><span id="bridgeCurrentInvest">-</span></p>
+        <div class="bridge-banner__actions">
+          <button id="loadStep1Data" class="btn btn-primary btn-sm" type="button">적용하기</button>
+          <button id="dismissBridgeBanner" class="btn btn-ghost btn-sm" type="button">닫기</button>
         </div>
-      </section>
+      </div>
 
       <section class="panel chart-panel">
         <div class="chart-head">
@@ -102,29 +105,6 @@
         <p class="muted" style="margin-bottom: var(--sp-sm);">계좌를 눌러 상세 종목 비중과 현재 보유 금액을 편집하세요.</p>
         <div id="accountList" class="account-list" aria-live="polite"></div>
         <p id="accountSummary" class="muted"></p>
-      </section>
-
-      <section class="panel actions-panel">
-        <div class="actions">
-          <button id="savePortfolio" class="btn btn-primary" type="button">브라우저 저장</button>
-          <button id="resetPortfolio" class="btn btn-ghost" type="button">새 포트폴리오</button>
-        </div>
-        <div class="actions" style="margin-top: 1rem;">
-          <button id="exportJson" class="btn btn-ghost btn-sm" type="button">JSON 내보내기</button>
-          <button id="importJsonTrigger" class="btn btn-ghost btn-sm" type="button">JSON 불러오기</button>
-          <button id="copyShareLink" class="btn btn-ghost btn-sm" type="button">공유 링크 복사</button>
-        </div>
-        <input id="importJsonFile" type="file" accept=".json,application/json" hidden />
-      </section>
-
-      <section class="panel storage-panel">
-        <h2>저장된 포트폴리오</h2>
-        <div class="load-row">
-          <select id="portfolioSelect" aria-label="저장된 포트폴리오 선택"></select>
-          <button id="loadPortfolio" class="btn btn-ghost" type="button">불러오기</button>
-          <button id="deletePortfolio" class="btn btn-ghost" type="button">삭제</button>
-        </div>
-        <p id="portfolioMeta" class="muted"></p>
       </section>
 
       <section class="panel simulation-panel">

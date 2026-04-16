@@ -11,29 +11,68 @@
   gap: 10px;
 }
 
-.bridge-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--sp-sm);
+.chart-panel { order: 1; }
+.info-panel { order: 2; }
+.account-panel { order: 3; }
+.simulation-panel { order: 4; }
+
+/* Dashboard Mode (Returning User) */
+body.is-dashboard-mode .info-panel,
+body.is-dashboard-mode .account-panel {
+  order: 10;
 }
 
-.bridge-grid p {
+/* 스마트 브리지 배너 */
+.bridge-banner {
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--tone-primary);
+  border-left-width: 4px;
+  border-radius: var(--rd-md);
+  padding: 12px 16px;
+  margin-bottom: var(--sp-md);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  box-shadow: var(--sh-float);
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from { transform: translateY(-10px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.bridge-banner__content {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  flex: 1;
+}
+
+.bridge-banner__icon {
+  font-size: 1.2rem;
+  margin-top: 2px;
+}
+
+.bridge-banner__text {
   margin: 0;
-  border: 1px dashed var(--line);
-  border-radius: 10px;
-  padding: var(--sp-sm);
-  background: rgba(255, 255, 255, 0.74);
-  display: grid;
-  gap: 4px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--ink);
 }
 
-.bridge-grid strong {
-  font-size: 0.76rem;
+.bridge-banner__meta {
+  margin-top: 4px;
+  display: flex;
+  gap: 12px;
+  font-size: 0.78rem;
   color: var(--muted);
 }
 
-.bridge-grid span {
-  font-size: 0.86rem;
+.bridge-banner__actions {
+  display: flex;
+  gap: 8px;
 }
 
 .form-grid {

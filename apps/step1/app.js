@@ -223,21 +223,12 @@ let backupDbPromise = null;
 let shareDbPromise = null;
 
 const dom = {
+  appHeader: document.querySelector("app-header"),
+  dataHubModal: document.querySelector("data-hub-modal"),
   controlsPanel: document.querySelector(".controls-panel"),
   inputsForm: document.getElementById("inputsForm"),
   inputsPanelContent: document.getElementById("inputsPanelContent"),
   toggleInputsMobile: document.getElementById("toggleInputsMobile"),
-  copyShareLink: document.getElementById("copyShareLink"),
-  exportJson: document.getElementById("exportJson"),
-  importJson: document.getElementById("importJson"),
-  importJsonFile: document.getElementById("importJsonFile"),
-  backupMenu: document.getElementById("backupMenu"),
-  shareMenu: document.getElementById("shareMenu"),
-  moreActionsMenu: document.getElementById("moreActionsMenu"),
-  backupNow: document.getElementById("backupNow"),
-  backupSelect: document.getElementById("backupSelect"),
-  restoreBackup: document.getElementById("restoreBackup"),
-  backupHelp: document.getElementById("backupHelp"),
   loadSample: document.getElementById("loadSample"),
   resetInputs: document.getElementById("resetInputs"),
   easterEgg: document.getElementById("easterEgg"),
@@ -345,11 +336,13 @@ const state = {
   },
   snapshot: null,
   mobileInputsCollapsed: false,
+  isDashboardMode: false,
   viewModeGuideClosedTemporarily: false,
   pwaVersionLastCheckedAt: 0,
 };
 
 document.addEventListener("DOMContentLoaded", () => {
+  checkReturningUser();
   bindControls();
   syncViewModeUi();
   syncViewModeGuideUi();
@@ -367,7 +360,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initializeBackupStore();
   void initializeInputsFromShareId();
   const pwaManager = new IsfPwaManager({
-    appVersion: "0.3.0",
+    appVersion: "0.4.0",
     appKey: SHARE_STATE_KEY,
     onFeedback: (message) => IsfFeedback.showFeedback(dom.applyFeedback, message),
     isViewMode: () => state.isViewMode,
@@ -382,51 +375,142 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 });
 
-function closeActionMenus() {
-  if (dom.backupMenu instanceof HTMLDetailsElement) {
-    dom.backupMenu.open = false;
+function checkReturningUser() {
+  if (state.isViewMode || hasShareState()) {
+    return;
   }
-  if (dom.shareMenu instanceof HTMLDetailsElement) {
-    dom.shareMenu.open = false;
-  }
-  if (dom.moreActionsMenu instanceof HTMLDetailsElement) {
-    dom.moreActionsMenu.open = false;
+  const persisted = loadPersistedInputs();
+  if (persisted) {
+    state.isDashboardMode = true;
+    document.body.classList.add("is-dashboard-mode");
+    state.mobileInputsCollapsed = true;
+    syncMobileInputsPanelVisibility();
   }
 }
 
-function bindActionMenus() {
-  const menus = [dom.backupMenu, dom.shareMenu, dom.moreActionsMenu].filter(Boolean);
+function bindModalEvents() {
+  if (!dom.appHeader || !dom.dataHubModal) return;
 
-  menus.forEach((menu) => {
-    if (!(menu instanceof HTMLDetailsElement)) return;
-    menu.addEventListener("toggle", () => {
-      if (menu.open) {
-        menus.forEach((other) => {
-          if (other !== menu && other instanceof HTMLDetailsElement) {
-            other.open = false;
-          }
-        });
-      }
-    });
+  dom.appHeader.addEventListener("open-data-hub", () => {
+    dom.dataHubModal.updateBackupList(state.backupEntries);
+    dom.dataHubModal.open();
   });
 
-  document.addEventListener("click", (event) => {
-    const target = event.target;
-    if (!(target instanceof Node)) {
-      return;
-    }
-    if (!(dom.controlsPanel instanceof HTMLElement)) {
-      return;
-    }
-    if (dom.controlsPanel.contains(target)) {
-      return;
-    }
-    closeActionMenus();
+  dom.dataHubModal.addEventListener("backup-now", async () => {
+    await handleManualBackup();
+    dom.dataHubModal.updateBackupList(state.backupEntries);
+  });
+
+  dom.dataHubModal.addEventListener("restore-backup", async (e) => {
+    const backupId = e.detail.backupId;
+    await restoreBackupById(backupId);
+    dom.dataHubModal.close();
+  });
+
+  dom.dataHubModal.addEventListener("export-json", () => {
+    handleExportJson();
+  });
+
+  dom.dataHubModal.addEventListener("import-json", async (e) => {
+    const file = e.detail.file;
+    await handleImportJson(file);
+    dom.dataHubModal.close();
+  });
+
+  dom.dataHubModal.addEventListener("copy-share-link", async () => {
+    await handleCopyShareLink();
   });
 }
+
+async function handleManualBackup() {
+  if (state.isViewMode) {
+    if (dom.appHeader) dom.appHeader.updateStatus("error", "보기 모드에선 백업 불가");
+    return;
+  }
+  if (!state.backupStoreReady) {
+    if (dom.appHeader) dom.appHeader.updateStatus("error", "백업 저장소 준비 중");
+    return;
+  }
+  const inputs = sanitizeInputs(cloneInputs(getVisibleInputs()));
+  const res = await IsfBackupManager.createBackupEntry(state.backupEntries, inputs, {
+    type: "manual",
+    source: "normal",
+    allowDuplicate: true,
+    replaceRecentManualWithinMs: MANUAL_BACKUP_WINDOW_MS,
+    appKey: SHARE_STATE_KEY,
+    onRecentManualOverwriteConfirm: () => window.confirm("최근 1분 이내 수동 백업이 있습니다. 기존 백업을 덮어쓸까요?"),
+  });
+
+  if (res.created) {
+    state.backupEntries = res.nextEntries;
+    syncBackupUi();
+    if (dom.appHeader) dom.appHeader.updateStatus("success", res.replaced ? "최근 백업 덮어씀" : "로컬 백업 저장됨");
+    return;
+  }
+
+  if (res.reason === "overwrite-cancelled") return;
+  if (res.reason === "duplicate-recent") {
+    if (dom.appHeader) dom.appHeader.updateStatus("success", "동일 내용 백업 존재");
+    return;
+  }
+  if (dom.appHeader) dom.appHeader.updateStatus("error", "백업 저장 실패");
+}
+
+async function restoreBackupById(backupId) {
+  const entry = (state.backupEntries || []).find(item => item.id === backupId);
+  if (!entry) return;
+
+  if (!window.confirm(`선택한 백업(${formatBackupTimestamp(entry.createdAt)})으로 복원할까요? 현재 상태는 복원 전에 수동 백업됩니다.`)) {
+    return;
+  }
+
+  const res = await IsfBackupManager.createBackupEntry(state.backupEntries, state.inputs, { type: "manual", source: "normal", allowDuplicate: true , appKey: SHARE_STATE_KEY});
+  if(res.created) {
+    state.backupEntries = res.nextEntries;
+    syncBackupUi();
+  }
+  commitImmediateInputs(entry.data, { skipAutoBackup: true });
+  if (dom.appHeader) dom.appHeader.updateStatus("success", "백업으로 복원됨");
+}
+
+function handleExportJson() {
+  IsfShare.exportAsJson(IsfShare.buildStateEnvelope(SHARE_STATE_KEY, SHARE_STATE_SCHEMA, state.inputs), "my-household-flow-backup");
+  if (dom.appHeader) dom.appHeader.updateStatus("success", "JSON 저장 완료");
+}
+
+async function handleImportJson(file) {
+  try {
+    const text = await file.text();
+    const imported = IsfShare.parseImportedJson(text, SHARE_STATE_KEY);
+    commitImmediateInputs(imported);
+    if (dom.appHeader) dom.appHeader.updateStatus("success", "JSON 데이터 로드됨");
+  } catch (_error) {
+    if (dom.appHeader) dom.appHeader.updateStatus("error", "JSON 형식 오류");
+  }
+}
+
+async function handleCopyShareLink() {
+  const shareLink = await buildShareLink(state.inputs, { viewMode: true });
+  if (!shareLink) {
+    if (dom.appHeader) dom.appHeader.updateStatus("error", "링크 생성 제한");
+    return;
+  }
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(shareLink);
+      if (dom.appHeader) dom.appHeader.updateStatus("success", "공유 링크 복사됨");
+      return;
+    }
+  } catch (_error) {}
+  window.prompt("아래 공유 링크를 복사하세요.", shareLink);
+}
+
+function closeActionMenus() {}
+
+function bindActionMenus() {}
 
 function bindControls() {
-  bindActionMenus();
+  bindModalEvents();
 
   if (dom.inputsForm) {
     const handleInput = (event) => {
@@ -4298,7 +4382,7 @@ function resolveInitialInputs() {
 function persistPrimaryState(inputs, options = {}) {
   const safeOptions = options && typeof options === "object" ? options : {};
   if (!state.isViewMode) {
-    IsfFeedback.notifyAutoSave("saving");
+    if (dom.appHeader) dom.appHeader.updateStatus("saving", "저장 중...");
     try {
       persistInputs(inputs);
       if (!safeOptions.skipAutoBackup) {
@@ -4311,9 +4395,9 @@ function persistPrimaryState(inputs, options = {}) {
         })();
       }
       void persistStep1BridgeSnapshot(inputs);
-      IsfFeedback.notifyAutoSave("success");
+      if (dom.appHeader) dom.appHeader.updateStatus("success", "자동 저장됨");
     } catch (e) {
-      IsfFeedback.notifyAutoSave("error");
+      if (dom.appHeader) dom.appHeader.updateStatus("error", "저장 실패");
     }
   }
   return true;
@@ -4697,6 +4781,10 @@ function buildBackupTooltipText(entries) {
 function syncBackupUi() {
   const entries = Array.isArray(state.backupEntries) ? state.backupEntries : [];
   const hasEntries = entries.length > 0;
+
+  if (dom.dataHubModal) {
+    dom.dataHubModal.updateBackupList(entries);
+  }
 
   if (dom.backupSelect instanceof HTMLSelectElement) {
     const previousValue = dom.backupSelect.value;

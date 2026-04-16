@@ -20,13 +20,13 @@
   const ASSET_COLORS = ["#ea5b2a", "#1e8b7c", "#3175b6", "#d97706", "#7c3aed", "#e11d48", "#0f766e", "#64748b"];
 
   const dom = {
+    appHeader: document.querySelector("app-header"),
+    dataHubModal: document.querySelector("data-hub-modal"),
+    bridgeBanner: document.getElementById("bridgeBanner"),
+    dismissBridgeBanner: document.getElementById("dismissBridgeBanner"),
     loadStep1Data: document.getElementById("loadStep1Data"),
-    bridgeStatus: document.getElementById("bridgeStatus"),
     bridgeTimestamp: document.getElementById("bridgeTimestamp"),
     bridgeMonthlyInvestCapacity: document.getElementById("bridgeMonthlyInvestCapacity"),
-    bridgeCurrentCash: document.getElementById("bridgeCurrentCash"),
-    bridgeCurrentInvest: document.getElementById("bridgeCurrentInvest"),
-    bridgeCurrentSavings: document.getElementById("bridgeCurrentSavings"),
     chartMeta: document.getElementById("chartMeta"),
     chartTabSummary: document.getElementById("chartTabSummary"),
     chartTabAccount: document.getElementById("chartTabAccount"),
@@ -39,29 +39,14 @@
     portfolioNotes: document.getElementById("portfolioNotes"),
     totalMonthlyInvestCapacity: document.getElementById("totalMonthlyInvestCapacity"),
     addAccount: document.getElementById("addAccount"),
-    mobileAccountSelect: document.getElementById("mobileAccountSelect"),
     accountList: document.getElementById("accountList"),
     accountSummary: document.getElementById("accountSummary"),
-    allocationEditorTitle: document.getElementById("allocationEditorTitle"),
-    allocationPanel: document.getElementById("allocationPanel"),
-    addAllocation: document.getElementById("addAllocation"),
-    allocationList: document.getElementById("allocationList"),
-    allocationSummary: document.getElementById("allocationSummary"),
     savePortfolio: document.getElementById("savePortfolio"),
     resetPortfolio: document.getElementById("resetPortfolio"),
-    portfolioSelect: document.getElementById("portfolioSelect"),
-    loadPortfolio: document.getElementById("loadPortfolio"),
-    deletePortfolio: document.getElementById("deletePortfolio"),
-    portfolioMeta: document.getElementById("portfolioMeta"),
-    step2Feedback: document.getElementById("step2Feedback"),
-    exportJson: document.getElementById("exportJson"),
-    importJsonTrigger: document.getElementById("importJsonTrigger"),
     pendingBar: document.getElementById("pendingBar"),
     pendingSummary: document.getElementById("pendingSummary"),
     applyChanges: document.getElementById("applyChanges"),
     cancelChanges: document.getElementById("cancelChanges"),
-    importJsonFile: document.getElementById("importJsonFile"),
-    copyShareLink: document.getElementById("copyShareLink"),
     applyFeedback: document.getElementById("applyFeedback"),
     toggleSimInputs: document.getElementById("toggleSimInputs"),
     simInputsContainer: document.getElementById("simInputsContainer"),
@@ -76,14 +61,22 @@
     simYearsTabs: document.getElementById("simYearsTabs"),
   };
 
-  const state = { portfolios: [], currentPortfolioId: "", draft: null, activeAccountId: "", activeChartTab: "summary", dirty: false };
+  const state = { 
+    portfolios: [], 
+    currentPortfolioId: "", 
+    draft: null, 
+    activeAccountId: "", 
+    activeChartTab: "summary", 
+    dirty: false,
+    isDashboardMode: false,
+    isReturningUser: false
+  };
   const colorCache = new Map();
   const TEMP_STORAGE_KEY = "isf-step2-draft-tmp";
 
   document.addEventListener("DOMContentLoaded", () => {
     state.draft = createEmptyDraft();
     const hash = window.location.hash;
-    const hub = getHubStorage();
 
     const savedTmp = sessionStorage.getItem(TEMP_STORAGE_KEY);
     if (savedTmp && !hash) {
@@ -102,56 +95,95 @@
       } catch (_e) { showFeedback("복원 실패", true); }
     }
     
-    bindEvents(); renderDraft(); void refreshPortfolioList();
-
-    if (!hash && !savedTmp && hub) {
-      resolveLatestBridgePayload(hub).then(resolved => {
-        const bridge = resolved.bridge;
-        const isEmpty = getTotalMonthlyInvestCapacity() === 0;
-        if (bridge?.payload && isEmpty) {
-          state.draft.totalMonthlyInvestCapacity = IsfUtils.sanitizeMoney(bridge.payload.monthlyInvestCapacity);
-          state.draft.bridgeContext = { timestamp: String(bridge.payload.timestamp || ""), currentCash: IsfUtils.sanitizeMoney(bridge.payload.currentCash), currentInvest: IsfUtils.sanitizeMoney(bridge.payload.currentInvest), currentSavings: IsfUtils.sanitizeMoney(bridge.payload.currentSavings) };
-          renderDraft();
-          if (document.getElementById("bridgePanel")) document.getElementById("bridgePanel").hidden = true;
-        } else {
-          refreshBridgeSummary();
-        }
-      }).catch(() => refreshBridgeSummary());
-    } else {
-      void refreshBridgeSummary();
-    }
+    bindEvents(); 
+    checkReturningUser().then(() => {
+      renderDraft(); 
+      checkBridgeData();
+    });
 
     new IsfPwaManager({
-      appVersion: "0.3.0", appKey: SHARE_STATE_KEY,
+      appVersion: "0.4.0", appKey: SHARE_STATE_KEY,
       onFeedback: (msg) => IsfFeedback.showFeedback(dom.applyFeedback, msg),
       getCurrentData: () => state.draft,
     }).init();
   });
 
-  function getHubStorage() { return window.IsfHubStorage; }
-  function formatWeight(v) { return IsfUtils.sanitizeWeight(v).toFixed(2); }
-  function formatCurrency(v) { return new Intl.NumberFormat("ko-KR").format(IsfUtils.sanitizeMoney(v)) + " 만원"; }
-  function formatDateTime(v) { return new Date(v).toLocaleString("ko-KR"); }
-
-  function createDraftAllocation(s) { return { id: s?.id || IsfUtils.createId("alloc"), key: s?.key || IsfUtils.createId("asset"), label: s?.label || "종목", targetWeight: IsfUtils.sanitizeWeight(s?.targetWeight), actualAmount: IsfUtils.sanitizeMoney(s?.actualAmount || 0), isImportant: Boolean(s?.isImportant), memo: s?.memo || "" }; }
-  function createDraftAccount(s) {
-    const rawAllocations = Array.isArray(s?.allocations) ? s.allocations : FALLBACK_ALLOCATIONS;
-    return { id: s?.id || IsfUtils.createId("acc"), name: s?.name || "계좌", accountWeight: IsfUtils.sanitizeWeight(s?.accountWeight), allocations: rawAllocations.map(a => createDraftAllocation(a)) };
+  async function checkReturningUser() {
+    const hub = getHubStorage();
+    if (!hub) return;
+    try {
+      const rows = await hub.listStep2Portfolios();
+      state.portfolios = rows || [];
+      if (state.portfolios.length > 0 && !window.location.hash) {
+        state.isReturningUser = true;
+        state.isDashboardMode = true;
+        document.body.classList.add("is-dashboard-mode");
+      }
+    } catch (e) { console.error(e); }
   }
-  function createEmptyDraft() { return { modelVersion: MODEL_VERSION, name: "내 포트폴리오", notes: "", totalMonthlyInvestCapacity: 0, accounts: DEFAULT_ACCOUNT_TEMPLATES.map(t => createDraftAccount(t)), dividendSim: { yield: 3.5, growth: 5.0, capitalGrowth: 4.0, years: 10, drip: true } }; }
 
-  function showFeedback(msg, isError) { IsfFeedback.showFeedback(dom.applyFeedback, msg, isError); if (dom.step2Feedback) { dom.step2Feedback.hidden = false; dom.step2Feedback.textContent = msg; dom.step2Feedback.classList.toggle("is-error", !!isError); } }
-  function markDirty() { state.dirty = true; IsfFeedback.markPendingBar(dom.pendingBar, dom.pendingSummary, true); sessionStorage.setItem(TEMP_STORAGE_KEY, JSON.stringify({ draft: state.draft, currentPortfolioId: state.currentPortfolioId, activeAccountId: state.activeAccountId })); }
-  function markClean() { state.dirty = false; IsfFeedback.markPendingBar(dom.pendingBar, dom.pendingSummary, false); sessionStorage.removeItem(TEMP_STORAGE_KEY); }
+  async function checkBridgeData() {
+    const hub = getHubStorage();
+    const res = await resolveLatestBridgePayload(hub);
+    const p = res.bridge?.payload;
+    if (p && p.monthlyInvestCapacity !== state.draft.totalMonthlyInvestCapacity) {
+      if (dom.bridgeBanner) {
+        dom.bridgeBanner.hidden = false;
+        if (dom.bridgeTimestamp) dom.bridgeTimestamp.textContent = formatDateTime(p.timestamp);
+        if (dom.bridgeMonthlyInvestCapacity) dom.bridgeMonthlyInvestCapacity.textContent = formatCurrency(p.monthlyInvestCapacity);
+      }
+    }
+  }
 
-  function getTotalMonthlyInvestCapacity() { return IsfUtils.sanitizeMoney(state.draft?.totalMonthlyInvestCapacity); }
-  function getTotalAccountWeight() { return state.draft.accounts.reduce((sum, a) => sum + IsfUtils.sanitizeWeight(a.accountWeight), 0); }
-  function getAutoCashAmount() { const total = getTotalMonthlyInvestCapacity(); return total > 0 ? Math.round(total * (1 - Math.min(100, getTotalAccountWeight()) / 100)) : 0; }
-  function getAccountById(id) { return state.draft.accounts.find(a => a.id === id); }
-  function getAllocationWeightTotal(acc) { return acc.allocations.reduce((sum, al) => sum + IsfUtils.sanitizeWeight(al.targetWeight), 0); }
+  function bindModalEvents() {
+    if (!dom.appHeader || !dom.dataHubModal) return;
+
+    dom.appHeader.addEventListener("open-data-hub", async () => {
+      await refreshPortfolioList();
+      dom.dataHubModal.updatePortfolioList(state.portfolios);
+      dom.dataHubModal.updateBackupList(state.backupEntries || []);
+      dom.dataHubModal.open();
+    });
+
+    dom.dataHubModal.addEventListener("select-portfolio", async (e) => {
+      await loadPortfolioById(e.detail.id);
+      dom.dataHubModal.close();
+    });
+
+    dom.dataHubModal.addEventListener("delete-portfolio", async (e) => {
+      if (confirm("정말 삭제하시겠습니까?")) {
+        await deletePortfolioById(e.detail.id);
+        dom.dataHubModal.updatePortfolioList(state.portfolios);
+      }
+    });
+
+    dom.dataHubModal.addEventListener("backup-now", async () => {
+      // Step 2 백업 로직 (필요 시 구현)
+      if (dom.appHeader) dom.appHeader.updateStatus("success", "백업 기능은 곧 지원됩니다.");
+    });
+
+    dom.dataHubModal.addEventListener("export-json", () => {
+      IsfShare.exportAsJson(IsfShare.buildStateEnvelope(SHARE_STATE_KEY, SHARE_STATE_SCHEMA, toPortablePortfolio()), "portfolio");
+      if (dom.appHeader) dom.appHeader.updateStatus("success", "JSON 저장 완료");
+    });
+
+    dom.dataHubModal.addEventListener("copy-share-link", async () => {
+      const enc = IsfShare.encodePayloadForHash(IsfShare.buildStateEnvelope(SHARE_STATE_KEY, SHARE_STATE_SCHEMA, toPortablePortfolio()));
+      const url = new URL(window.location.href);
+      url.hash = `${HASH_STATE_PARAM}=${enc}`;
+      try {
+        await navigator.clipboard.writeText(url.toString());
+        if (dom.appHeader) dom.appHeader.updateStatus("success", "공유 링크 복사됨");
+      } catch (e) {
+        window.prompt("링크를 복사하세요:", url.toString());
+      }
+    });
+  }
 
   function bindEvents() {
-    if (dom.loadStep1Data) dom.loadStep1Data.addEventListener("click", async () => { if (state.dirty && !confirm("덮어쓸까요?")) return; await importLatestBridgeIntoDraft(); if (document.getElementById("bridgePanel")) document.getElementById("bridgePanel").hidden = true; });
+    bindModalEvents();
+    if (dom.dismissBridgeBanner) dom.dismissBridgeBanner.addEventListener("click", () => { if (dom.bridgeBanner) dom.bridgeBanner.hidden = true; });
+    if (dom.loadStep1Data) dom.loadStep1Data.addEventListener("click", async () => { if (state.dirty && !confirm("현재 수정한 내용을 덮어쓸까요?")) return; await importLatestBridgeIntoDraft(); if (dom.bridgeBanner) dom.bridgeBanner.hidden = true; });
     if (dom.chartTabSummary) dom.chartTabSummary.addEventListener("click", () => { state.activeChartTab = "summary"; renderChartTabs(); renderCharts(); });
     if (dom.chartTabAccount) dom.chartTabAccount.addEventListener("click", () => { state.activeChartTab = "account"; renderChartTabs(); renderCharts(); });
     if (dom.totalMonthlyInvestCapacity) dom.totalMonthlyInvestCapacity.addEventListener("input", () => { state.draft.totalMonthlyInvestCapacity = IsfUtils.sanitizeMoney(dom.totalMonthlyInvestCapacity.value); markDirty(); renderAccountSummary(); renderCharts(); });
@@ -215,10 +247,6 @@
     if (dom.savePortfolio) dom.savePortfolio.addEventListener("click", saveCurrentPortfolio);
     if (dom.applyChanges) dom.applyChanges.addEventListener("click", saveCurrentPortfolio);
     if (dom.cancelChanges) dom.cancelChanges.addEventListener("click", async () => { if (state.currentPortfolioId) await loadPortfolioById(state.currentPortfolioId, { skipConfirm: true }); else resetDraft(); });
-    if (dom.loadPortfolio) dom.loadPortfolio.addEventListener("click", () => { if (dom.portfolioSelect.value) loadPortfolioById(dom.portfolioSelect.value); });
-    if (dom.deletePortfolio) dom.deletePortfolio.addEventListener("click", () => { if (dom.portfolioSelect.value && confirm("삭제?")) deletePortfolioById(dom.portfolioSelect.value); });
-    if (dom.exportJson) dom.exportJson.addEventListener("click", () => IsfShare.exportAsJson(IsfShare.buildStateEnvelope(SHARE_STATE_KEY, SHARE_STATE_SCHEMA, toPortablePortfolio()), "portfolio"));
-    if (dom.copyShareLink) dom.copyShareLink.addEventListener("click", () => { const enc = IsfShare.encodePayloadForHash(IsfShare.buildStateEnvelope(SHARE_STATE_KEY, SHARE_STATE_SCHEMA, toPortablePortfolio())); const url = new URL(window.location.href); url.hash = `${HASH_STATE_PARAM}=${enc}`; navigator.clipboard.writeText(url.toString()).then(() => showFeedback("복사 완료")); });
   }
 
   function renderDraft() {
@@ -369,10 +397,48 @@
     }
   }
 
-  function saveCurrentPortfolio() { const hub = getHubStorage(); if (hub) hub.saveStep2Portfolio(toPortablePortfolio()).then(() => { markClean(); refreshPortfolioList(); showFeedback("저장 완료"); }); }
-  async function loadPortfolioById(id) { const hub = getHubStorage(); const p = await hub.getStep2PortfolioById(id); if (p) { state.draft = p; state.currentPortfolioId = id; renderDraft(); markClean(); showFeedback("불러오기 완료"); } }
-  async function deletePortfolioById(id) { const hub = getHubStorage(); await hub.deleteStep2Portfolio(id); refreshPortfolioList(); }
-  async function refreshPortfolioList() { const hub = getHubStorage(); const rows = await (hub?.listStep2Portfolios() || []); dom.portfolioSelect.innerHTML = rows.map(r => `<option value="${r.id}">${r.name}</option>`).join(""); }
+  function saveCurrentPortfolio() {
+    const hub = getHubStorage();
+    if (!hub) return;
+    if (dom.appHeader) dom.appHeader.updateStatus("saving", "저장 중...");
+    hub.saveStep2Portfolio(toPortablePortfolio()).then(() => {
+      markClean();
+      refreshPortfolioList().then(() => {
+        if (dom.dataHubModal) dom.dataHubModal.updatePortfolioList(state.portfolios);
+      });
+      if (dom.appHeader) dom.appHeader.updateStatus("success", "브라우저에 저장됨");
+    }).catch(() => {
+      if (dom.appHeader) dom.appHeader.updateStatus("error", "저장 실패");
+    });
+  }
+
+  async function loadPortfolioById(id, options = {}) {
+    const hub = getHubStorage();
+    if (!hub) return;
+    const p = await hub.getStep2PortfolioById(id);
+    if (p) {
+      state.draft = p;
+      state.currentPortfolioId = id;
+      renderDraft();
+      markClean();
+      if (!options.skipConfirm && dom.appHeader) dom.appHeader.updateStatus("success", "포트폴리오 로드됨");
+    }
+  }
+
+  async function deletePortfolioById(id) {
+    const hub = getHubStorage();
+    if (!hub) return;
+    await hub.deleteStep2Portfolio(id);
+    if (state.currentPortfolioId === id) resetDraft();
+    await refreshPortfolioList();
+    if (dom.appHeader) dom.appHeader.updateStatus("success", "삭제되었습니다.");
+  }
+
+  async function refreshPortfolioList() {
+    const hub = getHubStorage();
+    const rows = await (hub?.listStep2Portfolios() || []);
+    state.portfolios = rows || [];
+  }
   function toPortablePortfolio() { return { ...state.draft, id: state.currentPortfolioId }; }
   function normalizeLoadedPortfolio(s) { return { draft: s, id: s.id }; }
   function resetDraft() { state.draft = createEmptyDraft(); state.currentPortfolioId = ""; renderDraft(); markClean(); }
