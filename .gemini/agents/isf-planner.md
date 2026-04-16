@@ -7,7 +7,8 @@ tools:
   - grep_search
   - list_directory
   - glob
-model: Gemini 3
+# model: gemini-3.1-pro-preview
+model: gemini-3-flash-preview
 temperature: 0.7
 ---
 

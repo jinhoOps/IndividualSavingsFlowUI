@@ -70,6 +70,7 @@
     init() {
       this.syncVersionCheckTriggerVisibility();
       this.bindPwaLifecycleFeedback();
+      this.bindNetworkStatusFeedback();
       this.registerServiceWorker();
       this.maybeShowStandaloneLaunchFeedback();
       this.bindPwaVersionAwareness();
@@ -88,6 +89,24 @@
       if (typeof window === "undefined") return;
       window.addEventListener("appinstalled", () => {
         this.onFeedback(`웹앱 설치가 완료되었습니다. v${this.appVersion}`);
+      });
+    }
+
+    // 오프라인/온라인 네트워크 상태 변화를 감지하여 토스트로 안내합니다.
+    bindNetworkStatusFeedback() {
+      if (typeof window === "undefined" || typeof navigator === "undefined") return;
+
+      // 앱 초기 로딩 시 이미 오프라인인 경우 안내
+      if (!navigator.onLine) {
+        this.onFeedback("오프라인 모드: 네트워크 연결 없이 앱을 이용 중입니다.");
+      }
+
+      window.addEventListener("offline", () => {
+        this.onFeedback("오프라인 모드: 네트워크 연결이 끊겼습니다. 저장된 데이터로 계속 이용 가능합니다.");
+      });
+
+      window.addEventListener("online", () => {
+        this.onFeedback("네트워크 연결이 복구되었습니다.");
       });
     }
 

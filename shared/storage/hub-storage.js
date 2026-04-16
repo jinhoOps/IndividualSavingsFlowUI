@@ -6,6 +6,8 @@
   const HUB_STORE_STEP1 = "step1Snapshots";
   const HUB_STORE_STEP2 = "step2Portfolios";
   const HUB_STORE_BRIDGE = "bridgeStep1ToStep2";
+  // 스냅샷 최대 보관 개수 (backup-manager.js의 MAX_BACKUP_ENTRIES=60과 의도적으로 다릅니다.
+  // 스냅샷은 앱 상태의 주 저장소이고, 백업은 복구용 이력이므로 보관 정책을 분리합니다.)
   const MAX_HUB_SNAPSHOTS = 20;
 
   let hubDbPromise = null;

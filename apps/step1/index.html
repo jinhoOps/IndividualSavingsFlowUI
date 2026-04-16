@@ -10,6 +10,7 @@
   <link rel="manifest" href="../../manifest.webmanifest" />
   <link rel="icon" href="icons/icon-192.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="icons/icon-192.svg" />
+  <link rel="stylesheet" href="../../shared/styles/step-theme.css" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 
@@ -48,7 +49,11 @@
           <h2 id="cardsTitle">핵심 카드</h2>
           <p id="cardMeta" class="hint"></p>
         </div>
-        <div id="summaryCards" class="summary-cards" aria-live="polite"></div>
+        <div id="summaryCards" class="summary-cards" aria-live="polite">
+          <div class="card skeleton" aria-hidden="true"><span class="label">불러오는 중</span><span class="value">━━━━</span></div>
+          <div class="card skeleton" aria-hidden="true"><span class="label">불러오는 중</span><span class="value">━━━━</span></div>
+          <div class="card skeleton" aria-hidden="true"><span class="label">불러오는 중</span><span class="value">━━━━</span></div>
+        </div>
       </section>
 
       <section class="panel sankey-panel" aria-labelledby="sankeyTitle">

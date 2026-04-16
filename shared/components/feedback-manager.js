@@ -29,13 +29,9 @@
     domElement.hidden = false;
 
     if (isError) {
-      domElement.style.borderColor = "rgba(174, 56, 56, 0.38)";
-      domElement.style.background = "rgba(253, 240, 240, 0.96)";
-      domElement.style.color = "#8b2f2f";
+      domElement.classList.add("is-error");
     } else {
-      domElement.style.borderColor = "";
-      domElement.style.background = "";
-      domElement.style.color = "";
+      domElement.classList.remove("is-error");
     }
 
     applyFeedbackTimer = window.setTimeout(() => {

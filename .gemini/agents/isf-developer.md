@@ -9,7 +9,7 @@ tools:
   - run_shell_command
   - grep_search
   - list_directory
-model: Gemini 3
+model: gemini-3-flash-preview
 temperature: 0.2
 ---
 

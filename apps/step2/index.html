@@ -66,7 +66,10 @@
 
         <div id="summaryChartPane" class="chart-pane" data-chart-pane="summary">
           <div class="chart-stage">
-            <svg id="summaryDonut" viewBox="0 0 400 300" role="img" aria-label="종합 포트폴리오 도넛"></svg>
+            <svg id="summaryDonut" viewBox="0 0 400 300" role="img" aria-label="종합 포트폴리오 도넛">
+              <circle cx="200" cy="150" r="90" fill="none" stroke="#e0e0e0" stroke-width="36" class="skeleton-donut" opacity="0.5"/>
+              <text x="200" y="155" text-anchor="middle" fill="#ccc" font-size="13">불러오는 중</text>
+            </svg>
           </div>
         </div>
 
@@ -161,6 +164,20 @@
         </div>
         
         <div id="simInputsContainer" class="sim-inputs-container" hidden>
+          <details class="sim-guide" style="margin-bottom: 10px;">
+            <summary style="cursor: pointer; font-size: 0.84rem; color: var(--tone-accent);">가정 설정 가이드 (처음이라면 펼쳐보세요)</summary>
+            <div style="margin-top: 8px; padding: 10px; border: 1px dashed var(--line); border-radius: var(--rd-sm); background: rgba(235,250,246,0.5); font-size: 0.82rem; line-height: 1.6; color: var(--ink);">
+              <p style="margin: 0 0 6px;">이 시뮬레이션은 "만약 매달 일정 금액을 투자하면, 배당금이 얼마나 쌓일까?"를 미리 계산해 봅니다.</p>
+              <ul style="margin: 0; padding-left: 18px;">
+                <li>기대 배당수익률: 1년 동안 투자금 대비 받는 배당금 비율입니다. 국내 고배당 ETF는 보통 3~5%, 미국 배당 ETF는 2~4% 수준입니다.</li>
+                <li>배당 성장률: 매년 기업이 배당금을 얼마나 올려주는지의 비율입니다. 배당 성장 ETF 기준 보통 5~8% 정도입니다.</li>
+                <li>주가 상승률: 자산 평가액이 매년 얼마나 오르는지의 비율입니다. 장기 주식시장 평균은 약 7~10%이지만, 보수적으로 4~6%를 권장합니다.</li>
+                <li>시뮬레이션 기간: 투자를 지속하는 기간(년)입니다.</li>
+                <li>배당 재투자: 받은 배당금을 다시 투자에 넣을지 여부입니다. 켜면 복리 효과로 자산이 더 빠르게 불어납니다.</li>
+              </ul>
+              <p style="margin: 8px 0 0; color: var(--muted);">명목 금액은 미래 시점의 액면가이고, 실질 금액은 물가 상승을 감안한 현재 기준 가치입니다. 배당 소득세는 15.4%로 일괄 적용됩니다.</p>
+            </div>
+          </details>
           <div class="form-grid">
             <label class="control">
               <span>기대 배당수익률(연, %)</span>

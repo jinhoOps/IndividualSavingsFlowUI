@@ -39,21 +39,43 @@
   - 중앙 정렬 레이아웃.
   - 버튼 및 입력 필드의 크기는 유지하되, 배치 간격을 조정하여 여유 공간 확보.
 
-## 4. Components & UX Rules
+## 4. Atomic System & Tokens
+
+일관된 UI를 위해 다음 수치 규격을 엄격히 준수합니다.
+
+### Spacing Scale
+- `4px` 단위를 기본으로 하는 배수 시스템을 사용합니다.
+- `xs: 4px`, `sm: 8px`, `md: 14px` (Main Gutter), `lg: 24px`, `xl: 32px`.
+
+### Radius & Shadows
+- **Radius**: `Small: 8px` (Inputs), `Medium: 14px` (Panels/Cards), `Large: 999px` (Pills/Buttons).
+- **Shadow**: 
+  - `Floating`: `0 8px 24px rgba(16, 34, 32, 0.08)` (Panel/Bar)
+  - `Hover`: `0 12px 32px rgba(16, 34, 32, 0.12)`
+
+## 5. Components & UX Rules
 
 ### Typography
 - **Display**: `Black Han Sans` (숫자 및 제목 강조용)
 - **Body**: `Gowun Dodum` (가독성 중심의 본문용)
 - **금액 단위**: Step 1은 **만원**, Step 2는 **원** 단위를 엄격히 구분하여 사용자 혼선을 방지합니다.
 
-### Buttons & Inputs
-- 모바일 터치 타겟을 고려하여 최소 클릭 영역 `44x44px` 수준의 여백을 확보합니다.
-- 중요한 액션은 `btn-primary` (Gradient 적용)를 사용합니다.
+### Buttons & Interaction
+- **Primary**: Gradient 배경, 클릭 시 `scale(0.96)` 및 `brightness(1.1)` 효과.
+- **Ghost/Outline**: 배경 없이 테두리만 존재, 호버 시 연한 배경색 노출.
+- **Touch Target**: 모든 클릭 요소는 최소 `44x44px` 영역을 확보합니다.
 
-### Dark Mode (Future Support)
-- 현재는 Light 모드(`color-scheme: light`)를 기본으로 하지만, 모든 색상은 CSS 변수로 관리됩니다. 
-- 향후 미디어 쿼리(`prefers-color-scheme: dark`) 대응을 통해 다크 모드 확장이 용이하도록 설계되어야 합니다.
+## 6. PWA & Feedback
 
-## 5. Visual Elements
+### Loading & Transitions
+- 페이지 전환 시 `opacity` 페이드 효과(0.3s)를 적용하여 부드러운 연결감을 줍니다.
+- 데이터 로딩 중에는 원형 스피너 대신 **Skeleton UI**(연한 회색 배경의 Pulse 효과)를 우선적으로 고려합니다.
+
+### Connectivity & Sync
+- **Offline Mode**: 오프라인 상태일 때 상단 또는 하단에 "오프라인 모드: 로컬에만 저장됩니다" 안내를 상시 노출합니다.
+- **Success Feedback**: `apply-feedback` (Toast)는 액션 완료 후 `2-3초`간 유지 후 자연스럽게 사라집니다.
+
+## 7. Visual Elements
 - **Sankey Diagram**: 금액과 비율의 전환이 용이해야 하며, 모바일에서도 노드 간의 흐름이 끊기지 않아야 합니다.
 - **Donut Chart**: 1% 이하의 작은 비중은 '기타'로 그룹화하거나 라벨 처리하여 가독성을 유지합니다.
+- **Glassmorphism**: `.panel` 클래스는 `backdrop-filter: blur(10px)`를 적용하여 배경과의 깊이감을 형성합니다.
