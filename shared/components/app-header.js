@@ -37,7 +37,7 @@ export class AppHeader extends HTMLElement {
       <header class="app-header">
         <div class="app-header__inner">
           <div style="display: flex; align-items: center; gap: var(--sp-md);">
-            <a href="/" class="app-header__logo">ISF UIUX</a>
+            <a href="/IndividualSavingsFlowUI/" class="app-header__logo">ISF UIUX</a>
             
             <div id="statusIndicator" class="status-indicator status-indicator--${this.status}">
               <span class="status-indicator__dot"></span>

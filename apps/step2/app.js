@@ -349,8 +349,37 @@
     const hub = getHubStorage();
     const res = await resolveLatestBridgePayload(hub);
     if (res.bridge?.payload) {
+      const p = res.bridge.payload;
       // 원 단위를 만원 단위로 변환하여 저장
-      state.draft.totalMonthlyInvestCapacity = Math.round(res.bridge.payload.monthlyInvestCapacity / 10000);
+      state.draft.totalMonthlyInvestCapacity = Math.round(p.monthlyInvestCapacity / 10000);
+      
+      // Step 1의 투자 항목 연동 (계좌 매핑)
+      if (Array.isArray(p.investItems) && p.investItems.length > 0) {
+        const totalInvestAmount = p.investItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+        if (totalInvestAmount > 0) {
+          const nextAccounts = [...(state.draft.accounts || [])];
+          
+          p.investItems.forEach(item => {
+            const weight = Math.round(((Number(item.amount) || 0) / totalInvestAmount) * 1000) / 10;
+            const existing = nextAccounts.find(acc => acc.name === item.name);
+            
+            if (existing) {
+              existing.accountWeight = weight;
+            } else {
+              nextAccounts.push({
+                id: IsfUtils.createId("acc"),
+                name: item.name,
+                accountWeight: weight,
+                allocations: [],
+                isOpen: true
+              });
+            }
+          });
+          
+          state.draft.accounts = nextAccounts;
+        }
+      }
+
       renderDraft();
       markDirty();
       showFeedback("데이터 가져오기 완료");
