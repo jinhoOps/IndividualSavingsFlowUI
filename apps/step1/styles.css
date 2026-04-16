@@ -29,6 +29,11 @@ main {
   min-width: 0;
 }
 
+.page-intro {
+  text-align: center;
+  padding: var(--sp-lg) var(--sp-md);
+}
+
 .controls-panel { order: 1; }
 .sankey-panel { order: 2; }
 .projection-panel { order: 3; }

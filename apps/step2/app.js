@@ -89,8 +89,8 @@
         importJsonTrigger: document.getElementById("importJsonTrigger"),
     pendingBar: document.getElementById("pendingBar"),
     pendingSummary: document.getElementById("pendingSummary"),
-    saveChanges: document.getElementById("saveChanges"),
-    discardChanges: document.getElementById("discardChanges"),
+    applyChanges: document.getElementById("applyChanges"),
+    cancelChanges: document.getElementById("cancelChanges"),
     importJsonFile: document.getElementById("importJsonFile"),
     copyShareLink: document.getElementById("copyShareLink"),
     applyFeedback: document.getElementById("applyFeedback"),
@@ -178,7 +178,7 @@
     }
 
     const pwaManager = new IsfPwaManager({
-      appVersion: "0.2.5",
+      appVersion: "0.3.0",
       appKey: SHARE_STATE_KEY,
       onFeedback: (message) => IsfFeedback.showFeedback(dom.applyFeedback, message),
       isViewMode: () => false,
@@ -199,12 +199,12 @@
     return required.every((name) => typeof hub[name] === "function") ? hub : null;
   }
 
-  function step1AmountToWon(value) {
+  function step1AmountToUnit(value) {
     const numeric = Number(value);
     if (!Number.isFinite(numeric)) {
       return 0;
     }
-    return Math.max(0, Math.round(numeric * STEP1_UNIT_TO_WON));
+    return Math.max(0, Math.round(numeric));
   }
 
   function buildBridgePayloadFromStep1Inputs(inputs, timestamp) {
@@ -217,10 +217,10 @@
       return null;
     }
     return {
-      monthlyInvestCapacity: step1AmountToWon(safeInputs.monthlyInvest),
-      currentCash: step1AmountToWon(safeInputs.startCash),
-      currentInvest: step1AmountToWon(safeInputs.startInvest),
-      currentSavings: step1AmountToWon(safeInputs.startSavings),
+      monthlyInvestCapacity: step1AmountToUnit(safeInputs.monthlyInvest),
+      currentCash: step1AmountToUnit(safeInputs.startCash),
+      currentInvest: step1AmountToUnit(safeInputs.startInvest),
+      currentSavings: step1AmountToUnit(safeInputs.startSavings),
       annualExpenseGrowth: Number(safeInputs.annualExpenseGrowth || 0),
       timestamp: String(timestamp || new Date().toISOString()),
       investItems: Array.isArray(safeInputs.investItems) ? safeInputs.investItems : [],
@@ -846,14 +846,14 @@
       });
     }
 
-    if (dom.saveChanges) {
-      dom.saveChanges.addEventListener("click", async () => {
+    if (dom.applyChanges) {
+      dom.applyChanges.addEventListener("click", async () => {
         await saveCurrentPortfolio();
       });
     }
 
-    if (dom.discardChanges) {
-      dom.discardChanges.addEventListener("click", async () => {
+    if (dom.cancelChanges) {
+      dom.cancelChanges.addEventListener("click", async () => {
         if (state.currentPortfolioId) {
           await loadPortfolioById(state.currentPortfolioId, { skipConfirm: true });
           showFeedback("변경사항을 취소하고 마지막 저장 상태로 되돌렸습니다.", false);

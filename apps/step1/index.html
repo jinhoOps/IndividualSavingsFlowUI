@@ -12,22 +12,17 @@
   <link rel="apple-touch-icon" href="icons/icon-192.svg" />
   <link rel="stylesheet" href="../../shared/styles/step-theme.css" />
   <link rel="stylesheet" href="styles.css" />
+  <script src="../../shared/components/app-header.js" type="module"></script>
 </head>
 
 <body>
+  <app-header current-step="1"></app-header>
   <div class="ambient" aria-hidden="true"></div>
   <div class="page">
-    <header class="hero panel">
-      <p class="eyebrow">IndividualSavings Flow UIUX · Step 1</p>
+    <section class="panel page-intro">
       <h1>나의 가계 흐름</h1>
-      <p class="lead">
-        이렇게 벌고, 이렇게 쓴다.
-        월 단위 가계 흐름을 카드와 단일 Sankey Diagram으로 빠르게 확인할 수 있습니다.
-      </p>
-      <div style="margin-top: 16px;">
-        <a href="../step2/" class="btn btn-primary" onclick="event.preventDefault(); window.location.replace('../step2/');">Step2 (포트폴리오 구성) 임시 이동</a>
-      </div>
-    </header>
+      <p class="lead">벌어들이는 수입이 어디로 흘러나가는지 Sankey Diagram으로 한눈에 파악하세요.</p>
+    </section>
     <section id="viewModeGuide" class="panel view-mode-guide" aria-live="polite" hidden>
       <p class="view-mode-guide__text">
         이 페이지는 공유 페이지입니다. 현재 상태를 내 브라우저에 저장하거나, 내 기존 데이터로 돌아갈 수 있습니다.
@@ -229,14 +224,14 @@
 
             <details id="advancedSettings" class="advanced-block">
               <summary>고급 설정 (생활비 상세 / 초기자산 / 증가율 / 수익률)</summary>
-              <div class="advanced-nav" role="tablist" aria-label="상세 항목 탭">
-                <button id="advancedTabExpense" class="advanced-tab is-active" type="button" role="tab"
+              <div class="tab-list" role="tablist" aria-label="상세 항목 탭">
+                <button id="advancedTabExpense" class="tab-btn is-active" type="button" role="tab"
                   aria-selected="true" aria-controls="expenseAdvancedBlock" data-advanced-tab="expense">생활비</button>
-                <button id="advancedTabSavings" class="advanced-tab" type="button" role="tab" aria-selected="false"
+                <button id="advancedTabSavings" class="tab-btn" type="button" role="tab" aria-selected="false"
                   aria-controls="savingsAdvancedBlock" data-advanced-tab="savings">저축</button>
-                <button id="advancedTabInvest" class="advanced-tab" type="button" role="tab" aria-selected="false"
+                <button id="advancedTabInvest" class="tab-btn" type="button" role="tab" aria-selected="false"
                   aria-controls="investAdvancedBlock" data-advanced-tab="invest">투자</button>
-                <button id="advancedTabRates" class="advanced-tab advanced-tab--mobile-only" type="button" role="tab"
+                <button id="advancedTabRates" class="tab-btn advanced-tab--mobile-only" type="button" role="tab"
                   aria-selected="false" aria-controls="ratesAdvancedBlock" data-advanced-tab="rates">수익률</button>
               </div>
               <div id="expenseAdvancedBlock" class="controls-block" data-advanced-block="expense">
@@ -373,10 +368,13 @@
     ▲
   </button>
   <div id="pendingBar" class="pending-bar" hidden>
-    <p id="pendingSummary" class="pending-summary"></p>
+    <div class="pending-content" style="display: flex; align-items: center; gap: 8px;">
+      <span class="pending-icon">⚠️</span>
+      <p id="pendingSummary" class="pending-summary"></p>
+    </div>
     <div class="pending-actions">
-      <button id="applyChanges" class="btn btn-primary" type="button">적용</button>
-      <button id="cancelChanges" class="btn btn-ghost" type="button">취소</button>
+      <button id="applyChanges" class="btn btn-primary btn-sm" type="button">적용</button>
+      <button id="cancelChanges" class="btn btn-ghost btn-sm" type="button">취소</button>
     </div>
   </div>
   <div id="applyFeedback" class="apply-feedback" hidden></div>

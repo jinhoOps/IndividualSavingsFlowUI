@@ -3,23 +3,13 @@
   --tone-paper: rgba(16, 34, 32, 0.04);
 }
 
-.page {
-  gap: var(--sp-md);
-}
-
-header.panel {
-  display: grid;
-  gap: 8px;
+.page-intro {
+  text-align: center;
+  padding: var(--sp-lg) var(--sp-md);
 }
 
 .lead {
   font-size: 1.02rem;
-}
-
-.actions {
-  display: flex;
-  gap: var(--sp-sm);
-  flex-wrap: wrap;
 }
 
 .section-head,

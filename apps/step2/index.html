@@ -11,19 +11,18 @@
     <link rel="apple-touch-icon" href="../../icons/icon-192.svg" />
     <link rel="stylesheet" href="../../shared/styles/step-theme.css" />
     <link rel="stylesheet" href="styles.css" />
-  </head>
-  <body>
+    <script src="../../shared/components/app-header.js" type="module"></script>
+    </head>
+    <body>
+    <app-header current-step="2"></app-header>
     <main class="page">
-      <header class="hero panel">
-        <p class="eyebrow">INDIVIDUALSAVINGS FLOW UIUX · STEP 2</p>
+      <section class="panel page-intro">
         <h1>투자 포트폴리오 구성</h1>
-        <p class="lead">월 투자 가능 금액을 기준으로 계좌/종목 비중만 조절하면, 남는 금액은 자동으로 현금 처리됩니다.</p>
-        <div class="actions">
-          <a class="btn btn-ghost" href="../step1/" onclick="event.preventDefault(); window.location.replace('../step1/');">Step1으로 이동</a>
+        <p class="lead">월 투자 여력을 바탕으로 계좌와 종목별 비중을 정교하게 설계하세요.</p>
+        <div class="actions" style="margin-top: var(--sp-sm);">
           <button id="loadStep1Data" class="btn btn-primary" type="button">Step1 데이터 가져오기</button>
         </div>
-      </header>
-
+      </section>
       <section class="panel bridge-panel">
         <h2>Step1 브리지 데이터</h2>
         <p id="bridgeStatus" class="muted">최신 Step1 브리지 데이터를 확인합니다.</p>
@@ -39,10 +38,10 @@
       <section class="panel chart-panel">
         <div class="chart-head">
           <h2>포트폴리오 도넛</h2>
-          <div class="chart-tabs" role="tablist" aria-label="도넛 보기 탭">
+          <div class="tab-list" role="tablist" aria-label="도넛 보기 탭">
             <button
               id="chartTabSummary"
-              class="chart-tab is-active"
+              class="tab-btn is-active"
               type="button"
               role="tab"
               aria-selected="true"
@@ -52,7 +51,7 @@
             </button>
             <button
               id="chartTabAccount"
-              class="chart-tab"
+              class="tab-btn"
               type="button"
               role="tab"
               aria-selected="false"
@@ -206,11 +205,11 @@
         <div class="sim-dashboard">
           <div class="sim-controls" style="margin-top: 10px; margin-bottom: 12px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
             <span class="muted" style="font-size: 0.8rem;">시뮬레이션 기간:</span>
-            <div class="chart-tabs" id="simYearsTabs" role="tablist">
-              <button class="chart-tab" data-years="5" role="tab">5년</button>
-              <button class="chart-tab is-active" data-years="10" role="tab" aria-selected="true">10년</button>
-              <button class="chart-tab" data-years="15" role="tab">15년</button>
-              <button class="chart-tab" data-years="20" role="tab">20년</button>
+            <div class="tab-list" id="simYearsTabs" role="tablist">
+              <button class="tab-btn" data-years="5" role="tab">5년</button>
+              <button class="tab-btn is-active" data-years="10" role="tab" aria-selected="true">10년</button>
+              <button class="tab-btn" data-years="15" role="tab">15년</button>
+              <button class="tab-btn" data-years="20" role="tab">20년</button>
             </div>
           </div>
 
@@ -244,14 +243,14 @@
         </div>
       </section>
 
-      <div id="pendingBar" class="pending-bar" aria-hidden="true" hidden>
-        <div class="pending-content">
+      <div id="pendingBar" class="pending-bar" hidden>
+        <div class="pending-content" style="display: flex; align-items: center; gap: 8px;">
           <span class="pending-icon">⚠️</span>
-          <span id="pendingSummary" class="pending-summary">변경사항 대기 중</span>
+          <p id="pendingSummary" class="pending-summary">변경사항 대기 중</p>
         </div>
         <div class="pending-actions">
-          <button id="discardChanges" class="btn btn-ghost btn-sm">취소</button>
-          <button id="saveChanges" class="btn btn-primary btn-sm">저장</button>
+          <button id="applyChanges" class="btn btn-primary btn-sm" type="button">적용</button>
+          <button id="cancelChanges" class="btn btn-ghost btn-sm" type="button">취소</button>
         </div>
       </div>
 

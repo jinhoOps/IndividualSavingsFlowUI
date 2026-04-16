@@ -16,6 +16,7 @@
 - [[Architecture_Reference]] : 디렉토리 구조 및 No-build 모듈 로드 방식
 - [[Data_Model_Reference]] : 금액 단위, IndexedDB 스키마, 저장/공유 로직
 - [[UI_Standards_Reference]] : 테마 변수, 피드백 시스템, 시각화 가이드
+- [[UI_UX_Overhaul_v0.3]] : v0.3 대규모 UI/UX 개편 및 HCD 적용 상세 기록
 
 ## 🧠 패턴 및 패턴 해결록 (Dev Patterns & Resolutions)
 에이전트가 개발 중 직면했던 문제 상황이나 일관되게 적용해야 하는 기계적 패턴들을 모아놓은 인덱스입니다.

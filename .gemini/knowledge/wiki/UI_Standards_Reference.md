@@ -21,13 +21,23 @@ tags: [ui, feedback, theme, visualization, reference]
 ## 테마 시스템
 
 - `shared/styles/step-theme.css`에 정의된 CSS Variables를 사용하여 일관된 색상과 타이포그래피를 유지합니다.
+- **v0.3 디자인 토큰:**
+  - **Spacing:** `--sp-xs(4px)` ~ `--sp-xl(32px)`
+  - **Radius:** `--rd-sm(8px)`, `--rd-md(14px)`, `--rd-lg(999px)`
+  - **Shadow:** `--sh-float` (공통 부유 효과)
 - 주요 변수: `--tone-primary`, `--tone-accent`, `--ink`, `--bg`, `--panel` 등.
 - 상세 Brand Identity 및 색상 체계는 프로젝트 루트의 `DESIGN.md`를 참조하십시오.
 
-## 피드백 시스템 (`feedback-manager.js`)
+## 공통 컴포넌트 및 피드백 표준 (v0.3 통합)
 
-- 모든 사용자 알림(성공, 오류, 안내)은 `shared/components/feedback-manager.js`의 `FeedbackManager`를 통해 일관되게 제공합니다.
-- 오류 안내 표준화: 공유 실패, 백업 충돌 시 사용자가 취할 수 있는 구체적인 행동(Action)을 메시지에 포함합니다.
+1. **AppHeader (`app-header.js`)**
+   - 역할: Step 간 네비게이션 및 브랜드 아이덴티티 제공. 모든 페이지 최상단 고정(Sticky).
+2. **Unified Tabs (`tab-list`, `tab-btn`)**
+   - 역할: 상세 설정 및 차트 전환용 탭 UI 표준. Underline 애니메이션 포함.
+3. **FeedbackManager (`shared/components/feedback-manager.js`)**
+   - `showFeedback`: 상단 플로팅 토스트 알림.
+   - `markPendingBar`: 하단 상태바(`pending-bar`) 제어. v0.3에서 아이콘(⚠️) 및 버튼 구조 표준화.
+   - `notifyAutoSave`: 자동 저장 상태 알림.
 
 ## 시각화
 
