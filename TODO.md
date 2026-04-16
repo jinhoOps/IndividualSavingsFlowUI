@@ -2,7 +2,7 @@
 kanban-plugin: basic
 ---
 
-# TODO (v0.4.0)
+# TODO (v0.4.1)
 
 ## Backlog (우선순위 상향)
 - [ ] **배당 시뮬레이션 고도화 (S2-S1)**

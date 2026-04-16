@@ -2,6 +2,14 @@
 
 이 파일은 프로젝트의 변화, 지식의 습득, 주요 결정을 시간 순으로 기록하는 append-only 로그입니다.
 
+## [2026-04-16] feature | UI/UX 안정화 및 v0.4.1 릴리스
+- **원인**: v0.4.0 대개편 후 발생한 레이아웃 `order` 중복 및 구식 백업 UI 요소(Ghost Listeners) 잔존.
+- **조치**: 
+    - **레이아웃 안정화**: `apps/step1/styles.css`에서 `order` 속성 중복을 제거하고 모바일/데스크톱 간 일관된 우선순위(`Summary -> Sankey`) 확립.
+    - **코드 위생 관리**: `DataHubModal` 도입으로 불필요해진 `backupSelect`, `exportJson`, `restoreBackup` 등 구식 리스너 및 헬퍼 함수 10여 개 제거.
+    - **버전 동기화**: `app.js`(Step 1/2), `sw.js`, `manifest.webmanifest` 버전을 모두 **0.4.1**로 통일하여 PWA 캐시 무결성 확보.
+- **결과**: UI 파손 위험 감소 및 앱 초기 로딩/상태 관리 로직의 경량화 달성.
+
 ## [2026-04-16] ingest | 하네스 보수 및 LLM Wiki 패턴 이식
 - **원인**: v0.2.4 리팩토링 중 대규모 CSS 스타일 유실 사고 발생.
 - **조치**: 

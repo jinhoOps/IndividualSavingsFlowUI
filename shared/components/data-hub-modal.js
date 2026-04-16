@@ -124,10 +124,15 @@ export class DataHubModal extends HTMLElement {
     if (restoreBtn) restoreBtn.disabled = false;
     
     // 최근 순 정렬
-    const sorted = [...entries].sort((a, b) => b.timestamp - a.timestamp);
+    const sorted = [...entries].sort((a, b) => {
+      const timeA = a.updatedAt || (a.createdAt ? Date.parse(a.createdAt) : 0);
+      const timeB = b.updatedAt || (b.createdAt ? Date.parse(b.createdAt) : 0);
+      return timeB - timeA;
+    });
     
     select.innerHTML = sorted.map(entry => {
-      const date = new Date(entry.timestamp);
+      const timestamp = entry.updatedAt || (entry.createdAt ? Date.parse(entry.createdAt) : Date.now());
+      const date = new Date(timestamp);
       const dateStr = date.toLocaleString('ko-KR', {
         month: '2-digit',
         day: '2-digit',

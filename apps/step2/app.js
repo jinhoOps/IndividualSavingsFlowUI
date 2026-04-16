@@ -102,7 +102,7 @@
     });
 
     new IsfPwaManager({
-      appVersion: "0.4.0", appKey: SHARE_STATE_KEY,
+      appVersion: "0.4.1", appKey: SHARE_STATE_KEY,
       onFeedback: (msg) => IsfFeedback.showFeedback(dom.applyFeedback, msg),
       getCurrentData: () => state.draft,
     }).init();

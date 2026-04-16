@@ -1,11 +1,24 @@
-const APP_VERSION = "0.4.0";
+const APP_VERSION = "0.4.1";
 const CACHE_NAME = `isf-static-v${APP_VERSION}`;
 const CORE_ASSETS = [
   "./",
   "./index.html",
-  "./styles.css",
-  "./app.js",
   "./manifest.webmanifest",
+  "./apps/step1/index.html",
+  "./apps/step1/app.js",
+  "./apps/step1/styles.css",
+  "./apps/step2/index.html",
+  "./apps/step2/app.js",
+  "./apps/step2/styles.css",
+  "./shared/styles/step-theme.css",
+  "./shared/core/utils.js",
+  "./shared/core/share-utils.js",
+  "./shared/storage/hub-storage.js",
+  "./shared/storage/backup-manager.js",
+  "./shared/components/app-header.js",
+  "./shared/components/data-hub-modal.js",
+  "./shared/components/feedback-manager.js",
+  "./shared/pwa/pwa-manager.js",
   "./icons/icon-192.svg",
   "./icons/icon-512.svg",
 ];

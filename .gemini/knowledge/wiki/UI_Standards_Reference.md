@@ -6,6 +6,19 @@ tags: [ui, feedback, theme, visualization, reference]
 
 # UI Standards Reference (UI 표준 참조)
 
+## 레이아웃 패널 순서 (Panel Ordering)
+
+사용자의 인지 흐름(HCD)을 반영하여 패널 순서를 제어합니다.
+
+1. **기본 순서 (New User)**: `요약(Summary) -> 흐름(Sankey) -> 입력(Controls) -> 미래(Projection)`
+   - 사용자가 자신의 상태(Summary)를 먼저 보고, 그 근거(Sankey)를 확인한 뒤, 필요한 수정(Controls)을 하도록 유도합니다.
+2. **대시보드 모드 (Returning User)**: `흐름(Sankey) -> 요약(Summary) -> 미래(Projection) -> 입력(Controls)`
+   - 데이터가 이미 있는 사용자는 시각적 변화(Sankey)를 가장 먼저 확인하고 싶어 하므로 이를 최상단에 배치합니다.
+
+**구현 주의사항**:
+- CSS `order` 속성을 사용하여 시각적 순서를 제어하되, 스크린 리더 등 접근성을 고려하여 HTML 마크업 순서와의 괴리가 크지 않게 유지합니다.
+- 모바일 미디어 쿼리(`@media (max-width: 760px)`)에서도 위 순서 원칙이 일관되게 적용되어야 합니다.
+
 ## CSS 구조 및 무결성 (CSS Structure & Integrity) - 중요!
 
 에이전트는 스타일 수정 시 파일의 물리적 구조를 보존하기 위해 다음 순서를 따릅니다.

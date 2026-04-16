@@ -34,15 +34,12 @@ main {
   padding: var(--sp-lg) var(--sp-md);
 }
 
-.controls-panel { order: 2; }
-.sankey-panel { order: 1; }
-.projection-panel { order: 3; }
 .summary-panel { order: 1; }
+.sankey-panel { order: 2; }
+.controls-panel { order: 3; }
+.projection-panel { order: 4; }
 
 /* Dashboard Mode (Returning User) */
-body.is-dashboard-mode .controls-panel {
-  order: 4;
-}
 body.is-dashboard-mode .sankey-panel {
   order: 1;
 }
@@ -51,6 +48,9 @@ body.is-dashboard-mode .summary-panel {
 }
 body.is-dashboard-mode .projection-panel {
   order: 3;
+}
+body.is-dashboard-mode .controls-panel {
+  order: 4;
 }
 
 .view-mode-guide {
@@ -286,8 +286,8 @@ body.is-dashboard-mode .projection-panel {
   main { order: 2; gap: 14px; display: grid; }
   .hero { order: 0; }
   .view-mode-guide { order: 1; }
-  .sankey-panel { order: 1; }
-  .summary-panel { order: 2; }
+  .summary-panel { order: 1; }
+  .sankey-panel { order: 2; }
   .projection-panel { order: 3; }
   .controls-panel { order: 4; }
 

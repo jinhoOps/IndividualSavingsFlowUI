@@ -360,7 +360,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initializeBackupStore();
   void initializeInputsFromShareId();
   const pwaManager = new IsfPwaManager({
-    appVersion: "0.4.0",
+    appVersion: "0.4.1",
     appKey: SHARE_STATE_KEY,
     onFeedback: (message) => IsfFeedback.showFeedback(dom.applyFeedback, message),
     isViewMode: () => state.isViewMode,
@@ -637,28 +637,6 @@ function bindControls() {
     });
   }
 
-  if (dom.copyShareLink) {
-    dom.copyShareLink.addEventListener("click", async () => {
-      const shareLink = await buildShareLink(state.inputs, { viewMode: true });
-      if (!shareLink) {
-        IsfFeedback.showFeedback(dom.applyFeedback, "링크 길이 초과로 보기 링크 생성이 제한됩니다. JSON 저장을 사용하세요.");
-        return;
-      }
-      try {
-        if (navigator.clipboard?.writeText) {
-          await navigator.clipboard.writeText(shareLink);
-          IsfFeedback.showFeedback(dom.applyFeedback, "보기 모드 링크를 복사했습니다.");
-          closeActionMenus();
-          return;
-        }
-      } catch (_error) {
-        // Fallback below.
-      }
-      window.prompt("아래 보기 모드 링크를 복사해 공유하세요.", shareLink);
-      closeActionMenus();
-    });
-  }
-
   if (dom.saveViewToLocal) {
     dom.saveViewToLocal.addEventListener("click", async () => {
       if (!state.isViewMode || !hasShareState()) {
@@ -685,99 +663,6 @@ function bindControls() {
   if (dom.returnToNormalMode) {
     dom.returnToNormalMode.addEventListener("click", () => {
       switchToNormalMode();
-    });
-  }
-
-  if (dom.exportJson) {
-    dom.exportJson.addEventListener("click", () => {
-      IsfShare.exportAsJson(IsfShare.buildStateEnvelope(SHARE_STATE_KEY, SHARE_STATE_SCHEMA, state.inputs), "my-household-flow-backup");
-      IsfFeedback.showFeedback(dom.applyFeedback, "JSON 백업 파일을 저장했습니다.");
-      closeActionMenus();
-    });
-  }
-
-  if (dom.importJson) {
-    dom.importJson.addEventListener("click", () => {
-      if (dom.importJsonFile) {
-        dom.importJsonFile.click();
-      }
-      closeActionMenus();
-    });
-  }
-
-  if (dom.importJsonFile) {
-    dom.importJsonFile.addEventListener("change", async (event) => {
-      const file = event.target instanceof HTMLInputElement ? event.target.files?.[0] : null;
-      if (!file) {
-        return;
-      }
-      try {
-        const text = await file.text();
-        const imported = IsfShare.parseImportedJson(text, SHARE_STATE_KEY);
-        commitImmediateInputs(imported);
-        IsfFeedback.showFeedback(dom.applyFeedback, "JSON 데이터를 불러와 적용했습니다.");
-      } catch (_error) {
-        IsfFeedback.showFeedback(dom.applyFeedback, "JSON 파일 형식이 올바르지 않습니다.");
-      } finally {
-        if (event.target instanceof HTMLInputElement) {
-          event.target.value = "";
-        }
-      }
-    });
-  }
-
-  if (dom.backupNow) {
-    dom.backupNow.addEventListener("click", async () => {
-      if (state.isViewMode) {
-        IsfFeedback.showFeedback(dom.applyFeedback, "보기 모드에서는 자동/수동 백업이 중지됩니다. 먼저 저장 아이콘으로 로컬 저장하세요.");
-        return;
-      }
-      if (!state.backupStoreReady) {
-        IsfFeedback.showFeedback(dom.applyFeedback, "백업 저장소를 준비 중입니다. 잠시 후 다시 시도하세요.");
-        return;
-      }
-      const inputs = sanitizeInputs(cloneInputs(getVisibleInputs()));
-      const res = await IsfBackupManager.createBackupEntry(state.backupEntries, inputs, {
-        type: "manual",
-        source: "normal",
-        allowDuplicate: true,
-        replaceRecentManualWithinMs: MANUAL_BACKUP_WINDOW_MS,
-        appKey: SHARE_STATE_KEY,
-        onRecentManualOverwriteConfirm: () => window.confirm("최근 1분 이내 수동 백업이 있습니다. 기존 백업을 덮어쓸까요?"),
-      });
-
-      if (res.created) {
-        state.backupEntries = res.nextEntries;
-        syncBackupUi();
-        IsfFeedback.showFeedback(dom.applyFeedback, res.replaced ? "최근 1분 수동 백업을 덮어썼습니다." : "로컬 백업을 저장했습니다.");
-        closeActionMenus();
-        return;
-      }
-
-      if (res.reason === "overwrite-cancelled") {
-        IsfFeedback.showFeedback(dom.applyFeedback, "백업 저장을 취소했습니다.");
-        return;
-      }
-
-      if (res.reason === "duplicate-recent") {
-        IsfFeedback.showFeedback(dom.applyFeedback, "1분 이내 동일 내용 백업이 이미 있습니다.");
-        return;
-      }
-
-      IsfFeedback.showFeedback(dom.applyFeedback, "백업 저장에 실패했습니다.");
-    });
-  }
-
-  if (dom.restoreBackup) {
-    dom.restoreBackup.addEventListener("click", async () => {
-      await restoreSelectedBackup();
-      closeActionMenus();
-    });
-  }
-
-  if (dom.backupSelect) {
-    dom.backupSelect.addEventListener("change", () => {
-      syncBackupUi();
     });
   }
 
@@ -4728,163 +4613,11 @@ function formatBackupTimestamp(dateText) {
   return backupTimestampFormatter.format(new Date(parsed));
 }
 
-function formatBackupTimestampCompact(dateText) {
-  const parsed = Date.parse(String(dateText || ""));
-  if (!Number.isFinite(parsed)) {
-    return "--:--";
-  }
-  const safeDate = new Date(parsed);
-  const month = String(safeDate.getMonth() + 1).padStart(2, "0");
-  const day = String(safeDate.getDate()).padStart(2, "0");
-  const hour = String(safeDate.getHours()).padStart(2, "0");
-  const minute = String(safeDate.getMinutes()).padStart(2, "0");
-  return `${month}-${day} ${hour}:${minute}`;
-}
-
-function formatBackupOptionText(entry, index = 0) {
-  const modeLabel = entry.type === "manual" ? "수동" : "자동";
-  const sourceLabel = entry.source === "view-save" ? "보기" : "일반";
-  const sequence = index + 1;
-  return `#${sequence} ${modeLabel} ${formatBackupTimestampCompact(entry.createdAt)} ${sourceLabel}`;
-}
-
-function buildBackupTooltipText(entries) {
-  if (state.backupStoreError) {
-    return "백업 저장소 초기화에 실패했습니다. 브라우저 설정(시크릿 모드/스토리지 차단)을 확인하세요.";
-  }
-
-  if (!state.backupStoreReady) {
-    return "백업 저장소를 준비 중입니다. 잠시 후 자동/수동 백업을 사용할 수 있습니다.";
-  }
-
-  const parts = [
-    "저장 위치: 이 브라우저 IndexedDB",
-    `보관 정책: 최신 ${MAX_BACKUP_ENTRIES}개`,
-    "자동 백업: 12시간 간격(일 2회)",
-    "수동 백업: 1분당 1개(1분 내 재저장 시 덮어쓰기)",
-    `현재 백업: ${entries.length}개`,
-  ];
-
-  if (state.isViewMode) {
-    parts.push("보기 모드에서는 자동/수동 백업이 중지됩니다. 좌측 하단 저장 아이콘으로 일반 모드 전환 후 사용하세요.");
-  }
-
-  if (Array.isArray(entries) && entries.length > 0) {
-    const latest = entries[0];
-    const latestMode = latest.type === "manual" ? "수동" : "자동";
-    parts.push(`최신 백업: ${latestMode} ${formatBackupTimestamp(latest.createdAt)}`);
-  }
-
-  return parts.join(" · ");
-}
-
 function syncBackupUi() {
   const entries = Array.isArray(state.backupEntries) ? state.backupEntries : [];
-  const hasEntries = entries.length > 0;
-
   if (dom.dataHubModal) {
     dom.dataHubModal.updateBackupList(entries);
   }
-
-  if (dom.backupSelect instanceof HTMLSelectElement) {
-    const previousValue = dom.backupSelect.value;
-    dom.backupSelect.innerHTML = "";
-
-    const placeholderOption = document.createElement("option");
-    placeholderOption.value = "";
-    if (!state.backupStoreReady && !state.backupStoreError) {
-      placeholderOption.textContent = "백업 준비중";
-    } else if (state.backupStoreError) {
-      placeholderOption.textContent = "백업 사용 불가";
-    } else {
-      placeholderOption.textContent = hasEntries ? "백업 선택" : "백업 없음";
-    }
-    dom.backupSelect.appendChild(placeholderOption);
-
-    entries.forEach((entry, index) => {
-      const option = document.createElement("option");
-      option.value = entry.id;
-      option.textContent = formatBackupOptionText(entry, index);
-      dom.backupSelect.appendChild(option);
-    });
-
-    if (hasEntries) {
-      const selectedValue = entries.some((entry) => entry.id === previousValue)
-        ? previousValue
-        : entries[0].id;
-      dom.backupSelect.value = selectedValue;
-    } else {
-      dom.backupSelect.value = "";
-    }
-  }
-
-  const selectedBackupId = dom.backupSelect instanceof HTMLSelectElement ? dom.backupSelect.value : "";
-  const canUseBackupActions = state.backupStoreReady && !state.isViewMode && hasEntries;
-
-  if (dom.backupNow) {
-    dom.backupNow.disabled = !state.backupStoreReady || state.isViewMode;
-  }
-
-  if (dom.backupSelect instanceof HTMLSelectElement) {
-    dom.backupSelect.disabled = !state.backupStoreReady || state.isViewMode || !hasEntries;
-  }
-
-  if (dom.restoreBackup) {
-    dom.restoreBackup.disabled = !canUseBackupActions || !selectedBackupId;
-  }
-
-  if (dom.backupHelp) {
-    const tooltipText = buildBackupTooltipText(entries);
-    dom.backupHelp.setAttribute("data-tooltip", tooltipText);
-    dom.backupHelp.setAttribute("title", tooltipText);
-  }
-}
-
-
-
-async function restoreSelectedBackup() {
-  if (!state.backupStoreReady) {
-    IsfFeedback.showFeedback(dom.applyFeedback, "백업 저장소가 아직 준비되지 않았습니다.");
-    return;
-  }
-
-  if (state.isViewMode) {
-    IsfFeedback.showFeedback(dom.applyFeedback, "보기 모드에서는 복원을 사용할 수 없습니다. 로컬 저장 후 일반 모드에서 복원하세요.");
-    return;
-  }
-
-  if (!(dom.backupSelect instanceof HTMLSelectElement)) {
-    return;
-  }
-
-  const backupId = String(dom.backupSelect.value || "").trim();
-  if (!backupId) {
-    IsfFeedback.showFeedback(dom.applyFeedback, "복원할 백업을 선택하세요.");
-    return;
-  }
-
-  const entry = (Array.isArray(state.backupEntries) ? state.backupEntries : [])
-    .find((item) => item.id === backupId);
-  if (!entry) {
-    IsfFeedback.showFeedback(dom.applyFeedback, "선택한 백업을 찾을 수 없습니다.");
-    syncBackupUi();
-    return;
-  }
-
-  const confirmed = window.confirm(
-    `선택한 백업(${formatBackupTimestamp(entry.createdAt)})으로 복원할까요? 현재 상태는 복원 전에 수동 백업됩니다.`,
-  );
-  if (!confirmed) {
-    return;
-  }
-
-  const res = await IsfBackupManager.createBackupEntry(state.backupEntries, state.inputs, { type: "manual", source: "normal", allowDuplicate: true , appKey: SHARE_STATE_KEY});
-  if(res.created) {
-    state.backupEntries = res.nextEntries;
-    syncBackupUi();
-  }
-  commitImmediateInputs(entry.data, { skipAutoBackup: true });
-  IsfFeedback.showFeedback(dom.applyFeedback, "선택한 백업으로 복원했습니다.");
 }
 
 function roundTo(value, digit) {
