@@ -61,8 +61,9 @@ body {
   z-index: 100;
   background: var(--panel);
   backdrop-filter: saturate(1.1) blur(10px);
+  -webkit-backdrop-filter: saturate(1.1) blur(10px);
   border-bottom: 1px solid var(--line);
-  padding: var(--sp-sm) var(--sp-md);
+  padding: env(safe-area-inset-top, 0) var(--sp-md) 0;
 }
 
 .app-header__inner {
@@ -72,14 +73,16 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: var(--sp-md);
+  height: 56px;
 }
 
 .app-header__logo {
   font-family: var(--font-display);
-  font-size: 1.2rem;
+  font-size: 1.15rem;
   color: var(--tone-primary);
   text-decoration: none;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .app-header__nav {
@@ -87,6 +90,9 @@ body {
   gap: var(--sp-xs);
   overflow-x: auto;
   scrollbar-width: none;
+  -ms-overflow-style: none;
+  padding: 4px 0;
+  align-items: center;
 }
 
 .app-header__nav::-webkit-scrollbar { display: none; }
