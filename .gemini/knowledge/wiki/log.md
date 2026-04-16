@@ -2,6 +2,16 @@
 
 이 파일은 프로젝트의 변화, 지식의 습득, 주요 결정을 시간 순으로 기록하는 append-only 로그입니다.
 
+## [2026-04-16] feature | Step 2 데이터 브리지 버그 해결 및 로직 복구 (v0.4.2)
+- **원인**: 
+    - **단위 불일치**: Step 1(브리지)의 '원' 단위와 Step 2 UI의 '만원' 단위 격차로 인한 알림/계산 오류 발생.
+    - **로직 소실**: 리팩토링 과정에서 `apps/step2/app.js` 내의 필수 헬퍼 함수(14종 이상)가 누락되어 앱 기능 마비.
+- **조치**: 
+    - **단위 정렬**: `IsfUtils.toWon` 및 `Math.round(... / 10000)`를 적용하여 브리지 연동 및 비교 로직의 단위 정합성 확보.
+    - **로직 전면 복구**: `createEmptyDraft`, `getAccountById`, `markDirty/Clean` 등 핵심 헬퍼 함수군을 재구현하여 삽입.
+    - **지식 영속화**: `Data_Model_Reference`, `Data_Bridge_Import_Pattern`, `Architecture_Reference` 위키에 해당 팩트와 패턴을 기록.
+- **결과**: Step 2 포트폴리오 구성 및 브리지 알림 기능 정상화, 향후 리팩토링 시 로직 유실 방지를 위한 가이드라인 수립.
+
 ## [2026-04-16] feature | UI/UX 안정화 및 v0.4.1 릴리스
 - **원인**: v0.4.0 대개편 후 발생한 레이아웃 `order` 중복 및 구식 백업 UI 요소(Ghost Listeners) 잔존.
 - **조치**: 

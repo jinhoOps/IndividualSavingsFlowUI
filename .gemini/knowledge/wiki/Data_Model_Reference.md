@@ -8,9 +8,12 @@ tags: [data_model, indexeddb, storage, bridge, reference]
 
 ## 금액 단위 (Currency Units)
 
-- Step1 (나의 가계 흐름): `만원` 단위 사용 (예: 350 = 3,500,000원).
-- Step2 (투자 포트폴리오): `원` 단위 사용.
-- 단계 간 데이터 이동 시 단위 변환에 주의해야 합니다.
+- **UI 입력 및 표시:** Step1과 Step2 모두 사용자 편의를 위해 `만원` 단위를 기본으로 사용합니다 (예: 350 입력 시 3,500,000원 의미).
+- **내부 데이터 및 저장:** IndexedDB 저장, 브리지(Bridge) 데이터, 내부 계산 로직은 정밀도와 일관성을 위해 `원` 단위를 기본으로 합니다.
+- **변환 규칙:** 
+  - `만원 -> 원`: `IsfUtils.toWon(value)` (10,000 곱셈)
+  - `원 -> 만원`: `Math.round(value / 10000)` (현재 `IsfUtils`에 별도 헬퍼가 없으므로 수동 변환 권장)
+- **주의:** Step1 브리지 데이터의 `monthlyInvestCapacity`는 원 단위이며, Step2 드래프트의 `totalMonthlyInvestCapacity`는 만원 단위이므로 연동 시 반드시 변환이 필요합니다.
 
 ## 저장 전략 (Storage Strategy)
 

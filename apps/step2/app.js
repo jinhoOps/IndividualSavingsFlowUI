@@ -126,7 +126,7 @@
     const hub = getHubStorage();
     const res = await resolveLatestBridgePayload(hub);
     const p = res.bridge?.payload;
-    if (p && p.monthlyInvestCapacity !== state.draft.totalMonthlyInvestCapacity) {
+    if (p && p.monthlyInvestCapacity !== IsfUtils.toWon(state.draft.totalMonthlyInvestCapacity)) {
       if (dom.bridgeBanner) {
         dom.bridgeBanner.hidden = false;
         if (dom.bridgeTimestamp) dom.bridgeTimestamp.textContent = formatDateTime(p.timestamp);
@@ -345,7 +345,17 @@
   }
 
   async function resolveLatestBridgePayload(hub) { if (!hub) return { bridge: null }; try { const b = await hub.getLatestBridgeStep1ToStep2(); return b?.payload ? { bridge: b } : { bridge: null }; } catch (_e) { return { bridge: null }; } }
-  async function importLatestBridgeIntoDraft() { const hub = getHubStorage(); const res = await resolveLatestBridgePayload(hub); if (res.bridge?.payload) { state.draft.totalMonthlyInvestCapacity = res.bridge.payload.monthlyInvestCapacity; renderDraft(); markDirty(); showFeedback("데이터 가져오기 완료"); } }
+  async function importLatestBridgeIntoDraft() {
+    const hub = getHubStorage();
+    const res = await resolveLatestBridgePayload(hub);
+    if (res.bridge?.payload) {
+      // 원 단위를 만원 단위로 변환하여 저장
+      state.draft.totalMonthlyInvestCapacity = Math.round(res.bridge.payload.monthlyInvestCapacity / 10000);
+      renderDraft();
+      markDirty();
+      showFeedback("데이터 가져오기 완료");
+    }
+  }
 
   function buildSummarySlices() {
     const total = getTotalMonthlyInvestCapacity(); if (total <= 0) return [];
@@ -442,5 +452,108 @@
   function toPortablePortfolio() { return { ...state.draft, id: state.currentPortfolioId }; }
   function normalizeLoadedPortfolio(s) { return { draft: s, id: s.id }; }
   function resetDraft() { state.draft = createEmptyDraft(); state.currentPortfolioId = ""; renderDraft(); markClean(); }
+
+  // --- Missing Utility Functions ---
+  function createEmptyDraft() {
+    return {
+      modelVersion: MODEL_VERSION,
+      name: "신규 포트폴리오",
+      notes: "",
+      totalMonthlyInvestCapacity: 0,
+      accounts: [],
+      dividendSim: {
+        years: 10,
+        yield: 3.5,
+        growth: 5.0,
+        capitalGrowth: 4.0,
+        isDrip: true
+      },
+      updatedAt: Date.now()
+    };
+  }
+
+  function createDraftAccount(data = {}) {
+    return {
+      id: IsfUtils.createId("acc"),
+      name: data.name || "신규 계좌",
+      accountWeight: 0,
+      allocations: [],
+      ...data
+    };
+  }
+
+  function createDraftAllocation(data = {}) {
+    return {
+      id: IsfUtils.createId("al"),
+      label: data.label || "신규 종목",
+      targetWeight: 0,
+      actualAmount: 0,
+      isImportant: false,
+      ...data
+    };
+  }
+
+  function getAccountById(id) {
+    if (!state.draft) return null;
+    return state.draft.accounts.find(a => a.id === id);
+  }
+
+  function getAllocationWeightTotal(account) {
+    if (!account || !Array.isArray(account.allocations)) return 0;
+    return account.allocations.reduce((sum, al) => sum + IsfUtils.sanitizeWeight(al.targetWeight), 0);
+  }
+
+  function getTotalAccountWeight() {
+    if (!state.draft || !Array.isArray(state.draft.accounts)) return 0;
+    return state.draft.accounts.reduce((sum, acc) => sum + IsfUtils.sanitizeWeight(acc.accountWeight), 0);
+  }
+
+  function getAutoCashAmount() {
+    const total = getTotalMonthlyInvestCapacity();
+    const allocated = state.draft.accounts.reduce((sum, acc) => {
+      return sum + Math.round(total * IsfUtils.sanitizeWeight(acc.accountWeight) / 100);
+    }, 0);
+    return Math.max(0, total - allocated);
+  }
+
+  function getTotalMonthlyInvestCapacity() {
+    return IsfUtils.toWon(IsfUtils.sanitizeMoney(state.draft?.totalMonthlyInvestCapacity, 0));
+  }
+
+  function formatCurrency(val) {
+    return IsfUtils.formatMoney(val);
+  }
+
+  function formatDateTime(iso) {
+    if (!iso) return "-";
+    return IsfUtils.formatTimestamp(new Date(iso).getTime());
+  }
+
+  function markDirty() {
+    state.dirty = true;
+    IsfFeedback.markPendingBar(dom.pendingBar, dom.pendingSummary, true);
+    // Crash recovery용 임시 저장
+    if (state.draft) {
+      sessionStorage.setItem(TEMP_STORAGE_KEY, JSON.stringify({
+        draft: state.draft,
+        currentPortfolioId: state.currentPortfolioId,
+        activeAccountId: state.activeAccountId
+      }));
+    }
+  }
+
+  function markClean() {
+    state.dirty = false;
+    IsfFeedback.markPendingBar(dom.pendingBar, dom.pendingSummary, false);
+    sessionStorage.removeItem(TEMP_STORAGE_KEY);
+  }
+
+  function showFeedback(msg, isError = false) {
+    IsfFeedback.showFeedback(dom.applyFeedback, msg, isError);
+  }
+
+  function getHubStorage() {
+    return window.IsfHubStorage || null;
+  }
 
 })();
