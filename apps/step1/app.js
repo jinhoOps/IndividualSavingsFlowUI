@@ -2946,14 +2946,15 @@ function renderSankey(snapshot) {
   const hasGroupLayer = Boolean(data.hasGroupLayer);
   const isMobileViewport = window.matchMedia("(max-width: 760px)").matches;
   const effectiveSankeyZoom = getEffectiveSankeyZoom(isMobileViewport);
-  const nodeWidth = isMobileViewport ? 16 : 18;
+  const baseNodeWidth = isMobileViewport ? 16 : 18;
+  const groupNodeWidth = baseNodeWidth + (isMobileViewport ? 4 : 6);
   const labelGap = isMobileViewport ? 8 : 10;
   const labelFontSize = isMobileViewport ? 11 : 12;
   const valueFontSize = isMobileViewport ? 10 : 11;
-  const overlapPadding = hasGroupLayer ? 14 : 0;
+  const overlapPadding = hasGroupLayer ? 20 : 0;
   const minColumnStep = isMobileViewport
     ? (hasIncomeInflow ? SANKEY_MOBILE_MIN_COLUMN_STEP_WITH_INFLOW : SANKEY_MOBILE_MIN_COLUMN_STEP) + overlapPadding
-    : 140 + overlapPadding;
+    : 160 + overlapPadding;
 
   const getNodeTextWidth = (node) => Math.max(
     measureSankeyTextWidth(node?.label, labelFontSize, 700),
@@ -2968,9 +2969,9 @@ function renderSankey(snapshot) {
     .filter((node) => node.column === lastColumn)
     .reduce((max, node) => Math.max(max, getNodeTextWidth(node)), 0);
 
-  const marginLeft = Math.max(64, Math.ceil(leftLabelWidth + labelGap + 12));
-  const marginRight = Math.max(64, Math.ceil(rightLabelWidth + labelGap + 12));
-  const flowMinWidth = nodeWidth + Math.max(0, columnCount - 1) * minColumnStep;
+  const marginLeft = Math.max(72, Math.ceil(leftLabelWidth + labelGap + 14));
+  const marginRight = Math.max(72, Math.ceil(rightLabelWidth + labelGap + 14));
+  const flowMinWidth = groupNodeWidth + Math.max(0, columnCount - 1) * minColumnStep;
   const minWidth = Math.ceil(marginLeft + flowMinWidth + marginRight);
   const wrapWidth = Math.max(0, dom.sankeyWrap.clientWidth - (isMobileViewport ? 12 : 20));
   const widthTarget = isMobileViewport
@@ -2982,19 +2983,19 @@ function renderSankey(snapshot) {
     return Math.max(max, count);
   }, 1);
   const nodeHeightUnit = isMobileViewport
-    ? (hasGroupLayer ? 50 : 42)
-    : (hasGroupLayer ? 56 : 46);
+    ? (hasGroupLayer ? 54 : 44)
+    : (hasGroupLayer ? 62 : 48);
   const baseHeight = Math.max(
-    isMobileViewport ? 320 : 360,
-    (isMobileViewport ? 230 : 260) + maxCountPerColumn * nodeHeightUnit,
+    isMobileViewport ? 340 : 380,
+    (isMobileViewport ? 240 : 280) + maxCountPerColumn * nodeHeightUnit,
   );
   const mobileAspectHeight = isMobileViewport ? Math.round(width * SANKEY_MOBILE_HEIGHT_RATIO) : 0;
   const height = Math.max(baseHeight, mobileAspectHeight);
-  const marginTop = isMobileViewport ? 20 : 26;
-  const marginBottom = isMobileViewport ? 20 : 26;
+  const marginTop = isMobileViewport ? 24 : 32;
+  const marginBottom = isMobileViewport ? 24 : 32;
   const nodeGap = isMobileViewport
-    ? (hasGroupLayer ? 14 : 12)
-    : (hasGroupLayer ? 18 : 14);
+    ? (hasGroupLayer ? 18 : 14)
+    : (hasGroupLayer ? 22 : 16);
 
   dom.sankeySvg.setAttribute("viewBox", `0 0 ${width} ${height}`);
   dom.sankeySvg.style.width = `${Math.round(effectiveSankeyZoom * 100)}%`;
@@ -3030,7 +3031,7 @@ function renderSankey(snapshot) {
     return;
   }
 
-  const usableWidth = Math.max(nodeWidth, width - marginLeft - marginRight - nodeWidth);
+  const usableWidth = Math.max(baseNodeWidth, width - marginLeft - marginRight - groupNodeWidth);
   const step = columnCount > 1 ? usableWidth / (columnCount - 1) : 0;
 
   const positionedNodes = [];
@@ -3040,10 +3041,12 @@ function renderSankey(snapshot) {
       + nodeGap * Math.max(0, nodesInColumn.length - 1);
     let y = (height - columnHeight) / 2;
     const x = marginLeft + index * step;
+    const isGroupCol = hasGroupLayer && column === columns[columns.length - 2];
+    const currentW = isGroupCol ? groupNodeWidth : baseNodeWidth;
 
     nodesInColumn.forEach((node) => {
       const h = node.displayValue * scale;
-      positionedNodes.push({ ...node, x, y, h });
+      positionedNodes.push({ ...node, x, y, h, w: currentW });
       y += h + nodeGap;
     });
   });
@@ -3083,7 +3086,7 @@ function renderSankey(snapshot) {
     targetOffsets.set(target.id, targetOffset + thickness);
 
     const path = createSvgElement("path", {
-      d: buildBandPath(source.x + nodeWidth, y0, y1, target.x, y2, y3),
+      d: buildBandPath(source.x + source.w, y0, y1, target.x, y2, y3),
       class: `sankey-path tone-${link.tone}`,
     });
 
@@ -4159,7 +4162,7 @@ function formatAllocationBreakdownText(items, totalValue, valueMode = SANKEY_VAL
 }
 
 function buildBandPath(x0, y0, y1, x1, y2, y3) {
-  const curve = Math.max(40, (x1 - x0) * 0.42);
+  const curve = Math.max(40, (x1 - x0) * 0.48);
   return [
     `M ${x0} ${y0}`,
     `C ${x0 + curve} ${y0}, ${x1 - curve} ${y2}, ${x1} ${y2}`,
