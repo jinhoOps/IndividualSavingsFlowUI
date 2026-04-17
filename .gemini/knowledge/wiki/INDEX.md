@@ -4,6 +4,7 @@
 
 ## 🧭 코어 시스템 (Core Systems)
 - [[Operating_Principles]] : 프로젝트 기본 운영 원칙
+- [[Version_Management_Principles]] : 버전 관리 및 PWA 동기화 표준 지침
 - [[Knowledge_Harness]] : 지식 하네스 운영 체계 (위키 라이프사이클, 작성 규칙)
 - [[log]] : 프로젝트 연대기적 작업 로그 (LLM Wiki Audit Trail)
 
