@@ -47,7 +47,7 @@ import { buildSankeyData } from "./modules/sankey-builder.js";
 
 // --- Initialization ---
 
-document.addEventListener("DOMContentLoaded", () => {
+function init() {
   checkReturningUser();
   bindControls();
   syncViewModeUi();
@@ -81,7 +81,13 @@ document.addEventListener("DOMContentLoaded", () => {
   if (state.isViewMode) {
     IsfFeedback.showFeedback(dom.applyFeedback, "보기 모드로 열었습니다. 로컬 저장값은 변경되지 않습니다.");
   }
-});
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", init);
+} else {
+  init();
+}
 
 function checkReturningUser() {
   if (state.isViewMode || hasShareState()) return;
@@ -159,6 +165,7 @@ function bindModalEvents() {
     await handleImportJson(e.detail.file);
     dom.dataHubModal.close();
   });
+  dom.dataHubModal.addEventListener("backup-now", handleManualBackup);
   dom.dataHubModal.addEventListener("copy-share-link", handleCopyShareLink);
 }
 
