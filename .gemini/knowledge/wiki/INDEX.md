@@ -22,6 +22,7 @@
 ## 🧠 패턴 및 패턴 해결록 (Dev Patterns & Resolutions)
 에이전트가 개발 중 직면했던 문제 상황이나 일관되게 적용해야 하는 기계적 패턴들을 모아놓은 인덱스입니다.
 - [[Data_Bridge_Import_Pattern]] : 통합 앱 간 데이터 브리지 가져오기 시 유실 방지 상태 관리 패턴
+- [[Step1_Modularization_Refactoring]] : No-build ES6 Native 모듈을 활용한 거대 단일 파일 리팩터링 전략
 
 ---
 *새로운 위키 문서가 생성되면, 해당 카테고리 아래에 [ [ 노드이름 ] ] 형식으로 반드시 링크를 추가하세요!*

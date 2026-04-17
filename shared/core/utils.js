@@ -109,5 +109,41 @@
     createId,
     escapeHtml,
     formatWeight,
+    debounce,
+    roundTo,
+    idbRequestToPromise,
+    idbTransactionDone,
   };
+
+  function debounce(fn, delay) {
+    let timer = null;
+    return (...args) => {
+      if (timer) {
+        window.clearTimeout(timer);
+      }
+      timer = window.setTimeout(() => {
+        fn(...args);
+      }, delay);
+    };
+  }
+
+  function roundTo(value, digit) {
+    const factor = 10 ** digit;
+    return Math.round(value * factor) / factor;
+  }
+
+  function idbRequestToPromise(request) {
+    return new Promise((resolve, reject) => {
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  function idbTransactionDone(transaction) {
+    return new Promise((resolve, reject) => {
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error);
+      transaction.onabort = () => reject(new Error("Transaction aborted"));
+    });
+  }
 })(window);

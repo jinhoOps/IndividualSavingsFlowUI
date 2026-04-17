@@ -18,7 +18,10 @@ description: ISF 프로젝트의 기술적 구현(Generator/Evaluator)을 담당
 3. **Shared 우선 재활용 (Don't Repeat Yourself)**
    - 앱 고유 로직을 짜기 전에 `shared/core/`, `shared/storage/`, `shared/components/` (예: FeedbackManager) 등을 먼저 탐색하여 기존 유틸리티를 재활용 하십시오.
    - 데이터는 로컬 `IndexedDB (isf-hub-db-v1)` 기반으로 저장 및 브리징 됩니다.
-4. **PWA 동작 우선**
+4. **데이터 무결성 및 단위 정합성 (Data Integrity & Unit consistency) - 중요!**
+   - **단위 원칙**: 모든 사용자 입력 및 UI 표시는 **'만원'** 단위로 통일하며, 모든 내부 계산 및 데이터 저장(IndexedDB, Bridge)은 **'원'** 단위로 정밀도를 유지합니다.
+   - **변환 강제**: 단위 변환 시 `IsfUtils.toWon` (만원 -> 원) 및 `Math.round(value / 10000)` (원 -> 만원)를 사용하여 오차와 계산 오류를 방지하십시오.
+5. **PWA 동작 우선**
    - 개발에 의해 Service Worker (`sw.js`) 캐싱이나 오프라인 가용성이 깨지지 않게 보수적으로 접근하세요.
 
 ## 🔍 레퍼런스 탐색(Progressive Disclosure) 지침
