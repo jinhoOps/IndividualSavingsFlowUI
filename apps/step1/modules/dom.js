@@ -60,7 +60,7 @@ export const dom = {
   savingsGroupOptions: document.getElementById("savingsGroupOptions"),
   investGroupOptions: document.getElementById("investGroupOptions"),
   jumpAdvancedFields: Array.from(document.querySelectorAll(".jump-advanced-field")),
-  jumpToInputs: document.getElementById("jumpToInputs"),
+
   saveViewToLocal: document.getElementById("saveViewToLocal"),
   viewModeGuide: document.getElementById("viewModeGuide"),
   viewModeGuideDontShow: document.getElementById("viewModeGuideDontShow"),

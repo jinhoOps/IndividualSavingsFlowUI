@@ -151,7 +151,12 @@ function bindControls() {
 }
 
 function bindModalEvents() {
+  // 로드 시점에 null이었을 경우를 대비해 다시 시도
+  if (!dom.appHeader) dom.appHeader = document.querySelector("app-header");
+  if (!dom.dataHubModal) dom.dataHubModal = document.querySelector("data-hub-modal");
+
   if (!dom.appHeader || !dom.dataHubModal) return;
+
   dom.appHeader.addEventListener("open-data-hub", () => {
     dom.dataHubModal.updateBackupList(state.backupEntries);
     dom.dataHubModal.open();
@@ -199,7 +204,6 @@ function bindActionButtons() {
   if (dom.resetInputs) dom.resetInputs.addEventListener("click", handleResetInputs);
   if (dom.applyChanges) dom.applyChanges.addEventListener("click", applyPendingChanges);
   if (dom.cancelChanges) dom.cancelChanges.addEventListener("click", cancelPendingChanges);
-  if (dom.jumpToInputs) dom.jumpToInputs.addEventListener("click", () => document.getElementById("cardsTitle")?.scrollIntoView({ behavior: "smooth" }));
   if (dom.jumpToTop) dom.jumpToTop.addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
 }
 
