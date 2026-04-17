@@ -45,6 +45,7 @@ export const state = {
     invest: ITEM_SORT_MODES.DEFAULT,
   },
   itemEditors: {
+    income: { active: false, items: [], baselineSignature: "" },
     expense: { active: false, items: [], baselineSignature: "" },
     savings: { active: false, items: [], baselineSignature: "" },
     invest: { active: false, items: [], baselineSignature: "" },

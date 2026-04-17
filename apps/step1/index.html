@@ -154,10 +154,17 @@
             <div class="controls-block">
               <div class="block-head">
                 <h3>월 수입 항목</h3>
-                <button id="addIncomeItem" class="btn btn-ghost btn-sm" type="button">수입 추가</button>
+                <div class="block-head-tools">
+                  <button id="editIncomeItems" class="btn btn-ghost btn-sm" type="button">항목 편집</button>
+                </div>
               </div>
               <p class="hint">수입 항목은 여러 개 추가할 수 있고, 자동 합산됩니다.</p>
               <div id="incomeList" class="income-list" aria-live="polite"></div>
+              <div id="incomeEditorActions" class="editor-actions" hidden>
+                <button id="addIncomeItem" class="btn btn-ghost btn-sm" type="button">항목 추가</button>
+                <button id="applyIncomeItems" class="btn btn-primary btn-sm" type="button">항목 변경 적용</button>
+                <button id="cancelIncomeItems" class="btn btn-ghost btn-sm" type="button">편집 취소</button>
+              </div>
               <p id="incomeTotalHint" class="hint"></p>
             </div>
 
@@ -206,7 +213,18 @@
               <div id="expenseAdvancedBlock" class="controls-block" data-advanced-block="expense">
                 <div class="block-head">
                   <h3>생활비 상세 항목</h3>
-                  <button id="editExpenseItems" class="btn btn-ghost btn-sm" type="button">항목 편집</button>
+                  <div class="block-head-tools">
+                    <label class="item-sort" for="expenseSortMode">
+                      <span>정렬</span>
+                      <select id="expenseSortMode" class="item-sort-select">
+                        <option value="default">기본(입력순)</option>
+                        <option value="amount-desc">금액 큰순</option>
+                        <option value="amount-asc">금액 작은순</option>
+                        <option value="name-asc">이름 가나다순</option>
+                      </select>
+                    </label>
+                    <button id="editExpenseItems" class="btn btn-ghost btn-sm" type="button">항목 편집</button>
+                  </div>
                 </div>
                 <p class="hint">아래 항목 합계가 월 생활비로 자동 반영됩니다. 편집 모드에서 그룹(예: 공과금)을 설정하면 적용 시 그룹끼리 자동으로 묶입니다. 기존 그룹명은 추천되고 신규
                   직접 입력도 가능합니다.</p>
@@ -221,7 +239,18 @@
               <div id="savingsAdvancedBlock" class="controls-block" data-advanced-block="savings">
                 <div class="block-head">
                   <h3>저축 상세 항목</h3>
-                  <button id="editSavingsItems" class="btn btn-ghost btn-sm" type="button">항목 편집</button>
+                  <div class="block-head-tools">
+                    <label class="item-sort" for="savingsSortMode">
+                      <span>정렬</span>
+                      <select id="savingsSortMode" class="item-sort-select">
+                        <option value="default">기본(입력순)</option>
+                        <option value="amount-desc">금액 큰순</option>
+                        <option value="amount-asc">금액 작은순</option>
+                        <option value="name-asc">이름 가나다순</option>
+                      </select>
+                    </label>
+                    <button id="editSavingsItems" class="btn btn-ghost btn-sm" type="button">항목 편집</button>
+                  </div>
                 </div>
                 <p class="hint">아래 항목 합계가 월 저축으로 자동 반영됩니다. 항목별 연 이자율을 비우면 저축 기본 수익률이 적용됩니다.</p>
                 <p class="hint">편집 모드에서 그룹(예: 단기예적금)과 만기 해지월(YYYY-MM)을 설정하면 적용 시 그룹끼리 자동으로 묶입니다. 기존 그룹명은 추천되고 신규 직접 입력도
@@ -237,7 +266,18 @@
               <div id="investAdvancedBlock" class="controls-block" data-advanced-block="invest">
                 <div class="block-head">
                   <h3>투자 상세 항목</h3>
-                  <button id="editInvestItems" class="btn btn-ghost btn-sm" type="button">항목 편집</button>
+                  <div class="block-head-tools">
+                    <label class="item-sort" for="investSortMode">
+                      <span>정렬</span>
+                      <select id="investSortMode" class="item-sort-select">
+                        <option value="default">기본(입력순)</option>
+                        <option value="amount-desc">금액 큰순</option>
+                        <option value="amount-asc">금액 작은순</option>
+                        <option value="name-asc">이름 가나다순</option>
+                      </select>
+                    </label>
+                    <button id="editInvestItems" class="btn btn-ghost btn-sm" type="button">항목 편집</button>
+                  </div>
                 </div>
                 <p class="hint">아래 항목 합계가 월 투자로 자동 반영됩니다. 편집 모드에서 그룹과 만기 해지월(YYYY-MM)을 설정하면 적용 시 그룹끼리 자동으로 묶입니다. 기존 그룹명은
                   추천되고 신규 직접 입력도 가능합니다.</p>

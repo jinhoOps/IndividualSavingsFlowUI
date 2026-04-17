@@ -85,11 +85,11 @@ function normalizeSankeySortMode(mode) {
   return Object.values(SANKEY_SORT_MODES).includes(mode) ? mode : SANKEY_SORT_MODES.GROUP;
 }
 
-export function renderSankey(snapshot, buildSankeyData) {
+export function renderSankey(snapshot, buildSankeyData, sortMode) {
   if (!dom.sankeySvg || !dom.sankeyWrap) return;
   hideSankeyTooltip();
 
-  const data = buildSankeyData(snapshot);
+  const data = buildSankeyData(snapshot, sortMode);
   dom.sankeySvg.innerHTML = "";
   dom.sankeyLegend.innerHTML = "";
 
@@ -101,7 +101,7 @@ export function renderSankey(snapshot, buildSankeyData) {
 
   dom.sankeyEmpty.hidden = true;
   const valueMode = normalizeSankeyValueMode(state.sankeyValueMode);
-  const sortMode = normalizeSankeySortMode(state.sankeySortMode);
+  const normalizedSortMode = normalizeSankeySortMode(sortMode);
   const sortModeTextMap = {
     [SANKEY_SORT_MODES.GROUP]: "정렬 그룹묶음",
     [SANKEY_SORT_MODES.AMOUNT_DESC]: "정렬 금액큰순",
@@ -115,7 +115,7 @@ export function renderSankey(snapshot, buildSankeyData) {
       : 0;
     const splitText = splitCount > 0 ? ` · 상세 분기 ${splitCount}개` : "";
     const valueModeText = valueMode === SANKEY_VALUE_MODES.PERCENT ? "표시 %" : "표시 금액";
-    const sortText = sortModeTextMap[sortMode] || sortModeTextMap[SANKEY_SORT_MODES.GROUP];
+    const sortText = sortModeTextMap[normalizedSortMode] || sortModeTextMap[SANKEY_SORT_MODES.GROUP];
     const isMobileViewport = window.matchMedia(MOBILE_LAYOUT_QUERY).matches;
     const zoomText = isMobileViewport ? ` · 확대 ${Math.round(getEffectiveSankeyZoom(true) * 100)}%` : "";
     dom.sankeyMeta.textContent = `수입 ${formatCurrency(snapshot.income)} · 배분 ${formatCurrency(snapshot.requiredOutflow)} · 순현금흐름 ${formatSignedCurrency(snapshot.netCashflow)}${splitText} · ${valueModeText} · ${sortText}${zoomText}`;

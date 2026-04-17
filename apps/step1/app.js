@@ -206,7 +206,7 @@ function bindActionButtons() {
 function bindGlobalEvents() {
   window.addEventListener("hashchange", handleHashChange);
   window.addEventListener("popstate", () => { syncViewModeUi(); syncViewModeGuideUi(); });
-  window.addEventListener("resize", IsfUtils.debounce(() => state.snapshot && renderSankey(state.snapshot, buildSankeyData), 120));
+  window.addEventListener("resize", IsfUtils.debounce(() => state.snapshot && renderSankey(state.snapshot, buildSankeyData, state.sankeySortMode), 120));
   
   const mq = window.matchMedia(MOBILE_LAYOUT_QUERY);
   const onChange = () => {
@@ -231,7 +231,7 @@ function renderAll() {
   const cards = buildSummaryCards(snapshot, projection, state.inputs.horizonYears);
 
   renderCards(cards, state.inputs.horizonYears);
-  renderSankey(snapshot, buildSankeyData);
+  renderSankey(snapshot, buildSankeyData, state.sankeySortMode);
   renderProjectionTable(projection, state.inputs.horizonYears, state.inputs.annualExpenseGrowth);
   renderInputHints(state.inputs);
 }
@@ -388,24 +388,6 @@ function handleItemInput(group, event) {
     setItemEditorUi(group, true);
     return;
   }
-
-  // Non-editing mode input (for simple items)
-  const itemId = target.dataset.incomeId || target.dataset.expenseId || target.dataset.savingsId || target.dataset.investId;
-  const field = target.dataset.field;
-  if (!itemId) return;
-
-  const draft = ensureDraftInputs();
-  const listField = group === "income" ? "incomes" : `${group}Items`;
-  const item = draft[listField].find(i => i.id === itemId);
-  if (!item) return;
-
-  if (field === "name") item.name = target.value.slice(0, 24);
-  if (field === "amount") item.amount = IsfUtils.sanitizeMoney(target.value, 0);
-  if (field === "annualRate" && group === "savings") {
-      const parsed = parseSavingsAnnualRateInput(target.value, draft.annualSavingsYield);
-      if (parsed === null) delete item.annualRate; else item.annualRate = parsed;
-  }
-  markPendingChanges();
 }
 
 function handleItemClick(group, event) {
@@ -427,16 +409,6 @@ function handleItemClick(group, event) {
     else if (group === "invest") renderInvestTotalHint(won, state.itemEditors[group].items.length);
     setItemEditorUi(group, true);
     return;
-  }
-
-  // Non-editing removal (for income)
-  if (group === "income") {
-      const draft = ensureDraftInputs();
-      if (draft.incomes.length <= 1) return;
-      draft.incomes = draft.incomes.filter(i => i.id !== removeId);
-      state.draftInputs = sanitizeInputs(draft);
-      renderIncomeList(state.draftInputs.incomes);
-      markPendingChanges();
   }
 }
 
@@ -471,15 +443,15 @@ function syncSankeyValueModeUi() {
 
 function setSankeyValueMode(mode) {
   state.sankeyValueMode = mode; syncSankeyValueModeUi();
-  renderSankey(state.snapshot, buildSankeyData);
+  renderSankey(state.snapshot, buildSankeyData, state.sankeySortMode);
 }
 
 function syncSankeySortModeUi() { if (dom.sankeySortMode) dom.sankeySortMode.value = state.sankeySortMode; }
-function setSankeySortMode(mode) { state.sankeySortMode = mode; syncSankeySortModeUi(); renderSankey(state.snapshot, buildSankeyData); }
+function setSankeySortMode(mode) { state.sankeySortMode = mode; syncSankeySortModeUi(); renderSankey(state.snapshot, buildSankeyData, state.sankeySortMode); }
 
 function syncSankeyZoomUi() {
   if (dom.sankeyZoomLabel) dom.sankeyZoomLabel.textContent = `${Math.round(state.sankeyZoom * 100)}%`;
-  renderSankey(state.snapshot, buildSankeyData);
+  renderSankey(state.snapshot, buildSankeyData, state.sankeySortMode);
 }
 
 function setSankeyZoom(zoom) { state.sankeyZoom = Math.min(SANKEY_ZOOM_MAX, Math.max(SANKEY_ZOOM_MIN, zoom)); syncSankeyZoomUi(); }
@@ -725,7 +697,22 @@ function syncMobileInputsPanelVisibility() {
 }
 
 function getItemEditorSignature(group, items) { return JSON.stringify(items.map(i => ({ name: i.name, amount: i.amount }))); }
-function syncMobileItemEditorFab() {} // Simplified
+function getActiveItemEditorGroupKey() {
+  return ["income", "expense", "savings", "invest"].find(g => state.itemEditors[g].active) || null;
+}
+
+function syncMobileItemEditorFab() {
+  const isMobile = window.matchMedia(MOBILE_LAYOUT_QUERY).matches;
+  const activeGroup = getActiveItemEditorGroupKey();
+  if (!isMobile || !activeGroup) {
+    if (dom.mobileEditorFab) dom.mobileEditorFab.hidden = true;
+    return;
+  }
+  const labels = { income: "수입 편집", expense: "생활비 편집", savings: "저축 편집", invest: "투자 편집" };
+  if (dom.mobileEditorFabLabel) dom.mobileEditorFabLabel.textContent = labels[activeGroup] || "항목 편집";
+  if (dom.mobileEditorFab) dom.mobileEditorFab.hidden = false;
+}
+
 function syncViewModeUi() { if (dom.saveViewToLocal) dom.saveViewToLocal.hidden = !state.isViewMode; }
 function syncViewModeGuideUi() { if (dom.viewModeGuide) dom.viewModeGuide.hidden = !state.isViewMode; }
 function dismissViewModeGuide() { if (dom.viewModeGuide) dom.viewModeGuide.hidden = true; }

@@ -8,9 +8,15 @@ export const dom = {
   loadSample: document.getElementById("loadSample"),
   resetInputs: document.getElementById("resetInputs"),
   easterEgg: document.getElementById("easterEgg"),
-  addIncomeItem: document.getElementById("addIncomeItem"),
+
   incomeList: document.getElementById("incomeList"),
+  editIncomeItems: document.getElementById("editIncomeItems"),
+  incomeEditorActions: document.getElementById("incomeEditorActions"),
+  addIncomeItem: document.getElementById("addIncomeItem"),
+  applyIncomeItems: document.getElementById("applyIncomeItems"),
+  cancelIncomeItems: document.getElementById("cancelIncomeItems"),
   incomeTotalHint: document.getElementById("incomeTotalHint"),
+
   expenseList: document.getElementById("expenseList"),
   expenseTotalHint: document.getElementById("expenseTotalHint"),
   editExpenseItems: document.getElementById("editExpenseItems"),
