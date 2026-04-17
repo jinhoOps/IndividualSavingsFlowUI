@@ -14,8 +14,8 @@
 - [[Project_History]] : 주요 마일스톤 및 업데이트 이력
 
 ## 📚 참조 문서 (Reference Documents)
-- [[Architecture_Reference]] : 디렉토리 구조 및 No-build 모듈 로드 방식
-- [[Data_Model_Reference]] : 금액 단위, IndexedDB 스키마, 저장/공유 로직
+- [[Architecture_Reference]] : 디렉토리 구조 및 No-build 모듈 로드 방식 (isf-developer의 기술적 사명 근거)
+- [[Data_Model_Reference]] : 금액 단위, IndexedDB 스키마, 저장/공유 로직 (단위 정합성 수호 근거)
 - [[UI_Standards_Reference]] : 테마 변수, 피드백 시스템, 시각화 가이드
 - [[UI_UX_Overhaul_v0.3]] : v0.3 대규모 UI/UX 개편 및 HCD 적용 상세 기록
 - [[UI_UX_Overhaul_v0.4]] : 사용자 중심 적응형 개편 (v0.4) 및 데이터 허브 통합 기록

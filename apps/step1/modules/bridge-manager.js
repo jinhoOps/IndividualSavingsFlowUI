@@ -12,7 +12,7 @@ export function buildStep1BridgePayload(inputs) {
     investItems: investItems.map(item => ({
       id: item.id,
       name: item.name,
-      amount: IsfUtils.sanitizeMoney(item.amount, 0)
+      amount: IsfUtils.toWon(IsfUtils.sanitizeMoney(item.amount, 0))
     })),
     annualExpenseGrowth: Number(safeInputs.annualExpenseGrowth || 0),
     timestamp: new Date().toISOString(),

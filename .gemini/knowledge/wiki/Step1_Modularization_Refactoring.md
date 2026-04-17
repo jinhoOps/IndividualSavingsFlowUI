@@ -34,3 +34,11 @@ tags: [refactoring, modularization, es6_modules, step1]
 ## 결론 및 교훈
 - 빌드 도구 없이도 ES6 모듈 시스템(`type="module"`)만으로 충분히 현대적이고 우아한 아키텍처를 구축할 수 있습니다.
 - 복잡한 로직일수록 "순수 계산(Calculator/Builder)"과 "DOM 제어(Renderer/Controller)"를 완벽히 분리해야 안정적인 유지보수가 가능합니다.
+
+## ⚠️ 리팩터링 후 주의사항 (Post-refactoring Pitfalls)
+모듈 분리 직후 다음과 같은 결함이 발생할 수 있으므로 검증 단계에서 반드시 확인해야 합니다:
+1. **상수 참조 유실**: `state.js` 등 하위 모듈에서 `constants.js`의 값을 참조할 때 `import` 문이 누락되어 `ReferenceError`가 발생하는지 확인하십시오. (예: `HASH_STATE_PARAM` 누락 사례)
+2. **렌더링 함수 누락**: 컨트롤러(`app.js`) 슬림화 과정에서 반복적인 UI 업데이트 함수(리스트 렌더러 등)가 소실되지 않았는지 대조하십시오.
+3. **이벤트 리스너 복구**: `bindReadonlyAdvancedNavigation`과 같이 동적으로 생성된 요소에 바인딩되는 특수 내비게이션 로직이 유지되었는지 점검하십시오.
+4. **계산 함수 호출 오류**: 수입/지출 항목별로 서로 다른 합산 함수(`getMonthlyIncomeTotalMan` vs `getMonthlyAllocationTotalMan`)가 정확히 매핑되었는지 검증하십시오.
+

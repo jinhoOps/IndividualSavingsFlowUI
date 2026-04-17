@@ -1,6 +1,7 @@
 import {
   DEFAULT_INPUTS,
   SHARE_STATE_KEY,
+  HASH_STATE_PARAM,
   SANKEY_VALUE_MODES,
   SANKEY_SORT_MODES,
   ITEM_SORT_MODES
@@ -11,7 +12,7 @@ import { loadPersistedInputs } from "./storage-manager.js";
 function resolveInitialInputs() {
   const sid = IsfShare.getShareIdFromUrl();
   const hashInputs = IsfShare.decodePayloadFromHash(
-    new URLSearchParams(window.location.hash.replace(/^#/, "")).get(IsfShare.HASH_STATE_PARAM),
+    new URLSearchParams(window.location.hash.replace(/^#/, "")).get(HASH_STATE_PARAM),
     SHARE_STATE_KEY
   );
   

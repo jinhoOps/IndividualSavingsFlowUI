@@ -67,7 +67,7 @@ document.addEventListener("DOMContentLoaded", () => {
   void initializeInputsFromShareId();
 
   const pwaManager = new IsfPwaManager({
-    appVersion: "0.5.0",
+    appVersion: "0.5.1",
     appKey: SHARE_STATE_KEY,
     onFeedback: (message) => IsfFeedback.showFeedback(dom.applyFeedback, message),
     isViewMode: () => state.isViewMode,
@@ -371,7 +371,8 @@ function handleItemInput(group, event) {
         if (!norm) delete item.maturityMonth; else item.maturityMonth = norm;
     }
     
-    const won = IsfUtils.toWon(getMonthlyAllocationTotalMan(state.itemEditors[group].items));
+    const totalMan = group === "income" ? getMonthlyIncomeTotalMan(state.itemEditors[group].items) : getMonthlyAllocationTotalMan(state.itemEditors[group].items);
+    const won = IsfUtils.toWon(totalMan);
     if (group === "income") renderIncomeTotalHint(won, state.itemEditors[group].items.length);
     else if (group === "expense") renderExpenseTotalHint(won, state.itemEditors[group].items.length);
     else if (group === "savings") renderSavingsTotalHint(won, state.itemEditors[group].items.length);
@@ -411,7 +412,8 @@ function handleItemClick(group, event) {
     if (state.itemEditors[group].items.length <= 1) return;
     state.itemEditors[group].items = state.itemEditors[group].items.filter(i => i.id !== removeId);
     renderItemList(group, state.itemEditors[group].items, { editing: true });
-    const won = IsfUtils.toWon(getMonthlyAllocationTotalMan(state.itemEditors[group].items));
+    const totalMan = group === "income" ? getMonthlyIncomeTotalMan(state.itemEditors[group].items) : getMonthlyAllocationTotalMan(state.itemEditors[group].items);
+    const won = IsfUtils.toWon(totalMan);
     if (group === "income") renderIncomeTotalHint(won, state.itemEditors[group].items.length);
     else if (group === "expense") renderExpenseTotalHint(won, state.itemEditors[group].items.length);
     else if (group === "savings") renderSavingsTotalHint(won, state.itemEditors[group].items.length);
@@ -520,6 +522,11 @@ function refreshInputsPanel(inputs) {
   } finally { state.suspendInputTracking = false; }
 }
 
+function renderIncomeList(items) { renderItemList("income", items); }
+function renderExpenseList(items) { renderItemList("expense", items); }
+function renderSavingsList(items) { renderItemList("savings", items); }
+function renderInvestList(items) { renderItemList("invest", items); }
+
 function applyInputsToForm(inputs) {
   FORM_FIELD_KEYS.forEach(key => {
     const field = dom.inputsForm?.elements?.[key];
@@ -610,11 +617,72 @@ function renderItemList(group, items, options = {}) {
 }
 
 function renderIncomeItemHtml(item, opts) {
-  return `<div class="income-item"><input type="text" value="${item.name}" data-income-id="${item.id}" data-field="name" ${opts.editing ? "" : "readonly"} /><input type="number" value="${item.amount}" data-income-id="${item.id}" data-field="amount" ${opts.editing ? "" : "readonly"} />${opts.editing ? `<button class="btn-remove" data-remove-income="${item.id}">×</button>` : ""}</div>`;
+  const isEditing = !!opts.editing;
+  return `
+    <div class="income-row">
+      <input type="text" value="${item.name}" data-income-id="${item.id}" data-field="name" ${isEditing ? "" : "readonly"} placeholder="이름" />
+      <input type="number" value="${item.amount}" data-income-id="${item.id}" data-field="amount" ${isEditing ? "" : "readonly"} placeholder="금액" />
+      ${isEditing ? `
+        <button class="income-remove" data-remove-income="${item.id}" title="삭제">
+          <svg class="income-remove-icon" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+          <span class="income-remove-text">삭제</span>
+        </button>
+      ` : ""}
+    </div>
+  `;
 }
 
 function renderAllocationItemHtml(group, item, opts) {
-  return `<div class="allocation-item"><input type="text" value="${item.name}" data-field="name" data-editor-id="${item.id}" ${opts.editing ? "" : "readonly"} /><input type="number" value="${item.amount}" data-field="amount" data-editor-id="${item.id}" ${opts.editing ? "" : "readonly"} />${opts.editing ? `<button class="btn-remove" data-remove-editor-item="${item.id}">×</button>` : ""}</div>`;
+  const isEditing = !!opts.editing;
+  const meta = buildAllocationMetaText(item, { showMaturity: group !== "expense" });
+  const metaHtml = (!isEditing && meta) ? `<div class="allocation-meta">${meta}</div>` : "";
+  
+  const commonClasses = `${group}-row ${isEditing ? "is-editing" : ""}`;
+  
+  if (!isEditing) {
+    return `
+      <div class="${commonClasses}">
+        <span class="${group}-name">${item.name}</span>
+        <span class="value">${formatCurrency(IsfUtils.toWon(item.amount))}</span>
+        ${metaHtml}
+      </div>
+    `;
+  }
+
+  // Editing Mode
+  const isSavings = group === "savings";
+  const isInvest = group === "invest";
+  const isExpense = group === "expense";
+
+  return `
+    <div class="${commonClasses}">
+      <div class="editor-field">
+        <label class="editor-field-label">이름</label>
+        <input type="text" value="${item.name}" data-field="name" data-editor-id="${item.id}" placeholder="항목명" />
+      </div>
+      <div class="editor-field">
+        <label class="editor-field-label">금액(만원)</label>
+        <input type="number" value="${item.amount}" data-field="amount" data-editor-id="${item.id}" placeholder="금액" />
+      </div>
+      <div class="editor-field">
+        <label class="editor-field-label">그룹</label>
+        <input type="text" value="${item.group || ""}" data-field="group" data-editor-id="${item.id}" list="${group}GroupOptions" placeholder="그룹" />
+      </div>
+      ${isSavings ? `
+        <div class="editor-field">
+          <label class="editor-field-label">연이율(%)</label>
+          <input type="number" value="${item.annualRate || ""}" data-field="annualRate" data-editor-id="${item.id}" step="0.1" placeholder="기본값" />
+        </div>
+      ` : ""}
+      ${(isSavings || isInvest) ? `
+        <div class="editor-field">
+          <label class="editor-field-label">만기/해지월</label>
+          <input type="month" value="${item.maturityMonth || ""}" data-field="maturityMonth" data-editor-id="${item.id}" />
+        </div>
+      ` : ""}
+      <button class="allocation-remove" data-remove-editor-item="${item.id}" title="삭제">×</button>
+    </div>
+  `;
 }
 
 // --- Final Helpers ---
@@ -656,7 +724,11 @@ function syncViewModeGuideUi() { if (dom.viewModeGuide) dom.viewModeGuide.hidden
 function dismissViewModeGuide() { if (dom.viewModeGuide) dom.viewModeGuide.hidden = true; }
 function switchToNormalMode() { window.location.href = window.location.pathname; }
 function hasShareState() { return !!IsfShare.getShareIdFromUrl(); }
-function bindReadonlyAdvancedNavigation() {}
+function bindReadonlyAdvancedNavigation() {
+  dom.jumpAdvancedFields.forEach(field => {
+    field.addEventListener("click", () => navigateToAdvancedGroup(field.dataset.advancedTarget));
+  });
+}
 
 function readInputsFromForm(base) {
   const raw = { ...base };
@@ -667,8 +739,9 @@ function readInputsFromForm(base) {
 function initializeBackupStore() {
   if (!IsfBackupManager.isIndexedDbAvailable()) return;
   IsfBackupManager.loadBackupEntriesFromDb(SHARE_STATE_KEY).then(entries => {
+    state.backupStoreReady = true;
     if (entries) { state.backupEntries = entries; syncBackupUi(); }
-  });
+  }).catch(() => { state.backupStoreReady = true; state.backupStoreError = true; });
 }
 async function initializeInputsFromShareId() {
   const sid = IsfShare.getShareIdFromUrl();
