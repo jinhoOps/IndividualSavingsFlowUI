@@ -37,7 +37,7 @@ kanban-plugin: basic
 ## Bug
 - [x] Step 2 새로고침 시 데이터 소실 현상 (정규화 로직 보완으로 해결)
 - [x] 모바일 차트/그래프 미노출 (SVG ViewBox 및 최소 높이 확보 완료)
-- [ ] 헤더 버튼 작동 보장 - 톱니바퀴 미동작
+- [x] 헤더 버튼 작동 보장 - 톱니바퀴 미동작
 
 
 %% kanban:settings

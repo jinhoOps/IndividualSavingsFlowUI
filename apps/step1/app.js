@@ -57,6 +57,7 @@ function init() {
   syncSankeySortModeUi();
   syncSankeyZoomUi();
   syncItemSortModeUi();
+  syncMobileInputsPanelVisibility();
   setActiveAdvancedTab(state.activeAdvancedTab);
   syncAdvancedTabBlockVisibility();
   refreshInputsPanel(state.inputs);
@@ -67,7 +68,7 @@ function init() {
   void initializeInputsFromShareId();
 
   const pwaManager = new IsfPwaManager({
-    appVersion: "0.5.7",
+    appVersion: "0.5.8",
     appKey: SHARE_STATE_KEY,
     onFeedback: (message) => IsfFeedback.showFeedback(dom.applyFeedback, message),
     isViewMode: () => state.isViewMode,
@@ -414,9 +415,10 @@ function handleItemInput(group, event) {
 
 function handleItemClick(group, event) {
   const target = event.target;
-  if (!(target instanceof HTMLElement)) return;
+  const btn = target.closest ? target.closest("[data-remove-income], [data-remove-editor-item]") : null;
+  if (!btn) return;
 
-  const removeId = target.dataset.removeIncome || target.dataset.removeEditorItem;
+  const removeId = btn.dataset.removeIncome || btn.dataset.removeEditorItem;
   if (!removeId) return;
 
   if (state.itemEditors[group].active) {
@@ -444,6 +446,7 @@ function setPendingBarVisible(visible) {
 function markPendingChanges() {
   if (!state.draftInputs || state.isViewMode) return;
   syncDerivedMonthlyInputs(state.draftInputs);
+  syncDerivedMonthlyInputsToUi(state.draftInputs);
   renderInputHints(state.draftInputs);
   setPendingBarVisible(true);
 }
@@ -700,6 +703,13 @@ function syncDerivedMonthlyInputs(inputs) {
   inputs.monthlyExpense = getMonthlyAllocationTotalMan(inputs.expenseItems);
   inputs.monthlySavings = getMonthlyAllocationTotalMan(inputs.savingsItems);
   inputs.monthlyInvest = getMonthlyAllocationTotalMan(inputs.investItems);
+}
+
+function syncDerivedMonthlyInputsToUi(inputs) {
+  ["monthlyExpense", "monthlySavings", "monthlyInvest"].forEach(key => {
+    const field = dom.inputsForm?.elements?.[key];
+    if (field) field.value = String(inputs[key]);
+  });
 }
 
 function renderInputHints(inputs) {
