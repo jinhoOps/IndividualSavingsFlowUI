@@ -324,6 +324,24 @@ function handleLoadSample() {
   IsfShare.buildShareLink({ ...SAMPLE_INPUTS }, { viewMode: true }).then(link => { if (link) window.location.href = link; });
 }
 
+function createResetInputs(current) {
+  return {
+    ...current,
+    incomes: current.incomes.map(income => ({ ...income, amount: 0 })),
+    expenseItems: current.expenseItems.map(item => ({ ...item, amount: 0 })),
+    savingsItems: current.savingsItems.map(item => ({ ...item, amount: 0 })),
+    investItems: current.investItems.map(item => ({ ...item, amount: 0 })),
+    monthlyExpense: 0,
+    monthlySavings: 0,
+    monthlyInvest: 0,
+    monthlyDebtPayment: 0,
+    startCash: 0,
+    startSavings: 0,
+    startInvest: 0,
+    startDebt: 0,
+  };
+}
+
 function handleResetInputs() {
   if (state.isViewMode || !window.confirm("모든 금액을 0으로 초기화할까요?")) return;
   commitImmediateInputs(createResetInputs(state.inputs));

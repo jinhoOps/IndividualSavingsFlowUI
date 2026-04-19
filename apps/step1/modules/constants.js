@@ -84,6 +84,19 @@ export const DEFAULT_INPUTS = {
   horizonYears: 10,
 };
 
+export const SAMPLE_INPUTS = {
+  ...DEFAULT_INPUTS,
+  incomes: [
+    { id: "sample-income-1", name: "주급여", amount: 450 },
+    { id: "sample-income-2", name: "부수입", amount: 50 },
+  ],
+  monthlyDebtPayment: 50,
+  startCash: 500,
+  startSavings: 2000,
+  startInvest: 1000,
+  startDebt: 1500,
+};
+
 export const TONE_COLORS = {
   income: "#1e8b7c",
   expense: "#c9573c",

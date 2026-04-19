@@ -280,6 +280,22 @@
     };
   }
 
+  async function buildShareLink(inputs, options = {}) {
+    const envelope = buildStateEnvelope(options.appKey || "", options.schema || 1, inputs);
+    const hash = encodePayloadForHash(envelope);
+    if (!hash) {
+      return null;
+    }
+    const url = new URL(window.location.href);
+    url.hash = `s=${hash}`;
+    if (options.viewMode) {
+      url.searchParams.set(VIEW_MODE_QUERY_PARAM, VIEW_MODE_QUERY_VALUE);
+    } else {
+      url.searchParams.delete(VIEW_MODE_QUERY_PARAM);
+    }
+    return url.toString();
+  }
+
   function parseStateEnvelope(parsed, expectedAppKey) {
     if (!parsed || typeof parsed !== "object") {
       return null;
@@ -385,6 +401,7 @@
 
   global.IsfShare = {
     buildStateEnvelope,
+    buildShareLink,
     parseStateEnvelope,
     encodePayloadForHash,
     decodePayloadFromHash,
