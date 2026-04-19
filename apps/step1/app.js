@@ -67,7 +67,7 @@ function init() {
   void initializeInputsFromShareId();
 
   const pwaManager = new IsfPwaManager({
-    appVersion: "0.5.4",
+    appVersion: "0.5.7",
     appKey: SHARE_STATE_KEY,
     onFeedback: (message) => IsfFeedback.showFeedback(dom.applyFeedback, message),
     isViewMode: () => state.isViewMode,
@@ -220,7 +220,7 @@ function bindGlobalEvents() {
     }
     syncMobileInputsPanelVisibility();
     syncAdvancedTabBlockVisibility();
-    syncAllItemEditorUi();
+    syncMobileItemEditorFab();
   };
   mq.addEventListener("change", onChange);
   window.addEventListener("orientationchange", () => window.setTimeout(() => { if (dom.sankeySvg) dom.sankeySvg.removeAttribute("viewBox"); renderAll(); }, 200));
@@ -473,7 +473,9 @@ function setSankeySortMode(mode) { state.sankeySortMode = mode; syncSankeySortMo
 
 function syncSankeyZoomUi() {
   if (dom.sankeyZoomLabel) dom.sankeyZoomLabel.textContent = `${Math.round(state.sankeyZoom * 100)}%`;
-  renderSankey(state.snapshot, buildSankeyData, state.sankeySortMode);
+  if (state.snapshot) {
+    renderSankey(state.snapshot, buildSankeyData, state.sankeySortMode);
+  }
 }
 
 function setSankeyZoom(zoom) { state.sankeyZoom = Math.min(SANKEY_ZOOM_MAX, Math.max(SANKEY_ZOOM_MIN, zoom)); syncSankeyZoomUi(); }
@@ -711,7 +713,13 @@ function renderExpenseTotalHint(won, count) { if (dom.expenseTotalHint) dom.expe
 function renderSavingsTotalHint(won, count) { if (dom.savingsTotalHint) dom.savingsTotalHint.textContent = `총 ${count}개 항목: ${formatCurrency(won)}`; }
 function renderInvestTotalHint(won, count) { if (dom.investTotalHint) dom.investTotalHint.textContent = `총 ${count}개 항목: ${formatCurrency(won)}`; }
 
-function navigateToAdvancedGroup(group) { setActiveAdvancedTab(group); if (dom.advancedSettings) dom.advancedSettings.open = true; }
+function navigateToAdvancedGroup(group) {
+  setActiveAdvancedTab(group);
+  if (dom.advancedSettings) {
+    dom.advancedSettings.open = true;
+    dom.advancedSettings.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+}
 function syncMobileInputsPanelVisibility() {
   const isMobile = window.matchMedia(MOBILE_LAYOUT_QUERY).matches;
   if (dom.inputsPanelContent) dom.inputsPanelContent.hidden = isMobile && state.mobileInputsCollapsed;

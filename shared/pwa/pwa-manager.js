@@ -65,10 +65,12 @@
       this.getCurrentData = config.getCurrentData || (() => null);
       this.appKey = config.appKey || "isf-hub";
       this.pwaVersionLastCheckedAt = 0;
+      this.deferredPrompt = null;
     }
 
     init() {
       this.syncVersionCheckTriggerVisibility();
+      this.bindPwaInstallEvents();
       this.bindPwaLifecycleFeedback();
       this.bindNetworkStatusFeedback();
       this.registerServiceWorker();
@@ -83,6 +85,29 @@
 
       // 앱 실행(Cold Start) 시 즉시 버전 체크 수행
       void this.maybeCheckRemotePwaVersion();
+    }
+
+    bindPwaInstallEvents() {
+      if (typeof window === "undefined") return;
+      window.addEventListener("beforeinstallprompt", (event) => {
+        // 브라우저의 기본 설치 알림을 막고 이벤트를 저장합니다.
+        event.preventDefault();
+        this.deferredPrompt = event;
+        // 삼성 인터넷 등 일부 브라우저에서 설치 가능함을 디버그 로그로 남깁니다.
+        console.log("PWA: Installable state detected.");
+      });
+    }
+
+    async promptInstall() {
+      if (!this.deferredPrompt) {
+        this.onFeedback("이미 설치되어 있거나 브라우저에서 설치를 지원하지 않습니다.");
+        return;
+      }
+      this.deferredPrompt.prompt();
+      const { outcome } = await this.deferredPrompt.userChoice;
+      if (outcome === "accepted") {
+        this.deferredPrompt = null;
+      }
     }
 
     bindPwaLifecycleFeedback() {

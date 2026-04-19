@@ -1,6 +1,19 @@
 
 # Project Evolution Log (연대기적 작업 로그)
 
+
+## [2026-04-19] fix | Step 1 초기화 오류 및 모바일 UX 개선 패치 (v0.5.5)
+- **원인**: 
+    - **Sankey null 참조**: 앱 초기화(`init`) 과정에서 데이터(`snapshot`)가 생성되기 전에 `syncSankeyZoomUi`가 호출되어 `renderSankey`에서 `null` 속성 접근 오류 발생.
+    - **미정의 함수 호출**: 레이아웃 변경 시 호출되는 `syncAllItemEditorUi` 함수가 정의되지 않아 화면 회전/리사이즈 시 JS 실행 중단.
+    - **점프 네비게이션 피드백 부족**: 간편 입력의 (자동합산) 필드 클릭 시 고급 설정 탭이 열리지만, 화면 스크롤 이동이 없어 사용자가 동작 여부를 인지하기 어려움.
+- **조치**: 
+    - **안전 로딩**: `syncSankeyZoomUi` 내부에 `snapshot` 존재 여부 체크 로직 추가.
+    - **함수 교체**: `syncAllItemEditorUi` 호출을 실제 정의된 `syncMobileItemEditorFab`으로 교체하여 런타임 오류 해결.
+    - **UX 강화**: `navigateToAdvancedGroup`에 `scrollIntoView`를 적용하여 클릭 시 해당 영역으로 자동 스크롤되도록 개선.
+    - **버전 업데이트**: `sw.js`, `manifest`, `app.js` 등 모든 구성 요소의 버전을 **0.5.5**로 동기화.
+- **결과**: 앱 초기 로딩 및 화면 전환 안정성 확보, 모바일 환경의 탐색 편의성 증대.
+
 ## [2026-04-17] fix | Step 1 헤더 버튼 복구 및 UI 정리 (v0.5.3)
 - **원인**: 
     - **바인딩 타이밍 문제**: `app.js` 초기화 시점에 커스텀 엘리먼트(`app-header`, `data-hub-modal`)가 아직 DOM에 준비되지 않아 `null` 참조로 인한 이벤트 바인딩 실패 발생.

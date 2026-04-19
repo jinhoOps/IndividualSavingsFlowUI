@@ -1,4 +1,4 @@
-const APP_VERSION = "0.5.4";
+const APP_VERSION = "0.5.7";
 const CACHE_NAME = `isf-static-v${APP_VERSION}`;
 const CORE_ASSETS = [
   "./",
@@ -21,6 +21,8 @@ const CORE_ASSETS = [
   "./shared/pwa/pwa-manager.js",
   "./icons/icon-192.svg",
   "./icons/icon-512.svg",
+  "./icons/icon-192.png",
+  "./icons/icon-512.png",
 ];
 
 self.addEventListener("install", (event) => {
