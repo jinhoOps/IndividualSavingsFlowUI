@@ -505,6 +505,7 @@ function syncAdvancedTabBlockVisibility() {
     if (block) {
       const active = block.dataset.advancedBlock === state.activeAdvancedTab;
       block.hidden = block.dataset.advancedBlock === "rates" ? (isMobile ? !active : false) : !active;
+      block.classList.toggle("is-active", active);
     }
   });
 }
@@ -514,12 +515,12 @@ function getVisibleInputs() { return state.draftInputs || state.inputs; }
 function refreshInputsPanel(inputs) {
   state.suspendInputTracking = true;
   try {
+    syncDerivedMonthlyInputs(inputs);
     applyInputsToForm(inputs);
     renderIncomeList(inputs.incomes);
     renderExpenseList(inputs.expenseItems);
     renderSavingsList(inputs.savingsItems);
     renderInvestList(inputs.investItems);
-    syncDerivedMonthlyInputs(inputs);
     renderInputHints(inputs);
     syncGroupOptionsAll();
   } finally { state.suspendInputTracking = false; }
@@ -723,7 +724,11 @@ function navigateToAdvancedGroup(group) {
 function syncMobileInputsPanelVisibility() {
   const isMobile = window.matchMedia(MOBILE_LAYOUT_QUERY).matches;
   if (dom.inputsPanelContent) dom.inputsPanelContent.hidden = isMobile && state.mobileInputsCollapsed;
-  if (dom.toggleInputsMobile) dom.toggleInputsMobile.hidden = !isMobile;
+  if (dom.toggleInputsMobile) {
+    dom.toggleInputsMobile.hidden = !isMobile;
+    dom.toggleInputsMobile.textContent = state.mobileInputsCollapsed ? "펼치기" : "접기";
+    dom.toggleInputsMobile.setAttribute("aria-expanded", !state.mobileInputsCollapsed);
+  }
 }
 
 function getItemEditorSignature(group, items) { return JSON.stringify(items.map(i => ({ name: i.name, amount: i.amount }))); }

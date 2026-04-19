@@ -108,6 +108,9 @@ export const TONE_COLORS = {
 };
 
 export const FORM_FIELD_KEYS = [
+  "monthlyExpense",
+  "monthlySavings",
+  "monthlyInvest",
   "monthlyDebtPayment",
   "startCash",
   "startSavings",
