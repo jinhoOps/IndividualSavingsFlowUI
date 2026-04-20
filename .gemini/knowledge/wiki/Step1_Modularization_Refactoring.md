@@ -41,4 +41,5 @@ tags: [refactoring, modularization, es6_modules, step1]
 2. **렌더링 함수 누락**: 컨트롤러(`app.js`) 슬림화 과정에서 반복적인 UI 업데이트 함수(리스트 렌더러 등)가 소실되지 않았는지 대조하십시오.
 3. **이벤트 리스너 복구**: `bindReadonlyAdvancedNavigation`과 같이 동적으로 생성된 요소에 바인딩되는 특수 내비게이션 로직이 유지되었는지 점검하십시오.
 4. **계산 함수 호출 오류**: 수입/지출 항목별로 서로 다른 합산 함수(`getMonthlyIncomeTotalMan` vs `getMonthlyAllocationTotalMan`)가 정확히 매핑되었는지 검증하십시오.
+5. **모델 버전 누락 (Unit Duplication)**: `input-sanitizer.js`에서 정규화된 데이터를 반환할 때 `modelVersion: 10` (원 단위 표시기)을 누락하지 않도록 주의하십시오. 누락 시, 시스템이 데이터를 여전히 '만원' 단위로 인식하여 `migrateInputsToWon`을 중복 실행, 수치가 10,000배씩 폭증하는 치명적 오류가 발생할 수 있습니다.
 

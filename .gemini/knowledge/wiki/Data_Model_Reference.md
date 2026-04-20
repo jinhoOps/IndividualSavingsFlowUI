@@ -13,7 +13,8 @@ tags: [data_model, indexeddb, storage, bridge, reference]
 - **변환 규칙:** 
   - `만원 -> 원`: `IsfUtils.toWon(value)` (10,000 곱셈)
   - `원 -> 만원`: `IsfUtils.toMan(value)` (10,000 나눗셈)
-- **정합성:** Step1 브리지 데이터와 Step2 드래프트의 `totalMonthlyInvestCapacity`는 모두 **원 단위**로 통일되었습니다. 임시 UI 상태에서만 만원 단위를 사용하며, 상태 저장 시에는 항상 원 단위를 준수하십시오.
+- **단위 정합성:** Step1 브리지 데이터와 Step2 드래프트의 `totalMonthlyInvestCapacity`는 모두 **원 단위**로 통일되었습니다. 임시 UI 상태에서만 만원 단위를 사용하며, 상태 저장 시에는 항상 원 단위를 준수하십시오.
+- **모델 버전 관리 (Versioning):** `modelVersion: 10`은 데이터가 '원' 단위로 정규화되었음을 나타내는 핵심 지표입니다. `input-sanitizer.js`와 같은 데이터 정규화 모듈은 반환 객체에 반드시 이 버전을 포함하여, 후속 처리 과정에서 단위 중복 변환(예: 만원 -> 원 중복 곱셈)이 발생하지 않도록 해야 합니다.
 
 ## 저장 전략 (Storage Strategy)
 

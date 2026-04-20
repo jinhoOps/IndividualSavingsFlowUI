@@ -1,6 +1,16 @@
 
 # Project Evolution Log (연대기적 작업 로그)
 
+## [2026-04-21] fix | Step 1 단위 중복 계산 및 Step 2 브리지 배너 표시 오류 해결 (v0.5.11)
+- **원인**: 
+    - **단위 중복 계산**: `sanitizeInputs` 함수에서 반환되는 객체에 `modelVersion: 10` 속성이 누락되어, 후속 입력이나 저장 시 `migrateInputsToWon` 로직이 데이터를 레거시(만원 단위)로 오인하여 매번 10,000배씩 중복 계산하는 버그 발생.
+    - **브리지 배너 미제거**: Step 2의 `.bridge-banner` 클래스가 `display: flex`를 명시적으로 사용하고 있어, `hidden` 속성만으로는 사라지지 않는 CSS 명시성(Specificity) 문제 발생. 또한 데이터 로드 중 오류 발생 시 배너를 닫는 로직이 실행되지 않음.
+- **조치**: 
+    - **정규화 보완**: `input-sanitizer.js`의 `sanitizeInputs` 반환 객체에 `modelVersion: 10`을 명시적으로 포함하여 "원 단위" 정규화 상태를 보장함.
+    - **CSS 강화**: `styles.css`에 `.bridge-banner[hidden] { display: none !important; }`를 추가하여 강제적으로 배너를 숨김 처리함.
+    - **로직 안정화**: Step 2의 `loadStep1Data` 클릭 핸들러에 `try...catch...finally` 구문을 도입하여 데이터 로드 성공 여부와 관계없이 배너가 항상 닫히도록 개선함.
+- **결과**: Step 1 금액 입력 시의 기하급수적 수치 폭증 해결 및 Step 2 브리지 연동 UX의 시각적 피드백 무결성 확보.
+
 ## [2026-04-19] fix | Step 1 데이터 연동 무결성 및 패널 기능 복구 (v0.5.8)
 - **원인**: 
     - **항목 삭제 불가**: `handleItemClick`에서 `event.target instanceof HTMLElement` 체크로 인해 SVG 아이콘이나 내부 요소를 클릭할 경우 삭제 로직이 무시됨.
