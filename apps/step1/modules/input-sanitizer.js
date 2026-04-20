@@ -366,7 +366,7 @@ export function scaleDefaultAllocationItemsToTotal(defaultItems, totalAmount) {
     };
   });
 
-  const currentTotal = getMonthlyAllocationTotalMan(scaled);
+  const currentTotal = getMonthlyAllocationTotalWon(scaled);
   const diff = safeTotal - currentTotal;
   const targetIndex = scaled.length - 1;
   scaled[targetIndex].amount = Math.max(0, scaled[targetIndex].amount + diff);

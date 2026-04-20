@@ -5,8 +5,8 @@ import {
   DEFAULT_INVEST_ITEMS
 } from "./constants.js";
 import {
-  getMonthlyIncomeTotalMan,
-  getMonthlyAllocationTotalMan,
+  getMonthlyIncomeTotalWon,
+  getMonthlyAllocationTotalWon,
   normalizeAllocationGroupName,
   sanitizeSavingsAnnualRate,
   toMonthlyFactor,
@@ -22,13 +22,13 @@ import {
 } from "./formatters.js";
 
 export function buildMonthlySnapshot(inputs) {
-  const income = IsfUtils.toWon(getMonthlyIncomeTotalMan(inputs.incomes));
+  const income = getMonthlyIncomeTotalWon(inputs.incomes);
   const incomeBreakdown = (Array.isArray(inputs.incomes) ? inputs.incomes : [])
     .map((item, index) => ({
       id: `income-${item?.id || index + 1}`,
       label: String(item?.name || `수입 ${index + 1}`),
       tone: "income",
-      value: IsfUtils.toWon(IsfUtils.sanitizeMoney(item?.amount, 0)),
+      value: IsfUtils.sanitizeMoney(item?.amount, 0),
     }))
     .filter((item) => item.value > 0);
   const expenseBreakdown = (Array.isArray(inputs.expenseItems) ? inputs.expenseItems : [])
@@ -36,7 +36,7 @@ export function buildMonthlySnapshot(inputs) {
       id: `expense-${item?.id || index + 1}`,
       label: String(item?.name || `생활비 ${index + 1}`),
       tone: "expense",
-      value: IsfUtils.toWon(IsfUtils.sanitizeMoney(item?.amount, 0)),
+      value: IsfUtils.sanitizeMoney(item?.amount, 0),
       group: normalizeAllocationGroupName(item?.group),
     }))
     .filter((item) => item.value > 0);
@@ -45,7 +45,7 @@ export function buildMonthlySnapshot(inputs) {
       id: `savings-${item?.id || index + 1}`,
       label: String(item?.name || `저축 ${index + 1}`),
       tone: "savings",
-      value: IsfUtils.toWon(IsfUtils.sanitizeMoney(item?.amount, 0)),
+      value: IsfUtils.sanitizeMoney(item?.amount, 0),
       group: normalizeAllocationGroupName(item?.group),
     }))
     .filter((item) => item.value > 0);
@@ -54,14 +54,14 @@ export function buildMonthlySnapshot(inputs) {
       id: `invest-${item?.id || index + 1}`,
       label: String(item?.name || `투자 ${index + 1}`),
       tone: "invest",
-      value: IsfUtils.toWon(IsfUtils.sanitizeMoney(item?.amount, 0)),
+      value: IsfUtils.sanitizeMoney(item?.amount, 0),
       group: normalizeAllocationGroupName(item?.group),
     }))
     .filter((item) => item.value > 0);
   const expense = expenseBreakdown.reduce((sum, item) => sum + item.value, 0);
   const savings = savingsBreakdown.reduce((sum, item) => sum + item.value, 0);
   const invest = investBreakdown.reduce((sum, item) => sum + item.value, 0);
-  const debtPayment = IsfUtils.toWon(inputs.monthlyDebtPayment);
+  const debtPayment = IsfUtils.sanitizeMoney(inputs.monthlyDebtPayment, 0);
 
   const requiredOutflow = expense + savings + invest + debtPayment;
   const netCashflow = income - requiredOutflow;
@@ -131,8 +131,8 @@ export function buildSavingsBuckets(inputs) {
   const savingsItems = Array.isArray(inputs.savingsItems) && inputs.savingsItems.length > 0
     ? inputs.savingsItems
     : DEFAULT_SAVINGS_ITEMS;
-  const monthlyTargets = savingsItems.map((item) => IsfUtils.toWon(IsfUtils.sanitizeMoney(item?.amount, 0)));
-  const initialBalances = allocateByWeights(IsfUtils.toWon(inputs.startSavings), monthlyTargets);
+  const monthlyTargets = savingsItems.map((item) => IsfUtils.sanitizeMoney(item?.amount, 0));
+  const initialBalances = allocateByWeights(IsfUtils.sanitizeMoney(inputs.startSavings, 0), monthlyTargets);
 
   return savingsItems.map((item, index) => ({
     id: typeof item?.id === "string" && item.id.trim()
@@ -152,8 +152,8 @@ export function buildInvestBuckets(inputs) {
   const investItems = Array.isArray(inputs.investItems) && inputs.investItems.length > 0
     ? inputs.investItems
     : DEFAULT_INVEST_ITEMS;
-  const monthlyTargets = investItems.map((item) => IsfUtils.toWon(IsfUtils.sanitizeMoney(item?.amount, 0)));
-  const initialBalances = allocateByWeights(IsfUtils.toWon(inputs.startInvest), monthlyTargets);
+  const monthlyTargets = investItems.map((item) => IsfUtils.sanitizeMoney(item?.amount, 0));
+  const initialBalances = allocateByWeights(IsfUtils.sanitizeMoney(inputs.startInvest, 0), monthlyTargets);
   const monthlyFactor = toMonthlyFactor(inputs.annualInvestReturn);
 
   return investItems.map((item, index) => ({
@@ -171,11 +171,11 @@ export function buildInvestBuckets(inputs) {
 
 export function simulateProjection(inputs) {
   const horizonMonths = Math.max(1, Math.round(inputs.horizonYears)) * 12;
-  const monthlyIncomeBase = IsfUtils.toWon(getMonthlyIncomeTotalMan(inputs.incomes));
-  const monthlyExpenseBase = IsfUtils.toWon(inputs.monthlyExpense);
-  const monthlySavings = IsfUtils.toWon(inputs.monthlySavings);
-  const monthlyInvest = IsfUtils.toWon(inputs.monthlyInvest);
-  const monthlyDebtPayment = IsfUtils.toWon(inputs.monthlyDebtPayment);
+  const monthlyIncomeBase = getMonthlyIncomeTotalWon(inputs.incomes);
+  const monthlyExpenseBase = IsfUtils.sanitizeMoney(inputs.monthlyExpense, 0);
+  const monthlySavings = IsfUtils.sanitizeMoney(inputs.monthlySavings, 0);
+  const monthlyInvest = IsfUtils.sanitizeMoney(inputs.monthlyInvest, 0);
+  const monthlyDebtPayment = IsfUtils.sanitizeMoney(inputs.monthlyDebtPayment, 0);
 
   const incomeFactor = toMonthlyFactor(inputs.annualIncomeGrowth);
   const expenseFactor = toMonthlyFactor(inputs.annualExpenseGrowth);
@@ -185,10 +185,10 @@ export function simulateProjection(inputs) {
   const savingsBuckets = buildSavingsBuckets(inputs);
   const investBuckets = buildInvestBuckets(inputs);
 
-  let cash = IsfUtils.toWon(inputs.startCash);
+  let cash = IsfUtils.sanitizeMoney(inputs.startCash, 0);
   let savings = savingsBuckets.reduce((sum, bucket) => sum + bucket.balance, 0);
   let invest = investBuckets.reduce((sum, bucket) => sum + bucket.balance, 0);
-  let debt = IsfUtils.toWon(inputs.startDebt);
+  let debt = IsfUtils.sanitizeMoney(inputs.startDebt, 0);
 
   savingsBuckets.forEach((bucket) => {
     if (bucket.maturityMonthIndex !== null && bucket.maturityMonthIndex <= 0 && !bucket.closed) {

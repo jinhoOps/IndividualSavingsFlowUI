@@ -5,14 +5,14 @@ export function buildStep1BridgePayload(inputs) {
   const investItems = Array.isArray(safeInputs.investItems) ? safeInputs.investItems : [];
   
   return {
-    monthlyInvestCapacity: IsfUtils.toWon(IsfUtils.sanitizeMoney(safeInputs.monthlyInvest, 0)),
-    currentCash: IsfUtils.toWon(IsfUtils.sanitizeMoney(safeInputs.startCash, 0)),
-    currentInvest: IsfUtils.toWon(IsfUtils.sanitizeMoney(safeInputs.startInvest, 0)),
-    currentSavings: IsfUtils.toWon(IsfUtils.sanitizeMoney(safeInputs.startSavings, 0)),
+    monthlyInvestCapacity: IsfUtils.sanitizeMoney(safeInputs.monthlyInvest, 0),
+    currentCash: IsfUtils.sanitizeMoney(safeInputs.startCash, 0),
+    currentInvest: IsfUtils.sanitizeMoney(safeInputs.startInvest, 0),
+    currentSavings: IsfUtils.sanitizeMoney(safeInputs.startSavings, 0),
     investItems: investItems.map(item => ({
       id: item.id,
       name: item.name,
-      amount: IsfUtils.toWon(IsfUtils.sanitizeMoney(item.amount, 0))
+      amount: IsfUtils.sanitizeMoney(item.amount, 0)
     })),
     annualExpenseGrowth: Number(safeInputs.annualExpenseGrowth || 0),
     timestamp: new Date().toISOString(),
