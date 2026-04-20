@@ -1,7 +1,7 @@
 {
   "name": "나의 가계 흐름",
   "short_name": "가계흐름",
-  "version": "0.5.9",
+  "version": "0.5.11",
   "description": "월 단위 가계 흐름을 카드와 Sankey Diagram으로 확인하는 개인 자산 흐름 프로토타입",
   "lang": "ko-KR",
   "start_url": "/IndividualSavingsFlowUI/",
