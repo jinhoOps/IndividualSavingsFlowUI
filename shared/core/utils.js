@@ -98,6 +98,12 @@
     }
     return Math.round(Number(amountInUnit) * 10000);
   }
+  function toMan(amountInWon) {
+    if (!Number.isFinite(Number(amountInWon))) {
+      return 0;
+    }
+    return Number(amountInWon) / 10000;
+  }
 
   global.IsfUtils = {
     formatMoney,
@@ -106,6 +112,7 @@
     sanitizeRate,
     sanitizeWeight,
     toWon,
+    toMan,
     createId,
     escapeHtml,
     formatWeight,

@@ -42,39 +42,40 @@ export const SANKEY_MOBILE_MIN_COLUMN_STEP_WITH_INFLOW = 110;
 export const MOBILE_LAYOUT_QUERY = "(max-width: 760px)";
 
 export const DEFAULT_EXPENSE_ITEMS = [
-  { id: "rent", name: "주거비(월세)", amount: 60 },
-  { id: "maintenance", name: "관리비", amount: 10 },
-  { id: "telecom", name: "통신비", amount: 5 },
-  { id: "transport", name: "교통비", amount: 10 },
-  { id: "food", name: "식비", amount: 40 },
-  { id: "etc", name: "기타생활비", amount: 20 },
+  { id: "rent", name: "주거비(월세)", amount: 600000 },
+  { id: "maintenance", name: "관리비", amount: 100000 },
+  { id: "telecom", name: "통신비", amount: 50000 },
+  { id: "transport", name: "교통비", amount: 100000 },
+  { id: "food", name: "식비", amount: 400000 },
+  { id: "etc", name: "기타생활비", amount: 200000 },
 ];
 
 export const DEFAULT_SAVINGS_ITEMS = [
-  { id: "youth-saving", name: "청년적금", amount: 70, annualRate: 3.6 },
-  { id: "housing-subscription", name: "주택청약", amount: 5, annualRate: 2.9 },
+  { id: "youth-saving", name: "청년적금", amount: 700000, annualRate: 3.6 },
+  { id: "housing-subscription", name: "주택청약", amount: 50000, annualRate: 2.9 },
 ];
 
 export const DEFAULT_INVEST_ITEMS = [
-  { id: "global-stock", name: "해외주식", amount: 30 },
-  { id: "isa", name: "ISA", amount: 30 },
-  { id: "gold-spot", name: "금현물", amount: 3 },
+  { id: "global-stock", name: "해외주식", amount: 300000 },
+  { id: "isa", name: "ISA", amount: 300000 },
+  { id: "gold-spot", name: "금현물", amount: 30000 },
 ];
 
 export const DEFAULT_INPUTS = {
+  modelVersion: 10, // 10: Won units normalized
   incomes: [
-    { id: "income-main", name: "급여", amount: 300 },
+    { id: "income-main", name: "급여", amount: 3000000 },
   ],
   expenseItems: DEFAULT_EXPENSE_ITEMS,
   savingsItems: DEFAULT_SAVINGS_ITEMS,
   investItems: DEFAULT_INVEST_ITEMS,
-  monthlyExpense: 145,
-  monthlySavings: 75,
-  monthlyInvest: 63,
+  monthlyExpense: 1450000,
+  monthlySavings: 750000,
+  monthlyInvest: 630000,
   monthlyDebtPayment: 0,
-  startCash: 100,
-  startSavings: 3000,
-  startInvest: 3000,
+  startCash: 1000000,
+  startSavings: 30000000,
+  startInvest: 30000000,
   startDebt: 0,
   annualIncomeGrowth: 4.0,
   annualExpenseGrowth: 2.5,
@@ -87,14 +88,14 @@ export const DEFAULT_INPUTS = {
 export const SAMPLE_INPUTS = {
   ...DEFAULT_INPUTS,
   incomes: [
-    { id: "sample-income-1", name: "주급여", amount: 450 },
-    { id: "sample-income-2", name: "부수입", amount: 50 },
+    { id: "sample-income-1", name: "주급여", amount: 4500000 },
+    { id: "sample-income-2", name: "부수입", amount: 500000 },
   ],
-  monthlyDebtPayment: 50,
-  startCash: 500,
-  startSavings: 2000,
-  startInvest: 1000,
-  startDebt: 1500,
+  monthlyDebtPayment: 500000,
+  startCash: 5000000,
+  startSavings: 20000000,
+  startInvest: 10000000,
+  startDebt: 15000000,
 };
 
 export const TONE_COLORS = {

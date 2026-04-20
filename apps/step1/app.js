@@ -10,7 +10,7 @@ import {
 
 import {
   cloneInputs, sanitizeInputs, createIncomeItem,
-  getMonthlyIncomeTotalMan, getMonthlyAllocationTotalMan,
+  getMonthlyIncomeTotalWon, getMonthlyAllocationTotalWon,
   normalizeAllocationGroupName, parseSavingsAnnualRateInput,
   createAllocationItemId, normalizeAllocationName, normalizeMaturityMonth,
   buildAllocationMetaText, scaleDefaultAllocationItemsToTotal,
@@ -44,6 +44,8 @@ import {
 } from "./modules/sankey-renderer.js";
 
 import { buildSankeyData } from "./modules/sankey-builder.js";
+import * as helpers from "./modules/state-helpers.js";
+
 
 // --- Initialization ---
 
@@ -68,7 +70,7 @@ function init() {
   void initializeInputsFromShareId();
 
   const pwaManager = new IsfPwaManager({
-    appVersion: "0.5.8",
+    appVersion: "0.5.9",
     appKey: SHARE_STATE_KEY,
     onFeedback: (message) => IsfFeedback.showFeedback(dom.applyFeedback, message),
     isViewMode: () => state.isViewMode,
@@ -112,8 +114,9 @@ function bindControls() {
       const target = event.target;
       if (!(target instanceof HTMLInputElement) || !FORM_FIELD_KEYS.includes(target.name)) return;
       
-      const baseInputs = ensureDraftInputs();
-      state.draftInputs = sanitizeInputs(readInputsFromForm(baseInputs));
+      const baseInputs = helpers.ensureDraftInputs(state);
+      state.draftInputs = sanitizeInputs(helpers.readInputsFromForm(dom.inputsForm, baseInputs, { FORM_FIELD_KEYS, toWon: IsfUtils.toWon }));
+      helpers.markDirty(state);
       markPendingChanges();
     });
   }
@@ -351,7 +354,7 @@ function handleResetInputs() {
 function applyPendingChanges() {
   if (!state.draftInputs) return;
   state.inputs = sanitizeInputs(state.draftInputs);
-  state.draftInputs = null;
+  helpers.markClean(state);
   setPendingBarVisible(false);
   refreshInputsPanel(state.inputs);
   persistPrimaryState(state.inputs);
@@ -359,7 +362,7 @@ function applyPendingChanges() {
 }
 
 function cancelPendingChanges() {
-  state.draftInputs = null;
+  helpers.markClean(state);
   setPendingBarVisible(false);
   refreshInputsPanel(state.inputs);
   renderAll();
@@ -390,7 +393,7 @@ function handleItemInput(group, event) {
     if (!item) return;
 
     if (field === "name") item.name = target.value.slice(0, 24);
-    if (field === "amount") item.amount = IsfUtils.sanitizeMoney(target.value, 0);
+    if (field === "amount") item.amount = IsfUtils.toWon(target.value);
     if (field === "group") item.group = normalizeAllocationGroupName(target.value);
     if (field === "annualRate") {
         const parsed = parseSavingsAnnualRateInput(target.value, getVisibleInputs().annualSavingsYield);
@@ -401,12 +404,11 @@ function handleItemInput(group, event) {
         if (!norm) delete item.maturityMonth; else item.maturityMonth = norm;
     }
     
-    const totalMan = group === "income" ? getMonthlyIncomeTotalMan(state.itemEditors[group].items) : getMonthlyAllocationTotalMan(state.itemEditors[group].items);
-    const won = IsfUtils.toWon(totalMan);
-    if (group === "income") renderIncomeTotalHint(won, state.itemEditors[group].items.length);
-    else if (group === "expense") renderExpenseTotalHint(won, state.itemEditors[group].items.length);
-    else if (group === "savings") renderSavingsTotalHint(won, state.itemEditors[group].items.length);
-    else if (group === "invest") renderInvestTotalHint(won, state.itemEditors[group].items.length);
+    const totalWon = group === "income" ? getMonthlyIncomeTotalWon(state.itemEditors[group].items) : getMonthlyAllocationTotalWon(state.itemEditors[group].items);
+    if (group === "income") renderIncomeTotalHint(totalWon, state.itemEditors[group].items.length);
+    else if (group === "expense") renderExpenseTotalHint(totalWon, state.itemEditors[group].items.length);
+    else if (group === "savings") renderSavingsTotalHint(totalWon, state.itemEditors[group].items.length);
+    else if (group === "invest") renderInvestTotalHint(totalWon, state.itemEditors[group].items.length);
     
     setItemEditorUi(group, true);
     return;
@@ -425,12 +427,11 @@ function handleItemClick(group, event) {
     if (state.itemEditors[group].items.length <= 1) return;
     state.itemEditors[group].items = state.itemEditors[group].items.filter(i => i.id !== removeId);
     renderItemList(group, state.itemEditors[group].items, { editing: true });
-    const totalMan = group === "income" ? getMonthlyIncomeTotalMan(state.itemEditors[group].items) : getMonthlyAllocationTotalMan(state.itemEditors[group].items);
-    const won = IsfUtils.toWon(totalMan);
-    if (group === "income") renderIncomeTotalHint(won, state.itemEditors[group].items.length);
-    else if (group === "expense") renderExpenseTotalHint(won, state.itemEditors[group].items.length);
-    else if (group === "savings") renderSavingsTotalHint(won, state.itemEditors[group].items.length);
-    else if (group === "invest") renderInvestTotalHint(won, state.itemEditors[group].items.length);
+    const totalWon = group === "income" ? getMonthlyIncomeTotalWon(state.itemEditors[group].items) : getMonthlyAllocationTotalWon(state.itemEditors[group].items);
+    if (group === "income") renderIncomeTotalHint(totalWon, state.itemEditors[group].items.length);
+    else if (group === "expense") renderExpenseTotalHint(totalWon, state.itemEditors[group].items.length);
+    else if (group === "savings") renderSavingsTotalHint(totalWon, state.itemEditors[group].items.length);
+    else if (group === "invest") renderInvestTotalHint(totalWon, state.itemEditors[group].items.length);
     setItemEditorUi(group, true);
     return;
   }
@@ -444,9 +445,10 @@ function setPendingBarVisible(visible) {
 }
 
 function markPendingChanges() {
-  if (!state.draftInputs || state.isViewMode) return;
-  syncDerivedMonthlyInputs(state.draftInputs);
-  syncDerivedMonthlyInputsToUi(state.draftInputs);
+  if (state.isViewMode) return;
+  helpers.markDirty(state);
+  helpers.syncDerivedValues(state.draftInputs, { getMonthlyAllocationTotalWon });
+  helpers.applyInputsToForm(dom.inputsForm, state.draftInputs, { FORM_FIELD_KEYS, toMan: IsfUtils.toMan });
   renderInputHints(state.draftInputs);
   setPendingBarVisible(true);
 }
@@ -513,13 +515,13 @@ function syncAdvancedTabBlockVisibility() {
   });
 }
 
-function getVisibleInputs() { return state.draftInputs || state.inputs; }
+function getVisibleInputs() { return helpers.getVisibleInputs(state); }
 
 function refreshInputsPanel(inputs) {
   state.suspendInputTracking = true;
   try {
-    syncDerivedMonthlyInputs(inputs);
-    applyInputsToForm(inputs);
+    helpers.syncDerivedValues(inputs, { getMonthlyAllocationTotalWon });
+    helpers.applyInputsToForm(dom.inputsForm, inputs, { FORM_FIELD_KEYS, toMan: IsfUtils.toMan });
     renderIncomeList(inputs.incomes);
     renderExpenseList(inputs.expenseItems);
     renderSavingsList(inputs.savingsItems);
@@ -534,13 +536,6 @@ function renderExpenseList(items) { renderItemList("expense", items); }
 function renderSavingsList(items) { renderItemList("savings", items); }
 function renderInvestList(items) { renderItemList("invest", items); }
 
-function applyInputsToForm(inputs) {
-  FORM_FIELD_KEYS.forEach(key => {
-    const field = dom.inputsForm?.elements?.[key];
-    if (field) field.value = String(inputs[key]);
-  });
-}
-
 // --- Item Editor Core ---
 
 function toggleItemEditor(group) { state.itemEditors[group].active ? cancelItemEditor(group) : startItemEditor(group); }
@@ -548,14 +543,14 @@ function toggleItemEditor(group) { state.itemEditors[group].active ? cancelItemE
 function startItemEditor(group) {
   closeAllItemEditors(group);
   const items = cloneInputs(getVisibleInputs()[group === "income" ? "incomes" : `${group}Items`]);
-  state.itemEditors[group] = { active: true, items, baselineSignature: getItemEditorSignature(group, items) };
+  state.itemEditors[group] = { active: true, items, baselineSignature: helpers.getItemEditorSignature(items) };
   renderItemList(group, items, { editing: true });
   setItemEditorUi(group, true);
 }
 
 function applyItemEditor(group) {
   const editor = state.itemEditors[group];
-  const draft = ensureDraftInputs();
+  const draft = helpers.ensureDraftInputs(state);
   if (group === "income") draft.incomes = editor.items;
   else draft[`${group}Items`] = editor.items;
   state.draftInputs = sanitizeInputs(draft);
@@ -628,7 +623,7 @@ function renderIncomeItemHtml(item, opts) {
   return `
     <div class="income-row">
       <input type="text" value="${item.name}" data-income-id="${item.id}" data-field="name" ${isEditing ? "" : "readonly"} placeholder="이름" />
-      <input type="number" value="${item.amount}" data-income-id="${item.id}" data-field="amount" ${isEditing ? "" : "readonly"} placeholder="금액" />
+      <input type="number" value="${IsfUtils.toMan(item.amount)}" data-income-id="${item.id}" data-field="amount" ${isEditing ? "" : "readonly"} placeholder="금액" />
       ${isEditing ? `
         <button class="income-remove" data-remove-income="${item.id}" title="삭제">
           <svg class="income-remove-icon" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
@@ -650,7 +645,7 @@ function renderAllocationItemHtml(group, item, opts) {
     return `
       <div class="${commonClasses}">
         <span class="${group}-name">${item.name}</span>
-        <span class="value">${formatCurrency(IsfUtils.toWon(item.amount))}</span>
+        <span class="value">${formatCurrency(item.amount)}</span>
         ${metaHtml}
       </div>
     `;
@@ -669,7 +664,7 @@ function renderAllocationItemHtml(group, item, opts) {
       </div>
       <div class="editor-field">
         <label class="editor-field-label">금액(만원)</label>
-        <input type="number" value="${item.amount}" data-field="amount" data-editor-id="${item.id}" placeholder="금액" />
+        <input type="number" value="${IsfUtils.toMan(item.amount)}" data-field="amount" data-editor-id="${item.id}" placeholder="금액" />
       </div>
       <div class="editor-field">
         <label class="editor-field-label">그룹</label>
@@ -694,29 +689,16 @@ function renderAllocationItemHtml(group, item, opts) {
 
 // --- Final Helpers ---
 function getPendingSummaryText(inputs) {
-  const monthlyIncome = IsfUtils.toWon(getMonthlyIncomeTotalMan(inputs.incomes));
-  const monthlyOutflow = IsfUtils.toWon(inputs.monthlyExpense + inputs.monthlySavings + inputs.monthlyInvest + inputs.monthlyDebtPayment);
+  const monthlyIncome = getMonthlyIncomeTotalWon(inputs.incomes);
+  const monthlyOutflow = inputs.monthlyExpense + inputs.monthlySavings + inputs.monthlyInvest + inputs.monthlyDebtPayment;
   return `수입 ${formatCurrency(monthlyIncome)} / 지출 ${formatCurrency(monthlyOutflow)}`;
 }
 
-function syncDerivedMonthlyInputs(inputs) {
-  inputs.monthlyExpense = getMonthlyAllocationTotalMan(inputs.expenseItems);
-  inputs.monthlySavings = getMonthlyAllocationTotalMan(inputs.savingsItems);
-  inputs.monthlyInvest = getMonthlyAllocationTotalMan(inputs.investItems);
-}
-
-function syncDerivedMonthlyInputsToUi(inputs) {
-  ["monthlyExpense", "monthlySavings", "monthlyInvest"].forEach(key => {
-    const field = dom.inputsForm?.elements?.[key];
-    if (field) field.value = String(inputs[key]);
-  });
-}
-
 function renderInputHints(inputs) {
-  renderIncomeTotalHint(IsfUtils.toWon(getMonthlyIncomeTotalMan(inputs.incomes)), inputs.incomes.length);
-  renderExpenseTotalHint(IsfUtils.toWon(inputs.monthlyExpense), inputs.expenseItems.length);
-  renderSavingsTotalHint(IsfUtils.toWon(inputs.monthlySavings), inputs.savingsItems.length);
-  renderInvestTotalHint(IsfUtils.toWon(inputs.monthlyInvest), inputs.investItems.length);
+  renderIncomeTotalHint(getMonthlyIncomeTotalWon(inputs.incomes), inputs.incomes.length);
+  renderExpenseTotalHint(inputs.monthlyExpense, inputs.expenseItems.length);
+  renderSavingsTotalHint(inputs.monthlySavings, inputs.savingsItems.length);
+  renderInvestTotalHint(inputs.monthlyInvest, inputs.investItems.length);
 }
 
 function renderIncomeTotalHint(won, count) { if (dom.incomeTotalHint) dom.incomeTotalHint.textContent = `총 ${count}개 항목: ${formatCurrency(won)}`; }
@@ -741,9 +723,8 @@ function syncMobileInputsPanelVisibility() {
   }
 }
 
-function getItemEditorSignature(group, items) { return JSON.stringify(items.map(i => ({ name: i.name, amount: i.amount }))); }
 function getActiveItemEditorGroupKey() {
-  return ["income", "expense", "savings", "invest"].find(g => state.itemEditors[g].active) || null;
+  return helpers.getActiveItemEditorGroupKey(state.itemEditors);
 }
 
 function syncMobileItemEditorFab() {
@@ -767,12 +748,6 @@ function bindReadonlyAdvancedNavigation() {
   dom.jumpAdvancedFields.forEach(field => {
     field.addEventListener("click", () => navigateToAdvancedGroup(field.dataset.advancedTarget));
   });
-}
-
-function readInputsFromForm(base) {
-  const raw = { ...base };
-  FORM_FIELD_KEYS.forEach(key => { const field = dom.inputsForm?.elements?.[key]; if (field) raw[key] = Number(field.value); });
-  return raw;
 }
 
 function initializeBackupStore() {

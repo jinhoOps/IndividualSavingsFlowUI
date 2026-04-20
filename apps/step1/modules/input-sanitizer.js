@@ -14,11 +14,45 @@ export function cloneInputs(inputs) {
   return JSON.parse(JSON.stringify(inputs));
 }
 
-export function sanitizeInputs(raw) {
-  const monthlyIncomeFallback = IsfUtils.sanitizeMoney(raw.monthlyIncome, getMonthlyIncomeTotalMan(DEFAULT_INPUTS.incomes));
-  const monthlyExpenseFallback = IsfUtils.sanitizeMoney(raw.monthlyExpense, getMonthlyAllocationTotalMan(DEFAULT_EXPENSE_ITEMS));
-  const monthlySavingsFallback = IsfUtils.sanitizeMoney(raw.monthlySavings, getMonthlyAllocationTotalMan(DEFAULT_SAVINGS_ITEMS));
-  const monthlyInvestFallback = IsfUtils.sanitizeMoney(raw.monthlyInvest, getMonthlyAllocationTotalMan(DEFAULT_INVEST_ITEMS));
+const CURRENCY_KEYS = [
+  "monthlyExpense", "monthlySavings", "monthlyInvest", "monthlyDebtPayment",
+  "startCash", "startSavings", "startInvest", "startDebt",
+  "monthlyIncome" // Computed field in some contexts
+];
+
+export function migrateInputsToWon(raw) {
+  if (raw.modelVersion && raw.modelVersion >= 10) return raw;
+  
+  const migrated = { ...raw, modelVersion: 10 };
+  
+  CURRENCY_KEYS.forEach(key => {
+    if (typeof migrated[key] === "number") {
+        migrated[key] *= 10000;
+    }
+  });
+
+  const migrateItemArr = (arr) => {
+    if (!Array.isArray(arr)) return arr;
+    return arr.map(item => ({
+      ...item,
+      amount: (typeof item.amount === "number") ? item.amount * 10000 : item.amount
+    }));
+  };
+
+  migrated.incomes = migrateItemArr(migrated.incomes);
+  migrated.expenseItems = migrateItemArr(migrated.expenseItems);
+  migrated.savingsItems = migrateItemArr(migrated.savingsItems);
+  migrated.investItems = migrateItemArr(migrated.investItems);
+
+  return migrated;
+}
+
+export function sanitizeInputs(rawInputs) {
+  const raw = migrateInputsToWon(rawInputs);
+  const monthlyIncomeFallback = IsfUtils.sanitizeMoney(raw.monthlyIncome, getMonthlyIncomeTotalWon(DEFAULT_INPUTS.incomes));
+  const monthlyExpenseFallback = IsfUtils.sanitizeMoney(raw.monthlyExpense, getMonthlyAllocationTotalWon(DEFAULT_EXPENSE_ITEMS));
+  const monthlySavingsFallback = IsfUtils.sanitizeMoney(raw.monthlySavings, getMonthlyAllocationTotalWon(DEFAULT_SAVINGS_ITEMS));
+  const monthlyInvestFallback = IsfUtils.sanitizeMoney(raw.monthlyInvest, getMonthlyAllocationTotalWon(DEFAULT_INVEST_ITEMS));
   const annualSavingsYield = IsfUtils.sanitizeRate(raw.annualSavingsYield, DEFAULT_INPUTS.annualSavingsYield, 20);
   const expenseItems = sanitizeExpenseItems(raw.expenseItems, monthlyExpenseFallback);
   const savingsItems = sanitizeSavingsItems(raw.savingsItems, monthlySavingsFallback, annualSavingsYield);
@@ -29,9 +63,9 @@ export function sanitizeInputs(raw) {
     expenseItems,
     savingsItems,
     investItems,
-    monthlyExpense: getMonthlyAllocationTotalMan(expenseItems),
-    monthlySavings: getMonthlyAllocationTotalMan(savingsItems),
-    monthlyInvest: getMonthlyAllocationTotalMan(investItems),
+    monthlyExpense: getMonthlyAllocationTotalWon(expenseItems),
+    monthlySavings: getMonthlyAllocationTotalWon(savingsItems),
+    monthlyInvest: getMonthlyAllocationTotalWon(investItems),
     monthlyDebtPayment: IsfUtils.sanitizeMoney(raw.monthlyDebtPayment, DEFAULT_INPUTS.monthlyDebtPayment),
     startCash: IsfUtils.sanitizeMoney(raw.startCash, DEFAULT_INPUTS.startCash),
     startSavings: IsfUtils.sanitizeMoney(raw.startSavings, DEFAULT_INPUTS.startSavings),
@@ -95,7 +129,7 @@ export function createIncomeItem({ id, name, amount } = {}) {
   };
 }
 
-export function getMonthlyIncomeTotalMan(incomes) {
+export function getMonthlyIncomeTotalWon(incomes) {
   if (!Array.isArray(incomes)) {
     return 0;
   }
@@ -314,8 +348,8 @@ export function buildAllocationMetaText(item, options = {}) {
 }
 
 export function scaleDefaultAllocationItemsToTotal(defaultItems, totalAmount) {
-  const safeTotal = IsfUtils.sanitizeMoney(totalAmount, getMonthlyAllocationTotalMan(defaultItems));
-  const baseTotal = getMonthlyAllocationTotalMan(defaultItems);
+  const safeTotal = IsfUtils.sanitizeMoney(totalAmount, getMonthlyAllocationTotalWon(defaultItems));
+  const baseTotal = getMonthlyAllocationTotalWon(defaultItems);
 
   if (baseTotal <= 0) {
     return defaultItems.map((item) => ({ ...item, amount: 0 }));
@@ -340,7 +374,7 @@ export function scaleDefaultAllocationItemsToTotal(defaultItems, totalAmount) {
   return scaled;
 }
 
-export function getMonthlyAllocationTotalMan(items) {
+export function getMonthlyAllocationTotalWon(items) {
   if (!Array.isArray(items)) {
     return 0;
   }

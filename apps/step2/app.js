@@ -1,7 +1,7 @@
 (function initStep2PortfolioMvpV2() {
   "use strict";
 
-  const MODEL_VERSION = 2;
+  const MODEL_VERSION = 10;
   const UNALLOCATED_ASSET_KEY = "__unallocated__";
   const STEP1_LOCAL_STORAGE_KEY = "isf-rebuild-v1";
   const SHARE_STATE_KEY = "my-portfolio-flow";
@@ -9,6 +9,7 @@
   const HASH_STATE_PARAM = "s";
   const MAX_FINANCIAL_INCOME = 20000000;
   const DEFAULT_TAX_RATE = 0.154;
+  const MANUAL_BACKUP_WINDOW_MS = 60 * 1000;
 
   const DEFAULT_ACCOUNT_TEMPLATES = [
     { name: "국내주식", accountWeight: 34, allocations: [{ key: "kr-samsung", label: "삼성전자", targetWeight: 40 }, { key: "kr-sk-hynix", label: "SK하이닉스", targetWeight: 35 }, { key: "kr-hyundai", label: "현대차", targetWeight: 25 }] },
@@ -69,7 +70,9 @@
     activeChartTab: "summary", 
     dirty: false,
     isDashboardMode: false,
-    isReturningUser: false
+    isReturningUser: false,
+    backupEntries: [],
+    backupStoreReady: false
   };
   const colorCache = new Map();
   const TEMP_STORAGE_KEY = "isf-step2-draft-tmp";
@@ -100,9 +103,10 @@
       renderDraft(); 
       checkBridgeData();
     });
+    initializeBackupStore();
 
     new IsfPwaManager({
-      appVersion: "0.5.8", appKey: SHARE_STATE_KEY,
+      appVersion: "0.5.9", appKey: SHARE_STATE_KEY,
       onFeedback: (msg) => IsfFeedback.showFeedback(dom.applyFeedback, msg),
       getCurrentData: () => state.draft,
     }).init();
@@ -126,7 +130,7 @@
     const hub = getHubStorage();
     const res = await resolveLatestBridgePayload(hub);
     const p = res.bridge?.payload;
-    if (p && p.monthlyInvestCapacity !== IsfUtils.toWon(state.draft.totalMonthlyInvestCapacity)) {
+    if (p && p.monthlyInvestCapacity !== state.draft.totalMonthlyInvestCapacity) {
       if (dom.bridgeBanner) {
         dom.bridgeBanner.hidden = false;
         if (dom.bridgeTimestamp) dom.bridgeTimestamp.textContent = formatDateTime(p.timestamp);
@@ -157,9 +161,13 @@
       }
     });
 
+    dom.dataHubModal.addEventListener("restore-backup", async (e) => {
+      await restoreBackupById(e.detail.backupId);
+      dom.dataHubModal.close();
+    });
+
     dom.dataHubModal.addEventListener("backup-now", async () => {
-      // Step 2 백업 로직 (필요 시 구현)
-      if (dom.appHeader) dom.appHeader.updateStatus("success", "백업 기능은 곧 지원됩니다.");
+      await handleManualBackup();
     });
 
     dom.dataHubModal.addEventListener("export-json", () => {
@@ -186,7 +194,7 @@
     if (dom.loadStep1Data) dom.loadStep1Data.addEventListener("click", async () => { if (state.dirty && !confirm("현재 수정한 내용을 덮어쓸까요?")) return; await importLatestBridgeIntoDraft(); if (dom.bridgeBanner) dom.bridgeBanner.hidden = true; });
     if (dom.chartTabSummary) dom.chartTabSummary.addEventListener("click", () => { state.activeChartTab = "summary"; renderChartTabs(); renderCharts(); });
     if (dom.chartTabAccount) dom.chartTabAccount.addEventListener("click", () => { state.activeChartTab = "account"; renderChartTabs(); renderCharts(); });
-    if (dom.totalMonthlyInvestCapacity) dom.totalMonthlyInvestCapacity.addEventListener("input", () => { state.draft.totalMonthlyInvestCapacity = IsfUtils.sanitizeMoney(dom.totalMonthlyInvestCapacity.value); markDirty(); renderAccountSummary(); renderCharts(); });
+    if (dom.totalMonthlyInvestCapacity) dom.totalMonthlyInvestCapacity.addEventListener("input", () => { state.draft.totalMonthlyInvestCapacity = IsfUtils.toWon(dom.totalMonthlyInvestCapacity.value); markDirty(); renderAccountSummary(); renderCharts(); });
     if (dom.addAccount) dom.addAccount.addEventListener("click", () => { const acc = createDraftAccount({ name: `계좌 ${state.draft.accounts.length + 1}` }); state.draft.accounts.push(acc); state.activeAccountId = acc.id; markDirty(); renderDraft(); });
     if (dom.accountList) {
       dom.accountList.addEventListener("input", (e) => {
@@ -198,7 +206,7 @@
           const al = acc.allocations.find(i => i.id === allocRow.dataset.allocationId); if (!al) return;
           if (e.target.dataset.field === "label") al.label = e.target.value;
           if (e.target.dataset.field === "targetWeight") al.targetWeight = IsfUtils.sanitizeWeight(e.target.value);
-          if (e.target.dataset.field === "actualAmount") al.actualAmount = IsfUtils.sanitizeMoney(e.target.value);
+          if (e.target.dataset.field === "actualAmount") al.actualAmount = IsfUtils.toWon(e.target.value);
           if (e.target.dataset.field === "memo") al.memo = e.target.value;
         } else {
           if (e.target.dataset.field === "accountName") acc.name = e.target.value;
@@ -252,7 +260,7 @@
   function renderDraft() {
     if (dom.portfolioName) dom.portfolioName.value = state.draft.name;
     if (dom.portfolioNotes) dom.portfolioNotes.value = state.draft.notes;
-    if (dom.totalMonthlyInvestCapacity) dom.totalMonthlyInvestCapacity.value = state.draft.totalMonthlyInvestCapacity;
+    if (dom.totalMonthlyInvestCapacity) dom.totalMonthlyInvestCapacity.value = IsfUtils.toMan(state.draft.totalMonthlyInvestCapacity);
     renderChartTabs(); renderAccountList(); renderAccountSummary(); renderCharts();
   }
 
@@ -297,7 +305,7 @@
                 <button class="btn-toggle-star ${al.isImportant ? "is-active" : ""}" data-toggle-important="${al.id}">${al.isImportant ? "★" : "☆"}</button>
                 <input type="text" data-field="label" value="${IsfUtils.escapeHtml(al.label)}" placeholder="종목명" />
                 <input type="number" data-field="targetWeight" value="${al.targetWeight}" step="0.1" />
-                <input type="number" data-field="actualAmount" value="${al.actualAmount}" step="1" inputmode="decimal" />
+                <input type="number" data-field="actualAmount" value="${IsfUtils.toMan(al.actualAmount)}" step="1" inputmode="decimal" />
                 <button class="btn btn-ghost btn-sm" data-remove-allocation-id="${al.id}">삭제</button>
               </div>
             `).join("")}
@@ -350,8 +358,8 @@
     const res = await resolveLatestBridgePayload(hub);
     if (res.bridge?.payload) {
       const p = res.bridge.payload;
-      // 원 단위를 만원 단위로 변환하여 저장
-      state.draft.totalMonthlyInvestCapacity = Math.round(p.monthlyInvestCapacity / 10000);
+      // Step1에서 이미 원 단위로 넘어오므로 그대로 저장
+      state.draft.totalMonthlyInvestCapacity = Number(p.monthlyInvestCapacity) || 0;
       
       // Step 1의 투자 항목 연동 (계좌 매핑)
       if (Array.isArray(p.investItems) && p.investItems.length > 0) {
@@ -440,11 +448,21 @@
     const hub = getHubStorage();
     if (!hub) return;
     if (dom.appHeader) dom.appHeader.updateStatus("saving", "저장 중...");
-    hub.saveStep2Portfolio(toPortablePortfolio()).then(() => {
+    const data = toPortablePortfolio();
+    hub.saveStep2Portfolio(data).then(() => {
       markClean();
       refreshPortfolioList().then(() => {
         if (dom.dataHubModal) dom.dataHubModal.updatePortfolioList(state.portfolios);
       });
+      
+      void (async () => {
+        const res = await IsfBackupManager.maybeCreateAutoBackupIfDue(state.backupEntries, data, SHARE_STATE_KEY);
+        if (res.created) {
+          state.backupEntries = res.nextEntries;
+          syncBackupUi();
+        }
+      })();
+
       if (dom.appHeader) dom.appHeader.updateStatus("success", "브라우저에 저장됨");
     }).catch(() => {
       if (dom.appHeader) dom.appHeader.updateStatus("error", "저장 실패");
@@ -478,8 +496,68 @@
     const rows = await (hub?.listStep2Portfolios() || []);
     state.portfolios = rows || [];
   }
+
+  function initializeBackupStore() {
+    if (!IsfBackupManager.isIndexedDbAvailable()) return;
+    IsfBackupManager.loadBackupEntriesFromDb(SHARE_STATE_KEY).then(entries => {
+      state.backupStoreReady = true;
+      if (entries) { state.backupEntries = entries; syncBackupUi(); }
+    }).catch(() => { state.backupStoreReady = true; });
+  }
+
+  async function handleManualBackup() {
+    if (!state.backupStoreReady) return;
+    const res = await IsfBackupManager.createBackupEntry(state.backupEntries, state.draft, {
+      type: "manual", source: "normal", allowDuplicate: true,
+      replaceRecentManualWithinMs: MANUAL_BACKUP_WINDOW_MS, appKey: SHARE_STATE_KEY,
+      onRecentManualOverwriteConfirm: () => window.confirm("최근 1분 이내 수동 백업이 있습니다. 덮어쓸까요?")
+    });
+    if (res.created) {
+      state.backupEntries = res.nextEntries;
+      syncBackupUi();
+      if (dom.appHeader) dom.appHeader.updateStatus("success", "백업 저장됨");
+    }
+  }
+
+  async function restoreBackupById(id) {
+    const entry = state.backupEntries.find(e => e.id === id);
+    if (!entry || !window.confirm(`백업(${IsfUtils.formatTimestamp(entry.createdAt)})으로 복원할까요? 현재 상태는 자동 백업됩니다.`)) return;
+    await handleManualBackup();
+    const norm = normalizeLoadedPortfolio(entry.data);
+    state.draft = norm.draft;
+    state.currentPortfolioId = norm.id || "";
+    renderDraft();
+    markClean();
+  }
+
+  function syncBackupUi() { if (dom.dataHubModal) dom.dataHubModal.updateBackupList(state.backupEntries); }
+
   function toPortablePortfolio() { return { ...state.draft, id: state.currentPortfolioId }; }
-  function normalizeLoadedPortfolio(s) { return { draft: s, id: s.id }; }
+  function normalizeLoadedPortfolio(s) {
+    if (!s) return { draft: createEmptyDraft(), id: "" };
+    
+    // Migration to Won units (modelVersion < 10)
+    if (!s.modelVersion || s.modelVersion < 10) {
+      const migrated = { ...s, modelVersion: 10 };
+      if (typeof migrated.totalMonthlyInvestCapacity === "number") {
+        migrated.totalMonthlyInvestCapacity *= 10000;
+      }
+      if (Array.isArray(migrated.accounts)) {
+        migrated.accounts.forEach(acc => {
+          if (Array.isArray(acc.allocations)) {
+            acc.allocations.forEach(al => {
+              if (typeof al.actualAmount === "number") {
+                al.actualAmount *= 10000;
+              }
+            });
+          }
+        });
+      }
+      return { draft: migrated, id: s.id || "" };
+    }
+    
+    return { draft: s, id: s.id || "" };
+  }
   function resetDraft() { state.draft = createEmptyDraft(); state.currentPortfolioId = ""; renderDraft(); markClean(); }
 
   // --- Missing Utility Functions ---
@@ -546,7 +624,7 @@
   }
 
   function getTotalMonthlyInvestCapacity() {
-    return IsfUtils.toWon(IsfUtils.sanitizeMoney(state.draft?.totalMonthlyInvestCapacity, 0));
+    return IsfUtils.sanitizeMoney(state.draft?.totalMonthlyInvestCapacity, 0);
   }
 
   function formatCurrency(val) {
