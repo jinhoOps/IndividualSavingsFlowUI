@@ -191,7 +191,17 @@
   function bindEvents() {
     bindModalEvents();
     if (dom.dismissBridgeBanner) dom.dismissBridgeBanner.addEventListener("click", () => { if (dom.bridgeBanner) dom.bridgeBanner.hidden = true; });
-    if (dom.loadStep1Data) dom.loadStep1Data.addEventListener("click", async () => { if (state.dirty && !confirm("현재 수정한 내용을 덮어쓸까요?")) return; await importLatestBridgeIntoDraft(); if (dom.bridgeBanner) dom.bridgeBanner.hidden = true; });
+    if (dom.loadStep1Data) dom.loadStep1Data.addEventListener("click", async () => { 
+      if (state.dirty && !confirm("현재 수정한 내용을 덮어쓸까요?")) return; 
+      try {
+        await importLatestBridgeIntoDraft(); 
+      } catch (e) {
+        console.error(e);
+        showFeedback("데이터 가져오기 중 오류가 발생했습니다.", true);
+      } finally {
+        if (dom.bridgeBanner) dom.bridgeBanner.hidden = true; 
+      }
+    });
     if (dom.chartTabSummary) dom.chartTabSummary.addEventListener("click", () => { state.activeChartTab = "summary"; renderChartTabs(); renderCharts(); });
     if (dom.chartTabAccount) dom.chartTabAccount.addEventListener("click", () => { state.activeChartTab = "account"; renderChartTabs(); renderCharts(); });
     if (dom.totalMonthlyInvestCapacity) dom.totalMonthlyInvestCapacity.addEventListener("input", () => { state.draft.totalMonthlyInvestCapacity = IsfUtils.toWon(dom.totalMonthlyInvestCapacity.value); markDirty(); renderAccountSummary(); renderCharts(); });

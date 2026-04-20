@@ -59,6 +59,7 @@ export function sanitizeInputs(rawInputs) {
   const investItems = sanitizeInvestItems(raw.investItems, monthlyInvestFallback);
 
   return {
+    modelVersion: 10,
     incomes: sanitizeIncomeItems(raw.incomes, monthlyIncomeFallback),
     expenseItems,
     savingsItems,
