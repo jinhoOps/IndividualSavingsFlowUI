@@ -47,16 +47,8 @@
             >
               종합 도넛
             </button>
-            <button
-              id="chartTabAccount"
-              class="tab-btn"
-              type="button"
-              role="tab"
-              aria-selected="false"
-              aria-controls="accountChartPane"
-            >
-              계좌별 도넛
-            </button>
+            <button id="chartTabAccount" class="tab-btn" type="button" role="tab" aria-selected="false" aria-controls="accountChartPane">계좌별 도넛</button>
+            <button id="chartTabFlow" class="tab-btn" type="button" role="tab" aria-selected="false" aria-controls="flowChartPane">흐름 시각화 (Sankey)</button>
           </div>
         </div>
         <p id="chartMeta" class="muted">종합 도넛은 월 투자 가능 금액 기준 계좌/종목 비중으로 계산됩니다.</p>
@@ -72,6 +64,11 @@
 
         <div id="accountChartPane" class="chart-pane" data-chart-pane="account" hidden>
           <div id="accountChartCards" class="account-chart-cards" aria-live="polite"></div>
+        </div>
+        <div id="flowChartPane" class="chart-pane" data-chart-pane="flow" hidden>
+          <div class="chart-stage">
+            <svg id="flowSankey" viewBox="0 0 600 400" role="img" aria-label="투자 흐름 시각화"></svg>
+          </div>
         </div>
         <details class="amount-details">
           <summary>금액 보기</summary>
@@ -208,6 +205,7 @@
       <div id="applyFeedback" class="apply-feedback" hidden></div>
 
       <p id="step2Feedback" class="feedback" aria-live="polite" hidden></p>
+    </main>
     <!-- Shared Utilities & Components -->
     <script src="../../shared/core/utils.js"></script>
     <script src="../../shared/core/share-utils.js"></script>
@@ -217,6 +215,6 @@
     <script src="../../shared/pwa/pwa-manager.js"></script>
     
     <!-- App Logic -->
-    <script src="./app.js" defer></script>
+    <script src="./app.js" type="module"></script>
   </body>
 </html>
