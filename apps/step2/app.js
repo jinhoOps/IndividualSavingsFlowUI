@@ -125,8 +125,6 @@ async function checkReturningUser() {
     state.portfolios = rows || [];
     if (state.portfolios.length > 0 && !window.location.hash) {
       state.isReturningUser = true;
-      // state.isDashboardMode = true; // 대시보드 모드는 명시적 전환 시에만
-      // document.body.classList.add("is-dashboard-mode");
     }
   } catch (e) { console.error(e); }
 }

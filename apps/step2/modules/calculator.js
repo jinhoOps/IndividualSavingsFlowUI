@@ -84,7 +84,6 @@ export function calculateDividendProjection() {
 
   let principal = 0;
   let assetNominal = 0;
-  let currentYieldOnCost = initialYield;
   const results = [];
 
   for (let y = 1; y <= years; y++) {
@@ -96,17 +95,15 @@ export function calculateDividendProjection() {
     assetNominal *= (1 + cgr);
 
     // 3. 배당금 계산
-    // 배당금 = (자산 평가액) * (현재 배당 수익률)
-    // 배당 성장률(DGR)은 매년 배당수익률 자체를 높이는 효과 (단순화: 배당금 총액이 DGR만큼 성장)
-    // 실제로는 (주가 상승 + 배당 성장)이 결합됨.
-    // 여기서는 배당금 자체가 전년비 DGR만큼 성장하고, 신규 매수분은 initialYield를 따르는 것으로 모델링
-    const dividendNominal = assetNominal * initialYield * Math.pow(1 + dgr, y - 1);
+    // 배당 성장률(DGR)은 기존 배당금의 증가분으로 계산하고, 신규 투자분은 초기 수익률(initialYield)을 따르도록 모델링
+    const prevDiv = y > 1 ? results[y - 2].dividendNominal : 0;
+    const dividendNominal = (prevDiv * (1 + dgr)) + (yearlyContribution * (1 + cgr) * initialYield);
     const dividendAfterTax = dividendNominal * (1 - taxRate);
 
     // 4. 배당 재투자
     if (isDrip) {
       assetNominal += dividendAfterTax;
-      principal += dividendAfterTax; // 재투자된 배당금도 원금(투자금)으로 간주
+      // principal += dividendAfterTax; // 재투자된 배당금은 원금 합산에서 제외 (수익률 측정 정확도 향상)
     }
 
     // 5. 실질 가치 계산 (인플레이션 반영)

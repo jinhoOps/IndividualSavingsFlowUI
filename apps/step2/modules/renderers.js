@@ -194,7 +194,12 @@ export function renderSankey() {
   const col1 = margin; const col2 = width / 2 - nodeW / 2; const col3 = width - margin - nodeW;
 
   // 1. Source Node (Total Capacity)
-  drawSankeyNode(svg, col1, height/2 - 20, nodeW, 40, "월 투자 여력", formatCurrency(total), "#ea5b2a");
+  const sourceNodeH = 40;
+  const sourceY = height / 2 - sourceNodeH / 2;
+  drawSankeyNode(svg, col1, sourceY, nodeW, sourceNodeH, "월 투자 여력", formatCurrency(total), "#ea5b2a");
+
+  // Source-to-Account Link Offset Tracker
+  let sourceLinkOffset = 0;
 
   // 2. Account Nodes
   let accY = margin;
@@ -204,9 +209,14 @@ export function renderSankey() {
     const nodeH = Math.max(30, (amt / total) * (height - 2*margin));
     drawSankeyNode(svg, col2, accY, nodeW, nodeH, acc.name, formatCurrency(amt), "#4dabf7");
     
-    // Link from Source to Account
-    drawSankeyLink(svg, col1 + nodeW, height/2, col2, accY + nodeH/2, nodeH * 0.8, "rgba(77, 171, 247, 0.2)");
+    // Link from Source to Account (Distributed start Y)
+    const sLinkThickness = nodeH * 0.8;
+    drawSankeyLink(svg, col1 + nodeW, sourceY + sourceLinkOffset + sLinkThickness / 2 + 2, col2, accY + nodeH / 2, sLinkThickness, "rgba(77, 171, 247, 0.2)");
+    sourceLinkOffset += (nodeH / (height - 2 * margin)) * sourceNodeH; 
     
+    // Account-to-Product Link Offset Tracker
+    let accLinkOffset = 0;
+
     // 3. Product Nodes (Nested)
     let prodY = accY;
     acc.allocations.forEach(al => {
@@ -215,8 +225,12 @@ export function renderSankey() {
       const pNodeH = Math.max(20, (pAmt / total) * (height - 2*margin));
       drawSankeyNode(svg, col3, prodY, nodeW, pNodeH, al.label, formatCurrency(pAmt), getAssetColor(al.label));
       
-      // Link from Account to Product
-      drawSankeyLink(svg, col2 + nodeW, accY + nodeH/2, col3, prodY + pNodeH/2, pNodeH * 0.8, "rgba(0,0,0,0.05)");
+      // Link from Account to Product (Distributed start Y)
+      const pLinkThickness = pNodeH * 0.8;
+      const startY = accY + accLinkOffset + pLinkThickness / 2 + 2;
+      drawSankeyLink(svg, col2 + nodeW, startY, col3, prodY + pNodeH / 2, pLinkThickness, "rgba(0,0,0,0.05)");
+      
+      accLinkOffset += (pAmt / amt) * nodeH;
       prodY += pNodeH + 10;
     });
 
