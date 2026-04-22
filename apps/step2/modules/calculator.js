@@ -2,6 +2,7 @@
  * Step 2 Business Logic & Calculations
  */
 import { state } from "./state.js";
+import { DEFAULT_INFLATION_RATE, DEFAULT_TAX_RATE } from "./constants.js";
 
 /**
  * Gets total allocation weight for an account
@@ -37,8 +38,8 @@ export function getAutoCashAmount() {
  * Gets the total monthly investment capacity in Won
  */
 export function getTotalMonthlyInvestCapacity() {
-  const utils = window.IsfUtils || { sanitizeMoney: (v, def) => v || def };
-  return utils.sanitizeMoney(state.draft?.totalMonthlyInvestCapacity, 0);
+  const utils = window.IsfUtils;
+  return utils ? utils.sanitizeMoney(state.draft?.totalMonthlyInvestCapacity, 0) : (state.draft?.totalMonthlyInvestCapacity || 0);
 }
 
 /**
@@ -78,8 +79,8 @@ export function calculateDividendProjection() {
   const cgr = (parseFloat(sim.capitalGrowth) || 4.0) / 100;
   const monthlyContribution = getTotalMonthlyInvestCapacity();
   const yearlyContribution = monthlyContribution * 12;
-  const taxRate = 0.154;
-  const inflationRate = 0.02; // 실질 가치 계산을 위한 고정 인플레이션
+  const taxRate = DEFAULT_TAX_RATE;
+  const inflationRate = DEFAULT_INFLATION_RATE;
 
   let principal = 0;
   let assetPR = 0;

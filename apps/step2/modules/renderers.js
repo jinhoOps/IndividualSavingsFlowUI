@@ -212,7 +212,7 @@ export function renderSankey() {
     // Link from Source to Account (Distributed start Y)
     const sLinkThickness = nodeH * 0.8;
     drawSankeyLink(svg, col1 + nodeW, sourceY + sourceLinkOffset + sLinkThickness / 2 + 2, col2, accY + nodeH / 2, sLinkThickness, "rgba(77, 171, 247, 0.2)");
-    sourceLinkOffset += (nodeH / (height - 2 * margin)) * sourceNodeH; 
+    sourceLinkOffset += (amt / (total || 1)) * sourceNodeH; 
     
     // Account-to-Product Link Offset Tracker
     let accLinkOffset = 0;
@@ -230,7 +230,7 @@ export function renderSankey() {
       const startY = accY + accLinkOffset + pLinkThickness / 2 + 2;
       drawSankeyLink(svg, col2 + nodeW, startY, col3, prodY + pNodeH / 2, pLinkThickness, "rgba(0,0,0,0.05)");
       
-      accLinkOffset += (pAmt / amt) * nodeH;
+      accLinkOffset += (pAmt / (amt || 1)) * nodeH;
       prodY += pNodeH + 10;
     });
 

@@ -9,6 +9,7 @@ export const SHARE_STATE_SCHEMA = 2;
 export const HASH_STATE_PARAM = "s";
 export const MAX_FINANCIAL_INCOME = 20000000;
 export const DEFAULT_TAX_RATE = 0.154;
+export const DEFAULT_INFLATION_RATE = 0.02;
 export const MANUAL_BACKUP_WINDOW_MS = 60 * 1000;
 export const TEMP_STORAGE_KEY = "isf-step2-draft-tmp";
 
