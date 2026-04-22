@@ -1,6 +1,32 @@
 
 # Project Evolution Log (연대기적 작업 로그)
 
+## [2026-04-21] release | Minor Up: Step 2 리팩터링 및 Sankey/배당 시뮬레이션 고도화 (v0.6.0)
+- **목적**: Step 2의 대규모 기능 고도화 및 아키텍처 개선 완료에 따른 Minor 버전 업그레이드 및 전역 동기화.
+- **조치**: 
+    - **Triple Sync 실행**: `manifest.webmanifest`, `sw.js`, `apps/step1/app.js`, `apps/step2/app.js`의 버전을 **0.6.0**으로 일관되게 업데이트.
+    - **문서 동기화**: `TODO.md` 및 주요 지식 노드의 버전 마커를 0.6.0으로 갱신하여 관리 체계 일원화.
+- **결과**: PWA 환경에서의 강제 업데이트 유도 및 신규 기능(Sankey, 고성능 배당 엔진)의 공식 릴리스 준비 완료.
+
+## [2026-04-21] ingest | 지식 위생 관리(Wiki Hygiene) 및 위키 정기 정화
+- **목적**: v0.5 리팩토링 이후 혼재된 과거 계획(Plan)과 현재 진실(SSOT) 간의 충돌 제거 및 지식 엔트로피 감소.
+- **조치**: 
+    - **스킬 강화**: `wiki-librarian` 스킬에 '지식 위생 관리' 원칙 명문화.
+    - **아카이브 실행**: `Plan_Step1/2`, `UI_UX_Overhaul_v0.3/4` 노드에 `[ARCHIVED]` 배너 추가 및 최신 문서 링크 연결.
+    - **지식 보강**: `Step2_Modularization_Refactoring` 노드 신규 생성 및 `Architecture_Reference` 최신화.
+    - **인덱스 재편**: `INDEX.md`를 '현행 설계'와 '과거 기록' 섹션으로 이원화하여 에이전트 오작동 방지.
+    - **이력 슬림화**: `Project_History` 상세 내역을 `log.md`로 일원화.
+- **결과**: 에이전트의 컨텍스트 로딩 정확도 향상 및 지식 베이스의 SSOT(Single Source of Truth) 신뢰도 회복.
+
+## [2026-04-21] feature | Step 2 모듈화 및 고성능 배당 시뮬레이션 엔진 도입 (v0.5.12)
+- **목적**: Step 2 포트폴리오 관리 시스템의 모듈화 리팩터링 완료 및 투자 고도화를 위한 시뮬레이션 엔진(DRIP/성장률) 및 Sankey 흐름 시각화 통합.
+- **주요 변경사항**:
+    - **7개 전문 모듈 분리**: `apps/step2/modules/` (constants, dom, state, calculator, renderers, bridge, storage-handler) 체계 구축.
+    - **배당 시뮬레이션 고도화**: 배당 성장률(DGR), 자본 성장률(CGR), 배당 재투자(DRIP), 인플레이션 반영 실질 가치 연산 엔진 탑재.
+    - **Sankey 흐름도 추가**: `월 투자 여력 -> 계좌 -> 종목`으로 이어지는 자금 흐름 시뮬레이션 탭 구현.
+    - **PWA 동기화**: `sw.js` 및 `manifest.webmanifest` 버전을 0.5.12로 업데이트하고 모듈 파일들에 대한 오프라인 캐싱 지원.
+- **결과**: Step 2의 아키텍처 결함 해결 및 포트폴리오 관리 도구로서의 기능적 완성도 대폭 향상.
+
 ## [2026-04-21] fix | Step 1 단위 중복 계산 및 Step 2 브리지 배너 표시 오류 해결 (v0.5.11)
 - **원인**: 
     - **단위 중복 계산**: `sanitizeInputs` 함수에서 반환되는 객체에 `modelVersion: 10` 속성이 누락되어, 후속 입력이나 저장 시 `migrateInputsToWon` 로직이 데이터를 레거시(만원 단위)로 오인하여 매번 10,000배씩 중복 계산하는 버그 발생.

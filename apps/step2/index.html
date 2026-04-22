@@ -47,16 +47,8 @@
             >
               종합 도넛
             </button>
-            <button
-              id="chartTabAccount"
-              class="tab-btn"
-              type="button"
-              role="tab"
-              aria-selected="false"
-              aria-controls="accountChartPane"
-            >
-              계좌별 도넛
-            </button>
+            <button id="chartTabAccount" class="tab-btn" type="button" role="tab" aria-selected="false" aria-controls="accountChartPane">계좌별 도넛</button>
+            <button id="chartTabFlow" class="tab-btn" type="button" role="tab" aria-selected="false" aria-controls="flowChartPane">흐름 시각화 (Sankey)</button>
           </div>
         </div>
         <p id="chartMeta" class="muted">종합 도넛은 월 투자 가능 금액 기준 계좌/종목 비중으로 계산됩니다.</p>
@@ -72,6 +64,11 @@
 
         <div id="accountChartPane" class="chart-pane" data-chart-pane="account" hidden>
           <div id="accountChartCards" class="account-chart-cards" aria-live="polite"></div>
+        </div>
+        <div id="flowChartPane" class="chart-pane" data-chart-pane="flow" hidden>
+          <div class="chart-stage">
+            <svg id="flowSankey" viewBox="0 0 600 400" role="img" aria-label="투자 흐름 시각화"></svg>
+          </div>
         </div>
         <details class="amount-details">
           <summary>금액 보기</summary>
@@ -175,11 +172,14 @@
                 <tr>
                   <th rowspan="2">연차</th>
                   <th rowspan="2">누적 원금</th>
-                  <th colspan="2" style="text-align: center;">자산 평가액</th>
-                  <th colspan="2" style="text-align: center;">연 배당금(세후)</th>
-                  <th colspan="2" style="text-align: center;">월평균 배당금</th>
+                  <th colspan="2" style="text-align: center;">자산(PR:차익)</th>
+                  <th colspan="2" style="text-align: center;">자산(TR:재투자)</th>
+                  <th colspan="2" style="text-align: center;">연 배당(PR)</th>
+                  <th colspan="2" style="text-align: center;">연 배당(TR)</th>
                 </tr>
                 <tr>
+                  <th>명목</th>
+                  <th>실질</th>
                   <th>명목</th>
                   <th>실질</th>
                   <th>명목</th>
@@ -208,6 +208,7 @@
       <div id="applyFeedback" class="apply-feedback" hidden></div>
 
       <p id="step2Feedback" class="feedback" aria-live="polite" hidden></p>
+    </main>
     <!-- Shared Utilities & Components -->
     <script src="../../shared/core/utils.js"></script>
     <script src="../../shared/core/share-utils.js"></script>
@@ -217,6 +218,6 @@
     <script src="../../shared/pwa/pwa-manager.js"></script>
     
     <!-- App Logic -->
-    <script src="./app.js" defer></script>
+    <script src="./app.js" type="module"></script>
   </body>
 </html>

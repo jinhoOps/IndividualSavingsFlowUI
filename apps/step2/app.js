@@ -1,676 +1,395 @@
-(function initStep2PortfolioMvpV2() {
-  "use strict";
+/**
+ * ISF Step 2: Investment Portfolio Controller
+ * (Refactored to ES6 Modules v0.5.12)
+ */
 
-  const MODEL_VERSION = 10;
-  const UNALLOCATED_ASSET_KEY = "__unallocated__";
-  const STEP1_LOCAL_STORAGE_KEY = "isf-rebuild-v1";
-  const SHARE_STATE_KEY = "my-portfolio-flow";
-  const SHARE_STATE_SCHEMA = 2;
-  const HASH_STATE_PARAM = "s";
-  const MAX_FINANCIAL_INCOME = 20000000;
-  const DEFAULT_TAX_RATE = 0.154;
-  const MANUAL_BACKUP_WINDOW_MS = 60 * 1000;
+import { state, createEmptyDraft, markDirty, markClean, getHubStorage, createDraftAccount, createDraftAllocation } from "./modules/state.js";
+import { dom, initDom } from "./modules/dom.js";
+import { 
+  SHARE_STATE_KEY, 
+  SHARE_STATE_SCHEMA, 
+  HASH_STATE_PARAM, 
+  TEMP_STORAGE_KEY 
+} from "./modules/constants.js";
+import { 
+  renderDraft, 
+  renderChartTabs, 
+  renderCharts, 
+  renderAccountList, 
+  renderAccountSummary,
+  renderDividendSimulation
+} from "./modules/renderers.js";
+import { checkBridgeData, importLatestBridgeIntoDraft } from "./modules/bridge.js";
+import { 
+  saveCurrentPortfolio, 
+  loadPortfolioById, 
+  deletePortfolioById, 
+  refreshPortfolioList, 
+  handleManualBackup, 
+  restoreBackupById, 
+  normalizeLoadedPortfolio,
+  toPortablePortfolio,
+  resetDraft,
+  syncBackupUi
+} from "./modules/storage-handler.js";
+import { getAccountById } from "./modules/calculator.js";
+import { utils } from "./modules/utils.js";
 
-  const DEFAULT_ACCOUNT_TEMPLATES = [
-    { name: "국내주식", accountWeight: 34, allocations: [{ key: "kr-samsung", label: "삼성전자", targetWeight: 40 }, { key: "kr-sk-hynix", label: "SK하이닉스", targetWeight: 35 }, { key: "kr-hyundai", label: "현대차", targetWeight: 25 }] },
-    { name: "ISA", accountWeight: 33, allocations: [{ key: "fund-kospi", label: "코스피", targetWeight: 30 }, { key: "fund-nasdaq100", label: "나스닥100", targetWeight: 40 }, { key: "fund-dow-dividend", label: "미국배당다우존스", targetWeight: 30 }] },
-    { name: "해외주식", accountWeight: 33, allocations: [{ key: "us-nasdaq100", label: "나스닥100", targetWeight: 60 }, { key: "us-tesla", label: "Tesla", targetWeight: 20 }, { key: "us-amd", label: "AMD", targetWeight: 20 }] }
-  ];
+// Initialize
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initApp);
+} else {
+  initApp();
+}
 
-  const FALLBACK_ALLOCATIONS = [{ key: "domestic-stock", label: "국내주식", targetWeight: 35 }, { key: "global-stock", label: "해외주식", targetWeight: 35 }, { key: "bond", label: "채권", targetWeight: 20 }, { key: "cash-like", label: "현금성", targetWeight: 10 }];
-  const ASSET_COLORS = ["#ea5b2a", "#1e8b7c", "#3175b6", "#d97706", "#7c3aed", "#e11d48", "#0f766e", "#64748b"];
-
-  const dom = {
-    appHeader: document.querySelector("app-header"),
-    dataHubModal: document.querySelector("data-hub-modal"),
-    bridgeBanner: document.getElementById("bridgeBanner"),
-    dismissBridgeBanner: document.getElementById("dismissBridgeBanner"),
-    loadStep1Data: document.getElementById("loadStep1Data"),
-    bridgeTimestamp: document.getElementById("bridgeTimestamp"),
-    bridgeMonthlyInvestCapacity: document.getElementById("bridgeMonthlyInvestCapacity"),
-    chartMeta: document.getElementById("chartMeta"),
-    chartTabSummary: document.getElementById("chartTabSummary"),
-    chartTabAccount: document.getElementById("chartTabAccount"),
-    summaryChartPane: document.getElementById("summaryChartPane"),
-    accountChartPane: document.getElementById("accountChartPane"),
-    summaryDonut: document.getElementById("summaryDonut"),
-    accountChartCards: document.getElementById("accountChartCards"),
-    amountBreakdown: document.getElementById("amountBreakdown"),
-    portfolioName: document.getElementById("portfolioName"),
-    portfolioNotes: document.getElementById("portfolioNotes"),
-    totalMonthlyInvestCapacity: document.getElementById("totalMonthlyInvestCapacity"),
-    addAccount: document.getElementById("addAccount"),
-    accountList: document.getElementById("accountList"),
-    accountSummary: document.getElementById("accountSummary"),
-    savePortfolio: document.getElementById("savePortfolio"),
-    resetPortfolio: document.getElementById("resetPortfolio"),
-    pendingBar: document.getElementById("pendingBar"),
-    pendingSummary: document.getElementById("pendingSummary"),
-    applyChanges: document.getElementById("applyChanges"),
-    cancelChanges: document.getElementById("cancelChanges"),
-    applyFeedback: document.getElementById("applyFeedback"),
-    toggleSimInputs: document.getElementById("toggleSimInputs"),
-    simInputsContainer: document.getElementById("simInputsContainer"),
-    simDividendYield: document.getElementById("simDividendYield"),
-    simDividendGrowth: document.getElementById("simDividendGrowth"),
-    simCapitalGrowth: document.getElementById("simCapitalGrowth"),
-    simHorizonYears: document.getElementById("simHorizonYears"),
-    simDrip: document.getElementById("simDrip"),
-    simChartSvg: document.getElementById("simChartSvg"),
-    simChartTooltip: document.getElementById("simChartTooltip"),
-    simTable: document.querySelector("#simTable tbody"),
-    simYearsTabs: document.getElementById("simYearsTabs"),
-  };
-
-  const state = { 
-    portfolios: [], 
-    currentPortfolioId: "", 
-    draft: null, 
-    activeAccountId: "", 
-    activeChartTab: "summary", 
-    dirty: false,
-    isDashboardMode: false,
-    isReturningUser: false,
-    backupEntries: [],
-    backupStoreReady: false
-  };
-  const colorCache = new Map();
-  const TEMP_STORAGE_KEY = "isf-step2-draft-tmp";
-
-  document.addEventListener("DOMContentLoaded", () => {
+async function initApp() {
+  try {
+    console.log("initApp: Starting initialization...");
+    initDom();
+    
     state.draft = createEmptyDraft();
     const hash = window.location.hash;
 
+    // 1. 세션 복구 및 공유 데이터 로드
     const savedTmp = sessionStorage.getItem(TEMP_STORAGE_KEY);
     if (savedTmp && !hash) {
       try {
         const parsed = JSON.parse(savedTmp);
         if (parsed?.draft) {
-          state.draft = parsed.draft; state.currentPortfolioId = parsed.currentPortfolioId || "";
-          state.activeAccountId = parsed.activeAccountId || ""; state.dirty = true;
-          IsfFeedback.markPendingBar(dom.pendingBar, dom.pendingSummary, true);
+          state.draft = parsed.draft; 
+          state.currentPortfolioId = parsed.currentPortfolioId || "";
+          state.activeAccountId = parsed.activeAccountId || ""; 
+          state.dirty = true;
+          console.log("initApp: Session restored.");
         }
-      } catch (e) { console.error(e); }
+      } catch (e) { console.warn("Session restore failed:", e); }
     } else if (hash) {
       try {
-        const payload = IsfShare.decodePayloadFromHash(new URLSearchParams(hash.replace(/^#/, "")).get(HASH_STATE_PARAM), SHARE_STATE_KEY);
-        if (payload) { const norm = normalizeLoadedPortfolio(payload); state.draft = norm.draft; state.currentPortfolioId = norm.id || ""; }
-      } catch (_e) { showFeedback("복원 실패", true); }
+        const payload = IsfShare.decodePayloadFromHash(
+          new URLSearchParams(hash.replace(/^#/, "")).get(HASH_STATE_PARAM), 
+          SHARE_STATE_KEY
+        );
+        if (payload) { 
+          const norm = normalizeLoadedPortfolio(payload); 
+          state.draft = norm.draft; 
+          state.currentPortfolioId = norm.id || ""; 
+          console.log("initApp: Hash payload loaded.");
+        }
+      } catch (_e) { 
+        console.error("Hash decode failed");
+        IsfFeedback.showFeedback(dom.applyFeedback, "복원 실패", true); 
+      }
     }
     
+    // 2. 이벤트 바인딩
     bindEvents(); 
-    checkReturningUser().then(() => {
-      renderDraft(); 
-      checkBridgeData();
-    });
-    initializeBackupStore();
+    
+    // 3. UI 초기 렌더링
+    renderDraft(); 
+    if (state.dirty && dom.pendingBar) {
+      IsfFeedback.markPendingBar(dom.pendingBar, dom.pendingSummary, true);
+    }
 
-    new IsfPwaManager({
-      appVersion: "0.5.9", appKey: SHARE_STATE_KEY,
-      onFeedback: (msg) => IsfFeedback.showFeedback(dom.applyFeedback, msg),
-      getCurrentData: () => state.draft,
-    }).init();
+    // 4. 비동기 데이터 로드 (에러가 나도 나머지는 작동하게)
+    try {
+      await checkReturningUser();
+      await checkBridgeData();
+      initializeBackupStore();
+    } catch (e) {
+      console.error("Async data initialization failed:", e);
+    }
+    
+    // 5. PWA 관리자 시작
+    try {
+      const pwa = new IsfPwaManager({
+        appVersion: "0.5.12", 
+        appKey: SHARE_STATE_KEY,
+        onFeedback: (msg) => IsfFeedback.showFeedback(dom.applyFeedback, msg),
+        getCurrentData: () => state.draft,
+      });
+      pwa.init();
+    } catch (e) {
+      console.error("PWA initialization failed:", e);
+    }
+    
+    console.log("initApp: Initialization finished.");
+  } catch (err) {
+    console.error("CRITICAL: initApp failed:", err);
+  }
+}
+
+async function checkReturningUser() {
+  const hub = getHubStorage();
+  if (!hub) return;
+  try {
+    const rows = await hub.listStep2Portfolios();
+    state.portfolios = rows || [];
+    if (state.portfolios.length > 0 && !window.location.hash) {
+      state.isReturningUser = true;
+      state.isDashboardMode = true;
+      document.body.classList.add("is-dashboard-mode");
+    }
+  } catch (e) { console.error(e); }
+}
+
+function bindModalEvents() {
+  if (!dom.appHeader || !dom.dataHubModal) return;
+
+  dom.appHeader.addEventListener("open-data-hub", async () => {
+    await refreshPortfolioList();
+    dom.dataHubModal.updatePortfolioList(state.portfolios);
+    dom.dataHubModal.updateBackupList(state.backupEntries || []);
+    dom.dataHubModal.open();
   });
 
-  async function checkReturningUser() {
-    const hub = getHubStorage();
-    if (!hub) return;
-    try {
-      const rows = await hub.listStep2Portfolios();
-      state.portfolios = rows || [];
-      if (state.portfolios.length > 0 && !window.location.hash) {
-        state.isReturningUser = true;
-        state.isDashboardMode = true;
-        document.body.classList.add("is-dashboard-mode");
-      }
-    } catch (e) { console.error(e); }
-  }
+  dom.dataHubModal.addEventListener("select-portfolio", async (e) => {
+    await loadPortfolioById(e.detail.id);
+    dom.dataHubModal.close();
+  });
 
-  async function checkBridgeData() {
-    const hub = getHubStorage();
-    const res = await resolveLatestBridgePayload(hub);
-    const p = res.bridge?.payload;
-    if (p && p.monthlyInvestCapacity !== state.draft.totalMonthlyInvestCapacity) {
-      if (dom.bridgeBanner) {
-        dom.bridgeBanner.hidden = false;
-        if (dom.bridgeTimestamp) dom.bridgeTimestamp.textContent = formatDateTime(p.timestamp);
-        if (dom.bridgeMonthlyInvestCapacity) dom.bridgeMonthlyInvestCapacity.textContent = formatCurrency(p.monthlyInvestCapacity);
-      }
-    }
-  }
-
-  function bindModalEvents() {
-    if (!dom.appHeader || !dom.dataHubModal) return;
-
-    dom.appHeader.addEventListener("open-data-hub", async () => {
-      await refreshPortfolioList();
+  dom.dataHubModal.addEventListener("delete-portfolio", async (e) => {
+    if (confirm("정말 삭제하시겠습니까?")) {
+      await deletePortfolioById(e.detail.id);
       dom.dataHubModal.updatePortfolioList(state.portfolios);
-      dom.dataHubModal.updateBackupList(state.backupEntries || []);
-      dom.dataHubModal.open();
-    });
+    }
+  });
 
-    dom.dataHubModal.addEventListener("select-portfolio", async (e) => {
-      await loadPortfolioById(e.detail.id);
-      dom.dataHubModal.close();
-    });
+  dom.dataHubModal.addEventListener("restore-backup", async (e) => {
+    await restoreBackupById(e.detail.backupId);
+    dom.dataHubModal.close();
+  });
 
-    dom.dataHubModal.addEventListener("delete-portfolio", async (e) => {
-      if (confirm("정말 삭제하시겠습니까?")) {
-        await deletePortfolioById(e.detail.id);
-        dom.dataHubModal.updatePortfolioList(state.portfolios);
-      }
-    });
+  dom.dataHubModal.addEventListener("backup-now", async () => {
+    await handleManualBackup();
+  });
 
-    dom.dataHubModal.addEventListener("restore-backup", async (e) => {
-      await restoreBackupById(e.detail.backupId);
-      dom.dataHubModal.close();
-    });
+  dom.dataHubModal.addEventListener("export-json", () => {
+    IsfShare.exportAsJson(IsfShare.buildStateEnvelope(SHARE_STATE_KEY, SHARE_STATE_SCHEMA, toPortablePortfolio()), "portfolio");
+    if (dom.appHeader) dom.appHeader.updateStatus("success", "JSON 저장 완료");
+  });
 
-    dom.dataHubModal.addEventListener("backup-now", async () => {
-      await handleManualBackup();
-    });
+  dom.dataHubModal.addEventListener("copy-share-link", async () => {
+    const enc = IsfShare.encodePayloadForHash(IsfShare.buildStateEnvelope(SHARE_STATE_KEY, SHARE_STATE_SCHEMA, toPortablePortfolio()));
+    const url = new URL(window.location.href);
+    url.hash = `${HASH_STATE_PARAM}=${enc}`;
+    try {
+      await navigator.clipboard.writeText(url.toString());
+      if (dom.appHeader) dom.appHeader.updateStatus("success", "공유 링크 복사됨");
+    } catch (e) {
+      window.prompt("링크를 복사하세요:", url.toString());
+    }
+  });
+}
 
-    dom.dataHubModal.addEventListener("export-json", () => {
-      IsfShare.exportAsJson(IsfShare.buildStateEnvelope(SHARE_STATE_KEY, SHARE_STATE_SCHEMA, toPortablePortfolio()), "portfolio");
-      if (dom.appHeader) dom.appHeader.updateStatus("success", "JSON 저장 완료");
-    });
-
-    dom.dataHubModal.addEventListener("copy-share-link", async () => {
-      const enc = IsfShare.encodePayloadForHash(IsfShare.buildStateEnvelope(SHARE_STATE_KEY, SHARE_STATE_SCHEMA, toPortablePortfolio()));
-      const url = new URL(window.location.href);
-      url.hash = `${HASH_STATE_PARAM}=${enc}`;
-      try {
-        await navigator.clipboard.writeText(url.toString());
-        if (dom.appHeader) dom.appHeader.updateStatus("success", "공유 링크 복사됨");
-      } catch (e) {
-        window.prompt("링크를 복사하세요:", url.toString());
-      }
+function bindEvents() {
+  bindModalEvents();
+  
+  if (dom.dismissBridgeBanner) {
+    dom.dismissBridgeBanner.addEventListener("click", () => { 
+      if (dom.bridgeBanner) dom.bridgeBanner.hidden = true; 
     });
   }
-
-  function bindEvents() {
-    bindModalEvents();
-    if (dom.dismissBridgeBanner) dom.dismissBridgeBanner.addEventListener("click", () => { if (dom.bridgeBanner) dom.bridgeBanner.hidden = true; });
-    if (dom.loadStep1Data) dom.loadStep1Data.addEventListener("click", async () => { 
+  
+  if (dom.loadStep1Data) {
+    dom.loadStep1Data.addEventListener("click", async () => { 
       if (state.dirty && !confirm("현재 수정한 내용을 덮어쓸까요?")) return; 
       try {
         await importLatestBridgeIntoDraft(); 
       } catch (e) {
         console.error(e);
-        showFeedback("데이터 가져오기 중 오류가 발생했습니다.", true);
+        IsfFeedback.showFeedback(dom.applyFeedback, "데이터 가져오기 중 오류가 발생했습니다.", true);
       } finally {
         if (dom.bridgeBanner) dom.bridgeBanner.hidden = true; 
       }
     });
-    if (dom.chartTabSummary) dom.chartTabSummary.addEventListener("click", () => { state.activeChartTab = "summary"; renderChartTabs(); renderCharts(); });
-    if (dom.chartTabAccount) dom.chartTabAccount.addEventListener("click", () => { state.activeChartTab = "account"; renderChartTabs(); renderCharts(); });
-    if (dom.totalMonthlyInvestCapacity) dom.totalMonthlyInvestCapacity.addEventListener("input", () => { state.draft.totalMonthlyInvestCapacity = IsfUtils.toWon(dom.totalMonthlyInvestCapacity.value); markDirty(); renderAccountSummary(); renderCharts(); });
-    if (dom.addAccount) dom.addAccount.addEventListener("click", () => { const acc = createDraftAccount({ name: `계좌 ${state.draft.accounts.length + 1}` }); state.draft.accounts.push(acc); state.activeAccountId = acc.id; markDirty(); renderDraft(); });
-    if (dom.accountList) {
-      dom.accountList.addEventListener("input", (e) => {
-        const accRow = e.target.closest("[data-account-id]");
-        const allocRow = e.target.closest("[data-allocation-id]");
-        const acc = getAccountById(accRow?.dataset.accountId); if (!acc) return;
-
-        if (allocRow) {
-          const al = acc.allocations.find(i => i.id === allocRow.dataset.allocationId); if (!al) return;
-          if (e.target.dataset.field === "label") al.label = e.target.value;
-          if (e.target.dataset.field === "targetWeight") al.targetWeight = IsfUtils.sanitizeWeight(e.target.value);
-          if (e.target.dataset.field === "actualAmount") al.actualAmount = IsfUtils.toWon(e.target.value);
-          if (e.target.dataset.field === "memo") al.memo = e.target.value;
-        } else {
-          if (e.target.dataset.field === "accountName") acc.name = e.target.value;
-          if (e.target.dataset.field === "accountWeight") acc.accountWeight = IsfUtils.sanitizeWeight(e.target.value);
-        }
-        markDirty(); renderAccountSummary(); renderCharts();
-      });
-      dom.accountList.addEventListener("click", (e) => {
-        const accRow = e.target.closest("[data-account-id]");
-        const accId = accRow?.dataset.accountId;
-        
-        const selId = e.target.dataset.selectAccountId || e.target.closest(".account-row-head")?.dataset.selectAccountId;
-        if (selId) { state.activeAccountId = (state.activeAccountId === selId ? "" : selId); renderAccountList(); return; }
-        
-        const rid = e.target.dataset.removeAccountId;
-        if (rid && confirm("계좌를 삭제하시겠습니까?")) {
-          state.draft.accounts = state.draft.accounts.filter(a => a.id !== rid);
-          if (state.activeAccountId === rid) state.activeAccountId = "";
-          markDirty(); renderDraft();
-          return;
-        }
-
-        const addAlId = e.target.dataset.addAllocationId;
-        if (addAlId) {
-          const acc = getAccountById(addAlId);
-          if (acc) { acc.allocations.push(createDraftAllocation({ label: `종목 ${acc.allocations.length + 1}` })); markDirty(); renderAccountList(); renderCharts(); }
-          return;
-        }
-
-        const remAlId = e.target.dataset.removeAllocationId;
-        if (remAlId) {
-          const acc = getAccountById(accId);
-          if (acc && confirm("종목을 삭제하시겠습니까?")) { acc.allocations = acc.allocations.filter(a => a.id !== remAlId); markDirty(); renderAccountList(); renderCharts(); }
-          return;
-        }
-
-        const tid = e.target.dataset.toggleImportant || e.target.closest(".btn-toggle-star")?.dataset.toggleImportant;
-        if (tid) {
-          const acc = getAccountById(accId);
-          const al = acc?.allocations.find(i => i.id === tid);
-          if (al) { al.isImportant = !al.isImportant; markDirty(); renderAccountList(); renderCharts(); }
-          return;
-        }
-      });
-    }
-    if (dom.savePortfolio) dom.savePortfolio.addEventListener("click", saveCurrentPortfolio);
-    if (dom.applyChanges) dom.applyChanges.addEventListener("click", saveCurrentPortfolio);
-    if (dom.cancelChanges) dom.cancelChanges.addEventListener("click", async () => { if (state.currentPortfolioId) await loadPortfolioById(state.currentPortfolioId, { skipConfirm: true }); else resetDraft(); });
   }
-
-  function renderDraft() {
-    if (dom.portfolioName) dom.portfolioName.value = state.draft.name;
-    if (dom.portfolioNotes) dom.portfolioNotes.value = state.draft.notes;
-    if (dom.totalMonthlyInvestCapacity) dom.totalMonthlyInvestCapacity.value = IsfUtils.toMan(state.draft.totalMonthlyInvestCapacity);
-    renderChartTabs(); renderAccountList(); renderAccountSummary(); renderCharts();
+  
+  if (dom.chartTabSummary) {
+    dom.chartTabSummary.addEventListener("click", () => { 
+      state.activeChartTab = "summary"; 
+      renderChartTabs(); 
+      renderCharts(); 
+    });
   }
-
-  function renderChartTabs() {
-    const isSum = state.activeChartTab === "summary";
-    dom.chartTabSummary?.classList.toggle("is-active", isSum); dom.chartTabAccount?.classList.toggle("is-active", !isSum);
-    dom.summaryChartPane.hidden = !isSum; dom.accountChartPane.hidden = isSum;
+  
+  if (dom.chartTabAccount) {
+    dom.chartTabAccount.addEventListener("click", () => { 
+      state.activeChartTab = "account"; 
+      renderChartTabs(); 
+      renderCharts(); 
+    });
   }
-
-  function renderAccountList() {
-    dom.accountList.innerHTML = state.draft.accounts.map(a => {
-      const isActive = a.id === state.activeAccountId;
-      const totalAlWeight = getAllocationWeightTotal(a);
-      return `
-      <div class="account-card ${isActive ? "is-active" : ""}" data-account-id="${a.id}">
-        <div class="account-row-head" data-select-account-id="${a.id}">
-          <div class="account-info">
-            <input type="text" data-field="accountName" value="${IsfUtils.escapeHtml(a.name)}" placeholder="계좌명" onclick="event.stopPropagation()"/>
-            <div class="account-meta">
-              <input type="number" data-field="accountWeight" value="${a.accountWeight}" step="0.1" onclick="event.stopPropagation()"/>
-              <span class="unit">%</span>
-            </div>
-          </div>
-          <div class="account-actions">
-            <button class="btn btn-ghost btn-sm" data-remove-account-id="${a.id}" onclick="event.stopPropagation()">삭제</button>
-            <span class="chevron">${isActive ? "▲" : "▼"}</span>
-          </div>
-        </div>
-        
-        ${isActive ? `
-        <div class="allocation-editor">
-          <div class="allocation-table-head">
-            <span></span>
-            <span>종목명</span>
-            <span>목표(%)</span>
-            <span>현재액(만)</span>
-            <span></span>
-          </div>
-          <div class="allocation-list">
-            ${a.allocations.map(al => `
-              <div class="allocation-row ${al.isImportant ? "is-important" : ""}" data-allocation-id="${al.id}">
-                <button class="btn-toggle-star ${al.isImportant ? "is-active" : ""}" data-toggle-important="${al.id}">${al.isImportant ? "★" : "☆"}</button>
-                <input type="text" data-field="label" value="${IsfUtils.escapeHtml(al.label)}" placeholder="종목명" />
-                <input type="number" data-field="targetWeight" value="${al.targetWeight}" step="0.1" />
-                <input type="number" data-field="actualAmount" value="${IsfUtils.toMan(al.actualAmount)}" step="1" inputmode="decimal" />
-                <button class="btn btn-ghost btn-sm" data-remove-allocation-id="${al.id}">삭제</button>
-              </div>
-            `).join("")}
-          </div>
-          <div class="allocation-footer">
-            <span class="total ${totalAlWeight > 100.01 ? "is-error" : ""}">합계: ${totalAlWeight.toFixed(1)}%</span>
-            <button class="btn btn-ghost btn-sm" data-add-allocation-id="${a.id}">+ 종목 추가</button>
-          </div>
-        </div>
-        ` : ""}
-      </div>
-    `}).join("");
+  
+  if (dom.chartTabFlow) {
+    dom.chartTabFlow.addEventListener("click", () => { 
+      state.activeChartTab = "flow"; 
+      renderChartTabs(); 
+      renderCharts(); 
+    });
   }
-
-  function renderAccountSummary() { const total = getTotalAccountWeight(); dom.accountSummary.textContent = `전체 계좌 비중 합계: ${total.toFixed(2)}% / 자동 현금: ${formatCurrency(getAutoCashAmount())}`; dom.accountSummary.classList.toggle("is-error", total > 100.01); }
-
-  function renderCharts() { renderSummaryChart(); renderAccountChartCards(); renderAmountBreakdown(); renderDividendSimulation(); }
-  function renderSummaryChart() { const slices = buildSummarySlices(); renderDonutChart(dom.summaryDonut, slices, { centerValue: formatCurrency(getTotalMonthlyInvestCapacity()) }); }
-  function renderAccountChartCards() { dom.accountChartCards.innerHTML = state.draft.accounts.map(a => `<div class="account-chart-card ${a.id === state.activeAccountId ? "is-active" : ""}"><p>${a.name} (${a.accountWeight}%)</p><button class="btn btn-ghost btn-sm" data-select-account-id="${a.id}">선택</button></div>`).join(""); }
-  function renderAmountBreakdown() { 
-    const slices = buildSummarySlices(); 
-    dom.amountBreakdown.innerHTML = `<ul class="amount-breakdown-list">` + slices.map(s => `
-      <li class="amount-breakdown-row ${s.isImportant ? "is-important" : ""}">
-        <span class="amount-breakdown-label">${s.label}</span>
-        <span class="amount-breakdown-percent">${((s.value / getTotalMonthlyInvestCapacity()) * 100).toFixed(1)}%</span>
-        <strong class="amount-breakdown-value">${formatCurrency(s.value)}</strong>
-      </li>
-    `).join("") + `</ul>`; 
+  
+  if (dom.totalMonthlyInvestCapacity) {
+    dom.totalMonthlyInvestCapacity.addEventListener("input", () => { 
+      state.draft.totalMonthlyInvestCapacity = utils.toWon(dom.totalMonthlyInvestCapacity.value); 
+      markDirty(); 
+      renderAccountSummary(); 
+      renderCharts(); 
+    });
   }
-
-  async function refreshBridgeSummary() {
-    const hub = getHubStorage(); const bridgePanel = document.getElementById("bridgePanel");
-    try {
-      const res = await resolveLatestBridgePayload(hub); renderBridgeInfo(res.bridge);
-      const isEmpty = getTotalMonthlyInvestCapacity() === 0; if (bridgePanel) bridgePanel.hidden = !isEmpty || !res.bridge;
-    } catch (_e) { if (bridgePanel) bridgePanel.hidden = true; }
+  
+  if (dom.addAccount) {
+    dom.addAccount.addEventListener("click", () => { 
+      const acc = createDraftAccount({ name: `계좌 ${state.draft.accounts.length + 1}` }); 
+      state.draft.accounts.push(acc); 
+      state.activeAccountId = acc.id; 
+      markDirty(); 
+      renderDraft(); 
+    });
   }
+  
+  if (dom.accountList) {
+    dom.accountList.addEventListener("input", (e) => {
+      const accRow = e.target.closest("[data-account-id]");
+      const allocRow = e.target.closest("[data-allocation-id]");
+      const acc = getAccountById(accRow?.dataset.accountId); 
+      if (!acc) return;
 
-  function renderBridgeInfo(b) {
-    const p = b?.payload; if (dom.bridgeStatus) dom.bridgeStatus.textContent = "Step1 데이터 연결 대기";
-    if (dom.bridgeTimestamp) dom.bridgeTimestamp.textContent = p?.timestamp ? formatDateTime(p.timestamp) : "-";
-    if (dom.bridgeMonthlyInvestCapacity) dom.bridgeMonthlyInvestCapacity.textContent = formatCurrency(p?.monthlyInvestCapacity);
-    if (dom.bridgeCurrentCash) dom.bridgeCurrentCash.textContent = formatCurrency(p?.currentCash);
-    if (dom.bridgeCurrentInvest) dom.bridgeCurrentInvest.textContent = formatCurrency(p?.currentInvest);
-  }
-
-  async function resolveLatestBridgePayload(hub) { if (!hub) return { bridge: null }; try { const b = await hub.getLatestBridgeStep1ToStep2(); return b?.payload ? { bridge: b } : { bridge: null }; } catch (_e) { return { bridge: null }; } }
-  async function importLatestBridgeIntoDraft() {
-    const hub = getHubStorage();
-    const res = await resolveLatestBridgePayload(hub);
-    if (res.bridge?.payload) {
-      const p = res.bridge.payload;
-      // Step1에서 이미 원 단위로 넘어오므로 그대로 저장
-      state.draft.totalMonthlyInvestCapacity = Number(p.monthlyInvestCapacity) || 0;
+      if (allocRow) {
+        const al = acc.allocations.find(i => i.id === allocRow.dataset.allocationId); 
+        if (!al) return;
+        if (e.target.dataset.field === "label") al.label = e.target.value;
+        if (e.target.dataset.field === "targetWeight") al.targetWeight = utils.sanitizeWeight(e.target.value);
+        if (e.target.dataset.field === "actualAmount") al.actualAmount = utils.toWon(e.target.value);
+      } else {
+        if (e.target.dataset.field === "accountName") acc.name = e.target.value;
+        if (e.target.dataset.field === "accountWeight") acc.accountWeight = utils.sanitizeWeight(e.target.value);
+      }
+      markDirty(); 
+      renderAccountSummary(); 
+      renderCharts();
+    });
+    
+    dom.accountList.addEventListener("click", (e) => {
+      const accRow = e.target.closest("[data-account-id]");
+      const accId = accRow?.dataset.accountId;
       
-      // Step 1의 투자 항목 연동 (계좌 매핑)
-      if (Array.isArray(p.investItems) && p.investItems.length > 0) {
-        const totalInvestAmount = p.investItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
-        if (totalInvestAmount > 0) {
-          const nextAccounts = [...(state.draft.accounts || [])];
-          
-          p.investItems.forEach(item => {
-            const weight = Math.round(((Number(item.amount) || 0) / totalInvestAmount) * 1000) / 10;
-            const existing = nextAccounts.find(acc => acc.name === item.name);
-            
-            if (existing) {
-              existing.accountWeight = weight;
-            } else {
-              nextAccounts.push({
-                id: IsfUtils.createId("acc"),
-                name: item.name,
-                accountWeight: weight,
-                allocations: [],
-                isOpen: true
-              });
-            }
-          });
-          
-          state.draft.accounts = nextAccounts;
-        }
+      const selId = e.target.dataset.selectAccountId || e.target.closest(".account-row-head")?.dataset.selectAccountId;
+      if (selId) { 
+        state.activeAccountId = (state.activeAccountId === selId ? "" : selId); 
+        renderAccountList(); 
+        return; 
+      }
+      
+      const rid = e.target.dataset.removeAccountId;
+      if (rid && confirm("계좌를 삭제하시겠습니까?")) {
+        state.draft.accounts = state.draft.accounts.filter(a => a.id !== rid);
+        if (state.activeAccountId === rid) state.activeAccountId = "";
+        markDirty(); 
+        renderDraft();
+        return;
       }
 
-      renderDraft();
+      const addAlId = e.target.dataset.addAllocationId;
+      if (addAlId) {
+        const acc = getAccountById(addAlId);
+        if (acc) { 
+          acc.allocations.push(createDraftAllocation({ label: `종목 ${acc.allocations.length + 1}` })); 
+          markDirty(); 
+          renderAccountList(); 
+          renderCharts(); 
+        }
+        return;
+      }
+
+      const remAlId = e.target.dataset.removeAllocationId;
+      if (remAlId) {
+        const acc = getAccountById(accId);
+        if (acc && confirm("종목을 삭제하시겠습니까?")) { 
+          acc.allocations = acc.allocations.filter(a => a.id !== remAlId); 
+          markDirty(); 
+          renderAccountList(); 
+          renderCharts(); 
+        }
+        return;
+      }
+
+      const tid = e.target.dataset.toggleImportant || e.target.closest(".btn-toggle-star")?.dataset.toggleImportant;
+      if (tid) {
+        const acc = getAccountById(accId);
+        const al = acc?.allocations.find(i => i.id === tid);
+        if (al) { 
+          al.isImportant = !al.isImportant; 
+          markDirty(); 
+          renderAccountList(); 
+          renderCharts(); 
+        }
+        return;
+      }
+    });
+  }
+  
+  if (dom.savePortfolio) dom.savePortfolio.addEventListener("click", saveCurrentPortfolio);
+  if (dom.applyChanges) dom.applyChanges.addEventListener("click", saveCurrentPortfolio);
+  if (dom.cancelChanges) {
+    dom.cancelChanges.addEventListener("click", async () => { 
+      if (state.currentPortfolioId) await loadPortfolioById(state.currentPortfolioId, { skipConfirm: true }); 
+      else resetDraft(); 
+    });
+  }
+
+  // Simulation Events
+  if (dom.toggleSimInputs) {
+    dom.toggleSimInputs.addEventListener("click", () => {
+      dom.simInputsContainer.hidden = !dom.simInputsContainer.hidden;
+      dom.toggleSimInputs.textContent = dom.simInputsContainer.hidden ? "가정 설정" : "설정 닫기";
+    });
+  }
+
+  if (dom.simYearsTabs) {
+    dom.simYearsTabs.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-years]");
+      if (btn) {
+        const y = parseInt(btn.dataset.years);
+        if (state.draft.dividendSim) state.draft.dividendSim.years = y;
+        Array.from(dom.simYearsTabs.querySelectorAll(".tab-btn")).forEach(t => t.classList.toggle("is-active", t === btn));
+        renderDividendSimulation();
+      }
+    });
+  }
+
+  ["simDividendYield", "simDividendGrowth", "simCapitalGrowth", "simHorizonYears"].forEach(id => {
+    const el = dom[id];
+    if (el) {
+      el.addEventListener("input", () => {
+        if (!state.draft.dividendSim) state.draft.dividendSim = {};
+        const val = parseFloat(el.value);
+        if (id === "simDividendYield") state.draft.dividendSim.yield = val;
+        if (id === "simDividendGrowth") state.draft.dividendSim.growth = val;
+        if (id === "simCapitalGrowth") state.draft.dividendSim.capitalGrowth = val;
+        if (id === "simHorizonYears") state.draft.dividendSim.years = val;
+        markDirty();
+        renderDividendSimulation();
+      });
+    }
+  });
+
+  if (dom.simDrip) {
+    dom.simDrip.addEventListener("change", () => {
+      if (!state.draft.dividendSim) state.draft.dividendSim = {};
+      state.draft.dividendSim.isDrip = dom.simDrip.checked;
       markDirty();
-      showFeedback("데이터 가져오기 완료");
-    }
-  }
-
-  function buildSummarySlices() {
-    const total = getTotalMonthlyInvestCapacity(); if (total <= 0) return [];
-    const bucket = new Map();
-    state.draft.accounts.forEach(acc => {
-      const budget = Math.round(total * IsfUtils.sanitizeWeight(acc.accountWeight) / 100);
-      acc.allocations.forEach(al => {
-        const amt = Math.round(budget * IsfUtils.sanitizeWeight(al.targetWeight) / 100); if (amt <= 0) return;
-        const key = al.key || al.label; const prev = bucket.get(key);
-        if (prev) { prev.value += amt; if (al.isImportant) prev.isImportant = true; }
-        else bucket.set(key, { label: al.label, value: amt, color: getAssetColor(key), isImportant: al.isImportant });
-      });
-    });
-    const slices = Array.from(bucket.values());
-    const cash = getAutoCashAmount(); if (cash > 0) slices.push({ label: "자동 현금", value: cash, color: "#8a8f98" });
-    return slices.sort((a, b) => b.value - a.value);
-  }
-
-  function getAssetColor(key) { if (!colorCache.has(key)) colorCache.set(key, ASSET_COLORS[colorCache.size % ASSET_COLORS.length]); return colorCache.get(key); }
-
-  function renderDonutChart(svg, slices, cfg) {
-    if (!svg) return; svg.innerHTML = ""; const total = slices.reduce((s, al) => s + al.value, 0); if (total <= 0) return;
-    const r = 80; const sw = 30; const circum = 2 * Math.PI * r; let offset = 0;
-    slices.forEach(s => {
-      const ratio = s.value / total; const dash = circum * ratio;
-      const arc = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-      arc.setAttribute("cx", "150"); arc.setAttribute("cy", "150"); arc.setAttribute("r", r);
-      arc.setAttribute("fill", "none"); arc.setAttribute("stroke", s.color); arc.setAttribute("stroke-width", sw);
-      arc.setAttribute("stroke-dasharray", `${dash} ${circum - dash}`); arc.setAttribute("stroke-dashoffset", -offset);
-      arc.setAttribute("transform", "rotate(-90 150 150)"); svg.appendChild(arc);
-      offset += dash;
-    });
-    const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    text.setAttribute("x", "150"); text.setAttribute("y", "155"); text.setAttribute("text-anchor", "middle"); text.textContent = cfg.centerValue;
-    svg.appendChild(text);
-  }
-
-  function renderDividendSimulation() {
-    if (!dom.simTable || !dom.simChartSvg) return;
-    const years = state.draft.dividendSim?.years || 10;
-    const yieldRate = (state.draft.dividendSim?.yield || 3.5) / 100;
-    const total = getTotalMonthlyInvestCapacity();
-    let asset = 0; dom.simTable.innerHTML = "";
-    for (let i = 1; i <= years; i++) {
-      asset += total * 12; const div = asset * yieldRate;
-      const tr = document.createElement("tr");
-      tr.innerHTML = `<td>${i}년</td><td>-</td><td>${formatCurrency(asset)}</td><td>-</td><td>${formatCurrency(div)}</td><td>-</td><td>${formatCurrency(div/12)}</td><td>-</td>`;
-      dom.simTable.appendChild(tr);
-    }
-  }
-
-  function saveCurrentPortfolio() {
-    const hub = getHubStorage();
-    if (!hub) return;
-    if (dom.appHeader) dom.appHeader.updateStatus("saving", "저장 중...");
-    const data = toPortablePortfolio();
-    hub.saveStep2Portfolio(data).then(() => {
-      markClean();
-      refreshPortfolioList().then(() => {
-        if (dom.dataHubModal) dom.dataHubModal.updatePortfolioList(state.portfolios);
-      });
-      
-      void (async () => {
-        const res = await IsfBackupManager.maybeCreateAutoBackupIfDue(state.backupEntries, data, SHARE_STATE_KEY);
-        if (res.created) {
-          state.backupEntries = res.nextEntries;
-          syncBackupUi();
-        }
-      })();
-
-      if (dom.appHeader) dom.appHeader.updateStatus("success", "브라우저에 저장됨");
-    }).catch(() => {
-      if (dom.appHeader) dom.appHeader.updateStatus("error", "저장 실패");
+      renderDividendSimulation();
     });
   }
+}
 
-  async function loadPortfolioById(id, options = {}) {
-    const hub = getHubStorage();
-    if (!hub) return;
-    const p = await hub.getStep2PortfolioById(id);
-    if (p) {
-      state.draft = p;
-      state.currentPortfolioId = id;
-      renderDraft();
-      markClean();
-      if (!options.skipConfirm && dom.appHeader) dom.appHeader.updateStatus("success", "포트폴리오 로드됨");
+function initializeBackupStore() {
+  if (!IsfBackupManager.isIndexedDbAvailable()) return;
+  IsfBackupManager.loadBackupEntriesFromDb(SHARE_STATE_KEY).then(entries => {
+    state.backupStoreReady = true;
+    if (entries) { 
+      state.backupEntries = entries; 
+      syncBackupUi(); 
     }
-  }
-
-  async function deletePortfolioById(id) {
-    const hub = getHubStorage();
-    if (!hub) return;
-    await hub.deleteStep2Portfolio(id);
-    if (state.currentPortfolioId === id) resetDraft();
-    await refreshPortfolioList();
-    if (dom.appHeader) dom.appHeader.updateStatus("success", "삭제되었습니다.");
-  }
-
-  async function refreshPortfolioList() {
-    const hub = getHubStorage();
-    const rows = await (hub?.listStep2Portfolios() || []);
-    state.portfolios = rows || [];
-  }
-
-  function initializeBackupStore() {
-    if (!IsfBackupManager.isIndexedDbAvailable()) return;
-    IsfBackupManager.loadBackupEntriesFromDb(SHARE_STATE_KEY).then(entries => {
-      state.backupStoreReady = true;
-      if (entries) { state.backupEntries = entries; syncBackupUi(); }
-    }).catch(() => { state.backupStoreReady = true; });
-  }
-
-  async function handleManualBackup() {
-    if (!state.backupStoreReady) return;
-    const res = await IsfBackupManager.createBackupEntry(state.backupEntries, state.draft, {
-      type: "manual", source: "normal", allowDuplicate: true,
-      replaceRecentManualWithinMs: MANUAL_BACKUP_WINDOW_MS, appKey: SHARE_STATE_KEY,
-      onRecentManualOverwriteConfirm: () => window.confirm("최근 1분 이내 수동 백업이 있습니다. 덮어쓸까요?")
-    });
-    if (res.created) {
-      state.backupEntries = res.nextEntries;
-      syncBackupUi();
-      if (dom.appHeader) dom.appHeader.updateStatus("success", "백업 저장됨");
-    }
-  }
-
-  async function restoreBackupById(id) {
-    const entry = state.backupEntries.find(e => e.id === id);
-    if (!entry || !window.confirm(`백업(${IsfUtils.formatTimestamp(entry.createdAt)})으로 복원할까요? 현재 상태는 자동 백업됩니다.`)) return;
-    await handleManualBackup();
-    const norm = normalizeLoadedPortfolio(entry.data);
-    state.draft = norm.draft;
-    state.currentPortfolioId = norm.id || "";
-    renderDraft();
-    markClean();
-  }
-
-  function syncBackupUi() { if (dom.dataHubModal) dom.dataHubModal.updateBackupList(state.backupEntries); }
-
-  function toPortablePortfolio() { return { ...state.draft, id: state.currentPortfolioId }; }
-  function normalizeLoadedPortfolio(s) {
-    if (!s) return { draft: createEmptyDraft(), id: "" };
-    
-    // Migration to Won units (modelVersion < 10)
-    if (!s.modelVersion || s.modelVersion < 10) {
-      const migrated = { ...s, modelVersion: 10 };
-      if (typeof migrated.totalMonthlyInvestCapacity === "number") {
-        migrated.totalMonthlyInvestCapacity *= 10000;
-      }
-      if (Array.isArray(migrated.accounts)) {
-        migrated.accounts.forEach(acc => {
-          if (Array.isArray(acc.allocations)) {
-            acc.allocations.forEach(al => {
-              if (typeof al.actualAmount === "number") {
-                al.actualAmount *= 10000;
-              }
-            });
-          }
-        });
-      }
-      return { draft: migrated, id: s.id || "" };
-    }
-    
-    return { draft: s, id: s.id || "" };
-  }
-  function resetDraft() { state.draft = createEmptyDraft(); state.currentPortfolioId = ""; renderDraft(); markClean(); }
-
-  // --- Missing Utility Functions ---
-  function createEmptyDraft() {
-    return {
-      modelVersion: MODEL_VERSION,
-      name: "신규 포트폴리오",
-      notes: "",
-      totalMonthlyInvestCapacity: 0,
-      accounts: [],
-      dividendSim: {
-        years: 10,
-        yield: 3.5,
-        growth: 5.0,
-        capitalGrowth: 4.0,
-        isDrip: true
-      },
-      updatedAt: Date.now()
-    };
-  }
-
-  function createDraftAccount(data = {}) {
-    return {
-      id: IsfUtils.createId("acc"),
-      name: data.name || "신규 계좌",
-      accountWeight: 0,
-      allocations: [],
-      ...data
-    };
-  }
-
-  function createDraftAllocation(data = {}) {
-    return {
-      id: IsfUtils.createId("al"),
-      label: data.label || "신규 종목",
-      targetWeight: 0,
-      actualAmount: 0,
-      isImportant: false,
-      ...data
-    };
-  }
-
-  function getAccountById(id) {
-    if (!state.draft) return null;
-    return state.draft.accounts.find(a => a.id === id);
-  }
-
-  function getAllocationWeightTotal(account) {
-    if (!account || !Array.isArray(account.allocations)) return 0;
-    return account.allocations.reduce((sum, al) => sum + IsfUtils.sanitizeWeight(al.targetWeight), 0);
-  }
-
-  function getTotalAccountWeight() {
-    if (!state.draft || !Array.isArray(state.draft.accounts)) return 0;
-    return state.draft.accounts.reduce((sum, acc) => sum + IsfUtils.sanitizeWeight(acc.accountWeight), 0);
-  }
-
-  function getAutoCashAmount() {
-    const total = getTotalMonthlyInvestCapacity();
-    const allocated = state.draft.accounts.reduce((sum, acc) => {
-      return sum + Math.round(total * IsfUtils.sanitizeWeight(acc.accountWeight) / 100);
-    }, 0);
-    return Math.max(0, total - allocated);
-  }
-
-  function getTotalMonthlyInvestCapacity() {
-    return IsfUtils.sanitizeMoney(state.draft?.totalMonthlyInvestCapacity, 0);
-  }
-
-  function formatCurrency(val) {
-    return IsfUtils.formatMoney(val);
-  }
-
-  function formatDateTime(iso) {
-    if (!iso) return "-";
-    return IsfUtils.formatTimestamp(new Date(iso).getTime());
-  }
-
-  function markDirty() {
-    state.dirty = true;
-    IsfFeedback.markPendingBar(dom.pendingBar, dom.pendingSummary, true);
-    // Crash recovery용 임시 저장
-    if (state.draft) {
-      sessionStorage.setItem(TEMP_STORAGE_KEY, JSON.stringify({
-        draft: state.draft,
-        currentPortfolioId: state.currentPortfolioId,
-        activeAccountId: state.activeAccountId
-      }));
-    }
-  }
-
-  function markClean() {
-    state.dirty = false;
-    IsfFeedback.markPendingBar(dom.pendingBar, dom.pendingSummary, false);
-    sessionStorage.removeItem(TEMP_STORAGE_KEY);
-  }
-
-  function showFeedback(msg, isError = false) {
-    IsfFeedback.showFeedback(dom.applyFeedback, msg, isError);
-  }
-
-  function getHubStorage() {
-    return window.IsfHubStorage || null;
-  }
-
-})();
+  }).catch(() => { state.backupStoreReady = true; });
+}

@@ -5,7 +5,11 @@ status: budding
 tags: [plan, step1, roadmap]
 ---
 
-# 🗺️ Step1: 나의 가계 흐름 개발 계획 (Roadmap)
+# [ARCHIVED] 🗺️ Step1: 나의 가계 흐름 개발 계획 (Roadmap)
+
+> [!WARNING]
+> 본 문서는 v0.2.0 시절의 초기 계획서입니다. 현재의 v0.5.x 모듈화 구조와는 상이할 수 있습니다.
+> 최신 리팩토링 전략 및 결과는 [[Step1_Modularization_Refactoring]] 노드를 참조하십시오.
 
 기준 시점: 2026-03-26 (v0.2.0 전후)
 
