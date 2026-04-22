@@ -48,11 +48,9 @@ export function renderDraft() {
 export function renderChartTabs() {
   const tab = state.activeChartTab;
   if (dom.chartTabSummary) dom.chartTabSummary.classList.toggle("is-active", tab === "summary"); 
-  if (dom.chartTabAccount) dom.chartTabAccount.classList.toggle("is-active", tab === "account");
   if (dom.chartTabFlow) dom.chartTabFlow.classList.toggle("is-active", tab === "flow");
 
   if (dom.summaryChartPane) dom.summaryChartPane.hidden = tab !== "summary"; 
-  if (dom.accountChartPane) dom.accountChartPane.hidden = tab !== "account";
   if (dom.flowChartPane) dom.flowChartPane.hidden = tab !== "flow";
 }
 
@@ -116,7 +114,6 @@ export function renderAccountSummary() {
 
 export function renderCharts() { 
   renderSummaryChart(); 
-  renderAccountChartCards(); 
   renderAmountBreakdown(); 
   renderSankey();
   renderDividendSimulation(); 
@@ -125,26 +122,6 @@ export function renderCharts() {
 export function renderSummaryChart() { 
   const slices = buildSummarySlices(); 
   renderDonutChart(dom.summaryDonut, slices, { centerValue: formatCurrency(getTotalMonthlyInvestCapacity()) }); 
-}
-
-export function renderAccountChartCards() { 
-  if (!dom.accountChartCards) return;
-  dom.accountChartCards.innerHTML = (state.draft.accounts || []).map(a => {
-    const isActive = String(a.id) === String(state.activeAccountId);
-    return `<div class="account-chart-card ${isActive ? "is-active" : ""}"><p>${utils.escapeHtml(a.name)} (${a.accountWeight}%)</p><button class="btn btn-ghost btn-sm" data-select-account-id="${a.id}">선택</button></div>`;
-  }).join(""); 
-}
-
-export function renderAmountBreakdown() { 
-  if (!dom.amountBreakdown) return;
-  const slices = buildSummarySlices(); 
-  dom.amountBreakdown.innerHTML = `<ul class="amount-breakdown-list">` + slices.map(s => `
-    <li class="amount-breakdown-row ${s.isImportant ? "is-important" : ""}">
-      <span class="amount-breakdown-label">${utils.escapeHtml(s.label)}</span>
-      <span class="amount-breakdown-percent">${((s.value / (getTotalMonthlyInvestCapacity() || 1)) * 100).toFixed(1)}%</span>
-      <strong class="amount-breakdown-value">${formatCurrency(s.value)}</strong>
-    </li>
-  `).join("") + `</ul>`; 
 }
 
 export function buildSummarySlices() {
@@ -181,10 +158,42 @@ export function renderDonutChart(svg, slices, cfg) {
     arc.setAttribute("fill", "none"); arc.setAttribute("stroke", s.color); arc.setAttribute("stroke-width", sw);
     arc.setAttribute("stroke-dasharray", `${dash} ${circum - dash}`); arc.setAttribute("stroke-dashoffset", -offset);
     arc.setAttribute("transform", `rotate(-90 ${cx} ${cy})`); svg.appendChild(arc);
+    
+    // 라벨 표시 (비중 3% 이상일 때만)
+    if (ratio > 0.03) {
+      const angle = (offset + dash / 2) / circum * 2 * Math.PI - Math.PI / 2;
+      const lr = r + 45; // 라벨 반지름
+      const lx = cx + lr * Math.cos(angle);
+      const ly = cy + lr * Math.sin(angle);
+      
+      const labelGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
+      
+      const txt = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      txt.setAttribute("x", lx); txt.setAttribute("y", ly);
+      txt.setAttribute("text-anchor", "middle");
+      txt.setAttribute("font-size", "11");
+      txt.setAttribute("fill", "#333");
+      txt.setAttribute("font-weight", "bold");
+      txt.textContent = s.label;
+      
+      const pct = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      pct.setAttribute("x", lx); pct.setAttribute("y", ly + 12);
+      pct.setAttribute("text-anchor", "middle");
+      pct.setAttribute("font-size", "9");
+      pct.setAttribute("fill", "#666");
+      pct.textContent = (ratio * 100).toFixed(1) + "%";
+      
+      labelGroup.appendChild(txt);
+      labelGroup.appendChild(pct);
+      svg.appendChild(labelGroup);
+    }
+    
     offset += dash;
   });
   const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
-  text.setAttribute("x", cx); text.setAttribute("y", cy + 5); text.setAttribute("text-anchor", "middle"); text.textContent = cfg.centerValue;
+  text.setAttribute("x", cx); text.setAttribute("y", cy + 5); text.setAttribute("text-anchor", "middle"); 
+  text.setAttribute("font-weight", "bold");
+  text.textContent = cfg.centerValue;
   svg.appendChild(text);
 }
 

@@ -212,14 +212,6 @@ function bindEvents() {
     });
   }
   
-  if (dom.chartTabAccount) {
-    dom.chartTabAccount.addEventListener("click", () => { 
-      state.activeChartTab = "account"; 
-      renderChartTabs(); 
-      renderCharts(); 
-    });
-  }
-  
   if (dom.chartTabFlow) {
     dom.chartTabFlow.addEventListener("click", () => { 
       state.activeChartTab = "flow"; 

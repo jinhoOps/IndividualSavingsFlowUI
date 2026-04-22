@@ -183,30 +183,31 @@ body.is-dashboard-mode .account-panel {
   font-weight: 700;
   border: none;
   background: transparent;
-  padding: 4px;
-  font-size: 1rem;
-  width: 140px;
+  padding: 6px;
+  font-size: 1.15rem;
+  width: 180px;
 }
 
 .account-meta {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   background: var(--tone-paper);
-  padding: 2px 8px;
-  border-radius: 6px;
+  padding: 4px 10px;
+  border-radius: 8px;
 }
 
 .account-meta input {
-  width: 50px;
+  width: 60px;
   border: none;
   background: transparent;
   text-align: right;
-  font-weight: 600;
+  font-weight: 700;
+  font-size: 1rem;
 }
 
 .account-meta .unit {
-  font-size: 0.75rem;
+  font-size: 0.85rem;
   color: var(--muted);
 }
 
@@ -217,15 +218,15 @@ body.is-dashboard-mode .account-panel {
 }
 
 .chevron {
-  font-size: 0.7rem;
+  font-size: 0.8rem;
   color: var(--muted);
-  width: 20px;
+  width: 24px;
   text-align: center;
 }
 
 /* 종목 에디터 (아코디언 내부) */
 .allocation-editor {
-  padding: 0 16px 16px;
+  padding: 0 16px 20px;
   background: linear-gradient(to bottom, rgba(234, 91, 42, 0.02), #fff);
   border-top: 1px solid rgba(0, 0, 0, 0.05);
 }
@@ -233,26 +234,27 @@ body.is-dashboard-mode .account-panel {
 .allocation-table-head {
   display: grid;
   grid-template-columns: 30px 1.5fr 0.8fr 1fr 40px;
-  gap: 8px;
-  padding: 10px 0 6px;
-  font-size: 0.72rem;
+  gap: 10px;
+  padding: 14px 0 8px;
+  font-size: 0.88rem;
+  font-weight: 600;
   color: var(--muted);
 }
 
 .allocation-list {
   display: grid;
-  gap: 6px;
+  gap: 8px;
 }
 
 .allocation-row {
   display: grid;
   grid-template-columns: 30px 1.5fr 0.8fr 1fr 40px;
-  gap: 8px;
+  gap: 10px;
   align-items: center;
   background: #fff;
   border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 4px 8px;
+  border-radius: 10px;
+  padding: 6px 10px;
 }
 
 .allocation-row.is-important {
@@ -264,25 +266,25 @@ body.is-dashboard-mode .account-panel {
   width: 100%;
   border: none;
   background: transparent;
-  padding: 6px;
-  font-size: 0.86rem;
+  padding: 8px;
+  font-size: 1.05rem;
 }
 
 .allocation-row input:focus {
   background: rgba(0,0,0,0.03);
-  border-radius: 4px;
+  border-radius: 6px;
 }
 
 .allocation-footer {
-  margin-top: 12px;
+  margin-top: 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
 .allocation-footer .total {
-  font-size: 0.78rem;
-  font-weight: 600;
+  font-size: 0.95rem;
+  font-weight: 700;
   color: var(--muted);
 }
 
