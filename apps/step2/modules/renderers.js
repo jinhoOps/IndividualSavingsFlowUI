@@ -266,12 +266,14 @@ export function renderDividendSimulation() {
     <tr>
       <td>${d.year}년</td>
       <td>${formatCurrency(d.principal)}</td>
-      <td class="nominal">${formatCurrency(d.assetNominal)}</td>
-      <td class="real">${formatCurrency(d.assetReal)}</td>
-      <td class="nominal">${formatCurrency(d.dividendAfterTax)}</td>
-      <td class="real">${formatCurrency(d.dividendAfterTaxReal)}</td>
-      <td class="nominal">${formatCurrency(d.monthlyDivNominal)}</td>
-      <td class="real">${formatCurrency(d.monthlyDivReal)}</td>
+      <td class="nominal">${formatCurrency(d.assetNominalPR)}</td>
+      <td class="real">${formatCurrency(d.assetRealPR)}</td>
+      <td class="nominal">${formatCurrency(d.assetNominalTR)}</td>
+      <td class="real">${formatCurrency(d.assetRealTR)}</td>
+      <td class="nominal">${formatCurrency(d.dividendAfterTaxPR)}</td>
+      <td class="real">${formatCurrency(d.dividendAfterTaxRealPR)}</td>
+      <td class="nominal">${formatCurrency(d.dividendAfterTaxTR)}</td>
+      <td class="real">${formatCurrency(d.dividendAfterTaxRealTR)}</td>
     </tr>
   `).join("");
 
@@ -282,20 +284,35 @@ function drawSimulationChart(svg, data) {
   svg.innerHTML = "";
   if (!data.length) return;
   const width = 600; const height = 220; const padding = 40;
-  const maxVal = Math.max(...data.map(d => d.dividendNominal));
-  if (maxVal <= 0) return;
+  // TR 배당금을 기준으로 스케일 설정
+  const maxVal = Math.max(...data.map(d => d.dividendNominalTR), 1);
 
-  const points = data.map((d, i) => {
+  // 1. PR 선 (미투자 - 회색 점선)
+  const pointsPR = data.map((d, i) => {
     const x = padding + (i / (data.length - 1)) * (width - 2 * padding);
-    const y = (height - padding) - (d.dividendNominal / maxVal) * (height - 2 * padding);
+    const y = (height - padding) - (d.dividendNominalPR / maxVal) * (height - 2 * padding);
     return `${x},${y}`;
   }).join(" ");
 
-  const polyline = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
-  polyline.setAttribute("points", points);
-  polyline.setAttribute("fill", "none"); polyline.setAttribute("stroke", "#ea5b2a"); polyline.setAttribute("stroke-width", "3");
-  svg.appendChild(polyline);
+  const polyPR = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+  polyPR.setAttribute("points", pointsPR);
+  polyPR.setAttribute("fill", "none"); polyPR.setAttribute("stroke", "#8a8f98"); polyPR.setAttribute("stroke-width", "2");
+  polyPR.setAttribute("stroke-dasharray", "4 4");
+  svg.appendChild(polyPR);
 
+  // 2. TR 선 (재투자 - 주황색 실선)
+  const pointsTR = data.map((d, i) => {
+    const x = padding + (i / (data.length - 1)) * (width - 2 * padding);
+    const y = (height - padding) - (d.dividendNominalTR / maxVal) * (height - 2 * padding);
+    return `${x},${y}`;
+  }).join(" ");
+
+  const polyTR = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+  polyTR.setAttribute("points", pointsTR);
+  polyTR.setAttribute("fill", "none"); polyTR.setAttribute("stroke", "#ea5b2a"); polyTR.setAttribute("stroke-width", "3");
+  svg.appendChild(polyTR);
+
+  // X축 라벨
   data.forEach((d, i) => {
     if (i % Math.ceil(data.length/5) !== 0 && i !== data.length - 1) return;
     const x = padding + (i / (data.length - 1)) * (width - 2 * padding);
@@ -304,4 +321,17 @@ function drawSimulationChart(svg, data) {
     text.setAttribute("text-anchor", "middle"); text.setAttribute("font-size", "10"); text.textContent = `${d.year}년`;
     svg.appendChild(text);
   });
+
+  // 범례 (Legend)
+  const legendTR = document.createElementNS("http://www.w3.org/2000/svg", "text");
+  legendTR.setAttribute("x", width - padding); legendTR.setAttribute("y", 20);
+  legendTR.setAttribute("text-anchor", "end"); legendTR.setAttribute("font-size", "11"); legendTR.setAttribute("fill", "#ea5b2a");
+  legendTR.textContent = "● TR (재투자)";
+  svg.appendChild(legendTR);
+
+  const legendPR = document.createElementNS("http://www.w3.org/2000/svg", "text");
+  legendPR.setAttribute("x", width - padding); legendPR.setAttribute("y", 38);
+  legendPR.setAttribute("text-anchor", "end"); legendPR.setAttribute("font-size", "11"); legendPR.setAttribute("fill", "#8a8f98");
+  legendPR.textContent = "○ PR (미투자)";
+  svg.appendChild(legendPR);
 }

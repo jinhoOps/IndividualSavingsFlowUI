@@ -1,6 +1,12 @@
 
 # Project Evolution Log (연대기적 작업 로그)
 
+## [2026-04-21] release | Minor Up: Step 2 리팩터링 및 Sankey/배당 시뮬레이션 고도화 (v0.6.0)
+- **목적**: Step 2의 대규모 기능 고도화 및 아키텍처 개선 완료에 따른 Minor 버전 업그레이드 및 전역 동기화.
+- **조치**: 
+    - **Triple Sync 실행**: `manifest.webmanifest`, `sw.js`, `apps/step1/app.js`, `apps/step2/app.js`의 버전을 **0.6.0**으로 일관되게 업데이트.
+    - **문서 동기화**: `TODO.md` 및 주요 지식 노드의 버전 마커를 0.6.0으로 갱신하여 관리 체계 일원화.
+- **결과**: PWA 환경에서의 강제 업데이트 유도 및 신규 기능(Sankey, 고성능 배당 엔진)의 공식 릴리스 준비 완료.
 
 ## [2026-04-21] ingest | 지식 위생 관리(Wiki Hygiene) 및 위키 정기 정화
 - **목적**: v0.5 리팩토링 이후 혼재된 과거 계획(Plan)과 현재 진실(SSOT) 간의 충돌 제거 및 지식 엔트로피 감소.

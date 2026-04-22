@@ -76,52 +76,53 @@ export function calculateDividendProjection() {
   const initialYield = (parseFloat(sim.yield) || 3.5) / 100;
   const dgr = (parseFloat(sim.growth) || 5.0) / 100;
   const cgr = (parseFloat(sim.capitalGrowth) || 4.0) / 100;
-  const isDrip = sim.isDrip !== false;
   const monthlyContribution = getTotalMonthlyInvestCapacity();
   const yearlyContribution = monthlyContribution * 12;
   const taxRate = 0.154;
   const inflationRate = 0.02; // 실질 가치 계산을 위한 고정 인플레이션
 
   let principal = 0;
-  let assetNominal = 0;
+  let assetPR = 0;
+  let assetTR = 0;
   const results = [];
 
   for (let y = 1; y <= years; y++) {
     // 1. 원금 적립
     principal += yearlyContribution;
-    assetNominal += yearlyContribution;
 
-    // 2. 자산 성장 (시세 차익)
-    assetNominal *= (1 + cgr);
+    // 2. PR 경로 (배당 미투자)
+    assetPR += yearlyContribution;
+    assetPR *= (1 + cgr);
+    const prevDivPR = y > 1 ? results[y - 2].dividendNominalPR : 0;
+    const divNominalPR = (prevDivPR * (1 + dgr)) + (yearlyContribution * (1 + cgr) * initialYield);
+    const divAfterTaxPR = divNominalPR * (1 - taxRate);
 
-    // 3. 배당금 계산
-    // 배당 성장률(DGR)은 기존 배당금의 증가분으로 계산하고, 신규 투자분은 초기 수익률(initialYield)을 따르도록 모델링
-    const prevDiv = y > 1 ? results[y - 2].dividendNominal : 0;
-    const dividendNominal = (prevDiv * (1 + dgr)) + (yearlyContribution * (1 + cgr) * initialYield);
-    const dividendAfterTax = dividendNominal * (1 - taxRate);
+    // 3. TR 경로 (배당 재투자)
+    assetTR += yearlyContribution;
+    assetTR *= (1 + cgr);
+    const prevDivTR = y > 1 ? results[y - 2].dividendNominalTR : 0;
+    const prevReinvested = y > 1 ? results[y - 2].dividendAfterTaxTR : 0;
+    // (기존 배당 성장) + (신규 납입분 배당) + (전년 재투자분에서 발생하는 배당)
+    const divNominalTR = (prevDivTR * (1 + dgr)) + (yearlyContribution * (1 + cgr) * initialYield) + (prevReinvested * (1 + cgr) * initialYield);
+    const divAfterTaxTR = divNominalTR * (1 - taxRate);
+    assetTR += divAfterTaxTR;
 
-    // 4. 배당 재투자
-    if (isDrip) {
-      assetNominal += dividendAfterTax;
-      // principal += dividendAfterTax; // 재투자된 배당금은 원금 합산에서 제외 (수익률 측정 정확도 향상)
-    }
-
-    // 5. 실질 가치 계산 (인플레이션 반영)
-    const discountFactor = Math.pow(1 + inflationRate, y);
-    const assetReal = assetNominal / discountFactor;
-    const divReal = dividendNominal / discountFactor;
-    const divAfterTaxReal = dividendAfterTax / discountFactor;
+    // 4. 실질 가치 계산 (인플레이션 반영)
+    const df = Math.pow(1 + inflationRate, y);
 
     results.push({
       year: y,
       principal,
-      assetNominal,
-      assetReal,
-      dividendNominal,
-      dividendAfterTax,
-      dividendAfterTaxReal,
-      monthlyDivNominal: dividendAfterTax / 12,
-      monthlyDivReal: divAfterTaxReal / 12
+      assetNominalPR: assetPR,
+      assetRealPR: assetPR / df,
+      assetNominalTR: assetTR,
+      assetRealTR: assetTR / df,
+      dividendNominalPR: divNominalPR,
+      dividendAfterTaxPR: divAfterTaxPR,
+      dividendAfterTaxRealPR: divAfterTaxPR / df,
+      dividendNominalTR: divNominalTR,
+      dividendAfterTaxTR: divAfterTaxTR,
+      dividendAfterTaxRealTR: divAfterTaxTR / df
     });
   }
 
