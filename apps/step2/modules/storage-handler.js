@@ -6,6 +6,13 @@ import { dom } from "./dom.js";
 import { SHARE_STATE_KEY, SHARE_STATE_SCHEMA } from "./constants.js";
 import { renderDraft } from "./renderers.js";
 
+// Local reference for shared utilities (v0.5.12 Standard)
+const utils = window.IsfUtils || {
+  toWon: v => v * 10000,
+  toMan: v => Math.floor(v / 10000),
+  formatTimestamp: t => new Date(t).toLocaleString()
+};
+
 /**
  * Saves the current portfolio to HubStorage
  */
@@ -94,7 +101,7 @@ export async function handleManualBackup() {
  */
 export async function restoreBackupById(id) {
   const entry = state.backupEntries.find(e => e.id === id);
-  if (!entry || !window.confirm(`백업(${IsfUtils.formatTimestamp(entry.createdAt)})으로 복원할까요? 현재 상태는 자동 백업됩니다.`)) return;
+  if (!entry || !window.confirm(`백업(${utils.formatTimestamp(entry.createdAt)})으로 복원할까요? 현재 상태는 자동 백업됩니다.`)) return;
   await handleManualBackup();
   const norm = normalizeLoadedPortfolio(entry.data);
   state.draft = norm.draft;
@@ -113,14 +120,14 @@ export function normalizeLoadedPortfolio(s) {
   if (!s.modelVersion || s.modelVersion < 10) {
     const migrated = { ...s, modelVersion: 10 };
     if (typeof migrated.totalMonthlyInvestCapacity === "number") {
-      migrated.totalMonthlyInvestCapacity *= 10000;
+      migrated.totalMonthlyInvestCapacity = utils.toWon(migrated.totalMonthlyInvestCapacity);
     }
     if (Array.isArray(migrated.accounts)) {
       migrated.accounts.forEach(acc => {
         if (Array.isArray(acc.allocations)) {
           acc.allocations.forEach(al => {
             if (typeof al.actualAmount === "number") {
-              al.actualAmount *= 10000;
+              al.actualAmount = utils.toWon(al.actualAmount);
             }
           });
         }

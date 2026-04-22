@@ -14,10 +14,11 @@ import {
 } from "./calculator.js";
 
 const utils = window.IsfUtils || { 
-  escapeHtml: s => String(s).replace(/[&<>"']/g, m => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[m])),
-  toMan: n => Math.round((n || 0) / 10000),
+  escapeHtml: s => String(s || "").replace(/[&<>"']/g, m => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[m])),
+  toMan: n => Math.floor((n || 0) / 10000),
+  toWon: n => (n || 0) * 10000,
   sanitizeWeight: n => parseFloat(n) || 0,
-  sanitizeMoney: (n, d) => n || d
+  sanitizeMoney: (n, d) => parseInt(n) || d || 0
 };
 
 /**

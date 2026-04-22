@@ -4,12 +4,21 @@
 import { state } from "./state.js";
 import { DEFAULT_INFLATION_RATE, DEFAULT_TAX_RATE } from "./constants.js";
 
+// Local reference for shared utilities (v0.5.12 Standard)
+const utils = window.IsfUtils || {
+  sanitizeWeight: n => parseFloat(n) || 0,
+  sanitizeMoney: v => parseInt(v) || 0,
+  formatMoney: v => v,
+  formatTimestamp: t => t,
+  toWon: v => v * 10000,
+  toMan: v => Math.floor(v / 10000)
+};
+
 /**
  * Gets total allocation weight for an account
  */
 export function getAllocationWeightTotal(account) {
   if (!account || !Array.isArray(account.allocations)) return 0;
-  const utils = window.IsfUtils || { sanitizeWeight: n => parseFloat(n) || 0 };
   return account.allocations.reduce((sum, al) => sum + utils.sanitizeWeight(al.targetWeight), 0);
 }
 
@@ -18,7 +27,6 @@ export function getAllocationWeightTotal(account) {
  */
 export function getTotalAccountWeight() {
   if (!state.draft || !Array.isArray(state.draft.accounts)) return 0;
-  const utils = window.IsfUtils || { sanitizeWeight: n => parseFloat(n) || 0 };
   return state.draft.accounts.reduce((sum, acc) => sum + utils.sanitizeWeight(acc.accountWeight), 0);
 }
 
@@ -27,7 +35,6 @@ export function getTotalAccountWeight() {
  */
 export function getAutoCashAmount() {
   const total = getTotalMonthlyInvestCapacity();
-  const utils = window.IsfUtils || { sanitizeWeight: n => parseFloat(n) || 0 };
   const allocated = state.draft.accounts.reduce((sum, acc) => {
     return sum + Math.round(total * utils.sanitizeWeight(acc.accountWeight) / 100);
   }, 0);
@@ -38,15 +45,13 @@ export function getAutoCashAmount() {
  * Gets the total monthly investment capacity in Won
  */
 export function getTotalMonthlyInvestCapacity() {
-  const utils = window.IsfUtils;
-  return utils ? utils.sanitizeMoney(state.draft?.totalMonthlyInvestCapacity, 0) : (state.draft?.totalMonthlyInvestCapacity || 0);
+  return utils.sanitizeMoney(state.draft?.totalMonthlyInvestCapacity, 0);
 }
 
 /**
  * Formats a currency value
  */
 export function formatCurrency(val) {
-  const utils = window.IsfUtils || { formatMoney: v => v };
   return utils.formatMoney(val);
 }
 
@@ -55,7 +60,6 @@ export function formatCurrency(val) {
  */
 export function formatDateTime(iso) {
   if (!iso) return "-";
-  const utils = window.IsfUtils || { formatTimestamp: t => t };
   return utils.formatTimestamp(new Date(iso).getTime());
 }
 
@@ -88,21 +92,23 @@ export function calculateDividendProjection() {
   const results = [];
 
   for (let y = 1; y <= years; y++) {
+    const lastResult = results.length > 0 ? results[results.length - 1] : null;
+
     // 1. 원금 적립
     principal += yearlyContribution;
 
     // 2. PR 경로 (배당 미투자)
     assetPR += yearlyContribution;
     assetPR *= (1 + cgr);
-    const prevDivPR = y > 1 ? results[y - 2].dividendNominalPR : 0;
+    const prevDivPR = lastResult ? lastResult.dividendNominalPR : 0;
     const divNominalPR = (prevDivPR * (1 + dgr)) + (yearlyContribution * (1 + cgr) * initialYield);
     const divAfterTaxPR = divNominalPR * (1 - taxRate);
 
     // 3. TR 경로 (배당 재투자)
     assetTR += yearlyContribution;
     assetTR *= (1 + cgr);
-    const prevDivTR = y > 1 ? results[y - 2].dividendNominalTR : 0;
-    const prevReinvested = y > 1 ? results[y - 2].dividendAfterTaxTR : 0;
+    const prevDivTR = lastResult ? lastResult.dividendNominalTR : 0;
+    const prevReinvested = lastResult ? lastResult.dividendAfterTaxTR : 0;
     // (기존 배당 성장) + (신규 납입분 배당) + (전년 재투자분에서 발생하는 배당)
     const divNominalTR = (prevDivTR * (1 + dgr)) + (yearlyContribution * (1 + cgr) * initialYield) + (prevReinvested * (1 + cgr) * initialYield);
     const divAfterTaxTR = divNominalTR * (1 - taxRate);
@@ -129,3 +135,4 @@ export function calculateDividendProjection() {
 
   return results;
 }
+
