@@ -17,10 +17,14 @@
   });
 
   function formatMoney(value) {
-    if (!Number.isFinite(Number(value))) {
-      return currencyFormatter.format(0);
+    const numericValue = Number(value || 0);
+    if (!Number.isFinite(numericValue)) {
+      return "0 만원";
     }
-    return currencyFormatter.format(Number(value));
+    const manValue = numericValue / 10000;
+    // 소수점 둘째자리까지 표시하되, 불필요한 소수점은 제거하여 출력
+    const formatted = Number(manValue.toFixed(2)).toLocaleString("ko-KR");
+    return `${formatted} 만원`;
   }
 
   function formatTimestamp(timestamp) {

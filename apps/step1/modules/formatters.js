@@ -1,11 +1,5 @@
 import { SANKEY_VALUE_MODES, MONEY_UNIT } from "./constants.js";
 
-const currencyFormatter = new Intl.NumberFormat("ko-KR", {
-  style: "currency",
-  currency: "KRW",
-  maximumFractionDigits: 0,
-});
-
 const backupTimestampFormatter = new Intl.DateTimeFormat("ko-KR", {
   year: "numeric",
   month: "2-digit",
@@ -16,18 +10,15 @@ const backupTimestampFormatter = new Intl.DateTimeFormat("ko-KR", {
 });
 
 export function formatCurrency(value) {
-  const safeValue = Number.isFinite(value) ? value : 0;
-  return currencyFormatter.format(Math.round(safeValue));
+  return IsfUtils.formatMoney(value);
 }
 
 export function formatSignedCurrency(value) {
-  if (!Number.isFinite(value)) {
-    return formatCurrency(0);
+  const safeValue = Number.isFinite(value) ? value : 0;
+  if (safeValue < 0) {
+    return `-${IsfUtils.formatMoney(Math.abs(safeValue))}`;
   }
-  if (value < 0) {
-    return `-${formatCurrency(Math.abs(value))}`;
-  }
-  return `+${formatCurrency(value)}`;
+  return `+${IsfUtils.formatMoney(safeValue)}`;
 }
 
 export function formatPercent(percent) {

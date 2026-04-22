@@ -10,7 +10,10 @@
 - **로직 보존 (Core Logic Protection)**: 
     - 리팩토링 시 `app.js`의 **3계층 구조(상태/헬퍼/UI)**를 유지하고, `markDirty` 등 14종 이상의 필수 헬퍼 함수가 소실되지 않도록 주의하십시오.
 - **단위 정합성 (Unit consistency)**: 
-    - **UI(만원) vs 저장(원)** 규칙을 수호하십시오. 모든 계산 시 `IsfUtils.toWon`을 활용하여 단위 오차를 방지하십시오.
+    - **UI(만원) vs 저장/계산(원)** 규칙을 수호하십시오. 
+    - 모든 사용자 입력 및 UI 표시는 **만원** 단위로 통일하십시오.
+    - 모든 내부 계산 및 영속화 데이터는 **원** 단위를 유지하십시오.
+    - 변환 시 `IsfUtils.toWon`, `IsfUtils.toMan`, `IsfUtils.formatMoney`를 적극 활용하여 단위 오차를 방지하십시오.
 - **No-build 보존**: 빌드 도구 없이 브라우저에서 즉시 실행 가능한 순수 CSS/JS 형태를 유지하십시오.
 
 ## 🧠 지식 관리: LLM Wiki (Compounding Knowledge Engine)
