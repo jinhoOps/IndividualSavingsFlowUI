@@ -13,17 +13,23 @@ import {
   calculateDividendProjection
 } from "./calculator.js";
 
+const utils = window.IsfUtils || { 
+  escapeHtml: s => String(s).replace(/[&<>"']/g, m => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[m])),
+  toMan: n => Math.round((n || 0) / 10000),
+  sanitizeWeight: n => parseFloat(n) || 0,
+  sanitizeMoney: (n, d) => n || d
+};
+
 /**
  * Renders the entire draft UI
  */
 export function renderDraft() {
   if (!state.draft) return;
   try {
-    const utils = window.IsfUtils || {};
     if (dom.portfolioName) dom.portfolioName.value = state.draft.name || "";
     if (dom.portfolioNotes) dom.portfolioNotes.value = state.draft.notes || "";
     if (dom.totalMonthlyInvestCapacity) {
-      dom.totalMonthlyInvestCapacity.value = utils.toMan ? utils.toMan(state.draft.totalMonthlyInvestCapacity || 0) : 0;
+      dom.totalMonthlyInvestCapacity.value = utils.toMan(state.draft.totalMonthlyInvestCapacity || 0);
     }
     
     if (state.draft.dividendSim) {
@@ -56,7 +62,6 @@ export function renderChartTabs() {
 
 export function renderAccountList() {
   if (!dom.accountList) return;
-  const utils = window.IsfUtils || { escapeHtml: s => s, toMan: n => n };
   dom.accountList.innerHTML = (state.draft.accounts || []).map(a => {
     const isActive = String(a.id) === String(state.activeAccountId);
     const totalAlWeight = getAllocationWeightTotal(a);
@@ -128,7 +133,10 @@ export function renderSummaryChart() {
 
 export function renderAccountChartCards() { 
   if (!dom.accountChartCards) return;
-  dom.accountChartCards.innerHTML = (state.draft.accounts || []).map(a => `<div class="account-chart-card ${a.id === state.activeAccountId ? "is-active" : ""}"><p>${a.name} (${a.accountWeight}%)</p><button class="btn btn-ghost btn-sm" data-select-account-id="${a.id}">선택</button></div>`).join(""); 
+  dom.accountChartCards.innerHTML = (state.draft.accounts || []).map(a => {
+    const isActive = String(a.id) === String(state.activeAccountId);
+    return `<div class="account-chart-card ${isActive ? "is-active" : ""}"><p>${utils.escapeHtml(a.name)} (${a.accountWeight}%)</p><button class="btn btn-ghost btn-sm" data-select-account-id="${a.id}">선택</button></div>`;
+  }).join(""); 
 }
 
 export function renderAmountBreakdown() { 
@@ -136,7 +144,7 @@ export function renderAmountBreakdown() {
   const slices = buildSummarySlices(); 
   dom.amountBreakdown.innerHTML = `<ul class="amount-breakdown-list">` + slices.map(s => `
     <li class="amount-breakdown-row ${s.isImportant ? "is-important" : ""}">
-      <span class="amount-breakdown-label">${s.label}</span>
+      <span class="amount-breakdown-label">${utils.escapeHtml(s.label)}</span>
       <span class="amount-breakdown-percent">${((s.value / (getTotalMonthlyInvestCapacity() || 1)) * 100).toFixed(1)}%</span>
       <strong class="amount-breakdown-value">${formatCurrency(s.value)}</strong>
     </li>
@@ -146,7 +154,6 @@ export function renderAmountBreakdown() {
 export function buildSummarySlices() {
   const total = getTotalMonthlyInvestCapacity(); if (total <= 0) return [];
   const bucket = new Map();
-  const utils = window.IsfUtils || { sanitizeWeight: n => n };
   (state.draft.accounts || []).forEach(acc => {
     const budget = Math.round(total * utils.sanitizeWeight(acc.accountWeight) / 100);
     (acc.allocations || []).forEach(al => {
@@ -206,13 +213,14 @@ export function renderSankey() {
   state.draft.accounts.forEach(acc => {
     const weight = (parseFloat(acc.accountWeight) || 0);
     const amt = Math.round(total * weight / 100);
-    const nodeH = Math.max(30, (amt / total) * (height - 2*margin));
+    const nodeH = (amt / (total || 1)) * (height - 2 * margin);
     drawSankeyNode(svg, col2, accY, nodeW, nodeH, acc.name, formatCurrency(amt), "#4dabf7");
     
     // Link from Source to Account (Distributed start Y)
-    const sLinkThickness = nodeH * 0.8;
-    drawSankeyLink(svg, col1 + nodeW, sourceY + sourceLinkOffset + sLinkThickness / 2 + 2, col2, accY + nodeH / 2, sLinkThickness, "rgba(77, 171, 247, 0.2)");
-    sourceLinkOffset += (amt / (total || 1)) * sourceNodeH; 
+    // Thickness is proportional to flow volume relative to source height
+    const sLinkThickness = (amt / total) * sourceNodeH;
+    drawSankeyLink(svg, col1 + nodeW, sourceY + sourceLinkOffset + sLinkThickness / 2, col2, accY + nodeH / 2, sLinkThickness, "rgba(77, 171, 247, 0.2)");
+    sourceLinkOffset += sLinkThickness; 
     
     // Account-to-Product Link Offset Tracker
     let accLinkOffset = 0;
@@ -222,15 +230,15 @@ export function renderSankey() {
     acc.allocations.forEach(al => {
       const pWeight = (parseFloat(al.targetWeight) || 0);
       const pAmt = Math.round(amt * pWeight / 100);
-      const pNodeH = Math.max(20, (pAmt / total) * (height - 2*margin));
+      const pNodeH = (pAmt / total) * (height - 2 * margin);
       drawSankeyNode(svg, col3, prodY, nodeW, pNodeH, al.label, formatCurrency(pAmt), getAssetColor(al.label));
       
       // Link from Account to Product (Distributed start Y)
-      const pLinkThickness = pNodeH * 0.8;
-      const startY = accY + accLinkOffset + pLinkThickness / 2 + 2;
+      const pLinkThickness = (pAmt / (amt || 1)) * nodeH;
+      const startY = accY + accLinkOffset + pLinkThickness / 2;
       drawSankeyLink(svg, col2 + nodeW, startY, col3, prodY + pNodeH / 2, pLinkThickness, "rgba(0,0,0,0.05)");
       
-      accLinkOffset += (pAmt / (amt || 1)) * nodeH;
+      accLinkOffset += pLinkThickness;
       prodY += pNodeH + 10;
     });
 
@@ -245,10 +253,109 @@ function drawSankeyNode(svg, x, y, w, h, label, val, color) {
   svg.appendChild(rect);
 
   const txt = document.createElementNS("http://www.w3.org/2000/svg", "text");
-  txt.setAttribute("x", x + w/2); txt.setAttribute("y", y + h/2 + 4); txt.setAttribute("text-anchor", "middle");
-  txt.setAttribute("font-size", "10"); txt.setAttribute("fill", "#fff"); txt.textContent = label;
+  txt.setAttribute("x", x + w/2); txt.setAttribute("y", y + Math.max(12, h/2 + 4)); txt.setAttribute("text-anchor", "middle");
+  txt.setAttribute("font-size", "10"); txt.setAttribute("fill", "#fff");
+  
+  // If node is tall enough, show both label and value
+  if (h > 25) {
+    const tspan1 = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+    tspan1.setAttribute("x", x + w/2); tspan1.setAttribute("dy", "-0.2em"); tspan1.textContent = label;
+    const tspan2 = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+    tspan2.setAttribute("x", x + w/2); tspan2.setAttribute("dy", "1.2em"); tspan2.setAttribute("font-weight", "bold");
+    tspan2.textContent = val;
+    txt.appendChild(tspan1); txt.appendChild(tspan2);
+  } else {
+    txt.textContent = label;
+  }
   svg.appendChild(txt);
 }
+
+function drawSankeyLink(svg, x1, y1, x2, y2, thickness, color) {
+  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  const cp1x = x1 + (x2 - x1) / 2;
+  const d = `M ${x1} ${y1} C ${cp1x} ${y1}, ${cp1x} ${y2}, ${x2} ${y2}`;
+  path.setAttribute("d", d); path.setAttribute("stroke", color); path.setAttribute("stroke-width", thickness);
+  path.setAttribute("fill", "none"); svg.appendChild(path);
+}
+
+export function renderDividendSimulation() {
+  if (!dom.simTable) return;
+  const data = calculateDividendProjection();
+  
+  dom.simTable.innerHTML = data.map(d => `
+    <tr>
+      <td>${d.year}년</td>
+      <td>${formatCurrency(d.principal)}</td>
+      <td class="nominal">${formatCurrency(d.assetNominalPR)}</td>
+      <td class="real">${formatCurrency(d.assetRealPR)}</td>
+      <td class="nominal">${formatCurrency(d.assetNominalTR)}</td>
+      <td class="real">${formatCurrency(d.assetRealTR)}</td>
+      <td class="nominal">${formatCurrency(d.dividendAfterTaxPR)}</td>
+      <td class="real">${formatCurrency(d.dividendAfterTaxRealPR)}</td>
+      <td class="nominal">${formatCurrency(d.dividendAfterTaxTR)}</td>
+      <td class="real">${formatCurrency(d.dividendAfterTaxRealTR)}</td>
+    </tr>
+  `).join("");
+
+  if (dom.simChartSvg) drawSimulationChart(dom.simChartSvg, data);
+}
+
+function drawSimulationChart(svg, data) {
+  svg.innerHTML = "";
+  if (!data.length) return;
+  const width = 600; const height = 220; const padding = 40;
+  // TR 배당금을 기준으로 스케일 설정
+  const maxVal = Math.max(...data.map(d => d.dividendNominalTR), 1);
+
+  // 1. PR 선 (미투자 - 회색 점선)
+  const pointsPR = data.map((d, i) => {
+    const x = padding + (i / (data.length - 1)) * (width - 2 * padding);
+    const y = (height - padding) - (d.dividendNominalPR / maxVal) * (height - 2 * padding);
+    return `${x},${y}`;
+  }).join(" ");
+
+  const polyPR = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+  polyPR.setAttribute("points", pointsPR);
+  polyPR.setAttribute("fill", "none"); polyPR.setAttribute("stroke", "#8a8f98"); polyPR.setAttribute("stroke-width", "2");
+  polyPR.setAttribute("stroke-dasharray", "4 4");
+  svg.appendChild(polyPR);
+
+  // 2. TR 선 (재투자 - 주황색 실선)
+  const pointsTR = data.map((d, i) => {
+    const x = padding + (i / (data.length - 1)) * (width - 2 * padding);
+    const y = (height - padding) - (d.dividendNominalTR / maxVal) * (height - 2 * padding);
+    return `${x},${y}`;
+  }).join(" ");
+
+  const polyTR = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+  polyTR.setAttribute("points", pointsTR);
+  polyTR.setAttribute("fill", "none"); polyTR.setAttribute("stroke", "#ea5b2a"); polyTR.setAttribute("stroke-width", "3");
+  svg.appendChild(polyTR);
+
+  // X축 라벨
+  data.forEach((d, i) => {
+    if (i % Math.ceil(data.length/5) !== 0 && i !== data.length - 1) return;
+    const x = padding + (i / (data.length - 1)) * (width - 2 * padding);
+    const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    text.setAttribute("x", x); text.setAttribute("y", height - 10);
+    text.setAttribute("text-anchor", "middle"); text.setAttribute("font-size", "10"); text.textContent = `${d.year}년`;
+    svg.appendChild(text);
+  });
+
+  // 범례 (Legend)
+  const legendTR = document.createElementNS("http://www.w3.org/2000/svg", "text");
+  legendTR.setAttribute("x", width - padding); legendTR.setAttribute("y", 20);
+  legendTR.setAttribute("text-anchor", "end"); legendTR.setAttribute("font-size", "11"); legendTR.setAttribute("fill", "#ea5b2a");
+  legendTR.textContent = "● TR (재투자)";
+  svg.appendChild(legendTR);
+
+  const legendPR = document.createElementNS("http://www.w3.org/2000/svg", "text");
+  legendPR.setAttribute("x", width - padding); legendPR.setAttribute("y", 38);
+  legendPR.setAttribute("text-anchor", "end"); legendPR.setAttribute("font-size", "11"); legendPR.setAttribute("fill", "#8a8f98");
+  legendPR.textContent = "○ PR (미투자)";
+  svg.appendChild(legendPR);
+}
+
 
 function drawSankeyLink(svg, x1, y1, x2, y2, thickness, color) {
   const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
