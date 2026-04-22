@@ -197,8 +197,8 @@ export function renderSankey() {
   const col1 = margin; const col2 = width / 2 - nodeW / 2; const col3 = width - margin - nodeW;
 
   // Estimate total required height to prevent clipping
-  const totalAccounts = state.draft.accounts.length;
-  const totalAllocations = state.draft.accounts.reduce((sum, acc) => sum + acc.allocations.length, 0);
+  const totalAccounts = (state.draft.accounts || []).length;
+  const totalAllocations = (state.draft.accounts || []).reduce((sum, acc) => sum + (acc.allocations?.length || 0), 0);
   const estimatedHeight = Math.max(400, (totalAccounts * 30) + (totalAllocations * 10) + (2 * margin) + 100);
   const height = estimatedHeight;
 

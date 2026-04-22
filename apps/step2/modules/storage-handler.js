@@ -110,30 +110,36 @@ export async function restoreBackupById(id) {
  */
 export function normalizeLoadedPortfolio(s) {
   if (!s) return { draft: createEmptyDraft(), id: "" };
-  
+
+  const base = createEmptyDraft();
+  // Ensure basic structure and field merging
+  const draft = {
+    ...base,
+    ...s,
+    dividendSim: { ...base.dividendSim, ...(s.dividendSim || {}) },
+    accounts: (s.accounts || []).map(acc => ({
+      ...acc,
+      allocations: (acc.allocations || [])
+    }))
+  };
+
   // Migration to Won units (modelVersion < 10)
   if (!s.modelVersion || s.modelVersion < 10) {
-    const migrated = { ...s, modelVersion: 10 };
-    if (typeof migrated.totalMonthlyInvestCapacity === "number") {
-      migrated.totalMonthlyInvestCapacity = utils.toWon(migrated.totalMonthlyInvestCapacity);
+    draft.modelVersion = 10;
+    if (typeof draft.totalMonthlyInvestCapacity === "number") {
+      draft.totalMonthlyInvestCapacity = utils.toWon(draft.totalMonthlyInvestCapacity);
     }
-    if (Array.isArray(migrated.accounts)) {
-      migrated.accounts.forEach(acc => {
-        if (Array.isArray(acc.allocations)) {
-          acc.allocations.forEach(al => {
-            if (typeof al.actualAmount === "number") {
-              al.actualAmount = utils.toWon(al.actualAmount);
-            }
-          });
+    draft.accounts.forEach(acc => {
+      acc.allocations.forEach(al => {
+        if (typeof al.actualAmount === "number") {
+          al.actualAmount = utils.toWon(al.actualAmount);
         }
       });
-    }
-    return { draft: migrated, id: s.id || "" };
+    });
   }
-  
-  return { draft: s, id: s.id || "" };
-}
 
+  return { draft, id: s.id || "" };
+}
 export function syncBackupUi() { 
   if (dom.dataHubModal) dom.dataHubModal.updateBackupList(state.backupEntries); 
 }
