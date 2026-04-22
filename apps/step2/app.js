@@ -102,7 +102,7 @@ async function initApp() {
     // 5. PWA 관리자 시작
     try {
       const pwa = new IsfPwaManager({
-        appVersion: "0.5.12", 
+        appVersion: "0.6.0", 
         appKey: SHARE_STATE_KEY,
         onFeedback: (msg) => IsfFeedback.showFeedback(dom.applyFeedback, msg),
         getCurrentData: () => state.draft,

@@ -1,12 +1,22 @@
 
 # Project Evolution Log (연대기적 작업 로그)
 
-## [2026-04-21] release | Minor Up: Step 2 리팩터링 및 Sankey/배당 시뮬레이션 고도화 (v0.6.0)
+## [2026-04-22] release | Minor Up: Step 2 리팩터링 및 Sankey/배당 시뮬레이션 고도화 (v0.6.0)
 - **목적**: Step 2의 대규모 기능 고도화 및 아키텍처 개선 완료에 따른 Minor 버전 업그레이드 및 전역 동기화.
 - **조치**: 
-    - **Triple Sync 실행**: `manifest.webmanifest`, `sw.js`, `apps/step1/app.js`, `apps/step2/app.js`의 버전을 **0.6.0**으로 일관되게 업데이트.
+    - **Quad Sync 실행**: `manifest.webmanifest`, `sw.js`, `apps/step1/app.js`, `apps/step2/app.js`의 버전을 **0.6.0**으로 일관되게 업데이트.
+    - **안정성 보강**: `renderSankey` 런타임 에러 방지(Optional Chaining) 및 데이터 정규화(Deep Merge) 로직 추가 적용.
     - **문서 동기화**: `TODO.md` 및 주요 지식 노드의 버전 마커를 0.6.0으로 갱신하여 관리 체계 일원화.
-- **결과**: PWA 환경에서의 강제 업데이트 유도 및 신규 기능(Sankey, 고성능 배당 엔진)의 공식 릴리스 준비 완료.
+- **결과**: PWA 환경에서의 강제 업데이트 유도 및 신규 기능(Sankey, 고성능 배당 엔진)의 공식 릴리스 완료.
+
+## [2026-04-22] fix | Step 2 렌더링 안정성 및 데이터 정규화 보완 (v0.6.0)
+- **원인**: 
+    - **Sankey 런타임 에러**: `state.draft.accounts` 또는 `allocations`가 미정의된 상태에서 `length` 참조 시 크래시 발생 가능성 확인.
+    - **필드 누락**: 과거 버전 데이터 로드 시 `dividendSim` 등 신규 필수 필드가 누락되어 시뮬레이션 계산 중 오류 발생.
+- **조치**: 
+    - **안전 장치**: `renderSankey` 내 배열 접근 시 옵셔널 체이닝(`?.`) 및 기본값(`|| []`)을 적용하여 데이터 불완전 상태 대응.
+    - **정규화 강화**: `normalizeLoadedPortfolio`에서 `createEmptyDraft`와 딥 머지(Deep Merge)를 수행하여 모든 필수 필드 구조 보장.
+- **결과**: Step 2 모듈화 체제의 최종 안정성 확보 및 v0.6.0 정식 릴리스 준비 완료.
 
 ## [2026-04-21] ingest | 지식 위생 관리(Wiki Hygiene) 및 위키 정기 정화
 - **목적**: v0.5 리팩토링 이후 혼재된 과거 계획(Plan)과 현재 진실(SSOT) 간의 충돌 제거 및 지식 엔트로피 감소.
