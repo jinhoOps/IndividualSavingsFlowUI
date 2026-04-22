@@ -98,7 +98,8 @@ export function calculateDividendProjection() {
 
     const prevDivPR = lastResult ? lastResult.dividendNominalPR : 0;
     // 당해 연도 납입분 배당은 평균적으로 절반 수준 (0.5 * initialYield) 적용
-    const divNominalPR = (prevDivPR * (1 + dgr)) + (yearlyContribution * (1 + cgr / 4) * (initialYield / 2));
+    // DCA 성장 보정: cgr / 2 (평균 6개월 성장)
+    const divNominalPR = (prevDivPR * (1 + dgr)) + (yearlyContribution * (1 + cgr / 2) * (initialYield / 2));
     const divAfterTaxPR = divNominalPR * (1 - taxRate);
 
     // 3. TR 경로 (배당 재투자)
@@ -110,7 +111,7 @@ export function calculateDividendProjection() {
     const prevDivTR = lastResult ? lastResult.dividendNominalTR : 0;
     const prevReinvested = lastResult ? lastResult.dividendAfterTaxTR : 0;
     // (기존 배당 성장) + (신규 납입분 배당/2) + (전년 재투자분의 연간 배당)
-    const divNominalTR = (prevDivTR * (1 + dgr)) + (yearlyContribution * (1 + cgr / 4) * (initialYield / 2)) + (prevReinvested * (1 + cgr) * initialYield);
+    const divNominalTR = (prevDivTR * (1 + dgr)) + (yearlyContribution * (1 + cgr / 2) * (initialYield / 2)) + (prevReinvested * (1 + cgr) * initialYield);
     const divAfterTaxTR = divNominalTR * (1 - taxRate);
     assetTR += divAfterTaxTR;
 
