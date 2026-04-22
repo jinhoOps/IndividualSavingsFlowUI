@@ -136,25 +136,3 @@ export function calculateDividendProjection() {
   return results;
 }
 
-    // 4. 실질 가치 계산 (인플레이션 반영)
-    const df = Math.pow(1 + inflationRate, y);
-
-    results.push({
-      year: y,
-      principal,
-      assetNominalPR: assetPR,
-      assetRealPR: assetPR / df,
-      assetNominalTR: assetTR,
-      assetRealTR: assetTR / df,
-      dividendNominalPR: divNominalPR,
-      dividendAfterTaxPR: divAfterTaxPR,
-      dividendAfterTaxRealPR: divAfterTaxPR / df,
-      dividendNominalTR: divNominalTR,
-      dividendAfterTaxTR: divAfterTaxTR,
-      dividendAfterTaxRealTR: divAfterTaxTR / df
-    });
-  }
-
-  return results;
-}
-
