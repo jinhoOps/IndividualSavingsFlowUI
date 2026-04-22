@@ -197,8 +197,17 @@ export function renderSankey() {
   const svg = dom.flowSankey; svg.innerHTML = "";
   const total = getTotalMonthlyInvestCapacity(); if (total <= 0) return;
 
-  const width = 600; const height = 400; const nodeW = 100; const margin = 50;
+  const width = 600; const nodeW = 100; const margin = 50;
   const col1 = margin; const col2 = width / 2 - nodeW / 2; const col3 = width - margin - nodeW;
+
+  // Estimate total required height to prevent clipping
+  const totalAccounts = state.draft.accounts.length;
+  const totalAllocations = state.draft.accounts.reduce((sum, acc) => sum + acc.allocations.length, 0);
+  const estimatedHeight = Math.max(400, (totalAccounts * 30) + (totalAllocations * 10) + (2 * margin) + 100);
+  const height = estimatedHeight;
+
+  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  svg.style.height = height + "px";
 
   // 1. Source Node (Total Capacity)
   const sourceNodeH = 40;
@@ -213,13 +222,14 @@ export function renderSankey() {
   state.draft.accounts.forEach(acc => {
     const weight = (parseFloat(acc.accountWeight) || 0);
     const amt = Math.round(total * weight / 100);
-    const nodeH = (amt / (total || 1)) * (height - 2 * margin);
-    drawSankeyNode(svg, col2, accY, nodeW, nodeH, acc.name, formatCurrency(amt), "#4dabf7");
+    const nodeH = (amt / (total || 1)) * (height - 2 * margin - (totalAccounts * 30));
+    const finalNodeH = Math.max(nodeH, 20); // Minimum height for visibility
+    
+    drawSankeyNode(svg, col2, accY, nodeW, finalNodeH, acc.name, formatCurrency(amt), "#4dabf7");
     
     // Link from Source to Account (Distributed start Y)
-    // Thickness is proportional to flow volume relative to source height
     const sLinkThickness = (amt / total) * sourceNodeH;
-    drawSankeyLink(svg, col1 + nodeW, sourceY + sourceLinkOffset + sLinkThickness / 2, col2, accY + nodeH / 2, sLinkThickness, "rgba(77, 171, 247, 0.2)");
+    drawSankeyLink(svg, col1 + nodeW, sourceY + sourceLinkOffset + sLinkThickness / 2, col2, accY + finalNodeH / 2, sLinkThickness, "rgba(77, 171, 247, 0.2)");
     sourceLinkOffset += sLinkThickness; 
     
     // Account-to-Product Link Offset Tracker
@@ -230,19 +240,21 @@ export function renderSankey() {
     acc.allocations.forEach(al => {
       const pWeight = (parseFloat(al.targetWeight) || 0);
       const pAmt = Math.round(amt * pWeight / 100);
-      const pNodeH = (pAmt / total) * (height - 2 * margin);
-      drawSankeyNode(svg, col3, prodY, nodeW, pNodeH, al.label, formatCurrency(pAmt), getAssetColor(al.label));
+      const pNodeH = (pAmt / total) * (height - 2 * margin - (totalAccounts * 30));
+      const finalPNodeH = Math.max(pNodeH, 15);
+      
+      drawSankeyNode(svg, col3, prodY, nodeW, finalPNodeH, al.label, formatCurrency(pAmt), getAssetColor(al.label));
       
       // Link from Account to Product (Distributed start Y)
-      const pLinkThickness = (pAmt / (amt || 1)) * nodeH;
+      const pLinkThickness = (pAmt / (amt || 1)) * finalNodeH;
       const startY = accY + accLinkOffset + pLinkThickness / 2;
-      drawSankeyLink(svg, col2 + nodeW, startY, col3, prodY + pNodeH / 2, pLinkThickness, "rgba(0,0,0,0.05)");
+      drawSankeyLink(svg, col2 + nodeW, startY, col3, prodY + finalPNodeH / 2, pLinkThickness, "rgba(0,0,0,0.05)");
       
       accLinkOffset += pLinkThickness;
-      prodY += pNodeH + 10;
+      prodY += finalPNodeH + 10;
     });
 
-    accY += nodeH + 30;
+    accY += finalNodeH + 30;
   });
 }
 
@@ -269,93 +281,6 @@ function drawSankeyNode(svg, x, y, w, h, label, val, color) {
   }
   svg.appendChild(txt);
 }
-
-function drawSankeyLink(svg, x1, y1, x2, y2, thickness, color) {
-  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-  const cp1x = x1 + (x2 - x1) / 2;
-  const d = `M ${x1} ${y1} C ${cp1x} ${y1}, ${cp1x} ${y2}, ${x2} ${y2}`;
-  path.setAttribute("d", d); path.setAttribute("stroke", color); path.setAttribute("stroke-width", thickness);
-  path.setAttribute("fill", "none"); svg.appendChild(path);
-}
-
-export function renderDividendSimulation() {
-  if (!dom.simTable) return;
-  const data = calculateDividendProjection();
-  
-  dom.simTable.innerHTML = data.map(d => `
-    <tr>
-      <td>${d.year}년</td>
-      <td>${formatCurrency(d.principal)}</td>
-      <td class="nominal">${formatCurrency(d.assetNominalPR)}</td>
-      <td class="real">${formatCurrency(d.assetRealPR)}</td>
-      <td class="nominal">${formatCurrency(d.assetNominalTR)}</td>
-      <td class="real">${formatCurrency(d.assetRealTR)}</td>
-      <td class="nominal">${formatCurrency(d.dividendAfterTaxPR)}</td>
-      <td class="real">${formatCurrency(d.dividendAfterTaxRealPR)}</td>
-      <td class="nominal">${formatCurrency(d.dividendAfterTaxTR)}</td>
-      <td class="real">${formatCurrency(d.dividendAfterTaxRealTR)}</td>
-    </tr>
-  `).join("");
-
-  if (dom.simChartSvg) drawSimulationChart(dom.simChartSvg, data);
-}
-
-function drawSimulationChart(svg, data) {
-  svg.innerHTML = "";
-  if (!data.length) return;
-  const width = 600; const height = 220; const padding = 40;
-  // TR 배당금을 기준으로 스케일 설정
-  const maxVal = Math.max(...data.map(d => d.dividendNominalTR), 1);
-
-  // 1. PR 선 (미투자 - 회색 점선)
-  const pointsPR = data.map((d, i) => {
-    const x = padding + (i / (data.length - 1)) * (width - 2 * padding);
-    const y = (height - padding) - (d.dividendNominalPR / maxVal) * (height - 2 * padding);
-    return `${x},${y}`;
-  }).join(" ");
-
-  const polyPR = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
-  polyPR.setAttribute("points", pointsPR);
-  polyPR.setAttribute("fill", "none"); polyPR.setAttribute("stroke", "#8a8f98"); polyPR.setAttribute("stroke-width", "2");
-  polyPR.setAttribute("stroke-dasharray", "4 4");
-  svg.appendChild(polyPR);
-
-  // 2. TR 선 (재투자 - 주황색 실선)
-  const pointsTR = data.map((d, i) => {
-    const x = padding + (i / (data.length - 1)) * (width - 2 * padding);
-    const y = (height - padding) - (d.dividendNominalTR / maxVal) * (height - 2 * padding);
-    return `${x},${y}`;
-  }).join(" ");
-
-  const polyTR = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
-  polyTR.setAttribute("points", pointsTR);
-  polyTR.setAttribute("fill", "none"); polyTR.setAttribute("stroke", "#ea5b2a"); polyTR.setAttribute("stroke-width", "3");
-  svg.appendChild(polyTR);
-
-  // X축 라벨
-  data.forEach((d, i) => {
-    if (i % Math.ceil(data.length/5) !== 0 && i !== data.length - 1) return;
-    const x = padding + (i / (data.length - 1)) * (width - 2 * padding);
-    const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    text.setAttribute("x", x); text.setAttribute("y", height - 10);
-    text.setAttribute("text-anchor", "middle"); text.setAttribute("font-size", "10"); text.textContent = `${d.year}년`;
-    svg.appendChild(text);
-  });
-
-  // 범례 (Legend)
-  const legendTR = document.createElementNS("http://www.w3.org/2000/svg", "text");
-  legendTR.setAttribute("x", width - padding); legendTR.setAttribute("y", 20);
-  legendTR.setAttribute("text-anchor", "end"); legendTR.setAttribute("font-size", "11"); legendTR.setAttribute("fill", "#ea5b2a");
-  legendTR.textContent = "● TR (재투자)";
-  svg.appendChild(legendTR);
-
-  const legendPR = document.createElementNS("http://www.w3.org/2000/svg", "text");
-  legendPR.setAttribute("x", width - padding); legendPR.setAttribute("y", 38);
-  legendPR.setAttribute("text-anchor", "end"); legendPR.setAttribute("font-size", "11"); legendPR.setAttribute("fill", "#8a8f98");
-  legendPR.textContent = "○ PR (미투자)";
-  svg.appendChild(legendPR);
-}
-
 
 function drawSankeyLink(svg, x1, y1, x2, y2, thickness, color) {
   const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
