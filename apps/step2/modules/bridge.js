@@ -6,17 +6,7 @@ import { dom } from "./dom.js";
 import { formatCurrency, formatDateTime } from "./calculator.js";
 import { renderDraft } from "./renderers.js";
 
-// Local reference for shared utilities (v0.5.12 Standard)
-const utils = window.IsfUtils || {
-  sanitizeWeight: n => parseFloat(n) || 0,
-  sanitizeMoney: v => parseInt(v) || 0,
-  formatMoney: v => v,
-  formatTimestamp: t => t,
-  toWon: v => v * 10000,
-  toMan: v => Math.floor(v / 10000),
-  escapeHtml: s => String(s || "").replace(/[&<>"']/g, m => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[m])),
-  createId: p => (p || "id") + "-" + Date.now() + "-" + Math.random().toString(16).slice(2)
-};
+import { utils } from "./utils.js";
 
 /**
  * Checks for new data from Step 1 and shows the bridge banner if available
@@ -56,33 +46,38 @@ export async function importLatestBridgeIntoDraft() {
   if (res.bridge?.payload) {
     const p = res.bridge.payload;
     // Step1에서 이미 원 단위로 넘어오므로 그대로 저장
-    state.draft.totalMonthlyInvestCapacity = Number(p.monthlyInvestCapacity) || 0;
+    const capacity = Number(p.monthlyInvestCapacity) || 0;
+    state.draft.totalMonthlyInvestCapacity = capacity;
     
-    // Step 1의 투자 항목 연동 (계좌 매핑)
-    if (Array.isArray(p.investItems) && p.investItems.length > 0) {
-      const totalInvestAmount = p.investItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
-      if (totalInvestAmount > 0) {
-        const nextAccounts = [...(state.draft.accounts || [])];
+    // Step 1의 투자 및 저축 항목 연동 (계좌 매핑)
+    const allItems = [
+      ...(Array.isArray(p.investItems) ? p.investItems : []),
+      ...(Array.isArray(p.savingsItems) ? p.savingsItems : [])
+    ];
+
+    if (allItems.length > 0) {
+      const nextAccounts = [...(state.draft.accounts || [])];
+      const denominator = capacity || 1;
+      
+      allItems.forEach(item => {
+        // 비중 계산: 전체 여력 대비 해당 항목의 금액 (1000 곱하고 10 나눠서 소수점 한자리 유지)
+        const weight = Math.round(((Number(item.amount) || 0) / denominator) * 1000) / 10;
+        const existing = nextAccounts.find(acc => acc.name === item.name);
         
-        p.investItems.forEach(item => {
-          const weight = Math.round(((Number(item.amount) || 0) / totalInvestAmount) * 1000) / 10;
-          const existing = nextAccounts.find(acc => acc.name === item.name);
-          
-          if (existing) {
-            existing.accountWeight = weight;
-          } else {
-            nextAccounts.push({
-              id: utils.createId("acc"),
-              name: item.name,
-              accountWeight: weight,
-              allocations: [],
-              isOpen: true
-            });
-          }
-        });
-        
-        state.draft.accounts = nextAccounts;
-      }
+        if (existing) {
+          existing.accountWeight = weight;
+        } else {
+          nextAccounts.push({
+            id: utils.createId("acc"),
+            name: item.name,
+            accountWeight: weight,
+            allocations: [],
+            isOpen: true
+          });
+        }
+      });
+      
+      state.draft.accounts = nextAccounts;
     }
 
     renderDraft();

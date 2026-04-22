@@ -4,16 +4,7 @@
 import { state } from "./state.js";
 import { DEFAULT_INFLATION_RATE, DEFAULT_TAX_RATE } from "./constants.js";
 
-// Local reference for shared utilities (v0.5.12 Standard)
-const utils = window.IsfUtils || {
-  sanitizeWeight: n => parseFloat(n) || 0,
-  sanitizeMoney: v => parseInt(v) || 0,
-  formatMoney: v => v,
-  formatTimestamp: t => t,
-  toWon: v => v * 10000,
-  toMan: v => Math.floor(v / 10000),
-  escapeHtml: s => String(s || "").replace(/[&<>"']/g, m => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[m]))
-};
+import { utils } from "./utils.js";
 
 /**
  * Gets total allocation weight for an account
@@ -99,27 +90,51 @@ export function calculateDividendProjection() {
     principal += yearlyContribution;
 
     // 2. PR 경로 (배당 미투자)
-    // 당해 연도 납입분은 평균적으로 절반의 기간 동안만 성장한다고 가정 (cgr / 2)
-    const growthOnExistingPR = assetPR * cgr;
+    // 당해 연도 납입분(DCA)은 평균적으로 절반의 기간 동안만 성장 (cgr / 2)
+    const existingAssetPR = assetPR;
+    const growthOnExistingPR = existingAssetPR * cgr;
     const growthOnNewPR = yearlyContribution * (cgr / 2);
-    assetPR += yearlyContribution + growthOnExistingPR + growthOnNewPR;
+    assetPR = existingAssetPR + yearlyContribution + growthOnExistingPR + growthOnNewPR;
 
     const prevDivPR = lastResult ? lastResult.dividendNominalPR : 0;
-    // 배당금 역시 당해 연도 납입분에 대해서는 절반의 기대 수익률 적용
-    const divNominalPR = (prevDivPR * (1 + dgr)) + (yearlyContribution * (1 + cgr / 2) * initialYield);
+    // 당해 연도 납입분 배당은 평균적으로 절반 수준 (0.5 * initialYield) 적용
+    const divNominalPR = (prevDivPR * (1 + dgr)) + (yearlyContribution * (1 + cgr / 4) * (initialYield / 2));
     const divAfterTaxPR = divNominalPR * (1 - taxRate);
 
     // 3. TR 경로 (배당 재투자)
-    const growthOnExistingTR = assetTR * cgr;
+    const existingAssetTR = assetTR;
+    const growthOnExistingTR = existingAssetTR * cgr;
     const growthOnNewTR = yearlyContribution * (cgr / 2);
-    assetTR += yearlyContribution + growthOnExistingTR + growthOnNewTR;
+    assetTR = existingAssetTR + yearlyContribution + growthOnExistingTR + growthOnNewTR;
 
     const prevDivTR = lastResult ? lastResult.dividendNominalTR : 0;
     const prevReinvested = lastResult ? lastResult.dividendAfterTaxTR : 0;
-    // (기존 배당 성장) + (신규 납입분 배당) + (전년 재투자분에서 발생하는 배당)
-    const divNominalTR = (prevDivTR * (1 + dgr)) + (yearlyContribution * (1 + cgr / 2) * initialYield) + (prevReinvested * (1 + cgr) * initialYield);
+    // (기존 배당 성장) + (신규 납입분 배당/2) + (전년 재투자분의 연간 배당)
+    const divNominalTR = (prevDivTR * (1 + dgr)) + (yearlyContribution * (1 + cgr / 4) * (initialYield / 2)) + (prevReinvested * (1 + cgr) * initialYield);
     const divAfterTaxTR = divNominalTR * (1 - taxRate);
     assetTR += divAfterTaxTR;
+
+    // 4. 실질 가치 계산 (인플레이션 반영)
+    const df = Math.pow(1 + inflationRate, y);
+
+    results.push({
+      year: y,
+      principal,
+      assetNominalPR: assetPR,
+      assetRealPR: assetPR / df,
+      assetNominalTR: assetTR,
+      assetRealTR: assetTR / df,
+      dividendNominalPR: divNominalPR,
+      dividendAfterTaxPR: divAfterTaxPR,
+      dividendAfterTaxRealPR: divAfterTaxPR / df,
+      dividendNominalTR: divNominalTR,
+      dividendAfterTaxTR: divAfterTaxTR,
+      dividendAfterTaxRealTR: divAfterTaxTR / df
+    });
+  }
+
+  return results;
+}
 
     // 4. 실질 가치 계산 (인플레이션 반영)
     const df = Math.pow(1 + inflationRate, y);

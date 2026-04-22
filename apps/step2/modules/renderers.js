@@ -13,16 +13,7 @@ import {
   calculateDividendProjection
 } from "./calculator.js";
 
-// Local reference for shared utilities (v0.5.12 Standard)
-const utils = window.IsfUtils || {
-  sanitizeWeight: n => parseFloat(n) || 0,
-  sanitizeMoney: v => parseInt(v) || 0,
-  formatMoney: v => v,
-  formatTimestamp: t => t,
-  toWon: v => v * 10000,
-  toMan: v => Math.floor(v / 10000),
-  escapeHtml: s => String(s || "").replace(/[&<>"']/g, m => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[m]))
-};
+import { utils } from "./utils.js";
 
 /**
  * Renders the entire draft UI
@@ -33,8 +24,8 @@ export function renderDraft() {
     if (dom.portfolioName) dom.portfolioName.value = state.draft.name || "";
     if (dom.portfolioNotes) dom.portfolioNotes.value = state.draft.notes || "";
     if (dom.totalMonthlyInvestCapacity) {
-      // UI 표시 시 정수(만원) 단위로 내림 처리
-      dom.totalMonthlyInvestCapacity.value = Math.floor(utils.toMan(state.draft.totalMonthlyInvestCapacity || 0));
+      // UI 표시 시 단위 변환만 수행 (절삭 방지)
+      dom.totalMonthlyInvestCapacity.value = utils.toMan(state.draft.totalMonthlyInvestCapacity || 0);
     }
     
     if (state.draft.dividendSim) {
@@ -101,7 +92,7 @@ export function renderAccountList() {
               <button class="btn-toggle-star ${al.isImportant ? "is-active" : ""}" data-toggle-important="${al.id}">${al.isImportant ? "★" : "☆"}</button>
               <input type="text" data-field="label" value="${utils.escapeHtml(al.label)}" placeholder="종목명" />
               <input type="number" data-field="targetWeight" value="${al.targetWeight}" step="0.1" />
-              <input type="number" data-field="actualAmount" value="${utils.toMan(al.actualAmount)}" step="1" inputmode="decimal" />
+              <input type="number" data-field="actualAmount" value="${utils.toMan(al.actualAmount)}" step="any" inputmode="decimal" />
               <button class="btn btn-ghost btn-sm" data-remove-allocation-id="${al.id}">삭제</button>
             </div>
           `).join("")}
