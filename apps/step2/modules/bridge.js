@@ -6,6 +6,18 @@ import { dom } from "./dom.js";
 import { formatCurrency, formatDateTime } from "./calculator.js";
 import { renderDraft } from "./renderers.js";
 
+// Local reference for shared utilities (v0.5.12 Standard)
+const utils = window.IsfUtils || {
+  sanitizeWeight: n => parseFloat(n) || 0,
+  sanitizeMoney: v => parseInt(v) || 0,
+  formatMoney: v => v,
+  formatTimestamp: t => t,
+  toWon: v => v * 10000,
+  toMan: v => Math.floor(v / 10000),
+  escapeHtml: s => String(s || "").replace(/[&<>"']/g, m => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[m])),
+  createId: p => (p || "id") + "-" + Date.now() + "-" + Math.random().toString(16).slice(2)
+};
+
 /**
  * Checks for new data from Step 1 and shows the bridge banner if available
  */
@@ -60,7 +72,7 @@ export async function importLatestBridgeIntoDraft() {
             existing.accountWeight = weight;
           } else {
             nextAccounts.push({
-              id: IsfUtils.createId("acc"),
+              id: utils.createId("acc"),
               name: item.name,
               accountWeight: weight,
               allocations: [],

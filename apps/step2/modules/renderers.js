@@ -13,12 +13,15 @@ import {
   calculateDividendProjection
 } from "./calculator.js";
 
-const utils = window.IsfUtils || { 
-  escapeHtml: s => String(s || "").replace(/[&<>"']/g, m => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[m])),
-  toMan: n => Math.floor((n || 0) / 10000),
-  toWon: n => (n || 0) * 10000,
+// Local reference for shared utilities (v0.5.12 Standard)
+const utils = window.IsfUtils || {
   sanitizeWeight: n => parseFloat(n) || 0,
-  sanitizeMoney: (n, d) => parseInt(n) || d || 0
+  sanitizeMoney: v => parseInt(v) || 0,
+  formatMoney: v => v,
+  formatTimestamp: t => t,
+  toWon: v => v * 10000,
+  toMan: v => Math.floor(v / 10000),
+  escapeHtml: s => String(s || "").replace(/[&<>"']/g, m => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[m]))
 };
 
 /**
@@ -30,7 +33,8 @@ export function renderDraft() {
     if (dom.portfolioName) dom.portfolioName.value = state.draft.name || "";
     if (dom.portfolioNotes) dom.portfolioNotes.value = state.draft.notes || "";
     if (dom.totalMonthlyInvestCapacity) {
-      dom.totalMonthlyInvestCapacity.value = utils.toMan(state.draft.totalMonthlyInvestCapacity || 0);
+      // UI 표시 시 정수(만원) 단위로 내림 처리
+      dom.totalMonthlyInvestCapacity.value = Math.floor(utils.toMan(state.draft.totalMonthlyInvestCapacity || 0));
     }
     
     if (state.draft.dividendSim) {

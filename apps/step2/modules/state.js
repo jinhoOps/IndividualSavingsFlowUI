@@ -4,6 +4,18 @@
 import { MODEL_VERSION, TEMP_STORAGE_KEY } from "./constants.js";
 import { dom } from "./dom.js";
 
+// Local reference for shared utilities (v0.5.12 Standard)
+const utils = window.IsfUtils || {
+  sanitizeWeight: n => parseFloat(n) || 0,
+  sanitizeMoney: v => parseInt(v) || 0,
+  formatMoney: v => v,
+  formatTimestamp: t => t,
+  toWon: v => v * 10000,
+  toMan: v => Math.floor(v / 10000),
+  escapeHtml: s => String(s || "").replace(/[&<>"']/g, m => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[m])),
+  createId: p => (p || "id") + "-" + Date.now() + "-" + Math.random().toString(16).slice(2)
+};
+
 export const state = { 
   portfolios: [], 
   currentPortfolioId: "", 
@@ -45,7 +57,7 @@ export function createEmptyDraft() {
  */
 export function createDraftAccount(data = {}) {
   return {
-    id: IsfUtils.createId("acc"),
+    id: utils.createId("acc"),
     name: data.name || "신규 계좌",
     accountWeight: 0,
     allocations: [],
@@ -58,7 +70,7 @@ export function createDraftAccount(data = {}) {
  */
 export function createDraftAllocation(data = {}) {
   return {
-    id: IsfUtils.createId("al"),
+    id: utils.createId("al"),
     label: data.label || "신규 종목",
     targetWeight: 0,
     actualAmount: 0,

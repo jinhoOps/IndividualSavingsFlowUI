@@ -8,9 +8,13 @@ import { renderDraft } from "./renderers.js";
 
 // Local reference for shared utilities (v0.5.12 Standard)
 const utils = window.IsfUtils || {
+  sanitizeWeight: n => parseFloat(n) || 0,
+  sanitizeMoney: v => parseInt(v) || 0,
+  formatMoney: v => v,
+  formatTimestamp: t => t,
   toWon: v => v * 10000,
   toMan: v => Math.floor(v / 10000),
-  formatTimestamp: t => new Date(t).toLocaleString()
+  escapeHtml: s => String(s || "").replace(/[&<>"']/g, m => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[m]))
 };
 
 /**

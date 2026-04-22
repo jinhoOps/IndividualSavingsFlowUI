@@ -34,6 +34,18 @@ import {
 } from "./modules/storage-handler.js";
 import { getAccountById } from "./modules/calculator.js";
 
+// Local reference for shared utilities (v0.5.12 Standard)
+const utils = window.IsfUtils || {
+  sanitizeWeight: n => parseFloat(n) || 0,
+  sanitizeMoney: v => parseInt(v) || 0,
+  formatMoney: v => v,
+  formatTimestamp: t => t,
+  toWon: v => v * 10000,
+  toMan: v => Math.floor(v / 10000),
+  escapeHtml: s => String(s || "").replace(/[&<>"']/g, m => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[m])),
+  createId: p => (p || "id") + "-" + Date.now() + "-" + Math.random().toString(16).slice(2)
+};
+
 // Initialize
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", initApp);
@@ -229,7 +241,7 @@ function bindEvents() {
   
   if (dom.totalMonthlyInvestCapacity) {
     dom.totalMonthlyInvestCapacity.addEventListener("input", () => { 
-      state.draft.totalMonthlyInvestCapacity = IsfUtils.toWon(dom.totalMonthlyInvestCapacity.value); 
+      state.draft.totalMonthlyInvestCapacity = utils.toWon(dom.totalMonthlyInvestCapacity.value); 
       markDirty(); 
       renderAccountSummary(); 
       renderCharts(); 
@@ -257,11 +269,11 @@ function bindEvents() {
         const al = acc.allocations.find(i => i.id === allocRow.dataset.allocationId); 
         if (!al) return;
         if (e.target.dataset.field === "label") al.label = e.target.value;
-        if (e.target.dataset.field === "targetWeight") al.targetWeight = IsfUtils.sanitizeWeight(e.target.value);
-        if (e.target.dataset.field === "actualAmount") al.actualAmount = IsfUtils.toWon(e.target.value);
+        if (e.target.dataset.field === "targetWeight") al.targetWeight = utils.sanitizeWeight(e.target.value);
+        if (e.target.dataset.field === "actualAmount") al.actualAmount = utils.toWon(e.target.value);
       } else {
         if (e.target.dataset.field === "accountName") acc.name = e.target.value;
-        if (e.target.dataset.field === "accountWeight") acc.accountWeight = IsfUtils.sanitizeWeight(e.target.value);
+        if (e.target.dataset.field === "accountWeight") acc.accountWeight = utils.sanitizeWeight(e.target.value);
       }
       markDirty(); 
       renderAccountSummary(); 

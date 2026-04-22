@@ -11,7 +11,8 @@ const utils = window.IsfUtils || {
   formatMoney: v => v,
   formatTimestamp: t => t,
   toWon: v => v * 10000,
-  toMan: v => Math.floor(v / 10000)
+  toMan: v => Math.floor(v / 10000),
+  escapeHtml: s => String(s || "").replace(/[&<>"']/g, m => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[m]))
 };
 
 /**
@@ -98,19 +99,25 @@ export function calculateDividendProjection() {
     principal += yearlyContribution;
 
     // 2. PR 경로 (배당 미투자)
-    assetPR += yearlyContribution;
-    assetPR *= (1 + cgr);
+    // 당해 연도 납입분은 평균적으로 절반의 기간 동안만 성장한다고 가정 (cgr / 2)
+    const growthOnExistingPR = assetPR * cgr;
+    const growthOnNewPR = yearlyContribution * (cgr / 2);
+    assetPR += yearlyContribution + growthOnExistingPR + growthOnNewPR;
+
     const prevDivPR = lastResult ? lastResult.dividendNominalPR : 0;
-    const divNominalPR = (prevDivPR * (1 + dgr)) + (yearlyContribution * (1 + cgr) * initialYield);
+    // 배당금 역시 당해 연도 납입분에 대해서는 절반의 기대 수익률 적용
+    const divNominalPR = (prevDivPR * (1 + dgr)) + (yearlyContribution * (1 + cgr / 2) * initialYield);
     const divAfterTaxPR = divNominalPR * (1 - taxRate);
 
     // 3. TR 경로 (배당 재투자)
-    assetTR += yearlyContribution;
-    assetTR *= (1 + cgr);
+    const growthOnExistingTR = assetTR * cgr;
+    const growthOnNewTR = yearlyContribution * (cgr / 2);
+    assetTR += yearlyContribution + growthOnExistingTR + growthOnNewTR;
+
     const prevDivTR = lastResult ? lastResult.dividendNominalTR : 0;
     const prevReinvested = lastResult ? lastResult.dividendAfterTaxTR : 0;
     // (기존 배당 성장) + (신규 납입분 배당) + (전년 재투자분에서 발생하는 배당)
-    const divNominalTR = (prevDivTR * (1 + dgr)) + (yearlyContribution * (1 + cgr) * initialYield) + (prevReinvested * (1 + cgr) * initialYield);
+    const divNominalTR = (prevDivTR * (1 + dgr)) + (yearlyContribution * (1 + cgr / 2) * initialYield) + (prevReinvested * (1 + cgr) * initialYield);
     const divAfterTaxTR = divNominalTR * (1 - taxRate);
     assetTR += divAfterTaxTR;
 
