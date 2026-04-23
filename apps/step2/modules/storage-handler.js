@@ -17,7 +17,7 @@ export async function saveCurrentSimulation() {
   if (dom.appHeader) dom.appHeader.updateStatus("saving", "저장 중...");
   const data = toPortableSimulation();
   try {
-    const entry = await IsfStorageHub.savePortfolio(data); // HubStorage의 API명은 하위 호환성을 위해 유지
+    const entry = await IsfStorageHub.saveStep2Entry(data); 
     state.currentSimulationId = entry.id;
     markClean();
     
@@ -42,7 +42,7 @@ export async function saveCurrentSimulation() {
  * ID를 기반으로 통합 저장소에서 시뮬레이션을 로드합니다.
  */
 export async function loadSimulationById(id, options = {}) {
-  const s = await IsfStorageHub.getPortfolioById(id);
+  const s = await IsfStorageHub.getStep2EntryById(id);
   if (s) {
     const norm = normalizeLoadedSimulation(s);
     state.draft = norm.draft;
@@ -57,7 +57,7 @@ export async function loadSimulationById(id, options = {}) {
  * ID를 기반으로 시뮬레이션을 삭제합니다.
  */
 export async function deleteSimulationById(id) {
-  await IsfStorageHub.deletePortfolio(id);
+  await IsfStorageHub.deleteStep2Entry(id);
   if (state.currentSimulationId === id) resetDraft();
   await refreshSimulationList();
   if (dom.appHeader) dom.appHeader.updateStatus("success", "삭제되었습니다.");
@@ -67,7 +67,7 @@ export async function deleteSimulationById(id) {
  * 통합 저장소에서 시뮬레이션 목록을 최신화합니다.
  */
 export async function refreshSimulationList() {
-  const rows = await IsfStorageHub.listPortfolios();
+  const rows = await IsfStorageHub.listStep2Entries();
   state.simulations = rows || [];
 }
 

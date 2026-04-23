@@ -35,8 +35,15 @@
         }
         // Migration: Rename store if legacy exists
         if (event.oldVersion < 2 && db.objectStoreNames.contains("step2Portfolios")) {
-          // Note: In real scenarios, complex migration might be needed. 
-          // Here we assume new structure is preferred.
+          const oldStore = event.target.transaction.objectStore("step2Portfolios");
+          const newStore = event.target.transaction.objectStore(STORES.STEP2);
+          oldStore.openCursor().onsuccess = (e) => {
+            const cursor = e.target.result;
+            if (cursor) {
+              newStore.put(cursor.value);
+              cursor.continue();
+            }
+          };
         }
       };
       request.onsuccess = () => resolve(request.result);
@@ -95,7 +102,33 @@
         data: data || {}
       };
       await perform(STORES.STEP1, "readwrite", (s) => s.put(entry));
+      await this.enforceStoreLimit(STORES.STEP1, MAX_SNAPSHOTS);
       return entry;
+    },
+
+    async enforceStoreLimit(storeName, maxCount) {
+      try {
+        await perform(storeName, "readwrite", (store) => {
+          const countReq = store.count();
+          countReq.onsuccess = () => {
+            if (countReq.result > maxCount) {
+              const toDelete = countReq.result - maxCount;
+              const index = store.index("updatedAt");
+              let deleted = 0;
+              index.openCursor().onsuccess = (e) => {
+                const cursor = e.target.result;
+                if (cursor && deleted < toDelete) {
+                  cursor.delete();
+                  deleted++;
+                  cursor.continue();
+                }
+              };
+            }
+          };
+        });
+      } catch (e) {
+        console.warn("enforceStoreLimit failed:", e);
+      }
     },
 
     async getLatestStep1Snapshot() {

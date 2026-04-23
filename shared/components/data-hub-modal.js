@@ -7,6 +7,17 @@
       this.attachShadow({ mode: "open" });
     }
 
+    static get observedAttributes() {
+      return ["current-step", "data-step"];
+    }
+
+    attributeChangedCallback(name, oldVal, newVal) {
+      if (oldVal !== newVal) {
+        this.render();
+        this.setupEventListeners();
+      }
+    }
+
     connectedCallback() {
       this.render();
       this.setupEventListeners();
@@ -16,8 +27,7 @@
      * @param {string} step '1' | '2'
      */
     setStep(step) {
-      this.dataset.step = step;
-      this.setActiveTab(step === "1" ? "tab-backups" : "tab-simulations");
+      this.setAttribute("current-step", step);
     }
 
     /**
@@ -141,7 +151,7 @@
     }
 
     render() {
-      const step = this.dataset.step || "1";
+      const step = this.getAttribute("current-step") || this.dataset.step || "1";
       const showSimulations = step === "2";
       const activeTab = showSimulations ? "tab-simulations" : "tab-backups";
 
