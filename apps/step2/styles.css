@@ -22,8 +22,8 @@ body.is-dashboard-mode .account-panel {
   order: 10;
 }
 
-/* 스마트 브리지 배너 */
-.bridge-banner {
+/* 통합 저장소 동기화 배너 */
+.sync-banner {
   background: rgba(255, 255, 255, 0.92);
   border: 1px solid var(--tone-primary);
   border-left-width: 4px;
@@ -38,7 +38,7 @@ body.is-dashboard-mode .account-panel {
   animation: slideDown 0.3s ease-out;
 }
 
-.bridge-banner[hidden] {
+.sync-banner[hidden] {
   display: none !important;
 }
 
@@ -47,26 +47,26 @@ body.is-dashboard-mode .account-panel {
   to { transform: translateY(0); opacity: 1; }
 }
 
-.bridge-banner__content {
+.sync-banner__content {
   display: flex;
   align-items: flex-start;
   gap: 12px;
   flex: 1;
 }
 
-.bridge-banner__icon {
+.sync-banner__icon {
   font-size: 1.2rem;
   margin-top: 2px;
 }
 
-.bridge-banner__text {
+.sync-banner__text {
   margin: 0;
   font-size: 0.9rem;
   font-weight: 600;
   color: var(--ink);
 }
 
-.bridge-banner__meta {
+.sync-banner__meta {
   margin-top: 4px;
   display: flex;
   gap: 12px;
@@ -74,7 +74,7 @@ body.is-dashboard-mode .account-panel {
   color: var(--muted);
 }
 
-.bridge-banner__actions {
+.sync-banner__actions {
   display: flex;
   gap: 8px;
 }
@@ -363,11 +363,11 @@ body.is-dashboard-mode .account-panel {
 
 @media (max-width: 900px) {
   .form-grid { grid-template-columns: 1fr 1fr; }
-  .bridge-grid { grid-template-columns: 1fr 1fr; }
+  .sync-grid { grid-template-columns: 1fr 1fr; }
 }
 
 @media (max-width: 760px) {
-  .bridge-panel { order: 0; }
+  .sync-panel { order: 0; }
   .chart-panel { order: 1; }
   .info-panel { order: 2; }
   .account-panel { order: 3; }
@@ -375,7 +375,7 @@ body.is-dashboard-mode .account-panel {
   .actions-panel { order: 5; }
   .storage-panel { order: 6; }
 
-  .form-grid, .bridge-grid { grid-template-columns: 1fr; }
+  .form-grid, .sync-grid { grid-template-columns: 1fr; }
 
   .account-info { flex-wrap: wrap; }
   .account-info input[data-field="accountName"] { width: 100%; }

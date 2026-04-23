@@ -1,12 +1,6 @@
 (function initIsfUtils(global) {
   "use strict";
 
-  const currencyFormatter = new Intl.NumberFormat("ko-KR", {
-    style: "currency",
-    currency: "KRW",
-    maximumFractionDigits: 0,
-  });
-
   const backupTimestampFormatter = new Intl.DateTimeFormat("ko-KR", {
     year: "numeric",
     month: "2-digit",
@@ -75,27 +69,6 @@
     return str.replace(/[&<>"']/g, (match) => entities[match]);
   }
 
-  function formatWeight(value) {
-    const numeric = Number(value);
-    if (!Number.isFinite(numeric)) return "0.00";
-    return (Math.round(numeric * 100) / 100).toFixed(2);
-  }
-
-  function sanitizeWeight(value) {
-    const numeric = Number(value);
-    if (!Number.isFinite(numeric)) {
-      return 0;
-    }
-    const rounded = Math.round(numeric * 100) / 100;
-    if (rounded < 0) {
-      return 0;
-    }
-    if (rounded > 100) {
-      return 100;
-    }
-    return rounded;
-  }
-
   function toWon(amountInUnit) {
     if (!Number.isFinite(Number(amountInUnit))) {
       return 0;
@@ -114,12 +87,10 @@
     formatTimestamp,
     sanitizeMoney,
     sanitizeRate,
-    sanitizeWeight,
     toWon,
     toMan,
     createId,
     escapeHtml,
-    formatWeight,
     debounce,
     roundTo,
     idbRequestToPromise,

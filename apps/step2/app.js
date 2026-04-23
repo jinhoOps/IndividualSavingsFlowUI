@@ -1,9 +1,11 @@
 /**
- * ISF Step 2: Investment Portfolio Controller
- * (Refactored to ES6 Modules v0.5.12)
+ * Individual Savings Flow (ISF) - Step 2: 배당 시뮬레이션 (Dividend Simulation)
+ * v0.7.0
+ * 
+ * 파일 역할: Step 2 애플리케이션의 엔트리 포인트 및 전체 배당 시뮬레이션 흐름 제어
  */
 
-import { state, createEmptyDraft, markDirty, markClean, getHubStorage, createDraftAccount, createDraftAllocation } from "./modules/state.js";
+import { state, createEmptyDraft, markDirty, markClean, getHubStorage } from "./modules/state.js";
 import { dom, initDom } from "./modules/dom.js";
 import { 
   SHARE_STATE_KEY, 
@@ -13,27 +15,22 @@ import {
 } from "./modules/constants.js";
 import { 
   renderDraft, 
-  renderChartTabs, 
   renderCharts, 
-  renderAccountList, 
-  renderAccountSummary,
   renderDividendSimulation
 } from "./modules/renderers.js";
-import { checkBridgeData, importLatestBridgeIntoDraft } from "./modules/bridge.js";
+import { checkStep1SyncData, importLatestStep1Data } from "./modules/step1-connector.js";
 import { 
-  saveCurrentPortfolio, 
-  loadPortfolioById, 
-  deletePortfolioById, 
-  refreshPortfolioList, 
+  saveCurrentSimulation, 
+  loadSimulationById, 
+  deleteSimulationById, 
+  refreshSimulationList, 
   handleManualBackup, 
   restoreBackupById, 
-  normalizeLoadedPortfolio,
-  toPortablePortfolio,
-  resetDraft,
+  normalizeLoadedSimulation,
+  toPortableSimulation,
   syncBackupUi
 } from "./modules/storage-handler.js";
-import { getAccountById } from "./modules/calculator.js";
-import { utils } from "./modules/utils.js";
+import { utils } from "./utils.js";
 
 // Initialize
 if (document.readyState === "loading") {
@@ -57,8 +54,7 @@ async function initApp() {
         const parsed = JSON.parse(savedTmp);
         if (parsed?.draft) {
           state.draft = parsed.draft; 
-          state.currentPortfolioId = parsed.currentPortfolioId || "";
-          state.activeAccountId = parsed.activeAccountId || ""; 
+          state.currentSimulationId = parsed.currentSimulationId || "";
           state.dirty = true;
           console.log("initApp: Session restored.");
         }
@@ -70,9 +66,9 @@ async function initApp() {
           SHARE_STATE_KEY
         );
         if (payload) { 
-          const norm = normalizeLoadedPortfolio(payload); 
+          const norm = normalizeLoadedSimulation(payload); 
           state.draft = norm.draft; 
-          state.currentPortfolioId = norm.id || ""; 
+          state.currentSimulationId = norm.id || ""; 
           console.log("initApp: Hash payload loaded.");
         }
       } catch (_e) { 
@@ -86,14 +82,11 @@ async function initApp() {
     
     // 3. UI 초기 렌더링
     renderDraft(); 
-    if (state.dirty && dom.pendingBar) {
-      IsfFeedback.markPendingBar(dom.pendingBar, dom.pendingSummary, true);
-    }
 
     // 4. 비동기 데이터 로드 (에러가 나도 나머지는 작동하게)
     try {
       await checkReturningUser();
-      await checkBridgeData();
+      await checkStep1SyncData();
       initializeBackupStore();
     } catch (e) {
       console.error("Async data initialization failed:", e);
@@ -102,7 +95,7 @@ async function initApp() {
     // 5. PWA 관리자 시작
     try {
       const pwa = new IsfPwaManager({
-        appVersion: "0.6.1", 
+        appVersion: "0.7.0", 
         appKey: SHARE_STATE_KEY,
         onFeedback: (msg) => IsfFeedback.showFeedback(dom.applyFeedback, msg),
         getCurrentData: () => state.draft,
@@ -122,9 +115,9 @@ async function checkReturningUser() {
   const hub = getHubStorage();
   if (!hub) return;
   try {
-    const rows = await hub.listStep2Portfolios();
-    state.portfolios = rows || [];
-    if (state.portfolios.length > 0 && !window.location.hash) {
+    const rows = await hub.listStep2Entries();
+    state.simulations = rows || [];
+    if (state.simulations.length > 0 && !window.location.hash) {
       state.isReturningUser = true;
       state.isDashboardMode = true;
       document.body.classList.add("is-dashboard-mode");
@@ -136,21 +129,21 @@ function bindModalEvents() {
   if (!dom.appHeader || !dom.dataHubModal) return;
 
   dom.appHeader.addEventListener("open-data-hub", async () => {
-    await refreshPortfolioList();
-    dom.dataHubModal.updatePortfolioList(state.portfolios);
+    await refreshSimulationList();
+    dom.dataHubModal.updateSimulationList(state.simulations);
     dom.dataHubModal.updateBackupList(state.backupEntries || []);
     dom.dataHubModal.open();
   });
 
-  dom.dataHubModal.addEventListener("select-portfolio", async (e) => {
-    await loadPortfolioById(e.detail.id);
+  dom.dataHubModal.addEventListener("select-simulation", async (e) => {
+    await loadSimulationById(e.detail.id);
     dom.dataHubModal.close();
   });
 
-  dom.dataHubModal.addEventListener("delete-portfolio", async (e) => {
+  dom.dataHubModal.addEventListener("delete-simulation", async (e) => {
     if (confirm("정말 삭제하시겠습니까?")) {
-      await deletePortfolioById(e.detail.id);
-      dom.dataHubModal.updatePortfolioList(state.portfolios);
+      await deleteSimulationById(e.detail.id);
+      dom.dataHubModal.updateSimulationList(state.simulations);
     }
   });
 
@@ -164,12 +157,12 @@ function bindModalEvents() {
   });
 
   dom.dataHubModal.addEventListener("export-json", () => {
-    IsfShare.exportAsJson(IsfShare.buildStateEnvelope(SHARE_STATE_KEY, SHARE_STATE_SCHEMA, toPortablePortfolio()), "portfolio");
+    IsfShare.exportAsJson(IsfShare.buildStateEnvelope(SHARE_STATE_KEY, SHARE_STATE_SCHEMA, toPortableSimulation()), "dividend-simulation");
     if (dom.appHeader) dom.appHeader.updateStatus("success", "JSON 저장 완료");
   });
 
   dom.dataHubModal.addEventListener("copy-share-link", async () => {
-    const enc = IsfShare.encodePayloadForHash(IsfShare.buildStateEnvelope(SHARE_STATE_KEY, SHARE_STATE_SCHEMA, toPortablePortfolio()));
+    const enc = IsfShare.encodePayloadForHash(IsfShare.buildStateEnvelope(SHARE_STATE_KEY, SHARE_STATE_SCHEMA, toPortableSimulation()));
     const url = new URL(window.location.href);
     url.hash = `${HASH_STATE_PARAM}=${enc}`;
     try {
@@ -179,44 +172,42 @@ function bindModalEvents() {
       window.prompt("링크를 복사하세요:", url.toString());
     }
   });
+
+  dom.dataHubModal.addEventListener("import-json", async (e) => {
+    try {
+      const imported = IsfShare.parseImportedJson(await e.detail.file.text(), SHARE_STATE_KEY);
+      const norm = normalizeLoadedSimulation(imported);
+      state.draft = norm.draft;
+      state.currentSimulationId = norm.id || "";
+      renderDraft();
+      markDirty();
+      if (dom.appHeader) dom.appHeader.updateStatus("success", "데이터 가져오기 성공");
+    } catch (_e) {
+      if (dom.appHeader) dom.appHeader.updateStatus("error", "JSON 형식 오류");
+    }
+  });
 }
 
 function bindEvents() {
   bindModalEvents();
   
-  if (dom.dismissBridgeBanner) {
-    dom.dismissBridgeBanner.addEventListener("click", () => { 
-      if (dom.bridgeBanner) dom.bridgeBanner.hidden = true; 
+  if (dom.dismissSyncBanner) {
+    dom.dismissSyncBanner.addEventListener("click", () => { 
+      if (dom.step1SyncBanner) dom.step1SyncBanner.hidden = true; 
     });
   }
   
-  if (dom.loadStep1Data) {
-    dom.loadStep1Data.addEventListener("click", async () => { 
+  if (dom.importStep1Data) {
+    dom.importStep1Data.addEventListener("click", async () => { 
       if (state.dirty && !confirm("현재 수정한 내용을 덮어쓸까요?")) return; 
       try {
-        await importLatestBridgeIntoDraft(); 
+        await importLatestStep1Data(); 
       } catch (e) {
         console.error(e);
         IsfFeedback.showFeedback(dom.applyFeedback, "데이터 가져오기 중 오류가 발생했습니다.", true);
       } finally {
-        if (dom.bridgeBanner) dom.bridgeBanner.hidden = true; 
+        if (dom.step1SyncBanner) dom.step1SyncBanner.hidden = true; 
       }
-    });
-  }
-  
-  if (dom.chartTabSummary) {
-    dom.chartTabSummary.addEventListener("click", () => { 
-      state.activeChartTab = "summary"; 
-      renderChartTabs(); 
-      renderCharts(); 
-    });
-  }
-  
-  if (dom.chartTabFlow) {
-    dom.chartTabFlow.addEventListener("click", () => { 
-      state.activeChartTab = "flow"; 
-      renderChartTabs(); 
-      renderCharts(); 
     });
   }
   
@@ -224,111 +215,10 @@ function bindEvents() {
     dom.totalMonthlyInvestCapacity.addEventListener("input", () => { 
       state.draft.totalMonthlyInvestCapacity = utils.toWon(dom.totalMonthlyInvestCapacity.value); 
       markDirty(); 
-      renderAccountSummary(); 
       renderCharts(); 
     });
   }
   
-  if (dom.addAccount) {
-    dom.addAccount.addEventListener("click", () => { 
-      const acc = createDraftAccount({ name: `계좌 ${state.draft.accounts.length + 1}` }); 
-      state.draft.accounts.push(acc); 
-      state.activeAccountId = acc.id; 
-      markDirty(); 
-      renderDraft(); 
-    });
-  }
-  
-  if (dom.accountList) {
-    dom.accountList.addEventListener("input", (e) => {
-      const accRow = e.target.closest("[data-account-id]");
-      const allocRow = e.target.closest("[data-allocation-id]");
-      const acc = getAccountById(accRow?.dataset.accountId); 
-      if (!acc) return;
-
-      if (allocRow) {
-        const al = acc.allocations.find(i => i.id === allocRow.dataset.allocationId); 
-        if (!al) return;
-        if (e.target.dataset.field === "label") al.label = e.target.value;
-        if (e.target.dataset.field === "targetWeight") al.targetWeight = utils.sanitizeWeight(e.target.value);
-        if (e.target.dataset.field === "actualAmount") al.actualAmount = utils.toWon(e.target.value);
-      } else {
-        if (e.target.dataset.field === "accountName") acc.name = e.target.value;
-        if (e.target.dataset.field === "accountWeight") acc.accountWeight = utils.sanitizeWeight(e.target.value);
-      }
-      markDirty(); 
-      renderAccountSummary(); 
-      renderCharts();
-    });
-    
-    dom.accountList.addEventListener("click", (e) => {
-      const accRow = e.target.closest("[data-account-id]");
-      const accId = accRow?.dataset.accountId;
-      
-      const selId = e.target.dataset.selectAccountId || e.target.closest(".account-row-head")?.dataset.selectAccountId;
-      if (selId) { 
-        state.activeAccountId = (state.activeAccountId === selId ? "" : selId); 
-        renderAccountList(); 
-        return; 
-      }
-      
-      const rid = e.target.dataset.removeAccountId;
-      if (rid && confirm("계좌를 삭제하시겠습니까?")) {
-        state.draft.accounts = state.draft.accounts.filter(a => a.id !== rid);
-        if (state.activeAccountId === rid) state.activeAccountId = "";
-        markDirty(); 
-        renderDraft();
-        return;
-      }
-
-      const addAlId = e.target.dataset.addAllocationId;
-      if (addAlId) {
-        const acc = getAccountById(addAlId);
-        if (acc) { 
-          acc.allocations.push(createDraftAllocation({ label: `종목 ${acc.allocations.length + 1}` })); 
-          markDirty(); 
-          renderAccountList(); 
-          renderCharts(); 
-        }
-        return;
-      }
-
-      const remAlId = e.target.dataset.removeAllocationId;
-      if (remAlId) {
-        const acc = getAccountById(accId);
-        if (acc && confirm("종목을 삭제하시겠습니까?")) { 
-          acc.allocations = acc.allocations.filter(a => a.id !== remAlId); 
-          markDirty(); 
-          renderAccountList(); 
-          renderCharts(); 
-        }
-        return;
-      }
-
-      const tid = e.target.dataset.toggleImportant || e.target.closest(".btn-toggle-star")?.dataset.toggleImportant;
-      if (tid) {
-        const acc = getAccountById(accId);
-        const al = acc?.allocations.find(i => i.id === tid);
-        if (al) { 
-          al.isImportant = !al.isImportant; 
-          markDirty(); 
-          renderAccountList(); 
-          renderCharts(); 
-        }
-        return;
-      }
-    });
-  }
-  
-  if (dom.savePortfolio) dom.savePortfolio.addEventListener("click", saveCurrentPortfolio);
-  if (dom.applyChanges) dom.applyChanges.addEventListener("click", saveCurrentPortfolio);
-  if (dom.cancelChanges) {
-    dom.cancelChanges.addEventListener("click", async () => { 
-      if (state.currentPortfolioId) await loadPortfolioById(state.currentPortfolioId, { skipConfirm: true }); 
-      else resetDraft(); 
-    });
-  }
-
   // Simulation Events
   if (dom.toggleSimInputs) {
     dom.toggleSimInputs.addEventListener("click", () => {

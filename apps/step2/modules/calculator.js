@@ -1,37 +1,13 @@
 /**
- * Step 2 Business Logic & Calculations
+ * Individual Savings Flow (ISF) - Step 2: 배당 시뮬레이션 (Dividend Simulation)
+ * v0.7.0
+ * 
+ * 파일 역할: 배당금 계산 로직 및 수식 (Calculator)
  */
 import { state } from "./state.js";
 import { DEFAULT_INFLATION_RATE, DEFAULT_TAX_RATE } from "./constants.js";
 
 import { utils } from "./utils.js";
-
-/**
- * Gets total allocation weight for an account
- */
-export function getAllocationWeightTotal(account) {
-  if (!account || !Array.isArray(account.allocations)) return 0;
-  return account.allocations.reduce((sum, al) => sum + utils.sanitizeWeight(al.targetWeight), 0);
-}
-
-/**
- * Gets total target weight across all accounts
- */
-export function getTotalAccountWeight() {
-  if (!state.draft || !Array.isArray(state.draft.accounts)) return 0;
-  return state.draft.accounts.reduce((sum, acc) => sum + utils.sanitizeWeight(acc.accountWeight), 0);
-}
-
-/**
- * Calculates the amount of cash not yet allocated to any account
- */
-export function getAutoCashAmount() {
-  const total = getTotalMonthlyInvestCapacity();
-  const allocated = state.draft.accounts.reduce((sum, acc) => {
-    return sum + Math.round(total * utils.sanitizeWeight(acc.accountWeight) / 100);
-  }, 0);
-  return Math.max(0, total - allocated);
-}
 
 /**
  * Gets the total monthly investment capacity in Won
@@ -53,14 +29,6 @@ export function formatCurrency(val) {
 export function formatDateTime(iso) {
   if (!iso) return "-";
   return utils.formatTimestamp(new Date(iso).getTime());
-}
-
-/**
- * Gets an account from the state draft by ID
- */
-export function getAccountById(id) {
-  if (!state.draft) return null;
-  return state.draft.accounts.find(a => String(a.id) === String(id));
 }
 
 /**

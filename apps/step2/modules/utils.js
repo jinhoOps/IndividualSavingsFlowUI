@@ -1,16 +1,11 @@
 /**
- * Step 2 Utility Bridge
- * Centralizes the reference to shared IsfUtils and provides fallbacks.
- * (v0.5.12 Standardized)
+ * Individual Savings Flow (ISF) - Step 2: 배당 시뮬레이션 (Dividend Simulation)
+ * v0.7.0
+ * 
+ * 파일 역할: 공유 유틸리티 연결 및 폴백 제공 (Utility Bridge)
  */
 
 export const utils = window.IsfUtils || {
-  sanitizeWeight: n => {
-    const numeric = parseFloat(n);
-    if (!Number.isFinite(numeric)) return 0;
-    const rounded = Math.round(numeric * 100) / 100;
-    return Math.max(0, Math.min(100, rounded));
-  },
   sanitizeMoney: (v, min = 0) => {
     const raw = String(v || "0").replace(/[^0-9.-]/g, "");
     const parsed = parseInt(raw, 10);

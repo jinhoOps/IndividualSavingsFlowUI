@@ -24,13 +24,12 @@ import {
 } from "./modules/formatters.js";
 
 import {
-  persistInputs, loadPersistedInputs, saveShareSnapshot,
   loadShareSnapshotById
 } from "./modules/storage-manager.js";
 
 import {
-  persistStep1BridgeSnapshot
-} from "./modules/bridge-manager.js";
+  persistStep1Snapshot
+} from "./modules/snapshot-manager.js";
 
 import {
   buildMonthlySnapshot, simulateProjection, buildSummaryCards
@@ -70,7 +69,7 @@ function init() {
   void initializeInputsFromShareId();
 
   const pwaManager = new IsfPwaManager({
-    appVersion: "0.6.1",
+    appVersion: "0.7.0",
     appKey: SHARE_STATE_KEY,
     onFeedback: (message) => IsfFeedback.showFeedback(dom.applyFeedback, message),
     isViewMode: () => state.isViewMode,
@@ -94,7 +93,7 @@ if (document.readyState === "loading") {
 
 function checkReturningUser() {
   if (state.isViewMode || hasShareState()) return;
-  const persisted = loadPersistedInputs();
+  const persisted = IsfStorageHub.loadLocal(STORAGE_KEY);
   if (persisted) {
     state.isDashboardMode = true;
     document.body.classList.add("is-dashboard-mode");
@@ -257,17 +256,17 @@ function persistPrimaryState(inputs, options = {}) {
   if (state.isViewMode) return;
   if (dom.appHeader) dom.appHeader.updateStatus("saving", "저장 중...");
   try {
-    persistInputs(inputs);
+    IsfStorageHub.saveLocal(STORAGE_KEY, inputs);
     if (!options.skipAutoBackup) {
       void (async () => {
-        const res = await IsfBackupManager.maybeCreateAutoBackupIfDue(state.backupEntries, inputs, SHARE_STATE_KEY);
+        const res = await IsfStorageHub.triggerAutoBackup(SHARE_STATE_KEY, inputs, state.backupEntries);
         if (res.created) {
           state.backupEntries = res.nextEntries;
           syncBackupUi();
         }
       })();
     }
-    void persistStep1BridgeSnapshot(inputs, { getHubStorage: () => IsfHubStorage, isViewMode: state.isViewMode });
+    void persistStep1Snapshot(inputs, { getHubStorage: () => IsfStorageHub, isViewMode: state.isViewMode });
     if (dom.appHeader) dom.appHeader.updateStatus("success", "자동 저장됨");
   } catch (_e) {
     if (dom.appHeader) dom.appHeader.updateStatus("error", "저장 실패");
@@ -278,9 +277,9 @@ function persistPrimaryState(inputs, options = {}) {
 
 async function handleManualBackup() {
   if (state.isViewMode || !state.backupStoreReady) return;
-  const res = await IsfBackupManager.createBackupEntry(state.backupEntries, state.inputs, {
+  const res = await IsfStorageHub.createManualBackup(SHARE_STATE_KEY, state.inputs, state.backupEntries, {
     type: "manual", source: "normal", allowDuplicate: true,
-    replaceRecentManualWithinMs: MANUAL_BACKUP_WINDOW_MS, appKey: SHARE_STATE_KEY,
+    replaceRecentManualWithinMs: MANUAL_BACKUP_WINDOW_MS,
     onRecentManualOverwriteConfirm: () => window.confirm("최근 1분 이내 수동 백업이 있습니다. 덮어쓸까요?")
   });
   if (res.created) {
@@ -318,10 +317,15 @@ async function handleCopyShareLink() {
 
 async function handleSaveViewToLocal() {
   const localInputs = sanitizeInputs(cloneInputs(state.inputs));
-  persistInputs(localInputs);
-  const res = await IsfBackupManager.createBackupEntry(state.backupEntries, localInputs, { type: "manual", source: "view-save", appKey: SHARE_STATE_KEY });
-  if (res.created) { state.backupEntries = res.nextEntries; syncBackupUi(); }
-  switchToNormalMode();
+  const success = await IsfStorageHub.persistViewDataLocally(STORAGE_KEY, localInputs, state.backupEntries);
+  if (success) {
+    const entries = await IsfBackupManager.loadBackupEntriesFromDb(SHARE_STATE_KEY);
+    if (entries) {
+      state.backupEntries = entries;
+      syncBackupUi();
+    }
+    switchToNormalMode();
+  }
 }
 
 function handleLoadSample() {

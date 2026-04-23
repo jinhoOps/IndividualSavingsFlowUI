@@ -4,43 +4,37 @@ created: 2026-04-21
 tags: [refactoring, modularization, es6_modules, step2, simulation]
 ---
 
-# Step2 Modularization Refactoring (Step 2 모듈화 및 시뮬레이션 고도화)
+# Step2 Modularization Refactoring (Step 2 배당 시뮬레이션 특화 개편)
 
 ## 배경 및 원인
-- Step 2 포트폴리오 관리 로직이 비대해짐에 따라 유지보수 효율을 높이고, 정교한 배당 시뮬레이션 엔진을 도입하기 위해 7개 전문 모듈 체제로 리팩터링을 진행했습니다. (v0.5.12)
+- Step 2 포트폴리오 관리 로직의 비대화를 해소하고, '배당 성장 시뮬레이션'이라는 핵심 가치에 집중하기 위해 구조를 대폭 간소화했습니다. (v0.7.0)
+- 기존의 계좌/종목 비중 관리 기능은 Step 1 데이터를 기반으로 추후 Step 3에서 새롭게 구현될 예정입니다.
 
-## 리팩터링 전략: 7개 전문 모듈 구성 (`apps/step2/modules/`)
+## 리팩터링 전략: 7개 전문 모듈 최적화 (`apps/step2/modules/`)
 
-1. **`constants.js`**: 앱 전역 설정, 초기값, 스타일 상수 격리.
-2. **`dom.js`**: DOM 요소 탐색 및 초기화 로딩 조율.
-3. **`state.js`**: `draftPortfolio`, `isDirty` 등 전역 상태 관리 및 유틸리티 매핑.
-4. **`calculator.js`**: **[핵심]** 포트폴리오 비중 연산 및 고성능 배당 시뮬레이션(DGR, DRIP, 인플레이션 반영 실질 가치) 엔진.
-5. **`renderers.js`**: 도넛 차트(D3/SVG), 자산 테이블, 시뮬레이션 결과 화면 렌더링.
-6. **`bridge.js`**: Step 1 연동 데이터(Invest Capacity) 수신 및 브리지 배너 관리.
-7. **`storage-handler.js`**: IndexedDB(`step2Portfolios`) 저장, 로드 및 백업 동기화.
+1. **`constants.js`**: 앱 전역 설정, 초기값 유지.
+2. **`dom.js`**: 포트폴리오 에디터 및 차트 관련 DOM 참조 제거.
+3. **`state.js`**: `draftPortfolio`에서 계좌(accounts) 관련 필드 제거 및 상태 관리 간소화.
+4. **`calculator.js`**: **[핵심]** 포트폴리오 비중 연산 로직을 제거하고, 고성능 배당 시뮬레이션 엔진에만 집중.
+5. **`renderers.js`**: 도넛 차트 및 Sankey 렌더러 제거. 시뮬레이션 차트 및 테이블 렌더링만 유지.
+6. **`bridge.js`**: Step 1 연동 데이터(Invest Capacity) 수신 및 브리지 배너 관리 유지.
+7. **`storage-handler.js`**: IndexedDB 저장 로직 유지하되, 데이터 정규화 과정에서 계좌 관련 로직 제거.
 
-## 주요 기술 혁신 (v0.6.0 업데이트)
+## 주요 기술 혁신 (v0.7.0 업데이트)
 
-### 1. 배당 시뮬레이션 엔진 고도화
-단순 선형 계산을 넘어 실제 투자 환경을 반영한 4대 핵심 변수를 통합 연산합니다:
-- **배당 성장률 (DGR)**: 매년 배당금이 복리로 증가하는 효과 반영.
-- **자본 성장률 (CGR)**: 주가 상승에 따른 원금 가치 증가 반영.
-- **배당 재투자 (DRIP)**: 수령한 배당금을 원금에 산입하여 복리 극대화.
-- **실질 가치 (Real Value)**: 목표 인플레이션율을 적용하여 미래의 금액을 현재 구매력 가치로 역산.
+### 1. 배당 시뮬레이션 대시보드 집중
+- UI에서 불필요한 입력 단계를 최소화하고, Step 1에서 넘어온 '월 투자 여력'을 즉시 시뮬레이션에 대입하여 결과를 보여줍니다.
+- **4대 핵심 변수 연산 보존**: 배당 성장률(DGR), 자본 성장률(CGR), 배당 재투자(DRIP), 실질 가치(Real Value).
 
-### 2. Sankey 흐름도 통합
-- `월 투자 여력 -> 계좌 -> 종목`으로 이어지는 자금 흐름을 시각화하여 포트폴리오의 구조적 건전성을 직관적으로 파악할 수 있게 개선했습니다.
-
-### 3. 렌더링 및 데이터 무결성 안정화 (Stability Hardening)
-- **런타임 보호**: `renderSankey` 내 배열 접근 시 옵셔널 체이닝(`?.`) 및 기본값(`|| []`)을 전면 적용하여, 데이터 로드 지연이나 일부 필드 누락 상황에서도 앱 크래시를 원천 차단했습니다.
-- **데이터 정규화 (Deep Merge)**: `normalizeLoadedPortfolio`에서 불러온 데이터를 `createEmptyDraft`와 딥 머지(Deep Merge)하여, `dividendSim` 등 신규 필수 필드가 누락된 과거 버전 데이터 로드 시에도 안정적인 시뮬레이션 구조를 보장합니다.
-- **단위 환산 및 마이그레이션**: `modelVersion < 10` 데이터 감지 시 `toWon` 변환을 통해 원 단위 정밀도를 확보하고 마이그레이션을 자동 수행합니다.
+### 2. 아키텍처 슬림화 (Logic Decoupling)
+- 포트폴리오의 '구성'과 '시뮬레이션'을 분리하여, Step 2는 순수하게 미래 가치를 예측하는 도구로 정체성을 확립했습니다.
+- 시각화 로직(D3/SVG)의 복잡도를 낮추어 런타임 안정성을 높였습니다.
 
 ## ⚠️ 주의사항 및 교훈
-- **물리적 무결성**: 모듈 분리 시 `state-helpers.js` 등 핵심 유틸리티가 누락되지 않도록 `app.js`의 의존성 트리를 주기적으로 점검해야 합니다.
-- **단위 정합성**: Step 1에서 넘어오는 데이터는 항상 `IsfUtils.toMan`을 통해 UI용 단위로 변환되어야 하며, 저장 시에는 원 단위(`modelVersion: 10`)를 준수해야 합니다.
-- **CSS 명시성**: 브리지 배너(`hidden` 속성)와 같이 CSS `display` 속성이 충돌할 경우 `!important`를 활용한 강제 제어가 필요할 수 있습니다.
-- **비동기 처리**: IndexedDB 로드 중 에러 발생 시에도 `finally` 구문을 통해 로딩 인디케이터나 배너를 적절히 닫아 UX 중단을 방지해야 합니다.
+- **단위 정합성**: Step 1에서 넘어오는 데이터는 항상 `IsfUtils.toWon`을 통해 원 단위로 처리되어야 함을 재확인했습니다.
+- **데이터 호환성**: `normalizeLoadedPortfolio`에서 과거의 계좌 포함 데이터를 로드하더라도 시뮬레이션에 필요한 필드만 추출하여 안정적으로 동작하게 설계했습니다.
+- **향후 계획**: 제거된 포트폴리오 시각화 기능은 Step 1의 실시간 입력값을 활용하는 [[Plan_Step3]]로 계승됩니다.
 
 ---
-*연결 노드:* [[Architecture_Reference]], [[Data_Model_Reference]], [[Step1_Modularization_Refactoring]]
+*연결 노드:* [[Architecture_Reference]], [[Data_Model_Reference]], [[Plan_Step3]]
+

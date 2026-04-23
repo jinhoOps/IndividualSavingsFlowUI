@@ -1,103 +1,59 @@
 /**
- * Step 2 State Management
+ * Individual Savings Flow (ISF) - Step 2: 배당 시뮬레이션 (Dividend Simulation)
+ * v0.7.0
+ * 
+ * 파일 역할: 애플리케이션 상태 관리 (State)
  */
-import { MODEL_VERSION, TEMP_STORAGE_KEY } from "./constants.js";
-import { dom } from "./dom.js";
+import { TEMP_STORAGE_KEY } from "./constants.js";
 
-import { utils } from "./utils.js";
-
-export const state = { 
-  portfolios: [], 
-  currentPortfolioId: "", 
-  draft: null, 
-  activeAccountId: "", 
-  activeChartTab: "summary", 
-  dirty: false,
+export const state = {
+  draft: null,
+  simulations: [], // 기존 portfolios에서 변경
+  currentSimulationId: "", // 기존 currentPortfolioId에서 변경
+  backupEntries: [],
   isDashboardMode: false,
   isReturningUser: false,
-  backupEntries: [],
-  backupStoreReady: false
+  dirty: false,
+  backupStoreReady: false,
 };
 
-export const colorCache = new Map();
-
 /**
- * Creates a new empty portfolio draft
+ * 새로운 빈 시뮬레이션 드래프트를 생성합니다.
  */
 export function createEmptyDraft() {
   return {
-    modelVersion: MODEL_VERSION,
-    name: "신규 포트폴리오",
-    notes: "",
+    modelVersion: 10,
     totalMonthlyInvestCapacity: 0,
-    accounts: [],
     dividendSim: {
-      years: 10,
       yield: 3.5,
       growth: 5.0,
       capitalGrowth: 4.0,
+      years: 10,
       isDrip: true
     },
     updatedAt: Date.now()
   };
 }
 
-/**
- * Creates a new account object
- */
-export function createDraftAccount(data = {}) {
-  return {
-    id: utils.createId("acc"),
-    name: data.name || "신규 계좌",
-    accountWeight: 0,
-    allocations: [],
-    ...data
-  };
-}
-
-/**
- * Creates a new allocation object
- */
-export function createDraftAllocation(data = {}) {
-  return {
-    id: utils.createId("al"),
-    label: data.label || "신규 종목",
-    targetWeight: 0,
-    actualAmount: 0,
-    isImportant: false,
-    ...data
-  };
-}
-
-/**
- * Marks the current state as dirty (pending changes)
- */
 export function markDirty() {
   state.dirty = true;
-  if (dom.pendingBar) IsfFeedback.markPendingBar(dom.pendingBar, dom.pendingSummary, true);
-  
-  // Crash recovery용 임시 저장
-  if (state.draft) {
-    sessionStorage.setItem(TEMP_STORAGE_KEY, JSON.stringify({
-      draft: state.draft,
-      currentPortfolioId: state.currentPortfolioId,
-      activeAccountId: state.activeAccountId
-    }));
-  }
+  saveSession();
 }
 
-/**
- * Marks the current state as clean (no pending changes)
- */
 export function markClean() {
   state.dirty = false;
-  if (dom.pendingBar) IsfFeedback.markPendingBar(dom.pendingBar, dom.pendingSummary, false);
-  sessionStorage.removeItem(TEMP_STORAGE_KEY);
+  saveSession();
 }
 
-/**
- * Gets the current IndexedDB based hub storage
- */
+function saveSession() {
+  try {
+    sessionStorage.setItem(TEMP_STORAGE_KEY, JSON.stringify({
+      draft: state.draft,
+      currentSimulationId: state.currentSimulationId
+    }));
+  } catch (e) { /* ignore */ }
+}
+
 export function getHubStorage() {
-  return window.IsfHubStorage || null;
+  return window.IsfStorageHub || window.IsfHubStorage || null;
 }
