@@ -317,13 +317,10 @@ async function handleCopyShareLink() {
 
 async function handleSaveViewToLocal() {
   const localInputs = sanitizeInputs(cloneInputs(state.inputs));
-  const success = await IsfStorageHub.persistViewDataLocally(STORAGE_KEY, localInputs, state.backupEntries);
-  if (success) {
-    const entries = await IsfBackupManager.loadBackupEntriesFromDb(SHARE_STATE_KEY);
-    if (entries) {
-      state.backupEntries = entries;
-      syncBackupUi();
-    }
+  const result = await IsfStorageHub.persistViewDataLocally(STORAGE_KEY, localInputs, state.backupEntries);
+  if (result.success) {
+    state.backupEntries = result.backupEntries;
+    syncBackupUi();
     switchToNormalMode();
   }
 }

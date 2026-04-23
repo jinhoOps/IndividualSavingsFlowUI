@@ -45,16 +45,16 @@
           const s2 = db.createObjectStore(STORES.STEP2, { keyPath: "id" });
           s2.createIndex("updatedAt", "updatedAt");
         }
-        // Migration: Rename store if legacy exists
+        // Migration: Move data and delete legacy store
         if (event.oldVersion < 2 && db.objectStoreNames.contains("step2Portfolios")) {
           const oldStore = event.target.transaction.objectStore("step2Portfolios");
           const newStore = event.target.transaction.objectStore(STORES.STEP2);
-          oldStore.openCursor().onsuccess = (e) => {
-            const cursor = e.target.result;
-            if (cursor) {
-              newStore.put(cursor.value);
-              cursor.continue();
+          const getAllReq = oldStore.getAll();
+          getAllReq.onsuccess = () => {
+            if (Array.isArray(getAllReq.result)) {
+              getAllReq.result.forEach(item => newStore.put(item));
             }
+            db.deleteObjectStore("step2Portfolios");
           };
         }
       };
@@ -219,14 +219,19 @@
     // 5. View Mode Overwrite
     async persistViewDataLocally(appKey, data, currentBackupEntries) {
       const currentLocal = loadFromLocal(appKey);
+      let backupResult = null;
       if (currentLocal) {
-        await this.createManualBackup(appKey, currentLocal, currentBackupEntries, {
+        backupResult = await this.createManualBackup(appKey, currentLocal, currentBackupEntries, {
           type: "auto",
           source: "view-save",
           allowDuplicate: false
         });
       }
-      return saveToLocal(appKey, data);
+      const success = saveToLocal(appKey, data);
+      return {
+        success,
+        backupEntries: (backupResult && backupResult.nextEntries) ? backupResult.nextEntries : currentBackupEntries
+      };
     }
   };
 

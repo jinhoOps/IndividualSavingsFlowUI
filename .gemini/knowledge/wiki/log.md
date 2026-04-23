@@ -1,4 +1,14 @@
 
+## [2026-04-23] fix | v0.7.0 데이터 마이그레이션 체계 구축 및 저장소 안정화
+- **원인**: 
+    - **하위 호환성 단절**: Step 2 리브랜딩으로 스토리지 키가 변경되어 기존 데이터 및 백업 이력 접근 불가.
+    - **초기화 경합**: `IsfStorageHub`가 전역 `IsfUtils`에 직접 의존하여 스크립트 로드 순서에 따라 `ReferenceError` 발생 위험.
+- **조치**: 
+    - **자동 마이그레이션**: `IsfStorageHub.ensureMigration` 및 `IsfBackupManager.migrateAppKey`를 구현하여 구버전 키(`my-portfolio-flow`)의 데이터를 신버전 키(`my-dividend-simulation`)로 안전하게 자동 이전.
+    - **독립성 확보**: `hub-storage.js` 내부에 전용 ID 생성기(`_createId`)를 내장하여 전역 유틸리티 의존성 제거.
+    - **폴백 보강**: Step 2 유틸리티 브리지(`utils.js`)에 누락된 메서드(`sanitizeRate`, `roundTo`)를 추가하고 전역 사양과 동기화.
+- **결과**: 기존 사용자 데이터 보호와 앱 초기화 안정성을 동시에 확보하며 v0.7.0 통합 저장소 체제 안착.
+
 ## [2026-04-23] release | 통합 스토리지 허브(IsfStorageHub) 도입 및 데이터 연동 최적화 (v0.7.0)
 - **목적**: 파편화된 스토리지 로직을 `IsfStorageHub`로 단일화하여 데이터 정합성을 높이고, Step 1/2 간의 데이터 공유를 IndexedDB 직접 참조 방식으로 단순화함.
 - **주요 변경사항**:
