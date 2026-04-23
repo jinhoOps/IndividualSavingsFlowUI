@@ -7,6 +7,7 @@
 export const MODEL_VERSION = 10;
 export const STEP1_LOCAL_STORAGE_KEY = "isf-rebuild-v1";
 export const SHARE_STATE_KEY = "my-dividend-simulation";
+export const LEGACY_SHARE_STATE_KEY = "my-portfolio-flow";
 export const SHARE_STATE_SCHEMA = 2;
 export const HASH_STATE_PARAM = "s";
 export const MAX_FINANCIAL_INCOME = 20000000;

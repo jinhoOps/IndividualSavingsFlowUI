@@ -9,6 +9,7 @@ import { state, createEmptyDraft, markDirty, markClean, getHubStorage } from "./
 import { dom, initDom } from "./modules/dom.js";
 import { 
   SHARE_STATE_KEY, 
+  LEGACY_SHARE_STATE_KEY,
   SHARE_STATE_SCHEMA, 
   HASH_STATE_PARAM, 
   TEMP_STORAGE_KEY 
@@ -265,13 +266,24 @@ function bindEvents() {
   }
 }
 
-function initializeBackupStore() {
+async function initializeBackupStore() {
   if (!IsfBackupManager.isIndexedDbAvailable()) return;
-  IsfBackupManager.loadBackupEntriesFromDb(SHARE_STATE_KEY).then(entries => {
-    state.backupStoreReady = true;
-    if (entries) { 
-      state.backupEntries = entries; 
-      syncBackupUi(); 
+  try {
+    // 1. Ensure Migration from Legacy Key (Rebranding)
+    const hub = getHubStorage();
+    if (hub && hub.ensureMigration) {
+      await hub.ensureMigration(LEGACY_SHARE_STATE_KEY, SHARE_STATE_KEY);
     }
-  }).catch(() => { state.backupStoreReady = true; });
+    
+    // 2. Load Entries
+    const entries = await IsfBackupManager.loadBackupEntriesFromDb(SHARE_STATE_KEY);
+    state.backupStoreReady = true;
+    if (entries) {
+      state.backupEntries = entries;
+      syncBackupUi();
+    }
+  } catch (e) {
+    console.error("initializeBackupStore failed:", e);
+    state.backupStoreReady = true;
+  }
 }

@@ -9,6 +9,18 @@
   };
   const MAX_SNAPSHOTS = 20;
 
+  function _createId(prefix) {
+    const safePrefix = String(prefix || "id").trim() || "id";
+    const bytes = new Uint8Array(8);
+    if (typeof global !== "undefined" && global.crypto && typeof global.crypto.getRandomValues === "function") {
+      global.crypto.getRandomValues(bytes);
+    } else {
+      for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
+    }
+    const randomText = Array.from(bytes, b => b.toString(16).padStart(2, "0")).join("");
+    return safePrefix + "-" + Date.now() + "-" + randomText;
+  }
+
   let dbPromise = null;
 
   function isIdbSupported() {
@@ -90,6 +102,31 @@
   // --- Hub API (Unified) ---
 
   const StorageHub = {
+    // 0. Migration
+    async ensureMigration(oldKey, newKey) {
+      if (!oldKey || !newKey || oldKey === newKey) return;
+      
+      try {
+        // 1. LocalStorage migration
+        const oldData = loadFromLocal(oldKey);
+        if (oldData) {
+          const newData = loadFromLocal(newKey);
+          if (!newData) {
+            saveToLocal(newKey, oldData);
+            console.log(`StorageHub: Migrated localStorage from ${oldKey} to ${newKey}`);
+          }
+        }
+        
+        // 2. Backup migration (IndexedDB)
+        if (global.IsfBackupManager && global.IsfBackupManager.migrateAppKey) {
+          await global.IsfBackupManager.migrateAppKey(oldKey, newKey);
+          console.log(`StorageHub: Migrated backups from ${oldKey} to ${newKey}`);
+        }
+      } catch (e) {
+        console.warn("StorageHub: ensureMigration failed", e);
+      }
+    },
+
     // 1. Persistence (LocalStorage)
     saveLocal: (key, data) => saveToLocal(key, data),
     loadLocal: (key) => loadFromLocal(key),
@@ -97,7 +134,7 @@
     // 2. Step 1 Snapshots (IDB)
     async saveStep1Snapshot(data) {
       const entry = {
-        id: IsfUtils.createId("s1"),
+        id: _createId("s1"),
         updatedAt: Date.now(),
         data: data || {}
       };
@@ -141,7 +178,7 @@
     async saveStep2Entry(data) {
       const entry = {
         ...data,
-        id: data.id || IsfUtils.createId("ds"), // ds: Dividend Simulation
+        id: data.id || _createId("ds"), // ds: Dividend Simulation
         updatedAt: Date.now(),
         modelVersion: 10
       };

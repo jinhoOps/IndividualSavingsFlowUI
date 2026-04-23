@@ -255,12 +255,39 @@
     });
   }
 
+  /**
+   * 기존 키(oldKey)로 저장된 모든 백업 항목의 app 필드를 새로운 키(newKey)로 변경합니다.
+   */
+  async function migrateAppKey(oldKey, newKey) {
+    if (!oldKey || !newKey || oldKey === newKey) return false;
+    try {
+      const db = await getBackupDb();
+      const tx = db.transaction(BACKUP_DB_STORE, "readwrite");
+      const store = tx.objectStore(BACKUP_DB_STORE);
+      const index = store.index("app");
+      const entries = await idbRequestToPromise(index.getAll(oldKey));
+      
+      if (!entries || entries.length === 0) return true;
+
+      for (const entry of entries) {
+        entry.app = newKey;
+        store.put(entry);
+      }
+      await idbTransactionDone(tx);
+      return true;
+    } catch (e) {
+      console.warn("IsfBackupManager: migrateAppKey failed", e);
+      return false;
+    }
+  }
+
   global.IsfBackupManager = {
     isIndexedDbAvailable,
     loadBackupEntriesFromDb,
     persistBackupEntries,
     createBackupEntry,
     maybeCreateAutoBackupIfDue,
+    migrateAppKey,
     getBackupTimestampMs,
     AUTO_BACKUP_INTERVAL_MS,
     MAX_BACKUP_ENTRIES,
