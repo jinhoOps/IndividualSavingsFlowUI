@@ -26,6 +26,17 @@ tags: [data_model, indexeddb, storage, bridge, reference]
 3. 로컬 저장소 (IndexedDB): `isf-hub-db-v1`의 최신 상태 로드.
 4. 기본값 (Default): 초기 샘플 데이터.
 
+### 데이터 마이그레이션 (Migration)
+앱의 정체성 변화나 리브랜딩으로 스토리지 키가 변경될 경우, 사용자 데이터 연속성을 위해 자동 마이그레이션을 수행합니다.
+- **LocalStorage**: `IsfStorageHub.ensureMigration(old, new)`를 통해 스냅샷 데이터 이전.
+- **IndexedDB**: `IsfBackupManager.migrateAppKey(old, new)`를 통해 백업 테이블(`backups`) 내의 앱 식별자를 일괄 업데이트하여 과거 백업 이력 보존.
+
+### 뷰 모드 안전 저장 프로토콜 (View-Save Protocol)
+외부 공유 데이터를 내 기기에 반영할 때의 무결성 보호 절차입니다.
+1. `BackupManager.createManualBackup('auto/view-save')` 실행.
+2. `IsfStorageHub.persistViewDataLocally(data)`를 통해 현재 세션 데이터 덮어쓰기.
+3. IndexedDB 스냅샷 및 LocalStorage 동시 업데이트.
+
 ## IndexedDB 스키마 (`isf-hub-db-v1`)
 
 | 테이블 | 설명 |

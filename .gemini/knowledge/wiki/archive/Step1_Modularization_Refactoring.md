@@ -1,12 +1,15 @@
 ---
 type: node
-created: 2026-04-17
+created: 2026-04-16
 tags: [refactoring, modularization, es6_modules, step1]
 ---
 
-# Step1 Modularization Refactoring (Step 1 모듈화 리팩터링)
+# [ARCHIVED] Step1 Modularization Refactoring (Step 1 모듈화 리팩터링)
+
+> **⚠️ 주의**: 이 문서는 초기 모듈화 당시의 기록입니다. 현재의 11개 모듈 체계 및 아키텍처는 **[[Architecture_Reference]]**를 참조하십시오.
 
 ## 배경 및 원인
+
 - `apps/step1/app.js` 파일이 약 4,600행에 달하는 거대한 단일 파일(Monolithic)로 비대화되었습니다.
 - 이로 인해 향후 기능 추가나 버그 수정 시 에이전트(LLM)가 전체 컨텍스트를 파악하기 어렵고 코드가 절삭(Truncate)될 위험이 커졌습니다.
 

@@ -7,7 +7,7 @@ tags: [ux, overhaul, v0.3, hcd]
 # [ARCHIVED] UI/UX 통합 개편 및 v0.3 격상 (HCD 원칙 적용)
 
 > [!NOTE]
-> 본 문서는 v0.3 대규모 UI/UX 개편 당시의 기록입니다. 현재의 v0.5.x 디자인 표준 및 아키텍처는 [[Architecture_Reference]] 및 [[UI_Standards_Reference]]를 참조하십시오.
+> 본 문서는 v0.3 대규모 UI/UX 개편 당시의 기록입니다. 현재의 최신 디자인 표준 및 아키텍처는 **[[Architecture_Reference]]** 및 **[[UI_Standards_Reference]]**를 참조하십시오.
 
 이 문서는 Step1과 Step2의 이질적인 사용자 경험을 통합하고, Donald Norman의 인간 중심 디자인(HCD) 원칙을 실무에 적용한 v0.3 대규모 개편 내용을 기록합니다.
 

@@ -4,7 +4,9 @@ created: 2026-04-21
 tags: [refactoring, modularization, es6_modules, step2, simulation]
 ---
 
-# Step2 Modularization Refactoring (Step 2 배당 시뮬레이션 특화 개편)
+# [ARCHIVED] Step2 Modularization Refactoring (Step 2 배당 시뮬레이션 특화 개편)
+
+> **⚠️ 주의**: 이 문서는 v0.7.0 리팩터링 당시의 기록입니다. 현재의 모듈 구조 및 시뮬레이션 엔진 사양은 **[[Architecture_Reference]]**를 참조하십시오.
 
 ## 배경 및 원인
 - Step 2 포트폴리오 관리 로직의 비대화를 해소하고, '배당 성장 시뮬레이션'이라는 핵심 가치에 집중하기 위해 구조를 대폭 간소화했습니다. (v0.7.0)

@@ -4,7 +4,9 @@ created: 2026-04-23
 tags: [storage, architecture, indexeddb, refactoring, v0.7.0]
 ---
 
-# Storage Hub Integration (스토리지 허브 통합 상세)
+# [ARCHIVED] Storage Hub Integration (스토리지 허브 통합 상세)
+
+> **⚠️ 주의**: 이 문서는 v0.7.0 구현 당시의 상세 기록입니다. 현재의 최신 설계 및 운영 원칙은 **[[Architecture_Reference]]** 및 **[[Data_Model_Reference]]**를 참조하십시오.
 
 v0.7.0 리팩터링을 통해 도입된 `IsfStorageHub` 중심의 통합 데이터 관리 체계에 대한 기술적 명세입니다.
 

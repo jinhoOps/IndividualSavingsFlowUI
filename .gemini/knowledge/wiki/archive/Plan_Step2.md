@@ -11,7 +11,7 @@ tags: [plan, step2, roadmap]
 > 본 문서는 v0.2.0 ~ v0.6.0 시절의 포트폴리오 구성 계획서입니다.
 > v0.7.0 리팩터링을 통해 포트폴리오 구성 기능은 [[Plan_Step3]]로 이관되었으며, 
 > Step 2는 **배당 시뮬레이션 전용**으로 개편되었습니다.
-> 최신 설계 정보는 [[Step2_Modularization_Refactoring]] 노드를 참조하십시오.
+> 최신 설계 정보는 **[[Architecture_Reference]]**를 참조하십시오.
 
 기준 시점: 2026-04-23 (v0.7.0)
 
