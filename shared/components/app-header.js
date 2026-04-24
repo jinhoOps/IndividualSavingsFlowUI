@@ -52,7 +52,7 @@ export class AppHeader extends HTMLElement {
             </a>
             <a href="../step2/" class="nav-link ${this.currentStep === '2' ? 'is-active' : ''}"
                onclick="if(window.location.pathname.includes('step2')) { event.preventDefault(); } else { window.location.assign('../step2/'); event.preventDefault(); }">
-               포트폴리오
+               배당 시뮬
             </a>
           </nav>
 

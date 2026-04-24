@@ -2,7 +2,7 @@
 kanban-plugin: basic
 ---
 
-# TODO (v0.7.0)
+# TODO (v0.7.1)
 
 ## Backlog (우선순위 상향)
 - [ ] **Step 3: 포트폴리오 시각화 및 구성 (신설 예정)**

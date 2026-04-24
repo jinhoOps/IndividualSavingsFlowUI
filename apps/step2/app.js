@@ -1,6 +1,6 @@
 /**
  * Individual Savings Flow (ISF) - Step 2: 배당 시뮬레이션 (Dividend Simulation)
- * v0.7.0
+ * v0.7.1
  * 
  * 파일 역할: Step 2 애플리케이션의 엔트리 포인트 및 전체 배당 시뮬레이션 흐름 제어
  */
