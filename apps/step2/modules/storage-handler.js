@@ -16,6 +16,10 @@ import { utils } from "./utils.js";
 export async function saveCurrentSimulation() {
   if (dom.appHeader) dom.appHeader.updateStatus("saving", "저장 중...");
   const data = toPortableSimulation();
+  if (!data) {
+    if (dom.appHeader) dom.appHeader.updateStatus("error", "데이터가 없습니다.");
+    return;
+  }
   try {
     const entry = await IsfStorageHub.saveStep2Entry(data); 
     state.currentSimulationId = entry.id;
@@ -133,6 +137,7 @@ export function syncBackupUi() {
  * 현재 상태를 내보내기용 객체로 변환합니다.
  */
 export function toPortableSimulation() { 
+  if (!state.draft) return null;
   const { modelVersion, totalMonthlyInvestCapacity, dividendSim, updatedAt } = state.draft;
   return { 
     modelVersion, totalMonthlyInvestCapacity, dividendSim, 
