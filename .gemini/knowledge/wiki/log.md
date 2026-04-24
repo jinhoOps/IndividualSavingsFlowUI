@@ -1,3 +1,6 @@
+﻿## [2026-04-24] ingest | 데이터 통합 및 입력 재사용 철학 동기화 (Single Hub & Input Reuse)
+- 모든 Step이 IsfStorageHub를 SSOT로 공유하고 입력값을 재사용하도록 isf-planner 지침 및 아키텍처 참조 업데이트
+
 
 
 ## [2026-04-24] fix | v0.7.2 타임스탬프 파싱 버그 수정 및 Step 2 자동 동기화 도입
