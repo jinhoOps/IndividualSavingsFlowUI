@@ -1,6 +1,6 @@
 /**
  * Individual Savings Flow (ISF) - Step 2: 배당 시뮬레이션 (Dividend Simulation)
- * v0.7.2
+ * v0.7.3
  * 
  * 파일 역할: Step 2 애플리케이션의 엔트리 포인트 및 전체 배당 시뮬레이션 흐름 제어
  */
@@ -96,7 +96,7 @@ async function initApp() {
     // 5. PWA 관리자 시작
     try {
       const pwa = new IsfPwaManager({
-        appVersion: "0.7.2",
+        appVersion: "0.7.3",
         appKey: SHARE_STATE_KEY,
         onFeedback: (msg) => IsfFeedback.showFeedback(dom.applyFeedback, msg),
         getCurrentData: () => state.draft,
@@ -199,20 +199,36 @@ function bindEvents() {
   
   if (dom.importStep1Data) {
     dom.importStep1Data.addEventListener("click", async () => { 
-      if (state.dirty && !confirm("현재 수정한 내용을 덮어쓸까요?")) return; 
-      try {
-        await importLatestStep1Data(); 
-      } catch (e) {
-        console.error(e);
-        IsfFeedback.showFeedback(dom.applyFeedback, "데이터 가져오기 중 오류가 발생했습니다.", true);
-      } finally {
-        if (dom.step1SyncBanner) dom.step1SyncBanner.hidden = true; 
+      if (confirm("Step 1의 최신 데이터로 다시 연동할까요?")) {
+        try {
+          await importLatestStep1Data(); 
+          state.isSyncedWithStep1 = true;
+        } catch (e) {
+          console.error(e);
+          IsfFeedback.showFeedback(dom.applyFeedback, "데이터 가져오기 중 오류가 발생했습니다.", true);
+        }
       }
     });
   }
   
   if (dom.totalMonthlyInvestCapacity) {
+    let previousValue = dom.totalMonthlyInvestCapacity.value;
+
+    dom.totalMonthlyInvestCapacity.addEventListener("focus", () => {
+      previousValue = dom.totalMonthlyInvestCapacity.value;
+    });
+
     dom.totalMonthlyInvestCapacity.addEventListener("input", () => { 
+      if (state.isSyncedWithStep1) {
+        if (confirm("Step 1에서 연동된 값을 직접 수정하시겠습니까?\n수정 시 자동 동기화 상태가 해제됩니다.")) {
+          state.isSyncedWithStep1 = false;
+          if (dom.step1SyncBanner) dom.step1SyncBanner.hidden = true;
+        } else {
+          dom.totalMonthlyInvestCapacity.value = previousValue;
+          return;
+        }
+      }
+
       state.draft.totalMonthlyInvestCapacity = utils.toWon(dom.totalMonthlyInvestCapacity.value); 
       markDirty(); 
       renderCharts(); 

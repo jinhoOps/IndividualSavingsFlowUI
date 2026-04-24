@@ -15,6 +15,7 @@ export const state = {
   isReturningUser: false,
   dirty: false,
   backupStoreReady: false,
+  isSyncedWithStep1: false, // Step 1 데이터와 동기화된 상태인지 여부
 };
 
 /**

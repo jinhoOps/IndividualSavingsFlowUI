@@ -1,6 +1,6 @@
 ﻿/**
  * Individual Savings Flow (ISF) - Step 2: 배당 시뮬레이션 (Dividend Simulation)
- * v0.7.2
+ * v0.7.3
  * 
  * 파일 역할: 통합 저장소를 통한 Step 1 데이터 동기화 (Step 1 Data Sync)
  */
@@ -12,29 +12,31 @@ import { renderDraft } from "./renderers.js";
 import { utils } from "./utils.js";
 
 /**
- * 통합 저장소에서 Step 1의 최신 데이터를 확인하고 동기화 배너를 표시합니다.
+ * 통합 저장소에서 Step 1의 최신 데이터를 확인하고 자동으로 동기화합니다. (Sync by Default)
  */
 export async function checkStep1SyncData() {
   const hub = getHubStorage();
   const res = await resolveLatestStep1Snapshot(hub);
   const p = res.snapshot?.payload;
 
-  if (p) {
-    // 1) 아직 Step 2에서 값을 직접 입력하지 않은 초기 상태(0)일 경우 Step 1 데이터 자동 연동
-    if (state.draft.totalMonthlyInvestCapacity === 0 && p.monthlyInvestCapacity > 0) {
-      state.draft.totalMonthlyInvestCapacity = Number(p.monthlyInvestCapacity);
-      renderDraft();
-      markDirty();
-      if (dom.step1SyncBanner) dom.step1SyncBanner.hidden = true;
-    } 
-    // 2) 이미 Step 2에 입력한 다른 값이 존재하는데, Step 1 데이터와 다를 경우 배너만 노출
-    else if (p.monthlyInvestCapacity !== state.draft.totalMonthlyInvestCapacity) {
-      if (dom.step1SyncBanner) {
-        dom.step1SyncBanner.hidden = false;
-        if (dom.syncTimestamp) dom.syncTimestamp.textContent = formatDateTime(p.timestamp);
-        if (dom.syncInvestCapacity) dom.syncInvestCapacity.textContent = formatCurrency(p.monthlyInvestCapacity);
-      }
+  if (p && p.monthlyInvestCapacity > 0) {
+    // 1) Step 1 데이터가 존재하면 무조건 자동으로 반영 (그래프 즉시 갱신)
+    state.draft.totalMonthlyInvestCapacity = Number(p.monthlyInvestCapacity);
+    state.isSyncedWithStep1 = true; // 동기화됨을 표시
+    
+    renderDraft();
+    markDirty();
+
+    // 2) 동기화 완료 알림 (배너는 안내용으로 사용)
+    if (dom.step1SyncBanner) {
+      dom.step1SyncBanner.hidden = false;
+      if (dom.syncTimestamp) dom.syncTimestamp.textContent = formatDateTime(p.timestamp);
+      if (dom.syncInvestCapacity) dom.syncInvestCapacity.textContent = formatCurrency(p.monthlyInvestCapacity);
+      
+      // '가져오기' 버튼 텍스트를 '연동됨'으로 변경하거나 숨김 처리 고려
+      if (dom.importStep1Data) dom.importStep1Data.textContent = "동기화 완료";
     }
+    console.log("checkStep1SyncData: Step 1 data automatically synced.");
   }
 }
 
