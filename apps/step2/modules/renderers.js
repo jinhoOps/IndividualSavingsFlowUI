@@ -1,6 +1,6 @@
-/**
+﻿/**
  * Individual Savings Flow (ISF) - Step 2: 배당 시뮬레이션 (Dividend Simulation)
- * v0.7.1
+ * v0.7.2
  * 
  * 파일 역할: 결과 데이터 렌더링 및 UI 업데이트 (Renderers)
  */
@@ -120,3 +120,4 @@ function drawSimulationChart(svg, data) {
   legendPR.textContent = "○ PR (미투자)";
   svg.appendChild(legendPR);
 }
+

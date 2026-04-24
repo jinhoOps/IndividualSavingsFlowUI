@@ -1,6 +1,6 @@
-/**
+﻿/**
  * Individual Savings Flow (ISF) - Step 2: 배당 시뮬레이션 (Dividend Simulation)
- * v0.7.1
+ * v0.7.2
  * 
  * 파일 역할: 통합 저장소를 통한 Step 1 데이터 동기화 (Step 1 Data Sync)
  */
@@ -67,3 +67,4 @@ export async function importLatestStep1Data() {
     if (dom.step1SyncBanner) dom.step1SyncBanner.hidden = true;
   }
 }
+

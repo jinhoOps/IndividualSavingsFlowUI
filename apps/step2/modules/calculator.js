@@ -1,6 +1,6 @@
-/**
+﻿/**
  * Individual Savings Flow (ISF) - Step 2: 배당 시뮬레이션 (Dividend Simulation)
- * v0.7.1
+ * v0.7.2
  * 
  * 파일 역할: 배당금 계산 로직 및 수식 (Calculator)
  */
@@ -104,4 +104,5 @@ export function calculateDividendProjection() {
 
   return results;
 }
+
 

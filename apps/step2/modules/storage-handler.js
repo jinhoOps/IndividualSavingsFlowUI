@@ -1,6 +1,6 @@
-/**
+﻿/**
  * Individual Savings Flow (ISF) - Step 2: 배당 시뮬레이션 (Dividend Simulation)
- * v0.7.1
+ * v0.7.2
  * 
  * 파일 역할: 시뮬레이션 데이터 저장 및 백업 핸들러 (Storage & Backup)
  */
@@ -152,3 +152,4 @@ export function resetDraft() {
   renderDraft(); 
   markClean(); 
 }
+

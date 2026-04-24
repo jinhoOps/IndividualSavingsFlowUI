@@ -1,6 +1,6 @@
 /**
  * Individual Savings Flow (ISF) - Step 2: 배당 시뮬레이션 (Dividend Simulation)
- * v0.7.1
+ * v0.7.2
  * 
  * 파일 역할: Step 2 애플리케이션의 엔트리 포인트 및 전체 배당 시뮬레이션 흐름 제어
  */
@@ -96,7 +96,7 @@ async function initApp() {
     // 5. PWA 관리자 시작
     try {
       const pwa = new IsfPwaManager({
-        appVersion: "0.7.0", 
+        appVersion: "0.7.2",
         appKey: SHARE_STATE_KEY,
         onFeedback: (msg) => IsfFeedback.showFeedback(dom.applyFeedback, msg),
         getCurrentData: () => state.draft,
@@ -104,8 +104,7 @@ async function initApp() {
       pwa.init();
     } catch (e) {
       console.error("PWA initialization failed:", e);
-    }
-    
+    }    
     console.log("initApp: Initialization finished.");
   } catch (err) {
     console.error("CRITICAL: initApp failed:", err);

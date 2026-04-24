@@ -1,6 +1,6 @@
-/**
+﻿/**
  * Individual Savings Flow (ISF) - Step 2: 배당 시뮬레이션 (Dividend Simulation)
- * v0.7.1
+ * v0.7.2
  * 
  * 파일 역할: 공유 유틸리티 연결 및 폴백 제공 (Utility Bridge)
  */
@@ -49,3 +49,4 @@ export const utils = window.IsfUtils || {
     return (p || "id") + "-" + Date.now() + "-" + randomText;
   }
 };
+

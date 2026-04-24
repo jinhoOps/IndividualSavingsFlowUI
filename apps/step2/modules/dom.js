@@ -1,6 +1,6 @@
-/**
+﻿/**
  * Individual Savings Flow (ISF) - Step 2: 배당 시뮬레이션 (Dividend Simulation)
- * v0.7.1
+ * v0.7.2
  * 
  * 파일 역할: UI 요소 핸들러 및 DOM 조작 (DOM)
  */
@@ -55,3 +55,4 @@ export function initDom() {
   }
   dom.simTable = document.querySelector("#simTable tbody");
 }
+

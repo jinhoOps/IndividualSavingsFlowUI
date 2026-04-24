@@ -1,6 +1,6 @@
-/**
+﻿/**
  * Individual Savings Flow (ISF) - Step 1: Storage Manager (Bridge)
- * v0.7.1
+ * v0.7.2
  * 
  * 파일 역할: 통합 저장소(Storage Hub)와 Step 1 앱 간의 브리지 및 레거시 공유 링크 지원
  */
@@ -76,3 +76,4 @@ export async function loadShareSnapshotById(sid) {
     }
   });
 }
+
