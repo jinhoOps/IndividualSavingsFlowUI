@@ -18,11 +18,22 @@ export async function checkStep1SyncData() {
   const hub = getHubStorage();
   const res = await resolveLatestStep1Snapshot(hub);
   const p = res.snapshot?.payload;
-  if (p && p.monthlyInvestCapacity !== state.draft.totalMonthlyInvestCapacity) {
-    if (dom.step1SyncBanner) {
-      dom.step1SyncBanner.hidden = false;
-      if (dom.syncTimestamp) dom.syncTimestamp.textContent = formatDateTime(p.timestamp);
-      if (dom.syncInvestCapacity) dom.syncInvestCapacity.textContent = formatCurrency(p.monthlyInvestCapacity);
+
+  if (p) {
+    // 1) 아직 Step 2에서 값을 직접 입력하지 않은 초기 상태(0)일 경우 Step 1 데이터 자동 연동
+    if (state.draft.totalMonthlyInvestCapacity === 0 && p.monthlyInvestCapacity > 0) {
+      state.draft.totalMonthlyInvestCapacity = Number(p.monthlyInvestCapacity);
+      renderDraft();
+      markDirty();
+      if (dom.step1SyncBanner) dom.step1SyncBanner.hidden = true;
+    } 
+    // 2) 이미 Step 2에 입력한 다른 값이 존재하는데, Step 1 데이터와 다를 경우 배너만 노출
+    else if (p.monthlyInvestCapacity !== state.draft.totalMonthlyInvestCapacity) {
+      if (dom.step1SyncBanner) {
+        dom.step1SyncBanner.hidden = false;
+        if (dom.syncTimestamp) dom.syncTimestamp.textContent = formatDateTime(p.timestamp);
+        if (dom.syncInvestCapacity) dom.syncInvestCapacity.textContent = formatCurrency(p.monthlyInvestCapacity);
+      }
     }
   }
 }

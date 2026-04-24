@@ -23,7 +23,10 @@
 
   function formatTimestamp(timestamp) {
     if (!timestamp) return "-";
-    const parsed = parseInt(timestamp, 10);
+    let parsed = Number(timestamp);
+    if (Number.isNaN(parsed)) {
+      parsed = Date.parse(timestamp);
+    }
     if (!Number.isFinite(parsed)) return "-";
     return backupTimestampFormatter.format(new Date(parsed));
   }
