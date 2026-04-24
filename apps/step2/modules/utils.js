@@ -40,6 +40,9 @@ export const utils = window.IsfUtils || {
   },
   escapeHtml: s => String(s || "").replace(/[&<>"']/g, m => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[m])),
   createId: p => {
+    if (typeof IsfUtils !== "undefined" && IsfUtils.createId) {
+      return IsfUtils.createId(p);
+    }
     const bytes = new Uint8Array(8);
     for (let i = 0; i < 8; i++) bytes[i] = Math.floor(Math.random() * 256);
     const randomText = Array.from(bytes, b => b.toString(16).padStart(2, "0")).join("");

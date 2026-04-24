@@ -10,6 +10,9 @@
   const MAX_SNAPSHOTS = 20;
 
   function _createId(prefix) {
+    if (global.IsfUtils && global.IsfUtils.createId) {
+      return global.IsfUtils.createId(prefix);
+    }
     const safePrefix = String(prefix || "id").trim() || "id";
     const bytes = new Uint8Array(8);
     if (typeof global !== "undefined" && global.crypto && typeof global.crypto.getRandomValues === "function") {
@@ -45,7 +48,7 @@
           const s2 = db.createObjectStore(STORES.STEP2, { keyPath: "id" });
           s2.createIndex("updatedAt", "updatedAt");
         }
-        // Migration: Move data and delete legacy store
+        // Migration: Move data from legacy store
         if (event.oldVersion < 2 && db.objectStoreNames.contains("step2Portfolios")) {
           const oldStore = event.target.transaction.objectStore("step2Portfolios");
           const newStore = event.target.transaction.objectStore(STORES.STEP2);
@@ -54,7 +57,9 @@
             if (Array.isArray(getAllReq.result)) {
               getAllReq.result.forEach(item => newStore.put(item));
             }
-            db.deleteObjectStore("step2Portfolios");
+            // 주의: 비동기 콜백에서의 deleteObjectStore는 위험할 수 있으므로, 
+            // 데이터 복사까지만 수행하고 실제 삭제는 향후 스키마 정리 시점에 별도로 다룹니다.
+            console.log("StorageHub: Legacy data migrated to new store.");
           };
         }
       };

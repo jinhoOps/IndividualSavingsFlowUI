@@ -6,7 +6,7 @@
  */
 import { state, markClean, createEmptyDraft } from "./state.js";
 import { dom } from "./dom.js";
-import { SHARE_STATE_KEY } from "./constants.js";
+import { SHARE_STATE_KEY, MANUAL_BACKUP_WINDOW_MS } from "./constants.js";
 import { renderDraft } from "./renderers.js";
 import { utils } from "./utils.js";
 
@@ -22,7 +22,7 @@ export async function saveCurrentSimulation() {
     markClean();
     
     await refreshSimulationList();
-    if (dom.dataHubModal) dom.dataHubModal.updatePortfolioList(state.simulations);
+    if (dom.dataHubModal) dom.dataHubModal.updateSimulationList(state.simulations);
     
     // 자동 백업 트리거
     const res = await IsfStorageHub.triggerAutoBackup(SHARE_STATE_KEY, data, state.backupEntries);
@@ -60,6 +60,7 @@ export async function deleteSimulationById(id) {
   await IsfStorageHub.deleteStep2Entry(id);
   if (state.currentSimulationId === id) resetDraft();
   await refreshSimulationList();
+  if (dom.dataHubModal) dom.dataHubModal.updateSimulationList(state.simulations);
   if (dom.appHeader) dom.appHeader.updateStatus("success", "삭제되었습니다.");
 }
 
@@ -78,7 +79,7 @@ export async function handleManualBackup() {
   if (!state.backupStoreReady) return;
   const res = await IsfStorageHub.createManualBackup(SHARE_STATE_KEY, state.draft, state.backupEntries, {
     type: "manual", source: "normal", allowDuplicate: true,
-    replaceRecentManualWithinMs: 60000,
+    replaceRecentManualWithinMs: MANUAL_BACKUP_WINDOW_MS,
     onRecentManualOverwriteConfirm: () => window.confirm("최근 1분 이내 수동 백업이 있습니다. 덮어쓸까요?")
   });
   if (res.created) {

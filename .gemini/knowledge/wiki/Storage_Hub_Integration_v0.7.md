@@ -1,4 +1,4 @@
----
+ ---
 type: node
 created: 2026-04-23
 tags: [storage, architecture, indexeddb, refactoring, v0.7.0]
