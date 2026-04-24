@@ -1,4 +1,4 @@
-const APP_VERSION = "0.6.1";
+const APP_VERSION = "0.7.0";
 const CACHE_NAME = `isf-static-v${APP_VERSION}`;
 const CORE_ASSETS = [
   "./",
@@ -7,7 +7,7 @@ const CORE_ASSETS = [
   "./apps/step1/index.html",
   "./apps/step1/app.js",
   "./apps/step1/styles.css",
-  "./apps/step1/modules/bridge-manager.js",
+  "./apps/step1/modules/snapshot-manager.js",
   "./apps/step1/modules/calculator.js",
   "./apps/step1/modules/constants.js",
   "./apps/step1/modules/dom.js",
@@ -17,11 +17,11 @@ const CORE_ASSETS = [
   "./apps/step1/modules/sankey-renderer.js",
   "./apps/step1/modules/state-helpers.js",
   "./apps/step1/modules/state.js",
-  "./apps/step1/modules/storage-manager.js",
   "./apps/step2/index.html",
-  "./apps/step2/app.js",
   "./apps/step2/styles.css",
-  "./apps/step2/modules/bridge.js",
+  "./apps/step2/app.js",
+  "./apps/step2/modules/step1-connector.js",
+
   "./apps/step2/modules/calculator.js",
   "./apps/step2/modules/constants.js",
   "./apps/step2/modules/dom.js",

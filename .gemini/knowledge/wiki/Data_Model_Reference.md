@@ -30,14 +30,17 @@ tags: [data_model, indexeddb, storage, bridge, reference]
 
 | 테이블 | 설명 |
 |---|---|
-| `step1Snapshots` | Step1의 이력 스냅샷 |
-| `bridgeStep1ToStep2` | Step1에서 Step2로 전달되는 핵심 요약 정보 |
-| `step2Portfolios` | Step2의 포트폴리오 데이터 |
-| `backups` | 12시간 주기로 저장되는 자동 백업 데이터 (최대 60개) |
+| `step1Snapshots` | Step1의 이력 및 브릿지용 최신 데이터 저장소 (최대 20개) |
+| `step2Portfolios` | Step2의 시뮬레이션 가정 데이터 (수익률, 성장률 등) |
+| `step3Portfolios` | [예정] Step3의 계좌 및 종목별 상세 비중 데이터 |
+| `backups` | `BackupManager`가 관리하는 자동/수동 백업 데이터 (최대 60개) |
 
-## 데이터 브리지
+## 데이터 브리지 (Direct Access Pattern)
 
-Step1의 '적용' 버튼 클릭 시, Step2에서 필요한 최소 페이로드(`monthlyInvestCapacity`, `currentCash` 등)가 `bridgeStep1ToStep2` 테이블에 저장됩니다. 브리지 데이터 임포트 시 유실 방지 패턴은 [[Data_Bridge_Import_Pattern]]을 참조하십시오.
+Step1의 '적용' 버튼 클릭 시, 최신 데이터가 `step1Snapshots`에 저장됩니다. Step2는 별도의 브릿지 테이블 없이 **이 테이블의 최신 레코드를 직접 조회**하여 `monthlyInvest` 데이터를 추출합니다. (v0.7.0)
+
+- **핵심 필드**: `monthlyInvest` (원 단위 합계)
+- **연동 시점**: Step 2 로딩 시 또는 상단 브릿지 배너의 '가져오기' 클릭 시.
 
 ---
 *연결 노드:* [[Architecture_Reference]], [[UI_Standards_Reference]], [[Data_Bridge_Import_Pattern]]

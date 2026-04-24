@@ -3,8 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Step2 | 투자 포트폴리오 구성</title>
-    <meta name="description" content="개인 자산 흐름 프로젝트의 2단계로, 투자 포트폴리오를 구성하고 백업하는 UI" />
+    <title>Step2 | 배당 시뮬레이션</title>
+    <meta name="description" content="개인 자산 흐름 프로젝트의 2단계로, 월 투자 여력을 바탕으로 배당 성장 복리 효과를 시뮬레이션하는 UI" />
     <meta name="theme-color" content="#ea5b2a" />
     <link rel="manifest" href="../../manifest.webmanifest" />
     <link rel="icon" href="../../icons/icon-192.svg" type="image/svg+xml" />
@@ -17,87 +17,31 @@
     <body>
     <app-header current-step="2"></app-header>
     <data-hub-modal current-step="2"></data-hub-modal>
-    <main class="page">
-      <div id="bridgeBanner" class="bridge-banner" hidden>
-        <div class="bridge-banner__content">
-          <span class="bridge-banner__icon">💡</span>
-          <p class="bridge-banner__text">Step 1에서 새로운 투자 여력 데이터를 가져왔습니다. 현재 포트폴리오에 적용할까요?</p>
-          <div class="bridge-banner__meta">
-            <span>기준: <strong id="bridgeTimestamp">-</strong></span>
-            <span>여력: <strong id="bridgeMonthlyInvestCapacity">-</strong></span>
-          </div>
-        </div>
-        <div class="bridge-banner__actions">
-          <button id="loadStep1Data" class="btn btn-primary btn-sm" type="button">적용하기</button>
-          <button id="dismissBridgeBanner" class="btn btn-ghost btn-sm" type="button">닫기</button>
+    <!-- Step 1 Integration Banner (Unified Storage Sync) -->
+    <div id="step1SyncBanner" class="sync-banner" hidden>
+      <div class="sync-banner__content">
+        <span class="sync-banner__icon">💡</span>
+        <p class="sync-banner__text">Step 1에서 새로운 투자 여력 데이터를 가져왔습니다. 시뮬레이션에 적용할까요?</p>
+        <div class="sync-banner__meta">
+          <span>기준: <strong id="syncTimestamp">-</strong></span>
+          <span>여력: <strong id="syncInvestCapacity">-</strong></span>
         </div>
       </div>
+      <div class="sync-banner__actions">
+        <button id="importStep1Data" class="btn btn-primary btn-sm" type="button">데이터 가져오기</button>
+        <button id="dismissSyncBanner" class="btn btn-ghost btn-sm" type="button">닫기</button>
+      </div>
+    </div>
 
-      <section class="panel chart-panel">
-        <div class="chart-head">
-          <h2>포트폴리오 도넛</h2>
-          <div class="tab-list" role="tablist" aria-label="도넛 보기 탭">
-            <button
-              id="chartTabSummary"
-              class="tab-btn is-active"
-              type="button"
-              role="tab"
-              aria-selected="true"
-              aria-controls="summaryChartPane"
-            >
-              종합 도넛
-            </button>
-            <button id="chartTabFlow" class="tab-btn" type="button" role="tab" aria-selected="false" aria-controls="flowChartPane">흐름 시각화 (Sankey)</button>
-          </div>
-        </div>
-        <p id="chartMeta" class="muted">종합 도넛은 월 투자 가능 금액 기준 계좌/종목 비중으로 계산됩니다.</p>
-
-        <div id="summaryChartPane" class="chart-pane" data-chart-pane="summary">
-          <div class="chart-stage">
-            <svg id="summaryDonut" viewBox="0 0 400 300" role="img" aria-label="종합 포트폴리오 도넛">
-              <circle cx="200" cy="150" r="90" fill="none" stroke="#e0e0e0" stroke-width="36" class="skeleton-donut" opacity="0.5"/>
-              <text x="200" y="155" text-anchor="middle" fill="#ccc" font-size="13">불러오는 중</text>
-            </svg>
-          </div>
-        </div>
-
-        <div id="flowChartPane" class="chart-pane" data-chart-pane="flow" hidden>
-          <div class="chart-stage">
-            <svg id="flowSankey" viewBox="0 0 600 400" role="img" aria-label="투자 흐름 시각화"></svg>
-          </div>
-        </div>
-        <details class="amount-details">
-          <summary>금액 보기</summary>
-          <div id="amountBreakdown" class="amount-breakdown" aria-live="polite"></div>
-        </details>
-      </section>
 
       <section class="panel info-panel">
         <h2>기본 정보</h2>
         <div class="form-grid">
           <label class="control">
-            <span>포트폴리오 이름</span>
-            <input id="portfolioName" type="text" maxlength="60" placeholder="예: 나의 노후 대비 포트폴리오" />
-          </label>
-          <label class="control">
             <span>월 투자 가능 금액(만원)</span>
             <input id="totalMonthlyInvestCapacity" type="number" min="0" step="1" inputmode="decimal" />
           </label>
-          <label class="control">
-            <span>메모</span>
-            <textarea id="portfolioNotes" rows="1" maxlength="500" placeholder="전략적 목표를 적어보세요"></textarea>
-          </label>
         </div>
-      </section>
-
-      <section class="panel account-panel">
-        <div class="section-head">
-          <h2>통합 포트폴리오 에디터</h2>
-          <button id="addAccount" class="btn btn-ghost btn-sm" type="button">계좌 추가</button>
-        </div>
-        <p class="muted" style="margin-bottom: var(--sp-sm);">계좌를 눌러 상세 종목 비중과 현재 보유 금액을 편집하세요.</p>
-        <div id="accountList" class="account-list" aria-live="polite"></div>
-        <p id="accountSummary" class="muted"></p>
       </section>
 
       <section class="panel simulation-panel">

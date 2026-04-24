@@ -1,87 +1,89 @@
 /**
- * Step 2 Storage & Backup Handlers
+ * Individual Savings Flow (ISF) - Step 2: 배당 시뮬레이션 (Dividend Simulation)
+ * v0.7.0
+ * 
+ * 파일 역할: 시뮬레이션 데이터 저장 및 백업 핸들러 (Storage & Backup)
  */
-import { state, markClean, getHubStorage, createEmptyDraft } from "./state.js";
+import { state, markClean, createEmptyDraft } from "./state.js";
 import { dom } from "./dom.js";
-import { SHARE_STATE_KEY, SHARE_STATE_SCHEMA } from "./constants.js";
+import { SHARE_STATE_KEY, MANUAL_BACKUP_WINDOW_MS } from "./constants.js";
 import { renderDraft } from "./renderers.js";
-
 import { utils } from "./utils.js";
 
 /**
- * Saves the current portfolio to HubStorage
+ * 현재 시뮬레이션 상태를 통합 저장소(HubStorage)에 저장합니다.
  */
-export async function saveCurrentPortfolio() {
-  const hub = getHubStorage();
-  if (!hub) return;
+export async function saveCurrentSimulation() {
   if (dom.appHeader) dom.appHeader.updateStatus("saving", "저장 중...");
-  const data = toPortablePortfolio();
+  const data = toPortableSimulation();
+  if (!data) {
+    if (dom.appHeader) dom.appHeader.updateStatus("error", "데이터가 없습니다.");
+    return;
+  }
   try {
-    await hub.saveStep2Portfolio(data);
+    const entry = await IsfStorageHub.saveStep2Entry(data); 
+    state.currentSimulationId = entry.id;
     markClean();
-    await refreshPortfolioList();
-    if (dom.dataHubModal) dom.dataHubModal.updatePortfolioList(state.portfolios);
     
-    // Auto-backup
-    const res = await IsfBackupManager.maybeCreateAutoBackupIfDue(state.backupEntries, data, SHARE_STATE_KEY);
+    await refreshSimulationList();
+    if (dom.dataHubModal) dom.dataHubModal.updateSimulationList(state.simulations);
+    
+    // 자동 백업 트리거
+    const res = await IsfStorageHub.triggerAutoBackup(SHARE_STATE_KEY, data, state.backupEntries);
     if (res.created) {
       state.backupEntries = res.nextEntries;
       syncBackupUi();
     }
 
-    if (dom.appHeader) dom.appHeader.updateStatus("success", "브라우저에 저장됨");
+    if (dom.appHeader) dom.appHeader.updateStatus("success", "시뮬레이션 저장됨");
   } catch (err) {
+    console.error("saveCurrentSimulation failed:", err);
     if (dom.appHeader) dom.appHeader.updateStatus("error", "저장 실패");
-    console.error(err);
   }
 }
 
 /**
- * Loads a portfolio from HubStorage by ID
+ * ID를 기반으로 통합 저장소에서 시뮬레이션을 로드합니다.
  */
-export async function loadPortfolioById(id, options = {}) {
-  const hub = getHubStorage();
-  if (!hub) return;
-  const p = await hub.getStep2PortfolioById(id);
-  if (p) {
-    state.draft = normalizeLoadedPortfolio(p).draft;
-    state.currentPortfolioId = id;
+export async function loadSimulationById(id, options = {}) {
+  const s = await IsfStorageHub.getStep2EntryById(id);
+  if (s) {
+    const norm = normalizeLoadedSimulation(s);
+    state.draft = norm.draft;
+    state.currentSimulationId = id;
     renderDraft();
     markClean();
-    if (!options.skipConfirm && dom.appHeader) dom.appHeader.updateStatus("success", "포트폴리오 로드됨");
+    if (!options.skipConfirm && dom.appHeader) dom.appHeader.updateStatus("success", "시뮬레이션 로드됨");
   }
 }
 
 /**
- * Deletes a portfolio from HubStorage
+ * ID를 기반으로 시뮬레이션을 삭제합니다.
  */
-export async function deletePortfolioById(id) {
-  const hub = getHubStorage();
-  if (!hub) return;
-  await hub.deleteStep2Portfolio(id);
-  if (state.currentPortfolioId === id) resetDraft();
-  await refreshPortfolioList();
+export async function deleteSimulationById(id) {
+  await IsfStorageHub.deleteStep2Entry(id);
+  if (state.currentSimulationId === id) resetDraft();
+  await refreshSimulationList();
+  if (dom.dataHubModal) dom.dataHubModal.updateSimulationList(state.simulations);
   if (dom.appHeader) dom.appHeader.updateStatus("success", "삭제되었습니다.");
 }
 
 /**
- * Refreshes the local portfolio list from HubStorage
+ * 통합 저장소에서 시뮬레이션 목록을 최신화합니다.
  */
-export async function refreshPortfolioList() {
-  const hub = getHubStorage();
-  const rows = await (hub?.listStep2Portfolios() || []);
-  state.portfolios = rows || [];
+export async function refreshSimulationList() {
+  const rows = await IsfStorageHub.listStep2Entries();
+  state.simulations = rows || [];
 }
 
 /**
- * Manual backup handler
+ * 수동 백업 핸들러
  */
 export async function handleManualBackup() {
   if (!state.backupStoreReady) return;
-  const MANUAL_BACKUP_WINDOW_MS = 60 * 1000;
-  const res = await IsfBackupManager.createBackupEntry(state.backupEntries, state.draft, {
+  const res = await IsfStorageHub.createManualBackup(SHARE_STATE_KEY, state.draft, state.backupEntries, {
     type: "manual", source: "normal", allowDuplicate: true,
-    replaceRecentManualWithinMs: MANUAL_BACKUP_WINDOW_MS, appKey: SHARE_STATE_KEY,
+    replaceRecentManualWithinMs: MANUAL_BACKUP_WINDOW_MS,
     onRecentManualOverwriteConfirm: () => window.confirm("최근 1분 이내 수동 백업이 있습니다. 덮어쓸까요?")
   });
   if (res.created) {
@@ -92,65 +94,61 @@ export async function handleManualBackup() {
 }
 
 /**
- * Restores a backup by ID
+ * 백업 ID를 기반으로 상태를 복구합니다.
  */
 export async function restoreBackupById(id) {
   const entry = state.backupEntries.find(e => e.id === id);
   if (!entry || !window.confirm(`백업(${utils.formatTimestamp(entry.createdAt)})으로 복원할까요? 현재 상태는 자동 백업됩니다.`)) return;
   await handleManualBackup();
-  const norm = normalizeLoadedPortfolio(entry.data);
+  const norm = normalizeLoadedSimulation(entry.data);
   state.draft = norm.draft;
-  state.currentPortfolioId = norm.id || "";
+  state.currentSimulationId = norm.id || "";
   renderDraft();
   markClean();
 }
 
 /**
- * Normalizes loaded portfolio data (migration, etc.)
+ * 로드된 데이터를 시뮬레이션 형식에 맞게 정규화합니다.
  */
-export function normalizeLoadedPortfolio(s) {
+export function normalizeLoadedSimulation(s) {
   if (!s) return { draft: createEmptyDraft(), id: "" };
-
   const base = createEmptyDraft();
-  // Ensure basic structure and field merging
   const draft = {
     ...base,
     ...s,
-    dividendSim: { ...base.dividendSim, ...(s.dividendSim || {}) },
-    accounts: (s.accounts || []).map(acc => ({
-      ...acc,
-      allocations: (acc.allocations || [])
-    }))
+    dividendSim: { ...base.dividendSim, ...(s.dividendSim || {}) }
   };
-
-  // Migration to Won units (modelVersion < 10)
+  
+  // 구버전(pf) 데이터의 원 단위 마이그레이션 호환성 유지
   if (!s.modelVersion || s.modelVersion < 10) {
     draft.modelVersion = 10;
     if (typeof draft.totalMonthlyInvestCapacity === "number") {
       draft.totalMonthlyInvestCapacity = utils.toWon(draft.totalMonthlyInvestCapacity);
     }
-    draft.accounts.forEach(acc => {
-      acc.allocations.forEach(al => {
-        if (typeof al.actualAmount === "number") {
-          al.actualAmount = utils.toWon(al.actualAmount);
-        }
-      });
-    });
   }
-
   return { draft, id: s.id || "" };
 }
+
 export function syncBackupUi() { 
   if (dom.dataHubModal) dom.dataHubModal.updateBackupList(state.backupEntries); 
 }
 
-export function toPortablePortfolio() { 
-  return { ...state.draft, id: state.currentPortfolioId }; 
+/**
+ * 현재 상태를 내보내기용 객체로 변환합니다.
+ */
+export function toPortableSimulation() { 
+  if (!state.draft) return null;
+  const { modelVersion, totalMonthlyInvestCapacity, dividendSim, updatedAt } = state.draft;
+  return { 
+    modelVersion, totalMonthlyInvestCapacity, dividendSim, 
+    updatedAt: updatedAt || Date.now(),
+    id: state.currentSimulationId || utils.createId("ds") // ds: Dividend Simulation
+  }; 
 }
 
 export function resetDraft() { 
   state.draft = createEmptyDraft(); 
-  state.currentPortfolioId = ""; 
+  state.currentSimulationId = ""; 
   renderDraft(); 
   markClean(); 
 }
