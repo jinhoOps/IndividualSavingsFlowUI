@@ -31,7 +31,7 @@ import {
   toPortableSimulation,
   syncBackupUi
 } from "./modules/storage-handler.js";
-import { utils } from "./utils.js";
+import { utils } from "./modules/utils.js";
 
 // Initialize
 if (document.readyState === "loading") {

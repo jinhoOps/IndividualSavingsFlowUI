@@ -13,142 +13,153 @@
     <link rel="stylesheet" href="styles.css" />
     <script src="../../shared/components/app-header.js" type="module"></script>
     <script src="../../shared/components/data-hub-modal.js" type="module"></script>
-    </head>
-    <body>
+  </head>
+  <body>
     <app-header current-step="2"></app-header>
     <data-hub-modal current-step="2"></data-hub-modal>
-    <!-- Step 1 Integration Banner (Unified Storage Sync) -->
-    <div id="step1SyncBanner" class="sync-banner" hidden>
-      <div class="sync-banner__content">
-        <span class="sync-banner__icon">💡</span>
-        <p class="sync-banner__text">Step 1에서 새로운 투자 여력 데이터를 가져왔습니다. 시뮬레이션에 적용할까요?</p>
-        <div class="sync-banner__meta">
-          <span>기준: <strong id="syncTimestamp">-</strong></span>
-          <span>여력: <strong id="syncInvestCapacity">-</strong></span>
-        </div>
-      </div>
-      <div class="sync-banner__actions">
-        <button id="importStep1Data" class="btn btn-primary btn-sm" type="button">데이터 가져오기</button>
-        <button id="dismissSyncBanner" class="btn btn-ghost btn-sm" type="button">닫기</button>
-      </div>
-    </div>
+    
+    <div class="ambient" aria-hidden="true"></div>
 
-
-      <section class="panel info-panel">
-        <h2>기본 정보</h2>
-        <div class="form-grid">
-          <label class="control">
-            <span>월 투자 가능 금액(만원)</span>
-            <input id="totalMonthlyInvestCapacity" type="number" min="0" step="1" inputmode="decimal" />
-          </label>
-        </div>
+    <div class="page">
+      <section class="panel page-intro">
+        <h1>배당 성장 시뮬레이션</h1>
+        <p class="lead">월 투자 여력을 바탕으로 배당금의 복리 성장 효과를 시뮬레이션하세요.</p>
       </section>
 
-      <section class="panel simulation-panel">
-        <div class="section-head">
-          <h2>배당 성장 시뮬레이션</h2>
-          <button id="toggleSimInputs" class="btn btn-ghost btn-sm" type="button">가정 설정</button>
-        </div>
-        
-        <div id="simInputsContainer" class="sim-inputs-container" hidden>
-          <details class="sim-guide" style="margin-bottom: 10px;">
-            <summary style="cursor: pointer; font-size: 0.84rem; color: var(--tone-accent);">가정 설정 가이드 (처음이라면 펼쳐보세요)</summary>
-            <div style="margin-top: 8px; padding: 10px; border: 1px dashed var(--line); border-radius: var(--rd-sm); background: rgba(235,250,246,0.5); font-size: 0.82rem; line-height: 1.6; color: var(--ink);">
-              <p style="margin: 0 0 6px;">이 시뮬레이션은 "만약 매달 일정 금액을 투자하면, 배당금이 얼마나 쌓일까?"를 미리 계산해 봅니다.</p>
-              <ul style="margin: 0; padding-left: 18px;">
-                <li>기대 배당수익률: 1년 동안 투자금 대비 받는 배당금 비율입니다. 국내 고배당 ETF는 보통 3~5%, 미국 배당 ETF는 2~4% 수준입니다.</li>
-                <li>배당 성장률: 매년 기업이 배당금을 얼마나 올려주는지의 비율입니다. 배당 성장 ETF 기준 보통 5~8% 정도입니다.</li>
-                <li>주가 상승률: 자산 평가액이 매년 얼마나 오르는지의 비율입니다. 장기 주식시장 평균은 약 7~10%이지만, 보수적으로 4~6%를 권장합니다.</li>
-                <li>시뮬레이션 기간: 투자를 지속하는 기간(년)입니다.</li>
-                <li>배당 재투자: 받은 배당금을 다시 투자에 넣을지 여부입니다. 켜면 복리 효과로 자산이 더 빠르게 불어납니다.</li>
-              </ul>
-              <p style="margin: 8px 0 0; color: var(--muted);">명목 금액은 미래 시점의 액면가이고, 실질 금액은 물가 상승을 감안한 현재 기준 가치입니다. 배당 소득세는 15.4%로 일괄 적용됩니다.</p>
+      <main>
+        <!-- Step 1 Integration Banner (Unified Storage Sync) -->
+        <div id="step1SyncBanner" class="sync-banner" hidden>
+          <div class="sync-banner__content">
+            <span class="sync-banner__icon">💡</span>
+            <div class="sync-banner__body">
+              <p class="sync-banner__text">Step 1에서 새로운 투자 여력 데이터를 가져왔습니다. 시뮬레이션에 적용할까요?</p>
+              <div class="sync-banner__meta">
+                <span>기준: <strong id="syncTimestamp">-</strong></span>
+                <span>여력: <strong id="syncInvestCapacity">-</strong></span>
+              </div>
             </div>
-          </details>
+          </div>
+          <div class="sync-banner__actions">
+            <button id="importStep1Data" class="btn btn-primary btn-sm" type="button">데이터 가져오기</button>
+            <button id="dismissSyncBanner" class="btn btn-ghost btn-sm" type="button">닫기</button>
+          </div>
+        </div>
+
+        <section class="panel info-panel">
+          <div class="section-head">
+            <h2>기본 정보</h2>
+          </div>
           <div class="form-grid">
             <label class="control">
-              <span>기대 배당수익률(연, %)</span>
-              <input id="simDividendYield" type="number" min="0" max="100" step="0.1" value="3.5" />
-            </label>
-            <label class="control">
-              <span>배당 성장률(연, %)</span>
-              <input id="simDividendGrowth" type="number" min="0" max="100" step="0.1" value="5.0" />
-            </label>
-            <label class="control">
-              <span>주가 상승률(연, %)</span>
-              <input id="simCapitalGrowth" type="number" min="0" max="100" step="0.1" value="4.0" />
-            </label>
-            <label class="control">
-              <span>시뮬레이션 기간(년)</span>
-              <input id="simHorizonYears" type="number" min="1" max="40" step="1" value="10" />
-            </label>
-            <label class="control" style="justify-content: center; align-items: start; display: flex; flex-direction: column;">
-              <span>배당 재투자(연 단위)</span>
-              <label style="font-size:0.9rem;"><input id="simDrip" type="checkbox" checked /> 재투자함</label>
+              <span>월 투자 가능 금액(만원)</span>
+              <input id="totalMonthlyInvestCapacity" type="number" min="0" step="1" inputmode="decimal" />
             </label>
           </div>
-          <p class="muted sim-disclaimer" style="margin-top: 8px;">※ 결과값은 예시이며 실제 성과를 보장하지 않습니다. 발생 배당금은 일괄 15.4%로 과세된다고 단순히 가정합니다. (계좌별 15%, 0% 선택 등은 추후 지원 예정)</p>
-        </div>
+        </section>
 
-        <div class="sim-dashboard">
-          <div class="sim-controls" style="margin-top: 10px; margin-bottom: 12px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-            <span class="muted" style="font-size: 0.8rem;">시뮬레이션 기간:</span>
-            <div class="tab-list" id="simYearsTabs" role="tablist">
-              <button class="tab-btn" data-years="5" role="tab">5년</button>
-              <button class="tab-btn is-active" data-years="10" role="tab" aria-selected="true">10년</button>
-              <button class="tab-btn" data-years="15" role="tab">15년</button>
-              <button class="tab-btn" data-years="20" role="tab">20년</button>
+        <section class="panel simulation-panel">
+          <div class="section-head">
+            <h2>시뮬레이션 대시보드</h2>
+            <button id="toggleSimInputs" class="btn btn-ghost btn-sm" type="button">가정 설정</button>
+          </div>
+          
+          <div id="simInputsContainer" class="sim-inputs-container" hidden>
+            <details class="sim-guide" style="margin-bottom: 10px;">
+              <summary style="cursor: pointer; font-size: 0.84rem; color: var(--tone-accent);">가정 설정 가이드 (처음이라면 펼쳐보세요)</summary>
+              <div style="margin-top: 8px; padding: 10px; border: 1px dashed var(--line); border-radius: var(--rd-sm); background: rgba(235,250,246,0.5); font-size: 0.82rem; line-height: 1.6; color: var(--ink);">
+                <p style="margin: 0 0 6px;">이 시뮬레이션은 "만약 매달 일정 금액을 투자하면, 배당금이 얼마나 쌓일까?"를 미리 계산해 봅니다.</p>
+                <ul style="margin: 0; padding-left: 18px;">
+                  <li>기대 배당수익률: 1년 동안 투자금 대비 받는 배당금 비율입니다.</li>
+                  <li>배당 성장률: 매년 기업이 배당금을 얼마나 올려주는지의 비율입니다.</li>
+                  <li>주가 상승률: 자산 평가액이 매년 얼마나 오르는지의 비율입니다.</li>
+                  <li>배당 재투자: 받은 배당금을 다시 투자에 넣으면 복리 효과가 극대화됩니다.</li>
+                </ul>
+              </div>
+            </details>
+            <div class="form-grid">
+              <label class="control">
+                <span>기대 배당수익률(연, %)</span>
+                <input id="simDividendYield" type="number" min="0" max="100" step="0.1" value="3.5" />
+              </label>
+              <label class="control">
+                <span>배당 성장률(연, %)</span>
+                <input id="simDividendGrowth" type="number" min="0" max="100" step="0.1" value="5.0" />
+              </label>
+              <label class="control">
+                <span>주가 상승률(연, %)</span>
+                <input id="simCapitalGrowth" type="number" min="0" max="100" step="0.1" value="4.0" />
+              </label>
+              <label class="control">
+                <span>시뮬레이션 기간(년)</span>
+                <input id="simHorizonYears" type="number" min="1" max="40" step="1" value="10" />
+              </label>
+              <label class="control" style="justify-content: center; align-items: start; display: flex; flex-direction: column;">
+                <span>배당 재투자(연 단위)</span>
+                <label style="font-size:0.9rem;"><input id="simDrip" type="checkbox" checked /> 재투자함</label>
+              </label>
             </div>
           </div>
 
-          <div class="sim-chart-wrap" style="position: relative; margin-top: 10px;">
-            <svg id="simChartSvg" viewBox="0 0 600 220" role="img" aria-label="연도별 배당금 추이"></svg>
-            <div id="simChartTooltip" class="sim-tooltip" hidden></div>
+          <div class="sim-dashboard">
+            <div class="sim-controls" style="margin-top: 10px; margin-bottom: 12px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+              <span class="muted" style="font-size: 0.8rem;">시뮬레이션 기간:</span>
+              <div class="tab-list" id="simYearsTabs" role="tablist">
+                <button class="tab-btn" data-years="5" role="tab">5년</button>
+                <button class="tab-btn is-active" data-years="10" role="tab" aria-selected="true">10년</button>
+                <button class="tab-btn" data-years="15" role="tab">15년</button>
+                <button class="tab-btn" data-years="20" role="tab">20년</button>
+              </div>
+            </div>
+
+            <div class="sim-chart-wrap" style="position: relative; margin-top: 10px;">
+              <svg id="simChartSvg" viewBox="0 0 600 220" role="img" aria-label="연도별 배당금 추이"></svg>
+              <div id="simChartTooltip" class="sim-tooltip" hidden></div>
+            </div>
+            
+            <div class="table-wrap" style="margin-top: 16px; overflow-x: auto;">
+              <table id="simTable" class="projection-table">
+                <thead>
+                  <tr>
+                    <th rowspan="2">연차</th>
+                    <th rowspan="2">누적 원금(만원)</th>
+                    <th colspan="2" style="text-align: center;">자산(PR:차익)(만원)</th>
+                    <th colspan="2" style="text-align: center;">자산(TR:재투자)(만원)</th>
+                    <th colspan="2" style="text-align: center;">연 배당(PR)(만원)</th>
+                    <th colspan="2" style="text-align: center;">연 배당(TR)(만원)</th>
+                  </tr>
+                  <tr>
+                    <th>명목</th>
+                    <th>실질</th>
+                    <th>명목</th>
+                    <th>실질</th>
+                    <th>명목</th>
+                    <th>실질</th>
+                    <th>명목</th>
+                    <th>실질</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
           </div>
-          
-          <div class="table-wrap" style="margin-top: 16px; overflow-x: auto;">
-            <table id="simTable" class="projection-table">
-              <thead>
-                <tr>
-                  <th rowspan="2">연차</th>
-                  <th rowspan="2">누적 원금(만원)</th>
-                  <th colspan="2" style="text-align: center;">자산(PR:차익)(만원)</th>
-                  <th colspan="2" style="text-align: center;">자산(TR:재투자)(만원)</th>
-                  <th colspan="2" style="text-align: center;">연 배당(PR)(만원)</th>
-                  <th colspan="2" style="text-align: center;">연 배당(TR)(만원)</th>
-                </tr>
-                <tr>
-                  <th>명목</th>
-                  <th>실질</th>
-                  <th>명목</th>
-                  <th>실질</th>
-                  <th>명목</th>
-                  <th>실질</th>
-                  <th>명목</th>
-                  <th>실질</th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
+        </section>
+
+        <div id="pendingBar" class="pending-bar" hidden>
+          <div class="pending-content" style="display: flex; align-items: center; gap: 8px;">
+            <span class="pending-icon">⚠️</span>
+            <p id="pendingSummary" class="pending-summary">변경사항 대기 중</p>
+          </div>
+          <div class="pending-actions">
+            <button id="applyChanges" class="btn btn-primary btn-sm" type="button">적용</button>
+            <button id="cancelChanges" class="btn btn-ghost btn-sm" type="button">취소</button>
           </div>
         </div>
-      </section>
 
-      <div id="pendingBar" class="pending-bar" hidden>
-        <div class="pending-content" style="display: flex; align-items: center; gap: 8px;">
-          <span class="pending-icon">⚠️</span>
-          <p id="pendingSummary" class="pending-summary">변경사항 대기 중</p>
-        </div>
-        <div class="pending-actions">
-          <button id="applyChanges" class="btn btn-primary btn-sm" type="button">적용</button>
-          <button id="cancelChanges" class="btn btn-ghost btn-sm" type="button">취소</button>
-        </div>
-      </div>
+        <div id="applyFeedback" class="apply-feedback" hidden></div>
+        <p id="step2Feedback" class="feedback" aria-live="polite" hidden></p>
+      </main>
+    </div>
 
-      <div id="applyFeedback" class="apply-feedback" hidden></div>
-
-      <p id="step2Feedback" class="feedback" aria-live="polite" hidden></p>
-    </main>
     <!-- Shared Utilities & Components -->
     <script src="../../shared/core/utils.js"></script>
     <script src="../../shared/core/share-utils.js"></script>
