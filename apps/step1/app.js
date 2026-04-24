@@ -1,3 +1,10 @@
+/**
+ * Individual Savings Flow (ISF) - Step 1: 나의 가계 흐름
+ * v0.7.2
+ * 
+ * 파일 역할: Step 1 애플리케이션의 엔트리 포인트 및 전체 가계 흐름 제어
+ */
+
 import {
   MONEY_UNIT, STORAGE_KEY, SHARE_STATE_KEY, SHARE_STATE_SCHEMA,
   HASH_STATE_PARAM, VIEW_MODE_GUIDE_DISMISSED_KEY, MANUAL_BACKUP_WINDOW_MS,
@@ -69,7 +76,7 @@ function init() {
   void initializeInputsFromShareId();
 
   const pwaManager = new IsfPwaManager({
-    appVersion: "0.7.1",
+    appVersion: "0.7.2",
     appKey: SHARE_STATE_KEY,
     onFeedback: (message) => IsfFeedback.showFeedback(dom.applyFeedback, message),
     isViewMode: () => state.isViewMode,
