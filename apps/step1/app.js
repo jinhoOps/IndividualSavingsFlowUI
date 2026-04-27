@@ -631,7 +631,7 @@ function renderIncomeItemHtml(item, opts) {
   return `
     <div class="income-row">
       <input type="text" value="${item.name}" data-income-id="${item.id}" data-field="name" ${isEditing ? "" : "readonly"} placeholder="이름" />
-      <input type="number" value="${IsfUtils.toMan(item.amount)}" data-income-id="${item.id}" data-field="amount" ${isEditing ? "" : "readonly"} placeholder="금액" />
+      <input type="number" value="${IsfUtils.toMan(item.amount)}" data-income-id="${item.id}" data-field="amount" ${isEditing ? "" : "readonly"} inputmode="decimal" placeholder="금액" />
       ${isEditing ? `
         <button class="income-remove" data-remove-income="${item.id}" title="삭제">
           <svg class="income-remove-icon" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
@@ -672,7 +672,7 @@ function renderAllocationItemHtml(group, item, opts) {
       </div>
       <div class="editor-field">
         <label class="editor-field-label">금액(만원)</label>
-        <input type="number" value="${IsfUtils.toMan(item.amount)}" data-field="amount" data-editor-id="${item.id}" placeholder="금액" />
+        <input type="number" value="${IsfUtils.toMan(item.amount)}" data-field="amount" data-editor-id="${item.id}" inputmode="decimal" placeholder="금액" />
       </div>
       <div class="editor-field">
         <label class="editor-field-label">그룹</label>
@@ -681,7 +681,7 @@ function renderAllocationItemHtml(group, item, opts) {
       ${isSavings ? `
         <div class="editor-field">
           <label class="editor-field-label">연이율(%)</label>
-          <input type="number" value="${item.annualRate || ""}" data-field="annualRate" data-editor-id="${item.id}" step="0.1" placeholder="기본값" />
+          <input type="number" value="${item.annualRate || ""}" data-field="annualRate" data-editor-id="${item.id}" step="0.1" inputmode="decimal" placeholder="기본값" />
         </div>
       ` : ""}
       ${(isSavings || isInvest) ? `

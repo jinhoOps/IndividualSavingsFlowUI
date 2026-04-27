@@ -178,25 +178,30 @@
                 <div class="control">
                   <label for="monthlyExpense">월 생활비(자동합산)</label>
                   <input id="monthlyExpense" name="monthlyExpense" type="number" min="0" step="1" readonly
-                    class="jump-advanced-field" data-advanced-target="expense" title="클릭하면 고급 설정의 생활비 상세 항목으로 이동" />
+                    inputmode="decimal" class="jump-advanced-field" data-advanced-target="expense"
+                    title="클릭하면 고급 설정의 생활비 상세 항목으로 이동" />
                 </div>
                 <div class="control">
                   <label for="monthlySavings">월 저축(자동합산)</label>
                   <input id="monthlySavings" name="monthlySavings" type="number" min="0" step="1" readonly
-                    class="jump-advanced-field" data-advanced-target="savings" title="클릭하면 고급 설정의 저축 상세 항목으로 이동" />
+                    inputmode="decimal" class="jump-advanced-field" data-advanced-target="savings"
+                    title="클릭하면 고급 설정의 저축 상세 항목으로 이동" />
                 </div>
                 <div class="control">
                   <label for="monthlyInvest">월 투자(자동합산)</label>
                   <input id="monthlyInvest" name="monthlyInvest" type="number" min="0" step="1" readonly
-                    class="jump-advanced-field" data-advanced-target="invest" title="클릭하면 고급 설정의 투자 상세 항목으로 이동" />
+                    inputmode="decimal" class="jump-advanced-field" data-advanced-target="invest"
+                    title="클릭하면 고급 설정의 투자 상세 항목으로 이동" />
                 </div>
                 <div class="control">
                   <label for="monthlyDebtPayment">월 부채상환</label>
-                  <input id="monthlyDebtPayment" name="monthlyDebtPayment" type="number" min="0" step="1" />
+                  <input id="monthlyDebtPayment" name="monthlyDebtPayment" type="number" min="0" step="1"
+                    inputmode="decimal" />
                 </div>
                 <div class="control">
                   <label for="horizonYears">시뮬레이션 기간(년)</label>
-                  <input id="horizonYears" name="horizonYears" type="number" min="1" max="40" step="1" />
+                  <input id="horizonYears" name="horizonYears" type="number" min="1" max="40" step="1"
+                    inputmode="decimal" />
                 </div>
               </div>
               <p class="hint">생활비/저축/투자 칸을 클릭하면 고급 설정의 상세 항목으로 이동합니다.</p>
@@ -301,29 +306,29 @@
                 <div class="controls-grid controls-grid--advanced">
                   <div class="control">
                     <label for="startCash">초기 현금</label>
-                    <input id="startCash" name="startCash" type="number" min="0" step="1" />
+                    <input id="startCash" name="startCash" type="number" min="0" step="1" inputmode="decimal" />
                   </div>
                   <div class="control">
                     <label for="startSavings">초기 저축잔액</label>
-                    <input id="startSavings" name="startSavings" type="number" min="0" step="1" />
+                    <input id="startSavings" name="startSavings" type="number" min="0" step="1" inputmode="decimal" />
                   </div>
                   <div class="control">
                     <label for="startInvest">초기 투자잔액</label>
-                    <input id="startInvest" name="startInvest" type="number" min="0" step="1" />
+                    <input id="startInvest" name="startInvest" type="number" min="0" step="1" inputmode="decimal" />
                   </div>
                   <div class="control">
                     <label for="startDebt">초기 부채</label>
-                    <input id="startDebt" name="startDebt" type="number" min="0" step="1" />
+                    <input id="startDebt" name="startDebt" type="number" min="0" step="1" inputmode="decimal" />
                   </div>
                   <div class="control">
                     <label for="annualIncomeGrowth">수입 증가율(연, %)</label>
                     <input id="annualIncomeGrowth" name="annualIncomeGrowth" type="number" min="0" max="30"
-                      step="0.1" />
+                      step="0.1" inputmode="decimal" />
                   </div>
                   <div class="control">
                     <label for="annualExpenseGrowth">생활비 증가율(연, %, 기준금리)</label>
                     <input id="annualExpenseGrowth" name="annualExpenseGrowth" type="number" min="0" max="30"
-                      step="0.1" />
+                      step="0.1" inputmode="decimal" />
                   </div>
                   <div class="control">
                     <div class="label-row">
@@ -334,17 +339,17 @@
                       </button>
                     </div>
                     <input id="annualSavingsYield" name="annualSavingsYield" type="number" min="0" max="20" step="0.1"
-                      placeholder="저축기본수익률" />
+                      placeholder="저축기본수익률" inputmode="decimal" />
                   </div>
                   <div class="control">
                     <label for="annualInvestReturn">투자 수익률(연, %)</label>
                     <input id="annualInvestReturn" name="annualInvestReturn" type="number" min="0" max="30"
-                      step="0.1" />
+                      step="0.1" inputmode="decimal" />
                   </div>
                   <div class="control">
                     <label for="annualDebtInterest">부채 이자율(연, %)</label>
                     <input id="annualDebtInterest" name="annualDebtInterest" type="number" min="0" max="30"
-                      step="0.1" />
+                      step="0.1" inputmode="decimal" />
                   </div>
                 </div>
               </div>

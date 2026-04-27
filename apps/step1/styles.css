@@ -324,8 +324,11 @@ body.is-dashboard-mode .controls-panel {
   .income-remove { min-width: 38px; width: 38px; min-height: 40px; padding: 0; border-radius: 10px; }
   .income-remove-icon { display: block; }
   .income-remove-text { display: none; }
-  .expense-row { grid-template-columns: 1fr; }
-  .savings-row, .invest-row { grid-template-columns: 1fr; }
+  
+  .expense-row, .savings-row, .invest-row { grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; }
+  .expense-row .value, .savings-row .value, .invest-row .value { text-align: right; font-size: 0.86rem; }
+  .allocation-meta { grid-column: 1 / -1; margin-top: -4px; margin-bottom: 4px; }
+
   .expense-row.is-editing, .savings-row.is-editing, .invest-row.is-editing { grid-template-columns: 1fr; gap: 10px; padding: 10px; border: 1px solid rgba(16, 34, 32, 0.12); border-radius: 12px; background: rgba(255, 255, 255, 0.9); }
   .editor-field-label { display: block; }
 
