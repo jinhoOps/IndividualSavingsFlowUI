@@ -2,7 +2,7 @@
 kanban-plugin: basic
 ---
 
-# TODO (v0.7.3)
+# TODO (v0.7.4)
 
 ## Backlog (우선순위 상향)
 - [ ] **Step 3: 포트폴리오 시각화 및 구성 (준비 중)**
@@ -11,10 +11,10 @@ kanban-plugin: basic
 - [ ] 처음 접속시 쉬운 입력값 입력 가이드. (Spotlight UX 가이드 도입 고려)
 - [ ] Step 1 지출 내역 이전 데이터 비교 막대 그래프 추가 (Issue #4)
 
-## Done (v0.7.3 Patch)
+## Done (v0.7.4 Patch)
 - [x] **디자인 시스템 고도화 (Glassmorphism)**: `DESIGN.md` 원칙에 따라 전역 테마 변수 및 유리 질감 효과 적용 완료.
 - [x] **Typography 정합성 확보**: 주요 수치 및 헤더에 `Black Han Sans` 적용 완료.
-- [x] **Triple Sync 완결 (v0.7.3)**: `sw.js`, `manifest.webmanifest`, `app.js` 및 모든 모듈의 버전 정보 동기화.
+- [x] **Triple Sync 완결 (v0.7.4)**: `sw.js`, `manifest.webmanifest`, `app.js` 및 모든 모듈의 버전 정보 동기화.
 - [ ] **데이터 관리 경험 개선**
   - [ ] 저장된 포트폴리오 목록 다중 선택 및 일괄 삭제 기능 추가
   - [ ] 포트폴리오별 '버전 태그' 또는 '히스토리 메모' 기능 (기존 메모 필드 확장)

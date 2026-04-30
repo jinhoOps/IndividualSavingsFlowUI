@@ -15,9 +15,8 @@
     if (!Number.isFinite(numericValue)) {
       return "0 만원";
     }
-    const manValue = numericValue / 10000;
-    // 소수점 둘째자리까지 표시하되, 불필요한 소수점은 제거하여 출력
-    const formatted = Number(manValue.toFixed(2)).toLocaleString("ko-KR");
+    const manValue = Math.round(numericValue / 10000);
+    const formatted = manValue.toLocaleString("ko-KR");
     return `${formatted} 만원`;
   }
 
@@ -82,7 +81,7 @@
     if (!Number.isFinite(Number(amountInWon))) {
       return 0;
     }
-    return Number(amountInWon) / 10000;
+    return Math.round(Number(amountInWon) / 10000);
   }
 
   global.IsfUtils = {

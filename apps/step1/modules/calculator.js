@@ -387,7 +387,7 @@ export function buildSummaryCards(snapshot, projection, horizonYears) {
       sub: debtProbe.monthIndex > 0 ? `${debtProbe.monthIndex}개월차 기준` : "현재 기준",
       variant: debtProbe.debtInterest > 0 ? "negative" : "positive",
       metric: debtProbe.debtInterest,
-      hideIfZero: true,
+      showIfDebtExists: true,
     },
     {
       label: "당월 실제상환",
@@ -395,7 +395,7 @@ export function buildSummaryCards(snapshot, projection, horizonYears) {
       sub: `설정 상환 ${formatCurrency(snapshot.debtPayment)}`,
       variant: debtProbe.actualDebtPayment > 0 ? "positive" : "",
       metric: debtProbe.actualDebtPayment,
-      hideIfZero: true,
+      showIfDebtExists: true,
     },
     {
       label: "당월 부채증가분",
@@ -403,7 +403,7 @@ export function buildSummaryCards(snapshot, projection, horizonYears) {
       sub: debtProbe.newBorrowing > 0 ? "현금 부족분이 부채로 전환됨" : "부채 증가분 없음",
       variant: debtProbe.newBorrowing > 0 ? "negative" : "positive",
       metric: debtProbe.newBorrowing,
-      hideIfZero: true,
+      showIfDebtExists: true,
     },
     {
       label: "현재 순자산",
@@ -424,16 +424,26 @@ export function buildSummaryCards(snapshot, projection, horizonYears) {
       variant: "positive",
     },
     {
+      label: "현재 총 부채",
+      value: formatCurrency(current.debt),
+      sub: `현재 시점의 부채 잔액`,
+      variant: "negative",
+      showIfDebtExists: true,
+    },
+    {
       label: "부채 소진 예상",
       value: debtFreeText,
       sub: debtSub || "초기 부채가 없습니다.",
       variant: debtFreeMonth || current.debt === 0 ? "positive" : "negative",
       metric: current.debt,
-      hideIfZero: true,
+      showIfDebtExists: true,
     },
   ];
 
   return cards.filter((card) => {
+    if (card.showIfDebtExists) {
+      return current.debt > 0;
+    }
     if (!card.hideIfZero) {
       return true;
     }
