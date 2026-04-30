@@ -39,8 +39,8 @@ date: 2026-05-01
 - **PASS**: `PRESET_SALARIES`의 기본값(5000만원) 설정이 적절한 초기 사용자 경험을 제공함.
 
 ## Actionable Fixes
-1. [ ] **Spacing**: `.preset-styles`의 패딩을 `2px`에서 `4px`로 조정하여 여유 공간 확보.
-2. [ ] **UX**: 모바일 화면에서 `preset-controls` 내부 요소들이 한 줄에 들어가지 않을 경우를 대비한 `flex-direction: column` 대응 확인 (현재 `flex-wrap: wrap`으로 되어 있으나 정렬 확인 필요).
+1. [x] **Spacing**: `.preset-styles`의 패딩을 `2px`에서 `4px`로 조정하여 여유 공간 확보.
+2. [x] **UX**: 모바일 화면에서 `preset-controls` 내부 요소들이 한 줄에 들어가지 않을 경우를 대비한 `flex-direction: column` 대응 확인 (현재 `flex-wrap: wrap`으로 되어 있으나 정렬 확인 필요).
 
 ## Final Sign-off
 - **Status**: APPROVED with minor suggestions.
