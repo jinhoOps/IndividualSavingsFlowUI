@@ -14,7 +14,7 @@ progress:
 Phase: 1 (프리셋 템플릿 로드 및 자동 시각화)
 Plan: 01 (Phase 1 01-PLAN)
 Status: complete
-Last activity: 2026-05-01 — Phase 1 UAT complete (5/5 passed)
+Last activity: 2026-05-01 — Phase 1 complete & v0.7.5 bump
 
 ## Key Decisions
 - (아직 기록된 주요 결정 사항 없음)
