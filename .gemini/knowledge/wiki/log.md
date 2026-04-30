@@ -296,7 +296,21 @@
 - **조치**: `.gemini/knowledge/wiki/archive/` 디렉토리를 신규 생성하여 구버전 계획서들을 물리적으로 격리함.
 - **대상**: Storage_Hub_Integration_v0.7, Modularization_Refactoring(Step1/2), Plan_Step(1/2), UI_UX_Overhaul(v0.3/v0.4).
 - **결과**: wiki/ 루트 디렉토리의 가독성을 확보하고 검색 엔진(grep/glob)의 검색 결과 노이즈 제거.
-# #   [ 2 0 2 6 - 0 4 - 2 4 ]   i n g e s t   |   ���   ���  ��Y�  �ĳT�  �  o r c h e s t r a t i o n   �¬�  ٳ0�T�  ( ����  ����  ȩ�)  
- 
 
-## [2026-04-30] ingest | 디자인 시스템 고도화 및 토큰 마이그레이션 완료`n- DESIGN.md의 최신 타이포그래피 토큰(Black Han Sans & Gowun Dodum) 반영`n- shared/styles/step-theme.css에 --text-* 변수 도입 및 버튼 scale(0.96) 피드백 추가`n- apps/step1 및 apps/step2의 하드코딩된 스타일을 공통 토큰으로 마이그레이션 완료`n- isf-evaluator를 통한 시각적/반응형 정합성 최종 검증 완료
+## [2026-04-24] ingest | 에이전트 협업 프로세스 동기화 (orchestration 스킬)
+- 에이전트 간의 기획, 구현, 평가 핸드오프 절차 및 입출력 규격 정의 완료.
+
+## [2026-04-30] ingest | 디자인 시스템 고도화 및 토큰 마이그레이션 완료
+- DESIGN.md의 최신 타이포그래피 토큰(Black Han Sans & Gowun Dodum) 반영.
+- shared/styles/step-theme.css에 --text-* 변수 도입 및 버튼 scale(0.96) 피드백 추가.
+- apps/step1 및 apps/step2의 하드코딩된 스타일을 공통 토큰으로 마이그레이션 완료.
+- isf-evaluator를 통한 시각적/반응형 정합성 최종 검증 완료.
+
+## [2026-04-24] ingest | 에이전트 협업 프로세스 동기화 (orchestration 스킬)
+- 에이전트 간의 기획, 구현, 평가 핸드오프 절차 및 입출력 규격 정의 완료.
+
+## [2026-04-30] ingest | 디자인 시스템 고도화 및 토큰 마이그레이션 완료
+- DESIGN.md의 최신 타이포그래피 토큰(Black Han Sans & Gowun Dodum) 반영.
+- shared/styles/step-theme.css에 --text-* 변수 도입 및 버튼 scale(0.96) 피드백 추가.
+- apps/step1 및 apps/step2의 하드코딩된 스타일을 공통 토큰으로 마이그레이션 완료.
+- isf-evaluator를 통한 시각적/반응형 정합성 최종 검증 완료.
