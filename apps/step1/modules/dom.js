@@ -9,6 +9,10 @@ export const dom = {
   resetInputs: document.getElementById("resetInputs"),
   easterEgg: document.getElementById("easterEgg"),
 
+  presetSalary: document.getElementById("presetSalary"),
+  presetStyleBtns: document.querySelectorAll(".preset-style-btn"),
+  applyPresetBtn: document.getElementById("applyPresetBtn"),
+
   incomeList: document.getElementById("incomeList"),
   editIncomeItems: document.getElementById("editIncomeItems"),
   incomeEditorActions: document.getElementById("incomeEditorActions"),

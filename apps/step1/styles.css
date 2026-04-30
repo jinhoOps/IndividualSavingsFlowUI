@@ -282,6 +282,40 @@ body.is-dashboard-mode .controls-panel {
 .floating-btn--left-save { left: 72px; }
 .floating-btn--right { right: var(--sp-lg); }
 
+/* Preset Controls */
+.preset-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-sm);
+  margin-top: 4px;
+}
+
+.preset-select {
+  border: 1px solid var(--line-strong);
+  border-radius: var(--rd-sm);
+  padding: 6px 10px;
+  background: #fff;
+  font: inherit;
+  font-size: 0.9rem;
+  color: var(--ink);
+  min-width: 140px;
+}
+
+.preset-styles {
+  display: inline-flex;
+  gap: 4px;
+  border: 1px solid var(--line);
+  padding: 2px;
+  border-radius: var(--rd-lg);
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.preset-style-btn.is-active {
+  background: var(--ink);
+  color: #fff;
+}
+
 @media (max-width: 1080px) {
   .controls-grid--simple, .controls-grid--advanced { grid-template-columns: repeat(3, minmax(140px, 1fr)); }
   .summary-cards { grid-template-columns: repeat(2, minmax(170px, 1fr)); }

@@ -44,6 +44,7 @@ import {
 
 import { dom } from "./modules/dom.js";
 import { state } from "./modules/state.js";
+import { PRESET_SALARIES, PRESET_STYLES, applyPreset } from "./modules/presets.js";
 
 import {
   renderSankey, hideSankeyTooltip, getEffectiveSankeyZoom
@@ -113,6 +114,41 @@ function checkReturningUser() {
 
 function bindControls() {
   bindModalEvents();
+
+  if (dom.presetSalary) {
+    dom.presetSalary.innerHTML = PRESET_SALARIES.map((s, i) => `<option value="${s.value}" ${i===2?'selected':''}>${s.label}</option>`).join('');
+  }
+  
+  let selectedPresetStyle = 'neutral';
+  if (dom.presetStyleBtns) {
+    dom.presetStyleBtns.forEach(btn => {
+      if (btn.dataset.style === selectedPresetStyle) btn.classList.add('is-active');
+      btn.addEventListener('click', () => {
+        dom.presetStyleBtns.forEach(b => b.classList.remove('is-active'));
+        btn.classList.add('is-active');
+        selectedPresetStyle = btn.dataset.style;
+      });
+    });
+  }
+
+  if (dom.applyPresetBtn) {
+    dom.applyPresetBtn.addEventListener('click', () => {
+      const isDirty = hasPendingChanges() || JSON.stringify(state.inputs) !== JSON.stringify(DEFAULT_INPUTS);
+      if (isDirty && !window.confirm('데이터 초기화 경고: 기존에 작성하신 자산 데이터가 모두 초기화되고 프리셋으로 덮어씌워집니다. 계속하시겠습니까?')) {
+        return;
+      }
+      
+      const val = parseInt(dom.presetSalary.value, 10);
+      const newPreset = applyPreset(val, selectedPresetStyle);
+      if (!newPreset) return;
+      
+      const nextInputs = { ...DEFAULT_INPUTS, ...newPreset };
+      state.inputs = sanitizeInputs(nextInputs);
+      helpers.markDirty(state);
+      markPendingChanges();
+      renderAll();
+    });
+  }
 
   if (dom.inputsForm) {
     dom.inputsForm.addEventListener("input", (event) => {

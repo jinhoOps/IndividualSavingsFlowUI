@@ -155,6 +155,22 @@
         <div id="inputsPanelContent">
           <p class="hint">금액 단위: 만원(예: 350 = 3,500,000원) · 기본값만 입력해도 바로 계산됩니다.</p>
           <form id="inputsForm" autocomplete="off">
+            <div class="controls-block" id="presetBlock">
+              <div class="block-head">
+                <h3>프리셋 템플릿</h3>
+              </div>
+              <p class="hint">연봉과 투자 성향을 선택하여 간편하게 기본 데이터를 채워보세요.</p>
+              <div class="preset-controls">
+                <select id="presetSalary" class="preset-select" aria-label="연봉 선택"></select>
+                <div class="preset-styles" role="group" aria-label="투자 성향">
+                  <button type="button" data-style="conservative" class="btn btn-ghost btn-sm preset-style-btn">안정형</button>
+                  <button type="button" data-style="neutral" class="btn btn-ghost btn-sm preset-style-btn">중립형</button>
+                  <button type="button" data-style="aggressive" class="btn btn-ghost btn-sm preset-style-btn">적극형</button>
+                </div>
+                <button type="button" id="applyPresetBtn" class="btn btn-primary btn-sm">프리셋 적용</button>
+              </div>
+            </div>
+
             <div class="controls-block">
               <div class="block-head">
                 <h3>월 수입 항목</h3>
