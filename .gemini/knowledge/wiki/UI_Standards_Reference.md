@@ -34,10 +34,18 @@ tags: [ui, feedback, theme, visualization, reference]
 ## 테마 시스템
 
 - `shared/styles/step-theme.css`에 정의된 CSS Variables를 사용하여 일관된 색상과 타이포그래피를 유지합니다.
-- **v0.3 디자인 토큰:**
+- **디자인 토큰 (v0.8 고도화):**
+  - **Typography (DESIGN.md 규격):** 
+    - `--text-display(32px)`: 섹션 헤더, 주요 요약 숫자 (Black Han Sans)
+    - `--text-title-lg(24px)`: 카드 제목, 주요 데이터 포인트 (Black Han Sans)
+    - `--text-title-md(18px)`: 서브 섹션 제목 (Gowun Dodum)
+    - `--text-body-md(16px)`: 본문 및 일반 입력 (Gowun Dodum)
+    - `--text-caption(14px)`: 도움말, 단위(만원), 작은 라벨 (Gowun Dodum)
   - **Spacing:** `--sp-xs(4px)` ~ `--sp-xl(32px)`
   - **Radius:** `--rd-sm(8px)`, `--rd-md(14px)`, `--rd-lg(999px)`
   - **Shadow:** `--sh-float` (공통 부유 효과)
+- **Interaction:**
+  - 버튼(`.btn`) 클릭 시 `transform: scale(0.96)` 피드백이 반드시 포함되어야 함.
 - 주요 변수: `--tone-primary`, `--tone-accent`, `--ink`, `--bg`, `--panel` 등.
 - 상세 Brand Identity 및 색상 체계는 프로젝트 루트의 `DESIGN.md`를 참조하십시오.
 

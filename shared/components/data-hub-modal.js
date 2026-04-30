@@ -170,11 +170,12 @@
         #modalOverlay { position: absolute; inset: 0; background: rgba(16, 34, 32, 0.4); backdrop-filter: blur(4px); }
         #modalContent { 
           position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-          width: 90%; max-width: 500px; background: #fff; border-radius: var(--radius); 
+          width: 90%; max-width: 500px; background: var(--panel); border-radius: var(--radius); 
+          backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
           box-shadow: 0 10px 30px rgba(0,0,0,0.15); display: flex; flex-direction: column; overflow: hidden;
         }
         .modal-header { padding: var(--sp-md) var(--sp-lg); display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); }
-        .modal-header h2 { margin: 0; font-size: 1.1rem; color: var(--ink); }
+        .modal-header h2 { margin: 0; font-family: var(--font-display); font-size: 1.1rem; color: var(--ink); }
         .btn-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--muted); }
         
         .modal-body { padding: var(--sp-lg); display: flex; flex-direction: column; gap: var(--sp-lg); }
@@ -188,7 +189,7 @@
         .simulation-list, .backup-list { display: flex; flex-direction: column; gap: var(--sp-sm); max-height: 240px; overflow-y: auto; padding-right: 4px; }
         .simulation-item, .backup-item { 
           display: flex; align-items: center; justify-content: space-between; 
-          padding: 10px 12px; background: var(--bg); border: 1px solid var(--line); border-radius: var(--rd-sm, 8px);
+          padding: 10px 12px; background: rgba(16, 34, 32, 0.04); border: 1px solid var(--line); border-radius: var(--rd-sm, 8px);
         }
         .simulation-name { font-weight: 600; font-size: 0.9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 240px; color: var(--ink); }
         .backup-info { display: flex; flex-direction: column; gap: 2px; }
@@ -197,11 +198,11 @@
         
         .item-actions { display: flex; gap: 6px; }
         .btn-select, .btn-restore, .btn-delete { padding: 4px 8px; font-size: 0.8rem; border-radius: 4px; cursor: pointer; font-family: inherit; }
-        .btn-select, .btn-restore { background: #fff; border: 1px solid var(--line); color: var(--ink); }
-        .btn-delete { background: #fff; border: 1px solid #ffcfcf; color: var(--status-error, #e03131); }
+        .btn-select, .btn-restore { background: var(--panel); border: 1px solid var(--line); color: var(--ink); }
+        .btn-delete { background: var(--panel); border: 1px solid #ffcfcf; color: var(--status-error, #e03131); }
         
-        .modal-footer { padding: var(--sp-md) var(--sp-lg); background: var(--bg); border-top: 1px solid var(--line); display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .btn-action { padding: 10px; border-radius: var(--rd-sm, 8px); font-weight: 600; cursor: pointer; text-align: center; font-size: 0.85rem; border: 1px solid var(--line); background: #fff; color: var(--ink); font-family: inherit; }
+        .modal-footer { padding: var(--sp-md) var(--sp-lg); background: rgba(16, 34, 32, 0.04); border-top: 1px solid var(--line); display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .btn-action { padding: 10px; border-radius: var(--rd-sm, 8px); font-weight: 600; cursor: pointer; text-align: center; font-size: 0.85rem; border: 1px solid var(--line); background: var(--panel); color: var(--ink); font-family: inherit; }
         .btn-primary { background: var(--primary); color: #fff; border: none; }
         .empty { text-align: center; padding: 40px 0; color: var(--muted); font-size: 0.9rem; }
       </style>

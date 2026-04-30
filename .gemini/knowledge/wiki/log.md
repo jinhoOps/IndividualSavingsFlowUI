@@ -291,3 +291,4 @@
 # #   [ 2 0 2 6 - 0 4 - 2 4 ]   i n g e s t   |   ���   ���  ��Y�  �ĳT�  �  o r c h e s t r a t i o n   �¬�  ٳ0�T�  ( ����  ����  ȩ�)  
  
 
+## [2026-04-30] ingest | 디자인 시스템 고도화 및 토큰 마이그레이션 완료`n- DESIGN.md의 최신 타이포그래피 토큰(Black Han Sans & Gowun Dodum) 반영`n- shared/styles/step-theme.css에 --text-* 변수 도입 및 버튼 scale(0.96) 피드백 추가`n- apps/step1 및 apps/step2의 하드코딩된 스타일을 공통 토큰으로 마이그레이션 완료`n- isf-evaluator를 통한 시각적/반응형 정합성 최종 검증 완료

@@ -3,7 +3,7 @@
 :root {
   color-scheme: light;
   --bg: #f3f4ef;
-  --panel: rgba(255, 255, 255, 0.9);
+  --panel: rgba(255, 255, 255, 0.82);
   --ink: #102220;
   --muted: rgba(16, 34, 32, 0.66);
   --line: rgba(16, 34, 32, 0.18);

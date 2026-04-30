@@ -106,7 +106,7 @@ body.is-dashboard-mode .controls-panel {
 
 .section-head h2 {
   margin: 0;
-  font-size: 1.15rem;
+  font-size: var(--text-title-md);
 }
 
 .controls-panel form { display: grid; gap: var(--sp-md); }
@@ -114,13 +114,15 @@ body.is-dashboard-mode .controls-panel {
 .controls-block {
   border: 1px solid var(--line);
   border-radius: var(--rd-md);
-  background: rgba(255, 255, 255, 0.65);
+  background: var(--panel);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   padding: var(--sp-md);
   display: grid;
   gap: var(--sp-sm);
 }
 
-.controls-block h3 { margin: 0; font-size: 0.95rem; }
+.controls-block h3 { margin: 0; font-size: var(--text-body-md); }
 
 .block-head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-sm); }
 
@@ -137,7 +139,7 @@ body.is-dashboard-mode .controls-panel {
   background: rgba(255, 255, 255, 0.75);
   padding: 7px 10px;
   cursor: pointer;
-  font-size: 0.8rem;
+  font-size: var(--text-caption);
 }
 
 .advanced-tab.is-active {
@@ -165,7 +167,7 @@ body.is-dashboard-mode .controls-panel {
 .controls-grid--advanced { grid-template-columns: repeat(4, minmax(140px, 1fr)); }
 
 .control { display: grid; gap: var(--sp-xs); }
-.control label { font-size: 0.82rem; color: var(--muted); }
+.control label { font-size: var(--text-caption); color: var(--muted); }
 
 .inline-tip {
   position: relative;
@@ -208,12 +210,14 @@ body.is-dashboard-mode .controls-panel {
 .card {
   border: 1px solid var(--line);
   border-radius: var(--rd-md);
-  background: #fff;
+  background: var(--panel);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   padding: var(--sp-md);
 }
 
-.card .label { font-size: 0.82rem; color: var(--muted); }
-.card .value { font-size: 1.25rem; font-weight: 700; margin-top: 4px; display: block; }
+.card .label { font-size: var(--text-caption); color: var(--muted); }
+.card .value { font-family: var(--font-display); font-size: var(--text-title-lg); font-weight: 700; margin-top: 4px; display: block; }
 .card.positive .value { color: var(--income); }
 .card.negative .value { color: var(--deficit); }
 
@@ -234,7 +238,9 @@ body.is-dashboard-mode .controls-panel {
   position: relative;
   border: 1px solid var(--line);
   border-radius: var(--rd-md);
-  background: #fff;
+  background: var(--panel);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   padding: var(--sp-sm);
   min-height: 330px;
   overflow: auto;
@@ -620,7 +626,9 @@ body.is-dashboard-mode .controls-panel {
   min-width: min(260px, 100%);
   border: 1px solid var(--line);
   border-radius: 12px;
-  background: #fff;
+  background: var(--panel);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   padding: 6px 8px;
 }
 
@@ -687,7 +695,9 @@ body.is-dashboard-mode .controls-panel {
 .formula {
   border: 1px dashed var(--line);
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.58);
+  background: var(--panel);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   padding: 10px 12px;
   font-size: 0.82rem;
   color: var(--muted);
@@ -727,7 +737,7 @@ body.is-dashboard-mode .controls-panel {
 .projection-table td {
   border-bottom: 1px solid rgba(16, 34, 32, 0.12);
   padding: 8px;
-  font-size: 0.82rem;
+  font-size: var(--text-caption);
   text-align: right;
   white-space: nowrap;
 }
@@ -738,7 +748,9 @@ body.is-dashboard-mode .controls-panel {
 }
 
 .projection-table thead th {
-  background: rgba(16, 34, 32, 0.04);
+  background: var(--panel);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
   color: var(--muted);
 }
 

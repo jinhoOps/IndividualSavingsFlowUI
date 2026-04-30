@@ -24,13 +24,13 @@
 
 .page-intro h1 {
   font-family: var(--font-display);
-  font-size: 2.2rem;
+  font-size: var(--text-display);
   margin-bottom: var(--sp-sm);
   color: var(--tone-primary);
 }
 
 .page-intro .lead {
-  font-size: 1.05rem;
+  font-size: var(--text-body-md);
   color: var(--muted);
 }
 
@@ -49,7 +49,9 @@ body.is-dashboard-mode .info-panel {
 
 /* 통합 저장소 동기화 배너 */
 .sync-banner {
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--panel);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   border: 1px solid var(--line-strong);
   border-left: 4px solid var(--tone-primary);
   border-radius: var(--rd-md);
@@ -84,7 +86,8 @@ body.is-dashboard-mode .info-panel {
 
 .sync-banner__text {
   margin: 0;
-  font-size: 0.92rem;
+  font-family: var(--font-display);
+  font-size: var(--text-body-md);
   font-weight: 700;
   color: var(--ink);
 }
@@ -93,7 +96,7 @@ body.is-dashboard-mode .info-panel {
   margin-top: 6px;
   display: flex;
   gap: 14px;
-  font-size: 0.8rem;
+  font-size: var(--text-caption);
   color: var(--muted);
 }
 
@@ -110,7 +113,7 @@ body.is-dashboard-mode .info-panel {
 }
 
 .control span {
-  font-size: 0.8rem;
+  font-size: var(--text-caption);
   font-weight: 700;
   color: var(--muted);
 }
@@ -142,7 +145,9 @@ body.is-dashboard-mode .info-panel {
 
 /* 차트 영역 */
 .sim-chart-wrap {
-  background: #fff;
+  background: var(--panel);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   border: 1px solid var(--line);
   border-radius: var(--rd-md);
   padding: 20px 16px;
@@ -156,7 +161,7 @@ body.is-dashboard-mode .info-panel {
   color: #fff;
   padding: 10px 14px;
   border-radius: var(--rd-md);
-  font-size: 0.78rem;
+  font-size: var(--text-caption);
   pointer-events: none;
   z-index: 10;
   line-height: 1.6;
@@ -167,7 +172,7 @@ body.is-dashboard-mode .info-panel {
 .projection-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.84rem;
+  font-size: var(--text-body-md);
 }
 
 .projection-table th, .projection-table td {
@@ -178,10 +183,12 @@ body.is-dashboard-mode .info-panel {
 }
 
 .projection-table th {
-  background: var(--tone-paper);
+  background: var(--panel);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
   color: var(--muted);
   font-weight: 700;
-  font-size: 0.78rem;
+  font-size: var(--text-caption);
 }
 
 .projection-table tbody tr:hover {
