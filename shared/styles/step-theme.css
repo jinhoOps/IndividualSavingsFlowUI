@@ -10,7 +10,7 @@
   --line-strong: rgba(16, 34, 32, 0.3);
   --tone-primary: #ea5b2a;
   --tone-accent: #1e8b7c;
-  --font-display: "Black Han Sans", "Gowun Dodum", sans-serif;
+  --font-display: "Gowun Dodum", "Black Han Sans", sans-serif;
   --font-body: "Gowun Dodum", "Nanum Gothic", sans-serif;
 
   /* Spacing Tokens */

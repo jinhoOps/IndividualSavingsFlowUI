@@ -23,15 +23,15 @@ The design philosophy is deeply rooted in Donald Norman's **Human-Centered Desig
 ## Typography
 
 ### Font Family
-The typography pairs **Black Han Sans** for bold numerical displays and prominent headers with **Gowun Dodum** for clean, legible body text and data presentation. This combination ensures numbers feel impactful while descriptions remain highly readable.
+The typography primarily uses **Gowun Dodum** for a clean, modern, and highly legible experience across both data and body text. **Black Han Sans** may be used as a secondary fallback for high-impact numerical displays if needed, but consistency is maintained by prioritizing Gowun Dodum.
 
 ### Hierarchy
 
 | Token | Size | Weight | Use |
 |---|---|---|---|
-| `{typography.display}` | 32px | Bold | Major section headers, large summary figures — Black Han Sans |
-| `{typography.title-lg}` | 24px | Bold | Card titles, primary data points — Black Han Sans |
-| `{typography.title-md}` | 18px | Regular | Sub-section headers — Gowun Dodum |
+| `{typography.display}` | 32px | Bold | Major section headers, large summary figures — Gowun Dodum |
+| `{typography.title-lg}` | 24px | Bold | Card titles, primary data points — Gowun Dodum |
+| `{typography.title-md}` | 18px | Bold | Sub-section headers, modal titles — Gowun Dodum |
 | `{typography.body-md}` | 16px | Regular | Default running-text, standard inputs — Gowun Dodum |
 | `{typography.caption}` | 14px | Regular | Helper text, small labels, units (만원) — Gowun Dodum |
 
