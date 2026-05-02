@@ -2,7 +2,7 @@
 kanban-plugin: basic
 ---
 
-# TODO (v0.7.5)
+# TODO (v0.7.6)
 
 ## Backlog (우선순위 상향)
 - [ ] **Step 3: 포트폴리오 시각화 및 구성 (준비 중)**
@@ -11,10 +11,15 @@ kanban-plugin: basic
 - [ ] 처음 접속시 쉬운 입력값 입력 가이드. (Spotlight UX 가이드 도입 고려)
 - [ ] Step 1 지출 내역 이전 데이터 비교 막대 그래프 추가 (Issue #4)
 
+## Done (v0.7.6 Patch)
+- [x] **모바일 레이아웃 및 입력 오류 수정**: Step 1 CSS 구조 재편 및 렌더링 무결성 확보.
+- [x] **Triple Sync 완결 (v0.7.6)**: `sw.js`, `manifest.webmanifest`, `app.js`(S1/S2) 버전 동기화 완료.
+
 ## Done (v0.7.5 Patch)
 - [x] **Phase 1: 프리셋 템플릿 로드 및 자동 시각화**: 연봉 및 투자 성향별 표준 가계 흐름 로드 기능 구현 완료.
 - [x] **디자인 시스템 고도화 (Typography)**: `Black Han Sans` 및 `Gowun Dodum` 폰트 적용 및 시각적 일관성 확보.
 - [x] **Triple Sync 완결 (v0.7.5)**: `sw.js`, `manifest.webmanifest`, `app.js`(S1/S2) 버전 동기화 완료.
+- [x] **Wiki Hygiene**: 지식 베이스 링크 정합성 및 인덱스 현행화 완료.
 
 ## Done (v0.7.4 Patch)
 - [x] **디자인 시스템 고도화 (Glassmorphism)**: `DESIGN.md` 원칙에 따라 전역 테마 변수 및 유리 질감 효과 적용 완료.
