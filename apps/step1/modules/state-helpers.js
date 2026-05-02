@@ -140,7 +140,13 @@ export function applyInputsToForm(form, inputs, { FORM_FIELD_KEYS, toMan }) {
  */
 export function getItemEditorSignature(items) {
   if (!Array.isArray(items)) return "";
-  return JSON.stringify(items.map(i => ({ name: i.name, amount: i.amount })));
+  return JSON.stringify(items.map(i => ({ 
+    name: i.name, 
+    amount: i.amount,
+    group: i.group,
+    annualRate: i.annualRate,
+    maturityMonth: i.maturityMonth
+  })));
 }
 
 /**

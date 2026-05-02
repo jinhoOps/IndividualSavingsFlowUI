@@ -1,6 +1,6 @@
 /**
  * Individual Savings Flow (ISF) - Step 1: 나의 가계 흐름
- * v0.7.6
+ * v0.7.7
  * 
  * 파일 역할: Step 1 애플리케이션의 엔트리 포인트 및 전체 가계 흐름 제어
  */
@@ -147,6 +147,15 @@ function bindControls() {
       helpers.markDirty(state);
       markPendingChanges();
       renderAll();
+
+      // Phase 2: 프리셋 적용 후 세부 조정 UX 강화
+      if (dom.advancedSettings) {
+        dom.advancedSettings.open = true;
+        dom.advancedSettings.classList.add('is-highlighted');
+        setTimeout(() => dom.advancedSettings.classList.remove('is-highlighted'), 3000);
+        dom.advancedSettings.scrollIntoView({ behavior: "smooth", block: "start" });
+        IsfFeedback.showFeedback(dom.applyFeedback, "프리셋이 적용되었습니다. 아래 '고급 설정'에서 세부 항목을 조정해보세요.");
+      }
     });
   }
 
@@ -613,12 +622,23 @@ function addItemToEditor(group) {
   if (!editor.active || editor.items.length >= MAX_ALLOCATION_ITEMS) return;
   editor.items.push(group === "income" ? createIncomeItem() : { id: createAllocationItemId(group, editor.items.length), name: "", amount: 0 });
   renderItemList(group, editor.items, { editing: true });
+  setItemEditorUi(group, true);
 }
 
 function setItemEditorUi(group, active) {
   const actions = dom[`${group}EditorActions`]; if (actions) actions.hidden = !active;
   const editBtn = dom[`edit${group.charAt(0).toUpperCase() + group.slice(1)}Items`];
   if (editBtn) editBtn.textContent = active ? "편집 완료" : "항목 편집";
+
+  // Phase 2: 항목 변경 여부에 따른 적용 버튼 활성 상태 동기화
+  const applyBtn = dom[`apply${group.charAt(0).toUpperCase() + group.slice(1)}Items`];
+  if (active && applyBtn) {
+    const currentSignature = helpers.getItemEditorSignature(state.itemEditors[group].items);
+    const changed = currentSignature !== state.itemEditors[group].baselineSignature;
+    applyBtn.disabled = !changed;
+    if (dom.mobileEditorApply) dom.mobileEditorApply.disabled = !changed;
+  }
+
   syncMobileItemEditorFab();
   syncGroupOptionsFor(group);
 }

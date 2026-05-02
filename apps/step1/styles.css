@@ -422,6 +422,19 @@ body.is-dashboard-mode .controls-panel {
   #sankeySvg { min-height: 250px; }
 }
 
+/* Phase 2: Preset adjustment highlight */
+.advanced-block.is-highlighted {
+  border-color: var(--income);
+  background: rgba(30, 139, 124, 0.08);
+  animation: pulse-highlight 2s ease-out;
+}
+
+@keyframes pulse-highlight {
+  0% { box-shadow: 0 0 0 0 rgba(30, 139, 124, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(30, 139, 124, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(30, 139, 124, 0); }
+}
+
 /* ─── 누락 컴포넌트 복원 ─── */
 
 /* 고급 설정 탭 전환 */

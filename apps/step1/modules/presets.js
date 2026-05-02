@@ -12,16 +12,16 @@ export const PRESET_SALARIES = [
 export const PRESET_STYLES = {
   conservative: { expenseRate: 0.5, savingsRate: 0.4, investRate: 0.1 },
   neutral: { expenseRate: 0.5, savingsRate: 0.3, investRate: 0.2 },
-  aggressive: { expenseRate: 0.4, savingsRate: 0.2, investRate: 0.4 }
+  aggressive: { expenseRate: 0.4, savingsRate: 0.1, investRate: 0.5 }
 };
 
 const EXPENSE_DETAIL = [
-  { id: "rent",        name: "주거비(월세)", weight: 0.35 },
-  { id: "maintenance", name: "관리비",       weight: 0.06 },
-  { id: "telecom",     name: "통신비",       weight: 0.04 },
-  { id: "transport",   name: "교통비",       weight: 0.08 },
-  { id: "food",        name: "식비",         weight: 0.32 },
-  { id: "etc",         name: "기타생활비",   weight: 0.15 },
+  { id: "rent",        name: "주거비(월세)", weight: 0.30 },
+  { id: "maintenance", name: "관리비",       weight: 0.05 },
+  { id: "telecom",     name: "통신비",       weight: 0.03 },
+  { id: "transport",   name: "교통비",       weight: 0.10 },
+  { id: "food",        name: "식비",         weight: 0.25 },
+  { id: "etc",         name: "기타생활비",   weight: 0.17 },
 ];
 
 const SAVINGS_DETAIL = [
