@@ -2,42 +2,47 @@
 
 ## What This Is
 
-개인 자산 흐름 프로젝트는 사용자가 극단적으로 단순화된 입력(예: 연봉, 투자 성향 프리셋 선택)만으로 자신의 전체 가계 흐름과 자산 배분 계획을 한눈에 볼 수 있도록 돕는 미니멀한 UI/UX 도구입니다. 복잡한 계산은 백그라운드에서 처리하고, 사용자는 시각화된 예산 흐름과 결과만 직관적으로 확인하며, 원할 경우 세부 카테고리 수동 입력으로 조절할 수 있습니다.
+개인 자산 흐름 프로젝트는 사용자가 극단적으로 단순화된 입력(연봉, 투자 성향 프리셋 선택)만으로 자신의 전체 가계 흐름과 자산 배분 계획을 한눈에 볼 수 있도록 돕는 미니멀한 UI/UX 도구입니다. 12대 세부 항목 기반의 고해상도 프리셋 템플릿이 자동 적용되며, 사용자는 Sankey Diagram으로 시각화된 예산 흐름을 직관적으로 확인하고 세부 카테고리를 수동으로 조절할 수 있습니다.
 
 ## Core Value
 
 단순한 프리셋 선택만으로 즉각적인 자산 시각화 결과를 제공하고, 복잡한 재무 계산의 부담 없이 직관적인 개인 예산 흐름을 파악하게 한다.
 
+## Current State
+
+**Shipped:** v1.0 (2026-05-03)
+**Tech Stack:** Vanilla JS, No-Build PWA, IndexedDB, Sankey Diagram
+**Codebase:** ~1,200 LOC (JavaScript), Mobile-First 반응형
+**Key Feature:** 연봉/투자 성향 기반 고해상도 프리셋 템플릿 로드 → 시각화 → 세부 편집 → 영속화
+
 ## Requirements
 
 ### Validated
-
-<!-- Shipped and confirmed valuable. -->
 
 - ✓ 월 가계 흐름 Sankey Diagram 시각화 엔진 — existing
 - ✓ 카테고리별(수입/생활비/저축/투자) 수동 입력 및 뷰포트 UI — existing
 - ✓ 바닐라 JS 기반 No-build 3계층 상태 관리(State/Helper/UI) 아키텍처 — existing
 - ✓ IndexedDB 기반의 브리지 데이터 자동 백업 및 복원 — existing
+- ✓ 연봉 수준 및 투자 스타일 선택에 따른 프리셋 템플릿 로드 기능 — v1.0
+- ✓ 템플릿 로드 시 표준 자산 흐름 자동 계산 및 시각화 즉시 반영 — v1.0
+- ✓ 세부 항목 수동 조절 및 재계산 흐름 — v1.0
+- ✓ 고해상도 12대 세부 항목 기반 프리셋 데이터 — v1.0
 
 ### Active
 
-<!-- Current scope. Building toward these. -->
-
-- [ ] 연봉 수준 및 투자 스타일(공격적/안정적 등) 선택에 따른 프리셋 템플릿 로드 기능
-- [ ] 템플릿 로드 시 표준 자산 흐름(수입 분배) 자동 계산 및 시각화 즉시 반영
-- [ ] 생성된 템플릿에서 기존 카테고리별 세부 항목을 수동으로 조절하고 재계산하는 흐름 연결
+<!-- Next milestone scope. To be defined via /gsd-new-milestone. -->
 
 ### Out of Scope
 
-<!-- Explicit boundaries. Includes reasoning to prevent re-adding. -->
-
 - [오픈뱅킹/마이데이터 계좌 자동 연동] — 미니멀하고 빠르며 독립적인 클라이언트(No-Build/PWA) 환경을 유지하는 것이 목표이며, 수동 입력을 통한 예산 '계획' 중심이므로 배제.
+- [오프라인 모드] — PWA 서비스 워커로 기본 오프라인 지원은 있으나, 완전한 오프라인 전용 모드는 현재 범위 밖.
 
 ## Context
 
-- 사용자의 입력 피로도를 줄이기 위해 프리셋 기능을 가장 전면에 내세웁니다.
-- PWA와 Vanilla JS만으로 브라우저에서 가볍고 빠르게 동작해야 합니다.
-- 금전 관련 수치는 UI에서는 만원, 내부 연산에서는 원 단위를 엄격히 지켜야 합니다.
+- v1.0 출시 완료: 프리셋 선택 → 시각화 → 편집 → 영속화 전체 흐름 구축.
+- 사용자 입력 피로도를 줄이기 위해 프리셋 기능을 가장 전면에 배치.
+- PWA와 Vanilla JS만으로 브라우저에서 가볍고 빠르게 동작.
+- 금전 관련 수치는 UI에서는 만원, 내부 연산에서는 원 단위를 엄격히 준수.
 
 ## Constraints
 
@@ -47,12 +52,13 @@
 
 ## Key Decisions
 
-<!-- Decisions that constrain future work. Add throughout project lifecycle. -->
-
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| 선 템플릿 제공, 후 세부 조절 UX | 극단적 단순화라는 가치를 지키기 위해 빈 화면부터 입력하는 대신, 완성된 흐름을 먼저 보여주고 편집하도록 유도 | — Pending |
+| 선 템플릿 제공, 후 세부 조절 UX | 극단적 단순화라는 가치를 지키기 위해 빈 화면부터 입력하는 대신, 완성된 흐름을 먼저 보여주고 편집하도록 유도 | ✓ Good |
 | 단위 분리 (UI: 만원, 연산: 원) | UX 가독성과 데이터 정합성 사이의 타협 | ✓ Good |
+| 프리셋 적용 시 고급 설정 자동 노출 | 사용자가 세부 편집 가능하다는 점을 즉시 인지하도록 유도 | ✓ Good |
+| 12대 세부 항목 기반 고해상도 템플릿 | 단일 항목 대비 현실적 가계 시뮬레이션 가능, 기존 API 변경 없이 데이터만 교체 | ✓ Good |
+| 반올림 오차 보정 (첫 번째 항목 흡수) | 세부 항목 합산이 카테고리 총액과 정확히 일치하도록 보장 | ✓ Good |
 
 ## Evolution
 
@@ -72,4 +78,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-30 after initialization*
+*Last updated: 2026-05-03 after v1.0 milestone*
