@@ -15,6 +15,38 @@ export const PRESET_STYLES = {
   aggressive: { expenseRate: 0.4, savingsRate: 0.2, investRate: 0.4 }
 };
 
+const EXPENSE_DETAIL = [
+  { id: "rent",        name: "주거비(월세)", weight: 0.35 },
+  { id: "maintenance", name: "관리비",       weight: 0.06 },
+  { id: "telecom",     name: "통신비",       weight: 0.04 },
+  { id: "transport",   name: "교통비",       weight: 0.08 },
+  { id: "food",        name: "식비",         weight: 0.32 },
+  { id: "etc",         name: "기타생활비",   weight: 0.15 },
+];
+
+const SAVINGS_DETAIL = [
+  { id: "emergency",            name: "비상금",     weight: 0.30, annualRate: 2.0 },
+  { id: "youth-saving",         name: "청년적금",   weight: 0.50, annualRate: 3.6 },
+  { id: "housing-subscription", name: "주택청약",   weight: 0.20, annualRate: 2.9 },
+];
+
+const INVEST_DETAIL = [
+  { id: "global-stock", name: "해외주식",     weight: 0.40 },
+  { id: "isa",          name: "ISA",          weight: 0.35 },
+  { id: "pension",      name: "개인연금/IRP", weight: 0.25 },
+];
+
+function distributeAmount(total, details) {
+  const items = details.map(d => ({
+    ...d,
+    amount: Math.round(total * d.weight),
+  }));
+  const sum = items.reduce((s, i) => s + i.amount, 0);
+  items[0].amount += (total - sum);
+  return items.map(({ weight, ...rest }) => rest);
+}
+
+
 export function applyPreset(salaryValue, styleKey) {
   const salary = PRESET_SALARIES.find(s => s.value === salaryValue);
   const style = PRESET_STYLES[styleKey];
@@ -32,9 +64,9 @@ export function applyPreset(salaryValue, styleKey) {
     monthlyExpense: expense,
     monthlySavings: savings,
     monthlyInvest: invest,
-    expenseItems: [{ id: "expense-preset", name: "생활비", amount: expense }],
-    savingsItems: [{ id: "savings-preset", name: "저축", amount: savings, annualRate: 3.0 }],
-    investItems: [{ id: "invest-preset", name: "투자", amount: invest }],
+    expenseItems: distributeAmount(expense, EXPENSE_DETAIL),
+    savingsItems: distributeAmount(savings, SAVINGS_DETAIL),
+    investItems: distributeAmount(invest, INVEST_DETAIL),
     monthlyDebtPayment: 0,
     startCash: 0,
     startSavings: 0,
