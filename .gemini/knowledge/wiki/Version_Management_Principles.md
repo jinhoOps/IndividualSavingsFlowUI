@@ -54,8 +54,8 @@ grep "appVersion:" apps/step2/app.js
 4.  **Pull Request**: 메인 브랜치로 PR을 생성하여 최종 코드 리뷰 및 머지를 진행합니다.
 
 ## 4. 기록 및 감사 (Audit Trail)
-- **Log**: 모든 버전 변경은 `[[log.md]]`에 기록됩니다.
-- **History**: 주요 마일스톤은 `[[Project_History.md]]`에 상세히 기술합니다.
+- **Log**: 모든 버전 변경은 [[log]]에 기록됩니다.
+- **History**: 주요 마일스톤은 [[Project_History]]에 상세히 기술합니다.
 - **Git**: Conventional Commits 규격을 준수하여 커밋 메시지만으로도 변경 사항을 추적할 수 있게 합니다.
 
 ## 4. 특이 사항 (No-build Invariant)

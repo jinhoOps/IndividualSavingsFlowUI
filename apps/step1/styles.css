@@ -120,6 +120,7 @@ body.is-dashboard-mode .controls-panel {
   padding: var(--sp-md);
   display: grid;
   gap: var(--sp-sm);
+  min-width: 0;
 }
 
 .controls-block h3 { margin: 0; font-size: var(--text-body-md); }
@@ -534,12 +535,14 @@ body.is-dashboard-mode .controls-panel {
 }
 
 /* 편집 행 추가 그리드 */
-.savings-row.is-editing {
-  grid-template-columns: minmax(140px, 1fr) 118px 108px 132px 120px auto;
-}
-
-.invest-row.is-editing {
-  grid-template-columns: minmax(140px, 1fr) 128px 132px 120px auto;
+@media (min-width: 761px) {
+  .expense-row.is-editing { grid-template-columns: minmax(140px, 1fr) 130px 120px auto; }
+  .savings-row.is-editing {
+    grid-template-columns: minmax(140px, 1fr) 118px 108px 132px 120px auto;
+  }
+  .invest-row.is-editing {
+    grid-template-columns: minmax(140px, 1fr) 128px 132px 120px auto;
+  }
 }
 
 /* 항목 정렬 UI */
@@ -793,9 +796,18 @@ body.is-dashboard-mode .controls-panel {
   color: var(--muted);
 }
 
+/* 모바일 전용 요소 (데스크톱에서 숨김) */
+@media (min-width: 761px) {
+  .advanced-tab--mobile-only,
+  .mobile-input-toggle,
+  .mobile-editor-fab,
+  .version-check-trigger {
+    display: none !important;
+  }
+}
+
 /* 모바일 입력 접기 토글 */
 .mobile-input-toggle {
-  display: none;
   margin-left: 8px;
   border: 0;
   background: transparent;
@@ -824,7 +836,6 @@ body.is-dashboard-mode .controls-panel {
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.96);
   box-shadow: 0 10px 22px rgba(16, 34, 32, 0.2);
-  display: none;
   gap: 6px;
 }
 

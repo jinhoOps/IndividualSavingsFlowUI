@@ -1,3 +1,13 @@
+## [2026-05-02] fix | 지식 위생 관리(Wiki Hygiene) 및 위키 정합성 강화 (Lint)
+- **목적**: `Plan_Step3_Implementation.md` 누락 해결 및 전역 위키 노드의 링크 정합성을 확보하여 지식 엔트로피를 낮춤.
+- **주요 변경사항**:
+    - **인덱스 현행화**: `INDEX.md`에 `Plan_Step3_Implementation` 노드 추가 및 로드맵/구현 계획 구분 명확화.
+    - **링크 표준화**: `[[NodeName.md]]` 형식의 링크에서 확장자를 제거하여 `[[NodeName]]` 컨벤션으로 일원화 (`Knowledge_Harness.md`, `Version_Management_Principles.md`).
+    - **결손 링크 복구**: `archive/Plan_Step1.md` 내의 부서진 `[[TODO]]` 링크를 `TODO.md` 참조 텍스트로 수정.
+    - **상호 참조 강화**: `Plan_Step3`와 `Plan_Step3_Implementation` 간의 상호 연결 노드(Related Nodes) 추가.
+    - **스킬 참조 교정**: `Knowledge_Harness.md`에서 위키 노드가 아닌 `wiki-librarian` 스킬을 가리키는 대괄호 제거.
+- **결과**: 지식 베이스의 구조적 무결성이 회복되었으며, 에이전트의 컨텍스트 탐색 효율이 향상됨.
+
 ## [2026-04-30] fix | 전역 버전 정리 및 안정화 (v0.7.4)
 - **목적**: 0.7.3과 0.7.4 간의 버전 혼선을 정리하고, 모든 구성 요소의 버전을 최신 패치 버전인 v0.7.4로 일원화함.
 - **주요 변경사항**:

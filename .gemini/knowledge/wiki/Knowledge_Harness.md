@@ -31,10 +31,10 @@ tags: [knowledge_management, workflow, librarian]
 [지식 합성 (Synthesize)] -- 기존 노드와 대조하여 모순 해결 및 지식 보강
         |
         v
-[연대기 기록 (Log)] -- [[log.md]]에 작업 내역 추가
+[연대기 기록 (Log)] -- [[log]]에 작업 내역 추가
         |
         v
-[인덱스 및 연결] -- [[INDEX.md]] 갱신 및 백링크([[]]) 생성
+[인덱스 및 연결] -- [[INDEX]] 갱신 및 백링크([[]]) 생성
 ```
 
 ## 위키 노드 작성 규칙
@@ -53,7 +53,7 @@ tags: [knowledge_management, workflow, librarian]
 
 ## 담당 스킬
 
-이 체계의 실행은 [[wiki-librarian]] 스킬이 담당합니다. 메인 하네스(GEMINI.md)의 3단계(Wiki Indexing & Post-processing)에서 호출됩니다.
+이 체계의 실행은 wiki-librarian 스킬이 담당합니다. 메인 하네스(GEMINI.md)의 3단계(Wiki Indexing & Post-processing)에서 호출됩니다.
 
 ---
 *연결 노드:* [[Operating_Principles]], [[INDEX]]

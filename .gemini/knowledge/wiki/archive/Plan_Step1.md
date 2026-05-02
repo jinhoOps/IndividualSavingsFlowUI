@@ -20,7 +20,7 @@ tags: [plan, step1, roadmap]
 
 ## 2) 핵심 기술 부채 및 개선 과제
 - `S1-TD1`: `apps/step1/app.js` 모듈 분리 (리팩터링 필요).
-- `S1-UX1`: 모바일 Sankey 가로 모드 및 화면 맞춤 UX 개선. [[TODO]]
+- `S1-UX1`: 모바일 Sankey 가로 모드 및 화면 맞춤 UX 개선. (참조: TODO.md)
 - `S1-UX2`: 목돈성 상품(파킹통장 등)을 위한 잔액 중심 모델 도입 검토.
 
 ## 3) 안정화 체크리스트

@@ -12,7 +12,8 @@
 - [[Architecture_Reference]] : 최신 No-build 모듈 구조, Storage Hub 및 시뮬레이션 엔진 사양
 - [[Data_Model_Reference]] : 금액 단위(원/만원), IndexedDB 스키마, 마이그레이션 및 뷰 모드 저장 로직
 - [[UI_Standards_Reference]] : 테마 변수, 피드백 시스템, 시각화 가이드
-- [[Plan_Step3]] : Step 3 포트폴리오 구성 및 최적화 개발 계획
+- [[Plan_Step3]] : Step 3 포트폴리오 구성 및 최적화 개발 로드맵
+- [[Plan_Step3_Implementation]] : v0.8.0 디자인 시스템 고도화 및 Step 3 상세 구현 계획
 - [[Feature_Archive_v0.5]] : v0.5 리팩토링 이전 정상 작동하던 핵심 기능 명세 (검증 기준)
 
 ## 🧠 패턴 해결 및 브리지 (Patterns & Bridge)

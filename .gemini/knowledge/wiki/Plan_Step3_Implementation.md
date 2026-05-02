@@ -79,4 +79,8 @@ apps/step3/
 1. **Phase 1 (Fix)**: Step 1, 2의 Glassmorphism 및 Typography 수정 (1-2 Turn).
 2. **Phase 2 (Foundation)**: Step 3 기본 파일 구조 생성 및 Step 1 데이터 연동 테스트 (2 Turn).
 3. **Phase 3 (UI/UX)**: 포트폴리오 에디터 및 리밸런싱 가이드 로직 구현 (3-4 Turn).
-4. **Phase 4 (Onboarding)**: 전역 가이드 시스템(Spotlight) 구현 및 마감 (2 Turn).
+4. Phase 4 (Onboarding): 전역 가이드 시스템(Spotlight) 구현 및 마감 (2 Turn).
+
+---
+*연결 노드:* [[Plan_Step3]], [[Architecture_Reference]], [[UI_Standards_Reference]], [[Data_Model_Reference]]
+

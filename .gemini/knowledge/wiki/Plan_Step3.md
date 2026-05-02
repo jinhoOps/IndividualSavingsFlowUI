@@ -37,4 +37,4 @@ tags: [plan, step3, roadmap]
 3. **Phase 3**: 리밸런싱 가이드 및 '포트폴리오 스냅샷' 백업 기능 고도화.
 
 ---
-*연결 노드:* [[Step1_Modularization_Refactoring]], [[Step2_Modularization_Refactoring]], [[Data_Model_Reference]]
+*연결 노드:* [[Plan_Step3_Implementation]], [[Step1_Modularization_Refactoring]], [[Step2_Modularization_Refactoring]], [[Data_Model_Reference]]
