@@ -8,6 +8,15 @@
 
 단순한 프리셋 선택만으로 즉각적인 자산 시각화 결과를 제공하고, 복잡한 재무 계산의 부담 없이 직관적인 개인 예산 흐름을 파악하게 한다.
 
+## Current Milestone: v1.1 시뮬레이션 고도화 및 온보딩 UX
+
+**Goal:** 배당 시뮬레이션 대시보드의 정보 밀도를 높이고, Step 1 첫 접속 사용자를 위한 입력 가이드를 제공한다.
+
+**Target features:**
+- 시뮬레이션 차트 고도화 (데이터 포인트, 호버 툴팁, Y축 눈금/그리드, 영역 채우기, KPI 요약 카드)
+- Step 2 테이블 헤더 간소화 (불필요한 만원 표기 제거)
+- Step 1 첫 접속 Spotlight UX 온보딩 가이드
+
 ## Current State
 
 **Shipped:** v1.0 (2026-05-03)
@@ -30,7 +39,10 @@
 
 ### Active
 
-<!-- Next milestone scope. To be defined via /gsd-new-milestone. -->
+- [ ] 시뮬레이션 차트 고도화 — 데이터 포인트, 호버 툴팁, Y축 눈금/그리드, 영역 채우기
+- [ ] KPI 요약 카드 — 최종 자산, 최종 연 배당금, 누적 수익률 등 핵심 지표 시각화
+- [ ] Step 2 테이블 헤더 간소화 — 불필요한 (만원) 표기 제거
+- [ ] Step 1 첫 접속 Spotlight UX 온보딩 가이드
 
 ### Out of Scope
 
@@ -60,6 +72,7 @@
 | 12대 세부 항목 기반 고해상도 템플릿 | 단일 항목 대비 현실적 가계 시뮬레이션 가능, 기존 API 변경 없이 데이터만 교체 | ✓ Good |
 | 반올림 오차 보정 (첫 번째 항목 흡수) | 세부 항목 합산이 카테고리 총액과 정확히 일치하도록 보장 | ✓ Good |
 | 마일스톤 버전 = 앱 버전 (v1.0 이후) | v1.0은 계획 레이블로 유지, 다음 마일스톤부터 앱 버전(0.8.x)과 통일 | — Pending |
+| 경량 차트 라이브러리 허용 (v1.1) | DESIGN.md 원칙(Glassmorphism, ISF 팔레트, No-build ESM)을 준수하는 경량 라이브러리에 한해 도입 가능 | — Pending |
 
 ## Evolution
 
@@ -79,4 +92,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-03 after v1.0 milestone*
+*Last updated: 2026-05-03 after v1.1 milestone start*
