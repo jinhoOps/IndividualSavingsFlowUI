@@ -4,7 +4,7 @@ name: "시뮬레이션 고도화 및 온보딩 UX"
 status: "planning"
 progress:
   completed_phases: 0
-  total_phases: 0
+  total_phases: 3
 ---
 
 # Project State

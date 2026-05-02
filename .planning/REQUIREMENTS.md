@@ -48,19 +48,19 @@ Requirements for milestone v1.1: 시뮬레이션 고도화 및 온보딩 UX.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SIM-01 | — | Pending |
-| SIM-02 | — | Pending |
-| SIM-03 | — | Pending |
-| SIM-04 | — | Pending |
-| SIM-05 | — | Pending |
-| TBL-01 | — | Pending |
-| ONB-01 | — | Pending |
-| ONB-02 | — | Pending |
+| SIM-01 | Phase 3 | Pending |
+| SIM-02 | Phase 3 | Pending |
+| SIM-03 | Phase 3 | Pending |
+| SIM-04 | Phase 3 | Pending |
+| SIM-05 | Phase 4 | Pending |
+| TBL-01 | Phase 4 | Pending |
+| ONB-01 | Phase 5 | Pending |
+| ONB-02 | Phase 5 | Pending |
 
 **Coverage:**
 - v1.1 requirements: 8 total
-- Mapped to phases: 0
-- Unmapped: 8 ⚠️
+- Mapped to phases: 8
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-05-03*
