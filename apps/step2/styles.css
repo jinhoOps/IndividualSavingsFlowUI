@@ -136,6 +136,12 @@ body.is-dashboard-mode .info-panel {
   padding: 4px 0;
 }
 
+.preset-btn.is-active {
+  background: rgba(234, 91, 42, 0.1);
+  color: #ea5b2a;
+  border-color: #ea5b2a;
+}
+
 /* 시뮬레이션 대시보드 */
 .sim-dashboard {
   display: flex;
@@ -153,19 +159,22 @@ body.is-dashboard-mode .info-panel {
   padding: 20px 16px;
 }
 
-.sim-tooltip {
+.chart-tooltip {
   position: absolute;
   top: 10px;
   left: 10px;
-  background: rgba(16, 34, 32, 0.9);
-  color: #fff;
-  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: var(--ink);
+  padding: 8px 12px;
+  border: 1px solid var(--line);
   border-radius: var(--rd-md);
   font-size: var(--text-caption);
   pointer-events: none;
   z-index: 10;
   line-height: 1.6;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 }
 
 /* 결과 테이블 */

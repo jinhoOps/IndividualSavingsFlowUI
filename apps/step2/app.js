@@ -234,6 +234,31 @@ function bindEvents() {
       renderCharts(); 
     });
   }
+
+  // Preset Buttons
+  document.querySelectorAll(".preset-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const y = parseFloat(btn.dataset.yield);
+      const g = parseFloat(btn.dataset.growth);
+      const c = parseFloat(btn.dataset.capital);
+      
+      if (!state.draft.dividendSim) state.draft.dividendSim = {};
+      state.draft.dividendSim.yield = y;
+      state.draft.dividendSim.growth = g;
+      state.draft.dividendSim.capitalGrowth = c;
+      
+      if (dom.simDividendYield) dom.simDividendYield.value = y;
+      if (dom.simDividendGrowth) dom.simDividendGrowth.value = g;
+      if (dom.simCapitalGrowth) dom.simCapitalGrowth.value = c;
+      
+      // Update active state
+      document.querySelectorAll(".preset-btn").forEach(b => b.classList.remove("is-active"));
+      btn.classList.add("is-active");
+
+      markDirty();
+      renderDividendSimulation();
+    });
+  });
   
   // Simulation Events
   if (dom.toggleSimInputs) {

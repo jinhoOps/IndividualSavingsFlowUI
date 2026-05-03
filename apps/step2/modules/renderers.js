@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Individual Savings Flow (ISF) - Step 2: 배당 시뮬레이션 (Dividend Simulation)
  * v0.7.4
  * 
@@ -68,14 +68,58 @@ export function renderDividendSimulation() {
 function drawSimulationChart(svg, data) {
   svg.innerHTML = "";
   if (!data.length) return;
-  const width = 600; const height = 220; const padding = 40;
-  // TR 배당금을 기준으로 스케일 설정
-  const maxVal = Math.max(...data.map(d => d.dividendNominalTR), 1);
+  const width = 600; const height = 250; const padding = 45; // Increased padding for Y labels
+  
+  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  svg.style.width = "100%";
+  svg.style.height = "auto";
+
+  // 자산(Asset) TR을 기준으로 스케일 설정
+  const maxVal = Math.max(...data.map(d => d.assetNominalTR), 1);
+
+  // Y축 그리드 및 라벨
+  const gridSteps = 4;
+  for (let i = 0; i <= gridSteps; i++) {
+    const yVal = maxVal * (i / gridSteps);
+    const yPos = height - padding - (i / gridSteps) * (height - 2 * padding);
+    
+    const gridLine = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    gridLine.setAttribute("x1", padding); gridLine.setAttribute("y1", yPos);
+    gridLine.setAttribute("x2", width - padding); gridLine.setAttribute("y2", yPos);
+    gridLine.setAttribute("stroke", "#e5e7eb"); gridLine.setAttribute("stroke-dasharray", "4");
+    svg.appendChild(gridLine);
+    
+    const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    text.setAttribute("x", padding - 5); text.setAttribute("y", yPos + 3);
+    text.setAttribute("text-anchor", "end"); text.setAttribute("font-size", "10"); text.setAttribute("fill", "#6b7280");
+    text.textContent = utils.toMan(yVal).toLocaleString();
+    svg.appendChild(text);
+  }
+
+  // 복리 영역 (Area Polygon)
+  const pointsPolygon = [
+    ...data.map((d, i) => {
+      const x = padding + (i / (data.length - 1)) * (width - 2 * padding);
+      const y = (height - padding) - (d.assetNominalTR / maxVal) * (height - 2 * padding);
+      return `${x},${y}`;
+    }),
+    ...data.map((d, i) => {
+      const revIndex = data.length - 1 - i;
+      const revData = data[revIndex];
+      const x = padding + (revIndex / (data.length - 1)) * (width - 2 * padding);
+      const y = (height - padding) - (revData.assetNominalPR / maxVal) * (height - 2 * padding);
+      return `${x},${y}`;
+    })
+  ].join(" ");
+  const polyArea = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+  polyArea.setAttribute("points", pointsPolygon);
+  polyArea.setAttribute("fill", "rgba(234, 91, 42, 0.1)");
+  svg.appendChild(polyArea);
 
   // 1. PR 선 (미투자 - 회색 점선)
   const pointsPR = data.map((d, i) => {
     const x = padding + (i / (data.length - 1)) * (width - 2 * padding);
-    const y = (height - padding) - (d.dividendNominalPR / maxVal) * (height - 2 * padding);
+    const y = (height - padding) - (d.assetNominalPR / maxVal) * (height - 2 * padding);
     return `${x},${y}`;
   }).join(" ");
 
@@ -88,7 +132,7 @@ function drawSimulationChart(svg, data) {
   // 2. TR 선 (재투자 - 주황색 실선)
   const pointsTR = data.map((d, i) => {
     const x = padding + (i / (data.length - 1)) * (width - 2 * padding);
-    const y = (height - padding) - (d.dividendNominalTR / maxVal) * (height - 2 * padding);
+    const y = (height - padding) - (d.assetNominalTR / maxVal) * (height - 2 * padding);
     return `${x},${y}`;
   }).join(" ");
 
@@ -97,14 +141,75 @@ function drawSimulationChart(svg, data) {
   polyTR.setAttribute("fill", "none"); polyTR.setAttribute("stroke", "#ea5b2a"); polyTR.setAttribute("stroke-width", "3");
   svg.appendChild(polyTR);
 
-  // X축 라벨
+  // 데이터 포인트 (Circle) 및 X축 라벨 추가
   data.forEach((d, i) => {
-    if (i % Math.ceil(data.length/5) !== 0 && i !== data.length - 1) return;
     const x = padding + (i / (data.length - 1)) * (width - 2 * padding);
-    const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    text.setAttribute("x", x); text.setAttribute("y", height - 10);
-    text.setAttribute("text-anchor", "middle"); text.setAttribute("font-size", "10"); text.textContent = `${d.year}년`;
-    svg.appendChild(text);
+    const yTR = (height - padding) - (d.assetNominalTR / maxVal) * (height - 2 * padding);
+    const yPR = (height - padding) - (d.assetNominalPR / maxVal) * (height - 2 * padding);
+
+    // TR Point
+    const circleTR = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    circleTR.setAttribute("cx", x); circleTR.setAttribute("cy", yTR);
+    circleTR.setAttribute("r", "3"); circleTR.setAttribute("fill", "#ea5b2a");
+    svg.appendChild(circleTR);
+
+    // PR Point
+    const circlePR = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    circlePR.setAttribute("cx", x); circlePR.setAttribute("cy", yPR);
+    circlePR.setAttribute("r", "2"); circlePR.setAttribute("fill", "#8a8f98");
+    svg.appendChild(circlePR);
+
+    if (i % Math.ceil(data.length/5) === 0 || i === data.length - 1) {
+      const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      text.setAttribute("x", x); text.setAttribute("y", height - 10);
+      text.setAttribute("text-anchor", "middle"); text.setAttribute("font-size", "10"); text.textContent = `${d.year}년`;
+      svg.appendChild(text);
+    }
+  });
+
+  // 호버 툴팁을 위한 투명 rect 요소들 및 이벤트 추가
+  let tooltip = document.querySelector('.chart-tooltip');
+  if (!tooltip) {
+    tooltip = document.createElement('div');
+    tooltip.className = 'chart-tooltip';
+    if(svg.parentNode) {
+      svg.parentNode.style.position = 'relative';
+      svg.parentNode.appendChild(tooltip);
+    }
+  }
+  tooltip.style.display = 'none';
+
+  const rectWidth = (width - 2 * padding) / Math.max((data.length - 1), 1);
+  data.forEach((d, i) => {
+    const x = padding + (i / (data.length - 1)) * (width - 2 * padding);
+    const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    rect.setAttribute("x", x - rectWidth / 2);
+    rect.setAttribute("y", 0);
+    rect.setAttribute("width", rectWidth);
+    rect.setAttribute("height", height);
+    rect.setAttribute("fill", "transparent");
+    rect.style.cursor = "pointer";
+    
+    const showTooltip = (e) => {
+      tooltip.style.display = 'block';
+      tooltip.innerHTML = `
+        <div style="font-weight: 600; margin-bottom: 4px;">${d.year}년</div>
+        <div>총 자산: ${utils.toMan(d.assetNominalTR).toLocaleString()} 만원</div>
+        <div>연 배당금: ${utils.toMan(d.dividendNominalTR).toLocaleString()} 만원</div>
+      `;
+      // 컨테이너 크기 비례 위치
+      const containerRect = svg.getBoundingClientRect();
+      const xRatio = x / width;
+      tooltip.style.left = \`\${xRatio * 100}%\`;
+      tooltip.style.top = '10%';
+      tooltip.style.transform = 'translateX(-50%)';
+    };
+    
+    rect.addEventListener("mouseenter", showTooltip);
+    rect.addEventListener("touchstart", (e) => { e.preventDefault(); showTooltip(e); });
+    rect.addEventListener("mouseleave", () => { tooltip.style.display = 'none'; });
+    
+    svg.appendChild(rect);
   });
 
   // 범례 (Legend)
