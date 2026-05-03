@@ -1,4 +1,4 @@
-import {
+﻿import {
   DEFAULT_INPUTS,
   DEFAULT_EXPENSE_ITEMS,
   DEFAULT_SAVINGS_ITEMS,
@@ -450,3 +450,4 @@ export function buildSummaryCards(snapshot, projection, horizonYears) {
     return Math.abs(Number(card.metric) || 0) > 0;
   });
 }
+

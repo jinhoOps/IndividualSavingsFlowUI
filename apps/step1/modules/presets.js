@@ -1,4 +1,4 @@
-export const PRESET_SALARIES = [
+﻿export const PRESET_SALARIES = [
   { label: '3,000만원', value: 30000000, monthlyIncome: 2250000 },
   { label: '4,000만원', value: 40000000, monthlyIncome: 2950000 },
   { label: '5,000만원', value: 50000000, monthlyIncome: 3550000 },
@@ -74,3 +74,4 @@ export function applyPreset(salaryValue, styleKey) {
     startDebt: 0
   };
 }
+

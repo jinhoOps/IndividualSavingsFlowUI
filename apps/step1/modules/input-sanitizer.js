@@ -1,4 +1,4 @@
-import {
+﻿import {
   DEFAULT_INPUTS,
   DEFAULT_EXPENSE_ITEMS,
   DEFAULT_SAVINGS_ITEMS,
@@ -17,7 +17,7 @@ export function cloneInputs(inputs) {
 const CURRENCY_KEYS = [
   "monthlyExpense", "monthlySavings", "monthlyInvest", "monthlyDebtPayment",
   "startCash", "startSavings", "startInvest", "startDebt",
-  "monthlyIncome" // Computed field in some contexts
+  "monthlyIncome"
 ];
 
 export function migrateInputsToWon(raw) {
@@ -394,3 +394,4 @@ export function toMonthlyFactor(annualPercent) {
   const annualRate = Number(annualPercent) / 100;
   return Math.pow(1 + annualRate, 1 / 12);
 }
+

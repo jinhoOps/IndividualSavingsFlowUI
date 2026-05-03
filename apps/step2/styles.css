@@ -1,4 +1,4 @@
-/* Step2 전용 스타일 */
+﻿
 :root {
   --tone-paper: rgba(16, 34, 32, 0.04);
 }
@@ -42,12 +42,12 @@ main {
 .info-panel { order: 2; }
 .simulation-panel { order: 3; }
 
-/* Dashboard Mode (Returning User) */
+
 body.is-dashboard-mode .info-panel {
   order: 10;
 }
 
-/* 통합 저장소 동기화 배너 */
+
 .sync-banner {
   background: var(--panel);
   backdrop-filter: blur(10px);
@@ -118,7 +118,7 @@ body.is-dashboard-mode .info-panel {
   color: var(--muted);
 }
 
-/* 시뮬레이션 설정 영역 */
+
 .sim-inputs-container {
   background: var(--tone-paper);
   border: 1px solid var(--line);
@@ -142,14 +142,14 @@ body.is-dashboard-mode .info-panel {
   border-color: #ea5b2a;
 }
 
-/* 시뮬레이션 대시보드 */
+
 .sim-dashboard {
   display: flex;
   flex-direction: column;
   gap: var(--sp-md);
 }
 
-/* 차트 영역 */
+
 .sim-chart-wrap {
   background: var(--panel);
   backdrop-filter: blur(10px);
@@ -177,7 +177,7 @@ body.is-dashboard-mode .info-panel {
   box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 }
 
-/* 결과 테이블 */
+
 .projection-table {
   width: 100%;
   border-collapse: collapse;
@@ -213,3 +213,4 @@ body.is-dashboard-mode .info-panel {
     font-size: 0.76rem;
   }
 }
+

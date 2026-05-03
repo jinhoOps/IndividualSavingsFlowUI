@@ -1,4 +1,4 @@
-(function initIsfShare(global) {
+﻿(function initIsfShare(global) {
   "use strict";
 
   const HASH_COMPRESSED_PREFIX = "z:";
@@ -312,7 +312,7 @@
       return parsed.data;
     }
   
-    // Legacy support without envelope
+
     return parsed;
   }
 
@@ -415,3 +415,4 @@
   };
 
 })(window);
+

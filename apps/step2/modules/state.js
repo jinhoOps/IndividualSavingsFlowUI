@@ -1,26 +1,19 @@
-﻿/**
- * Individual Savings Flow (ISF) - Step 2: 배당 시뮬레이션 (Dividend Simulation)
- * v0.7.4
- * 
- * 파일 역할: 애플리케이션 상태 관리 (State)
- */
+﻿
 import { TEMP_STORAGE_KEY } from "./constants.js";
 
 export const state = {
   draft: null,
-  simulations: [], // 기존 portfolios에서 변경
-  currentSimulationId: "", // 기존 currentPortfolioId에서 변경
+  simulations: [],
+  currentSimulationId: "",
   backupEntries: [],
   isDashboardMode: false,
   isReturningUser: false,
   dirty: false,
   backupStoreReady: false,
-  isSyncedWithStep1: false, // Step 1 데이터와 동기화된 상태인지 여부
+  isSyncedWithStep1: false,
 };
 
-/**
- * 새로운 빈 시뮬레이션 드래프트를 생성합니다.
- */
+
 export function createEmptyDraft() {
   return {
     modelVersion: 10,
@@ -52,10 +45,11 @@ function saveSession() {
       draft: state.draft,
       currentSimulationId: state.currentSimulationId
     }));
-  } catch (e) { /* ignore */ }
+  } catch (e) {  }
 }
 
 export function getHubStorage() {
   return window.IsfStorageHub || window.IsfHubStorage || null;
 }
+
 

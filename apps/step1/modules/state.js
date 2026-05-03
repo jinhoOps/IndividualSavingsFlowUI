@@ -1,4 +1,4 @@
-import {
+﻿import {
   DEFAULT_INPUTS,
   SHARE_STATE_KEY,
   HASH_STATE_PARAM,
@@ -56,3 +56,4 @@ export const state = {
   viewModeGuideClosedTemporarily: false,
   pwaVersionLastCheckedAt: 0,
 };
+

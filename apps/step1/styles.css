@@ -1,4 +1,4 @@
-:root {
+﻿:root {
   --income: var(--node-income, #1e8b7c);
   --expense: var(--node-expense, #c9573c);
   --savings: var(--node-saving, #3175b6);
@@ -39,7 +39,7 @@ main {
 .controls-panel { order: 3; }
 .projection-panel { order: 4; }
 
-/* Dashboard Mode (Returning User) */
+
 body.is-dashboard-mode .sankey-panel {
   order: 1;
 }
@@ -283,7 +283,7 @@ body.is-dashboard-mode .controls-panel {
 .floating-btn--left-save { left: 72px; }
 .floating-btn--right { right: var(--sp-lg); }
 
-/* Preset Controls */
+
 .preset-controls {
   display: flex;
   align-items: center;
@@ -422,7 +422,7 @@ body.is-dashboard-mode .controls-panel {
   #sankeySvg { min-height: 250px; }
 }
 
-/* Phase 2: Preset adjustment highlight */
+
 .advanced-block.is-highlighted {
   border-color: var(--income);
   background: rgba(30, 139, 124, 0.08);
@@ -435,9 +435,9 @@ body.is-dashboard-mode .controls-panel {
   100% { box-shadow: 0 0 0 0 rgba(30, 139, 124, 0); }
 }
 
-/* ─── 누락 컴포넌트 복원 ─── */
 
-/* 고급 설정 탭 전환 */
+
+
 .advanced-block {
   border: 1px dashed rgba(16, 34, 32, 0.2);
   border-radius: 12px;
@@ -473,13 +473,13 @@ body.is-dashboard-mode .controls-panel {
 
 .controls-block--rates h3 { margin: 0; }
 
-/* 에디터 활성화 상태 */
+
 .controls-panel.is-item-editor-active .controls-block.is-editor-active {
   border-color: rgba(49, 117, 182, 0.34);
   background: rgba(237, 245, 255, 0.68);
 }
 
-/* 에디터 공통 */
+
 .editor-actions {
   display: flex;
   flex-wrap: wrap;
@@ -510,7 +510,7 @@ body.is-dashboard-mode .controls-panel {
   width: 100%;
 }
 
-/* 라벨 행 */
+
 .label-row {
   display: flex;
   align-items: center;
@@ -520,7 +520,7 @@ body.is-dashboard-mode .controls-panel {
 
 .label-row label { min-width: 0; }
 
-/* 수입 항목 부가 */
+
 .income-remove {
   display: inline-flex;
   align-items: center;
@@ -541,13 +541,13 @@ body.is-dashboard-mode .controls-panel {
 
 .income-remove:disabled { opacity: 0.45; cursor: not-allowed; }
 
-/* 지출/저축/투자 항목 이름 */
+
 .expense-name, .savings-name, .invest-name {
   font-size: 0.82rem;
   color: var(--ink);
 }
 
-/* 편집 행 추가 그리드 */
+
 @media (min-width: 761px) {
   .expense-row.is-editing { grid-template-columns: minmax(140px, 1fr) 130px 120px auto; }
   .savings-row.is-editing {
@@ -558,7 +558,7 @@ body.is-dashboard-mode .controls-panel {
   }
 }
 
-/* 항목 정렬 UI */
+
 .block-head-tools {
   display: inline-flex;
   align-items: center;
@@ -584,12 +584,12 @@ body.is-dashboard-mode .controls-panel {
   background: #fff;
 }
 
-/* 항목 삭제 */
+
 .allocation-label { display: grid; gap: 2px; }
 .allocation-meta { font-size: 0.73rem; color: var(--muted); }
 .allocation-remove { color: #9b2c2c; }
 
-/* Sankey 컨트롤 */
+
 .section-head--sankey { align-items: flex-start; }
 
 .sankey-head-tools {
@@ -644,7 +644,7 @@ body.is-dashboard-mode .controls-panel {
 
 .sankey-panel { overflow: hidden; }
 
-/* Sankey SVG 스타일 */
+
 #sankeySvg {
   display: block;
   width: 100%;
@@ -666,7 +666,7 @@ body.is-dashboard-mode .controls-panel {
 .tone-surplus { fill: var(--surplus); }
 .tone-deficit { fill: var(--deficit); }
 
-/* Sankey 범례 */
+
 .sankey-legend {
   margin-top: 10px;
   display: flex;
@@ -734,7 +734,7 @@ body.is-dashboard-mode .controls-panel {
   flex-shrink: 0;
 }
 
-/* 빈 상태 */
+
 .empty {
   position: absolute;
   inset: 0;
@@ -746,7 +746,7 @@ body.is-dashboard-mode .controls-panel {
 
 .empty[hidden] { display: none !important; }
 
-/* 수식 블록 */
+
 .formula {
   border: 1px dashed var(--line);
   border-radius: 12px;
@@ -779,7 +779,7 @@ body.is-dashboard-mode .controls-panel {
 
 .formula-body { margin-top: 8px; line-height: 1.5; }
 
-/* 투영 테이블 (Step1용) */
+
 .table-wrap { overflow-x: auto; }
 
 .projection-table {
@@ -809,7 +809,7 @@ body.is-dashboard-mode .controls-panel {
   color: var(--muted);
 }
 
-/* 모바일 전용 요소 (데스크톱에서 숨김) */
+
 @media (min-width: 761px) {
   .advanced-tab--mobile-only,
   .mobile-input-toggle,
@@ -819,7 +819,7 @@ body.is-dashboard-mode .controls-panel {
   }
 }
 
-/* 모바일 입력 접기 토글 */
+
 .mobile-input-toggle {
   margin-left: 8px;
   border: 0;
@@ -836,7 +836,7 @@ body.is-dashboard-mode .controls-panel {
 
 .mobile-input-toggle:hover { color: var(--ink); }
 
-/* 모바일 에디터 FAB */
+
 .mobile-editor-fab {
   position: fixed;
   left: 50%;
@@ -888,7 +888,7 @@ body.is-dashboard-mode .controls-panel {
 
 .mobile-editor-fab-btn--cancel { font-size: 1.2rem; line-height: 1; }
 
-/* 버전 체크 트리거 */
+
 .version-check-trigger {
   position: fixed;
   left: 50%;
@@ -911,10 +911,11 @@ body.is-dashboard-mode .controls-panel {
 .version-check-trigger[hidden] { display: none !important; }
 .version-check-trigger:focus-visible { outline: 1px solid rgba(16, 34, 32, 0.25); outline-offset: 1px; }
 
-/* 부가 */
+
 .floating-btn-icon { width: 18px; height: 18px; display: block; }
 .floating-btn:hover { background: rgba(16, 34, 32, 0.5); }
 #saveViewToLocal[hidden] { display: none !important; }
 .controls-panel.is-mobile-collapsed .actions { margin-top: 2px; }
 .summary-invalid { color: #8b2f2f; }
+
 

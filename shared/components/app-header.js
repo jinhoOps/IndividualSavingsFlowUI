@@ -1,13 +1,9 @@
-/**
- * ISF App Header Component (v0.4)
- * 모든 단계에서 공통으로 사용하는 상단 네비게이션 헤더입니다.
- * 저장 상태 인디케이터와 데이터 관리 버튼 기능이 포함되어 있습니다.
- */
+﻿
 export class AppHeader extends HTMLElement {
   constructor() {
     super();
     this.currentStep = this.getAttribute('current-step') || '1';
-    this.status = 'idle'; // idle, saving, success, error
+    this.status = 'idle';
     this.statusMessage = '자동 저장 활성';
   }
 
@@ -15,11 +11,7 @@ export class AppHeader extends HTMLElement {
     this.render();
   }
 
-  /**
-   * 헤더의 저장 상태를 업데이트합니다.
-   * @param {string} status 'saving', 'success', 'error', 'idle'
-   * @param {string} message 표시할 메시지
-   */
+  
   updateStatus(status, message) {
     this.status = status;
     if (message) this.statusMessage = message;
@@ -68,8 +60,8 @@ export class AppHeader extends HTMLElement {
       </header>
     `;
 
-    // 텍스트는 데스크톱에서만 보이도록 인라인 스타일로 처리하거나 CSS에서 제어
-    // 미디어 쿼리를 사용하기 위해 스타일을 추가로 적용할 수 있습니다.
+
+
     const indicatorText = this.querySelector('.status-indicator__text');
     if (indicatorText && window.innerWidth > 760) {
       indicatorText.style.display = 'inline';
@@ -84,3 +76,4 @@ export class AppHeader extends HTMLElement {
 if (!customElements.get('app-header')) {
   customElements.define('app-header', AppHeader);
 }
+

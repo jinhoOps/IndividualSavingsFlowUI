@@ -1,11 +1,4 @@
-/**
- * Individual Savings Flow (ISF) - Step 1: 나의 가계 흐름
- * v0.7.8
- * 
- * 파일 역할: Step 1 애플리케이션의 엔트리 포인트 및 전체 가계 흐름 제어
- */
-
-import {
+﻿import {
   MONEY_UNIT, STORAGE_KEY, SHARE_STATE_KEY, SHARE_STATE_SCHEMA,
   HASH_STATE_PARAM, VIEW_MODE_GUIDE_DISMISSED_KEY, MANUAL_BACKUP_WINDOW_MS,
   MAX_INCOME_ITEMS, MAX_ALLOCATION_ITEMS, SANKEY_VALUE_MODES,
@@ -53,8 +46,6 @@ import {
 import { buildSankeyData } from "./modules/sankey-builder.js";
 import * as helpers from "./modules/state-helpers.js";
 
-
-// --- Initialization ---
 
 function init() {
   checkReturningUser();
@@ -110,7 +101,6 @@ function checkReturningUser() {
   }
 }
 
-// --- Event Binding ---
 
 function bindControls() {
   bindModalEvents();
@@ -148,7 +138,6 @@ function bindControls() {
       markPendingChanges();
       renderAll();
 
-      // Phase 2: 프리셋 적용 후 세부 조정 UX 강화
       if (dom.advancedSettings) {
         dom.advancedSettings.open = true;
         dom.advancedSettings.classList.add('is-highlighted');
@@ -206,7 +195,7 @@ function bindControls() {
 }
 
 function bindModalEvents() {
-  // 로드 시점에 null이었을 경우를 대비해 다시 시도
+
   if (!dom.appHeader) dom.appHeader = document.querySelector("app-header");
   if (!dom.dataHubModal) dom.dataHubModal = document.querySelector("data-hub-modal");
 
@@ -281,7 +270,6 @@ function bindGlobalEvents() {
   window.addEventListener("orientationchange", () => window.setTimeout(() => { if (dom.sankeySvg) dom.sankeySvg.removeAttribute("viewBox"); renderAll(); }, 200));
 }
 
-// --- Main Logic & State Transitions ---
 
 function renderAll() {
   const snapshot = buildMonthlySnapshot(state.inputs);
@@ -325,7 +313,6 @@ function persistPrimaryState(inputs, options = {}) {
   }
 }
 
-// --- Specific Handlers ---
 
 async function handleManualBackup() {
   if (state.isViewMode || !state.backupStoreReady) return;
@@ -490,7 +477,6 @@ function handleItemClick(group, event) {
   }
 }
 
-// --- UI Helpers & Syncers ---
 
 function setPendingBarVisible(visible) {
   if (dom.pendingBar) dom.pendingBar.hidden = !visible;
@@ -589,7 +575,6 @@ function renderExpenseList(items) { renderItemList("expense", items); }
 function renderSavingsList(items) { renderItemList("savings", items); }
 function renderInvestList(items) { renderItemList("invest", items); }
 
-// --- Item Editor Core ---
 
 function toggleItemEditor(group) { state.itemEditors[group].active ? cancelItemEditor(group) : startItemEditor(group); }
 
@@ -630,7 +615,6 @@ function setItemEditorUi(group, active) {
   const editBtn = dom[`edit${group.charAt(0).toUpperCase() + group.slice(1)}Items`];
   if (editBtn) editBtn.textContent = active ? "편집 완료" : "항목 편집";
 
-  // Phase 2: 항목 변경 여부에 따른 적용 버튼 활성 상태 동기화
   const applyBtn = dom[`apply${group.charAt(0).toUpperCase() + group.slice(1)}Items`];
   if (active && applyBtn) {
     const currentSignature = helpers.getItemEditorSignature(state.itemEditors[group].items);
@@ -647,7 +631,6 @@ function closeAllItemEditors(except = "") {
   ["income", "expense", "savings", "invest"].forEach(g => { if (g !== except && state.itemEditors[g].active) cancelItemEditor(g); });
 }
 
-// --- Suggester ---
 function syncGroupOptionsAll() { ["expense", "savings", "invest"].forEach(syncGroupOptionsFor); }
 function syncGroupOptionsFor(group) {
   const list = dom[`${group}GroupOptions`]; if (!list) return;
@@ -656,7 +639,6 @@ function syncGroupOptionsFor(group) {
   list.innerHTML = names.map(n => `<option value="${n}">`).join("");
 }
 
-// --- Sub-Renderers ---
 
 function renderCards(cards, horizonYears) {
   if (!dom.summaryCards) return;
@@ -715,7 +697,6 @@ function renderAllocationItemHtml(group, item, opts) {
     `;
   }
 
-  // Editing Mode
   const isSavings = group === "savings";
   const isInvest = group === "invest";
   const isExpense = group === "expense";
@@ -751,7 +732,6 @@ function renderAllocationItemHtml(group, item, opts) {
   `;
 }
 
-// --- Final Helpers ---
 function getPendingSummaryText(inputs) {
   const monthlyIncome = getMonthlyIncomeTotalWon(inputs.incomes);
   const monthlyOutflow = inputs.monthlyExpense + inputs.monthlySavings + inputs.monthlyInvest + inputs.monthlyDebtPayment;
@@ -828,3 +808,5 @@ async function initializeInputsFromShareId() {
     if (sidInputs) commitImmediateInputs(sidInputs);
   }
 }
+
+

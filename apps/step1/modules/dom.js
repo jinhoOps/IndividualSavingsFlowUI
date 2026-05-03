@@ -1,4 +1,4 @@
-export const dom = {
+﻿export const dom = {
   appHeader: document.querySelector("app-header"),
   dataHubModal: document.querySelector("data-hub-modal"),
   controlsPanel: document.querySelector(".controls-panel"),
@@ -95,3 +95,4 @@ export const dom = {
   projectionMeta: document.getElementById("projectionMeta"),
   appTitle: document.querySelector("h1"),
 };
+

@@ -1,4 +1,4 @@
-(function initDataHubModal(global) {
+﻿(function initDataHubModal(global) {
   "use strict";
 
   class DataHubModal extends HTMLElement {
@@ -23,16 +23,12 @@
       this.setupEventListeners();
     }
 
-    /**
-     * @param {string} step '1' | '2'
-     */
+    
     setStep(step) {
       this.setAttribute("current-step", step);
     }
 
-    /**
-     * @param {string} tabId 'tab-simulations' | 'tab-backups'
-     */
+    
     setActiveTab(tabId) {
       const panes = this.shadowRoot.querySelectorAll(".tab-pane");
       const btns = this.shadowRoot.querySelectorAll(".tab-btn");
@@ -40,9 +36,7 @@
       btns.forEach((b) => b.classList.toggle("is-active", b.dataset.target === tabId));
     }
 
-    /**
-     * @param {Array} entries 시뮬레이션 엔트리 배열 [{id, name, ...}]
-     */
+    
     updateSimulationList(entries = []) {
       const container = this.shadowRoot.getElementById("simulationListContainer");
       if (!container) return;
@@ -80,14 +74,12 @@
       );
     }
 
-    // 하위 호환성 유지 (앱에서 호출할 때 깨지지 않게)
+
     updatePortfolioList(entries) {
       this.updateSimulationList(entries);
     }
 
-    /**
-     * @param {Array} entries 백업 엔트리 배열 [{id, createdAt, ...}]
-     */
+    
     updateBackupList(entries = []) {
       const container = this.shadowRoot.getElementById("backupListContainer");
       if (!container) return;
@@ -244,3 +236,5 @@
 
   customElements.define("data-hub-modal", DataHubModal);
 })(window);
+
+

@@ -1,4 +1,4 @@
-export const MONEY_UNIT = 10000;
+﻿export const MONEY_UNIT = 10000;
 export const STORAGE_KEY = "isf-rebuild-v1";
 export const SHARE_STATE_KEY = "my-household-flow";
 export const SHARE_STATE_SCHEMA = 1;
@@ -62,7 +62,7 @@ export const DEFAULT_INVEST_ITEMS = [
 ];
 
 export const DEFAULT_INPUTS = {
-  modelVersion: 10, // 10: Won units normalized
+  modelVersion: 10,
   incomes: [
     { id: "income-main", name: "급여", amount: 3000000 },
   ],
@@ -124,3 +124,4 @@ export const FORM_FIELD_KEYS = [
   "annualDebtInterest",
   "horizonYears",
 ];
+

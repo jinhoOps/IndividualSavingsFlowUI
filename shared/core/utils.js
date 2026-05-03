@@ -1,4 +1,4 @@
-(function initIsfUtils(global) {
+﻿(function initIsfUtils(global) {
   "use strict";
 
   const backupTimestampFormatter = new Intl.DateTimeFormat("ko-KR", {
@@ -131,3 +131,4 @@
     });
   }
 })(window);
+

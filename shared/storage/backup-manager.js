@@ -1,4 +1,4 @@
-(function initIsfBackupManager(global) {
+﻿(function initIsfBackupManager(global) {
   "use strict";
 
   const BACKUP_DB_NAME = "isf-backup-db-v1";
@@ -255,9 +255,7 @@
     });
   }
 
-  /**
-   * 기존 키(oldKey)로 저장된 모든 백업 항목의 app 필드를 새로운 키(newKey)로 변경합니다.
-   */
+  
   async function migrateAppKey(oldKey, newKey) {
     if (!oldKey || !newKey || oldKey === newKey) return false;
     try {
@@ -294,3 +292,4 @@
   };
 
 })(window);
+

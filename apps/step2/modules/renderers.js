@@ -1,10 +1,4 @@
-/**
- * Individual Savings Flow (ISF) - Step 2: 배당 시뮬레이션 (Dividend Simulation)
- * v0.7.4
- * 
- * 파일 역할: 결과 데이터 렌더링 및 UI 업데이트 (Renderers)
- */
-import { state } from "./state.js";
+﻿import { state } from "./state.js";
 import { dom } from "./dom.js";
 import { 
   formatCurrency, 
@@ -14,14 +8,10 @@ import {
 
 import { utils } from "./utils.js";
 
-/**
- * Renders the entire draft UI
- */
 export function renderDraft() {
   if (!state.draft) return;
   try {
     if (dom.totalMonthlyInvestCapacity) {
-      // UI 표시 시 단위 변환만 수행 (절삭 방지)
       dom.totalMonthlyInvestCapacity.value = utils.toMan(state.draft.totalMonthlyInvestCapacity || 0);
     }
     
@@ -68,16 +58,14 @@ export function renderDividendSimulation() {
 function drawSimulationChart(svg, data) {
   svg.innerHTML = "";
   if (!data.length) return;
-  const width = 600; const height = 250; const padding = 45; // Increased padding for Y labels
+  const width = 600; const height = 250; const padding = 45;
   
   svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
   svg.style.width = "100%";
   svg.style.height = "auto";
 
-  // 자산(Asset) TR을 기준으로 스케일 설정
   const maxVal = Math.max(...data.map(d => d.assetNominalTR), 1);
 
-  // Y축 그리드 및 라벨
   const gridSteps = 4;
   for (let i = 0; i <= gridSteps; i++) {
     const yVal = maxVal * (i / gridSteps);
@@ -96,7 +84,6 @@ function drawSimulationChart(svg, data) {
     svg.appendChild(text);
   }
 
-  // 복리 영역 (Area Polygon)
   const pointsPolygon = [
     ...data.map((d, i) => {
       const x = padding + (i / (data.length - 1)) * (width - 2 * padding);
@@ -116,7 +103,6 @@ function drawSimulationChart(svg, data) {
   polyArea.setAttribute("fill", "rgba(234, 91, 42, 0.1)");
   svg.appendChild(polyArea);
 
-  // 1. PR 선 (미투자 - 회색 점선)
   const pointsPR = data.map((d, i) => {
     const x = padding + (i / (data.length - 1)) * (width - 2 * padding);
     const y = (height - padding) - (d.assetNominalPR / maxVal) * (height - 2 * padding);
@@ -129,7 +115,6 @@ function drawSimulationChart(svg, data) {
   polyPR.setAttribute("stroke-dasharray", "4 4");
   svg.appendChild(polyPR);
 
-  // 2. TR 선 (재투자 - 주황색 실선)
   const pointsTR = data.map((d, i) => {
     const x = padding + (i / (data.length - 1)) * (width - 2 * padding);
     const y = (height - padding) - (d.assetNominalTR / maxVal) * (height - 2 * padding);
@@ -141,19 +126,16 @@ function drawSimulationChart(svg, data) {
   polyTR.setAttribute("fill", "none"); polyTR.setAttribute("stroke", "#ea5b2a"); polyTR.setAttribute("stroke-width", "3");
   svg.appendChild(polyTR);
 
-  // 데이터 포인트 (Circle) 및 X축 라벨 추가
   data.forEach((d, i) => {
     const x = padding + (i / (data.length - 1)) * (width - 2 * padding);
     const yTR = (height - padding) - (d.assetNominalTR / maxVal) * (height - 2 * padding);
     const yPR = (height - padding) - (d.assetNominalPR / maxVal) * (height - 2 * padding);
 
-    // TR Point
     const circleTR = document.createElementNS("http://www.w3.org/2000/svg", "circle");
     circleTR.setAttribute("cx", x); circleTR.setAttribute("cy", yTR);
     circleTR.setAttribute("r", "3"); circleTR.setAttribute("fill", "#ea5b2a");
     svg.appendChild(circleTR);
 
-    // PR Point
     const circlePR = document.createElementNS("http://www.w3.org/2000/svg", "circle");
     circlePR.setAttribute("cx", x); circlePR.setAttribute("cy", yPR);
     circlePR.setAttribute("r", "2"); circlePR.setAttribute("fill", "#8a8f98");
@@ -167,7 +149,6 @@ function drawSimulationChart(svg, data) {
     }
   });
 
-  // 호버 툴팁을 위한 투명 rect 요소들 및 이벤트 추가
   let tooltip = document.querySelector('.chart-tooltip');
   if (!tooltip) {
     tooltip = document.createElement('div');
@@ -197,10 +178,9 @@ function drawSimulationChart(svg, data) {
         <div>총 자산: ${utils.toMan(d.assetNominalTR).toLocaleString()} 만원</div>
         <div>연 배당금: ${utils.toMan(d.dividendNominalTR).toLocaleString()} 만원</div>
       `;
-      // 컨테이너 크기 비례 위치
       const containerRect = svg.getBoundingClientRect();
       const xRatio = x / width;
-      tooltip.style.left = \`\${xRatio * 100}%\`;
+      tooltip.style.left = `\${xRatio * 100}%`;
       tooltip.style.top = '10%';
       tooltip.style.transform = 'translateX(-50%)';
     };
@@ -212,7 +192,6 @@ function drawSimulationChart(svg, data) {
     svg.appendChild(rect);
   });
 
-  // 범례 (Legend)
   const legendTR = document.createElementNS("http://www.w3.org/2000/svg", "text");
   legendTR.setAttribute("x", width - padding); legendTR.setAttribute("y", 20);
   legendTR.setAttribute("text-anchor", "end"); legendTR.setAttribute("font-size", "11"); legendTR.setAttribute("fill", "#ea5b2a");

@@ -1,11 +1,11 @@
-(function initIsfStorageHub(global) {
+﻿(function initIsfStorageHub(global) {
   "use strict";
 
   const DB_NAME = "isf-hub-db-v1";
   const DB_VERSION = 2;
   const STORES = {
     STEP1: "step1Snapshots",
-    STEP2: "step2Entries" // 기존 step2Portfolios에서 변경 (일반화)
+    STEP2: "step2Entries"
   };
   const MAX_SNAPSHOTS = 20;
 
@@ -38,17 +38,14 @@
       const request = global.indexedDB.open(DB_NAME, DB_VERSION);
       request.onupgradeneeded = (event) => {
         const db = request.result;
-        // Step 1: Snapshots
         if (!db.objectStoreNames.contains(STORES.STEP1)) {
           const s1 = db.createObjectStore(STORES.STEP1, { keyPath: "id" });
           s1.createIndex("updatedAt", "updatedAt");
         }
-        // Step 2: Entries (Portfolios/Simulations)
         if (!db.objectStoreNames.contains(STORES.STEP2)) {
           const s2 = db.createObjectStore(STORES.STEP2, { keyPath: "id" });
           s2.createIndex("updatedAt", "updatedAt");
         }
-        // Migration: Move data from legacy store
         if (event.oldVersion < 2 && db.objectStoreNames.contains("step2Portfolios")) {
           const oldStore = event.target.transaction.objectStore("step2Portfolios");
           const newStore = event.target.transaction.objectStore(STORES.STEP2);
@@ -57,8 +54,6 @@
             if (Array.isArray(getAllReq.result)) {
               getAllReq.result.forEach(item => newStore.put(item));
             }
-            // 주의: 비동기 콜백에서의 deleteObjectStore는 위험할 수 있으므로, 
-            // 데이터 복사까지만 수행하고 실제 삭제는 향후 스키마 정리 시점에 별도로 다룹니다.
             console.log("StorageHub: Legacy data migrated to new store.");
           };
         }
@@ -88,8 +83,6 @@
     });
   }
 
-  // --- LocalStorage Persistence ---
-  
   function saveToLocal(key, data) {
     try {
       localStorage.setItem(key, JSON.stringify(data));
@@ -104,15 +97,11 @@
     } catch (e) { return null; }
   }
 
-  // --- Hub API (Unified) ---
-
   const StorageHub = {
-    // 0. Migration
     async ensureMigration(oldKey, newKey) {
       if (!oldKey || !newKey || oldKey === newKey) return;
       
       try {
-        // 1. LocalStorage migration
         const oldData = loadFromLocal(oldKey);
         if (oldData) {
           const newData = loadFromLocal(newKey);
@@ -122,7 +111,6 @@
           }
         }
         
-        // 2. Backup migration (IndexedDB)
         if (global.IsfBackupManager && global.IsfBackupManager.migrateAppKey) {
           await global.IsfBackupManager.migrateAppKey(oldKey, newKey);
           console.log(`StorageHub: Migrated backups from ${oldKey} to ${newKey}`);
@@ -132,11 +120,9 @@
       }
     },
 
-    // 1. Persistence (LocalStorage)
     saveLocal: (key, data) => saveToLocal(key, data),
     loadLocal: (key) => loadFromLocal(key),
 
-    // 2. Step 1 Snapshots (IDB)
     async saveStep1Snapshot(data) {
       const entry = {
         id: _createId("s1"),
@@ -179,11 +165,10 @@
       }).then(c => c ? c.value : null);
     },
 
-    // 3. Step 2 Entries (Simulations)
     async saveStep2Entry(data) {
       const entry = {
         ...data,
-        id: data.id || _createId("ds"), // ds: Dividend Simulation
+        id: data.id || _createId("ds"),
         updatedAt: Date.now(),
         modelVersion: 10
       };
@@ -207,7 +192,6 @@
       return true;
     },
 
-    // 4. Backup Integration
     async triggerAutoBackup(appKey, data, currentEntries) {
       if (!global.IsfBackupManager) return { created: false };
       return global.IsfBackupManager.maybeCreateAutoBackupIfDue(currentEntries, data, appKey);
@@ -221,7 +205,6 @@
       });
     },
 
-    // 5. View Mode Overwrite
     async persistViewDataLocally(appKey, data, currentBackupEntries) {
       const currentLocal = loadFromLocal(appKey);
       let backupResult = null;
@@ -240,7 +223,6 @@
     }
   };
 
-  // Backward Compatibility (Mapped to new unified API)
   global.IsfHubStorage = {
     ...StorageHub,
     openHubDb: getDb,
@@ -257,3 +239,4 @@
   global.IsfStorageHub = StorageHub;
 
 })(window);
+

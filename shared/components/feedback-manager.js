@@ -1,15 +1,9 @@
-(function initIsfFeedback(global) {
+﻿(function initIsfFeedback(global) {
   "use strict";
 
   let applyFeedbackTimer = null;
 
-  /**
-   * 플로팅 토스트 피드백을 일시적으로 표시합니다.
-   * @param {HTMLElement} domElement - 토스트 요소 (예: #applyFeedback)
-   * @param {string} message - 표시할 메시지
-   * @param {boolean} isError - 에러 여부
-   * @param {number} timeoutMs - 자동 숨김 시간(ms)
-   */
+  
   function showFeedback(domElement, message, isError, timeoutMs) {
     if (!domElement) return;
 
@@ -39,13 +33,7 @@
     }, safeTimeout);
   }
 
-  /**
-   * 하단 대기 바의 표시/숨김을 제어합니다.
-   * @param {HTMLElement} barElement - 대기 바 요소 (예: #pendingBar)
-   * @param {HTMLElement} summaryElement - 요약 텍스트 요소 (예: #pendingSummary)
-   * @param {boolean} isPending - 대기 상태 여부
-   * @param {string} message - 대기 바에 표시할 메시지
-   */
+  
   function markPendingBar(barElement, summaryElement, isPending, message) {
     if (!barElement) return;
     if (isPending) {
@@ -63,10 +51,7 @@
     }
   }
 
-  /**
-   * 자동 저장 상태를 알림 바에 표시합니다.
-   * @param {'saving'|'success'|'error'} status - 저장 상태
-   */
+  
   function notifyAutoSave(status) {
     const feedbackEl = document.getElementById("applyFeedback");
     if (!feedbackEl) return;
@@ -86,3 +71,4 @@
     notifyAutoSave,
   };
 })(window);
+

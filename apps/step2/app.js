@@ -1,9 +1,4 @@
-/**
- * Individual Savings Flow (ISF) - Step 2: 배당 시뮬레이션 (Dividend Simulation)
- * v0.7.8
- * 
- * 파일 역할: Step 2 애플리케이션의 엔트리 포인트 및 전체 배당 시뮬레이션 흐름 제어
- */
+﻿
 
 import { state, createEmptyDraft, markDirty, markClean, getHubStorage } from "./modules/state.js";
 import { dom, initDom } from "./modules/dom.js";
@@ -33,7 +28,7 @@ import {
 } from "./modules/storage-handler.js";
 import { utils } from "./modules/utils.js";
 
-// Initialize
+
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", initApp);
 } else {
@@ -48,7 +43,7 @@ async function initApp() {
     state.draft = createEmptyDraft();
     const hash = window.location.hash;
 
-    // 1. 세션 복구 및 공유 데이터 로드
+
     const savedTmp = sessionStorage.getItem(TEMP_STORAGE_KEY);
     if (savedTmp && !hash) {
       try {
@@ -78,13 +73,13 @@ async function initApp() {
       }
     }
     
-    // 2. 이벤트 바인딩
+
     bindEvents(); 
     
-    // 3. UI 초기 렌더링
+
     renderDraft(); 
 
-    // 4. 비동기 데이터 로드 (에러가 나도 나머지는 작동하게)
+
     try {
       await checkReturningUser();
       await checkStep1SyncData();
@@ -93,7 +88,7 @@ async function initApp() {
       console.error("Async data initialization failed:", e);
     }
     
-    // 5. PWA 관리자 시작
+
     try {
       const pwa = new IsfPwaManager({
         appVersion: "0.7.8",
@@ -235,7 +230,7 @@ function bindEvents() {
     });
   }
 
-  // Preset Buttons
+
   document.querySelectorAll(".preset-btn").forEach(btn => {
     btn.addEventListener("click", () => {
       const y = parseFloat(btn.dataset.yield);
@@ -251,7 +246,7 @@ function bindEvents() {
       if (dom.simDividendGrowth) dom.simDividendGrowth.value = g;
       if (dom.simCapitalGrowth) dom.simCapitalGrowth.value = c;
       
-      // Update active state
+
       document.querySelectorAll(".preset-btn").forEach(b => b.classList.remove("is-active"));
       btn.classList.add("is-active");
 
@@ -260,7 +255,7 @@ function bindEvents() {
     });
   });
   
-  // Simulation Events
+
   if (dom.toggleSimInputs) {
     dom.toggleSimInputs.addEventListener("click", () => {
       dom.simInputsContainer.hidden = !dom.simInputsContainer.hidden;
@@ -309,13 +304,13 @@ function bindEvents() {
 async function initializeBackupStore() {
   if (!IsfBackupManager.isIndexedDbAvailable()) return;
   try {
-    // 1. Ensure Migration from Legacy Key (Rebranding)
+
     const hub = getHubStorage();
     if (hub && hub.ensureMigration) {
       await hub.ensureMigration(LEGACY_SHARE_STATE_KEY, SHARE_STATE_KEY);
     }
     
-    // 2. Load Entries
+
     const entries = await IsfBackupManager.loadBackupEntriesFromDb(SHARE_STATE_KEY);
     state.backupStoreReady = true;
     if (entries) {
@@ -327,3 +322,4 @@ async function initializeBackupStore() {
     state.backupStoreReady = true;
   }
 }
+

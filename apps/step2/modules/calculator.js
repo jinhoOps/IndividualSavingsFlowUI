@@ -1,39 +1,26 @@
-﻿/**
- * Individual Savings Flow (ISF) - Step 2: 배당 시뮬레이션 (Dividend Simulation)
- * v0.7.4
- * 
- * 파일 역할: 배당금 계산 로직 및 수식 (Calculator)
- */
+﻿
 import { state } from "./state.js";
 import { DEFAULT_INFLATION_RATE, DEFAULT_TAX_RATE } from "./constants.js";
 
 import { utils } from "./utils.js";
 
-/**
- * Gets the total monthly investment capacity in Won
- */
+
 export function getTotalMonthlyInvestCapacity() {
   return utils.sanitizeMoney(state.draft?.totalMonthlyInvestCapacity, 0);
 }
 
-/**
- * Formats a currency value
- */
+
 export function formatCurrency(val) {
   return utils.formatMoney(val);
 }
 
-/**
- * Formats a date/time string from ISO or timestamp
- */
+
 export function formatDateTime(iso) {
   if (!iso) return "-";
   return utils.formatTimestamp(new Date(iso).getTime());
 }
 
-/**
- * High-Fidelity Dividend Simulation Engine
- */
+
 export function calculateDividendProjection() {
   if (!state.draft) return [];
   const sim = state.draft.dividendSim || {};
@@ -54,23 +41,23 @@ export function calculateDividendProjection() {
   for (let y = 1; y <= years; y++) {
     const lastResult = results.length > 0 ? results[results.length - 1] : null;
 
-    // 1. 원금 적립
+
     principal += yearlyContribution;
 
-    // 2. PR 경로 (배당 미투자)
-    // 당해 연도 납입분(DCA)은 평균적으로 절반의 기간 동안만 성장 (cgr / 2)
+
+
     const existingAssetPR = assetPR;
     const growthOnExistingPR = existingAssetPR * cgr;
     const growthOnNewPR = yearlyContribution * (cgr / 2);
     assetPR = existingAssetPR + yearlyContribution + growthOnExistingPR + growthOnNewPR;
 
     const prevDivPR = lastResult ? lastResult.dividendNominalPR : 0;
-    // 당해 연도 납입분 배당은 평균적으로 절반 수준 (0.5 * initialYield) 적용
-    // DCA 성장 보정: cgr / 2 (평균 6개월 성장)
+
+
     const divNominalPR = (prevDivPR * (1 + dgr)) + (yearlyContribution * (1 + cgr / 2) * (initialYield / 2));
     const divAfterTaxPR = divNominalPR * (1 - taxRate);
 
-    // 3. TR 경로 (배당 재투자)
+
     const existingAssetTR = assetTR;
     const growthOnExistingTR = existingAssetTR * cgr;
     const growthOnNewTR = yearlyContribution * (cgr / 2);
@@ -78,12 +65,12 @@ export function calculateDividendProjection() {
 
     const prevDivTR = lastResult ? lastResult.dividendNominalTR : 0;
     const prevReinvested = lastResult ? lastResult.dividendAfterTaxTR : 0;
-    // (기존 배당 성장) + (신규 납입분 배당/2) + (전년 재투자분의 연간 배당)
+
     const divNominalTR = (prevDivTR * (1 + dgr)) + (yearlyContribution * (1 + cgr / 2) * (initialYield / 2)) + (prevReinvested * (1 + cgr) * initialYield);
     const divAfterTaxTR = divNominalTR * (1 - taxRate);
     assetTR += divAfterTaxTR;
 
-    // 4. 실질 가치 계산 (인플레이션 반영)
+
     const df = Math.pow(1 + inflationRate, y);
 
     results.push({
@@ -104,5 +91,6 @@ export function calculateDividendProjection() {
 
   return results;
 }
+
 
 

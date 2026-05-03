@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Gowun+Dodum:wght@400;700&display=swap");
+﻿@import url("https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Gowun+Dodum:wght@400;700&display=swap");
 
 :root {
   color-scheme: light;
@@ -13,29 +13,29 @@
   --font-display: "Gowun Dodum", "Black Han Sans", sans-serif;
   --font-body: "Gowun Dodum", "Nanum Gothic", sans-serif;
 
-  /* Spacing Tokens */
+  
   --sp-xs: 4px;
   --sp-sm: 8px;
   --sp-md: 14px;
   --sp-lg: 24px;
   --sp-xl: 32px;
 
-  /* Radius Tokens */
+  
   --rd-sm: 8px;
   --rd-md: 14px;
   --rd-lg: 999px;
 
-  /* Typography Tokens (DESIGN.md) */
+  
   --text-display: 32px;
   --text-title-lg: 24px;
   --text-title-md: 18px;
   --text-body-md: 16px;
   --text-caption: 14px;
 
-  /* Shadow Tokens */
+  
   --sh-float: 0 4px 12px rgba(16, 34, 32, 0.08);
   
-  /* Status & Node Colors */
+  
   --status-success: #2f9e44;
   --status-error: #e03131;
   --node-income: #1e8b7c;
@@ -61,7 +61,7 @@ body {
   transition: opacity 0.3s ease;
 }
 
-/* Global App Header */
+
 .app-header {
   position: sticky;
   top: 0;
@@ -122,7 +122,7 @@ body {
   font-weight: 700;
 }
 
-/* Common Layout Components */
+
 h1, h2, h3 { margin: 0; color: var(--ink); }
 h1 { font-family: var(--font-body); }
 
@@ -152,7 +152,7 @@ h1 { font-family: var(--font-body); }
   flex-wrap: wrap;
 }
 
-/* Tabs UI (Unified for both steps) */
+
 .tab-list {
   display: flex;
   gap: var(--sp-xs);
@@ -187,7 +187,7 @@ h1 { font-family: var(--font-body); }
 .tab-btn.is-active { color: var(--tone-primary); font-weight: 700; }
 .tab-btn.is-active::after { transform: scaleX(1); }
 
-/* Unified Button Style */
+
 .btn {
   border: 1px solid var(--line-strong);
   border-radius: var(--rd-lg);
@@ -250,7 +250,7 @@ select:focus-visible {
   color: #8b2f2f;
 }
 
-/* Skeleton UI */
+
 .skeleton {
   background: linear-gradient(90deg, #e0e0e0 25%, #f0f0f0 50%, #e0e0e0 75%);
   background-size: 200% 100%;
@@ -264,7 +264,7 @@ select:focus-visible {
   100% { background-position: -200% 0; }
 }
 
-/* Floating Bars & Toasts */
+
 .pending-bar {
   position: fixed;
   left: 50%;
@@ -325,7 +325,7 @@ select:focus-visible {
   color: #8b2f2f;
 }
 
-/* Modal UI */
+
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -416,7 +416,7 @@ select:focus-visible {
   gap: var(--sp-sm);
 }
 
-/* Status Indicator */
+
 .status-indicator {
   display: flex;
   align-items: center;
@@ -478,3 +478,4 @@ select:focus-visible {
   .pending-actions { width: 100%; }
   .pending-actions .btn { flex: 1; }
 }
+

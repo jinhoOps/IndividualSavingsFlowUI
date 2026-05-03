@@ -1,4 +1,4 @@
-import {
+﻿import {
   SANKEY_VALUE_MODES,
   SANKEY_SORT_MODES,
   SANKEY_ZOOM_MIN,
@@ -401,3 +401,4 @@ export function renderSankeyLegend(data, valueMode) {
     dom.sankeyLegend.appendChild(groupWrap);
   });
 }
+

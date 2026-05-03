@@ -1,4 +1,4 @@
-import { SANKEY_VALUE_MODES, MONEY_UNIT } from "./constants.js";
+﻿import { SANKEY_VALUE_MODES, MONEY_UNIT } from "./constants.js";
 
 const backupTimestampFormatter = new Intl.DateTimeFormat("ko-KR", {
   year: "numeric",
@@ -59,3 +59,4 @@ export function formatBackupTimestamp(dateText) {
   }
   return backupTimestampFormatter.format(new Date(parsed));
 }
+

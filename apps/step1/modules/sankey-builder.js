@@ -1,4 +1,4 @@
-import {
+﻿import {
   SANKEY_SORT_MODES
 } from "./constants.js";
 import {
@@ -184,3 +184,4 @@ export function buildSankeyData(snapshot, sortMode) {
     topLevelTargetIds: level1Targets.map(t => t.id)
   };
 }
+

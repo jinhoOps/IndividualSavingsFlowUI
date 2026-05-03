@@ -1,4 +1,4 @@
-const APP_VERSION = "0.7.8";
+﻿const APP_VERSION = "0.7.8";
 const CACHE_NAME = `isf-static-v${APP_VERSION}`;
 const CORE_ASSETS = [
   "./",
@@ -125,3 +125,4 @@ async function handleAssetRequest(request) {
     return new Response("", { status: 504 });
   }
 }
+

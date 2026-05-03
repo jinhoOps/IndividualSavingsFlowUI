@@ -1,4 +1,4 @@
-(function initIsfPwaManager(global) {
+﻿(function initIsfPwaManager(global) {
   "use strict";
 
   const PWA_STANDALONE_NOTICE_KEY = "isf-pwa-standalone-notice-v1";
@@ -83,17 +83,17 @@
         });
       }
 
-      // 앱 실행(Cold Start) 시 즉시 버전 체크 수행
+
       void this.maybeCheckRemotePwaVersion();
     }
 
     bindPwaInstallEvents() {
       if (typeof window === "undefined") return;
       window.addEventListener("beforeinstallprompt", (event) => {
-        // 브라우저의 기본 설치 알림을 막고 이벤트를 저장합니다.
+
         event.preventDefault();
         this.deferredPrompt = event;
-        // 삼성 인터넷 등 일부 브라우저에서 설치 가능함을 디버그 로그로 남깁니다.
+
         console.log("PWA: Installable state detected.");
       });
     }
@@ -117,11 +117,11 @@
       });
     }
 
-    // 오프라인/온라인 네트워크 상태 변화를 감지하여 토스트로 안내합니다.
+
     bindNetworkStatusFeedback() {
       if (typeof window === "undefined" || typeof navigator === "undefined") return;
 
-      // 앱 초기 로딩 시 이미 오프라인인 경우 안내
+
       if (!navigator.onLine) {
         this.onFeedback("오프라인 모드: 네트워크 연결 없이 앱을 이용 중입니다.");
       }
@@ -145,7 +145,7 @@
       if (typeof window === "undefined" || typeof document === "undefined") return false;
       if (this.isViewMode()) return false;
       
-      // 설치된 상태(Standalone)라면 데스크톱/모바일 구분 없이 체크 허용
+
       if (!isStandaloneDisplayMode()) return false;
       
       return window.location.protocol === "https:" || window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
@@ -172,7 +172,7 @@
     async maybeTriggerServiceWorkerUpdateCheck() {
       if (!shouldUseServiceWorker()) return;
       try {
-        // Find existing registration (from root)
+
         const registration = await navigator.serviceWorker.getRegistration();
         if (registration) {
           await registration.update();
@@ -323,3 +323,5 @@
   global.IsfPwaManager = PwaManager;
 
 })(window);
+
+
