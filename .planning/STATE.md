@@ -3,7 +3,7 @@ milestone: "v1.1"
 name: "시뮬레이션 고도화 및 온보딩 UX"
 status: "executing"
 progress:
-  completed_phases: 1
+  completed_phases: 2
   total_phases: 3
 ---
 
@@ -11,17 +11,17 @@ progress:
 
 ## Current Position
 
-Phase: 3
+Phase: 4
 Plan: 1
 Status: Complete
-Last activity: 2026-05-03 — Phase 3 executed
+Last activity: 2026-05-04 — Phase 4 implementation and evaluation complete
 
 ## Project Reference
 
 See: .planning/PROJECT.md (updated 2026-05-03)
 
 **Core value:** 단순한 프리셋 선택만으로 즉각적인 자산 시각화 결과 제공
-**Current focus:** Defining requirements for v1.1
+**Current focus:** Phase 5 Spotlight Onboarding Guide
 
 ## Key Decisions
 - **UX Sequence**: 프리셋 적용 직후 고급 설정을 자동 노출하여 사용자의 세부 조정을 유도함.

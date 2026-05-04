@@ -2,16 +2,28 @@
 kanban-plugin: basic
 ---
 
-# TODO (v0.7.13)
+# TODO (v1.1.0-alpha.1)
 
-## Backlog (우선순위 상향)
+## Backlog (v1.1)
+- [ ] **Phase 5: Step 1 Spotlight 온보딩 가이드**
+  - [ ] Step 1 첫 접속 시 프리셋 선택 영역 강조 Spotlight 가이드 구현
+  - [ ] 단계별 흐름 안내 및 localStorage 상태 저장
 - [ ] **Step 3: 포트폴리오 시각화 및 구성 (준비 중)**
   - [ ] Step 1의 투자 여력 데이터를 기반으로 계좌/종목 비중 구성 및 시각화(도넛, Sankey) 구현
   - [ ] 목표 비중(Target) vs 실제 보유(Actual) 격차 분석 및 리밸런싱 가이드 통합
-- [ ] 처음 접속시 쉬운 입력값 입력 가이드. (Spotlight UX 가이드 도입 고려)
-- [ ] Step 1 지출 내역 이전 데이터 비교 막대 그래프 추가 (Issue #4)
 
-## Done (v0.7.12 Patch)
+## Done (v0.7.15 Patch)
+- [x] **Triple Sync 완결 (v0.7.15)**: `sw.js`, `manifest.webmanifest`, `app.js` 버전 동기화 및 PWA 캐시 갱신.
+- [x] **Phase 4: KPI 대시보드 카드 및 테이블 정리**:
+  - [x] 시뮬레이션 결과 요약 KPI 카드(최종 자산, 배당금, 수익률) 구현
+  - [x] 테이블 헤더 (만원) 표기 제거 및 레이아웃 정제
+  - [x] DESIGN.md Glassmorphism 스타일 적용 및 모바일 대응
+- [x] **Phase 3: 시뮬레이션 차트 시각화 고도화**:
+  - [x] 인터랙티브 툴팁 및 SVG 반응형 개선
+  - [x] PR/TR 복리 효과 가시화 (Polygon 영역)
+  - [x] 배당 시뮬레이션 프리셋 3종 추가
+
+## Done (v0.7.13 Patch)
 - [x] **시뮬레이션 UI 고도화**: `simTable` 헤더 툴팁을 JS 기반 전역 핸들러로 전환하여 `overflow` 문제를 해결하고 즉각적인 반응성 확보.
 - [x] **시뮬레이션 UI 고도화**: 차트 툴팁을 '배당 재투자' 설정값에 따라 PR/TR 중 해당하는 정보만 노출하도록 롤백 및 최적화.
 

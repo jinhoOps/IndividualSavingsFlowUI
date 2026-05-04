@@ -124,6 +124,8 @@
               </div>
             </div>
 
+            <div id="simKpiGrid" class="kpi-grid"></div>
+
             <div class="sim-chart-wrap" style="position: relative; margin-top: 10px;">
               <svg id="simChartSvg" viewBox="0 0 600 220" role="img" aria-label="연도별 배당금 추이"></svg>
               <div id="simChartTooltip" class="sim-tooltip" hidden></div>
@@ -135,10 +137,10 @@
                   <tr>
                     <th rowspan="2" style="text-align: center; vertical-align: middle;">연차</th>
                     <th rowspan="2" style="text-align: center; vertical-align: middle;">누적 원금</th>
-                    <th colspan="2" style="text-align: center;" data-tooltip="배당(분배금)을 재투자하지 않는 PR(Price Return)">자산(PR)</th>
-                    <th colspan="2" style="text-align: center;" data-tooltip="배당(분배금)을 재투자하는 TR(Total Return)">자산(TR)</th>
-                    <th colspan="2" style="text-align: center;" data-tooltip="배당(분배금)을 재투자하지 않는 PR(Price Return)">연 배당(PR)</th>
-                    <th colspan="2" style="text-align: center;" data-tooltip="배당(분배금)을 재투자하는 TR(Total Return)">연 배당(TR)</th>
+                    <th colspan="2" style="text-align: center;" data-tooltip="배당을 재투자하지 않는 순수 주가 상승 케이스 (Price Return)">자산 (PR)</th>
+                    <th colspan="2" style="text-align: center;" data-tooltip="배당을 전액 재투자하여 복리 효과를 극대화한 케이스 (Total Return)">자산 (TR)</th>
+                    <th colspan="2" style="text-align: center;" data-tooltip="재투자하지 않을 때 받는 세후 배당금">연 배당 (PR)</th>
+                    <th colspan="2" style="text-align: center;" data-tooltip="재투자로 인해 늘어난 수량까지 합산된 세후 배당금">연 배당 (TR)</th>
                   </tr>
                   <tr>
                     <th>명목</th>

@@ -20,6 +20,7 @@ export const dom = {
   simChartTooltip: null,
   simTable: null,
   simYearsTabs: null,
+  simKpiGrid: null,
 };
 
 export function initDom() {
@@ -43,6 +44,7 @@ export function initDom() {
     simChartSvg: "simChartSvg",
     simChartTooltip: "simChartTooltip",
     simYearsTabs: "simYearsTabs",
+    simKpiGrid: "simKpiGrid",
   };
 
   for (const [key, id] of Object.entries(selectors)) {

@@ -37,6 +37,8 @@ export function renderDividendSimulation() {
   if (!dom.simTable) return;
   const data = calculateDividendProjection();
   
+  renderKpiCards(data);
+
   dom.simTable.innerHTML = data.map(d => `
     <tr>
       <td>${d.year}년</td>
@@ -53,6 +55,34 @@ export function renderDividendSimulation() {
   `).join("");
 
   if (dom.simChartSvg) drawSimulationChart(dom.simChartSvg, data);
+}
+
+export function renderKpiCards(data) {
+  if (!dom.simKpiGrid || !data || data.length === 0) return;
+  
+  const last = data[data.length - 1];
+  const finalAsset = last.assetNominalTR;
+  const finalDividend = last.dividendAfterTaxTR;
+  const totalPrincipal = last.principal;
+  
+  const returnRate = totalPrincipal > 0 
+    ? ((finalAsset / totalPrincipal) - 1) * 100 
+    : 0;
+
+  dom.simKpiGrid.innerHTML = `
+    <div class="kpi-card">
+      <div class="kpi-label">최종 예상 자산</div>
+      <div class="kpi-value">${utils.toMan(finalAsset).toLocaleString()}<span class="kpi-unit">만원</span></div>
+    </div>
+    <div class="kpi-card kpi-card--accent">
+      <div class="kpi-label">최종 연 배당금(세후)</div>
+      <div class="kpi-value">${utils.toMan(finalDividend).toLocaleString()}<span class="kpi-unit">만원</span></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">누적 수익률</div>
+      <div class="kpi-value">${returnRate.toFixed(1)}<span class="kpi-unit">%</span></div>
+    </div>
+  `;
 }
 
 function drawSimulationChart(svg, data) {

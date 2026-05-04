@@ -160,6 +160,58 @@ body.is-dashboard-mode .info-panel {
   gap: var(--sp-md);
 }
 
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.kpi-card {
+  padding: 20px 16px;
+  background: var(--panel);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--line);
+  border-radius: var(--rd-md);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  box-shadow: var(--sh-soft);
+  transition: transform 0.2s ease;
+}
+
+.kpi-card:hover {
+  transform: translateY(-2px);
+}
+
+.kpi-label {
+  font-size: var(--text-caption);
+  color: var(--muted);
+  font-weight: 700;
+  margin-bottom: 8px;
+  letter-spacing: -0.01em;
+}
+
+.kpi-value {
+  font-size: 1.5rem;
+  font-family: var(--font-display);
+  font-weight: 800;
+  color: var(--tone-primary);
+  line-height: 1;
+}
+
+.kpi-unit {
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: var(--muted);
+  margin-left: 2px;
+}
+
+.kpi-card--accent .kpi-value {
+  color: var(--tone-accent);
+}
 
 .sim-chart-wrap {
   background: var(--panel);
@@ -252,6 +304,11 @@ body.is-dashboard-mode .info-panel {
 
   .form-grid {
     grid-template-columns: 1fr;
+  }
+
+  .kpi-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
   }
 
   .projection-table th,
