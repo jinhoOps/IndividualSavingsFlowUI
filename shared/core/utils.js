@@ -16,8 +16,47 @@
       return "0 만원";
     }
     const manValue = Math.round(numericValue / 10000);
+    
+    if (manValue >= 10000) {
+      const eok = Math.floor(manValue / 10000);
+      const remainMan = manValue % 10000;
+      if (remainMan === 0) {
+        return `${eok.toLocaleString("ko-KR")} 억원`;
+      }
+      return `${eok.toLocaleString("ko-KR")} 억 ${remainMan.toLocaleString("ko-KR")} 만원`;
+    }
+    
     const formatted = manValue.toLocaleString("ko-KR");
     return `${formatted} 만원`;
+  }
+
+  function getFinancialIncomeStatus(annualIncomeWon) {
+    const income = Number(annualIncomeWon || 0);
+    if (income > 34000000) return "crit";
+    if (income > 19000000) return "warn";
+    return "normal";
+  }
+
+  function calculateIncomeTax(taxableIncomeWon) {
+    const income = Math.max(0, Number(taxableIncomeWon || 0));
+    // 2024년 이후 소득세법 개정안 기준 (단위: 원)
+    if (income <= 14000000) {
+      return Math.round(income * 0.06);
+    } else if (income <= 50000000) {
+      return Math.round(income * 0.15 - 1260000);
+    } else if (income <= 88000000) {
+      return Math.round(income * 0.24 - 5760000);
+    } else if (income <= 150000000) {
+      return Math.round(income * 0.35 - 15440000);
+    } else if (income <= 300000000) {
+      return Math.round(income * 0.38 - 19940000);
+    } else if (income <= 500000000) {
+      return Math.round(income * 0.40 - 25940000);
+    } else if (income <= 1000000000) {
+      return Math.round(income * 0.42 - 35940000);
+    } else {
+      return Math.round(income * 0.45 - 65940000);
+    }
   }
 
   function formatTimestamp(timestamp) {
@@ -85,7 +124,10 @@
   }
 
   global.IsfUtils = {
+    APP_VERSION: "0.8.4",
     formatMoney,
+    getFinancialIncomeStatus,
+    calculateIncomeTax,
     formatTimestamp,
     sanitizeMoney,
     sanitizeRate,

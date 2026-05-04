@@ -69,7 +69,7 @@ function init() {
   void initializeInputsFromShareId();
 
   const pwaManager = new window.IsfPwaManager({
-    appVersion: "0.8.3",
+    appVersion: window.IsfUtils.APP_VERSION,
     appKey: SHARE_STATE_KEY,
     onFeedback: (message) => window.IsfFeedback.showFeedback(dom.applyFeedback, message),
     isViewMode: () => state.isViewMode,
@@ -659,7 +659,28 @@ function renderProjectionTable(records, horizonYears, expenseGrowth) {
   if (!dom.projectionTableBody) return;
   dom.projectionTableBody.innerHTML = records.map((r, i) => {
     if (i > 0 && i % 12 !== 0 && i !== records.length - 1) return "";
-    return `<tr><td>${i === 0 ? "현재" : `${i / 12}년 후`}</td><td>${formatCurrency(r.monthlyIncome)}</td><td>${formatCurrency(r.monthlyExpense)}</td><td>${formatCurrency(r.debtInterest)}</td><td>${formatCurrency(r.actualDebtPayment)}</td><td>${formatCurrency(r.newBorrowing)}</td><td>${formatCurrency(r.cash)}</td><td>${formatCurrency(r.savings)}</td><td>${formatCurrency(r.invest)}</td><td>${formatCurrency(r.debt)}</td><td class="fw-bold">${formatCurrency(r.netAsset)}</td><td class="text-muted small">${formatCurrency(r.realNetAsset)}</td></tr>`;
+    
+    const statusClass = window.IsfUtils.getFinancialIncomeStatus(r.annualFinancialIncome);
+    const trClass = statusClass !== 'normal' ? `status--${statusClass}` : '';
+    const badge = statusClass === 'warn' ? '<span class="status-badge status-badge--warn">과세주의</span>' : 
+                  statusClass === 'crit' ? '<span class="status-badge status-badge--crit">과세대상</span>' : '';
+
+    return `
+      <tr class="${trClass}">
+        <td>${i === 0 ? "현재" : `${i / 12}년 후`}</td>
+        <td>${formatCurrency(r.monthlyIncome)}</td>
+        <td>${formatCurrency(r.monthlyExpense)}</td>
+        <td>${formatCurrency(r.debtInterest)}</td>
+        <td>${formatCurrency(r.actualDebtPayment)}</td>
+        <td>${formatCurrency(r.newBorrowing)}</td>
+        <td>${formatCurrency(r.cash)}</td>
+        <td>${formatCurrency(r.savings)}</td>
+        <td>${formatCurrency(r.invest)}</td>
+        <td>${formatCurrency(r.debt)}</td>
+        <td class="fw-bold">${formatCurrency(r.netAsset)} ${badge}</td>
+        <td class="text-muted small">${formatCurrency(r.realNetAsset)}</td>
+      </tr>
+    `;
   }).join("");
 }
 

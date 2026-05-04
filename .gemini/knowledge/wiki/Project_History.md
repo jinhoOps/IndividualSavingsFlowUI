@@ -8,6 +8,11 @@ tags: [history, timeline, legacy]
 
 ## 🕒 주요 마일스톤
 
+### [2026-05-04] Runtime Version Management Centralization (v0.8.3)
+- UI 하드코딩된 버전 표기를 `IsfUtils.APP_VERSION`으로 변수화 및 일원화.
+- `AppHeader` 및 PWA 매니저의 버전 참조 로직 동적화.
+- "Triple Sync" 유지보수 비용 절감 및 데이터 정합성 보장.
+
 ### [2026-05-04] Phase 5: Step 1 Spotlight Onboarding (v0.8.3) 🌟
 - 신규 사용자를 위한 프리셋 가이드 및 `IsfOnboardingManager` 구현 완료.
 - 모바일 플로팅 툴팁 및 Spotlight 하이라이트 효과 고도화.

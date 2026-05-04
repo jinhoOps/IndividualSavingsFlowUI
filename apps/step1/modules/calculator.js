@@ -185,6 +185,12 @@ export function simulateProjection(inputs) {
   const savingsBuckets = buildSavingsBuckets(inputs);
   const investBuckets = buildInvestBuckets(inputs);
 
+  // 현재 시점의 가중평균 연 수익률 계산 (경고용)
+  const avgSavingsRate = savingsBuckets.length > 0 
+    ? savingsBuckets.reduce((sum, b) => sum + b.annualRate, 0) / savingsBuckets.length 
+    : inputs.annualSavingsYield;
+  const investRate = inputs.annualInvestReturn;
+
   let cash = window.IsfUtils.sanitizeMoney(inputs.startCash, 0);
   let savings = savingsBuckets.reduce((sum, bucket) => sum + bucket.balance, 0);
   let invest = investBuckets.reduce((sum, bucket) => sum + bucket.balance, 0);
@@ -301,6 +307,8 @@ export function simulateProjection(inputs) {
         invest,
         debt,
         realDiscountFactor: Math.pow(purchasingPowerFactor, monthIndex),
+        avgSavingsRate,
+        investRate
       }),
     );
   }
@@ -320,9 +328,14 @@ export function buildProjectionRecord({
   invest,
   debt,
   realDiscountFactor = 1,
+  avgSavingsRate = 0,
+  investRate = 0
 }) {
   const netAsset = cash + savings + invest - debt;
   const realNetAsset = netAsset / Math.max(realDiscountFactor, 1e-9);
+  
+  // 연간 금융 수익 (이자 + 투자수익) 추정
+  const annualFinancialIncome = (savings * (avgSavingsRate / 100)) + (invest * (investRate / 100));
 
   return {
     monthIndex,
@@ -337,6 +350,7 @@ export function buildProjectionRecord({
     debt,
     netAsset,
     realNetAsset,
+    annualFinancialIncome
   };
 }
 

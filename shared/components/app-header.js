@@ -25,6 +25,7 @@ export class AppHeader extends HTMLElement {
   }
 
   render() {
+    const version = this.getAttribute('version') || (window.IsfUtils ? window.IsfUtils.APP_VERSION : '0.0.0');
     this.innerHTML = `
       <header class="app-header">
         <div class="app-header__inner">
@@ -49,7 +50,7 @@ export class AppHeader extends HTMLElement {
           </nav>
 
           <div style="display: flex; align-items: center; gap: var(--sp-xs); position: relative;">
-            <span class="version-badge">v0.8.1</span>
+            <span class="version-badge">v${version}</span>
             <button type="button" id="headerDataHubBtn" class="btn btn-ghost btn-sm" title="데이터 관리">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="12" cy="12" r="3"></circle>

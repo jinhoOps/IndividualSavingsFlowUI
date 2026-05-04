@@ -39,20 +39,27 @@ export function renderDividendSimulation() {
   
   renderKpiCards(data);
 
-  dom.simTable.innerHTML = data.map(d => `
-    <tr>
-      <td>${d.year}년</td>
-      <td>${formatCurrency(d.principal)}</td>
-      <td class="nominal">${formatCurrency(d.assetNominalPR)}</td>
-      <td class="real">${formatCurrency(d.assetRealPR)}</td>
-      <td class="nominal">${formatCurrency(d.assetNominalTR)}</td>
-      <td class="real">${formatCurrency(d.assetRealTR)}</td>
-      <td class="nominal">${formatCurrency(d.dividendAfterTaxPR)}</td>
-      <td class="real">${formatCurrency(d.dividendAfterTaxRealPR)}</td>
-      <td class="nominal">${formatCurrency(d.dividendAfterTaxTR)}</td>
-      <td class="real">${formatCurrency(d.dividendAfterTaxRealTR)}</td>
-    </tr>
-  `).join("");
+  dom.simTable.innerHTML = data.map(d => {
+    const statusClass = utils.getFinancialIncomeStatus(d.dividendNominalTR);
+    const trClass = statusClass !== 'normal' ? `status--${statusClass}` : '';
+    const badge = statusClass === 'warn' ? '<span class="status-badge status-badge--warn">종합과세 주의</span>' : 
+                  statusClass === 'crit' ? '<span class="status-badge status-badge--crit">종합과세 대상</span>' : '';
+
+    return `
+      <tr class="${trClass}">
+        <td>${d.year}년</td>
+        <td>${formatCurrency(d.principal)}</td>
+        <td class="nominal">${formatCurrency(d.assetNominalPR)}</td>
+        <td class="real">${formatCurrency(d.assetRealPR)}</td>
+        <td class="nominal">${formatCurrency(d.assetNominalTR)}</td>
+        <td class="real">${formatCurrency(d.assetRealTR)}</td>
+        <td class="nominal">${formatCurrency(d.dividendAfterTaxPR)}</td>
+        <td class="real">${formatCurrency(d.dividendAfterTaxRealPR)}</td>
+        <td class="nominal">${formatCurrency(d.dividendAfterTaxTR)} ${badge}</td>
+        <td class="real">${formatCurrency(d.dividendAfterTaxRealTR)}</td>
+      </tr>
+    `;
+  }).join("");
 
   if (dom.simChartSvg) drawSimulationChart(dom.simChartSvg, data);
 }
