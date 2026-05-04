@@ -4,10 +4,10 @@ kanban-plugin: basic
 
 # TODO (v1.1.0-alpha.1)
 
-## Backlog (v1.1)
-- [ ] **Phase 5: Step 1 Spotlight 온보딩 가이드**
-  - [ ] Step 1 첫 접속 시 프리셋 선택 영역 강조 Spotlight 가이드 구현
-  - [ ] 단계별 흐름 안내 및 localStorage 상태 저장
+## Done (v1.1.0-alpha.1)
+- [x] **Phase 5: Step 1 Spotlight 온보딩 가이드**
+  - [x] Step 1 첫 접속 시 프리셋 선택 영역 강조 Spotlight 가이드 구현
+  - [x] 단계별 흐름 안내 및 localStorage 상태 저장
 - [ ] **Step 3: 포트폴리오 시각화 및 구성 (준비 중)**
   - [ ] Step 1의 투자 여력 데이터를 기반으로 계좌/종목 비중 구성 및 시각화(도넛, Sankey) 구현
   - [ ] 목표 비중(Target) vs 실제 보유(Actual) 격차 분석 및 리밸런싱 가이드 통합

@@ -45,6 +45,7 @@ import {
 
 import { buildSankeyData } from "./modules/sankey-builder.js";
 import * as helpers from "./modules/state-helpers.js";
+import { initOnboarding } from "./modules/onboarding-manager.js";
 
 
 function init() {
@@ -68,7 +69,7 @@ function init() {
   void initializeInputsFromShareId();
 
   const pwaManager = new IsfPwaManager({
-    appVersion: "0.7.15",
+    appVersion: "1.1.0",
     appKey: SHARE_STATE_KEY,
     onFeedback: (message) => IsfFeedback.showFeedback(dom.applyFeedback, message),
     isViewMode: () => state.isViewMode,
@@ -82,6 +83,9 @@ function init() {
   if (state.isViewMode) {
     IsfFeedback.showFeedback(dom.applyFeedback, "보기 모드로 열었습니다. 로컬 저장값은 변경되지 않습니다.");
   }
+
+  // Phase 5: Onboarding Spotlight
+  initOnboarding();
 }
 
 if (document.readyState === "loading") {

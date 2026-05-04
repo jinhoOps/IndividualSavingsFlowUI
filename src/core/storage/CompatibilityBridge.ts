@@ -10,7 +10,8 @@ import { MoneyUtils } from '../types/money';
 export function initCompatibilityBridge() {
   const global = window as any;
 
-  global.IsfStorageHub = {
+  // Modern Storage Hub Bridge
+  const storageHub = {
     // Basic LocalStorage
     saveLocal: (key: string, data: any) => {
       localStorage.setItem(key, JSON.stringify(data));
@@ -24,7 +25,7 @@ export function initCompatibilityBridge() {
     // Step 1
     saveStep1Snapshot: async (data: any) => {
       await isfStore.saveStep1(data);
-      return { updatedAt: Date.now() }; // Fake return to match legacy
+      return { id: 'bkp-' + Date.now(), updatedAt: Date.now(), data };
     },
     getLatestStep1Snapshot: () => isfStore.loadStep1(),
 
@@ -36,6 +37,15 @@ export function initCompatibilityBridge() {
       return all.find(s => s.id === id) || null;
     },
     deleteStep2Entry: (id: string) => isfStore.deleteStep2Simulation(id),
+
+    // Step 2 Aliases
+    saveStep2Portfolio: (p: any) => isfStore.saveStep2Simulation(p),
+    listStep2Portfolios: () => isfStore.listStep2Simulations(),
+    getStep2PortfolioById: async (id: string) => {
+      const all = await isfStore.listStep2Simulations();
+      return all.find(s => s.id === id) || null;
+    },
+    deleteStep2Portfolio: (id: string) => isfStore.deleteStep2Simulation(id),
 
     // Backup
     triggerAutoBackup: async (appKey: string, data: any, _current: any) => {
@@ -54,10 +64,34 @@ export function initCompatibilityBridge() {
       return { success: true, backupEntries: next };
     },
 
-    // Migration (Stub - user said wipe is fine)
+    // Migration
     ensureMigration: async () => {
-      console.log('IsfStorageHub: Modernized version active. Migration skipped per user request.');
+      console.log('IsfStorageHub: Modernized version active. Migration handled by IsfStore.');
     }
+  };
+
+  global.IsfStorageHub = storageHub;
+  global.IsfHubStorage = storageHub; // Alias for some legacy calls
+
+  // Modern Backup Manager Bridge
+  global.IsfBackupManager = {
+    isIndexedDbAvailable: () => true, // Modern store uses IDB
+    loadBackupEntriesFromDb: (appKey: string) => backupService.listBackups(appKey),
+    createBackupEntry: async (current: any, data: any, options: any) => {
+      const entry = await backupService.createBackup(options.appKey, data, { 
+        type: options.type || 'manual', 
+        source: options.source || 'normal' 
+      });
+      const next = await backupService.listBackups(options.appKey);
+      return { created: true, entry, nextEntries: next };
+    },
+    maybeCreateAutoBackupIfDue: async (current: any, data: any, appKey: string) => {
+      await backupService.maybeAutoBackup(appKey, data);
+      const next = await backupService.listBackups(appKey);
+      return { created: true, nextEntries: next };
+    },
+    getBackupTimestampMs: (entry: any) => entry.createdAt || 0,
+    migrateAppKey: async () => true // No-op in modern
   };
 
   // Legacy Utility Aliases

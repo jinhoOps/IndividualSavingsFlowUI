@@ -1,4 +1,7 @@
 import '../styles/globals.css';
+import '../../shared/styles/step-theme.css';
+import '../../apps/step2/styles.css';
+
 import { initCompatibilityBridge } from '../core/storage/CompatibilityBridge';
 
 // Initialize modern storage and legacy bridge

@@ -332,3 +332,4 @@
 - shared/styles/step-theme.css에 --text-* 변수 도입 및 버튼 scale(0.96) 피드백 추가.
 - apps/step1 및 apps/step2의 하드코딩된 스타일을 공통 토큰으로 마이그레이션 완료.
 - isf-evaluator를 통한 시각적/반응형 정합성 최종 검증 완료.
+`n## [2026-05-04] ingest | Modernization Pivot & Storage v2 Implementation`n- 프로젝트 헌법 개정: No-build 원칙 폐기 및 Vite/TS/Tailwind v4 도입.`n- 통합 스토리지 v2 설계: IsfStore.ts 및 BackupService.ts를 통한 TypeScript 기반 데이터 관리.`n- 단위 정합성 수호: Branded Types (Won, ManWon) 도입으로 연산 실수 방지.`n- CI/CD 구축: GitHub Actions를 통한 PWA 자동 배포 워크플로우 설정.`n- 위키 인덱스 재구조화: 현대화된 아키텍처 중심으로 지식 맵 갱신 및 레거시 아카이브.
