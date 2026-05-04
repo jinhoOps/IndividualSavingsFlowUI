@@ -218,44 +218,40 @@ function drawSimulationChart(svg, data) {
   svg.appendChild(legendPR);
 }
 
-/**
- * 전역 툴팁 초기화 (data-tooltip 속성 처리)
- */
 export function initGlobalTooltips() {
-  const tooltip = document.getElementById("simChartTooltip");
-  if (!tooltip) return;
+  let tooltip = document.getElementById("isf-table-tooltip");
+  if (!tooltip) {
+    tooltip = document.createElement("div");
+    tooltip.id = "isf-table-tooltip";
+    tooltip.className = "isf-table-tooltip";
+    document.body.appendChild(tooltip);
+  }
 
-  const showTooltip = (e) => {
+  const show = (e) => {
     const target = e.target.closest("[data-tooltip]");
     if (!target) return;
-
+    tooltip.textContent = target.dataset.tooltip;
     tooltip.style.display = "block";
-    tooltip.innerHTML = `<div style="max-width: 200px; text-align: center;">${target.dataset.tooltip}</div>`;
-    
-    const rect = target.getBoundingClientRect();
-    const tooltipRect = tooltip.getBoundingClientRect();
-    
-    // 화면 하단에 표시
-    tooltip.style.position = "fixed";
-    tooltip.style.left = `${rect.left + rect.width / 2}px`;
-    tooltip.style.top = `${rect.bottom + 10}px`;
-    tooltip.style.transform = "translateX(-50%)";
-    tooltip.style.zIndex = "10000";
+    const r = target.getBoundingClientRect();
+    const tw = tooltip.offsetWidth;
+    let left = r.left + r.width / 2 - tw / 2;
+    left = Math.max(8, Math.min(left, window.innerWidth - tw - 8));
+    tooltip.style.left = `${left + window.scrollX}px`;
+    tooltip.style.top = `${r.bottom + window.scrollY + 8}px`;
   };
 
-  const hideTooltip = () => {
-    tooltip.style.display = "none";
-  };
+  const hide = () => { tooltip.style.display = "none"; };
 
-  document.addEventListener("mouseover", showTooltip);
-  document.addEventListener("mouseout", (e) => {
-    if (e.target.closest("[data-tooltip]")) hideTooltip();
+  document.addEventListener("mouseover", (e) => {
+    if (e.target.closest("[data-tooltip]")) show(e);
+    else hide();
   });
-  
-  // 모바일 대응
+  document.addEventListener("focusin", show);
+  document.addEventListener("focusout", hide);
+
   document.addEventListener("touchstart", (e) => {
-    if (e.target.closest("[data-tooltip]")) showTooltip(e);
-    else hideTooltip();
+    if (e.target.closest("[data-tooltip]")) show(e);
+    else hide();
   }, { passive: true });
 }
 
