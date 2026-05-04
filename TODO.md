@@ -2,7 +2,7 @@
 kanban-plugin: basic
 ---
 
-# TODO (v0.7.9)
+# TODO (v0.7.10)
 
 ## Backlog (우선순위 상향)
 - [ ] **Step 3: 포트폴리오 시각화 및 구성 (준비 중)**
@@ -11,12 +11,13 @@ kanban-plugin: basic
 - [ ] 처음 접속시 쉬운 입력값 입력 가이드. (Spotlight UX 가이드 도입 고려)
 - [ ] Step 1 지출 내역 이전 데이터 비교 막대 그래프 추가 (Issue #4)
 
-## Done (v0.7.8 Patch)
+## Done (v0.7.9 Patch)
 - [x] **시뮬레이션 UI 고도화**: 프리셋 버튼 2-Depth (카테고리 -> 비율) 구성 개편 및 가중 평균 자동 계산 로직 적용.
+- [x] **시뮬레이션 UI 고도화**: PR/TR 시각화 설명 툴팁 보완 및 시뮬레이션 결과 테이블 헤더 텍스트 간소화.
 - [x] **렌더러(툴팁) 안정성 강화**: SVG 영역 이탈 방지 좌표 계산 추가 (`apps/step2/modules/renderers.js`).
 - [x] **앱 마이그레이션 방어 로직 추가**: `backup-manager.js`의 AppKey 마이그레이션 간 IDB ObjectStore 인덱스 방어 코드 작성 및 버전 상향.
 
-## Done (v0.7.7 Patch)
+## Done (v0.7.8 Patch)
 - [x] **Phase 2: 템플릿 세부 항목 수동 조절 기능**: 프리셋 로드 후 세부 항목 편집 UX 및 로직 강화.
 - [x] **항목 편집기 고도화**: 변경 감지 서명(Signature) 확장 및 동적 적용 버튼 제어 구현.
 - [x] **Triple Sync 완결 (v0.7.7)**: `sw.js`, `manifest.webmanifest`, `app.js` 버전 동기화 완료.
