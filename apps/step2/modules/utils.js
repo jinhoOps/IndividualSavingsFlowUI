@@ -14,8 +14,14 @@ export const utils = window.IsfUtils || {
   },
   formatMoney: v => {
     if (typeof window.IsfUtils !== "undefined" && window.IsfUtils.formatMoney) return window.IsfUtils.formatMoney(v);
-    const manValue = Number(v || 0) / 10000;
-    return Number(manValue.toFixed(2)).toLocaleString() + " 만원";
+    const numericValue = Number(v || 0);
+    const manValue = Math.round(numericValue / 10000);
+    if (manValue >= 10000) {
+      const eok = Math.floor(manValue / 10000);
+      const remainMan = manValue % 10000;
+      return remainMan === 0 ? `${eok.toLocaleString()} 억원` : `${eok.toLocaleString()} 억 ${remainMan.toLocaleString()} 만원`;
+    }
+    return manValue.toLocaleString() + " 만원";
   },
   formatTimestamp: t => {
     if (typeof window.IsfUtils !== "undefined" && window.IsfUtils.formatTimestamp) return window.IsfUtils.formatTimestamp(t);

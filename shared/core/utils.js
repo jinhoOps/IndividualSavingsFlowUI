@@ -32,8 +32,10 @@
 
   function getFinancialIncomeStatus(annualIncomeWon) {
     const income = Number(annualIncomeWon || 0);
-    if (income > 34000000) return "crit";
-    if (income > 19000000) return "warn";
+    // 종합과세 대상 + 누진세율 본격화(3,400만) 버퍼 반영
+    if (income > 32640000) return "crit";
+    // 종합과세 기준(2,000만) 버퍼 반영
+    if (income > 19200000) return "warn";
     return "normal";
   }
 
@@ -124,7 +126,7 @@
   }
 
   global.IsfUtils = {
-    APP_VERSION: "0.8.4",
+    APP_VERSION: "0.8.5",
     formatMoney,
     getFinancialIncomeStatus,
     calculateIncomeTax,

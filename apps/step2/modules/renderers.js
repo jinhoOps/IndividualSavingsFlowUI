@@ -79,11 +79,11 @@ export function renderKpiCards(data) {
   dom.simKpiGrid.innerHTML = `
     <div class="kpi-card">
       <div class="kpi-label">최종 예상 자산</div>
-      <div class="kpi-value">${utils.toMan(finalAsset).toLocaleString()}<span class="kpi-unit">만원</span></div>
+      <div class="kpi-value">${formatCurrency(finalAsset)}</div>
     </div>
     <div class="kpi-card kpi-card--accent">
       <div class="kpi-label">최종 연 배당금(세후)</div>
-      <div class="kpi-value">${utils.toMan(finalDividend).toLocaleString()}<span class="kpi-unit">만원</span></div>
+      <div class="kpi-value">${formatCurrency(finalDividend)}</div>
     </div>
     <div class="kpi-card">
       <div class="kpi-label">누적 수익률</div>
@@ -117,7 +117,7 @@ function drawSimulationChart(svg, data) {
     const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
     text.setAttribute("x", padding - 5); text.setAttribute("y", yPos + 3);
     text.setAttribute("text-anchor", "end"); text.setAttribute("font-size", "10"); text.setAttribute("fill", "#6b7280");
-    text.textContent = utils.toMan(yVal).toLocaleString();
+    text.textContent = formatCurrency(yVal);
     svg.appendChild(text);
   }
 
@@ -168,14 +168,21 @@ function drawSimulationChart(svg, data) {
     const yTR = (height - padding) - (d.assetNominalTR / maxVal) * (height - 2 * padding);
     const yPR = (height - padding) - (d.assetNominalPR / maxVal) * (height - 2 * padding);
 
+    const statusClassTR = utils.getFinancialIncomeStatus(d.dividendNominalTR);
+    const colorTR = statusClassTR === 'crit' ? '#dc2626' : statusClassTR === 'warn' ? '#f59e0b' : '#ea5b2a';
+    const statusClassPR = utils.getFinancialIncomeStatus(d.dividendNominalPR);
+    const colorPR = statusClassPR === 'crit' ? '#dc2626' : statusClassPR === 'warn' ? '#f59e0b' : '#8a8f98';
+
     const circleTR = document.createElementNS("http://www.w3.org/2000/svg", "circle");
     circleTR.setAttribute("cx", x); circleTR.setAttribute("cy", yTR);
-    circleTR.setAttribute("r", "3"); circleTR.setAttribute("fill", "#ea5b2a");
+    circleTR.setAttribute("r", statusClassTR !== 'normal' ? "4" : "3"); 
+    circleTR.setAttribute("fill", colorTR);
     svg.appendChild(circleTR);
 
     const circlePR = document.createElementNS("http://www.w3.org/2000/svg", "circle");
     circlePR.setAttribute("cx", x); circlePR.setAttribute("cy", yPR);
-    circlePR.setAttribute("r", "2"); circlePR.setAttribute("fill", "#8a8f98");
+    circlePR.setAttribute("r", statusClassPR !== 'normal' ? "3" : "2"); 
+    circlePR.setAttribute("fill", colorPR);
     svg.appendChild(circlePR);
 
     if (i % Math.ceil(data.length/5) === 0 || i === data.length - 1) {
@@ -209,26 +216,26 @@ function drawSimulationChart(svg, data) {
     rect.style.cursor = "pointer";
     
     const showTooltip = (e) => {
-        tooltip.style.display = 'block';
         const isDrip = state.draft?.dividendSim?.isDrip !== false;
+        const divNominal = isDrip ? d.dividendNominalTR : d.dividendNominalPR;
+        const assetNominal = isDrip ? d.assetNominalTR : d.assetNominalPR;
+        const statusClass = utils.getFinancialIncomeStatus(divNominal);
+        
+        const badge = statusClass === 'warn' ? '<div class="status-badge status-badge--warn" style="margin: 4px 0 0 0; display: block; text-align: center;">종합과세 주의</div>' : 
+                      statusClass === 'crit' ? '<div class="status-badge status-badge--crit" style="margin: 4px 0 0 0; display: block; text-align: center;">종합과세 대상</div>' : '';
+
         tooltip.style.display = 'block';
-        tooltip.innerHTML = isDrip ? `
-          <div style="font-weight: 600; margin-bottom: 4px;">${d.year}년 (TR:재투자)</div>
-          <div>총 자산: ${utils.toMan(d.assetNominalTR).toLocaleString()} 만원</div>
-          <div>연 배당: ${utils.toMan(d.dividendNominalTR).toLocaleString()} 만원</div>
-        ` : `
-          <div style="font-weight: 600; margin-bottom: 4px;">${d.year}년 (PR:미투자)</div>
-          <div>총 자산: ${utils.toMan(d.assetNominalPR).toLocaleString()} 만원</div>
-          <div>연 배당: ${utils.toMan(d.dividendNominalPR).toLocaleString()} 만원</div>
+        tooltip.innerHTML = `
+          <div style="font-weight: 600; margin-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 2px;">
+            ${d.year}년 (${isDrip ? '재투자' : '일반'})
+          </div>
+          <div style="font-size: 0.75rem; opacity: 0.9;">자산: ${formatCurrency(assetNominal)}</div>
+          <div style="font-size: 0.75rem; opacity: 0.9;">배당: ${formatCurrency(divNominal)} (세전)</div>
+          ${badge}
         `;
         const containerRect = svg.getBoundingClientRect();
         const scale = containerRect.width / width;
         let actualX = x * scale;
-        
-        const tooltipWidth = 140; // approximate width
-        const halfWidth = tooltipWidth / 2;
-        if (actualX - halfWidth < 0) actualX = halfWidth;
-        if (actualX + halfWidth > containerRect.width) actualX = containerRect.width - halfWidth;
         
         tooltip.style.left = `${actualX}px`;
         tooltip.style.top = '10%';
