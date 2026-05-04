@@ -38,14 +38,18 @@ export async function resolveLatestStep1Snapshot(hub) {
   if (!hub) return { snapshot: null }; 
   try { 
     const s1 = await hub.getLatestStep1Snapshot();
-    if (!s1 || !s1.data) return { snapshot: null };
+    if (!s1) return { snapshot: null };
+    
+    // Modernized storage (IsfStore) returns the state directly or in a slightly different format
+    // Legacy storage (hub-storage) returns { id, data, updatedAt }
+    const payloadData = s1.data || s1;
     
     return {
       snapshot: {
-        id: s1.id,
+        id: s1.id || "recent",
         payload: {
-          monthlyInvestCapacity: Number(s1.data.monthlyInvest) || 0,
-          timestamp: new Date(s1.updatedAt).toISOString()
+          monthlyInvestCapacity: Number(payloadData.monthlyInvest) || 0,
+          timestamp: new Date(s1.updatedAt || Date.now()).toISOString()
         }
       }
     };

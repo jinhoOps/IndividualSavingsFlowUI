@@ -69,7 +69,7 @@ function init() {
   void initializeInputsFromShareId();
 
   const pwaManager = new window.IsfPwaManager({
-    appVersion: "0.8.2",
+    appVersion: "0.8.3",
     appKey: SHARE_STATE_KEY,
     onFeedback: (message) => window.IsfFeedback.showFeedback(dom.applyFeedback, message),
     isViewMode: () => state.isViewMode,
