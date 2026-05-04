@@ -64,7 +64,7 @@ export async function importLatestStep1Data() {
     
     renderDraft();
     markDirty();
-    IsfFeedback.showFeedback(dom.applyFeedback, "Step 1 데이터 동기화 완료");
+    window.IsfFeedback.showFeedback(dom.applyFeedback, "Step 1 데이터 동기화 완료");
     
     if (dom.step1SyncBanner) dom.step1SyncBanner.hidden = true;
   }

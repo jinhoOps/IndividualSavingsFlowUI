@@ -13,12 +13,12 @@ export const utils = window.IsfUtils || {
     return Math.round(Math.min(limit, parsed) * 100) / 100;
   },
   formatMoney: v => {
-    if (typeof IsfUtils !== "undefined" && IsfUtils.formatMoney) return IsfUtils.formatMoney(v);
+    if (typeof window.IsfUtils !== "undefined" && window.IsfUtils.formatMoney) return window.IsfUtils.formatMoney(v);
     const manValue = Number(v || 0) / 10000;
     return Number(manValue.toFixed(2)).toLocaleString() + " 만원";
   },
   formatTimestamp: t => {
-    if (typeof IsfUtils !== "undefined" && IsfUtils.formatTimestamp) return IsfUtils.formatTimestamp(t);
+    if (typeof window.IsfUtils !== "undefined" && window.IsfUtils.formatTimestamp) return window.IsfUtils.formatTimestamp(t);
     return t ? new Date(t).toLocaleString() : "-";
   },
   toWon: v => {
@@ -35,8 +35,8 @@ export const utils = window.IsfUtils || {
   },
   escapeHtml: s => String(s || "").replace(/[&<>"']/g, m => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[m])),
   createId: p => {
-    if (typeof IsfUtils !== "undefined" && IsfUtils.createId) {
-      return IsfUtils.createId(p);
+    if (typeof window.IsfUtils !== "undefined" && window.IsfUtils.createId) {
+      return window.IsfUtils.createId(p);
     }
     const bytes = new Uint8Array(8);
     for (let i = 0; i < 8; i++) bytes[i] = Math.floor(Math.random() * 256);

@@ -58,7 +58,7 @@ async function initApp() {
       } catch (e) { console.warn("Session restore failed:", e); }
     } else if (hash) {
       try {
-        const payload = IsfShare.decodePayloadFromHash(
+        const payload = window.IsfShare.decodePayloadFromHash(
           new URLSearchParams(hash.replace(/^#/, "")).get(HASH_STATE_PARAM), 
           SHARE_STATE_KEY
         );
@@ -70,7 +70,7 @@ async function initApp() {
         }
       } catch (_e) { 
         console.error("Hash decode failed");
-        IsfFeedback.showFeedback(dom.applyFeedback, "복원 실패", true); 
+        window.IsfFeedback.showFeedback(dom.applyFeedback, "복원 실패", true); 
       }
     }
     
@@ -91,10 +91,10 @@ async function initApp() {
     
 
     try {
-      const pwa = new IsfPwaManager({
+      const pwa = new window.IsfPwaManager({
         appVersion: "0.8.1",
         appKey: SHARE_STATE_KEY,
-        onFeedback: (msg) => IsfFeedback.showFeedback(dom.applyFeedback, msg),
+        onFeedback: (msg) => window.IsfFeedback.showFeedback(dom.applyFeedback, msg),
         getCurrentData: () => state.draft,
       });
       pwa.init();
@@ -154,12 +154,12 @@ function bindModalEvents() {
   });
 
   dom.dataHubModal.addEventListener("export-json", () => {
-    IsfShare.exportAsJson(IsfShare.buildStateEnvelope(SHARE_STATE_KEY, SHARE_STATE_SCHEMA, toPortableSimulation()), "dividend-simulation");
+    window.IsfShare.exportAsJson(window.IsfShare.buildStateEnvelope(SHARE_STATE_KEY, SHARE_STATE_SCHEMA, toPortableSimulation()), "dividend-simulation");
     if (dom.appHeader) dom.appHeader.updateStatus("success", "JSON 저장 완료");
   });
 
   dom.dataHubModal.addEventListener("copy-share-link", async () => {
-    const enc = IsfShare.encodePayloadForHash(IsfShare.buildStateEnvelope(SHARE_STATE_KEY, SHARE_STATE_SCHEMA, toPortableSimulation()));
+    const enc = window.IsfShare.encodePayloadForHash(window.IsfShare.buildStateEnvelope(SHARE_STATE_KEY, SHARE_STATE_SCHEMA, toPortableSimulation()));
     const url = new URL(window.location.href);
     url.hash = `${HASH_STATE_PARAM}=${enc}`;
     try {
@@ -172,7 +172,7 @@ function bindModalEvents() {
 
   dom.dataHubModal.addEventListener("import-json", async (e) => {
     try {
-      const imported = IsfShare.parseImportedJson(await e.detail.file.text(), SHARE_STATE_KEY);
+      const imported = window.IsfShare.parseImportedJson(await e.detail.file.text(), SHARE_STATE_KEY);
       const norm = normalizeLoadedSimulation(imported);
       state.draft = norm.draft;
       state.currentSimulationId = norm.id || "";
@@ -361,7 +361,7 @@ function bindEvents() {
 }
 
 async function initializeBackupStore() {
-  if (!IsfBackupManager.isIndexedDbAvailable()) return;
+  if (!window.IsfBackupManager.isIndexedDbAvailable()) return;
   try {
 
     const hub = getHubStorage();
@@ -370,22 +370,13 @@ async function initializeBackupStore() {
     }
     
 
-    const entries = await IsfBackupManager.loadBackupEntriesFromDb(SHARE_STATE_KEY);
+    const entries = await window.IsfBackupManager.loadBackupEntriesFromDb(SHARE_STATE_KEY);
     state.backupStoreReady = true;
     if (entries) {
       state.backupEntries = entries;
       syncBackupUi();
     }
   } catch (e) {
-    console.error("initializeBackupStore failed:", e);
-    state.backupStoreReady = true;
-  }
-}
-
-oreReady = true;
-  }
-}
-
     console.error("initializeBackupStore failed:", e);
     state.backupStoreReady = true;
   }

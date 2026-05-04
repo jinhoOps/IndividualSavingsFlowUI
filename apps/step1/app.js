@@ -68,10 +68,10 @@ function init() {
   initializeBackupStore();
   void initializeInputsFromShareId();
 
-  const pwaManager = new IsfPwaManager({
+  const pwaManager = new window.IsfPwaManager({
     appVersion: "0.8.1",
     appKey: SHARE_STATE_KEY,
-    onFeedback: (message) => IsfFeedback.showFeedback(dom.applyFeedback, message),
+    onFeedback: (message) => window.IsfFeedback.showFeedback(dom.applyFeedback, message),
     isViewMode: () => state.isViewMode,
     swPath: "../../sw.js",
     manifestPath: "../../manifest.webmanifest",
@@ -81,7 +81,7 @@ function init() {
   pwaManager.init();
 
   if (state.isViewMode) {
-    IsfFeedback.showFeedback(dom.applyFeedback, "보기 모드로 열었습니다. 로컬 저장값은 변경되지 않습니다.");
+    window.IsfFeedback.showFeedback(dom.applyFeedback, "보기 모드로 열었습니다. 로컬 저장값은 변경되지 않습니다.");
   }
 
   // Phase 5: Onboarding Spotlight
@@ -96,7 +96,7 @@ if (document.readyState === "loading") {
 
 function checkReturningUser() {
   if (state.isViewMode || hasShareState()) return;
-  const persisted = IsfStorageHub.loadLocal(STORAGE_KEY);
+  const persisted = window.IsfStorageHub.loadLocal(STORAGE_KEY);
   if (persisted) {
     state.isDashboardMode = true;
     document.body.classList.add("is-dashboard-mode");
@@ -159,7 +159,7 @@ function bindControls() {
       if (!(target instanceof HTMLInputElement) || !FORM_FIELD_KEYS.includes(target.name)) return;
       
       const baseInputs = helpers.ensureDraftInputs(state);
-      state.draftInputs = sanitizeInputs(helpers.readInputsFromForm(dom.inputsForm, baseInputs, { FORM_FIELD_KEYS, toWon: IsfUtils.toWon }));
+      state.draftInputs = sanitizeInputs(helpers.readInputsFromForm(dom.inputsForm, baseInputs, { FORM_FIELD_KEYS, toWon: window.IsfUtils.toWon }));
       helpers.markDirty(state);
       markPendingChanges();
     });
@@ -300,17 +300,17 @@ function persistPrimaryState(inputs, options = {}) {
   if (state.isViewMode) return;
   if (dom.appHeader) dom.appHeader.updateStatus("saving", "저장 중...");
   try {
-    IsfStorageHub.saveLocal(STORAGE_KEY, inputs);
+    window.IsfStorageHub.saveLocal(STORAGE_KEY, inputs);
     if (!options.skipAutoBackup) {
       void (async () => {
-        const res = await IsfStorageHub.triggerAutoBackup(SHARE_STATE_KEY, inputs, state.backupEntries);
+        const res = await window.IsfStorageHub.triggerAutoBackup(SHARE_STATE_KEY, inputs, state.backupEntries);
         if (res.created) {
           state.backupEntries = res.nextEntries;
           syncBackupUi();
         }
       })();
     }
-    void persistStep1Snapshot(inputs, { getHubStorage: () => IsfStorageHub, isViewMode: state.isViewMode });
+    void persistStep1Snapshot(inputs, { getHubStorage: () => window.IsfStorageHub, isViewMode: state.isViewMode });
     if (dom.appHeader) dom.appHeader.updateStatus("success", "자동 저장됨");
   } catch (_e) {
     if (dom.appHeader) dom.appHeader.updateStatus("error", "저장 실패");
@@ -320,7 +320,7 @@ function persistPrimaryState(inputs, options = {}) {
 
 async function handleManualBackup() {
   if (state.isViewMode || !state.backupStoreReady) return;
-  const res = await IsfStorageHub.createManualBackup(SHARE_STATE_KEY, state.inputs, state.backupEntries, {
+  const res = await window.IsfStorageHub.createManualBackup(SHARE_STATE_KEY, state.inputs, state.backupEntries, {
     type: "manual", source: "normal", allowDuplicate: true,
     replaceRecentManualWithinMs: MANUAL_BACKUP_WINDOW_MS,
     onRecentManualOverwriteConfirm: () => window.confirm("최근 1분 이내 수동 백업이 있습니다. 덮어쓸까요?")
@@ -340,18 +340,18 @@ async function restoreBackupById(id) {
 }
 
 function handleExportJson() {
-  IsfShare.exportAsJson(IsfShare.buildStateEnvelope(SHARE_STATE_KEY, SHARE_STATE_SCHEMA, state.inputs), "my-household-flow");
+  window.IsfShare.exportAsJson(window.IsfShare.buildStateEnvelope(SHARE_STATE_KEY, SHARE_STATE_SCHEMA, state.inputs), "my-household-flow");
 }
 
 async function handleImportJson(file) {
   try {
-    const imported = IsfShare.parseImportedJson(await file.text(), SHARE_STATE_KEY);
+    const imported = window.IsfShare.parseImportedJson(await file.text(), SHARE_STATE_KEY);
     commitImmediateInputs(imported);
   } catch (_e) { if (dom.appHeader) dom.appHeader.updateStatus("error", "JSON 오류"); }
 }
 
 async function handleCopyShareLink() {
-  const link = await IsfShare.buildShareLink(state.inputs, { viewMode: true });
+  const link = await window.IsfShare.buildShareLink(state.inputs, { viewMode: true });
   if (link && navigator.clipboard) {
     await navigator.clipboard.writeText(link);
     if (dom.appHeader) dom.appHeader.updateStatus("success", "공유 링크 복사됨");
@@ -360,7 +360,7 @@ async function handleCopyShareLink() {
 
 async function handleSaveViewToLocal() {
   const localInputs = sanitizeInputs(cloneInputs(state.inputs));
-  const result = await IsfStorageHub.persistViewDataLocally(STORAGE_KEY, localInputs, state.backupEntries);
+  const result = await window.IsfStorageHub.persistViewDataLocally(STORAGE_KEY, localInputs, state.backupEntries);
   if (result.success) {
     state.backupEntries = result.backupEntries;
     syncBackupUi();
@@ -369,7 +369,7 @@ async function handleSaveViewToLocal() {
 }
 
 function handleLoadSample() {
-  IsfShare.buildShareLink({ ...SAMPLE_INPUTS }, { viewMode: true }).then(link => { if (link) window.location.href = link; });
+  window.IsfShare.buildShareLink({ ...SAMPLE_INPUTS }, { viewMode: true }).then(link => { if (link) window.location.href = link; });
 }
 
 function createResetInputs(current) {
@@ -416,7 +416,7 @@ function handleHashChange() {
   syncViewModeUi(); syncViewModeGuideUi();
   if (state.isApplyingHashState) return;
   const hash = new URLSearchParams(window.location.hash.replace(/^#/, "")).get(HASH_STATE_PARAM);
-  const hashInputs = IsfShare.decodePayloadFromHash(hash, SHARE_STATE_KEY);
+  const hashInputs = window.IsfShare.decodePayloadFromHash(hash, SHARE_STATE_KEY);
   if (!hashInputs) return;
   const next = sanitizeInputs({ ...DEFAULT_INPUTS, ...hashInputs });
   if (JSON.stringify(next) === JSON.stringify(state.inputs)) return;
@@ -437,7 +437,7 @@ function handleItemInput(group, event) {
     if (!item) return;
 
     if (field === "name") item.name = target.value.slice(0, 24);
-    if (field === "amount") item.amount = IsfUtils.toWon(target.value);
+    if (field === "amount") item.amount = window.IsfUtils.toWon(target.value);
     if (field === "group") item.group = normalizeAllocationGroupName(target.value);
     if (field === "annualRate") {
         const parsed = parseSavingsAnnualRateInput(target.value, getVisibleInputs().annualSavingsYield);
@@ -491,7 +491,7 @@ function markPendingChanges() {
   if (state.isViewMode) return;
   helpers.markDirty(state);
   helpers.syncDerivedValues(state.draftInputs, { getMonthlyAllocationTotalWon });
-  helpers.applyInputsToForm(dom.inputsForm, state.draftInputs, { FORM_FIELD_KEYS, toMan: IsfUtils.toMan });
+  helpers.applyInputsToForm(dom.inputsForm, state.draftInputs, { FORM_FIELD_KEYS, toMan: window.IsfUtils.toMan });
   renderInputHints(state.draftInputs);
   setPendingBarVisible(true);
 }
@@ -564,7 +564,7 @@ function refreshInputsPanel(inputs) {
   state.suspendInputTracking = true;
   try {
     helpers.syncDerivedValues(inputs, { getMonthlyAllocationTotalWon });
-    helpers.applyInputsToForm(dom.inputsForm, inputs, { FORM_FIELD_KEYS, toMan: IsfUtils.toMan });
+    helpers.applyInputsToForm(dom.inputsForm, inputs, { FORM_FIELD_KEYS, toMan: window.IsfUtils.toMan });
     renderIncomeList(inputs.incomes);
     renderExpenseList(inputs.expenseItems);
     renderSavingsList(inputs.savingsItems);
@@ -673,7 +673,7 @@ function renderIncomeItemHtml(item, opts) {
   return `
     <div class="income-row">
       <input type="text" value="${item.name}" data-income-id="${item.id}" data-field="name" ${isEditing ? "" : "readonly"} placeholder="이름" />
-      <input type="number" value="${IsfUtils.toMan(item.amount)}" data-income-id="${item.id}" data-field="amount" ${isEditing ? "" : "readonly"} inputmode="decimal" placeholder="금액" />
+      <input type="number" value="${window.IsfUtils.toMan(item.amount)}" data-income-id="${item.id}" data-field="amount" ${isEditing ? "" : "readonly"} inputmode="decimal" placeholder="금액" />
       ${isEditing ? `
         <button class="income-remove" data-remove-income="${item.id}" title="삭제">
           <svg class="income-remove-icon" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
@@ -713,7 +713,7 @@ function renderAllocationItemHtml(group, item, opts) {
       </div>
       <div class="editor-field">
         <label class="editor-field-label">금액(만원)</label>
-        <input type="number" value="${IsfUtils.toMan(item.amount)}" data-field="amount" data-editor-id="${item.id}" inputmode="decimal" placeholder="금액" />
+        <input type="number" value="${window.IsfUtils.toMan(item.amount)}" data-field="amount" data-editor-id="${item.id}" inputmode="decimal" placeholder="금액" />
       </div>
       <div class="editor-field">
         <label class="editor-field-label">그룹</label>
@@ -791,7 +791,7 @@ function syncViewModeUi() { if (dom.saveViewToLocal) dom.saveViewToLocal.hidden 
 function syncViewModeGuideUi() { if (dom.viewModeGuide) dom.viewModeGuide.hidden = !state.isViewMode; }
 function dismissViewModeGuide() { if (dom.viewModeGuide) dom.viewModeGuide.hidden = true; }
 function switchToNormalMode() { window.location.href = window.location.pathname; }
-function hasShareState() { return !!IsfShare.getShareIdFromUrl(); }
+function hasShareState() { return !!window.IsfShare.getShareIdFromUrl(); }
 function bindReadonlyAdvancedNavigation() {
   dom.jumpAdvancedFields.forEach(field => {
     field.addEventListener("click", () => navigateToAdvancedGroup(field.dataset.advancedTarget));
@@ -799,30 +799,17 @@ function bindReadonlyAdvancedNavigation() {
 }
 
 function initializeBackupStore() {
-  if (!IsfBackupManager.isIndexedDbAvailable()) return;
-  IsfBackupManager.loadBackupEntriesFromDb(SHARE_STATE_KEY).then(entries => {
+  if (!window.IsfBackupManager.isIndexedDbAvailable()) return;
+  window.IsfBackupManager.loadBackupEntriesFromDb(SHARE_STATE_KEY).then(entries => {
     state.backupStoreReady = true;
     if (entries) { state.backupEntries = entries; syncBackupUi(); }
   }).catch(() => { state.backupStoreReady = true; state.backupStoreError = true; });
 }
 async function initializeInputsFromShareId() {
-  const sid = IsfShare.getShareIdFromUrl();
+  const sid = window.IsfShare.getShareIdFromUrl();
   if (sid) {
     const sidInputs = await loadShareSnapshotById(sid, (id) => id);
     if (sidInputs) commitImmediateInputs(sidInputs);
-  }
-}
-
-
-uts) commitImmediateInputs(sidInputs);
-  }
-}
-
-
-}
-
-
-ediateInputs(sidInputs);
   }
 }
 

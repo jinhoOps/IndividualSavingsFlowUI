@@ -14,7 +14,7 @@ export async function saveCurrentSimulation() {
     return;
   }
   try {
-    const entry = await IsfStorageHub.saveStep2Entry(data); 
+    const entry = await window.IsfStorageHub.saveStep2Entry(data); 
     state.currentSimulationId = entry.id;
     markClean();
     
@@ -22,7 +22,7 @@ export async function saveCurrentSimulation() {
     if (dom.dataHubModal) dom.dataHubModal.updateSimulationList(state.simulations);
     
 
-    const res = await IsfStorageHub.triggerAutoBackup(SHARE_STATE_KEY, data, state.backupEntries);
+    const res = await window.IsfStorageHub.triggerAutoBackup(SHARE_STATE_KEY, data, state.backupEntries);
     if (res.created) {
       state.backupEntries = res.nextEntries;
       syncBackupUi();
@@ -37,7 +37,7 @@ export async function saveCurrentSimulation() {
 
 
 export async function loadSimulationById(id, options = {}) {
-  const s = await IsfStorageHub.getStep2EntryById(id);
+  const s = await window.IsfStorageHub.getStep2EntryById(id);
   if (s) {
     const norm = normalizeLoadedSimulation(s);
     state.draft = norm.draft;
@@ -50,7 +50,7 @@ export async function loadSimulationById(id, options = {}) {
 
 
 export async function deleteSimulationById(id) {
-  await IsfStorageHub.deleteStep2Entry(id);
+  await window.IsfStorageHub.deleteStep2Entry(id);
   if (state.currentSimulationId === id) resetDraft();
   await refreshSimulationList();
   if (dom.dataHubModal) dom.dataHubModal.updateSimulationList(state.simulations);
@@ -59,14 +59,14 @@ export async function deleteSimulationById(id) {
 
 
 export async function refreshSimulationList() {
-  const rows = await IsfStorageHub.listStep2Entries();
+  const rows = await window.IsfStorageHub.listStep2Entries();
   state.simulations = rows || [];
 }
 
 
 export async function handleManualBackup() {
   if (!state.backupStoreReady) return;
-  const res = await IsfStorageHub.createManualBackup(SHARE_STATE_KEY, state.draft, state.backupEntries, {
+  const res = await window.IsfStorageHub.createManualBackup(SHARE_STATE_KEY, state.draft, state.backupEntries, {
     type: "manual", source: "normal", allowDuplicate: true,
     replaceRecentManualWithinMs: MANUAL_BACKUP_WINDOW_MS,
     onRecentManualOverwriteConfirm: () => window.confirm("최근 1분 이내 수동 백업이 있습니다. 덮어쓸까요?")

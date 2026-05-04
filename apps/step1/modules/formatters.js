@@ -10,20 +10,20 @@ const backupTimestampFormatter = new Intl.DateTimeFormat("ko-KR", {
 });
 
 export function formatCurrency(value) {
-  return IsfUtils.formatMoney(value);
+  return window.IsfUtils.formatMoney(value);
 }
 
 export function formatSignedCurrency(value) {
   const safeValue = Number.isFinite(value) ? value : 0;
   if (safeValue < 0) {
-    return `-${IsfUtils.formatMoney(Math.abs(safeValue))}`;
+    return `-${window.IsfUtils.formatMoney(Math.abs(safeValue))}`;
   }
-  return `+${IsfUtils.formatMoney(safeValue)}`;
+  return `+${window.IsfUtils.formatMoney(safeValue)}`;
 }
 
 export function formatPercent(percent) {
   const safe = Number.isFinite(percent) ? percent : 0;
-  return `${IsfUtils.roundTo(safe, 1).toLocaleString("ko-KR")} %`;
+  return `${window.IsfUtils.roundTo(safe, 1).toLocaleString("ko-KR")} %`;
 }
 
 export function formatMonthSpan(months) {
@@ -46,7 +46,7 @@ export function formatSankeyDisplayValue(value, totalValue, valueMode = SANKEY_V
     if (safeTotal <= 0) {
       return "0 %";
     }
-    const percent = IsfUtils.roundTo((safeValue / safeTotal) * 100, 1);
+    const percent = window.IsfUtils.roundTo((safeValue / safeTotal) * 100, 1);
     return `${percent.toLocaleString("ko-KR")} %`;
   }
   return formatCurrency(safeValue);
