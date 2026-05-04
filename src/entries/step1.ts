@@ -1,10 +1,11 @@
 import '../styles/globals.css';
+import { initCompatibilityBridge } from '../core/storage/CompatibilityBridge';
 
-// Load legacy global scripts as side effects if they are not modules
-// Note: If they depend on specific order, ensure it here.
+// Initialize modern storage and legacy bridge
+initCompatibilityBridge();
+
+// Load legacy global scripts as side effects (excluding replaced storage)
 import '../../shared/core/utils.js';
-import '../../shared/storage/hub-storage.js';
-import '../../shared/storage/backup-manager.js';
 import '../../shared/components/feedback-manager.js';
 import '../../shared/pwa/pwa-manager.js';
 import '../../shared/core/share-utils.js';

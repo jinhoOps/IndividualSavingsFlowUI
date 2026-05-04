@@ -1,8 +1,10 @@
 import '../styles/globals.css';
+import { initCompatibilityBridge } from '../core/storage/CompatibilityBridge';
+
+// Initialize modern storage and legacy bridge
+initCompatibilityBridge();
 
 import '../../shared/core/utils.js';
-import '../../shared/storage/hub-storage.js';
-import '../../shared/storage/backup-manager.js';
 import '../../shared/components/feedback-manager.js';
 import '../../shared/pwa/pwa-manager.js';
 import '../../shared/core/share-utils.js';

@@ -86,6 +86,7 @@
 }
 
 @layer components {
+  /* Utility bridges for legacy classes */
   .panel {
     @apply border border-line rounded-md bg-panel shadow-float p-md min-w-0;
   }
