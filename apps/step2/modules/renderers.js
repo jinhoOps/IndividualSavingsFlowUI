@@ -174,9 +174,13 @@ function drawSimulationChart(svg, data) {
     const showTooltip = (e) => {
         tooltip.style.display = 'block';
         tooltip.innerHTML = `
-          <div style="font-weight: 600; margin-bottom: 4px;">${d.year}년</div>
-          <div>총 자산: ${utils.toMan(d.assetNominalTR).toLocaleString()} 만원</div>
-          <div>연 배당금: ${utils.toMan(d.dividendNominalTR).toLocaleString()} 만원</div>
+          <div style="font-weight: 600; margin-bottom: 6px; border-bottom: 1px solid #eee; padding-bottom: 4px;">${d.year}년</div>
+          <div style="font-size: 0.85em; color: #8a8f98; margin-bottom: 2px;">재투자 안함 (PR)</div>
+          <div style="margin-bottom: 2px;">총 자산: ${utils.toMan(d.assetNominalPR).toLocaleString()} 만원</div>
+          <div style="margin-bottom: 6px;">연 배당: ${utils.toMan(d.dividendNominalPR).toLocaleString()} 만원</div>
+          <div style="font-size: 0.85em; color: #ea5b2a; margin-bottom: 2px;">자동 재투자 (TR)</div>
+          <div style="margin-bottom: 2px;">총 자산: ${utils.toMan(d.assetNominalTR).toLocaleString()} 만원</div>
+          <div>연 배당: ${utils.toMan(d.dividendNominalTR).toLocaleString()} 만원</div>
         `;
         const containerRect = svg.getBoundingClientRect();
         const scale = containerRect.width / width;
