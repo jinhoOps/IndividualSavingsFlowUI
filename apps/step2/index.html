@@ -9,10 +9,7 @@
     <link rel="manifest" href="../../manifest.webmanifest" />
     <link rel="icon" href="../../icons/icon-192.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="../../icons/icon-192.svg" />
-    <link rel="stylesheet" href="../../shared/styles/step-theme.css" />
-    <link rel="stylesheet" href="styles.css" />
-    <script src="../../shared/components/app-header.js" type="module"></script>
-    <script src="../../shared/components/data-hub-modal.js" type="module"></script>
+    <script type="module" src="../../src/entries/step2.ts"></script>
   </head>
   <body>
     <app-header current-step="2"></app-header>
@@ -174,16 +171,5 @@
         <p id="step2Feedback" class="feedback" aria-live="polite" hidden></p>
       </main>
     </div>
-
-    <!-- Shared Utilities & Components -->
-    <script src="../../shared/core/utils.js"></script>
-    <script src="../../shared/core/share-utils.js"></script>
-    <script src="../../shared/storage/hub-storage.js"></script>
-    <script src="../../shared/storage/backup-manager.js"></script>
-    <script src="../../shared/components/feedback-manager.js"></script>
-    <script src="../../shared/pwa/pwa-manager.js"></script>
-    
-    <!-- App Logic -->
-    <script src="./app.js" type="module"></script>
   </body>
 </html>

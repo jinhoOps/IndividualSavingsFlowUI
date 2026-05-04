@@ -1,0 +1,40 @@
+{
+  "name": "individualsavingsflowui",
+  "version": "1.0.0",
+  "description": "`개인 자산 흐름 (IndividualSavings Flow UIUX)` 프로젝트는  \r 개인의 월간 현금흐름 점검부터 중장기 자산 변화 시뮬레이션까지 연결하는 UIUX를 기획 중입니다.  \r 현재는 단일 레포 내 다중 단계 구조로 운영합니다.",
+  "main": "sw.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jinhoOps/IndividualSavingsFlowUI.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/jinhoOps/IndividualSavingsFlowUI/issues"
+  },
+  "homepage": "https://github.com/jinhoOps/IndividualSavingsFlowUI#readme",
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.2.4",
+    "@types/node": "^25.6.0",
+    "@vitejs/plugin-react": "^6.0.1",
+    "autoprefixer": "^10.5.0",
+    "postcss": "^8.5.13",
+    "tailwindcss": "^4.2.4",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.10",
+    "vite-plugin-pwa": "^0.21.1"
+  },
+  "dependencies": {
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5"
+  }
+}
