@@ -91,9 +91,10 @@ async function initApp() {
     
 
     try {
-      const pwa = new window.IsfPwaManager({
-        appVersion: "0.8.1",
+      const pwaManager = new window.IsfPwaManager({
+        appVersion: "0.8.2",
         appKey: SHARE_STATE_KEY,
+
         onFeedback: (msg) => window.IsfFeedback.showFeedback(dom.applyFeedback, msg),
         getCurrentData: () => state.draft,
       });

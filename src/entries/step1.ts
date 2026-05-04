@@ -1,14 +1,10 @@
+import '../../shared/core/utils.js';
+import '../core/storage/CompatibilityBridge';
 import '../styles/globals.css';
 import '../../shared/styles/step-theme.css';
 import '../../apps/step1/styles.css';
 
-import { initCompatibilityBridge } from '../core/storage/CompatibilityBridge';
-
-// Initialize modern storage and legacy bridge
-initCompatibilityBridge();
-
 // Load legacy global scripts as side effects (excluding replaced storage)
-import '../../shared/core/utils.js';
 import '../../shared/components/feedback-manager.js';
 import '../../shared/pwa/pwa-manager.js';
 import '../../shared/core/share-utils.js';

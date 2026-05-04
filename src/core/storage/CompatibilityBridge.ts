@@ -104,3 +104,8 @@ export function initCompatibilityBridge() {
 
   console.log('CompatibilityBridge: Legacy APIs bridged to Modernized Storage (Window & GlobalThis).');
 }
+
+// Auto-initialize if running in a browser environment
+if (typeof window !== 'undefined') {
+  initCompatibilityBridge();
+}
