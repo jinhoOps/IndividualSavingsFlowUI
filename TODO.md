@@ -2,9 +2,9 @@
 kanban-plugin: basic
 ---
 
-# TODO (v0.8.0)
+# TODO (v0.8.1)
 
-## Done (v0.8.0)
+## Done (v0.8.1)
 - [x] **Phase 5: Step 1 Spotlight 온보딩 가이드**
   - [x] Step 1 첫 접속 시 프리셋 선택 영역 강조 Spotlight 가이드 구현
   - [x] 단계별 흐름 안내 및 localStorage 상태 저장
