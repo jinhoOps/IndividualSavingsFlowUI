@@ -147,7 +147,7 @@ function bindControls() {
         dom.advancedSettings.classList.add('is-highlighted');
         setTimeout(() => dom.advancedSettings.classList.remove('is-highlighted'), 3000);
         dom.advancedSettings.scrollIntoView({ behavior: "smooth", block: "start" });
-        IsfFeedback.showFeedback(dom.applyFeedback, "프리셋이 적용되었습니다. 아래 '고급 설정'에서 세부 항목을 조정해보세요.");
+        window.IsfFeedback.showFeedback(dom.applyFeedback, "프리셋이 적용되었습니다. 아래 '고급 설정'에서 세부 항목을 조정해보세요.");
       }
     });
   }
@@ -258,7 +258,7 @@ function bindActionButtons() {
 function bindGlobalEvents() {
   window.addEventListener("hashchange", handleHashChange);
   window.addEventListener("popstate", () => { syncViewModeUi(); syncViewModeGuideUi(); });
-  window.addEventListener("resize", IsfUtils.debounce(() => state.snapshot && renderSankey(state.snapshot, buildSankeyData, state.sankeySortMode), 120));
+  window.addEventListener("resize", window.IsfUtils.debounce(() => state.snapshot && renderSankey(state.snapshot, buildSankeyData, state.sankeySortMode), 120));
   
   const mq = window.matchMedia(MOBILE_LAYOUT_QUERY);
   const onChange = () => {
@@ -810,6 +810,19 @@ async function initializeInputsFromShareId() {
   if (sid) {
     const sidInputs = await loadShareSnapshotById(sid, (id) => id);
     if (sidInputs) commitImmediateInputs(sidInputs);
+  }
+}
+
+
+uts) commitImmediateInputs(sidInputs);
+  }
+}
+
+
+}
+
+
+ediateInputs(sidInputs);
   }
 }
 

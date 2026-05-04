@@ -202,7 +202,7 @@ function bindEvents() {
           state.isSyncedWithStep1 = true;
         } catch (e) {
           console.error(e);
-          IsfFeedback.showFeedback(dom.applyFeedback, "데이터 가져오기 중 오류가 발생했습니다.", true);
+          window.IsfFeedback.showFeedback(dom.applyFeedback, "데이터 가져오기 중 오류가 발생했습니다.", true);
         }
       }
     });
@@ -377,6 +377,15 @@ async function initializeBackupStore() {
       syncBackupUi();
     }
   } catch (e) {
+    console.error("initializeBackupStore failed:", e);
+    state.backupStoreReady = true;
+  }
+}
+
+oreReady = true;
+  }
+}
+
     console.error("initializeBackupStore failed:", e);
     state.backupStoreReady = true;
   }

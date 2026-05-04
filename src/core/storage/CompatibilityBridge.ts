@@ -70,12 +70,14 @@ export function initCompatibilityBridge() {
     }
   };
 
-  global.IsfStorageHub = storageHub;
-  global.IsfHubStorage = storageHub; // Alias for some legacy calls
+  const target = (typeof window !== 'undefined' ? window : globalThis) as any;
+
+  target.IsfStorageHub = storageHub;
+  target.IsfHubStorage = storageHub;
 
   // Modern Backup Manager Bridge
-  global.IsfBackupManager = {
-    isIndexedDbAvailable: () => true, // Modern store uses IDB
+  target.IsfBackupManager = {
+    isIndexedDbAvailable: () => true,
     loadBackupEntriesFromDb: (appKey: string) => backupService.listBackups(appKey),
     createBackupEntry: async (current: any, data: any, options: any) => {
       const entry = await backupService.createBackup(options.appKey, data, { 
@@ -91,14 +93,14 @@ export function initCompatibilityBridge() {
       return { created: true, nextEntries: next };
     },
     getBackupTimestampMs: (entry: any) => entry.createdAt || 0,
-    migrateAppKey: async () => true // No-op in modern
+    migrateAppKey: async () => true
   };
 
   // Legacy Utility Aliases
-  global.IsfUtils = global.IsfUtils || {};
-  global.IsfUtils.toWon = MoneyUtils.toWon;
-  global.IsfUtils.toMan = MoneyUtils.toMan;
-  global.IsfUtils.formatMoney = MoneyUtils.formatMan;
+  target.IsfUtils = target.IsfUtils || {};
+  target.IsfUtils.toWon = MoneyUtils.toWon;
+  target.IsfUtils.toMan = MoneyUtils.toMan;
+  target.IsfUtils.formatMoney = MoneyUtils.formatMan;
 
-  console.log('CompatibilityBridge: Legacy APIs bridged to Modernized Storage.');
+  console.log('CompatibilityBridge: Legacy APIs bridged to Modernized Storage (Window & GlobalThis).');
 }
