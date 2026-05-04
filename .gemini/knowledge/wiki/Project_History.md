@@ -8,7 +8,12 @@ tags: [history, timeline, legacy]
 
 ## 🕒 주요 마일스톤
 
-### [2026-05-04] Modernization Pivot (v1.1.0-alpha.1) 🌟
+### [2026-05-04] Phase 5: Step 1 Spotlight Onboarding (v0.8.3) 🌟
+- 신규 사용자를 위한 프리셋 가이드 및 `IsfOnboardingManager` 구현 완료.
+- 모바일 플로팅 툴팁 및 Spotlight 하이라이트 효과 고도화.
+- 시스템 무결성 보호를 위한 방어적 리팩터링 및 UI 안정화 병행.
+
+### [2026-05-04] Modernization Pivot (v1.1.0-alpha.1)
 - **헌법 개정**: 'No-build' 원칙을 폐기하고 Vite, TypeScript, Tailwind v4 도입.
 - **스토리지 혁명**: 레거시 DB(v1)를 과감히 정리하고 TS 기반 `isf-v2-db` 및 Branded Type 시스템 구축.
 - **배포 자동화**: GitHub Actions를 통한 CI/CD 구축.

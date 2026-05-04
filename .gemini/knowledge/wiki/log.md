@@ -332,4 +332,17 @@
 - shared/styles/step-theme.css에 --text-* 변수 도입 및 버튼 scale(0.96) 피드백 추가.
 - apps/step1 및 apps/step2의 하드코딩된 스타일을 공통 토큰으로 마이그레이션 완료.
 - isf-evaluator를 통한 시각적/반응형 정합성 최종 검증 완료.
-`n## [2026-05-04] ingest | Modernization Pivot & Storage v2 Implementation`n- 프로젝트 헌법 개정: No-build 원칙 폐기 및 Vite/TS/Tailwind v4 도입.`n- 통합 스토리지 v2 설계: IsfStore.ts 및 BackupService.ts를 통한 TypeScript 기반 데이터 관리.`n- 단위 정합성 수호: Branded Types (Won, ManWon) 도입으로 연산 실수 방지.`n- CI/CD 구축: GitHub Actions를 통한 PWA 자동 배포 워크플로우 설정.`n- 위키 인덱스 재구조화: 현대화된 아키텍처 중심으로 지식 맵 갱신 및 레거시 아카이브.
+## [2026-05-04] ingest | Modernization Pivot & Storage v2 Implementation
+- **프로젝트 헌법 개정**: No-build 원칙 폐기 및 Vite/TS/Tailwind v4 도입 준비.
+- **통합 스토리지 v2 설계**: IsfStore.ts 및 BackupService.ts를 통한 TypeScript 기반 데이터 관리 체계 수립.
+- **단위 정합성 수호**: Branded Types (Won, ManWon) 도입으로 연산 실수 방지 로직 설계.
+- **CI/CD 구축**: GitHub Actions를 통한 PWA 자동 배포 워크플로우 설정.
+- **위키 인덱스 재구조화**: 현대화된 아키텍처 중심으로 지식 맵 갱신 및 레거시 아카이브.
+
+## [2026-05-04] release | Phase 5: Step 1 Spotlight 온보딩 가이드 및 시스템 무결성 강화
+- **목적**: 신규 사용자를 위한 프리셋 선택 가이드(Spotlight)를 제공하고, 기능 추가 시 발생할 수 있는 시스템 무결성 붕괴를 방지하기 위한 안전한 통합 로직 구현.
+- **주요 변경사항**:
+    - **Onboarding Manager 고도화**: `IsfOnboardingManager`를 리팩터링하여 툴팁의 반응형 위치 계산(모바일 플로팅 대응) 및 이벤트 리스너의 철저한 정리를 통한 메모리 누수 방지.
+    - **Spotlight UI 개선**: `DESIGN.md` 브랜드 컬러(`--tone-primary`)를 적용하고, 기존 `box-shadow` 방식의 한계를 극복하기 위해 `z-index` 레이어와 오버레이를 분리한 현대적인 하이라이트 효과 적용.
+    - **시스템 무결성 수호**: 온보딩 로직이 기존의 14종 이상 필수 헬퍼 함수 및 데이터 바인딩 로직을 훼손하지 않도록 `app.js` 초기화 시퀀스 최적화 및 방어적 코드 삽입.
+- **결과**: 초기 사용자 이탈율을 줄이는 온보딩 UX가 완성되었으며, 대규모 기능 추가에도 Step 1의 핵심 기능들이 안정적으로 작동함을 검증함.

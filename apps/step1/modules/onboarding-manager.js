@@ -51,6 +51,11 @@ export class IsfOnboardingManager {
     const target = document.getElementById(step.targetId);
     if (!target) return;
 
+    // Check if onboarding is already active to prevent duplicates
+    if (document.getElementById('onboardingTooltip') || document.body.classList.contains('is-onboarding-active')) {
+      return;
+    }
+
     // Create overlay
     const overlay = this.getOrCreateOverlay();
     
@@ -59,7 +64,12 @@ export class IsfOnboardingManager {
     tooltip.className = 'onboarding-tooltip';
     tooltip.id = 'onboardingTooltip';
     tooltip.innerHTML = step.content;
-    target.appendChild(tooltip);
+    
+    // Append to body instead of target to avoid z-index/transform issues with parents
+    document.body.appendChild(tooltip);
+
+    // Position tooltip relative to target
+    this.positionTooltip(target, tooltip);
 
     // Activate styles
     document.body.classList.add('is-onboarding-active');
@@ -68,11 +78,17 @@ export class IsfOnboardingManager {
     const cleanup = () => {
       document.body.classList.remove('is-onboarding-active');
       target.classList.remove('is-onboarding-active');
-      if (tooltip.parentNode) tooltip.parentNode.removeChild(tooltip);
-      if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+      const currentTooltip = document.getElementById('onboardingTooltip');
+      if (currentTooltip && currentTooltip.parentNode) currentTooltip.parentNode.removeChild(currentTooltip);
+      const currentOverlay = document.getElementById('onboardingOverlay');
+      if (currentOverlay && currentOverlay.parentNode) currentOverlay.parentNode.removeChild(currentOverlay);
       
       this.finish();
+      window.removeEventListener('resize', resizeHandler);
     };
+
+    const resizeHandler = () => this.positionTooltip(target, tooltip);
+    window.addEventListener('resize', resizeHandler);
 
     // Bind triggers to advance or close
     if (step.triggerId) {
@@ -86,6 +102,30 @@ export class IsfOnboardingManager {
 
     // Scroll to target
     target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  positionTooltip(target, tooltip) {
+    if (!target || !tooltip) return;
+    const rect = target.getBoundingClientRect();
+    const isMobile = window.innerWidth <= 760;
+    
+    if (isMobile) {
+      // In mobile, stick to bottom
+      tooltip.style.position = 'fixed';
+      tooltip.style.bottom = '20px';
+      tooltip.style.left = '50%';
+      tooltip.style.top = 'auto';
+      tooltip.style.transform = 'translateX(-50%)';
+      tooltip.style.width = 'calc(100% - 40px)';
+      tooltip.classList.add('is-mobile');
+    } else {
+      tooltip.style.position = 'absolute';
+      tooltip.style.top = `${window.scrollY + rect.bottom + 14}px`;
+      tooltip.style.left = `${rect.left + rect.width / 2}px`;
+      tooltip.style.transform = 'translateX(-50%)';
+      tooltip.style.width = 'min(300px, 85vw)';
+      tooltip.classList.remove('is-mobile');
+    }
   }
 
   getOrCreateOverlay() {

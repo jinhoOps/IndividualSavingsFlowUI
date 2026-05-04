@@ -944,28 +944,25 @@ body.is-onboarding-active .onboarding-overlay {
 #presetBlock.is-onboarding-active {
   position: relative;
   z-index: 1001;
-  box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.65);
   border-color: var(--tone-primary);
   background: #fff;
   pointer-events: auto !important;
+  box-shadow: 0 0 0 12px rgba(255, 255, 255, 1), 0 0 0 14px var(--tone-primary);
 }
 
 .onboarding-tooltip {
   position: absolute;
-  top: calc(100% + 14px);
-  left: 50%;
-  transform: translateX(-50%);
-  width: min(300px, 85vw);
+  z-index: 1002;
   padding: var(--sp-md);
   background: var(--tone-primary);
   color: #fff;
   border-radius: var(--rd-md);
-  box-shadow: 0 12px 28px rgba(234, 91, 42, 0.4);
-  z-index: 1002;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.3);
   font-size: 0.9rem;
   line-height: 1.5;
   text-align: center;
   animation: slide-up 0.4s ease-out;
+  pointer-events: auto;
 }
 
 .onboarding-tooltip::before {
@@ -977,6 +974,18 @@ body.is-onboarding-active .onboarding-overlay {
   border-left: 8px solid transparent;
   border-right: 8px solid transparent;
   border-bottom: 8px solid var(--tone-primary);
+}
+
+.onboarding-tooltip.is-mobile {
+  background: rgba(16, 34, 32, 0.95);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.4);
+}
+
+.onboarding-tooltip.is-mobile::before {
+  display: none;
 }
 
 .onboarding-tooltip b {
