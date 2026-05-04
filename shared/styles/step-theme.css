@@ -93,6 +93,19 @@ body {
   flex-shrink: 0;
 }
 
+/* Version Badge (Debugging) */
+.version-badge {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--muted);
+  background: var(--line);
+  padding: 1px 4px;
+  border-radius: 4px;
+  opacity: 0.8;
+  white-space: nowrap;
+  letter-spacing: -0.02em;
+}
+
 .app-header__nav {
   display: flex;
   gap: var(--sp-xs);
