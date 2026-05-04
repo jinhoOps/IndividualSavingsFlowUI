@@ -173,14 +173,16 @@ function drawSimulationChart(svg, data) {
     
     const showTooltip = (e) => {
         tooltip.style.display = 'block';
-        tooltip.innerHTML = `
-          <div style="font-weight: 600; margin-bottom: 6px; border-bottom: 1px solid #eee; padding-bottom: 4px;">${d.year}년</div>
-          <div style="font-size: 0.85em; color: #8a8f98; margin-bottom: 2px;">재투자 안함 (PR)</div>
-          <div style="margin-bottom: 2px;">총 자산: ${utils.toMan(d.assetNominalPR).toLocaleString()} 만원</div>
-          <div style="margin-bottom: 6px;">연 배당: ${utils.toMan(d.dividendNominalPR).toLocaleString()} 만원</div>
-          <div style="font-size: 0.85em; color: #ea5b2a; margin-bottom: 2px;">자동 재투자 (TR)</div>
-          <div style="margin-bottom: 2px;">총 자산: ${utils.toMan(d.assetNominalTR).toLocaleString()} 만원</div>
+        const isDrip = state.draft?.dividendSim?.isDrip !== false;
+        tooltip.style.display = 'block';
+        tooltip.innerHTML = isDrip ? `
+          <div style="font-weight: 600; margin-bottom: 4px;">${d.year}년 (TR:재투자)</div>
+          <div>총 자산: ${utils.toMan(d.assetNominalTR).toLocaleString()} 만원</div>
           <div>연 배당: ${utils.toMan(d.dividendNominalTR).toLocaleString()} 만원</div>
+        ` : `
+          <div style="font-weight: 600; margin-bottom: 4px;">${d.year}년 (PR:미투자)</div>
+          <div>총 자산: ${utils.toMan(d.assetNominalPR).toLocaleString()} 만원</div>
+          <div>연 배당: ${utils.toMan(d.dividendNominalPR).toLocaleString()} 만원</div>
         `;
         const containerRect = svg.getBoundingClientRect();
         const scale = containerRect.width / width;
@@ -214,5 +216,46 @@ function drawSimulationChart(svg, data) {
   legendPR.setAttribute("text-anchor", "end"); legendPR.setAttribute("font-size", "11"); legendPR.setAttribute("fill", "#8a8f98");
   legendPR.textContent = "○ PR (미투자)";
   svg.appendChild(legendPR);
+}
+
+/**
+ * 전역 툴팁 초기화 (data-tooltip 속성 처리)
+ */
+export function initGlobalTooltips() {
+  const tooltip = document.getElementById("simChartTooltip");
+  if (!tooltip) return;
+
+  const showTooltip = (e) => {
+    const target = e.target.closest("[data-tooltip]");
+    if (!target) return;
+
+    tooltip.style.display = "block";
+    tooltip.innerHTML = `<div style="max-width: 200px; text-align: center;">${target.dataset.tooltip}</div>`;
+    
+    const rect = target.getBoundingClientRect();
+    const tooltipRect = tooltip.getBoundingClientRect();
+    
+    // 화면 하단에 표시
+    tooltip.style.position = "fixed";
+    tooltip.style.left = `${rect.left + rect.width / 2}px`;
+    tooltip.style.top = `${rect.bottom + 10}px`;
+    tooltip.style.transform = "translateX(-50%)";
+    tooltip.style.zIndex = "10000";
+  };
+
+  const hideTooltip = () => {
+    tooltip.style.display = "none";
+  };
+
+  document.addEventListener("mouseover", showTooltip);
+  document.addEventListener("mouseout", (e) => {
+    if (e.target.closest("[data-tooltip]")) hideTooltip();
+  });
+  
+  // 모바일 대응
+  document.addEventListener("touchstart", (e) => {
+    if (e.target.closest("[data-tooltip]")) showTooltip(e);
+    else hideTooltip();
+  }, { passive: true });
 }
 

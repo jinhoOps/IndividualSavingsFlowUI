@@ -2,7 +2,7 @@
 kanban-plugin: basic
 ---
 
-# TODO (v0.7.12)
+# TODO (v0.7.13)
 
 ## Backlog (우선순위 상향)
 - [ ] **Step 3: 포트폴리오 시각화 및 구성 (준비 중)**
@@ -10,6 +10,10 @@ kanban-plugin: basic
   - [ ] 목표 비중(Target) vs 실제 보유(Actual) 격차 분석 및 리밸런싱 가이드 통합
 - [ ] 처음 접속시 쉬운 입력값 입력 가이드. (Spotlight UX 가이드 도입 고려)
 - [ ] Step 1 지출 내역 이전 데이터 비교 막대 그래프 추가 (Issue #4)
+
+## Done (v0.7.12 Patch)
+- [x] **시뮬레이션 UI 고도화**: `simTable` 헤더 툴팁을 JS 기반 전역 핸들러로 전환하여 `overflow` 문제를 해결하고 즉각적인 반응성 확보.
+- [x] **시뮬레이션 UI 고도화**: 차트 툴팁을 '배당 재투자' 설정값에 따라 PR/TR 중 해당하는 정보만 노출하도록 롤백 및 최적화.
 
 ## Done (v0.7.11 Patch)
 - [x] **시뮬레이션 UI 고도화**: 브라우저 기본 툴팁 대신 즉시 나타나는 커스텀 CSS 툴팁(`data-tooltip`) 시스템 도입 및 `simTable` 헤더 적용.

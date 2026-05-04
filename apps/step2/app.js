@@ -12,7 +12,8 @@ import {
 import { 
   renderDraft, 
   renderCharts, 
-  renderDividendSimulation
+  renderDividendSimulation,
+  initGlobalTooltips
 } from "./modules/renderers.js";
 import { checkStep1SyncData, importLatestStep1Data } from "./modules/step1-connector.js";
 import { 
@@ -91,7 +92,7 @@ async function initApp() {
 
     try {
       const pwa = new IsfPwaManager({
-        appVersion: "0.7.12",
+        appVersion: "0.7.13",
         appKey: SHARE_STATE_KEY,
         onFeedback: (msg) => IsfFeedback.showFeedback(dom.applyFeedback, msg),
         getCurrentData: () => state.draft,
@@ -100,6 +101,7 @@ async function initApp() {
     } catch (e) {
       console.error("PWA initialization failed:", e);
     }    
+    initGlobalTooltips();
     console.log("initApp: Initialization finished.");
   } catch (err) {
     console.error("CRITICAL: initApp failed:", err);
