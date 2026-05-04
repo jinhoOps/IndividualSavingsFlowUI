@@ -76,11 +76,18 @@
                 </ul>
               </div>
             </details>
-            <div class="sim-presets" style="margin-bottom: 16px; display: flex; gap: 8px; flex-wrap: wrap;">
-              <span class="muted" style="font-size: 0.8rem; display: flex; align-items: center; margin-right: 4px;">프리셋:</span>
-              <button class="btn btn-ghost btn-sm preset-btn" data-yield="3.5" data-growth="10.0" data-capital="5.0">단일 100%</button>
-              <button class="btn btn-ghost btn-sm preset-btn" data-yield="7.0" data-growth="5.0" data-capital="7.0">SCHD+QQQI (1:1)</button>
-              <button class="btn btn-ghost btn-sm preset-btn" data-yield="5.5" data-growth="7.0" data-capital="6.0">3종 혼합 (40:30:30)</button>
+            <div class="sim-presets" style="margin-bottom: 16px;">
+              <div class="muted" style="font-size: 0.8rem; margin-bottom: 8px;">프리셋 조합:</div>
+              <div class="preset-depth1" style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px;">
+                <button class="btn btn-ghost btn-sm preset-cat-btn" data-cat="schd">배당 성장 집중형 (SCHD 100%)</button>
+                <button class="btn btn-ghost btn-sm preset-cat-btn" data-cat="schd_qqqi">밸런스 표준형 (SCHD+QQQI)</button>
+                <button class="btn btn-ghost btn-sm preset-cat-btn" data-cat="schd_jepi">안정적 고배당형 (SCHD+JEPI)</button>
+                <button class="btn btn-ghost btn-sm preset-cat-btn" data-cat="jepi_qqqi">월배당 극대화형 (JEPI+QQQI)</button>
+                <button class="btn btn-ghost btn-sm preset-cat-btn" data-cat="all_weather">올웨더 배당형 (SCHD+JEPI+QQQI)</button>
+              </div>
+              <div class="preset-depth2" id="presetSubContainer" style="display: flex; gap: 6px; flex-wrap: wrap; min-height: 28px;">
+                <!-- Sub buttons inserted by JS -->
+              </div>
             </div>
             <div class="form-grid">
               <label class="control">

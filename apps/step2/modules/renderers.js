@@ -1,4 +1,4 @@
-﻿import { state } from "./state.js";
+import { state } from "./state.js";
 import { dom } from "./dom.js";
 import { 
   formatCurrency, 
@@ -172,18 +172,25 @@ function drawSimulationChart(svg, data) {
     rect.style.cursor = "pointer";
     
     const showTooltip = (e) => {
-      tooltip.style.display = 'block';
-      tooltip.innerHTML = `
-        <div style="font-weight: 600; margin-bottom: 4px;">${d.year}년</div>
-        <div>총 자산: ${utils.toMan(d.assetNominalTR).toLocaleString()} 만원</div>
-        <div>연 배당금: ${utils.toMan(d.dividendNominalTR).toLocaleString()} 만원</div>
-      `;
-      const containerRect = svg.getBoundingClientRect();
-      const xRatio = x / width;
-      tooltip.style.left = `\${xRatio * 100}%`;
-      tooltip.style.top = '10%';
-      tooltip.style.transform = 'translateX(-50%)';
-    };
+        tooltip.style.display = 'block';
+        tooltip.innerHTML = `
+          <div style="font-weight: 600; margin-bottom: 4px;">${d.year}년</div>
+          <div>총 자산: ${utils.toMan(d.assetNominalTR).toLocaleString()} 만원</div>
+          <div>연 배당금: ${utils.toMan(d.dividendNominalTR).toLocaleString()} 만원</div>
+        `;
+        const containerRect = svg.getBoundingClientRect();
+        const scale = containerRect.width / width;
+        let actualX = x * scale;
+        
+        const tooltipWidth = 140; // approximate width
+        const halfWidth = tooltipWidth / 2;
+        if (actualX - halfWidth < 0) actualX = halfWidth;
+        if (actualX + halfWidth > containerRect.width) actualX = containerRect.width - halfWidth;
+        
+        tooltip.style.left = `${actualX}px`;
+        tooltip.style.top = '10%';
+        tooltip.style.transform = 'translateX(-50%)';
+      };
     
     rect.addEventListener("mouseenter", showTooltip);
     rect.addEventListener("touchstart", (e) => { e.preventDefault(); showTooltip(e); });

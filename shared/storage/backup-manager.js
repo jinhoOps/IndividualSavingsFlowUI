@@ -1,8 +1,8 @@
-﻿(function initIsfBackupManager(global) {
+(function initIsfBackupManager(global) {
   "use strict";
 
   const BACKUP_DB_NAME = "isf-backup-db-v1";
-  const BACKUP_DB_VERSION = 1;
+  const BACKUP_DB_VERSION = 2;
   const BACKUP_DB_STORE = "backupEntries";
   const MAX_BACKUP_ENTRIES = 60;
   const AUTO_BACKUP_INTERVAL_MS = 12 * 60 * 60 * 1000;
@@ -24,10 +24,15 @@
     backupDbPromise = new Promise((resolve, reject) => {
       const request = window.indexedDB.open(BACKUP_DB_NAME, BACKUP_DB_VERSION);
 
-      request.onupgradeneeded = () => {
+      request.onupgradeneeded = (event) => {
         const db = request.result;
+        let store;
         if (!db.objectStoreNames.contains(BACKUP_DB_STORE)) {
-          const store = db.createObjectStore(BACKUP_DB_STORE, { keyPath: "id" });
+          store = db.createObjectStore(BACKUP_DB_STORE, { keyPath: "id" });
+        } else {
+          store = event.currentTarget.transaction.objectStore(BACKUP_DB_STORE);
+        }
+        if (!store.indexNames.contains("app")) {
           store.createIndex("app", "app", { unique: false });
         }
       };

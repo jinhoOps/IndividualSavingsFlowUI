@@ -1,4 +1,4 @@
-﻿
+
 
 import { state, createEmptyDraft, markDirty, markClean, getHubStorage } from "./modules/state.js";
 import { dom, initDom } from "./modules/dom.js";
@@ -91,7 +91,7 @@ async function initApp() {
 
     try {
       const pwa = new IsfPwaManager({
-        appVersion: "0.7.8",
+        appVersion: "0.7.9",
         appKey: SHARE_STATE_KEY,
         onFeedback: (msg) => IsfFeedback.showFeedback(dom.applyFeedback, msg),
         getCurrentData: () => state.draft,
@@ -231,27 +231,84 @@ function bindEvents() {
   }
 
 
-  document.querySelectorAll(".preset-btn").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const y = parseFloat(btn.dataset.yield);
-      const g = parseFloat(btn.dataset.growth);
-      const c = parseFloat(btn.dataset.capital);
-      
-      if (!state.draft.dividendSim) state.draft.dividendSim = {};
-      state.draft.dividendSim.yield = y;
-      state.draft.dividendSim.growth = g;
-      state.draft.dividendSim.capitalGrowth = c;
-      
-      if (dom.simDividendYield) dom.simDividendYield.value = y;
-      if (dom.simDividendGrowth) dom.simDividendGrowth.value = g;
-      if (dom.simCapitalGrowth) dom.simCapitalGrowth.value = c;
-      
+  const PRESET_ASSETS = {
+    SCHD: { yield: 3.5, growth: 10.0, capital: 5.0 },
+    QQQI: { yield: 10.5, growth: 0.0, capital: 9.0 },
+    JEPI: { yield: 8.0, growth: 1.0, capital: 3.0 }
+  };
 
-      document.querySelectorAll(".preset-btn").forEach(b => b.classList.remove("is-active"));
-      btn.classList.add("is-active");
+  const PRESET_COMBINATIONS = {
+    "schd": [
+      { label: "단일 100%", ratios: { SCHD: 1.0 } }
+    ],
+    "schd_qqqi": [
+      { label: "7:3", ratios: { SCHD: 0.7, QQQI: 0.3 } },
+      { label: "1:1", ratios: { SCHD: 0.5, QQQI: 0.5 } },
+      { label: "3:7", ratios: { SCHD: 0.3, QQQI: 0.7 } }
+    ],
+    "schd_jepi": [
+      { label: "7:3", ratios: { SCHD: 0.7, JEPI: 0.3 } },
+      { label: "1:1", ratios: { SCHD: 0.5, JEPI: 0.5 } },
+      { label: "3:7", ratios: { SCHD: 0.3, JEPI: 0.7 } }
+    ],
+    "jepi_qqqi": [
+      { label: "7:3", ratios: { JEPI: 0.7, QQQI: 0.3 } },
+      { label: "1:1", ratios: { JEPI: 0.5, QQQI: 0.5 } },
+      { label: "3:7", ratios: { JEPI: 0.3, QQQI: 0.7 } }
+    ],
+    "all_weather": [
+      { label: "4:3:3", ratios: { SCHD: 0.4, JEPI: 0.3, QQQI: 0.3 } }
+    ]
+  };
 
-      markDirty();
-      renderDividendSimulation();
+  document.querySelectorAll(".preset-cat-btn").forEach(catBtn => {
+    catBtn.addEventListener("click", () => {
+      document.querySelectorAll(".preset-cat-btn").forEach(b => b.classList.remove("is-active"));
+      catBtn.classList.add("is-active");
+      
+      const cat = catBtn.dataset.cat;
+      const subs = PRESET_COMBINATIONS[cat] || [];
+      const subContainer = document.getElementById("presetSubContainer");
+      if (subContainer) {
+        subContainer.innerHTML = subs.map((sub, i) => 
+          `<button class="btn btn-outline btn-sm preset-sub-btn" data-index="${i}">${sub.label}</button>`
+        ).join("");
+        
+        subContainer.querySelectorAll(".preset-sub-btn").forEach(subBtn => {
+          subBtn.addEventListener("click", () => {
+            subContainer.querySelectorAll(".preset-sub-btn").forEach(b => b.classList.remove("is-active"));
+            subBtn.classList.add("is-active");
+            
+            const subData = subs[subBtn.dataset.index];
+            let y = 0, g = 0, c = 0;
+            for (const [asset, ratio] of Object.entries(subData.ratios)) {
+               y += PRESET_ASSETS[asset].yield * ratio;
+               g += PRESET_ASSETS[asset].growth * ratio;
+               c += PRESET_ASSETS[asset].capital * ratio;
+            }
+            // Round to 1 decimal place
+            y = Math.round(y * 10) / 10;
+            g = Math.round(g * 10) / 10;
+            c = Math.round(c * 10) / 10;
+            
+            if (!state.draft.dividendSim) state.draft.dividendSim = {};
+            state.draft.dividendSim.yield = y;
+            state.draft.dividendSim.growth = g;
+            state.draft.dividendSim.capitalGrowth = c;
+            
+            if (dom.simDividendYield) dom.simDividendYield.value = y;
+            if (dom.simDividendGrowth) dom.simDividendGrowth.value = g;
+            if (dom.simCapitalGrowth) dom.simCapitalGrowth.value = c;
+            
+            markDirty();
+            renderDividendSimulation();
+          });
+        });
+        
+        if (subContainer.firstChild) {
+          subContainer.firstChild.click();
+        }
+      }
     });
   });
   

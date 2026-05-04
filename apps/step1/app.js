@@ -1,4 +1,4 @@
-﻿import {
+import {
   MONEY_UNIT, STORAGE_KEY, SHARE_STATE_KEY, SHARE_STATE_SCHEMA,
   HASH_STATE_PARAM, VIEW_MODE_GUIDE_DISMISSED_KEY, MANUAL_BACKUP_WINDOW_MS,
   MAX_INCOME_ITEMS, MAX_ALLOCATION_ITEMS, SANKEY_VALUE_MODES,
@@ -68,7 +68,7 @@ function init() {
   void initializeInputsFromShareId();
 
   const pwaManager = new IsfPwaManager({
-    appVersion: "0.7.8",
+    appVersion: "0.7.9",
     appKey: SHARE_STATE_KEY,
     onFeedback: (message) => IsfFeedback.showFeedback(dom.applyFeedback, message),
     isViewMode: () => state.isViewMode,
