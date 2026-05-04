@@ -1,4 +1,4 @@
-﻿
+
 :root {
   --tone-paper: rgba(16, 34, 32, 0.04);
 }
@@ -212,5 +212,42 @@ body.is-dashboard-mode .info-panel {
     padding: 8px 6px;
     font-size: 0.76rem;
   }
+}
+
+/* Custom Tooltip */
+[data-tooltip] {
+  position: relative;
+  cursor: help;
+}
+
+[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 125%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(31, 41, 55, 0.95);
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  white-space: normal;
+  width: 220px;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s ease;
+  z-index: 1000;
+  pointer-events: none;
+  font-weight: 500;
+  text-align: center;
+  line-height: 1.5;
+  box-shadow: var(--sh-float);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+[data-tooltip]:hover::after {
+  opacity: 1;
+  visibility: visible;
+  bottom: 110%;
 }
 
