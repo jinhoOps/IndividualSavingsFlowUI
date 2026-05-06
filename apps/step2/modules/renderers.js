@@ -250,6 +250,11 @@ function drawSimulationChart(svg, data) {
         const scale = containerRect.width / width;
         let actualX = x * scale;
         
+        const tooltipWidth = 140;
+        const halfWidth = tooltipWidth / 2;
+        if (actualX - halfWidth < 0) actualX = halfWidth;
+        if (actualX + halfWidth > containerRect.width) actualX = containerRect.width - halfWidth;
+
         tooltip.style.left = `${actualX}px`;
         tooltip.style.top = '10%';
         tooltip.style.transform = 'translateX(-50%)';

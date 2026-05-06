@@ -15,15 +15,14 @@ export class IsfStore {
   async init(): Promise<void> {
     if (this.db) return;
 
-    // Legacy Wipe: Delete old DB if it exists
-    // (Note: This is a bit aggressive, but per user request "Legacy data can be wiped")
+    // Legacy Wipe: Delete old DB if it exists (Per user: "Legacy can be wiped")
     try {
       const oldDbs = await window.indexedDB.databases();
       if (oldDbs.find(d => d.name === 'isf-hub-db-v1')) {
-        console.warn('IsfStore: Deleting legacy isf-hub-db-v1');
+        console.warn('IsfStore: Wiping legacy isf-hub-db-v1');
         window.indexedDB.deleteDatabase('isf-hub-db-v1');
       }
-    } catch (e) { /* ignore if databases() not supported */ }
+    } catch (e) { /* ignore */ }
 
     return new Promise((resolve, reject) => {
       const request = indexedDB.open(DB_NAME, DB_VERSION);
@@ -80,13 +79,8 @@ export class IsfStore {
   // --- Step 1 Methods ---
 
   async saveStep1(data: Step1State): Promise<void> {
-    // 1. Save to LocalStorage for active session (fast recovery)
     localStorage.setItem('isf-step1-active', JSON.stringify(data));
-
-    // 2. Save to history in IndexedDB
     await this.perform(STORES.STEP1_HISTORY, 'readwrite', (s) => s.put(data));
-    
-    // Optional: Trim history to last 50 entries
     await this.trimStore(STORES.STEP1_HISTORY, 50);
   }
 
@@ -95,8 +89,6 @@ export class IsfStore {
     if (local) {
       try { return JSON.parse(local); } catch (e) { return null; }
     }
-
-    // Fallback to latest from history
     return this.perform<Step1State | null>(STORES.STEP1_HISTORY, 'readonly', (s) => {
       return s.index('updatedAt').openCursor(null, 'prev');
     }).then(cursor => (cursor as any)?.value || null);
@@ -141,5 +133,4 @@ export class IsfStore {
   }
 }
 
-// Export singleton instance
 export const isfStore = new IsfStore();

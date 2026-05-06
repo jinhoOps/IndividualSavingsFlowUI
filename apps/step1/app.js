@@ -675,9 +675,9 @@ function renderProjectionTable(records, horizonYears, expenseGrowth) {
         <td>${formatCurrency(r.newBorrowing)}</td>
         <td>${formatCurrency(r.cash)}</td>
         <td>${formatCurrency(r.savings)}</td>
-        <td>${formatCurrency(r.invest)}</td>
+        <td>${formatCurrency(r.invest)} ${badge}</td>
         <td>${formatCurrency(r.debt)}</td>
-        <td class="fw-bold">${formatCurrency(r.netAsset)} ${badge}</td>
+        <td class="fw-bold">${formatCurrency(r.netAsset)}</td>
         <td class="text-muted small">${formatCurrency(r.realNetAsset)}</td>
       </tr>
     `;
