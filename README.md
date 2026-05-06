@@ -1,22 +1,23 @@
-# IndividualSavings Flow UIUX
+# IndividualSavings Flow UIUX (v0.9.0)
 
 `개인 자산 흐름 (IndividualSavings Flow UIUX)` 프로젝트는  
 개인의 월간 현금흐름 점검부터 중장기 자산 변화 시뮬레이션까지 연결하는 UIUX를 기획 중입니다.  
-현재는 단일 레포 내 다중 단계 구조로 운영합니다.
+**Modern Hybrid (Vite/TS/Tailwind v4)** 기반의 고성능 금융 시뮬레이션 환경을 지향합니다.
 
 ## 구조
 
-- `apps/step1`: `나의 가계 흐름` (현재 운영중인 1단계)
-- `apps/step2`: 투자 포트폴리오 구성(MVP: 계좌형 편집/도넛 시각화/저장/불러오기)
-- `shared`: Step1/Step2 공통 모듈(IndexedDB 허브 스키마/브리지/공통 테마)
+- `apps/step1`: `나의 가계 흐름` (현재 운영중인 1단계, 온보딩 지원)
+- `apps/step2`: `배당 성장 시뮬레이션` (자산 성장/배당 재투자/성장률 시뮬레이션)
+- `src/core`: 현대화된 TypeScript 기반 핵심 로직 (스토리지 v2, 브랜디드 타입)
+- `shared`: 레거시 및 공통 UI 컴포넌트
 
-## Design Philosophy
+## Tech Stack & Philosophy
 
-- **Mobile-First**: 모든 기능은 모바일 브라우저 및 PWA 환경에서의 가독성과 조작성을 최우선으로 설계합니다.
-- **Style & Responsive Integrity**: UI/UX는 데이터만큼 중요합니다. 물리적 파일 구조(특히 `@media` 쿼리)를 엄격히 보존하고, 모바일 레이아웃의 파손을 방지하는 시각적 회귀 테스트를 거칩니다.
-- **Compounding Knowledge (LLM Wiki)**: AI 에이전트가 지식을 단순히 소비하지 않고, **복리로 적립(Compounding)**하며 개발합니다. 모든 설계 결정과 패턴은 프로젝트 내부 위키에 합성되어 시간이 흐를수록 더 견고하고 지능적인 시스템으로 진화합니다.
-- **Modern Hybrid (No-Build Oriented)**: Vite, TypeScript, TailwindCSS 기반의 현대적 DX를 구축하되, 브라우저 표준 기술의 간결함과 유지보수성을 극대화합니다. 레거시 코드와의 하위 호환성을 존중하며 실시간 PWA 경험을 제공합니다.
-- **Data Continuity**: Step 1에서 Step 2로 이어지는 자산의 흐름을 데이터 무결성을 유지하며 매끄럽게 연결합니다.
+- **Modern Hybrid (Vite/TS/Tailwind v4)**: 현대적 DX를 구축하되 브라우저 표준 기술과의 상호운용성을 보존합니다.
+- **System Integrity**: TypeScript를 통한 단위(원/만원) 정합성 수호 및 `IsfStore` 기반의 타입 안전한 데이터 관리.
+- **Financial Precision**: 4% 안전 마진이 적용된 금융소득종합과세 경고 및 누진세율 기반 세액 계산 엔진 탑재.
+- **Mobile-First & Glassmorphism**: PWA 환경에 최적화된 유려한 디자인 시스템과 반응형 레이아웃.
+- **LLM Wiki (Compounding Knowledge)**: 모든 설계와 결정은 프로젝트 내부 위키에 합성되어 복리로 축적됩니다.
 
 ## 문제 정의
 
@@ -29,58 +30,56 @@
   - 루트(자동 Step1 이동): https://jinhoops.github.io/IndividualSavingsFlowUI/
   - Step1 직접: https://jinhoops.github.io/IndividualSavingsFlowUI/apps/step1/
   - Step2 직접: https://jinhoops.github.io/IndividualSavingsFlowUI/apps/step2/
-- 금액 단위: `만원` (예: `350` = `3,500,000원`)
+- 금액 단위: `만원` (UI 표시), `원` (내부 계산 및 저장)
 - 기본 흐름:
-  1. `입력값`에서 수입/지출/저축/투자/부채상환 값을 입력
-  2. `고급 설정`에서 생활비/저축/투자 상세 항목 편집
+  1. `Spotlight 온보딩`을 통해 서비스 사용법 및 프리셋 탐색
+  2. `입력값`에서 수입/지출/저축/투자/부채상환 값을 입력
   3. `적용`으로 반영 후 핵심 카드 + Sankey Diagram + 계산 검증표 확인
+  4. Step 2로 이동하여 자동 연동된 투자 여력 기반 배당 성장 시뮬레이션 수행
 
 ## 현재 기능
 
-- 수입 항목 복수 추가/삭제
-- 생활비/저축/투자 상세 항목 편집(항목 추가/삭제/적용)
-- 저축 상세 항목별 연 이자율 설정(미입력 시 저축 기본 수익률 적용)
-- Sankey Diagram 금액/% 전환, 확대/축소
-- 가계 추이 계산 검증표 및 실질 순자산(현재가치) 표시
-- 상태 공유/백업: 링크 복사, JSON 저장/불러오기
-- 로컬 백업: 12시간 간격 자동 백업(최대 60개) + 선택 복원
-- PWA 기본 적용: Service Worker + Web App Manifest(오프라인 재진입 지원)
-- Step2 포트폴리오:
-  - 계좌 중심 편집: `계좌명/계좌 비중(%)` + 계좌 내 자산군 비중 CRUD
-  - Step2 금액 단위: `원` (월 투자 가능 금액 1개 입력, 계좌 금액은 비중으로 자동 계산)
-  - 검증: 계좌별 자산 비중 합계 100% 검증(실패 시 저장 차단)
-  - 도넛 시각화: `종합 도넛(월 투자 가능 금액 기준 + 자동 현금)` / `계좌별 도넛` 탭 전환
-  - 기본 샘플 계좌: `국내주식`, `ISA`, `해외주식`
-  - IndexedDB 저장/불러오기/삭제 + v1(`targetAllocations`) 자동 마이그레이션
-  - Step1 브리지 데이터 수동 가져오기(월 투자여력 -> Step2 월 투자 가능 금액 반영, 덮어쓰기 확인)
+- **Step 1: 나의 가계 흐름**
+  - 신규 사용자를 위한 `Spotlight` 온보딩 가이드 시스템
+  - 수입/지출/저축/투자 상세 항목 편집 및 Sankey 시각화
+  - 가계 추이 계산 검증표 및 실질 순자산(현재가치) 표시
+  - 금융소득종합과세 **4% 안전 마진 경고** (1,920만/3,264만 기준)
+
+- **Step 2: 배당 시뮬레이션**
+  - 자산 성장률(CGR), 배당 성장률(DGR), 배당 재투자(DRIP) 시뮬레이션 엔진
+  - 인플레이션 반영 실질 가치 연산 및 시계열 차트/테이블 시각화
+  - Step 1 데이터 자동 연동 (월 투자여력 및 초기 자산 연동)
+
+- **데이터 및 인프라**
+  - PWA 지원: 오프라인 사용 및 홈 화면 추가 지원
+  - 스토리지 v2: IndexedDB `isf-v2-db` 기반의 타입 안전한 CRUD
+  - 로컬/원격 백업: 12시간 자동 백업 및 공유 링크(sid/hash) 지원
 
 ## 저장 방식
 
-- 우선순위: `공유 포인터(sid)` -> `URL 해시(#s)` -> `localStorage` -> 기본값
-- 공유 링크 기본 구조: `?view=1&sid=...`
-- 공유 포인터 DB:
-  - Step1에서는 브라우저 `IndexedDB`에 `sid -> 상태 JSON` 스냅샷을 저장/조회합니다.
-  - Step2에서는 동일 구조를 서버 DB로 확장할 수 있게 설계했습니다.
-- 단계 간 브리지 DB(`isf-hub-db-v1`):
-  - `step1Snapshots`: Step1 적용 시점 상태 스냅샷
-  - `bridgeStep1ToStep2`: Step2 전달용 최소 payload
-    - `monthlyInvestCapacity`, `currentCash`, `currentInvest`, `currentSavings`, `timestamp`
-  - `step2Portfolios`:
-    - v2(현재): `{ id, modelVersion, name, totalMonthlyInvestCapacity, accounts, notes, updatedAt }`
-    - v1(레거시): `{ id, name, targetAllocations, notes, updatedAt }` (로드 시 자동 변환)
-- 예외 모드(fallback):
-  - DB 없이도 공유가 가능하도록 `#s=...` 압축 해시를 함께 사용할 수 있습니다.
-  - 해시는 `LZ 기반 압축 + URI safe` 인코딩을 사용합니다.
-- `보기 링크(?view=1)`로 열면 로컬 작업 데이터는 자동 덮어쓰기 되지 않습니다.
-- 자동 백업은 브라우저 `IndexedDB`에 저장됩니다. (기존 `localStorage` 백업은 자동 마이그레이션)
+- **우선순위**: `공유 포인터(sid)` -> `URL 해시(#s)` -> `localStorage` -> 기본값
+- **스토리지 v2 (src/core/storage)**:
+  - `IsfStore.ts`: TypeScript 기반 고성능 IndexedDB 래퍼
+  - `BackupService.ts`: 현대화된 자동/수동 백업 프로토콜
+- **단위 정책**: UI는 `만원`(예: 350 만원), 영속화 데이터는 `원`(예: 3,500,000) 단위 고수
+- **Compatibility Bridge**: 레거시 앱이 수정 없이 신규 스토리지 레이어를 사용하도록 브릿지 제공
 
-## 로컬 실행(선택)
+## 로컬 개발 및 실행
+
+본 프로젝트는 Vite 빌드 시스템을 사용합니다.
 
 ```bash
+# 저장소 복제
 git clone https://github.com/jinhoOps/IndividualSavingsFlowUI.git
 cd IndividualSavingsFlowUI
-```
 
-- 루트 `index.html`: Step1으로 자동 이동
-- Step1 직접 실행: `apps/step1/index.html`
-- Step2 직접 실행: `apps/step2/index.html`
+# 의존성 설치
+npm install
+
+# 개발 서버 실행
+npm run dev
+
+# 빌드 및 프리뷰
+npm run build
+npm run preview
+```
