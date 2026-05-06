@@ -88,11 +88,11 @@
     return backupTimestampFormatter.format(new Date(parsed));
   }
 
-  function sanitizeMoney(value, min = 0) {
-    const raw = String(value || "0").replace(/[^0-9.-]/g, "");
+  function sanitizeMoney(value, fallback = 0, min = 0) {
+    const raw = String(value ?? "").replace(/[^0-9.-]/g, "");
     const parsed = parseInt(raw, 10);
     if (!Number.isFinite(parsed)) {
-      return min;
+      return fallback;
     }
     return Math.max(min, parsed);
   }

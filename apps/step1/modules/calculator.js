@@ -192,7 +192,7 @@ export function simulateProjection(inputs) {
     : (savingsBuckets.length > 0 ? savingsBuckets.reduce((sum, b) => sum + b.annualRate, 0) / savingsBuckets.length : inputs.annualSavingsYield);
   const investRate = inputs.annualInvestReturn;
 
-  let cash = window.IsfUtils.sanitizeMoney(inputs.startCash, 0);
+  let cash = window.IsfUtils.sanitizeMoney(inputs.startCash, 0, -1000000000000000);
   let savings = savingsBuckets.reduce((sum, bucket) => sum + bucket.balance, 0);
   let invest = investBuckets.reduce((sum, bucket) => sum + bucket.balance, 0);
   let debt = window.IsfUtils.sanitizeMoney(inputs.startDebt, 0);
