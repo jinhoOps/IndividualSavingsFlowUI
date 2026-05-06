@@ -1,3 +1,11 @@
+## [2026-05-06] ingest | No-build 원칙 완화 및 Modern Hybrid 전략 공식화
+- **목적**: v0.8.x 현대화 피벗(Vite/TS/Tailwind 도입)에 맞춰 프로젝트 핵심 원칙인 'No-build 보존'을 'No-build 지향 (Modern Hybrid)'으로 완화하고 관련 지식 베이스를 현행화함.
+- **주요 변경사항**:
+    - **원칙 수정**: `GEMINI.md` 및 `Operating_Principles.md`의 No-build 강제 조항을 '지향'으로 수정하고, 타입 안정성과 DX를 위한 현대적 인프라 수용을 명시함.
+    - **에이전트 지침 업데이트**: `isf-developer`, `isf-planner` 에이전트 정의 파일에 Modern Hybrid 전략(Vite/TS 활용 및 레거시 호환성 유지)을 반영함.
+    - **표준 문서 현행화**: `DESIGN.md`, `README.md`, `PROJECT.md` 및 `orchestration` 스킬 내의 No-build 관련 제약 사항을 현실화된 전략에 맞게 교정함.
+- **결과**: 인프라 변화와 프로젝트 헌법 간의 정합성이 확보되었으며, 에이전트가 현대화된 도구를 제약 없이 활용할 수 있는 근거를 마련함.
+
 ## [2026-05-04] fix | 버전 표기 변수화 및 관리 체계 일원화 (v0.8.3)
 - **목적**: UI 우측 상단에 하드코딩되어 있던 버전 표기를 변수화하고, 런타임 버전 관리 지점을 `IsfUtils`로 일원화하여 유지보수성을 향상함.
 - **주요 변경사항**:
