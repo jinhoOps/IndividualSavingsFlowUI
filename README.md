@@ -1,4 +1,4 @@
-# IndividualSavings Flow UIUX (v0.9.1)
+# IndividualSavings Flow UIUX (v0.9.x)
 
 `개인 자산 흐름 (IndividualSavings Flow UIUX)` 프로젝트는  
 개인의 월간 현금흐름 점검부터 중장기 자산 변화 시뮬레이션까지 연결하는 UIUX를 기획 중입니다.  
