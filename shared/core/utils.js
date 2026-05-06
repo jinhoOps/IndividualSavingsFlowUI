@@ -1,4 +1,4 @@
-﻿(function initIsfUtils(global) {
+﻿export const IsfUtils = (function initIsfUtils(global) {
   "use strict";
 
   const backupTimestampFormatter = new Intl.DateTimeFormat("ko-KR", {
@@ -139,24 +139,6 @@
     return Math.round(Number(amountInWon) / 10000);
   }
 
-  global.IsfUtils = {
-    APP_VERSION: "0.8.9",
-    formatMoney,
-    getFinancialIncomeStatus,
-    calculateIncomeTax,
-    formatTimestamp,
-    sanitizeMoney,
-    sanitizeRate,
-    toWon,
-    toMan,
-    createId,
-    escapeHtml,
-    debounce,
-    roundTo,
-    idbRequestToPromise,
-    idbTransactionDone,
-  };
-
   function debounce(fn, delay) {
     let timer = null;
     return (...args) => {
@@ -188,5 +170,29 @@
       transaction.onabort = () => reject(new Error("Transaction aborted"));
     });
   }
-})(window);
+
+  const result = {
+    APP_VERSION: "0.8.9",
+    formatMoney,
+    getFinancialIncomeStatus,
+    calculateIncomeTax,
+    formatTimestamp,
+    sanitizeMoney,
+    sanitizeRate,
+    toWon,
+    toMan,
+    createId,
+    escapeHtml,
+    debounce,
+    roundTo,
+    idbRequestToPromise,
+    idbTransactionDone,
+  };
+
+  if (global) {
+    global.IsfUtils = result;
+  }
+
+  return result;
+})((typeof window !== "undefined" ? window : null));
 

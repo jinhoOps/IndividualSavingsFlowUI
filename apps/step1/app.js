@@ -1,3 +1,5 @@
+import { IsfUtils } from "../../shared/core/utils.js";
+
 import {
   MONEY_UNIT, STORAGE_KEY, SHARE_STATE_KEY, SHARE_STATE_SCHEMA,
   HASH_STATE_PARAM, VIEW_MODE_GUIDE_DISMISSED_KEY, MANUAL_BACKUP_WINDOW_MS,
@@ -69,7 +71,7 @@ function init() {
   void initializeInputsFromShareId();
 
   const pwaManager = new window.IsfPwaManager({
-    appVersion: window.IsfUtils.APP_VERSION,
+    appVersion: IsfUtils.APP_VERSION,
     appKey: SHARE_STATE_KEY,
     onFeedback: (message) => window.IsfFeedback.showFeedback(dom.applyFeedback, message),
     isViewMode: () => state.isViewMode,
@@ -159,7 +161,7 @@ function bindControls() {
       if (!(target instanceof HTMLInputElement) || !FORM_FIELD_KEYS.includes(target.name)) return;
       
       const baseInputs = helpers.ensureDraftInputs(state);
-      state.draftInputs = sanitizeInputs(helpers.readInputsFromForm(dom.inputsForm, baseInputs, { FORM_FIELD_KEYS, toWon: window.IsfUtils.toWon }));
+      state.draftInputs = sanitizeInputs(helpers.readInputsFromForm(dom.inputsForm, baseInputs, { FORM_FIELD_KEYS, toWon: IsfUtils.toWon }));
       helpers.markDirty(state);
       markPendingChanges();
     });
@@ -258,7 +260,7 @@ function bindActionButtons() {
 function bindGlobalEvents() {
   window.addEventListener("hashchange", handleHashChange);
   window.addEventListener("popstate", () => { syncViewModeUi(); syncViewModeGuideUi(); });
-  window.addEventListener("resize", window.IsfUtils.debounce(() => state.snapshot && renderSankey(state.snapshot, buildSankeyData, state.sankeySortMode), 120));
+  window.addEventListener("resize", IsfUtils.debounce(() => state.snapshot && renderSankey(state.snapshot, buildSankeyData, state.sankeySortMode), 120));
   
   const mq = window.matchMedia(MOBILE_LAYOUT_QUERY);
   const onChange = () => {
@@ -438,7 +440,7 @@ function handleItemInput(group, event) {
     if (!item) return;
 
     if (field === "name") item.name = target.value.slice(0, 24);
-    if (field === "amount") item.amount = window.IsfUtils.toWon(target.value);
+    if (field === "amount") item.amount = IsfUtils.toWon(target.value);
     if (field === "group") item.group = normalizeAllocationGroupName(target.value);
     if (field === "annualRate") {
         const parsed = parseSavingsAnnualRateInput(target.value, getVisibleInputs().annualSavingsYield);
@@ -492,7 +494,7 @@ function markPendingChanges() {
   if (state.isViewMode) return;
   helpers.markDirty(state);
   helpers.syncDerivedValues(state.draftInputs, { getMonthlyAllocationTotalWon });
-  helpers.applyInputsToForm(dom.inputsForm, state.draftInputs, { FORM_FIELD_KEYS, toMan: window.IsfUtils.toMan });
+  helpers.applyInputsToForm(dom.inputsForm, state.draftInputs, { FORM_FIELD_KEYS, toMan: IsfUtils.toMan });
   renderInputHints(state.draftInputs);
   setPendingBarVisible(true);
 }
@@ -565,7 +567,7 @@ function refreshInputsPanel(inputs) {
   state.suspendInputTracking = true;
   try {
     helpers.syncDerivedValues(inputs, { getMonthlyAllocationTotalWon });
-    helpers.applyInputsToForm(dom.inputsForm, inputs, { FORM_FIELD_KEYS, toMan: window.IsfUtils.toMan });
+    helpers.applyInputsToForm(dom.inputsForm, inputs, { FORM_FIELD_KEYS, toMan: IsfUtils.toMan });
     renderIncomeList(inputs.incomes);
     renderExpenseList(inputs.expenseItems);
     renderSavingsList(inputs.savingsItems);
@@ -661,7 +663,7 @@ function renderProjectionTable(records, horizonYears, expenseGrowth) {
   dom.projectionTableBody.innerHTML = records.map((r, i) => {
     if (i > 0 && i % 12 !== 0 && i !== records.length - 1) return "";
     
-    const statusClass = window.IsfUtils.getFinancialIncomeStatus(r.annualFinancialIncome);
+    const statusClass = IsfUtils.getFinancialIncomeStatus(r.annualFinancialIncome);
     const trClass = statusClass !== 'normal' ? `status--${statusClass}` : '';
     const badge = statusClass === 'warn' ? '<span class="status-badge status-badge--warn">과세주의</span>' : 
                   statusClass === 'crit' ? '<span class="status-badge status-badge--crit">과세경고</span>' : '';
@@ -695,7 +697,7 @@ function renderIncomeItemHtml(item, opts) {
   return `
     <div class="income-row">
       <input type="text" value="${item.name}" data-income-id="${item.id}" data-field="name" ${isEditing ? "" : "readonly"} placeholder="이름" />
-      <input type="number" value="${window.IsfUtils.toMan(item.amount)}" data-income-id="${item.id}" data-field="amount" ${isEditing ? "" : "readonly"} inputmode="decimal" placeholder="금액" />
+      <input type="number" value="${IsfUtils.toMan(item.amount)}" data-income-id="${item.id}" data-field="amount" ${isEditing ? "" : "readonly"} inputmode="decimal" placeholder="금액" />
       ${isEditing ? `
         <button class="income-remove" data-remove-income="${item.id}" title="삭제">
           <svg class="income-remove-icon" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
@@ -735,7 +737,7 @@ function renderAllocationItemHtml(group, item, opts) {
       </div>
       <div class="editor-field">
         <label class="editor-field-label">금액(만원)</label>
-        <input type="number" value="${window.IsfUtils.toMan(item.amount)}" data-field="amount" data-editor-id="${item.id}" inputmode="decimal" placeholder="금액" />
+        <input type="number" value="${IsfUtils.toMan(item.amount)}" data-field="amount" data-editor-id="${item.id}" inputmode="decimal" placeholder="금액" />
       </div>
       <div class="editor-field">
         <label class="editor-field-label">그룹</label>
