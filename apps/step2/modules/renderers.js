@@ -25,6 +25,12 @@ export function renderDraft() {
       if (dom.simCapitalGrowth) dom.simCapitalGrowth.value = state.draft.dividendSim.capitalGrowth;
       if (dom.simHorizonYears) dom.simHorizonYears.value = state.draft.dividendSim.years;
       if (dom.simDrip) dom.simDrip.checked = state.draft.dividendSim.isDrip;
+      
+      if (dom.activePresetName) {
+        const pName = state.draft.dividendSim.presetName || "";
+        dom.activePresetName.textContent = pName;
+        dom.activePresetName.style.display = pName ? "inline-block" : "none";
+      }
     }
 
     renderCharts();

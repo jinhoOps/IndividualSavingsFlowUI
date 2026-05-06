@@ -187,16 +187,6 @@ function bindModalEvents() {
   });
 }
 
-function updateActivePresetDisplay(name) {
-  if (!dom.activePresetName) return;
-  if (name) {
-    dom.activePresetName.textContent = name;
-    dom.activePresetName.style.display = "inline-block";
-  } else {
-    dom.activePresetName.style.display = "none";
-  }
-}
-
 function bindEvents() {
   bindModalEvents();
   
@@ -340,9 +330,9 @@ function bindEvents() {
             if (dom.simDividendGrowth) dom.simDividendGrowth.value = g;
             if (dom.simCapitalGrowth) dom.simCapitalGrowth.value = c;
             
-            updateActivePresetDisplay(subData.fullName);
+            state.draft.dividendSim.presetName = subData.fullName;
             markDirty();
-            renderDividendSimulation();
+            renderDraft();
           });
         });
         
@@ -384,9 +374,9 @@ function bindEvents() {
         if (id === "simCapitalGrowth") state.draft.dividendSim.capitalGrowth = val;
         if (id === "simHorizonYears") state.draft.dividendSim.years = val;
         
-        updateActivePresetDisplay("");
+        state.draft.dividendSim.presetName = "";
         markDirty();
-        renderDividendSimulation();
+        renderDraft();
       });
     }
   });

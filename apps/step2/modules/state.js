@@ -24,7 +24,8 @@ export function createEmptyDraft() {
       growth: 5.0,
       capitalGrowth: 4.0,
       years: 10,
-      isDrip: true
+      isDrip: true,
+      presetName: ""
     },
     updatedAt: Date.now()
   };
