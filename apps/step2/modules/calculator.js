@@ -56,14 +56,7 @@ export function calculateDividendProjection() {
     const prevDivPR = lastResult ? lastResult.dividendNominalPR : 0;
     const divNominalPR = (prevDivPR * (1 + dgr)) + (yearlyContribution * (1 + cgr / 2) * (initialYield / 2));
     
-    // 금융종합소득과세 반영 (2000만원 초과 시 누진세율 적용, 미만 시 15.4% 원천징수)
-    let divAfterTaxPR = 0;
-    if (divNominalPR > 20000000) {
-      divAfterTaxPR = divNominalPR - window.IsfUtils.calculateIncomeTax(divNominalPR);
-    } else {
-      divAfterTaxPR = divNominalPR * (1 - 0.154);
-    }
-
+    const divAfterTaxPR = divNominalPR - window.IsfUtils.calculateIncomeTax(divNominalPR);
 
     const existingAssetTR = assetTR;
     const growthOnExistingTR = existingAssetTR * cgr;
@@ -75,12 +68,7 @@ export function calculateDividendProjection() {
 
     const divNominalTR = (prevDivTR * (1 + dgr)) + (yearlyContribution * (1 + cgr / 2) * (initialYield / 2)) + (prevReinvested * (1 + cgr) * initialYield);
     
-    let divAfterTaxTR = 0;
-    if (divNominalTR > 20000000) {
-      divAfterTaxTR = divNominalTR - window.IsfUtils.calculateIncomeTax(divNominalTR);
-    } else {
-      divAfterTaxTR = divNominalTR * (1 - 0.154);
-    }
+    const divAfterTaxTR = divNominalTR - window.IsfUtils.calculateIncomeTax(divNominalTR);
     
     assetTR += divAfterTaxTR;
 

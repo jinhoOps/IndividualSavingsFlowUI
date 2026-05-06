@@ -70,9 +70,10 @@ export function renderDividendSimulation() {
 export function renderKpiCards(data) {
   if (!dom.simKpiGrid || !data || data.length === 0) return;
   
+  const isDrip = state.draft?.dividendSim?.isDrip !== false;
   const last = data[data.length - 1];
-  const finalAsset = last.assetNominalTR;
-  const finalDividend = last.dividendAfterTaxTR;
+  const finalAsset = isDrip ? last.assetNominalTR : last.assetNominalPR;
+  const finalDividend = isDrip ? last.dividendAfterTaxTR : last.dividendAfterTaxPR;
   const totalPrincipal = last.principal;
   
   const returnRate = totalPrincipal > 0 
@@ -81,7 +82,7 @@ export function renderKpiCards(data) {
 
   dom.simKpiGrid.innerHTML = `
     <div class="kpi-card">
-      <div class="kpi-label">최종 예상 자산</div>
+      <div class="kpi-label">최종 예상 자산 (${isDrip ? '재투자' : '미투자'})</div>
       <div class="kpi-value">${formatCurrency(finalAsset)}</div>
     </div>
     <div class="kpi-card kpi-card--accent">
@@ -123,20 +124,22 @@ function drawSimulationChart(svg, data) {
     text.setAttribute("text-anchor", "end"); 
     text.setAttribute("font-size", "10"); 
     text.setAttribute("fill", "var(--muted)");
-    text.textContent = formatCurrency(yVal);
+    text.textContent = utils.toMan(yVal).toLocaleString();
     svg.appendChild(text);
   }
 
+  const denominator = Math.max(data.length - 1, 1);
+
   const pointsPolygon = [
     ...data.map((d, i) => {
-      const x = paddingL + (i / (data.length - 1)) * (width - paddingL - paddingR);
+      const x = paddingL + (i / denominator) * (width - paddingL - paddingR);
       const y = (height - paddingTB) - (d.assetNominalTR / maxVal) * (height - 2 * paddingTB);
       return `${x},${y}`;
     }),
     ...data.map((d, i) => {
       const revIndex = data.length - 1 - i;
       const revData = data[revIndex];
-      const x = paddingL + (revIndex / (data.length - 1)) * (width - paddingL - paddingR);
+      const x = paddingL + (revIndex / denominator) * (width - paddingL - paddingR);
       const y = (height - paddingTB) - (revData.assetNominalPR / maxVal) * (height - 2 * paddingTB);
       return `${x},${y}`;
     })
@@ -147,7 +150,7 @@ function drawSimulationChart(svg, data) {
   svg.appendChild(polyArea);
 
   const pointsPR = data.map((d, i) => {
-    const x = paddingL + (i / (data.length - 1)) * (width - paddingL - paddingR);
+    const x = paddingL + (i / denominator) * (width - paddingL - paddingR);
     const y = (height - paddingTB) - (d.assetNominalPR / maxVal) * (height - 2 * paddingTB);
     return `${x},${y}`;
   }).join(" ");
@@ -159,7 +162,7 @@ function drawSimulationChart(svg, data) {
   svg.appendChild(polyPR);
 
   const pointsTR = data.map((d, i) => {
-    const x = paddingL + (i / (data.length - 1)) * (width - paddingL - paddingR);
+    const x = paddingL + (i / denominator) * (width - paddingL - paddingR);
     const y = (height - paddingTB) - (d.assetNominalTR / maxVal) * (height - 2 * paddingTB);
     return `${x},${y}`;
   }).join(" ");
@@ -170,7 +173,7 @@ function drawSimulationChart(svg, data) {
   svg.appendChild(polyTR);
 
   data.forEach((d, i) => {
-    const x = paddingL + (i / (data.length - 1)) * (width - paddingL - paddingR);
+    const x = paddingL + (i / denominator) * (width - paddingL - paddingR);
     const yTR = (height - paddingTB) - (d.assetNominalTR / maxVal) * (height - 2 * paddingTB);
     const yPR = (height - paddingTB) - (d.assetNominalPR / maxVal) * (height - 2 * paddingTB);
 
@@ -217,9 +220,12 @@ function drawSimulationChart(svg, data) {
   }
   tooltip.style.display = 'none';
 
-  const rectWidth = (width - paddingL - paddingR) / Math.max((data.length - 1), 1);
+  const rectWidth = (width - paddingL - paddingR) / denominator;
   data.forEach((d, i) => {
-    const x = paddingL + (i / (data.length - 1)) * (width - paddingL - paddingR);
+    const x = paddingL + (i / denominator) * (width - paddingL - paddingR);
+    const yTR = (height - paddingTB) - (d.assetNominalTR / maxVal) * (height - 2 * paddingTB);
+    const yPR = (height - paddingTB) - (d.assetNominalPR / maxVal) * (height - 2 * paddingTB);
+
     const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
     rect.setAttribute("x", x - rectWidth / 2);
     rect.setAttribute("y", 0);
@@ -256,7 +262,17 @@ function drawSimulationChart(svg, data) {
         if (actualX + halfWidth > containerRect.width) actualX = containerRect.width - halfWidth;
 
         tooltip.style.left = `${actualX}px`;
-        tooltip.style.top = '10%';
+        
+        // Dynamic Y position based on data points
+        const targetY = isDrip ? yTR : yPR;
+        const actualY = targetY * scale;
+        if (actualY < containerRect.height / 2) {
+          tooltip.style.top = `${actualY + 20}px`;
+          tooltip.style.bottom = 'auto';
+        } else {
+          tooltip.style.top = 'auto';
+          tooltip.style.bottom = `${(height - targetY) * scale + 20}px`;
+        }
         tooltip.style.transform = 'translateX(-50%)';
       };
     

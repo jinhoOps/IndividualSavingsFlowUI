@@ -186,9 +186,10 @@ export function simulateProjection(inputs) {
   const investBuckets = buildInvestBuckets(inputs);
 
   // 현재 시점의 가중평균 연 수익률 계산 (경고용)
-  const avgSavingsRate = savingsBuckets.length > 0 
-    ? savingsBuckets.reduce((sum, b) => sum + b.annualRate, 0) / savingsBuckets.length 
-    : inputs.annualSavingsYield;
+  const totalSavingsBalance = savingsBuckets.reduce((sum, b) => sum + b.balance, 0);
+  const avgSavingsRate = totalSavingsBalance > 0 
+    ? savingsBuckets.reduce((sum, b) => sum + (b.annualRate * b.balance), 0) / totalSavingsBalance
+    : (savingsBuckets.length > 0 ? savingsBuckets.reduce((sum, b) => sum + b.annualRate, 0) / savingsBuckets.length : inputs.annualSavingsYield);
   const investRate = inputs.annualInvestReturn;
 
   let cash = window.IsfUtils.sanitizeMoney(inputs.startCash, 0);
