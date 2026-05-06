@@ -31,9 +31,24 @@ kanban-plugin: basic
 - [x] **Phase 5: Step 1 Spotlight 온보딩 가이드**
   - [x] Step 1 첫 접속 시 프리셋 선택 영역 강조 Spotlight 가이드 구현
   - [x] 단계별 흐름 안내 및 localStorage 상태 저장
-- [ ] **Step 3: 포트폴리오 시각화 및 구성 (준비 중)**
-  - [ ] Step 1의 투자 여력 데이터를 기반으로 계좌/종목 비중 구성 및 시각화(도넛, Sankey) 구현
-  - [ ] 목표 비중(Target) vs 실제 보유(Actual) 격차 분석 및 리밸런싱 가이드 통합
+
+# FUTURE (Phase 6~8)
+
+## Phase 6: 포트폴리오 자산 구성 및 리밸런싱 (Step 3)
+- [ ] **Step 3 아키텍처 설계**: Step 1 투자 데이터를 수신하는 전용 모듈(`step1-receiver.js`) 정의
+- [ ] **계좌별 자산 에디터**: 연금저축, ISA, 일반계좌 등 계좌별 비중 설정 기능
+- [ ] **목표 vs 실제 분석**: 도넛 차트를 활용한 비중 격차 시각화 및 리밸런싱 액션 가이드
+- [ ] **포트폴리오 스냅샷**: 현재 구성 상태를 히스토리로 저장 및 복원
+
+## Phase 7: 지출 데이터 과거 비교 분석 (Issue #4)
+- [ ] **데이터 브릿지 확장**: `SnapshotManager`를 통한 과거 스냅샷 데이터 로드 API 강화
+- [ ] **Grouped Bar Chart**: 카테고리별 [이전] vs [현재] 지출 비교 막대 그래프 구현
+- [ ] **증감 분석 UI**: 지출 증가/감소 항목에 대한 요약 요약 알림 및 컬러 코딩
+
+## Phase 8: 신혼부부 통합 허브 (Issue #2)
+- [ ] **Smart Clipboard Parser**: 은행/카드 문자 자동 파싱 엔진 개발
+- [ ] **Adaptive Budgeting**: 변동 지출 항목별 '예산' 필드 추가 및 진행률바 UI 적용
+- [ ] **Dual-Flow Merge**: 부부 간 데이터 해시 병합 및 통합 Sankey 다이어그램 렌더링
 
 ## Done (v0.7.15 Patch)
 - [x] **Triple Sync 완결 (v0.7.15)**: `sw.js`, `manifest.webmanifest`, `app.js` 버전 동기화 및 PWA 캐시 갱신.
