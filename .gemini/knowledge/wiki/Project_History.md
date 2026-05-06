@@ -8,6 +8,13 @@ tags: [history, timeline, legacy]
 
 ## 🕒 주요 마일스톤
 
+### [2026-05-06] Step 2 Preset UI Enhancement & Patch (v0.9.1) 🛠️
+- **주요 내용**: 시뮬레이션 프리셋 선택 시 가시성 개선 및 전역 버전 패치.
+- **성과**:
+    - 프리셋 선택 시 우측 상단에 전략 명칭(Badge) 표시 로직 구현.
+    - 입력값 수정 시 프리셋 상태를 자동으로 해제하여 사용자 혼선 방지.
+    - 프로젝트 전반의 버전을 v0.9.1로 패치하여 PWA 캐시 무결성 확보.
+
 ### [2026-05-06] Modern Hybrid Architecture & Financial Simulation Enhancements (v0.9.0) 🚀
 - **인프라 혁신**: Vite, TypeScript, TailwindCSS v4 도입 및 레거시 호환성 브릿지 구축 완료.
 - **금융 로직 정교화**: 4% 안전 마진(1,920만/3,264만) 정책이 적용된 자동 소득세 계산 및 경고 시스템 통합.

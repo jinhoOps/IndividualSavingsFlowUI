@@ -2,7 +2,7 @@
 kanban-plugin: basic
 ---
 
-# TODO (v0.9.0)
+# TODO (v0.9.1)
 
 ## Done (v0.9.0)
 - [x] **Modern Hybrid 아키텍처 전환**: Vite, TS, Tailwind v4 통합 완료.

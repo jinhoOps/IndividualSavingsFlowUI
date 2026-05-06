@@ -22,6 +22,7 @@ export const dom = {
   simTable: null,
   simYearsTabs: null,
   simKpiGrid: null,
+  activePresetName: null,
 };
 
 export function initDom() {
@@ -47,6 +48,7 @@ export function initDom() {
     simChartTooltip: "simChartTooltip",
     simYearsTabs: "simYearsTabs",
     simKpiGrid: "simKpiGrid",
+    activePresetName: "activePresetName",
   };
 
   for (const [key, id] of Object.entries(selectors)) {

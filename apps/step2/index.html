@@ -78,7 +78,10 @@
               </div>
             </details>
             <div class="sim-presets" style="margin-bottom: 16px;">
-              <div class="muted" style="font-size: 0.8rem; margin-bottom: 8px;">프리셋 조합:</div>
+              <div class="muted" style="font-size: 0.8rem; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+                <span>프리셋 조합:</span>
+                <span id="activePresetName" class="badge badge-primary" style="font-size: 0.75rem; display: none;"></span>
+              </div>
               <div class="preset-depth1" style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px;">
                 <button class="btn btn-ghost btn-sm preset-cat-btn" data-cat="schd">배당 성장 집중형 (SCHD 100%)</button>
                 <button class="btn btn-ghost btn-sm preset-cat-btn" data-cat="schd_qqqi">밸런스 표준형 (SCHD+QQQI)</button>

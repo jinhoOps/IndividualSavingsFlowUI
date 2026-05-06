@@ -187,6 +187,16 @@ function bindModalEvents() {
   });
 }
 
+function updateActivePresetDisplay(name) {
+  if (!dom.activePresetName) return;
+  if (name) {
+    dom.activePresetName.textContent = name;
+    dom.activePresetName.style.display = "inline-block";
+  } else {
+    dom.activePresetName.style.display = "none";
+  }
+}
+
 function bindEvents() {
   bindModalEvents();
   
@@ -269,25 +279,25 @@ function bindEvents() {
 
   const PRESET_COMBINATIONS = {
     "schd": [
-      { label: "단일 100%", ratios: { SCHD: 1.0 } }
+      { label: "단일 100%", ratios: { SCHD: 1.0 }, fullName: "배당 성장 집중형 (SCHD 100%)" }
     ],
     "schd_qqqi": [
-      { label: "7:3", ratios: { SCHD: 0.7, QQQI: 0.3 } },
-      { label: "1:1", ratios: { SCHD: 0.5, QQQI: 0.5 } },
-      { label: "3:7", ratios: { SCHD: 0.3, QQQI: 0.7 } }
+      { label: "7:3", ratios: { SCHD: 0.7, QQQI: 0.3 }, fullName: "밸런스 표준형 (SCHD+QQQI) 7:3" },
+      { label: "1:1", ratios: { SCHD: 0.5, QQQI: 0.5 }, fullName: "밸런스 표준형 (SCHD+QQQI) 1:1" },
+      { label: "3:7", ratios: { SCHD: 0.3, QQQI: 0.7 }, fullName: "밸런스 표준형 (SCHD+QQQI) 3:7" }
     ],
     "schd_jepi": [
-      { label: "7:3", ratios: { SCHD: 0.7, JEPI: 0.3 } },
-      { label: "1:1", ratios: { SCHD: 0.5, JEPI: 0.5 } },
-      { label: "3:7", ratios: { SCHD: 0.3, JEPI: 0.7 } }
+      { label: "7:3", ratios: { SCHD: 0.7, JEPI: 0.3 }, fullName: "안정적 고배당형 (SCHD+JEPI) 7:3" },
+      { label: "1:1", ratios: { SCHD: 0.5, JEPI: 0.5 }, fullName: "안정적 고배당형 (SCHD+JEPI) 1:1" },
+      { label: "3:7", ratios: { SCHD: 0.3, JEPI: 0.7 }, fullName: "안정적 고배당형 (SCHD+JEPI) 3:7" }
     ],
     "jepi_qqqi": [
-      { label: "7:3", ratios: { JEPI: 0.7, QQQI: 0.3 } },
-      { label: "1:1", ratios: { JEPI: 0.5, QQQI: 0.5 } },
-      { label: "3:7", ratios: { JEPI: 0.3, QQQI: 0.7 } }
+      { label: "7:3", ratios: { JEPI: 0.7, QQQI: 0.3 }, fullName: "월배당 극대화형 (JEPI+QQQI) 7:3" },
+      { label: "1:1", ratios: { JEPI: 0.5, QQQI: 0.5 }, fullName: "월배당 극대화형 (JEPI+QQQI) 1:1" },
+      { label: "3:7", ratios: { JEPI: 0.3, QQQI: 0.7 }, fullName: "월배당 극대화형 (JEPI+QQQI) 3:7" }
     ],
     "all_weather": [
-      { label: "4:3:3", ratios: { SCHD: 0.4, JEPI: 0.3, QQQI: 0.3 } }
+      { label: "4:3:3", ratios: { SCHD: 0.4, JEPI: 0.3, QQQI: 0.3 }, fullName: "올웨더 배당형 (SCHD+JEPI+QQQI) 4:3:3" }
     ]
   };
 
@@ -330,6 +340,7 @@ function bindEvents() {
             if (dom.simDividendGrowth) dom.simDividendGrowth.value = g;
             if (dom.simCapitalGrowth) dom.simCapitalGrowth.value = c;
             
+            updateActivePresetDisplay(subData.fullName);
             markDirty();
             renderDividendSimulation();
           });
@@ -372,6 +383,8 @@ function bindEvents() {
         if (id === "simDividendGrowth") state.draft.dividendSim.growth = val;
         if (id === "simCapitalGrowth") state.draft.dividendSim.capitalGrowth = val;
         if (id === "simHorizonYears") state.draft.dividendSim.years = val;
+        
+        updateActivePresetDisplay("");
         markDirty();
         renderDividendSimulation();
       });
