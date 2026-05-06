@@ -2,6 +2,13 @@
 kanban-plugin: basic
 ---
 
+# TODO (v0.8.9)
+
+## Done (v0.8.9)
+- [x] **Step 2 동기화 배너(step1SyncBanner) UX 개선**: 데이터가 이미 일치할 경우 배너를 자동으로 숨겨 불필요한 노출 방지.
+- [x] **Step 2 동기화 로직 고도화**: Step 1 데이터 부재 시 "Step 1로 이동" 가이드 제공 및 mismatch 발생 시에만 "업데이트" 버튼 노출.
+- [x] **전역 버전 동기화 (v0.8.9)**: sw.js, manifest, package.json, IsfUtils.APP_VERSION 동기화.
+
 # TODO (v0.8.8)
 
 ## Done (v0.8.8)

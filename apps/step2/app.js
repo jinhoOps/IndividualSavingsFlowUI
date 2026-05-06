@@ -196,10 +196,15 @@ function bindEvents() {
   }
   
   if (dom.importStep1Data) {
-    dom.importStep1Data.addEventListener("click", async () => { 
+    dom.importStep1Data.addEventListener("click", async () => {
+      if (dom.importStep1Data.textContent === "Step 1로 이동") {
+        window.location.href = "../step1/index.html";
+        return;
+      }
+
       if (confirm("Step 1의 최신 데이터로 다시 연동할까요?")) {
         try {
-          await importLatestStep1Data(); 
+          await importLatestStep1Data();
           state.isSyncedWithStep1 = true;
         } catch (e) {
           console.error(e);
