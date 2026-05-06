@@ -93,6 +93,19 @@ body {
   flex-shrink: 0;
 }
 
+/* Version Badge (Debugging) */
+.version-badge {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--muted);
+  background: var(--line);
+  padding: 1px 4px;
+  border-radius: 4px;
+  opacity: 0.8;
+  white-space: nowrap;
+  letter-spacing: -0.02em;
+}
+
 .app-header__nav {
   display: flex;
   gap: var(--sp-xs);
@@ -205,7 +218,7 @@ h1 { font-family: var(--font-body); }
   transition: all 0.2s ease;
 }
 
-.btn:hover { border-color: var(--ink); background: #fff; }
+.btn:hover { border-color: var(--ink); background: var(--panel); }
 .btn:active { transform: scale(0.96); }
 .btn-primary {
   color: #fff;
@@ -221,7 +234,7 @@ h1 { font-family: var(--font-body); }
 input, textarea, select {
   border: 1px solid var(--line-strong);
   border-radius: var(--rd-sm);
-  background: #fff;
+  background: var(--panel);
   color: var(--ink);
   font: inherit;
   padding: 8px 10px;

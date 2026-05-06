@@ -17,6 +17,7 @@ export const state = {
 export function createEmptyDraft() {
   return {
     modelVersion: 10,
+    totalInitialAsset: 0,
     totalMonthlyInvestCapacity: 0,
     dividendSim: {
       yield: 3.5,

@@ -10,8 +10,8 @@ import { sanitizeInputs } from "./input-sanitizer.js";
 import { loadPersistedInputs } from "./storage-manager.js";
 
 function resolveInitialInputs() {
-  const sid = IsfShare.getShareIdFromUrl();
-  const hashInputs = IsfShare.decodePayloadFromHash(
+  const sid = window.IsfShare.getShareIdFromUrl();
+  const hashInputs = window.IsfShare.decodePayloadFromHash(
     new URLSearchParams(window.location.hash.replace(/^#/, "")).get(HASH_STATE_PARAM),
     SHARE_STATE_KEY
   );
@@ -19,14 +19,14 @@ function resolveInitialInputs() {
   if (hashInputs) {
     return sanitizeInputs({ ...DEFAULT_INPUTS, ...hashInputs });
   }
-  if (sid && IsfShare.detectViewMode()) {
+  if (sid && window.IsfShare.detectViewMode()) {
     return sanitizeInputs({ ...DEFAULT_INPUTS });
   }
   return sanitizeInputs({ ...DEFAULT_INPUTS, ...loadPersistedInputs() });
 }
 
 export const state = {
-  isViewMode: IsfShare.detectViewMode(),
+  isViewMode: window.IsfShare.detectViewMode(),
   inputs: resolveInitialInputs(),
   backupEntries: [],
   backupStoreReady: false,

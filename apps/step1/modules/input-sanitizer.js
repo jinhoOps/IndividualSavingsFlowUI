@@ -49,11 +49,11 @@ export function migrateInputsToWon(raw) {
 
 export function sanitizeInputs(rawInputs) {
   const raw = migrateInputsToWon(rawInputs);
-  const monthlyIncomeFallback = IsfUtils.sanitizeMoney(raw.monthlyIncome, getMonthlyIncomeTotalWon(DEFAULT_INPUTS.incomes));
-  const monthlyExpenseFallback = IsfUtils.sanitizeMoney(raw.monthlyExpense, getMonthlyAllocationTotalWon(DEFAULT_EXPENSE_ITEMS));
-  const monthlySavingsFallback = IsfUtils.sanitizeMoney(raw.monthlySavings, getMonthlyAllocationTotalWon(DEFAULT_SAVINGS_ITEMS));
-  const monthlyInvestFallback = IsfUtils.sanitizeMoney(raw.monthlyInvest, getMonthlyAllocationTotalWon(DEFAULT_INVEST_ITEMS));
-  const annualSavingsYield = IsfUtils.sanitizeRate(raw.annualSavingsYield, DEFAULT_INPUTS.annualSavingsYield, 20);
+  const monthlyIncomeFallback = window.IsfUtils.sanitizeMoney(raw.monthlyIncome, getMonthlyIncomeTotalWon(DEFAULT_INPUTS.incomes));
+  const monthlyExpenseFallback = window.IsfUtils.sanitizeMoney(raw.monthlyExpense, getMonthlyAllocationTotalWon(DEFAULT_EXPENSE_ITEMS));
+  const monthlySavingsFallback = window.IsfUtils.sanitizeMoney(raw.monthlySavings, getMonthlyAllocationTotalWon(DEFAULT_SAVINGS_ITEMS));
+  const monthlyInvestFallback = window.IsfUtils.sanitizeMoney(raw.monthlyInvest, getMonthlyAllocationTotalWon(DEFAULT_INVEST_ITEMS));
+  const annualSavingsYield = window.IsfUtils.sanitizeRate(raw.annualSavingsYield, DEFAULT_INPUTS.annualSavingsYield, 20);
   const expenseItems = sanitizeExpenseItems(raw.expenseItems, monthlyExpenseFallback);
   const savingsItems = sanitizeSavingsItems(raw.savingsItems, monthlySavingsFallback, annualSavingsYield);
   const investItems = sanitizeInvestItems(raw.investItems, monthlyInvestFallback);
@@ -67,16 +67,16 @@ export function sanitizeInputs(rawInputs) {
     monthlyExpense: getMonthlyAllocationTotalWon(expenseItems),
     monthlySavings: getMonthlyAllocationTotalWon(savingsItems),
     monthlyInvest: getMonthlyAllocationTotalWon(investItems),
-    monthlyDebtPayment: IsfUtils.sanitizeMoney(raw.monthlyDebtPayment, DEFAULT_INPUTS.monthlyDebtPayment),
-    startCash: IsfUtils.sanitizeMoney(raw.startCash, DEFAULT_INPUTS.startCash),
-    startSavings: IsfUtils.sanitizeMoney(raw.startSavings, DEFAULT_INPUTS.startSavings),
-    startInvest: IsfUtils.sanitizeMoney(raw.startInvest, DEFAULT_INPUTS.startInvest),
-    startDebt: IsfUtils.sanitizeMoney(raw.startDebt, DEFAULT_INPUTS.startDebt),
-    annualIncomeGrowth: IsfUtils.sanitizeRate(raw.annualIncomeGrowth, DEFAULT_INPUTS.annualIncomeGrowth, 30),
-    annualExpenseGrowth: IsfUtils.sanitizeRate(raw.annualExpenseGrowth, DEFAULT_INPUTS.annualExpenseGrowth, 30),
+    monthlyDebtPayment: window.IsfUtils.sanitizeMoney(raw.monthlyDebtPayment, DEFAULT_INPUTS.monthlyDebtPayment),
+    startCash: window.IsfUtils.sanitizeMoney(raw.startCash, DEFAULT_INPUTS.startCash),
+    startSavings: window.IsfUtils.sanitizeMoney(raw.startSavings, DEFAULT_INPUTS.startSavings),
+    startInvest: window.IsfUtils.sanitizeMoney(raw.startInvest, DEFAULT_INPUTS.startInvest),
+    startDebt: window.IsfUtils.sanitizeMoney(raw.startDebt, DEFAULT_INPUTS.startDebt),
+    annualIncomeGrowth: window.IsfUtils.sanitizeRate(raw.annualIncomeGrowth, DEFAULT_INPUTS.annualIncomeGrowth, 30),
+    annualExpenseGrowth: window.IsfUtils.sanitizeRate(raw.annualExpenseGrowth, DEFAULT_INPUTS.annualExpenseGrowth, 30),
     annualSavingsYield,
-    annualInvestReturn: IsfUtils.sanitizeRate(raw.annualInvestReturn, DEFAULT_INPUTS.annualInvestReturn, 30),
-    annualDebtInterest: IsfUtils.sanitizeRate(raw.annualDebtInterest, DEFAULT_INPUTS.annualDebtInterest, 30),
+    annualInvestReturn: window.IsfUtils.sanitizeRate(raw.annualInvestReturn, DEFAULT_INPUTS.annualInvestReturn, 30),
+    annualDebtInterest: window.IsfUtils.sanitizeRate(raw.annualDebtInterest, DEFAULT_INPUTS.annualDebtInterest, 30),
     horizonYears: sanitizeInteger(raw.horizonYears, DEFAULT_INPUTS.horizonYears, 1, 40),
   };
 }
@@ -90,7 +90,7 @@ export function sanitizeIncomeItems(items, fallbackAmount) {
     .map((item, index) => {
       const safeItem = item && typeof item === "object" ? item : {};
       const safeName = normalizeIncomeName(safeItem.name, index);
-      const safeAmount = IsfUtils.sanitizeMoney(safeItem.amount, 0);
+      const safeAmount = window.IsfUtils.sanitizeMoney(safeItem.amount, 0);
       const safeId = typeof safeItem.id === "string" && safeItem.id.trim()
         ? safeItem.id.trim()
         : createIncomeId();
@@ -126,7 +126,7 @@ export function createIncomeItem({ id, name, amount } = {}) {
   return {
     id: typeof id === "string" && id.trim() ? id.trim() : createIncomeId(),
     name: normalizeIncomeName(name, 0),
-    amount: IsfUtils.sanitizeMoney(amount, 0),
+    amount: window.IsfUtils.sanitizeMoney(amount, 0),
   };
 }
 
@@ -134,7 +134,7 @@ export function getMonthlyIncomeTotalWon(incomes) {
   if (!Array.isArray(incomes)) {
     return 0;
   }
-  return incomes.reduce((sum, income) => sum + IsfUtils.sanitizeMoney(income?.amount, 0), 0);
+  return incomes.reduce((sum, income) => sum + window.IsfUtils.sanitizeMoney(income?.amount, 0), 0);
 }
 
 export function sanitizeExpenseItems(items, fallbackAmount) {
@@ -142,8 +142,8 @@ export function sanitizeExpenseItems(items, fallbackAmount) {
 }
 
 export function sanitizeSavingsAnnualRate(value, fallbackRate = DEFAULT_INPUTS.annualSavingsYield) {
-  const safeFallback = IsfUtils.sanitizeRate(fallbackRate, DEFAULT_INPUTS.annualSavingsYield, 20);
-  return IsfUtils.sanitizeRate(value, safeFallback, 20);
+  const safeFallback = window.IsfUtils.sanitizeRate(fallbackRate, DEFAULT_INPUTS.annualSavingsYield, 20);
+  return window.IsfUtils.sanitizeRate(value, safeFallback, 20);
 }
 
 export function parseSavingsAnnualRateInput(value, fallbackRate = DEFAULT_INPUTS.annualSavingsYield) {
@@ -240,7 +240,7 @@ export function sanitizeAllocationItems(
       const normalizedItem = {
         id: safeId,
         name: normalizeAllocationName(item.name, label, index),
-        amount: IsfUtils.sanitizeMoney(item.amount, 0),
+        amount: window.IsfUtils.sanitizeMoney(item.amount, 0),
       };
       const normalizedGroup = normalizeAllocationGroupName(item.group);
       if (normalizedGroup) {
@@ -349,7 +349,7 @@ export function buildAllocationMetaText(item, options = {}) {
 }
 
 export function scaleDefaultAllocationItemsToTotal(defaultItems, totalAmount) {
-  const safeTotal = IsfUtils.sanitizeMoney(totalAmount, getMonthlyAllocationTotalWon(defaultItems));
+  const safeTotal = window.IsfUtils.sanitizeMoney(totalAmount, getMonthlyAllocationTotalWon(defaultItems));
   const baseTotal = getMonthlyAllocationTotalWon(defaultItems);
 
   if (baseTotal <= 0) {
@@ -363,7 +363,7 @@ export function scaleDefaultAllocationItemsToTotal(defaultItems, totalAmount) {
       ...safeItem,
       id: safeItem.id,
       name: safeItem.name,
-      amount: IsfUtils.sanitizeMoney(safeItem.amount * factor, 0),
+      amount: window.IsfUtils.sanitizeMoney(safeItem.amount * factor, 0),
     };
   });
 
@@ -379,7 +379,7 @@ export function getMonthlyAllocationTotalWon(items) {
   if (!Array.isArray(items)) {
     return 0;
   }
-  return items.reduce((sum, item) => sum + IsfUtils.sanitizeMoney(item?.amount, 0), 0);
+  return items.reduce((sum, item) => sum + window.IsfUtils.sanitizeMoney(item?.amount, 0), 0);
 }
 
 export function sanitizeInteger(value, fallback, min, max) {

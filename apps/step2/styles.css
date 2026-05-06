@@ -226,18 +226,18 @@ body.is-dashboard-mode .info-panel {
   position: absolute;
   top: 10px;
   left: 10px;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(16, 34, 32, 0.9);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  color: var(--ink);
+  color: #fff;
   padding: 8px 12px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   border-radius: var(--rd-md);
   font-size: var(--text-caption);
   pointer-events: none;
   z-index: 10;
   line-height: 1.6;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 
@@ -273,6 +273,12 @@ body.is-dashboard-mode .info-panel {
   text-decoration: underline dotted var(--muted);
   text-underline-offset: 3px;
 }
+
+.status--warn { color: #f59e0b !important; }
+.status--crit { color: #dc2626 !important; font-weight: 800; }
+.status-badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; font-weight: 600; margin-left: 4px; vertical-align: middle; }
+.status-badge--warn { background: #fef3c7; color: #92400e; }
+.status-badge--crit { background: #fee2e2; color: #991b1b; }
 
 .isf-table-tooltip {
   display: none;

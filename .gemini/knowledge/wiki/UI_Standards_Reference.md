@@ -59,6 +59,8 @@ tags: [ui, feedback, theme, visualization, reference]
    - `showFeedback`: 상단 플로팅 토스트 알림.
    - `markPendingBar`: 하단 상태바(`pending-bar`) 제어. v0.3에서 아이콘(⚠️) 및 버튼 구조 표준화.
    - `notifyAutoSave`: 자동 저장 상태 알림.
+4. **Taxation Warnings (정책 기반 경고)**
+   - [[Financial_Taxation_Reference]]에 정의된 안전 마진(1,900만/3,400만) 기준에 따라 `warn`/`crit` 레벨의 피드백을 제공합니다.
 
 ## 시각화
 

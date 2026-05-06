@@ -58,7 +58,7 @@ async function initApp() {
       } catch (e) { console.warn("Session restore failed:", e); }
     } else if (hash) {
       try {
-        const payload = IsfShare.decodePayloadFromHash(
+        const payload = window.IsfShare.decodePayloadFromHash(
           new URLSearchParams(hash.replace(/^#/, "")).get(HASH_STATE_PARAM), 
           SHARE_STATE_KEY
         );
@@ -70,7 +70,7 @@ async function initApp() {
         }
       } catch (_e) { 
         console.error("Hash decode failed");
-        IsfFeedback.showFeedback(dom.applyFeedback, "복원 실패", true); 
+        window.IsfFeedback.showFeedback(dom.applyFeedback, "복원 실패", true); 
       }
     }
     
@@ -91,13 +91,14 @@ async function initApp() {
     
 
     try {
-      const pwa = new IsfPwaManager({
-        appVersion: "0.7.15",
+      const pwaManager = new window.IsfPwaManager({
+        appVersion: window.IsfUtils.APP_VERSION,
         appKey: SHARE_STATE_KEY,
-        onFeedback: (msg) => IsfFeedback.showFeedback(dom.applyFeedback, msg),
+
+        onFeedback: (msg) => window.IsfFeedback.showFeedback(dom.applyFeedback, msg),
         getCurrentData: () => state.draft,
       });
-      pwa.init();
+      pwaManager.init();
     } catch (e) {
       console.error("PWA initialization failed:", e);
     }    
@@ -154,17 +155,18 @@ function bindModalEvents() {
   });
 
   dom.dataHubModal.addEventListener("export-json", () => {
-    IsfShare.exportAsJson(IsfShare.buildStateEnvelope(SHARE_STATE_KEY, SHARE_STATE_SCHEMA, toPortableSimulation()), "dividend-simulation");
+    window.IsfShare.exportAsJson(window.IsfShare.buildStateEnvelope(SHARE_STATE_KEY, SHARE_STATE_SCHEMA, toPortableSimulation()), "dividend-simulation");
     if (dom.appHeader) dom.appHeader.updateStatus("success", "JSON 저장 완료");
   });
 
   dom.dataHubModal.addEventListener("copy-share-link", async () => {
-    const enc = IsfShare.encodePayloadForHash(IsfShare.buildStateEnvelope(SHARE_STATE_KEY, SHARE_STATE_SCHEMA, toPortableSimulation()));
+    const enc = window.IsfShare.encodePayloadForHash(window.IsfShare.buildStateEnvelope(SHARE_STATE_KEY, SHARE_STATE_SCHEMA, toPortableSimulation()));
     const url = new URL(window.location.href);
     url.hash = `${HASH_STATE_PARAM}=${enc}`;
     try {
       await navigator.clipboard.writeText(url.toString());
       if (dom.appHeader) dom.appHeader.updateStatus("success", "공유 링크 복사됨");
+      window.IsfFeedback.showFeedback(dom.applyFeedback, "공유 링크가 복사되었습니다.");
     } catch (e) {
       window.prompt("링크를 복사하세요:", url.toString());
     }
@@ -172,7 +174,7 @@ function bindModalEvents() {
 
   dom.dataHubModal.addEventListener("import-json", async (e) => {
     try {
-      const imported = IsfShare.parseImportedJson(await e.detail.file.text(), SHARE_STATE_KEY);
+      const imported = window.IsfShare.parseImportedJson(await e.detail.file.text(), SHARE_STATE_KEY);
       const norm = normalizeLoadedSimulation(imported);
       state.draft = norm.draft;
       state.currentSimulationId = norm.id || "";
@@ -195,14 +197,19 @@ function bindEvents() {
   }
   
   if (dom.importStep1Data) {
-    dom.importStep1Data.addEventListener("click", async () => { 
+    dom.importStep1Data.addEventListener("click", async () => {
+      if (dom.importStep1Data.textContent === "Step 1로 이동") {
+        window.location.href = "../step1/index.html";
+        return;
+      }
+
       if (confirm("Step 1의 최신 데이터로 다시 연동할까요?")) {
         try {
-          await importLatestStep1Data(); 
+          await importLatestStep1Data();
           state.isSyncedWithStep1 = true;
         } catch (e) {
           console.error(e);
-          IsfFeedback.showFeedback(dom.applyFeedback, "데이터 가져오기 중 오류가 발생했습니다.", true);
+          window.IsfFeedback.showFeedback(dom.applyFeedback, "데이터 가져오기 중 오류가 발생했습니다.", true);
         }
       }
     });
@@ -229,6 +236,27 @@ function bindEvents() {
       state.draft.totalMonthlyInvestCapacity = utils.toWon(dom.totalMonthlyInvestCapacity.value); 
       markDirty(); 
       renderCharts(); 
+    });
+  }
+
+  if (dom.totalInitialAsset) {
+    let previousValue = dom.totalInitialAsset.value;
+    dom.totalInitialAsset.addEventListener("focus", () => {
+      previousValue = dom.totalInitialAsset.value;
+    });
+    dom.totalInitialAsset.addEventListener("input", () => {
+      if (state.isSyncedWithStep1) {
+        if (confirm("Step 1에서 연동된 값을 직접 수정하시겠습니까?\n수정 시 자동 동기화 상태가 해제됩니다.")) {
+          state.isSyncedWithStep1 = false;
+          if (dom.step1SyncBanner) dom.step1SyncBanner.hidden = true;
+        } else {
+          dom.totalInitialAsset.value = previousValue;
+          return;
+        }
+      }
+      state.draft.totalInitialAsset = utils.toWon(dom.totalInitialAsset.value);
+      markDirty();
+      renderCharts();
     });
   }
 
@@ -361,7 +389,7 @@ function bindEvents() {
 }
 
 async function initializeBackupStore() {
-  if (!IsfBackupManager.isIndexedDbAvailable()) return;
+  if (!window.IsfBackupManager.isIndexedDbAvailable()) return;
   try {
 
     const hub = getHubStorage();
@@ -370,7 +398,7 @@ async function initializeBackupStore() {
     }
     
 
-    const entries = await IsfBackupManager.loadBackupEntriesFromDb(SHARE_STATE_KEY);
+    const entries = await window.IsfBackupManager.loadBackupEntriesFromDb(SHARE_STATE_KEY);
     state.backupStoreReady = true;
     if (entries) {
       state.backupEntries = entries;

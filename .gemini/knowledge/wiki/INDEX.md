@@ -1,33 +1,38 @@
-# AI Agent Knowledge Base Index
+---
+type: index
+created: 2026-05-04
+tags: [index, map, modernization]
+---
 
-이 파일은 `wiki-librarian` 스킬을 통해 관리되는 프로젝트 위키의 전체 대동여지도입니다. 에이전트는 '현재 참조' 섹션의 지식을 우선적으로 신뢰해야 하며, '아카이브' 섹션은 과거의 맥락 파악 용도로만 활용해야 합니다.
+# 🗺️ Project Knowledge Index
 
-## 🧭 코어 시스템 (Core Systems)
-- [[Operating_Principles]] : 프로젝트 기본 운영 원칙 (Constitutional Rules)
-- [[Version_Management_Principles]] : 버전 관리 및 PWA 동기화 표준 지침
-- [[Knowledge_Harness]] : 지식 하네스 운영 체계 (라이프사이클, 작성 규칙)
-- [[log]] : 프로젝트 연대기적 작업 로그 (LLM Wiki Audit Trail - **가장 최신 진실**)
+IndividualSavingsFlowUI (ISF) 프로젝트의 모든 지식은 이 지도를 통해 연결됩니다. v1.1 현대화 이후의 구조를 반영합니다.
 
-## 📐 아키텍처 및 현행 설계 (Architecture & SSOT)
-- [[Architecture_Reference]] : 최신 No-build 모듈 구조, Storage Hub 및 시뮬레이션 엔진 사양
-- [[Data_Model_Reference]] : 금액 단위(원/만원), IndexedDB 스키마, 마이그레이션 및 뷰 모드 저장 로직
-- [[UI_Standards_Reference]] : 테마 변수, 피드백 시스템, 시각화 가이드
-- [[Plan_Step3]] : Step 3 포트폴리오 구성 및 최적화 개발 로드맵
-- [[Plan_Step3_Implementation]] : v0.8.0 디자인 시스템 고도화 및 Step 3 상세 구현 계획
-- [[Feature_Archive_v0.5]] : v0.5 리팩토링 이전 정상 작동하던 핵심 기능 명세 (검증 기준)
+## 🏛️ 핵심 참조 (The Constitution)
+*현대적 개발 인프라와 운영의 근간이 되는 문서들입니다.*
+- [[Operating_Principles]]: 프로젝트 운영 원칙 및 현대적 DX 지침.
+- [[Architecture_Reference]]: Vite, TS, Tailwind v4 기반 아키텍처 명세.
+- [[Data_Model_Reference]]: v2 스토리지 스키마, Branded Types, 데이터 무결성 규칙.
+- [[Financial_Taxation_Reference]]: 금융소득종합과세 정책 및 UI 경고 기준 (Safety Margin).
+- [[Version_Management_Principles]]: 자동화된 버전 관리 및 배포(Actions) 프로토콜.
+- [[UI_Standards_Reference]]: 디자인 시스템(Glassmorphism), 피드백 및 시각화 표준.
 
-## 🧠 패턴 해결 및 브리지 (Patterns & Bridge)
-- [[Data_Bridge_Import_Pattern]] : 앱 간 데이터 브리지 시 유실 방지 상태 관리 패턴
+## 🚀 진행 중인 개발 (Active Development)
+- [[Plan_Step3]]: 포트폴리오(계좌/종목) 고도화 기획.
+- [[Plan_Step3_Implementation]]: Step 3 상세 구현 로직 및 API 설계.
 
-## 📜 과거 기록 및 아카이브 (Historical Archive)
-- [[Project_History]] : 주요 마일스톤 및 릴리스 요약
-- [[archive/Storage_Hub_Integration_v0.7]] : [ARCHIVED] v0.7.0 통합 스토리지 허브 구현 상세
-- [[archive/Step1_Modularization_Refactoring]] : [ARCHIVED] Step 1의 모듈화 리팩터링 기록
-- [[archive/Step2_Modularization_Refactoring]] : [ARCHIVED] Step 2의 배당 시뮬레이션 특화 개편 기록
-- [[archive/Plan_Step1]] : [ARCHIVED] Step 1 초기 설계 계획 (v0.2.0)
-- [[archive/Plan_Step2]] : [DEPRECATED] Step 2 초기 설계 계획 (v0.6.0 이전)
-- [[archive/UI_UX_Overhaul_v0.3]] : [ARCHIVED] v0.3 대규모 UI/UX 개편 기록
-- [[archive/UI_UX_Overhaul_v0.4]] : [ARCHIVED] v0.4 사용자 중심 개편 기록
+## 📜 프로젝트 기록 (Timeline & Logs)
+- [[Project_History]]: 주요 마일스톤 및 기술적 변천사.
+- [[log.md]]: 모든 작업과 지식 수집의 연대기적 기록.
+
+## 🗄️ 아카이브 (Archive & Legacy)
+*레거시 시스템 및 과거 버전의 기록들입니다.*
+- [[archive/Step1_Modularization_Refactoring]]: v0.5 모듈화 과정 기록.
+- [[archive/Step2_Modularization_Refactoring]]: v0.7 모듈화 과정 기록.
+- [[archive/Storage_Hub_Integration_v0.7]]: 구형 Storage Hub 설계.
+- [[archive/UI_UX_Overhaul_v0.4]]: 초기 디자인 시스템 수립 기록.
+- [[Feature_Archive_v0.5]]: 레거시 기능 동작 사양 (회귀 테스트용).
+- [[Data_Bridge_Import_Pattern]]: 레거시 브릿지 패턴 분석.
 
 ---
-*새로운 위키 문서가 생성되면, 해당 카테고리 아래에 [ [ 노드이름 ] ] 형식으로 반드시 링크를 추가하세요!*
+*Librarian Tip:* 새로운 지식을 추가할 때는 반드시 기존 노드와 `[[링크]]`로 연결하고, `INDEX.md`의 카테고리를 갱신하십시오.
