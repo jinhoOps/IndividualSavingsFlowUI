@@ -28,14 +28,16 @@ export function calculateDividendProjection() {
   const initialYield = (parseFloat(sim.yield) || 3.5) / 100;
   const dgr = (parseFloat(sim.growth) || 5.0) / 100;
   const cgr = (parseFloat(sim.capitalGrowth) || 4.0) / 100;
+  
+  const initialAsset = utils.sanitizeMoney(state.draft.totalInitialAsset, 0);
   const monthlyContribution = getTotalMonthlyInvestCapacity();
   const yearlyContribution = monthlyContribution * 12;
   const taxRate = DEFAULT_TAX_RATE;
   const inflationRate = DEFAULT_INFLATION_RATE;
 
-  let principal = 0;
-  let assetPR = 0;
-  let assetTR = 0;
+  let principal = initialAsset;
+  let assetPR = initialAsset;
+  let assetTR = initialAsset;
   const results = [];
 
   for (let y = 1; y <= years; y++) {
@@ -52,11 +54,9 @@ export function calculateDividendProjection() {
     assetPR = existingAssetPR + yearlyContribution + growthOnExistingPR + growthOnNewPR;
 
     const prevDivPR = lastResult ? lastResult.dividendNominalPR : 0;
-
-
     const divNominalPR = (prevDivPR * (1 + dgr)) + (yearlyContribution * (1 + cgr / 2) * (initialYield / 2));
-    const divAfterTaxPR = divNominalPR * (1 - taxRate);
-
+    
+    const divAfterTaxPR = divNominalPR - window.IsfUtils.calculateIncomeTax(divNominalPR);
 
     const existingAssetTR = assetTR;
     const growthOnExistingTR = existingAssetTR * cgr;
@@ -67,7 +67,9 @@ export function calculateDividendProjection() {
     const prevReinvested = lastResult ? lastResult.dividendAfterTaxTR : 0;
 
     const divNominalTR = (prevDivTR * (1 + dgr)) + (yearlyContribution * (1 + cgr / 2) * (initialYield / 2)) + (prevReinvested * (1 + cgr) * initialYield);
-    const divAfterTaxTR = divNominalTR * (1 - taxRate);
+    
+    const divAfterTaxTR = divNominalTR - window.IsfUtils.calculateIncomeTax(divNominalTR);
+    
     assetTR += divAfterTaxTR;
 
 
@@ -90,6 +92,18 @@ export function calculateDividendProjection() {
   }
 
   return results;
+}
+
+
+/**
+ * @param {number} finalVal 
+ * @param {number} principalVal 
+ * @param {number} years 
+ * @returns {number} 
+ */
+export function calculateCAGR(finalVal, principalVal, years) {
+  if (principalVal <= 0 || years <= 0 || finalVal <= 0) return 0;
+  return (Math.pow(finalVal / principalVal, 1 / years) - 1) * 100;
 }
 
 

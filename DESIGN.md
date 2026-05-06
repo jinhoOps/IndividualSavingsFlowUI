@@ -75,7 +75,7 @@ The layout follows a strict cognitive sequence to reduce user load:
 - **Unit Consistency**: Always display values in **만원** to the user, but persist and compute internally in **원**. Use `IsfUtils` for conversions.
 - **Component Reuse**: Check `shared/` directory (Header, Feedback) before building new UI elements.
 - **Immediate Feedback**: Always trigger the Pending Bar when state is dirtied.
-- **Preserve No-Build**: Write vanilla ES6 modules. No bundlers (Webpack, Vite, etc.).
+- **Modern Hybrid (No-build Oriented)**: Prefer vanilla ES6 modules for simplicity, but leverage Vite, TypeScript, and TailwindCSS for infrastructure stability and type safety. Maintain compatibility with legacy browser-native execution where possible.
 
 ### Don't
 - Don't use heavy solid colors for cards; stick to the Glass Panel aesthetic on the ISF Pearl canvas.
@@ -104,6 +104,6 @@ design_rules:
   - "Format all currency inputs/displays in '만원' using IsfUtils."
   - "Persist all data in '원' via IsfStorageHub."
   - "Add transform: scale(0.96) to button :active states."
-  - "Never introduce build steps; maintain ES6 vanilla JS."
+  - "Leverage Modern Hybrid infrastructure (Vite/TS/Tailwind) while respecting browser-native simplicity."
   - "Ensure responsive layouts don't break under 768px."
 ```

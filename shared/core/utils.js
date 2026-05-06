@@ -1,4 +1,4 @@
-﻿(function initIsfUtils(global) {
+﻿export const IsfUtils = (function initIsfUtils(global) {
   "use strict";
 
   const backupTimestampFormatter = new Intl.DateTimeFormat("ko-KR", {
@@ -16,8 +16,66 @@
       return "0 만원";
     }
     const manValue = Math.round(numericValue / 10000);
+    
+    if (manValue >= 10000) {
+      const eok = Math.floor(manValue / 10000);
+      const remainMan = manValue % 10000;
+      if (remainMan === 0) {
+        return `${eok.toLocaleString("ko-KR")} 억원`;
+      }
+      return `${eok.toLocaleString("ko-KR")} 억 ${remainMan.toLocaleString("ko-KR")} 만원`;
+    }
+    
     const formatted = manValue.toLocaleString("ko-KR");
     return `${formatted} 만원`;
+  }
+
+  const FINANCIAL_INCOME_WARN_THRESHOLD_WON = 19200000;
+  const FINANCIAL_INCOME_CRIT_THRESHOLD_WON = 32640000;
+
+  const TAX_CONFIG = {
+    SEPARATE_TAXATION_LIMIT_WON: 20000000,
+    SEPARATE_TAXATION_RATE: 0.14,
+    LOCAL_INCOME_TAX_RATE_MULTIPLIER: 1.1,
+    PROGRESSIVE_BRACKETS: [
+      { limit: 14000000, rate: 0.06, deduction: 0 },
+      { limit: 50000000, rate: 0.15, deduction: 1260000 },
+      { limit: 88000000, rate: 0.24, deduction: 5760000 },
+      { limit: 150000000, rate: 0.35, deduction: 15440000 },
+      { limit: 300000000, rate: 0.38, deduction: 19940000 },
+      { limit: 500000000, rate: 0.40, deduction: 25940000 },
+      { limit: 1000000000, rate: 0.42, deduction: 35940000 },
+      { limit: Infinity, rate: 0.45, deduction: 65940000 },
+    ],
+  };
+
+  function getFinancialIncomeStatus(annualIncomeWon) {
+    const income = Number(annualIncomeWon || 0);
+    if (income > FINANCIAL_INCOME_CRIT_THRESHOLD_WON) return "crit";
+    if (income > FINANCIAL_INCOME_WARN_THRESHOLD_WON) return "warn";
+    return "normal";
+  }
+
+  function getProgressiveTax(amount) {
+    const bracket = TAX_CONFIG.PROGRESSIVE_BRACKETS.find((b) => amount <= b.limit);
+    return amount * bracket.rate - bracket.deduction;
+  }
+
+  function calculateIncomeTax(taxableIncomeWon) {
+    const income = Math.max(0, Number(taxableIncomeWon || 0));
+
+    if (income <= TAX_CONFIG.SEPARATE_TAXATION_LIMIT_WON) {
+      const baseTax = income * TAX_CONFIG.SEPARATE_TAXATION_RATE;
+      return Math.round(baseTax * TAX_CONFIG.LOCAL_INCOME_TAX_RATE_MULTIPLIER);
+    }
+
+    const taxGeneral =
+      getProgressiveTax(income - TAX_CONFIG.SEPARATE_TAXATION_LIMIT_WON) +
+      TAX_CONFIG.SEPARATE_TAXATION_LIMIT_WON * TAX_CONFIG.SEPARATE_TAXATION_RATE;
+    const taxComparison = income * TAX_CONFIG.SEPARATE_TAXATION_RATE;
+
+    const baseTax = Math.max(taxGeneral, taxComparison);
+    return Math.round(baseTax * TAX_CONFIG.LOCAL_INCOME_TAX_RATE_MULTIPLIER);
   }
 
   function formatTimestamp(timestamp) {
@@ -84,21 +142,6 @@
     return Math.round(Number(amountInWon) / 10000);
   }
 
-  global.IsfUtils = {
-    formatMoney,
-    formatTimestamp,
-    sanitizeMoney,
-    sanitizeRate,
-    toWon,
-    toMan,
-    createId,
-    escapeHtml,
-    debounce,
-    roundTo,
-    idbRequestToPromise,
-    idbTransactionDone,
-  };
-
   function debounce(fn, delay) {
     let timer = null;
     return (...args) => {
@@ -130,5 +173,29 @@
       transaction.onabort = () => reject(new Error("Transaction aborted"));
     });
   }
-})(window);
+
+  const result = {
+    APP_VERSION: "0.8.9",
+    formatMoney,
+    getFinancialIncomeStatus,
+    calculateIncomeTax,
+    formatTimestamp,
+    sanitizeMoney,
+    sanitizeRate,
+    toWon,
+    toMan,
+    createId,
+    escapeHtml,
+    debounce,
+    roundTo,
+    idbRequestToPromise,
+    idbTransactionDone,
+  };
+
+  if (global) {
+    global.IsfUtils = result;
+  }
+
+  return result;
+})((typeof window !== "undefined" ? window : null));
 

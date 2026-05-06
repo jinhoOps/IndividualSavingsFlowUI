@@ -20,7 +20,7 @@
 ## Current State
 
 **Shipped:** v1.0 (2026-05-03)
-**Tech Stack:** Vanilla JS, No-Build PWA, IndexedDB, Sankey Diagram
+**Tech Stack:** Modern Hybrid (Vite/TS/Tailwind), No-Build Oriented, PWA, IndexedDB, Sankey Diagram
 **Codebase:** ~1,200 LOC (JavaScript), Mobile-First 반응형
 **Key Feature:** 연봉/투자 성향 기반 고해상도 프리셋 템플릿 로드 → 시각화 → 세부 편집 → 영속화
 
@@ -30,7 +30,7 @@
 
 - ✓ 월 가계 흐름 Sankey Diagram 시각화 엔진 — existing
 - ✓ 카테고리별(수입/생활비/저축/투자) 수동 입력 및 뷰포트 UI — existing
-- ✓ 바닐라 JS 기반 No-build 3계층 상태 관리(State/Helper/UI) 아키텍처 — existing
+- ✓ 바닐라 JS 기반 No-build 지향 (Modern Hybrid) 3계층 상태 관리(State/Helper/UI) 아키텍처 — existing
 - ✓ IndexedDB 기반의 브리지 데이터 자동 백업 및 복원 — existing
 - ✓ 연봉 수준 및 투자 스타일 선택에 따른 프리셋 템플릿 로드 기능 — v1.0
 - ✓ 템플릿 로드 시 표준 자산 흐름 자동 계산 및 시각화 즉시 반영 — v1.0
@@ -58,7 +58,7 @@
 
 ## Constraints
 
-- **[Tech]**: Vanilla JS, No-Build — 프레임워크나 빌드 도구 의존성 없이 지속 가능성 확보
+- **[Tech]**: Modern Hybrid (No-Build Oriented) — 프레임워크나 빌드 도구 의존성 없이 지속 가능성을 확보하되, 타입 안정성과 DX를 위해 Vite/TS/Tailwind 인프라를 적극 수용함.
 - **[Design]**: Mobile-First 무결성 — 반응형 브레이크포인트 하단의 미디어 쿼리가 손상되지 않아야 함
 - **[Data]**: 클라이언트 로컬 저장 — 서버리스, 오프라인 환경에서도 PWA를 통해 완벽히 동작해야 함
 

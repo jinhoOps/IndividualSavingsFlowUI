@@ -1,0 +1,118 @@
+@import url("https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Gowun+Dodum:wght@400;700&display=swap");
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #ea5b2a;
+  --color-accent: #1e8b7c;
+  --color-canvas: #f3f4ef;
+  --color-panel: rgba(255, 255, 255, 0.82);
+  --color-ink: #102220;
+  --color-muted-text: rgba(16, 34, 32, 0.66);
+  --color-line: rgba(16, 34, 32, 0.18);
+  --color-line-strong: rgba(16, 34, 32, 0.3);
+  
+  --font-display: "Black Han Sans", sans-serif;
+  --font-body: "Gowun Dodum", "Nanum Gothic", sans-serif;
+  
+  --text-display: 32px;
+  --text-title-lg: 24px;
+  --text-title-md: 18px;
+  --text-body-md: 16px;
+  --text-caption: 14px;
+  
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 14px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-pill: 999px;
+  
+  --shadow-float: 0 4px 12px rgba(16, 34, 32, 0.08);
+}
+
+:root {
+  color-scheme: light;
+  --bg: var(--color-canvas);
+  --panel: var(--color-panel);
+  --ink: var(--color-ink);
+  --muted: var(--color-muted-text);
+  --line: var(--color-line);
+  --line-strong: var(--color-line-strong);
+  --tone-primary: var(--color-primary);
+  --tone-accent: var(--color-accent);
+  
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
+
+  --sp-xs: var(--spacing-xs);
+  --sp-sm: var(--spacing-sm);
+  --sp-md: var(--spacing-md);
+  --sp-lg: var(--spacing-lg);
+  --sp-xl: var(--spacing-xl);
+
+  --rd-sm: var(--radius-sm);
+  --rd-md: var(--radius-md);
+  --rd-lg: var(--radius-pill);
+
+  --text-display: var(--text-display);
+  --text-title-lg: var(--text-title-lg);
+  --text-title-md: var(--text-title-md);
+  --text-body-md: var(--text-body-md);
+  --text-caption: var(--text-caption);
+
+  --sh-float: var(--shadow-float);
+  
+  --status-success: #2f9e44;
+  --status-error: #e03131;
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply m-0 bg-canvas text-ink font-body leading-[1.45] transition-opacity duration-300;
+  }
+
+  h1, h2, h3 {
+    @apply m-0 text-ink;
+  }
+}
+
+@layer components {
+  /* Utility bridges for legacy classes */
+  .panel {
+    @apply border border-line rounded-md bg-panel shadow-float p-md min-w-0;
+  }
+
+  .btn {
+    @apply border border-line-strong rounded-pill px-[14px] py-[8px] text-caption text-ink bg-white/95 cursor-pointer inline-flex items-center justify-center min-h-[40px] transition-all duration-200 active:scale-[0.96];
+    font-family: inherit;
+  }
+
+  .btn:hover {
+    @apply border-ink bg-white;
+  }
+
+  .btn-primary {
+    @apply text-white border-none bg-primary font-bold hover:brightness-110;
+  }
+
+  .btn-ghost {
+    @apply border-transparent bg-transparent hover:bg-line;
+  }
+
+  .btn-sm {
+    @apply min-h-[32px] px-[10px] py-[4px] text-[0.8rem];
+  }
+
+  input, textarea, select {
+    @apply border border-line-strong rounded-sm bg-white text-ink px-[10px] py-[8px] focus-visible:outline-2 focus-visible:outline-blue-500/36 focus-visible:outline-offset-1;
+    font-family: inherit;
+  }
+}
