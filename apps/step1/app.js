@@ -87,7 +87,7 @@ function init() {
   }
 
   // Phase 5: Onboarding Spotlight
-  initOnboarding();
+  initOnboarding(state.isViewMode);
 }
 
 if (document.readyState === "loading") {

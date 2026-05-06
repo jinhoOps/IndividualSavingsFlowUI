@@ -32,9 +32,10 @@
 
   function getFinancialIncomeStatus(annualIncomeWon) {
     const income = Number(annualIncomeWon || 0);
-    // 2025년 6월 기준 금융소득종합과세 기준(2,000만) 및 누진세율 본격화(3,400만 이상) 고려하여 가이드라인(1,900만 / 3,260만) 적용
-    if (income > 32640000) return "crit";
-    if (income > 19000000) return "warn";
+    // [Safety Margin Policy] Financial_Taxation_Reference.md 기준 (4% 마진 적용)
+    // 실제 기준(2,000만 / 과거 고액기준 3,400만) 대비 안전 마진을 적용하여 보수적으로 경고
+    if (income > 32640000) return "crit"; // 치명적 경고 (3,400만 * 0.96)
+    if (income > 19200000) return "warn"; // 과세 주의 (2,000만 * 0.96)
     return "normal";
   }
 
@@ -61,7 +62,8 @@
       // 2,000만 원 이하: 14% 분리과세 (원천징수세율)
       baseTax = income * RATE_14;
     } else {
-      // 2,000만 원 초과: 비교과세 원칙 적용 (금융소득 외 종합소득이 0이라고 가정)
+      // 2,000만 원 초과: 비교과세 원칙 적용 
+      // [Simplified Model Notice] 금융소득 외 다른 종합소득이 0원이라고 가정하여 최저한세를 계산함.
       // 일반산출세액 = (2천만원 초과 금융소득) * 누진세율 + (2천만원 * 14%)
       const taxGeneral = getProgressiveTax(income - LIMIT_20M) + (LIMIT_20M * RATE_14);
       // 비교산출세액 = 금융소득 전체 * 14%

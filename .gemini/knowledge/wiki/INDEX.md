@@ -13,6 +13,7 @@ IndividualSavingsFlowUI (ISF) 프로젝트의 모든 지식은 이 지도를 통
 - [[Operating_Principles]]: 프로젝트 운영 원칙 및 현대적 DX 지침.
 - [[Architecture_Reference]]: Vite, TS, Tailwind v4 기반 아키텍처 명세.
 - [[Data_Model_Reference]]: v2 스토리지 스키마, Branded Types, 데이터 무결성 규칙.
+- [[Financial_Taxation_Reference]]: 금융소득종합과세 정책 및 UI 경고 기준 (Safety Margin).
 - [[Version_Management_Principles]]: 자동화된 버전 관리 및 배포(Actions) 프로토콜.
 - [[UI_Standards_Reference]]: 디자인 시스템(Glassmorphism), 피드백 및 시각화 표준.
 

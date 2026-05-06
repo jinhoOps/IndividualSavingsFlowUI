@@ -966,7 +966,7 @@ body.is-onboarding-active .onboarding-overlay {
   position: relative;
   z-index: 1001;
   border-color: var(--tone-primary);
-  background: #fff;
+  background: var(--panel);
   pointer-events: auto !important;
   box-shadow: 0 0 0 12px rgba(255, 255, 255, 1), 0 0 0 14px var(--tone-primary);
 }

@@ -155,14 +155,12 @@ export class IsfOnboardingManager {
 
 /**
  * Legacy wrapper for Step 1
+ * @param {boolean} isViewMode
  */
-export const initOnboarding = () => {
+export const initOnboarding = (isViewMode = false) => {
   const manager = new IsfOnboardingManager({
     key: 'isf-onboarding-step1-preset-v1',
-    isViewMode: () => {
-       return new URLSearchParams(window.location.search).has('sid') || 
-              window.location.hash.includes('s=');
-    },
+    isViewMode: () => isViewMode,
     steps: [
       {
         targetId: 'presetBlock',
