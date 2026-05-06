@@ -30,51 +30,52 @@
     return `${formatted} 만원`;
   }
 
+  const FINANCIAL_INCOME_WARN_THRESHOLD_WON = 19200000;
+  const FINANCIAL_INCOME_CRIT_THRESHOLD_WON = 32640000;
+
+  const TAX_CONFIG = {
+    SEPARATE_TAXATION_LIMIT_WON: 20000000,
+    SEPARATE_TAXATION_RATE: 0.14,
+    LOCAL_INCOME_TAX_RATE_MULTIPLIER: 1.1,
+    PROGRESSIVE_BRACKETS: [
+      { limit: 14000000, rate: 0.06, deduction: 0 },
+      { limit: 50000000, rate: 0.15, deduction: 1260000 },
+      { limit: 88000000, rate: 0.24, deduction: 5760000 },
+      { limit: 150000000, rate: 0.35, deduction: 15440000 },
+      { limit: 300000000, rate: 0.38, deduction: 19940000 },
+      { limit: 500000000, rate: 0.40, deduction: 25940000 },
+      { limit: 1000000000, rate: 0.42, deduction: 35940000 },
+      { limit: Infinity, rate: 0.45, deduction: 65940000 },
+    ],
+  };
+
   function getFinancialIncomeStatus(annualIncomeWon) {
     const income = Number(annualIncomeWon || 0);
-    // [Safety Margin Policy] Financial_Taxation_Reference.md 기준 (4% 마진 적용)
-    // 실제 기준(2,000만 / 과거 고액기준 3,400만) 대비 안전 마진을 적용하여 보수적으로 경고
-    if (income > 32640000) return "crit"; // 치명적 경고 (3,400만 * 0.96)
-    if (income > 19200000) return "warn"; // 과세 주의 (2,000만 * 0.96)
+    if (income > FINANCIAL_INCOME_CRIT_THRESHOLD_WON) return "crit";
+    if (income > FINANCIAL_INCOME_WARN_THRESHOLD_WON) return "warn";
     return "normal";
+  }
+
+  function getProgressiveTax(amount) {
+    const bracket = TAX_CONFIG.PROGRESSIVE_BRACKETS.find((b) => amount <= b.limit);
+    return amount * bracket.rate - bracket.deduction;
   }
 
   function calculateIncomeTax(taxableIncomeWon) {
     const income = Math.max(0, Number(taxableIncomeWon || 0));
-    
-    // 1. 기본 국세 누진세액 계산 함수 (2024년 소득세법 개정안 기준)
-    const getProgressiveTax = (amount) => {
-      if (amount <= 14000000) return amount * 0.06;
-      if (amount <= 50000000) return amount * 0.15 - 1260000;
-      if (amount <= 88000000) return amount * 0.24 - 5760000;
-      if (amount <= 150000000) return amount * 0.35 - 15440000;
-      if (amount <= 300000000) return amount * 0.38 - 19940000;
-      if (amount <= 500000000) return amount * 0.40 - 25940000;
-      if (amount <= 1000000000) return amount * 0.42 - 35940000;
-      return amount * 0.45 - 65940000;
-    };
 
-    const LIMIT_20M = 20000000;
-    const RATE_14 = 0.14;
-    let baseTax = 0;
-
-    if (income <= LIMIT_20M) {
-      // 2,000만 원 이하: 14% 분리과세 (원천징수세율)
-      baseTax = income * RATE_14;
-    } else {
-      // 2,000만 원 초과: 비교과세 원칙 적용 
-      // [Simplified Model Notice] 금융소득 외 다른 종합소득이 0원이라고 가정하여 최저한세를 계산함.
-      // 일반산출세액 = (2천만원 초과 금융소득) * 누진세율 + (2천만원 * 14%)
-      const taxGeneral = getProgressiveTax(income - LIMIT_20M) + (LIMIT_20M * RATE_14);
-      // 비교산출세액 = 금융소득 전체 * 14%
-      const taxComparison = income * RATE_14;
-      
-      baseTax = Math.max(taxGeneral, taxComparison);
+    if (income <= TAX_CONFIG.SEPARATE_TAXATION_LIMIT_WON) {
+      const baseTax = income * TAX_CONFIG.SEPARATE_TAXATION_RATE;
+      return Math.round(baseTax * TAX_CONFIG.LOCAL_INCOME_TAX_RATE_MULTIPLIER);
     }
 
-    // 2. 지방소득세 10% 별도 부과 (국세의 10%)
-    // 결과적으로 실효세율은 15.4%, 6.6%, 16.5%... 등으로 적용됨
-    return Math.round(baseTax * 1.1);
+    const taxGeneral =
+      getProgressiveTax(income - TAX_CONFIG.SEPARATE_TAXATION_LIMIT_WON) +
+      TAX_CONFIG.SEPARATE_TAXATION_LIMIT_WON * TAX_CONFIG.SEPARATE_TAXATION_RATE;
+    const taxComparison = income * TAX_CONFIG.SEPARATE_TAXATION_RATE;
+
+    const baseTax = Math.max(taxGeneral, taxComparison);
+    return Math.round(baseTax * TAX_CONFIG.LOCAL_INCOME_TAX_RATE_MULTIPLIER);
   }
 
   function formatTimestamp(timestamp) {
