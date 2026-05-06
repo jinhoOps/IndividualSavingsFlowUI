@@ -8,6 +8,13 @@ tags: [history, timeline, legacy]
 
 ## 🕒 주요 마일스톤
 
+### [2026-05-06] Modern Hybrid Architecture & Financial Simulation Enhancements (v0.9.0) 🚀
+- **인프라 혁신**: Vite, TypeScript, TailwindCSS v4 도입 및 레거시 호환성 브릿지 구축 완료.
+- **금융 로직 정교화**: 4% 안전 마진(1,920만/3,264만) 정책이 적용된 자동 소득세 계산 및 경고 시스템 통합.
+- **UX 현대화**: Step 1 온보딩 스포트라이트 시스템 및 자산 트래킹 UI 고도화.
+- **코드 품질**: 매직 넘버 제거 및 `TAX_CONFIG` 기반의 Self-documenting 코드 구조로 대규모 리팩터링 수행.
+- **시스템 무결성**: Branded Types 도입 및 단위 정합성(만원/원) 수호 로직 강화.
+
 ### [2026-05-06] Step 2 초기 자산 연동 및 시뮬레이션 로직 수정 (v0.8.9)
 - **버그 수정**: 배당 시뮬레이션이 항상 0원에서 시작하던 논리적 결함 해결.
 - **데이터 브릿지 강화**: Step 1의 `startInvest` 데이터를 Step 2의 초기 원금으로 자동 연동.
