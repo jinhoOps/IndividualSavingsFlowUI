@@ -3,7 +3,8 @@ import { dom } from "./dom.js";
 import { 
   formatCurrency, 
   getTotalMonthlyInvestCapacity, 
-  calculateDividendProjection
+  calculateDividendProjection,
+  calculateCAGR
 } from "./calculator.js";
 
 import { utils } from "./utils.js";
@@ -71,6 +72,7 @@ export function renderKpiCards(data) {
   if (!dom.simKpiGrid || !data || data.length === 0) return;
   
   const isDrip = state.draft?.dividendSim?.isDrip !== false;
+  const years = state.draft?.dividendSim?.years || 10;
   const last = data[data.length - 1];
   const finalAsset = isDrip ? last.assetNominalTR : last.assetNominalPR;
   const finalDividend = isDrip ? last.dividendAfterTaxTR : last.dividendAfterTaxPR;
@@ -79,6 +81,8 @@ export function renderKpiCards(data) {
   const returnRate = totalPrincipal > 0 
     ? ((finalAsset / totalPrincipal) - 1) * 100 
     : 0;
+    
+  const cagr = calculateCAGR(finalAsset, totalPrincipal, years);
 
   dom.simKpiGrid.innerHTML = `
     <div class="kpi-card">
@@ -91,7 +95,12 @@ export function renderKpiCards(data) {
     </div>
     <div class="kpi-card">
       <div class="kpi-label">누적 수익률</div>
-      <div class="kpi-value">${returnRate.toFixed(1)}<span class="kpi-unit">%</span></div>
+      <div class="kpi-value">
+        ${returnRate.toFixed(1)}<span class="kpi-unit">%</span>
+        <span class="kpi-sub-value" style="font-size: 0.85rem; color: var(--muted); margin-left: 4px; font-weight: normal;">
+          (연 ${cagr.toFixed(1)}%)
+        </span>
+      </div>
     </div>
   `;
 }

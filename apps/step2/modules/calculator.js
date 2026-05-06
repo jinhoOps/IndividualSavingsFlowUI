@@ -95,4 +95,16 @@ export function calculateDividendProjection() {
 }
 
 
+/**
+ * @param {number} finalVal 
+ * @param {number} principalVal 
+ * @param {number} years 
+ * @returns {number} 
+ */
+export function calculateCAGR(finalVal, principalVal, years) {
+  if (principalVal <= 0 || years <= 0 || finalVal <= 0) return 0;
+  return (Math.pow(finalVal / principalVal, 1 / years) - 1) * 100;
+}
+
+
 
