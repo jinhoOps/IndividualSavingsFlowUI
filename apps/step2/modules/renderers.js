@@ -254,26 +254,28 @@ function drawSimulationChart(svg, data) {
         `;
         const containerRect = svg.getBoundingClientRect();
         const scale = containerRect.width / width;
-        let actualX = x * scale;
-        
         const tooltipWidth = 140;
-        const halfWidth = tooltipWidth / 2;
-        if (actualX - halfWidth < 0) actualX = halfWidth;
-        if (actualX + halfWidth > containerRect.width) actualX = containerRect.width - halfWidth;
+        
+        // Calculate left position to keep tooltip within bounds without using translateX(-50%)
+        let leftPos = (x * scale) - (tooltipWidth / 2);
+        if (leftPos < 8) leftPos = 8;
+        if (leftPos + tooltipWidth > containerRect.width - 8) leftPos = containerRect.width - tooltipWidth - 8;
 
-        tooltip.style.left = `${actualX}px`;
+        tooltip.style.left = `${leftPos}px`;
+        tooltip.style.transform = 'none';
         
         // Dynamic Y position based on data points
         const targetY = isDrip ? yTR : yPR;
         const actualY = targetY * scale;
-        if (actualY < containerRect.height / 2) {
+        const containerHeight = containerRect.height;
+
+        if (actualY < containerHeight / 2) {
           tooltip.style.top = `${actualY + 20}px`;
           tooltip.style.bottom = 'auto';
         } else {
           tooltip.style.top = 'auto';
-          tooltip.style.bottom = `${(height - targetY) * scale + 20}px`;
+          tooltip.style.bottom = `${(containerHeight - actualY) + 20}px`;
         }
-        tooltip.style.transform = 'translateX(-50%)';
       };
     
     rect.addEventListener("mouseenter", showTooltip);

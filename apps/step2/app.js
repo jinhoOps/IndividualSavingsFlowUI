@@ -98,7 +98,7 @@ async function initApp() {
         onFeedback: (msg) => window.IsfFeedback.showFeedback(dom.applyFeedback, msg),
         getCurrentData: () => state.draft,
       });
-      pwa.init();
+      pwaManager.init();
     } catch (e) {
       console.error("PWA initialization failed:", e);
     }    
