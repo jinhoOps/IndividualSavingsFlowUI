@@ -18,10 +18,21 @@ export const MoneyUtils = {
   toMan: (won: number | Won): ManWon => Math.round(Number(won) / 10000) as ManWon,
 
   /**
-   * Formats Won as a locale string with '만원' unit, rounded to integer.
+   * Formats Won as a locale string with '만원' unit, converting to '억원' if >= 10,000 ManWon.
    */
   formatMan: (won: number | Won): string => {
-    const man = Math.round(Number(won) / 10000);
-    return `${man.toLocaleString()} 만원`;
+    const numericValue = Number(won || 0);
+    const manValue = Math.round(numericValue / 10000);
+
+    if (manValue >= 10000) {
+      const eok = Math.floor(manValue / 10000);
+      const remainMan = manValue % 10000;
+      if (remainMan === 0) {
+        return `${eok.toLocaleString('ko-KR')} 억원`;
+      }
+      return `${eok.toLocaleString('ko-KR')} 억 ${remainMan.toLocaleString('ko-KR')} 만원`;
+    }
+
+    return `${manValue.toLocaleString('ko-KR')} 만원`;
   }
 };

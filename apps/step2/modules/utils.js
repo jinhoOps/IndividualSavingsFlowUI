@@ -19,9 +19,9 @@ export const utils = window.IsfUtils || {
     if (manValue >= 10000) {
       const eok = Math.floor(manValue / 10000);
       const remainMan = manValue % 10000;
-      return remainMan === 0 ? `${eok.toLocaleString()} 억원` : `${eok.toLocaleString()} 억 ${remainMan.toLocaleString()} 만원`;
+      return remainMan === 0 ? `${eok.toLocaleString("ko-KR")} 억원` : `${eok.toLocaleString("ko-KR")} 억 ${remainMan.toLocaleString("ko-KR")} 만원`;
     }
-    return manValue.toLocaleString() + " 만원";
+    return manValue.toLocaleString("ko-KR") + " 만원";
   },
   formatTimestamp: t => {
     if (typeof window.IsfUtils !== "undefined" && window.IsfUtils.formatTimestamp) return window.IsfUtils.formatTimestamp(t);

@@ -2,7 +2,17 @@
 kanban-plugin: basic
 ---
 
-# TODO (v0.8.1)
+# TODO (v0.8.7)
+
+## Done (v0.8.7)
+- [x] **단위 변환 버그 수정**: `CompatibilityBridge` 연동 시 `MoneyUtils.formatMan`에서 '억' 단위 변환 로직이 누락되어 표시되지 않던 문제 수정.
+- [x] **전역 버전 동기화 (v0.8.7)**: sw.js, manifest, package.json, IsfUtils.APP_VERSION 동기화.
+
+## Done (v0.8.6)
+- [x] **Phase 1 Fix: 디자인 시스템 정리 (Glassmorphism & Typography)**
+  - [x] Step 1/2 내 하드코딩된 `#fff` 배경을 `var(--panel)`로 전면 교체
+  - [x] `shared/styles/step-theme.css` 내 입력창 및 버튼 호버 스타일 Glassmorphism 정합성 확보
+  - [x] Step 1 내 주요 수치 및 경고 메시지에 `Black Han Sans` 타이포그래피 보완
 
 ## Done (v0.8.1)
 - [x] **Phase 5: Step 1 Spotlight 온보딩 가이드**

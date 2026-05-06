@@ -126,7 +126,7 @@
   }
 
   global.IsfUtils = {
-    APP_VERSION: "0.8.5",
+    APP_VERSION: "0.8.7",
     formatMoney,
     getFinancialIncomeStatus,
     calculateIncomeTax,

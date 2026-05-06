@@ -176,7 +176,7 @@ body.is-dashboard-mode .controls-panel {
   height: 20px;
   border: 1px solid var(--line);
   border-radius: var(--rd-lg);
-  background: #fff;
+  background: var(--panel);
   cursor: help;
   display: inline-grid;
   place-items: center;
@@ -302,7 +302,7 @@ body.is-dashboard-mode .controls-panel {
   border: 1px solid var(--line-strong);
   border-radius: var(--rd-sm);
   padding: 6px 10px;
-  background: #fff;
+  background: var(--panel);
   font: inherit;
   font-size: 0.9rem;
   color: var(--ink);
@@ -587,7 +587,7 @@ body.is-dashboard-mode .controls-panel {
   padding: 5px 8px;
   font: inherit;
   color: var(--ink);
-  background: #fff;
+  background: var(--panel);
 }
 
 
@@ -625,7 +625,7 @@ body.is-dashboard-mode .controls-panel {
   padding: 6px 9px;
   font: inherit;
   color: var(--ink);
-  background: #fff;
+  background: var(--panel);
 }
 
 .sankey-zoom-tools {
@@ -877,7 +877,7 @@ body.is-dashboard-mode .controls-panel {
   min-height: 38px;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: #fff;
+  background: var(--panel);
   color: var(--ink);
   font: inherit;
   font-weight: 700;
@@ -922,7 +922,7 @@ body.is-dashboard-mode .controls-panel {
 .floating-btn:hover { background: rgba(16, 34, 32, 0.5); }
 #saveViewToLocal[hidden] { display: none !important; }
 .controls-panel.is-mobile-collapsed .actions { margin-top: 2px; }
-.summary-invalid { color: #8b2f2f; }
+.summary-invalid { font-family: var(--font-display); color: #8b2f2f; }
 
 
 /* Phase 5: Onboarding Spotlight */
