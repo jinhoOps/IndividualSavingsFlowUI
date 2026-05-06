@@ -663,7 +663,7 @@ function renderProjectionTable(records, horizonYears, expenseGrowth) {
     const statusClass = window.IsfUtils.getFinancialIncomeStatus(r.annualFinancialIncome);
     const trClass = statusClass !== 'normal' ? `status--${statusClass}` : '';
     const badge = statusClass === 'warn' ? '<span class="status-badge status-badge--warn">과세주의</span>' : 
-                  statusClass === 'crit' ? '<span class="status-badge status-badge--crit">과세대상</span>' : '';
+                  statusClass === 'crit' ? '<span class="status-badge status-badge--crit">과세경고</span>' : '';
 
     return `
       <tr class="${trClass}">

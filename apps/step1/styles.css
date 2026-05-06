@@ -34,6 +34,18 @@ main {
   padding: var(--sp-lg) var(--sp-md);
 }
 
+.page-intro h1 {
+  font-family: var(--font-display);
+  font-size: var(--text-display);
+  margin-bottom: var(--sp-sm);
+  color: var(--tone-primary);
+}
+
+.page-intro .lead {
+  font-size: var(--text-body-md);
+  color: var(--muted);
+}
+
 .summary-panel { order: 1; }
 .sankey-panel { order: 2; }
 .controls-panel { order: 3; }
@@ -164,8 +176,8 @@ body.is-dashboard-mode .controls-panel {
 .expense-row.is-editing { grid-template-columns: minmax(140px, 1fr) 130px 120px auto; }
 
 .controls-grid { display: grid; gap: 10px; }
-.controls-grid--simple { grid-template-columns: repeat(5, minmax(140px, 1fr)); }
-.controls-grid--advanced { grid-template-columns: repeat(4, minmax(140px, 1fr)); }
+.controls-grid--simple { grid-template-columns: repeat(4, minmax(140px, 1fr)); }
+.controls-grid--advanced { grid-template-columns: repeat(3, minmax(140px, 1fr)); }
 
 .control { display: grid; gap: var(--sp-xs); }
 .control label { font-size: var(--text-caption); color: var(--muted); }
@@ -329,6 +341,9 @@ body.is-dashboard-mode .controls-panel {
 }
 
 @media (max-width: 760px) {
+  .page-intro h1 {
+    font-size: 1.8rem;
+  }
   .page { padding: 16px 10px 36px; display: grid; }
   main { order: 2; gap: 14px; display: grid; }
   .hero { order: 0; }

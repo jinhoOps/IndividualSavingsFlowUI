@@ -2,7 +2,13 @@
 kanban-plugin: basic
 ---
 
-# TODO (v0.8.7)
+# TODO (v0.8.8)
+
+## Done (v0.8.8)
+- [x] **Step 1 초기 자산 필드 구조 개선**: '초기 현금' 필드 복구 및 초기 자산을 현금/저축/투자 3종으로 구분하여 '간편 입력' 섹션으로 전면 배치.
+- [x] **데스크톱 UI 가독성 개선**: Step 1/2 H1 타이틀 스타일 통일 및 모바일/데스크톱 반응형 폰트 크기 조정.
+- [x] **SimChart 시각적 버그 수정**: 차트 패딩 최적화로 축 라벨 잘림 방지, 툴팁 폰트 정합성 확보, 데이터 포인트 가시성 강화.
+- [x] **전역 버전 동기화 (v0.8.8)**: sw.js, manifest, package.json, IsfUtils.APP_VERSION 동기화.
 
 ## Done (v0.8.7)
 - [x] **단위 변환 버그 수정**: `CompatibilityBridge` 연동 시 `MoneyUtils.formatMan`에서 '억' 단위 변환 로직이 누락되어 표시되지 않던 문제 수정.

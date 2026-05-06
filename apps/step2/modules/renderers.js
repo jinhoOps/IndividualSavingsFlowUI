@@ -95,100 +95,110 @@ export function renderKpiCards(data) {
 function drawSimulationChart(svg, data) {
   svg.innerHTML = "";
   if (!data.length) return;
-  const width = 600; const height = 250; const padding = 45;
+  const width = 600; const height = 260; const paddingL = 65; const paddingR = 30; const paddingTB = 40;
   
   svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
   svg.style.width = "100%";
   svg.style.height = "auto";
+  svg.style.fontFamily = "var(--font-body)";
 
   const maxVal = Math.max(...data.map(d => d.assetNominalTR), 1);
 
   const gridSteps = 4;
   for (let i = 0; i <= gridSteps; i++) {
     const yVal = maxVal * (i / gridSteps);
-    const yPos = height - padding - (i / gridSteps) * (height - 2 * padding);
+    const yPos = height - paddingTB - (i / gridSteps) * (height - 2 * paddingTB);
     
     const gridLine = document.createElementNS("http://www.w3.org/2000/svg", "line");
-    gridLine.setAttribute("x1", padding); gridLine.setAttribute("y1", yPos);
-    gridLine.setAttribute("x2", width - padding); gridLine.setAttribute("y2", yPos);
-    gridLine.setAttribute("stroke", "#e5e7eb"); gridLine.setAttribute("stroke-dasharray", "4");
+    gridLine.setAttribute("x1", paddingL); gridLine.setAttribute("y1", yPos);
+    gridLine.setAttribute("x2", width - paddingR); gridLine.setAttribute("y2", yPos);
+    gridLine.setAttribute("stroke", "var(--line)"); gridLine.setAttribute("stroke-dasharray", "4");
     svg.appendChild(gridLine);
     
     const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    text.setAttribute("x", padding - 5); text.setAttribute("y", yPos + 3);
-    text.setAttribute("text-anchor", "end"); text.setAttribute("font-size", "10"); text.setAttribute("fill", "#6b7280");
+    text.setAttribute("x", paddingL - 8); text.setAttribute("y", yPos + 4);
+    text.setAttribute("text-anchor", "end"); 
+    text.setAttribute("font-size", "10"); 
+    text.setAttribute("fill", "var(--muted)");
     text.textContent = formatCurrency(yVal);
     svg.appendChild(text);
   }
 
   const pointsPolygon = [
     ...data.map((d, i) => {
-      const x = padding + (i / (data.length - 1)) * (width - 2 * padding);
-      const y = (height - padding) - (d.assetNominalTR / maxVal) * (height - 2 * padding);
+      const x = paddingL + (i / (data.length - 1)) * (width - paddingL - paddingR);
+      const y = (height - paddingTB) - (d.assetNominalTR / maxVal) * (height - 2 * paddingTB);
       return `${x},${y}`;
     }),
     ...data.map((d, i) => {
       const revIndex = data.length - 1 - i;
       const revData = data[revIndex];
-      const x = padding + (revIndex / (data.length - 1)) * (width - 2 * padding);
-      const y = (height - padding) - (revData.assetNominalPR / maxVal) * (height - 2 * padding);
+      const x = paddingL + (revIndex / (data.length - 1)) * (width - paddingL - paddingR);
+      const y = (height - paddingTB) - (revData.assetNominalPR / maxVal) * (height - 2 * paddingTB);
       return `${x},${y}`;
     })
   ].join(" ");
   const polyArea = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
   polyArea.setAttribute("points", pointsPolygon);
-  polyArea.setAttribute("fill", "rgba(234, 91, 42, 0.1)");
+  polyArea.setAttribute("fill", "rgba(234, 91, 42, 0.08)");
   svg.appendChild(polyArea);
 
   const pointsPR = data.map((d, i) => {
-    const x = padding + (i / (data.length - 1)) * (width - 2 * padding);
-    const y = (height - padding) - (d.assetNominalPR / maxVal) * (height - 2 * padding);
+    const x = paddingL + (i / (data.length - 1)) * (width - paddingL - paddingR);
+    const y = (height - paddingTB) - (d.assetNominalPR / maxVal) * (height - 2 * paddingTB);
     return `${x},${y}`;
   }).join(" ");
 
   const polyPR = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
   polyPR.setAttribute("points", pointsPR);
-  polyPR.setAttribute("fill", "none"); polyPR.setAttribute("stroke", "#8a8f98"); polyPR.setAttribute("stroke-width", "2");
+  polyPR.setAttribute("fill", "none"); polyPR.setAttribute("stroke", "#94a3b8"); polyPR.setAttribute("stroke-width", "1.5");
   polyPR.setAttribute("stroke-dasharray", "4 4");
   svg.appendChild(polyPR);
 
   const pointsTR = data.map((d, i) => {
-    const x = padding + (i / (data.length - 1)) * (width - 2 * padding);
-    const y = (height - padding) - (d.assetNominalTR / maxVal) * (height - 2 * padding);
+    const x = paddingL + (i / (data.length - 1)) * (width - paddingL - paddingR);
+    const y = (height - paddingTB) - (d.assetNominalTR / maxVal) * (height - 2 * paddingTB);
     return `${x},${y}`;
   }).join(" ");
 
   const polyTR = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
   polyTR.setAttribute("points", pointsTR);
-  polyTR.setAttribute("fill", "none"); polyTR.setAttribute("stroke", "#ea5b2a"); polyTR.setAttribute("stroke-width", "3");
+  polyTR.setAttribute("fill", "none"); polyTR.setAttribute("stroke", "var(--tone-primary)"); polyTR.setAttribute("stroke-width", "2.5");
   svg.appendChild(polyTR);
 
   data.forEach((d, i) => {
-    const x = padding + (i / (data.length - 1)) * (width - 2 * padding);
-    const yTR = (height - padding) - (d.assetNominalTR / maxVal) * (height - 2 * padding);
-    const yPR = (height - padding) - (d.assetNominalPR / maxVal) * (height - 2 * padding);
+    const x = paddingL + (i / (data.length - 1)) * (width - paddingL - paddingR);
+    const yTR = (height - paddingTB) - (d.assetNominalTR / maxVal) * (height - 2 * paddingTB);
+    const yPR = (height - paddingTB) - (d.assetNominalPR / maxVal) * (height - 2 * paddingTB);
 
     const statusClassTR = utils.getFinancialIncomeStatus(d.dividendNominalTR);
-    const colorTR = statusClassTR === 'crit' ? '#dc2626' : statusClassTR === 'warn' ? '#f59e0b' : '#ea5b2a';
+    const colorTR = statusClassTR === 'crit' ? '#dc2626' : statusClassTR === 'warn' ? '#f59e0b' : 'var(--tone-primary)';
     const statusClassPR = utils.getFinancialIncomeStatus(d.dividendNominalPR);
-    const colorPR = statusClassPR === 'crit' ? '#dc2626' : statusClassPR === 'warn' ? '#f59e0b' : '#8a8f98';
+    const colorPR = statusClassPR === 'crit' ? '#dc2626' : statusClassPR === 'warn' ? '#f59e0b' : '#94a3b8';
 
     const circleTR = document.createElementNS("http://www.w3.org/2000/svg", "circle");
     circleTR.setAttribute("cx", x); circleTR.setAttribute("cy", yTR);
-    circleTR.setAttribute("r", statusClassTR !== 'normal' ? "4" : "3"); 
+    circleTR.setAttribute("r", statusClassTR !== 'normal' ? "4.5" : "3.5"); 
     circleTR.setAttribute("fill", colorTR);
+    circleTR.setAttribute("stroke", "#fff");
+    circleTR.setAttribute("stroke-width", "1");
     svg.appendChild(circleTR);
 
     const circlePR = document.createElementNS("http://www.w3.org/2000/svg", "circle");
     circlePR.setAttribute("cx", x); circlePR.setAttribute("cy", yPR);
-    circlePR.setAttribute("r", statusClassPR !== 'normal' ? "3" : "2"); 
+    circlePR.setAttribute("r", statusClassPR !== 'normal' ? "3.5" : "2.5"); 
     circlePR.setAttribute("fill", colorPR);
+    circlePR.setAttribute("stroke", "#fff");
+    circlePR.setAttribute("stroke-width", "1");
     svg.appendChild(circlePR);
 
     if (i % Math.ceil(data.length/5) === 0 || i === data.length - 1) {
       const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
       text.setAttribute("x", x); text.setAttribute("y", height - 10);
-      text.setAttribute("text-anchor", "middle"); text.setAttribute("font-size", "10"); text.textContent = `${d.year}년`;
+      text.setAttribute("text-anchor", "middle"); 
+      text.setAttribute("font-size", "10"); 
+      text.setAttribute("fill", "var(--muted)");
+      text.textContent = `${d.year}년`;
       svg.appendChild(text);
     }
   });
@@ -204,9 +214,9 @@ function drawSimulationChart(svg, data) {
   }
   tooltip.style.display = 'none';
 
-  const rectWidth = (width - 2 * padding) / Math.max((data.length - 1), 1);
+  const rectWidth = (width - paddingL - paddingR) / Math.max((data.length - 1), 1);
   data.forEach((d, i) => {
-    const x = padding + (i / (data.length - 1)) * (width - 2 * padding);
+    const x = paddingL + (i / (data.length - 1)) * (width - paddingL - paddingR);
     const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
     rect.setAttribute("x", x - rectWidth / 2);
     rect.setAttribute("y", 0);
@@ -219,7 +229,7 @@ function drawSimulationChart(svg, data) {
         const isDrip = state.draft?.dividendSim?.isDrip !== false;
         const divNominal = isDrip ? d.dividendNominalTR : d.dividendNominalPR;
         const assetNominal = isDrip ? d.assetNominalTR : d.assetNominalPR;
-        const statusClass = utils.getFinancialIncomeStatus(divNominal);
+        const statusClass = window.IsfUtils.getFinancialIncomeStatus(divNominal);
         
         const badge = statusClass === 'warn' ? '<div class="status-badge status-badge--warn" style="margin: 4px 0 0 0; display: block; text-align: center;">종합과세 주의</div>' : 
                       statusClass === 'crit' ? '<div class="status-badge status-badge--crit" style="margin: 4px 0 0 0; display: block; text-align: center;">종합과세 대상</div>' : '';
@@ -250,13 +260,13 @@ function drawSimulationChart(svg, data) {
   });
 
   const legendTR = document.createElementNS("http://www.w3.org/2000/svg", "text");
-  legendTR.setAttribute("x", width - padding); legendTR.setAttribute("y", 20);
+  legendTR.setAttribute("x", width - paddingR); legendTR.setAttribute("y", 20);
   legendTR.setAttribute("text-anchor", "end"); legendTR.setAttribute("font-size", "11"); legendTR.setAttribute("fill", "#ea5b2a");
   legendTR.textContent = "● TR (재투자)";
   svg.appendChild(legendTR);
 
   const legendPR = document.createElementNS("http://www.w3.org/2000/svg", "text");
-  legendPR.setAttribute("x", width - padding); legendPR.setAttribute("y", 38);
+  legendPR.setAttribute("x", width - paddingR); legendPR.setAttribute("y", 38);
   legendPR.setAttribute("text-anchor", "end"); legendPR.setAttribute("font-size", "11"); legendPR.setAttribute("fill", "#8a8f98");
   legendPR.textContent = "○ PR (미투자)";
   svg.appendChild(legendPR);

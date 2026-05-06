@@ -189,6 +189,23 @@
               <h3>간편 입력</h3>
               <div class="controls-grid controls-grid--simple">
                 <div class="control">
+                  <label for="startCash">초기 현금</label>
+                  <input id="startCash" name="startCash" type="number" min="0" step="1" inputmode="decimal" />
+                </div>
+                <div class="control">
+                  <label for="startSavings">초기 저축잔액</label>
+                  <input id="startSavings" name="startSavings" type="number" min="0" step="1" inputmode="decimal" />
+                </div>
+                <div class="control">
+                  <label for="startInvest">초기 투자잔액</label>
+                  <input id="startInvest" name="startInvest" type="number" min="0" step="1" inputmode="decimal" />
+                </div>
+                <div class="control">
+                  <label for="horizonYears">시뮬레이션 기간(년)</label>
+                  <input id="horizonYears" name="horizonYears" type="number" min="1" max="40" step="1"
+                    inputmode="decimal" />
+                </div>
+                <div class="control">
                   <label for="monthlyExpense">월 생활비(자동합산)</label>
                   <input id="monthlyExpense" name="monthlyExpense" type="number" min="0" step="1" readonly
                     inputmode="decimal" class="jump-advanced-field" data-advanced-target="expense"
@@ -211,17 +228,13 @@
                   <input id="monthlyDebtPayment" name="monthlyDebtPayment" type="number" min="0" step="1"
                     inputmode="decimal" />
                 </div>
-                <div class="control">
-                  <label for="horizonYears">시뮬레이션 기간(년)</label>
-                  <input id="horizonYears" name="horizonYears" type="number" min="1" max="40" step="1"
-                    inputmode="decimal" />
-                </div>
               </div>
+              <p class="hint">초기 자산(현금/저축/투자)을 구분하여 입력하면 자산별 수익률이 반영되어 더 정확한 추이가 계산됩니다.</p>
               <p class="hint">생활비/저축/투자 칸을 클릭하면 고급 설정의 상세 항목으로 이동합니다.</p>
             </div>
 
             <details id="advancedSettings" class="advanced-block">
-              <summary>고급 설정 (생활비 상세 / 초기자산 / 증가율 / 수익률)</summary>
+              <summary>고급 설정 (생활비 상세 / 기타 초기자산 / 증가율 / 수익률)</summary>
               <div class="tab-list" role="tablist" aria-label="상세 항목 탭">
                 <button id="advancedTabExpense" class="tab-btn is-active" type="button" role="tab"
                   aria-selected="true" aria-controls="expenseAdvancedBlock" data-advanced-tab="expense">생활비</button>
@@ -229,8 +242,8 @@
                   aria-controls="savingsAdvancedBlock" data-advanced-tab="savings">저축</button>
                 <button id="advancedTabInvest" class="tab-btn" type="button" role="tab" aria-selected="false"
                   aria-controls="investAdvancedBlock" data-advanced-tab="invest">투자</button>
-                <button id="advancedTabRates" class="tab-btn advanced-tab--mobile-only" type="button" role="tab"
-                  aria-selected="false" aria-controls="ratesAdvancedBlock" data-advanced-tab="rates">수익률</button>
+                <button id="advancedTabRates" class="tab-btn" type="button" role="tab"
+                  aria-selected="false" aria-controls="ratesAdvancedBlock" data-advanced-tab="rates">수익률/기타</button>
               </div>
               <div id="expenseAdvancedBlock" class="controls-block" data-advanced-block="expense">
                 <div class="block-head">
@@ -315,20 +328,8 @@
               <datalist id="savingsGroupOptions"></datalist>
               <datalist id="investGroupOptions"></datalist>
               <div id="ratesAdvancedBlock" class="controls-block controls-block--rates" data-advanced-block="rates">
-                <h3>초기자산 / 증가율 / 수익률</h3>
+                <h3>증가율 / 수익률 / 초기부채</h3>
                 <div class="controls-grid controls-grid--advanced">
-                  <div class="control">
-                    <label for="startCash">초기 현금</label>
-                    <input id="startCash" name="startCash" type="number" min="0" step="1" inputmode="decimal" />
-                  </div>
-                  <div class="control">
-                    <label for="startSavings">초기 저축잔액</label>
-                    <input id="startSavings" name="startSavings" type="number" min="0" step="1" inputmode="decimal" />
-                  </div>
-                  <div class="control">
-                    <label for="startInvest">초기 투자잔액</label>
-                    <input id="startInvest" name="startInvest" type="number" min="0" step="1" inputmode="decimal" />
-                  </div>
                   <div class="control">
                     <label for="startDebt">초기 부채</label>
                     <input id="startDebt" name="startDebt" type="number" min="0" step="1" inputmode="decimal" />
