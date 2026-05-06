@@ -355,6 +355,7 @@ async function handleCopyShareLink() {
   if (link && navigator.clipboard) {
     await navigator.clipboard.writeText(link);
     if (dom.appHeader) dom.appHeader.updateStatus("success", "공유 링크 복사됨");
+    window.IsfFeedback.showFeedback(dom.applyFeedback, "공유 링크가 복사되었습니다.");
   } else if (link) window.prompt("링크 복사:", link);
 }
 

@@ -166,6 +166,7 @@ function bindModalEvents() {
     try {
       await navigator.clipboard.writeText(url.toString());
       if (dom.appHeader) dom.appHeader.updateStatus("success", "공유 링크 복사됨");
+      window.IsfFeedback.showFeedback(dom.applyFeedback, "공유 링크가 복사되었습니다.");
     } catch (e) {
       window.prompt("링크를 복사하세요:", url.toString());
     }
