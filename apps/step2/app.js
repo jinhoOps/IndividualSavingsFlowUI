@@ -238,6 +238,27 @@ function bindEvents() {
     });
   }
 
+  if (dom.totalInitialAsset) {
+    let previousValue = dom.totalInitialAsset.value;
+    dom.totalInitialAsset.addEventListener("focus", () => {
+      previousValue = dom.totalInitialAsset.value;
+    });
+    dom.totalInitialAsset.addEventListener("input", () => {
+      if (state.isSyncedWithStep1) {
+        if (confirm("Step 1에서 연동된 값을 직접 수정하시겠습니까?\n수정 시 자동 동기화 상태가 해제됩니다.")) {
+          state.isSyncedWithStep1 = false;
+          if (dom.step1SyncBanner) dom.step1SyncBanner.hidden = true;
+        } else {
+          dom.totalInitialAsset.value = previousValue;
+          return;
+        }
+      }
+      state.draft.totalInitialAsset = utils.toWon(dom.totalInitialAsset.value);
+      markDirty();
+      renderCharts();
+    });
+  }
+
 
   const PRESET_ASSETS = {
     SCHD: { yield: 3.5, growth: 10.0, capital: 5.0 },

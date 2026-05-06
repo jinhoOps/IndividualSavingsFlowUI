@@ -11,6 +11,9 @@ import { utils } from "./utils.js";
 export function renderDraft() {
   if (!state.draft) return;
   try {
+    if (dom.totalInitialAsset) {
+      dom.totalInitialAsset.value = utils.toMan(state.draft.totalInitialAsset || 0);
+    }
     if (dom.totalMonthlyInvestCapacity) {
       dom.totalMonthlyInvestCapacity.value = utils.toMan(state.draft.totalMonthlyInvestCapacity || 0);
     }
@@ -42,8 +45,8 @@ export function renderDividendSimulation() {
   dom.simTable.innerHTML = data.map(d => {
     const statusClass = utils.getFinancialIncomeStatus(d.dividendNominalTR);
     const trClass = statusClass !== 'normal' ? `status--${statusClass}` : '';
-    const badge = statusClass === 'warn' ? '<span class="status-badge status-badge--warn">종합과세 주의</span>' : 
-                  statusClass === 'crit' ? '<span class="status-badge status-badge--crit">종합과세 대상</span>' : '';
+    const badge = statusClass === 'warn' ? '<span class="status-badge status-badge--warn">과세주의</span>' : 
+                  statusClass === 'crit' ? '<span class="status-badge status-badge--crit">과세경고</span>' : '';
 
     return `
       <tr class="${trClass}">
@@ -231,8 +234,8 @@ function drawSimulationChart(svg, data) {
         const assetNominal = isDrip ? d.assetNominalTR : d.assetNominalPR;
         const statusClass = window.IsfUtils.getFinancialIncomeStatus(divNominal);
         
-        const badge = statusClass === 'warn' ? '<div class="status-badge status-badge--warn" style="margin: 4px 0 0 0; display: block; text-align: center;">종합과세 주의</div>' : 
-                      statusClass === 'crit' ? '<div class="status-badge status-badge--crit" style="margin: 4px 0 0 0; display: block; text-align: center;">종합과세 대상</div>' : '';
+        const badge = statusClass === 'warn' ? '<div class="status-badge status-badge--warn" style="margin: 4px 0 0 0; display: block; text-align: center;">과세주의</div>' : 
+                      statusClass === 'crit' ? '<div class="status-badge status-badge--crit" style="margin: 4px 0 0 0; display: block; text-align: center;">과세경고</div>' : '';
 
         tooltip.style.display = 'block';
         tooltip.innerHTML = `

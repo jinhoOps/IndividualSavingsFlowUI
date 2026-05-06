@@ -28,14 +28,16 @@ export function calculateDividendProjection() {
   const initialYield = (parseFloat(sim.yield) || 3.5) / 100;
   const dgr = (parseFloat(sim.growth) || 5.0) / 100;
   const cgr = (parseFloat(sim.capitalGrowth) || 4.0) / 100;
+  
+  const initialAsset = utils.sanitizeMoney(state.draft.totalInitialAsset, 0);
   const monthlyContribution = getTotalMonthlyInvestCapacity();
   const yearlyContribution = monthlyContribution * 12;
   const taxRate = DEFAULT_TAX_RATE;
   const inflationRate = DEFAULT_INFLATION_RATE;
 
-  let principal = 0;
-  let assetPR = 0;
-  let assetTR = 0;
+  let principal = initialAsset;
+  let assetPR = initialAsset;
+  let assetTR = initialAsset;
   const results = [];
 
   for (let y = 1; y <= years; y++) {
