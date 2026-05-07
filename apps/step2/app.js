@@ -154,22 +154,41 @@ function bindModalEvents() {
     await handleManualBackup();
   });
 
+  dom.dataHubModal.addEventListener("generate-isf-code", async () => {
+    const code = window.IsfShare.encodePayloadForHash(
+      window.IsfShare.buildStateEnvelope(SHARE_STATE_KEY, SHARE_STATE_SCHEMA, toPortableSimulation())
+    );
+    if (code) {
+      dom.dataHubModal.showGeneratedCode(code);
+      if (dom.appHeader) dom.appHeader.updateStatus("success", "ISF CODE 복사됨");
+      window.IsfFeedback.showFeedback(dom.applyFeedback, "ISF CODE가 발급 및 복사되었습니다.");
+    }
+  });
+
+  dom.dataHubModal.addEventListener("apply-isf-code", async (e) => {
+    try {
+      const decoded = window.IsfShare.decodePayloadFromHash(e.detail.code, SHARE_STATE_KEY);
+      if (decoded) {
+        const norm = normalizeLoadedSimulation(decoded);
+        state.draft = norm.draft;
+        state.currentSimulationId = norm.id || "";
+        renderDraft();
+        markDirty();
+        dom.dataHubModal.close();
+        if (dom.appHeader) dom.appHeader.updateStatus("success", "코드 적용 성공");
+        window.IsfFeedback.showFeedback(dom.applyFeedback, "코드가 성공적으로 적용되었습니다.");
+      } else {
+        throw new Error("invalid-code");
+      }
+    } catch (_e) {
+      if (dom.appHeader) dom.appHeader.updateStatus("error", "유효하지 않은 코드");
+      window.IsfFeedback.showFeedback(dom.applyFeedback, "유효하지 않은 코드입니다.", true);
+    }
+  });
+
   dom.dataHubModal.addEventListener("export-json", () => {
     window.IsfShare.exportAsJson(window.IsfShare.buildStateEnvelope(SHARE_STATE_KEY, SHARE_STATE_SCHEMA, toPortableSimulation()), "dividend-simulation");
     if (dom.appHeader) dom.appHeader.updateStatus("success", "JSON 저장 완료");
-  });
-
-  dom.dataHubModal.addEventListener("copy-share-link", async () => {
-    const enc = window.IsfShare.encodePayloadForHash(window.IsfShare.buildStateEnvelope(SHARE_STATE_KEY, SHARE_STATE_SCHEMA, toPortableSimulation()));
-    const url = new URL(window.location.href);
-    url.hash = `${HASH_STATE_PARAM}=${enc}`;
-    try {
-      await navigator.clipboard.writeText(url.toString());
-      if (dom.appHeader) dom.appHeader.updateStatus("success", "공유 링크 복사됨");
-      window.IsfFeedback.showFeedback(dom.applyFeedback, "공유 링크가 복사되었습니다.");
-    } catch (e) {
-      window.prompt("링크를 복사하세요:", url.toString());
-    }
   });
 
   dom.dataHubModal.addEventListener("import-json", async (e) => {
@@ -181,6 +200,7 @@ function bindModalEvents() {
       renderDraft();
       markDirty();
       if (dom.appHeader) dom.appHeader.updateStatus("success", "데이터 가져오기 성공");
+      dom.dataHubModal.close();
     } catch (_e) {
       if (dom.appHeader) dom.appHeader.updateStatus("error", "JSON 형식 오류");
     }

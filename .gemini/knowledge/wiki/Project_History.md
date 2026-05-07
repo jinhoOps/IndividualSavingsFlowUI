@@ -8,14 +8,22 @@ tags: [history, timeline, legacy]
 
 ## 🕒 주요 마일스톤
 
-### [2026-05-06] Step 2 Preset UI Enhancement & Patch (v0.9.1) 🛠️
+### [2026-05-07] 'ISF CODE' Sharing System & Redirect Bug Fix (v0.9.5) 🔗
+- **주요 내용**: URL 리다이렉트 문제를 해결하기 위한 수동 코드 공유 시스템 도입 및 전역 버전 동기화.
+- **성과**:
+    - 긴 URL 대신 압축된 'ISF CODE'를 발급하고 입력하는 수동 공유 프로세스 정립.
+    - 서비스 워커 및 PWA 환경에서의 URL 해시 리다이렉트 버그 근본적 해결.
+    - DataHubModal 내 '공유 및 연동' 탭 신설 및 UI 중앙 집중화.
+    - 전역 기술 버전을 v0.9.5로 업데이트하여 PWA 캐시 무결성 확보.
+
+### [2026-05-06] Step 2 Preset UI Enhancement & Patch (v0.9) 🛠️
 - **주요 내용**: 시뮬레이션 프리셋 선택 시 가시성 개선 및 전역 버전 패치.
 - **성과**:
     - 프리셋 선택 시 우측 상단에 전략 명칭(Badge) 표시 로직 구현.
     - 입력값 수정 시 프리셋 상태를 자동으로 해제하여 사용자 혼선 방지.
-    - 프로젝트 전반의 버전을 v0.9.1로 패치하여 PWA 캐시 무결성 확보.
+    - 프로젝트 전반의 버전을 v0.9로 패치하여 PWA 캐시 무결성 확보.
 
-### [2026-05-06] Modern Hybrid Architecture & Financial Simulation Enhancements (v0.9.0) 🚀
+### [2026-05-06] Modern Hybrid Architecture & Financial Simulation Enhancements (v0.9) 🚀
 - **인프라 혁신**: Vite, TypeScript, TailwindCSS v4 도입 및 레거시 호환성 브릿지 구축 완료.
 - **금융 로직 정교화**: 4% 안전 마진(1,920만/3,264만) 정책이 적용된 자동 소득세 계산 및 경고 시스템 통합.
 - **UX 현대화**: Step 1 온보딩 스포트라이트 시스템 및 자산 트래킹 UI 고도화.
@@ -70,3 +78,4 @@ tags: [history, timeline, legacy]
 
 ---
 *연결 노드:* [[Operating_Principles]], [[Architecture_Reference]]
+

@@ -221,7 +221,31 @@ function bindModalEvents() {
     dom.dataHubModal.close();
   });
   dom.dataHubModal.addEventListener("backup-now", handleManualBackup);
-  dom.dataHubModal.addEventListener("copy-share-link", handleCopyShareLink);
+  dom.dataHubModal.addEventListener("generate-isf-code", handleGenerateIsfCode);
+  dom.dataHubModal.addEventListener("apply-isf-code", handleApplyIsfCode);
+}
+
+async function handleGenerateIsfCode() {
+  const code = window.IsfShare.encodePayloadForHash(
+    window.IsfShare.buildStateEnvelope(SHARE_STATE_KEY, SHARE_STATE_SCHEMA, state.inputs)
+  );
+  if (code) {
+    dom.dataHubModal.showGeneratedCode(code);
+    window.IsfFeedback.showFeedback(dom.applyFeedback, "ISF CODE가 발급 및 복사되었습니다.");
+  }
+}
+
+async function handleApplyIsfCode(e) {
+  const code = e.detail.code;
+  const decoded = window.IsfShare.decodePayloadFromHash(code, SHARE_STATE_KEY);
+  if (decoded) {
+    const next = sanitizeInputs({ ...DEFAULT_INPUTS, ...decoded });
+    commitImmediateInputs(next);
+    dom.dataHubModal.close();
+    window.IsfFeedback.showFeedback(dom.applyFeedback, "코드가 성공적으로 적용되었습니다.");
+  } else {
+    window.IsfFeedback.showFeedback(dom.applyFeedback, "유효하지 않은 코드입니다.", true);
+  }
 }
 
 function bindItemEditorEvents() {

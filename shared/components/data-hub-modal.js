@@ -120,9 +120,19 @@
       });
 
       root.getElementById("btnExportJson").addEventListener("click", () => this.dispatchEvent(new CustomEvent("export-json")));
-      root.getElementById("btnCopyLink").addEventListener("click", () => this.dispatchEvent(new CustomEvent("copy-share-link")));
       root.getElementById("btnBackupNow").addEventListener("click", () => this.dispatchEvent(new CustomEvent("backup-now")));
       
+      root.getElementById("btnGenerateCode").addEventListener("click", () => this.dispatchEvent(new CustomEvent("generate-isf-code")));
+      root.getElementById("btnApplyCode").addEventListener("click", () => {
+        const codeInput = root.getElementById("isfCodeInput");
+        const code = codeInput.value.trim();
+        if (code) {
+          this.dispatchEvent(new CustomEvent("apply-isf-code", { detail: { code } }));
+        } else {
+          codeInput.focus();
+        }
+      });
+
       const fileInput = root.getElementById("fileInput");
       root.getElementById("btnImportJson").addEventListener("click", () => fileInput.click());
       fileInput.addEventListener("change", (e) => {
@@ -132,9 +142,31 @@
       });
     }
 
+    
+    showGeneratedCode(code) {
+      const input = this.shadowRoot.getElementById("isfCodeInput");
+      if (input) {
+        input.value = code;
+        input.readOnly = false;
+        input.select();
+        try {
+          document.execCommand("copy");
+          input.readOnly = true;
+        } catch (e) {
+          input.readOnly = true;
+        }
+      }
+    }
+
     open() {
       this.shadowRoot.getElementById("modalContainer").classList.add("is-open");
       document.body.style.overflow = "hidden";
+      
+      const input = this.shadowRoot.getElementById("isfCodeInput");
+      if (input) {
+        input.value = "";
+        input.readOnly = false;
+      }
     }
 
     close() {
@@ -145,7 +177,7 @@
     render() {
       const step = this.getAttribute("current-step") || this.dataset.step || "1";
       const showSimulations = step === "2";
-      const activeTab = showSimulations ? "tab-simulations" : "tab-backups";
+      const activeTab = "tab-share"; 
 
       this.shadowRoot.innerHTML = `
       <style>
@@ -170,12 +202,12 @@
         .modal-header h2 { margin: 0; font-family: var(--font-display); font-size: 1.1rem; color: var(--ink); }
         .btn-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--muted); }
         
-        .modal-body { padding: var(--sp-lg); display: flex; flex-direction: column; gap: var(--sp-lg); }
+        .modal-body { padding: var(--sp-lg); display: flex; flex-direction: column; gap: var(--sp-lg); min-height: 320px; }
         
         .tab-list { display: flex; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
-        .tab-btn { flex: 1; padding: 10px; background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer; font-family: inherit; font-weight: 600; color: var(--muted); }
+        .tab-btn { flex: 1; padding: 10px; background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer; font-family: inherit; font-weight: 600; color: var(--muted); font-size: 0.85rem; white-space: nowrap; }
         .tab-btn.is-active { color: var(--primary); border-bottom-color: var(--primary); }
-        .tab-pane { display: none; padding-top: 12px; }
+        .tab-pane { display: none; padding-top: 12px; height: 100%; }
         .tab-pane.is-active { display: block; }
         
         .simulation-list, .backup-list { display: flex; flex-direction: column; gap: var(--sp-sm); max-height: 240px; overflow-y: auto; padding-right: 4px; }
@@ -193,6 +225,18 @@
         .btn-select, .btn-restore { background: var(--panel); border: 1px solid var(--line); color: var(--ink); }
         .btn-delete { background: var(--panel); border: 1px solid #ffcfcf; color: var(--status-error, #e03131); }
         
+        .share-section { display: flex; flex-direction: column; gap: 16px; }
+        .share-card { background: rgba(16, 34, 32, 0.04); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+        .share-card h3 { margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--ink); }
+        .share-card p { margin: 0; font-size: 0.8rem; color: var(--muted); line-height: 1.5; }
+        
+        .code-input-group { display: flex; gap: 8px; }
+        .code-input-group input { 
+          flex: 1; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); 
+          font-family: monospace; font-size: 0.9rem; color: var(--ink);
+        }
+        .code-input-group input:focus { border-color: var(--primary); outline: none; }
+        
         .modal-footer { padding: var(--sp-md) var(--sp-lg); background: rgba(16, 34, 32, 0.04); border-top: 1px solid var(--line); display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .btn-action { padding: 10px; border-radius: var(--rd-sm, 8px); font-weight: 600; cursor: pointer; text-align: center; font-size: 0.85rem; border: 1px solid var(--line); background: var(--panel); color: var(--ink); font-family: inherit; }
         .btn-primary { background: var(--primary); color: #fff; border: none; }
@@ -207,25 +251,49 @@
           </div>
           <div class="modal-body">
             <div class="tab-list">
-              ${showSimulations ? `<button type="button" class="tab-btn ${activeTab === "tab-simulations" ? "is-active" : ""}" data-target="tab-simulations">시뮬레이션 목록</button>` : ""}
-              <button type="button" class="tab-btn ${activeTab === "tab-backups" ? "is-active" : ""}" data-target="tab-backups">데이터 백업 이력</button>
+              <button type="button" class="tab-btn is-active" data-target="tab-share">공유 및 연동</button>
+              ${showSimulations ? `<button type="button" class="tab-btn" data-target="tab-simulations">시뮬레이션 목록</button>` : ""}
+              <button type="button" class="tab-btn" data-target="tab-backups">데이터 백업 이력</button>
             </div>
             
+            <div id="tab-share" class="tab-pane is-active">
+              <div class="share-section">
+                <div class="share-card">
+                  <h3>ISF CODE 공유</h3>
+                  <p>긴 URL 대신 짧은 코드를 통해 설정을 공유할 수 있습니다. 발급 후 상대방에게 코드를 전달하세요.</p>
+                  <div class="code-input-group">
+                    <input type="text" id="isfCodeInput" placeholder="코드를 입력하거나 발급받으세요" />
+                    <button id="btnGenerateCode" class="btn-action">발급</button>
+                  </div>
+                  <button id="btnApplyCode" class="btn-action btn-primary">코드 입력하기 (불러오기)</button>
+                </div>
+                
+                <div class="share-card" style="flex-direction: row; align-items: center; justify-content: space-between; padding: 12px 16px;">
+                  <div style="display: flex; flex-direction: column; gap: 4px;">
+                    <h3 style="font-size: 0.85rem;">JSON 파일 관리</h3>
+                    <p style="font-size: 0.75rem;">오프라인 보관용 파일</p>
+                  </div>
+                  <div style="display: flex; gap: 8px;">
+                    <button id="btnExportJson" class="btn-action" style="padding: 6px 10px; font-size: 0.75rem;">내보내기</button>
+                    <button id="btnImportJson" class="btn-action" style="padding: 6px 10px; font-size: 0.75rem;">가져오기</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             ${showSimulations ? `
-            <div id="tab-simulations" class="tab-pane ${activeTab === "tab-simulations" ? "is-active" : ""}">
+            <div id="tab-simulations" class="tab-pane">
               <div id="simulationListContainer" class="simulation-list"></div>
             </div>
             ` : ""}
             
-            <div id="tab-backups" class="tab-pane ${activeTab === "tab-backups" ? "is-active" : ""}">
+            <div id="tab-backups" class="tab-pane">
               <div id="backupListContainer" class="backup-list"></div>
               <button id="btnBackupNow" class="btn-action" style="width: 100%; margin-top: 12px;">지금 상태 백업하기</button>
             </div>
           </div>
-          <div class="modal-footer">
-            <button id="btnExportJson" class="btn-action">JSON 내보내기</button>
-            <button id="btnImportJson" class="btn-action">JSON 가져오기</button>
-            <button id="btnCopyLink" class="btn-action btn-primary" style="grid-column: span 2;">공유 링크 복사</button>
+          <div class="modal-footer" style="grid-template-columns: 1fr;">
+            <p style="margin: 0; font-size: 0.7rem; color: var(--muted); text-align: center;">모든 데이터는 브라우저 로컬 저장소에 안전하게 보관됩니다.</p>
             <input type="file" id="fileInput" accept=".json" hidden />
           </div>
         </div>

@@ -53,14 +53,27 @@ tags: [ui, feedback, theme, visualization, reference]
 
 1. **AppHeader (`app-header.js`)**
    - 역할: Step 간 네비게이션 및 브랜드 아이덴티티 제공. 모든 페이지 최상단 고정(Sticky).
-2. **Unified Tabs (`tab-list`, `tab-btn`)**
+2. **DataHubModal (`data-hub-modal.js`)**
+   - 역할: 데이터 백업, 복원, JSON 내보내기/가져오기, ISF CODE 공유를 통합 관리하는 중앙 허브. (v0.9 개편)
+   - 구성: '공유 및 연동', '시뮬레이션 목록', '백업 이력' 탭으로 분리하여 관리.
+3. **Unified Tabs (`tab-list`, `tab-btn`)**
    - 역할: 상세 설정 및 차트 전환용 탭 UI 표준. Underline 애니메이션 포함.
-3. **FeedbackManager (`shared/components/feedback-manager.js`)**
+4. **FeedbackManager (`shared/components/feedback-manager.js`)**
    - `showFeedback`: 상단 플로팅 토스트 알림.
    - `markPendingBar`: 하단 상태바(`pending-bar`) 제어. v0.3에서 아이콘(⚠️) 및 버튼 구조 표준화.
    - `notifyAutoSave`: 자동 저장 상태 알림.
-4. **Taxation Warnings (정책 기반 경고)**
+5. **Taxation Warnings (정책 기반 경고)**
    - [[Financial_Taxation_Reference]]에 정의된 안전 마진(1,900만/3,400만) 기준에 따라 `warn`/`crit` 레벨의 피드백을 제공합니다.
+
+## 데이터 공유 및 연동 표준 (v0.9 신설)
+
+1. **ISF CODE 시스템**
+   - **발급**: 현재 상태를 압축된 문자열(Base64/LZ)로 변환하여 'ISF CODE'를 생성합니다. 생성 시 클립보드에 자동 복사되며 사용자에게 피드백을 제공합니다.
+   - **입력**: 전달받은 코드를 수동으로 입력하여 즉시 상태를 반영합니다. URL 리다이렉트 없이도 데이터를 전송할 수 있는 가장 안정적인 방법입니다.
+   - **표준 UX**: 긴 URL 공유 방식보다 수동 코드 입력 방식을 우선적으로 노출하여 PWA 환경에서의 리다이렉트 버그를 원천 방지합니다.
+2. **백업 및 복원 (Backup & Restore)**
+   - 12시간마다 자동으로 수행되는 '자동 백업'과 사용자가 명시적으로 수행하는 '수동 백업'을 지원합니다.
+   - 복원 시 현재 상태가 유실되지 않도록 직전에 자동 백업을 수행하는 안전장치를 포함해야 합니다.
 
 ## 시각화
 

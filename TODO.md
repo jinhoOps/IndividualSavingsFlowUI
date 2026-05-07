@@ -2,12 +2,12 @@
 kanban-plugin: basic
 ---
 
-# TODO (v0.9.1)
+# TODO (v0.9.5)
 
-## Done (v0.9.0)
+## Done (v0.9.5)
+- [x] **'ISF CODE' 기반 공유 시스템 도입**: URL 리다이렉트 버그 해결 및 수동 코드 공유 UI 구현.
+- [x] **전역 버전 동기화 (v0.9.5)**: sw.js, manifest, package.json, IsfUtils.APP_VERSION 동기화.
 - [x] **Modern Hybrid 아키텍처 전환**: Vite, TS, Tailwind v4 통합 완료.
-- [x] **금융 시뮬레이션 고도화**: 4% 안전 마진 및 TAX_CONFIG 기반 세율 엔진 구현.
-- [x] **전역 버전 동기화 (v0.9.0)**: sw.js, manifest, package.json, IsfUtils.APP_VERSION 동기화.
 - [x] **Step 2 초기 투자 자산(totalInitialAsset) 연동**: Step 1의 `startInvest` 데이터를 시뮬레이션 원금으로 반영.
 - [x] **Step 2 동기화 로직 고도화**: 데이터 정합성 체크 강화 및 "Step 1로 이동" 가이드 제공.
 - [x] **UI/UX 레이블 일관성 확보**: 과세 경고 배지 문구를 '과세주의/과세경고'로 전면 통일.
