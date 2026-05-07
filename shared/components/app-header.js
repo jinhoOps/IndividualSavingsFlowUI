@@ -67,6 +67,10 @@ export class AppHeader extends HTMLElement {
                 <span class="launcher-item__icon">💰</span>
                 <span class="launcher-item__text">배당 시뮬</span>
               </a>
+              <a href="../step3/" class="launcher-item ${this.currentStep === '3' ? 'is-active' : ''}">
+                <span class="launcher-item__icon">💼</span>
+                <span class="launcher-item__text">포트폴리오</span>
+              </a>
               <a href="../step4/" class="launcher-item ${this.currentStep === '4' ? 'is-active' : ''}">
                 <span class="launcher-item__icon">📈</span>
                 <span class="launcher-item__text">백테스트</span>

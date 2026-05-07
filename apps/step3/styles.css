@@ -1,0 +1,77 @@
+/* Step 3 전용 스타일 */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-md);
+}
+
+.summary-section {
+  grid-column: span 2;
+}
+
+.summary-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--sp-md);
+}
+
+.card {
+  padding: var(--sp-md);
+  background: rgba(255, 255, 255, 0.4);
+  border: 1px solid var(--line);
+  border-radius: var(--rd-md);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.card .label {
+  font-size: var(--text-caption);
+  color: var(--muted);
+}
+
+.card .value {
+  font-family: var(--font-display);
+  font-size: var(--text-title-md);
+  color: var(--tone-primary);
+}
+
+.placeholder-chart {
+  height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(16, 34, 32, 0.03);
+  border-radius: var(--rd-md);
+  color: var(--muted);
+  font-style: italic;
+}
+
+.account-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-sm);
+}
+
+.badge {
+  padding: 2px 8px;
+  border-radius: var(--rd-lg);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.badge-primary {
+  background: rgba(234, 91, 42, 0.1);
+  color: var(--tone-primary);
+  border: 1px solid var(--tone-primary);
+}
+
+@media (max-width: 960px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+  .summary-section, .visual-section, .editor-section, .guide-section {
+    grid-column: span 1;
+  }
+}

@@ -17,7 +17,9 @@ kanban-plugin: basic
 - [x] **전역 버전 동기화 (v0.9.7)**: sw.js, manifest, package.json, IsfUtils.APP_VERSION 동기화.
 - [x] **Modern Hybrid 아키텍처 전환**: Vite, TS, Tailwind v4 통합 완료.
 - [x] **Step 2 초기 투자 자산(totalInitialAsset) 연동**: Step 1의 `startInvest` 데이터를 시뮬레이션 원금으로 반영.
-- [ ] **Step 3 아키텍처 설계**: Step 1 투자 데이터를 수신하는 전용 모듈(`step1-receiver.js`) 정의
+- [x] **Step 3 아키텍처 설계**: `apps/step3/` 스캐폴딩 및 `step1-connector.js` 구조 정의 (Phase 06-01)
+- [ ] **Step 3 데이터 연동**: Step 1의 최신 스냅샷에서 투자 가능 금액 실시간 동기화
+- [ ] **Step 3 포트폴리오 에디터**: 계좌/종목별 비중 설정 및 영속화 레이어 구현
 - [ ] **계좌별 자산 에디터**: 연금저축, ISA, 일반계좌 등 계좌별 비중 설정 기능
 - [ ] **목표 vs 실제 분석**: 도넛 차트를 활용한 비중 격차 시각화 및 리밸런싱 액션 가이드
 - [ ] **포트폴리오 스냅샷**: 현재 구성 상태를 히스토리로 저장 및 복원

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ISF UIUX | 포트폴리오 리밸런싱</title>
+  <meta name="theme-color" content="#ea5b2a">
+  <link rel="manifest" href="../../manifest.webmanifest">
+  <link rel="icon" href="../../icons/icon-192.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../../shared/styles/step-theme.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <app-header current-step="3"></app-header>
+  <data-hub-modal current-step="3"></data-hub-modal>
+
+  <div class="ambient" aria-hidden="true"></div>
+
+  <div class="page">
+    <section class="panel page-intro">
+      <h1>포트폴리오 리밸런싱</h1>
+      <p class="lead">Step 1의 투자 여력을 바탕으로 계좌별 자산 비중을 설계하고 최적의 매수 가이드를 확인하세요.</p>
+    </section>
+
+    <main class="dashboard-grid">
+      <!-- 1. 요약 섹션 -->
+      <section class="panel summary-section">
+        <div class="section-head">
+          <h2>자산 요약</h2>
+        </div>
+        <div class="summary-cards">
+          <div class="card">
+            <span class="label">이번 달 투자 여력 (from Step 1)</span>
+            <span id="investCapacity" class="value">0 만원</span>
+          </div>
+          <div class="card">
+            <span class="label">총 자산 평가액</span>
+            <span id="totalAssetValue" class="value">0 만원</span>
+          </div>
+          <div class="card">
+            <span class="label">기대 배당률 (연)</span>
+            <span id="expectedYield" class="value">0.00%</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. 시각화 섹션 -->
+      <section class="panel visual-section">
+        <div class="section-head">
+          <h2>비중 분석</h2>
+          <div class="toggle-group">
+            <button class="btn btn-ghost btn-sm is-active">목표 vs 실제</button>
+            <button class="btn btn-ghost btn-sm">자산군 분포</button>
+          </div>
+        </div>
+        <div class="chart-container">
+          <div id="portfolioChart" class="placeholder-chart">차트 준비 중...</div>
+        </div>
+      </section>
+
+      <!-- 3. 입력/에디터 섹션 -->
+      <section class="panel editor-section">
+        <div class="section-head">
+          <h2>계좌 및 종목 관리</h2>
+          <button id="addAccountBtn" class="btn btn-ghost btn-sm">+ 계좌 추가</button>
+        </div>
+        <div id="accountList" class="account-list">
+          <p class="empty">등록된 계좌가 없습니다. 계좌를 추가하여 자산 구성을 시작하세요.</p>
+        </div>
+      </section>
+
+      <!-- 4. 리밸런싱 가이드 -->
+      <section class="panel guide-section">
+        <div class="section-head">
+          <h2>리밸런싱 액션 가이드</h2>
+          <span class="badge badge-primary">신규 투자금 우선</span>
+        </div>
+        <div id="guideContent" class="guide-content">
+          <p class="hint">계좌와 종목 정보를 입력하면 목표 비중 달성을 위한 매수 추천 금액이 이곳에 표시됩니다.</p>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <button id="jumpToTop" class="floating-btn floating-btn--right" type="button" aria-label="맨 위로 이동">▲</button>
+  <div id="feedbackManager"></div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
