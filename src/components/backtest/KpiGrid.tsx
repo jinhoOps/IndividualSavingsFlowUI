@@ -33,10 +33,10 @@ export const KpiGrid: React.FC<Props> = ({ results, isLumpSum }) => {
             <div>
               <div className="text-[10px] text-muted font-medium">최종 평가 금액</div>
               <div className={`text-lg font-black ${result.isLiquidated ? 'text-red-500' : 'text-ink'}`}>
-                {result.isLiquidated ? '0' : (result.finalValue / 10000).toLocaleString()} <span className="text-xs font-normal text-muted">만원</span>
+                {result.isLiquidated ? '0' : (result.finalValue / 10000).toLocaleString()} <span className="text-xs font-normal text-muted">만원 ({asset.currency})</span>
               </div>
               {result.isLiquidated && (
-                <div className="text-[10px] text-red-500 font-bold mt-1">
+                <div className="text-[10px] text-red-500 font-bold mt-1 bg-red-50 p-1 rounded">
                   청산일: {result.liquidationDate}
                 </div>
               )}
@@ -47,7 +47,7 @@ export const KpiGrid: React.FC<Props> = ({ results, isLumpSum }) => {
                 <div className="text-[9px] text-muted font-medium flex items-center gap-1">
                   {isLumpSum ? 'CAGR (연평균)' : 'IRR (연환산)'}
                 </div>
-                <div className={`text-sm font-bold ${result.isLiquidated ? 'text-red-500' : 'text-ink'}`}>
+                <div className={`text-sm font-bold ${result.isLiquidated ? 'text-red-500' : (isLumpSum ? result.cagr : result.irr) >= 0 ? 'text-red-500' : 'text-blue-500'}`}>
                   {result.isLiquidated ? '-100%' : `${((isLumpSum ? result.cagr : result.irr) * 100).toFixed(2)}%`}
                 </div>
               </div>

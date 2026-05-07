@@ -26,6 +26,10 @@ export class BacktestEngine {
     let isLiquidated = false;
     let liquidationDate: string | undefined = undefined;
 
+    // MDD 계산을 위한 '단위 가격(Unit Price)' 추적 (자금 투입 영향 배제)
+    let unitPricePeak = -Infinity;
+    let currentUnitPrice = 100; // 기준가 100으로 시작
+
     // 시뮬레이션 루프
     for (let i = 0; i < filteredData.length; i++) {
       const point = filteredData[i];
@@ -39,6 +43,13 @@ export class BacktestEngine {
           isLiquidated: true
         });
         continue;
+      }
+
+      // 이전 가격 대비 수익률 계산 (MDD용)
+      if (i > 0) {
+        const prevPrice = filteredData[i-1].price;
+        const assetReturn = (currentPrice - prevPrice) / prevPrice;
+        currentUnitPrice *= (1 + assetReturn);
       }
 
       // 1. 자금 투입 (매월 초에 투입된다고 가정)
@@ -64,6 +75,8 @@ export class BacktestEngine {
         // 배당금으로 즉시 추가 매수
         currentShares += dividendAmount / currentPrice;
         currentValue = currentShares * currentPrice;
+        // 단위 가격에도 배당 반영
+        currentUnitPrice *= (1 + point.dividendYield);
       }
 
       // 4. 청산 체크 (원금 대비 99% 이상 손실 시 청산으로 간주)
@@ -74,11 +87,11 @@ export class BacktestEngine {
         currentShares = 0;
       }
 
-      // 5. MDD 계산
-      if (currentValue > peakValue) {
-        peakValue = currentValue;
+      // 5. MDD 계산 (단위 가격 기준)
+      if (currentUnitPrice > unitPricePeak) {
+        unitPricePeak = currentUnitPrice;
       }
-      const drawdown = peakValue > 0 ? (peakValue - currentValue) / peakValue : 0;
+      const drawdown = unitPricePeak > 0 ? (unitPricePeak - currentUnitPrice) / unitPricePeak : 0;
       if (drawdown > maxDrawdown) {
         maxDrawdown = drawdown;
       }

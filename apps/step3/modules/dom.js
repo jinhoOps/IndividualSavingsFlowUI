@@ -132,6 +132,7 @@ export const IsfDom = {
           <div class="asset-header">
             <span class="col-name">종목명(티커)</span>
             <span class="col-ratio">목표(%)</span>
+            <span class="col-yield">기대(%)</span>
             <span class="col-price">현재가</span>
             <span class="col-qty">수량</span>
             <span class="col-action"></span>
@@ -152,6 +153,9 @@ export const IsfDom = {
         </div>
         <div class="col-ratio">
           <input type="number" class="input-minimal" value="${as.targetRatio}" data-field="targetRatio" data-id="${as.id}" step="0.1">
+        </div>
+        <div class="col-yield">
+          <input type="number" class="input-minimal" value="${as.expectedYield || 0}" data-field="expectedYield" data-id="${as.id}" step="0.1">
         </div>
         <div class="col-price">
           <input type="number" class="input-minimal" value="${IsfUtils.toMan(as.currentPrice)}" data-field="currentPrice" data-id="${as.id}" step="1">
@@ -200,7 +204,7 @@ export const IsfDom = {
         let value = e.target.value;
         
         // 데이터 타입 변환
-        if (field === 'targetRatio' || field === 'quantity') value = parseFloat(value) || 0;
+        if (field === 'targetRatio' || field === 'quantity' || field === 'expectedYield') value = parseFloat(value) || 0;
         if (field === 'currentPrice') value = IsfUtils.toWon(parseFloat(value) || 0);
 
         handlers.onInputChange(id, field, value);

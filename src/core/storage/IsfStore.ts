@@ -89,9 +89,9 @@ export class IsfStore {
     if (local) {
       try { return JSON.parse(local); } catch (e) { return null; }
     }
-    return this.perform<Step1State | null>(STORES.STEP1_HISTORY, 'readonly', (s) => {
+    return this.perform<IDBCursorWithValue | null>(STORES.STEP1_HISTORY, 'readonly', (s) => {
       return s.index('updatedAt').openCursor(null, 'prev');
-    }).then(cursor => (cursor as any)?.value || null);
+    }).then(cursor => (cursor?.value as Step1State) || null);
   }
 
   async listStep1History(): Promise<Step1State[]> {

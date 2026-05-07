@@ -54,7 +54,12 @@ export class IsfState {
   updateAsset(id, field, value) {
     const asset = this.data.assets.find(as => as.id === id);
     if (asset) {
-      asset[field] = value;
+      // 수치 필드의 경우 타입 변환 강제
+      if (['targetRatio', 'currentPrice', 'quantity', 'expectedYield'].includes(field)) {
+        asset[field] = Number(value) || 0;
+      } else {
+        asset[field] = value;
+      }
       this.saveToStorage();
     }
   }
@@ -64,10 +69,19 @@ export class IsfState {
       return sum + (asset.currentPrice * asset.quantity);
     }, 0);
 
+    // 기대 수익률 계산 (자산 비중 기반 가중 평균)
+    let totalWeightedYield = 0;
+    if (totalAssetValue > 0) {
+      this.data.assets.forEach(asset => {
+        const weight = (asset.currentPrice * asset.quantity) / totalAssetValue;
+        totalWeightedYield += (asset.expectedYield || 0) * weight;
+      });
+    }
+
     return {
       investCapacity: this.data.investCapacity,
       totalAssetValue: totalAssetValue,
-      expectedYield: 0 
+      expectedYield: totalWeightedYield 
     };
   }
 
@@ -91,7 +105,8 @@ export class IsfState {
     const id = `asset-${Date.now()}`;
     const newAsset = { 
       id, accountId, name, ticker, 
-      targetRatio, currentPrice: 0, quantity: 0 
+      targetRatio, currentPrice: 0, quantity: 0,
+      expectedYield: 0 // 기대 수익률 필드 추가
     };
     this.data.assets.push(newAsset);
     this.saveToStorage();

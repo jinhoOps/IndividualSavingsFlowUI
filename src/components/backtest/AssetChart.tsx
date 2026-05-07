@@ -139,7 +139,7 @@ export const AssetChart: React.FC<Props> = ({ results, relativeMode, benchmarkId
           const x = getX(time);
           return (
             <text key={p} x={x} y={height - padding.bottom + 24} textAnchor="middle" fontSize="10" fill="var(--muted)" className="font-mono">
-              {new Date(time).toLocaleDateString('ko-KR', { year: '20' + 'yy' }).slice(0, 4)}
+              {new Date(time).toLocaleDateString('ko-KR', { year: 'numeric' }).slice(0, 4)}
             </text>
           );
         })}
