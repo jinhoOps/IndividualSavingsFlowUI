@@ -1,4 +1,6 @@
 ﻿
+import { IsfUtils } from '../core/utils.js';
+
 export class AppHeader extends HTMLElement {
   constructor() {
     super();
@@ -11,25 +13,21 @@ export class AppHeader extends HTMLElement {
     this.render();
   }
 
-  
+  /**
+   * 상태 인디케이터 업데이트 (현재는 시각적 요소가 제거되어 로직만 유지)
+   */
   updateStatus(status, message) {
     this.status = status;
     if (message) this.statusMessage = message;
-    
-    const indicator = this.querySelector('#statusIndicator');
-    if (indicator) {
-      indicator.className = `status-indicator status-indicator--${status}`;
-      const text = indicator.querySelector('.status-indicator__text');
-      if (text) text.textContent = this.statusMessage;
-    }
   }
 
   render() {
-    const version = this.getAttribute('version') || (window.IsfUtils ? window.IsfUtils.APP_VERSION : '0.0.0');
+    const version = this.getAttribute('version') || (IsfUtils ? IsfUtils.APP_VERSION : '0.0.0');
     
     const stepLabels = {
       '1': '현금 흐름',
       '2': '배당 시뮬',
+      '3': '포트폴리오',
       '4': '백테스트'
     };
     const currentLabel = stepLabels[this.currentStep] || '백테스트';
@@ -55,11 +53,6 @@ export class AppHeader extends HTMLElement {
               <a href="/IndividualSavingsFlowUI/" class="app-header__logo" style="font-weight: 800; letter-spacing: -0.5px;">ISF UIUX</a>
               <span style="color: var(--line-strong); font-size: 1.2rem; font-weight: 300;">|</span>
               <span class="current-step-label" style="font-weight: 700; color: var(--tone-primary); font-size: var(--text-body-md);">${currentLabel}</span>
-            </div>
-            
-            <div id="statusIndicator" class="status-indicator status-indicator--${this.status}">
-              <span class="status-indicator__dot"></span>
-              <span class="status-indicator__text" style="display: none;">${this.statusMessage}</span>
             </div>
           </div>
 
@@ -107,11 +100,6 @@ export class AppHeader extends HTMLElement {
     document.addEventListener('click', () => {
       launcherMenu.style.display = 'none';
     });
-
-    const indicatorText = this.querySelector('.status-indicator__text');
-    if (indicatorText && window.innerWidth > 760) {
-      indicatorText.style.display = 'inline';
-    }
 
     this.querySelector('#headerDataHubBtn').addEventListener('click', () => {
       this.dispatchEvent(new CustomEvent('open-data-hub'));

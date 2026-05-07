@@ -483,44 +483,6 @@ select:focus-visible {
 }
 
 
-.status-indicator {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.78rem;
-  color: var(--muted);
-  padding: 4px 8px;
-  border-radius: var(--rd-lg);
-  background: var(--line);
-  transition: all 0.3s ease;
-}
-
-.status-indicator__dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #ccc;
-  transition: background-color 0.3s ease;
-}
-
-.status-indicator--saving .status-indicator__dot {
-  background: var(--tone-primary);
-  animation: pulse-saving 1s infinite alternate;
-}
-
-.status-indicator--success .status-indicator__dot {
-  background: var(--status-success);
-}
-
-.status-indicator--error .status-indicator__dot {
-  background: var(--status-error);
-}
-
-@keyframes pulse-saving {
-  from { opacity: 0.4; transform: scale(0.8); }
-  to { opacity: 1; transform: scale(1.1); }
-}
-
 @media (max-width: 760px) {
   .modal-grid {
     grid-template-columns: 1fr;
