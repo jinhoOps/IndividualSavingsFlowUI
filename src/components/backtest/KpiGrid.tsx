@@ -1,6 +1,8 @@
 import React from 'react';
 import { AssetData, SimulationResult } from '../../core/backtest/types';
 
+import { MoneyUtils } from '../../core/types/money';
+
 interface Props {
   results: { asset: AssetData; result: SimulationResult }[];
   isLumpSum: boolean;
@@ -33,7 +35,8 @@ export const KpiGrid: React.FC<Props> = ({ results, isLumpSum }) => {
             <div>
               <div className="text-[10px] text-muted font-medium">최종 평가 금액</div>
               <div className={`text-lg font-black ${result.isLiquidated ? 'text-red-500' : 'text-ink'}`}>
-                {result.isLiquidated ? '0' : (result.finalValue / 10000).toLocaleString()} <span className="text-xs font-normal text-muted">만원 ({asset.currency})</span>
+                {result.isLiquidated ? '0 원' : MoneyUtils.formatMan(result.finalValue)}
+                {!result.isLiquidated && <span className="text-[10px] font-normal text-muted ml-1">({asset.currency})</span>}
               </div>
               {result.isLiquidated && (
                 <div className="text-[10px] text-red-500 font-bold mt-1 bg-red-50 p-1 rounded">

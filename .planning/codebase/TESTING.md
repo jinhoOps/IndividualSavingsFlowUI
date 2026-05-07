@@ -1,15 +1,72 @@
-# Testing Strategy
+<!-- generated-by: gsd-doc-writer -->
+# 테스트 전략 (Testing Strategy)
 
-## Quality Pillars
-1. **Visual Integrity**: UI/UX must not break across common mobile resolutions (760px and below).
-2. **Logic Accuracy**: Financial calculations must match the "가계 추이 계산 검증" table logic.
-3. **Data Persistence**: State must persist correctly across reloads and inter-step navigation.
+ISF 프로젝트는 금융 시뮬레이션의 계산 정확성을 보장하고, 다양한 플랫폼 환경에서의 시각적 무결성을 유지하기 위해 자동화된 단위 테스트와 체계적인 검증 프로토콜을 결합하여 운영합니다.
 
-## Verification Procedures
-- **Manual UAT**: Core flow validation (Input → Apply → View Sankey).
-- **Regression Check**: Verify large file edits haven't truncated media queries or utility classes.
-- **Unit Logic Audit**: Periodic check of `calculator.js` against known test samples.
+## 테스트 프레임워크 및 설정
 
-## Current Limitations
-- No automated unit testing framework (e.g., Vitest/Jest) is integrated to maintain the "No-Build" simplicity.
-- Verification relies on agent-led manual audits and user feedback.
+프로젝트의 핵심 비즈니스 로직 검증을 위해 **Vitest**를 사용합니다.
+
+- **프레임워크**: Vitest (^4.1.5)
+- **주요 도구**: `@vitest/ui` (시각적 테스트 러너 지원)
+- **설정**: 기본적으로 Vite의 설정을 공유하며, TypeScript 환경에서의 ESM 모듈 테스트를 지원합니다.
+
+## 테스트 실행
+
+개발자는 다음 명령어를 통해 테스트를 수행할 수 있습니다.
+
+```bash
+# 전체 테스트 실행 (단발성)
+npx vitest run
+
+# 테스트 감시 모드 (개발 모드)
+npx vitest
+
+# Vitest UI 실행 (브라우저에서 테스트 결과 확인)
+npx vitest --ui
+```
+
+## 단위 테스트 (Unit Tests)
+
+`src/core/` 디렉토리에 위치한 핵심 금융 로직 및 엔진은 단위 테스트를 통해 엄격하게 관리됩니다.
+
+### 테스트 대상: 금융 로직 (src/core/)
+- **BacktestEngine**: 거치식 및 적립식 자산 시뮬레이션의 CAGR, IRR, MDD 등 주요 지표 계산을 담당합니다.
+- **배당 재투자 (TR)**: 배당금의 재투자 여부에 따른 복리 효과의 수학적 정합성을 검증합니다.
+- **데이터 변환**: 다양한 자산 데이터 포맷의 처리 로직을 검증합니다.
+
+### 테스트 작성 규칙
+- **파일 명명**: 테스트 대상 파일과 동일한 위치에 `{파일명}.test.ts` 형식으로 작성합니다.
+- **테스트 방식**: TDD(Test-Driven Development) 방식을 지향하여, 엔진 수정 전 예상 결과에 대한 테스트 케이스를 먼저 정의합니다.
+- **예시 케이스**: `src/core/backtest/engine.test.ts` 파일에서 실제 시뮬레이션 엔진의 검증 사례를 확인할 수 있습니다.
+
+## 검증 프로토콜 (UAT)
+
+자동화 테스트로 검증하기 어려운 UI/UX 흐름과 시스템 통합 상태는 사용자 수락 테스트(UAT) 프로토콜을 통해 관리합니다.
+
+### 단계별 UAT (Phase-based UAT)
+각 기능 구현 단계(Phase)가 완료될 때마다 `.planning/phases/` 하위에 UAT 문서를 작성합니다.
+1. **Cold Start Smoke Test**: 애플리케이션의 초기 기동 및 상태 초기화 확인.
+2. **시각적 회귀 테스트**: 모바일(760px 이하) 및 데스크톱 환경에서의 레이아웃 무결성 확인.
+3. **핵심 흐름 검증**: '입력 -> 적용 -> 시각화'로 이어지는 사용자 시나리오 완주 여부 확인.
+
+### 에이전트 기반 품질 검증 (Evaluator)
+`isf-evaluator` 역할을 통해 다음 항목을 중점적으로 검사합니다:
+- **Triple Sync**: `sw.js`, `manifest.webmanifest`, `package.json` 간의 버전 일치 여부.
+- **무결성 수호**: 대규모 코드 수정 시 필수 헬퍼 함수나 미디어 쿼리의 유실 여부 확인.
+
+## 커버리지 요구사항
+
+| 유형 | 현재 목표 | 상태 |
+| :--- | :--- | :--- |
+| Lines | N/A | 설정된 임계치 없음 |
+| Functions | 80% 이상 (핵심 로직) | 핵심 엔진 중심 검증 중 |
+| Branches | N/A | 설정된 임계치 없음 |
+
+현재 별도의 자동화된 커버리지 임계치(Threshold)는 구성되어 있지 않으며, 핵심 금융 엔진의 로직 정합성 확보에 집중하고 있습니다.
+
+## CI 통합
+
+- **CI 도구**: GitHub Actions
+- **워크플로우**: `.github/workflows/deploy.yml`
+- **현재 상태**: 현재 CI 파이프라인은 정적 자산 배포에 집중되어 있습니다. 향후 `npm run build` 과정에 테스트 단계를 통합하여 결함이 있는 코드의 배포를 자동 차단할 예정입니다. <!-- VERIFY: CI 내 테스트 자동 실행 구성 여부 -->

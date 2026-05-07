@@ -1,6 +1,7 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { AssetData, SimulationResult } from '../../core/backtest/types';
 import { CHART_COLORS } from './BacktestDashboard';
+import { MoneyUtils } from '../../core/types/money';
 
 interface Props {
   results: { asset: AssetData; result: SimulationResult }[];
@@ -119,7 +120,7 @@ export const AssetChart: React.FC<Props> = ({ results, relativeMode, benchmarkId
             <g key={p}>
               <line x1={padding.left} y1={y} x2={width - padding.right} y2={y} stroke="var(--line)" strokeWidth="1" strokeDasharray="4 4" />
               <text x={padding.left - 10} y={y + 4} textAnchor="end" fontSize="10" fill="var(--muted)" className="font-mono">
-                {relativeMode ? `${val.toFixed(0)}%` : `${(val / 10000).toLocaleString()}`}
+                {relativeMode ? `${val.toFixed(0)}%` : `${Math.round(val / 10000).toLocaleString()}만`}
               </text>
             </g>
           );
@@ -213,7 +214,7 @@ export const AssetChart: React.FC<Props> = ({ results, relativeMode, benchmarkId
                       ? '청산'
                       : relativeMode 
                         ? `${tooltip.closest[r.asset.id] >= 0 ? '+' : ''}${tooltip.closest[r.asset.id].toFixed(2)}%`
-                        : `${(tooltip.closest[r.asset.id] / 10000).toLocaleString('ko-KR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}만`
+                        : MoneyUtils.formatMan(tooltip.closest[r.asset.id])
                     }
                   </span>
                 </div>
@@ -225,4 +226,3 @@ export const AssetChart: React.FC<Props> = ({ results, relativeMode, benchmarkId
     </div>
   );
 };
-
