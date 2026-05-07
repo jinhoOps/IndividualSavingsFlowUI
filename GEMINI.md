@@ -33,10 +33,21 @@
 - **사람을 위한 주석 지양 (No Human-Targeted Comments)**: 에이전트가 코드를 직접 다루므로, JS 코드 내에 사람을 위한 설명형 주석을 추가하지 마십시오. 코드는 그 자체로 의도를 드러내야 하며 불필요한 주석은 컨텍스트를 낭비합니다.
 
 ## 🧠 지식 관리: LLM Wiki (Compounding Knowledge Engine)
-이 프로젝트는 **"LLM Wiki"** 패턴을 따릅니다. 에이전트는 지식을 소모적으로 재발견하지 않고, 끊임없이 풍성해지는 위키 위에서 사고합니다.
-- **복리 적립 (Compounding)**: 새로운 지식은 단순히 기록되는 것이 아니라, 기존 노드들과 합성(Synthesize)되어 전체 지식망을 강화해야 합니다.
-- **연대기적 감사 (Audit Trail)**: 모든 주요 결정과 지식 수집은 `[[log.md]]`에 기록되어 시간적 맥락을 보존합니다.
-- **지식 검증 (Lint)**: 위키 내의 모순을 탐지하고 고아 페이지를 방지하여 지식의 엔트로피를 낮게 유지하십시오.
+이 프로젝트는 **"LLM Wiki"** 패턴을 따릅니다. 에이전트는 지식을 소모적으로 재발견하지 않고, 끊임없이 풍성해지는 위키 위에서 사고하며, 모든 지식은 명확한 3계층 구조로 관리됩니다.
+
+### 🏛️ Wiki Architecture
+1. **Raw Sources (`knowledge/raw/`)**: AI가 작업 중 기억해야 할 메모, 원시 문서, 데이터 파일. 불변(Immutable) 혹은 임시 공간으로 취급.
+2. **The Wiki (`knowledge/wiki/`)**: AI가 전적으로 소유하고 관리하는 마크다운 파일 모음. 요약, 엔티티 페이지, 개념 페이지 등. 지식의 SSOT.
+3. **The Schema (`GEMINI.md`)**: 에이전트가 위키를 어떻게 구성하고 유지 관리해야 하는지에 대한 지침(헌법).
+
+### ⚙️ Wiki Operations
+- **Ingest (인입)**: 새로운 소스를 읽고 핵심 정보를 추출하여 위키에 통합. 기존 페이지와 합성(Synthesize)하여 복리 지식 형성.
+- **Query (질의)**: 위키를 검색하여 답변 생성. 가치 있는 답변은 `knowledge/output/`에 기록하거나 위키 페이지로 환원.
+- **Lint (검증)**: 주기적으로 모순 탐지, 고아 페이지 확인, 누락된 교차 참조 보완 및 지식 정화 수행.
+
+### 📜 주요 관리 파일
+- **`wiki/index.md`**: 위키 전체의 목차 및 카테고리별 매핑. 인입 시 반드시 업데이트.
+- **`wiki/log.md`**: 모든 작업(Ingest, Query, Lint)의 연대기적 기록. `## [YYYY-MM-DD] action | title` 형식 준수.
 
 
 
@@ -45,7 +56,7 @@
 
 ### 1단계: Context Loading (맥락 로딩)
 어떤 작업을 시작하든, 가장 먼저 전체 프로젝트의 메타 지식이 담긴 마스터 인덱스를 읽어서 현재 컨텍스트를 로드하십시오.
-- **[필수 참조]** [[.gemini/knowledge/wiki/INDEX.md]] 
+- **[필수 참조]** [[knowledge/wiki/index.md]] 
 
 ### 2단계: Development & Architecture (개발 및 스펙 합의)
 사용자로부터 기능 추가, 리팩터링, 아키텍처 제어 등을 지시받았다면, 코드를 작성하기 전에 개발 관점의 지침을 로드해야 합니다.
@@ -57,17 +68,17 @@
 ### 3단계: Wiki Indexing & Post-processing (지식 인덱싱 필수 절차)
 작업이 끝났다고 그대로 대화를 종료하지 마십시오. 새로운 패턴을 도출했거나 설계를 바꿨다면, 반드시 **에이전트의 영속적 기억**을 갱신하는 절차를 밟아야 합니다.
 - **[사서 및 인덱싱 스킬]** [[.gemini/skills/wiki-librarian/SKILL.md]]
-  *(이 스킬을 바탕으로, 알아낸 사실을 .gemini/knowledge/wiki/ 에 정리하고, 최종적으로 INDEX.md의 목차 구조(Topology)를 업데이트하세요.)*
+  *(이 스킬을 바탕으로, 알아낸 사실을 knowledge/wiki/ 에 정리하고, 최종적으로 index.md의 목차 구조(Topology)를 업데이트하세요.)*
 
 ---
 
 ## 🛠️ 실무 참조 문서 (Reference Manuals)
 위의 1~3단계를 따르되, 구체적인 도메인 스펙이 필요할 때만 아래 문서들을 열어보세요. (필요하지 않으면 열지 마세요. 컨텍스트 윈도우는 희소한 자원입니다.)
-- 운영 원칙: [[.gemini/knowledge/wiki/Operating_Principles]]
-- 아키텍처 참조: [[.gemini/knowledge/wiki/Architecture_Reference.md]]
-- 데이터 모델 참조: [[.gemini/knowledge/wiki/Data_Model_Reference.md]]
-- UI 및 피드백 표준: [[.gemini/knowledge/wiki/UI_Standards_Reference.md]]
-- 브리지 데이터 패턴 (문제 해결 지식): [[.gemini/knowledge/wiki/Data_Bridge_Import_Pattern.md]]
+- 운영 원칙: [[knowledge/wiki/Operating_Principles]]
+- 아키텍처 참조: [[knowledge/wiki/Architecture_Reference.md]]
+- 데이터 모델 참조: [[knowledge/wiki/Data_Model_Reference.md]]
+- UI 및 피드백 표준: [[knowledge/wiki/UI_Standards_Reference.md]]
+- 브리지 데이터 패턴 (문제 해결 지식): [[knowledge/wiki/Data_Bridge_Import_Pattern.md]]
 - 기능 백로그 및 TODO: `TODO.md`
 
 (*주의사항: 모든 문서는 한국어(존댓말), UTF-8, 굵게/기울임 표시 지양 규칙을 준수합니다.*)

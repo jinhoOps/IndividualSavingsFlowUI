@@ -430,4 +430,22 @@
     - 안전 마진 설정: 실제 기준보다 보수적인 1,900만 원(5% 마진) `warn` 및 3,400만 원 `crit` 경고 정책 수립.
     - 위키 연결: `INDEX.md` 및 `UI_Standards_Reference.md`에 정책 노드 연결 완료.
 - **결과**: 금융 정책 관련 비즈니스 로직의 근거를 확보하고, 개발 및 기획 시 일관된 기준 제공.
-�.
+
+## [2026-05-07] lint | LLM Wiki 헌법(Constitution) 개선 및 3계층 구조 확립
+- **목적**: Karpathy의 LLM Wiki 패턴을 이식하여 지식 관리 체계를 고도화하고 에이전트의 지식 복리 적립 효율을 향상함.
+- **주요 변경사항**:
+    - **헌법 개정**: `GEMINI.md`에 Wiki Architecture(Raw, Wiki, Schema) 및 Operations(Ingest, Query, Lint) 지침 명문화.
+    - **구조 확립**: `knowledge/raw`, `knowledge/wiki`, `knowledge/output` 3계층 폴더 구조 확정 및 각 폴더별 `index.md` 초기화.
+    - **파일 정규화**: `INDEX.md`를 `index.md`로 표준화하고, `log.md`의 연대기적 기록 형식을 강화함.
+- **결과**: 에이전트가 지식을 소모적으로 재발견하지 않고 지속적으로 축적할 수 있는 시스템적 기반 완성.
+
+## [2026-05-07] ingest | 지식 저장소 위치 변경 및 인입 스캔 (Migration)
+- **목적**: `knowledge/` 디렉토리 위치 변경에 따른 시스템 정합성 확보 및 신규 지식 인입 여부 점검.
+- **주요 변경사항**:
+    - **경로 최적화**: `GEMINI.md` 및 위키 인덱스의 모든 지식 저장소 경로를 `.gemini/knowledge/`에서 `knowledge/`로 현행화.
+    - **인입 스캔**: `knowledge/raw/` 폴더 내 신규 소스 파일 존재 여부 전수 조사 (수행 결과: 추가 소스 없음).
+    - **결과 리포트**: `knowledge/output/ingest_report_20260507.md` 생성 및 저장.
+- **결과**: 프로젝트 구조 변경에 따른 지식 관리 인프라 재설정 완료 및 무결성 확인.
+
+
+�

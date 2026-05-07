@@ -42,6 +42,16 @@
             <span id="expectedYield" class="value">0.00%</span>
           </div>
         </div>
+
+        <div class="snapshot-controls-wrap">
+          <div class="section-head">
+            <h3>포트폴리오 스냅샷</h3>
+            <button id="saveSnapshotBtn" class="btn btn-primary btn-xs">현재 구성 저장</button>
+          </div>
+          <div id="snapshotControls" class="snapshot-controls">
+            <p class="hint">저장된 스냅샷이 없습니다.</p>
+          </div>
+        </div>
       </section>
 
       <!-- 2. 시각화 섹션 -->
@@ -85,6 +95,6 @@
   <button id="jumpToTop" class="floating-btn floating-btn--right" type="button" aria-label="맨 위로 이동">▲</button>
   <div id="feedbackManager"></div>
 
-  <script type="module" src="app.js"></script>
+  <script type="module" src="../../src/entries/step3.ts"></script>
 </body>
 </html>

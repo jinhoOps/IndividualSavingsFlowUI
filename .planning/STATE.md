@@ -3,7 +3,7 @@ milestone: "v1.2"
 name: "백테스트 시뮬레이터 및 자산 관리 확장"
 status: "in-progress"
 progress:
-  completed_phases: 6
+  completed_phases: 7
   total_phases: 9
 ---
 
@@ -11,10 +11,10 @@ progress:
 
 ## Current Position
 
-Phase: 6
+Phase: 8
 Plan: 01
 Status: Active
-Last activity: 2026-05-08 — Phase 07 (Step 4) completed with v0.9.7. Starting Phase 06 (Step 3).
+Last activity: 2026-05-08 — Phase 06 (Step 3 Portfolio Rebalancing) fully completed. Starting Phase 08 (Expense Comparison).
 
 ## Project Reference
 

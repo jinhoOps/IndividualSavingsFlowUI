@@ -6,14 +6,14 @@ tags: [architecture, modernization, vite, typescript, reference]
 
 # Architecture Reference (아키텍처 참조)
 
-IndividualSavingsFlowUI 프로젝트는 v1.1.0-alpha.1부터 **현대적 개발 스택(Modern DX)**을 기반으로 하며, 빌드 도구(Vite)를 사용하여 성능과 안정성을 극대화합니다.
+IndividualSavingsFlowUI 프로젝트는 v0.8.0부터 **현대적 개발 스택(Modern DX)**을 기반으로 하며, 빌드 도구(Vite)를 사용하여 성능과 안정성을 극대화합니다.
 
 ## 기술 스택 (Tech Stack)
 
 - **Runtime**: Vite 8 (Modern ESM)
 - **Language**: TypeScript (TS) & Modern JavaScript
 - **Styling**: TailwindCSS v4 (@theme 기반 설정)
-- **Framework**: React/Preact (v1.1.0+ 도입 시작) 및 Native Web Components
+- **Framework**: React/Preact (v0.8.0+ 도입 시작) 및 Native Web Components
 - **Deployment**: GitHub Actions를 통한 자동 PWA 배포
 
 ## 디렉토리 구조
@@ -35,7 +35,7 @@ IndividualSavingsFlowUI 프로젝트는 v1.1.0-alpha.1부터 **현대적 개발 
 - **TypeScript**: 정적 타입 검사를 통해 런타임 에러를 방지하며, 특히 '원 vs 만원' 단위 실수를 코드 레벨에서 차단합니다.
 
 ## 스토리지 아키텍처 (Modern Storage v2)
-v1.1.0부터 모든 데이터 영속화 로직은 `src/core/storage/IsfStore.ts`로 현대화되었습니다.
+v0.8.0부터 모든 데이터 영속화 로직은 `src/core/storage/IsfStore.ts`로 현대화되었습니다.
 
 ### 핵심 철학: 시스템 무결성 (Integrity First)
 - **Branded Types**: `Won`, `ManWon` 타입을 구분하여 산술 연산 시 단위 실수를 방지합니다. ([[Data_Model_Reference]] 참조)
