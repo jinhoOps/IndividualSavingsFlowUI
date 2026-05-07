@@ -11,6 +11,9 @@ IndividualSavingsFlowUI (ISF) 프로젝트의 모든 지식은 이 지도를 통
 ## 🏛️ 핵심 참조 (The Constitution)
 *프로젝트 운영의 근간이 되는 불변의 원칙들입니다.*
 - [[Operating_Principles]]: 프로젝트 운영 원칙 및 현대적 DX 지침.
+- [[System_Integrity_Standard]]: 🚨 스타일, 로직, 단위 정합성 수호 표준.
+- [[Agent_Behavior_Standard]]: 🛠️ 안전과 최소 개입을 위한 에이전트 행동 강령.
+- [[Version_Management_Principles]]: 📌 패치 버전 및 SSOT 관리 원칙.
 - [[Architecture_Reference]]: Vite, TS, Tailwind v4 기반 아키텍처 명세.
 - [[Data_Model_Reference]]: v2 스토리지 스키마, Branded Types, 데이터 무결성 규칙.
 - [[Financial_Taxation_Reference]]: 금융소득종합과세 정책 및 UI 경고 기준.
