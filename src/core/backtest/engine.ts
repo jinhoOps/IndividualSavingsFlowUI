@@ -23,13 +23,26 @@ export class BacktestEngine {
     
     let peakValue = -Infinity;
     let maxDrawdown = 0;
+    let isLiquidated = false;
+    let liquidationDate: string | undefined = undefined;
 
     // 시뮬레이션 루프
-    filteredData.forEach((point, index) => {
+    for (let i = 0; i < filteredData.length; i++) {
+      const point = filteredData[i];
       const currentPrice = point.price;
       
+      if (isLiquidated) {
+        history.push({
+          date: point.date,
+          value: 0,
+          principal: totalPrincipal,
+          isLiquidated: true
+        });
+        continue;
+      }
+
       // 1. 자금 투입 (매월 초에 투입된다고 가정)
-      if (index === 0) {
+      if (i === 0) {
         cash += initialPrincipal;
         totalPrincipal += initialPrincipal;
       }
@@ -53,11 +66,19 @@ export class BacktestEngine {
         currentValue = currentShares * currentPrice;
       }
 
-      // 4. MDD 계산
+      // 4. 청산 체크 (원금 대비 99% 이상 손실 시 청산으로 간주)
+      if (currentValue < totalPrincipal * 0.01 || currentValue <= 0) {
+        isLiquidated = true;
+        liquidationDate = point.date;
+        currentValue = 0;
+        currentShares = 0;
+      }
+
+      // 5. MDD 계산
       if (currentValue > peakValue) {
         peakValue = currentValue;
       }
-      const drawdown = (peakValue - currentValue) / peakValue;
+      const drawdown = peakValue > 0 ? (peakValue - currentValue) / peakValue : 0;
       if (drawdown > maxDrawdown) {
         maxDrawdown = drawdown;
       }
@@ -65,19 +86,21 @@ export class BacktestEngine {
       history.push({
         date: point.date,
         value: Math.round(currentValue),
-        principal: totalPrincipal
+        principal: totalPrincipal,
+        isLiquidated: isLiquidated
       });
-    });
+    }
 
     const finalValue = history[history.length - 1].value;
-    const totalReturn = (finalValue - totalPrincipal) / totalPrincipal;
+    const totalReturn = totalPrincipal > 0 ? (finalValue - totalPrincipal) / totalPrincipal : 0;
 
     // CAGR 계산 (거치식 전용)
     const years = filteredData.length / 12;
-    const cagr = years > 0 ? Math.pow(finalValue / initialPrincipal, 1 / years) - 1 : 0;
+    const cagr = years > 0 && finalValue > 0 && initialPrincipal > 0 
+      ? Math.pow(finalValue / initialPrincipal, 1 / years) - 1 
+      : 0;
 
     // IRR 계산 (단순화: 월간 수익률의 기하평균을 연율화)
-    // 실제 IRR은 복잡한 방정식 풀이가 필요하므로 추후 고도화 가능
     const irr = 0; 
 
     return {
@@ -87,6 +110,8 @@ export class BacktestEngine {
       cagr: isFinite(cagr) ? cagr : 0,
       irr,
       mdd: maxDrawdown,
+      isLiquidated,
+      liquidationDate,
       history
     };
   }

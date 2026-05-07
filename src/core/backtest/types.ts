@@ -3,7 +3,7 @@
  */
 
 /** 자산 유형 */
-export type AssetType = 'index' | 'commodity' | 'rate' | 'custom';
+export type AssetType = 'index' | 'commodity' | 'rate' | 'leveraged' | 'custom';
 
 /** 월별 시계열 데이터 포인트 */
 export interface TimeSeriesPoint {
@@ -22,6 +22,10 @@ export interface AssetData {
   type: AssetType;
   currency: 'KRW' | 'USD';
   data: TimeSeriesPoint[];
+  /** 레버리지 배수 (기본 1.0) */
+  leverage?: number;
+  /** 기초 자산 ID (레버리지 자산인 경우) */
+  baseAssetId?: string;
 }
 
 /** 시뮬레이션 설정 파라미터 */
@@ -52,10 +56,15 @@ export interface SimulationResult {
   irr: number;
   /** 최대 낙폭 (MDD, 0.0 ~ 1.0) */
   mdd: number;
+  /** 청산 여부 (자산 가치가 0에 수렴) */
+  isLiquidated?: boolean;
+  /** 청산 날짜 */
+  liquidationDate?: string;
   /** 시계열 결과 (그래프용) */
   history: {
     date: string;
     value: number;
     principal: number;
+    isLiquidated?: boolean;
   }[];
 }

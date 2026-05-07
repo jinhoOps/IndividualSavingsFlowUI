@@ -23,6 +23,12 @@ export const SimulationWarning: React.FC<Props> = ({ params, selectedAssets }) =
     warnings.push('시뮬레이션 기간이 1년 미만입니다. 단기 성과는 통계적 유의성이 낮을 수 있습니다.');
   }
 
+  // 3. 레버리지 자산 위험 경고
+  const hasLeveragedAsset = selectedAssets.some(a => a.type === 'leveraged');
+  if (hasLeveragedAsset) {
+    warnings.push('레버리지 자산은 변동성 잠식(Volatility Drag)으로 인해 장기 보유 시 기초 지수 수익률의 배수보다 성과가 낮을 수 있으며, 급락 시 원금 전액 손실(청산) 위험이 있습니다.');
+  }
+
   if (warnings.length === 0) return null;
 
   return (

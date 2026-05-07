@@ -20,35 +20,98 @@ export const BacktestDashboard: React.FC = () => {
   const [benchmarkAssetId, setBenchmarkAssetId] = useState<string>('qqq');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // 데이터 로드
+  // 데이터 로드 및 가상 자산 합성
   useEffect(() => {
     const loadAssets = async () => {
       try {
         const baseUrl = import.meta.env.BASE_URL;
         const paths = [
-          `${baseUrl}data/indices/qqq.json`,
-          `${baseUrl}data/indices/spy.json`,
-          `${baseUrl}data/indices/gold.json`
+          { id: 'qqq', path: `${baseUrl}data/indices/qqq.json` },
+          { id: 'spy', path: `${baseUrl}data/indices/spy.json` },
+          { id: 'gold', path: `${baseUrl}data/indices/gold.json` }
         ];
-        const loaded = await Promise.all(paths.map(path => fetch(path).then(res => {
+        
+        const loadedIndices = await Promise.all(paths.map(p => fetch(p.path).then(res => {
           if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
           return res.json();
         })));
         
-        // 기준금리 가상 데이터 추가
-        const rateAsset: AssetData = {
-          id: 'base-rate',
-          name: '기준금리 (가상 3.5%)',
-          type: 'rate',
-          currency: 'KRW',
-          data: loaded[0].data.map((p: any) => ({
-            date: p.date,
-            price: 100, // 기준 가격 (변하지 않음)
-            dividendYield: 0.035 / 12 // 월간 수익률로 배당 처리
-          }))
-        };
+        const qqq = loadedIndices.find(a => a.id === 'qqq')!;
+        const spy = loadedIndices.find(a => a.id === 'spy')!;
         
-        setAssets([...loaded, rateAsset]);
+        // 1. 레버리지 자산 합성 (QLD, TQQQ)
+        const createLeveraged = (base: AssetData, id: string, name: string, leverage: number): AssetData => {
+          const leveragedData = [...base.data];
+          const resultData = [leveragedData[0]];
+          
+          for (let i = 1; i < leveragedData.length; i++) {
+            const prevBase = leveragedData[i-1].price;
+            const currBase = leveragedData[i].price;
+            const baseReturn = (currBase - prevBase) / prevBase;
+            
+            const prevLev = resultData[i-1].price;
+            // 레버리지 수익률 계산 (운용 보수 등 단순화)
+            const levPrice = prevLev * (1 + (baseReturn * leverage));
+            
+            resultData.push({
+              date: leveragedData[i].date,
+              price: Math.max(0.01, levPrice), // 0 이하 방지
+              dividendYield: (leveragedData[i].dividendYield || 0) * 0.5 // 레버리지 분배금은 적음
+            });
+          }
+          
+          return {
+            id,
+            name,
+            type: 'leveraged',
+            currency: base.currency,
+            leverage,
+            baseAssetId: base.id,
+            data: resultData
+          };
+        };
+
+        const qld = createLeveraged(qqq, 'qld', 'ProShares Ultra QQQ (QLD, 2x)', 2);
+        const tqqq = createLeveraged(qqq, 'tqqq', 'ProShares UltraPro QQQ (TQQQ, 3x)', 3);
+
+        // 2. 추가 지수 합성 (Mock: 다우, 코스피)
+        const dow: AssetData = {
+          ...spy,
+          id: 'dow',
+          name: 'Dow Jones Industrial (DIA)',
+          data: spy.data.map(p => ({ ...p, price: p.price * 0.85 })) // 대략적인 변동성 차이
+        };
+
+        const kospi: AssetData = {
+          ...spy,
+          id: 'kospi',
+          name: 'KOSPI 200 (Mock)',
+          currency: 'KRW',
+          data: spy.data.map(p => ({ ...p, price: p.price * 1000 })) // 원화 단위 환산 모사
+        };
+
+        // 3. 금리 자산 합성 (US/KR 기준금리, 적금)
+        const createRateAsset = (id: string, name: string, rate: number, isKRW: boolean = true): AssetData => ({
+          id,
+          name,
+          type: 'rate',
+          currency: isKRW ? 'KRW' : 'USD',
+          data: qqq.data.map((p: any) => ({
+            date: p.date,
+            price: 100,
+            dividendYield: rate / 12
+          }))
+        });
+
+        const usRate = createRateAsset('us-rate', 'US Fed Funds Rate (5.25%)', 0.0525, false);
+        const krRate = createRateAsset('kr-rate', '한국 기준금리 (3.5%)', 0.035, true);
+        const savings = createRateAsset('savings', '정기적금 (금리+1%)', 0.045, true);
+
+        setAssets([
+          ...loadedIndices, 
+          qld, tqqq, dow, kospi, 
+          usRate, krRate, savings
+        ]);
       } catch (error) {
         console.error('Failed to load asset data:', error);
         setToastMessage('데이터를 불러오는데 실패했습니다.');

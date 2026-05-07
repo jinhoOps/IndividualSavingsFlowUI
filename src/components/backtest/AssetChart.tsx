@@ -103,7 +103,9 @@ export const AssetChart: React.FC<Props> = ({ results, relativeMode, benchmarkId
                     <span className="font-mono font-bold text-ink">
                       {relativeMode 
                         ? `${closest[r.asset.id] >= 0 ? '+' : ''}${closest[r.asset.id].toFixed(2)}%`
-                        : `${(closest[r.asset.id] / 10000).toLocaleString()}만`
+                        : (r.result.history.find(h => h.date === chartData.allDates[chartData.data.indexOf(closest)])?.isLiquidated 
+                            ? <span className="text-red-500">LIQUIDATED</span>
+                            : `${(closest[r.asset.id] / 10000).toLocaleString()}만`)
                       }
                     </span>
                   </div>
