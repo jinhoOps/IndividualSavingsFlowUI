@@ -45,10 +45,10 @@ export const KpiGrid: React.FC<Props> = ({ results, isLumpSum }) => {
             <div className="grid grid-cols-2 gap-sm pt-sm border-t border-line">
               <div>
                 <div className="text-[9px] text-muted font-medium flex items-center gap-1">
-                  {isLumpSum ? 'CAGR (연평균)' : '원금 대비 수익'}
+                  {isLumpSum ? 'CAGR (연평균)' : 'IRR (연환산)'}
                 </div>
                 <div className={`text-sm font-bold ${result.isLiquidated ? 'text-red-500' : 'text-ink'}`}>
-                  {result.isLiquidated ? '-100%' : (isLumpSum ? `${(result.cagr * 100).toFixed(2)}%` : `${((result.finalValue - result.totalPrincipal) / 10000).toLocaleString()}만`)}
+                  {result.isLiquidated ? '-100%' : `${((isLumpSum ? result.cagr : result.irr) * 100).toFixed(2)}%`}
                 </div>
               </div>
               <div>

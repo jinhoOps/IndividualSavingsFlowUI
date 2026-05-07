@@ -94,6 +94,15 @@ export class IsfStore {
     }).then(cursor => (cursor as any)?.value || null);
   }
 
+  async listStep1History(): Promise<Step1State[]> {
+    const list = await this.perform<Step1State[]>(STORES.STEP1_HISTORY, 'readonly', (s) => s.getAll());
+    return list.sort((a, b) => b.updatedAt - a.updatedAt);
+  }
+
+  async getStep1ById(id: number): Promise<Step1State | null> {
+    return this.perform<Step1State | null>(STORES.STEP1_HISTORY, 'readonly', (s) => s.get(id));
+  }
+
   // --- Step 2 Methods ---
 
   async saveStep2Simulation(sim: Step2Simulation): Promise<void> {

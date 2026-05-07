@@ -161,12 +161,12 @@ export const AssetChart: React.FC<Props> = ({ results, relativeMode, benchmarkId
         })}
 
         {/* 날짜 축 */}
-        {[0, 0.5, 1].map(p => {
+        {[0, 0.25, 0.5, 0.75, 1].map(p => {
           const time = chartData.minTime + (chartData.maxTime - chartData.minTime) * p;
           const x = getX(time);
           return (
             <text key={p} x={x} y={height - padding.bottom + 24} textAnchor="middle" fontSize="10" fill="var(--muted)">
-              {new Date(time).toLocaleDateString('ko-KR', { year: 'numeric', month: 'short' })}
+              {new Date(time).toLocaleDateString('ko-KR', { year: 'numeric' })}
             </text>
           );
         })}

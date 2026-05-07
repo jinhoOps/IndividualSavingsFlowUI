@@ -100,8 +100,8 @@ export class BacktestEngine {
       ? Math.pow(finalValue / initialPrincipal, 1 / years) - 1 
       : 0;
 
-    // IRR 계산 (단순화: 월간 수익률의 기하평균을 연율화)
-    const irr = 0; 
+    // IRR 계산 (적립식 포함 전체 현금 흐름 기준)
+    const irr = this.calculateIRR(initialPrincipal, monthlyInstallment, finalValue, filteredData.length);
 
     return {
       finalValue,
@@ -111,8 +111,41 @@ export class BacktestEngine {
       irr,
       mdd: maxDrawdown,
       isLiquidated,
-      liquidationDate,
       history
     };
+  }
+
+  /**
+   * 내부 수익률(IRR)을 계산합니다 (이분법 사용)
+   */
+  private static calculateIRR(initial: number, monthly: number, final: number, months: number): number {
+    if (months === 0 || (initial === 0 && monthly === 0)) return 0;
+    
+    // f(r) = initial*(1+r)^n + monthly * ((1+r)^n - 1)/r - final = 0
+    const f = (r: number) => {
+      if (Math.abs(r) < 1e-10) return initial + (monthly * months) - final;
+      const compound = Math.pow(1 + r, months);
+      return initial * compound + (monthly * (compound - 1) / r) - final;
+    };
+
+    let low = -0.999;
+    let high = 1.0; // 월 100% 수익률까지 탐색
+    
+    // 해가 존재하는지 확인 (단조 증가 함수이므로 간단함)
+    if (f(low) * f(high) > 0) {
+      // 범위를 벗어난 경우 (극단적인 수익률)
+      if (f(high) < 0) return 10.0; // 1000%+
+      return -0.99;
+    }
+
+    for (let i = 0; i < 40; i++) {
+      const mid = (low + high) / 2;
+      if (f(mid) > 0) high = mid;
+      else low = mid;
+    }
+
+    const monthlyRate = (low + high) / 2;
+    // 월간 수익률을 연율화: (1+r)^12 - 1
+    return Math.pow(1 + monthlyRate, 12) - 1;
   }
 }

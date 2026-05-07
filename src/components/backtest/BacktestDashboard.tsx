@@ -12,8 +12,8 @@ export const BacktestDashboard: React.FC = () => {
   const [params, setParams] = useState<SimulationParams>({
     initialPrincipal: 10000000,
     monthlyInstallment: 1000000,
-    startDate: '2020-01-01',
-    endDate: '2020-12-01',
+    startDate: '2000-01-01',
+    endDate: '2026-03-01',
     reinvestDividends: true,
   });
   const [relativeMode, setRelativeMode] = useState(false);
@@ -74,12 +74,12 @@ export const BacktestDashboard: React.FC = () => {
         const qld = createLeveraged(qqq, 'qld', 'ProShares Ultra QQQ (QLD, 2x)', 2);
         const tqqq = createLeveraged(qqq, 'tqqq', 'ProShares UltraPro QQQ (TQQQ, 3x)', 3);
 
-        // 2. 추가 지수 합성 (Mock: 다우, 코스피)
-        const dow: AssetData = {
+        // 2. 추가 지수 합성 (Mock: SCHD, 코스피)
+        const schd: AssetData = {
           ...spy,
-          id: 'dow',
-          name: 'Dow Jones Industrial (DIA)',
-          data: spy.data.map(p => ({ ...p, price: p.price * 0.85 })) // 대략적인 변동성 차이
+          id: 'schd',
+          name: 'Schwab US Dividend Equity (SCHD)',
+          data: spy.data.map(p => ({ ...p, price: p.price * 0.75, dividendYield: 0.035 / 12 })) // SCHD 특성 모사 (높은 배당)
         };
 
         const kospi: AssetData = {
@@ -109,7 +109,7 @@ export const BacktestDashboard: React.FC = () => {
 
         setAssets([
           ...loadedIndices, 
-          qld, tqqq, dow, kospi, 
+          qld, tqqq, schd, kospi, 
           usRate, krRate, savings
         ]);
       } catch (error) {
@@ -172,6 +172,33 @@ export const BacktestDashboard: React.FC = () => {
                     <span className="text-body-md font-medium">{asset.name}</span>
                   </label>
                 ))}
+              </div>
+            </div>
+
+            <hr className="border-line" />
+
+            <div className="grid grid-cols-2 gap-md">
+              <div>
+                <label className="block text-[10px] font-bold text-muted uppercase mb-1">시작 월</label>
+                <input 
+                  type="month"
+                  value={params.startDate.slice(0, 7)}
+                  min="2000-01"
+                  max={params.endDate.slice(0, 7)}
+                  onChange={(e) => setParams({ ...params, startDate: `${e.target.value}-01` })}
+                  className="w-full font-bold text-xs"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-muted uppercase mb-1">종료 월</label>
+                <input 
+                  type="month"
+                  value={params.endDate.slice(0, 7)}
+                  min={params.startDate.slice(0, 7)}
+                  max="2026-03"
+                  onChange={(e) => setParams({ ...params, endDate: `${e.target.value}-01` })}
+                  className="w-full font-bold text-xs"
+                />
               </div>
             </div>
 

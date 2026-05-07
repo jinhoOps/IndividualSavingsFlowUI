@@ -4,18 +4,1580 @@
   "type": "index",
   "currency": "USD",
   "data": [
-    { "date": "2020-01-01", "price": 223.23, "dividendYield": 0.0006 },
-    { "date": "2020-02-01", "price": 208.79, "dividendYield": 0.0006 },
-    { "date": "2020-03-01", "price": 181.86, "dividendYield": 0.0006 },
-    { "date": "2020-04-01", "price": 210.32, "dividendYield": 0.0006 },
-    { "date": "2020-05-01", "price": 226.54, "dividendYield": 0.0006 },
-    { "date": "2020-06-01", "price": 242.06, "dividendYield": 0.0006 },
-    { "date": "2020-07-01", "price": 260.65, "dividendYield": 0.0006 },
-    { "date": "2020-08-01", "price": 290.54, "dividendYield": 0.0006 },
-    { "date": "2020-09-01", "price": 274.65, "dividendYield": 0.0006 },
-    { "date": "2020-10-01", "price": 269.11, "dividendYield": 0.0006 },
-    { "date": "2020-11-01", "price": 299.71, "dividendYield": 0.0006 },
-    { "date": "2020-12-01", "price": 313.74, "dividendYield": 0.0006 },
-    { "date": "2021-01-01", "price": 313.74, "dividendYield": 0.0006 }
+    {
+      "date": "2000-01-01",
+      "price": 48.36,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2000-02-01",
+      "price": 46.05,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2000-03-01",
+      "price": 44.56,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2000-04-01",
+      "price": 43.17,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2000-05-01",
+      "price": 41.45,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2000-06-01",
+      "price": 40.52,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2000-07-01",
+      "price": 38.27,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2000-08-01",
+      "price": 37.05,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2000-09-01",
+      "price": 34.71,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2000-10-01",
+      "price": 33.61,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2000-11-01",
+      "price": 32.69,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2000-12-01",
+      "price": 31.73,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2001-01-01",
+      "price": 30.91,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2001-02-01",
+      "price": 30.3,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2001-03-01",
+      "price": 28.8,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2001-04-01",
+      "price": 28.06,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2001-05-01",
+      "price": 26.81,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2001-06-01",
+      "price": 25.69,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2001-07-01",
+      "price": 25.15,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2001-08-01",
+      "price": 23.72,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2001-09-01",
+      "price": 23.12,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2001-10-01",
+      "price": 22.24,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2001-11-01",
+      "price": 21.05,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2001-12-01",
+      "price": 20.67,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2002-01-01",
+      "price": 20.93,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2002-02-01",
+      "price": 21.54,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2002-03-01",
+      "price": 21.57,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2002-04-01",
+      "price": 21.31,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2002-05-01",
+      "price": 21.88,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2002-06-01",
+      "price": 21.87,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2002-07-01",
+      "price": 22.19,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2002-08-01",
+      "price": 22.85,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2002-09-01",
+      "price": 23.14,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2002-10-01",
+      "price": 23.83,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2002-11-01",
+      "price": 23.73,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2002-12-01",
+      "price": 23.86,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2003-01-01",
+      "price": 23.65,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2003-02-01",
+      "price": 23.76,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2003-03-01",
+      "price": 23.65,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2003-04-01",
+      "price": 23.88,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2003-05-01",
+      "price": 23.78,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2003-06-01",
+      "price": 24.06,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2003-07-01",
+      "price": 24.36,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2003-08-01",
+      "price": 25.03,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2003-09-01",
+      "price": 24.92,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2003-10-01",
+      "price": 24.73,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2003-11-01",
+      "price": 24.61,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2003-12-01",
+      "price": 24.42,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2004-01-01",
+      "price": 24.93,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2004-02-01",
+      "price": 25.08,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2004-03-01",
+      "price": 25.58,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2004-04-01",
+      "price": 25.5,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2004-05-01",
+      "price": 25.55,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2004-06-01",
+      "price": 25.38,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2004-07-01",
+      "price": 25.99,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2004-08-01",
+      "price": 26.2,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2004-09-01",
+      "price": 26.93,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2004-10-01",
+      "price": 26.79,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2004-11-01",
+      "price": 27.3,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2004-12-01",
+      "price": 27.24,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2005-01-01",
+      "price": 27.24,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2005-02-01",
+      "price": 27.14,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2005-03-01",
+      "price": 27.72,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2005-04-01",
+      "price": 27.93,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2005-05-01",
+      "price": 27.7,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2005-06-01",
+      "price": 27.63,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2005-07-01",
+      "price": 28.27,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2005-08-01",
+      "price": 28.78,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2005-09-01",
+      "price": 28.94,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2005-10-01",
+      "price": 28.98,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2005-11-01",
+      "price": 29.05,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2005-12-01",
+      "price": 29.85,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2006-01-01",
+      "price": 30.12,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2006-02-01",
+      "price": 30.23,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2006-03-01",
+      "price": 31.11,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2006-04-01",
+      "price": 30.86,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2006-05-01",
+      "price": 30.88,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2006-06-01",
+      "price": 31.18,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2006-07-01",
+      "price": 31.02,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2006-08-01",
+      "price": 31.62,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2006-09-01",
+      "price": 31.25,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2006-10-01",
+      "price": 31.41,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2006-11-01",
+      "price": 32.31,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2006-12-01",
+      "price": 32.85,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2007-01-01",
+      "price": 33.81,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2007-02-01",
+      "price": 33.25,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2007-03-01",
+      "price": 33.18,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2007-04-01",
+      "price": 34.21,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2007-05-01",
+      "price": 34.76,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2007-06-01",
+      "price": 34.58,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2007-07-01",
+      "price": 34.7,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2007-08-01",
+      "price": 34.21,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2007-09-01",
+      "price": 33.71,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2007-10-01",
+      "price": 33.45,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2007-11-01",
+      "price": 33.21,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2007-12-01",
+      "price": 34.24,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2008-01-01",
+      "price": 30.48,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2008-02-01",
+      "price": 27.75,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2008-03-01",
+      "price": 24.88,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2008-04-01",
+      "price": 22.03,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2008-05-01",
+      "price": 19.57,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2008-06-01",
+      "price": 17.7,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2008-07-01",
+      "price": 16.13,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2008-08-01",
+      "price": 14.87,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2008-09-01",
+      "price": 13.24,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2008-10-01",
+      "price": 12.07,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2008-11-01",
+      "price": 10.79,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2008-12-01",
+      "price": 9.67,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2009-01-01",
+      "price": 9.88,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2009-02-01",
+      "price": 9.83,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2009-03-01",
+      "price": 10.12,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2009-04-01",
+      "price": 10.16,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2009-05-01",
+      "price": 10.35,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2009-06-01",
+      "price": 10.36,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2009-07-01",
+      "price": 10.53,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2009-08-01",
+      "price": 10.37,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2009-09-01",
+      "price": 10.56,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2009-10-01",
+      "price": 10.83,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2009-11-01",
+      "price": 10.67,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2009-12-01",
+      "price": 10.8,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2010-01-01",
+      "price": 11.13,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2010-02-01",
+      "price": 11.47,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2010-03-01",
+      "price": 11.83,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2010-04-01",
+      "price": 11.74,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2010-05-01",
+      "price": 11.98,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2010-06-01",
+      "price": 11.98,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2010-07-01",
+      "price": 12.28,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2010-08-01",
+      "price": 12.51,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2010-09-01",
+      "price": 12.37,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2010-10-01",
+      "price": 12.71,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2010-11-01",
+      "price": 13.07,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2010-12-01",
+      "price": 13.49,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2011-01-01",
+      "price": 13.46,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2011-02-01",
+      "price": 13.66,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2011-03-01",
+      "price": 13.87,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2011-04-01",
+      "price": 13.92,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2011-05-01",
+      "price": 14.02,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2011-06-01",
+      "price": 14.25,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2011-07-01",
+      "price": 14.37,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2011-08-01",
+      "price": 14.68,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2011-09-01",
+      "price": 14.98,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2011-10-01",
+      "price": 15.39,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2011-11-01",
+      "price": 15.43,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2011-12-01",
+      "price": 15.91,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2012-01-01",
+      "price": 15.84,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2012-02-01",
+      "price": 16.23,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2012-03-01",
+      "price": 16.58,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2012-04-01",
+      "price": 17,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2012-05-01",
+      "price": 17.12,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2012-06-01",
+      "price": 17.53,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2012-07-01",
+      "price": 17.75,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2012-08-01",
+      "price": 17.86,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2012-09-01",
+      "price": 18.23,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2012-10-01",
+      "price": 17.98,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2012-11-01",
+      "price": 18.44,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2012-12-01",
+      "price": 18.34,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2013-01-01",
+      "price": 18.9,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2013-02-01",
+      "price": 18.99,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2013-03-01",
+      "price": 19.24,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2013-04-01",
+      "price": 19.07,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2013-05-01",
+      "price": 19.36,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2013-06-01",
+      "price": 19.92,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2013-07-01",
+      "price": 20.32,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2013-08-01",
+      "price": 20.42,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2013-09-01",
+      "price": 20.09,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2013-10-01",
+      "price": 19.86,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2013-11-01",
+      "price": 19.83,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2013-12-01",
+      "price": 19.63,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2014-01-01",
+      "price": 20.1,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2014-02-01",
+      "price": 20.23,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2014-03-01",
+      "price": 20.71,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2014-04-01",
+      "price": 21.38,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2014-05-01",
+      "price": 21.75,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2014-06-01",
+      "price": 21.89,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2014-07-01",
+      "price": 22.55,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2014-08-01",
+      "price": 22.63,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2014-09-01",
+      "price": 22.75,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2014-10-01",
+      "price": 23.2,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2014-11-01",
+      "price": 22.81,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2014-12-01",
+      "price": 23.06,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2015-01-01",
+      "price": 23.73,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2015-02-01",
+      "price": 24.35,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2015-03-01",
+      "price": 23.98,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2015-04-01",
+      "price": 23.91,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2015-05-01",
+      "price": 24.11,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2015-06-01",
+      "price": 24.08,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2015-07-01",
+      "price": 24.84,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2015-08-01",
+      "price": 25.47,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2015-09-01",
+      "price": 25.62,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2015-10-01",
+      "price": 26.31,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2015-11-01",
+      "price": 26.59,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2015-12-01",
+      "price": 26.65,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2016-01-01",
+      "price": 26.72,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2016-02-01",
+      "price": 26.36,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2016-03-01",
+      "price": 25.93,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2016-04-01",
+      "price": 26.63,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2016-05-01",
+      "price": 26.36,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2016-06-01",
+      "price": 26.08,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2016-07-01",
+      "price": 26.47,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2016-08-01",
+      "price": 27.31,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2016-09-01",
+      "price": 28.19,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2016-10-01",
+      "price": 28.47,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2016-11-01",
+      "price": 29.01,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2016-12-01",
+      "price": 28.68,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2017-01-01",
+      "price": 28.92,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2017-02-01",
+      "price": 28.67,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2017-03-01",
+      "price": 29.15,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2017-04-01",
+      "price": 30.03,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2017-05-01",
+      "price": 30.43,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2017-06-01",
+      "price": 30.56,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2017-07-01",
+      "price": 31.11,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2017-08-01",
+      "price": 30.74,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2017-09-01",
+      "price": 31.15,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2017-10-01",
+      "price": 32.08,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2017-11-01",
+      "price": 32.71,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2017-12-01",
+      "price": 33.49,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2018-01-01",
+      "price": 34.31,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2018-02-01",
+      "price": 33.87,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2018-03-01",
+      "price": 34.04,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2018-04-01",
+      "price": 33.95,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2018-05-01",
+      "price": 34.68,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2018-06-01",
+      "price": 34.23,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2018-07-01",
+      "price": 34.46,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2018-08-01",
+      "price": 34.43,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2018-09-01",
+      "price": 34.71,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2018-10-01",
+      "price": 35.03,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2018-11-01",
+      "price": 35.97,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2018-12-01",
+      "price": 36.86,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2019-01-01",
+      "price": 36.91,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2019-02-01",
+      "price": 38,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2019-03-01",
+      "price": 38.11,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2019-04-01",
+      "price": 38.56,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2019-05-01",
+      "price": 39.65,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2019-06-01",
+      "price": 39.78,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2019-07-01",
+      "price": 40.95,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2019-08-01",
+      "price": 40.33,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2019-09-01",
+      "price": 40.24,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2019-10-01",
+      "price": 40.36,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2019-11-01",
+      "price": 40.13,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2019-12-01",
+      "price": 39.89,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2020-01-01",
+      "price": 41.18,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2020-02-01",
+      "price": 41.52,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2020-03-01",
+      "price": 34.46,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2020-04-01",
+      "price": 38.86,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2020-05-01",
+      "price": 42.64,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2020-06-01",
+      "price": 47.28,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2020-07-01",
+      "price": 52.55,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2020-08-01",
+      "price": 59.25,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2020-09-01",
+      "price": 65.45,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2020-10-01",
+      "price": 72.5,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2020-11-01",
+      "price": 79.03,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2020-12-01",
+      "price": 85.83,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2021-01-01",
+      "price": 86.41,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2021-02-01",
+      "price": 87.16,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2021-03-01",
+      "price": 89.49,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2021-04-01",
+      "price": 90.1,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2021-05-01",
+      "price": 90.01,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2021-06-01",
+      "price": 91.44,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2021-07-01",
+      "price": 90.51,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2021-08-01",
+      "price": 89.32,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2021-09-01",
+      "price": 91.62,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2021-10-01",
+      "price": 91.85,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2021-11-01",
+      "price": 90.93,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2021-12-01",
+      "price": 90.87,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2022-01-01",
+      "price": 93.68,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2022-02-01",
+      "price": 94.39,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2022-03-01",
+      "price": 93.31,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2022-04-01",
+      "price": 93.19,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2022-05-01",
+      "price": 91.96,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2022-06-01",
+      "price": 92.63,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2022-07-01",
+      "price": 93.81,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2022-08-01",
+      "price": 96.03,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2022-09-01",
+      "price": 98.93,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2022-10-01",
+      "price": 97.74,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2022-11-01",
+      "price": 99.33,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2022-12-01",
+      "price": 99.94,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2023-01-01",
+      "price": 100.87,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2023-02-01",
+      "price": 102,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2023-03-01",
+      "price": 103.12,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2023-04-01",
+      "price": 104.99,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2023-05-01",
+      "price": 108.93,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2023-06-01",
+      "price": 113.39,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2023-07-01",
+      "price": 116.52,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2023-08-01",
+      "price": 121.15,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2023-09-01",
+      "price": 122.46,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2023-10-01",
+      "price": 127.69,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2023-11-01",
+      "price": 130.26,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2023-12-01",
+      "price": 136.54,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2024-01-01",
+      "price": 141.74,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2024-02-01",
+      "price": 146.58,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2024-03-01",
+      "price": 150.65,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2024-04-01",
+      "price": 152.54,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2024-05-01",
+      "price": 160.46,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2024-06-01",
+      "price": 167.77,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2024-07-01",
+      "price": 176.26,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2024-08-01",
+      "price": 182.83,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2024-09-01",
+      "price": 186.21,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2024-10-01",
+      "price": 187.33,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2024-11-01",
+      "price": 193.4,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2024-12-01",
+      "price": 195.39,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2025-01-01",
+      "price": 196.93,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2025-02-01",
+      "price": 200.54,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2025-03-01",
+      "price": 206.5,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2025-04-01",
+      "price": 212.53,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2025-05-01",
+      "price": 215.35,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2025-06-01",
+      "price": 218.17,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2025-07-01",
+      "price": 223.56,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2025-08-01",
+      "price": 234.48,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2025-09-01",
+      "price": 235.39,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2025-10-01",
+      "price": 238.02,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2025-11-01",
+      "price": 249.04,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2025-12-01",
+      "price": 257.06,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2026-01-01",
+      "price": 266.95,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2026-02-01",
+      "price": 269.2,
+      "dividendYield": 0.0006
+    },
+    {
+      "date": "2026-03-01",
+      "price": 275.12,
+      "dividendYield": 0.0006
+    }
   ]
 }
