@@ -8,34 +8,33 @@
 
 단순한 프리셋 선택만으로 즉각적인 자산 시각화 결과를 제공하고, 복잡한 재무 계산의 부담 없이 직관적인 개인 예산 흐름을 파악하게 한다.
 
-## Current Milestone: v1.1 시뮬레이션 고도화 및 온보딩 UX
+## Current Milestone: v1.2 백테스트 시뮬레이터 및 자산 관리 확장
 
-**Goal:** 배당 시뮬레이션 대시보드의 정보 밀도를 높이고, Step 1 첫 접속 사용자를 위한 입력 가이드를 제공한다.
+**Goal:** 주요 지수 백테스트 시뮬레이터를 구축하고, 포트폴리오 리밸런싱 도구를 통해 실제 자산 관리 여정을 완성한다.
 
 **Target features:**
-- 시뮬레이션 차트 고도화 (데이터 포인트, 호버 툴팁, Y축 눈금/그리드, 영역 채우기, KPI 요약 카드)
-- Step 2 테이블 헤더 간소화 (불필요한 만원 표기 제거)
-- Step 1 첫 접속 Spotlight UX 온보딩 가이드
+- Step 4 백테스트 시뮬레이터 (v0.9.7 완료)
+- Step 3 포트폴리오 리밸런싱 가이드 (In Progress)
+- 지출 데이터 과거 비교 분석 (Issue #4)
 
 ## Current State
 
-**Shipped:** v1.0 (2026-05-03)
-**Tech Stack:** Modern Hybrid (Vite/TS/Tailwind), No-Build Oriented, PWA, IndexedDB, Sankey Diagram
-**Codebase:** ~1,200 LOC (JavaScript), Mobile-First 반응형
-**Key Feature:** 연봉/투자 성향 기반 고해상도 프리셋 템플릿 로드 → 시각화 → 세부 편집 → 영속화
+**Shipped:** v0.9.7 (2026-05-07)
+**Tech Stack:** Modern Hybrid (Vite/TS/Tailwind v4), React 19, PWA, IndexedDB
+**Codebase:** Step 1/2 (JS Modules), Step 4 (React Components)
+**Key Feature:** 백테스트(Step 4) + 현금흐름(Step 1) + 배당시뮬(Step 2) 통합 완료
 
 ## Requirements
 
 ### Validated
 
-- ✓ 월 가계 흐름 Sankey Diagram 시각화 엔진 — existing
-- ✓ 카테고리별(수입/생활비/저축/투자) 수동 입력 및 뷰포트 UI — existing
-- ✓ 바닐라 JS 기반 No-build 지향 (Modern Hybrid) 3계층 상태 관리(State/Helper/UI) 아키텍처 — existing
-- ✓ IndexedDB 기반의 브리지 데이터 자동 백업 및 복원 — existing
-- ✓ 연봉 수준 및 투자 스타일 선택에 따른 프리셋 템플릿 로드 기능 — v1.0
-- ✓ 템플릿 로드 시 표준 자산 흐름 자동 계산 및 시각화 즉시 반영 — v1.0
-- ✓ 세부 항목 수동 조절 및 재계산 흐름 — v1.0
-- ✓ 고해상도 12대 세부 항목 기반 프리셋 데이터 — v1.0
+- ✓ 월 가계 흐름 Sankey Diagram 시각화 엔진 — Phase 1
+- ✓ 카테고리별 수동 입력 및 뷰포트 UI — Phase 1
+- ✓ 바닐라 JS 기반 No-build 지향 (Modern Hybrid) 아키텍처 — Phase 2
+- ✓ IndexedDB 기반 데이터 허브 및 백업 — Phase 4
+- ✓ Step 4: 백테스트 시뮬레이션 엔진 (CAGR, IRR, MDD) — Phase 7
+- ✓ Step 4: 레버리지 자산 및 청산 로직 구현 — Phase 7 (v0.9.7)
+- ✓ Step 4: React 기반 상대 비교 차트 대시보드 — Phase 7
 
 ### Active
 
