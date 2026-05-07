@@ -175,6 +175,12 @@
       return perform(STORES.STEP1, "readonly", (s) => s.get(id));
     },
 
+    async deleteStep1Snapshot(id) {
+      if (!id) return false;
+      await perform(STORES.STEP1, "readwrite", (s) => s.delete(id));
+      return true;
+    },
+
     async saveStep2Entry(data) {
       const entry = {
         ...data,

@@ -25,3 +25,9 @@ export async function getSnapshotById(id, { getHubStorage }) {
   if (!hub || !id) return null;
   return await hub.getStep1SnapshotById(id);
 }
+
+export async function deleteSnapshot(id, { getHubStorage }) {
+  const hub = getHubStorage();
+  if (!hub || !id) return false;
+  return await hub.deleteStep1Snapshot(id);
+}

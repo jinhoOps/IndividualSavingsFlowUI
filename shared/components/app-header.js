@@ -36,19 +36,6 @@ export class AppHeader extends HTMLElement {
       <header class="app-header">
         <div class="app-header__inner">
           <div style="display: flex; align-items: center; gap: var(--sp-sm);">
-            <button type="button" id="appLauncherBtn" class="btn btn-ghost btn-sm" style="padding: 4px; min-width: 32px; min-height: 32px;" title="메뉴">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                <circle cx="4" cy="4" r="2"></circle>
-                <circle cx="12" cy="4" r="2"></circle>
-                <circle cx="20" cy="4" r="2"></circle>
-                <circle cx="4" cy="12" r="2"></circle>
-                <circle cx="12" cy="12" r="2"></circle>
-                <circle cx="20" cy="12" r="2"></circle>
-                <circle cx="4" cy="20" r="2"></circle>
-                <circle cx="12" cy="20" r="2"></circle>
-                <circle cx="20" cy="20" r="2"></circle>
-              </svg>
-            </button>
             <div class="app-header__logo-group" style="display: flex; align-items: center; gap: var(--sp-xs);">
               <a href="/IndividualSavingsFlowUI/" class="app-header__logo" style="font-weight: 800; letter-spacing: -0.5px;">ISF UIUX</a>
               <span style="color: var(--line-strong); font-size: 1.2rem; font-weight: 300;">|</span>
@@ -85,6 +72,19 @@ export class AppHeader extends HTMLElement {
 
           <div style="display: flex; align-items: center; gap: var(--sp-xs); position: relative;">
             <span class="version-badge">v${version}</span>
+            <button type="button" id="appLauncherBtn" class="btn btn-ghost btn-sm" style="padding: 4px; min-width: 32px; min-height: 32px;" title="메뉴">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <circle cx="4" cy="4" r="2"></circle>
+                <circle cx="12" cy="4" r="2"></circle>
+                <circle cx="20" cy="4" r="2"></circle>
+                <circle cx="4" cy="12" r="2"></circle>
+                <circle cx="12" cy="12" r="2"></circle>
+                <circle cx="20" cy="12" r="2"></circle>
+                <circle cx="4" cy="20" r="2"></circle>
+                <circle cx="12" cy="20" r="2"></circle>
+                <circle cx="20" cy="20" r="2"></circle>
+              </svg>
+            </button>
           </div>
         </div>
       </header>

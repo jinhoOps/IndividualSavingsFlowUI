@@ -207,6 +207,8 @@ function bindControls() {
   if (dom.snapshotSelector) {
     dom.snapshotSelector.addEventListener("change", (e) => handleSnapshotSelection(e.target.value));
   }
+  if (dom.saveSnapshotBtn) dom.saveSnapshotBtn.addEventListener("click", handleSaveSnapshot);
+  if (dom.deleteSnapshotBtn) dom.deleteSnapshotBtn.addEventListener("click", handleDeleteSnapshot);
 
   bindItemEditorEvents();
   bindActionButtons();
@@ -388,13 +390,35 @@ function persistPrimaryState(inputs, options = {}) {
         }
       })();
     }
-    void persistStep1Snapshot(inputs, { getHubStorage: () => window.IsfStorageHub, isViewMode: state.isViewMode });
+    // persistStep1Snapshot(inputs, ...) removed from here to make it manual only
     if (dom.appHeader) dom.appHeader.updateStatus("success", "자동 저장됨");
   } catch (_e) {
     if (dom.appHeader) dom.appHeader.updateStatus("error", "저장 실패");
   }
 }
 
+async function handleSaveSnapshot() {
+  if (state.isViewMode) return;
+  await persistStep1Snapshot(state.inputs, { getHubStorage: () => window.IsfStorageHub, isViewMode: state.isViewMode });
+  await initializeSnapshotSelector();
+  window.IsfFeedback.showFeedback(dom.applyFeedback, "현재 상태가 비교용 스냅샷으로 저장되었습니다.");
+}
+
+async function handleDeleteSnapshot() {
+  if (!dom.snapshotSelector || !dom.snapshotSelector.value) {
+    alert("삭제할 스냅샷을 먼저 선택해주세요.");
+    return;
+  }
+  if (!window.confirm("선택한 스냅샷을 삭제할까요?")) return;
+  
+  const id = dom.snapshotSelector.value;
+  const success = await deleteSnapshot(id, { getHubStorage: () => window.IsfStorageHub });
+  if (success) {
+    await initializeSnapshotSelector();
+    handleSnapshotSelection(""); // Reset view
+    window.IsfFeedback.showFeedback(dom.applyFeedback, "스냅샷이 삭제되었습니다.");
+  }
+}
 
 async function handleManualBackup() {
   if (state.isViewMode || !state.backupStoreReady) return;

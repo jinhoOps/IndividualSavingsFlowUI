@@ -95,6 +95,8 @@
   projectionMeta: document.getElementById("projectionMeta"),
   
   snapshotSelector: document.getElementById("snapshotSelector"),
+  saveSnapshotBtn: document.getElementById("saveSnapshotBtn"),
+  deleteSnapshotBtn: document.getElementById("deleteSnapshotBtn"),
   comparisonContent: document.getElementById("comparisonContent"),
   comparisonExpenseSummary: document.getElementById("comparisonExpenseSummary"),
   comparisonSvg: document.getElementById("comparisonSvg"),

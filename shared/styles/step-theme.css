@@ -97,7 +97,7 @@ body {
 .launcher-menu {
   position: absolute;
   top: 50px;
-  left: var(--sp-md);
+  right: var(--sp-md);
   z-index: 101;
   background: var(--panel);
   backdrop-filter: saturate(1.1) blur(10px);

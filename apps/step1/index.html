@@ -138,10 +138,12 @@
       <section class="panel comparison-panel" aria-labelledby="comparisonTitle">
         <div class="section-head">
           <h2 id="comparisonTitle">과거 지출 비교</h2>
-          <div class="section-head-tools">
-            <select id="snapshotSelector" class="snapshot-select" aria-label="비교할 스냅샷 선택">
+          <div class="section-head-tools" style="display: flex; gap: var(--sp-xs); align-items: center;">
+            <select id="snapshotSelector" class="snapshot-select" aria-label="비교할 스냅샷 선택" style="max-width: 150px;">
               <option value="">과거 시점 선택...</option>
             </select>
+            <button id="saveSnapshotBtn" class="btn btn-ghost btn-sm" type="button" title="현재 상태를 비교용 스냅샷으로 저장">저장</button>
+            <button id="deleteSnapshotBtn" class="btn btn-ghost btn-sm" type="button" title="선택한 스냅샷 삭제" style="color: var(--status-error);">삭제</button>
           </div>
         </div>
         <div id="comparisonContent" class="comparison-content" hidden>

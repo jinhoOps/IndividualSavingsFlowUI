@@ -3,8 +3,12 @@ import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import tailwindcss from '@tailwindcss/vite';
 import { resolve } from 'path';
+import packageJson from './package.json';
 
 export default defineConfig({
+  define: {
+    __APP_VERSION__: JSON.stringify(packageJson.version),
+  },
   plugins: [
     react(),
     tailwindcss(),
@@ -15,6 +19,7 @@ export default defineConfig({
       manifest: {
         name: '나의 가계 흐름',
         short_name: '가계흐름',
+        version: packageJson.version,
         description: '월 단위 가계 흐름을 카드와 Sankey Diagram으로 확인하는 개인 자산 흐름 프로토타입',
         theme_color: '#ea5b2a',
         background_color: '#f3f4ef',
