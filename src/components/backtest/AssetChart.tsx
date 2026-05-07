@@ -11,7 +11,7 @@ export const AssetChart: React.FC<Props> = ({ results, relativeMode, benchmarkId
   const containerRef = useRef<HTMLDivElement>(null);
   const [tooltip, setTooltip] = useState<{ x: number; y: number; content: React.ReactNode } | null>(null);
 
-  const colors = ['#ea5b2a', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6'];
+  const colors = ['#ea5b2a', '#1e8b7c', '#3175b6', '#5d4fb3', '#8c3d65'];
 
   const chartData = useMemo(() => {
     if (results.length === 0) return null;
@@ -57,7 +57,7 @@ export const AssetChart: React.FC<Props> = ({ results, relativeMode, benchmarkId
 
   if (!chartData || chartData.data.length < 2) {
     return (
-      <div className="w-full h-full flex items-center justify-center text-gray-400 border-2 border-dashed border-gray-100 rounded-xl">
+      <div className="w-full h-full flex items-center justify-center text-muted border-2 border-dashed border-line rounded-md">
         비교할 데이터를 선택해주세요.
       </div>
     );
@@ -71,7 +71,7 @@ export const AssetChart: React.FC<Props> = ({ results, relativeMode, benchmarkId
   const getY = (val: number) => height - padding.bottom - ((val - chartData.minVal) / (chartData.maxVal - chartData.minVal)) * (height - padding.top - padding.bottom);
 
   return (
-    <div ref={containerRef} className="relative w-full h-full group">
+    <div ref={containerRef} className="relative w-full h-full group font-body">
       <svg 
         viewBox={`0 0 ${width} ${height}`} 
         className="w-full h-full overflow-visible"
@@ -90,20 +90,20 @@ export const AssetChart: React.FC<Props> = ({ results, relativeMode, benchmarkId
             x: e.clientX - rect.left,
             y: e.clientY - rect.top,
             content: (
-              <div className="p-2 bg-white shadow-xl border border-gray-100 rounded-lg text-xs pointer-events-none">
-                <div className="font-bold border-b border-gray-50 mb-1 pb-1">
+              <div className="p-3 bg-panel backdrop-blur-md shadow-float border border-line rounded-md text-[11px] pointer-events-none min-w-[140px]">
+                <div className="font-bold border-b border-line mb-sm pb-sm text-ink">
                   {new Date(closest.time).toLocaleDateString('ko-KR', { year: 'numeric', month: 'short' })}
                 </div>
                 {results.map((r, i) => (
-                  <div key={r.asset.id} className="flex justify-between gap-4 py-0.5">
-                    <span className="flex items-center gap-1">
+                  <div key={r.asset.id} className="flex justify-between gap-md py-0.5">
+                    <span className="flex items-center gap-1.5 text-muted">
                       <span className="w-2 h-2 rounded-full" style={{ backgroundColor: colors[i % colors.length] }}></span>
                       {r.asset.name}
                     </span>
-                    <span className="font-mono font-bold">
+                    <span className="font-mono font-bold text-ink">
                       {relativeMode 
-                        ? `${closest[r.asset.id].toFixed(2)}%`
-                        : `${(closest[r.asset.id] / 10000).toLocaleString()}만원`
+                        ? `${closest[r.asset.id] >= 0 ? '+' : ''}${closest[r.asset.id].toFixed(2)}%`
+                        : `${(closest[r.asset.id] / 10000).toLocaleString()}만`
                       }
                     </span>
                   </div>
@@ -120,8 +120,8 @@ export const AssetChart: React.FC<Props> = ({ results, relativeMode, benchmarkId
           const y = getY(val);
           return (
             <g key={p}>
-              <line x1={padding.left} y1={y} x2={width - padding.right} y2={y} stroke="#f1f5f9" strokeWidth="1" />
-              <text x={padding.left - 10} y={y + 4} textAnchor="end" fontSize="10" fill="#94a3b8">
+              <line x1={padding.left} y1={y} x2={width - padding.right} y2={y} stroke="var(--line)" strokeWidth="1" strokeDasharray="2 4" />
+              <text x={padding.left - 10} y={y + 4} textAnchor="end" fontSize="10" fill="var(--muted)" className="font-mono">
                 {relativeMode ? `${val.toFixed(0)}%` : `${(val / 10000).toLocaleString()}`}
               </text>
             </g>
@@ -132,7 +132,7 @@ export const AssetChart: React.FC<Props> = ({ results, relativeMode, benchmarkId
         {relativeMode && (
           <line 
             x1={padding.left} y1={getY(0)} x2={width - padding.right} y2={getY(0)} 
-            stroke="#94a3b8" strokeWidth="1" strokeDasharray="4 2" 
+            stroke="var(--tone-accent)" strokeWidth="1.5" strokeDasharray="none" 
           />
         )}
 
@@ -153,6 +153,7 @@ export const AssetChart: React.FC<Props> = ({ results, relativeMode, benchmarkId
               strokeLinecap="round"
               strokeLinejoin="round"
               className="transition-all duration-300"
+              style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.05))' }}
             />
           );
         })}
@@ -162,7 +163,7 @@ export const AssetChart: React.FC<Props> = ({ results, relativeMode, benchmarkId
           const time = chartData.minTime + (chartData.maxTime - chartData.minTime) * p;
           const x = getX(time);
           return (
-            <text key={p} x={x} y={height - padding.bottom + 20} textAnchor="middle" fontSize="10" fill="#94a3b8">
+            <text key={p} x={x} y={height - padding.bottom + 24} textAnchor="middle" fontSize="10" fill="var(--muted)">
               {new Date(time).toLocaleDateString('ko-KR', { year: 'numeric', month: 'short' })}
             </text>
           );

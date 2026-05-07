@@ -26,9 +26,9 @@ export const SimulationWarning: React.FC<Props> = ({ params, selectedAssets }) =
   if (warnings.length === 0) return null;
 
   return (
-    <div className="bg-amber-50 border border-amber-100 p-4 rounded-xl space-y-2">
+    <div className="bg-amber-50/50 border border-amber-200/50 p-md rounded-md space-y-2">
       {warnings.map((w, i) => (
-        <div key={i} className="flex gap-2 text-xs text-amber-700 leading-relaxed">
+        <div key={i} className="flex gap-2 text-[11px] text-amber-800 leading-relaxed">
           <span className="shrink-0">⚠️</span>
           <p>{w}</p>
         </div>
