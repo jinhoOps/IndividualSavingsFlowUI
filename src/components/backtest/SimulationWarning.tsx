@@ -29,6 +29,9 @@ export const SimulationWarning: React.FC<Props> = ({ params, selectedAssets }) =
     warnings.push('레버리지 자산은 변동성 잠식(Volatility Drag)으로 인해 장기 보유 시 기초 지수 수익률의 배수보다 성과가 낮을 수 있으며, 급락 시 원금 전액 손실(청산) 위험이 있습니다.');
   }
 
+  // 4. 데이터 정밀도 경고 (MDD 관련)
+  warnings.push('본 시뮬레이션은 월간 종가 데이터를 사용합니다. 일간 변동폭이 반영되지 않아 실제 MDD(최대낙폭)는 표시된 값보다 훨씬 클 수 있습니다 (특히 레버리지 ETF의 경우).');
+
   if (warnings.length === 0) return null;
 
   return (

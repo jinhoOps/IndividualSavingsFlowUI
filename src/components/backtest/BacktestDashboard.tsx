@@ -6,9 +6,12 @@ import { KpiGrid } from './KpiGrid';
 import { SimulationWarning } from './SimulationWarning';
 import { Toast } from '../common/Toast';
 
+export const CHART_COLORS = ['#ea5b2a', '#1e8b7c', '#3175b6', '#5d4fb3', '#8c3d65', '#f59e0b', '#10b981', '#6366f1'];
+
 export const BacktestDashboard: React.FC = () => {
   const [assets, setAssets] = useState<AssetData[]>([]);
   const [selectedAssetIds, setSelectedAssetIds] = useState<string[]>(['qqq', 'spy']);
+  // ... rest of state
   const [params, setParams] = useState<SimulationParams>({
     initialPrincipal: 10000000,
     monthlyInstallment: 1000000,
@@ -300,6 +303,29 @@ export const BacktestDashboard: React.FC = () => {
                 {params.startDate} ~ {params.endDate}
               </span>
             </div>
+          </div>
+          <div className="flex-1">
+            <AssetChart 
+              results={results} 
+              relativeMode={relativeMode} 
+              benchmarkId={benchmarkAssetId} 
+            />
+          </div>
+        </section>
+
+        <KpiGrid results={results} isLumpSum={params.monthlyInstallment === 0} />
+      </main>
+
+      {toastMessage && (
+        <Toast 
+          message={toastMessage} 
+          onClose={() => setToastMessage(null)} 
+        />
+      )}
+    </div>
+  );
+};
+v>
           </div>
           <div className="flex-1">
             <AssetChart 
