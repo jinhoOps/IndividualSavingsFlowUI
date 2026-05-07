@@ -2,15 +2,19 @@
 kanban-plugin: basic
 ---
 
-# TODO (v0.9.6)
+# TODO (v0.9.7)
 
-## Done (v0.9.6)
+## Done (v0.9.7)
+- [x] **레버리지 자산 및 청산 엔진 도입 (v0.9.7)**:
+    - [x] QLD(2x), TQQQ(3x) 레버리지 수익률 합성 로직 구현.
+    - [x] 원금 99% 손실 시 '청산(Liquidation)' 처리 엔진 고도화 및 UI 시각화.
+    - [x] 다우, 코스피, 금리, 적금 등 비교 자산 라인업 대폭 확장.
 - [x] **Step 4: 주요 지수 및 자산 백테스트 시뮬레이터 (Issue #7)**:
     - [x] TDD 기반 금융 연산 엔진 (CAGR, IRR, MDD, TR) 구현.
     - [x] React 19 + Tailwind v4 기반 대시보드 및 커스텀 SVG 차트 구축.
     - [x] 나스닥, S&P 500, 금, 기준금리 시계열 데이터 통합.
 - [x] **'ISF CODE' 기반 공유 시스템 도입**: URL 리다이렉트 버그 해결 및 수동 코드 공유 UI 구현.
-- [x] **전역 버전 동기화 (v0.9.6)**: sw.js, manifest, package.json, IsfUtils.APP_VERSION 동기화.
+- [x] **전역 버전 동기화 (v0.9.7)**: sw.js, manifest, package.json, IsfUtils.APP_VERSION 동기화.
 - [x] **Modern Hybrid 아키텍처 전환**: Vite, TS, Tailwind v4 통합 완료.
 - [x] **Step 2 초기 투자 자산(totalInitialAsset) 연동**: Step 1의 `startInvest` 데이터를 시뮬레이션 원금으로 반영.
 - [ ] **Step 3 아키텍처 설계**: Step 1 투자 데이터를 수신하는 전용 모듈(`step1-receiver.js`) 정의
