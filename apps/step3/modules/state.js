@@ -1,4 +1,4 @@
-import { IsfStorageHub } from '../../shared/storage/hub-storage.js';
+import { IsfStorageHub } from '../../../shared/storage/hub-storage.js';
 
 const STORAGE_KEY_STEP3 = 'isf-step3-settings-v1';
 

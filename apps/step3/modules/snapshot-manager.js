@@ -2,7 +2,7 @@
  * Step 3: Portfolio Snapshot & History Manager
  */
 
-import { IsfStorageHub } from '../../shared/storage/hub-storage.js';
+import { IsfStorageHub } from '../../../shared/storage/hub-storage.js';
 
 const SNAPSHOT_KEY = 'isf-step3-snapshots-v1';
 const MAX_SNAPSHOTS = 20;

@@ -1,4 +1,4 @@
-﻿import { sanitizeInputs, cloneInputs } from "./input-sanitizer.js";
+import { sanitizeInputs, cloneInputs } from "./input-sanitizer.js";
 
 
 export async function persistStep1Snapshot(inputs, { getHubStorage, isViewMode }) {
@@ -14,3 +14,14 @@ export async function persistStep1Snapshot(inputs, { getHubStorage, isViewMode }
   }
 }
 
+export async function listSnapshots({ getHubStorage }) {
+  const hub = getHubStorage();
+  if (!hub) return [];
+  return await hub.listStep1Snapshots();
+}
+
+export async function getSnapshotById(id, { getHubStorage }) {
+  const hub = getHubStorage();
+  if (!hub || !id) return null;
+  return await hub.getStep1SnapshotById(id);
+}

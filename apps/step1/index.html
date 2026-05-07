@@ -135,6 +135,26 @@
         </div>
       </section>
 
+      <section class="panel comparison-panel" aria-labelledby="comparisonTitle">
+        <div class="section-head">
+          <h2 id="comparisonTitle">과거 지출 비교</h2>
+          <div class="section-head-tools">
+            <select id="snapshotSelector" class="snapshot-select" aria-label="비교할 스냅샷 선택">
+              <option value="">과거 시점 선택...</option>
+            </select>
+          </div>
+        </div>
+        <div id="comparisonContent" class="comparison-content" hidden>
+          <div class="comparison-summary-row">
+            <div id="comparisonExpenseSummary" class="comparison-card"></div>
+          </div>
+          <div id="comparisonChartWrap" class="comparison-chart-wrap">
+            <svg id="comparisonSvg" class="comparison-svg"></svg>
+          </div>
+        </div>
+        <p id="comparisonEmpty" class="empty">비교할 과거 스냅샷을 선택해주세요.</p>
+      </section>
+
       <section class="panel controls-panel" aria-labelledby="inputsTitle">
         <div class="section-head section-head--controls">
           <h2 id="inputsTitle">

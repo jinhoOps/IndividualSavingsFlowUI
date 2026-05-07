@@ -93,6 +93,13 @@
   sankeyTooltip: document.getElementById("sankeyTooltip"),
   projectionTableBody: document.querySelector("#projectionTable tbody"),
   projectionMeta: document.getElementById("projectionMeta"),
+  
+  snapshotSelector: document.getElementById("snapshotSelector"),
+  comparisonContent: document.getElementById("comparisonContent"),
+  comparisonExpenseSummary: document.getElementById("comparisonExpenseSummary"),
+  comparisonSvg: document.getElementById("comparisonSvg"),
+  comparisonEmpty: document.getElementById("comparisonEmpty"),
+
   appTitle: document.querySelector("h1"),
 };
 

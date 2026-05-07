@@ -2,7 +2,7 @@
  * Step 3: DOM Rendering & Event Binding
  */
 
-import { IsfUtils } from '../../shared/core/utils.js';
+import { IsfUtils } from '../../../shared/core/utils.js';
 
 export const IsfDom = {
   // Selectors

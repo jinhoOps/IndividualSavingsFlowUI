@@ -2,7 +2,7 @@
  * Step 1 Data Connector for Step 3
  */
 
-import { IsfStorageHub } from '../../shared/storage/hub-storage.js';
+import { IsfStorageHub } from '../../../shared/storage/hub-storage.js';
 
 export const Step1Connector = {
   /**

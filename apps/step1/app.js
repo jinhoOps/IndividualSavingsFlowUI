@@ -30,8 +30,16 @@ import {
 } from "./modules/storage-manager.js";
 
 import {
-  persistStep1Snapshot
+  persistStep1Snapshot, listSnapshots, getSnapshotById
 } from "./modules/snapshot-manager.js";
+
+import {
+  calculateComparison
+} from "./modules/comparison-engine.js";
+
+import {
+  renderComparisonChart, renderComparisonSummary
+} from "./modules/comparison-renderer.js";
 
 import {
   buildMonthlySnapshot, simulateProjection, buildSummaryCards
@@ -69,6 +77,7 @@ function init() {
   renderAll();
   initializeBackupStore();
   void initializeInputsFromShareId();
+  void initializeSnapshotSelector();
 
   const pwaManager = new window.IsfPwaManager({
     appVersion: IsfUtils.APP_VERSION,
@@ -195,9 +204,45 @@ function bindControls() {
   if (dom.dismissViewModeGuide) dom.dismissViewModeGuide.addEventListener("click", dismissViewModeGuide);
   if (dom.returnToNormalMode) dom.returnToNormalMode.addEventListener("click", switchToNormalMode);
 
+  if (dom.snapshotSelector) {
+    dom.snapshotSelector.addEventListener("change", (e) => handleSnapshotSelection(e.target.value));
+  }
+
   bindItemEditorEvents();
   bindActionButtons();
   bindGlobalEvents();
+}
+
+async function initializeSnapshotSelector() {
+  if (!dom.snapshotSelector) return;
+  const list = await listSnapshots({ getHubStorage: () => window.IsfStorageHub });
+  if (list && list.length > 0) {
+    dom.snapshotSelector.innerHTML = '<option value="">과거 시점 선택...</option>' + 
+      list.map(s => `<option value="${s.id}">${formatBackupTimestamp(s.updatedAt)}</option>`).join("");
+  }
+}
+
+async function handleSnapshotSelection(id) {
+  if (!id) {
+    if (dom.comparisonContent) dom.comparisonContent.hidden = true;
+    if (dom.comparisonEmpty) dom.comparisonEmpty.hidden = false;
+    return;
+  }
+
+  const snapshot = await getSnapshotById(id, { getHubStorage: () => window.IsfStorageHub });
+  if (snapshot && snapshot.data) {
+    const comparison = calculateComparison(snapshot.data, state.inputs);
+    renderComparison(comparison);
+  }
+}
+
+function renderComparison(comparison) {
+  if (!comparison) return;
+  if (dom.comparisonContent) dom.comparisonContent.hidden = false;
+  if (dom.comparisonEmpty) dom.comparisonEmpty.hidden = true;
+
+  renderComparisonSummary(dom.comparisonExpenseSummary, comparison.summary.expense);
+  renderComparisonChart(dom.comparisonSvg, comparison.expenses);
 }
 
 function bindModalEvents() {
@@ -311,6 +356,13 @@ function renderAll() {
   renderSankey(snapshot, buildSankeyData, state.sankeySortMode);
   renderProjectionTable(projection, state.inputs.horizonYears, state.inputs.annualExpenseGrowth);
   renderInputHints(state.inputs);
+  refreshComparisonIfActive();
+}
+
+function refreshComparisonIfActive() {
+  if (dom.snapshotSelector && dom.snapshotSelector.value) {
+    handleSnapshotSelection(dom.snapshotSelector.value);
+  }
 }
 
 function commitImmediateInputs(inputs, options = {}) {

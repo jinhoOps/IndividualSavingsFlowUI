@@ -19,10 +19,10 @@
 
 ## Current State
 
-**Shipped:** v0.9.7 (2026-05-07)
+**Shipped:** v0.9.8 (2026-05-08)
 **Tech Stack:** Modern Hybrid (Vite/TS/Tailwind v4), React 19, PWA, IndexedDB
-**Codebase:** Step 1/2 (JS Modules), Step 4 (React Components)
-**Key Feature:** 백테스트(Step 4) + 현금흐름(Step 1) + 배당시뮬(Step 2) 통합 완료
+**Codebase:** Step 1/2 (JS Modules), Step 3 (JS/TS), Step 4 (React Components)
+**Key Feature:** 백테스트(Step 4) + 현금흐름(Step 1) + 배당시뮬(Step 2) + 자산관리(Step 3) + 지출비교 통합 완료
 
 ## Requirements
 
@@ -32,18 +32,20 @@
 - ✓ 카테고리별 수동 입력 및 뷰포트 UI — Phase 1
 - ✓ 바닐라 JS 기반 No-build 지향 (Modern Hybrid) 아키텍처 — Phase 2
 - ✓ IndexedDB 기반 데이터 허브 및 백업 — Phase 4
+- ✓ Step 3: 포트폴리오 리밸런싱 가이드 및 자산 관리 — Phase 6 (v0.9.5)
 - ✓ Step 4: 백테스트 시뮬레이션 엔진 (CAGR, IRR, MDD) — Phase 7
 - ✓ Step 4: 레버리지 자산 및 청산 로직 구현 — Phase 7 (v0.9.7)
 - ✓ Step 4: React 기반 상대 비교 차트 대시보드 — Phase 7
+- ✓ 지출 데이터 과거 비교 분석 및 막대 차트 — Phase 8 (v0.9.8)
 
 ### Active
 
+- [ ] Phase 9: 신혼부부 통합 허브 (Issue #2)
 - [ ] 시뮬레이션 차트 고도화 — 데이터 포인트, 호버 툴팁, Y축 눈금/그리드, 영역 채우기
 - [ ] KPI 요약 카드 — 최종 자산, 최종 연 배당금, 누적 수익률 등 핵심 지표 시각화
 - [ ] Step 2 테이블 헤더 간소화 — 불필요한 (만원) 표기 제거
 - [ ] Step 1 첫 접속 Spotlight UX 온보딩 가이드
 
-### Out of Scope
 
 - [오픈뱅킹/마이데이터 계좌 자동 연동] — 미니멀하고 빠르며 독립적인 클라이언트(No-Build/PWA) 환경을 유지하는 것이 목표이며, 수동 입력을 통한 예산 '계획' 중심이므로 배제.
 - [오프라인 모드] — PWA 서비스 워커로 기본 오프라인 지원은 있으나, 완전한 오프라인 전용 모드는 현재 범위 밖.

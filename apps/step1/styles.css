@@ -47,10 +47,70 @@ main {
 }
 
 .summary-panel { order: 1; }
-.sankey-panel { order: 2; }
-.controls-panel { order: 3; }
-.projection-panel { order: 4; }
+.comparison-panel { order: 2; }
+.sankey-panel { order: 3; }
+.controls-panel { order: 4; }
+.projection-panel { order: 5; }
 
+.snapshot-select {
+  border: 1px solid var(--line-strong);
+  border-radius: var(--rd-sm);
+  padding: 6px 10px;
+  background: var(--panel);
+  font: inherit;
+  font-size: 0.86rem;
+  color: var(--ink);
+  min-width: 180px;
+}
+
+.comparison-content {
+  display: grid;
+  gap: var(--sp-md);
+}
+
+.comparison-summary-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--sp-sm);
+}
+
+.comparison-card {
+  border: 1px solid var(--line);
+  border-radius: var(--rd-md);
+  background: var(--panel);
+  padding: var(--sp-md);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.comparison-card .label { font-size: var(--text-caption); color: var(--muted); }
+.comparison-card .main-val { font-size: 1.1rem; font-weight: 700; }
+.comparison-card .diff-val { font-size: 0.86rem; }
+.comparison-card .diff-val.is-positive { color: var(--deficit); }
+.comparison-card .diff-val.is-negative { color: var(--income); }
+
+.comparison-chart-wrap {
+  border: 1px solid var(--line);
+  border-radius: var(--rd-md);
+  background: var(--panel);
+  padding: var(--sp-md);
+  min-height: 240px;
+  overflow-x: auto;
+}
+
+.comparison-svg {
+  width: 100%;
+  height: auto;
+  min-height: 200px;
+  display: block;
+}
+
+.bar-prev { fill: #cbd5e0; }
+.bar-curr { fill: var(--expense); }
+.chart-axis-line { stroke: var(--line-strong); stroke-width: 1; }
+.chart-label { font-size: 11px; fill: var(--ink); }
+.chart-value { font-size: 10px; fill: var(--muted); }
 
 body.is-dashboard-mode .sankey-panel {
   order: 1;
@@ -58,11 +118,14 @@ body.is-dashboard-mode .sankey-panel {
 body.is-dashboard-mode .summary-panel {
   order: 2;
 }
-body.is-dashboard-mode .projection-panel {
+body.is-dashboard-mode .comparison-panel {
   order: 3;
 }
-body.is-dashboard-mode .controls-panel {
+body.is-dashboard-mode .projection-panel {
   order: 4;
+}
+body.is-dashboard-mode .controls-panel {
+  order: 5;
 }
 
 .view-mode-guide {

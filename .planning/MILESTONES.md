@@ -24,3 +24,39 @@
 - [v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md)
 - [v1.0-REQUIREMENTS.md](milestones/v1.0-REQUIREMENTS.md)
 - [v1.0-MILESTONE-AUDIT.md](milestones/v1.0-MILESTONE-AUDIT.md)
+
+---
+
+## v1.1 — 대시보드 고도화 및 온보딩 강화
+
+**Shipped:** 2026-05-06
+**Phases:** 3 (Phase 3, 4, 5)
+**Status:** Completed
+
+### Delivered
+
+시뮬레이션 차트의 시각적 완성도를 높이고, KPI 대시보드를 통해 핵심 재무 지표를 한눈에 파악할 수 있도록 개선했습니다. 또한 Spotlight UX를 도입하여 신규 사용자의 진입 장벽을 낮췄습니다.
+
+### Key Accomplishments
+
+1. Sankey Diagram 외 시뮬레이션 결과 차트 시각화 고도화.
+2. KPI 카드 및 요약 테이블을 통한 재무 건강도 진단 기능.
+3. Spotlight 기반의 단계별 온보딩 가이드 시스템 구축.
+
+---
+
+## v1.2 — 백테스트 시뮬레이터 및 자산 관리 확장
+
+**Target Date:** 2026-05-15
+**Phases:** 4 (Phase 6, 7, 8, 9)
+**Status:** In-Progress (Phase 6, 7, 8-01 Completed)
+
+### Goal
+
+주요 지수 백테스트 시뮬레이터를 구축하고, 포트폴리오 리밸런싱 도구를 통해 실제 자산 관리 여정을 완성하며, 부부 통합 허브를 통해 가계 관리를 확장합니다.
+
+### Key Accomplishments (To-date)
+
+1. Step 3: 계좌/종목별 비중 설정 및 리밸런싱 가이드 엔진 구현 (v0.9.5).
+2. Step 4: React 기반 고성능 백테스트 시뮬레이터 및 레버리지 청산 엔진 구축 (v0.9.7).
+3. 지출 데이터 과거 비교 분석 도구 (v0.9.8).
