@@ -1,4 +1,4 @@
-const APP_VERSION = "0.9.5";
+const APP_VERSION = "0.9.6";
 const CACHE_NAME = `isf-static-v${APP_VERSION}`;
 const CORE_ASSETS = [
   "./",

@@ -175,7 +175,7 @@
   }
 
   const result = {
-    APP_VERSION: "0.9.5",
+    APP_VERSION: "0.9.6",
     formatMoney,
     getFinancialIncomeStatus,
     calculateIncomeTax,

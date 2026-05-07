@@ -1,0 +1,21 @@
+{
+  "id": "gold",
+  "name": "Gold (Spot)",
+  "type": "commodity",
+  "currency": "USD",
+  "data": [
+    { "date": "2020-01-01", "price": 1517.1, "dividendYield": 0 },
+    { "date": "2020-02-01", "price": 1584.0, "dividendYield": 0 },
+    { "date": "2020-03-01", "price": 1609.8, "dividendYield": 0 },
+    { "date": "2020-04-01", "price": 1681.2, "dividendYield": 0 },
+    { "date": "2020-05-01", "price": 1728.7, "dividendYield": 0 },
+    { "date": "2020-06-01", "price": 1780.9, "dividendYield": 0 },
+    { "date": "2020-07-01", "price": 1964.9, "dividendYield": 0 },
+    { "date": "2020-08-01", "price": 1967.8, "dividendYield": 0 },
+    { "date": "2020-09-01", "price": 1887.3, "dividendYield": 0 },
+    { "date": "2020-10-01", "price": 1878.8, "dividendYield": 0 },
+    { "date": "2020-11-01", "price": 1776.5, "dividendYield": 0 },
+    { "date": "2020-12-01", "price": 1895.1, "dividendYield": 0 },
+    { "date": "2021-01-01", "price": 1847.6, "dividendYield": 0 }
+  ]
+}

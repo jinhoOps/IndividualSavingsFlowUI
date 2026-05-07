@@ -1,0 +1,21 @@
+{
+  "id": "spy",
+  "name": "S&P 500 (SPY)",
+  "type": "index",
+  "currency": "USD",
+  "data": [
+    { "date": "2020-01-01", "price": 321.73, "dividendYield": 0.0015 },
+    { "date": "2020-02-01", "price": 294.51, "dividendYield": 0.0015 },
+    { "date": "2020-03-01", "price": 257.75, "dividendYield": 0.0015 },
+    { "date": "2020-04-01", "price": 290.48, "dividendYield": 0.0015 },
+    { "date": "2020-05-01", "price": 304.32, "dividendYield": 0.0015 },
+    { "date": "2020-06-01", "price": 308.36, "dividendYield": 0.0015 },
+    { "date": "2020-07-01", "price": 326.52, "dividendYield": 0.0015 },
+    { "date": "2020-08-01", "price": 349.31, "dividendYield": 0.0015 },
+    { "date": "2020-09-01", "price": 334.89, "dividendYield": 0.0015 },
+    { "date": "2020-10-01", "price": 326.54, "dividendYield": 0.0015 },
+    { "date": "2020-11-01", "price": 362.06, "dividendYield": 0.0015 },
+    { "date": "2020-12-01", "price": 373.88, "dividendYield": 0.0015 },
+    { "date": "2021-01-01", "price": 373.88, "dividendYield": 0.0015 }
+  ]
+}

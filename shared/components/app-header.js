@@ -47,6 +47,10 @@ export class AppHeader extends HTMLElement {
                onclick="if(window.location.pathname.includes('step2')) { event.preventDefault(); } else { window.location.assign('../step2/'); event.preventDefault(); }">
                배당 시뮬
             </a>
+            <a href="../step4/" class="nav-link ${this.currentStep === '4' ? 'is-active' : ''}"
+               onclick="if(window.location.pathname.includes('step4')) { event.preventDefault(); } else { window.location.assign('../step4/'); event.preventDefault(); }">
+               백테스트
+            </a>
           </nav>
 
           <div style="display: flex; align-items: center; gap: var(--sp-xs); position: relative;">

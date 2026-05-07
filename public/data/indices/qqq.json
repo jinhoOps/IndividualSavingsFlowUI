@@ -1,0 +1,21 @@
+{
+  "id": "qqq",
+  "name": "Nasdaq 100 (QQQ)",
+  "type": "index",
+  "currency": "USD",
+  "data": [
+    { "date": "2020-01-01", "price": 223.23, "dividendYield": 0.0006 },
+    { "date": "2020-02-01", "price": 208.79, "dividendYield": 0.0006 },
+    { "date": "2020-03-01", "price": 181.86, "dividendYield": 0.0006 },
+    { "date": "2020-04-01", "price": 210.32, "dividendYield": 0.0006 },
+    { "date": "2020-05-01", "price": 226.54, "dividendYield": 0.0006 },
+    { "date": "2020-06-01", "price": 242.06, "dividendYield": 0.0006 },
+    { "date": "2020-07-01", "price": 260.65, "dividendYield": 0.0006 },
+    { "date": "2020-08-01", "price": 290.54, "dividendYield": 0.0006 },
+    { "date": "2020-09-01", "price": 274.65, "dividendYield": 0.0006 },
+    { "date": "2020-10-01", "price": 269.11, "dividendYield": 0.0006 },
+    { "date": "2020-11-01", "price": 299.71, "dividendYield": 0.0006 },
+    { "date": "2020-12-01", "price": 313.74, "dividendYield": 0.0006 },
+    { "date": "2021-01-01", "price": 313.74, "dividendYield": 0.0006 }
+  ]
+}

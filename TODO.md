@@ -2,19 +2,17 @@
 kanban-plugin: basic
 ---
 
-# TODO (v0.9.5)
+# TODO (v0.9.6)
 
-## Done (v0.9.5)
+## Done (v0.9.6)
+- [x] **Step 4: 주요 지수 및 자산 백테스트 시뮬레이터 (Issue #7)**:
+    - [x] TDD 기반 금융 연산 엔진 (CAGR, IRR, MDD, TR) 구현.
+    - [x] React 19 + Tailwind v4 기반 대시보드 및 커스텀 SVG 차트 구축.
+    - [x] 나스닥, S&P 500, 금, 기준금리 시계열 데이터 통합.
 - [x] **'ISF CODE' 기반 공유 시스템 도입**: URL 리다이렉트 버그 해결 및 수동 코드 공유 UI 구현.
-- [x] **전역 버전 동기화 (v0.9.5)**: sw.js, manifest, package.json, IsfUtils.APP_VERSION 동기화.
+- [x] **전역 버전 동기화 (v0.9.6)**: sw.js, manifest, package.json, IsfUtils.APP_VERSION 동기화.
 - [x] **Modern Hybrid 아키텍처 전환**: Vite, TS, Tailwind v4 통합 완료.
 - [x] **Step 2 초기 투자 자산(totalInitialAsset) 연동**: Step 1의 `startInvest` 데이터를 시뮬레이션 원금으로 반영.
-- [x] **Step 2 동기화 로직 고도화**: 데이터 정합성 체크 강화 및 "Step 1로 이동" 가이드 제공.
-- [x] **UI/UX 레이블 일관성 확보**: 과세 경고 배지 문구를 '과세주의/과세경고'로 전면 통일.
-
-# FUTURE (Phase 6~8)
-
-## Phase 6: 포트폴리오 자산 구성 및 리밸런싱 (Step 3)
 - [ ] **Step 3 아키텍처 설계**: Step 1 투자 데이터를 수신하는 전용 모듈(`step1-receiver.js`) 정의
 - [ ] **계좌별 자산 에디터**: 연금저축, ISA, 일반계좌 등 계좌별 비중 설정 기능
 - [ ] **목표 vs 실제 분석**: 도넛 차트를 활용한 비중 격차 시각화 및 리밸런싱 액션 가이드
