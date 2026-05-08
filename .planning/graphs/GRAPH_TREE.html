@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>IndividualSavingsFlowUI — graphify tree viewer</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f9f9f9;
+      color: #333;
+    }
+    h1 {
+      margin: 20px 0 0 24px;
+      font-size: 2.2rem;
+      font-weight: bold;
+      color: #1e3a56;
+    }
+    .controls {
+      margin: 20px 0 15px 24px;
+    }
+    button {
+      margin-right: 10px;
+      padding: 8px 18px;
+      background: #007bff;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: background 0.2s ease-in-out;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    button:hover {
+      background: #0056b3;
+    }
+    button:active {
+      background: #004085;
+    }
+    #tree-container {
+      width: calc(100vw - 48px); /* Adjust for body margin/padding */
+      height: 85vh;
+      overflow: auto;
+      border-radius: 8px;
+      background: #fff;
+      margin-left: 24px;
+      margin-right: 24px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      border: 1px solid #ddd;
+    }
+    svg {
+      background: #fff;
+      border-radius: 8px;
+      display: block; /* Important for D3 */
+    }
+    .node circle {
+      stroke-width: 2.5px;
+    }
+    .node text { /* Base style for the <text> container */
+      font: 13px 'Segoe UI', sans-serif;
+      paint-order: stroke fill; /* Ensures text is readable over lines */
+      stroke: #fff; /* White halo */
+      stroke-width: 3px; /* Halo thickness */
+      stroke-linejoin: round;
+      stroke-opacity: 0.85; /* Halo opacity */
+    }
+    .link {
+      fill: none;
+      stroke-opacity: 0.7;
+      stroke-width: 2px;
+    }
+  </style>
+</head>
+<body>
+  <h1>IndividualSavingsFlowUI — Knowledge Graph</h1>
+  <div class="controls">
+    <button onclick="expandAll()">Expand All</button>
+    <button onclick="collapseAll()">Collapse All</button>
+    <button onclick="resetView()">Reset View</button>
+  </div>
+  <div id="tree-container">
+    <svg id="tree-svg" width="6000" height="8000"></svg>
+  </div>
+
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script>
+    const initialJsonData = {"name":"IndividualSavingsFlowUI","total_count":659,"children":[{"name":"apps","total_count":235,"children":[{"name":"step1","total_count":179,"children":[{"name":"app.js","total_count":85,"children":[{"name":"addItemToEditor()","total_count":1,"children":[]},{"name":"applyItemEditor()","total_count":1,"children":[]},{"name":"applyPendingChanges()","total_count":1,"children":[]},{"name":"bindActionButtons()","total_count":1,"children":[]},{"name":"bindControls()","total_count":1,"children":[]},{"name":"bindGlobalEvents()","total_count":1,"children":[]},{"name":"bindItemEditorEvents()","total_count":1,"children":[]},{"name":"bindModalEvents()","total_count":1,"children":[]},{"name":"bindReadonlyAdvancedNavigation()","total_count":1,"children":[]},{"name":"cancelItemEditor()","total_count":1,"children":[]},{"name":"cancelPendingChanges()","total_count":1,"children":[]},{"name":"checkReturningUser()","total_count":1,"children":[]},{"name":"closeAllItemEditors()","total_count":1,"children":[]},{"name":"commitImmediateInputs()","total_count":1,"children":[]},{"name":"createResetInputs()","total_count":1,"children":[]},{"name":"dismissViewModeGuide()","total_count":1,"children":[]},{"name":"ensureDraftInputs()","total_count":1,"children":[]},{"name":"getActiveItemEditorGroupKey()","total_count":1,"children":[]},{"name":"getPendingSummaryText()","total_count":1,"children":[]},{"name":"getVisibleInputs()","total_count":1,"children":[]},{"name":"handleApplyIsfCode()","total_count":1,"children":[]},{"name":"handleCopyShareLink()","total_count":1,"children":[]},{"name":"handleDeleteSnapshot()","total_count":1,"children":[]},{"name":"handleExportJson()","total_count":1,"children":[]},{"name":"handleGenerateIsfCode()","total_count":1,"children":[]},{"name":"handleHashChange()","total_count":1,"children":[]},{"name":"handleImportJson()","total_count":1,"children":[]},{"name":"handleItemClick()","total_count":1,"children":[]},{"name":"handleItemInput()","total_count":1,"children":[]},{"name":"handleLoadSample()","total_count":1,"children":[]},{"name":"handleManualBackup()","total_count":1,"children":[]},{"name":"handleResetInputs()","total_count":1,"children":[]},{"name":"handleSaveSnapshot()","total_count":1,"children":[]},{"name":"handleSaveViewToLocal()","total_count":1,"children":[]},{"name":"handleSnapshotSelection()","total_count":1,"children":[]},{"name":"hasPendingChanges()","total_count":1,"children":[]},{"name":"hasShareState()","total_count":1,"children":[]},{"name":"init()","total_count":1,"children":[]},{"name":"initializeBackupStore()","total_count":1,"children":[]},{"name":"initializeInputsFromShareId()","total_count":1,"children":[]},{"name":"initializeSnapshotSelector()","total_count":1,"children":[]},{"name":"markPendingChanges()","total_count":1,"children":[]},{"name":"navigateToAdvancedGroup()","total_count":1,"children":[]},{"name":"persistPrimaryState()","total_count":1,"children":[]},{"name":"refreshComparisonIfActive()","total_count":1,"children":[]},{"name":"refreshInputsPanel()","total_count":1,"children":[]},{"name":"renderAll()","total_count":1,"children":[]},{"name":"renderAllocationItemHtml()","total_count":1,"children":[]},{"name":"renderCards()","total_count":1,"children":[]},{"name":"renderComparison()","total_count":1,"children":[]},{"name":"renderExpenseList()","total_count":1,"children":[]},{"name":"renderExpenseTotalHint()","total_count":1,"children":[]},{"name":"renderIncomeItemHtml()","total_count":1,"children":[]},{"name":"renderIncomeList()","total_count":1,"children":[]},{"name":"renderIncomeTotalHint()","total_count":1,"children":[]},{"name":"renderInputHints()","total_count":1,"children":[]},{"name":"renderInvestList()","total_count":1,"children":[]},{"name":"renderInvestTotalHint()","total_count":1,"children":[]},{"name":"renderItemList()","total_count":1,"children":[]},{"name":"renderProjectionTable()","total_count":1,"children":[]},{"name":"renderSavingsList()","total_count":1,"children":[]},{"name":"renderSavingsTotalHint()","total_count":1,"children":[]},{"name":"restoreBackupById()","total_count":1,"children":[]},{"name":"setActiveAdvancedTab()","total_count":1,"children":[]},{"name":"setItemEditorUi()","total_count":1,"children":[]},{"name":"setItemSortMode()","total_count":1,"children":[]},{"name":"setPendingBarVisible()","total_count":1,"children":[]},{"name":"setSankeySortMode()","total_count":1,"children":[]},{"name":"setSankeyValueMode()","total_count":1,"children":[]},{"name":"setSankeyZoom()","total_count":1,"children":[]},{"name":"startItemEditor()","total_count":1,"children":[]},{"name":"switchToNormalMode()","total_count":1,"children":[]},{"name":"syncAdvancedTabBlockVisibility()","total_count":1,"children":[]},{"name":"syncBackupUi()","total_count":1,"children":[]},{"name":"syncGroupOptionsAll()","total_count":1,"children":[]},{"name":"syncGroupOptionsFor()","total_count":1,"children":[]},{"name":"syncItemSortModeUi()","total_count":1,"children":[]},{"name":"syncMobileInputsPanelVisibility()","total_count":1,"children":[]},{"name":"syncMobileItemEditorFab()","total_count":1,"children":[]},{"name":"syncSankeySortModeUi()","total_count":1,"children":[]},{"name":"syncSankeyValueModeUi()","total_count":1,"children":[]},{"name":"syncSankeyZoomUi()","total_count":1,"children":[]},{"name":"syncViewModeGuideUi()","total_count":1,"children":[]},{"name":"syncViewModeUi()","total_count":1,"children":[]},{"name":"toggleItemEditor()","total_count":1,"children":[]}]},{"name":"modules","total_count":94,"children":[{"name":"calculator.js","total_count":7,"children":[{"name":"allocateByWeights()","total_count":1,"children":[]},{"name":"buildInvestBuckets()","total_count":1,"children":[]},{"name":"buildMonthlySnapshot()","total_count":1,"children":[]},{"name":"buildProjectionRecord()","total_count":1,"children":[]},{"name":"buildSavingsBuckets()","total_count":1,"children":[]},{"name":"buildSummaryCards()","total_count":1,"children":[]},{"name":"simulateProjection()","total_count":1,"children":[]}]},{"name":"comparison-engine.js","total_count":2,"children":[{"name":"calculateComparison()","total_count":1,"children":[]},{"name":"compareItems()","total_count":1,"children":[]}]},{"name":"comparison-renderer.js","total_count":2,"children":[{"name":"renderComparisonChart()","total_count":1,"children":[]},{"name":"renderComparisonSummary()","total_count":1,"children":[]}]},{"name":"formatters.js","total_count":6,"children":[{"name":"formatBackupTimestamp()","total_count":1,"children":[]},{"name":"formatCurrency()","total_count":1,"children":[]},{"name":"formatMonthSpan()","total_count":1,"children":[]},{"name":"formatPercent()","total_count":1,"children":[]},{"name":"formatSankeyDisplayValue()","total_count":1,"children":[]},{"name":"formatSignedCurrency()","total_count":1,"children":[]}]},{"name":"input-sanitizer.js","total_count":25,"children":[{"name":"buildAllocationMetaText()","total_count":1,"children":[]},{"name":"cloneInputs()","total_count":1,"children":[]},{"name":"createAllocationItemId()","total_count":1,"children":[]},{"name":"createIncomeId()","total_count":1,"children":[]},{"name":"createIncomeItem()","total_count":1,"children":[]},{"name":"formatMaturityMonthLabel()","total_count":1,"children":[]},{"name":"getMaturityMonthIndex()","total_count":1,"children":[]},{"name":"getMonthlyAllocationTotalWon()","total_count":1,"children":[]},{"name":"getMonthlyIncomeTotalWon()","total_count":1,"children":[]},{"name":"migrateInputsToWon()","total_count":1,"children":[]},{"name":"normalizeAllocationGroupName()","total_count":1,"children":[]},{"name":"normalizeAllocationName()","total_count":1,"children":[]},{"name":"normalizeIncomeName()","total_count":1,"children":[]},{"name":"normalizeMaturityMonth()","total_count":1,"children":[]},{"name":"parseSavingsAnnualRateInput()","total_count":1,"children":[]},{"name":"sanitizeAllocationItems()","total_count":1,"children":[]},{"name":"sanitizeExpenseItems()","total_count":1,"children":[]},{"name":"sanitizeIncomeItems()","total_count":1,"children":[]},{"name":"sanitizeInputs()","total_count":1,"children":[]},{"name":"sanitizeInteger()","total_count":1,"children":[]},{"name":"sanitizeInvestItems()","total_count":1,"children":[]},{"name":"sanitizeSavingsAnnualRate()","total_count":1,"children":[]},{"name":"sanitizeSavingsItems()","total_count":1,"children":[]},{"name":"scaleDefaultAllocationItemsToTotal()","total_count":1,"children":[]},{"name":"toMonthlyFactor()","total_count":1,"children":[]}]},{"name":"onboarding-manager.js","total_count":11,"children":[{"name":".constructor()","total_count":1,"children":[]},{"name":".finish()","total_count":1,"children":[]},{"name":".getOrCreateOverlay()","total_count":1,"children":[]},{"name":".init()","total_count":1,"children":[]},{"name":".isCompleted()","total_count":1,"children":[]},{"name":".positionTooltip()","total_count":1,"children":[]},{"name":".reset()","total_count":1,"children":[]},{"name":".showStep()","total_count":1,"children":[]},{"name":".start()","total_count":1,"children":[]},{"name":"initOnboarding()","total_count":1,"children":[]},{"name":"IsfOnboardingManager","total_count":1,"children":[]}]},{"name":"presets.js","total_count":2,"children":[{"name":"applyPreset()","total_count":1,"children":[]},{"name":"distributeAmount()","total_count":1,"children":[]}]},{"name":"sankey-builder.js","total_count":4,"children":[{"name":"buildSankeyData()","total_count":1,"children":[]},{"name":"clusterAllocationItemsByGroup()","total_count":1,"children":[]},{"name":"normalizeSankeySortMode()","total_count":1,"children":[]},{"name":"sortBreakdownItemsForSankey()","total_count":1,"children":[]}]},{"name":"sankey-renderer.js","total_count":12,"children":[{"name":"buildBandPath()","total_count":1,"children":[]},{"name":"createSvgElement()","total_count":1,"children":[]},{"name":"drawNode()","total_count":1,"children":[]},{"name":"formatAllocationBreakdownText()","total_count":1,"children":[]},{"name":"getEffectiveSankeyZoom()","total_count":1,"children":[]},{"name":"hideSankeyTooltip()","total_count":1,"children":[]},{"name":"measureSankeyTextWidth()","total_count":1,"children":[]},{"name":"normalizeSankeySortMode()","total_count":1,"children":[]},{"name":"normalizeSankeyValueMode()","total_count":1,"children":[]},{"name":"renderSankey()","total_count":1,"children":[]},{"name":"renderSankeyLegend()","total_count":1,"children":[]},{"name":"showSankeyTooltip()","total_count":1,"children":[]}]},{"name":"snapshot-manager.js","total_count":4,"children":[{"name":"deleteSnapshot()","total_count":1,"children":[]},{"name":"getSnapshotById()","total_count":1,"children":[]},{"name":"listSnapshots()","total_count":1,"children":[]},{"name":"persistStep1Snapshot()","total_count":1,"children":[]}]},{"name":"state-helpers.js","total_count":14,"children":[{"name":"applyInputsToForm()","total_count":1,"children":[]},{"name":"createEmptyDraft()","total_count":1,"children":[]},{"name":"ensureDraftInputs()","total_count":1,"children":[]},{"name":"getAccountById()","total_count":1,"children":[]},{"name":"getActiveItemEditorGroupKey()","total_count":1,"children":[]},{"name":"getItemEditorSignature()","total_count":1,"children":[]},{"name":"getVisibleInputs()","total_count":1,"children":[]},{"name":"hasPendingChanges()","total_count":1,"children":[]},{"name":"markClean()","total_count":1,"children":[]},{"name":"markDirty()","total_count":1,"children":[]},{"name":"readInputsFromForm()","total_count":1,"children":[]},{"name":"resetState()","total_count":1,"children":[]},{"name":"syncDerivedValues()","total_count":1,"children":[]},{"name":"updateDraftField()","total_count":1,"children":[]}]},{"name":"state.js","total_count":1,"children":[{"name":"resolveInitialInputs()","total_count":1,"children":[]}]},{"name":"storage-manager.js","total_count":2,"children":[{"name":"loadPersistedInputs()","total_count":1,"children":[]},{"name":"loadShareSnapshotById()","total_count":1,"children":[]}]},{"name":"constants.js","total_count":1,"children":[]},{"name":"dom.js","total_count":1,"children":[]}]}]},{"name":"step2","total_count":37,"children":[{"name":"app.js","total_count":5,"children":[{"name":"bindEvents()","total_count":1,"children":[]},{"name":"bindModalEvents()","total_count":1,"children":[]},{"name":"checkReturningUser()","total_count":1,"children":[]},{"name":"initApp()","total_count":1,"children":[]},{"name":"initializeBackupStore()","total_count":1,"children":[]}]},{"name":"modules","total_count":32,"children":[{"name":"calculator.js","total_count":5,"children":[{"name":"calculateCAGR()","total_count":1,"children":[]},{"name":"calculateDividendProjection()","total_count":1,"children":[]},{"name":"formatCurrency()","total_count":1,"children":[]},{"name":"formatDateTime()","total_count":1,"children":[]},{"name":"getTotalMonthlyInvestCapacity()","total_count":1,"children":[]}]},{"name":"dom.js","total_count":1,"children":[{"name":"initDom()","total_count":1,"children":[]}]},{"name":"renderers.js","total_count":6,"children":[{"name":"drawSimulationChart()","total_count":1,"children":[]},{"name":"initGlobalTooltips()","total_count":1,"children":[]},{"name":"renderCharts()","total_count":1,"children":[]},{"name":"renderDividendSimulation()","total_count":1,"children":[]},{"name":"renderDraft()","total_count":1,"children":[]},{"name":"renderKpiCards()","total_count":1,"children":[]}]},{"name":"state.js","total_count":5,"children":[{"name":"createEmptyDraft()","total_count":1,"children":[]},{"name":"getHubStorage()","total_count":1,"children":[]},{"name":"markClean()","total_count":1,"children":[]},{"name":"markDirty()","total_count":1,"children":[]},{"name":"saveSession()","total_count":1,"children":[]}]},{"name":"step1-connector.js","total_count":3,"children":[{"name":"checkStep1SyncData()","total_count":1,"children":[]},{"name":"importLatestStep1Data()","total_count":1,"children":[]},{"name":"resolveLatestStep1Snapshot()","total_count":1,"children":[]}]},{"name":"storage-handler.js","total_count":10,"children":[{"name":"deleteSimulationById()","total_count":1,"children":[]},{"name":"handleManualBackup()","total_count":1,"children":[]},{"name":"loadSimulationById()","total_count":1,"children":[]},{"name":"normalizeLoadedSimulation()","total_count":1,"children":[]},{"name":"refreshSimulationList()","total_count":1,"children":[]},{"name":"resetDraft()","total_count":1,"children":[]},{"name":"restoreBackupById()","total_count":1,"children":[]},{"name":"saveCurrentSimulation()","total_count":1,"children":[]},{"name":"syncBackupUi()","total_count":1,"children":[]},{"name":"toPortableSimulation()","total_count":1,"children":[]}]},{"name":"constants.js","total_count":1,"children":[]},{"name":"utils.js","total_count":1,"children":[]}]}]},{"name":"step3","total_count":19,"children":[{"name":"modules","total_count":18,"children":[{"name":"state.js","total_count":13,"children":[{"name":".addAccount()","total_count":1,"children":[]},{"name":".addAsset()","total_count":1,"children":[]},{"name":".constructor()","total_count":1,"children":[]},{"name":".getSummary()","total_count":1,"children":[]},{"name":".loadFromStorage()","total_count":1,"children":[]},{"name":".removeAccount()","total_count":1,"children":[]},{"name":".removeAsset()","total_count":1,"children":[]},{"name":".restoreSnapshot()","total_count":1,"children":[]},{"name":".saveToStorage()","total_count":1,"children":[]},{"name":".updateAccount()","total_count":1,"children":[]},{"name":".updateAsset()","total_count":1,"children":[]},{"name":".updateInvestCapacity()","total_count":1,"children":[]},{"name":"IsfState","total_count":1,"children":[]}]},{"name":"calculator.js","total_count":1,"children":[]},{"name":"chart-builder.js","total_count":1,"children":[]},{"name":"dom.js","total_count":1,"children":[]},{"name":"snapshot-manager.js","total_count":1,"children":[]},{"name":"step1-connector.js","total_count":1,"children":[]}]},{"name":"app.js","total_count":1,"children":[]}]}]},{"name":"DESIGN.md","total_count":23,"children":[{"name":"Agent Prompt Guide","total_count":1,"children":[]},{"name":"Brand & Accent","total_count":1,"children":[]},{"name":"Breakpoints & Adaptability","total_count":1,"children":[]},{"name":"code:yaml (context: \"ISF UI Development\")","total_count":1,"children":[]},{"name":"Collapsing Strategy","total_count":1,"children":[]},{"name":"Colors","total_count":1,"children":[]},{"name":"Components","total_count":1,"children":[]},{"name":"Depth & Elevation","total_count":1,"children":[]},{"name":"DESIGN.md","total_count":1,"children":[]},{"name":"Do","total_count":1,"children":[]},{"name":"Do's and Don'ts","total_count":1,"children":[]},{"name":"Don't","total_count":1,"children":[]},{"name":"Font Family","total_count":1,"children":[]},{"name":"Hierarchy","total_count":1,"children":[]},{"name":"Information Architecture (Panel Flow)","total_count":1,"children":[]},{"name":"Interactive Elements","total_count":1,"children":[]},{"name":"Layout","total_count":1,"children":[]},{"name":"Navigation & Feedback","total_count":1,"children":[]},{"name":"Overview (Visual Theme & Atmosphere)","total_count":1,"children":[]},{"name":"Responsive Behavior","total_count":1,"children":[]},{"name":"Spacing System","total_count":1,"children":[]},{"name":"Surface & Background","total_count":1,"children":[]},{"name":"Typography","total_count":1,"children":[]}]},{"name":"GEMINI.md","total_count":6,"children":[{"name":"GEMINI.md","total_count":1,"children":[]},{"name":"Individual Savings Flow UI (ISF) - Agent Router","total_count":1,"children":[]},{"name":"📌 필수 작업 프로토콜 (Mandatory Protocols)","total_count":1,"children":[]},{"name":"🚨 핵심 가드레일 (Critical Guardrails)","total_count":1,"children":[]},{"name":"🛠️ 실무 참조 (Reference Manuals)","total_count":1,"children":[]},{"name":"🧭 역할 기반 라우팅 (Routing)","total_count":1,"children":[]}]},{"name":"knowledge","total_count":256,"children":[{"name":"output","total_count":8,"children":[{"name":"index.md","total_count":3,"children":[{"name":"index.md","total_count":1,"children":[]},{"name":"Output Artifacts","total_count":1,"children":[]},{"name":"📁 목차","total_count":1,"children":[]}]},{"name":"ingest_report_20260507.md","total_count":5,"children":[{"name":"ingest_report_20260507.md","total_count":1,"children":[]},{"name":"Wiki Ingestion & Migration Report (2026-05-07)","total_count":1,"children":[]},{"name":"✅ 무결성 검증 (Lint)","total_count":1,"children":[]},{"name":"📁 지식 저장소 위치 변경 (Migration)","total_count":1,"children":[]},{"name":"📥 지식 인입 (Ingest Scan)","total_count":1,"children":[]}]}]},{"name":"raw","total_count":3,"children":[{"name":"index.md","total_count":3,"children":[{"name":"index.md","total_count":1,"children":[]},{"name":"Raw Knowledge Storage","total_count":1,"children":[]},{"name":"📁 목차","total_count":1,"children":[]}]}]},{"name":"wiki","total_count":245,"children":[{"name":"Agent_Behavior_Standard.md","total_count":4,"children":[{"name":"1. 행동 강령 (Guardrails)","total_count":1,"children":[]},{"name":"Agent_Behavior_Standard.md","total_count":1,"children":[]},{"name":"code:block1 (1. [Step] → verify: [check])","total_count":1,"children":[]},{"name":"🛠️ Agent Behavior Standard (에이전트 행동 지침)","total_count":1,"children":[]}]},{"name":"Architecture_Reference.md","total_count":8,"children":[{"name":"Architecture Reference (아키텍처 참조)","total_count":1,"children":[]},{"name":"Architecture_Reference.md","total_count":1,"children":[]},{"name":"기술 스택 (Tech Stack)","total_count":1,"children":[]},{"name":"데이터 흐름 (Data Flow)","total_count":1,"children":[]},{"name":"디렉토리 구조","total_count":1,"children":[]},{"name":"모듈 및 빌드 관리","total_count":1,"children":[]},{"name":"스토리지 아키텍처 (Modern Storage v2)","total_count":1,"children":[]},{"name":"핵심 철학: 시스템 무결성 (Integrity First)","total_count":1,"children":[]}]},{"name":"archive","total_count":67,"children":[{"name":"Data_Bridge_Import_Pattern.md","total_count":6,"children":[{"name":"Data_Bridge_Import_Pattern.md","total_count":1,"children":[]},{"name":"개요","total_count":1,"children":[]},{"name":"연관 지식","total_count":1,"children":[]},{"name":"자동 연동 및 수정 가드 원칙 (TO-BE, v0.7.4)","total_count":1,"children":[]},{"name":"통합 앱 간 데이터 브리지 및 자동 연동 패턴","total_count":1,"children":[]},{"name":"핵심 문제 및 원인 (AS-IS)","total_count":1,"children":[]}]},{"name":"Feature_Archive_v0.5.md","total_count":10,"children":[{"name":"1-1. 전역 상태 및 입력 인터페이스","total_count":1,"children":[]},{"name":"1-2. 시각화 (Sankey Diagram)","total_count":1,"children":[]},{"name":"1-3. 계산 로직: 가계 추이 검증 (Projection)","total_count":1,"children":[]},{"name":"1. Step 1: 나의 가계 흐름 (apps/step1)","total_count":1,"children":[]},{"name":"2-1. 브리지(Bridge) 기능","total_count":1,"children":[]},{"name":"2-2. 포트폴리오 구성 및 UI 인터랙션","total_count":1,"children":[]},{"name":"2-3. 배당 시뮬레이션 추이 (Dividend Simulation)","total_count":1,"children":[]},{"name":"2. Step 2: 투자 포트폴리오 (apps/step2)","total_count":1,"children":[]},{"name":"Feature Archive (v0.5 리팩토링 이전 정상 기능 스펙)","total_count":1,"children":[]},{"name":"Feature_Archive_v0.5.md","total_count":1,"children":[]}]},{"name":"Plan_Step1.md","total_count":6,"children":[{"name":"1) 현재 상태 요약","total_count":1,"children":[]},{"name":"2) 핵심 기술 부채 및 개선 과제","total_count":1,"children":[]},{"name":"3) 안정화 체크리스트","total_count":1,"children":[]},{"name":"4) 우선순위 및 실행 전략","total_count":1,"children":[]},{"name":"[ARCHIVED] 🗺️ Step1: 나의 가계 흐름 개발 계획 (Roadmap)","total_count":1,"children":[]},{"name":"Plan_Step1.md","total_count":1,"children":[]}]},{"name":"Plan_Step2.md","total_count":4,"children":[{"name":"1) 변경된 상태 요약","total_count":1,"children":[]},{"name":"2) Step 2 최종 MVP 범위 (v0.7.0+)","total_count":1,"children":[]},{"name":"[DEPRECATED] 🗺️ Step2: 포트폴리오 구성 개발 계획 (Roadmap)","total_count":1,"children":[]},{"name":"Plan_Step2.md","total_count":1,"children":[]}]},{"name":"Step1_Modularization_Refactoring.md","total_count":9,"children":[{"name":"1. 모듈 디렉토리 구성 (`apps/step1/modules/`)","total_count":1,"children":[]},{"name":"2. 경량 컨트롤러 (`apps/step1/app.js`)","total_count":1,"children":[]},{"name":"3. Shared 유틸리티 통합","total_count":1,"children":[]},{"name":"[ARCHIVED] Step1 Modularization Refactoring (Step 1 모듈화 리팩터링)","total_count":1,"children":[]},{"name":"Step1_Modularization_Refactoring.md","total_count":1,"children":[]},{"name":"⚠️ 리팩터링 후 주의사항 (Post-refactoring Pitfalls)","total_count":1,"children":[]},{"name":"결론 및 교훈","total_count":1,"children":[]},{"name":"리팩터링 전략","total_count":1,"children":[]},{"name":"배경 및 원인","total_count":1,"children":[]}]},{"name":"Step2_Modularization_Refactoring.md","total_count":8,"children":[{"name":"1. 배당 시뮬레이션 대시보드 집중","total_count":1,"children":[]},{"name":"2. 아키텍처 슬림화 (Logic Decoupling)","total_count":1,"children":[]},{"name":"[ARCHIVED] Step2 Modularization Refactoring (Step 2 배당 시뮬레이션 특화 개편)","total_count":1,"children":[]},{"name":"Step2_Modularization_Refactoring.md","total_count":1,"children":[]},{"name":"⚠️ 주의사항 및 교훈","total_count":1,"children":[]},{"name":"리팩터링 전략: 7개 전문 모듈 최적화 (`apps/step2/modules/`)","total_count":1,"children":[]},{"name":"배경 및 원인","total_count":1,"children":[]},{"name":"주요 기술 혁신 (v0.7.0 업데이트)","total_count":1,"children":[]}]},{"name":"Storage_Hub_Integration_v0.7.md","total_count":12,"children":[{"name":"1. 배경 및 목적","total_count":1,"children":[]},{"name":"2. 핵심 아키텍처: `IsfStorageHub`","total_count":1,"children":[]},{"name":"4. 데이터 마이그레이션 (v0.7.1 추가)","total_count":1,"children":[]},{"name":"4.1 LocalStorage 마이그레이션","total_count":1,"children":[]},{"name":"4.2 백업 이력 마이그레이션 (IndexedDB)","total_count":1,"children":[]},{"name":"4.3 실행 시점","total_count":1,"children":[]},{"name":"5. 구현 패턴 (Code Example)","total_count":1,"children":[]},{"name":"5. 뷰 모드 안전 저장 프로토콜","total_count":1,"children":[]},{"name":"[ARCHIVED] Storage Hub Integration (스토리지 허브 통합 상세)","total_count":1,"children":[]},{"name":"code:javascript (// IsfStorageHub를 이용한 안전한 저장 예시)","total_count":1,"children":[]},{"name":"Storage_Hub_Integration_v0.7.md","total_count":1,"children":[]},{"name":"주요 기능","total_count":1,"children":[]}]},{"name":"UI_UX_Overhaul_v0.3.md","total_count":6,"children":[{"name":"[ARCHIVED] UI/UX 통합 개편 및 v0.3 격상 (HCD 원칙 적용)","total_count":1,"children":[]},{"name":"UI_UX_Overhaul_v0.3.md","total_count":1,"children":[]},{"name":"🏛️ 개편 배경 및 목적","total_count":1,"children":[]},{"name":"📐 적용된 HCD 6대 원칙","total_count":1,"children":[]},{"name":"🔗 관련 링크","total_count":1,"children":[]},{"name":"🛠️ 주요 기술 변경 사항","total_count":1,"children":[]}]},{"name":"UI_UX_Overhaul_v0.4.md","total_count":6,"children":[{"name":"1. 스마트 적응형 엔트리 (Smart Adaptive Entry)","total_count":1,"children":[]},{"name":"2. 데이터 관리 허브 통합 (Consolidated Data Hub)","total_count":1,"children":[]},{"name":"3. 저밀도 피드백 시스템 (Silent Status Indicator)","total_count":1,"children":[]},{"name":"4. 스마트 브리지 배너 (Smart Bridge Banner)","total_count":1,"children":[]},{"name":"[ARCHIVED] UI/UX Overhaul v0.4 (사용자 중심 적응형 개편)","total_count":1,"children":[]},{"name":"UI_UX_Overhaul_v0.4.md","total_count":1,"children":[]}]}]},{"name":"Data_Model_Reference.md","total_count":11,"children":[{"name":"code:typescript (// 예시)","total_count":1,"children":[]},{"name":"code:typescript (export interface Step1State {)","total_count":1,"children":[]},{"name":"Data Model Reference (데이터 모델 참조)","total_count":1,"children":[]},{"name":"Data_Model_Reference.md","total_count":1,"children":[]},{"name":"IndexedDB 스키마 (`isf-v2-db`)","total_count":1,"children":[]},{"name":"Step 1 State (v2)","total_count":1,"children":[]},{"name":"금액 단위 (Currency Units)","total_count":1,"children":[]},{"name":"데이터 모델 정의 (SSOT)","total_count":1,"children":[]},{"name":"데이터 브리지 (Bridge Strategy)","total_count":1,"children":[]},{"name":"저장 레이어 (IsfStore v2)","total_count":1,"children":[]},{"name":"저장소 관리 규칙","total_count":1,"children":[]}]},{"name":"Financial_Taxation_Reference.md","total_count":8,"children":[{"name":"1. 금융소득종합과세 주의 (`warn`)","total_count":1,"children":[]},{"name":"2. 치명적 경고 (`crit`)","total_count":1,"children":[]},{"name":"Financial Taxation Reference (금융소득 및 과세 정책 참조)","total_count":1,"children":[]},{"name":"Financial_Taxation_Reference.md","total_count":1,"children":[]},{"name":"⚖️ 대한민국 금융소득종합과세 정책 (요약)","total_count":1,"children":[]},{"name":"종합소득 누진세율 (2023년 귀속분 기준)","total_count":1,"children":[]},{"name":"🚨 프로젝트 UI 경고 정책 (Safety Margin)","total_count":1,"children":[]},{"name":"🛠️ 구현 가이드","total_count":1,"children":[]}]},{"name":"index.md","total_count":6,"children":[{"name":"index.md","total_count":1,"children":[]},{"name":"🏛️ 핵심 참조 (The Constitution)","total_count":1,"children":[]},{"name":"📜 연대기 및 로그 (Timeline & Logs)","total_count":1,"children":[]},{"name":"🗄️ 아카이브 (Archive)","total_count":1,"children":[]},{"name":"🗺️ Project Knowledge Index (LLM Wiki)","total_count":1,"children":[]},{"name":"🚀 활성 지식 (Active Knowledge)","total_count":1,"children":[]}]},{"name":"Knowledge_Harness.md","total_count":8,"children":[{"name":"code:block1 ([개발/리팩터링 작업 완료])","total_count":1,"children":[]},{"name":"code:yaml (---)","total_count":1,"children":[]},{"name":"Knowledge_Harness.md","total_count":1,"children":[]},{"name":"담당 스킬","total_count":1,"children":[]},{"name":"위키 노드 작성 규칙","total_count":1,"children":[]},{"name":"지식 관리 구조","total_count":1,"children":[]},{"name":"지식 생성 라이프사이클 (The Compounding Loop)","total_count":1,"children":[]},{"name":"지식 하네스 운영 체계 (Knowledge Harness: LLM Wiki)","total_count":1,"children":[]}]},{"name":"log.md","total_count":63,"children":[{"name":"[2026-04-16] feature | Sprint 2.1: HCD 개선 및 모바일 최적화 (v0.2.5)","total_count":1,"children":[]},{"name":"[2026-04-16] feature | Sprint 2.2: UI/UX Overhaul v0.4 (사용자 중심 적응형 개편)","total_count":1,"children":[]},{"name":"[2026-04-16] feature | Step 2 데이터 브리지 버그 해결 및 로직 복구 (v0.4.2)","total_count":1,"children":[]},{"name":"[2026-04-16] feature | UI/UX 안정화 및 v0.4.1 릴리스","total_count":1,"children":[]},{"name":"[2026-04-16] ingest | PWA 안정성 및 스토리지 정책 강화","total_count":1,"children":[]},{"name":"[2026-04-16] ingest | 하네스 보수 및 LLM Wiki 패턴 이식","total_count":1,"children":[]},{"name":"[2026-04-17] feature | Step 1 Monolith 리팩터링 및 No-build 모듈화 (v0.5.0)","total_count":1,"children":[]},{"name":"[2026-04-17] fix | Step 1 모듈화 안정화 및 런타임 오류 패치 (v0.5.1)","total_count":1,"children":[]},{"name":"[2026-04-17] fix | Step 1 통합 편집 UX 및 모바일 FAB 지원 패치 (v0.5.2)","total_count":1,"children":[]},{"name":"[2026-04-17] fix | Step 1 헤더 버튼 복구 및 UI 정리 (v0.5.3)","total_count":1,"children":[]},{"name":"[2026-04-17] ingest | core-developer 스킬 폐지 및 지식 통폐합","total_count":1,"children":[]},{"name":"[2026-04-17] ingest | GEMINI.md 지식 슬림화 및 위키 이관 완료","total_count":1,"children":[]},{"name":"[2026-04-17] ingest | Minor Up 브랜치 전략 강화 및 위키 동기화 정책 추가","total_count":1,"children":[]},{"name":"[2026-04-19] fix | Step 1 데이터 연동 무결성 및 패널 기능 복구 (v0.5.8)","total_count":1,"children":[]},{"name":"[2026-04-19] fix | Step 1 초기화 오류 및 모바일 UX 개선 패치 (v0.5.5)","total_count":1,"children":[]},{"name":"[2026-04-21] feature | Step 2 모듈화 및 고성능 배당 시뮬레이션 엔진 도입 (v0.5.12)","total_count":1,"children":[]},{"name":"[2026-04-21] fix | Step 1 단위 중복 계산 및 Step 2 브리지 배너 표시 오류 해결 (v0.5.11)","total_count":1,"children":[]},{"name":"[2026-04-21] ingest | 지식 위생 관리(Wiki Hygiene) 및 위키 정기 정화","total_count":1,"children":[]},{"name":"[2026-04-22] fix | Step 2 렌더링 안정성 및 데이터 정규화 보완 (v0.6.0)","total_count":1,"children":[]},{"name":"[2026-04-22] fix | v0.7.13 ~ v0.7.11 시뮬레이션 UI 고도화 패치","total_count":1,"children":[]},{"name":"[2026-04-22] fix | 단위 정합성(만원/원) UI 및 데이터 저장 표준 강화 (v0.6.1)","total_count":1,"children":[]},{"name":"[2026-04-22] ingest | Step 1 지출 내역 비교 막대 그래프 기능 정의 및 이슈 생성 (#4)","total_count":1,"children":[]},{"name":"[2026-04-22] release | Minor Up: Step 2 리팩터링 및 Sankey/배당 시뮬레이션 고도화 (v0.6.0)","total_count":1,"children":[]},{"name":"[2026-04-23] fix | v0.7.0 데이터 마이그레이션 체계 구축 및 저장소 안정화","total_count":1,"children":[]},{"name":"[2026-04-23] release | Step 2 배당 시뮬레이션 특화 개편 및 Step 3 분리 계획 (v0.7.0)","total_count":1,"children":[]},{"name":"[2026-04-23] release | 통합 스토리지 허브(IsfStorageHub) 도입 및 데이터 연동 최적화 (v0.7.0)","total_count":1,"children":[]},{"name":"[2026-04-24] fix | v0.7.1 Step 1/2 안정화 및 리브랜딩 보강 (v0.7.1)","total_count":1,"children":[]},{"name":"[2026-04-24] fix | v0.7.2 전역 버전 동기화 및 Triple Sync 완결","total_count":1,"children":[]},{"name":"[2026-04-24] fix | v0.7.2 타임스탬프 파싱 버그 수정 및 Step 2 자동 동기화 도입","total_count":1,"children":[]},{"name":"[2026-04-24] ingest | 데이터 통합 및 입력 재사용 철학 동기화 (Single Hub & Input Reuse)","total_count":1,"children":[]},{"name":"[2026-04-24] ingest | 에이전트 협업 프로세스 동기화 (orchestration 스킬)","total_count":1,"children":[]},{"name":"[2026-04-24] ingest | 지식 위생 관리 및 물리적 아카이빙(Physical Archiving) 단행","total_count":1,"children":[]},{"name":"[2026-04-24] ingest | 지식 위생 관리(Wiki Hygiene) 및 SSOT 정립 완료","total_count":1,"children":[]},{"name":"[2026-04-24] merge | v0.7.0 최종 머지 및 브랜치 정리 완료","total_count":1,"children":[]},{"name":"[2026-04-24] update | Step 2 자동 연동 로직 교정 (Sync by Default)","total_count":1,"children":[]},{"name":"[2026-04-30] fix | 디자인 시스템 토큰 적용 및 UI 무결성 강화 (v0.7.3)","total_count":1,"children":[]},{"name":"[2026-04-30] fix | 전역 버전 정리 및 안정화 (v0.7.4)","total_count":1,"children":[]},{"name":"[2026-04-30] ingest | 디자인 시스템 고도화 및 토큰 마이그레이션 완료","total_count":1,"children":[]},{"name":"[2026-05-02] fix | Step 1 모바일 레이아웃 복구 및 입력 가시성 확보 (v0.7.6)","total_count":1,"children":[]},{"name":"[2026-05-02] fix | 지식 위생 관리(Wiki Hygiene) 및 위키 정합성 강화 (Lint)","total_count":1,"children":[]},{"name":"[2026-05-04] fix | 버전 표기 변수화 및 관리 체계 일원화 (v0.8.3)","total_count":1,"children":[]},{"name":"[2026-05-04] ingest | Modernization Pivot & Storage v2 Implementation","total_count":1,"children":[]},{"name":"[2026-05-04] release | Phase 5: Step 1 Spotlight 온보딩 가이드 및 시스템 무결성 강화","total_count":1,"children":[]},{"name":"[2026-05-06] bump | Step 2 프리셋 명칭 표시 UI 개선 및 패치 (v0.9)","total_count":1,"children":[]},{"name":"[2026-05-06] feat | Step 1 초기 자산 구조 개선 및 디자인 시스템 정제 (v0.8.8)","total_count":1,"children":[]},{"name":"[2026-05-06] fix | Step 2 초기 자산 연동 및 시뮬레이션 논리 결함 수정 (v0.8.9)","total_count":1,"children":[]},{"name":"[2026-05-06] ingest | Modern Hybrid 아키텍처 전환 및 금융 시뮬레이션 고도화 완결 (v0.9)","total_count":1,"children":[]},{"name":"[2026-05-06] ingest | No-build 원칙 완화 및 Modern Hybrid 전략 공식화","total_count":1,"children":[]},{"name":"[2026-05-06] ingest | 금융소득종합과세 정책 및 안전 마진 지침 수립","total_count":1,"children":[]},{"name":"[2026-05-07] action | GitHub 주요 이슈(#7, #4, #2) 진행 상황 보고 및 소통 강화","total_count":1,"children":[]},{"name":"[2026-05-07] bump | 전역 버전 동기화 및 정책 보완 (v0.9.5)","total_count":1,"children":[]},{"name":"[2026-05-07] feat | 'ISF CODE' 기반 공유 시스템 도입 및 리다이렉트 버그 해결 (v0.9)","total_count":1,"children":[]},{"name":"[2026-05-07] feat | 레버리지 자산 추가 및 청산 엔진 고도화 (v0.9.7)","total_count":1,"children":[]},{"name":"[2026-05-07] feat | 주요 지수 및 자산 백테스트 시뮬레이터(Step 4) 개발 완료 (v0.9.6)","total_count":1,"children":[]},{"name":"[2026-05-07] fix | 버전 관리 단일 진실 공급원(SSOT) 수립 및 자동화 (v0.9.12)","total_count":1,"children":[]},{"name":"[2026-05-07] fix | 지출 비교 기능 관리 도구 보완 및 수동 스냅샷 체계 도입 (v0.9.12)","total_count":1,"children":[]},{"name":"[2026-05-07] fix | 헤더 레이아웃 조정 및 CI 인프라 최신화 (v0.9.11)","total_count":1,"children":[]},{"name":"[2026-05-07] ingest | 지식 저장소 위치 변경 및 인입 스캔 (Migration)","total_count":1,"children":[]},{"name":"[2026-05-07] lint | LLM Wiki 헌법(Constitution) 개선 및 3계층 구조 확립","total_count":1,"children":[]},{"name":"[2026-05-07] refactor | GEMINI.md 라우터 경량화 및 거버넌스 강화 (v0.9.10)","total_count":1,"children":[]},{"name":"[2026-05-08] doc | Phase 06, 07, 08 단계 문서화 완료 및 마일스톤 동기화","total_count":1,"children":[]},{"name":"log.md","total_count":1,"children":[]},{"name":"Project Evolution Log (연대기적 작업 로그)","total_count":1,"children":[]}]},{"name":"Operating_Principles.md","total_count":6,"children":[{"name":"Operating_Principles.md","total_count":1,"children":[]},{"name":"⚖️ 핵심 헌법 (Core Pillars)","total_count":1,"children":[]},{"name":"🏛️ 지식 베이스 운영 (The Librarian Workflow)","total_count":1,"children":[]},{"name":"📝 Operating Principles (프로젝트 운영 원칙)","total_count":1,"children":[]},{"name":"🚀 개발 및 커밋 원칙","total_count":1,"children":[]},{"name":"🛠️ 기술 및 PWA 동기화 (Automated Sync)","total_count":1,"children":[]}]},{"name":"Plan_Step3.md","total_count":6,"children":[{"name":"1) 개발 배경","total_count":1,"children":[]},{"name":"2) 주요 기능 범위 (MVP)","total_count":1,"children":[]},{"name":"3) 기술적 고려 사항","total_count":1,"children":[]},{"name":"4) 마일스톤 (예정)","total_count":1,"children":[]},{"name":"Plan_Step3.md","total_count":1,"children":[]},{"name":"🗺️ Step3: 포트폴리오 구성 및 최적화 개발 계획 (Roadmap)","total_count":1,"children":[]}]},{"name":"Plan_Step3_Implementation.md","total_count":15,"children":[{"name":"1. 디자인 시스템 감사 및 수정 목록 (Audit & Fix)","total_count":1,"children":[]},{"name":"2. Step 3: 포트폴리오 에디터 및 리밸런싱 가이드 기획","total_count":1,"children":[]},{"name":"3. Onboarding UX 전략: '처음 접속 시 가이드'","total_count":1,"children":[]},{"name":"4. 파일 구조 설계 (Step 3)","total_count":1,"children":[]},{"name":"5. 실행 로드맵","total_count":1,"children":[]},{"name":"A. Glassmorphism 강화 (Surface & Depth)","total_count":1,"children":[]},{"name":"A. 개념적 모델 (Conceptual Model)","total_count":1,"children":[]},{"name":"A. 시각적 유도 (Signifiers)","total_count":1,"children":[]},{"name":"B. Typography 일관성 (Black Han Sans 적용)","total_count":1,"children":[]},{"name":"B. UI 구조 설계 (HCD 4단계 흐름)","total_count":1,"children":[]},{"name":"B. 신규 사용자 오버레이 (Onboarding Overlay)","total_count":1,"children":[]},{"name":"C. 반응형 무결성 (Mobile First)","total_count":1,"children":[]},{"name":"code:text (apps/step3/)","total_count":1,"children":[]},{"name":"Plan: 디자인 시스템 고도화 및 Step 3 착수 (v0.8.0)","total_count":1,"children":[]},{"name":"Plan_Step3_Implementation.md","total_count":1,"children":[]}]},{"name":"Project_History.md","total_count":19,"children":[{"name":"[2026-04-14] UI/UX Overhaul (v0.3.0)","total_count":1,"children":[]},{"name":"[2026-04-16] Step 1 Modularization (v0.5.0)","total_count":1,"children":[]},{"name":"[2026-04-17] Storage Hub Integration","total_count":1,"children":[]},{"name":"[2026-04-18] Step 2 Modularization (v0.7.0)","total_count":1,"children":[]},{"name":"[2026-04-20] System Integrity Recovery","total_count":1,"children":[]},{"name":"[2026-05-04] Modernization Pivot (v1.1.0-alpha.1)","total_count":1,"children":[]},{"name":"[2026-05-04] Phase 4: KPI Dashboard (v0.7.15)","total_count":1,"children":[]},{"name":"[2026-05-04] Phase 5: Step 1 Spotlight Onboarding (v0.8.3) 🌟","total_count":1,"children":[]},{"name":"[2026-05-04] Runtime Version Management Centralization (v0.8.3)","total_count":1,"children":[]},{"name":"[2026-05-06] Modern Hybrid Architecture & Financial Simulation Enhancements (v0.9) 🚀","total_count":1,"children":[]},{"name":"[2026-05-06] Step 1 초기 자산 필드 구조 개선 (v0.8.8)","total_count":1,"children":[]},{"name":"[2026-05-06] Step 2 Preset UI Enhancement & Patch (v0.9) 🛠️","total_count":1,"children":[]},{"name":"[2026-05-06] Step 2 초기 자산 연동 및 시뮬레이션 로직 수정 (v0.8.9)","total_count":1,"children":[]},{"name":"[2026-05-07] 'ISF CODE' Sharing System & Redirect Bug Fix (v0.9.5) 🔗","total_count":1,"children":[]},{"name":"[2026-05-07] Step 4: Asset Backtest Simulator (v0.9.6) 📈","total_count":1,"children":[]},{"name":"[2026-05-07] Step 4: Leverage Assets & Liquidation Engine (v0.9.7) 📉","total_count":1,"children":[]},{"name":"Project History (프로젝트 연대기)","total_count":1,"children":[]},{"name":"Project_History.md","total_count":1,"children":[]},{"name":"🕒 주요 마일스톤","total_count":1,"children":[]}]},{"name":"System_Integrity_Standard.md","total_count":6,"children":[{"name":"1. 스타일 및 반응형 무결성","total_count":1,"children":[]},{"name":"2. 로직 보존 (Core Logic Protection)","total_count":1,"children":[]},{"name":"3. 단위 정합성 (Unit Consistency)","total_count":1,"children":[]},{"name":"4. No-build 지향 (Modern Hybrid)","total_count":1,"children":[]},{"name":"System_Integrity_Standard.md","total_count":1,"children":[]},{"name":"🚨 System Integrity Standard (시스템 무결성 표준)","total_count":1,"children":[]}]},{"name":"UI_Standards_Reference.md","total_count":12,"children":[{"name":"CSS 구조 및 무결성 (CSS Structure & Integrity) - 중요!","total_count":1,"children":[]},{"name":"Dividend Simulation Chart (Step 2)","total_count":1,"children":[]},{"name":"Donut Chart (Step 3 예정)","total_count":1,"children":[]},{"name":"Sankey Diagram (Step1)","total_count":1,"children":[]},{"name":"UI Standards Reference (UI 표준 참조)","total_count":1,"children":[]},{"name":"UI_Standards_Reference.md","total_count":1,"children":[]},{"name":"공통 컴포넌트 및 피드백 표준 (v0.3 통합)","total_count":1,"children":[]},{"name":"데이터 공유 및 연동 표준 (v0.9 신설)","total_count":1,"children":[]},{"name":"레이아웃 패널 순서 (Panel Ordering)","total_count":1,"children":[]},{"name":"시각화","total_count":1,"children":[]},{"name":"타이포그래피","total_count":1,"children":[]},{"name":"테마 시스템","total_count":1,"children":[]}]},{"name":"Version_Management_Principles.md","total_count":6,"children":[{"name":"1. 버전 번호 체계 (SemVer)","total_count":1,"children":[]},{"name":"2. SSOT 버전 관리 (Single Source of Truth)","total_count":1,"children":[]},{"name":"3. Triple Sync 자동화 (Vite Build)","total_count":1,"children":[]},{"name":"4. 버전 업데이트 워크플로우","total_count":1,"children":[]},{"name":"Version_Management_Principles.md","total_count":1,"children":[]},{"name":"📌 Version Management Principles (버전 관리 원칙)","total_count":1,"children":[]}]}]}]},{"name":"README.md","total_count":10,"children":[{"name":"code:bash (# 저장소 복제)","total_count":1,"children":[]},{"name":"IndividualSavings Flow UIUX (v0.9.x)","total_count":1,"children":[]},{"name":"README.md","total_count":1,"children":[]},{"name":"Tech Stack & Philosophy","total_count":1,"children":[]},{"name":"구조","total_count":1,"children":[]},{"name":"로컬 개발 및 실행","total_count":1,"children":[]},{"name":"문제 정의","total_count":1,"children":[]},{"name":"배포 페이지에서 바로 사용","total_count":1,"children":[]},{"name":"저장 방식","total_count":1,"children":[]},{"name":"현재 기능","total_count":1,"children":[]}]},{"name":"scripts","total_count":1,"children":[{"name":"sync-version.js","total_count":1,"children":[]}]},{"name":"shared","total_count":86,"children":[{"name":"components","total_count":23,"children":[{"name":"app-header.js","total_count":5,"children":[{"name":".connectedCallback()","total_count":1,"children":[]},{"name":".constructor()","total_count":1,"children":[]},{"name":".render()","total_count":1,"children":[]},{"name":".updateStatus()","total_count":1,"children":[]},{"name":"AppHeader","total_count":1,"children":[]}]},{"name":"data-hub-modal.js","total_count":15,"children":[{"name":".attributeChangedCallback()","total_count":1,"children":[]},{"name":".close()","total_count":1,"children":[]},{"name":".connectedCallback()","total_count":1,"children":[]},{"name":".constructor()","total_count":1,"children":[]},{"name":".observedAttributes()","total_count":1,"children":[]},{"name":".open()","total_count":1,"children":[]},{"name":".render()","total_count":1,"children":[]},{"name":".setActiveTab()","total_count":1,"children":[]},{"name":".setStep()","total_count":1,"children":[]},{"name":".setupEventListeners()","total_count":1,"children":[]},{"name":".showGeneratedCode()","total_count":1,"children":[]},{"name":".updateBackupList()","total_count":1,"children":[]},{"name":".updatePortfolioList()","total_count":1,"children":[]},{"name":".updateSimulationList()","total_count":1,"children":[]},{"name":"DataHubModal","total_count":1,"children":[]}]},{"name":"feedback-manager.js","total_count":3,"children":[{"name":"markPendingBar()","total_count":1,"children":[]},{"name":"notifyAutoSave()","total_count":1,"children":[]},{"name":"showFeedback()","total_count":1,"children":[]}]}]},{"name":"core","total_count":16,"children":[{"name":"share-utils.js","total_count":15,"children":[{"name":"buildShareLink()","total_count":1,"children":[]},{"name":"buildStateEnvelope()","total_count":1,"children":[]},{"name":"decodeBase64Url()","total_count":1,"children":[]},{"name":"decodePayloadFromHash()","total_count":1,"children":[]},{"name":"detectViewMode()","total_count":1,"children":[]},{"name":"encodeBase64Url()","total_count":1,"children":[]},{"name":"encodePayloadForHash()","total_count":1,"children":[]},{"name":"exportAsJson()","total_count":1,"children":[]},{"name":"getShareIdFromUrl()","total_count":1,"children":[]},{"name":"lzCompress()","total_count":1,"children":[]},{"name":"lzCompressToUriComponent()","total_count":1,"children":[]},{"name":"lzDecompress()","total_count":1,"children":[]},{"name":"lzDecompressFromUriComponent()","total_count":1,"children":[]},{"name":"parseImportedJson()","total_count":1,"children":[]},{"name":"parseStateEnvelope()","total_count":1,"children":[]}]},{"name":"utils.js","total_count":1,"children":[]}]},{"name":"legacy","total_count":2,"children":[{"name":"sw.js","total_count":2,"children":[{"name":"handleAssetRequest()","total_count":1,"children":[]},{"name":"handleNavigationRequest()","total_count":1,"children":[]}]}]},{"name":"pwa","total_count":22,"children":[{"name":"pwa-manager.js","total_count":22,"children":[{"name":".bindNetworkStatusFeedback()","total_count":1,"children":[]},{"name":".bindPwaInstallEvents()","total_count":1,"children":[]},{"name":".bindPwaLifecycleFeedback()","total_count":1,"children":[]},{"name":".bindPwaVersionAwareness()","total_count":1,"children":[]},{"name":".bindServiceWorkerUpdateFeedback()","total_count":1,"children":[]},{"name":".constructor()","total_count":1,"children":[]},{"name":".getRemotePwaVersionLastCheckedAt()","total_count":1,"children":[]},{"name":".init()","total_count":1,"children":[]},{"name":".maybeCheckRemotePwaVersion()","total_count":1,"children":[]},{"name":".maybeShowStandaloneLaunchFeedback()","total_count":1,"children":[]},{"name":".maybeTriggerServiceWorkerUpdateCheck()","total_count":1,"children":[]},{"name":".promptInstall()","total_count":1,"children":[]},{"name":".registerServiceWorker()","total_count":1,"children":[]},{"name":".setRemotePwaVersionLastCheckedAt()","total_count":1,"children":[]},{"name":".shouldCheckRemotePwaVersion()","total_count":1,"children":[]},{"name":".syncVersionCheckTriggerVisibility()","total_count":1,"children":[]},{"name":".triggerAutoBackupAndUpgrade()","total_count":1,"children":[]},{"name":"compareSemver()","total_count":1,"children":[]},{"name":"isStandaloneDisplayMode()","total_count":1,"children":[]},{"name":"parseSemver()","total_count":1,"children":[]},{"name":"PwaManager","total_count":1,"children":[]},{"name":"shouldUseServiceWorker()","total_count":1,"children":[]}]}]},{"name":"README.md","total_count":4,"children":[{"name":"README.md","total_count":1,"children":[]},{"name":"shared","total_count":1,"children":[]},{"name":"storage/hub-storage.js","total_count":1,"children":[]},{"name":"styles/step-theme.css","total_count":1,"children":[]}]},{"name":"storage","total_count":19,"children":[{"name":"backup-manager.js","total_count":13,"children":[{"name":"buildBackupSignature()","total_count":1,"children":[]},{"name":"createBackupEntry()","total_count":1,"children":[]},{"name":"createBackupEntryId()","total_count":1,"children":[]},{"name":"getBackupDb()","total_count":1,"children":[]},{"name":"getBackupTimestampMs()","total_count":1,"children":[]},{"name":"idbRequestToPromise()","total_count":1,"children":[]},{"name":"idbTransactionDone()","total_count":1,"children":[]},{"name":"isIndexedDbAvailable()","total_count":1,"children":[]},{"name":"loadBackupEntriesFromDb()","total_count":1,"children":[]},{"name":"maybeCreateAutoBackupIfDue()","total_count":1,"children":[]},{"name":"migrateAppKey()","total_count":1,"children":[]},{"name":"normalizeBackupEntries()","total_count":1,"children":[]},{"name":"persistBackupEntries()","total_count":1,"children":[]}]},{"name":"hub-storage.js","total_count":6,"children":[{"name":"_createId()","total_count":1,"children":[]},{"name":"getDb()","total_count":1,"children":[]},{"name":"isIdbSupported()","total_count":1,"children":[]},{"name":"loadFromLocal()","total_count":1,"children":[]},{"name":"perform()","total_count":1,"children":[]},{"name":"saveToLocal()","total_count":1,"children":[]}]}]}]},{"name":"src","total_count":33,"children":[{"name":"components","total_count":5,"children":[{"name":"backtest","total_count":4,"children":[{"name":"BacktestDashboard.tsx","total_count":1,"children":[{"name":"loadAssets()","total_count":1,"children":[]}]},{"name":"SimulationWarning.tsx","total_count":1,"children":[{"name":"SimulationWarning()","total_count":1,"children":[]}]},{"name":"AssetChart.tsx","total_count":1,"children":[]},{"name":"KpiGrid.tsx","total_count":1,"children":[]}]},{"name":"common","total_count":1,"children":[{"name":"Toast.tsx","total_count":1,"children":[{"name":"Toast()","total_count":1,"children":[]}]}]}]},{"name":"core","total_count":24,"children":[{"name":"backtest","total_count":5,"children":[{"name":"engine.ts","total_count":3,"children":[{"name":".calculateIRR()","total_count":1,"children":[]},{"name":".run()","total_count":1,"children":[]},{"name":"BacktestEngine","total_count":1,"children":[]}]},{"name":"engine.test.ts","total_count":1,"children":[]},{"name":"types.ts","total_count":1,"children":[]}]},{"name":"storage","total_count":17,"children":[{"name":"BackupService.ts","total_count":5,"children":[{"name":".createBackup()","total_count":1,"children":[]},{"name":".listBackups()","total_count":1,"children":[]},{"name":".maybeAutoBackup()","total_count":1,"children":[]},{"name":".trimBackups()","total_count":1,"children":[]},{"name":"BackupService","total_count":1,"children":[]}]},{"name":"CompatibilityBridge.ts","total_count":1,"children":[{"name":"initCompatibilityBridge()","total_count":1,"children":[]}]},{"name":"IsfStore.ts","total_count":11,"children":[{"name":".deleteStep2Simulation()","total_count":1,"children":[]},{"name":".getStep1ById()","total_count":1,"children":[]},{"name":".init()","total_count":1,"children":[]},{"name":".listStep1History()","total_count":1,"children":[]},{"name":".listStep2Simulations()","total_count":1,"children":[]},{"name":".loadStep1()","total_count":1,"children":[]},{"name":".perform()","total_count":1,"children":[]},{"name":".saveStep1()","total_count":1,"children":[]},{"name":".saveStep2Simulation()","total_count":1,"children":[]},{"name":".trimStore()","total_count":1,"children":[]},{"name":"IsfStore","total_count":1,"children":[]}]}]},{"name":"types","total_count":2,"children":[{"name":"models.ts","total_count":1,"children":[]},{"name":"money.ts","total_count":1,"children":[]}]}]},{"name":"entries","total_count":4,"children":[{"name":"step1.ts","total_count":1,"children":[]},{"name":"step2.ts","total_count":1,"children":[]},{"name":"step3.ts","total_count":1,"children":[]},{"name":"step4.tsx","total_count":1,"children":[]}]}]},{"name":"TODO.md","total_count":8,"children":[{"name":"ARCHIVE","total_count":1,"children":[]},{"name":"code:block1 ({\"kanban-plugin\":\"basic\"})","total_count":1,"children":[]},{"name":"In Progress (v0.9.12)","total_count":1,"children":[]},{"name":"Next High Priority","total_count":1,"children":[]},{"name":"Pending / Not Started","total_count":1,"children":[]},{"name":"RECENT HISTORY (v0.8.7~v0.8.8)","total_count":1,"children":[]},{"name":"TODO (v0.9.8)","total_count":1,"children":[]},{"name":"TODO.md","total_count":1,"children":[]}]},{"name":"vite.config.ts","total_count":1,"children":[]}]};
+
+    function transformData(jsonData) {
+        // Helper function to recursively build the children structure
+        function processNode(node, parentL1StageName) {
+            let displayName = node.name;
+            // Append total_count if it exists and is not already in the name
+            if (node.total_count !== undefined) {
+                if (!/\(Total Count: \d+\)$/.test(displayName)) {
+                    displayName += ` (Total Count: ${node.total_count})`;
+                }
+            }
+
+            const newNode = { name: displayName };
+
+            if (parentL1StageName === "Root") {
+                 newNode.originalStageName = node.name;
+            } else {
+                newNode.originalStageName = parentL1StageName;
+            }
+
+            if (node.children && node.children.length > 0) {
+                const stageNameToPass = (parentL1StageName === "Root") ? node.name : parentL1StageName;
+                newNode.children = node.children.map(child => processNode(child, stageNameToPass));
+            }
+
+            return newNode;
+        }
+
+        let rootDisplayName = jsonData.name;
+        if (jsonData.total_count !== undefined && !/\(Total Count: \d+\)$/.test(rootDisplayName)) {
+            rootDisplayName += ` (Total Count: ${jsonData.total_count})`;
+        }
+
+        return {
+            name: rootDisplayName,
+            originalStageName: "Root",
+            children: (jsonData.children || []).map(child => processNode(child, "Root"))
+        };
+    }
+
+    const treeData = transformData(initialJsonData);
+
+    // Auto-populated phaseColors: every depth-1 child of the root gets
+    // a stable colour from a bigger palette so all top-level dirs are
+    // distinguishable.
+    const PALETTE = [
+      ["#3498DB","#2980B9","#AED6F1"], ["#2ECC71","#27AE60","#A9DFBF"],
+      ["#E74C3C","#C0392B","#F5B7B1"], ["#9B59B6","#8E44AD","#D7BDE2"],
+      ["#F39C12","#D68910","#FAD7A0"], ["#1ABC9C","#117864","#A2D9CE"],
+      ["#34495E","#1B2631","#ABB2B9"], ["#E67E22","#BA4A00","#F5CBA7"],
+      ["#16A085","#0E6655","#A2D9CE"], ["#D35400","#A04000","#EDBB99"],
+      ["#7F8C8D","#566573","#D5DBDB"], ["#C0392B","#7B241C","#F5B7B1"],
+      ["#2E86C1","#1B4F72","#A9CCE3"], ["#28B463","#196F3D","#A9DFBF"],
+      ["#AF7AC5","#6C3483","#D2B4DE"],
+    ];
+    const phaseColors = { "Root": { fill: "#4A4A4A", stroke: "#333333", collapsedFill: "#6C757D" },
+                          "Default": { fill: "#BDC3C7", stroke: "#95A5A6", collapsedFill: "#ECF0F1" } };
+    (initialJsonData.children || []).forEach((c, i) => {
+      const pal = PALETTE[i % PALETTE.length];
+      phaseColors[c.name] = { fill: pal[0], stroke: pal[1], collapsedFill: pal[2] };
+    });
+
+    const levelSpecificPalettes = {
+      0: { fill: "#4A4A4A", stroke: "#333333", collapsedFill: "#6C757D" },
+      2: { fill: "#6ab04c", stroke: "#508a38", collapsedFill: "#a3d391" },
+      3: { fill: "#f0932b", stroke: "#d0730f", collapsedFill: "#f6c07e" },
+      4: { fill: "#be2edd", stroke: "#a01cb3", collapsedFill: "#e08bf2" },
+      5: { fill: "#00a8ff", stroke: "#007ac1", collapsedFill: "#74d2ff" },
+      6: { fill: "#e55039", stroke: "#c23620", collapsedFill: "#f09a8d" },
+      default: { fill: "#747d8c", stroke: "#57606f", collapsedFill: "#a4b0be" }
+    };
+
+    const svgElement = d3.select("#tree-svg");
+    const initialSvgWidth = +svgElement.attr("width");
+    const initialSvgHeight = +svgElement.attr("height");
+    const margin = { top: 40, right: 120, bottom: 80, left: 450 };
+    let width = initialSvgWidth - margin.left - margin.right;
+    let height = initialSvgHeight - margin.top - margin.bottom;
+    const duration = 500;
+    let nodeCounter = 0;
+    const g = svgElement.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+    const treemap = d3.tree().nodeSize([40, 0]);
+    let rootNode = d3.hierarchy(treeData, d => d.children);
+    rootNode.x0 = 0;
+    rootNode.y0 = 0;
+
+    if (rootNode.children) {
+      rootNode.children.forEach(d_child => {
+        if (d_child.children) { collapseBranch(d_child); }
+      });
+    }
+    updateTree(rootNode);
+
+    function collapseBranch(d) { if (d.children) { d._children = d.children; d._children.forEach(collapseBranch); d.children = null; } }
+    function expandBranch(d) { if (d._children) { d.children = d._children; d._children = null; } if (d.children) { d.children.forEach(expandBranch); } }
+    window.expandAll = () => { expandBranch(rootNode); updateTree(rootNode); };
+    window.collapseAll = () => { if (rootNode.children) { rootNode.children.forEach(collapseBranch); } updateTree(rootNode); };
+    window.resetView = () => { if (rootNode.children) { rootNode.children.forEach(d_child => { if (d_child.children || d_child._children) { collapseBranch(d_child); } }); } if (rootNode._children && !rootNode.children) { rootNode.children = rootNode._children; rootNode._children = null; } updateTree(rootNode); };
+
+    function updateTree(source) {
+      const treeLayoutData = treemap(rootNode);
+      let nodes = treeLayoutData.descendants();
+      let links = treeLayoutData.descendants().slice(1);
+
+      let minX = 0;
+      let maxX = 0;
+      if (nodes.length > 0) {
+        minX = d3.min(nodes, d => d.x);
+        maxX = d3.max(nodes, d => d.x);
+      }
+
+      let neededHeight = Math.max(initialSvgHeight, maxX - minX + margin.top + margin.bottom + 100);
+      svgElement.transition().duration(duration / 2).attr("height", neededHeight);
+      g.transition().duration(duration / 2).attr("transform", `translate(${margin.left},${margin.top - minX + 40})`);
+
+      nodes.forEach(d => { d.y = d.depth * 400; }); // Adjust horizontal separation if needed
+
+      const node = g.selectAll('g.node').data(nodes, d => d.id || (d.id = ++nodeCounter));
+      const nodeEnter = node.enter().append('g')
+        .attr('class', d => "node" + (d.children || d._children ? " node--internal" : " node--leaf") + (d._children ? " _children" : ""))
+        .attr('transform', d => `translate(${source.y0},${source.x0})`)
+        .on('click', (event, d) => { if (d.children) { d._children = d.children; d.children = null; } else if (d._children) { d.children = d._children; d._children = null; } updateTree(d); })
+        .style('cursor', d => (d.children || d._children) ? 'pointer' : 'default');
+
+      nodeEnter.append('circle').attr('r', 1e-6);
+
+      nodeEnter.append('text')
+        .attr('dy', '.35em')
+        .attr('x', d => d.children || d._children ? -14 : 14)
+        .attr('text-anchor', d => d.children || d._children ? 'end' : 'start')
+        .style("fill-opacity", 1e-6)
+        .call(wrapText, 380);
+
+      const nodeUpdate = nodeEnter.merge(node);
+      nodeUpdate.transition().duration(duration)
+        .attr('transform', d => `translate(${d.y},${d.x})`)
+        .attr('class', d => "node" + (d.children ? " node--internal" : " node--leaf") + (d._children ? " node--internal _children" : ""));
+
+      nodeUpdate.select('circle').attr('r', 8.5)
+        .style('fill', d => {
+            let palette;
+            if (d.depth === 0) {
+                palette = levelSpecificPalettes[0];
+            } else if (d.depth === 1) {
+                palette = phaseColors[d.data.originalStageName] || phaseColors.Default;
+            } else {
+                palette = levelSpecificPalettes[d.depth] || levelSpecificPalettes.default;
+            }
+            if (d._children) return palette.collapsedFill;
+            if (d.children) return palette.fill;
+            return "#fff";
+        })
+        .style('stroke', d => {
+            let palette;
+            if (d.depth === 0) {
+                palette = levelSpecificPalettes[0];
+            } else if (d.depth === 1) {
+                palette = phaseColors[d.data.originalStageName] || phaseColors.Default;
+            } else {
+                palette = levelSpecificPalettes[d.depth] || levelSpecificPalettes.default;
+            }
+            return palette.stroke;
+        });
+      nodeUpdate.select('text').style("fill-opacity", 1).call(wrapText, 380);
+
+      const nodeExit = node.exit().transition().duration(duration).attr('transform', d => `translate(${source.y},${source.x})`).remove();
+      nodeExit.select('circle').attr('r', 1e-6);
+      nodeExit.select('text').style('fill-opacity', 1e-6);
+
+      const link = g.selectAll('path.link').data(links, d => d.id);
+      const linkEnter = link.enter().insert('path', "g").attr('class', 'link').attr('d', d => { const o = { x: source.x0, y: source.y0 }; return diagonal(o, o); });
+
+      linkEnter.merge(link).transition().duration(duration).attr('d', d => diagonal(d, d.parent))
+        .style('stroke', d => {
+            const sourceNode = d.parent;
+            if (!sourceNode) return phaseColors.Default.stroke;
+            const l1AncestorName = sourceNode.data.originalStageName;
+            const colorPalette = phaseColors[l1AncestorName] || phaseColors.Default;
+            return colorPalette.stroke;
+        });
+      link.exit().transition().duration(duration).attr('d', d => { const o = { x: source.x, y: source.y }; return diagonal(o, o); }).remove();
+      nodes.forEach(d => { d.x0 = d.x; d.y0 = d.y; });
+    }
+
+    function diagonal(s, d) { return `M ${s.y} ${s.x} C ${(s.y + d.y) / 2} ${s.x}, ${(s.y + d.y) / 2} ${d.x}, ${d.y} ${d.x}`; }
+
+    function wrapText(textElements, maxWidth) {
+        const textPartColors = {
+            name: '#343a40',
+            count: '#0056b3'
+        };
+        const countRegex = /(\s\(Total Count: \d+\))$/;
+
+        textElements.each(function () {
+            const textD3 = d3.select(this);
+            const originalNodeText = textD3.datum().data.name;
+            const x = parseFloat(textD3.attr("x") || 0);
+            const initialDy = textD3.attr("dy");
+            const textAnchor = textD3.attr("text-anchor");
+            const lineHeight = 1.1;
+
+            textD3.text(null);
+
+            let namePart = originalNodeText;
+            let countPartText = "";
+
+            const countMatch = originalNodeText.match(countRegex);
+            if (countMatch && originalNodeText.endsWith(countMatch[0])) {
+                namePart = originalNodeText.substring(0, originalNodeText.length - countMatch[0].length).trim();
+                countPartText = countMatch[0].trim();
+            }
+
+            const tokens = [];
+            namePart.split(/\s+/).filter(Boolean).forEach(word => {
+                tokens.push({ text: word, type: 'name' });
+            });
+            if (countPartText) {
+                tokens.push({ text: countPartText, type: 'count' });
+            }
+
+            if (tokens.length === 0 && originalNodeText) {
+                tokens.push({ text: originalNodeText, type: 'name' });
+            }
+
+            let currentTspan = textD3.append("tspan").attr("x", x).attr("dy", initialDy);
+            if (textAnchor === "end") currentTspan.attr("text-anchor", "end");
+
+            let lineTokens = [];
+
+            for (let i = 0; i < tokens.length; i++) {
+                const tokenObj = tokens[i];
+
+                lineTokens.push(tokenObj);
+                currentTspan.text(lineTokens.map(t => t.text).join(" "));
+
+                if (currentTspan.node().getComputedTextLength() > maxWidth && lineTokens.length > 1) {
+                    lineTokens.pop();
+
+                    currentTspan.text(null);
+                    lineTokens.forEach((prevToken, idx) => {
+                        currentTspan.append("tspan")
+                            .text((idx > 0 ? " " : "") + prevToken.text)
+                            .style("fill", textPartColors[prevToken.type] || textPartColors.name)
+                            .style("font-weight", prevToken.type === 'count' ? "bold" : "normal");
+                    });
+
+                    lineTokens = [tokenObj];
+                    currentTspan = textD3.append("tspan").attr("x", x).attr("dy", lineHeight + "em");
+                    if (textAnchor === "end") currentTspan.attr("text-anchor", "end");
+                }
+            }
+
+            currentTspan.text(null);
+            lineTokens.forEach((token, idx) => {
+                currentTspan.append("tspan")
+                    .text((idx > 0 ? " " : "") + token.text)
+                    .style("fill", textPartColors[token.type] || textPartColors.name)
+                    .style("font-weight", token.type === 'count' ? "bold" : "normal");
+            });
+
+            if (textD3.selectAll("tspan > tspan").empty() && textD3.select("tspan").text().length === 0 && originalNodeText) {
+                let t = textD3.select("tspan");
+                let displayText = originalNodeText;
+                t.text(displayText).style("fill", textPartColors.name);
+                if (t.node() && t.node().getComputedTextLength() > maxWidth && displayText.length > 20) {
+                    let estimatedChars = Math.floor(maxWidth / (t.node().getComputedTextLength()/displayText.length) );
+                    displayText = displayText.substring(0, Math.max(0, estimatedChars - 3)) + "...";
+                    t.text(displayText);
+                }
+            }
+        });
+    }
+  </script>
+</body>
+</html>

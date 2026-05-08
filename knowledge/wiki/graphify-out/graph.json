@@ -1,0 +1,4436 @@
+{
+  "directed": false,
+  "multigraph": false,
+  "graph": {},
+  "nodes": [
+    {
+      "label": "Agent_Behavior_Standard.md",
+      "file_type": "document",
+      "source_file": "Agent_Behavior_Standard.md",
+      "source_location": "L1",
+      "id": "agent_behavior_standard_md",
+      "community": 21,
+      "norm_label": "agent_behavior_standard.md"
+    },
+    {
+      "label": "\ud83d\udee0\ufe0f Agent Behavior Standard (\uc5d0\uc774\uc804\ud2b8 \ud589\ub3d9 \uc9c0\uce68)",
+      "file_type": "document",
+      "source_file": "Agent_Behavior_Standard.md",
+      "source_location": "L8",
+      "id": "wiki_agent_behavior_standard_agent_behavior_standard",
+      "community": 21,
+      "norm_label": "\ud83d\udee0\ufe0f agent behavior standard (\u110b\u1166\u110b\u1175\u110c\u1165\u11ab\u1110\u1173 \u1112\u1162\u11bc\u1103\u1169\u11bc \u110c\u1175\u110e\u1175\u11b7)"
+    },
+    {
+      "label": "1. \ud589\ub3d9 \uac15\ub839 (Guardrails)",
+      "file_type": "document",
+      "source_file": "Agent_Behavior_Standard.md",
+      "source_location": "L12",
+      "id": "wiki_agent_behavior_standard_1_guardrails",
+      "community": 21,
+      "norm_label": "1. \u1112\u1162\u11bc\u1103\u1169\u11bc \u1100\u1161\u11bc\u1105\u1167\u11bc (guardrails)"
+    },
+    {
+      "label": "code:block1 (1. [Step] \u2192 verify: [check])",
+      "file_type": "document",
+      "source_file": "Agent_Behavior_Standard.md",
+      "source_location": "L17",
+      "id": "wiki_agent_behavior_standard_codeblock_1",
+      "community": 21,
+      "norm_label": "code:block1 (1. [step] \u2192 verify: [check])"
+    },
+    {
+      "label": "Architecture_Reference.md",
+      "file_type": "document",
+      "source_file": "Architecture_Reference.md",
+      "source_location": "L1",
+      "id": "architecture_reference_md",
+      "community": 8,
+      "norm_label": "architecture_reference.md"
+    },
+    {
+      "label": "Architecture Reference (\uc544\ud0a4\ud14d\ucc98 \ucc38\uc870)",
+      "file_type": "document",
+      "source_file": "Architecture_Reference.md",
+      "source_location": "L7",
+      "id": "wiki_architecture_reference_architecture_reference",
+      "community": 8,
+      "norm_label": "architecture reference (\u110b\u1161\u110f\u1175\u1110\u1166\u11a8\u110e\u1165 \u110e\u1161\u11b7\u110c\u1169)"
+    },
+    {
+      "label": "\uae30\uc220 \uc2a4\ud0dd (Tech Stack)",
+      "file_type": "document",
+      "source_file": "Architecture_Reference.md",
+      "source_location": "L11",
+      "id": "wiki_architecture_reference_tech_stack",
+      "community": 8,
+      "norm_label": "\u1100\u1175\u1109\u116e\u11af \u1109\u1173\u1110\u1162\u11a8 (tech stack)"
+    },
+    {
+      "label": "\ub514\ub809\ud1a0\ub9ac \uad6c\uc870",
+      "file_type": "document",
+      "source_file": "Architecture_Reference.md",
+      "source_location": "L19",
+      "id": "wiki_architecture_reference",
+      "community": 8,
+      "norm_label": "\u1103\u1175\u1105\u1166\u11a8\u1110\u1169\u1105\u1175 \u1100\u116e\u110c\u1169"
+    },
+    {
+      "label": "\ubaa8\ub4c8 \ubc0f \ube4c\ub4dc \uad00\ub9ac",
+      "file_type": "document",
+      "source_file": "Architecture_Reference.md",
+      "source_location": "L31",
+      "id": "wiki_architecture_reference_31",
+      "community": 8,
+      "norm_label": "\u1106\u1169\u1103\u1172\u11af \u1106\u1175\u11be \u1107\u1175\u11af\u1103\u1173 \u1100\u116a\u11ab\u1105\u1175"
+    },
+    {
+      "label": "\uc2a4\ud1a0\ub9ac\uc9c0 \uc544\ud0a4\ud14d\ucc98 (Modern Storage v2)",
+      "file_type": "document",
+      "source_file": "Architecture_Reference.md",
+      "source_location": "L37",
+      "id": "wiki_architecture_reference_modern_storage_v2",
+      "community": 8,
+      "norm_label": "\u1109\u1173\u1110\u1169\u1105\u1175\u110c\u1175 \u110b\u1161\u110f\u1175\u1110\u1166\u11a8\u110e\u1165 (modern storage v2)"
+    },
+    {
+      "label": "\ud575\uc2ec \ucca0\ud559: \uc2dc\uc2a4\ud15c \ubb34\uacb0\uc131 (Integrity First)",
+      "file_type": "document",
+      "source_file": "Architecture_Reference.md",
+      "source_location": "L40",
+      "id": "wiki_architecture_reference_integrity_first",
+      "community": 8,
+      "norm_label": "\u1112\u1162\u11a8\u1109\u1175\u11b7 \u110e\u1165\u11af\u1112\u1161\u11a8: \u1109\u1175\u1109\u1173\u1110\u1166\u11b7 \u1106\u116e\u1100\u1167\u11af\u1109\u1165\u11bc (integrity first)"
+    },
+    {
+      "label": "\ub370\uc774\ud130 \ud750\ub984 (Data Flow)",
+      "file_type": "document",
+      "source_file": "Architecture_Reference.md",
+      "source_location": "L45",
+      "id": "wiki_architecture_reference_data_flow",
+      "community": 8,
+      "norm_label": "\u1103\u1166\u110b\u1175\u1110\u1165 \u1112\u1173\u1105\u1173\u11b7 (data flow)"
+    },
+    {
+      "label": "Data_Model_Reference.md",
+      "file_type": "document",
+      "source_file": "Data_Model_Reference.md",
+      "source_location": "L1",
+      "id": "data_model_reference_md",
+      "community": 5,
+      "norm_label": "data_model_reference.md"
+    },
+    {
+      "label": "Data Model Reference (\ub370\uc774\ud130 \ubaa8\ub378 \ucc38\uc870)",
+      "file_type": "document",
+      "source_file": "Data_Model_Reference.md",
+      "source_location": "L7",
+      "id": "wiki_data_model_reference_data_model_reference",
+      "community": 5,
+      "norm_label": "data model reference (\u1103\u1166\u110b\u1175\u1110\u1165 \u1106\u1169\u1103\u1166\u11af \u110e\u1161\u11b7\u110c\u1169)"
+    },
+    {
+      "label": "\uae08\uc561 \ub2e8\uc704 (Currency Units)",
+      "file_type": "document",
+      "source_file": "Data_Model_Reference.md",
+      "source_location": "L11",
+      "id": "wiki_data_model_reference_currency_units",
+      "community": 5,
+      "norm_label": "\u1100\u1173\u11b7\u110b\u1162\u11a8 \u1103\u1161\u11ab\u110b\u1171 (currency units)"
+    },
+    {
+      "label": "code:typescript (// \uc608\uc2dc)",
+      "file_type": "document",
+      "source_file": "Data_Model_Reference.md",
+      "source_location": "L17",
+      "id": "wiki_data_model_reference_codeblock_1",
+      "community": 5,
+      "norm_label": "code:typescript (// \u110b\u1168\u1109\u1175)"
+    },
+    {
+      "label": "\uc800\uc7a5 \ub808\uc774\uc5b4 (IsfStore v2)",
+      "file_type": "document",
+      "source_file": "Data_Model_Reference.md",
+      "source_location": "L22",
+      "id": "wiki_data_model_reference_isfstore_v2",
+      "community": 5,
+      "norm_label": "\u110c\u1165\u110c\u1161\u11bc \u1105\u1166\u110b\u1175\u110b\u1165 (isfstore v2)"
+    },
+    {
+      "label": "IndexedDB \uc2a4\ud0a4\ub9c8 (`isf-v2-db`)",
+      "file_type": "document",
+      "source_file": "Data_Model_Reference.md",
+      "source_location": "L26",
+      "id": "wiki_data_model_reference_indexeddb_isf_v2_db",
+      "community": 5,
+      "norm_label": "indexeddb \u1109\u1173\u110f\u1175\u1106\u1161 (`isf-v2-db`)"
+    },
+    {
+      "label": "\uc800\uc7a5\uc18c \uad00\ub9ac \uaddc\uce59",
+      "file_type": "document",
+      "source_file": "Data_Model_Reference.md",
+      "source_location": "L34",
+      "id": "wiki_data_model_reference",
+      "community": 5,
+      "norm_label": "\u110c\u1165\u110c\u1161\u11bc\u1109\u1169 \u1100\u116a\u11ab\u1105\u1175 \u1100\u1172\u110e\u1175\u11a8"
+    },
+    {
+      "label": "\ub370\uc774\ud130 \ubaa8\ub378 \uc815\uc758 (SSOT)",
+      "file_type": "document",
+      "source_file": "Data_Model_Reference.md",
+      "source_location": "L39",
+      "id": "wiki_data_model_reference_ssot",
+      "community": 5,
+      "norm_label": "\u1103\u1166\u110b\u1175\u1110\u1165 \u1106\u1169\u1103\u1166\u11af \u110c\u1165\u11bc\u110b\u1174 (ssot)"
+    },
+    {
+      "label": "Step 1 State (v2)",
+      "file_type": "document",
+      "source_file": "Data_Model_Reference.md",
+      "source_location": "L43",
+      "id": "wiki_data_model_reference_step_1_state_v2",
+      "community": 5,
+      "norm_label": "step 1 state (v2)"
+    },
+    {
+      "label": "code:typescript (export interface Step1State {)",
+      "file_type": "document",
+      "source_file": "Data_Model_Reference.md",
+      "source_location": "L44",
+      "id": "wiki_data_model_reference_codeblock_2",
+      "community": 5,
+      "norm_label": "code:typescript (export interface step1state {)"
+    },
+    {
+      "label": "\ub370\uc774\ud130 \ube0c\ub9ac\uc9c0 (Bridge Strategy)",
+      "file_type": "document",
+      "source_file": "Data_Model_Reference.md",
+      "source_location": "L53",
+      "id": "wiki_data_model_reference_bridge_strategy",
+      "community": 5,
+      "norm_label": "\u1103\u1166\u110b\u1175\u1110\u1165 \u1107\u1173\u1105\u1175\u110c\u1175 (bridge strategy)"
+    },
+    {
+      "label": "Financial_Taxation_Reference.md",
+      "file_type": "document",
+      "source_file": "Financial_Taxation_Reference.md",
+      "source_location": "L1",
+      "id": "financial_taxation_reference_md",
+      "community": 9,
+      "norm_label": "financial_taxation_reference.md"
+    },
+    {
+      "label": "Financial Taxation Reference (\uae08\uc735\uc18c\ub4dd \ubc0f \uacfc\uc138 \uc815\ucc45 \ucc38\uc870)",
+      "file_type": "document",
+      "source_file": "Financial_Taxation_Reference.md",
+      "source_location": "L7",
+      "id": "wiki_financial_taxation_reference_financial_taxation_reference",
+      "community": 9,
+      "norm_label": "financial taxation reference (\u1100\u1173\u11b7\u110b\u1172\u11bc\u1109\u1169\u1103\u1173\u11a8 \u1106\u1175\u11be \u1100\u116a\u1109\u1166 \u110c\u1165\u11bc\u110e\u1162\u11a8 \u110e\u1161\u11b7\u110c\u1169)"
+    },
+    {
+      "label": "\u2696\ufe0f \ub300\ud55c\ubbfc\uad6d \uae08\uc735\uc18c\ub4dd\uc885\ud569\uacfc\uc138 \uc815\ucc45 (\uc694\uc57d)",
+      "file_type": "document",
+      "source_file": "Financial_Taxation_Reference.md",
+      "source_location": "L11",
+      "id": "wiki_financial_taxation_reference",
+      "community": 9,
+      "norm_label": "\u2696\ufe0f \u1103\u1162\u1112\u1161\u11ab\u1106\u1175\u11ab\u1100\u116e\u11a8 \u1100\u1173\u11b7\u110b\u1172\u11bc\u1109\u1169\u1103\u1173\u11a8\u110c\u1169\u11bc\u1112\u1161\u11b8\u1100\u116a\u1109\u1166 \u110c\u1165\u11bc\u110e\u1162\u11a8 (\u110b\u116d\u110b\u1163\u11a8)"
+    },
+    {
+      "label": "\uc885\ud569\uc18c\ub4dd \ub204\uc9c4\uc138\uc728 (2023\ub144 \uadc0\uc18d\ubd84 \uae30\uc900)",
+      "file_type": "document",
+      "source_file": "Financial_Taxation_Reference.md",
+      "source_location": "L19",
+      "id": "wiki_financial_taxation_reference_2023",
+      "community": 9,
+      "norm_label": "\u110c\u1169\u11bc\u1112\u1161\u11b8\u1109\u1169\u1103\u1173\u11a8 \u1102\u116e\u110c\u1175\u11ab\u1109\u1166\u110b\u1172\u11af (2023\u1102\u1167\u11ab \u1100\u1171\u1109\u1169\u11a8\u1107\u116e\u11ab \u1100\u1175\u110c\u116e\u11ab)"
+    },
+    {
+      "label": "\ud83d\udea8 \ud504\ub85c\uc81d\ud2b8 UI \uacbd\uace0 \uc815\ucc45 (Safety Margin)",
+      "file_type": "document",
+      "source_file": "Financial_Taxation_Reference.md",
+      "source_location": "L34",
+      "id": "wiki_financial_taxation_reference_ui_safety_margin",
+      "community": 9,
+      "norm_label": "\ud83d\udea8 \u1111\u1173\u1105\u1169\u110c\u1166\u11a8\u1110\u1173 ui \u1100\u1167\u11bc\u1100\u1169 \u110c\u1165\u11bc\u110e\u1162\u11a8 (safety margin)"
+    },
+    {
+      "label": "1. \uae08\uc735\uc18c\ub4dd\uc885\ud569\uacfc\uc138 \uc8fc\uc758 (`warn`)",
+      "file_type": "document",
+      "source_file": "Financial_Taxation_Reference.md",
+      "source_location": "L38",
+      "id": "wiki_financial_taxation_reference_1_warn",
+      "community": 9,
+      "norm_label": "1. \u1100\u1173\u11b7\u110b\u1172\u11bc\u1109\u1169\u1103\u1173\u11a8\u110c\u1169\u11bc\u1112\u1161\u11b8\u1100\u116a\u1109\u1166 \u110c\u116e\u110b\u1174 (`warn`)"
+    },
+    {
+      "label": "2. \uce58\uba85\uc801 \uacbd\uace0 (`crit`)",
+      "file_type": "document",
+      "source_file": "Financial_Taxation_Reference.md",
+      "source_location": "L43",
+      "id": "wiki_financial_taxation_reference_2_crit",
+      "community": 9,
+      "norm_label": "2. \u110e\u1175\u1106\u1167\u11bc\u110c\u1165\u11a8 \u1100\u1167\u11bc\u1100\u1169 (`crit`)"
+    },
+    {
+      "label": "\ud83d\udee0\ufe0f \uad6c\ud604 \uac00\uc774\ub4dc",
+      "file_type": "document",
+      "source_file": "Financial_Taxation_Reference.md",
+      "source_location": "L48",
+      "id": "wiki_financial_taxation_reference_48",
+      "community": 9,
+      "norm_label": "\ud83d\udee0\ufe0f \u1100\u116e\u1112\u1167\u11ab \u1100\u1161\u110b\u1175\u1103\u1173"
+    },
+    {
+      "label": "index.md",
+      "file_type": "document",
+      "source_file": "index.md",
+      "source_location": "L1",
+      "id": "index_md",
+      "community": 12,
+      "norm_label": "index.md"
+    },
+    {
+      "label": "\ud83d\uddfa\ufe0f Project Knowledge Index (LLM Wiki)",
+      "file_type": "document",
+      "source_file": "index.md",
+      "source_location": "L7",
+      "id": "wiki_index_project_knowledge_index_llm_wiki",
+      "community": 12,
+      "norm_label": "\ud83d\uddfa\ufe0f project knowledge index (llm wiki)"
+    },
+    {
+      "label": "\ud83c\udfdb\ufe0f \ud575\uc2ec \ucc38\uc870 (The Constitution)",
+      "file_type": "document",
+      "source_file": "index.md",
+      "source_location": "L11",
+      "id": "wiki_index_the_constitution",
+      "community": 12,
+      "norm_label": "\ud83c\udfdb\ufe0f \u1112\u1162\u11a8\u1109\u1175\u11b7 \u110e\u1161\u11b7\u110c\u1169 (the constitution)"
+    },
+    {
+      "label": "\ud83d\ude80 \ud65c\uc131 \uc9c0\uc2dd (Active Knowledge)",
+      "file_type": "document",
+      "source_file": "index.md",
+      "source_location": "L22",
+      "id": "wiki_index_active_knowledge",
+      "community": 12,
+      "norm_label": "\ud83d\ude80 \u1112\u116a\u11af\u1109\u1165\u11bc \u110c\u1175\u1109\u1175\u11a8 (active knowledge)"
+    },
+    {
+      "label": "\ud83d\udcdc \uc5f0\ub300\uae30 \ubc0f \ub85c\uadf8 (Timeline & Logs)",
+      "file_type": "document",
+      "source_file": "index.md",
+      "source_location": "L27",
+      "id": "wiki_index_timeline_logs",
+      "community": 12,
+      "norm_label": "\ud83d\udcdc \u110b\u1167\u11ab\u1103\u1162\u1100\u1175 \u1106\u1175\u11be \u1105\u1169\u1100\u1173 (timeline & logs)"
+    },
+    {
+      "label": "\ud83d\uddc4\ufe0f \uc544\uce74\uc774\ube0c (Archive)",
+      "file_type": "document",
+      "source_file": "index.md",
+      "source_location": "L32",
+      "id": "wiki_index_archive",
+      "community": 12,
+      "norm_label": "\ud83d\uddc4\ufe0f \u110b\u1161\u110f\u1161\u110b\u1175\u1107\u1173 (archive)"
+    },
+    {
+      "label": "Knowledge_Harness.md",
+      "file_type": "document",
+      "source_file": "Knowledge_Harness.md",
+      "source_location": "L1",
+      "id": "knowledge_harness_md",
+      "community": 10,
+      "norm_label": "knowledge_harness.md"
+    },
+    {
+      "label": "\uc9c0\uc2dd \ud558\ub124\uc2a4 \uc6b4\uc601 \uccb4\uacc4 (Knowledge Harness: LLM Wiki)",
+      "file_type": "document",
+      "source_file": "Knowledge_Harness.md",
+      "source_location": "L7",
+      "id": "wiki_knowledge_harness_knowledge_harness_llm_wiki",
+      "community": 10,
+      "norm_label": "\u110c\u1175\u1109\u1175\u11a8 \u1112\u1161\u1102\u1166\u1109\u1173 \u110b\u116e\u11ab\u110b\u1167\u11bc \u110e\u1166\u1100\u1168 (knowledge harness: llm wiki)"
+    },
+    {
+      "label": "\uc9c0\uc2dd \uad00\ub9ac \uad6c\uc870",
+      "file_type": "document",
+      "source_file": "Knowledge_Harness.md",
+      "source_location": "L11",
+      "id": "wiki_knowledge_harness",
+      "community": 10,
+      "norm_label": "\u110c\u1175\u1109\u1175\u11a8 \u1100\u116a\u11ab\u1105\u1175 \u1100\u116e\u110c\u1169"
+    },
+    {
+      "label": "\uc9c0\uc2dd \uc0dd\uc131 \ub77c\uc774\ud504\uc0ac\uc774\ud074 (The Compounding Loop)",
+      "file_type": "document",
+      "source_file": "Knowledge_Harness.md",
+      "source_location": "L22",
+      "id": "wiki_knowledge_harness_the_compounding_loop",
+      "community": 10,
+      "norm_label": "\u110c\u1175\u1109\u1175\u11a8 \u1109\u1162\u11bc\u1109\u1165\u11bc \u1105\u1161\u110b\u1175\u1111\u1173\u1109\u1161\u110b\u1175\u110f\u1173\u11af (the compounding loop)"
+    },
+    {
+      "label": "code:block1 ([\uac1c\ubc1c/\ub9ac\ud329\ud130\ub9c1 \uc791\uc5c5 \uc644\ub8cc])",
+      "file_type": "document",
+      "source_file": "Knowledge_Harness.md",
+      "source_location": "L24",
+      "id": "wiki_knowledge_harness_codeblock_1",
+      "community": 10,
+      "norm_label": "code:block1 ([\u1100\u1162\u1107\u1161\u11af/\u1105\u1175\u1111\u1162\u11a8\u1110\u1165\u1105\u1175\u11bc \u110c\u1161\u11a8\u110b\u1165\u11b8 \u110b\u116a\u11ab\u1105\u116d])"
+    },
+    {
+      "label": "\uc704\ud0a4 \ub178\ub4dc \uc791\uc131 \uaddc\uce59",
+      "file_type": "document",
+      "source_file": "Knowledge_Harness.md",
+      "source_location": "L40",
+      "id": "wiki_knowledge_harness_40",
+      "community": 10,
+      "norm_label": "\u110b\u1171\u110f\u1175 \u1102\u1169\u1103\u1173 \u110c\u1161\u11a8\u1109\u1165\u11bc \u1100\u1172\u110e\u1175\u11a8"
+    },
+    {
+      "label": "code:yaml (---)",
+      "file_type": "document",
+      "source_file": "Knowledge_Harness.md",
+      "source_location": "L43",
+      "id": "wiki_knowledge_harness_codeblock_2",
+      "community": 10,
+      "norm_label": "code:yaml (---)"
+    },
+    {
+      "label": "\ub2f4\ub2f9 \uc2a4\ud0ac",
+      "file_type": "document",
+      "source_file": "Knowledge_Harness.md",
+      "source_location": "L54",
+      "id": "wiki_knowledge_harness_54",
+      "community": 10,
+      "norm_label": "\u1103\u1161\u11b7\u1103\u1161\u11bc \u1109\u1173\u110f\u1175\u11af"
+    },
+    {
+      "label": "log.md",
+      "file_type": "document",
+      "source_file": "log.md",
+      "source_location": "L1",
+      "id": "log_md",
+      "community": 0,
+      "norm_label": "log.md"
+    },
+    {
+      "label": "Project Evolution Log (\uc5f0\ub300\uae30\uc801 \uc791\uc5c5 \ub85c\uadf8)",
+      "file_type": "document",
+      "source_file": "log.md",
+      "source_location": "L1",
+      "id": "wiki_log_project_evolution_log",
+      "community": 0,
+      "norm_label": "project evolution log (\u110b\u1167\u11ab\u1103\u1162\u1100\u1175\u110c\u1165\u11a8 \u110c\u1161\u11a8\u110b\u1165\u11b8 \u1105\u1169\u1100\u1173)"
+    },
+    {
+      "label": "[2026-05-07] fix | \ubc84\uc804 \uad00\ub9ac \ub2e8\uc77c \uc9c4\uc2e4 \uacf5\uae09\uc6d0(SSOT) \uc218\ub9bd \ubc0f \uc790\ub3d9\ud654 (v0.9.12)",
+      "file_type": "document",
+      "source_file": "log.md",
+      "source_location": "L3",
+      "id": "wiki_log_2026_05_07_fix_ssot_v0_9_12",
+      "community": 0,
+      "norm_label": "[2026-05-07] fix | \u1107\u1165\u110c\u1165\u11ab \u1100\u116a\u11ab\u1105\u1175 \u1103\u1161\u11ab\u110b\u1175\u11af \u110c\u1175\u11ab\u1109\u1175\u11af \u1100\u1169\u11bc\u1100\u1173\u11b8\u110b\u116f\u11ab(ssot) \u1109\u116e\u1105\u1175\u11b8 \u1106\u1175\u11be \u110c\u1161\u1103\u1169\u11bc\u1112\u116a (v0.9.12)"
+    },
+    {
+      "label": "[2026-05-07] fix | \uc9c0\ucd9c \ube44\uad50 \uae30\ub2a5 \uad00\ub9ac \ub3c4\uad6c \ubcf4\uc644 \ubc0f \uc218\ub3d9 \uc2a4\ub0c5\uc0f7 \uccb4\uacc4 \ub3c4\uc785 (v0.9.12)",
+      "file_type": "document",
+      "source_file": "log.md",
+      "source_location": "L12",
+      "id": "wiki_log_2026_05_07_fix_v0_9_12",
+      "community": 0,
+      "norm_label": "[2026-05-07] fix | \u110c\u1175\u110e\u116e\u11af \u1107\u1175\u1100\u116d \u1100\u1175\u1102\u1173\u11bc \u1100\u116a\u11ab\u1105\u1175 \u1103\u1169\u1100\u116e \u1107\u1169\u110b\u116a\u11ab \u1106\u1175\u11be \u1109\u116e\u1103\u1169\u11bc \u1109\u1173\u1102\u1162\u11b8\u1109\u1163\u11ba \u110e\u1166\u1100\u1168 \u1103\u1169\u110b\u1175\u11b8 (v0.9.12)"
+    },
+    {
+      "label": "[2026-05-07] fix | \ud5e4\ub354 \ub808\uc774\uc544\uc6c3 \uc870\uc815 \ubc0f CI \uc778\ud504\ub77c \ucd5c\uc2e0\ud654 (v0.9.11)",
+      "file_type": "document",
+      "source_file": "log.md",
+      "source_location": "L22",
+      "id": "wiki_log_2026_05_07_fix_ci_v0_9_11",
+      "community": 0,
+      "norm_label": "[2026-05-07] fix | \u1112\u1166\u1103\u1165 \u1105\u1166\u110b\u1175\u110b\u1161\u110b\u116e\u11ba \u110c\u1169\u110c\u1165\u11bc \u1106\u1175\u11be ci \u110b\u1175\u11ab\u1111\u1173\u1105\u1161 \u110e\u116c\u1109\u1175\u11ab\u1112\u116a (v0.9.11)"
+    },
+    {
+      "label": "[2026-05-07] action | GitHub \uc8fc\uc694 \uc774\uc288(#7, #4, #2) \uc9c4\ud589 \uc0c1\ud669 \ubcf4\uace0 \ubc0f \uc18c\ud1b5 \uac15\ud654",
+      "file_type": "document",
+      "source_file": "log.md",
+      "source_location": "L31",
+      "id": "wiki_log_2026_05_07_action_github_7_4_2",
+      "community": 0,
+      "norm_label": "[2026-05-07] action | github \u110c\u116e\u110b\u116d \u110b\u1175\u1109\u1172(#7, #4, #2) \u110c\u1175\u11ab\u1112\u1162\u11bc \u1109\u1161\u11bc\u1112\u116a\u11bc \u1107\u1169\u1100\u1169 \u1106\u1175\u11be \u1109\u1169\u1110\u1169\u11bc \u1100\u1161\u11bc\u1112\u116a"
+    },
+    {
+      "label": "[2026-05-07] refactor | GEMINI.md \ub77c\uc6b0\ud130 \uacbd\ub7c9\ud654 \ubc0f \uac70\ubc84\ub10c\uc2a4 \uac15\ud654 (v0.9.10)",
+      "file_type": "document",
+      "source_file": "log.md",
+      "source_location": "L39",
+      "id": "wiki_log_2026_05_07_refactor_gemini_md_v0_9_10",
+      "community": 0,
+      "norm_label": "[2026-05-07] refactor | gemini.md \u1105\u1161\u110b\u116e\u1110\u1165 \u1100\u1167\u11bc\u1105\u1163\u11bc\u1112\u116a \u1106\u1175\u11be \u1100\u1165\u1107\u1165\u1102\u1165\u11ab\u1109\u1173 \u1100\u1161\u11bc\u1112\u116a (v0.9.10)"
+    },
+    {
+      "label": "[2026-05-08] doc | Phase 06, 07, 08 \ub2e8\uacc4 \ubb38\uc11c\ud654 \uc644\ub8cc \ubc0f \ub9c8\uc77c\uc2a4\ud1a4 \ub3d9\uae30\ud654",
+      "file_type": "document",
+      "source_file": "log.md",
+      "source_location": "L48",
+      "id": "wiki_log_2026_05_08_doc_phase_06_07_08",
+      "community": 0,
+      "norm_label": "[2026-05-08] doc | phase 06, 07, 08 \u1103\u1161\u11ab\u1100\u1168 \u1106\u116e\u11ab\u1109\u1165\u1112\u116a \u110b\u116a\u11ab\u1105\u116d \u1106\u1175\u11be \u1106\u1161\u110b\u1175\u11af\u1109\u1173\u1110\u1169\u11ab \u1103\u1169\u11bc\u1100\u1175\u1112\u116a"
+    },
+    {
+      "label": "[2026-05-06] bump | Step 2 \ud504\ub9ac\uc14b \uba85\uce6d \ud45c\uc2dc UI \uac1c\uc120 \ubc0f \ud328\uce58 (v0.9)",
+      "file_type": "document",
+      "source_file": "log.md",
+      "source_location": "L57",
+      "id": "wiki_log_2026_05_06_bump_step_2_ui_v0_9",
+      "community": 0,
+      "norm_label": "[2026-05-06] bump | step 2 \u1111\u1173\u1105\u1175\u1109\u1166\u11ba \u1106\u1167\u11bc\u110e\u1175\u11bc \u1111\u116d\u1109\u1175 ui \u1100\u1162\u1109\u1165\u11ab \u1106\u1175\u11be \u1111\u1162\u110e\u1175 (v0.9)"
+    },
+    {
+      "label": "[2026-05-06] ingest | Modern Hybrid \uc544\ud0a4\ud14d\ucc98 \uc804\ud658 \ubc0f \uae08\uc735 \uc2dc\ubbac\ub808\uc774\uc158 \uace0\ub3c4\ud654 \uc644\uacb0 (v0.9)",
+      "file_type": "document",
+      "source_file": "log.md",
+      "source_location": "L65",
+      "id": "wiki_log_2026_05_06_ingest_modern_hybrid_v0_9",
+      "community": 0,
+      "norm_label": "[2026-05-06] ingest | modern hybrid \u110b\u1161\u110f\u1175\u1110\u1166\u11a8\u110e\u1165 \u110c\u1165\u11ab\u1112\u116a\u11ab \u1106\u1175\u11be \u1100\u1173\u11b7\u110b\u1172\u11bc \u1109\u1175\u1106\u1172\u11af\u1105\u1166\u110b\u1175\u1109\u1167\u11ab \u1100\u1169\u1103\u1169\u1112\u116a \u110b\u116a\u11ab\u1100\u1167\u11af (v0.9)"
+    },
+    {
+      "label": "[2026-05-06] ingest | No-build \uc6d0\uce59 \uc644\ud654 \ubc0f Modern Hybrid \uc804\ub7b5 \uacf5\uc2dd\ud654",
+      "file_type": "document",
+      "source_file": "log.md",
+      "source_location": "L74",
+      "id": "wiki_log_2026_05_06_ingest_no_build_modern_hybrid",
+      "community": 0,
+      "norm_label": "[2026-05-06] ingest | no-build \u110b\u116f\u11ab\u110e\u1175\u11a8 \u110b\u116a\u11ab\u1112\u116a \u1106\u1175\u11be modern hybrid \u110c\u1165\u11ab\u1105\u1163\u11a8 \u1100\u1169\u11bc\u1109\u1175\u11a8\u1112\u116a"
+    },
+    {
+      "label": "[2026-05-04] fix | \ubc84\uc804 \ud45c\uae30 \ubcc0\uc218\ud654 \ubc0f \uad00\ub9ac \uccb4\uacc4 \uc77c\uc6d0\ud654 (v0.8.3)",
+      "file_type": "document",
+      "source_file": "log.md",
+      "source_location": "L82",
+      "id": "wiki_log_2026_05_04_fix_v0_8_3",
+      "community": 0,
+      "norm_label": "[2026-05-04] fix | \u1107\u1165\u110c\u1165\u11ab \u1111\u116d\u1100\u1175 \u1107\u1167\u11ab\u1109\u116e\u1112\u116a \u1106\u1175\u11be \u1100\u116a\u11ab\u1105\u1175 \u110e\u1166\u1100\u1168 \u110b\u1175\u11af\u110b\u116f\u11ab\u1112\u116a (v0.8.3)"
+    },
+    {
+      "label": "[2026-05-02] fix | Step 1 \ubaa8\ubc14\uc77c \ub808\uc774\uc544\uc6c3 \ubcf5\uad6c \ubc0f \uc785\ub825 \uac00\uc2dc\uc131 \ud655\ubcf4 (v0.7.6)",
+      "file_type": "document",
+      "source_file": "log.md",
+      "source_location": "L90",
+      "id": "wiki_log_2026_05_02_fix_step_1_v0_7_6",
+      "community": 0,
+      "norm_label": "[2026-05-02] fix | step 1 \u1106\u1169\u1107\u1161\u110b\u1175\u11af \u1105\u1166\u110b\u1175\u110b\u1161\u110b\u116e\u11ba \u1107\u1169\u11a8\u1100\u116e \u1106\u1175\u11be \u110b\u1175\u11b8\u1105\u1167\u11a8 \u1100\u1161\u1109\u1175\u1109\u1165\u11bc \u1112\u116a\u11a8\u1107\u1169 (v0.7.6)"
+    },
+    {
+      "label": "[2026-05-02] fix | \uc9c0\uc2dd \uc704\uc0dd \uad00\ub9ac(Wiki Hygiene) \ubc0f \uc704\ud0a4 \uc815\ud569\uc131 \uac15\ud654 (Lint)",
+      "file_type": "document",
+      "source_file": "log.md",
+      "source_location": "L98",
+      "id": "wiki_log_2026_05_02_fix_wiki_hygiene_lint",
+      "community": 0,
+      "norm_label": "[2026-05-02] fix | \u110c\u1175\u1109\u1175\u11a8 \u110b\u1171\u1109\u1162\u11bc \u1100\u116a\u11ab\u1105\u1175(wiki hygiene) \u1106\u1175\u11be \u110b\u1171\u110f\u1175 \u110c\u1165\u11bc\u1112\u1161\u11b8\u1109\u1165\u11bc \u1100\u1161\u11bc\u1112\u116a (lint)"
+    },
+    {
+      "label": "[2026-04-30] fix | \uc804\uc5ed \ubc84\uc804 \uc815\ub9ac \ubc0f \uc548\uc815\ud654 (v0.7.4)",
+      "file_type": "document",
+      "source_file": "log.md",
+      "source_location": "L108",
+      "id": "wiki_log_2026_04_30_fix_v0_7_4",
+      "community": 0,
+      "norm_label": "[2026-04-30] fix | \u110c\u1165\u11ab\u110b\u1167\u11a8 \u1107\u1165\u110c\u1165\u11ab \u110c\u1165\u11bc\u1105\u1175 \u1106\u1175\u11be \u110b\u1161\u11ab\u110c\u1165\u11bc\u1112\u116a (v0.7.4)"
+    },
+    {
+      "label": "[2026-04-30] fix | \ub514\uc790\uc778 \uc2dc\uc2a4\ud15c \ud1a0\ud070 \uc801\uc6a9 \ubc0f UI \ubb34\uacb0\uc131 \uac15\ud654 (v0.7.3)",
+      "file_type": "document",
+      "source_file": "log.md",
+      "source_location": "L116",
+      "id": "wiki_log_2026_04_30_fix_ui_v0_7_3",
+      "community": 0,
+      "norm_label": "[2026-04-30] fix | \u1103\u1175\u110c\u1161\u110b\u1175\u11ab \u1109\u1175\u1109\u1173\u1110\u1166\u11b7 \u1110\u1169\u110f\u1173\u11ab \u110c\u1165\u11a8\u110b\u116d\u11bc \u1106\u1175\u11be ui \u1106\u116e\u1100\u1167\u11af\u1109\u1165\u11bc \u1100\u1161\u11bc\u1112\u116a (v0.7.3)"
+    },
+    {
+      "label": "[2026-04-24] update | Step 2 \uc790\ub3d9 \uc5f0\ub3d9 \ub85c\uc9c1 \uad50\uc815 (Sync by Default)",
+      "file_type": "document",
+      "source_file": "log.md",
+      "source_location": "L125",
+      "id": "wiki_log_2026_04_24_update_step_2_sync_by_default",
+      "community": 0,
+      "norm_label": "[2026-04-24] update | step 2 \u110c\u1161\u1103\u1169\u11bc \u110b\u1167\u11ab\u1103\u1169\u11bc \u1105\u1169\u110c\u1175\u11a8 \u1100\u116d\u110c\u1165\u11bc (sync by default)"
+    },
+    {
+      "label": "[2026-04-24] ingest | \ub370\uc774\ud130 \ud1b5\ud569 \ubc0f \uc785\ub825 \uc7ac\uc0ac\uc6a9 \ucca0\ud559 \ub3d9\uae30\ud654 (Single Hub & Input Reuse)",
+      "file_type": "document",
+      "source_file": "log.md",
+      "source_location": "L129",
+      "id": "wiki_log_2026_04_24_ingest_single_hub_input_reuse",
+      "community": 0,
+      "norm_label": "[2026-04-24] ingest | \u1103\u1166\u110b\u1175\u1110\u1165 \u1110\u1169\u11bc\u1112\u1161\u11b8 \u1106\u1175\u11be \u110b\u1175\u11b8\u1105\u1167\u11a8 \u110c\u1162\u1109\u1161\u110b\u116d\u11bc \u110e\u1165\u11af\u1112\u1161\u11a8 \u1103\u1169\u11bc\u1100\u1175\u1112\u116a (single hub & input reuse)"
+    },
+    {
+      "label": "[2026-04-24] fix | v0.7.2 \ud0c0\uc784\uc2a4\ud0ec\ud504 \ud30c\uc2f1 \ubc84\uadf8 \uc218\uc815 \ubc0f Step 2 \uc790\ub3d9 \ub3d9\uae30\ud654 \ub3c4\uc785",
+      "file_type": "document",
+      "source_file": "log.md",
+      "source_location": "L134",
+      "id": "wiki_log_2026_04_24_fix_v0_7_2_step_2",
+      "community": 0,
+      "norm_label": "[2026-04-24] fix | v0.7.2 \u1110\u1161\u110b\u1175\u11b7\u1109\u1173\u1110\u1162\u11b7\u1111\u1173 \u1111\u1161\u1109\u1175\u11bc \u1107\u1165\u1100\u1173 \u1109\u116e\u110c\u1165\u11bc \u1106\u1175\u11be step 2 \u110c\u1161\u1103\u1169\u11bc \u1103\u1169\u11bc\u1100\u1175\u1112\u116a \u1103\u1169\u110b\u1175\u11b8"
+    },
+    {
+      "label": "[2026-04-24] fix | v0.7.2 \uc804\uc5ed \ubc84\uc804 \ub3d9\uae30\ud654 \ubc0f Triple Sync \uc644\uacb0",
+      "file_type": "document",
+      "source_file": "log.md",
+      "source_location": "L141",
+      "id": "wiki_log_2026_04_24_fix_v0_7_2_triple_sync",
+      "community": 0,
+      "norm_label": "[2026-04-24] fix | v0.7.2 \u110c\u1165\u11ab\u110b\u1167\u11a8 \u1107\u1165\u110c\u1165\u11ab \u1103\u1169\u11bc\u1100\u1175\u1112\u116a \u1106\u1175\u11be triple sync \u110b\u116a\u11ab\u1100\u1167\u11af"
+    },
+    {
+      "label": "[2026-04-24] fix | v0.7.1 Step 1/2 \uc548\uc815\ud654 \ubc0f \ub9ac\ube0c\ub79c\ub529 \ubcf4\uac15 (v0.7.1)",
+      "file_type": "document",
+      "source_file": "log.md",
+      "source_location": "L149",
+      "id": "wiki_log_2026_04_24_fix_v0_7_1_step_1_2_v0_7_1",
+      "community": 0,
+      "norm_label": "[2026-04-24] fix | v0.7.1 step 1/2 \u110b\u1161\u11ab\u110c\u1165\u11bc\u1112\u116a \u1106\u1175\u11be \u1105\u1175\u1107\u1173\u1105\u1162\u11ab\u1103\u1175\u11bc \u1107\u1169\u1100\u1161\u11bc (v0.7.1)"
+    },
+    {
+      "label": "[2026-04-24] merge | v0.7.0 \ucd5c\uc885 \uba38\uc9c0 \ubc0f \ube0c\ub79c\uce58 \uc815\ub9ac \uc644\ub8cc",
+      "file_type": "document",
+      "source_file": "log.md",
+      "source_location": "L158",
+      "id": "wiki_log_2026_04_24_merge_v0_7_0",
+      "community": 0,
+      "norm_label": "[2026-04-24] merge | v0.7.0 \u110e\u116c\u110c\u1169\u11bc \u1106\u1165\u110c\u1175 \u1106\u1175\u11be \u1107\u1173\u1105\u1162\u11ab\u110e\u1175 \u110c\u1165\u11bc\u1105\u1175 \u110b\u116a\u11ab\u1105\u116d"
+    },
+    {
+      "label": "[2026-04-23] fix | v0.7.0 \ub370\uc774\ud130 \ub9c8\uc774\uadf8\ub808\uc774\uc158 \uccb4\uacc4 \uad6c\ucd95 \ubc0f \uc800\uc7a5\uc18c \uc548\uc815\ud654",
+      "file_type": "document",
+      "source_file": "log.md",
+      "source_location": "L163",
+      "id": "wiki_log_2026_04_23_fix_v0_7_0",
+      "community": 0,
+      "norm_label": "[2026-04-23] fix | v0.7.0 \u1103\u1166\u110b\u1175\u1110\u1165 \u1106\u1161\u110b\u1175\u1100\u1173\u1105\u1166\u110b\u1175\u1109\u1167\u11ab \u110e\u1166\u1100\u1168 \u1100\u116e\u110e\u116e\u11a8 \u1106\u1175\u11be \u110c\u1165\u110c\u1161\u11bc\u1109\u1169 \u110b\u1161\u11ab\u110c\u1165\u11bc\u1112\u116a"
+    },
+    {
+      "label": "[2026-04-23] release | \ud1b5\ud569 \uc2a4\ud1a0\ub9ac\uc9c0 \ud5c8\ube0c(IsfStorageHub) \ub3c4\uc785 \ubc0f \ub370\uc774\ud130 \uc5f0\ub3d9 \ucd5c\uc801\ud654 (v0.7.0)",
+      "file_type": "document",
+      "source_file": "log.md",
+      "source_location": "L173",
+      "id": "wiki_log_2026_04_23_release_isfstoragehub_v0_7_0",
+      "community": 0,
+      "norm_label": "[2026-04-23] release | \u1110\u1169\u11bc\u1112\u1161\u11b8 \u1109\u1173\u1110\u1169\u1105\u1175\u110c\u1175 \u1112\u1165\u1107\u1173(isfstoragehub) \u1103\u1169\u110b\u1175\u11b8 \u1106\u1175\u11be \u1103\u1166\u110b\u1175\u1110\u1165 \u110b\u1167\u11ab\u1103\u1169\u11bc \u110e\u116c\u110c\u1165\u11a8\u1112\u116a (v0.7.0)"
+    },
+    {
+      "label": "[2026-04-23] release | Step 2 \ubc30\ub2f9 \uc2dc\ubbac\ub808\uc774\uc158 \ud2b9\ud654 \uac1c\ud3b8 \ubc0f Step 3 \ubd84\ub9ac \uacc4\ud68d (v0.7.0)",
+      "file_type": "document",
+      "source_file": "log.md",
+      "source_location": "L183",
+      "id": "wiki_log_2026_04_23_release_step_2_step_3_v0_7_0",
+      "community": 0,
+      "norm_label": "[2026-04-23] release | step 2 \u1107\u1162\u1103\u1161\u11bc \u1109\u1175\u1106\u1172\u11af\u1105\u1166\u110b\u1175\u1109\u1167\u11ab \u1110\u1173\u11a8\u1112\u116a \u1100\u1162\u1111\u1167\u11ab \u1106\u1175\u11be step 3 \u1107\u116e\u11ab\u1105\u1175 \u1100\u1168\u1112\u116c\u11a8 (v0.7.0)"
+    },
+    {
+      "label": "[2026-04-22] fix | \ub2e8\uc704 \uc815\ud569\uc131(\ub9cc\uc6d0/\uc6d0) UI \ubc0f \ub370\uc774\ud130 \uc800\uc7a5 \ud45c\uc900 \uac15\ud654 (v0.6.1)",
+      "file_type": "document",
+      "source_file": "log.md",
+      "source_location": "L192",
+      "id": "wiki_log_2026_04_22_fix_ui_v0_6_1",
+      "community": 0,
+      "norm_label": "[2026-04-22] fix | \u1103\u1161\u11ab\u110b\u1171 \u110c\u1165\u11bc\u1112\u1161\u11b8\u1109\u1165\u11bc(\u1106\u1161\u11ab\u110b\u116f\u11ab/\u110b\u116f\u11ab) ui \u1106\u1175\u11be \u1103\u1166\u110b\u1175\u1110\u1165 \u110c\u1165\u110c\u1161\u11bc \u1111\u116d\u110c\u116e\u11ab \u1100\u1161\u11bc\u1112\u116a (v0.6.1)"
+    },
+    {
+      "label": "[2026-04-22] ingest | Step 1 \uc9c0\ucd9c \ub0b4\uc5ed \ube44\uad50 \ub9c9\ub300 \uadf8\ub798\ud504 \uae30\ub2a5 \uc815\uc758 \ubc0f \uc774\uc288 \uc0dd\uc131 (#4)",
+      "file_type": "document",
+      "source_file": "log.md",
+      "source_location": "L200",
+      "id": "wiki_log_2026_04_22_ingest_step_1_4",
+      "community": 0,
+      "norm_label": "[2026-04-22] ingest | step 1 \u110c\u1175\u110e\u116e\u11af \u1102\u1162\u110b\u1167\u11a8 \u1107\u1175\u1100\u116d \u1106\u1161\u11a8\u1103\u1162 \u1100\u1173\u1105\u1162\u1111\u1173 \u1100\u1175\u1102\u1173\u11bc \u110c\u1165\u11bc\u110b\u1174 \u1106\u1175\u11be \u110b\u1175\u1109\u1172 \u1109\u1162\u11bc\u1109\u1165\u11bc (#4)"
+    },
+    {
+      "label": "[2026-04-22] release | Minor Up: Step 2 \ub9ac\ud329\ud130\ub9c1 \ubc0f Sankey/\ubc30\ub2f9 \uc2dc\ubbac\ub808\uc774\uc158 \uace0\ub3c4\ud654 (v0.6.0)",
+      "file_type": "document",
+      "source_file": "log.md",
+      "source_location": "L205",
+      "id": "wiki_log_2026_04_22_release_minor_up_step_2_sankey_v0_6_0",
+      "community": 0,
+      "norm_label": "[2026-04-22] release | minor up: step 2 \u1105\u1175\u1111\u1162\u11a8\u1110\u1165\u1105\u1175\u11bc \u1106\u1175\u11be sankey/\u1107\u1162\u1103\u1161\u11bc \u1109\u1175\u1106\u1172\u11af\u1105\u1166\u110b\u1175\u1109\u1167\u11ab \u1100\u1169\u1103\u1169\u1112\u116a (v0.6.0)"
+    },
+    {
+      "label": "[2026-04-22] fix | Step 2 \ub80c\ub354\ub9c1 \uc548\uc815\uc131 \ubc0f \ub370\uc774\ud130 \uc815\uaddc\ud654 \ubcf4\uc644 (v0.6.0)",
+      "file_type": "document",
+      "source_file": "log.md",
+      "source_location": "L213",
+      "id": "wiki_log_2026_04_22_fix_step_2_v0_6_0",
+      "community": 0,
+      "norm_label": "[2026-04-22] fix | step 2 \u1105\u1166\u11ab\u1103\u1165\u1105\u1175\u11bc \u110b\u1161\u11ab\u110c\u1165\u11bc\u1109\u1165\u11bc \u1106\u1175\u11be \u1103\u1166\u110b\u1175\u1110\u1165 \u110c\u1165\u11bc\u1100\u1172\u1112\u116a \u1107\u1169\u110b\u116a\u11ab (v0.6.0)"
+    },
+    {
+      "label": "[2026-04-21] ingest | \uc9c0\uc2dd \uc704\uc0dd \uad00\ub9ac(Wiki Hygiene) \ubc0f \uc704\ud0a4 \uc815\uae30 \uc815\ud654",
+      "file_type": "document",
+      "source_file": "log.md",
+      "source_location": "L222",
+      "id": "wiki_log_2026_04_21_ingest_wiki_hygiene",
+      "community": 0,
+      "norm_label": "[2026-04-21] ingest | \u110c\u1175\u1109\u1175\u11a8 \u110b\u1171\u1109\u1162\u11bc \u1100\u116a\u11ab\u1105\u1175(wiki hygiene) \u1106\u1175\u11be \u110b\u1171\u110f\u1175 \u110c\u1165\u11bc\u1100\u1175 \u110c\u1165\u11bc\u1112\u116a"
+    },
+    {
+      "label": "[2026-04-21] feature | Step 2 \ubaa8\ub4c8\ud654 \ubc0f \uace0\uc131\ub2a5 \ubc30\ub2f9 \uc2dc\ubbac\ub808\uc774\uc158 \uc5d4\uc9c4 \ub3c4\uc785 (v0.5.12)",
+      "file_type": "document",
+      "source_file": "log.md",
+      "source_location": "L232",
+      "id": "wiki_log_2026_04_21_feature_step_2_v0_5_12",
+      "community": 0,
+      "norm_label": "[2026-04-21] feature | step 2 \u1106\u1169\u1103\u1172\u11af\u1112\u116a \u1106\u1175\u11be \u1100\u1169\u1109\u1165\u11bc\u1102\u1173\u11bc \u1107\u1162\u1103\u1161\u11bc \u1109\u1175\u1106\u1172\u11af\u1105\u1166\u110b\u1175\u1109\u1167\u11ab \u110b\u1166\u11ab\u110c\u1175\u11ab \u1103\u1169\u110b\u1175\u11b8 (v0.5.12)"
+    },
+    {
+      "label": "[2026-04-21] fix | Step 1 \ub2e8\uc704 \uc911\ubcf5 \uacc4\uc0b0 \ubc0f Step 2 \ube0c\ub9ac\uc9c0 \ubc30\ub108 \ud45c\uc2dc \uc624\ub958 \ud574\uacb0 (v0.5.11)",
+      "file_type": "document",
+      "source_file": "log.md",
+      "source_location": "L241",
+      "id": "wiki_log_2026_04_21_fix_step_1_step_2_v0_5_11",
+      "community": 0,
+      "norm_label": "[2026-04-21] fix | step 1 \u1103\u1161\u11ab\u110b\u1171 \u110c\u116e\u11bc\u1107\u1169\u11a8 \u1100\u1168\u1109\u1161\u11ab \u1106\u1175\u11be step 2 \u1107\u1173\u1105\u1175\u110c\u1175 \u1107\u1162\u1102\u1165 \u1111\u116d\u1109\u1175 \u110b\u1169\u1105\u1172 \u1112\u1162\u1100\u1167\u11af (v0.5.11)"
+    },
+    {
+      "label": "[2026-04-19] fix | Step 1 \ub370\uc774\ud130 \uc5f0\ub3d9 \ubb34\uacb0\uc131 \ubc0f \ud328\ub110 \uae30\ub2a5 \ubcf5\uad6c (v0.5.8)",
+      "file_type": "document",
+      "source_file": "log.md",
+      "source_location": "L251",
+      "id": "wiki_log_2026_04_19_fix_step_1_v0_5_8",
+      "community": 0,
+      "norm_label": "[2026-04-19] fix | step 1 \u1103\u1166\u110b\u1175\u1110\u1165 \u110b\u1167\u11ab\u1103\u1169\u11bc \u1106\u116e\u1100\u1167\u11af\u1109\u1165\u11bc \u1106\u1175\u11be \u1111\u1162\u1102\u1165\u11af \u1100\u1175\u1102\u1173\u11bc \u1107\u1169\u11a8\u1100\u116e (v0.5.8)"
+    },
+    {
+      "label": "[2026-04-19] fix | Step 1 \ucd08\uae30\ud654 \uc624\ub958 \ubc0f \ubaa8\ubc14\uc77c UX \uac1c\uc120 \ud328\uce58 (v0.5.5)",
+      "file_type": "document",
+      "source_file": "log.md",
+      "source_location": "L263",
+      "id": "wiki_log_2026_04_19_fix_step_1_ux_v0_5_5",
+      "community": 0,
+      "norm_label": "[2026-04-19] fix | step 1 \u110e\u1169\u1100\u1175\u1112\u116a \u110b\u1169\u1105\u1172 \u1106\u1175\u11be \u1106\u1169\u1107\u1161\u110b\u1175\u11af ux \u1100\u1162\u1109\u1165\u11ab \u1111\u1162\u110e\u1175 (v0.5.5)"
+    },
+    {
+      "label": "[2026-04-17] fix | Step 1 \ud5e4\ub354 \ubc84\ud2bc \ubcf5\uad6c \ubc0f UI \uc815\ub9ac (v0.5.3)",
+      "file_type": "document",
+      "source_file": "log.md",
+      "source_location": "L275",
+      "id": "wiki_log_2026_04_17_fix_step_1_ui_v0_5_3",
+      "community": 0,
+      "norm_label": "[2026-04-17] fix | step 1 \u1112\u1166\u1103\u1165 \u1107\u1165\u1110\u1173\u11ab \u1107\u1169\u11a8\u1100\u116e \u1106\u1175\u11be ui \u110c\u1165\u11bc\u1105\u1175 (v0.5.3)"
+    },
+    {
+      "label": "[2026-04-17] fix | Step 1 \ud1b5\ud569 \ud3b8\uc9d1 UX \ubc0f \ubaa8\ubc14\uc77c FAB \uc9c0\uc6d0 \ud328\uce58 (v0.5.2)",
+      "file_type": "document",
+      "source_file": "log.md",
+      "source_location": "L289",
+      "id": "wiki_log_2026_04_17_fix_step_1_ux_fab_v0_5_2",
+      "community": 0,
+      "norm_label": "[2026-04-17] fix | step 1 \u1110\u1169\u11bc\u1112\u1161\u11b8 \u1111\u1167\u11ab\u110c\u1175\u11b8 ux \u1106\u1175\u11be \u1106\u1169\u1107\u1161\u110b\u1175\u11af fab \u110c\u1175\u110b\u116f\u11ab \u1111\u1162\u110e\u1175 (v0.5.2)"
+    },
+    {
+      "label": "[2026-04-17] ingest | Minor Up \ube0c\ub79c\uce58 \uc804\ub7b5 \uac15\ud654 \ubc0f \uc704\ud0a4 \ub3d9\uae30\ud654 \uc815\ucc45 \ucd94\uac00",
+      "file_type": "document",
+      "source_file": "log.md",
+      "source_location": "L303",
+      "id": "wiki_log_2026_04_17_ingest_minor_up",
+      "community": 0,
+      "norm_label": "[2026-04-17] ingest | minor up \u1107\u1173\u1105\u1162\u11ab\u110e\u1175 \u110c\u1165\u11ab\u1105\u1163\u11a8 \u1100\u1161\u11bc\u1112\u116a \u1106\u1175\u11be \u110b\u1171\u110f\u1175 \u1103\u1169\u11bc\u1100\u1175\u1112\u116a \u110c\u1165\u11bc\u110e\u1162\u11a8 \u110e\u116e\u1100\u1161"
+    },
+    {
+      "label": "[2026-04-17] ingest | GEMINI.md \uc9c0\uc2dd \uc2ac\ub9bc\ud654 \ubc0f \uc704\ud0a4 \uc774\uad00 \uc644\ub8cc",
+      "file_type": "document",
+      "source_file": "log.md",
+      "source_location": "L310",
+      "id": "wiki_log_2026_04_17_ingest_gemini_md",
+      "community": 0,
+      "norm_label": "[2026-04-17] ingest | gemini.md \u110c\u1175\u1109\u1175\u11a8 \u1109\u1173\u11af\u1105\u1175\u11b7\u1112\u116a \u1106\u1175\u11be \u110b\u1171\u110f\u1175 \u110b\u1175\u1100\u116a\u11ab \u110b\u116a\u11ab\u1105\u116d"
+    },
+    {
+      "label": "[2026-04-17] ingest | core-developer \uc2a4\ud0ac \ud3d0\uc9c0 \ubc0f \uc9c0\uc2dd \ud1b5\ud3d0\ud569",
+      "file_type": "document",
+      "source_file": "log.md",
+      "source_location": "L314",
+      "id": "wiki_log_2026_04_17_ingest_core_developer",
+      "community": 0,
+      "norm_label": "[2026-04-17] ingest | core-developer \u1109\u1173\u110f\u1175\u11af \u1111\u1168\u110c\u1175 \u1106\u1175\u11be \u110c\u1175\u1109\u1175\u11a8 \u1110\u1169\u11bc\u1111\u1168\u1112\u1161\u11b8"
+    },
+    {
+      "label": "[2026-04-17] fix | Step 1 \ubaa8\ub4c8\ud654 \uc548\uc815\ud654 \ubc0f \ub7f0\ud0c0\uc784 \uc624\ub958 \ud328\uce58 (v0.5.1)",
+      "file_type": "document",
+      "source_file": "log.md",
+      "source_location": "L323",
+      "id": "wiki_log_2026_04_17_fix_step_1_v0_5_1",
+      "community": 0,
+      "norm_label": "[2026-04-17] fix | step 1 \u1106\u1169\u1103\u1172\u11af\u1112\u116a \u110b\u1161\u11ab\u110c\u1165\u11bc\u1112\u116a \u1106\u1175\u11be \u1105\u1165\u11ab\u1110\u1161\u110b\u1175\u11b7 \u110b\u1169\u1105\u1172 \u1111\u1162\u110e\u1175 (v0.5.1)"
+    },
+    {
+      "label": "[2026-04-17] feature | Step 1 Monolith \ub9ac\ud329\ud130\ub9c1 \ubc0f No-build \ubaa8\ub4c8\ud654 (v0.5.0)",
+      "file_type": "document",
+      "source_file": "log.md",
+      "source_location": "L334",
+      "id": "wiki_log_2026_04_17_feature_step_1_monolith_no_build_v0_5_0",
+      "community": 0,
+      "norm_label": "[2026-04-17] feature | step 1 monolith \u1105\u1175\u1111\u1162\u11a8\u1110\u1165\u1105\u1175\u11bc \u1106\u1175\u11be no-build \u1106\u1169\u1103\u1172\u11af\u1112\u116a (v0.5.0)"
+    },
+    {
+      "label": "[2026-04-16] feature | Step 2 \ub370\uc774\ud130 \ube0c\ub9ac\uc9c0 \ubc84\uadf8 \ud574\uacb0 \ubc0f \ub85c\uc9c1 \ubcf5\uad6c (v0.4.2)",
+      "file_type": "document",
+      "source_file": "log.md",
+      "source_location": "L342",
+      "id": "wiki_log_2026_04_16_feature_step_2_v0_4_2",
+      "community": 0,
+      "norm_label": "[2026-04-16] feature | step 2 \u1103\u1166\u110b\u1175\u1110\u1165 \u1107\u1173\u1105\u1175\u110c\u1175 \u1107\u1165\u1100\u1173 \u1112\u1162\u1100\u1167\u11af \u1106\u1175\u11be \u1105\u1169\u110c\u1175\u11a8 \u1107\u1169\u11a8\u1100\u116e (v0.4.2)"
+    },
+    {
+      "label": "[2026-04-16] feature | UI/UX \uc548\uc815\ud654 \ubc0f v0.4.1 \ub9b4\ub9ac\uc2a4",
+      "file_type": "document",
+      "source_file": "log.md",
+      "source_location": "L352",
+      "id": "wiki_log_2026_04_16_feature_ui_ux_v0_4_1",
+      "community": 0,
+      "norm_label": "[2026-04-16] feature | ui/ux \u110b\u1161\u11ab\u110c\u1165\u11bc\u1112\u116a \u1106\u1175\u11be v0.4.1 \u1105\u1175\u11af\u1105\u1175\u1109\u1173"
+    },
+    {
+      "label": "[2026-04-16] ingest | \ud558\ub124\uc2a4 \ubcf4\uc218 \ubc0f LLM Wiki \ud328\ud134 \uc774\uc2dd",
+      "file_type": "document",
+      "source_file": "log.md",
+      "source_location": "L360",
+      "id": "wiki_log_2026_04_16_ingest_llm_wiki",
+      "community": 0,
+      "norm_label": "[2026-04-16] ingest | \u1112\u1161\u1102\u1166\u1109\u1173 \u1107\u1169\u1109\u116e \u1106\u1175\u11be llm wiki \u1111\u1162\u1110\u1165\u11ab \u110b\u1175\u1109\u1175\u11a8"
+    },
+    {
+      "label": "[2026-04-16] ingest | PWA \uc548\uc815\uc131 \ubc0f \uc2a4\ud1a0\ub9ac\uc9c0 \uc815\ucc45 \uac15\ud654",
+      "file_type": "document",
+      "source_file": "log.md",
+      "source_location": "L369",
+      "id": "wiki_log_2026_04_16_ingest_pwa",
+      "community": 0,
+      "norm_label": "[2026-04-16] ingest | pwa \u110b\u1161\u11ab\u110c\u1165\u11bc\u1109\u1165\u11bc \u1106\u1175\u11be \u1109\u1173\u1110\u1169\u1105\u1175\u110c\u1175 \u110c\u1165\u11bc\u110e\u1162\u11a8 \u1100\u1161\u11bc\u1112\u116a"
+    },
+    {
+      "label": "[2026-04-16] feature | Sprint 2.2: UI/UX Overhaul v0.4 (\uc0ac\uc6a9\uc790 \uc911\uc2ec \uc801\uc751\ud615 \uac1c\ud3b8)",
+      "file_type": "document",
+      "source_file": "log.md",
+      "source_location": "L372",
+      "id": "wiki_log_2026_04_16_feature_sprint_2_2_ui_ux_overhaul_v0_4",
+      "community": 0,
+      "norm_label": "[2026-04-16] feature | sprint 2.2: ui/ux overhaul v0.4 (\u1109\u1161\u110b\u116d\u11bc\u110c\u1161 \u110c\u116e\u11bc\u1109\u1175\u11b7 \u110c\u1165\u11a8\u110b\u1173\u11bc\u1112\u1167\u11bc \u1100\u1162\u1111\u1167\u11ab)"
+    },
+    {
+      "label": "[2026-04-16] feature | Sprint 2.1: HCD \uac1c\uc120 \ubc0f \ubaa8\ubc14\uc77c \ucd5c\uc801\ud654 (v0.2.5)",
+      "file_type": "document",
+      "source_file": "log.md",
+      "source_location": "L381",
+      "id": "wiki_log_2026_04_16_feature_sprint_2_1_hcd_v0_2_5",
+      "community": 0,
+      "norm_label": "[2026-04-16] feature | sprint 2.1: hcd \u1100\u1162\u1109\u1165\u11ab \u1106\u1175\u11be \u1106\u1169\u1107\u1161\u110b\u1175\u11af \u110e\u116c\u110c\u1165\u11a8\u1112\u116a (v0.2.5)"
+    },
+    {
+      "label": "[2026-04-24] ingest | \uc9c0\uc2dd \uc704\uc0dd \uad00\ub9ac(Wiki Hygiene) \ubc0f SSOT \uc815\ub9bd \uc644\ub8cc",
+      "file_type": "document",
+      "source_file": "log.md",
+      "source_location": "L391",
+      "id": "wiki_log_2026_04_24_ingest_wiki_hygiene_ssot",
+      "community": 0,
+      "norm_label": "[2026-04-24] ingest | \u110c\u1175\u1109\u1175\u11a8 \u110b\u1171\u1109\u1162\u11bc \u1100\u116a\u11ab\u1105\u1175(wiki hygiene) \u1106\u1175\u11be ssot \u110c\u1165\u11bc\u1105\u1175\u11b8 \u110b\u116a\u11ab\u1105\u116d"
+    },
+    {
+      "label": "[2026-04-24] ingest | \uc9c0\uc2dd \uc704\uc0dd \uad00\ub9ac \ubc0f \ubb3c\ub9ac\uc801 \uc544\uce74\uc774\ube59(Physical Archiving) \ub2e8\ud589",
+      "file_type": "document",
+      "source_file": "log.md",
+      "source_location": "L399",
+      "id": "wiki_log_2026_04_24_ingest_physical_archiving",
+      "community": 0,
+      "norm_label": "[2026-04-24] ingest | \u110c\u1175\u1109\u1175\u11a8 \u110b\u1171\u1109\u1162\u11bc \u1100\u116a\u11ab\u1105\u1175 \u1106\u1175\u11be \u1106\u116e\u11af\u1105\u1175\u110c\u1165\u11a8 \u110b\u1161\u110f\u1161\u110b\u1175\u1107\u1175\u11bc(physical archiving) \u1103\u1161\u11ab\u1112\u1162\u11bc"
+    },
+    {
+      "label": "[2026-04-24] ingest | \uc5d0\uc774\uc804\ud2b8 \ud611\uc5c5 \ud504\ub85c\uc138\uc2a4 \ub3d9\uae30\ud654 (orchestration \uc2a4\ud0ac)",
+      "file_type": "document",
+      "source_file": "log.md",
+      "source_location": "L405",
+      "id": "wiki_log_2026_04_24_ingest_orchestration",
+      "community": 0,
+      "norm_label": "[2026-04-24] ingest | \u110b\u1166\u110b\u1175\u110c\u1165\u11ab\u1110\u1173 \u1112\u1167\u11b8\u110b\u1165\u11b8 \u1111\u1173\u1105\u1169\u1109\u1166\u1109\u1173 \u1103\u1169\u11bc\u1100\u1175\u1112\u116a (orchestration \u1109\u1173\u110f\u1175\u11af)"
+    },
+    {
+      "label": "[2026-04-30] ingest | \ub514\uc790\uc778 \uc2dc\uc2a4\ud15c \uace0\ub3c4\ud654 \ubc0f \ud1a0\ud070 \ub9c8\uc774\uadf8\ub808\uc774\uc158 \uc644\ub8cc",
+      "file_type": "document",
+      "source_file": "log.md",
+      "source_location": "L408",
+      "id": "wiki_log_2026_04_30_ingest",
+      "community": 0,
+      "norm_label": "[2026-04-30] ingest | \u1103\u1175\u110c\u1161\u110b\u1175\u11ab \u1109\u1175\u1109\u1173\u1110\u1166\u11b7 \u1100\u1169\u1103\u1169\u1112\u116a \u1106\u1175\u11be \u1110\u1169\u110f\u1173\u11ab \u1106\u1161\u110b\u1175\u1100\u1173\u1105\u1166\u110b\u1175\u1109\u1167\u11ab \u110b\u116a\u11ab\u1105\u116d"
+    },
+    {
+      "label": "[2026-05-04] ingest | Modernization Pivot & Storage v2 Implementation",
+      "file_type": "document",
+      "source_file": "log.md",
+      "source_location": "L414",
+      "id": "wiki_log_2026_05_04_ingest_modernization_pivot_storage_v2_implementation",
+      "community": 0,
+      "norm_label": "[2026-05-04] ingest | modernization pivot & storage v2 implementation"
+    },
+    {
+      "label": "[2026-05-04] release | Phase 5: Step 1 Spotlight \uc628\ubcf4\ub529 \uac00\uc774\ub4dc \ubc0f \uc2dc\uc2a4\ud15c \ubb34\uacb0\uc131 \uac15\ud654",
+      "file_type": "document",
+      "source_file": "log.md",
+      "source_location": "L421",
+      "id": "wiki_log_2026_05_04_release_phase_5_step_1_spotlight",
+      "community": 0,
+      "norm_label": "[2026-05-04] release | phase 5: step 1 spotlight \u110b\u1169\u11ab\u1107\u1169\u1103\u1175\u11bc \u1100\u1161\u110b\u1175\u1103\u1173 \u1106\u1175\u11be \u1109\u1175\u1109\u1173\u1110\u1166\u11b7 \u1106\u116e\u1100\u1167\u11af\u1109\u1165\u11bc \u1100\u1161\u11bc\u1112\u116a"
+    },
+    {
+      "label": "[2026-05-06] fix | Step 2 \ucd08\uae30 \uc790\uc0b0 \uc5f0\ub3d9 \ubc0f \uc2dc\ubbac\ub808\uc774\uc158 \ub17c\ub9ac \uacb0\ud568 \uc218\uc815 (v0.8.9)",
+      "file_type": "document",
+      "source_file": "log.md",
+      "source_location": "L429",
+      "id": "wiki_log_2026_05_06_fix_step_2_v0_8_9",
+      "community": 0,
+      "norm_label": "[2026-05-06] fix | step 2 \u110e\u1169\u1100\u1175 \u110c\u1161\u1109\u1161\u11ab \u110b\u1167\u11ab\u1103\u1169\u11bc \u1106\u1175\u11be \u1109\u1175\u1106\u1172\u11af\u1105\u1166\u110b\u1175\u1109\u1167\u11ab \u1102\u1169\u11ab\u1105\u1175 \u1100\u1167\u11af\u1112\u1161\u11b7 \u1109\u116e\u110c\u1165\u11bc (v0.8.9)"
+    },
+    {
+      "label": "[2026-05-06] feat | Step 1 \ucd08\uae30 \uc790\uc0b0 \uad6c\uc870 \uac1c\uc120 \ubc0f \ub514\uc790\uc778 \uc2dc\uc2a4\ud15c \uc815\uc81c (v0.8.8)",
+      "file_type": "document",
+      "source_file": "log.md",
+      "source_location": "L437",
+      "id": "wiki_log_2026_05_06_feat_step_1_v0_8_8",
+      "community": 0,
+      "norm_label": "[2026-05-06] feat | step 1 \u110e\u1169\u1100\u1175 \u110c\u1161\u1109\u1161\u11ab \u1100\u116e\u110c\u1169 \u1100\u1162\u1109\u1165\u11ab \u1106\u1175\u11be \u1103\u1175\u110c\u1161\u110b\u1175\u11ab \u1109\u1175\u1109\u1173\u1110\u1166\u11b7 \u110c\u1165\u11bc\u110c\u1166 (v0.8.8)"
+    },
+    {
+      "label": "[2026-04-22] fix | v0.7.13 ~ v0.7.11 \uc2dc\ubbac\ub808\uc774\uc158 UI \uace0\ub3c4\ud654 \ud328\uce58",
+      "file_type": "document",
+      "source_file": "log.md",
+      "source_location": "L445",
+      "id": "wiki_log_2026_04_22_fix_v0_7_13_v0_7_11_ui",
+      "community": 0,
+      "norm_label": "[2026-04-22] fix | v0.7.13 ~ v0.7.11 \u1109\u1175\u1106\u1172\u11af\u1105\u1166\u110b\u1175\u1109\u1167\u11ab ui \u1100\u1169\u1103\u1169\u1112\u116a \u1111\u1162\u110e\u1175"
+    },
+    {
+      "label": "[2026-05-07] feat | \ub808\ubc84\ub9ac\uc9c0 \uc790\uc0b0 \ucd94\uac00 \ubc0f \uccad\uc0b0 \uc5d4\uc9c4 \uace0\ub3c4\ud654 (v0.9.7)",
+      "file_type": "document",
+      "source_file": "log.md",
+      "source_location": "L448",
+      "id": "wiki_log_2026_05_07_feat_v0_9_7",
+      "community": 0,
+      "norm_label": "[2026-05-07] feat | \u1105\u1166\u1107\u1165\u1105\u1175\u110c\u1175 \u110c\u1161\u1109\u1161\u11ab \u110e\u116e\u1100\u1161 \u1106\u1175\u11be \u110e\u1165\u11bc\u1109\u1161\u11ab \u110b\u1166\u11ab\u110c\u1175\u11ab \u1100\u1169\u1103\u1169\u1112\u116a (v0.9.7)"
+    },
+    {
+      "label": "[2026-05-07] feat | \uc8fc\uc694 \uc9c0\uc218 \ubc0f \uc790\uc0b0 \ubc31\ud14c\uc2a4\ud2b8 \uc2dc\ubbac\ub808\uc774\ud130(Step 4) \uac1c\ubc1c \uc644\ub8cc (v0.9.6)",
+      "file_type": "document",
+      "source_file": "log.md",
+      "source_location": "L454",
+      "id": "wiki_log_2026_05_07_feat_step_4_v0_9_6",
+      "community": 0,
+      "norm_label": "[2026-05-07] feat | \u110c\u116e\u110b\u116d \u110c\u1175\u1109\u116e \u1106\u1175\u11be \u110c\u1161\u1109\u1161\u11ab \u1107\u1162\u11a8\u1110\u1166\u1109\u1173\u1110\u1173 \u1109\u1175\u1106\u1172\u11af\u1105\u1166\u110b\u1175\u1110\u1165(step 4) \u1100\u1162\u1107\u1161\u11af \u110b\u116a\u11ab\u1105\u116d (v0.9.6)"
+    },
+    {
+      "label": "[2026-05-07] bump | \uc804\uc5ed \ubc84\uc804 \ub3d9\uae30\ud654 \ubc0f \uc815\ucc45 \ubcf4\uc644 (v0.9.5)",
+      "file_type": "document",
+      "source_file": "log.md",
+      "source_location": "L465",
+      "id": "wiki_log_2026_05_07_bump_v0_9_5",
+      "community": 0,
+      "norm_label": "[2026-05-07] bump | \u110c\u1165\u11ab\u110b\u1167\u11a8 \u1107\u1165\u110c\u1165\u11ab \u1103\u1169\u11bc\u1100\u1175\u1112\u116a \u1106\u1175\u11be \u110c\u1165\u11bc\u110e\u1162\u11a8 \u1107\u1169\u110b\u116a\u11ab (v0.9.5)"
+    },
+    {
+      "label": "[2026-05-07] feat | 'ISF CODE' \uae30\ubc18 \uacf5\uc720 \uc2dc\uc2a4\ud15c \ub3c4\uc785 \ubc0f \ub9ac\ub2e4\uc774\ub809\ud2b8 \ubc84\uadf8 \ud574\uacb0 (v0.9)",
+      "file_type": "document",
+      "source_file": "log.md",
+      "source_location": "L472",
+      "id": "wiki_log_2026_05_07_feat_isf_code_v0_9",
+      "community": 0,
+      "norm_label": "[2026-05-07] feat | 'isf code' \u1100\u1175\u1107\u1161\u11ab \u1100\u1169\u11bc\u110b\u1172 \u1109\u1175\u1109\u1173\u1110\u1166\u11b7 \u1103\u1169\u110b\u1175\u11b8 \u1106\u1175\u11be \u1105\u1175\u1103\u1161\u110b\u1175\u1105\u1166\u11a8\u1110\u1173 \u1107\u1165\u1100\u1173 \u1112\u1162\u1100\u1167\u11af (v0.9)"
+    },
+    {
+      "label": "[2026-05-06] ingest | \uae08\uc735\uc18c\ub4dd\uc885\ud569\uacfc\uc138 \uc815\ucc45 \ubc0f \uc548\uc804 \ub9c8\uc9c4 \uc9c0\uce68 \uc218\ub9bd",
+      "file_type": "document",
+      "source_file": "log.md",
+      "source_location": "L480",
+      "id": "wiki_log_2026_05_06_ingest",
+      "community": 0,
+      "norm_label": "[2026-05-06] ingest | \u1100\u1173\u11b7\u110b\u1172\u11bc\u1109\u1169\u1103\u1173\u11a8\u110c\u1169\u11bc\u1112\u1161\u11b8\u1100\u116a\u1109\u1166 \u110c\u1165\u11bc\u110e\u1162\u11a8 \u1106\u1175\u11be \u110b\u1161\u11ab\u110c\u1165\u11ab \u1106\u1161\u110c\u1175\u11ab \u110c\u1175\u110e\u1175\u11b7 \u1109\u116e\u1105\u1175\u11b8"
+    },
+    {
+      "label": "[2026-05-07] lint | LLM Wiki \ud5cc\ubc95(Constitution) \uac1c\uc120 \ubc0f 3\uacc4\uce35 \uad6c\uc870 \ud655\ub9bd",
+      "file_type": "document",
+      "source_file": "log.md",
+      "source_location": "L488",
+      "id": "wiki_log_2026_05_07_lint_llm_wiki_constitution_3",
+      "community": 0,
+      "norm_label": "[2026-05-07] lint | llm wiki \u1112\u1165\u11ab\u1107\u1165\u11b8(constitution) \u1100\u1162\u1109\u1165\u11ab \u1106\u1175\u11be 3\u1100\u1168\u110e\u1173\u11bc \u1100\u116e\u110c\u1169 \u1112\u116a\u11a8\u1105\u1175\u11b8"
+    },
+    {
+      "label": "[2026-05-07] ingest | \uc9c0\uc2dd \uc800\uc7a5\uc18c \uc704\uce58 \ubcc0\uacbd \ubc0f \uc778\uc785 \uc2a4\uce94 (Migration)",
+      "file_type": "document",
+      "source_file": "log.md",
+      "source_location": "L496",
+      "id": "wiki_log_2026_05_07_ingest_migration",
+      "community": 0,
+      "norm_label": "[2026-05-07] ingest | \u110c\u1175\u1109\u1175\u11a8 \u110c\u1165\u110c\u1161\u11bc\u1109\u1169 \u110b\u1171\u110e\u1175 \u1107\u1167\u11ab\u1100\u1167\u11bc \u1106\u1175\u11be \u110b\u1175\u11ab\u110b\u1175\u11b8 \u1109\u1173\u110f\u1162\u11ab (migration)"
+    },
+    {
+      "label": "Operating_Principles.md",
+      "file_type": "document",
+      "source_file": "Operating_Principles.md",
+      "source_location": "L1",
+      "id": "operating_principles_md",
+      "community": 13,
+      "norm_label": "operating_principles.md"
+    },
+    {
+      "label": "\ud83d\udcdd Operating Principles (\ud504\ub85c\uc81d\ud2b8 \uc6b4\uc601 \uc6d0\uce59)",
+      "file_type": "document",
+      "source_file": "Operating_Principles.md",
+      "source_location": "L8",
+      "id": "wiki_operating_principles_operating_principles",
+      "community": 13,
+      "norm_label": "\ud83d\udcdd operating principles (\u1111\u1173\u1105\u1169\u110c\u1166\u11a8\u1110\u1173 \u110b\u116e\u11ab\u110b\u1167\u11bc \u110b\u116f\u11ab\u110e\u1175\u11a8)"
+    },
+    {
+      "label": "\u2696\ufe0f \ud575\uc2ec \ud5cc\ubc95 (Core Pillars)",
+      "file_type": "document",
+      "source_file": "Operating_Principles.md",
+      "source_location": "L12",
+      "id": "wiki_operating_principles_core_pillars",
+      "community": 13,
+      "norm_label": "\u2696\ufe0f \u1112\u1162\u11a8\u1109\u1175\u11b7 \u1112\u1165\u11ab\u1107\u1165\u11b8 (core pillars)"
+    },
+    {
+      "label": "\ud83d\ude80 \uac1c\ubc1c \ubc0f \ucee4\ubc0b \uc6d0\uce59",
+      "file_type": "document",
+      "source_file": "Operating_Principles.md",
+      "source_location": "L17",
+      "id": "wiki_operating_principles",
+      "community": 13,
+      "norm_label": "\ud83d\ude80 \u1100\u1162\u1107\u1161\u11af \u1106\u1175\u11be \u110f\u1165\u1106\u1175\u11ba \u110b\u116f\u11ab\u110e\u1175\u11a8"
+    },
+    {
+      "label": "\ud83d\udee0\ufe0f \uae30\uc220 \ubc0f PWA \ub3d9\uae30\ud654 (Automated Sync)",
+      "file_type": "document",
+      "source_file": "Operating_Principles.md",
+      "source_location": "L22",
+      "id": "wiki_operating_principles_pwa_automated_sync",
+      "community": 13,
+      "norm_label": "\ud83d\udee0\ufe0f \u1100\u1175\u1109\u116e\u11af \u1106\u1175\u11be pwa \u1103\u1169\u11bc\u1100\u1175\u1112\u116a (automated sync)"
+    },
+    {
+      "label": "\ud83c\udfdb\ufe0f \uc9c0\uc2dd \ubca0\uc774\uc2a4 \uc6b4\uc601 (The Librarian Workflow)",
+      "file_type": "document",
+      "source_file": "Operating_Principles.md",
+      "source_location": "L28",
+      "id": "wiki_operating_principles_the_librarian_workflow",
+      "community": 13,
+      "norm_label": "\ud83c\udfdb\ufe0f \u110c\u1175\u1109\u1175\u11a8 \u1107\u1166\u110b\u1175\u1109\u1173 \u110b\u116e\u11ab\u110b\u1167\u11bc (the librarian workflow)"
+    },
+    {
+      "label": "Plan_Step3.md",
+      "file_type": "document",
+      "source_file": "Plan_Step3.md",
+      "source_location": "L1",
+      "id": "plan_step3_md",
+      "community": 14,
+      "norm_label": "plan_step3.md"
+    },
+    {
+      "label": "\ud83d\uddfa\ufe0f Step3: \ud3ec\ud2b8\ud3f4\ub9ac\uc624 \uad6c\uc131 \ubc0f \ucd5c\uc801\ud654 \uac1c\ubc1c \uacc4\ud68d (Roadmap)",
+      "file_type": "document",
+      "source_file": "Plan_Step3.md",
+      "source_location": "L8",
+      "id": "wiki_plan_step3_step3_roadmap",
+      "community": 14,
+      "norm_label": "\ud83d\uddfa\ufe0f step3: \u1111\u1169\u1110\u1173\u1111\u1169\u11af\u1105\u1175\u110b\u1169 \u1100\u116e\u1109\u1165\u11bc \u1106\u1175\u11be \u110e\u116c\u110c\u1165\u11a8\u1112\u116a \u1100\u1162\u1107\u1161\u11af \u1100\u1168\u1112\u116c\u11a8 (roadmap)"
+    },
+    {
+      "label": "1) \uac1c\ubc1c \ubc30\uacbd",
+      "file_type": "document",
+      "source_file": "Plan_Step3.md",
+      "source_location": "L14",
+      "id": "wiki_plan_step3_1",
+      "community": 14,
+      "norm_label": "1) \u1100\u1162\u1107\u1161\u11af \u1107\u1162\u1100\u1167\u11bc"
+    },
+    {
+      "label": "2) \uc8fc\uc694 \uae30\ub2a5 \ubc94\uc704 (MVP)",
+      "file_type": "document",
+      "source_file": "Plan_Step3.md",
+      "source_location": "L18",
+      "id": "wiki_plan_step3_2_mvp",
+      "community": 14,
+      "norm_label": "2) \u110c\u116e\u110b\u116d \u1100\u1175\u1102\u1173\u11bc \u1107\u1165\u11b7\u110b\u1171 (mvp)"
+    },
+    {
+      "label": "3) \uae30\uc220\uc801 \uace0\ub824 \uc0ac\ud56d",
+      "file_type": "document",
+      "source_file": "Plan_Step3.md",
+      "source_location": "L29",
+      "id": "wiki_plan_step3_3",
+      "community": 14,
+      "norm_label": "3) \u1100\u1175\u1109\u116e\u11af\u110c\u1165\u11a8 \u1100\u1169\u1105\u1167 \u1109\u1161\u1112\u1161\u11bc"
+    },
+    {
+      "label": "4) \ub9c8\uc77c\uc2a4\ud1a4 (\uc608\uc815)",
+      "file_type": "document",
+      "source_file": "Plan_Step3.md",
+      "source_location": "L34",
+      "id": "wiki_plan_step3_4",
+      "community": 14,
+      "norm_label": "4) \u1106\u1161\u110b\u1175\u11af\u1109\u1173\u1110\u1169\u11ab (\u110b\u1168\u110c\u1165\u11bc)"
+    },
+    {
+      "label": "Plan_Step3_Implementation.md",
+      "file_type": "document",
+      "source_file": "Plan_Step3_Implementation.md",
+      "source_location": "L1",
+      "id": "plan_step3_implementation_md",
+      "community": 2,
+      "norm_label": "plan_step3_implementation.md"
+    },
+    {
+      "label": "Plan: \ub514\uc790\uc778 \uc2dc\uc2a4\ud15c \uace0\ub3c4\ud654 \ubc0f Step 3 \ucc29\uc218 (v0.8.0)",
+      "file_type": "document",
+      "source_file": "Plan_Step3_Implementation.md",
+      "source_location": "L1",
+      "id": "wiki_plan_step3_implementation_plan_step_3_v0_8_0",
+      "community": 2,
+      "norm_label": "plan: \u1103\u1175\u110c\u1161\u110b\u1175\u11ab \u1109\u1175\u1109\u1173\u1110\u1166\u11b7 \u1100\u1169\u1103\u1169\u1112\u116a \u1106\u1175\u11be step 3 \u110e\u1161\u11a8\u1109\u116e (v0.8.0)"
+    },
+    {
+      "label": "1. \ub514\uc790\uc778 \uc2dc\uc2a4\ud15c \uac10\uc0ac \ubc0f \uc218\uc815 \ubaa9\ub85d (Audit & Fix)",
+      "file_type": "document",
+      "source_file": "Plan_Step3_Implementation.md",
+      "source_location": "L3",
+      "id": "wiki_plan_step3_implementation_1_audit_fix",
+      "community": 2,
+      "norm_label": "1. \u1103\u1175\u110c\u1161\u110b\u1175\u11ab \u1109\u1175\u1109\u1173\u1110\u1166\u11b7 \u1100\u1161\u11b7\u1109\u1161 \u1106\u1175\u11be \u1109\u116e\u110c\u1165\u11bc \u1106\u1169\u11a8\u1105\u1169\u11a8 (audit & fix)"
+    },
+    {
+      "label": "A. Glassmorphism \uac15\ud654 (Surface & Depth)",
+      "file_type": "document",
+      "source_file": "Plan_Step3_Implementation.md",
+      "source_location": "L6",
+      "id": "wiki_plan_step3_implementation_a_glassmorphism_surface_depth",
+      "community": 2,
+      "norm_label": "a. glassmorphism \u1100\u1161\u11bc\u1112\u116a (surface & depth)"
+    },
+    {
+      "label": "B. Typography \uc77c\uad00\uc131 (Black Han Sans \uc801\uc6a9)",
+      "file_type": "document",
+      "source_file": "Plan_Step3_Implementation.md",
+      "source_location": "L12",
+      "id": "wiki_plan_step3_implementation_b_typography_black_han_sans",
+      "community": 2,
+      "norm_label": "b. typography \u110b\u1175\u11af\u1100\u116a\u11ab\u1109\u1165\u11bc (black han sans \u110c\u1165\u11a8\u110b\u116d\u11bc)"
+    },
+    {
+      "label": "C. \ubc18\uc751\ud615 \ubb34\uacb0\uc131 (Mobile First)",
+      "file_type": "document",
+      "source_file": "Plan_Step3_Implementation.md",
+      "source_location": "L19",
+      "id": "wiki_plan_step3_implementation_c_mobile_first",
+      "community": 2,
+      "norm_label": "c. \u1107\u1161\u11ab\u110b\u1173\u11bc\u1112\u1167\u11bc \u1106\u116e\u1100\u1167\u11af\u1109\u1165\u11bc (mobile first)"
+    },
+    {
+      "label": "2. Step 3: \ud3ec\ud2b8\ud3f4\ub9ac\uc624 \uc5d0\ub514\ud130 \ubc0f \ub9ac\ubc38\ub7f0\uc2f1 \uac00\uc774\ub4dc \uae30\ud68d",
+      "file_type": "document",
+      "source_file": "Plan_Step3_Implementation.md",
+      "source_location": "L25",
+      "id": "wiki_plan_step3_implementation_2_step_3",
+      "community": 2,
+      "norm_label": "2. step 3: \u1111\u1169\u1110\u1173\u1111\u1169\u11af\u1105\u1175\u110b\u1169 \u110b\u1166\u1103\u1175\u1110\u1165 \u1106\u1175\u11be \u1105\u1175\u1107\u1162\u11af\u1105\u1165\u11ab\u1109\u1175\u11bc \u1100\u1161\u110b\u1175\u1103\u1173 \u1100\u1175\u1112\u116c\u11a8"
+    },
+    {
+      "label": "A. \uac1c\ub150\uc801 \ubaa8\ub378 (Conceptual Model)",
+      "file_type": "document",
+      "source_file": "Plan_Step3_Implementation.md",
+      "source_location": "L28",
+      "id": "wiki_plan_step3_implementation_a_conceptual_model",
+      "community": 2,
+      "norm_label": "a. \u1100\u1162\u1102\u1167\u11b7\u110c\u1165\u11a8 \u1106\u1169\u1103\u1166\u11af (conceptual model)"
+    },
+    {
+      "label": "B. UI \uad6c\uc870 \uc124\uacc4 (HCD 4\ub2e8\uacc4 \ud750\ub984)",
+      "file_type": "document",
+      "source_file": "Plan_Step3_Implementation.md",
+      "source_location": "L32",
+      "id": "wiki_plan_step3_implementation_b_ui_hcd_4",
+      "community": 2,
+      "norm_label": "b. ui \u1100\u116e\u110c\u1169 \u1109\u1165\u11af\u1100\u1168 (hcd 4\u1103\u1161\u11ab\u1100\u1168 \u1112\u1173\u1105\u1173\u11b7)"
+    },
+    {
+      "label": "3. Onboarding UX \uc804\ub7b5: '\ucc98\uc74c \uc811\uc18d \uc2dc \uac00\uc774\ub4dc'",
+      "file_type": "document",
+      "source_file": "Plan_Step3_Implementation.md",
+      "source_location": "L45",
+      "id": "wiki_plan_step3_implementation_3_onboarding_ux",
+      "community": 2,
+      "norm_label": "3. onboarding ux \u110c\u1165\u11ab\u1105\u1163\u11a8: '\u110e\u1165\u110b\u1173\u11b7 \u110c\u1165\u11b8\u1109\u1169\u11a8 \u1109\u1175 \u1100\u1161\u110b\u1175\u1103\u1173'"
+    },
+    {
+      "label": "A. \uc2dc\uac01\uc801 \uc720\ub3c4 (Signifiers)",
+      "file_type": "document",
+      "source_file": "Plan_Step3_Implementation.md",
+      "source_location": "L48",
+      "id": "wiki_plan_step3_implementation_a_signifiers",
+      "community": 2,
+      "norm_label": "a. \u1109\u1175\u1100\u1161\u11a8\u110c\u1165\u11a8 \u110b\u1172\u1103\u1169 (signifiers)"
+    },
+    {
+      "label": "B. \uc2e0\uaddc \uc0ac\uc6a9\uc790 \uc624\ubc84\ub808\uc774 (Onboarding Overlay)",
+      "file_type": "document",
+      "source_file": "Plan_Step3_Implementation.md",
+      "source_location": "L52",
+      "id": "wiki_plan_step3_implementation_b_onboarding_overlay",
+      "community": 2,
+      "norm_label": "b. \u1109\u1175\u11ab\u1100\u1172 \u1109\u1161\u110b\u116d\u11bc\u110c\u1161 \u110b\u1169\u1107\u1165\u1105\u1166\u110b\u1175 (onboarding overlay)"
+    },
+    {
+      "label": "4. \ud30c\uc77c \uad6c\uc870 \uc124\uacc4 (Step 3)",
+      "file_type": "document",
+      "source_file": "Plan_Step3_Implementation.md",
+      "source_location": "L60",
+      "id": "wiki_plan_step3_implementation_4_step_3",
+      "community": 2,
+      "norm_label": "4. \u1111\u1161\u110b\u1175\u11af \u1100\u116e\u110c\u1169 \u1109\u1165\u11af\u1100\u1168 (step 3)"
+    },
+    {
+      "label": "code:text (apps/step3/)",
+      "file_type": "document",
+      "source_file": "Plan_Step3_Implementation.md",
+      "source_location": "L63",
+      "id": "wiki_plan_step3_implementation_codeblock_1",
+      "community": 2,
+      "norm_label": "code:text (apps/step3/)"
+    },
+    {
+      "label": "5. \uc2e4\ud589 \ub85c\ub4dc\ub9f5",
+      "file_type": "document",
+      "source_file": "Plan_Step3_Implementation.md",
+      "source_location": "L78",
+      "id": "wiki_plan_step3_implementation_5",
+      "community": 2,
+      "norm_label": "5. \u1109\u1175\u11af\u1112\u1162\u11bc \u1105\u1169\u1103\u1173\u1106\u1162\u11b8"
+    },
+    {
+      "label": "Project_History.md",
+      "file_type": "document",
+      "source_file": "Project_History.md",
+      "source_location": "L1",
+      "id": "project_history_md",
+      "community": 1,
+      "norm_label": "project_history.md"
+    },
+    {
+      "label": "Project History (\ud504\ub85c\uc81d\ud2b8 \uc5f0\ub300\uae30)",
+      "file_type": "document",
+      "source_file": "Project_History.md",
+      "source_location": "L7",
+      "id": "wiki_project_history_project_history",
+      "community": 1,
+      "norm_label": "project history (\u1111\u1173\u1105\u1169\u110c\u1166\u11a8\u1110\u1173 \u110b\u1167\u11ab\u1103\u1162\u1100\u1175)"
+    },
+    {
+      "label": "\ud83d\udd52 \uc8fc\uc694 \ub9c8\uc77c\uc2a4\ud1a4",
+      "file_type": "document",
+      "source_file": "Project_History.md",
+      "source_location": "L9",
+      "id": "wiki_project_history",
+      "community": 1,
+      "norm_label": "\ud83d\udd52 \u110c\u116e\u110b\u116d \u1106\u1161\u110b\u1175\u11af\u1109\u1173\u1110\u1169\u11ab"
+    },
+    {
+      "label": "[2026-05-07] Step 4: Leverage Assets & Liquidation Engine (v0.9.7) \ud83d\udcc9",
+      "file_type": "document",
+      "source_file": "Project_History.md",
+      "source_location": "L11",
+      "id": "wiki_project_history_2026_05_07_step_4_leverage_assets_liquidation_engine_v0_9_7",
+      "community": 1,
+      "norm_label": "[2026-05-07] step 4: leverage assets & liquidation engine (v0.9.7) \ud83d\udcc9"
+    },
+    {
+      "label": "[2026-05-07] Step 4: Asset Backtest Simulator (v0.9.6) \ud83d\udcc8",
+      "file_type": "document",
+      "source_file": "Project_History.md",
+      "source_location": "L17",
+      "id": "wiki_project_history_2026_05_07_step_4_asset_backtest_simulator_v0_9_6",
+      "community": 1,
+      "norm_label": "[2026-05-07] step 4: asset backtest simulator (v0.9.6) \ud83d\udcc8"
+    },
+    {
+      "label": "[2026-05-07] 'ISF CODE' Sharing System & Redirect Bug Fix (v0.9.5) \ud83d\udd17",
+      "file_type": "document",
+      "source_file": "Project_History.md",
+      "source_location": "L26",
+      "id": "wiki_project_history_2026_05_07_isf_code_sharing_system_redirect_bug_fix_v0_9_5",
+      "community": 1,
+      "norm_label": "[2026-05-07] 'isf code' sharing system & redirect bug fix (v0.9.5) \ud83d\udd17"
+    },
+    {
+      "label": "[2026-05-06] Step 2 Preset UI Enhancement & Patch (v0.9) \ud83d\udee0\ufe0f",
+      "file_type": "document",
+      "source_file": "Project_History.md",
+      "source_location": "L34",
+      "id": "wiki_project_history_2026_05_06_step_2_preset_ui_enhancement_patch_v0_9",
+      "community": 1,
+      "norm_label": "[2026-05-06] step 2 preset ui enhancement & patch (v0.9) \ud83d\udee0\ufe0f"
+    },
+    {
+      "label": "[2026-05-06] Modern Hybrid Architecture & Financial Simulation Enhancements (v0.9) \ud83d\ude80",
+      "file_type": "document",
+      "source_file": "Project_History.md",
+      "source_location": "L41",
+      "id": "wiki_project_history_2026_05_06_modern_hybrid_architecture_financial_simulation_enhancements_v0_9",
+      "community": 1,
+      "norm_label": "[2026-05-06] modern hybrid architecture & financial simulation enhancements (v0.9) \ud83d\ude80"
+    },
+    {
+      "label": "[2026-05-06] Step 2 \ucd08\uae30 \uc790\uc0b0 \uc5f0\ub3d9 \ubc0f \uc2dc\ubbac\ub808\uc774\uc158 \ub85c\uc9c1 \uc218\uc815 (v0.8.9)",
+      "file_type": "document",
+      "source_file": "Project_History.md",
+      "source_location": "L48",
+      "id": "wiki_project_history_2026_05_06_step_2_v0_8_9",
+      "community": 1,
+      "norm_label": "[2026-05-06] step 2 \u110e\u1169\u1100\u1175 \u110c\u1161\u1109\u1161\u11ab \u110b\u1167\u11ab\u1103\u1169\u11bc \u1106\u1175\u11be \u1109\u1175\u1106\u1172\u11af\u1105\u1166\u110b\u1175\u1109\u1167\u11ab \u1105\u1169\u110c\u1175\u11a8 \u1109\u116e\u110c\u1165\u11bc (v0.8.9)"
+    },
+    {
+      "label": "[2026-05-06] Step 1 \ucd08\uae30 \uc790\uc0b0 \ud544\ub4dc \uad6c\uc870 \uac1c\uc120 (v0.8.8)",
+      "file_type": "document",
+      "source_file": "Project_History.md",
+      "source_location": "L53",
+      "id": "wiki_project_history_2026_05_06_step_1_v0_8_8",
+      "community": 1,
+      "norm_label": "[2026-05-06] step 1 \u110e\u1169\u1100\u1175 \u110c\u1161\u1109\u1161\u11ab \u1111\u1175\u11af\u1103\u1173 \u1100\u116e\u110c\u1169 \u1100\u1162\u1109\u1165\u11ab (v0.8.8)"
+    },
+    {
+      "label": "[2026-05-04] Runtime Version Management Centralization (v0.8.3)",
+      "file_type": "document",
+      "source_file": "Project_History.md",
+      "source_location": "L57",
+      "id": "wiki_project_history_2026_05_04_runtime_version_management_centralization_v0_8_3",
+      "community": 1,
+      "norm_label": "[2026-05-04] runtime version management centralization (v0.8.3)"
+    },
+    {
+      "label": "[2026-05-04] Phase 5: Step 1 Spotlight Onboarding (v0.8.3) \ud83c\udf1f",
+      "file_type": "document",
+      "source_file": "Project_History.md",
+      "source_location": "L62",
+      "id": "wiki_project_history_2026_05_04_phase_5_step_1_spotlight_onboarding_v0_8_3",
+      "community": 1,
+      "norm_label": "[2026-05-04] phase 5: step 1 spotlight onboarding (v0.8.3) \ud83c\udf1f"
+    },
+    {
+      "label": "[2026-05-04] Modernization Pivot (v1.1.0-alpha.1)",
+      "file_type": "document",
+      "source_file": "Project_History.md",
+      "source_location": "L67",
+      "id": "wiki_project_history_2026_05_04_modernization_pivot_v1_1_0_alpha_1",
+      "community": 1,
+      "norm_label": "[2026-05-04] modernization pivot (v1.1.0-alpha.1)"
+    },
+    {
+      "label": "[2026-05-04] Phase 4: KPI Dashboard (v0.7.15)",
+      "file_type": "document",
+      "source_file": "Project_History.md",
+      "source_location": "L73",
+      "id": "wiki_project_history_2026_05_04_phase_4_kpi_dashboard_v0_7_15",
+      "community": 1,
+      "norm_label": "[2026-05-04] phase 4: kpi dashboard (v0.7.15)"
+    },
+    {
+      "label": "[2026-04-20] System Integrity Recovery",
+      "file_type": "document",
+      "source_file": "Project_History.md",
+      "source_location": "L77",
+      "id": "wiki_project_history_2026_04_20_system_integrity_recovery",
+      "community": 1,
+      "norm_label": "[2026-04-20] system integrity recovery"
+    },
+    {
+      "label": "[2026-04-18] Step 2 Modularization (v0.7.0)",
+      "file_type": "document",
+      "source_file": "Project_History.md",
+      "source_location": "L80",
+      "id": "wiki_project_history_2026_04_18_step_2_modularization_v0_7_0",
+      "community": 1,
+      "norm_label": "[2026-04-18] step 2 modularization (v0.7.0)"
+    },
+    {
+      "label": "[2026-04-17] Storage Hub Integration",
+      "file_type": "document",
+      "source_file": "Project_History.md",
+      "source_location": "L83",
+      "id": "wiki_project_history_2026_04_17_storage_hub_integration",
+      "community": 1,
+      "norm_label": "[2026-04-17] storage hub integration"
+    },
+    {
+      "label": "[2026-04-16] Step 1 Modularization (v0.5.0)",
+      "file_type": "document",
+      "source_file": "Project_History.md",
+      "source_location": "L87",
+      "id": "wiki_project_history_2026_04_16_step_1_modularization_v0_5_0",
+      "community": 1,
+      "norm_label": "[2026-04-16] step 1 modularization (v0.5.0)"
+    },
+    {
+      "label": "[2026-04-14] UI/UX Overhaul (v0.3.0)",
+      "file_type": "document",
+      "source_file": "Project_History.md",
+      "source_location": "L91",
+      "id": "wiki_project_history_2026_04_14_ui_ux_overhaul_v0_3_0",
+      "community": 1,
+      "norm_label": "[2026-04-14] ui/ux overhaul (v0.3.0)"
+    },
+    {
+      "label": "System_Integrity_Standard.md",
+      "file_type": "document",
+      "source_file": "System_Integrity_Standard.md",
+      "source_location": "L1",
+      "id": "system_integrity_standard_md",
+      "community": 15,
+      "norm_label": "system_integrity_standard.md"
+    },
+    {
+      "label": "\ud83d\udea8 System Integrity Standard (\uc2dc\uc2a4\ud15c \ubb34\uacb0\uc131 \ud45c\uc900)",
+      "file_type": "document",
+      "source_file": "System_Integrity_Standard.md",
+      "source_location": "L8",
+      "id": "wiki_system_integrity_standard_system_integrity_standard",
+      "community": 15,
+      "norm_label": "\ud83d\udea8 system integrity standard (\u1109\u1175\u1109\u1173\u1110\u1166\u11b7 \u1106\u116e\u1100\u1167\u11af\u1109\u1165\u11bc \u1111\u116d\u110c\u116e\u11ab)"
+    },
+    {
+      "label": "1. \uc2a4\ud0c0\uc77c \ubc0f \ubc18\uc751\ud615 \ubb34\uacb0\uc131",
+      "file_type": "document",
+      "source_file": "System_Integrity_Standard.md",
+      "source_location": "L12",
+      "id": "wiki_system_integrity_standard_1",
+      "community": 15,
+      "norm_label": "1. \u1109\u1173\u1110\u1161\u110b\u1175\u11af \u1106\u1175\u11be \u1107\u1161\u11ab\u110b\u1173\u11bc\u1112\u1167\u11bc \u1106\u116e\u1100\u1167\u11af\u1109\u1165\u11bc"
+    },
+    {
+      "label": "2. \ub85c\uc9c1 \ubcf4\uc874 (Core Logic Protection)",
+      "file_type": "document",
+      "source_file": "System_Integrity_Standard.md",
+      "source_location": "L17",
+      "id": "wiki_system_integrity_standard_2_core_logic_protection",
+      "community": 15,
+      "norm_label": "2. \u1105\u1169\u110c\u1175\u11a8 \u1107\u1169\u110c\u1169\u11ab (core logic protection)"
+    },
+    {
+      "label": "3. \ub2e8\uc704 \uc815\ud569\uc131 (Unit Consistency)",
+      "file_type": "document",
+      "source_file": "System_Integrity_Standard.md",
+      "source_location": "L20",
+      "id": "wiki_system_integrity_standard_3_unit_consistency",
+      "community": 15,
+      "norm_label": "3. \u1103\u1161\u11ab\u110b\u1171 \u110c\u1165\u11bc\u1112\u1161\u11b8\u1109\u1165\u11bc (unit consistency)"
+    },
+    {
+      "label": "4. No-build \uc9c0\ud5a5 (Modern Hybrid)",
+      "file_type": "document",
+      "source_file": "System_Integrity_Standard.md",
+      "source_location": "L28",
+      "id": "wiki_system_integrity_standard_4_no_build_modern_hybrid",
+      "community": 15,
+      "norm_label": "4. no-build \u110c\u1175\u1112\u1163\u11bc (modern hybrid)"
+    },
+    {
+      "label": "UI_Standards_Reference.md",
+      "file_type": "document",
+      "source_file": "UI_Standards_Reference.md",
+      "source_location": "L1",
+      "id": "ui_standards_reference_md",
+      "community": 3,
+      "norm_label": "ui_standards_reference.md"
+    },
+    {
+      "label": "UI Standards Reference (UI \ud45c\uc900 \ucc38\uc870)",
+      "file_type": "document",
+      "source_file": "UI_Standards_Reference.md",
+      "source_location": "L7",
+      "id": "wiki_ui_standards_reference_ui_standards_reference_ui",
+      "community": 3,
+      "norm_label": "ui standards reference (ui \u1111\u116d\u110c\u116e\u11ab \u110e\u1161\u11b7\u110c\u1169)"
+    },
+    {
+      "label": "\ub808\uc774\uc544\uc6c3 \ud328\ub110 \uc21c\uc11c (Panel Ordering)",
+      "file_type": "document",
+      "source_file": "UI_Standards_Reference.md",
+      "source_location": "L9",
+      "id": "wiki_ui_standards_reference_panel_ordering",
+      "community": 3,
+      "norm_label": "\u1105\u1166\u110b\u1175\u110b\u1161\u110b\u116e\u11ba \u1111\u1162\u1102\u1165\u11af \u1109\u116e\u11ab\u1109\u1165 (panel ordering)"
+    },
+    {
+      "label": "CSS \uad6c\uc870 \ubc0f \ubb34\uacb0\uc131 (CSS Structure & Integrity) - \uc911\uc694!",
+      "file_type": "document",
+      "source_file": "UI_Standards_Reference.md",
+      "source_location": "L22",
+      "id": "wiki_ui_standards_reference_css_css_structure_integrity",
+      "community": 3,
+      "norm_label": "css \u1100\u116e\u110c\u1169 \u1106\u1175\u11be \u1106\u116e\u1100\u1167\u11af\u1109\u1165\u11bc (css structure & integrity) - \u110c\u116e\u11bc\u110b\u116d!"
+    },
+    {
+      "label": "\ud14c\ub9c8 \uc2dc\uc2a4\ud15c",
+      "file_type": "document",
+      "source_file": "UI_Standards_Reference.md",
+      "source_location": "L34",
+      "id": "wiki_ui_standards_reference",
+      "community": 3,
+      "norm_label": "\u1110\u1166\u1106\u1161 \u1109\u1175\u1109\u1173\u1110\u1166\u11b7"
+    },
+    {
+      "label": "\uacf5\ud1b5 \ucef4\ud3ec\ub10c\ud2b8 \ubc0f \ud53c\ub4dc\ubc31 \ud45c\uc900 (v0.3 \ud1b5\ud569)",
+      "file_type": "document",
+      "source_file": "UI_Standards_Reference.md",
+      "source_location": "L52",
+      "id": "wiki_ui_standards_reference_v0_3",
+      "community": 3,
+      "norm_label": "\u1100\u1169\u11bc\u1110\u1169\u11bc \u110f\u1165\u11b7\u1111\u1169\u1102\u1165\u11ab\u1110\u1173 \u1106\u1175\u11be \u1111\u1175\u1103\u1173\u1107\u1162\u11a8 \u1111\u116d\u110c\u116e\u11ab (v0.3 \u1110\u1169\u11bc\u1112\u1161\u11b8)"
+    },
+    {
+      "label": "\ub370\uc774\ud130 \uacf5\uc720 \ubc0f \uc5f0\ub3d9 \ud45c\uc900 (v0.9 \uc2e0\uc124)",
+      "file_type": "document",
+      "source_file": "UI_Standards_Reference.md",
+      "source_location": "L68",
+      "id": "wiki_ui_standards_reference_v0_9",
+      "community": 3,
+      "norm_label": "\u1103\u1166\u110b\u1175\u1110\u1165 \u1100\u1169\u11bc\u110b\u1172 \u1106\u1175\u11be \u110b\u1167\u11ab\u1103\u1169\u11bc \u1111\u116d\u110c\u116e\u11ab (v0.9 \u1109\u1175\u11ab\u1109\u1165\u11af)"
+    },
+    {
+      "label": "\uc2dc\uac01\ud654",
+      "file_type": "document",
+      "source_file": "UI_Standards_Reference.md",
+      "source_location": "L78",
+      "id": "wiki_ui_standards_reference_78",
+      "community": 3,
+      "norm_label": "\u1109\u1175\u1100\u1161\u11a8\u1112\u116a"
+    },
+    {
+      "label": "Sankey Diagram (Step1)",
+      "file_type": "document",
+      "source_file": "UI_Standards_Reference.md",
+      "source_location": "L80",
+      "id": "wiki_ui_standards_reference_sankey_diagram_step1",
+      "community": 3,
+      "norm_label": "sankey diagram (step1)"
+    },
+    {
+      "label": "Dividend Simulation Chart (Step 2)",
+      "file_type": "document",
+      "source_file": "UI_Standards_Reference.md",
+      "source_location": "L84",
+      "id": "wiki_ui_standards_reference_dividend_simulation_chart_step_2",
+      "community": 3,
+      "norm_label": "dividend simulation chart (step 2)"
+    },
+    {
+      "label": "Donut Chart (Step 3 \uc608\uc815)",
+      "file_type": "document",
+      "source_file": "UI_Standards_Reference.md",
+      "source_location": "L88",
+      "id": "wiki_ui_standards_reference_donut_chart_step_3",
+      "community": 3,
+      "norm_label": "donut chart (step 3 \u110b\u1168\u110c\u1165\u11bc)"
+    },
+    {
+      "label": "\ud0c0\uc774\ud3ec\uadf8\ub798\ud53c",
+      "file_type": "document",
+      "source_file": "UI_Standards_Reference.md",
+      "source_location": "L93",
+      "id": "wiki_ui_standards_reference_93",
+      "community": 3,
+      "norm_label": "\u1110\u1161\u110b\u1175\u1111\u1169\u1100\u1173\u1105\u1162\u1111\u1175"
+    },
+    {
+      "label": "Version_Management_Principles.md",
+      "file_type": "document",
+      "source_file": "Version_Management_Principles.md",
+      "source_location": "L1",
+      "id": "version_management_principles_md",
+      "community": 16,
+      "norm_label": "version_management_principles.md"
+    },
+    {
+      "label": "\ud83d\udccc Version Management Principles (\ubc84\uc804 \uad00\ub9ac \uc6d0\uce59)",
+      "file_type": "document",
+      "source_file": "Version_Management_Principles.md",
+      "source_location": "L9",
+      "id": "wiki_version_management_principles_version_management_principles",
+      "community": 16,
+      "norm_label": "\ud83d\udccc version management principles (\u1107\u1165\u110c\u1165\u11ab \u1100\u116a\u11ab\u1105\u1175 \u110b\u116f\u11ab\u110e\u1175\u11a8)"
+    },
+    {
+      "label": "1. \ubc84\uc804 \ubc88\ud638 \uccb4\uacc4 (SemVer)",
+      "file_type": "document",
+      "source_file": "Version_Management_Principles.md",
+      "source_location": "L13",
+      "id": "wiki_version_management_principles_1_semver",
+      "community": 16,
+      "norm_label": "1. \u1107\u1165\u110c\u1165\u11ab \u1107\u1165\u11ab\u1112\u1169 \u110e\u1166\u1100\u1168 (semver)"
+    },
+    {
+      "label": "2. SSOT \ubc84\uc804 \uad00\ub9ac (Single Source of Truth)",
+      "file_type": "document",
+      "source_file": "Version_Management_Principles.md",
+      "source_location": "L23",
+      "id": "wiki_version_management_principles_2_ssot_single_source_of_truth",
+      "community": 16,
+      "norm_label": "2. ssot \u1107\u1165\u110c\u1165\u11ab \u1100\u116a\u11ab\u1105\u1175 (single source of truth)"
+    },
+    {
+      "label": "3. Triple Sync \uc790\ub3d9\ud654 (Vite Build)",
+      "file_type": "document",
+      "source_file": "Version_Management_Principles.md",
+      "source_location": "L29",
+      "id": "wiki_version_management_principles_3_triple_sync_vite_build",
+      "community": 16,
+      "norm_label": "3. triple sync \u110c\u1161\u1103\u1169\u11bc\u1112\u116a (vite build)"
+    },
+    {
+      "label": "4. \ubc84\uc804 \uc5c5\ub370\uc774\ud2b8 \uc6cc\ud06c\ud50c\ub85c\uc6b0",
+      "file_type": "document",
+      "source_file": "Version_Management_Principles.md",
+      "source_location": "L37",
+      "id": "wiki_version_management_principles_4",
+      "community": 16,
+      "norm_label": "4. \u1107\u1165\u110c\u1165\u11ab \u110b\u1165\u11b8\u1103\u1166\u110b\u1175\u1110\u1173 \u110b\u116f\u110f\u1173\u1111\u1173\u11af\u1105\u1169\u110b\u116e"
+    },
+    {
+      "label": "Data_Bridge_Import_Pattern.md",
+      "file_type": "document",
+      "source_file": "archive/Data_Bridge_Import_Pattern.md",
+      "source_location": "L1",
+      "id": "archive_data_bridge_import_pattern_md",
+      "community": 17,
+      "norm_label": "data_bridge_import_pattern.md"
+    },
+    {
+      "label": "\ud1b5\ud569 \uc571 \uac04 \ub370\uc774\ud130 \ube0c\ub9ac\uc9c0 \ubc0f \uc790\ub3d9 \uc5f0\ub3d9 \ud328\ud134",
+      "file_type": "document",
+      "source_file": "archive/Data_Bridge_Import_Pattern.md",
+      "source_location": "L8",
+      "id": "archive_data_bridge_import_pattern",
+      "community": 17,
+      "norm_label": "\u1110\u1169\u11bc\u1112\u1161\u11b8 \u110b\u1162\u11b8 \u1100\u1161\u11ab \u1103\u1166\u110b\u1175\u1110\u1165 \u1107\u1173\u1105\u1175\u110c\u1175 \u1106\u1175\u11be \u110c\u1161\u1103\u1169\u11bc \u110b\u1167\u11ab\u1103\u1169\u11bc \u1111\u1162\u1110\u1165\u11ab"
+    },
+    {
+      "label": "\uac1c\uc694",
+      "file_type": "document",
+      "source_file": "archive/Data_Bridge_Import_Pattern.md",
+      "source_location": "L10",
+      "id": "archive_data_bridge_import_pattern_10",
+      "community": 17,
+      "norm_label": "\u1100\u1162\u110b\u116d"
+    },
+    {
+      "label": "\ud575\uc2ec \ubb38\uc81c \ubc0f \uc6d0\uc778 (AS-IS)",
+      "file_type": "document",
+      "source_file": "archive/Data_Bridge_Import_Pattern.md",
+      "source_location": "L13",
+      "id": "archive_data_bridge_import_pattern_as_is",
+      "community": 17,
+      "norm_label": "\u1112\u1162\u11a8\u1109\u1175\u11b7 \u1106\u116e\u11ab\u110c\u1166 \u1106\u1175\u11be \u110b\u116f\u11ab\u110b\u1175\u11ab (as-is)"
+    },
+    {
+      "label": "\uc790\ub3d9 \uc5f0\ub3d9 \ubc0f \uc218\uc815 \uac00\ub4dc \uc6d0\uce59 (TO-BE, v0.7.4)",
+      "file_type": "document",
+      "source_file": "archive/Data_Bridge_Import_Pattern.md",
+      "source_location": "L16",
+      "id": "archive_data_bridge_import_pattern_to_be_v0_7_4",
+      "community": 17,
+      "norm_label": "\u110c\u1161\u1103\u1169\u11bc \u110b\u1167\u11ab\u1103\u1169\u11bc \u1106\u1175\u11be \u1109\u116e\u110c\u1165\u11bc \u1100\u1161\u1103\u1173 \u110b\u116f\u11ab\u110e\u1175\u11a8 (to-be, v0.7.4)"
+    },
+    {
+      "label": "\uc5f0\uad00 \uc9c0\uc2dd",
+      "file_type": "document",
+      "source_file": "archive/Data_Bridge_Import_Pattern.md",
+      "source_location": "L36",
+      "id": "archive_data_bridge_import_pattern_36",
+      "community": 17,
+      "norm_label": "\u110b\u1167\u11ab\u1100\u116a\u11ab \u110c\u1175\u1109\u1175\u11a8"
+    },
+    {
+      "label": "Feature_Archive_v0.5.md",
+      "file_type": "document",
+      "source_file": "archive/Feature_Archive_v0.5.md",
+      "source_location": "L1",
+      "id": "archive_feature_archive_v0_5_md",
+      "community": 6,
+      "norm_label": "feature_archive_v0.5.md"
+    },
+    {
+      "label": "Feature Archive (v0.5 \ub9ac\ud329\ud1a0\ub9c1 \uc774\uc804 \uc815\uc0c1 \uae30\ub2a5 \uc2a4\ud399)",
+      "file_type": "document",
+      "source_file": "archive/Feature_Archive_v0.5.md",
+      "source_location": "L1",
+      "id": "archive_feature_archive_v0_5_feature_archive_v0_5",
+      "community": 6,
+      "norm_label": "feature archive (v0.5 \u1105\u1175\u1111\u1162\u11a8\u1110\u1169\u1105\u1175\u11bc \u110b\u1175\u110c\u1165\u11ab \u110c\u1165\u11bc\u1109\u1161\u11bc \u1100\u1175\u1102\u1173\u11bc \u1109\u1173\u1111\u1166\u11a8)"
+    },
+    {
+      "label": "1. Step 1: \ub098\uc758 \uac00\uacc4 \ud750\ub984 (apps/step1)",
+      "file_type": "document",
+      "source_file": "archive/Feature_Archive_v0.5.md",
+      "source_location": "L6",
+      "id": "archive_feature_archive_v0_5_1_step_1_apps_step1",
+      "community": 6,
+      "norm_label": "1. step 1: \u1102\u1161\u110b\u1174 \u1100\u1161\u1100\u1168 \u1112\u1173\u1105\u1173\u11b7 (apps/step1)"
+    },
+    {
+      "label": "1-1. \uc804\uc5ed \uc0c1\ud0dc \ubc0f \uc785\ub825 \uc778\ud130\ud398\uc774\uc2a4",
+      "file_type": "document",
+      "source_file": "archive/Feature_Archive_v0.5.md",
+      "source_location": "L10",
+      "id": "archive_feature_archive_v0_5_1_1",
+      "community": 6,
+      "norm_label": "1-1. \u110c\u1165\u11ab\u110b\u1167\u11a8 \u1109\u1161\u11bc\u1110\u1162 \u1106\u1175\u11be \u110b\u1175\u11b8\u1105\u1167\u11a8 \u110b\u1175\u11ab\u1110\u1165\u1111\u1166\u110b\u1175\u1109\u1173"
+    },
+    {
+      "label": "1-2. \uc2dc\uac01\ud654 (Sankey Diagram)",
+      "file_type": "document",
+      "source_file": "archive/Feature_Archive_v0.5.md",
+      "source_location": "L17",
+      "id": "archive_feature_archive_v0_5_1_2_sankey_diagram",
+      "community": 6,
+      "norm_label": "1-2. \u1109\u1175\u1100\u1161\u11a8\u1112\u116a (sankey diagram)"
+    },
+    {
+      "label": "1-3. \uacc4\uc0b0 \ub85c\uc9c1: \uac00\uacc4 \ucd94\uc774 \uac80\uc99d (Projection)",
+      "file_type": "document",
+      "source_file": "archive/Feature_Archive_v0.5.md",
+      "source_location": "L23",
+      "id": "archive_feature_archive_v0_5_1_3_projection",
+      "community": 6,
+      "norm_label": "1-3. \u1100\u1168\u1109\u1161\u11ab \u1105\u1169\u110c\u1175\u11a8: \u1100\u1161\u1100\u1168 \u110e\u116e\u110b\u1175 \u1100\u1165\u11b7\u110c\u1173\u11bc (projection)"
+    },
+    {
+      "label": "2. Step 2: \ud22c\uc790 \ud3ec\ud2b8\ud3f4\ub9ac\uc624 (apps/step2)",
+      "file_type": "document",
+      "source_file": "archive/Feature_Archive_v0.5.md",
+      "source_location": "L30",
+      "id": "archive_feature_archive_v0_5_2_step_2_apps_step2",
+      "community": 6,
+      "norm_label": "2. step 2: \u1110\u116e\u110c\u1161 \u1111\u1169\u1110\u1173\u1111\u1169\u11af\u1105\u1175\u110b\u1169 (apps/step2)"
+    },
+    {
+      "label": "2-1. \ube0c\ub9ac\uc9c0(Bridge) \uae30\ub2a5",
+      "file_type": "document",
+      "source_file": "archive/Feature_Archive_v0.5.md",
+      "source_location": "L34",
+      "id": "archive_feature_archive_v0_5_2_1_bridge",
+      "community": 6,
+      "norm_label": "2-1. \u1107\u1173\u1105\u1175\u110c\u1175(bridge) \u1100\u1175\u1102\u1173\u11bc"
+    },
+    {
+      "label": "2-2. \ud3ec\ud2b8\ud3f4\ub9ac\uc624 \uad6c\uc131 \ubc0f UI \uc778\ud130\ub799\uc158",
+      "file_type": "document",
+      "source_file": "archive/Feature_Archive_v0.5.md",
+      "source_location": "L38",
+      "id": "archive_feature_archive_v0_5_2_2_ui",
+      "community": 6,
+      "norm_label": "2-2. \u1111\u1169\u1110\u1173\u1111\u1169\u11af\u1105\u1175\u110b\u1169 \u1100\u116e\u1109\u1165\u11bc \u1106\u1175\u11be ui \u110b\u1175\u11ab\u1110\u1165\u1105\u1162\u11a8\u1109\u1167\u11ab"
+    },
+    {
+      "label": "2-3. \ubc30\ub2f9 \uc2dc\ubbac\ub808\uc774\uc158 \ucd94\uc774 (Dividend Simulation)",
+      "file_type": "document",
+      "source_file": "archive/Feature_Archive_v0.5.md",
+      "source_location": "L45",
+      "id": "archive_feature_archive_v0_5_2_3_dividend_simulation",
+      "community": 6,
+      "norm_label": "2-3. \u1107\u1162\u1103\u1161\u11bc \u1109\u1175\u1106\u1172\u11af\u1105\u1166\u110b\u1175\u1109\u1167\u11ab \u110e\u116e\u110b\u1175 (dividend simulation)"
+    },
+    {
+      "label": "Plan_Step1.md",
+      "file_type": "document",
+      "source_file": "archive/Plan_Step1.md",
+      "source_location": "L1",
+      "id": "archive_plan_step1_md",
+      "community": 18,
+      "norm_label": "plan_step1.md"
+    },
+    {
+      "label": "[ARCHIVED] \ud83d\uddfa\ufe0f Step1: \ub098\uc758 \uac00\uacc4 \ud750\ub984 \uac1c\ubc1c \uacc4\ud68d (Roadmap)",
+      "file_type": "document",
+      "source_file": "archive/Plan_Step1.md",
+      "source_location": "L8",
+      "id": "archive_plan_step1_archived_step1_roadmap",
+      "community": 18,
+      "norm_label": "[archived] \ud83d\uddfa\ufe0f step1: \u1102\u1161\u110b\u1174 \u1100\u1161\u1100\u1168 \u1112\u1173\u1105\u1173\u11b7 \u1100\u1162\u1107\u1161\u11af \u1100\u1168\u1112\u116c\u11a8 (roadmap)"
+    },
+    {
+      "label": "1) \ud604\uc7ac \uc0c1\ud0dc \uc694\uc57d",
+      "file_type": "document",
+      "source_file": "archive/Plan_Step1.md",
+      "source_location": "L15",
+      "id": "archive_plan_step1_1",
+      "community": 18,
+      "norm_label": "1) \u1112\u1167\u11ab\u110c\u1162 \u1109\u1161\u11bc\u1110\u1162 \u110b\u116d\u110b\u1163\u11a8"
+    },
+    {
+      "label": "2) \ud575\uc2ec \uae30\uc220 \ubd80\ucc44 \ubc0f \uac1c\uc120 \uacfc\uc81c",
+      "file_type": "document",
+      "source_file": "archive/Plan_Step1.md",
+      "source_location": "L21",
+      "id": "archive_plan_step1_2",
+      "community": 18,
+      "norm_label": "2) \u1112\u1162\u11a8\u1109\u1175\u11b7 \u1100\u1175\u1109\u116e\u11af \u1107\u116e\u110e\u1162 \u1106\u1175\u11be \u1100\u1162\u1109\u1165\u11ab \u1100\u116a\u110c\u1166"
+    },
+    {
+      "label": "3) \uc548\uc815\ud654 \uccb4\ud06c\ub9ac\uc2a4\ud2b8",
+      "file_type": "document",
+      "source_file": "archive/Plan_Step1.md",
+      "source_location": "L26",
+      "id": "archive_plan_step1_3",
+      "community": 18,
+      "norm_label": "3) \u110b\u1161\u11ab\u110c\u1165\u11bc\u1112\u116a \u110e\u1166\u110f\u1173\u1105\u1175\u1109\u1173\u1110\u1173"
+    },
+    {
+      "label": "4) \uc6b0\uc120\uc21c\uc704 \ubc0f \uc2e4\ud589 \uc804\ub7b5",
+      "file_type": "document",
+      "source_file": "archive/Plan_Step1.md",
+      "source_location": "L31",
+      "id": "archive_plan_step1_4",
+      "community": 18,
+      "norm_label": "4) \u110b\u116e\u1109\u1165\u11ab\u1109\u116e\u11ab\u110b\u1171 \u1106\u1175\u11be \u1109\u1175\u11af\u1112\u1162\u11bc \u110c\u1165\u11ab\u1105\u1163\u11a8"
+    },
+    {
+      "label": "Plan_Step2.md",
+      "file_type": "document",
+      "source_file": "archive/Plan_Step2.md",
+      "source_location": "L1",
+      "id": "archive_plan_step2_md",
+      "community": 22,
+      "norm_label": "plan_step2.md"
+    },
+    {
+      "label": "[DEPRECATED] \ud83d\uddfa\ufe0f Step2: \ud3ec\ud2b8\ud3f4\ub9ac\uc624 \uad6c\uc131 \uac1c\ubc1c \uacc4\ud68d (Roadmap)",
+      "file_type": "document",
+      "source_file": "archive/Plan_Step2.md",
+      "source_location": "L8",
+      "id": "archive_plan_step2_deprecated_step2_roadmap",
+      "community": 22,
+      "norm_label": "[deprecated] \ud83d\uddfa\ufe0f step2: \u1111\u1169\u1110\u1173\u1111\u1169\u11af\u1105\u1175\u110b\u1169 \u1100\u116e\u1109\u1165\u11bc \u1100\u1162\u1107\u1161\u11af \u1100\u1168\u1112\u116c\u11a8 (roadmap)"
+    },
+    {
+      "label": "1) \ubcc0\uacbd\ub41c \uc0c1\ud0dc \uc694\uc57d",
+      "file_type": "document",
+      "source_file": "archive/Plan_Step2.md",
+      "source_location": "L18",
+      "id": "archive_plan_step2_1",
+      "community": 22,
+      "norm_label": "1) \u1107\u1167\u11ab\u1100\u1167\u11bc\u1103\u116c\u11ab \u1109\u1161\u11bc\u1110\u1162 \u110b\u116d\u110b\u1163\u11a8"
+    },
+    {
+      "label": "2) Step 2 \ucd5c\uc885 MVP \ubc94\uc704 (v0.7.0+)",
+      "file_type": "document",
+      "source_file": "archive/Plan_Step2.md",
+      "source_location": "L23",
+      "id": "archive_plan_step2_2_step_2_mvp_v0_7_0",
+      "community": 22,
+      "norm_label": "2) step 2 \u110e\u116c\u110c\u1169\u11bc mvp \u1107\u1165\u11b7\u110b\u1171 (v0.7.0+)"
+    },
+    {
+      "label": "Step1_Modularization_Refactoring.md",
+      "file_type": "document",
+      "source_file": "archive/Step1_Modularization_Refactoring.md",
+      "source_location": "L1",
+      "id": "archive_step1_modularization_refactoring_md",
+      "community": 7,
+      "norm_label": "step1_modularization_refactoring.md"
+    },
+    {
+      "label": "[ARCHIVED] Step1 Modularization Refactoring (Step 1 \ubaa8\ub4c8\ud654 \ub9ac\ud329\ud130\ub9c1)",
+      "file_type": "document",
+      "source_file": "archive/Step1_Modularization_Refactoring.md",
+      "source_location": "L7",
+      "id": "archive_step1_modularization_refactoring_archived_step1_modularization_refactoring_step_1",
+      "community": 7,
+      "norm_label": "[archived] step1 modularization refactoring (step 1 \u1106\u1169\u1103\u1172\u11af\u1112\u116a \u1105\u1175\u1111\u1162\u11a8\u1110\u1165\u1105\u1175\u11bc)"
+    },
+    {
+      "label": "\ubc30\uacbd \ubc0f \uc6d0\uc778",
+      "file_type": "document",
+      "source_file": "archive/Step1_Modularization_Refactoring.md",
+      "source_location": "L11",
+      "id": "archive_step1_modularization_refactoring",
+      "community": 7,
+      "norm_label": "\u1107\u1162\u1100\u1167\u11bc \u1106\u1175\u11be \u110b\u116f\u11ab\u110b\u1175\u11ab"
+    },
+    {
+      "label": "\ub9ac\ud329\ud130\ub9c1 \uc804\ub7b5",
+      "file_type": "document",
+      "source_file": "archive/Step1_Modularization_Refactoring.md",
+      "source_location": "L16",
+      "id": "archive_step1_modularization_refactoring_16",
+      "community": 7,
+      "norm_label": "\u1105\u1175\u1111\u1162\u11a8\u1110\u1165\u1105\u1175\u11bc \u110c\u1165\u11ab\u1105\u1163\u11a8"
+    },
+    {
+      "label": "1. \ubaa8\ub4c8 \ub514\ub809\ud1a0\ub9ac \uad6c\uc131 (`apps/step1/modules/`)",
+      "file_type": "document",
+      "source_file": "archive/Step1_Modularization_Refactoring.md",
+      "source_location": "L19",
+      "id": "archive_step1_modularization_refactoring_1_apps_step1_modules",
+      "community": 7,
+      "norm_label": "1. \u1106\u1169\u1103\u1172\u11af \u1103\u1175\u1105\u1166\u11a8\u1110\u1169\u1105\u1175 \u1100\u116e\u1109\u1165\u11bc (`apps/step1/modules/`)"
+    },
+    {
+      "label": "2. \uacbd\ub7c9 \ucee8\ud2b8\ub864\ub7ec (`apps/step1/app.js`)",
+      "file_type": "document",
+      "source_file": "archive/Step1_Modularization_Refactoring.md",
+      "source_location": "L31",
+      "id": "archive_step1_modularization_refactoring_2_apps_step1_app_js",
+      "community": 7,
+      "norm_label": "2. \u1100\u1167\u11bc\u1105\u1163\u11bc \u110f\u1165\u11ab\u1110\u1173\u1105\u1169\u11af\u1105\u1165 (`apps/step1/app.js`)"
+    },
+    {
+      "label": "3. Shared \uc720\ud2f8\ub9ac\ud2f0 \ud1b5\ud569",
+      "file_type": "document",
+      "source_file": "archive/Step1_Modularization_Refactoring.md",
+      "source_location": "L34",
+      "id": "archive_step1_modularization_refactoring_3_shared",
+      "community": 7,
+      "norm_label": "3. shared \u110b\u1172\u1110\u1175\u11af\u1105\u1175\u1110\u1175 \u1110\u1169\u11bc\u1112\u1161\u11b8"
+    },
+    {
+      "label": "\uacb0\ub860 \ubc0f \uad50\ud6c8",
+      "file_type": "document",
+      "source_file": "archive/Step1_Modularization_Refactoring.md",
+      "source_location": "L37",
+      "id": "archive_step1_modularization_refactoring_37",
+      "community": 7,
+      "norm_label": "\u1100\u1167\u11af\u1105\u1169\u11ab \u1106\u1175\u11be \u1100\u116d\u1112\u116e\u11ab"
+    },
+    {
+      "label": "\u26a0\ufe0f \ub9ac\ud329\ud130\ub9c1 \ud6c4 \uc8fc\uc758\uc0ac\ud56d (Post-refactoring Pitfalls)",
+      "file_type": "document",
+      "source_file": "archive/Step1_Modularization_Refactoring.md",
+      "source_location": "L41",
+      "id": "archive_step1_modularization_refactoring_post_refactoring_pitfalls",
+      "community": 7,
+      "norm_label": "\u26a0\ufe0f \u1105\u1175\u1111\u1162\u11a8\u1110\u1165\u1105\u1175\u11bc \u1112\u116e \u110c\u116e\u110b\u1174\u1109\u1161\u1112\u1161\u11bc (post-refactoring pitfalls)"
+    },
+    {
+      "label": "Step2_Modularization_Refactoring.md",
+      "file_type": "document",
+      "source_file": "archive/Step2_Modularization_Refactoring.md",
+      "source_location": "L1",
+      "id": "archive_step2_modularization_refactoring_md",
+      "community": 11,
+      "norm_label": "step2_modularization_refactoring.md"
+    },
+    {
+      "label": "[ARCHIVED] Step2 Modularization Refactoring (Step 2 \ubc30\ub2f9 \uc2dc\ubbac\ub808\uc774\uc158 \ud2b9\ud654 \uac1c\ud3b8)",
+      "file_type": "document",
+      "source_file": "archive/Step2_Modularization_Refactoring.md",
+      "source_location": "L7",
+      "id": "archive_step2_modularization_refactoring_archived_step2_modularization_refactoring_step_2",
+      "community": 11,
+      "norm_label": "[archived] step2 modularization refactoring (step 2 \u1107\u1162\u1103\u1161\u11bc \u1109\u1175\u1106\u1172\u11af\u1105\u1166\u110b\u1175\u1109\u1167\u11ab \u1110\u1173\u11a8\u1112\u116a \u1100\u1162\u1111\u1167\u11ab)"
+    },
+    {
+      "label": "\ubc30\uacbd \ubc0f \uc6d0\uc778",
+      "file_type": "document",
+      "source_file": "archive/Step2_Modularization_Refactoring.md",
+      "source_location": "L11",
+      "id": "archive_step2_modularization_refactoring",
+      "community": 11,
+      "norm_label": "\u1107\u1162\u1100\u1167\u11bc \u1106\u1175\u11be \u110b\u116f\u11ab\u110b\u1175\u11ab"
+    },
+    {
+      "label": "\ub9ac\ud329\ud130\ub9c1 \uc804\ub7b5: 7\uac1c \uc804\ubb38 \ubaa8\ub4c8 \ucd5c\uc801\ud654 (`apps/step2/modules/`)",
+      "file_type": "document",
+      "source_file": "archive/Step2_Modularization_Refactoring.md",
+      "source_location": "L15",
+      "id": "archive_step2_modularization_refactoring_7_apps_step2_modules",
+      "community": 11,
+      "norm_label": "\u1105\u1175\u1111\u1162\u11a8\u1110\u1165\u1105\u1175\u11bc \u110c\u1165\u11ab\u1105\u1163\u11a8: 7\u1100\u1162 \u110c\u1165\u11ab\u1106\u116e\u11ab \u1106\u1169\u1103\u1172\u11af \u110e\u116c\u110c\u1165\u11a8\u1112\u116a (`apps/step2/modules/`)"
+    },
+    {
+      "label": "\uc8fc\uc694 \uae30\uc220 \ud601\uc2e0 (v0.7.0 \uc5c5\ub370\uc774\ud2b8)",
+      "file_type": "document",
+      "source_file": "archive/Step2_Modularization_Refactoring.md",
+      "source_location": "L25",
+      "id": "archive_step2_modularization_refactoring_v0_7_0",
+      "community": 11,
+      "norm_label": "\u110c\u116e\u110b\u116d \u1100\u1175\u1109\u116e\u11af \u1112\u1167\u11a8\u1109\u1175\u11ab (v0.7.0 \u110b\u1165\u11b8\u1103\u1166\u110b\u1175\u1110\u1173)"
+    },
+    {
+      "label": "1. \ubc30\ub2f9 \uc2dc\ubbac\ub808\uc774\uc158 \ub300\uc2dc\ubcf4\ub4dc \uc9d1\uc911",
+      "file_type": "document",
+      "source_file": "archive/Step2_Modularization_Refactoring.md",
+      "source_location": "L27",
+      "id": "archive_step2_modularization_refactoring_1",
+      "community": 11,
+      "norm_label": "1. \u1107\u1162\u1103\u1161\u11bc \u1109\u1175\u1106\u1172\u11af\u1105\u1166\u110b\u1175\u1109\u1167\u11ab \u1103\u1162\u1109\u1175\u1107\u1169\u1103\u1173 \u110c\u1175\u11b8\u110c\u116e\u11bc"
+    },
+    {
+      "label": "2. \uc544\ud0a4\ud14d\ucc98 \uc2ac\ub9bc\ud654 (Logic Decoupling)",
+      "file_type": "document",
+      "source_file": "archive/Step2_Modularization_Refactoring.md",
+      "source_location": "L31",
+      "id": "archive_step2_modularization_refactoring_2_logic_decoupling",
+      "community": 11,
+      "norm_label": "2. \u110b\u1161\u110f\u1175\u1110\u1166\u11a8\u110e\u1165 \u1109\u1173\u11af\u1105\u1175\u11b7\u1112\u116a (logic decoupling)"
+    },
+    {
+      "label": "\u26a0\ufe0f \uc8fc\uc758\uc0ac\ud56d \ubc0f \uad50\ud6c8",
+      "file_type": "document",
+      "source_file": "archive/Step2_Modularization_Refactoring.md",
+      "source_location": "L35",
+      "id": "archive_step2_modularization_refactoring_35",
+      "community": 11,
+      "norm_label": "\u26a0\ufe0f \u110c\u116e\u110b\u1174\u1109\u1161\u1112\u1161\u11bc \u1106\u1175\u11be \u1100\u116d\u1112\u116e\u11ab"
+    },
+    {
+      "label": "Storage_Hub_Integration_v0.7.md",
+      "file_type": "document",
+      "source_file": "archive/Storage_Hub_Integration_v0.7.md",
+      "source_location": "L1",
+      "id": "archive_storage_hub_integration_v0_7_md",
+      "community": 4,
+      "norm_label": "storage_hub_integration_v0.7.md"
+    },
+    {
+      "label": "[ARCHIVED] Storage Hub Integration (\uc2a4\ud1a0\ub9ac\uc9c0 \ud5c8\ube0c \ud1b5\ud569 \uc0c1\uc138)",
+      "file_type": "document",
+      "source_file": "archive/Storage_Hub_Integration_v0.7.md",
+      "source_location": "L7",
+      "id": "archive_storage_hub_integration_v0_7_archived_storage_hub_integration",
+      "community": 4,
+      "norm_label": "[archived] storage hub integration (\u1109\u1173\u1110\u1169\u1105\u1175\u110c\u1175 \u1112\u1165\u1107\u1173 \u1110\u1169\u11bc\u1112\u1161\u11b8 \u1109\u1161\u11bc\u1109\u1166)"
+    },
+    {
+      "label": "1. \ubc30\uacbd \ubc0f \ubaa9\uc801",
+      "file_type": "document",
+      "source_file": "archive/Storage_Hub_Integration_v0.7.md",
+      "source_location": "L13",
+      "id": "archive_storage_hub_integration_v0_7_1",
+      "community": 4,
+      "norm_label": "1. \u1107\u1162\u1100\u1167\u11bc \u1106\u1175\u11be \u1106\u1169\u11a8\u110c\u1165\u11a8"
+    },
+    {
+      "label": "2. \ud575\uc2ec \uc544\ud0a4\ud14d\ucc98: `IsfStorageHub`",
+      "file_type": "document",
+      "source_file": "archive/Storage_Hub_Integration_v0.7.md",
+      "source_location": "L18",
+      "id": "archive_storage_hub_integration_v0_7_2_isfstoragehub",
+      "community": 4,
+      "norm_label": "2. \u1112\u1162\u11a8\u1109\u1175\u11b7 \u110b\u1161\u110f\u1175\u1110\u1166\u11a8\u110e\u1165: `isfstoragehub`"
+    },
+    {
+      "label": "\uc8fc\uc694 \uae30\ub2a5",
+      "file_type": "document",
+      "source_file": "archive/Storage_Hub_Integration_v0.7.md",
+      "source_location": "L21",
+      "id": "archive_storage_hub_integration_v0_7",
+      "community": 4,
+      "norm_label": "\u110c\u116e\u110b\u116d \u1100\u1175\u1102\u1173\u11bc"
+    },
+    {
+      "label": "4. \ub370\uc774\ud130 \ub9c8\uc774\uadf8\ub808\uc774\uc158 (v0.7.1 \ucd94\uac00)",
+      "file_type": "document",
+      "source_file": "archive/Storage_Hub_Integration_v0.7.md",
+      "source_location": "L28",
+      "id": "archive_storage_hub_integration_v0_7_4_v0_7_1",
+      "community": 4,
+      "norm_label": "4. \u1103\u1166\u110b\u1175\u1110\u1165 \u1106\u1161\u110b\u1175\u1100\u1173\u1105\u1166\u110b\u1175\u1109\u1167\u11ab (v0.7.1 \u110e\u116e\u1100\u1161)"
+    },
+    {
+      "label": "4.1 LocalStorage \ub9c8\uc774\uadf8\ub808\uc774\uc158",
+      "file_type": "document",
+      "source_file": "archive/Storage_Hub_Integration_v0.7.md",
+      "source_location": "L31",
+      "id": "archive_storage_hub_integration_v0_7_4_1_localstorage",
+      "community": 4,
+      "norm_label": "4.1 localstorage \u1106\u1161\u110b\u1175\u1100\u1173\u1105\u1166\u110b\u1175\u1109\u1167\u11ab"
+    },
+    {
+      "label": "4.2 \ubc31\uc5c5 \uc774\ub825 \ub9c8\uc774\uadf8\ub808\uc774\uc158 (IndexedDB)",
+      "file_type": "document",
+      "source_file": "archive/Storage_Hub_Integration_v0.7.md",
+      "source_location": "L34",
+      "id": "archive_storage_hub_integration_v0_7_4_2_indexeddb",
+      "community": 4,
+      "norm_label": "4.2 \u1107\u1162\u11a8\u110b\u1165\u11b8 \u110b\u1175\u1105\u1167\u11a8 \u1106\u1161\u110b\u1175\u1100\u1173\u1105\u1166\u110b\u1175\u1109\u1167\u11ab (indexeddb)"
+    },
+    {
+      "label": "4.3 \uc2e4\ud589 \uc2dc\uc810",
+      "file_type": "document",
+      "source_file": "archive/Storage_Hub_Integration_v0.7.md",
+      "source_location": "L37",
+      "id": "archive_storage_hub_integration_v0_7_4_3",
+      "community": 4,
+      "norm_label": "4.3 \u1109\u1175\u11af\u1112\u1162\u11bc \u1109\u1175\u110c\u1165\u11b7"
+    },
+    {
+      "label": "5. \ubdf0 \ubaa8\ub4dc \uc548\uc804 \uc800\uc7a5 \ud504\ub85c\ud1a0\ucf5c",
+      "file_type": "document",
+      "source_file": "archive/Storage_Hub_Integration_v0.7.md",
+      "source_location": "L40",
+      "id": "archive_storage_hub_integration_v0_7_5",
+      "community": 4,
+      "norm_label": "5. \u1107\u1172 \u1106\u1169\u1103\u1173 \u110b\u1161\u11ab\u110c\u1165\u11ab \u110c\u1165\u110c\u1161\u11bc \u1111\u1173\u1105\u1169\u1110\u1169\u110f\u1169\u11af"
+    },
+    {
+      "label": "5. \uad6c\ud604 \ud328\ud134 (Code Example)",
+      "file_type": "document",
+      "source_file": "archive/Storage_Hub_Integration_v0.7.md",
+      "source_location": "L46",
+      "id": "archive_storage_hub_integration_v0_7_5_code_example",
+      "community": 4,
+      "norm_label": "5. \u1100\u116e\u1112\u1167\u11ab \u1111\u1162\u1110\u1165\u11ab (code example)"
+    },
+    {
+      "label": "code:javascript (// IsfStorageHub\ub97c \uc774\uc6a9\ud55c \uc548\uc804\ud55c \uc800\uc7a5 \uc608\uc2dc)",
+      "file_type": "document",
+      "source_file": "archive/Storage_Hub_Integration_v0.7.md",
+      "source_location": "L47",
+      "id": "archive_storage_hub_integration_v0_7_codeblock_1",
+      "community": 4,
+      "norm_label": "code:javascript (// isfstoragehub\u1105\u1173\u11af \u110b\u1175\u110b\u116d\u11bc\u1112\u1161\u11ab \u110b\u1161\u11ab\u110c\u1165\u11ab\u1112\u1161\u11ab \u110c\u1165\u110c\u1161\u11bc \u110b\u1168\u1109\u1175)"
+    },
+    {
+      "label": "UI_UX_Overhaul_v0.3.md",
+      "file_type": "document",
+      "source_file": "archive/UI_UX_Overhaul_v0.3.md",
+      "source_location": "L1",
+      "id": "archive_ui_ux_overhaul_v0_3_md",
+      "community": 19,
+      "norm_label": "ui_ux_overhaul_v0.3.md"
+    },
+    {
+      "label": "[ARCHIVED] UI/UX \ud1b5\ud569 \uac1c\ud3b8 \ubc0f v0.3 \uaca9\uc0c1 (HCD \uc6d0\uce59 \uc801\uc6a9)",
+      "file_type": "document",
+      "source_file": "archive/UI_UX_Overhaul_v0.3.md",
+      "source_location": "L7",
+      "id": "archive_ui_ux_overhaul_v0_3_archived_ui_ux_v0_3_hcd",
+      "community": 19,
+      "norm_label": "[archived] ui/ux \u1110\u1169\u11bc\u1112\u1161\u11b8 \u1100\u1162\u1111\u1167\u11ab \u1106\u1175\u11be v0.3 \u1100\u1167\u11a8\u1109\u1161\u11bc (hcd \u110b\u116f\u11ab\u110e\u1175\u11a8 \u110c\u1165\u11a8\u110b\u116d\u11bc)"
+    },
+    {
+      "label": "\ud83c\udfdb\ufe0f \uac1c\ud3b8 \ubc30\uacbd \ubc0f \ubaa9\uc801",
+      "file_type": "document",
+      "source_file": "archive/UI_UX_Overhaul_v0.3.md",
+      "source_location": "L14",
+      "id": "archive_ui_ux_overhaul_v0_3",
+      "community": 19,
+      "norm_label": "\ud83c\udfdb\ufe0f \u1100\u1162\u1111\u1167\u11ab \u1107\u1162\u1100\u1167\u11bc \u1106\u1175\u11be \u1106\u1169\u11a8\u110c\u1165\u11a8"
+    },
+    {
+      "label": "\ud83d\udcd0 \uc801\uc6a9\ub41c HCD 6\ub300 \uc6d0\uce59",
+      "file_type": "document",
+      "source_file": "archive/UI_UX_Overhaul_v0.3.md",
+      "source_location": "L19",
+      "id": "archive_ui_ux_overhaul_v0_3_hcd_6",
+      "community": 19,
+      "norm_label": "\ud83d\udcd0 \u110c\u1165\u11a8\u110b\u116d\u11bc\u1103\u116c\u11ab hcd 6\u1103\u1162 \u110b\u116f\u11ab\u110e\u1175\u11a8"
+    },
+    {
+      "label": "\ud83d\udee0\ufe0f \uc8fc\uc694 \uae30\uc220 \ubcc0\uacbd \uc0ac\ud56d",
+      "file_type": "document",
+      "source_file": "archive/UI_UX_Overhaul_v0.3.md",
+      "source_location": "L45",
+      "id": "archive_ui_ux_overhaul_v0_3_45",
+      "community": 19,
+      "norm_label": "\ud83d\udee0\ufe0f \u110c\u116e\u110b\u116d \u1100\u1175\u1109\u116e\u11af \u1107\u1167\u11ab\u1100\u1167\u11bc \u1109\u1161\u1112\u1161\u11bc"
+    },
+    {
+      "label": "\ud83d\udd17 \uad00\ub828 \ub9c1\ud06c",
+      "file_type": "document",
+      "source_file": "archive/UI_UX_Overhaul_v0.3.md",
+      "source_location": "L50",
+      "id": "archive_ui_ux_overhaul_v0_3_50",
+      "community": 19,
+      "norm_label": "\ud83d\udd17 \u1100\u116a\u11ab\u1105\u1167\u11ab \u1105\u1175\u11bc\u110f\u1173"
+    },
+    {
+      "label": "UI_UX_Overhaul_v0.4.md",
+      "file_type": "document",
+      "source_file": "archive/UI_UX_Overhaul_v0.4.md",
+      "source_location": "L1",
+      "id": "archive_ui_ux_overhaul_v0_4_md",
+      "community": 20,
+      "norm_label": "ui_ux_overhaul_v0.4.md"
+    },
+    {
+      "label": "[ARCHIVED] UI/UX Overhaul v0.4 (\uc0ac\uc6a9\uc790 \uc911\uc2ec \uc801\uc751\ud615 \uac1c\ud3b8)",
+      "file_type": "document",
+      "source_file": "archive/UI_UX_Overhaul_v0.4.md",
+      "source_location": "L7",
+      "id": "archive_ui_ux_overhaul_v0_4_archived_ui_ux_overhaul_v0_4",
+      "community": 20,
+      "norm_label": "[archived] ui/ux overhaul v0.4 (\u1109\u1161\u110b\u116d\u11bc\u110c\u1161 \u110c\u116e\u11bc\u1109\u1175\u11b7 \u110c\u1165\u11a8\u110b\u1173\u11bc\u1112\u1167\u11bc \u1100\u1162\u1111\u1167\u11ab)"
+    },
+    {
+      "label": "1. \uc2a4\ub9c8\ud2b8 \uc801\uc751\ud615 \uc5d4\ud2b8\ub9ac (Smart Adaptive Entry)",
+      "file_type": "document",
+      "source_file": "archive/UI_UX_Overhaul_v0.4.md",
+      "source_location": "L14",
+      "id": "archive_ui_ux_overhaul_v0_4_1_smart_adaptive_entry",
+      "community": 20,
+      "norm_label": "1. \u1109\u1173\u1106\u1161\u1110\u1173 \u110c\u1165\u11a8\u110b\u1173\u11bc\u1112\u1167\u11bc \u110b\u1166\u11ab\u1110\u1173\u1105\u1175 (smart adaptive entry)"
+    },
+    {
+      "label": "2. \ub370\uc774\ud130 \uad00\ub9ac \ud5c8\ube0c \ud1b5\ud569 (Consolidated Data Hub)",
+      "file_type": "document",
+      "source_file": "archive/UI_UX_Overhaul_v0.4.md",
+      "source_location": "L19",
+      "id": "archive_ui_ux_overhaul_v0_4_2_consolidated_data_hub",
+      "community": 20,
+      "norm_label": "2. \u1103\u1166\u110b\u1175\u1110\u1165 \u1100\u116a\u11ab\u1105\u1175 \u1112\u1165\u1107\u1173 \u1110\u1169\u11bc\u1112\u1161\u11b8 (consolidated data hub)"
+    },
+    {
+      "label": "3. \uc800\ubc00\ub3c4 \ud53c\ub4dc\ubc31 \uc2dc\uc2a4\ud15c (Silent Status Indicator)",
+      "file_type": "document",
+      "source_file": "archive/UI_UX_Overhaul_v0.4.md",
+      "source_location": "L26",
+      "id": "archive_ui_ux_overhaul_v0_4_3_silent_status_indicator",
+      "community": 20,
+      "norm_label": "3. \u110c\u1165\u1106\u1175\u11af\u1103\u1169 \u1111\u1175\u1103\u1173\u1107\u1162\u11a8 \u1109\u1175\u1109\u1173\u1110\u1166\u11b7 (silent status indicator)"
+    },
+    {
+      "label": "4. \uc2a4\ub9c8\ud2b8 \ube0c\ub9ac\uc9c0 \ubc30\ub108 (Smart Bridge Banner)",
+      "file_type": "document",
+      "source_file": "archive/UI_UX_Overhaul_v0.4.md",
+      "source_location": "L31",
+      "id": "archive_ui_ux_overhaul_v0_4_4_smart_bridge_banner",
+      "community": 20,
+      "norm_label": "4. \u1109\u1173\u1106\u1161\u1110\u1173 \u1107\u1173\u1105\u1175\u110c\u1175 \u1107\u1162\u1102\u1165 (smart bridge banner)"
+    }
+  ],
+  "links": [
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Agent_Behavior_Standard.md",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "agent_behavior_standard_md",
+      "target": "wiki_agent_behavior_standard_agent_behavior_standard",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Agent_Behavior_Standard.md",
+      "source_location": "L12",
+      "weight": 1.0,
+      "source": "wiki_agent_behavior_standard_agent_behavior_standard",
+      "target": "wiki_agent_behavior_standard_1_guardrails",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Agent_Behavior_Standard.md",
+      "source_location": "L17",
+      "weight": 1.0,
+      "source": "wiki_agent_behavior_standard_1_guardrails",
+      "target": "wiki_agent_behavior_standard_codeblock_1",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Architecture_Reference.md",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "architecture_reference_md",
+      "target": "wiki_architecture_reference_architecture_reference",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Architecture_Reference.md",
+      "source_location": "L11",
+      "weight": 1.0,
+      "source": "wiki_architecture_reference_architecture_reference",
+      "target": "wiki_architecture_reference_tech_stack",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Architecture_Reference.md",
+      "source_location": "L19",
+      "weight": 1.0,
+      "source": "wiki_architecture_reference_architecture_reference",
+      "target": "wiki_architecture_reference",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Architecture_Reference.md",
+      "source_location": "L31",
+      "weight": 1.0,
+      "source": "wiki_architecture_reference_architecture_reference",
+      "target": "wiki_architecture_reference_31",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Architecture_Reference.md",
+      "source_location": "L37",
+      "weight": 1.0,
+      "source": "wiki_architecture_reference_architecture_reference",
+      "target": "wiki_architecture_reference_modern_storage_v2",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Architecture_Reference.md",
+      "source_location": "L40",
+      "weight": 1.0,
+      "source": "wiki_architecture_reference_modern_storage_v2",
+      "target": "wiki_architecture_reference_integrity_first",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Architecture_Reference.md",
+      "source_location": "L45",
+      "weight": 1.0,
+      "source": "wiki_architecture_reference_modern_storage_v2",
+      "target": "wiki_architecture_reference_data_flow",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Data_Model_Reference.md",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "data_model_reference_md",
+      "target": "wiki_data_model_reference_data_model_reference",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Data_Model_Reference.md",
+      "source_location": "L11",
+      "weight": 1.0,
+      "source": "wiki_data_model_reference_data_model_reference",
+      "target": "wiki_data_model_reference_currency_units",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Data_Model_Reference.md",
+      "source_location": "L22",
+      "weight": 1.0,
+      "source": "wiki_data_model_reference_data_model_reference",
+      "target": "wiki_data_model_reference_isfstore_v2",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Data_Model_Reference.md",
+      "source_location": "L39",
+      "weight": 1.0,
+      "source": "wiki_data_model_reference_data_model_reference",
+      "target": "wiki_data_model_reference_ssot",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Data_Model_Reference.md",
+      "source_location": "L53",
+      "weight": 1.0,
+      "source": "wiki_data_model_reference_data_model_reference",
+      "target": "wiki_data_model_reference_bridge_strategy",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Data_Model_Reference.md",
+      "source_location": "L17",
+      "weight": 1.0,
+      "source": "wiki_data_model_reference_currency_units",
+      "target": "wiki_data_model_reference_codeblock_1",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Data_Model_Reference.md",
+      "source_location": "L26",
+      "weight": 1.0,
+      "source": "wiki_data_model_reference_isfstore_v2",
+      "target": "wiki_data_model_reference_indexeddb_isf_v2_db",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Data_Model_Reference.md",
+      "source_location": "L34",
+      "weight": 1.0,
+      "source": "wiki_data_model_reference_isfstore_v2",
+      "target": "wiki_data_model_reference",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Data_Model_Reference.md",
+      "source_location": "L43",
+      "weight": 1.0,
+      "source": "wiki_data_model_reference_ssot",
+      "target": "wiki_data_model_reference_step_1_state_v2",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Data_Model_Reference.md",
+      "source_location": "L44",
+      "weight": 1.0,
+      "source": "wiki_data_model_reference_step_1_state_v2",
+      "target": "wiki_data_model_reference_codeblock_2",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Financial_Taxation_Reference.md",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "financial_taxation_reference_md",
+      "target": "wiki_financial_taxation_reference_financial_taxation_reference",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Financial_Taxation_Reference.md",
+      "source_location": "L11",
+      "weight": 1.0,
+      "source": "wiki_financial_taxation_reference_financial_taxation_reference",
+      "target": "wiki_financial_taxation_reference",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Financial_Taxation_Reference.md",
+      "source_location": "L34",
+      "weight": 1.0,
+      "source": "wiki_financial_taxation_reference_financial_taxation_reference",
+      "target": "wiki_financial_taxation_reference_ui_safety_margin",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Financial_Taxation_Reference.md",
+      "source_location": "L48",
+      "weight": 1.0,
+      "source": "wiki_financial_taxation_reference_financial_taxation_reference",
+      "target": "wiki_financial_taxation_reference_48",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Financial_Taxation_Reference.md",
+      "source_location": "L19",
+      "weight": 1.0,
+      "source": "wiki_financial_taxation_reference",
+      "target": "wiki_financial_taxation_reference_2023",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Financial_Taxation_Reference.md",
+      "source_location": "L38",
+      "weight": 1.0,
+      "source": "wiki_financial_taxation_reference_ui_safety_margin",
+      "target": "wiki_financial_taxation_reference_1_warn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Financial_Taxation_Reference.md",
+      "source_location": "L43",
+      "weight": 1.0,
+      "source": "wiki_financial_taxation_reference_ui_safety_margin",
+      "target": "wiki_financial_taxation_reference_2_crit",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "index.md",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "index_md",
+      "target": "wiki_index_project_knowledge_index_llm_wiki",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "index.md",
+      "source_location": "L11",
+      "weight": 1.0,
+      "source": "wiki_index_project_knowledge_index_llm_wiki",
+      "target": "wiki_index_the_constitution",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "index.md",
+      "source_location": "L22",
+      "weight": 1.0,
+      "source": "wiki_index_project_knowledge_index_llm_wiki",
+      "target": "wiki_index_active_knowledge",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "index.md",
+      "source_location": "L27",
+      "weight": 1.0,
+      "source": "wiki_index_project_knowledge_index_llm_wiki",
+      "target": "wiki_index_timeline_logs",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "index.md",
+      "source_location": "L32",
+      "weight": 1.0,
+      "source": "wiki_index_project_knowledge_index_llm_wiki",
+      "target": "wiki_index_archive",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Knowledge_Harness.md",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "knowledge_harness_md",
+      "target": "wiki_knowledge_harness_knowledge_harness_llm_wiki",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Knowledge_Harness.md",
+      "source_location": "L11",
+      "weight": 1.0,
+      "source": "wiki_knowledge_harness_knowledge_harness_llm_wiki",
+      "target": "wiki_knowledge_harness",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Knowledge_Harness.md",
+      "source_location": "L22",
+      "weight": 1.0,
+      "source": "wiki_knowledge_harness_knowledge_harness_llm_wiki",
+      "target": "wiki_knowledge_harness_the_compounding_loop",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Knowledge_Harness.md",
+      "source_location": "L40",
+      "weight": 1.0,
+      "source": "wiki_knowledge_harness_knowledge_harness_llm_wiki",
+      "target": "wiki_knowledge_harness_40",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Knowledge_Harness.md",
+      "source_location": "L54",
+      "weight": 1.0,
+      "source": "wiki_knowledge_harness_knowledge_harness_llm_wiki",
+      "target": "wiki_knowledge_harness_54",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Knowledge_Harness.md",
+      "source_location": "L24",
+      "weight": 1.0,
+      "source": "wiki_knowledge_harness_the_compounding_loop",
+      "target": "wiki_knowledge_harness_codeblock_1",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Knowledge_Harness.md",
+      "source_location": "L43",
+      "weight": 1.0,
+      "source": "wiki_knowledge_harness_40",
+      "target": "wiki_knowledge_harness_codeblock_2",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "log.md",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "log_md",
+      "target": "wiki_log_project_evolution_log",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "log.md",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "wiki_log_project_evolution_log",
+      "target": "wiki_log_2026_05_07_fix_ssot_v0_9_12",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "log.md",
+      "source_location": "L12",
+      "weight": 1.0,
+      "source": "wiki_log_project_evolution_log",
+      "target": "wiki_log_2026_05_07_fix_v0_9_12",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "log.md",
+      "source_location": "L22",
+      "weight": 1.0,
+      "source": "wiki_log_project_evolution_log",
+      "target": "wiki_log_2026_05_07_fix_ci_v0_9_11",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "log.md",
+      "source_location": "L31",
+      "weight": 1.0,
+      "source": "wiki_log_project_evolution_log",
+      "target": "wiki_log_2026_05_07_action_github_7_4_2",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "log.md",
+      "source_location": "L39",
+      "weight": 1.0,
+      "source": "wiki_log_project_evolution_log",
+      "target": "wiki_log_2026_05_07_refactor_gemini_md_v0_9_10",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "log.md",
+      "source_location": "L48",
+      "weight": 1.0,
+      "source": "wiki_log_project_evolution_log",
+      "target": "wiki_log_2026_05_08_doc_phase_06_07_08",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "log.md",
+      "source_location": "L57",
+      "weight": 1.0,
+      "source": "wiki_log_project_evolution_log",
+      "target": "wiki_log_2026_05_06_bump_step_2_ui_v0_9",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "log.md",
+      "source_location": "L65",
+      "weight": 1.0,
+      "source": "wiki_log_project_evolution_log",
+      "target": "wiki_log_2026_05_06_ingest_modern_hybrid_v0_9",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "log.md",
+      "source_location": "L74",
+      "weight": 1.0,
+      "source": "wiki_log_project_evolution_log",
+      "target": "wiki_log_2026_05_06_ingest_no_build_modern_hybrid",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "log.md",
+      "source_location": "L82",
+      "weight": 1.0,
+      "source": "wiki_log_project_evolution_log",
+      "target": "wiki_log_2026_05_04_fix_v0_8_3",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "log.md",
+      "source_location": "L90",
+      "weight": 1.0,
+      "source": "wiki_log_project_evolution_log",
+      "target": "wiki_log_2026_05_02_fix_step_1_v0_7_6",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "log.md",
+      "source_location": "L98",
+      "weight": 1.0,
+      "source": "wiki_log_project_evolution_log",
+      "target": "wiki_log_2026_05_02_fix_wiki_hygiene_lint",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "log.md",
+      "source_location": "L108",
+      "weight": 1.0,
+      "source": "wiki_log_project_evolution_log",
+      "target": "wiki_log_2026_04_30_fix_v0_7_4",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "log.md",
+      "source_location": "L116",
+      "weight": 1.0,
+      "source": "wiki_log_project_evolution_log",
+      "target": "wiki_log_2026_04_30_fix_ui_v0_7_3",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "log.md",
+      "source_location": "L125",
+      "weight": 1.0,
+      "source": "wiki_log_project_evolution_log",
+      "target": "wiki_log_2026_04_24_update_step_2_sync_by_default",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "log.md",
+      "source_location": "L129",
+      "weight": 1.0,
+      "source": "wiki_log_project_evolution_log",
+      "target": "wiki_log_2026_04_24_ingest_single_hub_input_reuse",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "log.md",
+      "source_location": "L134",
+      "weight": 1.0,
+      "source": "wiki_log_project_evolution_log",
+      "target": "wiki_log_2026_04_24_fix_v0_7_2_step_2",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "log.md",
+      "source_location": "L141",
+      "weight": 1.0,
+      "source": "wiki_log_project_evolution_log",
+      "target": "wiki_log_2026_04_24_fix_v0_7_2_triple_sync",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "log.md",
+      "source_location": "L149",
+      "weight": 1.0,
+      "source": "wiki_log_project_evolution_log",
+      "target": "wiki_log_2026_04_24_fix_v0_7_1_step_1_2_v0_7_1",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "log.md",
+      "source_location": "L158",
+      "weight": 1.0,
+      "source": "wiki_log_project_evolution_log",
+      "target": "wiki_log_2026_04_24_merge_v0_7_0",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "log.md",
+      "source_location": "L163",
+      "weight": 1.0,
+      "source": "wiki_log_project_evolution_log",
+      "target": "wiki_log_2026_04_23_fix_v0_7_0",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "log.md",
+      "source_location": "L173",
+      "weight": 1.0,
+      "source": "wiki_log_project_evolution_log",
+      "target": "wiki_log_2026_04_23_release_isfstoragehub_v0_7_0",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "log.md",
+      "source_location": "L183",
+      "weight": 1.0,
+      "source": "wiki_log_project_evolution_log",
+      "target": "wiki_log_2026_04_23_release_step_2_step_3_v0_7_0",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "log.md",
+      "source_location": "L192",
+      "weight": 1.0,
+      "source": "wiki_log_project_evolution_log",
+      "target": "wiki_log_2026_04_22_fix_ui_v0_6_1",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "log.md",
+      "source_location": "L200",
+      "weight": 1.0,
+      "source": "wiki_log_project_evolution_log",
+      "target": "wiki_log_2026_04_22_ingest_step_1_4",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "log.md",
+      "source_location": "L205",
+      "weight": 1.0,
+      "source": "wiki_log_project_evolution_log",
+      "target": "wiki_log_2026_04_22_release_minor_up_step_2_sankey_v0_6_0",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "log.md",
+      "source_location": "L213",
+      "weight": 1.0,
+      "source": "wiki_log_project_evolution_log",
+      "target": "wiki_log_2026_04_22_fix_step_2_v0_6_0",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "log.md",
+      "source_location": "L222",
+      "weight": 1.0,
+      "source": "wiki_log_project_evolution_log",
+      "target": "wiki_log_2026_04_21_ingest_wiki_hygiene",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "log.md",
+      "source_location": "L232",
+      "weight": 1.0,
+      "source": "wiki_log_project_evolution_log",
+      "target": "wiki_log_2026_04_21_feature_step_2_v0_5_12",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "log.md",
+      "source_location": "L241",
+      "weight": 1.0,
+      "source": "wiki_log_project_evolution_log",
+      "target": "wiki_log_2026_04_21_fix_step_1_step_2_v0_5_11",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "log.md",
+      "source_location": "L251",
+      "weight": 1.0,
+      "source": "wiki_log_project_evolution_log",
+      "target": "wiki_log_2026_04_19_fix_step_1_v0_5_8",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "log.md",
+      "source_location": "L263",
+      "weight": 1.0,
+      "source": "wiki_log_project_evolution_log",
+      "target": "wiki_log_2026_04_19_fix_step_1_ux_v0_5_5",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "log.md",
+      "source_location": "L275",
+      "weight": 1.0,
+      "source": "wiki_log_project_evolution_log",
+      "target": "wiki_log_2026_04_17_fix_step_1_ui_v0_5_3",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "log.md",
+      "source_location": "L289",
+      "weight": 1.0,
+      "source": "wiki_log_project_evolution_log",
+      "target": "wiki_log_2026_04_17_fix_step_1_ux_fab_v0_5_2",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "log.md",
+      "source_location": "L303",
+      "weight": 1.0,
+      "source": "wiki_log_project_evolution_log",
+      "target": "wiki_log_2026_04_17_ingest_minor_up",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "log.md",
+      "source_location": "L310",
+      "weight": 1.0,
+      "source": "wiki_log_project_evolution_log",
+      "target": "wiki_log_2026_04_17_ingest_gemini_md",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "log.md",
+      "source_location": "L314",
+      "weight": 1.0,
+      "source": "wiki_log_project_evolution_log",
+      "target": "wiki_log_2026_04_17_ingest_core_developer",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "log.md",
+      "source_location": "L323",
+      "weight": 1.0,
+      "source": "wiki_log_project_evolution_log",
+      "target": "wiki_log_2026_04_17_fix_step_1_v0_5_1",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "log.md",
+      "source_location": "L334",
+      "weight": 1.0,
+      "source": "wiki_log_project_evolution_log",
+      "target": "wiki_log_2026_04_17_feature_step_1_monolith_no_build_v0_5_0",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "log.md",
+      "source_location": "L342",
+      "weight": 1.0,
+      "source": "wiki_log_project_evolution_log",
+      "target": "wiki_log_2026_04_16_feature_step_2_v0_4_2",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "log.md",
+      "source_location": "L352",
+      "weight": 1.0,
+      "source": "wiki_log_project_evolution_log",
+      "target": "wiki_log_2026_04_16_feature_ui_ux_v0_4_1",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "log.md",
+      "source_location": "L360",
+      "weight": 1.0,
+      "source": "wiki_log_project_evolution_log",
+      "target": "wiki_log_2026_04_16_ingest_llm_wiki",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "log.md",
+      "source_location": "L369",
+      "weight": 1.0,
+      "source": "wiki_log_project_evolution_log",
+      "target": "wiki_log_2026_04_16_ingest_pwa",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "log.md",
+      "source_location": "L372",
+      "weight": 1.0,
+      "source": "wiki_log_project_evolution_log",
+      "target": "wiki_log_2026_04_16_feature_sprint_2_2_ui_ux_overhaul_v0_4",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "log.md",
+      "source_location": "L381",
+      "weight": 1.0,
+      "source": "wiki_log_project_evolution_log",
+      "target": "wiki_log_2026_04_16_feature_sprint_2_1_hcd_v0_2_5",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "log.md",
+      "source_location": "L391",
+      "weight": 1.0,
+      "source": "wiki_log_project_evolution_log",
+      "target": "wiki_log_2026_04_24_ingest_wiki_hygiene_ssot",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "log.md",
+      "source_location": "L399",
+      "weight": 1.0,
+      "source": "wiki_log_project_evolution_log",
+      "target": "wiki_log_2026_04_24_ingest_physical_archiving",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "log.md",
+      "source_location": "L405",
+      "weight": 1.0,
+      "source": "wiki_log_project_evolution_log",
+      "target": "wiki_log_2026_04_24_ingest_orchestration",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "log.md",
+      "source_location": "L408",
+      "weight": 1.0,
+      "source": "wiki_log_project_evolution_log",
+      "target": "wiki_log_2026_04_30_ingest",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "log.md",
+      "source_location": "L414",
+      "weight": 1.0,
+      "source": "wiki_log_project_evolution_log",
+      "target": "wiki_log_2026_05_04_ingest_modernization_pivot_storage_v2_implementation",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "log.md",
+      "source_location": "L421",
+      "weight": 1.0,
+      "source": "wiki_log_project_evolution_log",
+      "target": "wiki_log_2026_05_04_release_phase_5_step_1_spotlight",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "log.md",
+      "source_location": "L429",
+      "weight": 1.0,
+      "source": "wiki_log_project_evolution_log",
+      "target": "wiki_log_2026_05_06_fix_step_2_v0_8_9",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "log.md",
+      "source_location": "L437",
+      "weight": 1.0,
+      "source": "wiki_log_project_evolution_log",
+      "target": "wiki_log_2026_05_06_feat_step_1_v0_8_8",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "log.md",
+      "source_location": "L445",
+      "weight": 1.0,
+      "source": "wiki_log_project_evolution_log",
+      "target": "wiki_log_2026_04_22_fix_v0_7_13_v0_7_11_ui",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "log.md",
+      "source_location": "L448",
+      "weight": 1.0,
+      "source": "wiki_log_project_evolution_log",
+      "target": "wiki_log_2026_05_07_feat_v0_9_7",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "log.md",
+      "source_location": "L454",
+      "weight": 1.0,
+      "source": "wiki_log_project_evolution_log",
+      "target": "wiki_log_2026_05_07_feat_step_4_v0_9_6",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "log.md",
+      "source_location": "L465",
+      "weight": 1.0,
+      "source": "wiki_log_project_evolution_log",
+      "target": "wiki_log_2026_05_07_bump_v0_9_5",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "log.md",
+      "source_location": "L472",
+      "weight": 1.0,
+      "source": "wiki_log_project_evolution_log",
+      "target": "wiki_log_2026_05_07_feat_isf_code_v0_9",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "log.md",
+      "source_location": "L480",
+      "weight": 1.0,
+      "source": "wiki_log_project_evolution_log",
+      "target": "wiki_log_2026_05_06_ingest",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "log.md",
+      "source_location": "L488",
+      "weight": 1.0,
+      "source": "wiki_log_project_evolution_log",
+      "target": "wiki_log_2026_05_07_lint_llm_wiki_constitution_3",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "log.md",
+      "source_location": "L496",
+      "weight": 1.0,
+      "source": "wiki_log_project_evolution_log",
+      "target": "wiki_log_2026_05_07_ingest_migration",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Operating_Principles.md",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "operating_principles_md",
+      "target": "wiki_operating_principles_operating_principles",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Operating_Principles.md",
+      "source_location": "L12",
+      "weight": 1.0,
+      "source": "wiki_operating_principles_operating_principles",
+      "target": "wiki_operating_principles_core_pillars",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Operating_Principles.md",
+      "source_location": "L17",
+      "weight": 1.0,
+      "source": "wiki_operating_principles_operating_principles",
+      "target": "wiki_operating_principles",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Operating_Principles.md",
+      "source_location": "L22",
+      "weight": 1.0,
+      "source": "wiki_operating_principles_operating_principles",
+      "target": "wiki_operating_principles_pwa_automated_sync",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Operating_Principles.md",
+      "source_location": "L28",
+      "weight": 1.0,
+      "source": "wiki_operating_principles_operating_principles",
+      "target": "wiki_operating_principles_the_librarian_workflow",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Plan_Step3.md",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "plan_step3_md",
+      "target": "wiki_plan_step3_step3_roadmap",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Plan_Step3.md",
+      "source_location": "L14",
+      "weight": 1.0,
+      "source": "wiki_plan_step3_step3_roadmap",
+      "target": "wiki_plan_step3_1",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Plan_Step3.md",
+      "source_location": "L18",
+      "weight": 1.0,
+      "source": "wiki_plan_step3_step3_roadmap",
+      "target": "wiki_plan_step3_2_mvp",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Plan_Step3.md",
+      "source_location": "L29",
+      "weight": 1.0,
+      "source": "wiki_plan_step3_step3_roadmap",
+      "target": "wiki_plan_step3_3",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Plan_Step3.md",
+      "source_location": "L34",
+      "weight": 1.0,
+      "source": "wiki_plan_step3_step3_roadmap",
+      "target": "wiki_plan_step3_4",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Plan_Step3_Implementation.md",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "plan_step3_implementation_md",
+      "target": "wiki_plan_step3_implementation_plan_step_3_v0_8_0",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Plan_Step3_Implementation.md",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "wiki_plan_step3_implementation_plan_step_3_v0_8_0",
+      "target": "wiki_plan_step3_implementation_1_audit_fix",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Plan_Step3_Implementation.md",
+      "source_location": "L25",
+      "weight": 1.0,
+      "source": "wiki_plan_step3_implementation_plan_step_3_v0_8_0",
+      "target": "wiki_plan_step3_implementation_2_step_3",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Plan_Step3_Implementation.md",
+      "source_location": "L45",
+      "weight": 1.0,
+      "source": "wiki_plan_step3_implementation_plan_step_3_v0_8_0",
+      "target": "wiki_plan_step3_implementation_3_onboarding_ux",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Plan_Step3_Implementation.md",
+      "source_location": "L60",
+      "weight": 1.0,
+      "source": "wiki_plan_step3_implementation_plan_step_3_v0_8_0",
+      "target": "wiki_plan_step3_implementation_4_step_3",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Plan_Step3_Implementation.md",
+      "source_location": "L78",
+      "weight": 1.0,
+      "source": "wiki_plan_step3_implementation_plan_step_3_v0_8_0",
+      "target": "wiki_plan_step3_implementation_5",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Plan_Step3_Implementation.md",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "wiki_plan_step3_implementation_1_audit_fix",
+      "target": "wiki_plan_step3_implementation_a_glassmorphism_surface_depth",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Plan_Step3_Implementation.md",
+      "source_location": "L12",
+      "weight": 1.0,
+      "source": "wiki_plan_step3_implementation_1_audit_fix",
+      "target": "wiki_plan_step3_implementation_b_typography_black_han_sans",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Plan_Step3_Implementation.md",
+      "source_location": "L19",
+      "weight": 1.0,
+      "source": "wiki_plan_step3_implementation_1_audit_fix",
+      "target": "wiki_plan_step3_implementation_c_mobile_first",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Plan_Step3_Implementation.md",
+      "source_location": "L28",
+      "weight": 1.0,
+      "source": "wiki_plan_step3_implementation_2_step_3",
+      "target": "wiki_plan_step3_implementation_a_conceptual_model",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Plan_Step3_Implementation.md",
+      "source_location": "L32",
+      "weight": 1.0,
+      "source": "wiki_plan_step3_implementation_2_step_3",
+      "target": "wiki_plan_step3_implementation_b_ui_hcd_4",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Plan_Step3_Implementation.md",
+      "source_location": "L48",
+      "weight": 1.0,
+      "source": "wiki_plan_step3_implementation_3_onboarding_ux",
+      "target": "wiki_plan_step3_implementation_a_signifiers",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Plan_Step3_Implementation.md",
+      "source_location": "L52",
+      "weight": 1.0,
+      "source": "wiki_plan_step3_implementation_3_onboarding_ux",
+      "target": "wiki_plan_step3_implementation_b_onboarding_overlay",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Plan_Step3_Implementation.md",
+      "source_location": "L63",
+      "weight": 1.0,
+      "source": "wiki_plan_step3_implementation_4_step_3",
+      "target": "wiki_plan_step3_implementation_codeblock_1",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Project_History.md",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "project_history_md",
+      "target": "wiki_project_history_project_history",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Project_History.md",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "wiki_project_history_project_history",
+      "target": "wiki_project_history",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Project_History.md",
+      "source_location": "L11",
+      "weight": 1.0,
+      "source": "wiki_project_history",
+      "target": "wiki_project_history_2026_05_07_step_4_leverage_assets_liquidation_engine_v0_9_7",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Project_History.md",
+      "source_location": "L17",
+      "weight": 1.0,
+      "source": "wiki_project_history",
+      "target": "wiki_project_history_2026_05_07_step_4_asset_backtest_simulator_v0_9_6",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Project_History.md",
+      "source_location": "L26",
+      "weight": 1.0,
+      "source": "wiki_project_history",
+      "target": "wiki_project_history_2026_05_07_isf_code_sharing_system_redirect_bug_fix_v0_9_5",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Project_History.md",
+      "source_location": "L34",
+      "weight": 1.0,
+      "source": "wiki_project_history",
+      "target": "wiki_project_history_2026_05_06_step_2_preset_ui_enhancement_patch_v0_9",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Project_History.md",
+      "source_location": "L41",
+      "weight": 1.0,
+      "source": "wiki_project_history",
+      "target": "wiki_project_history_2026_05_06_modern_hybrid_architecture_financial_simulation_enhancements_v0_9",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Project_History.md",
+      "source_location": "L48",
+      "weight": 1.0,
+      "source": "wiki_project_history",
+      "target": "wiki_project_history_2026_05_06_step_2_v0_8_9",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Project_History.md",
+      "source_location": "L53",
+      "weight": 1.0,
+      "source": "wiki_project_history",
+      "target": "wiki_project_history_2026_05_06_step_1_v0_8_8",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Project_History.md",
+      "source_location": "L57",
+      "weight": 1.0,
+      "source": "wiki_project_history",
+      "target": "wiki_project_history_2026_05_04_runtime_version_management_centralization_v0_8_3",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Project_History.md",
+      "source_location": "L62",
+      "weight": 1.0,
+      "source": "wiki_project_history",
+      "target": "wiki_project_history_2026_05_04_phase_5_step_1_spotlight_onboarding_v0_8_3",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Project_History.md",
+      "source_location": "L67",
+      "weight": 1.0,
+      "source": "wiki_project_history",
+      "target": "wiki_project_history_2026_05_04_modernization_pivot_v1_1_0_alpha_1",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Project_History.md",
+      "source_location": "L73",
+      "weight": 1.0,
+      "source": "wiki_project_history",
+      "target": "wiki_project_history_2026_05_04_phase_4_kpi_dashboard_v0_7_15",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Project_History.md",
+      "source_location": "L77",
+      "weight": 1.0,
+      "source": "wiki_project_history",
+      "target": "wiki_project_history_2026_04_20_system_integrity_recovery",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Project_History.md",
+      "source_location": "L80",
+      "weight": 1.0,
+      "source": "wiki_project_history",
+      "target": "wiki_project_history_2026_04_18_step_2_modularization_v0_7_0",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Project_History.md",
+      "source_location": "L83",
+      "weight": 1.0,
+      "source": "wiki_project_history",
+      "target": "wiki_project_history_2026_04_17_storage_hub_integration",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Project_History.md",
+      "source_location": "L87",
+      "weight": 1.0,
+      "source": "wiki_project_history",
+      "target": "wiki_project_history_2026_04_16_step_1_modularization_v0_5_0",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Project_History.md",
+      "source_location": "L91",
+      "weight": 1.0,
+      "source": "wiki_project_history",
+      "target": "wiki_project_history_2026_04_14_ui_ux_overhaul_v0_3_0",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "System_Integrity_Standard.md",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "system_integrity_standard_md",
+      "target": "wiki_system_integrity_standard_system_integrity_standard",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "System_Integrity_Standard.md",
+      "source_location": "L12",
+      "weight": 1.0,
+      "source": "wiki_system_integrity_standard_system_integrity_standard",
+      "target": "wiki_system_integrity_standard_1",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "System_Integrity_Standard.md",
+      "source_location": "L17",
+      "weight": 1.0,
+      "source": "wiki_system_integrity_standard_system_integrity_standard",
+      "target": "wiki_system_integrity_standard_2_core_logic_protection",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "System_Integrity_Standard.md",
+      "source_location": "L20",
+      "weight": 1.0,
+      "source": "wiki_system_integrity_standard_system_integrity_standard",
+      "target": "wiki_system_integrity_standard_3_unit_consistency",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "System_Integrity_Standard.md",
+      "source_location": "L28",
+      "weight": 1.0,
+      "source": "wiki_system_integrity_standard_system_integrity_standard",
+      "target": "wiki_system_integrity_standard_4_no_build_modern_hybrid",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "UI_Standards_Reference.md",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "ui_standards_reference_md",
+      "target": "wiki_ui_standards_reference_ui_standards_reference_ui",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "UI_Standards_Reference.md",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "wiki_ui_standards_reference_ui_standards_reference_ui",
+      "target": "wiki_ui_standards_reference_panel_ordering",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "UI_Standards_Reference.md",
+      "source_location": "L22",
+      "weight": 1.0,
+      "source": "wiki_ui_standards_reference_ui_standards_reference_ui",
+      "target": "wiki_ui_standards_reference_css_css_structure_integrity",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "UI_Standards_Reference.md",
+      "source_location": "L34",
+      "weight": 1.0,
+      "source": "wiki_ui_standards_reference_ui_standards_reference_ui",
+      "target": "wiki_ui_standards_reference",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "UI_Standards_Reference.md",
+      "source_location": "L52",
+      "weight": 1.0,
+      "source": "wiki_ui_standards_reference_ui_standards_reference_ui",
+      "target": "wiki_ui_standards_reference_v0_3",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "UI_Standards_Reference.md",
+      "source_location": "L68",
+      "weight": 1.0,
+      "source": "wiki_ui_standards_reference_ui_standards_reference_ui",
+      "target": "wiki_ui_standards_reference_v0_9",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "UI_Standards_Reference.md",
+      "source_location": "L78",
+      "weight": 1.0,
+      "source": "wiki_ui_standards_reference_ui_standards_reference_ui",
+      "target": "wiki_ui_standards_reference_78",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "UI_Standards_Reference.md",
+      "source_location": "L93",
+      "weight": 1.0,
+      "source": "wiki_ui_standards_reference_ui_standards_reference_ui",
+      "target": "wiki_ui_standards_reference_93",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "UI_Standards_Reference.md",
+      "source_location": "L80",
+      "weight": 1.0,
+      "source": "wiki_ui_standards_reference_78",
+      "target": "wiki_ui_standards_reference_sankey_diagram_step1",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "UI_Standards_Reference.md",
+      "source_location": "L84",
+      "weight": 1.0,
+      "source": "wiki_ui_standards_reference_78",
+      "target": "wiki_ui_standards_reference_dividend_simulation_chart_step_2",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "UI_Standards_Reference.md",
+      "source_location": "L88",
+      "weight": 1.0,
+      "source": "wiki_ui_standards_reference_78",
+      "target": "wiki_ui_standards_reference_donut_chart_step_3",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Version_Management_Principles.md",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "version_management_principles_md",
+      "target": "wiki_version_management_principles_version_management_principles",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Version_Management_Principles.md",
+      "source_location": "L13",
+      "weight": 1.0,
+      "source": "wiki_version_management_principles_version_management_principles",
+      "target": "wiki_version_management_principles_1_semver",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Version_Management_Principles.md",
+      "source_location": "L23",
+      "weight": 1.0,
+      "source": "wiki_version_management_principles_version_management_principles",
+      "target": "wiki_version_management_principles_2_ssot_single_source_of_truth",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Version_Management_Principles.md",
+      "source_location": "L29",
+      "weight": 1.0,
+      "source": "wiki_version_management_principles_version_management_principles",
+      "target": "wiki_version_management_principles_3_triple_sync_vite_build",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Version_Management_Principles.md",
+      "source_location": "L37",
+      "weight": 1.0,
+      "source": "wiki_version_management_principles_version_management_principles",
+      "target": "wiki_version_management_principles_4",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "archive/Data_Bridge_Import_Pattern.md",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "archive_data_bridge_import_pattern_md",
+      "target": "archive_data_bridge_import_pattern",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "archive/Data_Bridge_Import_Pattern.md",
+      "source_location": "L10",
+      "weight": 1.0,
+      "source": "archive_data_bridge_import_pattern",
+      "target": "archive_data_bridge_import_pattern_10",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "archive/Data_Bridge_Import_Pattern.md",
+      "source_location": "L13",
+      "weight": 1.0,
+      "source": "archive_data_bridge_import_pattern",
+      "target": "archive_data_bridge_import_pattern_as_is",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "archive/Data_Bridge_Import_Pattern.md",
+      "source_location": "L16",
+      "weight": 1.0,
+      "source": "archive_data_bridge_import_pattern",
+      "target": "archive_data_bridge_import_pattern_to_be_v0_7_4",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "archive/Data_Bridge_Import_Pattern.md",
+      "source_location": "L36",
+      "weight": 1.0,
+      "source": "archive_data_bridge_import_pattern",
+      "target": "archive_data_bridge_import_pattern_36",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "archive/Feature_Archive_v0.5.md",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "archive_feature_archive_v0_5_md",
+      "target": "archive_feature_archive_v0_5_feature_archive_v0_5",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "archive/Feature_Archive_v0.5.md",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "archive_feature_archive_v0_5_feature_archive_v0_5",
+      "target": "archive_feature_archive_v0_5_1_step_1_apps_step1",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "archive/Feature_Archive_v0.5.md",
+      "source_location": "L30",
+      "weight": 1.0,
+      "source": "archive_feature_archive_v0_5_feature_archive_v0_5",
+      "target": "archive_feature_archive_v0_5_2_step_2_apps_step2",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "archive/Feature_Archive_v0.5.md",
+      "source_location": "L10",
+      "weight": 1.0,
+      "source": "archive_feature_archive_v0_5_1_step_1_apps_step1",
+      "target": "archive_feature_archive_v0_5_1_1",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "archive/Feature_Archive_v0.5.md",
+      "source_location": "L17",
+      "weight": 1.0,
+      "source": "archive_feature_archive_v0_5_1_step_1_apps_step1",
+      "target": "archive_feature_archive_v0_5_1_2_sankey_diagram",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "archive/Feature_Archive_v0.5.md",
+      "source_location": "L23",
+      "weight": 1.0,
+      "source": "archive_feature_archive_v0_5_1_step_1_apps_step1",
+      "target": "archive_feature_archive_v0_5_1_3_projection",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "archive/Feature_Archive_v0.5.md",
+      "source_location": "L34",
+      "weight": 1.0,
+      "source": "archive_feature_archive_v0_5_2_step_2_apps_step2",
+      "target": "archive_feature_archive_v0_5_2_1_bridge",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "archive/Feature_Archive_v0.5.md",
+      "source_location": "L38",
+      "weight": 1.0,
+      "source": "archive_feature_archive_v0_5_2_step_2_apps_step2",
+      "target": "archive_feature_archive_v0_5_2_2_ui",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "archive/Feature_Archive_v0.5.md",
+      "source_location": "L45",
+      "weight": 1.0,
+      "source": "archive_feature_archive_v0_5_2_step_2_apps_step2",
+      "target": "archive_feature_archive_v0_5_2_3_dividend_simulation",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "archive/Plan_Step1.md",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "archive_plan_step1_md",
+      "target": "archive_plan_step1_archived_step1_roadmap",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "archive/Plan_Step1.md",
+      "source_location": "L15",
+      "weight": 1.0,
+      "source": "archive_plan_step1_archived_step1_roadmap",
+      "target": "archive_plan_step1_1",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "archive/Plan_Step1.md",
+      "source_location": "L21",
+      "weight": 1.0,
+      "source": "archive_plan_step1_archived_step1_roadmap",
+      "target": "archive_plan_step1_2",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "archive/Plan_Step1.md",
+      "source_location": "L26",
+      "weight": 1.0,
+      "source": "archive_plan_step1_archived_step1_roadmap",
+      "target": "archive_plan_step1_3",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "archive/Plan_Step1.md",
+      "source_location": "L31",
+      "weight": 1.0,
+      "source": "archive_plan_step1_archived_step1_roadmap",
+      "target": "archive_plan_step1_4",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "archive/Plan_Step2.md",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "archive_plan_step2_md",
+      "target": "archive_plan_step2_deprecated_step2_roadmap",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "archive/Plan_Step2.md",
+      "source_location": "L18",
+      "weight": 1.0,
+      "source": "archive_plan_step2_deprecated_step2_roadmap",
+      "target": "archive_plan_step2_1",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "archive/Plan_Step2.md",
+      "source_location": "L23",
+      "weight": 1.0,
+      "source": "archive_plan_step2_deprecated_step2_roadmap",
+      "target": "archive_plan_step2_2_step_2_mvp_v0_7_0",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "archive/Step1_Modularization_Refactoring.md",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "archive_step1_modularization_refactoring_md",
+      "target": "archive_step1_modularization_refactoring_archived_step1_modularization_refactoring_step_1",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "archive/Step1_Modularization_Refactoring.md",
+      "source_location": "L11",
+      "weight": 1.0,
+      "source": "archive_step1_modularization_refactoring_archived_step1_modularization_refactoring_step_1",
+      "target": "archive_step1_modularization_refactoring",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "archive/Step1_Modularization_Refactoring.md",
+      "source_location": "L16",
+      "weight": 1.0,
+      "source": "archive_step1_modularization_refactoring_archived_step1_modularization_refactoring_step_1",
+      "target": "archive_step1_modularization_refactoring_16",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "archive/Step1_Modularization_Refactoring.md",
+      "source_location": "L37",
+      "weight": 1.0,
+      "source": "archive_step1_modularization_refactoring_archived_step1_modularization_refactoring_step_1",
+      "target": "archive_step1_modularization_refactoring_37",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "archive/Step1_Modularization_Refactoring.md",
+      "source_location": "L41",
+      "weight": 1.0,
+      "source": "archive_step1_modularization_refactoring_archived_step1_modularization_refactoring_step_1",
+      "target": "archive_step1_modularization_refactoring_post_refactoring_pitfalls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "archive/Step1_Modularization_Refactoring.md",
+      "source_location": "L19",
+      "weight": 1.0,
+      "source": "archive_step1_modularization_refactoring_16",
+      "target": "archive_step1_modularization_refactoring_1_apps_step1_modules",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "archive/Step1_Modularization_Refactoring.md",
+      "source_location": "L31",
+      "weight": 1.0,
+      "source": "archive_step1_modularization_refactoring_16",
+      "target": "archive_step1_modularization_refactoring_2_apps_step1_app_js",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "archive/Step1_Modularization_Refactoring.md",
+      "source_location": "L34",
+      "weight": 1.0,
+      "source": "archive_step1_modularization_refactoring_16",
+      "target": "archive_step1_modularization_refactoring_3_shared",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "archive/Step2_Modularization_Refactoring.md",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "archive_step2_modularization_refactoring_md",
+      "target": "archive_step2_modularization_refactoring_archived_step2_modularization_refactoring_step_2",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "archive/Step2_Modularization_Refactoring.md",
+      "source_location": "L11",
+      "weight": 1.0,
+      "source": "archive_step2_modularization_refactoring_archived_step2_modularization_refactoring_step_2",
+      "target": "archive_step2_modularization_refactoring",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "archive/Step2_Modularization_Refactoring.md",
+      "source_location": "L15",
+      "weight": 1.0,
+      "source": "archive_step2_modularization_refactoring_archived_step2_modularization_refactoring_step_2",
+      "target": "archive_step2_modularization_refactoring_7_apps_step2_modules",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "archive/Step2_Modularization_Refactoring.md",
+      "source_location": "L25",
+      "weight": 1.0,
+      "source": "archive_step2_modularization_refactoring_archived_step2_modularization_refactoring_step_2",
+      "target": "archive_step2_modularization_refactoring_v0_7_0",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "archive/Step2_Modularization_Refactoring.md",
+      "source_location": "L35",
+      "weight": 1.0,
+      "source": "archive_step2_modularization_refactoring_archived_step2_modularization_refactoring_step_2",
+      "target": "archive_step2_modularization_refactoring_35",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "archive/Step2_Modularization_Refactoring.md",
+      "source_location": "L27",
+      "weight": 1.0,
+      "source": "archive_step2_modularization_refactoring_v0_7_0",
+      "target": "archive_step2_modularization_refactoring_1",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "archive/Step2_Modularization_Refactoring.md",
+      "source_location": "L31",
+      "weight": 1.0,
+      "source": "archive_step2_modularization_refactoring_v0_7_0",
+      "target": "archive_step2_modularization_refactoring_2_logic_decoupling",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "archive/Storage_Hub_Integration_v0.7.md",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "archive_storage_hub_integration_v0_7_md",
+      "target": "archive_storage_hub_integration_v0_7_archived_storage_hub_integration",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "archive/Storage_Hub_Integration_v0.7.md",
+      "source_location": "L13",
+      "weight": 1.0,
+      "source": "archive_storage_hub_integration_v0_7_archived_storage_hub_integration",
+      "target": "archive_storage_hub_integration_v0_7_1",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "archive/Storage_Hub_Integration_v0.7.md",
+      "source_location": "L18",
+      "weight": 1.0,
+      "source": "archive_storage_hub_integration_v0_7_archived_storage_hub_integration",
+      "target": "archive_storage_hub_integration_v0_7_2_isfstoragehub",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "archive/Storage_Hub_Integration_v0.7.md",
+      "source_location": "L28",
+      "weight": 1.0,
+      "source": "archive_storage_hub_integration_v0_7_archived_storage_hub_integration",
+      "target": "archive_storage_hub_integration_v0_7_4_v0_7_1",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "archive/Storage_Hub_Integration_v0.7.md",
+      "source_location": "L40",
+      "weight": 1.0,
+      "source": "archive_storage_hub_integration_v0_7_archived_storage_hub_integration",
+      "target": "archive_storage_hub_integration_v0_7_5",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "archive/Storage_Hub_Integration_v0.7.md",
+      "source_location": "L46",
+      "weight": 1.0,
+      "source": "archive_storage_hub_integration_v0_7_archived_storage_hub_integration",
+      "target": "archive_storage_hub_integration_v0_7_5_code_example",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "archive/Storage_Hub_Integration_v0.7.md",
+      "source_location": "L21",
+      "weight": 1.0,
+      "source": "archive_storage_hub_integration_v0_7_2_isfstoragehub",
+      "target": "archive_storage_hub_integration_v0_7",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "archive/Storage_Hub_Integration_v0.7.md",
+      "source_location": "L31",
+      "weight": 1.0,
+      "source": "archive_storage_hub_integration_v0_7_4_v0_7_1",
+      "target": "archive_storage_hub_integration_v0_7_4_1_localstorage",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "archive/Storage_Hub_Integration_v0.7.md",
+      "source_location": "L34",
+      "weight": 1.0,
+      "source": "archive_storage_hub_integration_v0_7_4_v0_7_1",
+      "target": "archive_storage_hub_integration_v0_7_4_2_indexeddb",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "archive/Storage_Hub_Integration_v0.7.md",
+      "source_location": "L37",
+      "weight": 1.0,
+      "source": "archive_storage_hub_integration_v0_7_4_v0_7_1",
+      "target": "archive_storage_hub_integration_v0_7_4_3",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "archive/Storage_Hub_Integration_v0.7.md",
+      "source_location": "L47",
+      "weight": 1.0,
+      "source": "archive_storage_hub_integration_v0_7_5_code_example",
+      "target": "archive_storage_hub_integration_v0_7_codeblock_1",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "archive/UI_UX_Overhaul_v0.3.md",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "archive_ui_ux_overhaul_v0_3_md",
+      "target": "archive_ui_ux_overhaul_v0_3_archived_ui_ux_v0_3_hcd",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "archive/UI_UX_Overhaul_v0.3.md",
+      "source_location": "L14",
+      "weight": 1.0,
+      "source": "archive_ui_ux_overhaul_v0_3_archived_ui_ux_v0_3_hcd",
+      "target": "archive_ui_ux_overhaul_v0_3",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "archive/UI_UX_Overhaul_v0.3.md",
+      "source_location": "L19",
+      "weight": 1.0,
+      "source": "archive_ui_ux_overhaul_v0_3_archived_ui_ux_v0_3_hcd",
+      "target": "archive_ui_ux_overhaul_v0_3_hcd_6",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "archive/UI_UX_Overhaul_v0.3.md",
+      "source_location": "L45",
+      "weight": 1.0,
+      "source": "archive_ui_ux_overhaul_v0_3_archived_ui_ux_v0_3_hcd",
+      "target": "archive_ui_ux_overhaul_v0_3_45",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "archive/UI_UX_Overhaul_v0.3.md",
+      "source_location": "L50",
+      "weight": 1.0,
+      "source": "archive_ui_ux_overhaul_v0_3_archived_ui_ux_v0_3_hcd",
+      "target": "archive_ui_ux_overhaul_v0_3_50",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "archive/UI_UX_Overhaul_v0.4.md",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "archive_ui_ux_overhaul_v0_4_md",
+      "target": "archive_ui_ux_overhaul_v0_4_archived_ui_ux_overhaul_v0_4",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "archive/UI_UX_Overhaul_v0.4.md",
+      "source_location": "L14",
+      "weight": 1.0,
+      "source": "archive_ui_ux_overhaul_v0_4_archived_ui_ux_overhaul_v0_4",
+      "target": "archive_ui_ux_overhaul_v0_4_1_smart_adaptive_entry",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "archive/UI_UX_Overhaul_v0.4.md",
+      "source_location": "L19",
+      "weight": 1.0,
+      "source": "archive_ui_ux_overhaul_v0_4_archived_ui_ux_overhaul_v0_4",
+      "target": "archive_ui_ux_overhaul_v0_4_2_consolidated_data_hub",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "archive/UI_UX_Overhaul_v0.4.md",
+      "source_location": "L26",
+      "weight": 1.0,
+      "source": "archive_ui_ux_overhaul_v0_4_archived_ui_ux_overhaul_v0_4",
+      "target": "archive_ui_ux_overhaul_v0_4_3_silent_status_indicator",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "archive/UI_UX_Overhaul_v0.4.md",
+      "source_location": "L31",
+      "weight": 1.0,
+      "source": "archive_ui_ux_overhaul_v0_4_archived_ui_ux_overhaul_v0_4",
+      "target": "archive_ui_ux_overhaul_v0_4_4_smart_bridge_banner",
+      "confidence_score": 1.0
+    }
+  ],
+  "hyperedges": [],
+  "built_at_commit": "da28496eaa58689d50f81ce3940784a3cc1f020a"
+}
