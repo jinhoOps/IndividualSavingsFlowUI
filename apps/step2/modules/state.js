@@ -11,6 +11,12 @@ export const state = {
   dirty: false,
   backupStoreReady: false,
   isSyncedWithStep1: false,
+  displayOptions: {
+    showAsset: true,
+    showDividend: true,
+    showPR: true,
+    showTR: true
+  }
 };
 
 

@@ -845,6 +845,26 @@ body.is-dashboard-mode .controls-panel {
 
 .projection-brief { margin-bottom: 8px; }
 
+.projection-options {
+  background: var(--panel-sub);
+  padding: 10px 14px;
+  border-radius: var(--rd-sm);
+  border: 1px solid var(--line);
+}
+
+.projection-options .opt-group {
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .projection-options {
+    gap: 16px !important;
+  }
+  .projection-options .opt-group {
+    flex: 1 1 100%;
+  }
+}
+
 .formula-toggle {
   padding: 8px 10px;
 }

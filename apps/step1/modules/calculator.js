@@ -169,7 +169,8 @@ export function buildInvestBuckets(inputs) {
   }));
 }
 
-export function simulateProjection(inputs) {
+export function simulateProjection(inputs, options = {}) {
+  const mode = options.mode || "TR"; // "TR" or "PR"
   const horizonMonths = Math.max(1, Math.round(inputs.horizonYears)) * 12;
   const monthlyIncomeBase = getMonthlyIncomeTotalWon(inputs.incomes);
   const monthlyExpenseBase = window.IsfUtils.sanitizeMoney(inputs.monthlyExpense, 0);
@@ -196,6 +197,7 @@ export function simulateProjection(inputs) {
   let savings = savingsBuckets.reduce((sum, bucket) => sum + bucket.balance, 0);
   let invest = investBuckets.reduce((sum, bucket) => sum + bucket.balance, 0);
   let debt = window.IsfUtils.sanitizeMoney(inputs.startDebt, 0);
+  let accumulatedPRDividend = 0; // PR 모드 시 재투자되지 않고 쌓인 배당/이자
 
   savingsBuckets.forEach((bucket) => {
     if (bucket.maturityMonthIndex !== null && bucket.maturityMonthIndex <= 0 && !bucket.closed) {
@@ -227,6 +229,7 @@ export function simulateProjection(inputs) {
       invest,
       debt,
       realDiscountFactor: 1,
+      accumulatedPRDividend
     }),
   ];
 
@@ -255,7 +258,15 @@ export function simulateProjection(inputs) {
       }
       const addAmount = savingsAddsByItem[index] || 0;
       bucket.balance += addAmount;
-      bucket.balance *= bucket.monthlyFactor;
+      
+      const growth = bucket.balance * (bucket.monthlyFactor - 1);
+      if (mode === "TR") {
+        bucket.balance += growth;
+      } else {
+        accumulatedPRDividend += growth;
+        // PR 모드에서는 수익을 자산에 더하지 않음 (Price Return)
+      }
+
       if (bucket.maturityMonthIndex !== null && monthIndex >= bucket.maturityMonthIndex) {
         nextCash += bucket.balance;
         bucket.balance = 0;
@@ -276,7 +287,14 @@ export function simulateProjection(inputs) {
       }
       const addAmount = investAddsByItem[index] || 0;
       bucket.balance += addAmount;
-      bucket.balance *= bucket.monthlyFactor;
+
+      const growth = bucket.balance * (bucket.monthlyFactor - 1);
+      if (mode === "TR") {
+        bucket.balance += growth;
+      } else {
+        accumulatedPRDividend += growth;
+      }
+
       if (bucket.maturityMonthIndex !== null && monthIndex >= bucket.maturityMonthIndex) {
         nextCash += bucket.balance;
         bucket.balance = 0;
@@ -309,7 +327,8 @@ export function simulateProjection(inputs) {
         debt,
         realDiscountFactor: Math.pow(purchasingPowerFactor, monthIndex),
         avgSavingsRate,
-        investRate
+        investRate,
+        accumulatedPRDividend
       }),
     );
   }
@@ -330,7 +349,8 @@ export function buildProjectionRecord({
   debt,
   realDiscountFactor = 1,
   avgSavingsRate = 0,
-  investRate = 0
+  investRate = 0,
+  accumulatedPRDividend = 0
 }) {
   const netAsset = cash + savings + invest - debt;
   const realNetAsset = netAsset / Math.max(realDiscountFactor, 1e-9);
@@ -351,9 +371,11 @@ export function buildProjectionRecord({
     debt,
     netAsset,
     realNetAsset,
-    annualFinancialIncome
+    annualFinancialIncome,
+    accumulatedPRDividend
   };
 }
+
 
 export function buildSummaryCards(snapshot, projection, horizonYears) {
   const current = projection[0];

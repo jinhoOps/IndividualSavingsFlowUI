@@ -93,6 +93,11 @@
   sankeyTooltip: document.getElementById("sankeyTooltip"),
   projectionTableBody: document.querySelector("#projectionTable tbody"),
   projectionMeta: document.getElementById("projectionMeta"),
+  modeTR: document.getElementById("modeTR"),
+  modePR: document.getElementById("modePR"),
+  colShowFlow: document.getElementById("colShowFlow"),
+  colShowBalance: document.getElementById("colShowBalance"),
+  colShowDividend: document.getElementById("colShowDividend"),
   
   snapshotSelector: document.getElementById("snapshotSelector"),
   saveSnapshotBtn: document.getElementById("saveSnapshotBtn"),

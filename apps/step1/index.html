@@ -101,6 +101,30 @@
           <p id="projectionMeta" class="hint"></p>
         </div>
         <p class="hint projection-brief">요약: 순자산 = 현금 + 저축 + 투자 - 부채</p>
+        
+        <div class="projection-options" style="margin-top: 12px; margin-bottom: 12px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+          <div class="opt-group" style="display: flex; align-items: center; gap: 8px;">
+            <span class="muted" style="font-size: 0.8rem;">시뮬레이션 모드:</span>
+            <div class="tab-list tab-list--sm" role="tablist">
+              <button id="modeTR" class="tab-btn tab-btn--sm is-active" data-mode="TR" role="tab" aria-selected="true">TR (재투자)</button>
+              <button id="modePR" class="tab-btn tab-btn--sm" data-mode="PR" role="tab" aria-selected="false">PR (미투자)</button>
+            </div>
+          </div>
+          <div style="width: 1px; height: 14px; background: var(--line); margin: 0 4px;"></div>
+          <div class="opt-group" style="display: flex; align-items: center; gap: 8px;">
+            <span class="muted" style="font-size: 0.8rem;">표시 컬럼:</span>
+            <label class="view-opt-label" style="font-size: 0.85rem; display: flex; align-items: center; gap: 4px; cursor: pointer;">
+              <input type="checkbox" id="colShowFlow" checked /> 흐름
+            </label>
+            <label class="view-opt-label" style="font-size: 0.85rem; display: flex; align-items: center; gap: 4px; cursor: pointer;">
+              <input type="checkbox" id="colShowBalance" checked /> 잔액
+            </label>
+            <label class="view-opt-label" style="font-size: 0.85rem; display: flex; align-items: center; gap: 4px; cursor: pointer;">
+              <input type="checkbox" id="colShowDividend" /> 연배당
+            </label>
+          </div>
+        </div>
+
         <details class="formula formula-toggle">
           <summary>자세히 보기</summary>
           <div class="formula-body">
