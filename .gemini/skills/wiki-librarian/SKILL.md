@@ -41,3 +41,15 @@ description: 프로젝트의 위키 문서 구조를 관리하고, 생성된 지
 - **SSOT(Single Source of Truth) 유지**: 아키텍처, 데이터 모델, 운영 원칙 등 핵심 참조 문서는 항상 최신 구현 상태를 반영해야 합니다.
 - **정보 통합 (Consolidation)**: 여러 문서에 흩어진 파편화된 정보는 하나의 권위 있는 노드로 통합하고 기존 노드는 아카이브합니다.
 - **인덱스 이원화**: `INDEX.md` 구조를 '현재 가용 지식'과 '과거 기록/아카이브'로 분리하여 에이전트가 잘못된 컨텍스트를 로드하지 않도록 방지합니다.
+
+## 📊 5. 그래프 지식 분석 (Graph Analysis) - New!
+사서는 `graphify`를 사용하여 위키 지식의 연결 상태를 시각화하고 복잡한 관계를 쿼리합니다.
+
+### 🔄 그래프 갱신 (Build)
+위키 문서의 대대적인 수정이나 추가가 발생한 경우, 지식 그래프를 동기화합니다.
+- 명령어: `node $HOME/.gemini/get-shit-done/bin/gsd-tools.cjs graphify build @knowledge\wiki\** --out .planning/graphs/wiki`
+
+### 🔍 지식 쿼리 (Query)
+문서 간의 간접적인 연결 고리나 특정 주제의 영향 범위를 탐색할 때 사용합니다.
+- 명령어: `node $HOME/.gemini/get-shit-done/bin/gsd-tools.cjs graphify query "<탐색어>" --graph .planning/graphs/wiki/graph.json`
+- 활용: "특정 정책 변경 시 영향을 받는 모든 설계 문서 찾기", "지식의 고립 지점(Isolated Nodes) 식별" 등
