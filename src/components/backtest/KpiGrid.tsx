@@ -12,13 +12,13 @@ interface Props {
 export const KpiGrid: React.FC<Props> = ({ results, isLumpSum, exchangeRate }) => {
   if (results.length === 0) return null;
 
-  const formatWithExchange = (val: number, currency: string) => {
+  const formatWithExchange = (val: number, currency: string, fractionDigits: number = 0) => {
     if (currency === 'USD') {
-      const usdText = `$${val.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+      const usdText = `$${val.toLocaleString(undefined, { minimumFractionDigits: fractionDigits, maximumFractionDigits: fractionDigits })}`;
       const krwText = MoneyUtils.formatMan(val * exchangeRate);
       return (
         <div className="flex flex-col">
-          <span className="text-lg font-black">{usdText}</span>
+          <span className="text-lg font-black leading-tight">{usdText}</span>
           <span className="text-[10px] text-muted font-medium">약 {krwText}</span>
         </div>
       );
@@ -51,14 +51,16 @@ export const KpiGrid: React.FC<Props> = ({ results, isLumpSum, exchangeRate }) =
               <div className="col-span-2">
                 <div className="text-[10px] text-muted font-medium mb-1">최종 평가 금액</div>
                 <div className={result.isLiquidated ? 'text-lg font-black text-red-500' : 'text-ink'}>
-                  {result.isLiquidated ? '0 원' : formatWithExchange(result.finalValue, asset.currency)}
+                  {result.isLiquidated ? '0 원' : formatWithExchange(result.finalValue, asset.currency, 2)}
                 </div>
               </div>
 
               <div className="col-span-1">
                 <div className="text-[10px] text-muted font-medium mb-1">총 투자 원금</div>
                 <div className="text-sm font-bold text-muted">
-                  {asset.currency === 'USD' ? `$${result.totalPrincipal.toLocaleString()}` : MoneyUtils.formatMan(result.totalPrincipal)}
+                  {asset.currency === 'USD' 
+                    ? `$${result.totalPrincipal.toLocaleString(undefined, { maximumFractionDigits: 0 })}` 
+                    : MoneyUtils.formatMan(result.totalPrincipal)}
                 </div>
               </div>
 
@@ -66,8 +68,8 @@ export const KpiGrid: React.FC<Props> = ({ results, isLumpSum, exchangeRate }) =
                 <div className="text-[10px] text-muted font-medium mb-1">누적 수익금</div>
                 <div className={`text-sm font-bold ${result.isLiquidated ? 'text-red-500' : result.totalReturn >= 0 ? 'text-red-500' : 'text-blue-500'}`}>
                   {asset.currency === 'USD' 
-                    ? `${result.totalReturn >= 0 ? '+' : ''}${(result.finalValue - result.totalPrincipal).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
-                    : MoneyUtils.formatMan(result.finalValue - result.totalPrincipal)
+                    ? `${result.totalReturn >= 0 ? '+' : ''}$${(result.finalValue - result.totalPrincipal).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                    : `${result.totalReturn >= 0 ? '+' : ''}${MoneyUtils.formatMan(result.finalValue - result.totalPrincipal)}`
                   }
                 </div>
               </div>
@@ -76,7 +78,9 @@ export const KpiGrid: React.FC<Props> = ({ results, isLumpSum, exchangeRate }) =
                 <div className="col-span-2 py-2 px-2 bg-green-50/50 rounded-sm border border-green-100/50">
                   <div className="text-[9px] text-green-700 font-bold uppercase tracking-tighter">예상 연 배당금 (최종 시점)</div>
                   <div className="text-sm font-black text-green-600">
-                    {asset.currency === 'USD' ? `$${result.finalAnnualDividend.toLocaleString()}` : MoneyUtils.formatMan(result.finalAnnualDividend)}
+                    {asset.currency === 'USD' 
+                      ? `$${result.finalAnnualDividend.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` 
+                      : MoneyUtils.formatMan(result.finalAnnualDividend)}
                     <span className="text-[10px] font-medium ml-1">/ year</span>
                   </div>
                 </div>

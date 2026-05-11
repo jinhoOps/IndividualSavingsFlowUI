@@ -22,6 +22,8 @@ export interface AssetData {
   type: AssetType;
   currency: 'KRW' | 'USD';
   data: TimeSeriesPoint[];
+  /** 데이터 해상도 (일간 또는 월간) */
+  resolution?: 'daily' | 'monthly';
   /** 레버리지 배수 (기본 1.0) */
   leverage?: number;
   /** 기초 자산 ID (레버리지 자산인 경우) */

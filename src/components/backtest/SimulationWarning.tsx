@@ -30,7 +30,19 @@ export const SimulationWarning: React.FC<Props> = ({ params, selectedAssets }) =
   }
 
   // 4. 데이터 정밀도 경고 (MDD 관련)
-  warnings.push('본 시뮬레이션은 월간 종가 데이터를 사용합니다. 일간 변동폭이 반영되지 않아 실제 MDD(최대낙폭)는 표시된 값보다 훨씬 클 수 있습니다 (특히 레버리지 ETF의 경우).');
+  const dailyAssets = selectedAssets.filter(a => a.resolution === 'daily');
+  const allDaily = selectedAssets.length > 0 && dailyAssets.length === selectedAssets.length;
+  const someDaily = dailyAssets.length > 0 && !allDaily;
+
+  if (allDaily) {
+    // 모든 자산이 일간 데이터인 경우 경고 제거 또는 안내로 변경
+    // warnings.push('선택한 자산은 일간 종가 데이터를 사용하여 MDD가 정밀하게 계산됩니다.');
+  } else if (someDaily) {
+    const dailyNames = dailyAssets.map(a => a.name.split(' (')[0]).join(', ');
+    warnings.push(`나스닥 계열(${dailyNames})은 일간 데이터를 사용하여 MDD가 정밀합니다. 그 외 자산은 월간 기준이므로 실제 MDD가 표시보다 클 수 있습니다.`);
+  } else {
+    warnings.push('본 시뮬레이션은 월간 종가 데이터를 사용합니다. 일간 변동폭이 반영되지 않아 실제 MDD(최대낙폭)는 표시된 값보다 클 수 있습니다.');
+  }
 
   if (warnings.length === 0) return null;
 

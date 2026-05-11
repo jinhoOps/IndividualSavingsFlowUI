@@ -4,6 +4,7 @@ import { BacktestEngine } from '../../core/backtest/engine';
 import { AssetChart } from './AssetChart';
 import { KpiGrid } from './KpiGrid';
 import { SimulationWarning } from './SimulationWarning';
+import { CalculationGuideModal } from './CalculationGuideModal';
 import { Toast } from '../common/Toast';
 
 export const CHART_COLORS = ['#ea5b2a', '#1e8b7c', '#3175b6', '#5d4fb3', '#8c3d65', '#f59e0b', '#10b981', '#6366f1'];
@@ -20,11 +21,12 @@ export const BacktestDashboard: React.FC = () => {
     initialPrincipal: 10000000,
     monthlyInstallment: 1000000,
     startDate: '2000-01-01',
-    endDate: '2026-03-01',
+    endDate: '2026-05-01',
     reinvestDividends: true,
   });
   const [relativeMode, setRelativeMode] = useState(false);
   const [benchmarkAssetId, setBenchmarkAssetId] = useState<string>('qqq');
+  const [showGuide, setShowGuide] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
 
@@ -36,7 +38,12 @@ export const BacktestDashboard: React.FC = () => {
         const paths = [
           { id: 'qqq', path: `${baseUrl}data/indices/qqq.json` },
           { id: 'spy', path: `${baseUrl}data/indices/spy.json` },
-          { id: 'gold', path: `${baseUrl}data/indices/gold.json` }
+          { id: 'gold', path: `${baseUrl}data/indices/gold.json` },
+          { id: 'qld', path: `${baseUrl}data/indices/qld.json` },
+          { id: 'tqqq', path: `${baseUrl}data/indices/tqqq.json` },
+          { id: 'kospi', path: `${baseUrl}data/indices/kospi.json` },
+          { id: 'kosdaq', path: `${baseUrl}data/indices/kosdaq.json` },
+          { id: 'schd', path: `${baseUrl}data/indices/schd.json` }
         ];
         
         const loadedIndices = await Promise.all(paths.map((p: { id: string; path: string }) => fetch(p.path).then(res => {
@@ -45,60 +52,8 @@ export const BacktestDashboard: React.FC = () => {
         })));
         
         const qqq = loadedIndices.find(a => a.id === 'qqq')!;
-        const spy = loadedIndices.find(a => a.id === 'spy')!;
-        
-        // 1. 레버리지 자산 합성 (QLD, TQQQ)
-        const createLeveraged = (base: AssetData, id: string, name: string, leverage: number): AssetData => {
-          const leveragedData = [...base.data];
-          const resultData = [leveragedData[0]];
-          
-          for (let i = 1; i < leveragedData.length; i++) {
-            const prevBase = leveragedData[i-1].price;
-            const currBase = leveragedData[i].price;
-            const baseReturn = (currBase - prevBase) / prevBase;
-            
-            const prevLev = resultData[i-1].price;
-            // 레버리지 수익률 계산 (운용 보수 등 단순화)
-            const levPrice = prevLev * (1 + (baseReturn * leverage));
-            
-            resultData.push({
-              date: leveragedData[i].date,
-              price: Math.max(0.01, levPrice), // 0 이하 방지
-              dividendYield: (leveragedData[i].dividendYield || 0) * 0.5 // 레버리지 분배금은 적음
-            });
-          }
-          
-          return {
-            id,
-            name,
-            type: 'leveraged',
-            currency: base.currency,
-            leverage,
-            baseAssetId: base.id,
-            data: resultData
-          };
-        };
 
-        const qld = createLeveraged(qqq, 'qld', 'ProShares Ultra QQQ (QLD, 2x)', 2);
-        const tqqq = createLeveraged(qqq, 'tqqq', 'ProShares UltraPro QQQ (TQQQ, 3x)', 3);
-
-        // 2. 추가 지수 합성 (Mock: SCHD, 코스피)
-        const schd: AssetData = {
-          ...spy,
-          id: 'schd',
-          name: 'Schwab US Dividend Equity (SCHD)',
-          data: spy.data.map((p: TimeSeriesPoint) => ({ ...p, price: p.price * 0.75, dividendYield: 0.035 / 12 })) // SCHD 특성 모사 (높은 배당)
-        };
-
-        const kospi: AssetData = {
-          ...spy,
-          id: 'kospi',
-          name: 'KOSPI 200 (Mock)',
-          currency: 'KRW',
-          data: spy.data.map((p: TimeSeriesPoint) => ({ ...p, price: p.price * 1000 })) // 원화 단위 환산 모사
-        };
-
-        // 3. 금리 자산 합성 (US/KR 기준금리, 적금)
+        // 1. 금리 자산 합성 (US/KR 기준금리, 적금) - 2026-05 현실 반영
         const createRateAsset = (id: string, name: string, rate: number, isKRW: boolean = true): AssetData => ({
           id,
           name,
@@ -111,13 +66,12 @@ export const BacktestDashboard: React.FC = () => {
           }))
         });
 
-        const usRate = createRateAsset('us-rate', 'US Fed Funds Rate (5.25%)', 0.0525, false);
-        const krRate = createRateAsset('kr-rate', '한국 기준금리 (3.5%)', 0.035, true);
-        const savings = createRateAsset('savings', '정기적금 (금리+1%)', 0.045, true);
+        const usRate = createRateAsset('us-rate', 'US Fed Funds Rate (3.65%)', 0.0365, false);
+        const krRate = createRateAsset('kr-rate', '한국 기준금리 (2.5%)', 0.025, true);
+        const savings = createRateAsset('savings', '정기적금 (금리+1.5%)', 0.040, true);
 
         const allAssets = [
           ...loadedIndices, 
-          qld, tqqq, schd, kospi, 
           usRate, krRate, savings
         ];
         setAssets(allAssets);
@@ -532,6 +486,11 @@ export const BacktestDashboard: React.FC = () => {
           onClose={() => setToastMessage(null)} 
         />
       )}
+
+      <CalculationGuideModal 
+        isOpen={showGuide} 
+        onClose={() => setShowGuide(false)} 
+      />
     </div>
   );
 };
