@@ -96,4 +96,90 @@ describe('BacktestEngine', () => {
       expect(result.history.length).toBe(4);
     });
   });
+
+  describe('Edge Cases & Robustness', () => {
+    it('자산 가치가 원금의 1% 미만일 때 청산되어야 한다', () => {
+      const crashAsset: AssetData = {
+        ...sampleAsset,
+        data: [
+          { date: '2023-01-01', price: 100 },
+          { date: '2023-02-01', price: 0.5 }, // 99.5% 폭락
+        ]
+      };
+
+      const result = BacktestEngine.run(crashAsset, {
+        initialPrincipal: 1000000,
+        monthlyInstallment: 0,
+        startDate: '2023-01-01',
+        endDate: '2023-02-01',
+        reinvestDividends: false
+      });
+
+      expect(result.isLiquidated).toBe(true);
+      expect(result.finalValue).toBe(0);
+      expect(result.liquidationDate).toBe('2023-02-01');
+    });
+
+    it('10년 이상의 장기 시뮬레이션에서 CAGR과 IRR이 합리적이어야 한다', () => {
+      const longData = [];
+      for (let i = 0; i < 120; i++) {
+        const year = 2010 + Math.floor(i / 12);
+        const month = (i % 12) + 1;
+        longData.push({
+          date: `${year}-${month.toString().padStart(2, '0')}-01`,
+          price: 100 * Math.pow(1.008, i) // 월 0.8%씩 꾸준히 상승 (연 약 10%)
+        });
+      }
+      
+      const longAsset: AssetData = { ...sampleAsset, data: longData };
+      const result = BacktestEngine.run(longAsset, {
+        initialPrincipal: 1000000,
+        monthlyInstallment: 0,
+        startDate: '2010-01-01',
+        endDate: '2019-12-01',
+        reinvestDividends: false
+      });
+
+      // 연 10% 정도의 CAGR 기대
+      expect(result.cagr).toBeGreaterThan(0.09);
+      expect(result.cagr).toBeLessThan(0.11);
+      // 거치식의 경우 CAGR과 IRR이 거의 일치해야 함
+      expect(result.irr).toBeCloseTo(result.cagr, 2);
+    });
+
+    it('시뮬레이션 기간 내 데이터가 1개뿐이면 에러를 던져야 한다 (또는 적절히 처리)', () => {
+      const singlePointAsset: AssetData = {
+        ...sampleAsset,
+        data: [{ date: '2023-01-01', price: 100 }]
+      };
+
+      // 현재 구현상 run()은 filteredData.length === 0일 때만 던지지만, 
+      // 1개일 때의 수익률은 0이어야 함. 
+      const result = BacktestEngine.run(singlePointAsset, {
+        initialPrincipal: 1000000,
+        monthlyInstallment: 0,
+        startDate: '2023-01-01',
+        endDate: '2023-01-01',
+        reinvestDividends: false
+      });
+
+      expect(result.totalReturn).toBe(0);
+      expect(result.history.length).toBe(1);
+    });
+
+    it('투자금이 모두 0이면 결과도 0이어야 한다', () => {
+      const result = BacktestEngine.run(sampleAsset, {
+        initialPrincipal: 0,
+        monthlyInstallment: 0,
+        startDate: '2023-01-01',
+        endDate: '2023-04-01',
+        reinvestDividends: false
+      });
+
+      expect(result.finalValue).toBe(0);
+      expect(result.totalPrincipal).toBe(0);
+      expect(result.totalReturn).toBe(0);
+      expect(result.irr).toBe(0);
+    });
+  });
 });

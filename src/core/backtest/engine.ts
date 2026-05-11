@@ -48,7 +48,7 @@ export class BacktestEngine {
         continue;
       }
 
-      // 이전 가격 대비 수익률 계산 (MDD용)
+      // 이전 가격 대비 수익률 계산 (MDD용 단위 가격 추적)
       if (i > 0) {
         const prevPrice = filteredData[i-1].price;
         const assetReturn = (currentPrice - prevPrice) / prevPrice;
@@ -62,15 +62,17 @@ export class BacktestEngine {
         totalPrincipal += initialPrincipal;
       }
       
-      // 월간 적립금 투입 (월이 바뀔 때마다 실행)
+      // 월간 적립금 투입 (월이 바뀔 때마다 실행, 단 첫 달은 제외하고 처리할지 고민 필요하나 보통 월초 투입 가정)
       if (currentMonth !== lastInvestmentMonth) {
+        // 이미 i=0에서 initial을 넣었으므로, 첫 달 적립금은 initial에 포함되거나 별도로 넣어야 함.
+        // 여기서는 매월 '새로운' 달이 시작될 때 monthlyInstallment를 넣는 것으로 통일 (첫 달 포함)
         cash += monthlyInstallment;
         totalPrincipal += monthlyInstallment;
         lastInvestmentMonth = currentMonth;
       }
 
       // 2. 보유 수량에 따른 현재 가치 계산 (배당 포함 전)
-      if (cash > 0) {
+      if (cash > 0 && currentPrice > 0) {
         currentShares += cash / currentPrice;
         cash = 0;
       }
@@ -78,24 +80,28 @@ export class BacktestEngine {
       let currentValue = currentShares * currentPrice;
 
       // 3. 배당금 재투자 (TR)
-      if (reinvestDividends && point.dividendYield) {
+      // point.dividendYield는 해당 월의 배당률(예: 0.01 = 1%)로 가정
+      if (reinvestDividends && point.dividendYield && point.dividendYield > 0) {
         const dividendAmount = currentValue * point.dividendYield;
-        // 배당금으로 즉시 추가 매수
-        currentShares += dividendAmount / currentPrice;
-        currentValue = currentShares * currentPrice;
-        // 단위 가격에도 배당 반영
-        currentUnitPrice *= (1 + point.dividendYield);
+        // 배당금으로 즉시 추가 매수 (수수료 등 무시)
+        if (currentPrice > 0) {
+          currentShares += dividendAmount / currentPrice;
+          currentValue = currentShares * currentPrice;
+          // 단위 가격에도 배당 반영하여 TR(Total Return) 지수화
+          currentUnitPrice *= (1 + point.dividendYield);
+        }
       }
 
-      // 4. 청산 체크 (원금 대비 99% 이상 손실 시 청산으로 간주)
-      if (currentValue < totalPrincipal * 0.01 || currentValue <= 0) {
+      // 4. 청산 체크 (자산 가치가 원금의 1% 미만으로 떨어지면 청산)
+      // 레버리지 자산 등에서 발생 가능
+      if (currentValue < totalPrincipal * 0.01 || (currentShares > 0 && currentPrice <= 0)) {
         isLiquidated = true;
         liquidationDate = point.date;
         currentValue = 0;
         currentShares = 0;
       }
 
-      // 5. MDD 계산 (단위 가격 기준)
+      // 5. MDD 계산 (단위 가격 기준 - 배당 반영된 TR 기준가 사용)
       if (currentUnitPrice > unitPricePeak) {
         unitPricePeak = currentUnitPrice;
       }
@@ -106,7 +112,7 @@ export class BacktestEngine {
 
       history.push({
         date: point.date,
-        value: Math.round(currentValue),
+        value: Number(currentValue.toFixed(2)),
         principal: totalPrincipal,
         isLiquidated: isLiquidated
       });
@@ -121,24 +127,26 @@ export class BacktestEngine {
       ? Math.round(currentShares * lastPoint.price * lastPoint.dividendYield * 12)
       : 0;
 
-    // CAGR 계산 (거치식 전용)
+    // CAGR 계산 (거치식 수익률 연율화)
+    // CAGR = (Final Value / Initial Value)^(1/years) - 1
     const years = filteredData.length / 12;
     const cagr = years > 0 && finalValue > 0 && initialPrincipal > 0 
       ? Math.pow(finalValue / initialPrincipal, 1 / years) - 1 
       : 0;
 
-    // IRR 계산 (적립식 포함 전체 현금 흐름 기준)
+    // IRR 계산 (적립식 포함 전체 현금 흐름 기준 연환산 수익률)
     const irr = this.calculateIRR(initialPrincipal, monthlyInstallment, finalValue, filteredData.length);
 
     return {
-      finalValue,
+      finalValue: Math.round(finalValue),
       totalPrincipal,
-      totalReturn,
+      totalReturn: Number(totalReturn.toFixed(6)),
       finalAnnualDividend,
-      cagr: isFinite(cagr) ? cagr : 0,
-      irr,
-      mdd: maxDrawdown,
+      cagr: isFinite(cagr) ? Number(cagr.toFixed(6)) : 0,
+      irr: isFinite(irr) ? Number(irr.toFixed(6)) : 0,
+      mdd: Number(maxDrawdown.toFixed(6)),
       isLiquidated,
+      liquidationDate,
       history
     };
   }

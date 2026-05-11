@@ -233,20 +233,49 @@ export const BacktestDashboard: React.FC = () => {
     }).filter(r => r !== null) as { asset: AssetData; result: SimulationResult }[];
   }, [assets, selectedAssetIds, params]);
 
+  // 벤치마크 자산 유효성 검사 및 자동 조정
+  useEffect(() => {
+    if (selectedAssetIds.length > 0 && !selectedAssetIds.includes(benchmarkAssetId)) {
+      setBenchmarkAssetId(selectedAssetIds[0]);
+    }
+  }, [selectedAssetIds, benchmarkAssetId]);
+
   const selectedAssets = useMemo(() => 
     assets.filter(a => selectedAssetIds.includes(a.id)),
     [assets, selectedAssetIds]
   );
+
+  if (!isLoaded) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-canvas text-ink">
+        <div className="flex flex-col items-center gap-md">
+          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-body-sm font-bold animate-pulse">데이터를 분석 중입니다...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col lg:flex-row gap-lg p-md lg:p-lg min-h-screen bg-canvas text-ink font-body">
       {/* 사이드바: 설정 영역 */}
       <aside className="w-full lg:w-80 flex flex-col gap-lg">
         <section className="panel backdrop-blur-md">
-          <h2 className="text-title-md font-bold mb-md flex items-center gap-sm">
-            <span className="w-1.5 h-6 bg-primary rounded-pill"></span>
-            시뮬레이션 설정
-          </h2>
+          <div className="flex justify-between items-center mb-md">
+            <h2 className="text-title-md font-bold flex items-center gap-sm">
+              <span className="w-1.5 h-6 bg-primary rounded-pill"></span>
+              시뮬레이션 설정
+            </h2>
+            <button 
+              onClick={() => setShowGuide(true)}
+              className="w-6 h-6 flex items-center justify-center rounded-full bg-line/40 hover:bg-line text-muted transition-colors"
+              title="계산식 설명"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </button>
+          </div>
           
           <div className="space-y-md">
             {/* 투자 모드 선택 */}
