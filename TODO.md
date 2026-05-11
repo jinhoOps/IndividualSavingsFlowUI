@@ -30,9 +30,9 @@ kanban-plugin: basic
 - [ ] **KPI 요약 카드**: 최종 자산, 최종 연 배당금, 누적 수익률 등 핵심 지표 시각화.
 - [ ] **Step 1 Spotlight UX**: 첫 접속 사용자 온보딩 가이드.
 
-# RECENT HISTORY (v0.8.7~v0.8.8)
-- [x] **v0.8.8**: Step 1 초기 자산 필드 구조 개선(현금/저축/투자 분리) 및 SimChart 시각적 버그 수정.
-- [x] **v0.8.7**: '억' 단위 변환 버그 수정 및 CompatibilityBridge 정합성 확보.
+# RECENT HISTORY (v0.8.7~v0.9.45)
+- [x] **v0.9.45**: Step 4 백테스트 시뮬레이터 `toLocaleString` TypeError 수정 (방어적 코드 적용).
+- [x] **v0.9.44**: Phase 9 Newlywed Harmony Hub 구현 완료 (클립보드 파서 & 부부 데이터 병합).
 
 # ARCHIVE
 - 상세 내역은 `[[Project_History]]` 및 `[[log.md]]` 참조.
