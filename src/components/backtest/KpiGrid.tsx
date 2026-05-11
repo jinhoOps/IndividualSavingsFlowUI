@@ -13,9 +13,10 @@ export const KpiGrid: React.FC<Props> = ({ results, isLumpSum, exchangeRate }) =
   if (results.length === 0) return null;
 
   const formatWithExchange = (val: number, currency: string, fractionDigits: number = 0) => {
+    const safeVal = val || 0;
     if (currency === 'USD') {
-      const usdText = `$${val.toLocaleString(undefined, { minimumFractionDigits: fractionDigits, maximumFractionDigits: fractionDigits })}`;
-      const krwText = MoneyUtils.formatMan(val * exchangeRate);
+      const usdText = `$${safeVal.toLocaleString(undefined, { minimumFractionDigits: fractionDigits, maximumFractionDigits: fractionDigits })}`;
+      const krwText = MoneyUtils.formatMan(safeVal * exchangeRate);
       return (
         <div className="flex flex-col">
           <span className="text-lg font-black leading-tight">{usdText}</span>
@@ -23,7 +24,7 @@ export const KpiGrid: React.FC<Props> = ({ results, isLumpSum, exchangeRate }) =
         </div>
       );
     }
-    return <div className="text-lg font-black">{MoneyUtils.formatMan(val)}</div>;
+    return <div className="text-lg font-black">{MoneyUtils.formatMan(safeVal)}</div>;
   };
 
   return (
@@ -59,8 +60,8 @@ export const KpiGrid: React.FC<Props> = ({ results, isLumpSum, exchangeRate }) =
                 <div className="text-[10px] text-muted font-medium mb-1">총 투자 원금</div>
                 <div className="text-sm font-bold text-muted">
                   {asset.currency === 'USD' 
-                    ? `$${result.totalPrincipal.toLocaleString(undefined, { maximumFractionDigits: 0 })}` 
-                    : MoneyUtils.formatMan(result.totalPrincipal)}
+                    ? `$${(result.totalPrincipal || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}` 
+                    : MoneyUtils.formatMan(result.totalPrincipal || 0)}
                 </div>
               </div>
 
@@ -68,8 +69,8 @@ export const KpiGrid: React.FC<Props> = ({ results, isLumpSum, exchangeRate }) =
                 <div className="text-[10px] text-muted font-medium mb-1">누적 수익금</div>
                 <div className={`text-sm font-bold ${result.isLiquidated ? 'text-red-500' : result.totalReturn >= 0 ? 'text-red-500' : 'text-blue-500'}`}>
                   {asset.currency === 'USD' 
-                    ? `${result.totalReturn >= 0 ? '+' : ''}$${(result.finalValue - result.totalPrincipal).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                    : `${result.totalReturn >= 0 ? '+' : ''}${MoneyUtils.formatMan(result.finalValue - result.totalPrincipal)}`
+                    ? `${result.totalReturn >= 0 ? '+' : ''}$${(result.finalValue - (result.totalPrincipal || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                    : `${result.totalReturn >= 0 ? '+' : ''}${MoneyUtils.formatMan(result.finalValue - (result.totalPrincipal || 0))}`
                   }
                 </div>
               </div>
@@ -81,11 +82,11 @@ export const KpiGrid: React.FC<Props> = ({ results, isLumpSum, exchangeRate }) =
                     {asset.currency === 'USD' 
                       ? (
                         <div className="flex flex-col">
-                          <span className="leading-tight">${result.finalAnnualDividend.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                          <span className="text-[10px] text-green-700/60 font-medium">약 {MoneyUtils.formatMan(result.finalAnnualDividend * exchangeRate)}</span>
+                          <span className="leading-tight">${(result.finalAnnualDividend || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          <span className="text-[10px] text-green-700/60 font-medium">약 {MoneyUtils.formatMan((result.finalAnnualDividend || 0) * exchangeRate)}</span>
                         </div>
                       )
-                      : MoneyUtils.formatMan(result.finalAnnualDividend)}
+                      : MoneyUtils.formatMan(result.finalAnnualDividend || 0)}
                     <span className="text-[10px] font-medium ml-1">/ year</span>
                   </div>
                 </div>

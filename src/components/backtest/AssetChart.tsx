@@ -18,12 +18,13 @@ export const AssetChart: React.FC<Props> = ({ results, relativeMode, benchmarkId
 
   const formatValue = (val: number, currency: string, isRelative: boolean) => {
     if (isRelative) return `${val >= 0 ? '+' : ''}${val.toFixed(2)}%`;
+    const safeVal = val || 0;
     if (currency === 'USD') {
-      const usdText = `$${val.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
-      const krwText = MoneyUtils.formatMan(val * exchangeRate);
+      const usdText = `$${safeVal.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+      const krwText = MoneyUtils.formatMan(safeVal * exchangeRate);
       return `${usdText} (${krwText})`;
     }
-    return MoneyUtils.formatMan(val);
+    return MoneyUtils.formatMan(safeVal);
   };
 
   const chartData = useMemo(() => {
@@ -264,9 +265,9 @@ export const AssetChart: React.FC<Props> = ({ results, relativeMode, benchmarkId
                         }
                       </span>
                     </div>
-                    {!relativeMode && !tooltip.closest[`${r.asset.id}_liquidated`] && (
+                    {!relativeMode && !tooltip.closest[`${r.asset.id}_liquidated`] && val !== undefined && (
                       <div className="flex justify-between text-[9px] text-muted">
-                        <span>원금: {r.asset.currency === 'USD' ? `$${principal.toLocaleString()} (약 ${MoneyUtils.formatMan(principal * exchangeRate)})` : MoneyUtils.formatMan(principal)}</span>
+                        <span>원금: {r.asset.currency === 'USD' ? `$${(principal || 0).toLocaleString()} (약 ${MoneyUtils.formatMan((principal || 0) * exchangeRate)})` : MoneyUtils.formatMan(principal || 0)}</span>
                         <span className={profitRate >= 0 ? 'text-red-500' : 'text-blue-500'}>
                           ({profitRate >= 0 ? '+' : ''}{profitRate.toFixed(1)}%)
                         </span>

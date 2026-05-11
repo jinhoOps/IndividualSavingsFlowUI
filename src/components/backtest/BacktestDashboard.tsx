@@ -10,7 +10,6 @@ import { PendingChangesBar } from './PendingChangesBar';
 
 export const CHART_COLORS = ['#ea5b2a', '#1e8b7c', '#3175b6', '#5d4fb3', '#8c3d65', '#f59e0b', '#10b981', '#6366f1'];
 
-export const CHART_COLORS = ['#ea5b2a', '#1e8b7c', '#3175b6', '#5d4fb3', '#8c3d65', '#f59e0b', '#10b981', '#6366f1'];
 
 type InvestMode = 'lump-sum' | 'dca' | 'mixed';
 
