@@ -98,12 +98,26 @@ export const CalculationGuideModal: React.FC<Props> = ({ isOpen, onClose }) => {
           </section>
 
           {/* 5. 청산 조건 */}
-          <section className="border-t border-line pt-lg">
+          <section>
             <h3 className="text-body-md font-black text-red-500 mb-sm">강제 청산 (Liquidation) 조건</h3>
             <p className="text-body-sm text-muted">
               레버리지 자산이나 극심한 변동성으로 인해 <strong className="text-ink">자산 가치가 누적 원금의 1% 미만</strong>으로 떨어질 경우, 
               해당 시점에서 시뮬레이션을 중단하고 '청산'으로 간주합니다. 이후의 수익률은 0%로 고정됩니다.
             </p>
+          </section>
+
+          {/* 6. 통화 및 환율 */}
+          <section className="bg-primary/5 p-md rounded-md border border-primary/20">
+            <h3 className="text-body-md font-black text-primary mb-md">통화 및 환율 (Currency)</h3>
+            <div className="space-y-sm text-body-sm text-ink/80 leading-relaxed">
+              <p>본 앱은 원화(KRW) 기반의 투자 계획을 지원합니다. 해외 자산(USD) 투자 시 다음과 같이 처리됩니다:</p>
+              <ul className="list-disc pl-5 space-y-1 text-muted">
+                <li><strong className="text-ink">입력 변환</strong>: 사용자가 입력한 원화 투자금은 <strong className="text-ink">고정 환율(1,450원)</strong>을 적용하여 달러로 환산된 후 시뮬레이션에 투입됩니다.</li>
+                <li><strong className="text-ink">결과 표시</strong>: USD 자산의 최종 금액은 달러($)로 먼저 표시되며, 현재 고정 환율을 적용한 원화 금액이 병기됩니다.</li>
+                <li><strong className="text-ink">상대 비교</strong>: 서로 다른 통화의 자산을 비교(Relative Mode)할 경우, 모든 가치를 <strong className="text-ink">원화로 재환산</strong>하여 성과 차이를 계산합니다.</li>
+                <li>실제 과거 환율 변동 데이터는 시뮬레이션에 반영되지 않으며, 고정 환율을 통해 자산 본연의 수익 성과에 집중합니다.</li>
+              </ul>
+            </div>
           </section>
         </div>
 

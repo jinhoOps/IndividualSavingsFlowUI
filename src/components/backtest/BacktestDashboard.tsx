@@ -222,10 +222,19 @@ export const BacktestDashboard: React.FC = () => {
     return selectedAssetIds.map(id => {
       const asset = assets.find(a => a.id === id);
       if (!asset) return null;
+      
+      // 통화 단위 정규화 (UI 입력은 만원 단위이며, 내부적으로 원으로 변환되어 params에 저장됨)
+      // USD 자산인 경우 원화 투자금을 현재 환율로 나누어 USD로 변환하여 시뮬레이션 실행
+      const adjustedParams = { ...params };
+      if (asset.currency === 'USD') {
+        adjustedParams.initialPrincipal = params.initialPrincipal / EXCHANGE_RATE;
+        adjustedParams.monthlyInstallment = params.monthlyInstallment / EXCHANGE_RATE;
+      }
+
       try {
         return {
           asset,
-          result: BacktestEngine.run(asset, params)
+          result: BacktestEngine.run(asset, adjustedParams)
         };
       } catch (e) {
         return null;

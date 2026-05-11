@@ -32,8 +32,10 @@ export const AssetChart: React.FC<Props> = ({ results, relativeMode, benchmarkId
     // 모든 시계열 데이터를 날짜별로 통합
     const allDates = Array.from(new Set(results.flatMap(r => r.result.history.map(h => h.date)))).sort();
     
-    // 벤치마크 데이터 추출
-    const benchmarkResult = results.find(r => r.asset.id === benchmarkId)?.result;
+    // 벤치마크 데이터 및 자산 정보 추출
+    const benchmarkItem = results.find(r => r.asset.id === benchmarkId);
+    const benchmarkResult = benchmarkItem?.result;
+    const benchmarkAsset = benchmarkItem?.asset;
 
     const data = allDates.map(date => {
       const point: Record<string, any> = { date, time: new Date(date).getTime() };
@@ -48,8 +50,10 @@ export const AssetChart: React.FC<Props> = ({ results, relativeMode, benchmarkId
         const h = r.result.history.find(h => h.date === date);
         if (h) {
           if (relativeMode) {
-            // 상대 수익률: (내 가치 / 벤치마크 가치 - 1) * 100
-            point[r.asset.id] = (h.value / benchmarkValue - 1) * 100;
+            // 상대 수익률 계산 시 모든 가치를 KRW로 환산하여 비교 (투자 원금이 동일하므로 성과 비교 가능)
+            const valInKrw = (r.asset.currency === 'USD') ? h.value * exchangeRate : h.value;
+            const benchmarkValInKrw = (benchmarkAsset?.currency === 'USD') ? benchmarkValue * exchangeRate : benchmarkValue;
+            point[r.asset.id] = benchmarkValInKrw > 0 ? (valInKrw / benchmarkValInKrw - 1) * 100 : 0;
           } else {
             // 환율 적용 전 달러/원화 절대값 유지
             point[r.asset.id] = h.value;
