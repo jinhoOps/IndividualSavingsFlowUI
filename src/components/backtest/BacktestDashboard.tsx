@@ -6,6 +6,7 @@ import { KpiGrid } from './KpiGrid';
 import { SimulationWarning } from './SimulationWarning';
 import { CalculationGuideModal } from './CalculationGuideModal';
 import { Toast } from '../common/Toast';
+import { PendingChangesBar } from './PendingChangesBar';
 
 export const CHART_COLORS = ['#ea5b2a', '#1e8b7c', '#3175b6', '#5d4fb3', '#8c3d65', '#f59e0b', '#10b981', '#6366f1'];
 
@@ -15,6 +16,8 @@ type InvestMode = 'lump-sum' | 'dca' | 'mixed';
 
 export const BacktestDashboard: React.FC = () => {
   const [assets, setAssets] = useState<AssetData[]>([]);
+  
+  // [Applied State] - 실제 계산에 사용되는 상태
   const [selectedAssetIds, setSelectedAssetIds] = useState<string[]>(['qqq', 'spy']);
   const [mode, setMode] = useState<InvestMode>('mixed');
   const [params, setParams] = useState<SimulationParams>({
@@ -24,13 +27,45 @@ export const BacktestDashboard: React.FC = () => {
     endDate: '2026-05-01',
     reinvestDividends: true,
   });
+
+  // [Draft State] - UI 조작 중인 임시 상태
+  const [draftSelectedAssetIds, setDraftSelectedAssetIds] = useState<string[]>(['qqq', 'spy']);
+  const [draftMode, setDraftMode] = useState<InvestMode>('mixed');
+  const [draftParams, setDraftParams] = useState<SimulationParams>({
+    initialPrincipal: 10000000,
+    monthlyInstallment: 1000000,
+    startDate: '2000-01-01',
+    endDate: '2026-05-01',
+    reinvestDividends: true,
+  });
+
   const [relativeMode, setRelativeMode] = useState(false);
   const [benchmarkAssetId, setBenchmarkAssetId] = useState<string>('qqq');
   const [showGuide, setShowGuide] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // 데이터 로드 및 가상 자산 합성
+  // 변경 사항 감지 (Dirty Check)
+  const isDirty = useMemo(() => {
+    if (!isLoaded) return false;
+
+    const assetIdsMatch = 
+      selectedAssetIds.length === draftSelectedAssetIds.length && 
+      [...selectedAssetIds].sort().join(',') === [...draftSelectedAssetIds].sort().join(',');
+    
+    const paramsMatch = 
+      params.initialPrincipal === draftParams.initialPrincipal &&
+      params.monthlyInstallment === draftParams.monthlyInstallment &&
+      params.startDate === draftParams.startDate &&
+      params.endDate === draftParams.endDate &&
+      params.reinvestDividends === draftParams.reinvestDividends;
+      
+    const modeMatch = mode === draftMode;
+
+    return !assetIdsMatch || !paramsMatch || !modeMatch;
+  }, [selectedAssetIds, draftSelectedAssetIds, params, draftParams, mode, draftMode, isLoaded]);
+
+  // 데이터 로드 및 초기 설정
   useEffect(() => {
     const loadAssets = async () => {
       try {
@@ -53,7 +88,7 @@ export const BacktestDashboard: React.FC = () => {
         
         const qqq = loadedIndices.find(a => a.id === 'qqq')!;
 
-        // 1. 금리 자산 합성 (US/KR 기준금리, 적금) - 2026-05 현실 반영
+        // 금리 자산 합성
         const createRateAsset = (id: string, name: string, rate: number, isKRW: boolean = true): AssetData => ({
           id,
           name,
@@ -70,21 +105,24 @@ export const BacktestDashboard: React.FC = () => {
         const krRate = createRateAsset('kr-rate', '한국 기준금리 (2.5%)', 0.025, true);
         const savings = createRateAsset('savings', '정기적금 (금리+1.5%)', 0.040, true);
 
-        const allAssets = [
-          ...loadedIndices, 
-          usRate, krRate, savings
-        ];
+        const allAssets = [...loadedIndices, usRate, krRate, savings];
         setAssets(allAssets);
 
-        // 초기 기간 설정 (데이터 로드 후 1회)
+        // 초기 기간 설정 및 로컬 스토리지 복원
         if (!isLoaded) {
           const saved = localStorage.getItem('backtest_settings');
           if (saved) {
             try {
               const parsed = JSON.parse(saved);
               setSelectedAssetIds(parsed.selectedAssetIds || ['qqq', 'spy']);
+              setDraftSelectedAssetIds(parsed.selectedAssetIds || ['qqq', 'spy']);
+              
               setMode(parsed.mode || 'mixed');
+              setDraftMode(parsed.mode || 'mixed');
+              
               setParams(p => ({ ...p, ...parsed.params }));
+              setDraftParams(p => ({ ...p, ...parsed.params }));
+              
               setRelativeMode(parsed.relativeMode || false);
               setBenchmarkAssetId(parsed.benchmarkAssetId || 'qqq');
             } catch (e) {
@@ -93,11 +131,13 @@ export const BacktestDashboard: React.FC = () => {
           } else {
             const qqqDates = qqq.data.map((d: TimeSeriesPoint) => d.date).sort();
             if (qqqDates.length > 0) {
-              setParams(p => ({
-                ...p,
+              const newParams = {
+                ...params,
                 startDate: qqqDates[0],
                 endDate: qqqDates[qqqDates.length - 1]
-              }));
+              };
+              setParams(newParams);
+              setDraftParams(newParams);
             }
           }
           setIsLoaded(true);
@@ -110,29 +150,39 @@ export const BacktestDashboard: React.FC = () => {
     loadAssets();
   }, [isLoaded]);
 
-  // 설정 자동 저장 (10초 디바운스)
+  // 설정 자동 저장 (적용된 설정만 저장)
   useEffect(() => {
     if (!isLoaded) return;
-    const timer = setTimeout(() => {
-      const settings = { selectedAssetIds, mode, params, relativeMode, benchmarkAssetId };
-      localStorage.setItem('backtest_settings', JSON.stringify(settings));
-    }, 10000);
-    return () => clearTimeout(timer);
+    const settings = { selectedAssetIds, mode, params, relativeMode, benchmarkAssetId };
+    localStorage.setItem('backtest_settings', JSON.stringify(settings));
   }, [selectedAssetIds, mode, params, relativeMode, benchmarkAssetId, isLoaded]);
 
-  // 투자 모드 변경 시 파라미터 자동 조정
+  // 투자 모드 변경 시 드래프트 파라미터 자동 조정
   useEffect(() => {
-    if (mode === 'lump-sum') {
-      setParams(p => ({ ...p, monthlyInstallment: 0 }));
-    } else if (mode === 'dca') {
-      setParams(p => ({ ...p, initialPrincipal: 0 }));
+    if (draftMode === 'lump-sum') {
+      setDraftParams(p => ({ ...p, monthlyInstallment: 0 }));
+    } else if (draftMode === 'dca') {
+      setDraftParams(p => ({ ...p, initialPrincipal: 0 }));
     }
-  }, [mode]);
+  }, [draftMode]);
+
+  const handleApply = () => {
+    setParams(draftParams);
+    setSelectedAssetIds(draftSelectedAssetIds);
+    setMode(draftMode);
+    setToastMessage('새로운 설정이 시뮬레이션에 적용되었습니다.');
+  };
+
+  const handleCancel = () => {
+    setDraftParams(params);
+    setDraftSelectedAssetIds(selectedAssetIds);
+    setDraftMode(mode);
+  };
 
   // 빠른 기간 설정 버튼 처리
   const handleQuickRange = (type: string) => {
-    const end = new Date(params.endDate);
-    let start = new Date(params.endDate);
+    const end = new Date(draftParams.endDate);
+    let start = new Date(draftParams.endDate);
 
     switch (type) {
       case 'YTD': start = new Date(end.getFullYear(), 0, 1); break;
@@ -147,7 +197,7 @@ export const BacktestDashboard: React.FC = () => {
 
     const startDateStr = start.toISOString().split('T')[0];
     const minDate = dateRange.min + '-01';
-    setParams({ ...params, startDate: startDateStr < minDate ? minDate : startDateStr });
+    setDraftParams({ ...draftParams, startDate: startDateStr < minDate ? minDate : startDateStr });
   };
 
   // 자산 카테고리화
@@ -171,14 +221,12 @@ export const BacktestDashboard: React.FC = () => {
     };
   }, [assets]);
 
-  // 시뮬레이션 계산
+  // 시뮬레이션 계산 (Applied State 사용)
   const results = useMemo(() => {
     return selectedAssetIds.map(id => {
       const asset = assets.find(a => a.id === id);
       if (!asset) return null;
       
-      // 통화 단위 정규화 (UI 입력은 만원 단위이며, 내부적으로 원으로 변환되어 params에 저장됨)
-      // USD 자산인 경우 원화 투자금을 현재 환율로 나누어 USD로 변환하여 시뮬레이션 실행
       const adjustedParams = { ...params };
       if (asset.currency === 'USD') {
         adjustedParams.initialPrincipal = params.initialPrincipal / EXCHANGE_RATE;
@@ -206,6 +254,11 @@ export const BacktestDashboard: React.FC = () => {
   const selectedAssets = useMemo(() => 
     assets.filter(a => selectedAssetIds.includes(a.id)),
     [assets, selectedAssetIds]
+  );
+
+  const draftSelectedAssets = useMemo(() => 
+    assets.filter(a => draftSelectedAssetIds.includes(a.id)),
+    [assets, draftSelectedAssetIds]
   );
 
   if (!isLoaded) {
@@ -248,8 +301,8 @@ export const BacktestDashboard: React.FC = () => {
                 {(['lump-sum', 'dca', 'mixed'] as InvestMode[]).map(m => (
                   <button
                     key={m}
-                    onClick={() => setMode(m)}
-                    className={`flex-1 py-1.5 text-[11px] font-bold rounded-sm transition-all ${mode === m ? 'bg-white shadow-sm text-primary' : 'text-muted hover:text-ink'}`}
+                    onClick={() => setDraftMode(m)}
+                    className={`flex-1 py-1.5 text-[11px] font-bold rounded-sm transition-all ${draftMode === m ? 'bg-white shadow-sm text-primary' : 'text-muted hover:text-ink'}`}
                   >
                     {m === 'lump-sum' ? '거치식' : m === 'dca' ? '적립식' : '혼합'}
                   </button>
@@ -258,9 +311,9 @@ export const BacktestDashboard: React.FC = () => {
               <div className="mt-2 text-[10px] text-muted leading-tight bg-line/10 p-2 rounded flex gap-2 items-start">
                 <span className="text-primary mt-0.5">ℹ️</span>
                 <span>
-                  {mode === 'lump-sum' && '초기 자본을 한 번에 투자하고 추가 납입 없이 성과를 추적합니다. (CAGR 중심)'}
-                  {mode === 'dca' && '초기 자본 없이 매월 일정 금액을 꾸준히 적립 투자합니다. (IRR 중심)'}
-                  {mode === 'mixed' && '초기 자본 투자 후 매월 일정 금액을 추가로 적립하여 운용합니다.'}
+                  {draftMode === 'lump-sum' && '초기 자본을 한 번에 투자하고 추가 납입 없이 성과를 추적합니다. (CAGR 중심)'}
+                  {draftMode === 'dca' && '초기 자본 없이 매월 일정 금액을 꾸준히 적립 투자합니다. (IRR 중심)'}
+                  {draftMode === 'mixed' && '초기 자본 투자 후 매월 일정 금액을 추가로 적립하여 운용합니다.'}
                 </span>
               </div>
             </div>
@@ -272,13 +325,13 @@ export const BacktestDashboard: React.FC = () => {
                 <label className="text-caption font-bold text-muted">비교 자산 선택</label>
                 <div className="flex gap-2">
                   <button 
-                    onClick={() => setSelectedAssetIds(assets.map(a => a.id))}
+                    onClick={() => setDraftSelectedAssetIds(assets.map(a => a.id))}
                     className="text-[10px] font-bold text-primary hover:underline"
                   >
                     전체 선택
                   </button>
                   <button 
-                    onClick={() => setSelectedAssetIds([])}
+                    onClick={() => setDraftSelectedAssetIds([])}
                     className="text-[10px] font-bold text-muted hover:underline"
                   >
                     전체 해제
@@ -291,15 +344,15 @@ export const BacktestDashboard: React.FC = () => {
                     <div className="text-[10px] font-bold text-muted/60 mb-1 px-1 uppercase tracking-wider">{category}</div>
                     <div className="grid grid-cols-1 gap-0.5">
                       {items.map(asset => (
-                        <label key={asset.id} className={`flex items-center gap-sm p-sm hover:bg-line rounded-sm cursor-pointer transition-colors ${selectedAssetIds.includes(asset.id) ? 'bg-line/50' : ''}`}>
+                        <label key={asset.id} className={`flex items-center gap-sm p-sm hover:bg-line rounded-sm cursor-pointer transition-colors ${draftSelectedAssetIds.includes(asset.id) ? 'bg-line/50' : ''}`}>
                           <input 
                             type="checkbox" 
-                            checked={selectedAssetIds.includes(asset.id)}
+                            checked={draftSelectedAssetIds.includes(asset.id)}
                             onChange={(e) => {
                               if (e.target.checked) {
-                                setSelectedAssetIds([...selectedAssetIds, asset.id]);
+                                setDraftSelectedAssetIds([...draftSelectedAssetIds, asset.id]);
                               } else {
-                                setSelectedAssetIds(selectedAssetIds.filter(id => id !== asset.id));
+                                setDraftSelectedAssetIds(draftSelectedAssetIds.filter(id => id !== asset.id));
                               }
                             }}
                             className="w-4 h-4 accent-primary rounded"
@@ -324,10 +377,10 @@ export const BacktestDashboard: React.FC = () => {
                   <label className="block text-[10px] font-bold text-muted uppercase mb-1">시작 월</label>
                   <input 
                     type="month"
-                    value={params.startDate.slice(0, 7)}
+                    value={draftParams.startDate.slice(0, 7)}
                     min={dateRange.min}
-                    max={params.endDate.slice(0, 7)}
-                    onChange={(e) => setParams({ ...params, startDate: `${e.target.value}-01` })}
+                    max={draftParams.endDate.slice(0, 7)}
+                    onChange={(e) => setDraftParams({ ...draftParams, startDate: `${e.target.value}-01` })}
                     className="w-full font-bold text-xs p-sm bg-line/20 rounded-sm border-none focus:ring-1 focus:ring-primary"
                   />
                 </div>
@@ -335,16 +388,15 @@ export const BacktestDashboard: React.FC = () => {
                   <label className="block text-[10px] font-bold text-muted uppercase mb-1">종료 월</label>
                   <input 
                     type="month"
-                    value={params.endDate.slice(0, 7)}
-                    min={params.startDate.slice(0, 7)}
+                    value={draftParams.endDate.slice(0, 7)}
+                    min={draftParams.startDate.slice(0, 7)}
                     max={dateRange.max}
-                    onChange={(e) => setParams({ ...params, endDate: `${e.target.value}-01` })}
+                    onChange={(e) => setDraftParams({ ...draftParams, endDate: `${e.target.value}-01` })}
                     className="w-full font-bold text-xs p-sm bg-line/20 rounded-sm border-none focus:ring-1 focus:ring-primary"
                   />
                 </div>
               </div>
               
-              {/* 빠른 기간 선택 칩 */}
               <div className="flex flex-wrap gap-1">
                 {['YTD', '1m', '1y', '3y', '5y', '10y', '15y', '20y'].map(range => (
                   <button
@@ -361,25 +413,25 @@ export const BacktestDashboard: React.FC = () => {
             <hr className="border-line" />
 
             <div className="grid grid-cols-2 gap-md">
-              <div className={mode === 'dca' ? 'opacity-30 pointer-events-none' : ''}>
+              <div className={draftMode === 'dca' ? 'opacity-30 pointer-events-none' : ''}>
                 <label className="block text-[10px] font-bold text-muted uppercase mb-1">초기 투자금</label>
                 <div className="relative">
                   <input 
                     type="number"
-                    value={params.initialPrincipal / 10000}
-                    onChange={(e) => setParams({ ...params, initialPrincipal: Number(e.target.value) * 10000 })}
+                    value={draftParams.initialPrincipal / 10000}
+                    onChange={(e) => setDraftParams({ ...draftParams, initialPrincipal: Number(e.target.value) * 10000 })}
                     className="w-full font-black text-lg p-sm pr-8 bg-line/20 rounded-sm border-none focus:ring-1 focus:ring-primary"
                   />
                   <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-muted">만원</span>
                 </div>
               </div>
-              <div className={mode === 'lump-sum' ? 'opacity-30 pointer-events-none' : ''}>
+              <div className={draftMode === 'lump-sum' ? 'opacity-30 pointer-events-none' : ''}>
                 <label className="block text-[10px] font-bold text-muted uppercase mb-1">월 적립액</label>
                 <div className="relative">
                   <input 
                     type="number"
-                    value={params.monthlyInstallment / 10000}
-                    onChange={(e) => setParams({ ...params, monthlyInstallment: Number(e.target.value) * 10000 })}
+                    value={draftParams.monthlyInstallment / 10000}
+                    onChange={(e) => setDraftParams({ ...draftParams, monthlyInstallment: Number(e.target.value) * 10000 })}
                     className="w-full font-black text-lg p-sm pr-8 bg-line/20 rounded-sm border-none focus:ring-1 focus:ring-primary"
                   />
                   <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-muted">만원</span>
@@ -392,10 +444,9 @@ export const BacktestDashboard: React.FC = () => {
               <label className="relative inline-flex items-center cursor-pointer">
                 <input 
                   type="checkbox"
-                  checked={params.reinvestDividends}
+                  checked={draftParams.reinvestDividends}
                   onChange={(e) => {
-                    setParams({ ...params, reinvestDividends: e.target.checked });
-                    setToastMessage(e.target.checked ? '배당 재투자가 활성화되었습니다.' : '배당 재투자가 해제되었습니다.');
+                    setDraftParams({ ...draftParams, reinvestDividends: e.target.checked });
                   }}
                   className="sr-only peer"
                 />
@@ -434,7 +485,8 @@ export const BacktestDashboard: React.FC = () => {
               )}
             </div>
 
-            <SimulationWarning params={params} selectedAssets={selectedAssets} />
+            {/* 경고 알림은 Draft 상태를 기준으로 실시간 피드백 제공 */}
+            <SimulationWarning params={draftParams} selectedAssets={draftSelectedAssets} />
           </div>
         </section>
 
@@ -479,6 +531,13 @@ export const BacktestDashboard: React.FC = () => {
           exchangeRate={EXCHANGE_RATE}
         />
       </main>
+
+      {/* 변경 사항 감지 플로팅 바 */}
+      <PendingChangesBar 
+        isVisible={isDirty} 
+        onApply={handleApply} 
+        onCancel={handleCancel} 
+      />
 
       {toastMessage && (
         <Toast 

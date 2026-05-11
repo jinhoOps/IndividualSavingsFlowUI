@@ -97,7 +97,7 @@ body {
 .launcher-menu {
   position: absolute;
   top: 50px;
-  right: var(--sp-md);
+  right: 0;
   z-index: 101;
   background: var(--panel);
   backdrop-filter: saturate(1.1) blur(10px);
@@ -107,7 +107,8 @@ body {
   padding: var(--sp-sm);
   min-width: 180px;
   max-width: 320px;
-  width: calc(100vw - 40px);
+  width: max-content;
+  transform-origin: top right;
   animation: launcher-slide-down 0.2s ease-out;
 }
 
