@@ -87,7 +87,7 @@
 @layer components {
   /* Launcher Menu Styles */
   .launcher-menu {
-    @apply absolute top-[50px] left-md z-[101] bg-panel backdrop-blur-md border border-line rounded-md p-sm min-w-[180px] animate-[launcher-slide-down_0.2s_ease-out];
+    @apply absolute top-[50px] right-0 z-[101] bg-panel backdrop-blur-md border border-line rounded-md p-sm min-w-[180px] animate-[launcher-slide-down_0.2s_ease-out];
   }
 
   @keyframes launcher-slide-down {
