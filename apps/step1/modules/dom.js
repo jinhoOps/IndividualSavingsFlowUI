@@ -99,6 +99,17 @@
   colShowBalance: document.getElementById("colShowBalance"),
   colShowDividend: document.getElementById("colShowDividend"),
   
+  openSmartAddBtn: document.getElementById("openSmartAddBtn"),
+  smartAddModal: document.getElementById("smartAddModal"),
+  closeSmartAddBtn: document.getElementById("closeSmartAddBtn"),
+  smartAddInput: document.getElementById("smartAddInput"),
+  smartAddResult: document.getElementById("smartAddResult"),
+  smartAddAmount: document.getElementById("smartAddAmount"),
+  smartAddMerchant: document.getElementById("smartAddMerchant"),
+  smartAddDate: document.getElementById("smartAddDate"),
+  smartAddCategory: document.getElementById("smartAddCategory"),
+  applySmartAddBtn: document.getElementById("applySmartAddBtn"),
+
   snapshotSelector: document.getElementById("snapshotSelector"),
   saveSnapshotBtn: document.getElementById("saveSnapshotBtn"),
   deleteSnapshotBtn: document.getElementById("deleteSnapshotBtn"),

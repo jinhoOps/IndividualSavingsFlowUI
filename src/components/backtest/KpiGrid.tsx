@@ -79,7 +79,12 @@ export const KpiGrid: React.FC<Props> = ({ results, isLumpSum, exchangeRate }) =
                   <div className="text-[9px] text-green-700 font-bold uppercase tracking-tighter">예상 연 배당금 (최종 시점)</div>
                   <div className="text-sm font-black text-green-600">
                     {asset.currency === 'USD' 
-                      ? `$${result.finalAnnualDividend.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` 
+                      ? (
+                        <div className="flex flex-col">
+                          <span className="leading-tight">${result.finalAnnualDividend.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          <span className="text-[10px] text-green-700/60 font-medium">약 {MoneyUtils.formatMan(result.finalAnnualDividend * exchangeRate)}</span>
+                        </div>
+                      )
                       : MoneyUtils.formatMan(result.finalAnnualDividend)}
                     <span className="text-[10px] font-medium ml-1">/ year</span>
                   </div>

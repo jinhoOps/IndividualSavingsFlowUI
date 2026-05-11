@@ -1,9 +1,9 @@
 ---
 milestone: "v1.2"
 name: "백테스트 시뮬레이터 및 자산 관리 확장"
-status: "in-progress"
+status: "completed"
 progress:
-  completed_phases: 6
+  completed_phases: 9
   total_phases: 9
 ---
 
@@ -11,17 +11,17 @@ progress:
 
 ## Current Position
 
-Phase: 7
-Plan: 03 (Improvement)
-Status: In-Progress
-Last activity: 2026-05-08 — Phase 07 (Backtest Simulator) usability improvement and bug fixes started. Corrected roadmap as Phase 08 and 09 have not started yet.
+Phase: 9 (Completed)
+Plan: Finalized
+Status: Completed
+Last activity: 2026-05-11 — Phase 09 (Newlywed Harmony Hub) completed. All milestone v1.2 phases are now finished.
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-08)
+See: .planning/PROJECT.md (updated 2026-05-11)
 
 **Core value:** 단순한 프리셋 선택만으로 즉각적인 자산 시각화 결과 제공
-**Current focus:** Phase 07 Backtest Simulator Usability & Bug Fixes
+**Current focus:** Milestone Completion & Maintenance
 
 ## Key Decisions
 - **Step 4 (React/TS)**: 복잡한 대시보드 구현을 위해 React 19와 TypeScript를 표준으로 도입함. (D-01, D-03)

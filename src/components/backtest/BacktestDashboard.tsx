@@ -10,7 +10,7 @@ import { PendingChangesBar } from './PendingChangesBar';
 
 export const CHART_COLORS = ['#ea5b2a', '#1e8b7c', '#3175b6', '#5d4fb3', '#8c3d65', '#f59e0b', '#10b981', '#6366f1'];
 
-const EXCHANGE_RATE = 1450; // 고정 환율
+export const CHART_COLORS = ['#ea5b2a', '#1e8b7c', '#3175b6', '#5d4fb3', '#8c3d65', '#f59e0b', '#10b981', '#6366f1'];
 
 type InvestMode = 'lump-sum' | 'dca' | 'mixed';
 
@@ -20,6 +20,7 @@ export const BacktestDashboard: React.FC = () => {
   // [Applied State] - 실제 계산에 사용되는 상태
   const [selectedAssetIds, setSelectedAssetIds] = useState<string[]>(['qqq', 'spy']);
   const [mode, setMode] = useState<InvestMode>('mixed');
+  const [exchangeRate, setExchangeRate] = useState<number>(1450);
   const [params, setParams] = useState<SimulationParams>({
     initialPrincipal: 10000000,
     monthlyInstallment: 1000000,
@@ -31,6 +32,7 @@ export const BacktestDashboard: React.FC = () => {
   // [Draft State] - UI 조작 중인 임시 상태
   const [draftSelectedAssetIds, setDraftSelectedAssetIds] = useState<string[]>(['qqq', 'spy']);
   const [draftMode, setDraftMode] = useState<InvestMode>('mixed');
+  const [draftExchangeRate, setDraftExchangeRate] = useState<number>(1450);
   const [draftParams, setDraftParams] = useState<SimulationParams>({
     initialPrincipal: 10000000,
     monthlyInstallment: 1000000,
@@ -61,9 +63,10 @@ export const BacktestDashboard: React.FC = () => {
       params.reinvestDividends === draftParams.reinvestDividends;
       
     const modeMatch = mode === draftMode;
+    const rateMatch = exchangeRate === draftExchangeRate;
 
-    return !assetIdsMatch || !paramsMatch || !modeMatch;
-  }, [selectedAssetIds, draftSelectedAssetIds, params, draftParams, mode, draftMode, isLoaded]);
+    return !assetIdsMatch || !paramsMatch || !modeMatch || !rateMatch;
+  }, [selectedAssetIds, draftSelectedAssetIds, params, draftParams, mode, draftMode, exchangeRate, draftExchangeRate, isLoaded]);
 
   // 데이터 로드 및 초기 설정
   useEffect(() => {
@@ -119,6 +122,9 @@ export const BacktestDashboard: React.FC = () => {
               
               setMode(parsed.mode || 'mixed');
               setDraftMode(parsed.mode || 'mixed');
+
+              setExchangeRate(parsed.exchangeRate || 1450);
+              setDraftExchangeRate(parsed.exchangeRate || 1450);
               
               setParams(p => ({ ...p, ...parsed.params }));
               setDraftParams(p => ({ ...p, ...parsed.params }));
@@ -153,9 +159,9 @@ export const BacktestDashboard: React.FC = () => {
   // 설정 자동 저장 (적용된 설정만 저장)
   useEffect(() => {
     if (!isLoaded) return;
-    const settings = { selectedAssetIds, mode, params, relativeMode, benchmarkAssetId };
+    const settings = { selectedAssetIds, mode, exchangeRate, params, relativeMode, benchmarkAssetId };
     localStorage.setItem('backtest_settings', JSON.stringify(settings));
-  }, [selectedAssetIds, mode, params, relativeMode, benchmarkAssetId, isLoaded]);
+  }, [selectedAssetIds, mode, exchangeRate, params, relativeMode, benchmarkAssetId, isLoaded]);
 
   // 투자 모드 변경 시 드래프트 파라미터 자동 조정
   useEffect(() => {
@@ -170,6 +176,7 @@ export const BacktestDashboard: React.FC = () => {
     setParams(draftParams);
     setSelectedAssetIds(draftSelectedAssetIds);
     setMode(draftMode);
+    setExchangeRate(draftExchangeRate);
     setToastMessage('새로운 설정이 시뮬레이션에 적용되었습니다.');
   };
 
@@ -177,6 +184,7 @@ export const BacktestDashboard: React.FC = () => {
     setDraftParams(params);
     setDraftSelectedAssetIds(selectedAssetIds);
     setDraftMode(mode);
+    setDraftExchangeRate(exchangeRate);
   };
 
   // 빠른 기간 설정 버튼 처리
@@ -229,8 +237,8 @@ export const BacktestDashboard: React.FC = () => {
       
       const adjustedParams = { ...params };
       if (asset.currency === 'USD') {
-        adjustedParams.initialPrincipal = params.initialPrincipal / EXCHANGE_RATE;
-        adjustedParams.monthlyInstallment = params.monthlyInstallment / EXCHANGE_RATE;
+        adjustedParams.initialPrincipal = params.initialPrincipal / exchangeRate;
+        adjustedParams.monthlyInstallment = params.monthlyInstallment / exchangeRate;
       }
 
       try {
@@ -242,7 +250,7 @@ export const BacktestDashboard: React.FC = () => {
         return null;
       }
     }).filter(r => r !== null) as { asset: AssetData; result: SimulationResult }[];
-  }, [assets, selectedAssetIds, params]);
+  }, [assets, selectedAssetIds, params, exchangeRate]);
 
   // 벤치마크 자산 유효성 검사 및 자동 조정
   useEffect(() => {
@@ -439,19 +447,34 @@ export const BacktestDashboard: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex items-center justify-between p-sm bg-line/30 rounded-md">
-              <span className="text-caption font-bold text-muted">배당 재투자 (TR)</span>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input 
-                  type="checkbox"
-                  checked={draftParams.reinvestDividends}
-                  onChange={(e) => {
-                    setDraftParams({ ...draftParams, reinvestDividends: e.target.checked });
-                  }}
-                  className="sr-only peer"
-                />
-                <div className="w-11 h-6 bg-line-strong peer-focus:outline-none rounded-pill peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-              </label>
+            <div className="grid grid-cols-2 gap-md">
+              <div className="flex items-center justify-between p-sm bg-line/30 rounded-md col-span-2">
+                <span className="text-caption font-bold text-muted">배당 재투자 (TR)</span>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input 
+                    type="checkbox"
+                    checked={draftParams.reinvestDividends}
+                    onChange={(e) => {
+                      setDraftParams({ ...draftParams, reinvestDividends: e.target.checked });
+                    }}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-line-strong peer-focus:outline-none rounded-pill peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                </label>
+              </div>
+              
+              <div className="col-span-2">
+                <label className="block text-[10px] font-bold text-muted uppercase mb-1">적용 환율 (USD/KRW)</label>
+                <div className="relative">
+                  <input 
+                    type="number"
+                    value={draftExchangeRate}
+                    onChange={(e) => setDraftExchangeRate(Number(e.target.value))}
+                    className="w-full font-black text-sm p-sm pr-8 bg-line/20 rounded-sm border-none focus:ring-1 focus:ring-primary"
+                  />
+                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-muted">원</span>
+                </div>
+              </div>
             </div>
 
             <hr className="border-line" />
@@ -520,7 +543,7 @@ export const BacktestDashboard: React.FC = () => {
               results={results} 
               relativeMode={relativeMode} 
               benchmarkId={benchmarkAssetId}
-              exchangeRate={EXCHANGE_RATE}
+              exchangeRate={exchangeRate}
             />
           </div>
         </section>
@@ -528,7 +551,7 @@ export const BacktestDashboard: React.FC = () => {
         <KpiGrid 
           results={results} 
           isLumpSum={mode === 'lump-sum'} 
-          exchangeRate={EXCHANGE_RATE}
+          exchangeRate={exchangeRate}
         />
       </main>
 

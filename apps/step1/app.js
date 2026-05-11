@@ -1,4 +1,5 @@
 import { IsfUtils } from "../../shared/core/utils.js";
+import { ClipboardParser } from "../../shared/core/clipboard-parser.js";
 
 import {
   MONEY_UNIT, STORAGE_KEY, SHARE_STATE_KEY, SHARE_STATE_SCHEMA,
@@ -219,9 +220,96 @@ function bindControls() {
   if (dom.saveSnapshotBtn) dom.saveSnapshotBtn.addEventListener("click", handleSaveSnapshot);
   if (dom.deleteSnapshotBtn) dom.deleteSnapshotBtn.addEventListener("click", handleDeleteSnapshot);
 
+  // Phase 09: Smart Clipboard Parser
+  if (dom.openSmartAddBtn) dom.openSmartAddBtn.addEventListener("click", handleOpenSmartAdd);
+  if (dom.closeSmartAddBtn) dom.closeSmartAddBtn.addEventListener("click", handleCloseSmartAdd);
+  if (dom.smartAddInput) dom.smartAddInput.addEventListener("input", handleSmartAddInput);
+  if (dom.applySmartAddBtn) dom.applySmartAddBtn.addEventListener("click", handleApplySmartAdd);
+
   bindItemEditorEvents();
   bindActionButtons();
   bindGlobalEvents();
+}
+
+function handleOpenSmartAdd() {
+  if (state.isViewMode) return;
+  dom.smartAddModal.hidden = false;
+  dom.smartAddModal.classList.add("is-active");
+  dom.smartAddInput.value = "";
+  dom.smartAddResult.hidden = true;
+  dom.applySmartAddBtn.disabled = true;
+  
+  // Populate category options
+  const options = ['<option value="new">+ 새 항목으로 추가</option>']
+    .concat(state.inputs.expenseItems.map(item => `<option value="${item.name}">${item.name} (${item.group || '미분류'})</option>`));
+  dom.smartAddCategory.innerHTML = options.join("");
+  
+  dom.smartAddInput.focus();
+}
+
+function handleCloseSmartAdd() {
+  dom.smartAddModal.classList.remove("is-active");
+  setTimeout(() => { dom.smartAddModal.hidden = true; }, 250);
+}
+
+function handleSmartAddInput(e) {
+  const text = e.target.value;
+  const result = ClipboardParser.parseSms(text);
+  
+  if (result) {
+    dom.smartAddResult.hidden = false;
+    dom.smartAddAmount.textContent = `${result.amount.toLocaleString()}원`;
+    dom.smartAddMerchant.value = result.merchant;
+    dom.smartAddDate.textContent = result.date || "날짜 없음";
+    
+    // Auto-match category
+    const matched = ClipboardParser.matchCategory(result.merchant, state.inputs.expenseItems);
+    if (matched) {
+      dom.smartAddCategory.value = matched.name;
+    } else {
+      dom.smartAddCategory.value = "new";
+    }
+    
+    dom.applySmartAddBtn.disabled = false;
+    state.lastParsedResult = result;
+  } else {
+    dom.smartAddResult.hidden = true;
+    dom.applySmartAddBtn.disabled = true;
+  }
+}
+
+function handleApplySmartAdd() {
+  const result = state.lastParsedResult;
+  if (!result) return;
+  
+  const selectedName = dom.smartAddCategory.value;
+  const merchantName = dom.smartAddMerchant.value.trim() || result.merchant;
+  const amountMan = Math.round(result.amount / 10000); // Convert to 만원
+  
+  const newItems = [...state.inputs.expenseItems];
+  
+  if (selectedName === "new") {
+    newItems.push({
+      name: merchantName,
+      amount: amountMan,
+      group: "기타"
+    });
+  } else {
+    const idx = newItems.findIndex(item => item.name === selectedName);
+    if (idx !== -1) {
+      newItems[idx].amount += amountMan;
+    }
+  }
+  
+  const draft = helpers.ensureDraftInputs(state);
+  draft.expenseItems = newItems;
+  state.draftInputs = sanitizeInputs(draft);
+  
+  renderItemList("expense", newItems);
+  markPendingChanges();
+  
+  handleCloseSmartAdd();
+  window.IsfFeedback.showFeedback(dom.applyFeedback, `${merchantName} 항목에 ${amountMan}만원이 합산되었습니다.`);
 }
 
 async function initializeSnapshotSelector() {
@@ -301,6 +389,44 @@ async function handleApplyIsfCode(e) {
   } else {
     window.IsfFeedback.showFeedback(dom.applyFeedback, "유효하지 않은 코드입니다.", true);
   }
+}
+
+async function handleMergeIsfCode(e) {
+  const code = e.detail.code;
+  const partnerData = window.IsfShare.decodePayloadFromHash(code, SHARE_STATE_KEY);
+  
+  if (!partnerData) {
+    window.IsfFeedback.showFeedback(dom.applyFeedback, "유효하지 않은 코드입니다.", true);
+    return;
+  }
+
+  if (!window.confirm("부부 데이터 병합: 파트너의 데이터를 현재 내 데이터와 합칠까요? (기존 항목들에 추가됩니다)")) {
+    return;
+  }
+
+  const mine = state.inputs;
+  const merged = { ...mine };
+
+  // Helper to add prefix
+  const addMe = (items) => items.map(it => ({ ...it, name: `[나] ${it.name}` }));
+  const addYou = (items) => items.map(it => ({ ...it, name: `[너] ${it.name}` }));
+
+  // Merge items
+  merged.incomes = [...addMe(mine.incomes), ...addYou(partnerData.incomes || [])];
+  merged.expenseItems = [...addMe(mine.expenseItems), ...addYou(partnerData.expenseItems || [])];
+  merged.savingsItems = [...addMe(mine.savingsItems), ...addYou(partnerData.savingsItems || [])];
+  merged.investItems = [...addMe(mine.investItems), ...addYou(partnerData.investItems || [])];
+
+  // Sum up totals
+  merged.startCash = (mine.startCash || 0) + (partnerData.startCash || 0);
+  merged.startSavings = (mine.startSavings || 0) + (partnerData.startSavings || 0);
+  merged.startInvest = (mine.startInvest || 0) + (partnerData.startInvest || 0);
+  merged.startDebt = (mine.startDebt || 0) + (partnerData.startDebt || 0);
+  merged.monthlyDebtPayment = (mine.monthlyDebtPayment || 0) + (partnerData.monthlyDebtPayment || 0);
+
+  commitImmediateInputs(merged);
+  dom.dataHubModal.close();
+  window.IsfFeedback.showFeedback(dom.applyFeedback, "부부 통합 데이터로 병합되었습니다! 🥂");
 }
 
 function bindItemEditorEvents() {

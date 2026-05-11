@@ -1103,3 +1103,63 @@ body.is-onboarding-active .onboarding-overlay {
   from { opacity: 0; transform: translate(-50%, 10px); }
   to { opacity: 1; transform: translate(-50%, 0); }
 }
+
+/* Phase 09: Smart Clipboard Parser UI */
+.smart-add-input {
+  width: 100%;
+  min-height: 120px;
+  margin-bottom: var(--sp-md);
+  font-size: 0.86rem;
+  line-height: 1.5;
+  resize: vertical;
+  background: rgba(16, 34, 32, 0.03);
+}
+
+.smart-add-result {
+  border: 1px solid var(--line);
+  border-radius: var(--rd-sm);
+  background: var(--panel);
+  padding: var(--sp-md);
+  display: grid;
+  gap: var(--sp-sm);
+  animation: fade-in 0.3s ease-out;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.result-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-md);
+}
+
+.result-row .label {
+  font-size: 0.78rem;
+  color: var(--muted);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.result-row .value {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.result-input, .result-select {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 8px;
+  font-size: 0.86rem;
+}
+
+.modal-content--sm {
+  max-width: 400px;
+}
+
+.mb-md { margin-bottom: var(--sp-md); }
+.w-full { width: 100%; }
