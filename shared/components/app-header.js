@@ -43,33 +43,6 @@ export class AppHeader extends HTMLElement {
             </div>
           </div>
 
-          <!-- 드롭다운 메뉴 (런처 클릭 시 노출) -->
-          <div id="appLauncherMenu" class="launcher-menu shadow-float" style="display: none;">
-            <div class="launcher-menu__inner">
-              <a href="../step1/" class="launcher-item ${this.currentStep === '1' ? 'is-active' : ''}">
-                <span class="launcher-item__icon">📊</span>
-                <span class="launcher-item__text">현금 흐름</span>
-              </a>
-              <a href="../step2/" class="launcher-item ${this.currentStep === '2' ? 'is-active' : ''}">
-                <span class="launcher-item__icon">💰</span>
-                <span class="launcher-item__text">배당 시뮬</span>
-              </a>
-              <a href="../step3/" class="launcher-item ${this.currentStep === '3' ? 'is-active' : ''}">
-                <span class="launcher-item__icon">💼</span>
-                <span class="launcher-item__text">포트폴리오</span>
-              </a>
-              <a href="../step4/" class="launcher-item ${this.currentStep === '4' ? 'is-active' : ''}">
-                <span class="launcher-item__icon">📈</span>
-                <span class="launcher-item__text">백테스트</span>
-              </a>
-              <div style="margin-top: var(--sp-xs); border-top: 1px solid var(--line);"></div>
-              <button type="button" id="headerDataHubBtn" class="launcher-item" style="width: 100%; border: none; background: none; text-align: left; cursor: pointer;">
-                <span class="launcher-item__icon">⚙️</span>
-                <span class="launcher-item__text">데이터 관리</span>
-              </button>
-            </div>
-          </div>
-
           <div style="display: flex; align-items: center; gap: var(--sp-xs); position: relative;">
             <span class="version-badge">v${version}</span>
             <button type="button" id="appLauncherBtn" class="btn btn-ghost btn-sm" style="padding: 4px; min-width: 32px; min-height: 32px;" title="메뉴">
@@ -85,6 +58,33 @@ export class AppHeader extends HTMLElement {
                 <circle cx="20" cy="20" r="2"></circle>
               </svg>
             </button>
+
+            <!-- 드롭다운 메뉴 (런처 클릭 시 노출) -->
+            <div id="appLauncherMenu" class="launcher-menu shadow-float" style="display: none;">
+              <div class="launcher-menu__inner">
+                <a href="../step1/" class="launcher-item ${this.currentStep === '1' ? 'is-active' : ''}">
+                  <span class="launcher-item__icon">📊</span>
+                  <span class="launcher-item__text">현금 흐름</span>
+                </a>
+                <a href="../step2/" class="launcher-item ${this.currentStep === '2' ? 'is-active' : ''}">
+                  <span class="launcher-item__icon">💰</span>
+                  <span class="launcher-item__text">배당 시뮬</span>
+                </a>
+                <a href="../step3/" class="launcher-item ${this.currentStep === '3' ? 'is-active' : ''}">
+                  <span class="launcher-item__icon">💼</span>
+                  <span class="launcher-item__text">포트폴리오</span>
+                </a>
+                <a href="../step4/" class="launcher-item ${this.currentStep === '4' ? 'is-active' : ''}">
+                  <span class="launcher-item__icon">📈</span>
+                  <span class="launcher-item__text">백테스트</span>
+                </a>
+                <div style="margin-top: var(--sp-xs); border-top: 1px solid var(--line);"></div>
+                <button type="button" id="headerDataHubBtn" class="launcher-item" style="width: 100%; border: none; background: none; text-align: left; cursor: pointer;">
+                  <span class="launcher-item__icon">⚙️</span>
+                  <span class="launcher-item__text">데이터 관리</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </header>

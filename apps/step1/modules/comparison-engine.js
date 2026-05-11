@@ -1,3 +1,5 @@
+import { migrateInputsToWon } from "./input-sanitizer.js";
+
 /**
  * Comparison Engine for Step 1 Snapshots
  * Calculates differences between historical and current financial data.
@@ -56,10 +58,14 @@ export function compareItems(previousItems = [], currentItems = []) {
 export function calculateComparison(prevData, currData) {
   if (!prevData || !currData) return null;
 
-  const expenseComp = compareItems(prevData.expenseItems, currData.expenseItems);
-  const incomeComp = compareItems(prevData.incomes, currData.incomes);
-  const savingsComp = compareItems(prevData.savingsItems, currData.savingsItems);
-  const investComp = compareItems(prevData.investItems, currData.investItems);
+  // Ensure consistent units (원) for older snapshots
+  const sanitizedPrev = migrateInputsToWon(prevData);
+  const sanitizedCurr = migrateInputsToWon(currData);
+
+  const expenseComp = compareItems(sanitizedPrev.expenseItems, sanitizedCurr.expenseItems);
+  const incomeComp = compareItems(sanitizedPrev.incomes, sanitizedCurr.incomes);
+  const savingsComp = compareItems(sanitizedPrev.savingsItems, sanitizedCurr.savingsItems);
+  const investComp = compareItems(sanitizedPrev.investItems, sanitizedCurr.investItems);
 
   const totalPrevExpense = expenseComp.reduce((sum, item) => sum + item.prev, 0);
   const totalCurrExpense = expenseComp.reduce((sum, item) => sum + item.curr, 0);

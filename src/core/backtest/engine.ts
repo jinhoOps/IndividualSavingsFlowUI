@@ -18,7 +18,7 @@ export class BacktestEngine {
 
     let currentShares = 0;
     let totalPrincipal = 0;
-    let cash = 0; // 초기 자본은 루프 내에서 처리
+    let cash = 0;
     const history: SimulationResult['history'] = [];
     
     let peakValue = -Infinity;
@@ -30,10 +30,13 @@ export class BacktestEngine {
     let unitPricePeak = -Infinity;
     let currentUnitPrice = 100; // 기준가 100으로 시작
 
+    let lastInvestmentMonth = '';
+
     // 시뮬레이션 루프
     for (let i = 0; i < filteredData.length; i++) {
       const point = filteredData[i];
       const currentPrice = point.price;
+      const currentMonth = point.date.substring(0, 7); // YYYY-MM
       
       if (isLiquidated) {
         history.push({
@@ -52,14 +55,19 @@ export class BacktestEngine {
         currentUnitPrice *= (1 + assetReturn);
       }
 
-      // 1. 자금 투입 (매월 초에 투입된다고 가정)
+      // 1. 자금 투입
+      // 초기 자본 투입 (첫 데이터 포인트에서만 실행)
       if (i === 0) {
         cash += initialPrincipal;
         totalPrincipal += initialPrincipal;
       }
       
-      cash += monthlyInstallment;
-      totalPrincipal += monthlyInstallment;
+      // 월간 적립금 투입 (월이 바뀔 때마다 실행)
+      if (currentMonth !== lastInvestmentMonth) {
+        cash += monthlyInstallment;
+        totalPrincipal += monthlyInstallment;
+        lastInvestmentMonth = currentMonth;
+      }
 
       // 2. 보유 수량에 따른 현재 가치 계산 (배당 포함 전)
       if (cash > 0) {
