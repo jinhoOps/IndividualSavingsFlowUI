@@ -55,5 +55,16 @@ export interface Step1State {
 - **Direct Access**: Step 2는 `isfStore.loadStep1()`을 통해 Step 1의 최신 데이터를 직접 읽어와서 `monthlyInvest` 가용 금액을 시뮬레이션에 주입합니다.
 - **Compatibility**: 레거시 바닐라 JS 코드들을 위해 `CompatibilityBridge.ts`가 구형 `window.IsfStorageHub` 인터페이스를 제공하지만, 내부는 현대화된 `IsfStore`를 호출합니다.
 
+## 시장 지수 데이터 (Market Data Indices)
+
+시뮬레이션의 정밀도(MDD, 변동성)를 위해 주요 지수 및 자산의 시계열 데이터를 제공합니다.
+
+- **데이터 해상도 (Resolution)**: 
+  - **Daily (고해상도)**: QQQ, QLD, TQQQ, SPY, KOSPI 200, Gold, KOSDAQ, SCHD.
+  - **Monthly (일반)**: 기타 보조 지수 및 장기 과거 데이터.
+- **데이터 보간 (Interpolation)**: 월간 앵커(Anchors) 사이의 공백은 **Brownian Bridge** 모델을 사용하여 자산별 실제 변동성($\sigma$)을 반영한 일간 무작위 행보로 채워집니다.
+- **데이터 위치**: `public/data/indices/*.json`
+- **관리 도구**: `scripts/generate_market_data.py`를 통해 통합 관리됩니다.
+
 ---
 *연결 노드:* [[Architecture_Reference]], [[UI_Standards_Reference]], [[Version_Management_Principles]]

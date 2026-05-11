@@ -39,7 +39,7 @@ export const SimulationWarning: React.FC<Props> = ({ params, selectedAssets }) =
     // warnings.push('선택한 자산은 일간 종가 데이터를 사용하여 MDD가 정밀하게 계산됩니다.');
   } else if (someDaily) {
     const dailyNames = dailyAssets.map(a => a.name.split(' (')[0]).join(', ');
-    warnings.push(`나스닥 계열(${dailyNames})은 일간 데이터를 사용하여 MDD가 정밀합니다. 그 외 자산은 월간 기준이므로 실제 MDD가 표시보다 클 수 있습니다.`);
+    warnings.push(`${dailyNames} 등 고해상도 자산은 일간 데이터를 사용하여 MDD가 정밀합니다. 그 외 월간 기준 자산은 실제 MDD가 표시보다 클 수 있습니다.`);
   } else {
     warnings.push('본 시뮬레이션은 월간 종가 데이터를 사용합니다. 일간 변동폭이 반영되지 않아 실제 MDD(최대낙폭)는 표시된 값보다 클 수 있습니다.');
   }
