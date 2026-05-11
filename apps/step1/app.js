@@ -239,7 +239,7 @@ async function initializeSnapshotSelector() {
 async function handleSnapshotSelection(id) {
   if (!id) {
     if (dom.comparisonContent) dom.comparisonContent.hidden = true;
-    if (dom.comparisonEmpty) dom.comparisonEmpty.hidden = false;
+    if (dom.comparisonEmpty) dom.comparisonEmpty.hidden = true; // Always hidden while on hold
     return;
   }
   const snapshot = await getSnapshotById(id, { getHubStorage: () => window.IsfStorageHub });
