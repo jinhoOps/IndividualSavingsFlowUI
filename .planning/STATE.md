@@ -1,27 +1,27 @@
 ---
-milestone: "v1.2"
-name: "백테스트 시뮬레이터 및 자산 관리 확장"
-status: "completed"
+milestone: "v1.3"
+name: "지능형 자산 관리 및 자문"
+status: "in-progress"
 progress:
   completed_phases: 9
-  total_phases: 9
+  total_phases: 12
 ---
 
 # Project State
 
 ## Current Position
 
-Phase: 9 (Completed)
-Plan: Finalized
-Status: Completed
-Last activity: 2026-05-11 — Phase 09 completed. Fixed Step 4 `toLocaleString` TypeError with defensive coding (v0.9.45).
+Phase: 10
+Plan: 01 (Engine Design)
+Status: In-Progress
+Last activity: 2026-05-11 — Milestone v1.2 finalized. Initiated Phase 10 (AI Integration) research and core engine planning.
 
 ## Project Reference
 
 See: .planning/PROJECT.md (updated 2026-05-11)
 
 **Core value:** 단순한 프리셋 선택만으로 즉각적인 자산 시각화 결과 제공
-**Current focus:** Milestone Completion & Maintenance
+**Current focus:** Phase 10 AI Integration - Architecture & Core Engine
 
 ## Key Decisions
 - **Step 4 (React/TS)**: 복잡한 대시보드 구현을 위해 React 19와 TypeScript를 표준으로 도입함. (D-01, D-03)

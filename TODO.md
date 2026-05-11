@@ -2,37 +2,20 @@
 kanban-plugin: basic
 ---
 
-# TODO (v0.9.38)
+# TODO (v0.9.46)
 
-## In Progress (v0.9.38)
-- [x] **Phase 7: 주요 지수 및 자산 백테스트 시뮬레이터 개선 (Issue #7)**:
-    - [x] TDD 기반 금융 연산 엔진 (CAGR, IRR, MDD, TR) 구현.
-    - [x] MDD 계산 로직 수정 (자금 투입 왜곡 방지).
-    - [x] 자산 선택 UX 개선 (전체 선택/해제, 통화 단위 표기).
-    - [x] 데이터 범위 기반 동적 기간 설정.                                                                                                                                                                                                                                                                                                                                                                                           
-    - [x] 시뮬레이션 차트 고도화 (호버 툴팁, Y축 그리드, 원금/수익률 표시).
-    - [x] KPI 요약 카드 고도화 (최종 자산, 연 배당금, 누적 수익률).
-    - [x] 예상 연 배당금 (최종 시점) 에도 원화 표기 추가
-    - [x] 환율 기본값은 1450이지만 직접 입력해서 변경할수있게 추가
-    - [x] "⚠️ 본 시뮬레이션은 월간 종가 데이터를 사용합니다. 일간 변동폭이 반영되지 않아 실제 MDD(최대낙폭)는 표시된 값보다 훨씬 클 수 있습니다." 라는 문구를 레버리지 선택시 강조, `(특히 레버리지 ETF의 경우)` 문구 대신 강조  
+## In Progress (v0.9.46)
+- [ ] **Phase 10: AI 기반 자산 분석 및 자문 (v1.3)**:
+    - [x] AI 연동 아키텍처 설계 및 `AiEngine` 추상화 레이어 구현 (v0.9.46).
+    - [x] DataHub 내 AI 설정 UI (API 키 관리) 추가.
+    - [x] Step 1 AI 인사이트 패널 및 자동 분석 로직 통합.
+    - [ ] 실제 Google Gemini API 연동 테스트 및 에러 핸들링 고도화.
+    - [ ] 자연어 질문 답변 기능 (Tax Advisor) UI 연동.
 
-- [x] **Phase 8: 지출 데이터 과거 비교 분석 (Issue #4)**:
-    - [x] Step 1 과거 지출 비교 기능 활성화.
-    - [x] 데이터 브릿지 확장: `SnapshotManager`를 통한 과거 스냅샷 데이터 로드 API 강화.
-    - [x] Grouped Bar Chart: 카테고리별 [이전] vs [현재] 지출 비교 막대 그래프 구현.
-- [x] **Phase 9: Newlywed Harmony Hub (Issue #2)**:
-    - [x] Smart Clipboard Parser: 은행/카드 문자 자동 파싱 엔진 및 Step 1 연동 구현.
-    - [x] Dual-Flow Merge: 부부 간 데이터 해시 병합 로직 및 UI 추가.
-    - [x] UI 연동: Step 1 '스마트 등록' 및 데이터 허브 내 '부부 데이터 병합' 기능 활성화.
-
-## Next High Priority
-- [ ] **시뮬레이션 차트 고도화**: 데이터 포인트, 호버 툴팁, Y축 눈금/그리드 개선.
-- [ ] **KPI 요약 카드**: 최종 자산, 최종 연 배당금, 누적 수익률 등 핵심 지표 시각화.
-- [ ] **Step 1 Spotlight UX**: 첫 접속 사용자 온보딩 가이드.
-
-# RECENT HISTORY (v0.8.7~v0.9.45)
-- [x] **v0.9.45**: Step 4 백테스트 시뮬레이터 `toLocaleString` TypeError 수정 (방어적 코드 적용).
-- [x] **v0.9.44**: Phase 9 Newlywed Harmony Hub 구현 완료 (클립보드 파서 & 부부 데이터 병합).
+## RECENT HISTORY (v0.8.7~v0.9.46)
+- [x] **v0.9.46**: Milestone v1.3 시작 및 AI Integration 아키텍처 구축 (Gemini 연동 기반).
+- [x] **v0.9.45**: Step 4 백테스트 시뮬레이터 `toLocaleString` TypeError 수정.
+- [x] **v0.9.44**: Phase 9 Newlywed Harmony Hub 구현 완료.
 
 # ARCHIVE
 - 상세 내역은 `[[Project_History]]` 및 `[[log.md]]` 참조.
