@@ -13,8 +13,10 @@
 3. **Wiki Update**: 새로운 지식이나 패턴이 발견되면 [[wiki-librarian]] 스킬을 사용하여 위키를 갱신하십시오.
 
 ## 🧭 역할 기반 라우팅 (Routing)
+- **기획/UX 설계**: [[.gemini/agents/isf-planner.md]]
+- **금융 전략/검증**: [[.gemini/agents/isf-strategist.md]]
 - **개발/리팩터링**: [[.gemini/agents/isf-developer.md]]
-- **기획/검증 협업**: [[.gemini/skills/orchestration/SKILL.md]]
+- **협업/워크플로우**: [[.gemini/skills/orchestration/SKILL.md]]
 - **지식 관리/인덱싱**: [[.gemini/skills/wiki-librarian/SKILL.md]]
 
 ---

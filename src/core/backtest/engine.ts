@@ -127,15 +127,31 @@ export class BacktestEngine {
       ? Math.round(currentShares * lastPoint.price * lastPoint.dividendYield * 12)
       : 0;
 
-    // CAGR 계산 (거치식 수익률 연율화)
-    // CAGR = (Final Value / Initial Value)^(1/years) - 1
-    const years = filteredData.length / 12;
+    // CAGR 계산 (일자 기준 정밀화)
+    const startDate = new Date(filteredData[0].date);
+    const endDate = new Date(filteredData[filteredData.length - 1].date);
+    const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const years = diffDays / 365.25;
+
     const cagr = years > 0 && finalValue > 0 && initialPrincipal > 0 
       ? Math.pow(finalValue / initialPrincipal, 1 / years) - 1 
       : 0;
 
-    // IRR 계산 (적립식 포함 전체 현금 흐름 기준 연환산 수익률)
-    const irr = this.calculateIRR(initialPrincipal, monthlyInstallment, finalValue, filteredData.length);
+    // IRR 계산용 월수 계산 (시작/종료일 차이 기반)
+    const monthsForIRR = Math.max(1, Math.round(diffDays / 30.4375));
+    const irr = this.calculateIRR(initialPrincipal, monthlyInstallment, finalValue, monthsForIRR);
+
+    // 차트 데이터 다운샘플링 (데이터가 너무 많을 경우 UI 성능을 위해 월간 데이터만 추출)
+    // 단, 청산 시점이나 시작/종료점은 포함
+    const sampledHistory = history.length > 100 
+      ? history.filter((h, idx) => {
+          if (idx === 0 || idx === history.length - 1 || h.isLiquidated) return true;
+          // 매월 첫 데이터만 남김
+          const prev = history[idx - 1];
+          return h.date.substring(0, 7) !== prev.date.substring(0, 7);
+        })
+      : history;
 
     return {
       finalValue: Math.round(finalValue),
@@ -147,7 +163,7 @@ export class BacktestEngine {
       mdd: Number(maxDrawdown.toFixed(6)),
       isLiquidated,
       liquidationDate,
-      history
+      history: sampledHistory
     };
   }
 

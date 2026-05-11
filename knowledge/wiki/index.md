@@ -11,6 +11,8 @@ IndividualSavingsFlowUI (ISF) 프로젝트의 모든 지식은 이 지도를 통
 ## 🏛️ 핵심 참조 (The Constitution)
 *프로젝트 운영의 근간이 되는 불변의 원칙들입니다.*
 - [[Operating_Principles]]: 프로젝트 운영 원칙 및 현대적 DX 지침.
+- [[Role_Strategist]]: 📈 금융 전략가(Strategist)의 역할 및 도메인 검증 가이드.
+- [[Strategy_Financial_Realism]]: 📉 금융 시뮬레이션 현실성 확보 및 데이터 개선 전략.
 - [[System_Integrity_Standard]]: 🚨 스타일, 로직, 단위 정합성 수호 표준.
 - [[Agent_Behavior_Standard]]: 🛠️ 안전과 최소 개입을 위한 에이전트 행동 강령.
 - [[Version_Management_Principles]]: 📌 패치 버전 및 SSOT 관리 원칙.
@@ -21,6 +23,7 @@ IndividualSavingsFlowUI (ISF) 프로젝트의 모든 지식은 이 지도를 통
 
 ## 🚀 활성 지식 (Active Knowledge)
 *현재 진행 중인 작업과 관련된 합성된 지식입니다.*
+- [[Backtest_Logic_Audit_v0.9.29]]: ⚖️ 백테스트 엔진 로직 및 데이터 현실성 검증 리포트.
 - [[Plan_Step3]]: 포트폴리오(계좌/종목) 고도화 기획.
 - [[Plan_Step3_Implementation]]: Step 3 상세 구현 로직 및 설계.
 
