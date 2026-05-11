@@ -128,9 +128,9 @@ export class BacktestEngine {
       : 0;
 
     // CAGR 계산 (일자 기준 정밀화)
-    const startDate = new Date(filteredData[0].date);
-    const endDate = new Date(filteredData[filteredData.length - 1].date);
-    const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
+    const actualStartDate = new Date(filteredData[0].date);
+    const actualEndDate = new Date(filteredData[filteredData.length - 1].date);
+    const diffTime = Math.abs(actualEndDate.getTime() - actualStartDate.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     const years = diffDays / 365.25;
 
