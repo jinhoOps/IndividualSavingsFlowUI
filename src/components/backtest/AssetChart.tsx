@@ -7,13 +7,24 @@ interface Props {
   results: { asset: AssetData; result: SimulationResult }[];
   relativeMode: boolean;
   benchmarkId: string;
+  exchangeRate: number;
 }
 
-export const AssetChart: React.FC<Props> = ({ results, relativeMode, benchmarkId }) => {
+export const AssetChart: React.FC<Props> = ({ results, relativeMode, benchmarkId, exchangeRate }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [tooltip, setTooltip] = useState<{ x: number; y: number; closest: any } | null>(null);
 
   const colors = CHART_COLORS;
+
+  const formatValue = (val: number, currency: string, isRelative: boolean) => {
+    if (isRelative) return `${val >= 0 ? '+' : ''}${val.toFixed(2)}%`;
+    if (currency === 'USD') {
+      const usdText = `$${val.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+      const krwText = MoneyUtils.formatMan(val * exchangeRate);
+      return `${usdText} (${krwText})`;
+    }
+    return MoneyUtils.formatMan(val);
+  };
 
   const chartData = useMemo(() => {
     if (results.length === 0) return null;
@@ -40,23 +51,31 @@ export const AssetChart: React.FC<Props> = ({ results, relativeMode, benchmarkId
             // 상대 수익률: (내 가치 / 벤치마크 가치 - 1) * 100
             point[r.asset.id] = (h.value / benchmarkValue - 1) * 100;
           } else {
+            // 환율 적용 전 달러/원화 절대값 유지
             point[r.asset.id] = h.value;
           }
+          point[`${r.asset.id}_principal`] = h.principal;
           point[`${r.asset.id}_liquidated`] = h.isLiquidated;
         }
       });
       return point;
     });
 
-    // 스케일 계산
-    const allValues = data.flatMap(d => results.map(r => d[r.asset.id]).filter(v => v !== undefined));
-    const minVal = Math.min(...allValues, 0);
-    const maxVal = Math.max(...allValues, 1);
+    // 스케일 계산 (Y축 눈금용 - 상대모드가 아닐 때 통화가 섞여있으면 원화 환산 기준으로 스케일링 권장하지만, 여기서는 단순화)
+    const allValuesForScale = data.flatMap(d => results.map(r => {
+      const v = d[r.asset.id];
+      if (v === undefined) return undefined;
+      // 스케일링을 위해 USD 자산은 환율 적용한 원화 기준으로 변환
+      return (!relativeMode && r.asset.currency === 'USD') ? v * exchangeRate : v;
+    }).filter(v => v !== undefined) as number[]);
+
+    const minVal = Math.min(...allValuesForScale, 0);
+    const maxVal = Math.max(...allValuesForScale, 1);
     const minTime = data[0].time;
     const maxTime = data[data.length - 1].time;
 
     return { data, minVal, maxVal, minTime, maxTime, allDates };
-  }, [results, relativeMode, benchmarkId]);
+  }, [results, relativeMode, benchmarkId, exchangeRate]);
 
   if (!chartData || chartData.data.length < 2) {
     return (
@@ -66,12 +85,16 @@ export const AssetChart: React.FC<Props> = ({ results, relativeMode, benchmarkId
     );
   }
 
-  const padding = { top: 40, right: 30, bottom: 40, left: 60 };
+  const padding = { top: 40, right: 30, bottom: 40, left: 70 };
   const width = 800; 
   const height = 400;
 
   const getX = (time: number) => padding.left + ((time - chartData.minTime) / (chartData.maxTime - chartData.minTime)) * (width - padding.left - padding.right);
-  const getY = (val: number) => height - padding.bottom - ((val - chartData.minVal) / (chartData.maxVal - chartData.minVal)) * (height - padding.top - padding.bottom);
+  const getY = (val: number, asset?: AssetData) => {
+    // 렌더링 시 USD 자산은 환율 적용된 원화 스케일에 맞춤
+    const scaledVal = (!relativeMode && asset?.currency === 'USD') ? val * exchangeRate : val;
+    return height - padding.bottom - ((scaledVal - chartData.minVal) / (chartData.maxVal - chartData.minVal)) * (height - padding.top - padding.bottom);
+  };
 
   return (
     <div ref={containerRef} className="relative w-full h-full group font-body select-none">
@@ -112,15 +135,30 @@ export const AssetChart: React.FC<Props> = ({ results, relativeMode, benchmarkId
         }}
         onMouseLeave={() => setTooltip(null)}
       >
-        {/* Y축 그리드 & 라벨 */}
+        {/* Y축 그리드 & 라벨 (원화 환산 기준) */}
         {[0, 0.25, 0.5, 0.75, 1].map(p => {
           const val = chartData.minVal + (chartData.maxVal - chartData.minVal) * p;
-          const y = getY(val);
+          const y = height - padding.bottom - ((val - chartData.minVal) / (chartData.maxVal - chartData.minVal)) * (height - padding.top - padding.bottom);
+          
+          let label = '';
+          if (relativeMode) {
+            label = `${val >= 0 ? '+' : ''}${val.toFixed(0)}%`;
+          } else {
+            if (val >= 100000000) {
+              label = `${(val / 100000000).toFixed(1)}억`;
+            } else {
+              label = `${Math.round(val / 10000).toLocaleString()}만`;
+            }
+          }
+
           return (
             <g key={p}>
-              <line x1={padding.left} y1={y} x2={width - padding.right} y2={y} stroke="var(--line)" strokeWidth="1" strokeDasharray="4 4" />
+              <line 
+                x1={padding.left} y1={y} x2={width - padding.right} y2={y} 
+                stroke="var(--line)" strokeWidth="0.5" strokeDasharray={p === 0 ? "" : "4 4"} 
+              />
               <text x={padding.left - 10} y={y + 4} textAnchor="end" fontSize="10" fill="var(--muted)" className="font-mono">
-                {relativeMode ? `${val.toFixed(0)}%` : `${Math.round(val / 10000).toLocaleString()}만`}
+                {label}
               </text>
             </g>
           );
@@ -129,7 +167,8 @@ export const AssetChart: React.FC<Props> = ({ results, relativeMode, benchmarkId
         {/* 0선 (상대 모드용) */}
         {relativeMode && (
           <line 
-            x1={padding.left} y1={getY(0)} x2={width - padding.right} y2={getY(0)} 
+            x1={padding.left} y1={height - padding.bottom - ((0 - chartData.minVal) / (chartData.maxVal - chartData.minVal)) * (height - padding.top - padding.bottom)} 
+            x2={width - padding.right} y2={height - padding.bottom - ((0 - chartData.minVal) / (chartData.maxVal - chartData.minVal)) * (height - padding.top - padding.bottom)} 
             stroke="var(--ink)" strokeWidth="1" strokeOpacity="0.3"
           />
         )}
@@ -158,7 +197,7 @@ export const AssetChart: React.FC<Props> = ({ results, relativeMode, benchmarkId
         {results.map((r, i) => {
           const pathData = chartData.data
             .filter(d => d[r.asset.id] !== undefined)
-            .map((d, idx) => `${idx === 0 ? 'M' : 'L'} ${getX(d.time)} ${getY(d[r.asset.id])}`)
+            .map((d, idx) => `${idx === 0 ? 'M' : 'L'} ${getX(d.time)} ${getY(d[r.asset.id], r.asset)}`)
             .join(' ');
 
           return (
@@ -176,7 +215,7 @@ export const AssetChart: React.FC<Props> = ({ results, relativeMode, benchmarkId
               {tooltip && tooltip.closest[r.asset.id] !== undefined && (
                 <circle 
                   cx={getX(tooltip.closest.time)} 
-                  cy={getY(tooltip.closest[r.asset.id])} 
+                  cy={getY(tooltip.closest[r.asset.id], r.asset)} 
                   r="4" 
                   fill={colors[i % colors.length]}
                   stroke="white"
@@ -193,32 +232,45 @@ export const AssetChart: React.FC<Props> = ({ results, relativeMode, benchmarkId
         <div 
           className="absolute z-50 pointer-events-none transition-transform duration-75 shadow-float"
           style={{ 
-            left: tooltip.x > containerRef.current!.offsetWidth / 2 ? tooltip.x - 180 : tooltip.x + 20,
-            top: Math.min(tooltip.y, containerRef.current!.offsetHeight - 160)
+            left: tooltip.x > containerRef.current!.offsetWidth / 2 ? tooltip.x - 220 : tooltip.x + 20,
+            top: Math.min(tooltip.y, containerRef.current!.offsetHeight - 180)
           }}
         >
-          <div className="p-3 bg-panel/90 backdrop-blur-md border border-line rounded-md text-[11px] min-w-[160px]">
+          <div className="p-3 bg-panel/90 backdrop-blur-md border border-line rounded-md text-[11px] min-w-[200px]">
             <div className="font-black border-b border-line mb-sm pb-sm text-ink flex justify-between items-center">
               <span>{new Date(tooltip.closest.time).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long' })}</span>
               {relativeMode && <span className="text-[9px] px-1 bg-line-strong rounded text-muted">상대</span>}
             </div>
-            <div className="space-y-1">
-              {results.map((r, i) => (
-                <div key={r.asset.id} className="flex justify-between gap-md items-center">
-                  <span className="flex items-center gap-1.5 text-muted truncate max-w-[100px]">
-                    <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: colors[i % colors.length] }}></span>
-                    {r.asset.name}
-                  </span>
-                  <span className={`font-mono font-bold ${tooltip.closest[`${r.asset.id}_liquidated`] ? 'text-red-500' : 'text-ink'}`}>
-                    {tooltip.closest[`${r.asset.id}_liquidated`] 
-                      ? '청산'
-                      : relativeMode 
-                        ? `${tooltip.closest[r.asset.id] >= 0 ? '+' : ''}${tooltip.closest[r.asset.id].toFixed(2)}%`
-                        : MoneyUtils.formatMan(tooltip.closest[r.asset.id])
-                    }
-                  </span>
-                </div>
-              ))}
+            <div className="space-y-2">
+              {results.map((r, i) => {
+                const val = tooltip.closest[r.asset.id];
+                const principal = tooltip.closest[`${r.asset.id}_principal`];
+                const profitRate = principal > 0 ? (val - principal) / principal * 100 : 0;
+
+                return (
+                  <div key={r.asset.id} className="border-l-2 pl-2" style={{ borderColor: colors[i % colors.length] }}>
+                    <div className="flex justify-between gap-md items-center mb-0.5">
+                      <span className="text-muted truncate max-w-[120px] font-bold">
+                        {r.asset.name}
+                      </span>
+                      <span className={`font-mono font-black ${tooltip.closest[`${r.asset.id}_liquidated`] ? 'text-red-500' : 'text-ink'}`}>
+                        {tooltip.closest[`${r.asset.id}_liquidated`] 
+                          ? '청산'
+                          : formatValue(val, r.asset.currency, relativeMode)
+                        }
+                      </span>
+                    </div>
+                    {!relativeMode && !tooltip.closest[`${r.asset.id}_liquidated`] && (
+                      <div className="flex justify-between text-[9px] text-muted">
+                        <span>원금: {r.asset.currency === 'USD' ? `$${principal.toLocaleString()} (약 ${MoneyUtils.formatMan(principal * exchangeRate)})` : MoneyUtils.formatMan(principal)}</span>
+                        <span className={profitRate >= 0 ? 'text-red-500' : 'text-blue-500'}>
+                          ({profitRate >= 0 ? '+' : ''}{profitRate.toFixed(1)}%)
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>

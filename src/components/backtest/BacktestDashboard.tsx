@@ -8,10 +8,14 @@ import { Toast } from '../common/Toast';
 
 export const CHART_COLORS = ['#ea5b2a', '#1e8b7c', '#3175b6', '#5d4fb3', '#8c3d65', '#f59e0b', '#10b981', '#6366f1'];
 
+const EXCHANGE_RATE = 1450; // 고정 환율
+
+type InvestMode = 'lump-sum' | 'dca' | 'mixed';
+
 export const BacktestDashboard: React.FC = () => {
   const [assets, setAssets] = useState<AssetData[]>([]);
   const [selectedAssetIds, setSelectedAssetIds] = useState<string[]>(['qqq', 'spy']);
-  // ... rest of state
+  const [mode, setMode] = useState<InvestMode>('mixed');
   const [params, setParams] = useState<SimulationParams>({
     initialPrincipal: 10000000,
     monthlyInstallment: 1000000,
@@ -22,6 +26,7 @@ export const BacktestDashboard: React.FC = () => {
   const [relativeMode, setRelativeMode] = useState(false);
   const [benchmarkAssetId, setBenchmarkAssetId] = useState<string>('qqq');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isLoaded, setIsLoaded] = useState(false);
 
   // 데이터 로드 및 가상 자산 합성
   useEffect(() => {
@@ -117,14 +122,31 @@ export const BacktestDashboard: React.FC = () => {
         ];
         setAssets(allAssets);
 
-        // 데이터 범위에 맞게 초기 기간 설정
-        const qqqDates = qqq.data.map((d: TimeSeriesPoint) => d.date).sort();
-        if (qqqDates.length > 0) {
-          setParams(p => ({
-            ...p,
-            startDate: qqqDates[0],
-            endDate: qqqDates[qqqDates.length - 1]
-          }));
+        // 초기 기간 설정 (데이터 로드 후 1회)
+        if (!isLoaded) {
+          const saved = localStorage.getItem('backtest_settings');
+          if (saved) {
+            try {
+              const parsed = JSON.parse(saved);
+              setSelectedAssetIds(parsed.selectedAssetIds || ['qqq', 'spy']);
+              setMode(parsed.mode || 'mixed');
+              setParams(p => ({ ...p, ...parsed.params }));
+              setRelativeMode(parsed.relativeMode || false);
+              setBenchmarkAssetId(parsed.benchmarkAssetId || 'qqq');
+            } catch (e) {
+              console.warn('Failed to parse saved backtest settings');
+            }
+          } else {
+            const qqqDates = qqq.data.map((d: TimeSeriesPoint) => d.date).sort();
+            if (qqqDates.length > 0) {
+              setParams(p => ({
+                ...p,
+                startDate: qqqDates[0],
+                endDate: qqqDates[qqqDates.length - 1]
+              }));
+            }
+          }
+          setIsLoaded(true);
         }
       } catch (error) {
         console.error('Failed to load asset data:', error);
@@ -132,7 +154,56 @@ export const BacktestDashboard: React.FC = () => {
       }
     };
     loadAssets();
-  }, []);
+  }, [isLoaded]);
+
+  // 설정 자동 저장 (10초 디바운스)
+  useEffect(() => {
+    if (!isLoaded) return;
+    const timer = setTimeout(() => {
+      const settings = { selectedAssetIds, mode, params, relativeMode, benchmarkAssetId };
+      localStorage.setItem('backtest_settings', JSON.stringify(settings));
+    }, 10000);
+    return () => clearTimeout(timer);
+  }, [selectedAssetIds, mode, params, relativeMode, benchmarkAssetId, isLoaded]);
+
+  // 투자 모드 변경 시 파라미터 자동 조정
+  useEffect(() => {
+    if (mode === 'lump-sum') {
+      setParams(p => ({ ...p, monthlyInstallment: 0 }));
+    } else if (mode === 'dca') {
+      setParams(p => ({ ...p, initialPrincipal: 0 }));
+    }
+  }, [mode]);
+
+  // 빠른 기간 설정 버튼 처리
+  const handleQuickRange = (type: string) => {
+    const end = new Date(params.endDate);
+    let start = new Date(params.endDate);
+
+    switch (type) {
+      case 'YTD': start = new Date(end.getFullYear(), 0, 1); break;
+      case '1m': start.setMonth(end.getMonth() - 1); break;
+      case '1y': start.setFullYear(end.getFullYear() - 1); break;
+      case '3y': start.setFullYear(end.getFullYear() - 3); break;
+      case '5y': start.setFullYear(end.getFullYear() - 5); break;
+      case '10y': start.setFullYear(end.getFullYear() - 10); break;
+      case '15y': start.setFullYear(end.getFullYear() - 15); break;
+      case '20y': start.setFullYear(end.getFullYear() - 20); break;
+    }
+
+    const startDateStr = start.toISOString().split('T')[0];
+    const minDate = dateRange.min + '-01';
+    setParams({ ...params, startDate: startDateStr < minDate ? minDate : startDateStr });
+  };
+
+  // 자산 카테고리화
+  const categorizedAssets = useMemo(() => {
+    return {
+      '해외 주식/ETF': assets.filter(a => a.currency === 'USD' && (a.type === 'index' || a.type === 'leveraged')),
+      '국내 주식/기타': assets.filter(a => a.currency === 'KRW' && a.id !== 'savings' && a.id !== 'gold'),
+      '안전 자산/채권': assets.filter(a => a.id === 'savings' || a.id === 'gold' || a.type === 'rate')
+    };
+  }, [assets]);
 
   // 유효한 날짜 범위 계산
   const dateRange = useMemo(() => {
@@ -178,6 +249,32 @@ export const BacktestDashboard: React.FC = () => {
           </h2>
           
           <div className="space-y-md">
+            {/* 투자 모드 선택 */}
+            <div>
+              <label className="text-caption font-bold text-muted block mb-sm">투자 모드</label>
+              <div className="flex bg-line/20 p-1 rounded-sm gap-1">
+                {(['lump-sum', 'dca', 'mixed'] as InvestMode[]).map(m => (
+                  <button
+                    key={m}
+                    onClick={() => setMode(m)}
+                    className={`flex-1 py-1.5 text-[11px] font-bold rounded-sm transition-all ${mode === m ? 'bg-white shadow-sm text-primary' : 'text-muted hover:text-ink'}`}
+                  >
+                    {m === 'lump-sum' ? '거치식' : m === 'dca' ? '적립식' : '혼합'}
+                  </button>
+                ))}
+              </div>
+              <div className="mt-2 text-[10px] text-muted leading-tight bg-line/10 p-2 rounded flex gap-2 items-start">
+                <span className="text-primary mt-0.5">ℹ️</span>
+                <span>
+                  {mode === 'lump-sum' && '초기 자본을 한 번에 투자하고 추가 납입 없이 성과를 추적합니다. (CAGR 중심)'}
+                  {mode === 'dca' && '초기 자본 없이 매월 일정 금액을 꾸준히 적립 투자합니다. (IRR 중심)'}
+                  {mode === 'mixed' && '초기 자본 투자 후 매월 일정 금액을 추가로 적립하여 운용합니다.'}
+                </span>
+              </div>
+            </div>
+
+            <hr className="border-line" />
+
             <div>
               <div className="flex justify-between items-center mb-sm">
                 <label className="text-caption font-bold text-muted">비교 자산 선택</label>
@@ -196,26 +293,75 @@ export const BacktestDashboard: React.FC = () => {
                   </button>
                 </div>
               </div>
-              <div className="grid grid-cols-1 gap-1 max-h-48 overflow-y-auto pr-sm custom-scrollbar bg-line/10 p-sm rounded-sm">
-                {assets.map(asset => (
-                  <label key={asset.id} className={`flex items-center gap-sm p-sm hover:bg-line rounded-sm cursor-pointer transition-colors ${selectedAssetIds.includes(asset.id) ? 'bg-line/50' : ''}`}>
-                    <input 
-                      type="checkbox" 
-                      checked={selectedAssetIds.includes(asset.id)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedAssetIds([...selectedAssetIds, asset.id]);
-                        } else {
-                          setSelectedAssetIds(selectedAssetIds.filter(id => id !== asset.id));
-                        }
-                      }}
-                      className="w-4 h-4 accent-primary rounded"
-                    />
-                    <div className="flex flex-col">
-                      <span className="text-body-sm font-bold">{asset.name}</span>
-                      <span className="text-[9px] text-muted uppercase font-mono">{asset.currency} • {asset.type}</span>
+              <div className="space-y-3 max-h-64 overflow-y-auto pr-sm custom-scrollbar bg-line/10 p-sm rounded-sm">
+                {Object.entries(categorizedAssets).map(([category, items]) => (
+                  <div key={category}>
+                    <div className="text-[10px] font-bold text-muted/60 mb-1 px-1 uppercase tracking-wider">{category}</div>
+                    <div className="grid grid-cols-1 gap-0.5">
+                      {items.map(asset => (
+                        <label key={asset.id} className={`flex items-center gap-sm p-sm hover:bg-line rounded-sm cursor-pointer transition-colors ${selectedAssetIds.includes(asset.id) ? 'bg-line/50' : ''}`}>
+                          <input 
+                            type="checkbox" 
+                            checked={selectedAssetIds.includes(asset.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedAssetIds([...selectedAssetIds, asset.id]);
+                              } else {
+                                setSelectedAssetIds(selectedAssetIds.filter(id => id !== asset.id));
+                              }
+                            }}
+                            className="w-4 h-4 accent-primary rounded"
+                          />
+                          <div className="flex flex-col">
+                            <span className="text-body-sm font-bold">{asset.name}</span>
+                            <span className="text-[9px] text-muted uppercase font-mono">{asset.currency} • {asset.type}</span>
+                          </div>
+                        </label>
+                      ))}
                     </div>
-                  </label>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <hr className="border-line" />
+
+            <div className="space-y-md">
+              <div className="grid grid-cols-2 gap-md">
+                <div>
+                  <label className="block text-[10px] font-bold text-muted uppercase mb-1">시작 월</label>
+                  <input 
+                    type="month"
+                    value={params.startDate.slice(0, 7)}
+                    min={dateRange.min}
+                    max={params.endDate.slice(0, 7)}
+                    onChange={(e) => setParams({ ...params, startDate: `${e.target.value}-01` })}
+                    className="w-full font-bold text-xs p-sm bg-line/20 rounded-sm border-none focus:ring-1 focus:ring-primary"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-muted uppercase mb-1">종료 월</label>
+                  <input 
+                    type="month"
+                    value={params.endDate.slice(0, 7)}
+                    min={params.startDate.slice(0, 7)}
+                    max={dateRange.max}
+                    onChange={(e) => setParams({ ...params, endDate: `${e.target.value}-01` })}
+                    className="w-full font-bold text-xs p-sm bg-line/20 rounded-sm border-none focus:ring-1 focus:ring-primary"
+                  />
+                </div>
+              </div>
+              
+              {/* 빠른 기간 선택 칩 */}
+              <div className="flex flex-wrap gap-1">
+                {['YTD', '1m', '1y', '3y', '5y', '10y', '15y', '20y'].map(range => (
+                  <button
+                    key={range}
+                    onClick={() => handleQuickRange(range)}
+                    className="px-2 py-1 bg-line/30 hover:bg-line text-[10px] font-bold rounded-pill text-muted transition-colors"
+                  >
+                    {range}
+                  </button>
                 ))}
               </div>
             </div>
@@ -223,34 +369,7 @@ export const BacktestDashboard: React.FC = () => {
             <hr className="border-line" />
 
             <div className="grid grid-cols-2 gap-md">
-              <div>
-                <label className="block text-[10px] font-bold text-muted uppercase mb-1">시작 월</label>
-                <input 
-                  type="month"
-                  value={params.startDate.slice(0, 7)}
-                  min={dateRange.min}
-                  max={params.endDate.slice(0, 7)}
-                  onChange={(e) => setParams({ ...params, startDate: `${e.target.value}-01` })}
-                  className="w-full font-bold text-xs p-sm bg-line/20 rounded-sm border-none focus:ring-1 focus:ring-primary"
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-muted uppercase mb-1">종료 월</label>
-                <input 
-                  type="month"
-                  value={params.endDate.slice(0, 7)}
-                  min={params.startDate.slice(0, 7)}
-                  max={dateRange.max}
-                  onChange={(e) => setParams({ ...params, endDate: `${e.target.value}-01` })}
-                  className="w-full font-bold text-xs p-sm bg-line/20 rounded-sm border-none focus:ring-1 focus:ring-primary"
-                />
-              </div>
-            </div>
-
-            <hr className="border-line" />
-
-            <div className="grid grid-cols-2 gap-md">
-              <div>
+              <div className={mode === 'dca' ? 'opacity-30 pointer-events-none' : ''}>
                 <label className="block text-[10px] font-bold text-muted uppercase mb-1">초기 투자금</label>
                 <div className="relative">
                   <input 
@@ -262,7 +381,7 @@ export const BacktestDashboard: React.FC = () => {
                   <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-muted">만원</span>
                 </div>
               </div>
-              <div>
+              <div className={mode === 'lump-sum' ? 'opacity-30 pointer-events-none' : ''}>
                 <label className="block text-[10px] font-bold text-muted uppercase mb-1">월 적립액</label>
                 <div className="relative">
                   <input 
@@ -356,12 +475,17 @@ export const BacktestDashboard: React.FC = () => {
             <AssetChart 
               results={results} 
               relativeMode={relativeMode} 
-              benchmarkId={benchmarkAssetId} 
+              benchmarkId={benchmarkAssetId}
+              exchangeRate={EXCHANGE_RATE}
             />
           </div>
         </section>
 
-        <KpiGrid results={results} isLumpSum={params.monthlyInstallment === 0} />
+        <KpiGrid 
+          results={results} 
+          isLumpSum={mode === 'lump-sum'} 
+          exchangeRate={EXCHANGE_RATE}
+        />
       </main>
 
       {toastMessage && (

@@ -1,15 +1,6 @@
 ﻿import { IsfUtils } from "../../../shared/core/utils.js";
 import { SANKEY_VALUE_MODES } from "./constants.js";
 
-const backupTimestampFormatter = new Intl.DateTimeFormat("ko-KR", {
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-  hour: "2-digit",
-  minute: "2-digit",
-  hour12: false,
-});
-
 export function formatCurrency(value) {
   return IsfUtils.formatMoney(value);
 }
@@ -53,11 +44,7 @@ export function formatSankeyDisplayValue(value, totalValue, valueMode = SANKEY_V
   return formatCurrency(safeValue);
 }
 
-export function formatBackupTimestamp(dateText) {
-  const parsed = Date.parse(String(dateText || ""));
-  if (!Number.isFinite(parsed)) {
-    return "-";
-  }
-  return backupTimestampFormatter.format(new Date(parsed));
+export function formatBackupTimestamp(timestamp) {
+  return IsfUtils.formatTimestamp(timestamp);
 }
 

@@ -106,6 +106,8 @@ body {
   border-radius: var(--rd-md);
   padding: var(--sp-sm);
   min-width: 180px;
+  max-width: 320px;
+  width: calc(100vw - 40px);
   animation: launcher-slide-down 0.2s ease-out;
 }
 

@@ -60,6 +60,8 @@ export interface SimulationResult {
   isLiquidated?: boolean;
   /** 청산 날짜 */
   liquidationDate?: string;
+  /** 최종 예상 연 배당금 (원) */
+  finalAnnualDividend: number;
   /** 시계열 결과 (그래프용) */
   history: {
     date: string;

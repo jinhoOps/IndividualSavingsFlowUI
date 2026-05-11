@@ -60,6 +60,21 @@ describe('BacktestEngine', () => {
       // ... 복리 효과로 121만원보다 커야 함
       expect(result.finalValue).toBeGreaterThan(1210000);
     });
+
+    it('최종 연 배당금을 올바르게 계산해야 한다', () => {
+      const result = BacktestEngine.run(sampleAsset, {
+        initialPrincipal: 1000000,
+        monthlyInstallment: 0,
+        startDate: '2023-01-01',
+        endDate: '2023-04-01',
+        reinvestDividends: false
+      });
+
+      // 마지막 달(4월) 보유 가치: 121만원
+      // 마지막 달 배당률: 0.01 (1%)
+      // 연 배당금: 121만원 * 1% * 12 = 145,200원
+      expect(result.finalAnnualDividend).toBe(145200);
+    });
   });
 
   describe('Installment Simulation (적립식)', () => {

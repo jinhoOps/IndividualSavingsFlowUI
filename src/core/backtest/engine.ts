@@ -107,6 +107,12 @@ export class BacktestEngine {
     const finalValue = history[history.length - 1].value;
     const totalReturn = totalPrincipal > 0 ? (finalValue - totalPrincipal) / totalPrincipal : 0;
 
+    // 최종 연 배당금 계산 (마지막 데이터 포인트의 배당률 기준 연율화)
+    const lastPoint = filteredData[filteredData.length - 1];
+    const finalAnnualDividend = !isLiquidated && lastPoint.dividendYield 
+      ? Math.round(currentShares * lastPoint.price * lastPoint.dividendYield * 12)
+      : 0;
+
     // CAGR 계산 (거치식 전용)
     const years = filteredData.length / 12;
     const cagr = years > 0 && finalValue > 0 && initialPrincipal > 0 
@@ -120,6 +126,7 @@ export class BacktestEngine {
       finalValue,
       totalPrincipal,
       totalReturn,
+      finalAnnualDividend,
       cagr: isFinite(cagr) ? cagr : 0,
       irr,
       mdd: maxDrawdown,

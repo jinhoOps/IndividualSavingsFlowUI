@@ -30,7 +30,7 @@ import {
 } from "./modules/storage-manager.js";
 
 import {
-  persistStep1Snapshot, listSnapshots, getSnapshotById
+  persistStep1Snapshot, listSnapshots, getSnapshotById, deleteSnapshot
 } from "./modules/snapshot-manager.js";
 
 import {
@@ -227,9 +227,12 @@ function bindControls() {
 async function initializeSnapshotSelector() {
   if (!dom.snapshotSelector) return;
   const list = await listSnapshots({ getHubStorage: () => window.IsfStorageHub });
+  const defaultOption = '<option value="">과거 시점 선택...</option>';
   if (list && list.length > 0) {
-    dom.snapshotSelector.innerHTML = '<option value="">과거 시점 선택...</option>' + 
+    dom.snapshotSelector.innerHTML = defaultOption + 
       list.map(s => `<option value="${s.id}">${formatBackupTimestamp(s.updatedAt)}</option>`).join("");
+  } else {
+    dom.snapshotSelector.innerHTML = defaultOption;
   }
 }
 

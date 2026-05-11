@@ -2,19 +2,16 @@
 kanban-plugin: basic
 ---
 
-# TODO (v0.9.8)
+# TODO (v0.9.22)
 
-## In Progress (v0.9.12)
-- [ ] **Phase 7: 주요 지수 및 자산 백테스트 시뮬레이터 개선 (Issue #7)**:
+## In Progress (v0.9.22)
+- [x] **Phase 7: 주요 지수 및 자산 백테스트 시뮬레이터 개선 (Issue #7)**:
     - [x] TDD 기반 금융 연산 엔진 (CAGR, IRR, MDD, TR) 구현.
     - [x] MDD 계산 로직 수정 (자금 투입 왜곡 방지).
     - [x] 자산 선택 UX 개선 (전체 선택/해제, 통화 단위 표기).
     - [x] 데이터 범위 기반 동적 기간 설정.
-- [ ] **Phase 6: 포트폴리오 리밸런싱 가이드 개선 (Step 3)**:
-    - [x] 기대 수익률(Expected Yield) 필드 추가 및 가중 평균 계산.
-    - [x] 데이터 바인딩 무결성 강화 (Number 타입 강제).
-
-## Pending / Not Started
+    - [x] 시뮬레이션 차트 고도화 (호버 툴팁, Y축 그리드, 원금/수익률 표시).
+    - [x] KPI 요약 카드 고도화 (최종 자산, 연 배당금, 누적 수익률).
 - [ ] **Phase 8: 지출 데이터 과거 비교 분석 (Issue #4)**:
     - [ ] 데이터 브릿지 확장: `SnapshotManager`를 통한 과거 스냅샷 데이터 로드 API 강화.
     - [ ] Grouped Bar Chart: 카테고리별 [이전] vs [현재] 지출 비교 막대 그래프 구현.
