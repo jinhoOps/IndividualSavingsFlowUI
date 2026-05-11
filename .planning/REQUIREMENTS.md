@@ -14,52 +14,44 @@ Requirements for milestone v1.1: 시뮬레이션 고도화 및 온보딩 UX.
 - [x] **SIM-04**: 사용자가 PR(미투자)과 TR(재투자) 사이 영역 채우기를 통해 복리 효과 차이를 직관적으로 인지할 수 있다
 - [x] **SIM-05**: 사용자가 차트 상단의 KPI 요약 카드에서 최종 자산, 최종 연 배당금, 누적 수익률 등 핵심 지표를 한눈에 확인할 수 있다
 
-### 테이블 정리 (TBL)
-- [x] **TBL-01**: Step 2 테이블 헤더에서 불필요한 (만원) 표기를 제거하여 시각적 잡음을 줄인다
-
 ### 온보딩 (ONB)
 - [x] **ONB-01**: Step 1에 처음 접속한 사용자가 프리셋 선택 흐름을 안내하는 Spotlight 가이드를 볼 수 있다
 - [x] **ONB-02**: 사용자가 온보딩 가이드를 닫으면 이후 재접속 시 다시 표시되지 않는다
 
-## v1.2 Requirements (Current)
+## v1.2 Requirements (Completed)
 
-### 백테스트 시뮬레이터 (BACK) - Issue #7
-- [ ] **BACK-01**: 사용자가 나스닥, S&P 500 등 주요 지수와 자산의 과거 시계열 데이터를 선택하여 백테스트를 수행할 수 있다.
-- [ ] **BACK-02**: 사용자가 거치식(Lump Sum) 또는 적립식(Installment) 투자 방식을 선택하고 기간을 설정할 수 있다.
-- [ ] **BACK-03**: 사용자가 배당 재투자(TR) 옵션을 켜거나 꺼서 복리 효과의 차이를 시뮬레이션할 수 있다.
-- [ ] **BACK-04**: 사용자가 일반 비교 모드와 특정 자산 기준의 상대 비교 모드를 전환하여 차트를 볼 수 있다.
-- [ ] **BACK-05**: 사용자가 CAGR, IRR, MDD, 누적 수익률 등 핵심 KPI 지표를 실시간으로 확인할 수 있다.
+### 백테스트 시뮬레이터 (BACK)
+- [x] **BACK-01**: 사용자가 주요 지수와 자산의 과거 시계열 데이터를 선택하여 백테스트를 수행할 수 있다. (v0.9.6)
+- [x] **BACK-02**: 사용자가 투자 방식(거치/적립) 및 기간을 설정할 수 있다. (v0.9.6)
+- [x] **BACK-03**: 사용자가 배당 재투자(TR) 옵션을 통해 복리 효과 차이를 확인할 수 있다. (v0.9.6)
+- [x] **BACK-04**: 사용자가 특정 자산 기준의 상대 비교 모드를 전환하여 볼 수 있다. (v0.9.6)
+- [x] **BACK-05**: 사용자가 CAGR, IRR, MDD 등 핵심 KPI 지표를 실시간으로 확인할 수 있다. (v0.9.6)
+- [x] **BACK-06**: 사용자가 환율을 수동 설정하고 배당금을 KRW로 환산하여 볼 수 있다. (v0.9.42)
 
-## Future Requirements
+### 통합 허브 및 비교 (HUB)
+- [x] **HUB-01**: 사용자가 과거 지출 스냅샷을 저장하고 현재와 카테고리별로 비교할 수 있다. (v0.9.43)
+- [x] **HUB-02**: 사용자가 은행/카드 문자를 붙여넣어 지출 항목을 자동으로 등록할 수 있다. (v0.9.44)
+- [x] **HUB-03**: 사용자가 파트너의 데이터를 병합하여 통합 가계 흐름을 시각화할 수 있다. (v0.9.44)
 
-### 포트폴리오 (PORT)
-- **PORT-01**: Step 1의 투자 여력 데이터를 기반으로 계좌/종목 비중 구성 및 시각화(도넛, Sankey) 구현
-- **PORT-02**: 목표 비중(Target) vs 실제 보유(Actual) 격차 분석 및 리밸런싱 가이드 통합
+## Future Requirements (v1.3 AI Integration)
 
-### 시각화 확장 (VIZ)
-- **VIZ-01**: Step 1 지출 내역 이전 데이터 비교 막대 그래프 추가
-- **VIZ-02**: 현금 흐름 Sankey 다이어그램 모바일 가로모드 최적화 및 확대/축소(Zoom/Pan) 기능
-
-## Out of Scope
-
-| Feature | Reason |
-|---------|--------|
-| 실시간 시세 연동 | 정적 데이터 백테스트 중심 철학 |
-| 개별 종목 정밀 분석 | 지수 및 자산군(Asset Class) 레벨 시뮬레이션 지향 |
+- **AI-01**: 사용자의 지출 패턴을 AI가 분석하여 카테고리 최적화 제안을 할 수 있다.
+- **AI-02**: 사용자가 AI에게 세금 정책 및 투자 전략에 대해 질문하고 답변을 받을 수 있다.
 
 ## Traceability
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SIM-01~04 | Phase 3 | Completed |
-| SIM-05, TBL-01 | Phase 4 | Completed |
+| SIM-01~05 | Phase 3/4 | Completed |
 | ONB-01~02 | Phase 5 | Completed |
-| BACK-01~05 | Phase 7 | In Progress |
+| BACK-01~06 | Phase 7 | Completed |
+| HUB-01 | Phase 8 | Completed |
+| HUB-02~03 | Phase 9 | Completed |
 
 **Coverage:**
-- v1.2 requirements: 5 total
-- Mapped to phases: 5
+- v1.2 requirements: 9 total
+- Mapped to phases: 9
 - Unmapped: 0 ✓
 
 ---
-*Last updated: 2026-05-08 after Issue #7 planning*
+*Last updated: 2026-05-11 after Milestone v1.2 completion*
