@@ -1,15 +1,60 @@
-# Testing Strategy
+# Testing Patterns
 
-## Quality Pillars
-1. **Visual Integrity**: UI/UX must not break across common mobile resolutions (760px and below).
-2. **Logic Accuracy**: Financial calculations must match the "가계 추이 계산 검증" table logic.
-3. **Data Persistence**: State must persist correctly across reloads and inter-step navigation.
+**Analysis Date:** [YYYY-MM-DD]
 
-## Verification Procedures
-- **Manual UAT**: Core flow validation (Input → Apply → View Sankey).
-- **Regression Check**: Verify large file edits haven't truncated media queries or utility classes.
-- **Unit Logic Audit**: Periodic check of `calculator.js` against known test samples.
+## Test Framework
 
-## Current Limitations
-- No automated unit testing framework (e.g., Vitest/Jest) is integrated to maintain the "No-Build" simplicity.
-- Verification relies on agent-led manual audits and user feedback.
+**Runner:**
+- Vitest (`^4.1.5`)
+- Config: Managed primarily via default Vite config (`vite.config.ts`).
+
+**Run Commands:**
+```bash
+npx vitest              # Run all tests
+```
+
+## Test File Organization
+
+**Location:**
+- Co-located with the implementation logic in core directories.
+
+**Naming:**
+- `*.test.ts` or `*.test.js`
+- Examples: `src/core/backtest/engine.test.ts`, `shared/core/clipboard-parser.test.js`
+
+## Test Structure
+
+**Suite Organization:**
+```typescript
+import { describe, it, expect } from 'vitest';
+
+describe('BacktestEngine', () => {
+  describe('LumpSum Simulation (거치식)', () => {
+    it('배당 재투자 없이 정확한 수익률을 계산해야 한다', () => {
+      // Setup
+      // Execute
+      // Assert
+      expect(result.totalReturn).toBeCloseTo(0.21, 2);
+    });
+  });
+});
+```
+
+**Patterns:**
+- Extensive use of `describe` blocks to group related test cases by logical feature or edge case.
+- `expect().toBeCloseTo()` is heavily utilized for floating-point financial calculations and ROI.
+- Test case descriptions (`it`) are written descriptively in Korean.
+
+## Manual Validation
+
+**UI/UX Responsiveness:**
+- Manual validation is strictly required for UI/UX responsiveness.
+- Focus specifically on the `760px` breakpoint to ensure seamless transition between mobile and desktop views.
+
+**Release & Version Sync:**
+- Version sync verification is required prior to build.
+- Ensures `package.json` version (`v0.10.0`) properly propagates to `__APP_VERSION__` and `manifest.webmanifest` via `npm run sync-version`.
+
+---
+
+*Testing analysis: [YYYY-MM-DD]*
