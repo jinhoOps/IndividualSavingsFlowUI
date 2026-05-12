@@ -1,29 +1,28 @@
 ---
-milestone: "v1.2"
-name: "백테스트 시뮬레이터 및 자산 관리 확장"
-status: "planning"
+milestone: "v1.4"
+name: "코어 안정화 및 UX 고도화 (Phase 11)"
+status: "active"
 progress:
-  completed_phases: 5
-  total_phases: 9
+  completed_phases: 10
+  total_phases: 12
 ---
 
 # Project State
 
 ## Current Position
 
-Phase: 7
+Phase: 11
 Plan: 01
-Status: Planned
-Last activity: 2026-05-08 — Phase 07 Backtest Simulator planning complete
+Status: In Progress
+Last activity: 2026-05-12 — Addressing code review findings and stabilizing v0.9.48
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-03)
+See: .planning/PROJECT.md (updated 2026-05-12)
 
-**Core value:** 단순한 프리셋 선택만으로 즉각적인 자산 시각화 결과 제공
-**Current focus:** Phase 07 Backtest Simulator (Step 4)
+**Core value:** 정적 웹 기반의 고성능 자산 관리 도구 (AI 의존성 제거)
+**Current focus:** Phase 11 Stability & UX Polish
 
 ## Key Decisions
-- **Step 4 (React/TS)**: 복잡한 대시보드 구현을 위해 React 19와 TypeScript를 표준으로 도입함. (D-01, D-03)
-- **Static Data Architecture**: 과거 데이터의 안정적 처리를 위해 정적 JSON 파일 방식을 채택함. (D-02)
-- **Relative Comparison**: 자산 간 성과 비교를 극대화하기 위한 상대 비교 모드를 핵심 UI 기능으로 정의함. (BACK-04)
+- **AI Removal (D-04)**: 시스템 복잡성 감소 및 정적 웹의 오프라인 안정성을 위해 실험적 AI 기능을 제거하고 코어 엔진 고도화에 집중함.
+- **Phase 11 Transition**: Phase 10(AI)을 취소하고 즉시 Phase 11(Stability)로 전환하여 프로덕션 수준의 품질 확보.

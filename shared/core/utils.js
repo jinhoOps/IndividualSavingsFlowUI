@@ -17,7 +17,7 @@
     }
     const manValue = Math.round(numericValue / 10000);
     
-    if (manValue >= 100000) {
+    if (manValue >= 10000) {
       const eok = Math.floor(manValue / 10000);
       const remainMan = manValue % 10000;
       if (remainMan === 0) {

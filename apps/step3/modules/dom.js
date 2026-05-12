@@ -36,8 +36,8 @@ export const IsfDom = {
         ${items.map(as => `
           <li class="guide-item">
             <div class="guide-info">
-              <span class="guide-name">${as.name}</span>
-              <span class="guide-ticker">${as.ticker || ''}</span>
+              <span class="guide-name">${IsfUtils.escapeHtml(as.name)}</span>
+              <span class="guide-ticker">${IsfUtils.escapeHtml(as.ticker || '')}</span>
             </div>
             <div class="guide-action">
               <span class="guide-amount">${Math.round(as.buyAmount / 10000).toLocaleString()} 만원</span>
@@ -68,7 +68,7 @@ export const IsfDom = {
         ${snapshots.map(s => `
           <div class="snapshot-item">
             <div class="snapshot-info">
-              <span class="snapshot-name">${s.name}</span>
+              <span class="snapshot-name">${IsfUtils.escapeHtml(s.name)}</span>
               <span class="snapshot-date">${new Date(s.createdAt).toLocaleDateString()}</span>
             </div>
             <div class="snapshot-actions">
@@ -121,7 +121,7 @@ export const IsfDom = {
             <select class="account-type-select" data-id="${acc.id}">
               ${types.map(t => `<option value="${t}" ${acc.type === t ? 'selected' : ''}>${t}</option>`).join('')}
             </select>
-            <h3 class="account-name">${acc.name}</h3>
+            <h3 class="account-name">${IsfUtils.escapeHtml(acc.name)}</h3>
           </div>
           <div class="account-actions">
             <button class="btn btn-ghost btn-xs btn-remove-account" data-id="${acc.id}">삭제</button>
@@ -148,8 +148,8 @@ export const IsfDom = {
     return `
       <div class="asset-row" data-asset-id="${as.id}">
         <div class="col-name">
-          <input type="text" class="input-minimal" value="${as.name}" data-field="name" data-id="${as.id}" placeholder="종목명">
-          <input type="text" class="input-minimal ticker" value="${as.ticker}" data-field="ticker" data-id="${as.id}" placeholder="Ticker">
+          <input type="text" class="input-minimal" value="${IsfUtils.escapeHtml(as.name)}" data-field="name" data-id="${as.id}" placeholder="종목명">
+          <input type="text" class="input-minimal ticker" value="${IsfUtils.escapeHtml(as.ticker)}" data-field="ticker" data-id="${as.id}" placeholder="Ticker">
         </div>
         <div class="col-ratio">
           <input type="number" class="input-minimal" value="${as.targetRatio}" data-field="targetRatio" data-id="${as.id}" step="0.1">

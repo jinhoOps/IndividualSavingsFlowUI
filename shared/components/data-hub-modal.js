@@ -338,10 +338,3 @@
 
   customElements.define("data-hub-modal", DataHubModal);
 })(window);
-v>
-      `;
-    }
-  }
-
-  customElements.define("data-hub-modal", DataHubModal);
-})(window);

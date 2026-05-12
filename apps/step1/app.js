@@ -220,7 +220,6 @@ function bindControls() {
   if (dom.saveSnapshotBtn) dom.saveSnapshotBtn.addEventListener("click", handleSaveSnapshot);
   if (dom.deleteSnapshotBtn) dom.deleteSnapshotBtn.addEventListener("click", handleDeleteSnapshot);
 
-  // Phase 09: Smart Clipboard Parser
   if (dom.openSmartAddBtn) dom.openSmartAddBtn.addEventListener("click", handleOpenSmartAdd);
   if (dom.closeSmartAddBtn) dom.closeSmartAddBtn.addEventListener("click", handleCloseSmartAdd);
   if (dom.smartAddInput) dom.smartAddInput.addEventListener("input", handleSmartAddInput);
@@ -238,15 +237,24 @@ function handleOpenSmartAdd() {
   dom.smartAddInput.value = "";
   dom.smartAddResult.hidden = true;
   dom.applySmartAddBtn.disabled = true;
-  
-  // Populate category options
-  const options = ['<option value="new">+ 새 항목으로 추가</option>']
-    .concat(state.inputs.expenseItems.map(item => `<option value="${item.name}">${item.name} (${item.group || '미분류'})</option>`));
-  dom.smartAddCategory.innerHTML = options.join("");
-  
+
+  // Populate category options safely
+  dom.smartAddCategory.innerHTML = "";
+
+  const defaultOption = document.createElement("option");
+  defaultOption.value = "new";
+  defaultOption.textContent = "+ 새 항목으로 추가";
+  dom.smartAddCategory.appendChild(defaultOption);
+
+  state.inputs.expenseItems.forEach(item => {
+    const option = document.createElement("option");
+    option.value = item.name;
+    option.textContent = `${item.name} (${item.group || '미분류'})`;
+    dom.smartAddCategory.appendChild(option);
+  });
+
   dom.smartAddInput.focus();
 }
-
 function handleCloseSmartAdd() {
   dom.smartAddModal.classList.remove("is-active");
   setTimeout(() => { dom.smartAddModal.hidden = true; }, 250);
@@ -545,7 +553,7 @@ async function handleSaveSnapshot() {
 
 async function handleDeleteSnapshot() {
   if (!dom.snapshotSelector || !dom.snapshotSelector.value) {
-    alert("삭제할 스냅샷을 먼저 선택해주세요.");
+    window.IsfFeedback.showFeedback(dom.snapshotSelector, "삭제할 스냅샷을 먼저 선택해주세요.", true);
     return;
   }
   if (!window.confirm("선택한 스냅샷을 삭제할까요?")) return;
@@ -909,7 +917,18 @@ function renderItemList(group, items, options = {}) {
 
 function renderIncomeItemHtml(item, opts) {
   const isEditing = !!opts.editing;
-  return `<div class="income-row"><input type="text" value="${item.name}" data-income-id="${item.id}" data-field="name" ${isEditing ? "" : "readonly"} placeholder="이름" /><input type="number" value="${IsfUtils.toMan(item.amount)}" data-income-id="${item.id}" data-field="amount" ${isEditing ? "" : "readonly"} inputmode="decimal" placeholder="금액" />${isEditing ? `<button class="income-remove" data-remove-income="${item.id}" title="삭제"><svg class="income-remove-icon" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg><span class="income-remove-text">삭제</span></button>` : ""}</div>`;
+  return `
+    <div class="income-row">
+      <input type="text" value="${IsfUtils.escapeHtml(item.name)}" data-income-id="${item.id}" data-field="name" ${isEditing ? "" : "readonly"} placeholder="이름" />
+      <input type="number" value="${IsfUtils.toMan(item.amount)}" data-income-id="${item.id}" data-field="amount" ${isEditing ? "" : "readonly"} inputmode="decimal" placeholder="금액" />
+      ${isEditing ? `
+        <button class="income-remove" data-remove-income="${item.id}" title="삭제">
+          <svg class="income-remove-icon" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+          <span class="income-remove-text">삭제</span>
+        </button>
+      ` : ""}
+    </div>
+  `;
 }
 
 function renderAllocationItemHtml(group, item, opts) {
@@ -917,9 +936,49 @@ function renderAllocationItemHtml(group, item, opts) {
   const meta = buildAllocationMetaText(item, { showMaturity: group !== "expense" });
   const metaHtml = (!isEditing && meta) ? `<div class="allocation-meta">${meta}</div>` : "";
   const commonClasses = `${group}-row ${isEditing ? "is-editing" : ""}`;
-  if (!isEditing) return `<div class="${commonClasses}"><span class="${group}-name">${item.name}</span><span class="value">${formatCurrency(item.amount)}</span>${metaHtml}</div>`;
-  const isSavings = group === "savings"; const isInvest = group === "invest";
-  return `<div class="${commonClasses}"><div class="editor-field"><label class="editor-field-label">이름</label><input type="text" value="${item.name}" data-field="name" data-editor-id="${item.id}" placeholder="항목명" /></div><div class="editor-field"><label class="editor-field-label">금액(만원)</label><input type="number" value="${IsfUtils.toMan(item.amount)}" data-field="amount" data-editor-id="${item.id}" inputmode="decimal" placeholder="금액" /></div><div class="editor-field"><label class="editor-field-label">그룹</label><input type="text" value="${item.group || ""}" data-field="group" data-editor-id="${item.id}" list="${group}GroupOptions" placeholder="그룹" /></div>${isSavings ? `<div class="editor-field"><label class="editor-field-label">연이율(%)</label><input type="number" value="${item.annualRate || ""}" data-field="annualRate" data-editor-id="${item.id}" step="0.1" inputmode="decimal" placeholder="기본값" /></div>` : ""}${(isSavings || isInvest) ? `<div class="editor-field"><label class="editor-field-label">만기/해지월</label><input type="month" value="${item.maturityMonth || ""}" data-field="maturityMonth" data-editor-id="${item.id}" /></div>` : ""}<button class="allocation-remove" data-remove-editor-item="${item.id}" title="삭제">×</button></div>`;
+  
+  if (!isEditing) {
+    return `
+      <div class="${commonClasses}">
+        <span class="${group}-name">${IsfUtils.escapeHtml(item.name)}</span>
+        <span class="value">${formatCurrency(item.amount)}</span>
+        ${metaHtml}
+      </div>
+    `;
+  }
+  
+  const isSavings = group === "savings"; 
+  const isInvest = group === "invest";
+  
+  return `
+    <div class="${commonClasses}">
+      <div class="editor-field">
+        <label class="editor-field-label">이름</label>
+        <input type="text" value="${IsfUtils.escapeHtml(item.name)}" data-field="name" data-editor-id="${item.id}" placeholder="항목명" />
+      </div>
+      <div class="editor-field">
+        <label class="editor-field-label">금액(만원)</label>
+        <input type="number" value="${IsfUtils.toMan(item.amount)}" data-field="amount" data-editor-id="${item.id}" inputmode="decimal" placeholder="금액" />
+      </div>
+      <div class="editor-field">
+        <label class="editor-field-label">그룹</label>
+        <input type="text" value="${IsfUtils.escapeHtml(item.group || "")}" data-field="group" data-editor-id="${item.id}" list="${group}GroupOptions" placeholder="그룹" />
+      </div>
+      ${isSavings ? `
+        <div class="editor-field">
+          <label class="editor-field-label">연이율(%)</label>
+          <input type="number" value="${item.annualRate || ""}" data-field="annualRate" data-editor-id="${item.id}" step="0.1" inputmode="decimal" placeholder="기본값" />
+        </div>
+      ` : ""}
+      ${(isSavings || isInvest) ? `
+        <div class="editor-field">
+          <label class="editor-field-label">만기/해지월</label>
+          <input type="month" value="${item.maturityMonth || ""}" data-field="maturityMonth" data-editor-id="${item.id}" />
+        </div>
+      ` : ""}
+      <button class="allocation-remove" data-remove-editor-item="${item.id}" title="삭제">×</button>
+    </div>
+  `;
 }
 
 function getPendingSummaryText(inputs) {
