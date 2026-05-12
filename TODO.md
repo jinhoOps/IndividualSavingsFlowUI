@@ -2,6 +2,12 @@
 kanban-plugin: basic
 ---
 
+# TODO (v0.10.0)
+
+## Done (v0.10.0)
+- [x] **v0.9.x 통합 병합**: 보안(XSS), 메모리(EventListener), 데이터(Aggregate) 결함이 모두 수정된 안정화 버전 메인 브랜치 병합.
+- [x] **버전 범프**: v0.10.0으로 마일스톤 업데이트 및 PWA 자산 동기화.
+
 # TODO (v0.9.53)
 
 ## Done (v0.9.53)

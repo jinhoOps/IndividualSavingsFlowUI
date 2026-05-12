@@ -11,10 +11,10 @@ progress:
 
 ## Current Position
 
-Phase: 11
+Phase: 12
 Plan: 01
 Status: In Progress
-Last activity: 2026-05-12 — v0.9.53 Release: 코드 리뷰 피드백 반영. 부부 데이터 병합 시 sanitizeInputs 추가(보안), AppHeader 이벤트 리스너 누수 방지, 비교 엔진 동일 이름 항목 합산 처리(데이터 유실 방지), 시뮬레이션 배당 수익률 상수 추출.
+Last activity: 2026-05-12 — v0.10.0 Release: 메인 브랜치 병합 및 마일스톤 전환. v0.9.x대의 모든 안정화 작업(보안, 메모리, 데이터 정합성)을 포함한 코어 완성본. Phase 12(종합 고도화) 시작.
 
 ## Project Reference
 
