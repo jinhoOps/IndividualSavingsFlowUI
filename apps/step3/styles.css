@@ -1,0 +1,314 @@
+/* Step 3 Dashboard Grid */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+@media (min-width: 1024px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas: 
+      "summary visual"
+      "editor editor"
+      "guide guide";
+  }
+  .summary-section { grid-area: summary; }
+  .visual-section { grid-area: visual; }
+  .editor-section { grid-area: editor; }
+  .guide-section { grid-area: guide; }
+}
+
+/* Summaries */
+.summary-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+}
+
+.card {
+  padding: 1rem;
+  background: var(--panel);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.75rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.card .label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-bottom: 0.25rem;
+}
+
+.card .value {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  color: var(--primary);
+}
+
+/* Account Card & Editor */
+.account-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin-top: 1rem;
+}
+
+.account-card {
+  background: var(--panel);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1rem;
+  padding: 1.25rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.account-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.account-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.account-type-badge {
+  background: var(--primary);
+  color: white;
+  padding: 0.2rem 0.6rem;
+  border-radius: 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.account-name {
+  margin: 0;
+  font-size: 1.1rem;
+  font-family: var(--font-display);
+}
+
+/* Asset List Table */
+.asset-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.asset-header, .asset-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr 40px;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.5rem 0;
+}
+
+.asset-header {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.asset-row {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.asset-row:last-child {
+  border-bottom: none;
+}
+
+.col-name {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.col-name .ticker {
+  font-size: 0.7rem;
+  color: var(--primary);
+  text-transform: uppercase;
+  border: none;
+}
+
+/* Minimal Inputs */
+.input-minimal {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid transparent;
+  color: var(--text);
+  padding: 0.25rem 0;
+  width: 100%;
+  font-size: 0.9rem;
+  transition: border-color 0.2s;
+}
+
+.input-minimal:focus {
+  outline: none;
+  border-bottom-color: var(--primary);
+}
+
+.input-minimal[type="number"] {
+  text-align: right;
+}
+
+.btn-remove-asset {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-remove-asset:hover {
+  color: var(--danger);
+}
+
+.btn-add-asset {
+  margin-top: 1rem;
+  align-self: flex-start;
+}
+
+/* Guide Section */
+.guide-list {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.guide-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.03);
+  border-left: 3px solid var(--primary);
+  border-radius: 0.5rem;
+}
+
+.guide-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.guide-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.guide-ticker {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.guide-action {
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+}
+
+.guide-amount {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  color: var(--primary);
+}
+
+/* Snapshot List */
+.snapshot-controls-wrap {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.snapshot-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.snapshot-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 0.4rem;
+}
+
+.snapshot-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.snapshot-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.snapshot-date {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.snapshot-actions {
+  display: flex;
+  gap: 0.25rem;
+}
+
+/* Account Editor Improvements */
+.account-type-select {
+  background: rgba(234, 91, 42, 0.1);
+  color: var(--primary);
+  border: 1px solid var(--primary);
+  padding: 0.15rem 0.4rem;
+  border-radius: 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.account-type-select:focus {
+  outline: none;
+  background: var(--primary);
+  color: white;
+}
+
+.account-name-input {
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-size: 1.1rem;
+  font-family: var(--font-display);
+  border-bottom: 1px solid transparent;
+  padding: 0.1rem 0;
+  width: auto;
+}
+
+.account-name-input:focus {
+  outline: none;
+  border-bottom-color: var(--primary);
+}
+
+/* Scroll Adjustment for mobile */
+@media (max-width: 600px) {
+  .asset-header, .asset-row {
+    grid-template-columns: 1.5fr 1fr 1fr 1fr 30px;
+    font-size: 0.8rem;
+  }
+  .input-minimal { font-size: 0.85rem; }
+}

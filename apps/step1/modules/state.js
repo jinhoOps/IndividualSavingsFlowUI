@@ -55,5 +55,11 @@ export const state = {
   isDashboardMode: false,
   viewModeGuideClosedTemporarily: false,
   pwaVersionLastCheckedAt: 0,
+  projectionOptions: {
+    mode: "TR",
+    showFlow: true,
+    showBalance: true,
+    showDividend: false
+  }
 };
 

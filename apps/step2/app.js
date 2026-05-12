@@ -409,6 +409,15 @@ function bindEvents() {
       renderDividendSimulation();
     });
   }
+
+  ["optShowAsset", "optShowDividend", "optShowPR", "optShowTR"].forEach(id => {
+    if (dom[id]) {
+      dom[id].addEventListener("change", () => {
+        state.displayOptions[id.replace("optShow", "show").charAt(0).toLowerCase() + id.replace("optShow", "show").slice(1)] = dom[id].checked;
+        renderDividendSimulation();
+      });
+    }
+  });
 }
 
 async function initializeBackupStore() {

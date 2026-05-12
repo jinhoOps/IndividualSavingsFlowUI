@@ -1,30 +1,28 @@
 ---
-milestone: "v1.1"
-name: "시뮬레이션 고도화 및 온보딩 UX"
-status: "executing"
+milestone: "v1.4"
+name: "코어 안정화 및 UX 고도화 (Phase 11)"
+status: "active"
 progress:
-  completed_phases: 2
-  total_phases: 3
+  completed_phases: 10
+  total_phases: 12
 ---
 
 # Project State
 
 ## Current Position
 
-Phase: 5
-Plan: 1
-Status: Complete
-Last activity: 2026-05-04 — Phase 5 Spotlight Onboarding implemented with safety refactoring
+Phase: 11
+Plan: 01
+Status: In Progress
+Last activity: 2026-05-12 — v0.9.53 Release: 코드 리뷰 피드백 반영. 부부 데이터 병합 시 sanitizeInputs 추가(보안), AppHeader 이벤트 리스너 누수 방지, 비교 엔진 동일 이름 항목 합산 처리(데이터 유실 방지), 시뮬레이션 배당 수익률 상수 추출.
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-03)
+See: .planning/PROJECT.md (updated 2026-05-12)
 
-**Core value:** 단순한 프리셋 선택만으로 즉각적인 자산 시각화 결과 제공
-**Current focus:** Phase 5 Spotlight Onboarding Guide
+**Core value:** 정적 웹 기반의 고성능 자산 관리 도구 (AI 의존성 제거)
+**Current focus:** Phase 11 Stability & UX Polish
 
 ## Key Decisions
-- **UX Sequence**: 프리셋 적용 직후 고급 설정을 자동 노출하여 사용자의 세부 조정을 유도함.
-- **Editor Efficiency**: 편집기 내 변경 사항이 있을 때만 적용 버튼을 활성화하여 UX 명확성 증대.
-- **High-Fidelity Templates**: 12대 세부 항목 기반 고해상도 프리셋으로 현실감 있는 가계 시뮬레이션 제공.
-- **Lightweight Charting**: DESIGN.md 원칙을 준수하는 경량 차트 라이브러리 도입 허용.
+- **AI Removal (D-04)**: 시스템 복잡성 감소 및 정적 웹의 오프라인 안정성을 위해 실험적 AI 기능을 제거하고 코어 엔진 고도화에 집중함.
+- **Phase 11 Transition**: Phase 10(AI)을 취소하고 즉시 Phase 11(Stability)로 전환하여 프로덕션 수준의 품질 확보.

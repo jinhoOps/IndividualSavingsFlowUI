@@ -165,6 +165,22 @@
       }).then(c => c ? c.value : null);
     },
 
+    async listStep1Snapshots() {
+      const rows = await perform(STORES.STEP1, "readonly", (s) => s.getAll());
+      return (rows || []).sort((a, b) => b.updatedAt - a.updatedAt);
+    },
+
+    async getStep1SnapshotById(id) {
+      if (!id) return null;
+      return perform(STORES.STEP1, "readonly", (s) => s.get(id));
+    },
+
+    async deleteStep1Snapshot(id) {
+      if (!id) return false;
+      await perform(STORES.STEP1, "readwrite", (s) => s.delete(id));
+      return true;
+    },
+
     async saveStep2Entry(data) {
       const entry = {
         ...data,
@@ -239,4 +255,8 @@
   global.IsfStorageHub = StorageHub;
 
 })(window);
+
+export const IsfStorageHub = window.IsfStorageHub;
+export const IsfHubStorage = window.IsfHubStorage;
+
 

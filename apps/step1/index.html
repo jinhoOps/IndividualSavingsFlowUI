@@ -101,6 +101,30 @@
           <p id="projectionMeta" class="hint"></p>
         </div>
         <p class="hint projection-brief">요약: 순자산 = 현금 + 저축 + 투자 - 부채</p>
+        
+        <div class="projection-options" style="margin-top: 12px; margin-bottom: 12px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+          <div class="opt-group" style="display: flex; align-items: center; gap: 8px;">
+            <span class="muted" style="font-size: 0.8rem;">시뮬레이션 모드:</span>
+            <div class="tab-list tab-list--sm" role="tablist">
+              <button id="modeTR" class="tab-btn tab-btn--sm is-active" data-mode="TR" role="tab" aria-selected="true">TR (재투자)</button>
+              <button id="modePR" class="tab-btn tab-btn--sm" data-mode="PR" role="tab" aria-selected="false">PR (미투자)</button>
+            </div>
+          </div>
+          <div style="width: 1px; height: 14px; background: var(--line); margin: 0 4px;"></div>
+          <div class="opt-group" style="display: flex; align-items: center; gap: 8px;">
+            <span class="muted" style="font-size: 0.8rem;">표시 컬럼:</span>
+            <label class="view-opt-label" style="font-size: 0.85rem; display: flex; align-items: center; gap: 4px; cursor: pointer;">
+              <input type="checkbox" id="colShowFlow" checked /> 흐름
+            </label>
+            <label class="view-opt-label" style="font-size: 0.85rem; display: flex; align-items: center; gap: 4px; cursor: pointer;">
+              <input type="checkbox" id="colShowBalance" checked /> 잔액
+            </label>
+            <label class="view-opt-label" style="font-size: 0.85rem; display: flex; align-items: center; gap: 4px; cursor: pointer;">
+              <input type="checkbox" id="colShowDividend" /> 연배당
+            </label>
+          </div>
+        </div>
+
         <details class="formula formula-toggle">
           <summary>자세히 보기</summary>
           <div class="formula-body">
@@ -132,6 +156,27 @@
             </thead>
             <tbody></tbody>
           </table>
+        </div>
+      </section>
+
+      <section class="panel comparison-panel" aria-labelledby="comparisonTitle">
+        <div class="section-head">
+          <h2 id="comparisonTitle">과거 지출 비교</h2>
+          <div class="section-head-tools" style="display: flex; gap: var(--sp-xs); align-items: center;">
+            <select id="snapshotSelector" class="snapshot-select" aria-label="비교할 스냅샷 선택" style="max-width: 150px;">
+              <option value="">과거 시점 선택...</option>
+            </select>
+            <button id="saveSnapshotBtn" class="btn btn-ghost btn-sm" type="button" title="현재 상태를 비교용 스냅샷으로 저장">저장</button>
+            <button id="deleteSnapshotBtn" class="btn btn-ghost btn-sm" type="button" title="선택한 스냅샷 삭제" style="color: var(--status-error);">삭제</button>
+          </div>
+        </div>
+        <div id="comparisonContent" class="comparison-content" hidden>
+          <div class="comparison-summary-row">
+            <div id="comparisonExpenseSummary" class="comparison-card"></div>
+          </div>
+          <div id="comparisonChartWrap" class="comparison-chart-wrap">
+            <svg id="comparisonSvg" class="comparison-svg"></svg>
+          </div>
         </div>
       </section>
 
@@ -384,6 +429,41 @@
         aria-label="편집 취소">×</button>
     </div>
   </div>
+  <div id="smartAddModal" class="modal-overlay" hidden>
+    <div class="modal-content modal-content--sm">
+      <div class="modal-header">
+        <h2 class="modal-title">스마트 지출 등록</h2>
+        <button id="closeSmartAddBtn" class="modal-close" type="button" aria-label="닫기">×</button>
+      </div>
+      <div class="modal-body">
+        <p class="hint mb-md">카드 결제 문자나 앱 알림 내용을 아래에 붙여넣으세요.</p>
+        <textarea id="smartAddInput" class="smart-add-input" placeholder="[Web발신] 신한카드승인..."></textarea>
+        
+        <div id="smartAddResult" class="smart-add-result" hidden>
+          <div class="result-row">
+            <span class="label">금액</span>
+            <span id="smartAddAmount" class="value"></span>
+          </div>
+          <div class="result-row">
+            <span class="label">상호명</span>
+            <input id="smartAddMerchant" type="text" class="result-input" />
+          </div>
+          <div class="result-row">
+            <span class="label">날짜</span>
+            <span id="smartAddDate" class="value"></span>
+          </div>
+          <div class="result-row">
+            <span class="label">매핑 항목</span>
+            <select id="smartAddCategory" class="result-select"></select>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="applySmartAddBtn" class="btn btn-primary w-full" type="button" disabled>지출 항목에 추가</button>
+      </div>
+    </div>
+  </div>
+
   <button id="checkLatestVersion" class="version-check-trigger" type="button" hidden>최신버전 체크</button>
 
   <button id="saveViewToLocal" class="floating-btn floating-btn--left-save" type="button"

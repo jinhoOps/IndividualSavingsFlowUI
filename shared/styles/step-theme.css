@@ -93,6 +93,62 @@ body {
   flex-shrink: 0;
 }
 
+/* Launcher Menu */
+.launcher-menu {
+  position: absolute;
+  top: 50px;
+  right: 0;
+  z-index: 101;
+  background: var(--panel);
+  backdrop-filter: saturate(1.1) blur(10px);
+  -webkit-backdrop-filter: saturate(1.1) blur(10px);
+  border: 1px solid var(--line);
+  border-radius: var(--rd-md);
+  padding: var(--sp-sm);
+  min-width: 180px;
+  max-width: 320px;
+  width: max-content;
+  transform-origin: top right;
+  animation: launcher-slide-down 0.2s ease-out;
+}
+
+@keyframes launcher-slide-down {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.launcher-menu__inner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-xs);
+}
+
+.launcher-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-sm);
+  padding: 10px 14px;
+  border-radius: var(--rd-sm);
+  text-decoration: none;
+  color: var(--ink);
+  font-size: var(--text-body-md);
+  transition: all 0.2s ease;
+}
+
+.launcher-item:hover {
+  background: var(--line);
+}
+
+.launcher-item.is-active {
+  background: rgba(234, 91, 42, 0.1);
+  color: var(--tone-primary);
+  font-weight: 700;
+}
+
+.launcher-item__icon {
+  font-size: 1.2rem;
+}
+
 /* Version Badge (Debugging) */
 .version-badge {
   font-size: 10px;
@@ -429,44 +485,6 @@ select:focus-visible {
   gap: var(--sp-sm);
 }
 
-
-.status-indicator {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.78rem;
-  color: var(--muted);
-  padding: 4px 8px;
-  border-radius: var(--rd-lg);
-  background: var(--line);
-  transition: all 0.3s ease;
-}
-
-.status-indicator__dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #ccc;
-  transition: background-color 0.3s ease;
-}
-
-.status-indicator--saving .status-indicator__dot {
-  background: var(--tone-primary);
-  animation: pulse-saving 1s infinite alternate;
-}
-
-.status-indicator--success .status-indicator__dot {
-  background: var(--status-success);
-}
-
-.status-indicator--error .status-indicator__dot {
-  background: var(--status-error);
-}
-
-@keyframes pulse-saving {
-  from { opacity: 0.4; transform: scale(0.8); }
-  to { opacity: 1; transform: scale(1.1); }
-}
 
 @media (max-width: 760px) {
   .modal-grid {

@@ -89,9 +89,18 @@ export class IsfStore {
     if (local) {
       try { return JSON.parse(local); } catch (e) { return null; }
     }
-    return this.perform<Step1State | null>(STORES.STEP1_HISTORY, 'readonly', (s) => {
+    return this.perform<IDBCursorWithValue | null>(STORES.STEP1_HISTORY, 'readonly', (s) => {
       return s.index('updatedAt').openCursor(null, 'prev');
-    }).then(cursor => (cursor as any)?.value || null);
+    }).then(cursor => (cursor?.value as Step1State) || null);
+  }
+
+  async listStep1History(): Promise<Step1State[]> {
+    const list = await this.perform<Step1State[]>(STORES.STEP1_HISTORY, 'readonly', (s) => s.getAll());
+    return list.sort((a, b) => b.updatedAt - a.updatedAt);
+  }
+
+  async getStep1ById(id: number): Promise<Step1State | null> {
+    return this.perform<Step1State | null>(STORES.STEP1_HISTORY, 'readonly', (s) => s.get(id));
   }
 
   // --- Step 2 Methods ---

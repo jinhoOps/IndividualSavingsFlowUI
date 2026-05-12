@@ -1,4 +1,5 @@
 import { IsfUtils } from "../../shared/core/utils.js";
+import { ClipboardParser } from "../../shared/core/clipboard-parser.js";
 
 import {
   MONEY_UNIT, STORAGE_KEY, SHARE_STATE_KEY, SHARE_STATE_SCHEMA,
@@ -30,8 +31,16 @@ import {
 } from "./modules/storage-manager.js";
 
 import {
-  persistStep1Snapshot
+  persistStep1Snapshot, listSnapshots, getSnapshotById, deleteSnapshot
 } from "./modules/snapshot-manager.js";
+
+import {
+  calculateComparison
+} from "./modules/comparison-engine.js";
+
+import {
+  renderComparisonChart, renderComparisonSummary
+} from "./modules/comparison-renderer.js";
 
 import {
   buildMonthlySnapshot, simulateProjection, buildSummaryCards
@@ -69,6 +78,7 @@ function init() {
   renderAll();
   initializeBackupStore();
   void initializeInputsFromShareId();
+  void initializeSnapshotSelector();
 
   const pwaManager = new window.IsfPwaManager({
     appVersion: IsfUtils.APP_VERSION,
@@ -86,7 +96,6 @@ function init() {
     window.IsfFeedback.showFeedback(dom.applyFeedback, "보기 모드로 열었습니다. 로컬 저장값은 변경되지 않습니다.");
   }
 
-  // Phase 5: Onboarding Spotlight
   initOnboarding(state.isViewMode);
 }
 
@@ -191,20 +200,176 @@ function bindControls() {
   if (dom.sankeyZoomOut) dom.sankeyZoomOut.addEventListener("click", () => setSankeyZoom(state.sankeyZoom - SANKEY_ZOOM_STEP));
   if (dom.sankeyZoomReset) dom.sankeyZoomReset.addEventListener("click", () => setSankeyZoom(1));
 
+  if (dom.modeTR) dom.modeTR.addEventListener("click", () => setProjectionMode("TR"));
+  if (dom.modePR) dom.modePR.addEventListener("click", () => setProjectionMode("PR"));
+  
+  ["colShowFlow", "colShowBalance", "colShowDividend"].forEach(id => {
+    if (dom[id]) dom[id].addEventListener("change", () => {
+      state.projectionOptions[id.replace("colShow", "show").charAt(0).toLowerCase() + id.replace("colShow", "show").slice(1)] = dom[id].checked;
+      renderAll();
+    });
+  });
+
   if (dom.saveViewToLocal) dom.saveViewToLocal.addEventListener("click", handleSaveViewToLocal);
   if (dom.dismissViewModeGuide) dom.dismissViewModeGuide.addEventListener("click", dismissViewModeGuide);
   if (dom.returnToNormalMode) dom.returnToNormalMode.addEventListener("click", switchToNormalMode);
+
+  if (dom.snapshotSelector) {
+    dom.snapshotSelector.addEventListener("change", (e) => handleSnapshotSelection(e.target.value));
+  }
+  if (dom.saveSnapshotBtn) dom.saveSnapshotBtn.addEventListener("click", handleSaveSnapshot);
+  if (dom.deleteSnapshotBtn) dom.deleteSnapshotBtn.addEventListener("click", handleDeleteSnapshot);
+
+  if (dom.openSmartAddBtn) dom.openSmartAddBtn.addEventListener("click", handleOpenSmartAdd);
+  if (dom.closeSmartAddBtn) dom.closeSmartAddBtn.addEventListener("click", handleCloseSmartAdd);
+  if (dom.smartAddInput) dom.smartAddInput.addEventListener("input", handleSmartAddInput);
+  if (dom.applySmartAddBtn) dom.applySmartAddBtn.addEventListener("click", handleApplySmartAdd);
 
   bindItemEditorEvents();
   bindActionButtons();
   bindGlobalEvents();
 }
 
-function bindModalEvents() {
+function handleOpenSmartAdd() {
+  if (state.isViewMode) return;
+  dom.smartAddModal.hidden = false;
+  dom.smartAddModal.classList.add("is-active");
+  dom.smartAddInput.value = "";
+  dom.smartAddResult.hidden = true;
+  dom.applySmartAddBtn.disabled = true;
 
+  // Populate category options safely
+  dom.smartAddCategory.innerHTML = "";
+
+  const defaultOption = document.createElement("option");
+  defaultOption.value = "new";
+  defaultOption.textContent = "+ 새 항목으로 추가";
+  dom.smartAddCategory.appendChild(defaultOption);
+
+  state.inputs.expenseItems.forEach(item => {
+    const option = document.createElement("option");
+    option.value = item.name;
+    option.textContent = `${item.name} (${item.group || '미분류'})`;
+    dom.smartAddCategory.appendChild(option);
+  });
+
+  dom.smartAddInput.focus();
+}
+function handleCloseSmartAdd() {
+  dom.smartAddModal.classList.remove("is-active");
+  setTimeout(() => { dom.smartAddModal.hidden = true; }, 250);
+}
+
+function handleSmartAddInput(e) {
+  const text = e.target.value;
+  const result = ClipboardParser.parseSms(text);
+  
+  if (result) {
+    dom.smartAddResult.hidden = false;
+    dom.smartAddAmount.textContent = `${result.amount.toLocaleString()}원`;
+    dom.smartAddMerchant.value = result.merchant;
+    dom.smartAddDate.textContent = result.date || "날짜 없음";
+    
+    // Auto-match category
+    const matched = ClipboardParser.matchCategory(result.merchant, state.inputs.expenseItems);
+    if (matched) {
+      dom.smartAddCategory.value = matched.name;
+    } else {
+      dom.smartAddCategory.value = "new";
+    }
+    
+    dom.applySmartAddBtn.disabled = false;
+    state.lastParsedResult = result;
+  } else {
+    dom.smartAddResult.hidden = true;
+    dom.applySmartAddBtn.disabled = true;
+  }
+}
+
+function handleApplySmartAdd() {
+  const result = state.lastParsedResult;
+  if (!result) return;
+
+  if (state.itemEditors.expense.active) {
+    window.IsfFeedback.showFeedback(dom.applyFeedback, "생활비 편집기가 열려 있습니다. 편집을 완료하거나 취소한 후 등록해주세요.", true);
+    return;
+  }
+  
+  const selectedName = dom.smartAddCategory.value;
+  const merchantName = dom.smartAddMerchant.value.trim() || result.merchant;
+  const amountWon = result.amount; // 원 단위 직접 사용
+  
+  const newItems = [...state.inputs.expenseItems];
+  
+  if (selectedName === "new") {
+    newItems.push({
+      name: merchantName,
+      amount: amountWon,
+      group: "기타"
+    });
+  } else {
+    const idx = newItems.findIndex(item => item.name === selectedName);
+    if (idx !== -1) {
+      newItems[idx] = { ...newItems[idx], amount: newItems[idx].amount + amountWon };
+    }
+  }
+  
+  const draft = helpers.ensureDraftInputs(state);
+  draft.expenseItems = newItems;
+  state.draftInputs = sanitizeInputs(draft);
+  
+  renderItemList("expense", newItems);
+  markPendingChanges();
+  
+  handleCloseSmartAdd();
+  window.IsfFeedback.showFeedback(dom.applyFeedback, `${merchantName} 항목에 ${window.IsfUtils.formatMoney(amountWon)}이 합산되었습니다.`);
+}
+
+async function initializeSnapshotSelector() {
+  if (!dom.snapshotSelector) return;
+  const list = await listSnapshots({ getHubStorage: () => window.IsfStorageHub });
+  
+  // Clear and add default option
+  dom.snapshotSelector.innerHTML = "";
+  const defaultOption = document.createElement("option");
+  defaultOption.value = "";
+  defaultOption.textContent = "과거 시점 선택...";
+  dom.snapshotSelector.appendChild(defaultOption);
+
+  if (list && list.length > 0) {
+    list.forEach(s => {
+      const option = document.createElement("option");
+      option.value = s.id;
+      option.textContent = formatBackupTimestamp(s.updatedAt);
+      dom.snapshotSelector.appendChild(option);
+    });
+  }
+}
+
+async function handleSnapshotSelection(id) {
+  if (!id) {
+    if (dom.comparisonContent) dom.comparisonContent.hidden = true;
+    if (dom.comparisonEmpty) dom.comparisonEmpty.hidden = true; // Always hidden while on hold
+    return;
+  }
+  const snapshot = await getSnapshotById(id, { getHubStorage: () => window.IsfStorageHub });
+  if (snapshot && snapshot.data) {
+    const comparison = calculateComparison(snapshot.data, state.inputs);
+    renderComparison(comparison);
+  }
+}
+
+function renderComparison(comparison) {
+  if (!comparison) return;
+  if (dom.comparisonContent) dom.comparisonContent.hidden = false;
+  if (dom.comparisonEmpty) dom.comparisonEmpty.hidden = true;
+  renderComparisonSummary(dom.comparisonExpenseSummary, comparison.summary.expense);
+  renderComparisonChart(dom.comparisonSvg, comparison.expenses);
+}
+
+function bindModalEvents() {
   if (!dom.appHeader) dom.appHeader = document.querySelector("app-header");
   if (!dom.dataHubModal) dom.dataHubModal = document.querySelector("data-hub-modal");
-
   if (!dom.appHeader || !dom.dataHubModal) return;
 
   dom.appHeader.addEventListener("open-data-hub", () => {
@@ -223,6 +388,7 @@ function bindModalEvents() {
   dom.dataHubModal.addEventListener("backup-now", handleManualBackup);
   dom.dataHubModal.addEventListener("generate-isf-code", handleGenerateIsfCode);
   dom.dataHubModal.addEventListener("apply-isf-code", handleApplyIsfCode);
+  dom.dataHubModal.addEventListener("merge-isf-code", handleMergeIsfCode);
 }
 
 async function handleGenerateIsfCode() {
@@ -248,6 +414,47 @@ async function handleApplyIsfCode(e) {
   }
 }
 
+async function handleMergeIsfCode(e) {
+  const code = e.detail.code;
+  let partnerData = window.IsfShare.decodePayloadFromHash(code, SHARE_STATE_KEY);
+  
+  if (!partnerData) {
+    window.IsfFeedback.showFeedback(dom.applyFeedback, "유효하지 않은 코드입니다.", true);
+    return;
+  }
+
+  // 외부 데이터 정제 (XSS 방지 및 무결성 확보)
+  partnerData = sanitizeInputs(partnerData);
+
+  if (!window.confirm("부부 데이터 병합: 파트너의 데이터를 현재 내 데이터와 합칠까요? (기존 항목들에 추가됩니다)")) {
+    return;
+  }
+
+  const mine = state.inputs;
+  const merged = { ...mine };
+
+  // Helper to add prefix
+  const addMe = (items) => items.map(it => ({ ...it, name: `[나] ${it.name.replace(/^\[(나|너)\]\s*/, '')}` }));
+  const addYou = (items) => items.map(it => ({ ...it, name: `[너] ${it.name.replace(/^\[(나|너)\]\s*/, '')}` }));
+
+  // Merge items
+  merged.incomes = [...addMe(mine.incomes), ...addYou(partnerData.incomes || [])];
+  merged.expenseItems = [...addMe(mine.expenseItems), ...addYou(partnerData.expenseItems || [])];
+  merged.savingsItems = [...addMe(mine.savingsItems), ...addYou(partnerData.savingsItems || [])];
+  merged.investItems = [...addMe(mine.investItems), ...addYou(partnerData.investItems || [])];
+
+  // Sum up totals
+  merged.startCash = (mine.startCash || 0) + (partnerData.startCash || 0);
+  merged.startSavings = (mine.startSavings || 0) + (partnerData.startSavings || 0);
+  merged.startInvest = (mine.startInvest || 0) + (partnerData.startInvest || 0);
+  merged.startDebt = (mine.startDebt || 0) + (partnerData.startDebt || 0);
+  merged.monthlyDebtPayment = (mine.monthlyDebtPayment || 0) + (partnerData.monthlyDebtPayment || 0);
+
+  commitImmediateInputs(merged);
+  dom.dataHubModal.close();
+  window.IsfFeedback.showFeedback(dom.applyFeedback, "부부 통합 데이터로 병합되었습니다! 🥂");
+}
+
 function bindItemEditorEvents() {
   ["income", "expense", "savings", "invest"].forEach(group => {
     const list = dom[`${group}List`];
@@ -257,17 +464,13 @@ function bindItemEditorEvents() {
     }
     const editBtn = dom[`edit${group.charAt(0).toUpperCase() + group.slice(1)}Items`];
     if (editBtn) editBtn.addEventListener("click", () => toggleItemEditor(group));
-    
     const addBtn = dom[`add${group.charAt(0).toUpperCase() + group.slice(1)}Item`];
     if (addBtn) addBtn.addEventListener("click", () => addItemToEditor(group));
-
     const applyBtn = dom[`apply${group.charAt(0).toUpperCase() + group.slice(1)}Items`];
     if (applyBtn) applyBtn.addEventListener("click", () => applyItemEditor(group));
-
     const cancelBtn = dom[`cancel${group.charAt(0).toUpperCase() + group.slice(1)}Items`];
     if (cancelBtn) cancelBtn.addEventListener("click", () => cancelItemEditor(group));
   });
-
   if (dom.mobileEditorAdd) dom.mobileEditorAdd.addEventListener("click", () => addItemToEditor(getActiveItemEditorGroupKey()));
   if (dom.mobileEditorApply) dom.mobileEditorApply.addEventListener("click", () => applyItemEditor(getActiveItemEditorGroupKey()));
   if (dom.mobileEditorCancel) dom.mobileEditorCancel.addEventListener("click", () => cancelItemEditor(getActiveItemEditorGroupKey()));
@@ -285,7 +488,6 @@ function bindGlobalEvents() {
   window.addEventListener("hashchange", handleHashChange);
   window.addEventListener("popstate", () => { syncViewModeUi(); syncViewModeGuideUi(); });
   window.addEventListener("resize", IsfUtils.debounce(() => state.snapshot && renderSankey(state.snapshot, buildSankeyData, state.sankeySortMode), 120));
-  
   const mq = window.matchMedia(MOBILE_LAYOUT_QUERY);
   const onChange = () => {
     if (!mq.matches) {
@@ -300,17 +502,34 @@ function bindGlobalEvents() {
   window.addEventListener("orientationchange", () => window.setTimeout(() => { if (dom.sankeySvg) dom.sankeySvg.removeAttribute("viewBox"); renderAll(); }, 200));
 }
 
-
 function renderAll() {
   const snapshot = buildMonthlySnapshot(state.inputs);
   state.snapshot = snapshot;
-  const projection = simulateProjection(state.inputs);
+  const projection = simulateProjection(state.inputs, { mode: state.projectionOptions.mode });
   const cards = buildSummaryCards(snapshot, projection, state.inputs.horizonYears);
-
   renderCards(cards, state.inputs.horizonYears);
   renderSankey(snapshot, buildSankeyData, state.sankeySortMode);
   renderProjectionTable(projection, state.inputs.horizonYears, state.inputs.annualExpenseGrowth);
   renderInputHints(state.inputs);
+  refreshInputsPanel(state.inputs);
+}
+
+function setProjectionMode(mode) {
+  state.projectionOptions.mode = mode;
+  [dom.modeTR, dom.modePR].forEach(btn => {
+    if (btn) {
+      const active = btn.dataset.mode === mode;
+      btn.classList.toggle("is-active", active);
+      btn.setAttribute("aria-selected", active);
+    }
+  });
+  renderAll();
+}
+
+function refreshComparisonIfActive() {
+  if (dom.snapshotSelector && dom.snapshotSelector.value) {
+    handleSnapshotSelection(dom.snapshotSelector.value);
+  }
 }
 
 function commitImmediateInputs(inputs, options = {}) {
@@ -336,13 +555,33 @@ function persistPrimaryState(inputs, options = {}) {
         }
       })();
     }
-    void persistStep1Snapshot(inputs, { getHubStorage: () => window.IsfStorageHub, isViewMode: state.isViewMode });
     if (dom.appHeader) dom.appHeader.updateStatus("success", "자동 저장됨");
   } catch (_e) {
     if (dom.appHeader) dom.appHeader.updateStatus("error", "저장 실패");
   }
 }
 
+async function handleSaveSnapshot() {
+  if (state.isViewMode) return;
+  await persistStep1Snapshot(state.inputs, { getHubStorage: () => window.IsfStorageHub, isViewMode: state.isViewMode });
+  await initializeSnapshotSelector();
+  window.IsfFeedback.showFeedback(dom.applyFeedback, "현재 상태가 비교용 스냅샷으로 저장되었습니다.");
+}
+
+async function handleDeleteSnapshot() {
+  if (!dom.snapshotSelector || !dom.snapshotSelector.value) {
+    window.IsfFeedback.showFeedback(dom.snapshotSelector, "삭제할 스냅샷을 먼저 선택해주세요.", true);
+    return;
+  }
+  if (!window.confirm("선택한 스냅샷을 삭제할까요?")) return;
+  const id = dom.snapshotSelector.value;
+  const success = await deleteSnapshot(id, { getHubStorage: () => window.IsfStorageHub });
+  if (success) {
+    await initializeSnapshotSelector();
+    handleSnapshotSelection("");
+    window.IsfFeedback.showFeedback(dom.applyFeedback, "스냅샷이 삭제되었습니다.");
+  }
+}
 
 async function handleManualBackup() {
   if (state.isViewMode || !state.backupStoreReady) return;
@@ -374,15 +613,6 @@ async function handleImportJson(file) {
     const imported = window.IsfShare.parseImportedJson(await file.text(), SHARE_STATE_KEY);
     commitImmediateInputs(imported);
   } catch (_e) { if (dom.appHeader) dom.appHeader.updateStatus("error", "JSON 오류"); }
-}
-
-async function handleCopyShareLink() {
-  const link = await window.IsfShare.buildShareLink(state.inputs, { viewMode: true });
-  if (link && navigator.clipboard) {
-    await navigator.clipboard.writeText(link);
-    if (dom.appHeader) dom.appHeader.updateStatus("success", "공유 링크 복사됨");
-    window.IsfFeedback.showFeedback(dom.applyFeedback, "공유 링크가 복사되었습니다.");
-  } else if (link) window.prompt("링크 복사:", link);
 }
 
 async function handleSaveViewToLocal() {
@@ -455,14 +685,12 @@ function handleItemInput(group, event) {
   if (state.suspendInputTracking) return;
   const target = event.target;
   if (!(target instanceof HTMLInputElement) && !(target instanceof HTMLSelectElement)) return;
-
   if (state.itemEditors[group].active) {
     const itemId = target.dataset.editorId || target.dataset.incomeId;
     const field = target.dataset.field;
     if (!itemId || !field) return;
     const item = state.itemEditors[group].items.find(e => e.id === itemId);
     if (!item) return;
-
     if (field === "name") item.name = target.value.slice(0, 24);
     if (field === "amount") item.amount = IsfUtils.toWon(target.value);
     if (field === "group") item.group = normalizeAllocationGroupName(target.value);
@@ -474,15 +702,12 @@ function handleItemInput(group, event) {
         const norm = normalizeMaturityMonth(target.value);
         if (!norm) delete item.maturityMonth; else item.maturityMonth = norm;
     }
-    
     const totalWon = group === "income" ? getMonthlyIncomeTotalWon(state.itemEditors[group].items) : getMonthlyAllocationTotalWon(state.itemEditors[group].items);
     if (group === "income") renderIncomeTotalHint(totalWon, state.itemEditors[group].items.length);
     else if (group === "expense") renderExpenseTotalHint(totalWon, state.itemEditors[group].items.length);
     else if (group === "savings") renderSavingsTotalHint(totalWon, state.itemEditors[group].items.length);
     else if (group === "invest") renderInvestTotalHint(totalWon, state.itemEditors[group].items.length);
-    
     setItemEditorUi(group, true);
-    return;
   }
 }
 
@@ -490,10 +715,8 @@ function handleItemClick(group, event) {
   const target = event.target;
   const btn = target.closest ? target.closest("[data-remove-income], [data-remove-editor-item]") : null;
   if (!btn) return;
-
   const removeId = btn.dataset.removeIncome || btn.dataset.removeEditorItem;
   if (!removeId) return;
-
   if (state.itemEditors[group].active) {
     if (state.itemEditors[group].items.length <= 1) return;
     state.itemEditors[group].items = state.itemEditors[group].items.filter(i => i.id !== removeId);
@@ -504,10 +727,8 @@ function handleItemClick(group, event) {
     else if (group === "savings") renderSavingsTotalHint(totalWon, state.itemEditors[group].items.length);
     else if (group === "invest") renderInvestTotalHint(totalWon, state.itemEditors[group].items.length);
     setItemEditorUi(group, true);
-    return;
   }
 }
-
 
 function setPendingBarVisible(visible) {
   if (dom.pendingBar) dom.pendingBar.hidden = !visible;
@@ -548,9 +769,7 @@ function setSankeySortMode(mode) { state.sankeySortMode = mode; syncSankeySortMo
 
 function syncSankeyZoomUi() {
   if (dom.sankeyZoomLabel) dom.sankeyZoomLabel.textContent = `${Math.round(state.sankeyZoom * 100)}%`;
-  if (state.snapshot) {
-    renderSankey(state.snapshot, buildSankeyData, state.sankeySortMode);
-  }
+  if (state.snapshot) renderSankey(state.snapshot, buildSankeyData, state.sankeySortMode);
 }
 
 function setSankeyZoom(zoom) { state.sankeyZoom = Math.min(SANKEY_ZOOM_MAX, Math.max(SANKEY_ZOOM_MIN, zoom)); syncSankeyZoomUi(); }
@@ -606,7 +825,6 @@ function renderExpenseList(items) { renderItemList("expense", items); }
 function renderSavingsList(items) { renderItemList("savings", items); }
 function renderInvestList(items) { renderItemList("invest", items); }
 
-
 function toggleItemEditor(group) { state.itemEditors[group].active ? cancelItemEditor(group) : startItemEditor(group); }
 
 function startItemEditor(group) {
@@ -645,7 +863,6 @@ function setItemEditorUi(group, active) {
   const actions = dom[`${group}EditorActions`]; if (actions) actions.hidden = !active;
   const editBtn = dom[`edit${group.charAt(0).toUpperCase() + group.slice(1)}Items`];
   if (editBtn) editBtn.textContent = active ? "편집 완료" : "항목 편집";
-
   const applyBtn = dom[`apply${group.charAt(0).toUpperCase() + group.slice(1)}Items`];
   if (active && applyBtn) {
     const currentSignature = helpers.getItemEditorSignature(state.itemEditors[group].items);
@@ -653,7 +870,6 @@ function setItemEditorUi(group, active) {
     applyBtn.disabled = !changed;
     if (dom.mobileEditorApply) dom.mobileEditorApply.disabled = !changed;
   }
-
   syncMobileItemEditorFab();
   syncGroupOptionsFor(group);
 }
@@ -670,7 +886,6 @@ function syncGroupOptionsFor(group) {
   list.innerHTML = names.map(n => `<option value="${n}">`).join("");
 }
 
-
 function renderCards(cards, horizonYears) {
   if (!dom.summaryCards) return;
   dom.summaryCards.innerHTML = "";
@@ -684,30 +899,31 @@ function renderCards(cards, horizonYears) {
 
 function renderProjectionTable(records, horizonYears, expenseGrowth) {
   if (!dom.projectionTableBody) return;
+  const { showFlow, showBalance, showDividend, mode } = state.projectionOptions;
+  const table = dom.projectionTableBody.closest("table");
+  if (table) {
+    const thead = table.querySelector("thead");
+    if (thead) {
+      let headerHtml = `<tr><th>시점</th>`;
+      if (showFlow) headerHtml += `<th>월 수입</th><th>월 생활비</th><th>당월 이자</th><th>실제 상환액</th><th>부채 증가분</th>`;
+      if (showBalance) headerHtml += `<th>현금</th><th>저축</th><th>투자</th><th>부채</th>`;
+      if (showDividend) headerHtml += `<th>연배당 (세전)</th>`;
+      headerHtml += `<th>순자산</th><th>실질 순자산</th></tr>`;
+      thead.innerHTML = headerHtml;
+    }
+  }
   dom.projectionTableBody.innerHTML = records.map((r, i) => {
     if (i > 0 && i % 12 !== 0 && i !== records.length - 1) return "";
-    
     const statusClass = IsfUtils.getFinancialIncomeStatus(r.annualFinancialIncome);
     const trClass = statusClass !== 'normal' ? `status--${statusClass}` : '';
     const badge = statusClass === 'warn' ? '<span class="status-badge status-badge--warn">과세주의</span>' : 
                   statusClass === 'crit' ? '<span class="status-badge status-badge--crit">과세경고</span>' : '';
-
-    return `
-      <tr class="${trClass}">
-        <td>${i === 0 ? "현재" : `${i / 12}년 후`}</td>
-        <td>${formatCurrency(r.monthlyIncome)}</td>
-        <td>${formatCurrency(r.monthlyExpense)}</td>
-        <td>${formatCurrency(r.debtInterest)}</td>
-        <td>${formatCurrency(r.actualDebtPayment)}</td>
-        <td>${formatCurrency(r.newBorrowing)}</td>
-        <td>${formatCurrency(r.cash)}</td>
-        <td>${formatCurrency(r.savings)}</td>
-        <td>${formatCurrency(r.invest)} ${badge}</td>
-        <td>${formatCurrency(r.debt)}</td>
-        <td class="fw-bold">${formatCurrency(r.netAsset)}</td>
-        <td class="text-muted small">${formatCurrency(r.realNetAsset)}</td>
-      </tr>
-    `;
+    let rowHtml = `<tr class="${trClass}"><td>${i === 0 ? "현재" : `${i / 12}년 후`}</td>`;
+    if (showFlow) rowHtml += `<td>${formatCurrency(r.monthlyIncome)}</td><td>${formatCurrency(r.monthlyExpense)}</td><td>${formatCurrency(r.debtInterest)}</td><td>${formatCurrency(r.actualDebtPayment)}</td><td>${formatCurrency(r.newBorrowing)}</td>`;
+    if (showBalance) rowHtml += `<td>${formatCurrency(r.cash)}</td><td>${formatCurrency(r.savings)}</td><td>${formatCurrency(r.invest)} ${badge}</td><td>${formatCurrency(r.debt)}</td>`;
+    if (showDividend) rowHtml += `<td>${formatCurrency(r.annualFinancialIncome)}</td>`;
+    rowHtml += `<td class="fw-bold">${formatCurrency(r.netAsset)}</td><td class="text-muted small">${formatCurrency(r.realNetAsset)}</td></tr>`;
+    return rowHtml;
   }).join("");
 }
 
@@ -720,7 +936,7 @@ function renderIncomeItemHtml(item, opts) {
   const isEditing = !!opts.editing;
   return `
     <div class="income-row">
-      <input type="text" value="${item.name}" data-income-id="${item.id}" data-field="name" ${isEditing ? "" : "readonly"} placeholder="이름" />
+      <input type="text" value="${IsfUtils.escapeHtml(item.name)}" data-income-id="${item.id}" data-field="name" ${isEditing ? "" : "readonly"} placeholder="이름" />
       <input type="number" value="${IsfUtils.toMan(item.amount)}" data-income-id="${item.id}" data-field="amount" ${isEditing ? "" : "readonly"} inputmode="decimal" placeholder="금액" />
       ${isEditing ? `
         <button class="income-remove" data-remove-income="${item.id}" title="삭제">
@@ -736,28 +952,26 @@ function renderAllocationItemHtml(group, item, opts) {
   const isEditing = !!opts.editing;
   const meta = buildAllocationMetaText(item, { showMaturity: group !== "expense" });
   const metaHtml = (!isEditing && meta) ? `<div class="allocation-meta">${meta}</div>` : "";
-  
   const commonClasses = `${group}-row ${isEditing ? "is-editing" : ""}`;
   
   if (!isEditing) {
     return `
       <div class="${commonClasses}">
-        <span class="${group}-name">${item.name}</span>
+        <span class="${group}-name">${IsfUtils.escapeHtml(item.name)}</span>
         <span class="value">${formatCurrency(item.amount)}</span>
         ${metaHtml}
       </div>
     `;
   }
-
-  const isSavings = group === "savings";
+  
+  const isSavings = group === "savings"; 
   const isInvest = group === "invest";
-  const isExpense = group === "expense";
-
+  
   return `
     <div class="${commonClasses}">
       <div class="editor-field">
         <label class="editor-field-label">이름</label>
-        <input type="text" value="${item.name}" data-field="name" data-editor-id="${item.id}" placeholder="항목명" />
+        <input type="text" value="${IsfUtils.escapeHtml(item.name)}" data-field="name" data-editor-id="${item.id}" placeholder="항목명" />
       </div>
       <div class="editor-field">
         <label class="editor-field-label">금액(만원)</label>
@@ -765,7 +979,7 @@ function renderAllocationItemHtml(group, item, opts) {
       </div>
       <div class="editor-field">
         <label class="editor-field-label">그룹</label>
-        <input type="text" value="${item.group || ""}" data-field="group" data-editor-id="${item.id}" list="${group}GroupOptions" placeholder="그룹" />
+        <input type="text" value="${IsfUtils.escapeHtml(item.group || "")}" data-field="group" data-editor-id="${item.id}" list="${group}GroupOptions" placeholder="그룹" />
       </div>
       ${isSavings ? `
         <div class="editor-field">
@@ -804,10 +1018,7 @@ function renderInvestTotalHint(won, count) { if (dom.investTotalHint) dom.invest
 
 function navigateToAdvancedGroup(group) {
   setActiveAdvancedTab(group);
-  if (dom.advancedSettings) {
-    dom.advancedSettings.open = true;
-    dom.advancedSettings.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
+  if (dom.advancedSettings) { dom.advancedSettings.open = true; dom.advancedSettings.scrollIntoView({ behavior: "smooth", block: "start" }); }
 }
 function syncMobileInputsPanelVisibility() {
   const isMobile = window.matchMedia(MOBILE_LAYOUT_QUERY).matches;
@@ -819,17 +1030,12 @@ function syncMobileInputsPanelVisibility() {
   }
 }
 
-function getActiveItemEditorGroupKey() {
-  return helpers.getActiveItemEditorGroupKey(state.itemEditors);
-}
+function getActiveItemEditorGroupKey() { return helpers.getActiveItemEditorGroupKey(state.itemEditors); }
 
 function syncMobileItemEditorFab() {
   const isMobile = window.matchMedia(MOBILE_LAYOUT_QUERY).matches;
   const activeGroup = getActiveItemEditorGroupKey();
-  if (!isMobile || !activeGroup) {
-    if (dom.mobileEditorFab) dom.mobileEditorFab.hidden = true;
-    return;
-  }
+  if (!isMobile || !activeGroup) { if (dom.mobileEditorFab) dom.mobileEditorFab.hidden = true; return; }
   const labels = { income: "수입 편집", expense: "생활비 편집", savings: "저축 편집", invest: "투자 편집" };
   if (dom.mobileEditorFabLabel) dom.mobileEditorFabLabel.textContent = labels[activeGroup] || "항목 편집";
   if (dom.mobileEditorFab) dom.mobileEditorFab.hidden = false;
@@ -841,16 +1047,13 @@ function dismissViewModeGuide() { if (dom.viewModeGuide) dom.viewModeGuide.hidde
 function switchToNormalMode() { window.location.href = window.location.pathname; }
 function hasShareState() { return !!window.IsfShare.getShareIdFromUrl(); }
 function bindReadonlyAdvancedNavigation() {
-  dom.jumpAdvancedFields.forEach(field => {
-    field.addEventListener("click", () => navigateToAdvancedGroup(field.dataset.advancedTarget));
-  });
+  dom.jumpAdvancedFields.forEach(field => { field.addEventListener("click", () => navigateToAdvancedGroup(field.dataset.advancedTarget)); });
 }
 
 function initializeBackupStore() {
   if (!window.IsfBackupManager.isIndexedDbAvailable()) return;
   window.IsfBackupManager.loadBackupEntriesFromDb(SHARE_STATE_KEY).then(entries => {
-    state.backupStoreReady = true;
-    if (entries) { state.backupEntries = entries; syncBackupUi(); }
+    state.backupStoreReady = true; if (entries) { state.backupEntries = entries; syncBackupUi(); }
   }).catch(() => { state.backupStoreReady = true; state.backupStoreError = true; });
 }
 async function initializeInputsFromShareId() {
@@ -860,5 +1063,3 @@ async function initializeInputsFromShareId() {
     if (sidInputs) commitImmediateInputs(sidInputs);
   }
 }
-
-

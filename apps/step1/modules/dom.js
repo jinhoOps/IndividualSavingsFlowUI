@@ -93,6 +93,31 @@
   sankeyTooltip: document.getElementById("sankeyTooltip"),
   projectionTableBody: document.querySelector("#projectionTable tbody"),
   projectionMeta: document.getElementById("projectionMeta"),
+  modeTR: document.getElementById("modeTR"),
+  modePR: document.getElementById("modePR"),
+  colShowFlow: document.getElementById("colShowFlow"),
+  colShowBalance: document.getElementById("colShowBalance"),
+  colShowDividend: document.getElementById("colShowDividend"),
+  
+  openSmartAddBtn: document.getElementById("openSmartAddBtn"),
+  smartAddModal: document.getElementById("smartAddModal"),
+  closeSmartAddBtn: document.getElementById("closeSmartAddBtn"),
+  smartAddInput: document.getElementById("smartAddInput"),
+  smartAddResult: document.getElementById("smartAddResult"),
+  smartAddAmount: document.getElementById("smartAddAmount"),
+  smartAddMerchant: document.getElementById("smartAddMerchant"),
+  smartAddDate: document.getElementById("smartAddDate"),
+  smartAddCategory: document.getElementById("smartAddCategory"),
+  applySmartAddBtn: document.getElementById("applySmartAddBtn"),
+
+  snapshotSelector: document.getElementById("snapshotSelector"),
+  saveSnapshotBtn: document.getElementById("saveSnapshotBtn"),
+  deleteSnapshotBtn: document.getElementById("deleteSnapshotBtn"),
+  comparisonContent: document.getElementById("comparisonContent"),
+  comparisonExpenseSummary: document.getElementById("comparisonExpenseSummary"),
+  comparisonSvg: document.getElementById("comparisonSvg"),
+  comparisonEmpty: document.getElementById("comparisonEmpty"),
+
   appTitle: document.querySelector("h1"),
 };
 

@@ -47,10 +47,70 @@ main {
 }
 
 .summary-panel { order: 1; }
-.sankey-panel { order: 2; }
-.controls-panel { order: 3; }
-.projection-panel { order: 4; }
+.comparison-panel { order: 2; }
+.sankey-panel { order: 3; }
+.controls-panel { order: 4; }
+.projection-panel { order: 5; }
 
+.snapshot-select {
+  border: 1px solid var(--line-strong);
+  border-radius: var(--rd-sm);
+  padding: 6px 10px;
+  background: var(--panel);
+  font: inherit;
+  font-size: 0.86rem;
+  color: var(--ink);
+  min-width: 180px;
+}
+
+.comparison-content {
+  display: grid;
+  gap: var(--sp-md);
+}
+
+.comparison-summary-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--sp-sm);
+}
+
+.comparison-card {
+  border: 1px solid var(--line);
+  border-radius: var(--rd-md);
+  background: var(--panel);
+  padding: var(--sp-md);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.comparison-card .label { font-size: var(--text-caption); color: var(--muted); }
+.comparison-card .main-val { font-size: 1.1rem; font-weight: 700; }
+.comparison-card .diff-val { font-size: 0.86rem; }
+.comparison-card .diff-val.is-positive { color: var(--deficit); }
+.comparison-card .diff-val.is-negative { color: var(--income); }
+
+.comparison-chart-wrap {
+  border: 1px solid var(--line);
+  border-radius: var(--rd-md);
+  background: var(--panel);
+  padding: var(--sp-md);
+  min-height: 240px;
+  overflow-x: auto;
+}
+
+.comparison-svg {
+  width: 100%;
+  height: auto;
+  min-height: 200px;
+  display: block;
+}
+
+.bar-prev { fill: #cbd5e0; }
+.bar-curr { fill: var(--expense); }
+.chart-axis-line { stroke: var(--line-strong); stroke-width: 1; }
+.chart-label { font-size: 11px; fill: var(--ink); }
+.chart-value { font-size: 10px; fill: var(--muted); }
 
 body.is-dashboard-mode .sankey-panel {
   order: 1;
@@ -58,11 +118,14 @@ body.is-dashboard-mode .sankey-panel {
 body.is-dashboard-mode .summary-panel {
   order: 2;
 }
-body.is-dashboard-mode .projection-panel {
+body.is-dashboard-mode .comparison-panel {
   order: 3;
 }
-body.is-dashboard-mode .controls-panel {
+body.is-dashboard-mode .projection-panel {
   order: 4;
+}
+body.is-dashboard-mode .controls-panel {
+  order: 5;
 }
 
 .view-mode-guide {
@@ -782,6 +845,26 @@ body.is-dashboard-mode .controls-panel {
 
 .projection-brief { margin-bottom: 8px; }
 
+.projection-options {
+  background: var(--panel-sub);
+  padding: 10px 14px;
+  border-radius: var(--rd-sm);
+  border: 1px solid var(--line);
+}
+
+.projection-options .opt-group {
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .projection-options {
+    gap: 16px !important;
+  }
+  .projection-options .opt-group {
+    flex: 1 1 100%;
+  }
+}
+
 .formula-toggle {
   padding: 8px 10px;
 }
@@ -1020,3 +1103,63 @@ body.is-onboarding-active .onboarding-overlay {
   from { opacity: 0; transform: translate(-50%, 10px); }
   to { opacity: 1; transform: translate(-50%, 0); }
 }
+
+/* Phase 09: Smart Clipboard Parser UI */
+.smart-add-input {
+  width: 100%;
+  min-height: 120px;
+  margin-bottom: var(--sp-md);
+  font-size: 0.86rem;
+  line-height: 1.5;
+  resize: vertical;
+  background: rgba(16, 34, 32, 0.03);
+}
+
+.smart-add-result {
+  border: 1px solid var(--line);
+  border-radius: var(--rd-sm);
+  background: var(--panel);
+  padding: var(--sp-md);
+  display: grid;
+  gap: var(--sp-sm);
+  animation: fade-in 0.3s ease-out;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.result-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-md);
+}
+
+.result-row .label {
+  font-size: 0.78rem;
+  color: var(--muted);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.result-row .value {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.result-input, .result-select {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 8px;
+  font-size: 0.86rem;
+}
+
+.modal-content--sm {
+  max-width: 400px;
+}
+
+.mb-md { margin-bottom: var(--sp-md); }
+.w-full { width: 100%; }

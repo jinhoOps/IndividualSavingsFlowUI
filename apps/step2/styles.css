@@ -213,6 +213,23 @@ body.is-dashboard-mode .info-panel {
   color: var(--tone-accent);
 }
 
+.sim-view-options {
+  background: var(--panel-sub);
+  padding: 10px 14px;
+  border-radius: var(--rd-sm);
+  border: 1px solid var(--line);
+}
+
+.sim-view-options label {
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .sim-view-options {
+    gap: 12px !important;
+  }
+}
+
 .sim-chart-wrap {
   background: var(--panel);
   backdrop-filter: blur(10px);

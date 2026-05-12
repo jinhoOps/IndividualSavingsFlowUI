@@ -28,6 +28,8 @@ export function initCompatibilityBridge() {
       return { id: 'bkp-' + Date.now(), updatedAt: Date.now(), data };
     },
     getLatestStep1Snapshot: () => isfStore.loadStep1(),
+    listStep1Snapshots: () => isfStore.listStep1History(),
+    getStep1SnapshotById: (id: any) => isfStore.getStep1ById(Number(id)),
 
     // Step 2
     saveStep2Entry: (data: any) => isfStore.saveStep2Simulation(data),

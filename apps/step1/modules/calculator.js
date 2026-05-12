@@ -2,7 +2,8 @@
   DEFAULT_INPUTS,
   DEFAULT_EXPENSE_ITEMS,
   DEFAULT_SAVINGS_ITEMS,
-  DEFAULT_INVEST_ITEMS
+  DEFAULT_INVEST_ITEMS,
+  PR_MODE_ASSUMED_ANNUAL_DIV_YIELD
 } from "./constants.js";
 import {
   getMonthlyIncomeTotalWon,
@@ -169,7 +170,8 @@ export function buildInvestBuckets(inputs) {
   }));
 }
 
-export function simulateProjection(inputs) {
+export function simulateProjection(inputs, options = {}) {
+  const mode = options.mode || "TR"; // "TR" or "PR"
   const horizonMonths = Math.max(1, Math.round(inputs.horizonYears)) * 12;
   const monthlyIncomeBase = getMonthlyIncomeTotalWon(inputs.incomes);
   const monthlyExpenseBase = window.IsfUtils.sanitizeMoney(inputs.monthlyExpense, 0);
@@ -196,6 +198,7 @@ export function simulateProjection(inputs) {
   let savings = savingsBuckets.reduce((sum, bucket) => sum + bucket.balance, 0);
   let invest = investBuckets.reduce((sum, bucket) => sum + bucket.balance, 0);
   let debt = window.IsfUtils.sanitizeMoney(inputs.startDebt, 0);
+  let accumulatedPRDividend = 0; // PR 모드 시 재투자되지 않고 쌓인 배당/이자
 
   savingsBuckets.forEach((bucket) => {
     if (bucket.maturityMonthIndex !== null && bucket.maturityMonthIndex <= 0 && !bucket.closed) {
@@ -227,6 +230,7 @@ export function simulateProjection(inputs) {
       invest,
       debt,
       realDiscountFactor: 1,
+      accumulatedPRDividend
     }),
   ];
 
@@ -255,7 +259,16 @@ export function simulateProjection(inputs) {
       }
       const addAmount = savingsAddsByItem[index] || 0;
       bucket.balance += addAmount;
-      bucket.balance *= bucket.monthlyFactor;
+      
+      const totalGrowth = bucket.balance * (bucket.monthlyFactor - 1);
+      if (mode === "TR") {
+        bucket.balance += totalGrowth;
+      } else {
+        // 저축(Savings)은 이자 수익 전체를 배당(수취)으로 간주하여 현금으로 회수
+        nextCash += totalGrowth;
+        accumulatedPRDividend += totalGrowth;
+      }
+
       if (bucket.maturityMonthIndex !== null && monthIndex >= bucket.maturityMonthIndex) {
         nextCash += bucket.balance;
         bucket.balance = 0;
@@ -276,7 +289,22 @@ export function simulateProjection(inputs) {
       }
       const addAmount = investAddsByItem[index] || 0;
       bucket.balance += addAmount;
-      bucket.balance *= bucket.monthlyFactor;
+
+      const totalGrowth = bucket.balance * (bucket.monthlyFactor - 1);
+      if (mode === "TR") {
+        bucket.balance += totalGrowth;
+      } else {
+        // PR(Price Return) 모드: 자산 가치 상승(Capital Gain)은 잔고에 반영, 배당 수익은 현금으로 합산
+        // 연 2% 수준의 배당 수익률을 가정하여 분리
+        const monthlyDivFactor = Math.pow(1 + PR_MODE_ASSUMED_ANNUAL_DIV_YIELD, 1 / 12);
+        const dividend = bucket.balance * (monthlyDivFactor - 1);
+        const capitalGain = totalGrowth - dividend;
+        
+        bucket.balance += capitalGain;
+        nextCash += dividend;
+        accumulatedPRDividend += dividend;
+      }
+
       if (bucket.maturityMonthIndex !== null && monthIndex >= bucket.maturityMonthIndex) {
         nextCash += bucket.balance;
         bucket.balance = 0;
@@ -309,7 +337,8 @@ export function simulateProjection(inputs) {
         debt,
         realDiscountFactor: Math.pow(purchasingPowerFactor, monthIndex),
         avgSavingsRate,
-        investRate
+        investRate,
+        accumulatedPRDividend
       }),
     );
   }
@@ -330,7 +359,8 @@ export function buildProjectionRecord({
   debt,
   realDiscountFactor = 1,
   avgSavingsRate = 0,
-  investRate = 0
+  investRate = 0,
+  accumulatedPRDividend = 0
 }) {
   const netAsset = cash + savings + invest - debt;
   const realNetAsset = netAsset / Math.max(realDiscountFactor, 1e-9);
@@ -351,9 +381,11 @@ export function buildProjectionRecord({
     debt,
     netAsset,
     realNetAsset,
-    annualFinancialIncome
+    annualFinancialIncome,
+    accumulatedPRDividend
   };
 }
+
 
 export function buildSummaryCards(snapshot, projection, horizonYears) {
   const current = projection[0];
