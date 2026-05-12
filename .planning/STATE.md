@@ -14,7 +14,7 @@ progress:
 Phase: 11
 Plan: 01
 Status: In Progress
-Last activity: 2026-05-12 — Successfully addressed code review findings and bumped to v0.9.49 (Core stabilization)
+Last activity: 2026-05-12 — Resolved critical logic errors in PR mode simulation and secured state immutability for Smart Add (v0.9.50)
 
 ## Project Reference
 

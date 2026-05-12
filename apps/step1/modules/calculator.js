@@ -259,12 +259,12 @@ export function simulateProjection(inputs, options = {}) {
       const addAmount = savingsAddsByItem[index] || 0;
       bucket.balance += addAmount;
       
-      const growth = bucket.balance * (bucket.monthlyFactor - 1);
+      const totalGrowth = bucket.balance * (bucket.monthlyFactor - 1);
       if (mode === "TR") {
-        bucket.balance += growth;
+        bucket.balance += totalGrowth;
       } else {
-        accumulatedPRDividend += growth;
-        // PR 모드에서는 수익을 자산에 더하지 않음 (Price Return)
+        // 저축(Savings)은 이자 수익 전체를 배당(수취)으로 간주 (재투자 안 함)
+        accumulatedPRDividend += totalGrowth;
       }
 
       if (bucket.maturityMonthIndex !== null && monthIndex >= bucket.maturityMonthIndex) {
@@ -288,11 +288,19 @@ export function simulateProjection(inputs, options = {}) {
       const addAmount = investAddsByItem[index] || 0;
       bucket.balance += addAmount;
 
-      const growth = bucket.balance * (bucket.monthlyFactor - 1);
+      const totalGrowth = bucket.balance * (bucket.monthlyFactor - 1);
       if (mode === "TR") {
-        bucket.balance += growth;
+        bucket.balance += totalGrowth;
       } else {
-        accumulatedPRDividend += growth;
+        // PR(Price Return) 모드: 자산 가치 상승(Capital Gain)은 잔고에 반영, 배당 수익은 별도 합계
+        // 연 2% 수준의 배당 수익률을 가정하여 분리
+        const annualDivYield = 0.02;
+        const monthlyDivFactor = Math.pow(1 + annualDivYield, 1 / 12);
+        const dividend = Math.min(totalGrowth, bucket.balance * (monthlyDivFactor - 1));
+        const capitalGain = totalGrowth - dividend;
+        
+        bucket.balance += capitalGain;
+        accumulatedPRDividend += dividend;
       }
 
       if (bucket.maturityMonthIndex !== null && monthIndex >= bucket.maturityMonthIndex) {
@@ -352,7 +360,7 @@ export function buildProjectionRecord({
   investRate = 0,
   accumulatedPRDividend = 0
 }) {
-  const netAsset = cash + savings + invest - debt;
+  const netAsset = cash + savings + invest + accumulatedPRDividend - debt;
   const realNetAsset = netAsset / Math.max(realDiscountFactor, 1e-9);
   
   // 연간 금융 수익 (이자 + 투자수익) 추정

@@ -305,7 +305,7 @@ function handleApplySmartAdd() {
   } else {
     const idx = newItems.findIndex(item => item.name === selectedName);
     if (idx !== -1) {
-      newItems[idx].amount += amountWon;
+      newItems[idx] = { ...newItems[idx], amount: newItems[idx].amount + amountWon };
     }
   }
   

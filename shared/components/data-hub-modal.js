@@ -253,10 +253,6 @@
         .btn-action { padding: 10px; border-radius: var(--rd-sm, 8px); font-weight: 600; cursor: pointer; text-align: center; font-size: 0.85rem; border: 1px solid var(--line); background: var(--panel); color: var(--ink); font-family: inherit; }
         .btn-primary { background: var(--primary); color: #fff; border: none; }
         .empty { text-align: center; padding: 40px 0; color: var(--muted); font-size: 0.9rem; }
-
-        /* AI Tab Styles */
-        .ai-status-badge { font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; background: var(--accent); color: white; font-weight: bold; }
-        .ai-key-input { font-family: password; letter-spacing: 2px; }
       </style>
       <div id="modalContainer">
         <div id="modalOverlay"></div>
@@ -270,7 +266,6 @@
               <button type="button" class="tab-btn is-active" data-target="tab-share">공유 및 연동</button>
               ${showSimulations ? `<button type="button" class="tab-btn" data-target="tab-simulations">시뮬레이션 목록</button>` : ""}
               <button type="button" class="tab-btn" data-target="tab-backups">데이터 백업 이력</button>
-              <button type="button" class="tab-btn" data-target="tab-ai">AI 지능형 자문 <span class="ai-status-badge">Beta</span></button>
             </div>
             
             <div id="tab-share" class="tab-pane is-active">
@@ -310,20 +305,6 @@
             <div id="tab-backups" class="tab-pane">
               <div id="backupListContainer" class="backup-list"></div>
               <button id="btnBackupNow" class="btn-action" style="width: 100%; margin-top: 12px;">지금 상태 백업하기</button>
-            </div>
-
-            <div id="tab-ai" class="tab-pane">
-              <div class="share-section">
-                <div class="share-card">
-                  <h3>AI 기능 설정</h3>
-                  <p>Google Gemini API 키를 등록하여 지능형 자산 분석 및 세무 자문 기능을 활성화하세요.</p>
-                  <div class="code-input-group">
-                    <input type="password" id="aiApiKeyInput" class="ai-key-input" placeholder="Gemini API Key를 입력하세요" />
-                  </div>
-                  <button id="btnSaveAiKey" class="btn-action btn-primary">API 키 저장</button>
-                  <p style="font-size: 0.7rem; color: var(--muted); margin-top: 8px;">* API 키는 브라우저 로컬 저장소에만 안전하게 보관되며, 서버로 전송되지 않습니다.</p>
-                </div>
-              </div>
             </div>
           </div>
           <div class="modal-footer" style="grid-template-columns: 1fr;">

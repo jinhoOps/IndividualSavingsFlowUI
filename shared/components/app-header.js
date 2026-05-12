@@ -100,8 +100,10 @@ export class AppHeader extends HTMLElement {
       launcherMenu.style.display = isVisible ? 'none' : 'block';
     });
 
-    document.addEventListener('click', () => {
-      launcherMenu.style.display = 'none';
+    document.addEventListener('click', (e) => {
+      if (!this.contains(e.target)) {
+        launcherMenu.style.display = 'none';
+      }
     });
 
     this.querySelector('#headerDataHubBtn').addEventListener('click', () => {
