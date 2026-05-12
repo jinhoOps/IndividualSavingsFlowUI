@@ -39,9 +39,11 @@ export const IsfCalculator = {
       };
     });
 
-    // 3. 투자금 비례 배분 (Optional: 투자금이 모든 목표치를 채우기에 부족할 경우)
+    // 3. 투자금 비례 배분
     const totalRequiredBuy = results.reduce((sum, as) => sum + as.buyAmount, 0);
-    if (totalRequiredBuy > investCapacity && investCapacity > 0) {
+    if (investCapacity <= 0) {
+      results.forEach(as => { as.buyAmount = 0; });
+    } else if (totalRequiredBuy > investCapacity) {
       const ratio = investCapacity / totalRequiredBuy;
       results.forEach(as => {
         as.buyAmount *= ratio;

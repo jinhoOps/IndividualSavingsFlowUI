@@ -14,7 +14,7 @@ progress:
 Phase: 11
 Plan: 01
 Status: In Progress
-Last activity: 2026-05-12 — Resolved critical logic errors in PR mode simulation and secured state immutability for Smart Add (v0.9.50)
+Last activity: 2026-05-12 — v0.9.51 Release: Fixed PR mode simulation logic, resolved Step 3 dependencies, and secured data integrity for merging/smart-add.
 
 ## Project Reference
 

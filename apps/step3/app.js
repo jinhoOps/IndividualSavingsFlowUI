@@ -3,6 +3,7 @@
  * 3-Tier Architecture: State / Helpers / UI
  */
 
+import { IsfUtils } from '../../shared/core/utils.js';
 import { IsfState } from './modules/state.js';
 import { IsfDom } from './modules/dom.js';
 import { IsfCalculator } from './modules/calculator.js';

@@ -263,7 +263,8 @@ export function simulateProjection(inputs, options = {}) {
       if (mode === "TR") {
         bucket.balance += totalGrowth;
       } else {
-        // 저축(Savings)은 이자 수익 전체를 배당(수취)으로 간주 (재투자 안 함)
+        // 저축(Savings)은 이자 수익 전체를 배당(수취)으로 간주하여 현금으로 회수
+        nextCash += totalGrowth;
         accumulatedPRDividend += totalGrowth;
       }
 
@@ -292,14 +293,15 @@ export function simulateProjection(inputs, options = {}) {
       if (mode === "TR") {
         bucket.balance += totalGrowth;
       } else {
-        // PR(Price Return) 모드: 자산 가치 상승(Capital Gain)은 잔고에 반영, 배당 수익은 별도 합계
+        // PR(Price Return) 모드: 자산 가치 상승(Capital Gain)은 잔고에 반영, 배당 수익은 현금으로 합산
         // 연 2% 수준의 배당 수익률을 가정하여 분리
         const annualDivYield = 0.02;
         const monthlyDivFactor = Math.pow(1 + annualDivYield, 1 / 12);
-        const dividend = Math.min(totalGrowth, bucket.balance * (monthlyDivFactor - 1));
+        const dividend = bucket.balance * (monthlyDivFactor - 1);
         const capitalGain = totalGrowth - dividend;
         
         bucket.balance += capitalGain;
+        nextCash += dividend;
         accumulatedPRDividend += dividend;
       }
 
@@ -360,7 +362,7 @@ export function buildProjectionRecord({
   investRate = 0,
   accumulatedPRDividend = 0
 }) {
-  const netAsset = cash + savings + invest + accumulatedPRDividend - debt;
+  const netAsset = cash + savings + invest - debt;
   const realNetAsset = netAsset / Math.max(realDiscountFactor, 1e-9);
   
   // 연간 금융 수익 (이자 + 투자수익) 추정

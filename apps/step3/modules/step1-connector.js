@@ -14,9 +14,18 @@ export const Step1Connector = {
       const snapshot = await IsfStorageHub.getLatestStep1Snapshot();
       if (!snapshot) return null;
 
-      // Step 1 데이터 구조에서 투자 가능 금액(startInvest 등) 추출
+      // Step 1 데이터 구조에서 투자 가능 금액 추출
+      // 1. 저장된 monthlyInvest 필드 확인
+      // 2. 필드가 없을 경우 investItems의 합계로 계산
+      // 3. 그래도 없으면 0 (startInvest는 초기 자산이므로 여력으로 쓰기 부적절)
       const data = snapshot.data || {};
-      const investCapacity = data.monthlyInvest || data.startInvest || 0;
+      let investCapacity = 0;
+      
+      if (typeof data.monthlyInvest === 'number') {
+        investCapacity = data.monthlyInvest;
+      } else if (Array.isArray(data.investItems)) {
+        investCapacity = data.investItems.reduce((sum, it) => sum + (Number(it.amount) || 0), 0);
+      }
 
       return {
         investCapacity: investCapacity

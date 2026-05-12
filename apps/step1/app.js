@@ -289,6 +289,11 @@ function handleSmartAddInput(e) {
 function handleApplySmartAdd() {
   const result = state.lastParsedResult;
   if (!result) return;
+
+  if (state.itemEditors.expense.active) {
+    window.IsfFeedback.showFeedback(dom.applyFeedback, "생활비 편집기가 열려 있습니다. 편집을 완료하거나 취소한 후 등록해주세요.", true);
+    return;
+  }
   
   const selectedName = dom.smartAddCategory.value;
   const merchantName = dom.smartAddMerchant.value.trim() || result.merchant;
@@ -1044,5 +1049,8 @@ async function initializeInputsFromShareId() {
   if (sid) {
     const sidInputs = await loadShareSnapshotById(sid, (id) => id);
     if (sidInputs) commitImmediateInputs(sidInputs);
+  }
+}
+  if (sidInputs) commitImmediateInputs(sidInputs);
   }
 }
