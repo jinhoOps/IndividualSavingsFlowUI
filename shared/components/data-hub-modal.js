@@ -144,11 +144,6 @@
         }
       });
 
-      root.getElementById("btnSaveAiKey").addEventListener("click", () => {
-        const key = root.getElementById("aiApiKeyInput").value.trim();
-        this.dispatchEvent(new CustomEvent("save-ai-key", { detail: { key } }));
-      });
-
       const fileInput = root.getElementById("fileInput");
       root.getElementById("btnImportJson").addEventListener("click", () => fileInput.click());
       fileInput.addEventListener("change", (e) => {
@@ -337,6 +332,13 @@
           </div>
         </div>
       </div>
+      `;
+    }
+  }
+
+  customElements.define("data-hub-modal", DataHubModal);
+})(window);
+v>
       `;
     }
   }

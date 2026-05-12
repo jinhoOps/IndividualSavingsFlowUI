@@ -110,9 +110,6 @@
   smartAddCategory: document.getElementById("smartAddCategory"),
   applySmartAddBtn: document.getElementById("applySmartAddBtn"),
 
-  aiInsightPanel: document.getElementById("aiInsightPanel"),
-  aiInsightContent: document.getElementById("aiInsightContent"),
-
   snapshotSelector: document.getElementById("snapshotSelector"),
   saveSnapshotBtn: document.getElementById("saveSnapshotBtn"),
   deleteSnapshotBtn: document.getElementById("deleteSnapshotBtn"),

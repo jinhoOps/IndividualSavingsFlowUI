@@ -1,6 +1,5 @@
 import { IsfUtils } from "../../shared/core/utils.js";
 import { ClipboardParser } from "../../shared/core/clipboard-parser.js";
-import { AiEngine } from "../../shared/core/ai-engine.js";
 
 import {
   MONEY_UNIT, STORAGE_KEY, SHARE_STATE_KEY, SHARE_STATE_SCHEMA,
@@ -98,10 +97,6 @@ function init() {
   }
 
   initOnboarding(state.isViewMode);
-
-  if (localStorage.getItem("isf_ai_api_key")) {
-    void runAiAnalysis();
-  }
 }
 
 if (document.readyState === "loading") {
@@ -372,44 +367,6 @@ function bindModalEvents() {
   dom.dataHubModal.addEventListener("generate-isf-code", handleGenerateIsfCode);
   dom.dataHubModal.addEventListener("apply-isf-code", handleApplyIsfCode);
   dom.dataHubModal.addEventListener("merge-isf-code", handleMergeIsfCode);
-  dom.dataHubModal.addEventListener("save-ai-key", handleSaveAiKey);
-}
-
-function handleSaveAiKey(e) {
-  const key = e.detail.key;
-  if (key) {
-    localStorage.setItem("isf_ai_api_key", key);
-    window.IsfFeedback.showFeedback(dom.applyFeedback, "AI API 키가 저장되었습니다. 인사이트를 분석합니다...");
-    void runAiAnalysis();
-  }
-}
-
-async function runAiAnalysis() {
-  const apiKey = localStorage.getItem("isf_ai_api_key");
-  if (!apiKey || !dom.aiInsightPanel) return;
-
-  dom.aiInsightPanel.hidden = false;
-  dom.aiInsightContent.innerHTML = `
-    <div class="ai-loading">
-      <div class="ai-pulse"></div>
-      현재 데이터를 기반으로 AI 인사이트를 분석 중입니다...
-    </div>
-  `;
-
-  try {
-    const projection = simulateProjection(state.inputs, { mode: state.projectionOptions.mode });
-    const finalResult = projection[projection.length - 1];
-    
-    const insight = await AiEngine.generateInsight({
-      inputs: state.inputs,
-      finalAnnualDividend: finalResult.annualFinancialIncome
-    }, apiKey);
-
-    dom.aiInsightContent.innerHTML = `<div class="ai-text">${insight.replace(/\n/g, '<br>')}</div>`;
-  } catch (error) {
-    console.error("AI Analysis failed:", error);
-    dom.aiInsightContent.innerHTML = `<div class="text-error">AI 분석에 실패했습니다. API 키를 확인해주세요.</div>`;
-  }
 }
 
 async function handleGenerateIsfCode() {
@@ -678,7 +635,6 @@ function applyPendingChanges() {
   refreshInputsPanel(state.inputs);
   persistPrimaryState(state.inputs);
   renderAll();
-  void runAiAnalysis();
 }
 
 function cancelPendingChanges() {

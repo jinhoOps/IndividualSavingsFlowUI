@@ -1,9 +1,9 @@
 ---
-milestone: "v1.3"
-name: "지능형 자산 관리 및 자문"
+milestone: "v1.4"
+name: "안정성 강화 및 UX 고도화"
 status: "in-progress"
 progress:
-  completed_phases: 9
+  completed_phases: 10
   total_phases: 12
 ---
 
@@ -11,17 +11,21 @@ progress:
 
 ## Current Position
 
-Phase: 10
-Plan: 01 (Engine Design)
+Phase: 11
+Plan: 01 (Stability & UX)
 Status: In-Progress
-Last activity: 2026-05-11 — Milestone v1.2 finalized. Initiated Phase 10 (AI Integration) research and core engine planning.
+Last activity: 2026-05-12 — Phase 10 (AI Integration) 제거 및 Phase 11 안정화 작업 전환.
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-11)
+See: .planning/PROJECT.md (updated 2026-05-12)
 
 **Core value:** 단순한 프리셋 선택만으로 즉각적인 자산 시각화 결과 제공
-**Current focus:** Phase 10 AI Integration - Architecture & Core Engine
+**Current focus:** Phase 11 Core Stability & UX Refinement
+
+## Recent Milestones
+- **Phase 09 (Newlywed Harmony Hub)**: 부부 통합 자산 관리 기능 구현 완료 (v0.9.44)
+- **Phase 10 (AI Integration - Cancelled)**: 정적 웹 환경의 안정성 우선 및 핵심 가치 집중을 위해 제거 (v0.9.47)
 
 ## Key Decisions
 - **Step 4 (React/TS)**: 복잡한 대시보드 구현을 위해 React 19와 TypeScript를 표준으로 도입함. (D-01, D-03)
