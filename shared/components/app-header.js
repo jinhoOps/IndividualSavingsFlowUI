@@ -87,10 +87,6 @@ export class AppHeader extends HTMLElement {
                   <span class="launcher-item__icon">💼</span>
                   <span class="launcher-item__text">포트폴리오</span>
                 </a>
-                <a href="../step4/" class="launcher-item ${this.currentStep === '4' ? 'is-active' : ''}">
-                  <span class="launcher-item__icon">📈</span>
-                  <span class="launcher-item__text">백테스트</span>
-                </a>
                 <div style="margin-top: var(--sp-xs); border-top: 1px solid var(--line);"></div>
                 <button type="button" id="headerDataHubBtn" class="launcher-item" style="width: 100%; border: none; background: none; text-align: left; cursor: pointer;">
                   <span class="launcher-item__icon">⚙️</span>

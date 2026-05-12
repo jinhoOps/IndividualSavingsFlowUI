@@ -46,4 +46,10 @@
 
 ---
 
-*Roadmap updated: 2026-05-08 (Reflecting GitHub Issue #7)*
+## Phase 10: 백테스트 관련 기능 제거 및 이관
+
+**Goal:** 현재 프로젝트(`IndividualSavingsFlowUI`)의 백테스트 관련 코드와 기능들을 모두 제거하고, 해당 설계 및 로직을 `D:\jhkSandBox\CODE\stock-snowball\.planning` 에 이관한다.
+
+---
+
+*Roadmap updated: 2026-05-12 (Reflecting Backtest Migration)*

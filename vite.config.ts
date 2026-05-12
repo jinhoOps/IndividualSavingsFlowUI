@@ -82,7 +82,7 @@ export default defineConfig({
         step1: resolve(__dirname, 'apps/step1/index.html'),
         step2: resolve(__dirname, 'apps/step2/index.html'),
         step3: resolve(__dirname, 'apps/step3/index.html'),
-        step4: resolve(__dirname, 'apps/step4/index.html'),
+
       },
     },
   },
