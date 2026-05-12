@@ -328,12 +328,21 @@ function handleApplySmartAdd() {
 async function initializeSnapshotSelector() {
   if (!dom.snapshotSelector) return;
   const list = await listSnapshots({ getHubStorage: () => window.IsfStorageHub });
-  const defaultOption = '<option value="">과거 시점 선택...</option>';
+  
+  // Clear and add default option
+  dom.snapshotSelector.innerHTML = "";
+  const defaultOption = document.createElement("option");
+  defaultOption.value = "";
+  defaultOption.textContent = "과거 시점 선택...";
+  dom.snapshotSelector.appendChild(defaultOption);
+
   if (list && list.length > 0) {
-    dom.snapshotSelector.innerHTML = defaultOption + 
-      list.map(s => `<option value="${s.id}">${formatBackupTimestamp(s.updatedAt)}</option>`).join("");
-  } else {
-    dom.snapshotSelector.innerHTML = defaultOption;
+    list.forEach(s => {
+      const option = document.createElement("option");
+      option.value = s.id;
+      option.textContent = formatBackupTimestamp(s.updatedAt);
+      dom.snapshotSelector.appendChild(option);
+    });
   }
 }
 
@@ -422,8 +431,8 @@ async function handleMergeIsfCode(e) {
   const merged = { ...mine };
 
   // Helper to add prefix
-  const addMe = (items) => items.map(it => ({ ...it, name: it.name.startsWith('[나]') ? it.name : `[나] ${it.name}` }));
-  const addYou = (items) => items.map(it => ({ ...it, name: it.name.startsWith('[너]') ? it.name : `[너] ${it.name}` }));
+  const addMe = (items) => items.map(it => ({ ...it, name: `[나] ${it.name.replace(/^\[(나|너)\]\s*/, '')}` }));
+  const addYou = (items) => items.map(it => ({ ...it, name: `[너] ${it.name.replace(/^\[(나|너)\]\s*/, '')}` }));
 
   // Merge items
   merged.incomes = [...addMe(mine.incomes), ...addYou(partnerData.incomes || [])];
@@ -1049,8 +1058,5 @@ async function initializeInputsFromShareId() {
   if (sid) {
     const sidInputs = await loadShareSnapshotById(sid, (id) => id);
     if (sidInputs) commitImmediateInputs(sidInputs);
-  }
-}
-  if (sidInputs) commitImmediateInputs(sidInputs);
   }
 }

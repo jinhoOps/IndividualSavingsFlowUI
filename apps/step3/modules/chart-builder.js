@@ -17,28 +17,59 @@ export const IsfChartBuilder = {
     const strokeWidth = 40;
     const total = data.reduce((sum, d) => sum + d.value, 0);
 
+    container.innerHTML = ""; // Clear container
+
     if (total === 0) {
-      container.innerHTML = '<div class="placeholder-chart">표시할 자산 데이터가 없습니다.</div>';
+      const placeholder = document.createElement("div");
+      placeholder.className = "placeholder-chart";
+      placeholder.textContent = "표시할 자산 데이터가 없습니다.";
+      container.appendChild(placeholder);
       return;
     }
 
-    let currentAngle = -90; // Top
-    const paths = data.map((d, i) => {
-      const sliceAngle = (d.value / total) * 360;
-      const path = this._describeArc(center, center, radius, currentAngle, currentAngle + sliceAngle);
-      currentAngle += sliceAngle;
-      return `<path d="${path}" fill="none" stroke="${d.color || this._getColor(i)}" stroke-width="${strokeWidth}" />`;
-    }).join('');
+    const svgNS = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(svgNS, "svg");
+    svg.setAttribute("width", "100%");
+    svg.setAttribute("height", "100%");
+    svg.setAttribute("viewBox", `0 0 ${size} ${size}`);
+    svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
 
-    container.innerHTML = `
-      <svg width="100%" height="100%" viewBox="0 0 ${size} ${size}" preserveAspectRatio="xMidYMid meet">
-        ${paths}
-        <circle cx="${center}" cy="${center}" r="${radius - strokeWidth/2 - 2}" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="1" />
-        <text x="${center}" y="${center}" text-anchor="middle" dominant-baseline="middle" fill="white" style="font-size: 14px; font-weight: 600;">
-          Portfolio
-        </text>
-      </svg>
-    `;
+    let currentAngle = -90; // Top
+    data.forEach((d, i) => {
+      const sliceAngle = (d.value / total) * 360;
+      const pathData = this._describeArc(center, center, radius, currentAngle, currentAngle + sliceAngle);
+      
+      const path = document.createElementNS(svgNS, "path");
+      path.setAttribute("d", pathData);
+      path.setAttribute("fill", "none");
+      path.setAttribute("stroke", d.color || this._getColor(i));
+      path.setAttribute("stroke-width", strokeWidth.toString());
+      svg.appendChild(path);
+
+      currentAngle += sliceAngle;
+    });
+
+    const circle = document.createElementNS(svgNS, "circle");
+    circle.setAttribute("cx", center.toString());
+    circle.setAttribute("cy", center.toString());
+    circle.setAttribute("r", (radius - strokeWidth/2 - 2).toString());
+    circle.setAttribute("fill", "none");
+    circle.setAttribute("stroke", "rgba(255,255,255,0.05)");
+    circle.setAttribute("stroke-width", "1");
+    svg.appendChild(circle);
+
+    const text = document.createElementNS(svgNS, "text");
+    text.setAttribute("x", center.toString());
+    text.setAttribute("y", center.toString());
+    text.setAttribute("text-anchor", "middle");
+    text.setAttribute("dominant-baseline", "middle");
+    text.setAttribute("fill", "white");
+    text.style.fontSize = "14px";
+    text.style.fontWeight = "600";
+    text.textContent = "Portfolio";
+    svg.appendChild(text);
+
+    container.appendChild(svg);
   },
 
   _describeArc(x, y, radius, startAngle, endAngle) {
