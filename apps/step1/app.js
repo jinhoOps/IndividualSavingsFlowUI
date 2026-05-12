@@ -416,12 +416,15 @@ async function handleApplyIsfCode(e) {
 
 async function handleMergeIsfCode(e) {
   const code = e.detail.code;
-  const partnerData = window.IsfShare.decodePayloadFromHash(code, SHARE_STATE_KEY);
+  let partnerData = window.IsfShare.decodePayloadFromHash(code, SHARE_STATE_KEY);
   
   if (!partnerData) {
     window.IsfFeedback.showFeedback(dom.applyFeedback, "유효하지 않은 코드입니다.", true);
     return;
   }
+
+  // 외부 데이터 정제 (XSS 방지 및 무결성 확보)
+  partnerData = sanitizeInputs(partnerData);
 
   if (!window.confirm("부부 데이터 병합: 파트너의 데이터를 현재 내 데이터와 합칠까요? (기존 항목들에 추가됩니다)")) {
     return;

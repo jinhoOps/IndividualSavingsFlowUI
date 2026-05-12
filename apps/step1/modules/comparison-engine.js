@@ -14,21 +14,27 @@ import { migrateInputsToWon } from "./input-sanitizer.js";
 export function compareItems(previousItems = [], currentItems = []) {
   const map = new Map();
 
-  // Process previous items
+  // Process previous items (aggregate by name)
   previousItems.forEach(item => {
     if (!item.name) return;
-    map.set(item.name, {
-      name: item.name,
-      prev: item.amount || 0,
-      curr: 0
-    });
+    const existing = map.get(item.name);
+    if (existing) {
+      existing.prev += (item.amount || 0);
+    } else {
+      map.set(item.name, {
+        name: item.name,
+        prev: item.amount || 0,
+        curr: 0
+      });
+    }
   });
 
-  // Process current items (merge with previous or add new)
+  // Process current items (aggregate by name, merge with previous or add new)
   currentItems.forEach(item => {
     if (!item.name) return;
-    if (map.has(item.name)) {
-      map.get(item.name).curr = item.amount || 0;
+    const existing = map.get(item.name);
+    if (existing) {
+      existing.curr += (item.amount || 0);
     } else {
       map.set(item.name, {
         name: item.name,

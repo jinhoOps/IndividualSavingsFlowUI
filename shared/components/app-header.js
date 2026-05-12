@@ -1,4 +1,4 @@
-﻿
+
 import { IsfUtils } from '../core/utils.js';
 
 export class AppHeader extends HTMLElement {
@@ -7,10 +7,23 @@ export class AppHeader extends HTMLElement {
     this.currentStep = this.getAttribute('current-step') || '1';
     this.status = 'idle';
     this.statusMessage = '자동 저장 활성';
+    this._onDocumentClick = this._onDocumentClick.bind(this);
   }
 
   connectedCallback() {
     this.render();
+    document.addEventListener('click', this._onDocumentClick);
+  }
+
+  disconnectedCallback() {
+    document.removeEventListener('click', this._onDocumentClick);
+  }
+
+  _onDocumentClick(e) {
+    const launcherMenu = this.querySelector('#appLauncherMenu');
+    if (launcherMenu && !this.contains(e.target)) {
+      launcherMenu.style.display = 'none';
+    }
   }
 
   /**
@@ -100,12 +113,6 @@ export class AppHeader extends HTMLElement {
       launcherMenu.style.display = isVisible ? 'none' : 'block';
     });
 
-    document.addEventListener('click', (e) => {
-      if (!this.contains(e.target)) {
-        launcherMenu.style.display = 'none';
-      }
-    });
-
     this.querySelector('#headerDataHubBtn').addEventListener('click', () => {
       this.dispatchEvent(new CustomEvent('open-data-hub'));
     });
@@ -115,4 +122,3 @@ export class AppHeader extends HTMLElement {
 if (!customElements.get('app-header')) {
   customElements.define('app-header', AppHeader);
 }
-

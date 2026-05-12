@@ -14,7 +14,7 @@ progress:
 Phase: 11
 Plan: 01
 Status: In Progress
-Last activity: 2026-05-12 — v0.9.52 Release: Resolved XSS vulnerabilities in SVG/DOM generation, refined data merging prefix logic, and eliminated magic numbers/redundant code.
+Last activity: 2026-05-12 — v0.9.53 Release: 코드 리뷰 피드백 반영. 부부 데이터 병합 시 sanitizeInputs 추가(보안), AppHeader 이벤트 리스너 누수 방지, 비교 엔진 동일 이름 항목 합산 처리(데이터 유실 방지), 시뮬레이션 배당 수익률 상수 추출.
 
 ## Project Reference
 

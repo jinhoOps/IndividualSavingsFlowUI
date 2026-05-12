@@ -2,7 +2,8 @@
   DEFAULT_INPUTS,
   DEFAULT_EXPENSE_ITEMS,
   DEFAULT_SAVINGS_ITEMS,
-  DEFAULT_INVEST_ITEMS
+  DEFAULT_INVEST_ITEMS,
+  PR_MODE_ASSUMED_ANNUAL_DIV_YIELD
 } from "./constants.js";
 import {
   getMonthlyIncomeTotalWon,
@@ -295,7 +296,6 @@ export function simulateProjection(inputs, options = {}) {
       } else {
         // PR(Price Return) 모드: 자산 가치 상승(Capital Gain)은 잔고에 반영, 배당 수익은 현금으로 합산
         // 연 2% 수준의 배당 수익률을 가정하여 분리
-        const PR_MODE_ASSUMED_ANNUAL_DIV_YIELD = 0.02;
         const monthlyDivFactor = Math.pow(1 + PR_MODE_ASSUMED_ANNUAL_DIV_YIELD, 1 / 12);
         const dividend = bucket.balance * (monthlyDivFactor - 1);
         const capitalGain = totalGrowth - dividend;

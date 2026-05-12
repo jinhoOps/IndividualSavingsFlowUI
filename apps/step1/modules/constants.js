@@ -11,6 +11,8 @@ export const MANUAL_BACKUP_WINDOW_MS = 60 * 1000;
 export const MAX_INCOME_ITEMS = 12;
 export const MAX_ALLOCATION_ITEMS = 20;
 
+export const PR_MODE_ASSUMED_ANNUAL_DIV_YIELD = 0.02; // 연 2% 수준의 배당 수익률 가정
+
 export const SANKEY_VALUE_MODES = {
   AMOUNT: "amount",
   PERCENT: "percent",
