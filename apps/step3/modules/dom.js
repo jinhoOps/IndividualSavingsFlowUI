@@ -40,7 +40,7 @@ export const IsfDom = {
               <span class="guide-ticker">${IsfUtils.escapeHtml(as.ticker || '')}</span>
             </div>
             <div class="guide-action">
-              <span class="guide-amount">${Math.round(as.buyAmount / 10000).toLocaleString()} 만원</span>
+              <span class="guide-amount">${IsfUtils.formatMoney(as.buyAmount)}</span>
               <span class="guide-label">매수 추천</span>
             </div>
           </li>

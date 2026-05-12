@@ -154,7 +154,7 @@ export class BacktestEngine {
       : history;
 
     return {
-      finalValue: Math.round(finalValue),
+      finalValue: Number(finalValue.toFixed(2)),
       totalPrincipal,
       totalReturn: Number(totalReturn.toFixed(6)),
       finalAnnualDividend,

@@ -64,8 +64,8 @@ const App = {
     const summary = this.state.getSummary();
     
     // Update Summaries
-    IsfDom.nodes.investCapacity.textContent = `${Math.round(summary.investCapacity / 10000).toLocaleString()} 만원`;
-    IsfDom.nodes.totalAssetValue.textContent = `${Math.round(analysis.totalValue / 10000).toLocaleString()} 만원`;
+    IsfDom.nodes.investCapacity.textContent = IsfUtils.formatMoney(summary.investCapacity);
+    IsfDom.nodes.totalAssetValue.textContent = IsfUtils.formatMoney(analysis.totalValue);
     IsfDom.nodes.expectedYield.textContent = `${summary.expectedYield.toFixed(2)}%`;
 
     // Render Chart

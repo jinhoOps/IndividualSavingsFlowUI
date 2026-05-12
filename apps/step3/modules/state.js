@@ -11,7 +11,7 @@ const STORAGE_KEY_STEP3 = 'isf-step3-settings-v1';
 export class IsfState {
   constructor() {
     this.data = {
-      investCapacity: 0, // 원 단위 (Step 1 연동)
+      investCapacity: 0,
       accounts: [],
       assets: [],
       lastUpdated: new Date().toISOString()
@@ -54,7 +54,6 @@ export class IsfState {
   updateAsset(id, field, value) {
     const asset = this.data.assets.find(as => as.id === id);
     if (asset) {
-      // 수치 필드의 경우 타입 변환 강제
       if (['targetRatio', 'currentPrice', 'quantity', 'expectedYield'].includes(field)) {
         asset[field] = Number(value) || 0;
       } else {
@@ -69,7 +68,6 @@ export class IsfState {
       return sum + (asset.currentPrice * asset.quantity);
     }, 0);
 
-    // 기대 수익률 계산 (자산 비중 기반 가중 평균)
     let totalWeightedYield = 0;
     if (totalAssetValue > 0) {
       this.data.assets.forEach(asset => {
@@ -106,7 +104,7 @@ export class IsfState {
     const newAsset = { 
       id, accountId, name, ticker, 
       targetRatio, currentPrice: 0, quantity: 0,
-      expectedYield: 0 // 기대 수익률 필드 추가
+      expectedYield: 0
     };
     this.data.assets.push(newAsset);
     this.saveToStorage();

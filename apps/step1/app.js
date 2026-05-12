@@ -292,20 +292,20 @@ function handleApplySmartAdd() {
   
   const selectedName = dom.smartAddCategory.value;
   const merchantName = dom.smartAddMerchant.value.trim() || result.merchant;
-  const amountMan = Math.round(result.amount / 10000); // Convert to 만원
+  const amountWon = result.amount; // 원 단위 직접 사용
   
   const newItems = [...state.inputs.expenseItems];
   
   if (selectedName === "new") {
     newItems.push({
       name: merchantName,
-      amount: amountMan,
+      amount: amountWon,
       group: "기타"
     });
   } else {
     const idx = newItems.findIndex(item => item.name === selectedName);
     if (idx !== -1) {
-      newItems[idx].amount += amountMan;
+      newItems[idx].amount += amountWon;
     }
   }
   
@@ -317,7 +317,7 @@ function handleApplySmartAdd() {
   markPendingChanges();
   
   handleCloseSmartAdd();
-  window.IsfFeedback.showFeedback(dom.applyFeedback, `${merchantName} 항목에 ${amountMan}만원이 합산되었습니다.`);
+  window.IsfFeedback.showFeedback(dom.applyFeedback, `${merchantName} 항목에 ${window.IsfUtils.formatMoney(amountWon)}이 합산되었습니다.`);
 }
 
 async function initializeSnapshotSelector() {
@@ -417,8 +417,8 @@ async function handleMergeIsfCode(e) {
   const merged = { ...mine };
 
   // Helper to add prefix
-  const addMe = (items) => items.map(it => ({ ...it, name: `[나] ${it.name}` }));
-  const addYou = (items) => items.map(it => ({ ...it, name: `[너] ${it.name}` }));
+  const addMe = (items) => items.map(it => ({ ...it, name: it.name.startsWith('[나]') ? it.name : `[나] ${it.name}` }));
+  const addYou = (items) => items.map(it => ({ ...it, name: it.name.startsWith('[너]') ? it.name : `[너] ${it.name}` }));
 
   // Merge items
   merged.incomes = [...addMe(mine.incomes), ...addYou(partnerData.incomes || [])];

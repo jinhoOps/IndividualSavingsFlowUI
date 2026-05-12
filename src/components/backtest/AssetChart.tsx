@@ -149,11 +149,8 @@ export const AssetChart: React.FC<Props> = ({ results, relativeMode, benchmarkId
           if (relativeMode) {
             label = `${val >= 0 ? '+' : ''}${val.toFixed(0)}%`;
           } else {
-            if (val >= 100000000) {
-              label = `${(val / 100000000).toFixed(1)}억`;
-            } else {
-              label = `${Math.round(val / 10000).toLocaleString()}만`;
-            }
+            // MoneyUtils.formatMan을 사용하여 억/만 단위 일관성 유지
+            label = MoneyUtils.formatMan(val).replace(' 만원', '만').replace(' 억원', '억').replace(' 억 ', '억');
           }
 
           return (
