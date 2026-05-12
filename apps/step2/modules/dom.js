@@ -23,6 +23,10 @@ export const dom = {
   simYearsTabs: null,
   simKpiGrid: null,
   activePresetName: null,
+  optShowAsset: null,
+  optShowDividend: null,
+  optShowPR: null,
+  optShowTR: null,
 };
 
 export function initDom() {
@@ -49,6 +53,10 @@ export function initDom() {
     simYearsTabs: "simYearsTabs",
     simKpiGrid: "simKpiGrid",
     activePresetName: "activePresetName",
+    optShowAsset: "optShowAsset",
+    optShowDividend: "optShowDividend",
+    optShowPR: "optShowPR",
+    optShowTR: "optShowTR",
   };
 
   for (const [key, id] of Object.entries(selectors)) {

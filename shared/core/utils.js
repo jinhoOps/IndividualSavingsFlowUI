@@ -17,7 +17,7 @@
     }
     const manValue = Math.round(numericValue / 10000);
     
-    if (manValue >= 10000) {
+    if (manValue >= 100000) {
       const eok = Math.floor(manValue / 10000);
       const remainMan = manValue % 10000;
       if (remainMan === 0) {
@@ -175,7 +175,7 @@
   }
 
   const result = {
-    APP_VERSION: "0.9.5",
+    APP_VERSION: (typeof __APP_VERSION__ !== "undefined") ? __APP_VERSION__ : "0.9.45",
     formatMoney,
     getFinancialIncomeStatus,
     calculateIncomeTax,

@@ -130,6 +130,23 @@
 
             <div id="simKpiGrid" class="kpi-grid"></div>
 
+            <div class="sim-view-options" style="margin-top: 16px; margin-bottom: 8px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+              <span class="muted" style="font-size: 0.8rem;">표시 옵션:</span>
+              <label class="view-opt-label" style="font-size: 0.85rem; display: flex; align-items: center; gap: 4px; cursor: pointer;">
+                <input type="checkbox" id="optShowAsset" checked /> 자산
+              </label>
+              <label class="view-opt-label" style="font-size: 0.85rem; display: flex; align-items: center; gap: 4px; cursor: pointer;">
+                <input type="checkbox" id="optShowDividend" checked /> 연배당
+              </label>
+              <div style="width: 1px; height: 14px; background: var(--line); margin: 0 4px;"></div>
+              <label class="view-opt-label" style="font-size: 0.85rem; display: flex; align-items: center; gap: 4px; cursor: pointer;">
+                <input type="checkbox" id="optShowPR" checked /> PR (미투자)
+              </label>
+              <label class="view-opt-label" style="font-size: 0.85rem; display: flex; align-items: center; gap: 4px; cursor: pointer;">
+                <input type="checkbox" id="optShowTR" checked /> TR (재투자)
+              </label>
+            </div>
+
             <div class="sim-chart-wrap" style="position: relative; margin-top: 10px;">
               <svg id="simChartSvg" viewBox="0 0 600 220" role="img" aria-label="연도별 배당금 추이"></svg>
               <div id="simChartTooltip" class="sim-tooltip" hidden></div>

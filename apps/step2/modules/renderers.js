@@ -49,26 +49,92 @@ export function renderDividendSimulation() {
   
   renderKpiCards(data);
 
+  const { showAsset, showDividend, showPR, showTR } = state.displayOptions;
+  
+  // Update table header based on options
+  const table = dom.simTable.closest("table");
+  if (table) {
+    const thead = table.querySelector("thead");
+    if (thead) {
+      let headerRow1 = `
+        <tr>
+          <th rowspan="2" style="text-align: center; vertical-align: middle;">연차</th>
+          <th rowspan="2" style="text-align: center; vertical-align: middle;">누적 원금</th>
+      `;
+      let headerRow2 = "<tr>";
+      
+      if (showAsset) {
+        if (showPR) {
+          headerRow1 += `<th colspan="2" style="text-align: center;" data-tooltip="배당을 재투자하지 않는 순수 주가 상승 케이스 (Price Return)">자산 (PR)</th>`;
+          headerRow2 += `<th>명목</th><th>실질</th>`;
+        }
+        if (showTR) {
+          headerRow1 += `<th colspan="2" style="text-align: center;" data-tooltip="배당을 전액 재투자하여 복리 효과를 극대화한 케이스 (Total Return)">자산 (TR)</th>`;
+          headerRow2 += `<th>명목</th><th>실질</th>`;
+        }
+      }
+      
+      if (showDividend) {
+        if (showPR) {
+          headerRow1 += `<th colspan="2" style="text-align: center;" data-tooltip="재투자하지 않을 때 받는 세후 배당금">연 배당 (PR)</th>`;
+          headerRow2 += `<th>명목</th><th>실질</th>`;
+        }
+        if (showTR) {
+          headerRow1 += `<th colspan="2" style="text-align: center;" data-tooltip="재투자로 인해 늘어난 수량까지 합산된 세후 배당금">연 배당 (TR)</th>`;
+          headerRow2 += `<th>명목</th><th>실질</th>`;
+        }
+      }
+      
+      headerRow1 += "</tr>";
+      headerRow2 += "</tr>";
+      thead.innerHTML = headerRow1 + headerRow2;
+    }
+  }
+
   dom.simTable.innerHTML = data.map(d => {
     const statusClass = utils.getFinancialIncomeStatus(d.dividendNominalTR);
     const trClass = statusClass !== 'normal' ? `status--${statusClass}` : '';
     const badge = statusClass === 'warn' ? '<span class="status-badge status-badge--warn">과세주의</span>' : 
                   statusClass === 'crit' ? '<span class="status-badge status-badge--crit">과세경고</span>' : '';
 
-    return `
+    let rowHtml = `
       <tr class="${trClass}">
         <td>${d.year}년</td>
         <td>${formatCurrency(d.principal)}</td>
-        <td class="nominal">${formatCurrency(d.assetNominalPR)}</td>
-        <td class="real">${formatCurrency(d.assetRealPR)}</td>
-        <td class="nominal">${formatCurrency(d.assetNominalTR)}</td>
-        <td class="real">${formatCurrency(d.assetRealTR)}</td>
-        <td class="nominal">${formatCurrency(d.dividendAfterTaxPR)}</td>
-        <td class="real">${formatCurrency(d.dividendAfterTaxRealPR)}</td>
-        <td class="nominal">${formatCurrency(d.dividendAfterTaxTR)} ${badge}</td>
-        <td class="real">${formatCurrency(d.dividendAfterTaxRealTR)}</td>
-      </tr>
     `;
+    
+    if (showAsset) {
+      if (showPR) {
+        rowHtml += `
+          <td class="nominal">${formatCurrency(d.assetNominalPR)}</td>
+          <td class="real">${formatCurrency(d.assetRealPR)}</td>
+        `;
+      }
+      if (showTR) {
+        rowHtml += `
+          <td class="nominal">${formatCurrency(d.assetNominalTR)}</td>
+          <td class="real">${formatCurrency(d.assetRealTR)}</td>
+        `;
+      }
+    }
+    
+    if (showDividend) {
+      if (showPR) {
+        rowHtml += `
+          <td class="nominal">${formatCurrency(d.dividendAfterTaxPR)}</td>
+          <td class="real">${formatCurrency(d.dividendAfterTaxRealPR)}</td>
+        `;
+      }
+      if (showTR) {
+        rowHtml += `
+          <td class="nominal">${formatCurrency(d.dividendAfterTaxTR)} ${badge}</td>
+          <td class="real">${formatCurrency(d.dividendAfterTaxRealTR)}</td>
+        `;
+      }
+    }
+    
+    rowHtml += "</tr>";
+    return rowHtml;
   }).join("");
 
   if (dom.simChartSvg) drawSimulationChart(dom.simChartSvg, data);

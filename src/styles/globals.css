@@ -85,6 +85,36 @@
 }
 
 @layer components {
+  /* Launcher Menu Styles */
+  .launcher-menu {
+    @apply absolute top-[50px] right-0 z-[101] bg-panel backdrop-blur-md border border-line rounded-md p-sm min-w-[180px] animate-[launcher-slide-down_0.2s_ease-out];
+  }
+
+  @keyframes launcher-slide-down {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .launcher-menu__inner {
+    @apply flex flex-col gap-xs;
+  }
+
+  .launcher-item {
+    @apply flex items-center gap-sm px-[14px] py-[10px] rounded-sm no-underline text-ink text-body-md transition-all duration-200;
+  }
+
+  .launcher-item:hover {
+    @apply bg-line;
+  }
+
+  .launcher-item.is-active {
+    @apply bg-primary/10 text-primary font-bold;
+  }
+
+  .launcher-item__icon {
+    @apply text-[1.2rem];
+  }
+
   /* Utility bridges for legacy classes */
   .panel {
     @apply border border-line rounded-md bg-panel shadow-float p-md min-w-0;

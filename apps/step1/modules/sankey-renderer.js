@@ -42,7 +42,7 @@ export function createSvgElement(tagName, attrs) {
 
 export function measureSankeyTextWidth(text, fontSizePx = 12, fontWeight = 400) {
   if (!sankeyTextMeasureContext) return text.length * 8;
-  sankeyTextMeasureContext.font = `${fontWeight} ${fontSizePx}px "Pretendard Variable", "Pretendard", -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif`;
+  sankeyTextMeasureContext.font = `${fontWeight} ${fontSizePx}px "Gowun Dodum", "Nanum Gothic", -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif`;
   return Math.ceil(sankeyTextMeasureContext.measureText(text).width);
 }
 

@@ -1,4 +1,4 @@
-﻿(function initDataHubModal(global) {
+(function initDataHubModal(global) {
   "use strict";
 
   class DataHubModal extends HTMLElement {
@@ -123,11 +123,22 @@
       root.getElementById("btnBackupNow").addEventListener("click", () => this.dispatchEvent(new CustomEvent("backup-now")));
       
       root.getElementById("btnGenerateCode").addEventListener("click", () => this.dispatchEvent(new CustomEvent("generate-isf-code")));
+      
       root.getElementById("btnApplyCode").addEventListener("click", () => {
         const codeInput = root.getElementById("isfCodeInput");
         const code = codeInput.value.trim();
         if (code) {
           this.dispatchEvent(new CustomEvent("apply-isf-code", { detail: { code } }));
+        } else {
+          codeInput.focus();
+        }
+      });
+
+      root.getElementById("btnMergeCode").addEventListener("click", () => {
+        const codeInput = root.getElementById("isfCodeInput");
+        const code = codeInput.value.trim();
+        if (code) {
+          this.dispatchEvent(new CustomEvent("merge-isf-code", { detail: { code } }));
         } else {
           codeInput.focus();
         }
@@ -177,17 +188,18 @@
     render() {
       const step = this.getAttribute("current-step") || this.dataset.step || "1";
       const showSimulations = step === "2";
-      const activeTab = "tab-share"; 
 
       this.shadowRoot.innerHTML = `
       <style>
         :host { 
           --primary: var(--tone-primary, #ea5b2a); 
+          --accent: var(--tone-accent, #1e8b7c);
           --bg: var(--bg, #f8f9fa); 
           --line: var(--line, #e9ecef); 
           --ink: var(--ink, #212529); 
           --muted: var(--muted, #868e96); 
           --radius: var(--rd-md, 16px);
+          --panel: rgba(255, 255, 255, 0.95);
         }
         #modalContainer { position: fixed; inset: 0; z-index: 1000; visibility: hidden; opacity: 0; transition: all 0.2s; }
         #modalContainer.is-open { visibility: visible; opacity: 1; }
@@ -204,7 +216,7 @@
         
         .modal-body { padding: var(--sp-lg); display: flex; flex-direction: column; gap: var(--sp-lg); min-height: 320px; }
         
-        .tab-list { display: flex; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
+        .tab-list { display: flex; border-bottom: 1px solid var(--line); margin-bottom: 4px; overflow-x: auto; custom-scrollbar: none; }
         .tab-btn { flex: 1; padding: 10px; background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer; font-family: inherit; font-weight: 600; color: var(--muted); font-size: 0.85rem; white-space: nowrap; }
         .tab-btn.is-active { color: var(--primary); border-bottom-color: var(--primary); }
         .tab-pane { display: none; padding-top: 12px; height: 100%; }
@@ -241,6 +253,10 @@
         .btn-action { padding: 10px; border-radius: var(--rd-sm, 8px); font-weight: 600; cursor: pointer; text-align: center; font-size: 0.85rem; border: 1px solid var(--line); background: var(--panel); color: var(--ink); font-family: inherit; }
         .btn-primary { background: var(--primary); color: #fff; border: none; }
         .empty { text-align: center; padding: 40px 0; color: var(--muted); font-size: 0.9rem; }
+
+        /* AI Tab Styles */
+        .ai-status-badge { font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; background: var(--accent); color: white; font-weight: bold; }
+        .ai-key-input { font-family: password; letter-spacing: 2px; }
       </style>
       <div id="modalContainer">
         <div id="modalOverlay"></div>
@@ -254,18 +270,22 @@
               <button type="button" class="tab-btn is-active" data-target="tab-share">공유 및 연동</button>
               ${showSimulations ? `<button type="button" class="tab-btn" data-target="tab-simulations">시뮬레이션 목록</button>` : ""}
               <button type="button" class="tab-btn" data-target="tab-backups">데이터 백업 이력</button>
+              <button type="button" class="tab-btn" data-target="tab-ai">AI 지능형 자문 <span class="ai-status-badge">Beta</span></button>
             </div>
             
             <div id="tab-share" class="tab-pane is-active">
               <div class="share-section">
                 <div class="share-card">
-                  <h3>ISF CODE 공유</h3>
-                  <p>긴 URL 대신 짧은 코드를 통해 설정을 공유할 수 있습니다. 발급 후 상대방에게 코드를 전달하세요.</p>
+                  <h3>ISF CODE 공유 및 병합</h3>
+                  <p>짧은 코드를 통해 설정을 공유하거나, 파트너의 데이터를 현재 내 데이터와 합칠 수 있습니다.</p>
                   <div class="code-input-group">
                     <input type="text" id="isfCodeInput" placeholder="코드를 입력하거나 발급받으세요" />
                     <button id="btnGenerateCode" class="btn-action">발급</button>
                   </div>
-                  <button id="btnApplyCode" class="btn-action btn-primary">코드 입력하기 (불러오기)</button>
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                    <button id="btnApplyCode" class="btn-action btn-primary">코드 불러오기</button>
+                    <button id="btnMergeCode" class="btn-action" style="background: rgba(30, 139, 124, 0.1); border-color: var(--accent); color: var(--accent);">부부 데이터 병합</button>
+                  </div>
                 </div>
                 
                 <div class="share-card" style="flex-direction: row; align-items: center; justify-content: space-between; padding: 12px 16px;">
@@ -291,6 +311,20 @@
               <div id="backupListContainer" class="backup-list"></div>
               <button id="btnBackupNow" class="btn-action" style="width: 100%; margin-top: 12px;">지금 상태 백업하기</button>
             </div>
+
+            <div id="tab-ai" class="tab-pane">
+              <div class="share-section">
+                <div class="share-card">
+                  <h3>AI 기능 설정</h3>
+                  <p>Google Gemini API 키를 등록하여 지능형 자산 분석 및 세무 자문 기능을 활성화하세요.</p>
+                  <div class="code-input-group">
+                    <input type="password" id="aiApiKeyInput" class="ai-key-input" placeholder="Gemini API Key를 입력하세요" />
+                  </div>
+                  <button id="btnSaveAiKey" class="btn-action btn-primary">API 키 저장</button>
+                  <p style="font-size: 0.7rem; color: var(--muted); margin-top: 8px;">* API 키는 브라우저 로컬 저장소에만 안전하게 보관되며, 서버로 전송되지 않습니다.</p>
+                </div>
+              </div>
+            </div>
           </div>
           <div class="modal-footer" style="grid-template-columns: 1fr;">
             <p style="margin: 0; font-size: 0.7rem; color: var(--muted); text-align: center;">모든 데이터는 브라우저 로컬 저장소에 안전하게 보관됩니다.</p>
@@ -304,5 +338,10 @@
 
   customElements.define("data-hub-modal", DataHubModal);
 })(window);
+v>
+      `;
+    }
+  }
 
-
+  customElements.define("data-hub-modal", DataHubModal);
+})(window);

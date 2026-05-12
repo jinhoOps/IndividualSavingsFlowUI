@@ -54,6 +54,19 @@
   - PWA 지원: 오프라인 사용 및 홈 화면 추가 지원
   - 스토리지 v2: IndexedDB `isf-v2-db` 기반의 타입 안전한 CRUD
   - 로컬/원격 백업: 12시간 자동 백업 및 공유 링크(sid/hash) 지원
+  - **Knowledge Graph**: `graphify`를 통한 Wiki 지식 및 Codebase 구조 시각화/검색 지원
+
+## 지식 그래프 (Knowledge Graph)
+
+프로젝트의 이해를 돕기 위해 두 가지 성격의 지식 그래프를 분리하여 운영합니다.
+
+- **Wiki 지식 그래프**: 프로젝트 정책, 위키, 지식 베이스 검색용. (245 노드, 222 엣지)
+- **Codebase 구조 그래프**: 배포물(`dist`) 및 코드 의존성 분석용. (675 노드, 2131 엣지)
+
+### 그래프 활용 (Query/Explain)
+조회 시 `--graph` 옵션을 사용하여 대상 그래프를 명시적으로 지정합니다.
+- Wiki 검색: `graphify query "질문" --graph .planning/graphs/wiki/graph.json`
+- 코드 분석: `graphify query "질문" --graph .planning/graphs/codebase/graph.json`
 
 ## 저장 방식
 
