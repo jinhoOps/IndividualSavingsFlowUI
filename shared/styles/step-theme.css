@@ -485,6 +485,46 @@ select:focus-visible {
   gap: var(--sp-sm);
 }
 
+/* Floating Buttons */
+.floating-btn {
+  position: fixed;
+  bottom: var(--sp-lg);
+  z-index: 30;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--rd-lg);
+  background: rgba(16, 34, 32, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  box-shadow: var(--sh-float);
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.floating-btn:hover {
+  background: rgba(16, 34, 32, 0.6);
+  transform: translateY(-2px);
+}
+
+.floating-btn:active {
+  transform: scale(0.96);
+}
+
+.floating-btn--left { left: var(--sp-lg); }
+.floating-btn--left-save { left: 72px; }
+.floating-btn--right { right: var(--sp-lg); }
+
+@media (max-width: 760px) {
+  .floating-btn { bottom: 12px; width: 40px; height: 40px; }
+  .floating-btn--left { left: 12px; }
+  .floating-btn--left-save { left: 60px; }
+  .floating-btn--right { right: 12px; }
+}
 
 @media (max-width: 760px) {
   .modal-grid {

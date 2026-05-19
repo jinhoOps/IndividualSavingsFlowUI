@@ -343,27 +343,6 @@ body.is-dashboard-mode .controls-panel {
   display: none !important;
 }
 
-.floating-btn {
-  position: fixed;
-  bottom: var(--sp-lg);
-  z-index: 30;
-  width: 44px;
-  height: 44px;
-  border-radius: var(--rd-lg);
-  background: rgba(16, 34, 32, 0.4);
-  backdrop-filter: blur(8px);
-  color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  cursor: pointer;
-  display: grid;
-  place-items: center;
-  box-shadow: var(--sh-float);
-}
-
-.floating-btn--left { left: var(--sp-lg); }
-.floating-btn--left-save { left: 72px; }
-.floating-btn--right { right: var(--sp-lg); }
-
 
 .preset-controls {
   display: flex;
@@ -1016,8 +995,6 @@ body.is-dashboard-mode .controls-panel {
 .version-check-trigger:focus-visible { outline: 1px solid rgba(16, 34, 32, 0.25); outline-offset: 1px; }
 
 
-.floating-btn-icon { width: 18px; height: 18px; display: block; }
-.floating-btn:hover { background: rgba(16, 34, 32, 0.5); }
 #saveViewToLocal[hidden] { display: none !important; }
 .controls-panel.is-mobile-collapsed .actions { margin-top: 2px; }
 .summary-invalid { font-family: var(--font-display); color: #8b2f2f; }
