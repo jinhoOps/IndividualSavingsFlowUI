@@ -1,5 +1,4 @@
 import { IsfUtils } from "../../shared/core/utils.js";
-import { ClipboardParser } from "../../shared/core/clipboard-parser.js";
 
 import {
   MONEY_UNIT, STORAGE_KEY, SHARE_STATE_KEY, SHARE_STATE_SCHEMA,
@@ -57,6 +56,20 @@ import {
 import { buildSankeyData } from "./modules/sankey-builder.js";
 import * as helpers from "./modules/state-helpers.js";
 import { initOnboarding } from "./modules/onboarding-manager.js";
+import {
+  syncViewModeUi, syncViewModeGuideUi, syncBackupUi,
+  syncSankeyValueModeUi, syncSankeySortModeUi, syncSankeyZoomUi,
+  syncItemSortModeUi, syncMobileInputsPanelVisibility,
+  syncMobileItemEditorFab, syncAdvancedTabBlockVisibility,
+  setActiveAdvancedTab, setPendingBarVisible, markPendingChanges,
+  clearPendingChanges, refreshInputsPanel, syncDerivedMonthlyInputsToUi,
+  syncGroupOptionsAll, syncGroupOptionsFor
+} from "./modules/ui-controller.js";
+
+import {
+  handleOpenSmartAdd, handleCloseSmartAdd, handleSmartAddInput, handleApplySmartAdd,
+  initializeSnapshotSelector, handleSnapshotSelection, handleSaveSnapshot, handleDeleteSnapshot
+} from "./modules/feature-controllers.js";
 
 
 function init() {
@@ -223,141 +236,23 @@ function bindControls() {
   if (dom.openSmartAddBtn) dom.openSmartAddBtn.addEventListener("click", handleOpenSmartAdd);
   if (dom.closeSmartAddBtn) dom.closeSmartAddBtn.addEventListener("click", handleCloseSmartAdd);
   if (dom.smartAddInput) dom.smartAddInput.addEventListener("input", handleSmartAddInput);
-  if (dom.applySmartAddBtn) dom.applySmartAddBtn.addEventListener("click", handleApplySmartAdd);
+  if (dom.applySmartAddBtn) dom.applySmartAddBtn.addEventListener("click", () => handleApplySmartAdd(renderItemList));
 
   bindItemEditorEvents();
   bindActionButtons();
   bindGlobalEvents();
 }
 
-function handleOpenSmartAdd() {
-  if (state.isViewMode) return;
-  dom.smartAddModal.hidden = false;
-  dom.smartAddModal.classList.add("is-active");
-  dom.smartAddInput.value = "";
-  dom.smartAddResult.hidden = true;
-  dom.applySmartAddBtn.disabled = true;
 
-  // Populate category options safely
-  dom.smartAddCategory.innerHTML = "";
 
-  const defaultOption = document.createElement("option");
-  defaultOption.value = "new";
-  defaultOption.textContent = "+ 새 항목으로 추가";
-  dom.smartAddCategory.appendChild(defaultOption);
 
-  state.inputs.expenseItems.forEach(item => {
-    const option = document.createElement("option");
-    option.value = item.name;
-    option.textContent = `${item.name} (${item.group || '미분류'})`;
-    dom.smartAddCategory.appendChild(option);
-  });
 
-  dom.smartAddInput.focus();
-}
-function handleCloseSmartAdd() {
-  dom.smartAddModal.classList.remove("is-active");
-  setTimeout(() => { dom.smartAddModal.hidden = true; }, 250);
-}
 
-function handleSmartAddInput(e) {
-  const text = e.target.value;
-  const result = ClipboardParser.parseSms(text);
-  
-  if (result) {
-    dom.smartAddResult.hidden = false;
-    dom.smartAddAmount.textContent = `${result.amount.toLocaleString()}원`;
-    dom.smartAddMerchant.value = result.merchant;
-    dom.smartAddDate.textContent = result.date || "날짜 없음";
-    
-    // Auto-match category
-    const matched = ClipboardParser.matchCategory(result.merchant, state.inputs.expenseItems);
-    if (matched) {
-      dom.smartAddCategory.value = matched.name;
-    } else {
-      dom.smartAddCategory.value = "new";
-    }
-    
-    dom.applySmartAddBtn.disabled = false;
-    state.lastParsedResult = result;
-  } else {
-    dom.smartAddResult.hidden = true;
-    dom.applySmartAddBtn.disabled = true;
-  }
-}
 
-function handleApplySmartAdd() {
-  const result = state.lastParsedResult;
-  if (!result) return;
 
-  if (state.itemEditors.expense.active) {
-    window.IsfFeedback.showFeedback(dom.applyFeedback, "생활비 편집기가 열려 있습니다. 편집을 완료하거나 취소한 후 등록해주세요.", true);
-    return;
-  }
-  
-  const selectedName = dom.smartAddCategory.value;
-  const merchantName = dom.smartAddMerchant.value.trim() || result.merchant;
-  const amountWon = result.amount; // 원 단위 직접 사용
-  
-  const newItems = [...state.inputs.expenseItems];
-  
-  if (selectedName === "new") {
-    newItems.push({
-      name: merchantName,
-      amount: amountWon,
-      group: "기타"
-    });
-  } else {
-    const idx = newItems.findIndex(item => item.name === selectedName);
-    if (idx !== -1) {
-      newItems[idx] = { ...newItems[idx], amount: newItems[idx].amount + amountWon };
-    }
-  }
-  
-  const draft = helpers.ensureDraftInputs(state);
-  draft.expenseItems = newItems;
-  state.draftInputs = sanitizeInputs(draft);
-  
-  renderItemList("expense", newItems);
-  markPendingChanges();
-  
-  handleCloseSmartAdd();
-  window.IsfFeedback.showFeedback(dom.applyFeedback, `${merchantName} 항목에 ${window.IsfUtils.formatMoney(amountWon)}이 합산되었습니다.`);
-}
 
-async function initializeSnapshotSelector() {
-  if (!dom.snapshotSelector) return;
-  const list = await listSnapshots({ getHubStorage: () => window.IsfStorageHub });
-  
-  // Clear and add default option
-  dom.snapshotSelector.innerHTML = "";
-  const defaultOption = document.createElement("option");
-  defaultOption.value = "";
-  defaultOption.textContent = "과거 시점 선택...";
-  dom.snapshotSelector.appendChild(defaultOption);
 
-  if (list && list.length > 0) {
-    list.forEach(s => {
-      const option = document.createElement("option");
-      option.value = s.id;
-      option.textContent = formatBackupTimestamp(s.updatedAt);
-      dom.snapshotSelector.appendChild(option);
-    });
-  }
-}
 
-async function handleSnapshotSelection(id) {
-  if (!id) {
-    if (dom.comparisonContent) dom.comparisonContent.hidden = true;
-    if (dom.comparisonEmpty) dom.comparisonEmpty.hidden = true; // Always hidden while on hold
-    return;
-  }
-  const snapshot = await getSnapshotById(id, { getHubStorage: () => window.IsfStorageHub });
-  if (snapshot && snapshot.data) {
-    const comparison = calculateComparison(snapshot.data, state.inputs);
-    renderComparison(comparison);
-  }
-}
 
 function renderComparison(comparison) {
   if (!comparison) return;
@@ -561,27 +456,9 @@ function persistPrimaryState(inputs, options = {}) {
   }
 }
 
-async function handleSaveSnapshot() {
-  if (state.isViewMode) return;
-  await persistStep1Snapshot(state.inputs, { getHubStorage: () => window.IsfStorageHub, isViewMode: state.isViewMode });
-  await initializeSnapshotSelector();
-  window.IsfFeedback.showFeedback(dom.applyFeedback, "현재 상태가 비교용 스냅샷으로 저장되었습니다.");
-}
 
-async function handleDeleteSnapshot() {
-  if (!dom.snapshotSelector || !dom.snapshotSelector.value) {
-    window.IsfFeedback.showFeedback(dom.snapshotSelector, "삭제할 스냅샷을 먼저 선택해주세요.", true);
-    return;
-  }
-  if (!window.confirm("선택한 스냅샷을 삭제할까요?")) return;
-  const id = dom.snapshotSelector.value;
-  const success = await deleteSnapshot(id, { getHubStorage: () => window.IsfStorageHub });
-  if (success) {
-    await initializeSnapshotSelector();
-    handleSnapshotSelection("");
-    window.IsfFeedback.showFeedback(dom.applyFeedback, "스냅샷이 삭제되었습니다.");
-  }
-}
+
+
 
 async function handleManualBackup() {
   if (state.isViewMode || !state.backupStoreReady) return;
@@ -751,32 +628,14 @@ function ensureDraftInputs() {
   return state.draftInputs;
 }
 
-function syncBackupUi() { if (dom.dataHubModal) dom.dataHubModal.updateBackupList(state.backupEntries); }
-
-function syncSankeyValueModeUi() {
-  [dom.sankeyViewAmount, dom.sankeyViewPercent].forEach(btn => {
-    if (btn) btn.classList.toggle("is-active", btn.dataset.sankeyView === state.sankeyValueMode);
-  });
-}
-
 function setSankeyValueMode(mode) {
   state.sankeyValueMode = mode; syncSankeyValueModeUi();
   renderSankey(state.snapshot, buildSankeyData, state.sankeySortMode);
 }
 
-function syncSankeySortModeUi() { if (dom.sankeySortMode) dom.sankeySortMode.value = state.sankeySortMode; }
 function setSankeySortMode(mode) { state.sankeySortMode = mode; syncSankeySortModeUi(); renderSankey(state.snapshot, buildSankeyData, state.sankeySortMode); }
 
-function syncSankeyZoomUi() {
-  if (dom.sankeyZoomLabel) dom.sankeyZoomLabel.textContent = `${Math.round(state.sankeyZoom * 100)}%`;
-  if (state.snapshot) renderSankey(state.snapshot, buildSankeyData, state.sankeySortMode);
-}
-
 function setSankeyZoom(zoom) { state.sankeyZoom = Math.min(SANKEY_ZOOM_MAX, Math.max(SANKEY_ZOOM_MIN, zoom)); syncSankeyZoomUi(); }
-
-function syncItemSortModeUi() {
-  ["expense", "savings", "invest"].forEach(g => { if (dom[`${g}SortMode`]) dom[`${g}SortMode`].value = state.itemSortModes[g]; });
-}
 
 function setItemSortMode(group, mode) {
   state.itemSortModes[group] = mode;
@@ -785,40 +644,7 @@ function setItemSortMode(group, mode) {
   syncItemSortModeUi();
 }
 
-function setActiveAdvancedTab(tab) {
-  state.activeAdvancedTab = tab;
-  [dom.advancedTabExpense, dom.advancedTabSavings, dom.advancedTabInvest, dom.advancedTabRates].forEach(btn => {
-    if (btn) btn.classList.toggle("is-active", btn.dataset.advancedTab === tab);
-  });
-  syncAdvancedTabBlockVisibility();
-}
-
-function syncAdvancedTabBlockVisibility() {
-  const isMobile = window.matchMedia(MOBILE_LAYOUT_QUERY).matches;
-  [dom.expenseAdvancedBlock, dom.savingsAdvancedBlock, dom.investAdvancedBlock, dom.ratesAdvancedBlock].forEach(block => {
-    if (block) {
-      const active = block.dataset.advancedBlock === state.activeAdvancedTab;
-      block.hidden = block.dataset.advancedBlock === "rates" ? (isMobile ? !active : false) : !active;
-      block.classList.toggle("is-active", active);
-    }
-  });
-}
-
 function getVisibleInputs() { return helpers.getVisibleInputs(state); }
-
-function refreshInputsPanel(inputs) {
-  state.suspendInputTracking = true;
-  try {
-    helpers.syncDerivedValues(inputs, { getMonthlyAllocationTotalWon });
-    helpers.applyInputsToForm(dom.inputsForm, inputs, { FORM_FIELD_KEYS, toMan: IsfUtils.toMan });
-    renderIncomeList(inputs.incomes);
-    renderExpenseList(inputs.expenseItems);
-    renderSavingsList(inputs.savingsItems);
-    renderInvestList(inputs.investItems);
-    renderInputHints(inputs);
-    syncGroupOptionsAll();
-  } finally { state.suspendInputTracking = false; }
-}
 
 function renderIncomeList(items) { renderItemList("income", items); }
 function renderExpenseList(items) { renderItemList("expense", items); }
@@ -1020,35 +846,13 @@ function navigateToAdvancedGroup(group) {
   setActiveAdvancedTab(group);
   if (dom.advancedSettings) { dom.advancedSettings.open = true; dom.advancedSettings.scrollIntoView({ behavior: "smooth", block: "start" }); }
 }
-function syncMobileInputsPanelVisibility() {
-  const isMobile = window.matchMedia(MOBILE_LAYOUT_QUERY).matches;
-  if (dom.inputsPanelContent) dom.inputsPanelContent.hidden = isMobile && state.mobileInputsCollapsed;
-  if (dom.toggleInputsMobile) {
-    dom.toggleInputsMobile.hidden = !isMobile;
-    dom.toggleInputsMobile.textContent = state.mobileInputsCollapsed ? "펼치기" : "접기";
-    dom.toggleInputsMobile.setAttribute("aria-expanded", !state.mobileInputsCollapsed);
-  }
-}
+
 
 function getActiveItemEditorGroupKey() { return helpers.getActiveItemEditorGroupKey(state.itemEditors); }
 
-function syncMobileItemEditorFab() {
-  const isMobile = window.matchMedia(MOBILE_LAYOUT_QUERY).matches;
-  const activeGroup = getActiveItemEditorGroupKey();
-  if (!isMobile || !activeGroup) { if (dom.mobileEditorFab) dom.mobileEditorFab.hidden = true; return; }
-  const labels = { income: "수입 편집", expense: "생활비 편집", savings: "저축 편집", invest: "투자 편집" };
-  if (dom.mobileEditorFabLabel) dom.mobileEditorFabLabel.textContent = labels[activeGroup] || "항목 편집";
-  if (dom.mobileEditorFab) dom.mobileEditorFab.hidden = false;
-}
 
-function syncViewModeUi() { if (dom.saveViewToLocal) dom.saveViewToLocal.hidden = !state.isViewMode; }
-function syncViewModeGuideUi() { if (dom.viewModeGuide) dom.viewModeGuide.hidden = !state.isViewMode; }
-function dismissViewModeGuide() { if (dom.viewModeGuide) dom.viewModeGuide.hidden = true; }
-function switchToNormalMode() { window.location.href = window.location.pathname; }
-function hasShareState() { return !!window.IsfShare.getShareIdFromUrl(); }
-function bindReadonlyAdvancedNavigation() {
-  dom.jumpAdvancedFields.forEach(field => { field.addEventListener("click", () => navigateToAdvancedGroup(field.dataset.advancedTarget)); });
-}
+
+
 
 function initializeBackupStore() {
   if (!window.IsfBackupManager.isIndexedDbAvailable()) return;

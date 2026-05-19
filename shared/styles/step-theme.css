@@ -320,6 +320,27 @@ select:focus-visible {
 }
 
 
+.card {
+  border: 1px solid var(--line);
+  border-radius: var(--rd-md);
+  background: var(--panel);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  padding: var(--sp-md);
+  box-shadow: var(--sh-float);
+}
+
+.card .label { font-size: var(--text-caption); color: var(--muted); }
+.card .value { font-family: var(--font-display); font-size: var(--text-title-lg); font-weight: 700; margin-top: 4px; display: block; }
+.card.positive .value { color: var(--node-income); }
+.card.negative .value { color: var(--node-deficit); }
+
+.status--warn { color: #f59e0b !important; }
+.status--crit { color: #dc2626 !important; font-weight: 800; }
+.status-badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; font-weight: 600; margin-left: 4px; vertical-align: middle; }
+.status-badge--warn { background: #fef3c7; color: #92400e; }
+.status-badge--crit { background: #fee2e2; color: #991b1b; }
+
 .skeleton {
   background: linear-gradient(90deg, #e0e0e0 25%, #f0f0f0 50%, #e0e0e0 75%);
   background-size: 200% 100%;

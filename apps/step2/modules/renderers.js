@@ -2,47 +2,14 @@ import { state } from "./state.js";
 import { dom } from "./dom.js";
 import { 
   formatCurrency, 
-  getTotalMonthlyInvestCapacity, 
   calculateDividendProjection,
   calculateCAGR
 } from "./calculator.js";
-
 import { utils } from "./utils.js";
 
-export function renderDraft() {
-  if (!state.draft) return;
-  try {
-    if (dom.totalInitialAsset) {
-      dom.totalInitialAsset.value = utils.toMan(state.draft.totalInitialAsset || 0);
-    }
-    if (dom.totalMonthlyInvestCapacity) {
-      dom.totalMonthlyInvestCapacity.value = utils.toMan(state.draft.totalMonthlyInvestCapacity || 0);
-    }
-    
-    if (state.draft.dividendSim) {
-      if (dom.simDividendYield) dom.simDividendYield.value = state.draft.dividendSim.yield;
-      if (dom.simDividendGrowth) dom.simDividendGrowth.value = state.draft.dividendSim.growth;
-      if (dom.simCapitalGrowth) dom.simCapitalGrowth.value = state.draft.dividendSim.capitalGrowth;
-      if (dom.simHorizonYears) dom.simHorizonYears.value = state.draft.dividendSim.years;
-      if (dom.simDrip) dom.simDrip.checked = state.draft.dividendSim.isDrip;
-      
-      if (dom.activePresetName) {
-        const pName = state.draft.dividendSim.presetName || "";
-        dom.activePresetName.textContent = pName;
-        dom.activePresetName.style.display = pName ? "inline-block" : "none";
-      }
-    }
-
-    renderCharts();
-  } catch (err) {
-    console.error("renderDraft failed:", err);
-  }
-}
-
-export function renderCharts() { 
-  renderDividendSimulation(); 
-}
-
+/**
+ * Renders the main dividend simulation table and triggers chart drawing.
+ */
 export function renderDividendSimulation() {
   if (!dom.simTable) return;
   const data = calculateDividendProjection();
@@ -140,6 +107,9 @@ export function renderDividendSimulation() {
   if (dom.simChartSvg) drawSimulationChart(dom.simChartSvg, data);
 }
 
+/**
+ * Renders KPI cards based on simulation data.
+ */
 export function renderKpiCards(data) {
   if (!dom.simKpiGrid || !data || data.length === 0) return;
   
@@ -157,15 +127,15 @@ export function renderKpiCards(data) {
   const cagr = calculateCAGR(finalAsset, totalPrincipal, years);
 
   dom.simKpiGrid.innerHTML = `
-    <div class="kpi-card">
+    <div class="card kpi-card">
       <div class="kpi-label">최종 예상 자산 (${isDrip ? '재투자' : '미투자'})</div>
       <div class="kpi-value">${formatCurrency(finalAsset)}</div>
     </div>
-    <div class="kpi-card kpi-card--accent">
+    <div class="card kpi-card kpi-card--accent">
       <div class="kpi-label">최종 연 배당금(세후)</div>
       <div class="kpi-value">${formatCurrency(finalDividend)}</div>
     </div>
-    <div class="kpi-card">
+    <div class="card kpi-card">
       <div class="kpi-label">누적 수익률</div>
       <div class="kpi-value">
         ${returnRate.toFixed(1)}<span class="kpi-unit">%</span>
@@ -177,6 +147,9 @@ export function renderKpiCards(data) {
   `;
 }
 
+/**
+ * Draws the SVG chart for simulation data.
+ */
 function drawSimulationChart(svg, data) {
   svg.innerHTML = "";
   if (!data.length) return;
@@ -337,7 +310,6 @@ function drawSimulationChart(svg, data) {
         const scale = containerRect.width / width;
         const tooltipWidth = 140;
         
-        // Calculate left position to keep tooltip within bounds without using translateX(-50%)
         let leftPos = (x * scale) - (tooltipWidth / 2);
         if (leftPos < 8) leftPos = 8;
         if (leftPos + tooltipWidth > containerRect.width - 8) leftPos = containerRect.width - tooltipWidth - 8;
@@ -345,7 +317,6 @@ function drawSimulationChart(svg, data) {
         tooltip.style.left = `${leftPos}px`;
         tooltip.style.transform = 'none';
         
-        // Dynamic Y position based on data points
         const targetY = isDrip ? yTR : yPR;
         const actualY = targetY * scale;
         const containerHeight = containerRect.height;
@@ -415,4 +386,3 @@ export function initGlobalTooltips() {
     else hide();
   }, { passive: true });
 }
-

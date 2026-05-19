@@ -27,27 +27,7 @@
   gap: 1rem;
 }
 
-.card {
-  padding: 1rem;
-  background: var(--panel);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 0.75rem;
-  display: flex;
-  flex-direction: column;
-}
-
-.card .label {
-  font-size: 0.75rem;
-  color: var(--text-muted);
-  margin-bottom: 0.25rem;
-}
-
-.card .value {
-  font-family: var(--font-display);
-  font-size: 1.25rem;
-  color: var(--primary);
-}
+/* Redundant .card removed, using shared card from step-theme.css */
 
 /* Account Card & Editor */
 .account-list {
@@ -60,10 +40,10 @@
 .account-card {
   background: var(--panel);
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--line);
   border-radius: 1rem;
   padding: 1.25rem;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--sh-float);
 }
 
 .account-head {
@@ -72,7 +52,7 @@
   align-items: center;
   margin-bottom: 1rem;
   padding-bottom: 0.75rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid var(--line);
 }
 
 .account-info {
@@ -82,7 +62,7 @@
 }
 
 .account-type-badge {
-  background: var(--primary);
+  background: var(--tone-primary);
   color: white;
   padding: 0.2rem 0.6rem;
   border-radius: 0.4rem;
@@ -112,13 +92,13 @@
 
 .asset-header {
   font-size: 0.75rem;
-  color: var(--text-muted);
+  color: var(--muted);
   font-weight: 600;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid var(--line);
 }
 
 .asset-row {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid var(--line);
 }
 
 .asset-row:last-child {
@@ -133,7 +113,7 @@
 
 .col-name .ticker {
   font-size: 0.7rem;
-  color: var(--primary);
+  color: var(--tone-primary);
   text-transform: uppercase;
   border: none;
 }
@@ -143,7 +123,7 @@
   background: transparent;
   border: none;
   border-bottom: 1px solid transparent;
-  color: var(--text);
+  color: var(--ink);
   padding: 0.25rem 0;
   width: 100%;
   font-size: 0.9rem;
@@ -152,7 +132,7 @@
 
 .input-minimal:focus {
   outline: none;
-  border-bottom-color: var(--primary);
+  border-bottom-color: var(--tone-primary);
 }
 
 .input-minimal[type="number"] {
@@ -162,7 +142,7 @@
 .btn-remove-asset {
   background: transparent;
   border: none;
-  color: var(--text-muted);
+  color: var(--muted);
   cursor: pointer;
   font-size: 1.2rem;
   display: flex;
@@ -171,7 +151,7 @@
 }
 
 .btn-remove-asset:hover {
-  color: var(--danger);
+  color: var(--status-error);
 }
 
 .btn-add-asset {
@@ -195,7 +175,7 @@
   align-items: center;
   padding: 0.75rem 1rem;
   background: rgba(255, 255, 255, 0.03);
-  border-left: 3px solid var(--primary);
+  border-left: 3px solid var(--tone-primary);
   border-radius: 0.5rem;
 }
 
@@ -211,7 +191,7 @@
 
 .guide-ticker {
   font-size: 0.75rem;
-  color: var(--text-muted);
+  color: var(--muted);
   text-transform: uppercase;
 }
 
@@ -224,14 +204,14 @@
 .guide-amount {
   font-family: var(--font-display);
   font-size: 1.1rem;
-  color: var(--primary);
+  color: var(--tone-primary);
 }
 
 /* Snapshot List */
 .snapshot-controls-wrap {
   margin-top: 1.5rem;
   padding-top: 1rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  border-top: 1px solid var(--line);
 }
 
 .snapshot-list {
@@ -262,7 +242,7 @@
 
 .snapshot-date {
   font-size: 0.7rem;
-  color: var(--text-muted);
+  color: var(--muted);
 }
 
 .snapshot-actions {
@@ -273,8 +253,8 @@
 /* Account Editor Improvements */
 .account-type-select {
   background: rgba(234, 91, 42, 0.1);
-  color: var(--primary);
-  border: 1px solid var(--primary);
+  color: var(--tone-primary);
+  border: 1px solid var(--tone-primary);
   padding: 0.15rem 0.4rem;
   border-radius: 0.4rem;
   font-size: 0.75rem;
@@ -284,14 +264,14 @@
 
 .account-type-select:focus {
   outline: none;
-  background: var(--primary);
+  background: var(--tone-primary);
   color: white;
 }
 
 .account-name-input {
   background: transparent;
   border: none;
-  color: var(--text);
+  color: var(--ink);
   font-size: 1.1rem;
   font-family: var(--font-display);
   border-bottom: 1px solid transparent;
@@ -301,7 +281,7 @@
 
 .account-name-input:focus {
   outline: none;
-  border-bottom-color: var(--primary);
+  border-bottom-color: var(--tone-primary);
 }
 
 /* Scroll Adjustment for mobile */

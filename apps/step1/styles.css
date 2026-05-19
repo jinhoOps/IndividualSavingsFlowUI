@@ -283,26 +283,6 @@ body.is-dashboard-mode .controls-panel {
   gap: var(--sp-sm);
 }
 
-.status--warn { color: #f59e0b !important; }
-.status--crit { color: #dc2626 !important; font-weight: 800; }
-.status-badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; font-weight: 600; margin-left: 4px; vertical-align: middle; }
-.status-badge--warn { background: #fef3c7; color: #92400e; }
-.status-badge--crit { background: #fee2e2; color: #991b1b; }
-
-.card {
-  border: 1px solid var(--line);
-  border-radius: var(--rd-md);
-  background: var(--panel);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  padding: var(--sp-md);
-}
-
-.card .label { font-size: var(--text-caption); color: var(--muted); }
-.card .value { font-family: var(--font-display); font-size: var(--text-title-lg); font-weight: 700; margin-top: 4px; display: block; }
-.card.positive .value { color: var(--income); }
-.card.negative .value { color: var(--deficit); }
-
 .sankey-view-toggle {
   display: inline-flex;
   border: 1px solid var(--line);
@@ -461,11 +441,6 @@ body.is-dashboard-mode .controls-panel {
 
   .projection-table { min-width: 780px; }
   .projection-table th, .projection-table td { font-size: 0.78rem; padding: 6px; }
-
-  .floating-btn { bottom: 12px; width: 40px; height: 40px; font-size: 1rem; }
-  .floating-btn--left { left: 12px; }
-  .floating-btn--left-save { left: 60px; }
-  .floating-btn--right { right: 12px; }
 
   .mobile-editor-fab { display: grid; }
   body.is-item-editor-active .floating-btn { opacity: 0; pointer-events: none; transform: translateY(10px); }

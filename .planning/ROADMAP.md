@@ -1,56 +1,54 @@
-# Roadmap: v1.1 ~ v1.2 시뮬레이션 고도화 및 자산 관리 확장
+# Roadmap: v1.1 ~ v1.4 시뮬레이션 고도화 및 안정화
 
-**Milestone:** v1.1 (Phase 3~5), v1.2 (Phase 6~9)
-**Requirements covered:** 8/8 ✓ + New Features from Issues
-
----
-
-## Phase 3: 시뮬레이션 차트 시각화 고도화 (v0.7.15 완료)
-## Phase 4: KPI 대시보드 카드 및 테이블 정리 (v0.7.15 완료)
-## Phase 5: Step 1 Spotlight 온보딩 가이드 (v0.8.1 완료)
+**Milestone:** v1.1~v1.3 (Completed), v1.4 (Active)
+**Requirements covered:** 15/15 ✓ + New Focus
 
 ---
 
-## Phase 6: 포트폴리오 자산 구성 및 리밸런싱 (Step 3)
-
-**Goal:** Step 1의 투자 여력 데이터를 기반으로 실제 계좌/종목 비중을 구성하고, 목표 비중과의 격차를 분석하여 리밸런싱 가이드를 제공한다.
+## Phase 3~5: 시뮬레이션 및 온보딩 고도화 (v0.8.1 완료)
+- 시뮬레이션 차트 고도화 (v1.1)
+- KPI 요약 카드 및 테이블 헤더 정리 (v1.1)
+- Step 1 Spotlight 온보딩 가이드 (v1.1)
 
 ---
 
-## Phase 7: 백테스트 시뮬레이터 대시보드 (stock-snowball 프로젝트로 이관)
+## Phase 6~9: 기능 확장 (v0.9.x 완료)
+- Phase 6: 포트폴리오 자산 구성 및 리밸런싱
+- Phase 8: 지출 데이터 과거 비교 분석
+- Phase 9: 신혼부부 통합 허브 (부부 데이터 병합)
+- Step 1 'Smart Add' (SMS 파싱)
 
-**Goal:** (Phase 10에 따라 stock-snowball 프로젝트로 설계 및 로직 이관 완료) 
-본 프로젝트에서는 코어 안정화 및 기존 기능 고도화에 집중하기 위해 백테스트 기능을 독립 프로젝트로 분리하였습니다.
+---
+
+## Phase 10: 백테스트 관련 기능 제거 및 이관 (v0.9.48 완료)
+
+**Goal:** `IndividualSavingsFlowUI`의 백테스트 코드를 `stock-snowball` 프로젝트로 이관하여 코어 안정성에 집중.
+
+---
+
+## Phase 11: 코어 안정화 (v0.10.0 완료)
+
+**Goal:** 시스템의 보안, 메모리, 데이터 정합성 결함을 해결하여 프로덕션 수준의 신뢰성 확보.
 
 **Success Criteria:**
-1. **정적 데이터 엔진**: 나스닥, S&P 500 등 주요 지수의 JSON 데이터 로딩 및 파싱.
-2. **복리 계산 엔진**: CAGR, IRR, MDD 등 금융 지표 계산 로직 구현 (TS).
-3. **인터랙티브 대시보드**: React 기반의 반응형 UI 및 SVG/Canvas 기반 수익률 차트.
-4. **상대 비교 모드**: 특정 자산을 0%로 둔 상대 수익률 시각화 기능.
-
-**Plans:** 3 plans
-- [ ] 07-01-PLAN.md — 데이터 구조 확립 및 시뮬레이션 엔진 구현
-- [ ] 07-02-PLAN.md — React 기반 대시보드 레이아웃 및 차트 컴포넌트 개발
-- [ ] 07-03-PLAN.md — KPI 요약 카드 및 최종 통합 검증
+1. **보안**: XSS 방지 및 데이터 Sanitize 강제 (완료)
+2. **메모리**: 중복 이벤트 리스너 제거 및 생명주기 관리 (완료)
+3. **데이터**: 비교 엔진의 합산 로직 및 정합성 보정 (완료)
+4. **버전 관리**: PWA 자산 및 서비스 워커 동기화 (완료)
 
 ---
 
-## Phase 8: 지출 데이터 과거 비교 분석 (Issue #4)
+## Phase 12: 종합 고도화 (Advanced Refinement - Active)
 
-**Goal:** `DataHub`에 저장된 이전 스냅샷 데이터를 불러와 현재 지출과 카테고리별로 비교하는 시각화 도구를 제공한다.
+**Goal:** Step 1~3 전반의 UX를 고도화하고 전역 디자인 일관성을 확보한다.
 
----
-
-## Phase 9: 신혼부부 통합 허브 (Newlywed Harmony Hub - Issue #2)
-
-**Goal:** 부부 간의 현금 흐름을 통합하고, 지출 예산 관리 및 입력 편의성을 극대화한다.
-
----
-
-## Phase 10: 백테스트 관련 기능 제거 및 이관
-
-**Goal:** 현재 프로젝트(`IndividualSavingsFlowUI`)의 백테스트 관련 코드와 기능들을 모두 제거하고, 해당 설계 및 로직을 `D:\jhkSandBox\CODE\stock-snowball\.planning` 에 이관한다.
+**Target Deliverables:**
+1. **전역 스타일 통합**: `shared/styles/step-theme.css` 기반 디자인 시스템 구축.
+2. **성능 최적화**: Sankey 및 시뮬레이션 렌더링 부하 감소.
+3. **PWA 안정화**: 오프라인 상태에서의 데이터 동기화 예외 처리 강화.
+4. **다국어 기초 설계**: 텍스트 리소스 외부화.
 
 ---
 
-*Roadmap updated: 2026-05-12 (Reflecting Backtest Migration)*
+*Roadmap updated: 2026-05-19 (Reflecting v1.4 Milestone Audit)*
+

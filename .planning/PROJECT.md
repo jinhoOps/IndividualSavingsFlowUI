@@ -8,88 +8,65 @@
 
 단순한 프리셋 선택만으로 즉각적인 자산 시각화 결과를 제공하고, 복잡한 재무 계산의 부담 없이 직관적인 개인 예산 흐름을 파악하게 한다.
 
-## Current Milestone: v1.1 시뮬레이션 고도화 및 온보딩 UX
+## Current Milestone: v1.4 코어 안정화 및 UX 고도화 (Phase 11~12)
 
-**Goal:** 배당 시뮬레이션 대시보드의 정보 밀도를 높이고, Step 1 첫 접속 사용자를 위한 입력 가이드를 제공한다.
+**Goal:** 시스템의 물리적/데이터 무결성을 확보하고, Step 1~3 전반의 UX 일관성을 고도화한다.
 
 **Target features:**
-- 시뮬레이션 차트 고도화 (데이터 포인트, 호버 툴팁, Y축 눈금/그리드, 영역 채우기, KPI 요약 카드)
-- Step 2 테이블 헤더 간소화 (불필요한 만원 표기 제거)
-- Step 1 첫 접속 Spotlight UX 온보딩 가이드
+- 전역 스타일 가이드 통합 (shared/styles/step-theme.css)
+- 보안 강화 (XSS 방어 및 데이터 Sanitize)
+- 메모리 및 성능 최적화 (이벤트 리스너 관리, Sankey 렌더링 최적화)
+- Step 1 'Smart Add' 및 부부 데이터 병합 안정성 확보
 
 ## Current State
 
-**Shipped:** v1.0 (2026-05-03)
-**Tech Stack:** Modern Hybrid (Vite/TS/Tailwind), No-Build Oriented, PWA, IndexedDB, Sankey Diagram
-**Codebase:** ~1,200 LOC (JavaScript), Mobile-First 반응형
-**Key Feature:** 연봉/투자 성향 기반 고해상도 프리셋 템플릿 로드 → 시각화 → 세부 편집 → 영속화
+**Shipped:** v0.10.0 (2026-05-12)
+**Tech Stack:** Modern Hybrid (Vite/TS/Tailwind), React 19 (Partial), PWA, IndexedDB
+**Codebase:** ~2,500 LOC (JavaScript/TS), Mobile-First 반응형
+**Key Feature:** 프리셋 기반 시각화 + 데이터 허브(백업/복원) + 부부 데이터 병합 + 포트폴리오 리밸런싱
 
 ## Requirements
 
 ### Validated
 
-- ✓ 월 가계 흐름 Sankey Diagram 시각화 엔진 — existing
-- ✓ 카테고리별(수입/생활비/저축/투자) 수동 입력 및 뷰포트 UI — existing
-- ✓ 바닐라 JS 기반 No-build 지향 (Modern Hybrid) 3계층 상태 관리(State/Helper/UI) 아키텍처 — existing
-- ✓ IndexedDB 기반의 브리지 데이터 자동 백업 및 복원 — existing
-- ✓ 연봉 수준 및 투자 스타일 선택에 따른 프리셋 템플릿 로드 기능 — v1.0
-- ✓ 템플릿 로드 시 표준 자산 흐름 자동 계산 및 시각화 즉시 반영 — v1.0
-- ✓ 세부 항목 수동 조절 및 재계산 흐름 — v1.0
-- ✓ 고해상도 12대 세부 항목 기반 프리셋 데이터 — v1.0
+- ✓ 연봉/투자 스타일 프리셋 로드 및 시각화 (v1.0)
+- ✓ 시뮬레이션 차트 고도화 (데이터 포인트, 툴팁, KPI 카드) (v1.1)
+- ✓ Step 1 Spotlight UX 온보딩 가이드 (v1.1)
+- ✓ IndexedDB 기반 브리지 데이터 자동 백업/복원 (v1.0)
+- ✓ 백테스트 기능 이관 및 제거 (Phase 10)
+- ✓ 보안(XSS) 및 메모리 누수 방지 (v0.10.0)
 
 ### Active
 
-- [ ] 시뮬레이션 차트 고도화 — 데이터 포인트, 호버 툴팁, Y축 눈금/그리드, 영역 채우기
-- [ ] KPI 요약 카드 — 최종 자산, 최종 연 배당금, 누적 수익률 등 핵심 지표 시각화
-- [ ] Step 2 테이블 헤더 간소화 — 불필요한 (만원) 표기 제거
-- [ ] Step 1 첫 접속 Spotlight UX 온보딩 가이드
+- [ ] **STAB-01**: 전역 스타일 가이드 정립 및 Step 간 UI 일관성 확보
+- [ ] **STAB-02**: 데이터 검증 로직 강화 및 PWA 오프라인 동기화 예외 처리
+- [ ] **ADV-01**: Sankey 및 시뮬레이션 엔진 렌더링 최적화
+- [ ] **ADV-02**: 다국어 지원을 위한 리소스 분리 및 브릿지 설계
 
 ### Out of Scope
 
-- [오픈뱅킹/마이데이터 계좌 자동 연동] — 미니멀하고 빠르며 독립적인 클라이언트(No-Build/PWA) 환경을 유지하는 것이 목표이며, 수동 입력을 통한 예산 '계획' 중심이므로 배제.
-- [오프라인 모드] — PWA 서비스 워커로 기본 오프라인 지원은 있으나, 완전한 오프라인 전용 모드는 현재 범위 밖.
+- [백테스트 시뮬레이터] — `stock-snowball` 프로젝트로 이관됨.
+- [실시간 시세 연동] — 정적 데이터 및 수동 계획 중심 철학 유지.
 
 ## Context
 
-- v1.0 출시 완료: 프리셋 선택 → 시각화 → 편집 → 영속화 전체 흐름 구축.
-- 사용자 입력 피로도를 줄이기 위해 프리셋 기능을 가장 전면에 배치.
-- PWA와 Vanilla JS만으로 브라우저에서 가볍고 빠르게 동작.
-- 금전 관련 수치는 UI에서는 만원, 내부 연산에서는 원 단위를 엄격히 준수.
-
-## Constraints
-
-- **[Tech]**: Modern Hybrid (No-Build Oriented) — 프레임워크나 빌드 도구 의존성 없이 지속 가능성을 확보하되, 타입 안정성과 DX를 위해 Vite/TS/Tailwind 인프라를 적극 수용함.
-- **[Design]**: Mobile-First 무결성 — 반응형 브레이크포인트 하단의 미디어 쿼리가 손상되지 않아야 함
-- **[Data]**: 클라이언트 로컬 저장 — 서버리스, 오프라인 환경에서도 PWA를 통해 완벽히 동작해야 함
+- v0.10.0 릴리즈 완료: Phase 10(백테스트 이관) 이후 시스템 안정화에 집중.
+- 실험적 기능(AI, 백테스트)을 제거하여 코어 엔진의 신뢰성 확보.
+- PWA와 Vanilla JS/React 하이브리드 구조로 전환 중.
 
 ## Key Decisions
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| 선 템플릿 제공, 후 세부 조절 UX | 극단적 단순화라는 가치를 지키기 위해 빈 화면부터 입력하는 대신, 완성된 흐름을 먼저 보여주고 편집하도록 유도 | ✓ Good |
-| 단위 분리 (UI: 만원, 연산: 원) | UX 가독성과 데이터 정합성 사이의 타협 | ✓ Good |
-| 프리셋 적용 시 고급 설정 자동 노출 | 사용자가 세부 편집 가능하다는 점을 즉시 인지하도록 유도 | ✓ Good |
-| 12대 세부 항목 기반 고해상도 템플릿 | 단일 항목 대비 현실적 가계 시뮬레이션 가능, 기존 API 변경 없이 데이터만 교체 | ✓ Good |
-| 반올림 오차 보정 (첫 번째 항목 흡수) | 세부 항목 합산이 카테고리 총액과 정확히 일치하도록 보장 | ✓ Good |
-| 마일스톤 버전 = 앱 버전 (v1.0 이후) | v1.0은 계획 레이블로 유지, 다음 마일스톤부터 앱 버전(0.8.x)과 통일 | — Pending |
-| 경량 차트 라이브러리 허용 (v1.1) | DESIGN.md 원칙(Glassmorphism, ISF 팔레트, No-build ESM)을 준수하는 경량 라이브러리에 한해 도입 가능 | — Pending |
+| 백테스트 기능 이관 (Phase 10) | 프로젝트 복잡도 감소 및 코어 안정성 집중을 위해 stock-snowball 프로젝트로 분리 | ✓ Good |
+| AI 기능 제거 | 실험적 기능보다 데이터 무결성과 정적 웹의 신뢰성이 우선됨 | ✓ Good |
+| 전역 스타일 공유 (shared/styles) | Step 간 디자인 파편화를 막고 유지보수 효율 증대 | ✓ Good |
+| React 19 점진적 도입 | 복잡한 UI 상태 관리 및 타입 안정성을 위해 현대적 스택으로 전환 시작 | — Ongoing |
 
 ## Evolution
 
 This document evolves at phase transitions and milestone boundaries.
 
-**After each phase transition** (via `/gsd-transition`):
-1. Requirements invalidated? → Move to Out of Scope with reason
-2. Requirements validated? → Move to Validated with phase reference
-3. New requirements emerged? → Add to Active
-4. Decisions to log? → Add to Key Decisions
-5. "What This Is" still accurate? → Update if drifted
-
-**After each milestone** (via `/gsd-complete-milestone`):
-1. Full review of all sections
-2. Core Value check — still the right priority?
-3. Audit Out of Scope — reasons still valid?
-4. Update Context with current state
-
 ---
-*Last updated: 2026-05-03 after v1.1 milestone start*
+*Last updated: 2026-05-19 for v1.4 Milestone Audit*
+

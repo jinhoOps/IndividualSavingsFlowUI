@@ -175,7 +175,7 @@
   }
 
   const result = {
-    APP_VERSION: (typeof __APP_VERSION__ !== "undefined") ? __APP_VERSION__ : "0.10.0",
+    APP_VERSION: (typeof __APP_VERSION__ !== "undefined") ? __APP_VERSION__ : "0.11.0",
     formatMoney,
     getFinancialIncomeStatus,
     calculateIncomeTax,
