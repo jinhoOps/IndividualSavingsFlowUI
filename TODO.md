@@ -36,7 +36,7 @@ kanban-plugin: basic
 - [x] **Step 1 비교 스냅샷**: 과거 지출 내역과의 시각적 비교 분석 기능 (Phase 07).
 - [x] **Step 1 부부 데이터 병합**: 파트너 데이터(ISF CODE) 병합 유틸리티 (Phase 09).
 - [x] **Step 3 포트폴리오 리밸런싱**: 계좌별 자산 구성 및 비중 최적화 도구 개발.
-- [x] **Step 4 백테스트 시뮬레이터**: React 기반의 과거 성과 기반 성산 시뮬레이션 (Phase 07).
+- [x] **Step 4 백테스트 시뮬레이터**: (stock-snowball 프로젝트로 이관 완료) Phase 10에 따라 제거 및 이관됨.
 
 # NEXT (Phase 11: Stability & UX)
 

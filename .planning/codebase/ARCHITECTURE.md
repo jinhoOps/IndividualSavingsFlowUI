@@ -1,150 +1,134 @@
-<!-- refreshed: 2026-05-12 -->
-# Architecture
+<!-- refreshed: 2026-05-19 -->
+# 아키텍처 (Architecture)
 
-**Analysis Date:** 2026-05-12
+**분석 날짜:** 2026-05-19
 
-## System Overview
+## 시스템 개요 (System Overview)
 
 ```text
 ┌─────────────────────────────────────────────────────────────┐
-│                      Application Entry                       │
-│  `src/entries/step[1-4].ts(x)` -> `apps/step[1-4]/index.html`│
+│                      애플리케이션 엔트리                      │
+│  `src/entries/step[1-3].ts` -> `apps/step[1-3]/index.html`  │
 ├──────────────────┬──────────────────┬───────────────────────┤
-│   Step 1-3 (JS)  │   Step 4 (React) │    Shared Components  │
-│  `apps/step1-3`  │  `src/components`│   `shared/components` │
+│    Step 1 (JS)   │    Step 2 (JS)   │    Step 3 (JS)        │
+│  `apps/step1`    │  `apps/step2`    │   `apps/step3`        │
 └────────┬─────────┴────────┬─────────┴──────────┬────────────┘
          │                  │                     │
          ▼                  ▼                     ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                    Business Logic Layer                     │
-│  `apps/step*/modules/*.js` (Vanilla)                        │
-│  `src/core/backtest/*.ts` (Modern Engine)                   │
+│                    비즈니스 로직 계층 (Logic)                 │
+│  `apps/step*/modules/*.js` (Modular Vanilla JS)             │
+│  `shared/core/*.js` (Common Utilities)                      │
 └─────────────────────────────────────────────────────────────┘
          │
          ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                    Storage & Data Layer                     │
+│                    저장소 및 데이터 계층 (Storage)             │
 │  `src/core/storage/IsfStore.ts` (IndexedDB)                 │
-│  `shared/storage/hub-storage.js` (Legacy/Bridge)            │
+│  `shared/storage/hub-storage.js` (Bridge/Legacy)            │
 │  `public/data/indices/*.json` (Market Data)                 │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## Component Responsibilities
+## 컴포넌트 역할 (Component Responsibilities)
 
-| Component | Responsibility | File |
+| 컴포넌트 | 역할 | 파일 경로 |
 |-----------|----------------|------|
-| **App Orchestrator** | Coordinates modules, handles DOM events (Vanilla) | `apps/step[1-3]/app.js` |
-| **Backtest Dashboard** | React root for Step 4 simulator | `src/components/backtest/BacktestDashboard.tsx` |
-| **Backtest Engine** | core simulation logic for Step 4 | `src/core/backtest/engine.ts` |
-| **IsfStore** | Modernized IndexedDB storage for state/history | `src/core/storage/IsfStore.ts` |
-| **Compatibility Bridge**| Redirects legacy JS calls to modernized services | `src/core/storage/CompatibilityBridge.ts` |
-| **HubStorage** | Legacy LocalStorage & IndexedDB abstraction | `shared/storage/hub-storage.js` |
-| **DataHubModal** | UI for data backup/restore/import/export | `shared/components/data-hub-modal.js` |
-| **PwaManager** | Service Worker and PWA lifecycle management | `shared/pwa/pwa-manager.js` |
+| **App Orchestrator** | 모듈 간 조정 및 DOM 이벤트 핸들링 | `apps/step[1-3]/app.js` |
+| **Logic Modules** | 금융 계산, 입력 정제, 상태 관리 헬퍼 | `apps/step[1-3]/modules/*.js` |
+| **IsfStore** | 현대화된 IndexedDB 기반 상태/이력 저장소 | `src/core/storage/IsfStore.ts` |
+| **Compatibility Bridge**| 레거시 JS 코드를 현대화된 TS 서비스와 연결 | `src/core/storage/CompatibilityBridge.ts` |
+| **Shared Components** | 공통 UI 요소 (Web Components) | `shared/components/*.js` |
+| **PwaManager** | 서비스 워커 및 PWA 생명주기 관리 | `shared/pwa/pwa-manager.js` |
 
-## Pattern Overview
+## 패턴 개요 (Pattern Overview)
 
-**Overall:** Hybrid Architecture (Progressive Enhancement)
+**전체 구조:** 하이브리드 아키텍처 (현대적 빌드 시스템 + 점진적 강화)
 
-**Key Characteristics:**
-- **Modular Vanilla (Steps 1-3):** Separates logic into `state.js`, `calculator.js`, `dom.js`, and `app.js` (Orchestrator).
-- **React/TypeScript (Step 4):** Modern component-based architecture for complex state and visualization.
-- **Unified Storage:** Even legacy vanilla apps use the modernized `IsfStore` via `CompatibilityBridge.ts`.
+**주요 특징:**
+- **3계층 구조 (State/Helper/UI):** `GEMINI.md` 원칙에 따라 상태, 비즈니스 로직, UI 핸들러를 엄격히 분리.
+- **No-build 가용성:** `apps/` 폴더 내의 코드는 브라우저에서 즉시 실행 가능한 순수 JS/CSS/HTML 구조를 유지.
+- **단위 정합성 (Unit Consistency):** UI 표시는 '만원', 내부 계산 및 저장은 '원' 단위를 유지하는 명확한 변환 계층 존재.
 
-## Layers
+## 레이어 (Layers)
 
-**UI Layer:**
-- Purpose: Rendering and User Interaction.
-- Location: `apps/step1-4/`, `src/components/`
-- Contains: HTML templates, CSS, Vanilla DOM manipulation, React Components.
-- Depends on: Logic Layer, Storage Layer.
-- Used by: End User.
+**UI 계층 (UI Layer):**
+- 목적: 사용자 상호작용 및 데이터 시각화.
+- 위치: `apps/step[1-3]/`, `shared/components/`.
+- 내용: HTML 템플릿, CSS, Vanilla DOM 조작, Web Components.
+- 의존성: 로직 계층, 저장소 계층.
 
-**Logic Layer:**
-- Purpose: Financial calculations and data transformation.
-- Location: `apps/step*/modules/`, `src/core/backtest/`
-- Contains: `calculator.js`, `engine.ts`, `input-sanitizer.js`.
-- Depends on: Shared Utilities.
-- Used by: UI Layer.
+**로직 계층 (Logic Layer):**
+- 목적: 금융 계산 및 데이터 변환.
+- 위치: `apps/step*/modules/`, `shared/core/`.
+- 내용: `calculator.js`, `input-sanitizer.js`, `comparison-engine.js`.
+- 의존성: 공유 유틸리티.
 
-**Storage Layer:**
-- Purpose: Persistence and Data Integrity.
-- Location: `src/core/storage/`, `shared/storage/`
-- Contains: IndexedDB schemas, LocalStorage wrappers, Backup services.
-- Depends on: Shared Utilities.
-- Used by: UI Layer, Logic Layer.
+**저장소 계층 (Storage Layer):**
+- 목적: 데이터 영속성 및 무결성 보장.
+- 위치: `src/core/storage/`, `shared/storage/`.
+- 내용: IndexedDB 스키마, LocalStorage 래퍼, 백업 매니저.
+- 의존성: 공유 유틸리티.
 
-## Data Flow
+## 데이터 흐름 (Data Flow)
 
-### Primary Request Path (Step 1-3)
+### 기본 요청 경로 (Step 1-3)
 
-1. **User Input:** Triggered in `apps/step*/app.js` via DOM event listeners.
-2. **Sanitization:** Input is cleaned via `modules/input-sanitizer.js`.
-3. **Calculation:** Business logic processed in `modules/calculator.js`.
-4. **State Update:** Results saved to `modules/state.js` and persisted via `IsfStorageHub`.
-5. **Rendering:** UI updated via `modules/dom.js` and specific renderers (e.g., `sankey-renderer.js`).
+1. **사용자 입력:** `apps/step*/app.js`에서 DOM 이벤트를 감지.
+2. **입력 정제:** `modules/input-sanitizer.js`를 통해 유효성 검사 및 '원' 단위 변환.
+3. **계산 로직:** `modules/calculator.js`에서 금융 시뮬레이션 및 데이터 가공.
+4. **상태 업데이트:** `modules/state.js`에 결과 저장 및 `IsfStorageHub`/`IsfStore`를 통해 영속화.
+5. **UI 렌더링:** `sankey-renderer.js` 등 전용 렌더러를 통해 화면 갱신.
 
-### Backtest Simulation Flow (Step 4)
+**상태 관리 (State Management):**
+- **Vanilla:** `modules/state.js`의 지역 `state` 객체 및 `helpers.markDirty` 패턴 사용.
+- **영속화:** 현대화된 IndexedDB (`IsfStore`)와 `localStorage`를 동기화하여 사용.
 
-1. **Parameters:** User sets backtest config in `BacktestDashboard.tsx`.
-2. **Engine:** `engine.ts` performs simulation using market data from `public/data/indices/`.
-3. **State:** Results managed by React state or local component state.
-4. **Visualization:** `AssetChart.tsx` (Recharts) and `KpiGrid.tsx` display metrics.
-
-**State Management:**
-- **Vanilla:** Local `state` object in `modules/state.js`.
-- **React:** Standard `useState` and `useMemo` hooks.
-- **Persistence:** Modernized IndexedDB (`IsfStore`) synchronized via `localStorage`.
-
-## Key Abstractions
+## 주요 추상화 (Key Abstractions)
 
 **IsfStore:**
-- Purpose: Centralized persistence for all application steps.
-- Examples: `src/core/storage/IsfStore.ts`
-- Pattern: Repository Pattern (abstracting IndexedDB/LocalStorage).
+- 목적: 모든 단계의 데이터를 통합 관리하는 중앙 집중식 저장소.
+- 위치: `src/core/storage/IsfStore.ts`
+- 패턴: Repository Pattern.
 
-**CompatibilityBridge:**
-- Purpose: Ensures legacy JS code can talk to modernized TS services.
-- Examples: `src/core/storage/CompatibilityBridge.ts`
-- Pattern: Adapter/Bridge Pattern.
+**Compatibility Bridge:**
+- 목적: 레거시 Vanilla JS와 현대적인 TypeScript 서비스 간의 통신 보장.
+- 위치: `src/core/storage/CompatibilityBridge.ts`
+- 패턴: Adapter/Bridge Pattern.
 
-## Entry Points
+## 엔트리 포인트 (Entry Points)
 
-**Step 1-4 Entries:**
-- Location: `src/entries/step1.ts` to `src/entries/step4.tsx`.
-- Triggers: Vite build process, loaded by `apps/step*/index.html`.
-- Responsibilities: Initializing the application, loading shared styles, and mounting UI.
+**Step 1-3 엔트리:**
+- 위치: `src/entries/step[1-3].ts`.
+- 트리거: Vite 빌드 프로세스, `apps/step*/index.html`에서 로드.
+- 역할: 앱 초기화, 공유 스타일 로드, Web Components 마운트.
 
-## Architectural Constraints
+## 아키텍처 제약 사항 (Architectural Constraints)
 
-- **Single-threaded Event Loop:** Standard browser environment constraints.
-- **Global state:** Vanilla steps use window-level singletons (e.g., `window.IsfStorageHub`) for communication.
-- **Circular imports:** Avoided by using a modular structure and clearly defined layers.
-- **Legacy Compatibility:** New features must not break existing Vanilla JS steps.
+- **단위 정합성:** 모든 저장 데이터는 '원' 단위여야 함 (`IsfUtils.toWon` 필수 사용).
+- **물리적 무결성:** CSS/HTML 수정 시 반응형 레이아웃 및 파일 하단 미디어 쿼리 보호.
+- **하이브리드 지원:** Vite 빌드 없이도 `apps/` 하위 코드가 동작할 수 있도록 상대 경로 임포트 유지.
 
-## Anti-Patterns
+## 안티 패턴 (Anti-Patterns)
 
-### Large Orchestrator (app.js)
+### 거대 오케스트레이터 (Large Orchestrator)
+**현상:** `apps/step1/app.js`가 너무 비대해짐.
+**문제:** 유지보수와 테스트가 어려워짐.
+**대안:** 도메인별 로직을 `modules/` 하위의 작은 모듈(`onboarding-manager.js`, `snapshot-manager.js` 등)로 계속 추출.
 
-**What happens:** `apps/step1/app.js` grew to ~700 lines.
-**Why it's wrong:** Becomes a "God Object" that is hard to maintain and test.
-**Do this instead:** Extract domain-specific logic into smaller modules (e.g., `onboarding-manager.js`, `snapshot-manager.js`).
+## 에러 핸들링 (Error Handling)
 
-## Error Handling
+**전략:** 안전한 기본값(Fail-safe) 제공 및 사용자 피드백.
+**패턴:**
+- **Sanitization:** 입력을 즉시 정제하여 계산 엔진의 크래시 방지.
+- **Feedback UI:** `FeedbackManager.js`를 통한 비차단형 알림.
 
-**Strategy:** Fail-safe defaults and user feedback.
+## 횡단 관심사 (Cross-Cutting Concerns)
 
-**Patterns:**
-- **Sanitization:** Ensuring inputs never crash the calculator (`input-sanitizer.js`).
-- **Feedback UI:** `FeedbackManager.js` for non-blocking error/success messages.
-
-## Cross-Cutting Concerns
-
-**Logging:** Console-based with warning/error levels.
-**Validation:** Surgical sanitization of financial inputs.
-**PWA:** Service Worker for offline capability (`shared/pwa/pwa-manager.js`).
+**로깅:** 중요 금융 상태 변화 및 스토리지 이벤트 로깅.
+**검증:** 금융종합소득과세 한도 초과 등에 대한 실시간 경고 시스템.
+**PWA:** 오프라인 사용을 위한 서비스 워커 관리 (`shared/pwa/pwa-manager.js`).
 
 ---
 
-*Architecture analysis: 2026-05-12*
+*아키텍처 분석: 2026-05-19*

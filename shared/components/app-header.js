@@ -40,10 +40,9 @@ export class AppHeader extends HTMLElement {
     const stepLabels = {
       '1': '현금 흐름',
       '2': '배당 시뮬',
-      '3': '포트폴리오',
-      '4': '백테스트'
+      '3': '포트폴리오'
     };
-    const currentLabel = stepLabels[this.currentStep] || '백테스트';
+    const currentLabel = stepLabels[this.currentStep] || 'ISF UIUX';
 
     this.innerHTML = `
       <header class="app-header">

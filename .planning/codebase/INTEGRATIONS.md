@@ -4,82 +4,65 @@
 
 ## APIs & External Services
 
-**PWA Sync:**
-- `sync-version.js` - Synchronizes version strings across `manifest.webmanifest`, `sw.js`, and `utils.js` during build.
-  - Auth: None (Local build script)
-
-**Clipboard Integration:**
-- `ClipboardParser` - Extracts transaction data (amount, merchant, date) from Korean bank/card SMS strings.
-  - Location: `shared/core/clipboard-parser.js`
+**Browser APIs:**
+- Clipboard API - Used in `shared/core/clipboard-parser.js` to parse transaction text (SMS) from Korean financial services.
+- Web Crypto API - Used for secure unique ID generation in `shared/storage/hub-storage.js` and `src/core/storage/IsfStore.ts`.
+- Share API - Integrated via `shared/core/share-utils.js` for data sharing capabilities.
 
 ## Data Storage
 
 **Databases:**
-- IndexedDB (`isf-hub-db-v1`)
-  - Connection: `IsfHubStorage.openHubDb()`
-  - Client: Native IndexedDB API with custom wrapper in `shared/storage/hub-storage.js`
-- LocalStorage
-  - Used for persistent app state and view-specific data.
-  - Keys: `my-dividend-simulation` (formerly `my-portfolio-flow`)
+- IndexedDB (Browser Native)
+  - `isf-v2-db`: Primary storage for Step 1 history, Step 2 simulations, and automated backups.
+  - `isf-hub-db-v1`: Legacy storage (automatically migrated/wiped by modern store).
+  - Clients: `src/core/storage/IsfStore.ts` (Modern) and `shared/storage/hub-storage.js` (Legacy/Bridged).
 
 **File Storage:**
-- JSON Import/Export - Users can manually backup/restore data via `.json` files.
-  - Location: `shared/components/data-hub-modal.js`
+- LocalStorage: Stores active application state, PWA visibility flags, and small-scale configuration.
+- Local JSON: Static market index data (QQQ, KOSPI, etc.) stored in `public/data/indices/`.
 
 **Caching:**
-- Service Worker Caching - Managed by `vite-plugin-pwa` and `shared/legacy/sw.js`.
+- Cache Storage API: Managed by Service Worker (`sw.js`) for full offline availability.
 
 ## Authentication & Identity
 
 **Auth Provider:**
-- Custom (Anonymous/Local-first)
-  - Implementation: Data is tied to the local device storage. No remote auth server integrated in v0.10.0.
+- None (Local-First Architecture)
+  - Data remains on the user's device.
+  - Privacy-by-design: No central database for user financial data.
 
 ## Monitoring & Observability
 
 **Error Tracking:**
-- None (Local console logging only)
+- Console Logging (Dev mode)
+- Custom `IsfFeedback`: UI-based notification system for application state changes and errors (`shared/components/feedback-manager.js`).
 
 **Logs:**
-- Browser `console.log` / `console.warn`
-- Persistent backup logs in `IsfStorageHub`
+- Browser DevTools Console.
 
 ## CI/CD & Deployment
 
 **Hosting:**
-- GitHub Pages (implied by `vite.config.ts` base path `/IndividualSavingsFlowUI/`)
+- GitHub Pages - Automated deployment via GitHub Actions.
 
 **CI Pipeline:**
-- GitHub Actions - `.github/workflows/deploy.yml`
+- GitHub Actions: `.github/workflows/deploy.yml` handles build and deployment to Pages.
 
 ## Environment Configuration
 
 **Required env vars:**
-- `__APP_VERSION__` - Injected via `vite.config.ts` from `package.json`.
+- None (Static application).
 
 **Secrets location:**
-- Not applicable (Project is static and client-side only).
+- Not applicable (No secrets stored or used in frontend).
 
 ## Webhooks & Callbacks
 
 **Incoming:**
-- None
+- None.
 
 **Outgoing:**
-- None
-
-## State Sharing (ISF CODE)
-
-**Mechanism:**
-- LZ-based URL Hash - Compresses state into a short string ("ISF CODE") stored in the URL fragment (`#s=...`).
-- Location: `shared/core/share-utils.js`
-
-## Data Migration
-
-**Logic:**
-- Versioned Migration: `modelVersion: 10` enforcement in `IsfStorageHub`.
-- Key Migration: `ensureMigration` handles renaming storage keys (e.g., from v0.7.0 legacy keys).
-- Location: `shared/storage/hub-storage.js`
+- None.
 
 ---
 

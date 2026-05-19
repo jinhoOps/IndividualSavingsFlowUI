@@ -5,65 +5,64 @@
 ## Languages
 
 **Primary:**
-- TypeScript 5.5.2 - Core application logic and type definitions in `src/`
-- JavaScript (ES6+) - Legacy modules and shared utilities in `apps/` and `shared/`
+- TypeScript 5.5 - Modern core logic, storage services, and PWA management in `src/`.
 
 **Secondary:**
-- Python 3.x - Data generation scripts in `scripts/` (e.g., `scripts/generate_market_data.py`)
-- CSS (Tailwind CSS 4.0 alpha) - Styling throughout the application
+- JavaScript (ES Modules) - Legacy application logic and UI controllers in `apps/` and `shared/`.
+- Python 3.x - Market data generation and processing scripts in `scripts/`.
 
 ## Runtime
 
 **Environment:**
-- Browser - Modern web browsers (Chrome, Edge, Safari, Firefox)
-- Node.js 20.x+ - Build environment and development tools
+- Browser (Modern Evergreen Browsers)
+- Node.js (Build-time & Development)
 
 **Package Manager:**
-- npm - Version 10.x+
+- npm
 - Lockfile: `package-lock.json` present
 
 ## Frameworks
 
 **Core:**
-- React 19.2.5 - UI component framework
-- Vite 5.3.1 - Build tool and development server
+- React 19 - Modern UI components and state management (Incremental introduction).
+- Vanilla JS - Legacy core modules for Step 1, 2, and 3 apps.
 
 **Testing:**
-- Vitest 4.1.5 - Unit and integration testing framework
+- Vitest 4.1 - Unit and integration testing for core logic and components.
 
 **Build/Dev:**
-- @tailwindcss/vite 4.0.0-alpha.13 - Styling engine
-- vite-plugin-pwa 0.21.1 - PWA generation and management
+- Vite 5 - Primary build tool and development server.
+- Tailwind CSS 4 (Alpha) - Utility-first CSS framework with native Vite integration.
 
 ## Key Dependencies
 
 **Critical:**
-- `react` 19.2.5 - Component library
-- `vite` 5.3.1 - Build orchestrator
+- `react` / `react-dom` 19 - UI library for modernized features.
+- `vite-plugin-pwa` - PWA (Progressive Web App) infrastructure and Service Worker generation.
 
 **Infrastructure:**
-- `IsfStorageHub` - Custom IndexedDB wrapper for local state persistence (`shared/storage/hub-storage.js`)
-- `IsfShare` - Custom LZ-based state compression and sharing utility (`shared/core/share-utils.js`)
+- `@tailwindcss/vite` - Modern styling engine.
+- `@types/node` / `typescript` - Development type safety.
 
 ## Configuration
 
 **Environment:**
-- Client-side configuration via `vite.config.ts`
-- `__APP_VERSION__` defined during build for runtime version checks
+- No environment variables required (Local-First Architecture).
+- Application versioning synced via `scripts/sync-version.js` from `package.json`.
 
 **Build:**
-- `vite.config.ts` - Main build configuration
-- `tsconfig.json` - TypeScript compiler settings
-- `scripts/sync-version.js` - Post-version-bump synchronization script
+- `vite.config.ts`: Multi-page application (MPA) setup with PWA configuration.
+- `tsconfig.json`: TypeScript compiler settings for modern browser targets.
 
 ## Platform Requirements
 
 **Development:**
-- Node.js, npm, Python 3.x
+- Node.js 20+
+- Python 3.x (Optional, for data script execution)
 
 **Production:**
-- Static file hosting (GitHub Pages)
-- PWA-compatible environment (Service Worker support)
+- Static Hosting (e.g., GitHub Pages)
+- HTTPS required for PWA and Service Worker functionality.
 
 ---
 
