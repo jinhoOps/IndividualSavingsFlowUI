@@ -61,9 +61,7 @@ import {
   syncSankeyValueModeUi, syncSankeySortModeUi, syncSankeyZoomUi,
   syncItemSortModeUi, syncMobileInputsPanelVisibility,
   syncMobileItemEditorFab, syncAdvancedTabBlockVisibility,
-  setActiveAdvancedTab, setPendingBarVisible, markPendingChanges,
-  clearPendingChanges, refreshInputsPanel, syncDerivedMonthlyInputsToUi,
-  syncGroupOptionsAll, syncGroupOptionsFor
+  setActiveAdvancedTab, refreshInputsPanel, syncDerivedMonthlyInputsToUi
 } from "./modules/ui-controller.js";
 
 import {

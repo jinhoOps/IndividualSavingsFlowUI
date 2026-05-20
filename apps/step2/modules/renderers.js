@@ -386,3 +386,33 @@ export function initGlobalTooltips() {
     else hide();
   }, { passive: true });
 }
+
+export function renderDraft() {
+  if (!state.draft) return;
+  try {
+    if (dom.totalInitialAsset) {
+      dom.totalInitialAsset.value = utils.toMan(state.draft.totalInitialAsset || 0);
+    }
+    if (dom.totalMonthlyInvestCapacity) {
+      dom.totalMonthlyInvestCapacity.value = utils.toMan(state.draft.totalMonthlyInvestCapacity || 0);
+    }
+    
+    if (state.draft.dividendSim) {
+      if (dom.simDividendYield) dom.simDividendYield.value = state.draft.dividendSim.yield;
+      if (dom.simDividendGrowth) dom.simDividendGrowth.value = state.draft.dividendSim.growth;
+      if (dom.simCapitalGrowth) dom.simCapitalGrowth.value = state.draft.dividendSim.capitalGrowth;
+      if (dom.simHorizonYears) dom.simHorizonYears.value = state.draft.dividendSim.years;
+      if (dom.simDrip) dom.simDrip.checked = state.draft.dividendSim.isDrip;
+      
+      if (dom.activePresetName) {
+        const pName = state.draft.dividendSim.presetName || "";
+        dom.activePresetName.textContent = pName;
+        dom.activePresetName.style.display = pName ? "inline-block" : "none";
+      }
+    }
+
+    renderDividendSimulation();
+  } catch (err) {
+    console.error("renderDraft failed:", err);
+  }
+}

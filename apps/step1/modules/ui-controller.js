@@ -6,9 +6,11 @@ import {
 } from "./constants.js";
 import * as helpers from "./state-helpers.js";
 import { 
-  formatCurrency, formatPercent, formatMonthSpan, 
-  buildAllocationMetaText 
+  formatCurrency, formatPercent, formatMonthSpan 
 } from "./formatters.js";
+import { 
+  normalizeAllocationGroupName, getMonthlyIncomeTotalWon, getMonthlyAllocationTotalWon 
+} from "./input-sanitizer.js";
 
 export function syncViewModeUi() {
   if (dom.saveViewToLocal) dom.saveViewToLocal.hidden = !state.isViewMode;
@@ -91,7 +93,7 @@ export function clearPendingChanges() {
 export function refreshInputsPanel(inputs) {
   if (!dom.inputsForm) return;
   state.suspendInputTracking = true;
-  helpers.writeInputsToForm(dom.inputsForm, inputs, { FORM_FIELD_KEYS, toMan: IsfUtils.toMan });
+  helpers.applyInputsToForm(dom.inputsForm, inputs, { FORM_FIELD_KEYS, toMan: IsfUtils.toMan });
   state.suspendInputTracking = false;
   
   syncDerivedMonthlyInputsToUi();
@@ -100,10 +102,10 @@ export function refreshInputsPanel(inputs) {
 
 export function syncDerivedMonthlyInputsToUi() {
   const inputs = state.draftInputs || state.inputs;
-  const inc = IsfUtils.toMan(helpers.getMonthlyIncomeTotalWon(inputs));
-  const exp = IsfUtils.toMan(helpers.getMonthlyAllocationTotalWon(inputs.expenseItems));
-  const sav = IsfUtils.toMan(helpers.getMonthlyAllocationTotalWon(inputs.savingsItems));
-  const inv = IsfUtils.toMan(helpers.getMonthlyAllocationTotalWon(inputs.investItems));
+  const inc = IsfUtils.toMan(getMonthlyIncomeTotalWon(inputs));
+  const exp = IsfUtils.toMan(getMonthlyAllocationTotalWon(inputs.expenseItems));
+  const sav = IsfUtils.toMan(getMonthlyAllocationTotalWon(inputs.savingsItems));
+  const inv = IsfUtils.toMan(getMonthlyAllocationTotalWon(inputs.investItems));
 
   if (dom.derivedMonthlyIncome) dom.derivedMonthlyIncome.value = inc.toLocaleString();
   if (dom.derivedMonthlyExpense) dom.derivedMonthlyExpense.value = exp.toLocaleString();
@@ -116,65 +118,11 @@ export function syncGroupOptionsAll() {
 }
 
 export function syncGroupOptionsFor(group) {
-  const listKey = `${group}Items`;
-  const containerId = `${group}List`;
-  const container = document.getElementById(containerId);
-  if (!container) return;
+  const list = dom[`${group}GroupOptions`];
+  if (!list) return;
 
-  const items = (state.draftInputs || state.inputs)[listKey];
-  const sorted = helpers.getSortedItems(items, state.itemSortModes[group]);
-  
-  const editingId = state.itemEditor[group];
-  const html = sorted.map(item => renderAllocationItemHtml(group, item, { isEditing: item.id === editingId })).join("");
-  container.innerHTML = html || `<p class="empty">등록된 항목이 없습니다.</p>`;
-}
-
-function renderAllocationItemHtml(group, item, opts) {
-  const { isEditing } = opts;
-  const rowClass = `${group}-row ${isEditing ? 'is-editing' : ''}`;
-  const nameClass = `${group}-name`;
-  const amtMan = IsfUtils.toMan(item.amountWon);
-  
-  if (isEditing) {
-    const isSavings = group === 'savings';
-    return `
-      <div class="${rowClass}" data-item-id="${item.id}">
-        <div class="editor-field">
-          <label class="editor-field-label">항목명</label>
-          <input type="text" class="edit-name" value="${IsfUtils.escapeHtml(item.name)}" placeholder="이름">
-        </div>
-        <div class="editor-field">
-          <label class="editor-field-label">금액(만원)</label>
-          <input type="number" class="edit-amount" value="${amtMan}" placeholder="금액">
-        </div>
-        ${isSavings ? `
-          <div class="editor-field">
-            <label class="editor-field-label">수익률(%)</label>
-            <input type="number" class="edit-rate" value="${item.annualRate || 0}" step="0.1" placeholder="수익률">
-          </div>
-          <div class="editor-field">
-            <label class="editor-field-label">만기(개월)</label>
-            <input type="number" class="edit-maturity" value="${item.maturityMonth || 0}" placeholder="만기">
-          </div>
-        ` : ''}
-        <div class="editor-actions">
-          <button class="btn btn-primary btn-sm apply-item-edit">적용</button>
-          <button class="btn btn-ghost btn-sm cancel-item-edit">취소</button>
-          <button class="btn btn-ghost btn-sm remove-item" style="color:var(--status-error)">삭제</button>
-        </div>
-      </div>
-    `;
-  }
-
-  const metaText = buildAllocationMetaText(item, group);
-  return `
-    <div class="${rowClass}" data-item-id="${item.id}">
-      <div class="allocation-label">
-        <span class="${nameClass}">${IsfUtils.escapeHtml(item.name)}</span>
-        ${metaText ? `<span class="allocation-meta">${metaText}</span>` : ''}
-      </div>
-      <span class="value">${amtMan.toLocaleString()} 만원</span>
-      <button class="btn btn-ghost btn-sm edit-item-trigger">편집</button>
-    </div>
-  `;
+  const inputs = state.draftInputs || state.inputs;
+  const items = inputs[`${group}Items`] || [];
+  const names = [...new Set(items.map(i => normalizeAllocationGroupName(i.group)).filter(Boolean))].sort();
+  list.innerHTML = names.map(n => `<option value="${n}">`).join("");
 }
