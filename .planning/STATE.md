@@ -1,20 +1,20 @@
 ---
-milestone: "v1.5"
-name: "포트폴리오 고도화 및 분석 엔진 구축"
+milestone: "v1.6"
+name: "코드 리팩터링, UX 개선 및 안정성 강화"
 status: "planning"
 progress:
-  completed_phases: 12
-  total_phases: 15
+  completed_phases: 0
+  total_phases: 0
 ---
 
 # Project State
 
 ## Current Position
 
-Phase: 13
-Plan: 01
-Status: Planning
-Last activity: 2026-05-20 — Milestone v1.4 완료 및 아카이빙. v0.10.1 릴리즈 반영 완료. 다음 마일스톤 v1.5 포트폴리오 고도화 기획 수립 개시.
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-05-20 — Milestone v1.6 started
 
 ## Project Reference
 

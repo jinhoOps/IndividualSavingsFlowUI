@@ -17,6 +17,17 @@
 
 ---
 
+## Current Milestone: v1.6 코드 리팩터링, UX 개선 및 안정성 강화
+
+**Goal:** 기존 시스템의 물리적/로직적 안정성을 강화하고, DESIGN.md 가이드라인을 기반으로 UX를 고도화하며 내부 코드를 리팩터링한다.
+
+**Target features:**
+- 코드 리팩터링 (app.js 등 핵심 로직 보존 및 모듈화)
+- UX 개선 (DESIGN.md 가이드라인 준수, Glassmorphism 패널, 반응형 레이아웃 개선 등)
+- 안정성 강화 (단위 정합성, 모바일 환경 및 예외 처리 강화)
+
+---
+
 ## Requirements Evolution
 
 ### Validated (Shipped)
@@ -67,4 +78,23 @@
 </details>
 
 ---
-*Last updated: 2026-05-20 after v1.4 Milestone Complete*
+
+## Evolution
+
+This document evolves at phase transitions and milestone boundaries.
+
+**After each phase transition** (via `/gsd-transition`):
+1. Requirements invalidated? → Move to Out of Scope with reason
+2. Requirements validated? → Move to Validated with phase reference
+3. New requirements emerged? → Add to Active
+4. Decisions to log? → Add to Key Decisions
+5. "What This Is" still accurate? → Update if drifted
+
+**After each milestone** (via `/gsd-complete-milestone`):
+1. Full review of all sections
+2. Core Value check — still the right priority?
+3. Audit Out of Scope — reasons still valid?
+4. Update Context with current state
+
+---
+*Last updated: 2026-05-20 after v1.6 Milestone Initialized*
