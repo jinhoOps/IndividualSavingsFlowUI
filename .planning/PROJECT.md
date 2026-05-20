@@ -8,51 +8,41 @@
 
 단순한 프리셋 선택만으로 즉각적인 자산 시각화 결과를 제공하고, 복잡한 재무 계산의 부담 없이 직관적인 개인 예산 흐름을 파악하게 한다.
 
-## Current Milestone: v1.4 코어 안정화 및 UX 고도화 (Phase 11~12)
-
-**Goal:** 시스템의 물리적/데이터 무결성을 확보하고, Step 1~3 전반의 UX 일관성을 고도화한다.
-
-**Target features:**
-- 전역 스타일 가이드 통합 (shared/styles/step-theme.css)
-- 보안 강화 (XSS 방어 및 데이터 Sanitize)
-- 메모리 및 성능 최적화 (이벤트 리스너 관리, Sankey 렌더링 최적화)
-- Step 1 'Smart Add' 및 부부 데이터 병합 안정성 확보
-
 ## Current State
 
-**Shipped:** v0.10.0 (2026-05-12)
+**Shipped:** v1.4 (v0.10.1 - 2026-05-20)
 **Tech Stack:** Modern Hybrid (Vite/TS/Tailwind), React 19 (Partial), PWA, IndexedDB
 **Codebase:** ~2,500 LOC (JavaScript/TS), Mobile-First 반응형
-**Key Feature:** 프리셋 기반 시각화 + 데이터 허브(백업/복원) + 부부 데이터 병합 + 포트폴리오 리밸런싱
+**Key Features:** 프리셋 기반 시각화 + 데이터 허브(백업/복원) + 부부 데이터 병합 + 포트폴리오 리밸런싱 + Step 2 모듈러 아키텍처 현대화 (ui-controller/feature-controllers)
 
-## Requirements
+---
 
-### Validated
+## Requirements Evolution
+
+### Validated (Shipped)
 
 - ✓ 연봉/투자 스타일 프리셋 로드 및 시각화 (v1.0)
 - ✓ 시뮬레이션 차트 고도화 (데이터 포인트, 툴팁, KPI 카드) (v1.1)
 - ✓ Step 1 Spotlight UX 온보딩 가이드 (v1.1)
 - ✓ IndexedDB 기반 브리지 데이터 자동 백업/복원 (v1.0)
 - ✓ 백테스트 기능 이관 및 제거 (Phase 10)
-- ✓ 보안(XSS) 및 메모리 누수 방지 (v0.10.0)
+- ✓ 보안(XSS) 및 메모리 누수 방지 (v1.4 / v0.10.0)
+- ✓ Step 2 아키텍처 현대화 및 모듈화 통합 (v1.4 / v0.10.1)
+- ✓ 전역 디자인 가이드라인 정립 (DESIGN.md 수립) (v1.4)
 
-### Active
+### Active (Next Milestone: v1.5)
 
-- [ ] **STAB-01**: 전역 스타일 가이드 정립 및 Step 간 UI 일관성 확보
-- [ ] **STAB-02**: 데이터 검증 로직 강화 및 PWA 오프라인 동기화 예외 처리
-- [ ] **ADV-01**: Sankey 및 시뮬레이션 엔진 렌더링 최적화
-- [ ] **ADV-02**: 다국어 지원을 위한 리소스 분리 및 브릿지 설계
+- [ ] **PORT-02**: 포트폴리오(계좌/종목) 고도화 및 비중 관리 기능 이식
+- [ ] **PORT-03**: 실시간 격차 분석(Target vs Actual) 알림 및 리밸런싱 로직 구축
+- [ ] **STAB-06**: PWA 오프라인 예외 처리 고도화 및 안정성 모니터링
+- [ ] **ADV-04**: 다국어 지원을 위한 텍스트 리소스 외부화 및 바인더 구현
 
 ### Out of Scope
 
 - [백테스트 시뮬레이터] — `stock-snowball` 프로젝트로 이관됨.
 - [실시간 시세 연동] — 정적 데이터 및 수동 계획 중심 철학 유지.
 
-## Context
-
-- v0.10.0 릴리즈 완료: Phase 10(백테스트 이관) 이후 시스템 안정화에 집중.
-- 실험적 기능(AI, 백테스트)을 제거하여 코어 엔진의 신뢰성 확보.
-- PWA와 Vanilla JS/React 하이브리드 구조로 전환 중.
+---
 
 ## Key Decisions
 
@@ -62,11 +52,19 @@
 | AI 기능 제거 | 실험적 기능보다 데이터 무결성과 정적 웹의 신뢰성이 우선됨 | ✓ Good |
 | 전역 스타일 공유 (shared/styles) | Step 간 디자인 파편화를 막고 유지보수 효율 증대 | ✓ Good |
 | React 19 점진적 도입 | 복잡한 UI 상태 관리 및 타입 안정성을 위해 현대적 스택으로 전환 시작 | — Ongoing |
-
-## Evolution
-
-This document evolves at phase transitions and milestone boundaries.
+| Step 2 모듈화 및 컨트롤러 이식 | Step 1 모듈화 사양과 일관성 유지 및 app.js 경량화 | ✓ Good |
+| 수동 경로 임포트 오류 즉각 해결 | app.js 내의 404 경로 참조 버그를 발견하여 외과적 핫픽스 단행 | ✓ Good |
 
 ---
-*Last updated: 2026-05-19 for v1.4 Milestone Audit*
 
+## Evolution History
+
+<details>
+<summary>v1.0 ~ v1.3 Evolution Details</summary>
+
+- v1.0 Shipped: 프리셋 기반 자산 시각화 MVP 완비.
+- v1.1~v1.3 Shipped: 시뮬레이션 고도화, 온보딩 가이드, 포트폴리오 기본 탑재 완료.
+</details>
+
+---
+*Last updated: 2026-05-20 after v1.4 Milestone Complete*

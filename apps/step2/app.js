@@ -12,7 +12,7 @@ import {
   initGlobalTooltips
 } from "./modules/renderers.js";
 import { checkStep1SyncData } from "./modules/step1-connector.js";
-import { featureController } from "./feature-controllers.js";
+import { featureController } from "./modules/feature-controllers.js";
 import { uiController } from "./modules/ui-controller.js";
 
 if (document.readyState === "loading") {
