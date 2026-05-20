@@ -422,4 +422,21 @@
     - 안전 마진 설정: 실제 기준보다 보수적인 1,900만 원(5% 마진) `warn` 및 3,400만 원 `crit` 경고 정책 수립.
     - 위키 연결: `INDEX.md` 및 `UI_Standards_Reference.md`에 정책 노드 연결 완료.
 - **결과**: 금융 정책 관련 비즈니스 로직의 근거를 확보하고, 개발 및 기획 시 일관된 기준 제공.
-�.
+
+## [2026-05-20] ingest | v1.4 마일스톤 감사 통과 및 런타임 버그 수정 (v0.10.1)
+- **목적**: Milestone v1.4 (코어 안정화 및 UX 고도화) 감사를 수행하여 DoD 달성 여부를 최종 검증하고, 감사 과정에서 발견된 치명적인 런타임 버그를 해결함.
+- **주요 변경사항**:
+    - **마일스톤 감사**: `PROJECT.md`, `ROADMAP.md`, `REQUIREMENTS.md`와 `DESIGN.md`가 모두 v1.4 상태에 부합함을 검증하고, `v1.4-MILESTONE-AUDIT.md`를 'Passed' 상태로 최종 갱신 완료.
+    - **Step 2 런타임 오류 수정**: `apps/step2/app.js` 내의 `featureController` 임포트 경로가 잘못 지정(`"./feature-controllers.js"`)되어 모듈 404 에러를 일으키던 문제를 `"./modules/feature-controllers.js"`로 외과적 수정 완료.
+    - **아키텍처 일관성**: Step 2 배당 시뮬레이션의 현대적 컨트롤러 패턴(`ui-controller.js`, `feature-controllers.js`) 리팩토링 무결성 확인.
+- **결과**: v1.4 마일스톤 공식 Passed 달성 및 시스템 런타임 안정성 전면 확보.
+
+## [2026-05-20] chore | 마일스톤 페이즈 디렉토리 아카이브 및 정리 완료 (gsd-cleanup)
+- **목적**: 기존 마일스톤(v1.0, v1.1~v1.3, v1.4) 개발 과정에서 `.planning/phases/` 내에 누적된 과거 페이즈 디렉토리들을 각 마일스톤 하위의 전용 아카이브 디렉토리로 안전하게 이관하여 현재 활성화된 페이즈 관리 환경을 깨끗하게 정리(Hygiene)함.
+- **변경 사항**:
+    - **아카이브 디렉토리 생성**: `.planning/milestones/` 하위에 `v1.0-phases`, `v1.3-phases`, `v1.4-phases` 디렉토리를 생성하여 격리 공간 확보.
+    - **v1.0 MVP 페이즈 이관**: `1-preset`, `2-adjustment`, `2.1-template-refinement` 페이즈 폴더를 `v1.0-phases/`로 안전하게 물리적 이동.
+    - **v1.1~v1.3 시뮬레이션 및 온보딩 페이즈 이관**: `03-chart-visualization`, `04-kpi-dashboard`, `05-onboarding`, `06-portfolio-rebalancing`, `10-backtest-migration` 페이즈 폴더를 `v1.3-phases/`로 물리적 이동.
+    - **v1.4 코어 안정화 및 UX 고도화 페이즈 이관**: `11-stability`, `12-advanced` 페이즈 폴더를 `v1.4-phases/`로 물리적 이동.
+    - **시스템 위생 관리**: `.planning/phases/` 내부를 깨끗이 비워 차기 스프린트(v1.5 포트폴리오 고도화) 준비 상태 완비.
+- **결과**: 과거 완료된 개발 이력의 완벽한 아카이빙을 통해 지식 검색 노이즈를 제어하고, 활성 작업 영역의 청결성을 극대화함.
