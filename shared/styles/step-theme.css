@@ -1,9 +1,9 @@
-﻿@import url("https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Gowun+Dodum:wght@400;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Gowun+Dodum:wght@400;700&display=swap");
 
 :root {
   color-scheme: light;
   --bg: #f3f4ef;
-  --panel: rgba(255, 255, 255, 0.82);
+  --panel: rgba(255, 255, 255, 0.9);
   --ink: #102220;
   --muted: rgba(16, 34, 32, 0.66);
   --line: rgba(16, 34, 32, 0.18);
@@ -238,7 +238,7 @@ h1 { font-family: var(--font-body); }
   color: var(--muted);
   cursor: pointer;
   position: relative;
-  transition: color 0.2s ease;
+  transition: color 0.2s ease, transform 0.15s ease-out;
 }
 
 .tab-btn::after {
@@ -275,7 +275,13 @@ h1 { font-family: var(--font-body); }
 }
 
 .btn:hover { border-color: var(--ink); background: var(--panel); }
-.btn:active { transform: scale(0.96); }
+.btn:active,
+.tab-btn:active,
+.nav-link:active,
+.floating-btn:active,
+.modal-close:active {
+  transform: scale(0.96);
+}
 .btn-primary {
   color: #fff;
   border: none;
@@ -482,6 +488,7 @@ select:focus-visible {
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: color 0.2s ease, transform 0.15s ease-out;
 }
 
 .modal-section {
@@ -540,20 +547,26 @@ select:focus-visible {
 .floating-btn--left-save { left: 72px; }
 .floating-btn--right { right: var(--sp-lg); }
 
-@media (max-width: 760px) {
+@media (max-width: 768px) {
+  /* 공통 반응형 뼈대: 패널 및 카드 패딩 축소 */
+  .panel,
+  .card {
+    padding: var(--sp-md) !important;
+  }
+
+  /* 공통 반응형 뼈대: 그리드 및 다단 레이아웃 1열 스택 강제 */
+  .grid,
+  .page,
+  .modal-grid,
+  [class*="grid-cols-"] {
+    grid-template-columns: 1fr !important;
+  }
+
   .floating-btn { bottom: 12px; width: 40px; height: 40px; }
   .floating-btn--left { left: 12px; }
   .floating-btn--left-save { left: 60px; }
   .floating-btn--right { right: 12px; }
-}
 
-@media (max-width: 760px) {
-  .modal-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 760px) {
   .pending-bar {
     left: 12px;
     right: 12px;
