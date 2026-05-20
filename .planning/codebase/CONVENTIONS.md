@@ -1,87 +1,39 @@
-# Coding Conventions
+# Codebase Conventions
 
-**Analysis Date:** 2026-05-12
+This document outlines the core conventions and standards established for the Individual Savings Flow UI project.
 
-## Naming Patterns
+## 1. Architectural Integrity
 
-**Files:**
-- Kebab-case for utility and component files: `clipboard-parser.js`, `step-theme.css`.
-- Simple name for entry points: `app.js`, `utils.js`.
-- Test files suffix: `.test.js`.
+*   **Three-Tier Architecture:** Logic within apps is consistently separated into three layers: `State`, `Helpers`, and `UI`. This structure must be preserved during all modifications.
+*   **Helper Functions Preservation:** Essential helper functions (e.g., `markDirty` and other 14+ specific methods) form the core of the state management and synchronization. These must not be removed or altered without explicit architectural approval.
+*   **No-build Orientation (Modern Hybrid):** The application prioritizes pure CSS and JS to ensure immediate browser executability. While modern tools like Vite, TypeScript, and Tailwind CSS are present (mainly to facilitate future migrations like React integration), the fundamental vanilla HTML/CSS/JS capability should remain respected wherever applicable.
+*   **Surgical Edits:** Agents and developers must implement "Surgical Changes"—only modifying code strictly related to the current task. Unrelated code or perceived stylistic "improvements" should not be touched unless it's unused variable cleanup.
 
-**Functions:**
-- CamelCase for logic and UI actions: `formatMoney`, `calculateIncomeTax`, `bindControls`.
-- Action-prefixed for UI: `handleSaveSnapshot`, `syncBackupUi`.
+## 2. Style and Responsive Rules
 
-**Variables:**
-- CamelCase for instances and state: `selectedPresetStyle`, `currentInputs`.
-- DOM elements often prefixed/grouped in `dom` object: `dom.inputsForm`, `dom.saveSnapshotBtn`.
+*   **Physical CSS Integrity:** Do not truncate or modify the bottom structure of CSS files where media queries and utility classes reside. Ensure the file length and structure are properly compared pre- and post-modification.
+*   **Responsive Priority:** Layouts must natively support mobile resolution (<= 760px) without breaking. Visual validation is required in Evaluator phases.
+*   **CSS Naming Conventions:** All CSS class naming must adhere strictly to either **BEM** (`block__element--modifier`) or **Snake Case** (using hyphens/underscores consistently) to maintain styling uniformity.
 
-**Types/Constants:**
-- UPPER_SNAKE_CASE for global constants: `MONEY_UNIT`, `STORAGE_KEY`, `FINANCIAL_INCOME_WARN_THRESHOLD_WON`.
+## 3. Unit and Currency Consistency
 
-**CSS:**
-- BEM (Block Element Modifier) or Snake-case: `income-row`, `status-badge--warn`, `card__label`.
-- Utility classes with `is-` prefix: `is-active`, `is-dirty`.
+Currency unit integrity is a critical rule for this financial application.
 
-## Code Style
+*   **Storage & Calculation:** All internal computations and persistent storage data are handled in **Won (원)**.
+*   **UI Display:** All user inputs and visible UI texts are represented in **Manwon (만원)**.
+*   **Large Value Formatting:** Values greater than or equal to 1억 원 (10,000 만원) must be displayed as `X 억 Y 만원` to optimize readability.
+*   **Utility Usage:** Always use the `IsfUtils` functions for conversion to prevent precision and semantic errors:
+    *   `IsfUtils.toWon()`: Manwon -> Won
+    *   `IsfUtils.toMan()`: Won -> Manwon
+    *   `IsfUtils.formatMoney()`: Formatting string outputs.
 
-**Formatting:**
-- Indentation: 2 spaces.
-- Semicolons: Required.
-- Quotes: Double quotes for HTML/Strings, single/double mix in JS (mostly double).
+## 4. Domain & Finance Logic Rules
 
-**Linting:**
-- `typescript` (tsc) used for type checking and basic linting (`npm run lint`).
-- No explicit ESLint/Prettier config found in root, but scripts are defined.
+*   **Financial Comprehensive Income Tax Warnings:**
+    *   If annual interest/dividend income exceeds **19,000,000 Won**, UI must display a `warn` alert.
+    *   If it exceeds **34,000,000 Won**, UI must display a `crit` alert.
 
-**3-Layer Architecture (JS):**
-- **State**: Centralized `state` object for application data. `apps/step1/modules/state.js`.
-- **Helpers**: Pure functions for calculation and data transformation. `apps/step1/modules/calculator.js`, `apps/step1/modules/input-sanitizer.js`.
-- **UI/DOM**: Event binding and rendering logic. `apps/step1/app.js`, `apps/step1/modules/dom.js`.
+## 5. Development Etiquette
 
-## Import Organization
-
-**Order:**
-1. External/Core utilities: `import { IsfUtils } from "../../shared/core/utils.js";`
-2. Constants: `import { ... } from "./modules/constants.js";`
-3. Domain logic/sanitizers: `import { ... } from "./modules/input-sanitizer.js";`
-4. UI/State: `import { dom } from "./modules/dom.js";`, `import { state } from "./modules/state.js";`
-
-**Path Aliases:**
-- Not explicitly configured in Vite for JS, uses relative paths.
-
-## Error Handling
-
-**Patterns:**
-- Try-catch blocks for I/O operations (Storage, IDB).
-- Fallback values in sanitizers: `sanitizeMoney(value, fallback = 0)`.
-- User-facing feedback via `window.IsfFeedback`.
-
-## Domain-Specific Rules (Critical)
-
-**Unit Consistency:**
-- **UI Level**: Use **만원 (Man-won)** for all user inputs and displays.
-- **Logic/Storage Level**: Use **원 (Won)** for all internal calculations and persisted data.
-- **Conversion**: Always use `IsfUtils.toWon()` when reading from UI and `IsfUtils.toMan()` when rendering to UI.
-
-**Currency Display:**
-- 10,000 만원 (1억) 이상: `X 억 Y 만원` 형태로 표기.
-- Helper: `IsfUtils.formatMoney()`.
-
-**Thresholds:**
-- 연간 이자/배당 소득 **1,900만 원** 초과: `warn` (과세주의).
-- 연간 이자/배당 소득 **3,400만 원** 초과: `crit` (과세경고).
-
-## Module Design
-
-**Exports:**
-- Named exports preferred for modules.
-- IIFE wrappers for shared legacy core files (`shared/core/utils.js`) to support both ESM and global `window` access.
-
-**Physical Integrity:**
-- CSS/HTML 수정 시 파일 하단의 `@media` 쿼리가 누락되지 않도록 주의.
-
----
-
-*Convention analysis: 2026-05-12*
+*   **Language & Encoding:** All responses, documentation, and source code text must use **Korean (존댓말)** and **UTF-8** encoding.
+*   **No Human-Targeted Comments:** Avoid writing descriptive/explanatory comments in JavaScript files aimed at humans. The codebase is primarily maintained by agents, and the code should be self-explanatory.

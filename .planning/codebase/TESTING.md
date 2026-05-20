@@ -1,104 +1,26 @@
-# Testing Patterns
+# Testing Strategy and Practices
 
-**Analysis Date:** 2026-05-12
+This document outlines the testing methodologies used in the Individual Savings Flow UI project.
 
-## Test Framework
+## 1. Testing Infrastructure
 
-**Runner:**
-- Vitest `^4.1.5` (Detected in `package.json`).
+*   **Vitest Framework:** The project has `vitest` and `@vitest/ui` configured as dependencies in `package.json`. However, the current adoption of Vitest is minimal.
+*   **Custom Test Scripts:** Existing tests (such as `shared/core/clipboard-parser.test.js`) are currently implemented as lightweight Node scripts using basic `console.log` assertions rather than a full test runner suite.
+*   **Testing Commands:** Although `npm run check` and `npm run lint` are mapped to TypeScript validation (`tsc --noEmit`), automated test runners are not actively integrated into the primary build pipeline.
 
-**Assertion Library:**
-- Vitest default (Chai-compatible `expect`).
+## 2. Agent-Driven Testing Methodology
 
-**Run Commands:**
-```bash
-npx vitest              # Run all tests (Manual execution as no script is in package.json)
-npx vitest run          # CI/Single run
-```
+Because the codebase relies heavily on agent operations, testing is generally defined by strict success criteria rather than extensive TDD unit tests.
 
-## Test File Organization
+*   **Goal-Driven Verification:** All execution plans must include explicit verification steps. Plans should be structured as:
+    ```
+    1. [Implementation Step] → verify: [observable check/assertion]
+    2. [Implementation Step] → verify: [observable check/assertion]
+    ```
+*   **Evaluator Phase:** The validation cycle must proactively ensure that the system's core invariants are untouched.
+*   **Responsive Regression Checking:** In UI validation, there is an absolute mandate to verify mobile layout integrity (resolutions <= 760px). The Evaluator must ensure no styles were broken.
 
-**Location:**
-- Co-located with source or in `shared/core/`.
-- Example: `shared/core/clipboard-parser.test.js`.
+## 3. Future Testing Recommendations
 
-**Naming:**
-- `*.test.js` or `*.spec.js`.
-
-## Test Structure
-
-**Legacy/Manual Pattern:**
-Found in `shared/core/clipboard-parser.test.js`:
-```javascript
-const testCases = [
-  { name: '...', input: '...', expected: { ... } }
-];
-
-testCases.forEach(tc => {
-  const result = ClipboardParser.parseSms(tc.input);
-  const success = ...;
-  console.log(`[${tc.name}] ${success ? '✅ PASS' : '❌ FAIL'}`);
-});
-```
-
-**Modern Pattern (Recommended for Vitest):**
-```javascript
-import { describe, it, expect } from 'vitest';
-import { someFunction } from './module.js';
-
-describe('ModuleName', () => {
-  it('should behave as expected', () => {
-    expect(someFunction()).toBe(true);
-  });
-});
-```
-
-## Mocking
-
-**Framework:**
-- Vitest (builtin `vi`).
-
-**What to Mock:**
-- Browser APIs (`localStorage`, `IndexedDB`).
-- Network requests (though mostly client-side logic).
-
-## Fixtures and Factories
-
-**Test Data:**
-- Defined as constants within test files or in `apps/step1/modules/constants.js` (e.g., `SAMPLE_INPUTS`).
-
-## Coverage
-
-**Requirements:**
-- None enforced in `package.json`.
-
-## Test Types
-
-**Unit Tests:**
-- Focus on `IsfUtils` and pure logic in `modules/`.
-- Example: `clipboard-parser.test.js` tests SMS parsing logic.
-
-**Integration Tests:**
-- Storage migration and backup logic (`shared/storage/`).
-
-**E2E Tests:**
-- Not explicitly configured (No Playwright/Cypress detected).
-
-## Common Patterns
-
-**Unit Conversion Testing:**
-Tests should verify the Won-to-Man and Man-to-Won consistency.
-```javascript
-expect(IsfUtils.toWon(1)).toBe(10000);
-expect(IsfUtils.toMan(10000)).toBe(1);
-```
-
-**Error Testing:**
-Verify that sanitizers handle invalid inputs gracefully.
-```javascript
-expect(IsfUtils.sanitizeMoney("abc")).toBe(0);
-```
-
----
-
-*Testing analysis: 2026-05-12*
+*   **Unit Tests Migration:** As the application scales and React is fully integrated, the existing script-based unit tests (`*.test.js`) should be migrated to the already installed `Vitest` framework to harness modern assertion APIs and test isolation.
+*   **Type Checking:** The repository uses `tsc --noEmit` as its primary static analysis tool. Ensuring TypeScript definitions correctly reflect the vanilla JS `IsfUtils` and state modules will enhance reliability without requiring massive unit test coverage.
