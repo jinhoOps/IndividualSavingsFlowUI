@@ -1,7 +1,7 @@
 import { IsfUtils } from "../../shared/core/utils.js";
 
 import {
-  MONEY_UNIT, STORAGE_KEY, SHARE_STATE_KEY, SHARE_STATE_SCHEMA,
+  STORAGE_KEY, SHARE_STATE_KEY, SHARE_STATE_SCHEMA,
   HASH_STATE_PARAM, VIEW_MODE_GUIDE_DISMISSED_KEY, MANUAL_BACKUP_WINDOW_MS,
   MAX_INCOME_ITEMS, MAX_ALLOCATION_ITEMS, SANKEY_VALUE_MODES,
   SANKEY_SORT_MODES, ITEM_SORT_MODES, SANKEY_ZOOM_MIN, SANKEY_ZOOM_MAX, SANKEY_ZOOM_STEP,
@@ -14,15 +14,11 @@ import {
   cloneInputs, sanitizeInputs, createIncomeItem,
   getMonthlyIncomeTotalWon, getMonthlyAllocationTotalWon,
   normalizeAllocationGroupName, parseSavingsAnnualRateInput,
-  createAllocationItemId, normalizeAllocationName, normalizeMaturityMonth,
-  buildAllocationMetaText, scaleDefaultAllocationItemsToTotal,
-  sanitizeInteger, sanitizeAllocationItems, sanitizeSavingsItems,
-  sanitizeSavingsAnnualRate
+  createAllocationItemId, normalizeMaturityMonth
 } from "./modules/input-sanitizer.js";
 
 import {
-  formatCurrency, formatSignedCurrency, formatPercent,
-  formatMonthSpan, formatBackupTimestamp, formatSankeyDisplayValue
+  formatCurrency, formatBackupTimestamp
 } from "./modules/formatters.js";
 
 import {
@@ -34,10 +30,6 @@ import {
 } from "./modules/snapshot-manager.js";
 
 import {
-  calculateComparison
-} from "./modules/comparison-engine.js";
-
-import {
   renderComparisonChart, renderComparisonSummary
 } from "./modules/comparison-renderer.js";
 
@@ -47,10 +39,10 @@ import {
 
 import { dom } from "./modules/dom.js";
 import { state } from "./modules/state.js";
-import { PRESET_SALARIES, PRESET_STYLES, applyPreset } from "./modules/presets.js";
+import { PRESET_SALARIES, applyPreset } from "./modules/presets.js";
 
 import {
-  renderSankey, hideSankeyTooltip, getEffectiveSankeyZoom
+  renderSankey
 } from "./modules/sankey-renderer.js";
 
 import { buildSankeyData } from "./modules/sankey-builder.js";
@@ -61,7 +53,8 @@ import {
   syncSankeyValueModeUi, syncSankeySortModeUi, syncSankeyZoomUi,
   syncItemSortModeUi, syncMobileInputsPanelVisibility,
   syncMobileItemEditorFab, syncAdvancedTabBlockVisibility,
-  setActiveAdvancedTab, refreshInputsPanel, syncDerivedMonthlyInputsToUi
+  setActiveAdvancedTab, refreshInputsPanel, syncDerivedMonthlyInputsToUi,
+  syncGroupOptionsAll, syncGroupOptionsFor
 } from "./modules/ui-controller.js";
 
 import {
@@ -254,13 +247,7 @@ function bindControls() {
 
 
 
-function renderComparison(comparison) {
-  if (!comparison) return;
-  if (dom.comparisonContent) dom.comparisonContent.hidden = false;
-  if (dom.comparisonEmpty) dom.comparisonEmpty.hidden = true;
-  renderComparisonSummary(dom.comparisonExpenseSummary, comparison.summary.expense);
-  renderComparisonChart(dom.comparisonSvg, comparison.expenses);
-}
+
 
 function bindModalEvents() {
   if (!dom.appHeader) dom.appHeader = document.querySelector("app-header");
@@ -421,11 +408,7 @@ function setProjectionMode(mode) {
   renderAll();
 }
 
-function refreshComparisonIfActive() {
-  if (dom.snapshotSelector && dom.snapshotSelector.value) {
-    handleSnapshotSelection(dom.snapshotSelector.value);
-  }
-}
+
 
 function commitImmediateInputs(inputs, options = {}) {
   state.inputs = sanitizeInputs(inputs);
@@ -623,10 +606,7 @@ function markPendingChanges() {
 
 function hasPendingChanges() { return !!state.draftInputs && JSON.stringify(state.draftInputs) !== JSON.stringify(state.inputs); }
 
-function ensureDraftInputs() {
-  if (!state.draftInputs) state.draftInputs = sanitizeInputs(cloneInputs(state.inputs));
-  return state.draftInputs;
-}
+
 
 function setSankeyValueMode(mode) {
   state.sankeyValueMode = mode; syncSankeyValueModeUi();
@@ -646,10 +626,7 @@ function setItemSortMode(group, mode) {
 
 function getVisibleInputs() { return helpers.getVisibleInputs(state); }
 
-function renderIncomeList(items) { listRenderer.renderItemList("income", items); }
-function renderExpenseList(items) { listRenderer.renderItemList("expense", items); }
-function renderSavingsList(items) { listRenderer.renderItemList("savings", items); }
-function renderInvestList(items) { listRenderer.renderItemList("invest", items); }
+
 
 function toggleItemEditor(group) { state.itemEditors[group].active ? cancelItemEditor(group) : startItemEditor(group); }
 
@@ -704,13 +681,7 @@ function closeAllItemEditors(except = "") {
   ["income", "expense", "savings", "invest"].forEach(g => { if (g !== except && state.itemEditors[g].active) cancelItemEditor(g); });
 }
 
-function syncGroupOptionsAll() { ["expense", "savings", "invest"].forEach(syncGroupOptionsFor); }
-function syncGroupOptionsFor(group) {
-  const list = dom[`${group}GroupOptions`]; if (!list) return;
-  const items = getVisibleInputs()[`${group}Items`] || [];
-  const names = [...new Set(items.map(i => normalizeAllocationGroupName(i.group)).filter(Boolean))].sort();
-  list.innerHTML = names.map(n => `<option value="${n}">`).join("");
-}
+
 
 
 function navigateToAdvancedGroup(group) {
