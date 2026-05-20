@@ -1,4 +1,4 @@
-﻿export const IsfUtils = (function initIsfUtils(global) {
+export const IsfUtils = (function initIsfUtils(global) {
   "use strict";
 
   const backupTimestampFormatter = new Intl.DateTimeFormat("ko-KR", {
@@ -30,8 +30,8 @@
     return `${formatted} 만원`;
   }
 
-  const FINANCIAL_INCOME_WARN_THRESHOLD_WON = 19200000;
-  const FINANCIAL_INCOME_CRIT_THRESHOLD_WON = 32640000;
+  const FINANCIAL_INCOME_WARN_THRESHOLD_WON = 19000000;
+  const FINANCIAL_INCOME_CRIT_THRESHOLD_WON = 34000000;
 
   const TAX_CONFIG = {
     SEPARATE_TAXATION_LIMIT_WON: 20000000,
