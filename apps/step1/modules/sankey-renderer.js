@@ -1,4 +1,4 @@
-﻿import {
+import {
   SANKEY_VALUE_MODES,
   SANKEY_SORT_MODES,
   SANKEY_ZOOM_MIN,
@@ -93,6 +93,18 @@ export function renderSankey(snapshot, buildSankeyData, sortMode) {
   dom.sankeySvg.innerHTML = "";
   dom.sankeyLegend.innerHTML = "";
 
+  const defs = createSvgElement("defs");
+  const linearGradient = createSvgElement("linearGradient", {
+    id: "isf-sankey-sunset-deepsea-gradient",
+    x1: "0%", y1: "0%", x2: "100%", y2: "0%"
+  });
+  const stop1 = createSvgElement("stop", { offset: "0%", "stop-color": "#ea5b2a" });
+  const stop2 = createSvgElement("stop", { offset: "100%", "stop-color": "#1e8b7c" });
+  linearGradient.appendChild(stop1);
+  linearGradient.appendChild(stop2);
+  defs.appendChild(linearGradient);
+  dom.sankeySvg.appendChild(defs);
+
   if (!data || !data.links.length) {
     dom.sankeyEmpty.hidden = false;
     if (dom.sankeyMeta) dom.sankeyMeta.textContent = "수입/배분 데이터가 없습니다.";
@@ -136,7 +148,7 @@ export function renderSankey(snapshot, buildSankeyData, sortMode) {
   const valueFontSize = isMobileViewport ? 10 : 11;
   const overlapPadding = hasGroupLayer ? 20 : 0;
   const minColumnStep = isMobileViewport
-    ? (hasIncomeInflow ? SANKEY_MOBILE_MIN_COLUMN_STEP_WITH_INFLOW : SANKEY_MOBILE_MIN_COLUMN_STEP) + overlapPadding
+    ? (hasIncomeInflow ? 80 : 100)
     : 160 + overlapPadding;
 
   const getNodeTextWidth = (node) => Math.max(
@@ -157,10 +169,8 @@ export function renderSankey(snapshot, buildSankeyData, sortMode) {
   const flowMinWidth = groupNodeWidth + Math.max(0, columnCount - 1) * minColumnStep;
   const minWidth = Math.ceil(marginLeft + flowMinWidth + marginRight);
   const wrapWidth = Math.max(0, dom.sankeyWrap.clientWidth - (isMobileViewport ? 12 : 20));
-  const widthTarget = isMobileViewport
-    ? Math.ceil(wrapWidth * SANKEY_MOBILE_WIDTH_SCALE)
-    : wrapWidth;
-  const width = Math.max(minWidth, widthTarget);
+  const widthTarget = wrapWidth;
+  const width = isMobileViewport ? Math.max(280, wrapWidth) : Math.max(minWidth, widthTarget);
   const maxCountPerColumn = columns.reduce((max, column) => {
     const count = data.nodes.filter((node) => node.column === column).length;
     return Math.max(max, count);
@@ -174,10 +184,10 @@ export function renderSankey(snapshot, buildSankeyData, sortMode) {
   );
   const mobileAspectHeight = isMobileViewport ? Math.round(width * SANKEY_MOBILE_HEIGHT_RATIO) : 0;
   const height = Math.max(baseHeight, mobileAspectHeight);
-  const marginTop = isMobileViewport ? 24 : 32;
+  const marginTop = isMobileViewport ? 40 : 32;
   const marginBottom = isMobileViewport ? 24 : 32;
   const nodeGap = isMobileViewport
-    ? (hasGroupLayer ? 18 : 14)
+    ? (hasGroupLayer ? 14 : 10)
     : (hasGroupLayer ? 22 : 16);
 
   dom.sankeySvg.setAttribute("viewBox", `0 0 ${width} ${height}`);
@@ -269,6 +279,7 @@ export function renderSankey(snapshot, buildSankeyData, sortMode) {
     const path = createSvgElement("path", {
       d: buildBandPath(source.x + source.w, y0, y1, target.x, y2, y3),
       class: `sankey-path tone-${link.tone}`,
+      fill: "url(#isf-sankey-sunset-deepsea-gradient)",
     });
 
     path.addEventListener("mousemove", (event) => {
@@ -282,7 +293,7 @@ export function renderSankey(snapshot, buildSankeyData, sortMode) {
 
   positionedNodes.forEach((node) => {
     const side = (hasIncomeInflow && node.column === firstColumn) || node.column === lastColumn ? "target" : "source";
-    drawNode(node, side, node.w, labelGap, data.totalValue, valueMode);
+    drawNode(node, side, node.w, labelGap, data.totalValue, valueMode, isMobileViewport);
   });
 
   renderSankeyLegend(data, valueMode);
@@ -293,7 +304,7 @@ function formatAllocationBreakdownText(items, totalValue, valueMode) {
   return "\n구성: " + items.map(item => `${item.label} ${formatSankeyDisplayValue(item.value, totalValue, valueMode)}`).join(", ");
 }
 
-function drawNode(node, side, nodeWidth, labelGap, totalValue, valueMode) {
+function drawNode(node, side, nodeWidth, labelGap, totalValue, valueMode, isMobileViewport) {
   const rect = createSvgElement("rect", {
     x: node.x,
     y: node.y,
@@ -303,11 +314,43 @@ function drawNode(node, side, nodeWidth, labelGap, totalValue, valueMode) {
   });
   dom.sankeySvg.appendChild(rect);
 
-  const labelX = side === "source" ? node.x - labelGap : node.x + nodeWidth + labelGap;
-  const anchor = side === "source" ? "end" : "start";
-  const centerY = node.y + node.h / 2;
-  const showValue = node.h >= 22;
-  const labelY = showValue ? centerY - 6 : centerY;
+  const showValue = node.h >= 22 || isMobileViewport;
+  const valueText = formatSankeyDisplayValue(node.value, totalValue, valueMode);
+
+  let labelX, anchor, centerY, labelY;
+
+  if (isMobileViewport) {
+    labelX = node.x + nodeWidth / 2;
+    anchor = "middle";
+    centerY = node.y - 18;
+    labelY = showValue ? centerY - 5 : centerY;
+
+    const textW = Math.max(
+      measureSankeyTextWidth(node.label, 11, 700),
+      showValue ? measureSankeyTextWidth(valueText, 10, 400) : 0
+    );
+    const badgeW = textW + 12;
+    const badgeH = showValue ? 28 : 16;
+    const badgeX = labelX - badgeW / 2;
+    const badgeY = showValue ? centerY - 14 : centerY - 8;
+
+    const badgeBg = createSvgElement("rect", {
+      x: badgeX,
+      y: badgeY,
+      width: badgeW,
+      height: badgeH,
+      rx: 4,
+      fill: "rgba(255, 255, 255, 0.85)",
+      stroke: "rgba(16, 34, 32, 0.15)",
+      "stroke-width": "1"
+    });
+    dom.sankeySvg.appendChild(badgeBg);
+  } else {
+    labelX = side === "source" ? node.x - labelGap : node.x + nodeWidth + labelGap;
+    anchor = side === "source" ? "end" : "start";
+    centerY = node.y + node.h / 2;
+    labelY = showValue ? centerY - 6 : centerY;
+  }
 
   const label = createSvgElement("text", {
     x: labelX,
@@ -322,12 +365,12 @@ function drawNode(node, side, nodeWidth, labelGap, totalValue, valueMode) {
   if (showValue) {
     const value = createSvgElement("text", {
       x: labelX,
-      y: centerY + 10,
+      y: isMobileViewport ? centerY + 7 : centerY + 10,
       class: "sankey-value",
       "text-anchor": anchor,
       "dominant-baseline": "middle",
     });
-    value.textContent = formatSankeyDisplayValue(node.value, totalValue, valueMode);
+    value.textContent = valueText;
     dom.sankeySvg.appendChild(value);
   }
 }
