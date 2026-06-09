@@ -122,6 +122,41 @@ function checkReturningUser() {
   }
 }
 
+function hasShareState() {
+  return !!window.IsfShare.getShareIdFromUrl();
+}
+
+function bindReadonlyAdvancedNavigation() {
+  if (!Array.isArray(dom.jumpAdvancedFields) || dom.jumpAdvancedFields.length === 0) {
+    return;
+  }
+
+  dom.jumpAdvancedFields.forEach((field) => {
+    if (!(field instanceof HTMLInputElement)) {
+      return;
+    }
+    field.addEventListener("click", () => {
+      navigateToAdvancedGroup(field.dataset.advancedTarget);
+    });
+    field.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") {
+        return;
+      }
+      event.preventDefault();
+      navigateToAdvancedGroup(field.dataset.advancedTarget);
+    });
+  });
+}
+
+function dismissViewModeGuide() {
+  if (dom.viewModeGuide) dom.viewModeGuide.hidden = true;
+}
+
+function switchToNormalMode() {
+  window.location.href = window.location.pathname;
+}
+
+
 
 function bindControls() {
   bindModalEvents();
