@@ -175,7 +175,12 @@ export const uiController = {
     const PRESET_ASSETS = {
       SCHD: { yield: 3.5, growth: 10.0, capital: 5.0 },
       QQQI: { yield: 10.5, growth: 0.0, capital: 9.0 },
-      JEPI: { yield: 8.0, growth: 1.0, capital: 3.0 }
+      JEPI: { yield: 8.0, growth: 1.0, capital: 3.0 },
+      QLD: { yield: 0.4, growth: 0.0, capital: 18.0 },
+      TQQQ: { yield: 0.2, growth: 0.0, capital: 23.0 },
+      QQQM: { yield: 0.6, growth: 10.0, capital: 11.0 },
+      VOO: { yield: 1.3, growth: 7.0, capital: 8.0 },
+      SGOV: { yield: 4.5, growth: 0.0, capital: 0.0 }
     };
 
     const PRESET_COMBINATIONS = {
@@ -195,7 +200,13 @@ export const uiController = {
         { label: "1:1", ratios: { JEPI: 0.5, QQQI: 0.5 }, fullName: "월배당 극대화형 (JEPI+QQQI) 1:1" },
         { label: "3:7", ratios: { JEPI: 0.3, QQQI: 0.7 }, fullName: "월배당 극대화형 (JEPI+QQQI) 3:7" }
       ],
-      "all_weather": [{ label: "4:3:3", ratios: { SCHD: 0.4, JEPI: 0.3, QQQI: 0.3 }, fullName: "올웨더 배당형 (SCHD+JEPI+QQQI) 4:3:3" }]
+      "all_weather": [{ label: "4:3:3", ratios: { SCHD: 0.4, JEPI: 0.3, QQQI: 0.3 }, fullName: "올웨더 배당형 (SCHD+JEPI+QQQI) 4:3:3" }],
+      "aggressive_leverage": [
+        { label: "1안 (레버리지+CC)", ratios: { QLD: 0.5, TQQQ: 0.1, QQQI: 0.4 }, fullName: "적극형 1안: QLD 50% / TQQQ 10% / QQQI 40%" },
+        { label: "2안 (나스닥 알파)", ratios: { QQQM: 0.7, QLD: 0.3 }, fullName: "적극형 2안: QQQM 70% / QLD 30%" },
+        { label: "3안 (지수+레버리지)", ratios: { VOO: 0.5, QLD: 0.5 }, fullName: "적극형 3안: VOO 50% / QLD 50%" },
+        { label: "4안 (바벨 전략)", ratios: { QLD: 0.5, SGOV: 0.5 }, fullName: "적극형 4안: QLD 50% / SGOV 50%" }
+      ]
     };
 
     document.querySelectorAll(".preset-cat-btn").forEach(catBtn => {

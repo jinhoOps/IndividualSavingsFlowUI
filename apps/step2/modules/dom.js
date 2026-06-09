@@ -1,4 +1,4 @@
-﻿
+
 export const dom = {
   appHeader: null,
   dataHubModal: null,
@@ -27,6 +27,7 @@ export const dom = {
   optShowDividend: null,
   optShowPR: null,
   optShowTR: null,
+  dividendWarningBanner: null,
 };
 
 export function initDom() {
@@ -57,6 +58,7 @@ export function initDom() {
     optShowDividend: "optShowDividend",
     optShowPR: "optShowPR",
     optShowTR: "optShowTR",
+    dividendWarningBanner: "dividendWarningBanner",
   };
 
   for (const [key, id] of Object.entries(selectors)) {

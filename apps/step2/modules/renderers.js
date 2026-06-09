@@ -115,6 +115,16 @@ export function renderKpiCards(data) {
   
   const isDrip = state.draft?.dividendSim?.isDrip !== false;
   const years = state.draft?.dividendSim?.years || 10;
+  
+  // Show/Hide warning if total operation scale < 100 million won (100,000,000 won)
+  const initialAsset = state.draft?.totalInitialAsset || 0;
+  const monthlyCapacity = state.draft?.totalMonthlyInvestCapacity || 0;
+  const totalOperationScale = initialAsset + (monthlyCapacity * 12 * years);
+  
+  if (dom.dividendWarningBanner) {
+    dom.dividendWarningBanner.style.display = totalOperationScale < 100000000 ? "flex" : "none";
+  }
+
   const last = data[data.length - 1];
   const finalAsset = isDrip ? last.assetNominalTR : last.assetNominalPR;
   const finalDividend = isDrip ? last.dividendAfterTaxTR : last.dividendAfterTaxPR;
