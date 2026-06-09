@@ -1,4 +1,4 @@
-﻿export const MONEY_UNIT = 10000;
+export const MONEY_UNIT = 10000;
 export const STORAGE_KEY = "isf-rebuild-v1";
 export const SHARE_STATE_KEY = "my-household-flow";
 export const SHARE_STATE_SCHEMA = 1;
@@ -44,9 +44,13 @@ export const SANKEY_MOBILE_MIN_COLUMN_STEP_WITH_INFLOW = 110;
 export const MOBILE_LAYOUT_QUERY = "(max-width: 760px)";
 
 export const DEFAULT_EXPENSE_ITEMS = [
-  { id: "rent", name: "주거비(월세)", amount: 600000 },
-  { id: "maintenance", name: "관리비", amount: 100000 },
-  { id: "telecom", name: "통신비", amount: 50000 },
+  { id: "rent", name: "주거비(대출상환)", amount: 600000, group: "생활비-고정비-주거비" },
+  { id: "maintenance", name: "관리비", amount: 100000, group: "생활비-고정비-공과금" },
+  { id: "water", name: "수도세", amount: 20000, group: "생활비-고정비-공과금" },
+  { id: "gas", name: "가스비", amount: 50000, group: "생활비-고정비-공과금" },
+  { id: "electricity", name: "전기세", amount: 50000, group: "생활비-고정비-공과금" },
+  { id: "telecom", name: "통신비", amount: 50000, group: "생활비-고정비-통신비" },
+  { id: "insurance", name: "보험료", amount: 150000, group: "생활비-고정비-보험료" },
   { id: "transport", name: "교통비", amount: 100000 },
   { id: "food", name: "식비", amount: 400000 },
   { id: "etc", name: "기타생활비", amount: 200000 },
@@ -71,7 +75,7 @@ export const DEFAULT_INPUTS = {
   expenseItems: DEFAULT_EXPENSE_ITEMS,
   savingsItems: DEFAULT_SAVINGS_ITEMS,
   investItems: DEFAULT_INVEST_ITEMS,
-  monthlyExpense: 1450000,
+  monthlyExpense: 1720000,
   monthlySavings: 750000,
   monthlyInvest: 630000,
   monthlyDebtPayment: 0,

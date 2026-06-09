@@ -1,4 +1,4 @@
-﻿export const PRESET_SALARIES = [
+export const PRESET_SALARIES = [
   { label: '3,000만원', value: 30000000, monthlyIncome: 2250000 },
   { label: '4,000만원', value: 40000000, monthlyIncome: 2950000 },
   { label: '5,000만원', value: 50000000, monthlyIncome: 3550000 },
@@ -16,12 +16,16 @@ export const PRESET_STYLES = {
 };
 
 const EXPENSE_DETAIL = [
-  { id: "rent",        name: "주거비(월세)", weight: 0.30 },
-  { id: "maintenance", name: "관리비",       weight: 0.05 },
-  { id: "telecom",     name: "통신비",       weight: 0.03 },
-  { id: "transport",   name: "교통비",       weight: 0.10 },
-  { id: "food",        name: "식비",         weight: 0.25 },
-  { id: "etc",         name: "기타생활비",   weight: 0.17 },
+  { id: "rent",        name: "주거비(대출상환)", weight: 0.30, group: "생활비-고정비-주거비" },
+  { id: "maintenance", name: "관리비",       weight: 0.05, group: "생활비-고정비-공과금" },
+  { id: "water",       name: "수도세",       weight: 0.02, group: "생활비-고정비-공과금" },
+  { id: "gas",         name: "가스비",       weight: 0.03, group: "생활비-고정비-공과금" },
+  { id: "electricity", name: "전기세",       weight: 0.03, group: "생활비-고정비-공과금" },
+  { id: "telecom",     name: "통신비",       weight: 0.03, group: "생활비-고정비-통신비" },
+  { id: "insurance",   name: "보험료",       weight: 0.08, group: "생활비-고정비-보험료" },
+  { id: "transport",   name: "교통비",       weight: 0.08 },
+  { id: "food",        name: "식비",         weight: 0.23 },
+  { id: "etc",         name: "기타생활비",   weight: 0.15 },
 ];
 
 const SAVINGS_DETAIL = [
