@@ -1,5 +1,12 @@
 # Project Evolution Log (연대기적 작업 로그)
 
+## [2026-06-09] fix | Step 1 모듈화 리팩토링 유실 함수 복구 및 런타임 안정화 (v0.11.2)
+- **목적**: Step 1 모듈화 과정에서 유실되어 런타임 흰 화면 및 ReferenceError를 일으키던 4종의 필수 헬퍼 함수를 복원하고 앱 동작을 정상화함.
+- **변경 사항**:
+    - **헬퍼 함수 복원**: `apps/step1/app.js`에서 유실되었던 `hasShareState`, `bindReadonlyAdvancedNavigation`, `dismissViewModeGuide`, `switchToNormalMode` 함수 정의 복구.
+    - **정상 작동 검증**: Playwright를 이용해 `npm run dev` 실행 환경에서 런타임 오류가 없음을 재검증 완료.
+- **결과**: Step 1 메인 화면 렌더링 및 공유 데이터 연동 기능 완벽 복구.
+
 ## [2026-05-12] fix | 코드 리뷰 피드백 반영 및 시스템 안정화 (v0.9.51)
 - **목적**: v0.9.50에서 지적된 시뮬레이션 논리 오류, Step 3 의존성 누락, 데이터 유실 위험 등을 해결하여 시스템 신뢰도를 확보함.
 - **변경 사항**:
