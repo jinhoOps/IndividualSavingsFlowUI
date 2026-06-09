@@ -56,7 +56,6 @@ export class AppHeader extends HTMLElement {
           </div>
 
           <div style="display: flex; align-items: center; gap: var(--sp-xs); position: relative;">
-            <span class="version-badge">v${version}</span>
             <button type="button" id="appLauncherBtn" class="btn btn-ghost btn-sm" style="padding: 4px; min-width: 32px; min-height: 32px;" title="메뉴">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                 <circle cx="4" cy="4" r="2"></circle>
@@ -91,6 +90,10 @@ export class AppHeader extends HTMLElement {
                   <span class="launcher-item__icon">⚙️</span>
                   <span class="launcher-item__text">데이터 관리</span>
                 </button>
+                <div style="margin-top: var(--sp-xs); border-top: 1px solid var(--line);"></div>
+                <div class="launcher-menu__version" style="padding: 6px 12px 2px; font-size: 10px; font-weight: 500; color: var(--muted); text-align: right; opacity: 0.8; letter-spacing: -0.02em;">
+                  v${version}
+                </div>
               </div>
             </div>
           </div>
