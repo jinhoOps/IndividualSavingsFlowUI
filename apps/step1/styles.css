@@ -443,7 +443,7 @@ body.is-dashboard-mode .controls-panel {
   .sankey-view-btn { flex: 1; }
   .sankey-sort { width: 100%; justify-content: space-between; }
   .sankey-sort-select { min-width: 0; width: min(220px, 64vw); }
-  .sankey-zoom-tools { width: 100%; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .sankey-zoom-tools { width: 100%; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
   .sankey-zoom-tools .btn { min-width: 0; }
   .sankey-zoom-label { grid-column: 1 / -1; justify-self: end; font-size: 0.8rem; }
   .sankey-wrap { min-height: 286px; padding: 6px; }
@@ -1200,4 +1200,22 @@ body.is-onboarding-active .onboarding-overlay {
   font-size: var(--text-body-md);
   font-weight: 600;
   color: var(--ink);
+}
+
+/* Phase 16: Export Feature Styles */
+.sankey-export-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.sankey-export-btn:hover {
+  background: var(--tone-primary) !important;
+  color: #fff !important;
+}
+
+.sankey-export-btn svg {
+  flex-shrink: 0;
+  stroke: currentColor;
 }

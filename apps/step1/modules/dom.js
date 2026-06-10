@@ -100,6 +100,7 @@ export const dom = {
   sankeyZoomIn: document.getElementById("sankeyZoomIn"),
   sankeyZoomReset: document.getElementById("sankeyZoomReset"),
   sankeyZoomLabel: document.getElementById("sankeyZoomLabel"),
+  sankeyExport: document.getElementById("sankeyExport"),
   sankeyEmpty: document.getElementById("sankeyEmpty"),
   sankeyTooltip: document.getElementById("sankeyTooltip"),
   projectionTableBody: document.querySelector("#projectionTable tbody"),

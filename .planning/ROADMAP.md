@@ -15,7 +15,7 @@
 | ✅ 13 | Core Refactoring & Stability | 핵심 로직 3계층 모듈화 및 단위/무결성 오류 수정 | REF-01, REF-02, STAB-01, STAB-02 | 4 |
 | ✅ 14 | Foundation UX & Branding | DESIGN.md 가이드라인의 시각적 테마와 반응형 뼈대 구축 | UX-01, UX-02, UX-04 | 3 |
 | ✅ 15 | Chart Enhancement & Responsive | Sankey Chart 데이터 라벨링 및 모바일 레이아웃 고도화 | UX-03, UX-05 | 3 |
-| 16 | Export Feature | 사용자가 결과물을 이미지로 저장하고 공유할 수 있는 수단 확보 | FEAT-01 | 2 |
+| ✅ 16 | Export Feature | 사용자가 결과물을 이미지로 저장하고 공유할 수 있는 수단 확보 | FEAT-01 | 2 |
 | ✅ 17 | Step 1 Income Flow & Wallet Partitioning | 수입/지출 통장 쪼개기 및 자금 흐름 시각화 개선 | FEAT-02, UX-06 | 3 |
 
 ### Phase Details

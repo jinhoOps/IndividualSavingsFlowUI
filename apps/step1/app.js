@@ -42,7 +42,7 @@ import { state } from "./modules/state.js";
 import { PRESET_SALARIES, applyPreset } from "./modules/presets.js";
 
 import {
-  renderSankey
+  renderSankey, exportSankeyToPng
 } from "./modules/sankey-renderer.js";
 
 import { buildSankeyData } from "./modules/sankey-builder.js";
@@ -240,6 +240,7 @@ function bindControls() {
   if (dom.sankeyZoomIn) dom.sankeyZoomIn.addEventListener("click", () => setSankeyZoom(state.sankeyZoom + SANKEY_ZOOM_STEP));
   if (dom.sankeyZoomOut) dom.sankeyZoomOut.addEventListener("click", () => setSankeyZoom(state.sankeyZoom - SANKEY_ZOOM_STEP));
   if (dom.sankeyZoomReset) dom.sankeyZoomReset.addEventListener("click", () => setSankeyZoom(1));
+  if (dom.sankeyExport) dom.sankeyExport.addEventListener("click", exportSankeyToPng);
 
   if (dom.modeTR) dom.modeTR.addEventListener("click", () => setProjectionMode("TR"));
   if (dom.modePR) dom.modePR.addEventListener("click", () => setProjectionMode("PR"));

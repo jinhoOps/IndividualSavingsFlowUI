@@ -445,3 +445,81 @@ export function renderSankeyLegend(data, valueMode) {
   });
 }
 
+export function exportSankeyToPng() {
+  const svgEl = dom.sankeySvg;
+  if (!svgEl) return;
+
+  const rect = svgEl.getBoundingClientRect();
+  const width = rect.width || 800;
+  const height = rect.height || 600;
+
+  const clone = svgEl.cloneNode(true);
+  clone.setAttribute("width", width);
+  clone.setAttribute("height", height);
+  clone.removeAttribute("style");
+
+  const styleEl = document.createElementNS("http://www.w3.org/2000/svg", "style");
+  styleEl.textContent = `
+    @import url('https://fonts.googleapis.com/css2?family=Gowun+Dodum&display=swap');
+    svg {
+      font-family: 'Gowun Dodum', sans-serif;
+      background-color: #ffffff; /* 흰색 배경 보장 */
+    }
+    text {
+      fill: #334155;
+      font-size: 12px;
+    }
+    .sankey-path {
+      fill: none;
+      stroke-opacity: 0.4;
+    }
+    .sankey-node {
+      opacity: 0.72;
+      stroke: rgba(16, 34, 32, 0.18);
+      stroke-width: 1;
+    }
+    .sankey-label {
+      fill: #1e293b;
+      font-weight: 700;
+    }
+    .sankey-value {
+      fill: #64748b;
+    }
+  `;
+  clone.insertBefore(styleEl, clone.firstChild);
+
+  const serializer = new XMLSerializer();
+  const svgString = serializer.serializeToString(clone);
+
+  const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+  const url = URL.createObjectURL(svgBlob);
+
+  const img = new Image();
+  img.onload = () => {
+    const scale = 2; // 2배 고해상도
+    const canvas = document.createElement("canvas");
+    canvas.width = width * scale;
+    canvas.height = height * scale;
+    const ctx = canvas.getContext("2d");
+
+    // 배경 흰색 채우기
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.scale(scale, scale);
+    ctx.drawImage(img, 0, 0, width, height);
+
+    const pngUrl = canvas.toDataURL("image/png");
+    const downloadLink = document.createElement("a");
+    const today = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+    downloadLink.href = pngUrl;
+    downloadLink.download = `isf-sankey-${today}.png`;
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    document.body.removeChild(downloadLink);
+
+    URL.revokeObjectURL(url);
+  };
+  img.src = url;
+}
+
