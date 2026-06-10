@@ -63,7 +63,15 @@ export class IsfOnboardingManager {
     const tooltip = document.createElement('div');
     tooltip.className = 'onboarding-tooltip';
     tooltip.id = 'onboardingTooltip';
-    tooltip.innerHTML = step.content;
+    tooltip.innerHTML = `
+      <button type="button" class="onboarding-tooltip__close" aria-label="닫기">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+      <div class="onboarding-tooltip__content">${step.content}</div>
+    `;
     
     // Append to body instead of target to avoid z-index/transform issues with parents
     document.body.appendChild(tooltip);
@@ -89,6 +97,14 @@ export class IsfOnboardingManager {
 
     const resizeHandler = () => this.positionTooltip(target, tooltip);
     window.addEventListener('resize', resizeHandler);
+
+    const closeBtn = tooltip.querySelector('.onboarding-tooltip__close');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        cleanup();
+      });
+    }
 
     // Bind triggers to advance or close
     if (step.triggerId) {
@@ -175,4 +191,5 @@ export const initOnboarding = (isViewMode = false) => {
     ]
   });
   manager.init();
+  return manager;
 };

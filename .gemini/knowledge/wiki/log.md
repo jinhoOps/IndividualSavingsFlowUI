@@ -1,5 +1,15 @@
 # Project Evolution Log (연대기적 작업 로그)
 
+## [2026-06-10] feat | Step 1 Spotlight 온보딩 가이드 스킵 및 튜토리얼 다시보기 구현
+- **목적**: 튜토리얼(온보딩) 진행 시 귀찮음을 방지하고 즉시 스킵할 수 있는 X(닫기) 버튼을 구현하고, 필요 시 언제든 튜토리얼을 다시 재생할 수 있도록 헤더에 복구 메뉴를 추가함.
+- **변경 사항**:
+  - **온보딩 스킵**: `apps/step1/modules/onboarding-manager.js`에서 툴팁 HTML 템플릿에 우측 상단 X 닫기 버튼을 주입하고 클릭 시 `cleanup()`이 실행되어 닫히며 완료로 저장되도록 수정.
+  - **인스턴스 반환**: `initOnboarding` 래퍼 함수가 `IsfOnboardingManager` 인스턴스를 반환하여 외부에서 제어할 수 있도록 수정.
+  - **헤더 복구 메뉴**: `shared/components/app-header.js`에 `current-step="1"` (Step 1)일 때만 드롭다운 메뉴 하단에 '💡 튜토리얼 다시보기' 버튼이 렌더링되도록 개선. 클릭 시 `request-onboarding` 커스텀 이벤트를 dispatch.
+  - **이벤트 연동 및 재시작**: `apps/step1/app.js`에서 `request-onboarding` 이벤트를 수신하면 온보딩 매니저를 `reset()` 후 즉시 `start()` 하도록 바인딩.
+  - **디자인 스타일**: `apps/step1/styles.css`에 온보딩 툴팁 닫기 버튼 및 콘텐츠 래퍼에 대한 Glassmorphism/호버 피드백 스타일을 보존 무결성에 맞게 이식.
+- **결과**: Vite 프로덕션 빌드가 성공적으로 완료되었으며 온보딩 스킵 사용성 및 접근성이 획기적으로 향상됨.
+
 ## [2026-06-10] execute | Phase 17: Step 1 수입/지출 통장 쪼개기 및 자금 흐름 개선 구현 완료
 - **목적**: Step 1 수입/지출 입력 및 자산 시각화 흐름에 '통장 쪼개기(계좌 관리)' 모델을 반영하여 실가계 금융 매핑 무결성을 구축함.
 - **주요 변경 사항**:

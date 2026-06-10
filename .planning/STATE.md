@@ -4,13 +4,13 @@ milestone: v1.6
 milestone_name: 코드 리팩터링, UX 개선 및 안정성 강화
 status: complete
 stopped_at: ""
-last_updated: "2026-06-10T12:18:00.000Z"
-last_activity: 2026-06-10 -- Phase 16 execution completed.
+last_updated: "2026-06-10T14:06:00.000Z"
+last_activity: 2026-06-10 -- Phase 17 execution completed.
 progress:
   total_phases: 5
   completed_phases: 5
-  total_plans: 6
-  completed_plans: 6
+  total_plans: 7
+  completed_plans: 7
   percent: 100
 ---
 
@@ -18,10 +18,10 @@ progress:
 
 ## Current Position
 
-Phase: 16 (export-feature) — COMPLETED
-Plan: 3 of 3
-Status: Phase 16 execution completed. Milestone v1.6 all phases finished.
-Last activity: 2026-06-10 -- Phase 16 execution completed and SUMMARY.md created.
+Phase: 17 (step1-flow-partitioning) — COMPLETED
+Plan: 1 of 1
+Status: Phase 17 execution completed. Milestone v1.6 all phases finished.
+Last activity: 2026-06-10 -- Phase 17 execution completed and 17-SUMMARY.md created.
 Stopped at: ""
 Resume file: ""
 
@@ -30,7 +30,7 @@ Resume file: ""
 See: .planning/PROJECT.md (updated 2026-05-20)
 
 **Core value:** 정적 웹 기반의 고성능 자산 관리 도구 (AI 의존성 제거)
-**Current focus:** Phase 16 — export-feature
+**Current focus:** Milestone v1.6 Completion
 
 ## Key Decisions
 

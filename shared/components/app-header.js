@@ -90,6 +90,12 @@ export class AppHeader extends HTMLElement {
                   <span class="launcher-item__icon">⚙️</span>
                   <span class="launcher-item__text">데이터 관리</span>
                 </button>
+                ${this.currentStep === '1' ? `
+                  <button type="button" id="headerTutorialBtn" class="launcher-item" style="width: 100%; border: none; background: none; text-align: left; cursor: pointer;">
+                    <span class="launcher-item__icon">💡</span>
+                    <span class="launcher-item__text">튜토리얼 다시보기</span>
+                  </button>
+                ` : ''}
                 <div style="margin-top: var(--sp-xs); border-top: 1px solid var(--line);"></div>
                 <div class="launcher-menu__version" style="padding: 6px 12px 2px; font-size: 10px; font-weight: 500; color: var(--muted); text-align: right; opacity: 0.8; letter-spacing: -0.02em;">
                   v${version}
@@ -114,6 +120,14 @@ export class AppHeader extends HTMLElement {
     this.querySelector('#headerDataHubBtn').addEventListener('click', () => {
       this.dispatchEvent(new CustomEvent('open-data-hub'));
     });
+
+    const tutorialBtn = this.querySelector('#headerTutorialBtn');
+    if (tutorialBtn) {
+      tutorialBtn.addEventListener('click', () => {
+        launcherMenu.style.display = 'none';
+        this.dispatchEvent(new CustomEvent('request-onboarding', { bubbles: true, composed: true }));
+      });
+    }
   }
 }
 

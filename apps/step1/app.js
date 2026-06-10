@@ -102,7 +102,13 @@ function init() {
     window.IsfFeedback.showFeedback(dom.applyFeedback, "보기 모드로 열었습니다. 로컬 저장값은 변경되지 않습니다.");
   }
 
-  initOnboarding(state.isViewMode);
+  const onboardingManager = initOnboarding(state.isViewMode);
+  if (onboardingManager) {
+    window.addEventListener("request-onboarding", () => {
+      onboardingManager.reset();
+      onboardingManager.start();
+    });
+  }
 }
 
 if (document.readyState === "loading") {

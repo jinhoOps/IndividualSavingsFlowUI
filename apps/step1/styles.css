@@ -1040,6 +1040,39 @@ body.is-onboarding-active .onboarding-overlay {
   pointer-events: auto;
 }
 
+.onboarding-tooltip__close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.7);
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.onboarding-tooltip__close:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
+.onboarding-tooltip__close svg {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+
+.onboarding-tooltip__content {
+  padding-top: 4px;
+}
+
 .onboarding-tooltip::before {
   content: '';
   position: absolute;

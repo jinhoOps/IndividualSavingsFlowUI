@@ -65,6 +65,11 @@ tags: [ui, feedback, theme, visualization, reference]
 5. **Taxation Warnings (정책 기반 경고)**
    - [[Financial_Taxation_Reference]]에 정의된 안전 마진(1,900만/3,400만) 기준에 따라 `warn`/`crit` 레벨의 피드백을 제공합니다.
 
+6. **Onboarding Guide (IsfOnboardingManager)**
+   - 역할: 신규 사용자를 위한 첫 단계 가이드(Spotlight).
+   - 스킵: 툴팁 우측 상단에 명시적인 X(닫기) 버튼을 제공하여 언제든지 즉시 스킵할 수 있어야 합니다. 닫기 클릭 시 완료 상태가 로컬 스토리지에 저장되어 다음 진입 시 노출되지 않습니다.
+   - 다시보기: Step 1 진입 후 헤더의 앱 런처 메뉴 하단에 '💡 튜토리얼 다시보기' 버튼을 제공하여, 사용자가 언제든 튜토리얼을 초기화하고 다시 볼 수 있도록 지원합니다.
+
 ## 데이터 공유 및 연동 표준 (v0.9 신설)
 
 1. **ISF CODE 시스템**
