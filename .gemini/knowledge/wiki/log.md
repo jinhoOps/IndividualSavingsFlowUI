@@ -1,5 +1,21 @@
 # Project Evolution Log (연대기적 작업 로그)
 
+## [2026-06-10] execute | Phase 17: Step 1 수입/지출 통장 쪼개기 및 자금 흐름 개선 구현 완료
+- **목적**: Step 1 수입/지출 입력 및 자산 시각화 흐름에 '통장 쪼개기(계좌 관리)' 모델을 반영하여 실가계 금융 매핑 무결성을 구축함.
+- **주요 변경 사항**:
+  - **계좌 모델 및 입력 UI**: accounts 모델, default/sample preset 계좌 설정, magic mapping 규칙을 constants.js 및 input-sanitizer.js에 추가. 통장 CRUD를 처리하는 편집 UI 마크업(index.html) 및 state 관리(state.js, state-helpers.js) 완료.
+  - **잉여현금 이체 배너**: 요약 카드 하단에 잉여현금(surplus > 0) 발생 시 나타나는 Glassmorphism 문장형 UI 배너 마크업 및 드롭다운 이벤트 핸들러(app.js) 개발.
+  - **계좌 기반 4단계 Sankey**: 기존 대분류 노드를 계좌 노드로 대체. 수입->계좌, 계좌->세부항목 링크를 매핑하고 계좌 간의 Inflow/Outflow 과부족을 배분(Math.min)하여 내부 이체 링크(tone: "transfer")를 수학적으로 자동 연산해내는 알고리즘(sankey-builder.js, calculator.js) 구현.
+- **결과**: Vite 프로덕션 빌드(npm run build) 정상 완료 및 760px 모바일 화면 반응형 검사 회귀 방지 보증.
+
+## [2026-06-10] plan | Phase 17: Step 1 수입/지출 통장 쪼개기 및 자금 흐름 개선 계획 수립
+- **목적**: Phase 17 구현을 위한 구체적인 기술 설계 및 검증 계획(PLAN.md, VALIDATION.md)을 완성함.
+- **주요 내용**:
+    - **통장(계좌) 관리 UI/모델**: `constants.js`, `input-sanitizer.js`, `state.js` 등에 계좌 모델 및 기본 프리셋을 이식하고, 각 항목 편집 시 매핑 드롭다운 구현 계획 수립.
+    - **잉여현금 자동 이체**: 요약 카드 하단에 문장형 배너 및 드롭다운 선택 UI 배치 설계.
+    - **중간 계좌 레이어 Sankey**: 대분류 대신 계좌 노드를 렌더링하고, 계좌 간 Inflow/Outflow 수지 연산을 통해 자금 부족처로의 내부 이체 흐름선을 자동 도출하는 알고리즘 구체화.
+- **결과**: `17-PLAN.md` 및 `17-VALIDATION.md` 생성 완료.
+
 ## [2026-06-10] ingest | Phase 17: Step 1 수입/지출 통장 쪼개기 및 자금 흐름 개선 기획 수립
 - **목적**: 사용자가 수입을 단순 금액으로 입력하던 방식에서 벗어나, 급여계좌/생활비계좌/주식계좌 등의 '통장 쪼개기' 흐름을 설계하고 잉여현금의 주식계좌 이체 경로를 시각화할 수 있도록 기획함.
 - **주요 합의사항**:

@@ -1,4 +1,4 @@
-﻿import { cloneInputs, sanitizeInputs } from "./input-sanitizer.js";
+import { cloneInputs, sanitizeInputs } from "./input-sanitizer.js";
 
 
 
@@ -88,6 +88,12 @@ export function readInputsFromForm(form, baseInputs, { FORM_FIELD_KEYS, toWon })
       raw[key] = value;
     }
   });
+
+  const surplusField = form.elements["surplusTransferAccountId"] || form.elements["surplusTransferAccountSelect"];
+  if (surplusField) {
+    raw.surplusTransferAccountId = surplusField.value;
+  }
+
   return raw;
 }
 
@@ -105,6 +111,11 @@ export function applyInputsToForm(form, inputs, { FORM_FIELD_KEYS, toMan }) {
       field.value = String(inputs[key]);
     }
   });
+
+  const surplusField = form.elements["surplusTransferAccountId"] || form.elements["surplusTransferAccountSelect"];
+  if (surplusField && inputs.surplusTransferAccountId) {
+    surplusField.value = inputs.surplusTransferAccountId;
+  }
 }
 
 
@@ -115,7 +126,8 @@ export function getItemEditorSignature(items) {
     amount: i.amount,
     group: i.group,
     annualRate: i.annualRate,
-    maturityMonth: i.maturityMonth
+    maturityMonth: i.maturityMonth,
+    accountId: i.accountId
   })));
 }
 

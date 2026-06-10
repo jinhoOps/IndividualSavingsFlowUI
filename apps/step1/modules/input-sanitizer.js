@@ -1,10 +1,11 @@
-﻿import {
+import {
   DEFAULT_INPUTS,
   DEFAULT_EXPENSE_ITEMS,
   DEFAULT_SAVINGS_ITEMS,
   DEFAULT_INVEST_ITEMS,
   MAX_INCOME_ITEMS,
   MAX_ALLOCATION_ITEMS,
+  MAGIC_MAPPING_DEFAULTS,
 } from "./constants.js";
 
 export function cloneInputs(inputs) {
@@ -58,9 +59,44 @@ export function sanitizeInputs(rawInputs) {
   const savingsItems = sanitizeSavingsItems(raw.savingsItems, monthlySavingsFallback, annualSavingsYield);
   const investItems = sanitizeInvestItems(raw.investItems, monthlyInvestFallback);
 
+  let sanitizedAccounts = [];
+  if (!Array.isArray(raw.accounts) || raw.accounts.length === 0) {
+    sanitizedAccounts = [
+      { id: "acc-salary", name: "급여계좌" },
+      { id: "acc-living", name: "생활비계좌" },
+      { id: "acc-stock", name: "주식계좌" }
+    ];
+  } else {
+    sanitizedAccounts = raw.accounts.map((acc, index) => {
+      const safeAcc = acc && typeof acc === "object" ? acc : {};
+      const id = typeof safeAcc.id === "string" && safeAcc.id.trim()
+        ? safeAcc.id.trim()
+        : `acc-${Date.now()}-${index}`;
+      const name = typeof safeAcc.name === "string" && safeAcc.name.trim()
+        ? safeAcc.name.trim()
+        : `계좌 ${index + 1}`;
+      return { id, name };
+    });
+  }
+
+  let surplusId = typeof raw.surplusTransferAccountId === "string" && raw.surplusTransferAccountId.trim()
+    ? raw.surplusTransferAccountId.trim()
+    : "";
+  if (!sanitizedAccounts.some(acc => acc.id === surplusId)) {
+    if (sanitizedAccounts.some(acc => acc.id === "acc-stock")) {
+      surplusId = "acc-stock";
+    } else if (sanitizedAccounts.length > 0) {
+      surplusId = sanitizedAccounts[0].id;
+    } else {
+      surplusId = "acc-stock";
+    }
+  }
+
   return {
     modelVersion: 10,
     incomes: sanitizeIncomeItems(raw.incomes, monthlyIncomeFallback),
+    accounts: sanitizedAccounts,
+    surplusTransferAccountId: surplusId,
     expenseItems,
     savingsItems,
     investItems,
@@ -83,7 +119,7 @@ export function sanitizeInputs(rawInputs) {
 
 export function sanitizeIncomeItems(items, fallbackAmount) {
   if (!Array.isArray(items) || items.length === 0) {
-    return [createIncomeItem({ name: "급여", amount: fallbackAmount })];
+    return [createIncomeItem({ name: "급여", amount: fallbackAmount, accountId: MAGIC_MAPPING_DEFAULTS.income })];
   }
 
   const sanitized = items
@@ -94,10 +130,14 @@ export function sanitizeIncomeItems(items, fallbackAmount) {
       const safeId = typeof safeItem.id === "string" && safeItem.id.trim()
         ? safeItem.id.trim()
         : createIncomeId();
+      const safeAccountId = typeof safeItem.accountId === "string" && safeItem.accountId.trim()
+        ? safeItem.accountId.trim()
+        : (MAGIC_MAPPING_DEFAULTS?.income || "acc-salary");
       return {
         id: safeId,
         name: safeName,
         amount: safeAmount,
+        accountId: safeAccountId,
       };
     })
     .filter((item) => item.name || item.amount > 0)
@@ -107,7 +147,7 @@ export function sanitizeIncomeItems(items, fallbackAmount) {
     return sanitized;
   }
 
-  return [createIncomeItem({ name: "급여", amount: fallbackAmount })];
+  return [createIncomeItem({ name: "급여", amount: fallbackAmount, accountId: MAGIC_MAPPING_DEFAULTS.income })];
 }
 
 function normalizeIncomeName(name, index) {
@@ -122,11 +162,12 @@ function createIncomeId() {
   return `income-${Date.now()}-${Math.floor(Math.random() * 100000)}`;
 }
 
-export function createIncomeItem({ id, name, amount } = {}) {
+export function createIncomeItem({ id, name, amount, accountId } = {}) {
   return {
     id: typeof id === "string" && id.trim() ? id.trim() : createIncomeId(),
     name: normalizeIncomeName(name, 0),
     amount: window.IsfUtils.sanitizeMoney(amount, 0),
+    accountId: typeof accountId === "string" && accountId.trim() ? accountId.trim() : (MAGIC_MAPPING_DEFAULTS?.income || "acc-salary"),
   };
 }
 
@@ -237,10 +278,16 @@ export function sanitizeAllocationItems(
       }
       usedIds.add(safeId);
 
+      const fallbackAccountId = (MAGIC_MAPPING_DEFAULTS && MAGIC_MAPPING_DEFAULTS[prefix]) || (MAGIC_MAPPING_DEFAULTS && MAGIC_MAPPING_DEFAULTS.expense) || "acc-living";
+      const safeAccountId = typeof item.accountId === "string" && item.accountId.trim()
+        ? item.accountId.trim()
+        : fallbackAccountId;
+
       const normalizedItem = {
         id: safeId,
         name: normalizeAllocationName(item.name, label, index),
         amount: window.IsfUtils.sanitizeMoney(item.amount, 0),
+        accountId: safeAccountId,
       };
       const normalizedGroup = normalizeAllocationGroupName(item.group);
       if (normalizedGroup) {
@@ -364,6 +411,7 @@ export function scaleDefaultAllocationItemsToTotal(defaultItems, totalAmount) {
       id: safeItem.id,
       name: safeItem.name,
       amount: window.IsfUtils.sanitizeMoney(safeItem.amount * factor, 0),
+      accountId: safeItem.accountId,
     };
   });
 

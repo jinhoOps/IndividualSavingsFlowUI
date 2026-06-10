@@ -1,5 +1,6 @@
-﻿import {
-  SANKEY_SORT_MODES
+import {
+  SANKEY_SORT_MODES,
+  MAGIC_MAPPING_DEFAULTS
 } from "./constants.js";
 import {
   normalizeAllocationGroupName
@@ -56,132 +57,179 @@ function sortBreakdownItemsForSankey(items, sortMode) {
 }
 
 export function buildSankeyData(snapshot, sortMode) {
-  const level1Targets = snapshot.targets.filter((item) => item.value > 0);
-  if (!level1Targets.length) {
+  const incomeSources = (snapshot.incomeBreakdown || []).filter((item) => item.value > 0);
+  if (!incomeSources.length) {
     return null;
   }
 
-  const totalValue = level1Targets.reduce((sum, item) => sum + item.value, 0);
-  const incomeSources = (snapshot.incomeBreakdown || []).filter((item) => item.value > 0);
-  const showIncomeInflow = incomeSources.length >= 2;
-
-  const toGroupNodeId = (parentId, groupLabel, index) => {
-    const slug = String(groupLabel || "")
-      .toLowerCase()
-      .replace(/[^a-z0-9\uac00-\ud7a3]+/g, "-")
-      .replace(/^-+|-+$/g, "")
-      .slice(0, 24);
-    const safeSlug = slug || `group-${index + 1}`;
-    return `${parentId}-group-${safeSlug}-${index + 1}`;
-  };
-
-  const splitConfigs = [
-    {
-      parentId: "expense",
-      tone: "expense",
-      breakdown: sortBreakdownItemsForSankey((snapshot.expenseBreakdown || []).filter((item) => item.value > 0), sortMode),
-    },
-    {
-      parentId: "savings",
-      tone: "savings",
-      breakdown: sortBreakdownItemsForSankey((snapshot.savingsBreakdown || []).filter((item) => item.value > 0), sortMode),
-    },
-    {
-      parentId: "invest",
-      tone: "invest",
-      breakdown: sortBreakdownItemsForSankey((snapshot.investBreakdown || []).filter((item) => item.value > 0), sortMode),
-    },
-  ];
-
   const nodes = [];
   const links = [];
-  let currentColumn = 0;
 
-  if (showIncomeInflow) {
-    incomeSources.forEach((source) => {
-      nodes.push({ id: source.id, label: source.label, value: source.value, tone: source.tone, column: currentColumn });
-      links.push({ source: source.id, target: "total-income", value: source.value, tone: source.tone });
+  // 1. 노드 목록(nodes) 생성
+  // 수입 노드들 (column: 0)
+  incomeSources.forEach((src) => {
+    nodes.push({
+      id: src.id,
+      label: src.label,
+      value: src.value,
+      tone: src.tone,
+      column: 0
     });
-    nodes.push({ id: "total-income", label: "총 수입", value: totalValue, tone: "income", column: currentColumn + 1 });
-    currentColumn += 1;
-  } else {
-    nodes.push({ id: "total-income", label: "총 수입", value: totalValue, tone: "income", column: currentColumn });
+  });
+
+  // 계좌 노드들 (column: 1)
+  const accounts = snapshot.accounts || [];
+  accounts.forEach((acc) => {
+    nodes.push({
+      id: acc.id,
+      label: acc.name || acc.label || `계좌-${acc.id}`,
+      value: 0,
+      tone: acc.tone || "account",
+      column: 1
+    });
+  });
+
+  // 세부 항목 노드들 (column: 2)
+  const sortedExpenses = sortBreakdownItemsForSankey(
+    (snapshot.expenseBreakdown || []).filter((item) => item.value > 0),
+    sortMode
+  );
+  const sortedSavings = sortBreakdownItemsForSankey(
+    (snapshot.savingsBreakdown || []).filter((item) => item.value > 0),
+    sortMode
+  );
+  const sortedInvests = sortBreakdownItemsForSankey(
+    (snapshot.investBreakdown || []).filter((item) => item.value > 0),
+    sortMode
+  );
+
+  const allBreakdowns = [...sortedExpenses, ...sortedSavings, ...sortedInvests];
+  allBreakdowns.forEach((tgt) => {
+    nodes.push({
+      id: tgt.id,
+      label: tgt.label,
+      value: tgt.value,
+      tone: tgt.tone,
+      column: 2
+    });
+  });
+
+  // 잉여현금 노드
+  if (snapshot.surplus > 0) {
+    nodes.push({
+      id: "surplus",
+      label: "잉여현금",
+      value: snapshot.surplus,
+      tone: "surplus",
+      column: 2
+    });
   }
 
-  const mainNodeId = "total-income";
-  const targetColumn = currentColumn + 1;
-  level1Targets.forEach((target) => {
-    nodes.push({ id: target.id, label: target.label, value: target.value, tone: target.tone, column: targetColumn });
-    links.push({ source: mainNodeId, target: target.id, value: target.value, tone: target.tone });
+  // 2. 링크 목록(links) 생성
+  // 수입 ➔ 계좌 링크
+  incomeSources.forEach((src) => {
+    const targetAccountId = src.accountId || MAGIC_MAPPING_DEFAULTS.income || "acc-salary";
+    links.push({
+      source: src.id,
+      target: targetAccountId,
+      value: src.value,
+      tone: src.tone
+    });
   });
 
-  const splitGroups = [];
-  let hasGroupLayer = false;
-
-  splitConfigs.forEach((config) => {
-    const parent = level1Targets.find((t) => t.id === config.parentId);
-    if (!parent || !config.breakdown.length) return;
-
-    const groupedMap = new Map();
-    const ungrouped = [];
-    config.breakdown.forEach((item) => {
-      const groupName = normalizeAllocationGroupName(item.group);
-      if (groupName) {
-        if (!groupedMap.has(groupName)) groupedMap.set(groupName, []);
-        groupedMap.get(groupName).push(item);
-      } else {
-        ungrouped.push(item);
-      }
+  // 계좌 ➔ 세부 항목 링크
+  sortedExpenses.forEach((tgt) => {
+    const sourceAccountId = tgt.accountId || MAGIC_MAPPING_DEFAULTS.expense || "acc-living";
+    links.push({
+      source: sourceAccountId,
+      target: tgt.id,
+      value: tgt.value,
+      tone: tgt.tone
     });
+  });
 
-    const breakdownNodes = [];
-    const groupEntries = [];
-    
-    if (groupedMap.size > 0) {
-      hasGroupLayer = true;
-      let gIdx = 0;
-      for (const [groupName, groupItems] of groupedMap) {
-        const groupId = toGroupNodeId(config.parentId, groupName, gIdx++);
-        const groupValue = groupItems.reduce((sum, i) => sum + i.value, 0);
-        nodes.push({ id: groupId, label: groupName, value: groupValue, tone: config.tone, column: targetColumn + 1 });
-        links.push({ source: config.parentId, target: groupId, value: groupValue, tone: config.tone });
-        
-        groupItems.forEach((item) => {
-          nodes.push({ id: item.id, label: item.label, value: item.value, tone: config.tone, column: targetColumn + 2 });
-          links.push({ source: groupId, target: item.id, value: item.value, tone: config.tone });
-          breakdownNodes.push(item);
-        });
-        groupEntries.push({ label: groupName, value: groupValue, items: groupItems });
-      }
-      ungrouped.forEach((item) => {
-        nodes.push({ id: item.id, label: item.label, value: item.value, tone: config.tone, column: targetColumn + 2 });
-        links.push({ source: config.parentId, target: item.id, value: item.value, tone: config.tone });
-        breakdownNodes.push(item);
-      });
-    } else {
-      config.breakdown.forEach((item) => {
-        nodes.push({ id: item.id, label: item.label, value: item.value, tone: config.tone, column: targetColumn + 1 });
-        links.push({ source: config.parentId, target: item.id, value: item.value, tone: config.tone });
-        breakdownNodes.push(item);
-      });
+  sortedSavings.forEach((tgt) => {
+    const sourceAccountId = tgt.accountId || MAGIC_MAPPING_DEFAULTS.savings || "acc-salary";
+    links.push({
+      source: sourceAccountId,
+      target: tgt.id,
+      value: tgt.value,
+      tone: tgt.tone
+    });
+  });
+
+  sortedInvests.forEach((tgt) => {
+    const sourceAccountId = tgt.accountId || MAGIC_MAPPING_DEFAULTS.invest || "acc-stock";
+    links.push({
+      source: sourceAccountId,
+      target: tgt.id,
+      value: tgt.value,
+      tone: tgt.tone
+    });
+  });
+
+  // 잉여현금 링크
+  if (snapshot.surplus > 0) {
+    const surplusSourceId = snapshot.surplusTransferAccountId || MAGIC_MAPPING_DEFAULTS.invest || "acc-stock";
+    links.push({
+      source: surplusSourceId,
+      target: "surplus",
+      value: snapshot.surplus,
+      tone: "surplus"
+    });
+  }
+
+  // 3. 계좌 간 이체(내부 링크) 계산
+  const providers = [];
+  const consumers = [];
+
+  accounts.forEach((acc) => {
+    const totalInflow = links
+      .filter((link) => link.target === acc.id)
+      .reduce((sum, link) => sum + link.value, 0);
+
+    const totalOutflow = links
+      .filter((link) => link.source === acc.id)
+      .reduce((sum, link) => sum + link.value, 0);
+
+    const balance = totalInflow - totalOutflow;
+    if (balance > 0.01) {
+      providers.push({ id: acc.id, balance });
+    } else if (balance < -0.01) {
+      consumers.push({ id: acc.id, balance });
     }
-
-    splitGroups.push({
-      parentId: config.parentId,
-      breakdown: breakdownNodes,
-      grouped: groupEntries,
-      ungrouped: ungrouped
-    });
   });
 
+  let pIdx = 0, cIdx = 0;
+  while (pIdx < providers.length && cIdx < consumers.length) {
+    const p = providers[pIdx];
+    const c = consumers[cIdx];
+    const transfer = Math.min(p.balance, -c.balance);
+    if (transfer > 0.01) {
+      links.push({
+        source: p.id,
+        target: c.id,
+        value: transfer,
+        tone: "transfer"
+      });
+      p.balance -= transfer;
+      c.balance += transfer;
+    }
+    if (p.balance <= 0.01) pIdx++;
+    if (-c.balance <= 0.01) cIdx++;
+  }
+
+  const totalValue = incomeSources.reduce((sum, item) => sum + item.value, 0);
+
+  // 4. 기존 렌더러와의 호환성(회귀 방지)을 위해 아래의 구조로 반환
   return {
     nodes,
     links,
     totalValue,
-    hasIncomeInflow: showIncomeInflow,
-    hasGroupLayer,
-    splitGroups,
-    topLevelTargetIds: level1Targets.map(t => t.id)
+    hasIncomeInflow: incomeSources.length >= 2,
+    hasGroupLayer: false,
+    splitGroups: [],
+    topLevelTargetIds: accounts.map((a) => a.id)
   };
 }
 

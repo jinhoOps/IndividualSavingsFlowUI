@@ -1,4 +1,10 @@
 export const MONEY_UNIT = 10000;
+export const MAGIC_MAPPING_DEFAULTS = {
+  income: "acc-salary",
+  expense: "acc-living",
+  savings: "acc-salary",
+  invest: "acc-stock"
+};
 export const STORAGE_KEY = "isf-rebuild-v1";
 export const SHARE_STATE_KEY = "my-household-flow";
 export const SHARE_STATE_SCHEMA = 1;
@@ -44,34 +50,40 @@ export const SANKEY_MOBILE_MIN_COLUMN_STEP_WITH_INFLOW = 110;
 export const MOBILE_LAYOUT_QUERY = "(max-width: 760px)";
 
 export const DEFAULT_EXPENSE_ITEMS = [
-  { id: "rent", name: "주거비(대출상환)", amount: 600000, group: "생활비-고정비-주거비" },
-  { id: "maintenance", name: "관리비", amount: 100000, group: "생활비-고정비-공과금" },
-  { id: "water", name: "수도세", amount: 20000, group: "생활비-고정비-공과금" },
-  { id: "gas", name: "가스비", amount: 50000, group: "생활비-고정비-공과금" },
-  { id: "electricity", name: "전기세", amount: 50000, group: "생활비-고정비-공과금" },
-  { id: "telecom", name: "통신비", amount: 50000, group: "생활비-고정비-통신비" },
-  { id: "insurance", name: "보험료", amount: 150000, group: "생활비-고정비-보험료" },
-  { id: "transport", name: "교통비", amount: 100000 },
-  { id: "food", name: "식비", amount: 400000 },
-  { id: "etc", name: "기타생활비", amount: 200000 },
+  { id: "rent", name: "주거비(대출상환)", amount: 600000, group: "생활비-고정비-주거비", accountId: "acc-living" },
+  { id: "maintenance", name: "관리비", amount: 100000, group: "생활비-고정비-공과금", accountId: "acc-living" },
+  { id: "water", name: "수도세", amount: 20000, group: "생활비-고정비-공과금", accountId: "acc-living" },
+  { id: "gas", name: "가스비", amount: 50000, group: "생활비-고정비-공과금", accountId: "acc-living" },
+  { id: "electricity", name: "전기세", amount: 50000, group: "생활비-고정비-공과금", accountId: "acc-living" },
+  { id: "telecom", name: "통신비", amount: 50000, group: "생활비-고정비-통신비", accountId: "acc-living" },
+  { id: "insurance", name: "보험료", amount: 150000, group: "생활비-고정비-보험료", accountId: "acc-living" },
+  { id: "transport", name: "교통비", amount: 100000, accountId: "acc-living" },
+  { id: "food", name: "식비", amount: 400000, accountId: "acc-living" },
+  { id: "etc", name: "기타생활비", amount: 200000, accountId: "acc-living" },
 ];
 
 export const DEFAULT_SAVINGS_ITEMS = [
-  { id: "youth-saving", name: "청년적금", amount: 700000, annualRate: 3.6 },
-  { id: "housing-subscription", name: "주택청약", amount: 50000, annualRate: 2.9 },
+  { id: "youth-saving", name: "청년적금", amount: 700000, annualRate: 3.6, accountId: "acc-salary" },
+  { id: "housing-subscription", name: "주택청약", amount: 50000, annualRate: 2.9, accountId: "acc-salary" },
 ];
 
 export const DEFAULT_INVEST_ITEMS = [
-  { id: "global-stock", name: "해외주식", amount: 300000 },
-  { id: "isa", name: "ISA", amount: 300000 },
-  { id: "gold-spot", name: "금현물", amount: 30000 },
+  { id: "global-stock", name: "해외주식", amount: 300000, accountId: "acc-stock" },
+  { id: "isa", name: "ISA", amount: 300000, accountId: "acc-stock" },
+  { id: "gold-spot", name: "금현물", amount: 30000, accountId: "acc-stock" },
 ];
 
 export const DEFAULT_INPUTS = {
   modelVersion: 10,
   incomes: [
-    { id: "income-main", name: "급여", amount: 3000000 },
+    { id: "income-main", name: "급여", amount: 3000000, accountId: "acc-salary" },
   ],
+  accounts: [
+    { id: "acc-salary", name: "급여계좌" },
+    { id: "acc-living", name: "생활비계좌" },
+    { id: "acc-stock", name: "주식계좌" }
+  ],
+  surplusTransferAccountId: "acc-stock",
   expenseItems: DEFAULT_EXPENSE_ITEMS,
   savingsItems: DEFAULT_SAVINGS_ITEMS,
   investItems: DEFAULT_INVEST_ITEMS,
@@ -94,9 +106,15 @@ export const DEFAULT_INPUTS = {
 export const SAMPLE_INPUTS = {
   ...DEFAULT_INPUTS,
   incomes: [
-    { id: "sample-income-1", name: "주급여", amount: 4500000 },
-    { id: "sample-income-2", name: "부수입", amount: 500000 },
+    { id: "sample-income-1", name: "주급여", amount: 4500000, accountId: "acc-salary" },
+    { id: "sample-income-2", name: "부수입", amount: 500000, accountId: "acc-salary" },
   ],
+  accounts: [
+    { id: "acc-salary", name: "급여계좌" },
+    { id: "acc-living", name: "생활비계좌" },
+    { id: "acc-stock", name: "주식계좌" }
+  ],
+  surplusTransferAccountId: "acc-stock",
   monthlyDebtPayment: 500000,
   startCash: 5000000,
   startSavings: 20000000,

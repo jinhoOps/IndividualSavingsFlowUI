@@ -1,4 +1,4 @@
-﻿export const dom = {
+export const dom = {
   appHeader: document.querySelector("app-header"),
   dataHubModal: document.querySelector("data-hub-modal"),
   controlsPanel: document.querySelector(".controls-panel"),
@@ -20,6 +20,17 @@
   applyIncomeItems: document.getElementById("applyIncomeItems"),
   cancelIncomeItems: document.getElementById("cancelIncomeItems"),
   incomeTotalHint: document.getElementById("incomeTotalHint"),
+
+  surplusTransferBanner: document.getElementById("surplusTransferBanner"),
+  surplusAmountText: document.getElementById("surplusAmountText"),
+  surplusTransferAccountSelect: document.getElementById("surplusTransferAccountSelect"),
+
+  accountList: document.getElementById("accountList"),
+  editAccountItems: document.getElementById("editAccountItems"),
+  accountEditorActions: document.getElementById("accountEditorActions"),
+  addAccountItem: document.getElementById("addAccountItem"),
+  applyAccountItems: document.getElementById("applyAccountItems"),
+  cancelAccountItems: document.getElementById("cancelAccountItems"),
 
   expenseList: document.getElementById("expenseList"),
   expenseTotalHint: document.getElementById("expenseTotalHint"),

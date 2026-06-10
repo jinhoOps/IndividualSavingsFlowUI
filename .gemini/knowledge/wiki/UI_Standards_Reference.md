@@ -79,6 +79,9 @@ tags: [ui, feedback, theme, visualization, reference]
 
 ### Sankey Diagram (Step1)
 - 현금 흐름을 시각화합니다.
+- **계좌 기반 4단계 레이어 구조**: 기존 대분류 대신 사용자가 정의한 커스텀 계좌 노드를 중간 레이어로 도입하여 `[수입원] ➔ [계좌들] ➔ [세부 항목들]` 구조를 유지합니다.
+- **계좌 간 자동 이체 연산**: 각 계좌의 Inflow와 Outflow 차액을 계산하여, 자금이 남는 공급처(Inflow > Outflow)에서 자금이 부족한 수요처(Inflow < Outflow)로의 내부 이체선(tone: "transfer")을 수학적으로 자동 도출/시각화합니다.
+- **잉여현금 자동 이체 배너**: 요약 카드 하단에 Glassmorphism 스타일의 문장형 UI 배너(`💡 이번 달 남는 잉여현금 [X만 원]은 [주식계좌 ▾]로 자동 이체합니다.`)를 제공하여 자금 흐름을 직관적으로 제어할 수 있게 합니다.
 - 모바일 환경에서의 가독성을 위해 '화면 맞춤' 및 '배율 리셋' 기능이 필수적입니다.
 
 ### Dividend Simulation Chart (Step 2)

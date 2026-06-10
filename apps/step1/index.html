@@ -51,6 +51,11 @@
           <div class="card skeleton" aria-hidden="true"><span class="label">불러오는 중</span><span class="value">━━━━</span></div>
           <div class="card skeleton" aria-hidden="true"><span class="label">불러오는 중</span><span class="value">━━━━</span></div>
         </div>
+        <div id="surplusTransferBanner" class="surplus-transfer-banner" hidden>
+          💡 이번 달 남는 잉여현금 <span id="surplusAmountText">0만 원</span>은 
+          <select id="surplusTransferAccountSelect" class="surplus-select" aria-label="잉여현금 자동 이체 계좌"></select> 
+          으로 자동 이체합니다.
+        </div>
       </section>
 
       <section class="panel sankey-panel" aria-labelledby="sankeyTitle">
@@ -228,6 +233,22 @@
                 <button id="cancelIncomeItems" class="btn btn-ghost btn-sm" type="button">편집 취소</button>
               </div>
               <p id="incomeTotalHint" class="hint"></p>
+            </div>
+
+            <div class="controls-block">
+              <div class="block-head">
+                <h3>통장(계좌) 관리</h3>
+                <div class="block-head-tools">
+                  <button id="editAccountItems" class="btn btn-ghost btn-sm" type="button">항목 편집</button>
+                </div>
+              </div>
+              <p class="hint">자산 흐름의 중간 통로가 되는 통장을 추가하거나 이름을 편집합니다.</p>
+              <div id="accountList" class="account-list" aria-live="polite"></div>
+              <div id="accountEditorActions" class="editor-actions" hidden>
+                <button id="addAccountItem" class="btn btn-ghost btn-sm" type="button">통장 추가</button>
+                <button id="applyAccountItems" class="btn btn-primary btn-sm" type="button">변경 적용</button>
+                <button id="cancelAccountItems" class="btn btn-ghost btn-sm" type="button">편집 취소</button>
+              </div>
             </div>
 
             <div class="controls-block">

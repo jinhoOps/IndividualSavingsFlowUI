@@ -1,9 +1,10 @@
-﻿import {
+import {
   DEFAULT_INPUTS,
   DEFAULT_EXPENSE_ITEMS,
   DEFAULT_SAVINGS_ITEMS,
   DEFAULT_INVEST_ITEMS,
-  PR_MODE_ASSUMED_ANNUAL_DIV_YIELD
+  PR_MODE_ASSUMED_ANNUAL_DIV_YIELD,
+  MAGIC_MAPPING_DEFAULTS
 } from "./constants.js";
 import {
   getMonthlyIncomeTotalWon,
@@ -30,6 +31,7 @@ export function buildMonthlySnapshot(inputs) {
       label: String(item?.name || `수입 ${index + 1}`),
       tone: "income",
       value: window.IsfUtils.sanitizeMoney(item?.amount, 0),
+      accountId: item?.accountId,
     }))
     .filter((item) => item.value > 0);
   const expenseBreakdown = (Array.isArray(inputs.expenseItems) ? inputs.expenseItems : [])
@@ -39,6 +41,7 @@ export function buildMonthlySnapshot(inputs) {
       tone: "expense",
       value: window.IsfUtils.sanitizeMoney(item?.amount, 0),
       group: normalizeAllocationGroupName(item?.group),
+      accountId: item?.accountId,
     }))
     .filter((item) => item.value > 0);
   const savingsBreakdown = (Array.isArray(inputs.savingsItems) ? inputs.savingsItems : [])
@@ -48,6 +51,7 @@ export function buildMonthlySnapshot(inputs) {
       tone: "savings",
       value: window.IsfUtils.sanitizeMoney(item?.amount, 0),
       group: normalizeAllocationGroupName(item?.group),
+      accountId: item?.accountId,
     }))
     .filter((item) => item.value > 0);
   const investBreakdown = (Array.isArray(inputs.investItems) ? inputs.investItems : [])
@@ -57,6 +61,7 @@ export function buildMonthlySnapshot(inputs) {
       tone: "invest",
       value: window.IsfUtils.sanitizeMoney(item?.amount, 0),
       group: normalizeAllocationGroupName(item?.group),
+      accountId: item?.accountId,
     }))
     .filter((item) => item.value > 0);
   const expense = expenseBreakdown.reduce((sum, item) => sum + item.value, 0);
@@ -75,6 +80,7 @@ export function buildMonthlySnapshot(inputs) {
       label: "결손(부채/자산인출)",
       tone: "deficit",
       value: deficit,
+      accountId: MAGIC_MAPPING_DEFAULTS.expense || "acc-living",
     });
   }
 
@@ -104,6 +110,8 @@ export function buildMonthlySnapshot(inputs) {
     surplus,
     deficit,
     targets,
+    accounts: inputs.accounts || [],
+    surplusTransferAccountId: inputs.surplusTransferAccountId || "",
   };
 }
 

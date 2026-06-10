@@ -42,10 +42,19 @@ v1.1.0-alpha.1부터 강력한 타입 시스템과 현대화된 스토리지 레
 
 ### Step 1 State (v2)
 ```typescript
+export interface Account {
+  id: string; // 예: "acc-salary", "acc-living", "acc-stock"
+  name: string; // 계좌 별칭 (예: "급여계좌", "생활비계좌")
+}
+
 export interface Step1State {
   version: 2;
-  incomes: BaseItem[]; // Won 단위
-  expenseItems: AllocationItem[];
+  incomes: BaseItem[]; // Won 단위, accountId 포함
+  accounts: Account[]; // 계좌 목록 프리셋
+  surplusTransferAccountId: string; // 잉여현금 이체 타깃 계좌 ID
+  expenseItems: AllocationItem[]; // accountId 포함
+  savingsItems: AllocationItem[]; // accountId 포함
+  investItems: AllocationItem[]; // accountId 포함
   // ... (기타 시뮬레이션 변수 및 초기 자산)
 }
 ```

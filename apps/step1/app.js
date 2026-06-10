@@ -266,6 +266,16 @@ function bindControls() {
   if (dom.smartAddInput) dom.smartAddInput.addEventListener("input", handleSmartAddInput);
   if (dom.applySmartAddBtn) dom.applySmartAddBtn.addEventListener("click", () => handleApplySmartAdd(listRenderer.renderItemList));
 
+  if (dom.surplusTransferAccountSelect) {
+    dom.surplusTransferAccountSelect.addEventListener("change", (e) => {
+      const draft = helpers.ensureDraftInputs(state);
+      draft.surplusTransferAccountId = e.target.value;
+      state.draftInputs = sanitizeInputs(draft);
+      markPendingChanges();
+      renderAll();
+    });
+  }
+
   bindItemEditorEvents();
   bindActionButtons();
   bindGlobalEvents();
@@ -373,7 +383,7 @@ async function handleMergeIsfCode(e) {
 }
 
 function bindItemEditorEvents() {
-  ["income", "expense", "savings", "invest"].forEach(group => {
+  ["income", "expense", "savings", "invest", "account"].forEach(group => {
     const list = dom[`${group}List`];
     if (list) {
       list.addEventListener("input", (e) => handleItemInput(group, e));
@@ -429,6 +439,25 @@ function renderAll() {
   listRenderer.renderProjectionTable(projection, state.inputs.horizonYears, state.inputs.annualExpenseGrowth);
   listRenderer.renderInputHints(state.inputs);
   refreshInputsPanel(state.inputs);
+
+  if (dom.surplusTransferBanner) {
+    if (snapshot.surplus > 0) {
+      dom.surplusTransferBanner.hidden = false;
+      if (dom.surplusAmountText) {
+        dom.surplusAmountText.textContent = IsfUtils.formatMoney(snapshot.surplus);
+      }
+      if (dom.surplusTransferAccountSelect) {
+        const currentInputs = getVisibleInputs();
+        const accounts = currentInputs.accounts || [];
+        dom.surplusTransferAccountSelect.innerHTML = accounts.map(acc => {
+          const selected = acc.id === currentInputs.surplusTransferAccountId ? "selected" : "";
+          return `<option value="${acc.id}" ${selected}>${IsfUtils.escapeHtml(acc.name)}</option>`;
+        }).join("");
+      }
+    } else {
+      dom.surplusTransferBanner.hidden = true;
+    }
+  }
 }
 
 function setProjectionMode(mode) {
@@ -667,7 +696,8 @@ function toggleItemEditor(group) { state.itemEditors[group].active ? cancelItemE
 
 function startItemEditor(group) {
   closeAllItemEditors(group);
-  const items = cloneInputs(getVisibleInputs()[group === "income" ? "incomes" : `${group}Items`]);
+  const rawItems = group === "income" ? getVisibleInputs().incomes : (group === "account" ? getVisibleInputs().accounts : getVisibleInputs()[`${group}Items`]);
+  const items = cloneInputs(rawItems);
   state.itemEditors[group] = { active: true, items, baselineSignature: helpers.getItemEditorSignature(items) };
   listRenderer.renderItemList(group, items, { editing: true });
   setItemEditorUi(group, true);
@@ -677,6 +707,7 @@ function applyItemEditor(group) {
   const editor = state.itemEditors[group];
   const draft = helpers.ensureDraftInputs(state);
   if (group === "income") draft.incomes = editor.items;
+  else if (group === "account") draft.accounts = editor.items;
   else draft[`${group}Items`] = editor.items;
   state.draftInputs = sanitizeInputs(draft);
   cancelItemEditor(group);
@@ -685,14 +716,21 @@ function applyItemEditor(group) {
 
 function cancelItemEditor(group) {
   state.itemEditors[group].active = false;
-  listRenderer.renderItemList(group, getVisibleInputs()[group === "income" ? "incomes" : `${group}Items`]);
+  const rawItems = group === "income" ? getVisibleInputs().incomes : (group === "account" ? getVisibleInputs().accounts : getVisibleInputs()[`${group}Items`]);
+  listRenderer.renderItemList(group, rawItems);
   setItemEditorUi(group, false);
 }
 
 function addItemToEditor(group) {
   const editor = state.itemEditors[group];
   if (!editor.active || editor.items.length >= MAX_ALLOCATION_ITEMS) return;
-  editor.items.push(group === "income" ? createIncomeItem() : { id: createAllocationItemId(group, editor.items.length), name: "", amount: 0 });
+  if (group === "income") {
+    editor.items.push(createIncomeItem());
+  } else if (group === "account") {
+    editor.items.push({ id: "acc-" + Date.now() + "-" + editor.items.length, name: "" });
+  } else {
+    editor.items.push({ id: createAllocationItemId(group, editor.items.length), name: "", amount: 0 });
+  }
   listRenderer.renderItemList(group, editor.items, { editing: true });
   setItemEditorUi(group, true);
 }
@@ -713,7 +751,7 @@ function setItemEditorUi(group, active) {
 }
 
 function closeAllItemEditors(except = "") {
-  ["income", "expense", "savings", "invest"].forEach(g => { if (g !== except && state.itemEditors[g].active) cancelItemEditor(g); });
+  ["income", "expense", "savings", "invest", "account"].forEach(g => { if (g !== except && state.itemEditors[g].active) cancelItemEditor(g); });
 }
 
 

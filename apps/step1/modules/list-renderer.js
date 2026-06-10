@@ -47,28 +47,65 @@ export function renderProjectionTable(records, horizonYears, expenseGrowth) {
 
 export function renderItemList(group, items, options = {}) {
   const list = dom[`${group}List`]; if (!list) return;
+  if (group === "account") {
+    list.innerHTML = items.map(item => renderAccountItemHtml(item, options)).join("");
+    return;
+  }
   list.innerHTML = items.map((item, idx) => group === "income" ? renderIncomeItemHtml(item, options) : renderAllocationItemHtml(group, item, options)).join("");
 }
 
 export function renderIncomeItemHtml(item, opts) {
   const isEditing = !!opts.editing;
+  if (!isEditing) {
+    const acc = (state.inputs.accounts || []).find(a => a.id === item.accountId);
+    const displayName = item.name + (acc ? ` (${acc.name})` : " (미지정)");
+    return `
+      <div class="income-row">
+        <input type="text" value="${IsfUtils.escapeHtml(displayName)}" data-income-id="${item.id}" data-field="name" readonly placeholder="이름" />
+        <input type="number" value="${IsfUtils.toMan(item.amount)}" data-income-id="${item.id}" data-field="amount" readonly inputmode="decimal" placeholder="금액" />
+      </div>
+    `;
+  }
+
+  // 편집 모드일 때
+  const selectOptions = (state.inputs.accounts || []).map(acc => {
+    const selected = acc.id === item.accountId ? "selected" : "";
+    return `<option value="${acc.id}" ${selected}>${IsfUtils.escapeHtml(acc.name)}</option>`;
+  }).join("");
+
   return `
-    <div class="income-row">
-      <input type="text" value="${IsfUtils.escapeHtml(item.name)}" data-income-id="${item.id}" data-field="name" ${isEditing ? "" : "readonly"} placeholder="이름" />
-      <input type="number" value="${IsfUtils.toMan(item.amount)}" data-income-id="${item.id}" data-field="amount" ${isEditing ? "" : "readonly"} inputmode="decimal" placeholder="금액" />
-      ${isEditing ? `
-        <button class="income-remove" data-remove-income="${item.id}" title="삭제">
-          <svg class="income-remove-icon" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-          <span class="income-remove-text">삭제</span>
-        </button>
-      ` : ""}
+    <div class="income-row is-editing">
+      <input type="text" value="${IsfUtils.escapeHtml(item.name)}" data-income-id="${item.id}" data-field="name" placeholder="이름" />
+      <select data-income-id="${item.id}" data-field="accountId" class="income-account-select">
+        <option value="">계좌 선택...</option>
+        ${selectOptions}
+      </select>
+      <input type="number" value="${IsfUtils.toMan(item.amount)}" data-income-id="${item.id}" data-field="amount" inputmode="decimal" placeholder="금액" />
+      <button class="income-remove" data-remove-income="${item.id}" title="삭제">
+        <svg class="income-remove-icon" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1-1H5v2h14V4z"/></svg>
+        <span class="income-remove-text">삭제</span>
+      </button>
     </div>
   `;
 }
 
 export function renderAllocationItemHtml(group, item, opts) {
   const isEditing = !!opts.editing;
-  const meta = buildAllocationMetaText(item, { showMaturity: group !== "expense" });
+  
+  let meta = "";
+  if (!isEditing) {
+    const parts = [];
+    const baseMeta = buildAllocationMetaText(item, { showMaturity: group !== "expense" });
+    if (baseMeta) parts.push(baseMeta);
+    const acc = (state.inputs.accounts || []).find(a => a.id === item.accountId);
+    if (acc) {
+      parts.push(acc.name);
+    } else {
+      parts.push("미지정 계좌");
+    }
+    meta = parts.join(" · ");
+  }
+
   const metaHtml = (!isEditing && meta) ? `<div class="allocation-meta">${meta}</div>` : "";
   const commonClasses = `${group}-row ${isEditing ? "is-editing" : ""}`;
   
@@ -90,6 +127,16 @@ export function renderAllocationItemHtml(group, item, opts) {
       <div class="editor-field">
         <label class="editor-field-label">이름</label>
         <input type="text" value="${IsfUtils.escapeHtml(item.name)}" data-field="name" data-editor-id="${item.id}" placeholder="항목명" />
+      </div>
+      <div class="editor-field">
+        <label class="editor-field-label">출금계좌</label>
+        <select data-field="accountId" data-editor-id="${item.id}">
+          <option value="">계좌 선택...</option>
+          ${(state.inputs.accounts || []).map(acc => {
+            const selected = acc.id === item.accountId ? "selected" : "";
+            return `<option value="${acc.id}" ${selected}>${IsfUtils.escapeHtml(acc.name)}</option>`;
+          }).join("")}
+        </select>
       </div>
       <div class="editor-field">
         <label class="editor-field-label">금액(만원)</label>
@@ -133,3 +180,23 @@ export function renderIncomeTotalHint(won, count) { if (dom.incomeTotalHint) dom
 export function renderExpenseTotalHint(won, count) { if (dom.expenseTotalHint) dom.expenseTotalHint.textContent = `총 ${count}개 항목: ${formatCurrency(won)}`; }
 export function renderSavingsTotalHint(won, count) { if (dom.savingsTotalHint) dom.savingsTotalHint.textContent = `총 ${count}개 항목: ${formatCurrency(won)}`; }
 export function renderInvestTotalHint(won, count) { if (dom.investTotalHint) dom.investTotalHint.textContent = `총 ${count}개 항목: ${formatCurrency(won)}`; }
+
+export function renderAccountItemHtml(item, opts) {
+  const isEditing = !!opts.editing;
+  if (!isEditing) {
+    return `
+      <div class="account-row">
+        <span class="account-name">${IsfUtils.escapeHtml(item.name)}</span>
+      </div>
+    `;
+  }
+  return `
+    <div class="account-row is-editing">
+      <div class="editor-field">
+        <label class="editor-field-label">계좌명</label>
+        <input type="text" value="${IsfUtils.escapeHtml(item.name)}" data-field="name" data-editor-id="${item.id}" placeholder="계좌 별칭" />
+      </div>
+      <button class="allocation-remove" data-remove-editor-item="${item.id}" title="삭제">×</button>
+    </div>
+  `;
+}

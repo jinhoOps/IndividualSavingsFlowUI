@@ -1,4 +1,4 @@
-﻿import {
+import {
   DEFAULT_INPUTS,
   SHARE_STATE_KEY,
   HASH_STATE_PARAM,
@@ -49,6 +49,7 @@ export const state = {
     expense: { active: false, items: [], baselineSignature: "" },
     savings: { active: false, items: [], baselineSignature: "" },
     invest: { active: false, items: [], baselineSignature: "" },
+    account: { active: false, items: [], baselineSignature: "" },
   },
   snapshot: null,
   mobileInputsCollapsed: false,
