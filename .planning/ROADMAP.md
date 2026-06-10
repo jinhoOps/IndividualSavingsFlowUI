@@ -16,6 +16,7 @@
 | 14 | Foundation UX & Branding | DESIGN.md 가이드라인의 시각적 테마와 반응형 뼈대 구축 | UX-01, UX-02, UX-04 | 3 |
 | 15 | Chart Enhancement & Responsive | Sankey Chart 데이터 라벨링 및 모바일 레이아웃 고도화 | UX-03, UX-05 | 3 |
 | 16 | Export Feature | 사용자가 결과물을 이미지로 저장하고 공유할 수 있는 수단 확보 | FEAT-01 | 2 |
+| 17 | Step 1 Income Flow & Wallet Partitioning | 수입/지출 통장 쪼개기 및 자금 흐름 시각화 개선 | FEAT-02, UX-06 | 3 |
 
 ### Phase Details
 
@@ -50,6 +51,14 @@
 - Success criteria:
   1. "이미지로 내보내기" 버튼이 제공된다.
   2. 캔버스 영역이 깨짐 없이 `.png` (또는 적절한 포맷) 파일로 다운로드된다.
+
+**Phase 17: Step 1 Income Flow & Wallet Partitioning**
+- Goal: 수입/지출 통장 쪼개기 및 자금 흐름 시각화 개선
+- Requirements: FEAT-02, UX-06
+- Success criteria:
+  1. 수입 입력 시 단순 금액 입력 외에 '입금/급여 계좌' 매핑 기능이 지원된다.
+  2. 중간 계좌(통장 쪼개기) 레이어가 도입되어 수입 -> 급여계좌 -> 생활비/저축/투자계좌 -> 지출/저축/투자 항목으로 이어지는 Sankey 흐름이 렌더링된다.
+  3. 잉여현금의 자동/수동 이체 경로(예: 주식계좌로의 흐름)를 설정할 수 있다.
 
 ---
 
