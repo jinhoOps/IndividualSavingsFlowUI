@@ -502,3 +502,11 @@
     - **코드 상수 수정**: `shared/core/utils.js` 내 `FINANCIAL_INCOME_WARN_THRESHOLD_WON`을 1,900만 원(`19000000`), `FINANCIAL_INCOME_CRIT_THRESHOLD_WON`을 3,400만 원(`34000000`)으로 교정 완료.
     - **지식 문서 동기화**: `Financial_Taxation_Reference.md` 문서 내 주의/치명적 경고 기준(임계값) 정보를 1,900만 원 및 3,400만 원으로 갱신하여 지식 베이스의 일관성 확보.
 - **결과**: 기획서에 명시된 비즈니스 룰과 런타임 계산 로직 및 지식 문서의 무결성을 100% 일치시킴.
+
+## [2026-06-10] audit | v1.6 마일스톤 감사 통과 및 빌드 무결성 확인 (v0.11.2)
+- **목적**: Milestone v1.6 (코드 리팩터링, UX 개선 및 안정성 강화) 감사를 완료하고, 빌드 시스템 및 런타임 안정성을 최종 검증함.
+- **변경 사항**:
+    - **마일스톤 감사 및 갱신**: `v1.6-MILESTONE-AUDIT.md` 감사 보고서를 최신 검증 내용으로 업데이트 완료 (audited: "2026-06-10T17:58:00.000Z").
+    - **레거시 함수 검증**: 이전에 런타임 ReferenceError 우려가 보고되었던 4종의 레거시 유령 함수(`hasShareState`, `bindReadonlyAdvancedNavigation`, `dismissViewModeGuide`, `switchToNormalMode`)들이 현재 `apps/step1/app.js`에 정상 정의 및 바인딩되어 안정적으로 실행 중임을 교차 확인 완료.
+    - **빌드 및 PWA 무결성**: 로컬 빌드 및 버전 동기화 커맨드(`npm run build`)가 913ms 만에 무결하게 성공함을 확인. PWA 프리캐시 엔트리가 올바르게 갱신 및 생성됨.
+- **결과**: v1.6 마일스톤 공식 Passed 달성 및 상용 배포 가능 수준의 시스템 안정성 보증.
