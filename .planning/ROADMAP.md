@@ -77,3 +77,19 @@
 - 계좌 및 종목별 비중 관리 고도화
 - 포트폴리오 실시간 격차 분석(Target vs Actual) 알림
 - 리밸런싱 전략 연산 엔진 고도화
+
+### Phase 999.14: Follow-up — Phase 14 incomplete plans (BACKLOG)
+
+**Goal:** Resolve plans that ran without producing summaries during Phase 14 execution
+**Source phase:** 14
+**Deferred at:** 2026-06-10 during /gsd-progress --next advancement to Phase 16
+**Plans:**
+- [ ] 14-PLAN: foundation-ux-branding (ran, no SUMMARY.md)
+
+### Phase 999.15: Follow-up — Phase 15 incomplete plans (BACKLOG)
+
+**Goal:** Resolve plans that ran without producing summaries during Phase 15 execution
+**Source phase:** 15
+**Deferred at:** 2026-06-10 during /gsd-progress --next advancement to Phase 16
+**Plans:**
+- [ ] 15-PLAN: chart-enhancement-responsive (ran, no SUMMARY.md)
