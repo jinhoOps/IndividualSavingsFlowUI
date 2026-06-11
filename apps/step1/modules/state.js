@@ -56,6 +56,7 @@ export const state = {
   isDashboardMode: false,
   viewModeGuideClosedTemporarily: false,
   pwaVersionLastCheckedAt: 0,
+  showDetailedCards: false,
   projectionOptions: {
     mode: "TR",
     showFlow: true,

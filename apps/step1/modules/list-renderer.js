@@ -7,12 +7,47 @@ import { buildAllocationMetaText, getMonthlyIncomeTotalWon } from "./input-sanit
 export function renderCards(cards, horizonYears) {
   if (!dom.summaryCards) return;
   dom.summaryCards.innerHTML = "";
-  cards.forEach(card => {
+
+  const hasDetailed = cards.length > 6;
+  const showDetailed = state.showDetailedCards || false;
+
+  cards.forEach((card, idx) => {
     const el = document.createElement("article");
-    el.className = `card ${card.variant || ""}`;
+    const isDetailed = idx >= 6;
+    el.className = `card ${card.variant || ""} ${isDetailed ? "is-detailed" : ""}`;
+    if (isDetailed && !showDetailed) {
+      el.style.display = "none";
+    }
     el.innerHTML = `<span class="label">${card.label}</span><span class="value">${card.value}</span><span class="sub">${card.sub}</span>`;
     dom.summaryCards.appendChild(el);
   });
+
+  if (hasDetailed) {
+    const btnContainer = document.createElement("div");
+    btnContainer.className = "summary-toggle-wrap";
+    btnContainer.style.gridColumn = "1 / -1";
+    btnContainer.style.display = "flex";
+    btnContainer.style.justifyContent = "center";
+    btnContainer.style.marginTop = "12px";
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.id = "toggleDetailedCardsBtn";
+    btn.className = "btn btn-ghost btn-xs";
+    btn.textContent = showDetailed ? "상세 지표 접기 ▴" : "상세 지표 더보기 ▾";
+    btnContainer.appendChild(btn);
+    dom.summaryCards.appendChild(btnContainer);
+
+    btn.addEventListener("click", () => {
+      state.showDetailedCards = !state.showDetailedCards;
+      const detailCards = dom.summaryCards.querySelectorAll(".card.is-detailed");
+      const isNowShowing = state.showDetailedCards;
+      detailCards.forEach(c => {
+        c.style.display = isNowShowing ? "" : "none";
+      });
+      btn.textContent = isNowShowing ? "상세 지표 접기 ▴" : "상세 지표 더보기 ▾";
+    });
+  }
 }
 
 export function renderProjectionTable(records, horizonYears, expenseGrowth) {
@@ -54,6 +89,11 @@ export function renderItemList(group, items, options = {}) {
   list.innerHTML = items.map((item, idx) => group === "income" ? renderIncomeItemHtml(item, options) : renderAllocationItemHtml(group, item, options)).join("");
 }
 
+function getShortAccountName(name) {
+  if (!name) return "";
+  return name.replace(/(계좌|통장)$/, "");
+}
+
 export function renderIncomeItemHtml(item, opts) {
   const isEditing = !!opts.editing;
   if (!isEditing) {
@@ -62,12 +102,13 @@ export function renderIncomeItemHtml(item, opts) {
     if (Array.isArray(item.allocations) && item.allocations.length > 0) {
       accHtml = item.allocations.map(al => {
         const acc = accounts.find(a => a.id === al.accountId);
-        const name = acc ? acc.name : "미지정 계좌";
+        const name = acc ? getShortAccountName(acc.name) : "미지정";
         return `<span class="badge-account badge-account--income">${IsfUtils.escapeHtml(name)}: ${formatCurrency(al.amount)}</span>`;
       }).join(" ");
     } else {
       const acc = accounts.find(a => a.id === item.accountId);
-      accHtml = acc ? `<span class="badge-account badge-account--income">${IsfUtils.escapeHtml(acc.name)}</span>` : `<span class="badge-account badge-account--none">계좌 미지정</span>`;
+      const name = acc ? getShortAccountName(acc.name) : "미지정";
+      accHtml = acc ? `<span class="badge-account badge-account--income">${IsfUtils.escapeHtml(name)}</span>` : `<span class="badge-account badge-account--none">미지정</span>`;
     }
     return `
       <div class="income-row">
@@ -137,7 +178,8 @@ export function renderAllocationItemHtml(group, item, opts) {
   if (!isEditing) {
     const baseMeta = buildAllocationMetaText(item, { showMaturity: group !== "expense" });
     const acc = ((state.draftInputs || state.inputs).accounts || []).find(a => a.id === item.accountId);
-    const accHtml = acc ? `<span class="badge-account badge-account--outflow">${IsfUtils.escapeHtml(acc.name)}</span>` : `<span class="badge-account badge-account--none">계좌 미지정</span>`;
+    const name = acc ? getShortAccountName(acc.name) : "미지정";
+    const accHtml = acc ? `<span class="badge-account badge-account--outflow">${IsfUtils.escapeHtml(name)}</span>` : `<span class="badge-account badge-account--none">미지정</span>`;
     metaHtml = `
       <div class="allocation-meta">
         ${baseMeta ? `<span class="allocation-base-meta">${baseMeta}</span> · ` : ""}
