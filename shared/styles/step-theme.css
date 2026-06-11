@@ -562,7 +562,7 @@ select:focus-visible {
     grid-template-columns: 1fr !important;
   }
 
-  .floating-btn { bottom: 12px; width: 40px; height: 40px; }
+  .floating-btn { bottom: 12px; width: 44px; height: 44px; }
   .floating-btn--left { left: 12px; }
   .floating-btn--left-save { left: 60px; }
   .floating-btn--right { right: 12px; }
@@ -582,5 +582,46 @@ select:focus-visible {
   }
   .pending-actions { width: 100%; }
   .pending-actions .btn { flex: 1; }
+
+  /* D-01: 모바일 터치 영역 활성화 (최소 44px) */
+  .btn,
+  .btn-sm {
+    min-height: 44px;
+  }
+
+  .tab-btn,
+  .nav-link {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .modal-close {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  /* D-02: 테이블 오버플로우 방지 및 스크롤 개선 */
+  .table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+  }
+
+  .table-wrap::-webkit-scrollbar {
+    display: block;
+    height: 4px;
+  }
+
+  .table-wrap::-webkit-scrollbar-track {
+    background: rgba(16, 34, 32, 0.05);
+    border-radius: 2px;
+  }
+
+  .table-wrap::-webkit-scrollbar-thumb {
+    background: var(--tone-accent);
+    border-radius: 2px;
+  }
 }
 
