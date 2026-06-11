@@ -175,7 +175,7 @@ export const IsfUtils = (function initIsfUtils(global) {
   }
 
   const result = {
-    APP_VERSION: (typeof __APP_VERSION__ !== "undefined") ? __APP_VERSION__ : "0.11.2",
+    APP_VERSION: (typeof __APP_VERSION__ !== "undefined") ? __APP_VERSION__ : "0.11.3",
     formatMoney,
     getFinancialIncomeStatus,
     calculateIncomeTax,
