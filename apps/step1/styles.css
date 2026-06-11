@@ -598,6 +598,30 @@ input[type=number] {
     grid-column: 1 / 3;
     width: 100%;
   }
+  .income-row.is-editing.is-multi-allocation {
+    display: flex;
+    flex-direction: column;
+    grid-template-columns: none;
+    gap: var(--sp-md);
+  }
+  .income-row-fields {
+    grid-template-columns: 1fr;
+    gap: var(--sp-xs);
+  }
+  .income-row-fields .income-remove {
+    width: 100%;
+    margin-top: 4px;
+  }
+  .income-allocation-row {
+    grid-template-columns: 1.2fr 0.8fr auto auto;
+    gap: var(--sp-xs);
+    padding: 8px;
+  }
+  .income-allocation-row select,
+  .income-allocation-row input {
+    font-size: 0.8rem;
+    padding: 6px 8px;
+  }
   .editor-field-label { display: block; }
 
   .sankey-head-tools { width: 100%; justify-items: start; gap: 8px; }

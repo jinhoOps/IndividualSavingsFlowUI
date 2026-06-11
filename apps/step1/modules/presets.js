@@ -73,6 +73,12 @@ export function applyPreset(salaryValue, styleKey) {
   if (allocSalary > 0) allocations.push({ accountId: "acc-salary", amount: allocSalary });
   if (allocInvest > 0) allocations.push({ accountId: "acc-stock", amount: allocInvest });
 
+  const isAggressiveOrBeast = styleKey === "aggressive" || styleKey === "beast";
+  const startSavings = isAggressiveOrBeast ? 5000000 : 10000000;
+  const startInvest = isAggressiveOrBeast ? 10000000 : 5000000;
+  const startCash = 5000000;
+  const startDebt = 5000000;
+
   return {
     incomes: [{ id: "income-preset", name: "급여", amount: income, accountId: "acc-salary", allocations }],
     monthlyExpense: expense,
@@ -82,10 +88,10 @@ export function applyPreset(salaryValue, styleKey) {
     savingsItems: distributeAmount(savings, SAVINGS_DETAIL),
     investItems: distributeAmount(invest, INVEST_DETAIL),
     monthlyDebtPayment: 0,
-    startCash: 0,
-    startSavings: 0,
-    startInvest: 0,
-    startDebt: 0
+    startCash,
+    startSavings,
+    startInvest,
+    startDebt
   };
 }
 
@@ -167,6 +173,12 @@ export function applyPresetBySalary(salaryMan, styleKey) {
   if (allocSalary > 0) allocations.push({ accountId: "acc-salary", amount: allocSalary });
   if (allocInvest > 0) allocations.push({ accountId: "acc-stock", amount: allocInvest });
 
+  const isAggressiveOrBeast = styleKey === "aggressive" || styleKey === "beast";
+  const startSavings = isAggressiveOrBeast ? 5000000 : 10000000;
+  const startInvest = isAggressiveOrBeast ? 10000000 : 5000000;
+  const startCash = 5000000;
+  const startDebt = 5000000;
+
   return {
     incomes: [{ id: "income-preset", name: "급여", amount: income, accountId: "acc-salary", allocations }],
     monthlyExpense: expense,
@@ -176,10 +188,10 @@ export function applyPresetBySalary(salaryMan, styleKey) {
     savingsItems: distributeAmount(savings, SAVINGS_DETAIL.map(d => ({ ...d, accountId: "acc-salary" }))),
     investItems: distributeAmount(invest, INVEST_DETAIL.map(d => ({ ...d, accountId: "acc-stock" }))),
     monthlyDebtPayment: 0,
-    startCash: 0,
-    startSavings: 0,
-    startInvest: 0,
-    startDebt: 0
+    startCash,
+    startSavings,
+    startInvest,
+    startDebt
   };
 }
 
