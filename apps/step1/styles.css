@@ -374,7 +374,8 @@ input[type=number] {
 .control:has(input[name="monthlySavings"])::after,
 .control:has(input[name="monthlyInvest"])::after,
 .control:has(input[name="monthlyDebtPayment"])::after,
-.control:has(input[name="startDebt"])::after {
+.control:has(input[name="startDebt"])::after,
+.control:has(input[name="presetIncomeAmount"])::after {
   content: "만원";
 }
 
@@ -509,7 +510,8 @@ input[type=number] {
   background: rgba(255, 255, 255, 0.6);
 }
 
-.preset-style-btn.is-active {
+.preset-style-btn.is-active,
+.preset-modal-style-btn.is-active {
   background: var(--ink);
   color: #fff;
 }
@@ -535,7 +537,8 @@ input[type=number] {
   .preset-controls { flex-direction: column; align-items: stretch; }
   .preset-select { min-width: 0; width: 100%; }
   .preset-styles { width: 100%; justify-content: space-between; padding: 4px; }
-  .preset-style-btn { flex: 1; justify-content: center; }
+  .preset-style-btn,
+  .preset-modal-style-btn { flex: 1; justify-content: center; }
 
   .summary-cards { grid-template-columns: 1fr; }
   .controls-grid--simple, .controls-grid--advanced { grid-template-columns: 1fr; }

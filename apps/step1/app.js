@@ -282,12 +282,15 @@ function bindControls() {
   }
 
   // Preset Modal
-  let selectedPresetStyle = 'neutral';
+  let selectedModalPresetStyle = 'neutral';
   
   if (dom.openPresetBtn) {
     dom.openPresetBtn.addEventListener("click", () => {
       if (dom.presetModal) {
         dom.presetModal.hidden = false;
+        setTimeout(() => {
+          dom.presetModal.classList.add("is-active");
+        }, 10);
         
         const incomeWon = getMonthlyIncomeTotalWon(state.inputs);
         const incomeMan = Math.min(9900, Math.round(IsfUtils.toMan(incomeWon)));
@@ -295,7 +298,7 @@ function bindControls() {
           dom.presetIncomeAmount.value = incomeMan > 0 ? incomeMan : 400;
         }
         
-        selectedPresetStyle = 'neutral';
+        selectedModalPresetStyle = 'neutral';
         if (dom.presetModalStyleBtns) {
           dom.presetModalStyleBtns.forEach(btn => {
             if (btn.dataset.style === 'neutral') {
@@ -310,7 +313,10 @@ function bindControls() {
   }
 
   const closePresetModal = () => {
-    if (dom.presetModal) dom.presetModal.hidden = true;
+    if (dom.presetModal) {
+      dom.presetModal.classList.remove("is-active");
+      setTimeout(() => { dom.presetModal.hidden = true; }, 250);
+    }
   };
 
   if (dom.closePresetBtn) dom.closePresetBtn.addEventListener("click", closePresetModal);
@@ -321,7 +327,7 @@ function bindControls() {
       btn.addEventListener("click", () => {
         dom.presetModalStyleBtns.forEach(b => b.classList.remove('is-active'));
         btn.classList.add('is-active');
-        selectedPresetStyle = btn.dataset.style;
+        selectedModalPresetStyle = btn.dataset.style;
       });
     });
   }
@@ -341,7 +347,7 @@ function bindControls() {
         return;
       }
 
-      const newPreset = applyPresetByIncome(incomeMan, selectedPresetStyle);
+      const newPreset = applyPresetByIncome(incomeMan, selectedModalPresetStyle);
       if (!newPreset) return;
 
       const nextInputs = { ...DEFAULT_INPUTS, ...newPreset };
