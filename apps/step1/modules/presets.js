@@ -12,7 +12,8 @@ export const PRESET_SALARIES = [
 export const PRESET_STYLES = {
   conservative: { expenseRate: 0.5, savingsRate: 0.4, investRate: 0.1 },
   neutral: { expenseRate: 0.5, savingsRate: 0.3, investRate: 0.2 },
-  aggressive: { expenseRate: 0.4, savingsRate: 0.1, investRate: 0.5 }
+  aggressive: { expenseRate: 0.4, savingsRate: 0.1, investRate: 0.5 },
+  beast: { expenseRate: 0.3, savingsRate: 0.0, investRate: 0.7 }
 };
 
 const EXPENSE_DETAIL = [
@@ -71,6 +72,32 @@ export function applyPreset(salaryValue, styleKey) {
     expenseItems: distributeAmount(expense, EXPENSE_DETAIL),
     savingsItems: distributeAmount(savings, SAVINGS_DETAIL),
     investItems: distributeAmount(invest, INVEST_DETAIL),
+    monthlyDebtPayment: 0,
+    startCash: 0,
+    startSavings: 0,
+    startInvest: 0,
+    startDebt: 0
+  };
+}
+
+export function applyPresetByIncome(monthlyIncomeMan, styleKey) {
+  const style = PRESET_STYLES[styleKey];
+  if (!style) return null;
+  
+  const income = Math.max(0, Math.min(9900, Number(monthlyIncomeMan) || 0)) * 10000;
+  
+  const expense = Math.round(income * style.expenseRate);
+  const savings = Math.round(income * style.savingsRate);
+  const invest = Math.round(income * style.investRate);
+
+  return {
+    incomes: [{ id: "income-preset", name: "급여", amount: income, accountId: "acc-salary", allocations: [{ accountId: "acc-salary", amount: income }] }],
+    monthlyExpense: expense,
+    monthlySavings: savings,
+    monthlyInvest: invest,
+    expenseItems: distributeAmount(expense, EXPENSE_DETAIL.map(d => ({ ...d, accountId: "acc-living" }))),
+    savingsItems: distributeAmount(savings, SAVINGS_DETAIL.map(d => ({ ...d, accountId: "acc-salary" }))),
+    investItems: distributeAmount(invest, INVEST_DETAIL.map(d => ({ ...d, accountId: "acc-stock" }))),
     monthlyDebtPayment: 0,
     startCash: 0,
     startSavings: 0,

@@ -127,7 +127,8 @@ export function getItemEditorSignature(items) {
     group: i.group,
     annualRate: i.annualRate,
     maturityMonth: i.maturityMonth,
-    accountId: i.accountId
+    accountId: i.accountId,
+    allocations: i.allocations
   })));
 }
 

@@ -133,11 +133,28 @@ export function sanitizeIncomeItems(items, fallbackAmount) {
       const safeAccountId = typeof safeItem.accountId === "string" && safeItem.accountId.trim()
         ? safeItem.accountId.trim()
         : (MAGIC_MAPPING_DEFAULTS?.income || "acc-salary");
+      
+      const rawAllocs = Array.isArray(safeItem.allocations) ? safeItem.allocations : [];
+      const safeAllocations = rawAllocs.map(al => {
+        const safeAl = al && typeof al === "object" ? al : {};
+        return {
+          accountId: typeof safeAl.accountId === "string" && safeAl.accountId.trim()
+            ? safeAl.accountId.trim()
+            : safeAccountId,
+          amount: window.IsfUtils.sanitizeMoney(safeAl.amount, 0)
+        };
+      });
+
+      if (safeAllocations.length === 0) {
+        safeAllocations.push({ accountId: safeAccountId, amount: safeAmount });
+      }
+
       return {
         id: safeId,
         name: safeName,
         amount: safeAmount,
         accountId: safeAccountId,
+        allocations: safeAllocations
       };
     })
     .filter((item) => item.name || item.amount > 0)
@@ -162,12 +179,29 @@ function createIncomeId() {
   return `income-${Date.now()}-${Math.floor(Math.random() * 100000)}`;
 }
 
-export function createIncomeItem({ id, name, amount, accountId } = {}) {
+export function createIncomeItem({ id, name, amount, accountId, allocations } = {}) {
+  const safeAmount = window.IsfUtils.sanitizeMoney(amount, 0);
+  const defaultAccountId = typeof accountId === "string" && accountId.trim() ? accountId.trim() : (MAGIC_MAPPING_DEFAULTS?.income || "acc-salary");
+  
+  const rawAllocs = Array.isArray(allocations) ? allocations : [];
+  const safeAllocations = rawAllocs.map(al => {
+    const safeAl = al && typeof al === "object" ? al : {};
+    return {
+      accountId: typeof safeAl.accountId === "string" && safeAl.accountId.trim() ? safeAl.accountId.trim() : defaultAccountId,
+      amount: window.IsfUtils.sanitizeMoney(safeAl.amount, 0)
+    };
+  });
+
+  if (safeAllocations.length === 0) {
+    safeAllocations.push({ accountId: defaultAccountId, amount: safeAmount });
+  }
+
   return {
     id: typeof id === "string" && id.trim() ? id.trim() : createIncomeId(),
     name: normalizeIncomeName(name, 0),
-    amount: window.IsfUtils.sanitizeMoney(amount, 0),
-    accountId: typeof accountId === "string" && accountId.trim() ? accountId.trim() : (MAGIC_MAPPING_DEFAULTS?.income || "acc-salary"),
+    amount: safeAmount,
+    accountId: defaultAccountId,
+    allocations: safeAllocations
   };
 }
 

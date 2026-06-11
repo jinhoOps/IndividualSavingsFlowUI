@@ -11,6 +11,7 @@ import {
 import { 
   normalizeAllocationGroupName, getMonthlyIncomeTotalWon, getMonthlyAllocationTotalWon 
 } from "./input-sanitizer.js";
+import * as listRenderer from "./list-renderer.js";
 
 export function syncViewModeUi() {
   if (dom.saveViewToLocal) dom.saveViewToLocal.hidden = !state.isViewMode;
@@ -96,6 +97,12 @@ export function refreshInputsPanel(inputs) {
   helpers.applyInputsToForm(dom.inputsForm, inputs, { FORM_FIELD_KEYS, toMan: IsfUtils.toMan });
   state.suspendInputTracking = false;
   
+  const rawInputs = state.draftInputs || inputs;
+  ["income", "account", "expense", "savings", "invest"].forEach(group => {
+    const rawItems = group === "income" ? rawInputs.incomes : (group === "account" ? rawInputs.accounts : rawInputs[`${group}Items`]);
+    listRenderer.renderItemList(group, rawItems, { editing: state.itemEditors[group].active });
+  });
+
   syncDerivedMonthlyInputsToUi();
   syncGroupOptionsAll();
 }

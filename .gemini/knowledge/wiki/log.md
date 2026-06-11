@@ -1,5 +1,32 @@
 # Project Evolution Log (연대기적 작업 로그)
 
+## [2026-06-11] fix | 수입 다중 분배 유효성 검증 적용 및 Sankey 차트 흐름선 꼬임 에러 수정 (v0.11.7)
+- **목적**: 수입 항목별 계좌별 분배 시 전체 수입을 초과하여 배분되는 것을 방지하고, 미배분된 잔여 금액으로 인해 Sankey 차트 내 입출금 수지가 맞지 않아 발생하던 렌더링 에러를 해결함.
+- **주요 변경 사항**:
+  - **초과 배분 유효성 검증**: `apps/step1/app.js` 의 `applyItemEditor` 실행 시점에 수입 항목별 분배액 합산이 전체 수입 금액을 초과할 경우, 에러 경고 모달을 띄우고 데이터 적용을 중단하는 유효성 체크 로직 추가.
+  - **Sankey 잔여분 자동 밸런싱**: `apps/step1/modules/sankey-builder.js` 에서 수입 다중 배분 금액의 합산이 전체 수입보다 작을 경우, 그 차액(잔여 금액)을 디폴트 수입 계좌(`src.accountId`)로 자동 흐르게 하여 Sankey 다이어그램의 수지(Inflow = Outflow) 정합성을 100% 보장함.
+- **결과**: `npm run build` 프로덕션 빌드가 에러 없이 최종 완료되었으며, 수입 초과 배분 데이터 오염을 예방하고 차트에 즉각 정밀한 이체선들이 반영되도록 무결성을 확보함.
+
+## [2026-06-11] feat | Step 1 수입 다중 계좌 분배(Multi-Allocation) 기능 구현 완료 (v0.11.6)
+- **목적**: 하나의 수입원(예: 주급여)에서 여러 개의 계좌로 나누어 분배하여 입금될 수 있도록 데이터 구조를 확장하고 UI 및 Sankey 차트 연동을 고도화함.
+- **주요 변경 사항**:
+  - **데이터 모델 확장**: `apps/step1/modules/input-sanitizer.js`에서 수입 아이템에 `allocations` 배열 스키마를 추가하고 정제(Sanitization) 규칙을 구현함. (기존 단일 `accountId` 데이터와도 100% 호환되도록 fallback 구현)
+  - **다중 분배 UI 폼 개발**: `apps/step1/modules/list-renderer.js`에서 수입 편집 모드 진입 시 각 수입 하단에 '계좌별 분배 설정' 영역을 렌더링하도록 템플릿을 개편하고, 분배 추가/삭제 및 개별 금액 조절 인풋 서브폼 구현.
+  - **이벤트 델리게이션 바인딩**: `apps/step1/app.js`에서 분배 항목 관련 select/input 변경 이벤트를 처리하고, 분배 항목 추가/삭제 버튼 클릭 이벤트를 위임 수용하도록 제어 로직 보강.
+  - **서명(Signature) 로직 갱신**: `apps/step1/modules/state-helpers.js` 내의 `getItemEditorSignature` 함수에 `allocations` 배열 직렬화를 포함하여, 분배 내역 수정 시에도 변경 적용 버튼이 올바르게 활성화되도록 개선.
+  - **Sankey 차트 동적 맵핑**: `apps/step1/modules/sankey-builder.js` 및 `calculator.js`에서 다중 분배 목록이 존재할 경우, 각 분배 계좌별로 독립적인 금액 흐름 링크를 동적으로 생성하여 뿜어내도록 알고리즘 개편.
+  - **디자인 스타일 보강**: `apps/step1/styles.css` 하단에 다중 분배 폼 및 서브 행들을 위한 Editorial 스타일의 연한 배경 및 그리드 간격 스타일 추가.
+- **결과**: `npm run build` 프로덕션 빌드가 성공적으로 완료되었으며, 수입 ➔ 다중 계좌 분배를 통한 정교한 가계 흐름 설계가 가능해지고 UAT 테스트 5개 항목을 전원 Pass로 통과함.
+
+## [2026-06-11] fix | Step 1 관리 탭 런타임 바인딩 에러 해결 및 UX/스타일링 무결성 강화 (v0.11.5)
+- **목적**: Step 1 재무 설정 관리 탭 전환 기능 누락 버그와 최초 리스트 렌더링 부재 오류를 해결하여 사용성을 정상화하고, 단위 라벨(::after)과 인풋 placeholder의 정렬 틀어짐 문제를 해소함.
+- **주요 변경 사항**:
+  - **탭 전환 활성화**: `apps/step1/app.js` 내에 누락되어 있던 `activateMgmtTab` 및 `initMgmtTabs` 함수를 정의하고, 앱 기동 시점(`init`)에 관리 탭 클릭 리스너를 올바르게 바인딩함.
+  - **최초 리스트 렌더링 구현**: 앱 최초 기동 및 펜딩 데이터 변경 사항이 반영/취소되는 시점에 `refreshInputsPanel` 호출을 통해 수입, 계좌, 지출, 저축, 투자 리스트들이 `listRenderer.renderItemList`에 의해 정상적으로 렌더링되도록 개선함.
+  - **탭 간 데이터 동기화 최적화**: `apps/step1/modules/list-renderer.js`에서 계좌 참조 대상을 기존 `state.inputs.accounts`에서 `(state.draftInputs || state.inputs).accounts`로 전면 대체하여, 계좌 탭에서 펜딩 상태로 수정한 내용이 수입/지출/저축/투자 드롭다운과 배지에 즉각 동기화되도록 수정함.
+  - **디자인 무결성 개선**: `apps/step1/styles.css`에서 단위 라벨(`::after`)의 `bottom` 위치를 `24px`로 미세 정렬하여 수직 중앙 정렬을 맞추고, 숫자 인풋의 placeholder 정렬을 `text-align: right`로 통일하여 시각적 어긋남을 완치함.
+- **결과**: `npm run build` 프로덕션 빌드가 성공적으로 완료되었으며, 탭 조작 시의 데이터 연동과 입력 인터페이스의 시각적 무결성을 동시에 확보함.
+
 ## [2026-06-11] setup | OpenGSD Gemini 환경 글로벌 설정 및 미변환 경로 패치 완료
 - **목적**: OpenGSD의 최신 `gsd-core` 패키지를 사용하여 Gemini 환경에 맞춤화된 글로벌 컨텍스트 모니터 훅 및 설정을 갱신하고, 일부 템플릿 파일 내 미변환 `.claude` 경로를 Gemini 환경으로 수동 패치함.
 - **변경 사항**:

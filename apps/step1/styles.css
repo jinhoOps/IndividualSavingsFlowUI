@@ -358,8 +358,7 @@ input[type=number] {
 .control::after {
   position: absolute;
   right: 16px;
-  bottom: 50%;
-  transform: translateY(50%);
+  bottom: 24px;
   font-size: 0.75rem;
   color: var(--muted);
   pointer-events: none;
@@ -400,8 +399,7 @@ input[type=number] {
 }
 
 .control:has(input) input::placeholder {
-  text-align: left;
-  direction: ltr;
+  text-align: right;
   color: var(--muted);
   opacity: 0.7;
 }
@@ -1506,4 +1504,393 @@ body.is-onboarding-active .onboarding-overlay {
   background: rgba(214, 51, 108, 0.08);
   color: var(--deficit);
   border: 1px solid rgba(214, 51, 108, 0.18);
+}
+
+/* ────────────────────────────────────────
+   관리 탭 (Management Panel Tabs)
+──────────────────────────────────────── */
+.mgmt-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--rd-md);
+  overflow: hidden;
+  margin-bottom: var(--sp-md);
+}
+
+.mgmt-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 12px 8px;
+  border: none;
+  border-right: 1px solid var(--line);
+  background: transparent;
+  font: inherit;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+  min-height: 64px;
+  position: relative;
+}
+
+.mgmt-tab:last-child { border-right: none; }
+
+.mgmt-tab__icon {
+  font-size: 1.3rem;
+  line-height: 1;
+  display: block;
+}
+
+.mgmt-tab__label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.mgmt-tab:hover {
+  background: rgba(16, 34, 32, 0.04);
+  color: var(--ink);
+}
+
+.mgmt-tab.is-active {
+  background: var(--panel);
+  color: var(--tone-primary);
+  font-weight: 700;
+}
+
+.mgmt-tab.is-active::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 12px;
+  right: 12px;
+  height: 2px;
+  background: var(--tone-primary);
+  border-radius: 2px 2px 0 0;
+}
+
+.mgmt-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-md);
+}
+
+.surplus-transfer-banner span {
+  font-weight: 700;
+  color: var(--surplus);
+}
+
+.surplus-select {
+  border: 1px solid var(--line-strong);
+  border-radius: var(--rd-sm);
+  padding: 4px 8px;
+  background: rgba(255, 255, 255, 0.85);
+  font-family: inherit;
+  font-size: 0.9rem;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.account-list {
+  display: grid;
+  gap: var(--sp-sm);
+}
+
+.account-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  align-items: center;
+  padding: 8px 12px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--rd-sm);
+  min-height: 42px;
+}
+
+.account-row.is-editing {
+  grid-template-columns: 1fr auto;
+  gap: var(--sp-sm);
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.account-name {
+  font-size: var(--text-body-md);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* Phase 16: Export Feature Styles */
+.sankey-export-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.sankey-export-btn:hover {
+  background: var(--tone-primary) !important;
+  color: #fff !important;
+}
+
+.sankey-export-btn svg {
+  flex-shrink: 0;
+  stroke: currentColor;
+}
+
+.income-row:not(.is-editing) {
+  grid-template-columns: 1fr auto auto;
+  padding: 8px 12px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--rd-sm);
+}
+
+.income-name {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.income-row:not(.is-editing) .value {
+  font-weight: 700;
+  color: var(--income);
+  text-align: right;
+  min-width: 90px;
+}
+
+.income-meta {
+  display: inline-flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin-left: 8px;
+}
+
+.badge-account {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  border-radius: 4px;
+  line-height: 1.2;
+  transition: all 0.18s ease;
+  white-space: nowrap;
+}
+
+.badge-account--income {
+  background: rgba(30, 139, 124, 0.08);
+  color: var(--income);
+  border: 1px solid rgba(30, 139, 124, 0.18);
+}
+
+.badge-account--outflow {
+  background: rgba(49, 117, 182, 0.08);
+  color: var(--savings);
+  border: 1px solid rgba(49, 117, 182, 0.18);
+}
+
+.badge-account--none {
+  background: rgba(214, 51, 108, 0.08);
+  color: var(--deficit);
+  border: 1px solid rgba(214, 51, 108, 0.18);
+}
+
+/* ────────────────────────────────────────
+   관리 탭 (Management Panel Tabs)
+──────────────────────────────────────── */
+.mgmt-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--rd-md);
+  overflow: hidden;
+  margin-bottom: var(--sp-md);
+}
+
+.mgmt-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 12px 8px;
+  border: none;
+  border-right: 1px solid var(--line);
+  background: transparent;
+  font: inherit;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+  min-height: 64px;
+  position: relative;
+}
+
+.mgmt-tab:last-child { border-right: none; }
+
+.mgmt-tab__icon {
+  font-size: 1.3rem;
+  line-height: 1;
+  display: block;
+}
+
+.mgmt-tab__label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.mgmt-tab:hover {
+  background: rgba(16, 34, 32, 0.04);
+  color: var(--ink);
+}
+
+.mgmt-tab.is-active {
+  background: var(--panel);
+  color: var(--tone-primary);
+  font-weight: 700;
+}
+
+.mgmt-tab.is-active::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 12px;
+  right: 12px;
+  height: 2px;
+  background: var(--tone-primary);
+  border-radius: 2px 2px 0 0;
+}
+
+.mgmt-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-md);
+}
+
+.mgmt-panel[hidden] { display: none; }
+
+.advanced-block {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line);
+  border-radius: var(--rd-md);
+  overflow: hidden;
+}
+
+.advanced-block > .tab-list {
+  margin-bottom: 0;
+  background: var(--bg);
+  padding: 0 var(--sp-sm);
+  border-bottom: 1px solid var(--line);
+}
+
+.advanced-block > .controls-block {
+  border: none;
+  border-top: 1px solid var(--line);
+  border-radius: 0;
+  box-shadow: none;
+}
+
+@media (max-width: 768px) {
+  .mgmt-tabs { grid-template-columns: repeat(2, 1fr); }
+  .mgmt-tab { border-bottom: 1px solid var(--line); }
+  .mgmt-tab:nth-child(even) { border-right: none; }
+  .mgmt-tab:last-child,
+  .mgmt-tab:nth-last-child(2):nth-child(odd) { border-bottom: none; }
+}
+
+/* ────────────────────────────────────────
+   수입 다중 계좌 분배 (Income Multi-Allocation)
+──────────────────────────────────────── */
+.income-row.is-multi-allocation {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-md);
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--line);
+  border-radius: var(--rd-md);
+}
+
+.income-row-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: var(--sp-sm);
+  align-items: flex-end;
+}
+
+.income-allocations-section {
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+
+.allocations-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.allocations-title {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--muted);
+  letter-spacing: -0.01em;
+}
+
+.allocations-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.income-allocation-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto auto;
+  gap: var(--sp-sm);
+  align-items: center;
+  background: var(--bg);
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--rd-sm);
+}
+
+.income-allocation-row select,
+.income-allocation-row input {
+  font-size: 0.88rem;
+  padding: 6px 10px;
+  background: #fff;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--rd-sm);
+  width: 100%;
+}
+
+.allocation-unit {
+  font-size: 0.75rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.remove-allocation-btn {
+  background: transparent;
+  border: none;
+  font-size: 1.2rem;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 2px 8px;
+  line-height: 1;
+  transition: color 0.18s ease;
+}
+
+.remove-allocation-btn:hover {
+  color: var(--status-error);
 }

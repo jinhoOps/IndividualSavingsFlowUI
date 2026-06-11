@@ -57,8 +57,18 @@ export function renderItemList(group, items, options = {}) {
 export function renderIncomeItemHtml(item, opts) {
   const isEditing = !!opts.editing;
   if (!isEditing) {
-    const acc = (state.inputs.accounts || []).find(a => a.id === item.accountId);
-    const accHtml = acc ? `<span class="badge-account badge-account--income">${IsfUtils.escapeHtml(acc.name)}</span>` : `<span class="badge-account badge-account--none">계좌 미지정</span>`;
+    const accounts = ((state.draftInputs || state.inputs).accounts || []);
+    let accHtml = "";
+    if (Array.isArray(item.allocations) && item.allocations.length > 0) {
+      accHtml = item.allocations.map(al => {
+        const acc = accounts.find(a => a.id === al.accountId);
+        const name = acc ? acc.name : "미지정 계좌";
+        return `<span class="badge-account badge-account--income">${IsfUtils.escapeHtml(name)}: ${formatCurrency(al.amount)}</span>`;
+      }).join(" ");
+    } else {
+      const acc = accounts.find(a => a.id === item.accountId);
+      accHtml = acc ? `<span class="badge-account badge-account--income">${IsfUtils.escapeHtml(acc.name)}</span>` : `<span class="badge-account badge-account--none">계좌 미지정</span>`;
+    }
     return `
       <div class="income-row">
         <span class="income-name">${IsfUtils.escapeHtml(item.name)}</span>
@@ -69,23 +79,53 @@ export function renderIncomeItemHtml(item, opts) {
   }
 
   // 편집 모드일 때
-  const selectOptions = (state.inputs.accounts || []).map(acc => {
-    const selected = acc.id === item.accountId ? "selected" : "";
-    return `<option value="${acc.id}" ${selected}>${IsfUtils.escapeHtml(acc.name)}</option>`;
+  const accounts = ((state.draftInputs || state.inputs).accounts || []);
+  const allocations = Array.isArray(item.allocations) ? item.allocations : [];
+
+  const allocationsHtml = allocations.map((al, idx) => {
+    const selectOpts = accounts.map(acc => {
+      const selected = acc.id === al.accountId ? "selected" : "";
+      return `<option value="${acc.id}" ${selected}>${IsfUtils.escapeHtml(acc.name)}</option>`;
+    }).join("");
+
+    return `
+      <div class="income-allocation-row">
+        <select data-income-id="${item.id}" data-allocation-index="${idx}" data-field="allocationAccountId" class="allocation-select">
+          <option value="">계좌 선택...</option>
+          ${selectOpts}
+        </select>
+        <input type="number" value="${IsfUtils.toMan(al.amount)}" data-income-id="${item.id}" data-allocation-index="${idx}" data-field="allocationAmount" inputmode="decimal" class="allocation-amount-input" placeholder="분배 금액" />
+        <span class="allocation-unit">만원</span>
+        <button type="button" class="remove-allocation-btn" data-income-id="${item.id}" data-allocation-index="${idx}" title="분배 제거">×</button>
+      </div>
+    `;
   }).join("");
 
   return `
-    <div class="income-row is-editing">
-      <input type="text" value="${IsfUtils.escapeHtml(item.name)}" data-income-id="${item.id}" data-field="name" placeholder="이름" />
-      <select data-income-id="${item.id}" data-field="accountId" class="income-account-select">
-        <option value="">계좌 선택...</option>
-        ${selectOptions}
-      </select>
-      <input type="number" value="${IsfUtils.toMan(item.amount)}" data-income-id="${item.id}" data-field="amount" inputmode="decimal" placeholder="금액" />
-      <button class="income-remove" data-remove-income="${item.id}" title="삭제">
-        <svg class="income-remove-icon" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1-1H5v2h14V4z"/></svg>
-        <span class="income-remove-text">삭제</span>
-      </button>
+    <div class="income-row is-editing is-multi-allocation">
+      <div class="income-row-fields">
+        <div class="editor-field">
+          <label class="editor-field-label">수입명</label>
+          <input type="text" value="${IsfUtils.escapeHtml(item.name)}" data-income-id="${item.id}" data-field="name" placeholder="이름" />
+        </div>
+        <div class="editor-field">
+          <label class="editor-field-label">전체 수입(만원)</label>
+          <input type="number" value="${IsfUtils.toMan(item.amount)}" data-income-id="${item.id}" data-field="amount" inputmode="decimal" placeholder="금액" />
+        </div>
+        <button class="income-remove" data-remove-income="${item.id}" title="삭제">
+          <svg class="income-remove-icon" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1-1H5v2h14V4z"/></svg>
+          <span class="income-remove-text">삭제</span>
+        </button>
+      </div>
+      <div class="income-allocations-section">
+        <div class="allocations-header">
+          <span class="allocations-title">계좌별 분배 설정</span>
+          <button type="button" class="btn btn-ghost btn-xs add-allocation-btn" data-income-id="${item.id}">+ 분배 계좌 추가</button>
+        </div>
+        <div class="allocations-list">
+          ${allocationsHtml}
+        </div>
+      </div>
     </div>
   `;
 }
@@ -96,7 +136,7 @@ export function renderAllocationItemHtml(group, item, opts) {
   let metaHtml = "";
   if (!isEditing) {
     const baseMeta = buildAllocationMetaText(item, { showMaturity: group !== "expense" });
-    const acc = (state.inputs.accounts || []).find(a => a.id === item.accountId);
+    const acc = ((state.draftInputs || state.inputs).accounts || []).find(a => a.id === item.accountId);
     const accHtml = acc ? `<span class="badge-account badge-account--outflow">${IsfUtils.escapeHtml(acc.name)}</span>` : `<span class="badge-account badge-account--none">계좌 미지정</span>`;
     metaHtml = `
       <div class="allocation-meta">
@@ -131,7 +171,7 @@ export function renderAllocationItemHtml(group, item, opts) {
         <label class="editor-field-label">출금계좌</label>
         <select data-field="accountId" data-editor-id="${item.id}">
           <option value="">계좌 선택...</option>
-          ${(state.inputs.accounts || []).map(acc => {
+          ${((state.draftInputs || state.inputs).accounts || []).map(acc => {
             const selected = acc.id === item.accountId ? "selected" : "";
             return `<option value="${acc.id}" ${selected}>${IsfUtils.escapeHtml(acc.name)}</option>`;
           }).join("")}

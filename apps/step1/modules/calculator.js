@@ -32,6 +32,7 @@ export function buildMonthlySnapshot(inputs) {
       tone: "income",
       value: window.IsfUtils.sanitizeMoney(item?.amount, 0),
       accountId: item?.accountId,
+      allocations: item?.allocations,
     }))
     .filter((item) => item.value > 0);
   const expenseBreakdown = (Array.isArray(inputs.expenseItems) ? inputs.expenseItems : [])

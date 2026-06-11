@@ -136,14 +136,35 @@ export function buildSankeyData(snapshot, sortMode) {
   // 2. 링크 목록(links) 생성
   // 수입 ➔ 계좌 링크
   incomeSources.forEach((src) => {
-    const targetAccountId = resolveAccountId(src.accountId, MAGIC_MAPPING_DEFAULTS.income);
-    if (!targetAccountId) return;
-    links.push({
-      source: src.id,
-      target: targetAccountId,
-      value: src.value,
-      tone: src.tone
-    });
+    let allocatedTotal = 0;
+    
+    if (Array.isArray(src.allocations) && src.allocations.length > 0) {
+      src.allocations.forEach((alloc) => {
+        if (alloc.amount <= 0) return;
+        const targetAccountId = resolveAccountId(alloc.accountId, MAGIC_MAPPING_DEFAULTS.income);
+        if (!targetAccountId) return;
+        links.push({
+          source: src.id,
+          target: targetAccountId,
+          value: alloc.amount,
+          tone: src.tone
+        });
+        allocatedTotal += alloc.amount;
+      });
+    }
+
+    const remainder = src.value - allocatedTotal;
+    if (remainder > 0.01) {
+      const targetAccountId = resolveAccountId(src.accountId, MAGIC_MAPPING_DEFAULTS.income);
+      if (targetAccountId) {
+        links.push({
+          source: src.id,
+          target: targetAccountId,
+          value: remainder,
+          tone: src.tone
+        });
+      }
+    }
   });
 
   // 계좌 ➔ 세부 항목 링크

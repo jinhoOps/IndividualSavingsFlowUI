@@ -196,7 +196,7 @@
       <section class="panel controls-panel" aria-labelledby="inputsTitle">
         <div class="section-head section-head--controls">
           <h2 id="inputsTitle">
-            입력값
+            재무 설정
             <button id="toggleInputsMobile" class="mobile-input-toggle" type="button" aria-expanded="true"
               aria-controls="inputsPanelContent">
               접기
@@ -204,199 +204,236 @@
           </h2>
           <div class="section-head-tools">
             <button id="loadSample" class="btn btn-ghost btn-sm" type="button">샘플 불러오기</button>
+            <button id="openPresetBtn" class="btn btn-ghost btn-sm" type="button" title="투자 성향과 월수입 기준으로 프리셋 적용">프리셋</button>
             <button id="resetInputs" class="btn btn-ghost btn-sm" type="button">초기화</button>
           </div>
         </div>
         <div id="inputsPanelContent">
           <p class="hint">금액 단위: 만원(예: 350 = 3,500,000원) · 기본값만 입력해도 바로 계산됩니다.</p>
+
+          <!-- 관리 탭 네비게이션 -->
+          <div class="mgmt-tabs" role="tablist" aria-label="재무 설정 탭">
+            <button class="mgmt-tab is-active" id="mgmtTabIncome" type="button" role="tab"
+              aria-selected="true" aria-controls="mgmtPanelIncome" data-mgmt-tab="income">
+              <span class="mgmt-tab__icon">💰</span>
+              <span class="mgmt-tab__label">월수입</span>
+            </button>
+            <button class="mgmt-tab" id="mgmtTabAccount" type="button" role="tab"
+              aria-selected="false" aria-controls="mgmtPanelAccount" data-mgmt-tab="account">
+              <span class="mgmt-tab__icon">🏦</span>
+              <span class="mgmt-tab__label">계좌</span>
+            </button>
+            <button class="mgmt-tab" id="mgmtTabFlow" type="button" role="tab"
+              aria-selected="false" aria-controls="mgmtPanelFlow" data-mgmt-tab="flow">
+              <span class="mgmt-tab__icon">📊</span>
+              <span class="mgmt-tab__label">지출·저축·투자</span>
+            </button>
+            <button class="mgmt-tab" id="mgmtTabSettings" type="button" role="tab"
+              aria-selected="false" aria-controls="mgmtPanelSettings" data-mgmt-tab="settings">
+              <span class="mgmt-tab__icon">⚙️</span>
+              <span class="mgmt-tab__label">설정</span>
+            </button>
+          </div>
+
           <form id="inputsForm" autocomplete="off">
-            <div class="controls-block" id="presetBlock">
-              <div class="block-head">
-                <h3>프리셋 템플릿</h3>
-              </div>
-              <p class="hint">연봉과 투자 성향을 선택하여 간편하게 기본 데이터를 채워보세요.</p>
-              <div class="preset-controls">
-                <select id="presetSalary" class="preset-select" aria-label="연봉 선택"></select>
-                <div class="preset-styles" role="group" aria-label="투자 성향">
-                  <button type="button" data-style="conservative" class="btn btn-ghost btn-sm preset-style-btn">안정형</button>
-                  <button type="button" data-style="neutral" class="btn btn-ghost btn-sm preset-style-btn">중립형</button>
-                  <button type="button" data-style="aggressive" class="btn btn-ghost btn-sm preset-style-btn">적극형</button>
-                </div>
-                <button type="button" id="applyPresetBtn" class="btn btn-primary btn-sm">프리셋 적용</button>
-              </div>
-            </div>
 
-            <div class="controls-block">
-              <div class="block-head">
-                <h3>월 수입 항목</h3>
-                <div class="block-head-tools">
-                  <button id="editIncomeItems" class="btn btn-ghost btn-sm" type="button">항목 편집</button>
-                </div>
-              </div>
-              <p class="hint">수입 항목별로 입금받을 계좌를 연결할 수 있습니다. [항목 편집] 버튼을 클릭하여 설정해보세요.</p>
-              <div id="incomeList" class="income-list" aria-live="polite"></div>
-              <div id="incomeEditorActions" class="editor-actions" hidden>
-                <button id="addIncomeItem" class="btn btn-ghost btn-sm" type="button">항목 추가</button>
-                <button id="applyIncomeItems" class="btn btn-primary btn-sm" type="button">항목 변경 적용</button>
-                <button id="cancelIncomeItems" class="btn btn-ghost btn-sm" type="button">편집 취소</button>
-              </div>
-              <p id="incomeTotalHint" class="hint"></p>
-            </div>
+            <!-- ── 탭 1: 월수입 ── -->
+            <div id="mgmtPanelIncome" class="mgmt-panel" role="tabpanel" aria-labelledby="mgmtTabIncome">
 
-            <div class="controls-block">
-              <div class="block-head">
-                <h3>통장(계좌) 관리</h3>
-                <div class="block-head-tools">
-                  <button id="editAccountItems" class="btn btn-ghost btn-sm" type="button">항목 편집</button>
-                </div>
-              </div>
-              <p class="hint">자산 흐름의 중간 경로(통로)가 되는 계좌를 관리합니다. [항목 편집]을 눌러 추가/삭제해보세요.</p>
-              <div id="accountList" class="account-list" aria-live="polite"></div>
-              <div id="accountEditorActions" class="editor-actions" hidden>
-                <button id="addAccountItem" class="btn btn-ghost btn-sm" type="button">통장 추가</button>
-                <button id="applyAccountItems" class="btn btn-primary btn-sm" type="button">변경 적용</button>
-                <button id="cancelAccountItems" class="btn btn-ghost btn-sm" type="button">편집 취소</button>
-              </div>
-            </div>
+              <!-- 프리셋 영역이 상단 프리셋 모달로 통합되었습니다. -->
 
-            <div class="controls-block">
-              <h3>간편 입력</h3>
-              <div class="controls-grid controls-grid--simple">
-                <div class="control">
-                  <label for="startCash">초기 현금</label>
-                  <input id="startCash" name="startCash" type="number" step="1" inputmode="decimal" />
-                </div>
-                <div class="control">
-                  <label for="startSavings">초기 저축잔액</label>
-                  <input id="startSavings" name="startSavings" type="number" min="0" step="1" inputmode="decimal" />
-                </div>
-                <div class="control">
-                  <label for="startInvest">초기 투자잔액</label>
-                  <input id="startInvest" name="startInvest" type="number" min="0" step="1" inputmode="decimal" />
-                </div>
-                <div class="control">
-                  <label for="horizonYears">시뮬레이션 기간(년)</label>
-                  <input id="horizonYears" name="horizonYears" type="number" min="1" max="40" step="1"
-                    inputmode="decimal" />
-                </div>
-                <div class="control">
-                  <label for="monthlyExpense">월 생활비(자동합산)</label>
-                  <input id="monthlyExpense" name="monthlyExpense" type="number" min="0" step="1" readonly
-                    inputmode="decimal" class="jump-advanced-field" data-advanced-target="expense"
-                    title="클릭하면 고급 설정의 생활비 상세 항목으로 이동" />
-                </div>
-                <div class="control">
-                  <label for="monthlySavings">월 저축(자동합산)</label>
-                  <input id="monthlySavings" name="monthlySavings" type="number" min="0" step="1" readonly
-                    inputmode="decimal" class="jump-advanced-field" data-advanced-target="savings"
-                    title="클릭하면 고급 설정의 저축 상세 항목으로 이동" />
-                </div>
-                <div class="control">
-                  <label for="monthlyInvest">월 투자(자동합산)</label>
-                  <input id="monthlyInvest" name="monthlyInvest" type="number" min="0" step="1" readonly
-                    inputmode="decimal" class="jump-advanced-field" data-advanced-target="invest"
-                    title="클릭하면 고급 설정의 투자 상세 항목으로 이동" />
-                </div>
-                <div class="control">
-                  <label for="monthlyDebtPayment">월 부채상환</label>
-                  <input id="monthlyDebtPayment" name="monthlyDebtPayment" type="number" min="0" step="1"
-                    inputmode="decimal" />
-                </div>
-              </div>
-              <p class="hint">초기 자산(현금/저축/투자)을 구분하여 입력하면 자산별 수익률이 반영되어 더 정확한 추이가 계산됩니다.</p>
-              <p class="hint">생활비/저축/투자 칸을 클릭하면 고급 설정의 상세 항목으로 이동합니다.</p>
-            </div>
-
-            <details id="advancedSettings" class="advanced-block">
-              <summary>고급 설정 (생활비 상세 / 기타 초기자산 / 증가율 / 수익률)</summary>
-              <div class="tab-list" role="tablist" aria-label="상세 항목 탭">
-                <button id="advancedTabExpense" class="tab-btn is-active" type="button" role="tab"
-                  aria-selected="true" aria-controls="expenseAdvancedBlock" data-advanced-tab="expense">생활비</button>
-                <button id="advancedTabSavings" class="tab-btn" type="button" role="tab" aria-selected="false"
-                  aria-controls="savingsAdvancedBlock" data-advanced-tab="savings">저축</button>
-                <button id="advancedTabInvest" class="tab-btn" type="button" role="tab" aria-selected="false"
-                  aria-controls="investAdvancedBlock" data-advanced-tab="invest">투자</button>
-                <button id="advancedTabRates" class="tab-btn" type="button" role="tab"
-                  aria-selected="false" aria-controls="ratesAdvancedBlock" data-advanced-tab="rates">수익률/기타</button>
-              </div>
-              <div id="expenseAdvancedBlock" class="controls-block" data-advanced-block="expense">
+              <!-- 수입 항목 -->
+              <div class="controls-block">
                 <div class="block-head">
-                  <h3>생활비 상세 항목</h3>
+                  <h3>월 수입 항목</h3>
                   <div class="block-head-tools">
-                    <label class="item-sort" for="expenseSortMode">
-                      <span>정렬</span>
-                      <select id="expenseSortMode" class="item-sort-select">
-                        <option value="default">기본(입력순)</option>
-                        <option value="amount-desc">금액 큰순</option>
-                        <option value="amount-asc">금액 작은순</option>
-                        <option value="name-asc">이름 가나다순</option>
-                      </select>
-                    </label>
-                    <button id="editExpenseItems" class="btn btn-ghost btn-sm" type="button">항목 편집</button>
+                    <button id="editIncomeItems" class="btn btn-ghost btn-sm" type="button">항목 편집</button>
                   </div>
                 </div>
-                <p class="hint">각 생활비 항목이 어떤 계좌에서 출금될지 연결할 수 있습니다. [항목 편집]을 통해 출금계좌 및 대분류 그룹을 변경해보세요.</p>
-                <div id="expenseList" class="expense-list" aria-live="polite"></div>
-                <div id="expenseEditorActions" class="editor-actions" hidden>
-                  <button id="addExpenseItem" class="btn btn-ghost btn-sm" type="button">항목 추가</button>
-                  <button id="applyExpenseItems" class="btn btn-primary btn-sm" type="button">항목 변경 적용</button>
-                  <button id="cancelExpenseItems" class="btn btn-ghost btn-sm" type="button">편집 취소</button>
+                <p class="hint">각 수입이 입금될 계좌를 연결하면 Sankey 다이어그램에 정확히 반영됩니다.</p>
+                <div id="incomeList" class="income-list" aria-live="polite"></div>
+                <div id="incomeEditorActions" class="editor-actions" hidden>
+                  <button id="addIncomeItem" class="btn btn-ghost btn-sm" type="button">항목 추가</button>
+                  <button id="applyIncomeItems" class="btn btn-primary btn-sm" type="button">항목 변경 적용</button>
+                  <button id="cancelIncomeItems" class="btn btn-ghost btn-sm" type="button">편집 취소</button>
                 </div>
-                <p id="expenseTotalHint" class="hint"></p>
+                <p id="incomeTotalHint" class="hint"></p>
               </div>
-              <div id="savingsAdvancedBlock" class="controls-block" data-advanced-block="savings">
+
+              <!-- 잉여현금 이체 안내 (surplusTransferBanner 중복 방지용: 여기선 hint만) -->
+              <p class="hint">수입 합계 기준으로 남은 잉여현금은 화면 상단 카드에서 이체 계좌를 선택할 수 있습니다.</p>
+            </div>
+
+            <!-- ── 탭 2: 계좌 ── -->
+            <div id="mgmtPanelAccount" class="mgmt-panel" role="tabpanel" aria-labelledby="mgmtTabAccount" hidden>
+              <div class="controls-block">
                 <div class="block-head">
-                  <h3>저축 상세 항목</h3>
+                  <h3>통장(계좌) 관리</h3>
                   <div class="block-head-tools">
-                    <label class="item-sort" for="savingsSortMode">
-                      <span>정렬</span>
-                      <select id="savingsSortMode" class="item-sort-select">
-                        <option value="default">기본(입력순)</option>
-                        <option value="amount-desc">금액 큰순</option>
-                        <option value="amount-asc">금액 작은순</option>
-                        <option value="name-asc">이름 가나다순</option>
-                      </select>
-                    </label>
-                    <button id="editSavingsItems" class="btn btn-ghost btn-sm" type="button">항목 편집</button>
+                    <button id="editAccountItems" class="btn btn-ghost btn-sm" type="button">항목 편집</button>
                   </div>
                 </div>
-                <p class="hint">각 저축 적금 항목의 이체(출금) 계좌를 연결하고 이자율을 관리합니다. [항목 편집]을 눌러 연동해보세요.</p>
-                <div id="savingsList" class="savings-list" aria-live="polite"></div>
-                <div id="savingsEditorActions" class="editor-actions" hidden>
-                  <button id="addSavingsItem" class="btn btn-ghost btn-sm" type="button">항목 추가</button>
-                  <button id="applySavingsItems" class="btn btn-primary btn-sm" type="button">항목 변경 적용</button>
-                  <button id="cancelSavingsItems" class="btn btn-ghost btn-sm" type="button">편집 취소</button>
+                <p class="hint">수입·지출·저축·투자 흐름의 경유 계좌입니다. 계좌 이름을 실제 통장명으로 설정하면 Sankey에 그대로 표시됩니다.</p>
+                <div id="accountList" class="account-list" aria-live="polite"></div>
+                <div id="accountEditorActions" class="editor-actions" hidden>
+                  <button id="addAccountItem" class="btn btn-ghost btn-sm" type="button">통장 추가</button>
+                  <button id="applyAccountItems" class="btn btn-primary btn-sm" type="button">변경 적용</button>
+                  <button id="cancelAccountItems" class="btn btn-ghost btn-sm" type="button">편집 취소</button>
                 </div>
-                <p id="savingsTotalHint" class="hint"></p>
               </div>
-              <div id="investAdvancedBlock" class="controls-block" data-advanced-block="invest">
-                <div class="block-head">
-                  <h3>투자 상세 항목</h3>
-                  <div class="block-head-tools">
-                    <label class="item-sort" for="investSortMode">
-                      <span>정렬</span>
-                      <select id="investSortMode" class="item-sort-select">
-                        <option value="default">기본(입력순)</option>
-                        <option value="amount-desc">금액 큰순</option>
-                        <option value="amount-asc">금액 작은순</option>
-                        <option value="name-asc">이름 가나다순</option>
-                      </select>
-                    </label>
-                    <button id="editInvestItems" class="btn btn-ghost btn-sm" type="button">항목 편집</button>
+            </div>
+
+            <!-- ── 탭 3: 지출·저축·투자 ── -->
+            <div id="mgmtPanelFlow" class="mgmt-panel" role="tabpanel" aria-labelledby="mgmtTabFlow" hidden>
+
+              <!-- 간편 요약 -->
+              <div class="controls-block">
+                <h3>월 지출·저축·투자 요약</h3>
+                <p class="hint">아래 항목 상세 설정을 마치면 자동으로 합산됩니다.</p>
+                <div class="controls-grid controls-grid--simple">
+                  <div class="control">
+                    <label for="monthlyExpense">월 생활비</label>
+                    <input id="monthlyExpense" name="monthlyExpense" type="number" min="0" step="1" readonly
+                      inputmode="decimal" class="jump-advanced-field" data-advanced-target="expense"
+                      title="아래 생활비 상세 항목에서 자동합산됩니다" />
+                  </div>
+                  <div class="control">
+                    <label for="monthlySavings">월 저축</label>
+                    <input id="monthlySavings" name="monthlySavings" type="number" min="0" step="1" readonly
+                      inputmode="decimal" class="jump-advanced-field" data-advanced-target="savings"
+                      title="아래 저축 상세 항목에서 자동합산됩니다" />
+                  </div>
+                  <div class="control">
+                    <label for="monthlyInvest">월 투자</label>
+                    <input id="monthlyInvest" name="monthlyInvest" type="number" min="0" step="1" readonly
+                      inputmode="decimal" class="jump-advanced-field" data-advanced-target="invest"
+                      title="아래 투자 상세 항목에서 자동합산됩니다" />
+                  </div>
+                  <div class="control">
+                    <label for="monthlyDebtPayment">월 부채상환</label>
+                    <input id="monthlyDebtPayment" name="monthlyDebtPayment" type="number" min="0" step="1"
+                      inputmode="decimal" />
                   </div>
                 </div>
-                <p class="hint">투자금의 출금(투자) 계좌를 지정할 수 있습니다. [항목 편집] 버튼을 눌러 연동 계좌를 변경해보세요.</p>
-                <div id="investList" class="invest-list" aria-live="polite"></div>
-                <div id="investEditorActions" class="editor-actions" hidden>
-                  <button id="addInvestItem" class="btn btn-ghost btn-sm" type="button">항목 추가</button>
-                  <button id="applyInvestItems" class="btn btn-primary btn-sm" type="button">항목 변경 적용</button>
-                  <button id="cancelInvestItems" class="btn btn-ghost btn-sm" type="button">편집 취소</button>
-                </div>
-                <p id="investTotalHint" class="hint"></p>
               </div>
-              <datalist id="expenseGroupOptions"></datalist>
-              <datalist id="savingsGroupOptions"></datalist>
-              <datalist id="investGroupOptions"></datalist>
+
+              <!-- 상세 항목 탭 (기존 advancedSettings 내용) -->
+              <div class="advanced-block" id="advancedSettings">
+                <div class="tab-list" role="tablist" aria-label="상세 항목 탭">
+                  <button id="advancedTabExpense" class="tab-btn is-active" type="button" role="tab"
+                    aria-selected="true" aria-controls="expenseAdvancedBlock" data-advanced-tab="expense">생활비</button>
+                  <button id="advancedTabSavings" class="tab-btn" type="button" role="tab" aria-selected="false"
+                    aria-controls="savingsAdvancedBlock" data-advanced-tab="savings">저축</button>
+                  <button id="advancedTabInvest" class="tab-btn" type="button" role="tab" aria-selected="false"
+                    aria-controls="investAdvancedBlock" data-advanced-tab="invest">투자</button>
+                  <button id="advancedTabRates" class="tab-btn" type="button" role="tab"
+                    aria-selected="false" aria-controls="ratesAdvancedBlock" data-advanced-tab="rates">수익률/기타</button>
+                </div>
+                <div id="expenseAdvancedBlock" class="controls-block" data-advanced-block="expense">
+                  <div class="block-head">
+                    <h3>생활비 상세 항목</h3>
+                    <div class="block-head-tools">
+                      <label class="item-sort" for="expenseSortMode">
+                        <span>정렬</span>
+                        <select id="expenseSortMode" class="item-sort-select">
+                          <option value="default">기본(입력순)</option>
+                          <option value="amount-desc">금액 큰순</option>
+                          <option value="amount-asc">금액 작은순</option>
+                          <option value="name-asc">이름 가나다순</option>
+                        </select>
+                      </label>
+                      <button id="editExpenseItems" class="btn btn-ghost btn-sm" type="button">항목 편집</button>
+                    </div>
+                  </div>
+                  <p class="hint">각 지출이 어떤 계좌에서 출금될지 지정합니다.</p>
+                  <div id="expenseList" class="expense-list" aria-live="polite"></div>
+                  <div id="expenseEditorActions" class="editor-actions" hidden>
+                    <button id="addExpenseItem" class="btn btn-ghost btn-sm" type="button">항목 추가</button>
+                    <button id="applyExpenseItems" class="btn btn-primary btn-sm" type="button">항목 변경 적용</button>
+                    <button id="cancelExpenseItems" class="btn btn-ghost btn-sm" type="button">편집 취소</button>
+                  </div>
+                  <p id="expenseTotalHint" class="hint"></p>
+                </div>
+                <div id="savingsAdvancedBlock" class="controls-block" data-advanced-block="savings">
+                  <div class="block-head">
+                    <h3>저축 상세 항목</h3>
+                    <div class="block-head-tools">
+                      <label class="item-sort" for="savingsSortMode">
+                        <span>정렬</span>
+                        <select id="savingsSortMode" class="item-sort-select">
+                          <option value="default">기본(입력순)</option>
+                          <option value="amount-desc">금액 큰순</option>
+                          <option value="amount-asc">금액 작은순</option>
+                          <option value="name-asc">이름 가나다순</option>
+                        </select>
+                      </label>
+                      <button id="editSavingsItems" class="btn btn-ghost btn-sm" type="button">항목 편집</button>
+                    </div>
+                  </div>
+                  <p class="hint">각 적금의 이체 계좌와 연 이자율을 관리합니다.</p>
+                  <div id="savingsList" class="savings-list" aria-live="polite"></div>
+                  <div id="savingsEditorActions" class="editor-actions" hidden>
+                    <button id="addSavingsItem" class="btn btn-ghost btn-sm" type="button">항목 추가</button>
+                    <button id="applySavingsItems" class="btn btn-primary btn-sm" type="button">항목 변경 적용</button>
+                    <button id="cancelSavingsItems" class="btn btn-ghost btn-sm" type="button">편집 취소</button>
+                  </div>
+                  <p id="savingsTotalHint" class="hint"></p>
+                </div>
+                <div id="investAdvancedBlock" class="controls-block" data-advanced-block="invest">
+                  <div class="block-head">
+                    <h3>투자 상세 항목</h3>
+                    <div class="block-head-tools">
+                      <label class="item-sort" for="investSortMode">
+                        <span>정렬</span>
+                        <select id="investSortMode" class="item-sort-select">
+                          <option value="default">기본(입력순)</option>
+                          <option value="amount-desc">금액 큰순</option>
+                          <option value="amount-asc">금액 작은순</option>
+                          <option value="name-asc">이름 가나다순</option>
+                        </select>
+                      </label>
+                      <button id="editInvestItems" class="btn btn-ghost btn-sm" type="button">항목 편집</button>
+                    </div>
+                  </div>
+                  <p class="hint">투자금의 출금 계좌를 지정합니다.</p>
+                  <div id="investList" class="invest-list" aria-live="polite"></div>
+                  <div id="investEditorActions" class="editor-actions" hidden>
+                    <button id="addInvestItem" class="btn btn-ghost btn-sm" type="button">항목 추가</button>
+                    <button id="applyInvestItems" class="btn btn-primary btn-sm" type="button">항목 변경 적용</button>
+                    <button id="cancelInvestItems" class="btn btn-ghost btn-sm" type="button">편집 취소</button>
+                  </div>
+                  <p id="investTotalHint" class="hint"></p>
+                </div>
+                <datalist id="expenseGroupOptions"></datalist>
+                <datalist id="savingsGroupOptions"></datalist>
+                <datalist id="investGroupOptions"></datalist>
+              </div>
+            </div>
+
+            <!-- ── 탭 4: 설정 ── -->
+            <div id="mgmtPanelSettings" class="mgmt-panel" role="tabpanel" aria-labelledby="mgmtTabSettings" hidden>
+              <div class="controls-block">
+                <h3>초기 자산</h3>
+                <div class="controls-grid controls-grid--simple">
+                  <div class="control">
+                    <label for="startCash">초기 현금</label>
+                    <input id="startCash" name="startCash" type="number" step="1" inputmode="decimal" />
+                  </div>
+                  <div class="control">
+                    <label for="startSavings">초기 저축잔액</label>
+                    <input id="startSavings" name="startSavings" type="number" min="0" step="1" inputmode="decimal" />
+                  </div>
+                  <div class="control">
+                    <label for="startInvest">초기 투자잔액</label>
+                    <input id="startInvest" name="startInvest" type="number" min="0" step="1" inputmode="decimal" />
+                  </div>
+                  <div class="control">
+                    <label for="horizonYears">시뮬레이션 기간</label>
+                    <input id="horizonYears" name="horizonYears" type="number" min="1" max="40" step="1"
+                      inputmode="decimal" />
+                  </div>
+                </div>
+              </div>
               <div id="ratesAdvancedBlock" class="controls-block controls-block--rates" data-advanced-block="rates">
                 <h3>증가율 / 수익률 / 초기부채</h3>
                 <div class="controls-grid controls-grid--advanced">
@@ -410,13 +447,13 @@
                       step="0.1" inputmode="decimal" />
                   </div>
                   <div class="control">
-                    <label for="annualExpenseGrowth">생활비 증가율(연, %, 기준금리)</label>
+                    <label for="annualExpenseGrowth">생활비 증가율(연, %)</label>
                     <input id="annualExpenseGrowth" name="annualExpenseGrowth" type="number" min="0" max="30"
                       step="0.1" inputmode="decimal" />
                   </div>
                   <div class="control">
                     <div class="label-row">
-                      <label for="annualSavingsYield">저축 기본 수익률(연, %, 항목 기본값)</label>
+                      <label for="annualSavingsYield">저축 기본 수익률(연, %)</label>
                       <button type="button" class="inline-tip" aria-label="저축 기본 수익률 설명"
                         data-tooltip="저축 상세 항목의 연 이자율을 비워둔 항목에 적용됩니다.">
                         ?
@@ -437,10 +474,12 @@
                   </div>
                 </div>
               </div>
-            </details>
+            </div>
+
           </form>
         </div>
       </section>
+
     </main>
   </div>
   <div id="mobileEditorFab" class="mobile-editor-fab" hidden>
@@ -485,6 +524,37 @@
       </div>
       <div class="modal-footer">
         <button id="applySmartAddBtn" class="btn btn-primary w-full" type="button" disabled>지출 항목에 추가</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="presetModal" class="modal-overlay" hidden>
+    <div class="modal-content modal-content--sm">
+      <div class="modal-header">
+        <h2 class="modal-title">프리셋 빠른 생성</h2>
+        <button id="closePresetBtn" class="modal-close" type="button" aria-label="닫기">×</button>
+      </div>
+      <div class="modal-body">
+        <p class="hint mb-md">월 급여와 투자 성향을 선택해 자산 흐름을 한 번에 구성합니다.</p>
+        
+        <div style="margin-bottom: 20px;">
+          <label class="editor-field-label" style="font-weight: 700; font-size: 0.78rem; display: block; margin-bottom: 6px;">1. 투자 성향 선택</label>
+          <div class="preset-styles" role="group" aria-label="투자 성향" style="display: flex; gap: 6px;">
+            <button type="button" data-style="conservative" class="btn btn-ghost btn-sm preset-modal-style-btn">안정형</button>
+            <button type="button" data-style="neutral" class="btn btn-ghost btn-sm preset-modal-style-btn is-active">중립형</button>
+            <button type="button" data-style="aggressive" class="btn btn-ghost btn-sm preset-modal-style-btn">적극형</button>
+            <button type="button" data-style="beast" class="btn btn-ghost btn-sm preset-modal-style-btn">야수형</button>
+          </div>
+        </div>
+
+        <div class="control">
+          <label for="presetIncomeAmount">2. 월 급여 설정 (최대 9,900만원)</label>
+          <input type="number" id="presetIncomeAmount" name="presetIncomeAmount" min="0" max="9900" step="10" value="400" placeholder="예: 400" />
+        </div>
+      </div>
+      <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px;">
+        <button type="button" id="closePresetModalCancel" class="btn btn-ghost btn-sm">취소</button>
+        <button type="button" id="applyModalPresetBtn" class="btn btn-primary btn-sm">적용하기</button>
       </div>
     </div>
   </div>

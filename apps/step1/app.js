@@ -39,7 +39,7 @@ import {
 
 import { dom } from "./modules/dom.js";
 import { state } from "./modules/state.js";
-import { PRESET_SALARIES, applyPreset } from "./modules/presets.js";
+import { PRESET_SALARIES, applyPreset, applyPresetByIncome } from "./modules/presets.js";
 
 import {
   renderSankey, exportSankeyToPng
@@ -78,6 +78,7 @@ function init() {
   syncMobileInputsPanelVisibility();
   setActiveAdvancedTab(state.activeAdvancedTab);
   syncAdvancedTabBlockVisibility();
+  initMgmtTabs();
   refreshInputsPanel(state.inputs);
   syncGroupOptionsAll();
   setPendingBarVisible(false);
@@ -277,6 +278,83 @@ function bindControls() {
       state.draftInputs = sanitizeInputs(draft);
       markPendingChanges();
       renderAll();
+    });
+  }
+
+  // Preset Modal
+  let selectedPresetStyle = 'neutral';
+  
+  if (dom.openPresetBtn) {
+    dom.openPresetBtn.addEventListener("click", () => {
+      if (dom.presetModal) {
+        dom.presetModal.hidden = false;
+        
+        const incomeWon = getMonthlyIncomeTotalWon(state.inputs);
+        const incomeMan = Math.min(9900, Math.round(IsfUtils.toMan(incomeWon)));
+        if (dom.presetIncomeAmount) {
+          dom.presetIncomeAmount.value = incomeMan > 0 ? incomeMan : 400;
+        }
+        
+        selectedPresetStyle = 'neutral';
+        if (dom.presetModalStyleBtns) {
+          dom.presetModalStyleBtns.forEach(btn => {
+            if (btn.dataset.style === 'neutral') {
+              btn.classList.add('is-active');
+            } else {
+              btn.classList.remove('is-active');
+            }
+          });
+        }
+      }
+    });
+  }
+
+  const closePresetModal = () => {
+    if (dom.presetModal) dom.presetModal.hidden = true;
+  };
+
+  if (dom.closePresetBtn) dom.closePresetBtn.addEventListener("click", closePresetModal);
+  if (dom.closePresetModalCancel) dom.closePresetModalCancel.addEventListener("click", closePresetModal);
+
+  if (dom.presetModalStyleBtns) {
+    dom.presetModalStyleBtns.forEach(btn => {
+      btn.addEventListener("click", () => {
+        dom.presetModalStyleBtns.forEach(b => b.classList.remove('is-active'));
+        btn.classList.add('is-active');
+        selectedPresetStyle = btn.dataset.style;
+      });
+    });
+  }
+
+  if (dom.applyModalPresetBtn) {
+    dom.applyModalPresetBtn.addEventListener("click", () => {
+      if (!dom.presetIncomeAmount) return;
+      const incomeMan = parseInt(dom.presetIncomeAmount.value, 10);
+      
+      if (isNaN(incomeMan) || incomeMan < 0 || incomeMan > 9900) {
+        alert("월 급여는 0원 이상 9900만원 이하로 입력해주세요.");
+        return;
+      }
+
+      const isDirty = hasPendingChanges() || JSON.stringify(state.inputs) !== JSON.stringify(DEFAULT_INPUTS);
+      if (isDirty && !window.confirm('데이터 초기화 경고: 기존에 작성하신 자산 데이터가 모두 초기화되고 프리셋으로 덮어씌워집니다. 계속하시겠습니까?')) {
+        return;
+      }
+
+      const newPreset = applyPresetByIncome(incomeMan, selectedPresetStyle);
+      if (!newPreset) return;
+
+      const nextInputs = { ...DEFAULT_INPUTS, ...newPreset };
+      commitImmediateInputs(nextInputs);
+      closePresetModal();
+
+      if (dom.advancedSettings) {
+        dom.advancedSettings.open = true;
+        dom.advancedSettings.classList.add('is-highlighted');
+        setTimeout(() => dom.advancedSettings.classList.remove('is-highlighted'), 3000);
+        dom.advancedSettings.scrollIntoView({ behavior: "smooth", block: "start" });
+        window.IsfFeedback.showFeedback(dom.applyFeedback, "프리셋이 적용되었습니다. 아래 '고급 설정'에서 세부 항목을 조정해보세요.");
+      }
     });
   }
 
@@ -624,6 +702,18 @@ function handleItemInput(group, event) {
     if (field === "amount") item.amount = IsfUtils.toWon(target.value);
     if (field === "group") item.group = normalizeAllocationGroupName(target.value);
     if (field === "accountId") item.accountId = target.value;
+    if (field === "allocationAccountId") {
+      const idx = parseInt(target.dataset.allocationIndex, 10);
+      if (item.allocations && item.allocations[idx]) {
+        item.allocations[idx].accountId = target.value;
+      }
+    }
+    if (field === "allocationAmount") {
+      const idx = parseInt(target.dataset.allocationIndex, 10);
+      if (item.allocations && item.allocations[idx]) {
+        item.allocations[idx].amount = IsfUtils.toWon(target.value);
+      }
+    }
     if (field === "annualRate") {
         const parsed = parseSavingsAnnualRateInput(target.value, getVisibleInputs().annualSavingsYield);
         if (parsed === null) delete item.annualRate; else item.annualRate = parsed;
@@ -643,6 +733,34 @@ function handleItemInput(group, event) {
 
 function handleItemClick(group, event) {
   const target = event.target;
+  
+  const addAllocBtn = target.closest(".add-allocation-btn");
+  if (addAllocBtn && group === "income" && state.itemEditors[group].active) {
+    const incomeId = addAllocBtn.dataset.incomeId;
+    const item = state.itemEditors[group].items.find(e => e.id === incomeId);
+    if (item) {
+      if (!Array.isArray(item.allocations)) item.allocations = [];
+      const defaultAcc = ((state.draftInputs || state.inputs).accounts || [])[0]?.id || "";
+      item.allocations.push({ accountId: defaultAcc, amount: 0 });
+      listRenderer.renderItemList(group, state.itemEditors[group].items, { editing: true });
+      setItemEditorUi(group, true);
+    }
+    return;
+  }
+
+  const removeAllocBtn = target.closest(".remove-allocation-btn");
+  if (removeAllocBtn && group === "income" && state.itemEditors[group].active) {
+    const incomeId = removeAllocBtn.dataset.incomeId;
+    const idx = parseInt(removeAllocBtn.dataset.allocationIndex, 10);
+    const item = state.itemEditors[group].items.find(e => e.id === incomeId);
+    if (item && Array.isArray(item.allocations)) {
+      item.allocations.splice(idx, 1);
+      listRenderer.renderItemList(group, state.itemEditors[group].items, { editing: true });
+      setItemEditorUi(group, true);
+    }
+    return;
+  }
+
   const btn = target.closest ? target.closest("[data-remove-income], [data-remove-editor-item]") : null;
   if (!btn) return;
   const removeId = btn.dataset.removeIncome || btn.dataset.removeEditorItem;
@@ -712,9 +830,25 @@ function startItemEditor(group) {
 function applyItemEditor(group) {
   const editor = state.itemEditors[group];
   const draft = helpers.ensureDraftInputs(state);
-  if (group === "income") draft.incomes = editor.items;
-  else if (group === "account") draft.accounts = editor.items;
-  else draft[`${group}Items`] = editor.items;
+  
+  if (group === "income") {
+    const incomes = editor.items;
+    for (const item of incomes) {
+      if (Array.isArray(item.allocations) && item.allocations.length > 0) {
+        const allocTotal = item.allocations.reduce((sum, al) => sum + al.amount, 0);
+        if (allocTotal > item.amount) {
+          alert(`오류: '${item.name}' 항목의 계좌별 분배 금액 합계(${IsfUtils.toMan(allocTotal)}만원)가 전체 수입 금액(${IsfUtils.toMan(item.amount)}만원)을 초과할 수 없습니다. 금액 조정을 해 주십시오.`);
+          return;
+        }
+      }
+    }
+    draft.incomes = editor.items;
+  } else if (group === "account") {
+    draft.accounts = editor.items;
+  } else {
+    draft[`${group}Items`] = editor.items;
+  }
+  
   state.draftInputs = sanitizeInputs(draft);
   cancelItemEditor(group);
   markPendingChanges();
@@ -765,7 +899,9 @@ function closeAllItemEditors(except = "") {
 
 function navigateToAdvancedGroup(group) {
   setActiveAdvancedTab(group);
-  if (dom.advancedSettings) { dom.advancedSettings.open = true; dom.advancedSettings.scrollIntoView({ behavior: "smooth", block: "start" }); }
+  activateMgmtTab("flow");
+  const panel = document.getElementById("mgmtPanelFlow");
+  if (panel) panel.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 
@@ -787,4 +923,28 @@ async function initializeInputsFromShareId() {
     const sidInputs = await loadShareSnapshotById(sid, (id) => id);
     if (sidInputs) commitImmediateInputs(sidInputs);
   }
+}
+
+function activateMgmtTab(tabKey) {
+  const tabs = document.querySelectorAll(".mgmt-tab[data-mgmt-tab]");
+  const panels = document.querySelectorAll(".mgmt-panel[id^='mgmtPanel']");
+  tabs.forEach(tab => {
+    const active = tab.dataset.mgmtTab === tabKey;
+    tab.classList.toggle("is-active", active);
+    tab.setAttribute("aria-selected", active ? "true" : "false");
+  });
+  panels.forEach(panel => {
+    const targetId = `mgmtPanel${tabKey.charAt(0).toUpperCase() + tabKey.slice(1)}`;
+    panel.hidden = panel.id !== targetId;
+  });
+}
+
+function initMgmtTabs() {
+  const tabs = document.querySelectorAll(".mgmt-tab[data-mgmt-tab]");
+  tabs.forEach(tab => {
+    tab.addEventListener("click", () => {
+      activateMgmtTab(tab.dataset.mgmtTab);
+    });
+  });
+  activateMgmtTab("income");
 }

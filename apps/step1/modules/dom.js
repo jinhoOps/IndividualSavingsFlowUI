@@ -122,6 +122,14 @@ export const dom = {
   smartAddCategory: document.getElementById("smartAddCategory"),
   applySmartAddBtn: document.getElementById("applySmartAddBtn"),
 
+  openPresetBtn: document.getElementById("openPresetBtn"),
+  presetModal: document.getElementById("presetModal"),
+  closePresetBtn: document.getElementById("closePresetBtn"),
+  closePresetModalCancel: document.getElementById("closePresetModalCancel"),
+  applyModalPresetBtn: document.getElementById("applyModalPresetBtn"),
+  presetIncomeAmount: document.getElementById("presetIncomeAmount"),
+  presetModalStyleBtns: document.querySelectorAll(".preset-modal-style-btn"),
+
   snapshotSelector: document.getElementById("snapshotSelector"),
   saveSnapshotBtn: document.getElementById("saveSnapshotBtn"),
   deleteSnapshotBtn: document.getElementById("deleteSnapshotBtn"),
