@@ -102,7 +102,7 @@ export function refreshInputsPanel(inputs) {
 
 export function syncDerivedMonthlyInputsToUi() {
   const inputs = state.draftInputs || state.inputs;
-  const inc = IsfUtils.toMan(getMonthlyIncomeTotalWon(inputs));
+  const inc = IsfUtils.toMan(getMonthlyIncomeTotalWon(inputs.incomes));
   const exp = IsfUtils.toMan(getMonthlyAllocationTotalWon(inputs.expenseItems));
   const sav = IsfUtils.toMan(getMonthlyAllocationTotalWon(inputs.savingsItems));
   const inv = IsfUtils.toMan(getMonthlyAllocationTotalWon(inputs.investItems));

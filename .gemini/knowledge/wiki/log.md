@@ -517,3 +517,20 @@
     - **레거시 함수 검증**: 이전에 런타임 ReferenceError 우려가 보고되었던 4종의 레거시 유령 함수(`hasShareState`, `bindReadonlyAdvancedNavigation`, `dismissViewModeGuide`, `switchToNormalMode`)들이 현재 `apps/step1/app.js`에 정상 정의 및 바인딩되어 안정적으로 실행 중임을 교차 확인 완료.
     - **빌드 및 PWA 무결성**: 로컬 빌드 및 버전 동기화 커맨드(`npm run build`)가 913ms 만에 무결하게 성공함을 확인. PWA 프리캐시 엔트리가 올바르게 갱신 및 생성됨.
 - **결과**: v1.6 마일스톤 공식 Passed 달성 및 상용 배포 가능 수준의 시스템 안정성 보증.
+
+## [2026-06-11] bump | 계좌 연결 결함 수정 및 자동 버전 범프 빌드 시스템 이식 (v0.11.3)
+- **목적**: Phase 17 도입 후 발생한 계좌(accountId) 변경 정보 유실 결함을 핫픽스하고, 빌드(npm run build) 시 자동으로 패치 버전을 범프하는 파이프라인을 구축함.
+- **변경 사항**:
+    - **계좌 연결 결함 해결**: `apps/step1/app.js`에서 항목 변경 감지 시 `accountId`가 데이터 구조에 저장되지 않던 누락 버그를 수정하고, select 요소의 기민한 반응을 위해 `change` 이벤트를 추가로 연동함.
+    - **자동 버전 범프 빌드 이식**: `npm run build` 시 package.json의 패치 버전을 1씩 자동으로 올리는 `scripts/bump-version.js` 스크립트를 신규 개발하여 빌드 체인에 추가함.
+    - **Phase 15/999.15 정리**: 누락되었던 `15-SUMMARY.md` 보고서를 작성하여 Phase 15를 정식 마감하고, Phase 999.15 백로그의 요약 보고서(`999.15-SUMMARY.md`) 및 UAT 계획서(`999.15-UAT.md`)를 도출함.
+- **결과**: 가계 흐름 계좌 쪼개기 모델의 데이터 저장 무결성을 회복하고, 번거로운 수동 버전업 단계를 배포 파이프라인으로 자동화함.
+
+## [2026-06-11] fix | 수입 0원 집계 결함 핫픽스 및 프리셋 UX 간소화 (v0.11.4)
+- **목적**: UAT 중 발견된 수입 0원 표시 버그를 해결하고 프리셋 적용 시 펜딩 바 노출 없이 즉시 반영되도록 개선함.
+- **변경 사항**:
+    - **수입 0원 집계 버그 수정**: `apps/step1/modules/ui-controller.js` 내에서 `getMonthlyIncomeTotalWon` 함수를 호출할 때 배열이 아닌 `inputs` 객체 전체를 인자로 잘못 전달하던 오타 버그를 `inputs.incomes`로 정정함.
+    - **프리셋 적용 UX 간소화**: `apps/step1/app.js`에서 프리셋을 선택하고 적용할 때, 펜딩 변경사항 바가 나타나 수동 적용을 한 번 더 유도하던 방식을 변경하여 `commitImmediateInputs(nextInputs)`로 즉시 영속화 및 자동 빌드 저장되도록 개선함.
+- **결과**: 프리셋 적용 후 즉시 정상적인 Sankey 차트 흐름(수입원 ➔ 계좌 ➔ 세부항목)이 렌더링되며, 펜딩 확인 절차가 줄어들어 입력 사용성이 크게 개선됨.
+
+

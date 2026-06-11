@@ -194,12 +194,8 @@ function bindControls() {
       const newPreset = applyPreset(val, selectedPresetStyle);
       if (!newPreset) return;
       
-      state.draftInputs = null;
       const nextInputs = { ...DEFAULT_INPUTS, ...newPreset };
-      state.inputs = sanitizeInputs(nextInputs);
-      helpers.markDirty(state);
-      markPendingChanges();
-      renderAll();
+      commitImmediateInputs(nextInputs);
 
       if (dom.advancedSettings) {
         dom.advancedSettings.open = true;
