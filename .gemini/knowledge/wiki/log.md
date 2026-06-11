@@ -1,5 +1,12 @@
 # Project Evolution Log (연대기적 작업 로그)
 
+## [2026-06-11] setup | OpenGSD Gemini 환경 글로벌 설정 및 미변환 경로 패치 완료
+- **목적**: OpenGSD의 최신 `gsd-core` 패키지를 사용하여 Gemini 환경에 맞춤화된 글로벌 컨텍스트 모니터 훅 및 설정을 갱신하고, 일부 템플릿 파일 내 미변환 `.claude` 경로를 Gemini 환경으로 수동 패치함.
+- **변경 사항**:
+  - `npx @opengsd/gsd-core@latest --gemini --global` 명령을 실행하여 `commands/gsd` 설치 및 Gemini 특화 BeforeAgent, AfterAgent, BeforeModel 등의 컨텍스트 모니터 훅을 구성함.
+  - 설치 완료 시 보고된 4개 파일(`autonomous.md`, `plan-phase.md`, `graphify.toml`, `surface.toml`) 내 미변환 `.claude` 경로 및 옵션명들을 `.gemini`/`--gemini` 등으로 수동 치환하고, 이를 글로벌 설치 경로(`C:\Users\LENOVO\.gemini`)에 반영하여 보존함.
+- **결과**: Gemini 환경 하에서 경로 매핑 오류 없이 `/gsd:new-project` 등 OpenGSD 자동화 워크플로우를 원활히 기동할 수 있도록 무결성을 확보함.
+
 ## [2026-06-10] feat | Step 1 Spotlight 온보딩 가이드 스킵 및 튜토리얼 다시보기 구현
 - **목적**: 튜토리얼(온보딩) 진행 시 귀찮음을 방지하고 즉시 스킵할 수 있는 X(닫기) 버튼을 구현하고, 필요 시 언제든 튜토리얼을 다시 재생할 수 있도록 헤더에 복구 메뉴를 추가함.
 - **변경 사항**:
