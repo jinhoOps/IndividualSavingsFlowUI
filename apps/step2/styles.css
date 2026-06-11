@@ -7,10 +7,10 @@
   inset: -20%;
   z-index: -1;
   background:
-    radial-gradient(720px 560px at 12% 14%, rgba(234, 91, 42, 0.12), transparent 60%),
-    radial-gradient(760px 540px at 88% 10%, rgba(49, 117, 182, 0.14), transparent 58%),
-    radial-gradient(740px 620px at 60% 84%, rgba(30, 139, 124, 0.1), transparent 60%),
-    linear-gradient(160deg, #f0f1ec 0%, #faf9f6 45%, #f2f3ee 100%);
+    radial-gradient(720px 560px at 12% 14%, rgba(234, 91, 42, 0.08), transparent 60%),
+    radial-gradient(760px 540px at 88% 10%, rgba(49, 117, 182, 0.09), transparent 58%),
+    radial-gradient(740px 620px at 60% 84%, rgba(30, 139, 124, 0.07), transparent 60%),
+    linear-gradient(160deg, #f6f4ed 0%, #f9f6f0 50%, #f3f0e7 100%);
 }
 
 .page-intro {
@@ -35,7 +35,7 @@
 
 main {
   display: grid;
-  gap: var(--sp-md);
+  gap: var(--sp-xl);
 }
 
 .info-panel {
@@ -54,8 +54,6 @@ body.is-dashboard-mode .info-panel {
 
 .sync-banner {
   background: var(--panel);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
   border: 1px solid var(--line-strong);
   border-left: 4px solid var(--tone-primary);
   border-radius: var(--rd-md);
@@ -134,7 +132,7 @@ body.is-dashboard-mode .info-panel {
   background: var(--tone-paper);
   border: 1px solid var(--line);
   border-radius: var(--rd-md);
-  padding: var(--sp-md);
+  padding: var(--sp-lg);
   margin-bottom: var(--sp-md);
 }
 
@@ -163,7 +161,7 @@ body.is-dashboard-mode .info-panel {
 .kpi-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
+  gap: 24px;
   margin-bottom: 8px;
 }
 
@@ -221,11 +219,9 @@ body.is-dashboard-mode .info-panel {
 
 .sim-chart-wrap {
   background: var(--panel);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
   border: 1px solid var(--line);
   border-radius: var(--rd-md);
-  padding: 20px 16px;
+  padding: var(--sp-lg);
 }
 
 .chart-tooltip {
@@ -233,8 +229,6 @@ body.is-dashboard-mode .info-panel {
   top: 10px;
   left: 10px;
   background: rgba(16, 34, 32, 0.9);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
   color: #fff;
   padding: 8px 12px;
   border: 1px solid var(--line-strong);
@@ -263,8 +257,6 @@ body.is-dashboard-mode .info-panel {
 
 .projection-table th {
   background: var(--panel);
-  backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
   color: var(--muted);
   font-weight: 700;
   font-size: var(--text-caption);

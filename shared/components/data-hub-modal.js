@@ -199,15 +199,14 @@
           --ink: var(--ink, #212529); 
           --muted: var(--muted, #868e96); 
           --radius: var(--rd-md, 16px);
-          --panel: rgba(255, 255, 255, 0.95);
+          --panel: #ffffff;
         }
         #modalContainer { position: fixed; inset: 0; z-index: 1000; visibility: hidden; opacity: 0; transition: all 0.2s; }
         #modalContainer.is-open { visibility: visible; opacity: 1; }
-        #modalOverlay { position: absolute; inset: 0; background: rgba(16, 34, 32, 0.4); backdrop-filter: blur(4px); }
+        #modalOverlay { position: absolute; inset: 0; background: rgba(16, 34, 32, 0.4); }
         #modalContent { 
           position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
           width: 90%; max-width: 500px; background: var(--panel); border-radius: var(--radius); 
-          backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
           box-shadow: 0 10px 30px rgba(0,0,0,0.15); display: flex; flex-direction: column; overflow: hidden;
         }
         .modal-header { padding: var(--sp-md) var(--sp-lg); display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); }

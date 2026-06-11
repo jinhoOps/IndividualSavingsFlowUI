@@ -22,7 +22,7 @@ export default defineConfig({
         version: packageJson.version,
         description: '월 단위 가계 흐름을 카드와 Sankey Diagram으로 확인하는 개인 자산 흐름 프로토타입',
         theme_color: '#ea5b2a',
-        background_color: '#f3f4ef',
+        background_color: '#f9f6f0',
         display: 'standalone',
         start_url: '/IndividualSavingsFlowUI/',
         scope: '/IndividualSavingsFlowUI/',

@@ -1,17 +1,17 @@
-@import url("https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Gowun+Dodum:wght@400;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Gowun+Dodum:wght@400;700&display=swap");
 @import "tailwindcss";
 
 @theme {
   --color-primary: #ea5b2a;
   --color-accent: #1e8b7c;
-  --color-canvas: #f3f4ef;
-  --color-panel: rgba(255, 255, 255, 0.9);
+  --color-canvas: #f9f6f0;
+  --color-panel: #ffffff;
   --color-ink: #102220;
   --color-muted-text: rgba(16, 34, 32, 0.66);
-  --color-line: rgba(16, 34, 32, 0.18);
+  --color-line: rgba(16, 34, 32, 0.12);
   --color-line-strong: rgba(16, 34, 32, 0.3);
   
-  --font-display: "Black Han Sans", sans-serif;
+  --font-display: "Gowun Batang", serif;
   --font-body: "Gowun Dodum", "Nanum Gothic", sans-serif;
   
   --text-display: 32px;
@@ -22,7 +22,7 @@
   
   --spacing-xs: 4px;
   --spacing-sm: 8px;
-  --spacing-md: 14px;
+  --spacing-md: 16px;
   --spacing-lg: 24px;
   --spacing-xl: 32px;
   
@@ -30,7 +30,7 @@
   --radius-md: 14px;
   --radius-pill: 999px;
   
-  --shadow-float: 0 4px 12px rgba(16, 34, 32, 0.08);
+  --shadow-float: 0 2px 8px rgba(16, 34, 32, 0.04);
 }
 
 :root {
@@ -76,18 +76,22 @@
   }
 
   body {
-    @apply m-0 bg-canvas text-ink font-body leading-[1.45] transition-opacity duration-300;
+    @apply m-0 bg-canvas text-ink font-body leading-[1.5] transition-opacity duration-300;
+    letter-spacing: -0.01em;
   }
 
   h1, h2, h3 {
     @apply m-0 text-ink;
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+    line-height: 1.25;
   }
 }
 
 @layer components {
   /* Utility bridges for legacy classes */
   .panel {
-    @apply border border-line rounded-md bg-panel shadow-float p-md min-w-0;
+    @apply border border-line rounded-md bg-panel shadow-float p-lg min-w-0;
   }
 
   .btn {
@@ -112,7 +116,7 @@
   }
 
   input, textarea, select {
-    @apply border border-line-strong rounded-sm bg-white text-ink px-[10px] py-[8px] focus-visible:outline-2 focus-visible:outline-blue-500/36 focus-visible:outline-offset-1;
+    @apply border border-line-strong rounded-sm bg-white text-ink px-[14px] py-[10px] focus-visible:outline-2 focus-visible:outline-blue-500/36 focus-visible:outline-offset-1;
     font-family: inherit;
   }
 }

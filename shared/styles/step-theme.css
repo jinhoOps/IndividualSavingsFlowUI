@@ -1,22 +1,22 @@
-@import url("https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Gowun+Dodum:wght@400;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Gowun+Dodum:wght@400;700&display=swap");
 
 :root {
   color-scheme: light;
-  --bg: #f3f4ef;
-  --panel: rgba(255, 255, 255, 0.9);
+  --bg: #f9f6f0;
+  --panel: #ffffff;
   --ink: #102220;
   --muted: rgba(16, 34, 32, 0.66);
-  --line: rgba(16, 34, 32, 0.18);
+  --line: rgba(16, 34, 32, 0.12);
   --line-strong: rgba(16, 34, 32, 0.3);
   --tone-primary: #ea5b2a;
   --tone-accent: #1e8b7c;
-  --font-display: "Gowun Dodum", "Black Han Sans", sans-serif;
+  --font-display: "Gowun Batang", serif;
   --font-body: "Gowun Dodum", "Nanum Gothic", sans-serif;
 
   
   --sp-xs: 4px;
   --sp-sm: 8px;
-  --sp-md: 14px;
+  --sp-md: 16px;
   --sp-lg: 24px;
   --sp-xl: 32px;
 
@@ -33,7 +33,7 @@
   --text-caption: 14px;
 
   
-  --sh-float: 0 4px 12px rgba(16, 34, 32, 0.08);
+  --sh-float: 0 2px 8px rgba(16, 34, 32, 0.04);
   
   
   --status-success: #2f9e44;
@@ -57,7 +57,8 @@ body {
   background: var(--bg);
   color: var(--ink);
   font-family: var(--font-body);
-  line-height: 1.45;
+  line-height: 1.5;
+  letter-spacing: -0.01em;
   transition: opacity 0.3s ease;
 }
 
@@ -67,8 +68,6 @@ body {
   top: 0;
   z-index: 100;
   background: var(--panel);
-  backdrop-filter: saturate(1.1) blur(10px);
-  -webkit-backdrop-filter: saturate(1.1) blur(10px);
   border-bottom: 1px solid var(--line);
   padding: env(safe-area-inset-top, 0) var(--sp-md) 0;
 }
@@ -100,8 +99,6 @@ body {
   right: 0;
   z-index: 101;
   background: var(--panel);
-  backdrop-filter: saturate(1.1) blur(10px);
-  -webkit-backdrop-filter: saturate(1.1) blur(10px);
   border: 1px solid var(--line);
   border-radius: var(--rd-md);
   padding: var(--sp-sm);
@@ -192,15 +189,17 @@ body {
 }
 
 
-h1, h2, h3 { margin: 0; color: var(--ink); }
-h1 { font-family: var(--font-body); }
+h1, h2, h3 { margin: 0; color: var(--ink); font-family: var(--font-display); letter-spacing: -0.02em; line-height: 1.25; }
+h1 { font-size: var(--text-display); }
+h2 { font-size: var(--text-title-lg); }
+h3 { font-size: var(--text-title-md); }
 
 .page {
   max-width: 1120px;
   margin: 0 auto;
-  padding: var(--sp-md) var(--sp-md) var(--sp-xl);
+  padding: var(--sp-lg) var(--sp-md) var(--sp-xl);
   display: grid;
-  gap: var(--sp-md);
+  gap: var(--sp-xl);
 }
 
 .panel {
@@ -208,7 +207,7 @@ h1 { font-family: var(--font-body); }
   border-radius: var(--rd-md);
   background: var(--panel);
   box-shadow: var(--sh-float);
-  padding: var(--sp-md);
+  padding: var(--sp-lg);
   min-width: 0;
 }
 
@@ -299,7 +298,7 @@ input, textarea, select {
   background: var(--panel);
   color: var(--ink);
   font: inherit;
-  padding: 8px 10px;
+  padding: 10px 14px;
 }
 
 input:focus-visible,
@@ -330,14 +329,12 @@ select:focus-visible {
   border: 1px solid var(--line);
   border-radius: var(--rd-md);
   background: var(--panel);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  padding: var(--sp-md);
+  padding: var(--sp-lg);
   box-shadow: var(--sh-float);
 }
 
-.card .label { font-size: var(--text-caption); color: var(--muted); }
-.card .value { font-family: var(--font-display); font-size: var(--text-title-lg); font-weight: 700; margin-top: 4px; display: block; }
+.card .label { font-size: var(--text-caption); color: var(--muted); letter-spacing: 0; }
+.card .value { font-family: var(--font-display); font-size: var(--text-title-lg); font-weight: 700; letter-spacing: -0.02em; line-height: 1.25; margin-top: 6px; display: block; }
 .card.positive .value { color: var(--node-income); }
 .card.negative .value { color: var(--node-deficit); }
 
@@ -429,8 +426,6 @@ select:focus-visible {
   right: 0;
   bottom: 0;
   background: rgba(16, 34, 32, 0.4);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
   z-index: 1000;
   display: flex;
   align-items: center;
@@ -522,8 +517,6 @@ select:focus-visible {
   height: 44px;
   border-radius: var(--rd-lg);
   background: rgba(16, 34, 32, 0.4);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
   color: #fff;
   border: 1px solid rgba(255, 255, 255, 0.2);
   cursor: pointer;

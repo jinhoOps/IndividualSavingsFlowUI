@@ -17,15 +17,15 @@ html {
   inset: -20%;
   z-index: -1;
   background:
-    radial-gradient(720px 560px at 12% 14%, rgba(234, 91, 42, 0.16), transparent 60%),
-    radial-gradient(760px 540px at 88% 10%, rgba(49, 117, 182, 0.18), transparent 58%),
-    radial-gradient(740px 620px at 60% 84%, rgba(30, 139, 124, 0.14), transparent 60%),
-    linear-gradient(160deg, #f0f1ec 0%, #faf9f6 45%, #f2f3ee 100%);
+    radial-gradient(720px 560px at 12% 14%, rgba(234, 91, 42, 0.08), transparent 60%),
+    radial-gradient(760px 540px at 88% 10%, rgba(49, 117, 182, 0.09), transparent 58%),
+    radial-gradient(740px 620px at 60% 84%, rgba(30, 139, 124, 0.07), transparent 60%),
+    linear-gradient(160deg, #f6f4ed 0%, #f9f6f0 50%, #f3f0e7 100%);
 }
 
 main {
   display: grid;
-  gap: var(--sp-md);
+  gap: var(--sp-xl);
   min-width: 0;
 }
 
@@ -78,10 +78,10 @@ main {
   border: 1px solid var(--line);
   border-radius: var(--rd-md);
   background: var(--panel);
-  padding: var(--sp-md);
+  padding: var(--sp-lg);
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
 .comparison-card .label { font-size: var(--text-caption); color: var(--muted); }
@@ -94,7 +94,7 @@ main {
   border: 1px solid var(--line);
   border-radius: var(--rd-md);
   background: var(--panel);
-  padding: var(--sp-md);
+  padding: var(--sp-lg);
   min-height: 240px;
   overflow-x: auto;
 }
@@ -190,9 +190,7 @@ body.is-dashboard-mode .controls-panel {
   border: 1px solid var(--line);
   border-radius: var(--rd-md);
   background: var(--panel);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  padding: var(--sp-md);
+  padding: var(--sp-lg);
   display: grid;
   gap: var(--sp-sm);
   min-width: 0;
@@ -276,7 +274,8 @@ body.is-dashboard-mode .controls-panel {
   align-items: center;
 }
 
-.income-row { grid-template-columns: 1.2fr 0.9fr auto; }
+.income-row { grid-template-columns: 1fr auto 120px auto; }
+
 .expense-row { grid-template-columns: 1fr 150px; }
 .savings-row { grid-template-columns: minmax(120px, 1fr) 130px 120px; }
 .invest-row { grid-template-columns: 1fr 150px; }
@@ -291,7 +290,7 @@ body.is-dashboard-mode .controls-panel {
   position: relative;
   display: grid;
   gap: 6px;
-  background: rgba(255, 255, 255, 0.45);
+  background: var(--panel);
   border: 1px solid var(--line);
   border-radius: var(--rd-md);
   padding: 12px 14px;
@@ -358,13 +357,15 @@ input[type=number] {
 
 .control::after {
   position: absolute;
-  right: 14px;
-  bottom: 21px;
-  font-size: 0.78rem;
+  right: 16px;
+  bottom: 50%;
+  transform: translateY(50%);
+  font-size: 0.75rem;
   color: var(--muted);
   pointer-events: none;
   font-weight: 500;
   transition: color 0.18s ease;
+  line-height: 1;
 }
 
 .control:has(input[name="startCash"])::after,
@@ -394,8 +395,15 @@ input[type=number] {
 }
 
 .control:has(input) input {
-  padding-right: 48px !important;
+  padding-right: 44px !important;
   text-align: right;
+}
+
+.control:has(input) input::placeholder {
+  text-align: left;
+  direction: ltr;
+  color: var(--muted);
+  opacity: 0.7;
 }
 
 .inline-tip {
@@ -454,8 +462,6 @@ input[type=number] {
   border: 1px solid var(--line);
   border-radius: var(--rd-md);
   background: var(--panel);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
   padding: var(--sp-sm);
   min-height: 330px;
   overflow: auto;
@@ -563,6 +569,7 @@ input[type=number] {
   .backup-help-tip { width: 28px; height: 28px; justify-self: start; }
 
   .income-row { grid-template-columns: minmax(0, 1fr) minmax(96px, 118px) auto; align-items: center; }
+  .income-row .income-meta { grid-column: 1 / -1; margin-top: -2px; }
   .income-remove { min-width: 38px; width: 38px; min-height: 40px; padding: 0; border-radius: 10px; }
   .income-remove-icon { display: block; }
   .income-remove-text { display: none; }
@@ -649,7 +656,7 @@ input[type=number] {
 .advanced-block {
   border: 1px solid var(--line);
   border-radius: var(--rd-md);
-  background: rgba(255, 255, 255, 0.45);
+  background: var(--panel);
   padding: 0;
   overflow: hidden;
   transition: all 0.2s ease;
@@ -942,8 +949,6 @@ input[type=number] {
   border: 1px solid var(--line);
   border-radius: 12px;
   background: var(--panel);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
   padding: 6px 8px;
 }
 
@@ -1008,11 +1013,9 @@ input[type=number] {
 
 
 .formula {
-  border: 1px dashed var(--line);
+  border: 1px solid var(--line);
   border-radius: 12px;
   background: var(--panel);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
   padding: 10px 12px;
   font-size: 0.82rem;
   color: var(--muted);
@@ -1084,8 +1087,6 @@ input[type=number] {
 
 .projection-table thead th {
   background: var(--panel);
-  backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
   color: var(--muted);
 }
 
@@ -1203,8 +1204,6 @@ input[type=number] {
   inset: 0;
   z-index: 1000;
   background: rgba(0, 0, 0, 0.65);
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.4s ease;
@@ -1289,8 +1288,6 @@ body.is-onboarding-active .onboarding-overlay {
 
 .onboarding-tooltip.is-mobile {
   background: rgba(16, 34, 32, 0.95);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.2);
   box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.4);
 }
@@ -1377,9 +1374,7 @@ body.is-onboarding-active .onboarding-overlay {
   padding: var(--sp-md);
   border: 1px solid var(--line);
   border-radius: var(--rd-md);
-  background: rgba(255, 255, 255, 0.45);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background: var(--panel);
   font-size: var(--text-body-md);
   color: var(--ink);
   display: flex;
@@ -1419,7 +1414,7 @@ body.is-onboarding-active .onboarding-overlay {
   grid-template-columns: 1fr;
   align-items: center;
   padding: 8px 12px;
-  background: rgba(255, 255, 255, 0.5);
+  background: var(--panel);
   border: 1px solid var(--line);
   border-radius: var(--rd-sm);
   min-height: 42px;
@@ -1459,7 +1454,7 @@ body.is-onboarding-active .onboarding-overlay {
 .income-row:not(.is-editing) {
   grid-template-columns: 1fr auto auto;
   padding: 8px 12px;
-  background: rgba(255, 255, 255, 0.4);
+  background: var(--panel);
   border: 1px solid var(--line);
   border-radius: var(--rd-sm);
 }

@@ -125,10 +125,19 @@ export function buildSankeyData(snapshot, sortMode) {
     });
   }
 
+  const accountIds = new Set(accounts.map((a) => a.id));
+
+  function resolveAccountId(itemAccountId, magicDefault) {
+    if (itemAccountId && accountIds.has(itemAccountId)) return itemAccountId;
+    if (magicDefault && accountIds.has(magicDefault)) return magicDefault;
+    return accounts[0]?.id || null;
+  }
+
   // 2. 링크 목록(links) 생성
   // 수입 ➔ 계좌 링크
   incomeSources.forEach((src) => {
-    const targetAccountId = src.accountId || MAGIC_MAPPING_DEFAULTS.income || "acc-salary";
+    const targetAccountId = resolveAccountId(src.accountId, MAGIC_MAPPING_DEFAULTS.income);
+    if (!targetAccountId) return;
     links.push({
       source: src.id,
       target: targetAccountId,
@@ -139,7 +148,8 @@ export function buildSankeyData(snapshot, sortMode) {
 
   // 계좌 ➔ 세부 항목 링크
   sortedExpenses.forEach((tgt) => {
-    const sourceAccountId = tgt.accountId || MAGIC_MAPPING_DEFAULTS.expense || "acc-living";
+    const sourceAccountId = resolveAccountId(tgt.accountId, MAGIC_MAPPING_DEFAULTS.expense);
+    if (!sourceAccountId) return;
     links.push({
       source: sourceAccountId,
       target: tgt.id,
@@ -149,7 +159,8 @@ export function buildSankeyData(snapshot, sortMode) {
   });
 
   sortedSavings.forEach((tgt) => {
-    const sourceAccountId = tgt.accountId || MAGIC_MAPPING_DEFAULTS.savings || "acc-salary";
+    const sourceAccountId = resolveAccountId(tgt.accountId, MAGIC_MAPPING_DEFAULTS.savings);
+    if (!sourceAccountId) return;
     links.push({
       source: sourceAccountId,
       target: tgt.id,
@@ -159,7 +170,8 @@ export function buildSankeyData(snapshot, sortMode) {
   });
 
   sortedInvests.forEach((tgt) => {
-    const sourceAccountId = tgt.accountId || MAGIC_MAPPING_DEFAULTS.invest || "acc-stock";
+    const sourceAccountId = resolveAccountId(tgt.accountId, MAGIC_MAPPING_DEFAULTS.invest);
+    if (!sourceAccountId) return;
     links.push({
       source: sourceAccountId,
       target: tgt.id,
@@ -170,14 +182,17 @@ export function buildSankeyData(snapshot, sortMode) {
 
   // 잉여현금 링크
   if (snapshot.surplus > 0) {
-    const surplusSourceId = snapshot.surplusTransferAccountId || MAGIC_MAPPING_DEFAULTS.invest || "acc-stock";
-    links.push({
-      source: surplusSourceId,
-      target: "surplus",
-      value: snapshot.surplus,
-      tone: "surplus"
-    });
+    const surplusSourceId = resolveAccountId(snapshot.surplusTransferAccountId, MAGIC_MAPPING_DEFAULTS.invest);
+    if (surplusSourceId) {
+      links.push({
+        source: surplusSourceId,
+        target: "surplus",
+        value: snapshot.surplus,
+        tone: "surplus"
+      });
+    }
   }
+
 
   // 3. 계좌 간 이체(내부 링크) 계산
   const providers = [];
