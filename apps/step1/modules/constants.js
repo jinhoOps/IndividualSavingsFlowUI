@@ -100,7 +100,7 @@ export const DEFAULT_INPUTS = {
   annualSavingsYield: 3.0,
   annualInvestReturn: 9.5,
   annualDebtInterest: 4.2,
-  horizonYears: 10,
+  horizonYears: 5,
 };
 
 export const SAMPLE_INPUTS = {

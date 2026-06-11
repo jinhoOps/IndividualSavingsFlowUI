@@ -58,11 +58,12 @@ export function renderIncomeItemHtml(item, opts) {
   const isEditing = !!opts.editing;
   if (!isEditing) {
     const acc = (state.inputs.accounts || []).find(a => a.id === item.accountId);
-    const displayName = item.name + (acc ? ` (${acc.name})` : " (미지정)");
+    const accHtml = acc ? `<span class="badge-account badge-account--income">${IsfUtils.escapeHtml(acc.name)}</span>` : `<span class="badge-account badge-account--none">계좌 미지정</span>`;
     return `
       <div class="income-row">
-        <input type="text" value="${IsfUtils.escapeHtml(displayName)}" data-income-id="${item.id}" data-field="name" readonly placeholder="이름" />
-        <input type="number" value="${IsfUtils.toMan(item.amount)}" data-income-id="${item.id}" data-field="amount" readonly inputmode="decimal" placeholder="금액" />
+        <span class="income-name">${IsfUtils.escapeHtml(item.name)}</span>
+        <span class="value">${formatCurrency(item.amount)}</span>
+        <div class="income-meta">${accHtml}</div>
       </div>
     `;
   }
@@ -92,21 +93,19 @@ export function renderIncomeItemHtml(item, opts) {
 export function renderAllocationItemHtml(group, item, opts) {
   const isEditing = !!opts.editing;
   
-  let meta = "";
+  let metaHtml = "";
   if (!isEditing) {
-    const parts = [];
     const baseMeta = buildAllocationMetaText(item, { showMaturity: group !== "expense" });
-    if (baseMeta) parts.push(baseMeta);
     const acc = (state.inputs.accounts || []).find(a => a.id === item.accountId);
-    if (acc) {
-      parts.push(acc.name);
-    } else {
-      parts.push("미지정 계좌");
-    }
-    meta = parts.join(" · ");
+    const accHtml = acc ? `<span class="badge-account badge-account--outflow">${IsfUtils.escapeHtml(acc.name)}</span>` : `<span class="badge-account badge-account--none">계좌 미지정</span>`;
+    metaHtml = `
+      <div class="allocation-meta">
+        ${baseMeta ? `<span class="allocation-base-meta">${baseMeta}</span> · ` : ""}
+        ${accHtml}
+      </div>
+    `;
   }
 
-  const metaHtml = (!isEditing && meta) ? `<div class="allocation-meta">${meta}</div>` : "";
   const commonClasses = `${group}-row ${isEditing ? "is-editing" : ""}`;
   
   if (!isEditing) {
