@@ -255,6 +255,16 @@ export function buildSankeyData(snapshot, sortMode) {
     if (-c.balance <= 0.01) cIdx++;
   }
 
+  // 3.5 계좌 노드들의 실제 금액(value) 계산 및 갱신
+  nodes.forEach((node) => {
+    if (node.column === 1) {
+      const totalInflow = links
+        .filter((link) => link.target === node.id)
+        .reduce((sum, link) => sum + link.value, 0);
+      node.value = totalInflow;
+    }
+  });
+
   const totalValue = incomeSources.reduce((sum, item) => sum + item.value, 0);
 
   // 4. 기존 렌더러와의 호환성(회귀 방지)을 위해 아래의 구조로 반환

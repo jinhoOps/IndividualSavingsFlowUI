@@ -43,153 +43,13 @@
     <main>
       <section class="panel summary-panel" aria-labelledby="cardsTitle">
         <div class="section-head">
-          <h2 id="cardsTitle">핵심 카드</h2>
+          <h2 id="cardsTitle">재무 핵심 지표</h2>
           <p id="cardMeta" class="hint"></p>
         </div>
         <div id="summaryCards" class="summary-cards" aria-live="polite">
           <div class="card skeleton" aria-hidden="true"><span class="label">불러오는 중</span><span class="value">━━━━</span></div>
           <div class="card skeleton" aria-hidden="true"><span class="label">불러오는 중</span><span class="value">━━━━</span></div>
           <div class="card skeleton" aria-hidden="true"><span class="label">불러오는 중</span><span class="value">━━━━</span></div>
-        </div>
-        <div id="surplusTransferBanner" class="surplus-transfer-banner" hidden>
-          💡 이번 달 남는 잉여현금 <span id="surplusAmountText">0만 원</span>은 
-          <select id="surplusTransferAccountSelect" class="surplus-select" aria-label="잉여현금 자동 이체 계좌"></select> 
-          으로 자동 이체합니다.
-        </div>
-      </section>
-
-      <section class="panel sankey-panel" aria-labelledby="sankeyTitle">
-        <div class="section-head section-head--sankey">
-          <h2 id="sankeyTitle">월 가계 흐름 Sankey Diagram</h2>
-          <div class="sankey-head-tools">
-            <p id="sankeyMeta" class="hint"></p>
-            <div class="sankey-view-toggle" role="group" aria-label="Sankey Diagram 표기 방식">
-              <button id="sankeyViewAmount" class="btn btn-ghost btn-sm sankey-view-btn is-active" type="button"
-                data-sankey-view="amount" aria-pressed="true">
-                금액
-              </button>
-              <button id="sankeyViewPercent" class="btn btn-ghost btn-sm sankey-view-btn" type="button"
-                data-sankey-view="percent" aria-pressed="false">
-                %
-              </button>
-            </div>
-            <label class="sankey-sort" for="sankeySortMode">
-              <span>정렬</span>
-              <select id="sankeySortMode" class="sankey-sort-select" aria-label="Sankey Diagram 정렬 기준">
-                <option value="group">기본(그룹 묶음)</option>
-                <option value="amount-desc">금액 큰순</option>
-                <option value="amount-asc">금액 작은순</option>
-                <option value="name-asc">이름순</option>
-              </select>
-            </label>
-            <div class="sankey-zoom-tools" role="group" aria-label="Sankey Diagram 확대 제어">
-              <button id="sankeyZoomOut" class="btn btn-ghost btn-sm" type="button"
-                aria-label="Sankey Diagram 축소">-</button>
-              <button id="sankeyZoomIn" class="btn btn-ghost btn-sm" type="button"
-                aria-label="Sankey Diagram 확대">+</button>
-              <button id="sankeyZoomReset" class="btn btn-ghost btn-sm" type="button">기본 크기</button>
-              <span id="sankeyZoomLabel" class="sankey-zoom-label" aria-live="polite">100%</span>
-              <button id="sankeyExport" class="btn btn-ghost btn-sm sankey-export-btn" type="button" aria-label="Sankey Diagram 이미지 저장">
-                <svg class="icon icon-export" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                  <polyline points="7 10 12 15 17 10"></polyline>
-                  <line x1="12" y1="15" x2="12" y2="3"></line>
-                </svg>
-                <span>이미지 저장</span>
-              </button>
-            </div>
-          </div>
-        </div>
-        <div id="sankeyWrap" class="sankey-wrap">
-          <svg id="sankeySvg" role="img" aria-label="월 가계 흐름 Sankey Diagram"></svg>
-          <p id="sankeyEmpty" class="empty" hidden>표시할 흐름이 없습니다.</p>
-          <div id="sankeyTooltip" class="sankey-tooltip" hidden></div>
-        </div>
-        <div id="sankeyLegend" class="sankey-legend"></div>
-      </section>
-
-      <section class="panel projection-panel" aria-labelledby="projectionTitle">
-        <div class="section-head">
-          <h2 id="projectionTitle">가계 추이 계산 검증</h2>
-          <p id="projectionMeta" class="hint"></p>
-        </div>
-        <p class="hint projection-brief">요약: 순자산 = 현금 + 저축 + 투자 - 부채</p>
-        
-        <div class="projection-options" style="margin-top: 12px; margin-bottom: 12px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-          <div class="opt-group" style="display: flex; align-items: center; gap: 8px;">
-            <span class="muted" style="font-size: 0.8rem;">시뮬레이션 모드:</span>
-            <div class="tab-list tab-list--sm" role="tablist">
-              <button id="modeTR" class="tab-btn tab-btn--sm is-active" data-mode="TR" role="tab" aria-selected="true">TR (재투자)</button>
-              <button id="modePR" class="tab-btn tab-btn--sm" data-mode="PR" role="tab" aria-selected="false">PR (미투자)</button>
-            </div>
-          </div>
-          <div style="width: 1px; height: 14px; background: var(--line); margin: 0 4px;"></div>
-          <div class="opt-group" style="display: flex; align-items: center; gap: 8px;">
-            <span class="muted" style="font-size: 0.8rem;">표시 컬럼:</span>
-            <label class="view-opt-label" style="font-size: 0.85rem; display: flex; align-items: center; gap: 4px; cursor: pointer;">
-              <input type="checkbox" id="colShowFlow" checked /> 흐름
-            </label>
-            <label class="view-opt-label" style="font-size: 0.85rem; display: flex; align-items: center; gap: 4px; cursor: pointer;">
-              <input type="checkbox" id="colShowBalance" checked /> 잔액
-            </label>
-            <label class="view-opt-label" style="font-size: 0.85rem; display: flex; align-items: center; gap: 4px; cursor: pointer;">
-              <input type="checkbox" id="colShowDividend" /> 연배당
-            </label>
-          </div>
-        </div>
-
-        <details class="formula formula-toggle">
-          <summary>자세히 보기</summary>
-          <div class="formula-body">
-            매월: (수입 - 생활비 - 저축 - 투자 - 실제 부채상환액)을 현금에 반영합니다.
-            (실제 부채상환액 = 설정 상환액, 부채잔액, 가용현금 중 최솟값)
-            저축/투자는 가용현금 범위 내에서만 반영됩니다.
-            부채는 월 이자를 먼저 반영하고 상환액으로 차감하며, 현금이 음수면 부족분을 부채에 더합니다.
-            저축은 항목별 월 수익률, 투자는 설정 월 수익률을 적용합니다.
-            실질 순자산(현재가치)은 기준금리(연)를 월 복리로 환산해 할인합니다.
-          </div>
-        </details>
-        <div class="table-wrap">
-          <table id="projectionTable" class="projection-table">
-            <thead>
-              <tr>
-                <th>시점</th>
-                <th>월 수입</th>
-                <th>월 생활비</th>
-                <th>당월 이자</th>
-                <th>실제 상환액</th>
-                <th>부채 증가분</th>
-                <th>현금</th>
-                <th>저축</th>
-                <th>투자</th>
-                <th>부채</th>
-                <th>순자산</th>
-                <th>실질 순자산</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-        </div>
-      </section>
-
-      <section class="panel comparison-panel" aria-labelledby="comparisonTitle">
-        <div class="section-head">
-          <h2 id="comparisonTitle">과거 지출 비교</h2>
-          <div class="section-head-tools" style="display: flex; gap: var(--sp-xs); align-items: center;">
-            <select id="snapshotSelector" class="snapshot-select" aria-label="비교할 스냅샷 선택" style="max-width: 150px;">
-              <option value="">과거 시점 선택...</option>
-            </select>
-            <button id="saveSnapshotBtn" class="btn btn-ghost btn-sm" type="button" title="현재 상태를 비교용 스냅샷으로 저장">저장</button>
-            <button id="deleteSnapshotBtn" class="btn btn-ghost btn-sm" type="button" title="선택한 스냅샷 삭제" style="color: var(--status-error);">삭제</button>
-          </div>
-        </div>
-        <div id="comparisonContent" class="comparison-content" hidden>
-          <div class="comparison-summary-row">
-            <div id="comparisonExpenseSummary" class="comparison-card"></div>
-          </div>
-          <div id="comparisonChartWrap" class="comparison-chart-wrap">
-            <svg id="comparisonSvg" class="comparison-svg"></svg>
-          </div>
         </div>
       </section>
 
@@ -210,6 +70,11 @@
         </div>
         <div id="inputsPanelContent">
           <p class="hint">금액 단위: 만원(예: 350 = 3,500,000원) · 기본값만 입력해도 바로 계산됩니다.</p>
+          <div id="surplusTransferBanner" class="surplus-transfer-banner" hidden>
+            💡 이번 달 남는 잉여현금 <span id="surplusAmountText">0만 원</span>은 
+            <select id="surplusTransferAccountSelect" class="surplus-select" aria-label="잉여현금 자동 이체 계좌"></select> 
+            으로 자동 이체합니다.
+          </div>
 
           <!-- 관리 탭 네비게이션 -->
           <div class="mgmt-tabs" role="tablist" aria-label="재무 설정 탭">
@@ -413,7 +278,7 @@
             <!-- ── 탭 4: 설정 ── -->
             <div id="mgmtPanelSettings" class="mgmt-panel" role="tabpanel" aria-labelledby="mgmtTabSettings" hidden>
               <div class="controls-block">
-                <h3>초기 자산</h3>
+                <h3>현재 자산 및 부채</h3>
                 <div class="controls-grid controls-grid--simple">
                   <div class="control">
                     <label for="startCash">초기 현금</label>
@@ -428,6 +293,10 @@
                     <input id="startInvest" name="startInvest" type="number" min="0" step="1" inputmode="decimal" />
                   </div>
                   <div class="control">
+                    <label for="startDebt">현재 부채</label>
+                    <input id="startDebt" name="startDebt" type="number" min="0" step="1" inputmode="decimal" />
+                  </div>
+                  <div class="control">
                     <label for="horizonYears">시뮬레이션 기간</label>
                     <input id="horizonYears" name="horizonYears" type="number" min="1" max="40" step="1"
                       inputmode="decimal" />
@@ -435,12 +304,8 @@
                 </div>
               </div>
               <div id="ratesAdvancedBlock" class="controls-block controls-block--rates" data-advanced-block="rates">
-                <h3>증가율 / 수익률 / 초기부채</h3>
+                <h3>증가율 및 수익률</h3>
                 <div class="controls-grid controls-grid--advanced">
-                  <div class="control">
-                    <label for="startDebt">초기 부채</label>
-                    <input id="startDebt" name="startDebt" type="number" min="0" step="1" inputmode="decimal" />
-                  </div>
                   <div class="control">
                     <label for="annualIncomeGrowth">수입 증가율(연, %)</label>
                     <input id="annualIncomeGrowth" name="annualIncomeGrowth" type="number" min="0" max="30"
@@ -479,6 +344,142 @@
           </form>
         </div>
       </section>
+
+      <section class="panel sankey-panel" aria-labelledby="sankeyTitle">
+        <div class="section-head section-head--sankey">
+          <h2 id="sankeyTitle">월 가계 흐름 Sankey Diagram</h2>
+          <div class="sankey-head-tools">
+            <p id="sankeyMeta" class="hint"></p>
+            <div class="sankey-view-toggle" role="group" aria-label="Sankey Diagram 표기 방식">
+              <button id="sankeyViewAmount" class="btn btn-ghost btn-sm sankey-view-btn is-active" type="button"
+                data-sankey-view="amount" aria-pressed="true">
+                금액
+              </button>
+              <button id="sankeyViewPercent" class="btn btn-ghost btn-sm sankey-view-btn" type="button"
+                data-sankey-view="percent" aria-pressed="false">
+                %
+              </button>
+            </div>
+            <label class="sankey-sort" for="sankeySortMode">
+              <span>정렬</span>
+              <select id="sankeySortMode" class="sankey-sort-select" aria-label="Sankey Diagram 정렬 기준">
+                <option value="group">기본(그룹 묶음)</option>
+                <option value="amount-desc">금액 큰순</option>
+                <option value="amount-asc">금액 작은순</option>
+                <option value="name-asc">이름순</option>
+              </select>
+            </label>
+            <div class="sankey-zoom-tools" role="group" aria-label="Sankey Diagram 확대 제어">
+              <button id="sankeyZoomOut" class="btn btn-ghost btn-sm" type="button"
+                aria-label="Sankey Diagram 축소">-</button>
+              <button id="sankeyZoomIn" class="btn btn-ghost btn-sm" type="button"
+                aria-label="Sankey Diagram 확대">+</button>
+              <button id="sankeyZoomReset" class="btn btn-ghost btn-sm" type="button">기본 크기</button>
+              <span id="sankeyZoomLabel" class="sankey-zoom-label" aria-live="polite">100%</span>
+              <button id="sankeyExport" class="btn btn-ghost btn-sm sankey-export-btn" type="button" aria-label="Sankey Diagram 이미지 저장">
+                <svg class="icon icon-export" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="7 10 12 15 17 10"></polyline>
+                  <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                <span>이미지 저장</span>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div id="sankeyWrap" class="sankey-wrap">
+          <svg id="sankeySvg" role="img" aria-label="월 가계 흐름 Sankey Diagram"></svg>
+          <p id="sankeyEmpty" class="empty" hidden>표시할 흐름이 없습니다.</p>
+          <div id="sankeyTooltip" class="sankey-tooltip" hidden></div>
+        </div>
+        <div id="sankeyLegend" class="sankey-legend"></div>
+      </section>
+
+      <section class="panel projection-panel" aria-labelledby="projectionTitle">
+        <div class="section-head">
+          <h2 id="projectionTitle">가계 추이 계산 검증</h2>
+          <p id="projectionMeta" class="hint"></p>
+        </div>
+        <p class="hint projection-brief">요약: 순자산 = 현금 + 저축 + 투자 - 부채</p>
+        
+        <div class="projection-options" style="margin-top: 12px; margin-bottom: 12px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+          <div class="opt-group" style="display: flex; align-items: center; gap: 8px;">
+            <span class="muted" style="font-size: 0.8rem;">시뮬레이션 모드:</span>
+            <div class="tab-list tab-list--sm" role="tablist">
+              <button id="modeTR" class="tab-btn tab-btn--sm is-active" data-mode="TR" role="tab" aria-selected="true">TR (재투자)</button>
+              <button id="modePR" class="tab-btn tab-btn--sm" data-mode="PR" role="tab" aria-selected="false">PR (미투자)</button>
+            </div>
+          </div>
+          <div style="width: 1px; height: 14px; background: var(--line); margin: 0 4px;"></div>
+          <div class="opt-group" style="display: flex; align-items: center; gap: 8px;">
+            <span class="muted" style="font-size: 0.8rem;">표시 컬럼:</span>
+            <label class="view-opt-label" style="font-size: 0.85rem; display: flex; align-items: center; gap: 4px; cursor: pointer;">
+              <input type="checkbox" id="colShowFlow" checked /> 흐름
+            </label>
+            <label class="view-opt-label" style="font-size: 0.85rem; display: flex; align-items: center; gap: 4px; cursor: pointer;">
+              <input type="checkbox" id="colShowBalance" checked /> 잔액
+            </label>
+            <label class="view-opt-label" style="font-size: 0.85rem; display: flex; align-items: center; gap: 4px; cursor: pointer;">
+              <input type="checkbox" id="colShowDividend" /> 연배당
+            </label>
+          </div>
+        </div>
+
+        <details class="formula formula-toggle">
+          <summary>자세히 보기</summary>
+          <div class="formula-body">
+            매월: (수입 - 생활비 - 저축 - 투자 - 실제 부채상환액)을 현금에 반영합니다.
+            (실제 부채상환액 = 설정 상환액, 부채잔액, 가용현금 중 최솟값)
+            저축/투자는 가용현금 범위 내에서만 반영됩니다.
+            부채는 월 이자를 먼저 반영하고 상환액으로 차감하며, 현금이 음수면 부족분을 부채에 더합니다.
+            저축은 항목별 월 수익률, 투자는 설정 월 수익률을 적용합니다.
+            실질 순자산(현재가치)은 기준금리(연)를 월 복리로 환산해 할인합니다.
+          </div>
+        </details>
+        <div class="table-wrap">
+          <table id="projectionTable" class="projection-table">
+            <thead>
+              <tr>
+                <th>시점</th>
+                <th>월 수입</th>
+                <th>월 생활비</th>
+                <th>당월 이자</th>
+                <th>실제 상환액</th>
+                <th>부채 증가분</th>
+                <th>현금</th>
+                <th>저축</th>
+                <th>투자</th>
+                <th>부채</th>
+                <th>순자산</th>
+                <th>실질 순자산</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel comparison-panel" aria-labelledby="comparisonTitle">
+        <div class="section-head">
+          <h2 id="comparisonTitle">과거 지출 비교</h2>
+          <div class="section-head-tools" style="display: flex; gap: var(--sp-xs); align-items: center;">
+            <select id="snapshotSelector" class="snapshot-select" aria-label="비교할 스냅샷 선택" style="max-width: 150px;">
+              <option value="">과거 시점 선택...</option>
+            </select>
+            <button id="saveSnapshotBtn" class="btn btn-ghost btn-sm" type="button" title="현재 상태를 비교용 스냅샷으로 저장">저장</button>
+            <button id="deleteSnapshotBtn" class="btn btn-ghost btn-sm" type="button" title="선택한 스냅샷 삭제" style="color: var(--status-error);">삭제</button>
+          </div>
+        </div>
+        <div id="comparisonContent" class="comparison-content" hidden>
+          <div class="comparison-summary-row">
+            <div id="comparisonExpenseSummary" class="comparison-card"></div>
+          </div>
+          <div id="comparisonChartWrap" class="comparison-chart-wrap">
+            <svg id="comparisonSvg" class="comparison-svg"></svg>
+          </div>
+        </div>
+      </section>
+
 
     </main>
   </div>
@@ -548,8 +549,8 @@
         </div>
 
         <div class="control">
-          <label for="presetIncomeAmount">2. 월 급여 설정 (최대 9,900만원)</label>
-          <input type="number" id="presetIncomeAmount" name="presetIncomeAmount" min="0" max="9900" step="10" value="400" placeholder="예: 400" />
+          <label for="presetIncomeAmount">2. 연봉 설정 (최대 9,900만원)</label>
+          <input type="number" id="presetIncomeAmount" name="presetIncomeAmount" min="0" max="9900" step="100" value="4000" placeholder="예: 4000" />
         </div>
       </div>
       <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px;">

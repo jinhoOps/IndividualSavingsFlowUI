@@ -39,7 +39,7 @@ import {
 
 import { dom } from "./modules/dom.js";
 import { state } from "./modules/state.js";
-import { PRESET_SALARIES, applyPreset, applyPresetByIncome } from "./modules/presets.js";
+import { PRESET_SALARIES, applyPreset, applyPresetBySalary, calculateAnnualSalaryFromMonthlyIncome } from "./modules/presets.js";
 
 import {
   renderSankey, exportSankeyToPng
@@ -293,9 +293,9 @@ function bindControls() {
         }, 10);
         
         const incomeWon = getMonthlyIncomeTotalWon(state.inputs);
-        const incomeMan = Math.min(9900, Math.round(IsfUtils.toMan(incomeWon)));
+        const salaryMan = Math.min(9900, Math.round(calculateAnnualSalaryFromMonthlyIncome(incomeWon)));
         if (dom.presetIncomeAmount) {
-          dom.presetIncomeAmount.value = incomeMan > 0 ? incomeMan : 400;
+          dom.presetIncomeAmount.value = salaryMan > 0 ? salaryMan : 4000;
         }
         
         selectedModalPresetStyle = 'neutral';
@@ -335,10 +335,10 @@ function bindControls() {
   if (dom.applyModalPresetBtn) {
     dom.applyModalPresetBtn.addEventListener("click", () => {
       if (!dom.presetIncomeAmount) return;
-      const incomeMan = parseInt(dom.presetIncomeAmount.value, 10);
+      const salaryMan = parseInt(dom.presetIncomeAmount.value, 10);
       
-      if (isNaN(incomeMan) || incomeMan < 0 || incomeMan > 9900) {
-        alert("월 급여는 0원 이상 9900만원 이하로 입력해주세요.");
+      if (isNaN(salaryMan) || salaryMan < 0 || salaryMan > 9900) {
+        alert("연봉은 0원 이상 9900만원 이하로 입력해주세요.");
         return;
       }
 
@@ -347,7 +347,7 @@ function bindControls() {
         return;
       }
 
-      const newPreset = applyPresetByIncome(incomeMan, selectedModalPresetStyle);
+      const newPreset = applyPresetBySalary(salaryMan, selectedModalPresetStyle);
       if (!newPreset) return;
 
       const nextInputs = { ...DEFAULT_INPUTS, ...newPreset };

@@ -76,7 +76,17 @@ export const DEFAULT_INVEST_ITEMS = [
 export const DEFAULT_INPUTS = {
   modelVersion: 10,
   incomes: [
-    { id: "income-main", name: "급여", amount: 3000000, accountId: "acc-salary" },
+    { 
+      id: "income-main", 
+      name: "급여", 
+      amount: 3000000, 
+      accountId: "acc-salary",
+      allocations: [
+        { accountId: "acc-salary", amount: 900000 },
+        { accountId: "acc-living", amount: 1500000 },
+        { accountId: "acc-stock", amount: 600000 }
+      ]
+    },
   ],
   accounts: [
     { id: "acc-salary", name: "급여계좌" },
@@ -106,8 +116,26 @@ export const DEFAULT_INPUTS = {
 export const SAMPLE_INPUTS = {
   ...DEFAULT_INPUTS,
   incomes: [
-    { id: "sample-income-1", name: "주급여", amount: 4500000, accountId: "acc-salary" },
-    { id: "sample-income-2", name: "부수입", amount: 500000, accountId: "acc-salary" },
+    { 
+      id: "sample-income-1", 
+      name: "주급여", 
+      amount: 3100000, 
+      accountId: "acc-salary",
+      allocations: [
+        { accountId: "acc-salary", amount: 1000000 },
+        { accountId: "acc-living", amount: 1500000 },
+        { accountId: "acc-stock", amount: 600000 }
+      ]
+    },
+    { 
+      id: "sample-income-2", 
+      name: "부수입", 
+      amount: 100000, 
+      accountId: "acc-salary",
+      allocations: [
+        { accountId: "acc-salary", amount: 100000 }
+      ]
+    },
   ],
   accounts: [
     { id: "acc-salary", name: "급여계좌" },

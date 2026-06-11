@@ -64,8 +64,17 @@ export function applyPreset(salaryValue, styleKey) {
   const savings = Math.round(income * style.savingsRate);
   const invest = Math.round(income * style.investRate);
 
+  const allocLiving = Math.round(income * style.expenseRate);
+  const allocInvest = Math.round(income * style.investRate);
+  const allocSalary = income - (allocLiving + allocInvest);
+
+  const allocations = [];
+  if (allocLiving > 0) allocations.push({ accountId: "acc-living", amount: allocLiving });
+  if (allocSalary > 0) allocations.push({ accountId: "acc-salary", amount: allocSalary });
+  if (allocInvest > 0) allocations.push({ accountId: "acc-stock", amount: allocInvest });
+
   return {
-    incomes: [{ id: "income-preset", name: "급여", amount: income }],
+    incomes: [{ id: "income-preset", name: "급여", amount: income, accountId: "acc-salary", allocations }],
     monthlyExpense: expense,
     monthlySavings: savings,
     monthlyInvest: invest,
@@ -80,18 +89,86 @@ export function applyPreset(salaryValue, styleKey) {
   };
 }
 
-export function applyPresetByIncome(monthlyIncomeMan, styleKey) {
+export function calculateMonthlyIncomeFromAnnualSalary(salaryMan) {
+  const table = [
+    { salary: 0, monthly: 0 },
+    { salary: 3000, monthly: 2250000 },
+    { salary: 4000, monthly: 2950000 },
+    { salary: 5000, monthly: 3550000 },
+    { salary: 6000, monthly: 4200000 },
+    { salary: 7000, monthly: 4850000 },
+    { salary: 8000, monthly: 5400000 },
+    { salary: 9000, monthly: 6000000 },
+    { salary: 10000, monthly: 6550000 }
+  ];
+
+  if (salaryMan <= 0) return 0;
+  if (salaryMan >= 10000) {
+    return Math.round(6550000 * (salaryMan / 10000));
+  }
+
+  for (let i = 0; i < table.length - 1; i++) {
+    const p1 = table[i];
+    const p2 = table[i + 1];
+    if (salaryMan >= p1.salary && salaryMan <= p2.salary) {
+      const ratio = (salaryMan - p1.salary) / (p2.salary - p1.salary);
+      return Math.round(p1.monthly + ratio * (p2.monthly - p1.monthly));
+    }
+  }
+  return 0;
+}
+
+export function calculateAnnualSalaryFromMonthlyIncome(monthlyWon) {
+  const table = [
+    { salary: 0, monthly: 0 },
+    { salary: 3000, monthly: 2250000 },
+    { salary: 4000, monthly: 2950000 },
+    { salary: 5000, monthly: 3550000 },
+    { salary: 6000, monthly: 4200000 },
+    { salary: 7000, monthly: 4850000 },
+    { salary: 8000, monthly: 5400000 },
+    { salary: 9000, monthly: 6000000 },
+    { salary: 10000, monthly: 6550000 }
+  ];
+
+  if (monthlyWon <= 0) return 0;
+  if (monthlyWon >= 6550000) {
+    return Math.round(10000 * (monthlyWon / 6550000));
+  }
+
+  for (let i = 0; i < table.length - 1; i++) {
+    const p1 = table[i];
+    const p2 = table[i + 1];
+    if (monthlyWon >= p1.monthly && monthlyWon <= p2.monthly) {
+      const ratio = (monthlyWon - p1.monthly) / (p2.monthly - p1.monthly);
+      return Math.round(p1.salary + ratio * (p2.salary - p1.salary));
+    }
+  }
+  return 0;
+}
+
+export function applyPresetBySalary(salaryMan, styleKey) {
   const style = PRESET_STYLES[styleKey];
   if (!style) return null;
   
-  const income = Math.max(0, Math.min(9900, Number(monthlyIncomeMan) || 0)) * 10000;
+  const validSalaryMan = Math.max(0, Math.min(9900, Number(salaryMan) || 0));
+  const income = calculateMonthlyIncomeFromAnnualSalary(validSalaryMan);
   
   const expense = Math.round(income * style.expenseRate);
   const savings = Math.round(income * style.savingsRate);
   const invest = Math.round(income * style.investRate);
 
+  const allocLiving = Math.round(income * style.expenseRate);
+  const allocInvest = Math.round(income * style.investRate);
+  const allocSalary = income - (allocLiving + allocInvest);
+
+  const allocations = [];
+  if (allocLiving > 0) allocations.push({ accountId: "acc-living", amount: allocLiving });
+  if (allocSalary > 0) allocations.push({ accountId: "acc-salary", amount: allocSalary });
+  if (allocInvest > 0) allocations.push({ accountId: "acc-stock", amount: allocInvest });
+
   return {
-    incomes: [{ id: "income-preset", name: "급여", amount: income, accountId: "acc-salary", allocations: [{ accountId: "acc-salary", amount: income }] }],
+    incomes: [{ id: "income-preset", name: "급여", amount: income, accountId: "acc-salary", allocations }],
     monthlyExpense: expense,
     monthlySavings: savings,
     monthlyInvest: invest,

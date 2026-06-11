@@ -47,10 +47,10 @@ main {
 }
 
 .summary-panel { order: 1; }
-.comparison-panel { order: 2; }
+.controls-panel { order: 2; }
 .sankey-panel { order: 3; }
-.controls-panel { order: 4; }
-.projection-panel { order: 5; }
+.projection-panel { order: 4; }
+.comparison-panel { order: 5; }
 
 .snapshot-select {
   border: 1px solid var(--line-strong);
@@ -530,9 +530,10 @@ input[type=number] {
   .hero { order: 0; }
   .view-mode-guide { order: 1; }
   .summary-panel { order: 1; }
-  .sankey-panel { order: 2; }
-  .projection-panel { order: 3; }
-  .controls-panel { order: 4; }
+  .controls-panel { order: 2; }
+  .sankey-panel { order: 3; }
+  .projection-panel { order: 4; }
+  .comparison-panel { order: 5; }
 
   .preset-controls { flex-direction: column; align-items: stretch; }
   .preset-select { min-width: 0; width: 100%; }
@@ -1372,6 +1373,7 @@ body.is-onboarding-active .onboarding-overlay {
 /* 통장(계좌) 및 잉여현금 자동 이체 배너 스타일 */
 .surplus-transfer-banner {
   margin-top: var(--sp-md);
+  margin-bottom: var(--sp-md);
   padding: var(--sp-md);
   border: 1px solid var(--line);
   border-radius: var(--rd-md);
