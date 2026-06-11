@@ -395,6 +395,7 @@ function bindItemEditorEvents() {
     const list = dom[`${group}List`];
     if (list) {
       list.addEventListener("input", (e) => handleItemInput(group, e));
+      list.addEventListener("change", (e) => handleItemInput(group, e));
       list.addEventListener("click", (e) => handleItemClick(group, e));
     }
     const editBtn = dom[`edit${group.charAt(0).toUpperCase() + group.slice(1)}Items`];
@@ -626,6 +627,7 @@ function handleItemInput(group, event) {
     if (field === "name") item.name = target.value.slice(0, 24);
     if (field === "amount") item.amount = IsfUtils.toWon(target.value);
     if (field === "group") item.group = normalizeAllocationGroupName(target.value);
+    if (field === "accountId") item.accountId = target.value;
     if (field === "annualRate") {
         const parsed = parseSavingsAnnualRateInput(target.value, getVisibleInputs().annualSavingsYield);
         if (parsed === null) delete item.annualRate; else item.annualRate = parsed;
