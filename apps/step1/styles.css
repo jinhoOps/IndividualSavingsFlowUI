@@ -701,6 +701,19 @@ body.is-dashboard-mode .controls-panel {
 
 .sankey-panel { overflow: hidden; }
 
+@media (min-width: 761px) {
+  .sankey-panel {
+    max-height: calc(100vh - 120px);
+    display: flex;
+    flex-direction: column;
+  }
+  .sankey-panel .sankey-wrap {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+  }
+}
+
 
 #sankeySvg {
   display: block;
