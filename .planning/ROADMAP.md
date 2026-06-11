@@ -15,24 +15,14 @@
 
 ## Future Milestones & Backlog
 
+### 📋 v1.7 Step 1 계좌 분할 체계 재설계 (Next Milestone)
+**Goal:** 수입 항목 하나에서 여러 계좌로 자금을 배분(Splitting)하는 아키텍처를 새롭게 설계하고, 사용자 입력 편의성을 대폭 개선한다. 
+- 수입/지출 1:N 계좌 매핑 아키텍처 변경
+- 다중 계좌 분배 UI/UX 입력 흐름 개선
+- (기존 Phase 17 및 999.15 잔여 요구사항 포함)
+
 ### 📋 v1.5 포트폴리오(계좌/종목) 고도화 (Paused/Deferred)
 **Goal:** Step 3 포트폴리오 구성을 본격화하고, Target vs Actual 비중 분석과 배당 성장 예측 엔진의 확장팩을 개발한다.
 - 계좌 및 종목별 비중 관리 고도화
 - 포트폴리오 실시간 격차 분석(Target vs Actual) 알림
 - 리밸런싱 전략 연산 엔진 고도화
-
-### Phase 999.14: Follow-up — Phase 14 incomplete plans (BACKLOG)
-
-**Goal:** Resolve plans that ran without producing summaries during Phase 14 execution
-**Source phase:** 14
-**Deferred at:** 2026-06-10 during /gsd-progress --next advancement to Phase 16
-**Plans:**
-- [x] 14-PLAN: foundation-ux-branding (ran, no SUMMARY.md)
-
-### Phase 999.15: Follow-up — Phase 15 incomplete plans (BACKLOG)
-
-**Goal:** Resolve plans that ran without producing summaries during Phase 15 execution
-**Source phase:** 15
-**Deferred at:** 2026-06-10 during /gsd-progress --next advancement to Phase 16
-**Plans:**
-- [ ] 15-PLAN: chart-enhancement-responsive (ran, no SUMMARY.md)
