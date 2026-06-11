@@ -1,28 +1,40 @@
-# Roadmap: Individual Savings Flow (ISF)
+## Proposed Roadmap
 
-**Milestones:** v1.0~v1.6 (Completed) | **Current:** (Ready for next milestone)
+**4 phases** | **7 requirements mapped** | All covered ✓
 
----
+| # | Phase | Goal | Requirements | Success Criteria |
+|---|-------|------|--------------|------------------|
+| 1 | Design System & Core Typography | DESIGN.md 개편 및 Anthropic 에디토리얼 스타일의 기본 폰트 스택, 타이포그래피 적용 | UI-01, UI-02 | 2 |
+| 2 | Core Components & Layout | 주요 컴포넌트(버튼, 폼, 카드 등) 신규 디자인 규칙 적용 및 레이아웃 개편 | UI-03, UX-01 | 2 |
+| 3 | Multi-account Data Model | 다중 계좌 데이터 모델 확장 및 Sankey 차트 다중 노드 연동 | CORE-01, CORE-02 | 2 |
+| 4 | Account Transfer UI & UX Polish | 계좌 간 이체/분배 UI 구현 및 단계 전환 부드러운 애니메이션 적용 | CORE-03, UX-02 | 2 |
 
-## Completed Milestones
+### Phase Details
 
-- ✅ **v1.0 MVP — 템일릿 기반 자산 흐름 시각화** (Shipped 2026-05-03) — [v1.0-ROADMAP.md](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/.planning/milestones/v1.0-ROADMAP.md)
-- ✅ **v1.1 ~ v1.3 시뮬레이션 고도화 및 온보딩** (Shipped 2026-05-12)
-- ✅ **v1.4 코어 안정화 및 UX 고도화** (Shipped 2026-05-20) — [v1.4-ROADMAP.md](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/.planning/milestones/v1.4-ROADMAP.md)
-- ✅ **v1.6 코드 리팩터링, UX 개선 및 안정성 강화** (Shipped 2026-06-10) — [v1.6-ROADMAP.md](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/.planning/milestones/v1.6-ROADMAP.md)
+**Phase 1: Design System & Core Typography**
+Goal: DESIGN.md 개편 및 Anthropic 에디토리얼 스타일의 기본 폰트 스택, 타이포그래피 적용
+Requirements: UI-01, UI-02
+Success criteria:
+1. DESIGN.md 문서 갱신 확인
+2. 전역 캔버스 배경색 및 기본 폰트(Serif/Sans) 적용 여부 확인
 
----
+**Phase 2: Core Components & Layout**
+Goal: 주요 컴포넌트(버튼, 폼, 카드 등) 신규 디자인 규칙 적용 및 레이아웃 개편
+Requirements: UI-03, UX-01
+Success criteria:
+1. 개선된 입력 폼의 렌더링 및 입력 편의성 확인
+2. Anthropic 스타일의 신규 Card/Button 적용 확인
 
-## Future Milestones & Backlog
+**Phase 3: Multi-account Data Model**
+Goal: 다중 계좌 데이터 모델 확장 및 Sankey 차트 다중 노드 연동
+Requirements: CORE-01, CORE-02
+Success criteria:
+1. 다중 계좌 데이터의 상태 저장 및 복원 정상 동작 확인
+2. Sankey 차트에 다중 계좌 노드가 정상적으로 렌더링되는지 확인
 
-### 📋 v1.7 Step 1 계좌 분할 체계 재설계 (Next Milestone)
-**Goal:** 수입 항목 하나에서 여러 계좌로 자금을 배분(Splitting)하는 아키텍처를 새롭게 설계하고, 사용자 입력 편의성을 대폭 개선한다. 
-- 수입/지출 1:N 계좌 매핑 아키텍처 변경
-- 다중 계좌 분배 UI/UX 입력 흐름 개선
-- (기존 Phase 17 및 999.15 잔여 요구사항 포함)
-
-### 📋 v1.5 포트폴리오(계좌/종목) 고도화 (Paused/Deferred)
-**Goal:** Step 3 포트폴리오 구성을 본격화하고, Target vs Actual 비중 분석과 배당 성장 예측 엔진의 확장팩을 개발한다.
-- 계좌 및 종목별 비중 관리 고도화
-- 포트폴리오 실시간 격차 분석(Target vs Actual) 알림
-- 리밸런싱 전략 연산 엔진 고도화
+**Phase 4: Account Transfer UI & UX Polish**
+Goal: 계좌 간 이체/분배 UI 구현 및 단계 전환 부드러운 애니메이션 적용
+Requirements: CORE-03, UX-02
+Success criteria:
+1. 계좌 간 잔고 이체 로직 및 UI가 문제없이 동작하는지 확인
+2. Step 화면 전환 시 부자연스러운 끊김 없이 트랜지션 애니메이션 실행 확인
