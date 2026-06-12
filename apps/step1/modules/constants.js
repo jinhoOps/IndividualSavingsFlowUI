@@ -145,7 +145,9 @@ export const SAMPLE_INPUTS = {
     { id: "acc-cma", name: "CMA비상금계좌" }
   ],
   transfers: [
-    { id: "sample-tr-1", sourceAccountId: "acc-salary", targetAccountId: "acc-cma", amount: 300000 }
+    { id: "sample-tr-1", sourceAccountId: "acc-salary", targetAccountId: "acc-cma", amount: 300000 },
+    { id: "sample-tr-2", sourceAccountId: "acc-salary", targetAccountId: "acc-stock", amount: 500000 },
+    { id: "sample-tr-3", sourceAccountId: "acc-cma", targetAccountId: "acc-living", amount: 150000 }
   ],
   expenseItems: [
     { id: "rent", name: "주거비(대출상환)", amount: 800000, group: "생활비-고정비-주거비", accountId: "acc-living" },
@@ -173,10 +175,14 @@ export const SAMPLE_INPUTS = {
   monthlySavings: 900000,
   monthlyInvest: 1000000,
   monthlyDebtPayment: 400000,
-  startCash: 8000000,
-  startSavings: 25000000,
-  startInvest: 15000000,
-  startDebt: 12000000,
+  startCash: 15000000,
+  startSavings: 150000000,
+  startInvest: 750000000,
+  startDebt: 50000000,
+  annualSavingsYield: 3.5,
+  annualInvestReturn: 9.5,
+  annualDebtInterest: 5.2,
+  horizonYears: 5,
 };
 
 export const TONE_COLORS = {

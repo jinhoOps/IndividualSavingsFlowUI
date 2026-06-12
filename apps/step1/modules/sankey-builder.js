@@ -110,7 +110,9 @@ export function buildSankeyData(snapshot, sortMode) {
       label: tgt.label,
       value: tgt.value,
       tone: tgt.tone,
-      column: 2
+      column: 2,
+      group: tgt.group || null,
+      accountId: tgt.accountId || null
     });
   });
 
