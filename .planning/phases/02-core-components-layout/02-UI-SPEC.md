@@ -1,10 +1,11 @@
 ---
 phase: 2
 slug: core-components-layout
-status: draft
+status: approved
 shadcn_initialized: false
 preset: none
 created: 2026-06-12
+reviewed_at: 2026-06-13
 ---
 
 # Phase 2 — UI Design Contract
@@ -62,7 +63,7 @@ Declared values (must be multiples of 4):
   - **1순위 (Primary Focal Point)**: 에디토리얼 언더라인 스타일이 적용된 활성화 탭(`border-bottom: 2px solid var(--income)`) 및 아이콘.
   - **2순위 (Secondary Focal Point)**: 비활성화 상태의 탭 텍스트 및 터치 드래그 감도.
 - **모바일 입력 폼 (D-01, D-02)**:
-  - **1순위**: 입력창 포커스 시 점등되는 Sunset 오렌지(`#ea5b2a`) 또는 Accent 그린(`#1e8b7c`) 계열의 **얇은 포커스 링**.
+  - **1순위**: 입력창 포커스 시 점등되는 Sunset 오렌지 `#ea5b2a` 또는 Accent 그린 `#1e8b7c` 계열의 **얇은 포커스 링**.
   - **2순위**: 모바일 편집 활성화 시 수직 3단 스택 구조로 아래로 넓게 펼쳐지는 **Inline Expand Card** 영역.
   - **3순위**: 비편집 상태의 플랫 가독 요약 행.
 
@@ -86,6 +87,9 @@ Declared values (must be multiples of 4):
 | Accent (10%) | #ea5b2a | Sunset Orange for active underline tab state, major CTA borders, and focus rings |
 | Accent (Support) | #1e8b7c | Deep Sea Green for sub-active tab underline and alternative focus rings |
 | Line / Border | rgba(16, 34, 32, 0.12) | Hairline Border for panels, cards, and input fields |
+| Destructive | #dc2626 | Crimson Red for delete actions and error boundaries |
+
+**Accent reserved for:** Active tab underlines, main CTA borders, and focus rings.
 
 ---
 
@@ -93,10 +97,14 @@ Declared values (must be multiples of 4):
 
 | Element | Copy |
 |---------|------|
+| Primary CTA | "항목 변경 적용" |
+| Empty state heading | "등록된 자산 흐름 항목이 없습니다." |
+| Empty state body | "'항목 추가' 버튼을 눌러 새로운 소득, 저축, 또는 투자 흐름을 기록해보세요." |
+| Error state | "입력값이 올바르지 않습니다. 빨간색으로 표시된 필드를 확인 후 다시 시도해주십시오." |
+| Destructive confirmation | "항목 삭제: 정말로 이 자산 흐름 항목을 삭제하시겠습니까?" |
 | Input unit suffix | "만원", "년", "%" |
 | Edit Trigger | "항목 편집" |
 | Add Trigger | "항목 추가" |
-| Apply Trigger | "항목 변경 적용" |
 | Cancel Trigger | "편집 취소" |
 
 ---
@@ -111,11 +119,11 @@ Declared values (must be multiples of 4):
 
 ## Checker Sign-Off
 
-- [ ] Dimension 1 Copywriting: PASS
-- [ ] Dimension 2 Visuals: PASS
-- [ ] Dimension 3 Color: PASS
-- [ ] Dimension 4 Typography: PASS
-- [ ] Dimension 5 Spacing: PASS
-- [ ] Dimension 6 Registry Safety: PASS
+- [x] Dimension 1 Copywriting: PASS
+- [x] Dimension 2 Visuals: PASS
+- [x] Dimension 3 Color: PASS
+- [x] Dimension 4 Typography: PASS
+- [x] Dimension 5 Spacing: PASS
+- [x] Dimension 6 Registry Safety: PASS
 
-**Approval:** pending
+**Approval:** approved 2026-06-13
