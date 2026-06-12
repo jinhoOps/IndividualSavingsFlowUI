@@ -543,6 +543,7 @@ input[type=number] {
 
   .summary-cards { grid-template-columns: 1fr; }
   .controls-grid--simple, .controls-grid--advanced { grid-template-columns: 1fr; }
+  .control { padding: 12px !important; }
 
   .mobile-input-toggle { display: inline-flex; align-items: center; font-size: 0.74rem; }
 
@@ -594,43 +595,150 @@ input[type=number] {
   .expense-row .value, .savings-row .value, .invest-row .value { text-align: right; font-size: 0.86rem; }
   .allocation-meta { grid-column: 1 / -1; margin-top: -4px; margin-bottom: 4px; }
 
-  .expense-row.is-editing, .savings-row.is-editing, .invest-row.is-editing, .account-row.is-editing { grid-template-columns: 1fr; gap: 10px; padding: 10px; border: 1px solid rgba(16, 34, 32, 0.12); border-radius: 12px; background: rgba(255, 255, 255, 0.9); }
+  .expense-row.is-editing,
+  .savings-row.is-editing,
+  .invest-row.is-editing {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 12px !important;
+    padding: 12px !important;
+    border: 1px solid var(--line) !important;
+    border-radius: var(--rd-md) !important;
+    background: rgba(255, 255, 255, 0.9) !important;
+  }
+  
+  .expense-row.is-editing > .editor-field:nth-child(1),
+  .savings-row.is-editing > .editor-field:nth-child(1),
+  .invest-row.is-editing > .editor-field:nth-child(1) {
+    grid-column: 1 / 3 !important;
+  }
+  
+  .expense-row.is-editing > .editor-field:nth-child(4),
+  .savings-row.is-editing > .editor-field:nth-child(4),
+  .invest-row.is-editing > .editor-field:nth-child(4) {
+    grid-column: 1 / 3 !important;
+  }
+  
+  .expense-row.is-editing > .editor-field:nth-child(2),
+  .savings-row.is-editing > .editor-field:nth-child(2),
+  .invest-row.is-editing > .editor-field:nth-child(2) {
+    grid-column: 1 !important;
+  }
+  
+  .expense-row.is-editing > .editor-field:nth-child(3),
+  .savings-row.is-editing > .editor-field:nth-child(3),
+  .invest-row.is-editing > .editor-field:nth-child(3) {
+    grid-column: 2 !important;
+  }
+  
+  .savings-row.is-editing > .editor-field:nth-child(5) {
+    grid-column: 1 !important;
+  }
+  
+  .savings-row.is-editing > .editor-field:nth-child(6) {
+    grid-column: 2 !important;
+  }
+  
+  .invest-row.is-editing > .editor-field:nth-child(5) {
+    grid-column: 1 / 3 !important;
+  }
+  
+  .expense-row.is-editing > .allocation-remove,
+  .savings-row.is-editing > .allocation-remove,
+  .invest-row.is-editing > .allocation-remove {
+    grid-column: 1 / 3 !important;
+    width: 100% !important;
+    min-height: 44px !important;
+    margin-top: 4px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border: 1px solid rgba(155, 44, 44, 0.2) !important;
+    border-radius: var(--rd-sm) !important;
+    background: rgba(253, 240, 240, 0.9) !important;
+    color: #9b2c2c !important;
+    font-size: 0.9rem !important;
+    cursor: pointer !important;
+  }
+  
+  .expense-row.is-editing > .allocation-remove::before,
+  .savings-row.is-editing > .allocation-remove::before,
+  .invest-row.is-editing > .allocation-remove::before {
+    content: "항목 삭제" !important;
+    font-size: 0.82rem !important;
+    font-weight: 600 !important;
+    margin-right: 4px !important;
+  }
+  
+  .account-row.is-editing {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+    padding: 12px !important;
+    border: 1px solid var(--line) !important;
+    border-radius: var(--rd-md) !important;
+    background: rgba(255, 255, 255, 0.9) !important;
+  }
+  
+  .account-row.is-editing > .editor-field {
+    grid-column: 1 !important;
+  }
+  
+  .account-row.is-editing > .allocation-remove {
+    grid-column: 1 !important;
+    width: 100% !important;
+    min-height: 44px !important;
+    margin-top: 4px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border: 1px solid rgba(155, 44, 44, 0.2) !important;
+    border-radius: var(--rd-sm) !important;
+    background: rgba(253, 240, 240, 0.9) !important;
+    color: #9b2c2c !important;
+    font-size: 0.9rem !important;
+  }
+  
+  .account-row.is-editing > .allocation-remove::before {
+    content: "통장 삭제" !important;
+    font-size: 0.82rem !important;
+    font-weight: 600 !important;
+    margin-right: 4px !important;
+  }
+  
   .income-row.is-editing {
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: var(--sp-md) !important;
+    padding: 12px !important;
+    border: 1px solid var(--line) !important;
+    border-radius: var(--rd-md) !important;
+    background: rgba(255, 255, 255, 0.9) !important;
   }
-  .income-row.is-editing input[data-field="name"] {
-    grid-column: 1 / 3;
-  }
-  .income-row.is-editing .income-account-select {
-    grid-column: 1;
-  }
-  .income-row.is-editing input[data-field="amount"] {
-    grid-column: 2;
-  }
-  .income-row.is-editing .income-remove {
-    grid-column: 1 / 3;
-    width: 100%;
-  }
-  .income-row.is-editing.is-multi-allocation {
-    display: flex;
-    flex-direction: column;
-    grid-template-columns: none;
-    gap: var(--sp-md);
-  }
+  
   .income-row-fields {
-    grid-template-columns: 1fr;
-    gap: var(--sp-xs);
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
   }
+  
+  .income-row-fields .editor-field {
+    width: 100% !important;
+  }
+  
   .income-row-fields .income-remove {
-    width: 100%;
-    margin-top: 4px;
+    width: 100% !important;
+    min-height: 44px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
   }
+  
   .income-allocation-row {
-    grid-template-columns: 1.2fr 0.8fr auto auto;
-    gap: var(--sp-xs);
-    padding: 8px;
+    grid-template-columns: 1.2fr 0.8fr auto auto !important;
+    gap: 8px !important;
   }
+  
   .income-allocation-row select,
   .income-allocation-row input {
     font-size: 0.8rem;
@@ -1137,6 +1245,10 @@ input[type=number] {
   .mobile-editor-fab,
   .version-check-trigger {
     display: none !important;
+  }
+  .controls-grid--simple,
+  .controls-grid--advanced {
+    grid-template-columns: repeat(3, 1fr) !important;
   }
 }
 
@@ -1844,11 +1956,80 @@ body.is-onboarding-active .onboarding-overlay {
 }
 
 @media (max-width: 768px) {
-  .mgmt-tabs { grid-template-columns: repeat(2, 1fr); }
-  .mgmt-tab { border-bottom: 1px solid var(--line); }
-  .mgmt-tab:nth-child(even) { border-right: none; }
-  .mgmt-tab:last-child,
-  .mgmt-tab:nth-last-child(2):nth-child(odd) { border-bottom: none; }
+  .mgmt-tabs {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    border: none !important;
+    border-bottom: 1px solid var(--line) !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    margin-bottom: var(--sp-md) !important;
+  }
+  .mgmt-tabs::-webkit-scrollbar {
+    display: none !important;
+  }
+  .mgmt-tab {
+    flex: 1 0 auto !important;
+    border: none !important;
+    border-bottom: 2px solid transparent !important;
+    border-radius: 0 !important;
+    min-height: 44px !important;
+    padding: 8px 16px !important;
+    flex-direction: row !important;
+    gap: 6px !important;
+  }
+  .mgmt-tab:last-child {
+    border-right: none !important;
+  }
+  .mgmt-tab:nth-child(even) {
+    border-right: none !important;
+  }
+  .mgmt-tab.is-active {
+    background: transparent !important;
+    color: var(--tone-primary) !important;
+    border-bottom-color: var(--tone-primary) !important;
+    font-weight: 700 !important;
+  }
+  .mgmt-tab.is-active::after {
+    display: none !important;
+  }
+  
+  .advanced-block > .tab-list {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    background: transparent !important;
+    border-bottom: 1px solid var(--line) !important;
+    padding: 0 !important;
+  }
+  .advanced-block > .tab-list::-webkit-scrollbar {
+    display: none !important;
+  }
+  .advanced-block .tab-btn {
+    flex: 1 0 auto !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    border-bottom: 2px solid transparent !important;
+    padding: 10px 16px !important;
+    box-shadow: none !important;
+    min-height: 44px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+  .advanced-block .tab-btn.is-active {
+    border-bottom-color: var(--tone-primary) !important;
+    color: var(--ink) !important;
+    font-weight: 700;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
 }
 
 /* ────────────────────────────────────────

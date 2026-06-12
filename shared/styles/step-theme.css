@@ -206,7 +206,7 @@ h3 { font-size: var(--text-title-md); }
   border: 1px solid var(--line);
   border-radius: var(--rd-md);
   background: var(--panel);
-  box-shadow: var(--sh-float);
+  box-shadow: none;
   padding: var(--sp-lg);
   min-width: 0;
 }
@@ -299,13 +299,15 @@ input, textarea, select {
   color: var(--ink);
   font: inherit;
   padding: 10px 14px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 input:focus-visible,
 textarea:focus-visible,
 select:focus-visible {
-  outline: 2px solid rgba(49, 117, 182, 0.36);
-  outline-offset: 1px;
+  outline: none;
+  border-color: var(--tone-primary);
+  box-shadow: 0 0 0 2px rgba(234, 91, 42, 0.2);
 }
 
 .feedback {
@@ -330,7 +332,7 @@ select:focus-visible {
   border-radius: var(--rd-md);
   background: var(--panel);
   padding: var(--sp-lg);
-  box-shadow: var(--sh-float);
+  box-shadow: none;
 }
 
 .card .label { font-size: var(--text-caption); color: var(--muted); letter-spacing: 0; }
@@ -522,7 +524,7 @@ select:focus-visible {
   cursor: pointer;
   display: grid;
   place-items: center;
-  box-shadow: var(--sh-float);
+  box-shadow: none;
   transition: all 0.2s ease;
   text-decoration: none;
 }
