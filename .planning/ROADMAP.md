@@ -14,7 +14,7 @@
 |---|-------|------|--------------|------------------|
 | ✅ 1 | Design System & Core Typography | DESIGN.md 개편 및 Anthropic 에디토리얼 스타일의 기본 폰트 스택, 타이포그래피 적용 | UI-01, UI-02 | 2 |
 | ✅ 2 | Core Components & Layout | 주요 컴포넌트(버튼, 폼, 카드 등) 신규 디자인 규칙 적용 및 레이아웃 개편 | UI-03, UX-01 | 2 |
-| 3 | Multi-account Data Model | 다중 계좌 데이터 모델 확장 및 Sankey 차트 다중 노드 연동 | CORE-01, CORE-02 | 2 |
+| 3 | Multi-account Data Model | 1/1 | Complete   | 2026-06-12 |
 | 4 | Account Transfer UI & UX Polish | 계좌 간 이체/분배 UI 구현 및 단계 전환 부드러운 애니메이션 적용 | CORE-03, UX-02 | 2 |
 
 ### Phase Details

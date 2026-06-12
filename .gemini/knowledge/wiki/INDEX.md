@@ -18,8 +18,8 @@ IndividualSavingsFlowUI (ISF) 프로젝트의 모든 지식은 이 지도를 통
 - [[UI_Standards_Reference]]: 디자인 시스템(Glassmorphism), 피드백 및 시각화 표준.
 
 ## 🚀 진행 중인 개발 (Active Development)
-- [Phase 1 Context](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/.planning/phases/01-design-system-typography/01-CONTEXT.md): 기획서
-- [Phase 2 Context](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/.planning/phases/02-core-components-layout/02-CONTEXT.md): 기획 및 계획 수립 완료 (진행 중)
+- [Phase 2 Context](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/.planning/phases/02-core-components-layout/02-CONTEXT.md): 완료
+- [Phase 3 Context](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/.planning/phases/03-multi-account-data-model/03-CONTEXT.md): 완료
 - [Phase 999.15 UAT](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/.planning/phases/999.15-follow-up-phase-15-incomplete-plans-backlog/999.15-UAT.md): 사용자 인수 테스트 명세서 (진행 중)
 - [[Plan_Step3]]: 포트폴리오(계좌/종목) 고도화 기획.
 - [[Plan_Step3_Implementation]]: Step 3 상세 구현 로직 및 API 설계.
