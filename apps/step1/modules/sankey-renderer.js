@@ -190,7 +190,7 @@ export function renderSankey(snapshot, buildSankeyData, sortMode) {
     (isMobileViewport ? 240 : 280) + maxCountPerColumn * adjustedNodeHeightUnit,
   );
   const mobileAspectHeight = isMobileViewport ? Math.round(width * SANKEY_MOBILE_HEIGHT_RATIO) : 0;
-  const maxSankeyHeight = isMobileViewport ? 520 : 620;
+  const maxSankeyHeight = isMobileViewport ? 360 : 440;
   const height = Math.min(maxSankeyHeight, Math.max(baseHeight, mobileAspectHeight));
   const marginTop = isMobileViewport ? 40 : 32;
   const marginBottom = isMobileViewport ? 24 : 32;
