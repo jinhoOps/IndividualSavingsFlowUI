@@ -210,6 +210,9 @@ function bindControls() {
   }
 
   if (dom.inputsForm) {
+    dom.inputsForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+    });
     dom.inputsForm.addEventListener("input", (event) => {
       if (state.suspendInputTracking) return;
       const target = event.target;
