@@ -1,5 +1,13 @@
 # Project Evolution Log (연대기적 작업 로그)
 
+## [2026-06-12] fix | 실시간 금융소득 경고 핫픽스 및 마이크로 애니메이션 전역 적용 (v0.11.25)
+- **목적**: UAT 피드백 수렴을 위한 폼 서브밋 무한 루프 차단, 금융과세 경고의 실시간 연동, 그리고 에디토리얼 호버 부유 트랜지션의 전역 컴포넌트 확장.
+- **주요 변경사항**:
+  - **폼 엔터 새로고침 차단**: `apps/step1/app.js` 내 `inputsForm` 에 대해 `submit` 이벤트 리스너를 달아 `event.preventDefault()` 처리함으로써 엔터 입력 시 페이지 새로고침 루프를 원천 예방.
+  - **실시간 금융과세 경고 연동**: `renderAll`에서 금융소득과세 경고(`calculateAccountFinancialIncomes`) 및 각종 렌더링에 `state.inputs` 대신 `getVisibleInputs()`를 참조하도록 수정하여 사용자가 입력 필드를 변경하는 즉시 화면과 계좌 카드에 링/뱃지가 실시간 점등되도록 결함 핫픽스.
+  - **에디토리얼 호버 효과 전역화**: 이체 카드 외에도 `.card`, `.account-row`, `.income-row`, `.expense-row`, `.savings-row`, `.invest-row` 등 Step 1 전체 컴포넌트의 비편집 상태 카드에 마우스 호버 시 Sunset Orange 테두리 및 Y축 -2px 부유 효과를 일괄 적용하여 시각적 디자인 일관성 강화.
+- **결과**: `npm run build` 빌드 성공 및 핫픽스 배포 완료.
+
 ## [2026-06-12] release | Phase 3: Multi-account Data Model 및 이체 보드 구현 완료 (v0.11.22)
 - **목적**: 다중 계좌 데이터 모델 확장 및 내부 이체 링크의 생키 다이어그램 제외 로직 구현 및 연간 금융소득 과세 주의/경고 알림 연동.
 - **주요 변경사항**:
