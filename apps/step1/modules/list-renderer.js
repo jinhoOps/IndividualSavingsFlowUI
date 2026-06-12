@@ -337,3 +337,100 @@ export function renderTransferBoard(transfers, accounts) {
     `;
   }).join("");
 }
+
+export function renderTransferRulesList(transfers, accounts) {
+  if (!dom.transferRuleList) return;
+  dom.transferRuleList.innerHTML = "";
+
+  const safeTransfers = Array.isArray(transfers) ? transfers : [];
+  if (safeTransfers.length === 0) {
+    dom.transferRuleList.innerHTML = `<p class="empty" style="text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 12px 0;">설정된 수동 이체 규칙이 없습니다.</p>`;
+    return;
+  }
+
+  dom.transferRuleList.innerHTML = safeTransfers.map(tr => {
+    const src = accounts.find(a => a.id === tr.sourceAccountId);
+    const tgt = accounts.find(a => a.id === tr.targetAccountId);
+    const srcName = src ? src.name : "알 수 없음";
+    const tgtName = tgt ? tgt.name : "알 수 없음";
+    const amountMan = Math.round(tr.amount / 10000);
+
+    return `
+      <div class="transfer-rule-card">
+        <div class="transfer-rule-card__info">
+          <span class="transfer-rule-card__label">${IsfUtils.escapeHtml(tr.label)}</span>
+          <span class="transfer-rule-card__flow">${IsfUtils.escapeHtml(srcName)} ➔ ${IsfUtils.escapeHtml(tgtName)}</span>
+        </div>
+        <div class="transfer-rule-card__action">
+          <span class="badge-transfer">${amountMan}만 원</span>
+          <button type="button" class="btn-delete-transfer" data-delete-transfer-id="${tr.id}" title="이체 규칙 삭제">×</button>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+export function renderTransferSelectOptions(accounts) {
+  if (!dom.transferSourceSelect || !dom.transferTargetSelect) return;
+  
+  const defaultSource = dom.transferSourceSelect.value;
+  const defaultTarget = dom.transferTargetSelect.value;
+
+  const optionsHtml = `
+    <option value="">계좌 선택...</option>
+    ${accounts.map(a => `<option value="${a.id}">${IsfUtils.escapeHtml(a.name)}</option>`).join("")}
+  `;
+
+  dom.transferSourceSelect.innerHTML = optionsHtml;
+  dom.transferTargetSelect.innerHTML = optionsHtml;
+
+  dom.transferSourceSelect.value = defaultSource;
+  dom.transferTargetSelect.value = defaultTarget;
+}
+
+export function updateSourceBalanceHint(inputs, sourceAccountId) {
+  if (!dom.sourceBalanceHint) return;
+  if (!sourceAccountId) {
+    dom.sourceBalanceHint.hidden = true;
+    dom.sourceBalanceHint.textContent = "";
+    return;
+  }
+  
+  // 1. 수입원으로부터 sourceAccountId로 들어오는 금액 합산
+  let inflow = 0;
+  const incomes = Array.isArray(inputs.incomes) ? inputs.incomes : [];
+  incomes.forEach(src => {
+    if (Array.isArray(src.allocations) && src.allocations.length > 0) {
+      src.allocations.forEach(alloc => {
+        if (alloc.accountId === sourceAccountId) {
+          inflow += alloc.amount;
+        }
+      });
+    } else if (src.accountId === sourceAccountId) {
+      inflow += src.amount;
+    }
+  });
+
+  // 2. 이 계좌에서 나가는 지출, 저축, 투자 합산
+  let outflow = 0;
+  const expenses = Array.isArray(inputs.expenseItems) ? inputs.expenseItems : [];
+  const savings = Array.isArray(inputs.savingsItems) ? inputs.savingsItems : [];
+  const invests = Array.isArray(inputs.investItems) ? inputs.investItems : [];
+  
+  expenses.forEach(item => { if (item.accountId === sourceAccountId) outflow += item.amount; });
+  savings.forEach(item => { if (item.accountId === sourceAccountId) outflow += item.amount; });
+  invests.forEach(item => { if (item.accountId === sourceAccountId) outflow += item.amount; });
+
+  // 3. 수동 이체에 의한 가감
+  const transfers = Array.isArray(inputs.transfers) ? inputs.transfers : [];
+  transfers.forEach(tr => {
+    if (tr.sourceAccountId === sourceAccountId) outflow += tr.amount;
+    if (tr.targetAccountId === sourceAccountId) inflow += tr.amount;
+  });
+
+  const available = inflow - outflow;
+  const availableMan = Math.round(available / 10000);
+  
+  dom.sourceBalanceHint.hidden = false;
+  dom.sourceBalanceHint.textContent = `💡 출금 가능 예상 잔액: ${availableMan}만 원`;
+}

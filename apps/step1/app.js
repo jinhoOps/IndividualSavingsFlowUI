@@ -63,6 +63,7 @@ import {
   initializeSnapshotSelector, handleSnapshotSelection, handleSaveSnapshot, handleDeleteSnapshot
 } from "./modules/feature-controllers.js";
 import * as listRenderer from "./modules/list-renderer.js";
+import { renderNetworkMap } from "./modules/network-map-renderer.js";
 
 
 
@@ -366,25 +367,140 @@ function bindControls() {
         window.IsfFeedback.showFeedback(dom.applyFeedback, "프리셋이 적용되었습니다. 아래 '고급 설정'에서 세부 항목을 조정해보세요.");
       }
     });
-  }
+}
 
   bindItemEditorEvents();
   bindActionButtons();
   bindGlobalEvents();
+  bindVisualizationAndTooltipEvents();
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
+function bindVisualizationAndTooltipEvents() {
+  // 1. 시각화 탭 전환 리스너
+  if (dom.showSankeyBtn && dom.showNetworkBtn && dom.visualizationSlider) {
+    dom.showSankeyBtn.addEventListener("click", () => {
+      dom.showSankeyBtn.classList.add("is-active");
+      dom.showSankeyBtn.setAttribute("aria-selected", "true");
+      dom.showNetworkBtn.classList.remove("is-active");
+      dom.showNetworkBtn.setAttribute("aria-selected", "false");
+      dom.visualizationSlider.style.transform = "translateX(0%)";
+    });
+    dom.showNetworkBtn.addEventListener("click", () => {
+      dom.showNetworkBtn.classList.add("is-active");
+      dom.showNetworkBtn.setAttribute("aria-selected", "true");
+      dom.showSankeyBtn.classList.remove("is-active");
+      dom.showSankeyBtn.setAttribute("aria-selected", "false");
+      dom.visualizationSlider.style.transform = "translateX(-50%)";
+    });
+  }
+ 
+  // 2. 수동 이체 폼 제어 리스너
+  if (dom.addTransferRuleBtn) {
+    dom.addTransferRuleBtn.addEventListener("click", () => {
+      const srcId = dom.transferSourceSelect.value;
+      const tgtId = dom.transferTargetSelect.value;
+      const amountMan = Number(dom.transferAmount.value) || 0;
+      const label = dom.transferLabel.value.trim();
+ 
+      if (!srcId || !tgtId) {
+        alert("출발 계좌와 도착 계좌를 모두 선택해주세요.");
+        return;
+      }
+      if (srcId === tgtId) {
+        alert("출발 계좌와 도착 계좌는 서로 달라야 합니다.");
+        return;
+      }
+      if (amountMan <= 0) {
+        alert("이체할 금액을 0보다 큰 값으로 입력해주세요.");
+        return;
+      }
+ 
+      const draft = helpers.ensureDraftInputs(state);
+      const transfers = Array.isArray(draft.transfers) ? draft.transfers : [];
+      
+      // 중복 및 순환 검사
+      const isDuplicate = transfers.some(t => t.sourceAccountId === srcId && t.targetAccountId === tgtId && t.label === label);
+      if (isDuplicate) {
+        alert("동일한 이체 규칙이 이미 존재합니다.");
+        return;
+      }
+ 
+      const amount = amountMan * 10000;
+      const newRule = {
+        id: `tr-${Date.now()}`,
+        sourceAccountId: srcId,
+        targetAccountId: tgtId,
+        amount,
+        label: label || "계좌 이체"
+      };
+ 
+      draft.transfers = [...transfers, newRule];
+      state.draftInputs = sanitizeInputs(draft);
+      markPendingChanges();
+      
+      // 폼 초기화
+      dom.transferAmount.value = "";
+      dom.transferLabel.value = "";
+      renderAll();
+    });
+  }
+ 
+  // 삭제 위임 이벤트
+  if (dom.transferRuleList) {
+    dom.transferRuleList.addEventListener("click", (e) => {
+      const btn = e.target.closest(".btn-delete-transfer");
+      if (!btn) return;
+      const trId = btn.dataset.deleteTransferId;
+      const draft = helpers.ensureDraftInputs(state);
+      const transfers = Array.isArray(draft.transfers) ? draft.transfers : [];
+      const nextTransfers = transfers.filter(t => t.id !== trId);
+ 
+      draft.transfers = nextTransfers;
+      state.draftInputs = sanitizeInputs(draft);
+      markPendingChanges();
+      renderAll();
+    });
+  }
+ 
+  // 잔액 힌트 갱신 리스너
+  if (dom.transferSourceSelect) {
+    dom.transferSourceSelect.addEventListener("change", () => {
+      const inputs = state.draftInputs || state.inputs;
+      listRenderer.updateSourceBalanceHint(inputs, dom.transferSourceSelect.value);
+    });
+  }
+ 
+  // 3. 도움말 및 전역 툴팁 리스너
+  document.addEventListener("mouseenter", (e) => {
+    const trigger = e.target.closest(".help-tooltip-trigger");
+    if (!trigger || !dom.globalTooltip) return;
+ 
+    const text = trigger.getAttribute("data-tooltip");
+    dom.globalTooltip.textContent = text;
+    dom.globalTooltip.hidden = false;
+ 
+    const rect = trigger.getBoundingClientRect();
+    const tooltipWidth = 220;
+    let left = rect.left + window.scrollX + rect.width / 2 - tooltipWidth / 2;
+    let top = rect.top + window.scrollY - 50; 
+ 
+    if (left < 10) left = 10;
+    if (left + tooltipWidth > window.innerWidth - 10) {
+      left = window.innerWidth - tooltipWidth - 10;
+    }
+    if (top < 10) top = rect.bottom + window.scrollY + 10; 
+ 
+    dom.globalTooltip.style.left = `${left}px`;
+    dom.globalTooltip.style.top = `${top}px`;
+  }, true);
+ 
+  document.addEventListener("mouseleave", (e) => {
+    const trigger = e.target.closest(".help-tooltip-trigger");
+    if (trigger && dom.globalTooltip) {
+      dom.globalTooltip.hidden = true;
+    }
+  }, true);
+}
 
 function bindModalEvents() {
   if (!dom.appHeader) dom.appHeader = document.querySelector("app-header");
@@ -536,6 +652,10 @@ function renderAll() {
   const transfers = sankeyData ? sankeyData.transfers : [];
   renderSankey(snapshot, buildSankeyData, state.sankeySortMode);
   listRenderer.renderTransferBoard(transfers, inputs.accounts);
+  listRenderer.renderTransferRulesList(inputs.transfers || [], inputs.accounts);
+  listRenderer.renderTransferSelectOptions(inputs.accounts);
+  renderNetworkMap(dom.networkMapInner, inputs.accounts, transfers);
+  listRenderer.updateSourceBalanceHint(inputs, dom.transferSourceSelect ? dom.transferSourceSelect.value : "");
 
   listRenderer.renderProjectionTable(projection, inputs.horizonYears, inputs.annualExpenseGrowth);
   listRenderer.renderInputHints(inputs);

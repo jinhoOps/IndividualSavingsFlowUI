@@ -141,5 +141,29 @@ export const dom = {
   comparisonEmpty: document.getElementById("comparisonEmpty"),
 
   appTitle: document.querySelector("h1"),
+ 
+  // 시각화 토글 및 슬라이더 관련
+  visualizationToggle: document.getElementById("visualizationToggle"),
+  showSankeyBtn: document.getElementById("showSankeyBtn"),
+  showNetworkBtn: document.getElementById("showNetworkBtn"),
+  visualizationViewport: document.getElementById("visualizationViewport"),
+  visualizationSlider: document.getElementById("visualizationSlider"),
+  networkMapWrap: document.getElementById("networkMapWrap"),
+  networkMapInner: document.getElementById("networkMapInner"),
+  accountFlowNetworkMap: document.getElementById("accountFlowNetworkMap"),
+  networkMapEmpty: document.getElementById("networkMapEmpty"),
+ 
+  // 수동 이체 에디터 관련
+  transferEditorSection: document.getElementById("transferEditorSection"),
+  transferRuleForm: document.getElementById("transferRuleForm"),
+  transferSourceSelect: document.getElementById("transferSourceSelect"),
+  transferTargetSelect: document.getElementById("transferTargetSelect"),
+  transferAmount: document.getElementById("transferAmount"),
+  transferLabel: document.getElementById("transferLabel"),
+  addTransferRuleBtn: document.getElementById("addTransferRuleBtn"),
+  sourceBalanceHint: document.getElementById("sourceBalanceHint"),
+  transferRuleList: document.getElementById("transferRuleList"),
+ 
+  // 도움말 및 툴팁
+  globalTooltip: document.getElementById("globalTooltip"),
 };
-

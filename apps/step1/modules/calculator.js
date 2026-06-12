@@ -113,6 +113,7 @@ export function buildMonthlySnapshot(inputs) {
     targets,
     accounts: inputs.accounts || [],
     surplusTransferAccountId: inputs.surplusTransferAccountId || "",
+    transfers: inputs.transfers || [],
   };
 }
 

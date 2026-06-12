@@ -2293,3 +2293,264 @@ body.is-onboarding-active .onboarding-overlay {
 .invest-row {
   transition: transform 0.2s ease-in-out, border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out !important;
 }
+ 
+/* Phase 4: 시각화 슬라이더 및 전환 효과 */
+.visualization-viewport {
+  overflow: hidden;
+  width: 100%;
+  position: relative;
+  border-radius: var(--rd-md);
+  background: var(--panel);
+}
+ 
+.visualization-slider {
+  display: flex;
+  width: 200%;
+  transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+}
+ 
+.visualization-slide {
+  width: 50%;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+ 
+/* 도움말 아이콘 및 Glassmorphism 전역 툴팁 */
+.help-tooltip-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: rgba(16, 34, 32, 0.08);
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 700;
+  cursor: help;
+  margin-left: 6px;
+  vertical-align: middle;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+}
+ 
+.help-tooltip-trigger:hover {
+  background: var(--tone-primary);
+  color: #ffffff;
+}
+ 
+.isf-tooltip {
+  position: absolute;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  color: #102220;
+  max-width: 220px;
+  z-index: 1000;
+  line-height: 1.45;
+  pointer-events: none;
+  background: rgba(251, 250, 247, 0.78);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(16, 34, 32, 0.12);
+  box-shadow: 0 4px 20px rgba(16, 34, 32, 0.08);
+  animation: tooltip-fade-in 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+ 
+@keyframes tooltip-fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+ 
+/* 수동 이체 폼 및 카드 스타일 */
+.sentence-form {
+  background: var(--panel-sub);
+  border: 1px solid var(--line);
+  border-radius: var(--rd-md);
+  padding: 16px;
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-size: 0.88rem;
+  color: var(--ink);
+}
+ 
+.sentence-form__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+ 
+.sentence-form select {
+  padding: 6px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--rd-sm);
+  background: #ffffff;
+  font-family: inherit;
+  font-size: 0.84rem;
+  color: var(--ink);
+}
+ 
+.sentence-form input[type="number"],
+.sentence-form input[type="text"] {
+  padding: 6px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--rd-sm);
+  background: #ffffff;
+  font-family: inherit;
+  font-size: 0.84rem;
+  color: var(--ink);
+}
+ 
+.inline-input-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+ 
+.inline-input-wrapper input {
+  padding-right: 36px !important;
+  width: 90px;
+  text-align: right;
+}
+ 
+.inline-input-wrapper .input-suffix {
+  position: absolute;
+  right: 8px;
+  font-size: 0.75rem;
+  color: var(--muted);
+  pointer-events: none;
+}
+ 
+.balance-hint {
+  font-size: 0.78rem;
+  color: var(--tone-primary);
+  font-weight: 600;
+  margin-top: 2px;
+  transition: opacity 0.2s ease;
+}
+ 
+.transfer-rule-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+ 
+.transfer-rule-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--rd-sm);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+ 
+.transfer-rule-card:hover {
+  border-color: rgba(234, 91, 42, 0.3) !important;
+  transform: translateY(-1.5px);
+  box-shadow: 0 4px 10px rgba(16, 34, 32, 0.04);
+}
+ 
+.transfer-rule-card__info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+ 
+.transfer-rule-card__label {
+  font-weight: 600;
+  font-size: 0.84rem;
+  color: var(--ink);
+}
+ 
+.transfer-rule-card__flow {
+  font-size: 0.74rem;
+  color: var(--muted);
+}
+ 
+.transfer-rule-card__action {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+ 
+.btn-delete-transfer {
+  background: transparent;
+  border: none;
+  font-size: 1.1rem;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 4px;
+  line-height: 1;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+ 
+.transfer-rule-card:hover .btn-delete-transfer {
+  opacity: 1;
+  pointer-events: auto;
+  color: var(--status-error, #dc2626);
+}
+ 
+/* 금융소득종합과세 인디케이터 디자인 스펙 준수 */
+.account-row {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+ 
+.account-row--warn {
+  border-color: #f59e0b !important;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.35) !important;
+}
+ 
+.account-row--crit {
+  border-color: #dc2626 !important;
+  box-shadow: 0 0 12px rgba(220, 38, 38, 0.45) !important;
+}
+ 
+.status-badge--warn {
+  color: #d97706 !important;
+  background: rgba(245, 158, 11, 0.1) !important;
+  border-color: rgba(245, 158, 11, 0.2) !important;
+}
+ 
+.status-badge--crit {
+  color: #b91c1c !important;
+  background: rgba(220, 38, 38, 0.1) !important;
+  border-color: rgba(220, 38, 38, 0.2) !important;
+}
+ 
+/* 네트워크 맵 SVG 스타일 */
+.network-node-bg {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+ 
+.network-node-group:hover .network-node-bg {
+  stroke: var(--tone-primary);
+  stroke-width: 1.8;
+  filter: drop-shadow(0 4px 8px rgba(234, 91, 42, 0.1));
+}
+ 
+@keyframes network-flow-pulse {
+  from {
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dashoffset: -24;
+  }
+}
+ 
+.network-link-pulse {
+  animation: network-flow-pulse 1.2s linear infinite;
+}
+ 
+/* 마스킹 페이드아웃 효과 */
+.is-dimmed {
+  opacity: 0.15 !important;
+  transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}

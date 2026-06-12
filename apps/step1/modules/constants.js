@@ -94,6 +94,7 @@ export const DEFAULT_INPUTS = {
     { id: "acc-stock", name: "주식계좌" }
   ],
   surplusTransferAccountId: "acc-stock",
+  transfers: [],
   expenseItems: DEFAULT_EXPENSE_ITEMS,
   savingsItems: DEFAULT_SAVINGS_ITEMS,
   investItems: DEFAULT_INVEST_ITEMS,

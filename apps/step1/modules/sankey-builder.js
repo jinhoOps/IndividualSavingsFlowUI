@@ -216,27 +216,54 @@ export function buildSankeyData(snapshot, sortMode) {
 
 
   // 3. 계좌 간 이체(내부 링크) 계산
+  const transfers = [];
+  const manualRules = Array.isArray(snapshot.transfers) ? snapshot.transfers : [];
+  
+  // 3.1 수동 이체 규칙 선제 적용
+  manualRules.forEach((rule) => {
+    transfers.push({
+      id: rule.id,
+      source: rule.sourceAccountId,
+      target: rule.targetAccountId,
+      value: rule.amount,
+      tone: "transfer",
+      label: rule.label,
+      isManual: true
+    });
+  });
+ 
   const providers = [];
   const consumers = [];
-  const transfers = [];
-
+ 
   accounts.forEach((acc) => {
+    // 수입 -> 계좌 링크 합산
     const totalInflow = links
       .filter((link) => link.target === acc.id)
       .reduce((sum, link) => sum + link.value, 0);
-
+ 
+    // 계좌 -> 대분류 링크 합산
     const totalOutflow = links
       .filter((link) => link.source === acc.id)
       .reduce((sum, link) => sum + link.value, 0);
-
-    const balance = totalInflow - totalOutflow;
+ 
+    // 수동 이체에 의한 출금 및 입금 가감
+    const manualInflow = transfers
+      .filter((t) => t.target === acc.id)
+      .reduce((sum, t) => sum + t.value, 0);
+ 
+    const manualOutflow = transfers
+      .filter((t) => t.source === acc.id)
+      .reduce((sum, t) => sum + t.value, 0);
+ 
+    const balance = (totalInflow + manualInflow) - (totalOutflow + manualOutflow);
     if (balance > 0.01) {
       providers.push({ id: acc.id, balance });
     } else if (balance < -0.01) {
       consumers.push({ id: acc.id, balance });
     }
   });
-
+ 
+  // 3.2 수동 이체 후 남은 과부족에 대해 자동 Greedy 매칭 적용
   let pIdx = 0, cIdx = 0;
   while (pIdx < providers.length && cIdx < consumers.length) {
     const p = providers[pIdx];
@@ -247,7 +274,9 @@ export function buildSankeyData(snapshot, sortMode) {
         source: p.id,
         target: c.id,
         value: transfer,
-        tone: "transfer"
+        tone: "transfer",
+        label: "자동 잔액 맞춤",
+        isManual: false
       });
       p.balance -= transfer;
       c.balance += transfer;

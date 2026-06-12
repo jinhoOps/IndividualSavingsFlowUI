@@ -57,6 +57,7 @@
         <div class="section-head section-head--controls">
           <h2 id="inputsTitle">
             재무 설정
+            <span class="help-tooltip-trigger" data-tooltip="금액 단위: 만원(예: 350 = 3,500,000원) · 기본값만 입력해도 바로 계산됩니다.">?</span>
             <button id="toggleInputsMobile" class="mobile-input-toggle" type="button" aria-expanded="true"
               aria-controls="inputsPanelContent">
               접기
@@ -69,11 +70,11 @@
           </div>
         </div>
         <div id="inputsPanelContent">
-          <p class="hint">금액 단위: 만원(예: 350 = 3,500,000원) · 기본값만 입력해도 바로 계산됩니다.</p>
           <div id="surplusTransferBanner" class="surplus-transfer-banner" hidden>
             💡 이번 달 남는 잉여현금 <span id="surplusAmountText">0만 원</span>은 
             <select id="surplusTransferAccountSelect" class="surplus-select" aria-label="잉여현금 자동 이체 계좌"></select> 
             으로 자동 이체합니다.
+            <span class="help-tooltip-trigger" data-tooltip="지출, 저축, 투자를 모두 배분하고 남은 수입(잉여현금)이 있을 때 지정된 계좌로 자동 입금 흐름이 생성됩니다.">?</span>
           </div>
 
           <!-- 관리 탭 네비게이션 -->
@@ -110,12 +111,14 @@
               <!-- 수입 항목 -->
               <div class="controls-block">
                 <div class="block-head">
-                  <h3>월 수입 항목</h3>
+                  <h3>
+                    월 수입 항목
+                    <span class="help-tooltip-trigger" data-tooltip="각 수입이 입금될 계좌를 연결하면 자금 흐름 시각화에 정확히 반영됩니다.">?</span>
+                  </h3>
                   <div class="block-head-tools">
                     <button id="editIncomeItems" class="btn btn-ghost btn-sm" type="button">항목 편집</button>
                   </div>
                 </div>
-                <p class="hint">각 수입이 입금될 계좌를 연결하면 Sankey 다이어그램에 정확히 반영됩니다.</p>
                 <div id="incomeList" class="income-list" aria-live="polite"></div>
                 <div id="incomeEditorActions" class="editor-actions" hidden>
                   <button id="addIncomeItem" class="btn btn-ghost btn-sm" type="button">항목 추가</button>
@@ -124,21 +127,20 @@
                 </div>
                 <p id="incomeTotalHint" class="hint"></p>
               </div>
-
-              <!-- 잉여현금 이체 안내 (surplusTransferBanner 중복 방지용: 여기선 hint만) -->
-              <p class="hint">수입 합계 기준으로 남은 잉여현금은 화면 상단 카드에서 이체 계좌를 선택할 수 있습니다.</p>
             </div>
 
             <!-- ── 탭 2: 계좌 ── -->
             <div id="mgmtPanelAccount" class="mgmt-panel" role="tabpanel" aria-labelledby="mgmtTabAccount" hidden>
               <div class="controls-block">
                 <div class="block-head">
-                  <h3>통장(계좌) 관리</h3>
+                  <h3>
+                    통장(계좌) 관리
+                    <span class="help-tooltip-trigger" data-tooltip="수입·지출·저축·투자 흐름의 경유 계좌입니다. 계좌 이름을 실제 통장명으로 설정하면 시각화 맵에 표시됩니다.">?</span>
+                  </h3>
                   <div class="block-head-tools">
                     <button id="editAccountItems" class="btn btn-ghost btn-sm" type="button">항목 편집</button>
                   </div>
                 </div>
-                <p class="hint">수입·지출·저축·투자 흐름의 경유 계좌입니다. 계좌 이름을 실제 통장명으로 설정하면 Sankey에 그대로 표시됩니다.</p>
                 <div id="accountList" class="account-list" aria-live="polite"></div>
                 <div id="accountEditorActions" class="editor-actions" hidden>
                   <button id="addAccountItem" class="btn btn-ghost btn-sm" type="button">통장 추가</button>
@@ -153,8 +155,10 @@
 
               <!-- 간편 요약 -->
               <div class="controls-block">
-                <h3>월 지출·저축·투자 요약</h3>
-                <p class="hint">아래 항목 상세 설정을 마치면 자동으로 합산됩니다.</p>
+                <h3>
+                  월 지출·저축·투자 요약
+                  <span class="help-tooltip-trigger" data-tooltip="아래 상세 항목(생활비, 저축, 투자)의 설정값이 자동으로 합산되어 반영됩니다.">?</span>
+                </h3>
                 <div class="controls-grid controls-grid--simple">
                   <div class="control">
                     <label for="monthlyExpense">월 생활비</label>
@@ -196,7 +200,10 @@
                 </div>
                 <div id="expenseAdvancedBlock" class="controls-block" data-advanced-block="expense">
                   <div class="block-head">
-                    <h3>생활비 상세 항목</h3>
+                    <h3>
+                      생활비 상세 항목
+                      <span class="help-tooltip-trigger" data-tooltip="각 지출이 어떤 계좌에서 출금될지 연결하여 지출 흐름을 관리합니다.">?</span>
+                    </h3>
                     <div class="block-head-tools">
                       <label class="item-sort" for="expenseSortMode">
                         <span>정렬</span>
@@ -210,7 +217,6 @@
                       <button id="editExpenseItems" class="btn btn-ghost btn-sm" type="button">항목 편집</button>
                     </div>
                   </div>
-                  <p class="hint">각 지출이 어떤 계좌에서 출금될지 지정합니다.</p>
                   <div id="expenseList" class="expense-list" aria-live="polite"></div>
                   <div id="expenseEditorActions" class="editor-actions" hidden>
                     <button id="addExpenseItem" class="btn btn-ghost btn-sm" type="button">항목 추가</button>
@@ -221,7 +227,10 @@
                 </div>
                 <div id="savingsAdvancedBlock" class="controls-block" data-advanced-block="savings">
                   <div class="block-head">
-                    <h3>저축 상세 항목</h3>
+                    <h3>
+                      저축 상세 항목
+                      <span class="help-tooltip-trigger" data-tooltip="각 저축 적금의 이체 계좌와 적용 금리(이자율)를 개별 설정합니다.">?</span>
+                    </h3>
                     <div class="block-head-tools">
                       <label class="item-sort" for="savingsSortMode">
                         <span>정렬</span>
@@ -235,18 +244,19 @@
                       <button id="editSavingsItems" class="btn btn-ghost btn-sm" type="button">항목 편집</button>
                     </div>
                   </div>
-                  <p class="hint">각 적금의 이체 계좌와 연 이자율을 관리합니다.</p>
                   <div id="savingsList" class="savings-list" aria-live="polite"></div>
                   <div id="savingsEditorActions" class="editor-actions" hidden>
                     <button id="addSavingsItem" class="btn btn-ghost btn-sm" type="button">항목 추가</button>
                     <button id="applySavingsItems" class="btn btn-primary btn-sm" type="button">항목 변경 적용</button>
                     <button id="cancelSavingsItems" class="btn btn-ghost btn-sm" type="button">편집 취소</button>
                   </div>
-                  <p id="savingsTotalHint" class="hint"></p>
                 </div>
                 <div id="investAdvancedBlock" class="controls-block" data-advanced-block="invest">
                   <div class="block-head">
-                    <h3>투자 상세 항목</h3>
+                    <h3>
+                      투자 상세 항목
+                      <span class="help-tooltip-trigger" data-tooltip="매월 투자금으로 빠져나가는 금액과 출금 계좌를 설정합니다.">?</span>
+                    </h3>
                     <div class="block-head-tools">
                       <label class="item-sort" for="investSortMode">
                         <span>정렬</span>
@@ -260,7 +270,6 @@
                       <button id="editInvestItems" class="btn btn-ghost btn-sm" type="button">항목 편집</button>
                     </div>
                   </div>
-                  <p class="hint">투자금의 출금 계좌를 지정합니다.</p>
                   <div id="investList" class="invest-list" aria-live="polite"></div>
                   <div id="investEditorActions" class="editor-actions" hidden>
                     <button id="addInvestItem" class="btn btn-ghost btn-sm" type="button">항목 추가</button>
@@ -347,7 +356,14 @@
 
       <section class="panel sankey-panel" aria-labelledby="sankeyTitle">
         <div class="section-head section-head--sankey">
-          <h2 id="sankeyTitle">월 가계 흐름 Sankey Diagram</h2>
+          <div class="sankey-title-group" style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+            <h2 id="sankeyTitle">월 가계 흐름</h2>
+            <div id="visualizationToggle" class="tab-list tab-list--sm" role="tablist" aria-label="시각화 선택">
+              <button id="showSankeyBtn" class="tab-btn tab-btn--sm is-active" data-vis="sankey" role="tab" aria-selected="true">Sankey 흐름</button>
+              <button id="showNetworkBtn" class="tab-btn tab-btn--sm" data-vis="network" role="tab" aria-selected="false">계좌 이체망</button>
+            </div>
+            <span class="help-tooltip-trigger" data-tooltip="수입에서 계좌를 거쳐 최종 소비처로 흘러가는 가계 흐름(Sankey) 및 계좌 간의 다대다(N:N) 이체 관계망(Network)을 번갈아 탐색할 수 있습니다.">?</span>
+          </div>
           <div class="sankey-head-tools">
             <p id="sankeyMeta" class="hint"></p>
             <div class="sankey-view-toggle" role="group" aria-label="Sankey Diagram 표기 방식">
@@ -387,10 +403,21 @@
             </div>
           </div>
         </div>
-        <div id="sankeyWrap" class="sankey-wrap">
-          <svg id="sankeySvg" role="img" aria-label="월 가계 흐름 Sankey Diagram"></svg>
-          <p id="sankeyEmpty" class="empty" hidden>표시할 흐름이 없습니다.</p>
-          <div id="sankeyTooltip" class="sankey-tooltip" hidden></div>
+        
+        <div id="visualizationViewport" class="visualization-viewport">
+          <div id="visualizationSlider" class="visualization-slider">
+            <div id="sankeyWrap" class="sankey-wrap visualization-slide">
+              <svg id="sankeySvg" role="img" aria-label="월 가계 흐름 Sankey Diagram"></svg>
+              <p id="sankeyEmpty" class="empty" hidden>표시할 흐름이 없습니다.</p>
+              <div id="sankeyTooltip" class="sankey-tooltip" hidden></div>
+            </div>
+            <div id="networkMapWrap" class="network-map-wrap visualization-slide">
+              <div id="networkMapInner" class="network-map-inner" style="position: relative; width: 100%; height: 100%; min-height: 480px;">
+                <svg id="accountFlowNetworkMap" role="img" aria-label="계좌 간 자금 흐름 지도" style="width: 100%; height: 100%; min-height: 480px;"></svg>
+                <p id="networkMapEmpty" class="empty" hidden>표시할 이체 흐름이 없습니다.</p>
+              </div>
+            </div>
+          </div>
         </div>
         <div id="sankeyLegend" class="sankey-legend"></div>
       </section>
@@ -600,6 +627,7 @@
     </div>
   </div>
   <div id="applyFeedback" class="apply-feedback" hidden></div>
+  <div id="globalTooltip" class="isf-tooltip" hidden></div>
 </body>
 
 </html>

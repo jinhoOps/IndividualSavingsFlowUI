@@ -1,5 +1,15 @@
 # Project Evolution Log (연대기적 작업 로그)
 
+## [2026-06-12] feat | Phase 4: 계좌 간 이체 시각화 및 UX 개선 구현 완료 (v0.11.28)
+- **목적**: 계좌 간 다대다(N:N) 이체 흐름을 기하학적으로 보여주는 SVG 흐름 지도 도입, 직관적이고 뇌적 연산을 줄이는 수동 이체 설정 및 편집기 탑재, 차트 패널 가로 슬라이딩 스위칭 전환, 도움말의 전역 Glassmorphism 툴팁 통합, 금융소득과세 경고 규격화.
+- **주요 변경사항**:
+  - **Account Flow Network Map (D-01)**: SVG 기반 네트워크 맵 신설. 계좌 노드 원형 배치, 흐름 펄스 점선 애니메이션(`@keyframes` dashoffset) 및 마우스 호버 시 관련 연결 노드/엣지만 포커싱(이외 요소 `0.15` opacity dimmed) 기능 탑재.
+  - **Manual Transfer Rules & UI (D-02)**: `transfers` 데이터 스키마 영속화. 문장형/카드형 폼 UI 및 삭제(X) 버튼 호버 시 페이드 노출 구현. 출발 계좌 변경 시 출금 가능한 실시간 예상 잔액 힌트(`#sourceBalanceHint`) 표출.
+  - **시각화 슬라이드 전환 (D-03)**: Sankey ↔ Network Map 탭 전환 시 두 SVG 래퍼를 뷰포트 내 가로 flex 슬라이더(`#visualizationSlider`)로 감싸 `transform` 트랜지션(0.4s cubic-bezier)으로 가로 슬라이딩 스위칭되도록 구현.
+  - **과세 경고 디자인 규격 준수 (D-04)**: Warn(Yellow 보더, 0 0 8px 그림자), Crit(Red 보더, 0 0 12px 그림자), 뱃지 글자/배경색 스펙을 `styles.css`에 분리 구현하고 `transition: all 0.3s` 트랜지션 처리.
+  - **도움말 ? 아이콘 툴팁화 (D-05)**: 지저분한 가이드 문구들을 소거하고 `?` 아이콘으로 대체, 호버 시 위치를 계산하여 Glassmorphism 전역 툴팁(`#globalTooltip`, blur 10px, 0.78 opacity 백그라운드) 팝업 처리.
+- **결과**: `npm run build` 빌드 성공 및 v0.11.28 버전 배포 완료. UAT 성공 기준 100% 충족.
+
 ## [2026-06-12] ingest | Phase 4: 계좌 간 이체 시각화 및 UX 개선 기획 및 설계 수립 (v0.11.27)
 - **목적**: 사용자 피드백을 반영하여 계좌 간 N:N 이체 흐름 시각화 차트 도입, 수동 이체 설정 및 사용성 극대화 UI 설계, 시각화 패널 내 가로 슬라이딩 전환, 설명문 도움말 ? 아이콘 및 전역 툴팁화, 경고 인디케이터 디자인 규격 수립.
 - **주요 합의사항**:

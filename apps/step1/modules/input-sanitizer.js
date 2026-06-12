@@ -97,6 +97,7 @@ export function sanitizeInputs(rawInputs) {
     incomes: sanitizeIncomeItems(raw.incomes, monthlyIncomeFallback),
     accounts: sanitizedAccounts,
     surplusTransferAccountId: surplusId,
+    transfers: sanitizeTransfers(raw.transfers, sanitizedAccounts),
     expenseItems,
     savingsItems,
     investItems,
@@ -475,5 +476,25 @@ export function sanitizeInteger(value, fallback, min, max) {
 export function toMonthlyFactor(annualPercent) {
   const annualRate = Number(annualPercent) / 100;
   return Math.pow(1 + annualRate, 1 / 12);
+}
+ 
+export function sanitizeTransfers(transfers, accounts) {
+  if (!Array.isArray(transfers)) return [];
+  const accountIds = new Set(accounts.map(a => a.id));
+  return transfers
+    .map((tr, index) => {
+      const safeTr = tr && typeof tr === "object" ? tr : {};
+      const id = typeof safeTr.id === "string" && safeTr.id.trim() ? safeTr.id.trim() : `tr-${Date.now()}-${index}`;
+      const sourceAccountId = typeof safeTr.sourceAccountId === "string" ? safeTr.sourceAccountId.trim() : "";
+      const targetAccountId = typeof safeTr.targetAccountId === "string" ? safeTr.targetAccountId.trim() : "";
+      const amount = window.IsfUtils.sanitizeMoney(safeTr.amount, 0);
+      const label = typeof safeTr.label === "string" && safeTr.label.trim() ? safeTr.label.trim() : `이체 ${index + 1}`;
+ 
+      if (sourceAccountId && targetAccountId && sourceAccountId !== targetAccountId && accountIds.has(sourceAccountId) && accountIds.has(targetAccountId)) {
+        return { id, sourceAccountId, targetAccountId, amount, label };
+      }
+      return null;
+    })
+    .filter(Boolean);
 }
 
