@@ -1,11 +1,31 @@
 # Project Evolution Log (연대기적 작업 로그)
 
+## [2026-06-13] cleanup | 재무 핵심 지표 영역의 미사용 cardMeta 안내문구 삭제 (v0.11.43)
+- **목적**: 불필요한 마크업 및 비어 있는 가이드 태그를 소거하여 구조적 일관성과 미니멀함을 유지.
+- **주요 변경사항**:
+  - **HTML 엘리먼트 제거**: `apps/step1/index.html` 의 '재무 핵심 지표' 패널 헤더 하단에 위치하던 비어 있는 `<p id="cardMeta" class="hint"></p>` 요소 제거.
+  - **DOM 맵핑 청소**: `apps/step1/modules/dom.js` 의 `dom` 인스턴스에서 미사용 중이던 `cardMeta` 엘리먼트 맵핑 코드 제거.
+- **결과**: `npm run build` 빌드 성공, Playwright E2E 테스트 통과 및 v0.11.43 버전 배포 완료.
+
 ## [2026-06-13] fix | 핵심 요약 지표 카드 내 금액(억/만) 줄바꿈 방지 및 텍스트 중앙정렬 처리 (v0.11.42)
 - **목적**: 요약 카드 내에서 억/만 단위의 금액이 들어갈 때 개행되는 현상 방지 및 카드 내 텍스트 정렬의 시각적 일관성 확보.
 - **주요 변경사항**:
   - **금액 포맷 띄어쓰기 개선**: `shared/core/utils.js` 의 `formatMoney` 반환 포맷의 공백을 제거하여 `"X 억 Y 만원"` ➔ `"X억 Y만원"` 및 `"X 만원"` ➔ `"X만원"` 형태로 튜닝.
   - **텍스트 중앙정렬 및 줄바꿈 차단**: `shared/styles/step-theme.css` 에서 공통 `.card` 에 `text-align: center`를 적용하여 텍스트를 중앙정렬하고, `.card .value`에 `white-space: nowrap`을 추가하여 억/만 단위 숫자의 개행(줄바꿈)을 차단.
 - **결과**: `npm run build` 빌드 성공, Playwright E2E 테스트 통과 및 v0.11.42 버전 배포 완료.
+
+## [2026-06-13] fix | 모바일 Sankey 다이어그램 노드 과밀 겹침 개선 — 자동 그룹 collapse + 상세 팝업
+
+- 문제: 모바일 화면에서 column 2(지출/저축/투자 항목)가 많을수록 배지 레이블이 촘촘하게 겹쳐 판독 불가 상태로 열화됨.
+- 해결:
+  - `sankey-renderer.js`에 `collapseOverloadedNodes(data)` 함수 신설. column 2 노드 수가 임계값(6개)을 초과하면 두 단계로 fold 처리:
+    1. 1단계: `group` 필드의 첫 번째 `-` 이전 prefix를 기준으로 동일 그룹 항목들을 합산 노드로 묶음 (`"관리비 외 N개"` 형식).
+    2. 2단계: 1단계 후에도 5개 초과 시, 같은 계좌(`accountId`)로 연결된 항목들을 `"식비 외 N개"` 형식으로 재묶음.
+  - collapsed 노드는 황색 계통 배지(`rgba(255,248,220)`) + `▸` 접두사로 시각적 구분.
+  - `sankey-builder.js`에서 col2 노드에 `group`·`accountId` 필드를 전달하도록 개선.
+  - collapsed 노드 탭/클릭 시 `showCollapsedNodeDetail()` 함수를 통해 상세 항목 테이블 팝업 노출. 터치 좌표 계산으로 팝업 위치 산정, 외부 탭 시 자동 해제.
+  - `styles.css`에 `.sankey-node--collapsed`, `.sankey-collapsed-detail`, 팝업 내 테이블 스타일 추가.
+- 검증: 모바일 390px 뷰포트에서 샘플 데이터 기준 column 2 노드가 14개 → 3개 그룹으로 collapse됨. 탭 시 팝업 테이블이 정상 노출되고 JS 에러 없음 확인.
 
 ## [2026-06-13] feat | 사용성 개선을 위한 샘플데이터 및 투자성향 프리셋 자산규모/이체 규칙 고도화 (v0.11.41)
 - **목적**: 다중 계좌, 수동 이체, 금융소득과세 경고 시스템을 사용자가 바로 확인하고 놀 수 있도록 샘플 불러오기 및 프리셋의 파라미터 튜닝.

@@ -38,6 +38,7 @@ export const state = {
   sankeyValueMode: SANKEY_VALUE_MODES.AMOUNT,
   sankeySortMode: SANKEY_SORT_MODES.GROUP,
   sankeyZoom: 1,
+  sankeyDetailMode: "basic",
   activeAdvancedTab: "expense",
   itemSortModes: {
     expense: ITEM_SORT_MODES.DEFAULT,

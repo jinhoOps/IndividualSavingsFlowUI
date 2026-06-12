@@ -44,7 +44,6 @@
       <section class="panel summary-panel" aria-labelledby="cardsTitle">
         <div class="section-head" style="position: relative;">
           <h2 id="cardsTitle">재무 핵심 지표</h2>
-          <p id="cardMeta" class="hint"></p>
         </div>
         <div id="summaryCards" class="summary-cards" aria-live="polite">
           <div class="card skeleton" aria-hidden="true"><span class="label">불러오는 중</span><span class="value">━━━━</span></div>
@@ -391,8 +390,9 @@
           <div class="sankey-title-group" style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
             <h2 id="sankeyTitle">월 가계 흐름</h2>
             <div id="visualizationToggle" class="tab-list tab-list--sm" role="tablist" aria-label="시각화 선택">
-              <button id="showSankeyBtn" class="tab-btn tab-btn--sm is-active" data-vis="sankey" role="tab" aria-selected="true">Sankey 흐름</button>
-              <button id="showNetworkBtn" class="tab-btn tab-btn--sm" data-vis="network" role="tab" aria-selected="false">계좌 이체망</button>
+              <button id="showSankeyBasicBtn" class="tab-btn tab-btn--sm is-active" data-vis="basic" role="tab" aria-selected="true">기본</button>
+              <button id="showSankeyDetailBtn" class="tab-btn tab-btn--sm" data-vis="detail" role="tab" aria-selected="false">상세</button>
+              <button id="showNetworkBtn" class="tab-btn tab-btn--sm" data-vis="network" role="tab" aria-selected="false">계좌흐름도</button>
             </div>
             <span id="sankeyMetaTooltipTrigger" class="help-tooltip-trigger" data-tooltip="수입에서 계좌를 거쳐 최종 소비처로 흘러가는 가계 흐름(Sankey) 및 계좌 간의 다대다(N:N) 이체 관계망(Network)을 번갈아 탐색할 수 있습니다.">?</span>
           </div>
@@ -417,13 +417,6 @@
                 <option value="name-asc">이름순</option>
               </select>
             </label>
-            <div class="sankey-zoom-tools" role="group" aria-label="Sankey Diagram 확대 제어">
-              <button id="sankeyZoomOut" class="btn btn-ghost btn-sm" type="button"
-                aria-label="Sankey Diagram 축소">-</button>
-              <button id="sankeyZoomIn" class="btn btn-ghost btn-sm" type="button"
-                aria-label="Sankey Diagram 확대">+</button>
-              <button id="sankeyZoomReset" class="btn btn-ghost btn-sm" type="button">기본 크기</button>
-              <span id="sankeyZoomLabel" class="sankey-zoom-label" aria-live="polite">100%</span>
               <button id="sankeyExport" class="btn btn-ghost btn-sm sankey-export-btn" type="button" aria-label="Sankey Diagram 이미지 저장">
                 <svg class="icon icon-export" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
@@ -432,7 +425,6 @@
                 </svg>
                 <span>이미지 저장</span>
               </button>
-            </div>
           </div>
         </div>
         
