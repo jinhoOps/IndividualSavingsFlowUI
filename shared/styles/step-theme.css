@@ -334,10 +334,11 @@ select:focus-visible {
   background: var(--panel);
   padding: var(--sp-lg);
   box-shadow: none;
+  text-align: center;
 }
 
 .card .label { font-size: var(--text-caption); color: var(--muted); letter-spacing: 0; }
-.card .value { font-family: var(--font-display); font-size: var(--text-title-lg); font-weight: 700; letter-spacing: -0.02em; line-height: 1.25; margin-top: 6px; display: block; }
+.card .value { font-family: var(--font-display); font-size: var(--text-title-lg); font-weight: 700; letter-spacing: -0.02em; line-height: 1.25; margin-top: 6px; display: block; white-space: nowrap; }
 .card.positive .value { color: var(--node-income); }
 .card.negative .value { color: var(--node-deficit); }
 

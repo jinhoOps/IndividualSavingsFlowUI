@@ -13,7 +13,7 @@ export const IsfUtils = (function initIsfUtils(global) {
   function formatMoney(value) {
     const numericValue = Number(value || 0);
     if (!Number.isFinite(numericValue)) {
-      return "0 만원";
+      return "0만원";
     }
     const manValue = Math.round(numericValue / 10000);
     
@@ -21,13 +21,13 @@ export const IsfUtils = (function initIsfUtils(global) {
       const eok = Math.floor(manValue / 10000);
       const remainMan = manValue % 10000;
       if (remainMan === 0) {
-        return `${eok.toLocaleString("ko-KR")} 억원`;
+        return `${eok.toLocaleString("ko-KR")}억원`;
       }
-      return `${eok.toLocaleString("ko-KR")} 억 ${remainMan.toLocaleString("ko-KR")} 만원`;
+      return `${eok.toLocaleString("ko-KR")}억 ${remainMan.toLocaleString("ko-KR")}만원`;
     }
     
     const formatted = manValue.toLocaleString("ko-KR");
-    return `${formatted} 만원`;
+    return `${formatted}만원`;
   }
 
   const FINANCIAL_INCOME_WARN_THRESHOLD_WON = 19000000;
@@ -175,7 +175,7 @@ export const IsfUtils = (function initIsfUtils(global) {
   }
 
   const result = {
-    APP_VERSION: (typeof __APP_VERSION__ !== "undefined") ? __APP_VERSION__ : "0.11.41",
+    APP_VERSION: (typeof __APP_VERSION__ !== "undefined") ? __APP_VERSION__ : "0.11.42",
     formatMoney,
     getFinancialIncomeStatus,
     calculateIncomeTax,
