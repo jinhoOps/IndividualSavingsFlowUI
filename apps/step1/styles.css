@@ -2273,3 +2273,23 @@ body.is-onboarding-active .onboarding-overlay {
     padding: 12px;
   }
 }
+
+.card:hover,
+.account-row:not(.is-editing):hover,
+.income-row:not(.is-editing):hover,
+.expense-row:not(.is-editing):hover,
+.savings-row:not(.is-editing):hover,
+.invest-row:not(.is-editing):hover {
+  border-color: rgba(234, 91, 42, 0.3) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(16, 34, 32, 0.05);
+}
+
+.card,
+.account-row,
+.income-row,
+.expense-row,
+.savings-row,
+.invest-row {
+  transition: transform 0.2s ease-in-out, border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out !important;
+}

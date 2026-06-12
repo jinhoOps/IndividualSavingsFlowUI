@@ -523,22 +523,23 @@ function bindGlobalEvents() {
 }
 
 function renderAll() {
-  const snapshot = buildMonthlySnapshot(state.inputs);
+  const inputs = getVisibleInputs();
+  const snapshot = buildMonthlySnapshot(inputs);
   state.snapshot = snapshot;
-  const projection = simulateProjection(state.inputs, { mode: state.projectionOptions.mode });
-  const cards = buildSummaryCards(snapshot, projection, state.inputs.horizonYears);
-  listRenderer.renderCards(cards, state.inputs.horizonYears);
+  const projection = simulateProjection(inputs, { mode: state.projectionOptions.mode });
+  const cards = buildSummaryCards(snapshot, projection, inputs.horizonYears);
+  listRenderer.renderCards(cards, inputs.horizonYears);
   
-  const { warnings } = calculateAccountFinancialIncomes(state.inputs);
+  const { warnings } = calculateAccountFinancialIncomes(inputs);
 
   const sankeyData = buildSankeyData(snapshot, state.sankeySortMode);
   const transfers = sankeyData ? sankeyData.transfers : [];
   renderSankey(snapshot, buildSankeyData, state.sankeySortMode);
-  listRenderer.renderTransferBoard(transfers, state.inputs.accounts);
+  listRenderer.renderTransferBoard(transfers, inputs.accounts);
 
-  listRenderer.renderProjectionTable(projection, state.inputs.horizonYears, state.inputs.annualExpenseGrowth);
-  listRenderer.renderInputHints(state.inputs);
-  refreshInputsPanel(state.inputs, warnings);
+  listRenderer.renderProjectionTable(projection, inputs.horizonYears, inputs.annualExpenseGrowth);
+  listRenderer.renderInputHints(inputs);
+  refreshInputsPanel(inputs, warnings);
 
   if (dom.surplusTransferBanner) {
     if (snapshot.surplus > 0) {
