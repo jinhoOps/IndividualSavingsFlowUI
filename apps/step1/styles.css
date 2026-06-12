@@ -239,7 +239,7 @@ body.is-dashboard-mode .comparison-panel {
   background: #fff;
   color: var(--ink);
   font-weight: 700;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  border: 1px solid var(--line);
 }
 
 .tab-btn--sm {
@@ -263,7 +263,7 @@ body.is-dashboard-mode .comparison-panel {
   background: #fff;
   color: var(--ink);
   font-weight: 700;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  border: 1px solid var(--line);
 }
 
 .income-list, .expense-list, .savings-list, .invest-list { display: grid; gap: var(--sp-sm); }
@@ -300,8 +300,6 @@ body.is-dashboard-mode .comparison-panel {
 .control:hover {
   background: rgba(255, 255, 255, 0.75);
   border-color: rgba(30, 139, 124, 0.25);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.04);
 }
 
 .control label {
@@ -327,8 +325,8 @@ body.is-dashboard-mode .comparison-panel {
 .control input:focus, .control select:focus {
   outline: none;
   background: #fff;
-  border-color: var(--income);
-  box-shadow: 0 0 0 3px rgba(30, 139, 124, 0.15);
+  border-color: var(--tone-primary);
+  box-shadow: 0 0 0 2px var(--tone-primary);
 }
 
 .control input[readonly] {
@@ -2281,9 +2279,7 @@ body.is-onboarding-active .onboarding-overlay {
 .expense-row:not(.is-editing):hover,
 .savings-row:not(.is-editing):hover,
 .invest-row:not(.is-editing):hover {
-  border-color: rgba(234, 91, 42, 0.3) !important;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(16, 34, 32, 0.05);
+  border-color: var(--tone-primary) !important;
 }
 
 .card,
@@ -2292,7 +2288,7 @@ body.is-onboarding-active .onboarding-overlay {
 .expense-row,
 .savings-row,
 .invest-row {
-  transition: transform 0.2s ease-in-out, border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out !important;
+  transition: border-color 0.2s ease-in-out !important;
 }
  
 /* Phase 4: 시각화 슬라이더 및 전환 효과 */
@@ -2479,9 +2475,7 @@ body.is-onboarding-active .onboarding-overlay {
 }
  
 .transfer-rule-card:hover {
-  border-color: rgba(234, 91, 42, 0.3) !important;
-  transform: translateY(-1.5px);
-  box-shadow: 0 4px 10px rgba(16, 34, 32, 0.04);
+  border-color: var(--tone-primary) !important;
 }
  
 .transfer-rule-card__info {

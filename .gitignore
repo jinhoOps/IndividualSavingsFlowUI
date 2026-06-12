@@ -38,3 +38,4 @@ yarn-error.log*
 # graphify
 graphify-out/cache/
 **/graphify-out/cache/
+.agent/*

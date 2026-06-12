@@ -182,12 +182,16 @@ export function renderSankey(snapshot, buildSankeyData, sortMode) {
   const nodeHeightUnit = isMobileViewport
     ? (hasGroupLayer ? 54 : 44)
     : (hasGroupLayer ? 62 : 48);
+  const adjustedNodeHeightUnit = maxCountPerColumn > 8
+    ? Math.max(isMobileViewport ? 26 : 32, nodeHeightUnit - (maxCountPerColumn - 8) * (isMobileViewport ? 2 : 3))
+    : nodeHeightUnit;
   const baseHeight = Math.max(
     isMobileViewport ? 340 : 380,
-    (isMobileViewport ? 240 : 280) + maxCountPerColumn * nodeHeightUnit,
+    (isMobileViewport ? 240 : 280) + maxCountPerColumn * adjustedNodeHeightUnit,
   );
   const mobileAspectHeight = isMobileViewport ? Math.round(width * SANKEY_MOBILE_HEIGHT_RATIO) : 0;
-  const height = Math.max(baseHeight, mobileAspectHeight);
+  const maxSankeyHeight = isMobileViewport ? 520 : 620;
+  const height = Math.min(maxSankeyHeight, Math.max(baseHeight, mobileAspectHeight));
   const marginTop = isMobileViewport ? 40 : 32;
   const marginBottom = isMobileViewport ? 24 : 32;
   const nodeGap = isMobileViewport
@@ -490,9 +494,8 @@ export function exportSankeyToPng() {
 
   const styleEl = document.createElementNS("http://www.w3.org/2000/svg", "style");
   styleEl.textContent = `
-    @import url('https://fonts.googleapis.com/css2?family=Gowun+Dodum&display=swap');
     svg {
-      font-family: 'Gowun Dodum', sans-serif;
+      font-family: 'Gowun Dodum', 'Nanum Gothic', sans-serif;
       background-color: #ffffff; /* 흰색 배경 보장 */
     }
     text {
