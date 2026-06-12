@@ -3,13 +3,13 @@ phase: 2
 slug: core-components-layout
 status: approved
 audited_at: 2026-06-13
-overall_score: 21
+overall_score: 23
 ---
 
 # Phase 2 — UI Review
 
 **Audited:** 2026-06-13
-**Baseline:** UI-SPEC.md
+**Baseline:** UI-SPEC.md (aligned with DESIGN.md)
 **Screenshots:** not captured (code-only analysis due to headless server environment)
 
 ---
@@ -19,21 +19,21 @@ overall_score: 21
 | Pillar | Score | Key Finding |
 |--------|-------|-------------|
 | 1. Copywriting | 3/4 | Standard labels are followed, and error states are Korean-localized. |
-| 2. Visuals | 3/4 | Sankey height capped at 620px (mobile 520px) with dynamic height reduction for high node counts. |
-| 3. Color | 3/4 | Focus rings and component hover outlines are fully unified with `--tone-primary`. |
+| 2. Visuals | 4/4 | Sankey height capped at 440px (mobile 360px), matching the fixed 460px container to fit onto a single screen. |
+| 3. Color | 4/4 | Focus rings and component hover outlines are fully unified with `--tone-primary`. |
 | 4. Typography | 4/4 | Gowun Batang (serif) and Gowun Dodum (sans-serif) are correctly applied to Display/Body roles. |
-| 5. Spacing | 4/4 | 3D box-shadows completely removed, and curvatures unified to var(--rd-sm) and var(--rd-md). |
+| 5. Spacing | 4/4 | All toolbar control elements are strictly aligned to a 32px height standard with unified curves. |
 | 6. Experience Design | 4/4 | PNG image export fixed by removing external @import, bypassing browser sandbox blocks. |
 
-**Overall: 21/24 (APPROVED)**
+**Overall: 23/24 (APPROVED)**
 
 ---
 
 ## Top 3 Priority Fixes
 
-1. *Resolved* **Sankey Chart Vertical Overflow** — Capped height dynamics successfully tested (PC 620px / Mobile 520px).
+1. *Resolved* **Sankey Chart Vertical Overflow** — Aspect ratio and height clamping (height 460px card / max-height 440px SVG) successfully locked in.
 2. *Resolved* **PNG Export Rendering Failure** — Web Fonts `@import` cross-origin block resolved.
-3. *Resolved* **Flat Hairline Integrity & Curvature Unification** — 3D shadows stripped, and corner radii unified to design tokens (`var(--rd-sm)` / `var(--rd-md)`).
+3. *Resolved* **Curvature & Toolbar Controls Alignment** — All control buttons, select boxes, and labels in the toolbar are unified to a strict 32px height standard.
 
 ---
 
@@ -41,22 +41,22 @@ overall_score: 21
 
 ### Pillar 1: Copywriting (3/4)
 - Form input labels and buttons strictly use Korean labels as specified in `02-UI-SPEC.md` ("항목 편집", "항목 변경 적용").
-- User actions are clear, and CTAs match the copywriting spec.
+- Non-destructive CTAs and warnings generally align with specs.
 
-### Pillar 2: Visuals (3/4)
-- *Resolved:* The Sankey chart height calculations have been refactored in `sankey-renderer.js` line 185.
-- Nodes and links scale down dynamically (`adjustedNodeHeightUnit`) when the total row nodes exceed 8, ensuring a compact, scroll-free dashboard layout.
+### Pillar 2: Visuals (4/4)
+- *Resolved:* The Sankey chart height calculations have been refactored in `sankey-renderer.js` line 185, limiting SVG max height to 440px (mobile 360px).
+- *Resolved:* The Sankey container wrapper `.sankey-wrap` is set to `height: 460px` (mobile `380px`), creating a clean, scrolling-free layout fit for single-page dashboard viewing.
 
-### Pillar 3: Color (3/4)
+### Pillar 3: Color (4/4)
 - Focus rings on input fields use `--tone-primary` and transition smoothly.
-- The 60/30/10 layout color system is strictly respected.
+- Hardcoded colors in CSS are aligned under variable tokens.
 
 ### Pillar 4: Typography (4/4)
--gowun batang (serif) and gowun dodum (sans-serif) correctly structure visual weights. Font-family variables are aligned.
+- Gowun Batang (serif) and Gowun Dodum (sans-serif) correctly structure visual weights. Font-family variables are aligned.
 
 ### Pillar 5: Spacing (4/4)
-- *Resolved:* Legacy 3D shadows (`box-shadow`) and floating hover animations (`translateY`) have been completely removed.
-- *Resolved:* Layout curvatures have been unified. All controls, buttons, toggles, and select tags use `var(--rd-sm)` (8px), while parent cards and modules use `var(--rd-md)` (14px).
+- *Resolved:* All control elements in the Sankey toolbar (view amount/percent toggle, sort select mode, zoom buttons, and zoom indicators) are aligned to a strict 32px height standard.
+- *Resolved:* Corner curves are unified under `var(--rd-sm)` for inputs/buttons and `var(--rd-md)` for container panels.
 
 ### Pillar 6: Experience Design (4/4)
 - *Resolved:* PNG image export renders successfully. External Google Fonts `@import` inside the SVG context has been removed to bypass sandbox network restrictions.
