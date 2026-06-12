@@ -173,7 +173,7 @@ export function renderSankey(snapshot, buildSankeyData, sortMode) {
   const flowMinWidth = groupNodeWidth + Math.max(0, columnCount - 1) * minColumnStep;
   const minWidth = Math.ceil(marginLeft + flowMinWidth + marginRight);
   const wrapWidth = Math.max(0, dom.sankeyWrap.clientWidth - (isMobileViewport ? 12 : 20));
-  const baseWidth = isMobileViewport ? Math.max(280, wrapWidth) : Math.max(minWidth, wrapWidth);
+  const baseWidth = isMobileViewport ? Math.max(680, wrapWidth) : Math.max(minWidth, wrapWidth);
   const width = baseWidth * effectiveSankeyZoom;
   const maxCountPerColumn = columns.reduce((max, column) => {
     const count = data.nodes.filter((node) => node.column === column).length;

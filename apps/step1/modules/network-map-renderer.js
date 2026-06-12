@@ -5,7 +5,9 @@ export function renderNetworkMap(container, accounts, transfers) {
   if (!container) return;
   container.innerHTML = "";
  
-  const width = container.clientWidth || 600;
+  const isMobileViewport = window.matchMedia("(max-width: 760px)").matches;
+  const clientW = container.clientWidth || 600;
+  const width = isMobileViewport ? Math.max(680, clientW) : clientW;
   const height = container.clientHeight || 480;
   const cx = width / 2;
   const cy = height / 2;
@@ -15,8 +17,8 @@ export function renderNetworkMap(container, accounts, transfers) {
  
   // 1. SVG 엘리먼트 생성
   const svg = createSvgElement("svg", {
-    width: "100%",
-    height: "100%",
+    width: isMobileViewport ? `${width}px` : "100%",
+    height: isMobileViewport ? `${height}px` : "100%",
     viewBox: `0 0 ${width} ${height}`,
     style: "overflow: visible;"
   });

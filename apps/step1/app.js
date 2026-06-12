@@ -112,6 +112,46 @@ function init() {
       onboardingManager.start();
     });
   }
+
+  initScrollHintBanners();
+}
+
+function initScrollHintBanners() {
+  const banners = document.querySelectorAll(".scroll-hint-banner");
+  banners.forEach((banner) => {
+    // 닫기 버튼 추가
+    const closeBtn = document.createElement("button");
+    closeBtn.type = "button";
+    closeBtn.className = "scroll-hint-close";
+    closeBtn.innerHTML = "&times;";
+    closeBtn.setAttribute("aria-label", "스크롤 알림 닫기");
+    closeBtn.style.cssText = "background:none; border:none; font-size:1.1rem; font-weight:bold; color:var(--muted); cursor:pointer; padding:0 4px; margin-left:8px; line-height:1; vertical-align:middle;";
+    closeBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      banner.style.transition = "opacity 0.4s ease, margin-bottom 0.4s ease, padding 0.4s ease, height 0.4s ease";
+      banner.style.opacity = "0";
+      setTimeout(() => {
+        banner.style.display = "none";
+      }, 400);
+    });
+    banner.appendChild(closeBtn);
+
+    // 가로 스크롤 감지 시 서서히 숨김
+    const container = banner.parentElement;
+    if (container) {
+      const handleScroll = () => {
+        if (container.scrollLeft > 10) {
+          banner.style.transition = "opacity 0.5s ease";
+          banner.style.opacity = "0";
+          container.removeEventListener("scroll", handleScroll);
+          setTimeout(() => {
+            banner.style.display = "none";
+          }, 500);
+        }
+      };
+      container.addEventListener("scroll", handleScroll);
+    }
+  });
 }
 
 if (document.readyState === "loading") {

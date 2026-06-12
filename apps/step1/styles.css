@@ -2650,12 +2650,10 @@ body.is-onboarding-active .onboarding-overlay {
 
 @media (max-width: 760px) {
   .scroll-hint-banner.mobile-only {
-    display: block;
-  }
-  #sankeySvg {
-    min-width: 680px;
-  }
-  #accountFlowNetworkMap {
-    min-width: 680px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    box-sizing: border-box;
   }
 }
