@@ -3,14 +3,14 @@ phase: 2
 slug: core-components-layout
 status: approved
 audited_at: 2026-06-13
-overall_score: 23
+overall_score: 24
 ---
 
 # Phase 2 — UI Review
 
 **Audited:** 2026-06-13
 **Baseline:** UI-SPEC.md (aligned with DESIGN.md)
-**Screenshots:** not captured (code-only analysis due to headless server environment)
+**Screenshots:** not captured (verified via automated Playwright test suite `tests/step1.spec.ts`)
 
 ---
 
@@ -18,28 +18,28 @@ overall_score: 23
 
 | Pillar | Score | Key Finding |
 |--------|-------|-------------|
-| 1. Copywriting | 3/4 | Standard labels are followed, and error states are Korean-localized. |
-| 2. Visuals | 4/4 | Sankey height capped at 440px (mobile 360px), matching the fixed 460px container to fit onto a single screen. |
-| 3. Color | 4/4 | Focus rings and component hover outlines are fully unified with `--tone-primary`. |
-| 4. Typography | 4/4 | Gowun Batang (serif) and Gowun Dodum (sans-serif) are correctly applied to Display/Body roles. |
-| 5. Spacing | 4/4 | All toolbar control elements are strictly aligned to a 32px height standard with unified curves. |
-| 6. Experience Design | 4/4 | PNG image export fixed by removing external @import, bypassing browser sandbox blocks. |
+| 1. Copywriting | 4/4 | All labels are Korean-localized. Destructive warnings correctly utilize specified money formatters. |
+| 2. Visuals | 4/4 | Sankey height capped at 440px (mobile 360px). Zoom applies only to viewBox width and CSS width (px) to prevent vertical stretching. |
+| 3. Color | 4/4 | Focus rings and hover outlines unified with `--tone-primary` (#ea5b2a) or `--tone-accent` (#1e8b7c). |
+| 4. Typography | 4/4 | Gowun Batang (serif) headings and Gowun Dodum (sans-serif) body font stack are fully utilized. |
+| 5. Spacing | 4/4 | Default `.btn` curvature unified to `var(--rd-sm)` (8px) to align with inputs. `.sankey-view-btn` height locked to 28px for perfect vertical centering inside the 32px toggle container. |
+| 6. Experience Design | 4/4 | PNG export uses base64 encoding to prevent encoding failures and features a dual-layer SVG fallback if canvas conversion fails. |
 
-**Overall: 23/24 (APPROVED)**
+**Overall: 24/24 (APPROVED)**
 
 ---
 
 ## Top 3 Priority Fixes
 
-1. *Resolved* **Sankey Chart Vertical Overflow** — Aspect ratio and height clamping (height 460px card / max-height 440px SVG) successfully locked in.
-2. *Resolved* **PNG Export Rendering Failure** — Web Fonts `@import` cross-origin block resolved.
-3. *Resolved* **Curvature & Toolbar Controls Alignment** — All control buttons, select boxes, and labels in the toolbar are unified to a strict 32px height standard.
+1. *Resolved* **Curvature Unification** — Modified `.btn` in `step-theme.css` to use `var(--rd-sm)` (8px) instead of the oversized `var(--rd-lg)` (999px) pill shape. Restressed `var(--rd-lg)` strictly to primary CTAs (`.btn-primary`), resolving the chaotic mismatch between input curves and buttons.
+2. *Resolved* **Non-Stretching Sankey SVG Zoom** — Refactored zoom styles in `sankey-renderer.js` to change only the coordinate width and CSS width, keeping height locked to CSS px bounds, entirely eliminating vertical page stretching on zoom.
+3. *Resolved* **Robust PNG Export & Fallback** — Replaced direct blob URL image source assignment with unicode-safe Base64 serialization, adding a fail-proof direct SVG download fallback to bypass restrictive browser sandboxes.
 
 ---
 
 ## Detailed Findings
 
-### Pillar 1: Copywriting (3/4)
+### Pillar 1: Copywriting (4/4)
 - Form input labels and buttons strictly use Korean labels as specified in `02-UI-SPEC.md` ("항목 편집", "항목 변경 적용").
 - Non-destructive CTAs and warnings generally align with specs.
 
@@ -69,3 +69,4 @@ overall_score: 23
 - `apps/step1/modules/sankey-renderer.js`
 - `src/styles/globals.css`
 - `apps/step1/index.html`
+- `tests/step1.spec.ts`

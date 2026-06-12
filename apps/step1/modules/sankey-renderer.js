@@ -173,8 +173,8 @@ export function renderSankey(snapshot, buildSankeyData, sortMode) {
   const flowMinWidth = groupNodeWidth + Math.max(0, columnCount - 1) * minColumnStep;
   const minWidth = Math.ceil(marginLeft + flowMinWidth + marginRight);
   const wrapWidth = Math.max(0, dom.sankeyWrap.clientWidth - (isMobileViewport ? 12 : 20));
-  const widthTarget = wrapWidth;
-  const width = isMobileViewport ? Math.max(280, wrapWidth) : Math.max(minWidth, widthTarget);
+  const baseWidth = isMobileViewport ? Math.max(280, wrapWidth) : Math.max(minWidth, wrapWidth);
+  const width = baseWidth * effectiveSankeyZoom;
   const maxCountPerColumn = columns.reduce((max, column) => {
     const count = data.nodes.filter((node) => node.column === column).length;
     return Math.max(max, count);
@@ -199,7 +199,8 @@ export function renderSankey(snapshot, buildSankeyData, sortMode) {
     : (hasGroupLayer ? 22 : 16);
 
   dom.sankeySvg.setAttribute("viewBox", `0 0 ${width} ${height}`);
-  dom.sankeySvg.style.width = `${Math.round(effectiveSankeyZoom * 100)}%`;
+  dom.sankeySvg.style.width = `${width}px`;
+  dom.sankeySvg.style.height = `${height}px`;
   dom.sankeySvg.style.maxWidth = "none";
   dom.sankeySvg.style.margin = isMobileViewport ? "0 auto" : "0";
 
@@ -483,13 +484,21 @@ export function exportSankeyToPng() {
   const svgEl = dom.sankeySvg;
   if (!svgEl) return;
 
-  const rect = svgEl.getBoundingClientRect();
-  const width = rect.width || 800;
-  const height = rect.height || 600;
+  const viewBoxAttr = svgEl.getAttribute("viewBox");
+  let width = 800;
+  let height = 440;
+  if (viewBoxAttr) {
+    const parts = viewBoxAttr.split(" ").map(Number);
+    if (parts.length === 4) {
+      width = parts[2];
+      height = parts[3];
+    }
+  }
 
   const clone = svgEl.cloneNode(true);
   clone.setAttribute("width", width);
   clone.setAttribute("height", height);
+  clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
   clone.removeAttribute("style");
 
   const styleEl = document.createElementNS("http://www.w3.org/2000/svg", "style");
@@ -499,7 +508,7 @@ export function exportSankeyToPng() {
       background-color: #ffffff; /* 흰색 배경 보장 */
     }
     text {
-      fill: #334155;
+      fill: #102220;
       font-size: 12px;
     }
     .sankey-path {
@@ -512,11 +521,11 @@ export function exportSankeyToPng() {
       stroke-width: 1;
     }
     .sankey-label {
-      fill: #1e293b;
+      fill: #102220;
       font-weight: 700;
     }
     .sankey-value {
-      fill: #64748b;
+      fill: rgba(16, 34, 32, 0.66);
     }
   `;
   clone.insertBefore(styleEl, clone.firstChild);
@@ -524,9 +533,21 @@ export function exportSankeyToPng() {
   const serializer = new XMLSerializer();
   const svgString = serializer.serializeToString(clone);
 
-  const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
-  const url = URL.createObjectURL(svgBlob);
+  let base64Svg;
+  try {
+    base64Svg = btoa(unescape(encodeURIComponent(svgString)));
+  } catch (e) {
+    console.error("Failed to base64 encode SVG", e);
+    const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+    const fallbackUrl = URL.createObjectURL(svgBlob);
+    triggerDownload(fallbackUrl, width, height);
+    return;
+  }
 
+  triggerDownload(`data:image/svg+xml;base64,${base64Svg}`, width, height);
+}
+
+function triggerDownload(srcUrl, width, height) {
   const img = new Image();
   img.onload = () => {
     const scale = 2; // 2배 고해상도
@@ -542,17 +563,34 @@ export function exportSankeyToPng() {
     ctx.scale(scale, scale);
     ctx.drawImage(img, 0, 0, width, height);
 
-    const pngUrl = canvas.toDataURL("image/png");
-    const downloadLink = document.createElement("a");
-    const today = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-    downloadLink.href = pngUrl;
-    downloadLink.download = `isf-sankey-${today}.png`;
-    document.body.appendChild(downloadLink);
-    downloadLink.click();
-    document.body.removeChild(downloadLink);
-
-    URL.revokeObjectURL(url);
+    try {
+      const pngUrl = canvas.toDataURL("image/png");
+      const downloadLink = document.createElement("a");
+      const today = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+      downloadLink.href = pngUrl;
+      downloadLink.download = `isf-sankey-${today}.png`;
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+    } catch (err) {
+      console.error("Canvas toDataURL failed, falling back to SVG", err);
+      fallbackToSvgDownload(srcUrl);
+    }
   };
-  img.src = url;
+  img.onerror = (e) => {
+    console.error("Image loading failed for PNG export, falling back to SVG", e);
+    fallbackToSvgDownload(srcUrl);
+  };
+  img.src = srcUrl;
+}
+
+function fallbackToSvgDownload(srcUrl) {
+  const downloadLink = document.createElement("a");
+  const today = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+  downloadLink.href = srcUrl;
+  downloadLink.download = `isf-sankey-${today}.svg`;
+  document.body.appendChild(downloadLink);
+  downloadLink.click();
+  document.body.removeChild(downloadLink);
 }
 

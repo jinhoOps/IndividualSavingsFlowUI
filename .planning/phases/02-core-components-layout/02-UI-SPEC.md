@@ -23,6 +23,10 @@ reviewed_at: 2026-06-13
 | Component library | none |
 | Icon library | none (SVG inline / unicode) |
 | Font | Display: "Gowun Batang", serif <br> Body: "Gowun Dodum", "Nanum Gothic", sans-serif |
+| Curvature Tokens | `var(--rd-sm)` (8px) for inputs, standard buttons, combos, and badges. <br> `var(--rd-md)` (14px) for cards and main panels. <br> `var(--rd-lg)` (999px) reserved strictly for primary CTA (`.btn-primary`) buttons. |
+| Toolbar Heights | Unified controls inside toolbar: `.sankey-view-btn` height = 28px (line-height 28px) aligned inside a 32px high `.sankey-view-toggle` wrapper. |
+| Sankey Sizing | Max vertical SVG height capped at 440px (mobile 360px). Zoom applied exclusively to SVG viewBox width and CSS width (px) to prevent vertical stretching. |
+| PNG Export | Base64-encoded SVG serialization to ensure offline/local capability. Automatic fallback to raw SVG download if Canvas conversion fails due to browser sandbox restrictions. |
 
 ---
 

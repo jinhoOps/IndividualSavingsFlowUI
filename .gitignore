@@ -39,3 +39,5 @@ yarn-error.log*
 graphify-out/cache/
 **/graphify-out/cache/
 .agent/*
+/test-results/
+/playwright-report/

@@ -10,7 +10,8 @@
     "sync-version": "node scripts/sync-version.js",
     "version": "npm run sync-version && git add public/manifest.webmanifest shared/legacy/sw.js shared/core/utils.js",
     "check": "tsc --noEmit",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "test:e2e": "playwright test"
   },
   "repository": {
     "type": "git",
@@ -25,6 +26,7 @@
   },
   "homepage": "https://github.com/jinhoOps/IndividualSavingsFlowUI#readme",
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "@tailwindcss/vite": "^4.0.0-alpha.13",
     "@types/node": "^20.14.9",
     "@vitejs/plugin-react": "^4.3.1",

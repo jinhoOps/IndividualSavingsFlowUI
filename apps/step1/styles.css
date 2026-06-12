@@ -751,7 +751,7 @@ input[type=number] {
 
   .sankey-head-tools { width: 100% !important; display: flex !important; flex-direction: row !important; flex-wrap: wrap !important; align-items: center !important; justify-content: flex-start !important; gap: 8px !important; }
   .sankey-view-toggle { height: 32px !important; }
-  .sankey-view-btn { flex: 1; height: 26px !important; line-height: 26px !important; }
+  .sankey-view-btn { flex: 1; height: 28px !important; line-height: 28px !important; }
   .sankey-sort { display: inline-flex !important; align-items: center !important; gap: 6px !important; }
   .sankey-sort-select { min-width: 0 !important; width: min(180px, 50vw) !important; height: 32px !important; }
   .sankey-zoom-tools { display: inline-flex !important; align-items: center !important; gap: 6px !important; height: 32px !important; }
@@ -982,7 +982,7 @@ input[type=number] {
 .item-sort-select {
   min-width: 92px;
   border: 1px solid var(--line);
-  border-radius: 9px;
+  border-radius: var(--rd-sm);
   padding: 5px 8px;
   font: inherit;
   color: var(--ink);
@@ -1010,11 +1010,11 @@ input[type=number] {
   min-width: 50px;
   border: 0;
   background: transparent;
-  height: 26px;
-  line-height: 26px;
+  height: 28px;
+  line-height: 28px;
   padding: 0 12px !important;
   min-height: 0 !important;
-  border-radius: 4px;
+  border-radius: var(--rd-sm);
   font-size: 0.76rem;
 }
 
@@ -1112,7 +1112,7 @@ input[type=number] {
   max-width: 100%;
   min-width: min(260px, 100%);
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: var(--rd-sm);
   background: var(--panel);
   padding: 6px 8px;
 }
@@ -1654,7 +1654,7 @@ body.is-onboarding-active .onboarding-overlay {
   padding: 3px 8px;
   font-size: 0.74rem;
   font-weight: 600;
-  border-radius: 4px;
+  border-radius: var(--rd-sm);
   line-height: 1.2;
   transition: all 0.18s ease;
   white-space: nowrap;
@@ -1849,7 +1849,7 @@ body.is-onboarding-active .onboarding-overlay {
   padding: 3px 8px;
   font-size: 0.74rem;
   font-weight: 600;
-  border-radius: 4px;
+  border-radius: var(--rd-sm);
   line-height: 1.2;
   transition: all 0.18s ease;
   white-space: nowrap;
@@ -2638,7 +2638,7 @@ body.is-onboarding-active .onboarding-overlay {
 .isf-tooltip .formula-box {
   background: rgba(234, 91, 42, 0.04);
   border: 1px solid rgba(234, 91, 42, 0.12);
-  border-radius: 4px;
+  border-radius: var(--rd-sm);
   padding: 6px 10px;
   margin: 6px 0;
   text-align: center;
