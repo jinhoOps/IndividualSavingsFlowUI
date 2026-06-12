@@ -95,7 +95,7 @@
   }
 
   .btn {
-    @apply border border-line-strong rounded-pill px-[14px] py-[8px] text-caption text-ink bg-white/95 cursor-pointer inline-flex items-center justify-center min-h-[40px] transition-all duration-200 active:scale-[0.96];
+    @apply border border-line-strong rounded-sm px-[14px] py-[8px] text-caption text-ink bg-white/95 cursor-pointer inline-flex items-center justify-center min-h-[40px] transition-all duration-200 active:scale-[0.96];
     font-family: inherit;
   }
 
