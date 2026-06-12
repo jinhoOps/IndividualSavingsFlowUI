@@ -1,5 +1,14 @@
 # Project Evolution Log (연대기적 작업 로그)
 
+## [2026-06-13] feat | 재무설정/가계추이 패널 디폴트 접기, 과거지출 비교 비활성화 및 이미지 저장 엣지 유실 버그 해결 (v0.11.44)
+- **목적**: 불필요한 인지 부하 감소를 위해 복잡한 입력/테이블 패널을 기본 상태에서 접어두고, 미구현 기능을 확실하게 차단하며, SVG 다운로드 시 엣지가 누락되던 렌더링 버그 해결.
+- **주요 변경사항**:
+  - **패널 접기/펼치기 인터랙션 구현**: `controls-panel` (재무 설정) 및 `projection-panel` (가계 추이) 패널 헤더에 아코디언 토글 화살표 버튼(`toggleControlsBtn`, `toggleProjectionBtn`) 추가. 콘텐츠 영역을 감싸는 wrapper를 설계해 기본 로드 시 `hidden` 처리하여 깔끔하게 접어둠.
+  - **가계 추이 검증 표현 단순화**: `state.js` 의 `projectionOptions.showFlow` 기본값을 `false` 로 수정하여 기본 상태에서는 수입/생활비 세부 흐름 컬럼들을 제외한 핵심 잔액/순자산 위주로 테이블이 단순 노출되도록 개선. 또한 `시점` ➔ `기간`, `실질 순자산` ➔ `실질 순자산 (현재가치)`으로 텍스트를 직관화.
+  - **과거 지출 비교(미구현) 차단**: `.comparison-panel` 의 도구 버튼들을 `disabled` 처리하고, 그 위에 미려한 글래스모피즘 오버레이(`.comparison-panel__overlay`)와 `🚧 준비 중` 배지를 배치해 동작을 완벽히 비활성화.
+  - **이미지 다운로드 엣지 유실 버그 해결**: `exportSankeyToPng` 함수 내 `styleEl`에 하드코딩되어 있던 `.sankey-path { fill: none; }` 오타를 `fill: url(#isf-sankey-sunset-deepsea-gradient); fill-opacity: 0.56; stroke: none;` 으로 전면 수정하여 저장된 이미지에서 그라디언트 밴드가 선명하게 출력되도록 정상화.
+- **결과**: `npm run build` 빌드 성공, Playwright E2E 테스트 통과 및 v0.11.44 버전 배포 완료.
+
 ## [2026-06-13] cleanup | 재무 핵심 지표 영역의 미사용 cardMeta 안내문구 삭제 (v0.11.43)
 - **목적**: 불필요한 마크업 및 비어 있는 가이드 태그를 소거하여 구조적 일관성과 미니멀함을 유지.
 - **주요 변경사항**:

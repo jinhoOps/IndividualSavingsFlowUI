@@ -51,7 +51,7 @@ import * as helpers from "./modules/state-helpers.js";
 import { initOnboarding } from "./modules/onboarding-manager.js";
 import {
   syncViewModeUi, syncViewModeGuideUi, syncBackupUi,
-  syncSankeyValueModeUi, syncSankeySortModeUi, syncSankeyZoomUi,
+  syncSankeyValueModeUi, syncSankeySortModeUi,
   syncItemSortModeUi, syncMobileInputsPanelVisibility,
   syncMobileItemEditorFab, syncAdvancedTabBlockVisibility,
   setActiveAdvancedTab, refreshInputsPanel, syncDerivedMonthlyInputsToUi,
@@ -75,7 +75,6 @@ function init() {
   syncBackupUi();
   syncSankeyValueModeUi();
   syncSankeySortModeUi();
-  syncSankeyZoomUi();
   syncItemSortModeUi();
   syncMobileInputsPanelVisibility();
   setActiveAdvancedTab(state.activeAdvancedTab);
@@ -282,9 +281,6 @@ function bindControls() {
 
 
 
-  if (dom.sankeyZoomIn) dom.sankeyZoomIn.addEventListener("click", () => setSankeyZoom(state.sankeyZoom + SANKEY_ZOOM_STEP));
-  if (dom.sankeyZoomOut) dom.sankeyZoomOut.addEventListener("click", () => setSankeyZoom(state.sankeyZoom - SANKEY_ZOOM_STEP));
-  if (dom.sankeyZoomReset) dom.sankeyZoomReset.addEventListener("click", () => setSankeyZoom(1));
   if (dom.sankeyExport) dom.sankeyExport.addEventListener("click", exportSankeyToPng);
 
   if (dom.modeTR) dom.modeTR.addEventListener("click", () => setProjectionMode("TR"));
@@ -413,21 +409,19 @@ function bindControls() {
 
 function bindVisualizationAndTooltipEvents() {
   // 1. 시각화 탭 전환 리스너
-  if (dom.showSankeyBtn && dom.showNetworkBtn && dom.visualizationSlider) {
-    dom.showSankeyBtn.addEventListener("click", () => {
-      dom.showSankeyBtn.classList.add("is-active");
-      dom.showSankeyBtn.setAttribute("aria-selected", "true");
-      dom.showNetworkBtn.classList.remove("is-active");
-      dom.showNetworkBtn.setAttribute("aria-selected", "false");
-      dom.visualizationSlider.style.transform = "translateX(0%)";
-    });
-    dom.showNetworkBtn.addEventListener("click", () => {
-      dom.showNetworkBtn.classList.add("is-active");
-      dom.showNetworkBtn.setAttribute("aria-selected", "true");
-      dom.showSankeyBtn.classList.remove("is-active");
-      dom.showSankeyBtn.setAttribute("aria-selected", "false");
-      dom.visualizationSlider.style.transform = "translateX(-50%)";
-    });
+  const sankeyTabBtns = [dom.showSankeyBasicBtn, dom.showSankeyDetailBtn, dom.showNetworkBtn].filter(Boolean);
+  if (sankeyTabBtns.length === 3 && dom.visualizationSlider) {
+    const switchVis = (activeBtn, detailMode, sliderIndex) => {
+      sankeyTabBtns.forEach((btn) => {
+        btn.classList.toggle("is-active", btn === activeBtn);
+        btn.setAttribute("aria-selected", btn === activeBtn ? "true" : "false");
+      });
+      dom.visualizationSlider.style.transform = sliderIndex === 1 ? "translateX(-50%)" : "translateX(0%)";
+      if (detailMode !== null) setSankeyDetailMode(detailMode);
+    };
+    dom.showSankeyBasicBtn.addEventListener("click", () => switchVis(dom.showSankeyBasicBtn, "basic", 0));
+    dom.showSankeyDetailBtn.addEventListener("click", () => switchVis(dom.showSankeyDetailBtn, "detail", 0));
+    dom.showNetworkBtn.addEventListener("click", () => switchVis(dom.showNetworkBtn, null, 1));
   }
  
   // 2. 수동 이체 폼 제어 리스너
@@ -694,6 +688,36 @@ function bindActionButtons() {
   if (dom.applyChanges) dom.applyChanges.addEventListener("click", applyPendingChanges);
   if (dom.cancelChanges) dom.cancelChanges.addEventListener("click", cancelPendingChanges);
   if (dom.jumpToTop) dom.jumpToTop.addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
+
+  if (dom.toggleControlsBtn && dom.inputsPanelContent) {
+    dom.toggleControlsBtn.addEventListener("click", () => {
+      const isHidden = dom.inputsPanelContent.hasAttribute("hidden");
+      if (isHidden) {
+        dom.inputsPanelContent.removeAttribute("hidden");
+        dom.toggleControlsBtn.setAttribute("aria-expanded", "true");
+        dom.toggleControlsBtn.textContent = "▴";
+      } else {
+        dom.inputsPanelContent.setAttribute("hidden", "");
+        dom.toggleControlsBtn.setAttribute("aria-expanded", "false");
+        dom.toggleControlsBtn.textContent = "▾";
+      }
+    });
+  }
+
+  if (dom.toggleProjectionBtn && dom.projectionPanelContent) {
+    dom.toggleProjectionBtn.addEventListener("click", () => {
+      const isHidden = dom.projectionPanelContent.hasAttribute("hidden");
+      if (isHidden) {
+        dom.projectionPanelContent.removeAttribute("hidden");
+        dom.toggleProjectionBtn.setAttribute("aria-expanded", "true");
+        dom.toggleProjectionBtn.textContent = "▴";
+      } else {
+        dom.projectionPanelContent.setAttribute("hidden", "");
+        dom.toggleProjectionBtn.setAttribute("aria-expanded", "false");
+        dom.toggleProjectionBtn.textContent = "▾";
+      }
+    });
+  }
 }
 
 function bindGlobalEvents() {
@@ -1049,7 +1073,10 @@ function setSankeyValueMode(mode) {
 
 function setSankeySortMode(mode) { state.sankeySortMode = mode; syncSankeySortModeUi(); renderSankey(state.snapshot, buildSankeyData, state.sankeySortMode); }
 
-function setSankeyZoom(zoom) { state.sankeyZoom = Math.min(SANKEY_ZOOM_MAX, Math.max(SANKEY_ZOOM_MIN, zoom)); syncSankeyZoomUi(); }
+function setSankeyDetailMode(mode) {
+  state.sankeyDetailMode = mode;
+  if (state.snapshot) renderSankey(state.snapshot, buildSankeyData, state.sankeySortMode);
+}
 
 function setItemSortMode(group, mode) {
   state.itemSortModes[group] = mode;

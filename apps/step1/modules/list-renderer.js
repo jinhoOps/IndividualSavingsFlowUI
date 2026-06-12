@@ -24,11 +24,11 @@ export function renderProjectionTable(records, horizonYears, expenseGrowth) {
   if (table) {
     const thead = table.querySelector("thead");
     if (thead) {
-      let headerHtml = `<tr><th>시점</th>`;
+      let headerHtml = `<tr><th>기간</th>`;
       if (showFlow) headerHtml += `<th>월 수입</th><th>월 생활비</th><th>당월 이자</th><th>실제 상환액</th><th>부채 증가분</th>`;
       if (showBalance) headerHtml += `<th>현금</th><th>저축</th><th>투자</th><th>부채</th>`;
       if (showDividend) headerHtml += `<th>연배당 (세전)</th>`;
-      headerHtml += `<th>순자산</th><th>실질 순자산</th></tr>`;
+      headerHtml += `<th>순자산</th><th>실질 순자산 (현재가치)</th></tr>`;
       thead.innerHTML = headerHtml;
     }
   }

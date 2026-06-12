@@ -2720,3 +2720,64 @@ body.is-onboarding-active .onboarding-overlay {
     box-sizing: border-box;
   }
 }
+
+/* 패널 접기/펼치기 토글 버튼 */
+.panel-toggle-btn {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: var(--rd-sm);
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+.panel-toggle-btn:hover {
+  color: var(--ink);
+  background: rgba(16, 34, 32, 0.04);
+}
+
+/* 과거 지출 비교 미구현 오버레이 */
+.comparison-panel {
+  position: relative;
+  overflow: hidden;
+}
+.comparison-panel__overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+  padding: var(--sp-md);
+  text-align: center;
+}
+.comparison-panel__overlay-badge {
+  background: var(--ink);
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: var(--rd-sm);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  margin-bottom: var(--sp-xs);
+}
+.comparison-panel__overlay-text {
+  font-size: 0.85rem;
+  color: var(--muted);
+  font-weight: 500;
+  margin: 0;
+}

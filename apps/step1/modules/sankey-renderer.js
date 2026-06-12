@@ -91,7 +91,8 @@ export function renderSankey(snapshot, buildSankeyData, sortMode) {
 
   const isMobileEarly = window.matchMedia(MOBILE_LAYOUT_QUERY).matches;
   const rawData = buildSankeyData(snapshot, sortMode);
-  const data = isMobileEarly && rawData ? collapseOverloadedNodes(rawData) : rawData;
+  const isDetailMode = state.sankeyDetailMode === "detail";
+  const data = isMobileEarly && !isDetailMode && rawData ? collapseOverloadedNodes(rawData) : rawData;
   dom.sankeySvg.innerHTML = "";
   dom.sankeyLegend.innerHTML = "";
 
@@ -757,8 +758,9 @@ export function exportSankeyToPng() {
       font-size: 12px;
     }
     .sankey-path {
-      fill: none;
-      stroke-opacity: 0.4;
+      fill: url(#isf-sankey-sunset-deepsea-gradient);
+      fill-opacity: 0.56;
+      stroke: none;
     }
     .sankey-node {
       opacity: 0.72;

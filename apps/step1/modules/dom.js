@@ -7,6 +7,7 @@ export const dom = {
 
   loadSample: document.getElementById("loadSample"),
   resetInputs: document.getElementById("resetInputs"),
+  toggleControlsBtn: document.getElementById("toggleControlsBtn"),
   easterEgg: document.getElementById("easterEgg"),
 
   presetSalary: document.getElementById("presetSalary"),
@@ -100,6 +101,8 @@ export const dom = {
   sankeyExport: document.getElementById("sankeyExport"),
   sankeyEmpty: document.getElementById("sankeyEmpty"),
   sankeyTooltip: document.getElementById("sankeyTooltip"),
+  toggleProjectionBtn: document.getElementById("toggleProjectionBtn"),
+  projectionPanelContent: document.getElementById("projectionPanelContent"),
   projectionTableBody: document.querySelector("#projectionTable tbody"),
   projectionMeta: document.getElementById("projectionMeta"),
   modeTR: document.getElementById("modeTR"),

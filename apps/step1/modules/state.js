@@ -60,7 +60,7 @@ export const state = {
   showDetailedCards: false,
   projectionOptions: {
     mode: "TR",
-    showFlow: true,
+    showFlow: false,
     showBalance: true,
     showDividend: false
   }

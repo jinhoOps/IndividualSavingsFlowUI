@@ -63,9 +63,10 @@
             <button id="loadSample" class="btn btn-ghost btn-sm" type="button">샘플 불러오기</button>
             <button id="openPresetBtn" class="btn btn-ghost btn-sm" type="button" title="투자 성향과 월수입 기준으로 프리셋 적용">프리셋</button>
             <button id="resetInputs" class="btn btn-ghost btn-sm" type="button">초기화</button>
+            <button id="toggleControlsBtn" class="panel-toggle-btn" type="button" aria-expanded="false" aria-label="재무 설정 펼치기">▾</button>
           </div>
         </div>
-        <div id="inputsPanelContent">
+        <div id="inputsPanelContent" hidden>
           <div id="surplusTransferBanner" class="surplus-transfer-banner" hidden>
             💡 이번 달 남는 잉여현금 <span id="surplusAmountText">0만 원</span>은 
             <select id="surplusTransferAccountSelect" class="surplus-select" aria-label="잉여현금 자동 이체 계좌"></select> 
@@ -457,51 +458,56 @@
             <span class="help-tooltip-trigger" data-tooltip="━━ 순자산 정의 ━━&#10;$$순자산 = (현금 + 저축 + 투자) − 부채$$&#10;&#10;━━ 월간 자금 흐름 순서 ━━&#10;① **가용현금 계산**: 매월 수입 적립 및 지출 차감&#10;`가용현금 = 수입 − 생활비 − 설정저축 − 설정투자 − 부채상환`&#10;② **부채 상환**: 가용현금 내에서 실제 상환 처리&#10;`실제상환액 = min(설정상환액, 부채잔액, 가용현금)`&#10;③ **부채 변동**: 가용현금이 부족한 경우 (적자 발생)&#10;`부족분은 부채로 자동 전환` (부채 증가)&#10;④ **저축/투자**: 가용현금이 0 이상일 때만 정상 실행&#10;&#10;━━ 이자/수익률 계산 ━━&#10;· **저축/투자**: 복리식 월 수익률 반영&#10;· **실질 순자산 (PV)**: 기준금리 기반 현재가치 할인&#10;`실질가치 = 명목가치 / (1 + 기준금리/12)^개월수`">?</span>
           </h2>
           <p id="projectionMeta" class="hint"></p>
+          <div class="section-head-tools">
+            <button id="toggleProjectionBtn" class="panel-toggle-btn" type="button" aria-expanded="false" aria-label="가계 추이 펼치기">▾</button>
+          </div>
         </div>
         
-        <div class="projection-options" style="margin-top: 12px; margin-bottom: 12px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-          <div class="opt-group" style="display: flex; align-items: center; gap: 8px;">
-            <span class="muted" style="font-size: 0.8rem;">시뮬레이션 모드:</span>
-            <div class="tab-list tab-list--sm" role="tablist">
-              <button id="modeTR" class="tab-btn tab-btn--sm is-active" data-mode="TR" role="tab" aria-selected="true">TR (재투자)</button>
-              <button id="modePR" class="tab-btn tab-btn--sm" data-mode="PR" role="tab" aria-selected="false">PR (미투자)</button>
+        <div id="projectionPanelContent" hidden>
+          <div class="projection-options" style="margin-top: 12px; margin-bottom: 12px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <div class="opt-group" style="display: flex; align-items: center; gap: 8px;">
+              <span class="muted" style="font-size: 0.8rem;">시뮬레이션 모드:</span>
+              <div class="tab-list tab-list--sm" role="tablist">
+                <button id="modeTR" class="tab-btn tab-btn--sm is-active" data-mode="TR" role="tab" aria-selected="true">TR (재투자)</button>
+                <button id="modePR" class="tab-btn tab-btn--sm" data-mode="PR" role="tab" aria-selected="false">PR (미투자)</button>
+              </div>
+            </div>
+            <div style="width: 1px; height: 14px; background: var(--line); margin: 0 4px;"></div>
+            <div class="opt-group" style="display: flex; align-items: center; gap: 8px;">
+              <span class="muted" style="font-size: 0.8rem;">표시 컬럼:</span>
+              <label class="view-opt-label" style="font-size: 0.85rem; display: flex; align-items: center; gap: 4px; cursor: pointer;">
+                <input type="checkbox" id="colShowFlow" /> 흐름
+              </label>
+              <label class="view-opt-label" style="font-size: 0.85rem; display: flex; align-items: center; gap: 4px; cursor: pointer;">
+                <input type="checkbox" id="colShowBalance" checked /> 잔액
+              </label>
+              <label class="view-opt-label" style="font-size: 0.85rem; display: flex; align-items: center; gap: 4px; cursor: pointer;">
+                <input type="checkbox" id="colShowDividend" /> 연배당
+              </label>
             </div>
           </div>
-          <div style="width: 1px; height: 14px; background: var(--line); margin: 0 4px;"></div>
-          <div class="opt-group" style="display: flex; align-items: center; gap: 8px;">
-            <span class="muted" style="font-size: 0.8rem;">표시 컬럼:</span>
-            <label class="view-opt-label" style="font-size: 0.85rem; display: flex; align-items: center; gap: 4px; cursor: pointer;">
-              <input type="checkbox" id="colShowFlow" checked /> 흐름
-            </label>
-            <label class="view-opt-label" style="font-size: 0.85rem; display: flex; align-items: center; gap: 4px; cursor: pointer;">
-              <input type="checkbox" id="colShowBalance" checked /> 잔액
-            </label>
-            <label class="view-opt-label" style="font-size: 0.85rem; display: flex; align-items: center; gap: 4px; cursor: pointer;">
-              <input type="checkbox" id="colShowDividend" /> 연배당
-            </label>
-          </div>
-        </div>
 
-        <div class="table-wrap">
-          <table id="projectionTable" class="projection-table">
-            <thead>
-              <tr>
-                <th>시점</th>
-                <th>월 수입</th>
-                <th>월 생활비</th>
-                <th>당월 이자</th>
-                <th>실제 상환액</th>
-                <th>부채 증가분</th>
-                <th>현금</th>
-                <th>저축</th>
-                <th>투자</th>
-                <th>부채</th>
-                <th>순자산</th>
-                <th>실질 순자산</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
+          <div class="table-wrap">
+            <table id="projectionTable" class="projection-table">
+              <thead>
+                <tr>
+                  <th>기간</th>
+                  <th>월 수입</th>
+                  <th>월 생활비</th>
+                  <th>당월 이자</th>
+                  <th>실제 상환액</th>
+                  <th>부채 증가분</th>
+                  <th>현금</th>
+                  <th>저축</th>
+                  <th>투자</th>
+                  <th>부채</th>
+                  <th>순자산</th>
+                  <th>실질 순자산 (현재가치)</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
         </div>
       </section>
 
@@ -509,11 +515,11 @@
         <div class="section-head">
           <h2 id="comparisonTitle">과거 지출 비교</h2>
           <div class="section-head-tools" style="display: flex; gap: var(--sp-xs); align-items: center;">
-            <select id="snapshotSelector" class="snapshot-select" aria-label="비교할 스냅샷 선택" style="max-width: 150px;">
+            <select id="snapshotSelector" class="snapshot-select" aria-label="비교할 스냅샷 선택" style="max-width: 150px;" disabled>
               <option value="">과거 시점 선택...</option>
             </select>
-            <button id="saveSnapshotBtn" class="btn btn-ghost btn-sm" type="button" title="현재 상태를 비교용 스냅샷으로 저장">저장</button>
-            <button id="deleteSnapshotBtn" class="btn btn-ghost btn-sm" type="button" title="선택한 스냅샷 삭제" style="color: var(--status-error);">삭제</button>
+            <button id="saveSnapshotBtn" class="btn btn-ghost btn-sm" type="button" title="현재 상태를 비교용 스냅샷으로 저장" disabled>저장</button>
+            <button id="deleteSnapshotBtn" class="btn btn-ghost btn-sm" type="button" title="선택한 스냅샷 삭제" style="color: var(--status-error);" disabled>삭제</button>
           </div>
         </div>
         <div id="comparisonContent" class="comparison-content" hidden>
@@ -523,6 +529,12 @@
           <div id="comparisonChartWrap" class="comparison-chart-wrap">
             <svg id="comparisonSvg" class="comparison-svg"></svg>
           </div>
+        </div>
+        
+        <!-- 미구현 기능 오버레이 -->
+        <div class="comparison-panel__overlay">
+          <span class="comparison-panel__overlay-badge">🚧 준비 중</span>
+          <p class="comparison-panel__overlay-text">과거 지출 비교 기능은 다음 업데이트(v1.8)에서 지원할 예정입니다.</p>
         </div>
       </section>
 
