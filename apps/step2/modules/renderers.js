@@ -61,8 +61,6 @@ export function renderDividendSimulation() {
   dom.simTable.innerHTML = data.map(d => {
     const statusClass = utils.getFinancialIncomeStatus(d.dividendNominalTR);
     const trClass = statusClass !== 'normal' ? `status--${statusClass}` : '';
-    const badge = statusClass === 'warn' ? '<span class="status-badge status-badge--warn">과세주의</span>' : 
-                  statusClass === 'crit' ? '<span class="status-badge status-badge--crit">과세경고</span>' : '';
 
     let rowHtml = `
       <tr class="${trClass}">
@@ -94,7 +92,7 @@ export function renderDividendSimulation() {
       }
       if (showTR) {
         rowHtml += `
-          <td class="nominal">${formatCurrency(d.dividendAfterTaxTR)} ${badge}</td>
+          <td class="nominal">${formatCurrency(d.dividendAfterTaxTR)}</td>
           <td class="real">${formatCurrency(d.dividendAfterTaxRealTR)}</td>
         `;
       }
@@ -105,6 +103,26 @@ export function renderDividendSimulation() {
   }).join("");
 
   if (dom.simChartSvg) drawSimulationChart(dom.simChartSvg, data);
+
+  // 글로벌 금융소득과세 인디케이터 갱신
+  if (dom.appHeader && typeof dom.appHeader.setFinancialWarning === "function") {
+    let maxStatus = "none";
+    let message = "";
+    
+    // 시뮬레이션 전 기간 중 최초의 주의/경고 연차를 찾음
+    const firstCrit = data.find(d => utils.getFinancialIncomeStatus(d.dividendNominalTR) === "crit");
+    const firstWarn = data.find(d => utils.getFinancialIncomeStatus(d.dividendNominalTR) === "warn");
+    
+    if (firstCrit) {
+      maxStatus = "crit";
+      message = `⚠️ ${firstCrit.year}년차 연배당이 종합과세 한도 초과!\n(세전 ${window.IsfUtils.formatMoney(firstCrit.dividendNominalTR)})`;
+    } else if (firstWarn) {
+      maxStatus = "warn";
+      message = `💡 ${firstWarn.year}년차 연배당이 종합과세 주의 (Safety Margin 도달)\n(세전 ${window.IsfUtils.formatMoney(firstWarn.dividendNominalTR)})`;
+    }
+    
+    dom.appHeader.setFinancialWarning(maxStatus, message);
+  }
 }
 
 /**
@@ -304,17 +322,17 @@ function drawSimulationChart(svg, data) {
         const assetNominal = isDrip ? d.assetNominalTR : d.assetNominalPR;
         const statusClass = window.IsfUtils.getFinancialIncomeStatus(divNominal);
         
-        const badge = statusClass === 'warn' ? '<div class="status-badge status-badge--warn" style="margin: 4px 0 0 0; display: block; text-align: center;">과세주의</div>' : 
-                      statusClass === 'crit' ? '<div class="status-badge status-badge--crit" style="margin: 4px 0 0 0; display: block; text-align: center;">과세경고</div>' : '';
+        let statusText = "";
+        if (statusClass === 'warn') statusText = ' <span style="color: #f59e0b; font-weight: 600;">(과세주의)</span>';
+        if (statusClass === 'crit') statusText = ' <span style="color: #dc2626; font-weight: 600;">(과세경고)</span>';
 
         tooltip.style.display = 'block';
         tooltip.innerHTML = `
           <div style="font-weight: 600; margin-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 2px;">
-            ${d.year}년 (${isDrip ? '재투자' : '일반'})
+            ${d.year}년 (${isDrip ? '재투자' : '일반'})${statusText}
           </div>
           <div style="font-size: 0.75rem; opacity: 0.9;">자산: ${formatCurrency(assetNominal)}</div>
           <div style="font-size: 0.75rem; opacity: 0.9;">배당: ${formatCurrency(divNominal)} (세전)</div>
-          ${badge}
         `;
         const containerRect = svg.getBoundingClientRect();
         const scale = containerRect.width / width;

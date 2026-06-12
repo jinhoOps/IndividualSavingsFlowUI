@@ -541,7 +541,8 @@ input[type=number] {
   .preset-style-btn,
   .preset-modal-style-btn { flex: 1; justify-content: center; }
 
-  .summary-cards { grid-template-columns: 1fr; }
+  .summary-cards { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .summary-cards .card .sub { display: none !important; }
   .controls-grid--simple, .controls-grid--advanced { grid-template-columns: 1fr; }
   .control { padding: 12px !important; }
 
@@ -778,7 +779,7 @@ input[type=number] {
 }
 
 @media (max-width: 520px) {
-  .summary-cards { grid-template-columns: 1fr; }
+  .summary-cards { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
   .actions { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .actions--primary { grid-template-columns: 1fr; }
   .sankey-wrap { min-height: 270px; }
@@ -2341,13 +2342,13 @@ body.is-onboarding-active .onboarding-overlay {
  
 .isf-tooltip {
   position: absolute;
-  padding: 8px 12px;
-  border-radius: 6px;
-  font-size: 0.75rem;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 0.78rem;
   color: #102220;
-  max-width: 220px;
+  max-width: 340px;
   z-index: 1000;
-  line-height: 1.45;
+  line-height: 1.5;
   pointer-events: none;
   background: rgba(251, 250, 247, 0.78);
   backdrop-filter: blur(10px);
@@ -2356,7 +2357,34 @@ body.is-onboarding-active .onboarding-overlay {
   box-shadow: 0 4px 20px rgba(16, 34, 32, 0.08);
   animation: tooltip-fade-in 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
- 
+
+.isf-tooltip .tooltip-section-title {
+  font-weight: 700;
+  font-size: 0.8rem;
+  color: var(--tone-primary);
+  margin-top: 8px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid rgba(16, 34, 32, 0.08);
+  padding-bottom: 2px;
+}
+.isf-tooltip .tooltip-section-title:first-child {
+  margin-top: 0;
+}
+.isf-tooltip ul {
+  margin: 4px 0;
+  padding-left: 14px;
+}
+.isf-tooltip li {
+  margin-bottom: 2px;
+}
+.isf-tooltip code {
+  font-family: monospace;
+  background: rgba(16, 34, 32, 0.05);
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 0.72rem;
+}
+
 @keyframes tooltip-fade-in {
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
@@ -2536,21 +2564,86 @@ body.is-onboarding-active .onboarding-overlay {
   filter: drop-shadow(0 4px 8px rgba(234, 91, 42, 0.1));
 }
  
-@keyframes network-flow-pulse {
-  from {
-    stroke-dashoffset: 0;
-  }
-  to {
-    stroke-dashoffset: -24;
-  }
-}
- 
-.network-link-pulse {
-  animation: network-flow-pulse 1.2s linear infinite;
-}
  
 /* 마스킹 페이드아웃 효과 */
 .is-dimmed {
   opacity: 0.15 !important;
   transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* 글로벌 금융소득과세 경고등 LED 스타일 */
+.global-indicator {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.3s ease;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+.global-indicator--warn {
+  background-color: #f59e0b;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.8);
+  animation: led-pulse-warn 1.8s infinite ease-in-out;
+}
+
+.global-indicator--crit {
+  background-color: #dc2626;
+  box-shadow: 0 0 10px rgba(220, 38, 38, 0.9);
+  animation: led-pulse-crit 1.0s infinite ease-in-out;
+}
+
+@keyframes led-pulse-warn {
+  0% { transform: scale(1); opacity: 0.9; box-shadow: 0 0 4px rgba(245, 158, 11, 0.5); }
+  50% { transform: scale(1.15); opacity: 1; box-shadow: 0 0 10px rgba(245, 158, 11, 0.9); }
+  100% { transform: scale(1); opacity: 0.9; box-shadow: 0 0 4px rgba(245, 158, 11, 0.5); }
+}
+
+@keyframes led-pulse-crit {
+  0% { transform: scale(1); opacity: 0.8; box-shadow: 0 0 4px rgba(220, 38, 38, 0.6); }
+  50% { transform: scale(1.2); opacity: 1; box-shadow: 0 0 14px rgba(220, 38, 38, 1); }
+  100% { transform: scale(1); opacity: 0.8; box-shadow: 0 0 4px rgba(220, 38, 38, 0.6); }
+}
+
+/* 가계 흐름 모바일 스크롤 힌트 배너 */
+.scroll-hint-banner {
+  background: rgba(234, 91, 42, 0.05);
+  border: 1px dashed rgba(234, 91, 42, 0.2);
+  border-radius: var(--rd-sm, 6px);
+  color: var(--tone-accent, #ea5b2a);
+  padding: 6px 12px;
+  font-size: 0.74rem;
+  font-weight: 500;
+  text-align: center;
+  margin-bottom: 10px;
+  display: none;
+}
+
+/* 툴팁 내 특수 수식 박스 스타일 */
+.isf-tooltip .formula-box {
+  background: rgba(234, 91, 42, 0.04);
+  border: 1px solid rgba(234, 91, 42, 0.12);
+  border-radius: 4px;
+  padding: 6px 10px;
+  margin: 6px 0;
+  text-align: center;
+  font-weight: 600;
+  color: var(--tone-primary, #ea5b2a);
+  font-size: 0.8rem;
+  font-family: monospace;
+}
+
+@media (max-width: 760px) {
+  .scroll-hint-banner.mobile-only {
+    display: block;
+  }
+  #sankeySvg {
+    min-width: 680px;
+  }
+  #accountFlowNetworkMap {
+    min-width: 680px;
+  }
 }

@@ -38,6 +38,7 @@ export function renderNetworkMap(container, accounts, transfers) {
   });
   marker.appendChild(markerPath);
   defs.appendChild(marker);
+
   svg.appendChild(defs);
  
   const safeAccounts = Array.isArray(accounts) ? accounts : [];
@@ -51,17 +52,27 @@ export function renderNetworkMap(container, accounts, transfers) {
     return;
   }
  
-  // 3. 노드 원형 좌표 배치
+  // 3. 노드 좌우(LR) 좌표 배치
   const nodeMap = {};
   const N = safeAccounts.length;
   safeAccounts.forEach((acc, i) => {
-    // 12시 방향부터 균등 정렬되도록 -PI / 2 오프셋 적용
-    const theta = (i * 2 * Math.PI) / N - Math.PI / 2;
+    // x 좌표는 좌에서 우로 균등 배분 (좌우 마진 80px)
+    const startX = 80;
+    const endX = width - 80;
+    const x = N > 1 ? startX + (i * (endX - startX)) / (N - 1) : cx;
+    
+    // y 좌표는 중앙선을 기준으로 위/아래로 지그재그(Alternating) 배치하여
+    // 수평 링크 꼬임 및 노드 겹침을 최소화 (N이 2개 이상일 때만 지그재그 적용)
+    let y = cy;
+    if (N > 2) {
+      y = cy + (i % 2 === 0 ? -60 : 60);
+    }
+    
     nodeMap[acc.id] = {
       id: acc.id,
       name: acc.name,
-      x: cx + r * Math.cos(theta),
-      y: cy + r * Math.sin(theta)
+      x,
+      y
     };
   });
  
@@ -100,6 +111,23 @@ export function renderNetworkMap(container, accounts, transfers) {
       pathD = `M ${x0} ${y0} Q ${qx} ${qy} ${x1} ${y1}`;
     }
  
+    // 각 이체 경로에 맞춰진 고유한 방향 그라데이션 동적 생성
+    const gradId = `flow-grad-${index}`;
+    const grad = createSvgElement("linearGradient", {
+      id: gradId,
+      gradientUnits: "userSpaceOnUse",
+      x1: x0,
+      y1: y0,
+      x2: x1,
+      y2: y1
+    });
+    const color = tr.isManual ? "234, 91, 42" : "30, 139, 124";
+    const stop1 = createSvgElement("stop", { offset: "0%", "stop-color": `rgba(${color}, 0.15)` });
+    const stop2 = createSvgElement("stop", { offset: "50%", "stop-color": `rgba(${color}, 0.95)` });
+    const stop3 = createSvgElement("stop", { offset: "100%", "stop-color": `rgba(${color}, 0.15)` });
+    grad.append(stop1, stop2, stop3);
+    defs.appendChild(grad);
+
     // 기본 바탕 이체선
     const baseLink = createSvgElement("path", {
       class: "network-link-base",
@@ -116,9 +144,9 @@ export function renderNetworkMap(container, accounts, transfers) {
       class: "network-link-pulse",
       d: pathD,
       fill: "none",
-      stroke: tr.isManual ? "rgba(234, 91, 42, 0.8)" : "rgba(30, 139, 124, 0.7)",
-      "stroke-width": "2",
-      "stroke-dasharray": "6, 12",
+      stroke: `url(#${gradId})`,
+      "stroke-width": "3.5",
+      "stroke-linecap": "round",
       "marker-end": "url(#network-arrow)",
       "data-source": tr.source,
       "data-target": tr.target
@@ -154,8 +182,7 @@ export function renderNetworkMap(container, accounts, transfers) {
       class: "network-link-label",
       style: `fill: ${tr.isManual ? '#d35400' : '#16a085'}; font-size: 9px; font-weight: 500; font-family: "Gowun Dodum";`
     });
-    const amountMan = Math.round(tr.value / 10000);
-    textNode.textContent = `${tr.label} (${amountMan}만)`;
+    textNode.textContent = `${tr.label} (${IsfUtils.formatMoney(tr.value * 10000)})`;
     
     textGroup.appendChild(textBg);
     textGroup.appendChild(textNode);
@@ -193,18 +220,33 @@ export function renderNetworkMap(container, accounts, transfers) {
       class: "network-node-bg"
     });
  
+    // 계좌 실시간 금액 매핑 (만원 환산)
+    const accObj = safeAccounts.find(a => a.id === node.id);
+    const valWon = accObj ? (Number(accObj.value) || 0) : 0;
+
     // 노드 이름 텍스트
-    const text = createSvgElement("text", {
+    const nameText = createSvgElement("text", {
       x: node.x,
-      y: node.y + 4,
+      y: node.y - 2,
       "text-anchor": "middle",
-      class: "network-node-text",
+      class: "network-node-text-name",
       style: 'font-size: 11px; font-weight: 600; fill: #102220; font-family: "Gowun Dodum";'
     });
-    text.textContent = node.name;
+    nameText.textContent = node.name;
+
+    // 노드 금액 텍스트
+    const valText = createSvgElement("text", {
+      x: node.x,
+      y: node.y + 11,
+      "text-anchor": "middle",
+      class: "network-node-text-val",
+      style: 'font-size: 9.5px; font-weight: 500; fill: var(--muted); font-family: "Gowun Dodum";'
+    });
+    valText.textContent = IsfUtils.formatMoney(valWon * 10000);
  
     group.appendChild(rect);
-    group.appendChild(text);
+    group.appendChild(nameText);
+    group.appendChild(valText);
     nodeGroup.appendChild(group);
  
     // 6. 마우스 호버 포커스 필터링 이벤트 등록

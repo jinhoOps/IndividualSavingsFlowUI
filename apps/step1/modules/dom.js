@@ -4,7 +4,7 @@ export const dom = {
   controlsPanel: document.querySelector(".controls-panel"),
   inputsForm: document.getElementById("inputsForm"),
   inputsPanelContent: document.getElementById("inputsPanelContent"),
-  toggleInputsMobile: document.getElementById("toggleInputsMobile"),
+
   loadSample: document.getElementById("loadSample"),
   resetInputs: document.getElementById("resetInputs"),
   easterEgg: document.getElementById("easterEgg"),
@@ -166,4 +166,8 @@ export const dom = {
  
   // 도움말 및 툴팁
   globalTooltip: document.getElementById("globalTooltip"),
+  sankeyMetaTooltipTrigger: document.getElementById("sankeyMetaTooltipTrigger"),
+  get globalFinancialIncomeIndicator() {
+    return document.getElementById("globalFinancialIncomeIndicator");
+  },
 };

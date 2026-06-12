@@ -42,7 +42,7 @@
 
     <main>
       <section class="panel summary-panel" aria-labelledby="cardsTitle">
-        <div class="section-head">
+        <div class="section-head" style="position: relative;">
           <h2 id="cardsTitle">재무 핵심 지표</h2>
           <p id="cardMeta" class="hint"></p>
         </div>
@@ -58,10 +58,7 @@
           <h2 id="inputsTitle">
             재무 설정
             <span class="help-tooltip-trigger" data-tooltip="금액 단위: 만원(예: 350 = 3,500,000원) · 기본값만 입력해도 바로 계산됩니다.">?</span>
-            <button id="toggleInputsMobile" class="mobile-input-toggle" type="button" aria-expanded="true"
-              aria-controls="inputsPanelContent">
-              접기
-            </button>
+
           </h2>
           <div class="section-head-tools">
             <button id="loadSample" class="btn btn-ghost btn-sm" type="button">샘플 불러오기</button>
@@ -146,6 +143,35 @@
                   <button id="addAccountItem" class="btn btn-ghost btn-sm" type="button">통장 추가</button>
                   <button id="applyAccountItems" class="btn btn-primary btn-sm" type="button">변경 적용</button>
                   <button id="cancelAccountItems" class="btn btn-ghost btn-sm" type="button">편집 취소</button>
+                </div>
+              </div>
+
+              <!-- 수동 이체 설정 에디터 섹션 탑재 (아코디언 개편) -->
+              <div class="controls-block" id="transferEditorSection" style="margin-top: 16px; border-top: 1px dashed var(--line); padding-top: 16px;">
+                <div class="accordion-head" id="transferAccordionHead" style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none;">
+                  <h3 style="margin: 0; display: flex; align-items: center; gap: 4px;">
+                    계좌 간 수동 이체 설정
+                    <span class="help-tooltip-trigger" data-tooltip="계좌(통장) 간에 고정적으로 자금을 이체할 수 있는 수동 규칙을 설정합니다.">?</span>
+                  </h3>
+                  <span id="transferAccordionIcon" style="font-size: 1rem; color: var(--muted); transition: transform 0.2s ease;">▾</span>
+                </div>
+                <div id="transferAccordionBody" style="display: none; margin-top: 12px;">
+                  <div id="transferRuleForm" class="transfer-rule-form" style="display: flex; flex-direction: column; gap: 8px;">
+                    <div class="sentence-ui" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 0.9rem;">
+                      <select id="transferSourceSelect" class="editor-select" aria-label="출발 계좌" style="min-width: 120px;"></select>
+                      <span>에서</span>
+                      <select id="transferTargetSelect" class="editor-select" aria-label="도착 계좌" style="min-width: 120px;"></select>
+                      <span>로</span>
+                      <input type="number" id="transferAmount" class="editor-input" min="1" placeholder="금액" aria-label="이체 금액" style="width: 80px;" />
+                      <span>만 원을</span>
+                      <input type="text" id="transferLabel" class="editor-input" placeholder="이체 설명 (예: 생활비 보조)" aria-label="이체 설명" style="flex: 1; min-width: 140px;" />
+                      <button type="button" id="addTransferRuleBtn" class="btn btn-primary btn-sm">추가</button>
+                    </div>
+                    <p id="sourceBalanceHint" class="hint" style="color: var(--surplus); font-size: 0.82rem; margin-top: 2px;" hidden></p>
+                  </div>
+                  <div id="transferRuleList" class="transfer-rule-list" style="margin-top: 12px; display: grid; gap: 8px;">
+                    <!-- 동적으로 렌더링된 수동 이체 규칙 카드가 들어감 -->
+                  </div>
                 </div>
               </div>
             </div>
@@ -278,6 +304,7 @@
                   </div>
                   <p id="investTotalHint" class="hint"></p>
                 </div>
+                  <!-- 증가율 및 수익률 설정은 설정(Settings) 탭으로 이동됨 -->
                 <datalist id="expenseGroupOptions"></datalist>
                 <datalist id="savingsGroupOptions"></datalist>
                 <datalist id="investGroupOptions"></datalist>
@@ -312,8 +339,13 @@
                   </div>
                 </div>
               </div>
-              <div id="ratesAdvancedBlock" class="controls-block controls-block--rates" data-advanced-block="rates">
-                <h3>증가율 및 수익률</h3>
+
+              <!-- 이전 탭에서 이동한 증가율 및 수익률 설정 -->
+              <div id="ratesAdvancedBlock" class="controls-block controls-block--rates" style="margin-top: 16px; border-top: 1px dashed var(--line); padding-top: 16px;">
+                <h3>
+                  증가율 및 수익률 설정
+                  <span class="help-tooltip-trigger" data-tooltip="자산 증가율 및 시뮬레이션에 사용될 기본 금리/수익률을 지정합니다.">?</span>
+                </h3>
                 <div class="controls-grid controls-grid--advanced">
                   <div class="control">
                     <label for="annualIncomeGrowth">수입 증가율(연, %)</label>
@@ -362,10 +394,10 @@
               <button id="showSankeyBtn" class="tab-btn tab-btn--sm is-active" data-vis="sankey" role="tab" aria-selected="true">Sankey 흐름</button>
               <button id="showNetworkBtn" class="tab-btn tab-btn--sm" data-vis="network" role="tab" aria-selected="false">계좌 이체망</button>
             </div>
-            <span class="help-tooltip-trigger" data-tooltip="수입에서 계좌를 거쳐 최종 소비처로 흘러가는 가계 흐름(Sankey) 및 계좌 간의 다대다(N:N) 이체 관계망(Network)을 번갈아 탐색할 수 있습니다.">?</span>
+            <span id="sankeyMetaTooltipTrigger" class="help-tooltip-trigger" data-tooltip="수입에서 계좌를 거쳐 최종 소비처로 흘러가는 가계 흐름(Sankey) 및 계좌 간의 다대다(N:N) 이체 관계망(Network)을 번갈아 탐색할 수 있습니다.">?</span>
           </div>
           <div class="sankey-head-tools">
-            <p id="sankeyMeta" class="hint"></p>
+            <p id="sankeyMeta" class="hint" hidden></p>
             <div class="sankey-view-toggle" role="group" aria-label="Sankey Diagram 표기 방식">
               <button id="sankeyViewAmount" class="btn btn-ghost btn-sm sankey-view-btn is-active" type="button"
                 data-sankey-view="amount" aria-pressed="true">
@@ -407,12 +439,14 @@
         <div id="visualizationViewport" class="visualization-viewport">
           <div id="visualizationSlider" class="visualization-slider">
             <div id="sankeyWrap" class="sankey-wrap visualization-slide">
+              <div class="scroll-hint-banner mobile-only">↔ 좌우로 스크롤하여 가계 흐름을 확인하세요</div>
               <svg id="sankeySvg" role="img" aria-label="월 가계 흐름 Sankey Diagram"></svg>
               <p id="sankeyEmpty" class="empty" hidden>표시할 흐름이 없습니다.</p>
               <div id="sankeyTooltip" class="sankey-tooltip" hidden></div>
             </div>
             <div id="networkMapWrap" class="network-map-wrap visualization-slide">
               <div id="networkMapInner" class="network-map-inner" style="position: relative; width: 100%; height: 100%; min-height: 480px;">
+                <div class="scroll-hint-banner mobile-only">↔ 좌우로 드래그/스크롤하여 계좌망을 확인하세요</div>
                 <svg id="accountFlowNetworkMap" role="img" aria-label="계좌 간 자금 흐름 지도" style="width: 100%; height: 100%; min-height: 480px;"></svg>
                 <p id="networkMapEmpty" class="empty" hidden>표시할 이체 흐름이 없습니다.</p>
               </div>
@@ -422,22 +456,16 @@
         <div id="sankeyLegend" class="sankey-legend"></div>
       </section>
 
-      <section id="accountTransferBoard" class="panel transfer-board-panel" aria-labelledby="transferBoardTitle">
-        <div class="section-head">
-          <h2 id="transferBoardTitle">계좌 간 자동 이체 흐름</h2>
-          <p class="hint">계좌(통장) 간에 정기적으로 이동하는 자동 이체 경로입니다.</p>
-        </div>
-        <div id="transferCardList" class="transfer-card-list" aria-live="polite">
-          <!-- 이체 카드가 여기에 동적으로 렌더링됩니다 -->
-        </div>
-      </section>
+      <!-- 계좌 간 자동 이체 흐름 패널 제거됨 -->
 
       <section class="panel projection-panel" aria-labelledby="projectionTitle">
         <div class="section-head">
-          <h2 id="projectionTitle">가계 추이 계산 검증</h2>
+          <h2 id="projectionTitle">
+            가계 추이 계산 검증
+            <span class="help-tooltip-trigger" data-tooltip="━━ 순자산 정의 ━━&#10;$$순자산 = (현금 + 저축 + 투자) − 부채$$&#10;&#10;━━ 월간 자금 흐름 순서 ━━&#10;① **가용현금 계산**: 매월 수입 적립 및 지출 차감&#10;`가용현금 = 수입 − 생활비 − 설정저축 − 설정투자 − 부채상환`&#10;② **부채 상환**: 가용현금 내에서 실제 상환 처리&#10;`실제상환액 = min(설정상환액, 부채잔액, 가용현금)`&#10;③ **부채 변동**: 가용현금이 부족한 경우 (적자 발생)&#10;`부족분은 부채로 자동 전환` (부채 증가)&#10;④ **저축/투자**: 가용현금이 0 이상일 때만 정상 실행&#10;&#10;━━ 이자/수익률 계산 ━━&#10;· **저축/투자**: 복리식 월 수익률 반영&#10;· **실질 순자산 (PV)**: 기준금리 기반 현재가치 할인&#10;`실질가치 = 명목가치 / (1 + 기준금리/12)^개월수`">?</span>
+          </h2>
           <p id="projectionMeta" class="hint"></p>
         </div>
-        <p class="hint projection-brief">요약: 순자산 = 현금 + 저축 + 투자 - 부채</p>
         
         <div class="projection-options" style="margin-top: 12px; margin-bottom: 12px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
           <div class="opt-group" style="display: flex; align-items: center; gap: 8px;">
@@ -462,17 +490,6 @@
           </div>
         </div>
 
-        <details class="formula formula-toggle">
-          <summary>자세히 보기</summary>
-          <div class="formula-body">
-            매월: (수입 - 생활비 - 저축 - 투자 - 실제 부채상환액)을 현금에 반영합니다.
-            (실제 부채상환액 = 설정 상환액, 부채잔액, 가용현금 중 최솟값)
-            저축/투자는 가용현금 범위 내에서만 반영됩니다.
-            부채는 월 이자를 먼저 반영하고 상환액으로 차감하며, 현금이 음수면 부족분을 부채에 더합니다.
-            저축은 항목별 월 수익률, 투자는 설정 월 수익률을 적용합니다.
-            실질 순자산(현재가치)은 기준금리(연)를 월 복리로 환산해 할인합니다.
-          </div>
-        </details>
         <div class="table-wrap">
           <table id="projectionTable" class="projection-table">
             <thead>

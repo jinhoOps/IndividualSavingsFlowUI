@@ -240,11 +240,7 @@ function bindControls() {
   if (dom.sankeyViewPercent) dom.sankeyViewPercent.addEventListener("click", () => setSankeyValueMode(SANKEY_VALUE_MODES.PERCENT));
   if (dom.sankeySortMode) dom.sankeySortMode.addEventListener("change", () => setSankeySortMode(dom.sankeySortMode.value));
 
-  if (dom.toggleInputsMobile) dom.toggleInputsMobile.addEventListener("click", () => {
-    if (!window.matchMedia(MOBILE_LAYOUT_QUERY).matches) return;
-    state.mobileInputsCollapsed = !state.mobileInputsCollapsed;
-    syncMobileInputsPanelVisibility();
-  });
+
 
   if (dom.sankeyZoomIn) dom.sankeyZoomIn.addEventListener("click", () => setSankeyZoom(state.sankeyZoom + SANKEY_ZOOM_STEP));
   if (dom.sankeyZoomOut) dom.sankeyZoomOut.addEventListener("click", () => setSankeyZoom(state.sankeyZoom - SANKEY_ZOOM_STEP));
@@ -474,32 +470,72 @@ function bindVisualizationAndTooltipEvents() {
   document.addEventListener("mouseenter", (e) => {
     const trigger = e.target.closest(".help-tooltip-trigger");
     if (!trigger || !dom.globalTooltip) return;
- 
-    const text = trigger.getAttribute("data-tooltip");
-    dom.globalTooltip.textContent = text;
+
+    const text = trigger.getAttribute("data-tooltip") || "";
+    
+    let htmlContent = text
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+      .replace(/\$\$(.*?)\$\$/g, "<div class='formula-box'>$1</div>")
+      .replace(/`(.*?)`/g, "<code>$1</code>")
+      .replace(/━━\s*(.*?)\s*━━/g, "<div class='tooltip-section-title'>$1</div>")
+      .replace(/\n/g, "<br>");
+
+    // 리스트 스타일 변환 (①, ②, ③, ④, ⑤, · 등)
+    // br로 개행된 것을 고려하여 <li> 요소로 치환 후 <ul>로 묶음
+    const hasList = /^[①②③④⑤·]/m.test(text);
+    if (hasList) {
+      // <li> 요소로 변환
+      htmlContent = htmlContent.replace(/(?:<br>)?([①②③④⑤·])\s*(.*?)(?=<br>|$)/g, "<li>$1 $2</li>");
+      // 연속된 <li> 들을 <ul>로 묶어주고 남은 <br> 정리
+      htmlContent = htmlContent.replace(/(?:<li>.*?<\/li>\s*)+/g, "<ul>$&</ul>");
+      // <ul> 앞뒤의 불필요한 <br> 정리
+      htmlContent = htmlContent.replace(/<br>\s*<ul>/g, "<ul>").replace(/<\/ul>\s*<br>/g, "</ul>");
+    }
+
+    dom.globalTooltip.innerHTML = htmlContent;
     dom.globalTooltip.hidden = false;
- 
+
     const rect = trigger.getBoundingClientRect();
-    const tooltipWidth = 220;
+    const tooltipWidth = text.length > 120 ? 320 : 240;
+    dom.globalTooltip.style.width = `${tooltipWidth}px`;
+
     let left = rect.left + window.scrollX + rect.width / 2 - tooltipWidth / 2;
-    let top = rect.top + window.scrollY - 50; 
- 
     if (left < 10) left = 10;
     if (left + tooltipWidth > window.innerWidth - 10) {
       left = window.innerWidth - tooltipWidth - 10;
     }
-    if (top < 10) top = rect.bottom + window.scrollY + 10; 
- 
+
+    const tooltipHeight = dom.globalTooltip.offsetHeight;
+    let top = rect.top + window.scrollY - tooltipHeight - 10;
+    if (top < window.scrollY + 10) {
+      top = rect.bottom + window.scrollY + 10;
+    }
+
     dom.globalTooltip.style.left = `${left}px`;
     dom.globalTooltip.style.top = `${top}px`;
   }, true);
- 
+
   document.addEventListener("mouseleave", (e) => {
     const trigger = e.target.closest(".help-tooltip-trigger");
     if (trigger && dom.globalTooltip) {
       dom.globalTooltip.hidden = true;
     }
   }, true);
+
+  // 수동이체 설정 에디터 아코디언 토글 바인딩
+  const accordionHead = document.getElementById("transferAccordionHead");
+  const accordionBody = document.getElementById("transferAccordionBody");
+  const accordionIcon = document.getElementById("transferAccordionIcon");
+  if (accordionHead && accordionBody && accordionIcon) {
+    accordionHead.addEventListener("click", () => {
+      const isVisible = accordionBody.style.display === "block";
+      accordionBody.style.display = isVisible ? "none" : "block";
+      accordionIcon.style.transform = isVisible ? "rotate(0deg)" : "rotate(180deg)";
+    });
+  }
 }
 
 function bindModalEvents() {
@@ -648,13 +684,45 @@ function renderAll() {
   
   const { warnings } = calculateAccountFinancialIncomes(inputs);
 
+  // 글로벌 금융소득과세 인디케이터 갱신
+  if (dom.appHeader && typeof dom.appHeader.setFinancialWarning === "function") {
+    let maxStatus = "none";
+    let message = "";
+    if (warnings && typeof warnings === "object") {
+      const warningValues = Object.values(warnings);
+      const hasCrit = warningValues.some(w => w.status === "crit");
+      const hasWarn = warningValues.some(w => w.status === "warn");
+      if (hasCrit) {
+        maxStatus = "crit";
+        const critWarnings = warningValues.filter(w => w.status === "crit");
+        message = `⚠️ 금융소득 종합과세 한도 초과!\n(${critWarnings.map(w => w.message).join(", ")})`;
+      } else if (hasWarn) {
+        maxStatus = "warn";
+        const warnWarnings = warningValues.filter(w => w.status === "warn");
+        message = `💡 금융소득 종합과세 주의 (Safety Margin 도달)\n(${warnWarnings.map(w => w.message).join(", ")})`;
+      }
+    }
+    dom.appHeader.setFinancialWarning(maxStatus, message);
+  }
+
   const sankeyData = buildSankeyData(snapshot, state.sankeySortMode);
   const transfers = sankeyData ? sankeyData.transfers : [];
   renderSankey(snapshot, buildSankeyData, state.sankeySortMode);
-  listRenderer.renderTransferBoard(transfers, inputs.accounts);
+  
   listRenderer.renderTransferRulesList(inputs.transfers || [], inputs.accounts);
   listRenderer.renderTransferSelectOptions(inputs.accounts);
-  renderNetworkMap(dom.networkMapInner, inputs.accounts, transfers);
+  
+  // 계좌 노드에 실시간 유입금액 매핑하여 network-map-renderer로 전달
+  const accountNodes = sankeyData ? sankeyData.nodes.filter(n => n.column === 1) : [];
+  const accountsWithValues = inputs.accounts.map(acc => {
+    const node = accountNodes.find(n => n.id === acc.id);
+    return {
+      ...acc,
+      value: node ? node.value : 0
+    };
+  });
+  renderNetworkMap(dom.networkMapInner, accountsWithValues, transfers);
+  
   listRenderer.updateSourceBalanceHint(inputs, dom.transferSourceSelect ? dom.transferSourceSelect.value : "");
 
   listRenderer.renderProjectionTable(projection, inputs.horizonYears, inputs.annualExpenseGrowth);

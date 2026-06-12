@@ -400,38 +400,11 @@ export function buildProjectionRecord({
 export function buildSummaryCards(snapshot, projection, horizonYears) {
   const current = projection[0];
   const last = projection[projection.length - 1];
-  const debtProbe = projection[1] || current;
   const deltaNet = last.netAsset - current.netAsset;
   const futureAllocation = snapshot.savings + snapshot.invest;
   const savingsRate = snapshot.income > 0 ? futureAllocation / snapshot.income : 0;
-  const debtFreeMonth = projection.find((row) => row.monthIndex > 0 && row.debt <= 1);
 
-  let debtFreeText = "부채 없음";
-  let debtSub = "";
-
-  if (current.debt > 0) {
-    if (debtFreeMonth) {
-      debtFreeText = formatMonthSpan(debtFreeMonth.monthIndex);
-      debtSub = `시점: ${debtFreeMonth.monthIndex}개월`; 
-    } else {
-      debtFreeText = `${horizonYears}년 내 미소진`;
-      debtSub = `말 잔여부채 ${formatCurrency(last.debt)}`;
-    }
-  }
-
-  const cards = [
-    {
-      label: "월 수입",
-      value: formatCurrency(snapshot.income),
-      sub: `연 ${formatCurrency(snapshot.income * 12)}`,
-      variant: "positive",
-    },
-    {
-      label: "월 총 배분",
-      value: formatCurrency(snapshot.requiredOutflow),
-      sub: `생활비+저축+투자+부채상환`,
-      variant: "",
-    },
+  return [
     {
       label: "월 순현금흐름",
       value: formatSignedCurrency(snapshot.netCashflow),
@@ -439,33 +412,9 @@ export function buildSummaryCards(snapshot, projection, horizonYears) {
       variant: snapshot.netCashflow >= 0 ? "positive" : "negative",
     },
     {
-      label: "당월 부채이자",
-      value: formatCurrency(debtProbe.debtInterest),
-      sub: debtProbe.monthIndex > 0 ? `${debtProbe.monthIndex}개월차 기준` : "현재 기준",
-      variant: debtProbe.debtInterest > 0 ? "negative" : "positive",
-      metric: debtProbe.debtInterest,
-      showIfDebtExists: true,
-    },
-    {
-      label: "당월 실제상환",
-      value: formatCurrency(debtProbe.actualDebtPayment),
-      sub: `설정 상환 ${formatCurrency(snapshot.debtPayment)}`,
-      variant: debtProbe.actualDebtPayment > 0 ? "positive" : "",
-      metric: debtProbe.actualDebtPayment,
-      showIfDebtExists: true,
-    },
-    {
-      label: "당월 부채증가분",
-      value: formatCurrency(debtProbe.newBorrowing),
-      sub: debtProbe.newBorrowing > 0 ? "현금 부족분이 부채로 전환됨" : "부채 증가분 없음",
-      variant: debtProbe.newBorrowing > 0 ? "negative" : "positive",
-      metric: debtProbe.newBorrowing,
-      showIfDebtExists: true,
-    },
-    {
       label: "현재 순자산",
       value: formatCurrency(current.netAsset),
-      sub: `현금 ${formatCurrency(current.cash)} · 부채 ${formatCurrency(current.debt)}`,
+      sub: `현금 ${formatCurrency(current.cash)} · 저축 ${formatCurrency(current.savings)} · 투자 ${formatCurrency(current.invest)}${current.debt > 0 ? ` · 부채 ${formatCurrency(current.debt)}` : ""}`,
       variant: current.netAsset >= 0 ? "positive" : "negative",
     },
     {
@@ -480,32 +429,7 @@ export function buildSummaryCards(snapshot, projection, horizonYears) {
       sub: `월 저축+투자 ${formatCurrency(futureAllocation)}`,
       variant: "positive",
     },
-    {
-      label: "현재 총 부채",
-      value: formatCurrency(current.debt),
-      sub: `현재 시점의 부채 잔액`,
-      variant: "negative",
-      showIfDebtExists: true,
-    },
-    {
-      label: "부채 소진 예상",
-      value: debtFreeText,
-      sub: debtSub || "초기 부채가 없습니다.",
-      variant: debtFreeMonth || current.debt === 0 ? "positive" : "negative",
-      metric: current.debt,
-      showIfDebtExists: true,
-    },
   ];
-
-  return cards.filter((card) => {
-    if (card.showIfDebtExists) {
-      return current.debt > 0;
-    }
-    if (!card.hideIfZero) {
-      return true;
-    }
-    return Math.abs(Number(card.metric) || 0) > 0;
-  });
 }
 
 export function calculateAccountFinancialIncomes(inputs) {

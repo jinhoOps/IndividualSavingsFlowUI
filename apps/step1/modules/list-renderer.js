@@ -9,46 +9,12 @@ export function renderCards(cards, horizonYears) {
   if (!dom.summaryCards) return;
   dom.summaryCards.innerHTML = "";
 
-  const hasDetailed = cards.length > 6;
-  const showDetailed = state.showDetailedCards || false;
-
-  cards.forEach((card, idx) => {
+  cards.forEach((card) => {
     const el = document.createElement("article");
-    const isDetailed = idx >= 6;
-    el.className = `card ${card.variant || ""} ${isDetailed ? "is-detailed" : ""}`;
-    if (isDetailed && !showDetailed) {
-      el.style.display = "none";
-    }
+    el.className = `card ${card.variant || ""}`;
     el.innerHTML = `<span class="label">${card.label}</span><span class="value">${card.value}</span><span class="sub">${card.sub}</span>`;
     dom.summaryCards.appendChild(el);
   });
-
-  if (hasDetailed) {
-    const btnContainer = document.createElement("div");
-    btnContainer.className = "summary-toggle-wrap";
-    btnContainer.style.gridColumn = "1 / -1";
-    btnContainer.style.display = "flex";
-    btnContainer.style.justifyContent = "center";
-    btnContainer.style.marginTop = "12px";
-
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.id = "toggleDetailedCardsBtn";
-    btn.className = "btn btn-ghost btn-xs";
-    btn.textContent = showDetailed ? "상세 지표 접기 ▴" : "상세 지표 더보기 ▾";
-    btnContainer.appendChild(btn);
-    dom.summaryCards.appendChild(btnContainer);
-
-    btn.addEventListener("click", () => {
-      state.showDetailedCards = !state.showDetailedCards;
-      const detailCards = dom.summaryCards.querySelectorAll(".card.is-detailed");
-      const isNowShowing = state.showDetailedCards;
-      detailCards.forEach(c => {
-        c.style.display = isNowShowing ? "" : "none";
-      });
-      btn.textContent = isNowShowing ? "상세 지표 접기 ▴" : "상세 지표 더보기 ▾";
-    });
-  }
 }
 
 export function renderProjectionTable(records, horizonYears, expenseGrowth) {
@@ -70,11 +36,9 @@ export function renderProjectionTable(records, horizonYears, expenseGrowth) {
     if (i > 0 && i % 12 !== 0 && i !== records.length - 1) return "";
     const statusClass = IsfUtils.getFinancialIncomeStatus(r.annualFinancialIncome);
     const trClass = statusClass !== 'normal' ? `status--${statusClass}` : '';
-    const badge = statusClass === 'warn' ? '<span class="status-badge status-badge--warn">과세주의</span>' : 
-                  statusClass === 'crit' ? '<span class="status-badge status-badge--crit">과세경고</span>' : '';
     let rowHtml = `<tr class="${trClass}"><td>${i === 0 ? "현재" : `${i / 12}년 후`}</td>`;
     if (showFlow) rowHtml += `<td>${formatCurrency(r.monthlyIncome)}</td><td>${formatCurrency(r.monthlyExpense)}</td><td>${formatCurrency(r.debtInterest)}</td><td>${formatCurrency(r.actualDebtPayment)}</td><td>${formatCurrency(r.newBorrowing)}</td>`;
-    if (showBalance) rowHtml += `<td>${formatCurrency(r.cash)}</td><td>${formatCurrency(r.savings)}</td><td>${formatCurrency(r.invest)} ${badge}</td><td>${formatCurrency(r.debt)}</td>`;
+    if (showBalance) rowHtml += `<td>${formatCurrency(r.cash)}</td><td>${formatCurrency(r.savings)}</td><td>${formatCurrency(r.invest)}</td><td>${formatCurrency(r.debt)}</td>`;
     if (showDividend) rowHtml += `<td>${formatCurrency(r.annualFinancialIncome)}</td>`;
     rowHtml += `<td class="fw-bold">${formatCurrency(r.netAsset)}</td><td class="text-muted small">${formatCurrency(r.realNetAsset)}</td></tr>`;
     return rowHtml;
@@ -276,21 +240,17 @@ export function renderAccountItemHtml(item, opts) {
 
   if (!isEditing) {
     let warningClass = "";
-    let badgeHtml = "";
     if (warning) {
       if (warning.status === "warn") {
         warningClass = "account-row--warn";
-        badgeHtml = `<span class="status-badge status-badge--warn">${IsfUtils.escapeHtml(warning.message)}</span>`;
       } else if (warning.status === "crit") {
         warningClass = "account-row--crit";
-        badgeHtml = `<span class="status-badge status-badge--crit">${IsfUtils.escapeHtml(warning.message)}</span>`;
       }
     }
 
     return `
       <div class="account-row ${warningClass}">
         <span class="account-name">${IsfUtils.escapeHtml(item.name)}</span>
-        ${badgeHtml}
       </div>
     `;
   }

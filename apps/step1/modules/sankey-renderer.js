@@ -121,16 +121,21 @@ export function renderSankey(snapshot, buildSankeyData, sortMode) {
     [SANKEY_SORT_MODES.NAME_ASC]: "정렬 이름순",
   };
 
+  const splitCount = Array.isArray(data.splitGroups)
+    ? data.splitGroups.reduce((sum, group) => sum + group.breakdown.length, 0)
+    : 0;
+  const splitText = splitCount > 0 ? ` · 상세 분기 ${splitCount}개` : "";
+  const valueModeText = valueMode === SANKEY_VALUE_MODES.PERCENT ? "표시 %" : "표시 금액";
+  const sortText = sortModeTextMap[normalizedSortMode] || sortModeTextMap[SANKEY_SORT_MODES.GROUP];
+  const isMobileViewport = window.matchMedia(MOBILE_LAYOUT_QUERY).matches;
+  const zoomText = isMobileViewport ? ` · 확대 ${Math.round(getEffectiveSankeyZoom(true) * 100)}%` : "";
+  const metaInfo = `수입 ${formatCurrency(snapshot.income)} · 배분 ${formatCurrency(snapshot.requiredOutflow)} · 순현금흐름 ${formatSignedCurrency(snapshot.netCashflow)}${splitText} · ${valueModeText} · ${sortText}${zoomText}`;
+
   if (dom.sankeyMeta) {
-    const splitCount = Array.isArray(data.splitGroups)
-      ? data.splitGroups.reduce((sum, group) => sum + group.breakdown.length, 0)
-      : 0;
-    const splitText = splitCount > 0 ? ` · 상세 분기 ${splitCount}개` : "";
-    const valueModeText = valueMode === SANKEY_VALUE_MODES.PERCENT ? "표시 %" : "표시 금액";
-    const sortText = sortModeTextMap[normalizedSortMode] || sortModeTextMap[SANKEY_SORT_MODES.GROUP];
-    const isMobileViewport = window.matchMedia(MOBILE_LAYOUT_QUERY).matches;
-    const zoomText = isMobileViewport ? ` · 확대 ${Math.round(getEffectiveSankeyZoom(true) * 100)}%` : "";
-    dom.sankeyMeta.textContent = `수입 ${formatCurrency(snapshot.income)} · 배분 ${formatCurrency(snapshot.requiredOutflow)} · 순현금흐름 ${formatSignedCurrency(snapshot.netCashflow)}${splitText} · ${valueModeText} · ${sortText}${zoomText}`;
+    dom.sankeyMeta.textContent = metaInfo;
+  }
+  if (dom.sankeyMetaTooltipTrigger) {
+    dom.sankeyMetaTooltipTrigger.setAttribute("data-tooltip", `${metaInfo}\n\n[도움말]\n수입에서 계좌를 거쳐 최종 소비처로 흘러가는 가계 흐름(Sankey) 및 계좌 간의 다대다(N:N) 이체 관계망(Network)을 번갈아 탐색할 수 있습니다.`);
   }
 
   const columns = [...new Set(data.nodes.map((node) => node.column))].sort((a, b) => a - b);
@@ -139,7 +144,6 @@ export function renderSankey(snapshot, buildSankeyData, sortMode) {
   const lastColumn = columns[columns.length - 1];
   const hasIncomeInflow = Boolean(data.hasIncomeInflow);
   const hasGroupLayer = Boolean(data.hasGroupLayer);
-  const isMobileViewport = window.matchMedia(MOBILE_LAYOUT_QUERY).matches;
   const effectiveSankeyZoom = getEffectiveSankeyZoom(isMobileViewport);
   const baseNodeWidth = isMobileViewport ? 16 : 18;
   const groupNodeWidth = baseNodeWidth + (isMobileViewport ? 4 : 6);
@@ -403,7 +407,12 @@ export function renderSankeyLegend(data, valueMode) {
     dot.style.backgroundColor = TONE_COLORS[item.tone] || "#999";
 
     const label = document.createElement("span");
-    label.textContent = `${item.label} ${formatSankeyDisplayValue(item.value, data.totalValue, valueMode)}`;
+    let valText = formatSankeyDisplayValue(item.value, data.totalValue, valueMode);
+    if (valueMode === "amount") {
+      const yearValMan = Math.round((item.value * 12) / 10000);
+      valText += ` (연 ${yearValMan}만)`;
+    }
+    label.textContent = `${item.label} ${valText}`;
 
     chip.append(dot, label);
     groupWrap.appendChild(chip);
@@ -412,15 +421,36 @@ export function renderSankeyLegend(data, valueMode) {
     if (splitGroup && Array.isArray(splitGroup.breakdown) && splitGroup.breakdown.length > 0) {
       const groupedTexts = Array.isArray(splitGroup.grouped)
         ? splitGroup.grouped.map((ge) => {
-            const ct = (ge.items || []).map((e) => `${e.label} ${formatSankeyDisplayValue(e.value, data.totalValue, valueMode)}`).join(", ");
+            const ct = (ge.items || []).map((e) => {
+              let itemValText = formatSankeyDisplayValue(e.value, data.totalValue, valueMode);
+              if (valueMode === "amount") {
+                const yearValMan = Math.round((e.value * 12) / 10000);
+                itemValText += ` (연 ${yearValMan}만)`;
+              }
+              return `${e.label} ${itemValText}`;
+            }).join(", ");
             return ct ? `${ge.label}: ${ct}` : "";
           }).filter(Boolean)
         : [];
       const groupedSummaryTexts = Array.isArray(splitGroup.grouped)
-        ? splitGroup.grouped.map((ge) => `${ge.label} ${formatSankeyDisplayValue(ge.value, data.totalValue, valueMode)}`).filter(Boolean)
+        ? splitGroup.grouped.map((ge) => {
+            let itemValText = formatSankeyDisplayValue(ge.value, data.totalValue, valueMode);
+            if (valueMode === "amount") {
+              const yearValMan = Math.round((ge.value * 12) / 10000);
+              itemValText += ` (연 ${yearValMan}만)`;
+            }
+            return `${ge.label} ${itemValText}`;
+          }).filter(Boolean)
         : [];
       const ungroupedTexts = Array.isArray(splitGroup.ungrouped)
-        ? splitGroup.ungrouped.map((e) => `${e.label} ${formatSankeyDisplayValue(e.value, data.totalValue, valueMode)}`)
+        ? splitGroup.ungrouped.map((e) => {
+            let itemValText = formatSankeyDisplayValue(e.value, data.totalValue, valueMode);
+            if (valueMode === "amount") {
+              const yearValMan = Math.round((e.value * 12) / 10000);
+              itemValText += ` (연 ${yearValMan}만)`;
+            }
+            return `${e.label} ${itemValText}`;
+          })
         : [];
 
       if (groupedSummaryTexts.length > 0) {

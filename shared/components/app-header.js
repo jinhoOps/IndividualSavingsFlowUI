@@ -32,6 +32,40 @@ export class AppHeader extends HTMLElement {
   updateStatus(status, message) {
     this.status = status;
     if (message) this.statusMessage = message;
+    
+    const indicator = this.querySelector('#statusIndicator');
+    if (indicator) {
+      indicator.className = `status-indicator status-indicator--${status}`;
+      const text = indicator.querySelector('.status-indicator__text');
+      if (text) {
+        text.textContent = this.statusMessage;
+        if (window.innerWidth > 760) {
+          text.style.display = 'inline';
+        } else {
+          text.style.display = 'none';
+        }
+      }
+    }
+  }
+
+  setFinancialWarning(maxStatus, message) {
+    const indicator = this.querySelector('#globalFinancialIncomeIndicator');
+    if (!indicator) return;
+    
+    if (maxStatus === 'crit') {
+      indicator.className = "global-indicator global-indicator--crit help-tooltip-trigger";
+      indicator.setAttribute("data-tooltip", message);
+      indicator.hidden = false;
+      indicator.style.display = 'inline-block';
+    } else if (maxStatus === 'warn') {
+      indicator.className = "global-indicator global-indicator--warn help-tooltip-trigger";
+      indicator.setAttribute("data-tooltip", message);
+      indicator.hidden = false;
+      indicator.style.display = 'inline-block';
+    } else {
+      indicator.hidden = true;
+      indicator.style.display = 'none';
+    }
   }
 
   render() {
@@ -52,6 +86,11 @@ export class AppHeader extends HTMLElement {
               <a href="/IndividualSavingsFlowUI/" class="app-header__logo" style="font-weight: 800; letter-spacing: -0.5px;">ISF UIUX</a>
               <span style="color: var(--line-strong); font-size: 1.2rem; font-weight: 300;">|</span>
               <span class="current-step-label" style="font-weight: 700; color: var(--tone-primary); font-size: var(--text-body-md);">${currentLabel}</span>
+              <div id="globalFinancialIncomeIndicator" class="global-indicator help-tooltip-trigger" data-tooltip="" hidden></div>
+            </div>
+            <div id="statusIndicator" class="status-indicator status-indicator--${this.status}">
+              <span class="status-indicator__dot"></span>
+              <span class="status-indicator__text" style="display: none;">${this.statusMessage}</span>
             </div>
           </div>
 
@@ -106,6 +145,11 @@ export class AppHeader extends HTMLElement {
         </div>
       </header>
     `;
+
+    const indicatorText = this.querySelector('.status-indicator__text');
+    if (indicatorText && window.innerWidth > 760) {
+      indicatorText.style.display = 'inline';
+    }
 
     // 런처 메뉴 토글 로직
     const launcherBtn = this.querySelector('#appLauncherBtn');
