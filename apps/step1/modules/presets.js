@@ -79,14 +79,26 @@ export function applyPreset(salaryValue, styleKey) {
   const startCash = 5000000;
   const startDebt = 5000000;
 
+  const transfers = [];
+  if (income > 0) {
+    transfers.push({ id: "preset-tr-1", sourceAccountId: "acc-salary", targetAccountId: "acc-cma", amount: Math.round(income * 0.08) });
+  }
+
   return {
     incomes: [{ id: "income-preset", name: "급여", amount: income, accountId: "acc-salary", allocations }],
+    accounts: [
+      { id: "acc-salary", name: "급여계좌" },
+      { id: "acc-living", name: "생활비계좌" },
+      { id: "acc-stock", name: "주식계좌" },
+      { id: "acc-cma", name: "CMA비상금계좌" }
+    ],
+    transfers,
     monthlyExpense: expense,
     monthlySavings: savings,
     monthlyInvest: invest,
-    expenseItems: distributeAmount(expense, EXPENSE_DETAIL),
-    savingsItems: distributeAmount(savings, SAVINGS_DETAIL),
-    investItems: distributeAmount(invest, INVEST_DETAIL),
+    expenseItems: distributeAmount(expense, EXPENSE_DETAIL.map(d => ({ ...d, accountId: "acc-living" }))),
+    savingsItems: distributeAmount(savings, SAVINGS_DETAIL.map((d, idx) => ({ ...d, accountId: idx === 0 ? "acc-cma" : "acc-salary" }))),
+    investItems: distributeAmount(invest, INVEST_DETAIL.map(d => ({ ...d, accountId: "acc-stock" }))),
     monthlyDebtPayment: 0,
     startCash,
     startSavings,
@@ -179,13 +191,25 @@ export function applyPresetBySalary(salaryMan, styleKey) {
   const startCash = 5000000;
   const startDebt = 5000000;
 
+  const transfers = [];
+  if (income > 0) {
+    transfers.push({ id: "preset-tr-1", sourceAccountId: "acc-salary", targetAccountId: "acc-cma", amount: Math.round(income * 0.08) });
+  }
+
   return {
     incomes: [{ id: "income-preset", name: "급여", amount: income, accountId: "acc-salary", allocations }],
+    accounts: [
+      { id: "acc-salary", name: "급여계좌" },
+      { id: "acc-living", name: "생활비계좌" },
+      { id: "acc-stock", name: "주식계좌" },
+      { id: "acc-cma", name: "CMA비상금계좌" }
+    ],
+    transfers,
     monthlyExpense: expense,
     monthlySavings: savings,
     monthlyInvest: invest,
     expenseItems: distributeAmount(expense, EXPENSE_DETAIL.map(d => ({ ...d, accountId: "acc-living" }))),
-    savingsItems: distributeAmount(savings, SAVINGS_DETAIL.map(d => ({ ...d, accountId: "acc-salary" }))),
+    savingsItems: distributeAmount(savings, SAVINGS_DETAIL.map((d, idx) => ({ ...d, accountId: idx === 0 ? "acc-cma" : "acc-salary" }))),
     investItems: distributeAmount(invest, INVEST_DETAIL.map(d => ({ ...d, accountId: "acc-stock" }))),
     monthlyDebtPayment: 0,
     startCash,

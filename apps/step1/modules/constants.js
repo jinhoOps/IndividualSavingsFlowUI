@@ -120,35 +120,63 @@ export const SAMPLE_INPUTS = {
     { 
       id: "sample-income-1", 
       name: "주급여", 
-      amount: 3100000, 
+      amount: 4500000, 
       accountId: "acc-salary",
       allocations: [
-        { accountId: "acc-salary", amount: 1000000 },
-        { accountId: "acc-living", amount: 1500000 },
-        { accountId: "acc-stock", amount: 600000 }
+        { accountId: "acc-salary", amount: 1500000 },
+        { accountId: "acc-living", amount: 2000000 },
+        { accountId: "acc-stock", amount: 1000000 }
       ]
     },
     { 
       id: "sample-income-2", 
       name: "부수입", 
-      amount: 100000, 
+      amount: 300000, 
       accountId: "acc-salary",
       allocations: [
-        { accountId: "acc-salary", amount: 100000 }
+        { accountId: "acc-salary", amount: 300000 }
       ]
     },
   ],
   accounts: [
     { id: "acc-salary", name: "급여계좌" },
     { id: "acc-living", name: "생활비계좌" },
-    { id: "acc-stock", name: "주식계좌" }
+    { id: "acc-stock", name: "주식계좌" },
+    { id: "acc-cma", name: "CMA비상금계좌" }
+  ],
+  transfers: [
+    { id: "sample-tr-1", sourceAccountId: "acc-salary", targetAccountId: "acc-cma", amount: 300000 }
+  ],
+  expenseItems: [
+    { id: "rent", name: "주거비(대출상환)", amount: 800000, group: "생활비-고정비-주거비", accountId: "acc-living" },
+    { id: "maintenance", name: "관리비", amount: 120000, group: "생활비-고정비-공과금", accountId: "acc-living" },
+    { id: "water", name: "수도세", amount: 20000, group: "생활비-고정비-공과금", accountId: "acc-living" },
+    { id: "gas", name: "가스비", amount: 60000, group: "생활비-고정비-공과금", accountId: "acc-living" },
+    { id: "electricity", name: "전기세", amount: 50000, group: "생활비-고정비-공과금", accountId: "acc-living" },
+    { id: "telecom", name: "통신비", amount: 60000, group: "생활비-고정비-통신비", accountId: "acc-living" },
+    { id: "insurance", name: "보험료", amount: 200000, group: "생활비-고정비-보험료", accountId: "acc-living" },
+    { id: "transport", name: "교통비", amount: 150000, accountId: "acc-living" },
+    { id: "food", name: "식비", amount: 500000, accountId: "acc-living" },
+    { id: "etc", name: "기타생활비", amount: 250000, accountId: "acc-living" },
+  ],
+  savingsItems: [
+    { id: "youth-saving", name: "청년적금", amount: 700000, annualRate: 3.6, accountId: "acc-salary" },
+    { id: "housing-subscription", name: "주택청약", amount: 200000, annualRate: 2.9, accountId: "acc-cma" },
+  ],
+  investItems: [
+    { id: "global-stock", name: "해외주식", amount: 500000, accountId: "acc-stock" },
+    { id: "isa", name: "ISA", amount: 400000, accountId: "acc-stock" },
+    { id: "gold-spot", name: "금현물", amount: 100000, accountId: "acc-stock" },
   ],
   surplusTransferAccountId: "acc-stock",
-  monthlyDebtPayment: 500000,
-  startCash: 5000000,
-  startSavings: 20000000,
-  startInvest: 10000000,
-  startDebt: 15000000,
+  monthlyExpense: 2210000,
+  monthlySavings: 900000,
+  monthlyInvest: 1000000,
+  monthlyDebtPayment: 400000,
+  startCash: 8000000,
+  startSavings: 25000000,
+  startInvest: 15000000,
+  startDebt: 12000000,
 };
 
 export const TONE_COLORS = {

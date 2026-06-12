@@ -89,7 +89,9 @@ export function renderSankey(snapshot, buildSankeyData, sortMode) {
   if (!dom.sankeySvg || !dom.sankeyWrap) return;
   hideSankeyTooltip();
 
-  const data = buildSankeyData(snapshot, sortMode);
+  const isMobileEarly = window.matchMedia(MOBILE_LAYOUT_QUERY).matches;
+  const rawData = buildSankeyData(snapshot, sortMode);
+  const data = isMobileEarly && rawData ? collapseOverloadedNodes(rawData) : rawData;
   dom.sankeySvg.innerHTML = "";
   dom.sankeyLegend.innerHTML = "";
 
@@ -127,7 +129,7 @@ export function renderSankey(snapshot, buildSankeyData, sortMode) {
   const splitText = splitCount > 0 ? ` · 상세 분기 ${splitCount}개` : "";
   const valueModeText = valueMode === SANKEY_VALUE_MODES.PERCENT ? "표시 %" : "표시 금액";
   const sortText = sortModeTextMap[normalizedSortMode] || sortModeTextMap[SANKEY_SORT_MODES.GROUP];
-  const isMobileViewport = window.matchMedia(MOBILE_LAYOUT_QUERY).matches;
+  const isMobileViewport = isMobileEarly;
   const zoomText = isMobileViewport ? ` · 확대 ${Math.round(getEffectiveSankeyZoom(true) * 100)}%` : "";
   const metaInfo = `수입 ${formatCurrency(snapshot.income)} · 배분 ${formatCurrency(snapshot.requiredOutflow)} · 순현금흐름 ${formatSignedCurrency(snapshot.netCashflow)}${splitText} · ${valueModeText} · ${sortText}${zoomText}`;
 
@@ -308,19 +310,158 @@ export function renderSankey(snapshot, buildSankeyData, sortMode) {
   renderSankeyLegend(data, valueMode);
 }
 
+const MOBILE_COLLAPSE_THRESHOLD = 6;
+const MOBILE_COLLAPSE_TARGET = 5;
+
+function collapseOverloadedNodes(data) {
+  const col2Nodes = data.nodes.filter((n) => n.column === 2 && !n._collapsed);
+  if (col2Nodes.length <= MOBILE_COLLAPSE_THRESHOLD) return data;
+
+  const groupPrefixMap = new Map();
+  col2Nodes.forEach((n) => {
+    const prefix = n._groupPrefix || (n.group ? n.group.split("-")[0] : null);
+    if (prefix) {
+      if (!groupPrefixMap.has(prefix)) groupPrefixMap.set(prefix, []);
+      groupPrefixMap.get(prefix).push(n);
+    }
+  });
+
+  const mergedIds = new Set();
+  const collapsedNodes = [];
+
+  groupPrefixMap.forEach((members, prefix) => {
+    if (members.length < 2) return;
+    const totalValue = members.reduce((s, n) => s + n.value, 0);
+    const dominantTone = members.sort((a, b) => b.value - a.value)[0].tone;
+    const sortedByValue = [...members].sort((a, b) => b.value - a.value);
+    const topLabel = sortedByValue[0].label;
+    const label = sortedByValue.length > 1 ? `${topLabel} 외 ${sortedByValue.length - 1}개` : topLabel;
+    const collapseId = `collapsed-group-${prefix}`;
+    collapsedNodes.push({
+      id: collapseId,
+      label,
+      value: totalValue,
+      tone: dominantTone,
+      column: 2,
+      _collapsed: true,
+      _children: sortedByValue.map((n) => ({ label: n.label, value: n.value, tone: n.tone }))
+    });
+    members.forEach((n) => mergedIds.add(n.id));
+  });
+
+  const ungrouped = col2Nodes.filter((n) => !mergedIds.has(n.id));
+  let remaining = [...ungrouped, ...collapsedNodes];
+
+  if (remaining.length > MOBILE_COLLAPSE_TARGET) {
+    const accountLinkMap = new Map();
+    data.links.forEach((lk) => {
+      if (!mergedIds.has(lk.target) && ungrouped.find((n) => n.id === lk.target)) {
+        if (!accountLinkMap.has(lk.source)) accountLinkMap.set(lk.source, []);
+        accountLinkMap.get(lk.source).push(lk.target);
+      }
+    });
+
+    const accountCollapseIds = new Set();
+    const accountCollapsedNodes = [];
+    const accountMergedIds = new Set();
+
+    accountLinkMap.forEach((targetIds, sourceId) => {
+      if (targetIds.length < 2) return;
+      const members2 = ungrouped.filter((n) => targetIds.includes(n.id) && !accountMergedIds.has(n.id));
+      if (members2.length < 2) return;
+      const totalValue2 = members2.reduce((s, n) => s + n.value, 0);
+      const sorted2 = [...members2].sort((a, b) => b.value - a.value);
+      const topLabel2 = sorted2[0].label;
+      const label2 = sorted2.length > 1 ? `${topLabel2} 외 ${sorted2.length - 1}개` : topLabel2;
+      const collapseId2 = `collapsed-acc-${sourceId}`;
+      if (!accountCollapseIds.has(collapseId2)) {
+        accountCollapseIds.add(collapseId2);
+        accountCollapsedNodes.push({
+          id: collapseId2,
+          label: label2,
+          value: totalValue2,
+          tone: sorted2[0].tone,
+          column: 2,
+          _collapsed: true,
+          _children: sorted2.map((n) => ({ label: n.label, value: n.value, tone: n.tone }))
+        });
+        members2.forEach((n) => accountMergedIds.add(n.id));
+      }
+    });
+
+    if (accountMergedIds.size > 0) {
+      remaining = [
+        ...ungrouped.filter((n) => !accountMergedIds.has(n.id)),
+        ...collapsedNodes,
+        ...accountCollapsedNodes,
+      ];
+    }
+  }
+
+  const remainingIds = new Set(remaining.map((n) => n.id));
+  const mergedFromLinks = new Set([...mergedIds]);
+  remaining.forEach((n) => {
+    if (n._collapsed && n._children) {
+      n._children.forEach((c) => {
+        const orig = col2Nodes.find((o) => o.label === c.label && o.value === c.value);
+        if (orig) mergedFromLinks.add(orig.id);
+      });
+    }
+  });
+
+  const newNodes = [
+    ...data.nodes.filter((n) => n.column !== 2 || remainingIds.has(n.id)),
+    ...remaining.filter((n) => n._collapsed),
+  ];
+
+  const collapsedIdMap = new Map();
+  remaining.filter((n) => n._collapsed).forEach((cn) => {
+    (cn._children || []).forEach((child) => {
+      const orig = col2Nodes.find((o) => o.label === child.label && Math.abs(o.value - child.value) < 1);
+      if (orig) collapsedIdMap.set(orig.id, cn.id);
+    });
+  });
+
+  const newLinks = data.links.map((lk) => {
+    if (collapsedIdMap.has(lk.target)) {
+      return { ...lk, target: collapsedIdMap.get(lk.target) };
+    }
+    return lk;
+  });
+
+  const deduped = [];
+  const linkKey = new Map();
+  newLinks.forEach((lk) => {
+    const key = `${lk.source}__${lk.target}`;
+    if (linkKey.has(key)) {
+      linkKey.get(key).value += lk.value;
+    } else {
+      const copy = { ...lk };
+      linkKey.set(key, copy);
+      deduped.push(copy);
+    }
+  });
+
+  return { ...data, nodes: newNodes, links: deduped };
+}
+
 function formatAllocationBreakdownText(items, totalValue, valueMode) {
   if (!Array.isArray(items) || items.length === 0) return "";
   return "\n구성: " + items.map(item => `${item.label} ${formatSankeyDisplayValue(item.value, totalValue, valueMode)}`).join(", ");
 }
 
 function drawNode(node, side, nodeWidth, labelGap, totalValue, valueMode, isMobileViewport) {
-  const rect = createSvgElement("rect", {
+  const isCollapsed = Boolean(node._collapsed && node._children?.length);
+
+  const rectAttrs = {
     x: node.x,
     y: node.y,
     width: nodeWidth,
     height: Math.max(1, node.h),
-    class: `sankey-node tone-${node.tone}`,
-  });
+    class: `sankey-node tone-${node.tone}${isCollapsed ? " sankey-node--collapsed" : ""}`,
+  };
+  if (isCollapsed) rectAttrs.style = "cursor:pointer;";
+  const rect = createSvgElement("rect", rectAttrs);
   dom.sankeySvg.appendChild(rect);
 
   const showValue = node.h >= 22 || isMobileViewport;
@@ -334,8 +475,9 @@ function drawNode(node, side, nodeWidth, labelGap, totalValue, valueMode, isMobi
     centerY = node.y - 18;
     labelY = showValue ? centerY - 5 : centerY;
 
+    const baseLabel = isCollapsed ? `▸ ${node.label}` : node.label;
     const textW = Math.max(
-      measureSankeyTextWidth(node.label, 11, 700),
+      measureSankeyTextWidth(baseLabel, 11, 700),
       showValue ? measureSankeyTextWidth(valueText, 10, 400) : 0
     );
     const badgeW = textW + 12;
@@ -349,17 +491,61 @@ function drawNode(node, side, nodeWidth, labelGap, totalValue, valueMode, isMobi
       width: badgeW,
       height: badgeH,
       rx: 4,
-      fill: "rgba(255, 255, 255, 0.85)",
-      stroke: "rgba(16, 34, 32, 0.15)",
-      "stroke-width": "1"
+      fill: isCollapsed ? "rgba(255, 248, 220, 0.92)" : "rgba(255, 255, 255, 0.85)",
+      stroke: isCollapsed ? "rgba(180, 120, 20, 0.4)" : "rgba(16, 34, 32, 0.15)",
+      "stroke-width": "1",
+      style: isCollapsed ? "cursor:pointer;" : ""
     });
     dom.sankeySvg.appendChild(badgeBg);
-  } else {
-    labelX = side === "source" ? node.x - labelGap : node.x + nodeWidth + labelGap;
-    anchor = side === "source" ? "end" : "start";
-    centerY = node.y + node.h / 2;
-    labelY = showValue ? centerY - 6 : centerY;
+
+    if (isCollapsed) {
+      const handleCollapsedTap = (evt) => {
+        evt.stopPropagation();
+        showCollapsedNodeDetail(node, totalValue, valueMode, evt);
+      };
+      badgeBg.addEventListener("click", handleCollapsedTap);
+      badgeBg.addEventListener("touchend", handleCollapsedTap);
+      rect.addEventListener("click", handleCollapsedTap);
+      rect.addEventListener("touchend", handleCollapsedTap);
+    }
+
+    const label = createSvgElement("text", {
+      x: labelX,
+      y: labelY,
+      class: "sankey-label",
+      "text-anchor": anchor,
+      "dominant-baseline": "middle",
+      style: isCollapsed ? "cursor:pointer;" : ""
+    });
+    label.textContent = isCollapsed ? `▸ ${node.label}` : node.label;
+    if (isCollapsed) {
+      const handleCollapsedTap = (evt) => {
+        evt.stopPropagation();
+        showCollapsedNodeDetail(node, totalValue, valueMode, evt);
+      };
+      label.addEventListener("click", handleCollapsedTap);
+      label.addEventListener("touchend", handleCollapsedTap);
+    }
+    dom.sankeySvg.appendChild(label);
+
+    if (showValue) {
+      const value = createSvgElement("text", {
+        x: labelX,
+        y: centerY + 7,
+        class: "sankey-value",
+        "text-anchor": anchor,
+        "dominant-baseline": "middle",
+      });
+      value.textContent = valueText;
+      dom.sankeySvg.appendChild(value);
+    }
+    return;
   }
+
+  labelX = side === "source" ? node.x - labelGap : node.x + nodeWidth + labelGap;
+  anchor = side === "source" ? "end" : "start";
+  centerY = node.y + node.h / 2;
+  labelY = showValue ? centerY - 6 : centerY;
 
   const label = createSvgElement("text", {
     x: labelX,
@@ -374,7 +560,7 @@ function drawNode(node, side, nodeWidth, labelGap, totalValue, valueMode, isMobi
   if (showValue) {
     const value = createSvgElement("text", {
       x: labelX,
-      y: isMobileViewport ? centerY + 7 : centerY + 10,
+      y: centerY + 10,
       class: "sankey-value",
       "text-anchor": anchor,
       "dominant-baseline": "middle",
@@ -382,6 +568,65 @@ function drawNode(node, side, nodeWidth, labelGap, totalValue, valueMode, isMobi
     value.textContent = valueText;
     dom.sankeySvg.appendChild(value);
   }
+}
+
+function showCollapsedNodeDetail(node, totalValue, valueMode, evt) {
+  const existing = document.getElementById("sankey-collapsed-detail");
+  if (existing) existing.remove();
+
+  const panel = document.createElement("div");
+  panel.id = "sankey-collapsed-detail";
+  panel.className = "sankey-collapsed-detail";
+
+  const header = document.createElement("div");
+  header.className = "sankey-collapsed-detail__header";
+  const title = document.createElement("span");
+  title.textContent = node.label.replace(/^▸ /, "");
+  const closeBtn = document.createElement("button");
+  closeBtn.className = "sankey-collapsed-detail__close";
+  closeBtn.textContent = "✕";
+  closeBtn.setAttribute("aria-label", "닫기");
+  closeBtn.addEventListener("click", () => panel.remove());
+  header.append(title, closeBtn);
+  panel.appendChild(header);
+
+  const table = document.createElement("table");
+  table.className = "sankey-collapsed-detail__table";
+  const tbody = document.createElement("tbody");
+  node._children.forEach((child) => {
+    const tr = document.createElement("tr");
+    const tdLabel = document.createElement("td");
+    tdLabel.textContent = child.label;
+    const tdValue = document.createElement("td");
+    tdValue.textContent = formatSankeyDisplayValue(child.value, totalValue, valueMode);
+    tdValue.className = "sankey-collapsed-detail__value";
+    tr.append(tdLabel, tdValue);
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+  panel.appendChild(table);
+
+  const wrapRect = dom.sankeyWrap.getBoundingClientRect();
+  const tapX = (evt.changedTouches?.[0]?.clientX ?? evt.clientX) - wrapRect.left;
+  const tapY = (evt.changedTouches?.[0]?.clientY ?? evt.clientY) - wrapRect.top;
+  panel.style.position = "absolute";
+  panel.style.left = `${Math.min(tapX + 8, wrapRect.width - 200)}px`;
+  panel.style.top = `${Math.max(4, tapY - 16)}px`;
+
+  dom.sankeyWrap.style.position = "relative";
+  dom.sankeyWrap.appendChild(panel);
+
+  const dismissOnOutside = (e) => {
+    if (!panel.contains(e.target)) {
+      panel.remove();
+      document.removeEventListener("click", dismissOnOutside);
+      document.removeEventListener("touchend", dismissOnOutside);
+    }
+  };
+  setTimeout(() => {
+    document.addEventListener("click", dismissOnOutside);
+    document.addEventListener("touchend", dismissOnOutside);
+  }, 0);
 }
 
 export function renderSankeyLegend(data, valueMode) {
