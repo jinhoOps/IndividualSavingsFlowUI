@@ -2781,3 +2781,8 @@ body.is-onboarding-active .onboarding-overlay {
   font-weight: 500;
   margin: 0;
 }
+
+/* 접혀있는 패널의 헤더 도구 버튼들 가리기 */
+.panel.is-collapsed .section-head-tools > button:not(.panel-toggle-btn) {
+  display: none !important;
+}

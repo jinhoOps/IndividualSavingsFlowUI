@@ -47,17 +47,30 @@ export function renderProjectionTable(records, horizonYears, expenseGrowth) {
 
 export function renderItemList(group, items, options = {}) {
   const list = dom[`${group}List`]; if (!list) return;
-  if (group === "account") {
-    let warnings = options.warnings;
-    if (!warnings) {
-      const inputs = state.draftInputs || state.inputs;
-      const res = calculateAccountFinancialIncomes(inputs);
-      warnings = res.warnings;
+  if (group === "account" || group === "income") {
+    if (group === "account") {
+      let warnings = options.warnings;
+      if (!warnings) {
+        const inputs = state.draftInputs || state.inputs;
+        const res = calculateAccountFinancialIncomes(inputs);
+        warnings = res.warnings;
+      }
+      list.innerHTML = items.map(item => renderAccountItemHtml(item, { ...options, warnings })).join("");
+    } else {
+      list.innerHTML = items.map((item) => renderIncomeItemHtml(item, options)).join("");
     }
-    list.innerHTML = items.map(item => renderAccountItemHtml(item, { ...options, warnings })).join("");
     return;
   }
-  list.innerHTML = items.map((item, idx) => group === "income" ? renderIncomeItemHtml(item, options) : renderAllocationItemHtml(group, item, options)).join("");
+  const sortMode = state.itemSortModes[group] || "default";
+  let sorted = [...(items || [])];
+  if (sortMode === "amount-desc") {
+    sorted.sort((a, b) => (b.amount || 0) - (a.amount || 0));
+  } else if (sortMode === "amount-asc") {
+    sorted.sort((a, b) => (a.amount || 0) - (b.amount || 0));
+  } else if (sortMode === "name-asc") {
+    sorted.sort((a, b) => (a.name || "").localeCompare(b.name || "", "ko"));
+  }
+  list.innerHTML = sorted.map((item) => renderAllocationItemHtml(group, item, options)).join("");
 }
 
 function getShortAccountName(name) {
