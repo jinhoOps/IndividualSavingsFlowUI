@@ -2140,3 +2140,136 @@ body.is-onboarding-active .onboarding-overlay {
   color: var(--text);
   border-color: var(--line-strong);
 }
+
+/* 계좌 간 자동 이체 흐름 보드 스타일 */
+.transfer-board-panel {
+  order: 3.5; /* Sankey Diagram (order: 3) 바로 아래 배치 */
+}
+
+.transfer-card-list {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.transfer-card {
+  border: 1px solid rgba(16, 34, 32, 0.12);
+  border-radius: var(--rd-md, 8px);
+  background: #ffffff;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 12px;
+  box-shadow: 0 1px 3px rgba(16, 34, 32, 0.04);
+  transition: all 0.2s ease-in-out;
+}
+
+.transfer-card:hover {
+  border-color: rgba(234, 91, 42, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(234, 91, 42, 0.06);
+}
+
+.transfer-card__flow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: var(--ink);
+}
+
+.transfer-card__acc {
+  font-weight: 600;
+}
+
+.transfer-card__acc--source {
+  color: var(--muted);
+}
+
+.transfer-card__acc--target {
+  color: var(--ink);
+}
+
+.transfer-card__arrow {
+  display: inline-block;
+  color: var(--income, #1e8b7c);
+  font-weight: 700;
+  animation: arrow-bounce 1.5s infinite ease-in-out;
+}
+
+.badge-transfer {
+  display: inline-block;
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: #3175b6;
+  background: rgba(49, 117, 182, 0.15);
+  padding: 4px 10px;
+  border-radius: 999px;
+  width: max-content;
+}
+
+@keyframes arrow-bounce {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(4px);
+  }
+}
+
+/* 금융소득 과세 경고 계좌 카드 스타일 */
+.account-row--warn {
+  border-color: #f59e0b !important;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.15) !important;
+}
+
+.account-row--crit {
+  border-color: #dc2626 !important;
+  box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.15) !important;
+}
+
+.status-badge {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  line-height: 1.2;
+  opacity: 1;
+  transition: opacity 0.3s ease-in-out;
+  animation: status-glow 1.5s infinite alternate ease-in-out;
+}
+
+.status-badge--warn {
+  color: #d97706;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.24);
+}
+
+.status-badge--crit {
+  color: #dc2626;
+  background: rgba(220, 38, 38, 0.12);
+  border: 1px solid rgba(220, 38, 38, 0.24);
+}
+
+@keyframes status-glow {
+  0% { opacity: 0.85; }
+  100% { opacity: 1; }
+}
+
+/* 모바일 전용 반응형 재정의 (760px 이하) */
+@media (max-width: 760px) {
+  .transfer-card-list {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    gap: 12px;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .transfer-card {
+    padding: 12px;
+  }
+}

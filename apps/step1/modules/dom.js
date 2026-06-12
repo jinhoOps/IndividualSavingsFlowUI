@@ -93,6 +93,8 @@ export const dom = {
   sankeyWrap: document.getElementById("sankeyWrap"),
   sankeyMeta: document.getElementById("sankeyMeta"),
   sankeyLegend: document.getElementById("sankeyLegend"),
+  accountTransferBoard: document.getElementById("accountTransferBoard"),
+  transferCardList: document.getElementById("transferCardList"),
   sankeyViewAmount: document.getElementById("sankeyViewAmount"),
   sankeyViewPercent: document.getElementById("sankeyViewPercent"),
   sankeySortMode: document.getElementById("sankeySortMode"),

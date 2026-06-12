@@ -218,6 +218,7 @@ export function buildSankeyData(snapshot, sortMode) {
   // 3. 계좌 간 이체(내부 링크) 계산
   const providers = [];
   const consumers = [];
+  const transfers = [];
 
   accounts.forEach((acc) => {
     const totalInflow = links
@@ -242,7 +243,7 @@ export function buildSankeyData(snapshot, sortMode) {
     const c = consumers[cIdx];
     const transfer = Math.min(p.balance, -c.balance);
     if (transfer > 0.01) {
-      links.push({
+      transfers.push({
         source: p.id,
         target: c.id,
         value: transfer,
@@ -258,7 +259,7 @@ export function buildSankeyData(snapshot, sortMode) {
   // 3.5 계좌 노드들의 실제 금액(value) 계산 및 갱신
   nodes.forEach((node) => {
     if (node.column === 1) {
-      const totalInflow = links
+      const totalInflow = [...links, ...transfers]
         .filter((link) => link.target === node.id)
         .reduce((sum, link) => sum + link.value, 0);
       node.value = totalInflow;
@@ -271,6 +272,7 @@ export function buildSankeyData(snapshot, sortMode) {
   return {
     nodes,
     links,
+    transfers,
     totalValue,
     hasIncomeInflow: incomeSources.length >= 2,
     hasGroupLayer: false,

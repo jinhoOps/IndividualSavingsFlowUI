@@ -507,3 +507,79 @@ export function buildSummaryCards(snapshot, projection, horizonYears) {
   });
 }
 
+export function calculateAccountFinancialIncomes(inputs) {
+  const savingsItems = Array.isArray(inputs.savingsItems) ? inputs.savingsItems : [];
+  const investItems = Array.isArray(inputs.investItems) ? inputs.investItems : [];
+  const accounts = Array.isArray(inputs.accounts) ? inputs.accounts : [];
+  const accountIds = new Set(accounts.map((a) => a.id));
+
+  function resolveAccountId(itemAccountId, magicDefault) {
+    if (itemAccountId && accountIds.has(itemAccountId)) return itemAccountId;
+    if (magicDefault && accountIds.has(magicDefault)) return magicDefault;
+    return accounts[0]?.id || null;
+  }
+
+  const savingsBuckets = buildSavingsBuckets(inputs);
+  const investBuckets = buildInvestBuckets(inputs);
+
+  const accountIncomeMap = {};
+  accounts.forEach((acc) => {
+    accountIncomeMap[acc.id] = 0;
+  });
+
+  savingsBuckets.forEach((bucket, index) => {
+    const originalItem = savingsItems[index];
+    const accId = resolveAccountId(originalItem?.accountId, MAGIC_MAPPING_DEFAULTS.savings);
+    if (!accId) return;
+
+    const annualRate = bucket.annualRate || 0;
+    const balance = bucket.balance || 0;
+    const annualIncome = balance * (annualRate / 100);
+
+    if (accountIncomeMap[accId] === undefined) {
+      accountIncomeMap[accId] = 0;
+    }
+    accountIncomeMap[accId] += annualIncome;
+  });
+
+  investBuckets.forEach((bucket, index) => {
+    const originalItem = investItems[index];
+    const accId = resolveAccountId(originalItem?.accountId, MAGIC_MAPPING_DEFAULTS.invest);
+    if (!accId) return;
+
+    const balance = bucket.balance || 0;
+    const annualIncome = balance * 0.02;
+
+    if (accountIncomeMap[accId] === undefined) {
+      accountIncomeMap[accId] = 0;
+    }
+    accountIncomeMap[accId] += annualIncome;
+  });
+
+  let totalFinancialIncome = 0;
+  Object.values(accountIncomeMap).forEach((val) => {
+    totalFinancialIncome += val;
+  });
+
+  const warnings = {};
+  const status = window.IsfUtils.getFinancialIncomeStatus(totalFinancialIncome);
+
+  if (status !== "normal") {
+    const message = status === "crit"
+      ? "금융소득 종합과세 대상 (한도 초과)"
+      : "금융소득 종합과세 주의";
+
+    Object.keys(accountIncomeMap).forEach((accId) => {
+      if (accountIncomeMap[accId] > 0) {
+        warnings[accId] = { status, message };
+      }
+    });
+  }
+
+  return {
+    accountIncomeMap,
+    totalFinancialIncome,
+    warnings
+  };
+}
+

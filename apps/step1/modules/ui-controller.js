@@ -91,7 +91,7 @@ export function clearPendingChanges() {
   setPendingBarVisible(false);
 }
 
-export function refreshInputsPanel(inputs) {
+export function refreshInputsPanel(inputs, warnings) {
   if (!dom.inputsForm) return;
   state.suspendInputTracking = true;
   helpers.applyInputsToForm(dom.inputsForm, inputs, { FORM_FIELD_KEYS, toMan: IsfUtils.toMan });
@@ -100,7 +100,10 @@ export function refreshInputsPanel(inputs) {
   const rawInputs = state.draftInputs || inputs;
   ["income", "account", "expense", "savings", "invest"].forEach(group => {
     const rawItems = group === "income" ? rawInputs.incomes : (group === "account" ? rawInputs.accounts : rawInputs[`${group}Items`]);
-    listRenderer.renderItemList(group, rawItems, { editing: state.itemEditors[group].active });
+    listRenderer.renderItemList(group, rawItems, { 
+      editing: state.itemEditors[group].active,
+      warnings: group === "account" ? warnings : undefined
+    });
   });
 
   syncDerivedMonthlyInputsToUi();

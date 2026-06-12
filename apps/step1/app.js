@@ -34,7 +34,8 @@ import {
 } from "./modules/comparison-renderer.js";
 
 import {
-  buildMonthlySnapshot, simulateProjection, buildSummaryCards
+  buildMonthlySnapshot, simulateProjection, buildSummaryCards,
+  calculateAccountFinancialIncomes
 } from "./modules/calculator.js";
 
 import { dom } from "./modules/dom.js";
@@ -524,10 +525,17 @@ function renderAll() {
   const projection = simulateProjection(state.inputs, { mode: state.projectionOptions.mode });
   const cards = buildSummaryCards(snapshot, projection, state.inputs.horizonYears);
   listRenderer.renderCards(cards, state.inputs.horizonYears);
+  
+  const { warnings } = calculateAccountFinancialIncomes(state.inputs);
+
+  const sankeyData = buildSankeyData(snapshot, state.sankeySortMode);
+  const transfers = sankeyData ? sankeyData.transfers : [];
   renderSankey(snapshot, buildSankeyData, state.sankeySortMode);
+  listRenderer.renderTransferBoard(transfers, state.inputs.accounts);
+
   listRenderer.renderProjectionTable(projection, state.inputs.horizonYears, state.inputs.annualExpenseGrowth);
   listRenderer.renderInputHints(state.inputs);
-  refreshInputsPanel(state.inputs);
+  refreshInputsPanel(state.inputs, warnings);
 
   if (dom.surplusTransferBanner) {
     if (snapshot.surplus > 0) {

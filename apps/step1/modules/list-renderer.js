@@ -3,6 +3,7 @@ import { state } from "./state.js";
 import { IsfUtils } from "../../../shared/core/utils.js";
 import { formatCurrency } from "./formatters.js";
 import { buildAllocationMetaText, getMonthlyIncomeTotalWon } from "./input-sanitizer.js";
+import { calculateAccountFinancialIncomes } from "./calculator.js";
 
 export function renderCards(cards, horizonYears) {
   if (!dom.summaryCards) return;
@@ -83,7 +84,13 @@ export function renderProjectionTable(records, horizonYears, expenseGrowth) {
 export function renderItemList(group, items, options = {}) {
   const list = dom[`${group}List`]; if (!list) return;
   if (group === "account") {
-    list.innerHTML = items.map(item => renderAccountItemHtml(item, options)).join("");
+    let warnings = options.warnings;
+    if (!warnings) {
+      const inputs = state.draftInputs || state.inputs;
+      const res = calculateAccountFinancialIncomes(inputs);
+      warnings = res.warnings;
+    }
+    list.innerHTML = items.map(item => renderAccountItemHtml(item, { ...options, warnings })).join("");
     return;
   }
   list.innerHTML = items.map((item, idx) => group === "income" ? renderIncomeItemHtml(item, options) : renderAllocationItemHtml(group, item, options)).join("");
@@ -264,10 +271,26 @@ export function renderInvestTotalHint(won, count) { if (dom.investTotalHint) dom
 
 export function renderAccountItemHtml(item, opts) {
   const isEditing = !!opts.editing;
+  const warnings = opts.warnings || {};
+  const warning = warnings[item.id];
+
   if (!isEditing) {
+    let warningClass = "";
+    let badgeHtml = "";
+    if (warning) {
+      if (warning.status === "warn") {
+        warningClass = "account-row--warn";
+        badgeHtml = `<span class="status-badge status-badge--warn">${IsfUtils.escapeHtml(warning.message)}</span>`;
+      } else if (warning.status === "crit") {
+        warningClass = "account-row--crit";
+        badgeHtml = `<span class="status-badge status-badge--crit">${IsfUtils.escapeHtml(warning.message)}</span>`;
+      }
+    }
+
     return `
-      <div class="account-row">
+      <div class="account-row ${warningClass}">
         <span class="account-name">${IsfUtils.escapeHtml(item.name)}</span>
+        ${badgeHtml}
       </div>
     `;
   }
@@ -280,4 +303,37 @@ export function renderAccountItemHtml(item, opts) {
       <button class="allocation-remove" data-remove-editor-item="${item.id}" title="삭제">×</button>
     </div>
   `;
+}
+
+export function renderTransferBoard(transfers, accounts) {
+  if (!dom.transferCardList) return;
+  dom.transferCardList.innerHTML = "";
+
+  const safeTransfers = Array.isArray(transfers) ? transfers : [];
+  const safeAccounts = Array.isArray(accounts) ? accounts : [];
+
+  if (safeTransfers.length === 0) {
+    dom.transferCardList.innerHTML = `<p class="empty">자동 이체 흐름이 없습니다.</p>`;
+    return;
+  }
+
+  dom.transferCardList.innerHTML = safeTransfers.map((t) => {
+    const srcAcc = safeAccounts.find((a) => a.id === t.source);
+    const tgtAcc = safeAccounts.find((a) => a.id === t.target);
+    const srcName = srcAcc ? srcAcc.name : t.source;
+    const tgtName = tgtAcc ? tgtAcc.name : t.target;
+
+    return `
+      <div class="transfer-card">
+        <div class="transfer-card__flow">
+          <span class="transfer-card__acc transfer-card__acc--source">${IsfUtils.escapeHtml(srcName)}</span>
+          <span class="transfer-card__arrow">➔</span>
+          <span class="transfer-card__acc transfer-card__acc--target">${IsfUtils.escapeHtml(tgtName)}</span>
+        </div>
+        <div class="transfer-card__amount">
+          <span class="badge-transfer">${IsfUtils.formatMoney(t.value)}</span>
+        </div>
+      </div>
+    `;
+  }).join("");
 }
