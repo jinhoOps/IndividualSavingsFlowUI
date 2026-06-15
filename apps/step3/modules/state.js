@@ -1,113 +1,99 @@
 import { IsfStorageHub } from '../../../shared/storage/hub-storage.js';
 
-const STORAGE_KEY_STEP3 = 'isf-step3-settings-v1';
-
-/**
- * Step 3: Global State Management
- * Accounts: { id, name, type, color, assets: [assetIds] }
- * Assets: { id, name, ticker, targetRatio, currentPrice, quantity, accountId }
- */
+const STORAGE_KEY_PORTFOLIOS = 'isf-step3-portfolios-v2';
 
 export class IsfState {
   constructor() {
     this.data = {
-      investCapacity: 0,
-      accounts: [],
-      assets: [],
+      portfolios: [],
+      activeCreator: {
+        name: '',
+        period: '매일',
+        assets: []
+      },
       lastUpdated: new Date().toISOString()
     };
   }
 
   async loadFromStorage() {
-    const saved = IsfStorageHub.loadLocal(STORAGE_KEY_STEP3);
+    const saved = IsfStorageHub.loadLocal(STORAGE_KEY_PORTFOLIOS);
     if (saved) {
-      this.data = { ...this.data, ...saved };
+      this.data = {
+        portfolios: saved.portfolios || [],
+        activeCreator: saved.activeCreator || { name: '', period: '매일', assets: [] },
+        lastUpdated: saved.lastUpdated || new Date().toISOString()
+      };
+    } else {
+      this.resetActiveCreator();
     }
   }
 
-  restoreSnapshot(snapshotData) {
-    this.data = JSON.parse(JSON.stringify(snapshotData));
+  resetActiveCreator() {
+    this.data.activeCreator = {
+      name: '',
+      period: '매일',
+      assets: [
+        { id: `as-${Date.now()}-1`, name: '', ticker: '', amount: 0, ratio: 0 },
+        { id: `as-${Date.now()}-2`, name: '', ticker: '', amount: 0, ratio: 0 }
+      ]
+    };
     this.saveToStorage();
   }
 
   async saveToStorage() {
     this.data.lastUpdated = new Date().toISOString();
-    IsfStorageHub.saveLocal(STORAGE_KEY_STEP3, this.data);
+    IsfStorageHub.saveLocal(STORAGE_KEY_PORTFOLIOS, this.data);
   }
 
-  updateInvestCapacity(value) {
-    this.data.investCapacity = value;
+  addPortfolio(portfolio) {
+    this.data.portfolios.push(portfolio);
+    this.resetActiveCreator();
     this.saveToStorage();
   }
 
-  removeAccount(id) {
-    this.data.accounts = this.data.accounts.filter(acc => acc.id !== id);
-    this.data.assets = this.data.assets.filter(as => as.accountId !== id);
+  removePortfolio(id) {
+    this.data.portfolios = this.data.portfolios.filter(p => p.id !== id);
     this.saveToStorage();
   }
 
-  removeAsset(id) {
-    this.data.assets = this.data.assets.filter(as => as.id !== id);
+  updateActiveCreator(field, value) {
+    if (field === 'name') {
+      this.data.activeCreator.name = value;
+    } else if (field === 'period') {
+      this.data.activeCreator.period = value;
+    } else if (field === 'assets') {
+      this.data.activeCreator.assets = value;
+    }
     this.saveToStorage();
   }
 
-  updateAsset(id, field, value) {
-    const asset = this.data.assets.find(as => as.id === id);
+  addAssetToCreator() {
+    const newAsset = {
+      id: `as-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      name: '',
+      ticker: '',
+      amount: 0,
+      ratio: 0
+    };
+    this.data.activeCreator.assets.push(newAsset);
+    this.saveToStorage();
+    return newAsset;
+  }
+
+  removeAssetFromCreator(assetId) {
+    this.data.activeCreator.assets = this.data.activeCreator.assets.filter(as => as.id !== assetId);
+    this.saveToStorage();
+  }
+
+  updateCreatorAsset(assetId, field, value) {
+    const asset = this.data.activeCreator.assets.find(as => as.id === assetId);
     if (asset) {
-      if (['targetRatio', 'currentPrice', 'quantity', 'expectedYield'].includes(field)) {
+      if (field === 'amount') {
         asset[field] = Number(value) || 0;
       } else {
         asset[field] = value;
       }
       this.saveToStorage();
     }
-  }
-
-  getSummary() {
-    const totalAssetValue = this.data.assets.reduce((sum, asset) => {
-      return sum + (asset.currentPrice * asset.quantity);
-    }, 0);
-
-    let totalWeightedYield = 0;
-    if (totalAssetValue > 0) {
-      this.data.assets.forEach(asset => {
-        const weight = (asset.currentPrice * asset.quantity) / totalAssetValue;
-        totalWeightedYield += (asset.expectedYield || 0) * weight;
-      });
-    }
-
-    return {
-      investCapacity: this.data.investCapacity,
-      totalAssetValue: totalAssetValue,
-      expectedYield: totalWeightedYield 
-    };
-  }
-
-  addAccount(name, type = 'ISA') {
-    const id = `acc-${Date.now()}`;
-    const newAccount = { id, name, type, color: '#ea5b2a' };
-    this.data.accounts.push(newAccount);
-    this.saveToStorage();
-    return newAccount;
-  }
-
-  updateAccount(id, field, value) {
-    const account = this.data.accounts.find(acc => acc.id === id);
-    if (account) {
-      account[field] = value;
-      this.saveToStorage();
-    }
-  }
-
-  addAsset(accountId, name, ticker = '', targetRatio = 0) {
-    const id = `asset-${Date.now()}`;
-    const newAsset = { 
-      id, accountId, name, ticker, 
-      targetRatio, currentPrice: 0, quantity: 0,
-      expectedYield: 0
-    };
-    this.data.assets.push(newAsset);
-    this.saveToStorage();
-    return newAsset;
   }
 }

@@ -1,59 +1,70 @@
 /**
- * Step 3: Rebalancing Calculation Engine
+ * Step 3: Accumulative Portfolio Calculation Engine
  */
 
 export const IsfCalculator = {
   /**
-   * 포트폴리오의 현재 상태와 목표 격차를 계산합니다.
-   * @param {Object} data IsfState.data
-   * @returns {Object} { totalValue, assets: [{ id, currentValue, currentRatio, targetRatio, diffRatio, buyAmount }] }
+   * 입력된 개별 종목 금액(원)을 합산하여 총액을 반환합니다.
+   * @param {Array} assets 
+   * @returns {number}
    */
-  calculateRebalancing(data) {
-    const { assets, investCapacity } = data;
-    
-    // 1. 현재 총 자산 가치 계산
-    const assetsWithValues = assets.map(as => ({
-      ...as,
-      currentValue: as.currentPrice * as.quantity
-    }));
-    
-    const totalCurrentValue = assetsWithValues.reduce((sum, as) => sum + as.currentValue, 0);
-    const totalFutureValue = totalCurrentValue + investCapacity; // 이번 달 투자금 포함
+  sumAmounts(assets) {
+    if (!Array.isArray(assets)) return 0;
+    return assets.reduce((sum, asset) => sum + (Number(asset.amount) || 0), 0);
+  },
 
-    // 2. 비중 분석 및 매수액 산출
-    // 로직: 목표 비중(%)에 도달하기 위해 필요한 금액(Total * Target%) - 현재 금액
-    const results = assetsWithValues.map(as => {
-      const currentRatio = totalCurrentValue > 0 ? (as.currentValue / totalCurrentValue) * 100 : 0;
-      const targetValue = totalFutureValue * (as.targetRatio / 100);
-      let buyAmount = targetValue - as.currentValue;
-
-      // 음수(매도)는 매수 가이드에서는 0으로 처리 (신규 투자금 우선 전략)
-      // 단, 전체 투자금(investCapacity)을 초과하지 않도록 추후 보정이 필요할 수 있음
-      buyAmount = Math.max(0, buyAmount);
-
+  /**
+   * 총 매수 금액 대비 각 종목의 비중 %를 실시간 반올림 정수로 산출합니다.
+   * @param {Array} assets 
+   * @param {number} totalAmount 
+   * @returns {Array}
+   */
+  calculateRatios(assets, totalAmount) {
+    if (!Array.isArray(assets)) return [];
+    if (totalAmount <= 0) {
+      return assets.map(asset => ({ ...asset, ratio: 0 }));
+    }
+    return assets.map(asset => {
+      const ratio = Math.round(((Number(asset.amount) || 0) / totalAmount) * 100);
       return {
-        ...as,
-        currentRatio,
-        diffRatio: as.targetRatio - currentRatio,
-        buyAmount
+        ...asset,
+        ratio
       };
     });
+  },
 
-    // 3. 투자금 비례 배분
-    const totalRequiredBuy = results.reduce((sum, as) => sum + as.buyAmount, 0);
-    if (investCapacity <= 0) {
-      results.forEach(as => { as.buyAmount = 0; });
-    } else if (totalRequiredBuy > investCapacity) {
-      const ratio = investCapacity / totalRequiredBuy;
-      results.forEach(as => {
-        as.buyAmount *= ratio;
-      });
-    }
+  /**
+   * 개별 종목 금액이 최소 1,000원 이상이고 1,000원 단위인지 여부를 판별합니다.
+   * @param {number} amount 
+   * @returns {boolean}
+   */
+  validateAssetAmount(amount) {
+    const num = Number(amount);
+    return num >= 1000 && num % 1000 === 0;
+  },
 
-    return {
-      totalValue: totalCurrentValue,
-      totalFutureValue,
-      assets: results
-    };
+  /**
+   * 종목 개수가 2개 이상이고, 모든 종목의 금액이 유효한지 검사합니다.
+   * 포트폴리오 및 개별 종목명이 비어있지 않은지도 검사합니다.
+   * @param {Object} portfolio 
+   * @returns {boolean}
+   */
+  validatePortfolio(portfolio) {
+    if (!portfolio) return false;
+    
+    // 포트폴리오 이름 검증
+    if (!portfolio.name || !portfolio.name.trim()) return false;
+
+    // 종목 개수 검증 (최소 2개)
+    const assets = portfolio.assets || [];
+    if (assets.length < 2) return false;
+
+    // 모든 종목에 대해 유효성 검증
+    return assets.every(asset => {
+      // 종목 이름 검증
+      if (!asset.name || !asset.name.trim()) return false;
+      // 금액 검증
+      return this.validateAssetAmount(asset.amount);
+    });
   }
 };

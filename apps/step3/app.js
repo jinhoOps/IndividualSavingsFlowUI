@@ -1,5 +1,5 @@
 /**
- * Step 3: Portfolio Rebalancing - Main Application
+ * Step 3: Portfolio Manager - Main Application
  * 3-Tier Architecture: State / Helpers / UI
  */
 
@@ -7,9 +7,6 @@ import { IsfUtils } from '../../shared/core/utils.js';
 import { IsfState } from './modules/state.js';
 import { IsfDom } from './modules/dom.js';
 import { IsfCalculator } from './modules/calculator.js';
-import { IsfChartBuilder } from './modules/chart-builder.js';
-import { IsfSnapshotManager } from './modules/snapshot-manager.js';
-import { Step1Connector } from './modules/step1-connector.js';
 
 const App = {
   // 1. State
@@ -17,12 +14,11 @@ const App = {
 
   // 2. Core Helpers
   async init() {
-    console.log('[Step3] Initializing Application...');
+    console.log('[Step3] Initializing Accumulative Portfolio Manager...');
     this.state = new IsfState();
     
     try {
       await this.state.loadFromStorage();
-      await this.loadInitialData();
       this.bindEvents();
       this.render();
       console.log('[Step3] Initialization Complete.');
@@ -31,91 +27,97 @@ const App = {
     }
   },
 
-  async loadInitialData() {
-    const step1Data = await Step1Connector.fetchLatestSnapshot();
-    if (step1Data) {
-      this.state.updateInvestCapacity(step1Data.investCapacity);
-    }
-  },
-
   bindEvents() {
-    // Add Account
-    IsfDom.nodes.addAccountBtn.onclick = () => {
-      const name = prompt('계좌 별명을 입력하세요 (예: 연금저축펀드)', '새 계좌');
-      if (name) {
-        this.state.addAccount(name);
-        this.render();
+    // 1. 포트폴리오명 입력 변경 핸들러
+    IsfDom.nodes.portfolioName.oninput = (e) => {
+      this.state.updateActiveCreator('name', e.target.value);
+      this.renderCreatorOnly(); // 폼만 부분 렌더링하여 반응 속도 극대화
+    };
+
+    // 2. 주기 세그먼트 버튼 클릭 핸들러
+    IsfDom.nodes.periodSegment.querySelectorAll('.segment-btn').forEach(btn => {
+      btn.onclick = () => {
+        const period = btn.dataset.period;
+        this.state.updateActiveCreator('period', period);
+        this.renderCreatorOnly();
+      };
+    });
+
+    // 3. 종목 추가 버튼 핸들러
+    IsfDom.nodes.addAssetBtn.onclick = () => {
+      this.state.addAssetToCreator();
+      this.renderCreatorOnly();
+    };
+
+    // 4. 모달 닫기 버튼 핸들러
+    IsfDom.nodes.closeModalBtn.onclick = () => {
+      IsfDom.closePortfolioDetailModal();
+    };
+
+    // 5. 모달 바깥 영역 클릭 시 닫기
+    IsfDom.nodes.portfolioDetailModal.onclick = (e) => {
+      if (e.target === IsfDom.nodes.portfolioDetailModal) {
+        IsfDom.closePortfolioDetailModal();
       }
     };
 
-    // Save Snapshot
-    IsfDom.nodes.saveSnapshotBtn.onclick = async () => {
-      const name = prompt('스냅샷 이름을 입력하세요', `포트폴리오 ${new Date().toLocaleDateString()}`);
-      if (name) {
-        await IsfSnapshotManager.saveSnapshot(this.state.data, name);
-        this.render();
+    // 6. 포트폴리오 저장 버튼 핸들러
+    IsfDom.nodes.savePortfolioBtn.onclick = () => {
+      const activeCreator = this.state.data.activeCreator;
+      const totalAmount = IsfCalculator.sumAmounts(activeCreator.assets);
+      const assetsWithRatios = IsfCalculator.calculateRatios(activeCreator.assets, totalAmount);
+      
+      const newPortfolio = {
+        id: `port-${Date.now()}`,
+        name: activeCreator.name.trim(),
+        period: activeCreator.period,
+        totalAmount,
+        assets: assetsWithRatios,
+        createdAt: new Date().toISOString()
+      };
+
+      if (IsfCalculator.validatePortfolio(newPortfolio)) {
+        this.state.addPortfolio(newPortfolio);
+        this.render(); // 전체 화면 재렌더링
       }
     };
   },
 
-  // 3. UI Logic
+  // 3. UI Logic & Render Pipeline
   render() {
-    // Calculate Rebalancing
-    const analysis = IsfCalculator.calculateRebalancing(this.state.data);
-    const summary = this.state.getSummary();
-    
-    // Update Summaries
-    IsfDom.nodes.investCapacity.textContent = IsfUtils.formatMoney(summary.investCapacity);
-    IsfDom.nodes.totalAssetValue.textContent = IsfUtils.formatMoney(analysis.totalValue);
-    IsfDom.nodes.expectedYield.textContent = `${summary.expectedYield.toFixed(2)}%`;
-
-    // Render Chart
-    IsfChartBuilder.renderDonutChart(IsfDom.nodes.portfolioChart, analysis.assets.map(as => ({
-      label: as.name,
-      value: as.currentValue
-    })));
-
-    // Render Guide
-    IsfDom.renderGuide(analysis.assets);
-
-    // Render Snapshots
-    IsfDom.renderSnapshots(IsfSnapshotManager.listSnapshots(), {
-      onRestore: (id) => {
-        const snap = IsfSnapshotManager.listSnapshots().find(s => s.id === id);
-        if (snap && confirm(`'${snap.name}' 스냅샷으로 복원하시겠습니까?`)) {
-          this.state.restoreSnapshot(snap.data);
+    // 포트폴리오 목록 렌더링
+    IsfDom.renderPortfolioList(this.state.data.portfolios, {
+      onRemovePortfolio: (id) => {
+        if (confirm('이 포트폴리오를 삭제하시겠습니까?')) {
+          this.state.removePortfolio(id);
           this.render();
         }
       },
-      onDelete: (id) => {
-        if (confirm('스냅샷을 삭제하시겠습니까?')) {
-          IsfSnapshotManager.deleteSnapshot(id);
-          this.render();
+      onClickCard: (id) => {
+        const portfolio = this.state.data.portfolios.find(p => p.id === id);
+        if (portfolio) {
+          IsfDom.showPortfolioDetailModal(portfolio);
         }
       }
     });
 
-    // Render Editor
-    IsfDom.renderEditor(this.state.data, {
-      onRemoveAccount: (id) => {
-        this.state.removeAccount(id);
-        this.render();
+    // 포트폴리오 크리에이터 폼 렌더링
+    this.renderCreatorOnly();
+  },
+
+  /**
+   * 전체 화면을 갱신하지 않고, 크리에이터 입력 폼 영역만 반응형으로 부분 렌더링합니다.
+   */
+  renderCreatorOnly() {
+    IsfDom.renderCreatorForm(this.state.data.activeCreator, {
+      onInputChange: (assetId, field, value) => {
+        this.state.updateCreatorAsset(assetId, field, value);
+        // 값이 바뀔 때마다 실시간 합산 정보와 비중 %를 갱신
+        this.renderCreatorOnly();
       },
-      onAccountUpdate: (id, field, value) => {
-        this.state.updateAccount(id, field, value);
-        this.render();
-      },
-      onAddAsset: (accountId) => {
-        this.state.addAsset(accountId, '새 종목');
-        this.render();
-      },
-      onRemoveAsset: (id) => {
-        this.state.removeAsset(id);
-        this.render();
-      },
-      onInputChange: (id, field, value) => {
-        this.state.updateAsset(id, field, value);
-        this.render();
+      onRemoveAsset: (assetId) => {
+        this.state.removeAssetFromCreator(assetId);
+        this.renderCreatorOnly();
       }
     });
   }
