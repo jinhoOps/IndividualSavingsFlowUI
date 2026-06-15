@@ -119,7 +119,8 @@ export function applyPreset(salaryValue, styleKey) {
   };
 }
 
-export function calculateMonthlyIncomeFromAnnualSalary(salaryMan) {
+export function calculateMonthlyIncomeFromAnnualSalary(salaryWon) {
+  const salaryMan = Number(salaryWon || 0) / 10000;
   const table = [
     { salary: 0, monthly: 0 },
     { salary: 3000, monthly: 2250000 },
@@ -163,7 +164,7 @@ export function calculateAnnualSalaryFromMonthlyIncome(monthlyWon) {
 
   if (monthlyWon <= 0) return 0;
   if (monthlyWon >= 6550000) {
-    return Math.round(10000 * (monthlyWon / 6550000));
+    return Math.round(100000000 * (monthlyWon / 6550000));
   }
 
   for (let i = 0; i < table.length - 1; i++) {
@@ -171,18 +172,19 @@ export function calculateAnnualSalaryFromMonthlyIncome(monthlyWon) {
     const p2 = table[i + 1];
     if (monthlyWon >= p1.monthly && monthlyWon <= p2.monthly) {
       const ratio = (monthlyWon - p1.monthly) / (p2.monthly - p1.monthly);
-      return Math.round(p1.salary + ratio * (p2.salary - p1.salary));
+      const salaryMan = p1.salary + ratio * (p2.salary - p1.salary);
+      return Math.round(salaryMan * 10000);
     }
   }
   return 0;
 }
 
-export function applyPresetBySalary(salaryMan, styleKey) {
+export function applyPresetBySalary(salaryWon, styleKey) {
   const style = PRESET_STYLES[styleKey];
   if (!style) return null;
   
-  const validSalaryMan = Math.max(0, Math.min(9900, Number(salaryMan) || 0));
-  const income = calculateMonthlyIncomeFromAnnualSalary(validSalaryMan);
+  const validSalaryWon = Math.max(0, Math.min(99000000, Number(salaryWon) || 0));
+  const income = calculateMonthlyIncomeFromAnnualSalary(validSalaryWon);
   
   const expense = Math.round(income * style.expenseRate);
   const savings = Math.round(income * style.savingsRate);
@@ -198,6 +200,7 @@ export function applyPresetBySalary(salaryMan, styleKey) {
   if (allocInvest > 0) allocations.push({ accountId: "acc-stock", amount: allocInvest });
 
   const isAggressiveOrBeast = styleKey === "aggressive" || styleKey === "beast";
+  const salaryMan = validSalaryWon / 10000;
   
   // 연봉을 기준으로 초기 자산을 풍부하게 조절
   const startCash = Math.round(salaryMan * 2000) * 10000; // 연봉의 0.2배

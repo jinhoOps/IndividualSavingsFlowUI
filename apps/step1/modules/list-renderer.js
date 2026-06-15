@@ -119,8 +119,8 @@ export function renderIncomeItemHtml(item, opts) {
           <option value="">계좌 선택...</option>
           ${selectOpts}
         </select>
-        <input type="number" value="${IsfUtils.toMan(al.amount)}" data-income-id="${item.id}" data-allocation-index="${idx}" data-field="allocationAmount" inputmode="decimal" class="allocation-amount-input" placeholder="분배 금액" />
-        <span class="allocation-unit">만원</span>
+        <input type="number" value="${IsfUtils.toMan(al.amount)}" data-income-id="${item.id}" data-allocation-index="${idx}" data-field="allocationAmount" inputmode="decimal" class="allocation-amount-input" placeholder="분배 금액 (원)" />
+        <span class="allocation-unit">원</span>
         <button type="button" class="remove-allocation-btn" data-income-id="${item.id}" data-allocation-index="${idx}" title="분배 제거">×</button>
       </div>
     `;
@@ -134,8 +134,8 @@ export function renderIncomeItemHtml(item, opts) {
           <input type="text" value="${IsfUtils.escapeHtml(item.name)}" data-income-id="${item.id}" data-field="name" placeholder="이름" />
         </div>
         <div class="editor-field">
-          <label class="editor-field-label">전체 수입(만원)</label>
-          <input type="number" value="${IsfUtils.toMan(item.amount)}" data-income-id="${item.id}" data-field="amount" inputmode="decimal" placeholder="금액" />
+          <label class="editor-field-label">전체 수입(원)</label>
+          <input type="number" value="${IsfUtils.toMan(item.amount)}" data-income-id="${item.id}" data-field="amount" inputmode="decimal" placeholder="금액 (원)" />
         </div>
         <button class="income-remove" data-remove-income="${item.id}" title="삭제">
           <svg class="income-remove-icon" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1-1H5v2h14V4z"/></svg>
@@ -204,8 +204,8 @@ export function renderAllocationItemHtml(group, item, opts) {
         </select>
       </div>
       <div class="editor-field">
-        <label class="editor-field-label">금액(만원)</label>
-        <input type="number" value="${IsfUtils.toMan(item.amount)}" data-field="amount" data-editor-id="${item.id}" inputmode="decimal" placeholder="금액" />
+        <label class="editor-field-label">금액(원)</label>
+        <input type="number" value="${IsfUtils.toMan(item.amount)}" data-field="amount" data-editor-id="${item.id}" inputmode="decimal" placeholder="금액 (원)" />
       </div>
       <div class="editor-field">
         <label class="editor-field-label">그룹</label>

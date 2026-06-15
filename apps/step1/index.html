@@ -56,7 +56,7 @@
         <div class="section-head section-head--controls">
           <h2 id="inputsTitle">
             재무 설정
-            <span class="help-tooltip-trigger" data-tooltip="금액 단위: 만원(예: 350 = 3,500,000원) · 기본값만 입력해도 바로 계산됩니다.">?</span>
+            <span class="help-tooltip-trigger" data-tooltip="금액 단위: 원(예: 3,500,000) · 기본값만 입력해도 바로 계산됩니다.">?</span>
 
           </h2>
           <div class="section-head-tools">
@@ -68,7 +68,7 @@
         </div>
         <div id="inputsPanelContent" hidden>
           <div id="surplusTransferBanner" class="surplus-transfer-banner" hidden>
-            💡 이번 달 남는 잉여현금 <span id="surplusAmountText">0만 원</span>은 
+            💡 이번 달 남는 잉여현금 <span id="surplusAmountText">0원</span>은 
             <select id="surplusTransferAccountSelect" class="surplus-select" aria-label="잉여현금 자동 이체 계좌"></select> 
             으로 자동 이체합니다.
             <span class="help-tooltip-trigger" data-tooltip="지출, 저축, 투자를 모두 배분하고 남은 수입(잉여현금)이 있을 때 지정된 계좌로 자동 입금 흐름이 생성됩니다.">?</span>
@@ -162,8 +162,8 @@
                       <span>에서</span>
                       <select id="transferTargetSelect" class="editor-select" aria-label="도착 계좌" style="min-width: 120px;"></select>
                       <span>로</span>
-                      <input type="number" id="transferAmount" class="editor-input" min="1" placeholder="금액" aria-label="이체 금액" style="width: 80px;" />
-                      <span>만 원을</span>
+                      <input type="number" id="transferAmount" class="editor-input" min="1" placeholder="금액 (원)" aria-label="이체 금액" style="width: 120px;" />
+                      <span>원을</span>
                       <input type="text" id="transferLabel" class="editor-input" placeholder="이체 설명 (예: 생활비 보조)" aria-label="이체 설명" style="flex: 1; min-width: 140px;" />
                       <button type="button" id="addTransferRuleBtn" class="btn btn-primary btn-sm">추가</button>
                     </div>
@@ -607,8 +607,8 @@
         </div>
 
         <div class="control">
-          <label for="presetIncomeAmount">2. 연봉 설정 (최대 9,900만원)</label>
-          <input type="number" id="presetIncomeAmount" name="presetIncomeAmount" min="0" max="9900" step="100" value="4000" placeholder="예: 4000" />
+          <label for="presetIncomeAmount">2. 연봉 설정 (최대 9,900만 원)</label>
+          <input type="number" id="presetIncomeAmount" name="presetIncomeAmount" min="0" max="99000000" step="1000000" value="40000000" placeholder="예: 40000000" />
         </div>
       </div>
       <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px;">

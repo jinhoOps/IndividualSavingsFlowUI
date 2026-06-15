@@ -1,4 +1,4 @@
-﻿
+
 import { state, markDirty, getHubStorage } from "./state.js";
 import { dom } from "./dom.js";
 import { formatCurrency, formatDateTime } from "./calculator.js";
@@ -58,7 +58,7 @@ export async function checkStep1SyncData() {
       dom.step1SyncBanner.hidden = false;
       const textEl = dom.step1SyncBanner.querySelector('.sync-banner__text');
       if (textEl) textEl.textContent = "Step 1 데이터가 없거나 0원입니다. 자산 흐름을 먼저 설정해 주세요.";
-      if (dom.syncInvestCapacity) dom.syncInvestCapacity.textContent = "0 만원";
+      if (dom.syncInvestCapacity) dom.syncInvestCapacity.textContent = "0원";
       if (dom.importStep1Data) {
         dom.importStep1Data.textContent = "Step 1로 이동";
       }

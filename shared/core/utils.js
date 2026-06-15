@@ -133,13 +133,103 @@ export const IsfUtils = (function initIsfUtils(global) {
     if (!Number.isFinite(Number(amountInUnit))) {
       return 0;
     }
-    return Math.round(Number(amountInUnit) * 10000);
+    return Math.round(Number(amountInUnit));
   }
   function toMan(amountInWon) {
     if (!Number.isFinite(Number(amountInWon))) {
       return 0;
     }
-    return Math.round(Number(amountInWon) / 10000);
+    return Math.round(Number(amountInWon));
+  }
+
+  function convertToKoreanWon(value) {
+    const isNegative = Number(value) < 0;
+    const num = Math.floor(Math.abs(Number(value || 0)));
+    if (num === 0) return "0원";
+    if (!Number.isFinite(num)) return "0원";
+    
+    const eok = Math.floor(num / 100000000);
+    const man = Math.floor((num % 100000000) / 10000);
+    const won = num % 10000;
+    
+    let result = "";
+    if (eok > 0) {
+      result += `${eok}억 `;
+    }
+    if (man > 0) {
+      result += `${man}만 `;
+    }
+    if (won > 0) {
+      result += `${won.toLocaleString("ko-KR")}원`;
+    } else if (result !== "") {
+      result += "원";
+    } else {
+      result = "0원";
+    }
+    return (isNegative ? "-" : "") + result.trim();
+  }
+
+  function updateAllKoreanWonHints(container = document) {
+    const inputs = container.querySelectorAll("input[type='number']");
+    inputs.forEach(input => {
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+  }
+
+  if (typeof document !== "undefined") {
+    document.addEventListener("DOMContentLoaded", () => {
+      document.addEventListener("input", (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLInputElement) || target.type !== "number") return;
+        
+        const name = (target.name || "").toLowerCase();
+        const dataField = (target.dataset.field || "");
+        const placeholder = (target.placeholder || "");
+        const isClass = target.classList.contains("allocation-amount-input") || target.classList.contains("editor-input") || target.classList.contains("result-input");
+
+        const isMoneyField = 
+          name.includes("salary") ||
+          name.includes("asset") ||
+          name.includes("expense") ||
+          name.includes("savings") ||
+          name.includes("invest") ||
+          name.includes("debt") ||
+          name.includes("capacity") ||
+          name.includes("amount") ||
+          dataField === "amount" ||
+          dataField === "allocationAmount" ||
+          dataField === "currentPrice" ||
+          dataField === "targetBalance" ||
+          dataField === "initialBalance" ||
+          isClass ||
+          placeholder.includes("금액") ||
+          placeholder.includes("원");
+
+        if (!isMoneyField) return;
+
+        let hintEl = target.parentElement.querySelector(".realtime-won-hint");
+        if (!hintEl) {
+          hintEl = document.createElement("div");
+          hintEl.className = "realtime-won-hint";
+          hintEl.style.fontSize = "0.75rem";
+          hintEl.style.color = "var(--primary, #ea5b2a)";
+          hintEl.style.marginTop = "4px";
+          hintEl.style.minHeight = "1rem";
+          target.parentNode.insertBefore(hintEl, target.nextSibling);
+        }
+        
+        const val = parseFloat(target.value) || 0;
+        if (val > 0) {
+          hintEl.textContent = `실시간 변환: ${convertToKoreanWon(val)}`;
+          hintEl.style.display = "block";
+        } else {
+          hintEl.textContent = "";
+          hintEl.style.display = "none";
+        }
+      });
+      // DOM 로드 완료 후 힌트들을 1회 갱신합니다.
+      updateAllKoreanWonHints();
+    });
   }
 
   function debounce(fn, delay) {
@@ -175,7 +265,7 @@ export const IsfUtils = (function initIsfUtils(global) {
   }
 
   const result = {
-    APP_VERSION: (typeof __APP_VERSION__ !== "undefined") ? __APP_VERSION__ : "0.11.45",
+    APP_VERSION: (typeof __APP_VERSION__ !== "undefined") ? __APP_VERSION__ : "0.11.47",
     formatMoney,
     getFinancialIncomeStatus,
     calculateIncomeTax,
@@ -184,6 +274,8 @@ export const IsfUtils = (function initIsfUtils(global) {
     sanitizeRate,
     toWon,
     toMan,
+    convertToKoreanWon,
+    updateAllKoreanWonHints,
     createId,
     escapeHtml,
     debounce,

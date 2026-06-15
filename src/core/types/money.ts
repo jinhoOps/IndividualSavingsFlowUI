@@ -10,12 +10,12 @@ export const MoneyUtils = {
   /**
    * Converts Man-Won to Won (Multiplies by 10,000).
    */
-  toWon: (manwon: number | ManWon): Won => (Math.round(Number(manwon) * 10000)) as Won,
+  toWon: (manwon: number | ManWon): Won => (Math.round(Number(manwon))) as Won,
 
   /**
    * Converts Won to Man-Won (Divides by 10,000 and rounds to integer).
    */
-  toMan: (won: number | Won): ManWon => Math.round(Number(won) / 10000) as ManWon,
+  toMan: (won: number | Won): ManWon => Math.round(Number(won)) as ManWon,
 
   /**
    * Formats Won as a locale string with '만원' unit, converting to '억원' if >= 10,000 ManWon.

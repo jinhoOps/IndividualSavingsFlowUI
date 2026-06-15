@@ -1,4 +1,4 @@
-﻿
+
 import { IsfUtils } from "../../../shared/core/utils.js";
 
 const isf = IsfUtils || {};
@@ -15,10 +15,10 @@ export const utils = {
     if (!Number.isFinite(parsed) || parsed < 0) return fallback;
     return Math.round(Math.min(limit, parsed) * 100) / 100;
   }),
-  formatMoney: v => isf.formatMoney ? isf.formatMoney(v) : (Math.round(Number(v || 0) / 10000).toLocaleString() + " 만원"),
+  formatMoney: v => isf.formatMoney ? isf.formatMoney(v) : (Math.round(Number(v || 0)).toLocaleString() + " 원"),
   formatTimestamp: t => isf.formatTimestamp ? isf.formatTimestamp(t) : (t ? new Date(t).toLocaleString() : "-"),
-  toWon: isf.toWon || (v => Math.round(Number(v || 0) * 10000)),
-  toMan: isf.toMan || (v => Number(v || 0) / 10000),
+  toWon: isf.toWon || (v => Math.round(Number(v || 0))),
+  toMan: isf.toMan || (v => Math.round(Number(v || 0))),
   roundTo: isf.roundTo || ((v, d) => {
     const factor = Math.pow(10, d);
     return Math.round(v * factor) / factor;
