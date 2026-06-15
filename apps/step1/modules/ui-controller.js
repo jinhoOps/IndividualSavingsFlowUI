@@ -108,14 +108,15 @@ export function refreshInputsPanel(inputs, warnings) {
 
   syncDerivedMonthlyInputsToUi();
   syncGroupOptionsAll();
+  IsfUtils.updateAllKoreanWonHints();
 }
 
 export function syncDerivedMonthlyInputsToUi() {
   const inputs = state.draftInputs || state.inputs;
-  const inc = IsfUtils.toMan(getMonthlyIncomeTotalWon(inputs.incomes));
-  const exp = IsfUtils.toMan(getMonthlyAllocationTotalWon(inputs.expenseItems));
-  const sav = IsfUtils.toMan(getMonthlyAllocationTotalWon(inputs.savingsItems));
-  const inv = IsfUtils.toMan(getMonthlyAllocationTotalWon(inputs.investItems));
+  const inc = getMonthlyIncomeTotalWon(inputs.incomes);
+  const exp = getMonthlyAllocationTotalWon(inputs.expenseItems);
+  const sav = getMonthlyAllocationTotalWon(inputs.savingsItems);
+  const inv = getMonthlyAllocationTotalWon(inputs.investItems);
 
   if (dom.derivedMonthlyIncome) dom.derivedMonthlyIncome.value = inc.toLocaleString();
   if (dom.derivedMonthlyExpense) dom.derivedMonthlyExpense.value = exp.toLocaleString();

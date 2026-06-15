@@ -119,7 +119,7 @@ export function renderIncomeItemHtml(item, opts) {
           <option value="">계좌 선택...</option>
           ${selectOpts}
         </select>
-        <input type="number" value="${IsfUtils.toMan(al.amount)}" data-income-id="${item.id}" data-allocation-index="${idx}" data-field="allocationAmount" inputmode="decimal" class="allocation-amount-input" placeholder="분배 금액 (원)" />
+        <input type="number" value="${al.amount || 0}" data-income-id="${item.id}" data-allocation-index="${idx}" data-field="allocationAmount" inputmode="decimal" class="allocation-amount-input" placeholder="분배 금액 (원)" />
         <span class="allocation-unit">원</span>
         <button type="button" class="remove-allocation-btn" data-income-id="${item.id}" data-allocation-index="${idx}" title="분배 제거">×</button>
       </div>
@@ -135,7 +135,7 @@ export function renderIncomeItemHtml(item, opts) {
         </div>
         <div class="editor-field">
           <label class="editor-field-label">전체 수입(원)</label>
-          <input type="number" value="${IsfUtils.toMan(item.amount)}" data-income-id="${item.id}" data-field="amount" inputmode="decimal" placeholder="금액 (원)" />
+          <input type="number" value="${item.amount || 0}" data-income-id="${item.id}" data-field="amount" inputmode="decimal" placeholder="금액 (원)" />
         </div>
         <button class="income-remove" data-remove-income="${item.id}" title="삭제">
           <svg class="income-remove-icon" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1-1H5v2h14V4z"/></svg>
@@ -205,7 +205,7 @@ export function renderAllocationItemHtml(group, item, opts) {
       </div>
       <div class="editor-field">
         <label class="editor-field-label">금액(원)</label>
-        <input type="number" value="${IsfUtils.toMan(item.amount)}" data-field="amount" data-editor-id="${item.id}" inputmode="decimal" placeholder="금액 (원)" />
+        <input type="number" value="${item.amount || 0}" data-field="amount" data-editor-id="${item.id}" inputmode="decimal" placeholder="금액 (원)" />
       </div>
       <div class="editor-field">
         <label class="editor-field-label">그룹</label>
@@ -326,8 +326,6 @@ export function renderTransferRulesList(transfers, accounts) {
     const tgt = accounts.find(a => a.id === tr.targetAccountId);
     const srcName = src ? src.name : "알 수 없음";
     const tgtName = tgt ? tgt.name : "알 수 없음";
-    const amountMan = Math.round(tr.amount / 10000);
-
     return `
       <div class="transfer-rule-card">
         <div class="transfer-rule-card__info">
@@ -335,7 +333,7 @@ export function renderTransferRulesList(transfers, accounts) {
           <span class="transfer-rule-card__flow">${IsfUtils.escapeHtml(srcName)} ➔ ${IsfUtils.escapeHtml(tgtName)}</span>
         </div>
         <div class="transfer-rule-card__action">
-          <span class="badge-transfer">${amountMan}만 원</span>
+          <span class="badge-transfer">${tr.amount.toLocaleString()}원 <small style="font-size: 0.72rem; opacity: 0.85;">(${IsfUtils.convertToKoreanWon(tr.amount)})</small></span>
           <button type="button" class="btn-delete-transfer" data-delete-transfer-id="${tr.id}" title="이체 규칙 삭제">×</button>
         </div>
       </div>
@@ -402,8 +400,7 @@ export function updateSourceBalanceHint(inputs, sourceAccountId) {
   });
 
   const available = inflow - outflow;
-  const availableMan = Math.round(available / 10000);
   
   dom.sourceBalanceHint.hidden = false;
-  dom.sourceBalanceHint.textContent = `💡 출금 가능 예상 잔액: ${availableMan}만 원`;
+  dom.sourceBalanceHint.textContent = `💡 출금 가능 예상 잔액: ${available.toLocaleString()}원 (${IsfUtils.convertToKoreanWon(available)})`;
 }

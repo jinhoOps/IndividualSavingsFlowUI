@@ -187,23 +187,37 @@ export const IsfUtils = (function initIsfUtils(global) {
         const placeholder = (target.placeholder || "");
         const isClass = target.classList.contains("allocation-amount-input") || target.classList.contains("editor-input") || target.classList.contains("result-input");
 
+        const isRateField = 
+          name.includes("growth") ||
+          name.includes("yield") ||
+          name.includes("return") ||
+          name.includes("interest") ||
+          name.includes("rate") ||
+          dataField === "annualrate" ||
+          dataField.includes("rate") ||
+          placeholder.includes("%") ||
+          placeholder.includes("이율") ||
+          placeholder.includes("수익률");
+
         const isMoneyField = 
-          name.includes("salary") ||
-          name.includes("asset") ||
-          name.includes("expense") ||
-          name.includes("savings") ||
-          name.includes("invest") ||
-          name.includes("debt") ||
-          name.includes("capacity") ||
-          name.includes("amount") ||
-          dataField === "amount" ||
-          dataField === "allocationAmount" ||
-          dataField === "currentPrice" ||
-          dataField === "targetBalance" ||
-          dataField === "initialBalance" ||
-          isClass ||
-          placeholder.includes("금액") ||
-          placeholder.includes("원");
+          !isRateField && (
+            name.includes("salary") ||
+            name.includes("asset") ||
+            name.includes("expense") ||
+            name.includes("savings") ||
+            name.includes("invest") ||
+            name.includes("debt") ||
+            name.includes("capacity") ||
+            name.includes("amount") ||
+            dataField === "amount" ||
+            dataField === "allocationAmount" ||
+            dataField === "currentPrice" ||
+            dataField === "targetBalance" ||
+            dataField === "initialBalance" ||
+            isClass ||
+            placeholder.includes("금액") ||
+            placeholder.includes("원")
+          );
 
         if (!isMoneyField) return;
 
@@ -265,7 +279,7 @@ export const IsfUtils = (function initIsfUtils(global) {
   }
 
   const result = {
-    APP_VERSION: (typeof __APP_VERSION__ !== "undefined") ? __APP_VERSION__ : "0.11.48",
+    APP_VERSION: (typeof __APP_VERSION__ !== "undefined") ? __APP_VERSION__ : "0.11.51",
     formatMoney,
     getFinancialIncomeStatus,
     calculateIncomeTax,

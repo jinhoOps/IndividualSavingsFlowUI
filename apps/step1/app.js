@@ -327,12 +327,13 @@ function bindControls() {
         dom.presetModal.hidden = false;
         setTimeout(() => {
           dom.presetModal.classList.add("is-active");
+          IsfUtils.updateAllKoreanWonHints(dom.presetModal);
         }, 10);
         
-        const incomeWon = getMonthlyIncomeTotalWon(state.inputs);
-        const salaryMan = Math.min(9900, Math.round(calculateAnnualSalaryFromMonthlyIncome(incomeWon)));
+        const incomeWon = getMonthlyIncomeTotalWon(state.inputs.incomes);
+        const salaryWon = Math.min(99000000, Math.round(calculateAnnualSalaryFromMonthlyIncome(incomeWon)));
         if (dom.presetIncomeAmount) {
-          dom.presetIncomeAmount.value = salaryMan > 0 ? salaryMan : 4000;
+          dom.presetIncomeAmount.value = salaryWon > 0 ? salaryWon : 40000000;
         }
         
         selectedModalPresetStyle = 'neutral';
@@ -372,10 +373,10 @@ function bindControls() {
   if (dom.applyModalPresetBtn) {
     dom.applyModalPresetBtn.addEventListener("click", () => {
       if (!dom.presetIncomeAmount) return;
-      const salaryMan = parseInt(dom.presetIncomeAmount.value, 10);
+      const salaryWon = parseInt(dom.presetIncomeAmount.value, 10);
       
-      if (isNaN(salaryMan) || salaryMan < 0 || salaryMan > 9900) {
-        alert("연봉은 0원 이상 9900만원 이하로 입력해주세요.");
+      if (isNaN(salaryWon) || salaryWon < 0 || salaryWon > 99000000) {
+        alert("연봉은 0원 이상 9,900만 원 이하로 입력해주세요.");
         return;
       }
 
@@ -384,7 +385,7 @@ function bindControls() {
         return;
       }
 
-      const newPreset = applyPresetBySalary(salaryMan, selectedModalPresetStyle);
+      const newPreset = applyPresetBySalary(salaryWon, selectedModalPresetStyle);
       if (!newPreset) return;
 
       const nextInputs = { ...DEFAULT_INPUTS, ...newPreset };
@@ -1148,7 +1149,7 @@ function applyItemEditor(group) {
       if (Array.isArray(item.allocations) && item.allocations.length > 0) {
         const allocTotal = item.allocations.reduce((sum, al) => sum + al.amount, 0);
         if (allocTotal > item.amount) {
-          alert(`오류: '${item.name}' 항목의 계좌별 분배 금액 합계(${IsfUtils.toMan(allocTotal)}만원)가 전체 수입 금액(${IsfUtils.toMan(item.amount)}만원)을 초과할 수 없습니다. 금액 조정을 해 주십시오.`);
+          alert(`오류: '${item.name}' 항목의 계좌별 분배 금액 합계(${allocTotal.toLocaleString()}원, ${IsfUtils.convertToKoreanWon(allocTotal)})가 전체 수입 금액(${item.amount.toLocaleString()}원, ${IsfUtils.convertToKoreanWon(item.amount)})을 초과할 수 없습니다. 금액 조정을 해 주십시오.`);
           return;
         }
       }

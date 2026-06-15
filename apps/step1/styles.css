@@ -374,7 +374,7 @@ input[type=number] {
 .control:has(input[name="monthlyDebtPayment"])::after,
 .control:has(input[name="startDebt"])::after,
 .control:has(input[name="presetIncomeAmount"])::after {
-  content: "만원";
+  content: "원";
 }
 
 .control:has(input[name="horizonYears"])::after {

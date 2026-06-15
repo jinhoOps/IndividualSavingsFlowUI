@@ -1,12 +1,12 @@
 export const PRESET_SALARIES = [
-  { label: '3,000만원', value: 30000000, monthlyIncome: 2250000 },
-  { label: '4,000만원', value: 40000000, monthlyIncome: 2950000 },
-  { label: '5,000만원', value: 50000000, monthlyIncome: 3550000 },
-  { label: '6,000만원', value: 60000000, monthlyIncome: 4200000 },
-  { label: '7,000만원', value: 70000000, monthlyIncome: 4850000 },
-  { label: '8,000만원', value: 80000000, monthlyIncome: 5400000 },
-  { label: '9,000만원', value: 90000000, monthlyIncome: 6000000 },
-  { label: '10,000만원', value: 100000000, monthlyIncome: 6550000 }
+  { label: '3,000만 원', value: 30000000, monthlyIncome: 2250000 },
+  { label: '4,000만 원', value: 40000000, monthlyIncome: 2950000 },
+  { label: '5,000만 원', value: 50000000, monthlyIncome: 3550000 },
+  { label: '6,000만 원', value: 60000000, monthlyIncome: 4200000 },
+  { label: '7,000만 원', value: 70000000, monthlyIncome: 4850000 },
+  { label: '8,000만 원', value: 80000000, monthlyIncome: 5400000 },
+  { label: '9,000만 원', value: 90000000, monthlyIncome: 6000000 },
+  { label: '10,000만 원', value: 100000000, monthlyIncome: 6550000 }
 ];
 
 export const PRESET_STYLES = {
@@ -74,26 +74,24 @@ export function applyPreset(salaryValue, styleKey) {
   if (allocInvest > 0) allocations.push({ accountId: "acc-stock", amount: allocInvest });
 
   const isAggressiveOrBeast = styleKey === "aggressive" || styleKey === "beast";
-  const salaryMan = salaryValue / 10000;
-  
   // 연봉을 기준으로 초기 자산을 풍부하게 조절
-  const startCash = Math.round(salaryMan * 2000) * 10000; // 연봉의 0.2배
-  const startDebt = Math.round(salaryMan * 5000) * 10000; // 연봉의 0.5배
+  const startCash = Math.round(salaryValue * 0.2); // 연봉의 0.2배
+  const startDebt = Math.round(salaryValue * 0.5); // 연봉의 0.5배
   
   let startSavings, startInvest;
   if (isAggressiveOrBeast) {
-    startSavings = Math.round(salaryMan * 20000) * 10000; // 연봉의 2배 저축
-    startInvest = Math.round(salaryMan * 80000) * 10000;  // 연봉의 8배 투자
+    startSavings = Math.round(salaryValue * 2.0); // 연봉의 2배 저축
+    startInvest = Math.round(salaryValue * 8.0);  // 연봉의 8배 투자
   } else {
-    startSavings = Math.round(salaryMan * 80000) * 10000; // 연봉의 8배 저축
-    startInvest = Math.round(salaryMan * 20000) * 10000;  // 연봉의 2배 투자
+    startSavings = Math.round(salaryValue * 8.0); // 연봉의 8배 저축
+    startInvest = Math.round(salaryValue * 2.0);  // 연봉의 2배 투자
   }
 
   const transfers = [];
   if (income > 0) {
-    transfers.push({ id: "preset-tr-1", sourceAccountId: "acc-salary", targetAccountId: "acc-cma", amount: Math.round(income * 0.08) });
-    transfers.push({ id: "preset-tr-2", sourceAccountId: "acc-salary", targetAccountId: "acc-stock", amount: Math.round(income * 0.15) });
-    transfers.push({ id: "preset-tr-3", sourceAccountId: "acc-cma", targetAccountId: "acc-living", amount: Math.round(income * 0.04) });
+    transfers.push({ id: "preset-tr-1", sourceAccountId: "acc-salary", targetAccountId: "acc-cma", amount: Math.round(income * 0.08), label: "비상금 저축" });
+    transfers.push({ id: "preset-tr-2", sourceAccountId: "acc-salary", targetAccountId: "acc-stock", amount: Math.round(income * 0.15), label: "투자금 이체" });
+    transfers.push({ id: "preset-tr-3", sourceAccountId: "acc-cma", targetAccountId: "acc-living", amount: Math.round(income * 0.04), label: "생활비 보조" });
   }
 
   return {
@@ -200,26 +198,24 @@ export function applyPresetBySalary(salaryWon, styleKey) {
   if (allocInvest > 0) allocations.push({ accountId: "acc-stock", amount: allocInvest });
 
   const isAggressiveOrBeast = styleKey === "aggressive" || styleKey === "beast";
-  const salaryMan = validSalaryWon / 10000;
-  
   // 연봉을 기준으로 초기 자산을 풍부하게 조절
-  const startCash = Math.round(salaryMan * 2000) * 10000; // 연봉의 0.2배
-  const startDebt = Math.round(salaryMan * 5000) * 10000; // 연봉의 0.5배
+  const startCash = Math.round(validSalaryWon * 0.2); // 연봉의 0.2배
+  const startDebt = Math.round(validSalaryWon * 0.5); // 연봉의 0.5배
   
   let startSavings, startInvest;
   if (isAggressiveOrBeast) {
-    startSavings = Math.round(salaryMan * 20000) * 10000; // 연봉의 2배 저축
-    startInvest = Math.round(salaryMan * 80000) * 10000;  // 연봉의 8배 투자
+    startSavings = Math.round(validSalaryWon * 2.0); // 연봉의 2배 저축
+    startInvest = Math.round(validSalaryWon * 8.0);  // 연봉의 8배 투자
   } else {
-    startSavings = Math.round(salaryMan * 80000) * 10000; // 연봉의 8배 저축
-    startInvest = Math.round(salaryMan * 20000) * 10000;  // 연봉의 2배 투자
+    startSavings = Math.round(validSalaryWon * 8.0); // 연봉의 8배 저축
+    startInvest = Math.round(validSalaryWon * 2.0);  // 연봉의 2배 투자
   }
 
   const transfers = [];
   if (income > 0) {
-    transfers.push({ id: "preset-tr-1", sourceAccountId: "acc-salary", targetAccountId: "acc-cma", amount: Math.round(income * 0.08) });
-    transfers.push({ id: "preset-tr-2", sourceAccountId: "acc-salary", targetAccountId: "acc-stock", amount: Math.round(income * 0.15) });
-    transfers.push({ id: "preset-tr-3", sourceAccountId: "acc-cma", targetAccountId: "acc-living", amount: Math.round(income * 0.04) });
+    transfers.push({ id: "preset-tr-1", sourceAccountId: "acc-salary", targetAccountId: "acc-cma", amount: Math.round(income * 0.08), label: "비상금 저축" });
+    transfers.push({ id: "preset-tr-2", sourceAccountId: "acc-salary", targetAccountId: "acc-stock", amount: Math.round(income * 0.15), label: "투자금 이체" });
+    transfers.push({ id: "preset-tr-3", sourceAccountId: "acc-cma", targetAccountId: "acc-living", amount: Math.round(income * 0.04), label: "생활비 보조" });
   }
 
   return {
