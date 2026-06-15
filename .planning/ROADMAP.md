@@ -1,49 +1,32 @@
 # Roadmap: Individual Savings Flow (ISF)
 
-**Milestones:** v1.0~v1.6 (Completed) | **Current:** v1.7 (Active)
+**Milestones:** v1.0~v1.7 (Completed) | **Current:** v1.8 (Active)
 
 ---
 
-## Active Roadmap: v1.7 다중 계좌 매핑 및 에디토리얼 UI 개편
+## Active Roadmap: v1.8 적립식 포트폴리오 관리 (Step 3 고도화)
 
-**Goal:** 다중 계좌 데이터 모델과 이체 로직을 정교화하고, 최신 디자인 시스템을 적용하여 에디토리얼 스타일의 프리미엄 UI/UX를 완성한다.
+**Goal:** 나만의 적립식 포트폴리오 만들기 화면을 구현하고, 매일/매주/매달 주기별 투자 금액 및 종목 비중을 편집·추가·영속화하는 서비스를 완성한다.
 
-**4 phases** | **7 requirements mapped** | All covered ✓
+**2 phases** | **3 requirements mapped** | All covered ✓
 
 | # | Phase | Goal | Requirements | Success Criteria |
 |---|-------|------|--------------|------------------|
-| ✅ 1 | Design System & Core Typography | DESIGN.md 개편 및 Anthropic 에디토리얼 스타일의 기본 폰트 스택, 타이포그래피 적용 | UI-01, UI-02 | 2 |
-| ✅ 2 | Core Components & Layout | 주요 컴포넌트(버튼, 폼, 카드 등) 신규 디자인 규칙 적용 및 레이아웃 개편 | UI-03, UX-01 | 2 |
-| ✅ 3 | Multi-account Data Model | 다중 계좌 데이터 모델 확장 및 Sankey 차트 다중 노드 연동 | CORE-01, CORE-02 | 2 |
-| ✅ 4 | Account Transfer UI & UX Polish | 계좌 간 이체/분배 UI 구현 및 시각화 슬라이드 전환 적용 | CORE-03, UX-02 | 2 |
+| 5 | Portfolio Creation & Target Allocation UI | 나만의 포트폴리오 만들기 화면, 종목명 입력, 주기 선택 및 종목 비중 실시간 편집 UI 구현 | PORT-01, PORT-02 | 2 |
+| 6 | Confirmation & Portfolio Storage Hub | 포트폴리오 추가 최종 확인 모달 구현 및 IndexedDB 영속화 저장소 연동 | PORT-03 | 2 |
 
 ### Phase Details
 
-### Phase 1: Design System & Core Typography (Completed)
-- **Goal:** DESIGN.md 개편 및 Anthropic 에디토리얼 스타일의 기본 폰트 스택, 타이포그래피 적용
-- **Requirements:** UI-01, UI-02
+### Phase 5: Portfolio Creation & Target Allocation UI
+- **Goal:** 나만의 포트폴리오 만들기 화면, 종목명 입력, 주기 선택 및 종목 비중 실시간 편집 UI 구현
+- **Requirements:** PORT-01, PORT-02
 - **Success Criteria**:
-  1. DESIGN.md 문서 갱신 확인
-  2. 전역 캔버스 배경색 및 기본 폰트(Serif/Sans) 적용 여부 확인
+  1. 최소 2개 이상 종목 선택 및 포트폴리오 이름 지정 폼이 정상 동작하는지 확인
+  2. 비중 편집 팝업에서 총금액 대비 각 종목의 비중 %가 실시간 계산되어 정확히 노출되는지 확인
 
-### Phase 2: Core Components & Layout
-- **Goal:** 주요 컴포넌트(버튼, 폼, 카드 등) 신규 디자인 규칙 적용 및 레이아웃 개편
-- **Requirements:** UI-03, UX-01
+### Phase 6: Confirmation & Portfolio Storage Hub
+- **Goal:** 포트폴리오 추가 최종 확인 모달 구현 및 IndexedDB 영속화 저장소 연동
+- **Requirements:** PORT-03
 - **Success Criteria**:
-  1. 개선된 입력 폼의 렌더링 및 입력 편의성 확인
-  2. Anthropic 스타일의 신규 Card/Button 적용 확인
-
-### Phase 3: Multi-account Data Model
-- **Goal:** 다중 계좌 데이터 모델 확장 및 Sankey 차트 다중 노드 연동
-- **Requirements:** CORE-01, CORE-02
-- **Success Criteria**:
-  1. 다중 계좌 데이터의 상태 저장 및 복원 정상 동작 확인
-  2. Sankey 차트에 다중 계좌 노드가 정상적으로 렌더링되는지 확인
-
-### Phase 4: Account Transfer UI & UX Polish
-- **Goal:** 계좌 간 이체/분배 UI 구현 및 단계 전환 부드러운 애니메이션 적용
-- **Requirements:** CORE-03, UX-02
-- **Success Criteria**:
-  1. 계좌 간 잔고 이체 로직 및 UI가 문제없이 동작하는지 확인
-  2. Step 화면 전환 시 부자연스러운 끊김 없이 트랜지션 애니메이션 실행 확인
-
+  1. 추가 확인 모달에 종목 개수, 구매 금액, 설정일, 주기가 정확히 요약 표시되는지 확인
+  2. 확인 버튼 클릭 시 IndexedDB에 안전하게 영속화되고, 포트폴리오 목록에 정상 리스팅되는지 확인
