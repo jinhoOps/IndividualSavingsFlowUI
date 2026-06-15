@@ -2786,3 +2786,23 @@ body.is-onboarding-active .onboarding-overlay {
 .panel.is-collapsed .section-head-tools > button:not(.panel-toggle-btn) {
   display: none !important;
 }
+
+/* 모바일에서 접기/펼치기 패널의 헤더 영역 전체에 클릭 가능 포인터와 토글 표시 */
+@media (max-width: 760px) {
+  .controls-panel .section-head,
+  .projection-panel .section-head {
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  /* 모바일에서 토글 버튼 줄바꿈 방지 및 flex-shrink 억제 */
+  .section-head-tools {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    align-items: center;
+  }
+  .panel-toggle-btn {
+    flex-shrink: 0;
+  }
+}

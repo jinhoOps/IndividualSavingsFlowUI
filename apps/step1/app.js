@@ -689,39 +689,72 @@ function bindActionButtons() {
   if (dom.cancelChanges) dom.cancelChanges.addEventListener("click", cancelPendingChanges);
   if (dom.jumpToTop) dom.jumpToTop.addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
 
+  function toggleControlsPanel() {
+    const isHidden = dom.inputsPanelContent.hasAttribute("hidden");
+    if (isHidden) {
+      dom.inputsPanelContent.removeAttribute("hidden");
+      dom.controlsPanel.classList.remove("is-collapsed");
+      dom.toggleControlsBtn.setAttribute("aria-expanded", "true");
+      dom.toggleControlsBtn.textContent = "▴";
+    } else {
+      dom.inputsPanelContent.setAttribute("hidden", "");
+      dom.controlsPanel.classList.add("is-collapsed");
+      dom.toggleControlsBtn.setAttribute("aria-expanded", "false");
+      dom.toggleControlsBtn.textContent = "▾";
+    }
+  }
+
+  function toggleProjectionPanel() {
+    const projectionPanel = dom.projectionPanelContent.closest(".projection-panel");
+    const isHidden = dom.projectionPanelContent.hasAttribute("hidden");
+    if (isHidden) {
+      dom.projectionPanelContent.removeAttribute("hidden");
+      if (projectionPanel) projectionPanel.classList.remove("is-collapsed");
+      dom.toggleProjectionBtn.setAttribute("aria-expanded", "true");
+      dom.toggleProjectionBtn.textContent = "▴";
+    } else {
+      dom.projectionPanelContent.setAttribute("hidden", "");
+      if (projectionPanel) projectionPanel.classList.add("is-collapsed");
+      dom.toggleProjectionBtn.setAttribute("aria-expanded", "false");
+      dom.toggleProjectionBtn.textContent = "▾";
+    }
+  }
+
   if (dom.toggleControlsBtn && dom.inputsPanelContent && dom.controlsPanel) {
-    dom.toggleControlsBtn.addEventListener("click", () => {
-      const isHidden = dom.inputsPanelContent.hasAttribute("hidden");
-      if (isHidden) {
-        dom.inputsPanelContent.removeAttribute("hidden");
-        dom.controlsPanel.classList.remove("is-collapsed");
-        dom.toggleControlsBtn.setAttribute("aria-expanded", "true");
-        dom.toggleControlsBtn.textContent = "▴";
-      } else {
-        dom.inputsPanelContent.setAttribute("hidden", "");
-        dom.controlsPanel.classList.add("is-collapsed");
-        dom.toggleControlsBtn.setAttribute("aria-expanded", "false");
-        dom.toggleControlsBtn.textContent = "▾";
-      }
+    dom.toggleControlsBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      toggleControlsPanel();
     });
+
+    const controlsHeader = dom.controlsPanel.querySelector(".section-head");
+    if (controlsHeader) {
+      controlsHeader.addEventListener("click", (e) => {
+        if (window.innerWidth > 760) return;
+        if (e.target.closest("#openPresetBtn") || e.target.closest(".help-tooltip-trigger") || e.target.closest(".panel-toggle-btn")) {
+          return;
+        }
+        toggleControlsPanel();
+      });
+    }
   }
 
   if (dom.toggleProjectionBtn && dom.projectionPanelContent) {
-    const projectionPanel = dom.toggleProjectionBtn.closest(".projection-panel");
-    dom.toggleProjectionBtn.addEventListener("click", () => {
-      const isHidden = dom.projectionPanelContent.hasAttribute("hidden");
-      if (isHidden) {
-        dom.projectionPanelContent.removeAttribute("hidden");
-        if (projectionPanel) projectionPanel.classList.remove("is-collapsed");
-        dom.toggleProjectionBtn.setAttribute("aria-expanded", "true");
-        dom.toggleProjectionBtn.textContent = "▴";
-      } else {
-        dom.projectionPanelContent.setAttribute("hidden", "");
-        if (projectionPanel) projectionPanel.classList.add("is-collapsed");
-        dom.toggleProjectionBtn.setAttribute("aria-expanded", "false");
-        dom.toggleProjectionBtn.textContent = "▾";
-      }
+    dom.toggleProjectionBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      toggleProjectionPanel();
     });
+
+    const projectionPanel = dom.projectionPanelContent.closest(".projection-panel");
+    const projectionHeader = projectionPanel ? projectionPanel.querySelector(".section-head") : null;
+    if (projectionHeader) {
+      projectionHeader.addEventListener("click", (e) => {
+        if (window.innerWidth > 760) return;
+        if (e.target.closest(".help-tooltip-trigger") || e.target.closest(".panel-toggle-btn")) {
+          return;
+        }
+        toggleProjectionPanel();
+      });
+    }
   }
 }
 
