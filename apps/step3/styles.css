@@ -312,6 +312,15 @@
     font-size: 0.8rem;
   }
   .input-minimal { font-size: 0.85rem; }
+  
+  .creator-table th, .creator-table td {
+    padding: 6px 4px !important;
+    font-size: 0.8rem !important;
+  }
+  .creator-table input.input-minimal {
+    font-size: 0.8rem !important;
+    padding: 4px 2px !important;
+  }
 }
 
 /* Portfolio List Grid */
@@ -334,36 +343,34 @@
   }
 }
 
-/* Portfolio Card Modern Dark / Glassmorphism Design */
+/* Portfolio Card Flat Editorial Panel Design */
 .portfolio-card {
   position: relative;
-  background: rgba(30, 30, 30, 0.65) !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  background: var(--panel) !important;
+  border: 1px solid var(--line) !important;
   border-radius: 14px;
   padding: 20px;
   cursor: pointer;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
   display: flex;
   flex-direction: column;
   gap: 12px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
 }
 
 .portfolio-card:hover {
   transform: translateY(-2px);
-  border-color: var(--primary, #ea5b2a) !important;
-  box-shadow: 0 0 15px rgba(234, 91, 42, 0.35), 0 4px 20px rgba(0, 0, 0, 0.4);
+  border-color: var(--tone-primary, #ea5b2a) !important;
+  box-shadow: 0 10px 25px rgba(234, 91, 42, 0.18), 0 2px 6px rgba(234, 91, 42, 0.08);
 }
 
 /* Premium Segment Control */
 .segment-control {
   display: inline-flex;
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--bg);
   padding: 4px;
   border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--line);
   width: fit-content;
 }
 
@@ -372,7 +379,7 @@
   border-radius: 16px;
   border: none;
   background: transparent;
-  color: #fff;
+  color: var(--ink);
   cursor: pointer;
   font-size: 0.9rem;
   font-weight: 500;
@@ -380,14 +387,14 @@
 }
 
 .segment-btn:hover {
-  color: var(--primary, #ea5b2a);
-  background: rgba(255, 255, 255, 0.03);
+  color: var(--tone-primary);
+  background: rgba(0, 0, 0, 0.02);
 }
 
 .segment-btn.active {
-  background: var(--primary, #ea5b2a) !important;
+  background: var(--tone-primary) !important;
   color: #fff !important;
-  box-shadow: 0 2px 10px rgba(234, 91, 42, 0.4);
+  box-shadow: 0 2px 10px rgba(234, 91, 42, 0.2);
 }
 
 /* Modal Glassmorphism & Animations */
@@ -398,7 +405,7 @@
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(0, 0, 0, 0.4);
   z-index: 1000;
   align-items: center;
   justify-content: center;
@@ -406,13 +413,13 @@
 }
 
 .modal-content.glassmorphism {
-  background: rgba(20, 20, 20, 0.85) !important;
-  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  background: rgba(255, 255, 255, 0.95) !important;
+  border: 1px solid var(--line) !important;
   border-radius: 16px;
   padding: 24px;
   width: 90%;
   max-width: 500px;
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+  box-shadow: var(--sh-float) !important;
   backdrop-filter: blur(15px);
   -webkit-backdrop-filter: blur(15px);
   animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -434,6 +441,7 @@
   font-size: 0.85rem;
   color: #aaa;
   border-bottom: 1px solid rgba(255,255,255,0.1);
+  white-space: nowrap;
 }
 
 .creator-table td {
@@ -487,4 +495,134 @@
 .chart-bar-body:hover {
   filter: brightness(1.2);
   box-shadow: 0 0 15px rgba(234, 91, 42, 0.6);
+}
+
+/* Modal Table Edit Animation */
+.modal-table tr {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.modal-table tr td {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.modal-table tr.editing td:first-child {
+  font-size: 0.8rem !important;
+  opacity: 0.5;
+  transform: scale(0.92);
+  transform-origin: left center;
+}
+.modal-table tr.editing .modal-asset-ratio-display {
+  font-size: 0.8rem !important;
+  opacity: 0.5;
+  transform: scale(0.92);
+  transform-origin: right center;
+}
+
+/* Pending Bar Floating Action */
+.pending-bar {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: auto;
+  min-width: 200px;
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid var(--tone-primary, #ea5b2a);
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(234, 91, 42, 0.15), 0 1px 3px rgba(0,0,0,0.05);
+  z-index: 1100;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.pending-bar-inner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 18px;
+  gap: 16px;
+}
+
+.pending-bar-message {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.pending-bar-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+/* Animations */
+.pending-bar.anim-slide-up {
+  animation: pendingSlideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.pending-bar.anim-fade-scale {
+  animation: pendingFadeScale 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.pending-bar.anim-bounce-in {
+  animation: pendingBounceIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+@keyframes pendingSlideUp {
+  from {
+    transform: translate(-50%, 100px);
+    opacity: 0;
+  }
+  to {
+    transform: translate(-50%, 0);
+    opacity: 1;
+  }
+}
+
+@keyframes pendingFadeScale {
+  from {
+    transform: translate(-50%, 20px) scale(0.92);
+    opacity: 0;
+  }
+  to {
+    transform: translate(-50%, 0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes pendingBounceIn {
+  0% {
+    transform: translate(-50%, 50px) scale(0.8);
+    opacity: 0;
+  }
+  50% {
+    transform: translate(-50%, -15px) scale(1.05);
+    opacity: 0.85;
+  }
+  70% {
+    transform: translate(-50%, 5px) scale(0.98);
+    opacity: 0.95;
+  }
+  100% {
+    transform: translate(-50%, 0) scale(1);
+    opacity: 1;
+  }
+}
+
+/* Creator Assets Table Edit Animation */
+.creator-table tr {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.creator-table tr td {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.creator-table tr.editing td:first-child {
+  font-size: 0.8rem !important;
+  opacity: 0.5;
+  transform: scale(0.92);
+  transform-origin: left center;
+}
+.creator-table tr.editing .asset-ratio-display {
+  font-size: 0.8rem !important;
+  opacity: 0.5;
+  transform: scale(0.92);
+  transform-origin: right center;
 }

@@ -50,21 +50,41 @@ export const IsfCalculator = {
    * @returns {boolean}
    */
   validatePortfolio(portfolio) {
-    if (!portfolio) return false;
+    if (!portfolio) {
+      console.log('[Validation] Portfolio is null/undefined');
+      return false;
+    }
     
     // 포트폴리오 이름 검증
-    if (!portfolio.name || !portfolio.name.trim()) return false;
+    if (!portfolio.name || !portfolio.name.trim()) {
+      console.log('[Validation] Portfolio name is empty');
+      return false;
+    }
 
     // 종목 개수 검증 (최소 2개)
     const assets = portfolio.assets || [];
-    if (assets.length < 2) return false;
+    if (assets.length < 2) {
+      console.log('[Validation] Portfolio assets count is less than 2:', assets.length);
+      return false;
+    }
 
     // 모든 종목에 대해 유효성 검증
-    return assets.every(asset => {
+    const allValid = assets.every(asset => {
       // 종목 이름 검증
-      if (!asset.name || !asset.name.trim()) return false;
+      if (!asset.name || !asset.name.trim()) {
+        console.log('[Validation] Asset name is empty for id:', asset.id);
+        return false;
+      }
       // 금액 검증
-      return this.validateAssetAmount(asset.amount);
+      const isAmountValid = this.validateAssetAmount(asset.amount);
+      if (!isAmountValid) {
+        console.log('[Validation] Asset amount is invalid for id:', asset.id, 'amount:', asset.amount);
+        return false;
+      }
+      return true;
     });
+
+    console.log('[Validation] Final portfolio validation result:', allValid);
+    return allValid;
   }
 };

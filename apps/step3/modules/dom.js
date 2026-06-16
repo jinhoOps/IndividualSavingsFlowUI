@@ -26,6 +26,10 @@ export const IsfDom = {
     showCreatorBtn: document.getElementById('showCreatorBtn'),
     cancelCreatorBtn: document.getElementById('cancelCreatorBtn'),
     closeModalBtn: document.getElementById('closeModalBtn'),
+    pendingBar: document.getElementById('pendingBar'),
+    pendingCancelBtn: document.getElementById('pendingCancelBtn'),
+    pendingSaveBtn: document.getElementById('pendingSaveBtn'),
+    modalChartDesc: document.getElementById('modalChartDesc'),
   },
 
   /**
@@ -44,19 +48,16 @@ export const IsfDom = {
 
     portfolioList.innerHTML = portfolios.map(p => {
       return `
-        <div class="portfolio-card" data-id="${p.id}" style="position: relative; background: rgba(30, 30, 30, 0.65); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 14px; padding: 20px; cursor: pointer; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); backdrop-filter: blur(10px); display: flex; flex-direction: column; gap: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
-          <button type="button" class="btn-delete-portfolio" data-id="${p.id}" style="position: absolute; top: 12px; right: 12px; background: transparent; border: none; color: #888; font-size: 1.2rem; cursor: pointer; transition: color 0.2s;" title="삭제">&times;</button>
-          <div style="font-size: 1.15rem; font-weight: 700; color: #fff; max-width: calc(100% - 24px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${IsfUtils.escapeHtml(p.name)}</div>
+        <div class="portfolio-card" data-id="${p.id}" style="position: relative; display: flex; flex-direction: column; gap: 12px;">
+          <button type="button" class="btn-delete-portfolio" data-id="${p.id}" style="position: absolute; top: 12px; right: 12px; background: transparent; border: none; color: var(--muted); font-size: 1.2rem; cursor: pointer; transition: color 0.2s;" title="삭제">&times;</button>
+          <div style="font-size: 1.15rem; font-weight: 700; color: var(--ink); max-width: calc(100% - 24px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${IsfUtils.escapeHtml(p.name)}</div>
           <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
             <span class="badge" style="background: rgba(234, 91, 42, 0.15); color: var(--primary, #ea5b2a); padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 600;">${p.period}</span>
-            <span style="font-size: 0.85rem; color: #aaa;">종목 ${p.assets ? p.assets.length : 0}개</span>
+            <span style="font-size: 0.85rem; color: var(--muted);">종목 ${p.assets ? p.assets.length : 0}개</span>
           </div>
-          <div style="border-top: 1px solid rgba(255,255,255,0.06); padding-top: 10px; margin-top: 4px; display: flex; justify-content: space-between; align-items: baseline;">
-            <span style="font-size: 0.8rem; color: #888;">총 투자 금액</span>
-            <span style="font-size: 1.1rem; font-weight: 700; color: #fff;">${p.totalAmount.toLocaleString('ko-KR')}원</span>
-          </div>
-          <div style="font-size: 0.75rem; color: var(--primary, #ea5b2a); text-align: right; margin-top: -4px; font-weight: 500;">
-            ${IsfUtils.convertToKoreanWon(p.totalAmount)}
+          <div style="border-top: 1px solid var(--line); padding-top: 10px; margin-top: 4px; display: flex; justify-content: space-between; align-items: baseline;">
+            <span style="font-size: 0.8rem; color: var(--muted);">총 투자 금액</span>
+            <span style="font-size: 1.1rem; font-weight: 700; color: var(--ink);">${IsfUtils.convertToKoreanWon(p.totalAmount)}</span>
           </div>
         </div>
       `;
@@ -113,55 +114,89 @@ export const IsfDom = {
     creatorAssetTable.innerHTML = assetsWithRatios.map(as => {
       const amountVal = Number(as.amount) || 0;
       const isAmountValid = amountVal === 0 || IsfCalculator.validateAssetAmount(amountVal);
-      const borderBottomStyle = isAmountValid ? 'rgba(255, 255, 255, 0.15)' : 'var(--status-error, #ff5e5e)';
-      const hintColor = isAmountValid ? 'var(--primary, #ea5b2a)' : 'var(--status-error, #ff5e5e)';
-      const hintText = amountVal > 0 
-        ? (isAmountValid ? `실시간 변환: ${IsfUtils.convertToKoreanWon(amountVal)}` : '⚠️ 1,000원 단위로 입력해 주세요 (최소 1,000원)')
-        : '';
+      const borderBottomStyle = isAmountValid ? 'var(--line)' : 'var(--status-error, #ff5e5e)';
 
       return `
-        <tr data-asset-id="${as.id}" style="border-bottom: 1px solid rgba(255,255,255,0.05);">
-          <td style="padding: 10px 4px;">
-            <input type="text" class="input-minimal asset-name-input" data-id="${as.id}" data-field="name" value="${IsfUtils.escapeHtml(as.name)}" placeholder="종목명" style="width: 100%; border: none; background: transparent; color: #fff; padding: 6px; border-bottom: 1px solid rgba(255, 255, 255, 0.15); transition: border-color 0.2s; font-size: 0.9rem;" />
+        <tr data-asset-id="${as.id}" style="border-bottom: 1px solid var(--line);">
+          <td style="padding: 10px 4px; vertical-align: middle;">
+            <input type="text" class="input-minimal asset-name-input" data-id="${as.id}" data-field="name" value="${IsfUtils.escapeHtml(as.name)}" placeholder="종목명" style="width: 100%; border: none; background: transparent; color: var(--ink); padding: 6px; border-bottom: 1px solid var(--line); transition: border-color 0.2s; font-size: 0.9rem;" />
           </td>
           <td style="padding: 10px 4px;">
-            <div style="display: flex; flex-direction: column; gap: 4px; width: 100%;">
-              <input type="number" class="input-minimal asset-amount-input" data-id="${as.id}" data-field="amount" value="${as.amount || ''}" placeholder="금액 입력" style="width: 100%; border: none; background: transparent; color: #fff; padding: 6px; border-bottom: 1px solid ${borderBottomStyle}; font-size: 0.9rem;" />
-              <span class="realtime-won-hint" style="font-size: 0.75rem; color: ${hintColor}; min-height: 14px; margin-top: 2px;">
-                ${hintText}
-              </span>
+            <div style="display: flex; align-items: center; gap: 4px; width: 100%;">
+              <button type="button" class="btn-creator-adjust minus" data-id="${as.id}" style="width: 22px; height: 22px; border-radius: 4px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font-size: 0.9rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1; padding: 0;">-</button>
+              <input type="number" class="input-minimal asset-amount-input no-won-hint" data-id="${as.id}" data-field="amount" value="${as.amount || ''}" placeholder="금액" style="width: 80px; border: none; background: transparent; color: var(--ink); padding: 6px; border-bottom: 1px solid ${borderBottomStyle}; font-size: 0.9rem; text-align: right;" />원
+              <button type="button" class="btn-creator-adjust plus" data-id="${as.id}" style="width: 22px; height: 22px; border-radius: 4px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font-size: 0.9rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1; padding: 0;">+</button>
             </div>
           </td>
-          <td style="padding: 10px 4px; text-align: right; font-weight: 600; color: #ccc;">
+          <td style="padding: 10px 4px; text-align: right; font-weight: 600; color: var(--ink); vertical-align: middle;">
             <span class="asset-ratio-display" style="font-size: 0.95rem;">${as.ratio}%</span>
           </td>
-          <td style="padding: 10px 4px; text-align: center;">
-            <button type="button" class="btn-remove-creator-asset" data-id="${as.id}" style="background: transparent; border: none; color: #ff5e5e; font-size: 1.4rem; cursor: pointer; padding: 4px 10px; line-height: 1; transition: opacity 0.2s;">&times;</button>
+          <td style="padding: 10px 4px; text-align: center; vertical-align: middle;">
+            <button type="button" class="btn-remove-creator-asset" data-id="${as.id}" style="background: transparent; border: none; color: var(--status-error, #ff5e5e); font-size: 1.4rem; cursor: pointer; padding: 4px 10px; line-height: 1; transition: opacity 0.2s;">&times;</button>
           </td>
         </tr>
       `;
     }).join('');
 
     // 4. 합산 요약 정보 업데이트
-    creatorSummary.textContent = `총 ${assets.length}개의 주식 | 총 매수 금액: ${totalAmount.toLocaleString('ko-KR')}원`;
-    creatorSummaryWonHint.textContent = `실시간 변환: ${IsfUtils.convertToKoreanWon(totalAmount)}`;
+    creatorSummary.textContent = `총 ${assets.length}개의 주식 | 총 매수 금액: ${IsfUtils.convertToKoreanWon(totalAmount)}`;
 
-    // 5. 생성 버튼 활성화 여부 제어
-    const isValid = IsfCalculator.validatePortfolio(activeCreator);
-    if (isValid) {
+    // 5. 생성 버튼 상시 활성화 (클릭 시 미입력 항목 피드백을 지원하기 위함)
+    if (savePortfolioBtn) {
       savePortfolioBtn.disabled = false;
       savePortfolioBtn.style.cursor = 'pointer';
       savePortfolioBtn.style.opacity = '1';
-      savePortfolioBtn.style.background = 'var(--primary, #ea5b2a)';
-    } else {
-      savePortfolioBtn.disabled = true;
-      savePortfolioBtn.style.cursor = 'not-allowed';
-      savePortfolioBtn.style.opacity = '0.5';
-      savePortfolioBtn.style.background = 'rgba(255, 255, 255, 0.08)';
     }
 
     // Event binding
     this._bindCreatorEvents(handlers);
+  },
+
+  /**
+   * 인풋 입력 시 innerHTML을 호출하지 않고, 금액/비중/요약/버튼 상태 등 스탯 정보만 부분 업데이트합니다.
+   * @param {Object} activeCreator 
+   */
+  updateCreatorFormStats(activeCreator) {
+    const { creatorAssetTable, creatorSummary, savePortfolioBtn } = this.nodes;
+    if (!activeCreator) return;
+
+    const assets = activeCreator.assets || [];
+    const totalAmount = IsfCalculator.sumAmounts(assets);
+    const assetsWithRatios = IsfCalculator.calculateRatios(assets, totalAmount);
+
+    // 각 행의 비중 부분 갱신
+    assetsWithRatios.forEach(as => {
+      const row = creatorAssetTable.querySelector(`tr[data-asset-id="${as.id}"]`);
+      if (row) {
+        const amountInput = row.querySelector('.asset-amount-input');
+        const ratioSpan = row.querySelector('.asset-ratio-display');
+
+        const amountVal = Number(as.amount) || 0;
+        const isAmountValid = amountVal === 0 || IsfCalculator.validateAssetAmount(amountVal);
+        
+        // input border style 업데이트
+        if (amountInput) {
+          amountInput.style.borderBottomColor = isAmountValid ? 'var(--line)' : 'var(--status-error, #ff5e5e)';
+        }
+
+        // 비중 업데이트
+        if (ratioSpan) {
+          ratioSpan.textContent = `${as.ratio}%`;
+        }
+      }
+    });
+
+    // 합산 요약 정보 업데이트
+    if (creatorSummary) {
+      creatorSummary.textContent = `총 ${assets.length}개의 주식 | 총 매수 금액: ${IsfUtils.convertToKoreanWon(totalAmount)}`;
+    }
+
+    // 생성 버튼 상시 활성화 (클릭 시 미입력 항목 피드백을 지원하기 위함)
+    if (savePortfolioBtn) {
+      savePortfolioBtn.disabled = false;
+      savePortfolioBtn.style.cursor = 'pointer';
+      savePortfolioBtn.style.opacity = '1';
+    }
   },
 
   _bindCreatorEvents(handlers) {
@@ -182,79 +217,279 @@ export const IsfDom = {
       };
     });
 
+    // 금액 인풋 포커스에 따른 tr 스타일 트랜지션 바인딩 및 입력 핸들러
     creatorAssetTable.querySelectorAll('.asset-amount-input').forEach(input => {
+      input.onfocus = () => {
+        const tr = creatorAssetTable.querySelector(`tr[data-asset-id="${input.dataset.id}"]`);
+        if (tr) tr.classList.add('editing');
+      };
+      input.onblur = () => {
+        const tr = creatorAssetTable.querySelector(`tr[data-asset-id="${input.dataset.id}"]`);
+        if (tr) tr.classList.remove('editing');
+      };
       input.oninput = (e) => {
         const id = input.dataset.id;
         const val = parseFloat(e.target.value) || 0;
         handlers.onInputChange(id, 'amount', val);
       };
     });
+
+    // 만들기 화면 - / + 증감 버튼 이벤트 바인딩 및 올림/내림 처리 공식 적용
+    creatorAssetTable.querySelectorAll('.btn-creator-adjust').forEach(btn => {
+      btn.onclick = () => {
+        const id = btn.dataset.id;
+        const inputEl = creatorAssetTable.querySelector(`input[data-id="${id}"][data-field="amount"]`);
+        if (inputEl) {
+          let val = parseFloat(inputEl.value) || 0;
+          if (btn.classList.contains('minus')) {
+            if (val % 1000 !== 0) {
+              val = Math.floor(val / 1000) * 1000;
+            } else {
+              val = Math.max(0, val - 1000);
+            }
+          } else if (btn.classList.contains('plus')) {
+            if (val % 1000 !== 0) {
+              val = Math.ceil(val / 1000) * 1000;
+            } else {
+              val = val + 1000;
+            }
+          }
+          inputEl.value = val;
+          handlers.onInputChange(id, 'amount', val);
+        }
+      };
+    });
   },
 
   /**
    * 포트폴리오 요약 카드를 클릭할 시 나타나는 Glassmorphism 팝업/모달의 세부 내역을 렌더링하고 모달을 엽니다.
-   * @param {Object} portfolio 
+   * @param {Object} portfolio 원래 포트폴리오 데이터
+   * @param {Object|null} pendingData 현재 편집 중인 임시 데이터 (없으면 portfolio 기반)
+   * @param {Object} handlers { onModalDataChange }
    */
-  showPortfolioDetailModal(portfolio) {
+  showPortfolioDetailModal(portfolio, pendingData, handlers) {
     const { portfolioDetailModal, modalPortfolioName, modalPortfolioPeriod, modalPortfolioTotal, modalAssetList, modalChartBars } = this.nodes;
 
     if (!portfolioDetailModal || !portfolio) return;
 
-    modalPortfolioName.textContent = portfolio.name;
-    modalPortfolioPeriod.textContent = portfolio.period;
+    // 현재 표시 및 편집에 사용할 데이터를 결정합니다.
+    const activeData = pendingData ? pendingData.currentData : {
+      name: portfolio.name,
+      period: portfolio.period,
+      assets: (portfolio.assets || []).map(as => ({ id: as.id, name: as.name, ticker: as.ticker, amount: as.amount }))
+    };
+
+    const originalData = pendingData ? pendingData.originalData : {
+      name: portfolio.name,
+      period: portfolio.period,
+      assets: (portfolio.assets || []).map(as => ({ id: as.id, name: as.name, ticker: as.ticker, amount: as.amount }))
+    };
+
+    modalPortfolioName.value = activeData.name;
+    modalPortfolioPeriod.value = activeData.period;
     
-    const totalWon = portfolio.totalAmount;
-    modalPortfolioTotal.textContent = `${totalWon.toLocaleString('ko-KR')}원 (${IsfUtils.convertToKoreanWon(totalWon)})`;
+    const assets = activeData.assets;
 
-    // 1. 구성 종목 리스트 렌더링
-    const assets = portfolio.assets || [];
-    modalAssetList.innerHTML = assets.map(as => {
-      return `
-        <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
-          <td style="padding: 10px 4px;">${IsfUtils.escapeHtml(as.name)}</td>
-          <td style="padding: 10px 4px; text-align: right;">${Number(as.amount).toLocaleString('ko-KR')}원</td>
-          <td style="padding: 10px 4px; text-align: right; font-weight: 600; color: var(--primary, #ea5b2a);">${as.ratio}%</td>
-        </tr>
-      `;
-    }).join('');
+    // 1. 구성 종목 리스트 렌더링 (금액을 input으로, 좌우에 - / + 버튼과 하단에 한글 힌트)
+    const renderModalAssetList = (currentAssets) => {
+      const currentTotal = IsfCalculator.sumAmounts(currentAssets);
+      const assetsWithRatios = IsfCalculator.calculateRatios(currentAssets, currentTotal);
 
-    // 2. 1년 누적 투자 추이 예시 막대 렌더링
-    // 적립 납입 주기별 1년 환산 가중치
-    let factor = 12; // default: 매달
-    if (portfolio.period === '매일') {
-      factor = 365;
-    } else if (portfolio.period === '매주') {
-      factor = 52;
-    } else if (portfolio.period === '매달') {
-      factor = 12;
-    }
+      modalAssetList.innerHTML = assetsWithRatios.map(as => {
+        const hintText = as.amount > 0 ? `(${IsfUtils.formatMoney(as.amount)})` : '';
+        return `
+          <tr data-asset-id="${as.id}" style="border-bottom: 1px solid var(--line); transition: all 0.25s ease;">
+            <td style="padding: 10px 4px; color: var(--ink); vertical-align: middle; transition: all 0.25s ease;">${IsfUtils.escapeHtml(as.name)}</td>
+            <td style="padding: 10px 4px; text-align: right;">
+              <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 2px;">
+                <div style="display: flex; align-items: center; gap: 4px;">
+                  <button type="button" class="btn-modal-adjust minus" data-id="${as.id}" style="width: 22px; height: 22px; border-radius: 4px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font-size: 0.9rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1; padding: 0;">-</button>
+                  <input type="number" class="input-minimal modal-asset-amount-input no-won-hint" data-id="${as.id}" value="${as.amount}" style="width: 100px; text-align: right; border: none; background: transparent; border-bottom: 1px solid var(--line); color: var(--ink); padding: 4px;" />원
+                  <button type="button" class="btn-modal-adjust plus" data-id="${as.id}" style="width: 22px; height: 22px; border-radius: 4px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font-size: 0.9rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1; padding: 0;">+</button>
+                </div>
+                <span class="modal-asset-won-hint" data-id="${as.id}" style="font-size: 0.75rem; color: var(--primary, #ea5b2a); font-weight: 500; text-align: right; min-height: 14px;">${hintText}</span>
+              </div>
+            </td>
+            <td style="padding: 10px 4px; text-align: right; font-weight: 600; color: var(--primary, #ea5b2a); vertical-align: middle; transition: all 0.25s ease;">
+              <span class="modal-asset-ratio-display" data-id="${as.id}">${as.ratio}%</span>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    };
 
-    const total1Year = totalWon * factor;
+    renderModalAssetList(assets);
 
-    // 5단계 지점 시뮬레이션: 1개월 후, 3개월 후, 6개월 후, 9개월 후, 12개월 후(1년 후)
-    // 횟수로 환산
-    const steps = [
-      { label: '1개월', val: totalWon * (factor / 12 * 1) },
-      { label: '3개월', val: totalWon * (factor / 12 * 3) },
-      { label: '6개월', val: totalWon * (factor / 12 * 6) },
-      { label: '9개월', val: totalWon * (factor / 12 * 9) },
-      { label: '1년', val: total1Year },
-    ];
+    // 2. 실시간 모달 편집 반영 함수
+    const updateModalStats = () => {
+      const name = modalPortfolioName.value.trim();
+      const period = modalPortfolioPeriod.value;
+      
+      const updatedAssets = assets.map(as => {
+        const inputEl = modalAssetList.querySelector(`input[data-id="${as.id}"]`);
+        const amount = inputEl ? (parseFloat(inputEl.value) || 0) : as.amount;
+        return {
+          ...as,
+          amount
+        };
+      });
 
-    const maxVal = total1Year;
+      const currentTotal = IsfCalculator.sumAmounts(updatedAssets);
+      const assetsWithRatios = IsfCalculator.calculateRatios(updatedAssets, currentTotal);
 
-    modalChartBars.innerHTML = steps.map(step => {
-      const heightPercent = maxVal > 0 ? (step.val / maxVal) * 100 : 0;
-      return `
-        <div class="chart-bar-wrap" style="display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; height: 100%; justify-content: flex-end;">
-          <span style="font-size: 0.7rem; color: #ccc;">${step.val.toLocaleString('ko-KR')}원</span>
-          <div class="chart-bar-body" style="width: 20px; height: ${heightPercent}%; background: linear-gradient(180deg, var(--primary, #ea5b2a) 0%, rgba(234, 91, 42, 0.4) 100%); border-radius: 4px 4px 0 0; transition: height 0.5s ease-out; box-shadow: 0 0 10px rgba(234, 91, 42, 0.3);"></div>
-          <span style="font-size: 0.75rem; color: #888; margin-top: 4px;">${step.label}</span>
-        </div>
-      `;
-    }).join('');
+      // 총액 업데이트
+      modalPortfolioTotal.textContent = IsfUtils.convertToKoreanWon(currentTotal);
+
+      // 개별 한글 금액 힌트 및 비중 업데이트
+      assetsWithRatios.forEach(as => {
+        const hintSpan = modalAssetList.querySelector(`.modal-asset-won-hint[data-id="${as.id}"]`);
+        if (hintSpan) {
+          hintSpan.textContent = as.amount > 0 ? `(${IsfUtils.formatMoney(as.amount)})` : '';
+        }
+        const ratioSpan = modalAssetList.querySelector(`.modal-asset-ratio-display[data-id="${as.id}"]`);
+        if (ratioSpan) {
+          ratioSpan.textContent = `${as.ratio}%`;
+        }
+      });
+
+      // 1년 차트 업데이트 (누적 투입금 4단계: 1개월, 3개월, 6개월, 1년)
+      // 매일 적립의 경우 영업일 기준(월 평균 20일, 연 240일)으로 대략적인 수치를 산출합니다.
+      let factor = 12;
+      if (period === '매일') factor = 240;
+      else if (period === '매주') factor = 52;
+      else if (period === '매달') factor = 12;
+
+      const total1Year = currentTotal * factor;
+      const steps = [
+        { label: '1개월', val: currentTotal * (factor / 12 * 1) },
+        { label: '3개월', val: currentTotal * (factor / 12 * 3) },
+        { label: '6개월', val: currentTotal * (factor / 12 * 6) },
+        { label: '1년', val: total1Year },
+      ];
+      const maxVal = total1Year;
+
+      modalChartBars.innerHTML = steps.map(step => {
+        const heightPercent = maxVal > 0 ? (step.val / maxVal) * 100 : 0;
+        return `
+          <div class="chart-bar-wrap" style="display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; height: 100%; justify-content: flex-end;">
+            <span style="font-size: 0.7rem; color: var(--muted);">${IsfUtils.formatMoney(step.val)}</span>
+            <div class="chart-bar-body" style="width: 20px; height: ${heightPercent}%; background: linear-gradient(180deg, var(--primary, #ea5b2a) 0%, rgba(234, 91, 42, 0.4) 100%); border-radius: 4px 4px 0 0; transition: height 0.5s ease-out; box-shadow: 0 0 10px rgba(234, 91, 42, 0.15);"></div>
+            <span style="font-size: 0.75rem; color: var(--muted); margin-top: 4px;">${step.label}</span>
+          </div>
+        `;
+      }).join('');
+
+      // 누적 투입금 대략적인 영업일 기준 힌트 문구 동적 반영
+      const { modalChartDesc } = this.nodes;
+      if (modalChartDesc) {
+        if (period === '매일') {
+          modalChartDesc.textContent = '매일 적립은 월 평균 영업일(20일, 연 240일) 기준의 대략적인 수치입니다.';
+        } else if (period === '매주') {
+          modalChartDesc.textContent = '매주 적립은 연 52주 기준의 대략적인 수치입니다.';
+        } else {
+          modalChartDesc.textContent = '매달 적립은 연 12개월 기준의 대략적인 수치입니다.';
+        }
+      }
+
+      // 변경사항 유무 체크
+      let hasChanges = false;
+      if (name !== originalData.name) hasChanges = true;
+      if (period !== originalData.period) hasChanges = true;
+      for (let i = 0; i < updatedAssets.length; i++) {
+        const orig = originalData.assets.find(a => a.id === updatedAssets[i].id);
+        if (orig && orig.amount !== updatedAssets[i].amount) {
+          hasChanges = true;
+        }
+      }
+
+      handlers.onModalDataChange({
+        name,
+        period,
+        assets: updatedAssets,
+        totalAmount: currentTotal
+      }, hasChanges);
+    };
+
+    // 초기 차트 및 총액 렌더링
+    updateModalStats();
+
+    // 이벤트 리스너 바인딩
+    modalPortfolioName.oninput = updateModalStats;
+    modalPortfolioPeriod.onchange = updateModalStats;
+
+    // 인풋 포커스에 따른 tr 스타일 트랜지션 바인딩
+    const bindFocusTransitions = () => {
+      modalAssetList.querySelectorAll('.modal-asset-amount-input').forEach(input => {
+        input.onfocus = () => {
+          const tr = modalAssetList.querySelector(`tr[data-asset-id="${input.dataset.id}"]`);
+          if (tr) tr.classList.add('editing');
+        };
+        input.onblur = () => {
+          const tr = modalAssetList.querySelector(`tr[data-asset-id="${input.dataset.id}"]`);
+          if (tr) tr.classList.remove('editing');
+        };
+        input.oninput = () => {
+          updateModalStats();
+        };
+      });
+    };
+
+    bindFocusTransitions();
+
+    // - / + 증감 버튼 이벤트 바인딩 및 올림/내림 처리 공식 적용 (모달)
+    modalAssetList.querySelectorAll('.btn-modal-adjust').forEach(btn => {
+      btn.onclick = () => {
+        const id = btn.dataset.id;
+        const inputEl = modalAssetList.querySelector(`input[data-id="${id}"]`);
+        if (inputEl) {
+          let val = parseFloat(inputEl.value) || 0;
+          if (btn.classList.contains('minus')) {
+            if (val % 1000 !== 0) {
+              val = Math.floor(val / 1000) * 1000;
+            } else {
+              val = Math.max(0, val - 1000);
+            }
+          } else if (btn.classList.contains('plus')) {
+            if (val % 1000 !== 0) {
+              val = Math.ceil(val / 1000) * 1000;
+            } else {
+              val = val + 1000;
+            }
+          }
+          inputEl.value = val;
+          updateModalStats();
+        }
+      };
+    });
 
     portfolioDetailModal.style.display = 'flex';
+  },
+
+  /**
+   * 플로팅 펜딩 바를 노출하되, 3가지 애니메이션 중 무작위로 하나를 실행합니다.
+   */
+  showPendingBar() {
+    const { pendingBar } = this.nodes;
+    if (pendingBar && pendingBar.style.display === 'none') {
+      // 기존 애니메이션 클래스 제거
+      pendingBar.classList.remove('anim-slide-up', 'anim-fade-scale', 'anim-bounce-in');
+      
+      const anims = ['anim-slide-up', 'anim-fade-scale', 'anim-bounce-in'];
+      const selected = anims[Math.floor(Math.random() * anims.length)];
+      pendingBar.classList.add(selected);
+      pendingBar.style.display = 'block';
+    }
+  },
+
+  /**
+   * 플로팅 펜딩 바를 숨깁니다.
+   */
+  hidePendingBar() {
+    const { pendingBar } = this.nodes;
+    if (pendingBar) {
+      pendingBar.style.display = 'none';
+      pendingBar.classList.remove('anim-slide-up', 'anim-fade-scale', 'anim-bounce-in');
+    }
   },
 
   /**

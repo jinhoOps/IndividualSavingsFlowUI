@@ -13,21 +13,31 @@ export const IsfUtils = (function initIsfUtils(global) {
   function formatMoney(value) {
     const numericValue = Number(value || 0);
     if (!Number.isFinite(numericValue)) {
-      return "0만원";
+      return "0원";
     }
-    const manValue = Math.round(numericValue / 10000);
+    if (numericValue < 1000) {
+      return "0원";
+    }
+    if (numericValue < 10000) {
+      const cheon = Math.round(numericValue / 1000);
+      return `${cheon}천원`;
+    }
     
-    if (manValue >= 10000) {
-      const eok = Math.floor(manValue / 10000);
-      const remainMan = manValue % 10000;
+    const totalMan = Math.floor(numericValue / 10000);
+    const remainCheon = Math.round((numericValue % 10000) / 1000);
+    const cheonSuffix = remainCheon > 0 ? ` ${remainCheon}천원` : "원";
+    const manText = totalMan >= 10000 ? "" : "만";
+    
+    if (totalMan >= 10000) {
+      const eok = Math.floor(totalMan / 10000);
+      const remainMan = totalMan % 10000;
       if (remainMan === 0) {
-        return `${eok.toLocaleString("ko-KR")}억원`;
+        return `${eok.toLocaleString("ko-KR")}억${remainCheon > 0 ? ` ${remainCheon}천원` : "원"}`;
       }
-      return `${eok.toLocaleString("ko-KR")}억 ${remainMan.toLocaleString("ko-KR")}만원`;
+      return `${eok.toLocaleString("ko-KR")}억 ${remainMan.toLocaleString("ko-KR")}만${remainCheon > 0 ? ` ${remainCheon}천원` : "원"}`;
     }
     
-    const formatted = manValue.toLocaleString("ko-KR");
-    return `${formatted}만원`;
+    return `${totalMan.toLocaleString("ko-KR")}만${remainCheon > 0 ? ` ${remainCheon}천원` : "원"}`;
   }
 
   const FINANCIAL_INCOME_WARN_THRESHOLD_WON = 19000000;
@@ -181,6 +191,7 @@ export const IsfUtils = (function initIsfUtils(global) {
       document.addEventListener("input", (event) => {
         const target = event.target;
         if (!(target instanceof HTMLInputElement) || target.type !== "number") return;
+        if (target.classList.contains("no-won-hint")) return;
         
         const name = (target.name || "").toLowerCase();
         const dataField = (target.dataset.field || "");
@@ -279,7 +290,7 @@ export const IsfUtils = (function initIsfUtils(global) {
   }
 
   const result = {
-    APP_VERSION: (typeof __APP_VERSION__ !== "undefined") ? __APP_VERSION__ : "0.11.55",
+    APP_VERSION: (typeof __APP_VERSION__ !== "undefined") ? __APP_VERSION__ : "0.11.71",
     formatMoney,
     getFinancialIncomeStatus,
     calculateIncomeTax,
