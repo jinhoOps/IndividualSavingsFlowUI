@@ -50,6 +50,14 @@ sequenceDiagram
 
 ---
 
+## [2026-06-16] style | main 재무 핵심 지표 웹 전체화면 4열 레이아웃 및 3:4 카드 비율 조정 (v0.11.73)
+- **목적**: main 화면의 재무 핵심 지표 요약 카드 영역이 PC 전체화면일 때 3열이 아닌 4열로 노출되도록 하고, 각 카드가 세로형 3:4 비율에 가깝게 하도록 개선하여 화면 여백과 시각적 완성도를 높입니다.
+- **주요 변경사항**:
+  - **PC 뷰포트 4열 그리드 이식 (`apps/main/styles.css`)**: `.summary-cards`의 `grid-template-columns` 속성을 `repeat(3, minmax(180px, 1fr))`에서 `repeat(4, minmax(180px, 1fr))`로 변경하여 카드 4개가 한 줄에 정렬되도록 수정.
+  - **카드 3:4 비율 및 중앙 정렬 적용 (`apps/main/styles.css`)**: `.summary-cards .card`에 `aspect-ratio: 3/4`, `display: flex`, `flex-direction: column`, `justify-content: center`를 적용하여 3:4 비율 유지 및 내부 텍스트 정렬 확보.
+  - **반응형 리셋 구성 (`apps/main/styles.css`)**: 태블릿 및 모바일(1080px 이하) 환경에서는 `aspect-ratio: auto` 및 `display: block`을 다시 활성화하여 레이아웃 파손 방지.
+- **결과**: Playwright e2e 테스트(7개 테스트 케이스) 전체 통과 확인 및 번들 빌드 성공.
+
 ## [2026-06-16] docs | Phase 5: UI/UX visual audit 및 6-pillar UI-REVIEW.md 작성
 - **목적**: Phase 5 (Portfolio Creation & Target Allocation UI) 완료에 따라, abstract 6-pillar standards와 Playwright 스크린샷 캡처를 기반으로 시각적/인터랙션 감사(visual audit)를 수행하고 `05-UI-REVIEW.md`를 작성하여 품질을 검증함.
 - **주요 변경사항**:
