@@ -38,7 +38,7 @@ The typography uses **Gowun Batang** (Serif) for display titles, key headings, a
 ## Components
 
 ### Navigation & Feedback
-- **`AppHeader`**: Persistent top navigation exposing the application structure (Step 1, Step 2) and global status indicators (Sync Banner).
+- **`AppHeader`**: Persistent top navigation exposing the application structure (Main, Simulation, Portfolio) and global status indicators (Sync Banner).
 - **`Pending Bar`**: Floating action bar at the bottom appearing only when data is modified (dirty state) with 'Save' and 'Cancel' actions.
 - **`Toast Message`**: Handled via `FeedbackManager` for non-blocking success/error notifications.
 

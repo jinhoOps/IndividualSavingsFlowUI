@@ -1,0 +1,70 @@
+
+export const dom = {
+  appHeader: null,
+  dataHubModal: null,
+  step1SyncBanner: null,
+  dismissSyncBanner: null,
+  importStep1Data: null,
+  syncTimestamp: null,
+  syncInvestCapacity: null,
+  totalInitialAsset: null,
+  totalMonthlyInvestCapacity: null,
+  applyFeedback: null,
+  toggleSimInputs: null,
+  simInputsContainer: null,
+  simDividendYield: null,
+  simDividendGrowth: null,
+  simCapitalGrowth: null,
+  simHorizonYears: null,
+  simDrip: null,
+  simChartSvg: null,
+  simChartTooltip: null,
+  simTable: null,
+  simYearsTabs: null,
+  simKpiGrid: null,
+  activePresetName: null,
+  optShowAsset: null,
+  optShowDividend: null,
+  optShowPR: null,
+  optShowTR: null,
+  dividendWarningBanner: null,
+};
+
+export function initDom() {
+  const selectors = {
+    appHeader: "app-header",
+    dataHubModal: "data-hub-modal",
+    step1SyncBanner: "step1SyncBanner",
+    dismissSyncBanner: "dismissSyncBanner",
+    importStep1Data: "importStep1Data",
+    syncTimestamp: "syncTimestamp",
+    syncInvestCapacity: "syncInvestCapacity",
+    totalInitialAsset: "totalInitialAsset",
+    totalMonthlyInvestCapacity: "totalMonthlyInvestCapacity",
+    applyFeedback: "applyFeedback",
+    toggleSimInputs: "toggleSimInputs",
+    simInputsContainer: "simInputsContainer",
+    simDividendYield: "simDividendYield",
+    simDividendGrowth: "simDividendGrowth",
+    simCapitalGrowth: "simCapitalGrowth",
+    simHorizonYears: "simHorizonYears",
+    simDrip: "simDrip",
+    simChartSvg: "simChartSvg",
+    simChartTooltip: "simChartTooltip",
+    simYearsTabs: "simYearsTabs",
+    simKpiGrid: "simKpiGrid",
+    activePresetName: "activePresetName",
+    optShowAsset: "optShowAsset",
+    optShowDividend: "optShowDividend",
+    optShowPR: "optShowPR",
+    optShowTR: "optShowTR",
+    dividendWarningBanner: "dividendWarningBanner",
+  };
+
+  for (const [key, id] of Object.entries(selectors)) {
+    dom[key] = document.getElementById(id) || document.querySelector(id);
+  }
+  dom.simTable = document.querySelector("#simTable tbody");
+}
+
+

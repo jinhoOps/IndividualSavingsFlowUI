@@ -72,9 +72,9 @@ export class AppHeader extends HTMLElement {
     const version = this.getAttribute('version') || (IsfUtils ? IsfUtils.APP_VERSION : '0.0.0');
     
     const stepLabels = {
-      '1': '현금 흐름',
-      '2': '배당 시뮬',
-      '3': '포트폴리오'
+      '1': 'Main',
+      '2': 'Simulation',
+      '3': 'Portfolio'
     };
     const currentLabel = stepLabels[this.currentStep] || 'ISF UIUX';
 
@@ -112,17 +112,17 @@ export class AppHeader extends HTMLElement {
             <!-- 드롭다운 메뉴 (런처 클릭 시 노출) -->
             <div id="appLauncherMenu" class="launcher-menu shadow-float" style="display: none;">
               <div class="launcher-menu__inner">
-                <a href="../step1/" class="launcher-item ${this.currentStep === '1' ? 'is-active' : ''}">
+                <a href="../main/" class="launcher-item ${this.currentStep === '1' ? 'is-active' : ''}">
                   <span class="launcher-item__icon">📊</span>
-                  <span class="launcher-item__text">현금 흐름</span>
+                  <span class="launcher-item__text">Main</span>
                 </a>
-                <a href="../step2/" class="launcher-item ${this.currentStep === '2' ? 'is-active' : ''}">
+                <a href="../simulation/" class="launcher-item ${this.currentStep === '2' ? 'is-active' : ''}">
                   <span class="launcher-item__icon">💰</span>
-                  <span class="launcher-item__text">배당 시뮬</span>
+                  <span class="launcher-item__text">Simulation</span>
                 </a>
-                <a href="../step3/" class="launcher-item ${this.currentStep === '3' ? 'is-active' : ''}">
+                <a href="../portfolio/" class="launcher-item ${this.currentStep === '3' ? 'is-active' : ''}">
                   <span class="launcher-item__icon">💼</span>
-                  <span class="launcher-item__text">포트폴리오</span>
+                  <span class="launcher-item__text">Portfolio</span>
                 </a>
                 <div style="margin-top: var(--sp-xs); border-top: 1px solid var(--line);"></div>
                 <button type="button" id="headerDataHubBtn" class="launcher-item" style="width: 100%; border: none; background: none; text-align: left; cursor: pointer;">

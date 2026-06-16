@@ -1,9 +1,9 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('Individual Savings Flow Step 1 UI/UX Audit', () => {
+test.describe('Individual Savings Flow Main UI/UX Audit', () => {
   test.beforeEach(async ({ page }) => {
-    // Navigate to step1 index
-    await page.goto('apps/step1/index.html');
+    // Navigate to Main index
+    await page.goto('apps/main/index.html');
     // Wait for main layout rendering
     await page.waitForSelector('main');
   });

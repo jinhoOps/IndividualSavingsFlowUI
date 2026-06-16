@@ -315,4 +315,3 @@ export const IsfUtils = (function initIsfUtils(global) {
 
   return result;
 })((typeof window !== "undefined" ? window : null));
-

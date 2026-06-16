@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ISF UIUX | Portfolio</title>
+  <meta name="theme-color" content="#ea5b2a">
+  <link rel="manifest" href="../../manifest.webmanifest">
+  <link rel="icon" href="../../icons/icon-192.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../../shared/styles/step-theme.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <app-header current-step="3"></app-header>
+  <data-hub-modal current-step="3"></data-hub-modal>
+
+  <div class="ambient" aria-hidden="true"></div>
+
+  <div class="page">
+    <section class="panel page-intro">
+      <h1>나의 적립식 포트폴리오</h1>
+      <p class="lead">종목별 매수 금액을 바탕으로 실시간 비중을 계산하고, 나만의 포트폴리오를 관리하세요.</p>
+    </section>
+
+    <main class="dashboard-grid" style="display: grid; grid-template-columns: 1fr; gap: 20px;">
+      <!-- 1. 포트폴리오 목록 섹션 -->
+      <section class="panel summary-section">
+        <div class="section-head" style="display: flex; justify-content: space-between; align-items: center; gap: 12px; width: 100%;">
+          <h2>포트폴리오</h2>
+          <button id="showCreatorBtn" class="btn btn-primary btn-sm" type="button" style="padding: 6px 14px; border-radius: 8px;">+ 포트폴리오 추가</button>
+        </div>
+        <div id="portfolioList" class="portfolio-list-grid">
+          <p class="hint">등록된 포트폴리오가 없습니다. 아래에서 첫 포트폴리오를 생성해 보세요.</p>
+        </div>
+      </section>
+
+      <!-- 2. 나만의 적립식 포트폴리오 만들기 에디터 섹션 -->
+      <section class="panel editor-section" id="portfolioCreator" style="display: none;">
+        <div class="section-head">
+          <h2>나만의 적립식 포트폴리오 만들기</h2>
+        </div>
+        <div class="creator-form-wrap" style="display: flex; flex-direction: column; gap: 20px;">
+          <div class="form-group" style="display: flex; flex-direction: column; gap: 8px;">
+            <label for="portfolioName" style="font-weight: 600; font-size: 0.95rem;">포트폴리오명</label>
+            <input type="text" id="portfolioName" class="form-control" placeholder="예: 연금계좌 주식 포트폴리오" style="padding: 10px; border-radius: 8px;" />
+          </div>
+
+          <div class="form-group" style="display: flex; flex-direction: column; gap: 8px;">
+            <label style="font-weight: 600; font-size: 0.95rem;">적립 주기</label>
+            <div id="periodSegment" class="segment-control">
+              <button type="button" class="segment-btn active" data-period="매일">매일</button>
+              <button type="button" class="segment-btn" data-period="매주">매주</button>
+              <button type="button" class="segment-btn" data-period="매달">매달</button>
+            </div>
+          </div>
+
+          <div class="form-group" style="display: flex; flex-direction: column; gap: 8px;">
+            <div class="table-head-wrap" style="display: flex; justify-content: space-between; align-items: center;">
+              <label style="font-weight: 600; font-size: 0.95rem;">구성 종목 설정</label>
+              <button type="button" id="addAssetBtn" class="btn btn-ghost btn-xs">+ 종목 추가</button>
+            </div>
+            <table class="creator-table" style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+              <thead>
+                <tr style="border-bottom: 1px solid var(--line); text-align: left;">
+                  <th style="padding: 10px; font-size: 0.85rem; color: var(--muted);">종목명</th>
+                  <th style="padding: 10px; font-size: 0.85rem; color: var(--muted);">매수 금액 (원)</th>
+                  <th style="padding: 10px; font-size: 0.85rem; color: var(--muted); width: 80px; text-align: right;">비중 (%)</th>
+                  <th style="padding: 10px; font-size: 0.85rem; color: var(--muted); width: 80px; text-align: center;">삭제</th>
+                </tr>
+              </thead>
+              <tbody id="creatorAssetTable">
+                <!-- 동적 종목 행 삽입 -->
+              </tbody>
+            </table>
+          </div>
+
+          <div class="creator-summary-wrap" style="padding: 15px; border-radius: 8px; display: flex; flex-direction: column; gap: 4px; border: 1px solid var(--line); background: var(--bg);">
+            <div id="creatorSummary" style="font-size: 1.05rem; font-weight: 700; color: var(--ink);">
+              총 0개의 주식 | 총 매수 금액: 0원
+            </div>
+            <div id="creatorSummaryWonHint" class="creator-annual-hint" aria-live="polite">
+              1년 누적 투자금 약 0원
+            </div>
+          </div>
+
+          <div class="form-actions" style="display: flex; justify-content: flex-end; gap: 10px;">
+            <button type="button" id="cancelCreatorBtn" class="btn btn-ghost">취소</button>
+            <button type="button" id="savePortfolioBtn" class="btn btn-primary" disabled>포트폴리오 생성</button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- 포트폴리오 상세 보기/편집 모달 -->
+  <div id="portfolioDetailModal" class="modal-backdrop" style="display: none;">
+    <div class="modal-content glassmorphism" style="border-radius: 16px; padding: 24px; width: 90%; max-width: 500px;">
+      <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line); padding-bottom: 12px; margin-bottom: 16px;">
+        <input type="text" id="modalPortfolioName" class="form-control" style="font-size: 1.15rem; font-weight: 700; color: var(--ink); border: none; border-bottom: 1px solid var(--line); background: transparent; padding: 4px; width: 75%;" placeholder="포트폴리오명" />
+        <button type="button" id="closeModalBtn" style="background: transparent; border: none; color: var(--ink); font-size: 1.5rem; cursor: pointer; line-height: 1;">&times;</button>
+      </div>
+      <div class="modal-body" style="display: flex; flex-direction: column; gap: 16px;">
+        <div class="modal-summary-info" style="display: flex; gap: 20px; align-items: center; font-size: 0.95rem; color: var(--muted);">
+          <div style="display: flex; align-items: center; gap: 6px;">
+            적립 주기:
+            <select id="modalPortfolioPeriod" class="account-type-select" style="font-size: 0.85rem; padding: 4px 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font-weight: 600; cursor: pointer;">
+              <option value="매일">매일</option>
+              <option value="매주">매주</option>
+              <option value="매달">매달</option>
+            </select>
+          </div>
+          <div>총 매수 금액: <span id="modalPortfolioTotal" style="font-weight: 600; color: var(--ink);">-</span></div>
+        </div>
+        <table class="modal-table" style="width: 100%; border-collapse: collapse;">
+          <thead>
+            <tr style="border-bottom: 1px solid var(--line); text-align: left;">
+              <th style="padding: 8px; font-size: 0.85rem; color: var(--muted);">종목명</th>
+              <th style="padding: 8px; font-size: 0.85rem; color: var(--muted); text-align: right;">매수 금액 (원)</th>
+              <th style="padding: 8px; font-size: 0.85rem; color: var(--muted); text-align: right; width: 80px;">비중</th>
+            </tr>
+          </thead>
+          <tbody id="modalAssetList" style="color: var(--ink); font-size: 0.9rem;">
+            <!-- 동적 종목 행 -->
+          </tbody>
+        </table>
+
+        <div class="modal-chart-container" style="border-top: 1px solid var(--line); padding-top: 16px;">
+          <h4 style="margin: 0 0 12px 0; font-size: 0.95rem; font-weight: 600; color: var(--muted);">1년 누적 투자 추이 예시</h4>
+          <div id="modalInvestmentChart" style="height: 140px; background: var(--bg); border-radius: 8px; border: 1px solid var(--line); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; font-size: 0.8rem; color: var(--muted);">
+            <div id="modalChartBars" style="display: flex; align-items: flex-end; gap: 12px; height: 70px; width: 80%; justify-content: space-around;">
+              <!-- 동적으로 막대 바 생성 -->
+            </div>
+            <div id="modalChartDesc" style="font-size: 0.75rem; color: var(--muted); margin-top: 4px;">시간이 경과함에 따라 누적액이 복리로 증식합니다.</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- 포트폴리오 생성 최종 확인 모달 -->
+  <div id="portfolioConfirmModal" class="modal-backdrop" style="display: none;">
+    <div class="modal-content glassmorphism" style="border-radius: 16px; padding: 24px; width: 90%; max-width: 500px;">
+      <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line); padding-bottom: 12px; margin-bottom: 16px;">
+        <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--ink); margin: 0;">포트폴리오 생성 최종 확인</h3>
+        <button type="button" id="confirmCloseModalBtn" style="background: transparent; border: none; color: var(--ink); font-size: 1.5rem; cursor: pointer; line-height: 1;">&times;</button>
+      </div>
+      <div class="modal-body" style="display: flex; flex-direction: column; gap: 16px;">
+        <div style="font-size: 0.95rem; color: var(--muted); display: flex; flex-direction: column; gap: 8px;">
+          <div><strong>포트폴리오명:</strong> <span id="confirmPortfolioName" style="color: var(--ink); font-weight: 600;">-</span></div>
+          <div><strong>적립 주기:</strong> <span id="confirmPortfolioPeriod" style="color: var(--ink); font-weight: 600;">-</span></div>
+          <div><strong>총 종목 개수:</strong> <span id="confirmAssetCount" style="color: var(--ink); font-weight: 600;">-</span></div>
+          <div><strong>총 매수 금액:</strong> <span id="confirmTotalAmount" style="color: var(--ink); font-weight: 600;">-</span></div>
+        </div>
+
+        <div style="border-top: 1px solid var(--line); padding-top: 12px;">
+          <h4 style="margin: 0 0 8px 0; font-size: 0.9rem; font-weight: 600; color: var(--muted);">구성 종목 비중 분포</h4>
+          <table class="modal-table" style="width: 100%; border-collapse: collapse;">
+            <thead>
+              <tr style="border-bottom: 1px solid var(--line); text-align: left;">
+                <th style="padding: 6px; font-size: 0.8rem; color: var(--muted);">종목명</th>
+                <th style="padding: 6px; font-size: 0.8rem; color: var(--muted); text-align: right;">매수 금액</th>
+                <th style="padding: 6px; font-size: 0.8rem; color: var(--muted); text-align: right; width: 70px;">비중</th>
+              </tr>
+            </thead>
+            <tbody id="confirmAssetList" style="color: var(--ink); font-size: 0.85rem;">
+              <!-- 동적 종목 행 -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid var(--line); padding-top: 16px; margin-top: 16px;">
+        <button type="button" id="confirmCancelBtn" class="btn btn-ghost">취소</button>
+        <button type="button" id="confirmSaveBtn" class="btn btn-primary">최종 저장</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 플로팅 펜딩 바 (모달 변경 감지 시 화면 하단에 노출) -->
+  <div id="pendingBar" class="pending-bar" style="display: none;">
+    <div class="pending-bar-inner" style="justify-content: center;">
+      <div class="pending-bar-buttons">
+        <button type="button" id="pendingCancelBtn" class="btn btn-ghost btn-sm" style="padding: 6px 14px; border-radius: 8px;">취소</button>
+        <button type="button" id="pendingSaveBtn" class="btn btn-primary btn-sm" style="padding: 6px 14px; border-radius: 8px;">저장</button>
+      </div>
+    </div>
+  </div>
+
+  <a href="https://github.com/jinhoOps/IndividualSavingsFlowUI" target="_blank" rel="noopener noreferrer" class="floating-btn floating-btn--left" aria-label="GitHub Repository">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7a3.37 3.37 0 0 0-.94 2.58V22"></path>
+    </svg>
+  </a>
+
+  <button id="jumpToTop" class="floating-btn floating-btn--right" type="button" aria-label="맨 위로 이동">▲</button>
+  <div id="feedbackManager"></div>
+
+  <script type="module" src="../../src/entries/step3.ts"></script>
+</body>
+</html>

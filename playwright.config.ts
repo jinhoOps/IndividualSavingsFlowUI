@@ -20,7 +20,7 @@ export default defineConfig({
   ],
   webServer: {
     command: 'npm run dev',
-    url: 'http://localhost:5173/IndividualSavingsFlowUI/apps/step1/index.html',
+    url: 'http://localhost:5173/IndividualSavingsFlowUI/apps/main/index.html',
     reuseExistingServer: true,
     timeout: 120000,
   },

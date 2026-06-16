@@ -50,7 +50,7 @@
         .map(
           (e) => `
         <div class="simulation-item">
-          <span class="simulation-name" title="${e.name || "이름 없음"}">${e.name || "배당 시뮬레이션"}</span>
+          <span class="simulation-name" title="${e.name || "이름 없음"}">${e.name || "Simulation"}</span>
           <div class="item-actions">
             <button class="btn-select" data-id="${e.id}">불러오기</button>
             <button class="btn-delete" data-id="${e.id}">삭제</button>

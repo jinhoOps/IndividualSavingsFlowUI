@@ -79,9 +79,9 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'index.html'),
-        step1: resolve(__dirname, 'apps/step1/index.html'),
-        step2: resolve(__dirname, 'apps/step2/index.html'),
-        step3: resolve(__dirname, 'apps/step3/index.html'),
+        mainApp: resolve(__dirname, 'apps/main/index.html'),
+        simulation: resolve(__dirname, 'apps/simulation/index.html'),
+        portfolio: resolve(__dirname, 'apps/portfolio/index.html'),
 
       },
     },
