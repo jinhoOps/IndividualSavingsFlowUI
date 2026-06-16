@@ -172,6 +172,8 @@ test.describe('Individual Savings Flow Main UI/UX Audit', () => {
     expect(networkBox).not.toBeNull();
     expect(networkBox!.width).toBeGreaterThan(0);
     expect(networkBox!.height).toBeGreaterThan(0);
+    const networkText = await networkSvg.locator('text').evaluateAll((nodes) => nodes.map((node) => node.textContent || '').join(' '));
+    expect(networkText).not.toContain('억');
 
     await page.setViewportSize({ width: 768, height: 1024 });
     await page.waitForTimeout(200);
@@ -193,6 +195,7 @@ test.describe('Individual Savings Flow Main UI/UX Audit', () => {
 
     await page.locator('#toggleControlsBtn').click();
     await page.locator('#mgmtTabSettings').click();
+    await page.waitForTimeout(100);
     await expect(page.locator('#ratesAdvancedBlock')).toBeVisible();
 
     page.once('dialog', async (dialog) => {
@@ -214,6 +217,7 @@ test.describe('Individual Savings Flow Main UI/UX Audit', () => {
   test('Phase 07 rerun keeps Sankey detail metadata controls effective', async ({ page }) => {
     await page.locator('#showSankeyBasicBtn').click();
     await page.waitForTimeout(200);
+    await expect(page.locator('.sankey-grouping-controls')).toBeHidden();
     const basicExpenseLabels = await page.locator('#sankeySvg .sankey-label').evaluateAll((labels) =>
       labels.map((label) => label.textContent || '').filter((text) => ['관리비', '수도세', '가스비', '전기세'].includes(text)).length
     );
@@ -221,6 +225,7 @@ test.describe('Individual Savings Flow Main UI/UX Audit', () => {
 
     await page.locator('#showSankeyDetailBtn').click();
     await page.waitForTimeout(300);
+    await expect(page.locator('.sankey-grouping-controls')).toBeVisible();
     const detailWithTotalGrouping = await page.locator('#sankeySvg .sankey-label').evaluateAll((labels) =>
       labels.map((label) => label.textContent || '').filter((text) => ['관리비', '수도세', '가스비', '전기세'].includes(text)).length
     );
@@ -232,6 +237,10 @@ test.describe('Individual Savings Flow Main UI/UX Audit', () => {
       labels.map((label) => label.textContent || '').filter((text) => ['관리비', '수도세', '가스비', '전기세'].includes(text)).length
     );
     expect(detailExpenseLabels).toBeGreaterThanOrEqual(2);
+
+    await page.locator('#showNetworkBtn').click();
+    await page.waitForTimeout(300);
+    await expect(page.locator('.sankey-grouping-controls')).toBeHidden();
   });
 
   test('Phase 07 rerun formats money fields and groups long item lists', async ({ page }) => {
@@ -239,14 +248,28 @@ test.describe('Individual Savings Flow Main UI/UX Audit', () => {
     await page.locator('#mgmtTabSettings').click();
 
     const startCash = page.locator('#startCash');
-    await startCash.fill('1234567');
-    await expect(startCash).toHaveValue('1,234,567');
-    await expect(startCash).toHaveAttribute('title', /123만/);
+    await startCash.fill('12345678');
+    await expect(startCash).toHaveValue('12,345,678');
+    await expect(startCash).toHaveAttribute('title', /1234만/);
+    const startInvest = page.locator('#startInvest');
+    await startInvest.fill('87654321');
+    await expect(startInvest).toHaveValue('87,654,321');
+    await page.locator('#horizonYears').focus();
+    const savedInputs = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}'));
+    expect(savedInputs.startCash).toBe(12345678);
+    expect(savedInputs.startInvest).toBe(87654321);
 
     await page.locator('#mgmtTabFlow').click();
+    const groupNames = await page.locator('#expenseAdvancedBlock .allocation-group__name').evaluateAll((nodes) => nodes.map((node) => node.textContent || ''));
+    expect(groupNames).toEqual(expect.arrayContaining(['공과금', '통신비', '교통비', '식비', '여행', '취미']));
+    expect(await page.locator('#savingsAdvancedBlock .allocation-group__name').first().textContent()).toContain('저축');
+    expect(await page.locator('#investAdvancedBlock .allocation-group__name').first().textContent()).toContain('투자');
     expect(await page.locator('#expenseAdvancedBlock .allocation-group').count()).toBeGreaterThan(1);
     const utilityGroup = page.locator('#expenseAdvancedBlock .allocation-group').filter({ hasText: '공과금' }).first();
     await expect(utilityGroup).toBeVisible();
+    if (await utilityGroup.locator('.allocation-group__items').isVisible()) {
+      await utilityGroup.locator('summary').click();
+    }
     await expect(utilityGroup.locator('.allocation-group__items')).not.toBeVisible();
     await utilityGroup.locator('summary').click();
     await expect(utilityGroup.locator('.allocation-group__items')).toBeVisible();

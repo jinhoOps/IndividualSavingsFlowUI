@@ -73,9 +73,16 @@ export function renderItemList(group, items, options = {}) {
   list.innerHTML = renderGroupedAllocationList(group, sorted, options);
 }
 
-function getAllocationGroupName(item) {
+function getAllocationGroupName(group, item) {
   const groupName = String(item?.group || "미분류").trim();
-  if (!groupName) return "미분류";
+  if (!groupName) {
+    if (group === "savings") return "저축";
+    if (group === "invest") return "투자";
+    return "미분류";
+  }
+  if ((group === "savings" || group === "invest") && (groupName === "저축" || groupName === "투자")) {
+    return groupName;
+  }
   const pathSegments = groupName.split("-").map((segment) => segment.trim()).filter(Boolean);
   return pathSegments[pathSegments.length - 1] || groupName;
 }
@@ -83,7 +90,7 @@ function getAllocationGroupName(item) {
 function renderGroupedAllocationList(group, items, options) {
   const groups = new Map();
   items.forEach((item) => {
-    const groupName = getAllocationGroupName(item);
+    const groupName = getAllocationGroupName(group, item);
     if (!groups.has(groupName)) groups.set(groupName, []);
     groups.get(groupName).push(item);
   });

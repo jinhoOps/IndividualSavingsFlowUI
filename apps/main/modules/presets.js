@@ -23,22 +23,22 @@ const EXPENSE_DETAIL = [
   { id: "gas",         name: "가스비",       weight: 0.03, group: "생활비-고정비-공과금" },
   { id: "electricity", name: "전기세",       weight: 0.03, group: "생활비-고정비-공과금" },
   { id: "telecom",     name: "통신비",       weight: 0.03, group: "생활비-고정비-통신비" },
-  { id: "insurance",   name: "보험료",       weight: 0.08, group: "생활비-고정비-보험료" },
-  { id: "transport",   name: "교통비",       weight: 0.08 },
-  { id: "food",        name: "식비",         weight: 0.23 },
-  { id: "etc",         name: "기타생활비",   weight: 0.15 },
+  { id: "transport",   name: "교통비",       weight: 0.08, group: "생활비-고정비-교통비" },
+  { id: "food",        name: "식비",         weight: 0.23, group: "생활비-고정비-식비" },
+  { id: "travel",      name: "여행",         weight: 0.08, group: "자유소비-여행" },
+  { id: "hobby",       name: "취미",         weight: 0.15, group: "자유소비-취미" },
 ];
 
 const SAVINGS_DETAIL = [
-  { id: "emergency",            name: "비상금",     weight: 0.30, annualRate: 2.0 },
-  { id: "youth-saving",         name: "청년적금",   weight: 0.50, annualRate: 3.6 },
-  { id: "housing-subscription", name: "주택청약",   weight: 0.20, annualRate: 2.9 },
+  { id: "emergency",            name: "비상금",     weight: 0.30, group: "저축", annualRate: 2.0 },
+  { id: "youth-saving",         name: "청년적금",   weight: 0.50, group: "저축", annualRate: 3.6 },
+  { id: "housing-subscription", name: "주택청약",   weight: 0.20, group: "저축", annualRate: 2.9 },
 ];
 
 const INVEST_DETAIL = [
-  { id: "global-stock", name: "해외주식",     weight: 0.40 },
-  { id: "isa",          name: "ISA",          weight: 0.35 },
-  { id: "pension",      name: "개인연금/IRP", weight: 0.25 },
+  { id: "global-stock", name: "해외주식",     weight: 0.40, group: "투자" },
+  { id: "isa",          name: "ISA",          weight: 0.35, group: "투자" },
+  { id: "pension",      name: "개인연금/IRP", weight: 0.25, group: "투자" },
 ];
 
 function getStartingCapitalMultipliers(styleKey) {

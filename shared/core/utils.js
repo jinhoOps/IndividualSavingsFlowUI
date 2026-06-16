@@ -195,7 +195,13 @@ export const IsfUtils = (function initIsfUtils(global) {
   function updateAllKoreanWonHints(container = document) {
     const inputs = container.querySelectorAll("input[data-money-input='won'], input[type='number']");
     inputs.forEach(input => {
-      input.dispatchEvent(new Event("input", { bubbles: true }));
+      if (!(input instanceof HTMLInputElement)) return;
+      if (input.dataset.moneyInput === "won" && input.type === "text") {
+        const formatted = formatWonInputValue(input.value);
+        if (input.value !== formatted) input.value = formatted;
+      }
+      const parsed = sanitizeMoney(input.value, 0, -1000000000000000);
+      input.title = parsed > 0 ? convertToKoreanWon(parsed) : "";
     });
   }
 

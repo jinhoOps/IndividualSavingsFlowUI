@@ -93,6 +93,7 @@ export function readInputsFromForm(form, baseInputs, { FORM_FIELD_KEYS, toWon })
 
 export function applyInputsToForm(form, inputs, { FORM_FIELD_KEYS, toMan }) {
   if (!form) return;
+  const activeElement = form.ownerDocument ? form.ownerDocument.activeElement : null;
   FORM_FIELD_KEYS.forEach(key => {
     const field = form.elements[key];
     if (!field) return;
@@ -100,6 +101,9 @@ export function applyInputsToForm(form, inputs, { FORM_FIELD_KEYS, toMan }) {
     
     if (wonFields.includes(key)) {
       const value = toMan(inputs[key]);
+      if (field === activeElement && field.dataset.moneyInput === "won") {
+        return;
+      }
       field.value = window.IsfUtils && typeof window.IsfUtils.formatWonInputValue === "function"
         ? window.IsfUtils.formatWonInputValue(value)
         : String(value);

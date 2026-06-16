@@ -42,6 +42,12 @@ export function syncSankeyGroupingUi() {
   if (dom.sankeyGroupingExpense) dom.sankeyGroupingExpense.value = state.sankeyGrouping.expense;
   if (dom.sankeyGroupingSavings) dom.sankeyGroupingSavings.value = state.sankeyGrouping.savings;
   if (dom.sankeyGroupingInvest) dom.sankeyGroupingInvest.value = state.sankeyGrouping.invest;
+  const controls = dom.sankeyGroupingExpense ? dom.sankeyGroupingExpense.closest(".sankey-grouping-controls") : null;
+  if (controls) {
+    const show = state.sankeyDetailMode === "detail";
+    controls.hidden = !show;
+    controls.setAttribute("aria-hidden", show ? "false" : "true");
+  }
 }
 
 export function syncSankeyZoomUi() {
@@ -114,9 +120,7 @@ export function refreshInputsPanel(inputs, warnings) {
   syncDerivedMonthlyInputsToUi();
   syncGroupOptionsAll();
   IsfUtils.updateAllKoreanWonHints();
-  window.setTimeout(() => {
-    state.suspendInputTracking = false;
-  }, 0);
+  state.suspendInputTracking = false;
 }
 
 export function syncDerivedMonthlyInputsToUi() {

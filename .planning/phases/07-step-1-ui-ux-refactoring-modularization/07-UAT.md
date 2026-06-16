@@ -1,5 +1,5 @@
 ---
-status: diagnosed
+status: resolved
 phase: 07-step-1-ui-ux-refactoring-modularization
 source:
   - 07-01-SUMMARY.md
@@ -8,7 +8,7 @@ source:
   - 07-GAP-CLOSURE-SUMMARY.md
   - 07-UAT-RERUN-GAP-SUMMARY.md
 started: 2026-06-16T17:20:00+09:00
-updated: 2026-06-16T17:55:00+09:00
+updated: 2026-06-16T18:45:00+09:00
 ---
 
 ## Current Test
@@ -80,7 +80,7 @@ blocked: 0
 ## Gaps
 
 - truth: "계좌 흐름도에서 계좌 잔액과 흐름 금액이 실제 값에 맞는 단위로 표시된다. 만 원 단위 값이 억 원처럼 과대 표시되지 않고, Sankey/요약과 같은 금액 감각으로 읽힌다."
-  status: failed
+  status: resolved
   reason: "User reported: 계좌흐름도 단위변환 적용 버그로 `만`단위가 `억`으로 보여"
   severity: major
   test: 1
@@ -95,7 +95,7 @@ blocked: 0
     - "Add a regression assertion that a 5,000,000 Won account renders as 500만 원, not 500억 원."
   debug_session: "inline-uat-diagnosis-2026-06-16-second-rerun"
 - truth: "프리셋, JSON 가져오기, ISF CODE 데이터, 백업 복원, 해시 복원, 공유 ID 로드가 Step 1 값을 정상적인 계좌/그룹 값으로 반영한다. 금액 입력은 쉼표 포맷을 유지하고, 깨진 UI나 원시 마크업, 스크립트처럼 보이는 텍스트가 화면에 렌더링되지 않는다."
-  status: failed
+  status: resolved
   reason: "User reported: 금액 입력 쉼표포맷:모든 금액입력이 아닌 설정에서만 제대로 보여, 초기 현금 및 투자 잔액 최대 입력값 5,000,000 이상 입력 불가 현상"
   severity: major
   test: 3
@@ -115,7 +115,7 @@ blocked: 0
     - "Add tests for entering values above 5,000,000 into `startCash` and `startInvest`."
   debug_session: "inline-uat-diagnosis-2026-06-16-second-rerun"
 - truth: "생활비처럼 하위 항목이 많은 지출·저축·투자 목록은 그룹 디렉터리처럼 접고 펼칠 수 있다. 접었을 때 세로 길이가 줄고, 펼쳤을 때 기존 항목 편집과 금액 표시가 유지된다."
-  status: failed
+  status: resolved
   reason: "User reported: pass, 그런데 아예 지출입력하는거니까 , `생활비`를 대표그룹 고정비로  묶어주고, 고정비 하위 대표 그룹으로는 `공과금`,`통신비`,`교통비`,`식비` 는 모두 생활비 성격, 그외에 발생할수있는건 여행,취미,자기개발 등 자유로운 소비 사용자가 자유롭게 추가하는거 예시로 2가지로 여행,취미 정도만 해주면될듯.  저축하고 투자는 항목 자체가 그룹이라 저축은 저축, 투자는 투자자"
   severity: minor
   test: 6
@@ -133,7 +133,7 @@ blocked: 0
     - "Add regression coverage for the desired default group labels."
   debug_session: "inline-uat-diagnosis-2026-06-16-second-rerun"
 - truth: "기본 Sankey 보기는 통합된 상태로 시작한다. 상세 탭에서도 강제로 전부 개별화하지 않고, 지출/저축/투자 grouping 메타데이터 선택에 따라 통합·그룹·상세 표시가 바뀐다."
-  status: failed
+  status: resolved
   reason: "User reported: pass, 상세에서만 메타데이터 선택이 출력되면 좋겠습니다"
   severity: minor
   test: 7
@@ -151,7 +151,7 @@ blocked: 0
     - "Add a UI regression check for grouping-control visibility across visualization modes."
   debug_session: "inline-uat-diagnosis-2026-06-16-second-rerun"
 - truth: "Step 1 화면은 과한 radial glow 배경, 무거운 blur 효과, 과한 토글 윤곽선, 중첩 카드의 과도한 border 없이 컴팩트하고 미니멀한 공유 테마 스타일을 유지한다."
-  status: failed
+  status: resolved
   reason: "User reported: pass, 토글의 이질감은 약하지만 남아있고, 입력관련 카드의 border는 여전히 복잡하여 컴팩트하지 않아보임"
   severity: cosmetic
   test: 9

@@ -185,7 +185,7 @@ export function renderNetworkMap(container, accounts, transfers) {
       class: "network-link-label",
       style: `fill: ${tr.isManual ? '#d35400' : '#16a085'}; font-size: 9px; font-weight: 500; font-family: "Gowun Dodum";`
     });
-    textNode.textContent = `${tr.label} (${IsfUtils.formatMoney(tr.value * 10000)})`;
+    textNode.textContent = `${tr.label} (${IsfUtils.formatMoney(tr.value)})`;
     
     textGroup.appendChild(textBg);
     textGroup.appendChild(textNode);
@@ -223,7 +223,7 @@ export function renderNetworkMap(container, accounts, transfers) {
       class: "network-node-bg"
     });
  
-    // 계좌 실시간 금액 매핑 (만원 환산)
+    // 계좌 실시간 금액 매핑
     const accObj = safeAccounts.find(a => a.id === node.id);
     const valWon = accObj ? (Number(accObj.value) || 0) : 0;
 
@@ -245,7 +245,7 @@ export function renderNetworkMap(container, accounts, transfers) {
       class: "network-node-text-val",
       style: `font-size: ${isMobileViewport ? 10.5 : 11}px; font-weight: 600; fill: var(--muted); font-family: "Gowun Dodum";`
     });
-    valText.textContent = IsfUtils.formatMoney(valWon * 10000);
+    valText.textContent = IsfUtils.formatMoney(valWon);
  
     group.appendChild(rect);
     group.appendChild(nameText);

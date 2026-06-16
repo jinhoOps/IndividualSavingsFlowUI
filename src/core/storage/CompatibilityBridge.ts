@@ -100,9 +100,9 @@ export function initCompatibilityBridge() {
 
   // Legacy Utility Aliases
   target.IsfUtils = target.IsfUtils || {};
-  target.IsfUtils.toWon = MoneyUtils.toWon;
-  target.IsfUtils.toMan = MoneyUtils.toMan;
-  target.IsfUtils.formatMoney = MoneyUtils.formatMan;
+  if (typeof target.IsfUtils.toWon !== 'function') target.IsfUtils.toWon = MoneyUtils.toWon;
+  if (typeof target.IsfUtils.toMan !== 'function') target.IsfUtils.toMan = MoneyUtils.toMan;
+  if (typeof target.IsfUtils.formatMoney !== 'function') target.IsfUtils.formatMoney = MoneyUtils.formatMan;
 
   console.log('CompatibilityBridge: Legacy APIs bridged to Modernized Storage (Window & GlobalThis).');
 }

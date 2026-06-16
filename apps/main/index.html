@@ -163,7 +163,7 @@
                       <span>에서</span>
                       <select id="transferTargetSelect" class="editor-select" aria-label="도착 계좌"></select>
                       <span>로</span>
-                      <input type="number" id="transferAmount" class="editor-input" min="1" placeholder="금액 (원)" aria-label="이체 금액" />
+                      <input type="text" id="transferAmount" class="editor-input" data-money-input="won" inputmode="decimal" placeholder="금액 (원)" aria-label="이체 금액" />
                       <span>원을</span>
                       <input type="text" id="transferLabel" class="editor-input" placeholder="이체 설명 (예: 생활비 보조)" aria-label="이체 설명" />
                       <button type="button" id="addTransferRuleBtn" class="btn btn-primary btn-sm">추가</button>
@@ -408,7 +408,7 @@
                 %
               </button>
             </div>
-            <div class="sankey-grouping-controls" role="group" aria-label="Sankey Diagram 그룹화 설정">
+            <div class="sankey-grouping-controls" role="group" aria-label="Sankey Diagram 그룹화 설정" hidden>
               <div class="sankey-grouping-item">
                 <span class="sankey-grouping-label">지출</span>
                 <select id="sankeyGroupingExpense" class="sankey-sort-select" aria-label="지출 그룹화 설정">
@@ -633,7 +633,7 @@
 
         <div class="control">
           <label for="presetIncomeAmount">2. 연봉 설정 (최대 9,900만 원)</label>
-          <input type="number" id="presetIncomeAmount" name="presetIncomeAmount" min="0" max="99000000" step="1000000" value="40000000" placeholder="예: 40000000" />
+          <input type="text" id="presetIncomeAmount" name="presetIncomeAmount" data-money-input="won" inputmode="decimal" value="40,000,000" placeholder="예: 40,000,000" />
         </div>
       </div>
       <div class="modal-footer">

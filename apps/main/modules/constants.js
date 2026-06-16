@@ -56,21 +56,21 @@ export const DEFAULT_EXPENSE_ITEMS = [
   { id: "gas", name: "가스비", amount: 50000, group: "생활비-고정비-공과금", accountId: "acc-living" },
   { id: "electricity", name: "전기세", amount: 50000, group: "생활비-고정비-공과금", accountId: "acc-living" },
   { id: "telecom", name: "통신비", amount: 50000, group: "생활비-고정비-통신비", accountId: "acc-living" },
-  { id: "insurance", name: "보험료", amount: 150000, group: "생활비-고정비-보험료", accountId: "acc-living" },
-  { id: "transport", name: "교통비", amount: 100000, accountId: "acc-living" },
-  { id: "food", name: "식비", amount: 400000, accountId: "acc-living" },
-  { id: "etc", name: "기타생활비", amount: 200000, accountId: "acc-living" },
+  { id: "transport", name: "교통비", amount: 100000, group: "생활비-고정비-교통비", accountId: "acc-living" },
+  { id: "food", name: "식비", amount: 400000, group: "생활비-고정비-식비", accountId: "acc-living" },
+  { id: "travel", name: "여행", amount: 150000, group: "자유소비-여행", accountId: "acc-living" },
+  { id: "hobby", name: "취미", amount: 200000, group: "자유소비-취미", accountId: "acc-living" },
 ];
 
 export const DEFAULT_SAVINGS_ITEMS = [
-  { id: "youth-saving", name: "청년적금", amount: 700000, annualRate: 3.6, accountId: "acc-salary" },
-  { id: "housing-subscription", name: "주택청약", amount: 50000, annualRate: 2.9, accountId: "acc-salary" },
+  { id: "youth-saving", name: "청년적금", amount: 700000, group: "저축", annualRate: 3.6, accountId: "acc-salary" },
+  { id: "housing-subscription", name: "주택청약", amount: 50000, group: "저축", annualRate: 2.9, accountId: "acc-salary" },
 ];
 
 export const DEFAULT_INVEST_ITEMS = [
-  { id: "global-stock", name: "해외주식", amount: 300000, accountId: "acc-stock" },
-  { id: "isa", name: "ISA", amount: 300000, accountId: "acc-stock" },
-  { id: "gold-spot", name: "금현물", amount: 30000, accountId: "acc-stock" },
+  { id: "global-stock", name: "해외주식", amount: 300000, group: "투자", accountId: "acc-stock" },
+  { id: "isa", name: "ISA", amount: 300000, group: "투자", accountId: "acc-stock" },
+  { id: "gold-spot", name: "금현물", amount: 30000, group: "투자", accountId: "acc-stock" },
 ];
 
 export const DEFAULT_INPUTS = {
@@ -156,19 +156,19 @@ export const SAMPLE_INPUTS = {
     { id: "gas", name: "가스비", amount: 60000, group: "생활비-고정비-공과금", accountId: "acc-living" },
     { id: "electricity", name: "전기세", amount: 50000, group: "생활비-고정비-공과금", accountId: "acc-living" },
     { id: "telecom", name: "통신비", amount: 60000, group: "생활비-고정비-통신비", accountId: "acc-living" },
-    { id: "insurance", name: "보험료", amount: 200000, group: "생활비-고정비-보험료", accountId: "acc-living" },
-    { id: "transport", name: "교통비", amount: 150000, accountId: "acc-living" },
-    { id: "food", name: "식비", amount: 500000, accountId: "acc-living" },
-    { id: "etc", name: "기타생활비", amount: 250000, accountId: "acc-living" },
+    { id: "transport", name: "교통비", amount: 150000, group: "생활비-고정비-교통비", accountId: "acc-living" },
+    { id: "food", name: "식비", amount: 500000, group: "생활비-고정비-식비", accountId: "acc-living" },
+    { id: "travel", name: "여행", amount: 200000, group: "자유소비-여행", accountId: "acc-living" },
+    { id: "hobby", name: "취미", amount: 250000, group: "자유소비-취미", accountId: "acc-living" },
   ],
   savingsItems: [
-    { id: "youth-saving", name: "청년적금", amount: 700000, annualRate: 3.6, accountId: "acc-salary" },
-    { id: "housing-subscription", name: "주택청약", amount: 200000, annualRate: 2.9, accountId: "acc-cma" },
+    { id: "youth-saving", name: "청년적금", amount: 700000, group: "저축", annualRate: 3.6, accountId: "acc-salary" },
+    { id: "housing-subscription", name: "주택청약", amount: 200000, group: "저축", annualRate: 2.9, accountId: "acc-cma" },
   ],
   investItems: [
-    { id: "global-stock", name: "해외주식", amount: 500000, accountId: "acc-stock" },
-    { id: "isa", name: "ISA", amount: 400000, accountId: "acc-stock" },
-    { id: "gold-spot", name: "금현물", amount: 100000, accountId: "acc-stock" },
+    { id: "global-stock", name: "해외주식", amount: 500000, group: "투자", accountId: "acc-stock" },
+    { id: "isa", name: "ISA", amount: 400000, group: "투자", accountId: "acc-stock" },
+    { id: "gold-spot", name: "금현물", amount: 100000, group: "투자", accountId: "acc-stock" },
   ],
   surplusTransferAccountId: "acc-stock",
   monthlyExpense: 2210000,

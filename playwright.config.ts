@@ -11,6 +11,7 @@ export default defineConfig({
     baseURL: 'http://localhost:5173/IndividualSavingsFlowUI/',
     trace: 'on-first-retry',
     viewport: { width: 1280, height: 720 },
+    serviceWorkers: 'block',
   },
   projects: [
     {

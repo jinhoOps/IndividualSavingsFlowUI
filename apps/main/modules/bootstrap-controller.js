@@ -263,14 +263,21 @@ function bindControls() {
     dom.inputsForm.addEventListener("submit", (event) => {
       event.preventDefault();
     });
-    dom.inputsForm.addEventListener("input", (event) => {
-      if (state.suspendInputTracking) return;
+    const handleFormValueEvent = (event, options = {}) => {
       const target = event.target;
       if (!(target instanceof HTMLInputElement) || !FORM_FIELD_KEYS.includes(target.name)) return;
+      if (state.suspendInputTracking && !options.capture) return;
       
       state.inputs = sanitizeInputs(helpers.readInputsFromForm(dom.inputsForm, state.inputs, { FORM_FIELD_KEYS, toWon: IsfUtils.toWon }));
-      markPendingChanges();
-    });
+      helpers.syncDerivedValues(state.inputs, { getMonthlyAllocationTotalWon });
+      listRenderer.renderInputHints(state.inputs);
+      persistPrimaryState(state.inputs);
+      window.clearTimeout(state.formRenderTimer);
+      state.formRenderTimer = window.setTimeout(() => {
+        renderAll();
+      }, 150);
+    };
+    dom.inputsForm.addEventListener("input", (event) => handleFormValueEvent(event, { capture: true }), true);
   }
 
   bindReadonlyAdvancedNavigation();
@@ -382,7 +389,7 @@ function bindControls() {
   if (dom.applyModalPresetBtn) {
     dom.applyModalPresetBtn.addEventListener("click", () => {
       if (!dom.presetIncomeAmount) return;
-      const salaryWon = parseInt(dom.presetIncomeAmount.value, 10);
+      const salaryWon = IsfUtils.toWon(dom.presetIncomeAmount.value);
       
       if (isNaN(salaryWon) || salaryWon < 0 || salaryWon > 99000000) {
         alert("연봉은 0원 이상 9,900만 원 이하로 입력해주세요.");
@@ -428,6 +435,13 @@ function bindVisualizationAndTooltipEvents() {
       });
       dom.visualizationSlider.style.transform = sliderIndex === 1 ? "translateX(-50%)" : "translateX(0%)";
       if (detailMode !== null) setSankeyDetailMode(detailMode);
+      if (detailMode === null) {
+        const controls = dom.sankeyGroupingExpense ? dom.sankeyGroupingExpense.closest(".sankey-grouping-controls") : null;
+        if (controls) {
+          controls.hidden = true;
+          controls.setAttribute("aria-hidden", "true");
+        }
+      }
     };
     dom.showSankeyBasicBtn.addEventListener("click", () => switchVis(dom.showSankeyBasicBtn, "basic", 0));
     dom.showSankeyDetailBtn.addEventListener("click", () => switchVis(dom.showSankeyDetailBtn, "detail", 0));
@@ -439,7 +453,7 @@ function bindVisualizationAndTooltipEvents() {
     dom.addTransferRuleBtn.addEventListener("click", () => {
       const srcId = dom.transferSourceSelect.value;
       const tgtId = dom.transferTargetSelect.value;
-      const amountMan = Number(dom.transferAmount.value) || 0;
+      const amountMan = IsfUtils.toWon(dom.transferAmount.value);
       const label = dom.transferLabel.value.trim();
  
       if (!srcId || !tgtId) {
@@ -1096,6 +1110,7 @@ function setSankeyGrouping(category, value) {
 
 function setSankeyDetailMode(mode) {
   state.sankeyDetailMode = mode;
+  syncSankeyGroupingUi();
   if (state.snapshot) renderSankey(state.snapshot, buildSankeyData, state.sankeySortMode);
 }
 
