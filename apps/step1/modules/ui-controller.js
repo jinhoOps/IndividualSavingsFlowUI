@@ -101,7 +101,6 @@ export function refreshInputsPanel(inputs, warnings) {
   if (!dom.inputsForm) return;
   state.suspendInputTracking = true;
   helpers.applyInputsToForm(dom.inputsForm, inputs, { FORM_FIELD_KEYS, toMan: IsfUtils.toMan });
-  state.suspendInputTracking = false;
   
   const rawInputs = inputs;
   ["income", "account", "expense", "savings", "invest"].forEach(group => {
@@ -115,6 +114,7 @@ export function refreshInputsPanel(inputs, warnings) {
   syncDerivedMonthlyInputsToUi();
   syncGroupOptionsAll();
   IsfUtils.updateAllKoreanWonHints();
+  state.suspendInputTracking = false;
 }
 
 export function syncDerivedMonthlyInputsToUi() {
