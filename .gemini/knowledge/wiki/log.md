@@ -1,5 +1,17 @@
 # Project Evolution Log (연대기적 작업 로그)
 
+## [2026-06-16] docs | parallel gsd-codebase-mapper 에이전트를 통한 코드베이스 분석 및 7대 핵심 문서 업데이트
+- **목적**: 코드베이스의 최신 기술 스택, 아키텍처, 디렉토리 구조, 코딩 컨벤션, 테스트 상태, 미결 과제 등을 4개 에이전트의 병렬 처리를 통해 조사하고 관련 문서를 동기화하여 지식 기반을 최신화합니다.
+- **주요 변경사항**:
+  - **4개 병렬 `gsd-codebase-mapper` 에이전트 구동**:
+    - Tech: `STACK.md` (71 lines), `INTEGRATIONS.md` (74 lines)
+    - Arch: `ARCHITECTURE.md` (110 lines), `STRUCTURE.md` (73 lines)
+    - Quality: `CONVENTIONS.md` (45 lines), `TESTING.md` (39 lines)
+    - Concerns: `CONCERNS.md` (103 lines)
+  - **문서 동기화 및 커밋**:
+    - 수정된 7대 코드베이스 맵 문서를 스테이징하고 커밋 완료 (`docs: update codebase map from parallel analysis`).
+- **결과**: `.planning/codebase/` 내부의 모든 핵심 문서가 실제 구현 세부 사항(Vite/TS/Tailwind v4, React 점진적 도입, IndexedDB & BackupService 흐름, 원화 단위 정합성 수호 원칙 등)을 바탕으로 현행화 완료되었습니다.
+
 ## [2026-06-16] feat | 전역 패널 헤더 투명 디자인 통일 및 Step 3 포트폴리오 에디터 접기/펼치기 UX 고도화 (v0.11.55)
 - **목적**: Step 2의 page-intro 헤더 디자인 규격(배경 및 테두리 투명화)을 Step 1과 Step 3에 전역 적용하여 시각적 통일성을 부여하고, 항상 노출되어 화면을 비대하게 차지하던 Step 3 포트폴리오 만들기 화면을 기본적으로 숨기고 추가/취소 버튼 액션으로 동적 제어하도록 UX를 고도화합니다.
 - **주요 변경사항**:
