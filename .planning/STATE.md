@@ -1,9 +1,9 @@
 ---
 gsd_state_version: 1.0
 milestone: v1.8
-milestone_name: 적립식 포트폴리오 관리 (Step 3 고도화)
-status: ready_to_plan
-last_updated: 2026-06-16T11:20:00.000Z
+milestone_name: 적립식 포트폴리오 관리 및 전체 UI/UX 개선
+status: planning
+last_updated: "2026-06-16T03:09:04.939Z"
 last_activity: 2026-06-16
 progress:
   total_phases: 4
