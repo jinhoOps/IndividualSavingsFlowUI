@@ -50,11 +50,11 @@ sequenceDiagram
 
 ---
 
-## [2026-06-16] style | main 재무 핵심 지표 웹 전체화면 4열 레이아웃 및 3:4 카드 비율 조정 (v0.11.73)
-- **목적**: main 화면의 재무 핵심 지표 요약 카드 영역이 PC 전체화면일 때 3열이 아닌 4열로 노출되도록 하고, 각 카드가 세로형 3:4 비율에 가깝게 하도록 개선하여 화면 여백과 시각적 완성도를 높입니다.
+## [2026-06-16] style | main 재무 핵심 지표 웹 전체화면 4열 레이아웃 및 4:3 카드 비율 조정 (v0.11.74)
+- **목적**: main 화면의 재무 핵심 지표 요약 카드 영역이 PC 전체화면일 때 3열이 아닌 4열로 노출되도록 하고, 각 카드가 가로가 더 긴 4:3 비율을 갖도록 개선하여 컴팩트하고 밀도 높은 레이아웃을 완성합니다.
 - **주요 변경사항**:
   - **PC 뷰포트 4열 그리드 이식 (`apps/main/styles.css`)**: `.summary-cards`의 `grid-template-columns` 속성을 `repeat(3, minmax(180px, 1fr))`에서 `repeat(4, minmax(180px, 1fr))`로 변경하여 카드 4개가 한 줄에 정렬되도록 수정.
-  - **카드 3:4 비율 및 중앙 정렬 적용 (`apps/main/styles.css`)**: `.summary-cards .card`에 `aspect-ratio: 3/4`, `display: flex`, `flex-direction: column`, `justify-content: center`를 적용하여 3:4 비율 유지 및 내부 텍스트 정렬 확보.
+  - **카드 4:3 비율 및 중앙 정렬 적용 (`apps/main/styles.css`)**: `.summary-cards .card`에 `aspect-ratio: 4/3`, `display: flex`, `flex-direction: column`, `justify-content: center`를 적용하고 padding 및 gap을 축소하여 밀도 높고 컴팩트하게 정렬.
   - **반응형 리셋 구성 (`apps/main/styles.css`)**: 태블릿 및 모바일(1080px 이하) 환경에서는 `aspect-ratio: auto` 및 `display: block`을 다시 활성화하여 레이아웃 파손 방지.
 - **결과**: Playwright e2e 테스트(7개 테스트 케이스) 전체 통과 확인 및 번들 빌드 성공.
 
