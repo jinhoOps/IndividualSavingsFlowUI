@@ -86,15 +86,15 @@ export function setActiveAdvancedTab(tabId) {
 }
 
 export function setPendingBarVisible(visible) {
-  if (dom.pendingBar) dom.pendingBar.hidden = !visible;
+  // Removed
 }
 
 export function markPendingChanges() {
-  setPendingBarVisible(true);
+  // Removed
 }
 
 export function clearPendingChanges() {
-  setPendingBarVisible(false);
+  // Removed
 }
 
 export function refreshInputsPanel(inputs, warnings) {
@@ -103,7 +103,7 @@ export function refreshInputsPanel(inputs, warnings) {
   helpers.applyInputsToForm(dom.inputsForm, inputs, { FORM_FIELD_KEYS, toMan: IsfUtils.toMan });
   state.suspendInputTracking = false;
   
-  const rawInputs = state.draftInputs || inputs;
+  const rawInputs = inputs;
   ["income", "account", "expense", "savings", "invest"].forEach(group => {
     const rawItems = group === "income" ? rawInputs.incomes : (group === "account" ? rawInputs.accounts : rawInputs[`${group}Items`]);
     listRenderer.renderItemList(group, rawItems, { 
@@ -118,7 +118,7 @@ export function refreshInputsPanel(inputs, warnings) {
 }
 
 export function syncDerivedMonthlyInputsToUi() {
-  const inputs = state.draftInputs || state.inputs;
+  const inputs = state.inputs;
   const inc = getMonthlyIncomeTotalWon(inputs.incomes);
   const exp = getMonthlyAllocationTotalWon(inputs.expenseItems);
   const sav = getMonthlyAllocationTotalWon(inputs.savingsItems);
@@ -138,7 +138,7 @@ export function syncGroupOptionsFor(group) {
   const list = dom[`${group}GroupOptions`];
   if (!list) return;
 
-  const inputs = state.draftInputs || state.inputs;
+  const inputs = state.inputs;
   const items = inputs[`${group}Items`] || [];
   const names = [...new Set(items.map(i => normalizeAllocationGroupName(i.group)).filter(Boolean))].sort();
   list.innerHTML = names.map(n => `<option value="${n}">`).join("");

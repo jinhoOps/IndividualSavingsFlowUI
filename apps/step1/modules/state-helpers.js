@@ -9,21 +9,17 @@ export function createEmptyDraft(baseInputs) {
 
 
 export function ensureDraftInputs(state) {
-  if (!state.draftInputs) {
-    state.draftInputs = createEmptyDraft(state.inputs);
-  }
-  return state.draftInputs;
+  return state.inputs;
 }
 
 
 export function getVisibleInputs(state) {
-  return state.draftInputs || state.inputs;
+  return state.inputs;
 }
 
 
 export function markDirty(state) {
-  if (state.isViewMode) return;
-  ensureDraftInputs(state);
+  // Auto-save: no action needed
 }
 
 
@@ -33,9 +29,7 @@ export function markClean(state) {
 
 
 export function hasPendingChanges(state) {
-  if (!state.draftInputs) return false;
-
-  return JSON.stringify(state.draftInputs) !== JSON.stringify(state.inputs);
+  return false;
 }
 
 
@@ -59,9 +53,8 @@ export function resetState(state, defaultInputs) {
 
 
 export function updateDraftField(state, key, value) {
-  const draft = ensureDraftInputs(state);
-  draft[key] = value;
-  return draft;
+  state.inputs[key] = value;
+  return state.inputs;
 }
 
 

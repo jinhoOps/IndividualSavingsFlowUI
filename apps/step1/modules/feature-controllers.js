@@ -87,9 +87,8 @@ export function handleApplySmartAdd(renderItemListCallback) {
     }
   }
   
-  const draft = helpers.ensureDraftInputs(state);
-  draft.expenseItems = newItems;
-  state.draftInputs = sanitizeInputs(draft);
+  state.inputs.expenseItems = newItems;
+  state.inputs = sanitizeInputs(state.inputs);
   
   if (renderItemListCallback) renderItemListCallback("expense", newItems);
   markPendingChanges();

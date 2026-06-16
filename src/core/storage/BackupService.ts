@@ -40,8 +40,21 @@ export class BackupService {
 
   private async trimBackups(appKey: string): Promise<void> {
     const backups = await this.listBackups(appKey);
-    if (backups.length > MAX_BACKUPS) {
-      const toDelete = backups.slice(MAX_BACKUPS);
+    const autos = backups.filter(b => b.type === 'auto');
+    const manuals = backups.filter(b => b.type === 'manual');
+
+    const MAX_AUTOS = 20;
+    const MAX_MANUALS = 10;
+
+    if (autos.length > MAX_AUTOS) {
+      const toDelete = autos.slice(MAX_AUTOS);
+      for (const b of toDelete) {
+        await isfStore.perform('backups', 'readwrite', (s: IDBObjectStore) => s.delete(b.id));
+      }
+    }
+
+    if (manuals.length > MAX_MANUALS) {
+      const toDelete = manuals.slice(MAX_MANUALS);
       for (const b of toDelete) {
         await isfStore.perform('backups', 'readwrite', (s: IDBObjectStore) => s.delete(b.id));
       }

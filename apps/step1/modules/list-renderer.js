@@ -51,7 +51,7 @@ export function renderItemList(group, items, options = {}) {
     if (group === "account") {
       let warnings = options.warnings;
       if (!warnings) {
-        const inputs = state.draftInputs || state.inputs;
+        const inputs = state.inputs;
         const res = calculateAccountFinancialIncomes(inputs);
         warnings = res.warnings;
       }
@@ -81,7 +81,7 @@ function getShortAccountName(name) {
 export function renderIncomeItemHtml(item, opts) {
   const isEditing = !!opts.editing;
   if (!isEditing) {
-    const accounts = ((state.draftInputs || state.inputs).accounts || []);
+    const accounts = (state.inputs.accounts || []);
     let accHtml = "";
     if (Array.isArray(item.allocations) && item.allocations.length > 0) {
       accHtml = item.allocations.map(al => {
@@ -104,7 +104,7 @@ export function renderIncomeItemHtml(item, opts) {
   }
 
   // 편집 모드일 때
-  const accounts = ((state.draftInputs || state.inputs).accounts || []);
+  const accounts = (state.inputs.accounts || []);
   const allocations = Array.isArray(item.allocations) ? item.allocations : [];
 
   const allocationsHtml = allocations.map((al, idx) => {
@@ -161,7 +161,7 @@ export function renderAllocationItemHtml(group, item, opts) {
   let metaHtml = "";
   if (!isEditing) {
     const baseMeta = buildAllocationMetaText(item, { showMaturity: group !== "expense" });
-    const acc = ((state.draftInputs || state.inputs).accounts || []).find(a => a.id === item.accountId);
+    const acc = (state.inputs.accounts || []).find(a => a.id === item.accountId);
     const name = acc ? getShortAccountName(acc.name) : "미지정";
     const accHtml = acc ? `<span class="badge-account badge-account--outflow">${IsfUtils.escapeHtml(name)}</span>` : `<span class="badge-account badge-account--none">미지정</span>`;
     metaHtml = `
@@ -197,7 +197,7 @@ export function renderAllocationItemHtml(group, item, opts) {
         <label class="editor-field-label">출금계좌</label>
         <select data-field="accountId" data-editor-id="${item.id}">
           <option value="">계좌 선택...</option>
-          ${((state.draftInputs || state.inputs).accounts || []).map(acc => {
+          ${(state.inputs.accounts || []).map(acc => {
             const selected = acc.id === item.accountId ? "selected" : "";
             return `<option value="${acc.id}" ${selected}>${IsfUtils.escapeHtml(acc.name)}</option>`;
           }).join("")}

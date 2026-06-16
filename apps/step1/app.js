@@ -259,9 +259,7 @@ function bindControls() {
       const target = event.target;
       if (!(target instanceof HTMLInputElement) || !FORM_FIELD_KEYS.includes(target.name)) return;
       
-      const baseInputs = helpers.ensureDraftInputs(state);
-      state.draftInputs = sanitizeInputs(helpers.readInputsFromForm(dom.inputsForm, baseInputs, { FORM_FIELD_KEYS, toWon: IsfUtils.toWon }));
-      helpers.markDirty(state);
+      state.inputs = sanitizeInputs(helpers.readInputsFromForm(dom.inputsForm, state.inputs, { FORM_FIELD_KEYS, toWon: IsfUtils.toWon }));
       markPendingChanges();
     });
   }
@@ -314,11 +312,9 @@ function bindControls() {
 
   if (dom.surplusTransferAccountSelect) {
     dom.surplusTransferAccountSelect.addEventListener("change", (e) => {
-      const draft = helpers.ensureDraftInputs(state);
-      draft.surplusTransferAccountId = e.target.value;
-      state.draftInputs = sanitizeInputs(draft);
+      state.inputs.surplusTransferAccountId = e.target.value;
+      state.inputs = sanitizeInputs(state.inputs);
       markPendingChanges();
-      renderAll();
     });
   }
 
@@ -460,7 +456,7 @@ function bindVisualizationAndTooltipEvents() {
         return;
       }
  
-      const amount = amountMan * 10000;
+      const amount = amountMan;
       const newRule = {
         id: `tr-${Date.now()}`,
         sourceAccountId: srcId,
@@ -469,14 +465,13 @@ function bindVisualizationAndTooltipEvents() {
         label: label || "계좌 이체"
       };
  
-      draft.transfers = [...transfers, newRule];
-      state.draftInputs = sanitizeInputs(draft);
+      state.inputs.transfers = [...transfers, newRule];
+      state.inputs = sanitizeInputs(state.inputs);
       markPendingChanges();
       
       // 폼 초기화
       dom.transferAmount.value = "";
       dom.transferLabel.value = "";
-      renderAll();
     });
   }
  
@@ -486,14 +481,12 @@ function bindVisualizationAndTooltipEvents() {
       const btn = e.target.closest(".btn-delete-transfer");
       if (!btn) return;
       const trId = btn.dataset.deleteTransferId;
-      const draft = helpers.ensureDraftInputs(state);
-      const transfers = Array.isArray(draft.transfers) ? draft.transfers : [];
+      const transfers = Array.isArray(state.inputs.transfers) ? state.inputs.transfers : [];
       const nextTransfers = transfers.filter(t => t.id !== trId);
  
-      draft.transfers = nextTransfers;
-      state.draftInputs = sanitizeInputs(draft);
+      state.inputs.transfers = nextTransfers;
+      state.inputs = sanitizeInputs(state.inputs);
       markPendingChanges();
-      renderAll();
     });
   }
  
@@ -690,8 +683,7 @@ function bindItemEditorEvents() {
 function bindActionButtons() {
   if (dom.loadSample) dom.loadSample.addEventListener("click", handleLoadSample);
   if (dom.resetInputs) dom.resetInputs.addEventListener("click", handleResetInputs);
-  if (dom.applyChanges) dom.applyChanges.addEventListener("click", applyPendingChanges);
-  if (dom.cancelChanges) dom.cancelChanges.addEventListener("click", cancelPendingChanges);
+  // Removed pending changes bindings
   if (dom.jumpToTop) dom.jumpToTop.addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
 
   function toggleControlsPanel() {
@@ -972,22 +964,7 @@ function handleResetInputs() {
   commitImmediateInputs(createResetInputs(state.inputs));
 }
 
-function applyPendingChanges() {
-  if (!state.draftInputs) return;
-  state.inputs = sanitizeInputs(state.draftInputs);
-  helpers.markClean(state);
-  setPendingBarVisible(false);
-  refreshInputsPanel(state.inputs);
-  persistPrimaryState(state.inputs);
-  renderAll();
-}
-
-function cancelPendingChanges() {
-  helpers.markClean(state);
-  setPendingBarVisible(false);
-  refreshInputsPanel(state.inputs);
-  renderAll();
-}
+// Removed applyPendingChanges and cancelPendingChanges
 
 function handleHashChange() {
   syncViewModeUi(); syncViewModeGuideUi();
@@ -1053,7 +1030,7 @@ function handleItemClick(group, event) {
     const item = state.itemEditors[group].items.find(e => e.id === incomeId);
     if (item) {
       if (!Array.isArray(item.allocations)) item.allocations = [];
-      const defaultAcc = ((state.draftInputs || state.inputs).accounts || [])[0]?.id || "";
+      const defaultAcc = (state.inputs.accounts || [])[0]?.id || "";
       item.allocations.push({ accountId: defaultAcc, amount: 0 });
       listRenderer.renderItemList(group, state.itemEditors[group].items, { editing: true });
       setItemEditorUi(group, true);
@@ -1098,11 +1075,10 @@ function setPendingBarVisible(visible) {
 
 function markPendingChanges() {
   if (state.isViewMode) return;
-  helpers.markDirty(state);
-  helpers.syncDerivedValues(state.draftInputs, { getMonthlyAllocationTotalWon });
-  helpers.applyInputsToForm(dom.inputsForm, state.draftInputs, { FORM_FIELD_KEYS, toMan: IsfUtils.toMan });
-  listRenderer.renderInputHints(state.draftInputs);
-  setPendingBarVisible(true);
+  helpers.syncDerivedValues(state.inputs, { getMonthlyAllocationTotalWon });
+  listRenderer.renderInputHints(state.inputs);
+  persistPrimaryState(state.inputs);
+  renderAll();
 }
 
 function hasPendingChanges() { return !!state.draftInputs && JSON.stringify(state.draftInputs) !== JSON.stringify(state.inputs); }
@@ -1171,7 +1147,7 @@ function applyItemEditor(group) {
     draft[`${group}Items`] = editor.items;
   }
   
-  state.draftInputs = sanitizeInputs(draft);
+  state.inputs = sanitizeInputs(draft);
   cancelItemEditor(group);
   markPendingChanges();
 }
