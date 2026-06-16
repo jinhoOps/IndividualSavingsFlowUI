@@ -20,7 +20,7 @@ IndividualSavingsFlowUI (ISF) 프로젝트의 모든 지식은 이 지도를 통
 ## 🚀 진행 중인 개발 (Active Development)
 - [Phase 2 Context](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/.planning/phases/02-core-components-layout/02-CONTEXT.md): 완료
 - [Phase 3 Context](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/.planning/phases/03-multi-account-data-model/03-CONTEXT.md): 완료
-- [Phase 5 Context](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/.planning/phases/05-portfolio-creation-allocation-ui/05-CONTEXT.md): 기획 완료 (구현 대기)
+- [Phase 5 Context](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/.planning/phases/05-portfolio-creation-allocation-ui/05-CONTEXT.md): 완료
 - [Phase 999.15 UAT](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/.planning/phases/999.15-follow-up-phase-15-incomplete-plans-backlog/999.15-UAT.md): 사용자 인수 테스트 명세서 (진행 중)
 - [[Plan_Step3]]: 포트폴리오(계좌/종목) 고도화 기획.
 - [[Plan_Step3_Implementation]]: Step 3 상세 구현 로직 및 API 설계.
