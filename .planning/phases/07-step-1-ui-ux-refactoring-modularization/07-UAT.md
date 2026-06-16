@@ -1,12 +1,12 @@
 ---
-status: diagnosed
+status: resolved
 phase: 07-step-1-ui-ux-refactoring-modularization
 source:
   - 07-01-SUMMARY.md
   - 07-02-SUMMARY.md
   - 07-03-SUMMARY.md
 started: 2026-06-16T14:56:55.1173453+09:00
-updated: 2026-06-16T15:17:36.1279925+09:00
+updated: 2026-06-16T15:35:54.0447995+09:00
 ---
 
 ## Current Test
@@ -73,7 +73,7 @@ blocked: 0
 ## Gaps
 
 - truth: "Cold start and initial sample-data path should leave the Step 1 app in a usable state with live data."
-  status: failed
+  status: resolved
   reason: "User reported: 데이터 확인을 위해 샘플불러오기 하니까 라우팅 이상했고, 아예 초기화를 누르면 샘플 데이터로 초기화 해주는게 좋겠어. (값은 프리셋에서 중립형 연봉 5천만원)"
   severity: major
   test: 1
@@ -88,7 +88,7 @@ blocked: 0
     - "Reset/initialization should load the neutral preset with annual income 50,000,000 KRW."
   debug_session: "inline-uat-diagnosis-2026-06-16"
 - truth: "In Sankey detail mode, fixed expenses should split into and display all lower-level fixed-cost subitems rather than matching the basic view."
-  status: failed
+  status: resolved
   reason: "User reported: pass, 그런데 생키 - 상세 로 볼때 고정비 하위항목으로 갈라져서 전부 보여야 하는데 기본보기랑 다를게 없어"
   severity: major
   test: 8
@@ -105,7 +105,7 @@ blocked: 0
     - "Add a regression assertion that detail mode displays more fixed-expense nodes than basic mode when subitems exist."
   debug_session: "inline-uat-diagnosis-2026-06-16"
 - truth: "Preset loading and sample-data loading should update Step 1 safely like JSON import, ISF CODE backup restore, and hash restore."
-  status: failed
+  status: resolved
   reason: "User reported: 프리셋- x , json 가져오기 - o , isf code 데이터 백업복원 - o , 샘플데이터 - x (제거하고 초기화 기능에 합병), 해시복원 : O"
   severity: major
   test: 3
@@ -121,7 +121,7 @@ blocked: 0
     - "Make preset application complete in-place with clear feedback and no unexpected routing."
   debug_session: "inline-uat-diagnosis-2026-06-16"
 - truth: "Account/group management should be understandable enough for normal use, and return/other settings for expense/saving/investment should live in settings rather than the main spending/saving/investment menu."
-  status: failed
+  status: resolved
   reason: "User reported: 기능은 정상 동작 하는것으로 보이나 계좌 관리 UIUX 가 너무 어렵게되어있어서 이용 자체 가 어려움 / 지출저축투자 메뉴의 `수익률/기타`는 설정 에서 하는게 맞을듯."
   severity: major
   test: 4
@@ -137,7 +137,7 @@ blocked: 0
     - "Remove or reroute the stale `advancedTabRates` entry from the item-management tab list."
   debug_session: "inline-uat-diagnosis-2026-06-16"
 - truth: "Mobile controls-block rows should keep unit labels contained and use available width efficiently, including one-line label/input layouts where practical."
-  status: failed
+  status: resolved
   reason: "User reported: `<div class=\"controls-block\">` 여기에 단위 표시 벗어난게 많음,라벨 크기가 작기 때문에 인풋영역을 한줄로 표기가능하여 화면 밀도 향상"
   severity: major
   test: 7
