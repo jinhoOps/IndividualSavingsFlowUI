@@ -6,6 +6,8 @@
 
 데이터 수집이나 서버 영속화를 최소화하여 개인정보 노출 걱정 없이 오프라인에서도 강력하게 동작하며, 철저한 금융 연산 규칙과 안정적인 성능을 자랑합니다.
 
+## 배포 페이지 : [GitHub Pages 바로가기](https://jinhoops.github.io/IndividualSavingsFlowUI/)
+
 ---
 
 ## 🎯 프로젝트 의도 & 철학
@@ -69,4 +71,4 @@ npm run dev
 npm run build
 ```
 
-* 배포 페이지 링크: [GitHub Pages 바로가기](https://jinhoops.github.io/IndividualSavingsFlowUI/)
+
