@@ -2,32 +2,33 @@
 gsd_state_version: 1.0
 milestone: v1.8
 milestone_name: 적립식 포트폴리오 관리 (Step 3 고도화)
-status: execution
-last_updated: "2026-06-15T17:03:00.000Z"
+status: ready_to_plan
+last_updated: 2026-06-16T01:35:27.350Z
 last_activity: 2026-06-15
 progress:
   total_phases: 2
   completed_phases: 1
   total_plans: 1
-  completed_plans: 1
+  completed_plans: 5
   percent: 50
+stopped_at: Phase 05 complete (0/1) — ready to discuss Phase 6
 ---
 
 # Project State
 
 ## Current Position
 
-Phase: 05 (portfolio-creation-allocation-ui) — COMPLETED
-Plan: 1 of 1 completed
-Status: Phase 5 execution complete, verified via build and types check. Next is Phase 6.
-Last activity: 2026-06-15
+Phase: 6
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-06-16
 
 ## Project Reference
 
 See: .planning/PROJECT.md (updated 2026-05-20)
 
 **Core value:** 정적 웹 기반의 고성능 자산 관리 도구 (AI 의존성 제거)
-**Current focus:** Milestone v1.8 Planning
+**Current focus:** Phase 6 — confirmation & portfolio storage hub
 
 ## Key Decisions
 

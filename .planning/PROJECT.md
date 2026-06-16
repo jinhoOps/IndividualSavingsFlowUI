@@ -45,10 +45,10 @@
 - ✓ 768px 모바일 반응형 레이아웃 개선 및 줌/리사이즈 대응 (v1.6)
 - ✓ SVG ➔ 2배 고해상도 PNG 이미지 내보내기 및 공유 기능 (v1.6)
 - ✓ 수입/지출 통장 쪼개기(계좌 관리) 모델 및 4단계 레이어 Sankey 자동 연산 (v1.6)
+- ✓ PORT-02: 포트폴리오(계좌/종목) 고도화 및 비중 관리 기능 이식 — Phase 5
 
 ### Active (Next Milestone: v1.7)
 
-- [ ] **PORT-02**: 포트폴리오(계좌/종목) 고도화 및 비중 관리 기능 이식
 - [ ] **PORT-03**: 실시간 격차 분석(Target vs Actual) 알림 및 리밸런싱 로직 구축
 - [ ] **STAB-06**: PWA 오프라인 예외 처리 고도화 및 안정성 모니터링
 - [ ] **ADV-04**: 다국어 지원을 위한 텍스트 리소스 외부화 및 바인더 구현
@@ -111,42 +111,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-11 after v1.7 Milestone Initialized*�트로 분리 | ✓ Good |
-| AI 기능 제거 | 실험적 기능보다 데이터 무결성과 정적 웹의 신뢰성이 우선됨 | ✓ Good |
-| 전역 스타일 공유 (shared/styles) | Step 간 디자인 파편화를 막고 유지보수 효율 증대 | ✓ Good |
-| React 19 점진적 도입 | 복잡한 UI 상태 관리 및 타입 안정성을 위해 현대적 스택으로 전환 시작 | — Ongoing |
-| Step 2 모듈화 및 컨트롤러 이식 | Step 1 모듈화 사양과 일관성 유지 및 app.js 경량화 | ✓ Good |
-| 수동 경로 임포트 오류 즉각 해결 | app.js 내의 404 경로 참조 버그를 발견하여 외과적 핫픽스 단행 | ✓ Good |
-
----
-
-## Evolution History
-
-<details>
-<summary>v1.0 ~ v1.3 Evolution Details</summary>
-
-- v1.0 Shipped: 프리셋 기반 자산 시각화 MVP 완비.
-- v1.1~v1.3 Shipped: 시뮬레이션 고도화, 온보딩 가이드, 포트폴리오 기본 탑재 완료.
-</details>
-
----
-
-## Evolution
-
-This document evolves at phase transitions and milestone boundaries.
-
-**After each phase transition** (via `/gsd-transition`):
-1. Requirements invalidated? → Move to Out of Scope with reason
-2. Requirements validated? → Move to Validated with phase reference
-3. New requirements emerged? → Add to Active
-4. Decisions to log? → Add to Key Decisions
-5. "What This Is" still accurate? → Update if drifted
-
-**After each milestone** (via `/gsd-complete-milestone`):
-1. Full review of all sections
-2. Core Value check — still the right priority?
-3. Audit Out of Scope — reasons still valid?
-4. Update Context with current state
-
----
-*Last updated: 2026-06-11 after v1.7 Milestone Initialized*
+*Last updated: 2026-06-16 after Phase 5*
