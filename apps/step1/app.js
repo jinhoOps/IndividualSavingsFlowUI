@@ -51,7 +51,7 @@ import * as helpers from "./modules/state-helpers.js";
 import { initOnboarding } from "./modules/onboarding-manager.js";
 import {
   syncViewModeUi, syncViewModeGuideUi, syncBackupUi,
-  syncSankeyValueModeUi, syncSankeySortModeUi,
+  syncSankeyValueModeUi, syncSankeySortModeUi, syncSankeyGroupingUi,
   syncItemSortModeUi, syncMobileInputsPanelVisibility,
   syncMobileItemEditorFab, syncAdvancedTabBlockVisibility,
   setActiveAdvancedTab, refreshInputsPanel, syncDerivedMonthlyInputsToUi,
@@ -75,6 +75,7 @@ function init() {
   syncBackupUi();
   syncSankeyValueModeUi();
   syncSankeySortModeUi();
+  syncSankeyGroupingUi();
   syncItemSortModeUi();
   syncMobileInputsPanelVisibility();
   setActiveAdvancedTab(state.activeAdvancedTab);
@@ -278,6 +279,9 @@ function bindControls() {
   if (dom.sankeyViewAmount) dom.sankeyViewAmount.addEventListener("click", () => setSankeyValueMode(SANKEY_VALUE_MODES.AMOUNT));
   if (dom.sankeyViewPercent) dom.sankeyViewPercent.addEventListener("click", () => setSankeyValueMode(SANKEY_VALUE_MODES.PERCENT));
   if (dom.sankeySortMode) dom.sankeySortMode.addEventListener("change", () => setSankeySortMode(dom.sankeySortMode.value));
+  if (dom.sankeyGroupingExpense) dom.sankeyGroupingExpense.addEventListener("change", () => setSankeyGrouping("expense", dom.sankeyGroupingExpense.value));
+  if (dom.sankeyGroupingSavings) dom.sankeyGroupingSavings.addEventListener("change", () => setSankeyGrouping("savings", dom.sankeyGroupingSavings.value));
+  if (dom.sankeyGroupingInvest) dom.sankeyGroupingInvest.addEventListener("change", () => setSankeyGrouping("invest", dom.sankeyGroupingInvest.value));
 
 
 
@@ -808,7 +812,7 @@ function renderAll() {
     dom.appHeader.setFinancialWarning(maxStatus, message);
   }
 
-  const sankeyData = buildSankeyData(snapshot, state.sankeySortMode);
+  const sankeyData = buildSankeyData(snapshot, state.sankeySortMode, state.sankeyGrouping);
   const transfers = sankeyData ? sankeyData.transfers : [];
   renderSankey(snapshot, buildSankeyData, state.sankeySortMode);
   
@@ -1111,6 +1115,12 @@ function setSankeyValueMode(mode) {
 }
 
 function setSankeySortMode(mode) { state.sankeySortMode = mode; syncSankeySortModeUi(); renderSankey(state.snapshot, buildSankeyData, state.sankeySortMode); }
+
+function setSankeyGrouping(category, value) {
+  state.sankeyGrouping[category] = value;
+  syncSankeyGroupingUi();
+  if (state.snapshot) renderSankey(state.snapshot, buildSankeyData, state.sankeySortMode);
+}
 
 function setSankeyDetailMode(mode) {
   state.sankeyDetailMode = mode;

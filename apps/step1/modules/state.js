@@ -40,6 +40,11 @@ export const state = {
   sankeyZoom: 1,
   sankeyDetailMode: "basic",
   activeAdvancedTab: "expense",
+  sankeyGrouping: {
+    expense: "total",
+    savings: "total",
+    invest: "total"
+  },
   itemSortModes: {
     expense: ITEM_SORT_MODES.DEFAULT,
     savings: ITEM_SORT_MODES.DEFAULT,

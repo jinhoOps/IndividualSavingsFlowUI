@@ -409,6 +409,32 @@
                 %
               </button>
             </div>
+            <div class="sankey-grouping-controls" role="group" aria-label="Sankey Diagram 그룹화 설정">
+              <div class="sankey-grouping-item">
+                <span class="sankey-grouping-label">지출</span>
+                <select id="sankeyGroupingExpense" class="sankey-sort-select" aria-label="지출 그룹화 설정">
+                  <option value="total">통합</option>
+                  <option value="group">그룹별</option>
+                  <option value="detail">개별</option>
+                </select>
+              </div>
+              <div class="sankey-grouping-item">
+                <span class="sankey-grouping-label">저축</span>
+                <select id="sankeyGroupingSavings" class="sankey-sort-select" aria-label="저축 그룹화 설정">
+                  <option value="total">통합</option>
+                  <option value="group">그룹별</option>
+                  <option value="detail">개별</option>
+                </select>
+              </div>
+              <div class="sankey-grouping-item">
+                <span class="sankey-grouping-label">투자</span>
+                <select id="sankeyGroupingInvest" class="sankey-sort-select" aria-label="투자 그룹화 설정">
+                  <option value="total">통합</option>
+                  <option value="group">그룹별</option>
+                  <option value="detail">개별</option>
+                </select>
+              </div>
+            </div>
             <label class="sankey-sort" for="sankeySortMode">
               <span>정렬</span>
               <select id="sankeySortMode" class="sankey-sort-select" aria-label="Sankey Diagram 정렬 기준">

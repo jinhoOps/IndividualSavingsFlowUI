@@ -1,5 +1,30 @@
 # Project Evolution Log (연대기적 작업 로그)
 
+## [2026-06-16] feat | 전역 패널 헤더 투명 디자인 통일 및 Step 3 포트폴리오 에디터 접기/펼치기 UX 고도화 (v0.11.55)
+- **목적**: Step 2의 page-intro 헤더 디자인 규격(배경 및 테두리 투명화)을 Step 1과 Step 3에 전역 적용하여 시각적 통일성을 부여하고, 항상 노출되어 화면을 비대하게 차지하던 Step 3 포트폴리오 만들기 화면을 기본적으로 숨기고 추가/취소 버튼 액션으로 동적 제어하도록 UX를 고도화합니다.
+- **주요 변경사항**:
+  - **패널 헤더 디자인 통일 (`styles.css`)**:
+    - `step1/styles.css` 내 `.page-intro` 클래스의 `background: transparent !important`, `border: none !important`, `box-shadow: none !important` 강제 적용.
+    - `step3/styles.css`에 `.page-intro`, `.page-intro h1`, `.page-intro .lead` 스타일을 신설하여 Step 2 디자인 사양으로 정비.
+  - **Step 3 에디터 동적 토글 마크업 (`step3/index.html`)**:
+    - 포트폴리오 목록 헤더에 `+ 포트폴리오 추가` 버튼(`showCreatorBtn`) 탑재.
+    - 포트폴리오 생성기 폼 영역(`portfolioCreator`)의 디폴트 숨김(`style="display: none;"`) 설정.
+    - 생성기 폼 하단 액션 버튼 그룹에 `취소` 버튼(`cancelCreatorBtn`) 신설.
+  - **이벤트 컨트롤러 및 헬퍼 구현 (`step3/modules/dom.js`, `step3/app.js`)**:
+    - `dom.js`에 새로 신설한 버튼 DOM 선택자 맵핑 및 폼의 표시 상태를 제어하는 `showPortfolioCreator()`, `hidePortfolioCreator()` 헬퍼 함수 구현.
+    - `app.js` 내에 만들기/취소 버튼 클릭 이벤트를 구독하고, 생성 성공 콜백 완료 시 자동으로 크리에이터 폼을 닫고 목록을 재렌더링하도록 3계층 이벤트 제어 로직 보완.
+- **결과**: `npm run build` 및 `npm run check` 번들링/타입 검증 경고 없이 최종 통과.
+
+## [2026-06-16] feat | Step 1 가계 흐름(Sankey) 그룹화 다중화 및 사용자 커스텀 수준 제어 구현 (v0.11.54)
+- **목적**: Step 1 월 가계 흐름(Sankey Diagram)에서 지출, 저축, 투자 카테고리의 묶음 단위를 기본값으로 크게 '고정비(고정지출)', '저축', '투자'로 묶어 보여주어 가독성을 확보하고, 사용자가 직접 드롭다운(통합, 그룹별, 개별 항목)을 통해 각 분류별 그룹화 깊이를 자유롭게 실시간 커스터마이징할 수 있는 UX를 제공합니다.
+- **주요 변경사항**:
+  - **상태 관리 확장 (`state.js`)**: 각 카테고리별 그룹화 방식을 선택 저장하는 `sankeyGrouping` 상태(`expense`, `savings`, `invest` 각각 `total` | `group` | `detail`)를 추가하고 기본값은 모두 `total`로 지정.
+  - **Sankey 빌더 고도화 (`sankey-builder.js`)**: `buildSankeyData` 함수에 `sankeyGrouping`을 추가 수용하고, 카테고리별로 그룹화 방식에 맞춰 노드 및 링크를 동적으로 병합 및 합산하는 `resolveCategoryNodesAndLinks` 알고리즘 이식. 병합된 대분류 노드(`total-expense` 등)를 생성할 때 범례(Legend) 및 마우스 오버 툴팁과 연동되도록 `splitGroups` 배열 구조를 정밀하게 구성하여 반환.
+  - **UI 마크업 통합 (`index.html`)**: 생키 다이어그램 도구막대(`sankey-head-tools`) 내부의 `sankey-view-toggle` 바로 아래에 Glassmorphism 디자인 원칙에 맞춘 지출/저축/투자 그룹화 설정 셀렉트 박스 3개 신설.
+  - **DOM 매핑 및 이벤트 연동 (`dom.js`, `ui-controller.js`, `app.js`)**: `dom.js`에 새로 추가된 엘리먼트 맵핑을 이식하고, `ui-controller.js`에 `syncSankeyGroupingUi()` 동기화 헬퍼 신설. `app.js`에서 각 드롭다운의 `change` 이벤트를 구독하여 `setSankeyGrouping` 함수를 통해 상태 갱신 및 다이어그램 리렌더링 처리.
+  - **반응형 스타일 보완 (`styles.css`)**: 760px 이하 모바일 디바이스 뷰포트에서도 레이아웃이 찌그러지거나 잘리지 않도록 모바일 미디어 쿼리 블록에 `.sankey-grouping-controls` 및 내부 셀렉트 박스의 너비를 적절히 좁히는 반응형 스타일 추가.
+- **결과**: `npm run build` 및 `npm run check` 컴파일/타입 체크 에러 없이 무결하게 통과.
+
 ## [2026-06-15] feat | Phase 5: 적립식 포트폴리오 관리 UI/UX 및 실시간 비중 연산 구현 완료 (v0.11.52)
 - **목적**: 마일스톤 v1.8 Phase 5 요구사항(PORT-01, PORT-02)을 반영하여, 나만의 적립식 포트폴리오 만들기 화면 구현 및 실시간 비중 계산, 개별 종목 금액 1,000원 단위/최소 1,000원 검증, 그리고 한글 금액 힌트가 즉시 반영되는 입력 폼과 에디토리얼 요약 카드 및 팝업 모달 연동을 완성함.
 - **주요 변경사항**:

@@ -38,6 +38,12 @@ export function syncSankeySortModeUi() {
   if (dom.sankeySortMode) dom.sankeySortMode.value = state.sankeySortMode;
 }
 
+export function syncSankeyGroupingUi() {
+  if (dom.sankeyGroupingExpense) dom.sankeyGroupingExpense.value = state.sankeyGrouping.expense;
+  if (dom.sankeyGroupingSavings) dom.sankeyGroupingSavings.value = state.sankeyGrouping.savings;
+  if (dom.sankeyGroupingInvest) dom.sankeyGroupingInvest.value = state.sankeyGrouping.invest;
+}
+
 export function syncSankeyZoomUi() {
   if (dom.sankeyZoomLabel) {
     dom.sankeyZoomLabel.textContent = `${Math.round(state.sankeyZoom * 100)}%`;

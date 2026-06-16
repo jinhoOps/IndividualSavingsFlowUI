@@ -23,6 +23,8 @@ export const IsfDom = {
     modalPortfolioTotal: document.getElementById('modalPortfolioTotal'),
     modalAssetList: document.getElementById('modalAssetList'),
     modalChartBars: document.getElementById('modalChartBars'),
+    showCreatorBtn: document.getElementById('showCreatorBtn'),
+    cancelCreatorBtn: document.getElementById('cancelCreatorBtn'),
     closeModalBtn: document.getElementById('closeModalBtn'),
   },
 
@@ -254,6 +256,27 @@ export const IsfDom = {
     const { portfolioDetailModal } = this.nodes;
     if (portfolioDetailModal) {
       portfolioDetailModal.style.display = 'none';
+    }
+  },
+
+  /**
+   * 포트폴리오 크리에이터 폼을 화면에 표시합니다.
+   */
+  showPortfolioCreator() {
+    const { portfolioCreator } = this.nodes;
+    if (portfolioCreator) {
+      portfolioCreator.style.display = 'block';
+      portfolioCreator.scrollIntoView({ behavior: 'smooth' });
+    }
+  },
+
+  /**
+   * 포트폴리오 크리에이터 폼을 숨깁니다.
+   */
+  hidePortfolioCreator() {
+    const { portfolioCreator } = this.nodes;
+    if (portfolioCreator) {
+      portfolioCreator.style.display = 'none';
     }
   }
 };

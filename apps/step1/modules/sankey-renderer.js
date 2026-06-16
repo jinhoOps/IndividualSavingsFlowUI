@@ -90,7 +90,7 @@ export function renderSankey(snapshot, buildSankeyData, sortMode) {
   hideSankeyTooltip();
 
   const isMobileEarly = window.matchMedia(MOBILE_LAYOUT_QUERY).matches;
-  const rawData = buildSankeyData(snapshot, sortMode);
+  const rawData = buildSankeyData(snapshot, sortMode, state.sankeyGrouping);
   const isDetailMode = state.sankeyDetailMode === "detail";
   const data = isMobileEarly && !isDetailMode && rawData ? collapseOverloadedNodes(rawData) : rawData;
   dom.sankeySvg.innerHTML = "";

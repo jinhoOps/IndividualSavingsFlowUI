@@ -28,6 +28,15 @@ const App = {
   },
 
   bindEvents() {
+    // 0. 만들기 보이기/숨기기 토글 핸들러
+    IsfDom.nodes.showCreatorBtn.onclick = () => {
+      IsfDom.showPortfolioCreator();
+    };
+
+    IsfDom.nodes.cancelCreatorBtn.onclick = () => {
+      IsfDom.hidePortfolioCreator();
+    };
+
     // 1. 포트폴리오명 입력 변경 핸들러
     IsfDom.nodes.portfolioName.oninput = (e) => {
       this.state.updateActiveCreator('name', e.target.value);
@@ -78,6 +87,7 @@ const App = {
 
       if (IsfCalculator.validatePortfolio(newPortfolio)) {
         this.state.addPortfolio(newPortfolio);
+        IsfDom.hidePortfolioCreator();
         this.render(); // 전체 화면 재렌더링
       }
     };
