@@ -17,6 +17,7 @@ export function renderNetworkMap(container, accounts, transfers) {
  
   // 1. SVG 엘리먼트 생성
   const svg = createSvgElement("svg", {
+    id: "accountFlowNetworkMap",
     width: isMobileViewport ? `${width}px` : "100%",
     height: isMobileViewport ? `${height}px` : "100%",
     viewBox: `0 0 ${width} ${height}`,

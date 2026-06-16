@@ -62,4 +62,117 @@ test.describe('Individual Savings Flow Main UI/UX Audit', () => {
       expect(boundingBox.height).toBeCloseTo(28, 1);
     }
   });
+
+  test('Phase 07 panel hierarchy is stable on desktop and mobile', async ({ page }) => {
+    const viewports = [
+      { width: 1280, height: 900 },
+      { width: 768, height: 1024 },
+      { width: 390, height: 844 },
+    ];
+
+    for (const viewport of viewports) {
+      await page.setViewportSize(viewport);
+      await page.waitForTimeout(100);
+
+      const selectors = [
+        '.summary-panel',
+        '.sankey-panel',
+        '.controls-panel',
+        '.projection-panel',
+        '.comparison-panel',
+      ];
+      const boxes = [];
+      for (const selector of selectors) {
+        const box = await page.locator(selector).boundingBox();
+        expect(box, `${selector} should have a layout box at ${viewport.width}px`).not.toBeNull();
+        boxes.push(box!);
+      }
+
+      for (let index = 1; index < boxes.length; index += 1) {
+        expect(boxes[index].y).toBeGreaterThanOrEqual(boxes[index - 1].y - 2);
+      }
+    }
+  });
+
+  test('Phase 07 mobile controls stay contained at 768px and 390px', async ({ page }) => {
+    for (const viewport of [{ width: 768, height: 1024 }, { width: 390, height: 844 }]) {
+      await page.setViewportSize(viewport);
+      await page.waitForTimeout(100);
+
+      // controls-panel이 접혀 있다면 클릭해서 펼침
+      const toggleBtn = page.locator('#toggleControlsBtn');
+      if (await toggleBtn.getAttribute('aria-expanded') === 'false') {
+        await toggleBtn.click();
+        await page.waitForTimeout(500);
+      }
+
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      expect(overflow).toBeLessThanOrEqual(4);
+
+      // 항상 보이는 탭과 헤더 툴들을 먼저 검사
+      for (const selector of ['.mgmt-tabs', '#visualizationToggle', '.sankey-head-tools']) {
+        const locator = page.locator(selector).first();
+        await expect(locator, `${selector} should be visible at ${viewport.width}px`).toBeVisible();
+        const contained = await locator.evaluate((element) => element.scrollWidth <= element.clientWidth + 4 || window.getComputedStyle(element).overflowX !== 'visible');
+        expect(contained, `${selector} should fit or scroll within itself at ${viewport.width}px`).toBe(true);
+      }
+
+      // '계좌' 및 '흐름배분' 탭을 클릭해서 숨겨져 있던 테이블과 서브 탭 리스트 검사
+      const subTabs = [
+        { btnId: '#mgmtTabAccount', checkSelector: '.account-list' },
+        { btnId: '#mgmtTabFlow', checkSelector: '.advanced-block > .tab-list' }
+      ];
+
+      for (const tab of subTabs) {
+        const tabBtn = page.locator(tab.btnId);
+        await tabBtn.click();
+        await page.waitForTimeout(300);
+
+        const locator = page.locator(tab.checkSelector).first();
+        await expect(locator, `${tab.checkSelector} should be visible after clicking ${tab.btnId} at ${viewport.width}px`).toBeVisible();
+        const contained = await locator.evaluate((element) => element.scrollWidth <= element.clientWidth + 4 || window.getComputedStyle(element).overflowX !== 'visible');
+        expect(contained, `${tab.checkSelector} should fit or scroll within itself at ${viewport.width}px`).toBe(true);
+      }
+
+      await page.screenshot({ path: `test-results/phase07-step1-mobile-${viewport.width}.png`, fullPage: true });
+    }
+  });
+
+  test('Phase 07 visualization tabs render nonblank SVGs after switching and resize', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.waitForTimeout(100);
+
+    const sankeySvg = page.locator('#sankeySvg');
+    await expect(sankeySvg).toBeVisible();
+    let sankeyBox = await sankeySvg.boundingBox();
+    expect(sankeyBox).not.toBeNull();
+    expect(sankeyBox!.width).toBeGreaterThan(0);
+    expect(sankeyBox!.height).toBeGreaterThan(0);
+
+    const showNetworkBtn = page.locator('#showNetworkBtn');
+    await expect(showNetworkBtn).toBeVisible();
+    await showNetworkBtn.click();
+    await page.waitForTimeout(600); // 슬라이드 애니메이션 대기
+
+    // translateX(-50%) 이동으로 인해 Playwright 가시성 오판정이 날 수 있으므로 toBeAttached 및 boundingBox 크기로만 검증
+    const networkSvg = page.locator('#accountFlowNetworkMap');
+    await expect(networkSvg).toBeAttached();
+    const networkBox = await networkSvg.boundingBox();
+    expect(networkBox).not.toBeNull();
+    expect(networkBox!.width).toBeGreaterThan(0);
+    expect(networkBox!.height).toBeGreaterThan(0);
+
+    await page.setViewportSize({ width: 768, height: 1024 });
+    await page.waitForTimeout(200);
+    
+    const showSankeyDetailBtn = page.locator('#showSankeyDetailBtn');
+    await expect(showSankeyDetailBtn).toBeVisible();
+    await showSankeyDetailBtn.click();
+    await page.waitForTimeout(600);
+
+    sankeyBox = await sankeySvg.boundingBox();
+    expect(sankeyBox).not.toBeNull();
+    expect(sankeyBox!.width).toBeGreaterThan(0);
+    expect(sankeyBox!.height).toBeGreaterThan(0);
+  });
 });

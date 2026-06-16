@@ -139,12 +139,14 @@ export const IsfUtils = (function initIsfUtils(global) {
     return str.replace(/[&<>"']/g, (match) => entities[match]);
   }
 
+  // Step inputs already store values in Won; this helper only parses and rounds.
   function toWon(amountInUnit) {
     if (!Number.isFinite(Number(amountInUnit))) {
       return 0;
     }
     return Math.round(Number(amountInUnit));
   }
+  // Historical name retained for callers; this does not divide by 10,000.
   function toMan(amountInWon) {
     if (!Number.isFinite(Number(amountInWon))) {
       return 0;

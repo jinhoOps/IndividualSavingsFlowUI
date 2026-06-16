@@ -347,13 +347,23 @@ export function renderTransferSelectOptions(accounts) {
   const defaultSource = dom.transferSourceSelect.value;
   const defaultTarget = dom.transferTargetSelect.value;
 
-  const optionsHtml = `
-    <option value="">계좌 선택...</option>
-    ${accounts.map(a => `<option value="${a.id}">${IsfUtils.escapeHtml(a.name)}</option>`).join("")}
-  `;
+  const buildOptions = () => {
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = "계좌 선택...";
+    return [
+      placeholder,
+      ...accounts.map((account) => {
+        const option = document.createElement("option");
+        option.value = account.id;
+        option.textContent = account.name;
+        return option;
+      }),
+    ];
+  };
 
-  dom.transferSourceSelect.innerHTML = optionsHtml;
-  dom.transferTargetSelect.innerHTML = optionsHtml;
+  dom.transferSourceSelect.replaceChildren(...buildOptions());
+  dom.transferTargetSelect.replaceChildren(...buildOptions());
 
   dom.transferSourceSelect.value = defaultSource;
   dom.transferTargetSelect.value = defaultTarget;

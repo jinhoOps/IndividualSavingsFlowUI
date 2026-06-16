@@ -39,16 +39,16 @@
 
 - **Goal:** Step 1의 거대한 CSS 다이어트, 모듈 쪼개기, DESIGN.md 기반 UI/UX 전면 개편
 - **Requirements:** UI-01, UI-02
-- **Plans:** 3 plansPlans:
+- **Plans:** 3/3 plans complete
 
 **Wave 1**
 
-- [ ] 07-01-PLAN.md — Step 1 app.js 모듈화 및 렌더링/외부 데이터 경계 강화
-- [ ] 07-02-PLAN.md — Step 1 CSS 50% 감축, DESIGN.md 적용, 모바일 레이아웃 재정렬
+- [x] 07-01-PLAN.md — Step 1 app.js 모듈화 및 렌더링/외부 데이터 경계 강화
+- [x] 07-02-PLAN.md — Step 1 CSS 50% 감축, DESIGN.md 적용, 모바일 레이아웃 재정렬
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 07-03-PLAN.md — Step 1 라인 카운트, grep, Playwright 모바일 회귀 검증
+- [x] 07-03-PLAN.md — Step 1 라인 카운트, grep, Playwright 모바일 회귀 검증
 - **Success Criteria**:
   1. styles.css 크기를 50% 이상 감축하고 공통 theme 변수로 통합 적용되는지 확인
   2. app.js 내의 거대 바인딩 로직을 세부 모듈로 완전히 분리하고, 768px 이하 모바일 뷰에서 레이아웃 파손이 없는지 확인

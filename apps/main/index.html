@@ -42,7 +42,7 @@
 
     <main>
       <section class="panel summary-panel" aria-labelledby="cardsTitle">
-        <div class="section-head" style="position: relative;">
+        <div class="section-head">
           <h2 id="cardsTitle">재무 핵심 지표</h2>
         </div>
         <div id="summaryCards" class="summary-cards" aria-live="polite">
@@ -147,29 +147,29 @@
               </div>
 
               <!-- 수동 이체 설정 에디터 섹션 탑재 (아코디언 개편) -->
-              <div class="controls-block" id="transferEditorSection" style="margin-top: 16px; border-top: 1px dashed var(--line); padding-top: 16px;">
-                <div class="accordion-head" id="transferAccordionHead" style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none;">
-                  <h3 style="margin: 0; display: flex; align-items: center; gap: 4px;">
+              <div class="controls-block" id="transferEditorSection">
+                <div class="accordion-head" id="transferAccordionHead">
+                  <h3>
                     계좌 간 수동 이체 설정
                     <span class="help-tooltip-trigger" data-tooltip="계좌(통장) 간에 고정적으로 자금을 이체할 수 있는 수동 규칙을 설정합니다.">?</span>
                   </h3>
-                  <span id="transferAccordionIcon" style="font-size: 1rem; color: var(--muted); transition: transform 0.2s ease;">▾</span>
+                  <span id="transferAccordionIcon">▾</span>
                 </div>
-                <div id="transferAccordionBody" style="display: none; margin-top: 12px;">
-                  <div id="transferRuleForm" class="transfer-rule-form" style="display: flex; flex-direction: column; gap: 8px;">
-                    <div class="sentence-ui" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 0.9rem;">
-                      <select id="transferSourceSelect" class="editor-select" aria-label="출발 계좌" style="min-width: 120px;"></select>
+                <div id="transferAccordionBody">
+                  <div id="transferRuleForm" class="transfer-rule-form">
+                    <div class="sentence-ui">
+                      <select id="transferSourceSelect" class="editor-select" aria-label="출발 계좌"></select>
                       <span>에서</span>
-                      <select id="transferTargetSelect" class="editor-select" aria-label="도착 계좌" style="min-width: 120px;"></select>
+                      <select id="transferTargetSelect" class="editor-select" aria-label="도착 계좌"></select>
                       <span>로</span>
-                      <input type="number" id="transferAmount" class="editor-input" min="1" placeholder="금액 (원)" aria-label="이체 금액" style="width: 120px;" />
+                      <input type="number" id="transferAmount" class="editor-input" min="1" placeholder="금액 (원)" aria-label="이체 금액" />
                       <span>원을</span>
-                      <input type="text" id="transferLabel" class="editor-input" placeholder="이체 설명 (예: 생활비 보조)" aria-label="이체 설명" style="flex: 1; min-width: 140px;" />
+                      <input type="text" id="transferLabel" class="editor-input" placeholder="이체 설명 (예: 생활비 보조)" aria-label="이체 설명" />
                       <button type="button" id="addTransferRuleBtn" class="btn btn-primary btn-sm">추가</button>
                     </div>
-                    <p id="sourceBalanceHint" class="hint" style="color: var(--surplus); font-size: 0.82rem; margin-top: 2px;" hidden></p>
+                    <p id="sourceBalanceHint" class="hint" hidden></p>
                   </div>
-                  <div id="transferRuleList" class="transfer-rule-list" style="margin-top: 12px; display: grid; gap: 8px;">
+                  <div id="transferRuleList" class="transfer-rule-list">
                     <!-- 동적으로 렌더링된 수동 이체 규칙 카드가 들어감 -->
                   </div>
                 </div>
@@ -341,7 +341,7 @@
               </div>
 
               <!-- 이전 탭에서 이동한 증가율 및 수익률 설정 -->
-              <div id="ratesAdvancedBlock" class="controls-block controls-block--rates" style="margin-top: 16px; border-top: 1px dashed var(--line); padding-top: 16px;">
+              <div id="ratesAdvancedBlock" class="controls-block controls-block--rates">
                 <h3>
                   증가율 및 수익률 설정
                   <span class="help-tooltip-trigger" data-tooltip="자산 증가율 및 시뮬레이션에 사용될 기본 금리/수익률을 지정합니다.">?</span>
@@ -388,7 +388,7 @@
 
       <section class="panel sankey-panel" aria-labelledby="sankeyTitle">
         <div class="section-head section-head--sankey">
-          <div class="sankey-title-group" style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+          <div class="sankey-title-group">
             <h2 id="sankeyTitle">월 가계 흐름</h2>
             <div id="visualizationToggle" class="tab-list tab-list--sm" role="tablist" aria-label="시각화 선택">
               <button id="showSankeyBasicBtn" class="tab-btn tab-btn--sm is-active" data-vis="basic" role="tab" aria-selected="true">기본</button>
@@ -464,9 +464,9 @@
               <div id="sankeyTooltip" class="sankey-tooltip" hidden></div>
             </div>
             <div id="networkMapWrap" class="network-map-wrap visualization-slide">
-              <div id="networkMapInner" class="network-map-inner" style="position: relative; width: 100%; height: 100%; min-height: 480px;">
+              <div id="networkMapInner" class="network-map-inner">
                 <div class="scroll-hint-banner mobile-only">↔ 좌우로 드래그/스크롤하여 계좌망을 확인하세요</div>
-                <svg id="accountFlowNetworkMap" role="img" aria-label="계좌 간 자금 흐름 지도" style="width: 100%; height: 100%; min-height: 480px;"></svg>
+                <svg id="accountFlowNetworkMap" role="img" aria-label="계좌 간 자금 흐름 지도"></svg>
                 <p id="networkMapEmpty" class="empty" hidden>표시할 이체 흐름이 없습니다.</p>
               </div>
             </div>
@@ -490,24 +490,24 @@
         </div>
         
         <div id="projectionPanelContent" hidden>
-          <div class="projection-options" style="margin-top: 12px; margin-bottom: 12px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-            <div class="opt-group" style="display: flex; align-items: center; gap: 8px;">
-              <span class="muted" style="font-size: 0.8rem;">시뮬레이션 모드:</span>
+          <div class="projection-options">
+            <div class="opt-group">
+              <span class="muted">시뮬레이션 모드:</span>
               <div class="tab-list tab-list--sm" role="tablist">
                 <button id="modeTR" class="tab-btn tab-btn--sm is-active" data-mode="TR" role="tab" aria-selected="true">TR (재투자)</button>
                 <button id="modePR" class="tab-btn tab-btn--sm" data-mode="PR" role="tab" aria-selected="false">PR (미투자)</button>
               </div>
             </div>
-            <div style="width: 1px; height: 14px; background: var(--line); margin: 0 4px;"></div>
-            <div class="opt-group" style="display: flex; align-items: center; gap: 8px;">
-              <span class="muted" style="font-size: 0.8rem;">표시 컬럼:</span>
-              <label class="view-opt-label" style="font-size: 0.85rem; display: flex; align-items: center; gap: 4px; cursor: pointer;">
+            <div></div>
+            <div class="opt-group">
+              <span class="muted">표시 컬럼:</span>
+              <label class="view-opt-label">
                 <input type="checkbox" id="colShowFlow" /> 흐름
               </label>
-              <label class="view-opt-label" style="font-size: 0.85rem; display: flex; align-items: center; gap: 4px; cursor: pointer;">
+              <label class="view-opt-label">
                 <input type="checkbox" id="colShowBalance" checked /> 잔액
               </label>
-              <label class="view-opt-label" style="font-size: 0.85rem; display: flex; align-items: center; gap: 4px; cursor: pointer;">
+              <label class="view-opt-label">
                 <input type="checkbox" id="colShowDividend" /> 연배당
               </label>
             </div>
@@ -540,12 +540,12 @@
       <section class="panel comparison-panel" aria-labelledby="comparisonTitle">
         <div class="section-head">
           <h2 id="comparisonTitle">과거 지출 비교</h2>
-          <div class="section-head-tools" style="display: flex; gap: var(--sp-xs); align-items: center;">
-            <select id="snapshotSelector" class="snapshot-select" aria-label="비교할 스냅샷 선택" style="max-width: 150px;" disabled>
+          <div class="section-head-tools">
+            <select id="snapshotSelector" class="snapshot-select" aria-label="비교할 스냅샷 선택" disabled>
               <option value="">과거 시점 선택...</option>
             </select>
             <button id="saveSnapshotBtn" class="btn btn-ghost btn-sm" type="button" title="현재 상태를 비교용 스냅샷으로 저장" disabled>저장</button>
-            <button id="deleteSnapshotBtn" class="btn btn-ghost btn-sm" type="button" title="선택한 스냅샷 삭제" style="color: var(--status-error);" disabled>삭제</button>
+            <button id="deleteSnapshotBtn" class="btn btn-ghost btn-sm" type="button" title="선택한 스냅샷 삭제" disabled>삭제</button>
           </div>
         </div>
         <div id="comparisonContent" class="comparison-content" hidden>
@@ -622,9 +622,9 @@
       <div class="modal-body">
         <p class="hint mb-md">월 급여와 투자 성향을 선택해 자산 흐름을 한 번에 구성합니다.</p>
         
-        <div style="margin-bottom: 20px;">
-          <label class="editor-field-label" style="font-weight: 700; font-size: 0.78rem; display: block; margin-bottom: 6px;">1. 투자 성향 선택</label>
-          <div class="preset-styles" role="group" aria-label="투자 성향" style="display: flex; gap: 6px;">
+        <div>
+          <label class="editor-field-label">1. 투자 성향 선택</label>
+          <div class="preset-styles" role="group" aria-label="투자 성향">
             <button type="button" data-style="conservative" class="btn btn-ghost btn-sm preset-modal-style-btn">안정형</button>
             <button type="button" data-style="neutral" class="btn btn-ghost btn-sm preset-modal-style-btn is-active">중립형</button>
             <button type="button" data-style="aggressive" class="btn btn-ghost btn-sm preset-modal-style-btn">적극형</button>
@@ -637,7 +637,7 @@
           <input type="number" id="presetIncomeAmount" name="presetIncomeAmount" min="0" max="99000000" step="1000000" value="40000000" placeholder="예: 40000000" />
         </div>
       </div>
-      <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px;">
+      <div class="modal-footer">
         <button type="button" id="closePresetModalCancel" class="btn btn-ghost btn-sm">취소</button>
         <button type="button" id="applyModalPresetBtn" class="btn btn-primary btn-sm">적용하기</button>
       </div>

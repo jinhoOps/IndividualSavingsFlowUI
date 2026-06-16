@@ -66,7 +66,7 @@ export function syncMobileInputsPanelVisibility() {
 
 export function syncMobileItemEditorFab() {
   if (!dom.mobileEditorFab) return;
-  const isAnyEditing = state.itemEditor.expense || state.itemEditor.savings || state.itemEditor.invest;
+  const isAnyEditing = state.itemEditors.expense.active || state.itemEditors.savings.active || state.itemEditors.invest.active;
   dom.mobileEditorFab.hidden = !isAnyEditing;
 }
 
@@ -98,7 +98,6 @@ export function clearPendingChanges() {
 }
 
 export function refreshInputsPanel(inputs, warnings) {
-  console.log("[refreshInputsPanel] Called", inputs);
   if (!dom.inputsForm) return;
   state.suspendInputTracking = true;
   helpers.applyInputsToForm(dom.inputsForm, inputs, { FORM_FIELD_KEYS, toMan: IsfUtils.toMan });
@@ -115,7 +114,9 @@ export function refreshInputsPanel(inputs, warnings) {
   syncDerivedMonthlyInputsToUi();
   syncGroupOptionsAll();
   IsfUtils.updateAllKoreanWonHints();
-  state.suspendInputTracking = false;
+  window.setTimeout(() => {
+    state.suspendInputTracking = false;
+  }, 0);
 }
 
 export function syncDerivedMonthlyInputsToUi() {
