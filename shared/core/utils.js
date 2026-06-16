@@ -141,17 +141,28 @@ export const IsfUtils = (function initIsfUtils(global) {
 
   // Step inputs already store values in Won; this helper only parses and rounds.
   function toWon(amountInUnit) {
-    if (!Number.isFinite(Number(amountInUnit))) {
+    const parsed = sanitizeMoney(amountInUnit, Number.NaN, -1000000000000000);
+    if (!Number.isFinite(parsed)) {
       return 0;
     }
-    return Math.round(Number(amountInUnit));
+    return Math.round(parsed);
   }
   // Historical name retained for callers; this does not divide by 10,000.
   function toMan(amountInWon) {
-    if (!Number.isFinite(Number(amountInWon))) {
+    const parsed = sanitizeMoney(amountInWon, Number.NaN, -1000000000000000);
+    if (!Number.isFinite(parsed)) {
       return 0;
     }
-    return Math.round(Number(amountInWon));
+    return Math.round(parsed);
+  }
+
+  function formatWonInputValue(value) {
+    const raw = String(value ?? "").trim();
+    if (raw === "" || raw === "-") return raw;
+    const isNegative = raw.startsWith("-");
+    const digits = raw.replace(/[^0-9]/g, "");
+    if (!digits) return isNegative ? "-" : "";
+    return `${isNegative ? "-" : ""}${Number(digits).toLocaleString("ko-KR")}`;
   }
 
   function convertToKoreanWon(value) {
@@ -182,7 +193,7 @@ export const IsfUtils = (function initIsfUtils(global) {
   }
 
   function updateAllKoreanWonHints(container = document) {
-    const inputs = container.querySelectorAll("input[type='number']");
+    const inputs = container.querySelectorAll("input[data-money-input='won'], input[type='number']");
     inputs.forEach(input => {
       input.dispatchEvent(new Event("input", { bubbles: true }));
     });
@@ -192,13 +203,14 @@ export const IsfUtils = (function initIsfUtils(global) {
     document.addEventListener("DOMContentLoaded", () => {
       document.addEventListener("input", (event) => {
         const target = event.target;
-        if (!(target instanceof HTMLInputElement) || target.type !== "number") return;
+        if (!(target instanceof HTMLInputElement)) return;
         if (target.classList.contains("no-won-hint")) return;
         
         const name = (target.name || "").toLowerCase();
         const dataField = (target.dataset.field || "");
         const placeholder = (target.placeholder || "");
         const isClass = target.classList.contains("allocation-amount-input") || target.classList.contains("editor-input") || target.classList.contains("result-input");
+        const isWonInput = target.dataset.moneyInput === "won";
 
         const isRateField = 
           name.includes("growth") ||
@@ -214,6 +226,7 @@ export const IsfUtils = (function initIsfUtils(global) {
 
         const isMoneyField = 
           !isRateField && (
+            isWonInput ||
             name.includes("salary") ||
             name.includes("asset") ||
             name.includes("expense") ||
@@ -234,25 +247,16 @@ export const IsfUtils = (function initIsfUtils(global) {
 
         if (!isMoneyField) return;
 
-        let hintEl = target.parentElement.querySelector(".realtime-won-hint");
-        if (!hintEl) {
-          hintEl = document.createElement("div");
-          hintEl.className = "realtime-won-hint";
-          hintEl.style.fontSize = "0.75rem";
-          hintEl.style.color = "var(--primary, #ea5b2a)";
-          hintEl.style.marginTop = "4px";
-          hintEl.style.minHeight = "1rem";
-          target.parentNode.insertBefore(hintEl, target.nextSibling);
+        if (target.type !== "text" && !isWonInput) return;
+
+        const formatted = formatWonInputValue(target.value);
+        if (target.value !== formatted) {
+          const atEnd = target.selectionStart === target.value.length;
+          target.value = formatted;
+          if (atEnd) target.setSelectionRange(target.value.length, target.value.length);
         }
-        
-        const val = parseFloat(target.value) || 0;
-        if (val > 0) {
-          hintEl.textContent = `실시간 변환: ${convertToKoreanWon(val)}`;
-          hintEl.style.display = "block";
-        } else {
-          hintEl.textContent = "";
-          hintEl.style.display = "none";
-        }
+        const parsed = sanitizeMoney(target.value, 0, -1000000000000000);
+        target.title = parsed > 0 ? convertToKoreanWon(parsed) : "";
       });
       // DOM 로드 완료 후 힌트들을 1회 갱신합니다.
       updateAllKoreanWonHints();
@@ -302,6 +306,7 @@ export const IsfUtils = (function initIsfUtils(global) {
     toWon,
     toMan,
     convertToKoreanWon,
+    formatWonInputValue,
     updateAllKoreanWonHints,
     createId,
     escapeHtml,

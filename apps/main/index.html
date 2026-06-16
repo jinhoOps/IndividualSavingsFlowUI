@@ -61,7 +61,7 @@
           </h2>
           <div class="section-head-tools">
             <button id="openPresetBtn" class="btn btn-ghost btn-sm" type="button" title="투자 성향과 월수입 기준으로 프리셋 적용">프리셋</button>
-            <button id="resetInputs" class="btn btn-ghost btn-sm" type="button" title="중립형 연봉 5,000만 원 프리셋으로 초기화">중립형 초기화</button>
+            <button id="resetInputs" class="btn btn-ghost btn-sm" type="button" title="중립형 연봉 5,000만 원 프리셋으로 초기화">초기화</button>
             <button id="toggleControlsBtn" class="panel-toggle-btn" type="button" aria-expanded="false" aria-label="재무 설정 펼치기">▾</button>
           </div>
         </div>
@@ -316,20 +316,20 @@
                 <h3>현재 자산 및 부채</h3>
                 <div class="controls-grid controls-grid--simple">
                   <div class="control">
-                    <label for="startCash">초기 현금</label>
-                    <input id="startCash" name="startCash" type="number" step="1" inputmode="decimal" />
+                    <label for="startCash">초기 현금 <span class="help-tooltip-trigger" data-tooltip="시뮬레이션 시작 시점에 바로 사용할 수 있는 현금입니다. 1,000,000처럼 쉼표 입력을 지원합니다.">?</span></label>
+                    <input id="startCash" name="startCash" type="text" data-money-input="won" inputmode="decimal" />
                   </div>
                   <div class="control">
                     <label for="startSavings">초기 저축잔액</label>
-                    <input id="startSavings" name="startSavings" type="number" min="0" step="1" inputmode="decimal" />
+                    <input id="startSavings" name="startSavings" type="text" data-money-input="won" inputmode="decimal" />
                   </div>
                   <div class="control">
                     <label for="startInvest">초기 투자잔액</label>
-                    <input id="startInvest" name="startInvest" type="number" min="0" step="1" inputmode="decimal" />
+                    <input id="startInvest" name="startInvest" type="text" data-money-input="won" inputmode="decimal" />
                   </div>
                   <div class="control">
                     <label for="startDebt">현재 부채</label>
-                    <input id="startDebt" name="startDebt" type="number" min="0" step="1" inputmode="decimal" />
+                    <input id="startDebt" name="startDebt" type="text" data-money-input="won" inputmode="decimal" />
                   </div>
                   <div class="control">
                     <label for="horizonYears">시뮬레이션 기간</label>

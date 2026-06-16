@@ -4,7 +4,7 @@ plan: uat-rerun-gap-closure
 type: execute
 gap_closure: true
 source: 07-UAT.md
-status: ready
+status: completed
 created: 2026-06-16T16:30:49.8121375+09:00
 requirements_addressed:
   - UI-01

@@ -72,13 +72,13 @@ export function readInputsFromForm(form, baseInputs, { FORM_FIELD_KEYS, toWon })
   FORM_FIELD_KEYS.forEach(key => {
     const field = form.elements[key];
     if (!field) return;
-    const value = Number(field.value);
+    const value = field.value;
     const wonFields = ["monthlyExpense", "monthlySavings", "monthlyInvest", "monthlyDebtPayment", "startCash", "startSavings", "startInvest", "startDebt"];
     
     if (wonFields.includes(key)) {
       raw[key] = toWon(value);
     } else {
-      raw[key] = value;
+      raw[key] = Number(value);
     }
   });
 
@@ -99,7 +99,11 @@ export function applyInputsToForm(form, inputs, { FORM_FIELD_KEYS, toMan }) {
     const wonFields = ["monthlyExpense", "monthlySavings", "monthlyInvest", "monthlyDebtPayment", "startCash", "startSavings", "startInvest", "startDebt"];
     
     if (wonFields.includes(key)) {
-      field.value = String(toMan(inputs[key]));
+      const value = toMan(inputs[key]);
+      field.value = window.IsfUtils && typeof window.IsfUtils.formatWonInputValue === "function"
+        ? window.IsfUtils.formatWonInputValue(value)
+        : String(value);
+      field.dataset.moneyInput = "won";
     } else {
       field.value = String(inputs[key]);
     }

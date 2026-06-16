@@ -91,10 +91,7 @@ export function renderSankey(snapshot, buildSankeyData, sortMode) {
 
   const isMobileEarly = window.matchMedia(MOBILE_LAYOUT_QUERY).matches;
   const isDetailMode = state.sankeyDetailMode === "detail";
-  const grouping = isDetailMode
-    ? { ...state.sankeyGrouping, expense: "detail", savings: "detail", invest: "detail" }
-    : state.sankeyGrouping;
-  const rawData = buildSankeyData(snapshot, sortMode, grouping);
+  const rawData = buildSankeyData(snapshot, sortMode, state.sankeyGrouping);
   const data = isMobileEarly && !isDetailMode && rawData ? collapseOverloadedNodes(rawData) : rawData;
   dom.sankeySvg.innerHTML = "";
   dom.sankeyLegend.innerHTML = "";
@@ -130,12 +127,13 @@ export function renderSankey(snapshot, buildSankeyData, sortMode) {
   const splitCount = Array.isArray(data.splitGroups)
     ? data.splitGroups.reduce((sum, group) => sum + group.breakdown.length, 0)
     : 0;
-  const splitText = splitCount > 0 ? ` · 상세 분기 ${splitCount}개` : "";
+  const splitText = splitCount > 0 ? ` · 메타데이터 분기 ${splitCount}개` : "";
   const valueModeText = valueMode === SANKEY_VALUE_MODES.PERCENT ? "표시 %" : "표시 금액";
   const sortText = sortModeTextMap[normalizedSortMode] || sortModeTextMap[SANKEY_SORT_MODES.GROUP];
   const isMobileViewport = isMobileEarly;
   const zoomText = isMobileViewport ? ` · 확대 ${Math.round(getEffectiveSankeyZoom(true) * 100)}%` : "";
-  const metaInfo = `수입 ${formatCurrency(snapshot.income)} · 배분 ${formatCurrency(snapshot.requiredOutflow)} · 순현금흐름 ${formatSignedCurrency(snapshot.netCashflow)}${splitText} · ${valueModeText} · ${sortText}${zoomText}`;
+  const detailText = isDetailMode ? " · 상세 메타데이터 조절 가능" : " · 기본 통합 보기";
+  const metaInfo = `수입 ${formatCurrency(snapshot.income)} · 배분 ${formatCurrency(snapshot.requiredOutflow)} · 순현금흐름 ${formatSignedCurrency(snapshot.netCashflow)}${splitText}${detailText} · ${valueModeText} · ${sortText}${zoomText}`;
 
   if (dom.sankeyMeta) {
     dom.sankeyMeta.textContent = metaInfo;

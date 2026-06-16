@@ -1,5 +1,5 @@
 ---
-status: diagnosed
+status: resolved
 phase: 07-step-1-ui-ux-refactoring-modularization
 source:
   - 07-01-SUMMARY.md
@@ -7,7 +7,7 @@ source:
   - 07-03-SUMMARY.md
   - 07-GAP-CLOSURE-SUMMARY.md
 started: 2026-06-16T15:48:31.3902191+09:00
-updated: 2026-06-16T16:30:49.8121375+09:00
+updated: 2026-06-16T17:05:00+09:00
 ---
 
 ## Current Test
@@ -85,7 +85,7 @@ blocked: 0
 ## Gaps
 
 - truth: "프리셋, JSON 가져오기, ISF CODE 데이터, 백업 복원, 해시 복원, 공유 ID 로드가 Step 1 값을 정상적인 계좌/그룹 값으로 반영하고, 깨진 UI나 원시 마크업, 스크립트처럼 보이는 텍스트가 화면에 렌더링되지 않는다."
-  status: failed
+  status: resolved
   reason: "User reported: pass, 실시간 변환 글자 표시때문에 복잡도 높아지고 열이 깨짐, 초기 현금 helper 미동작, 돈 입력값 0개수 3개마다 `,`표시 추가되었으면 좋겠음"
   severity: major
   test: 3
@@ -103,7 +103,7 @@ blocked: 0
     - "Introduce display formatting for Won inputs, likely via text/inputmode decimal plus parse-on-read normalization."
   debug_session: "inline-uat-diagnosis-2026-06-16-rerun"
 - truth: "초기화/리셋을 누르면 연봉 50,000,000원의 중립형 프리셋이 현재 화면에서 바로 적용되고, 명확한 피드백이 보이며, 별도 샘플 데이터 화면으로 라우팅되지 않는다."
-  status: failed
+  status: resolved
   reason: "User reported: pass, 그런데 초기값으로 자본이 높게 찍혀서 0 하나씩 뺀값이 좋을듯함"
   severity: major
   test: 4
@@ -118,7 +118,7 @@ blocked: 0
     - "Add regression coverage for expected 50,000,000 KRW reset asset values."
   debug_session: "inline-uat-diagnosis-2026-06-16-rerun"
 - truth: "좁은 모바일 화면에서 controls-block 행의 라벨, 입력칸, 단위 표시가 영역 안에 들어가고, 페이지 전체 가로 스크롤이 생기지 않으며, 가능한 곳에서는 한 줄 라벨/입력 레이아웃으로 밀도 있게 표시된다."
-  status: failed
+  status: resolved
   reason: "User reported: pass, 그러나 생활비 하위 항목이 많아 나열할 경우 세로 초과, 그룹을 생성하면 디렉토리처럼 쓸수 있어야 접어서 이를 해소 가능해보임"
   severity: major
   test: 9
@@ -136,7 +136,7 @@ blocked: 0
     - "Add mobile coverage for grouped item lists with many 생활비 children."
   debug_session: "inline-uat-diagnosis-2026-06-16-rerun"
 - truth: "시각화 탭을 전환하거나 화면 크기를 바꿔도 Sankey/network 시각화가 페이지에 붙어 있고, 보이는 영역이 0이 아닌 크기로 렌더링된다."
-  status: failed
+  status: resolved
   reason: "User reported: 상세 탭에서 메타데이터로 조절한게 아닌 강제 개별화라 별로임. 기본은 전부 통합한걸로 보여주고 상세부터 아예 메타데이터 수정할수있게 해줘야하고, 계좌 흐름도는 작게보여서 보기가 힘들어"
   severity: major
   test: 10
@@ -156,7 +156,7 @@ blocked: 0
     - "Improve account-flow map readability with larger scale, zoom, or expanded view."
   debug_session: "inline-uat-diagnosis-2026-06-16-rerun"
 - truth: "Step 1 화면은 과한 radial glow 배경, 무거운 blur 효과, 다른 화면과 어긋나는 토큰 스타일 없이 컴팩트한 공유 테마 스타일을 사용한다."
-  status: failed
+  status: resolved
   reason: "User reported: 일부 토글이 전체적인 ui 에서 눈에 띔, `visualizationToggle`는 예시고 전체적으로 카드내의 항목이 복잡할때 과도한 윤곽선 표시 등등 전체적인 미니멀 추구 필요"
   severity: cosmetic
   test: 12
@@ -173,3 +173,12 @@ blocked: 0
     - "Reduce segmented-control borders/backgrounds where hierarchy is already clear."
     - "Add visual regression or screenshot review for `visualizationToggle` and dense management panels."
   debug_session: "inline-uat-diagnosis-2026-06-16-rerun"
+
+## Gap Closure
+
+resolved_by: 07-UAT-RERUN-GAP-PLAN.md
+summary: 07-UAT-RERUN-GAP-SUMMARY.md
+verification:
+  - "`npm run check` passed."
+  - "`node --check` passed for modified JS modules."
+  - "`npx playwright test tests/step1.spec.ts -g \"Phase 07\" --reporter=list --timeout=30000` printed all 6 Phase 07 tests as passed; the command process timed out while waiting for Playwright/webServer shutdown."

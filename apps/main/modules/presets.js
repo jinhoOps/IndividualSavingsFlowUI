@@ -41,6 +41,13 @@ const INVEST_DETAIL = [
   { id: "pension",      name: "개인연금/IRP", weight: 0.25 },
 ];
 
+function getStartingCapitalMultipliers(styleKey) {
+  if (styleKey === "aggressive" || styleKey === "beast") {
+    return { cash: 0.02, savings: 0.2, invest: 0.8, debt: 0.5 };
+  }
+  return { cash: 0.02, savings: 0.8, invest: 0.2, debt: 0.5 };
+}
+
 function distributeAmount(total, details) {
   const items = details.map(d => ({
     ...d,
@@ -73,19 +80,11 @@ export function applyPreset(salaryValue, styleKey) {
   if (allocSalary > 0) allocations.push({ accountId: "acc-salary", amount: allocSalary });
   if (allocInvest > 0) allocations.push({ accountId: "acc-stock", amount: allocInvest });
 
-  const isAggressiveOrBeast = styleKey === "aggressive" || styleKey === "beast";
-  // 연봉을 기준으로 초기 자산을 풍부하게 조절
-  const startCash = Math.round(salaryValue * 0.2); // 연봉의 0.2배
-  const startDebt = Math.round(salaryValue * 0.5); // 연봉의 0.5배
-  
-  let startSavings, startInvest;
-  if (isAggressiveOrBeast) {
-    startSavings = Math.round(salaryValue * 2.0); // 연봉의 2배 저축
-    startInvest = Math.round(salaryValue * 8.0);  // 연봉의 8배 투자
-  } else {
-    startSavings = Math.round(salaryValue * 8.0); // 연봉의 8배 저축
-    startInvest = Math.round(salaryValue * 2.0);  // 연봉의 2배 투자
-  }
+  const startingCapital = getStartingCapitalMultipliers(styleKey);
+  const startCash = Math.round(salaryValue * startingCapital.cash);
+  const startDebt = Math.round(salaryValue * startingCapital.debt);
+  const startSavings = Math.round(salaryValue * startingCapital.savings);
+  const startInvest = Math.round(salaryValue * startingCapital.invest);
 
   const transfers = [];
   if (income > 0) {
@@ -197,19 +196,11 @@ export function applyPresetBySalary(salaryWon, styleKey) {
   if (allocSalary > 0) allocations.push({ accountId: "acc-salary", amount: allocSalary });
   if (allocInvest > 0) allocations.push({ accountId: "acc-stock", amount: allocInvest });
 
-  const isAggressiveOrBeast = styleKey === "aggressive" || styleKey === "beast";
-  // 연봉을 기준으로 초기 자산을 풍부하게 조절
-  const startCash = Math.round(validSalaryWon * 0.2); // 연봉의 0.2배
-  const startDebt = Math.round(validSalaryWon * 0.5); // 연봉의 0.5배
-  
-  let startSavings, startInvest;
-  if (isAggressiveOrBeast) {
-    startSavings = Math.round(validSalaryWon * 2.0); // 연봉의 2배 저축
-    startInvest = Math.round(validSalaryWon * 8.0);  // 연봉의 8배 투자
-  } else {
-    startSavings = Math.round(validSalaryWon * 8.0); // 연봉의 8배 저축
-    startInvest = Math.round(validSalaryWon * 2.0);  // 연봉의 2배 투자
-  }
+  const startingCapital = getStartingCapitalMultipliers(styleKey);
+  const startCash = Math.round(validSalaryWon * startingCapital.cash);
+  const startDebt = Math.round(validSalaryWon * startingCapital.debt);
+  const startSavings = Math.round(validSalaryWon * startingCapital.savings);
+  const startInvest = Math.round(validSalaryWon * startingCapital.invest);
 
   const transfers = [];
   if (income > 0) {

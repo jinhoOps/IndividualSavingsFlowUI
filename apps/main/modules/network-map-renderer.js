@@ -7,8 +7,8 @@ export function renderNetworkMap(container, accounts, transfers) {
  
   const isMobileViewport = window.matchMedia("(max-width: 760px)").matches;
   const clientW = container.clientWidth || 600;
-  const width = isMobileViewport ? Math.max(680, clientW) : clientW;
-  const height = container.clientHeight || 480;
+  const width = isMobileViewport ? Math.max(820, clientW) : Math.max(920, clientW);
+  const height = Math.max(container.clientHeight || 480, isMobileViewport ? 460 : 520);
   const cx = width / 2;
   const cy = height / 2;
   
@@ -60,15 +60,15 @@ export function renderNetworkMap(container, accounts, transfers) {
   const N = safeAccounts.length;
   safeAccounts.forEach((acc, i) => {
     // x 좌표는 좌에서 우로 균등 배분 (좌우 마진 80px)
-    const startX = 80;
-    const endX = width - 80;
+    const startX = isMobileViewport ? 100 : 130;
+    const endX = width - startX;
     const x = N > 1 ? startX + (i * (endX - startX)) / (N - 1) : cx;
     
     // y 좌표는 중앙선을 기준으로 위/아래로 지그재그(Alternating) 배치하여
     // 수평 링크 꼬임 및 노드 겹침을 최소화 (N이 2개 이상일 때만 지그재그 적용)
     let y = cy;
     if (N > 2) {
-      y = cy + (i % 2 === 0 ? -60 : 60);
+      y = cy + (i % 2 === 0 ? -86 : 86);
     }
     
     nodeMap[acc.id] = {
@@ -206,8 +206,8 @@ export function renderNetworkMap(container, accounts, transfers) {
       style: "cursor: pointer;"
     });
  
-    const rectWidth = 100;
-    const rectHeight = 38;
+    const rectWidth = isMobileViewport ? 124 : 136;
+    const rectHeight = isMobileViewport ? 46 : 50;
     
     // 노드 배경 박스
     const rect = createSvgElement("rect", {
@@ -233,7 +233,7 @@ export function renderNetworkMap(container, accounts, transfers) {
       y: node.y - 2,
       "text-anchor": "middle",
       class: "network-node-text-name",
-      style: 'font-size: 11px; font-weight: 600; fill: #102220; font-family: "Gowun Dodum";'
+      style: `font-size: ${isMobileViewport ? 12 : 13}px; font-weight: 700; fill: #102220; font-family: "Gowun Dodum";`
     });
     nameText.textContent = node.name;
 
@@ -243,7 +243,7 @@ export function renderNetworkMap(container, accounts, transfers) {
       y: node.y + 11,
       "text-anchor": "middle",
       class: "network-node-text-val",
-      style: 'font-size: 9.5px; font-weight: 500; fill: var(--muted); font-family: "Gowun Dodum";'
+      style: `font-size: ${isMobileViewport ? 10.5 : 11}px; font-weight: 600; fill: var(--muted); font-family: "Gowun Dodum";`
     });
     valText.textContent = IsfUtils.formatMoney(valWon * 10000);
  

@@ -586,8 +586,28 @@ to{opacity:1;transform:translateY(0)}
 .comparison-panel__overlay-badge{background:var(--ink);color:#fff;padding:6px 12px;border-radius:var(--rd-sm);font-size:0.78rem;font-weight:700;letter-spacing:0.05em;margin-bottom:var(--sp-xs)}
 .comparison-panel__overlay-text{font-size:0.85rem;color:var(--muted);font-weight:500;margin:0}
 .panel.is-collapsed .section-head-tools>button:not(.panel-toggle-btn){display:none !important}
+.allocation-group{border:0;border-top:1px solid rgba(16,34,32,0.08);padding-top:8px}
+.allocation-group:first-child{border-top:0;padding-top:0}
+.allocation-group__summary{display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;list-style:none;padding:8px 2px;color:var(--ink)}
+.allocation-group__summary::-webkit-details-marker{display:none}
+.allocation-group__summary::before{content:"▸";color:var(--muted);font-size:0.72rem;transition:transform 0.16s ease}
+.allocation-group[open]>.allocation-group__summary::before{transform:rotate(90deg)}
+.allocation-group__name{font-weight:700;font-size:0.84rem}
+.allocation-group__meta{margin-left:auto;font-size:0.74rem;color:var(--muted);white-space:nowrap}
+.allocation-group__items{display:grid;gap:8px;padding:2px 0 10px 18px}
+.network-map-inner{height:520px;min-height:460px}
+#visualizationToggle.tab-list{background:transparent;border-color:transparent;padding:0;gap:2px}
+#visualizationToggle .tab-btn{border:0;border-radius:var(--rd-sm);padding:6px 10px;color:var(--muted);background:transparent}
+#visualizationToggle .tab-btn:hover{background:rgba(16,34,32,0.04);color:var(--ink)}
+#visualizationToggle .tab-btn.is-active{border:0;background:rgba(16,34,32,0.08);color:var(--ink);box-shadow:none}
+.advanced-block,.controls-block,.comparison-card,.comparison-chart-wrap,.transfer-card,.transfer-rule-card,.account-row,.income-row:not(.is-editing),.expense-row:not(.is-editing),.savings-row:not(.is-editing),.invest-row:not(.is-editing){border-color:rgba(16,34,32,0.1)}
+.card:hover,.account-row:not(.is-editing):hover,.income-row:not(.is-editing):hover,.expense-row:not(.is-editing):hover,.savings-row:not(.is-editing):hover,.invest-row:not(.is-editing):hover,.transfer-rule-card:hover{border-color:rgba(16,34,32,0.18) !important}
+.transfer-card:hover{border-color:rgba(16,34,32,0.18);transform:none;box-shadow:0 1px 3px rgba(16,34,32,0.04)}
+.network-node-group:hover .network-node-bg{stroke:rgba(16,34,32,0.22);stroke-width:1.4;filter:none}
 @media (max-width:760px){
 .controls-panel .section-head,.projection-panel .section-head{cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;flex-direction:row;align-items:center;justify-content:space-between}
 .section-head-tools{display:flex !important;flex-wrap:nowrap !important;align-items:center}
 .panel-toggle-btn{flex-shrink:0}
+.allocation-group__items{padding-left:10px}
+.network-map-inner{height:460px;min-height:420px}
 }

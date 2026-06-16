@@ -204,11 +204,14 @@ test.describe('Individual Savings Flow Main UI/UX Audit', () => {
 
     const savedInputs = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}'));
     expect(savedInputs.incomes?.[0]?.amount).toBe(3550000);
+    expect(savedInputs.startCash).toBe(1000000);
+    expect(savedInputs.startSavings).toBe(40000000);
+    expect(savedInputs.startInvest).toBe(10000000);
     expect(savedInputs.monthlyExpense).toBeGreaterThan(0);
     expect(savedInputs.expenseItems?.length).toBeGreaterThan(3);
   });
 
-  test('Phase 07 gap closure expands Sankey detail mode into item labels', async ({ page }) => {
+  test('Phase 07 rerun keeps Sankey detail metadata controls effective', async ({ page }) => {
     await page.locator('#showSankeyBasicBtn').click();
     await page.waitForTimeout(200);
     const basicExpenseLabels = await page.locator('#sankeySvg .sankey-label').evaluateAll((labels) =>
@@ -218,9 +221,36 @@ test.describe('Individual Savings Flow Main UI/UX Audit', () => {
 
     await page.locator('#showSankeyDetailBtn').click();
     await page.waitForTimeout(300);
+    const detailWithTotalGrouping = await page.locator('#sankeySvg .sankey-label').evaluateAll((labels) =>
+      labels.map((label) => label.textContent || '').filter((text) => ['관리비', '수도세', '가스비', '전기세'].includes(text)).length
+    );
+    expect(detailWithTotalGrouping).toBe(0);
+
+    await page.locator('#sankeyGroupingExpense').selectOption('detail');
+    await page.waitForTimeout(300);
     const detailExpenseLabels = await page.locator('#sankeySvg .sankey-label').evaluateAll((labels) =>
       labels.map((label) => label.textContent || '').filter((text) => ['관리비', '수도세', '가스비', '전기세'].includes(text)).length
     );
     expect(detailExpenseLabels).toBeGreaterThanOrEqual(2);
+  });
+
+  test('Phase 07 rerun formats money fields and groups long item lists', async ({ page }) => {
+    await page.locator('#toggleControlsBtn').click();
+    await page.locator('#mgmtTabSettings').click();
+
+    const startCash = page.locator('#startCash');
+    await startCash.fill('1234567');
+    await expect(startCash).toHaveValue('1,234,567');
+    await expect(startCash).toHaveAttribute('title', /123만/);
+
+    await page.locator('#mgmtTabFlow').click();
+    expect(await page.locator('#expenseAdvancedBlock .allocation-group').count()).toBeGreaterThan(1);
+    const utilityGroup = page.locator('#expenseAdvancedBlock .allocation-group').filter({ hasText: '공과금' }).first();
+    await expect(utilityGroup).toBeVisible();
+    await expect(utilityGroup.locator('.allocation-group__items')).not.toBeVisible();
+    await utilityGroup.locator('summary').click();
+    await expect(utilityGroup.locator('.allocation-group__items')).toBeVisible();
+    await utilityGroup.locator('summary').click();
+    await expect(utilityGroup.locator('.allocation-group__items')).not.toBeVisible();
   });
 });
