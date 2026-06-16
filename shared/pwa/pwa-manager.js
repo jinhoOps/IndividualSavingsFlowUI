@@ -1,4 +1,4 @@
-﻿(function initIsfPwaManager(global) {
+(function initIsfPwaManager(global) {
   "use strict";
 
   const PWA_STANDALONE_NOTICE_KEY = "isf-pwa-standalone-notice-v1";
@@ -308,6 +308,16 @@
       let refreshing = false;
       navigator.serviceWorker.addEventListener("controllerchange", () => {
         if (refreshing) return;
+        
+        // 무한 새로고침 방지 가드 (10초 쿨다운)
+        const now = Date.now();
+        const lastReload = sessionStorage.getItem("isf-pwa-last-reload");
+        if (lastReload && (now - parseInt(lastReload, 10) < 10000)) {
+          console.warn("PWA: Infinite reload loop detected and blocked.");
+          return;
+        }
+        sessionStorage.setItem("isf-pwa-last-reload", String(now));
+
         refreshing = true;
         window.location.reload();
       });

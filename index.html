@@ -4,9 +4,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>IndividualSavings Flow UIUX</title>
-    <meta http-equiv="refresh" content="0; url=./apps/main/" />
     <script>
       (function redirectToMain() {
+        var path = window.location.pathname;
+        // 이미 하위 앱 경로에 진입해 있는 경우(서비스워커 폴백 등으로 루트 HTML이 호출된 경우) 리다이렉트 차단
+        if (path.indexOf('/apps/main/') !== -1 || 
+            path.indexOf('/apps/simulation/') !== -1 || 
+            path.indexOf('/apps/portfolio/') !== -1) {
+          console.warn("Redirect blocked to prevent infinite routing loop. Path:", path);
+          return;
+        }
         var search = window.location.search || "";
         var hash = window.location.hash || "";
         window.location.replace("./apps/main/" + search + hash);
