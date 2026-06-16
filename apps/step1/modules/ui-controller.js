@@ -98,6 +98,7 @@ export function clearPendingChanges() {
 }
 
 export function refreshInputsPanel(inputs, warnings) {
+  console.log("[refreshInputsPanel] Called", inputs);
   if (!dom.inputsForm) return;
   state.suspendInputTracking = true;
   helpers.applyInputsToForm(dom.inputsForm, inputs, { FORM_FIELD_KEYS, toMan: IsfUtils.toMan });

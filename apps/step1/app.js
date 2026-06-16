@@ -255,6 +255,7 @@ function bindControls() {
       event.preventDefault();
     });
     dom.inputsForm.addEventListener("input", (event) => {
+      console.log("[inputsForm input] event", event.target.name, event.target.value, "suspend:", state.suspendInputTracking);
       if (state.suspendInputTracking) return;
       const target = event.target;
       if (!(target instanceof HTMLInputElement) || !FORM_FIELD_KEYS.includes(target.name)) return;
@@ -774,6 +775,7 @@ function bindGlobalEvents() {
 }
 
 function renderAll() {
+  console.log("[renderAll] Called");
   const inputs = getVisibleInputs();
   const snapshot = buildMonthlySnapshot(inputs);
   state.snapshot = snapshot;
