@@ -53,7 +53,7 @@ export const IsfDom = {
           </div>
           <div style="border-top: 1px solid rgba(255,255,255,0.06); padding-top: 10px; margin-top: 4px; display: flex; justify-content: space-between; align-items: baseline;">
             <span style="font-size: 0.8rem; color: #888;">총 투자 금액</span>
-            <span style="font-size: 1.1rem; font-weight: 700; color: #fff;">${IsfUtils.formatMoney(p.totalAmount)}</span>
+            <span style="font-size: 1.1rem; font-weight: 700; color: #fff;">${p.totalAmount.toLocaleString('ko-KR')}원</span>
           </div>
           <div style="font-size: 0.75rem; color: var(--primary, #ea5b2a); text-align: right; margin-top: -4px; font-weight: 500;">
             ${IsfUtils.convertToKoreanWon(p.totalAmount)}
@@ -111,6 +111,14 @@ export const IsfDom = {
     const assetsWithRatios = IsfCalculator.calculateRatios(assets, totalAmount);
 
     creatorAssetTable.innerHTML = assetsWithRatios.map(as => {
+      const amountVal = Number(as.amount) || 0;
+      const isAmountValid = amountVal === 0 || IsfCalculator.validateAssetAmount(amountVal);
+      const borderBottomStyle = isAmountValid ? 'rgba(255, 255, 255, 0.15)' : 'var(--status-error, #ff5e5e)';
+      const hintColor = isAmountValid ? 'var(--primary, #ea5b2a)' : 'var(--status-error, #ff5e5e)';
+      const hintText = amountVal > 0 
+        ? (isAmountValid ? `실시간 변환: ${IsfUtils.convertToKoreanWon(amountVal)}` : '⚠️ 1,000원 단위로 입력해 주세요 (최소 1,000원)')
+        : '';
+
       return `
         <tr data-asset-id="${as.id}" style="border-bottom: 1px solid rgba(255,255,255,0.05);">
           <td style="padding: 10px 4px;">
@@ -118,9 +126,9 @@ export const IsfDom = {
           </td>
           <td style="padding: 10px 4px;">
             <div style="display: flex; flex-direction: column; gap: 4px; width: 100%;">
-              <input type="number" class="input-minimal asset-amount-input" data-id="${as.id}" data-field="amount" value="${as.amount || ''}" placeholder="금액 입력" style="width: 100%; border: none; background: transparent; color: #fff; padding: 6px; border-bottom: 1px solid rgba(255, 255, 255, 0.15); font-size: 0.9rem;" />
-              <span class="realtime-won-hint" style="font-size: 0.75rem; color: var(--primary, #ea5b2a); min-height: 14px; margin-top: 2px;">
-                ${as.amount > 0 ? `실시간 변환: ${IsfUtils.convertToKoreanWon(as.amount)}` : ''}
+              <input type="number" class="input-minimal asset-amount-input" data-id="${as.id}" data-field="amount" value="${as.amount || ''}" placeholder="금액 입력" style="width: 100%; border: none; background: transparent; color: #fff; padding: 6px; border-bottom: 1px solid ${borderBottomStyle}; font-size: 0.9rem;" />
+              <span class="realtime-won-hint" style="font-size: 0.75rem; color: ${hintColor}; min-height: 14px; margin-top: 2px;">
+                ${hintText}
               </span>
             </div>
           </td>
@@ -196,7 +204,7 @@ export const IsfDom = {
     modalPortfolioPeriod.textContent = portfolio.period;
     
     const totalWon = portfolio.totalAmount;
-    modalPortfolioTotal.textContent = `${IsfUtils.formatMoney(totalWon)} (${IsfUtils.convertToKoreanWon(totalWon)})`;
+    modalPortfolioTotal.textContent = `${totalWon.toLocaleString('ko-KR')}원 (${IsfUtils.convertToKoreanWon(totalWon)})`;
 
     // 1. 구성 종목 리스트 렌더링
     const assets = portfolio.assets || [];
@@ -204,7 +212,7 @@ export const IsfDom = {
       return `
         <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
           <td style="padding: 10px 4px;">${IsfUtils.escapeHtml(as.name)}</td>
-          <td style="padding: 10px 4px; text-align: right;">${IsfUtils.formatMoney(as.amount)}</td>
+          <td style="padding: 10px 4px; text-align: right;">${Number(as.amount).toLocaleString('ko-KR')}원</td>
           <td style="padding: 10px 4px; text-align: right; font-weight: 600; color: var(--primary, #ea5b2a);">${as.ratio}%</td>
         </tr>
       `;
@@ -239,7 +247,7 @@ export const IsfDom = {
       const heightPercent = maxVal > 0 ? (step.val / maxVal) * 100 : 0;
       return `
         <div class="chart-bar-wrap" style="display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; height: 100%; justify-content: flex-end;">
-          <span style="font-size: 0.7rem; color: #ccc;">${IsfUtils.formatMoney(step.val)}</span>
+          <span style="font-size: 0.7rem; color: #ccc;">${step.val.toLocaleString('ko-KR')}원</span>
           <div class="chart-bar-body" style="width: 20px; height: ${heightPercent}%; background: linear-gradient(180deg, var(--primary, #ea5b2a) 0%, rgba(234, 91, 42, 0.4) 100%); border-radius: 4px 4px 0 0; transition: height 0.5s ease-out; box-shadow: 0 0 10px rgba(234, 91, 42, 0.3);"></div>
           <span style="font-size: 0.75rem; color: #888; margin-top: 4px;">${step.label}</span>
         </div>
