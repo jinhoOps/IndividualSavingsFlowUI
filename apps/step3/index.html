@@ -44,7 +44,7 @@
             <label for="portfolioName" style="font-weight: 600; font-size: 0.95rem;">포트폴리오명</label>
             <input type="text" id="portfolioName" class="form-control" placeholder="예: 연금계좌 주식 포트폴리오" style="padding: 10px; border-radius: 8px;" />
           </div>
-          
+
           <div class="form-group" style="display: flex; flex-direction: column; gap: 8px;">
             <label style="font-weight: 600; font-size: 0.95rem;">적립 주기</label>
             <div id="periodSegment" class="segment-control">
@@ -53,7 +53,7 @@
               <button type="button" class="segment-btn" data-period="매달">매달</button>
             </div>
           </div>
-          
+
           <div class="form-group" style="display: flex; flex-direction: column; gap: 8px;">
             <div class="table-head-wrap" style="display: flex; justify-content: space-between; align-items: center;">
               <label style="font-weight: 600; font-size: 0.95rem;">구성 종목 설정</label>
@@ -73,10 +73,13 @@
               </tbody>
             </table>
           </div>
-          
+
           <div class="creator-summary-wrap" style="padding: 15px; border-radius: 8px; display: flex; flex-direction: column; gap: 4px; border: 1px solid var(--line); background: var(--bg);">
             <div id="creatorSummary" style="font-size: 1.05rem; font-weight: 700; color: var(--ink);">
               총 0개의 주식 | 총 매수 금액: 0원
+            </div>
+            <div id="creatorSummaryWonHint" class="creator-annual-hint" aria-live="polite">
+              1년 누적 투자금 약 0원
             </div>
           </div>
 
@@ -99,7 +102,7 @@
       <div class="modal-body" style="display: flex; flex-direction: column; gap: 16px;">
         <div class="modal-summary-info" style="display: flex; gap: 20px; align-items: center; font-size: 0.95rem; color: var(--muted);">
           <div style="display: flex; align-items: center; gap: 6px;">
-            적립 주기: 
+            적립 주기:
             <select id="modalPortfolioPeriod" class="account-type-select" style="font-size: 0.85rem; padding: 4px 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font-weight: 600; cursor: pointer;">
               <option value="매일">매일</option>
               <option value="매주">매주</option>
@@ -120,7 +123,7 @@
             <!-- 동적 종목 행 -->
           </tbody>
         </table>
-        
+
         <div class="modal-chart-container" style="border-top: 1px solid var(--line); padding-top: 16px;">
           <h4 style="margin: 0 0 12px 0; font-size: 0.95rem; font-weight: 600; color: var(--muted);">1년 누적 투자 추이 예시</h4>
           <div id="modalInvestmentChart" style="height: 140px; background: var(--bg); border-radius: 8px; border: 1px solid var(--line); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; font-size: 0.8rem; color: var(--muted);">
@@ -149,7 +152,7 @@
           <div><strong>총 종목 개수:</strong> <span id="confirmAssetCount" style="color: var(--ink); font-weight: 600;">-</span></div>
           <div><strong>총 매수 금액:</strong> <span id="confirmTotalAmount" style="color: var(--ink); font-weight: 600;">-</span></div>
         </div>
-        
+
         <div style="border-top: 1px solid var(--line); padding-top: 12px;">
           <h4 style="margin: 0 0 8px 0; font-size: 0.9rem; font-weight: 600; color: var(--muted);">구성 종목 비중 분포</h4>
           <table class="modal-table" style="width: 100%; border-collapse: collapse;">

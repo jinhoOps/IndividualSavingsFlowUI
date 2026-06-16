@@ -29,7 +29,7 @@
 @media (min-width: 1024px) {
   .dashboard-grid {
     grid-template-columns: 1fr 1fr;
-    grid-template-areas: 
+    grid-template-areas:
       "summary visual"
       "editor editor"
       "guide guide";
@@ -312,7 +312,7 @@
     font-size: 0.8rem;
   }
   .input-minimal { font-size: 0.85rem; }
-  
+
   .creator-table th, .creator-table td {
     padding: 6px 4px !important;
     font-size: 0.8rem !important;
@@ -466,6 +466,13 @@
   font-weight: 500;
   opacity: 0.85;
   transition: opacity 0.2s;
+}
+
+.creator-annual-hint {
+  color: var(--tone-primary);
+  font-size: 0.88rem;
+  font-weight: 600;
+  line-height: 1.35;
 }
 
 /* Modal Table */

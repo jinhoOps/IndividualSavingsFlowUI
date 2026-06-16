@@ -43,7 +43,7 @@ export const IsfDom = {
 
   /**
    * 에디토리얼 요약 카드 리스트를 렌더링합니다.
-   * @param {Array} portfolios 
+   * @param {Array} portfolios
    * @param {Object} handlers { onRemovePortfolio, onClickCard }
    */
   renderPortfolioList(portfolios, handlers) {
@@ -93,7 +93,7 @@ export const IsfDom = {
 
   /**
    * 포트폴리오 크리에이터 폼을 동적으로 렌더링하고 유효성을 판별하여 UI를 갱신합니다.
-   * @param {Object} activeCreator 
+   * @param {Object} activeCreator
    * @param {Object} handlers { onInputChange, onRemoveAsset, onSave }
    */
   renderCreatorForm(activeCreator, handlers) {
@@ -149,6 +149,10 @@ export const IsfDom = {
 
     // 4. 합산 요약 정보 업데이트
     creatorSummary.textContent = `총 ${assets.length}개의 주식 | 총 매수 금액: ${IsfUtils.convertToKoreanWon(totalAmount)}`;
+    if (creatorSummaryWonHint) {
+      const annualInvestment = IsfCalculator.calculateAnnualInvestment(totalAmount, activeCreator.period);
+      creatorSummaryWonHint.textContent = `1년 누적 투자금 약 ${IsfUtils.convertToKoreanWon(annualInvestment)}`;
+    }
 
     // 5. 생성 버튼 상시 활성화 (클릭 시 미입력 항목 피드백을 지원하기 위함)
     if (savePortfolioBtn) {
@@ -163,10 +167,10 @@ export const IsfDom = {
 
   /**
    * 인풋 입력 시 innerHTML을 호출하지 않고, 금액/비중/요약/버튼 상태 등 스탯 정보만 부분 업데이트합니다.
-   * @param {Object} activeCreator 
+   * @param {Object} activeCreator
    */
   updateCreatorFormStats(activeCreator) {
-    const { creatorAssetTable, creatorSummary, savePortfolioBtn } = this.nodes;
+    const { creatorAssetTable, creatorSummary, creatorSummaryWonHint, savePortfolioBtn } = this.nodes;
     if (!activeCreator) return;
 
     const assets = activeCreator.assets || [];
@@ -182,7 +186,7 @@ export const IsfDom = {
 
         const amountVal = Number(as.amount) || 0;
         const isAmountValid = amountVal === 0 || IsfCalculator.validateAssetAmount(amountVal);
-        
+
         // input border style 업데이트
         if (amountInput) {
           amountInput.style.borderBottomColor = isAmountValid ? 'var(--line)' : 'var(--status-error, #ff5e5e)';
@@ -198,6 +202,10 @@ export const IsfDom = {
     // 합산 요약 정보 업데이트
     if (creatorSummary) {
       creatorSummary.textContent = `총 ${assets.length}개의 주식 | 총 매수 금액: ${IsfUtils.convertToKoreanWon(totalAmount)}`;
+    }
+    if (creatorSummaryWonHint) {
+      const annualInvestment = IsfCalculator.calculateAnnualInvestment(totalAmount, activeCreator.period);
+      creatorSummaryWonHint.textContent = `1년 누적 투자금 약 ${IsfUtils.convertToKoreanWon(annualInvestment)}`;
     }
 
     // 생성 버튼 상시 활성화 (클릭 시 미입력 항목 피드백을 지원하기 위함)
@@ -296,7 +304,7 @@ export const IsfDom = {
 
     modalPortfolioName.value = activeData.name;
     modalPortfolioPeriod.value = activeData.period;
-    
+
     const assets = activeData.assets;
 
     // 1. 구성 종목 리스트 렌더링 (금액을 input으로, 좌우에 - / + 버튼과 하단에 한글 힌트)
@@ -333,7 +341,7 @@ export const IsfDom = {
     const updateModalStats = () => {
       const name = modalPortfolioName.value.trim();
       const period = modalPortfolioPeriod.value;
-      
+
       const updatedAssets = assets.map(as => {
         const inputEl = modalAssetList.querySelector(`input[data-id="${as.id}"]`);
         const amount = inputEl ? (parseFloat(inputEl.value) || 0) : as.amount;
@@ -363,12 +371,8 @@ export const IsfDom = {
 
       // 1년 차트 업데이트 (누적 투입금 4단계: 1개월, 3개월, 6개월, 1년)
       // 매일 적립의 경우 영업일 기준(월 평균 20일, 연 240일)으로 대략적인 수치를 산출합니다.
-      let factor = 12;
-      if (period === '매일') factor = 240;
-      else if (period === '매주') factor = 52;
-      else if (period === '매달') factor = 12;
-
-      const total1Year = currentTotal * factor;
+      const factor = IsfCalculator.getAnnualInvestmentFactor(period);
+      const total1Year = IsfCalculator.calculateAnnualInvestment(currentTotal, period);
       const steps = [
         { label: '1개월', val: currentTotal * (factor / 12 * 1) },
         { label: '3개월', val: currentTotal * (factor / 12 * 3) },
@@ -482,7 +486,7 @@ export const IsfDom = {
     if (pendingBar && pendingBar.style.display === 'none') {
       // 기존 애니메이션 클래스 제거
       pendingBar.classList.remove('anim-slide-up', 'anim-fade-scale', 'anim-bounce-in');
-      
+
       const anims = ['anim-slide-up', 'anim-fade-scale', 'anim-bounce-in'];
       const selected = anims[Math.floor(Math.random() * anims.length)];
       pendingBar.classList.add(selected);
@@ -534,7 +538,7 @@ export const IsfDom = {
 
   /**
    * 포트폴리오 생성을 최종 확인하는 모달을 엽니다.
-   * @param {Object} portfolio 
+   * @param {Object} portfolio
    */
   showPortfolioConfirmModal(portfolio) {
     const {

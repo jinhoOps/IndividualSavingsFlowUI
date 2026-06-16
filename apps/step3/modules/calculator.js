@@ -5,7 +5,7 @@
 export const IsfCalculator = {
   /**
    * 입력된 개별 종목 금액(원)을 합산하여 총액을 반환합니다.
-   * @param {Array} assets 
+   * @param {Array} assets
    * @returns {number}
    */
   sumAmounts(assets) {
@@ -15,8 +15,8 @@ export const IsfCalculator = {
 
   /**
    * 총 매수 금액 대비 각 종목의 비중 %를 실시간 반올림 정수로 산출합니다.
-   * @param {Array} assets 
-   * @param {number} totalAmount 
+   * @param {Array} assets
+   * @param {number} totalAmount
    * @returns {Array}
    */
   calculateRatios(assets, totalAmount) {
@@ -35,7 +35,7 @@ export const IsfCalculator = {
 
   /**
    * 개별 종목 금액이 최소 1,000원 이상이고 1,000원 단위인지 여부를 판별합니다.
-   * @param {number} amount 
+   * @param {number} amount
    * @returns {boolean}
    */
   validateAssetAmount(amount) {
@@ -44,9 +44,31 @@ export const IsfCalculator = {
   },
 
   /**
+   * 적립 주기별 1년 누적 투자금 계산 배수를 반환합니다.
+   * 매일 적립은 영업일 기준 월 20일, 연 240일로 계산합니다.
+   * @param {string} period
+   * @returns {number}
+   */
+  getAnnualInvestmentFactor(period) {
+    if (period === '매일') return 240;
+    if (period === '매주') return 52;
+    return 12;
+  },
+
+  /**
+   * 1회 매수 총액과 적립 주기로 1년 누적 투자금을 계산합니다.
+   * @param {number} totalAmount
+   * @param {string} period
+   * @returns {number}
+   */
+  calculateAnnualInvestment(totalAmount, period) {
+    return (Number(totalAmount) || 0) * this.getAnnualInvestmentFactor(period);
+  },
+
+  /**
    * 종목 개수가 2개 이상이고, 모든 종목의 금액이 유효한지 검사합니다.
    * 포트폴리오 및 개별 종목명이 비어있지 않은지도 검사합니다.
-   * @param {Object} portfolio 
+   * @param {Object} portfolio
    * @returns {boolean}
    */
   validatePortfolio(portfolio) {
@@ -54,7 +76,7 @@ export const IsfCalculator = {
       console.log('[Validation] Portfolio is null/undefined');
       return false;
     }
-    
+
     // 포트폴리오 이름 검증
     if (!portfolio.name || !portfolio.name.trim()) {
       console.log('[Validation] Portfolio name is empty');
