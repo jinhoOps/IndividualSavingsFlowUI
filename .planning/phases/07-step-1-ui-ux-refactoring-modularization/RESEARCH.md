@@ -331,17 +331,17 @@ function replaceOptions(select, accounts) {
 | A2 | Body horizontal scroll and clipped editor controls are likely warning signs after CSS removal. [ASSUMED] | Common Pitfalls | Verification could miss visual regressions if it checks only existing Playwright assertions. |
 | A3 | A tiny external-data wrapper is enough and a full schema library is unnecessary. [ASSUMED] | Rendering Safety | If imported data has deeper shape drift, planner may need more guard coverage inside `input-sanitizer.js`. |
 
-## Open Questions
+## Open Questions — RESOLVED
 
-1. **Should Phase 07 correct the visual panel order by DOM movement or CSS order?**  
+All Phase 07 research questions are resolved for execution.
+
+1. **RESOLVED: Phase 07 should correct the visual panel order by preferring DOM order.**
    - What we know: Context locks Summary, Visualization, Controls, Projection, Comparison, while current CSS orders Controls before Sankey/Visualization. [VERIFIED: 07-CONTEXT.md + codebase grep]  
-   - What's unclear: Whether the existing DOM order should remain stable for accessibility and only CSS order should change. [ASSUMED]  
-   - Recommendation: Prefer DOM order if accessibility/regression scope is manageable; otherwise explicitly document CSS order as the chosen mechanism and test keyboard/tab flow. [ASSUMED]
+   - Resolution: Prefer DOM order if existing `dom.js` selectors and controller bindings can be preserved. If DOM movement would break selectors or create disproportionate regression risk, CSS order is acceptable only when the implementation explicitly documents that choice and verifies keyboard/tab flow in addition to visual order. [VERIFIED: 07-CONTEXT.md + checker revision]
 
-2. **Should `toWon` / `toMan` be renamed or only documented?**  
+2. **RESOLVED: `toWon` / `toMan` should be documented, not renamed or behavior-changed, in Phase 07.**
    - What we know: Both functions are currently 1:1 numeric rounders. [VERIFIED: codebase grep]  
-   - What's unclear: Whether Step 1 intentionally moved from 만원 UI to 원 UI while DESIGN.md still says UI displays 만원. [VERIFIED: DESIGN.md + codebase grep]  
-   - Recommendation: Do not change conversion behavior in Phase 07 unless tests and labels are updated together. [ASSUMED]
+   - Resolution: Phase 07 must document the current 1:1 numeric rounder behavior and preserve conversion behavior. Do not rename these helpers, do not introduce multiply/divide-by-10,000 behavior, and do not change stored/display units in this phase. [VERIFIED: codebase grep + checker revision]
 
 ## Environment Availability
 

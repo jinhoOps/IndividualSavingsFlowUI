@@ -20,6 +20,7 @@
 ### Phase Details
 
 ### Phase 5: Portfolio Creation & Target Allocation UI
+
 - **Goal:** 나만의 포트폴리오 만들기 화면, 종목명 입력, 주기 선택 및 종목 비중 실시간 편집 UI 구현
 - **Requirements:** PORT-01, PORT-02
 - **Success Criteria**:
@@ -27,6 +28,7 @@
   2. 비중 편집 팝업에서 총금액 대비 각 종목의 비중 %가 실시간 계산되어 정확히 노출되는지 확인
 
 ### Phase 6: Confirmation & Portfolio Storage Hub
+
 - **Goal:** 포트폴리오 추가 최종 확인 모달 구현 및 IndexedDB 영속화 저장소 연동
 - **Requirements:** PORT-03
 - **Success Criteria**:
@@ -34,18 +36,25 @@
   2. 확인 버튼 클릭 시 IndexedDB에 안전하게 영속화되고, 포트폴리오 목록에 정상 리스팅되는지 확인
 
 ### Phase 7: Step 1 UI/UX Refactoring & Modularization
+
 - **Goal:** Step 1의 거대한 CSS 다이어트, 모듈 쪼개기, DESIGN.md 기반 UI/UX 전면 개편
 - **Requirements:** UI-01, UI-02
-- **Plans:** 3 plans
-Plans:
+- **Plans:** 3 plansPlans:
+
+**Wave 1**
+
 - [ ] 07-01-PLAN.md — Step 1 app.js 모듈화 및 렌더링/외부 데이터 경계 강화
 - [ ] 07-02-PLAN.md — Step 1 CSS 50% 감축, DESIGN.md 적용, 모바일 레이아웃 재정렬
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 07-03-PLAN.md — Step 1 라인 카운트, grep, Playwright 모바일 회귀 검증
 - **Success Criteria**:
   1. styles.css 크기를 50% 이상 감축하고 공통 theme 변수로 통합 적용되는지 확인
   2. app.js 내의 거대 바인딩 로직을 세부 모듈로 완전히 분리하고, 768px 이하 모바일 뷰에서 레이아웃 파손이 없는지 확인
 
 ### Phase 8: Step 2 Redesign & Re-planning
+
 - **Goal:** 배당성장과 커버드콜의 개념적 이해를 돕고, 단순 지수추종 및 성장주 대비 총수익률의 열세에도 불구하고 이를 선택하는 이유(월 현금 흐름 확보, 은퇴 계획 등)를 투자자 본인이 판단할 수 있도록 돕는 미래 자산 시뮬레이션을 전면 재기획 및 구현
 - **Requirements:** UI-03
 - **Success Criteria**:
