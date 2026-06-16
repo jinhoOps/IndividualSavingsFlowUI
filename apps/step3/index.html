@@ -135,6 +135,44 @@
     </div>
   </div>
 
+  <!-- 포트폴리오 생성 최종 확인 모달 -->
+  <div id="portfolioConfirmModal" class="modal-backdrop" style="display: none;">
+    <div class="modal-content glassmorphism" style="border-radius: 16px; padding: 24px; width: 90%; max-width: 500px;">
+      <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line); padding-bottom: 12px; margin-bottom: 16px;">
+        <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--ink); margin: 0;">포트폴리오 생성 최종 확인</h3>
+        <button type="button" id="confirmCloseModalBtn" style="background: transparent; border: none; color: var(--ink); font-size: 1.5rem; cursor: pointer; line-height: 1;">&times;</button>
+      </div>
+      <div class="modal-body" style="display: flex; flex-direction: column; gap: 16px;">
+        <div style="font-size: 0.95rem; color: var(--muted); display: flex; flex-direction: column; gap: 8px;">
+          <div><strong>포트폴리오명:</strong> <span id="confirmPortfolioName" style="color: var(--ink); font-weight: 600;">-</span></div>
+          <div><strong>적립 주기:</strong> <span id="confirmPortfolioPeriod" style="color: var(--ink); font-weight: 600;">-</span></div>
+          <div><strong>총 종목 개수:</strong> <span id="confirmAssetCount" style="color: var(--ink); font-weight: 600;">-</span></div>
+          <div><strong>총 매수 금액:</strong> <span id="confirmTotalAmount" style="color: var(--ink); font-weight: 600;">-</span></div>
+        </div>
+        
+        <div style="border-top: 1px solid var(--line); padding-top: 12px;">
+          <h4 style="margin: 0 0 8px 0; font-size: 0.9rem; font-weight: 600; color: var(--muted);">구성 종목 비중 분포</h4>
+          <table class="modal-table" style="width: 100%; border-collapse: collapse;">
+            <thead>
+              <tr style="border-bottom: 1px solid var(--line); text-align: left;">
+                <th style="padding: 6px; font-size: 0.8rem; color: var(--muted);">종목명</th>
+                <th style="padding: 6px; font-size: 0.8rem; color: var(--muted); text-align: right;">매수 금액</th>
+                <th style="padding: 6px; font-size: 0.8rem; color: var(--muted); text-align: right; width: 70px;">비중</th>
+              </tr>
+            </thead>
+            <tbody id="confirmAssetList" style="color: var(--ink); font-size: 0.85rem;">
+              <!-- 동적 종목 행 -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid var(--line); padding-top: 16px; margin-top: 16px;">
+        <button type="button" id="confirmCancelBtn" class="btn btn-ghost">취소</button>
+        <button type="button" id="confirmSaveBtn" class="btn btn-primary">최종 저장</button>
+      </div>
+    </div>
+  </div>
+
   <!-- 플로팅 펜딩 바 (모달 변경 감지 시 화면 하단에 노출) -->
   <div id="pendingBar" class="pending-bar" style="display: none;">
     <div class="pending-bar-inner" style="justify-content: center;">

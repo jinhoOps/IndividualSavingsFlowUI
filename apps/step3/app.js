@@ -12,6 +12,7 @@ const App = {
   // 1. State
   state: null,
   pendingModalChanges: null,
+  pendingNewPortfolio: null,
 
   // 2. Core Helpers
   async init() {
@@ -123,9 +124,8 @@ const App = {
         createdAt: new Date().toISOString()
       };
 
-      this.state.addPortfolio(newPortfolio);
-      IsfDom.hidePortfolioCreator();
-      this.render(); // 전체 화면 재렌더링
+      this.pendingNewPortfolio = newPortfolio;
+      IsfDom.showPortfolioConfirmModal(newPortfolio);
     };
 
     // 7. 플로팅 펜딩 바 취소 버튼 핸들러 (취소 누르면 펜딩 바만 숨기고 이어서 편집하도록 처리)
@@ -171,6 +171,34 @@ const App = {
         IsfDom.hidePendingBar();
         this.pendingModalChanges = null;
         this.render();
+      }
+    };
+
+    // 9. 최종 확인 모달 관련 핸들러
+    IsfDom.nodes.confirmCloseModalBtn.onclick = () => {
+      IsfDom.closePortfolioConfirmModal();
+      this.pendingNewPortfolio = null;
+    };
+
+    IsfDom.nodes.confirmCancelBtn.onclick = () => {
+      IsfDom.closePortfolioConfirmModal();
+      this.pendingNewPortfolio = null;
+    };
+
+    IsfDom.nodes.confirmSaveBtn.onclick = () => {
+      if (this.pendingNewPortfolio) {
+        this.state.addPortfolio(this.pendingNewPortfolio);
+        IsfDom.closePortfolioConfirmModal();
+        IsfDom.hidePortfolioCreator();
+        this.pendingNewPortfolio = null;
+        this.render(); // 전체 화면 재렌더링
+      }
+    };
+
+    IsfDom.nodes.portfolioConfirmModal.onclick = (e) => {
+      if (e.target === IsfDom.nodes.portfolioConfirmModal) {
+        IsfDom.closePortfolioConfirmModal();
+        this.pendingNewPortfolio = null;
       }
     };
   },

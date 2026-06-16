@@ -30,6 +30,15 @@ export const IsfDom = {
     pendingCancelBtn: document.getElementById('pendingCancelBtn'),
     pendingSaveBtn: document.getElementById('pendingSaveBtn'),
     modalChartDesc: document.getElementById('modalChartDesc'),
+    portfolioConfirmModal: document.getElementById('portfolioConfirmModal'),
+    confirmPortfolioName: document.getElementById('confirmPortfolioName'),
+    confirmPortfolioPeriod: document.getElementById('confirmPortfolioPeriod'),
+    confirmAssetCount: document.getElementById('confirmAssetCount'),
+    confirmTotalAmount: document.getElementById('confirmTotalAmount'),
+    confirmAssetList: document.getElementById('confirmAssetList'),
+    confirmSaveBtn: document.getElementById('confirmSaveBtn'),
+    confirmCancelBtn: document.getElementById('confirmCancelBtn'),
+    confirmCloseModalBtn: document.getElementById('confirmCloseModalBtn'),
   },
 
   /**
@@ -520,6 +529,50 @@ export const IsfDom = {
     const { portfolioCreator } = this.nodes;
     if (portfolioCreator) {
       portfolioCreator.style.display = 'none';
+    }
+  },
+
+  /**
+   * 포트폴리오 생성을 최종 확인하는 모달을 엽니다.
+   * @param {Object} portfolio 
+   */
+  showPortfolioConfirmModal(portfolio) {
+    const {
+      portfolioConfirmModal,
+      confirmPortfolioName,
+      confirmPortfolioPeriod,
+      confirmAssetCount,
+      confirmTotalAmount,
+      confirmAssetList
+    } = this.nodes;
+
+    if (!portfolioConfirmModal || !portfolio) return;
+
+    confirmPortfolioName.textContent = portfolio.name;
+    confirmPortfolioPeriod.textContent = portfolio.period;
+    confirmAssetCount.textContent = `${portfolio.assets ? portfolio.assets.length : 0}개`;
+    confirmTotalAmount.textContent = IsfUtils.convertToKoreanWon(portfolio.totalAmount);
+
+    confirmAssetList.innerHTML = (portfolio.assets || []).map(as => {
+      return `
+        <tr style="border-bottom: 1px solid var(--line);">
+          <td style="padding: 8px 6px; color: var(--ink);">${IsfUtils.escapeHtml(as.name)}</td>
+          <td style="padding: 8px 6px; text-align: right; color: var(--ink);">${IsfUtils.convertToKoreanWon(as.amount)}</td>
+          <td style="padding: 8px 6px; text-align: right; font-weight: 600; color: var(--primary, #ea5b2a);">${as.ratio}%</td>
+        </tr>
+      `;
+    }).join('');
+
+    portfolioConfirmModal.style.display = 'flex';
+  },
+
+  /**
+   * 최종 확인 모달을 닫습니다.
+   */
+  closePortfolioConfirmModal() {
+    const { portfolioConfirmModal } = this.nodes;
+    if (portfolioConfirmModal) {
+      portfolioConfirmModal.style.display = 'none';
     }
   }
 };
