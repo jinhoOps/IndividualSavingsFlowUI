@@ -86,7 +86,7 @@ body.is-dashboard-mode .comparison-panel{order:5}
 .controls-grid{display:grid;gap:10px}
 .controls-grid--simple{grid-template-columns:repeat(4,minmax(140px,1fr))}
 .controls-grid--advanced{grid-template-columns:repeat(3,minmax(140px,1fr))}
-.control{position:relative;display:grid;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:var(--rd-md);padding:12px 14px;transition:all 0.22s cubic-bezier(0.4,0,0.2,1)}
+.control{position:relative;display:grid;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:var(--rd-md);padding:12px 14px;transition:all 0.22s cubic-bezier(0.4,0,0.2,1);min-width:0}
 .control:hover{background:rgba(255,255,255,0.75);border-color:rgba(30,139,124,0.25)}
 .control label{font-size:0.78rem;font-weight:700;color:var(--ink);letter-spacing:-0.01em}
 .control input,.control select{font-family:inherit;font-size:0.95rem;color:var(--ink);background:rgba(255,255,255,0.85);border:1px solid var(--line-strong);border-radius:var(--rd-sm);padding:8px 12px;width:100%;box-sizing:border-box;transition:all 0.18s ease}
@@ -95,7 +95,7 @@ body.is-dashboard-mode .comparison-panel{order:5}
 .control input[readonly]:hover{background:rgba(240,241,236,0.9);border-color:var(--income);color:var(--income)}
 input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 input[type=number]{-moz-appearance:textfield}
-.control::after{position:absolute;right:16px;bottom:24px;font-size:0.75rem;color:var(--muted);pointer-events:none;font-weight:500;transition:color 0.18s ease;line-height:1}
+.control::after{position:absolute;right:26px;bottom:23px;font-size:0.75rem;color:var(--muted);pointer-events:none;font-weight:500;transition:color 0.18s ease;line-height:1}
 .control:has(input[name="startCash"])::after,.control:has(input[name="startSavings"])::after,.control:has(input[name="startInvest"])::after,.control:has(input[name="monthlyExpense"])::after,.control:has(input[name="monthlySavings"])::after,.control:has(input[name="monthlyInvest"])::after,.control:has(input[name="monthlyDebtPayment"])::after,.control:has(input[name="startDebt"])::after,.control:has(input[name="presetIncomeAmount"])::after{content:"원"}
 .control:has(input[name="horizonYears"])::after{content:"년"}
 .control:has(input[name$="Growth"])::after,.control:has(input[name$="Yield"])::after,.control:has(input[name$="Return"])::after,.control:has(input[name$="Interest"])::after{content:"%"}
@@ -142,6 +142,11 @@ main{order:2;gap:14px;display:grid}
 .summary-cards .card .sub{display:none !important}
 .controls-grid--simple,.controls-grid--advanced{grid-template-columns:1fr}
 .control{padding:12px !important}
+.controls-block .control{grid-template-columns:minmax(82px,0.72fr) minmax(116px,1fr);align-items:center;column-gap:10px;padding:10px 12px !important}
+.controls-block .control>label,.controls-block .control>.label-row{min-width:0;line-height:1.25}
+.controls-block .control>input,.controls-block .control>select{min-width:0}
+.controls-block .control:has(input)::after{top:50%;right:24px;bottom:auto;transform:translateY(-50%)}
+.controls-block .control:has(input) input{padding-right:42px !important}
 .mobile-input-toggle{display:inline-flex;align-items:center;font-size:0.74rem}
 .block-head{flex-direction:column;align-items:flex-start}
 .block-head-tools{width:100%;justify-content:space-between}
@@ -226,6 +231,7 @@ body.is-item-editor-active .version-check-trigger{opacity:0;pointer-events:none}
 }
 @media (max-width:520px){
 .summary-cards{grid-template-columns:repeat(2,minmax(0,1fr)) !important}
+.controls-block .control{grid-template-columns:minmax(76px,0.68fr) minmax(104px,1fr);column-gap:8px}
 .actions{grid-template-columns:repeat(3,minmax(0,1fr))}
 .actions--primary{grid-template-columns:1fr}
 .sankey-wrap{height:380px !important;max-height:380px !important}

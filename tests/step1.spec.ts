@@ -134,6 +134,17 @@ test.describe('Individual Savings Flow Main UI/UX Audit', () => {
         expect(contained, `${tab.checkSelector} should fit or scroll within itself at ${viewport.width}px`).toBe(true);
       }
 
+      const controls = page.locator('.mgmt-panel:not([hidden]) .controls-block .control');
+      const controlCount = await controls.count();
+      for (let index = 0; index < Math.min(controlCount, 8); index += 1) {
+        const box = await controls.nth(index).boundingBox();
+        expect(box, `control ${index} should have a layout box at ${viewport.width}px`).not.toBeNull();
+        if (box) {
+          expect(box.x).toBeGreaterThanOrEqual(-1);
+          expect(box.x + box.width).toBeLessThanOrEqual(viewport.width + 1);
+        }
+      }
+
       await page.screenshot({ path: `test-results/phase07-step1-mobile-${viewport.width}.png`, fullPage: true });
     }
   });
@@ -174,5 +185,42 @@ test.describe('Individual Savings Flow Main UI/UX Audit', () => {
     expect(sankeyBox).not.toBeNull();
     expect(sankeyBox!.width).toBeGreaterThan(0);
     expect(sankeyBox!.height).toBeGreaterThan(0);
+  });
+
+  test('Phase 07 gap closure keeps reset in-place and moves rates to settings', async ({ page }) => {
+    await expect(page.locator('#loadSample')).toHaveCount(0);
+    await expect(page.locator('#advancedTabRates')).toHaveCount(0);
+
+    await page.locator('#toggleControlsBtn').click();
+    await page.locator('#mgmtTabSettings').click();
+    await expect(page.locator('#ratesAdvancedBlock')).toBeVisible();
+
+    page.once('dialog', async (dialog) => {
+      expect(dialog.message()).toContain('중립형 연봉 5,000만 원');
+      await dialog.accept();
+    });
+    await page.locator('#resetInputs').click();
+    await expect(page.locator('#applyFeedback')).toContainText('중립형 연봉 5,000만 원');
+
+    const savedInputs = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}'));
+    expect(savedInputs.incomes?.[0]?.amount).toBe(3550000);
+    expect(savedInputs.monthlyExpense).toBeGreaterThan(0);
+    expect(savedInputs.expenseItems?.length).toBeGreaterThan(3);
+  });
+
+  test('Phase 07 gap closure expands Sankey detail mode into item labels', async ({ page }) => {
+    await page.locator('#showSankeyBasicBtn').click();
+    await page.waitForTimeout(200);
+    const basicExpenseLabels = await page.locator('#sankeySvg .sankey-label').evaluateAll((labels) =>
+      labels.map((label) => label.textContent || '').filter((text) => ['관리비', '수도세', '가스비', '전기세'].includes(text)).length
+    );
+    expect(basicExpenseLabels).toBe(0);
+
+    await page.locator('#showSankeyDetailBtn').click();
+    await page.waitForTimeout(300);
+    const detailExpenseLabels = await page.locator('#sankeySvg .sankey-label').evaluateAll((labels) =>
+      labels.map((label) => label.textContent || '').filter((text) => ['관리비', '수도세', '가스비', '전기세'].includes(text)).length
+    );
+    expect(detailExpenseLabels).toBeGreaterThanOrEqual(2);
   });
 });

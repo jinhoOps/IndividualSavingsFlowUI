@@ -6,7 +6,7 @@ import {
   MAX_INCOME_ITEMS, MAX_ALLOCATION_ITEMS, SANKEY_VALUE_MODES,
   SANKEY_SORT_MODES, ITEM_SORT_MODES, SANKEY_ZOOM_MIN, SANKEY_ZOOM_MAX, SANKEY_ZOOM_STEP,
   MOBILE_LAYOUT_QUERY, DEFAULT_INPUTS, DEFAULT_EXPENSE_ITEMS,
-  DEFAULT_SAVINGS_ITEMS, DEFAULT_INVEST_ITEMS, SAMPLE_INPUTS,
+  DEFAULT_SAVINGS_ITEMS, DEFAULT_INVEST_ITEMS,
   FORM_FIELD_KEYS, TONE_COLORS
 } from "./constants.js";
 
@@ -275,7 +275,7 @@ function bindControls() {
 
   bindReadonlyAdvancedNavigation();
   
-  [dom.advancedTabExpense, dom.advancedTabSavings, dom.advancedTabInvest, dom.advancedTabRates].forEach(tab => {
+  [dom.advancedTabExpense, dom.advancedTabSavings, dom.advancedTabInvest].forEach(tab => {
     if (tab) tab.addEventListener("click", () => navigateToAdvancedGroup(tab.dataset.advancedTab));
   });
 
@@ -692,7 +692,6 @@ function bindItemEditorEvents() {
 }
 
 function bindActionButtons() {
-  if (dom.loadSample) dom.loadSample.addEventListener("click", handleLoadSample);
   if (dom.resetInputs) dom.resetInputs.addEventListener("click", handleResetInputs);
   // Removed pending changes bindings
   if (dom.jumpToTop) dom.jumpToTop.addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
@@ -951,31 +950,14 @@ async function handleSaveViewToLocal() {
   }
 }
 
-function handleLoadSample() {
-  window.IsfShare.buildShareLink(normalizeExternalStep1Inputs("sample", SAMPLE_INPUTS), { viewMode: true }).then(link => { if (link) window.location.href = link; });
-}
-
-function createResetInputs(current) {
-  return {
-    ...current,
-    incomes: current.incomes.map(income => ({ ...income, amount: 0 })),
-    expenseItems: current.expenseItems.map(item => ({ ...item, amount: 0 })),
-    savingsItems: current.savingsItems.map(item => ({ ...item, amount: 0 })),
-    investItems: current.investItems.map(item => ({ ...item, amount: 0 })),
-    monthlyExpense: 0,
-    monthlySavings: 0,
-    monthlyInvest: 0,
-    monthlyDebtPayment: 0,
-    startCash: 0,
-    startSavings: 0,
-    startInvest: 0,
-    startDebt: 0,
-  };
+function createResetInputs() {
+  return normalizeExternalStep1Inputs("reset-neutral-preset", applyPresetBySalary(50000000, "neutral"));
 }
 
 function handleResetInputs() {
-  if (state.isViewMode || !window.confirm("모든 금액을 0으로 초기화할까요?")) return;
-  commitImmediateInputs(createResetInputs(state.inputs));
+  if (state.isViewMode || !window.confirm("중립형 연봉 5,000만 원 프리셋으로 초기화할까요?")) return;
+  commitImmediateInputs(createResetInputs());
+  window.IsfFeedback.showFeedback(dom.applyFeedback, "중립형 연봉 5,000만 원 프리셋으로 초기화되었습니다.");
 }
 
 // Removed applyPendingChanges and cancelPendingChanges

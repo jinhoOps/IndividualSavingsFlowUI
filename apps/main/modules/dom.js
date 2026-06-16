@@ -5,7 +5,6 @@ export const dom = {
   inputsForm: document.getElementById("inputsForm"),
   inputsPanelContent: document.getElementById("inputsPanelContent"),
 
-  loadSample: document.getElementById("loadSample"),
   resetInputs: document.getElementById("resetInputs"),
   toggleControlsBtn: document.getElementById("toggleControlsBtn"),
   easterEgg: document.getElementById("easterEgg"),
@@ -64,7 +63,6 @@ export const dom = {
   advancedTabExpense: document.getElementById("advancedTabExpense"),
   advancedTabSavings: document.getElementById("advancedTabSavings"),
   advancedTabInvest: document.getElementById("advancedTabInvest"),
-  advancedTabRates: document.getElementById("advancedTabRates"),
   expenseAdvancedBlock: document.getElementById("expenseAdvancedBlock"),
   savingsAdvancedBlock: document.getElementById("savingsAdvancedBlock"),
   investAdvancedBlock: document.getElementById("investAdvancedBlock"),

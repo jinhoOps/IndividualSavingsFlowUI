@@ -60,9 +60,8 @@
 
           </h2>
           <div class="section-head-tools">
-            <button id="loadSample" class="btn btn-ghost btn-sm" type="button">샘플 불러오기</button>
             <button id="openPresetBtn" class="btn btn-ghost btn-sm" type="button" title="투자 성향과 월수입 기준으로 프리셋 적용">프리셋</button>
-            <button id="resetInputs" class="btn btn-ghost btn-sm" type="button">초기화</button>
+            <button id="resetInputs" class="btn btn-ghost btn-sm" type="button" title="중립형 연봉 5,000만 원 프리셋으로 초기화">중립형 초기화</button>
             <button id="toggleControlsBtn" class="panel-toggle-btn" type="button" aria-expanded="false" aria-label="재무 설정 펼치기">▾</button>
           </div>
         </div>
@@ -138,6 +137,7 @@
                     <button id="editAccountItems" class="btn btn-ghost btn-sm" type="button">항목 편집</button>
                   </div>
                 </div>
+                <p class="hint">계좌는 돈이 들어오고 나가는 경유지입니다. 먼저 통장 이름만 정리한 뒤, 필요한 경우 아래에서 통장 간 고정 이체 규칙을 추가하세요.</p>
                 <div id="accountList" class="account-list" aria-live="polite"></div>
                 <div id="accountEditorActions" class="editor-actions" hidden>
                   <button id="addAccountItem" class="btn btn-ghost btn-sm" type="button">통장 추가</button>
@@ -156,6 +156,7 @@
                   <span id="transferAccordionIcon">▾</span>
                 </div>
                 <div id="transferAccordionBody">
+                  <p class="hint">월급 통장에서 생활비 통장으로 보내는 금액처럼 매달 반복되는 통장 간 이동만 입력합니다.</p>
                   <div id="transferRuleForm" class="transfer-rule-form">
                     <div class="sentence-ui">
                       <select id="transferSourceSelect" class="editor-select" aria-label="출발 계좌"></select>
@@ -221,8 +222,6 @@
                     aria-controls="savingsAdvancedBlock" data-advanced-tab="savings">저축</button>
                   <button id="advancedTabInvest" class="tab-btn" type="button" role="tab" aria-selected="false"
                     aria-controls="investAdvancedBlock" data-advanced-tab="invest">투자</button>
-                  <button id="advancedTabRates" class="tab-btn" type="button" role="tab"
-                    aria-selected="false" aria-controls="ratesAdvancedBlock" data-advanced-tab="rates">수익률/기타</button>
                 </div>
                 <div id="expenseAdvancedBlock" class="controls-block" data-advanced-block="expense">
                   <div class="block-head">
@@ -304,7 +303,7 @@
                   </div>
                   <p id="investTotalHint" class="hint"></p>
                 </div>
-                  <!-- 증가율 및 수익률 설정은 설정(Settings) 탭으로 이동됨 -->
+                  <!-- 증가율 및 수익률 설정은 설정 탭에서만 관리합니다. -->
                 <datalist id="expenseGroupOptions"></datalist>
                 <datalist id="savingsGroupOptions"></datalist>
                 <datalist id="investGroupOptions"></datalist>

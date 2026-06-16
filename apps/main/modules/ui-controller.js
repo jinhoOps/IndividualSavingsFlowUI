@@ -79,7 +79,7 @@ export function syncAdvancedTabBlockVisibility() {
 
 export function setActiveAdvancedTab(tabId) {
   state.activeAdvancedTab = tabId;
-  [dom.advancedTabExpense, dom.advancedTabSavings, dom.advancedTabInvest, dom.advancedTabRates].forEach(tab => {
+  [dom.advancedTabExpense, dom.advancedTabSavings, dom.advancedTabInvest].forEach(tab => {
     if (tab) tab.classList.toggle("is-active", tab.dataset.advancedTab === tabId);
   });
   syncAdvancedTabBlockVisibility();
