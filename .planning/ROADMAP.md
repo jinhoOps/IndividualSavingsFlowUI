@@ -36,6 +36,11 @@
 ### Phase 7: Step 1 UI/UX Refactoring & Modularization
 - **Goal:** Step 1의 거대한 CSS 다이어트, 모듈 쪼개기, DESIGN.md 기반 UI/UX 전면 개편
 - **Requirements:** UI-01, UI-02
+- **Plans:** 3 plans
+Plans:
+- [ ] 07-01-PLAN.md — Step 1 app.js 모듈화 및 렌더링/외부 데이터 경계 강화
+- [ ] 07-02-PLAN.md — Step 1 CSS 50% 감축, DESIGN.md 적용, 모바일 레이아웃 재정렬
+- [ ] 07-03-PLAN.md — Step 1 라인 카운트, grep, Playwright 모바일 회귀 검증
 - **Success Criteria**:
   1. styles.css 크기를 50% 이상 감축하고 공통 theme 변수로 통합 적용되는지 확인
   2. app.js 내의 거대 바인딩 로직을 세부 모듈로 완전히 분리하고, 768px 이하 모바일 뷰에서 레이아웃 파손이 없는지 확인
@@ -48,4 +53,3 @@
   2. IndexedDB 차단 환경(Private Mode)에서도 LocalStorage를 통한 오프라인 폴백 동작이 정상 작동하는지 확인
   3. 배당에 투자할 수 있는 순수 투자자산이 5천만 원(5,000만 원) 이하일 때 배당 투자의 효과가 미미하다는 안내 힌트/경고가 UI 상에 명시적으로 노출되는지 확인
   4. 지수추종(성장형) vs 배당성장 vs 커버드콜의 장단점(장기 총수익률 vs 월 현금 흐름 창출 및 심리적 안정감)을 직관적으로 대조하여, 투자자 스스로 자산 선택 여부를 쉽게 판단할 수 있는 가이드 카드 및 비교 기능이 제공되는지 확인
-
