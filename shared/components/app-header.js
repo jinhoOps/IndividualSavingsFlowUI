@@ -1,4 +1,3 @@
-
 import { IsfUtils } from '../core/utils.js';
 
 export class AppHeader extends HTMLElement {
@@ -72,9 +71,9 @@ export class AppHeader extends HTMLElement {
     const version = this.getAttribute('version') || (IsfUtils ? IsfUtils.APP_VERSION : '0.0.0');
     
     const stepLabels = {
-      '1': 'Main',
-      '2': 'Simulation',
-      '3': 'Portfolio'
+      '1': '나의 가계 흐름',
+      '2': '배당 성장 시뮬레이션',
+      '3': '나의 적립식 포트폴리오'
     };
     const currentLabel = stepLabels[this.currentStep] || 'ISF UIUX';
 
@@ -114,15 +113,15 @@ export class AppHeader extends HTMLElement {
               <div class="launcher-menu__inner">
                 <a href="../main/" class="launcher-item ${this.currentStep === '1' ? 'is-active' : ''}">
                   <span class="launcher-item__icon">📊</span>
-                  <span class="launcher-item__text">Main</span>
+                  <span class="launcher-item__text">가계 흐름</span>
                 </a>
                 <a href="../simulation/" class="launcher-item ${this.currentStep === '2' ? 'is-active' : ''}">
                   <span class="launcher-item__icon">💰</span>
-                  <span class="launcher-item__text">Simulation</span>
+                  <span class="launcher-item__text">배당 시뮬레이션</span>
                 </a>
                 <a href="../portfolio/" class="launcher-item ${this.currentStep === '3' ? 'is-active' : ''}">
                   <span class="launcher-item__icon">💼</span>
-                  <span class="launcher-item__text">Portfolio</span>
+                  <span class="launcher-item__text">주식 모으기</span>
                 </a>
                 <div style="margin-top: var(--sp-xs); border-top: 1px solid var(--line);"></div>
                 <button type="button" id="headerDataHubBtn" class="launcher-item" style="width: 100%; border: none; background: none; text-align: left; cursor: pointer;">

@@ -27,16 +27,20 @@ IndividualSavingsFlowUI (ISF) 프로젝트의 모든 지식은 이 지도를 통
 
 ## 📜 프로젝트 기록 (Timeline & Logs)
 - [[Project_History]]: 주요 마일스톤 및 기술적 변천사.
-- [[log.md]]: 모든 작업과 지식 수집의 연대기적 기록.
+- [[log]]: 모든 작업과 지식 수집의 연대기적 기록 (2026-06-15 이후 최신).
+- [[archive/log_archive_20260613]]: 2026-06-13 이전의 연대기적 작업 로그 아카이브.
 
 ## 🗄️ 아카이브 (Archive & Legacy)
 *레거시 시스템 및 과거 버전의 기록들입니다.*
 - [[archive/Step1_Modularization_Refactoring]]: v0.5 모듈화 과정 기록.
 - [[archive/Step2_Modularization_Refactoring]]: v0.7 모듈화 과정 기록.
 - [[archive/Storage_Hub_Integration_v0.7]]: 구형 Storage Hub 설계.
-- [[archive/UI_UX_Overhaul_v0.4]]: 초기 디자인 시스템 수립 기록.
-- [[Feature_Archive_v0.5]]: 레거시 기능 동작 사양 (회귀 테스트용).
-- [[Data_Bridge_Import_Pattern]]: 레거시 브릿지 패턴 분석.
+- [[archive/UI_UX_Overhaul_v0.3]]: 초기 디자인 시스템 수립 기록 (v0.3).
+- [[archive/UI_UX_Overhaul_v0.4]]: 디자인 시스템 고도화 기록 (v0.4).
+- [[archive/Plan_Step1]]: Step 1 초기 기획서.
+- [[archive/Plan_Step2]]: Step 2 초기 기획서.
+- [[archive/Feature_Archive_v0.5]]: 레거시 기능 동작 사양 (회귀 테스트용).
+- [[archive/Data_Bridge_Import_Pattern]]: 레거시 브릿지 패턴 분석.
 
 ---
 *Librarian Tip:* 새로운 지식을 추가할 때는 반드시 기존 노드와 `[[링크]]`로 연결하고, `INDEX.md`의 카테고리를 갱신하십시오.

@@ -48,7 +48,7 @@ tags: [tax, finance, policy, reference, logic]
 ## 🛠️ 구현 가이드
 
 - `IsfUtils` 또는 전용 `TaxCalculator` 모듈을 통해 위 기준값을 상수로 관리하십시오.
-- 모든 계산은 내부적으로 `원` 단위를 사용하며, UI 표시 시에만 `만원` 또는 `억/만원` 단위로 변환합니다.
+- 모든 계산 및 내부 저장은 `원` 단위를 사용하며, UI 표시 시 `formatMoney`를 사용해 정밀하게 포맷팅하여 렌더링하고, 입력 폼에서는 원 단위를 직접 입력하며 실시간 한글 금액 변환 힌트를 표시합니다.
 
 ---
 *연결 노드:* [[Data_Model_Reference]], [[UI_Standards_Reference]], [[Operating_Principles]]

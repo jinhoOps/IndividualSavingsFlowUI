@@ -10,10 +10,10 @@ IndividualSavingsFlowUI 프로젝트는 v1.1.0-alpha.1부터 **현대적 개발 
 
 ## 기술 스택 (Tech Stack)
 
-- **Runtime**: Vite 8 (Modern ESM)
+- **Runtime**: Vite 5 (Modern ESM)
 - **Language**: TypeScript (TS) & Modern JavaScript
 - **Styling**: TailwindCSS v4 (@theme 기반 설정)
-- **Framework**: React/Preact (v1.1.0+ 도입 시작) 및 Native Web Components
+- **Framework**: React (v1.1.0+ 도입 시작) 및 Native Web Components
 - **Deployment**: GitHub Actions를 통한 자동 PWA 배포
 
 ## 디렉토리 구조
@@ -43,8 +43,8 @@ v1.1.0부터 모든 데이터 영속화 로직은 `src/core/storage/IsfStore.ts`
 - **Compatibility Bridge**: 레거시 바닐라 JS 앱들이 수정 없이도 새 스토리지 레이어를 사용할 수 있도록 `CompatibilityBridge.ts`가 구형 API(`window.IsfStorageHub`)를 가로채어 새 서비스로 연결합니다.
 
 ### 데이터 흐름 (Data Flow)
-1. **Input**: 사용자가 UI에서 '만원' 단위로 입력.
-2. **Sanitize**: `MoneyUtils.toWon`을 통해 내부 데이터인 '원' 단위로 즉시 변환.
+1. **Input**: 사용자가 UI에서 '원(KRW)' 단위로 금액을 직접 입력 (실시간 한글 금액 변환 힌트 표출).
+2. **Sanitize**: `IsfUtils.toWon` (혹은 `MoneyUtils.toWon`)을 거치며 단위 왜곡을 유발하는 10,000배율 변환 없이 1원 단위 정밀성을 직접 유지.
 3. **Persist**: `IsfStore`가 IndexedDB 및 LocalStorage에 '원' 단위로 영속화.
 4. **Bridge**: Step 2 등 다른 페이지에서 필요 시 `IsfStore`를 통해 원 단위 데이터를 조회하여 정밀한 계산 수행.
 
