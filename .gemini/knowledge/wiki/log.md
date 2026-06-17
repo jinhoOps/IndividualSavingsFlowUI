@@ -50,6 +50,15 @@ sequenceDiagram
 
 ---
 
+## [2026-06-17] fix | 계좌 네트워크 맵 소득 분배 연산 반영 및 급여 초과 지출 시 마이너스 결손 배너 경고 추가 (v0.11.80)
+- **목적**: Account Network Map에서 계좌 간 분배 흐름이 누락되는 현상을 해결하고, 순현금흐름이 적자(결손) 상태일 때 직관적인 마이너스(-) 경고 배너를 제공하여 가계 흐름의 시각적 및 상태 가독성을 극대화합니다.
+- **주요 변경사항**:
+  - **계좌 간 분배 연산 추가 (`apps/main/modules/sankey-builder.js`)**: 소득 분배 규칙(`src.allocations`)을 `transfers` 배열에 이체 내역으로 추가하여 Account Network Map 상에 초록색의 분배 흐름 화살표가 렌더링되도록 수정했습니다.
+  - **이중 계산 방지 필터링 (`apps/main/modules/sankey-builder.js`)**: `totalInflow`와 `totalOutflow`를 계산할 때 계좌 간 분배 링크들을 제외하고 순수 수입원(Column 0)과 지출처(Column 2)만 가산하도록 필터링을 보강하여 계좌 잔액의 이중 계산 오류를 원천 차단했습니다.
+  - **결손 경고 배너 분리 구현 (`apps/main/index.html`, `apps/main/modules/dom.js`, `apps/main/modules/render-orchestrator.js`)**: 기존 잉여현금 자동 이체 배너를 잉여현금 노출용(`surplusNormalWrapper`)과 결손 경고용(`surplusDeficitWrapper`) 듀얼 래퍼로 분리하여 셀렉트 이벤트의 해제 없이 동적 상태를 렌더링하게 했습니다. 결손 상태일 때 마이너스 금액(`-X원`)을 렌더링하도록 반영했습니다.
+  - **경고 테마 스타일 추가 (`apps/main/styles.css`)**: `.surplus-transfer-banner.is-deficit` 스타일을 정의하여, 적자 상태일 경우 붉은색 경고 박스로 시각적인 경고 힌트를 제공하도록 CSS를 수정했습니다.
+- **결과**: `npm run build` 및 `npm run test:e2e` 24개 테스트 케이스 전원 통과 상태로 배포 번들 빌드와 수동 및 자동 검증을 완벽히 마쳤습니다.
+
 ## [2026-06-17] fix | 잉여현금 및 다중 계좌 분배 시각화 정밀 개선, 부채상환 노드 추가 및 시뮬레이션 합산
 - **목적**: 잉여현금의 다중 계좌 분배 흐름을 시각적으로 올바르게 표현하고, 누락된 부채상환 흐름을 Sankey 다이어그램에 표출하여 수학적 균형을 맞춥니다. 또한 시뮬레이션에서 잉여현금이 지정된 이체 대상 계좌의 자산으로 정상적으로 누적되도록 패치하고, 스마트 등록 시의 데이터 키 불일치 버그를 해결합니다.
 - **주요 변경사항**:
