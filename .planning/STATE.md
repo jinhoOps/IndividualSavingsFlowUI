@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.8
 milestone_name: 적립식 포트폴리오 관리 및 전체 UI/UX 개선
 status: planning
-last_updated: "2026-06-17T08:08:57.853Z"
-last_activity: 2026-06-17 -- Phase 08 Plan 02 complete
+last_updated: "2026-06-17T08:31:19Z"
+last_activity: 2026-06-17 -- Phase 08 Plan 03 complete
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 13
-  completed_plans: 11
-  percent: 85
-stopped_at: Completed 08-step-2-redesign-re-planning-02-PLAN.md
+  completed_plans: 12
+  percent: 92
+stopped_at: Completed 08-step-2-redesign-re-planning-03-PLAN.md
 ---
 
 # Project State
@@ -19,9 +19,9 @@ stopped_at: Completed 08-step-2-redesign-re-planning-02-PLAN.md
 ## Current Position
 
 Phase: 8
-Plan: 03/04
-Status: Ready for Phase 08 Plan 03
-Last activity: 2026-06-17 -- Phase 08 Plan 02 complete
+Plan: 04/04
+Status: Ready for Phase 08 Plan 04
+Last activity: 2026-06-17 -- Phase 08 Plan 03 complete
 
 ## Project Reference
 
@@ -41,6 +41,7 @@ See: .planning/PROJECT.md (updated 2026-05-20)
 |-------|------|----------|-------|
 | Phase 08-step-2-redesign-re-planning P01 | 33 min | 3 tasks | 8 files |
 | Phase 08-step-2-redesign-re-planning P02 | 17 min | 2 tasks | 6 files |
+| Phase 08-step-2-redesign-re-planning P03 | 19 min | 3 tasks | 7 files |
 
 ## Decisions
 
@@ -49,3 +50,5 @@ See: .planning/PROJECT.md (updated 2026-05-20)
 - [Phase 08-01]: Saved Step 2 entries generate a display name from strategy context, horizon, and save timestamp when no existing name is present.
 - [Phase 08-02]: Strategy assumptions are centralized in assumptions.js with conservative numeric defaults separated from display ranges.
 - [Phase 08-02]: Strategy comparison rows expose signed Won benchmark deltas so underperformance versus Nasdaq or S&P 500 remains visible.
+- [Phase 08-03]: Step 2 first-screen order now follows the mobile judgment flow in actual DOM order.
+- [Phase 08-03]: DataHub simulation list names and ids are rendered with textContent and dataset while static modal templates remain unchanged.

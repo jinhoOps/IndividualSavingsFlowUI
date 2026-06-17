@@ -15,7 +15,7 @@
 | 5 | Portfolio Creation & Target Allocation UI | 나만의 포트폴리오 만들기 화면, 종목명 입력, 주기 선택 및 종목 비중 실시간 편집 UI 구현 | PORT-01, PORT-02 | 2 |
 | 6 | Confirmation & Portfolio Storage Hub | 포트폴리오 추가 최종 확인 모달 구현 및 IndexedDB 영속화 저장소 연동 | PORT-03 | 2 |
 | 7 | Step 1 UI/UX Refactoring & Modularization | Step 1의 거대한 CSS 다이어트, 모듈 쪼개기, DESIGN.md 기반 UI/UX 전면 개편 | UI-01, UI-02 | Complete (7/7, 2026-06-17) |
-| 8 | Step 2 Redesign & Re-planning | Step 2의 목표(미래 자산 시뮬레이션)만 살려 현대적 에디토리얼 레이아웃으로 전면 재기획 및 구현 | UI-03 | In Progress (2/4 plans, 2026-06-17) |
+| 8 | Step 2 Redesign & Re-planning | Step 2의 목표(미래 자산 시뮬레이션)만 살려 현대적 에디토리얼 레이아웃으로 전면 재기획 및 구현 | UI-03 | In Progress (3/4 plans, 2026-06-17) |
 
 ### Phase Details
 
@@ -57,7 +57,7 @@
 
 - **Goal:** 배당성장과 커버드콜의 개념적 이해를 돕고, 단순 지수추종 및 성장주 대비 총수익률의 열세에도 불구하고 이를 선택하는 이유(월 현금 흐름 확보, 은퇴 계획 등)를 투자자 본인이 판단할 수 있도록 돕는 미래 자산 시뮬레이션을 전면 재기획 및 구현
 - **Requirements:** UI-03
-- **Plans:** 2/4 plans executed
+- **Plans:** 3/4 plans executed
 
 **Wave 1**
 
@@ -69,7 +69,7 @@
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 08-03-PLAN.md — Step 2 첫 화면, 모바일 레이아웃, KPI/그래프/카드/상세 검증 게이트
+- [x] 08-03-PLAN.md — Step 2 첫 화면, 모바일 레이아웃, KPI/그래프/카드/상세 검증 게이트
 - [ ] 08-04-PLAN.md — 정적 시장 데이터 문서화 및 root QQQ CSV backdata 정리
 - **Success Criteria**:
   1. 복잡한 입력 항목을 간소화하고, 직관적인 미래 자산 성장 그래프와 KPI 카드로 화면이 전면 재배치되는지 확인
