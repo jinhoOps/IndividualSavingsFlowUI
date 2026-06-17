@@ -57,7 +57,7 @@
 
 - **Goal:** 배당성장과 커버드콜의 개념적 이해를 돕고, 단순 지수추종 및 성장주 대비 총수익률의 열세에도 불구하고 이를 선택하는 이유(월 현금 흐름 확보, 은퇴 계획 등)를 투자자 본인이 판단할 수 있도록 돕는 미래 자산 시뮬레이션을 전면 재기획 및 구현
 - **Requirements:** UI-03
-- **Plans:** 3 plans
+- **Plans:** 4 plans
 
 **Wave 1**
 
@@ -65,11 +65,12 @@
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 08-02-PLAN.md — 지수/배당성장/커버드콜 비교 계산 모델, 보수 가정, backdata 정리
+- [ ] 08-02-PLAN.md — 지수/배당성장/커버드콜 비교 계산 모델, 보수 가정, 회귀 테스트
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
 - [ ] 08-03-PLAN.md — Step 2 첫 화면, 모바일 레이아웃, KPI/그래프/카드/상세 검증 게이트
+- [ ] 08-04-PLAN.md — 정적 시장 데이터 문서화 및 root QQQ CSV backdata 정리
 - **Success Criteria**:
   1. 복잡한 입력 항목을 간소화하고, 직관적인 미래 자산 성장 그래프와 KPI 카드로 화면이 전면 재배치되는지 확인
   2. IndexedDB 차단 환경(Private Mode)에서도 LocalStorage를 통한 오프라인 폴백 동작이 정상 작동하는지 확인
