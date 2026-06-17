@@ -8,6 +8,7 @@ import {
 } from "./renderers.js";
 import { featureController } from "./feature-controllers.js";
 import { importLatestStep1Data } from "./step1-connector.js";
+import { getStrategyAssumptions } from "./assumptions.js";
 import { 
   SHARE_STATE_KEY, 
   SHARE_STATE_SCHEMA 
@@ -69,7 +70,7 @@ export const uiController = {
     this.bindInputListeners();
     this.bindSimulationSettings();
     this.bindDisplayOptions();
-    this.bindPresets();
+    this.bindStrategyControls();
   },
 
   bindInputListeners() {
@@ -113,10 +114,9 @@ export const uiController = {
   },
 
   bindSimulationSettings() {
-    if (dom.toggleSimInputs) {
-      dom.toggleSimInputs.addEventListener("click", () => {
-        dom.simInputsContainer.hidden = !dom.simInputsContainer.hidden;
-        dom.toggleSimInputs.textContent = dom.simInputsContainer.hidden ? "가정 설정" : "설정 닫기";
+    if (dom.saveStep2Simulation) {
+      dom.saveStep2Simulation.addEventListener("click", async () => {
+        await featureController.saveCurrent();
       });
     }
 
@@ -126,7 +126,13 @@ export const uiController = {
         if (btn) {
           const y = parseInt(btn.dataset.years);
           if (state.draft.dividendSim) state.draft.dividendSim.years = y;
-          Array.from(dom.simYearsTabs.querySelectorAll(".tab-btn")).forEach(t => t.classList.toggle("is-active", t === btn));
+          Array.from(dom.simYearsTabs.querySelectorAll(".tab-btn")).forEach(t => {
+            const active = t === btn;
+            t.classList.toggle("is-active", active);
+            t.setAttribute("aria-selected", active ? "true" : "false");
+          });
+          if (dom.simHorizonYears) dom.simHorizonYears.value = y;
+          markDirty();
           renderDividendSimulation();
         }
       });
@@ -171,91 +177,100 @@ export const uiController = {
     });
   },
 
-  bindPresets() {
-    const PRESET_ASSETS = {
-      SCHD: { yield: 3.5, growth: 10.0, capital: 5.0 },
-      QQQI: { yield: 10.5, growth: 0.0, capital: 9.0 },
-      JEPI: { yield: 8.0, growth: 1.0, capital: 3.0 },
-      QLD: { yield: 0.4, growth: 0.0, capital: 18.0 },
-      TQQQ: { yield: 0.2, growth: 0.0, capital: 23.0 },
-      QQQM: { yield: 0.6, growth: 10.0, capital: 11.0 },
-      VOO: { yield: 1.3, growth: 7.0, capital: 8.0 },
-      SGOV: { yield: 4.5, growth: 0.0, capital: 0.0 }
-    };
-
-    const PRESET_COMBINATIONS = {
-      "schd": [{ label: "단일 100%", ratios: { SCHD: 1.0 }, fullName: "배당 성장 집중형 (SCHD 100%)" }],
-      "schd_qqqi": [
-        { label: "7:3", ratios: { SCHD: 0.7, QQQI: 0.3 }, fullName: "밸런스 표준형 (SCHD+QQQI) 7:3" },
-        { label: "1:1", ratios: { SCHD: 0.5, QQQI: 0.5 }, fullName: "밸런스 표준형 (SCHD+QQQI) 1:1" },
-        { label: "3:7", ratios: { SCHD: 0.3, QQQI: 0.7 }, fullName: "밸런스 표준형 (SCHD+QQQI) 3:7" }
-      ],
-      "schd_jepi": [
-        { label: "7:3", ratios: { SCHD: 0.7, JEPI: 0.3 }, fullName: "안정적 고배당형 (SCHD+JEPI) 7:3" },
-        { label: "1:1", ratios: { SCHD: 0.5, JEPI: 0.5 }, fullName: "안정적 고배당형 (SCHD+JEPI) 1:1" },
-        { label: "3:7", ratios: { SCHD: 0.3, JEPI: 0.7 }, fullName: "안정적 고배당형 (SCHD+JEPI) 3:7" }
-      ],
-      "jepi_qqqi": [
-        { label: "7:3", ratios: { JEPI: 0.7, QQQI: 0.3 }, fullName: "월배당 극대화형 (JEPI+QQQI) 7:3" },
-        { label: "1:1", ratios: { JEPI: 0.5, QQQI: 0.5 }, fullName: "월배당 극대화형 (JEPI+QQQI) 1:1" },
-        { label: "3:7", ratios: { JEPI: 0.3, QQQI: 0.7 }, fullName: "월배당 극대화형 (JEPI+QQQI) 3:7" }
-      ],
-      "all_weather": [{ label: "4:3:3", ratios: { SCHD: 0.4, JEPI: 0.3, QQQI: 0.3 }, fullName: "올웨더 배당형 (SCHD+JEPI+QQQI) 4:3:3" }],
-      "aggressive_leverage": [
-        { label: "1안 (레버리지+CC)", ratios: { QLD: 0.5, TQQQ: 0.1, QQQI: 0.4 }, fullName: "적극형 1안: QLD 50% / TQQQ 10% / QQQI 40%" },
-        { label: "2안 (나스닥 알파)", ratios: { QQQM: 0.7, QLD: 0.3 }, fullName: "적극형 2안: QQQM 70% / QLD 30%" },
-        { label: "3안 (지수+레버리지)", ratios: { VOO: 0.5, QLD: 0.5 }, fullName: "적극형 3안: VOO 50% / QLD 50%" },
-        { label: "4안 (바벨 전략)", ratios: { QLD: 0.5, SGOV: 0.5 }, fullName: "적극형 4안: QLD 50% / SGOV 50%" }
-      ]
-    };
-
-    document.querySelectorAll(".preset-cat-btn").forEach(catBtn => {
-      catBtn.addEventListener("click", () => {
-        document.querySelectorAll(".preset-cat-btn").forEach(b => b.classList.remove("is-active"));
-        catBtn.classList.add("is-active");
-        
-        const cat = catBtn.dataset.cat;
-        const subs = PRESET_COMBINATIONS[cat] || [];
-        const subContainer = document.getElementById("presetSubContainer");
-        if (subContainer) {
-          subContainer.innerHTML = subs.map((sub, i) => 
-            `<button class="btn btn-outline btn-sm preset-sub-btn" data-index="${i}">${sub.label}</button>`
-          ).join("");
-          
-          subContainer.querySelectorAll(".preset-sub-btn").forEach(subBtn => {
-            subBtn.addEventListener("click", () => {
-              subContainer.querySelectorAll(".preset-sub-btn").forEach(b => b.classList.remove("is-active"));
-              subBtn.classList.add("is-active");
-              
-              const subData = subs[subBtn.dataset.index];
-              let y = 0, g = 0, c = 0;
-              for (const [asset, ratio] of Object.entries(subData.ratios)) {
-                 y += PRESET_ASSETS[asset].yield * ratio;
-                 g += PRESET_ASSETS[asset].growth * ratio;
-                 c += PRESET_ASSETS[asset].capital * ratio;
-              }
-              y = Math.round(y * 10) / 10;
-              g = Math.round(g * 10) / 10;
-              c = Math.round(c * 10) / 10;
-              
-              if (!state.draft.dividendSim) state.draft.dividendSim = {};
-              state.draft.dividendSim.yield = y;
-              state.draft.dividendSim.growth = g;
-              state.draft.dividendSim.capitalGrowth = c;
-              state.draft.dividendSim.presetName = subData.fullName;
-              
-              if (dom.simDividendYield) dom.simDividendYield.value = y;
-              if (dom.simDividendGrowth) dom.simDividendGrowth.value = g;
-              if (dom.simCapitalGrowth) dom.simCapitalGrowth.value = c;
-              
-              markDirty();
-              this.updateAll();
-            });
-          });
-          if (subContainer.firstChild) subContainer.firstChild.click();
-        }
+  bindStrategyControls() {
+    if (dom.strategyCardGroup) {
+      dom.strategyCardGroup.addEventListener("click", (e) => {
+        const card = e.target.closest("[data-strategy-card]");
+        if (!card) return;
+        this.applyStrategySelection(card.dataset.strategyCard);
       });
+    }
+
+    if (dom.benchmarkSelect) {
+      dom.benchmarkSelect.addEventListener("change", () => {
+        if (!state.draft.dividendSim) state.draft.dividendSim = {};
+        state.draft.dividendSim.selectedBenchmark = dom.benchmarkSelect.value;
+        if (state.draft.dividendSim.strategyKey === "indexGrowth") {
+          this.applyStrategySelection("indexGrowth", { mark: false });
+        } else {
+          this.updateAssumptionNote();
+        }
+        markDirty();
+        this.updateAll();
+      });
+    }
+
+    if (dom.coveredCallSelect) {
+      dom.coveredCallSelect.addEventListener("change", () => {
+        if (!state.draft.dividendSim) state.draft.dividendSim = {};
+        state.draft.dividendSim.coveredCallExample = dom.coveredCallSelect.value;
+        if (state.draft.dividendSim.strategyKey === "coveredCallMonthlyIncome") {
+          this.applyStrategySelection("coveredCallMonthlyIncome", { mark: false });
+        } else {
+          this.updateAssumptionNote();
+        }
+        markDirty();
+        this.updateAll();
+      });
+    }
+  },
+
+  applyStrategySelection(strategyKey, options = {}) {
+    if (!state.draft.dividendSim) state.draft.dividendSim = {};
+    const sim = state.draft.dividendSim;
+    const assumptions = getStrategyAssumptions({
+      selectedBenchmark: sim.selectedBenchmark,
+      coveredCallExample: sim.coveredCallExample,
     });
+
+    const selected = strategyKey === "indexGrowth"
+      ? assumptions.benchmark
+      : strategyKey === "coveredCallMonthlyIncome"
+        ? assumptions.coveredCall
+        : assumptions.dividendGrowth;
+    const defaults = selected.defaults || {};
+
+    sim.strategyKey = strategyKey;
+    sim.strategyName = selected.label;
+    sim.presetName = selected.fullName || selected.label;
+    sim.yield = defaults.dividendYield ?? defaults.cashFlowYield ?? sim.yield;
+    sim.growth = defaults.dividendGrowth ?? defaults.distributionGrowth ?? sim.growth;
+    sim.capitalGrowth = defaults.capitalGrowth ?? sim.capitalGrowth;
+    sim.isDrip = defaults.isDrip !== false;
+
+    this.syncStrategyControlState();
+    if (options.mark !== false) markDirty();
+    this.updateAll();
+  },
+
+  syncStrategyControlState() {
+    const sim = state.draft?.dividendSim || {};
+    if (dom.strategyCardGroup) {
+      dom.strategyCardGroup.querySelectorAll("[data-strategy-card]").forEach((card) => {
+        const active = card.dataset.strategyCard === (sim.strategyKey || "dividendGrowth");
+        card.classList.toggle("is-active", active);
+        card.setAttribute("aria-checked", active ? "true" : "false");
+      });
+    }
+    if (dom.benchmarkSelect) dom.benchmarkSelect.value = sim.selectedBenchmark || "nasdaq";
+    if (dom.coveredCallSelect) dom.coveredCallSelect.value = sim.coveredCallExample || "jepi";
+    this.updateAssumptionNote();
+  },
+
+  updateAssumptionNote() {
+    if (!dom.assumptionRangeNote) return;
+    const sim = state.draft?.dividendSim || {};
+    const assumptions = getStrategyAssumptions({
+      selectedBenchmark: sim.selectedBenchmark,
+      coveredCallExample: sim.coveredCallExample,
+    });
+    const active = sim.strategyKey === "indexGrowth"
+      ? assumptions.benchmark
+      : sim.strategyKey === "coveredCallMonthlyIncome"
+        ? assumptions.coveredCall
+        : assumptions.dividendGrowth;
+    const ranges = active.displayRanges || {};
+    dom.assumptionRangeNote.textContent = `${active.label} 예시 범위: 현금흐름 ${ranges.cashFlowYield || ranges.dividendYield}, 성장 ${ranges.dividendGrowth || ranges.distributionGrowth}, 주가 ${ranges.capitalGrowth}. ${assumptions.copy.disclaimer}`;
   },
 
   bindModalEvents() {

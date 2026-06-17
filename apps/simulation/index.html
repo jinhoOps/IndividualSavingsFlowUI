@@ -18,9 +18,10 @@
     <div class="ambient" aria-hidden="true"></div>
 
     <div class="page">
-      <section class="panel page-intro">
-        <h1>배당 성장 시뮬레이션</h1>
-        <p class="lead">월 투자 여력을 바탕으로 배당금의 복리 성장 효과를 시뮬레이션하세요.</p>
+      <section id="choiceJudgment" class="panel page-intro choice-judgment">
+        <p class="eyebrow">Step 2 선택 가이드</p>
+        <h1>월 현금흐름을 얻는 대신, 총자산 성장의 일부를 포기할 수 있습니다.</h1>
+        <p class="lead">지수/성장 전략과 배당성장, 커버드콜 월 현금흐름 전략을 같은 조건으로 비교해 은퇴 현금흐름과 장기 총수익률의 균형을 판단하세요.</p>
       </section>
 
       <main>
@@ -42,9 +43,10 @@
           </div>
         </div>
 
-        <section class="panel info-panel">
+        <section id="primaryInputsPanel" class="panel info-panel">
           <div class="section-head">
-            <h2>기본 정보</h2>
+            <h2>주요 입력</h2>
+            <p class="section-note">첫 화면에서는 초기 투자금, 월 투자금, 기간만 조정합니다.</p>
           </div>
           <div class="form-grid">
             <label class="control">
@@ -55,72 +57,78 @@
               <span>월 투자 가능 금액(원)</span>
               <input id="totalMonthlyInvestCapacity" type="number" min="0" step="1" inputmode="decimal" />
             </label>
+            <label class="control">
+              <span>투자 기간(년)</span>
+              <input id="simHorizonYears" type="number" min="1" max="50" step="1" value="10" />
+            </label>
           </div>
         </section>
 
         <section class="panel simulation-panel">
           <div class="section-head">
-            <h2>시뮬레이션 대시보드</h2>
-            <button id="toggleSimInputs" class="btn btn-ghost btn-sm" type="button">가정 설정</button>
+            <h2>전략 비교</h2>
+            <button id="saveStep2Simulation" class="btn btn-primary btn-sm" type="button">시뮬레이션 저장</button>
           </div>
-          
-          <div id="simInputsContainer" class="sim-inputs-container" hidden>
-            <details class="sim-guide" style="margin-bottom: 10px;">
-              <summary style="cursor: pointer; font-size: 0.84rem; color: var(--tone-accent);">가정 설정 가이드 (처음이라면 펼쳐보세요)</summary>
-              <div style="margin-top: 8px; padding: 10px; border: 1px dashed var(--line); border-radius: var(--rd-sm); background: rgba(235,250,246,0.5); font-size: 0.82rem; line-height: 1.6; color: var(--ink);">
-                <p style="margin: 0 0 6px;">이 시뮬레이션은 "만약 매달 일정 금액을 투자하면, 배당금이 얼마나 쌓일까?"를 미리 계산해 봅니다.</p>
-                <ul style="margin: 0; padding-left: 18px;">
-                  <li>기대 배당수익률: 1년 동안 투자금 대비 받는 배당금 비율입니다.</li>
-                  <li>배당 성장률: 매년 기업이 배당금을 얼마나 올려주는지의 비율입니다.</li>
-                  <li>주가 상승률: 자산 평가액이 매년 얼마나 오르는지의 비율입니다.</li>
-                  <li>배당 재투자: 받은 배당금을 다시 투자에 넣으면 복리 효과가 극대화됩니다.</li>
-                </ul>
-              </div>
-            </details>
-            <div class="sim-presets" style="margin-bottom: 16px;">
-              <div class="muted" style="font-size: 0.8rem; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
-                <span>프리셋 조합:</span>
-                <span id="activePresetName" class="badge badge-primary" style="font-size: 0.75rem; display: none;"></span>
-              </div>
-              <div class="preset-depth1" style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px;">
-                <button class="btn btn-ghost btn-sm preset-cat-btn" data-cat="schd">배당 성장 집중형 (SCHD 100%)</button>
-                <button class="btn btn-ghost btn-sm preset-cat-btn" data-cat="schd_qqqi">밸런스 표준형 (SCHD+QQQI)</button>
-                <button class="btn btn-ghost btn-sm preset-cat-btn" data-cat="schd_jepi">안정적 고배당형 (SCHD+JEPI)</button>
-                <button class="btn btn-ghost btn-sm preset-cat-btn" data-cat="jepi_qqqi">월배당 극대화형 (JEPI+QQQI)</button>
-                <button class="btn btn-ghost btn-sm preset-cat-btn" data-cat="all_weather">올웨더 배당형 (SCHD+JEPI+QQQI)</button>
-                <button class="btn btn-ghost btn-sm preset-cat-btn" data-cat="aggressive_leverage">적극적 레버리지/알파형</button>
-              </div>
-              <div class="preset-depth2" id="presetSubContainer" style="display: flex; gap: 6px; flex-wrap: wrap; min-height: 28px;">
-                <!-- Sub buttons inserted by JS -->
-              </div>
-            </div>
-            <div class="form-grid">
+
+          <div id="strategyCardGroup" class="strategy-card-grid" role="radiogroup" aria-label="전략 선택">
+            <button class="strategy-card" type="button" role="radio" aria-checked="false" data-strategy-card="indexGrowth">
+              <span class="strategy-card__group">지수/성장</span>
+              <strong>Nasdaq 또는 S&P 500</strong>
+              <span>총자산 성장을 먼저 보는 기준선</span>
+            </button>
+            <button class="strategy-card is-active" type="button" role="radio" aria-checked="true" data-strategy-card="dividendGrowth">
+              <span class="strategy-card__group">배당성장</span>
+              <strong>SCHD</strong>
+              <span>현금흐름과 성장의 균형</span>
+            </button>
+            <button class="strategy-card" type="button" role="radio" aria-checked="false" data-strategy-card="coveredCallMonthlyIncome">
+              <span class="strategy-card__group">커버드콜/월 현금흐름</span>
+              <strong>JEPI · QQQI · DIVO</strong>
+              <span>은퇴 현금흐름 도구, 상승 참여 제한 동반</span>
+            </button>
+          </div>
+
+          <details id="simInputsContainer" class="sim-inputs-container">
+            <summary id="toggleSimInputs">고급 가정 및 ETF 예시</summary>
+            <div class="advanced-settings-grid">
               <label class="control">
-                <span>기대 배당수익률(연, %)</span>
-                <input id="simDividendYield" type="number" min="0" max="100" step="0.1" value="3.5" />
+                <span>비교 벤치마크</span>
+                <select id="benchmarkSelect">
+                  <option value="nasdaq">Nasdaq</option>
+                  <option value="sp500">S&amp;P 500</option>
+                </select>
+              </label>
+              <label class="control">
+                <span>커버드콜 예시</span>
+                <select id="coveredCallSelect">
+                  <option value="jepi">JEPI</option>
+                  <option value="qqqi">QQQI</option>
+                  <option value="divo">DIVO</option>
+                </select>
+              </label>
+              <label class="control">
+                <span>배당/현금흐름 수익률(연, %)</span>
+                <input id="simDividendYield" type="number" min="0" max="30" step="0.1" value="3.5" />
               </label>
               <label class="control">
                 <span>배당 성장률(연, %)</span>
-                <input id="simDividendGrowth" type="number" min="0" max="100" step="0.1" value="5.0" />
+                <input id="simDividendGrowth" type="number" min="0" max="30" step="0.1" value="5.0" />
               </label>
               <label class="control">
                 <span>주가 상승률(연, %)</span>
-                <input id="simCapitalGrowth" type="number" min="0" max="100" step="0.1" value="4.0" />
+                <input id="simCapitalGrowth" type="number" min="0" max="30" step="0.1" value="4.0" />
               </label>
-              <label class="control">
-                <span>시뮬레이션 기간(년)</span>
-                <input id="simHorizonYears" type="number" min="1" max="40" step="1" value="10" />
-              </label>
-              <label class="control" style="justify-content: center; align-items: start; display: flex; flex-direction: column;">
-                <span>배당 재투자(연 단위)</span>
-                <label style="font-size:0.9rem;"><input id="simDrip" type="checkbox" checked /> 재투자함</label>
+              <label class="control control--checkbox">
+                <span>배당 재투자</span>
+                <label><input id="simDrip" type="checkbox" checked /> 재투자함</label>
               </label>
             </div>
-          </div>
+            <p id="assumptionRangeNote" class="assumption-note">보수 예시 가정이며 실시간 수익률이나 보장 수익이 아닙니다.</p>
+          </details>
 
           <div class="sim-dashboard">
-            <div class="sim-controls" style="margin-top: 10px; margin-bottom: 12px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-              <span class="muted" style="font-size: 0.8rem;">시뮬레이션 기간:</span>
+            <div class="sim-controls">
+              <span class="muted">기간 빠른 선택</span>
               <div class="tab-list" id="simYearsTabs" role="tablist">
                 <button class="tab-btn" data-years="5" role="tab">5년</button>
                 <button class="tab-btn is-active" data-years="10" role="tab" aria-selected="true">10년</button>
@@ -129,62 +137,34 @@
               </div>
             </div>
 
-            <div id="dividendWarningBanner" class="warning-banner" style="margin-top: 12px; margin-bottom: 12px; padding: var(--sp-md, 12px); border-radius: var(--rd-lg, 8px); background: rgba(235, 91, 42, 0.05); border: 1.5px dashed var(--tone-accent); display: none; align-items: start; gap: 8px;">
-              <span class="warning-banner__icon" style="font-size: 1.2rem; filter: grayscale(0.2);">⚠️</span>
-              <div class="warning-banner__body" style="font-size: 0.85rem; line-height: 1.5; color: var(--ink);">
-                <strong>투자 안내:</strong> 총 자산 운용 규모가 1억 원(10,000 만원) 미만인 경우, 배당 소득의 재투자 복리 효과가 크지 않을 수 있습니다. 자산 형성기에는 배당 투자보다 <strong>지수 추종 및 성장 알파 자산</strong>을 통해 원금을 극대화하는 것을 권장합니다.
+            <div id="dividendWarningBanner" class="warning-banner">
+              <span class="warning-banner__icon" aria-hidden="true">!</span>
+              <div class="warning-banner__body">
+                <strong>5천만 원 이하 초기 자금 안내:</strong> 배당 또는 커버드콜 현금흐름에 기대기 전에 지수/성장 투자로 원금을 키우는 선택을 먼저 비교해 보세요.
               </div>
             </div>
 
             <div id="simKpiGrid" class="kpi-grid"></div>
 
-            <div class="sim-view-options" style="margin-top: 16px; margin-bottom: 8px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-              <span class="muted" style="font-size: 0.8rem;">표시 옵션:</span>
-              <label class="view-opt-label" style="font-size: 0.85rem; display: flex; align-items: center; gap: 4px; cursor: pointer;">
-                <input type="checkbox" id="optShowAsset" checked /> 자산
-              </label>
-              <label class="view-opt-label" style="font-size: 0.85rem; display: flex; align-items: center; gap: 4px; cursor: pointer;">
-                <input type="checkbox" id="optShowDividend" checked /> 연배당
-              </label>
-              <div style="width: 1px; height: 14px; background: var(--line); margin: 0 4px;"></div>
-              <label class="view-opt-label" style="font-size: 0.85rem; display: flex; align-items: center; gap: 4px; cursor: pointer;">
-                <input type="checkbox" id="optShowPR" checked /> PR (미투자)
-              </label>
-              <label class="view-opt-label" style="font-size: 0.85rem; display: flex; align-items: center; gap: 4px; cursor: pointer;">
-                <input type="checkbox" id="optShowTR" checked /> TR (재투자)
-              </label>
-            </div>
-
-            <div class="sim-chart-wrap" style="position: relative; margin-top: 10px;">
-              <svg id="simChartSvg" viewBox="0 0 600 220" role="img" aria-label="연도별 배당금 추이"></svg>
+            <div class="sim-chart-wrap">
+              <svg id="simChartSvg" viewBox="0 0 600 260" role="img" aria-label="전략별 최종 자산 성장 비교"></svg>
               <div id="simChartTooltip" class="sim-tooltip" hidden></div>
             </div>
-            
-            <div class="table-wrap" style="margin-top: 16px; overflow-x: auto;">
-              <table id="simTable" class="projection-table">
-                <thead>
-                  <tr>
-                    <th rowspan="2" style="text-align: center; vertical-align: middle;">연차</th>
-                    <th rowspan="2" style="text-align: center; vertical-align: middle;">누적 원금</th>
-                    <th colspan="2" style="text-align: center;" data-tooltip="배당을 재투자하지 않는 순수 주가 상승 케이스 (Price Return)">자산 (PR)</th>
-                    <th colspan="2" style="text-align: center;" data-tooltip="배당을 전액 재투자하여 복리 효과를 극대화한 케이스 (Total Return)">자산 (TR)</th>
-                    <th colspan="2" style="text-align: center;" data-tooltip="재투자하지 않을 때 받는 세후 배당금">연 배당 (PR)</th>
-                    <th colspan="2" style="text-align: center;" data-tooltip="재투자로 인해 늘어난 수량까지 합산된 세후 배당금">연 배당 (TR)</th>
-                  </tr>
-                  <tr>
-                    <th>명목</th>
-                    <th>실질</th>
-                    <th>명목</th>
-                    <th>실질</th>
-                    <th>명목</th>
-                    <th>실질</th>
-                    <th>명목</th>
-                    <th>실질</th>
-                  </tr>
-                </thead>
-                <tbody></tbody>
-              </table>
-            </div>
+
+            <div id="strategyComparisonCards" class="comparison-card-grid"></div>
+
+            <div id="finalGuidance" class="final-guidance" aria-live="polite"></div>
+
+            <details id="detailSection" class="detail-section">
+              <summary>연도별 상세 보기</summary>
+              <div id="detailSummaryCards" class="detail-summary-grid"></div>
+              <div class="table-wrap">
+                <table id="simTable" class="projection-table">
+                  <thead></thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </details>
           </div>
         </section>
 
