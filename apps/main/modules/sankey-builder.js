@@ -366,6 +366,30 @@ export function buildSankeyData(snapshot, sortMode, sankeyGrouping) {
 
   // 3. 계좌 간 이체(내부 링크) 계산
   const transfers = [];
+
+  // 소득 분배를 transfers에 추가
+  incomeSources.forEach((src) => {
+    const mainAccountId = resolveAccountId(src.accountId, MAGIC_MAPPING_DEFAULTS.income);
+    if (!mainAccountId) return;
+
+    if (Array.isArray(src.allocations) && src.allocations.length > 0) {
+      src.allocations.forEach((alloc) => {
+        if (alloc.amount <= 0) return;
+        const targetAccountId = resolveAccountId(alloc.accountId, MAGIC_MAPPING_DEFAULTS.income);
+        if (!targetAccountId || targetAccountId === mainAccountId) return;
+
+        transfers.push({
+          source: mainAccountId,
+          target: targetAccountId,
+          value: alloc.amount,
+          tone: src.tone,
+          label: `${src.label} 분배`,
+          isManual: false
+        });
+      });
+    }
+  });
+
   const manualRules = Array.isArray(snapshot.transfers) ? snapshot.transfers : [];
   
   // 3.1 수동 이체 규칙 선제 적용
@@ -385,14 +409,14 @@ export function buildSankeyData(snapshot, sortMode, sankeyGrouping) {
   const consumers = [];
  
   accounts.forEach((acc) => {
-    // 수입 -> 계좌 링크 합산
+    // 수입 -> 계좌 링크 합산 (계좌 간 분배 링크는 제외하기 위해 source가 계좌가 아닌 것만 필터)
     const totalInflow = links
-      .filter((link) => link.target === acc.id)
+      .filter((link) => link.target === acc.id && !accountIds.has(link.source))
       .reduce((sum, link) => sum + link.value, 0);
  
-    // 계좌 -> 대분류 링크 합산
+    // 계좌 -> 대분류 링크 합산 (계좌 간 분배 링크는 제외하기 위해 target이 계좌가 아닌 것만 필터)
     const totalOutflow = links
-      .filter((link) => link.source === acc.id)
+      .filter((link) => link.source === acc.id && !accountIds.has(link.target))
       .reduce((sum, link) => sum + link.value, 0);
  
     // 수동 이체에 의한 출금 및 입금 가감

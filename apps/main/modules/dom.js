@@ -24,6 +24,9 @@ export const dom = {
   surplusTransferBanner: document.getElementById("surplusTransferBanner"),
   surplusAmountText: document.getElementById("surplusAmountText"),
   surplusTransferAccountSelect: document.getElementById("surplusTransferAccountSelect"),
+  surplusNormalWrapper: document.getElementById("surplusNormalWrapper"),
+  surplusDeficitWrapper: document.getElementById("surplusDeficitWrapper"),
+  deficitAmountText: document.getElementById("deficitAmountText"),
 
   accountList: document.getElementById("accountList"),
   editAccountItems: document.getElementById("editAccountItems"),

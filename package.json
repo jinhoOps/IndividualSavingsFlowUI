@@ -1,6 +1,6 @@
 {
   "name": "individualsavingsflowui",
-  "version": "0.11.79",
+  "version": "0.11.80",
   "description": "`개인 자산 흐름 (IndividualSavings Flow UIUX)` 프로젝트는  \r 개인의 월간 현금흐름 점검부터 중장기 자산 변화 시뮬레이션까지 연결하는 UIUX를 기획 중입니다.  \r 현재는 단일 레포 내 다중 단계 구조로 운영합니다.",
   "main": "sw.js",
   "scripts": {

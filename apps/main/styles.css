@@ -408,6 +408,8 @@ to{opacity:1}
 .mb-md{margin-bottom:var(--sp-md)}
 .w-full{width:100%}
 .surplus-transfer-banner{margin-top:var(--sp-md);margin-bottom:var(--sp-md);padding:var(--sp-md);border:1px solid var(--line);border-radius:var(--rd-md);background:var(--panel);font-size:var(--text-body-md);color:var(--ink);display:flex;align-items:center;flex-wrap:wrap;gap:var(--sp-xs);box-shadow:var(--sh-float)}
+.surplus-transfer-banner.is-deficit{border-color:rgba(214,51,108,0.25);background:rgba(214,51,108,0.05)}
+.surplus-transfer-banner.is-deficit span{color:var(--deficit) !important}
 .surplus-transfer-banner[hidden]{display:none !important}
 .surplus-transfer-banner span{font-weight:700;color:var(--surplus)}
 .surplus-select{border:1px solid var(--line-strong);border-radius:var(--rd-sm);padding:4px 8px;background:rgba(255,255,255,0.85);font-family:inherit;font-size:0.9rem;color:var(--ink);cursor:pointer}

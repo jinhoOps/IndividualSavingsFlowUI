@@ -74,6 +74,10 @@ export function createRenderOrchestrator() {
     if (dom.surplusTransferBanner) {
       if (snapshot.surplus > 0) {
         dom.surplusTransferBanner.hidden = false;
+        dom.surplusTransferBanner.classList.remove("is-deficit");
+        if (dom.surplusNormalWrapper) dom.surplusNormalWrapper.hidden = false;
+        if (dom.surplusDeficitWrapper) dom.surplusDeficitWrapper.hidden = true;
+
         if (dom.surplusAmountText) {
           dom.surplusAmountText.textContent = IsfUtils.formatMoney(snapshot.surplus);
         }
@@ -87,6 +91,15 @@ export function createRenderOrchestrator() {
             option.selected = account.id === currentInputs.surplusTransferAccountId;
             return option;
           }));
+        }
+      } else if (snapshot.deficit > 0) {
+        dom.surplusTransferBanner.hidden = false;
+        dom.surplusTransferBanner.classList.add("is-deficit");
+        if (dom.surplusNormalWrapper) dom.surplusNormalWrapper.hidden = true;
+        if (dom.surplusDeficitWrapper) dom.surplusDeficitWrapper.hidden = false;
+
+        if (dom.deficitAmountText) {
+          dom.deficitAmountText.textContent = `-${IsfUtils.formatMoney(snapshot.deficit)}`;
         }
       } else {
         dom.surplusTransferBanner.hidden = true;

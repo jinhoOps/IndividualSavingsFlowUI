@@ -67,10 +67,15 @@
         </div>
         <div id="inputsPanelContent" hidden>
           <div id="surplusTransferBanner" class="surplus-transfer-banner" hidden>
-            💡 이번 달 남는 잉여현금 <span id="surplusAmountText">0원</span>은 
-            <select id="surplusTransferAccountSelect" class="surplus-select" aria-label="잉여현금 자동 이체 계좌"></select> 
-            으로 자동 이체합니다.
-            <span class="help-tooltip-trigger" data-tooltip="지출, 저축, 투자를 모두 배분하고 남은 수입(잉여현금)이 있을 때 지정된 계좌로 자동 입금 흐름이 생성됩니다.">?</span>
+            <span id="surplusNormalWrapper" style="display: inline-flex; align-items: center; gap: var(--sp-xs); flex-wrap: wrap;">
+              💡 이번 달 남는 잉여현금 <span id="surplusAmountText">0원</span>은 
+              <select id="surplusTransferAccountSelect" class="surplus-select" aria-label="잉여현금 자동 이체 계좌"></select> 
+              으로 자동 이체합니다.
+              <span class="help-tooltip-trigger" data-tooltip="지출, 저축, 투자를 모두 배분하고 남은 수입(잉여현금)이 있을 때 지정된 계좌로 자동 입금 흐름이 생성됩니다.">?</span>
+            </span>
+            <span id="surplusDeficitWrapper" style="display: inline-flex; align-items: center; gap: var(--sp-xs); flex-wrap: wrap;" hidden>
+              ⚠️ 이번 달 수입보다 지출/저축/투자가 <span id="deficitAmountText">0원</span> 많습니다 (결손)
+            </span>
           </div>
 
           <!-- 관리 탭 네비게이션 -->
