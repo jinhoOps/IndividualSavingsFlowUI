@@ -138,6 +138,11 @@ function getShortAccountName(name) {
   return name.replace(/(계좌|통장)$/, "");
 }
 
+function escapeOptionAttributeValue(value) {
+  const entities = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" };
+  return String(value ?? "").replace(/[&<>"']/g, (match) => entities[match]);
+}
+
 export function renderIncomeItemHtml(item, opts) {
   const isEditing = !!opts.editing;
   if (!isEditing) {
@@ -170,7 +175,7 @@ export function renderIncomeItemHtml(item, opts) {
   const allocationsHtml = allocations.map((al, idx) => {
     const selectOpts = accounts.map(acc => {
       const selected = acc.id === al.accountId ? "selected" : "";
-      return `<option value="${acc.id}" ${selected}>${IsfUtils.escapeHtml(acc.name)}</option>`;
+      return `<option value="${escapeOptionAttributeValue(acc.id)}" ${selected}>${IsfUtils.escapeHtml(acc.name)}</option>`;
     }).join("");
 
     return `
@@ -259,7 +264,7 @@ export function renderAllocationItemHtml(group, item, opts) {
           <option value="">계좌 선택...</option>
           ${(state.inputs.accounts || []).map(acc => {
             const selected = acc.id === item.accountId ? "selected" : "";
-            return `<option value="${acc.id}" ${selected}>${IsfUtils.escapeHtml(acc.name)}</option>`;
+            return `<option value="${escapeOptionAttributeValue(acc.id)}" ${selected}>${IsfUtils.escapeHtml(acc.name)}</option>`;
           }).join("")}
         </select>
       </div>

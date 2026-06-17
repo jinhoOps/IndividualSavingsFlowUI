@@ -116,6 +116,12 @@ completed: 2026-06-17
 
 - `$gsd-verify-work 7` was not invoked because the user explicitly instructed that `07-VERIFICATION.md` must not be edited or committed by this plan execution. Shell verification covered the automated Phase 07 gate.
 
+## Residual Verifier Gap Follow-up
+
+- Closed the verifier-found residual renderer-hardening gap in `apps/main/modules/list-renderer.js` by escaping account IDs before placing them in account select option `value` attributes.
+- Added Phase 07 Playwright coverage proving malicious imported account IDs and names remain inert in Step 1 item-editor select surfaces: option values/text remain usable, no raw `<img>` markup is created, and injected event handlers do not execute.
+- Preserved the verifier-owned `07-VERIFICATION.md` change for the next verifier run; this executor fix does not commit that report.
+
 ## Verification
 
 - `node --check apps/main/modules/bootstrap-controller.js` - PASS

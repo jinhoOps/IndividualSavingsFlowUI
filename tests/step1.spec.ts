@@ -364,6 +364,62 @@ test.describe('Individual Savings Flow Main UI/UX Audit', () => {
     expect(await page.evaluate(() => Boolean((window as any).__unsafeGroupOption))).toBe(false);
   });
 
+  test('Phase 07 account select options escape imported account ids and names', async ({ page }) => {
+    const result = await page.evaluate(async () => {
+      const unsafeWindow = window as any;
+      unsafeWindow.__unsafeAccountOption = false;
+      unsafeWindow.__unsafeAccountName = false;
+      const maliciousAccountId = `acc"></option><img src=x onerror="window.__unsafeAccountOption = true"><option value="tail`;
+      const maliciousAccountName = `계좌"><img src=x onerror="window.__unsafeAccountName = true">`;
+      const [{ state }, { renderItemList }] = await Promise.all([
+        import('/IndividualSavingsFlowUI/apps/main/modules/state.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/list-renderer.js'),
+      ]);
+
+      state.inputs.accounts = [{ id: maliciousAccountId, name: maliciousAccountName }];
+      renderItemList('income', [{
+        id: 'income-malicious-account',
+        name: '수입',
+        amount: 10000,
+        accountId: maliciousAccountId,
+        allocations: [{ accountId: maliciousAccountId, amount: 10000 }],
+      }], { editing: true });
+      renderItemList('expense', [{
+        id: 'expense-malicious-account',
+        name: '지출',
+        amount: 10000,
+        group: '테스트',
+        accountId: maliciousAccountId,
+      }], { editing: true });
+
+      const incomeSelect = document.querySelector<HTMLSelectElement>('#incomeList select[data-field="allocationAccountId"]');
+      const expenseSelect = document.querySelector<HTMLSelectElement>('#expenseList select[data-field="accountId"]');
+      return {
+        incomeOptionCount: incomeSelect?.querySelectorAll('option').length ?? 0,
+        expenseOptionCount: expenseSelect?.querySelectorAll('option').length ?? 0,
+        incomeValue: incomeSelect?.value ?? '',
+        expenseValue: expenseSelect?.value ?? '',
+        incomeText: incomeSelect?.selectedOptions[0]?.textContent ?? '',
+        expenseText: expenseSelect?.selectedOptions[0]?.textContent ?? '',
+        incomeMarkup: incomeSelect?.innerHTML ?? '',
+        expenseMarkup: expenseSelect?.innerHTML ?? '',
+        injectedImages: document.querySelectorAll('#incomeList img, #expenseList img').length,
+        unsafeFlag: Boolean(unsafeWindow.__unsafeAccountOption || unsafeWindow.__unsafeAccountName),
+      };
+    });
+
+    expect(result.incomeOptionCount).toBe(2);
+    expect(result.expenseOptionCount).toBe(2);
+    expect(result.incomeValue).toContain('<img');
+    expect(result.expenseValue).toContain('<img');
+    expect(result.incomeText).toContain('<img');
+    expect(result.expenseText).toContain('<img');
+    expect(result.incomeMarkup).not.toMatch(/<img/i);
+    expect(result.expenseMarkup).not.toMatch(/<img/i);
+    expect(result.injectedImages).toBe(0);
+    expect(result.unsafeFlag).toBe(false);
+  });
+
   test('Phase 07 allocation groups preserve user open state after render refresh', async ({ page }) => {
     await openControlsPanel(page);
     await page.locator('#mgmtTabFlow').click();
