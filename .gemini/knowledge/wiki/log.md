@@ -50,6 +50,12 @@ sequenceDiagram
 
 ---
 
+## [2026-06-17] fix | 월 지출/저축/투자 요약 인풋 타입 변경 (number -> text)
+- **목적**: 요약 지표 영역의 인풋 값 대입 시 천단위 콤마 포맷팅 문자열이 유입될 때 브라우저 파싱 에러로 인해 값이 공란(0원)으로 손실되는 현상을 막고 가독성을 개선합니다.
+- **주요 변경사항**:
+  - **인풋 속성 변경 (`apps/main/index.html`)**: `monthlyExpense`, `monthlySavings`, `monthlyInvest`, `monthlyDebtPayment` 요소의 `type` 속성을 `"number"`에서 `"text"`로 수정하고 `data-money-input="won"` 추가.
+- **결과**: 쉼표 포맷 문자열이 유입되어도 런타임 오류가 발생하지 않으며, 정상적으로 데이터 바인딩 및 파싱이 이루어져 가용현금 0원 데이터 오염 문제가 해결됨.
+
 ## [2026-06-17] fix | 루트 index.html 내 Main 링크 경로 수정
 - **목적**: 자동 이동되지 않을 때 사용자가 클릭하는 Main 링크의 경로를 실제 호스팅 주소인 GitHub Pages URL로 수정합니다.
 - **주요 변경사항**:
