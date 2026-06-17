@@ -2,7 +2,7 @@
 
 **Researched:** 2026-06-17  
 **Domain:** Step 2 vanilla ES module redesign, local-first persistence fallback, strategy comparison simulation  
-**Confidence:** HIGH for codebase attachment points, MEDIUM for browser API fallback guidance, LOW for exact investment assumption numbers
+**Confidence:** HIGH for codebase attachment points, MEDIUM for browser API fallback guidance and Phase 08 execution-default investment assumptions
 
 <user_constraints>
 ## User Constraints (from CONTEXT.md)
@@ -226,11 +226,19 @@ export async function saveStep2Simulation(data) {
 export const STRATEGIES = {
   index: { label: "지수/성장", benchmarkOptions: ["qqq", "spy"], defaultKey: "qqq" },
   dividendGrowth: { label: "배당성장", examples: ["SCHD"], defaults: { yield: 3.5, growth: 5.0, capitalGrowth: 4.0, drip: true } },
-  coveredCall: { label: "월 현금흐름", examples: ["JEPI", "QQQI", "DIVO"], defaults: { yield: 8.0, growth: 0.5, capitalGrowth: 2.0, drip: false } }
+  coveredCall: {
+    label: "월 현금흐름",
+    examples: ["JEPI", "QQQI", "DIVO"],
+    defaultsByExample: {
+      JEPI: { cashFlowYield: 7.0, distributionGrowth: 0.0, capitalGrowth: 1.5, drip: false, displayRange: { cashFlowYield: "6-9%", distributionGrowth: "0-1%", capitalGrowth: "0-3%" } },
+      QQQI: { cashFlowYield: 9.0, distributionGrowth: 0.0, capitalGrowth: 2.0, drip: false, displayRange: { cashFlowYield: "7-11%", distributionGrowth: "0-1%", capitalGrowth: "0-4%" } },
+      DIVO: { cashFlowYield: 4.5, distributionGrowth: 1.0, capitalGrowth: 3.0, drip: false, displayRange: { cashFlowYield: "3.5-6%", distributionGrowth: "0-2%", capitalGrowth: "1-5%" } }
+    }
+  }
 };
 ```
 
-The exact covered-call and dividend-growth defaults above are implementation hypotheses, not verified financial facts. [ASSUMED]
+The covered-call defaults above are Phase 08 execution defaults from the resolved user decision: use conservative editable assumptions rather than live/guaranteed market data. They must be labeled as examples/ranges in the UI and remain editable through advanced settings. [RESOLVED: 2026-06-17]
 
 ### Pattern 3: Stable Mobile Order Through DOM Order First
 
@@ -288,7 +296,7 @@ Default examples should be conservative and editable, and the UI should display 
 Recommended cleanup:
 
 1. Remove runtime references to root CSV files and assert no imports/fetches reference them. [VERIFIED: codebase grep]
-2. Either delete the three root CSV files or move them under a clearly named non-runtime fixture/docs path. [VERIFIED: 08-CONTEXT.md]
+2. Delete the three root CSV files after grep confirms no runtime/script dependency. If execution finds a real dependency, relocate only the required file under a clearly named non-runtime archive path such as `scripts/fixtures/qqq-backdata/` and document why in the plan summary. [RESOLVED: 2026-06-17]
 3. Add a short comment or README note near `scripts/generate_qqq_data.py` / `scripts/generate_market_data.py` explaining that `public/data/indices/*.json` is the runtime source. [VERIFIED: codebase grep]
 4. Do not add live market fetching in Phase 08. [VERIFIED: 08-CONTEXT.md]
 
@@ -317,7 +325,7 @@ Recommended cleanup:
 
 - Extract strategy assumptions and comparison calculator modules. [VERIFIED: codebase grep]
 - Convert current ETF preset constants into strategy cards/examples and collapsed advanced settings. [VERIFIED: 08-CONTEXT.md]
-- Use `qqq.json`, `spy.json`, and `schd.json` as static evidence; represent JEPI/QQQI/DIVO as conservative editable assumptions unless matching JSON is added. [VERIFIED: codebase grep]
+- Use `qqq.json`, `spy.json`, and `schd.json` as static evidence; represent JEPI/QQQI/DIVO with the resolved conservative editable defaults and ranges from `assumptions.js`. [RESOLVED: 2026-06-17]
 - Clean or relocate `qqq_raw.csv`, `qqq_daily_raw.csv`, and `qqq_daily_stooq.csv`; add grep verification that runtime code does not depend on root CSV files. [VERIFIED: file read]
 
 ### Wave 3: Mobile-First Editorial UI and Visual Verification
@@ -430,26 +438,23 @@ item.append(name);
 
 | # | Claim | Section | Risk if Wrong |
 |---|-------|---------|---------------|
-| A1 | Exact strategy default numbers such as covered-call 8.0% yield / 0.5% growth / 2.0% capital growth are hypotheses, not verified financial facts. | Architecture Patterns / Strategy Comparison Model | Misleading investment expectations; planner should keep values editable and label them as examples. |
+| A1 | JEPI/QQQI/DIVO use resolved Phase 08 conservative execution defaults and ranges rather than live/current issuer data. | Architecture Patterns / Strategy Comparison Model | Misleading investment expectations; executor must keep values editable, display ranges, and label them as examples. |
 | A2 | DOM order should mirror mobile visual order for accessibility and keyboard order. | Architecture Patterns | Low implementation risk; if existing layout constraints force CSS order, planner must add accessibility verification. |
 | A3 | Helper names in pseudo-code examples are illustrative. | Code Examples | Planner must create actual module names/functions consistently. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Exact conservative assumptions for JEPI/QQQI/DIVO**
    - What we know: Phase 08 requires conservative examples and ranges, not live/guaranteed market data. [VERIFIED: 08-CONTEXT.md]
-   - What's unclear: Exact default numbers were not verified against issuer/current data in this research. [ASSUMED]
-   - Recommendation: Implement editable defaults with conservative copy and gate exact numbers behind product confirmation or a later data-source task. [ASSUMED]
+   - RESOLVED: Use Phase 08 execution defaults in `apps/simulation/modules/assumptions.js`, displayed as ranges and editable in advanced settings. JEPI default: 7.0% cash-flow yield, 0.0% distribution growth, 1.5% capital growth, DRIP off, displayed as 6-9% / 0-1% / 0-3%. QQQI default: 9.0% cash-flow yield, 0.0% distribution growth, 2.0% capital growth, DRIP off, displayed as 7-11% / 0-1% / 0-4%. DIVO default: 4.5% cash-flow yield, 1.0% distribution growth, 3.0% capital growth, DRIP off, displayed as 3.5-6% / 0-2% / 1-5%. These are conservative product assumptions, not live/current issuer data or promises. [RESOLVED: user decision, 2026-06-17]
 
 2. **Whether to delete or relocate root CSV clutter**
    - What we know: The three root CSV files are not clean data and are in Phase 08 cleanup scope. [VERIFIED: file read]
-   - What's unclear: Whether the user wants deletion or archival under scripts/docs. [ASSUMED]
-   - Recommendation: Prefer deletion if no runtime/script references exist; otherwise move under a documented non-runtime fixture path. [ASSUMED]
+   - RESOLVED: Delete `qqq_raw.csv`, `qqq_daily_raw.csv`, and `qqq_daily_stooq.csv` from the repository root after grep confirms no runtime/script dependency. Preserve reproducibility by documenting `public/data/indices/*.json` as the runtime evidence source and `scripts/generate_qqq_data.py` / `scripts/generate_market_data.py` as the intentional generation path. If execution discovers an actual dependency, relocate only the required file to a documented non-runtime archive path and state the reason in `08-02-SUMMARY.md`. [RESOLVED: user decision, 2026-06-17]
 
 3. **Step 2 simulation display name**
    - What we know: DataHub renders `e.name || "Simulation"`, but current `toPortableFormat()` does not include a user-facing name. [VERIFIED: codebase grep]
-   - What's unclear: Whether Phase 08 should add naming UI or keep automatic names. [ASSUMED]
-   - Recommendation: Use generated names based on benchmark/strategy/date unless the planner scopes an explicit name field. [ASSUMED]
+   - RESOLVED: Preserve the current save/list/load UX and do not add a new naming UI. Normalize saved Step 2 entries so `id` and `name` both survive save/load in IndexedDB and LocalStorage fallback. If an existing entry has `name`, keep it; otherwise generate a stable display name from selected benchmark/strategy, horizon, and local save timestamp, then render `name` as text and use `id` only as the storage/list key. This closes the known save entry id/display-name mismatch without blocking execution on a new naming question. [RESOLVED: user decision, 2026-06-17]
 
 ## Environment Availability
 
@@ -513,7 +518,7 @@ item.append(name);
 
 ### Tertiary (LOW confidence)
 
-- Exact conservative forward assumptions for JEPI/QQQI/DIVO are not verified in this session. [ASSUMED]
+- Exact conservative forward assumptions for JEPI/QQQI/DIVO are Phase 08 execution defaults, editable and range-labeled rather than sourced as live/current issuer data. [RESOLVED: 2026-06-17]
 
 ## Metadata
 
@@ -522,8 +527,8 @@ item.append(name);
 - Standard stack: HIGH - verified with `npm ls`, package files, and codebase imports. [VERIFIED: npm ls]
 - Architecture: HIGH - verified through local Step 2 modules and Phase 08 context. [VERIFIED: codebase grep]
 - Storage fallback: MEDIUM - local code surfaces are verified; browser API rationale is based on MDN docs. [CITED: https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API]
-- Investment assumption values: LOW - context requires conservative assumptions, but exact future-looking numbers need product confirmation. [ASSUMED]
+- Investment assumption values: MEDIUM - Phase 08 has resolved conservative execution defaults; they are product assumptions, not live/current issuer data. [RESOLVED: 2026-06-17]
 - UI verification risks: HIGH - Phase 07 established Playwright viewport/screenshot patterns, and Phase 08 decisions define target behavior. [VERIFIED: Phase 07 summaries]
 
 **Research date:** 2026-06-17  
-**Valid until:** 2026-07-17 for codebase architecture; 2026-06-24 for ETF assumption values if exact numbers are later sourced. [ASSUMED]
+**Valid until:** 2026-07-17 for codebase architecture and Phase 08 execution-default assumptions. If later phases choose to source live/current ETF data, they must run a fresh data-source research pass. [RESOLVED: 2026-06-17]
