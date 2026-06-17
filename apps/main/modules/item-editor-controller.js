@@ -250,18 +250,121 @@ export function createItemEditorController({ markPendingChanges, getVisibleInput
     markPendingChanges();
   }
 
+  function handleCreatorApply(group, container) {
+    const editor = state.itemEditors[group];
+    if (!editor) return;
+
+    if (group === "income") {
+      const nameInput = container.querySelector("#newIncomeName");
+      const amountInput = container.querySelector("#newIncomeAmount");
+      const accountSelect = container.querySelector("#newIncomeAccountId");
+
+      const name = nameInput?.value?.trim();
+      const amountVal = IsfUtils.toWon(amountInput?.value || "0");
+      const accountId = accountSelect?.value || "";
+
+      if (!name) {
+        alert("수입 항목의 이름을 입력해 주세요.");
+        return;
+      }
+      if (amountVal < 1000) {
+        alert("수입 금액은 최소 1,000원 이상이어야 합니다.");
+        return;
+      }
+      if (amountVal % 1000 !== 0) {
+        alert("수입 금액은 1,000원 단위로 입력해 주세요.");
+        return;
+      }
+
+      editor.items.push({
+        id: `inc-${Date.now()}`,
+        name,
+        amount: amountVal,
+        accountId,
+        tone: "income",
+        allocations: []
+      });
+    } else if (group === "account") {
+      const nameInput = container.querySelector("#newAccountName");
+      const name = nameInput?.value?.trim();
+
+      if (!name) {
+        alert("계좌(통장) 이름을 입력해 주세요.");
+        return;
+      }
+
+      editor.items.push({
+        id: `acc-${Date.now()}-${editor.items.length}`,
+        name
+      });
+    } else {
+      const nameInput = container.querySelector("#newItemName");
+      const amountInput = container.querySelector("#newItemAmount");
+      const accountSelect = container.querySelector("#newItemAccountId");
+      const groupInput = container.querySelector("#newItemGroup");
+
+      const name = nameInput?.value?.trim();
+      const amountVal = IsfUtils.toWon(amountInput?.value || "0");
+      const accountId = accountSelect?.value || "";
+      const groupName = normalizeAllocationGroupName(groupInput?.value || "");
+
+      if (!name) {
+        alert("항목의 이름을 입력해 주세요.");
+        return;
+      }
+      if (amountVal < 1000) {
+        alert("금액은 최소 1,000원 이상이어야 합니다.");
+        return;
+      }
+      if (amountVal % 1000 !== 0) {
+        alert("금액은 1,000원 단위로 입력해 주세요.");
+        return;
+      }
+
+      const newItem = {
+        id: createAllocationItemId(group, editor.items.length),
+        name,
+        amount: amountVal,
+        accountId,
+        group: groupName,
+        tone: group
+      };
+
+      if (group === "savings") {
+        const rateInput = container.querySelector("#newItemAnnualRate");
+        const maturityInput = container.querySelector("#newItemMaturityMonth");
+        const parsedRate = parseSavingsAnnualRateInput(rateInput?.value || "", getVisibleInputs().annualSavingsYield);
+        if (parsedRate !== null) newItem.annualRate = parsedRate;
+        
+        const normMaturity = normalizeMaturityMonth(maturityInput?.value || "");
+        if (normMaturity) newItem.maturityMonth = normMaturity;
+      } else if (group === "invest") {
+        const maturityInput = container.querySelector("#newItemMaturityMonth");
+        const normMaturity = normalizeMaturityMonth(maturityInput?.value || "");
+        if (normMaturity) newItem.maturityMonth = normMaturity;
+      }
+
+      editor.items.push(newItem);
+    }
+
+    editor.creatorActive = false;
+    listRenderer.renderItemList(group, editor.items, { editing: true });
+    setItemEditorUi(group, true);
+    renderTotalHint(group);
+  }
+
+  function handleCreatorCancel(group) {
+    const editor = state.itemEditors[group];
+    if (!editor) return;
+    editor.creatorActive = false;
+    listRenderer.renderItemList(group, editor.items, { editing: true });
+  }
+
   function addItemToEditor(group) {
     const editor = state.itemEditors[group];
     if (!editor || !editor.active || editor.items.length >= MAX_ALLOCATION_ITEMS) return;
-    if (group === "income") {
-      editor.items.push(createIncomeItem());
-    } else if (group === "account") {
-      editor.items.push({ id: `acc-${Date.now()}-${editor.items.length}`, name: "" });
-    } else {
-      editor.items.push({ id: createAllocationItemId(group, editor.items.length), name: "", amount: 0 });
-    }
+    editor.creatorActive = true;
     listRenderer.renderItemList(group, editor.items, { editing: true });
-    setItemEditorUi(group, true);
   }
 
   function navigateToAdvancedGroup(group) {
@@ -289,7 +392,20 @@ export function createItemEditorController({ markPendingChanges, getVisibleInput
       if (list) {
         list.addEventListener("input", (event) => handleItemInput(group, event));
         list.addEventListener("change", (event) => handleItemInput(group, event));
-        list.addEventListener("click", (event) => handleItemClick(group, event));
+        list.addEventListener("click", (event) => {
+          const target = event.target;
+          const applyBtn = target.closest(".creator-apply-btn");
+          const cancelBtn = target.closest(".creator-cancel-btn");
+          if (applyBtn) {
+            handleCreatorApply(group, list);
+            return;
+          }
+          if (cancelBtn) {
+            handleCreatorCancel(group);
+            return;
+          }
+          handleItemClick(group, event);
+        });
       }
       const capitalized = group.charAt(0).toUpperCase() + group.slice(1);
       const editButton = dom[`edit${capitalized}Items`];

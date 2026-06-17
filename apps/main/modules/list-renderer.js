@@ -47,6 +47,13 @@ export function renderProjectionTable(records, horizonYears, expenseGrowth) {
 
 export function renderItemList(group, items, options = {}) {
   const list = dom[`${group}List`]; if (!list) return;
+  
+  if (state.itemEditors[group]?.creatorActive) {
+    list.innerHTML = renderCreatorFormHtml(group);
+    IsfUtils.updateAllKoreanWonHints(list);
+    return;
+  }
+
   if (group === "account" || group === "income") {
     if (group === "account") {
       let warnings = options.warnings;
@@ -497,4 +504,109 @@ export function updateSourceBalanceHint(inputs, sourceAccountId) {
   
   dom.sourceBalanceHint.hidden = false;
   dom.sourceBalanceHint.textContent = `💡 출금 가능 예상 잔액: ${available.toLocaleString()}원 (${IsfUtils.convertToKoreanWon(available)})`;
+}
+
+function renderCreatorFormHtml(group) {
+  const accounts = state.inputs.accounts || [];
+  const isSavings = group === "savings";
+  const isInvest = group === "invest";
+  
+  let fieldsHtml = "";
+  if (group === "income") {
+    fieldsHtml = `
+      <div class="creator-field-row" style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <div class="editor-field" style="flex: 0 0 140px; min-width: 120px;">
+          <label class="editor-field-label">수입명</label>
+          <input type="text" id="newIncomeName" placeholder="예: 급여" class="creator-input" style="width: 100%;" />
+        </div>
+        <div class="editor-field" style="flex: 1; min-width: 150px;">
+          <label class="editor-field-label">금액(원)</label>
+          <input type="text" id="newIncomeAmount" data-money-input="won" placeholder="금액 입력" class="creator-input" inputmode="decimal" style="width: 100%;" />
+          <div class="quick-amount-buttons">
+            <button type="button" class="btn-quick-amount" data-add="10000">+1만</button>
+            <button type="button" class="btn-quick-amount" data-add="100000">+10만</button>
+            <button type="button" class="btn-quick-amount" data-add="1000000">+100만</button>
+          </div>
+        </div>
+      </div>
+      <div class="editor-field" style="margin-top: 12px;">
+        <label class="editor-field-label">입금 계좌 선택</label>
+        <select id="newIncomeAccountId" class="creator-select" style="width: 100%; border: 1px solid rgba(16, 34, 32, 0.12); border-radius: 4px; padding: 6px 8px; font-size: 0.86rem;">
+          <option value="">계좌 선택...</option>
+          ${accounts.map(acc => `<option value="${escapeOptionAttributeValue(acc.id)}">${IsfUtils.escapeHtml(acc.name)}</option>`).join("")}
+        </select>
+      </div>
+    `;
+  } else if (group === "account") {
+    fieldsHtml = `
+      <div class="editor-field">
+        <label class="editor-field-label">계좌(통장) 이름</label>
+        <input type="text" id="newAccountName" placeholder="예: 생활비통장" class="creator-input" style="width: 100%;" />
+      </div>
+    `;
+  } else {
+    fieldsHtml = `
+      <div class="creator-field-row" style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <div class="editor-field" style="flex: 0 0 140px; min-width: 120px;">
+          <label class="editor-field-label">이름</label>
+          <input type="text" id="newItemName" placeholder="항목명" class="creator-input" style="width: 100%;" />
+        </div>
+        <div class="editor-field" style="flex: 1; min-width: 150px;">
+          <label class="editor-field-label">금액(원)</label>
+          <input type="text" id="newItemAmount" data-money-input="won" placeholder="금액 입력" class="creator-input" inputmode="decimal" style="width: 100%;" />
+          <div class="quick-amount-buttons">
+            <button type="button" class="btn-quick-amount" data-add="10000">+1만</button>
+            <button type="button" class="btn-quick-amount" data-add="100000">+10만</button>
+            <button type="button" class="btn-quick-amount" data-add="1000000">+100만</button>
+          </div>
+        </div>
+      </div>
+      <div class="creator-field-row" style="display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap;">
+        <div class="editor-field" style="flex: 1; min-width: 120px;">
+          <label class="editor-field-label">출금계좌</label>
+          <select id="newItemAccountId" class="creator-select" style="width: 100%; border: 1px solid rgba(16, 34, 32, 0.12); border-radius: 4px; padding: 6px 8px; font-size: 0.86rem;">
+            <option value="">계좌 선택...</option>
+            ${accounts.map(acc => `<option value="${escapeOptionAttributeValue(acc.id)}">${IsfUtils.escapeHtml(acc.name)}</option>`).join("")}
+          </select>
+        </div>
+        <div class="editor-field" style="flex: 1; min-width: 120px;">
+          <label class="editor-field-label">그룹</label>
+          <input type="text" id="newItemGroup" placeholder="그룹명" list="${group}GroupOptions" class="creator-input" style="width: 100%;" />
+        </div>
+      </div>
+      ${isSavings ? `
+        <div class="creator-field-row" style="display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap;">
+          <div class="editor-field" style="flex: 1;">
+            <label class="editor-field-label">연이율(%)</label>
+            <input type="number" id="newItemAnnualRate" placeholder="연이율 입력" class="creator-input" step="0.1" inputmode="decimal" style="width: 100%;" />
+          </div>
+          <div class="editor-field" style="flex: 1;">
+            <label class="editor-field-label">만기/해지월</label>
+            <input type="month" id="newItemMaturityMonth" class="creator-input" style="width: 100%;" />
+          </div>
+        </div>
+      ` : ""}
+      ${isInvest && !isSavings ? `
+        <div class="editor-field" style="margin-top: 12px;">
+          <label class="editor-field-label">만기/해지월</label>
+          <input type="month" id="newItemMaturityMonth" class="creator-input" style="width: 100%;" />
+        </div>
+      ` : ""}
+    `;
+  }
+
+  const groupKo = group === "income" ? "수입" : (group === "account" ? "계좌" : (group === "expense" ? "지출" : (group === "savings" ? "저축" : "투자")));
+
+  return `
+    <div class="item-creator-panel" style="padding: 16px; border: 1.5px dashed var(--tone-primary); border-radius: var(--rd-sm); background: rgba(255,255,255,0.7); margin-bottom: 12px;">
+      <h4 style="margin-top: 0; margin-bottom: 16px; color: var(--tone-primary); font-family: 'Gowun Dodum'; font-weight: 700; font-size: 0.95rem;">➕ 새 ${groupKo} 항목 추가</h4>
+      <form id="newGroupItemForm" onsubmit="event.preventDefault();">
+        ${fieldsHtml}
+        <div class="creator-form-buttons" style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px;">
+          <button type="button" class="btn btn-ghost btn-sm creator-cancel-btn" style="padding: 6px 14px; border-radius: 8px; border: 1px solid var(--line);">취소</button>
+          <button type="button" class="btn btn-primary btn-sm creator-apply-btn" style="padding: 6px 14px; border-radius: 8px;">추가하기</button>
+        </div>
+      </form>
+    </div>
+  `;
 }

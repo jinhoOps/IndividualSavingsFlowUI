@@ -177,25 +177,20 @@ main{order:2;gap:14px;display:grid}
 .expense-row,.savings-row,.invest-row{grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px}
 .expense-row .value,.savings-row .value,.invest-row .value{text-align:right;font-size:0.86rem}
 .allocation-meta{grid-column:1 / -1;margin-top:-4px;margin-bottom:4px}
-.expense-row.is-editing,.savings-row.is-editing,.invest-row.is-editing{display:grid !important;grid-template-columns:1fr 1fr !important;gap:12px !important;padding:12px !important;border:1px solid var(--line) !important;border-radius:var(--rd-md) !important;background:rgba(255,255,255,0.9) !important}
-.expense-row.is-editing>.editor-field:nth-child(1),.savings-row.is-editing>.editor-field:nth-child(1),.invest-row.is-editing>.editor-field:nth-child(1){grid-column:1 / 3 !important}
-.expense-row.is-editing>.editor-field:nth-child(4),.savings-row.is-editing>.editor-field:nth-child(4),.invest-row.is-editing>.editor-field:nth-child(4){grid-column:1 / 3 !important}
-.expense-row.is-editing>.editor-field:nth-child(2),.savings-row.is-editing>.editor-field:nth-child(2),.invest-row.is-editing>.editor-field:nth-child(2){grid-column:1 !important}
-.expense-row.is-editing>.editor-field:nth-child(3),.savings-row.is-editing>.editor-field:nth-child(3),.invest-row.is-editing>.editor-field:nth-child(3){grid-column:2 !important}
-.savings-row.is-editing>.editor-field:nth-child(5){grid-column:1 !important}
-.savings-row.is-editing>.editor-field:nth-child(6){grid-column:2 !important}
-.invest-row.is-editing>.editor-field:nth-child(5){grid-column:1 / 3 !important}
-.expense-row.is-editing>.allocation-remove,.savings-row.is-editing>.allocation-remove,.invest-row.is-editing>.allocation-remove{grid-column:1 / 3 !important;width:100% !important;min-height:44px !important;margin-top:4px !important;display:flex !important;align-items:center !important;justify-content:center !important;border:1px solid rgba(155,44,44,0.2) !important;border-radius:var(--rd-sm) !important;background:rgba(253,240,240,0.9) !important;color:#9b2c2c !important;font-size:0.9rem !important;cursor:pointer !important}
-.expense-row.is-editing>.allocation-remove::before,.savings-row.is-editing>.allocation-remove::before,.invest-row.is-editing>.allocation-remove::before{content:"항목 삭제" !important;font-size:0.82rem !important;font-weight:600 !important;margin-right:4px !important}
-.account-row.is-editing{display:grid !important;grid-template-columns:1fr !important;gap:10px !important;padding:12px !important;border:1px solid var(--line) !important;border-radius:var(--rd-md) !important;background:rgba(255,255,255,0.9) !important}
-.account-row.is-editing>.editor-field{grid-column:1 !important}
-.account-row.is-editing>.allocation-remove{grid-column:1 !important;width:100% !important;min-height:44px !important;margin-top:4px !important;display:flex !important;align-items:center !important;justify-content:center !important;border:1px solid rgba(155,44,44,0.2) !important;border-radius:var(--rd-sm) !important;background:rgba(253,240,240,0.9) !important;color:#9b2c2c !important;font-size:0.9rem !important}
-.account-row.is-editing>.allocation-remove::before{content:"통장 삭제" !important;font-size:0.82rem !important;font-weight:600 !important;margin-right:4px !important}
-.income-row.is-editing{display:flex !important;flex-direction:column !important;gap:var(--sp-md) !important;padding:12px !important;border:1px solid var(--line) !important;border-radius:var(--rd-md) !important;background:rgba(255,255,255,0.9) !important}
-.income-row-fields{display:flex !important;flex-direction:column !important;gap:10px !important}
-.income-row-fields .editor-field{width:100% !important}
-.income-row-fields .income-remove{width:100% !important;min-height:44px !important;display:flex !important;align-items:center !important;justify-content:center !important}
-.income-allocation-row{grid-template-columns:1.2fr 0.8fr auto auto !important;gap:8px !important}
+.expense-row.is-editing,.savings-row.is-editing,.invest-row.is-editing{display:grid !important;grid-template-columns:minmax(120px,1.2fr) minmax(110px,1.2fr) minmax(120px,1.4fr) minmax(100px,1fr) auto !important;gap:8px !important;padding:8px !important;border:1px solid var(--line) !important;border-radius:var(--rd-sm) !important;background:rgba(255,255,255,0.6) !important;align-items:center !important}
+.savings-row.is-editing{grid-template-columns:minmax(100px,1.2fr) minmax(100px,1.2fr) minmax(110px,1.4fr) minmax(90px,1fr) minmax(90px,0.8fr) minmax(100px,1fr) auto !important}
+.invest-row.is-editing{grid-template-columns:minmax(110px,1.2fr) minmax(110px,1.2fr) minmax(120px,1.4fr) minmax(90px,1fr) minmax(100px,1fr) auto !important}
+.is-editing .editor-field input[data-field="name"]{width:120px !important}
+.is-editing .editor-field input[data-field="group"]{width:100px !important}
+.is-editing .editor-field input[data-field="annualRate"]{width:80px !important}
+.expense-row.is-editing>.allocation-remove,.savings-row.is-editing>.allocation-remove,.invest-row.is-editing>.allocation-remove{width:32px !important;height:32px !important;min-height:32px !important;display:flex !important;align-items:center !important;justify-content:center !important;border:1px solid rgba(155,44,44,0.15) !important;border-radius:var(--rd-sm) !important;background:rgba(253,240,240,0.85) !important;color:#9b2c2c !important;font-size:1.1rem !important;cursor:pointer !important;padding:0 !important}
+.account-row.is-editing{display:grid !important;grid-template-columns:1fr auto !important;gap:8px !important;padding:8px !important;border:1px solid var(--line) !important;border-radius:var(--rd-sm) !important;background:rgba(255,255,255,0.6) !important;align-items:center !important}
+.account-row.is-editing>.allocation-remove{width:32px !important;height:32px !important;min-height:32px !important;display:flex !important;align-items:center !important;justify-content:center !important;border:1px solid rgba(155,44,44,0.15) !important;border-radius:var(--rd-sm) !important;background:rgba(253,240,240,0.85) !important;color:#9b2c2c !important;font-size:1.1rem !important;padding:0 !important}
+.income-row.is-editing{display:flex !important;flex-direction:column !important;gap:var(--sp-sm) !important;padding:10px !important;border:1px solid var(--line) !important;border-radius:var(--rd-sm) !important;background:rgba(255,255,255,0.6) !important}
+.income-row-fields{display:flex !important;flex-direction:row !important;align-items:center !important;gap:8px !important}
+.income-row-fields .editor-field{flex:1 !important}
+.income-row-fields .income-remove{width:32px !important;height:32px !important;min-height:32px !important;display:flex !important;align-items:center !important;justify-content:center !important;border:1px solid rgba(155,44,44,0.15) !important;border-radius:var(--rd-sm) !important;background:rgba(253,240,240,0.85) !important;color:#9b2c2c !important;padding:0 !important}
+.income-allocation-row{display:grid !important;grid-template-columns:1.2fr 1.2fr auto auto !important;gap:8px !important;align-items:center !important}
 .income-allocation-row select,.income-allocation-row input{font-size:0.8rem;padding:6px 8px}
 .editor-field-label{display:block}
 .sankey-head-tools{width:100% !important;display:flex !important;flex-direction:row !important;flex-wrap:wrap !important;align-items:center !important;justify-content:flex-start !important;gap:8px !important}
@@ -623,6 +618,36 @@ to{opacity:1;transform:translateY(0)}
 .panel-toggle-btn{flex-shrink:0}
 .allocation-group__items{padding-left:10px}
 .network-map-inner{height:460px;min-height:420px}
+.expense-row.is-editing, .savings-row.is-editing, .invest-row.is-editing {
+  grid-template-columns: 1fr 1fr !important;
+}
+.expense-row.is-editing > .editor-field:text-name,
+.expense-row.is-editing > .editor-field:nth-child(1),
+.savings-row.is-editing > .editor-field:nth-child(1),
+.invest-row.is-editing > .editor-field:nth-child(1),
+.expense-row.is-editing > .editor-field:nth-child(4),
+.savings-row.is-editing > .editor-field:nth-child(4),
+.invest-row.is-editing > .editor-field:nth-child(4),
+.invest-row.is-editing > .editor-field:nth-child(5) {
+  grid-column: 1 / 3 !important;
+}
+.is-editing .editor-field input[data-field="name"] {
+  width: 100% !important;
+}
+.is-editing .editor-field input[data-field="group"] {
+  width: 100% !important;
+}
+.expense-row.is-editing > .allocation-remove,
+.savings-row.is-editing > .allocation-remove,
+.invest-row.is-editing > .allocation-remove {
+  grid-column: 1 / 3 !important;
+  width: 100% !important;
+  min-height: 44px !important;
+  margin-top: 4px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
 }
 
 /* Pending Bar Floating Action */
