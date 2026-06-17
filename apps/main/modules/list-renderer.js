@@ -117,8 +117,9 @@ function renderGroupedAllocationList(group, items, options, openState) {
     const total = groupItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
     const itemHtml = groupItems.map((item) => renderAllocationItemHtml(group, item, options)).join("");
     const groupKey = getAllocationGroupKey(group, groupName);
+    const isEditing = !!options.editing;
     const knownOpen = openState && openState.has(groupKey) ? openState.get(groupKey) : null;
-    const isOpen = knownOpen === null ? index === 0 : knownOpen;
+    const isOpen = isEditing || (knownOpen === null ? true : knownOpen);
     return `
       <details class="allocation-group" data-allocation-group="${IsfUtils.escapeHtml(groupName)}" data-allocation-group-key="${IsfUtils.escapeHtml(groupKey)}" ${isOpen ? "open" : ""}>
         <summary class="allocation-group__summary">
