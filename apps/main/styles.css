@@ -611,6 +611,10 @@ to{opacity:1;transform:translateY(0)}
 .advanced-block>.controls-block{border-top-color:rgba(16,34,32,0.06);background:transparent}
 .income-row.is-editing,.expense-row.is-editing,.savings-row.is-editing,.invest-row.is-editing,.income-row.is-multi-allocation{border-color:rgba(16,34,32,0.08) !important;background:rgba(255,255,255,0.48) !important;box-shadow:none !important}
 .editor-field input,.editor-field select,.sentence-ui input,.sentence-ui select{border-color:rgba(16,34,32,0.12)}
+.allocation-amount-wrapper{display:flex;flex-direction:column;gap:4px;width:100%}
+.quick-amount-buttons{display:flex;gap:4px;margin-top:4px;flex-wrap:wrap}
+.btn-quick-amount{font-family:inherit;font-size:0.68rem;font-weight:600;padding:2px 6px;border:1px solid var(--line);background:#fff;border-radius:4px;color:var(--muted);cursor:pointer;transition:all 0.15s ease}
+.btn-quick-amount:hover{background:var(--bg);color:var(--text);border-color:var(--line-strong)}
 @media (max-width:760px){
 .controls-panel .section-head,.projection-panel .section-head{cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;flex-direction:row;align-items:center;justify-content:space-between}
 .section-head-tools{display:flex !important;flex-wrap:nowrap !important;align-items:center}

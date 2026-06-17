@@ -95,6 +95,23 @@ export function createItemEditorController({ markPendingChanges, getVisibleInput
     const target = event.target;
     if (target.closest?.(".allocation-group__summary")) return;
 
+    const quickBtn = target.closest(".btn-quick-amount");
+    if (quickBtn && state.itemEditors[group].active) {
+      const parentField = quickBtn.closest(".editor-field") || quickBtn.closest(".allocation-amount-wrapper");
+      if (parentField) {
+        const input = parentField.querySelector("input[data-money-input='won']");
+        if (input) {
+          const addVal = parseInt(quickBtn.dataset.add, 10) || 0;
+          const currentVal = IsfUtils.toWon(input.value);
+          const newVal = currentVal + addVal;
+          input.value = IsfUtils.formatWonInputValue(newVal);
+          input.dispatchEvent(new Event("input", { bubbles: true }));
+          input.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+      }
+      return;
+    }
+
     const addAllocationButton = target.closest(".add-allocation-btn");
     if (addAllocationButton && group === "income" && state.itemEditors[group].active) {
       const incomeId = addAllocationButton.dataset.incomeId;
@@ -172,7 +189,22 @@ export function createItemEditorController({ markPendingChanges, getVisibleInput
     const draft = helpers.ensureDraftInputs(state);
 
     if (group === "income") {
-      for (const item of editor.items) {
+      for (let i = 0; i < editor.items.length; i++) {
+        const item = editor.items[i];
+        const displayIndex = i + 1;
+        if (!item.name || !item.name.trim()) {
+          alert(`${displayIndex}번째 수입 항목의 이름을 입력해 주세요.`);
+          return;
+        }
+        const amountVal = Number(item.amount) || 0;
+        if (amountVal < 1000) {
+          alert(`'${item.name || displayIndex + '번째 수입 항목'}'의 금액은 최소 1,000원 이상이어야 합니다.`);
+          return;
+        }
+        if (amountVal % 1000 !== 0) {
+          alert(`'${item.name}' 수입 항목의 금액은 1,000원 단위로 입력해 주세요.`);
+          return;
+        }
         if (Array.isArray(item.allocations) && item.allocations.length > 0) {
           const allocationTotal = item.allocations.reduce((sum, allocation) => sum + allocation.amount, 0);
           if (allocationTotal > item.amount) {
@@ -183,8 +215,33 @@ export function createItemEditorController({ markPendingChanges, getVisibleInput
       }
       draft.incomes = editor.items;
     } else if (group === "account") {
+      for (let i = 0; i < editor.items.length; i++) {
+        const item = editor.items[i];
+        if (!item.name || !item.name.trim()) {
+          alert(`${i + 1}번째 통장의 이름을 입력해 주세요.`);
+          return;
+        }
+      }
       draft.accounts = editor.items;
     } else {
+      const groupKo = group === "expense" ? "지출" : (group === "savings" ? "저축" : "투자");
+      for (let i = 0; i < editor.items.length; i++) {
+        const item = editor.items[i];
+        const displayIndex = i + 1;
+        if (!item.name || !item.name.trim()) {
+          alert(`${displayIndex}번째 ${groupKo} 항목의 이름을 입력해 주세요.`);
+          return;
+        }
+        const amountVal = Number(item.amount) || 0;
+        if (amountVal < 1000) {
+          alert(`'${item.name || displayIndex + '번째 항목'}'의 금액은 최소 1,000원 이상이어야 합니다.`);
+          return;
+        }
+        if (amountVal % 1000 !== 0) {
+          alert(`'${item.name}' 항목의 금액은 1,000원 단위로 입력해 주세요.`);
+          return;
+        }
+      }
       draft[`${group}Items`] = editor.items;
     }
 

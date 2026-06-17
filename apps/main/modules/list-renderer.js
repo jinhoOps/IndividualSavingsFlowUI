@@ -118,8 +118,9 @@ function renderGroupedAllocationList(group, items, options, openState) {
     const itemHtml = groupItems.map((item) => renderAllocationItemHtml(group, item, options)).join("");
     const groupKey = getAllocationGroupKey(group, groupName);
     const isEditing = !!options.editing;
+    const isUnclassified = groupName === "미분류";
     const knownOpen = openState && openState.has(groupKey) ? openState.get(groupKey) : null;
-    const isOpen = isEditing || (knownOpen === null ? true : knownOpen);
+    const isOpen = isEditing || isUnclassified || (knownOpen === null ? true : knownOpen);
     return `
       <details class="allocation-group" data-allocation-group="${IsfUtils.escapeHtml(groupName)}" data-allocation-group-key="${IsfUtils.escapeHtml(groupKey)}" ${isOpen ? "open" : ""}>
         <summary class="allocation-group__summary">
@@ -185,7 +186,14 @@ export function renderIncomeItemHtml(item, opts) {
           <option value="">계좌 선택...</option>
           ${selectOpts}
         </select>
-        <input type="text" value="${IsfUtils.formatWonInputValue(al.amount || 0)}" data-money-input="won" data-income-id="${item.id}" data-allocation-index="${idx}" data-field="allocationAmount" inputmode="decimal" class="allocation-amount-input" placeholder="분배 금액 (원)" />
+        <div class="allocation-amount-wrapper">
+          <input type="text" value="${IsfUtils.formatWonInputValue(al.amount || 0)}" data-money-input="won" data-income-id="${item.id}" data-allocation-index="${idx}" data-field="allocationAmount" inputmode="decimal" class="allocation-amount-input" placeholder="분배 금액 (원)" />
+          <div class="quick-amount-buttons">
+            <button type="button" class="btn-quick-amount" data-add="10000">+1만</button>
+            <button type="button" class="btn-quick-amount" data-add="100000">+10만</button>
+            <button type="button" class="btn-quick-amount" data-add="1000000">+100만</button>
+          </div>
+        </div>
         <span class="allocation-unit">원</span>
         <button type="button" class="remove-allocation-btn" data-income-id="${item.id}" data-allocation-index="${idx}" title="분배 제거">×</button>
       </div>
@@ -202,6 +210,11 @@ export function renderIncomeItemHtml(item, opts) {
         <div class="editor-field">
           <label class="editor-field-label">전체 수입(원)</label>
           <input type="text" value="${IsfUtils.formatWonInputValue(item.amount || 0)}" data-money-input="won" data-income-id="${item.id}" data-field="amount" inputmode="decimal" placeholder="금액 (원)" />
+          <div class="quick-amount-buttons">
+            <button type="button" class="btn-quick-amount" data-add="10000">+1만</button>
+            <button type="button" class="btn-quick-amount" data-add="100000">+10만</button>
+            <button type="button" class="btn-quick-amount" data-add="1000000">+100만</button>
+          </div>
         </div>
         <button class="income-remove" data-remove-income="${item.id}" title="삭제">
           <svg class="income-remove-icon" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1-1H5v2h14V4z"/></svg>
@@ -272,6 +285,11 @@ export function renderAllocationItemHtml(group, item, opts) {
       <div class="editor-field">
         <label class="editor-field-label">금액(원)</label>
         <input type="text" value="${IsfUtils.formatWonInputValue(item.amount || 0)}" data-money-input="won" data-field="amount" data-editor-id="${item.id}" inputmode="decimal" placeholder="금액 (원)" />
+        <div class="quick-amount-buttons">
+          <button type="button" class="btn-quick-amount" data-add="10000">+1만</button>
+          <button type="button" class="btn-quick-amount" data-add="100000">+10만</button>
+          <button type="button" class="btn-quick-amount" data-add="1000000">+100만</button>
+        </div>
       </div>
       <div class="editor-field">
         <label class="editor-field-label">그룹</label>
