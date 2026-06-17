@@ -124,7 +124,8 @@ function renderGroupedAllocationList(group, items, options, openState) {
     const total = groupItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
     const itemHtml = groupItems.map((item) => renderAllocationItemHtml(group, item, options)).join("");
     const groupKey = getAllocationGroupKey(group, groupName);
-    const isEditing = !!options.editing;
+    const hasEditingItem = options.editingItemId && groupItems.some(item => item.id === options.editingItemId);
+    const isEditing = !!options.editing || !!hasEditingItem;
     const isUnclassified = groupName === "미분류";
     const knownOpen = openState && openState.has(groupKey) ? openState.get(groupKey) : null;
     const isOpen = isEditing || isUnclassified || (knownOpen === null ? true : knownOpen);
@@ -153,7 +154,7 @@ function escapeOptionAttributeValue(value) {
 }
 
 export function renderIncomeItemHtml(item, opts) {
-  const isEditing = !!opts.editing;
+  const isEditing = opts.editing || opts.editingItemId === item.id;
   if (!isEditing) {
     const accounts = (state.inputs.accounts || []);
     let accHtml = "";
@@ -169,7 +170,7 @@ export function renderIncomeItemHtml(item, opts) {
       accHtml = acc ? `<span class="badge-account badge-account--income">${IsfUtils.escapeHtml(name)}</span>` : `<span class="badge-account badge-account--none">미지정</span>`;
     }
     return `
-      <div class="income-row">
+      <div class="income-row clickable-row" data-item-id="${item.id}" data-group="income" style="cursor: pointer;">
         <span class="income-name">${IsfUtils.escapeHtml(item.name)}</span>
         <span class="value">${formatCurrency(item.amount)}</span>
         <div class="income-meta">${accHtml}</div>
@@ -194,7 +195,11 @@ export function renderIncomeItemHtml(item, opts) {
           ${selectOpts}
         </select>
         <div class="allocation-amount-wrapper">
-          <input type="text" value="${IsfUtils.formatWonInputValue(al.amount || 0)}" data-money-input="won" data-income-id="${item.id}" data-allocation-index="${idx}" data-field="allocationAmount" inputmode="decimal" class="allocation-amount-input" placeholder="분배 금액 (원)" />
+          <div class="amount-stepper-container" style="display: flex; align-items: center; gap: 4px;">
+            <button type="button" class="btn-step-amount step-minus" data-step="-1000" style="padding: 6px 10px; border: 1px solid var(--line); background: #fff; border-radius: 4px; cursor: pointer; font-weight: bold;">-</button>
+            <input type="text" value="${IsfUtils.formatWonInputValue(al.amount || 0)}" data-money-input="won" data-income-id="${item.id}" data-allocation-index="${idx}" data-field="allocationAmount" inputmode="decimal" class="allocation-amount-input" placeholder="분배 금액 (원)" style="flex: 1;" />
+            <button type="button" class="btn-step-amount step-plus" data-step="1000" style="padding: 6px 10px; border: 1px solid var(--line); background: #fff; border-radius: 4px; cursor: pointer; font-weight: bold;">+</button>
+          </div>
           <div class="quick-amount-buttons">
             <button type="button" class="btn-quick-amount" data-add="10000">+1만</button>
             <button type="button" class="btn-quick-amount" data-add="100000">+10만</button>
@@ -216,7 +221,11 @@ export function renderIncomeItemHtml(item, opts) {
         </div>
         <div class="editor-field">
           <label class="editor-field-label">전체 수입(원)</label>
-          <input type="text" value="${IsfUtils.formatWonInputValue(item.amount || 0)}" data-money-input="won" data-income-id="${item.id}" data-field="amount" inputmode="decimal" placeholder="금액 (원)" />
+          <div class="amount-stepper-container" style="display: flex; align-items: center; gap: 4px;">
+            <button type="button" class="btn-step-amount step-minus" data-step="-1000" style="padding: 6px 10px; border: 1px solid var(--line); background: #fff; border-radius: 4px; cursor: pointer; font-weight: bold;">-</button>
+            <input type="text" value="${IsfUtils.formatWonInputValue(item.amount || 0)}" data-money-input="won" data-income-id="${item.id}" data-field="amount" inputmode="decimal" placeholder="금액 (원)" style="flex: 1;" />
+            <button type="button" class="btn-step-amount step-plus" data-step="1000" style="padding: 6px 10px; border: 1px solid var(--line); background: #fff; border-radius: 4px; cursor: pointer; font-weight: bold;">+</button>
+          </div>
           <div class="quick-amount-buttons">
             <button type="button" class="btn-quick-amount" data-add="10000">+1만</button>
             <button type="button" class="btn-quick-amount" data-add="100000">+10만</button>
@@ -242,7 +251,7 @@ export function renderIncomeItemHtml(item, opts) {
 }
 
 export function renderAllocationItemHtml(group, item, opts) {
-  const isEditing = !!opts.editing;
+  const isEditing = opts.editing || opts.editingItemId === item.id;
   
   let metaHtml = "";
   if (!isEditing) {
@@ -262,7 +271,7 @@ export function renderAllocationItemHtml(group, item, opts) {
   
   if (!isEditing) {
     return `
-      <div class="${commonClasses}">
+      <div class="${commonClasses} clickable-row" data-item-id="${item.id}" data-group="${group}" style="cursor: pointer;">
         <span class="${group}-name">${IsfUtils.escapeHtml(item.name)}</span>
         <span class="value">${formatCurrency(item.amount)}</span>
         ${metaHtml}
@@ -291,7 +300,11 @@ export function renderAllocationItemHtml(group, item, opts) {
       </div>
       <div class="editor-field">
         <label class="editor-field-label">금액(원)</label>
-        <input type="text" value="${IsfUtils.formatWonInputValue(item.amount || 0)}" data-money-input="won" data-field="amount" data-editor-id="${item.id}" inputmode="decimal" placeholder="금액 (원)" />
+        <div class="amount-stepper-container" style="display: flex; align-items: center; gap: 4px;">
+          <button type="button" class="btn-step-amount step-minus" data-step="-1000" style="padding: 6px 10px; border: 1px solid var(--line); background: #fff; border-radius: 4px; cursor: pointer; font-weight: bold;">-</button>
+          <input type="text" value="${IsfUtils.formatWonInputValue(item.amount || 0)}" data-money-input="won" data-field="amount" data-editor-id="${item.id}" inputmode="decimal" placeholder="금액 (원)" style="flex: 1;" />
+          <button type="button" class="btn-step-amount step-plus" data-step="1000" style="padding: 6px 10px; border: 1px solid var(--line); background: #fff; border-radius: 4px; cursor: pointer; font-weight: bold;">+</button>
+        </div>
         <div class="quick-amount-buttons">
           <button type="button" class="btn-quick-amount" data-add="10000">+1만</button>
           <button type="button" class="btn-quick-amount" data-add="100000">+10만</button>
@@ -338,7 +351,7 @@ export function renderSavingsTotalHint(won, count) { if (dom.savingsTotalHint) d
 export function renderInvestTotalHint(won, count) { if (dom.investTotalHint) dom.investTotalHint.textContent = `총 ${count}개 항목: ${formatCurrency(won)}`; }
 
 export function renderAccountItemHtml(item, opts) {
-  const isEditing = !!opts.editing;
+  const isEditing = opts.editing || opts.editingItemId === item.id;
   const warnings = opts.warnings || {};
   const warning = warnings[item.id];
 
@@ -353,7 +366,7 @@ export function renderAccountItemHtml(item, opts) {
     }
 
     return `
-      <div class="account-row ${warningClass}">
+      <div class="account-row ${warningClass} clickable-row" data-item-id="${item.id}" data-group="account" style="cursor: pointer;">
         <span class="account-name">${IsfUtils.escapeHtml(item.name)}</span>
       </div>
     `;

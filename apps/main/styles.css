@@ -739,3 +739,7 @@ to{opacity:1;transform:translateY(0)}
     opacity: 1;
   }
 }
+
+#editIncomeItems, #editAccountItems, #editExpenseItems, #editSavingsItems, #editInvestItems {
+  display: none !important;
+}

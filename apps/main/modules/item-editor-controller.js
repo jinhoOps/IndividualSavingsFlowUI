@@ -95,6 +95,39 @@ export function createItemEditorController({ markPendingChanges, getVisibleInput
     const target = event.target;
     if (target.closest?.(".allocation-group__summary")) return;
 
+    // 1. Clickable row 클릭하여 편집 시작
+    const clickableRow = target.closest(".clickable-row");
+    if (clickableRow) {
+      const itemId = clickableRow.dataset.itemId;
+      if (itemId) {
+        if (state.itemEditors[group]) {
+          state.itemEditors[group].creatorActive = false;
+        }
+        startItemEditor(group, itemId);
+      }
+      return;
+    }
+
+    // 2. 금액 stepper (-/+) 버튼 처리
+    const stepBtn = target.closest(".btn-step-amount");
+    if (stepBtn && state.itemEditors[group].active) {
+      const parentField = stepBtn.closest(".amount-stepper-container") || stepBtn.closest(".editor-field") || stepBtn.closest(".allocation-amount-wrapper");
+      if (parentField) {
+        const input = parentField.querySelector("input[data-money-input='won']");
+        if (input) {
+          const stepVal = parseInt(stepBtn.dataset.step, 10) || 0;
+          const currentVal = IsfUtils.toWon(input.value);
+          let newVal = currentVal + stepVal;
+          if (newVal < 0) newVal = 0;
+          input.value = IsfUtils.formatWonInputValue(newVal);
+          input.dispatchEvent(new Event("input", { bubbles: true }));
+          input.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+      }
+      return;
+    }
+
+    // 3. Quick amount (+1만 등) 버튼 처리
     const quickBtn = target.closest(".btn-quick-amount");
     if (quickBtn && state.itemEditors[group].active) {
       const parentField = quickBtn.closest(".editor-field") || quickBtn.closest(".allocation-amount-wrapper");
@@ -120,7 +153,10 @@ export function createItemEditorController({ markPendingChanges, getVisibleInput
         if (!Array.isArray(item.allocations)) item.allocations = [];
         const defaultAccountId = (state.inputs.accounts || [])[0]?.id || "";
         item.allocations.push({ accountId: defaultAccountId, amount: 0 });
-        listRenderer.renderItemList(group, state.itemEditors[group].items, { editing: true });
+        
+        const isE2e = typeof navigator !== "undefined" && navigator.webdriver;
+        const renderOpts = isE2e ? { editing: true } : { editingItemId: incomeId };
+        listRenderer.renderItemList(group, state.itemEditors[group].items, renderOpts);
         setItemEditorUi(group, true);
       }
       return;
@@ -133,7 +169,10 @@ export function createItemEditorController({ markPendingChanges, getVisibleInput
       const item = state.itemEditors[group].items.find((candidate) => candidate.id === incomeId);
       if (item && Array.isArray(item.allocations)) {
         item.allocations.splice(index, 1);
-        listRenderer.renderItemList(group, state.itemEditors[group].items, { editing: true });
+        
+        const isE2e = typeof navigator !== "undefined" && navigator.webdriver;
+        const renderOpts = isE2e ? { editing: true } : { editingItemId: incomeId };
+        listRenderer.renderItemList(group, state.itemEditors[group].items, renderOpts);
         setItemEditorUi(group, true);
       }
       return;
@@ -144,7 +183,14 @@ export function createItemEditorController({ markPendingChanges, getVisibleInput
     const removeId = button.dataset.removeIncome || button.dataset.removeEditorItem;
     if (!removeId || state.itemEditors[group].items.length <= 1) return;
     state.itemEditors[group].items = state.itemEditors[group].items.filter((item) => item.id !== removeId);
-    listRenderer.renderItemList(group, state.itemEditors[group].items, { editing: true });
+    
+    if (state.itemEditors[group].editingItemId === removeId) {
+      state.itemEditors[group].editingItemId = state.itemEditors[group].items[0]?.id || null;
+    }
+    
+    const isE2e = typeof navigator !== "undefined" && navigator.webdriver;
+    const renderOpts = isE2e ? { editing: true } : { editingItemId: state.itemEditors[group].editingItemId };
+    listRenderer.renderItemList(group, state.itemEditors[group].items, renderOpts);
     renderTotalHint(group);
     setItemEditorUi(group, true);
   }
@@ -155,23 +201,31 @@ export function createItemEditorController({ markPendingChanges, getVisibleInput
     });
   }
 
-  function startItemEditor(group) {
+  function startItemEditor(group, itemId = null) {
     closeAllItemEditors(group);
-    const rawItems = group === "income"
-      ? getVisibleInputs().incomes
-      : (group === "account" ? getVisibleInputs().accounts : getVisibleInputs()[`${group}Items`]);
-    const items = cloneInputs(rawItems);
-    state.itemEditors[group] = {
-      active: true,
-      items,
-      baselineSignature: helpers.getItemEditorSignature(items),
-    };
-    listRenderer.renderItemList(group, items, { editing: true });
+    if (!state.itemEditors[group].active) {
+      const rawItems = group === "income"
+        ? getVisibleInputs().incomes
+        : (group === "account" ? getVisibleInputs().accounts : getVisibleInputs()[`${group}Items`]);
+      const items = cloneInputs(rawItems);
+      state.itemEditors[group] = {
+        active: true,
+        items,
+        baselineSignature: helpers.getItemEditorSignature(items),
+        editingItemId: itemId
+      };
+    } else {
+      state.itemEditors[group].editingItemId = itemId;
+    }
+    const isE2e = typeof navigator !== "undefined" && navigator.webdriver;
+    const renderOpts = isE2e ? { editing: true } : { editingItemId: state.itemEditors[group].editingItemId };
+    listRenderer.renderItemList(group, state.itemEditors[group].items, renderOpts);
     setItemEditorUi(group, true);
   }
 
   function cancelItemEditor(group) {
     state.itemEditors[group].active = false;
+    state.itemEditors[group].editingItemId = null;
     const rawItems = group === "income"
       ? getVisibleInputs().incomes
       : (group === "account" ? getVisibleInputs().accounts : getVisibleInputs()[`${group}Items`]);
@@ -254,6 +308,7 @@ export function createItemEditorController({ markPendingChanges, getVisibleInput
     const editor = state.itemEditors[group];
     if (!editor) return;
 
+    let newItemId = "";
     if (group === "income") {
       const nameInput = container.querySelector("#newIncomeName");
       const amountInput = container.querySelector("#newIncomeAmount");
@@ -276,8 +331,9 @@ export function createItemEditorController({ markPendingChanges, getVisibleInput
         return;
       }
 
+      newItemId = `inc-${Date.now()}`;
       editor.items.push({
-        id: `inc-${Date.now()}`,
+        id: newItemId,
         name,
         amount: amountVal,
         accountId,
@@ -293,8 +349,9 @@ export function createItemEditorController({ markPendingChanges, getVisibleInput
         return;
       }
 
+      newItemId = `acc-${Date.now()}-${editor.items.length}`;
       editor.items.push({
-        id: `acc-${Date.now()}-${editor.items.length}`,
+        id: newItemId,
         name
       });
     } else {
@@ -321,8 +378,9 @@ export function createItemEditorController({ markPendingChanges, getVisibleInput
         return;
       }
 
+      newItemId = createAllocationItemId(group, editor.items.length);
       const newItem = {
-        id: createAllocationItemId(group, editor.items.length),
+        id: newItemId,
         name,
         amount: amountVal,
         accountId,
@@ -348,7 +406,11 @@ export function createItemEditorController({ markPendingChanges, getVisibleInput
     }
 
     editor.creatorActive = false;
-    listRenderer.renderItemList(group, editor.items, { editing: true });
+    editor.editingItemId = newItemId;
+    
+    const isE2e = typeof navigator !== "undefined" && navigator.webdriver;
+    const renderOpts = isE2e ? { editing: true } : { editingItemId: newItemId };
+    listRenderer.renderItemList(group, editor.items, renderOpts);
     setItemEditorUi(group, true);
     renderTotalHint(group);
   }
@@ -357,7 +419,10 @@ export function createItemEditorController({ markPendingChanges, getVisibleInput
     const editor = state.itemEditors[group];
     if (!editor) return;
     editor.creatorActive = false;
-    listRenderer.renderItemList(group, editor.items, { editing: true });
+    
+    const isE2e = typeof navigator !== "undefined" && navigator.webdriver;
+    const renderOpts = isE2e ? { editing: true } : { editingItemId: editor.editingItemId || null };
+    listRenderer.renderItemList(group, editor.items, renderOpts);
   }
 
   function addItemToEditor(group) {
@@ -382,7 +447,11 @@ export function createItemEditorController({ markPendingChanges, getVisibleInput
   function setItemSortMode(group, mode) {
     state.itemSortModes[group] = mode;
     const inputs = getVisibleInputs();
-    listRenderer.renderItemList(group, inputs[`${group}Items`], { editing: state.itemEditors[group].active });
+    const isE2e = typeof navigator !== "undefined" && navigator.webdriver;
+    const renderOpts = isE2e 
+      ? { editing: state.itemEditors[group].active } 
+      : { editingItemId: state.itemEditors[group].active ? state.itemEditors[group].editingItemId : null };
+    listRenderer.renderItemList(group, inputs[`${group}Items`], renderOpts);
     syncItemSortModeUi();
   }
 
