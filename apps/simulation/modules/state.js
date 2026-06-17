@@ -30,6 +30,7 @@ export const state = {
 export function createEmptyDraft() {
   return {
     modelVersion: 10,
+    name: "",
     totalInitialAsset: 0,
     totalMonthlyInvestCapacity: 0,
     dividendSim: {

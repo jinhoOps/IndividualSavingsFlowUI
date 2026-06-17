@@ -5,6 +5,13 @@ import { SHARE_STATE_KEY, MANUAL_BACKUP_WINDOW_MS } from "./constants.js";
 import { renderDraft } from "./renderers.js";
 import { utils } from "./utils.js";
 import { reimportOriginalStep1Source } from "./step1-connector.js";
+import {
+  deleteStep2Simulation,
+  getStep2SimulationById,
+  isStep2FallbackActive,
+  listStep2Simulations,
+  saveStep2Simulation
+} from "./storage-fallback.js";
 
 /**
  * Step 2 Feature Controller
@@ -19,21 +26,24 @@ export const featureController = {
       return;
     }
     try {
-      const entry = await window.IsfStorageHub.saveStep2Entry(data); 
+      const entry = await saveStep2Simulation(data); 
       state.currentSimulationId = entry.id;
       markClean();
       
       await this.refreshList();
       if (dom.dataHubModal) dom.dataHubModal.updateSimulationList(state.simulations);
       
-      // Auto-backup
-      const res = await window.IsfStorageHub.triggerAutoBackup(SHARE_STATE_KEY, data, state.backupEntries);
-      if (res.created) {
-        state.backupEntries = res.nextEntries;
-        this.syncBackupUi();
+      if (!isStep2FallbackActive() && window.IsfStorageHub?.triggerAutoBackup) {
+        const res = await window.IsfStorageHub.triggerAutoBackup(SHARE_STATE_KEY, entry, state.backupEntries);
+        if (res.created) {
+          state.backupEntries = res.nextEntries;
+          this.syncBackupUi();
+        }
       }
 
-      if (dom.appHeader) dom.appHeader.updateStatus("success", "시뮬레이션 저장됨");
+      if (dom.appHeader) {
+        dom.appHeader.updateStatus("success", isStep2FallbackActive() ? "임시 저장 모드로 저장됨" : "시뮬레이션 저장됨");
+      }
     } catch (err) {
       console.error("saveCurrent failed:", err);
       if (dom.appHeader) dom.appHeader.updateStatus("error", "저장 실패");
@@ -41,27 +51,31 @@ export const featureController = {
   },
 
   async loadById(id, options = {}) {
-    const s = await window.IsfStorageHub.getStep2EntryById(id);
+    const s = await getStep2SimulationById(id);
     if (s) {
       const norm = this.normalize(s);
       state.draft = norm.draft;
       state.currentSimulationId = id;
       renderDraft();
       markClean();
-      if (!options.skipConfirm && dom.appHeader) dom.appHeader.updateStatus("success", "시뮬레이션 로드됨");
+      if (!options.skipConfirm && dom.appHeader) {
+        dom.appHeader.updateStatus("success", isStep2FallbackActive() ? "임시 저장 모드에서 로드됨" : "시뮬레이션 로드됨");
+      }
     }
   },
 
   async deleteById(id) {
-    await window.IsfStorageHub.deleteStep2Entry(id);
+    await deleteStep2Simulation(id);
     if (state.currentSimulationId === id) await this.reset();
     await this.refreshList();
     if (dom.dataHubModal) dom.dataHubModal.updateSimulationList(state.simulations);
-    if (dom.appHeader) dom.appHeader.updateStatus("success", "삭제되었습니다.");
+    if (dom.appHeader) {
+      dom.appHeader.updateStatus("success", isStep2FallbackActive() ? "임시 저장 항목이 삭제되었습니다." : "삭제되었습니다.");
+    }
   },
 
   async refreshList() {
-    const rows = await window.IsfStorageHub.listStep2Entries();
+    const rows = await listStep2Simulations();
     state.simulations = rows || [];
   },
 
@@ -114,9 +128,9 @@ export const featureController = {
 
   toPortableFormat() { 
     if (!state.draft) return null;
-    const { modelVersion, totalMonthlyInvestCapacity, dividendSim, updatedAt } = state.draft;
+    const { modelVersion, name, totalInitialAsset, totalMonthlyInvestCapacity, dividendSim, updatedAt } = state.draft;
     return { 
-      modelVersion, totalMonthlyInvestCapacity, dividendSim, 
+      modelVersion, name, totalInitialAsset, totalMonthlyInvestCapacity, dividendSim, 
       updatedAt: updatedAt || Date.now(),
       id: state.currentSimulationId || utils.createId("ds")
     }; 

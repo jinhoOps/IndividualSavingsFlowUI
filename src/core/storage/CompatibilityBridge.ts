@@ -9,6 +9,13 @@ import { MoneyUtils } from '../types/money';
 
 export function initCompatibilityBridge() {
   const global = window as any;
+  const createStep2Entry = (data: any) => ({
+    ...data,
+    id: data?.id || `ds-${Date.now()}`,
+    name: data?.name || '배당 시뮬레이션',
+    updatedAt: data?.updatedAt || Date.now(),
+    modelVersion: data?.modelVersion || 10,
+  });
 
   // Modern Storage Hub Bridge
   const storageHub = {
@@ -32,7 +39,11 @@ export function initCompatibilityBridge() {
     getStep1SnapshotById: (id: any) => isfStore.getStep1ById(Number(id)),
 
     // Step 2
-    saveStep2Entry: (data: any) => isfStore.saveStep2Simulation(data),
+    saveStep2Entry: async (data: any) => {
+      const entry = createStep2Entry(data);
+      await isfStore.saveStep2Simulation(entry);
+      return entry;
+    },
     listStep2Entries: () => isfStore.listStep2Simulations(),
     getStep2EntryById: async (id: string) => {
       const all = await isfStore.listStep2Simulations();
@@ -41,7 +52,11 @@ export function initCompatibilityBridge() {
     deleteStep2Entry: (id: string) => isfStore.deleteStep2Simulation(id),
 
     // Step 2 Aliases
-    saveStep2Portfolio: (p: any) => isfStore.saveStep2Simulation(p),
+    saveStep2Portfolio: async (p: any) => {
+      const entry = createStep2Entry(p);
+      await isfStore.saveStep2Simulation(entry);
+      return entry;
+    },
     listStep2Portfolios: () => isfStore.listStep2Simulations(),
     getStep2PortfolioById: async (id: string) => {
       const all = await isfStore.listStep2Simulations();

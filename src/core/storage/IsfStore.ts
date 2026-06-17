@@ -105,8 +105,9 @@ export class IsfStore {
 
   // --- Step 2 Methods ---
 
-  async saveStep2Simulation(sim: Step2Simulation): Promise<void> {
+  async saveStep2Simulation(sim: Step2Simulation): Promise<Step2Simulation> {
     await this.perform(STORES.STEP2_SIMULATIONS, 'readwrite', (s) => s.put(sim));
+    return sim;
   }
 
   async listStep2Simulations(): Promise<Step2Simulation[]> {

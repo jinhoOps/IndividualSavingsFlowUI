@@ -47,12 +47,18 @@ export interface DividendSimulationState {
   capitalGrowth: number;
   years: number;
   isDrip: boolean;
+  presetName?: string;
+  selectedBenchmark?: string;
+  strategyKey?: string;
+  strategyName?: string;
+  coveredCallExample?: string;
 }
 
 export interface Step2Simulation {
   id: string;
   name: string;
   updatedAt: number;
+  totalInitialAsset: Won;
   totalMonthlyInvestCapacity: Won;
   dividendSim: DividendSimulationState;
   modelVersion: 10;
