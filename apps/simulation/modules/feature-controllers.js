@@ -4,6 +4,7 @@ import { dom } from "./dom.js";
 import { SHARE_STATE_KEY, MANUAL_BACKUP_WINDOW_MS } from "./constants.js";
 import { renderDraft } from "./renderers.js";
 import { utils } from "./utils.js";
+import { reimportOriginalStep1Source } from "./step1-connector.js";
 
 /**
  * Step 2 Feature Controller
@@ -53,7 +54,7 @@ export const featureController = {
 
   async deleteById(id) {
     await window.IsfStorageHub.deleteStep2Entry(id);
-    if (state.currentSimulationId === id) this.reset();
+    if (state.currentSimulationId === id) await this.reset();
     await this.refreshList();
     if (dom.dataHubModal) dom.dataHubModal.updateSimulationList(state.simulations);
     if (dom.appHeader) dom.appHeader.updateStatus("success", "삭제되었습니다.");
@@ -121,9 +122,10 @@ export const featureController = {
     }; 
   },
 
-  reset() { 
+  async reset() { 
     state.draft = createEmptyDraft(); 
     state.currentSimulationId = ""; 
+    await reimportOriginalStep1Source();
     renderDraft(); 
     markClean(); 
   }

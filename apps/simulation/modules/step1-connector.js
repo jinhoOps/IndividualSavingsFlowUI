@@ -6,51 +6,85 @@ import { renderDraft } from "./renderers.js";
 
 import { utils } from "./utils.js";
 
+function normalizeStep1Payload(snapshot) {
+  const payload = snapshot?.payload;
+  if (!payload) return null;
+  return {
+    id: snapshot.id || "recent",
+    timestamp: payload.timestamp || new Date(Date.now()).toISOString(),
+    totalInitialAsset: utils.toWon(payload.totalInitialAsset),
+    totalMonthlyInvestCapacity: utils.toWon(payload.monthlyInvestCapacity),
+  };
+}
+
+function hasStep1SourceValue(source) {
+  return Boolean(source && (source.totalInitialAsset > 0 || source.totalMonthlyInvestCapacity > 0));
+}
+
+function cacheStep1Source(source) {
+  if (!source) return;
+  state.step1Source = {
+    id: source.id,
+    timestamp: source.timestamp,
+    totalInitialAsset: source.totalInitialAsset,
+    totalMonthlyInvestCapacity: source.totalMonthlyInvestCapacity,
+    importedAt: Date.now()
+  };
+}
+
+function applyStep1SourceToDraft(source) {
+  if (!source || !state.draft) return false;
+  state.draft.totalMonthlyInvestCapacity = source.totalMonthlyInvestCapacity;
+  state.draft.totalInitialAsset = source.totalInitialAsset;
+  state.draft.updatedAt = Date.now();
+  state.isSyncedWithStep1 = true;
+  cacheStep1Source(source);
+  return true;
+}
+
+function renderSyncBanner(source, options = {}) {
+  if (!dom.step1SyncBanner) return;
+  const { hidden = false, actionText = "동기화됨", message = "Main에서 새로운 투자 여력 데이터를 가져왔습니다. 시뮬레이션에 적용할까요?" } = options;
+  dom.step1SyncBanner.hidden = hidden;
+  const textEl = dom.step1SyncBanner.querySelector('.sync-banner__text');
+  if (textEl) textEl.textContent = message;
+  if (dom.syncTimestamp) dom.syncTimestamp.textContent = formatDateTime(source?.timestamp);
+  if (dom.syncInvestCapacity) dom.syncInvestCapacity.textContent = formatCurrency(source?.totalMonthlyInvestCapacity || 0);
+  if (dom.importStep1Data) dom.importStep1Data.textContent = actionText;
+}
 
 export async function checkStep1SyncData() {
   const hub = getHubStorage();
   const res = await resolveLatestStep1Snapshot(hub);
-  const p = res.snapshot?.payload;
+  const source = normalizeStep1Payload(res.snapshot);
 
   const currentInvestVal = state.draft.totalMonthlyInvestCapacity || 0;
   const currentInitialVal = state.draft.totalInitialAsset || 0;
-  
-  const newInvestVal = p ? Number(p.monthlyInvestCapacity) : 0;
-  const newInitialVal = p ? Number(p.totalInitialAsset) : 0;
+  const hasLoadedStep2Override = Boolean(state.currentSimulationId) || state.dirty;
 
       // Case 1: Main에 유효한 데이터가 있음
-  if (p && (newInvestVal > 0 || newInitialVal > 0)) {
+  if (hasStep1SourceValue(source)) {
+    cacheStep1Source(source);
     // 데이터가 이미 일치하고 동기화된 상태라면 배너를 숨김
-    if (currentInvestVal === newInvestVal && currentInitialVal === newInitialVal) {
+    if (currentInvestVal === source.totalMonthlyInvestCapacity && currentInitialVal === source.totalInitialAsset) {
       state.isSyncedWithStep1 = true;
       if (dom.step1SyncBanner) dom.step1SyncBanner.hidden = true;
       return;
     }
 
-    // 데이터가 다르거나 처음인 경우
-    if (currentInvestVal === 0 && currentInitialVal === 0) {
-      state.draft.totalMonthlyInvestCapacity = newInvestVal;
-      state.draft.totalInitialAsset = newInitialVal;
-      state.isSyncedWithStep1 = true;
+    // 데이터가 다르거나 처음인 경우. 저장/세션으로 불러온 Step 2 값은 의도적 override로 보존한다.
+    if (!hasLoadedStep2Override && currentInvestVal === 0 && currentInitialVal === 0) {
+      applyStep1SourceToDraft(source);
       renderDraft();
       // 처음 가져온 것이라면 배너를 보여주어 출처를 알림
-      if (dom.step1SyncBanner) {
-        dom.step1SyncBanner.hidden = false;
-        if (dom.syncTimestamp) dom.syncTimestamp.textContent = formatDateTime(p.timestamp);
-        if (dom.syncInvestCapacity) dom.syncInvestCapacity.textContent = formatCurrency(p.monthlyInvestCapacity);
-        if (dom.importStep1Data) dom.importStep1Data.textContent = "동기화됨";
-      }
+      renderSyncBanner(source, { hidden: false, actionText: "동기화됨" });
     } else {
       // 값이 이미 있는데 Main과 다른 경우 -> 배너를 보여주고 수동 업데이트 유도
-      if (dom.step1SyncBanner) {
-        dom.step1SyncBanner.hidden = false;
-        if (dom.syncTimestamp) dom.syncTimestamp.textContent = formatDateTime(p.timestamp);
-        if (dom.syncInvestCapacity) dom.syncInvestCapacity.textContent = formatCurrency(p.monthlyInvestCapacity);
-        if (dom.importStep1Data) dom.importStep1Data.textContent = "업데이트";
-        
-        const textEl = dom.step1SyncBanner.querySelector('.sync-banner__text');
-        if (textEl) textEl.textContent = "Main의 자산/투자 데이터가 변경되었습니다. 시뮬레이션에 반영할까요?";
-      }
+      renderSyncBanner(source, {
+        hidden: false,
+        actionText: "업데이트",
+        message: "Main의 자산/투자 데이터가 변경되었습니다. 시뮬레이션에 반영할까요?"
+      });
     }
   } else {
     // Case 2: Main 데이터가 없거나 0인 경우 (실패 혹은 미설정)
@@ -96,17 +130,28 @@ export async function resolveLatestStep1Snapshot(hub) {
 export async function importLatestStep1Data() {
   const hub = getHubStorage();
   const res = await resolveLatestStep1Snapshot(hub);
-  if (res.snapshot?.payload) {
-    const p = res.snapshot.payload;
-    state.draft.totalMonthlyInvestCapacity = Number(p.monthlyInvestCapacity) || 0;
-    state.draft.totalInitialAsset = Number(p.totalInitialAsset) || 0;
-    
+  const source = normalizeStep1Payload(res.snapshot);
+  if (hasStep1SourceValue(source)) {
+    applyStep1SourceToDraft(source);
     renderDraft();
     markDirty();
     window.IsfFeedback.showFeedback(dom.applyFeedback, "Main 데이터 동기화 완료");
     
     if (dom.step1SyncBanner) dom.step1SyncBanner.hidden = true;
   }
+}
+
+export async function reimportOriginalStep1Source() {
+  const hub = getHubStorage();
+  const latest = normalizeStep1Payload((await resolveLatestStep1Snapshot(hub)).snapshot);
+  const source = hasStep1SourceValue(latest) ? latest : state.step1Source;
+  if (!hasStep1SourceValue(source)) return false;
+  const applied = applyStep1SourceToDraft(source);
+  if (applied) {
+    renderDraft();
+    if (dom.step1SyncBanner) dom.step1SyncBanner.hidden = true;
+  }
+  return applied;
 }
 
 

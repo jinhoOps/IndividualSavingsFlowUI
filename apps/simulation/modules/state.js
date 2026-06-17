@@ -11,6 +11,13 @@ export const state = {
   dirty: false,
   backupStoreReady: false,
   isSyncedWithStep1: false,
+  step1Source: {
+    id: "",
+    timestamp: "",
+    totalInitialAsset: 0,
+    totalMonthlyInvestCapacity: 0,
+    importedAt: 0
+  },
   displayOptions: {
     showAsset: true,
     showDividend: true,
