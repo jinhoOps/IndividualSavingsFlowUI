@@ -14,7 +14,7 @@
 |---|-------|------|--------------|------------------|
 | 5 | Portfolio Creation & Target Allocation UI | 나만의 포트폴리오 만들기 화면, 종목명 입력, 주기 선택 및 종목 비중 실시간 편집 UI 구현 | PORT-01, PORT-02 | 2 |
 | 6 | Confirmation & Portfolio Storage Hub | 포트폴리오 추가 최종 확인 모달 구현 및 IndexedDB 영속화 저장소 연동 | PORT-03 | 2 |
-| 7 | Step 1 UI/UX Refactoring & Modularization | Step 1의 거대한 CSS 다이어트, 모듈 쪼개기, DESIGN.md 기반 UI/UX 전면 개편 | UI-01, UI-02 | 2 |
+| 7 | Step 1 UI/UX Refactoring & Modularization | Step 1의 거대한 CSS 다이어트, 모듈 쪼개기, DESIGN.md 기반 UI/UX 전면 개편 | UI-01, UI-02 | Complete (7/7, 2026-06-17) |
 | 8 | Step 2 Redesign & Re-planning | Step 2의 목표(미래 자산 시뮬레이션)만 살려 현대적 에디토리얼 레이아웃으로 전면 재기획 및 구현 | UI-03 | 2 |
 
 ### Phase Details
@@ -39,7 +39,7 @@
 
 - **Goal:** Step 1의 거대한 CSS 다이어트, 모듈 쪼개기, DESIGN.md 기반 UI/UX 전면 개편
 - **Requirements:** UI-01, UI-02
-- **Plans:** 3/3 plans complete
+- **Plans:** 7/7 plans complete
 
 **Wave 1**
 
