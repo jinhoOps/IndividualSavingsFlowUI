@@ -1,381 +1,350 @@
 import { state } from "./state.js";
 import { dom } from "./dom.js";
-import { 
-  formatCurrency, 
-  calculateDividendProjection,
-  calculateCAGR
+import {
+  formatCurrency,
+  calculateStrategyComparison,
 } from "./calculator.js";
 import { utils } from "./utils.js";
+import { getStrategyAssumptions } from "./assumptions.js";
 
-/**
- * Renders the main dividend simulation table and triggers chart drawing.
- */
+const STRATEGY_VIEW = {
+  index: {
+    key: "index",
+    cardKey: "indexGrowth",
+    title: "지수/성장",
+    color: "#3175b6",
+    conclusion: "총자산 성장 기준선",
+    caveat: "월 현금흐름은 작게 시작합니다.",
+  },
+  schd: {
+    key: "schd",
+    cardKey: "dividendGrowth",
+    title: "SCHD 배당성장",
+    color: "#1e8b7c",
+    conclusion: "성장과 현금흐름의 균형",
+    caveat: "지수보다 총자산은 낮을 수 있습니다.",
+  },
+  coveredCall: {
+    key: "coveredCall",
+    cardKey: "coveredCallMonthlyIncome",
+    title: "커버드콜 월 현금흐름",
+    color: "#ea5b2a",
+    conclusion: "은퇴 현금흐름 도구",
+    caveat: "초보/자산 형성기에는 상승 참여 제한을 비교하세요.",
+  },
+};
+
+function getSelectedStrategyKey() {
+  const selected = state.draft?.dividendSim?.strategyKey || "dividendGrowth";
+  if (selected === "indexGrowth") return "index";
+  if (selected === "coveredCallMonthlyIncome") return "coveredCall";
+  return "schd";
+}
+
+function formatSignedCurrency(value) {
+  const amount = Number(value || 0);
+  if (amount === 0) return "0원";
+  return `${amount > 0 ? "+" : "-"}${formatCurrency(Math.abs(amount))}`;
+}
+
+function clearNode(node) {
+  if (!node) return;
+  while (node.firstChild) node.removeChild(node.firstChild);
+}
+
+function appendText(parent, tag, className, text) {
+  const el = document.createElement(tag);
+  if (className) el.className = className;
+  el.textContent = text;
+  parent.appendChild(el);
+  return el;
+}
+
 export function renderDividendSimulation() {
   if (!dom.simTable) return;
-  const data = calculateDividendProjection();
-  
-  renderKpiCards(data);
+  const comparison = calculateStrategyComparison(state.draft || {});
 
-  const { showAsset, showDividend, showPR, showTR } = state.displayOptions;
-  
-  // Update table header based on options
-  const table = dom.simTable.closest("table");
-  if (table) {
-    const thead = table.querySelector("thead");
-    if (thead) {
-      let headerRow1 = `
-        <tr>
-          <th rowspan="2" style="text-align: center; vertical-align: middle;">연차</th>
-          <th rowspan="2" style="text-align: center; vertical-align: middle;">누적 원금</th>
-      `;
-      let headerRow2 = "<tr>";
-      
-      if (showAsset) {
-        if (showPR) {
-          headerRow1 += `<th colspan="2" style="text-align: center;" data-tooltip="배당을 재투자하지 않는 순수 주가 상승 케이스 (Price Return)">자산 (PR)</th>`;
-          headerRow2 += `<th>명목</th><th>실질</th>`;
-        }
-        if (showTR) {
-          headerRow1 += `<th colspan="2" style="text-align: center;" data-tooltip="배당을 전액 재투자하여 복리 효과를 극대화한 케이스 (Total Return)">자산 (TR)</th>`;
-          headerRow2 += `<th>명목</th><th>실질</th>`;
-        }
-      }
-      
-      if (showDividend) {
-        if (showPR) {
-          headerRow1 += `<th colspan="2" style="text-align: center;" data-tooltip="재투자하지 않을 때 받는 세후 배당금">연 배당 (PR)</th>`;
-          headerRow2 += `<th>명목</th><th>실질</th>`;
-        }
-        if (showTR) {
-          headerRow1 += `<th colspan="2" style="text-align: center;" data-tooltip="재투자로 인해 늘어난 수량까지 합산된 세후 배당금">연 배당 (TR)</th>`;
-          headerRow2 += `<th>명목</th><th>실질</th>`;
-        }
-      }
-      
-      headerRow1 += "</tr>";
-      headerRow2 += "</tr>";
-      thead.innerHTML = headerRow1 + headerRow2;
-    }
-  }
+  renderKpiCards(comparison);
+  renderComparisonCards(comparison);
+  renderFinalGuidance(comparison);
+  renderDetailSummaryCards(comparison);
+  renderComparisonTable(comparison);
 
-  dom.simTable.innerHTML = data.map(d => {
-    const statusClass = utils.getFinancialIncomeStatus(d.dividendNominalTR);
-    const trClass = statusClass !== 'normal' ? `status--${statusClass}` : '';
+  if (dom.simChartSvg) drawSimulationChart(dom.simChartSvg, comparison);
 
-    let rowHtml = `
-      <tr class="${trClass}">
-        <td>${d.year}년</td>
-        <td>${formatCurrency(d.principal)}</td>
-    `;
-    
-    if (showAsset) {
-      if (showPR) {
-        rowHtml += `
-          <td class="nominal">${formatCurrency(d.assetNominalPR)}</td>
-          <td class="real">${formatCurrency(d.assetRealPR)}</td>
-        `;
-      }
-      if (showTR) {
-        rowHtml += `
-          <td class="nominal">${formatCurrency(d.assetNominalTR)}</td>
-          <td class="real">${formatCurrency(d.assetRealTR)}</td>
-        `;
-      }
-    }
-    
-    if (showDividend) {
-      if (showPR) {
-        rowHtml += `
-          <td class="nominal">${formatCurrency(d.dividendAfterTaxPR)}</td>
-          <td class="real">${formatCurrency(d.dividendAfterTaxRealPR)}</td>
-        `;
-      }
-      if (showTR) {
-        rowHtml += `
-          <td class="nominal">${formatCurrency(d.dividendAfterTaxTR)}</td>
-          <td class="real">${formatCurrency(d.dividendAfterTaxRealTR)}</td>
-        `;
-      }
-    }
-    
-    rowHtml += "</tr>";
-    return rowHtml;
-  }).join("");
-
-  if (dom.simChartSvg) drawSimulationChart(dom.simChartSvg, data);
-
-  // 글로벌 금융소득과세 인디케이터 갱신
   if (dom.appHeader && typeof dom.appHeader.setFinancialWarning === "function") {
-    let maxStatus = "none";
-    let message = "";
-    
-    // 시뮬레이션 전 기간 중 최초의 주의/경고 연차를 찾음
-    const firstCrit = data.find(d => utils.getFinancialIncomeStatus(d.dividendNominalTR) === "crit");
-    const firstWarn = data.find(d => utils.getFinancialIncomeStatus(d.dividendNominalTR) === "warn");
-    
-    if (firstCrit) {
-      maxStatus = "crit";
-      message = `⚠️ ${firstCrit.year}년차 연배당이 종합과세 한도 초과!\n(세전 ${window.IsfUtils.formatMoney(firstCrit.dividendNominalTR)})`;
-    } else if (firstWarn) {
-      maxStatus = "warn";
-      message = `💡 ${firstWarn.year}년차 연배당이 종합과세 주의 (Safety Margin 도달)\n(세전 ${window.IsfUtils.formatMoney(firstWarn.dividendNominalTR)})`;
-    }
-    
-    dom.appHeader.setFinancialWarning(maxStatus, message);
+    const final = comparison.final;
+    const annualCashFlow = final?.strategies?.coveredCall?.annualCashFlowGross || 0;
+    const status = utils.getFinancialIncomeStatus(annualCashFlow);
+    const message = status === "normal"
+      ? ""
+      : `커버드콜 연 현금흐름 세전 ${formatCurrency(annualCashFlow)} 기준 과세 구간을 확인하세요.`;
+    dom.appHeader.setFinancialWarning(status === "normal" ? "none" : status, message);
   }
 }
 
-/**
- * Renders KPI cards based on simulation data.
- */
-export function renderKpiCards(data) {
-  if (!dom.simKpiGrid || !data || data.length === 0) return;
-  
-  const isDrip = state.draft?.dividendSim?.isDrip !== false;
-  const years = state.draft?.dividendSim?.years || 10;
-  
-  // Show/Hide warning if total operation scale < 100 million won (100,000,000 won)
+export function renderKpiCards(comparison) {
+  if (!dom.simKpiGrid || !comparison?.final) return;
+
   const initialAsset = state.draft?.totalInitialAsset || 0;
-  const monthlyCapacity = state.draft?.totalMonthlyInvestCapacity || 0;
-  const totalOperationScale = initialAsset + (monthlyCapacity * 12 * years);
-  
   if (dom.dividendWarningBanner) {
-    dom.dividendWarningBanner.style.display = totalOperationScale < 100000000 ? "flex" : "none";
+    dom.dividendWarningBanner.style.display = initialAsset <= 50000000 ? "flex" : "none";
   }
 
-  const last = data[data.length - 1];
-  const finalAsset = isDrip ? last.assetNominalTR : last.assetNominalPR;
-  const finalDividend = isDrip ? last.dividendAfterTaxTR : last.dividendAfterTaxPR;
-  const totalPrincipal = last.principal;
-  
-  const returnRate = totalPrincipal > 0 
-    ? ((finalAsset / totalPrincipal) - 1) * 100 
-    : 0;
-    
-  const cagr = calculateCAGR(finalAsset, totalPrincipal, years);
+  const selectedKey = getSelectedStrategyKey();
+  const final = comparison.final;
+  const selected = final.strategies[selectedKey];
+  const benchmarkLabel = comparison.selectedBenchmarkLabel || "벤치마크";
+  const delta = selected?.benchmarkDelta || 0;
 
-  dom.simKpiGrid.innerHTML = `
-    <div class="card kpi-card">
-      <div class="kpi-label">최종 예상 자산 (${isDrip ? '재투자' : '미투자'})</div>
-      <div class="kpi-value">${formatCurrency(finalAsset)}</div>
-    </div>
-    <div class="card kpi-card kpi-card--accent">
-      <div class="kpi-label">최종 연 배당금(세후)</div>
-      <div class="kpi-value">${formatCurrency(finalDividend)}</div>
-    </div>
-    <div class="card kpi-card">
-      <div class="kpi-label">누적 수익률</div>
-      <div class="kpi-value">
-        ${returnRate.toFixed(1)}<span class="kpi-unit">%</span>
-        <span class="kpi-sub-value" style="font-size: 0.85rem; color: var(--muted); margin-left: 4px; font-weight: normal;">
-          (연 ${cagr.toFixed(1)}%)
-        </span>
-      </div>
-    </div>
-  `;
+  clearNode(dom.simKpiGrid);
+
+  const cards = [
+    {
+      label: "최종 예상 자산",
+      value: formatCurrency(selected.finalAsset),
+      sub: selected.label,
+      accent: false,
+    },
+    {
+      label: "예상 월 배당/현금흐름",
+      value: formatCurrency(selected.monthlyCashFlowAfterTax),
+      sub: "세후 월평균",
+      accent: true,
+    },
+    {
+      label: `${benchmarkLabel} 대비 차이`,
+      value: formatSignedCurrency(delta),
+      sub: delta < 0 ? "총자산 기회비용" : "총자산 초과분",
+      accent: delta >= 0,
+    },
+  ];
+
+  cards.forEach((card) => {
+    const wrapper = document.createElement("div");
+    wrapper.className = `card kpi-card${card.accent ? " kpi-card--accent" : ""}`;
+    appendText(wrapper, "div", "kpi-label", card.label);
+    appendText(wrapper, "div", "kpi-value", card.value);
+    appendText(wrapper, "div", "kpi-sub-value", card.sub);
+    dom.simKpiGrid.appendChild(wrapper);
+  });
 }
 
-/**
- * Draws the SVG chart for simulation data.
- */
-function drawSimulationChart(svg, data) {
+function renderComparisonCards(comparison) {
+  if (!dom.strategyComparisonCards || !comparison?.final) return;
+  clearNode(dom.strategyComparisonCards);
+
+  Object.values(STRATEGY_VIEW).forEach((view) => {
+    const strategy = comparison.final.strategies[view.key];
+    const card = document.createElement("article");
+    card.className = `comparison-card${getSelectedStrategyKey() === view.key ? " is-active" : ""}`;
+    card.dataset.strategy = view.cardKey;
+
+    appendText(card, "p", "comparison-card__eyebrow", view.title);
+    appendText(card, "h3", "", view.conclusion);
+
+    const metrics = document.createElement("div");
+    metrics.className = "comparison-card__metrics";
+    appendText(metrics, "span", "", formatCurrency(strategy.finalAsset));
+    appendText(metrics, "span", "", `월 ${formatCurrency(strategy.monthlyCashFlowAfterTax)}`);
+    card.appendChild(metrics);
+
+    appendText(card, "p", "comparison-card__caveat", view.caveat);
+    dom.strategyComparisonCards.appendChild(card);
+  });
+}
+
+function renderFinalGuidance(comparison) {
+  if (!dom.finalGuidance || !comparison?.final) return;
+  const covered = comparison.final.strategies.coveredCall;
+  const index = comparison.final.strategies.index;
+  const cashFlowAdvantage = covered.monthlyCashFlowAfterTax - index.monthlyCashFlowAfterTax;
+  dom.finalGuidance.textContent = `자산 형성기에는 ${comparison.selectedBenchmarkLabel} 같은 지수/성장 전략을 먼저 비교하고, 은퇴 준비나 월 현금흐름이 중요한 시기에는 배당성장 또는 커버드콜 전략을 검토하세요. 커버드콜은 월 ${formatCurrency(cashFlowAdvantage)}가량의 현금흐름 우위가 있을 수 있지만 상승 참여 제한으로 최종 자산은 낮아질 수 있습니다.`;
+}
+
+function renderDetailSummaryCards(comparison) {
+  if (!dom.detailSummaryCards || !comparison?.rows?.length) return;
+  clearNode(dom.detailSummaryCards);
+  const rows = comparison.rows;
+  const pickIndexes = [0, Math.floor((rows.length - 1) / 2), rows.length - 1];
+  [...new Set(pickIndexes)].forEach((idx) => {
+    const row = rows[idx];
+    const card = document.createElement("div");
+    card.className = "detail-summary-card";
+    appendText(card, "span", "", `${row.year}년차`);
+    appendText(card, "strong", "", formatCurrency(row.finalAssets[getSelectedStrategyKey()]));
+    appendText(card, "small", "", `월 현금흐름 ${formatCurrency(row.monthlyCashFlowAfterTax[getSelectedStrategyKey()])}`);
+    dom.detailSummaryCards.appendChild(card);
+  });
+}
+
+function renderComparisonTable(comparison) {
+  const table = dom.simTable?.closest("table");
+  const thead = table?.querySelector("thead");
+  if (!dom.simTable || !thead || !comparison?.rows) return;
+
+  thead.innerHTML = `
+    <tr>
+      <th>연차</th>
+      <th>누적 원금</th>
+      <th>${comparison.selectedBenchmarkLabel} 자산</th>
+      <th>SCHD 자산</th>
+      <th>${comparison.selectedCoveredCallLabel} 자산</th>
+      <th>SCHD 월 현금흐름</th>
+      <th>${comparison.selectedCoveredCallLabel} 월 현금흐름</th>
+      <th>커버드콜 벤치마크 차이</th>
+    </tr>
+  `;
+
+  dom.simTable.innerHTML = comparison.rows.map((row) => `
+    <tr>
+      <td>${row.year}년</td>
+      <td>${formatCurrency(row.principal)}</td>
+      <td>${formatCurrency(row.finalAssets.index)}</td>
+      <td>${formatCurrency(row.finalAssets.schd)}</td>
+      <td>${formatCurrency(row.finalAssets.coveredCall)}</td>
+      <td>${formatCurrency(row.monthlyCashFlowAfterTax.schd)}</td>
+      <td>${formatCurrency(row.monthlyCashFlowAfterTax.coveredCall)}</td>
+      <td>${formatSignedCurrency(row.benchmarkDelta.coveredCall)}</td>
+    </tr>
+  `).join("");
+}
+
+function createSvgEl(tag, attrs = {}) {
+  const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
+  Object.entries(attrs).forEach(([key, value]) => el.setAttribute(key, String(value)));
+  return el;
+}
+
+function drawSimulationChart(svg, comparison) {
   svg.innerHTML = "";
-  if (!data.length) return;
-  const width = 600; const height = 260; const paddingL = 65; const paddingR = 30; const paddingTB = 40;
-  
+  const rows = comparison?.rows || [];
+  if (!rows.length) return;
+
+  const width = 640;
+  const height = 280;
+  const paddingL = 70;
+  const paddingR = 34;
+  const paddingT = 38;
+  const paddingB = 42;
+  const plotW = width - paddingL - paddingR;
+  const plotH = height - paddingT - paddingB;
+  const denominator = Math.max(rows.length - 1, 1);
+  const maxVal = Math.max(...rows.flatMap((row) => Object.values(row.finalAssets)), 1);
+
   svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
   svg.style.width = "100%";
   svg.style.height = "auto";
   svg.style.fontFamily = "var(--font-body)";
 
-  const maxVal = Math.max(...data.map(d => d.assetNominalTR), 1);
-
-  const gridSteps = 4;
-  for (let i = 0; i <= gridSteps; i++) {
-    const yVal = maxVal * (i / gridSteps);
-    const yPos = height - paddingTB - (i / gridSteps) * (height - 2 * paddingTB);
-    
-    const gridLine = document.createElementNS("http://www.w3.org/2000/svg", "line");
-    gridLine.setAttribute("x1", paddingL); gridLine.setAttribute("y1", yPos);
-    gridLine.setAttribute("x2", width - paddingR); gridLine.setAttribute("y2", yPos);
-    gridLine.setAttribute("stroke", "var(--line)"); gridLine.setAttribute("stroke-dasharray", "4");
-    svg.appendChild(gridLine);
-    
-    const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    text.setAttribute("x", paddingL - 8); text.setAttribute("y", yPos + 4);
-    text.setAttribute("text-anchor", "end"); 
-    text.setAttribute("font-size", "10"); 
-    text.setAttribute("fill", "var(--muted)");
-    text.textContent = utils.toMan(yVal).toLocaleString();
-    svg.appendChild(text);
+  for (let i = 0; i <= 4; i += 1) {
+    const y = paddingT + plotH - (plotH * i / 4);
+    const value = maxVal * i / 4;
+    svg.appendChild(createSvgEl("line", {
+      x1: paddingL,
+      y1: y,
+      x2: width - paddingR,
+      y2: y,
+      stroke: "var(--line)",
+      "stroke-dasharray": "4 4",
+    }));
+    const label = createSvgEl("text", {
+      x: paddingL - 8,
+      y: y + 4,
+      "text-anchor": "end",
+      "font-size": 10,
+      fill: "var(--muted)",
+    });
+    label.textContent = utils.toMan(value).toLocaleString();
+    svg.appendChild(label);
   }
 
-  const denominator = Math.max(data.length - 1, 1);
+  const getPoint = (row, index, key) => {
+    const x = paddingL + (index / denominator) * plotW;
+    const y = paddingT + plotH - (row.finalAssets[key] / maxVal) * plotH;
+    return { x, y };
+  };
 
-  const pointsPolygon = [
-    ...data.map((d, i) => {
-      const x = paddingL + (i / denominator) * (width - paddingL - paddingR);
-      const y = (height - paddingTB) - (d.assetNominalTR / maxVal) * (height - 2 * paddingTB);
-      return `${x},${y}`;
-    }),
-    ...data.map((d, i) => {
-      const revIndex = data.length - 1 - i;
-      const revData = data[revIndex];
-      const x = paddingL + (revIndex / denominator) * (width - paddingL - paddingR);
-      const y = (height - paddingTB) - (revData.assetNominalPR / maxVal) * (height - 2 * paddingTB);
-      return `${x},${y}`;
-    })
-  ].join(" ");
-  const polyArea = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
-  polyArea.setAttribute("points", pointsPolygon);
-  polyArea.setAttribute("fill", "rgba(234, 91, 42, 0.08)");
-  svg.appendChild(polyArea);
+  Object.values(STRATEGY_VIEW).forEach((view) => {
+    const points = rows.map((row, index) => {
+      const point = getPoint(row, index, view.key);
+      return `${point.x},${point.y}`;
+    }).join(" ");
+    const line = createSvgEl("polyline", {
+      points,
+      fill: "none",
+      stroke: view.color,
+      "stroke-width": getSelectedStrategyKey() === view.key ? 3 : 2,
+      "stroke-linecap": "round",
+      "stroke-linejoin": "round",
+      class: "strategy-line",
+    });
+    svg.appendChild(line);
+  });
 
-  const pointsPR = data.map((d, i) => {
-    const x = paddingL + (i / denominator) * (width - paddingL - paddingR);
-    const y = (height - paddingTB) - (d.assetNominalPR / maxVal) * (height - 2 * paddingTB);
-    return `${x},${y}`;
-  }).join(" ");
-
-  const polyPR = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
-  polyPR.setAttribute("points", pointsPR);
-  polyPR.setAttribute("fill", "none"); polyPR.setAttribute("stroke", "#94a3b8"); polyPR.setAttribute("stroke-width", "1.5");
-  polyPR.setAttribute("stroke-dasharray", "4 4");
-  svg.appendChild(polyPR);
-
-  const pointsTR = data.map((d, i) => {
-    const x = paddingL + (i / denominator) * (width - paddingL - paddingR);
-    const y = (height - paddingTB) - (d.assetNominalTR / maxVal) * (height - 2 * paddingTB);
-    return `${x},${y}`;
-  }).join(" ");
-
-  const polyTR = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
-  polyTR.setAttribute("points", pointsTR);
-  polyTR.setAttribute("fill", "none"); polyTR.setAttribute("stroke", "var(--tone-primary)"); polyTR.setAttribute("stroke-width", "2.5");
-  svg.appendChild(polyTR);
-
-  data.forEach((d, i) => {
-    const x = paddingL + (i / denominator) * (width - paddingL - paddingR);
-    const yTR = (height - paddingTB) - (d.assetNominalTR / maxVal) * (height - 2 * paddingTB);
-    const yPR = (height - paddingTB) - (d.assetNominalPR / maxVal) * (height - 2 * paddingTB);
-
-    const statusClassTR = utils.getFinancialIncomeStatus(d.dividendNominalTR);
-    const colorTR = statusClassTR === 'crit' ? '#dc2626' : statusClassTR === 'warn' ? '#f59e0b' : 'var(--tone-primary)';
-    const statusClassPR = utils.getFinancialIncomeStatus(d.dividendNominalPR);
-    const colorPR = statusClassPR === 'crit' ? '#dc2626' : statusClassPR === 'warn' ? '#f59e0b' : '#94a3b8';
-
-    const circleTR = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-    circleTR.setAttribute("cx", x); circleTR.setAttribute("cy", yTR);
-    circleTR.setAttribute("r", statusClassTR !== 'normal' ? "4.5" : "3.5"); 
-    circleTR.setAttribute("fill", colorTR);
-    circleTR.setAttribute("stroke", "#fff");
-    circleTR.setAttribute("stroke-width", "1");
-    svg.appendChild(circleTR);
-
-    const circlePR = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-    circlePR.setAttribute("cx", x); circlePR.setAttribute("cy", yPR);
-    circlePR.setAttribute("r", statusClassPR !== 'normal' ? "3.5" : "2.5"); 
-    circlePR.setAttribute("fill", colorPR);
-    circlePR.setAttribute("stroke", "#fff");
-    circlePR.setAttribute("stroke-width", "1");
-    svg.appendChild(circlePR);
-
-    if (i % Math.ceil(data.length/5) === 0 || i === data.length - 1) {
-      const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
-      text.setAttribute("x", x); text.setAttribute("y", height - 10);
-      text.setAttribute("text-anchor", "middle"); 
-      text.setAttribute("font-size", "10"); 
-      text.setAttribute("fill", "var(--muted)");
-      text.textContent = `${d.year}년`;
-      svg.appendChild(text);
+  rows.forEach((row, index) => {
+    if (index % Math.ceil(rows.length / 5) === 0 || index === rows.length - 1) {
+      const point = getPoint(row, index, "index");
+      const label = createSvgEl("text", {
+        x: point.x,
+        y: height - 14,
+        "text-anchor": "middle",
+        "font-size": 10,
+        fill: "var(--muted)",
+      });
+      label.textContent = `${row.year}년`;
+      svg.appendChild(label);
     }
   });
 
-  let tooltip = document.querySelector('.chart-tooltip');
-  if (!tooltip) {
-    tooltip = document.createElement('div');
-    tooltip.className = 'chart-tooltip';
-    if(svg.parentNode) {
-      svg.parentNode.style.position = 'relative';
-      svg.parentNode.appendChild(tooltip);
-    }
-  }
-  tooltip.style.display = 'none';
+  Object.values(STRATEGY_VIEW).forEach((view, index) => {
+    const legend = createSvgEl("text", {
+      x: width - paddingR,
+      y: 20 + index * 18,
+      "text-anchor": "end",
+      "font-size": 11,
+      fill: view.color,
+    });
+    legend.textContent = `● ${view.title}`;
+    svg.appendChild(legend);
+  });
 
-  const rectWidth = (width - paddingL - paddingR) / denominator;
-  data.forEach((d, i) => {
-    const x = paddingL + (i / denominator) * (width - paddingL - paddingR);
-    const yTR = (height - paddingTB) - (d.assetNominalTR / maxVal) * (height - 2 * paddingTB);
-    const yPR = (height - paddingTB) - (d.assetNominalPR / maxVal) * (height - 2 * paddingTB);
-
-    const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-    rect.setAttribute("x", x - rectWidth / 2);
-    rect.setAttribute("y", 0);
-    rect.setAttribute("width", rectWidth);
-    rect.setAttribute("height", height);
-    rect.setAttribute("fill", "transparent");
+  const tooltip = dom.simChartTooltip || document.querySelector(".sim-tooltip");
+  const rectWidth = plotW / denominator;
+  rows.forEach((row, index) => {
+    const x = paddingL + (index / denominator) * plotW;
+    const rect = createSvgEl("rect", {
+      x: x - rectWidth / 2,
+      y: 0,
+      width: rectWidth,
+      height,
+      fill: "transparent",
+    });
     rect.style.cursor = "pointer";
-    
-    const showTooltip = (e) => {
-        const isDrip = state.draft?.dividendSim?.isDrip !== false;
-        const divNominal = isDrip ? d.dividendNominalTR : d.dividendNominalPR;
-        const assetNominal = isDrip ? d.assetNominalTR : d.assetNominalPR;
-        const statusClass = window.IsfUtils.getFinancialIncomeStatus(divNominal);
-        
-        let statusText = "";
-        if (statusClass === 'warn') statusText = ' <span style="color: #f59e0b; font-weight: 600;">(과세주의)</span>';
-        if (statusClass === 'crit') statusText = ' <span style="color: #dc2626; font-weight: 600;">(과세경고)</span>';
 
-        tooltip.style.display = 'block';
-        tooltip.innerHTML = `
-          <div style="font-weight: 600; margin-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 2px;">
-            ${d.year}년 (${isDrip ? '재투자' : '일반'})${statusText}
-          </div>
-          <div style="font-size: 0.75rem; opacity: 0.9;">자산: ${formatCurrency(assetNominal)}</div>
-          <div style="font-size: 0.75rem; opacity: 0.9;">배당: ${formatCurrency(divNominal)} (세전)</div>
-        `;
-        const containerRect = svg.getBoundingClientRect();
-        const scale = containerRect.width / width;
-        const tooltipWidth = 140;
-        
-        let leftPos = (x * scale) - (tooltipWidth / 2);
-        if (leftPos < 8) leftPos = 8;
-        if (leftPos + tooltipWidth > containerRect.width - 8) leftPos = containerRect.width - tooltipWidth - 8;
-
-        tooltip.style.left = `${leftPos}px`;
-        tooltip.style.transform = 'none';
-        
-        const targetY = isDrip ? yTR : yPR;
-        const actualY = targetY * scale;
-        const containerHeight = containerRect.height;
-
-        if (actualY < containerHeight / 2) {
-          tooltip.style.top = `${actualY + 20}px`;
-          tooltip.style.bottom = 'auto';
-        } else {
-          tooltip.style.top = 'auto';
-          tooltip.style.bottom = `${(containerHeight - actualY) + 20}px`;
-        }
-      };
-    
+    const showTooltip = () => {
+      if (!tooltip) return;
+      tooltip.hidden = false;
+      tooltip.textContent = `${row.year}년차: ${comparison.selectedBenchmarkLabel} ${formatCurrency(row.finalAssets.index)} / SCHD 월 ${formatCurrency(row.monthlyCashFlowAfterTax.schd)} / ${comparison.selectedCoveredCallLabel} 월 ${formatCurrency(row.monthlyCashFlowAfterTax.coveredCall)}`;
+      const containerRect = svg.getBoundingClientRect();
+      const scale = containerRect.width / width;
+      const tooltipWidth = Math.min(280, containerRect.width - 16);
+      let left = x * scale - tooltipWidth / 2;
+      left = Math.max(8, Math.min(left, containerRect.width - tooltipWidth - 8));
+      tooltip.style.width = `${tooltipWidth}px`;
+      tooltip.style.left = `${left}px`;
+      tooltip.style.top = "12px";
+    };
     rect.addEventListener("mouseenter", showTooltip);
-    rect.addEventListener("touchstart", (e) => { e.preventDefault(); showTooltip(e); });
-    rect.addEventListener("mouseleave", () => { tooltip.style.display = 'none'; });
-    
+    rect.addEventListener("touchstart", (event) => {
+      event.preventDefault();
+      showTooltip();
+    });
+    rect.addEventListener("mouseleave", () => {
+      if (tooltip) tooltip.hidden = true;
+    });
     svg.appendChild(rect);
   });
-
-  const legendTR = document.createElementNS("http://www.w3.org/2000/svg", "text");
-  legendTR.setAttribute("x", width - paddingR); legendTR.setAttribute("y", 20);
-  legendTR.setAttribute("text-anchor", "end"); legendTR.setAttribute("font-size", "11"); legendTR.setAttribute("fill", "#ea5b2a");
-  legendTR.textContent = "● TR (재투자)";
-  svg.appendChild(legendTR);
-
-  const legendPR = document.createElementNS("http://www.w3.org/2000/svg", "text");
-  legendPR.setAttribute("x", width - paddingR); legendPR.setAttribute("y", 38);
-  legendPR.setAttribute("text-anchor", "end"); legendPR.setAttribute("font-size", "11"); legendPR.setAttribute("fill", "#8a8f98");
-  legendPR.textContent = "○ PR (미투자)";
-  svg.appendChild(legendPR);
 }
 
 export function initGlobalTooltips() {
@@ -415,6 +384,32 @@ export function initGlobalTooltips() {
   }, { passive: true });
 }
 
+function syncStrategyControls() {
+  const sim = state.draft?.dividendSim || {};
+  if (dom.strategyCardGroup) {
+    dom.strategyCardGroup.querySelectorAll("[data-strategy-card]").forEach((card) => {
+      const active = card.dataset.strategyCard === (sim.strategyKey || "dividendGrowth");
+      card.classList.toggle("is-active", active);
+      card.setAttribute("aria-checked", active ? "true" : "false");
+    });
+  }
+  if (dom.benchmarkSelect) dom.benchmarkSelect.value = sim.selectedBenchmark || "nasdaq";
+  if (dom.coveredCallSelect) dom.coveredCallSelect.value = sim.coveredCallExample || "jepi";
+  if (dom.assumptionRangeNote) {
+    const assumptions = getStrategyAssumptions({
+      selectedBenchmark: sim.selectedBenchmark,
+      coveredCallExample: sim.coveredCallExample,
+    });
+    const active = sim.strategyKey === "indexGrowth"
+      ? assumptions.benchmark
+      : sim.strategyKey === "coveredCallMonthlyIncome"
+        ? assumptions.coveredCall
+        : assumptions.dividendGrowth;
+    const ranges = active.displayRanges || {};
+    dom.assumptionRangeNote.textContent = `${active.label} 예시 범위: 현금흐름 ${ranges.cashFlowYield || ranges.dividendYield}, 성장 ${ranges.dividendGrowth || ranges.distributionGrowth}, 주가 ${ranges.capitalGrowth}. ${assumptions.copy.disclaimer}`;
+  }
+}
+
 export function renderDraft() {
   if (!state.draft) return;
   try {
@@ -424,14 +419,22 @@ export function renderDraft() {
     if (dom.totalMonthlyInvestCapacity) {
       dom.totalMonthlyInvestCapacity.value = utils.toMan(state.draft.totalMonthlyInvestCapacity || 0);
     }
-    
+
     if (state.draft.dividendSim) {
       if (dom.simDividendYield) dom.simDividendYield.value = state.draft.dividendSim.yield;
       if (dom.simDividendGrowth) dom.simDividendGrowth.value = state.draft.dividendSim.growth;
       if (dom.simCapitalGrowth) dom.simCapitalGrowth.value = state.draft.dividendSim.capitalGrowth;
       if (dom.simHorizonYears) dom.simHorizonYears.value = state.draft.dividendSim.years;
       if (dom.simDrip) dom.simDrip.checked = state.draft.dividendSim.isDrip;
-      
+
+      if (dom.simYearsTabs) {
+        Array.from(dom.simYearsTabs.querySelectorAll(".tab-btn")).forEach((tab) => {
+          const active = Number(tab.dataset.years) === Number(state.draft.dividendSim.years);
+          tab.classList.toggle("is-active", active);
+          tab.setAttribute("aria-selected", active ? "true" : "false");
+        });
+      }
+
       if (dom.activePresetName) {
         const pName = state.draft.dividendSim.presetName || "";
         dom.activePresetName.textContent = pName;
@@ -439,6 +442,7 @@ export function renderDraft() {
       }
     }
 
+    syncStrategyControls();
     renderDividendSimulation();
   } catch (err) {
     console.error("renderDraft failed:", err);

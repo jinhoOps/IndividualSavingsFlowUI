@@ -46,32 +46,43 @@
         return;
       }
 
-      container.innerHTML = entries
-        .map(
-          (e) => `
-        <div class="simulation-item">
-          <span class="simulation-name" title="${e.name || "이름 없음"}">${e.name || "Simulation"}</span>
-          <div class="item-actions">
-            <button class="btn-select" data-id="${e.id}">불러오기</button>
-            <button class="btn-delete" data-id="${e.id}">삭제</button>
-          </div>
-        </div>
-      `,
-        )
-        .join("");
+      container.textContent = "";
 
-      container.querySelectorAll(".btn-select").forEach((b) =>
-        b.addEventListener("click", () => {
-          const id = b.dataset.id;
-          this.dispatchEvent(new CustomEvent("select-simulation", { detail: { id } }));
-        }),
-      );
-      container.querySelectorAll(".btn-delete").forEach((b) =>
-        b.addEventListener("click", () => {
-          const id = b.dataset.id;
-          this.dispatchEvent(new CustomEvent("delete-simulation", { detail: { id } }));
-        }),
-      );
+      entries.forEach((entry) => {
+        const item = document.createElement("div");
+        item.className = "simulation-item";
+
+        const name = document.createElement("span");
+        name.className = "simulation-name";
+        name.textContent = entry.name || "Simulation";
+        name.title = entry.name || "이름 없음";
+        item.appendChild(name);
+
+        const actions = document.createElement("div");
+        actions.className = "item-actions";
+
+        const select = document.createElement("button");
+        select.className = "btn-select";
+        select.type = "button";
+        select.dataset.id = entry.id || "";
+        select.textContent = "불러오기";
+        select.addEventListener("click", () => {
+          this.dispatchEvent(new CustomEvent("select-simulation", { detail: { id: select.dataset.id } }));
+        });
+
+        const remove = document.createElement("button");
+        remove.className = "btn-delete";
+        remove.type = "button";
+        remove.dataset.id = entry.id || "";
+        remove.textContent = "삭제";
+        remove.addEventListener("click", () => {
+          this.dispatchEvent(new CustomEvent("delete-simulation", { detail: { id: remove.dataset.id } }));
+        });
+
+        actions.append(select, remove);
+        item.appendChild(actions);
+        container.appendChild(item);
+      });
     }
 
 
