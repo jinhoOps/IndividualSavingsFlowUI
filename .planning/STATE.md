@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.8
 milestone_name: 적립식 포트폴리오 관리 및 전체 UI/UX 개선
 status: planning
-last_updated: "2026-06-17T07:50:39.567Z"
-last_activity: 2026-06-17 -- Phase 08 Plan 01 complete
+last_updated: "2026-06-17T08:08:57.853Z"
+last_activity: 2026-06-17 -- Phase 08 Plan 02 complete
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 13
-  completed_plans: 10
-  percent: 75
-stopped_at: Phase 08 context gathered
+  completed_plans: 11
+  percent: 85
+stopped_at: Completed 08-step-2-redesign-re-planning-02-PLAN.md
 ---
 
 # Project State
@@ -19,9 +19,9 @@ stopped_at: Phase 08 context gathered
 ## Current Position
 
 Phase: 8
-Plan: 02/04
-Status: Ready to plan Phase 08
-Last activity: 2026-06-17 -- Phase 08 Plan 01 complete
+Plan: 03/04
+Status: Ready for Phase 08 Plan 03
+Last activity: 2026-06-17 -- Phase 08 Plan 02 complete
 
 ## Project Reference
 
@@ -40,9 +40,12 @@ See: .planning/PROJECT.md (updated 2026-05-20)
 | Phase | Plan | Duration | Notes |
 |-------|------|----------|-------|
 | Phase 08-step-2-redesign-re-planning P01 | 33 min | 3 tasks | 8 files |
+| Phase 08-step-2-redesign-re-planning P02 | 17 min | 2 tasks | 6 files |
 
 ## Decisions
 
 - [Phase 08-01]: Step 2 save/list/load/delete now routes through a narrow storage facade; backup behavior remains on IndexedDB-capable paths only.
 - [Phase 08-01]: Reset prefers the latest Step 1 source snapshot and falls back to cached original source metadata before returning to an empty draft.
 - [Phase 08-01]: Saved Step 2 entries generate a display name from strategy context, horizon, and save timestamp when no existing name is present.
+- [Phase 08-02]: Strategy assumptions are centralized in assumptions.js with conservative numeric defaults separated from display ranges.
+- [Phase 08-02]: Strategy comparison rows expose signed Won benchmark deltas so underperformance versus Nasdaq or S&P 500 remains visible.
