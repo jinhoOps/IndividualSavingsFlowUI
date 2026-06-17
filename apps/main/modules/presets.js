@@ -94,6 +94,7 @@ export function applyPreset(salaryValue, styleKey) {
   }
 
   return {
+    modelVersion: 10,
     incomes: [{ id: "income-preset", name: "급여", amount: income, accountId: "acc-salary", allocations }],
     accounts: [
       { id: "acc-salary", name: "급여계좌" },
@@ -210,6 +211,7 @@ export function applyPresetBySalary(salaryWon, styleKey) {
   }
 
   return {
+    modelVersion: 10,
     incomes: [{ id: "income-preset", name: "급여", amount: income, accountId: "acc-salary", allocations }],
     accounts: [
       { id: "acc-salary", name: "급여계좌" },
