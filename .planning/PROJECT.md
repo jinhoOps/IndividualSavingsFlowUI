@@ -10,21 +10,21 @@
 
 ## Current State
 
-**Shipped:** v1.6 (v0.11.2 - 2026-06-10)
+**Shipped:** v1.8 Phase 07 (2026-06-17)
 **Tech Stack:** Modern Hybrid (Vite/TS/Tailwind), React 19 (Partial), PWA, IndexedDB
 **Codebase:** ~3,000 LOC (JavaScript/TS), Mobile-First 반응형
-**Key Features:** 프리셋 기반 시각화 + 데이터 허브(백업/복원) + 부부 데이터 병합 + 포트폴리오 리밸런싱 + Step 2 모듈러 아키텍처 현대화 (ui-controller/feature-controllers) + 통장 쪼개기 계좌 관리 + 고해상도 PNG 저장
+**Key Features:** 프리셋 기반 시각화 + 데이터 허브(백업/복원) + 부부 데이터 병합 + 포트폴리오 리밸런싱 + Step 1/2 모듈러 아키텍처 현대화 + 통장 쪼개기 계좌 관리 + 고해상도 PNG 저장
 
 ---
 
-## Current Milestone: v1.7 다중 계좌 매핑 및 에디토리얼 UI 개편
+## Current Milestone: v1.8 적립식 포트폴리오 관리 및 전체 UI/UX 개선
 
-**Goal:** 기존 금액 중심 UI에서 벗어나, 에디토리얼 디자인(Anthropic 스타일의 타이포그래피, 레이아웃 등)을 도입하되 ISF 고유의 기존 컬러 팔레트를 유지하여 전면적인 UI 개편 및 다중 계좌 매핑을 통합한다.
+**Goal:** Step 3 포트폴리오 영속화를 완료하고, 이를 기반으로 Step 1과 Step 2의 UI/UX를 전면 개선하여 일관된 에디토리얼 피드백 시스템을 완성한다.
 
 **Target features:**
-- 다중 계좌 매핑 기능 구현
-- DESIGN.md 개편 (ISF 고유 컬러 유지 + Anthropic 스타일의 에디토리얼 타이포그래피 및 레이아웃 구조 적용)
-- 신규 디자인 시스템 기반의 전체 UI 리팩터링 및 입력 편의성 향상
+- Step 1 UI/UX 리팩터링 및 컨트롤러 모듈화 완료
+- Step 2 목표 중심 재기획 및 에디토리얼 레이아웃 구현
+- 포트폴리오 저장 허브와 단계 간 피드백 흐름 통합
 
 ---
 
@@ -46,12 +46,11 @@
 - ✓ SVG ➔ 2배 고해상도 PNG 이미지 내보내기 및 공유 기능 (v1.6)
 - ✓ 수입/지출 통장 쪼개기(계좌 관리) 모델 및 4단계 레이어 Sankey 자동 연산 (v1.6)
 - ✓ PORT-02: 포트폴리오(계좌/종목) 고도화 및 비중 관리 기능 이식 — Phase 5
+- ✓ UI-01/UI-02: Step 1 DESIGN.md 기반 Pearl 캔버스 적용, CSS 감축, 컨트롤러 모듈화, 안전 렌더링, 모바일 회귀 검증 — Phase 7
 
-### Active (Next Milestone: v1.7)
+### Active (Next Milestone: v1.8)
 
-- [ ] **PORT-03**: 실시간 격차 분석(Target vs Actual) 알림 및 리밸런싱 로직 구축
-- [ ] **STAB-06**: PWA 오프라인 예외 처리 고도화 및 안정성 모니터링
-- [ ] **ADV-04**: 다국어 지원을 위한 텍스트 리소스 외부화 및 바인더 구현
+- [ ] **UI-03**: Step 2 목표 중심 재기획 및 에디토리얼 레이아웃 구현
 
 ### Out of Scope
 
@@ -72,6 +71,7 @@
 | 수동 경로 임포트 오류 즉각 해결 | app.js 내의 404 경로 참조 버그를 발견하여 외과적 핫픽스 단행 | ✓ Good |
 | 통장 쪼개기 도입 (Phase 17) | 단순 수입 입력 방식에서 급여/생활비/주식 계좌 레이어를 Sankey에 융합해 실가계 매핑 무결성 제공 | ✓ Good |
 | 네이티브 고해상도 이미지 내보내기 (Phase 16) | 클라이언트 사이드에서 Gowun Dodum 폰트 및 그라디언트를 인라인 주입해 2배 선명도로 PNG 다운로드 구현 | ✓ Good |
+| Step 1 컨트롤러 모듈화 (Phase 07) | bootstrap-controller를 startup-only로 축소하고 event/persistence/render/visualization/item-editor 컨트롤러로 분리해 Phase 07 검증 gap을 해소 | ✓ Good |
 
 ---
 
@@ -111,4 +111,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-16 after Phase 5*
+*Last updated: 2026-06-17 after Phase 7*
