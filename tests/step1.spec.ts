@@ -1,5 +1,12 @@
 import { test, expect } from '@playwright/test';
 
+async function openControlsPanel(page: import('@playwright/test').Page) {
+  const toggleButton = page.locator('#toggleControlsBtn');
+  if (await toggleButton.getAttribute('aria-expanded') === 'false') {
+    await toggleButton.click();
+  }
+}
+
 test.describe('Individual Savings Flow Main UI/UX Audit', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
@@ -15,6 +22,12 @@ test.describe('Individual Savings Flow Main UI/UX Audit', () => {
     await page.goto('apps/main/index.html');
     // Wait for main layout rendering
     await page.waitForSelector('main');
+  });
+
+  test.afterEach(async ({ page }) => {
+    if (!page.isClosed()) {
+      await page.close();
+    }
   });
 
   test('Page header and layout loads correctly', async ({ page }) => {
@@ -329,16 +342,20 @@ test.describe('Individual Savings Flow Main UI/UX Audit', () => {
 
   test('Phase 07 group datalist options are DOM-built and safe for imported values', async ({ page }) => {
     await page.evaluate(() => {
+      (window as any).__unsafeGroupOption = false;
+    });
+    await page.evaluate(async () => {
       const maliciousGroup = `x"><img src=x onerror="window.__unsafeGroupOption = true">`;
-      const saved = JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}');
-      saved.expenseItems = [
-        ...(saved.expenseItems || []),
+      const [{ state }, { syncGroupOptionsFor }] = await Promise.all([
+        import('/IndividualSavingsFlowUI/apps/main/modules/state.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/ui-controller.js'),
+      ]);
+      state.inputs.expenseItems = [
+        ...(state.inputs.expenseItems || []),
         { id: 'expense-malicious-group', name: '테스트', amount: 10000, group: maliciousGroup, accountId: 'acc-living' },
       ];
-      localStorage.setItem('isf-rebuild-v1', JSON.stringify(saved));
+      syncGroupOptionsFor('expense');
     });
-    await page.reload();
-    await page.waitForSelector('main');
 
     const optionInfo = await page.locator('#expenseGroupOptions option').evaluateAll((options) =>
       options.map((option) => ({ value: option.getAttribute('value'), text: option.textContent }))
@@ -348,7 +365,7 @@ test.describe('Individual Savings Flow Main UI/UX Audit', () => {
   });
 
   test('Phase 07 allocation groups preserve user open state after render refresh', async ({ page }) => {
-    await page.locator('#toggleControlsBtn').click();
+    await openControlsPanel(page);
     await page.locator('#mgmtTabFlow').click();
     const utilityGroup = page.locator('#expenseAdvancedBlock .allocation-group').filter({ hasText: '공과금' }).first();
     await expect(utilityGroup).toBeVisible();
@@ -358,13 +375,13 @@ test.describe('Individual Savings Flow Main UI/UX Audit', () => {
       await summary.click();
     }
     await expect(utilityGroup.locator('.allocation-group__items')).not.toBeVisible();
-    await page.locator('#horizonYears').fill('12');
+    await page.locator('#expenseSortMode').selectOption('amount-desc');
     await page.waitForTimeout(250);
     await expect(utilityGroup.locator('.allocation-group__items')).not.toBeVisible();
 
     await summary.click();
     await expect(utilityGroup.locator('.allocation-group__items')).toBeVisible();
-    await page.locator('#horizonYears').fill('13');
+    await page.locator('#expenseSortMode').selectOption('name-asc');
     await page.waitForTimeout(250);
     await expect(utilityGroup.locator('.allocation-group__items')).toBeVisible();
   });

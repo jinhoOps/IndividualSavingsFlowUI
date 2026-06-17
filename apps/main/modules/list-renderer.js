@@ -70,7 +70,8 @@ export function renderItemList(group, items, options = {}) {
   } else if (sortMode === "name-asc") {
     sorted.sort((a, b) => (a.name || "").localeCompare(b.name || "", "ko"));
   }
-  list.innerHTML = renderGroupedAllocationList(group, sorted, options);
+  const openState = readAllocationGroupOpenState(group, list);
+  list.innerHTML = renderGroupedAllocationList(group, sorted, options, openState);
 }
 
 function getAllocationGroupName(group, item) {
@@ -87,7 +88,24 @@ function getAllocationGroupName(group, item) {
   return pathSegments[pathSegments.length - 1] || groupName;
 }
 
-function renderGroupedAllocationList(group, items, options) {
+function getAllocationGroupKey(group, groupName) {
+  return `${group}:${groupName}`;
+}
+
+function readAllocationGroupOpenState(group, list) {
+  const stateByKey = new Map();
+  list.querySelectorAll("details[data-allocation-group-key]").forEach((details) => {
+    stateByKey.set(details.dataset.allocationGroupKey, details.open);
+  });
+  list.querySelectorAll("details[data-allocation-group]").forEach((details) => {
+    const groupName = details.dataset.allocationGroup || "";
+    const key = getAllocationGroupKey(group, groupName);
+    if (!stateByKey.has(key)) stateByKey.set(key, details.open);
+  });
+  return stateByKey;
+}
+
+function renderGroupedAllocationList(group, items, options, openState) {
   const groups = new Map();
   items.forEach((item) => {
     const groupName = getAllocationGroupName(group, item);
@@ -98,8 +116,11 @@ function renderGroupedAllocationList(group, items, options) {
   return Array.from(groups.entries()).map(([groupName, groupItems], index) => {
     const total = groupItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
     const itemHtml = groupItems.map((item) => renderAllocationItemHtml(group, item, options)).join("");
+    const groupKey = getAllocationGroupKey(group, groupName);
+    const knownOpen = openState && openState.has(groupKey) ? openState.get(groupKey) : null;
+    const isOpen = knownOpen === null ? index === 0 : knownOpen;
     return `
-      <details class="allocation-group" data-allocation-group="${IsfUtils.escapeHtml(groupName)}" ${index === 0 ? "open" : ""}>
+      <details class="allocation-group" data-allocation-group="${IsfUtils.escapeHtml(groupName)}" data-allocation-group-key="${IsfUtils.escapeHtml(groupKey)}" ${isOpen ? "open" : ""}>
         <summary class="allocation-group__summary">
           <span class="allocation-group__name">${IsfUtils.escapeHtml(groupName)}</span>
           <span class="allocation-group__meta">${groupItems.length}개 · ${formatCurrency(total)}</span>

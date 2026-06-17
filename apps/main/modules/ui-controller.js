@@ -147,5 +147,11 @@ export function syncGroupOptionsFor(group) {
   const inputs = state.inputs;
   const items = inputs[`${group}Items`] || [];
   const names = [...new Set(items.map(i => normalizeAllocationGroupName(i.group)).filter(Boolean))].sort();
-  list.innerHTML = names.map(n => `<option value="${n}">`).join("");
+  const options = names.map((name) => {
+    const option = document.createElement("option");
+    option.value = name;
+    option.textContent = name;
+    return option;
+  });
+  list.replaceChildren(...options);
 }
