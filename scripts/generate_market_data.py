@@ -1,4 +1,6 @@
 
+"""Convert market evidence JSON files in public/data/indices/ to runtime daily data."""
+
 import json
 import random
 import math

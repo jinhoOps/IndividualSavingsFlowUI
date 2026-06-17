@@ -1,4 +1,6 @@
 
+"""Generate QQQ-family runtime index JSON files under public/data/indices/."""
+
 import json
 import random
 import math
