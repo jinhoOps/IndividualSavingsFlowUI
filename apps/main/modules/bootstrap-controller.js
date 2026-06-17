@@ -1,72 +1,33 @@
 import { IsfUtils } from "../../../shared/core/utils.js";
 
-import {
-  STORAGE_KEY, SHARE_STATE_KEY, SHARE_STATE_SCHEMA,
-  HASH_STATE_PARAM, VIEW_MODE_GUIDE_DISMISSED_KEY, MANUAL_BACKUP_WINDOW_MS,
-  MAX_INCOME_ITEMS, MAX_ALLOCATION_ITEMS, SANKEY_VALUE_MODES,
-  SANKEY_SORT_MODES, ITEM_SORT_MODES, SANKEY_ZOOM_MIN, SANKEY_ZOOM_MAX, SANKEY_ZOOM_STEP,
-  MOBILE_LAYOUT_QUERY, DEFAULT_INPUTS, DEFAULT_EXPENSE_ITEMS,
-  DEFAULT_SAVINGS_ITEMS, DEFAULT_INVEST_ITEMS,
-  FORM_FIELD_KEYS, TONE_COLORS
-} from "./constants.js";
-
-import {
-  cloneInputs, sanitizeInputs, createIncomeItem,
-  getMonthlyIncomeTotalWon, getMonthlyAllocationTotalWon,
-  normalizeAllocationGroupName, parseSavingsAnnualRateInput,
-  createAllocationItemId, normalizeMaturityMonth
-} from "./input-sanitizer.js";
-import { normalizeExternalStep1Inputs } from "./external-input-guard.js";
-
-import {
-  formatCurrency, formatBackupTimestamp
-} from "./formatters.js";
-
-import {
-  loadShareSnapshotById
-} from "./storage-manager.js";
-
-import {
-  persistStep1Snapshot, listSnapshots, getSnapshotById, deleteSnapshot
-} from "./snapshot-manager.js";
-
-import {
-  renderComparisonChart, renderComparisonSummary
-} from "./comparison-renderer.js";
-
-import {
-  buildMonthlySnapshot, simulateProjection, buildSummaryCards,
-  calculateAccountFinancialIncomes
-} from "./calculator.js";
-
+import { SHARE_STATE_KEY, STORAGE_KEY } from "./constants.js";
 import { dom } from "./dom.js";
 import { state } from "./state.js";
-import { PRESET_SALARIES, applyPreset, applyPresetBySalary, calculateAnnualSalaryFromMonthlyIncome } from "./presets.js";
-
-import {
-  renderSankey, exportSankeyToPng
-} from "./sankey-renderer.js";
-
-import { buildSankeyData } from "./sankey-builder.js";
-import * as helpers from "./state-helpers.js";
 import { initOnboarding } from "./onboarding-manager.js";
+import { initializeSnapshotSelector } from "./feature-controllers.js";
 import {
-  syncViewModeUi, syncViewModeGuideUi, syncBackupUi,
-  syncSankeyValueModeUi, syncSankeySortModeUi, syncSankeyGroupingUi,
-  syncItemSortModeUi, syncMobileInputsPanelVisibility,
-  syncMobileItemEditorFab, syncAdvancedTabBlockVisibility,
-  setActiveAdvancedTab, refreshInputsPanel, syncDerivedMonthlyInputsToUi,
-  syncGroupOptionsAll, syncGroupOptionsFor
+  syncViewModeUi,
+  syncViewModeGuideUi,
+  syncBackupUi,
+  syncSankeyValueModeUi,
+  syncSankeySortModeUi,
+  syncSankeyGroupingUi,
+  syncItemSortModeUi,
+  syncMobileInputsPanelVisibility,
+  syncAdvancedTabBlockVisibility,
+  setActiveAdvancedTab,
+  refreshInputsPanel,
+  syncGroupOptionsAll,
 } from "./ui-controller.js";
-
 import {
-  handleOpenSmartAdd, handleCloseSmartAdd, handleSmartAddInput, handleApplySmartAdd,
-  initializeSnapshotSelector, handleSnapshotSelection, handleSaveSnapshot, handleDeleteSnapshot
-} from "./feature-controllers.js";
-import * as listRenderer from "./list-renderer.js";
-import { renderNetworkMap } from "./network-map-renderer.js";
-
-
+  activateMgmtTab,
+  bindStep1Events,
+  initMgmtTabs,
+} from "./event-bindings.js";
+import { createPersistenceController } from "./persistence-controller.js";
+import { createRenderOrchestrator } from "./render-orchestrator.js";
+import { createVisualizationController } from "./visualization-controller.js";
+import { createItemEditorController } from "./item-editor-controller.js";
 
 export function startStep1App() {
   if (document.readyState === "loading") {
@@ -77,8 +38,48 @@ export function startStep1App() {
 }
 
 function init() {
+  const controllers = createControllers();
+
   checkReturningUser();
-  bindControls();
+  bindStep1Events(controllers);
+  syncInitialUi();
+  initMgmtTabs();
+  refreshInputsPanel(state.inputs);
+  syncGroupOptionsAll();
+  controllers.persistence.setPendingBarVisible(false);
+  controllers.render.renderAll();
+  controllers.persistence.initializeBackupStore();
+  void controllers.persistence.initializeInputsFromShareId();
+  void initializeSnapshotSelector();
+  initializePwa();
+  initializeViewModeFeedback();
+  initializeOnboarding();
+  initScrollHintBanners();
+}
+
+function createControllers() {
+  const render = createRenderOrchestrator();
+  const persistence = createPersistenceController({
+    renderAll: () => render.renderAll(),
+  });
+  const visualization = createVisualizationController({
+    markPendingChanges: () => persistence.markPendingChanges(),
+  });
+  const itemEditor = createItemEditorController({
+    markPendingChanges: () => persistence.markPendingChanges(),
+    getVisibleInputs: () => render.getVisibleInputs(),
+    activateMgmtTab,
+  });
+
+  return {
+    render,
+    persistence,
+    visualization,
+    itemEditor,
+  };
+}
+
+function syncInitialUi() {
   syncViewModeUi();
   syncViewModeGuideUi();
   syncBackupUi();
@@ -89,78 +90,6 @@ function init() {
   syncMobileInputsPanelVisibility();
   setActiveAdvancedTab(state.activeAdvancedTab);
   syncAdvancedTabBlockVisibility();
-  initMgmtTabs();
-  refreshInputsPanel(state.inputs);
-  syncGroupOptionsAll();
-  setPendingBarVisible(false);
-  renderAll();
-  initializeBackupStore();
-  void initializeInputsFromShareId();
-  void initializeSnapshotSelector();
-
-  const pwaManager = new window.IsfPwaManager({
-    appVersion: IsfUtils.APP_VERSION,
-    appKey: SHARE_STATE_KEY,
-    onFeedback: (message) => window.IsfFeedback.showFeedback(dom.applyFeedback, message),
-    isViewMode: () => state.isViewMode,
-    swPath: "../../sw.js",
-    manifestPath: "../../manifest.webmanifest",
-    versionCheckTriggerElement: dom.checkLatestVersion,
-    getCurrentData: () => state.inputs,
-  });
-  pwaManager.init();
-
-  if (state.isViewMode) {
-    window.IsfFeedback.showFeedback(dom.applyFeedback, "보기 모드로 열었습니다. 로컬 저장값은 변경되지 않습니다.");
-  }
-
-  const onboardingManager = initOnboarding(state.isViewMode);
-  if (onboardingManager) {
-    window.addEventListener("request-onboarding", () => {
-      onboardingManager.reset();
-      onboardingManager.start();
-    });
-  }
-
-  initScrollHintBanners();
-}
-
-function initScrollHintBanners() {
-  const banners = document.querySelectorAll(".scroll-hint-banner");
-  banners.forEach((banner) => {
-    // 닫기 버튼 추가
-    const closeBtn = document.createElement("button");
-    closeBtn.type = "button";
-    closeBtn.className = "scroll-hint-close";
-    closeBtn.innerHTML = "&times;";
-    closeBtn.setAttribute("aria-label", "스크롤 알림 닫기");
-    closeBtn.style.cssText = "background:none; border:none; font-size:1.1rem; font-weight:bold; color:var(--muted); cursor:pointer; padding:0 4px; margin-left:8px; line-height:1; vertical-align:middle;";
-    closeBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      banner.style.transition = "opacity 0.4s ease, margin-bottom 0.4s ease, padding 0.4s ease, height 0.4s ease";
-      banner.style.opacity = "0";
-      setTimeout(() => {
-        banner.style.display = "none";
-      }, 400);
-    });
-    banner.appendChild(closeBtn);
-
-    // 가로 스크롤 감지 시 서서히 숨김
-    const container = banner.parentElement;
-    if (container) {
-      const handleScroll = () => {
-        if (container.scrollLeft > 10) {
-          banner.style.transition = "opacity 0.5s ease";
-          banner.style.opacity = "0";
-          container.removeEventListener("scroll", handleScroll);
-          setTimeout(() => {
-            banner.style.display = "none";
-          }, 500);
-        }
-      };
-      container.addEventListener("scroll", handleScroll);
-    }
-  });
 }
 
 function checkReturningUser() {
@@ -178,1082 +107,65 @@ function hasShareState() {
   return !!window.IsfShare.getShareIdFromUrl();
 }
 
-function bindReadonlyAdvancedNavigation() {
-  if (!Array.isArray(dom.jumpAdvancedFields) || dom.jumpAdvancedFields.length === 0) {
-    return;
-  }
+function initializePwa() {
+  const pwaManager = new window.IsfPwaManager({
+    appVersion: IsfUtils.APP_VERSION,
+    appKey: SHARE_STATE_KEY,
+    onFeedback: (message) => window.IsfFeedback.showFeedback(dom.applyFeedback, message),
+    isViewMode: () => state.isViewMode,
+    swPath: "../../sw.js",
+    manifestPath: "../../manifest.webmanifest",
+    versionCheckTriggerElement: dom.checkLatestVersion,
+    getCurrentData: () => state.inputs,
+  });
+  pwaManager.init();
+}
 
-  dom.jumpAdvancedFields.forEach((field) => {
-    if (!(field instanceof HTMLInputElement)) {
-      return;
-    }
-    field.addEventListener("click", () => {
-      navigateToAdvancedGroup(field.dataset.advancedTarget);
-    });
-    field.addEventListener("keydown", (event) => {
-      if (event.key !== "Enter" && event.key !== " ") {
-        return;
-      }
-      event.preventDefault();
-      navigateToAdvancedGroup(field.dataset.advancedTarget);
-    });
+function initializeViewModeFeedback() {
+  if (state.isViewMode) {
+    window.IsfFeedback.showFeedback(dom.applyFeedback, "보기 모드로 열었습니다. 로컬 저장값은 변경되지 않습니다.");
+  }
+}
+
+function initializeOnboarding() {
+  const onboardingManager = initOnboarding(state.isViewMode);
+  if (!onboardingManager) return;
+  window.addEventListener("request-onboarding", () => {
+    onboardingManager.reset();
+    onboardingManager.start();
   });
 }
 
-function dismissViewModeGuide() {
-  if (dom.viewModeGuide) dom.viewModeGuide.hidden = true;
-}
-
-function switchToNormalMode() {
-  window.location.href = window.location.pathname;
-}
-
-
-
-function bindControls() {
-  bindModalEvents();
-
-  if (dom.presetSalary) {
-    dom.presetSalary.replaceChildren(...PRESET_SALARIES.map((salary, index) => {
-      const option = document.createElement("option");
-      option.value = String(salary.value);
-      option.textContent = salary.label;
-      option.selected = index === 2;
-      return option;
-    }));
-  }
-  
-  let selectedPresetStyle = 'neutral';
-  if (dom.presetStyleBtns) {
-    dom.presetStyleBtns.forEach(btn => {
-      if (btn.dataset.style === selectedPresetStyle) btn.classList.add('is-active');
-      btn.addEventListener('click', () => {
-        dom.presetStyleBtns.forEach(b => b.classList.remove('is-active'));
-        btn.classList.add('is-active');
-        selectedPresetStyle = btn.dataset.style;
-      });
+function initScrollHintBanners() {
+  const banners = document.querySelectorAll(".scroll-hint-banner");
+  banners.forEach((banner) => {
+    const closeButton = document.createElement("button");
+    closeButton.type = "button";
+    closeButton.className = "scroll-hint-close";
+    closeButton.innerHTML = "&times;";
+    closeButton.setAttribute("aria-label", "스크롤 알림 닫기");
+    closeButton.style.cssText = "background:none; border:none; font-size:1.1rem; font-weight:bold; color:var(--muted); cursor:pointer; padding:0 4px; margin-left:8px; line-height:1; vertical-align:middle;";
+    closeButton.addEventListener("click", (event) => {
+      event.stopPropagation();
+      banner.style.transition = "opacity 0.4s ease, margin-bottom 0.4s ease, padding 0.4s ease, height 0.4s ease";
+      banner.style.opacity = "0";
+      setTimeout(() => {
+        banner.style.display = "none";
+      }, 400);
     });
-  }
+    banner.appendChild(closeButton);
 
-  if (dom.applyPresetBtn) {
-    dom.applyPresetBtn.addEventListener('click', () => {
-      const isDirty = hasPendingChanges() || JSON.stringify(state.inputs) !== JSON.stringify(DEFAULT_INPUTS);
-      if (isDirty && !window.confirm('데이터 초기화 경고: 기존에 작성하신 자산 데이터가 모두 초기화되고 프리셋으로 덮어씌워집니다. 계속하시겠습니까?')) {
-        return;
-      }
-      
-      const val = parseInt(dom.presetSalary.value, 10);
-      const newPreset = applyPreset(val, selectedPresetStyle);
-      if (!newPreset) return;
-      
-      const nextInputs = normalizeExternalStep1Inputs("preset", newPreset);
-      commitImmediateInputs(nextInputs);
-
-      if (dom.advancedSettings) {
-        dom.advancedSettings.open = true;
-        dom.advancedSettings.classList.add('is-highlighted');
-        setTimeout(() => dom.advancedSettings.classList.remove('is-highlighted'), 3000);
-        dom.advancedSettings.scrollIntoView({ behavior: "smooth", block: "start" });
-        window.IsfFeedback.showFeedback(dom.applyFeedback, "프리셋이 적용되었습니다. 아래 '고급 설정'에서 세부 항목을 조정해보세요.");
-      }
-    });
-  }
-
-  if (dom.inputsForm) {
-    dom.inputsForm.addEventListener("submit", (event) => {
-      event.preventDefault();
-    });
-    const handleFormValueEvent = (event, options = {}) => {
-      const target = event.target;
-      if (!(target instanceof HTMLInputElement) || !FORM_FIELD_KEYS.includes(target.name)) return;
-      if (state.suspendInputTracking && !options.capture) return;
-      
-      state.inputs = sanitizeInputs(helpers.readInputsFromForm(dom.inputsForm, state.inputs, { FORM_FIELD_KEYS, toWon: IsfUtils.toWon }));
-      helpers.syncDerivedValues(state.inputs, { getMonthlyAllocationTotalWon });
-      listRenderer.renderInputHints(state.inputs);
-      persistPrimaryState(state.inputs);
-      window.clearTimeout(state.formRenderTimer);
-      state.formRenderTimer = window.setTimeout(() => {
-        renderAll();
-      }, 150);
+    const container = banner.parentElement;
+    if (!container) return;
+    const handleScroll = () => {
+      if (container.scrollLeft <= 10) return;
+      banner.style.transition = "opacity 0.5s ease";
+      banner.style.opacity = "0";
+      container.removeEventListener("scroll", handleScroll);
+      setTimeout(() => {
+        banner.style.display = "none";
+      }, 500);
     };
-    dom.inputsForm.addEventListener("input", (event) => handleFormValueEvent(event, { capture: true }), true);
-  }
-
-  bindReadonlyAdvancedNavigation();
-  
-  [dom.advancedTabExpense, dom.advancedTabSavings, dom.advancedTabInvest].forEach(tab => {
-    if (tab) tab.addEventListener("click", () => navigateToAdvancedGroup(tab.dataset.advancedTab));
+    container.addEventListener("scroll", handleScroll);
   });
-
-  [dom.expenseSortMode, dom.savingsSortMode, dom.investSortMode].forEach(sel => {
-    if (sel) sel.addEventListener("change", () => setItemSortMode(sel.id.replace("SortMode", ""), sel.value));
-  });
-
-  if (dom.sankeyViewAmount) dom.sankeyViewAmount.addEventListener("click", () => setSankeyValueMode(SANKEY_VALUE_MODES.AMOUNT));
-  if (dom.sankeyViewPercent) dom.sankeyViewPercent.addEventListener("click", () => setSankeyValueMode(SANKEY_VALUE_MODES.PERCENT));
-  if (dom.sankeySortMode) dom.sankeySortMode.addEventListener("change", () => setSankeySortMode(dom.sankeySortMode.value));
-  if (dom.sankeyGroupingExpense) dom.sankeyGroupingExpense.addEventListener("change", () => setSankeyGrouping("expense", dom.sankeyGroupingExpense.value));
-  if (dom.sankeyGroupingSavings) dom.sankeyGroupingSavings.addEventListener("change", () => setSankeyGrouping("savings", dom.sankeyGroupingSavings.value));
-  if (dom.sankeyGroupingInvest) dom.sankeyGroupingInvest.addEventListener("change", () => setSankeyGrouping("invest", dom.sankeyGroupingInvest.value));
-
-
-
-  if (dom.sankeyExport) dom.sankeyExport.addEventListener("click", exportSankeyToPng);
-
-  if (dom.modeTR) dom.modeTR.addEventListener("click", () => setProjectionMode("TR"));
-  if (dom.modePR) dom.modePR.addEventListener("click", () => setProjectionMode("PR"));
-  
-  ["colShowFlow", "colShowBalance", "colShowDividend"].forEach(id => {
-    if (dom[id]) dom[id].addEventListener("change", () => {
-      state.projectionOptions[id.replace("colShow", "show").charAt(0).toLowerCase() + id.replace("colShow", "show").slice(1)] = dom[id].checked;
-      renderAll();
-    });
-  });
-
-  if (dom.saveViewToLocal) dom.saveViewToLocal.addEventListener("click", handleSaveViewToLocal);
-  if (dom.dismissViewModeGuide) dom.dismissViewModeGuide.addEventListener("click", dismissViewModeGuide);
-  if (dom.returnToNormalMode) dom.returnToNormalMode.addEventListener("click", switchToNormalMode);
-
-  if (dom.snapshotSelector) {
-    dom.snapshotSelector.addEventListener("change", (e) => handleSnapshotSelection(e.target.value));
-  }
-  if (dom.saveSnapshotBtn) dom.saveSnapshotBtn.addEventListener("click", handleSaveSnapshot);
-  if (dom.deleteSnapshotBtn) dom.deleteSnapshotBtn.addEventListener("click", handleDeleteSnapshot);
-
-  if (dom.openSmartAddBtn) dom.openSmartAddBtn.addEventListener("click", handleOpenSmartAdd);
-  if (dom.closeSmartAddBtn) dom.closeSmartAddBtn.addEventListener("click", handleCloseSmartAdd);
-  if (dom.smartAddInput) dom.smartAddInput.addEventListener("input", handleSmartAddInput);
-  if (dom.applySmartAddBtn) dom.applySmartAddBtn.addEventListener("click", () => handleApplySmartAdd(listRenderer.renderItemList));
-
-  if (dom.surplusTransferAccountSelect) {
-    dom.surplusTransferAccountSelect.addEventListener("change", (e) => {
-      state.inputs.surplusTransferAccountId = e.target.value;
-      state.inputs = sanitizeInputs(state.inputs);
-      markPendingChanges();
-    });
-  }
-
-  // Preset Modal
-  let selectedModalPresetStyle = 'neutral';
-  
-  if (dom.openPresetBtn) {
-    dom.openPresetBtn.addEventListener("click", () => {
-      if (dom.presetModal) {
-        dom.presetModal.hidden = false;
-        setTimeout(() => {
-          dom.presetModal.classList.add("is-active");
-          IsfUtils.updateAllKoreanWonHints(dom.presetModal);
-        }, 10);
-        
-        const incomeWon = getMonthlyIncomeTotalWon(state.inputs.incomes);
-        const salaryWon = Math.min(99000000, Math.round(calculateAnnualSalaryFromMonthlyIncome(incomeWon)));
-        if (dom.presetIncomeAmount) {
-          dom.presetIncomeAmount.value = salaryWon > 0 ? salaryWon : 40000000;
-        }
-        
-        selectedModalPresetStyle = 'neutral';
-        if (dom.presetModalStyleBtns) {
-          dom.presetModalStyleBtns.forEach(btn => {
-            if (btn.dataset.style === 'neutral') {
-              btn.classList.add('is-active');
-            } else {
-              btn.classList.remove('is-active');
-            }
-          });
-        }
-      }
-    });
-  }
-
-  const closePresetModal = () => {
-    if (dom.presetModal) {
-      dom.presetModal.classList.remove("is-active");
-      setTimeout(() => { dom.presetModal.hidden = true; }, 250);
-    }
-  };
-
-  if (dom.closePresetBtn) dom.closePresetBtn.addEventListener("click", closePresetModal);
-  if (dom.closePresetModalCancel) dom.closePresetModalCancel.addEventListener("click", closePresetModal);
-
-  if (dom.presetModalStyleBtns) {
-    dom.presetModalStyleBtns.forEach(btn => {
-      btn.addEventListener("click", () => {
-        dom.presetModalStyleBtns.forEach(b => b.classList.remove('is-active'));
-        btn.classList.add('is-active');
-        selectedModalPresetStyle = btn.dataset.style;
-      });
-    });
-  }
-
-  if (dom.applyModalPresetBtn) {
-    dom.applyModalPresetBtn.addEventListener("click", () => {
-      if (!dom.presetIncomeAmount) return;
-      const salaryWon = IsfUtils.toWon(dom.presetIncomeAmount.value);
-      
-      if (isNaN(salaryWon) || salaryWon < 0 || salaryWon > 99000000) {
-        alert("연봉은 0원 이상 9,900만 원 이하로 입력해주세요.");
-        return;
-      }
-
-      const isDirty = hasPendingChanges() || JSON.stringify(state.inputs) !== JSON.stringify(DEFAULT_INPUTS);
-      if (isDirty && !window.confirm('데이터 초기화 경고: 기존에 작성하신 자산 데이터가 모두 초기화되고 프리셋으로 덮어씌워집니다. 계속하시겠습니까?')) {
-        return;
-      }
-
-      const newPreset = applyPresetBySalary(salaryWon, selectedModalPresetStyle);
-      if (!newPreset) return;
-
-      const nextInputs = normalizeExternalStep1Inputs("modal-preset", newPreset);
-      commitImmediateInputs(nextInputs);
-      closePresetModal();
-
-      if (dom.advancedSettings) {
-        dom.advancedSettings.open = true;
-        dom.advancedSettings.classList.add('is-highlighted');
-        setTimeout(() => dom.advancedSettings.classList.remove('is-highlighted'), 3000);
-        dom.advancedSettings.scrollIntoView({ behavior: "smooth", block: "start" });
-        window.IsfFeedback.showFeedback(dom.applyFeedback, "프리셋이 적용되었습니다. 아래 '고급 설정'에서 세부 항목을 조정해보세요.");
-      }
-    });
-}
-
-  bindItemEditorEvents();
-  bindActionButtons();
-  bindGlobalEvents();
-  bindVisualizationAndTooltipEvents();
-}
-
-function bindVisualizationAndTooltipEvents() {
-  // 1. 시각화 탭 전환 리스너
-  const sankeyTabBtns = [dom.showSankeyBasicBtn, dom.showSankeyDetailBtn, dom.showNetworkBtn].filter(Boolean);
-  if (sankeyTabBtns.length === 3 && dom.visualizationSlider) {
-    const switchVis = (activeBtn, detailMode, sliderIndex) => {
-      sankeyTabBtns.forEach((btn) => {
-        btn.classList.toggle("is-active", btn === activeBtn);
-        btn.setAttribute("aria-selected", btn === activeBtn ? "true" : "false");
-      });
-      dom.visualizationSlider.style.transform = sliderIndex === 1 ? "translateX(-50%)" : "translateX(0%)";
-      if (detailMode !== null) setSankeyDetailMode(detailMode);
-      if (detailMode === null) {
-        const controls = dom.sankeyGroupingExpense ? dom.sankeyGroupingExpense.closest(".sankey-grouping-controls") : null;
-        if (controls) {
-          controls.hidden = true;
-          controls.setAttribute("aria-hidden", "true");
-        }
-      }
-    };
-    dom.showSankeyBasicBtn.addEventListener("click", () => switchVis(dom.showSankeyBasicBtn, "basic", 0));
-    dom.showSankeyDetailBtn.addEventListener("click", () => switchVis(dom.showSankeyDetailBtn, "detail", 0));
-    dom.showNetworkBtn.addEventListener("click", () => switchVis(dom.showNetworkBtn, null, 1));
-  }
- 
-  // 2. 수동 이체 폼 제어 리스너
-  if (dom.addTransferRuleBtn) {
-    dom.addTransferRuleBtn.addEventListener("click", () => {
-      const srcId = dom.transferSourceSelect.value;
-      const tgtId = dom.transferTargetSelect.value;
-      const amountMan = IsfUtils.toWon(dom.transferAmount.value);
-      const label = dom.transferLabel.value.trim();
- 
-      if (!srcId || !tgtId) {
-        alert("출발 계좌와 도착 계좌를 모두 선택해주세요.");
-        return;
-      }
-      if (srcId === tgtId) {
-        alert("출발 계좌와 도착 계좌는 서로 달라야 합니다.");
-        return;
-      }
-      if (amountMan <= 0) {
-        alert("이체할 금액을 0보다 큰 값으로 입력해주세요.");
-        return;
-      }
- 
-      const draft = helpers.ensureDraftInputs(state);
-      const transfers = Array.isArray(draft.transfers) ? draft.transfers : [];
-      
-      // 중복 및 순환 검사
-      const isDuplicate = transfers.some(t => t.sourceAccountId === srcId && t.targetAccountId === tgtId && t.label === label);
-      if (isDuplicate) {
-        alert("동일한 이체 규칙이 이미 존재합니다.");
-        return;
-      }
- 
-      const amount = amountMan;
-      const newRule = {
-        id: `tr-${Date.now()}`,
-        sourceAccountId: srcId,
-        targetAccountId: tgtId,
-        amount,
-        label: label || "계좌 이체"
-      };
- 
-      state.inputs.transfers = [...transfers, newRule];
-      state.inputs = sanitizeInputs(state.inputs);
-      markPendingChanges();
-      
-      // 폼 초기화
-      dom.transferAmount.value = "";
-      dom.transferLabel.value = "";
-    });
-  }
- 
-  // 삭제 위임 이벤트
-  if (dom.transferRuleList) {
-    dom.transferRuleList.addEventListener("click", (e) => {
-      const btn = e.target.closest(".btn-delete-transfer");
-      if (!btn) return;
-      const trId = btn.dataset.deleteTransferId;
-      const transfers = Array.isArray(state.inputs.transfers) ? state.inputs.transfers : [];
-      const nextTransfers = transfers.filter(t => t.id !== trId);
- 
-      state.inputs.transfers = nextTransfers;
-      state.inputs = sanitizeInputs(state.inputs);
-      markPendingChanges();
-    });
-  }
- 
-  // 잔액 힌트 갱신 리스너
-  if (dom.transferSourceSelect) {
-    dom.transferSourceSelect.addEventListener("change", () => {
-      const inputs = state.draftInputs || state.inputs;
-      listRenderer.updateSourceBalanceHint(inputs, dom.transferSourceSelect.value);
-    });
-  }
- 
-  // 3. 도움말 및 전역 툴팁 리스너
-  document.addEventListener("mouseenter", (e) => {
-    if (!e.target || typeof e.target.closest !== "function") return;
-    const trigger = typeof e.target.closest === "function" ? e.target.closest(".help-tooltip-trigger") : null;
-    if (!trigger || !dom.globalTooltip) return;
-
-    const text = trigger.getAttribute("data-tooltip") || "";
-    
-    let htmlContent = text
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
-      .replace(/\$\$(.*?)\$\$/g, "<div class='formula-box'>$1</div>")
-      .replace(/`(.*?)`/g, "<code>$1</code>")
-      .replace(/━━\s*(.*?)\s*━━/g, "<div class='tooltip-section-title'>$1</div>")
-      .replace(/\n/g, "<br>");
-
-    // 리스트 스타일 변환 (①, ②, ③, ④, ⑤, · 등)
-    // br로 개행된 것을 고려하여 <li> 요소로 치환 후 <ul>로 묶음
-    const hasList = /^[①②③④⑤·]/m.test(text);
-    if (hasList) {
-      // <li> 요소로 변환
-      htmlContent = htmlContent.replace(/(?:<br>)?([①②③④⑤·])\s*(.*?)(?=<br>|$)/g, "<li>$1 $2</li>");
-      // 연속된 <li> 들을 <ul>로 묶어주고 남은 <br> 정리
-      htmlContent = htmlContent.replace(/(?:<li>.*?<\/li>\s*)+/g, "<ul>$&</ul>");
-      // <ul> 앞뒤의 불필요한 <br> 정리
-      htmlContent = htmlContent.replace(/<br>\s*<ul>/g, "<ul>").replace(/<\/ul>\s*<br>/g, "</ul>");
-    }
-
-    dom.globalTooltip.innerHTML = htmlContent;
-    dom.globalTooltip.hidden = false;
-
-    const rect = trigger.getBoundingClientRect();
-    const tooltipWidth = text.length > 120 ? 320 : 240;
-    dom.globalTooltip.style.width = `${tooltipWidth}px`;
-
-    let left = rect.left + window.scrollX + rect.width / 2 - tooltipWidth / 2;
-    if (left < 10) left = 10;
-    if (left + tooltipWidth > window.innerWidth - 10) {
-      left = window.innerWidth - tooltipWidth - 10;
-    }
-
-    const tooltipHeight = dom.globalTooltip.offsetHeight;
-    let top = rect.top + window.scrollY - tooltipHeight - 10;
-    if (top < window.scrollY + 10) {
-      top = rect.bottom + window.scrollY + 10;
-    }
-
-    dom.globalTooltip.style.left = `${left}px`;
-    dom.globalTooltip.style.top = `${top}px`;
-  }, true);
-
-  document.addEventListener("mouseleave", (e) => {
-    if (!e.target || typeof e.target.closest !== "function") return;
-    const trigger = typeof e.target.closest === "function" ? e.target.closest(".help-tooltip-trigger") : null;
-    if (trigger && dom.globalTooltip) {
-      dom.globalTooltip.hidden = true;
-    }
-  }, true);
-
-  // 수동이체 설정 에디터 아코디언 토글 바인딩
-  const accordionHead = document.getElementById("transferAccordionHead");
-  const accordionBody = document.getElementById("transferAccordionBody");
-  const accordionIcon = document.getElementById("transferAccordionIcon");
-  if (accordionHead && accordionBody && accordionIcon) {
-    accordionHead.addEventListener("click", () => {
-      const isVisible = accordionBody.style.display === "block";
-      accordionBody.style.display = isVisible ? "none" : "block";
-      accordionIcon.style.transform = isVisible ? "rotate(0deg)" : "rotate(180deg)";
-    });
-  }
-}
-
-function bindModalEvents() {
-  if (!dom.appHeader) dom.appHeader = document.querySelector("app-header");
-  if (!dom.dataHubModal) dom.dataHubModal = document.querySelector("data-hub-modal");
-  if (!dom.appHeader || !dom.dataHubModal) return;
-
-  dom.appHeader.addEventListener("open-data-hub", () => {
-    dom.dataHubModal.updateBackupList(state.backupEntries);
-    dom.dataHubModal.open();
-  });
-  dom.dataHubModal.addEventListener("restore-backup", async (e) => {
-    await restoreBackupById(e.detail.backupId);
-    dom.dataHubModal.close();
-  });
-  dom.dataHubModal.addEventListener("export-json", handleExportJson);
-  dom.dataHubModal.addEventListener("import-json", async (e) => {
-    await handleImportJson(e.detail.file);
-    dom.dataHubModal.close();
-  });
-  dom.dataHubModal.addEventListener("backup-now", handleManualBackup);
-  dom.dataHubModal.addEventListener("generate-isf-code", handleGenerateIsfCode);
-  dom.dataHubModal.addEventListener("apply-isf-code", handleApplyIsfCode);
-  dom.dataHubModal.addEventListener("merge-isf-code", handleMergeIsfCode);
-}
-
-async function handleGenerateIsfCode() {
-  const code = window.IsfShare.encodePayloadForHash(
-    window.IsfShare.buildStateEnvelope(SHARE_STATE_KEY, SHARE_STATE_SCHEMA, state.inputs)
-  );
-  if (code) {
-    dom.dataHubModal.showGeneratedCode(code);
-    window.IsfFeedback.showFeedback(dom.applyFeedback, "ISF CODE가 발급 및 복사되었습니다.");
-  }
-}
-
-async function handleApplyIsfCode(e) {
-  const code = e.detail.code;
-  const decoded = window.IsfShare.decodePayloadFromHash(code, SHARE_STATE_KEY);
-  if (decoded) {
-    const next = normalizeExternalStep1Inputs("isf-code-apply", decoded);
-    commitImmediateInputs(next);
-    dom.dataHubModal.close();
-    window.IsfFeedback.showFeedback(dom.applyFeedback, "코드가 성공적으로 적용되었습니다.");
-  } else {
-    window.IsfFeedback.showFeedback(dom.applyFeedback, "유효하지 않은 코드입니다.", true);
-  }
-}
-
-async function handleMergeIsfCode(e) {
-  const code = e.detail.code;
-  let partnerData = window.IsfShare.decodePayloadFromHash(code, SHARE_STATE_KEY);
-  
-  if (!partnerData) {
-    window.IsfFeedback.showFeedback(dom.applyFeedback, "유효하지 않은 코드입니다.", true);
-    return;
-  }
-
-  // 외부 데이터 정제 (XSS 방지 및 무결성 확보)
-  partnerData = normalizeExternalStep1Inputs("isf-code-merge", partnerData);
-
-  if (!window.confirm("부부 데이터 병합: 파트너의 데이터를 현재 내 데이터와 합칠까요? (기존 항목들에 추가됩니다)")) {
-    return;
-  }
-
-  const mine = state.inputs;
-  const merged = { ...mine };
-
-  // Helper to add prefix
-  const addMe = (items) => items.map(it => ({ ...it, name: `[나] ${it.name.replace(/^\[(나|너)\]\s*/, '')}` }));
-  const addYou = (items) => items.map(it => ({ ...it, name: `[너] ${it.name.replace(/^\[(나|너)\]\s*/, '')}` }));
-
-  // Merge items
-  merged.incomes = [...addMe(mine.incomes), ...addYou(partnerData.incomes || [])];
-  merged.expenseItems = [...addMe(mine.expenseItems), ...addYou(partnerData.expenseItems || [])];
-  merged.savingsItems = [...addMe(mine.savingsItems), ...addYou(partnerData.savingsItems || [])];
-  merged.investItems = [...addMe(mine.investItems), ...addYou(partnerData.investItems || [])];
-
-  // Sum up totals
-  merged.startCash = (mine.startCash || 0) + (partnerData.startCash || 0);
-  merged.startSavings = (mine.startSavings || 0) + (partnerData.startSavings || 0);
-  merged.startInvest = (mine.startInvest || 0) + (partnerData.startInvest || 0);
-  merged.startDebt = (mine.startDebt || 0) + (partnerData.startDebt || 0);
-  merged.monthlyDebtPayment = (mine.monthlyDebtPayment || 0) + (partnerData.monthlyDebtPayment || 0);
-
-  commitImmediateInputs(merged);
-  dom.dataHubModal.close();
-  window.IsfFeedback.showFeedback(dom.applyFeedback, "부부 통합 데이터로 병합되었습니다! 🥂");
-}
-
-function bindItemEditorEvents() {
-  ["income", "expense", "savings", "invest", "account"].forEach(group => {
-    const list = dom[`${group}List`];
-    if (list) {
-      list.addEventListener("input", (e) => handleItemInput(group, e));
-      list.addEventListener("change", (e) => handleItemInput(group, e));
-      list.addEventListener("click", (e) => handleItemClick(group, e));
-    }
-    const editBtn = dom[`edit${group.charAt(0).toUpperCase() + group.slice(1)}Items`];
-    if (editBtn) editBtn.addEventListener("click", () => toggleItemEditor(group));
-    const addBtn = dom[`add${group.charAt(0).toUpperCase() + group.slice(1)}Item`];
-    if (addBtn) addBtn.addEventListener("click", () => addItemToEditor(group));
-    const applyBtn = dom[`apply${group.charAt(0).toUpperCase() + group.slice(1)}Items`];
-    if (applyBtn) applyBtn.addEventListener("click", () => applyItemEditor(group));
-    const cancelBtn = dom[`cancel${group.charAt(0).toUpperCase() + group.slice(1)}Items`];
-    if (cancelBtn) cancelBtn.addEventListener("click", () => cancelItemEditor(group));
-  });
-  if (dom.mobileEditorAdd) dom.mobileEditorAdd.addEventListener("click", () => addItemToEditor(getActiveItemEditorGroupKey()));
-  if (dom.mobileEditorApply) dom.mobileEditorApply.addEventListener("click", () => applyItemEditor(getActiveItemEditorGroupKey()));
-  if (dom.mobileEditorCancel) dom.mobileEditorCancel.addEventListener("click", () => cancelItemEditor(getActiveItemEditorGroupKey()));
-}
-
-function bindActionButtons() {
-  if (dom.resetInputs) dom.resetInputs.addEventListener("click", handleResetInputs);
-  // Removed pending changes bindings
-  if (dom.jumpToTop) dom.jumpToTop.addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
-
-  function toggleControlsPanel() {
-    const isHidden = dom.inputsPanelContent.hasAttribute("hidden");
-    if (isHidden) {
-      dom.inputsPanelContent.removeAttribute("hidden");
-      dom.controlsPanel.classList.remove("is-collapsed");
-      dom.toggleControlsBtn.setAttribute("aria-expanded", "true");
-      dom.toggleControlsBtn.textContent = "▴";
-    } else {
-      dom.inputsPanelContent.setAttribute("hidden", "");
-      dom.controlsPanel.classList.add("is-collapsed");
-      dom.toggleControlsBtn.setAttribute("aria-expanded", "false");
-      dom.toggleControlsBtn.textContent = "▾";
-    }
-  }
-
-  function toggleProjectionPanel() {
-    const projectionPanel = dom.projectionPanelContent.closest(".projection-panel");
-    const isHidden = dom.projectionPanelContent.hasAttribute("hidden");
-    if (isHidden) {
-      dom.projectionPanelContent.removeAttribute("hidden");
-      if (projectionPanel) projectionPanel.classList.remove("is-collapsed");
-      dom.toggleProjectionBtn.setAttribute("aria-expanded", "true");
-      dom.toggleProjectionBtn.textContent = "▴";
-    } else {
-      dom.projectionPanelContent.setAttribute("hidden", "");
-      if (projectionPanel) projectionPanel.classList.add("is-collapsed");
-      dom.toggleProjectionBtn.setAttribute("aria-expanded", "false");
-      dom.toggleProjectionBtn.textContent = "▾";
-    }
-  }
-
-  if (dom.toggleControlsBtn && dom.inputsPanelContent && dom.controlsPanel) {
-    dom.toggleControlsBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      toggleControlsPanel();
-    });
-
-    const controlsHeader = dom.controlsPanel.querySelector(".section-head");
-    if (controlsHeader) {
-      controlsHeader.addEventListener("click", (e) => {
-        if (window.innerWidth > 760) return;
-        if (typeof e.target.closest !== "function" || e.target.closest("#openPresetBtn") || e.target.closest(".help-tooltip-trigger") || e.target.closest(".panel-toggle-btn")) {
-          return;
-        }
-        toggleControlsPanel();
-      });
-    }
-  }
-
-  if (dom.toggleProjectionBtn && dom.projectionPanelContent) {
-    dom.toggleProjectionBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      toggleProjectionPanel();
-    });
-
-    const projectionPanel = dom.projectionPanelContent.closest(".projection-panel");
-    const projectionHeader = projectionPanel ? projectionPanel.querySelector(".section-head") : null;
-    if (projectionHeader) {
-      projectionHeader.addEventListener("click", (e) => {
-        if (window.innerWidth > 760) return;
-        if (typeof e.target.closest !== "function" || e.target.closest(".help-tooltip-trigger") || e.target.closest(".panel-toggle-btn")) {
-          return;
-        }
-        toggleProjectionPanel();
-      });
-    }
-  }
-}
-
-function bindGlobalEvents() {
-  window.addEventListener("hashchange", handleHashChange);
-  window.addEventListener("popstate", () => { syncViewModeUi(); syncViewModeGuideUi(); });
-  window.addEventListener("resize", IsfUtils.debounce(() => state.snapshot && renderSankey(state.snapshot, buildSankeyData, state.sankeySortMode), 120));
-  const mq = window.matchMedia(MOBILE_LAYOUT_QUERY);
-  const onChange = () => {
-    if (!mq.matches) {
-      state.mobileInputsCollapsed = false;
-      if (state.activeAdvancedTab === "rates") setActiveAdvancedTab("expense");
-    }
-    syncMobileInputsPanelVisibility();
-    syncAdvancedTabBlockVisibility();
-    syncMobileItemEditorFab();
-  };
-  mq.addEventListener("change", onChange);
-  window.addEventListener("orientationchange", () => window.setTimeout(() => { if (dom.sankeySvg) dom.sankeySvg.removeAttribute("viewBox"); renderAll(); }, 200));
-}
-
-function renderAll() {
-  const inputs = getVisibleInputs();
-  const snapshot = buildMonthlySnapshot(inputs);
-  state.snapshot = snapshot;
-  const projection = simulateProjection(inputs, { mode: state.projectionOptions.mode });
-  const cards = buildSummaryCards(snapshot, projection, inputs.horizonYears);
-  listRenderer.renderCards(cards, inputs.horizonYears);
-  
-  const { warnings } = calculateAccountFinancialIncomes(inputs);
-
-  // 글로벌 금융소득과세 인디케이터 갱신
-  if (dom.appHeader && typeof dom.appHeader.setFinancialWarning === "function") {
-    let maxStatus = "none";
-    let message = "";
-    if (warnings && typeof warnings === "object") {
-      const warningValues = Object.values(warnings);
-      const hasCrit = warningValues.some(w => w.status === "crit");
-      const hasWarn = warningValues.some(w => w.status === "warn");
-      if (hasCrit) {
-        maxStatus = "crit";
-        const critWarnings = warningValues.filter(w => w.status === "crit");
-        message = `⚠️ 금융소득 종합과세 한도 초과!\n(${critWarnings.map(w => w.message).join(", ")})`;
-      } else if (hasWarn) {
-        maxStatus = "warn";
-        const warnWarnings = warningValues.filter(w => w.status === "warn");
-        message = `💡 금융소득 종합과세 주의 (Safety Margin 도달)\n(${warnWarnings.map(w => w.message).join(", ")})`;
-      }
-    }
-    dom.appHeader.setFinancialWarning(maxStatus, message);
-  }
-
-  const sankeyData = buildSankeyData(snapshot, state.sankeySortMode, state.sankeyGrouping);
-  const transfers = sankeyData ? sankeyData.transfers : [];
-  renderSankey(snapshot, buildSankeyData, state.sankeySortMode);
-  
-  listRenderer.renderTransferRulesList(inputs.transfers || [], inputs.accounts);
-  listRenderer.renderTransferSelectOptions(inputs.accounts);
-  
-  // 계좌 노드에 실시간 유입금액 매핑하여 network-map-renderer로 전달
-  const accountNodes = sankeyData ? sankeyData.nodes.filter(n => n.column === 1) : [];
-  const accountsWithValues = inputs.accounts.map(acc => {
-    const node = accountNodes.find(n => n.id === acc.id);
-    return {
-      ...acc,
-      value: node ? node.value : 0
-    };
-  });
-  renderNetworkMap(dom.networkMapInner, accountsWithValues, transfers);
-  
-  listRenderer.updateSourceBalanceHint(inputs, dom.transferSourceSelect ? dom.transferSourceSelect.value : "");
-
-  listRenderer.renderProjectionTable(projection, inputs.horizonYears, inputs.annualExpenseGrowth);
-  listRenderer.renderInputHints(inputs);
-  refreshInputsPanel(inputs, warnings);
-
-  if (dom.surplusTransferBanner) {
-    if (snapshot.surplus > 0) {
-      dom.surplusTransferBanner.hidden = false;
-      if (dom.surplusAmountText) {
-        dom.surplusAmountText.textContent = IsfUtils.formatMoney(snapshot.surplus);
-      }
-      if (dom.surplusTransferAccountSelect) {
-        const currentInputs = getVisibleInputs();
-        const accounts = currentInputs.accounts || [];
-        dom.surplusTransferAccountSelect.replaceChildren(...accounts.map((account) => {
-          const option = document.createElement("option");
-          option.value = account.id;
-          option.textContent = account.name;
-          option.selected = account.id === currentInputs.surplusTransferAccountId;
-          return option;
-        }));
-      }
-    } else {
-      dom.surplusTransferBanner.hidden = true;
-    }
-  }
-}
-
-function setProjectionMode(mode) {
-  state.projectionOptions.mode = mode;
-  [dom.modeTR, dom.modePR].forEach(btn => {
-    if (btn) {
-      const active = btn.dataset.mode === mode;
-      btn.classList.toggle("is-active", active);
-      btn.setAttribute("aria-selected", active);
-    }
-  });
-  renderAll();
-}
-
-
-
-function commitImmediateInputs(inputs, options = {}) {
-  state.inputs = sanitizeInputs(inputs);
-  state.draftInputs = null;
-  setPendingBarVisible(false);
-  refreshInputsPanel(state.inputs);
-  persistPrimaryState(state.inputs, options);
-  renderAll();
-}
-
-function persistPrimaryState(inputs, options = {}) {
-  if (state.isViewMode) return;
-  if (dom.appHeader) dom.appHeader.updateStatus("saving", "저장 중...");
-  try {
-    window.IsfStorageHub.saveLocal(STORAGE_KEY, inputs);
-    if (!options.skipAutoBackup) {
-      void (async () => {
-        const res = await window.IsfStorageHub.triggerAutoBackup(SHARE_STATE_KEY, inputs, state.backupEntries);
-        if (res.created) {
-          state.backupEntries = res.nextEntries;
-          syncBackupUi();
-        }
-      })();
-    }
-    if (dom.appHeader) dom.appHeader.updateStatus("success", "자동 저장됨");
-  } catch (_e) {
-    if (dom.appHeader) dom.appHeader.updateStatus("error", "저장 실패");
-  }
-}
-
-
-
-
-
-async function handleManualBackup() {
-  if (state.isViewMode || !state.backupStoreReady) return;
-  const res = await window.IsfStorageHub.createManualBackup(SHARE_STATE_KEY, state.inputs, state.backupEntries, {
-    type: "manual", source: "normal", allowDuplicate: true,
-    replaceRecentManualWithinMs: MANUAL_BACKUP_WINDOW_MS,
-    onRecentManualOverwriteConfirm: () => window.confirm("최근 1분 이내 수동 백업이 있습니다. 덮어쓸까요?")
-  });
-  if (res.created) {
-    state.backupEntries = res.nextEntries;
-    syncBackupUi();
-    if (dom.appHeader) dom.appHeader.updateStatus("success", "백업 저장됨");
-  }
-}
-
-async function restoreBackupById(id) {
-  const entry = state.backupEntries.find(e => e.id === id);
-  if (!entry || !window.confirm(`백업(${formatBackupTimestamp(entry.createdAt)})으로 복원할까요? 현재 상태는 자동 백업됩니다.`)) return;
-  await handleManualBackup();
-  commitImmediateInputs(normalizeExternalStep1Inputs("backup-restore", entry.data), { skipAutoBackup: true });
-}
-
-function handleExportJson() {
-  window.IsfShare.exportAsJson(window.IsfShare.buildStateEnvelope(SHARE_STATE_KEY, SHARE_STATE_SCHEMA, state.inputs), "my-household-flow");
-}
-
-async function handleImportJson(file) {
-  try {
-    const imported = window.IsfShare.parseImportedJson(await file.text(), SHARE_STATE_KEY);
-    commitImmediateInputs(normalizeExternalStep1Inputs("json-import", imported));
-  } catch (_e) { if (dom.appHeader) dom.appHeader.updateStatus("error", "JSON 오류"); }
-}
-
-async function handleSaveViewToLocal() {
-  const localInputs = normalizeExternalStep1Inputs("view-mode-save", state.inputs);
-  const result = await window.IsfStorageHub.persistViewDataLocally(STORAGE_KEY, localInputs, state.backupEntries);
-  if (result.success) {
-    state.backupEntries = result.backupEntries;
-    syncBackupUi();
-    switchToNormalMode();
-  }
-}
-
-function createResetInputs() {
-  return normalizeExternalStep1Inputs("reset-neutral-preset", applyPresetBySalary(50000000, "neutral"));
-}
-
-function handleResetInputs() {
-  if (state.isViewMode || !window.confirm("중립형 연봉 5,000만 원 프리셋으로 초기화할까요?")) return;
-  commitImmediateInputs(createResetInputs());
-  window.IsfFeedback.showFeedback(dom.applyFeedback, "중립형 연봉 5,000만 원 프리셋으로 초기화되었습니다.");
-}
-
-// Removed applyPendingChanges and cancelPendingChanges
-
-function handleHashChange() {
-  syncViewModeUi(); syncViewModeGuideUi();
-  if (state.isApplyingHashState) return;
-  const hash = new URLSearchParams(window.location.hash.replace(/^#/, "")).get(HASH_STATE_PARAM);
-  const hashInputs = window.IsfShare.decodePayloadFromHash(hash, SHARE_STATE_KEY);
-  if (!hashInputs) return;
-  const next = normalizeExternalStep1Inputs("hash-restore", hashInputs);
-  if (JSON.stringify(next) === JSON.stringify(state.inputs)) return;
-  state.isApplyingHashState = true;
-  try { commitImmediateInputs(next); } finally { state.isApplyingHashState = false; }
-}
-
-function handleItemInput(group, event) {
-  if (state.suspendInputTracking) return;
-  const target = event.target;
-  if (!(target instanceof HTMLInputElement) && !(target instanceof HTMLSelectElement)) return;
-  if (state.itemEditors[group].active) {
-    const itemId = target.dataset.editorId || target.dataset.incomeId;
-    const field = target.dataset.field;
-    if (!itemId || !field) return;
-    const item = state.itemEditors[group].items.find(e => e.id === itemId);
-    if (!item) return;
-    if (field === "name") item.name = target.value.slice(0, 24);
-    if (field === "amount") item.amount = IsfUtils.toWon(target.value);
-    if (field === "group") item.group = normalizeAllocationGroupName(target.value);
-    if (field === "accountId") item.accountId = target.value;
-    if (field === "allocationAccountId") {
-      const idx = parseInt(target.dataset.allocationIndex, 10);
-      if (item.allocations && item.allocations[idx]) {
-        item.allocations[idx].accountId = target.value;
-      }
-    }
-    if (field === "allocationAmount") {
-      const idx = parseInt(target.dataset.allocationIndex, 10);
-      if (item.allocations && item.allocations[idx]) {
-        item.allocations[idx].amount = IsfUtils.toWon(target.value);
-      }
-    }
-    if (field === "annualRate") {
-        const parsed = parseSavingsAnnualRateInput(target.value, getVisibleInputs().annualSavingsYield);
-        if (parsed === null) delete item.annualRate; else item.annualRate = parsed;
-    }
-    if (field === "maturityMonth") {
-        const norm = normalizeMaturityMonth(target.value);
-        if (!norm) delete item.maturityMonth; else item.maturityMonth = norm;
-    }
-    const totalWon = group === "income" ? getMonthlyIncomeTotalWon(state.itemEditors[group].items) : getMonthlyAllocationTotalWon(state.itemEditors[group].items);
-    if (group === "income") listRenderer.renderIncomeTotalHint(totalWon, state.itemEditors[group].items.length);
-    else if (group === "expense") listRenderer.renderExpenseTotalHint(totalWon, state.itemEditors[group].items.length);
-    else if (group === "savings") listRenderer.renderSavingsTotalHint(totalWon, state.itemEditors[group].items.length);
-    else if (group === "invest") listRenderer.renderInvestTotalHint(totalWon, state.itemEditors[group].items.length);
-    setItemEditorUi(group, true);
-  }
-}
-
-function handleItemClick(group, event) {
-  const target = event.target;
-  
-  const addAllocBtn = target.closest(".add-allocation-btn");
-  if (addAllocBtn && group === "income" && state.itemEditors[group].active) {
-    const incomeId = addAllocBtn.dataset.incomeId;
-    const item = state.itemEditors[group].items.find(e => e.id === incomeId);
-    if (item) {
-      if (!Array.isArray(item.allocations)) item.allocations = [];
-      const defaultAcc = (state.inputs.accounts || [])[0]?.id || "";
-      item.allocations.push({ accountId: defaultAcc, amount: 0 });
-      listRenderer.renderItemList(group, state.itemEditors[group].items, { editing: true });
-      setItemEditorUi(group, true);
-    }
-    return;
-  }
-
-  const removeAllocBtn = target.closest(".remove-allocation-btn");
-  if (removeAllocBtn && group === "income" && state.itemEditors[group].active) {
-    const incomeId = removeAllocBtn.dataset.incomeId;
-    const idx = parseInt(removeAllocBtn.dataset.allocationIndex, 10);
-    const item = state.itemEditors[group].items.find(e => e.id === incomeId);
-    if (item && Array.isArray(item.allocations)) {
-      item.allocations.splice(idx, 1);
-      listRenderer.renderItemList(group, state.itemEditors[group].items, { editing: true });
-      setItemEditorUi(group, true);
-    }
-    return;
-  }
-
-  const btn = target.closest ? target.closest("[data-remove-income], [data-remove-editor-item]") : null;
-  if (!btn) return;
-  const removeId = btn.dataset.removeIncome || btn.dataset.removeEditorItem;
-  if (!removeId) return;
-  if (state.itemEditors[group].active) {
-    if (state.itemEditors[group].items.length <= 1) return;
-    state.itemEditors[group].items = state.itemEditors[group].items.filter(i => i.id !== removeId);
-    listRenderer.renderItemList(group, state.itemEditors[group].items, { editing: true });
-    const totalWon = group === "income" ? getMonthlyIncomeTotalWon(state.itemEditors[group].items) : getMonthlyAllocationTotalWon(state.itemEditors[group].items);
-    if (group === "income") listRenderer.renderIncomeTotalHint(totalWon, state.itemEditors[group].items.length);
-    else if (group === "expense") listRenderer.renderExpenseTotalHint(totalWon, state.itemEditors[group].items.length);
-    else if (group === "savings") listRenderer.renderSavingsTotalHint(totalWon, state.itemEditors[group].items.length);
-    else if (group === "invest") listRenderer.renderInvestTotalHint(totalWon, state.itemEditors[group].items.length);
-    setItemEditorUi(group, true);
-  }
-}
-
-function setPendingBarVisible(visible) {
-  if (dom.pendingBar) dom.pendingBar.hidden = !visible;
-  if (dom.pendingSummary) dom.pendingSummary.textContent = visible ? listRenderer.getPendingSummaryText(state.draftInputs) : "";
-}
-
-function markPendingChanges() {
-  if (state.isViewMode) return;
-  helpers.syncDerivedValues(state.inputs, { getMonthlyAllocationTotalWon });
-  listRenderer.renderInputHints(state.inputs);
-  persistPrimaryState(state.inputs);
-  renderAll();
-}
-
-function hasPendingChanges() { return !!state.draftInputs && JSON.stringify(state.draftInputs) !== JSON.stringify(state.inputs); }
-
-
-
-function setSankeyValueMode(mode) {
-  state.sankeyValueMode = mode; syncSankeyValueModeUi();
-  renderSankey(state.snapshot, buildSankeyData, state.sankeySortMode);
-}
-
-function setSankeySortMode(mode) { state.sankeySortMode = mode; syncSankeySortModeUi(); renderSankey(state.snapshot, buildSankeyData, state.sankeySortMode); }
-
-function setSankeyGrouping(category, value) {
-  state.sankeyGrouping[category] = value;
-  syncSankeyGroupingUi();
-  if (state.snapshot) renderSankey(state.snapshot, buildSankeyData, state.sankeySortMode);
-}
-
-function setSankeyDetailMode(mode) {
-  state.sankeyDetailMode = mode;
-  syncSankeyGroupingUi();
-  if (state.snapshot) renderSankey(state.snapshot, buildSankeyData, state.sankeySortMode);
-}
-
-function setItemSortMode(group, mode) {
-  state.itemSortModes[group] = mode;
-  const inputs = getVisibleInputs();
-  listRenderer.renderItemList(group, inputs[`${group}Items`], { editing: state.itemEditors[group].active });
-  syncItemSortModeUi();
-}
-
-function getVisibleInputs() { return helpers.getVisibleInputs(state); }
-
-
-
-function toggleItemEditor(group) { state.itemEditors[group].active ? cancelItemEditor(group) : startItemEditor(group); }
-
-function startItemEditor(group) {
-  closeAllItemEditors(group);
-  const rawItems = group === "income" ? getVisibleInputs().incomes : (group === "account" ? getVisibleInputs().accounts : getVisibleInputs()[`${group}Items`]);
-  const items = cloneInputs(rawItems);
-  state.itemEditors[group] = { active: true, items, baselineSignature: helpers.getItemEditorSignature(items) };
-  listRenderer.renderItemList(group, items, { editing: true });
-  setItemEditorUi(group, true);
-}
-
-function applyItemEditor(group) {
-  const editor = state.itemEditors[group];
-  const draft = helpers.ensureDraftInputs(state);
-  
-  if (group === "income") {
-    const incomes = editor.items;
-    for (const item of incomes) {
-      if (Array.isArray(item.allocations) && item.allocations.length > 0) {
-        const allocTotal = item.allocations.reduce((sum, al) => sum + al.amount, 0);
-        if (allocTotal > item.amount) {
-          alert(`오류: '${item.name}' 항목의 계좌별 분배 금액 합계(${allocTotal.toLocaleString()}원, ${IsfUtils.convertToKoreanWon(allocTotal)})가 전체 수입 금액(${item.amount.toLocaleString()}원, ${IsfUtils.convertToKoreanWon(item.amount)})을 초과할 수 없습니다. 금액 조정을 해 주십시오.`);
-          return;
-        }
-      }
-    }
-    draft.incomes = editor.items;
-  } else if (group === "account") {
-    draft.accounts = editor.items;
-  } else {
-    draft[`${group}Items`] = editor.items;
-  }
-  
-  state.inputs = sanitizeInputs(draft);
-  cancelItemEditor(group);
-  markPendingChanges();
-}
-
-function cancelItemEditor(group) {
-  state.itemEditors[group].active = false;
-  const rawItems = group === "income" ? getVisibleInputs().incomes : (group === "account" ? getVisibleInputs().accounts : getVisibleInputs()[`${group}Items`]);
-  listRenderer.renderItemList(group, rawItems);
-  setItemEditorUi(group, false);
-}
-
-function addItemToEditor(group) {
-  const editor = state.itemEditors[group];
-  if (!editor.active || editor.items.length >= MAX_ALLOCATION_ITEMS) return;
-  if (group === "income") {
-    editor.items.push(createIncomeItem());
-  } else if (group === "account") {
-    editor.items.push({ id: "acc-" + Date.now() + "-" + editor.items.length, name: "" });
-  } else {
-    editor.items.push({ id: createAllocationItemId(group, editor.items.length), name: "", amount: 0 });
-  }
-  listRenderer.renderItemList(group, editor.items, { editing: true });
-  setItemEditorUi(group, true);
-}
-
-function setItemEditorUi(group, active) {
-  const actions = dom[`${group}EditorActions`]; if (actions) actions.hidden = !active;
-  const editBtn = dom[`edit${group.charAt(0).toUpperCase() + group.slice(1)}Items`];
-  if (editBtn) editBtn.textContent = active ? "편집 완료" : "항목 편집";
-  const applyBtn = dom[`apply${group.charAt(0).toUpperCase() + group.slice(1)}Items`];
-  if (active && applyBtn) {
-    const currentSignature = helpers.getItemEditorSignature(state.itemEditors[group].items);
-    const changed = currentSignature !== state.itemEditors[group].baselineSignature;
-    applyBtn.disabled = !changed;
-    if (dom.mobileEditorApply) dom.mobileEditorApply.disabled = !changed;
-  }
-  syncMobileItemEditorFab();
-  syncGroupOptionsFor(group);
-}
-
-function closeAllItemEditors(except = "") {
-  ["income", "expense", "savings", "invest", "account"].forEach(g => { if (g !== except && state.itemEditors[g].active) cancelItemEditor(g); });
-}
-
-
-
-
-function navigateToAdvancedGroup(group) {
-  setActiveAdvancedTab(group);
-  activateMgmtTab("flow");
-  const panel = document.getElementById("mgmtPanelFlow");
-  if (panel) panel.scrollIntoView({ behavior: "smooth", block: "start" });
-}
-
-
-function getActiveItemEditorGroupKey() { return helpers.getActiveItemEditorGroupKey(state.itemEditors); }
-
-
-
-
-
-function initializeBackupStore() {
-  if (!window.IsfBackupManager.isIndexedDbAvailable()) return;
-  window.IsfBackupManager.loadBackupEntriesFromDb(SHARE_STATE_KEY).then(entries => {
-    state.backupStoreReady = true; if (entries) { state.backupEntries = entries; syncBackupUi(); }
-  }).catch(() => { state.backupStoreReady = true; state.backupStoreError = true; });
-}
-async function initializeInputsFromShareId() {
-  const sid = window.IsfShare.getShareIdFromUrl();
-  if (sid) {
-    const sidInputs = await loadShareSnapshotById(sid, (id) => id);
-    if (sidInputs) commitImmediateInputs(normalizeExternalStep1Inputs("share-id-load", sidInputs));
-  }
-}
-
-function activateMgmtTab(tabKey) {
-  const tabs = document.querySelectorAll(".mgmt-tab[data-mgmt-tab]");
-  const panels = document.querySelectorAll(".mgmt-panel[id^='mgmtPanel']");
-  tabs.forEach(tab => {
-    const active = tab.dataset.mgmtTab === tabKey;
-    tab.classList.toggle("is-active", active);
-    tab.setAttribute("aria-selected", active ? "true" : "false");
-  });
-  panels.forEach(panel => {
-    const targetId = `mgmtPanel${tabKey.charAt(0).toUpperCase() + tabKey.slice(1)}`;
-    panel.hidden = panel.id !== targetId;
-  });
-}
-
-function initMgmtTabs() {
-  const tabs = document.querySelectorAll(".mgmt-tab[data-mgmt-tab]");
-  tabs.forEach(tab => {
-    tab.addEventListener("click", () => {
-      activateMgmtTab(tab.dataset.mgmtTab);
-    });
-  });
-  activateMgmtTab("income");
 }

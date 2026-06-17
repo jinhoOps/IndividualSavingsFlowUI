@@ -1,0 +1,263 @@
+import { IsfUtils } from "../../../shared/core/utils.js";
+
+import { MAX_ALLOCATION_ITEMS } from "./constants.js";
+import {
+  cloneInputs,
+  sanitizeInputs,
+  createIncomeItem,
+  getMonthlyIncomeTotalWon,
+  getMonthlyAllocationTotalWon,
+  normalizeAllocationGroupName,
+  parseSavingsAnnualRateInput,
+  createAllocationItemId,
+  normalizeMaturityMonth,
+} from "./input-sanitizer.js";
+import { dom } from "./dom.js";
+import { state } from "./state.js";
+import * as helpers from "./state-helpers.js";
+import * as listRenderer from "./list-renderer.js";
+import {
+  setActiveAdvancedTab,
+  syncGroupOptionsFor,
+  syncItemSortModeUi,
+  syncMobileItemEditorFab,
+} from "./ui-controller.js";
+
+const EDITOR_GROUPS = ["income", "expense", "savings", "invest", "account"];
+
+export function createItemEditorController({ markPendingChanges, getVisibleInputs, activateMgmtTab }) {
+  function setItemEditorUi(group, active) {
+    const actions = dom[`${group}EditorActions`];
+    if (actions) actions.hidden = !active;
+    const editButton = dom[`edit${group.charAt(0).toUpperCase() + group.slice(1)}Items`];
+    if (editButton) editButton.textContent = active ? "편집 완료" : "항목 편집";
+    const applyButton = dom[`apply${group.charAt(0).toUpperCase() + group.slice(1)}Items`];
+    if (active && applyButton) {
+      const currentSignature = helpers.getItemEditorSignature(state.itemEditors[group].items);
+      const changed = currentSignature !== state.itemEditors[group].baselineSignature;
+      applyButton.disabled = !changed;
+      if (dom.mobileEditorApply) dom.mobileEditorApply.disabled = !changed;
+    }
+    syncMobileItemEditorFab();
+    syncGroupOptionsFor(group);
+  }
+
+  function renderTotalHint(group) {
+    const totalWon = group === "income"
+      ? getMonthlyIncomeTotalWon(state.itemEditors[group].items)
+      : getMonthlyAllocationTotalWon(state.itemEditors[group].items);
+    if (group === "income") listRenderer.renderIncomeTotalHint(totalWon, state.itemEditors[group].items.length);
+    else if (group === "expense") listRenderer.renderExpenseTotalHint(totalWon, state.itemEditors[group].items.length);
+    else if (group === "savings") listRenderer.renderSavingsTotalHint(totalWon, state.itemEditors[group].items.length);
+    else if (group === "invest") listRenderer.renderInvestTotalHint(totalWon, state.itemEditors[group].items.length);
+  }
+
+  function handleItemInput(group, event) {
+    if (state.suspendInputTracking) return;
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement) && !(target instanceof HTMLSelectElement)) return;
+    if (!state.itemEditors[group].active) return;
+
+    const itemId = target.dataset.editorId || target.dataset.incomeId;
+    const field = target.dataset.field;
+    if (!itemId || !field) return;
+    const item = state.itemEditors[group].items.find((candidate) => candidate.id === itemId);
+    if (!item) return;
+
+    if (field === "name") item.name = target.value.slice(0, 24);
+    if (field === "amount") item.amount = IsfUtils.toWon(target.value);
+    if (field === "group") item.group = normalizeAllocationGroupName(target.value);
+    if (field === "accountId") item.accountId = target.value;
+    if (field === "allocationAccountId") {
+      const index = parseInt(target.dataset.allocationIndex, 10);
+      if (item.allocations && item.allocations[index]) item.allocations[index].accountId = target.value;
+    }
+    if (field === "allocationAmount") {
+      const index = parseInt(target.dataset.allocationIndex, 10);
+      if (item.allocations && item.allocations[index]) item.allocations[index].amount = IsfUtils.toWon(target.value);
+    }
+    if (field === "annualRate") {
+      const parsed = parseSavingsAnnualRateInput(target.value, getVisibleInputs().annualSavingsYield);
+      if (parsed === null) delete item.annualRate;
+      else item.annualRate = parsed;
+    }
+    if (field === "maturityMonth") {
+      const normalized = normalizeMaturityMonth(target.value);
+      if (!normalized) delete item.maturityMonth;
+      else item.maturityMonth = normalized;
+    }
+
+    renderTotalHint(group);
+    setItemEditorUi(group, true);
+  }
+
+  function handleItemClick(group, event) {
+    const target = event.target;
+    if (target.closest?.(".allocation-group__summary")) return;
+
+    const addAllocationButton = target.closest(".add-allocation-btn");
+    if (addAllocationButton && group === "income" && state.itemEditors[group].active) {
+      const incomeId = addAllocationButton.dataset.incomeId;
+      const item = state.itemEditors[group].items.find((candidate) => candidate.id === incomeId);
+      if (item) {
+        if (!Array.isArray(item.allocations)) item.allocations = [];
+        const defaultAccountId = (state.inputs.accounts || [])[0]?.id || "";
+        item.allocations.push({ accountId: defaultAccountId, amount: 0 });
+        listRenderer.renderItemList(group, state.itemEditors[group].items, { editing: true });
+        setItemEditorUi(group, true);
+      }
+      return;
+    }
+
+    const removeAllocationButton = target.closest(".remove-allocation-btn");
+    if (removeAllocationButton && group === "income" && state.itemEditors[group].active) {
+      const incomeId = removeAllocationButton.dataset.incomeId;
+      const index = parseInt(removeAllocationButton.dataset.allocationIndex, 10);
+      const item = state.itemEditors[group].items.find((candidate) => candidate.id === incomeId);
+      if (item && Array.isArray(item.allocations)) {
+        item.allocations.splice(index, 1);
+        listRenderer.renderItemList(group, state.itemEditors[group].items, { editing: true });
+        setItemEditorUi(group, true);
+      }
+      return;
+    }
+
+    const button = target.closest ? target.closest("[data-remove-income], [data-remove-editor-item]") : null;
+    if (!button || !state.itemEditors[group].active) return;
+    const removeId = button.dataset.removeIncome || button.dataset.removeEditorItem;
+    if (!removeId || state.itemEditors[group].items.length <= 1) return;
+    state.itemEditors[group].items = state.itemEditors[group].items.filter((item) => item.id !== removeId);
+    listRenderer.renderItemList(group, state.itemEditors[group].items, { editing: true });
+    renderTotalHint(group);
+    setItemEditorUi(group, true);
+  }
+
+  function closeAllItemEditors(except = "") {
+    EDITOR_GROUPS.forEach((group) => {
+      if (group !== except && state.itemEditors[group].active) cancelItemEditor(group);
+    });
+  }
+
+  function startItemEditor(group) {
+    closeAllItemEditors(group);
+    const rawItems = group === "income"
+      ? getVisibleInputs().incomes
+      : (group === "account" ? getVisibleInputs().accounts : getVisibleInputs()[`${group}Items`]);
+    const items = cloneInputs(rawItems);
+    state.itemEditors[group] = {
+      active: true,
+      items,
+      baselineSignature: helpers.getItemEditorSignature(items),
+    };
+    listRenderer.renderItemList(group, items, { editing: true });
+    setItemEditorUi(group, true);
+  }
+
+  function cancelItemEditor(group) {
+    state.itemEditors[group].active = false;
+    const rawItems = group === "income"
+      ? getVisibleInputs().incomes
+      : (group === "account" ? getVisibleInputs().accounts : getVisibleInputs()[`${group}Items`]);
+    listRenderer.renderItemList(group, rawItems);
+    setItemEditorUi(group, false);
+  }
+
+  function toggleItemEditor(group) {
+    if (state.itemEditors[group].active) cancelItemEditor(group);
+    else startItemEditor(group);
+  }
+
+  function applyItemEditor(group) {
+    const editor = state.itemEditors[group];
+    const draft = helpers.ensureDraftInputs(state);
+
+    if (group === "income") {
+      for (const item of editor.items) {
+        if (Array.isArray(item.allocations) && item.allocations.length > 0) {
+          const allocationTotal = item.allocations.reduce((sum, allocation) => sum + allocation.amount, 0);
+          if (allocationTotal > item.amount) {
+            alert(`오류: '${item.name}' 항목의 계좌별 분배 금액 합계(${allocationTotal.toLocaleString()}원, ${IsfUtils.convertToKoreanWon(allocationTotal)})가 전체 수입 금액(${item.amount.toLocaleString()}원, ${IsfUtils.convertToKoreanWon(item.amount)})을 초과할 수 없습니다. 금액 조정을 해 주십시오.`);
+            return;
+          }
+        }
+      }
+      draft.incomes = editor.items;
+    } else if (group === "account") {
+      draft.accounts = editor.items;
+    } else {
+      draft[`${group}Items`] = editor.items;
+    }
+
+    state.inputs = sanitizeInputs(draft);
+    cancelItemEditor(group);
+    markPendingChanges();
+  }
+
+  function addItemToEditor(group) {
+    const editor = state.itemEditors[group];
+    if (!editor || !editor.active || editor.items.length >= MAX_ALLOCATION_ITEMS) return;
+    if (group === "income") {
+      editor.items.push(createIncomeItem());
+    } else if (group === "account") {
+      editor.items.push({ id: `acc-${Date.now()}-${editor.items.length}`, name: "" });
+    } else {
+      editor.items.push({ id: createAllocationItemId(group, editor.items.length), name: "", amount: 0 });
+    }
+    listRenderer.renderItemList(group, editor.items, { editing: true });
+    setItemEditorUi(group, true);
+  }
+
+  function navigateToAdvancedGroup(group) {
+    setActiveAdvancedTab(group);
+    activateMgmtTab("flow");
+    const panel = document.getElementById("mgmtPanelFlow");
+    if (panel) panel.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function getActiveItemEditorGroupKey() {
+    return helpers.getActiveItemEditorGroupKey(state.itemEditors);
+  }
+
+  function setItemSortMode(group, mode) {
+    state.itemSortModes[group] = mode;
+    const inputs = getVisibleInputs();
+    listRenderer.renderItemList(group, inputs[`${group}Items`], { editing: state.itemEditors[group].active });
+    syncItemSortModeUi();
+  }
+
+  function bindItemEditorEvents() {
+    EDITOR_GROUPS.forEach((group) => {
+      const list = dom[`${group}List`];
+      if (list) {
+        list.addEventListener("input", (event) => handleItemInput(group, event));
+        list.addEventListener("change", (event) => handleItemInput(group, event));
+        list.addEventListener("click", (event) => handleItemClick(group, event));
+      }
+      const capitalized = group.charAt(0).toUpperCase() + group.slice(1);
+      const editButton = dom[`edit${capitalized}Items`];
+      const addButton = dom[`add${capitalized}Item`];
+      const applyButton = dom[`apply${capitalized}Items`];
+      const cancelButton = dom[`cancel${capitalized}Items`];
+      if (editButton) editButton.addEventListener("click", () => toggleItemEditor(group));
+      if (addButton) addButton.addEventListener("click", () => addItemToEditor(group));
+      if (applyButton) applyButton.addEventListener("click", () => applyItemEditor(group));
+      if (cancelButton) cancelButton.addEventListener("click", () => cancelItemEditor(group));
+    });
+    if (dom.mobileEditorAdd) dom.mobileEditorAdd.addEventListener("click", () => addItemToEditor(getActiveItemEditorGroupKey()));
+    if (dom.mobileEditorApply) dom.mobileEditorApply.addEventListener("click", () => applyItemEditor(getActiveItemEditorGroupKey()));
+    if (dom.mobileEditorCancel) dom.mobileEditorCancel.addEventListener("click", () => cancelItemEditor(getActiveItemEditorGroupKey()));
+  }
+
+  return {
+    bindItemEditorEvents,
+    toggleItemEditor,
+    startItemEditor,
+    applyItemEditor,
+    cancelItemEditor,
+    addItemToEditor,
+    closeAllItemEditors,
+    navigateToAdvancedGroup,
+    getActiveItemEditorGroupKey,
+    setItemSortMode,
+  };
+}
