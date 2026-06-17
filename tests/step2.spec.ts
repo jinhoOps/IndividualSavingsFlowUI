@@ -155,3 +155,194 @@ test.describe('Step 2 Phase 08 storage and import contracts', () => {
     expect(result.fallbackRaw).toBe('[]');
   });
 });
+
+test.describe('Step 2 Phase 08 strategy comparison contracts', () => {
+  test('Phase 08 strategy assumptions expose conservative groups benchmarks examples and ranges', async ({ page }) => {
+    await page.goto('apps/simulation/index.html');
+
+    const contract = await page.evaluate(async () => {
+      const assumptions = await import('/IndividualSavingsFlowUI/apps/simulation/modules/assumptions.js');
+      return {
+        groups: assumptions.STRATEGY_GROUPS,
+        benchmarkOptions: assumptions.getBenchmarkOptions(),
+        dividendGrowthExamples: assumptions.getDividendGrowthExamples(),
+        coveredCallExamples: assumptions.getCoveredCallExamples(),
+        resolved: assumptions.getStrategyAssumptions({ benchmarkKey: 'sp500', coveredCallKey: 'divo' }),
+      };
+    });
+
+    expect(contract.groups.map((group) => group.key)).toEqual([
+      'indexGrowth',
+      'dividendGrowth',
+      'coveredCallMonthlyIncome',
+    ]);
+    expect(contract.benchmarkOptions.map((option) => option.label)).toEqual(
+      expect.arrayContaining(['Nasdaq', 'S&P 500']),
+    );
+    expect(contract.benchmarkOptions.map((option) => option.evidenceKey)).toEqual(
+      expect.arrayContaining(['qqq', 'spy']),
+    );
+    expect(contract.dividendGrowthExamples.map((example) => example.label)).toContain('SCHD');
+    expect(contract.coveredCallExamples.map((example) => example.label)).toEqual(
+      expect.arrayContaining(['JEPI', 'QQQI', 'DIVO']),
+    );
+    expect(contract.resolved.benchmark.label).toBe('S&P 500');
+    expect(contract.resolved.coveredCall.label).toBe('DIVO');
+    expect(contract.resolved.copy.disclaimer).toContain('보수 예시');
+
+    const examplesByLabel = Object.fromEntries(
+      contract.coveredCallExamples.map((example) => [example.label, example]),
+    );
+
+    expect(examplesByLabel.JEPI.defaults).toMatchObject({
+      cashFlowYield: 7.0,
+      distributionGrowth: 0.0,
+      capitalGrowth: 1.5,
+      isDrip: false,
+    });
+    expect(examplesByLabel.JEPI.displayRanges).toMatchObject({
+      cashFlowYield: '6-9%',
+      distributionGrowth: '0-1%',
+      capitalGrowth: '0-3%',
+    });
+
+    expect(examplesByLabel.QQQI.defaults).toMatchObject({
+      cashFlowYield: 9.0,
+      distributionGrowth: 0.0,
+      capitalGrowth: 2.0,
+      isDrip: false,
+    });
+    expect(examplesByLabel.QQQI.displayRanges).toMatchObject({
+      cashFlowYield: '7-11%',
+      distributionGrowth: '0-1%',
+      capitalGrowth: '0-4%',
+    });
+
+    expect(examplesByLabel.DIVO.defaults).toMatchObject({
+      cashFlowYield: 4.5,
+      distributionGrowth: 1.0,
+      capitalGrowth: 3.0,
+      isDrip: false,
+    });
+    expect(examplesByLabel.DIVO.displayRanges).toMatchObject({
+      cashFlowYield: '3.5-6%',
+      distributionGrowth: '0-2%',
+      capitalGrowth: '1-5%',
+    });
+
+    for (const example of contract.coveredCallExamples) {
+      expect(typeof example.defaults.cashFlowYield).toBe('number');
+      expect(typeof example.defaults.distributionGrowth).toBe('number');
+      expect(typeof example.defaults.capitalGrowth).toBe('number');
+      expect(typeof example.displayRanges.cashFlowYield).toBe('string');
+    }
+  });
+
+  test('Phase 08 strategy comparison returns Won asset paths cash flow and numeric percent values', async ({ page }) => {
+    await page.goto('apps/simulation/index.html');
+
+    const result = await page.evaluate(async () => {
+      const { calculateStrategyComparison } = await import('/IndividualSavingsFlowUI/apps/simulation/modules/calculator.js');
+      return calculateStrategyComparison({
+        totalInitialAsset: 50000000,
+        totalMonthlyInvestCapacity: 1000000,
+        dividendSim: {
+          years: 10,
+          selectedBenchmark: 'sp500',
+          coveredCallExample: 'qqqi',
+          yield: 3.5,
+          growth: 5.0,
+          capitalGrowth: 4.0,
+          isDrip: true,
+        },
+      });
+    });
+
+    expect(result.selectedBenchmark).toBe('sp500');
+    expect(result.selectedCoveredCall).toBe('qqqi');
+    expect(result.rows).toHaveLength(10);
+
+    const first = result.rows[0];
+    const final = result.final;
+    expect(first.principal).toBe(62000000);
+    expect(final.principal).toBe(170000000);
+
+    for (const row of result.rows) {
+      expect(Number.isInteger(row.principal)).toBe(true);
+      expect(Object.keys(row.finalAssets)).toEqual(['index', 'schd', 'coveredCall']);
+      expect(Object.keys(row.monthlyCashFlowAfterTax)).toEqual(['index', 'schd', 'coveredCall']);
+      expect(Object.keys(row.benchmarkDelta)).toEqual(['index', 'schd', 'coveredCall']);
+      expect(row.benchmarkDelta.index).toBe(0);
+      expect(Number.isInteger(row.finalAssets.index)).toBe(true);
+      expect(Number.isInteger(row.finalAssets.schd)).toBe(true);
+      expect(Number.isInteger(row.finalAssets.coveredCall)).toBe(true);
+      expect(Number.isInteger(row.monthlyCashFlowAfterTax.coveredCall)).toBe(true);
+    }
+
+    expect(final.strategies.index.label).toBe('S&P 500');
+    expect(final.strategies.schd.label).toBe('SCHD');
+    expect(final.strategies.coveredCall.label).toBe('QQQI');
+    expect(final.finalAssets.index).toBeGreaterThan(final.finalAssets.coveredCall);
+    expect(final.monthlyCashFlowAfterTax.coveredCall).toBeGreaterThan(final.monthlyCashFlowAfterTax.index);
+    expect(final.benchmarkDelta.coveredCall).toBeLessThan(0);
+
+    for (const strategy of Object.values(final.strategies)) {
+      expect(typeof strategy.dividendYieldPercent).toBe('number');
+      expect(typeof strategy.cashFlowYieldPercent).toBe('number');
+      expect(typeof strategy.dividendGrowthPercent).toBe('number');
+      expect(typeof strategy.capitalGrowthPercent).toBe('number');
+      expect(Number.isInteger(strategy.finalAsset)).toBe(true);
+      expect(Number.isInteger(strategy.monthlyCashFlowAfterTax)).toBe(true);
+    }
+  });
+
+  test('Phase 08 strategy defaults remain editable numeric assumptions', async ({ page }) => {
+    await page.goto('apps/simulation/index.html');
+
+    const result = await page.evaluate(async () => {
+      const { calculateStrategyComparison } = await import('/IndividualSavingsFlowUI/apps/simulation/modules/comparison-calculator.js');
+      const draft = {
+        totalInitialAsset: 30000000,
+        totalMonthlyInvestCapacity: 700000,
+        dividendSim: {
+          years: 12,
+          selectedBenchmark: 'nasdaq',
+          coveredCallExample: 'jepi',
+          yield: 3.5,
+          growth: 5.0,
+          capitalGrowth: 4.0,
+          isDrip: true,
+        },
+      };
+      const base = calculateStrategyComparison(draft);
+      const edited = calculateStrategyComparison(draft, {
+        coveredCallOverrides: {
+          cashFlowYield: 6.0,
+          distributionGrowth: 0.5,
+          capitalGrowth: 2.5,
+          isDrip: false,
+        },
+      });
+      return {
+        base: base.final.strategies.coveredCall,
+        edited: edited.final.strategies.coveredCall,
+      };
+    });
+
+    expect(result.base.label).toBe('JEPI');
+    expect(result.base.cashFlowYieldPercent).toBe(7.0);
+    expect(result.base.distributionGrowthPercent).toBe(0.0);
+    expect(result.base.capitalGrowthPercent).toBe(1.5);
+    expect(result.base.displayRanges).toMatchObject({
+      cashFlowYield: '6-9%',
+      distributionGrowth: '0-1%',
+      capitalGrowth: '0-3%',
+    });
+
+    expect(result.edited.cashFlowYieldPercent).toBe(6.0);
+    expect(result.edited.distributionGrowthPercent).toBe(0.5);
+    expect(result.edited.capitalGrowthPercent).toBe(2.5);
+    expect(result.edited.monthlyCashFlowAfterTax).not.toBe(result.base.monthlyCashFlowAfterTax);
+    expect(result.edited.finalAsset).not.toBe(result.base.finalAsset);
+  });
+});
