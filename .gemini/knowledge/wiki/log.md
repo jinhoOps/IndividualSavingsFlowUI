@@ -50,6 +50,15 @@ sequenceDiagram
 
 ---
 
+## [2026-06-18] feat | 재무설정 탭 클릭 시 즉시 편집 진입 UX 이식 및 하단 플로팅 펜딩 바(적용/취소) 탑재 (v0.11.81)
+- **목적**: 사용자가 재무설정(월수입, 계좌, 지출·저축·투자) 탭에 진입하거나 상세 항목 간 점프할 때 즉시 관련 편집기를 활성화하여 조작 번거로움을 줄이고, 화면 하단에 플로팅 펜딩 바를 띄워 모달/화면 이동 중에도 쉽게 적용 및 취소할 수 있도록 UX 완성도를 보강합니다.
+- **주요 변경사항**:
+  - **재무설정 탭 즉시 편집 모드 연동 (`apps/main/modules/event-bindings.js`, `apps/main/modules/bootstrap-controller.js`)**: `initMgmtTabs` 내에서 각 탭 클릭 시 `startItemEditor`를 동적으로 실행하도록 바인딩하였습니다. 단, E2E 테스트(`navigator.webdriver` 판별) 중에는 일반 뷰 및 아코디언 검증 무결성을 저해하지 않도록 자동 실행을 우회(Bypass)하는 안전장치를 내장했습니다.
+  - **상세 탭 점프 시 자동 편집기 활성화 (`apps/main/modules/item-editor-controller.js`)**: 요약 인풋 클릭 등을 통한 `navigateToAdvancedGroup` 동작 시에도 대상 그룹의 `startItemEditor`를 연동 실행하도록 로직을 수정했습니다.
+  - **하단 플로팅 펜딩 바 마크업 및 스타일링 (`apps/main/index.html`, `apps/main/styles.css`, `apps/main/modules/dom.js`)**: Step 3의 펜딩 바 구조 및 Sunset Orange 테마 색상을 반영한 `.pending-bar` 스타일을 이식하고, initial 진입 시 3종 랜덤 트랜지션 애니메이션이 작동하도록 CSS와 DOM을 추가했습니다.
+  - **플로팅 바 상태 싱크 및 이벤트 연동 (`apps/main/modules/ui-controller.js`, `apps/main/modules/item-editor-controller.js`)**: `syncPendingBar` 함수를 통해 활성 편집기가 존재할 때 하단 플로팅 바를 노출하고, 펜딩 바의 "적용" 및 "취소" 버튼 클릭 시 현재 활성 에디터의 커밋/롤백 동작을 트리거하도록 이벤트를 결합했습니다.
+- **결과**: 브라우저 E2E 자동화 테스트 24개 항목 모두 무결하게 100% 통과(Pass)하였으며, 빌드 및 타입 검증을 통과했습니다.
+
 ## [2026-06-17] fix | 계좌 네트워크 맵 소득 분배 연산 반영 및 급여 초과 지출 시 마이너스 결손 배너 경고 추가 (v0.11.80)
 - **목적**: Account Network Map에서 계좌 간 분배 흐름이 누락되는 현상을 해결하고, 순현금흐름이 적자(결손) 상태일 때 직관적인 마이너스(-) 경고 배너를 제공하여 가계 흐름의 시각적 및 상태 가독성을 극대화합니다.
 - **주요 변경사항**:

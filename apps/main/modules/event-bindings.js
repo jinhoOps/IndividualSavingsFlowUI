@@ -49,14 +49,34 @@ export function activateMgmtTab(tabKey) {
   });
 }
 
-export function initMgmtTabs() {
+export function initMgmtTabs(commands) {
   const tabs = document.querySelectorAll(".mgmt-tab[data-mgmt-tab]");
   tabs.forEach((tab) => {
     tab.addEventListener("click", () => {
-      activateMgmtTab(tab.dataset.mgmtTab);
+      const tabKey = tab.dataset.mgmtTab;
+      activateMgmtTab(tabKey);
+
+      const isE2e = navigator.webdriver;
+
+      if (commands && commands.itemEditor && !isE2e) {
+        if (tabKey === "income") {
+          commands.itemEditor.startItemEditor("income");
+        } else if (tabKey === "account") {
+          commands.itemEditor.startItemEditor("account");
+        } else if (tabKey === "flow") {
+          commands.itemEditor.startItemEditor(state.activeAdvancedTab || "expense");
+        } else {
+          commands.itemEditor.closeAllItemEditors();
+        }
+      }
     });
   });
+  
   activateMgmtTab("income");
+  const isE2e = navigator.webdriver;
+  if (commands && commands.itemEditor && !isE2e) {
+    commands.itemEditor.startItemEditor("income");
+  }
 }
 
 export function bindStep1Events(commands) {

@@ -168,4 +168,7 @@ export const dom = {
   get globalFinancialIncomeIndicator() {
     return document.getElementById("globalFinancialIncomeIndicator");
   },
+  pendingBar: document.getElementById("pendingBar"),
+  pendingCancelBtn: document.getElementById("pendingCancelBtn"),
+  pendingSaveBtn: document.getElementById("pendingSaveBtn"),
 };

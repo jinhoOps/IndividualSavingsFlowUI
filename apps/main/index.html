@@ -670,6 +670,16 @@
 
   <div id="applyFeedback" class="apply-feedback" hidden></div>
   <div id="globalTooltip" class="isf-tooltip" hidden></div>
+
+  <!-- 하단 플로팅 적용/취소 펜딩 바 -->
+  <div id="pendingBar" class="pending-bar" style="display: none;">
+    <div class="pending-bar-inner" style="justify-content: center;">
+      <div class="pending-bar-buttons">
+        <button type="button" id="pendingCancelBtn" class="btn btn-ghost btn-sm" style="padding: 6px 14px; border-radius: 8px;">취소</button>
+        <button type="button" id="pendingSaveBtn" class="btn btn-primary btn-sm" style="padding: 6px 14px; border-radius: 8px;">적용</button>
+      </div>
+    </div>
+  </div>
 </body>
 
 </html>

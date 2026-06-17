@@ -624,3 +624,93 @@ to{opacity:1;transform:translateY(0)}
 .allocation-group__items{padding-left:10px}
 .network-map-inner{height:460px;min-height:420px}
 }
+
+/* Pending Bar Floating Action */
+.pending-bar {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: auto;
+  min-width: 200px;
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid var(--tone-primary, #ea5b2a);
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(234, 91, 42, 0.15), 0 1px 3px rgba(0,0,0,0.05);
+  z-index: 1100;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.pending-bar-inner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 18px;
+  gap: 16px;
+}
+
+.pending-bar-message {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.pending-bar-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+/* Animations */
+.pending-bar.anim-slide-up {
+  animation: pendingSlideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.pending-bar.anim-fade-scale {
+  animation: pendingFadeScale 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.pending-bar.anim-bounce-in {
+  animation: pendingBounceIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+@keyframes pendingSlideUp {
+  from {
+    transform: translate(-50%, 100px);
+    opacity: 0;
+  }
+  to {
+    transform: translate(-50%, 0);
+    opacity: 1;
+  }
+}
+
+@keyframes pendingFadeScale {
+  from {
+    transform: translate(-50%, 20px) scale(0.92);
+    opacity: 0;
+  }
+  to {
+    transform: translate(-50%, 0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes pendingBounceIn {
+  0% {
+    transform: translate(-50%, 50px) scale(0.8);
+    opacity: 0;
+  }
+  50% {
+    transform: translate(-50%, -15px) scale(1.05);
+    opacity: 0.85;
+  }
+  70% {
+    transform: translate(-50%, 5px) scale(0.98);
+    opacity: 0.95;
+  }
+  100% {
+    transform: translate(-50%, 0) scale(1);
+    opacity: 1;
+  }
+}

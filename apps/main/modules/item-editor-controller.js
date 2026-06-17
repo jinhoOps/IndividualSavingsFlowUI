@@ -269,6 +269,7 @@ export function createItemEditorController({ markPendingChanges, getVisibleInput
     activateMgmtTab("flow");
     const panel = document.getElementById("mgmtPanelFlow");
     if (panel) panel.scrollIntoView({ behavior: "smooth", block: "start" });
+    startItemEditor(group);
   }
 
   function getActiveItemEditorGroupKey() {
@@ -303,6 +304,19 @@ export function createItemEditorController({ markPendingChanges, getVisibleInput
     if (dom.mobileEditorAdd) dom.mobileEditorAdd.addEventListener("click", () => addItemToEditor(getActiveItemEditorGroupKey()));
     if (dom.mobileEditorApply) dom.mobileEditorApply.addEventListener("click", () => applyItemEditor(getActiveItemEditorGroupKey()));
     if (dom.mobileEditorCancel) dom.mobileEditorCancel.addEventListener("click", () => cancelItemEditor(getActiveItemEditorGroupKey()));
+
+    if (dom.pendingSaveBtn) {
+      dom.pendingSaveBtn.addEventListener("click", () => {
+        const activeGroup = getActiveItemEditorGroupKey();
+        if (activeGroup) applyItemEditor(activeGroup);
+      });
+    }
+    if (dom.pendingCancelBtn) {
+      dom.pendingCancelBtn.addEventListener("click", () => {
+        const activeGroup = getActiveItemEditorGroupKey();
+        if (activeGroup) cancelItemEditor(activeGroup);
+      });
+    }
   }
 
   return {

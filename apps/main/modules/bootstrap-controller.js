@@ -43,7 +43,7 @@ function init() {
   checkReturningUser();
   bindStep1Events(controllers);
   syncInitialUi();
-  initMgmtTabs();
+  initMgmtTabs(controllers);
   refreshInputsPanel(state.inputs);
   syncGroupOptionsAll();
   controllers.persistence.setPendingBarVisible(false);

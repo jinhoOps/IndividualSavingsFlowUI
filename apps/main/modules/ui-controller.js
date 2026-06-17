@@ -70,12 +70,6 @@ export function syncMobileInputsPanelVisibility() {
   dom.toggleInputsMobile.textContent = isCollapsed ? "펼치기" : "접기";
 }
 
-export function syncMobileItemEditorFab() {
-  if (!dom.mobileEditorFab) return;
-  const isAnyEditing = state.itemEditors.expense.active || state.itemEditors.savings.active || state.itemEditors.invest.active;
-  dom.mobileEditorFab.hidden = !isAnyEditing;
-}
-
 export function syncAdvancedTabBlockVisibility() {
   const tab = state.activeAdvancedTab;
   document.querySelectorAll("[data-advanced-block]").forEach(block => {
@@ -91,16 +85,59 @@ export function setActiveAdvancedTab(tabId) {
   syncAdvancedTabBlockVisibility();
 }
 
+export function syncMobileItemEditorFab() {
+  if (!dom.mobileEditorFab) return;
+  const isAnyEditing = state.itemEditors.income.active || 
+                       state.itemEditors.account.active || 
+                       state.itemEditors.expense.active || 
+                       state.itemEditors.savings.active || 
+                       state.itemEditors.invest.active;
+  dom.mobileEditorFab.hidden = !isAnyEditing;
+}
+
+export function syncPendingBar() {
+  const pendingBar = dom.pendingBar;
+  if (!pendingBar) return;
+  
+  const isAnyEditing = state.itemEditors.income.active || 
+                       state.itemEditors.account.active || 
+                       state.itemEditors.expense.active || 
+                       state.itemEditors.savings.active || 
+                       state.itemEditors.invest.active;
+                       
+  if (isAnyEditing) {
+    if (pendingBar.style.display === "none") {
+      pendingBar.classList.remove("anim-slide-up", "anim-fade-scale", "anim-bounce-in");
+      const anims = ["anim-slide-up", "anim-fade-scale", "anim-bounce-in"];
+      const selected = anims[Math.floor(Math.random() * anims.length)];
+      pendingBar.classList.add(selected);
+      pendingBar.style.display = "block";
+    }
+    
+    // 적용 버튼 활성화 상태 조율
+    const activeGroup = helpers.getActiveItemEditorGroupKey(state.itemEditors);
+    const pendingSaveBtn = dom.pendingSaveBtn;
+    if (pendingSaveBtn && activeGroup) {
+      const currentSignature = helpers.getItemEditorSignature(state.itemEditors[activeGroup].items);
+      const changed = currentSignature !== state.itemEditors[activeGroup].baselineSignature;
+      pendingSaveBtn.disabled = !changed;
+    }
+  } else {
+    pendingBar.style.display = "none";
+    pendingBar.classList.remove("anim-slide-up", "anim-fade-scale", "anim-bounce-in");
+  }
+}
+
 export function setPendingBarVisible(visible) {
-  // Removed
+  syncPendingBar();
 }
 
 export function markPendingChanges() {
-  // Removed
+  syncPendingBar();
 }
 
 export function clearPendingChanges() {
-  // Removed
+  syncPendingBar();
 }
 
 export function refreshInputsPanel(inputs, warnings) {
