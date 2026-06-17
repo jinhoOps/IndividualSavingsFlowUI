@@ -2,6 +2,15 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Individual Savings Flow Main UI/UX Audit', () => {
   test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.clear();
+      sessionStorage.clear();
+      indexedDB.databases?.().then((databases) => {
+        for (const database of databases) {
+          if (database.name) indexedDB.deleteDatabase(database.name);
+        }
+      }).catch(() => {});
+    });
     // Navigate to Main index
     await page.goto('apps/main/index.html');
     // Wait for main layout rendering
@@ -275,5 +284,88 @@ test.describe('Individual Savings Flow Main UI/UX Audit', () => {
     await expect(utilityGroup.locator('.allocation-group__items')).toBeVisible();
     await utilityGroup.locator('summary').click();
     await expect(utilityGroup.locator('.allocation-group__items')).not.toBeVisible();
+  });
+
+  test('Phase 07 controller modules expose focused interfaces', async ({ page }) => {
+    const contracts = await page.evaluate(async () => {
+      const [
+        eventBindings,
+        persistenceController,
+        renderOrchestrator,
+        visualizationController,
+        itemEditorController,
+      ] = await Promise.all([
+        import('/IndividualSavingsFlowUI/apps/main/modules/event-bindings.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/persistence-controller.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/render-orchestrator.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/visualization-controller.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/item-editor-controller.js'),
+      ]);
+
+      const source = await fetch('/IndividualSavingsFlowUI/apps/main/modules/bootstrap-controller.js').then((response) => response.text());
+      return {
+        exports: {
+          bindStep1Events: typeof eventBindings.bindStep1Events,
+          createPersistenceController: typeof persistenceController.createPersistenceController,
+          createRenderOrchestrator: typeof renderOrchestrator.createRenderOrchestrator,
+          createVisualizationController: typeof visualizationController.createVisualizationController,
+          createItemEditorController: typeof itemEditorController.createItemEditorController,
+        },
+        bootstrapLineCount: source.split(/\r?\n/).length,
+        blockedBodies: /function (bindControls|bindVisualizationAndTooltipEvents|renderAll|commitImmediateInputs|handleHashChange|applyItemEditor)\b/.test(source),
+      };
+    });
+
+    expect(contracts.exports).toEqual({
+      bindStep1Events: 'function',
+      createPersistenceController: 'function',
+      createRenderOrchestrator: 'function',
+      createVisualizationController: 'function',
+      createItemEditorController: 'function',
+    });
+    expect(contracts.bootstrapLineCount).toBeLessThanOrEqual(350);
+    expect(contracts.blockedBodies).toBe(false);
+  });
+
+  test('Phase 07 group datalist options are DOM-built and safe for imported values', async ({ page }) => {
+    await page.evaluate(() => {
+      const maliciousGroup = `x"><img src=x onerror="window.__unsafeGroupOption = true">`;
+      const saved = JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}');
+      saved.expenseItems = [
+        ...(saved.expenseItems || []),
+        { id: 'expense-malicious-group', name: '테스트', amount: 10000, group: maliciousGroup, accountId: 'acc-living' },
+      ];
+      localStorage.setItem('isf-rebuild-v1', JSON.stringify(saved));
+    });
+    await page.reload();
+    await page.waitForSelector('main');
+
+    const optionInfo = await page.locator('#expenseGroupOptions option').evaluateAll((options) =>
+      options.map((option) => ({ value: option.getAttribute('value'), text: option.textContent }))
+    );
+    expect(optionInfo.some((option) => option.value?.includes('<img'))).toBe(true);
+    expect(await page.evaluate(() => Boolean((window as any).__unsafeGroupOption))).toBe(false);
+  });
+
+  test('Phase 07 allocation groups preserve user open state after render refresh', async ({ page }) => {
+    await page.locator('#toggleControlsBtn').click();
+    await page.locator('#mgmtTabFlow').click();
+    const utilityGroup = page.locator('#expenseAdvancedBlock .allocation-group').filter({ hasText: '공과금' }).first();
+    await expect(utilityGroup).toBeVisible();
+
+    const summary = utilityGroup.locator('.allocation-group__summary');
+    if (await utilityGroup.evaluate((element) => (element as HTMLDetailsElement).open)) {
+      await summary.click();
+    }
+    await expect(utilityGroup.locator('.allocation-group__items')).not.toBeVisible();
+    await page.locator('#horizonYears').fill('12');
+    await page.waitForTimeout(250);
+    await expect(utilityGroup.locator('.allocation-group__items')).not.toBeVisible();
+
+    await summary.click();
+    await expect(utilityGroup.locator('.allocation-group__items')).toBeVisible();
+    await page.locator('#horizonYears').fill('13');
+    await page.waitForTimeout(250);
+    await expect(utilityGroup.locator('.allocation-group__items')).toBeVisible();
   });
 });
