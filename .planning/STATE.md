@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.8
 milestone_name: 적립식 포트폴리오 관리 및 전체 UI/UX 개선
-status: planning
-last_updated: "2026-06-17T08:31:19Z"
-last_activity: 2026-06-17 -- Phase 08 Plan 03 complete
+status: verifying
+last_updated: "2026-06-17T08:40:31.757Z"
+last_activity: 2026-06-17 -- Phase 08 Plan 04 complete
 progress:
   total_phases: 4
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 13
-  completed_plans: 12
-  percent: 92
-stopped_at: Completed 08-step-2-redesign-re-planning-03-PLAN.md
+  completed_plans: 13
+  percent: 100
+stopped_at: Completed 08-step-2-redesign-re-planning-04-PLAN.md
 ---
 
 # Project State
@@ -20,8 +20,8 @@ stopped_at: Completed 08-step-2-redesign-re-planning-03-PLAN.md
 
 Phase: 8
 Plan: 04/04
-Status: Ready for Phase 08 Plan 04
-Last activity: 2026-06-17 -- Phase 08 Plan 03 complete
+Status: Phase 08 complete, ready for verification
+Last activity: 2026-06-17 -- Phase 08 Plan 04 complete
 
 ## Project Reference
 
@@ -42,6 +42,7 @@ See: .planning/PROJECT.md (updated 2026-05-20)
 | Phase 08-step-2-redesign-re-planning P01 | 33 min | 3 tasks | 8 files |
 | Phase 08-step-2-redesign-re-planning P02 | 17 min | 2 tasks | 6 files |
 | Phase 08-step-2-redesign-re-planning P03 | 19 min | 3 tasks | 7 files |
+| Phase 08-step-2-redesign-re-planning P04 | 13 min | 2 tasks | 6 files |
 
 ## Decisions
 
@@ -52,3 +53,5 @@ See: .planning/PROJECT.md (updated 2026-05-20)
 - [Phase 08-02]: Strategy comparison rows expose signed Won benchmark deltas so underperformance versus Nasdaq or S&P 500 remains visible.
 - [Phase 08-03]: Step 2 first-screen order now follows the mobile judgment flow in actual DOM order.
 - [Phase 08-03]: DataHub simulation list names and ids are rendered with textContent and dataset while static modal templates remain unchanged.
+- [Phase 08-04]: Step 2 runtime market evidence is documented under public/data/indices/*.json, while JEPI/QQQI/DIVO remain editable conservative assumptions in assumptions.js.
+- [Phase 08-04]: Loose root QQQ CSV backdata files were deleted after runtime path scanning found no dependency.
