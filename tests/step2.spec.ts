@@ -346,3 +346,159 @@ test.describe('Step 2 Phase 08 strategy comparison contracts', () => {
     expect(result.edited.finalAsset).not.toBe(result.base.finalAsset);
   });
 });
+
+test.describe('Step 2 Phase 08 first-screen mobile UI flows', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript((source) => {
+      localStorage.clear();
+      sessionStorage.clear();
+      localStorage.setItem('isf-step1-active', JSON.stringify(source));
+    }, STEP1_SOURCE);
+  });
+
+  test('Phase 08 first screen preserves required order and KPI labels across desktop tablet and mobile', async ({ page }) => {
+    for (const viewport of [
+      { width: 1280, height: 820 },
+      { width: 768, height: 920 },
+      { width: 390, height: 900 },
+    ]) {
+      await page.setViewportSize(viewport);
+      await page.goto('apps/simulation/index.html');
+      await page.waitForSelector('#strategyComparisonCards .comparison-card');
+
+      const labels = await page.locator('#simKpiGrid .kpi-label').allTextContents();
+      expect(labels.join(' / ')).toContain('최종 예상 자산');
+      expect(labels.join(' / ')).toContain('예상 월 배당/현금흐름');
+      expect(labels.join(' / ')).toContain('대비 차이');
+
+      const order = await page.evaluate(() => {
+        const ids = [
+          'choiceJudgment',
+          'primaryInputsPanel',
+          'simKpiGrid',
+          'simChartSvg',
+          'strategyComparisonCards',
+          'detailSection',
+        ];
+        return ids.map((id) => {
+          const element = document.getElementById(id);
+          return { id, top: element?.getBoundingClientRect().top ?? -1 };
+        });
+      });
+      for (let i = 1; i < order.length; i += 1) {
+        expect(order[i].top).toBeGreaterThan(order[i - 1].top);
+      }
+
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      expect(overflow).toBeLessThanOrEqual(1);
+    }
+  });
+
+  test('Phase 08 warning uses only totalInitialAsset and not high monthly investment', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 900 });
+    await page.goto('apps/simulation/index.html');
+    await page.waitForSelector('#dividendWarningBanner');
+
+    page.once('dialog', async (dialog) => {
+      expect(dialog.message()).toContain('Main에서 연동된 값');
+      await dialog.accept();
+    });
+    await page.locator('#totalInitialAsset').fill('50000000');
+    await page.locator('#totalMonthlyInvestCapacity').fill('10000000');
+    await expect(page.locator('#dividendWarningBanner')).toBeVisible();
+
+    await page.locator('#totalInitialAsset').fill('50000001');
+    await expect(page.locator('#dividendWarningBanner')).toBeHidden();
+  });
+
+  test('Phase 08 chart cards details and touch tooltip stay stable on mobile', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 900 });
+    await page.goto('apps/simulation/index.html');
+    await page.waitForSelector('#simChartSvg polyline.strategy-line');
+
+    const chartBox = await page.locator('#simChartSvg').boundingBox();
+    expect(chartBox?.width || 0).toBeGreaterThan(240);
+    expect(chartBox?.height || 0).toBeGreaterThan(90);
+    await expect(page.locator('#simChartSvg text', { hasText: '지수/성장' })).toBeVisible();
+    await expect(page.locator('#simChartSvg text', { hasText: 'SCHD' })).toBeVisible();
+    await expect(page.locator('#simChartSvg text', { hasText: '커버드콜' })).toBeVisible();
+
+    const firstKpiBefore = await page.locator('#simKpiGrid .kpi-value').first().textContent();
+    const chartTopBefore = await page.locator('.sim-chart-wrap').evaluate((el) => {
+      const rect = el.getBoundingClientRect();
+      return rect.top + window.scrollY;
+    });
+    await page.locator('[data-strategy-card="coveredCallMonthlyIncome"]').click();
+    const firstKpiAfter = await page.locator('#simKpiGrid .kpi-value').first().textContent();
+    const chartTopAfter = await page.locator('.sim-chart-wrap').evaluate((el) => {
+      const rect = el.getBoundingClientRect();
+      return rect.top + window.scrollY;
+    });
+    expect(firstKpiAfter).not.toBe(firstKpiBefore);
+    expect(Math.abs(chartTopAfter - chartTopBefore)).toBeLessThan(32);
+
+    await page.locator('#simChartSvg rect').nth(2).dispatchEvent('touchstart');
+    await expect(page.locator('#simChartTooltip')).toBeVisible();
+    await expect(page.locator('#simChartTooltip')).toContainText('월');
+
+    await expect(page.locator('#detailSection')).not.toHaveAttribute('open', '');
+    await page.locator('#detailSection summary').click();
+    await expect(page.locator('#detailSection')).toHaveAttribute('open', '');
+    const detailOverflow = await page.locator('#detailSection .table-wrap').evaluate((el) => el.scrollWidth > el.clientWidth);
+    expect(detailOverflow).toBe(true);
+
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(overflow).toBeLessThanOrEqual(1);
+
+    await page.screenshot({ path: 'test-results/phase08-step2-mobile-390.png', fullPage: true });
+  });
+
+  test('Phase 08 tablet screenshot captures first-screen comparison flow', async ({ page }) => {
+    await page.setViewportSize({ width: 768, height: 920 });
+    await page.goto('apps/simulation/index.html');
+    await page.waitForSelector('#strategyComparisonCards .comparison-card');
+    await page.screenshot({ path: 'test-results/phase08-step2-mobile-768.png', fullPage: true });
+  });
+
+  test('Phase 08 DataHub save list load and delete works through visible controls with fallback status', async ({ page }) => {
+    page.on('dialog', async (dialog) => {
+      if (dialog.type() === 'confirm') await dialog.accept();
+      else await dialog.dismiss();
+    });
+
+    await page.goto('apps/simulation/index.html');
+    await page.waitForSelector('#saveStep2Simulation');
+    await page.evaluate(() => {
+      const failingHub = {
+        saveStep2Entry: async () => { throw new Error('IDB_BLOCKED_SAVE'); },
+        listStep2Entries: async () => { throw new Error('IDB_BLOCKED_LIST'); },
+        getStep2EntryById: async () => { throw new Error('IDB_BLOCKED_LOAD'); },
+        deleteStep2Entry: async () => { throw new Error('IDB_BLOCKED_DELETE'); },
+        triggerAutoBackup: async () => ({ created: false }),
+      };
+      window.IsfStorageHub = failingHub;
+      window.IsfHubStorage = failingHub;
+    });
+
+    await page.locator('[data-strategy-card="coveredCallMonthlyIncome"]').click();
+    await page.locator('#saveStep2Simulation').click();
+    await expect(page.locator('#statusIndicator')).toContainText('임시 저장 모드로 저장됨');
+
+    await page.locator('#appLauncherBtn').click();
+    await page.locator('#headerDataHubBtn').click();
+    await page.locator('data-hub-modal .tab-btn', { hasText: '시뮬레이션 목록' }).click();
+    await expect(page.locator('data-hub-modal .simulation-name')).toContainText(/JEPI|커버드콜|월 현금흐름/);
+
+    const savedName = await page.locator('data-hub-modal .simulation-name').first().textContent();
+    await page.locator('#totalInitialAsset').fill('64000000');
+    await page.locator('data-hub-modal .btn-select').first().click();
+    await expect(page.locator('#totalInitialAsset')).not.toHaveValue('64000000');
+
+    await page.locator('#appLauncherBtn').click();
+    await page.locator('#headerDataHubBtn').click();
+    await page.locator('data-hub-modal .tab-btn', { hasText: '시뮬레이션 목록' }).click();
+    await expect(page.locator('data-hub-modal .simulation-name').first()).toHaveText(savedName || '');
+    await page.locator('data-hub-modal .btn-delete').first().click();
+    await expect(page.locator('data-hub-modal #tab-simulations .empty')).toContainText('저장된 시뮬레이션이 없습니다.');
+  });
+});
