@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.8
 milestone_name: 적립식 포트폴리오 관리 및 전체 UI/UX 개선
 status: planning
-last_updated: "2026-06-17T07:08:18.330Z"
-last_activity: 2026-06-17 -- Phase 07 complete; ready to plan Phase 08
+last_updated: "2026-06-17T07:50:39.567Z"
+last_activity: 2026-06-17 -- Phase 08 Plan 01 complete
 progress:
   total_phases: 4
   completed_phases: 3
-  total_plans: 9
-  completed_plans: 9
+  total_plans: 13
+  completed_plans: 10
   percent: 75
 stopped_at: Phase 08 context gathered
 ---
@@ -19,9 +19,9 @@ stopped_at: Phase 08 context gathered
 ## Current Position
 
 Phase: 8
-Plan: Not started
+Plan: 02/04
 Status: Ready to plan Phase 08
-Last activity: 2026-06-17 -- Phase 07 complete; ready to plan Phase 08
+Last activity: 2026-06-17 -- Phase 08 Plan 01 complete
 
 ## Project Reference
 
@@ -34,3 +34,15 @@ See: .planning/PROJECT.md (updated 2026-05-20)
 
 - **AI Removal (D-04)**: 시스템 복잡성 감소 및 정적 웹의 오프라인 안정성을 위해 실험적 AI 기능을 제거하고 코어 엔진 고도화에 집중함.
 - **Phase 07 Gap Closure**: Step 1 bootstrap was split into focused vanilla ES module controllers; safe datalist rendering and allocation group open-state regressions are covered by the full Phase 07 Playwright gate.
+
+## Performance Metrics
+
+| Phase | Plan | Duration | Notes |
+|-------|------|----------|-------|
+| Phase 08-step-2-redesign-re-planning P01 | 33 min | 3 tasks | 8 files |
+
+## Decisions
+
+- [Phase 08-01]: Step 2 save/list/load/delete now routes through a narrow storage facade; backup behavior remains on IndexedDB-capable paths only.
+- [Phase 08-01]: Reset prefers the latest Step 1 source snapshot and falls back to cached original source metadata before returning to an empty draft.
+- [Phase 08-01]: Saved Step 2 entries generate a display name from strategy context, horizon, and save timestamp when no existing name is present.
