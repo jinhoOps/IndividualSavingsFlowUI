@@ -56,7 +56,7 @@ export function createRenderOrchestrator() {
     listRenderer.renderTransferRulesList(inputs.transfers || [], inputs.accounts);
     listRenderer.renderTransferSelectOptions(inputs.accounts);
 
-    const accountNodes = sankeyData ? sankeyData.nodes.filter((node) => node.column === 1) : [];
+    const accountNodes = sankeyData ? sankeyData.nodes.filter((node) => node.column === 1 || node.column === 1.5) : [];
     const accountsWithValues = inputs.accounts.map((account) => {
       const node = accountNodes.find((candidate) => candidate.id === account.id);
       return {

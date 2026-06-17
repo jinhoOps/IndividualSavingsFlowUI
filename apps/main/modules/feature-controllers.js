@@ -79,11 +79,11 @@ export function handleApplySmartAdd(renderItemListCallback) {
   const newItems = [...state.inputs.expenseItems];
   
   if (selectedName === "new") {
-    newItems.push({ name: merchantName, amountWon: amountWon, group: "기타" });
+    newItems.push({ name: merchantName, amount: amountWon, group: "기타" });
   } else {
     const idx = newItems.findIndex(item => item.name === selectedName);
     if (idx !== -1) {
-      newItems[idx] = { ...newItems[idx], amountWon: newItems[idx].amountWon + amountWon };
+      newItems[idx] = { ...newItems[idx], amount: (newItems[idx].amount || 0) + amountWon };
     }
   }
   

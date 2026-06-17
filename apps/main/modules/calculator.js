@@ -149,6 +149,7 @@ export function buildSavingsBuckets(inputs) {
     id: typeof item?.id === "string" && item.id.trim()
       ? item.id.trim()
       : createAllocationItemId("savings", index),
+    accountId: item?.accountId || "",
     monthlyTarget: monthlyTargets[index] || 0,
     annualRate: sanitizeSavingsAnnualRate(item?.annualRate, fallbackRate),
     monthlyFactor: toMonthlyFactor(sanitizeSavingsAnnualRate(item?.annualRate, fallbackRate)),
@@ -171,6 +172,7 @@ export function buildInvestBuckets(inputs) {
     id: typeof item?.id === "string" && item.id.trim()
       ? item.id.trim()
       : createAllocationItemId("invest", index),
+    accountId: item?.accountId || "",
     monthlyTarget: monthlyTargets[index] || 0,
     monthlyFactor,
     balance: initialBalances[index] || 0,
@@ -322,6 +324,35 @@ export function simulateProjection(inputs, options = {}) {
       }
     });
     invest = investBuckets.reduce((sum, bucket) => sum + bucket.balance, 0);
+
+    const surplusTransferAccountId = inputs.surplusTransferAccountId;
+    if (nextCash > 0 && surplusTransferAccountId) {
+      const targetSavings = savingsBuckets.filter(b => !b.closed && b.accountId === surplusTransferAccountId);
+      const targetInvests = investBuckets.filter(b => !b.closed && b.accountId === surplusTransferAccountId);
+      const targetBuckets = [...targetSavings, ...targetInvests];
+      
+      if (targetBuckets.length > 0) {
+        const surplusAmount = nextCash;
+        const surplusAdds = allocateByWeights(surplusAmount, targetBuckets.map(b => b.monthlyTarget || 1));
+        
+        targetSavings.forEach((bucket) => {
+          const idx = savingsBuckets.indexOf(bucket);
+          if (idx !== -1) {
+            bucket.balance += surplusAdds[idx] || 0;
+          }
+        });
+        targetInvests.forEach((bucket) => {
+          const idx = investBuckets.indexOf(bucket);
+          if (idx !== -1) {
+            bucket.balance += surplusAdds[targetSavings.length + idx] || 0;
+          }
+        });
+        
+        savings = savingsBuckets.reduce((sum, bucket) => sum + bucket.balance, 0);
+        invest = investBuckets.reduce((sum, bucket) => sum + bucket.balance, 0);
+        nextCash = 0;
+      }
+    }
 
     let newBorrowing = 0;
     if (nextCash < 0) {

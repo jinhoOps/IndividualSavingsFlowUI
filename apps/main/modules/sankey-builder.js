@@ -66,6 +66,15 @@ export function buildSankeyData(snapshot, sortMode, sankeyGrouping) {
   const links = [];
   const splitGroups = [];
 
+  const accounts = snapshot.accounts || [];
+  const accountIds = new Set(accounts.map((a) => a.id));
+
+  function resolveAccountId(itemAccountId, magicDefault) {
+    if (itemAccountId && accountIds.has(itemAccountId)) return itemAccountId;
+    if (magicDefault && accountIds.has(magicDefault)) return magicDefault;
+    return accounts[0]?.id || null;
+  }
+
   // 1. 노드 목록(nodes) 생성
   // 수입 노드들 (column: 0)
   incomeSources.forEach((src) => {
@@ -78,25 +87,17 @@ export function buildSankeyData(snapshot, sortMode, sankeyGrouping) {
     });
   });
 
-  // 계좌 노드들 (column: 1)
-  const accounts = snapshot.accounts || [];
+  // 계좌 노드들 (수입이 직접 들어오는 수입계좌는 column 1, 분배받는 중간계좌는 column 1.5)
+  const incomeAccounts = new Set(incomeSources.map(src => resolveAccountId(src.accountId, MAGIC_MAPPING_DEFAULTS.income)));
   accounts.forEach((acc) => {
     nodes.push({
       id: acc.id,
       label: acc.name || acc.label || `계좌-${acc.id}`,
       value: 0,
       tone: acc.tone || "account",
-      column: 1
+      column: incomeAccounts.has(acc.id) ? 1 : 1.5
     });
   });
-
-  const accountIds = new Set(accounts.map((a) => a.id));
-
-  function resolveAccountId(itemAccountId, magicDefault) {
-    if (itemAccountId && accountIds.has(itemAccountId)) return itemAccountId;
-    if (magicDefault && accountIds.has(magicDefault)) return magicDefault;
-    return accounts[0]?.id || null;
-  }
 
   // 세부 항목 카테고리별 묶음 연산 헬퍼
   const resolveCategoryNodesAndLinks = (category, breakdownItems, groupingSetting, defaultNodeLabel) => {
@@ -281,6 +282,17 @@ export function buildSankeyData(snapshot, sortMode, sankeyGrouping) {
     nodes.push(node);
   });
 
+  // 부채상환 노드
+  if (snapshot.debtPayment > 0) {
+    nodes.push({
+      id: "debt",
+      label: "부채상환",
+      value: snapshot.debtPayment,
+      tone: "debt",
+      column: 2
+    });
+  }
+
   // 잉여현금 노드
   if (snapshot.surplus > 0) {
     nodes.push({
@@ -293,41 +305,51 @@ export function buildSankeyData(snapshot, sortMode, sankeyGrouping) {
   }
 
   // 2. 링크 목록(links) 생성
-  // 수입 ➔ 계좌 링크
+  // 수입 ➔ 급여계좌(수입계좌) 전체 이체, 그리고 급여계좌 ➔ 타 계좌 분배 링크 생성
   incomeSources.forEach((src) => {
-    let allocatedTotal = 0;
-    
+    const mainAccountId = resolveAccountId(src.accountId, MAGIC_MAPPING_DEFAULTS.income);
+    if (!mainAccountId) return;
+
+    // 1) 수입 ➔ 해당 수입의 주 계좌로 전체 금액 연결
+    links.push({
+      source: src.id,
+      target: mainAccountId,
+      value: src.value,
+      tone: src.tone
+    });
+
+    // 2) 주 계좌 ➔ 타 계좌로의 분배 링크 연결
     if (Array.isArray(src.allocations) && src.allocations.length > 0) {
       src.allocations.forEach((alloc) => {
         if (alloc.amount <= 0) return;
         const targetAccountId = resolveAccountId(alloc.accountId, MAGIC_MAPPING_DEFAULTS.income);
-        if (!targetAccountId) return;
+        if (!targetAccountId || targetAccountId === mainAccountId) return;
+        
         links.push({
-          source: src.id,
+          source: mainAccountId,
           target: targetAccountId,
           value: alloc.amount,
           tone: src.tone
         });
-        allocatedTotal += alloc.amount;
       });
-    }
-
-    const remainder = src.value - allocatedTotal;
-    if (remainder > 0.01) {
-      const targetAccountId = resolveAccountId(src.accountId, MAGIC_MAPPING_DEFAULTS.income);
-      if (targetAccountId) {
-        links.push({
-          source: src.id,
-          target: targetAccountId,
-          value: remainder,
-          tone: src.tone
-        });
-      }
     }
   });
 
   // 계좌 ➔ 세부 항목 링크들 주입
   links.push(...expenseRes.links, ...savingsRes.links, ...investRes.links);
+
+  // 부채상환 링크
+  if (snapshot.debtPayment > 0) {
+    const debtSourceId = resolveAccountId(null, MAGIC_MAPPING_DEFAULTS.expense);
+    if (debtSourceId) {
+      links.push({
+        source: debtSourceId,
+        target: "debt",
+        value: snapshot.debtPayment,
+        tone: "debt"
+      });
+    }
+  }
 
   // 잉여현금 링크
   if (snapshot.surplus > 0) {
@@ -414,7 +436,7 @@ export function buildSankeyData(snapshot, sortMode, sankeyGrouping) {
 
   // 3.5 계좌 노드들의 실제 금액(value) 계산 및 갱신
   nodes.forEach((node) => {
-    if (node.column === 1) {
+    if (node.column === 1 || node.column === 1.5) {
       const totalInflow = [...links, ...transfers]
         .filter((link) => link.target === node.id)
         .reduce((sum, link) => sum + link.value, 0);
