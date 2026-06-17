@@ -49,10 +49,10 @@ export function normalizeStep2Entry(data = {}) {
     years: Number(data.dividendSim?.years ?? 10),
     isDrip: data.dividendSim?.isDrip !== false,
     presetName: data.dividendSim?.presetName || "",
-    selectedBenchmark: data.dividendSim?.selectedBenchmark || "",
+    selectedBenchmark: data.dividendSim?.selectedBenchmark || "nasdaq",
     strategyKey: data.dividendSim?.strategyKey || "",
     strategyName: data.dividendSim?.strategyName || "",
-    coveredCallExample: data.dividendSim?.coveredCallExample || "",
+    coveredCallExample: data.dividendSim?.coveredCallExample || "jepi",
   };
   const entry = {
     ...data,

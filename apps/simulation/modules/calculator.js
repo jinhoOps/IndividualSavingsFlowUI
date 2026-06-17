@@ -3,6 +3,7 @@ import { state } from "./state.js";
 import { DEFAULT_INFLATION_RATE, DEFAULT_TAX_RATE } from "./constants.js";
 
 import { utils } from "./utils.js";
+export { calculateStrategyComparison } from "./comparison-calculator.js";
 
 
 export function getTotalMonthlyInvestCapacity() {

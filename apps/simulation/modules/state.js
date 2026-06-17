@@ -39,7 +39,11 @@ export function createEmptyDraft() {
       capitalGrowth: 4.0,
       years: 10,
       isDrip: true,
-      presetName: ""
+      presetName: "",
+      selectedBenchmark: "nasdaq",
+      strategyKey: "dividendGrowth",
+      strategyName: "SCHD",
+      coveredCallExample: "jepi"
     },
     updatedAt: Date.now()
   };
