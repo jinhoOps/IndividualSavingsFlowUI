@@ -713,4 +713,41 @@ test.describe('Phase 09 preset quick setup contracts', () => {
     await expect(modal.locator('input[data-preset-percent="savings"]')).toHaveValue(copiedValues[1]);
     await expect(modal.locator('input[data-preset-percent="invest"]')).toHaveValue(copiedValues[2]);
   });
+
+  test('shows confirmation provenance and commits preset through persistence', async ({ page }) => {
+    await page.locator('#openPresetBtn').click();
+    const modal = page.locator('#presetModal');
+    await modal.locator('[data-preset-key="growth"]').click();
+    await modal.locator('#applyModalPresetBtn').click();
+
+    await expect(modal.locator('#presetConfirmStep')).toBeVisible();
+    await expect(modal.locator('#presetConfirmStep')).toContainText('기존 데이터 덮어쓰기');
+    await expect(modal.locator('#presetConfirmStep')).toContainText('원래');
+    await expect(modal.locator('#presetConfirmStep')).toContainText('보정');
+    await expect(modal.locator('.preset-confirm-row').first()).toContainText('%');
+
+    await modal.locator('#applyModalPresetBtn').click();
+    await expect(modal).toBeHidden();
+
+    const savedInputs = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}'));
+    expect(savedInputs.incomes?.[0]?.id).toBe('income-preset');
+    expect(savedInputs.expenseItems?.map((item: any) => item.group)).toEqual(['고정비', '변동비', '행복비', '경조사비']);
+    expect(savedInputs.monthlyExpense).toBeGreaterThan(0);
+    expect(savedInputs.monthlySavings).toBeGreaterThan(0);
+    expect(savedInputs.monthlyInvest).toBeGreaterThan(0);
+  });
+
+  test('formats high Korean money units with only one lower unit', async ({ page }) => {
+    const result = await page.evaluate(() => ({
+      eokHint: window.IsfUtils.convertToKoreanWon(123456789),
+      joHint: window.IsfUtils.convertToKoreanWon(1234567890000),
+      eokLabel: window.IsfUtils.formatMoney(123456789),
+      joLabel: window.IsfUtils.formatMoney(1234567890000),
+    }));
+
+    expect(result.eokHint).toBe('1억 2345만');
+    expect(result.joHint).toBe('1조 2345억');
+    expect(result.eokLabel).toBe('1억 2345만');
+    expect(result.joLabel).toBe('1조 2345억');
+  });
 });
