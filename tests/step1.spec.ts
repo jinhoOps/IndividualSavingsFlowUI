@@ -611,6 +611,92 @@ test.describe('Phase 09 account correction and Sankey topology', () => {
     expect(result.totalIncomeValue).toBe(1000000);
     expect(result.deficitToTotal).toBe(false);
   });
+
+  test('Phase 09 manual Sankey account correction refresh repairs visible state', async ({ page }) => {
+    await page.evaluate(async () => {
+      const [{ state }, { buildMonthlySnapshot }, { sanitizeInputs }] = await Promise.all([
+        import('/IndividualSavingsFlowUI/apps/main/modules/state.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/calculator.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/input-sanitizer.js'),
+      ]);
+      state.inputs = {
+        ...sanitizeInputs({
+          modelVersion: 10,
+          incomes: [{ id: 'income-main', name: '급여', amount: 3000000, accountId: 'acc-salary' }],
+          accounts: [
+            { id: 'acc-salary', name: '급여계좌' },
+            { id: 'acc-living', name: '생활비계좌' },
+            { id: 'acc-stock', name: '투자계좌' },
+          ],
+          expenseItems: [{ id: 'rent', name: '월세', amount: 900000, group: '고정비', accountId: 'acc-living' }],
+          savingsItems: [{ id: 'saving', name: '적금', amount: 300000, group: '저축', accountId: 'acc-salary' }],
+          investItems: [{ id: 'invest', name: 'ETF', amount: 200000, group: '투자', accountId: 'acc-stock' }],
+        }),
+        expenseItems: [{ id: 'rent', name: '월세', amount: 900000, group: '고정비', accountId: 'missing-expense' }],
+        accountCorrections: [],
+      };
+      state.snapshot = buildMonthlySnapshot(state.inputs);
+    });
+
+    const refreshButton = page.locator('#sankeyCorrectionRefresh');
+    await expect(refreshButton).toBeVisible();
+    await refreshButton.click();
+
+    await expect(page.locator('#sankeyCorrectionStatus')).toContainText('보정');
+    const savedInputs = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}'));
+    expect(savedInputs.expenseItems?.[0]?.accountId).toBe('acc-living');
+    await expect(page.locator('#sankeySvg .sankey-label')).toContainText(['총수입']);
+    await expect(page.locator('#sankeySvg')).not.toContainText('미지정 계좌');
+  });
+
+  test('Phase 09 basic Sankey starts at total-income while detail mode expands items', async ({ page }) => {
+    await page.evaluate(async () => {
+      const [{ state }, { buildMonthlySnapshot }, { sanitizeInputs }, { renderSankey }, { buildSankeyData }] = await Promise.all([
+        import('/IndividualSavingsFlowUI/apps/main/modules/state.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/calculator.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/input-sanitizer.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/sankey-renderer.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/sankey-builder.js'),
+      ]);
+      state.inputs = sanitizeInputs({
+        modelVersion: 10,
+        splitIncomeAccounts: false,
+        incomes: [
+          { id: 'salary', name: '본업 급여', amount: 3000000, accountId: 'acc-salary' },
+          { id: 'side', name: '부업 수입', amount: 500000, accountId: 'acc-salary' },
+        ],
+        accounts: [
+          { id: 'acc-salary', name: '급여계좌' },
+          { id: 'acc-living', name: '생활비계좌' },
+          { id: 'acc-stock', name: '투자계좌' },
+        ],
+        expenseItems: [{ id: 'rent', name: '월세', amount: 900000, group: '고정비', accountId: 'acc-living' }],
+        savingsItems: [{ id: 'saving', name: '적금', amount: 300000, group: '저축', accountId: 'acc-salary' }],
+        investItems: [{ id: 'invest', name: 'ETF', amount: 200000, group: '투자', accountId: 'acc-stock' }],
+      });
+      state.snapshot = buildMonthlySnapshot(state.inputs);
+      state.sankeyDetailMode = 'basic';
+      state.sankeyGrouping = { expense: 'total', savings: 'total', invest: 'total' };
+      renderSankey(state.snapshot, buildSankeyData, 'group');
+    });
+
+    const basicLabels = await page.locator('#sankeySvg .sankey-label').evaluateAll((labels) =>
+      labels.map((label) => label.textContent || '')
+    );
+    expect(basicLabels).toEqual(expect.arrayContaining(['총수입', '급여계좌', '생활비계좌', '투자계좌', '고정비(고정지출)', '저축', '투자']));
+    expect(basicLabels).not.toEqual(expect.arrayContaining(['본업 급여', '부업 수입', '월세', '적금', 'ETF']));
+
+    await page.locator('#showSankeyDetailBtn').click();
+    await page.locator('#sankeyGroupingExpense').selectOption('detail');
+    await page.locator('#sankeyGroupingSavings').selectOption('detail');
+    await page.locator('#sankeyGroupingInvest').selectOption('detail');
+    await page.waitForTimeout(300);
+
+    const detailLabels = await page.locator('#sankeySvg .sankey-label').evaluateAll((labels) =>
+      labels.map((label) => label.textContent || '')
+    );
+    expect(detailLabels).toEqual(expect.arrayContaining(['본업 급여', '부업 수입', '월세', '적금', 'ETF']));
+  });
 });
 
 test.describe('Phase 09 preset quick setup contracts', () => {
