@@ -2,13 +2,11 @@
 
 **Milestones:** v1.0~v1.7 (Completed) | **Current:** v1.8 (Active)
 
----
-
 ## Active Roadmap: v1.8 적립식 포트폴리오 관리 및 전체 UI/UX 개선
 
 **Goal:** Step 3 포트폴리오 영속화를 완료하고, 이를 기반으로 Step 1과 Step 2의 UI/UX를 전면 개선(Step 1 모듈화 및 대역폭 축소, Step 2 목표 중심 재기획)하여 일관된 에디토리얼 피드백 시스템을 완성한다.
 
-**4 phases** | **5 requirements mapped** | All covered ✓
+**5 phases** | **5 requirements mapped** | All covered ✓
 
 | # | Phase | Goal | Requirements | Success Criteria |
 |---|-------|------|--------------|------------------|
@@ -16,6 +14,7 @@
 | 6 | Confirmation & Portfolio Storage Hub | 포트폴리오 추가 최종 확인 모달 구현 및 IndexedDB 영속화 저장소 연동 | PORT-03 | 2 |
 | 7 | Step 1 UI/UX Refactoring & Modularization | Step 1의 거대한 CSS 다이어트, 모듈 쪼개기, DESIGN.md 기반 UI/UX 전면 개편 | UI-01, UI-02 | Complete (7/7, 2026-06-17) |
 | 8 | Step 2 Redesign & Re-planning | 4/4 | Complete   | 2026-06-17 |
+| 9 | Step 1 Financial Settings Input UIUX Rebuild | Step 1 재무설정 입력 화면을 Step 3 경험 기준으로 재설계하고, 계좌/항목 추가 흐름 및 Sankey 총수입 집계 노드를 안정화 | TBD | TBD |
 
 ### Phase Details
 
@@ -76,3 +75,14 @@
   2. IndexedDB 차단 환경(Private Mode)에서도 LocalStorage를 통한 오프라인 폴백 동작이 정상 작동하는지 확인
   3. 배당에 투자할 수 있는 순수 투자자산이 5천만 원(5,000만 원) 이하일 때 배당 투자의 효과가 미미하다는 안내 힌트/경고가 UI 상에 명시적으로 노출되는지 확인
   4. 지수추종(성장형) vs 배당성장 vs 커버드콜의 장단점(장기 총수익률 vs 월 현금 흐름 창출 및 심리적 안정감)을 직관적으로 대조하여, 투자자 스스로 자산 선택 여부를 쉽게 판단할 수 있는 가이드 카드 및 비교 기능이 제공되는지 확인
+
+### Phase 9: Step 1 Financial Settings Input UIUX Rebuild
+
+- **Goal:** Step 1 재무설정 입력 화면을 Step 3 경험 기준으로 재설계하고, 계좌/항목 추가 흐름 및 Sankey 총수입 집계 노드를 안정화
+- **Requirements:** TBD
+- **Depends on:** Phase 8
+- **Plans:** 0 plans
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase 9 to break down)
