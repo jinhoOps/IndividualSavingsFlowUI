@@ -151,6 +151,9 @@ export const dom = {
   financialModalRows: document.getElementById("financialModalRows"),
   financialModalCancel: document.getElementById("financialModalCancel"),
   financialModalSave: document.getElementById("financialModalSave"),
+  financialModalPendingBar: document.getElementById("financialModalPendingBar"),
+  financialModalPendingCancel: document.getElementById("financialModalPendingCancel"),
+  financialModalPendingSave: document.getElementById("financialModalPendingSave"),
 
   snapshotSelector: document.getElementById("snapshotSelector"),
   saveSnapshotBtn: document.getElementById("saveSnapshotBtn"),

@@ -140,6 +140,60 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
     return typeof getVisibleInputs === "function" ? getVisibleInputs() : {};
   }
 
+  function syncFinancialModalPendingBar() {
+    if (!dom.financialModalPendingBar) return;
+
+    const hasChanges = () => {
+      if (!activeCategory || !baselineInputs) return false;
+      const baseItems = getItemsForCategory(baselineInputs, activeCategory);
+      return JSON.stringify(baseItems) !== JSON.stringify(draftItems);
+    };
+
+    const isVisible = (editingIndex !== -1 && !createDraft) || hasChanges();
+
+    if (isVisible) {
+      if (dom.financialModalPendingBar.hidden || dom.financialModalPendingBar.style.display === "none") {
+        const animations = ["anim-slide-up", "anim-fade-scale", "anim-bounce-in"];
+        const randomAnim = animations[Math.floor(Math.random() * animations.length)];
+        
+        dom.financialModalPendingBar.classList.remove("anim-slide-up", "anim-fade-scale", "anim-bounce-in");
+        dom.financialModalPendingBar.classList.add(randomAnim);
+        
+        dom.financialModalPendingBar.hidden = false;
+        dom.financialModalPendingBar.style.display = "";
+      }
+    } else {
+      dom.financialModalPendingBar.hidden = true;
+      dom.financialModalPendingBar.style.display = "none";
+    }
+  }
+
+  function convertToSelect(badge, idx, accounts) {
+    const select = document.createElement("select");
+    select.className = "financial-modal-account-inline-select";
+    accounts.forEach((acc) => {
+      const opt = document.createElement("option");
+      opt.value = acc.id;
+      opt.textContent = acc.name;
+      if (acc.id === draftItems[idx].accountId) opt.selected = true;
+      select.appendChild(opt);
+    });
+    
+    select.onchange = () => {
+      draftItems[idx].accountId = select.value;
+      if (activeCategory === "income") {
+        draftItems[idx].allocations = [{ accountId: select.value, amount: Number(draftItems[idx].amount) || 0 }];
+      }
+      renderRows();
+      syncFinancialModalPendingBar();
+    };
+    select.onblur = () => {
+      renderRows();
+    };
+    badge.replaceWith(select);
+    select.focus();
+  }
+
   function syncStats() {
     if (!dom.financialModalSummary) return;
     const total = activeCategory === "account"
@@ -199,7 +253,9 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
     header.className = "financial-modal-row__header";
     header.appendChild(createText("strong", "", getItemLabel(item, activeCategory, index)));
     if (activeCategory !== "account") {
-      header.appendChild(createText("span", "financial-modal-account-badge", getAccountName(accounts, item.accountId)));
+      const badge = createText("span", "financial-modal-account-badge clickable", getAccountName(accounts, item.accountId));
+      badge.dataset.badgeAccountIndex = String(index);
+      header.appendChild(badge);
     }
     row.appendChild(header);
 
@@ -219,7 +275,7 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
     edit.type = "button";
     edit.className = "btn btn-ghost btn-sm financial-modal-row__edit";
     edit.dataset.financialModalEdit = String(index);
-    edit.textContent = "편집";
+    edit.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>`;
     row.appendChild(edit);
 
     return row;
@@ -228,8 +284,6 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
   function renderEditingRow(item, index, accounts) {
     const row = renderCompactRow(item, index, accounts);
     row.classList.add("financial-modal-row--editing");
-    const editButton = row.querySelector("[data-financial-modal-edit]");
-    if (editButton) editButton.textContent = "편집 중";
 
     const fields = document.createElement("div");
     fields.className = "financial-modal-row__fields";
@@ -303,6 +357,7 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
     dom.financialModalRows.replaceChildren(...draftItems.map((item, index) => renderRow(item, index, accounts)));
     syncStats();
     IsfUtils.updateAllKoreanWonHints(dom.financialModalRows);
+    syncFinancialModalPendingBar();
   }
 
   function open(category) {
@@ -330,6 +385,7 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
     }
     dom.financialModal.hidden = false;
     window.setTimeout(() => dom.financialModal.classList.add("is-active"), 10);
+    syncFinancialModalPendingBar();
   }
 
   function close() {
@@ -345,6 +401,7 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
     window.setTimeout(() => {
       dom.financialModal.hidden = true;
     }, 250);
+    syncFinancialModalPendingBar();
   }
 
   function save() {
@@ -361,6 +418,7 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
       renderAll();
     }
     close();
+    syncFinancialModalPendingBar();
   }
 
   function getRecommendedAccountId() {
@@ -670,11 +728,35 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
           if (dom.financialModalSave) dom.financialModalSave.hidden = false;
           if (dom.financialModalCreate) dom.financialModalCreate.hidden = false;
           renderRows();
+          return;
         }
+
+        // 배지 클릭 시 인라인 셀렉트 변환
+        const badge = target.closest("[data-badge-account-index]");
+        if (badge) {
+          event.stopPropagation();
+          const idx = Number(badge.dataset.badgeAccountIndex);
+          const accounts = safeItems(getInputs().accounts);
+          convertToSelect(badge, idx, accounts);
+          return;
+        }
+
+        // 에디트 버튼 클릭 시
         const editButton = target.closest?.("[data-financial-modal-edit]");
         if (editButton) {
           editingIndex = Number(editButton.dataset.financialModalEdit);
           renderRows();
+          return;
+        }
+
+        // 카드 자체 클릭 시 편집 진입
+        const row = target.closest(".financial-modal-row");
+        if (row && !target.closest("button") && !target.closest("select") && !target.closest("input")) {
+          const idx = Number(row.dataset.modalRowIndex);
+          if (editingIndex !== idx) {
+            editingIndex = idx;
+            renderRows();
+          }
         }
       });
     }
@@ -682,6 +764,8 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
     if (dom.financialModalCancel) dom.financialModalCancel.addEventListener("click", close);
     if (dom.financialModalSave) dom.financialModalSave.addEventListener("click", save);
     if (dom.financialModalCreate) dom.financialModalCreate.addEventListener("click", startCreateFlow);
+    if (dom.financialModalPendingCancel) dom.financialModalPendingCancel.addEventListener("click", close);
+    if (dom.financialModalPendingSave) dom.financialModalPendingSave.addEventListener("click", save);
   }
 
   return {
