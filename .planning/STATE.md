@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.8
 milestone_name: 적립식 포트폴리오 관리 및 전체 UI/UX 개선
 status: completed
-last_updated: "2026-06-18T03:08:20.597Z"
-last_activity: 2026-06-18 -- Phase 09 Plan 03 completed
+last_updated: "2026-06-18T03:35:29.551Z"
+last_activity: 2026-06-18 -- Phase 09 Plan 04 completed
 progress:
   total_phases: 5
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 17
-  completed_plans: 16
-  percent: 94
-stopped_at: Completed 09-03-PLAN.md
+  completed_plans: 17
+  percent: 100
+stopped_at: Completed 09-04-PLAN.md
 ---
 
 # Project State
@@ -19,9 +19,9 @@ stopped_at: Completed 09-03-PLAN.md
 ## Current Position
 
 Phase: 9
-Plan: 03/04
-Status: Phase 09 Plan 03 complete, ready for 09-04
-Last activity: 2026-06-18 -- Phase 09 Plan 03 completed
+Plan: 04/04
+Status: Phase 09 complete
+Last activity: 2026-06-18 -- Phase 09 Plan 04 completed
 
 ## Project Reference
 
@@ -52,6 +52,7 @@ See: .planning/PROJECT.md (updated 2026-05-20)
 | Phase 09-step-1-financial-settings-input-uiux-rebuild P01 | 28 min | 3 tasks | 6 files |
 | Phase 09-step-1-financial-settings-input-uiux-rebuild P02 | 32 min | 3 tasks | 8 files |
 | Phase 09-step-1-financial-settings-input-uiux-rebuild P03 | 21 min | 3 tasks | 9 files |
+| Phase 09-step-1-financial-settings-input-uiux-rebuild P04 | 22 min | 3 tasks | 7 files |
 
 ## Decisions
 
@@ -71,3 +72,5 @@ See: .planning/PROJECT.md (updated 2026-05-20)
 - [Phase 09-03]: Step 1 summaryCards now render two financial setup groups and five category cards before Sankey. — Phase 09 requires the default screen to be summary-first while keeping Sankey directly below.
 - [Phase 09-03]: Category detail edits stay in financial modal draft state until persistence.commitImmediateInputs() save. — This preserves explicit save/cancel behavior and keeps sanitizer/persistence as the durable boundary.
 - [Phase 09-03]: Guided item creation and simple account alias creation live inside the relevant category modal. — The standalone account-management path is rejected for Phase 09; account work belongs inside item flows.
+- [Phase 09-04]: Manual Sankey account correction refresh reuses sanitizeInputs()/repairAccountConnections before persistence and rerender. — This keeps D-25 correction behavior aligned with saved/imported/shared Step 1 data.
+- [Phase 09-04]: Merged Sankey tooltip metadata remains textContent-based and uses newline-separated rows with CSS pre-line wrapping. — This satisfies D-27 readability without opening an HTML injection surface.
