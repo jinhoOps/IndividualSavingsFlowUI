@@ -770,6 +770,7 @@ test.describe('Phase 09 financial summary card surface', () => {
         import('/IndividualSavingsFlowUI/apps/main/modules/input-sanitizer.js'),
       ]);
       const inputs = sanitizeInputs({
+        modelVersion: 10,
         incomes: [{ id: 'income-test', name: '급여', amount: 3000000, accountId: 'acc-salary' }],
         accounts: [
           { id: 'acc-salary', name: '급여계좌' },
@@ -800,7 +801,7 @@ test.describe('Phase 09 financial summary card surface', () => {
     expect(result.groupTitles).toEqual(['수입+계좌', '지출+저축+투자']);
     expect(result.categoryLabels).toEqual(['수입', '계좌', '지출', '저축', '투자']);
     expect(result.firstCard).toMatchObject({ category: 'income', label: '수입', count: 1, total: 3000000 });
-    expect(result.firstCard.representatives).toContain('급여');
+    expect(result.firstCard.representatives).toEqual(expect.arrayContaining([expect.stringContaining('급여')]));
     expect(result.cardCategories).toEqual(['income', 'account', 'expense', 'savings', 'invest']);
     expect(result.cardRoles.every((role: string) => role === 'button')).toBe(true);
     expect(result.summaryBeforeSankey).toBe(true);

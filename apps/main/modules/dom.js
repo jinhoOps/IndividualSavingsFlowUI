@@ -85,6 +85,7 @@ export const dom = {
   returnToNormalMode: document.getElementById("returnToNormalMode"),
   jumpToTop: document.getElementById("jumpToTop"),
   applyFeedback: document.getElementById("applyFeedback"),
+  summaryPanel: document.querySelector(".summary-panel"),
   summaryCards: document.getElementById("summaryCards"),
   sankeySvg: document.getElementById("sankeySvg"),
   sankeyWrap: document.getElementById("sankeyWrap"),

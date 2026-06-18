@@ -3,12 +3,13 @@ import { IsfUtils } from "../../../shared/core/utils.js";
 import {
   buildMonthlySnapshot,
   simulateProjection,
-  buildSummaryCards,
   calculateAccountFinancialIncomes,
 } from "./calculator.js";
 import { buildSankeyData } from "./sankey-builder.js";
 import { renderSankey } from "./sankey-renderer.js";
 import { renderNetworkMap } from "./network-map-renderer.js";
+import { buildFinancialSummaryGroups } from "./financial-summary.js";
+import { renderFinancialSummaryGroups } from "./financial-summary-renderer.js";
 import { dom } from "./dom.js";
 import { state } from "./state.js";
 import * as helpers from "./state-helpers.js";
@@ -25,8 +26,7 @@ export function createRenderOrchestrator() {
     const snapshot = buildMonthlySnapshot(inputs);
     state.snapshot = snapshot;
     const projection = simulateProjection(inputs, { mode: state.projectionOptions.mode });
-    const cards = buildSummaryCards(snapshot, projection, inputs.horizonYears);
-    listRenderer.renderCards(cards, inputs.horizonYears);
+    renderFinancialSummaryGroups(dom.summaryCards, buildFinancialSummaryGroups(inputs));
 
     const { warnings } = calculateAccountFinancialIncomes(inputs);
     if (dom.appHeader && typeof dom.appHeader.setFinancialWarning === "function") {
