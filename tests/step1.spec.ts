@@ -751,3 +751,59 @@ test.describe('Phase 09 preset quick setup contracts', () => {
     expect(result.joLabel).toBe('1조 2345억');
   });
 });
+
+test.describe('Phase 09 financial summary card surface', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.clear();
+      sessionStorage.clear();
+    });
+    await page.goto('apps/main/index.html');
+    await page.waitForSelector('main');
+  });
+
+  test('builds and renders two summary groups with five category cards before Sankey', async ({ page }) => {
+    const result = await page.evaluate(async () => {
+      const [{ buildFinancialSummaryGroups }, { renderFinancialSummaryGroups }, { sanitizeInputs }] = await Promise.all([
+        import('/IndividualSavingsFlowUI/apps/main/modules/financial-summary.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/financial-summary-renderer.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/input-sanitizer.js'),
+      ]);
+      const inputs = sanitizeInputs({
+        incomes: [{ id: 'income-test', name: '급여', amount: 3000000, accountId: 'acc-salary' }],
+        accounts: [
+          { id: 'acc-salary', name: '급여계좌' },
+          { id: 'acc-living', name: '생활비계좌' },
+          { id: 'acc-stock', name: '투자계좌' },
+        ],
+        expenseItems: [{ id: 'rent', name: '월세', amount: 800000, group: '고정비', accountId: 'acc-living' }],
+        savingsItems: [{ id: 'saving', name: '청년적금', amount: 300000, group: '저축', accountId: 'acc-salary' }],
+        investItems: [{ id: 'invest', name: 'ETF', amount: 200000, group: '투자', accountId: 'acc-stock' }],
+      });
+      const groups = buildFinancialSummaryGroups(inputs);
+      const host = document.querySelector('#summaryCards');
+      renderFinancialSummaryGroups(host, groups);
+      const cardButtons = Array.from(document.querySelectorAll('[data-financial-category]'));
+      const summaryPanel = document.querySelector('.summary-panel');
+      const sankeyPanel = document.querySelector('.sankey-panel');
+      return {
+        groupTitles: groups.map((group: any) => group.title),
+        categoryLabels: groups.flatMap((group: any) => group.cards.map((card: any) => card.label)),
+        firstCard: groups[0].cards[0],
+        cardCategories: cardButtons.map((button) => (button as HTMLElement).dataset.financialCategory),
+        cardRoles: cardButtons.map((button) => button.getAttribute('role') || button.tagName.toLowerCase()),
+        summaryBeforeSankey: Boolean(summaryPanel && sankeyPanel && summaryPanel.compareDocumentPosition(sankeyPanel) & Node.DOCUMENT_POSITION_FOLLOWING),
+        renderedText: host?.textContent || '',
+      };
+    });
+
+    expect(result.groupTitles).toEqual(['수입+계좌', '지출+저축+투자']);
+    expect(result.categoryLabels).toEqual(['수입', '계좌', '지출', '저축', '투자']);
+    expect(result.firstCard).toMatchObject({ category: 'income', label: '수입', count: 1, total: 3000000 });
+    expect(result.firstCard.representatives).toContain('급여');
+    expect(result.cardCategories).toEqual(['income', 'account', 'expense', 'savings', 'invest']);
+    expect(result.cardRoles.every((role: string) => role === 'button')).toBe(true);
+    expect(result.summaryBeforeSankey).toBe(true);
+    expect(result.renderedText).toContain('월세');
+  });
+});
