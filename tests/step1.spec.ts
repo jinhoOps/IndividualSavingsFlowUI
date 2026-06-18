@@ -442,3 +442,69 @@ test.describe('Individual Savings Flow Main UI/UX Audit', () => {
     await expect(utilityGroup.locator('.allocation-group__items')).toBeVisible();
   });
 });
+
+test.describe('Phase 09 account correction and Sankey topology', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.clear();
+      sessionStorage.clear();
+    });
+    await page.goto('apps/main/index.html');
+    await page.waitForSelector('main');
+  });
+
+  test('repairs invalid account links and emits correction metadata', async ({ page }) => {
+    const result = await page.evaluate(async () => {
+      const { sanitizeInputs } = await import('/IndividualSavingsFlowUI/apps/main/modules/input-sanitizer.js');
+      const sanitized = sanitizeInputs({
+        modelVersion: 10,
+        incomes: [{
+          id: 'income-main',
+          name: '급여',
+          amount: 3000000,
+          accountId: 'missing-income',
+          allocations: [
+            { accountId: 'missing-income', amount: 1000000 },
+            { accountId: 'acc-living', amount: 500000 },
+          ],
+        }],
+        accounts: [],
+        expenseItems: [{ id: 'rent', name: '월세', amount: 900000, group: '고정비', accountId: 'missing-expense' }],
+        savingsItems: [{ id: 'saving', name: '적금', amount: 300000, group: '저축', accountId: 'missing-saving' }],
+        investItems: [{ id: 'invest', name: 'ETF', amount: 200000, group: '투자', accountId: 'missing-invest' }],
+        monthlyDebtPayment: 0,
+        startCash: 0,
+        startSavings: 0,
+        startInvest: 0,
+        startDebt: 0,
+        annualIncomeGrowth: 0,
+        annualExpenseGrowth: 0,
+        annualSavingsYield: 3,
+        annualInvestReturn: 7,
+        annualDebtInterest: 0,
+        horizonYears: 5,
+      });
+
+      return {
+        accountNames: sanitized.accounts.map((account: { name: string }) => account.name),
+        incomeAccountId: sanitized.incomes[0].accountId,
+        incomeAllocations: sanitized.incomes[0].allocations,
+        expenseAccountId: sanitized.expenseItems[0].accountId,
+        savingsAccountId: sanitized.savingsItems[0].accountId,
+        investAccountId: sanitized.investItems[0].accountId,
+        correctionMessages: sanitized.accountCorrections.map((correction: { message: string }) => correction.message),
+        correctionTypes: sanitized.accountCorrections.map((correction: { itemType: string }) => correction.itemType),
+      };
+    });
+
+    expect(result.accountNames).toEqual(expect.arrayContaining(['급여계좌', '생활비계좌', '투자계좌']));
+    expect(result.incomeAccountId).toBe('acc-salary');
+    expect(result.incomeAllocations).toEqual([{ accountId: 'acc-salary', amount: 3000000 }]);
+    expect(result.expenseAccountId).toBe('acc-living');
+    expect(result.savingsAccountId).toBe('acc-salary');
+    expect(result.investAccountId).toBe('acc-stock');
+    expect(result.correctionTypes).toEqual(expect.arrayContaining(['income', 'expense', 'savings', 'invest']));
+    expect(result.correctionMessages.join(' ')).toContain('계좌');
+    expect(result.correctionMessages.join(' ')).toContain('보정');
+  });
+});
