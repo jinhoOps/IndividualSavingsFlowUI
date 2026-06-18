@@ -14,7 +14,7 @@
 | 6 | Confirmation & Portfolio Storage Hub | 포트폴리오 추가 최종 확인 모달 구현 및 IndexedDB 영속화 저장소 연동 | PORT-03 | 2 |
 | 7 | Step 1 UI/UX Refactoring & Modularization | Step 1의 거대한 CSS 다이어트, 모듈 쪼개기, DESIGN.md 기반 UI/UX 전면 개편 | UI-01, UI-02 | Complete (7/7, 2026-06-17) |
 | 8 | Step 2 Redesign & Re-planning | 4/4 | Complete   | 2026-06-17 |
-| 9 | Step 1 Financial Settings Input UIUX Rebuild | Step 1 재무설정 입력 화면을 Step 3 경험 기준으로 재설계하고, 계좌/항목 추가 흐름 및 Sankey 총수입 집계 노드를 안정화 | TBD | TBD |
+| 9 | Step 1 Financial Settings Input UIUX Rebuild | 1/4 | In Progress|  |
 
 ### Phase Details
 
@@ -81,13 +81,13 @@
 - **Goal:** Step 1 재무설정 입력 화면을 Step 3 경험 기준으로 재설계하고, 계좌/항목 추가 흐름 및 Sankey 총수입 집계 노드를 안정화
 - **Requirements:** TBD
 - **Depends on:** Phase 8
-- **Plans:** 4 plans
+- **Plans:** 1/4 plans executed
 
 Plans:
 
 **Wave 1**
 
-- [ ] 09-01-PLAN.md — 계좌 자동 보정 및 `총수입` Sankey 토폴로지 기반
+- [x] 09-01-PLAN.md — 계좌 자동 보정 및 `총수입` Sankey 토폴로지 기반
 - [ ] 09-02-PLAN.md — 퍼센트 기반 프리셋 빠른 설정과 최종 확인 흐름
 
 **Wave 2** *(blocked on Wave 1 completion)*

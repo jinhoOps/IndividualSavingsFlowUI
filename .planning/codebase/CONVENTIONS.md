@@ -37,6 +37,8 @@
     *   연간 이자/배당 소득이 **1,900만 원** 초과 시: `warn` (주의) 수준의 경고 표시.
     *   연간 이자/배당 소득이 **3,400만 원** 초과 시: `crit` (심각) 수준의 경고 표시.
     *   판별 함수: `IsfUtils.getFinancialIncomeStatus()` ([utils.js](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/shared/core/utils.js)에 구현됨).
+*   **Step 1 계좌 연결 보정:** 수입/지출/저축/투자 항목의 계좌 연결은 렌더러나 Sankey 내부에서 조용히 fallback하지 말고 [account-correction.js](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/apps/main/modules/account-correction.js)와 [input-sanitizer.js](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/apps/main/modules/input-sanitizer.js) 경계에서 결정적으로 보정해야 합니다. 보정 결과는 `accountCorrections` 메타데이터로 남겨 UI와 시각화가 같은 모델을 소비하게 유지합니다.
+*   **Step 1 Sankey 총수입 토폴로지:** Step 1 Sankey 데이터는 개별 수입에서 `total-income` / `총수입` 노드로 모은 뒤 계좌와 지출/저축/투자 outflow로 흘러가야 합니다. 결손 pseudo-income은 총수입을 부풀리지 않는 별도 shortfall 지표로 취급합니다.
 
 ## 5. 개발 문화 및 가이드라인 (Development Etiquette)
 

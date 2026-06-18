@@ -18,6 +18,7 @@
     *   **Sankey 다이어그램 높이 제한:** Sankey 뷰포트 영역의 높이가 디자인 요구 사양에 맞게 `440px` 이하로 제한되는지 체크하여 UI 넘침 현상을 감시합니다.
     *   **UI 곡률 정합성:** 선택 상자, 입력란, 버튼의 `border-radius` 스타일이 CSS 토큰 변수인 `var(--rd-sm)` (8px) 사양에 완벽히 정합하는지 직접 계산하여 회귀 현상을 잡아냅니다.
     *   **Sankey 뷰 토글 크기:** 토글 버튼의 높이가 레이아웃 간격 표준인 `28px`에 정확히 수렴하는지 소수점 단위 정밀도로 평가합니다.
+    *   **Phase 09 계좌/Sankey 데이터 형태:** 브라우저 `page.evaluate()`에서 Step 1 ES module을 직접 import하여 invalid account id 보정, `accountCorrections` 메타데이터, `total-income` / `총수입` 노드, `income -> total-income -> account` 링크, deficit exclusion을 검증합니다.
 
 ### 클립보드 SMS 파서 커스텀 테스트
 *   **경로:** [clipboard-parser.test.js](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/shared/core/clipboard-parser.test.js)
