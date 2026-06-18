@@ -507,4 +507,57 @@ test.describe('Phase 09 account correction and Sankey topology', () => {
     expect(result.correctionMessages.join(' ')).toContain('계좌');
     expect(result.correctionMessages.join(' ')).toContain('보정');
   });
+
+  test('builds Sankey links around mandatory total-income node', async ({ page }) => {
+    const result = await page.evaluate(async () => {
+      const [{ sanitizeInputs }, { buildMonthlySnapshot }, { buildSankeyData }] = await Promise.all([
+        import('/IndividualSavingsFlowUI/apps/main/modules/input-sanitizer.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/calculator.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/sankey-builder.js'),
+      ]);
+
+      const inputs = sanitizeInputs({
+        modelVersion: 10,
+        splitIncomeAccounts: false,
+        incomes: [{ id: 'main', name: '급여', amount: 3000000, accountId: 'missing-income' }],
+        accounts: [],
+        expenseItems: [{ id: 'rent', name: '월세', amount: 900000, group: '고정비', accountId: 'missing-expense' }],
+        savingsItems: [{ id: 'saving', name: '적금', amount: 300000, group: '저축', accountId: 'missing-saving' }],
+        investItems: [{ id: 'invest', name: 'ETF', amount: 200000, group: '투자', accountId: 'missing-invest' }],
+        monthlyDebtPayment: 0,
+        startCash: 0,
+        startSavings: 0,
+        startInvest: 0,
+        startDebt: 0,
+        annualIncomeGrowth: 0,
+        annualExpenseGrowth: 0,
+        annualSavingsYield: 3,
+        annualInvestReturn: 7,
+        annualDebtInterest: 0,
+        horizonYears: 5,
+      });
+      const snapshot = buildMonthlySnapshot(inputs);
+      const sankey = buildSankeyData(snapshot, 'group', { expense: 'detail', savings: 'detail', invest: 'detail' });
+
+      return {
+        totalIncomeNode: sankey?.nodes.find((node: { id: string }) => node.id === 'total-income'),
+        incomeToTotal: sankey?.links.some((link: { source: string; target: string }) =>
+          link.source === 'income-main' && link.target === 'total-income'
+        ),
+        totalToAccount: sankey?.links.some((link: { source: string; target: string }) =>
+          link.source === 'total-income' && link.target === 'acc-salary'
+        ),
+        accountToExpense: sankey?.links.some((link: { source: string; target: string }) =>
+          link.source === 'acc-living' && link.target === 'expense-rent'
+        ),
+        labels: sankey?.nodes.map((node: { label: string }) => node.label) || [],
+      };
+    });
+
+    expect(result.totalIncomeNode).toMatchObject({ id: 'total-income', label: '총수입', tone: 'income' });
+    expect(result.incomeToTotal).toBe(true);
+    expect(result.totalToAccount).toBe(true);
+    expect(result.accountToExpense).toBe(true);
+    expect(result.labels).not.toContain('미지정 계좌');
+  });
 });
