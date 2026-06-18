@@ -15,7 +15,8 @@ import { buildSankeyData } from "./sankey-builder.js";
 import { renderSankey, exportSankeyToPng } from "./sankey-renderer.js";
 import { dom } from "./dom.js";
 import { state } from "./state.js";
-import { PRESET_SALARIES, applyPreset, applyPresetBySalary, calculateAnnualSalaryFromMonthlyIncome } from "./presets.js";
+import { createPresetSetupController } from "./preset-setup-controller.js";
+import { PRESET_SALARIES, applyPreset } from "./presets.js";
 import * as helpers from "./state-helpers.js";
 import * as listRenderer from "./list-renderer.js";
 import {
@@ -92,7 +93,10 @@ export function bindStep1Events(commands) {
   bindSnapshotControls();
   bindSmartAddControls();
   bindSurplusTransferControl(commands.persistence.markPendingChanges);
-  bindPresetModal(commands);
+  createPresetSetupController({
+    persistence: commands.persistence,
+    getInputs: () => state.inputs,
+  }).bind();
   commands.itemEditor.bindItemEditorEvents();
   bindActionButtons(commands.persistence.handleResetInputs);
   bindGlobalEvents(commands);
@@ -253,77 +257,6 @@ function bindSurplusTransferControl(markPendingChanges) {
     state.inputs = sanitizeInputs(state.inputs);
     markPendingChanges();
   });
-}
-
-function bindPresetModal({ persistence }) {
-  let selectedModalPresetStyle = "neutral";
-
-  if (dom.openPresetBtn) {
-    dom.openPresetBtn.addEventListener("click", () => {
-      if (!dom.presetModal) return;
-      dom.presetModal.hidden = false;
-      setTimeout(() => {
-        dom.presetModal.classList.add("is-active");
-        IsfUtils.updateAllKoreanWonHints(dom.presetModal);
-      }, 10);
-
-      const incomeWon = getMonthlyIncomeTotalWon(state.inputs.incomes);
-      const salaryWon = Math.min(99000000, Math.round(calculateAnnualSalaryFromMonthlyIncome(incomeWon)));
-      if (dom.presetIncomeAmount) {
-        dom.presetIncomeAmount.value = salaryWon > 0 ? salaryWon : 40000000;
-      }
-
-      selectedModalPresetStyle = "neutral";
-      if (dom.presetModalStyleBtns) {
-        dom.presetModalStyleBtns.forEach((button) => {
-          button.classList.toggle("is-active", button.dataset.style === "neutral");
-        });
-      }
-    });
-  }
-
-  const closePresetModal = () => {
-    if (!dom.presetModal) return;
-    dom.presetModal.classList.remove("is-active");
-    setTimeout(() => {
-      dom.presetModal.hidden = true;
-    }, 250);
-  };
-
-  if (dom.closePresetBtn) dom.closePresetBtn.addEventListener("click", closePresetModal);
-  if (dom.closePresetModalCancel) dom.closePresetModalCancel.addEventListener("click", closePresetModal);
-
-  if (dom.presetModalStyleBtns) {
-    dom.presetModalStyleBtns.forEach((button) => {
-      button.addEventListener("click", () => {
-        dom.presetModalStyleBtns.forEach((candidate) => candidate.classList.remove("is-active"));
-        button.classList.add("is-active");
-        selectedModalPresetStyle = button.dataset.style;
-      });
-    });
-  }
-
-  if (dom.applyModalPresetBtn) {
-    dom.applyModalPresetBtn.addEventListener("click", () => {
-      if (!dom.presetIncomeAmount) return;
-      const salaryWon = IsfUtils.toWon(dom.presetIncomeAmount.value);
-      if (Number.isNaN(salaryWon) || salaryWon < 0 || salaryWon > 99000000) {
-        alert("연봉은 0원 이상 9,900만 원 이하로 입력해주세요.");
-        return;
-      }
-
-      const isDirty = persistence.hasPendingChanges() || JSON.stringify(state.inputs) !== JSON.stringify(DEFAULT_INPUTS);
-      if (isDirty && !window.confirm("데이터 초기화 경고: 기존에 작성하신 자산 데이터가 모두 초기화되고 프리셋으로 덮어씌워집니다. 계속하시겠습니까?")) {
-        return;
-      }
-
-      const presetInputs = applyPresetBySalary(salaryWon, selectedModalPresetStyle);
-      if (!presetInputs) return;
-      persistence.commitImmediateInputs(presetInputs);
-      closePresetModal();
-      showPresetAppliedFeedback();
-    });
-  }
 }
 
 function showPresetAppliedFeedback() {

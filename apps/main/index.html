@@ -618,32 +618,80 @@
   </div>
 
   <div id="presetModal" class="modal-overlay" hidden>
-    <div class="modal-content modal-content--sm">
+    <div class="modal-content modal-content--preset">
       <div class="modal-header">
-        <h2 class="modal-title">프리셋 빠른 생성</h2>
+        <h2 class="modal-title">프리셋 빠른 설정</h2>
         <button id="closePresetBtn" class="modal-close" type="button" aria-label="닫기">×</button>
       </div>
       <div class="modal-body">
-        <p class="hint mb-md">월 급여와 투자 성향을 선택해 자산 흐름을 한 번에 구성합니다.</p>
-        
-        <div>
-          <label class="editor-field-label">1. 투자 성향 선택</label>
-          <div class="preset-styles" role="group" aria-label="투자 성향">
-            <button type="button" data-style="conservative" class="btn btn-ghost btn-sm preset-modal-style-btn">안정형</button>
-            <button type="button" data-style="neutral" class="btn btn-ghost btn-sm preset-modal-style-btn is-active">중립형</button>
-            <button type="button" data-style="aggressive" class="btn btn-ghost btn-sm preset-modal-style-btn">적극형</button>
-            <button type="button" data-style="beast" class="btn btn-ghost btn-sm preset-modal-style-btn">야수형</button>
+        <div id="presetSetupStep" class="preset-setup-step">
+          <div class="preset-field">
+            <label class="editor-field-label" for="presetMonthlyIncome">월수입</label>
+            <input type="text" id="presetMonthlyIncome" name="presetMonthlyIncome" data-money-input="won" inputmode="decimal" />
+          </div>
+
+          <div class="preset-field">
+            <span class="editor-field-label">투자 성향</span>
+            <div id="presetSegmentGroup" class="preset-segment-group" role="group" aria-label="프리셋 선택">
+              <button type="button" class="preset-segment-btn" data-preset-key="stable">안정</button>
+              <button type="button" class="preset-segment-btn is-active" data-preset-key="balanced">균형</button>
+              <button type="button" class="preset-segment-btn" data-preset-key="growth">성장</button>
+              <button type="button" class="preset-segment-btn" data-preset-key="beast">야수</button>
+              <button type="button" class="preset-segment-btn" data-preset-key="custom">사용자 지정</button>
+            </div>
+          </div>
+
+          <div class="preset-field">
+            <div class="preset-percent-head">
+              <span class="editor-field-label">월수입 배분</span>
+              <span id="presetPercentTotal" class="preset-percent-total">100%</span>
+            </div>
+            <div class="preset-percent-grid">
+              <label class="preset-percent-row">
+                <span>지출</span>
+                <input type="number" min="0" max="100" step="0.01" data-preset-percent="expense" value="50" />
+                <span>%</span>
+              </label>
+              <label class="preset-percent-row">
+                <span>저축</span>
+                <input type="number" min="0" max="100" step="0.01" data-preset-percent="savings" value="30" />
+                <span>%</span>
+              </label>
+              <label class="preset-percent-row">
+                <span>투자</span>
+                <input type="number" min="0" max="100" step="0.01" data-preset-percent="invest" value="20" />
+                <span>%</span>
+              </label>
+            </div>
+          </div>
+
+          <fieldset class="preset-field preset-correction-field">
+            <legend class="editor-field-label">보정 방식</legend>
+            <label>
+              <input type="radio" name="presetCorrectionMode" value="amount" checked />
+              금액 보정
+            </label>
+            <label>
+              <input type="radio" name="presetCorrectionMode" value="percentage" />
+              퍼센트 보정
+            </label>
+          </fieldset>
+
+          <div class="preset-preview" aria-live="polite">
+            <div class="preset-preview__summary">
+              <span>생성 합계</span>
+              <strong id="presetPreviewTotal">0원</strong>
+            </div>
+            <div id="presetPreviewRows" class="preset-preview__rows"></div>
           </div>
         </div>
 
-        <div class="control">
-          <label for="presetIncomeAmount">2. 연봉 설정 (최대 9,900만 원)</label>
-          <input type="text" id="presetIncomeAmount" name="presetIncomeAmount" data-money-input="won" inputmode="decimal" value="40,000,000" placeholder="예: 40,000,000" />
-        </div>
+        <div id="presetConfirmStep" class="preset-confirm-step" hidden></div>
       </div>
       <div class="modal-footer">
         <button type="button" id="closePresetModalCancel" class="btn btn-ghost btn-sm">취소</button>
-        <button type="button" id="applyModalPresetBtn" class="btn btn-primary btn-sm">적용하기</button>
+        <button type="button" id="presetBackBtn" class="btn btn-ghost btn-sm" hidden>이전</button>
+        <button type="button" id="applyModalPresetBtn" class="btn btn-primary btn-sm">다음: 확인</button>
       </div>
     </div>
   </div>
