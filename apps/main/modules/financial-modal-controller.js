@@ -52,6 +52,42 @@ function createAccountSelect(accounts, selectedAccountId, fieldName) {
   return select;
 }
 
+function getItemLabel(item, category, index) {
+  return item.name || `${CATEGORY_CONFIG[category]?.label || "항목"} ${index + 1}`;
+}
+
+function buildGroupOptions(items, category) {
+  const groups = new Set([CATEGORY_CONFIG[category]?.label || "기타"]);
+  safeItems(items).forEach((item) => {
+    const group = normalizeAllocationGroupName(item.group || "");
+    if (group) groups.add(group);
+  });
+  return Array.from(groups);
+}
+
+function createGroupSelect(items, category, selectedGroup, forceCustom = false) {
+  const normalizedGroup = normalizeAllocationGroupName(selectedGroup || "");
+  const options = buildGroupOptions(items, category);
+  const select = document.createElement("select");
+  select.dataset.financialModalField = "groupMode";
+
+  options.forEach((group) => {
+    const option = document.createElement("option");
+    option.value = group;
+    option.textContent = group;
+    option.selected = group === normalizedGroup;
+    select.appendChild(option);
+  });
+
+  const custom = document.createElement("option");
+  custom.value = "__custom__";
+  custom.textContent = "직접 입력";
+  custom.selected = forceCustom || (Boolean(normalizedGroup) && !options.includes(normalizedGroup));
+  select.appendChild(custom);
+
+  return select;
+}
+
 function appendField(container, labelText, control) {
   const label = document.createElement("label");
   label.className = "financial-modal-field";
@@ -97,6 +133,8 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
   let draftItems = [];
   let createDraft = null;
   let createStep = "detail";
+  let editingIndex = -1;
+  let customGroupIndexes = new Set();
 
   function getInputs() {
     return typeof getVisibleInputs === "function" ? getVisibleInputs() : {};
@@ -121,6 +159,18 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
     if (field === "name") item.name = String(value || "").slice(0, 32);
     if (field === "amount") item.amount = IsfUtils.toWon(value || "0");
     if (field === "group") item.group = normalizeAllocationGroupName(value || "");
+    if (field === "groupMode") {
+      if (value === "__custom__") {
+        customGroupIndexes.add(index);
+        if (buildGroupOptions(draftItems, activeCategory).includes(item.group)) item.group = "";
+        renderRows();
+      } else {
+        customGroupIndexes.delete(index);
+        item.group = normalizeAllocationGroupName(value || "");
+        renderRows();
+      }
+      return;
+    }
     if (field === "accountId") {
       item.accountId = value;
       if (activeCategory === "income") {
@@ -139,7 +189,7 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
     syncStats();
   }
 
-  function renderRow(item, index, accounts) {
+  function renderCompactRow(item, index, accounts) {
     const row = document.createElement("article");
     row.className = "financial-modal-row";
     row.dataset.modalRowCategory = activeCategory;
@@ -147,11 +197,39 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
 
     const header = document.createElement("div");
     header.className = "financial-modal-row__header";
-    header.appendChild(createText("strong", "", item.name || `${CATEGORY_CONFIG[activeCategory].label} ${index + 1}`));
+    header.appendChild(createText("strong", "", getItemLabel(item, activeCategory, index)));
     if (activeCategory !== "account") {
       header.appendChild(createText("span", "financial-modal-account-badge", getAccountName(accounts, item.accountId)));
     }
     row.appendChild(header);
+
+    const summary = document.createElement("div");
+    summary.className = "financial-modal-row__summary";
+    if (activeCategory === "account") {
+      summary.appendChild(createText("span", "", "계좌 별칭"));
+    } else {
+      summary.append(
+        createText("span", "", IsfUtils.formatMoney(Number(item.amount) || 0)),
+        createText("span", "", item.group || CATEGORY_CONFIG[activeCategory].label),
+      );
+    }
+    row.appendChild(summary);
+
+    const edit = document.createElement("button");
+    edit.type = "button";
+    edit.className = "btn btn-ghost btn-sm financial-modal-row__edit";
+    edit.dataset.financialModalEdit = String(index);
+    edit.textContent = "편집";
+    row.appendChild(edit);
+
+    return row;
+  }
+
+  function renderEditingRow(item, index, accounts) {
+    const row = renderCompactRow(item, index, accounts);
+    row.classList.add("financial-modal-row--editing");
+    const editButton = row.querySelector("[data-financial-modal-edit]");
+    if (editButton) editButton.textContent = "편집 중";
 
     const fields = document.createElement("div");
     fields.className = "financial-modal-row__fields";
@@ -177,11 +255,15 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
     }
 
     if (["expense", "savings", "invest"].includes(activeCategory)) {
-      const groupInput = document.createElement("input");
-      groupInput.type = "text";
-      groupInput.value = item.group || "";
-      groupInput.dataset.financialModalField = "group";
-      appendField(fields, "그룹", groupInput);
+      const groupSelect = createGroupSelect(draftItems, activeCategory, item.group, customGroupIndexes.has(index));
+      appendField(fields, "그룹", groupSelect);
+      if (groupSelect.value === "__custom__") {
+        const groupInput = document.createElement("input");
+        groupInput.type = "text";
+        groupInput.value = item.group || "";
+        groupInput.dataset.financialModalField = "group";
+        appendField(fields, "직접 입력", groupInput);
+      }
     }
 
     if (activeCategory === "savings") {
@@ -205,6 +287,12 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
     return row;
   }
 
+  function renderRow(item, index, accounts) {
+    return index === editingIndex
+      ? renderEditingRow(item, index, accounts)
+      : renderCompactRow(item, index, accounts);
+  }
+
   function renderRows() {
     if (!dom.financialModalRows) return;
     if (createDraft) {
@@ -225,6 +313,8 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
     draftItems = getItemsForCategory(baselineInputs, category);
     createDraft = null;
     createStep = "detail";
+    editingIndex = -1;
+    customGroupIndexes = new Set();
 
     if (dom.financialModalTitle) dom.financialModalTitle.textContent = `${config.label} 상세 편집`;
     if (dom.financialModalDescription) {
@@ -250,6 +340,8 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
     draftItems = [];
     createDraft = null;
     createStep = "detail";
+    editingIndex = -1;
+    customGroupIndexes = new Set();
     window.setTimeout(() => {
       dom.financialModal.hidden = true;
     }, 250);
@@ -287,6 +379,8 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
       useNewAccount: false,
     };
     createStep = "detail";
+    editingIndex = -1;
+    customGroupIndexes = new Set();
     if (dom.financialModalSave) dom.financialModalSave.hidden = true;
     if (dom.financialModalCreate) dom.financialModalCreate.hidden = true;
     renderCreateStep();
@@ -575,6 +669,11 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
           createStep = "detail";
           if (dom.financialModalSave) dom.financialModalSave.hidden = false;
           if (dom.financialModalCreate) dom.financialModalCreate.hidden = false;
+          renderRows();
+        }
+        const editButton = target.closest?.("[data-financial-modal-edit]");
+        if (editButton) {
+          editingIndex = Number(editButton.dataset.financialModalEdit);
           renderRows();
         }
       });

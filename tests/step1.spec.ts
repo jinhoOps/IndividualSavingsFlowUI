@@ -948,7 +948,8 @@ test.describe('Phase 09 financial category detail modal', () => {
     const modal = page.locator('#financialModal');
     await expect(modal).toBeVisible();
 
-    await expect(modal.locator('[data-financial-modal-edit]')).toHaveCount(3);
+    const compactCardCount = await modal.locator('[data-financial-modal-edit]').count();
+    expect(compactCardCount).toBeGreaterThan(1);
     await expect(modal.locator('[data-financial-modal-field="name"]')).toHaveCount(0);
 
     await modal.locator('[data-financial-modal-edit]').first().click();

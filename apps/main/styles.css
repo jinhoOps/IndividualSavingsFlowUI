@@ -180,11 +180,15 @@ input[type=number]{-moz-appearance:textfield}
 .financial-modal-summary{border:1px solid var(--line);border-radius:var(--rd-sm);background:rgba(249,246,240,0.72);padding:10px 12px;font-size:0.84rem;font-weight:800;color:var(--ink);margin-bottom:var(--sp-sm)}
 .financial-modal-toolbar{display:flex;justify-content:flex-end;margin:0 0 var(--sp-sm)}
 .financial-modal-rows{display:grid;gap:var(--sp-sm)}
-.financial-modal-row{border:1px solid var(--line);border-radius:var(--rd-sm);background:var(--panel);padding:var(--sp-md);display:grid;gap:var(--sp-sm)}
-.financial-modal-row__header{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-sm);flex-wrap:wrap}
+.financial-modal-row{border:1px solid var(--line);border-radius:var(--rd-sm);background:var(--panel);padding:var(--sp-md);display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:var(--sp-sm)}
+.financial-modal-row--editing{align-items:stretch;border-color:rgba(30,139,124,0.24);background:rgba(255,255,255,0.86)}
+.financial-modal-row__header{display:flex;align-items:center;justify-content:flex-start;gap:var(--sp-sm);flex-wrap:wrap;min-width:0}
 .financial-modal-row__header strong{font-size:0.94rem}
 .financial-modal-account-badge{display:inline-flex;align-items:center;border:1px solid rgba(30,139,124,0.22);border-radius:999px;background:rgba(30,139,124,0.08);color:var(--tone-accent);font-size:0.74rem;font-weight:800;padding:3px 8px}
-.financial-modal-row__fields{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.financial-modal-row__summary{display:flex;align-items:center;gap:8px;flex-wrap:wrap;color:var(--muted);font-size:0.78rem;min-width:0}
+.financial-modal-row__summary span{border:1px solid rgba(16,34,32,0.08);border-radius:999px;background:rgba(249,246,240,0.72);padding:3px 8px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.financial-modal-row__edit{grid-column:2;grid-row:1 / span 2;align-self:center}
+.financial-modal-row__fields{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;grid-column:1 / -1}
 .financial-modal-field{display:grid;gap:5px;min-width:0}
 .financial-modal-field__label{font-size:0.72rem;font-weight:800;color:var(--muted)}
 .financial-modal-field input,.financial-modal-field select{width:100%;min-width:0;font-size:0.86rem;padding:8px 10px}
@@ -226,7 +230,10 @@ main{order:2;gap:14px;display:grid}
 .preset-confirm-summary span{text-align:left}
 .preset-confirm-row{grid-template-columns:1fr}
 .preset-confirm-row__metrics{justify-content:flex-start}
+.financial-modal-row{grid-template-columns:1fr;align-items:stretch;padding:12px}
+.financial-modal-row__edit{grid-column:1;grid-row:auto;width:100%;justify-content:center}
 .financial-modal-row__fields{grid-template-columns:1fr}
+.financial-modal-row__summary span{white-space:normal}
 .financial-create-grid{grid-template-columns:1fr}
 .financial-create-confirm__row{align-items:flex-start;flex-direction:column}
 .financial-create-confirm__row strong{text-align:left}
