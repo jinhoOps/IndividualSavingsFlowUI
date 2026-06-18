@@ -34,6 +34,9 @@ This phase should not add a detailed bank-account model, live banking integratio
 - **D-12:** The final confirmation supports both amount correction and percentage correction. Amount correction rounds cleanly to 10,000 KRW units; percentage correction preserves integer percentage intent.
 - **D-13:** User-entered original percentages must remain visible in the final confirmation. They must not disappear just because generated Won amounts were rounded.
 
+### Money Display Precision
+- **D-28:** Korean money unit conversion should show only one lower unit below the largest displayed unit. If the amount is displayed in `억`, show down to `만` only; if displayed in `조`, show down to `억` only. Do not append smaller units such as `천원` once the display has moved up to `억`, and do not append `만` once the display has moved up to `조`.
+
 ### Item Creation Flow
 - **D-14:** New item creation uses a dedicated guided creation modal: choose what to add, enter name/amount, choose the connected account, then confirm.
 - **D-15:** Creation has a final confirmation screen like Step 3 portfolio creation, summarizing item name, amount, connected account, group/type, and any correction applied.
@@ -80,6 +83,7 @@ This phase should not add a detailed bank-account model, live banking integratio
 ### Design System
 - `DESIGN.md` — Authoritative visual system and editorial UI direction.
 - `shared/styles/step-theme.css` — Shared card, modal, button, and step-theme tokens.
+- `shared/core/utils.js` — Shared Won formatting and Korean money unit conversion helpers.
 - `src/styles/globals.css` — Global styling imported by Vite entries.
 
 ### Step 1 Source
@@ -143,6 +147,7 @@ This phase should not add a detailed bank-account model, live banking integratio
 - Sankey must always have a `총수입` node. The user clarified that `총수입` is where incomes arrive and where spending/saving/investment flow begins.
 - For merged Sankey hover details, readability matters: list items with deliberate line breaks instead of dense single-line metadata.
 - Preset quick setup should let many users build a useful Step 1 plan from percentages first, then inspect and fine-tune details.
+- Korean money hints should stay compact: once the display reaches `억`, include at most `만`; once it reaches `조`, include at most `억`.
 
 </specifics>
 
