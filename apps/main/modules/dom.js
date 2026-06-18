@@ -145,6 +145,7 @@ export const dom = {
   financialModalDescription: document.getElementById("financialModalDescription"),
   financialModalClose: document.getElementById("financialModalClose"),
   financialModalSummary: document.getElementById("financialModalSummary"),
+  financialModalCreate: document.getElementById("financialModalCreate"),
   financialModalRows: document.getElementById("financialModalRows"),
   financialModalCancel: document.getElementById("financialModalCancel"),
   financialModalSave: document.getElementById("financialModalSave"),

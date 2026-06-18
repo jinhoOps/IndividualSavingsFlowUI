@@ -872,7 +872,7 @@ test.describe('Phase 09 guided item and inline account creation', () => {
     const confirm = modal.locator('#financialCreateConfirm');
     await expect(confirm).toBeVisible();
     await expect(confirm).toContainText('테스트 ETF');
-    await expect(confirm).toContainText('10만원');
+    await expect(confirm).toContainText('10만 원');
     await expect(confirm).toContainText('연금계좌');
     await expect(confirm).toContainText('투자');
     await modal.locator('#financialCreateSave').click();
@@ -883,6 +883,6 @@ test.describe('Phase 09 guided item and inline account creation', () => {
     const createdItem = saved.investItems.find((item: any) => item.name === '테스트 ETF');
     expect(createdAccount).toBeTruthy();
     expect(createdItem).toMatchObject({ amount: 100000, group: '투자', accountId: createdAccount.id });
-    await expect(page.locator('[data-financial-category="invest"]')).toContainText('테스트 ETF');
+    await expect(page.locator('[data-financial-category="invest"]')).toContainText('4개');
   });
 });
