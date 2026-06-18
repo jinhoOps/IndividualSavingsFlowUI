@@ -81,8 +81,19 @@
 - **Goal:** Step 1 재무설정 입력 화면을 Step 3 경험 기준으로 재설계하고, 계좌/항목 추가 흐름 및 Sankey 총수입 집계 노드를 안정화
 - **Requirements:** TBD
 - **Depends on:** Phase 8
-- **Plans:** 0 plans
+- **Plans:** 4 plans
 
 Plans:
 
-- [ ] TBD (run /gsd-plan-phase 9 to break down)
+**Wave 1**
+
+- [ ] 09-01-PLAN.md — 계좌 자동 보정 및 `총수입` Sankey 토폴로지 기반
+- [ ] 09-02-PLAN.md — 퍼센트 기반 프리셋 빠른 설정과 최종 확인 흐름
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 09-03-PLAN.md — Step 3형 요약 카드, 상세 모달, 항목/계좌 생성 흐름
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 09-04-PLAN.md — Sankey 보정 새로고침, 툴팁 가독성, 모바일/Playwright 검증
