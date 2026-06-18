@@ -3,6 +3,7 @@ import { dom } from "./dom.js";
 import { getMonthlyIncomeTotalWon } from "./input-sanitizer.js";
 import {
   PRESET_STYLES,
+  applyPresetPreview,
   buildPresetPreview,
   normalizePresetPercentages,
 } from "./presets.js";
@@ -60,6 +61,34 @@ function appendPreviewRow(container, label, amount, percent) {
   container.append(row);
 }
 
+function appendConfirmRow(container, item, typeLabel) {
+  const row = document.createElement("div");
+  row.className = "preset-confirm-row";
+
+  const title = document.createElement("div");
+  title.className = "preset-confirm-row__title";
+  const name = document.createElement("strong");
+  name.textContent = item.name;
+  const group = document.createElement("span");
+  group.textContent = `${typeLabel} · ${item.group || "기본"}`;
+  title.append(name, group);
+
+  const metrics = document.createElement("div");
+  metrics.className = "preset-confirm-row__metrics";
+  const original = document.createElement("span");
+  original.textContent = `원래 ${formatPercent(item.originalPercent)}%`;
+  const normalized = document.createElement("span");
+  normalized.textContent = `보정 ${formatPercent(item.normalizedPercent)}%`;
+  const amount = document.createElement("span");
+  amount.textContent = IsfUtils.convertToKoreanWon(item.amount);
+  const delta = document.createElement("span");
+  delta.textContent = `차이 ${IsfUtils.convertToKoreanWon(item.correctionDelta)}`;
+  metrics.append(original, normalized, amount, delta);
+
+  row.append(title, metrics);
+  container.append(row);
+}
+
 export function createPresetSetupController({ persistence, getInputs }) {
   let selectedPresetKey = "balanced";
   let lastPresetPercentages = { ...PRESET_STYLES.balanced.percentages };
@@ -107,6 +136,57 @@ export function createPresetSetupController({ persistence, getInputs }) {
     renderPreview();
   }
 
+  function renderConfirmation() {
+    if (!dom.presetConfirmStep || !draftPreview) return;
+    dom.presetConfirmStep.replaceChildren();
+
+    const warning = document.createElement("div");
+    warning.className = "preset-overwrite-warning";
+    warning.textContent = "기존 데이터 덮어쓰기: 확인을 누르면 현재 Step 1 지출, 저축, 투자 행이 프리셋 결과로 교체됩니다.";
+
+    const summary = document.createElement("div");
+    summary.className = "preset-confirm-summary";
+    const summaryTitle = document.createElement("strong");
+    summaryTitle.textContent = `${draftPreview.presetLabel} 프리셋`;
+    const summaryText = document.createElement("span");
+    summaryText.textContent =
+      `월수입 ${IsfUtils.convertToKoreanWon(draftPreview.totals.monthlyIncomeWon)} 기준`;
+    summary.append(summaryTitle, summaryText);
+
+    const rows = document.createElement("div");
+    rows.className = "preset-confirm-rows";
+    draftPreview.expenseItems.forEach((item) => appendConfirmRow(rows, item, "지출"));
+    draftPreview.savingsItems.forEach((item) => appendConfirmRow(rows, item, "저축"));
+    draftPreview.investItems.forEach((item) => appendConfirmRow(rows, item, "투자"));
+
+    dom.presetConfirmStep.append(warning, summary, rows);
+  }
+
+  function showSetupStep() {
+    if (dom.presetSetupStep) dom.presetSetupStep.hidden = false;
+    if (dom.presetConfirmStep) dom.presetConfirmStep.hidden = true;
+    if (dom.presetBackBtn) dom.presetBackBtn.hidden = true;
+    if (dom.applyModalPresetBtn) dom.applyModalPresetBtn.textContent = "다음: 확인";
+  }
+
+  function showConfirmStep() {
+    renderPreview();
+    renderConfirmation();
+    if (dom.presetSetupStep) dom.presetSetupStep.hidden = true;
+    if (dom.presetConfirmStep) dom.presetConfirmStep.hidden = false;
+    if (dom.presetBackBtn) dom.presetBackBtn.hidden = false;
+    if (dom.applyModalPresetBtn) dom.applyModalPresetBtn.textContent = "적용하기";
+  }
+
+  function commitPreview() {
+    if (!draftPreview || !persistence || typeof persistence.commitImmediateInputs !== "function") return;
+    persistence.commitImmediateInputs(applyPresetPreview(draftPreview));
+    close();
+    if (window.IsfFeedback && dom.applyFeedback) {
+      window.IsfFeedback.showFeedback(dom.applyFeedback, "프리셋 설정이 적용되었습니다. 생성된 항목을 확인해보세요.");
+    }
+  }
+
   function choosePreset(key) {
     selectedPresetKey = PRESET_STYLES[key] ? key : "balanced";
     setActivePreset(selectedPresetKey);
@@ -126,10 +206,7 @@ export function createPresetSetupController({ persistence, getInputs }) {
     if (dom.presetMonthlyIncome) {
       dom.presetMonthlyIncome.value = IsfUtils.formatWonInputValue(String(currentIncome));
     }
-    if (dom.presetSetupStep) dom.presetSetupStep.hidden = false;
-    if (dom.presetConfirmStep) dom.presetConfirmStep.hidden = true;
-    if (dom.presetBackBtn) dom.presetBackBtn.hidden = true;
-    if (dom.applyModalPresetBtn) dom.applyModalPresetBtn.textContent = "다음: 확인";
+    showSetupStep();
     choosePreset(selectedPresetKey);
     dom.presetModal.hidden = false;
     window.setTimeout(() => {
@@ -150,6 +227,16 @@ export function createPresetSetupController({ persistence, getInputs }) {
     if (dom.openPresetBtn) dom.openPresetBtn.addEventListener("click", open);
     if (dom.closePresetBtn) dom.closePresetBtn.addEventListener("click", close);
     if (dom.closePresetModalCancel) dom.closePresetModalCancel.addEventListener("click", close);
+    if (dom.presetBackBtn) dom.presetBackBtn.addEventListener("click", showSetupStep);
+    if (dom.applyModalPresetBtn) {
+      dom.applyModalPresetBtn.addEventListener("click", () => {
+        if (dom.presetSetupStep && !dom.presetSetupStep.hidden) {
+          showConfirmStep();
+          return;
+        }
+        commitPreview();
+      });
+    }
     Array.from(dom.presetSegmentBtns || []).forEach((button) => {
       button.addEventListener("click", () => choosePreset(button.dataset.presetKey));
     });

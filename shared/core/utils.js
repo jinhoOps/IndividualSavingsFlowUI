@@ -15,29 +15,36 @@ export const IsfUtils = (function initIsfUtils(global) {
     if (!Number.isFinite(numericValue)) {
       return "0원";
     }
-    if (numericValue < 1000) {
+    const isNegative = numericValue < 0;
+    const absoluteValue = Math.abs(numericValue);
+    if (absoluteValue < 1000) {
       return "0원";
     }
-    if (numericValue < 10000) {
-      const cheon = Math.round(numericValue / 1000);
-      return `${cheon}천원`;
+    if (absoluteValue >= 1000000000000) {
+      const jo = Math.floor(absoluteValue / 1000000000000);
+      const remainEok = Math.floor((absoluteValue % 1000000000000) / 100000000);
+      const text = remainEok > 0
+        ? `${jo}조 ${remainEok}억`
+        : `${jo}조`;
+      return `${isNegative ? "-" : ""}${text}`;
+    }
+    if (absoluteValue >= 100000000) {
+      const eok = Math.floor(absoluteValue / 100000000);
+      const remainMan = Math.floor((absoluteValue % 100000000) / 10000);
+      const text = remainMan > 0
+        ? `${eok}억 ${remainMan}만`
+        : `${eok}억`;
+      return `${isNegative ? "-" : ""}${text}`;
+    }
+    if (absoluteValue < 10000) {
+      const cheon = Math.round(absoluteValue / 1000);
+      return `${isNegative ? "-" : ""}${cheon}천원`;
     }
     
-    const totalMan = Math.floor(numericValue / 10000);
-    const remainCheon = Math.round((numericValue % 10000) / 1000);
+    const totalMan = Math.floor(absoluteValue / 10000);
+    const remainCheon = Math.round((absoluteValue % 10000) / 1000);
     const cheonSuffix = remainCheon > 0 ? ` ${remainCheon}천원` : "원";
-    const manText = totalMan >= 10000 ? "" : "만";
-    
-    if (totalMan >= 10000) {
-      const eok = Math.floor(totalMan / 10000);
-      const remainMan = totalMan % 10000;
-      if (remainMan === 0) {
-        return `${eok.toLocaleString("ko-KR")}억${remainCheon > 0 ? ` ${remainCheon}천원` : "원"}`;
-      }
-      return `${eok.toLocaleString("ko-KR")}억 ${remainMan.toLocaleString("ko-KR")}만${remainCheon > 0 ? ` ${remainCheon}천원` : "원"}`;
-    }
-    
-    return `${totalMan.toLocaleString("ko-KR")}만${remainCheon > 0 ? ` ${remainCheon}천원` : "원"}`;
+    return `${isNegative ? "-" : ""}${totalMan.toLocaleString("ko-KR")}만${cheonSuffix}`;
   }
 
   const FINANCIAL_INCOME_WARN_THRESHOLD_WON = 19000000;
@@ -170,6 +177,20 @@ export const IsfUtils = (function initIsfUtils(global) {
     const num = Math.floor(Math.abs(Number(value || 0)));
     if (num === 0) return "0원";
     if (!Number.isFinite(num)) return "0원";
+
+    if (num >= 1000000000000) {
+      const jo = Math.floor(num / 1000000000000);
+      const eok = Math.floor((num % 1000000000000) / 100000000);
+      const text = eok > 0 ? `${jo}조 ${eok}억` : `${jo}조`;
+      return (isNegative ? "-" : "") + text;
+    }
+
+    if (num >= 100000000) {
+      const eok = Math.floor(num / 100000000);
+      const man = Math.floor((num % 100000000) / 10000);
+      const text = man > 0 ? `${eok}억 ${man}만` : `${eok}억`;
+      return (isNegative ? "-" : "") + text;
+    }
     
     const eok = Math.floor(num / 100000000);
     const man = Math.floor((num % 100000000) / 10000);
