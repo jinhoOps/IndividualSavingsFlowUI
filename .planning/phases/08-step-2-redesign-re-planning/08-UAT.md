@@ -3,15 +3,15 @@ status: testing
 phase: 08-step-2-redesign-re-planning
 source: [08-01-SUMMARY.md, 08-02-SUMMARY.md, 08-03-SUMMARY.md, 08-04-SUMMARY.md]
 started: 2026-06-18T16:31:12+09:00
-updated: 2026-06-18T16:54:00+09:00
+updated: 2026-06-18T17:08:00+09:00
 ---
 
 ## Current Test
 
-number: 2
-name: 전략 선택과 보수적 가정 표시
+number: 3
+name: KPI, 그래프, 비교 카드 결과
 expected: |
-  Step 2에서 지수 성장, SCHD 배당 성장, 커버드콜/월배당 전략 카드가 보이고, Nasdaq/S&P 500 벤치마크 및 JEPI/QQQI/DIVO 예시를 선택할 수 있다. 고급 가정은 기본적으로 접혀 있으며 펼치면 수익률/배당/성장률 범위가 이해 가능한 문구로 보인다.
+  거치식 시작 자금, 월 투자금, 투자 기간을 바꾸면 최종 예상 자산, 세후 월 현금흐름, 벤치마크 대비 차이가 화면의 KPI, 그래프, 비교 카드에 함께 갱신된다. 벤치마크 대비 불리한 전략은 음수 차이가 숨겨지지 않고 기회비용처럼 보인다.
 awaiting: user response
 
 ## Tests
@@ -22,10 +22,10 @@ result: pass
 
 ### 2. 전략 선택과 보수적 가정 표시
 expected: Step 2에서 지수 성장, SCHD 배당 성장, 커버드콜/월배당 전략 카드가 보이고, Nasdaq/S&P 500 벤치마크 및 JEPI/QQQI/DIVO 예시를 선택할 수 있다. 고급 가정은 기본적으로 접혀 있으며 펼치면 수익률/배당/성장률 범위가 이해 가능한 문구로 보인다.
-result: [pending]
+result: pass
 
 ### 3. KPI, 그래프, 비교 카드 결과
-expected: 초기 투자금, 월 투자금, 투자 기간을 바꾸면 최종 예상 자산, 세후 월 현금흐름, 벤치마크 대비 차이가 화면의 KPI, 그래프, 비교 카드에 함께 갱신된다. 벤치마크 대비 불리한 전략은 음수 차이가 숨겨지지 않고 기회비용처럼 보인다.
+expected: 거치식 시작 자금, 월 투자금, 투자 기간을 바꾸면 최종 예상 자산, 세후 월 현금흐름, 벤치마크 대비 차이가 화면의 KPI, 그래프, 비교 카드에 함께 갱신된다. 벤치마크 대비 불리한 전략은 음수 차이가 숨겨지지 않고 기회비용처럼 보인다.
 result: [pending]
 
 ### 4. 5천만 원 이하 초기자본 경고
@@ -47,9 +47,9 @@ result: [pending]
 ## Summary
 
 total: 7
-passed: 1
+passed: 2
 issues: 0
-pending: 6
+pending: 5
 skipped: 0
 blocked: 0
 

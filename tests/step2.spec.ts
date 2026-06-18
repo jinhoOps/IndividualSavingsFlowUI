@@ -45,8 +45,8 @@ test.describe('Step 2 Phase 08 storage and import contracts', () => {
     await expect(page.locator('#choiceJudgment h1')).toContainText('월 현금흐름');
     await expect(page.locator('#importStep1DataPrimary')).toBeVisible();
     await expect(page.locator('#resetStep2Simulation')).toBeVisible();
-    await expect(page.locator('#totalMonthlyInvestCapacity')).toHaveValue('1750000');
-    await expect(page.locator('#totalInitialAsset')).toHaveValue('25000000');
+    await expect(page.locator('#totalMonthlyInvestCapacity')).toHaveValue('1,750,000');
+    await expect(page.locator('#totalInitialAsset')).toHaveValue('25,000,000');
     await expect(page.locator('#simHorizonYears')).toHaveValue('18');
 
     page.once('dialog', async (dialog) => {
@@ -54,7 +54,7 @@ test.describe('Step 2 Phase 08 storage and import contracts', () => {
       await dialog.accept();
     });
     await page.locator('#totalMonthlyInvestCapacity').fill('2250000');
-    await expect(page.locator('#totalMonthlyInvestCapacity')).toHaveValue('2250000');
+    await expect(page.locator('#totalMonthlyInvestCapacity')).toHaveValue('2,250,000');
     await page.locator('#simHorizonYears').fill('7');
     await expect(page.locator('#simHorizonYears')).toHaveValue('7');
 
@@ -68,8 +68,8 @@ test.describe('Step 2 Phase 08 storage and import contracts', () => {
     });
     await page.locator('#resetStep2Simulation').click();
 
-    await expect(page.locator('#totalMonthlyInvestCapacity')).toHaveValue('1750000');
-    await expect(page.locator('#totalInitialAsset')).toHaveValue('25000000');
+    await expect(page.locator('#totalMonthlyInvestCapacity')).toHaveValue('1,750,000');
+    await expect(page.locator('#totalInitialAsset')).toHaveValue('25,000,000');
     await expect(page.locator('#simHorizonYears')).toHaveValue('18');
   });
 
@@ -519,7 +519,7 @@ test.describe('Step 2 Phase 08 first-screen mobile UI flows', () => {
     const savedName = await page.locator('data-hub-modal .simulation-name').first().textContent();
     await page.locator('#totalInitialAsset').fill('64000000');
     await page.locator('data-hub-modal .btn-select').first().click();
-    await expect(page.locator('#totalInitialAsset')).not.toHaveValue('64000000');
+    await expect(page.locator('#totalInitialAsset')).not.toHaveValue('64,000,000');
 
     await page.locator('#appLauncherBtn').click();
     await page.locator('#headerDataHubBtn').click();

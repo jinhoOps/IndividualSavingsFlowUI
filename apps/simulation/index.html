@@ -47,7 +47,7 @@
           <div class="section-head">
             <div>
               <h2>주요 입력</h2>
-              <p class="section-note">Step 1 원본값을 기준으로 초기 투자금, 월 투자금, 기간만 조정합니다.</p>
+              <p class="section-note">Step 1 원본값을 기준으로 거치식 시작 자금, 월 투자금, 기간을 조정합니다.</p>
             </div>
             <div class="section-head-tools step2-input-actions">
               <button id="importStep1DataPrimary" class="btn btn-ghost btn-sm" type="button">Step 1 데이터 가져오기</button>
@@ -56,12 +56,12 @@
           </div>
           <div class="form-grid">
             <label class="control">
-              <span>초기 투자 자금(원)</span>
-              <input id="totalInitialAsset" type="number" min="0" step="1" inputmode="decimal" />
+              <span>거치식 시작 자금(원)</span>
+              <input id="totalInitialAsset" type="text" data-money-input="won" inputmode="decimal" />
             </label>
             <label class="control">
               <span>월 투자 가능 금액(원)</span>
-              <input id="totalMonthlyInvestCapacity" type="number" min="0" step="1" inputmode="decimal" />
+              <input id="totalMonthlyInvestCapacity" type="text" data-money-input="won" inputmode="decimal" />
             </label>
             <label class="control">
               <span>투자 기간(년)</span>

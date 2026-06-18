@@ -60,6 +60,13 @@ function appendText(parent, tag, className, text) {
   return el;
 }
 
+function formatWonInputValue(value) {
+  if (typeof window !== "undefined" && window.IsfUtils?.formatWonInputValue) {
+    return window.IsfUtils.formatWonInputValue(value);
+  }
+  return String(Math.round(Number(value || 0)));
+}
+
 export function renderDividendSimulation() {
   if (!dom.simTable) return;
   const comparison = calculateStrategyComparison(state.draft || {});
@@ -414,10 +421,10 @@ export function renderDraft() {
   if (!state.draft) return;
   try {
     if (dom.totalInitialAsset) {
-      dom.totalInitialAsset.value = utils.toMan(state.draft.totalInitialAsset || 0);
+      dom.totalInitialAsset.value = formatWonInputValue(state.draft.totalInitialAsset || 0);
     }
     if (dom.totalMonthlyInvestCapacity) {
-      dom.totalMonthlyInvestCapacity.value = utils.toMan(state.draft.totalMonthlyInvestCapacity || 0);
+      dom.totalMonthlyInvestCapacity.value = formatWonInputValue(state.draft.totalMonthlyInvestCapacity || 0);
     }
 
     if (state.draft.dividendSim) {
