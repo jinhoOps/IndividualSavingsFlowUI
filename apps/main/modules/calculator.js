@@ -112,6 +112,8 @@ export function buildMonthlySnapshot(inputs) {
     deficit,
     targets,
     accounts: inputs.accounts || [],
+    splitIncomeAccounts: Boolean(inputs.splitIncomeAccounts),
+    accountCorrections: Array.isArray(inputs.accountCorrections) ? inputs.accountCorrections : [],
     surplusTransferAccountId: inputs.surplusTransferAccountId || "",
     transfers: inputs.transfers || [],
   };

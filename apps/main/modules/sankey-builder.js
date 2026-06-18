@@ -1,10 +1,10 @@
 import {
-  SANKEY_SORT_MODES,
-  MAGIC_MAPPING_DEFAULTS
+  SANKEY_SORT_MODES
 } from "./constants.js";
 import {
   normalizeAllocationGroupName
 } from "./input-sanitizer.js";
+import { recommendAccountId } from "./account-correction.js";
 
 function normalizeSankeySortMode(mode) {
   return Object.values(SANKEY_SORT_MODES).includes(mode) ? mode : SANKEY_SORT_MODES.GROUP;
@@ -57,7 +57,8 @@ function sortBreakdownItemsForSankey(items, sortMode) {
 }
 
 export function buildSankeyData(snapshot, sortMode, sankeyGrouping) {
-  const incomeSources = (snapshot.incomeBreakdown || []).filter((item) => item.value > 0);
+  const incomeSources = (snapshot.incomeBreakdown || [])
+    .filter((item) => item.value > 0 && item.id !== "income-deficit" && item.tone !== "deficit");
   if (!incomeSources.length) {
     return null;
   }
@@ -69,10 +70,9 @@ export function buildSankeyData(snapshot, sortMode, sankeyGrouping) {
   const accounts = snapshot.accounts || [];
   const accountIds = new Set(accounts.map((a) => a.id));
 
-  function resolveAccountId(itemAccountId, magicDefault) {
+  function resolveAccountId(itemAccountId, category) {
     if (itemAccountId && accountIds.has(itemAccountId)) return itemAccountId;
-    if (magicDefault && accountIds.has(magicDefault)) return magicDefault;
-    return accounts[0]?.id || null;
+    return recommendAccountId({ accounts }, category, { accountId: itemAccountId }) || null;
   }
 
   // 1. 노드 목록(nodes) 생성
@@ -87,15 +87,22 @@ export function buildSankeyData(snapshot, sortMode, sankeyGrouping) {
     });
   });
 
-  // 계좌 노드들 (수입이 직접 들어오는 수입계좌는 column 1, 분배받는 중간계좌는 column 1.5)
-  const incomeAccounts = new Set(incomeSources.map(src => resolveAccountId(src.accountId, MAGIC_MAPPING_DEFAULTS.income)));
+  nodes.push({
+    id: "total-income",
+    label: "총수입",
+    value: incomeSources.reduce((sum, src) => sum + src.value, 0),
+    tone: "income",
+    column: 1
+  });
+
+  // 계좌 노드들 (총수입 이후 계좌 레이어)
   accounts.forEach((acc) => {
     nodes.push({
       id: acc.id,
       label: acc.name || acc.label || `계좌-${acc.id}`,
       value: 0,
       tone: acc.tone || "account",
-      column: incomeAccounts.has(acc.id) ? 1 : 1.5
+      column: 1.5
     });
   });
 
@@ -157,7 +164,7 @@ export function buildSankeyData(snapshot, sortMode, sankeyGrouping) {
       // 계좌별로 합산 링크
       const accountValues = new Map();
       activeItems.forEach((item) => {
-        const sourceAccountId = resolveAccountId(item.accountId, MAGIC_MAPPING_DEFAULTS[category]);
+        const sourceAccountId = resolveAccountId(item.accountId, category);
         if (sourceAccountId) {
           accountValues.set(sourceAccountId, (accountValues.get(sourceAccountId) || 0) + item.value);
         }
@@ -209,7 +216,7 @@ export function buildSankeyData(snapshot, sortMode, sankeyGrouping) {
         // 계좌별로 합산 링크
         const accountValues = new Map();
         itemsInGroup.forEach((item) => {
-          const sourceAccountId = resolveAccountId(item.accountId, MAGIC_MAPPING_DEFAULTS[category]);
+          const sourceAccountId = resolveAccountId(item.accountId, category);
           if (sourceAccountId) {
             accountValues.set(sourceAccountId, (accountValues.get(sourceAccountId) || 0) + item.value);
           }
@@ -238,7 +245,7 @@ export function buildSankeyData(snapshot, sortMode, sankeyGrouping) {
           accountId: item.accountId || null
         });
 
-        const sourceAccountId = resolveAccountId(item.accountId, MAGIC_MAPPING_DEFAULTS[category]);
+        const sourceAccountId = resolveAccountId(item.accountId, category);
         if (sourceAccountId) {
           categoryLinks.push({
             source: sourceAccountId,
@@ -305,34 +312,38 @@ export function buildSankeyData(snapshot, sortMode, sankeyGrouping) {
   }
 
   // 2. 링크 목록(links) 생성
-  // 수입 ➔ 급여계좌(수입계좌) 전체 이체, 그리고 급여계좌 ➔ 타 계좌 분배 링크 생성
+  // 수입 ➔ 총수입 ➔ 계좌 allocation 링크 생성
+  const accountIncomeValues = new Map();
   incomeSources.forEach((src) => {
-    const mainAccountId = resolveAccountId(src.accountId, MAGIC_MAPPING_DEFAULTS.income);
-    if (!mainAccountId) return;
-
-    // 1) 수입 ➔ 해당 수입의 주 계좌로 전체 금액 연결
     links.push({
       source: src.id,
-      target: mainAccountId,
+      target: "total-income",
       value: src.value,
       tone: src.tone
     });
 
-    // 2) 주 계좌 ➔ 타 계좌로의 분배 링크 연결
-    if (Array.isArray(src.allocations) && src.allocations.length > 0) {
-      src.allocations.forEach((alloc) => {
-        if (alloc.amount <= 0) return;
-        const targetAccountId = resolveAccountId(alloc.accountId, MAGIC_MAPPING_DEFAULTS.income);
-        if (!targetAccountId || targetAccountId === mainAccountId) return;
-        
-        links.push({
-          source: mainAccountId,
-          target: targetAccountId,
-          value: alloc.amount,
-          tone: src.tone
-        });
-      });
+    const allocations = Array.isArray(src.allocations) && src.allocations.length > 0
+      ? src.allocations
+      : [{ accountId: src.accountId, amount: src.value }];
+    allocations.forEach((alloc) => {
+      const amount = Number(alloc?.amount) || 0;
+      if (amount <= 0) return;
+      const targetAccountId = resolveAccountId(alloc.accountId, "income");
+      if (!targetAccountId) return;
+      accountIncomeValues.set(targetAccountId, (accountIncomeValues.get(targetAccountId) || 0) + amount);
+    });
+  });
+
+  accountIncomeValues.forEach((value, accountId) => {
+    if (value <= 0) {
+      return;
     }
+    links.push({
+      source: "total-income",
+      target: accountId,
+      value,
+      tone: "income"
+    });
   });
 
   // 계좌 ➔ 세부 항목 링크들 주입
@@ -340,7 +351,7 @@ export function buildSankeyData(snapshot, sortMode, sankeyGrouping) {
 
   // 부채상환 링크
   if (snapshot.debtPayment > 0) {
-    const debtSourceId = resolveAccountId(null, MAGIC_MAPPING_DEFAULTS.expense);
+    const debtSourceId = resolveAccountId(null, "expense");
     if (debtSourceId) {
       links.push({
         source: debtSourceId,
@@ -353,7 +364,7 @@ export function buildSankeyData(snapshot, sortMode, sankeyGrouping) {
 
   // 잉여현금 링크
   if (snapshot.surplus > 0) {
-    const surplusSourceId = resolveAccountId(snapshot.surplusTransferAccountId, MAGIC_MAPPING_DEFAULTS.invest);
+    const surplusSourceId = resolveAccountId(snapshot.surplusTransferAccountId, "invest");
     if (surplusSourceId) {
       links.push({
         source: surplusSourceId,
@@ -369,13 +380,13 @@ export function buildSankeyData(snapshot, sortMode, sankeyGrouping) {
 
   // 소득 분배를 transfers에 추가
   incomeSources.forEach((src) => {
-    const mainAccountId = resolveAccountId(src.accountId, MAGIC_MAPPING_DEFAULTS.income);
+    const mainAccountId = resolveAccountId(src.accountId, "income");
     if (!mainAccountId) return;
 
     if (Array.isArray(src.allocations) && src.allocations.length > 0) {
       src.allocations.forEach((alloc) => {
         if (alloc.amount <= 0) return;
-        const targetAccountId = resolveAccountId(alloc.accountId, MAGIC_MAPPING_DEFAULTS.income);
+        const targetAccountId = resolveAccountId(alloc.accountId, "income");
         if (!targetAccountId || targetAccountId === mainAccountId) return;
 
         transfers.push({
