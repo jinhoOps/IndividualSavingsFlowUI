@@ -43,7 +43,7 @@ export function createRenderOrchestrator() {
     const snapshot = buildMonthlySnapshot(inputs);
     state.snapshot = snapshot;
     const projection = simulateProjection(inputs, { mode: state.projectionOptions.mode });
-    renderFinancialSummaryGroups(dom.summaryCards, buildFinancialSummaryGroups(inputs));
+    renderFinancialSummaryGroups(dom.summaryCards, buildFinancialSummaryGroups(inputs, { projection }));
     updateSankeyCorrectionStatus(inputs);
 
     const { warnings } = calculateAccountFinancialIncomes(inputs);

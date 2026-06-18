@@ -21,27 +21,38 @@ function createRepresentativeList(items) {
 }
 
 function renderCard(card) {
-  const button = document.createElement("button");
-  button.type = "button";
-  button.className = `financial-summary-card financial-summary-card--${card.tone || card.category}`;
-  button.dataset.financialCategory = card.category;
-  button.setAttribute("aria-label", `${card.label} 상세 열기`);
+  const isMetric = card.type === "metric";
+  const button = document.createElement(isMetric ? "article" : "button");
+  if (!isMetric) {
+    button.type = "button";
+    button.dataset.financialCategory = card.category;
+    button.setAttribute("aria-label", `${card.label} 상세 열기`);
+  } else {
+    button.dataset.financialMetric = card.metric;
+  }
+  button.className = [
+    "financial-summary-card",
+    isMetric ? "financial-summary-card--metric" : "",
+    `financial-summary-card--${card.tone || card.category}`,
+  ].filter(Boolean).join(" ");
 
   const head = document.createElement("span");
   head.className = "financial-summary-card__head";
   head.appendChild(createTextElement("span", "financial-summary-card__label", card.label));
-  head.appendChild(createTextElement("span", "financial-summary-card__count", `${card.count}개`));
+  if (!isMetric) {
+    head.appendChild(createTextElement("span", "financial-summary-card__count", `${card.count}개`));
+  }
 
-  const total = createTextElement("strong", "financial-summary-card__total", IsfUtils.formatMoney(card.total || 0));
+  const total = createTextElement(
+    "strong",
+    "financial-summary-card__total",
+    isMetric ? card.value : IsfUtils.formatMoney(card.total || 0),
+  );
   const list = createRepresentativeList(card.representatives);
 
   button.appendChild(head);
   button.appendChild(total);
   button.appendChild(list);
-
-  if (card.meta) {
-    button.appendChild(createTextElement("span", "financial-summary-card__note", card.meta));
-  }
 
   return button;
 }
@@ -51,15 +62,16 @@ function renderGroup(group) {
   section.className = "financial-summary-group";
   section.dataset.financialSummaryGroup = group.id;
 
-  const title = createTextElement("h3", "financial-summary-group__title", group.title);
   const grid = document.createElement("div");
   grid.className = "financial-summary-group__cards";
+  if (group.title) {
+    section.setAttribute("aria-label", group.title);
+  }
 
   (group.cards || []).forEach((card) => {
     grid.appendChild(renderCard(card));
   });
 
-  section.appendChild(title);
   section.appendChild(grid);
   return section;
 }
@@ -69,4 +81,3 @@ export function renderFinancialSummaryGroups(host, groups) {
   host.classList.add("financial-summary-groups");
   host.replaceChildren(...(Array.isArray(groups) ? groups : []).map(renderGroup));
 }
-

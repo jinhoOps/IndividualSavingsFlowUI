@@ -781,9 +781,9 @@ test.describe('Phase 09 preset quick setup contracts', () => {
     await expect(modal.locator('[data-preset-key="custom"]')).toHaveText('사용자 지정');
 
     await modal.locator('[data-preset-key="growth"]').click();
-    await expect(modal.locator('input[data-preset-percent="expense"]')).toHaveValue('42');
-    await expect(modal.locator('input[data-preset-percent="savings"]')).toHaveValue('18');
-    await expect(modal.locator('input[data-preset-percent="invest"]')).toHaveValue('40');
+    await expect(modal.locator('input[data-preset-percent="expense"]')).toHaveValue('38');
+    await expect(modal.locator('input[data-preset-percent="savings"]')).toHaveValue('12');
+    await expect(modal.locator('input[data-preset-percent="invest"]')).toHaveValue('50');
 
     await modal.locator('input[data-preset-percent="expense"]').fill('60');
     await modal.locator('input[data-preset-percent="savings"]').fill('20');
@@ -848,12 +848,13 @@ test.describe('Phase 09 financial summary card surface', () => {
     await page.waitForSelector('main');
   });
 
-  test('builds and renders two summary groups with five category cards before Sankey', async ({ page }) => {
+  test('builds and renders core metric cards plus editable outflow cards before Sankey', async ({ page }) => {
     const result = await page.evaluate(async () => {
-      const [{ buildFinancialSummaryGroups }, { renderFinancialSummaryGroups }, { sanitizeInputs }] = await Promise.all([
+      const [{ buildFinancialSummaryGroups }, { renderFinancialSummaryGroups }, { sanitizeInputs }, { simulateProjection }] = await Promise.all([
         import('/IndividualSavingsFlowUI/apps/main/modules/financial-summary.js'),
         import('/IndividualSavingsFlowUI/apps/main/modules/financial-summary-renderer.js'),
         import('/IndividualSavingsFlowUI/apps/main/modules/input-sanitizer.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/calculator.js'),
       ]);
       const inputs = sanitizeInputs({
         modelVersion: 10,
@@ -866,32 +867,42 @@ test.describe('Phase 09 financial summary card surface', () => {
         expenseItems: [{ id: 'rent', name: '월세', amount: 800000, group: '고정비', accountId: 'acc-living' }],
         savingsItems: [{ id: 'saving', name: '청년적금', amount: 300000, group: '저축', accountId: 'acc-salary' }],
         investItems: [{ id: 'invest', name: 'ETF', amount: 200000, group: '투자', accountId: 'acc-stock' }],
+        horizonYears: 5,
       });
-      const groups = buildFinancialSummaryGroups(inputs);
+      const projection = simulateProjection(inputs);
+      const groups = buildFinancialSummaryGroups(inputs, { projection });
       const host = document.querySelector('#summaryCards');
       renderFinancialSummaryGroups(host, groups);
       const cardButtons = Array.from(document.querySelectorAll('[data-financial-category]'));
+      const metricCards = Array.from(document.querySelectorAll('[data-financial-metric]'));
       const summaryPanel = document.querySelector('.summary-panel');
       const sankeyPanel = document.querySelector('.sankey-panel');
       return {
         groupTitles: groups.map((group: any) => group.title),
-        categoryLabels: groups.flatMap((group: any) => group.cards.map((card: any) => card.label)),
+        cardLabels: groups.flatMap((group: any) => group.cards.map((card: any) => card.label)),
         firstCard: groups[0].cards[0],
+        metricCards: metricCards.map((card) => (card as HTMLElement).dataset.financialMetric),
         cardCategories: cardButtons.map((button) => (button as HTMLElement).dataset.financialCategory),
         cardRoles: cardButtons.map((button) => button.getAttribute('role') || button.tagName.toLowerCase()),
+        groupTitleElements: document.querySelectorAll('.financial-summary-group__title').length,
+        correctionNotes: document.querySelectorAll('.financial-summary-card__note').length,
         summaryBeforeSankey: Boolean(summaryPanel && sankeyPanel && summaryPanel.compareDocumentPosition(sankeyPanel) & Node.DOCUMENT_POSITION_FOLLOWING),
         renderedText: host?.textContent || '',
       };
     });
 
-    expect(result.groupTitles).toEqual(['수입+계좌', '지출+저축+투자']);
-    expect(result.categoryLabels).toEqual(['수입', '계좌', '지출', '저축', '투자']);
-    expect(result.firstCard).toMatchObject({ category: 'income', label: '수입', count: 1, total: 3000000 });
-    expect(result.firstCard.representatives).toEqual(expect.arrayContaining([expect.stringContaining('급여')]));
-    expect(result.cardCategories).toEqual(['income', 'account', 'expense', 'savings', 'invest']);
+    expect(result.groupTitles).toEqual(['핵심지표', '지출+저축+투자']);
+    expect(result.cardLabels).toEqual(['5년 후 순자산', '미래자산 투입률', '지출', '저축', '투자']);
+    expect(result.firstCard).toMatchObject({ type: 'metric', metric: 'future-net-asset', label: '5년 후 순자산' });
+    expect(result.firstCard.value).toMatch(/원|만|억|조/);
+    expect(result.metricCards).toEqual(['future-net-asset', 'future-asset-rate']);
+    expect(result.cardCategories).toEqual(['expense', 'savings', 'invest']);
     expect(result.cardRoles.every((role: string) => role === 'button')).toBe(true);
+    expect(result.groupTitleElements).toBe(0);
+    expect(result.correctionNotes).toBe(0);
     expect(result.summaryBeforeSankey).toBe(true);
     expect(result.renderedText).toContain('월세');
+    expect(result.renderedText).not.toContain('자동 보정');
   });
 });
 
@@ -1061,9 +1072,10 @@ test.describe('Phase 09 final responsive user flow coverage', () => {
       await page.setViewportSize(viewport);
       await page.waitForTimeout(150);
 
-      await expect(page.locator('[data-financial-summary-group="income-account"]')).toContainText('수입+계좌');
-      await expect(page.locator('[data-financial-summary-group="outflow"]')).toContainText('지출+저축+투자');
-      await expect(page.locator('[data-financial-category]')).toHaveCount(5);
+      await expect(page.locator('[data-financial-summary-group="core-metrics"]')).toContainText('년 후 순자산');
+      await expect(page.locator('[data-financial-summary-group="core-metrics"]')).toContainText('미래자산 투입률');
+      await expect(page.locator('[data-financial-summary-group="outflow"]')).toContainText('지출');
+      await expect(page.locator('[data-financial-category]')).toHaveCount(3);
 
       const summaryBox = await page.locator('.summary-panel').boundingBox();
       const sankeyBox = await page.locator('.sankey-panel').boundingBox();

@@ -14,7 +14,7 @@ const CATEGORY_META = {
 };
 
 const SUMMARY_GROUPS = [
-  { id: "income-account", title: "수입+계좌", categories: ["income", "account"] },
+  { id: "core-metrics", title: "핵심지표", categories: [] },
   { id: "outflow", title: "지출+저축+투자", categories: ["expense", "savings", "invest"] },
 ];
 
@@ -88,6 +88,7 @@ function buildCard(inputs, category) {
   const correctionCount = countCorrections(inputs, category);
 
   return {
+    type: "category",
     category,
     label: meta.label,
     tone: meta.tone,
@@ -95,18 +96,67 @@ function buildCard(inputs, category) {
     count: items.length,
     representatives,
     correctionCount,
-    meta: correctionCount > 0 ? `${correctionCount}건 자동 보정` : "",
   };
 }
 
-export function buildFinancialSummaryGroups(inputs) {
+function formatSignedMoneyDelta(amount) {
+  const numericAmount = Number(amount) || 0;
+  if (numericAmount === 0) return "변화 0원";
+  const prefix = numericAmount > 0 ? "+" : "-";
+  return `변화 ${prefix}${IsfUtils.formatMoney(Math.abs(numericAmount))}`;
+}
+
+function formatFutureAssetRate(inputs) {
+  const income = getMonthlyIncomeTotalWon(inputs.incomes);
+  const futureAllocation = getMonthlyAllocationTotalWon(inputs.savingsItems) +
+    getMonthlyAllocationTotalWon(inputs.investItems);
+  const rate = income > 0 ? (futureAllocation / income) * 100 : 0;
+  const cleanRate = Number.isFinite(rate) ? Math.round(rate * 10) / 10 : 0;
+  return {
+    value: `${cleanRate.toLocaleString("ko-KR", { maximumFractionDigits: 1 })}%`,
+    sub: `월 저축+투자 ${IsfUtils.formatMoney(futureAllocation)}`,
+  };
+}
+
+function buildCoreMetricCards(inputs, projection) {
+  const safeProjection = Array.isArray(projection) ? projection : [];
+  const current = safeProjection[0] || null;
+  const last = safeProjection[safeProjection.length - 1] || current;
+  const horizonYears = Math.max(1, Math.round(Number(inputs.horizonYears) || 1));
+  const netAsset = Number(last?.netAsset || 0);
+  const deltaNet = current && last ? netAsset - Number(current.netAsset || 0) : 0;
+  const futureRate = formatFutureAssetRate(inputs);
+
+  return [
+    {
+      type: "metric",
+      metric: "future-net-asset",
+      label: `${horizonYears}년 후 순자산`,
+      tone: netAsset >= 0 ? "income" : "deficit",
+      total: netAsset,
+      value: IsfUtils.formatMoney(netAsset),
+      representatives: [formatSignedMoneyDelta(deltaNet)],
+    },
+    {
+      type: "metric",
+      metric: "future-asset-rate",
+      label: "미래자산 투입률",
+      tone: "invest",
+      value: futureRate.value,
+      representatives: [futureRate.sub],
+    },
+  ];
+}
+
+export function buildFinancialSummaryGroups(inputs, options = {}) {
   const safeInputs = inputs && typeof inputs === "object" ? inputs : {};
   return SUMMARY_GROUPS.map((group) => ({
     id: group.id,
     title: group.title,
-    cards: group.categories
-      .map((category) => buildCard(safeInputs, category))
-      .filter(Boolean),
+    cards: group.id === "core-metrics"
+      ? buildCoreMetricCards(safeInputs, options.projection)
+      : group.categories
+        .map((category) => buildCard(safeInputs, category))
+        .filter(Boolean),
   }));
 }
-
