@@ -170,9 +170,9 @@ input[type=number]{-moz-appearance:textfield}
 .preset-confirm-rows{display:grid;border:1px solid var(--line);border-radius:var(--rd-sm);overflow:hidden;background:var(--panel)}
 .preset-confirm-row{display:grid;grid-template-columns:minmax(120px,0.8fr) minmax(0,1.2fr);gap:10px;align-items:center;padding:10px 12px;border-top:1px solid rgba(16,34,32,0.07);font-size:0.82rem}
 .preset-confirm-row:first-child{border-top:0}
-.preset-confirm-row__title{display:grid;gap:2px}
-.preset-confirm-row__title strong{font-size:0.9rem;color:var(--ink)}
-.preset-confirm-row__title span{font-size:0.76rem;color:var(--muted)}
+.preset-confirm-row__title{display:flex;justify-content:space-between;align-items:center;gap:8px;white-space:nowrap}
+.preset-confirm-row__title strong{font-size:0.9rem;color:var(--ink);flex-shrink:0}
+.preset-confirm-row__title span{font-size:0.76rem;color:var(--muted);text-align:right}
 .preset-confirm-row__metrics{display:flex;align-items:center;justify-content:flex-end;gap:6px;flex-wrap:wrap}
 .preset-confirm-row__metrics span{border:1px solid var(--line);border-radius:999px;padding:2px 7px;background:rgba(255,255,255,0.82);white-space:nowrap}
 .modal-content--financial{max-width:860px}

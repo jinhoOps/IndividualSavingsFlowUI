@@ -75,15 +75,24 @@ function appendConfirmRow(container, item, typeLabel) {
 
   const metrics = document.createElement("div");
   metrics.className = "preset-confirm-row__metrics";
-  const original = document.createElement("span");
-  original.textContent = `원래 ${formatPercent(item.originalPercent)}%`;
-  const normalized = document.createElement("span");
-  normalized.textContent = `보정 ${formatPercent(item.normalizedPercent)}%`;
-  const amount = document.createElement("span");
-  amount.textContent = IsfUtils.convertToKoreanWon(item.amount);
-  const delta = document.createElement("span");
-  delta.textContent = `차이 ${IsfUtils.convertToKoreanWon(item.correctionDelta)}`;
-  metrics.append(original, normalized, amount, delta);
+
+  if (item.correctionDelta === 0) {
+    const percent = document.createElement("span");
+    percent.textContent = `${formatPercent(item.normalizedPercent)}%`;
+    const amount = document.createElement("span");
+    amount.textContent = IsfUtils.convertToKoreanWon(item.amount);
+    metrics.append(percent, amount);
+  } else {
+    const original = document.createElement("span");
+    original.textContent = `원래 ${formatPercent(item.originalPercent)}%`;
+    const normalized = document.createElement("span");
+    normalized.textContent = `보정 ${formatPercent(item.normalizedPercent)}%`;
+    const amount = document.createElement("span");
+    amount.textContent = IsfUtils.convertToKoreanWon(item.amount);
+    const delta = document.createElement("span");
+    delta.textContent = `차이 ${IsfUtils.convertToKoreanWon(item.correctionDelta)}`;
+    metrics.append(original, normalized, amount, delta);
+  }
 
   row.append(title, metrics);
   container.append(row);
