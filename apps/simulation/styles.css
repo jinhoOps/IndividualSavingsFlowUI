@@ -248,17 +248,17 @@ body.is-dashboard-mode .info-panel {
 .warning-banner {
   display: none;
   align-items: flex-start;
-  gap: 10px;
-  padding: 12px 14px;
+  gap: 8px;
+  padding: 8px 10px;
   border-radius: 8px;
   background: rgba(234, 91, 42, 0.06);
-  border: 1px solid rgba(234, 91, 42, 0.45);
+  border: 1px solid rgba(234, 91, 42, 0.28);
 }
 
 .warning-banner__icon {
-  width: 22px;
-  height: 22px;
-  flex: 0 0 22px;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -266,12 +266,12 @@ body.is-dashboard-mode .info-panel {
   background: var(--tone-primary);
   color: #fff;
   font-weight: 900;
-  font-size: 0.85rem;
+  font-size: 0.72rem;
 }
 
 .warning-banner__body {
-  font-size: 0.88rem;
-  line-height: 1.6;
+  font-size: 0.8rem;
+  line-height: 1.45;
   color: var(--ink);
 }
 
@@ -530,6 +530,42 @@ body.is-dashboard-mode .info-panel {
   .strategy-card,
   .comparison-card {
     min-height: 112px;
+  }
+
+  .strategy-card-grid {
+    gap: 8px;
+  }
+
+  .strategy-card {
+    min-height: 48px;
+    padding: 10px 12px;
+    justify-content: center;
+  }
+
+  .strategy-card:not(.is-active) {
+    display: grid;
+    grid-template-columns: minmax(72px, auto) 1fr;
+    align-items: center;
+    column-gap: 10px;
+    background: rgba(255, 255, 255, 0.64);
+  }
+
+  .strategy-card:not(.is-active) span:last-child {
+    display: none;
+  }
+
+  .strategy-card:not(.is-active) strong {
+    font-size: 0.94rem;
+    line-height: 1.2;
+  }
+
+  .strategy-card.is-active {
+    min-height: 118px;
+  }
+
+  .warning-banner {
+    align-items: center;
+    padding: 7px 9px;
   }
 
   .kpi-grid {

@@ -5,6 +5,8 @@
 - `qqq.json` is the Nasdaq/growth evidence file used for the QQQ benchmark context.
 - `spy.json` is the S&P 500 evidence file used for the broad index benchmark context.
 - `schd.json` is the dividend-growth evidence file used for the SCHD context.
+- `qld.json` and `tqqq.json` are QQQ-family leveraged growth evidence files.
+- `kospi.json`, `kosdaq.json`, and `gold.json` are broader comparison evidence files kept in the same runtime data location.
 
 These files support conservative example ranges for education and comparison. They are not live market feeds, current ETF quotes, or guaranteed return sources.
 
@@ -15,4 +17,4 @@ The generation scripts write runtime market data back into this directory:
 - `scripts/generate_qqq_data.py` generates `qqq.json`, `qld.json`, and `tqqq.json`.
 - `scripts/generate_market_data.py` converts supported monthly JSON files in this directory to daily runtime JSON.
 
-Step 2 runtime code must continue to use `public/data/indices/*.json` and `assumptions.js`; it should not depend on loose root-level CSV backdata files.
+Step 2 runtime code must continue to use `public/data/indices/*.json` and `assumptions.js`; it should not depend on loose root-level CSV or market JSON backdata files.

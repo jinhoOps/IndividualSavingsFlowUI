@@ -1,18 +1,14 @@
 ---
-status: testing
+status: complete
 phase: 08-step-2-redesign-re-planning
 source: [08-01-SUMMARY.md, 08-02-SUMMARY.md, 08-03-SUMMARY.md, 08-04-SUMMARY.md]
 started: 2026-06-18T16:31:12+09:00
-updated: 2026-06-18T17:28:00+09:00
+updated: 2026-06-18T17:52:00+09:00
 ---
 
 ## Current Test
 
-number: 5
-name: 모바일 첫 화면 읽기 흐름
-expected: |
-  390px와 768px 폭에서 Step 2 화면 순서가 판단 문장, 핵심 입력, KPI, 그래프, 비교 카드, 안내, 접힌 상세 표 순서로 자연스럽게 읽힌다. 텍스트 겹침, 잘림, 가로 넘침, 큰 레이아웃 점프가 없다.
-awaiting: user response
+[testing complete]
 
 ## Tests
 
@@ -34,22 +30,22 @@ result: pass
 
 ### 5. 모바일 첫 화면 읽기 흐름
 expected: 390px와 768px 폭에서 Step 2 화면 순서가 판단 문장, 핵심 입력, KPI, 그래프, 비교 카드, 안내, 접힌 상세 표 순서로 자연스럽게 읽힌다. 텍스트 겹침, 잘림, 가로 넘침, 큰 레이아웃 점프가 없다.
-result: [pending]
+result: pass
 
 ### 6. Step 2 저장, 목록, 불러오기, 삭제
 expected: Step 2의 저장 버튼으로 현재 시뮬레이션을 저장할 수 있고, DataHub 시뮬레이션 목록에서 알아볼 수 있는 이름으로 보인다. 저장한 항목을 불러오면 Step 2 값과 전략 선택이 복원되고, 삭제하면 목록에서 사라진다.
-result: [pending]
+result: pass
 
 ### 7. 정적 시장 데이터 출처와 루트 CSV 정리
-expected: 프로젝트의 시장 데이터 설명은 public/data/indices/README.md에서 qqq.json, spy.json, schd.json을 런타임 근거 파일로 안내한다. 루트의 qqq_raw.csv, qqq_daily_raw.csv, qqq_daily_stooq.csv 파일은 남아 있지 않다.
-result: [pending]
+expected: 프로젝트의 시장 데이터 설명은 public/data/indices/README.md에서 qqq.json, spy.json, schd.json과 추가 정적 지표 파일을 런타임 근거 파일로 안내한다. 루트의 qqq_raw.csv, qqq_daily_raw.csv, qqq_daily_stooq.csv, qqq_daily_chart.json 파일은 남아 있지 않다.
+result: pass
 
 ## Summary
 
 total: 7
-passed: 4
+passed: 7
 issues: 0
-pending: 3
+pending: 0
 skipped: 0
 blocked: 0
 

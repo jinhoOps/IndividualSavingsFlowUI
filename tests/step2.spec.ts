@@ -451,11 +451,17 @@ test.describe('Step 2 Phase 08 first-screen mobile UI flows', () => {
     await expect(page.locator('#simChartSvg text', { hasText: '커버드콜' })).toBeVisible();
 
     const firstKpiBefore = await page.locator('#simKpiGrid .kpi-value').first().textContent();
+    const inactiveCardHeightBefore = await page.locator('[data-strategy-card="coveredCallMonthlyIncome"]').evaluate((el) => el.getBoundingClientRect().height);
+    const activeCardHeightBefore = await page.locator('[data-strategy-card="dividendGrowth"]').evaluate((el) => el.getBoundingClientRect().height);
+    expect(inactiveCardHeightBefore).toBeLessThan(activeCardHeightBefore);
     const chartTopBefore = await page.locator('.sim-chart-wrap').evaluate((el) => {
       const rect = el.getBoundingClientRect();
       return rect.top + window.scrollY;
     });
     await page.locator('[data-strategy-card="coveredCallMonthlyIncome"]').click();
+    const inactiveCardHeightAfter = await page.locator('[data-strategy-card="dividendGrowth"]').evaluate((el) => el.getBoundingClientRect().height);
+    const activeCardHeightAfter = await page.locator('[data-strategy-card="coveredCallMonthlyIncome"]').evaluate((el) => el.getBoundingClientRect().height);
+    expect(inactiveCardHeightAfter).toBeLessThan(activeCardHeightAfter);
     const firstKpiAfter = await page.locator('#simKpiGrid .kpi-value').first().textContent();
     const chartTopAfter = await page.locator('.sim-chart-wrap').evaluate((el) => {
       const rect = el.getBoundingClientRect();
