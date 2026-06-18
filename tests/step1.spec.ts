@@ -560,4 +560,55 @@ test.describe('Phase 09 account correction and Sankey topology', () => {
     expect(result.accountToExpense).toBe(true);
     expect(result.labels).not.toContain('미지정 계좌');
   });
+
+  test('keeps deficit pseudo-income outside total-income aggregation', async ({ page }) => {
+    const result = await page.evaluate(async () => {
+      const [{ sanitizeInputs }, { buildMonthlySnapshot }, { buildSankeyData }] = await Promise.all([
+        import('/IndividualSavingsFlowUI/apps/main/modules/input-sanitizer.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/calculator.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/sankey-builder.js'),
+      ]);
+
+      const inputs = sanitizeInputs({
+        modelVersion: 10,
+        incomes: [{ id: 'main', name: '급여', amount: 1000000, accountId: 'acc-salary' }],
+        accounts: [
+          { id: 'acc-salary', name: '급여계좌' },
+          { id: 'acc-living', name: '생활비계좌' },
+          { id: 'acc-stock', name: '투자계좌' },
+        ],
+        expenseItems: [{ id: 'rent', name: '월세', amount: 1500000, group: '고정비', accountId: 'acc-living' }],
+        savingsItems: [{ id: 'saving-zero', name: '저축 없음', amount: 0, group: '저축', accountId: 'acc-salary' }],
+        investItems: [{ id: 'invest-zero', name: '투자 없음', amount: 0, group: '투자', accountId: 'acc-stock' }],
+        monthlyDebtPayment: 0,
+        startCash: 0,
+        startSavings: 0,
+        startInvest: 0,
+        startDebt: 0,
+        annualIncomeGrowth: 0,
+        annualExpenseGrowth: 0,
+        annualSavingsYield: 3,
+        annualInvestReturn: 7,
+        annualDebtInterest: 0,
+        horizonYears: 5,
+      });
+      const snapshot = buildMonthlySnapshot(inputs);
+      const sankey = buildSankeyData(snapshot, 'group', { expense: 'detail' });
+      const totalIncomeNode = sankey?.nodes.find((node: { id: string }) => node.id === 'total-income');
+
+      return {
+        snapshotIncome: snapshot.income,
+        deficit: snapshot.deficit,
+        totalIncomeValue: totalIncomeNode?.value,
+        deficitToTotal: sankey?.links.some((link: { source: string; target: string }) =>
+          link.source === 'income-deficit' && link.target === 'total-income'
+        ),
+      };
+    });
+
+    expect(result.snapshotIncome).toBe(1000000);
+    expect(result.deficit).toBe(500000);
+    expect(result.totalIncomeValue).toBe(1000000);
+    expect(result.deficitToTotal).toBe(false);
+  });
 });
