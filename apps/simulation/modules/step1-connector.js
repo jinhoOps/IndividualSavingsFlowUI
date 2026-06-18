@@ -6,6 +6,22 @@ import { renderDraft } from "./renderers.js";
 
 import { utils } from "./utils.js";
 
+const STEP1_PRIMARY_STORAGE_KEY = "isf-rebuild-v1";
+
+function readLocalStep1Inputs() {
+  try {
+    const hubLocal = getHubStorage()?.loadLocal?.(STEP1_PRIMARY_STORAGE_KEY);
+    if (hubLocal) return hubLocal;
+  } catch (_e) {}
+
+  try {
+    const raw = localStorage.getItem(STEP1_PRIMARY_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (_e) {
+    return null;
+  }
+}
+
 function normalizeStep1Payload(snapshot) {
   const payload = snapshot?.payload;
   if (!payload) return null;
@@ -51,6 +67,11 @@ function renderSyncBanner(source, options = {}) {
   if (dom.syncTimestamp) dom.syncTimestamp.textContent = formatDateTime(source?.timestamp);
   if (dom.syncInvestCapacity) dom.syncInvestCapacity.textContent = formatCurrency(source?.totalMonthlyInvestCapacity || 0);
   if (dom.importStep1Data) dom.importStep1Data.textContent = actionText;
+  if (dom.importStep1Data) dom.importStep1Data.dataset.mode = actionText === "Main으로 이동" ? "go-main" : "import";
+  if (dom.importStep1DataPrimary) {
+    dom.importStep1DataPrimary.textContent = actionText === "Main으로 이동" ? "Step 1에서 먼저 입력하기" : "Step 1 데이터 가져오기";
+    dom.importStep1DataPrimary.dataset.mode = actionText === "Main으로 이동" ? "go-main" : "import";
+  }
 }
 
 export async function checkStep1SyncData() {
@@ -95,6 +116,11 @@ export async function checkStep1SyncData() {
       if (dom.syncInvestCapacity) dom.syncInvestCapacity.textContent = "0원";
       if (dom.importStep1Data) {
         dom.importStep1Data.textContent = "Main으로 이동";
+        dom.importStep1Data.dataset.mode = "go-main";
+      }
+      if (dom.importStep1DataPrimary) {
+        dom.importStep1DataPrimary.textContent = "Step 1에서 먼저 입력하기";
+        dom.importStep1DataPrimary.dataset.mode = "go-main";
       }
     } else {
       if (dom.step1SyncBanner) dom.step1SyncBanner.hidden = true;
@@ -104,24 +130,35 @@ export async function checkStep1SyncData() {
 
 
 export async function resolveLatestStep1Snapshot(hub) { 
-  if (!hub) return { snapshot: null }; 
+  const localInputs = readLocalStep1Inputs();
   try { 
-    const s1 = await hub.getLatestStep1Snapshot();
-    if (!s1) return { snapshot: null };
-    
-    const payloadData = s1.data || s1;
+    const s1 = hub?.getLatestStep1Snapshot ? await hub.getLatestStep1Snapshot() : null;
+    const payloadData = s1?.data || s1 || localInputs;
+    if (!payloadData) return { snapshot: null };
     
     return {
       snapshot: {
-        id: s1.id || "recent",
+        id: s1?.id || "recent",
         payload: {
           totalInitialAsset: Number(payloadData.startInvest) || 0,
           monthlyInvestCapacity: Number(payloadData.monthlyInvest) || 0,
-          timestamp: new Date(s1.updatedAt || Date.now()).toISOString()
+          timestamp: new Date(s1?.updatedAt || payloadData.updatedAt || Date.now()).toISOString()
         }
       }
     };
   } catch (_e) { 
+    if (localInputs) {
+      return {
+        snapshot: {
+          id: "local-current",
+          payload: {
+            totalInitialAsset: Number(localInputs.startInvest) || 0,
+            monthlyInvestCapacity: Number(localInputs.monthlyInvest) || 0,
+            timestamp: new Date(localInputs.updatedAt || Date.now()).toISOString()
+          }
+        }
+      };
+    }
     return { snapshot: null }; 
   } 
 }

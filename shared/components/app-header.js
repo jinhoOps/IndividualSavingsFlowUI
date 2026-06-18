@@ -72,7 +72,7 @@ export class AppHeader extends HTMLElement {
     
     const stepLabels = {
       '1': '나의 가계 흐름',
-      '2': '배당 성장 시뮬레이션',
+      '2': '전략 선택 가이드',
       '3': '나의 적립식 포트폴리오'
     };
     const currentLabel = stepLabels[this.currentStep] || 'ISF UIUX';

@@ -41,6 +41,10 @@ test.describe('Step 2 Phase 08 storage and import contracts', () => {
     await page.goto('apps/simulation/index.html');
     await page.waitForSelector('#totalMonthlyInvestCapacity');
 
+    await expect(page.locator('.current-step-label')).toHaveText('전략 선택 가이드');
+    await expect(page.locator('#choiceJudgment h1')).toContainText('월 현금흐름');
+    await expect(page.locator('#importStep1DataPrimary')).toBeVisible();
+    await expect(page.locator('#resetStep2Simulation')).toBeVisible();
     await expect(page.locator('#totalMonthlyInvestCapacity')).toHaveValue('1750000');
     await expect(page.locator('#totalInitialAsset')).toHaveValue('25000000');
 
@@ -55,10 +59,11 @@ test.describe('Step 2 Phase 08 storage and import contracts', () => {
     expect(step1AfterEdit.monthlyInvest).toBe(1750000);
     expect(step1AfterEdit.startInvest).toBe(25000000);
 
-    await page.evaluate(async () => {
-      const { featureController } = await import('/IndividualSavingsFlowUI/apps/simulation/modules/feature-controllers.js');
-      await featureController.reset();
+    page.once('dialog', async (dialog) => {
+      expect(dialog.message()).toContain('Step 1 원본값');
+      await dialog.accept();
     });
+    await page.locator('#resetStep2Simulation').click();
 
     await expect(page.locator('#totalMonthlyInvestCapacity')).toHaveValue('1750000');
     await expect(page.locator('#totalInitialAsset')).toHaveValue('25000000');

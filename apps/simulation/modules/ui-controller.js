@@ -46,10 +46,10 @@ export const uiController = {
       });
     }
     
-    // Main Import
-    if (dom.importStep1Data) {
-      dom.importStep1Data.addEventListener("click", async () => {
-        if (dom.importStep1Data.textContent === "Main으로 이동") {
+    const bindImportButton = (button) => {
+      if (!button) return;
+      button.addEventListener("click", async () => {
+        if (button.dataset.mode === "go-main" || button.textContent === "Main으로 이동") {
           window.location.href = "../main/index.html";
           return;
         }
@@ -63,6 +63,18 @@ export const uiController = {
             window.IsfFeedback.showFeedback(dom.applyFeedback, "데이터 가져오기 중 오류가 발생했습니다.", true);
           }
         }
+      });
+    };
+
+    bindImportButton(dom.importStep1Data);
+    bindImportButton(dom.importStep1DataPrimary);
+
+    if (dom.resetStep2Simulation) {
+      dom.resetStep2Simulation.addEventListener("click", async () => {
+        if (!confirm("Step 2 값을 Step 1 원본값 기준으로 초기화할까요?")) return;
+        await featureController.reset();
+        state.isSyncedWithStep1 = true;
+        window.IsfFeedback.showFeedback(dom.applyFeedback, "Step 1 원본값 기준으로 초기화되었습니다.");
       });
     }
 
