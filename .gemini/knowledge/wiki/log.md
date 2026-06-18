@@ -50,6 +50,15 @@ sequenceDiagram
 
 ---
 
+## [2026-06-18] feat | 재무 설정 요약 카드 3줄 고정 및 상세 모달 UX 개편 (v0.11.87)
+- **목적**: 대표 항목 리스트의 정렬 무결성을 높이기 위해 요약 카드의 높이를 3줄로 일관되게 고정하고, 모바일 노출 제한을 기존 2줄에서 3줄로 완화합니다. 또한, 상세 편집 모달에서 불필요한 "편집" 글자 버튼을 없애고 카드 행 자체를 터치/클릭하여 직관적으로 편집에 진입하게 하며, 계좌 배지를 누르면 그 자리에서 즉시 인라인 드롭다운으로 매핑을 바꿀 수 있도록 UX를 개편합니다. 임시 수정 사항(Draft)이 있을 때만 Step 3와 동일하게 3종 랜덤 애니메이션으로 팝업되는 전용 펜딩 바를 탑재하여 입력 제어의 프리미엄 조작감을 부여합니다.
+- **주요 변경사항**:
+  - **요약 카드 3줄 높이 고정 및 모바일 노출 완화 (`apps/main/styles.css`)**: `.financial-summary-card__list`에 `min-height: calc(3.159rem + 8px)`를 부여하여 정렬을 맞추고, 모바일 미디어 쿼리 내에서 `nth-child(n+4) { display: none; }`으로 수정하여 3줄 노출을 지원합니다.
+  - **모달 인라인 즉시 편집 UX 도입 (`apps/main/modules/financial-modal-controller.js`)**: 모달 내 row 클릭 시 해당 항목 편집 모드로 바로 진입하도록 클릭 핸들러를 확장하고, 기존 텍스트 "편집" 버튼은 미니멀한 SVG 펜 아이콘으로 변경하였습니다.
+  - **계좌 배지 인라인 드롭다운 전환 (`apps/main/modules/financial-modal-controller.js`, `apps/main/styles.css`)**: `.financial-modal-account-badge` 클릭 시 그 자리에 실시간 `<select>` 엘리먼트를 동적 렌더링하고, 블러 혹은 변경 시 드롭다운 상태를 데이터 모델에 인라인 반영하고 뷰를 갱신하도록 처리했습니다.
+  - **모달 전용 하단 플로팅 펜딩 바 구축 (`apps/main/index.html`, `apps/main/modules/dom.js`, `apps/main/modules/financial-modal-controller.js`, `apps/main/styles.css`)**: 모달 내부의 기존 풋터 버튼들을 숨기고, 모달 하단에 절대 배치되는 `#financialModalPendingBar`를 신설하였습니다. 편집 상태나 수정된 임시 변경사항이 감지되면 3종 애니메이션(`anim-slide-up`, `anim-fade-scale`, `anim-bounce-in`) 중 하나가 랜덤으로 부여되며 플로팅 바가 팝업되고, 변경 취소/저장을 주도하도록 결합했습니다.
+- **결과**: UI 검증 및 E2E 테스트 무결성을 입증하였습니다.
+
 ## [2026-06-18] feat | 프리셋 빠른 설정 확인창 레이아웃 고도화 및 0원 항목 렌더링 간소화 (v0.11.86)
 - **목적**: 프리셋 설정 확인창에서 차이가 0원인 항목들의 복잡한 라벨 노출을 숨겨 시각적 노이즈를 제어하고, 행 타이틀 구조를 한 줄로 컴팩트하게 정렬하여 전반적인 사용자 확인 화면의 가독성을 높입니다.
 - **주요 변경사항**:

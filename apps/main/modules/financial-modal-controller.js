@@ -764,8 +764,6 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
     if (dom.financialModalCancel) dom.financialModalCancel.addEventListener("click", close);
     if (dom.financialModalSave) dom.financialModalSave.addEventListener("click", save);
     if (dom.financialModalCreate) dom.financialModalCreate.addEventListener("click", startCreateFlow);
-    if (dom.financialModalPendingCancel) dom.financialModalPendingCancel.addEventListener("click", close);
-    if (dom.financialModalPendingSave) dom.financialModalPendingSave.addEventListener("click", save);
   }
 
   return {

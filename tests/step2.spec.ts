@@ -421,7 +421,7 @@ test.describe('Step 2 Phase 08 first-screen mobile UI flows', () => {
     }
   });
 
-  test('Phase 08 warning uses only totalInitialAsset and not high monthly investment', async ({ page }) => {
+  test('Phase 08 warning uses only totalInitialAsset below 50M and not high monthly investment', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 900 });
     await page.goto('apps/simulation/index.html');
     await page.waitForSelector('#dividendWarningBanner');
@@ -430,11 +430,11 @@ test.describe('Step 2 Phase 08 first-screen mobile UI flows', () => {
       expect(dialog.message()).toContain('Main에서 연동된 값');
       await dialog.accept();
     });
-    await page.locator('#totalInitialAsset').fill('50000000');
+    await page.locator('#totalInitialAsset').fill('49999999');
     await page.locator('#totalMonthlyInvestCapacity').fill('10000000');
     await expect(page.locator('#dividendWarningBanner')).toBeVisible();
 
-    await page.locator('#totalInitialAsset').fill('50000001');
+    await page.locator('#totalInitialAsset').fill('50000000');
     await expect(page.locator('#dividendWarningBanner')).toBeHidden();
   });
 

@@ -109,7 +109,11 @@ function resolveEditableOverrides(draft = {}, overrides = {}) {
   };
 }
 
-function projectStrategy(strategy, previousAsset, yearlyContribution, yearIndex) {
+function usesDividendGrowthIncomeModel(strategy) {
+  return strategy.key === "schd" || strategy.key === "divo";
+}
+
+function projectStrategy(strategy, previousAsset, yearlyContribution, yearIndex, previousAnnualCashFlowGross = 0) {
   const capitalGrowth = strategy.capitalGrowthPercent / 100;
   const distributionGrowth = strategy.distributionGrowthPercent / 100;
   const baseCashFlowYield = strategy.cashFlowYieldPercent / 100;
@@ -117,7 +121,13 @@ function projectStrategy(strategy, previousAsset, yearlyContribution, yearIndex)
   const contributedAsset = yearlyContribution * (1 + capitalGrowth / 2);
   let finalAsset = grownAsset + contributedAsset;
   const effectiveCashFlowYield = baseCashFlowYield * Math.pow(1 + distributionGrowth, yearIndex - 1);
-  const annualCashFlowGross = finalAsset * effectiveCashFlowYield;
+  const annualCashFlowGross = usesDividendGrowthIncomeModel(strategy)
+    ? (
+        yearIndex === 1
+          ? previousAsset * (1 + capitalGrowth / 2) * baseCashFlowYield
+          : previousAnnualCashFlowGross * (1 + distributionGrowth)
+      ) + (contributedAsset * baseCashFlowYield / 2)
+    : finalAsset * effectiveCashFlowYield;
   const annualCashFlowAfterTax = annualCashFlowGross - calculateIncomeTax(annualCashFlowGross);
 
   if (strategy.isDrip) {
@@ -129,7 +139,7 @@ function projectStrategy(strategy, previousAsset, yearlyContribution, yearIndex)
     annualCashFlowGross: toWon(annualCashFlowGross),
     annualCashFlowAfterTax: toWon(annualCashFlowAfterTax),
     monthlyCashFlowAfterTax: toWon(annualCashFlowAfterTax / 12),
-    effectiveCashFlowYieldPercent: toPercent(effectiveCashFlowYield * 100),
+    effectiveCashFlowYieldPercent: toPercent(finalAsset > 0 ? (annualCashFlowGross / finalAsset) * 100 : effectiveCashFlowYield * 100),
   };
 }
 
@@ -179,18 +189,26 @@ export function calculateStrategyComparison(draft = {}, selectedAssumptions = {}
     schd: initialAsset,
     coveredCall: initialAsset,
   };
+  const annualCashFlows = {
+    index: 0,
+    schd: 0,
+    coveredCall: 0,
+  };
   const rows = [];
 
   for (let year = 1; year <= years; year += 1) {
     principal += yearlyContribution;
-    const indexProjection = projectStrategy(indexStrategy, assets.index, yearlyContribution, year);
+    const indexProjection = projectStrategy(indexStrategy, assets.index, yearlyContribution, year, annualCashFlows.index);
     assets.index = indexProjection.finalAsset;
+    annualCashFlows.index = indexProjection.annualCashFlowGross;
 
-    const schdProjection = projectStrategy(schdStrategy, assets.schd, yearlyContribution, year);
+    const schdProjection = projectStrategy(schdStrategy, assets.schd, yearlyContribution, year, annualCashFlows.schd);
     assets.schd = schdProjection.finalAsset;
+    annualCashFlows.schd = schdProjection.annualCashFlowGross;
 
-    const coveredProjection = projectStrategy(coveredCallStrategy, assets.coveredCall, yearlyContribution, year);
+    const coveredProjection = projectStrategy(coveredCallStrategy, assets.coveredCall, yearlyContribution, year, annualCashFlows.coveredCall);
     assets.coveredCall = coveredProjection.finalAsset;
+    annualCashFlows.coveredCall = coveredProjection.annualCashFlowGross;
 
     const benchmarkAsset = indexProjection.finalAsset;
     const inflationFactor = Math.pow(1 + inflationRate, year);

@@ -3,15 +3,15 @@ status: testing
 phase: 08-step-2-redesign-re-planning
 source: [08-01-SUMMARY.md, 08-02-SUMMARY.md, 08-03-SUMMARY.md, 08-04-SUMMARY.md]
 started: 2026-06-18T16:31:12+09:00
-updated: 2026-06-18T17:08:00+09:00
+updated: 2026-06-18T17:28:00+09:00
 ---
 
 ## Current Test
 
-number: 3
-name: KPI, 그래프, 비교 카드 결과
+number: 5
+name: 모바일 첫 화면 읽기 흐름
 expected: |
-  거치식 시작 자금, 월 투자금, 투자 기간을 바꾸면 최종 예상 자산, 세후 월 현금흐름, 벤치마크 대비 차이가 화면의 KPI, 그래프, 비교 카드에 함께 갱신된다. 벤치마크 대비 불리한 전략은 음수 차이가 숨겨지지 않고 기회비용처럼 보인다.
+  390px와 768px 폭에서 Step 2 화면 순서가 판단 문장, 핵심 입력, KPI, 그래프, 비교 카드, 안내, 접힌 상세 표 순서로 자연스럽게 읽힌다. 텍스트 겹침, 잘림, 가로 넘침, 큰 레이아웃 점프가 없다.
 awaiting: user response
 
 ## Tests
@@ -26,11 +26,11 @@ result: pass
 
 ### 3. KPI, 그래프, 비교 카드 결과
 expected: 거치식 시작 자금, 월 투자금, 투자 기간을 바꾸면 최종 예상 자산, 세후 월 현금흐름, 벤치마크 대비 차이가 화면의 KPI, 그래프, 비교 카드에 함께 갱신된다. 벤치마크 대비 불리한 전략은 음수 차이가 숨겨지지 않고 기회비용처럼 보인다.
-result: [pending]
+result: pass
 
-### 4. 5천만 원 이하 초기자본 경고
-expected: 총 초기 투자금이 5천만 원 이하이면 Step 2 화면에 초기자본 부족 경고가 보이고, 5천만 원을 초과하면 해당 경고가 사라진다. 이전 1억 원 기준 경고 문구는 보이지 않는다.
-result: [pending]
+### 4. 5천만 원 미만 초기자본 경고
+expected: 거치식 시작 자금이 5천만 원 미만이면 Step 2 화면에 초기자본 부족 경고가 보이고, 5천만 원부터는 해당 경고가 사라진다. 이전 1억 원 기준 경고 문구는 보이지 않는다.
+result: pass
 
 ### 5. 모바일 첫 화면 읽기 흐름
 expected: 390px와 768px 폭에서 Step 2 화면 순서가 판단 문장, 핵심 입력, KPI, 그래프, 비교 카드, 안내, 접힌 상세 표 순서로 자연스럽게 읽힌다. 텍스트 겹침, 잘림, 가로 넘침, 큰 레이아웃 점프가 없다.
@@ -47,9 +47,9 @@ result: [pending]
 ## Summary
 
 total: 7
-passed: 2
+passed: 4
 issues: 0
-pending: 5
+pending: 3
 skipped: 0
 blocked: 0
 

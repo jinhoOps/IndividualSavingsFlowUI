@@ -95,7 +95,7 @@ export function renderKpiCards(comparison) {
 
   const initialAsset = state.draft?.totalInitialAsset || 0;
   if (dom.dividendWarningBanner) {
-    dom.dividendWarningBanner.style.display = initialAsset <= 50000000 ? "flex" : "none";
+    dom.dividendWarningBanner.style.display = initialAsset < 50000000 ? "flex" : "none";
   }
 
   const selectedKey = getSelectedStrategyKey();
