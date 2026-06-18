@@ -1,9 +1,9 @@
 ---
-status: diagnosed
+status: resolved
 phase: 09-step-1-financial-settings-input-uiux-rebuild
 source: [09-VERIFICATION.md]
 started: 2026-06-18T05:30:21Z
-updated: 2026-06-18T14:58:30+09:00
+updated: 2026-06-18T16:13:11+09:00
 ---
 
 ## Current Test
@@ -36,7 +36,7 @@ blocked: 0
 ## Gaps
 
 - truth: "The preset setup and category creation/edit flows feel understandable on desktop and mobile widths, confirmation copy is clear, and no awkward visual overlap or confusing state transition appears."
-  status: failed
+  status: resolved
   reason: "User reported: pass, 지출 상세편집에서 각 입력칸이 전부 떠서 힘듬, 정보 밀집을 높이기위해 각 카드를 보여주고 선택을 해서 편집할때만 지금처럼 보이게하고, 그룹도 출금계좌 처럼 드롭다운으로 선택하는게 편할거같아. 근데 이렇게 하려면 따로 관리창이 있어야겠지? 재무설정에 계좌간수동이체설정 제거하고, 어차피 지출/저축/투자 에서 어느 계좌로부터 오는지 출처 설정 강제니까 그걸 기준으로 자동계산하고, 자동계산의 결과로 잉여분 생기는걸로 수입대비 부족분이나 재투입 표시, 재무설정 생활비/저축/투자 그 상세항목 편집하려고 하면 모바일에서 입력칸 겹침 이슈 해결"
   severity: major
   test: 2

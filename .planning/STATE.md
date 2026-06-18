@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.8
 milestone_name: 적립식 포트폴리오 관리 및 전체 UI/UX 개선
 status: completed
-last_updated: "2026-06-18T03:35:29.551Z"
-last_activity: 2026-06-18 -- Phase 09 Plan 04 completed
+last_updated: "2026-06-18T16:13:11+09:00"
+last_activity: 2026-06-18 -- Phase 09 Plan 05 UAT gap closure completed
 progress:
   total_phases: 5
   completed_phases: 5
-  total_plans: 17
-  completed_plans: 17
+  total_plans: 18
+  completed_plans: 18
   percent: 100
 stopped_at: Completed 09-04-PLAN.md
 ---
@@ -19,9 +19,9 @@ stopped_at: Completed 09-04-PLAN.md
 ## Current Position
 
 Phase: 9
-Plan: 04/04
+Plan: 05/05
 Status: Phase 09 complete
-Last activity: 2026-06-18 -- Phase 09 Plan 04 completed
+Last activity: 2026-06-18 -- Phase 09 Plan 05 UAT gap closure completed
 
 ## Project Reference
 
@@ -53,6 +53,7 @@ See: .planning/PROJECT.md (updated 2026-05-20)
 | Phase 09-step-1-financial-settings-input-uiux-rebuild P02 | 32 min | 3 tasks | 8 files |
 | Phase 09-step-1-financial-settings-input-uiux-rebuild P03 | 21 min | 3 tasks | 9 files |
 | Phase 09-step-1-financial-settings-input-uiux-rebuild P04 | 22 min | 3 tasks | 7 files |
+| Phase 09-step-1-financial-settings-input-uiux-rebuild P05 | 52 min | 4 tasks | 5 files |
 
 ## Decisions
 
@@ -74,3 +75,5 @@ See: .planning/PROJECT.md (updated 2026-05-20)
 - [Phase 09-03]: Guided item creation and simple account alias creation live inside the relevant category modal. — The standalone account-management path is rejected for Phase 09; account work belongs inside item flows.
 - [Phase 09-04]: Manual Sankey account correction refresh reuses sanitizeInputs()/repairAccountConnections before persistence and rerender. — This keeps D-25 correction behavior aligned with saved/imported/shared Step 1 data.
 - [Phase 09-04]: Merged Sankey tooltip metadata remains textContent-based and uses newline-separated rows with CSS pre-line wrapping. — This satisfies D-27 readability without opening an HTML injection surface.
+- [Phase 09-05]: Expense/savings/invest detail editing now opens as compact cards and expands only the selected item. — This closes the UAT mobile density issue while preserving explicit save/cancel.
+- [Phase 09-05]: Step 1 no longer exposes manual account-transfer settings; item source accounts drive automatic flow balancing. — This removes duplicate cash-flow modeling and keeps surplus/deficit output derived from required item account selections.

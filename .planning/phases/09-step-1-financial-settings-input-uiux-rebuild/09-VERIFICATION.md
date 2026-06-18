@@ -1,7 +1,7 @@
 ---
 phase: 09-step-1-financial-settings-input-uiux-rebuild
-verified: 2026-06-18T05:30:21Z
-status: human_needed
+verified: 2026-06-18T16:13:11+09:00
+status: passed
 score: "11/11 must-haves verified"
 overrides_applied: 1
 overrides:
@@ -21,9 +21,9 @@ human_verification:
 # Phase 09: Step 1 Financial Settings Input UIUX Rebuild Verification Report
 
 **Phase Goal:** Step 1 재무설정 입력 화면을 Step 3 경험 기준으로 재설계하고, 계좌/항목 추가 흐름 및 Sankey 총수입 집계 노드를 안정화
-**Verified:** 2026-06-18T05:30:21Z
-**Status:** human_needed
-**Re-verification:** No - initial verification
+**Verified:** 2026-06-18T16:13:11+09:00
+**Status:** passed
+**Re-verification:** Yes - Phase 09 UAT gap closed by 09-05
 
 ## Goal Achievement
 
@@ -44,6 +44,13 @@ human_verification:
 | 11 | Phase 09 has automated coverage for data, UI, Sankey, modal, preset, money display, and responsive behavior. | VERIFIED | `playwright test tests/step1.spec.ts -g "Phase 09" --list` found 14 Phase 09 tests covering account correction, Sankey, presets, summary, modals, tooltip readability, and responsive flow. |
 
 **Score:** 11/11 truths verified, including 1 accepted post-feedback override.
+
+### Human Verification Resolution
+
+- `09-UAT.md` status is `resolved`.
+- Test 1 passed by user confirmation.
+- Test 2 produced a UAT gap and was resolved by `09-05-PLAN.md` / `09-05-SUMMARY.md`.
+- Phase 09 Playwright coverage now includes 17 Phase 09 tests, including compact financial modal editing, group dropdown behavior, source-account automatic flow, and 390px mobile overlap checks.
 
 ### Required Artifacts
 

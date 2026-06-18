@@ -56,7 +56,7 @@
 
 - **Goal:** 배당성장과 커버드콜의 개념적 이해를 돕고, 단순 지수추종 및 성장주 대비 총수익률의 열세에도 불구하고 이를 선택하는 이유(월 현금 흐름 확보, 은퇴 계획 등)를 투자자 본인이 판단할 수 있도록 돕는 미래 자산 시뮬레이션을 전면 재기획 및 구현
 - **Requirements:** UI-03
-- **Plans:** 4/4 plans complete
+- **Plans:** 5/5 plans complete
 
 **Wave 1**
 
@@ -97,3 +97,7 @@ Plans:
 **Wave 3** *(blocked on Wave 2 completion)*
 
 - [x] 09-04-PLAN.md — Sankey 보정 새로고침, 툴팁 가독성, 모바일/Playwright 검증
+
+**Wave 4** *(UAT gap closure)*
+
+- [x] 09-05-PLAN.md — 재무 상세 편집 카드화, 그룹 드롭다운, 수동 이체 설정 제거
