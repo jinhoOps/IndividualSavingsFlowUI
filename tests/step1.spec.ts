@@ -612,3 +612,72 @@ test.describe('Phase 09 account correction and Sankey topology', () => {
     expect(result.deficitToTotal).toBe(false);
   });
 });
+
+test.describe('Phase 09 preset quick setup contracts', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.clear();
+      sessionStorage.clear();
+    });
+    await page.goto('apps/main/index.html');
+    await page.waitForSelector('main');
+  });
+
+  test('builds percentage preview rows with correction provenance', async ({ page }) => {
+    const result = await page.evaluate(async () => {
+      const {
+        PRESET_STYLES,
+        buildPresetPreview,
+        applyPresetPreview,
+      } = await import('/IndividualSavingsFlowUI/apps/main/modules/presets.js');
+
+      const preview = buildPresetPreview({
+        monthlyIncomeWon: 3333333,
+        presetKey: 'growth',
+        percentages: {
+          expense: 41,
+          savings: 19,
+          invest: 40,
+        },
+      });
+      const inputs = applyPresetPreview(preview);
+
+      return {
+        presetNames: Object.values(PRESET_STYLES).map((preset: any) => preset.label),
+        presetKeys: Object.keys(PRESET_STYLES),
+        totals: preview.totals,
+        expenseGroups: preview.expenseItems.map((item: any) => item.group),
+        firstExpenseRow: preview.expenseItems[0],
+        savingsRow: preview.savingsItems[0],
+        investRow: preview.investItems[0],
+        inputTotals: {
+          monthlyExpense: inputs.monthlyExpense,
+          monthlySavings: inputs.monthlySavings,
+          monthlyInvest: inputs.monthlyInvest,
+        },
+        inputItemCounts: {
+          expense: inputs.expenseItems.length,
+          savings: inputs.savingsItems.length,
+          invest: inputs.investItems.length,
+        },
+      };
+    });
+
+    expect(result.presetNames).toEqual(expect.arrayContaining(['안정', '균형', '성장', '야수', '사용자 지정']));
+    expect(result.presetKeys).toEqual(expect.arrayContaining(['stable', 'balanced', 'growth', 'beast', 'custom']));
+    expect(new Set(result.expenseGroups)).toEqual(new Set(['고정비', '변동비', '행복비', '경조사비']));
+    expect(result.totals.monthlyIncomeWon).toBe(3333333);
+    expect(result.totals.originalPercentTotal).toBe(100);
+    expect(result.firstExpenseRow.originalPercent).toBeGreaterThan(0);
+    expect(result.firstExpenseRow.normalizedPercent).toBeGreaterThan(0);
+    expect(result.firstExpenseRow.amount).toBeGreaterThan(0);
+    expect(result.firstExpenseRow.amount % 10000).toBe(0);
+    expect(typeof result.firstExpenseRow.correctionDelta).toBe('number');
+    expect(result.savingsRow.originalPercent).toBe(19);
+    expect(result.investRow.originalPercent).toBe(40);
+    expect(result.inputTotals.monthlyExpense).toBe(result.totals.expenseAmount);
+    expect(result.inputTotals.monthlySavings).toBe(result.totals.savingsAmount);
+    expect(result.inputTotals.monthlyInvest).toBe(result.totals.investAmount);
+    expect(result.inputItemCounts).toEqual({ expense: 4, savings: 1, invest: 1 });
+  });
+});
