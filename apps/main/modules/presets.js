@@ -1,119 +1,298 @@
 export const PRESET_SALARIES = [
-  { label: '3,000만 원', value: 30000000, monthlyIncome: 2250000 },
-  { label: '4,000만 원', value: 40000000, monthlyIncome: 2950000 },
-  { label: '5,000만 원', value: 50000000, monthlyIncome: 3550000 },
-  { label: '6,000만 원', value: 60000000, monthlyIncome: 4200000 },
-  { label: '7,000만 원', value: 70000000, monthlyIncome: 4850000 },
-  { label: '8,000만 원', value: 80000000, monthlyIncome: 5400000 },
-  { label: '9,000만 원', value: 90000000, monthlyIncome: 6000000 },
-  { label: '10,000만 원', value: 100000000, monthlyIncome: 6550000 }
+  { label: "3,000만 원", value: 30000000, monthlyIncome: 2250000 },
+  { label: "4,000만 원", value: 40000000, monthlyIncome: 2950000 },
+  { label: "5,000만 원", value: 50000000, monthlyIncome: 3550000 },
+  { label: "6,000만 원", value: 60000000, monthlyIncome: 4200000 },
+  { label: "7,000만 원", value: 70000000, monthlyIncome: 4850000 },
+  { label: "8,000만 원", value: 80000000, monthlyIncome: 5400000 },
+  { label: "9,000만 원", value: 90000000, monthlyIncome: 6000000 },
+  { label: "10,000만 원", value: 100000000, monthlyIncome: 6550000 },
 ];
 
 export const PRESET_STYLES = {
-  conservative: { expenseRate: 0.5, savingsRate: 0.4, investRate: 0.1 },
-  neutral: { expenseRate: 0.5, savingsRate: 0.3, investRate: 0.2 },
-  aggressive: { expenseRate: 0.4, savingsRate: 0.1, investRate: 0.5 },
-  beast: { expenseRate: 0.3, savingsRate: 0.0, investRate: 0.7 }
+  stable: {
+    label: "안정",
+    summary: "저축 비중을 높여 현금 안정성을 먼저 확보합니다.",
+    percentages: { expense: 50, savings: 40, invest: 10 },
+  },
+  balanced: {
+    label: "균형",
+    summary: "생활비를 유지하면서 저축과 투자를 균형 있게 나눕니다.",
+    percentages: { expense: 50, savings: 30, invest: 20 },
+  },
+  growth: {
+    label: "성장",
+    summary: "필수 저축을 남기고 장기 투자 비중을 높입니다.",
+    percentages: { expense: 42, savings: 18, invest: 40 },
+  },
+  beast: {
+    label: "야수",
+    summary: "생활비를 강하게 통제하고 투자 비중을 최대로 둡니다.",
+    percentages: { expense: 34, savings: 6, invest: 60 },
+  },
+  custom: {
+    label: "사용자 지정",
+    summary: "직전 선택값을 복사해 직접 조정합니다.",
+    percentages: { expense: 50, savings: 30, invest: 20 },
+  },
+};
+
+const LEGACY_STYLE_KEYS = {
+  conservative: "stable",
+  neutral: "balanced",
+  aggressive: "growth",
 };
 
 const EXPENSE_DETAIL = [
-  { id: "rent",        name: "주거비(대출상환)", weight: 0.30, group: "생활비-고정비-주거비" },
-  { id: "maintenance", name: "관리비",       weight: 0.05, group: "생활비-고정비-공과금" },
-  { id: "water",       name: "수도세",       weight: 0.02, group: "생활비-고정비-공과금" },
-  { id: "gas",         name: "가스비",       weight: 0.03, group: "생활비-고정비-공과금" },
-  { id: "electricity", name: "전기세",       weight: 0.03, group: "생활비-고정비-공과금" },
-  { id: "telecom",     name: "통신비",       weight: 0.03, group: "생활비-고정비-통신비" },
-  { id: "transport",   name: "교통비",       weight: 0.08, group: "생활비-고정비-교통비" },
-  { id: "food",        name: "식비",         weight: 0.23, group: "생활비-고정비-식비" },
-  { id: "travel",      name: "여행",         weight: 0.08, group: "자유소비-여행" },
-  { id: "hobby",       name: "취미",         weight: 0.15, group: "자유소비-취미" },
+  { id: "fixed", name: "고정비", weight: 0.42, group: "고정비", accountId: "acc-living" },
+  { id: "variable", name: "변동비", weight: 0.32, group: "변동비", accountId: "acc-living" },
+  { id: "joy", name: "행복비", weight: 0.18, group: "행복비", accountId: "acc-living" },
+  { id: "events", name: "경조사비", weight: 0.08, group: "경조사비", accountId: "acc-living" },
 ];
 
 const SAVINGS_DETAIL = [
-  { id: "emergency",            name: "비상금",     weight: 0.30, group: "저축", annualRate: 2.0 },
-  { id: "youth-saving",         name: "청년적금",   weight: 0.50, group: "저축", annualRate: 3.6 },
-  { id: "housing-subscription", name: "주택청약",   weight: 0.20, group: "저축", annualRate: 2.9 },
+  { id: "reserve", name: "비상금/목표저축", weight: 1, group: "저축", annualRate: 3.0, accountId: "acc-salary" },
 ];
 
 const INVEST_DETAIL = [
-  { id: "global-stock", name: "해외주식",     weight: 0.40, group: "투자" },
-  { id: "isa",          name: "ISA",          weight: 0.35, group: "투자" },
-  { id: "pension",      name: "개인연금/IRP", weight: 0.25, group: "투자" },
+  { id: "core-portfolio", name: "장기 투자", weight: 1, group: "투자", accountId: "acc-stock" },
 ];
 
+const ROUNDING_UNIT_WON = 10000;
+
+function resolvePresetKey(styleKey) {
+  const key = String(styleKey || "balanced").trim();
+  return PRESET_STYLES[key] ? key : (LEGACY_STYLE_KEYS[key] || "balanced");
+}
+
+function sanitizePercent(value) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) return 0;
+  return Math.round(parsed * 100) / 100;
+}
+
+function roundToUnit(value, unit = ROUNDING_UNIT_WON) {
+  return Math.max(0, Math.round(Number(value || 0) / unit) * unit);
+}
+
 function getStartingCapitalMultipliers(styleKey) {
-  if (styleKey === "aggressive" || styleKey === "beast") {
+  const key = resolvePresetKey(styleKey);
+  if (key === "growth" || key === "beast") {
     return { cash: 0.02, savings: 0.2, invest: 0.8, debt: 0.5 };
   }
   return { cash: 0.02, savings: 0.8, invest: 0.2, debt: 0.5 };
 }
 
-function distributeAmount(total, details) {
-  const items = details.map(d => ({
-    ...d,
-    amount: Math.round(total * d.weight),
-  }));
-  const sum = items.reduce((s, i) => s + i.amount, 0);
-  items[0].amount += (total - sum);
-  return items.map(({ weight, ...rest }) => rest);
+function createAllocations(monthlyIncomeWon, amounts) {
+  const living = Math.max(0, Number(amounts.expense || 0));
+  const invest = Math.max(0, Number(amounts.invest || 0));
+  const salary = Math.max(0, monthlyIncomeWon - living - invest);
+  const allocations = [];
+  if (salary > 0) allocations.push({ accountId: "acc-salary", amount: salary });
+  if (living > 0) allocations.push({ accountId: "acc-living", amount: living });
+  if (invest > 0) allocations.push({ accountId: "acc-stock", amount: invest });
+  return allocations.length > 0 ? allocations : [{ accountId: "acc-salary", amount: monthlyIncomeWon }];
 }
 
+function distributeCategoryAmount({
+  totalAmount,
+  totalOriginalPercent,
+  totalNormalizedPercent,
+  details,
+  prefix,
+  correctionMode,
+}) {
+  const safeTotal = Math.max(0, Number(totalAmount || 0));
+  let remaining = safeTotal;
 
-export function applyPreset(salaryValue, styleKey) {
-  const salary = PRESET_SALARIES.find(s => s.value === salaryValue);
-  const style = PRESET_STYLES[styleKey];
-  
-  if (!salary || !style) return null;
-  
-  const income = salary.monthlyIncome;
-  
-  const expense = Math.round(income * style.expenseRate);
-  const savings = Math.round(income * style.savingsRate);
-  const invest = Math.round(income * style.investRate);
+  return details.map((detail, index) => {
+    const isLast = index === details.length - 1;
+    const rawAmount = safeTotal * detail.weight;
+    const amount = isLast
+      ? remaining
+      : correctionMode === "percentage"
+        ? Math.round(rawAmount)
+        : roundToUnit(rawAmount);
+    remaining = Math.max(0, remaining - amount);
+    const originalPercent = Math.round(totalOriginalPercent * detail.weight * 100) / 100;
+    const normalizedPercent = Math.round(totalNormalizedPercent * detail.weight * 100) / 100;
 
-  const allocLiving = Math.round(income * style.expenseRate);
-  const allocInvest = Math.round(income * style.investRate);
-  const allocSalary = income - (allocLiving + allocInvest);
+    return {
+      id: `preset-${prefix}-${detail.id}`,
+      name: detail.name,
+      group: detail.group,
+      accountId: detail.accountId,
+      amount,
+      originalPercent,
+      normalizedPercent,
+      rawAmount: Math.round(rawAmount),
+      correctionDelta: amount - Math.round(rawAmount),
+      ...(detail.annualRate ? { annualRate: detail.annualRate } : {}),
+    };
+  });
+}
 
-  const allocations = [];
-  if (allocLiving > 0) allocations.push({ accountId: "acc-living", amount: allocLiving });
-  if (allocSalary > 0) allocations.push({ accountId: "acc-salary", amount: allocSalary });
-  if (allocInvest > 0) allocations.push({ accountId: "acc-stock", amount: allocInvest });
-
-  const startingCapital = getStartingCapitalMultipliers(styleKey);
-  const startCash = Math.round(salaryValue * startingCapital.cash);
-  const startDebt = Math.round(salaryValue * startingCapital.debt);
-  const startSavings = Math.round(salaryValue * startingCapital.savings);
-  const startInvest = Math.round(salaryValue * startingCapital.invest);
-
-  const transfers = [];
-  if (income > 0) {
-    transfers.push({ id: "preset-tr-1", sourceAccountId: "acc-salary", targetAccountId: "acc-cma", amount: Math.round(income * 0.08), label: "비상금 저축" });
-    transfers.push({ id: "preset-tr-2", sourceAccountId: "acc-salary", targetAccountId: "acc-stock", amount: Math.round(income * 0.15), label: "투자금 이체" });
-    transfers.push({ id: "preset-tr-3", sourceAccountId: "acc-cma", targetAccountId: "acc-living", amount: Math.round(income * 0.04), label: "생활비 보조" });
+export function normalizePresetPercentages(percentages = PRESET_STYLES.balanced.percentages) {
+  const original = {
+    expense: sanitizePercent(percentages.expense),
+    savings: sanitizePercent(percentages.savings),
+    invest: sanitizePercent(percentages.invest),
+  };
+  const total = original.expense + original.savings + original.invest;
+  if (total <= 0) {
+    return {
+      original,
+      normalized: { ...PRESET_STYLES.balanced.percentages },
+      originalTotal: 0,
+      normalizedTotal: 100,
+    };
   }
+
+  const normalized = {
+    expense: Math.round((original.expense / total) * 10000) / 100,
+    savings: Math.round((original.savings / total) * 10000) / 100,
+    invest: 0,
+  };
+  normalized.invest = Math.round((100 - normalized.expense - normalized.savings) * 100) / 100;
+
+  return {
+    original,
+    normalized,
+    originalTotal: Math.round(total * 100) / 100,
+    normalizedTotal: Math.round((normalized.expense + normalized.savings + normalized.invest) * 100) / 100,
+  };
+}
+
+export function buildPresetPreview({
+  monthlyIncomeWon,
+  presetKey = "balanced",
+  percentages,
+  correctionMode = "amount",
+} = {}) {
+  const key = resolvePresetKey(presetKey);
+  const preset = PRESET_STYLES[key];
+  const safeIncome = Math.max(0, Math.round(Number(monthlyIncomeWon || 0)));
+  const normalized = normalizePresetPercentages(percentages || preset.percentages);
+  const mode = correctionMode === "percentage" ? "percentage" : "amount";
+  const amountFor = (percent) => {
+    const raw = safeIncome * (percent / 100);
+    return mode === "percentage" ? Math.round(raw) : roundToUnit(raw);
+  };
+  const expenseAmount = amountFor(normalized.normalized.expense);
+  const savingsAmount = amountFor(normalized.normalized.savings);
+  const investAmount = Math.max(0, safeIncome - expenseAmount - savingsAmount);
+
+  const expenseItems = distributeCategoryAmount({
+    totalAmount: expenseAmount,
+    totalOriginalPercent: normalized.original.expense,
+    totalNormalizedPercent: normalized.normalized.expense,
+    details: EXPENSE_DETAIL,
+    prefix: "expense",
+    correctionMode: mode,
+  });
+  const savingsItems = distributeCategoryAmount({
+    totalAmount: savingsAmount,
+    totalOriginalPercent: normalized.original.savings,
+    totalNormalizedPercent: normalized.normalized.savings,
+    details: SAVINGS_DETAIL,
+    prefix: "savings",
+    correctionMode: mode,
+  });
+  const investItems = distributeCategoryAmount({
+    totalAmount: investAmount,
+    totalOriginalPercent: normalized.original.invest,
+    totalNormalizedPercent: normalized.normalized.invest,
+    details: INVEST_DETAIL,
+    prefix: "invest",
+    correctionMode: mode,
+  });
+
+  return {
+    presetKey: key,
+    presetLabel: preset.label,
+    correctionMode: mode,
+    percentages: normalized,
+    totals: {
+      monthlyIncomeWon: safeIncome,
+      originalPercentTotal: normalized.originalTotal,
+      normalizedPercentTotal: normalized.normalizedTotal,
+      expenseAmount,
+      savingsAmount,
+      investAmount,
+      correctionDelta: expenseAmount + savingsAmount + investAmount - safeIncome,
+    },
+    expenseItems,
+    savingsItems,
+    investItems,
+  };
+}
+
+export function applyPresetPreview(preview) {
+  const safePreview = preview && typeof preview === "object" ? preview : buildPresetPreview();
+  const income = Math.max(0, Number(safePreview.totals?.monthlyIncomeWon || 0));
+  const expenseAmount = Math.max(0, Number(safePreview.totals?.expenseAmount || 0));
+  const savingsAmount = Math.max(0, Number(safePreview.totals?.savingsAmount || 0));
+  const investAmount = Math.max(0, Number(safePreview.totals?.investAmount || 0));
 
   return {
     modelVersion: 10,
-    incomes: [{ id: "income-preset", name: "급여", amount: income, accountId: "acc-salary", allocations }],
+    incomes: [{
+      id: "income-preset",
+      name: "급여",
+      amount: income,
+      accountId: "acc-salary",
+      allocations: createAllocations(income, {
+        expense: expenseAmount,
+        savings: savingsAmount,
+        invest: investAmount,
+      }),
+    }],
     accounts: [
       { id: "acc-salary", name: "급여계좌" },
       { id: "acc-living", name: "생활비계좌" },
-      { id: "acc-stock", name: "주식계좌" },
-      { id: "acc-cma", name: "CMA비상금계좌" }
+      { id: "acc-stock", name: "투자계좌" },
+      { id: "acc-cma", name: "CMA비상금계좌" },
     ],
-    transfers,
-    monthlyExpense: expense,
-    monthlySavings: savings,
-    monthlyInvest: invest,
-    expenseItems: distributeAmount(expense, EXPENSE_DETAIL.map(d => ({ ...d, accountId: "acc-living" }))),
-    savingsItems: distributeAmount(savings, SAVINGS_DETAIL.map((d, idx) => ({ ...d, accountId: idx === 0 ? "acc-cma" : "acc-salary" }))),
-    investItems: distributeAmount(invest, INVEST_DETAIL.map(d => ({ ...d, accountId: "acc-stock" }))),
+    splitIncomeAccounts: true,
+    transfers: [],
+    monthlyExpense: expenseAmount,
+    monthlySavings: savingsAmount,
+    monthlyInvest: investAmount,
+    expenseItems: (safePreview.expenseItems || []).map(({ rawAmount, originalPercent, normalizedPercent, correctionDelta, ...item }) => item),
+    savingsItems: (safePreview.savingsItems || []).map(({ rawAmount, originalPercent, normalizedPercent, correctionDelta, ...item }) => item),
+    investItems: (safePreview.investItems || []).map(({ rawAmount, originalPercent, normalizedPercent, correctionDelta, ...item }) => item),
     monthlyDebtPayment: 0,
-    startCash,
-    startSavings,
-    startInvest,
-    startDebt
+    startCash: 0,
+    startSavings: 0,
+    startInvest: 0,
+    startDebt: 0,
+    annualIncomeGrowth: 4.0,
+    annualExpenseGrowth: 2.5,
+    annualSavingsYield: 3.0,
+    annualInvestReturn: 9.5,
+    annualDebtInterest: 5.2,
+    horizonYears: 5,
+    presetPreviewMeta: {
+      presetKey: safePreview.presetKey,
+      presetLabel: safePreview.presetLabel,
+      correctionMode: safePreview.correctionMode,
+      percentages: safePreview.percentages,
+      totals: safePreview.totals,
+    },
+  };
+}
+
+export function applyPreset(salaryValue, styleKey) {
+  const salary = PRESET_SALARIES.find((candidate) => candidate.value === salaryValue);
+  if (!salary) return null;
+  const presetInputs = applyPresetByMonthlyIncome(salary.monthlyIncome, styleKey);
+  const startingCapital = getStartingCapitalMultipliers(styleKey);
+  return {
+    ...presetInputs,
+    startCash: Math.round(salary.value * startingCapital.cash),
+    startDebt: Math.round(salary.value * startingCapital.debt),
+    startSavings: Math.round(salary.value * startingCapital.savings),
+    startInvest: Math.round(salary.value * startingCapital.invest),
   };
 }
 
@@ -128,7 +307,7 @@ export function calculateMonthlyIncomeFromAnnualSalary(salaryWon) {
     { salary: 7000, monthly: 4850000 },
     { salary: 8000, monthly: 5400000 },
     { salary: 9000, monthly: 6000000 },
-    { salary: 10000, monthly: 6550000 }
+    { salary: 10000, monthly: 6550000 },
   ];
 
   if (salaryMan <= 0) return 0;
@@ -136,7 +315,7 @@ export function calculateMonthlyIncomeFromAnnualSalary(salaryWon) {
     return Math.round(6550000 * (salaryMan / 10000));
   }
 
-  for (let i = 0; i < table.length - 1; i++) {
+  for (let i = 0; i < table.length - 1; i += 1) {
     const p1 = table[i];
     const p2 = table[i + 1];
     if (salaryMan >= p1.salary && salaryMan <= p2.salary) {
@@ -157,7 +336,7 @@ export function calculateAnnualSalaryFromMonthlyIncome(monthlyWon) {
     { salary: 7000, monthly: 4850000 },
     { salary: 8000, monthly: 5400000 },
     { salary: 9000, monthly: 6000000 },
-    { salary: 10000, monthly: 6550000 }
+    { salary: 10000, monthly: 6550000 },
   ];
 
   if (monthlyWon <= 0) return 0;
@@ -165,7 +344,7 @@ export function calculateAnnualSalaryFromMonthlyIncome(monthlyWon) {
     return Math.round(100000000 * (monthlyWon / 6550000));
   }
 
-  for (let i = 0; i < table.length - 1; i++) {
+  for (let i = 0; i < table.length - 1; i += 1) {
     const p1 = table[i];
     const p2 = table[i + 1];
     if (monthlyWon >= p1.monthly && monthlyWon <= p2.monthly) {
@@ -177,60 +356,26 @@ export function calculateAnnualSalaryFromMonthlyIncome(monthlyWon) {
   return 0;
 }
 
-export function applyPresetBySalary(salaryWon, styleKey) {
-  const style = PRESET_STYLES[styleKey];
-  if (!style) return null;
-  
-  const validSalaryWon = Math.max(0, Math.min(99000000, Number(salaryWon) || 0));
-  const income = calculateMonthlyIncomeFromAnnualSalary(validSalaryWon);
-  
-  const expense = Math.round(income * style.expenseRate);
-  const savings = Math.round(income * style.savingsRate);
-  const invest = Math.round(income * style.investRate);
-
-  const allocLiving = Math.round(income * style.expenseRate);
-  const allocInvest = Math.round(income * style.investRate);
-  const allocSalary = income - (allocLiving + allocInvest);
-
-  const allocations = [];
-  if (allocLiving > 0) allocations.push({ accountId: "acc-living", amount: allocLiving });
-  if (allocSalary > 0) allocations.push({ accountId: "acc-salary", amount: allocSalary });
-  if (allocInvest > 0) allocations.push({ accountId: "acc-stock", amount: allocInvest });
-
-  const startingCapital = getStartingCapitalMultipliers(styleKey);
-  const startCash = Math.round(validSalaryWon * startingCapital.cash);
-  const startDebt = Math.round(validSalaryWon * startingCapital.debt);
-  const startSavings = Math.round(validSalaryWon * startingCapital.savings);
-  const startInvest = Math.round(validSalaryWon * startingCapital.invest);
-
-  const transfers = [];
-  if (income > 0) {
-    transfers.push({ id: "preset-tr-1", sourceAccountId: "acc-salary", targetAccountId: "acc-cma", amount: Math.round(income * 0.08), label: "비상금 저축" });
-    transfers.push({ id: "preset-tr-2", sourceAccountId: "acc-salary", targetAccountId: "acc-stock", amount: Math.round(income * 0.15), label: "투자금 이체" });
-    transfers.push({ id: "preset-tr-3", sourceAccountId: "acc-cma", targetAccountId: "acc-living", amount: Math.round(income * 0.04), label: "생활비 보조" });
-  }
-
-  return {
-    modelVersion: 10,
-    incomes: [{ id: "income-preset", name: "급여", amount: income, accountId: "acc-salary", allocations }],
-    accounts: [
-      { id: "acc-salary", name: "급여계좌" },
-      { id: "acc-living", name: "생활비계좌" },
-      { id: "acc-stock", name: "주식계좌" },
-      { id: "acc-cma", name: "CMA비상금계좌" }
-    ],
-    transfers,
-    monthlyExpense: expense,
-    monthlySavings: savings,
-    monthlyInvest: invest,
-    expenseItems: distributeAmount(expense, EXPENSE_DETAIL.map(d => ({ ...d, accountId: "acc-living" }))),
-    savingsItems: distributeAmount(savings, SAVINGS_DETAIL.map((d, idx) => ({ ...d, accountId: idx === 0 ? "acc-cma" : "acc-salary" }))),
-    investItems: distributeAmount(invest, INVEST_DETAIL.map(d => ({ ...d, accountId: "acc-stock" }))),
-    monthlyDebtPayment: 0,
-    startCash,
-    startSavings,
-    startInvest,
-    startDebt
-  };
+export function applyPresetByMonthlyIncome(monthlyIncomeWon, styleKey) {
+  const key = resolvePresetKey(styleKey);
+  const preview = buildPresetPreview({
+    monthlyIncomeWon,
+    presetKey: key,
+    percentages: PRESET_STYLES[key].percentages,
+  });
+  return applyPresetPreview(preview);
 }
 
+export function applyPresetBySalary(salaryWon, styleKey) {
+  const validSalaryWon = Math.max(0, Math.min(99000000, Number(salaryWon) || 0));
+  const monthlyIncome = calculateMonthlyIncomeFromAnnualSalary(validSalaryWon);
+  const presetInputs = applyPresetByMonthlyIncome(monthlyIncome, styleKey);
+  const startingCapital = getStartingCapitalMultipliers(styleKey);
+  return {
+    ...presetInputs,
+    startCash: Math.round(validSalaryWon * startingCapital.cash),
+    startDebt: Math.round(validSalaryWon * startingCapital.debt),
+    startSavings: Math.round(validSalaryWon * startingCapital.savings),
+    startInvest: Math.round(validSalaryWon * startingCapital.invest),
+  };
+}
