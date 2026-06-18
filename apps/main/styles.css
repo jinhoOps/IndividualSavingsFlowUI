@@ -120,7 +120,7 @@ input[type=number]{-moz-appearance:textfield}
 .financial-summary-card__label{font-size:0.86rem;font-weight:800}
 .financial-summary-card__count{font-size:0.74rem;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:2px 7px;background:rgba(249,246,240,0.8);white-space:nowrap}
 .financial-summary-card__total{font-family:var(--font-display);font-size:1.45rem;line-height:1.18;color:var(--ink);overflow-wrap:anywhere}
-.financial-summary-card__list{display:grid;gap:4px;margin:0;padding:0;list-style:none;color:var(--muted);font-size:0.78rem;line-height:1.35}
+.financial-summary-card__list{display:grid;gap:4px;margin:0;padding:0;list-style:none;color:var(--muted);font-size:0.78rem;line-height:1.35;min-height:calc(3.159rem + 8px)}
 .financial-summary-card__list li{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .financial-summary-card--income .financial-summary-card__total{color:var(--income)}
 .financial-summary-card--expense .financial-summary-card__total{color:var(--expense)}
@@ -241,7 +241,7 @@ main{order:2;gap:14px;display:grid}
 .financial-summary-group__cards,.financial-summary-group[data-financial-summary-group="core-metrics"] .financial-summary-group__cards{grid-template-columns:repeat(2,minmax(0,1fr))}
 .financial-summary-card{min-height:146px;padding:12px}
 .financial-summary-card__total{font-size:1.16rem}
-.financial-summary-card__list li:nth-child(n+3){display:none}
+.financial-summary-card__list li:nth-child(n+4){display:none}
 .controls-grid--simple,.controls-grid--advanced{grid-template-columns:1fr}
 .control{padding:12px !important}
 .controls-block .control{grid-template-columns:minmax(82px,0.72fr) minmax(116px,1fr);align-items:center;column-gap:10px;padding:10px 12px !important}
