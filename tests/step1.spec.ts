@@ -808,3 +808,38 @@ test.describe('Phase 09 financial summary card surface', () => {
     expect(result.renderedText).toContain('월세');
   });
 });
+
+test.describe('Phase 09 financial category detail modal', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.clear();
+      sessionStorage.clear();
+    });
+    await page.goto('apps/main/index.html');
+    await page.waitForSelector('main');
+  });
+
+  test('opens category modal for card detail editing and saves only after explicit confirm', async ({ page }) => {
+    await page.locator('[data-financial-category="expense"]').click();
+    const modal = page.locator('#financialModal');
+    await expect(modal).toBeVisible();
+    await expect(modal.locator('#financialModalTitle')).toContainText('지출');
+    await expect(modal.locator('[data-modal-row-category="expense"]').first()).toContainText('월세');
+    await expect(modal.locator('.financial-modal-account-badge').first()).toBeVisible();
+
+    const firstName = modal.locator('[data-financial-modal-field="name"]').first();
+    await firstName.fill('월세 수정');
+    await modal.locator('#financialModalCancel').click();
+    await expect(modal).toBeHidden();
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}').expenseItems?.[0]?.name || '')).not.toBe('월세 수정');
+
+    await page.locator('[data-financial-category="expense"]').click();
+    await modal.locator('[data-financial-modal-field="name"]').first().fill('월세 수정');
+    await modal.locator('#financialModalSave').click();
+    await expect(modal).toBeHidden();
+
+    const savedName = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}').expenseItems?.[0]?.name);
+    expect(savedName).toBe('월세 수정');
+    await expect(page.locator('[data-financial-category="expense"]')).toContainText('월세 수정');
+  });
+});
