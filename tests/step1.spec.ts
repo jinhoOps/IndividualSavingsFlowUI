@@ -843,3 +843,46 @@ test.describe('Phase 09 financial category detail modal', () => {
     await expect(page.locator('[data-financial-category="expense"]')).toContainText('주거비 수정');
   });
 });
+
+test.describe('Phase 09 guided item and inline account creation', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.clear();
+      sessionStorage.clear();
+    });
+    await page.goto('apps/main/index.html');
+    await page.waitForSelector('main');
+  });
+
+  test('creates a new investment item with an inline account and final confirmation', async ({ page }) => {
+    await page.locator('[data-financial-category="invest"]').click();
+    const modal = page.locator('#financialModal');
+    await expect(modal).toBeVisible();
+    await modal.locator('#financialModalCreate').click();
+
+    await expect(modal.locator('[data-create-step="details"]')).toBeVisible();
+    await expect(modal.locator('#financialCreateAccountSelect')).toHaveValue('acc-stock');
+    await modal.locator('[data-create-field="name"]').fill('테스트 ETF');
+    await modal.locator('[data-create-field="amount"]').fill('100000');
+    await modal.locator('[data-create-field="group"]').fill('투자');
+    await modal.locator('#financialCreateNewAccountToggle').click();
+    await modal.locator('[data-create-field="accountName"]').fill('연금계좌');
+    await modal.locator('#financialCreateReview').click();
+
+    const confirm = modal.locator('#financialCreateConfirm');
+    await expect(confirm).toBeVisible();
+    await expect(confirm).toContainText('테스트 ETF');
+    await expect(confirm).toContainText('10만원');
+    await expect(confirm).toContainText('연금계좌');
+    await expect(confirm).toContainText('투자');
+    await modal.locator('#financialCreateSave').click();
+    await expect(modal).toBeHidden();
+
+    const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}'));
+    const createdAccount = saved.accounts.find((account: any) => account.name === '연금계좌');
+    const createdItem = saved.investItems.find((item: any) => item.name === '테스트 ETF');
+    expect(createdAccount).toBeTruthy();
+    expect(createdItem).toMatchObject({ amount: 100000, group: '투자', accountId: createdAccount.id });
+    await expect(page.locator('[data-financial-category="invest"]')).toContainText('테스트 ETF');
+  });
+});
