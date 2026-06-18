@@ -6,6 +6,7 @@ import { renderSankey } from "./sankey-renderer.js";
 import { dom } from "./dom.js";
 import { state } from "./state.js";
 import { sanitizeInputs } from "./input-sanitizer.js";
+import { summarizeAccountCorrections } from "./account-correction.js";
 import * as helpers from "./state-helpers.js";
 import * as listRenderer from "./list-renderer.js";
 import {
@@ -15,6 +16,29 @@ import {
 } from "./ui-controller.js";
 
 export function createVisualizationController({ markPendingChanges }) {
+  function updateSankeyCorrectionStatus(corrections = state.inputs?.accountCorrections) {
+    if (!dom.sankeyCorrectionStatus) return;
+    const safeCorrections = Array.isArray(corrections) ? corrections : [];
+    dom.sankeyCorrectionStatus.classList.toggle("is-warning", safeCorrections.length > 0);
+    dom.sankeyCorrectionStatus.textContent = safeCorrections.length > 0
+      ? `${safeCorrections.length}개 계좌 연결 보정됨`
+      : "계좌 연결 정상";
+    const detail = summarizeAccountCorrections(safeCorrections);
+    if (detail) {
+      dom.sankeyCorrectionStatus.setAttribute("title", detail);
+    } else {
+      dom.sankeyCorrectionStatus.removeAttribute("title");
+    }
+  }
+
+  function refreshSankeyAccountCorrections() {
+    const repairedInputs = sanitizeInputs(state.inputs);
+    state.inputs = repairedInputs;
+    state.draftInputs = null;
+    markPendingChanges();
+    updateSankeyCorrectionStatus(repairedInputs.accountCorrections);
+  }
+
   function setSankeyValueMode(mode) {
     state.sankeyValueMode = mode;
     syncSankeyValueModeUi();
@@ -109,6 +133,10 @@ export function createVisualizationController({ markPendingChanges }) {
       });
     }
 
+    if (dom.sankeyCorrectionRefresh) {
+      dom.sankeyCorrectionRefresh.addEventListener("click", refreshSankeyAccountCorrections);
+    }
+
     if (dom.transferRuleList) {
       dom.transferRuleList.addEventListener("click", (event) => {
         const button = event.target.closest(".btn-delete-transfer");
@@ -192,6 +220,7 @@ export function createVisualizationController({ markPendingChanges }) {
 
   return {
     bindVisualizationAndTooltipEvents,
+    updateSankeyCorrectionStatus,
     setSankeyValueMode,
     setSankeySortMode,
     setSankeyGrouping,

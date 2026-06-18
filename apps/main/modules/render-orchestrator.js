@@ -17,6 +17,23 @@ import * as listRenderer from "./list-renderer.js";
 import { refreshInputsPanel } from "./ui-controller.js";
 
 export function createRenderOrchestrator() {
+  function updateSankeyCorrectionStatus(inputs) {
+    if (!dom.sankeyCorrectionStatus) return;
+    const corrections = Array.isArray(inputs?.accountCorrections) ? inputs.accountCorrections : [];
+    dom.sankeyCorrectionStatus.classList.toggle("is-warning", corrections.length > 0);
+    dom.sankeyCorrectionStatus.textContent = corrections.length > 0
+      ? `${corrections.length}개 계좌 연결 보정됨`
+      : "계좌 연결 정상";
+    if (corrections.length > 0) {
+      dom.sankeyCorrectionStatus.setAttribute(
+        "title",
+        corrections.map((correction) => correction.message).join("\n"),
+      );
+    } else {
+      dom.sankeyCorrectionStatus.removeAttribute("title");
+    }
+  }
+
   function getVisibleInputs() {
     return helpers.getVisibleInputs(state);
   }
@@ -27,6 +44,7 @@ export function createRenderOrchestrator() {
     state.snapshot = snapshot;
     const projection = simulateProjection(inputs, { mode: state.projectionOptions.mode });
     renderFinancialSummaryGroups(dom.summaryCards, buildFinancialSummaryGroups(inputs));
+    updateSankeyCorrectionStatus(inputs);
 
     const { warnings } = calculateAccountFinancialIncomes(inputs);
     if (dom.appHeader && typeof dom.appHeader.setFinancialWarning === "function") {

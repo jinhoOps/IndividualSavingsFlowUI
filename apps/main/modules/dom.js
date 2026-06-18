@@ -90,6 +90,8 @@ export const dom = {
   sankeySvg: document.getElementById("sankeySvg"),
   sankeyWrap: document.getElementById("sankeyWrap"),
   sankeyMeta: document.getElementById("sankeyMeta"),
+  sankeyCorrectionRefresh: document.getElementById("sankeyCorrectionRefresh"),
+  sankeyCorrectionStatus: document.getElementById("sankeyCorrectionStatus"),
   sankeyLegend: document.getElementById("sankeyLegend"),
   accountTransferBoard: document.getElementById("accountTransferBoard"),
   transferCardList: document.getElementById("transferCardList"),

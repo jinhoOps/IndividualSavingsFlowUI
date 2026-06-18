@@ -403,6 +403,14 @@
           </div>
           <div class="sankey-head-tools">
             <p id="sankeyMeta" class="hint" hidden></p>
+            <div class="sankey-correction-control" role="group" aria-label="Sankey 계좌 보정">
+              <button id="sankeyCorrectionRefresh" class="btn btn-ghost btn-sm" type="button">
+                계좌 보정
+              </button>
+              <span id="sankeyCorrectionStatus" class="sankey-correction-status" aria-live="polite">
+                계좌 연결 정상
+              </span>
+            </div>
             <div class="sankey-view-toggle" role="group" aria-label="Sankey Diagram 표기 방식">
               <button id="sankeyViewAmount" class="btn btn-ghost btn-sm sankey-view-btn is-active" type="button"
                 data-sankey-view="amount" aria-pressed="true">
