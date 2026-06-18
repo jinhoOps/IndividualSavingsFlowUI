@@ -824,22 +824,22 @@ test.describe('Phase 09 financial category detail modal', () => {
     const modal = page.locator('#financialModal');
     await expect(modal).toBeVisible();
     await expect(modal.locator('#financialModalTitle')).toContainText('지출');
-    await expect(modal.locator('[data-modal-row-category="expense"]').first()).toContainText('월세');
+    await expect(modal.locator('[data-modal-row-category="expense"]').first()).toContainText('주거비');
     await expect(modal.locator('.financial-modal-account-badge').first()).toBeVisible();
 
     const firstName = modal.locator('[data-financial-modal-field="name"]').first();
-    await firstName.fill('월세 수정');
+    await firstName.fill('주거비 수정');
     await modal.locator('#financialModalCancel').click();
     await expect(modal).toBeHidden();
-    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}').expenseItems?.[0]?.name || '')).not.toBe('월세 수정');
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}').expenseItems?.[0]?.name || '')).not.toBe('주거비 수정');
 
     await page.locator('[data-financial-category="expense"]').click();
-    await modal.locator('[data-financial-modal-field="name"]').first().fill('월세 수정');
+    await modal.locator('[data-financial-modal-field="name"]').first().fill('주거비 수정');
     await modal.locator('#financialModalSave').click();
     await expect(modal).toBeHidden();
 
     const savedName = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}').expenseItems?.[0]?.name);
-    expect(savedName).toBe('월세 수정');
-    await expect(page.locator('[data-financial-category="expense"]')).toContainText('월세 수정');
+    expect(savedName).toBe('주거비 수정');
+    await expect(page.locator('[data-financial-category="expense"]')).toContainText('주거비 수정');
   });
 });

@@ -14,6 +14,7 @@ import { renderSankey, exportSankeyToPng } from "./sankey-renderer.js";
 import { dom } from "./dom.js";
 import { state } from "./state.js";
 import { createPresetSetupController } from "./preset-setup-controller.js";
+import { createFinancialModalController } from "./financial-modal-controller.js";
 import * as helpers from "./state-helpers.js";
 import * as listRenderer from "./list-renderer.js";
 import {
@@ -92,6 +93,11 @@ export function bindStep1Events(commands) {
   createPresetSetupController({
     persistence: commands.persistence,
     getInputs: () => state.inputs,
+  }).bind();
+  createFinancialModalController({
+    persistence: commands.persistence,
+    getVisibleInputs: commands.render.getVisibleInputs,
+    renderAll: commands.render.renderAll,
   }).bind();
   commands.itemEditor.bindItemEditorEvents();
   bindActionButtons(commands.persistence.handleResetInputs);

@@ -171,6 +171,18 @@ input[type=number]{-moz-appearance:textfield}
 .preset-confirm-row__title span{font-size:0.76rem;color:var(--muted)}
 .preset-confirm-row__metrics{display:flex;align-items:center;justify-content:flex-end;gap:6px;flex-wrap:wrap}
 .preset-confirm-row__metrics span{border:1px solid var(--line);border-radius:999px;padding:2px 7px;background:rgba(255,255,255,0.82);white-space:nowrap}
+.modal-content--financial{max-width:860px}
+.financial-modal-description{margin:4px 0 0;color:var(--muted);font-size:0.82rem}
+.financial-modal-summary{border:1px solid var(--line);border-radius:var(--rd-sm);background:rgba(249,246,240,0.72);padding:10px 12px;font-size:0.84rem;font-weight:800;color:var(--ink);margin-bottom:var(--sp-sm)}
+.financial-modal-rows{display:grid;gap:var(--sp-sm)}
+.financial-modal-row{border:1px solid var(--line);border-radius:var(--rd-sm);background:var(--panel);padding:var(--sp-md);display:grid;gap:var(--sp-sm)}
+.financial-modal-row__header{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-sm);flex-wrap:wrap}
+.financial-modal-row__header strong{font-size:0.94rem}
+.financial-modal-account-badge{display:inline-flex;align-items:center;border:1px solid rgba(30,139,124,0.22);border-radius:999px;background:rgba(30,139,124,0.08);color:var(--tone-accent);font-size:0.74rem;font-weight:800;padding:3px 8px}
+.financial-modal-row__fields{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.financial-modal-field{display:grid;gap:5px;min-width:0}
+.financial-modal-field__label{font-size:0.72rem;font-weight:800;color:var(--muted)}
+.financial-modal-field input,.financial-modal-field select{width:100%;min-width:0;font-size:0.86rem;padding:8px 10px}
 @media (max-width:1080px){
 .controls-grid--simple,.controls-grid--advanced{grid-template-columns:repeat(3,minmax(140px,1fr))}
 .financial-summary-group__cards,.financial-summary-group[data-financial-summary-group="income-account"] .financial-summary-group__cards{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -197,6 +209,8 @@ main{order:2;gap:14px;display:grid}
 .preset-confirm-summary span{text-align:left}
 .preset-confirm-row{grid-template-columns:1fr}
 .preset-confirm-row__metrics{justify-content:flex-start}
+.financial-modal-row__fields{grid-template-columns:1fr}
+.modal-content--financial{max-width:100%}
 .financial-summary-group__cards,.financial-summary-group[data-financial-summary-group="income-account"] .financial-summary-group__cards{grid-template-columns:repeat(2,minmax(0,1fr))}
 .financial-summary-card{min-height:146px;padding:12px}
 .financial-summary-card__total{font-size:1.16rem}

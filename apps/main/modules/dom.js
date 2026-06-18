@@ -140,6 +140,15 @@ export const dom = {
   presetPreviewTotal: document.getElementById("presetPreviewTotal"),
   presetPreviewRows: document.getElementById("presetPreviewRows"),
 
+  financialModal: document.getElementById("financialModal"),
+  financialModalTitle: document.getElementById("financialModalTitle"),
+  financialModalDescription: document.getElementById("financialModalDescription"),
+  financialModalClose: document.getElementById("financialModalClose"),
+  financialModalSummary: document.getElementById("financialModalSummary"),
+  financialModalRows: document.getElementById("financialModalRows"),
+  financialModalCancel: document.getElementById("financialModalCancel"),
+  financialModalSave: document.getElementById("financialModalSave"),
+
   snapshotSelector: document.getElementById("snapshotSelector"),
   saveSnapshotBtn: document.getElementById("saveSnapshotBtn"),
   deleteSnapshotBtn: document.getElementById("deleteSnapshotBtn"),
