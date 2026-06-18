@@ -369,17 +369,17 @@ return sanitizeInputs({ ...base, ...raw });
 | A3 | Preset preview should carry original percent, normalized percent, rounded amount, and correction delta. | Common Pitfalls / Preset Quick Setup | Without this shape, confirmation may fail D-12/D-13. |
 | A4 | Basic mode may hide individual income nodes and start visually from `총수입`. | Sankey Redesign | If product requires incomes visible in basic mode, layout and tests must account for one more column. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should deficit pseudo-income flow into `총수입`?**  
    - What we know: `buildMonthlySnapshot()` currently adds `결손(부채/자산인출)` to `incomeBreakdown` when outflow exceeds income. [VERIFIED: apps/main/modules/calculator.js]  
    - What's unclear: Phase 09 says individual incomes flow to `총수입`, but does not state whether deficit should be represented as income or separate shortfall. [VERIFIED: 09-CONTEXT.md]  
-   - Recommendation: Keep deficit separate from `총수입` unless the user explicitly wants borrowed/withdrawn funds counted in total income. [ASSUMED]
+   - Resolution: Keep deficit separate from `총수입`. `총수입` represents positive income sources only; deficit/shortfall remains a separate visual or metadata indicator so borrowed or withdrawn funds do not inflate total income. [RESOLVED: 09-01-PLAN.md]
 
 2. **Should preset quick setup overwrite existing items or create a preview merge?**  
    - What we know: current preset modal warns and overwrites via `commitImmediateInputs()`. [VERIFIED: apps/main/modules/event-bindings.js]  
    - What's unclear: Phase 09 requires final confirmation and correction visibility, but not merge-vs-overwrite behavior. [VERIFIED: 09-CONTEXT.md]  
-   - Recommendation: Keep overwrite as the default after confirmation, with an explicit warning when existing data differs from defaults. [ASSUMED]
+   - Resolution: Keep overwrite as the default only after the guided preview and final confirmation. Existing-data overwrite warning is part of the confirmation flow, and commit still goes through existing persistence/sanitizer boundaries. [RESOLVED: 09-02-PLAN.md]
 
 ## Environment Availability
 
