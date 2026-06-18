@@ -13,27 +13,27 @@ export const PRESET_STYLES = {
   stable: {
     label: "안정",
     summary: "저축 비중을 높여 현금 안정성을 먼저 확보합니다.",
-    percentages: { expense: 50, savings: 40, invest: 10 },
+    percentages: { expense: 40, savings: 50, invest: 10 },
   },
   balanced: {
     label: "균형",
     summary: "생활비를 유지하면서 저축과 투자를 균형 있게 나눕니다.",
-    percentages: { expense: 50, savings: 30, invest: 20 },
+    percentages: { expense: 40, savings: 35, invest: 25 },
   },
   growth: {
     label: "성장",
     summary: "필수 저축을 남기고 장기 투자 비중을 높입니다.",
-    percentages: { expense: 42, savings: 18, invest: 40 },
+    percentages: { expense: 38, savings: 12, invest: 50 },
   },
   beast: {
     label: "야수",
     summary: "생활비를 강하게 통제하고 투자 비중을 최대로 둡니다.",
-    percentages: { expense: 34, savings: 6, invest: 60 },
+    percentages: { expense: 30, savings: 7, invest: 63 },
   },
   custom: {
     label: "사용자 지정",
     summary: "직전 선택값을 복사해 직접 조정합니다.",
-    percentages: { expense: 50, savings: 30, invest: 20 },
+    percentages: { expense: 40, savings: 35, invest: 25 },
   },
 };
 
@@ -251,7 +251,7 @@ export function applyPresetPreview(preview) {
       { id: "acc-salary", name: "급여계좌" },
       { id: "acc-living", name: "생활비계좌" },
       { id: "acc-stock", name: "투자계좌" },
-      { id: "acc-cma", name: "CMA비상금계좌" },
+      { id: "acc-cma", name: "CMA비상금계좌(RP)" },
     ],
     splitIncomeAccounts: true,
     transfers: [],
