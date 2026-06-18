@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.8
 milestone_name: 적립식 포트폴리오 관리 및 전체 UI/UX 개선
-status: executing
-last_updated: "2026-06-18T02:03:47.546Z"
-last_activity: 2026-06-18 -- Phase 09 Plan 01 completed
+status: completed
+last_updated: "2026-06-18T02:41:24.537Z"
+last_activity: 2026-06-18 -- Phase 09 Plan 02 completed
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 17
-  completed_plans: 14
-  percent: 82
-stopped_at: Completed 09-01-PLAN.md
+  completed_plans: 15
+  percent: 80
+stopped_at: Completed 09-02-PLAN.md
 ---
 
 # Project State
@@ -19,9 +19,9 @@ stopped_at: Completed 09-01-PLAN.md
 ## Current Position
 
 Phase: 9
-Plan: 01/04
-Status: Phase 09 Plan 01 complete, ready for 09-02
-Last activity: 2026-06-18 -- Phase 09 Plan 01 completed
+Plan: 02/04
+Status: Phase 09 Plan 02 complete, ready for 09-03
+Last activity: 2026-06-18 -- Phase 09 Plan 02 completed
 
 ## Project Reference
 
@@ -50,6 +50,7 @@ See: .planning/PROJECT.md (updated 2026-05-20)
 | Phase 08-step-2-redesign-re-planning P03 | 19 min | 3 tasks | 7 files |
 | Phase 08-step-2-redesign-re-planning P04 | 13 min | 2 tasks | 6 files |
 | Phase 09-step-1-financial-settings-input-uiux-rebuild P01 | 28 min | 3 tasks | 6 files |
+| Phase 09-step-1-financial-settings-input-uiux-rebuild P02 | 32 min | 3 tasks | 8 files |
 
 ## Decisions
 
@@ -64,3 +65,5 @@ See: .planning/PROJECT.md (updated 2026-05-20)
 - [Phase 08-04]: Loose root QQQ CSV backdata files were deleted after runtime path scanning found no dependency.
 - [Phase 09-01]: Account correction now runs at the Step 1 sanitizer boundary so saved, imported, shared, and rendered data use the same repaired account links.
 - [Phase 09-01]: Sankey uses a real `total-income` / `총수입` node between individual income sources and account outflows, excluding deficit pseudo-income from total income.
+- [Phase 09-02]: Preset setup uses Korean percentage presets (`안정`, `균형`, `성장`, `야수`, `사용자 지정`) and confirms overwrite inside the modal before persistence commit.
+- [Phase 09-02]: Korean high-unit money labels stop at one lower unit: `억` displays down to `만`, and `조` displays down to `억`.
