@@ -30,6 +30,7 @@ function normalizeStep1Payload(snapshot) {
     timestamp: payload.timestamp || new Date(Date.now()).toISOString(),
     totalInitialAsset: utils.toWon(payload.totalInitialAsset),
     totalMonthlyInvestCapacity: utils.toWon(payload.monthlyInvestCapacity),
+    horizonYears: Number(payload.horizonYears) || 0,
   };
 }
 
@@ -44,6 +45,7 @@ function cacheStep1Source(source) {
     timestamp: source.timestamp,
     totalInitialAsset: source.totalInitialAsset,
     totalMonthlyInvestCapacity: source.totalMonthlyInvestCapacity,
+    horizonYears: source.horizonYears,
     importedAt: Date.now()
   };
 }
@@ -52,6 +54,10 @@ function applyStep1SourceToDraft(source) {
   if (!source || !state.draft) return false;
   state.draft.totalMonthlyInvestCapacity = source.totalMonthlyInvestCapacity;
   state.draft.totalInitialAsset = source.totalInitialAsset;
+  if (source.horizonYears > 0) {
+    if (!state.draft.dividendSim) state.draft.dividendSim = {};
+    state.draft.dividendSim.years = source.horizonYears;
+  }
   state.draft.updatedAt = Date.now();
   state.isSyncedWithStep1 = true;
   cacheStep1Source(source);
@@ -142,6 +148,7 @@ export async function resolveLatestStep1Snapshot(hub) {
         payload: {
           totalInitialAsset: Number(payloadData.startInvest) || 0,
           monthlyInvestCapacity: Number(payloadData.monthlyInvest) || 0,
+          horizonYears: Number(payloadData.horizonYears) || 0,
           timestamp: new Date(s1?.updatedAt || payloadData.updatedAt || Date.now()).toISOString()
         }
       }
@@ -154,6 +161,7 @@ export async function resolveLatestStep1Snapshot(hub) {
           payload: {
             totalInitialAsset: Number(localInputs.startInvest) || 0,
             monthlyInvestCapacity: Number(localInputs.monthlyInvest) || 0,
+            horizonYears: Number(localInputs.horizonYears) || 0,
             timestamp: new Date(localInputs.updatedAt || Date.now()).toISOString()
           }
         }

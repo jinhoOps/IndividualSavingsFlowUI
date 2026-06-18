@@ -3,24 +3,22 @@ status: testing
 phase: 08-step-2-redesign-re-planning
 source: [08-01-SUMMARY.md, 08-02-SUMMARY.md, 08-03-SUMMARY.md, 08-04-SUMMARY.md]
 started: 2026-06-18T16:31:12+09:00
-updated: 2026-06-18T16:31:12+09:00
+updated: 2026-06-18T16:54:00+09:00
 ---
 
 ## Current Test
 
-number: 1
-name: Step 1 원본값 가져오기와 초기화 경계
+number: 2
+name: 전략 선택과 보수적 가정 표시
 expected: |
-  Step 1에서 입력한 투자 가능 금액이 Step 2 진입 시 원본값으로 반영된다. Step 2에서 금액을 수정해도 Step 1 원본값은 바뀌지 않고, Step 2 초기화를 누르면 Step 1 원본값 기준으로 되돌아온다.
+  Step 2에서 지수 성장, SCHD 배당 성장, 커버드콜/월배당 전략 카드가 보이고, Nasdaq/S&P 500 벤치마크 및 JEPI/QQQI/DIVO 예시를 선택할 수 있다. 고급 가정은 기본적으로 접혀 있으며 펼치면 수익률/배당/성장률 범위가 이해 가능한 문구로 보인다.
 awaiting: user response
 
 ## Tests
 
 ### 1. Step 1 원본값 가져오기와 초기화 경계
 expected: Step 1에서 입력한 투자 가능 금액이 Step 2 진입 시 원본값으로 반영된다. Step 2에서 금액을 수정해도 Step 1 원본값은 바뀌지 않고, Step 2 초기화를 누르면 Step 1 원본값 기준으로 되돌아온다.
-result: issue
-reported: "step1 데이터 못불러오는듯,입력하는것도 개별로 되어있고, step2 초기화 버튼도 안보여  배당 시뮬레이션 제목이 먼저 나오고, 저거 문구 나와야할거같은 choiceJudgment 섹션이야.. 다른 앱들하고 맞춰서 해줘.."
-severity: major
+result: pass
 
 ### 2. 전략 선택과 보수적 가정 표시
 expected: Step 2에서 지수 성장, SCHD 배당 성장, 커버드콜/월배당 전략 카드가 보이고, Nasdaq/S&P 500 벤치마크 및 JEPI/QQQI/DIVO 예시를 선택할 수 있다. 고급 가정은 기본적으로 접혀 있으며 펼치면 수익률/배당/성장률 범위가 이해 가능한 문구로 보인다.
@@ -49,27 +47,10 @@ result: [pending]
 ## Summary
 
 total: 7
-passed: 0
-issues: 1
+passed: 1
+issues: 0
 pending: 6
 skipped: 0
 blocked: 0
 
 ## Gaps
-- truth: "Step 1에서 입력한 투자 가능 금액이 Step 2 진입 시 원본값으로 반영된다. Step 2에서 금액을 수정해도 Step 1 원본값은 바뀌지 않고, Step 2 초기화를 누르면 Step 1 원본값 기준으로 되돌아온다."
-  status: failed
-  reason: "User reported: step1 데이터 못불러오는듯,입력하는것도 개별로 되어있고, step2 초기화 버튼도 안보여  배당 시뮬레이션 제목이 먼저 나오고, 저거 문구 나와야할거같은 choiceJudgment 섹션이야.. 다른 앱들하고 맞춰서 해줘.."
-  severity: major
-  test: 1
-  root_cause: "Step 2 only exposed Step 1 import through the conditional sync banner, had no visible reset control, and read Step 1 primarily from snapshot APIs rather than falling back to Main's active local state."
-  artifacts:
-    - path: "apps/simulation/index.html"
-      issue: "Primary input panel lacked always-visible Step 1 import and reset actions."
-    - path: "apps/simulation/modules/step1-connector.js"
-      issue: "Step 1 resolver did not fall back to Main app's active local storage key."
-    - path: "shared/components/app-header.js"
-      issue: "Step 2 header label still emphasized dividend simulation instead of the redesigned choice guide."
-  missing:
-    - "Visible Step 1 import action in the primary Step 2 input area"
-    - "Visible Step 2 reset action that re-imports the original Step 1 source"
-    - "Fallback import path from Main active storage"

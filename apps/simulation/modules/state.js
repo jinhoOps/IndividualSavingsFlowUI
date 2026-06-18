@@ -16,6 +16,7 @@ export const state = {
     timestamp: "",
     totalInitialAsset: 0,
     totalMonthlyInvestCapacity: 0,
+    horizonYears: 0,
     importedAt: 0
   },
   displayOptions: {

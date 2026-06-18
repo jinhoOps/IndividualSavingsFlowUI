@@ -77,15 +77,35 @@ function resolveSelection(draft = {}, overrides = {}) {
 
 function resolveEditableOverrides(draft = {}, overrides = {}) {
   const sim = draft.dividendSim || {};
-  return {
-    dividendGrowth: overrides.dividendGrowthOverrides || {
-      dividendYield: sim.yield,
-      dividendGrowth: sim.growth,
-      capitalGrowth: sim.capitalGrowth,
-      isDrip: sim.isDrip,
-    },
+  const selectedStrategy = sim.strategyKey || "dividendGrowth";
+  const editableFromUi = {
+    dividendYield: sim.yield,
+    cashFlowYield: sim.yield,
+    dividendGrowth: sim.growth,
+    distributionGrowth: sim.growth,
+    capitalGrowth: sim.capitalGrowth,
+    isDrip: sim.isDrip,
+  };
+  const editable = {
+    dividendGrowth: overrides.dividendGrowthOverrides || {},
     coveredCall: overrides.coveredCallOverrides || {},
     benchmark: overrides.benchmarkOverrides || {},
+  };
+
+  if (!overrides.dividendGrowthOverrides && !overrides.coveredCallOverrides && !overrides.benchmarkOverrides) {
+    if (selectedStrategy === "indexGrowth") {
+      editable.benchmark = editableFromUi;
+    } else if (selectedStrategy === "coveredCallMonthlyIncome") {
+      editable.coveredCall = editableFromUi;
+    } else {
+      editable.dividendGrowth = editableFromUi;
+    }
+  }
+
+  return {
+    dividendGrowth: editable.dividendGrowth,
+    coveredCall: editable.coveredCall,
+    benchmark: editable.benchmark,
   };
 }
 
@@ -138,13 +158,14 @@ function buildStrategyRow(strategy, projection, benchmarkAsset) {
 }
 
 export function calculateStrategyComparison(draft = {}, selectedAssumptions = {}) {
-  const selection = resolveSelection(draft, selectedAssumptions);
+  const safeDraft = draft && typeof draft === "object" ? draft : {};
+  const selection = resolveSelection(safeDraft, selectedAssumptions);
   const assumptions = getStrategyAssumptions(selection);
-  const editable = resolveEditableOverrides(draft, selectedAssumptions);
+  const editable = resolveEditableOverrides(safeDraft, selectedAssumptions);
 
-  const years = sanitizeYears(selectedAssumptions.years ?? draft.dividendSim?.years);
-  const initialAsset = toWon(draft.totalInitialAsset);
-  const monthlyContribution = toWon(draft.totalMonthlyInvestCapacity);
+  const years = sanitizeYears(selectedAssumptions.years ?? safeDraft.dividendSim?.years);
+  const initialAsset = toWon(safeDraft.totalInitialAsset);
+  const monthlyContribution = toWon(safeDraft.totalMonthlyInvestCapacity);
   const yearlyContribution = monthlyContribution * 12;
   const inflationRate = clampNumber(selectedAssumptions.inflationRate, DEFAULT_INFLATION_RATE, 0, 0.2);
 

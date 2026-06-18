@@ -7,7 +7,7 @@ const STEP1_SOURCE = {
   expenseItems: [],
   savingsItems: [],
   investItems: [],
-  horizonYears: 10,
+  horizonYears: 18,
   annualIncomeGrowth: 0,
   annualExpenseGrowth: 0,
   annualSavingsYield: 0,
@@ -47,6 +47,7 @@ test.describe('Step 2 Phase 08 storage and import contracts', () => {
     await expect(page.locator('#resetStep2Simulation')).toBeVisible();
     await expect(page.locator('#totalMonthlyInvestCapacity')).toHaveValue('1750000');
     await expect(page.locator('#totalInitialAsset')).toHaveValue('25000000');
+    await expect(page.locator('#simHorizonYears')).toHaveValue('18');
 
     page.once('dialog', async (dialog) => {
       expect(dialog.message()).toContain('Main에서 연동된 값');
@@ -54,6 +55,8 @@ test.describe('Step 2 Phase 08 storage and import contracts', () => {
     });
     await page.locator('#totalMonthlyInvestCapacity').fill('2250000');
     await expect(page.locator('#totalMonthlyInvestCapacity')).toHaveValue('2250000');
+    await page.locator('#simHorizonYears').fill('7');
+    await expect(page.locator('#simHorizonYears')).toHaveValue('7');
 
     const step1AfterEdit = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-step1-active') || '{}'));
     expect(step1AfterEdit.monthlyInvest).toBe(1750000);
@@ -67,6 +70,7 @@ test.describe('Step 2 Phase 08 storage and import contracts', () => {
 
     await expect(page.locator('#totalMonthlyInvestCapacity')).toHaveValue('1750000');
     await expect(page.locator('#totalInitialAsset')).toHaveValue('25000000');
+    await expect(page.locator('#simHorizonYears')).toHaveValue('18');
   });
 
   test('Phase 08 storage falls back to LocalStorage for save list load and delete when the bridge fails', async ({ page }) => {
@@ -200,39 +204,39 @@ test.describe('Step 2 Phase 08 strategy comparison contracts', () => {
     );
 
     expect(examplesByLabel.JEPI.defaults).toMatchObject({
-      cashFlowYield: 7.0,
+      cashFlowYield: 8.0,
       distributionGrowth: 0.0,
-      capitalGrowth: 1.5,
-      isDrip: false,
-    });
-    expect(examplesByLabel.JEPI.displayRanges).toMatchObject({
-      cashFlowYield: '6-9%',
-      distributionGrowth: '0-1%',
-      capitalGrowth: '0-3%',
-    });
-
-    expect(examplesByLabel.QQQI.defaults).toMatchObject({
-      cashFlowYield: 9.0,
-      distributionGrowth: 0.0,
-      capitalGrowth: 2.0,
-      isDrip: false,
-    });
-    expect(examplesByLabel.QQQI.displayRanges).toMatchObject({
-      cashFlowYield: '7-11%',
-      distributionGrowth: '0-1%',
-      capitalGrowth: '0-4%',
-    });
-
-    expect(examplesByLabel.DIVO.defaults).toMatchObject({
-      cashFlowYield: 4.5,
-      distributionGrowth: 1.0,
       capitalGrowth: 3.0,
       isDrip: false,
     });
+    expect(examplesByLabel.JEPI.displayRanges).toMatchObject({
+      cashFlowYield: '7-9%',
+      distributionGrowth: '측정 불가/변동',
+      capitalGrowth: '2-4%',
+    });
+
+    expect(examplesByLabel.QQQI.defaults).toMatchObject({
+      cashFlowYield: 11.5,
+      distributionGrowth: 0.0,
+      capitalGrowth: 6.5,
+      isDrip: false,
+    });
+    expect(examplesByLabel.QQQI.displayRanges).toMatchObject({
+      cashFlowYield: '11-12%',
+      distributionGrowth: '측정 불가/변동',
+      capitalGrowth: '5-8%',
+    });
+
+    expect(examplesByLabel.DIVO.defaults).toMatchObject({
+      cashFlowYield: 4.75,
+      distributionGrowth: 5.0,
+      capitalGrowth: 6.0,
+      isDrip: false,
+    });
     expect(examplesByLabel.DIVO.displayRanges).toMatchObject({
-      cashFlowYield: '3.5-6%',
-      distributionGrowth: '0-2%',
-      capitalGrowth: '1-5%',
+      cashFlowYield: '4.5-5%',
+      distributionGrowth: '4-6%',
+      capitalGrowth: '5-7%',
     });
 
     for (const example of contract.coveredCallExamples) {
@@ -328,20 +332,33 @@ test.describe('Step 2 Phase 08 strategy comparison contracts', () => {
           isDrip: false,
         },
       });
+      const selectedCoveredCallEdit = calculateStrategyComparison({
+        ...draft,
+        dividendSim: {
+          ...draft.dividendSim,
+          strategyKey: 'coveredCallMonthlyIncome',
+          yield: 6.0,
+          growth: 0.5,
+          capitalGrowth: 2.5,
+          isDrip: false,
+        },
+      });
       return {
         base: base.final.strategies.coveredCall,
         edited: edited.final.strategies.coveredCall,
+        selectedCoveredCallEdit: selectedCoveredCallEdit.final.strategies.coveredCall,
+        selectedCoveredCallSchd: selectedCoveredCallEdit.final.strategies.schd,
       };
     });
 
     expect(result.base.label).toBe('JEPI');
-    expect(result.base.cashFlowYieldPercent).toBe(7.0);
+    expect(result.base.cashFlowYieldPercent).toBe(8.0);
     expect(result.base.distributionGrowthPercent).toBe(0.0);
-    expect(result.base.capitalGrowthPercent).toBe(1.5);
+    expect(result.base.capitalGrowthPercent).toBe(3.0);
     expect(result.base.displayRanges).toMatchObject({
-      cashFlowYield: '6-9%',
-      distributionGrowth: '0-1%',
-      capitalGrowth: '0-3%',
+      cashFlowYield: '7-9%',
+      distributionGrowth: '측정 불가/변동',
+      capitalGrowth: '2-4%',
     });
 
     expect(result.edited.cashFlowYieldPercent).toBe(6.0);
@@ -349,6 +366,11 @@ test.describe('Step 2 Phase 08 strategy comparison contracts', () => {
     expect(result.edited.capitalGrowthPercent).toBe(2.5);
     expect(result.edited.monthlyCashFlowAfterTax).not.toBe(result.base.monthlyCashFlowAfterTax);
     expect(result.edited.finalAsset).not.toBe(result.base.finalAsset);
+    expect(result.selectedCoveredCallEdit.cashFlowYieldPercent).toBe(6.0);
+    expect(result.selectedCoveredCallEdit.distributionGrowthPercent).toBe(0.5);
+    expect(result.selectedCoveredCallEdit.capitalGrowthPercent).toBe(2.5);
+    expect(result.selectedCoveredCallSchd.cashFlowYieldPercent).toBe(3.5);
+    expect(result.selectedCoveredCallSchd.capitalGrowthPercent).toBe(7.0);
   });
 });
 
