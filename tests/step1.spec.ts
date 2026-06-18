@@ -680,4 +680,37 @@ test.describe('Phase 09 preset quick setup contracts', () => {
     expect(result.inputTotals.monthlyInvest).toBe(result.totals.investAmount);
     expect(result.inputItemCounts).toEqual({ expense: 4, savings: 1, invest: 1 });
   });
+
+  test('opens guided preset setup and normalizes editable percentages', async ({ page }) => {
+    await page.locator('#openPresetBtn').click();
+    const modal = page.locator('#presetModal');
+    await expect(modal).toBeVisible();
+    await expect(modal.locator('.modal-title')).toHaveText('프리셋 빠른 설정');
+
+    await expect(modal.locator('#presetMonthlyIncome')).toBeVisible();
+    await expect(modal.locator('[data-preset-key="stable"]')).toHaveText('안정');
+    await expect(modal.locator('[data-preset-key="balanced"]')).toHaveText('균형');
+    await expect(modal.locator('[data-preset-key="growth"]')).toHaveText('성장');
+    await expect(modal.locator('[data-preset-key="beast"]')).toHaveText('야수');
+    await expect(modal.locator('[data-preset-key="custom"]')).toHaveText('사용자 지정');
+
+    await modal.locator('[data-preset-key="growth"]').click();
+    await expect(modal.locator('input[data-preset-percent="expense"]')).toHaveValue('42');
+    await expect(modal.locator('input[data-preset-percent="savings"]')).toHaveValue('18');
+    await expect(modal.locator('input[data-preset-percent="invest"]')).toHaveValue('40');
+
+    await modal.locator('input[data-preset-percent="expense"]').fill('60');
+    await modal.locator('input[data-preset-percent="savings"]').fill('20');
+    await modal.locator('input[data-preset-percent="invest"]').fill('30');
+    await modal.locator('input[data-preset-percent="invest"]').blur();
+    await expect(modal.locator('#presetPercentTotal')).toContainText('100%');
+
+    const copiedValues = await modal.locator('input[data-preset-percent]').evaluateAll((inputs) =>
+      inputs.map((input) => (input as HTMLInputElement).value)
+    );
+    await modal.locator('[data-preset-key="custom"]').click();
+    await expect(modal.locator('input[data-preset-percent="expense"]')).toHaveValue(copiedValues[0]);
+    await expect(modal.locator('input[data-preset-percent="savings"]')).toHaveValue(copiedValues[1]);
+    await expect(modal.locator('input[data-preset-percent="invest"]')).toHaveValue(copiedValues[2]);
+  });
 });
