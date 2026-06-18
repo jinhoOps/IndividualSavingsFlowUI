@@ -972,3 +972,67 @@ test.describe('Phase 09 guided item and inline account creation', () => {
     await expect(page.locator('[data-financial-category="invest"]')).toContainText('4개');
   });
 });
+
+test.describe('Phase 09 Sankey tooltip readability', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.clear();
+      sessionStorage.clear();
+    });
+    await page.goto('apps/main/index.html');
+    await page.waitForSelector('main');
+  });
+
+  test('renders merged Sankey tooltip details as line-broken safe text', async ({ page }) => {
+    await page.evaluate(async () => {
+      const [{ state }, { buildMonthlySnapshot }, { sanitizeInputs }, { renderSankey }, { buildSankeyData }] = await Promise.all([
+        import('/IndividualSavingsFlowUI/apps/main/modules/state.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/calculator.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/input-sanitizer.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/sankey-renderer.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/sankey-builder.js'),
+      ]);
+      state.inputs = sanitizeInputs({
+        modelVersion: 10,
+        incomes: [{ id: 'salary', name: '급여', amount: 4000000, accountId: 'acc-salary' }],
+        accounts: [
+          { id: 'acc-salary', name: '급여계좌' },
+          { id: 'acc-living', name: '생활비계좌' },
+          { id: 'acc-stock', name: '투자계좌' },
+        ],
+        expenseItems: [
+          { id: 'rent', name: '월세 <b>', amount: 900000, group: '고정비', accountId: 'acc-living' },
+          { id: 'utility', name: '관리비 & 공과금', amount: 200000, group: '고정비', accountId: 'acc-living' },
+        ],
+        savingsItems: [{ id: 'saving', name: '적금', amount: 300000, group: '저축', accountId: 'acc-salary' }],
+        investItems: [{ id: 'invest', name: 'ETF', amount: 200000, group: '투자', accountId: 'acc-stock' }],
+      });
+      state.snapshot = buildMonthlySnapshot(state.inputs);
+      state.sankeyDetailMode = 'basic';
+      state.sankeyGrouping = { expense: 'total', savings: 'total', invest: 'total' };
+      renderSankey(state.snapshot, buildSankeyData, 'group');
+    });
+
+    const pathCount = await page.locator('#sankeySvg .sankey-path').count();
+    let tooltipText = '';
+    for (let index = 0; index < pathCount; index += 1) {
+      const path = page.locator('#sankeySvg .sankey-path').nth(index);
+      const box = await path.boundingBox();
+      if (!box) continue;
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+      const text = await page.locator('#sankeyTooltip').textContent();
+      if (text?.includes('월세 <b>') && text.includes('관리비 & 공과금')) {
+        tooltipText = text;
+        break;
+      }
+    }
+
+    expect(tooltipText).toContain('구성:');
+    expect(tooltipText).toMatch(/구성:\n월세 <b> .*?\n관리비 & 공과금 /);
+    expect(tooltipText).not.toContain(', 관리비');
+    const tooltipMarkup = await page.locator('#sankeyTooltip').evaluate((element) => element.innerHTML);
+    expect(tooltipMarkup).not.toContain('<b>');
+    const whiteSpace = await page.locator('#sankeyTooltip').evaluate((element) => window.getComputedStyle(element).whiteSpace);
+    expect(whiteSpace).toBe('pre-line');
+  });
+});
