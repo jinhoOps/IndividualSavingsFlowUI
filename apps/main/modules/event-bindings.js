@@ -1,14 +1,12 @@
 import { IsfUtils } from "../../../shared/core/utils.js";
 
 import {
-  DEFAULT_INPUTS,
   FORM_FIELD_KEYS,
   MOBILE_LAYOUT_QUERY,
   SANKEY_VALUE_MODES,
 } from "./constants.js";
 import {
   sanitizeInputs,
-  getMonthlyIncomeTotalWon,
   getMonthlyAllocationTotalWon,
 } from "./input-sanitizer.js";
 import { buildSankeyData } from "./sankey-builder.js";
@@ -16,7 +14,6 @@ import { renderSankey, exportSankeyToPng } from "./sankey-renderer.js";
 import { dom } from "./dom.js";
 import { state } from "./state.js";
 import { createPresetSetupController } from "./preset-setup-controller.js";
-import { PRESET_SALARIES, applyPreset } from "./presets.js";
 import * as helpers from "./state-helpers.js";
 import * as listRenderer from "./list-renderer.js";
 import {
@@ -82,7 +79,6 @@ export function initMgmtTabs(commands) {
 
 export function bindStep1Events(commands) {
   bindModalEvents(commands.persistence);
-  bindPresetControls(commands);
   bindFormTracking(commands);
   bindReadonlyAdvancedNavigation(commands.itemEditor.navigateToAdvancedGroup);
   bindAdvancedTabs(commands.itemEditor.navigateToAdvancedGroup);
@@ -101,46 +97,6 @@ export function bindStep1Events(commands) {
   bindActionButtons(commands.persistence.handleResetInputs);
   bindGlobalEvents(commands);
   commands.visualization.bindVisualizationAndTooltipEvents();
-}
-
-function bindPresetControls({ persistence }) {
-  if (dom.presetSalary) {
-    dom.presetSalary.replaceChildren(...PRESET_SALARIES.map((salary, index) => {
-      const option = document.createElement("option");
-      option.value = String(salary.value);
-      option.textContent = salary.label;
-      option.selected = index === 2;
-      return option;
-    }));
-  }
-
-  let selectedPresetStyle = "neutral";
-  if (dom.presetStyleBtns) {
-    dom.presetStyleBtns.forEach((button) => {
-      if (button.dataset.style === selectedPresetStyle) button.classList.add("is-active");
-      button.addEventListener("click", () => {
-        dom.presetStyleBtns.forEach((candidate) => candidate.classList.remove("is-active"));
-        button.classList.add("is-active");
-        selectedPresetStyle = button.dataset.style;
-      });
-    });
-  }
-
-  if (dom.applyPresetBtn) {
-    dom.applyPresetBtn.addEventListener("click", () => {
-      const isDirty = persistence.hasPendingChanges() || JSON.stringify(state.inputs) !== JSON.stringify(DEFAULT_INPUTS);
-      if (isDirty && !window.confirm("데이터 초기화 경고: 기존에 작성하신 자산 데이터가 모두 초기화되고 프리셋으로 덮어씌워집니다. 계속하시겠습니까?")) {
-        return;
-      }
-
-      const presetValue = parseInt(dom.presetSalary.value, 10);
-      const presetInputs = applyPreset(presetValue, selectedPresetStyle);
-      if (!presetInputs) return;
-
-      persistence.commitImmediateInputs(presetInputs);
-      showPresetAppliedFeedback();
-    });
-  }
 }
 
 function bindFormTracking({ persistence, render }) {
@@ -257,15 +213,6 @@ function bindSurplusTransferControl(markPendingChanges) {
     state.inputs = sanitizeInputs(state.inputs);
     markPendingChanges();
   });
-}
-
-function showPresetAppliedFeedback() {
-  if (!dom.advancedSettings) return;
-  dom.advancedSettings.open = true;
-  dom.advancedSettings.classList.add("is-highlighted");
-  setTimeout(() => dom.advancedSettings.classList.remove("is-highlighted"), 3000);
-  dom.advancedSettings.scrollIntoView({ behavior: "smooth", block: "start" });
-  window.IsfFeedback.showFeedback(dom.applyFeedback, "프리셋이 적용되었습니다. 아래 '고급 설정'에서 세부 항목을 조정해보세요.");
 }
 
 function bindModalEvents(persistence) {
