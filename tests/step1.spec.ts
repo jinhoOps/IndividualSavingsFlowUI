@@ -924,6 +924,7 @@ test.describe('Phase 09 financial category detail modal', () => {
     await expect(modal.locator('[data-modal-row-category="expense"]').first()).toContainText('주거비');
     await expect(modal.locator('.financial-modal-account-badge').first()).toBeVisible();
 
+    await modal.locator('[data-financial-modal-edit]').first().click();
     const firstName = modal.locator('[data-financial-modal-field="name"]').first();
     await firstName.fill('주거비 수정');
     await modal.locator('#financialModalCancel').click();
@@ -931,6 +932,7 @@ test.describe('Phase 09 financial category detail modal', () => {
     expect(await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}').expenseItems?.[0]?.name || '')).not.toBe('주거비 수정');
 
     await page.locator('[data-financial-category="expense"]').click();
+    await modal.locator('[data-financial-modal-edit]').first().click();
     await modal.locator('[data-financial-modal-field="name"]').first().fill('주거비 수정');
     await modal.locator('#financialModalSave').click();
     await expect(modal).toBeHidden();
@@ -938,6 +940,119 @@ test.describe('Phase 09 financial category detail modal', () => {
     const savedName = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}').expenseItems?.[0]?.name);
     expect(savedName).toBe('주거비 수정');
     await expect(page.locator('[data-financial-category="expense"]')).toContainText('주거비 수정');
+  });
+
+  test('Phase 09 financial modal compact editing keeps only the selected item expanded on mobile', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.locator('[data-financial-category="expense"]').click();
+    const modal = page.locator('#financialModal');
+    await expect(modal).toBeVisible();
+
+    await expect(modal.locator('[data-financial-modal-edit]')).toHaveCount(3);
+    await expect(modal.locator('[data-financial-modal-field="name"]')).toHaveCount(0);
+
+    await modal.locator('[data-financial-modal-edit]').first().click();
+    await expect(modal.locator('[data-financial-modal-field="name"]')).toHaveCount(1);
+    await expect(modal.locator('[data-financial-modal-field="amount"]')).toHaveCount(1);
+    await expect(modal.locator('.financial-modal-row--editing')).toHaveCount(1);
+
+    const result = await page.evaluate(() => {
+      const modalRect = document.querySelector('#financialModal .modal-content')?.getBoundingClientRect();
+      const controls = Array.from(document.querySelectorAll<HTMLElement>('#financialModal input, #financialModal select, #financialModal button'));
+      const overlaps = [];
+      for (let i = 0; i < controls.length; i += 1) {
+        const a = controls[i].getBoundingClientRect();
+        for (let j = i + 1; j < controls.length; j += 1) {
+          const b = controls[j].getBoundingClientRect();
+          const intersects = a.left < b.right - 1 && a.right > b.left + 1 && a.top < b.bottom - 1 && a.bottom > b.top + 1;
+          if (intersects) overlaps.push([controls[i].tagName, controls[j].tagName]);
+        }
+      }
+      return {
+        pageOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        modalOverflow: modalRect ? Math.max(0, modalRect.right - document.documentElement.clientWidth) : 0,
+        overlaps: overlaps.length,
+      };
+    });
+
+    expect(result.pageOverflow).toBeLessThanOrEqual(4);
+    expect(result.modalOverflow).toBeLessThanOrEqual(4);
+    expect(result.overlaps).toBe(0);
+  });
+
+  test('Phase 09 financial modal group dropdown supports existing and custom groups', async ({ page }) => {
+    await page.locator('[data-financial-category="expense"]').click();
+    const modal = page.locator('#financialModal');
+    await expect(modal).toBeVisible();
+    await modal.locator('[data-financial-modal-edit]').first().click();
+
+    const groupSelect = modal.locator('[data-financial-modal-field="groupMode"]').first();
+    await expect(groupSelect).toBeVisible();
+    await expect(groupSelect).toContainText('고정비');
+    await expect(groupSelect).toContainText('직접 입력');
+    await expect(modal.locator('[data-financial-modal-field="group"]')).toHaveCount(0);
+
+    await groupSelect.selectOption('__custom__');
+    const customGroup = modal.locator('[data-financial-modal-field="group"]').first();
+    await expect(customGroup).toBeVisible();
+    await customGroup.fill('테스트그룹');
+    await modal.locator('#financialModalSave').click();
+
+    const savedGroup = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}').expenseItems?.[0]?.group);
+    expect(savedGroup).toBe('테스트그룹');
+  });
+});
+
+test.describe('Phase 09 source account automatic flow', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.clear();
+      sessionStorage.clear();
+    });
+    await page.goto('apps/main/index.html');
+    await page.waitForSelector('main');
+  });
+
+  test('removes manual transfer settings while preserving source-account surplus and deficit display', async ({ page }) => {
+    await openControlsPanel(page);
+    await expect(page.locator('text=계좌 간 수동 이체 설정')).toHaveCount(0);
+    await expect(page.locator('#transferEditorSection')).toHaveCount(0);
+
+    await page.evaluate(async () => {
+      const [{ state }, { sanitizeInputs }, { buildMonthlySnapshot }, { buildSankeyData }] = await Promise.all([
+        import('/IndividualSavingsFlowUI/apps/main/modules/state.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/input-sanitizer.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/calculator.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/sankey-builder.js'),
+      ]);
+      state.inputs = sanitizeInputs({
+        modelVersion: 10,
+        incomes: [{ id: 'salary', name: '월급', amount: 3000000, accountId: 'acc-salary' }],
+        accounts: [
+          { id: 'acc-salary', name: '급여계좌' },
+          { id: 'acc-living', name: '생활비계좌' },
+          { id: 'acc-stock', name: '투자계좌' },
+        ],
+        expenseItems: [{ id: 'rent', name: '월세', amount: 1000000, group: '고정비', accountId: 'acc-living' }],
+        savingsItems: [{ id: 'saving', name: '적금', amount: 500000, group: '저축', accountId: 'acc-salary' }],
+        investItems: [{ id: 'invest', name: 'ETF', amount: 400000, group: '투자', accountId: 'acc-stock' }],
+        transfers: [{ id: 'legacy', sourceAccountId: 'acc-salary', targetAccountId: 'acc-living', amount: 999999, label: 'legacy' }],
+      });
+      state.snapshot = buildMonthlySnapshot(state.inputs);
+      (window as any).__phase09Flow = buildSankeyData(state.snapshot, 'group', state.sankeyGrouping);
+    });
+
+    const result = await page.evaluate(() => {
+      const flow = (window as any).__phase09Flow;
+      return {
+        surplus: flow.nodes.some((node: any) => node.id === 'surplus'),
+        sourceLinks: flow.links.filter((link: any) => ['expense', 'savings', 'invest'].includes(link.tone)).map((link: any) => link.source),
+        legacyManual: flow.transfers.some((transfer: any) => transfer.isManual && transfer.id === 'legacy'),
+      };
+    });
+    expect(result.surplus).toBe(true);
+    expect(result.sourceLinks).toEqual(expect.arrayContaining(['acc-living', 'acc-salary', 'acc-stock']));
+    expect(result.legacyManual).toBe(false);
   });
 });
 
