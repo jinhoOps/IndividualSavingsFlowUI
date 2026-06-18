@@ -1041,3 +1041,56 @@ test.describe('Phase 09 Sankey tooltip readability', () => {
     expect(whiteSpace).toBe('pre-line');
   });
 });
+
+test.describe('Phase 09 final responsive user flow coverage', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.clear();
+      sessionStorage.clear();
+    });
+    await page.goto('apps/main/index.html');
+    await page.waitForSelector('main');
+  });
+
+  test('keeps summary-first Sankey workflow usable without horizontal overflow', async ({ page }) => {
+    for (const viewport of [
+      { width: 1280, height: 900 },
+      { width: 768, height: 1024 },
+      { width: 390, height: 844 },
+    ]) {
+      await page.setViewportSize(viewport);
+      await page.waitForTimeout(150);
+
+      await expect(page.locator('[data-financial-summary-group="income-account"]')).toContainText('수입+계좌');
+      await expect(page.locator('[data-financial-summary-group="outflow"]')).toContainText('지출+저축+투자');
+      await expect(page.locator('[data-financial-category]')).toHaveCount(5);
+
+      const summaryBox = await page.locator('.summary-panel').boundingBox();
+      const sankeyBox = await page.locator('.sankey-panel').boundingBox();
+      expect(summaryBox).not.toBeNull();
+      expect(sankeyBox).not.toBeNull();
+      expect(sankeyBox!.y).toBeGreaterThan(summaryBox!.y);
+
+      await expect(page.locator('#sankeyCorrectionRefresh')).toBeVisible();
+      await page.locator('#showSankeyBasicBtn').click();
+      await page.waitForTimeout(150);
+      await expect(page.locator('#showSankeyBasicBtn')).toHaveClass(/is-active/);
+      const basicLabels = await page.locator('#sankeySvg .sankey-label').evaluateAll((labels) =>
+        labels.map((label) => label.textContent || '')
+      );
+      expect(basicLabels).toContain('총수입');
+      expect(basicLabels.some((label) => label.includes('월급'))).toBe(false);
+
+      await page.locator('#showSankeyDetailBtn').click();
+      await page.locator('#sankeyGroupingExpense').selectOption('detail');
+      await page.waitForTimeout(250);
+      const detailLabels = await page.locator('#sankeySvg .sankey-label').evaluateAll((labels) =>
+        labels.map((label) => label.textContent || '')
+      );
+      expect(detailLabels.some((label) => label.includes('주거비'))).toBe(true);
+
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      expect(overflow, `no page overflow at ${viewport.width}px`).toBeLessThanOrEqual(4);
+    }
+  });
+});
