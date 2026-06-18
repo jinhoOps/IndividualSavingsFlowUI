@@ -91,8 +91,9 @@ export const DEFAULT_INPUTS = {
   accounts: [
     { id: "acc-salary", name: "급여계좌" },
     { id: "acc-living", name: "생활비계좌" },
-    { id: "acc-stock", name: "주식계좌" }
+    { id: "acc-stock", name: "투자계좌" }
   ],
+  splitIncomeAccounts: false,
   surplusTransferAccountId: "acc-stock",
   transfers: [],
   expenseItems: DEFAULT_EXPENSE_ITEMS,
@@ -141,9 +142,10 @@ export const SAMPLE_INPUTS = {
   accounts: [
     { id: "acc-salary", name: "급여계좌" },
     { id: "acc-living", name: "생활비계좌" },
-    { id: "acc-stock", name: "주식계좌" },
+    { id: "acc-stock", name: "투자계좌" },
     { id: "acc-cma", name: "CMA비상금계좌" }
   ],
+  splitIncomeAccounts: true,
   transfers: [
     { id: "sample-tr-1", sourceAccountId: "acc-salary", targetAccountId: "acc-cma", amount: 300000 },
     { id: "sample-tr-2", sourceAccountId: "acc-salary", targetAccountId: "acc-stock", amount: 500000 },

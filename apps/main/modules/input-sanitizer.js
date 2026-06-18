@@ -7,6 +7,7 @@ import {
   MAX_ALLOCATION_ITEMS,
   MAGIC_MAPPING_DEFAULTS,
 } from "./constants.js";
+import { repairAccountConnections, SIMPLE_ACCOUNT_ALIASES } from "./account-correction.js";
 
 export function cloneInputs(inputs) {
   if (typeof structuredClone === "function") {
@@ -61,11 +62,7 @@ export function sanitizeInputs(rawInputs) {
 
   let sanitizedAccounts = [];
   if (!Array.isArray(raw.accounts) || raw.accounts.length === 0) {
-    sanitizedAccounts = [
-      { id: "acc-salary", name: "급여계좌" },
-      { id: "acc-living", name: "생활비계좌" },
-      { id: "acc-stock", name: "주식계좌" }
-    ];
+    sanitizedAccounts = SIMPLE_ACCOUNT_ALIASES.map((account) => ({ ...account }));
   } else {
     sanitizedAccounts = raw.accounts.map((acc, index) => {
       const safeAcc = acc && typeof acc === "object" ? acc : {};
@@ -92,10 +89,11 @@ export function sanitizeInputs(rawInputs) {
     }
   }
 
-  return {
+  const sanitized = {
     modelVersion: 10,
     incomes: sanitizeIncomeItems(raw.incomes, monthlyIncomeFallback),
     accounts: sanitizedAccounts,
+    splitIncomeAccounts: Boolean(raw.splitIncomeAccounts),
     surplusTransferAccountId: surplusId,
     transfers: sanitizeTransfers(raw.transfers, sanitizedAccounts),
     expenseItems,
@@ -115,6 +113,14 @@ export function sanitizeInputs(rawInputs) {
     annualInvestReturn: window.IsfUtils.sanitizeRate(raw.annualInvestReturn, DEFAULT_INPUTS.annualInvestReturn, 30),
     annualDebtInterest: window.IsfUtils.sanitizeRate(raw.annualDebtInterest, DEFAULT_INPUTS.annualDebtInterest, 30),
     horizonYears: sanitizeInteger(raw.horizonYears, DEFAULT_INPUTS.horizonYears, 1, 40),
+  };
+
+  const repaired = repairAccountConnections(sanitized);
+  return {
+    ...repaired,
+    monthlyExpense: getMonthlyAllocationTotalWon(repaired.expenseItems),
+    monthlySavings: getMonthlyAllocationTotalWon(repaired.savingsItems),
+    monthlyInvest: getMonthlyAllocationTotalWon(repaired.investItems),
   };
 }
 
