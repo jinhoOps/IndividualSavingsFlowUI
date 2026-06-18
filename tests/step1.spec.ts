@@ -1013,19 +1013,24 @@ test.describe('Phase 09 Sankey tooltip readability', () => {
       renderSankey(state.snapshot, buildSankeyData, 'group');
     });
 
-    const pathCount = await page.locator('#sankeySvg .sankey-path').count();
-    let tooltipText = '';
-    for (let index = 0; index < pathCount; index += 1) {
-      const path = page.locator('#sankeySvg .sankey-path').nth(index);
-      const box = await path.boundingBox();
-      if (!box) continue;
-      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-      const text = await page.locator('#sankeyTooltip').textContent();
-      if (text?.includes('월세 <b>') && text.includes('관리비 & 공과금')) {
-        tooltipText = text;
-        break;
+    const tooltipText = await page.evaluate(() => {
+      const paths = Array.from(document.querySelectorAll<SVGPathElement>('#sankeySvg .sankey-path'));
+      const tooltip = document.querySelector<HTMLElement>('#sankeyTooltip');
+      const wrap = document.querySelector<HTMLElement>('#sankeyWrap');
+      if (!tooltip || !wrap) return '';
+      for (const path of paths) {
+        path.dispatchEvent(new MouseEvent('mousemove', {
+          bubbles: true,
+          clientX: wrap.getBoundingClientRect().left + 40,
+          clientY: wrap.getBoundingClientRect().top + 40,
+        }));
+        const text = tooltip.textContent || '';
+        if (text.includes('월세 <b>') && text.includes('관리비 & 공과금')) {
+          return text;
+        }
       }
-    }
+      return '';
+    });
 
     expect(tooltipText).toContain('구성:');
     expect(tooltipText).toMatch(/구성:\n월세 <b> .*?\n관리비 & 공과금 /);

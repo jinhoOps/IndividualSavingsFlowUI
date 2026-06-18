@@ -449,7 +449,8 @@ function collapseOverloadedNodes(data) {
 
 function formatAllocationBreakdownText(items, totalValue, valueMode) {
   if (!Array.isArray(items) || items.length === 0) return "";
-  return "\n구성: " + items.map(item => `${item.label} ${formatSankeyDisplayValue(item.value, totalValue, valueMode)}`).join(", ");
+  const rows = items.map((item) => `${item.label} ${formatSankeyDisplayValue(item.value, totalValue, valueMode)}`);
+  return ["구성:", ...rows].join("\n");
 }
 
 function drawNode(node, side, nodeWidth, labelGap, totalValue, valueMode, isMobileViewport) {
