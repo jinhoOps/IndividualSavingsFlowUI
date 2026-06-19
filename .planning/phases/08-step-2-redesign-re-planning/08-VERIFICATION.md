@@ -148,6 +148,10 @@ No unreferenced `TBD`, `FIXME`, or `XXX` markers were found in Phase 08 touched 
 
 No blocker gaps found. All 22 roadmap and plan must-haves are verified in the codebase. Status is `human_needed` only because Phase 08 is a UI/user-flow phase and visual/readability checks remain human judgment items under the verification gate.
 
+## Acknowledged Gaps
+
+- 2026-06-19T10:51:36.9215399+09:00 - User approved proceeding despite `08-VERIFICATION.md` status `human_needed`. Open items are human UX checks for mobile visual flow and DataHub save/load/delete clarity.
+
 ---
 
 _Verified: 2026-06-17T08:52:21Z_
