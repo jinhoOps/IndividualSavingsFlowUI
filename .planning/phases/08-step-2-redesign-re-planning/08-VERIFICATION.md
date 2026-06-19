@@ -1,24 +1,24 @@
 ---
 phase: 08-step-2-redesign-re-planning
-verified: 2026-06-17T08:52:21Z
-status: human_needed
+verified: 2026-06-19T12:18:09+09:00
+status: complete
 score: 22/22 must-haves verified
 overrides_applied: 0
-human_verification:
+human_verification_completed:
   - test: "Open Step 2 at 390px and 768px and visually inspect the first-screen flow."
     expected: "The screen reads in this order: judgment statement, simplified inputs, KPI cards, graph, comparison cards, collapsed detail; no overlap, clipped text, or incoherent spacing."
-    why_human: "Playwright verifies order, overflow, chart box, screenshots, and interactions, but final visual quality and readability still require human judgment."
+    result: "PASS - user accepted Phase 8 verification report on 2026-06-19 after the card/advanced-assumption interaction fixes."
   - test: "Use the visible Step 2 save button and DataHub list in a browser session, then load and delete one saved simulation."
     expected: "The flow feels understandable, fallback status copy is non-blocking, and saved simulation names are recognizable to the user."
-    why_human: "Automated tests verify CRUD behavior, but user-flow clarity and status-message clarity are human UX checks."
+    result: "PASS - user accepted Phase 8 verification report on 2026-06-19; automated DataHub regression evidence remains passing."
 ---
 
 # Phase 8: Step 2 Redesign & Re-planning Verification Report
 
 **Phase Goal:** 배당성장과 커버드콜의 개념적 이해를 돕고, 단순 지수추종 및 성장주 대비 총수익률의 열세에도 불구하고 이를 선택하는 이유(월 현금 흐름 확보, 은퇴 계획 등)를 투자자 본인이 판단할 수 있도록 돕는 미래 자산 시뮬레이션을 전면 재기획 및 구현
-**Verified:** 2026-06-17T08:52:21Z
-**Status:** human_needed
-**Re-verification:** No - initial verification
+**Verified:** 2026-06-19T12:18:09+09:00
+**Status:** complete
+**Re-verification:** Yes - human UX checks accepted on 2026-06-19
 
 ## Goal Achievement
 
@@ -131,29 +131,30 @@ No additional Phase 08 requirement IDs were mapped in `.planning/REQUIREMENTS.md
 
 No unreferenced `TBD`, `FIXME`, or `XXX` markers were found in Phase 08 touched files.
 
-### Human Verification Required
+### Human Verification Completed
 
 ### 1. Mobile Visual Flow Inspection
 
 **Test:** Open Step 2 at 390px and 768px and visually inspect the first-screen flow.
 **Expected:** The screen reads in this order: judgment statement, simplified inputs, KPI cards, graph, comparison cards, collapsed detail; no overlap, clipped text, or incoherent spacing.
-**Why human:** Playwright verifies order, overflow, chart box, screenshots, and interactions, but final visual quality and readability still require human judgment.
+**Result:** PASS - user accepted the Phase 8 verification report on 2026-06-19 after the Step 2 strategy card and advanced-assumption panel refinements.
 
 ### 2. DataHub Save/Load/Delete UX Clarity
 
 **Test:** Use the visible Step 2 save button and DataHub list in a browser session, then load and delete one saved simulation.
 **Expected:** The flow feels understandable, fallback status copy is non-blocking, and saved simulation names are recognizable to the user.
-**Why human:** Automated tests verify CRUD behavior, but user-flow clarity and status-message clarity are human UX checks.
+**Result:** PASS - user accepted the Phase 8 verification report on 2026-06-19; automated DataHub save/list/load/delete regression evidence remains passing.
 
 ### Gaps Summary
 
-No blocker gaps found. All 22 roadmap and plan must-haves are verified in the codebase. Status is `human_needed` only because Phase 08 is a UI/user-flow phase and visual/readability checks remain human judgment items under the verification gate.
+No blocker gaps found. All 22 roadmap and plan must-haves are verified in the codebase, and the remaining human UX checks are now accepted as PASS.
 
 ## Acknowledged Gaps
 
-- 2026-06-19T10:51:36.9215399+09:00 - User approved proceeding despite `08-VERIFICATION.md` status `human_needed`. Open items are human UX checks for mobile visual flow and DataHub save/load/delete clarity.
+- 2026-06-19T10:51:36.9215399+09:00 - User approved proceeding while Phase 08 still had pending human UX checks for mobile visual flow and DataHub save/load/delete clarity.
+- 2026-06-19T12:18:09+09:00 - User accepted the Phase 8 verification report as PASS. Human UX checks are closed.
 
 ---
 
-_Verified: 2026-06-17T08:52:21Z_
+_Verified: 2026-06-19T12:18:09+09:00_
 _Verifier: the agent (gsd-verifier)_
