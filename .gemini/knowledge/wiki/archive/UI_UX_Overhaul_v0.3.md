@@ -1,13 +1,16 @@
 ---
 type: node
-created: 2026-04-16
+title: "UI UX Overhaul v0.3"
+description: "UI UX Overhaul v0.3 reference documentation."
 tags: [ux, overhaul, v0.3, hcd]
+timestamp: 2026-04-16T00:00:00Z
 ---
+
 
 # [ARCHIVED] UI/UX 통합 개편 및 v0.3 격상 (HCD 원칙 적용)
 
 > [!NOTE]
-> 본 문서는 v0.3 대규모 UI/UX 개편 당시의 기록입니다. 현재의 최신 디자인 표준 및 아키텍처는 **[[Architecture_Reference]]** 및 **[[UI_Standards_Reference]]**를 참조하십시오.
+> 본 문서는 v0.3 대규모 UI/UX 개편 당시의 기록입니다. 현재의 최신 디자인 표준 및 아키텍처는 **[Architecture_Reference](../core/architecture_reference.md)** 및 **[UI_Standards_Reference](../core/ui_standards_reference.md)**를 참조하십시오.
 
 이 문서는 Step1과 Step2의 이질적인 사용자 경험을 통합하고, Donald Norman의 인간 중심 디자인(HCD) 원칙을 실무에 적용한 v0.3 대규모 개편 내용을 기록합니다.
 
@@ -48,6 +51,6 @@ tags: [ux, overhaul, v0.3, hcd]
 - **데이터 마이그레이션:** Step2 로드 시 '원' 단위 데이터를 감지하여 '만원'으로 자동 변환하는 로직 도입.
 
 ## 🔗 관련 링크
-- [[Architecture_Reference]]
-- [[UI_Standards_Reference]]
-- [[Data_Model_Reference]]
+- [Architecture_Reference](../core/architecture_reference.md)
+- [UI_Standards_Reference](../core/ui_standards_reference.md)
+- [Data_Model_Reference](../core/data_model_reference.md)

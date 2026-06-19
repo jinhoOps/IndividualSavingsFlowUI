@@ -32,42 +32,43 @@
     ```
 - **사람을 위한 주석 지양 (No Human-Targeted Comments)**: 에이전트가 코드를 직접 다루므로, JS 코드 내에 사람을 위한 설명형 주석을 추가하지 마십시오. 코드는 그 자체로 의도를 드러내야 하며 불필요한 주석은 컨텍스트를 낭비합니다.
 
-## 🧠 지식 관리: LLM Wiki (Compounding Knowledge Engine)
-이 프로젝트는 **"LLM Wiki"** 패턴을 따릅니다. 에이전트는 지식을 소모적으로 재발견하지 않고, 끊임없이 풍성해지는 위키 위에서 사고합니다.
-- **복리 적립 (Compounding)**: 새로운 지식은 단순히 기록되는 것이 아니라, 기존 노드들과 합성(Synthesize)되어 전체 지식망을 강화해야 합니다.
-- **연대기적 감사 (Audit Trail)**: 모든 주요 결정과 지식 수집은 `[[log.md]]`에 기록되어 시간적 맥락을 보존합니다.
-- **지식 검증 (Lint)**: 위키 내의 모순을 탐지하고 고아 페이지를 방지하여 지식의 엔트로피를 낮게 유지하십시오.
-
-
+## 🧠 지식 관리: Open Knowledge Format v0.1 (LLM Wiki)
+이 프로젝트는 Google Cloud 오픈 사양인 **Open Knowledge Format (OKF) v0.1** 규격을 준수하여 지식을 구조화합니다.
+- **구조적 하이어라키**: 위키 문서들은 `core/`, `phases/`, `archive/` 서브 디렉토리에 계층적으로 배치되며, 소문자 파일명을 사용합니다.
+- **표준 링크**: 모든 상호 참조는 Obsidian 스타일 `[[WikiLink]]` 대신 표준 마크다운 상대 경로 링크 `[Label](./relative_path.md)` 형식을 엄격히 사용합니다.
+- **메타데이터 계약**: 모든 위키 파일 최상단에는 OKF 표준 YAML Frontmatter(`type`, `title`, `description`, `tags`, `timestamp`)가 반드시 명시되어야 합니다.
+- **연대기적 감사 (Audit Trail)**: 주요 결정 사항은 루트의 `log.md`에 지속 기록됩니다.
+- **지식 검증 (Lint)**: 위키 내의 모순을 탐지하고 고아 페이지를 방지하며, 실시간 코드 심볼과의 정합성을 유지하십시오.
 
 ## 🧭 파트너 스킬 / 역할 기반 라우팅
 이 파일은 프로젝트의 모든 규칙을 나열하지 않고, 상황에 맞는 특화 스킬(Skill)과 지식(Knowledge)으로 분기하는 "지도(Map)" 역할을 합니다. 당신의 현재 목적(Phase)에 맞춰서 올바른 문서를 참조하세요.
 
 ### 1단계: Context Loading (맥락 로딩)
 어떤 작업을 시작하든, 가장 먼저 전체 프로젝트의 메타 지식이 담긴 마스터 인덱스를 읽어서 현재 컨텍스트를 로드하십시오.
-- **[필수 참조]** [[.gemini/knowledge/wiki/INDEX.md]] 
+- **[필수 참조]** [index.md](.gemini/knowledge/wiki/index.md)
 
 ### 2단계: Development & Architecture (개발 및 스펙 합의)
 사용자로부터 기능 추가, 리팩터링, 아키텍처 제어 등을 지시받았다면, 코드를 작성하기 전에 개발 관점의 지침을 로드해야 합니다.
-- **[구현 및 리팩터링]** [[.gemini/agents/isf-developer.md]]
+- **[구현 및 리팩터링]** [isf-developer.md](.gemini/agents/isf-developer.md)
   *(이 안에는 No-build 지향 (Modern Hybrid) 원칙, 물리적 무결성(절삭 방지), 단위 정합성 수호 원칙 등이 정의되어 있습니다.)*
-- **[에이전트 협업 스킬]** [[.gemini/skills/orchestration/SKILL.md]]
+- **[에이전트 협업 스킬]** [SKILL.md](.gemini/skills/orchestration/SKILL.md)
   *(기획(Planner), 구현(Developer), 평가(Evaluator) 간의 핸드오프 순서, 스프린트 계약, 입출력 규격이 정의되어 있습니다.)*
 
 ### 3단계: Wiki Indexing & Post-processing (지식 인덱싱 필수 절차)
 작업이 끝났다고 그대로 대화를 종료하지 마십시오. 새로운 패턴을 도출했거나 설계를 바꿨다면, 반드시 **에이전트의 영속적 기억**을 갱신하는 절차를 밟아야 합니다.
-- **[사서 및 인덱싱 스킬]** [[.gemini/skills/wiki-librarian/SKILL.md]]
-  *(이 스킬을 바탕으로, 알아낸 사실을 .gemini/knowledge/wiki/ 에 정리하고, 최종적으로 INDEX.md의 목차 구조(Topology)를 업데이트하세요.)*
+- **[사서 및 인덱싱 스킬]** [SKILL.md](.gemini/skills/wiki-librarian/SKILL.md)
+  *(이 스킬을 바탕으로, 알아낸 사실을 `.gemini/knowledge/wiki/` 에 정리하고, 최종적으로 `index.md`의 목차 구조(Topology)를 업데이트하세요.)*
 
 ---
 
 ## 🛠️ 실무 참조 문서 (Reference Manuals)
 위의 1~3단계를 따르되, 구체적인 도메인 스펙이 필요할 때만 아래 문서들을 열어보세요. (필요하지 않으면 열지 마세요. 컨텍스트 윈도우는 희소한 자원입니다.)
-- 운영 원칙: [[.gemini/knowledge/wiki/Operating_Principles]]
-- 아키텍처 참조: [[.gemini/knowledge/wiki/Architecture_Reference.md]]
-- 데이터 모델 참조: [[.gemini/knowledge/wiki/Data_Model_Reference.md]]
-- UI 및 피드백 표준: [[.gemini/knowledge/wiki/UI_Standards_Reference.md]]
-- 브리지 데이터 패턴 (문제 해결 지식): [[.gemini/knowledge/wiki/Data_Bridge_Import_Pattern.md]]
+- 운영 원칙: [operating_principles.md](.gemini/knowledge/wiki/core/operating_principles.md)
+- 아키텍처 참조: [architecture_reference.md](.gemini/knowledge/wiki/core/architecture_reference.md)
+- 데이터 모델 참조: [data_model_reference.md](.gemini/knowledge/wiki/core/data_model_reference.md)
+- UI 및 피드백 표준: [ui_standards_reference.md](.gemini/knowledge/wiki/core/ui_standards_reference.md)
+- 브리지 데이터 패턴 (문제 해결 지식): [data_bridge_import_pattern.md](.gemini/knowledge/wiki/archive/data_bridge_import_pattern.md)
 - 기능 백로그 및 TODO: `TODO.md`
 
 (*주의사항: 모든 문서는 한국어(존댓말), UTF-8, 굵게/기울임 표시 지양 규칙을 준수합니다.*)
+

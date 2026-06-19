@@ -1,9 +1,11 @@
 ---
 type: node
-created: 2026-04-16
-status: evergreen
+title: "Data Bridge Import Pattern"
+description: "Data Bridge Import Pattern reference documentation."
 tags: [bridge, data-import, state-management, step2]
+timestamp: 2026-04-16T00:00:00Z
 ---
+
 
 # 통합 앱 간 데이터 브리지 및 자동 연동 패턴
 
@@ -26,7 +28,7 @@ Step 2 로딩 시, `IsfStorageHub`에서 Step 1의 최신 데이터를 자동으
 데이터를 자동으로 반영할 때, 기존 Step 2에서 설정한 포트폴리오의 다른 값(수익률, 성장률 등)은 건드리지 않고 오직 '월 투자 여력'만 업데이트합니다.
 
 4. 데이터 단위 정합성 (불변)
-허브에서 수신되는 데이터는 원 단위이므로, UI 표시 시에는 반드시 `IsfUtils.toMan`을 거쳐야 합니다. (참고: [[Data_Model_Reference]])
+허브에서 수신되는 데이터는 원 단위이므로, UI 표시 시에는 반드시 `IsfUtils.toMan`을 거쳐야 합니다. (참고: [Data_Model_Reference](../core/data_model_reference.md))
 
 ---
 *구식 패턴 아카이브:*
@@ -34,6 +36,6 @@ Step 2 로딩 시, `IsfStorageHub`에서 Step 1의 최신 데이터를 자동으
 
 
 ## 연관 지식
-[[Data_Model_Reference]]
-[[Operating_Principles]]
-[[Plan_Step2]]
+[Data_Model_Reference](../core/data_model_reference.md)
+[Operating_Principles](../core/operating_principles.md)
+[Plan_Step2](./plan_step2.md)

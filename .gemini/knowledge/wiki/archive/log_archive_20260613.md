@@ -1,12 +1,16 @@
 ---
+type: node
 title: "Project Evolution Log Archive (2026-06-13)"
 description: "Individual Savings Flow UI 프로젝트의 2026-06-13 이전 연대기적 작업 로그"
+tags: []
+timestamp: 2026-06-19T00:00:00Z
 ---
+
 
 # 📜 Project Evolution Log Archive (2026-06-13 이전)
 
 이 문서는 IndividualSavingsFlowUI 프로젝트의 과거 마일스톤 진행 및 리팩터링 결정 사항을 보관하는 아카이브입니다.
-최신 작업 로그는 [[log]] 문서에서 확인할 수 있습니다.
+최신 작업 로그는 [log](../log.md) 문서에서 확인할 수 있습니다.
 
 ## 📊 과거 마일스톤 이력 요약
 
@@ -604,8 +608,8 @@ sequenceDiagram
 - **목적**: `Plan_Step3_Implementation.md` 누락 해결 및 전역 위키 노드의 링크 정합성을 확보하여 지식 엔트로피를 낮춤.
 - **주요 변경사항**:
     - **인덱스 현행화**: `INDEX.md`에 `Plan_Step3_Implementation` 노드 추가 및 로드맵/구현 계획 구분 명확화.
-    - **링크 표준화**: `[[NodeName.md]]` 형식의 링크에서 확장자를 제거하여 `[[NodeName]]` 컨벤션으로 일원화 (`Knowledge_Harness.md`, `Version_Management_Principles.md`).
-    - **결손 링크 복구**: `archive/Plan_Step1.md` 내의 부서진 `[[TODO]]` 링크를 `TODO.md` 참조 텍스트로 수정.
+    - **링크 표준화**: `[NodeName.md](#broken-link-NodeName.md)` 형식의 링크에서 확장자를 제거하여 `[NodeName](#broken-link-NodeName)` 컨벤션으로 일원화 (`Knowledge_Harness.md`, `Version_Management_Principles.md`).
+    - **결손 링크 복구**: `archive/Plan_Step1.md` 내의 부서진 `[TODO](#broken-link-TODO)` 링크를 `TODO.md` 참조 텍스트로 수정.
     - **상호 참조 강화**: `Plan_Step3`와 `Plan_Step3_Implementation` 간의 상호 연결 노드(Related Nodes) 추가.
     - **스킬 참조 교정**: `Knowledge_Harness.md`에서 위키 노드가 아닌 `wiki-librarian` 스킬을 가리키는 대괄호 제거.
 - **결과**: 지식 베이스의 구조적 무결성이 회복되었으며, 에이전트의 컨텍스트 탐색 효율이 향상됨.
@@ -868,7 +872,7 @@ sequenceDiagram
 
 
 ## [2026-04-17] ingest | GEMINI.md 지식 슬림화 및 위키 이관 완료
-- **내역**: `GEMINI.md`의 `Gemini Added Memories` 섹션을 삭제하고 해당 지식을 `[[Version_Management_Principles]]` 노드로 일원화함.
+- **내역**: `GEMINI.md`의 `Gemini Added Memories` 섹션을 삭제하고 해당 지식을 `[Version_Management_Principles](../core/version_management_principles.md)` 노드로 일원화함.
 - **효과**: "Constitutional Rules"와 "Operating Policies"의 분리를 명확히 하여 지식 중복 관리 제거.
 
 

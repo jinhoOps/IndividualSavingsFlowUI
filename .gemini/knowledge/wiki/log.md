@@ -1,12 +1,16 @@
 ---
+type: node
 title: "Project Evolution Log"
 description: "Individual Savings Flow UI 프로젝트의 최신 연대기적 작업 로그"
+tags: []
+timestamp: 2026-06-19T00:00:00Z
 ---
+
 
 # 🗺️ Project Evolution Log (최신 작업 로그)
 
 이 문서는 프로젝트의 최근 지식 습득 및 결정의 **감사 추적(Audit Trail)**을 보관합니다.
-이전의 오래된 작업 로그는 [[archive/log_archive_20260613]] 문서에서 확인할 수 있습니다.
+이전의 오래된 작업 로그는 [archive/log_archive_20260613](./archive/log_archive_20260613.md) 문서에서 확인할 수 있습니다.
 
 ## 📊 최신 마일스톤 개발 요약
 

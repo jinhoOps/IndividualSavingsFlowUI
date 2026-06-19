@@ -1,13 +1,16 @@
 ---
 type: node
-created: 2026-04-16
+title: "UI UX Overhaul v0.4"
+description: "UI UX Overhaul v0.4 reference documentation."
 tags: [ui, ux, dashboard, adaptive, data-hub, v0.4]
+timestamp: 2026-04-16T00:00:00Z
 ---
+
 
 # [ARCHIVED] UI/UX Overhaul v0.4 (사용자 중심 적응형 개편)
 
 > [!NOTE]
-> 본 문서는 v0.4 대규모 UI/UX 개편 당시의 기록입니다. 현재의 최신 디자인 표준 및 아키텍처는 **[[Architecture_Reference]]** 및 **[[UI_Standards_Reference]]**를 참조하십시오.
+> 본 문서는 v0.4 대규모 UI/UX 개편 당시의 기록입니다. 현재의 최신 디자인 표준 및 아키텍처는 **[Architecture_Reference](../core/architecture_reference.md)** 및 **[UI_Standards_Reference](../core/ui_standards_reference.md)**를 참조하십시오.
 
 본 문서는 최초 사용자와 기존 사용자 간의 인지 부하 차이를 해결하고, 파편화된 데이터 관리 기능을 통합하여 사용자 경험을 고도화한 v0.4 개편 사항을 기록합니다.
 
@@ -33,4 +36,4 @@ tags: [ui, ux, dashboard, adaptive, data-hub, v0.4]
 - **해결**: 상단에 플로팅되는 비침습적 배너를 통해 새로운 데이터 감지 사실을 알리고 사용자가 원하는 시점에 적용하도록 함.
 
 ---
-*연결 노드:* [[Architecture_Reference]], [[UI_Standards_Reference]], [[Operating_Principles]]
+*연결 노드:* [Architecture_Reference](../core/architecture_reference.md), [UI_Standards_Reference](../core/ui_standards_reference.md), [Operating_Principles](../core/operating_principles.md)

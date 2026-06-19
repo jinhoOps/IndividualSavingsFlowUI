@@ -1,12 +1,15 @@
 ---
 type: node
-created: 2026-04-21
+title: "Step2 Modularization Refactoring"
+description: "Step2 Modularization Refactoring reference documentation."
 tags: [refactoring, modularization, es6_modules, step2, simulation]
+timestamp: 2026-04-21T00:00:00Z
 ---
+
 
 # [ARCHIVED] Step2 Modularization Refactoring (Step 2 배당 시뮬레이션 특화 개편)
 
-> **⚠️ 주의**: 이 문서는 v0.7.0 리팩터링 당시의 기록입니다. 현재의 모듈 구조 및 시뮬레이션 엔진 사양은 **[[Architecture_Reference]]**를 참조하십시오.
+> **⚠️ 주의**: 이 문서는 v0.7.0 리팩터링 당시의 기록입니다. 현재의 모듈 구조 및 시뮬레이션 엔진 사양은 **[Architecture_Reference](../core/architecture_reference.md)**를 참조하십시오.
 
 ## 배경 및 원인
 - Step 2 포트폴리오 관리 로직의 비대화를 해소하고, '배당 성장 시뮬레이션'이라는 핵심 가치에 집중하기 위해 구조를 대폭 간소화했습니다. (v0.7.0)
@@ -35,8 +38,8 @@ tags: [refactoring, modularization, es6_modules, step2, simulation]
 ## ⚠️ 주의사항 및 교훈
 - **단위 정합성**: Step 1에서 넘어오는 데이터는 항상 `IsfUtils.toWon`을 통해 원 단위로 처리되어야 함을 재확인했습니다.
 - **데이터 호환성**: `normalizeLoadedPortfolio`에서 과거의 계좌 포함 데이터를 로드하더라도 시뮬레이션에 필요한 필드만 추출하여 안정적으로 동작하게 설계했습니다.
-- **향후 계획**: 제거된 포트폴리오 시각화 기능은 Step 1의 실시간 입력값을 활용하는 [[Plan_Step3]]로 계승됩니다.
+- **향후 계획**: 제거된 포트폴리오 시각화 기능은 Step 1의 실시간 입력값을 활용하는 [Plan_Step3](../phases/plan_step3.md)로 계승됩니다.
 
 ---
-*연결 노드:* [[Architecture_Reference]], [[Data_Model_Reference]], [[Plan_Step3]]
+*연결 노드:* [Architecture_Reference](../core/architecture_reference.md), [Data_Model_Reference](../core/data_model_reference.md), [Plan_Step3](../phases/plan_step3.md)
 

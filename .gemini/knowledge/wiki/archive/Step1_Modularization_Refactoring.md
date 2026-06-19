@@ -1,12 +1,15 @@
 ---
 type: node
-created: 2026-04-16
+title: "Step1 Modularization Refactoring"
+description: "Step1 Modularization Refactoring reference documentation."
 tags: [refactoring, modularization, es6_modules, step1]
+timestamp: 2026-04-16T00:00:00Z
 ---
+
 
 # [ARCHIVED] Step1 Modularization Refactoring (Step 1 모듈화 리팩터링)
 
-> **⚠️ 주의**: 이 문서는 초기 모듈화 당시의 기록입니다. 현재의 11개 모듈 체계 및 아키텍처는 **[[Architecture_Reference]]**를 참조하십시오.
+> **⚠️ 주의**: 이 문서는 초기 모듈화 당시의 기록입니다. 현재의 11개 모듈 체계 및 아키텍처는 **[Architecture_Reference](../core/architecture_reference.md)**를 참조하십시오.
 
 ## 배경 및 원인
 

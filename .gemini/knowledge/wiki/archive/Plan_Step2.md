@@ -1,17 +1,19 @@
 ---
 type: node
-created: 2026-04-14
-status: budding
+title: "Plan Step2"
+description: "Plan Step2 reference documentation."
 tags: [plan, step2, roadmap]
+timestamp: 2026-04-14T00:00:00Z
 ---
+
 
 # [DEPRECATED] 🗺️ Step2: 포트폴리오 구성 개발 계획 (Roadmap)
 
 > [!WARNING]
 > 본 문서는 v0.2.0 ~ v0.6.0 시절의 포트폴리오 구성 계획서입니다.
-> v0.7.0 리팩터링을 통해 포트폴리오 구성 기능은 [[Plan_Step3]]로 이관되었으며, 
+> v0.7.0 리팩터링을 통해 포트폴리오 구성 기능은 [Plan_Step3](../phases/plan_step3.md)로 이관되었으며, 
 > Step 2는 **배당 시뮬레이션 전용**으로 개편되었습니다.
-> 최신 설계 정보는 **[[Architecture_Reference]]**를 참조하십시오.
+> 최신 설계 정보는 **[Architecture_Reference](../core/architecture_reference.md)**를 참조하십시오.
 
 기준 시점: 2026-04-23 (v0.7.0)
 
@@ -26,4 +28,4 @@ tags: [plan, step2, roadmap]
 - `S2-Sim-3`: 명목 vs 실질 가치 비교 테이블 및 추이 그래프.
 
 ---
-*연결 노드:* [[Plan_Step3]], [[Step2_Modularization_Refactoring]], [[Project_History]]
+*연결 노드:* [Plan_Step3](../phases/plan_step3.md), [Step2_Modularization_Refactoring](./step2_modularization_refactoring.md), [Project_History](../phases/project_history.md)

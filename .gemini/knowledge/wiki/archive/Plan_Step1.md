@@ -1,14 +1,16 @@
 ---
 type: node
-created: 2026-04-14
-status: budding
+title: "Plan Step1"
+description: "Plan Step1 reference documentation."
 tags: [plan, step1, roadmap]
+timestamp: 2026-04-14T00:00:00Z
 ---
+
 
 # [ARCHIVED] 🗺️ Step1: 나의 가계 흐름 개발 계획 (Roadmap)
 
 > [!WARNING]
-> 본 문서는 v0.2.0 시절의 초기 계획서입니다. 현재의 최신 구현 상태 및 아키텍처는 **[[Architecture_Reference]]**를 참조하십시오.
+> 본 문서는 v0.2.0 시절의 초기 계획서입니다. 현재의 최신 구현 상태 및 아키텍처는 **[Architecture_Reference](../core/architecture_reference.md)**를 참조하십시오.
 
 기준 시점: 2026-03-26 (v0.2.0 전후)
 
@@ -37,4 +39,4 @@ tags: [plan, step1, roadmap]
 | S1-TD1 | Med | Sankey 정합성 | [완료] 결손 노드(Deficit) 도입으로 Total In=Out 보장 |
 
 ---
-*연결 노드:* [[Plan_Step2]], [[Operating_Principles]], [[Project_History]]
+*연결 노드:* [Plan_Step2](./plan_step2.md), [Operating_Principles](../core/operating_principles.md), [Project_History](../phases/project_history.md)

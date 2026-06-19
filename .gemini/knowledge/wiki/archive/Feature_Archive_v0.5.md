@@ -1,3 +1,10 @@
+---
+type: node
+title: "Feature Archive v0.5"
+description: "Feature Archive v0.5 reference documentation."
+tags: []
+timestamp: 2026-06-19T00:00:00Z
+---
 # Feature Archive (v0.5 리팩토링 이전 정상 기능 스펙)
 
 이 문서는 v0.5 리팩토링 이전(모놀리식 구조 혹은 초기 구현 단계)에 정상 작동했던 Individual Savings Flow (ISF) 프로젝트의 기능 스펙을 아카이빙합니다.
