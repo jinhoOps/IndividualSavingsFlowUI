@@ -94,43 +94,51 @@
             </button>
           </div>
 
-          <details id="simInputsContainer" class="sim-inputs-container">
-            <summary id="toggleSimInputs">고급 가정 및 ETF 예시</summary>
-            <div class="advanced-settings-grid">
-              <label class="control">
-                <span>비교 벤치마크</span>
-                <select id="benchmarkSelect">
-                  <option value="nasdaq">Nasdaq</option>
-                  <option value="sp500">S&amp;P 500</option>
-                </select>
-              </label>
-              <label class="control">
-                <span>커버드콜 예시</span>
-                <select id="coveredCallSelect">
-                  <option value="jepi">JEPI</option>
-                  <option value="qqqi">QQQI</option>
-                  <option value="divo">DIVO</option>
-                </select>
-              </label>
-              <label class="control">
-                <span>배당/현금흐름 수익률(연, %)</span>
-                <input id="simDividendYield" type="number" min="0" max="30" step="0.1" value="3.5" />
-              </label>
-              <label class="control">
-                <span>배당 성장률(연, %)</span>
-                <input id="simDividendGrowth" type="number" min="0" max="30" step="0.1" value="5.0" />
-              </label>
-              <label class="control">
-                <span>주가 상승률(연, %)</span>
-                <input id="simCapitalGrowth" type="number" min="0" max="30" step="0.1" value="4.0" />
-              </label>
-              <label class="control control--checkbox">
-                <span>배당 재투자</span>
-                <label><input id="simDrip" type="checkbox" checked /> 재투자함</label>
-              </label>
-            </div>
-            <p id="assumptionRangeNote" class="assumption-note">보수 예시 가정이며 실시간 수익률이나 보장 수익이 아닙니다.</p>
-          </details>
+          <div id="advancedAssumptionsModal" class="advanced-assumptions-modal" role="dialog" aria-modal="true" aria-labelledby="advancedAssumptionsTitle" hidden>
+            <div class="advanced-assumptions-modal__overlay" data-advanced-assumptions-close></div>
+            <section class="advanced-assumptions-modal__panel" aria-describedby="assumptionRangeNote">
+              <div class="advanced-assumptions-modal__header">
+                <h3 id="advancedAssumptionsTitle">고급 가정 및 ETF 예시</h3>
+                <button id="closeAdvancedAssumptions" class="advanced-assumptions-modal__close" type="button" aria-label="고급 가정 및 ETF 예시 닫기">×</button>
+              </div>
+              <div id="simInputsContainer" class="sim-inputs-container">
+                <div class="advanced-settings-grid">
+                  <label class="control">
+                    <span>비교 벤치마크</span>
+                    <select id="benchmarkSelect">
+                      <option value="nasdaq">Nasdaq</option>
+                      <option value="sp500">S&amp;P 500</option>
+                    </select>
+                  </label>
+                  <label class="control">
+                    <span>커버드콜 예시</span>
+                    <select id="coveredCallSelect">
+                      <option value="jepi">JEPI</option>
+                      <option value="qqqi">QQQI</option>
+                      <option value="divo">DIVO</option>
+                    </select>
+                  </label>
+                  <label class="control">
+                    <span>배당/현금흐름 수익률(연, %)</span>
+                    <input id="simDividendYield" type="number" min="0" max="30" step="0.1" value="3.5" />
+                  </label>
+                  <label class="control">
+                    <span>배당 성장률(연, %)</span>
+                    <input id="simDividendGrowth" type="number" min="0" max="30" step="0.1" value="5.0" />
+                  </label>
+                  <label class="control">
+                    <span>주가 상승률(연, %)</span>
+                    <input id="simCapitalGrowth" type="number" min="0" max="30" step="0.1" value="4.0" />
+                  </label>
+                  <label class="control control--checkbox">
+                    <span>배당 재투자</span>
+                    <label><input id="simDrip" type="checkbox" checked /> 재투자함</label>
+                  </label>
+                </div>
+                <p id="assumptionRangeNote" class="assumption-note">보수 예시 가정이며 실시간 수익률이나 보장 수익이 아닙니다.</p>
+              </div>
+            </section>
+          </div>
 
           <div class="sim-dashboard">
             <div class="sim-controls">

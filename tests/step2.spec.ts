@@ -421,27 +421,28 @@ test.describe('Step 2 Phase 08 first-screen mobile UI flows', () => {
     }
   });
 
-  test('Phase 08 strategy cards reopen assumptions and collapsed comparison cards remain selectable', async ({ page }) => {
+  test('Phase 08 strategy cards open advanced assumptions modal and collapsed comparison cards remain selectable', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 820 });
     await page.goto('apps/simulation/index.html');
     await page.waitForSelector('#strategyComparisonCards .comparison-card');
 
-    await expect(page.locator('#simInputsContainer')).not.toHaveAttribute('open', '');
+    const modal = page.locator('#advancedAssumptionsModal');
+    await expect(modal).toBeHidden();
     await page.locator('[data-strategy-card="dividendGrowth"]').click();
-    await expect(page.locator('#simInputsContainer')).toHaveAttribute('open', '');
+    await expect(modal).toBeVisible();
     await expect(page.locator('#assumptionRangeNote')).toContainText('SCHD');
 
-    await page.locator('#simInputsContainer summary').click();
-    await expect(page.locator('#simInputsContainer')).not.toHaveAttribute('open', '');
+    await page.keyboard.press('Escape');
+    await expect(modal).toBeHidden();
 
     await page.locator('#strategyComparisonCards [data-strategy="coveredCallMonthlyIncome"]').click();
     await expect(page.locator('[data-strategy-card="coveredCallMonthlyIncome"]')).toHaveClass(/is-active/);
     await expect(page.locator('#strategyComparisonCards [data-strategy="coveredCallMonthlyIncome"]')).toHaveClass(/is-active/);
     await expect(page.locator('#strategyComparisonCards [data-strategy="dividendGrowth"]')).toHaveClass(/is-collapsed/);
 
-    await expect(page.locator('#simInputsContainer')).not.toHaveAttribute('open', '');
+    await expect(modal).toBeHidden();
     await page.locator('#strategyComparisonCards [data-strategy="coveredCallMonthlyIncome"]').click();
-    await expect(page.locator('#simInputsContainer')).toHaveAttribute('open', '');
+    await expect(modal).toBeVisible();
     await expect(page.locator('#assumptionRangeNote')).toContainText('JEPI');
 
     await expect(page.locator('#strategyComparisonCards [data-strategy="dividendGrowth"] .comparison-card__metrics')).toBeHidden();
@@ -461,6 +462,7 @@ test.describe('Step 2 Phase 08 first-screen mobile UI flows', () => {
     await expect(page.locator('#strategyCardGroup')).not.toContainText('JEPI · QQQI · DIVO');
 
     await page.locator('[data-strategy-card="dividendGrowth"]').click();
+    await expect(page.locator('#advancedAssumptionsModal')).toBeVisible();
     await page.locator('#benchmarkSelect').selectOption('sp500');
     await page.locator('#coveredCallSelect').selectOption('divo');
 

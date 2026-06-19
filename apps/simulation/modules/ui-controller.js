@@ -218,6 +218,20 @@ export const uiController = {
       });
     }
 
+    if (dom.closeAdvancedAssumptions) {
+      dom.closeAdvancedAssumptions.addEventListener("click", () => this.closeAdvancedAssumptions());
+    }
+    dom.advancedAssumptionsModal?.addEventListener("click", (e) => {
+      if (e.target.closest("[data-advanced-assumptions-close]")) {
+        this.closeAdvancedAssumptions();
+      }
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && !dom.advancedAssumptionsModal?.hidden) {
+        this.closeAdvancedAssumptions();
+      }
+    });
+
     if (dom.benchmarkSelect) {
       dom.benchmarkSelect.addEventListener("change", () => {
         if (!state.draft.dividendSim) state.draft.dividendSim = {};
@@ -254,21 +268,27 @@ export const uiController = {
       return;
     }
     this.applyStrategySelection(strategyKey);
-    if (dom.simInputsContainer?.open) {
+    if (!dom.advancedAssumptionsModal?.hidden) {
       this.revealAdvancedAssumptions({ focus: false });
     }
   },
 
   revealAdvancedAssumptions(options = {}) {
-    if (!dom.simInputsContainer) return;
-    dom.simInputsContainer.open = true;
+    if (!dom.advancedAssumptionsModal || !dom.simInputsContainer) return;
+    dom.advancedAssumptionsModal.hidden = false;
+    document.body.classList.add("has-open-modal");
     dom.simInputsContainer.classList.add("is-emphasized");
     window.setTimeout(() => {
       dom.simInputsContainer?.classList.remove("is-emphasized");
     }, 900);
     if (options.focus === false) return;
-    dom.simInputsContainer.querySelector("summary")?.focus({ preventScroll: true });
-    dom.simInputsContainer.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    dom.closeAdvancedAssumptions?.focus({ preventScroll: true });
+  },
+
+  closeAdvancedAssumptions() {
+    if (!dom.advancedAssumptionsModal) return;
+    dom.advancedAssumptionsModal.hidden = true;
+    document.body.classList.remove("has-open-modal");
   },
 
   applyStrategySelection(strategyKey, options = {}) {
