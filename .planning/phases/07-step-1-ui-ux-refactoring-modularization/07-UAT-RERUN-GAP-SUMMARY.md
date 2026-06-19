@@ -1,6 +1,7 @@
 ---
 phase: 07-step-1-ui-ux-refactoring-modularization
 plan: uat-rerun-gap-closure
+status: complete
 subsystem: ui
 tags: [step1, uat, money-input, sankey, account-flow, mobile]
 requires:
