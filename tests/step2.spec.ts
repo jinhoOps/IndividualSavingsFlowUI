@@ -421,6 +421,33 @@ test.describe('Step 2 Phase 08 first-screen mobile UI flows', () => {
     }
   });
 
+  test('Phase 08 strategy cards reopen assumptions and collapsed comparison cards remain selectable', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 820 });
+    await page.goto('apps/simulation/index.html');
+    await page.waitForSelector('#strategyComparisonCards .comparison-card');
+
+    await expect(page.locator('#simInputsContainer')).not.toHaveAttribute('open', '');
+    await page.locator('[data-strategy-card="dividendGrowth"]').click();
+    await expect(page.locator('#simInputsContainer')).toHaveAttribute('open', '');
+    await expect(page.locator('#assumptionRangeNote')).toContainText('SCHD');
+
+    await page.locator('#simInputsContainer summary').click();
+    await expect(page.locator('#simInputsContainer')).not.toHaveAttribute('open', '');
+
+    await page.locator('#strategyComparisonCards [data-strategy="coveredCallMonthlyIncome"]').click();
+    await expect(page.locator('[data-strategy-card="coveredCallMonthlyIncome"]')).toHaveClass(/is-active/);
+    await expect(page.locator('#strategyComparisonCards [data-strategy="coveredCallMonthlyIncome"]')).toHaveClass(/is-active/);
+    await expect(page.locator('#strategyComparisonCards [data-strategy="dividendGrowth"]')).toHaveClass(/is-collapsed/);
+
+    await expect(page.locator('#simInputsContainer')).not.toHaveAttribute('open', '');
+    await page.locator('#strategyComparisonCards [data-strategy="coveredCallMonthlyIncome"]').click();
+    await expect(page.locator('#simInputsContainer')).toHaveAttribute('open', '');
+    await expect(page.locator('#assumptionRangeNote')).toContainText('JEPI');
+
+    await expect(page.locator('#strategyComparisonCards [data-strategy="dividendGrowth"] .comparison-card__metrics')).toBeHidden();
+    await expect(page.locator('#strategyComparisonCards [data-strategy="coveredCallMonthlyIncome"] .comparison-card__metrics')).toBeVisible();
+  });
+
   test('Phase 08 warning uses only totalInitialAsset below 50M and not high monthly investment', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 900 });
     await page.goto('apps/simulation/index.html');

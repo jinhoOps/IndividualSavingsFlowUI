@@ -141,11 +141,17 @@ function renderComparisonCards(comparison) {
   if (!dom.strategyComparisonCards || !comparison?.final) return;
   clearNode(dom.strategyComparisonCards);
 
+  const selectedStrategyKey = getSelectedStrategyKey();
   Object.values(STRATEGY_VIEW).forEach((view) => {
     const strategy = comparison.final.strategies[view.key];
+    const active = selectedStrategyKey === view.key;
     const card = document.createElement("article");
-    card.className = `comparison-card${getSelectedStrategyKey() === view.key ? " is-active" : ""}`;
+    card.className = `comparison-card${active ? " is-active" : " is-collapsed"}`;
     card.dataset.strategy = view.cardKey;
+    card.tabIndex = 0;
+    card.setAttribute("role", "button");
+    card.setAttribute("aria-pressed", active ? "true" : "false");
+    card.setAttribute("aria-label", `${view.title} 전략 선택`);
 
     appendText(card, "p", "comparison-card__eyebrow", view.title);
     appendText(card, "h3", "", view.conclusion);
@@ -397,6 +403,7 @@ function syncStrategyControls() {
     dom.strategyCardGroup.querySelectorAll("[data-strategy-card]").forEach((card) => {
       const active = card.dataset.strategyCard === (sim.strategyKey || "dividendGrowth");
       card.classList.toggle("is-active", active);
+      card.classList.toggle("is-collapsed", !active);
       card.setAttribute("aria-checked", active ? "true" : "false");
     });
   }

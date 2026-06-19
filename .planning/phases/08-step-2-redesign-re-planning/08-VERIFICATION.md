@@ -101,7 +101,8 @@ human_verification:
 | Data generation scripts parse | `python -m py_compile scripts/generate_qqq_data.py scripts/generate_market_data.py` | exit 0 | PASS |
 | TypeScript check | `npm run check` | Orchestrator evidence: PASS | PASS |
 | Schema drift | `gsd-tools query verify.schema-drift 08` | `drift_detected=false`, `blocking=false` | PASS |
-| Phase 08 browser regression | `npx playwright test tests/step2.spec.ts -g "Phase 08" --reporter=list --timeout=30000` with managed Vite server | Orchestrator evidence: 10 passed; screenshot artifacts exist | PASS |
+| Phase 08 browser regression | `npx playwright test tests/step2.spec.ts -g "Phase 08" --reporter=list --timeout=30000` with managed Vite server | Orchestrator evidence: 11 test bodies passed; screenshot artifacts exist; local runner process hit shutdown timeout after pass output | PASS |
+| Strategy card reselect and comparison-card collapse audit fix | Custom Playwright spot-check on Vite `127.0.0.1:5175` | `{"topOpen":true,"selected":true,"collapsed":true,"comparisonOpen":true,"noteIncludesJEPI":true}` | PASS |
 
 ### Probe Execution
 

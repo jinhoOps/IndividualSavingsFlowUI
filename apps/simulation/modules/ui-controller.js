@@ -191,10 +191,30 @@ export const uiController = {
 
   bindStrategyControls() {
     if (dom.strategyCardGroup) {
-      dom.strategyCardGroup.addEventListener("click", (e) => {
+      const handleStrategyCard = (e) => {
         const card = e.target.closest("[data-strategy-card]");
         if (!card) return;
-        this.applyStrategySelection(card.dataset.strategyCard);
+        this.handleStrategyCardAction(card.dataset.strategyCard);
+      };
+      dom.strategyCardGroup.addEventListener("click", handleStrategyCard);
+      dom.strategyCardGroup.addEventListener("keydown", (e) => {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        e.preventDefault();
+        handleStrategyCard(e);
+      });
+    }
+
+    if (dom.strategyComparisonCards) {
+      const handleComparisonCard = (e) => {
+        const card = e.target.closest("[data-strategy]");
+        if (!card) return;
+        this.handleStrategyCardAction(card.dataset.strategy);
+      };
+      dom.strategyComparisonCards.addEventListener("click", handleComparisonCard);
+      dom.strategyComparisonCards.addEventListener("keydown", (e) => {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        e.preventDefault();
+        handleComparisonCard(e);
       });
     }
 
@@ -225,6 +245,30 @@ export const uiController = {
         this.updateAll();
       });
     }
+  },
+
+  handleStrategyCardAction(strategyKey) {
+    const currentKey = state.draft?.dividendSim?.strategyKey || "dividendGrowth";
+    if (strategyKey === currentKey) {
+      this.revealAdvancedAssumptions();
+      return;
+    }
+    this.applyStrategySelection(strategyKey);
+    if (dom.simInputsContainer?.open) {
+      this.revealAdvancedAssumptions({ focus: false });
+    }
+  },
+
+  revealAdvancedAssumptions(options = {}) {
+    if (!dom.simInputsContainer) return;
+    dom.simInputsContainer.open = true;
+    dom.simInputsContainer.classList.add("is-emphasized");
+    window.setTimeout(() => {
+      dom.simInputsContainer?.classList.remove("is-emphasized");
+    }, 900);
+    if (options.focus === false) return;
+    dom.simInputsContainer.querySelector("summary")?.focus({ preventScroll: true });
+    dom.simInputsContainer.scrollIntoView({ behavior: "smooth", block: "nearest" });
   },
 
   applyStrategySelection(strategyKey, options = {}) {
@@ -261,6 +305,7 @@ export const uiController = {
       dom.strategyCardGroup.querySelectorAll("[data-strategy-card]").forEach((card) => {
         const active = card.dataset.strategyCard === (sim.strategyKey || "dividendGrowth");
         card.classList.toggle("is-active", active);
+        card.classList.toggle("is-collapsed", !active);
         card.setAttribute("aria-checked", active ? "true" : "false");
       });
     }

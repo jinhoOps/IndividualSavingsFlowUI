@@ -179,6 +179,21 @@ body.is-dashboard-mode .info-panel {
   background: rgba(234, 91, 42, 0.06);
 }
 
+.strategy-card.is-collapsed:not(.is-active) {
+  min-height: 72px;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.64);
+}
+
+.strategy-card.is-collapsed:not(.is-active) span:last-child {
+  display: none;
+}
+
+.strategy-card.is-collapsed:not(.is-active) strong {
+  font-size: 0.98rem;
+  line-height: 1.2;
+}
+
 .strategy-card__group {
   color: var(--tone-primary);
   font-size: 0.78rem;
@@ -203,6 +218,11 @@ body.is-dashboard-mode .info-panel {
   border-radius: 8px;
   padding: 0;
   margin-bottom: var(--sp-md);
+}
+
+.sim-inputs-container.is-emphasized {
+  border-color: var(--tone-primary);
+  box-shadow: 0 0 0 3px rgba(234, 91, 42, 0.12);
 }
 
 .sim-inputs-container summary {
@@ -371,10 +391,37 @@ body.is-dashboard-mode .info-panel {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  cursor: pointer;
+  transition: transform 0.18s ease, border-color 0.18s ease, background-color 0.18s ease;
+}
+
+.comparison-card:active {
+  transform: scale(0.99);
+}
+
+.comparison-card:focus-visible {
+  outline: 3px solid rgba(234, 91, 42, 0.24);
+  outline-offset: 2px;
 }
 
 .comparison-card.is-active {
   border-color: var(--tone-primary);
+}
+
+.comparison-card.is-collapsed:not(.is-active) {
+  min-height: 86px;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.64);
+}
+
+.comparison-card.is-collapsed:not(.is-active) .comparison-card__metrics,
+.comparison-card.is-collapsed:not(.is-active) .comparison-card__caveat {
+  display: none;
+}
+
+.comparison-card.is-collapsed:not(.is-active) h3 {
+  font-size: 0.92rem;
+  line-height: 1.25;
 }
 
 .comparison-card__eyebrow {
