@@ -266,10 +266,10 @@ persistence.commitImmediateInputs(nextInputs);
 **Warning signs:** Saved `actualSpent` exists in modal state but disappears after page reload or JSON export/import. [ASSUMED]
 
 ### Pitfall 2: Duplicate Household Income
-**What goes wrong:** Spouse income is added to both `householdContext.spouseMonthlyIncome` and `incomes[]`, inflating household metrics or Sankey flow. [ASSUMED]  
+**What goes wrong:** Spouse income is added to both `householdContext.spouseMonthlyIncome` and `incomes[]`, inflating household metrics or Sankey flow against the resolved Phase 10 boundary. [VERIFIED: user final decision 2026-06-19]
 **Why it happens:** Current Sankey derives income from `incomes[]`, while Phase 10 household context is separate. [VERIFIED: CodeGraph apps/main/modules/calculator.js:26]  
-**How to avoid:** For Phase 10, treat spouse income as household budget context only; do not add an automatic spouse income row to `incomes[]`. [ASSUMED]  
-**Warning signs:** `총수입` Sankey node changes when only household context spouse income is edited. [ASSUMED]
+**How to avoid:** For Phase 10, treat spouse income as household budget context only; do not add an automatic spouse income row to `incomes[]`, and do not alter Sankey income rows. [VERIFIED: user final decision 2026-06-19]
+**Warning signs:** `총수입` Sankey node changes when only household context spouse income is edited. [VERIFIED: user final decision 2026-06-19]
 
 ### Pitfall 3: Projection Division Edge Cases
 **What goes wrong:** Early-month or invalid-date projection returns Infinity/NaN. [ASSUMED]  
@@ -353,26 +353,26 @@ function saveHouseholdBudgetDraft() {
 - Live banking or transaction scraping: out of scope for v1.9 and Phase 10. [VERIFIED: .planning/REQUIREMENTS.md]
 - Real-estate affordability and historical comparison inside Phase 10: deferred to later phases. [VERIFIED: .planning/ROADMAP.md]
 
-## Assumptions Log
+## Assumptions And Resolved Decisions Log
 
 | # | Claim | Section | Risk if Wrong |
 |---|-------|---------|---------------|
 | A1 | Status thresholds should be `초과` when actual > target, `주의` when projected over target or actual/target >= 80%, otherwise `여유`. | Architecture Patterns | Planner may choose a different deterministic threshold, requiring test expectation changes. |
-| A2 | Spouse income should affect only Step 1.2 household budget metrics in Phase 10 and should not automatically create a Sankey income row. | Common Pitfalls | If stakeholders expect spouse income to alter Sankey now, summary and Sankey totals may appear inconsistent. |
+| A2 | RESOLVED 2026-06-19: Spouse income affects only Step 1.2 household budget metrics in Phase 10 and must not automatically create or alter Sankey income rows. | Common Pitfalls / Open Questions (RESOLVED) | If implementation changes `incomes[]` or Sankey rows from spouse income in Phase 10, it violates the Phase 10 boundary; Sankey/dual-flow household merge belongs to Phase 12. |
 | A3 | Derived budget status/projection should not be persisted. | Don't Hand-Roll | If later features need audit trails, a future event/history model may be required. |
 | A4 | Projection helper should clamp elapsed days to avoid NaN/Infinity. | Common Pitfalls | Bad date handling could create broken UI labels. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should spouse income change Sankey in Phase 10?**
    - What we know: Phase 12 owns dual-flow household merge, and Phase 10 must preserve current Step 1 Sankey behavior. [VERIFIED: .planning/ROADMAP.md]
-   - What's unclear: Whether a manually entered spouse income in Phase 10 should be budget-context-only or optionally reflected in base Step 1 `incomes[]`.
-   - Recommendation: Keep spouse income budget-context-only in Phase 10 to avoid duplicate income and defer merged household flow to Phase 12. [ASSUMED]
+   - RESOLVED: Spouse income in Phase 10 affects only Step 1.2 household budget metrics. It must not automatically create income rows, mutate existing `incomes[]`, or alter Sankey income flows. Sankey/dual-flow household merge is Phase 12. [VERIFIED: user final decision 2026-06-19]
+   - Planning consequence: Plans should keep spouse income in `householdContext.spouseMonthlyIncome` and use it only for household budget summary/modal calculations.
 
 2. **What exactly defines "variable expense"?**
    - What we know: Preset output includes `변동비`, and Phase 10 says only variable expenses get tracking. [VERIFIED: .planning/milestones/v1.8-phases/09-step-1-financial-settings-input-uiux-rebuild/09-CONTEXT.md]
-   - What's unclear: Whether user-created custom groups should be trackable.
-   - Recommendation: Start with normalized group name `변동비`; add a future `budgetTracking: true` flag only if custom-group tracking becomes necessary. [ASSUMED]
+   - RESOLVED: Variable expense in Phase 10 means expense rows normalized to the `변동비` group/predicate used by the Step 1 budget model. Fixed expense rows do not receive actual-spending controls. [VERIFIED: user final decision 2026-06-19]
+   - Planning consequence: `actualSpent` is preserved and rendered only for rows where `isVariableExpenseItem(item)` resolves true for the Step 1 `변동비` predicate; fixed rows keep planned values only.
 
 ## Environment Availability
 
@@ -442,7 +442,7 @@ Planner should still add focused checks:
 - `package.json` - declared scripts and dependency versions.
 
 ### Tertiary (LOW confidence)
-- Assumed threshold recommendations and Phase 10 spouse-income/Sankey interpretation; see Assumptions Log.
+- Assumed threshold recommendations; spouse-income/Sankey and variable-expense definitions are resolved in Open Questions (RESOLVED).
 
 ## Metadata
 
@@ -450,7 +450,7 @@ Planner should still add focused checks:
 - Standard stack: HIGH - existing package/tooling and Step 1 modules were verified locally and via CodeGraph.
 - Architecture: HIGH - current render/sanitize/persist/modal flow was verified from source.
 - Data shape recommendation: MEDIUM - backward-compatible approach is strongly supported by current code, but exact field naming is explicitly planner discretion.
-- Pitfalls: MEDIUM - sanitizer field-dropping is verified; threshold/status and spouse-income semantics include assumptions.
+- Pitfalls: MEDIUM - sanitizer field-dropping is verified; threshold/status includes assumptions, while spouse-income/Sankey and variable-expense semantics are resolved above.
 - Security: MEDIUM - local input/render controls are verified; ASVS applicability is scoped to a static local-first app.
 
 **Research date:** 2026-06-19  
