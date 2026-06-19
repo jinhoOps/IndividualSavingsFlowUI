@@ -78,12 +78,12 @@ Rules:
 |------|-------|-------|
 | Dominant (60%) | `#f9f6f0` / `var(--bg)` | Page canvas and section floor |
 | Secondary (30%) | `#ffffff` / `var(--panel)` | Step 1.2 summary panel, modal surface, metric cards, variable expense rows |
-| Accent (10%) | `#ea5b2a` / `var(--tone-primary)` | Primary CTA `예산 상세 편집`, active segmented option, focus ring, save action |
+| Accent (10%) | `#ea5b2a` / `var(--tone-primary)` | Primary CTA `예산 상세 편집`, active segmented option, focus ring, `예산 저장` action |
 | Destructive | `#e03131` / `var(--status-error)` | Destructive actions only; Phase 10 has no new destructive action |
 
 Accent reserved for:
 - `예산 상세 편집` primary CTA.
-- Modal `저장` button.
+- Modal `예산 저장` button.
 - Focus-visible outline on Step 1.2 controls.
 - Active state for one-income/dual-income segmented control.
 
@@ -113,8 +113,8 @@ Rules:
 | Empty state heading | `추적할 변동비가 없습니다` |
 | Empty state body | `지출 상세에서 변동비 항목을 추가하면 목표와 실제 사용액을 함께 볼 수 있습니다.` |
 | Error state | `예산을 저장하지 못했습니다. 금액과 필수 항목을 확인한 뒤 다시 저장해 주세요.` |
-| Save action | `저장` |
-| Cancel action | `취소` |
+| Save action | `예산 저장` |
+| Cancel action | `편집 취소` |
 | Destructive confirmation | none - Phase 10 must not add delete/reset/destructive household actions |
 
 Status and helper copy:
@@ -190,14 +190,14 @@ Required sections:
 | Household context | Segmented control for `1인 소득` and `맞벌이`; spouse monthly income input shown/enabled only when relevant |
 | Budget summary | Total variable target, total actual, remaining, `월말 예상`, and status badge |
 | Variable expense rows | Compact cards for variable expenses only; each row shows name, target, actual, remaining/progress, projection |
-| Actions | `취소` closes without durable mutation; `저장` commits through the existing persistence boundary |
+| Actions | `편집 취소` closes without durable mutation; `예산 저장` commits through the existing persistence boundary |
 
 Modal behavior:
 - Open from `예산 상세 편집` or the Step 1.2 panel.
 - Use draft state while editing.
-- Closing with `취소` or close button discards unsaved household budget edits.
-- Only `저장` mutates durable state through `persistence.commitImmediateInputs()`.
-- Existing Step 1 financial modal explicit save/cancel behavior must remain unchanged.
+- Closing with `편집 취소` or close button discards unsaved household budget edits.
+- Only `예산 저장` mutates durable state through `persistence.commitImmediateInputs()`.
+- Existing Step 1 financial modal explicit confirm/dismiss behavior must remain unchanged.
 - Use DOM APIs and `textContent` for user-controlled names and values.
 
 ### Variable Expense Rows
@@ -228,8 +228,8 @@ Input constraints:
 | Open panel | Opens `신혼부부 예산 상세` modal without navigating away or changing Sankey |
 | Toggle income mode | `1인 소득` works with spouse income absent/0; `맞벌이` allows spouse income input |
 | Edit actual spending | Updates modal draft and derived row metrics immediately inside modal only |
-| Cancel modal | Restores the default screen with no durable mutation |
-| Save modal | Sanitizes, persists, refreshes summary panel, and rerenders Sankey without corrupting existing Step 1 data |
+| Click `편집 취소` | Restores the default screen with no durable mutation |
+| Click `예산 저장` | Sanitizes, persists, refreshes summary panel, and rerenders Sankey without corrupting existing Step 1 data |
 | Overspend | Shows `초과`, negative remaining amount, and non-destructive warning styling |
 | No variable expenses | Shows the empty state; CTA remains available |
 
