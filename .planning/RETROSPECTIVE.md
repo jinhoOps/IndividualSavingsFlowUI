@@ -1,5 +1,44 @@
 # Project Retrospective
 
+## Milestone: v1.8 — 적립식 포트폴리오 관리 및 전체 UI/UX 개선
+
+**Shipped:** 2026-06-19
+**Phases:** 5 | **Plans:** 18 | **Tasks:** 42
+
+### What Was Built
+1. Step 3 portfolio creation with dynamic asset rows, allocation percentages, segmented purchase cadence, final confirmation, and persistent listing.
+2. Step 1 modular architecture with focused controllers and reduced durable CSS/inline styling surface.
+3. Step 2 strategy choice guide comparing index growth, SCHD dividend growth, and covered-call cash-flow outcomes with editable conservative assumptions.
+4. Step 1 financial setup rebuild with summary cards, category detail modals, guided item/account creation, and compact mobile editing.
+5. Sankey account correction, total-income aggregation, readable tooltip rows, and source-account-based automatic flow balancing.
+
+### What Worked
+- Phase-level UAT plus milestone audit made it possible to close residual artifact gaps before archive.
+- Keeping Step 2 assumptions in data modules separated display ranges from editable defaults and reduced UI/calculation drift.
+- Moving dense Step 1 editing into modal-owned state preserved the existing persistence boundary while improving mobile ergonomics.
+- CodeGraph-assisted source inspection kept late UI fixes narrow around renderers/controllers instead of broad rewrites.
+
+### What Was Inefficient
+- Several Playwright runs printed PASS lines but did not exit cleanly on Windows, creating repeated verification noise.
+- Some GSD summary extraction pulled timestamps as accomplishments, requiring manual milestone-entry cleanup.
+- Phase 08 human UX checks stayed open until final close rather than being accepted immediately after the last UI adjustment.
+
+### Patterns Established
+- Strategy cards can open advanced assumptions on reselect while inactive cards stay compact and selectable.
+- Step 1 category cards should lead the first viewport; dense legacy controls belong behind detail surfaces.
+- Source-account selection is the durable boundary for automatic account flow; separate manual transfer settings create duplicate modeling.
+
+### Key Lessons
+1. Close human verification debt before running milestone close so `audit-open` stays clean.
+2. Keep UI card labels tied to selected advanced examples, not option lists, when a separate advanced panel owns the choice.
+3. Treat sanitizer/account repair as the single durable account-link correction path across save, import, share, and render flows.
+
+### Cost Observations
+- Sessions: Multiple focused GSD verification, audit, and UAT gap-closure passes.
+- Notable: Late fixes were small because phase summaries and CodeGraph made the relevant render/controller boundaries easy to locate.
+
+---
+
 ## Milestone: v1.0 — 템플릿 기반 자산 흐름 시각화
 
 **Shipped:** 2026-05-03
@@ -41,9 +80,7 @@
 
 ## Cross-Milestone Trends
 
-| Metric | v1.0 |
-|--------|------|
-| Phases | 3 |
-| Plans | 3 |
-| Timeline | 4 days |
-| Key Pattern | 선 템플릿 → 후 편집 UX |
+| Milestone | Phases | Plans | Timeline | Key Pattern |
+|---|---:|---:|---|---|
+| v1.0 | 3 | 3 | 4 days | 선 템플릿 → 후 편집 UX |
+| v1.8 | 5 | 18 | 2026-06-16 → 2026-06-19 | summary-first cards + modal/detail editing + strategy comparison |

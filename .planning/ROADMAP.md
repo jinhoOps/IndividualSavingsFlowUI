@@ -23,6 +23,7 @@ Full archive:
 - [v1.8-ROADMAP.md](milestones/v1.8-ROADMAP.md)
 - [v1.8-REQUIREMENTS.md](milestones/v1.8-REQUIREMENTS.md)
 - [v1.8-MILESTONE-AUDIT.md](milestones/v1.8-MILESTONE-AUDIT.md)
+- [v1.8 phase artifacts](milestones/v1.8-phases/)
 
 </details>
 
