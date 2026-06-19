@@ -27,10 +27,17 @@ Resolve the next Step 1 household-flow work from `TODO.md` and open GitHub issue
 **Requirements:** HH-01, HH-02, BUD-01, BUD-02, BUD-03, BUD-04
 
 **Plans:** 3 plans
-
 Plans:
+**Wave 1**
+
 - [ ] 10-01-PLAN.md — Sanitizer-backed household context, variable actual spending, and derived budget helpers.
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 10-02-PLAN.md — Compact `신혼부부 예산` summary panel on the Step 1 default screen.
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 10-03-PLAN.md — Detailed household budget modal, explicit save/cancel workflow, and Step 1 regressions.
 
 **Success criteria:**
