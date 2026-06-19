@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.8
 milestone_name: 적립식 포트폴리오 관리 및 전체 UI/UX 개선
-status: completed
-last_updated: "2026-06-18T16:13:11+09:00"
-last_activity: 2026-06-18 -- Phase 09 Plan 05 UAT gap closure completed
+status: Awaiting next milestone
+last_updated: "2026-06-19T03:24:07.026Z"
+last_activity: 2026-06-19 — Milestone v1.8 completed and archived
 progress:
   total_phases: 5
   completed_phases: 5
@@ -18,10 +18,10 @@ stopped_at: Completed 09-04-PLAN.md
 
 ## Current Position
 
-Phase: 9
-Plan: 05/05
-Status: Phase 09 complete
-Last activity: 2026-06-18 -- Phase 09 Plan 05 UAT gap closure completed
+Phase: Milestone v1.8 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-06-19 — Milestone v1.8 completed and archived
 
 ## Project Reference
 
@@ -77,3 +77,7 @@ See: .planning/PROJECT.md (updated 2026-05-20)
 - [Phase 09-04]: Merged Sankey tooltip metadata remains textContent-based and uses newline-separated rows with CSS pre-line wrapping. — This satisfies D-27 readability without opening an HTML injection surface.
 - [Phase 09-05]: Expense/savings/invest detail editing now opens as compact cards and expands only the selected item. — This closes the UAT mobile density issue while preserving explicit save/cancel.
 - [Phase 09-05]: Step 1 no longer exposes manual account-transfer settings; item source accounts drive automatic flow balancing. — This removes duplicate cash-flow modeling and keeps surplus/deficit output derived from required item account selections.
+
+## Operator Next Steps
+
+- Start the next milestone with /gsd-new-milestone
