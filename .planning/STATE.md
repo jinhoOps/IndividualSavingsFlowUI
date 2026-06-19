@@ -4,9 +4,9 @@ milestone: v1.9
 milestone_name: TODO/GitHub Issue Resolution
 status: planning
 last_updated: "2026-06-19T05:36:27.976Z"
-last_activity: 2026-06-19
+last_activity: 2026-06-19 — Milestone v1.9 roadmap created
 progress:
-  total_phases: 0
+  total_phases: 5
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -17,17 +17,17 @@ progress:
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 10 — Step 1.2 Household Budget Foundation
 Plan: —
-Status: Defining requirements
-Last activity: 2026-06-19 — Milestone v1.9 started
+Status: Roadmap ready; awaiting phase discussion/planning
+Last activity: 2026-06-19 — Milestone v1.9 roadmap created
 
 ## Project Reference
 
 See: .planning/PROJECT.md (updated 2026-06-19)
 
 **Core value:** 단순한 프리셋과 단계별 카드/시뮬레이션 흐름으로 개인 자산 흐름을 빠르게 이해하고 조정하게 한다.
-**Current focus:** Planning next milestone
+**Current focus:** Phase 10 — Step 1.2 Household Budget Foundation
 
 ## Accumulated Context
 
@@ -80,4 +80,5 @@ See: .planning/PROJECT.md (updated 2026-06-19)
 
 ## Operator Next Steps
 
-- Start the next milestone with `$gsd-new-milestone`
+- Start Phase 10 with `$gsd-discuss-phase 10`
+- Or skip directly to planning with `$gsd-plan-phase 10`
