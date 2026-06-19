@@ -301,12 +301,23 @@ export const uiController = {
 
   syncStrategyControlState() {
     const sim = state.draft?.dividendSim || {};
+    const assumptions = getStrategyAssumptions({
+      selectedBenchmark: sim.selectedBenchmark,
+      coveredCallExample: sim.coveredCallExample,
+    });
+    const cardLabels = {
+      indexGrowth: assumptions.benchmark.label,
+      dividendGrowth: assumptions.dividendGrowth.label,
+      coveredCallMonthlyIncome: assumptions.coveredCall.label,
+    };
     if (dom.strategyCardGroup) {
       dom.strategyCardGroup.querySelectorAll("[data-strategy-card]").forEach((card) => {
         const active = card.dataset.strategyCard === (sim.strategyKey || "dividendGrowth");
         card.classList.toggle("is-active", active);
         card.classList.toggle("is-collapsed", !active);
         card.setAttribute("aria-checked", active ? "true" : "false");
+        const label = card.querySelector("[data-strategy-selected-label]");
+        if (label) label.textContent = cardLabels[card.dataset.strategyCard] || "";
       });
     }
     if (dom.benchmarkSelect) dom.benchmarkSelect.value = sim.selectedBenchmark || "nasdaq";

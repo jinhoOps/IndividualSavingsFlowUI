@@ -60,6 +60,22 @@ function appendText(parent, tag, className, text) {
   return el;
 }
 
+function getSelectedAssumptions() {
+  const sim = state.draft?.dividendSim || {};
+  return getStrategyAssumptions({
+    selectedBenchmark: sim.selectedBenchmark,
+    coveredCallExample: sim.coveredCallExample,
+  });
+}
+
+function getCardLabelMap(assumptions) {
+  return {
+    indexGrowth: assumptions.benchmark.label,
+    dividendGrowth: assumptions.dividendGrowth.label,
+    coveredCallMonthlyIncome: assumptions.coveredCall.label,
+  };
+}
+
 function formatWonInputValue(value) {
   if (typeof window !== "undefined" && window.IsfUtils?.formatWonInputValue) {
     return window.IsfUtils.formatWonInputValue(value);
@@ -145,16 +161,21 @@ function renderComparisonCards(comparison) {
   Object.values(STRATEGY_VIEW).forEach((view) => {
     const strategy = comparison.final.strategies[view.key];
     const active = selectedStrategyKey === view.key;
+    const selectedLabel = view.key === "index"
+      ? comparison.selectedBenchmarkLabel
+      : view.key === "coveredCall"
+        ? comparison.selectedCoveredCallLabel
+        : strategy.label;
     const card = document.createElement("article");
     card.className = `comparison-card${active ? " is-active" : " is-collapsed"}`;
     card.dataset.strategy = view.cardKey;
     card.tabIndex = 0;
     card.setAttribute("role", "button");
     card.setAttribute("aria-pressed", active ? "true" : "false");
-    card.setAttribute("aria-label", `${view.title} 전략 선택`);
+    card.setAttribute("aria-label", `${selectedLabel} 전략 선택`);
 
     appendText(card, "p", "comparison-card__eyebrow", view.title);
-    appendText(card, "h3", "", view.conclusion);
+    appendText(card, "h3", "", selectedLabel);
 
     const metrics = document.createElement("div");
     metrics.className = "comparison-card__metrics";
@@ -399,21 +420,21 @@ export function initGlobalTooltips() {
 
 function syncStrategyControls() {
   const sim = state.draft?.dividendSim || {};
+  const assumptions = getSelectedAssumptions();
+  const cardLabels = getCardLabelMap(assumptions);
   if (dom.strategyCardGroup) {
     dom.strategyCardGroup.querySelectorAll("[data-strategy-card]").forEach((card) => {
       const active = card.dataset.strategyCard === (sim.strategyKey || "dividendGrowth");
       card.classList.toggle("is-active", active);
       card.classList.toggle("is-collapsed", !active);
       card.setAttribute("aria-checked", active ? "true" : "false");
+      const label = card.querySelector("[data-strategy-selected-label]");
+      if (label) label.textContent = cardLabels[card.dataset.strategyCard] || "";
     });
   }
   if (dom.benchmarkSelect) dom.benchmarkSelect.value = sim.selectedBenchmark || "nasdaq";
   if (dom.coveredCallSelect) dom.coveredCallSelect.value = sim.coveredCallExample || "jepi";
   if (dom.assumptionRangeNote) {
-    const assumptions = getStrategyAssumptions({
-      selectedBenchmark: sim.selectedBenchmark,
-      coveredCallExample: sim.coveredCallExample,
-    });
     const active = sim.strategyKey === "indexGrowth"
       ? assumptions.benchmark
       : sim.strategyKey === "coveredCallMonthlyIncome"

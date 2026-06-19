@@ -448,6 +448,30 @@ test.describe('Step 2 Phase 08 first-screen mobile UI flows', () => {
     await expect(page.locator('#strategyComparisonCards [data-strategy="coveredCallMonthlyIncome"] .comparison-card__metrics')).toBeVisible();
   });
 
+  test('Phase 08 strategy cards display only selected advanced ETF examples', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 820 });
+    await page.goto('apps/simulation/index.html');
+    await page.waitForSelector('#strategyComparisonCards .comparison-card');
+
+    await expect(page.locator('[data-strategy-card="indexGrowth"] [data-strategy-selected-label]')).toHaveText('Nasdaq');
+    await expect(page.locator('[data-strategy-card="coveredCallMonthlyIncome"] [data-strategy-selected-label]')).toHaveText('JEPI');
+    await expect(page.locator('#strategyComparisonCards [data-strategy="indexGrowth"] h3')).toHaveText('Nasdaq');
+    await expect(page.locator('#strategyComparisonCards [data-strategy="coveredCallMonthlyIncome"] h3')).toHaveText('JEPI');
+    await expect(page.locator('#strategyCardGroup')).not.toContainText('Nasdaq 또는 S&P 500');
+    await expect(page.locator('#strategyCardGroup')).not.toContainText('JEPI · QQQI · DIVO');
+
+    await page.locator('[data-strategy-card="dividendGrowth"]').click();
+    await page.locator('#benchmarkSelect').selectOption('sp500');
+    await page.locator('#coveredCallSelect').selectOption('divo');
+
+    await expect(page.locator('[data-strategy-card="indexGrowth"] [data-strategy-selected-label]')).toHaveText('S&P 500');
+    await expect(page.locator('[data-strategy-card="coveredCallMonthlyIncome"] [data-strategy-selected-label]')).toHaveText('DIVO');
+    await expect(page.locator('#strategyComparisonCards [data-strategy="indexGrowth"] h3')).toHaveText('S&P 500');
+    await expect(page.locator('#strategyComparisonCards [data-strategy="coveredCallMonthlyIncome"] h3')).toHaveText('DIVO');
+    await expect(page.locator('#strategyCardGroup')).not.toContainText('JEPI');
+    await expect(page.locator('#strategyCardGroup')).not.toContainText('QQQI');
+  });
+
   test('Phase 08 warning uses only totalInitialAsset below 50M and not high monthly investment', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 900 });
     await page.goto('apps/simulation/index.html');
