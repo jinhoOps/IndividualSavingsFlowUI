@@ -1,9 +1,5 @@
 ---
-type: index
-title: "index"
-description: "Project Knowledge Index for IndividualSavingsFlowUI."
-tags: [index, map, modernization]
-timestamp: 2026-05-04T00:00:00Z
+okf_version: "0.1"
 ---
 
 # 🗺️ Project Knowledge Index

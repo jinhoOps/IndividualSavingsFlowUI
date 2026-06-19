@@ -83,6 +83,14 @@ function processFrontmatter(content, key) {
     });
   }
 
+  // OKF index.md 전용 프론트매터 분기
+  if (key === 'INDEX') {
+    return `---
+okf_version: "0.1"
+---
+` + bodyContent;
+  }
+
   // OKF 필수/권장 필드 맵핑
   const type = frontmatterData.type || 'node';
   const title = frontmatterData.title || `"${getTitle(key)}"`;
