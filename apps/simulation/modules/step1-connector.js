@@ -68,15 +68,15 @@ function renderSyncBanner(source, options = {}) {
   if (!dom.step1SyncBanner) return;
   const { hidden = false, actionText = "동기화됨", message = "Main에서 새로운 투자 여력 데이터를 가져왔습니다. 시뮬레이션에 적용할까요?" } = options;
   dom.step1SyncBanner.hidden = hidden;
-  const textEl = dom.step1SyncBanner.querySelector('.sync-banner__text');
+  const textEl = dom.step1SyncBanner.querySelector('[data-sync-message]');
   if (textEl) textEl.textContent = message;
   if (dom.syncTimestamp) dom.syncTimestamp.textContent = formatDateTime(source?.timestamp);
   if (dom.syncInvestCapacity) dom.syncInvestCapacity.textContent = formatCurrency(source?.totalMonthlyInvestCapacity || 0);
   if (dom.importStep1Data) dom.importStep1Data.textContent = actionText;
-  if (dom.importStep1Data) dom.importStep1Data.dataset.mode = actionText === "Main으로 이동" ? "go-main" : "import";
+  if (dom.importStep1Data) dom.importStep1Data.dataset.mode = actionText === "Main 데이터 가져오기" ? "go-main" : "import";
   if (dom.importStep1DataPrimary) {
-    dom.importStep1DataPrimary.textContent = actionText === "Main으로 이동" ? "Step 1에서 먼저 입력하기" : "Step 1 데이터 가져오기";
-    dom.importStep1DataPrimary.dataset.mode = actionText === "Main으로 이동" ? "go-main" : "import";
+    dom.importStep1DataPrimary.textContent = actionText === "Main 데이터 가져오기" ? "Step 1에서 먼저 입력하기" : "Step 1 데이터 가져오기";
+    dom.importStep1DataPrimary.dataset.mode = actionText === "Main 데이터 가져오기" ? "go-main" : "import";
   }
 }
 
@@ -117,11 +117,11 @@ export async function checkStep1SyncData() {
     // Case 2: Main 데이터가 없거나 0인 경우 (실패 혹은 미설정)
     if (currentInvestVal === 0 && currentInitialVal === 0 && dom.step1SyncBanner) {
       dom.step1SyncBanner.hidden = false;
-      const textEl = dom.step1SyncBanner.querySelector('.sync-banner__text');
-      if (textEl) textEl.textContent = "Main 데이터가 없거나 0원입니다. 자산 흐름을 먼저 설정해 주세요.";
+      const textEl = dom.step1SyncBanner.querySelector('[data-sync-message]');
+      if (textEl) textEl.textContent = "Main 데이터 가져오기 또는 직접 설정해보세요!";
       if (dom.syncInvestCapacity) dom.syncInvestCapacity.textContent = "0원";
       if (dom.importStep1Data) {
-        dom.importStep1Data.textContent = "Main으로 이동";
+        dom.importStep1Data.textContent = "Main 데이터 가져오기";
         dom.importStep1Data.dataset.mode = "go-main";
       }
       if (dom.importStep1DataPrimary) {

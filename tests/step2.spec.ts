@@ -23,6 +23,39 @@ const STEP1_SOURCE = {
   monthlyDebtPayment: 0,
 };
 
+test.describe('Step 2 first-run tutorial', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.clear();
+      sessionStorage.clear();
+      indexedDB.databases?.().then((databases) => {
+        for (const database of databases) {
+          if (database.name) indexedDB.deleteDatabase(database.name);
+        }
+      }).catch(() => {});
+    });
+  });
+
+  test('shows bottom tutorial actions instead of the old sync banner when Main data is empty', async ({ page }) => {
+    await page.goto('apps/simulation/index.html');
+    await page.waitForSelector('#totalInitialAsset');
+
+    const tutorial = page.locator('#step1SyncBanner');
+    await expect(tutorial).toBeVisible();
+    await expect(tutorial).toHaveClass(/first-run-tutorial/);
+    await expect(tutorial).toContainText('Main 데이터 가져오기 또는 직접 설정해보세요!');
+    await expect(tutorial.locator('#importStep1Data')).toHaveText('Main 데이터 가져오기');
+    await expect(tutorial.locator('#directStep2Setup')).toBeVisible();
+
+    const box = await tutorial.boundingBox();
+    const viewport = page.viewportSize();
+    expect(box && viewport ? box.y + box.height : 0).toBeGreaterThan((viewport?.height || 0) - 120);
+
+    await tutorial.locator('#directStep2Setup').click();
+    await expect(page.locator('#totalInitialAsset')).toBeFocused();
+  });
+});
+
 test.describe('Step 2 Phase 08 storage and import contracts', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript((source) => {

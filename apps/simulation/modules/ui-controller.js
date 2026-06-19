@@ -49,7 +49,7 @@ export const uiController = {
     const bindImportButton = (button) => {
       if (!button) return;
       button.addEventListener("click", async () => {
-        if (button.dataset.mode === "go-main" || button.textContent === "Main으로 이동") {
+        if (button.dataset.mode === "go-main") {
           window.location.href = "../main/index.html";
           return;
         }
@@ -68,6 +68,13 @@ export const uiController = {
 
     bindImportButton(dom.importStep1Data);
     bindImportButton(dom.importStep1DataPrimary);
+
+    if (dom.directStep2Setup) {
+      dom.directStep2Setup.addEventListener("click", () => {
+        dom.primaryInputsPanel?.scrollIntoView({ behavior: "smooth", block: "center" });
+        dom.totalInitialAsset?.focus({ preventScroll: true });
+      });
+    }
 
     if (dom.resetStep2Simulation) {
       dom.resetStep2Simulation.addEventListener("click", async () => {

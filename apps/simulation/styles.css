@@ -43,6 +43,7 @@
 main {
   display: grid;
   gap: var(--sp-xl);
+  padding-bottom: 112px;
 }
 
 .info-panel {
@@ -59,27 +60,33 @@ body.is-dashboard-mode .info-panel {
 }
 
 
-.sync-banner {
+.first-run-tutorial {
+  position: fixed;
+  left: max(16px, env(safe-area-inset-left));
+  right: max(16px, env(safe-area-inset-right));
+  bottom: max(16px, env(safe-area-inset-bottom));
+  z-index: 900;
+  max-width: 860px;
+  margin: 0 auto;
   background: var(--panel);
   border: 1px solid var(--line-strong);
-  border-left: 4px solid var(--tone-primary);
-  border-radius: var(--rd-md);
-  padding: 14px 18px;
+  border-radius: 8px;
+  padding: 14px 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
   box-shadow: var(--sh-float);
-  animation: slideDown 0.3s ease-out;
+  animation: tutorialSlideUp 0.24s ease-out;
 }
 
-.sync-banner[hidden] {
+.first-run-tutorial[hidden] {
   display: none !important;
 }
 
-@keyframes slideDown {
+@keyframes tutorialSlideUp {
   from {
-    transform: translateY(-10px);
+    transform: translateY(16px);
     opacity: 0;
   }
 
@@ -89,18 +96,15 @@ body.is-dashboard-mode .info-panel {
   }
 }
 
-.sync-banner__content {
+.first-run-tutorial__content {
   display: flex;
-  align-items: flex-start;
-  gap: 12px;
+  flex-direction: column;
+  gap: 4px;
   flex: 1;
+  min-width: 0;
 }
 
-.sync-banner__icon {
-  font-size: 1.4rem;
-}
-
-.sync-banner__text {
+.first-run-tutorial__text {
   margin: 0;
   font-family: var(--font-display);
   font-size: var(--text-body-md);
@@ -108,12 +112,18 @@ body.is-dashboard-mode .info-panel {
   color: var(--ink);
 }
 
-.sync-banner__meta {
-  margin-top: 6px;
-  display: flex;
-  gap: 14px;
+.first-run-tutorial__hint {
+  margin: 0;
   font-size: var(--text-caption);
+  line-height: 1.45;
   color: var(--muted);
+}
+
+.first-run-tutorial__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
 }
 
 .form-grid {
@@ -621,9 +631,14 @@ body.is-dashboard-mode .info-panel {
     font-size: 1.8rem;
   }
 
-  .sync-banner {
+  .first-run-tutorial {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .first-run-tutorial__actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
   }
 
   .form-grid {

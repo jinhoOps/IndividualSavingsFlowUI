@@ -25,21 +25,14 @@
       </section>
 
       <main>
-        <!-- Main Integration Banner (Unified Storage Sync) -->
-        <div id="step1SyncBanner" class="sync-banner" hidden>
-          <div class="sync-banner__content">
-            <span class="sync-banner__icon">💡</span>
-            <div class="sync-banner__body">
-              <p class="sync-banner__text">Main에서 새로운 투자 여력 데이터를 가져왔습니다. 시뮬레이션에 적용할까요?</p>
-              <div class="sync-banner__meta">
-                <span>기준: <strong id="syncTimestamp">-</strong></span>
-                <span>여력: <strong id="syncInvestCapacity">-</strong></span>
-              </div>
-            </div>
+        <div id="step1SyncBanner" class="first-run-tutorial" hidden>
+          <div class="first-run-tutorial__content">
+            <p class="first-run-tutorial__text" data-sync-message>Main 데이터 가져오기 또는 직접 설정해보세요!</p>
+            <p class="first-run-tutorial__hint">처음이라면 Main에서 자산 흐름을 불러오거나, 아래 입력값부터 바로 시작할 수 있습니다.</p>
           </div>
-          <div class="sync-banner__actions">
-            <button id="importStep1Data" class="btn btn-primary btn-sm" type="button">데이터 가져오기</button>
-            <button id="dismissSyncBanner" class="btn btn-ghost btn-sm" type="button">닫기</button>
+          <div class="first-run-tutorial__actions">
+            <button id="importStep1Data" class="btn btn-primary btn-sm" type="button" data-mode="go-main">Main 데이터 가져오기</button>
+            <button id="directStep2Setup" class="btn btn-ghost btn-sm" type="button">직접 설정하기</button>
           </div>
         </div>
 
