@@ -17,15 +17,15 @@
 
 ---
 
-## Next Milestone Goals
+## Current Milestone: v1.9 TODO/GitHub Issue Resolution
 
-Next milestone scope is intentionally open. Start with `$gsd-new-milestone` to define fresh requirements and roadmap items from the shipped v1.8 baseline.
+**Goal:** Resolve the next Step 1 household-flow work from `TODO.md` and open GitHub issues, focusing on newlywed/household planning, real-estate affordability, and historical spending comparison.
 
-Candidate directions to evaluate:
-- Step 3 portfolio experience polish after real saved-portfolio use
-- Step 1/2 cross-step data continuity and sharing ergonomics
-- Build/test pipeline cleanup, including Playwright shutdown behavior on Windows
-- Documentation and onboarding for the now-expanded multi-step flow
+**Target features:**
+- Step 1.2 Newlywed Harmony Hub scope from GitHub issue #2: adaptive budgeting, zero-input spending capture, and dual-flow integration.
+- Step 1 spending history comparison from GitHub issue #4: compare current expenses against saved prior snapshots with a grouped bar chart.
+- Real-estate affordability planning from `TODO.md`: estimate apartment purchase capacity from couple income, DSR/LTV assumptions, and household context.
+- Keep GitHub issue #7 out of this project because backtesting was already moved to `stock-snowball`.
 
 ---
 
@@ -55,7 +55,7 @@ Candidate directions to evaluate:
 
 ### Active
 
-- [ ] Define next milestone requirements with `$gsd-new-milestone`
+- [ ] Define and execute v1.9 requirements for Step 1.2 household planning, spending comparison, and real-estate affordability.
 
 ### Out of Scope
 
@@ -126,4 +126,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-19 after v1.8 milestone*
+*Last updated: 2026-06-19 after starting v1.9 milestone*
