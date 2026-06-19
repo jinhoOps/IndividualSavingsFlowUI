@@ -25,16 +25,17 @@ Last activity: 2026-06-19 — Milestone v1.8 completed and archived
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-20)
+See: .planning/PROJECT.md (updated 2026-06-19)
 
-**Core value:** 정적 웹 기반의 고성능 자산 관리 도구 (AI 의존성 제거)
-**Current focus:** Phase 9 — Step 1 Financial Settings Input UIUX Rebuild
+**Core value:** 단순한 프리셋과 단계별 카드/시뮬레이션 흐름으로 개인 자산 흐름을 빠르게 이해하고 조정하게 한다.
+**Current focus:** Planning next milestone
 
 ## Accumulated Context
 
 ### Roadmap Evolution
 
 - Phase 9 added: Step 1 Financial Settings Input UIUX Rebuild
+- v1.8 shipped: portfolio creation/storage, Step 1 modular and financial setup rebuild, Step 2 strategy comparison redesign.
 
 ## Key Decisions
 
@@ -80,4 +81,4 @@ See: .planning/PROJECT.md (updated 2026-05-20)
 
 ## Operator Next Steps
 
-- Start the next milestone with /gsd-new-milestone
+- Start the next milestone with `$gsd-new-milestone`
