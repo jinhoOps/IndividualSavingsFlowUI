@@ -32,11 +32,26 @@ export function createVisualizationController({ markPendingChanges }) {
   }
 
   function refreshSankeyAccountCorrections() {
+    const beforeCorrections = Array.isArray(state.inputs?.accountCorrections) ? state.inputs.accountCorrections.length : 0;
     const repairedInputs = sanitizeInputs(state.inputs);
     state.inputs = repairedInputs;
     state.draftInputs = null;
     markPendingChanges();
     updateSankeyCorrectionStatus(repairedInputs.accountCorrections);
+    const afterCorrections = Array.isArray(repairedInputs.accountCorrections) ? repairedInputs.accountCorrections.length : 0;
+    const firstCorrectionType = repairedInputs.accountCorrections?.find?.((correction) =>
+      ["income", "expense", "savings", "invest"].includes(correction.itemType)
+    )?.itemType;
+    if (afterCorrections === 0) {
+      if (dom.sankeyCorrectionStatus) {
+        dom.sankeyCorrectionStatus.textContent = beforeCorrections > 0
+          ? "자동 보정 완료 · 직접 확인 가능"
+          : "자동 보정 없음 · 직접 확인 가능";
+      }
+      document.dispatchEvent(new CustomEvent("open-financial-modal", { detail: { category: "account" } }));
+    } else {
+      document.dispatchEvent(new CustomEvent("open-financial-modal", { detail: { category: firstCorrectionType || "account" } }));
+    }
   }
 
   function setSankeyValueMode(mode) {

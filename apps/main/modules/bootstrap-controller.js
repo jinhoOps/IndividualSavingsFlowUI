@@ -69,6 +69,9 @@ function createControllers() {
     markPendingChanges: () => persistence.markPendingChanges(),
     getVisibleInputs: () => render.getVisibleInputs(),
     activateMgmtTab,
+    openFinancialModal: (category) => {
+      document.dispatchEvent(new CustomEvent("open-financial-modal", { detail: { category } }));
+    },
   });
 
   return {

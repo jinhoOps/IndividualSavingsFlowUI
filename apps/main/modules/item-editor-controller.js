@@ -26,7 +26,7 @@ import {
 
 const EDITOR_GROUPS = ["income", "expense", "savings", "invest", "account"];
 
-export function createItemEditorController({ markPendingChanges, getVisibleInputs, activateMgmtTab }) {
+export function createItemEditorController({ markPendingChanges, getVisibleInputs, activateMgmtTab, openFinancialModal }) {
   function setItemEditorUi(group, active) {
     const actions = dom[`${group}EditorActions`];
     if (actions) actions.hidden = !active;
@@ -158,9 +158,7 @@ export function createItemEditorController({ markPendingChanges, getVisibleInput
         const defaultAccountId = (state.inputs.accounts || [])[0]?.id || "";
         item.allocations.push({ accountId: defaultAccountId, amount: 0 });
         
-        const isE2e = typeof navigator !== "undefined" && navigator.webdriver;
-        const renderOpts = isE2e ? { editing: true } : { editingItemId: incomeId };
-        listRenderer.renderItemList(group, state.itemEditors[group].items, renderOpts);
+        listRenderer.renderItemList(group, state.itemEditors[group].items, { editingItemId: incomeId });
         setItemEditorUi(group, true);
       }
       return;
@@ -174,9 +172,7 @@ export function createItemEditorController({ markPendingChanges, getVisibleInput
       if (item && Array.isArray(item.allocations)) {
         item.allocations.splice(index, 1);
         
-        const isE2e = typeof navigator !== "undefined" && navigator.webdriver;
-        const renderOpts = isE2e ? { editing: true } : { editingItemId: incomeId };
-        listRenderer.renderItemList(group, state.itemEditors[group].items, renderOpts);
+        listRenderer.renderItemList(group, state.itemEditors[group].items, { editingItemId: incomeId });
         setItemEditorUi(group, true);
       }
       return;
@@ -192,9 +188,7 @@ export function createItemEditorController({ markPendingChanges, getVisibleInput
       state.itemEditors[group].editingItemId = state.itemEditors[group].items[0]?.id || null;
     }
     
-    const isE2e = typeof navigator !== "undefined" && navigator.webdriver;
-    const renderOpts = isE2e ? { editing: true } : { editingItemId: state.itemEditors[group].editingItemId };
-    listRenderer.renderItemList(group, state.itemEditors[group].items, renderOpts);
+    listRenderer.renderItemList(group, state.itemEditors[group].items, { editingItemId: state.itemEditors[group].editingItemId });
     renderTotalHint(group);
     setItemEditorUi(group, true);
   }
@@ -221,9 +215,7 @@ export function createItemEditorController({ markPendingChanges, getVisibleInput
     } else {
       state.itemEditors[group].editingItemId = itemId;
     }
-    const isE2e = typeof navigator !== "undefined" && navigator.webdriver;
-    const renderOpts = isE2e ? { editing: true } : { editingItemId: state.itemEditors[group].editingItemId };
-    listRenderer.renderItemList(group, state.itemEditors[group].items, renderOpts);
+    listRenderer.renderItemList(group, state.itemEditors[group].items, { editingItemId: state.itemEditors[group].editingItemId });
     setItemEditorUi(group, true);
   }
 
@@ -412,9 +404,7 @@ export function createItemEditorController({ markPendingChanges, getVisibleInput
     editor.creatorActive = false;
     editor.editingItemId = newItemId;
     
-    const isE2e = typeof navigator !== "undefined" && navigator.webdriver;
-    const renderOpts = isE2e ? { editing: true } : { editingItemId: newItemId };
-    listRenderer.renderItemList(group, editor.items, renderOpts);
+    listRenderer.renderItemList(group, editor.items, { editingItemId: newItemId });
     setItemEditorUi(group, true);
     renderTotalHint(group);
   }
@@ -424,9 +414,7 @@ export function createItemEditorController({ markPendingChanges, getVisibleInput
     if (!editor) return;
     editor.creatorActive = false;
     
-    const isE2e = typeof navigator !== "undefined" && navigator.webdriver;
-    const renderOpts = isE2e ? { editing: true } : { editingItemId: editor.editingItemId || null };
-    listRenderer.renderItemList(group, editor.items, renderOpts);
+    listRenderer.renderItemList(group, editor.items, { editingItemId: editor.editingItemId || null });
   }
 
   function addItemToEditor(group) {
@@ -451,11 +439,9 @@ export function createItemEditorController({ markPendingChanges, getVisibleInput
   function setItemSortMode(group, mode) {
     state.itemSortModes[group] = mode;
     const inputs = getVisibleInputs();
-    const isE2e = typeof navigator !== "undefined" && navigator.webdriver;
-    const renderOpts = isE2e 
-      ? { editing: state.itemEditors[group].active } 
-      : { editingItemId: state.itemEditors[group].active ? state.itemEditors[group].editingItemId : null };
-    listRenderer.renderItemList(group, inputs[`${group}Items`], renderOpts);
+    listRenderer.renderItemList(group, inputs[`${group}Items`], {
+      editingItemId: state.itemEditors[group].active ? state.itemEditors[group].editingItemId : null,
+    });
     syncItemSortModeUi();
   }
 
@@ -485,7 +471,15 @@ export function createItemEditorController({ markPendingChanges, getVisibleInput
       const addButton = dom[`add${capitalized}Item`];
       const applyButton = dom[`apply${capitalized}Items`];
       const cancelButton = dom[`cancel${capitalized}Items`];
-      if (editButton) editButton.addEventListener("click", () => toggleItemEditor(group));
+      if (editButton) {
+        editButton.addEventListener("click", () => {
+          if ((group === "savings" || group === "invest") && typeof openFinancialModal === "function") {
+            openFinancialModal(group);
+            return;
+          }
+          toggleItemEditor(group);
+        });
+      }
       if (addButton) addButton.addEventListener("click", () => addItemToEditor(group));
       if (applyButton) applyButton.addEventListener("click", () => applyItemEditor(group));
       if (cancelButton) cancelButton.addEventListener("click", () => cancelItemEditor(group));

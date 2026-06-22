@@ -1432,7 +1432,19 @@ test.describe('Phase 10 household overview in financial settings', () => {
       const modal = page.locator('#financialModal');
       await expect(modal).toBeVisible();
       await expect(modal.locator('[data-household-overview]')).toBeVisible();
-      await expect(modal.locator('[data-household-overview]')).toContainText('부부 현황');
+      await expect(modal.locator('[data-household-overview]')).toContainText('부부 현황 설정');
+      await expect(modal.locator('.household-mode-toggle__button')).toHaveText(['단독', '부부']);
+      await expect(modal.locator('[data-household-field="primaryMonthlyIncome"]')).toBeVisible();
+      if (viewport.width <= 760) {
+        await expect(modal.locator('.household-person-tabs')).toBeVisible();
+        await expect(modal.locator('[data-household-person-panel="self"]')).toBeVisible();
+        await modal.locator('[data-household-person="spouse"]').click();
+        await expect(modal.locator('[data-household-person-panel="spouse"]')).toBeVisible();
+      } else {
+        await expect(modal.locator('.household-person-tabs')).toBeHidden();
+        await expect(modal.locator('[data-household-person-panel="self"]')).toBeVisible();
+        await expect(modal.locator('[data-household-person-panel="spouse"]')).toBeVisible();
+      }
       await expect(modal.locator('[data-household-overview]')).toContainText('급여');
       await expect(modal.locator('[data-household-overview]')).toContainText('생활비');
       await expect(modal.locator('[data-household-overview]')).toContainText('고정지출 합계');

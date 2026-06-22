@@ -222,9 +222,15 @@ input[type=number]{-moz-appearance:textfield}
 .financial-modal-field__label{font-size:0.72rem;font-weight:800;color:var(--muted)}
 .financial-modal-field input,.financial-modal-field select{width:100%;min-width:0;font-size:0.86rem;padding:8px 10px}
 .financial-modal-field input[data-financial-modal-field="amount"],.financial-create-field input[data-create-field="amount"]{font-variant-numeric:tabular-nums;text-align:right}
-.household-overview-settings{grid-column:1 / -1;display:grid;grid-template-columns:minmax(150px,0.7fr) minmax(210px,1fr);gap:10px;border:1px solid rgba(16,34,32,0.1);border-radius:var(--rd-sm);background:rgba(255,255,255,0.78);padding:10px}
+.household-overview-settings{grid-column:1 / -1;display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px;align-items:end;border:1px solid rgba(16,34,32,0.1);border-radius:var(--rd-sm);background:rgba(255,255,255,0.78);padding:10px}
+.household-mode-toggle{display:inline-grid;grid-template-columns:repeat(2,minmax(58px,1fr));gap:4px;border:1px solid var(--line);border-radius:var(--rd-sm);background:rgba(249,246,240,0.8);padding:4px;align-self:stretch}
+.household-mode-toggle__button,.household-person-tab{border:0;border-radius:6px;background:transparent;color:var(--muted);font:inherit;font-size:0.8rem;font-weight:900;padding:8px 10px;cursor:pointer}
+.household-mode-toggle__button.is-active,.household-person-tab.is-active{background:#fff;color:var(--ink);box-shadow:0 1px 4px rgba(16,34,32,0.08)}
+.household-person-tabs{display:none}
+.household-income-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;min-width:0}
+.household-person-panel{min-width:0}
 .household-overview-settings .financial-modal-field input,.household-overview-settings .financial-modal-field select{font-size:0.86rem}
-.household-overview-settings .financial-modal-field input[data-household-field="spouseMonthlyIncome"]{font-variant-numeric:tabular-nums;text-align:right}
+.household-overview-settings .financial-modal-field input[data-household-field]{font-variant-numeric:tabular-nums;text-align:right}
 .financial-create-step,.financial-create-confirm{border:1px solid var(--line);border-radius:var(--rd-sm);background:var(--panel);padding:var(--sp-md);display:grid;gap:var(--sp-md)}
 .financial-create-step__title{font-family:var(--font-display);font-size:var(--text-title-md);margin:0}
 .financial-create-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
@@ -279,7 +285,12 @@ main{order:2;gap:14px;display:grid}
 .household-overview-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 .household-overview-cell{padding:8px}
 .household-overview-cell__value{font-size:0.9rem}
-.household-overview-settings{grid-template-columns:1fr}
+.household-overview-settings{grid-template-columns:1fr;align-items:stretch}
+.household-mode-toggle{width:100%}
+.household-person-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;border:1px solid var(--line);border-radius:var(--rd-sm);background:rgba(249,246,240,0.8);padding:4px}
+.household-income-fields{grid-template-columns:1fr}
+.household-person-panel{display:none}
+.household-person-panel.is-active{display:block}
 .financial-summary-group__cards,.financial-summary-group[data-financial-summary-group="core-metrics"] .financial-summary-group__cards{grid-template-columns:repeat(2,minmax(0,1fr))}
 .financial-summary-card{min-height:146px;padding:12px}
 .financial-summary-card__total{font-size:1.16rem}
