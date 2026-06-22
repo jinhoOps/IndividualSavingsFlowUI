@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { test, expect } from '@playwright/test';
 
 async function openControlsPanel(page: import('@playwright/test').Page) {
