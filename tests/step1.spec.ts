@@ -1169,6 +1169,375 @@ test.describe('Phase 09 Sankey tooltip readability', () => {
   });
 });
 
+test.describe('Phase 10 financial settings regression fixes', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.clear();
+      sessionStorage.clear();
+    });
+    await page.goto('apps/main/index.html');
+    await page.waitForSelector('main');
+  });
+
+  test.afterEach(async ({ page }) => {
+    if (!page.isClosed()) {
+      await page.close();
+    }
+  });
+
+  test('normalizes legacy allocation group paths before saving and rendering', async ({ page }) => {
+    const result = await page.evaluate(async () => {
+      const [{ sanitizeInputs }, { renderItemList }, { state }] = await Promise.all([
+        import('/IndividualSavingsFlowUI/apps/main/modules/input-sanitizer.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/list-renderer.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/state.js'),
+      ]);
+      const inputs = sanitizeInputs({
+        modelVersion: 10,
+        incomes: [{ id: 'income-test', name: '급여', amount: 3000000, accountId: 'acc-salary' }],
+        accounts: [
+          { id: 'acc-salary', name: '급여계좌' },
+          { id: 'acc-living', name: '생활비계좌' },
+        ],
+        expenseItems: [
+          { id: 'utility', name: '전기세', amount: 120000, group: '생활비-고정비-공과금', accountId: 'acc-living' },
+        ],
+      });
+      state.inputs = inputs;
+      renderItemList('expense', inputs.expenseItems, { editingItemId: 'utility' });
+      return {
+        savedGroup: inputs.expenseItems[0].group,
+        editorValue: document.querySelector<HTMLInputElement>('#expenseList input[data-field="group"]')?.value,
+        groupNames: Array.from(document.querySelectorAll('#expenseList .allocation-group__name')).map((node) => node.textContent),
+      };
+    });
+
+    expect(result.savedGroup).toBe('공과금');
+    expect(result.editorValue).toBe('공과금');
+    expect(result.groupNames).toEqual(['공과금']);
+  });
+
+  test('repairs income allocation totals that exceed the income amount', async ({ page }) => {
+    const result = await page.evaluate(async () => {
+      const [{ sanitizeInputs }, { buildMonthlySnapshot }, { buildSankeyData }] = await Promise.all([
+        import('/IndividualSavingsFlowUI/apps/main/modules/input-sanitizer.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/calculator.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/sankey-builder.js'),
+      ]);
+      const inputs = sanitizeInputs({
+        modelVersion: 10,
+        splitIncomeAccounts: true,
+        incomes: [{
+          id: 'income-over',
+          name: '급여',
+          amount: 3000000,
+          accountId: 'acc-salary',
+          allocations: [
+            { accountId: 'acc-salary', amount: 3000000 },
+            { accountId: 'acc-living', amount: 1000000 },
+          ],
+        }],
+        accounts: [
+          { id: 'acc-salary', name: '급여계좌' },
+          { id: 'acc-living', name: '생활비계좌' },
+          { id: 'acc-stock', name: '투자계좌' },
+        ],
+        expenseItems: [{ id: 'rent', name: '월세', amount: 1000000, group: '고정비', accountId: 'acc-living' }],
+        savingsItems: [{ id: 'saving', name: '적금', amount: 500000, group: '저축', accountId: 'acc-salary' }],
+        investItems: [{ id: 'invest', name: 'ETF', amount: 400000, group: '투자', accountId: 'acc-stock' }],
+      });
+      const allocationTotal = inputs.incomes[0].allocations.reduce((sum: number, allocation: any) => sum + allocation.amount, 0);
+      const flow = buildSankeyData(buildMonthlySnapshot(inputs), 'group', { expense: 'total', savings: 'total', invest: 'total' });
+      const accountIncomeTotal = flow.links
+        .filter((link: any) => link.source === 'total-income')
+        .reduce((sum: number, link: any) => sum + link.value, 0);
+      return {
+        incomeAmount: inputs.incomes[0].amount,
+        allocationTotal,
+        accountIncomeTotal,
+      };
+    });
+
+    expect(result.allocationTotal).toBe(result.incomeAmount);
+    expect(result.accountIncomeTotal).toBeLessThanOrEqual(result.incomeAmount);
+  });
+
+});
+
+test.describe('Phase 10 household budget data model', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.clear();
+      sessionStorage.clear();
+    });
+    await page.goto('apps/main/index.html');
+    await page.waitForSelector('main');
+  });
+
+  test('sanitizes household context defaults and variable actual spending only', async ({ page }) => {
+    const result = await page.evaluate(async () => {
+      const { sanitizeInputs, sanitizeHouseholdContext, isVariableExpenseItem } = await import('/IndividualSavingsFlowUI/apps/main/modules/input-sanitizer.js');
+      const defaultInputs = sanitizeInputs({});
+      const dualIncome = sanitizeHouseholdContext({
+        profile: 'unexpected',
+        incomeMode: 'dual-income',
+        spouseMonthlyIncome: '123456',
+      });
+      const unknownMode = sanitizeHouseholdContext({
+        incomeMode: 'other',
+        spouseMonthlyIncome: '98765',
+      });
+      const sanitized = sanitizeInputs({
+        modelVersion: 10,
+        incomes: [{ id: 'income-main', name: '급여', amount: 3000000, accountId: 'acc-salary' }],
+        accounts: [
+          { id: 'acc-salary', name: '급여계좌' },
+          { id: 'acc-living', name: '생활비계좌' },
+        ],
+        expenseItems: [
+          { id: 'rent', name: '월세', amount: 700000, group: '고정비', actualSpent: 999999, accountId: 'acc-living' },
+          { id: 'food', name: '식비', amount: 300000, group: '변동비', actualSpent: 123456, accountId: 'acc-living' },
+        ],
+      });
+
+      return {
+        defaultContext: defaultInputs.householdContext,
+        dualIncome,
+        unknownMode,
+        fixedExpense: sanitized.expenseItems.find((item: any) => item.id === 'rent'),
+        variableExpense: sanitized.expenseItems.find((item: any) => item.id === 'food'),
+        variablePredicate: sanitized.expenseItems.map((item: any) => isVariableExpenseItem(item)),
+        monthlyExpense: sanitized.monthlyExpense,
+      };
+    });
+
+    expect(result.defaultContext).toEqual({
+      profile: 'newlywed',
+      incomeMode: 'single-income',
+      spouseMonthlyIncome: 0,
+    });
+    expect(result.dualIncome).toEqual({
+      profile: 'newlywed',
+      incomeMode: 'dual-income',
+      spouseMonthlyIncome: 123456,
+    });
+    expect(result.unknownMode.incomeMode).toBe('single-income');
+    expect(result.unknownMode.spouseMonthlyIncome).toBe(98765);
+    expect(result.fixedExpense).not.toHaveProperty('actualSpent');
+    expect(result.variableExpense.actualSpent).toBe(123456);
+    expect(result.variablePredicate).toEqual([false, true]);
+    expect(result.monthlyExpense).toBe(1000000);
+  });
+
+  test('derives variable budget rows, status, projection, and three summary metrics', async ({ page }) => {
+    const result = await page.evaluate(async () => {
+      const {
+        BUDGET_STATUS_LABELS,
+        buildHouseholdBudgetSummary,
+        buildVariableExpenseBudgetRows,
+        projectMonthEndSpending,
+        resolveBudgetStatus,
+      } = await import('/IndividualSavingsFlowUI/apps/main/modules/household-budget.js');
+      const now = new Date('2026-06-30T12:00:00+09:00');
+      const inputs = {
+        householdContext: {
+          profile: 'newlywed',
+          incomeMode: 'dual-income',
+          spouseMonthlyIncome: 1200000,
+        },
+        incomes: [{ id: 'income-main', name: '급여', amount: 3000000 }],
+        expenseItems: [
+          { id: 'food', name: '식비', amount: 100000, group: '변동비', actualSpent: 120000 },
+          { id: 'rent', name: '월세', amount: 700000, group: '고정비', actualSpent: 700000 },
+        ],
+      };
+      const rows = buildVariableExpenseBudgetRows(inputs, now);
+      const summary = buildHouseholdBudgetSummary(inputs, now);
+
+      return {
+        labels: BUDGET_STATUS_LABELS,
+        projectedZero: projectMonthEndSpending(0, now),
+        cautionStatus: resolveBudgetStatus({ target: 100000, actual: 80000, projected: 80000 }),
+        overRow: rows[0],
+        rowCount: rows.length,
+        metricLabels: summary.metrics.map((metric: any) => metric.label),
+        householdIncome: summary.householdIncome,
+        projectionNote: summary.projectionNote,
+      };
+    });
+
+    expect(result.labels).toEqual({ safe: '여유', caution: '주의', over: '초과' });
+    expect(result.projectedZero).toBe(0);
+    expect(result.cautionStatus).toBe('주의');
+    expect(result.rowCount).toBe(1);
+    expect(result.overRow.status).toBe('초과');
+    expect(result.overRow.remaining).toBe(-20000);
+    expect(result.metricLabels).toEqual(['가구 월수입', '변동비 실제/목표', '남은 변동비']);
+    expect(result.householdIncome).toBe(4200000);
+    expect(result.projectionNote).toBe('현재 사용 속도를 단순 환산한 참고값입니다.');
+  });
+});
+
+test.describe('Phase 10 household budget summary panel', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.clear();
+      sessionStorage.clear();
+    });
+    await page.goto('apps/main/index.html');
+    await page.waitForSelector('main');
+  });
+
+  test('renders compact three-metric household panel before existing summary cards', async ({ page }) => {
+    for (const viewport of [
+      { width: 1280, height: 900 },
+      { width: 768, height: 1024 },
+      { width: 390, height: 844 },
+    ]) {
+      await page.setViewportSize(viewport);
+      await page.waitForSelector('#householdBudgetPanel .household-budget-panel');
+      await expect(page.locator('#householdBudgetPanel')).toContainText('신혼부부 예산');
+      await expect(page.locator('#openHouseholdBudgetModal')).toContainText('예산 상세 편집');
+      await expect(page.locator('#householdBudgetPanel .household-budget-metric')).toHaveCount(3);
+      await expect(page.locator('#householdBudgetPanel')).toContainText('가구 월수입');
+      await expect(page.locator('#householdBudgetPanel')).toContainText('변동비 실제/목표');
+      await expect(page.locator('#householdBudgetPanel')).toContainText('남은 변동비');
+
+      const badgeText = await page.locator('[data-household-budget-status]').textContent();
+      expect(['여유', '주의', '초과']).toContain((badgeText || '').trim());
+      await expect(page.locator('[data-household-budget-row]')).toHaveCount(0);
+      await expect(page.locator('[data-household-budget-actual]')).toHaveCount(0);
+
+      const order = await page.evaluate(() => {
+        const panel = document.querySelector('#householdBudgetPanel');
+        const cards = document.querySelector('#summaryCards');
+        const summary = document.querySelector('.summary-panel');
+        const sankey = document.querySelector('.sankey-panel');
+        if (!panel || !cards || !summary || !sankey) return null;
+        return {
+          panelBeforeCards: Boolean(panel.compareDocumentPosition(cards) & Node.DOCUMENT_POSITION_FOLLOWING),
+          summaryBeforeSankey: Boolean(summary.compareDocumentPosition(sankey) & Node.DOCUMENT_POSITION_FOLLOWING),
+          overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        };
+      });
+      expect(order?.panelBeforeCards).toBe(true);
+      expect(order?.summaryBeforeSankey).toBe(true);
+      expect(order?.overflow, `no page overflow at ${viewport.width}px`).toBeLessThanOrEqual(4);
+      await expect(page.locator('[data-financial-summary-group="core-metrics"]')).toContainText('년 후 순자산');
+      await expect(page.locator('[data-financial-summary-group="outflow"]')).toContainText('지출');
+    }
+  });
+});
+
+test.describe('Phase 10 household budget modal workflow', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.clear();
+      sessionStorage.clear();
+    });
+    await page.goto('apps/main/index.html');
+    await page.waitForSelector('main');
+  });
+
+  async function seedBudgetInputs(page: any) {
+    await page.evaluate(async () => {
+      const [{ STORAGE_KEY }, { sanitizeInputs }, { state }, { createRenderOrchestrator }] = await Promise.all([
+        import('/IndividualSavingsFlowUI/apps/main/modules/constants.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/input-sanitizer.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/state.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/render-orchestrator.js'),
+      ]);
+      const inputs = sanitizeInputs({
+        modelVersion: 10,
+        incomes: [{ id: 'income-main', name: '급여', amount: 3000000, accountId: 'acc-salary' }],
+        accounts: [
+          { id: 'acc-salary', name: '급여계좌' },
+          { id: 'acc-living', name: '생활비계좌' },
+        ],
+        householdContext: { profile: 'newlywed', incomeMode: 'single-income', spouseMonthlyIncome: 0 },
+        expenseItems: [
+          { id: 'food', name: '식비', amount: 300000, group: '변동비', actualSpent: 50000, accountId: 'acc-living' },
+          { id: 'rent', name: '월세', amount: 700000, group: '고정비', actualSpent: 700000, accountId: 'acc-living' },
+        ],
+      });
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(inputs));
+      state.inputs = inputs;
+      createRenderOrchestrator().renderAll();
+    });
+    await page.waitForSelector('#openHouseholdBudgetModal');
+  }
+
+  test('opens modal, edits draft, saves dual-income context and variable actual spending', async ({ page }) => {
+    await seedBudgetInputs(page);
+
+    await page.locator('#openHouseholdBudgetModal').click();
+    await expect(page.locator('#householdBudgetModal')).toBeVisible();
+    await expect(page.locator('#householdBudgetModalTitle')).toHaveText('신혼부부 예산 상세');
+    await expect(page.locator('#householdBudgetModal')).toContainText('생활 변동비의 목표와 이번 달 실제 사용액을 저장할 때만 반영합니다.');
+    await expect(page.locator('#householdBudgetRows [data-household-budget-row]')).toHaveCount(1);
+    await expect(page.locator('[data-household-budget-actual]')).toHaveCount(1);
+    await expect(page.locator('#householdBudgetModal')).toContainText('월말 예상');
+    await expect(page.locator('#householdBudgetModal')).toContainText('현재 사용 속도를 단순 환산한 참고값입니다.');
+
+    await page.locator('#householdIncomeModeDual').click();
+    await page.locator('#spouseMonthlyIncome').fill('1200000');
+    await page.locator('[data-household-budget-target]').fill('350000');
+    await page.locator('[data-household-budget-actual]').fill('180000');
+
+    const beforeSave = await page.evaluate(async () => {
+      const { STORAGE_KEY } = await import('/IndividualSavingsFlowUI/apps/main/modules/constants.js');
+      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+      return {
+        mode: saved.householdContext?.incomeMode,
+        spouse: saved.householdContext?.spouseMonthlyIncome,
+        amount: saved.expenseItems?.find((item: any) => item.id === 'food')?.amount,
+        actual: saved.expenseItems?.find((item: any) => item.id === 'food')?.actualSpent,
+      };
+    });
+    expect(beforeSave).toEqual({ mode: 'single-income', spouse: 0, amount: 300000, actual: 50000 });
+
+    await page.locator('#householdBudgetSave').click();
+    await page.waitForTimeout(250);
+    const afterSave = await page.evaluate(async () => {
+      const { STORAGE_KEY } = await import('/IndividualSavingsFlowUI/apps/main/modules/constants.js');
+      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+      return {
+        mode: saved.householdContext?.incomeMode,
+        spouse: saved.householdContext?.spouseMonthlyIncome,
+        variable: saved.expenseItems?.find((item: any) => item.id === 'food'),
+        fixed: saved.expenseItems?.find((item: any) => item.id === 'rent'),
+      };
+    });
+    expect(afterSave.mode).toBe('dual-income');
+    expect(afterSave.spouse).toBe(1200000);
+    expect(afterSave.variable.amount).toBe(350000);
+    expect(afterSave.variable.actualSpent).toBe(180000);
+    expect(afterSave.fixed).not.toHaveProperty('actualSpent');
+
+    await page.reload();
+    await page.waitForSelector('#householdBudgetPanel');
+    await expect(page.locator('#householdBudgetPanel')).toContainText('신혼부부 예산');
+  });
+
+  test('cancels draft changes without durable state mutation', async ({ page }) => {
+    await seedBudgetInputs(page);
+    await page.locator('#openHouseholdBudgetModal').click();
+    await page.locator('#householdIncomeModeDual').click();
+    await page.locator('#spouseMonthlyIncome').fill('2200000');
+    await page.locator('[data-household-budget-actual]').fill('280000');
+    await page.locator('#householdBudgetCancel').click();
+    await page.waitForTimeout(250);
+
+    const saved = await page.evaluate(async () => {
+      const { STORAGE_KEY } = await import('/IndividualSavingsFlowUI/apps/main/modules/constants.js');
+      return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+    });
+    expect(saved.householdContext.incomeMode).toBe('single-income');
+    expect(saved.householdContext.spouseMonthlyIncome).toBe(0);
+    expect(saved.expenseItems.find((item: any) => item.id === 'food').actualSpent).toBe(50000);
+  });
+});
+
 test.describe('Phase 09 final responsive user flow coverage', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {

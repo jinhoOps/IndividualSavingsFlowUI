@@ -10,10 +10,10 @@
 
 ## Current State
 
-**Shipped:** v1.8 적립식 포트폴리오 관리 및 전체 UI/UX 개선 (2026-06-19)
+**Shipped:** v1.9 Phase 10 Step 1.2 household budget foundation (2026-06-22)
 **Tech Stack:** Modern Hybrid (Vite/TS/Tailwind), React 19 (Partial), PWA, IndexedDB
 **Codebase:** Mobile-first multi-step web app with shared components, Step-specific ES modules, Playwright regression coverage, and IndexedDB/LocalStorage persistence paths
-**Key Features:** 프리셋 기반 자산 흐름 시각화 + 데이터 허브(백업/복원/공유) + 포트폴리오 생성/저장 + Step 2 전략 비교 시뮬레이션 + Step 1 재무설정 카드/모달 편집 + Sankey 계좌 보정
+**Key Features:** 프리셋 기반 자산 흐름 시각화 + 데이터 허브(백업/복원/공유) + 포트폴리오 생성/저장 + Step 2 전략 비교 시뮬레이션 + Step 1 재무설정 카드/모달 편집 + Step 1.2 신혼부부 예산/변동비 실제 관리 + Sankey 계좌 보정
 
 ---
 
@@ -52,10 +52,11 @@
 - ✓ PORT-03: 포트폴리오 최종 확인 모달 및 IndexedDB/LocalStorage 저장 경계 — v1.8
 - ✓ UI-03: Step 2 목표 중심 전략 비교, 보수 가정, KPI/차트/카드/상세 흐름 — v1.8
 - ✓ Step 1 financial setup rebuild: summary-first cards, modal editing, account correction, Sankey readability — v1.8
+- ✓ HH-01/HH-02/BUD-01~BUD-04: Step 1.2 household budget foundation, one-income/dual-income context, variable target/actual tracking, and month-end projection — Phase 10
 
 ### Active
 
-- [ ] Define and execute v1.9 requirements for Step 1.2 household planning, spending comparison, and real-estate affordability.
+- [ ] Continue v1.9 with Phase 11 zero-input spending capture, then household merge, spending comparison, and real-estate affordability.
 
 ### Out of Scope
 
@@ -80,6 +81,7 @@
 | Step 2 strategy comparison model (Phase 08) | 투자자가 총자산 성장과 월 현금흐름 tradeoff를 직접 판단하도록 지수/SCHD/커버드콜 비교와 보수 가정을 분리 | ✓ Good |
 | Step 1 financial setup summary-first flow (Phase 09) | 기본 화면은 요약 카드 중심으로 줄이고, 상세 편집은 모달/선택 행으로 이동해 모바일 밀도를 낮춤 | ✓ Good |
 | Manual transfer surface removal (Phase 09) | 필수 source account 기반 자동 흐름과 중복되는 수동 이체 설정을 제거해 Sankey 모델을 단순화 | ✓ Good |
+| Step 1.2 household budget foundation (Phase 10) | 신혼부부 예산은 기본 화면 요약과 별도 상세 모달로 분리하고, 변동비 실제 사용액은 sanitizer-backed 필드로 보존 | ✓ Good |
 
 ---
 
@@ -126,4 +128,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-19 after starting v1.9 milestone*
+*Last updated: 2026-06-22 after completing Phase 10*

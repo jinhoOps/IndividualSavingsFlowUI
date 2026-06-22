@@ -7,18 +7,18 @@
 
 ### Household Hub
 
-- [ ] **HH-01**: User can open a Step 1.2 household planning surface from the Step 1 flow without losing the existing Step 1 financial setup context.
-- [ ] **HH-02**: User can mark household context for one-income or dual-income couples so downstream calculations do not assume both partners earn income.
+- [x] **HH-01**: User can open a Step 1.2 household planning surface from the Step 1 flow without losing the existing Step 1 financial setup context.
+- [x] **HH-02**: User can mark household context for one-income or dual-income couples so downstream calculations do not assume both partners earn income.
 - [ ] **HH-03**: User can merge two shared Step 1 data hashes into one household flow preview.
 - [ ] **HH-04**: User can see shared or meeting-account nodes merged into a single household node without duplicate Sankey branches.
 - [ ] **HH-05**: User can review merge warnings when two data sources contain conflicting account or category names.
 
 ### Adaptive Budgeting
 
-- [ ] **BUD-01**: User can set a monthly target budget on variable expense items.
-- [ ] **BUD-02**: User can enter actual spending for a variable expense item separately from the planned amount.
-- [ ] **BUD-03**: User can see budget progress, remaining amount, and overspend state for each tracked variable expense.
-- [ ] **BUD-04**: User can see an end-of-month spending projection from current actual spending pace.
+- [x] **BUD-01**: User can set a monthly target budget on variable expense items.
+- [x] **BUD-02**: User can enter actual spending for a variable expense item separately from the planned amount.
+- [x] **BUD-03**: User can see budget progress, remaining amount, and overspend state for each tracked variable expense.
+- [x] **BUD-04**: User can see an end-of-month spending projection from current actual spending pace.
 
 ### Zero-Input Capture
 
@@ -74,15 +74,15 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| HH-01 | Phase 10 | Pending |
-| HH-02 | Phase 10 | Pending |
+| HH-01 | Phase 10 | Complete |
+| HH-02 | Phase 10 | Complete |
 | HH-03 | Phase 12 | Pending |
 | HH-04 | Phase 12 | Pending |
 | HH-05 | Phase 12 | Pending |
-| BUD-01 | Phase 10 | Pending |
-| BUD-02 | Phase 10 | Pending |
-| BUD-03 | Phase 10 | Pending |
-| BUD-04 | Phase 10 | Pending |
+| BUD-01 | Phase 10 | Complete |
+| BUD-02 | Phase 10 | Complete |
+| BUD-03 | Phase 10 | Complete |
+| BUD-04 | Phase 10 | Complete |
 | CAP-01 | Phase 11 | Pending |
 | CAP-02 | Phase 11 | Pending |
 | CAP-03 | Phase 11 | Pending |
@@ -99,6 +99,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | REAL-05 | Phase 14 | Pending |
 
 **Coverage:**
+
 - v1.9 requirements: 23 total
 - Mapped to phases: 23
 - Unmapped: 0

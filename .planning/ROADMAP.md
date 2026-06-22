@@ -26,21 +26,22 @@ Resolve the next Step 1 household-flow work from `TODO.md` and open GitHub issue
 
 **Requirements:** HH-01, HH-02, BUD-01, BUD-02, BUD-03, BUD-04
 
-**Plans:** 3 plans
+**Plans:** 3/3 plans complete
 Plans:
 **Wave 1**
 
-- [ ] 10-01-PLAN.md — Sanitizer-backed household context, variable actual spending, and derived budget helpers.
+- [x] 10-01-PLAN.md — Sanitizer-backed household context, variable actual spending, and derived budget helpers.
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 10-02-PLAN.md — Compact `신혼부부 예산` summary panel on the Step 1 default screen.
+- [x] 10-02-PLAN.md — Compact `신혼부부 예산` summary panel on the Step 1 default screen.
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 10-03-PLAN.md — Detailed household budget modal, explicit save/cancel workflow, and Step 1 regressions.
+- [x] 10-03-PLAN.md — Detailed household budget modal, explicit save/cancel workflow, and Step 1 regressions.
 
 **Success criteria:**
+
 1. Step 1 exposes a Step 1.2 household planning entry point and can return to the original Step 1 setup without data loss.
 2. Household context supports one-income and dual-income cases, including optional spouse income.
 3. Variable expense items accept target budget and actual spending fields without corrupting existing saved Step 1 data.
@@ -54,6 +55,7 @@ Plans:
 **Requirements:** CAP-01, CAP-02, CAP-03, CAP-04
 
 **Success criteria:**
+
 1. A Step 1.2 capture input accepts pasted Korean notification text without page reload.
 2. Parser output includes date, amount, merchant, and candidate category when confidence is sufficient.
 3. User can correct parsed fields before committing them to expense actuals.
@@ -66,6 +68,7 @@ Plans:
 **Requirements:** HH-03, HH-04, HH-05
 
 **Success criteria:**
+
 1. User can paste or load two Step 1 share hashes and preview a merged household flow.
 2. Shared, public, or meeting-account nodes merge into one household node rather than duplicate Sankey branches.
 3. Conflicting account or category names are shown as warnings before the preview is accepted.
@@ -78,6 +81,7 @@ Plans:
 **Requirements:** CMP-01, CMP-02, CMP-03, CMP-04, CMP-05
 
 **Success criteria:**
+
 1. User can choose a comparable prior Step 1 snapshot from DataHub.
 2. Grouped bar chart renders previous and current category values using consistent won-unit conversion.
 3. Category differences are visible through labels or tooltips.
@@ -91,6 +95,7 @@ Plans:
 **Requirements:** REAL-01, REAL-02, REAL-03, REAL-04, REAL-05
 
 **Success criteria:**
+
 1. User can enter household income with optional spouse income and one-income mode.
 2. User can edit DSR, LTV, available cash, interest rate, and loan term assumptions.
 3. Result table shows maximum purchase price, loan amount, monthly repayment, required cash, and binding constraint.
@@ -101,12 +106,12 @@ Plans:
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| HH-01 | Phase 10 | Pending |
-| HH-02 | Phase 10 | Pending |
-| BUD-01 | Phase 10 | Pending |
-| BUD-02 | Phase 10 | Pending |
-| BUD-03 | Phase 10 | Pending |
-| BUD-04 | Phase 10 | Pending |
+| HH-01 | Phase 10 | Complete |
+| HH-02 | Phase 10 | Complete |
+| BUD-01 | Phase 10 | Complete |
+| BUD-02 | Phase 10 | Complete |
+| BUD-03 | Phase 10 | Complete |
+| BUD-04 | Phase 10 | Complete |
 | CAP-01 | Phase 11 | Pending |
 | CAP-02 | Phase 11 | Pending |
 | CAP-03 | Phase 11 | Pending |
@@ -126,6 +131,7 @@ Plans:
 | REAL-05 | Phase 14 | Pending |
 
 **Coverage:**
+
 - v1.9 requirements: 23 total
 - Mapped to phases: 23
 - Unmapped: 0
@@ -138,4 +144,4 @@ Plans:
 
 ## Next
 
-Start with `$gsd-discuss-phase 10` to clarify the Step 1.2 household budget foundation before implementation planning.
+Start with `$gsd-discuss-phase 11` to clarify the zero-input spending capture flow before implementation planning.

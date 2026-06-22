@@ -96,6 +96,11 @@ export const DEFAULT_INPUTS = {
   splitIncomeAccounts: false,
   surplusTransferAccountId: "acc-stock",
   transfers: [],
+  householdContext: {
+    profile: "newlywed",
+    incomeMode: "single-income",
+    spouseMonthlyIncome: 0,
+  },
   expenseItems: DEFAULT_EXPENSE_ITEMS,
   savingsItems: DEFAULT_SAVINGS_ITEMS,
   investItems: DEFAULT_INVEST_ITEMS,

@@ -10,6 +10,8 @@ import { renderSankey } from "./sankey-renderer.js";
 import { renderNetworkMap } from "./network-map-renderer.js";
 import { buildFinancialSummaryGroups } from "./financial-summary.js";
 import { renderFinancialSummaryGroups } from "./financial-summary-renderer.js";
+import { buildHouseholdBudgetSummary } from "./household-budget.js";
+import { renderHouseholdBudgetPanel } from "./household-budget-renderer.js";
 import { dom } from "./dom.js";
 import { state } from "./state.js";
 import * as helpers from "./state-helpers.js";
@@ -43,6 +45,7 @@ export function createRenderOrchestrator() {
     const snapshot = buildMonthlySnapshot(inputs);
     state.snapshot = snapshot;
     const projection = simulateProjection(inputs, { mode: state.projectionOptions.mode });
+    renderHouseholdBudgetPanel(dom.householdBudgetPanel, buildHouseholdBudgetSummary(inputs));
     renderFinancialSummaryGroups(dom.summaryCards, buildFinancialSummaryGroups(inputs, { projection }));
     updateSankeyCorrectionStatus(inputs);
 

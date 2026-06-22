@@ -22,6 +22,9 @@ const CURRENCY_KEYS = [
   "monthlyIncome"
 ];
 
+const HOUSEHOLD_INCOME_MODE_SINGLE = "single-income";
+const HOUSEHOLD_INCOME_MODE_DUAL = "dual-income";
+
 export function migrateInputsToWon(raw) {
   if (raw.modelVersion && raw.modelVersion >= 10) return raw;
   
@@ -96,6 +99,7 @@ export function sanitizeInputs(rawInputs) {
     splitIncomeAccounts: Boolean(raw.splitIncomeAccounts),
     surplusTransferAccountId: surplusId,
     transfers: sanitizeTransfers(raw.transfers, sanitizedAccounts),
+    householdContext: sanitizeHouseholdContext(raw.householdContext),
     expenseItems,
     savingsItems,
     investItems,
@@ -122,6 +126,24 @@ export function sanitizeInputs(rawInputs) {
     monthlySavings: getMonthlyAllocationTotalWon(repaired.savingsItems),
     monthlyInvest: getMonthlyAllocationTotalWon(repaired.investItems),
   };
+}
+
+export function sanitizeHouseholdContext(rawContext) {
+  const safeContext = rawContext && typeof rawContext === "object" ? rawContext : {};
+  const incomeMode = safeContext.incomeMode === HOUSEHOLD_INCOME_MODE_DUAL
+    ? HOUSEHOLD_INCOME_MODE_DUAL
+    : HOUSEHOLD_INCOME_MODE_SINGLE;
+
+  return {
+    profile: "newlywed",
+    incomeMode,
+    spouseMonthlyIncome: window.IsfUtils.sanitizeMoney(safeContext.spouseMonthlyIncome, 0, 0),
+  };
+}
+
+export function isVariableExpenseItem(item) {
+  const group = normalizeAllocationGroupName(item?.group);
+  return group === "변동비";
 }
 
 export function sanitizeIncomeItems(items, fallbackAmount) {
@@ -220,7 +242,32 @@ export function getMonthlyIncomeTotalWon(incomes) {
 }
 
 export function sanitizeExpenseItems(items, fallbackAmount) {
-  return sanitizeAllocationItems(items, DEFAULT_EXPENSE_ITEMS, fallbackAmount, "expense", "생활비");
+  const actualSpentById = new Map();
+  if (Array.isArray(items)) {
+    items.forEach((rawItem) => {
+      const safeItem = rawItem && typeof rawItem === "object" ? rawItem : null;
+      if (!safeItem || !isVariableExpenseItem(safeItem)) {
+        return;
+      }
+      const itemId = typeof safeItem.id === "string" ? safeItem.id.trim() : "";
+      if (!itemId) {
+        return;
+      }
+      actualSpentById.set(itemId, window.IsfUtils.sanitizeMoney(safeItem.actualSpent, 0, 0));
+    });
+  }
+
+  return sanitizeAllocationItems(items, DEFAULT_EXPENSE_ITEMS, fallbackAmount, "expense", "생활비")
+    .map((item) => {
+      if (!isVariableExpenseItem(item) || !actualSpentById.has(item.id)) {
+        const { actualSpent: _actualSpent, ...rest } = item;
+        return rest;
+      }
+      return {
+        ...item,
+        actualSpent: actualSpentById.get(item.id),
+      };
+    });
 }
 
 export function sanitizeSavingsAnnualRate(value, fallbackRate = DEFAULT_INPUTS.annualSavingsYield) {
@@ -372,7 +419,9 @@ export function normalizeAllocationGroupName(groupName) {
   if (!text) {
     return "";
   }
-  return text.slice(0, 16);
+  const pathSegments = text.split("-").map((segment) => segment.trim()).filter(Boolean);
+  const normalized = pathSegments[pathSegments.length - 1] || text;
+  return normalized.slice(0, 16);
 }
 
 export function normalizeMaturityMonth(value) {

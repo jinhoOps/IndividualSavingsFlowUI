@@ -45,6 +45,7 @@
         <div class="section-head">
           <h2 id="cardsTitle">재무 설정 요약</h2>
         </div>
+        <div id="householdBudgetPanel" class="household-budget-panel-host" aria-live="polite"></div>
         <div id="summaryCards" class="summary-cards" aria-live="polite">
           <div class="card skeleton" aria-hidden="true"><span class="label">불러오는 중</span><span class="value">━━━━</span></div>
           <div class="card skeleton" aria-hidden="true"><span class="label">불러오는 중</span><span class="value">━━━━</span></div>
@@ -117,12 +118,15 @@
                     <span class="help-tooltip-trigger" data-tooltip="각 수입이 입금될 계좌를 연결하면 자금 흐름 시각화에 정확히 반영됩니다.">?</span>
                   </h3>
                   <div class="block-head-tools">
+                    <button id="addIncomeItem" class="btn btn-ghost btn-sm editor-add-action" type="button" hidden aria-label="수입 항목 추가" title="수입 항목 추가">
+                      <span aria-hidden="true">+</span>
+                      <span class="sr-only">항목 추가</span>
+                    </button>
                     <button id="editIncomeItems" class="btn btn-ghost btn-sm" type="button">항목 편집</button>
                   </div>
                 </div>
                 <div id="incomeList" class="income-list" aria-live="polite"></div>
                 <div id="incomeEditorActions" class="editor-actions" hidden>
-                  <button id="addIncomeItem" class="btn btn-ghost btn-sm" type="button">항목 추가</button>
                   <button id="applyIncomeItems" class="btn btn-primary btn-sm" type="button">항목 변경 적용</button>
                   <button id="cancelIncomeItems" class="btn btn-ghost btn-sm" type="button">편집 취소</button>
                 </div>
@@ -139,13 +143,16 @@
                     <span class="help-tooltip-trigger" data-tooltip="수입·지출·저축·투자 흐름의 경유 계좌입니다. 계좌 이름을 실제 통장명으로 설정하면 시각화 맵에 표시됩니다.">?</span>
                   </h3>
                   <div class="block-head-tools">
+                    <button id="addAccountItem" class="btn btn-ghost btn-sm editor-add-action" type="button" hidden aria-label="통장 추가" title="통장 추가">
+                      <span aria-hidden="true">+</span>
+                      <span class="sr-only">통장 추가</span>
+                    </button>
                     <button id="editAccountItems" class="btn btn-ghost btn-sm" type="button">항목 편집</button>
                   </div>
                 </div>
                 <p class="hint">계좌는 돈이 들어오고 나가는 경유지입니다. 지출·저축·투자 항목에서 선택한 출처 계좌를 기준으로 흐름과 잉여/부족분을 자동 계산합니다.</p>
                 <div id="accountList" class="account-list" aria-live="polite"></div>
                 <div id="accountEditorActions" class="editor-actions" hidden>
-                  <button id="addAccountItem" class="btn btn-ghost btn-sm" type="button">통장 추가</button>
                   <button id="applyAccountItems" class="btn btn-primary btn-sm" type="button">변경 적용</button>
                   <button id="cancelAccountItems" class="btn btn-ghost btn-sm" type="button">편집 취소</button>
                 </div>
@@ -215,11 +222,14 @@
                         </select>
                       </label>
                       <button id="editExpenseItems" class="btn btn-ghost btn-sm" type="button">항목 편집</button>
+                      <button id="addExpenseItem" class="btn btn-ghost btn-sm editor-add-action" type="button" hidden aria-label="생활비 항목 추가" title="생활비 항목 추가">
+                        <span aria-hidden="true">+</span>
+                        <span class="sr-only">항목 추가</span>
+                      </button>
                     </div>
                   </div>
                   <div id="expenseList" class="expense-list" aria-live="polite"></div>
                   <div id="expenseEditorActions" class="editor-actions" hidden>
-                    <button id="addExpenseItem" class="btn btn-ghost btn-sm" type="button">항목 추가</button>
                     <button id="applyExpenseItems" class="btn btn-primary btn-sm" type="button">항목 변경 적용</button>
                     <button id="cancelExpenseItems" class="btn btn-ghost btn-sm" type="button">편집 취소</button>
                   </div>
@@ -242,11 +252,14 @@
                         </select>
                       </label>
                       <button id="editSavingsItems" class="btn btn-ghost btn-sm" type="button">항목 편집</button>
+                      <button id="addSavingsItem" class="btn btn-ghost btn-sm editor-add-action" type="button" hidden aria-label="저축 항목 추가" title="저축 항목 추가">
+                        <span aria-hidden="true">+</span>
+                        <span class="sr-only">항목 추가</span>
+                      </button>
                     </div>
                   </div>
                   <div id="savingsList" class="savings-list" aria-live="polite"></div>
                   <div id="savingsEditorActions" class="editor-actions" hidden>
-                    <button id="addSavingsItem" class="btn btn-ghost btn-sm" type="button">항목 추가</button>
                     <button id="applySavingsItems" class="btn btn-primary btn-sm" type="button">항목 변경 적용</button>
                     <button id="cancelSavingsItems" class="btn btn-ghost btn-sm" type="button">편집 취소</button>
                   </div>
@@ -268,11 +281,14 @@
                         </select>
                       </label>
                       <button id="editInvestItems" class="btn btn-ghost btn-sm" type="button">항목 편집</button>
+                      <button id="addInvestItem" class="btn btn-ghost btn-sm editor-add-action" type="button" hidden aria-label="투자 항목 추가" title="투자 항목 추가">
+                        <span aria-hidden="true">+</span>
+                        <span class="sr-only">항목 추가</span>
+                      </button>
                     </div>
                   </div>
                   <div id="investList" class="invest-list" aria-live="polite"></div>
                   <div id="investEditorActions" class="editor-actions" hidden>
-                    <button id="addInvestItem" class="btn btn-ghost btn-sm" type="button">항목 추가</button>
                     <button id="applyInvestItems" class="btn btn-primary btn-sm" type="button">항목 변경 적용</button>
                     <button id="cancelInvestItems" class="btn btn-ghost btn-sm" type="button">편집 취소</button>
                   </div>
@@ -700,6 +716,37 @@
             <button type="button" id="financialModalSave" class="btn btn-primary btn-sm">저장</button>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="householdBudgetModal" class="modal-overlay" hidden>
+    <div class="modal-content modal-content--household-budget">
+      <div class="modal-header">
+        <div>
+          <h2 id="householdBudgetModalTitle" class="modal-title">신혼부부 예산 상세</h2>
+          <p class="household-budget-modal-description">생활 변동비의 목표와 이번 달 실제 사용액을 저장할 때만 반영합니다.</p>
+        </div>
+        <button id="householdBudgetClose" class="modal-close" type="button" aria-label="닫기">×</button>
+      </div>
+      <div class="modal-body household-budget-modal-body">
+        <section class="household-budget-context" aria-label="가구 소득 설정">
+          <div class="segmented-control" role="group" aria-label="가구 소득 유형">
+            <button id="householdIncomeModeSingle" class="segmented-control__button is-active" type="button" data-income-mode="single-income">1인 소득</button>
+            <button id="householdIncomeModeDual" class="segmented-control__button" type="button" data-income-mode="dual-income">맞벌이</button>
+          </div>
+          <label class="household-budget-field" for="spouseMonthlyIncome">
+            <span>배우자 월수입</span>
+            <input id="spouseMonthlyIncome" type="text" inputmode="numeric" data-money-input="won" autocomplete="off" />
+          </label>
+        </section>
+        <div id="householdBudgetModalSummary" class="household-budget-modal-summary" aria-live="polite"></div>
+        <div id="householdBudgetRows" class="household-budget-rows"></div>
+        <p id="householdBudgetEmpty" class="household-budget-empty" hidden>이번 달 실제 사용액을 기록할 변동비 항목이 없습니다.</p>
+      </div>
+      <div class="modal-footer household-budget-modal-footer">
+        <button id="householdBudgetCancel" class="btn btn-ghost btn-sm" type="button">편집 취소</button>
+        <button id="householdBudgetSave" class="btn btn-primary btn-sm" type="button">예산 저장</button>
       </div>
     </div>
   </div>

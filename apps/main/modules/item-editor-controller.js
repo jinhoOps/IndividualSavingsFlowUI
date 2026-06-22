@@ -21,6 +21,7 @@ import {
   syncGroupOptionsFor,
   syncItemSortModeUi,
   syncMobileItemEditorFab,
+  syncPendingBar,
 } from "./ui-controller.js";
 
 const EDITOR_GROUPS = ["income", "expense", "savings", "invest", "account"];
@@ -29,6 +30,8 @@ export function createItemEditorController({ markPendingChanges, getVisibleInput
   function setItemEditorUi(group, active) {
     const actions = dom[`${group}EditorActions`];
     if (actions) actions.hidden = !active;
+    const addButton = dom[`add${group.charAt(0).toUpperCase() + group.slice(1)}Item`];
+    if (addButton) addButton.hidden = !active;
     const editButton = dom[`edit${group.charAt(0).toUpperCase() + group.slice(1)}Items`];
     if (editButton) editButton.textContent = active ? "편집 완료" : "항목 편집";
     const applyButton = dom[`apply${group.charAt(0).toUpperCase() + group.slice(1)}Items`];
@@ -39,6 +42,7 @@ export function createItemEditorController({ markPendingChanges, getVisibleInput
       if (dom.mobileEditorApply) dom.mobileEditorApply.disabled = !changed;
     }
     syncMobileItemEditorFab();
+    syncPendingBar();
     syncGroupOptionsFor(group);
   }
 

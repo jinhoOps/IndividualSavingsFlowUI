@@ -115,6 +115,45 @@ function aggregateAllocations(allocations) {
   return Array.from(aggregate, ([accountId, amount]) => ({ accountId, amount }));
 }
 
+function rebalanceAllocationsToAmount(allocations, targetAmount, fallbackAccountId) {
+  const amount = sanitizeAmount(targetAmount);
+  const positiveAllocations = (Array.isArray(allocations) ? allocations : [])
+    .map((allocation) => ({
+      accountId: allocation?.accountId || fallbackAccountId,
+      amount: sanitizeAmount(allocation?.amount),
+    }))
+    .filter((allocation) => allocation.accountId && allocation.amount > 0);
+
+  if (amount <= 0) {
+    return [];
+  }
+  if (positiveAllocations.length === 0) {
+    return [{ accountId: fallbackAccountId, amount }];
+  }
+
+  const total = positiveAllocations.reduce((sum, allocation) => sum + allocation.amount, 0);
+  if (total === amount) {
+    return aggregateAllocations(positiveAllocations);
+  }
+  if (total < amount) {
+    return aggregateAllocations([
+      ...positiveAllocations,
+      { accountId: fallbackAccountId, amount: amount - total },
+    ]);
+  }
+
+  let remaining = amount;
+  const scaled = positiveAllocations.map((allocation, index) => {
+    const isLast = index === positiveAllocations.length - 1;
+    const nextAmount = isLast
+      ? remaining
+      : Math.min(remaining, Math.round(allocation.amount * (amount / total)));
+    remaining = Math.max(0, remaining - nextAmount);
+    return { accountId: allocation.accountId, amount: nextAmount };
+  });
+  return aggregateAllocations(scaled).filter((allocation) => allocation.amount > 0);
+}
+
 function repairIncomeItem(inputs, income, corrections) {
   const repaired = cloneRecord(income);
   const resolvedAccountId = recommendAccountId(inputs, "income", repaired);
@@ -176,21 +215,18 @@ function repairIncomeItem(inputs, income, corrections) {
     });
 
   const allocationTotal = repairedAllocations.reduce((sum, allocation) => sum + allocation.amount, 0);
-  const delta = amount - allocationTotal;
-  if (delta !== 0 || repairedAllocations.length === 0) {
-    repairedAllocations.push({ accountId: resolvedAccountId, amount: delta });
+  if (allocationTotal !== amount || repairedAllocations.length === 0) {
     corrections.push(createCorrection({
       item: repaired,
       itemType: "income",
       originalAccountId: "",
       resolvedAccountId,
-      amountDelta: delta,
+      amountDelta: amount - allocationTotal,
       reason: "수입 allocation 합계를 항목 금액과 일치시켰습니다.",
     }));
   }
 
-  repaired.allocations = aggregateAllocations(repairedAllocations)
-    .filter((allocation) => allocation.amount > 0);
+  repaired.allocations = rebalanceAllocationsToAmount(repairedAllocations, amount, resolvedAccountId);
   if (repaired.allocations.length === 0 && amount > 0) {
     repaired.allocations = [{ accountId: resolvedAccountId, amount }];
   }
