@@ -106,21 +106,6 @@ input[type=number]{-moz-appearance:textfield}
 .inline-tip::after{content:attr(data-tooltip);position:absolute;left:50%;bottom:calc(100%+8px);transform:translateX(-50%);min-width:180px;padding:var(--sp-sm);background:rgba(255,255,255,0.98);border:1px solid var(--line);border-radius:var(--rd-sm);box-shadow:var(--sh-float);opacity:0;pointer-events:none;z-index:20}
 .inline-tip:hover::after{opacity:1}
 .summary-cards,.financial-summary-groups{display:grid;gap:var(--sp-md)}
-.household-budget-panel-host{display:block;min-width:0;margin-bottom:var(--sp-md)}
-.household-budget-panel{display:grid;gap:var(--sp-sm);border:1px solid var(--line);border-radius:var(--rd-sm);background:var(--panel);padding:var(--sp-md);min-width:0}
-.household-budget-panel__head{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:var(--sp-sm)}
-.household-budget-panel__title-group{display:grid;gap:2px;min-width:0}
-.household-budget-panel__title{margin:0;font-size:1rem;line-height:1.25;color:var(--ink)}
-.household-budget-panel__note{margin:0;color:var(--muted);font-size:0.78rem;line-height:1.35;overflow-wrap:anywhere}
-.household-budget-status{display:inline-flex;align-items:center;justify-content:center;min-height:28px;padding:3px 10px;border-radius:var(--rd-sm);border:1px solid rgba(30,139,124,0.24);background:rgba(30,139,124,0.08);color:#1e8b7c;font-size:0.78rem;font-weight:800;white-space:nowrap}
-.household-budget-status[data-household-budget-status="주의"]{border-color:rgba(176,120,0,0.28);background:rgba(176,120,0,0.1);color:#8a5f00}
-.household-budget-status[data-household-budget-status="초과"]{border-color:rgba(211,84,74,0.28);background:rgba(211,84,74,0.1);color:#b93a31}
-.household-budget-panel__cta{min-height:36px;border:1px solid var(--line);border-radius:var(--rd-sm);background:#fff;color:var(--ink);font:inherit;font-size:0.82rem;font-weight:800;padding:6px 12px;cursor:pointer;white-space:nowrap}
-.household-budget-panel__cta:hover{border-color:rgba(16,34,32,0.24);background:rgba(255,255,255,0.86)}
-.household-budget-panel__metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--sp-sm)}
-.household-budget-metric{display:grid;gap:4px;min-width:0;border:1px solid var(--line);border-radius:var(--rd-sm);background:rgba(255,255,255,0.62);padding:10px}
-.household-budget-metric__label{font-size:0.74rem;font-weight:800;color:var(--muted)}
-.household-budget-metric__value{font-family:var(--font-display);font-size:1rem;line-height:1.2;color:var(--ink);overflow-wrap:anywhere}
 .financial-summary-group{display:grid;gap:var(--sp-sm);min-width:0}
 .financial-summary-group__cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--sp-sm)}
 .financial-summary-group[data-financial-summary-group="core-metrics"] .financial-summary-group__cards{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -195,6 +180,34 @@ input[type=number]{-moz-appearance:textfield}
 .financial-modal-summary{border:1px solid var(--line);border-radius:var(--rd-sm);background:rgba(249,246,240,0.72);padding:10px 12px;font-size:0.84rem;font-weight:800;color:var(--ink);margin-bottom:var(--sp-sm)}
 .financial-modal-toolbar{display:flex;justify-content:flex-end;margin:0 0 var(--sp-sm)}
 .financial-modal-rows{display:grid;gap:var(--sp-sm)}
+.financial-modal-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;border:1px solid var(--line);border-radius:var(--rd-sm);background:rgba(249,246,240,0.72);padding:4px}
+.financial-modal-tab{border:0;border-radius:6px;background:transparent;color:var(--muted);font-weight:900;font-size:0.84rem;padding:8px 10px;cursor:pointer}
+.financial-modal-tab.is-active{background:var(--panel);color:var(--ink);box-shadow:0 1px 4px rgba(16,34,32,0.08)}
+.financial-group-toolbar{display:flex;justify-content:flex-end}
+.financial-group-board{display:grid;gap:10px}
+.financial-group-section{border:1px solid var(--line);border-radius:var(--rd-sm);background:rgba(255,255,255,0.72);padding:10px;display:grid;gap:8px;transition:border-color 0.15s ease,background-color 0.15s ease}
+.financial-group-section.is-drag-over{border-color:rgba(30,139,124,0.42);background:rgba(30,139,124,0.08)}
+.financial-group-section__head{display:flex;align-items:center;justify-content:space-between;gap:8px;color:var(--ink)}
+.financial-group-section__head strong{font-size:0.9rem}
+.financial-group-section__head span{font-size:0.72rem;font-weight:800;color:var(--muted)}
+.financial-group-section__items{display:grid;gap:8px;min-height:52px}
+.financial-group-section__empty{margin:0;border:1px dashed rgba(16,34,32,0.18);border-radius:var(--rd-sm);padding:12px;text-align:center;color:var(--muted);font-size:0.8rem;background:rgba(249,246,240,0.45)}
+.household-overview-board{position:relative;display:grid;grid-template-columns:minmax(0,1fr) 160px;gap:10px;margin:0 0 var(--sp-sm);padding:12px;border:1px solid rgba(16,34,32,0.18);border-radius:var(--rd-sm);background:linear-gradient(180deg,rgba(255,255,255,0.96),rgba(244,248,244,0.84));min-width:0}
+.household-overview-board__head{display:grid;gap:3px;align-self:center;min-width:0}
+.household-overview-board__title{margin:0;font-family:var(--font-display);font-size:1rem;line-height:1.25;color:var(--ink)}
+.household-overview-board__note{margin:0;color:var(--muted);font-size:0.76rem;line-height:1.35}
+.household-overview-ratio{grid-column:2;grid-row:1 / span 2;display:grid;place-items:center;align-content:center;gap:3px;min-height:70px;border:1px solid rgba(211,84,74,0.32);border-radius:var(--rd-sm);background:rgba(211,84,74,0.12);color:#9f3028}
+.household-overview-ratio[data-household-budget-status="여유"]{border-color:rgba(30,139,124,0.28);background:rgba(30,139,124,0.1);color:#147a68}
+.household-overview-ratio[data-household-budget-status="주의"]{border-color:rgba(176,120,0,0.32);background:rgba(176,120,0,0.12);color:#775000}
+.household-overview-ratio__label{font-size:0.72rem;font-weight:800}
+.household-overview-ratio__value{font-family:var(--font-display);font-size:1.32rem;line-height:1}
+.household-overview-grid{grid-column:1 / -1;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.household-overview-cell{display:grid;gap:3px;min-width:0;border:1px solid rgba(16,34,32,0.12);border-radius:var(--rd-sm);background:#fff;padding:8px 10px}
+.household-overview-cell__label{font-size:0.72rem;font-weight:800;color:var(--muted)}
+.household-overview-cell__value{font-family:var(--font-display);font-size:0.96rem;line-height:1.18;color:var(--ink);overflow-wrap:anywhere}
+.household-overview-cell--income{border-color:rgba(30,139,124,0.22);background:rgba(30,139,124,0.08)}
+.household-overview-cell.is-positive .household-overview-cell__value{color:#147a68}
+.household-overview-cell.is-negative .household-overview-cell__value{color:#b93a31}
 .financial-modal-row{border:1px solid var(--line);border-radius:var(--rd-sm);background:var(--panel);padding:var(--sp-md);display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:var(--sp-sm)}
 .financial-modal-row--editing{align-items:stretch;border-color:rgba(30,139,124,0.24);background:rgba(255,255,255,0.86)}
 .financial-modal-row__header{display:flex;align-items:center;justify-content:flex-start;gap:var(--sp-sm);flex-wrap:wrap;min-width:0}
@@ -203,33 +216,15 @@ input[type=number]{-moz-appearance:textfield}
 .financial-modal-row__summary{display:flex;align-items:center;gap:8px;flex-wrap:wrap;color:var(--muted);font-size:0.78rem;min-width:0}
 .financial-modal-row__summary span{border:1px solid rgba(16,34,32,0.08);border-radius:999px;background:rgba(249,246,240,0.72);padding:3px 8px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .financial-modal-row__edit{grid-column:2;grid-row:1 / span 2;align-self:center}
-.financial-modal-row__fields{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;grid-column:1 / -1}
+.financial-modal-row__remove{grid-column:1 / -1;justify-self:end;color:#9f3028}
+.financial-modal-row__fields{display:grid;grid-template-columns:minmax(150px,1.1fr) minmax(170px,1fr) minmax(190px,1.25fr);gap:10px;grid-column:1 / -1}
 .financial-modal-field{display:grid;gap:5px;min-width:0}
 .financial-modal-field__label{font-size:0.72rem;font-weight:800;color:var(--muted)}
 .financial-modal-field input,.financial-modal-field select{width:100%;min-width:0;font-size:0.86rem;padding:8px 10px}
-.modal-content--household-budget{max-width:860px}
-.household-budget-modal-description{margin:4px 0 0;color:var(--muted);font-size:0.82rem}
-.household-budget-modal-body{display:grid;gap:var(--sp-md)}
-.household-budget-context{display:grid;grid-template-columns:auto minmax(180px,260px);align-items:end;gap:var(--sp-sm);min-width:0}
-.segmented-control{display:inline-flex;border:1px solid var(--line);border-radius:var(--rd-sm);padding:2px;background:rgba(255,255,255,0.84)}
-.segmented-control__button{min-height:36px;border:0;border-radius:calc(var(--rd-sm) - 2px);background:transparent;color:var(--muted);font:inherit;font-size:0.82rem;font-weight:800;padding:6px 12px;cursor:pointer}
-.segmented-control__button.is-active{background:var(--ink);color:#fff}
-.household-budget-field{display:grid;gap:5px;min-width:0;font-size:0.78rem;font-weight:800;color:var(--muted)}
-.household-budget-field input{width:100%;min-width:0;box-sizing:border-box;font:inherit;font-size:0.86rem;padding:8px 10px;border:1px solid var(--line);border-radius:var(--rd-sm);background:#fff;color:var(--ink)}
-.household-budget-field input:disabled{background:rgba(16,34,32,0.04);color:var(--muted)}
-.household-budget-modal-summary{border:1px solid var(--line);border-radius:var(--rd-sm);background:rgba(249,246,240,0.72);padding:10px;display:grid;gap:8px}
-.household-budget-modal-summary__metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-.household-budget-modal-summary__metric{display:grid;gap:3px;min-width:0}
-.household-budget-modal-summary__metric span{font-size:0.72rem;color:var(--muted);font-weight:800}
-.household-budget-modal-summary__metric strong{font-family:var(--font-display);font-size:0.96rem;line-height:1.2;overflow-wrap:anywhere}
-.household-budget-modal-summary__projection{margin:0;color:var(--muted);font-size:0.78rem;line-height:1.35}
-.household-budget-rows{display:grid;gap:var(--sp-sm)}
-.household-budget-row{border:1px solid var(--line);border-radius:var(--rd-sm);background:var(--panel);padding:var(--sp-md);display:grid;gap:var(--sp-sm);min-width:0}
-.household-budget-row__head{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-sm);min-width:0}
-.household-budget-row__head strong{font-size:0.94rem;overflow-wrap:anywhere}
-.household-budget-row__fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-.household-budget-row__meta{margin:0;color:var(--muted);font-size:0.78rem;line-height:1.35}
-.household-budget-empty{margin:0;border:1px dashed var(--line);border-radius:var(--rd-sm);padding:16px;text-align:center;color:var(--muted);font-size:0.86rem}
+.financial-modal-field input[data-financial-modal-field="amount"],.financial-create-field input[data-create-field="amount"]{font-variant-numeric:tabular-nums;text-align:right}
+.household-overview-settings{grid-column:1 / -1;display:grid;grid-template-columns:minmax(150px,0.7fr) minmax(210px,1fr);gap:10px;border:1px solid rgba(16,34,32,0.1);border-radius:var(--rd-sm);background:rgba(255,255,255,0.78);padding:10px}
+.household-overview-settings .financial-modal-field input,.household-overview-settings .financial-modal-field select{font-size:0.86rem}
+.household-overview-settings .financial-modal-field input[data-household-field="spouseMonthlyIncome"]{font-variant-numeric:tabular-nums;text-align:right}
 .financial-create-step,.financial-create-confirm{border:1px solid var(--line);border-radius:var(--rd-sm);background:var(--panel);padding:var(--sp-md);display:grid;gap:var(--sp-md)}
 .financial-create-step__title{font-family:var(--font-display);font-size:var(--text-title-md);margin:0}
 .financial-create-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
@@ -270,24 +265,22 @@ main{order:2;gap:14px;display:grid}
 .preset-confirm-row__metrics{justify-content:flex-start}
 .financial-modal-row{grid-template-columns:1fr;align-items:stretch;padding:12px}
 .financial-modal-row__edit{grid-column:1;grid-row:auto;width:100%;justify-content:center}
+.financial-modal-row__remove{justify-self:stretch}
 .financial-modal-row__fields{grid-template-columns:1fr}
 .financial-modal-row__summary span{white-space:normal}
+.financial-group-section{padding:8px}
+.financial-group-section__head{align-items:flex-start;flex-direction:column}
 .financial-create-grid{grid-template-columns:1fr}
 .financial-create-confirm__row{align-items:flex-start;flex-direction:column}
 .financial-create-confirm__row strong{text-align:left}
 .modal-content--financial{max-width:100%}
-.modal-content--household-budget{max-width:100%}
-.household-budget-context{grid-template-columns:1fr}
-.household-budget-modal-summary__metrics,.household-budget-row__fields{grid-template-columns:1fr}
-.household-budget-row{padding:12px}
-.segmented-control{width:100%;display:grid;grid-template-columns:1fr 1fr}
-.segmented-control__button{min-height:44px}
-.household-budget-modal-footer .btn{min-height:44px}
+.household-overview-board{grid-template-columns:1fr;padding:10px}
+.household-overview-ratio{grid-column:1;grid-row:auto;min-height:58px}
+.household-overview-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.household-overview-cell{padding:8px}
+.household-overview-cell__value{font-size:0.9rem}
+.household-overview-settings{grid-template-columns:1fr}
 .financial-summary-group__cards,.financial-summary-group[data-financial-summary-group="core-metrics"] .financial-summary-group__cards{grid-template-columns:repeat(2,minmax(0,1fr))}
-.household-budget-panel{padding:12px}
-.household-budget-panel__head{grid-template-columns:minmax(0,1fr) auto}
-.household-budget-panel__cta{grid-column:1/-1;min-height:44px;width:100%}
-.household-budget-panel__metrics{grid-template-columns:1fr}
 .financial-summary-card{min-height:146px;padding:12px}
 .financial-summary-card__total{font-size:1.16rem}
 .financial-summary-card__list li:nth-child(n+4){display:none}

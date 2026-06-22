@@ -9,7 +9,7 @@ import { sanitizeInputs } from "./input-sanitizer.js";
 import { normalizeExternalStep1Inputs } from "./external-input-guard.js";
 import { formatBackupTimestamp } from "./formatters.js";
 import { loadShareSnapshotById } from "./storage-manager.js";
-import { applyPresetBySalary } from "./presets.js";
+import { applyPresetBySalary, calculateMonthlyIncomeFromAnnualSalary } from "./presets.js";
 import { dom } from "./dom.js";
 import { state } from "./state.js";
 import * as helpers from "./state-helpers.js";
@@ -113,13 +113,26 @@ export function createPersistenceController({ renderAll }) {
   }
 
   function createResetInputs() {
-    return normalizeExternalStep1Inputs("reset-neutral-preset", applyPresetBySalary(50000000, "neutral"));
+    const isDualIncome = state.inputs?.householdContext?.incomeMode === "dual-income";
+    const primaryAnnualSalary = isDualIncome ? 40000000 : 46000000;
+    const spouseAnnualSalary = 46000000;
+    const preset = applyPresetBySalary(primaryAnnualSalary, "balanced");
+    return normalizeExternalStep1Inputs(isDualIncome ? "reset-newlywed-dual-preset" : "reset-newlywed-single-preset", {
+      ...preset,
+      householdContext: {
+        profile: "newlywed",
+        incomeMode: isDualIncome ? "dual-income" : "single-income",
+        spouseMonthlyIncome: isDualIncome ? calculateMonthlyIncomeFromAnnualSalary(spouseAnnualSalary) : 0,
+      },
+    });
   }
 
   function handleResetInputs() {
-    if (state.isViewMode || !window.confirm("중립형 연봉 5,000만 원 프리셋으로 초기화할까요?")) return;
+    const isDualIncome = state.inputs?.householdContext?.incomeMode === "dual-income";
+    const resetLabel = isDualIncome ? "맞벌이 연봉 4,000만 원 / 4,600만 원" : "1인 소득 연봉 4,600만 원";
+    if (state.isViewMode || !window.confirm(`${resetLabel} 기준으로 초기화할까요?`)) return;
     commitImmediateInputs(createResetInputs());
-    window.IsfFeedback.showFeedback(dom.applyFeedback, "중립형 연봉 5,000만 원 프리셋으로 초기화되었습니다.");
+    window.IsfFeedback.showFeedback(dom.applyFeedback, `${resetLabel} 기준으로 초기화되었습니다.`);
   }
 
   function handleHashChange() {

@@ -132,3 +132,51 @@ export function buildHouseholdBudgetSummary(inputs, now = new Date()) {
     rows,
   };
 }
+
+export function buildHouseholdOverview(inputs, now = new Date()) {
+  const context = inputs?.householdContext || {};
+  const incomeTotal = getMonthlyIncomeTotalWon(inputs?.incomes);
+  const spouseIncome = context.incomeMode === HOUSEHOLD_INCOME_MODES.dual
+    ? safeMoney(context.spouseMonthlyIncome)
+    : 0;
+  const householdIncome = incomeTotal + spouseIncome;
+  const expenses = Array.isArray(inputs?.expenseItems) ? inputs.expenseItems : [];
+  const fixedExpenses = expenses.filter((item) => !isVariableExpenseItem(item));
+  const variableExpenses = expenses.filter(isVariableExpenseItem);
+  const fixedExpenseTotal = getMonthlyAllocationTotalWon(fixedExpenses);
+  const savingsTotal = getMonthlyAllocationTotalWon(inputs?.savingsItems);
+  const investTotal = getMonthlyAllocationTotalWon(inputs?.investItems);
+  const fixedCommitmentTotal = fixedExpenseTotal + savingsTotal + investTotal;
+  const livingExpenseTotal = getMonthlyAllocationTotalWon(variableExpenses);
+  const monthlySavings = householdIncome - fixedCommitmentTotal - livingExpenseTotal;
+  const fixedRatio = householdIncome > 0 ? Math.round((fixedCommitmentTotal / householdIncome) * 100) : 0;
+  const status = fixedRatio >= 70 ? BUDGET_STATUS_LABELS.over : fixedRatio >= 60 ? BUDGET_STATUS_LABELS.caution : BUDGET_STATUS_LABELS.safe;
+  const toAccumulated = (years) => monthlySavings * 12 * years;
+
+  return {
+    householdIncome,
+    fixedExpenseTotal,
+    fixedCommitmentTotal,
+    livingExpenseTotal,
+    monthlySavings,
+    fixedRatio,
+    status,
+    incomeLabel: IsfUtils.formatMoney(householdIncome),
+    fixedExpenseLabel: IsfUtils.formatMoney(fixedCommitmentTotal),
+    livingExpenseLabel: IsfUtils.formatMoney(livingExpenseTotal),
+    monthlySavingsLabel: `${monthlySavings < 0 ? "-" : ""}${IsfUtils.formatMoney(Math.abs(monthlySavings))}`,
+    oneYearSavingsLabel: `${monthlySavings < 0 ? "-" : ""}${IsfUtils.formatMoney(Math.abs(toAccumulated(1)))}`,
+    fiveYearSavingsLabel: `${monthlySavings < 0 ? "-" : ""}${IsfUtils.formatMoney(Math.abs(toAccumulated(5)))}`,
+    tenYearSavingsLabel: `${monthlySavings < 0 ? "-" : ""}${IsfUtils.formatMoney(Math.abs(toAccumulated(10)))}`,
+    rows: [
+      { id: "income", label: "급여", value: IsfUtils.formatMoney(householdIncome) },
+      { id: "fixed", label: "고정지출 합계", value: IsfUtils.formatMoney(fixedCommitmentTotal) },
+      { id: "living", label: "생활비", value: IsfUtils.formatMoney(livingExpenseTotal) },
+      { id: "monthly", label: "월저축", value: `${monthlySavings < 0 ? "-" : ""}${IsfUtils.formatMoney(Math.abs(monthlySavings))}` },
+      { id: "one-year", label: "1년 후 저축", value: `${monthlySavings < 0 ? "-" : ""}${IsfUtils.formatMoney(Math.abs(toAccumulated(1)))}` },
+      { id: "five-year", label: "5년 후 저축", value: `${monthlySavings < 0 ? "-" : ""}${IsfUtils.formatMoney(Math.abs(toAccumulated(5)))}` },
+      { id: "ten-year", label: "10년 후 저축", value: `${monthlySavings < 0 ? "-" : ""}${IsfUtils.formatMoney(Math.abs(toAccumulated(10)))}` },
+      { id: "ratio", label: "고정지출 비율", value: `${fixedRatio}%` },
+    ],
+  };
+}

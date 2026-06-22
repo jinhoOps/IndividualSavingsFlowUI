@@ -222,17 +222,18 @@ test.describe('Individual Savings Flow Main UI/UX Audit', () => {
     await expect(page.locator('#ratesAdvancedBlock')).toBeVisible();
 
     page.once('dialog', async (dialog) => {
-      expect(dialog.message()).toContain('중립형 연봉 5,000만 원');
+      expect(dialog.message()).toContain('1인 소득 연봉 4,600만 원');
       await dialog.accept();
     });
     await page.locator('#resetInputs').click();
-    await expect(page.locator('#applyFeedback')).toContainText('중립형 연봉 5,000만 원');
+    await expect(page.locator('#applyFeedback')).toContainText('1인 소득 연봉 4,600만 원');
 
     const savedInputs = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}'));
-    expect(savedInputs.incomes?.[0]?.amount).toBe(3550000);
-    expect(savedInputs.startCash).toBe(1000000);
-    expect(savedInputs.startSavings).toBe(40000000);
-    expect(savedInputs.startInvest).toBe(10000000);
+    expect(savedInputs.incomes?.[0]?.amount).toBe(3310000);
+    expect(savedInputs.householdContext).toMatchObject({ profile: 'newlywed', incomeMode: 'single-income', spouseMonthlyIncome: 0 });
+    expect(savedInputs.startCash).toBe(920000);
+    expect(savedInputs.startSavings).toBe(36800000);
+    expect(savedInputs.startInvest).toBe(9200000);
     expect(savedInputs.monthlyExpense).toBeGreaterThan(0);
     expect(savedInputs.expenseItems?.length).toBeGreaterThan(3);
   });
@@ -982,22 +983,36 @@ test.describe('Phase 09 financial category detail modal', () => {
     expect(result.overlaps).toBe(0);
   });
 
-  test('Phase 09 financial modal group dropdown supports existing and custom groups', async ({ page }) => {
+  test('Phase 09 financial modal group board supports custom groups and drag assignment', async ({ page }) => {
     await page.locator('[data-financial-category="expense"]').click();
     const modal = page.locator('#financialModal');
     await expect(modal).toBeVisible();
+    await expect(modal.locator('[data-outflow-tab="living"]')).toHaveClass(/is-active/);
     await modal.locator('[data-financial-modal-edit]').first().click();
 
-    const groupSelect = modal.locator('[data-financial-modal-field="groupMode"]').first();
-    await expect(groupSelect).toBeVisible();
-    await expect(groupSelect).toContainText('고정비');
-    await expect(groupSelect).toContainText('직접 입력');
+    await expect(modal.locator('[data-financial-modal-field="name"]')).toBeVisible();
+    await expect(modal.locator('[data-financial-modal-field="accountId"]')).toBeVisible();
+    await expect(modal.locator('[data-financial-modal-field="amount"]')).toBeVisible();
+    await expect(modal.locator('[data-financial-modal-field="groupMode"]')).toHaveCount(0);
     await expect(modal.locator('[data-financial-modal-field="group"]')).toHaveCount(0);
 
-    await groupSelect.selectOption('__custom__');
-    const customGroup = modal.locator('[data-financial-modal-field="group"]').first();
-    await expect(customGroup).toBeVisible();
-    await customGroup.fill('테스트그룹');
+    page.once('dialog', async (dialog) => {
+      expect(dialog.type()).toBe('prompt');
+      await dialog.accept('테스트그룹');
+    });
+    await modal.locator('[data-financial-add-group]').click();
+    await expect(modal.locator('[data-group-drop-name="테스트그룹"]')).toBeVisible();
+
+    await page.evaluate(() => {
+      const source = document.querySelector<HTMLElement>('[data-modal-row-category="expense"][data-modal-row-index="0"]');
+      const target = document.querySelector<HTMLElement>('[data-group-drop-category="expense"][data-group-drop-name="테스트그룹"]');
+      if (!source || !target) throw new Error('drag fixtures missing');
+      const dataTransfer = new DataTransfer();
+      source.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer }));
+      target.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer }));
+      target.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer }));
+    });
+    await expect(modal.locator('[data-group-drop-name="테스트그룹"] [data-modal-row-index="0"]')).toBeVisible();
     await modal.locator('#financialModalSave').click();
 
     const savedGroup = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}').expenseItems?.[0]?.group);
@@ -1068,35 +1083,35 @@ test.describe('Phase 09 guided item and inline account creation', () => {
     await page.waitForSelector('main');
   });
 
-  test('creates a new investment item with an inline account and final confirmation', async ({ page }) => {
+  test('creates a new investment item in the savings-investment tab with final confirmation', async ({ page }) => {
     await page.locator('[data-financial-category="invest"]').click();
     const modal = page.locator('#financialModal');
     await expect(modal).toBeVisible();
+    await expect(modal.locator('[data-outflow-tab="future"]')).toHaveClass(/is-active/);
     await modal.locator('#financialModalCreate').click();
 
     await expect(modal.locator('[data-create-step="details"]')).toBeVisible();
     await expect(modal.locator('#financialCreateAccountSelect')).toHaveValue('acc-stock');
     await modal.locator('[data-create-field="name"]').fill('테스트 ETF');
     await modal.locator('[data-create-field="amount"]').fill('100000');
-    await modal.locator('[data-create-field="group"]').fill('투자');
-    await modal.locator('#financialCreateNewAccountToggle').click();
-    await modal.locator('[data-create-field="accountName"]').fill('연금계좌');
+    await expect(modal.locator('[data-create-field="group"]')).toHaveCount(0);
+    await expect(modal.locator('#financialCreateNewAccountToggle')).toHaveCount(0);
     await modal.locator('#financialCreateReview').click();
 
     const confirm = modal.locator('#financialCreateConfirm');
     await expect(confirm).toBeVisible();
     await expect(confirm).toContainText('테스트 ETF');
     await expect(confirm).toContainText('10만 원');
-    await expect(confirm).toContainText('연금계좌');
+    await expect(confirm).toContainText('투자계좌');
     await expect(confirm).toContainText('투자');
     await modal.locator('#financialCreateSave').click();
+    await expect(modal.locator('[data-modal-row-category="invest"]').filter({ hasText: '테스트 ETF' })).toBeVisible();
+    await modal.locator('#financialModalSave').click();
     await expect(modal).toBeHidden();
 
     const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}'));
-    const createdAccount = saved.accounts.find((account: any) => account.name === '연금계좌');
     const createdItem = saved.investItems.find((item: any) => item.name === '테스트 ETF');
-    expect(createdAccount).toBeTruthy();
-    expect(createdItem).toMatchObject({ amount: 100000, group: '투자', accountId: createdAccount.id });
+    expect(createdItem).toMatchObject({ amount: 100000, group: '투자', accountId: 'acc-stock' });
     await expect(page.locator('[data-financial-category="invest"]')).toContainText('4개');
   });
 });
@@ -1330,10 +1345,11 @@ test.describe('Phase 10 household budget data model', () => {
     expect(result.monthlyExpense).toBe(1000000);
   });
 
-  test('derives variable budget rows, status, projection, and three summary metrics', async ({ page }) => {
+  test('derives variable budget rows, status, projection, overview, and three summary metrics', async ({ page }) => {
     const result = await page.evaluate(async () => {
       const {
         BUDGET_STATUS_LABELS,
+        buildHouseholdOverview,
         buildHouseholdBudgetSummary,
         buildVariableExpenseBudgetRows,
         projectMonthEndSpending,
@@ -1351,9 +1367,12 @@ test.describe('Phase 10 household budget data model', () => {
           { id: 'food', name: '식비', amount: 100000, group: '변동비', actualSpent: 120000 },
           { id: 'rent', name: '월세', amount: 700000, group: '고정비', actualSpent: 700000 },
         ],
+        savingsItems: [{ id: 'saving', name: '적금', amount: 300000 }],
+        investItems: [{ id: 'invest', name: 'ISA', amount: 200000 }],
       };
       const rows = buildVariableExpenseBudgetRows(inputs, now);
       const summary = buildHouseholdBudgetSummary(inputs, now);
+      const overview = buildHouseholdOverview(inputs, now);
 
       return {
         labels: BUDGET_STATUS_LABELS,
@@ -1364,6 +1383,13 @@ test.describe('Phase 10 household budget data model', () => {
         metricLabels: summary.metrics.map((metric: any) => metric.label),
         householdIncome: summary.householdIncome,
         projectionNote: summary.projectionNote,
+        overview: {
+          fixedRatio: overview.fixedRatio,
+          fixedCommitmentTotal: overview.fixedCommitmentTotal,
+          livingExpenseTotal: overview.livingExpenseTotal,
+          monthlySavings: overview.monthlySavings,
+          rowLabels: overview.rows.map((row: any) => row.label),
+        },
       };
     });
 
@@ -1376,10 +1402,15 @@ test.describe('Phase 10 household budget data model', () => {
     expect(result.metricLabels).toEqual(['가구 월수입', '변동비 실제/목표', '남은 변동비']);
     expect(result.householdIncome).toBe(4200000);
     expect(result.projectionNote).toBe('현재 사용 속도를 단순 환산한 참고값입니다.');
+    expect(result.overview.fixedCommitmentTotal).toBe(1200000);
+    expect(result.overview.livingExpenseTotal).toBe(100000);
+    expect(result.overview.monthlySavings).toBe(2900000);
+    expect(result.overview.fixedRatio).toBe(29);
+    expect(result.overview.rowLabels).toEqual(['급여', '고정지출 합계', '생활비', '월저축', '1년 후 저축', '5년 후 저축', '10년 후 저축', '고정지출 비율']);
   });
 });
 
-test.describe('Phase 10 household budget summary panel', () => {
+test.describe('Phase 10 household overview in financial settings', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
       localStorage.clear();
@@ -1389,48 +1420,53 @@ test.describe('Phase 10 household budget summary panel', () => {
     await page.waitForSelector('main');
   });
 
-  test('renders compact three-metric household panel before existing summary cards', async ({ page }) => {
+  test('renders couple status board inside expense financial modal without summary-screen clutter', async ({ page }) => {
     for (const viewport of [
       { width: 1280, height: 900 },
       { width: 768, height: 1024 },
       { width: 390, height: 844 },
     ]) {
       await page.setViewportSize(viewport);
-      await page.waitForSelector('#householdBudgetPanel .household-budget-panel');
-      await expect(page.locator('#householdBudgetPanel')).toContainText('신혼부부 예산');
-      await expect(page.locator('#openHouseholdBudgetModal')).toContainText('예산 상세 편집');
-      await expect(page.locator('#householdBudgetPanel .household-budget-metric')).toHaveCount(3);
-      await expect(page.locator('#householdBudgetPanel')).toContainText('가구 월수입');
-      await expect(page.locator('#householdBudgetPanel')).toContainText('변동비 실제/목표');
-      await expect(page.locator('#householdBudgetPanel')).toContainText('남은 변동비');
+      await expect(page.locator('#householdBudgetPanel')).toHaveCount(0);
+      await page.locator('[data-financial-category="expense"]').click();
+      const modal = page.locator('#financialModal');
+      await expect(modal).toBeVisible();
+      await expect(modal.locator('[data-household-overview]')).toBeVisible();
+      await expect(modal.locator('[data-household-overview]')).toContainText('부부 현황');
+      await expect(modal.locator('[data-household-overview]')).toContainText('급여');
+      await expect(modal.locator('[data-household-overview]')).toContainText('생활비');
+      await expect(modal.locator('[data-household-overview]')).toContainText('고정지출 합계');
+      await expect(modal.locator('[data-household-overview]')).toContainText('월저축');
+      await expect(modal.locator('[data-household-overview]')).toContainText('1년 후 저축');
+      await expect(modal.locator('[data-household-overview]')).toContainText('5년 후 저축');
+      await expect(modal.locator('[data-household-overview]')).toContainText('10년 후 저축');
 
-      const badgeText = await page.locator('[data-household-budget-status]').textContent();
-      expect(['여유', '주의', '초과']).toContain((badgeText || '').trim());
+      const ratioText = await modal.locator('.household-overview-ratio__value').textContent();
+      expect(ratioText || '').toMatch(/\d+%/);
       await expect(page.locator('[data-household-budget-row]')).toHaveCount(0);
       await expect(page.locator('[data-household-budget-actual]')).toHaveCount(0);
 
       const order = await page.evaluate(() => {
-        const panel = document.querySelector('#householdBudgetPanel');
         const cards = document.querySelector('#summaryCards');
         const summary = document.querySelector('.summary-panel');
         const sankey = document.querySelector('.sankey-panel');
-        if (!panel || !cards || !summary || !sankey) return null;
+        if (!cards || !summary || !sankey) return null;
         return {
-          panelBeforeCards: Boolean(panel.compareDocumentPosition(cards) & Node.DOCUMENT_POSITION_FOLLOWING),
           summaryBeforeSankey: Boolean(summary.compareDocumentPosition(sankey) & Node.DOCUMENT_POSITION_FOLLOWING),
           overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
         };
       });
-      expect(order?.panelBeforeCards).toBe(true);
       expect(order?.summaryBeforeSankey).toBe(true);
       expect(order?.overflow, `no page overflow at ${viewport.width}px`).toBeLessThanOrEqual(4);
       await expect(page.locator('[data-financial-summary-group="core-metrics"]')).toContainText('년 후 순자산');
       await expect(page.locator('[data-financial-summary-group="outflow"]')).toContainText('지출');
+      await modal.locator('#financialModalClose').click();
+      await expect(modal).toBeHidden();
     }
   });
 });
 
-test.describe('Phase 10 household budget modal workflow', () => {
+test.describe('Phase 10 household overview draft workflow', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
       localStorage.clear();
@@ -1460,30 +1496,28 @@ test.describe('Phase 10 household budget modal workflow', () => {
           { id: 'food', name: '식비', amount: 300000, group: '변동비', actualSpent: 50000, accountId: 'acc-living' },
           { id: 'rent', name: '월세', amount: 700000, group: '고정비', actualSpent: 700000, accountId: 'acc-living' },
         ],
+        savingsItems: [{ id: 'saving', name: '적금', amount: 300000, accountId: 'acc-salary' }],
+        investItems: [{ id: 'invest', name: 'ISA', amount: 200000, accountId: 'acc-salary' }],
       });
       localStorage.setItem(STORAGE_KEY, JSON.stringify(inputs));
       state.inputs = inputs;
       createRenderOrchestrator().renderAll();
     });
-    await page.waitForSelector('#openHouseholdBudgetModal');
+    await page.waitForSelector('[data-financial-category="expense"]');
   }
 
-  test('opens modal, edits draft, saves dual-income context and variable actual spending', async ({ page }) => {
+  test('updates couple overview from expense draft and saves only after explicit confirm', async ({ page }) => {
     await seedBudgetInputs(page);
 
-    await page.locator('#openHouseholdBudgetModal').click();
-    await expect(page.locator('#householdBudgetModal')).toBeVisible();
-    await expect(page.locator('#householdBudgetModalTitle')).toHaveText('신혼부부 예산 상세');
-    await expect(page.locator('#householdBudgetModal')).toContainText('생활 변동비의 목표와 이번 달 실제 사용액을 저장할 때만 반영합니다.');
-    await expect(page.locator('#householdBudgetRows [data-household-budget-row]')).toHaveCount(1);
-    await expect(page.locator('[data-household-budget-actual]')).toHaveCount(1);
-    await expect(page.locator('#householdBudgetModal')).toContainText('월말 예상');
-    await expect(page.locator('#householdBudgetModal')).toContainText('현재 사용 속도를 단순 환산한 참고값입니다.');
+    await page.locator('[data-financial-category="expense"]').click();
+    const modal = page.locator('#financialModal');
+    await expect(modal.locator('[data-household-overview]')).toContainText('고정지출 합계');
+    await expect(modal.locator('[data-household-overview]')).toContainText('생활비');
+    await expect(modal.locator('[data-household-overview]')).toContainText('월저축');
 
-    await page.locator('#householdIncomeModeDual').click();
-    await page.locator('#spouseMonthlyIncome').fill('1200000');
-    await page.locator('[data-household-budget-target]').fill('350000');
-    await page.locator('[data-household-budget-actual]').fill('180000');
+    await modal.locator('[data-modal-row-index]').filter({ hasText: '식비' }).locator('[data-financial-modal-edit]').click();
+    await modal.locator('[data-financial-modal-field="amount"]').fill('350000');
+    await expect(modal.locator('[data-household-overview]')).toContainText('35만원');
 
     const beforeSave = await page.evaluate(async () => {
       const { STORAGE_KEY } = await import('/IndividualSavingsFlowUI/apps/main/modules/constants.js');
@@ -1497,7 +1531,7 @@ test.describe('Phase 10 household budget modal workflow', () => {
     });
     expect(beforeSave).toEqual({ mode: 'single-income', spouse: 0, amount: 300000, actual: 50000 });
 
-    await page.locator('#householdBudgetSave').click();
+    await modal.locator('#financialModalSave').click();
     await page.waitForTimeout(250);
     const afterSave = await page.evaluate(async () => {
       const { STORAGE_KEY } = await import('/IndividualSavingsFlowUI/apps/main/modules/constants.js');
@@ -1509,24 +1543,21 @@ test.describe('Phase 10 household budget modal workflow', () => {
         fixed: saved.expenseItems?.find((item: any) => item.id === 'rent'),
       };
     });
-    expect(afterSave.mode).toBe('dual-income');
-    expect(afterSave.spouse).toBe(1200000);
     expect(afterSave.variable.amount).toBe(350000);
-    expect(afterSave.variable.actualSpent).toBe(180000);
+    expect(afterSave.variable.actualSpent).toBe(50000);
     expect(afterSave.fixed).not.toHaveProperty('actualSpent');
 
-    await page.reload();
-    await page.waitForSelector('#householdBudgetPanel');
-    await expect(page.locator('#householdBudgetPanel')).toContainText('신혼부부 예산');
+    await expect(page.locator('[data-financial-category="expense"]')).toContainText('35만원');
   });
 
   test('cancels draft changes without durable state mutation', async ({ page }) => {
     await seedBudgetInputs(page);
-    await page.locator('#openHouseholdBudgetModal').click();
-    await page.locator('#householdIncomeModeDual').click();
-    await page.locator('#spouseMonthlyIncome').fill('2200000');
-    await page.locator('[data-household-budget-actual]').fill('280000');
-    await page.locator('#householdBudgetCancel').click();
+    await page.locator('[data-financial-category="expense"]').click();
+    const modal = page.locator('#financialModal');
+    await modal.locator('[data-modal-row-index]').filter({ hasText: '식비' }).locator('[data-financial-modal-edit]').click();
+    await modal.locator('[data-financial-modal-field="amount"]').fill('380000');
+    await expect(modal.locator('[data-household-overview]')).toContainText('38만원');
+    await modal.locator('#financialModalCancel').click();
     await page.waitForTimeout(250);
 
     const saved = await page.evaluate(async () => {
@@ -1535,7 +1566,51 @@ test.describe('Phase 10 household budget modal workflow', () => {
     });
     expect(saved.householdContext.incomeMode).toBe('single-income');
     expect(saved.householdContext.spouseMonthlyIncome).toBe(0);
+    expect(saved.expenseItems.find((item: any) => item.id === 'food').amount).toBe(300000);
     expect(saved.expenseItems.find((item: any) => item.id === 'food').actualSpent).toBe(50000);
+  });
+
+  test('reset uses 4000/4600 salaries in dual-income mode', async ({ page }) => {
+    await page.evaluate(async () => {
+      const [{ STORAGE_KEY }, { sanitizeInputs }, { state }, { createRenderOrchestrator }] = await Promise.all([
+        import('/IndividualSavingsFlowUI/apps/main/modules/constants.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/input-sanitizer.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/state.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/render-orchestrator.js'),
+      ]);
+      const inputs = sanitizeInputs({
+        modelVersion: 10,
+        householdContext: { profile: 'newlywed', incomeMode: 'dual-income', spouseMonthlyIncome: 1111111 },
+        incomes: [{ id: 'income-main', name: '급여', amount: 1234567, accountId: 'acc-salary' }],
+        accounts: [
+          { id: 'acc-salary', name: '급여계좌' },
+          { id: 'acc-living', name: '생활비계좌' },
+          { id: 'acc-stock', name: '투자계좌' },
+        ],
+      });
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(inputs));
+      state.inputs = inputs;
+      createRenderOrchestrator().renderAll();
+    });
+
+    page.once('dialog', async (dialog) => {
+      expect(dialog.message()).toContain('맞벌이 연봉 4,000만 원 / 4,600만 원');
+      await dialog.accept();
+    });
+    await openControlsPanel(page);
+    await page.locator('#resetInputs').click();
+    await expect(page.locator('#applyFeedback')).toContainText('맞벌이 연봉 4,000만 원 / 4,600만 원');
+
+    const saved = await page.evaluate(async () => {
+      const { STORAGE_KEY } = await import('/IndividualSavingsFlowUI/apps/main/modules/constants.js');
+      return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+    });
+    expect(saved.incomes?.[0]?.amount).toBe(2950000);
+    expect(saved.householdContext).toMatchObject({
+      profile: 'newlywed',
+      incomeMode: 'dual-income',
+      spouseMonthlyIncome: 3310000,
+    });
   });
 });
 
