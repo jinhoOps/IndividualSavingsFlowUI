@@ -1,73 +1,110 @@
 # External Integrations
 
-**Analysis Date:** 2026-06-16
+**Analysis Date:** 2026-06-23
 
 ## APIs & External Services
 
-**Browser APIs:**
-- Clipboard API: [clipboard-parser.js](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/shared/core/clipboard-parser.js)를 활용해 사용자가 복사한 한국 금융사(은행, 카드사 등)의 입출금 SMS/알림톡 텍스트 데이터를 클립보드에서 직접 읽고 가계부 데이터 형식으로 자동 파싱.
-- Web Crypto API: [hub-storage.js](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/shared/storage/hub-storage.js)에서 브라우저 보안 난수 생성기(`crypto.getRandomValues`)를 통해 고유한 스냅샷 및 엔트리 ID(`s1-*`, `ds-*`)를 생성하는 데 활용.
-- Share API: [share-utils.js](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/shared/core/share-utils.js)를 통해 시뮬레이션 결과 및 자산 데이터를 외부 메신저나 SNS로 텍스트 형식 전송.
+**Static Hosting:**
+- GitHub Pages - Production deployment target for the static Vite build.
+  - SDK/Client: GitHub Actions actions in `.github/workflows/deploy.yml` (`actions/checkout@v4`, `actions/setup-node@v4`, `actions/configure-pages@v5`, `actions/upload-pages-artifact@v3`, `actions/deploy-pages@v4`).
+  - Auth: GitHub-provided `GITHUB_TOKEN` permissions declared in `.github/workflows/deploy.yml`.
+
+**Browser Platform APIs:**
+- IndexedDB - Primary local persistence for snapshots, simulations, and backup entries.
+  - SDK/Client: Native browser `indexedDB` in `src/core/storage/IsfStore.ts`, `shared/storage/hub-storage.js`, `shared/storage/backup-manager.js`, and `apps/main/modules/storage-manager.js`.
+  - Auth: Not applicable.
+- localStorage - Active state, compatibility storage, PWA notices, onboarding flags, and fallback Step 2 simulation storage.
+  - SDK/Client: Native browser `localStorage` in `src/core/storage/CompatibilityBridge.ts`, `src/core/storage/IsfStore.ts`, `shared/storage/hub-storage.js`, `shared/pwa/pwa-manager.js`, `apps/main/modules/onboarding-manager.js`, `apps/simulation/modules/storage-fallback.js`.
+  - Auth: Not applicable.
+- Service Worker / Cache Storage - Offline behavior and PWA lifecycle.
+  - SDK/Client: Native `navigator.serviceWorker` in `shared/pwa/pwa-manager.js`; generated PWA configuration in `vite.config.ts`; legacy cache worker in `shared/legacy/sw.js`.
+  - Auth: Not applicable.
+- URL hash/query sharing - Portable state export/import and view mode detection.
+  - SDK/Client: Native `URL`, `URLSearchParams`, `TextEncoder`, `TextDecoder`, `Blob`, and `URL.createObjectURL` in `shared/core/share-utils.js`.
+  - Auth: Not applicable.
+
+**External Assets:**
+- Google Fonts - Runtime CSS font import for Gowun Batang and Gowun Dodum.
+  - SDK/Client: CSS `@import` in `src/styles/globals.css` and `shared/styles/step-theme.css`.
+  - Auth: Not applicable.
+- GitHub repository links - App pages link to the repository for navigation/reference.
+  - SDK/Client: Static anchors in `apps/main/index.html`, `apps/simulation/index.html`, `apps/portfolio/index.html`.
+  - Auth: Not applicable.
+
+**Market Data:**
+- Runtime market evidence is local static JSON, not a live external market-data API.
+  - SDK/Client: `public/data/indices/*.json`, documented in `public/data/indices/README.md`.
+  - Auth: Not applicable.
+- Market-data generation is offline and synthetic/project-local.
+  - SDK/Client: Python standard library only in `scripts/generate_qqq_data.py`, `scripts/generate_market_data.py`, `scripts/generate_extra_indices.py`, `scripts/generate_kospi_data.py`.
+  - Auth: Not applicable.
 
 ## Data Storage
 
 **Databases:**
-- **IndexedDB (Browser Native)**
-  - 로컬 브라우저 내장 데이터베이스로, 네트워크가 단절된 오프라인 환경에서도 원활하게 동작하는 로컬 퍼스트 아키텍처의 핵심 저장소.
-  - **`isf-hub-db-v1` (DB_VERSION 2)**
-    - 클라이언트: [hub-storage.js](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/shared/storage/hub-storage.js)
-    - 객체 스토어:
-      - `step1Snapshots`: 가계 흐름 정보 스냅샷 저장. 최근 20개(`MAX_SNAPSHOTS = 20`)까지만 유지하며 초과 시 `updatedAt` 인덱스 기반으로 가장 오래된 스냅샷부터 자동 삭제(Limit enforcement).
-      - `step2Entries`: 자산 포트폴리오 엔트리 저장.
-    - 마이그레이션: `event.oldVersion < 2` 조건에서 기존 `step2Portfolios` 스토어에 잔존하던 데이터를 신규 스토어인 `step2Entries`로 자동 복제 및 이전 처리.
-  - **`isf-backup-db-v1` (DB_VERSION 2)**
-    - 클라이언트: [backup-manager.js](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/shared/storage/backup-manager.js)
-    - 객체 스토어:
-      - `backupEntries`: 각 기능의 백업 히스토리 관리. 최대 60개(`MAX_BACKUP_ENTRIES = 60`)까지 백업 유지.
-      - 인덱스: `app` 컬럼을 생성하여 앱 단계별(Step 1, Step 2 등) 백업을 구분 및 인덱싱.
-    - 백업 간격 및 중복 방지: 자동 백업은 최소 12시간 주기(`AUTO_BACKUP_INTERVAL_MS`)로 제한하며, 데이터가 완전히 동일한 경우(`signature` 해시값 기반) 중복 저장을 차단.
+- Browser IndexedDB
+  - Connection: Native browser storage; no server connection string.
+  - Client: `isfStore` in `src/core/storage/IsfStore.ts` opens `isf-v2-db` with stores `step1_history`, `step2_simulations`, and `backups`.
+- Browser IndexedDB legacy/shared hub
+  - Connection: Native browser storage; no server connection string.
+  - Client: `window.IsfStorageHub` and `window.IsfHubStorage` in `shared/storage/hub-storage.js` open `isf-hub-db-v1` with stores `step1Snapshots` and `step2Entries`.
+- Browser IndexedDB backup database
+  - Connection: Native browser storage; no server connection string.
+  - Client: `window.IsfBackupManager` in `shared/storage/backup-manager.js` opens `isf-backup-db-v1` with store `backupEntries`.
 
 **File Storage:**
-- **LocalStorage:**
-  - 사용자가 작업 중인 활성 뷰 데이터(Active View State), PWA 관리용 가시성 상태 플래그 등 저용량 키-값 데이터를 캐싱.
-  - 브릿지 백업 패턴: `persistViewDataLocally` 호출 시 localStorage에 신규 데이터를 덮어쓰기 전에 기존 로컬 데이터를 `IsfBackupManager`를 통해 안전하게 IndexedDB 백업 스토어로 아카이빙.
-- **Local JSON:**
-  - [qqq_daily_chart.json](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/qqq_daily_chart.json) 등 정적 마켓 차트 데이터를 로컬 파일로 저장하여 필요 시 렌더링에 직접 로드.
+- Local browser export/import only - JSON exports use `Blob` download in `shared/core/share-utils.js`; image exports are generated from SVG/canvas in `apps/main/modules/sankey-renderer.js`.
+- Static project files - PWA icons and market evidence are stored under `public/icons/` and `public/data/indices/`.
 
 **Caching:**
-- **Cache Storage API (Service Worker):**
-  - [sw.js](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/shared/legacy/sw.js) 및 빌드 타임에 VitePWA 플러그인에 의해 제어되는 Service Worker가 JS, CSS, HTML, 웹 매니페스트, 로컬 이미지 등의 정적 자원을 브라우저 캐시에 저장하여 완전한 오프라인 작동을 지원.
+- Browser Cache Storage - `shared/legacy/sw.js` caches app shell/static assets at install/fetch time.
+- Workbox runtime generated by `vite-plugin-pwa` - Configured in `vite.config.ts` using `workbox.globPatterns`, `skipWaiting`, `clientsClaim`, and `navigateFallback`.
 
 ## Authentication & Identity
 
 **Auth Provider:**
-- 없음 (완전한 로컬 퍼스트 아키텍처)
-  - 별도의 원격 인증 서버가 존재하지 않으며, 사용자의 모든 자산 정보, 가계부 데이터, 백업 이력은 사용자의 로컬 브라우저 기기 샌드박스 내부(IndexedDB, LocalStorage)에만 저장됨.
-  - 외부로 데이터를 전송하지 않음으로써 강력한 사용자 개인정보 보호(Privacy-by-Design) 구현.
+- None detected.
+  - Implementation: The app is a client-side personal finance tool with no login, no user accounts, and no remote identity provider in `apps/`, `src/`, or `shared/`.
 
 ## Monitoring & Observability
 
-**Error & UI State Feedback:**
-- [feedback-manager.js](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/shared/components/feedback-manager.js): 화면 상단에 커스텀 알림 배너 및 토스트 메시지를 띄워 데이터 로드 성공, 백업 완료, 에러 메시지 등을 사용자에게 시각적으로 즉시 피드백.
-- Browser Console: 개발 중 디버깅 정보를 콘솔에 출력.
+**Error Tracking:**
+- None detected - No Sentry, Datadog, OpenTelemetry, analytics SDK, or similar dependency appears in `package.json` or source imports.
+
+**Logs:**
+- Browser console logging only - `console.warn`, `console.error`, and `console.log` are used in files such as `shared/storage/hub-storage.js`, `shared/pwa/pwa-manager.js`, `shared/storage/backup-manager.js`, `apps/main/modules/storage-manager.js`, and `apps/simulation/modules/storage-fallback.js`.
+- User-facing feedback uses `window.IsfFeedback` from `shared/components/feedback-manager.js` and callers in `apps/main/modules/persistence-controller.js`, `apps/simulation/modules/ui-controller.js`, and `shared/pwa/pwa-manager.js`.
 
 ## CI/CD & Deployment
 
 **Hosting:**
-- **GitHub Pages**: 빌드된 정적 리소스들을 서비스하기 위해 GitHub Pages 호스팅 이용.
-- 배포 서브패스 `/IndividualSavingsFlowUI/`에 대응하기 위해 `base` 경로를 설정하여 리소스를 라우팅함.
+- GitHub Pages - `.github/workflows/deploy.yml` deploys `dist` to the `github-pages` environment.
+- Public base URL - `README.md` points to `https://jinhoops.github.io/IndividualSavingsFlowUI/`; `vite.config.ts` and `public/manifest.webmanifest` use `/IndividualSavingsFlowUI/`.
 
 **CI Pipeline:**
-- GitHub Actions: `.github/workflows/` 하위의 배포 워크플로우를 통해 코드가 push될 때 자동으로 빌드 테스트 후 GitHub Pages에 배포.
+- GitHub Actions - `.github/workflows/deploy.yml` runs on pushes to `main` and `feat/backtest-simulator`, plus manual `workflow_dispatch`.
+- Deploy steps - `.github/workflows/deploy.yml` checks out code, installs Node 22, runs `npm install --legacy-peer-deps`, runs `npm run build`, uploads `dist`, and deploys to Pages.
 
 ## Environment Configuration
 
 **Required env vars:**
-- 없음 (정적 단일 페이지 애플리케이션으로 동작).
+- None detected for the app runtime.
+- `CI` is optionally read by `playwright.config.ts` to enable `forbidOnly` and retries in CI.
 
 **Secrets location:**
-- 해당 없음 (민감한 API 키나 보안 토큰을 클라이언트 사이드에서 소유하지 않음).
+- No project-managed secrets detected.
+- GitHub Actions uses repository-provided token permissions in `.github/workflows/deploy.yml`; no secret values are declared in the workflow.
+
+## Webhooks & Callbacks
+
+**Incoming:**
+- None detected - No HTTP server, webhook endpoint, API route, or backend callback handler exists in the scanned app code.
+
+**Outgoing:**
+- PWA manifest version check - `shared/pwa/pwa-manager.js` calls `fetch(`${manifestUrl}?vchk=${now}`, { cache: "no-store" })` against the same-origin `public/manifest.webmanifest`.
+- Service worker fetch passthrough/cache - `shared/legacy/sw.js` handles browser fetch events and fetches same-origin requests when cache misses occur.
+- No outgoing third-party API calls detected in runtime application code.
 
 ---
 
-*Integration audit: 2026-06-16*
+*Integration audit: 2026-06-23*

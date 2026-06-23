@@ -1,70 +1,92 @@
 # Technology Stack
 
-**Analysis Date:** 2026-06-16
+**Analysis Date:** 2026-06-23
 
 ## Languages
 
 **Primary:**
-- TypeScript 5.5 - 현대적인 핵심 로직, 스토리지 서비스, PWA 엔트리 포인트(`src/entries/`) 작성에 사용.
-- JavaScript (ES Modules) - `apps/` 및 `shared/` 하위의 레거시 애플리케이션 로직, 컴포넌트, UI 컨트롤러 구현에 사용.
+- TypeScript 5.5.2 - Typed source under `src/`, Vite and Playwright config in `vite.config.ts`, `playwright.config.ts`, `tsconfig.json`.
+- JavaScript ES modules - Main runtime app code under `apps/`, shared browser modules under `shared/`, and build/version scripts under `scripts/`.
+- HTML/CSS - Multi-entry static app shells in `index.html`, `apps/main/index.html`, `apps/simulation/index.html`, `apps/portfolio/index.html`; app styles in `apps/*/styles.css`, `src/styles/globals.css`, `shared/styles/step-theme.css`.
 
 **Secondary:**
-- Node.js (JavaScript) - 빌드 프로세스 고도화 및 유틸리티 스크립트 작성에 사용 (`scripts/bump-version.js`, `scripts/sync-version.js`).
+- Python 3 - Offline market-data generation scripts in `scripts/generate_qqq_data.py`, `scripts/generate_market_data.py`, `scripts/generate_extra_indices.py`, `scripts/generate_kospi_data.py`.
+- JSON/Web App Manifest - Runtime market evidence in `public/data/indices/*.json` and PWA metadata in `public/manifest.webmanifest`.
 
 ## Runtime
 
 **Environment:**
-- Browser (Modern Evergreen Browsers) - 웹 크립토, 클립보드, IndexedDB 등 최신 웹 API 지원 브라우저.
-- Node.js (Build-time & Development) - 로컬 개발 서버 구동 및 정적 에셋 빌드 타임 환경.
+- Browser runtime - The shipped app runs as static client-side pages using DOM APIs, IndexedDB, localStorage, service workers, Cache Storage, and URL hash/query state. Key files: `src/entries/step1.ts`, `src/entries/step2.ts`, `src/entries/step3.ts`, `shared/pwa/pwa-manager.js`, `shared/storage/hub-storage.js`.
+- Node.js 22 - CI/deploy runtime configured in `.github/workflows/deploy.yml`.
+- Node.js types 20.14.9 - Type definitions configured by `@types/node` in `package.json`.
 
 **Package Manager:**
-- npm (Lockfile: `package-lock.json`을 사용하여 의존성 트리 고정)
+- npm - Scripts and lockfile are defined in `package.json` and `package-lock.json`.
+- Lockfile: present at `package-lock.json`.
 
 ## Frameworks
 
 **Core:**
-- React 19 - UI 라이브러리. 점진적인 현대적 대시보드 도입을 위해 `react` (v19.2.5), `react-dom` (v19.2.5) 탑재.
-- Vanilla JS - Step 1, 2, 3 애플리케이션(`apps/step*/app.js`)의 비즈니스 로직 및 UI 제어.
+- Vite 5.3.1 - Static multi-page build and dev server configured in `vite.config.ts`.
+- React 19.2.5 / React DOM 19.2.5 - Installed runtime dependencies in `package.json`; TypeScript JSX mode is `react-jsx` in `tsconfig.json`.
+- Vite PWA 0.21.1 - PWA manifest and Workbox-driven service worker generation configured in `vite.config.ts`.
+- Tailwind CSS 4.0.0-alpha.13 - Vite plugin configured in `vite.config.ts`; shared/global styles are plain CSS files under `src/styles/`, `shared/styles/`, and `apps/*/styles.css`.
 
 **Testing:**
-- Vitest 4.1 - 핵심 유틸리티 및 클립보드 파서 등의 단위/통합 테스트 프레임워크 (`shared/core/clipboard-parser.test.js`).
-- Playwright 1.60 - 브라우저 기반 E2E(End-to-End) 테스트 프레임워크 (`tests/step1.spec.ts`).
+- Playwright 1.60.0 - End-to-end runner configured in `playwright.config.ts`; tests live in `tests/`.
+- Vitest 4.1.5 / Vitest UI 4.1.5 - Installed in `package.json`; co-located unit test example at `shared/core/clipboard-parser.test.js`.
+- TypeScript compiler 5.5.2 - `npm run check` and `npm run lint` both execute `tsc --noEmit` from `package.json`.
 
 **Build/Dev:**
-- Vite 5 - 빌드 도구 및 초고속 로컬 개발 서버 (`vite.config.ts`).
-- Tailwind CSS v4 (Alpha) - `@tailwindcss/vite` 플러그인을 활용한 Vite 네이티브 CSS 컴파일 환경 구성.
+- Vite dev server - `npm run dev` starts `vite` from `package.json`.
+- Vite build - `npm run build` runs `scripts/bump-version.js`, `npm run sync-version`, and `vite build`.
+- Version sync scripts - `scripts/sync-version.js` updates `public/manifest.webmanifest`, `shared/legacy/sw.js`, and `shared/core/utils.js`; `scripts/bump-version.js` increments package version before production builds.
+- GitHub Actions Pages deployment - `.github/workflows/deploy.yml` installs dependencies, builds `dist`, and deploys with GitHub Pages actions.
 
 ## Key Dependencies
 
 **Critical:**
-- `react` / `react-dom` (v19.2.5) - 현대적 UI 점진적 도입.
-- `vite-plugin-pwa` (v0.21.1) - 오프라인 가용성을 보장하는 Service Worker 및 PWA 환경 제어.
+- `vite` ^5.3.1 - Owns local dev server and static production build in `vite.config.ts`.
+- `react` ^19.2.5 and `react-dom` ^19.2.5 - Installed UI runtime dependencies for typed React entry support under `src/`.
+- `vite-plugin-pwa` ^0.21.1 - Generates PWA assets and service-worker behavior from `vite.config.ts`.
+- `@vitejs/plugin-react` ^4.3.1 - Enables React transform in `vite.config.ts`.
+- `@tailwindcss/vite` ^4.0.0-alpha.13 and `tailwindcss` ^4.0.0-alpha.13 - CSS framework/tooling dependency configured by `vite.config.ts`.
 
 **Infrastructure:**
-- `@tailwindcss/vite` - 스타일 빌드 플러그인.
-- `typescript` (v5.5.2) - 타입 안전성 강화.
-- `@playwright/test` - E2E 테스트 오케스트레이션.
+- `@playwright/test` ^1.60.0 - Browser E2E testing in `tests/` with dev-server orchestration in `playwright.config.ts`.
+- `typescript` ^5.5.2 - Type checking for `src`, `apps`, and `shared` via `tsconfig.json`.
+- `autoprefixer` ^10.4.19 and `postcss` ^8.4.38 - CSS processing dependencies in `package.json`.
+- `@types/react`, `@types/react-dom`, `@types/node` - Type packages listed in `package.json`.
 
 ## Configuration
 
 **Environment:**
-- 로컬 퍼스트(Local-First) 아키텍처로, 별도의 서버 연동이나 환경 변수 설정 없음.
-- 빌드 프로세스 실행 시 `scripts/bump-version.js`와 `scripts/sync-version.js`가 구동되어 `package.json`의 버전 정보를 정적 자산(`public/manifest.webmanifest`, `shared/legacy/sw.js`, `shared/core/utils.js`)에 동기화.
+- No `.env` files detected at the repository root during this scan.
+- No runtime environment-variable reads detected in `apps/`, `src/`, `shared/`, `scripts/`, `public/`, or `tests/`; `playwright.config.ts` only reads `process.env.CI`.
+- Browser app configuration is static and path-based: `vite.config.ts` sets `base: '/IndividualSavingsFlowUI/'`, `publicDir: 'public'`, and `__APP_VERSION__` from `package.json`.
 
 **Build:**
-- [vite.config.ts](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/vite.config.ts): 메인 페이지 및 각 단계를 나타내는 Multi-Entry 빌드 구성, PWA Workbox 캐싱 정책 및 Manifest 설정 관리.
-- [tsconfig.json](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/tsconfig.json): ESNext 빌드 타겟 지정, `allowJs` 활성화로 Vanilla JS 혼용 지원, `@/*` 및 `@shared/*` 절대 경로 에일리어스 정의.
+- `vite.config.ts` defines a multi-entry Rollup build for `index.html`, `apps/main/index.html`, `apps/simulation/index.html`, and `apps/portfolio/index.html`.
+- `vite.config.ts` emits to `dist` with assets under `dist/assets`.
+- `vite.config.ts` configures PWA manifest values, included icon assets, Workbox glob patterns, `skipWaiting`, `clientsClaim`, and `navigateFallback`.
+- `tsconfig.json` uses `strict: true`, `allowJs: true`, `module: ESNext`, `moduleResolution: Node`, `jsx: react-jsx`, aliases `@/* -> ./src/*` and `@shared/* -> ./shared/*`.
+- `playwright.config.ts` sets `testDir: './tests'`, Chromium-only execution, `workers: 1`, `baseURL: 'http://localhost:5173/IndividualSavingsFlowUI/'`, blocks service workers in tests, and starts Vite through `webServer`.
 
 ## Platform Requirements
 
 **Development:**
-- Node.js 20+
-- Modern Web Browser (E2E 테스트 구동용)
+- Use `npm install` with `package-lock.json`.
+- Use `npm run dev` for local Vite development.
+- Use `npm run check` or `npm run lint` for TypeScript validation.
+- Use `npm run test:e2e` for Playwright E2E tests.
+- The app expects browser support for IndexedDB/localStorage for persistence paths in `src/core/storage/IsfStore.ts`, `src/core/storage/CompatibilityBridge.ts`, `shared/storage/hub-storage.js`, and `shared/storage/backup-manager.js`.
 
 **Production:**
-- Static Hosting (GitHub Pages 등 정적 서버 환경 배포)
-- PWA와 Service Worker 구동을 위해 반드시 HTTPS 환경 필요 (로컬 개발 시 localhost 예외 허용)
+- Static hosting target is GitHub Pages, configured by `.github/workflows/deploy.yml` and the `/IndividualSavingsFlowUI/` base path in `vite.config.ts`.
+- Production artifact is `dist` from `npm run build`.
+- PWA installation and offline operation depend on HTTPS or localhost checks in `shared/pwa/pwa-manager.js`.
+- Runtime market evidence is served from committed static files under `public/data/indices/`, documented in `public/data/indices/README.md`.
 
 ---
 
-*Stack analysis: 2026-06-16*
+*Stack analysis: 2026-06-23*

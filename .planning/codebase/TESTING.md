@@ -1,41 +1,231 @@
-# 테스트 전략 및 검증 상태 (Testing Strategy & Practices)
+# Testing Patterns
 
-본 문서는 개인 저축 흐름 UI(Individual Savings Flow UI) 프로젝트의 테스트 자동화 스택, 검증 절차, 그리고 구현된 테스트 케이스 현황을 설명합니다.
+**Analysis Date:** 2026-06-23
 
-## 1. 테스트 인프라 및 도구 (Testing Infrastructure)
+## Test Framework
 
-*   **Playwright (E2E 테스트):** UI 및 브라우저 상호작용 검증을 담당합니다. 설정 파일인 [playwright.config.ts](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/playwright.config.ts)를 기반으로 작동하며, `npm run test:e2e` 명령어를 통해 실행할 수 있습니다.
-*   **Vitest (단위 테스트):** 패키지 설정([package.json](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/package.json))에 `vitest` 및 `@vitest/ui`가 구성되어 있으며, 점진적 이관 및 통합을 위해 준비되어 있습니다.
-*   **커스텀 테스트 스크립트:** 현재 비즈니스 로직 단위 테스트 중 일부(예: 클립보드 파서)는 경량 Node.js 스크립트로 동작하며, assertions 결과를 표준 출력(`console.log`) 형태로 시각화하여 확인하도록 구축되어 있습니다.
-*   **정적 분석 (Static Analysis):** TypeScript 컴파일러 설정([tsconfig.json](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/tsconfig.json))을 바탕으로 `npm run check` (`tsc --noEmit`) 명령어를 실행하여 타입 무결성 및 컴파일 에러를 빌드 전 단계에서 필터링합니다.
+**Runner:**
+- Playwright `^1.60.0` is the active automated test runner.
+- Config: `playwright.config.ts`.
+- Test directory: `tests/`.
+- Vitest `^4.1.5` and `@vitest/ui` `^4.1.5` are installed in `package.json`, but no `vitest.config.*` file or `npm test` script is present.
+- `shared/core/clipboard-parser.test.js` is a direct Node script-style smoke test, not a Vitest suite.
 
-## 2. 주요 테스트 케이스 및 검증 상태 (Test Cases & Validation Status)
+**Assertion Library:**
+- Playwright `expect` from `@playwright/test` in `tests/step1.spec.ts` and `tests/step2.spec.ts`.
+- The parser smoke test in `shared/core/clipboard-parser.test.js` uses manual boolean checks and `console.log`.
 
-### Playwright E2E 테스트
-*   **경로:** [tests/step1.spec.ts](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/tests/step1.spec.ts)
-*   **검증 항목:**
-    *   **레이아웃 로드 검증:** 메인 `main` 컨테이너와 헤더 타이틀이 올바르게 로드되는지 검증합니다.
-    *   **Sankey 다이어그램 높이 제한:** Sankey 뷰포트 영역의 높이가 디자인 요구 사양에 맞게 `440px` 이하로 제한되는지 체크하여 UI 넘침 현상을 감시합니다.
-    *   **UI 곡률 정합성:** 선택 상자, 입력란, 버튼의 `border-radius` 스타일이 CSS 토큰 변수인 `var(--rd-sm)` (8px) 사양에 완벽히 정합하는지 직접 계산하여 회귀 현상을 잡아냅니다.
-    *   **Sankey 뷰 토글 크기:** 토글 버튼의 높이가 레이아웃 간격 표준인 `28px`에 정확히 수렴하는지 소수점 단위 정밀도로 평가합니다.
-    *   **Phase 09 계좌/Sankey 데이터 형태:** 브라우저 `page.evaluate()`에서 Step 1 ES module을 직접 import하여 invalid account id 보정, `accountCorrections` 메타데이터, `total-income` / `총수입` 노드, `income -> total-income -> account` 링크, deficit exclusion을 검증합니다.
-    *   **Phase 09 프리셋 빠른 설정:** 브라우저 `page.evaluate()`와 UI 클릭 경로를 함께 사용하여 Korean preset key/label 계약, 퍼센트 정규화, `사용자 지정` 복사, 확인 화면의 원래/보정 퍼센트 및 반올림 금액 표시, `localStorage` 영속화 결과, 억/조 단위 금액 포맷을 검증합니다.
-    *   **Phase 09 재무 요약/모달 입력:** Step 1 summary card view model과 DOM 렌더링, category card click modal, explicit save/cancel draft behavior, inline account creation, final confirmation, and `localStorage` persistence are covered in [tests/step1.spec.ts](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/tests/step1.spec.ts).
+**Run Commands:**
+```bash
+npm run test:e2e      # Run Playwright end-to-end tests
+npm run check         # Run TypeScript no-emit checks
+npm run lint          # Same as check; runs tsc --noEmit
+node shared/core/clipboard-parser.test.js  # Run parser smoke test manually
+```
 
-### 클립보드 SMS 파서 커스텀 테스트
-*   **경로:** [clipboard-parser.test.js](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/shared/core/clipboard-parser.test.js)
-*   **검증 항목:**
-    *   사용자가 금융권 알림(SMS 등)을 복사/붙여넣기하여 스마트하게 소비 항목을 등록할 수 있는 [clipboard-parser.js](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/shared/core/clipboard-parser.js) 모듈의 정상 동작 유무를 평가합니다.
-    *   신한카드, 현대카드, 토스뱅크, 국민카드(KB) 승인 SMS 포맷에 대해 정규표현식 파싱 기능이 동작하여 정확한 금액(원 단위), 가맹점명, 승인 날짜를 가져오는지 테스트 케이스를 통해 점검합니다.
+## Test File Organization
 
-## 3. 에이전트 주도 검증 파이프라인 (Agent-Driven Testing Methodology)
+**Location:**
+- E2E and browser integration tests live under `tests/`: `tests/step1.spec.ts`, `tests/step2.spec.ts`.
+- The parser smoke test is colocated with the implementation: `shared/core/clipboard-parser.test.js` next to `shared/core/clipboard-parser.js`.
 
-이 프로젝트는 에이전트의 개발 비중이 높기 때문에 코드가 작성되는 즉시 아래의 3단계 가이드라인을 강제합니다.
+**Naming:**
+- Use `*.spec.ts` for Playwright suites under `tests/`.
+- Use `*.test.js` only for standalone JavaScript smoke tests when keeping them near source.
 
-1.  **목표 중심의 검증 계획 명시:** 모든 작업 계획서 및 실행 전 단계에서는 아래의 규격과 같이 명시적인 확인(verify) 루프를 정의해야 합니다.
-    ```
-    1. [구현 단계] → verify: [관측 가능한 확인 항목 / Assertion]
-    2. [구현 단계] → verify: [관측 가능한 확인 항목 / Assertion]
-    ```
-2.  **반응형 및 모바일 품질 보증:** 스타일 시트나 HTML 요소가 수정될 경우, 760px 이하의 모바일 레이아웃 구조가 깨지지 않는지 시각적으로 검증해야 합니다.
-3.  **향후 이관 로드맵:** 기존에 작성된 개별 유틸 스크립트 기반 테스트들(예: [clipboard-parser.test.js](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/shared/core/clipboard-parser.test.js))을 Vitest 환경 내 유닛 테스트 스위트로 정식 마이그레이션하여 모던 API 검증 체계로의 전환이 요구됩니다.
+**Structure:**
+```text
+tests/
+├── step1.spec.ts      # Main app UI/UX, layout, storage, and flow contracts
+└── step2.spec.ts      # Simulation app tutorial, import, storage fallback, and strategy contracts
+
+shared/core/
+├── clipboard-parser.js
+└── clipboard-parser.test.js
+```
+
+## Test Structure
+
+**Suite Organization:**
+```typescript
+// tests/step2.spec.ts
+// @ts-nocheck
+import { test, expect } from '@playwright/test';
+
+test.describe('Step 2 Phase 08 storage and import contracts', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript((source) => {
+      localStorage.clear();
+      sessionStorage.clear();
+      localStorage.setItem('isf-step1-active', JSON.stringify(source));
+    }, STEP1_SOURCE);
+  });
+
+  test('Phase 08 Step 1 import keeps Step 2 edits local and reset re-imports the source', async ({ page }) => {
+    await page.goto('apps/simulation/index.html');
+    await page.waitForSelector('#totalMonthlyInvestCapacity');
+    await expect(page.locator('#totalMonthlyInvestCapacity')).toHaveValue('1,750,000');
+  });
+});
+```
+
+**Patterns:**
+- Group tests by feature phase or contract area with `test.describe`, as in `tests/step1.spec.ts` and `tests/step2.spec.ts`.
+- Use `test.beforeEach` to reset browser storage and IndexedDB before navigation.
+- Use `test.afterEach` to close pages when the suite opens long-running UI flows, as in `tests/step1.spec.ts`.
+- Navigate to app entry HTML files directly: `page.goto('apps/main/index.html')`, `page.goto('apps/simulation/index.html')`.
+- Wait for stable selectors before assertions: `page.waitForSelector('main')`, `page.waitForSelector('#totalMonthlyInvestCapacity')`.
+- Prefer Playwright locators and web assertions: `await expect(page.locator('#step1SyncBanner')).toBeVisible()`.
+- Use `page.evaluate` for direct browser-context contract checks against app modules and LocalStorage.
+
+## Mocking
+
+**Framework:** Playwright browser context primitives; no Vitest mocking pattern is active.
+
+**Patterns:**
+```typescript
+// tests/step2.spec.ts
+const result = await page.evaluate(async () => {
+  const [{ state }, { featureController }] = await Promise.all([
+    import('/IndividualSavingsFlowUI/apps/simulation/modules/state.js'),
+    import('/IndividualSavingsFlowUI/apps/simulation/modules/feature-controllers.js'),
+  ]);
+
+  const failingHub = {
+    saveStep2Entry: async () => { throw new Error('IDB_BLOCKED_SAVE'); },
+    listStep2Entries: async () => { throw new Error('IDB_BLOCKED_LIST'); },
+    getStep2EntryById: async () => { throw new Error('IDB_BLOCKED_LOAD'); },
+    deleteStep2Entry: async () => { throw new Error('IDB_BLOCKED_DELETE'); },
+    triggerAutoBackup: async () => ({ created: false }),
+  };
+  window.IsfStorageHub = failingHub;
+  window.IsfHubStorage = failingHub;
+
+  await featureController.saveCurrent();
+  return { savedId: state.currentSimulationId };
+});
+```
+
+**What to Mock:**
+- Mock browser globals in `page.evaluate` when testing fallback paths: `window.IsfStorageHub`, `window.IsfHubStorage` in `tests/step2.spec.ts`.
+- Seed `localStorage` and clear `sessionStorage`/IndexedDB in `page.addInitScript` before loading the app.
+- Mock user confirmation flows with `page.once('dialog', ...)` when clicks trigger `confirm` or `alert`.
+
+**What NOT to Mock:**
+- Do not mock rendering for layout and visual contract tests in `tests/step1.spec.ts`; assert real DOM boxes, overflow, visibility, SVG contents, and screenshots.
+- Do not mock app calculators when testing strategy comparison contracts in `tests/step2.spec.ts`; dynamically import and execute `apps/simulation/modules/calculator.js` in the page.
+- Do not bypass LocalStorage/IndexedDB state setup when the behavior under test depends on persistence contracts.
+
+## Fixtures and Factories
+
+**Test Data:**
+```typescript
+// tests/step2.spec.ts
+const STEP1_SOURCE = {
+  version: 2,
+  updatedAt: Date.now(),
+  incomes: [],
+  expenseItems: [],
+  savingsItems: [],
+  investItems: [],
+  horizonYears: 18,
+  startInvest: 25000000,
+  monthlyInvest: 1750000,
+};
+```
+
+**Location:**
+- Inline constants live at the top of the relevant spec file, such as `STEP1_SOURCE` in `tests/step2.spec.ts`.
+- UI fixtures are established through browser storage in `page.addInitScript`, not external fixture files.
+- Parser examples live inline in `testCases` inside `shared/core/clipboard-parser.test.js`.
+
+## Coverage
+
+**Requirements:** None enforced.
+
+**View Coverage:**
+```bash
+# No configured coverage command is present in package.json.
+# Add a runner/config first before relying on coverage reports.
+```
+
+**Current Signals:**
+- Playwright produces behavior confidence for major UI flows in `tests/step1.spec.ts` and `tests/step2.spec.ts`.
+- No coverage thresholds are configured in `playwright.config.ts`, `vite.config.ts`, or `package.json`.
+- Vitest coverage packages are optional peer entries in `package-lock.json`, but no local coverage provider is configured.
+
+## Test Types
+
+**Unit Tests:**
+- Not formally configured. `shared/core/clipboard-parser.test.js` is a manual script that imports `ClipboardParser` from `shared/core/clipboard-parser.js`, iterates cases, and logs pass/fail.
+- For new pure functions in `apps/main/modules/input-sanitizer.js`, `apps/main/modules/comparison-engine.js`, or `apps/simulation/modules/calculator.js`, prefer adding a real Vitest script/config before creating more manual test scripts.
+
+**Integration Tests:**
+- Playwright specs act as browser integration tests. They load real app pages, interact with controls, inspect LocalStorage, and dynamically import modules.
+- `tests/step2.spec.ts` checks storage bridge fallback behavior by injecting failing storage globals and asserting app state.
+- `tests/step1.spec.ts` checks Main UI layout hierarchy, Sankey/network rendering, controls, screenshots, and saved input contracts.
+
+**E2E Tests:**
+- Playwright is configured in `playwright.config.ts` with `testDir: './tests'`, Chromium only, `workers: 1`, `fullyParallel: false`, `trace: 'on-first-retry'`, `serviceWorkers: 'block'`, and a Vite web server.
+- Base URL is `http://localhost:5173/IndividualSavingsFlowUI/`.
+- The web server command is `node ./node_modules/vite/bin/vite.js --host 127.0.0.1`.
+
+## Common Patterns
+
+**Async Testing:**
+```typescript
+await page.goto('apps/main/index.html');
+await page.waitForSelector('main');
+const sankeySvg = page.locator('#sankeySvg');
+await expect(sankeySvg).toBeVisible();
+const box = await sankeySvg.boundingBox();
+expect(box).not.toBeNull();
+```
+
+**Error Testing:**
+```typescript
+page.on('dialog', async (dialog) => {
+  dialogs.push(dialog.message());
+  await dialog.dismiss();
+});
+
+const failingHub = {
+  saveStep2Entry: async () => { throw new Error('IDB_BLOCKED_SAVE'); },
+};
+window.IsfStorageHub = failingHub;
+```
+
+**Responsive/Layout Testing:**
+```typescript
+for (const viewport of [{ width: 768, height: 1024 }, { width: 390, height: 844 }]) {
+  await page.setViewportSize(viewport);
+  await page.waitForTimeout(100);
+  const overflow = await page.evaluate(() =>
+    document.documentElement.scrollWidth - document.documentElement.clientWidth
+  );
+  expect(overflow).toBeLessThanOrEqual(4);
+}
+```
+
+**Visual Artifacts:**
+- `tests/step1.spec.ts` writes screenshots under `test-results/`, for example `test-results/phase07-step1-mobile-390.png`.
+- Treat `test-results/` as generated verification output, not source.
+
+## Adding New Tests
+
+**For UI behavior:**
+- Add a focused Playwright `test(...)` to `tests/step1.spec.ts` for Main app behavior or `tests/step2.spec.ts` for Simulation app behavior.
+- Reset storage in `beforeEach` before relying on persisted state.
+- Assert user-visible DOM state with locators before checking internal state with `page.evaluate`.
+
+**For pure logic:**
+- Prefer creating a proper Vitest configuration and `npm test` script before expanding unit tests.
+- Put test cases near the source when testing isolated shared utilities, following the colocated pattern of `shared/core/clipboard-parser.test.js`, but use real assertions rather than console-only pass/fail.
+
+**For storage and import contracts:**
+- Use browser-context dynamic imports and controlled `window.*` globals, following `tests/step2.spec.ts`.
+- Assert both returned values and persisted browser storage keys.
+
+---
+
+*Testing analysis: 2026-06-23*

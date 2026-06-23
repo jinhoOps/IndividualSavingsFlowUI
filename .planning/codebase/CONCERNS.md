@@ -1,102 +1,186 @@
 # Codebase Concerns
 
-**Analysis Date:** 2026-06-16
+**Analysis Date:** 2026-06-23
 
-## 기술 부채 (Tech Debt)
+## Tech Debt
 
-**단위 변환 헬퍼 명칭과 의미적 괴리:**
-- 이슈: 단위 변환 관련 데이터 정합성 강화 과정에서 `toWon`과 `toMan` 함수는 단위를 변경하지 않고 1:1 패스스루 형태로 작동하도록 수정되었습니다. 그러나 JSDoc 주석, 타입 시그니처(`ManWon` 브랜드 타입), 그리고 주요 설정 및 규칙 문서들에는 여전히 이 함수들이 만원 단위 변환을 수행한다고 명시되어 있습니다.
-- 파일:
-  - [money.ts](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/src/core/types/money.ts)
-  - [utils.js](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/shared/core/utils.js)
-- 영향: 향후 React 마이그레이션 및 유지보수 시 단위가 이미 '원' 단위로 조정된 상태에서 중복 계산(예: 직접 `/ 10000` 연산 후 헬퍼를 추가 통과시키는 행위)을 유발하거나 데이터가 소실 및 왜곡될 가능성이 큽니다.
-- 해결 방향: 실제 1:1 변환 주기에 맞춰 함수명을 `roundWon` 등으로 수정하거나, 문서 및 주석을 최신 변환 정책에 맞춰 통일해야 합니다.
+**Large browser controller modules:**
+- Issue: Several user-facing flows are implemented as long, stateful modules with nested closures and DOM mutation logic. `apps/main/modules/financial-modal-controller.js` is 1,261 lines and owns draft state, editing state, household UI, validation, row rendering, drag/drop, and persistence handoff. `apps/main/modules/sankey-renderer.js` is 846 lines and owns layout, SVG rendering, tooltips, export, and mobile collapse behavior.
+- Files: `apps/main/modules/financial-modal-controller.js`, `apps/main/modules/sankey-renderer.js`, `apps/main/modules/list-renderer.js`
+- Impact: Small feature changes can accidentally alter draft comparison, household mode, Sankey layout, or persistence behavior because related logic is spread through closure-local mutable variables and global `state`.
+- Fix approach: Extract pure helpers first: draft diffing/validation from `apps/main/modules/financial-modal-controller.js`, Sankey layout calculation from `apps/main/modules/sankey-renderer.js`, and HTML rendering helpers from `apps/main/modules/list-renderer.js`. Keep DOM event binding at the edge and add focused unit tests for extracted functions.
 
-**레거시 바닐라 JS 기반 3계층 구조의 리팩토링 복잡성:**
-- 이슈: `apps/step1/app.js`와 같은 레거시 바닐라 JS 진입점들이 비대해지고, 상태 관리 및 UI 연동을 위해 `state-helpers.js` 내 14종의 필수 헬퍼 함수와 강하게 결합되어 있습니다.
-- 파일:
-  - [app.js](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/apps/step1/app.js)
-  - [state-helpers.js](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/apps/step1/modules/state-helpers.js)
-- 영향: React 점진적 적용 과정에서 React의 선언형 렌더링 주기 및 상태 흐름(useState/Zustand 등)에 이 헬퍼 로직을 부드럽게 이식하기 어렵고, 과도기적인 코드 파편화가 증가합니다.
-- 해결 방향: 상태 모델링과 UI 관리 계층을 React 컴포넌트 내부로 이식하는 명확한 마이그레이션 규칙을 정립해야 합니다.
+**Mixed legacy JavaScript and modern TypeScript storage stacks:**
+- Issue: Storage exists in parallel forms: legacy global browser utilities in `shared/storage/hub-storage.js` and `shared/storage/backup-manager.js`, direct app usage in `apps/main/modules/storage-manager.js`, and a modern bridge in `src/core/storage/CompatibilityBridge.ts` / `src/core/storage/IsfStore.ts`.
+- Files: `shared/storage/hub-storage.js`, `shared/storage/backup-manager.js`, `apps/main/modules/storage-manager.js`, `src/core/storage/CompatibilityBridge.ts`, `src/core/storage/IsfStore.ts`, `src/core/storage/BackupService.ts`
+- Impact: Storage behavior can diverge by entry point. A change that works through the TypeScript bridge may bypass legacy fallback behavior or localStorage keys used by existing Playwright tests.
+- Fix approach: Treat `src/core/storage/CompatibilityBridge.ts` as the compatibility boundary. New storage behavior should be implemented in `src/core/storage/IsfStore.ts` and verified against legacy consumers in `apps/main/modules/persistence-controller.js`, `apps/simulation/modules/storage-fallback.js`, and `apps/portfolio/modules/state.js`.
 
-**AI 기능 제거 잔재:**
-- 이슈: 과거 실험적 AI 기능의 잔재가 완벽히 제거되지 않았을 가능성이 있습니다.
-- 파일:
-  - [data-hub-modal.js](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/shared/components/data-hub-modal.js)
-- 영향: 사용되지 않는 코드(Dead code)로 인한 혼선 및 잠재적 버그 유발.
-- 해결 방향: 코드베이스 전반에 걸친 오딧(Audit)을 통해 AI 관련 스텁, 설정, 주석을 완전히 제거해야 합니다.
+**Committed build output:**
+- Issue: Built assets are present under `dist/`, including `dist/apps/main/index.html` and `dist/assets/mainApp-BAW_GJB3.js`.
+- Files: `dist/apps/main/index.html`, `dist/assets/mainApp-BAW_GJB3.js`, `vite.config.ts`
+- Impact: Source and generated output can drift. Reviewers and future agents may inspect stale `dist/` files instead of source modules under `apps/`, `shared/`, and `src/`.
+- Fix approach: Prefer source paths for implementation and mapping. If `dist/` is intentionally committed for deployment, regenerate it only through `npm run build` and include it in release/deploy commits, not routine source-only changes.
 
-## 알려진 버그 (Known Bugs)
+**One backlog file captures product work outside planning structure:**
+- Issue: `TODO.md` contains an unplanned real-estate/DSR/LTV feature idea and overlaps with a noted Step 1.2/newlywed hub direction.
+- Files: `TODO.md`, `prd-10.md`, `.planning/`
+- Impact: Product scope can fragment between `TODO.md`, PRDs, and `.planning/` artifacts.
+- Fix approach: Promote actionable items from `TODO.md` into `.planning/` milestone/phase artifacts before implementation. Keep `TODO.md` as inbox only, not as authoritative requirements.
 
-**항목 비교 시 데이터 합산 누락 (수정됨, 회귀 위험):**
-- 증상: 동일한 이름을 가진 항목 비교 시 데이터가 덮어씌워지는 현상.
-- 파일: [comparison-engine.js](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/apps/step1/modules/comparison-engine.js)
-- 트리거: 입력 필드에 동일한 이름의 항목을 여러 번 입력할 때 발생.
-- 예방책: 입력 단계에서 동일 항목 이름을 자동으로 집계(Aggregate)하도록 강제해야 합니다.
+## Known Bugs
 
-## 아키텍처적 위험 요소 (Architectural Risks)
+**Surplus transfer allocation uses bucket indexes from different arrays:**
+- Symptoms: In `simulateProjection`, surplus cash allocation computes `surplusAdds` for `targetBuckets`, then uses `savingsBuckets.indexOf(bucket)` and `investBuckets.indexOf(bucket)` to index into the smaller `surplusAdds` array. When selected target buckets are not at index `0` in their source arrays, the wrong add amount can be used or the add can become `0`.
+- Files: `apps/main/modules/calculator.js`
+- Trigger: Configure `surplusTransferAccountId` to match a savings/invest bucket that is not the first bucket in `savingsBuckets` or `investBuckets`, then run projection with positive surplus.
+- Workaround: Keep the surplus target mapped to the first matching bucket, or avoid relying on surplus transfer precision until fixed.
 
-**전역 CompatibilityBridge에 대한 과도한 결합:**
-- 이슈: 바닐라 JS 레거시 앱이 현대화된 TS 스토어에 접근할 수 있도록 글로벌 `window` 객체에 `IsfStorageHub`, `IsfBackupManager`, `IsfUtils`를 강제 주입하고 있습니다.
-- 파일: [CompatibilityBridge.ts](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/src/core/storage/CompatibilityBridge.ts)
-- 영향: 브라우저 전역 객체에 의존하므로 로드 순서 및 모듈 초기화 타이밍에 따라 전역 객체 미정의 오류가 발생할 수 있으며, 네임스페이스 충돌의 가능성이 높습니다.
-- 해결 방향: React 마이그레이션 과정에서 전역 객체 의존성을 제거하고, ESM 임포트 패턴으로 전면 전환해야 합니다.
+**IndexedDB availability is overreported by the modern bridge:**
+- Symptoms: `target.IsfBackupManager.isIndexedDbAvailable` always returns `true` in `src/core/storage/CompatibilityBridge.ts`, while actual IndexedDB open can fail in `src/core/storage/IsfStore.ts`.
+- Files: `src/core/storage/CompatibilityBridge.ts`, `src/core/storage/IsfStore.ts`, `apps/main/modules/persistence-controller.js`
+- Trigger: Run in a browser/context where IndexedDB is unavailable, blocked, quota-limited, or fails during open.
+- Workaround: Legacy `shared/storage/backup-manager.js` has a real availability check; use that pattern when hardening the TypeScript bridge.
 
-**비동기 IndexedDB와 동기식 레거시 로직의 흐름 불일치:**
-- 이슈: `IsfStore`는 IndexedDB를 사용하여 완전히 비동기(Promise/Async-Await)로 쓰기 및 백업 작업을 수행하는 반면, 레거시 앱의 제어 흐름은 동기식 `localStorage` 동작 방식에 맞춰 설계되어 있습니다.
-- 파일:
-  - [IsfStore.ts](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/src/core/storage/IsfStore.ts)
-  - [CompatibilityBridge.ts](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/src/core/storage/CompatibilityBridge.ts)
-- 영향: 레거시 코드에서 비동기 데이터 저장이 끝나기 전에 화면 갱신이나 페이지 후속 작업이 실행될 경우, 레이스 컨디션(Race Condition)으로 인한 데이터 유실이나 미반영 결함이 생길 수 있습니다.
-- 해결 방향: 브릿지 메서드 내부에 동기화 완료 대기 로직을 엄격하게 구현하거나, 레거시 컨트롤러를 비동기 이벤트 기반으로 전면 리팩토링해야 합니다.
+**Legacy database deletion runs during storage initialization:**
+- Symptoms: `IsfStore.init()` calls `window.indexedDB.deleteDatabase('isf-hub-db-v1')` when it detects the old database.
+- Files: `src/core/storage/IsfStore.ts`
+- Trigger: Opening an app path that initializes the TypeScript storage bridge on a browser profile with existing `isf-hub-db-v1` data.
+- Workaround: Export/import JSON or create manual backups before testing storage migration changes.
 
-## 미결 과제 (Pending Tasks)
+## Security Considerations
 
-**런타임 데이터 검증 부재:**
-- 이슈: 수입/지출/저축/투자 항목 등 단계(Step) 간에 데이터를 교환하거나 부부 데이터 병합(ISF CODE)을 처리할 때, 데이터의 구조적 런타임 스키마 검증이 이루어지지 않습니다.
-- 파일: [input-sanitizer.js](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/apps/step1/modules/input-sanitizer.js)
-- 영향: 비정상적이거나 스키마 버전이 다른 외부 데이터가 영속성 스토어에 곧바로 적재되어 데이터 정합성을 파괴할 우려가 있습니다.
-- 해결 방향: 데이터가 로드 및 병합되는 접점에 Zod 또는 컴팩트한 스키마 검증기를 도입해 런타임 정합성을 강제해야 합니다.
+**HTML string rendering must keep escaping discipline:**
+- Risk: Multiple renderers assign template strings to `innerHTML`. Some paths escape user-controlled labels with `IsfUtils.escapeHtml`, but not every assignment is structurally enforced by a sanitizer or typed safe-HTML helper.
+- Files: `apps/main/modules/list-renderer.js`, `apps/main/modules/visualization-controller.js`, `apps/portfolio/modules/dom.js`, `apps/simulation/modules/renderers.js`
+- Current mitigation: Representative item renderers in `apps/main/modules/list-renderer.js` escape names/groups with `IsfUtils.escapeHtml`; tooltip rendering in `apps/main/modules/visualization-controller.js` escapes `&`, `<`, and `>` before applying limited markup transforms.
+- Recommendations: Use DOM APIs or a small `htmlEscape`/safe-template helper for all user-controlled values. Add tests for names/groups containing `<img onerror=...>`, quotes, and backticks in Step 1, Step 2, and portfolio renderers.
 
-**IndexedDB 차단 시 환경적 폴백 설계 부재:**
-- 이슈: 브라우저의 프라이빗 브라우징(Private Mode) 또는 로컬 보안 정책에 의해 IndexedDB 초기화가 차단될 때, 이를 보완하여 LocalStorage 등으로 실시간 전환되는 투명한 폴백 메커니즘이 부족합니다.
-- 파일: [IsfStore.ts](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/src/core/storage/IsfStore.ts)
-- 영향: 차단 환경에서 스토어 호출 시 예외를 던지며 웹 어플리케이션 전체가 먹통이 될 수 있습니다.
-- 해결 방향: 데이터 저장 실패 시 LocalStorage에 캐싱 처리하고, IndexedDB가 활성화될 때 마이그레이션하는 복구 로직이 요구됩니다.
+**Financial data is stored locally without encryption or access controls:**
+- Risk: Income, expense, account, portfolio, and backup data are stored in `localStorage`, `sessionStorage`, URL hashes, and IndexedDB. Any script running on the origin can read it.
+- Files: `apps/main/modules/storage-manager.js`, `apps/main/modules/persistence-controller.js`, `shared/core/share-utils.js`, `shared/storage/hub-storage.js`, `src/core/storage/IsfStore.ts`, `apps/simulation/modules/state.js`
+- Current mitigation: No remote API is detected; storage is local-first. Share IDs are constrained by regex in `shared/core/share-utils.js`, and hash payloads are length-limited by `HASH_STATE_MAX_LENGTH`.
+- Recommendations: Keep third-party scripts off these pages, document local-only privacy expectations, avoid adding analytics that can read app state, and consider optional encrypted export/share flows before handling sensitive production user data.
 
-## 보안 고려 사항 (Security Considerations)
+**Share links and ISF codes are integrity-free payloads:**
+- Risk: `shared/core/share-utils.js` encodes compressed/base64 JSON in URL hashes or codes and `apps/main/modules/persistence-controller.js` applies decoded data after normalization. There is no signature, expiry, or sender authenticity.
+- Files: `shared/core/share-utils.js`, `apps/main/modules/persistence-controller.js`, `apps/main/modules/external-input-guard.js`
+- Current mitigation: `parseStateEnvelope` checks the app key when present, `decodePayloadFromHash` catches parse errors, and external inputs are normalized before commit.
+- Recommendations: Treat share payloads as untrusted input. Keep all imported fields routed through `normalizeExternalStep1Inputs`; add schema-version checks and user-visible source warnings before accepting future higher-risk fields.
 
-**DOM 수동 렌더링에 의한 XSS 공격 위험:**
-- 위험: 부부 데이터 병합 및 외부 ISF CODE 파싱 시 `sanitizeInputs`를 통해 데이터 정화를 거치고 있지만, 바닐라 JS 렌더러들은 여전히 `IsfUtils.escapeHtml`과 `innerHTML` 수동 생성 방식을 혼재하고 있습니다.
-- 파일:
-  - [input-sanitizer.js](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/apps/step1/modules/input-sanitizer.js)
-  - [app.js](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/apps/step1/app.js)
-- 영향: DOM 직접 삽입 구조로 인해 필터링되지 않은 특수문자나 기이한 구조의 페이로드가 유입될 경우, Cross-Site Scripting 취약점을 제공할 위험이 남아있습니다.
-- 해결 방향: 모든 DOM 조작 시 `textContent`를 사용하거나, React의 JSX 자동 이스케이프 시스템으로 전환하여 인젝션을 원천 봉쇄해야 합니다.
+## Performance Bottlenecks
 
-## 성능 병목 구간 (Performance Bottlenecks)
+**Frequent full-state JSON diffing and cloning:**
+- Problem: Draft-change checks and state comparisons use `JSON.stringify` on nested financial inputs during UI updates and hash handling.
+- Files: `apps/main/modules/financial-modal-controller.js`, `apps/main/modules/persistence-controller.js`, `apps/main/modules/state-helpers.js`, `shared/storage/backup-manager.js`
+- Cause: Deep equality and cloning are implemented through JSON serialization for convenience.
+- Improvement path: Add stable signatures for item arrays and input revisions. Compare category-level signatures in modal code and only serialize full state at persistence/export boundaries.
 
-**Sankey 차트의 DOM 직접 재빌드 부하:**
-- 문제: Sankey 차트 및 시뮬레이션 렌더링 시, 캔버스를 이용한 실시간 폰트 측정(`measureSankeyTextWidth`)과 모든 SVG 엘리먼트를 수동으로 비우고 재생성하는 연산이 메인 스레드 상에서 매번 수행됩니다.
-- 파일: [sankey-renderer.js](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/apps/step1/modules/sankey-renderer.js)
-- 영향: 데이터 노드가 많아지거나 모바일 장치에서 화면을 확대/축소(Zoom) 또는 윈도우 크기를 조절할 때 심각한 UI 렉 및 프레임 드랍이 발생합니다.
-- 개선 경로: 렌더링 디바운싱 강화, 레이아웃 계산 결과 캐싱, SVG 렌더링 연산의 React 가상 DOM 최적화 적용 등이 필요합니다.
+**Sankey rendering recomputes layout and text metrics on each render:**
+- Problem: `renderSankey` calculates column geometry, measures labels on canvas, clears SVG/legend, and rebuilds the complete SVG tree each render.
+- Files: `apps/main/modules/sankey-renderer.js`, `apps/main/modules/sankey-builder.js`, `apps/main/modules/render-orchestrator.js`
+- Cause: Rendering is full rebuild oriented and tied to global `state`.
+- Improvement path: Keep the full rebuild for small datasets, but introduce memoized layout inputs for `snapshot`, grouping, value mode, sort mode, zoom, and viewport. Add a performance guard test for many income/allocation/account nodes.
 
-**루프 내 개별 트랜잭션을 통한 백업 삭제 정리 오버헤드:**
-- 문제: `BackupService.trimBackups`에서 최대 백업 개수(60개)를 유지하기 위해 오래된 데이터를 삭제할 때, 루프를 돌며 개별 `isfStore.perform` 비동기 트랜잭션을 호출합니다.
-- 파일: [BackupService.ts](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/src/core/storage/BackupService.ts)
-- 영향: 한 번에 삭제해야 할 백업이 많아질 경우 불필요한 트랜잭션 락(Lock)과 중복 디스크 I/O가 발생하여 브라우저 성능을 지연시킵니다.
-- 개선 경로: 단일 'readwrite' 트랜잭션 내에서 여러 개의 삭제(`.delete(b.id)`) 처리를 묶어서 한 번에 승인(Commit)하도록 변경해야 합니다.
+**Backup listing trims by scanning all backup records:**
+- Problem: `BackupService.listBackups` reads all backups with `getAll()` and filters in memory, and `trimBackups` repeatedly opens readwrite transactions for individual deletes.
+- Files: `src/core/storage/BackupService.ts`, `src/core/storage/IsfStore.ts`
+- Cause: The `appKey` index exists but is not used for lookup or trim operations.
+- Improvement path: Query the `appKey` index in `listBackups`, delete stale entries in one transaction, and preserve the current caps of 20 auto and 10 manual backups per app key.
 
-## 테스트 커버리지 간극 (Test Coverage Gaps)
+## Fragile Areas
 
-**단위 및 E2E 테스트 범위 부족:**
-- 테스트되지 않은 영역: 대부분의 핵심 비즈니스 로직(시뮬레이션 가치 상승 공식 등) 및 동기화 흐름, 모바일 뷰에서의 UI 레이아웃 안정성.
-- 파일: `apps/**/*.js`, `src/**/*.tsx`
-- 영향: 데이터 동기화, 병합 로직, 단위 환산 연산 수정 시 의도치 않은 회귀(Regression) 오류 감지가 늦어집니다.
-- 우선순위: 높음
+**Global mutable state object is shared across many modules:**
+- Files: `apps/main/modules/state.js`, `apps/main/modules/persistence-controller.js`, `apps/main/modules/event-bindings.js`, `apps/main/modules/render-orchestrator.js`, `apps/main/modules/list-renderer.js`, `apps/main/modules/sankey-renderer.js`
+- Why fragile: `state.inputs`, `state.draftInputs`, editor flags, projection options, Sankey settings, and backup flags are mutated directly by many modules.
+- Safe modification: Route commits through `commitImmediateInputs` and `markPendingChanges` in `apps/main/modules/persistence-controller.js` when persistence/rendering is expected. For UI-only flags, update the smallest owning controller and call the relevant renderer explicitly.
+- Test coverage: Playwright covers major Step 1 flows in `tests/step1.spec.ts`, but central state helpers and controllers have little isolated unit coverage.
+
+**Model migration assumes pre-v10 currency fields need multiplication:**
+- Files: `apps/main/modules/input-sanitizer.js`, `apps/main/modules/constants.js`, `shared/core/share-utils.js`
+- Why fragile: `migrateInputsToWon` multiplies numeric currency fields and item amounts by 10,000 when `modelVersion < 10`. Incorrect or missing `modelVersion` on imported data can silently scale financial values.
+- Safe modification: Add migration tests for missing, old, and current `modelVersion` payloads before changing currency fields. Keep imports through `sanitizeInputs` and `normalizeExternalStep1Inputs`.
+- Test coverage: Some import/persistence flows are exercised in `tests/step1.spec.ts`; direct migration matrix tests are limited.
+
+**Portfolio app is less integrated with the main test and storage hardening path:**
+- Files: `apps/portfolio/app.js`, `apps/portfolio/modules/state.js`, `apps/portfolio/modules/calculator.js`, `apps/portfolio/modules/dom.js`
+- Why fragile: Portfolio state writes through `IsfStorageHub` but lacks the same normalization and E2E coverage density as Step 1 and Step 2. Validation logs to console and `apps/portfolio/modules/dom.js` renders several user-entered fields through `innerHTML`.
+- Safe modification: Add portfolio-specific tests before changing creator assets, portfolio validation, or storage keys. Escape all portfolio names/tickers in render output.
+- Test coverage: No `tests/step3.spec.ts` or portfolio-specific spec was detected.
+
+**PWA and storage update behavior can affect user data:**
+- Files: `shared/pwa/pwa-manager.js`, `shared/storage/backup-manager.js`, `src/core/storage/IsfStore.ts`, `public/manifest.webmanifest`, `shared/legacy/sw.js`
+- Why fragile: PWA update flows, backup creation, and database migration all touch persistent browser state. Errors are often caught and logged without surfacing durable diagnostics.
+- Safe modification: Before changing service worker/version/storage migration behavior, run E2E flows with existing localStorage/IndexedDB data, update available, and blocked IndexedDB scenarios.
+- Test coverage: Playwright blocks service workers in `playwright.config.ts`, so PWA update behavior is not exercised by the main E2E suite.
+
+## Scaling Limits
+
+**URL hash share payload is capped at 6,000 characters:**
+- Current capacity: `HASH_STATE_MAX_LENGTH = 6000`.
+- Limit: Large household datasets with many accounts, allocations, transfers, and backups cannot be shared through hash payloads once compressed/base64 data exceeds the cap.
+- Scaling path: Use IndexedDB/local file export for large data, or introduce a server-backed share service with explicit privacy/security design.
+
+**Playwright suite is serialized to one browser worker:**
+- Current capacity: `playwright.config.ts` sets `fullyParallel: false` and `workers: 1`.
+- Limit: `tests/step1.spec.ts` is 1,523 lines and `tests/step2.spec.ts` is 550 lines; E2E runtime will grow linearly as more flows are added.
+- Scaling path: Split tests by isolated storage keys and pages, make setup deterministic, then raise worker count or shard by project.
+
+**Local browser storage has no quota handling strategy:**
+- Current capacity: Browser-dependent `localStorage` and IndexedDB quotas.
+- Limit: Save, backup, and export paths can fail when storage is blocked or quota is exceeded.
+- Scaling path: Centralize quota/error handling in `src/core/storage/IsfStore.ts` and `shared/storage/hub-storage.js`; expose actionable UI recovery steps through `apps/main/modules/persistence-controller.js`.
+
+## Dependencies at Risk
+
+**Tailwind CSS alpha dependency:**
+- Risk: `tailwindcss` and `@tailwindcss/vite` are pinned to `^4.0.0-alpha.13`.
+- Impact: Alpha API or output changes can break builds or styling during install/update.
+- Migration plan: Pin exact versions while alpha is required, or move to a stable Tailwind release and update `vite.config.ts` / CSS entrypoints in one verified change.
+
+**React dependencies are present but the app is mostly vanilla DOM:**
+- Risk: `react`, `react-dom`, `@vitejs/plugin-react`, and React type packages are installed, but the inspected app modules under `apps/` are vanilla JavaScript DOM controllers.
+- Impact: Dependency surface and build complexity are larger than the active architecture suggests.
+- Migration plan: Either document the React-backed entrypoints under `src/entries/` as the intended direction, or remove unused React dependencies after verifying `npm run build`, `npm run check`, and E2E tests.
+
+## Missing Critical Features
+
+**No durable diagnostics for storage/import failures:**
+- Problem: Several important failure paths catch errors and show a short UI status or write to console. There is no persisted failure record for recovery.
+- Blocks: Debugging user reports about lost backups, failed imports, broken share links, or quota problems.
+- Files: `apps/main/modules/persistence-controller.js`, `apps/main/modules/storage-manager.js`, `src/core/storage/IsfStore.ts`, `shared/storage/backup-manager.js`
+
+**No dedicated security/privacy mode for financial data:**
+- Problem: Local financial data can be read by any same-origin script and exported/shared as plain JSON payloads.
+- Blocks: Safe use in contexts with shared devices, browser extensions, analytics scripts, or sensitive household data.
+- Files: `shared/core/share-utils.js`, `apps/main/modules/persistence-controller.js`, `shared/storage/hub-storage.js`, `src/core/storage/IsfStore.ts`
+
+## Test Coverage Gaps
+
+**Unit coverage is narrow:**
+- What's not tested: Core pure functions such as `simulateProjection`, `migrateInputsToWon`, `sanitizeInputs`, `buildSavingsBuckets`, storage trimming, and share payload decoding are not covered by focused unit tests.
+- Files: `apps/main/modules/calculator.js`, `apps/main/modules/input-sanitizer.js`, `shared/core/share-utils.js`, `src/core/storage/BackupService.ts`
+- Risk: Financial math, migration, and import behavior can regress without a fast failing test.
+- Priority: High
+
+**Step 3 portfolio flows lack detected E2E coverage:**
+- What's not tested: Portfolio creation, validation, deletion, chart rendering, storage persistence, and Step 1 connector behavior.
+- Files: `apps/portfolio/app.js`, `apps/portfolio/modules/state.js`, `apps/portfolio/modules/calculator.js`, `apps/portfolio/modules/dom.js`
+- Risk: Portfolio-specific bugs can ship while Step 1 and Step 2 suites pass.
+- Priority: High
+
+**PWA/service worker behavior is outside E2E coverage:**
+- What's not tested: Service worker registration/update prompts, backup-before-update behavior, reload loop protection, and manifest/version sync.
+- Files: `shared/pwa/pwa-manager.js`, `shared/legacy/sw.js`, `public/manifest.webmanifest`, `playwright.config.ts`
+- Risk: Production install/update problems may only appear after deployment.
+- Priority: Medium
+
+**Cross-browser coverage is limited to Chromium:**
+- What's not tested: Safari/WebKit and Firefox behavior for IndexedDB, localStorage, file import/export, SVG/PNG export, and mobile viewport rendering.
+- Files: `playwright.config.ts`, `tests/step1.spec.ts`, `tests/step2.spec.ts`
+- Risk: Browser-specific storage and rendering bugs can remain undetected.
+- Priority: Medium
 
 ---
 
-*Concerns audit: 2026-06-16*
+*Concerns audit: 2026-06-23*

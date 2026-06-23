@@ -1,73 +1,267 @@
-# 코드베이스 구조 (Codebase Structure)
+# Codebase Structure
 
-**분석 날짜:** 2026-06-16
+**Analysis Date:** 2026-06-23
 
-## 디렉토리 레이아웃 (Directory Layout)
+## Directory Layout
 
 ```text
-[project-root]/
-├── [apps/](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/apps/)                    # 단계별 애플리케이션 로직 (Vanilla JS 기반)
-│   ├── [step1/](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/apps/step1/)                # 개인 자산 흐름 계획 (입력, 계산 및 Sankey 시각화)
-│   │   ├── [modules/](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/apps/step1/modules/)          # Step 1 전용 서브 모듈 (계산, 입력 정제, 상태 및 렌더러)
-│   │   ├── [app.js](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/apps/step1/app.js)            # Step 1 메인 오케스트레이터
-│   │   ├── [index.html](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/apps/step1/index.html)        # Step 1 HTML 뷰 엔트리
-│   │   └── [styles.css](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/apps/step1/styles.css)        # Step 1 전용 반응형 스타일시트
-│   ├── [step2/](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/apps/step2/)                # 포트폴리오 조정 및 배당 시뮬레이션
-│   └── [step3/](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/apps/step3/)                # 종합 대시보드 및 KPI 요약
-├── [shared/](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/shared/)                  # 공통 리소스 및 브라우저 호환성 코드
-│   ├── [components/](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/shared/components/)          # 재사용 가능한 Web Components (헤더, 데이터 허브 등)
-│   ├── [core/](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/shared/core/)                # 공유 비즈니스 유틸리티, 파서 및 클립보드 파서
-│   ├── [legacy/](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/shared/legacy/)              # 서비스 워커 파일 등 레거시 인프라
-│   ├── [storage/](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/shared/storage/)            # 레거시 스토리지 엔진 (IsfHubStorage 등)
-│   └── [styles/](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/shared/styles/)             # 공유 디자인 시스템 CSS 변수 및 공통 테마
-├── [src/](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/src/)                     # 현대화된 TypeScript/React 소스 코드
-│   ├── [components/](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/src/components/)           # 점진 도입 중인 React 컴포넌트 레이어
-│   ├── [core/](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/src/core/)                 # 현대적 저장소 로직 및 데이터 타입 정의
-│   │   ├── [storage/](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/src/core/storage/)           # IndexedDB 엔진, 백업 서비스 및 브릿지
-│   │   └── [types/](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/src/core/types/)             # 모델 인터페이스 및 화폐(Money) 정합성 유틸리티
-│   ├── [entries/](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/src/entries/)             # Vite 다중 페이지 번들링용 TS 엔트리 포인트
-│   └── [styles/](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/src/styles/)              # 전역 Tailwind CSS v4 설정 파일
-├── [public/](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/public/)                  # 정적 자산 및 마켓 지수 역사 데이터
-├── [scripts/](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/scripts/)                 # 버전 관리, 릴리즈용 백엔드 파이프라인 스크립트
-└── [.planning/](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/.planning/)              # 로드맵, 분석 상태 및 지식 위키 데이터
+IndividualSavingsFlowUI/
+├── apps/                    # Active multi-page application pages and vanilla JS feature modules
+│   ├── main/                # Step 1 household cash-flow app
+│   ├── simulation/          # Step 2 dividend/strategy simulation app
+│   └── portfolio/           # Step 3 accumulative portfolio app
+├── shared/                  # Runtime modules shared by all steps
+│   ├── components/          # Custom elements and shared UI managers
+│   ├── core/                # Global utility and share/clipboard helpers
+│   ├── legacy/              # Legacy service worker file
+│   ├── pwa/                 # PWA manager
+│   ├── storage/             # Legacy JS storage/backup globals
+│   └── styles/              # Shared step theme CSS
+├── src/                     # TypeScript entry and modernized core layer
+│   ├── components/          # React-oriented common components
+│   ├── core/                # Typed storage and model/money helpers
+│   ├── entries/             # Vite page entry bridges
+│   └── styles/              # Global CSS imported by page entries
+├── public/                  # Vite public assets, manifest, icons, static index data
+├── tests/                   # Playwright end-to-end tests
+├── scripts/                 # Version sync and data generation scripts
+├── .github/workflows/       # GitHub Actions deployment workflow
+├── .planning/               # GSD planning/codebase documents
+├── index.html               # Root page
+├── vite.config.ts           # Vite, PWA, and Rollup multi-page config
+├── playwright.config.ts     # E2E test runner config
+├── tsconfig.json            # TypeScript config for src/apps/shared
+├── package.json             # npm scripts and dependencies
+└── package-lock.json        # npm lockfile
 ```
 
-## 디렉토리 상세 역할 (Directory Purposes)
+## Directory Purposes
 
-### **1. [apps/](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/apps/)**
-* **목적:** 애플리케이션의 단계별 비즈니스 시나리오를 구성하는 메인 페이지들을 격리 보존합니다.
-* **구조:** 각 스텝(`step1/`, `step2/`, `step3/`) 하위에 `app.js`를 배치하고, 내부적인 세부 계산 및 렌더링 동작은 `modules/` 디렉토리의 단일 목적 모듈로 세분화하여 **거대 오케스트레이터 안티패턴**을 방지합니다.
+**`apps/`:**
+- Purpose: Contains the active user-facing step pages and their page-local source code.
+- Contains: HTML entry pages, page CSS, `app.js`, and `modules/*.js` for each step.
+- Key files: `apps/main/index.html`, `apps/main/app.js`, `apps/simulation/index.html`, `apps/simulation/app.js`, `apps/portfolio/index.html`, `apps/portfolio/app.js`
 
-### **2. [shared/](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/shared/)**
-* **목적:** Vite 빌드 환경과 레거시 비빌드(No-build) 환경 모두에서 전역적으로 사용 가능한 유틸리티 및 UI 컴포넌트를 보유합니다.
-* **핵심 모듈:**
-  * [app-header.js](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/shared/components/app-header.js): 글로벌 상태 바인딩 및 종합소득세 한도 경고를 관리하는 HTML Web Component.
-  * [data-hub-modal.js](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/shared/components/data-hub-modal.js): 데이터 가져오기/내보내기 및 스냅샷 복원 통합 모달 Shadow DOM Component.
-  * [clipboard-parser.js](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/shared/core/clipboard-parser.js): 금융 SMS 및 클립보드 원문 데이터 파싱 엔진.
+**`apps/main/`:**
+- Purpose: Step 1 household cash-flow UI for income, accounts, expense/savings/investment flows, Sankey visualization, snapshots, and sharing.
+- Contains: Static HTML DOM contract, page styles, bootstrap app, and feature modules.
+- Key files: `apps/main/modules/bootstrap-controller.js`, `apps/main/modules/state.js`, `apps/main/modules/dom.js`, `apps/main/modules/calculator.js`, `apps/main/modules/render-orchestrator.js`, `apps/main/modules/persistence-controller.js`, `apps/main/modules/sankey-builder.js`
 
-### **3. [src/](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/src/)**
-* **목적:** 애플리케이션의 데이터 신뢰성 및 타입 안정성을 강화하기 위해 도입된 TypeScript 및 React 인프라입니다.
-* **핵심 모듈:**
-  * [IsfStore.ts](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/src/core/storage/IsfStore.ts): 데이터 무결성 보장을 위해 구현된 Repository Pattern 기반의 IndexedDB 연동 코어.
-  * [CompatibilityBridge.ts](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/src/core/storage/CompatibilityBridge.ts): 레거시 애플리케이션 코드의 파괴 없이 전역 스토리지를 IndexedDB로 교체하는 Adapter Pattern 브릿지.
-  * [money.ts](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/src/core/types/money.ts): 원 단위 금융 계산 정합성을 수호하기 위한 변환 및 포맷 유틸리티.
+**`apps/simulation/`:**
+- Purpose: Step 2 strategy comparison and dividend simulation UI.
+- Contains: Static HTML DOM contract, page styles, app bootstrap, simulation state, controllers, renderers, calculators, and Step 1 connector.
+- Key files: `apps/simulation/modules/state.js`, `apps/simulation/modules/feature-controllers.js`, `apps/simulation/modules/ui-controller.js`, `apps/simulation/modules/step1-connector.js`, `apps/simulation/modules/calculator.js`, `apps/simulation/modules/renderers.js`
 
-### **4. [public/](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/public/)**
-* 시뮬레이션용 역사적 시장 데이터(`indices/*.json`) 및 PWA 오프라인 구동에 필수적인 `manifest.webmanifest`, 아이콘 자산들을 포함합니다.
+**`apps/portfolio/`:**
+- Purpose: Step 3 portfolio creation and allocation management UI.
+- Contains: Static HTML DOM contract, page styles, app object, state class, DOM renderer, calculator, chart builder, and Step 1 connector.
+- Key files: `apps/portfolio/modules/state.js`, `apps/portfolio/modules/dom.js`, `apps/portfolio/modules/calculator.js`, `apps/portfolio/modules/chart-builder.js`, `apps/portfolio/modules/step1-connector.js`
+
+**`shared/`:**
+- Purpose: Shared browser runtime modules consumed by every step.
+- Contains: Custom elements, utility functions, share/clipboard helpers, PWA manager, legacy storage globals, and shared theme CSS.
+- Key files: `shared/components/app-header.js`, `shared/components/data-hub-modal.js`, `shared/components/feedback-manager.js`, `shared/core/utils.js`, `shared/core/share-utils.js`, `shared/pwa/pwa-manager.js`, `shared/storage/hub-storage.js`, `shared/storage/backup-manager.js`, `shared/styles/step-theme.css`
+
+**`src/`:**
+- Purpose: Vite/TypeScript layer that bridges active vanilla apps into a typed build and modern storage implementation.
+- Contains: Page entry modules, typed storage services, type definitions, global CSS, and React-oriented common components.
+- Key files: `src/entries/step1.ts`, `src/entries/step2.ts`, `src/entries/step3.ts`, `src/core/storage/CompatibilityBridge.ts`, `src/core/storage/IsfStore.ts`, `src/core/storage/BackupService.ts`, `src/core/types/models.ts`, `src/core/types/money.ts`
+
+**`public/`:**
+- Purpose: Static files copied by Vite without module transformation.
+- Contains: PWA manifest, icons, and static index data JSON.
+- Key files: `public/manifest.webmanifest`, `public/icons/icon-192.png`, `public/icons/icon-512.png`, `public/data/indices/README.md`
+
+**`tests/`:**
+- Purpose: End-to-end regression coverage for active step flows.
+- Contains: Playwright specs.
+- Key files: `tests/step1.spec.ts`, `tests/step2.spec.ts`
+
+**`scripts/`:**
+- Purpose: Build-time version maintenance and market/index data generation.
+- Contains: Node scripts, Python data scripts, migration helper, and script output.
+- Key files: `scripts/bump-version.js`, `scripts/sync-version.js`, `scripts/generate_market_data.py`, `scripts/migrate_okf.cjs`
+
+**`.planning/`:**
+- Purpose: GSD project planning and codebase intelligence artifacts.
+- Contains: Milestone/phase artifacts, UI reviews, and codebase maps.
+- Key files: `.planning/codebase/ARCHITECTURE.md`, `.planning/codebase/STRUCTURE.md`
+
+## Key File Locations
+
+**Entry Points:**
+- `index.html`: Root app entry page.
+- `apps/main/index.html`: Step 1 HTML route; imports `src/entries/step1.ts`.
+- `apps/simulation/index.html`: Step 2 HTML route; imports `src/entries/step2.ts`.
+- `apps/portfolio/index.html`: Step 3 HTML route; imports `src/entries/step3.ts`.
+- `src/entries/step1.ts`: Step 1 Vite entry bridge.
+- `src/entries/step2.ts`: Step 2 Vite entry bridge.
+- `src/entries/step3.ts`: Step 3 Vite entry bridge.
+
+**Configuration:**
+- `vite.config.ts`: Vite config, PWA config, base path `/IndividualSavingsFlowUI/`, public directory, and Rollup HTML inputs.
+- `tsconfig.json`: TypeScript config covering `src`, `apps`, and `shared`; defines `@/*` and `@shared/*` aliases.
+- `tsconfig.node.json`: Node-side TypeScript config reference.
+- `playwright.config.ts`: Playwright test config and local Vite web server.
+- `package.json`: npm scripts for dev, build, preview, type check, version sync, and E2E tests.
+- `.github/workflows/deploy.yml`: GitHub Actions deployment workflow.
+
+**Core Logic:**
+- `apps/main/modules/bootstrap-controller.js`: Step 1 app initialization and controller assembly.
+- `apps/main/modules/state.js`: Step 1 singleton state and initial input resolution.
+- `apps/main/modules/input-sanitizer.js`: Step 1 input normalization and cloning.
+- `apps/main/modules/calculator.js`: Step 1 financial projections/calculations.
+- `apps/main/modules/household-budget.js`: Step 1 household budget calculations.
+- `apps/main/modules/sankey-builder.js`: Step 1 Sankey graph model builder.
+- `apps/main/modules/render-orchestrator.js`: Step 1 top-level render pipeline.
+- `apps/main/modules/event-bindings.js`: Step 1 event binding.
+- `apps/main/modules/persistence-controller.js`: Step 1 save/share/backup/view-mode persistence.
+- `apps/simulation/modules/calculator.js`: Step 2 dividend/strategy simulation math.
+- `apps/simulation/modules/comparison-calculator.js`: Step 2 strategy comparison math.
+- `apps/simulation/modules/assumptions.js`: Step 2 strategy assumptions.
+- `apps/simulation/modules/feature-controllers.js`: Step 2 persistence, normalize/load/save/delete/backup/export workflows.
+- `apps/simulation/modules/ui-controller.js`: Step 2 event handling and rendering orchestration.
+- `apps/portfolio/modules/calculator.js`: Step 3 allocation, validation, and recurring investment calculations.
+- `apps/portfolio/modules/state.js`: Step 3 portfolio and creator state persistence.
+- `apps/portfolio/modules/dom.js`: Step 3 rendering and modal DOM workflows.
+
+**Shared Runtime:**
+- `shared/components/app-header.js`: Shared header custom element and step launcher/status UI.
+- `shared/components/data-hub-modal.js`: Shared data import/export/backup modal custom element.
+- `shared/components/feedback-manager.js`: Feedback display manager exposed to app code.
+- `shared/core/utils.js`: Global utility methods and app version constant.
+- `shared/core/share-utils.js`: Share-code/hash/JSON import-export helpers.
+- `shared/core/clipboard-parser.js`: Clipboard parsing helper with unit test.
+- `shared/pwa/pwa-manager.js`: PWA registration/update/version check helper.
+- `shared/storage/hub-storage.js`: Legacy JS storage hub implementation.
+- `shared/storage/backup-manager.js`: Legacy JS backup manager implementation.
+- `shared/styles/step-theme.css`: Shared visual tokens, panel/button/form styles.
+
+**Modern Storage:**
+- `src/core/storage/CompatibilityBridge.ts`: Registers modern storage services under legacy global API names.
+- `src/core/storage/IsfStore.ts`: IndexedDB wrapper for Step 1 history, Step 2 simulations, and backups.
+- `src/core/storage/BackupService.ts`: Backup creation/listing/trimming service.
+- `src/core/types/models.ts`: Typed data models.
+- `src/core/types/money.ts`: Money conversion/formatting helpers.
+
+**Testing:**
+- `tests/step1.spec.ts`: Step 1 Playwright coverage.
+- `tests/step2.spec.ts`: Step 2 Playwright coverage.
+- `shared/core/clipboard-parser.test.js`: Clipboard parser test file.
+- `playwright.config.ts`: E2E runner setup.
+
+## Naming Conventions
+
+**Files:**
+- Step app entry files use `app.js`: `apps/main/app.js`, `apps/simulation/app.js`, `apps/portfolio/app.js`.
+- Step modules use kebab-case for JavaScript files: `bootstrap-controller.js`, `render-orchestrator.js`, `step1-connector.js`, `financial-summary-renderer.js`.
+- TypeScript core services use PascalCase class/service filenames: `CompatibilityBridge.ts`, `IsfStore.ts`, `BackupService.ts`.
+- Type definition/helper files use lower-case names: `models.ts`, `money.ts`.
+- Tests use `.spec.ts` or `.test.js`: `tests/step1.spec.ts`, `shared/core/clipboard-parser.test.js`.
+- CSS is either shared global/theme CSS or step-local `styles.css`: `src/styles/globals.css`, `shared/styles/step-theme.css`, `apps/main/styles.css`.
+
+**Directories:**
+- Active pages are grouped by step under `apps/<step>/`.
+- Page-local modules live under `apps/<step>/modules/`.
+- Shared browser modules are grouped by capability under `shared/<capability>/`.
+- Typed core code lives under `src/core/<capability>/`.
+- Static public assets live under `public/<asset-type>/`.
+
+## Where to Add New Code
+
+**New Step 1 Feature:**
+- Primary code: `apps/main/modules/`
+- HTML targets: `apps/main/index.html`
+- Styles: `apps/main/styles.css`, or `shared/styles/step-theme.css` only for reusable step-wide styles.
+- DOM handles: `apps/main/modules/dom.js`
+- Event binding: `apps/main/modules/event-bindings.js`
+- Rendering: `apps/main/modules/render-orchestrator.js` plus focused renderer modules such as `apps/main/modules/list-renderer.js`
+- Persistence: `apps/main/modules/persistence-controller.js` or storage services under `src/core/storage/`
+- Tests: `tests/step1.spec.ts`
+
+**New Step 2 Feature:**
+- Primary code: `apps/simulation/modules/`
+- HTML targets: `apps/simulation/index.html`
+- Styles: `apps/simulation/styles.css`
+- DOM handles: `apps/simulation/modules/dom.js`
+- Event binding/orchestration: `apps/simulation/modules/ui-controller.js`
+- Save/load/backup behavior: `apps/simulation/modules/feature-controllers.js`
+- Step 1 import behavior: `apps/simulation/modules/step1-connector.js`
+- Tests: `tests/step2.spec.ts`
+
+**New Step 3 Feature:**
+- Primary code: `apps/portfolio/modules/`
+- HTML targets: `apps/portfolio/index.html`
+- Styles: `apps/portfolio/styles.css`
+- State: `apps/portfolio/modules/state.js`
+- DOM/render behavior: `apps/portfolio/modules/dom.js`
+- Calculations/validation: `apps/portfolio/modules/calculator.js`
+- New E2E tests: add `tests/step3.spec.ts`
+
+**New Shared Component/Module:**
+- Custom element: `shared/components/<name>.js`
+- Shared utility: `shared/core/<name>.js`
+- Shared styles/tokens: `shared/styles/step-theme.css`
+- Import registration: add imports to each relevant `src/entries/step*.ts`
+
+**New Storage Capability:**
+- Typed implementation: `src/core/storage/`
+- Model updates: `src/core/types/models.ts`
+- Legacy/global API exposure: `src/core/storage/CompatibilityBridge.ts`
+- Legacy JS fallback only if needed: `shared/storage/`
+
+**New Page/Step:**
+- HTML route: `apps/<new-step>/index.html`
+- Entry bridge: `src/entries/<new-step>.ts`
+- App bootstrap: `apps/<new-step>/app.js`
+- Modules: `apps/<new-step>/modules/`
+- Styles: `apps/<new-step>/styles.css`
+- Build config: add a Rollup input in `vite.config.ts`
+- Navigation: update `shared/components/app-header.js`
+- Tests: add `tests/<new-step>.spec.ts`
+
+**Utilities:**
+- Shared browser utilities: `shared/core/`
+- Typed helpers used by TypeScript layer: `src/core/`
+- App-specific helpers: keep them inside `apps/<step>/modules/` unless at least two steps consume them.
+
+## Special Directories
+
+**`.codegraph/`:**
+- Purpose: CodeGraph index used for code navigation and architecture exploration.
+- Generated: Yes
+- Committed: Project-dependent; treat as an index/cache unless repository policy says otherwise.
+
+**`.planning/`:**
+- Purpose: GSD planning artifacts, phase/milestone docs, UI reviews, and generated codebase maps.
+- Generated: Yes
+- Committed: Yes, as project planning context.
+
+**`dist/`:**
+- Purpose: Vite production build output.
+- Generated: Yes
+- Committed: No for normal source changes.
+
+**`node_modules/`:**
+- Purpose: npm dependency install directory.
+- Generated: Yes
+- Committed: No.
+
+**`test-results/`:**
+- Purpose: Playwright output and failure artifacts.
+- Generated: Yes
+- Committed: No.
+
+**`graphify-out/`:**
+- Purpose: Graphify/cache output for code/document graph tooling.
+- Generated: Yes
+- Committed: Project-dependent; avoid placing hand-written source here.
+
+**`public/data/indices/`:**
+- Purpose: Static market/index JSON data available at runtime.
+- Generated: Partly; scripts in `scripts/` can generate or refresh data.
+- Committed: Yes, because the app reads these files as public assets.
 
 ---
 
-## 신규 코드 추가 가이드 (Code Extension Guidelines)
-
-새로운 기능을 추가하거나 기존 구조를 리팩토링할 때는 아래 가이드를 엄격히 따라 올바른 디렉토리에 코드를 배치해야 합니다.
-
-* **새로운 UI 공통 컴포넌트를 만들 때:**
-  * 웹 컴포넌트 형태로 모든 단계에 적용해야 하는 경우: [shared/components/](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/shared/components/) 에 `.js` 파일로 작성하십시오.
-  * 점진 도입 중인 React 컴포넌트로 구현할 경우: [src/components/common/](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/src/components/common/) 하위에 `.tsx` 파일로 작성하십시오.
-* **새로운 비즈니스 계산 및 도메인 로직을 추가할 때:**
-  * 특정 스텝 전용 로직일 경우: [apps/step[N]/modules/](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/apps/step1/modules/) 에 추가하십시오.
-  * 여러 스텝에서 공통으로 재사용하는 자산 파서 등일 경우: [shared/core/](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/shared/core/) 에 추가하십시오.
-* **데이터 모델 정의 또는 스토리지 확장이 필요할 때:**
-  * 새로운 데이터 타입/인터페이스 정의: [src/core/types/models.ts](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/src/core/types/models.ts) 에 정의하십시오.
-  * IndexedDB 스토어 테이블 추가 및 쿼리 구현: [IsfStore.ts](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/src/core/storage/IsfStore.ts) 의 스키마 업데이트 및 관련 데이터베이스 액션 메서드를 추가하십시오.
-  * 레거시 JS 앱에서의 노출 바인딩: [CompatibilityBridge.ts](file:///D:/jhkSandBox/CODE/IndividualSavingsFlowUI/src/core/storage/CompatibilityBridge.ts) 에 어댑터를 작성하여 전역 윈도우에 연결하십시오.
+*Structure analysis: 2026-06-23*
