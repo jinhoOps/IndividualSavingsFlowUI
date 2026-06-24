@@ -58,7 +58,7 @@ Plans:
 **Success criteria:**
 
 1. The Step 1 default screen shows only the essential financial-setting state and next action, without duplicating the full editing surface.
-2. The financial settings detail flow connects monthly income, monthly living expenses, monthly investment, automatic savings, household total, user settings, and spouse settings in one coherent UX.
+2. The financial settings detail flow connects monthly income, monthly living expenses, monthly investment, savings, automatic savings, and result review in one coherent UX, with Phase 10 couple/self/spouse UI removed until a future dedicated spec.
 3. Variable expense target, actual spending, remaining amount, status, and end-of-month projection are editable or visible in the detailed flow without overwhelming the default screen.
 4. The repaired UX addresses the Phase 10 UI review blockers for copywriting, visuals, spacing, and experience design while preserving existing Step 1 persistence and sanitizer behavior.
 
@@ -128,7 +128,7 @@ Plans:
 | BUD-04 | Phase 10 | Complete |
 | UXR-01 | Phase 10.5 | Complete |
 | UXR-02 | Phase 10.5 | Complete |
-| UXR-03 | Phase 10.5 | Pending |
+| UXR-03 | Phase 10.5 | Complete |
 | UXR-04 | Phase 10.5 | Complete |
 | CAP-01 | Phase 11 | Pending |
 | CAP-02 | Phase 11 | Pending |
@@ -162,4 +162,4 @@ Plans:
 
 ## Next
 
-Start with `$gsd-spec-phase 10.5` to lock the financial settings UX repair requirements before implementation planning.
+Start with `$gsd-discuss-phase 11` to shape Zero-Input Spending Capture before planning.
