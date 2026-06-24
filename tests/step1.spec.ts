@@ -1682,6 +1682,125 @@ test.describe('Phase 10.5 living expense variable rows', () => {
   });
 });
 
+test.describe('Phase 10.5 automatic savings adjustment', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.clear();
+      sessionStorage.clear();
+    });
+    await page.goto('apps/main/index.html');
+    await page.waitForSelector('main');
+  });
+
+  async function seedAutomaticSavingsCase(page: import('@playwright/test').Page, overBudget = false) {
+    await page.evaluate(async ({ overBudget }) => {
+      const [
+        { state },
+        { sanitizeInputs },
+        { buildMonthlySnapshot },
+        { createRenderOrchestrator },
+        { STORAGE_KEY },
+      ] = await Promise.all([
+        import('/IndividualSavingsFlowUI/apps/main/modules/state.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/input-sanitizer.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/calculator.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/render-orchestrator.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/constants.js'),
+      ]);
+      state.inputs = sanitizeInputs({
+        modelVersion: 10,
+        incomes: [{ id: 'income-main', name: '급여', amount: 4200000, accountId: 'acc-salary' }],
+        accounts: [
+          { id: 'acc-salary', name: '급여계좌' },
+          { id: 'acc-living', name: '생활비계좌' },
+          { id: 'acc-saving', name: '저축계좌' },
+          { id: 'acc-stock', name: '투자계좌' },
+        ],
+        expenseItems: [
+          { id: 'rent', name: '월세', amount: overBudget ? 2000000 : 1600000, group: '고정비', accountId: 'acc-living' },
+          { id: 'food', name: '식비', amount: overBudget ? 0 : 300000, group: '변동비', actualSpent: 100000, accountId: 'acc-living' },
+        ],
+        savingsItems: [{ id: 'saving-main', name: '적금', amount: overBudget ? 1800000 : 700000, group: '저축', accountId: 'acc-saving' }],
+        investItems: [{ id: 'invest-main', name: 'ETF', amount: overBudget ? 1200000 : 800000, group: '투자', accountId: 'acc-stock' }],
+      });
+      state.snapshot = buildMonthlySnapshot(state.inputs);
+      window.IsfStorageHub.saveLocal(STORAGE_KEY, state.inputs);
+      createRenderOrchestrator().renderAll();
+    }, { overBudget });
+  }
+
+  test('shows derived automatic savings and navigates to savings in the same modal', async ({ page }) => {
+    await seedAutomaticSavingsCase(page, false);
+
+    const modal = page.locator('#financialModal');
+    await page.locator('[data-financial-settings-detail]').click();
+    await expect(modal).toBeVisible();
+    await expect(modal.locator('[data-financial-detail-rail]')).toContainText('자동 저축');
+    await expect(modal.locator('[data-financial-detail-rail]')).toContainText('80만');
+    await expect(modal.locator('[data-financial-automatic-savings-input]')).toHaveCount(0);
+
+    await modal.getByRole('tab', { name: '결과/자동 저축', exact: true }).click();
+    const resultPanel = modal.locator('[data-financial-detail-panel]');
+    await expect(resultPanel).toContainText('자동 저축');
+    await expect(resultPanel).toContainText('80만');
+    await expect(resultPanel.locator('input')).toHaveCount(0);
+    await resultPanel.locator('[data-financial-result-savings-action]').click();
+    await expect(modal.getByRole('tab', { name: '저축', exact: true })).toHaveAttribute('aria-selected', 'true');
+    await expect(page.locator('.modal-overlay:not(#financialModal):visible')).toHaveCount(0);
+  });
+
+  test('blocks excess save until a choice is selected and applies the choice idempotently', async ({ page }) => {
+    await seedAutomaticSavingsCase(page, true);
+
+    const modal = page.locator('#financialModal');
+    await page.locator('[data-financial-settings-detail]').click();
+    await expect(modal).toBeVisible();
+
+    const choices = modal.locator('[data-financial-adjustment-choice]');
+    await expect(choices).toHaveText([
+      '투자 먼저 줄이기',
+      '저축 먼저 줄이기',
+      '저축/투자 비율 유지해서 같이 줄이기',
+    ]);
+
+    const beforeSave = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}'));
+    await modal.locator('#financialModalSave').click();
+    await expect(modal).toBeVisible();
+    await expect(modal.locator('[data-financial-adjustment-feedback]')).toContainText('조정 방식을 선택');
+    const blockedSave = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}'));
+    expect(blockedSave.savingsItems).toEqual(beforeSave.savingsItems);
+    expect(blockedSave.investItems).toEqual(beforeSave.investItems);
+
+    await choices.filter({ hasText: '투자 먼저 줄이기' }).click();
+    await modal.locator('#financialModalCancel').click();
+    await expect(modal).toBeHidden();
+    const afterCancel = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}'));
+    expect(afterCancel.savingsItems).toEqual(beforeSave.savingsItems);
+    expect(afterCancel.investItems).toEqual(beforeSave.investItems);
+
+    await page.locator('[data-financial-settings-detail]').click();
+    await choices.filter({ hasText: '투자 먼저 줄이기' }).click();
+    await modal.locator('#financialModalSave').click();
+    await expect(modal).toBeHidden();
+
+    const adjusted = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}'));
+    expect(adjusted.savingsItems.map((item: any) => item.id)).toEqual(['saving-main']);
+    expect(adjusted.investItems.map((item: any) => item.id)).toEqual(['invest-main']);
+    expect(adjusted.savingsItems[0].amount).toBe(1800000);
+    expect(adjusted.investItems[0].amount).toBe(400000);
+
+    await page.locator('[data-financial-settings-detail]').click();
+    await modal.locator('#financialModalSave').click();
+    await expect(modal).toBeHidden();
+    const repeated = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}'));
+    expect(repeated.savingsItems.map((item: any) => item.id)).toEqual(['saving-main']);
+    expect(repeated.investItems.map((item: any) => item.id)).toEqual(['invest-main']);
+    const labels = await page.locator('#sankeySvg .sankey-label').evaluateAll((nodes) => nodes.map((node) => node.textContent || ''));
+    expect(labels.filter((label) => label.includes('적금')).length).toBeLessThanOrEqual(1);
+    expect(labels.filter((label) => label.includes('ETF')).length).toBeLessThanOrEqual(1);
+  });
+});
+
 test.describe('Phase 09 final responsive user flow coverage', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
