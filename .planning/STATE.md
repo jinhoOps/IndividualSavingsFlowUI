@@ -2,38 +2,43 @@
 gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: milestone
+current_phase: 11
+current_phase_name: Zero-Input Spending Capture
 status: executing
-last_updated: "2026-06-22T02:34:02.707Z"
-last_activity: 2026-06-22
+stopped_at: Completed 10.5-03-PLAN.md
+last_updated: "2026-06-24T05:07:20.341Z"
+last_activity: 2026-06-24
+last_activity_desc: Phase 10.5 complete, transitioned to Phase 11
 progress:
-  total_phases: 5
-  completed_phases: 1
-  total_plans: 3
-  completed_plans: 3
-  percent: 20
+  total_phases: 6
+  completed_phases: 2
+  total_plans: 8
+  completed_plans: 8
+  percent: 33
 ---
 
 # Project State
 
 ## Current Position
 
-Phase: 11
+Phase: 11 — Zero-Input Spending Capture
 Plan: Not started
-Status: Ready to execute
-Last activity: 2026-06-22
+Status: Executing Phase 10.5
+Last activity: 2026-06-24 — Phase 10.5 complete, transitioned to Phase 11
 
 ## Project Reference
 
 See: .planning/PROJECT.md (updated 2026-06-22)
 
 **Core value:** 단순한 프리셋과 단계별 카드/시뮬레이션 흐름으로 개인 자산 흐름을 빠르게 이해하고 조정하게 한다.
-**Current focus:** Phase 11 — Zero-Input Spending Capture
+**Current focus:** Phase 10.5 — Financial Settings UX Integration Repair
 
 ## Accumulated Context
 
 ### Roadmap Evolution
 
 - Phase 9 added: Step 1 Financial Settings Input UIUX Rebuild
+- Phase 10.5 inserted after Phase 10 (URGENT): Financial Settings UX Integration Repair
 - v1.8 shipped: portfolio creation/storage, Step 1 modular and financial setup rebuild, Step 2 strategy comparison redesign.
 
 ## Key Decisions
@@ -54,6 +59,8 @@ See: .planning/PROJECT.md (updated 2026-06-22)
 | Phase 09-step-1-financial-settings-input-uiux-rebuild P03 | 21 min | 3 tasks | 9 files |
 | Phase 09-step-1-financial-settings-input-uiux-rebuild P04 | 22 min | 3 tasks | 7 files |
 | Phase 09-step-1-financial-settings-input-uiux-rebuild P05 | 52 min | 4 tasks | 5 files |
+| Phase 10.5-financial-settings-ux-integration-repair P01 | 22 min | 2 tasks | 4 files |
+| Phase 10.5 P03 | 29 min | 2 tasks | 4 files |
 
 ## Decisions
 
@@ -79,8 +86,17 @@ See: .planning/PROJECT.md (updated 2026-06-22)
 - [Phase 09-04]: Merged Sankey tooltip metadata remains textContent-based and uses newline-separated rows with CSS pre-line wrapping. — This satisfies D-27 readability without opening an HTML injection surface.
 - [Phase 09-05]: Expense/savings/invest detail editing now opens as compact cards and expands only the selected item. — This closes the UAT mobile density issue while preserving explicit save/cancel.
 - [Phase 09-05]: Step 1 no longer exposes manual account-transfer settings; item source accounts drive automatic flow balancing. — This removes duplicate cash-flow modeling and keeps surplus/deficit output derived from required item account selections.
+- [Phase 10.5-01]: Default Step 1 financial summary now has one static `재무설정 상세` CTA, and summary cards route to the same financial modal controller path.
+- [Phase 10.5-01]: Visible Phase 10 couple/household overview UI was removed from the financial modal while sanitizer and household-budget data helpers remain intact.
+- [Phase 10.5]: Phase 10.5-03: 월 생활비 uses dedicated variable/fixed sections; variable actual edits stay draft-only until 재무설정 저장. — Plan 03 requires selected variable rows to expose actual controls while fixed expenses remain actual-free.
 
 ## Operator Next Steps
 
-- Discuss Phase 11 with `$gsd-discuss-phase 11`
-- Or plan Phase 11 directly with `$gsd-plan-phase 11`
+- Continue Phase 10.5 with `10.5-02-PLAN.md`
+- Preserve Plan 01 entry contract tests while building the integrated modal shell.
+
+## Session
+
+**Last session:** 2026-06-24T04:11:42.206Z
+**Stopped at:** Completed 10.5-03-PLAN.md
+**Resume file:** None

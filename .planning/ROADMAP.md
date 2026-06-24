@@ -13,6 +13,7 @@ Resolve the next Step 1 household-flow work from `TODO.md` and open GitHub issue
 | Phase | Name | Goal | Requirements | Success Criteria |
 |---:|---|---|---|---:|
 | 10 | Step 1.2 Household Budget Foundation | Add the Step 1.2 surface and adaptive budget model without breaking existing Step 1 setup. | HH-01, HH-02, BUD-01, BUD-02, BUD-03, BUD-04 | 5 |
+| 10.5 | Financial Settings UX Integration Repair | 5/5 | Complete    | 2026-06-24 |
 | 11 | Zero-Input Spending Capture | Parse pasted Korean bank/card text into reviewable spending actuals. | CAP-01, CAP-02, CAP-03, CAP-04 | 4 |
 | 12 | Dual-Flow Household Merge | Combine two shared Step 1 data sources into one household flow preview. | HH-03, HH-04, HH-05 | 4 |
 | 13 | Historical Spending Comparison | Compare current Step 1 expenses against prior DataHub snapshots with a grouped bar chart. | CMP-01, CMP-02, CMP-03, CMP-04, CMP-05 | 5 |
@@ -47,6 +48,19 @@ Plans:
 3. Variable expense items accept target budget and actual spending fields without corrupting existing saved Step 1 data.
 4. Budget progress, remaining amount, overspend state, and end-of-month projection render from the same sanitized data model.
 5. Existing Step 1 summary cards, modal editing, persistence, and Sankey rendering still pass targeted regression checks.
+
+### Phase 10.5: Financial Settings UX Integration Repair *(INSERTED)*
+
+**Goal:** Rework the Phase 10 financial settings experience into one integrated flow that preserves information density while reducing user fatigue.
+
+**Requirements:** UXR-01, UXR-02, UXR-03, UXR-04
+
+**Success criteria:**
+
+1. The Step 1 default screen shows only the essential financial-setting state and next action, without duplicating the full editing surface.
+2. The financial settings detail flow connects monthly income, monthly living expenses, monthly investment, automatic savings, household total, user settings, and spouse settings in one coherent UX.
+3. Variable expense target, actual spending, remaining amount, status, and end-of-month projection are editable or visible in the detailed flow without overwhelming the default screen.
+4. The repaired UX addresses the Phase 10 UI review blockers for copywriting, visuals, spacing, and experience design while preserving existing Step 1 persistence and sanitizer behavior.
 
 ### Phase 11: Zero-Input Spending Capture
 
@@ -112,6 +126,10 @@ Plans:
 | BUD-02 | Phase 10 | Complete |
 | BUD-03 | Phase 10 | Complete |
 | BUD-04 | Phase 10 | Complete |
+| UXR-01 | Phase 10.5 | Complete |
+| UXR-02 | Phase 10.5 | Complete |
+| UXR-03 | Phase 10.5 | Pending |
+| UXR-04 | Phase 10.5 | Complete |
 | CAP-01 | Phase 11 | Pending |
 | CAP-02 | Phase 11 | Pending |
 | CAP-03 | Phase 11 | Pending |
@@ -132,8 +150,8 @@ Plans:
 
 **Coverage:**
 
-- v1.9 requirements: 23 total
-- Mapped to phases: 23
+- v1.9 requirements: 27 total
+- Mapped to phases: 27
 - Unmapped: 0
 
 ## Out of Scope Guardrails
@@ -144,4 +162,4 @@ Plans:
 
 ## Next
 
-Start with `$gsd-discuss-phase 11` to clarify the zero-input spending capture flow before implementation planning.
+Start with `$gsd-spec-phase 10.5` to lock the financial settings UX repair requirements before implementation planning.
