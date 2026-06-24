@@ -162,4 +162,4 @@ Plans:
 
 ## Next
 
-Start with `$gsd-discuss-phase 11` to shape Zero-Input Spending Capture before planning.
+Phase 10.5 is complete. Start Phase 11 later with `$gsd-discuss-phase 11` only when ready.
