@@ -1527,7 +1527,12 @@ test.describe('Phase 10.5 integrated modal shell', () => {
       '상태',
     ]);
     await expect(rail.locator('[data-financial-rail-status]')).toBeVisible();
-    await expect(modal.locator('[data-financial-overbudget-action]')).toHaveCount(0);
+    await expect(modal.locator('[data-financial-overbudget-action]')).toBeVisible();
+    await expect(modal.locator('[data-financial-adjustment-choice]')).toHaveText([
+      '투자 먼저 줄이기',
+      '저축 먼저 줄이기',
+      '저축/투자 비율 유지해서 같이 줄이기',
+    ]);
 
     for (const label of ['월 수입', '월 생활비', '투자', '저축', '결과/자동 저축']) {
       await modal.getByRole('tab', { name: label, exact: true }).click();
@@ -1717,8 +1722,8 @@ test.describe('Phase 10.5 automatic savings adjustment', () => {
           { id: 'acc-stock', name: '투자계좌' },
         ],
         expenseItems: [
-          { id: 'rent', name: '월세', amount: overBudget ? 2000000 : 1600000, group: '고정비', accountId: 'acc-living' },
-          { id: 'food', name: '식비', amount: overBudget ? 0 : 300000, group: '변동비', actualSpent: 100000, accountId: 'acc-living' },
+          { id: 'rent', name: '월세', amount: overBudget ? 1900000 : 1600000, group: '고정비', accountId: 'acc-living' },
+          { id: 'food', name: '식비', amount: overBudget ? 100000 : 300000, group: '변동비', actualSpent: 100000, accountId: 'acc-living' },
         ],
         savingsItems: [{ id: 'saving-main', name: '적금', amount: overBudget ? 1800000 : 700000, group: '저축', accountId: 'acc-saving' }],
         investItems: [{ id: 'invest-main', name: 'ETF', amount: overBudget ? 1200000 : 800000, group: '투자', accountId: 'acc-stock' }],
@@ -1779,7 +1784,7 @@ test.describe('Phase 10.5 automatic savings adjustment', () => {
     expect(afterCancel.investItems).toEqual(beforeSave.investItems);
 
     await page.locator('[data-financial-settings-detail]').click();
-    await choices.filter({ hasText: '투자 먼저 줄이기' }).click();
+    await modal.locator('[data-financial-adjustment-choice]').filter({ hasText: '투자 먼저 줄이기' }).click();
     await modal.locator('#financialModalSave').click();
     await expect(modal).toBeHidden();
 

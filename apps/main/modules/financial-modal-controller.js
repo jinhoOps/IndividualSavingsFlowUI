@@ -29,6 +29,11 @@ const DETAIL_TABS = [
   { key: "savings", label: "저축", categories: ["savings"], createCategory: "savings" },
   { key: "result", label: "결과/자동 저축", categories: [], createCategory: "savings" },
 ];
+const ADJUSTMENT_BASIS = [
+  { key: "invest-first", label: "투자 먼저 줄이기" },
+  { key: "savings-first", label: "저축 먼저 줄이기" },
+  { key: "proportional", label: "저축/투자 비율 유지해서 같이 줄이기" },
+];
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value || null));
@@ -154,6 +159,8 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
   let customGroupNames = {};
   let customGroupIndexes = new Set();
   let householdContextChanged = false;
+  let selectedAdjustmentBasis = "";
+  let adjustmentFeedback = "";
 
   function getInputs() {
     return typeof getVisibleInputs === "function" ? getVisibleInputs() : {};
@@ -234,11 +241,7 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
     const hasChanges = () => {
       if (!activeCategory || !baselineInputs) return false;
       if (isOutflowMode()) {
-        if (householdContextChanged) return true;
-        return OUTFLOW_CATEGORIES.some((category) => {
-          const baseItems = getItemsForCategory(baselineInputs, category);
-          return JSON.stringify(baseItems) !== JSON.stringify(getDraftItemsForCategory(category));
-        });
+        return true;
       }
       const baseItems = getItemsForCategory(baselineInputs, activeCategory);
       return JSON.stringify(baseItems) !== JSON.stringify(draftItems);
@@ -315,18 +318,20 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
     const living = sumDraftCategory("expense");
     const invest = sumDraftCategory("invest");
     const savings = sumDraftCategory("savings");
-    const availableAfterLiving = income - living;
+    const availableAfterLiving = Math.max(0, income - living);
     const futureCommitment = savings + invest;
     const automaticSavings = Math.max(0, availableAfterLiving - futureCommitment);
-    const overBudget = futureCommitment > Math.max(0, income);
+    const overBudget = futureCommitment > availableAfterLiving;
     return {
       income,
       living,
       invest,
       savings,
+      availableAfterLiving,
+      futureCommitment,
       automaticSavings,
       overBudget,
-      excess: Math.max(0, futureCommitment - Math.max(0, income)),
+      excess: Math.max(0, futureCommitment - availableAfterLiving),
     };
   }
 
@@ -364,10 +369,43 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
       action.className = "btn btn-ghost btn-sm";
       action.dataset.financialOverbudgetAction = "true";
       action.textContent = "조정 방식 선택";
-      rail.append(warning, action);
+      rail.append(warning, action, renderAdjustmentPanel(railState));
     }
 
     dom.financialModalSummary.replaceChildren(rail);
+  }
+
+  function renderAdjustmentPanel(railState = getRailState()) {
+    const panel = document.createElement("section");
+    panel.className = "financial-adjustment";
+    panel.dataset.financialAdjustment = "true";
+
+    const title = createText("h4", "financial-adjustment__title", "자동 저축 보정");
+    const copy = createText(
+      "p",
+      "financial-adjustment__copy",
+      `생활비 이후 남는 금액 ${IsfUtils.formatMoney(railState.availableAfterLiving)} 안에서 저축과 투자를 맞춥니다.`,
+    );
+    const choices = document.createElement("div");
+    choices.className = "financial-adjustment__choices";
+    ADJUSTMENT_BASIS.forEach(({ key, label }) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = `financial-adjustment__choice ${selectedAdjustmentBasis === key ? "is-selected" : ""}`;
+      button.dataset.financialAdjustmentChoice = key;
+      button.setAttribute("aria-pressed", String(selectedAdjustmentBasis === key));
+      button.textContent = label;
+      choices.appendChild(button);
+    });
+
+    const feedback = createText(
+      "p",
+      "financial-adjustment__feedback",
+      adjustmentFeedback || (selectedAdjustmentBasis ? "선택한 방식은 저장할 때 한 번 적용됩니다." : "저장하려면 조정 방식을 선택하거나 금액을 조정해 초과를 해소해 주세요."),
+    );
+    feedback.dataset.financialAdjustmentFeedback = "true";
+    panel.append(title, copy, choices, feedback);
+    return panel;
   }
 
   function getDraftInputsForActiveCategory() {
@@ -422,6 +460,7 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
       else delete item.maturityMonth;
     }
     setDraftItemsForCategory(category, items);
+    adjustmentFeedback = "";
     syncStats();
   }
 
@@ -722,11 +761,20 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
 
     if (activeOutflowTab === "result") {
       const state = getRailState();
-      panel.appendChild(createText("p", "financial-detail-panel__lead", `자동 저축은 현재 draft 기준 ${IsfUtils.formatMoney(state.automaticSavings)}입니다.`));
+      const result = document.createElement("section");
+      result.className = "financial-result";
+      result.dataset.financialAutomaticSavingsResult = "true";
+      result.append(
+        createText("span", "financial-result__label", "자동 저축"),
+        createText("strong", "financial-result__value", IsfUtils.formatMoney(state.automaticSavings)),
+        createText("p", "financial-result__copy", "월 수입에서 생활비, 저축, 투자를 반영한 뒤 남는 금액입니다."),
+      );
+      panel.appendChild(result);
       const savingsNav = document.createElement("button");
       savingsNav.type = "button";
       savingsNav.className = "btn btn-ghost btn-sm";
       savingsNav.dataset.outflowTab = "savings";
+      savingsNav.dataset.financialResultSavingsAction = "true";
       savingsNav.textContent = "저축 항목 보기";
       panel.appendChild(savingsNav);
       fragment.appendChild(panel);
@@ -813,6 +861,72 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
     syncFinancialModalPendingBar();
   }
 
+  function reduceItemsByAmount(items, amountToReduce) {
+    let remaining = Math.max(0, Number(amountToReduce) || 0);
+    return safeItems(items).map((item) => {
+      const current = Number(item.amount) || 0;
+      const reduction = Math.min(current, remaining);
+      remaining -= reduction;
+      return {
+        ...item,
+        amount: current - reduction,
+      };
+    });
+  }
+
+  function scaleItemsToTotal(items, targetTotal) {
+    const safe = safeItems(items);
+    const currentTotal = safe.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+    const safeTarget = Math.max(0, Number(targetTotal) || 0);
+    if (currentTotal <= 0) {
+      return safe.map((item) => ({ ...item, amount: 0 }));
+    }
+    let assigned = 0;
+    return safe.map((item, index) => {
+      const isLast = index === safe.length - 1;
+      const amount = isLast
+        ? Math.max(0, safeTarget - assigned)
+        : Math.max(0, Math.round(((Number(item.amount) || 0) * safeTarget) / currentTotal / 1000) * 1000);
+      assigned += amount;
+      return {
+        ...item,
+        amount,
+      };
+    });
+  }
+
+  function applySelectedAdjustment(nextInputs) {
+    const state = getRailState();
+    if (!state.overBudget || !selectedAdjustmentBasis) return nextInputs;
+    const savingsItems = getDraftItemsForCategory("savings");
+    const investItems = getDraftItemsForCategory("invest");
+    const savingsTotal = state.savings;
+    const investTotal = state.invest;
+
+    if (selectedAdjustmentBasis === "invest-first") {
+      const adjustedInvest = reduceItemsByAmount(investItems, state.excess);
+      const remainingExcess = Math.max(0, state.excess - investTotal);
+      const adjustedSavings = remainingExcess > 0 ? reduceItemsByAmount(savingsItems, remainingExcess) : savingsItems;
+      return setItemsForCategory(setItemsForCategory(nextInputs, "invest", adjustedInvest), "savings", adjustedSavings);
+    }
+
+    if (selectedAdjustmentBasis === "savings-first") {
+      const adjustedSavings = reduceItemsByAmount(savingsItems, state.excess);
+      const remainingExcess = Math.max(0, state.excess - savingsTotal);
+      const adjustedInvest = remainingExcess > 0 ? reduceItemsByAmount(investItems, remainingExcess) : investItems;
+      return setItemsForCategory(setItemsForCategory(nextInputs, "savings", adjustedSavings), "invest", adjustedInvest);
+    }
+
+    const targetTotal = state.availableAfterLiving;
+    const adjustedSavingsTotal = Math.round((targetTotal * savingsTotal) / Math.max(1, state.futureCommitment) / 1000) * 1000;
+    const adjustedInvestTotal = Math.max(0, targetTotal - adjustedSavingsTotal);
+    return setItemsForCategory(
+      setItemsForCategory(nextInputs, "savings", scaleItemsToTotal(savingsItems, adjustedSavingsTotal)),
+      "invest",
+      scaleItemsToTotal(investItems, adjustedInvestTotal),
+    );
+  }
+
   function open(category = "expense") {
     const config = CATEGORY_CONFIG[category];
     if (!config || !dom.financialModal) return;
@@ -839,6 +953,8 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
     editingIndex = { category, index: -1 };
     customGroupIndexes = new Set();
     householdContextChanged = false;
+    selectedAdjustmentBasis = "";
+    adjustmentFeedback = "";
 
     if (dom.financialModalTitle) {
       dom.financialModalTitle.textContent = "재무설정 상세";
@@ -874,6 +990,8 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
     customGroupNames = {};
     customGroupIndexes = new Set();
     householdContextChanged = false;
+    selectedAdjustmentBasis = "";
+    adjustmentFeedback = "";
     removeHouseholdOverview();
     window.setTimeout(() => {
       dom.financialModal.hidden = true;
@@ -890,9 +1008,16 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
       window.alert(validationMessage);
       return;
     }
-    const nextInputs = isOutflowMode()
+    const railState = isOutflowMode() ? getRailState() : null;
+    if (railState?.overBudget && !selectedAdjustmentBasis) {
+      adjustmentFeedback = "조정 방식을 선택하거나 금액을 조정해 초과를 해소해 주세요.";
+      renderRows();
+      return;
+    }
+    const nextInputsBase = isOutflowMode()
       ? INTEGRATED_CATEGORIES.reduce((inputs, category) => setItemsForCategory(inputs, category, getDraftItemsForCategory(category)), baselineInputs)
       : setItemsForCategory(baselineInputs, activeCategory, draftItems);
+    const nextInputs = isOutflowMode() ? applySelectedAdjustment(nextInputsBase) : nextInputsBase;
     if (persistence && typeof persistence.commitImmediateInputs === "function") {
       persistence.commitImmediateInputs(nextInputs);
     } else if (typeof renderAll === "function") {
@@ -901,6 +1026,22 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
     close();
     householdContextChanged = false;
     syncFinancialModalPendingBar();
+  }
+
+  function handleAdjustmentClick(target) {
+    const adjustmentChoice = target.closest?.("[data-financial-adjustment-choice]");
+    if (adjustmentChoice) {
+      selectedAdjustmentBasis = adjustmentChoice.dataset.financialAdjustmentChoice || "";
+      adjustmentFeedback = "선택한 방식은 저장할 때 한 번 적용됩니다.";
+      renderRows();
+      return true;
+    }
+    if (target.closest?.("[data-financial-overbudget-action]")) {
+      activeOutflowTab = "result";
+      renderRows();
+      return true;
+    }
+    return false;
   }
 
   function getRecommendedAccountId() {
@@ -1233,6 +1374,7 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
           renderRows();
           return;
         }
+        if (handleAdjustmentClick(target)) return;
         if (target.closest?.("[data-financial-add-group]")) {
           addGroupToActiveTab();
           return;
@@ -1342,6 +1484,13 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
         const targetCategory = section.dataset.groupDropCategory || payload.category || activeCategory;
         if (section.dataset.groupDropScope !== "future" && payload.category !== targetCategory) return;
         moveItemToGroup(targetCategory, Number(payload.index), section.dataset.groupDropName || "");
+      });
+    }
+    if (dom.financialModalSummary) {
+      dom.financialModalSummary.addEventListener("click", (event) => {
+        const target = event.target;
+        if (!(target instanceof Element)) return;
+        handleAdjustmentClick(target);
       });
     }
     document.addEventListener("open-financial-modal", (event) => {
