@@ -1806,6 +1806,184 @@ test.describe('Phase 10.5 automatic savings adjustment', () => {
   });
 });
 
+test.describe('Phase 10.5 regression hardening', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.clear();
+      sessionStorage.clear();
+    });
+    await page.goto('apps/main/index.html');
+    await page.waitForSelector('main');
+  });
+
+  async function seedRegressionFlow(page: import('@playwright/test').Page) {
+    await page.evaluate(async () => {
+      const [
+        { state },
+        { sanitizeInputs },
+        { buildMonthlySnapshot },
+        { createRenderOrchestrator },
+        { STORAGE_KEY },
+      ] = await Promise.all([
+        import('/IndividualSavingsFlowUI/apps/main/modules/state.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/input-sanitizer.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/calculator.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/render-orchestrator.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/constants.js'),
+      ]);
+      state.inputs = sanitizeInputs({
+        modelVersion: 10,
+        incomes: [{ id: 'income-main', name: '급여', amount: 4200000, accountId: 'acc-salary' }],
+        accounts: [
+          { id: 'acc-salary', name: '급여계좌' },
+          { id: 'acc-living', name: '생활비계좌' },
+          { id: 'acc-saving', name: '저축계좌' },
+          { id: 'acc-stock', name: '투자계좌' },
+        ],
+        expenseItems: [
+          { id: 'rent', name: '월세', amount: 1000000, group: '고정비', actualSpent: 111111, accountId: 'acc-living' },
+          { id: 'food', name: '식비', amount: 500000, group: '변동비', actualSpent: 210000, accountId: 'acc-living' },
+        ],
+        savingsItems: [{ id: 'saving-main', name: '적금', amount: 600000, group: '저축', accountId: 'acc-saving' }],
+        investItems: [{ id: 'invest-main', name: 'ETF', amount: 500000, group: '투자', accountId: 'acc-stock' }],
+      });
+      state.snapshot = buildMonthlySnapshot(state.inputs);
+      window.IsfStorageHub.saveLocal(STORAGE_KEY, state.inputs);
+      createRenderOrchestrator().renderAll();
+    });
+  }
+
+  async function openFinancialDetail(page: import('@playwright/test').Page) {
+    const modal = page.locator('#financialModal');
+    await page.locator('[data-financial-settings-detail]').click();
+    await expect(modal).toBeVisible();
+    return modal;
+  }
+
+  async function assertForbiddenCoupleUiAbsent(page: import('@playwright/test').Page) {
+    await expect(page.locator('#householdBudgetPanel')).toHaveCount(0);
+    await expect(page.locator('[data-household-overview]')).toHaveCount(0);
+    await expect(page.locator('.household-mode-toggle')).toHaveCount(0);
+    await expect(page.locator('.household-person-tabs')).toHaveCount(0);
+    await expect(page.locator('[data-household-field="spouseMonthlyIncome"]')).toHaveCount(0);
+    await expect(page.getByText('부부합산', { exact: true })).toHaveCount(0);
+    await expect(page.getByText('본인 설정', { exact: true })).toHaveCount(0);
+    await expect(page.getByText('배우자 설정', { exact: true })).toHaveCount(0);
+    await expect(page.locator('.modal-overlay:not(#financialModal):visible')).toHaveCount(0);
+  }
+
+  async function editFirstAmount(modal: import('@playwright/test').Locator, category: string, value: string) {
+    await modal.locator(`[data-modal-row-category="${category}"]`).first().click();
+    const row = modal.locator(`.financial-modal-row--editing[data-modal-row-category="${category}"]`).first();
+    await expect(row).toBeVisible();
+    await row.locator('[data-financial-modal-field="amount"]').fill(value);
+  }
+
+  test('protects integrated save/cancel, Sankey, sanitizer, duplicate, and responsive contracts', async ({ page }) => {
+    await seedRegressionFlow(page);
+    await assertForbiddenCoupleUiAbsent(page);
+
+    let modal = await openFinancialDetail(page);
+    for (const label of ['월 수입', '월 생활비', '투자', '저축', '결과/자동 저축']) {
+      await modal.getByRole('tab', { name: label, exact: true }).click();
+      await expect(modal.locator('[data-financial-detail-rail]')).toBeVisible();
+      await assertForbiddenCoupleUiAbsent(page);
+    }
+
+    await modal.getByRole('tab', { name: '월 수입', exact: true }).click();
+    await editFirstAmount(modal, 'income', '5000000');
+
+    await modal.getByRole('tab', { name: '월 생활비', exact: true }).click();
+    const variableRow = modal.locator('[data-financial-variable-row]').filter({ hasText: '식비' });
+    await variableRow.click();
+    await expect(modal.locator('[data-financial-variable-detail]')).toContainText('월말 예상');
+    await modal.locator('[data-financial-modal-field="amount"]').fill('550000');
+    await modal.locator('[data-financial-modal-field="actualSpent"]').fill('280000');
+    await expect(modal.locator('[data-financial-variable-detail]')).toContainText('현재 사용 속도를 단순 환산한 참고값입니다.');
+    await expect(modal.locator('[data-financial-fixed-row]').filter({ hasText: '월세' }).locator('[data-financial-modal-field="actualSpent"]')).toHaveCount(0);
+
+    await modal.getByRole('tab', { name: '투자', exact: true }).click();
+    await editFirstAmount(modal, 'invest', '4000000');
+    await expect(modal.locator('[data-financial-overbudget-action]')).toBeVisible();
+    await modal.locator('#financialModalSave').click();
+    await expect(modal.locator('[data-financial-adjustment-feedback]')).toContainText('조정 방식을 선택');
+    await modal.locator('[data-financial-adjustment-choice]').filter({ hasText: '투자 먼저 줄이기' }).click();
+    await modal.locator('#financialModalSave').click();
+    await expect(modal).toBeHidden();
+
+    let saved = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}'));
+    expect(saved.incomes.find((item: any) => item.id === 'income-main')?.amount).toBe(5000000);
+    expect(saved.expenseItems.find((item: any) => item.id === 'food')).toMatchObject({ amount: 550000, actualSpent: 280000 });
+    expect(saved.expenseItems.find((item: any) => item.id === 'rent')).not.toHaveProperty('actualSpent');
+    expect(saved.savingsItems.map((item: any) => item.id)).toEqual(['saving-main']);
+    expect(saved.investItems.map((item: any) => item.id)).toEqual(['invest-main']);
+    expect(saved.investItems[0].amount).toBe(2850000);
+
+    await assertForbiddenCoupleUiAbsent(page);
+    const order = await page.evaluate(() => {
+      const cards = document.querySelector('#summaryCards');
+      const sankey = document.querySelector('.sankey-panel');
+      return Boolean(cards && sankey && cards.compareDocumentPosition(sankey) & Node.DOCUMENT_POSITION_FOLLOWING);
+    });
+    expect(order).toBe(true);
+    const labels = await page.locator('#sankeySvg .sankey-label').evaluateAll((nodes) => nodes.map((node) => node.textContent || ''));
+    expect(labels).toEqual(expect.arrayContaining(['총수입', '급여계좌', '생활비계좌', '투자계좌']));
+    expect(labels.filter((label) => label.includes('적금')).length).toBeLessThanOrEqual(1);
+    expect(labels.filter((label) => label.includes('ETF')).length).toBeLessThanOrEqual(1);
+
+    modal = await openFinancialDetail(page);
+    await modal.locator('#financialModalSave').click();
+    await expect(modal).toBeHidden();
+    saved = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}'));
+    expect(saved.expenseItems.filter((item: any) => item.id === 'food')).toHaveLength(1);
+    expect(saved.savingsItems.filter((item: any) => item.id === 'saving-main')).toHaveLength(1);
+    expect(saved.investItems.filter((item: any) => item.id === 'invest-main')).toHaveLength(1);
+
+    modal = await openFinancialDetail(page);
+    await modal.getByRole('tab', { name: '월 수입', exact: true }).click();
+    await editFirstAmount(modal, 'income', '6000000');
+    await modal.locator('#financialModalCancel').click();
+    await expect(modal).toBeHidden();
+    const afterCancel = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}'));
+    expect(afterCancel.incomes.find((item: any) => item.id === 'income-main')?.amount).toBe(5000000);
+    await assertForbiddenCoupleUiAbsent(page);
+  });
+
+  test('keeps every financial detail tab contained on desktop, tablet, and mobile', async ({ page }) => {
+    await seedRegressionFlow(page);
+
+    for (const viewport of [
+      { width: 1280, height: 900 },
+      { width: 768, height: 1024 },
+      { width: 390, height: 844 },
+    ]) {
+      await page.setViewportSize(viewport);
+      await page.waitForTimeout(150);
+      const modal = await openFinancialDetail(page);
+
+      for (const label of ['월 수입', '월 생활비', '투자', '저축', '결과/자동 저축']) {
+        await modal.getByRole('tab', { name: label, exact: true }).click();
+        await page.waitForTimeout(80);
+        const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+        expect(overflow, `${label} tab should not create document overflow at ${viewport.width}px`).toBeLessThanOrEqual(4);
+        const contained = await modal.evaluate((element) => {
+          const nodes = [
+            element.querySelector('[data-financial-detail-tabs]'),
+            element.querySelector('[data-financial-detail-rail]'),
+            element.querySelector('[data-financial-detail-panel]'),
+          ].filter(Boolean);
+          return nodes.every((node) => node.scrollWidth <= node.clientWidth + 4);
+        });
+        expect(contained, `${label} tab content should fit modal at ${viewport.width}px`).toBe(true);
+      }
+
+      await assertForbiddenCoupleUiAbsent(page);
+      await modal.locator('#financialModalClose').click();
+      await expect(modal).toBeHidden();
+    }
+  });
+});
+
 test.describe('Phase 09 final responsive user flow coverage', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
