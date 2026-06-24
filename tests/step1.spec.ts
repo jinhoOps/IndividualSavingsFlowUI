@@ -1572,6 +1572,116 @@ test.describe('Phase 10.5 integrated modal shell', () => {
   });
 });
 
+test.describe('Phase 10.5 living expense variable rows', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.clear();
+      sessionStorage.clear();
+    });
+    await page.goto('apps/main/index.html');
+    await page.waitForSelector('main');
+  });
+
+  async function seedLivingExpenseRows(page: import('@playwright/test').Page, includeVariable = true) {
+    await page.evaluate(async ({ includeVariable }) => {
+      const [{ state }, { sanitizeInputs }, { buildMonthlySnapshot }, { renderAll }] = await Promise.all([
+        import('/IndividualSavingsFlowUI/apps/main/modules/state.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/input-sanitizer.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/calculator.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/render-orchestrator.js'),
+      ]);
+      state.inputs = sanitizeInputs({
+        modelVersion: 10,
+        incomes: [{ id: 'income-main', name: '급여', amount: 4200000, accountId: 'acc-salary' }],
+        accounts: [
+          { id: 'acc-salary', name: '급여계좌' },
+          { id: 'acc-living', name: '생활비계좌' },
+          { id: 'acc-stock', name: '투자계좌' },
+        ],
+        expenseItems: [
+          { id: 'rent', name: '월세', amount: 900000, group: '고정비', actualSpent: 123456, accountId: 'acc-living' },
+          ...(includeVariable
+            ? [{ id: 'food', name: '식비', amount: 450000, group: '변동비', actualSpent: 180000, accountId: 'acc-living' }]
+            : []),
+        ],
+        savingsItems: [{ id: 'saving', name: '적금', amount: 300000, group: '저축', accountId: 'acc-salary' }],
+        investItems: [{ id: 'invest', name: 'ETF', amount: 200000, group: '투자', accountId: 'acc-stock' }],
+      });
+      state.snapshot = buildMonthlySnapshot(state.inputs);
+      renderAll();
+    }, { includeVariable });
+  }
+
+  test('shows compact variable summaries and expands one editable target/actual row', async ({ page }) => {
+    await seedLivingExpenseRows(page);
+
+    const modal = page.locator('#financialModal');
+    await page.locator('[data-financial-settings-detail]').click();
+    await expect(modal).toBeVisible();
+    await modal.getByRole('tab', { name: '월 생활비', exact: true }).click();
+
+    const variableRows = modal.locator('[data-financial-variable-row]');
+    await expect(variableRows).toHaveCount(1);
+    await expect(variableRows.first()).toContainText('식비');
+    await expect(variableRows.first()).toContainText('목표');
+    await expect(variableRows.first()).toContainText('실제');
+    await expect(modal.locator('[data-financial-variable-detail]')).toHaveCount(0);
+    await expect(modal.locator('[data-financial-modal-field="actualSpent"]')).toHaveCount(0);
+
+    await variableRows.first().click();
+    await expect(modal.locator('[data-financial-variable-detail]')).toHaveCount(1);
+    await expect(modal.locator('[data-financial-modal-field="amount"]')).toHaveCount(1);
+    await expect(modal.locator('[data-financial-modal-field="actualSpent"]')).toHaveCount(1);
+    await expect(modal.locator('[data-financial-variable-detail]')).toContainText('남은 금액');
+    await expect(modal.locator('[data-financial-variable-detail]')).toContainText('상태');
+    await expect(modal.locator('[data-financial-variable-detail]')).toContainText('월말 예상');
+    await expect(modal.locator('[data-financial-variable-detail]')).toContainText('현재 사용 속도를 단순 환산한 참고값입니다.');
+
+    await modal.locator('[data-financial-modal-field="amount"]').fill('500000');
+    await modal.locator('[data-financial-modal-field="actualSpent"]').fill('230000');
+    await expect(modal.locator('[data-financial-variable-detail]')).toContainText('27만');
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}').expenseItems?.find((item: any) => item.id === 'food')?.actualSpent)).not.toBe(230000);
+
+    const fixedRow = modal.locator('[data-financial-fixed-row]').filter({ hasText: '월세' });
+    await expect(fixedRow).toBeVisible();
+    await fixedRow.click();
+    await expect(fixedRow.locator('[data-financial-modal-field="actualSpent"]')).toHaveCount(0);
+    await expect(modal.locator('[data-financial-modal-field="actualSpent"]')).toHaveCount(0);
+
+    await variableRows.first().click();
+    await modal.locator('[data-financial-modal-field="amount"]').fill('500000');
+    await modal.locator('[data-financial-modal-field="actualSpent"]').fill('230000');
+    await modal.locator('#financialModalSave').click();
+    await expect(modal).toBeHidden();
+
+    const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}'));
+    const variable = saved.expenseItems.find((item: any) => item.id === 'food');
+    const fixed = saved.expenseItems.find((item: any) => item.id === 'rent');
+    expect(variable).toMatchObject({ amount: 500000, actualSpent: 230000 });
+    expect(fixed).not.toHaveProperty('actualSpent');
+  });
+
+  test('renders an empty variable state and avoids 390px overflow', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await seedLivingExpenseRows(page, false);
+
+    const modal = page.locator('#financialModal');
+    await page.locator('[data-financial-settings-detail]').click();
+    await expect(modal).toBeVisible();
+    await modal.getByRole('tab', { name: '월 생활비', exact: true }).click();
+
+    await expect(modal.locator('[data-financial-variable-row]')).toHaveCount(0);
+    await expect(modal.locator('[data-financial-variable-empty]')).toBeVisible();
+    await expect(modal.locator('[data-financial-variable-empty]')).toContainText('변동비 항목이 없습니다');
+    await expect(modal.locator('[data-financial-modal-field="actualSpent"]')).toHaveCount(0);
+
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(overflow).toBeLessThanOrEqual(4);
+    const contained = await modal.evaluate((element) => element.scrollWidth <= element.clientWidth + 4);
+    expect(contained).toBe(true);
+  });
+});
+
 test.describe('Phase 09 final responsive user flow coverage', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
