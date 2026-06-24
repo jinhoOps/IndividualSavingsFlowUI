@@ -1584,7 +1584,7 @@ test.describe('Phase 10.5 living expense variable rows', () => {
 
   async function seedLivingExpenseRows(page: import('@playwright/test').Page, includeVariable = true) {
     await page.evaluate(async ({ includeVariable }) => {
-      const [{ state }, { sanitizeInputs }, { buildMonthlySnapshot }, { renderAll }] = await Promise.all([
+      const [{ state }, { sanitizeInputs }, { buildMonthlySnapshot }, { createRenderOrchestrator }] = await Promise.all([
         import('/IndividualSavingsFlowUI/apps/main/modules/state.js'),
         import('/IndividualSavingsFlowUI/apps/main/modules/input-sanitizer.js'),
         import('/IndividualSavingsFlowUI/apps/main/modules/calculator.js'),
@@ -1608,7 +1608,7 @@ test.describe('Phase 10.5 living expense variable rows', () => {
         investItems: [{ id: 'invest', name: 'ETF', amount: 200000, group: '투자', accountId: 'acc-stock' }],
       });
       state.snapshot = buildMonthlySnapshot(state.inputs);
-      renderAll();
+      createRenderOrchestrator().renderAll();
     }, { includeVariable });
   }
 

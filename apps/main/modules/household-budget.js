@@ -63,8 +63,9 @@ export function resolveBudgetStatus({ target, actual, projected } = {}) {
 export function buildVariableExpenseBudgetRows(inputs, now = new Date()) {
   const expenses = Array.isArray(inputs?.expenseItems) ? inputs.expenseItems : [];
   return expenses
-    .filter(isVariableExpenseItem)
-    .map((item) => {
+    .map((item, sourceIndex) => ({ item, sourceIndex }))
+    .filter(({ item }) => isVariableExpenseItem(item))
+    .map(({ item, sourceIndex }) => {
       const target = safeMoney(item.amount);
       const actual = safeMoney(item.actualSpent);
       const projectedMonthEnd = projectMonthEndSpending(actual, now);
@@ -74,6 +75,7 @@ export function buildVariableExpenseBudgetRows(inputs, now = new Date()) {
 
       return {
         id: item.id,
+        sourceIndex,
         name: item.name || item.id || "변동비",
         group: item.group || "변동비",
         target,
