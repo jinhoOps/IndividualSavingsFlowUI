@@ -1499,6 +1499,79 @@ test.describe('Phase 10.5 financial settings entry contract', () => {
   });
 });
 
+test.describe('Phase 10.5 integrated modal shell', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.clear();
+      sessionStorage.clear();
+    });
+    await page.goto('apps/main/index.html');
+    await page.waitForSelector('main');
+  });
+
+  test('renders ordered tabs and keeps the five-value summary rail visible', async ({ page }) => {
+    const modal = page.locator('#financialModal');
+    await page.locator('[data-financial-settings-detail]').click();
+    await expect(modal).toBeVisible();
+
+    const tabs = modal.locator('[data-financial-detail-tab]');
+    await expect(tabs).toHaveText(['월 수입', '월 생활비', '투자', '저축', '결과/자동 저축']);
+
+    const rail = modal.locator('[data-financial-detail-rail]');
+    await expect(rail).toBeVisible();
+    await expect(rail.locator('[data-financial-rail-label]')).toHaveText([
+      '월 수입',
+      '월 생활비',
+      '월 투자',
+      '자동 저축',
+      '상태',
+    ]);
+    await expect(rail.locator('[data-financial-rail-status]')).toBeVisible();
+    await expect(modal.locator('[data-financial-overbudget-action]')).toHaveCount(0);
+
+    for (const label of ['월 수입', '월 생활비', '투자', '저축', '결과/자동 저축']) {
+      await modal.getByRole('tab', { name: label, exact: true }).click();
+      await expect(rail, `summary rail should remain visible on ${label}`).toBeVisible();
+      await expect(modal.locator('[data-financial-detail-panel]')).toBeVisible();
+      await expect(modal.locator('[data-financial-detail-panel]')).toContainText(label);
+      await expect(page.locator('.modal-overlay:not(#financialModal):visible')).toHaveCount(0);
+    }
+
+    const modalText = await modal.textContent();
+    expect(modalText || '').not.toMatch(/후회|잘못|책임|대출 상담|세무|투자 조언/);
+  });
+
+  test('wraps tabs and summary rail without page overflow', async ({ page }) => {
+    for (const viewport of [
+      { width: 1280, height: 900 },
+      { width: 768, height: 1024 },
+      { width: 390, height: 844 },
+    ]) {
+      await page.setViewportSize(viewport);
+      await page.waitForTimeout(150);
+
+      const modal = page.locator('#financialModal');
+      await page.locator('[data-financial-settings-detail]').click();
+      await expect(modal).toBeVisible();
+      await expect(modal.locator('[data-financial-detail-rail]')).toBeVisible();
+      await expect(modal.locator('[data-financial-detail-tabs]')).toBeVisible();
+
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      expect(overflow, `modal should not create document overflow at ${viewport.width}px`).toBeLessThanOrEqual(4);
+
+      const contained = await modal.evaluate((element) => {
+        const rail = element.querySelector('[data-financial-detail-rail]');
+        const tabs = element.querySelector('[data-financial-detail-tabs]');
+        return [rail, tabs].every((node) => node && node.scrollWidth <= node.clientWidth + 4);
+      });
+      expect(contained, `rail and tabs should fit their container at ${viewport.width}px`).toBe(true);
+
+      await modal.locator('#financialModalClose').click();
+      await expect(modal).toBeHidden();
+    }
+  });
+});
+
 test.describe('Phase 09 final responsive user flow coverage', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
