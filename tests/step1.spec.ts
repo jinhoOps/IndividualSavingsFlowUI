@@ -1410,7 +1410,7 @@ test.describe('Phase 10 household budget data model', () => {
   });
 });
 
-test.describe('Phase 10 household overview in financial settings', () => {
+test.describe('Phase 10.5 financial settings entry contract', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
       localStorage.clear();
@@ -1420,43 +1420,32 @@ test.describe('Phase 10 household overview in financial settings', () => {
     await page.waitForSelector('main');
   });
 
-  test('renders couple status board inside expense financial modal without summary-screen clutter', async ({ page }) => {
+  test('keeps the default screen light with one integrated detail entry before Sankey', async ({ page }) => {
     for (const viewport of [
       { width: 1280, height: 900 },
       { width: 768, height: 1024 },
       { width: 390, height: 844 },
     ]) {
       await page.setViewportSize(viewport);
-      await expect(page.locator('#householdBudgetPanel')).toHaveCount(0);
-      await page.locator('[data-financial-category="expense"]').click();
-      const modal = page.locator('#financialModal');
-      await expect(modal).toBeVisible();
-      await expect(modal.locator('[data-household-overview]')).toBeVisible();
-      await expect(modal.locator('[data-household-overview]')).toContainText('부부 현황 설정');
-      await expect(modal.locator('.household-mode-toggle__button')).toHaveText(['단독', '부부']);
-      await expect(modal.locator('[data-household-field="primaryMonthlyIncome"]')).toBeVisible();
-      if (viewport.width <= 760) {
-        await expect(modal.locator('.household-person-tabs')).toBeVisible();
-        await expect(modal.locator('[data-household-person-panel="self"]')).toBeVisible();
-        await modal.locator('[data-household-person="spouse"]').click();
-        await expect(modal.locator('[data-household-person-panel="spouse"]')).toBeVisible();
-      } else {
-        await expect(modal.locator('.household-person-tabs')).toBeHidden();
-        await expect(modal.locator('[data-household-person-panel="self"]')).toBeVisible();
-        await expect(modal.locator('[data-household-person-panel="spouse"]')).toBeVisible();
-      }
-      await expect(modal.locator('[data-household-overview]')).toContainText('급여');
-      await expect(modal.locator('[data-household-overview]')).toContainText('생활비');
-      await expect(modal.locator('[data-household-overview]')).toContainText('고정지출 합계');
-      await expect(modal.locator('[data-household-overview]')).toContainText('월저축');
-      await expect(modal.locator('[data-household-overview]')).toContainText('1년 후 저축');
-      await expect(modal.locator('[data-household-overview]')).toContainText('5년 후 저축');
-      await expect(modal.locator('[data-household-overview]')).toContainText('10년 후 저축');
+      await page.waitForTimeout(150);
 
-      const ratioText = await modal.locator('.household-overview-ratio__value').textContent();
-      expect(ratioText || '').toMatch(/\d+%/);
+      await expect(page.locator('#householdBudgetPanel')).toHaveCount(0);
+      await expect(page.locator('[data-household-overview]')).toHaveCount(0);
       await expect(page.locator('[data-household-budget-row]')).toHaveCount(0);
       await expect(page.locator('[data-household-budget-actual]')).toHaveCount(0);
+      await expect(page.locator('.household-mode-toggle')).toHaveCount(0);
+      await expect(page.locator('.household-person-tabs')).toHaveCount(0);
+      await expect(page.locator('[data-household-person-panel]')).toHaveCount(0);
+      await expect(page.locator('[data-household-field="spouseMonthlyIncome"]')).toHaveCount(0);
+
+      const detailActions = page.locator('[data-financial-settings-detail]');
+      await expect(detailActions).toHaveCount(1);
+      await expect(detailActions.first()).toBeVisible();
+      await expect(detailActions.first()).toContainText('재무설정 상세');
+
+      await expect(page.getByText('부부합산', { exact: true })).toHaveCount(0);
+      await expect(page.getByText('본인 설정', { exact: true })).toHaveCount(0);
+      await expect(page.getByText('배우자 설정', { exact: true })).toHaveCount(0);
 
       const order = await page.evaluate(() => {
         const cards = document.querySelector('#summaryCards');
@@ -1472,157 +1461,41 @@ test.describe('Phase 10 household overview in financial settings', () => {
       expect(order?.overflow, `no page overflow at ${viewport.width}px`).toBeLessThanOrEqual(4);
       await expect(page.locator('[data-financial-summary-group="core-metrics"]')).toContainText('년 후 순자산');
       await expect(page.locator('[data-financial-summary-group="outflow"]')).toContainText('지출');
+    }
+  });
+
+  test('opens the same integrated modal from the detail action and summary category cards', async ({ page }) => {
+    const modal = page.locator('#financialModal');
+    const detailAction = page.locator('[data-financial-settings-detail]');
+    await expect(detailAction).toHaveCount(1);
+    await detailAction.click();
+    await expect(modal).toBeVisible();
+    await expect(modal.locator('#financialModalTitle')).toHaveText('재무설정 상세');
+    await expect(modal.locator('#financialModalCancel')).toHaveText('편집 취소');
+    await expect(modal.locator('#financialModalSave')).toHaveText('재무설정 저장');
+    await expect(modal.locator('[data-household-overview]')).toHaveCount(0);
+    await expect(modal.getByText('부부합산', { exact: true })).toHaveCount(0);
+    await expect(modal.getByText('본인 설정', { exact: true })).toHaveCount(0);
+    await expect(modal.getByText('배우자 설정', { exact: true })).toHaveCount(0);
+    await modal.locator('#financialModalClose').click();
+    await expect(modal).toBeHidden();
+
+    const categories = await page.locator('[data-financial-category]').evaluateAll((buttons) =>
+      buttons.map((button) => button.getAttribute('data-financial-category') || '')
+    );
+    expect(categories).toEqual(expect.arrayContaining(['expense', 'savings', 'invest']));
+
+    for (const category of categories) {
+      await page.locator(`[data-financial-category="${category}"]`).click();
+      await expect(modal).toBeVisible();
+      await expect(modal.locator('#financialModalTitle')).toHaveText('재무설정 상세');
+      await expect(modal.locator('[data-household-overview]')).toHaveCount(0);
+      await expect(modal.locator('.household-mode-toggle')).toHaveCount(0);
+      await expect(modal.locator('.household-person-tabs')).toHaveCount(0);
+      await expect(modal.locator('[data-household-field="spouseMonthlyIncome"]')).toHaveCount(0);
       await modal.locator('#financialModalClose').click();
       await expect(modal).toBeHidden();
     }
-  });
-});
-
-test.describe('Phase 10 household overview draft workflow', () => {
-  test.beforeEach(async ({ page }) => {
-    await page.addInitScript(() => {
-      localStorage.clear();
-      sessionStorage.clear();
-    });
-    await page.goto('apps/main/index.html');
-    await page.waitForSelector('main');
-  });
-
-  async function seedBudgetInputs(page: any) {
-    await page.evaluate(async () => {
-      const [{ STORAGE_KEY }, { sanitizeInputs }, { state }, { createRenderOrchestrator }] = await Promise.all([
-        import('/IndividualSavingsFlowUI/apps/main/modules/constants.js'),
-        import('/IndividualSavingsFlowUI/apps/main/modules/input-sanitizer.js'),
-        import('/IndividualSavingsFlowUI/apps/main/modules/state.js'),
-        import('/IndividualSavingsFlowUI/apps/main/modules/render-orchestrator.js'),
-      ]);
-      const inputs = sanitizeInputs({
-        modelVersion: 10,
-        incomes: [{ id: 'income-main', name: '급여', amount: 3000000, accountId: 'acc-salary' }],
-        accounts: [
-          { id: 'acc-salary', name: '급여계좌' },
-          { id: 'acc-living', name: '생활비계좌' },
-        ],
-        householdContext: { profile: 'newlywed', incomeMode: 'single-income', spouseMonthlyIncome: 0 },
-        expenseItems: [
-          { id: 'food', name: '식비', amount: 300000, group: '변동비', actualSpent: 50000, accountId: 'acc-living' },
-          { id: 'rent', name: '월세', amount: 700000, group: '고정비', actualSpent: 700000, accountId: 'acc-living' },
-        ],
-        savingsItems: [{ id: 'saving', name: '적금', amount: 300000, accountId: 'acc-salary' }],
-        investItems: [{ id: 'invest', name: 'ISA', amount: 200000, accountId: 'acc-salary' }],
-      });
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(inputs));
-      state.inputs = inputs;
-      createRenderOrchestrator().renderAll();
-    });
-    await page.waitForSelector('[data-financial-category="expense"]');
-  }
-
-  test('updates couple overview from expense draft and saves only after explicit confirm', async ({ page }) => {
-    await seedBudgetInputs(page);
-
-    await page.locator('[data-financial-category="expense"]').click();
-    const modal = page.locator('#financialModal');
-    await expect(modal.locator('[data-household-overview]')).toContainText('고정지출 합계');
-    await expect(modal.locator('[data-household-overview]')).toContainText('생활비');
-    await expect(modal.locator('[data-household-overview]')).toContainText('월저축');
-
-    await modal.locator('[data-modal-row-index]').filter({ hasText: '식비' }).locator('[data-financial-modal-edit]').click();
-    await modal.locator('[data-financial-modal-field="amount"]').fill('350000');
-    await expect(modal.locator('[data-household-overview]')).toContainText('35만원');
-
-    const beforeSave = await page.evaluate(async () => {
-      const { STORAGE_KEY } = await import('/IndividualSavingsFlowUI/apps/main/modules/constants.js');
-      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-      return {
-        mode: saved.householdContext?.incomeMode,
-        spouse: saved.householdContext?.spouseMonthlyIncome,
-        amount: saved.expenseItems?.find((item: any) => item.id === 'food')?.amount,
-        actual: saved.expenseItems?.find((item: any) => item.id === 'food')?.actualSpent,
-      };
-    });
-    expect(beforeSave).toEqual({ mode: 'single-income', spouse: 0, amount: 300000, actual: 50000 });
-
-    await modal.locator('#financialModalSave').click();
-    await page.waitForTimeout(250);
-    const afterSave = await page.evaluate(async () => {
-      const { STORAGE_KEY } = await import('/IndividualSavingsFlowUI/apps/main/modules/constants.js');
-      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-      return {
-        mode: saved.householdContext?.incomeMode,
-        spouse: saved.householdContext?.spouseMonthlyIncome,
-        variable: saved.expenseItems?.find((item: any) => item.id === 'food'),
-        fixed: saved.expenseItems?.find((item: any) => item.id === 'rent'),
-      };
-    });
-    expect(afterSave.variable.amount).toBe(350000);
-    expect(afterSave.variable.actualSpent).toBe(50000);
-    expect(afterSave.fixed).not.toHaveProperty('actualSpent');
-
-    await expect(page.locator('[data-financial-category="expense"]')).toContainText('35만원');
-  });
-
-  test('cancels draft changes without durable state mutation', async ({ page }) => {
-    await seedBudgetInputs(page);
-    await page.locator('[data-financial-category="expense"]').click();
-    const modal = page.locator('#financialModal');
-    await modal.locator('[data-modal-row-index]').filter({ hasText: '식비' }).locator('[data-financial-modal-edit]').click();
-    await modal.locator('[data-financial-modal-field="amount"]').fill('380000');
-    await expect(modal.locator('[data-household-overview]')).toContainText('38만원');
-    await modal.locator('#financialModalCancel').click();
-    await page.waitForTimeout(250);
-
-    const saved = await page.evaluate(async () => {
-      const { STORAGE_KEY } = await import('/IndividualSavingsFlowUI/apps/main/modules/constants.js');
-      return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-    });
-    expect(saved.householdContext.incomeMode).toBe('single-income');
-    expect(saved.householdContext.spouseMonthlyIncome).toBe(0);
-    expect(saved.expenseItems.find((item: any) => item.id === 'food').amount).toBe(300000);
-    expect(saved.expenseItems.find((item: any) => item.id === 'food').actualSpent).toBe(50000);
-  });
-
-  test('reset uses 4000/4600 salaries in dual-income mode', async ({ page }) => {
-    await page.evaluate(async () => {
-      const [{ STORAGE_KEY }, { sanitizeInputs }, { state }, { createRenderOrchestrator }] = await Promise.all([
-        import('/IndividualSavingsFlowUI/apps/main/modules/constants.js'),
-        import('/IndividualSavingsFlowUI/apps/main/modules/input-sanitizer.js'),
-        import('/IndividualSavingsFlowUI/apps/main/modules/state.js'),
-        import('/IndividualSavingsFlowUI/apps/main/modules/render-orchestrator.js'),
-      ]);
-      const inputs = sanitizeInputs({
-        modelVersion: 10,
-        householdContext: { profile: 'newlywed', incomeMode: 'dual-income', spouseMonthlyIncome: 1111111 },
-        incomes: [{ id: 'income-main', name: '급여', amount: 1234567, accountId: 'acc-salary' }],
-        accounts: [
-          { id: 'acc-salary', name: '급여계좌' },
-          { id: 'acc-living', name: '생활비계좌' },
-          { id: 'acc-stock', name: '투자계좌' },
-        ],
-      });
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(inputs));
-      state.inputs = inputs;
-      createRenderOrchestrator().renderAll();
-    });
-
-    page.once('dialog', async (dialog) => {
-      expect(dialog.message()).toContain('맞벌이 연봉 4,000만 원 / 4,600만 원');
-      await dialog.accept();
-    });
-    await openControlsPanel(page);
-    await page.locator('#resetInputs').click();
-    await expect(page.locator('#applyFeedback')).toContainText('맞벌이 연봉 4,000만 원 / 4,600만 원');
-
-    const saved = await page.evaluate(async () => {
-      const { STORAGE_KEY } = await import('/IndividualSavingsFlowUI/apps/main/modules/constants.js');
-      return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-    });
-    expect(saved.incomes?.[0]?.amount).toBe(2950000);
-    expect(saved.householdContext).toMatchObject({
-      profile: 'newlywed',
-      incomeMode: 'dual-income',
-      spouseMonthlyIncome: 3310000,
-    });
   });
 });
 
