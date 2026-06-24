@@ -16,10 +16,14 @@ const CATEGORY_CONFIG = {
 };
 
 const OUTFLOW_CATEGORIES = ["expense", "savings", "invest"];
-const OUTFLOW_TAB_CATEGORIES = {
-  living: ["expense"],
-  future: ["savings", "invest"],
-};
+const INTEGRATED_CATEGORIES = ["income", "expense", "savings", "invest"];
+const DETAIL_TABS = [
+  { key: "income", label: "월 수입", categories: ["income"], createCategory: "income" },
+  { key: "living", label: "월 생활비", categories: ["expense"], createCategory: "expense" },
+  { key: "invest", label: "투자", categories: ["invest"], createCategory: "invest" },
+  { key: "savings", label: "저축", categories: ["savings"], createCategory: "savings" },
+  { key: "result", label: "결과/자동 저축", categories: [], createCategory: "savings" },
+];
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value || null));
@@ -140,7 +144,7 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
   let createDraft = null;
   let createStep = "detail";
   let editingIndex = { category: "", index: -1 };
-  let activeOutflowTab = "living";
+  let activeOutflowTab = "income";
   let outflowDrafts = null;
   let customGroupNames = {};
   let customGroupIndexes = new Set();
@@ -151,7 +155,7 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
   }
 
   function isOutflowCategory(category) {
-    return OUTFLOW_CATEGORIES.includes(category);
+    return INTEGRATED_CATEGORIES.includes(category);
   }
 
   function isOutflowMode() {
@@ -160,7 +164,7 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
 
   function getRenderedCategories() {
     if (!isOutflowMode()) return [activeCategory];
-    return OUTFLOW_TAB_CATEGORIES[activeOutflowTab] || ["expense"];
+    return DETAIL_TABS.find((tab) => tab.key === activeOutflowTab)?.categories || [];
   }
 
   function getDraftItemsForCategory(category) {
@@ -180,13 +184,12 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
   }
 
   function getAllOutflowDraftItems() {
-    return OUTFLOW_CATEGORIES.flatMap((category) => getDraftItemsForCategory(category));
+    return INTEGRATED_CATEGORIES.flatMap((category) => getDraftItemsForCategory(category));
   }
 
   function getCreateCategory() {
     if (!isOutflowMode()) return activeCategory;
-    if (activeOutflowTab === "living") return "expense";
-    return activeCategory === "invest" ? "invest" : "savings";
+    return DETAIL_TABS.find((tab) => tab.key === activeOutflowTab)?.createCategory || "expense";
   }
 
   function getGroupNames(category) {
@@ -202,18 +205,10 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
   }
 
   function getRenderedGroupNames() {
-    if (!isOutflowMode() || activeOutflowTab === "living") {
-      return getGroupNames("expense");
-    }
-    const groups = new Set(["저축-투자"]);
-    OUTFLOW_TAB_CATEGORIES.future.forEach((category) => {
-      getDraftItemsForCategory(category).forEach((item) => {
-        const group = normalizeAllocationGroupName(item.group || "");
-        if (group && group !== "저축" && group !== "투자") groups.add(group);
-      });
-      safeItems(customGroupNames[category]).forEach((group) => {
-        if (group && group !== "저축" && group !== "투자") groups.add(group);
-      });
+    const categories = getRenderedCategories();
+    const groups = new Set();
+    categories.forEach((category) => {
+      getGroupNames(category).forEach((group) => groups.add(group));
     });
     return Array.from(groups);
   }
@@ -279,7 +274,7 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
       const items = getDraftItemsForCategory(category);
       if (!items[idx]) return;
       items[idx].accountId = select.value;
-      if (activeCategory === "income") {
+      if (category === "income") {
         items[idx].allocations = [{ accountId: select.value, amount: Number(items[idx].amount) || 0 }];
       }
       setDraftItemsForCategory(category, items);
@@ -295,17 +290,75 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
 
   function syncStats() {
     if (!dom.financialModalSummary) return;
-    const statItems = isOutflowMode() ? getRenderedCategories().flatMap((category) => getDraftItemsForCategory(category)) : draftItems;
+    if (isOutflowMode()) {
+      renderSummaryRail();
+      return;
+    }
     const total = activeCategory === "account"
-      ? statItems.length
-      : statItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
-    const totalLabel = activeCategory === "account"
-      ? `${statItems.length}개 계좌`
-      : IsfUtils.formatMoney(total);
-    const label = isOutflowMode()
-      ? activeOutflowTab === "living" ? "생활비" : "저축-투자"
-      : CATEGORY_CONFIG[activeCategory]?.label || "";
-    dom.financialModalSummary.textContent = `${label} ${statItems.length}개 · ${totalLabel}`;
+      ? draftItems.length
+      : draftItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+    const totalLabel = activeCategory === "account" ? `${draftItems.length}개 계좌` : IsfUtils.formatMoney(total);
+    dom.financialModalSummary.textContent = `${CATEGORY_CONFIG[activeCategory]?.label || ""} ${draftItems.length}개 · ${totalLabel}`;
+  }
+
+  function sumDraftCategory(category) {
+    return getDraftItemsForCategory(category).reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+  }
+
+  function getRailState() {
+    const income = sumDraftCategory("income");
+    const living = sumDraftCategory("expense");
+    const invest = sumDraftCategory("invest");
+    const savings = sumDraftCategory("savings");
+    const availableAfterLiving = income - living;
+    const futureCommitment = savings + invest;
+    const automaticSavings = Math.max(0, availableAfterLiving - futureCommitment);
+    const overBudget = futureCommitment > Math.max(0, income);
+    return {
+      income,
+      living,
+      invest,
+      savings,
+      automaticSavings,
+      overBudget,
+      excess: Math.max(0, futureCommitment - Math.max(0, income)),
+    };
+  }
+
+  function appendRailItem(container, label, value, options = {}) {
+    const item = document.createElement("div");
+    item.className = `financial-detail-rail__item ${options.status ? "financial-detail-rail__item--status" : ""}`;
+    if (options.status) item.dataset.financialRailStatus = "true";
+    const labelNode = createText("span", "financial-detail-rail__label", label);
+    labelNode.dataset.financialRailLabel = "true";
+    const valueNode = createText("strong", "financial-detail-rail__value", value);
+    item.append(labelNode, valueNode);
+    container.appendChild(item);
+  }
+
+  function renderSummaryRail() {
+    const railState = getRailState();
+    const rail = document.createElement("section");
+    rail.className = "financial-detail-rail";
+    rail.dataset.financialDetailRail = "true";
+    rail.setAttribute("aria-label", "월 현금흐름 요약");
+    appendRailItem(rail, "월 수입", IsfUtils.formatMoney(railState.income));
+    appendRailItem(rail, "월 생활비", IsfUtils.formatMoney(railState.living));
+    appendRailItem(rail, "월 투자", IsfUtils.formatMoney(railState.invest));
+    appendRailItem(rail, "자동 저축", IsfUtils.formatMoney(railState.automaticSavings));
+    appendRailItem(rail, "상태", railState.overBudget ? "조정 필요" : "균형", { status: true });
+
+    if (railState.overBudget) {
+      const warning = createText("p", "financial-detail-rail__warning", `저축+투자가 생활비 제외 수입보다 ${IsfUtils.formatMoney(railState.excess)} 많습니다.`);
+      const action = document.createElement("button");
+      action.type = "button";
+      action.className = "btn btn-ghost btn-sm";
+      action.dataset.financialOverbudgetAction = "true";
+      action.textContent = "조정 방식 선택";
+      rail.append(warning, action);
+    }
+
+    dom.financialModalSummary.replaceChildren(rail);
   }
 
   function getDraftInputsForActiveCategory() {
@@ -343,7 +396,7 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
     }
     if (field === "accountId") {
       item.accountId = value;
-      if (activeCategory === "income") {
+      if (rowCategory === "income") {
         item.allocations = [{ accountId: value, amount: Number(item.amount) || 0 }];
       }
     }
@@ -455,16 +508,15 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
 
   function renderOutflowTabs() {
     const tabs = document.createElement("div");
-    tabs.className = "financial-modal-tabs";
+    tabs.className = "financial-modal-tabs financial-detail-tabs";
+    tabs.dataset.financialDetailTabs = "true";
     tabs.setAttribute("role", "tablist");
-    [
-      ["living", "생활비"],
-      ["future", "저축-투자"],
-    ].forEach(([key, label]) => {
+    DETAIL_TABS.forEach(({ key, label }) => {
       const button = document.createElement("button");
       button.type = "button";
       button.className = `financial-modal-tab ${activeOutflowTab === key ? "is-active" : ""}`;
       button.dataset.outflowTab = key;
+      button.dataset.financialDetailTab = "true";
       button.setAttribute("role", "tab");
       button.setAttribute("aria-selected", String(activeOutflowTab === key));
       button.textContent = label;
@@ -515,7 +567,7 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
 
     const body = document.createElement("div");
     body.className = "financial-group-section__items";
-    const grouped = OUTFLOW_TAB_CATEGORIES.future.flatMap((category) => (
+    const grouped = getRenderedCategories().flatMap((category) => (
       getDraftItemsForCategory(category)
         .map((item, index) => ({ category, item, index }))
         .filter(({ item }) => getFutureDisplayGroup(item) === groupName)
@@ -535,6 +587,26 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
     const fragment = document.createDocumentFragment();
     fragment.appendChild(renderOutflowTabs());
 
+    const activeTab = DETAIL_TABS.find((tab) => tab.key === activeOutflowTab) || DETAIL_TABS[0];
+    const panel = document.createElement("section");
+    panel.className = "financial-detail-panel";
+    panel.dataset.financialDetailPanel = "true";
+    panel.appendChild(createText("h3", "financial-detail-panel__title", activeTab.label));
+
+    if (activeOutflowTab === "result") {
+      const state = getRailState();
+      panel.appendChild(createText("p", "financial-detail-panel__lead", `자동 저축은 현재 draft 기준 ${IsfUtils.formatMoney(state.automaticSavings)}입니다.`));
+      const savingsNav = document.createElement("button");
+      savingsNav.type = "button";
+      savingsNav.className = "btn btn-ghost btn-sm";
+      savingsNav.dataset.outflowTab = "savings";
+      savingsNav.textContent = "저축 항목 보기";
+      panel.appendChild(savingsNav);
+      fragment.appendChild(panel);
+      dom.financialModalRows.replaceChildren(fragment);
+      return;
+    }
+
     const toolbar = document.createElement("div");
     toolbar.className = "financial-group-toolbar";
     const addGroup = document.createElement("button");
@@ -543,22 +615,17 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
     addGroup.dataset.financialAddGroup = "true";
     addGroup.textContent = "그룹 추가";
     toolbar.appendChild(addGroup);
-    fragment.appendChild(toolbar);
+    panel.appendChild(toolbar);
 
     const groups = document.createElement("div");
     groups.className = "financial-group-board";
-    if (activeOutflowTab === "future") {
-      getRenderedGroupNames().forEach((groupName) => {
-        groups.appendChild(renderCombinedFutureGroupSection(groupName, accounts));
+    getRenderedCategories().forEach((category) => {
+      getGroupNames(category).forEach((groupName) => {
+        groups.appendChild(renderGroupSection(category, groupName, accounts));
       });
-    } else {
-      getRenderedCategories().forEach((category) => {
-        getGroupNames(category).forEach((groupName) => {
-          groups.appendChild(renderGroupSection(category, groupName, accounts));
-        });
-      });
-    }
-    fragment.appendChild(groups);
+    });
+    panel.appendChild(groups);
+    fragment.appendChild(panel);
     dom.financialModalRows.replaceChildren(fragment);
   }
 
@@ -567,18 +634,10 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
     const rawName = window.prompt("새 그룹명을 입력해 주세요.");
     const name = normalizeAllocationGroupName(rawName || "");
     if (!name) return;
-    if (activeOutflowTab === "future") {
-      customGroupNames = {
-        ...customGroupNames,
-        savings: Array.from(new Set([...safeItems(customGroupNames.savings), name])),
-        invest: Array.from(new Set([...safeItems(customGroupNames.invest), name])),
-      };
-    } else {
       customGroupNames = {
         ...customGroupNames,
         [category]: Array.from(new Set([...safeItems(customGroupNames[category]), name])),
       };
-    }
     renderRows();
   }
 
@@ -626,13 +685,13 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
     activeCategory = category;
     baselineInputs = clone(getInputs());
     if (isOutflowCategory(category)) {
-      outflowDrafts = OUTFLOW_CATEGORIES.reduce((drafts, key) => ({
+      outflowDrafts = INTEGRATED_CATEGORIES.reduce((drafts, key) => ({
         ...drafts,
         [key]: getItemsForCategory(baselineInputs, key),
       }), {});
       draftItems = getDraftItemsForCategory(category);
-      activeOutflowTab = category === "expense" ? "living" : "future";
-      customGroupNames = OUTFLOW_CATEGORIES.reduce((groups, key) => ({
+      activeOutflowTab = category === "expense" ? "living" : category;
+      customGroupNames = INTEGRATED_CATEGORIES.reduce((groups, key) => ({
         ...groups,
         [key]: buildGroupOptions(getDraftItemsForCategory(key), key),
       }), {});
@@ -652,7 +711,7 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
     }
     if (dom.financialModalDescription) {
       dom.financialModalDescription.textContent = isOutflowCategory(category)
-        ? "생활비와 저축-투자를 한 흐름에서 확인합니다. 변경 내용은 저장할 때만 요약 화면에 반영됩니다."
+        ? "월 수입부터 자동 저축 결과까지 한 흐름에서 확인합니다. 변경 내용은 저장할 때만 요약 화면에 반영됩니다."
         : category === "account"
         ? "계좌 별칭만 가볍게 정리합니다. 별도 계좌 관리 화면은 만들지 않습니다."
         : "항목 이름, 금액, 연결 계좌를 확인하고 저장할 때만 요약 화면에 반영합니다.";
@@ -691,14 +750,14 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
   function save() {
     if (!activeCategory || !baselineInputs) return;
     const validationMessage = isOutflowMode()
-      ? OUTFLOW_CATEGORIES.map((category) => validateItems(category, getDraftItemsForCategory(category))).find(Boolean)
+      ? INTEGRATED_CATEGORIES.map((category) => validateItems(category, getDraftItemsForCategory(category))).find(Boolean)
       : validateItems(activeCategory, draftItems);
     if (validationMessage) {
       window.alert(validationMessage);
       return;
     }
     const nextInputs = isOutflowMode()
-      ? OUTFLOW_CATEGORIES.reduce((inputs, category) => setItemsForCategory(inputs, category, getDraftItemsForCategory(category)), baselineInputs)
+      ? INTEGRATED_CATEGORIES.reduce((inputs, category) => setItemsForCategory(inputs, category, getDraftItemsForCategory(category)), baselineInputs)
       : setItemsForCategory(baselineInputs, activeCategory, draftItems);
     if (persistence && typeof persistence.commitImmediateInputs === "function") {
       persistence.commitImmediateInputs(nextInputs);
@@ -1159,7 +1218,7 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
     if (dom.financialModalCancel) dom.financialModalCancel.addEventListener("click", close);
     if (dom.financialModalSave) dom.financialModalSave.addEventListener("click", save);
     if (dom.financialModalCreate) dom.financialModalCreate.addEventListener("click", startCreateFlow);
-    if (dom.financialSettingsDetail) dom.financialSettingsDetail.addEventListener("click", () => open("expense"));
+    if (dom.financialSettingsDetail) dom.financialSettingsDetail.addEventListener("click", () => open("income"));
   }
 
   return {
