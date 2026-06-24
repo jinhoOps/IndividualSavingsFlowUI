@@ -87,6 +87,7 @@ export const dom = {
   applyFeedback: document.getElementById("applyFeedback"),
   summaryPanel: document.querySelector(".summary-panel"),
   summaryCards: document.getElementById("summaryCards"),
+  financialSettingsDetail: document.getElementById("financialSettingsDetail"),
   sankeySvg: document.getElementById("sankeySvg"),
   sankeyWrap: document.getElementById("sankeyWrap"),
   sankeyMeta: document.getElementById("sankeyMeta"),

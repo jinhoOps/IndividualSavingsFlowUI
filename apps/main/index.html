@@ -44,6 +44,11 @@
       <section class="panel summary-panel" aria-labelledby="cardsTitle">
         <div class="section-head">
           <h2 id="cardsTitle">재무 설정 요약</h2>
+          <div class="section-head-tools">
+            <button id="financialSettingsDetail" class="btn btn-primary btn-sm" type="button" data-financial-settings-detail>
+              재무설정 상세
+            </button>
+          </div>
         </div>
         <div id="summaryCards" class="summary-cards" aria-live="polite">
           <div class="card skeleton" aria-hidden="true"><span class="label">불러오는 중</span><span class="value">━━━━</span></div>
@@ -693,7 +698,7 @@
     <div class="modal-content modal-content--financial">
       <div class="modal-header">
         <div>
-          <h2 id="financialModalTitle" class="modal-title">재무 항목 상세</h2>
+          <h2 id="financialModalTitle" class="modal-title">재무설정 상세</h2>
           <p id="financialModalDescription" class="financial-modal-description"></p>
         </div>
         <button id="financialModalClose" class="modal-close" type="button" aria-label="닫기">×</button>
@@ -711,8 +716,8 @@
       <div id="financialModalPendingBar" class="financial-modal-pending-bar" style="display: none;">
         <div class="financial-modal-pending-bar-inner">
           <div class="financial-modal-pending-bar-buttons">
-            <button type="button" id="financialModalCancel" class="btn btn-ghost btn-sm">취소</button>
-            <button type="button" id="financialModalSave" class="btn btn-primary btn-sm">저장</button>
+            <button type="button" id="financialModalCancel" class="btn btn-ghost btn-sm">편집 취소</button>
+            <button type="button" id="financialModalSave" class="btn btn-primary btn-sm">재무설정 저장</button>
           </div>
         </div>
       </div>

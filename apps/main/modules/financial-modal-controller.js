@@ -5,7 +5,6 @@ import {
   parseSavingsAnnualRateInput,
 } from "./input-sanitizer.js";
 import { recommendAccountId } from "./account-correction.js";
-import { buildHouseholdOverview } from "./household-budget.js";
 import { dom } from "./dom.js";
 
 const CATEGORY_CONFIG = {
@@ -146,7 +145,6 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
   let customGroupNames = {};
   let customGroupIndexes = new Set();
   let householdContextChanged = false;
-  let householdMobilePane = "self";
 
   function getInputs() {
     return typeof getVisibleInputs === "function" ? getVisibleInputs() : {};
@@ -321,168 +319,6 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
     dom.financialModal?.querySelector("[data-household-overview]")?.remove();
   }
 
-  function getPrimaryIncomeItem(inputs) {
-    return safeItems(inputs?.incomes)[0] || null;
-  }
-
-  function setPrimaryIncomeAmount(inputs, amount) {
-    const incomes = safeItems(inputs?.incomes).map((income) => ({ ...income }));
-    if (incomes.length === 0) return inputs;
-    const target = incomes[0];
-    const nextAmount = Math.max(0, Number(amount) || 0);
-    const allocations = Array.isArray(target.allocations)
-      ? target.allocations.map((allocation) => ({ ...allocation }))
-      : [];
-    const allocationTotal = allocations.reduce((sum, allocation) => sum + (Number(allocation.amount) || 0), 0);
-    if (allocations.length === 1) {
-      allocations[0].amount = nextAmount;
-    } else if (allocations.length > 1 && allocationTotal > 0) {
-      let allocated = 0;
-      allocations.forEach((allocation, index) => {
-        const nextAllocationAmount = index === allocations.length - 1
-          ? Math.max(0, nextAmount - allocated)
-          : Math.round(nextAmount * ((Number(allocation.amount) || 0) / allocationTotal));
-        allocation.amount = nextAllocationAmount;
-        allocated += nextAllocationAmount;
-      });
-    }
-    target.amount = nextAmount;
-    if (allocations.length > 0) target.allocations = allocations;
-    return {
-      ...inputs,
-      incomes,
-    };
-  }
-
-  function createOverviewCell(label, value, className = "") {
-    const cell = document.createElement("article");
-    cell.className = `household-overview-cell ${className}`.trim();
-    cell.append(
-      createText("span", "household-overview-cell__label", label),
-      createText("strong", "household-overview-cell__value", value),
-    );
-    return cell;
-  }
-
-  function renderHouseholdOverviewBoard() {
-    if (!dom.financialModalRows || !isOutflowMode()) {
-      removeHouseholdOverview();
-      return;
-    }
-
-    const draftInputs = getDraftInputsForActiveCategory();
-    const overview = buildHouseholdOverview(draftInputs);
-    const context = draftInputs.householdContext || {};
-    const primaryIncome = getPrimaryIncomeItem(draftInputs);
-    const board = document.createElement("section");
-    board.className = "household-overview-board";
-    board.dataset.householdOverview = "true";
-    board.setAttribute("aria-label", "부부 현황");
-
-    const head = document.createElement("div");
-    head.className = "household-overview-board__head";
-    head.append(
-      createText("h3", "household-overview-board__title", "부부 현황 설정"),
-      createText("p", "household-overview-board__note", "단독/부부 모드와 월소득을 이 재무설정 안에서 바로 관리합니다."),
-    );
-
-    const settings = document.createElement("div");
-    settings.className = "household-overview-settings";
-
-    const modeToggle = document.createElement("div");
-    modeToggle.className = "household-mode-toggle";
-    modeToggle.setAttribute("role", "group");
-    modeToggle.setAttribute("aria-label", "부부 현황 모드");
-    [
-      ["single-income", "단독"],
-      ["dual-income", "부부"],
-    ].forEach(([value, label]) => {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = `household-mode-toggle__button ${context.incomeMode === value ? "is-active" : ""}`;
-      button.dataset.householdField = "incomeMode";
-      button.dataset.householdValue = value;
-      button.setAttribute("aria-pressed", String(context.incomeMode === value));
-      button.textContent = label;
-      modeToggle.appendChild(button);
-    });
-    settings.appendChild(modeToggle);
-
-    const mobileTabs = document.createElement("div");
-    mobileTabs.className = "household-person-tabs";
-    [
-      ["self", "본인"],
-      ["spouse", "배우자"],
-    ].forEach(([value, label]) => {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = `household-person-tab ${householdMobilePane === value ? "is-active" : ""}`;
-      button.dataset.householdPerson = value;
-      button.textContent = label;
-      mobileTabs.appendChild(button);
-    });
-    settings.appendChild(mobileTabs);
-
-    const incomeFields = document.createElement("div");
-    incomeFields.className = "household-income-fields";
-
-    const selfPanel = document.createElement("div");
-    selfPanel.className = `household-person-panel ${householdMobilePane === "self" ? "is-active" : ""}`;
-    selfPanel.dataset.householdPersonPanel = "self";
-    const selfInput = document.createElement("input");
-    selfInput.type = "text";
-    selfInput.inputMode = "decimal";
-    selfInput.value = formatAmount(primaryIncome?.amount || 0);
-    selfInput.placeholder = "예: 3,310,000";
-    selfInput.dataset.moneyInput = "won";
-    selfInput.dataset.householdField = "primaryMonthlyIncome";
-    appendField(selfPanel, "본인 월소득", selfInput);
-
-    const spouseInput = document.createElement("input");
-    spouseInput.type = "text";
-    spouseInput.inputMode = "decimal";
-    spouseInput.value = context.spouseMonthlyIncome ? formatAmount(context.spouseMonthlyIncome) : "";
-    spouseInput.placeholder = "예: 3,310,000";
-    spouseInput.dataset.moneyInput = "won";
-    spouseInput.dataset.householdField = "spouseMonthlyIncome";
-    spouseInput.disabled = context.incomeMode !== "dual-income";
-    const spousePanel = document.createElement("div");
-    spousePanel.className = `household-person-panel ${householdMobilePane === "spouse" ? "is-active" : ""}`;
-    spousePanel.dataset.householdPersonPanel = "spouse";
-    appendField(spousePanel, "배우자 월소득", spouseInput);
-    incomeFields.append(selfPanel, spousePanel);
-    settings.appendChild(incomeFields);
-
-    const ratio = document.createElement("div");
-    ratio.className = "household-overview-ratio";
-    ratio.dataset.householdBudgetStatus = overview.status;
-    ratio.append(
-      createText("span", "household-overview-ratio__label", "고정지출 비율"),
-      createText("strong", "household-overview-ratio__value", `${overview.fixedRatio}%`),
-    );
-
-    const grid = document.createElement("div");
-    grid.className = "household-overview-grid";
-    grid.append(
-      createOverviewCell("급여", overview.incomeLabel, "household-overview-cell--income"),
-      createOverviewCell("생활비", overview.livingExpenseLabel),
-      createOverviewCell("고정지출 합계", overview.fixedExpenseLabel),
-      createOverviewCell("월저축", overview.monthlySavingsLabel, overview.monthlySavings < 0 ? "is-negative" : "is-positive"),
-      createOverviewCell("1년 후 저축", overview.oneYearSavingsLabel),
-      createOverviewCell("5년 후 저축", overview.fiveYearSavingsLabel),
-      createOverviewCell("10년 후 저축", overview.tenYearSavingsLabel),
-    );
-
-    board.append(head, settings, ratio, grid);
-
-    const existing = dom.financialModal.querySelector("[data-household-overview]");
-    if (existing) {
-      existing.replaceWith(board);
-    } else {
-      dom.financialModalRows.before(board);
-    }
-  }
-
   function updateDraftFromField(row, field, value) {
     const category = row.dataset.modalRowCategory || activeCategory;
     const index = Number(row.dataset.modalRowIndex);
@@ -522,29 +358,6 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
     }
     setDraftItemsForCategory(category, items);
     syncStats();
-    renderHouseholdOverviewBoard();
-  }
-
-  function updateHouseholdContextFromField(field, value) {
-    if (!baselineInputs) return;
-    const currentContext = baselineInputs.householdContext || {};
-    const nextContext = { ...currentContext };
-    if (field === "incomeMode") {
-      nextContext.incomeMode = value === "dual-income" ? "dual-income" : "single-income";
-      if (nextContext.incomeMode !== "dual-income") nextContext.spouseMonthlyIncome = 0;
-    }
-    if (field === "primaryMonthlyIncome") {
-      baselineInputs = setPrimaryIncomeAmount(baselineInputs, IsfUtils.toWon(value || "0"));
-    }
-    if (field === "spouseMonthlyIncome") {
-      nextContext.spouseMonthlyIncome = IsfUtils.toWon(value || "0");
-    }
-    baselineInputs = {
-      ...baselineInputs,
-      householdContext: nextContext,
-    };
-    householdContextChanged = true;
-    renderRows();
   }
 
   function renderCompactRow(item, index, accounts, rowCategory = activeCategory) {
@@ -803,12 +616,11 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
       dom.financialModalRows.replaceChildren(...draftItems.map((item, index) => renderRow(item, index, accounts)));
     }
     syncStats();
-    renderHouseholdOverviewBoard();
     IsfUtils.updateAllKoreanWonHints(dom.financialModalRows);
     syncFinancialModalPendingBar();
   }
 
-  function open(category) {
+  function open(category = "expense") {
     const config = CATEGORY_CONFIG[category];
     if (!config || !dom.financialModal) return;
     activeCategory = category;
@@ -836,11 +648,11 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
     householdContextChanged = false;
 
     if (dom.financialModalTitle) {
-      dom.financialModalTitle.textContent = isOutflowCategory(category) ? "지출·저축·투자 편집" : `${config.label} 상세 편집`;
+      dom.financialModalTitle.textContent = "재무설정 상세";
     }
     if (dom.financialModalDescription) {
       dom.financialModalDescription.textContent = isOutflowCategory(category)
-        ? "생활비와 저축-투자를 두 탭에서 관리합니다. 그룹은 별도로 만들고 항목을 끌어 이동합니다."
+        ? "생활비와 저축-투자를 한 흐름에서 확인합니다. 변경 내용은 저장할 때만 요약 화면에 반영됩니다."
         : category === "account"
         ? "계좌 별칭만 가볍게 정리합니다. 별도 계좌 관리 화면은 만들지 않습니다."
         : "항목 이름, 금액, 연결 계좌를 확인하고 저장할 때만 요약 화면에 반영합니다.";
@@ -1208,7 +1020,6 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
         if (!(target instanceof HTMLInputElement) && !(target instanceof HTMLSelectElement)) return;
         const householdField = target.dataset.householdField;
         if (householdField) {
-          updateHouseholdContextFromField(householdField, target.value);
           return;
         }
         const row = target.closest("[data-modal-row-index]");
@@ -1231,17 +1042,6 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
         }
         if (target.closest?.("[data-financial-add-group]")) {
           addGroupToActiveTab();
-          return;
-        }
-        const householdModeButton = target.closest?.("[data-household-field='incomeMode']");
-        if (householdModeButton) {
-          updateHouseholdContextFromField("incomeMode", householdModeButton.dataset.householdValue || "single-income");
-          return;
-        }
-        const householdPersonButton = target.closest?.("[data-household-person]");
-        if (householdPersonButton) {
-          householdMobilePane = householdPersonButton.dataset.householdPerson || "self";
-          renderHouseholdOverviewBoard();
           return;
         }
         if (target.closest?.("#financialCreateNewAccountToggle")) {
@@ -1351,28 +1151,6 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
         moveItemToGroup(targetCategory, Number(payload.index), section.dataset.groupDropName || "");
       });
     }
-    if (dom.financialModal) {
-      dom.financialModal.addEventListener("click", (event) => {
-        const target = event.target;
-        if (!(target instanceof Element)) return;
-        const householdModeButton = target.closest?.("[data-household-field='incomeMode']");
-        if (householdModeButton) {
-          updateHouseholdContextFromField("incomeMode", householdModeButton.dataset.householdValue || "single-income");
-          return;
-        }
-        const householdPersonButton = target.closest?.("[data-household-person]");
-        if (householdPersonButton) {
-          householdMobilePane = householdPersonButton.dataset.householdPerson || "self";
-          renderHouseholdOverviewBoard();
-        }
-      });
-      dom.financialModal.addEventListener("change", (event) => {
-        const target = event.target;
-        if (!(target instanceof HTMLInputElement) && !(target instanceof HTMLSelectElement)) return;
-        const householdField = target.dataset.householdField;
-        if (householdField) updateHouseholdContextFromField(householdField, target.value);
-      });
-    }
     document.addEventListener("open-financial-modal", (event) => {
       const category = event.detail?.category;
       if (category) open(category);
@@ -1381,6 +1159,7 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
     if (dom.financialModalCancel) dom.financialModalCancel.addEventListener("click", close);
     if (dom.financialModalSave) dom.financialModalSave.addEventListener("click", save);
     if (dom.financialModalCreate) dom.financialModalCreate.addEventListener("click", startCreateFlow);
+    if (dom.financialSettingsDetail) dom.financialSettingsDetail.addEventListener("click", () => open("expense"));
   }
 
   return {
