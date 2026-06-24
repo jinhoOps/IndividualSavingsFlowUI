@@ -14,6 +14,7 @@ Resolve the next Step 1 household-flow work from `TODO.md` and open GitHub issue
 |---:|---|---|---|---:|
 | 10 | Step 1.2 Household Budget Foundation | Add the Step 1.2 surface and adaptive budget model without breaking existing Step 1 setup. | HH-01, HH-02, BUD-01, BUD-02, BUD-03, BUD-04 | 5 |
 | 10.5 | Financial Settings UX Integration Repair | 5/5 | Complete    | 2026-06-24 |
+| 10.6 | Financial Detail Modal Editing UX Repair | Repair row-level editing, pending-change behavior, and compressed read-mode UX in `재무설정 상세`. | UXR-05, UXR-06, UXR-07, UXR-08 | 6 |
 | 11 | Zero-Input Spending Capture | Parse pasted Korean bank/card text into reviewable spending actuals. | CAP-01, CAP-02, CAP-03, CAP-04 | 4 |
 | 12 | Dual-Flow Household Merge | Combine two shared Step 1 data sources into one household flow preview. | HH-03, HH-04, HH-05 | 4 |
 | 13 | Historical Spending Comparison | Compare current Step 1 expenses against prior DataHub snapshots with a grouped bar chart. | CMP-01, CMP-02, CMP-03, CMP-04, CMP-05 | 5 |
@@ -61,6 +62,21 @@ Plans:
 2. The financial settings detail flow connects monthly income, monthly living expenses, monthly investment, savings, automatic savings, and result review in one coherent UX, with Phase 10 couple/self/spouse UI removed until a future dedicated spec.
 3. Variable expense target, actual spending, remaining amount, status, and end-of-month projection are editable or visible in the detailed flow without overwhelming the default screen.
 4. The repaired UX addresses the Phase 10 UI review blockers for copywriting, visuals, spacing, and experience design while preserving existing Step 1 persistence and sanitizer behavior.
+
+### Phase 10.6: Financial Detail Modal Editing UX Repair *(INSERTED)*
+
+**Goal:** Polish the existing `재무설정 상세` modal so read mode is compact, row-level editing is predictable, and pending changes are applied only through an explicit in-modal pending bar.
+
+**Requirements:** UXR-05, UXR-06, UXR-07, UXR-08
+
+**Success criteria:**
+
+1. The modal opens in compact read mode with no duplicated tab/panel titles, repeated category labels, or icon-driven line wrapping.
+2. Editing is row-level: one selected row expands, existing values remain editable, other rows stay in read mode, and outside clicks fold the edited row without discarding draft changes.
+3. Money editing supports direct input, `+`/`-` steppers in 10,000 KRW increments, and increase-only quick buttons `+5만`, `+10만`, and `+100만`.
+4. The pending bar appears only after real draft changes, uses `취소` / `적용`, never closes the modal by itself, and applies or discards draft changes while keeping the modal open.
+5. `새 항목 추가` lives at the right side of each tab's item header and creates items in the same visible section, avoiding detached floating-button behavior.
+6. The implementation removes user-facing traces of implementation language such as "신설 모달" and preserves existing sanitizer, persistence, Sankey, and no-couple-UI contracts.
 
 ### Phase 11: Zero-Input Spending Capture
 
@@ -130,6 +146,10 @@ Plans:
 | UXR-02 | Phase 10.5 | Complete |
 | UXR-03 | Phase 10.5 | Complete |
 | UXR-04 | Phase 10.5 | Complete |
+| UXR-05 | Phase 10.6 | Pending |
+| UXR-06 | Phase 10.6 | Pending |
+| UXR-07 | Phase 10.6 | Pending |
+| UXR-08 | Phase 10.6 | Pending |
 | CAP-01 | Phase 11 | Pending |
 | CAP-02 | Phase 11 | Pending |
 | CAP-03 | Phase 11 | Pending |
@@ -150,8 +170,8 @@ Plans:
 
 **Coverage:**
 
-- v1.9 requirements: 27 total
-- Mapped to phases: 27
+- v1.9 requirements: 31 total
+- Mapped to phases: 31
 - Unmapped: 0
 
 ## Out of Scope Guardrails
@@ -162,4 +182,4 @@ Plans:
 
 ## Next
 
-Phase 10.5 is complete. Start Phase 11 later with `$gsd-discuss-phase 11` only when ready.
+Phase 10.5 is complete. Next recommended step is `$gsd-discuss-phase 10.6` when ready to refine the `재무설정 상세` modal editing UX; start Phase 11 later only after Phase 10.6 is intentionally skipped or completed.
