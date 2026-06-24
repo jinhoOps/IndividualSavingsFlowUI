@@ -35,6 +35,16 @@ import {
 } from "./ui-controller.js";
 
 export function activateMgmtTab(tabKey) {
+  if (dom.controlsPanel?.classList.contains("controls-panel--assumptions")) {
+    document.querySelectorAll("[data-legacy-flow-editor]").forEach((panel) => {
+      panel.hidden = true;
+      panel.setAttribute("aria-hidden", "true");
+    });
+    const settingsPanel = document.getElementById("mgmtPanelSettings");
+    if (settingsPanel) settingsPanel.hidden = false;
+    return;
+  }
+
   const tabs = document.querySelectorAll(".mgmt-tab[data-mgmt-tab]");
   const panels = document.querySelectorAll(".mgmt-panel[id^='mgmtPanel']");
   tabs.forEach((tab) => {
@@ -49,6 +59,16 @@ export function activateMgmtTab(tabKey) {
 }
 
 export function initMgmtTabs(commands) {
+  if (dom.controlsPanel?.classList.contains("controls-panel--assumptions")) {
+    document.querySelectorAll(".mgmt-tab[data-mgmt-tab]").forEach((tab) => {
+      tab.setAttribute("aria-hidden", "true");
+      tab.setAttribute("tabindex", "-1");
+    });
+    activateMgmtTab("settings");
+    if (commands && commands.itemEditor) commands.itemEditor.closeAllItemEditors();
+    return;
+  }
+
   const tabs = document.querySelectorAll(".mgmt-tab[data-mgmt-tab]");
   tabs.forEach((tab) => {
     tab.addEventListener("click", () => {

@@ -57,20 +57,23 @@
         </div>
       </section>
 
-      <section class="panel controls-panel is-collapsed" aria-labelledby="inputsTitle">
+      <section class="panel controls-panel controls-panel--assumptions is-collapsed" aria-labelledby="inputsTitle">
         <div class="section-head section-head--controls">
           <h2 id="inputsTitle">
-            재무 설정
-            <span class="help-tooltip-trigger" data-tooltip="금액 단위: 원(예: 3,500,000) · 기본값만 입력해도 바로 계산됩니다.">?</span>
+            기초 자산·부채 및 가정
+            <span class="help-tooltip-trigger" data-tooltip="초기 자산, 부채, 기간, 증가율과 수익률만 입력합니다. 수입·생활비·저축·투자 금액은 재무설정 상세에서 편집합니다.">?</span>
 
           </h2>
           <div class="section-head-tools">
             <button id="openPresetBtn" class="btn btn-ghost btn-sm" type="button" title="투자 성향과 월수입 기준으로 프리셋 적용">프리셋</button>
             <button id="resetInputs" class="btn btn-ghost btn-sm" type="button" title="현재 소득 유형 기준으로 초기화">초기화</button>
-            <button id="toggleControlsBtn" class="panel-toggle-btn" type="button" aria-expanded="false" aria-label="재무 설정 펼치기">▾</button>
+            <button id="toggleControlsBtn" class="panel-toggle-btn" type="button" aria-expanded="false" aria-label="기초 자산·부채 및 가정 펼치기">▾</button>
           </div>
         </div>
         <div id="inputsPanelContent" hidden>
+          <p class="controls-panel__intro">
+            월 수입, 생활비, 저축, 투자 금액과 연결 계좌는 재무설정 상세에서 편집합니다.
+          </p>
           <div id="surplusTransferBanner" class="surplus-transfer-banner" hidden>
             <span id="surplusNormalWrapper" style="display: inline-flex; align-items: center; gap: var(--sp-xs); flex-wrap: wrap;">
               💡 이번 달 남는 잉여현금 <span id="surplusAmountText">0원</span>은 
@@ -84,7 +87,7 @@
           </div>
 
           <!-- 관리 탭 네비게이션 -->
-          <div class="mgmt-tabs" role="tablist" aria-label="재무 설정 탭">
+          <div class="mgmt-tabs" role="tablist" aria-label="재무 설정 탭" hidden aria-hidden="true">
             <button class="mgmt-tab is-active" id="mgmtTabIncome" type="button" role="tab"
               aria-selected="true" aria-controls="mgmtPanelIncome" data-mgmt-tab="income">
               <span class="mgmt-tab__icon">💰</span>
@@ -110,7 +113,7 @@
           <form id="inputsForm" autocomplete="off">
 
             <!-- ── 탭 1: 월수입 ── -->
-            <div id="mgmtPanelIncome" class="mgmt-panel" role="tabpanel" aria-labelledby="mgmtTabIncome">
+            <div id="mgmtPanelIncome" class="mgmt-panel" role="tabpanel" aria-labelledby="mgmtTabIncome" hidden aria-hidden="true" data-legacy-flow-editor>
 
               <!-- 프리셋 영역이 상단 프리셋 모달로 통합되었습니다. -->
 
@@ -139,7 +142,7 @@
             </div>
 
             <!-- ── 탭 2: 계좌 ── -->
-            <div id="mgmtPanelAccount" class="mgmt-panel" role="tabpanel" aria-labelledby="mgmtTabAccount" hidden>
+            <div id="mgmtPanelAccount" class="mgmt-panel" role="tabpanel" aria-labelledby="mgmtTabAccount" hidden aria-hidden="true" data-legacy-flow-editor>
               <div class="controls-block">
                 <div class="block-head">
                   <h3>
@@ -164,7 +167,7 @@
             </div>
 
             <!-- ── 탭 3: 지출·저축·투자 ── -->
-            <div id="mgmtPanelFlow" class="mgmt-panel" role="tabpanel" aria-labelledby="mgmtTabFlow" hidden>
+            <div id="mgmtPanelFlow" class="mgmt-panel" role="tabpanel" aria-labelledby="mgmtTabFlow" hidden aria-hidden="true" data-legacy-flow-editor>
 
               <!-- 간편 요약 -->
               <div class="controls-block">
@@ -190,11 +193,6 @@
                     <input id="monthlyInvest" name="monthlyInvest" type="text" data-money-input="won" readonly
                       inputmode="decimal" class="jump-advanced-field" data-advanced-target="invest"
                       title="아래 투자 상세 항목에서 자동합산됩니다" />
-                  </div>
-                  <div class="control">
-                    <label for="monthlyDebtPayment">월 부채상환</label>
-                    <input id="monthlyDebtPayment" name="monthlyDebtPayment" type="text" data-money-input="won"
-                      inputmode="decimal" />
                   </div>
                 </div>
               </div>
@@ -306,7 +304,7 @@
             </div>
 
             <!-- ── 탭 4: 설정 ── -->
-            <div id="mgmtPanelSettings" class="mgmt-panel" role="tabpanel" aria-labelledby="mgmtTabSettings" hidden>
+            <div id="mgmtPanelSettings" class="mgmt-panel mgmt-panel--assumptions" role="group" aria-labelledby="inputsTitle">
               <div class="controls-block">
                 <h3>현재 자산 및 부채</h3>
                 <div class="controls-grid controls-grid--simple">
@@ -325,6 +323,11 @@
                   <div class="control">
                     <label for="startDebt">현재 부채</label>
                     <input id="startDebt" name="startDebt" type="text" data-money-input="won" inputmode="decimal" />
+                  </div>
+                  <div class="control">
+                    <label for="monthlyDebtPayment">월 부채상환</label>
+                    <input id="monthlyDebtPayment" name="monthlyDebtPayment" type="text" data-money-input="won"
+                      inputmode="decimal" />
                   </div>
                   <div class="control">
                     <label for="horizonYears">시뮬레이션 기간</label>

@@ -132,29 +132,19 @@ test.describe('Individual Savings Flow Main UI/UX Audit', () => {
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
       expect(overflow).toBeLessThanOrEqual(4);
 
-      // 항상 보이는 탭과 헤더 툴들을 먼저 검사
-      for (const selector of ['.mgmt-tabs', '#visualizationToggle', '.sankey-head-tools']) {
+      await expect(page.locator('#inputsTitle')).toContainText('기초 자산·부채 및 가정');
+      await expect(page.locator('.mgmt-tabs')).toBeHidden();
+      await expect(page.locator('#mgmtPanelIncome')).toBeHidden();
+      await expect(page.locator('#mgmtPanelAccount')).toBeHidden();
+      await expect(page.locator('#mgmtPanelFlow')).toBeHidden();
+      await expect(page.locator('#mgmtPanelSettings')).toBeVisible();
+
+      // 항상 보이는 기초 설정과 헤더 툴들을 먼저 검사
+      for (const selector of ['#mgmtPanelSettings', '#visualizationToggle', '.sankey-head-tools']) {
         const locator = page.locator(selector).first();
         await expect(locator, `${selector} should be visible at ${viewport.width}px`).toBeVisible();
         const contained = await locator.evaluate((element) => element.scrollWidth <= element.clientWidth + 4 || window.getComputedStyle(element).overflowX !== 'visible');
         expect(contained, `${selector} should fit or scroll within itself at ${viewport.width}px`).toBe(true);
-      }
-
-      // '계좌' 및 '흐름배분' 탭을 클릭해서 숨겨져 있던 테이블과 서브 탭 리스트 검사
-      const subTabs = [
-        { btnId: '#mgmtTabAccount', checkSelector: '.account-list' },
-        { btnId: '#mgmtTabFlow', checkSelector: '.advanced-block > .tab-list' }
-      ];
-
-      for (const tab of subTabs) {
-        const tabBtn = page.locator(tab.btnId);
-        await tabBtn.click();
-        await page.waitForTimeout(300);
-
-        const locator = page.locator(tab.checkSelector).first();
-        await expect(locator, `${tab.checkSelector} should be visible after clicking ${tab.btnId} at ${viewport.width}px`).toBeVisible();
-        const contained = await locator.evaluate((element) => element.scrollWidth <= element.clientWidth + 4 || window.getComputedStyle(element).overflowX !== 'visible');
-        expect(contained, `${tab.checkSelector} should fit or scroll within itself at ${viewport.width}px`).toBe(true);
       }
 
       const controls = page.locator('.mgmt-panel:not([hidden]) .controls-block .control');
@@ -217,8 +207,9 @@ test.describe('Individual Savings Flow Main UI/UX Audit', () => {
     await expect(page.locator('#advancedTabRates')).toHaveCount(0);
 
     await page.locator('#toggleControlsBtn').click();
-    await page.locator('#mgmtTabSettings').click();
     await page.waitForTimeout(100);
+    await expect(page.locator('#inputsTitle')).toContainText('기초 자산·부채 및 가정');
+    await expect(page.locator('.mgmt-tabs')).toBeHidden();
     await expect(page.locator('#ratesAdvancedBlock')).toBeVisible();
 
     page.once('dialog', async (dialog) => {
@@ -269,7 +260,6 @@ test.describe('Individual Savings Flow Main UI/UX Audit', () => {
 
   test('Phase 07 rerun formats money fields and groups long item lists', async ({ page }) => {
     await page.locator('#toggleControlsBtn').click();
-    await page.locator('#mgmtTabSettings').click();
 
     const startCash = page.locator('#startCash');
     await startCash.fill('12345678');
@@ -283,22 +273,17 @@ test.describe('Individual Savings Flow Main UI/UX Audit', () => {
     expect(savedInputs.startCash).toBe(12345678);
     expect(savedInputs.startInvest).toBe(87654321);
 
-    await page.locator('#mgmtTabFlow').click();
-    const groupNames = await page.locator('#expenseAdvancedBlock .allocation-group__name').evaluateAll((nodes) => nodes.map((node) => node.textContent || ''));
-    expect(groupNames).toEqual(expect.arrayContaining(['공과금', '통신비', '교통비', '식비', '여행', '취미']));
-    expect(await page.locator('#savingsAdvancedBlock .allocation-group__name').first().textContent()).toContain('저축');
-    expect(await page.locator('#investAdvancedBlock .allocation-group__name').first().textContent()).toContain('투자');
-    expect(await page.locator('#expenseAdvancedBlock .allocation-group').count()).toBeGreaterThan(1);
-    const utilityGroup = page.locator('#expenseAdvancedBlock .allocation-group').filter({ hasText: '공과금' }).first();
-    await expect(utilityGroup).toBeVisible();
-    if (await utilityGroup.locator('.allocation-group__items').isVisible()) {
-      await utilityGroup.locator('summary').click();
-    }
-    await expect(utilityGroup.locator('.allocation-group__items')).not.toBeVisible();
-    await utilityGroup.locator('summary').click();
-    await expect(utilityGroup.locator('.allocation-group__items')).toBeVisible();
-    await utilityGroup.locator('summary').click();
-    await expect(utilityGroup.locator('.allocation-group__items')).not.toBeVisible();
+    await page.locator('[data-financial-settings-detail]').click();
+    const modal = page.locator('#financialModal');
+    await expect(modal).toBeVisible();
+    await modal.getByRole('tab', { name: '월 생활비', exact: true }).click();
+    await expect(modal.locator('[data-financial-detail-panel]')).toContainText('월 생활비');
+    await expect(modal.locator('[data-financial-fixed-row]').first()).toBeVisible();
+
+    await modal.getByRole('tab', { name: '저축', exact: true }).click();
+    await expect(modal.locator('.financial-group-section').first()).toContainText('저축');
+    await modal.getByRole('tab', { name: '투자', exact: true }).click();
+    await expect(modal.locator('.financial-group-section').first()).toContainText('투자');
   });
 
   test('Phase 07 controller modules expose focused interfaces', async ({ page }) => {
@@ -422,26 +407,22 @@ test.describe('Individual Savings Flow Main UI/UX Audit', () => {
     expect(result.unsafeFlag).toBe(false);
   });
 
-  test('Phase 07 allocation groups preserve user open state after render refresh', async ({ page }) => {
+  test('Phase 07 allocation groups move behind the integrated financial detail modal', async ({ page }) => {
     await openControlsPanel(page);
-    await page.locator('#mgmtTabFlow').click();
-    const utilityGroup = page.locator('#expenseAdvancedBlock .allocation-group').filter({ hasText: '공과금' }).first();
-    await expect(utilityGroup).toBeVisible();
+    await expect(page.locator('#mgmtPanelFlow')).toBeHidden();
+    await expect(page.locator('#expenseAdvancedBlock')).toBeHidden();
 
-    const summary = utilityGroup.locator('.allocation-group__summary');
-    if (await utilityGroup.evaluate((element) => (element as HTMLDetailsElement).open)) {
-      await summary.click();
-    }
-    await expect(utilityGroup.locator('.allocation-group__items')).not.toBeVisible();
-    await page.locator('#expenseSortMode').selectOption('amount-desc');
-    await page.waitForTimeout(250);
-    await expect(utilityGroup.locator('.allocation-group__items')).not.toBeVisible();
+    await page.locator('[data-financial-settings-detail]').click();
+    const modal = page.locator('#financialModal');
+    await expect(modal).toBeVisible();
+    await modal.getByRole('tab', { name: '월 생활비', exact: true }).click();
+    await expect(modal.locator('[data-financial-detail-panel]')).toContainText('월 생활비');
+    await expect(modal.locator('[data-financial-fixed-row]').first()).toBeVisible();
 
-    await summary.click();
-    await expect(utilityGroup.locator('.allocation-group__items')).toBeVisible();
-    await page.locator('#expenseSortMode').selectOption('name-asc');
-    await page.waitForTimeout(250);
-    await expect(utilityGroup.locator('.allocation-group__items')).toBeVisible();
+    await modal.getByRole('tab', { name: '저축', exact: true }).click();
+    await expect(modal.locator('.financial-modal-row').first()).toBeVisible();
+    await modal.getByRole('tab', { name: '투자', exact: true }).click();
+    await expect(modal.locator('.financial-modal-row').first()).toBeVisible();
   });
 });
 
@@ -1467,6 +1448,12 @@ test.describe('Phase 10.5 financial settings entry contract', () => {
       await expect(detailActions.first()).toBeVisible();
       await expect(detailActions.first()).toContainText('재무설정 상세');
 
+      await expect(page.locator('#inputsTitle')).toContainText('기초 자산·부채 및 가정');
+      await expect(page.locator('.mgmt-tabs')).toBeHidden();
+      await expect(page.locator('#mgmtPanelIncome')).toBeHidden();
+      await expect(page.locator('#mgmtPanelAccount')).toBeHidden();
+      await expect(page.locator('#mgmtPanelFlow')).toBeHidden();
+
       await expect(page.getByText('부부합산', { exact: true })).toHaveCount(0);
       await expect(page.getByText('본인 설정', { exact: true })).toHaveCount(0);
       await expect(page.getByText('배우자 설정', { exact: true })).toHaveCount(0);
@@ -1486,6 +1473,28 @@ test.describe('Phase 10.5 financial settings entry contract', () => {
       await expect(page.locator('[data-financial-summary-group="core-metrics"]')).toContainText('년 후 순자산');
       await expect(page.locator('[data-financial-summary-group="outflow"]')).toContainText('지출');
     }
+  });
+
+  test('keeps base assumptions in the controls panel and amount editing in the detail modal', async ({ page }) => {
+    await page.locator('#toggleControlsBtn').click();
+    await expect(page.locator('#mgmtPanelSettings')).toBeVisible();
+    await expect(page.locator('#startCash')).toBeVisible();
+    await expect(page.locator('#startDebt')).toBeVisible();
+    await expect(page.locator('#monthlyDebtPayment')).toBeVisible();
+    await expect(page.locator('#annualIncomeGrowth')).toBeVisible();
+    await expect(page.locator('#annualInvestReturn')).toBeVisible();
+    await expect(page.locator('#incomeList')).toBeHidden();
+    await expect(page.locator('#expenseList')).toBeHidden();
+    await expect(page.locator('#savingsList')).toBeHidden();
+    await expect(page.locator('#investList')).toBeHidden();
+
+    const modal = page.locator('#financialModal');
+    await page.locator('[data-financial-settings-detail]').click();
+    await expect(modal).toBeVisible();
+    await expect(modal.locator('[data-financial-detail-tab]')).toHaveText(['월 수입', '월 생활비', '투자', '저축', '결과/자동 저축']);
+    await modal.locator('[data-financial-modal-edit]').first().click();
+    await expect(modal.locator('[data-financial-modal-field="amount"]').first()).toBeVisible();
+    await expect(modal.locator('#financialModalCreate')).toBeVisible();
   });
 
   test('opens the same integrated modal from the detail action and summary category cards', async ({ page }) => {
