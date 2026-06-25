@@ -8,6 +8,11 @@ async function openControlsPanel(page: import('@playwright/test').Page) {
   }
 }
 
+async function openFinancialAddMenu(modal: import('@playwright/test').Locator) {
+  await modal.locator('[data-financial-add-menu-toggle]').click();
+  await expect(modal.locator('[data-financial-add-menu]')).toBeVisible();
+}
+
 test.describe('Individual Savings Flow Main UI/UX Audit', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
@@ -595,7 +600,7 @@ test.describe('Phase 09 account correction and Sankey topology', () => {
     expect(result.deficitToTotal).toBe(false);
   });
 
-  test('Phase 09 manual Sankey account correction refresh repairs visible state', async ({ page }) => {
+  test('Phase 09 keeps account correction controls out of the chart header', async ({ page }) => {
     await page.evaluate(async () => {
       const [{ state }, { buildMonthlySnapshot }, { sanitizeInputs }] = await Promise.all([
         import('/IndividualSavingsFlowUI/apps/main/modules/state.js'),
@@ -622,14 +627,10 @@ test.describe('Phase 09 account correction and Sankey topology', () => {
     });
 
     const refreshButton = page.locator('#sankeyCorrectionRefresh');
-    await expect(refreshButton).toBeVisible();
-    await refreshButton.click();
-
-    await expect(page.locator('#sankeyCorrectionStatus')).toContainText('보정');
-    const savedInputs = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}'));
-    expect(savedInputs.expenseItems?.[0]?.accountId).toBe('acc-living');
+    await expect(refreshButton).toBeHidden();
+    await expect(page.locator('#sankeyCorrectionStatus')).toBeHidden();
     await expect(page.locator('#sankeySvg .sankey-label')).toContainText(['총수입']);
-    await expect(page.locator('#sankeySvg')).not.toContainText('미지정 계좌');
+    await expect(page.locator('.sankey-panel')).not.toContainText('계좌 연결 보정');
   });
 
   test('Phase 09 basic Sankey starts at total-income while detail mode expands items', async ({ page }) => {
@@ -1003,8 +1004,10 @@ test.describe('Phase 09 financial category detail modal', () => {
       expect(dialog.type()).toBe('prompt');
       await dialog.accept('테스트그룹');
     });
+    await openFinancialAddMenu(modal);
     await modal.locator('[data-financial-add-group]').click();
     await expect(modal.locator('[data-group-drop-name="테스트그룹"]')).toBeVisible();
+    await expect(modal.locator('[data-group-drop-name="테스트그룹"] .financial-group-section__head span')).toHaveCount(0);
 
     await page.evaluate(() => {
       const source = document.querySelector<HTMLElement>('[data-modal-row-category="invest"][data-modal-row-index="0"]');
@@ -1094,6 +1097,7 @@ test.describe('Phase 09 guided item and inline account creation', () => {
     const modal = page.locator('#financialModal');
     await expect(modal).toBeVisible();
     await expect(modal.locator('[data-outflow-tab="invest"]')).toHaveClass(/is-active/);
+    await openFinancialAddMenu(modal);
     await modal.locator('[data-financial-inline-add]').click();
     const newRow = modal.locator('.financial-modal-row--editing[data-modal-row-category="invest"]').last();
     await expect(newRow.locator('[data-financial-modal-field="accountId"]')).toHaveValue('acc-stock');
@@ -1495,7 +1499,7 @@ test.describe('Phase 10.5 financial settings entry contract', () => {
     await modal.locator('[data-financial-modal-edit]').first().click();
     await expect(modal.locator('[data-financial-modal-field="amount"]').first()).toBeVisible();
     await expect(modal.locator('#financialModalCreate')).toBeHidden();
-    await expect(modal.locator('[data-financial-inline-add]')).toBeVisible();
+    await expect(modal.locator('[data-financial-add-menu-toggle]')).toBeVisible();
   });
 
   test('opens the same integrated modal from the detail action and summary category cards', async ({ page }) => {
@@ -1991,6 +1995,29 @@ test.describe('Phase 10.6 financial detail modal editing repair', () => {
     const row = modal.locator('.financial-modal-row--editing[data-modal-row-category="income"]');
     const amount = row.locator('[data-financial-modal-field="amount"]');
 
+    const layout = await row.evaluate((node) => {
+      const input = node.querySelector('[data-financial-modal-field="amount"]') as HTMLElement;
+      const down = node.querySelector('[data-money-step="down"]') as HTMLElement;
+      const up = node.querySelector('[data-money-step="up"]') as HTMLElement;
+      const quick = node.querySelector('[data-money-quick="50000"]') as HTMLElement;
+      const account = node.querySelector('[data-financial-modal-field="accountId"]') as HTMLElement;
+      const rect = (element: HTMLElement) => element.getBoundingClientRect();
+      return {
+        downRight: rect(down).right,
+        inputLeft: rect(input).left,
+        inputRight: rect(input).right,
+        upLeft: rect(up).left,
+        quickTop: rect(quick).top,
+        inputBottom: rect(input).bottom,
+        amountTop: rect(input).top,
+        accountTop: rect(account).top,
+      };
+    });
+    expect(layout.downRight).toBeLessThanOrEqual(layout.inputLeft + 4);
+    expect(layout.inputRight).toBeLessThanOrEqual(layout.upLeft + 4);
+    expect(layout.quickTop).toBeGreaterThanOrEqual(layout.inputBottom - 1);
+    expect(Math.abs(layout.accountTop - layout.amountTop)).toBeLessThanOrEqual(8);
+
     await row.locator('[data-money-step="down"]').click();
     await expect(amount).toHaveValue('4,190,000');
     await row.locator('[data-money-step="up"]').click();
@@ -2051,6 +2078,7 @@ test.describe('Phase 10.6 financial detail modal editing repair', () => {
     await expect(modal.locator('#financialModalPendingBar')).toBeHidden();
     await modal.getByRole('tab', { name: '월 생활비', exact: true }).click();
     await expect(modal.locator('#financialModalPendingBar')).toBeHidden();
+    await openFinancialAddMenu(modal);
     await modal.locator('[data-financial-inline-add]').click();
     await expect(modal.locator('#financialModalPendingBar')).toBeHidden();
   });
@@ -2091,6 +2119,7 @@ test.describe('Phase 10.6 financial detail modal editing repair', () => {
     await seedRegressionFlow(page);
 
     const modal = await openFinancialDetail(page);
+    await openFinancialAddMenu(modal);
     await expect(modal.locator('[data-financial-inline-add]')).toHaveText('수입 추가');
     await modal.locator('[data-financial-inline-add]').click();
     let tempRow = modal.locator('.financial-modal-row--editing[data-modal-row-category="income"]').last();
@@ -2102,6 +2131,7 @@ test.describe('Phase 10.6 financial detail modal editing repair', () => {
     await expect(modal.locator('[data-modal-row-category="income"]')).toHaveCount(1);
     await expect(modal.locator('#financialModalPendingBar')).toBeHidden();
 
+    await openFinancialAddMenu(modal);
     await modal.locator('[data-financial-inline-add]').click();
     tempRow = modal.locator('.financial-modal-row--editing[data-modal-row-category="income"]').last();
     await tempRow.locator('[data-financial-modal-field="name"]').fill('부업');
@@ -2114,6 +2144,7 @@ test.describe('Phase 10.6 financial detail modal editing repair', () => {
     await expect(modal.locator('[data-modal-row-category="income"]')).toHaveCount(1);
     await expect(modal.locator('#financialModalPendingBar')).toBeHidden();
 
+    await openFinancialAddMenu(modal);
     await modal.locator('[data-financial-inline-add]').click();
     tempRow = modal.locator('.financial-modal-row--editing[data-modal-row-category="income"]').last();
     await tempRow.locator('[data-financial-modal-field="name"]').fill('부업');
@@ -2141,6 +2172,7 @@ test.describe('Phase 10.6 financial detail modal editing repair', () => {
     await expect(modal.locator('[data-modal-row-category="savings"]')).toHaveCount(1);
     await expect(modal.locator('#financialModalPendingBar')).toBeHidden();
 
+    await openFinancialAddMenu(modal);
     await modal.locator('[data-financial-inline-add]').click();
     await modal.locator('.financial-modal-row--editing[data-modal-row-category="savings"] [data-financial-modal-remove]').click();
     await expect(modal.locator('[data-modal-row-category="savings"]')).toHaveCount(1);
@@ -2196,6 +2228,7 @@ test.describe('Phase 10.6 financial detail modal editing repair', () => {
     await seedRegressionFlow(page);
 
     const modal = await openFinancialDetail(page);
+    await openFinancialAddMenu(modal);
     await modal.locator('[data-financial-inline-add]').click();
     const tempRow = modal.locator('.financial-modal-row--editing[data-modal-row-category="income"]').last();
     await tempRow.locator('[data-financial-modal-field="amount"]').fill('1234567');
@@ -2604,7 +2637,7 @@ test.describe('Phase 09 final responsive user flow coverage', () => {
       expect(sankeyBox).not.toBeNull();
       expect(sankeyBox!.y).toBeGreaterThan(summaryBox!.y);
 
-      await expect(page.locator('#sankeyCorrectionRefresh')).toBeVisible();
+      await expect(page.locator('#sankeyCorrectionRefresh')).toBeHidden();
       await page.locator('#showSankeyBasicBtn').click();
       await page.waitForTimeout(150);
       await expect(page.locator('#showSankeyBasicBtn')).toHaveClass(/is-active/);

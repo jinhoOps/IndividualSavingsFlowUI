@@ -219,6 +219,7 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
   let selectedAdjustmentBasis = "";
   let adjustmentFeedback = "";
   let rowErrors = {};
+  let addMenuOpen = false;
 
   function getInputs() {
     return typeof getVisibleInputs === "function" ? getVisibleInputs() : {};
@@ -583,6 +584,7 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
     createDraft = null;
     createStep = "detail";
     editingIndex = { category: "", index: -1 };
+    addMenuOpen = false;
     rowErrors = {};
     selectedAdjustmentBasis = "";
     adjustmentFeedback = "";
@@ -708,13 +710,15 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
     }
     row.appendChild(summary);
 
-    const edit = document.createElement("button");
-    edit.type = "button";
-    edit.className = "btn btn-ghost btn-sm financial-modal-row__edit";
-    edit.dataset.financialModalEdit = String(index);
-    edit.dataset.financialModalCategory = rowCategory;
-    edit.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>`;
-    row.appendChild(edit);
+    if (rowCategory !== "account") {
+      const edit = document.createElement("button");
+      edit.type = "button";
+      edit.className = "btn btn-ghost btn-sm financial-modal-row__edit";
+      edit.dataset.financialModalEdit = String(index);
+      edit.dataset.financialModalCategory = rowCategory;
+      edit.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>`;
+      row.appendChild(edit);
+    }
 
     return row;
   }
@@ -722,22 +726,22 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
   function appendMoneyControls(label, input, options = {}) {
     const wrap = document.createElement("div");
     wrap.className = "financial-money-control";
-    wrap.appendChild(input);
 
-    const steppers = document.createElement("div");
-    steppers.className = "financial-money-control__steppers";
+    const inputRow = document.createElement("div");
+    inputRow.className = "financial-money-control__input-row";
     [
       ["down", "-"],
       ["up", "+"],
-    ].forEach(([direction, text]) => {
+    ].forEach(([direction, text], buttonIndex) => {
       const button = document.createElement("button");
       button.type = "button";
-      button.className = "btn btn-ghost btn-sm";
+      button.className = "btn btn-ghost btn-sm financial-money-control__step";
       button.dataset.moneyStep = direction;
       button.dataset.moneyField = input.dataset.financialModalField || "amount";
       button.setAttribute("aria-label", `${label} ${text} 1만원`);
       button.textContent = text;
-      steppers.appendChild(button);
+      if (buttonIndex === 0) inputRow.appendChild(button);
+      else inputRow.append(input, button);
     });
 
     const quicks = document.createElement("div");
@@ -756,7 +760,7 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
       quicks.appendChild(button);
     });
 
-    wrap.append(steppers, quicks);
+    wrap.append(inputRow, quicks);
     return wrap;
   }
 
@@ -982,12 +986,40 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
       "financial-detail-panel__heading",
       DETAIL_TABS.find((tab) => tab.key === activeOutflowTab)?.label || CATEGORY_CONFIG[getCreateCategory()]?.label || "항목",
     );
+    const addWrap = document.createElement("div");
+    addWrap.className = "financial-add-menu";
     const add = document.createElement("button");
     add.type = "button";
-    add.className = "btn btn-ghost btn-sm";
-    add.dataset.financialInlineAdd = "true";
-    add.textContent = getActiveAddLabel();
-    header.append(title, add);
+    add.className = "btn btn-ghost btn-sm financial-add-menu__trigger";
+    add.dataset.financialAddMenuToggle = "true";
+    add.setAttribute("aria-label", "항목 추가 메뉴");
+    add.setAttribute("aria-expanded", String(addMenuOpen));
+    add.textContent = "+";
+    addWrap.appendChild(add);
+
+    if (addMenuOpen) {
+      const menu = document.createElement("div");
+      menu.className = "financial-add-menu__panel";
+      menu.dataset.financialAddMenu = "true";
+      const addItem = document.createElement("button");
+      addItem.type = "button";
+      addItem.className = "financial-add-menu__item";
+      addItem.dataset.financialInlineAdd = "true";
+      addItem.textContent = getActiveAddLabel();
+      menu.appendChild(addItem);
+
+      if (activeOutflowTab !== "living") {
+        const addGroup = document.createElement("button");
+        addGroup.type = "button";
+        addGroup.className = "financial-add-menu__item";
+        addGroup.dataset.financialAddGroup = "true";
+        addGroup.textContent = "그룹 추가";
+        menu.appendChild(addGroup);
+      }
+      addWrap.appendChild(menu);
+    }
+
+    header.append(title, addWrap);
     panel.appendChild(header);
   }
 
@@ -999,10 +1031,7 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
 
     const header = document.createElement("div");
     header.className = "financial-group-section__head";
-    header.append(
-      createText("strong", "", groupName),
-      createText("span", "", CATEGORY_CONFIG[category]?.label || ""),
-    );
+    header.appendChild(createText("strong", "", groupName));
 
     const items = getDraftItemsForCategory(category);
     const body = document.createElement("div");
@@ -1089,16 +1118,6 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
       dom.financialModalRows.replaceChildren(fragment);
       return;
     }
-
-    const toolbar = document.createElement("div");
-    toolbar.className = "financial-group-toolbar";
-    const addGroup = document.createElement("button");
-    addGroup.type = "button";
-    addGroup.className = "btn btn-ghost btn-sm";
-    addGroup.dataset.financialAddGroup = "true";
-    addGroup.textContent = "그룹 추가";
-    toolbar.appendChild(addGroup);
-    panel.appendChild(toolbar);
 
     const groups = document.createElement("div");
     groups.className = "financial-group-board";
@@ -1250,6 +1269,7 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
     createDraft = null;
     createStep = "detail";
     editingIndex = { category, index: -1 };
+    addMenuOpen = false;
     customGroupIndexes = new Set();
     householdContextChanged = false;
     selectedAdjustmentBasis = "";
@@ -1296,6 +1316,7 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
     createDraft = null;
     createStep = "detail";
     editingIndex = { category: "", index: -1 };
+    addMenuOpen = false;
     customGroupNames = {};
     customGroupIndexes = new Set();
     householdContextChanged = false;
@@ -1722,6 +1743,7 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
           pruneEmptyTemporaryRows();
           activeOutflowTab = tabButton.dataset.outflowTab || "living";
           editingIndex = { category: "", index: -1 };
+          addMenuOpen = false;
           createDraft = null;
           createStep = "detail";
           if (dom.financialModalSave) dom.financialModalSave.hidden = false;
@@ -1752,11 +1774,18 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
           return;
         }
         if (handleAdjustmentClick(target)) return;
+        if (target.closest?.("[data-financial-add-menu-toggle]")) {
+          addMenuOpen = !addMenuOpen;
+          renderRows();
+          return;
+        }
         if (target.closest?.("[data-financial-inline-add]")) {
+          addMenuOpen = false;
           startInlineCreateRow();
           return;
         }
         if (target.closest?.("[data-financial-add-group]")) {
+          addMenuOpen = false;
           addGroupToActiveTab();
           return;
         }
@@ -1884,9 +1913,15 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
           close();
           return;
         }
+        if (addMenuOpen && !target.closest(".financial-add-menu")) {
+          addMenuOpen = false;
+          renderRows();
+          return;
+        }
         if (!hasEditingSelection()) return;
-        if (target.closest(".financial-modal-row, .financial-variable-row, .financial-modal-pending-bar")) return;
+        if (target.closest(".financial-modal-row, .financial-variable-row, .financial-modal-pending-bar, .financial-add-menu")) return;
         if (target.closest("button, input, select, textarea")) return;
+        addMenuOpen = false;
         foldEditingRow();
         renderRows();
       });
@@ -1896,8 +1931,14 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
         const target = event.target;
         if (!(target instanceof Element)) return;
         if (target === dom.financialModal) return;
+        if (addMenuOpen && !target.closest(".financial-add-menu")) {
+          addMenuOpen = false;
+          renderRows();
+          return;
+        }
         if (!hasEditingSelection()) return;
-        if (target.closest(".financial-modal-row, .financial-variable-row, #financialModalPendingBar, [data-financial-detail-tabs], button, input, select, textarea")) return;
+        if (target.closest(".financial-modal-row, .financial-variable-row, #financialModalPendingBar, [data-financial-detail-tabs], .financial-add-menu, button, input, select, textarea")) return;
+        addMenuOpen = false;
         foldEditingRow();
         renderRows();
       });

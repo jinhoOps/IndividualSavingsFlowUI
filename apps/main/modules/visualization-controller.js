@@ -6,7 +6,6 @@ import { renderSankey } from "./sankey-renderer.js";
 import { dom } from "./dom.js";
 import { state } from "./state.js";
 import { sanitizeInputs } from "./input-sanitizer.js";
-import { summarizeAccountCorrections } from "./account-correction.js";
 import * as helpers from "./state-helpers.js";
 import * as listRenderer from "./list-renderer.js";
 import {
@@ -19,16 +18,10 @@ export function createVisualizationController({ markPendingChanges }) {
   function updateSankeyCorrectionStatus(corrections = state.inputs?.accountCorrections) {
     if (!dom.sankeyCorrectionStatus) return;
     const safeCorrections = Array.isArray(corrections) ? corrections : [];
+    dom.sankeyCorrectionStatus.closest(".sankey-correction-control")?.setAttribute("hidden", "");
     dom.sankeyCorrectionStatus.classList.toggle("is-warning", safeCorrections.length > 0);
-    dom.sankeyCorrectionStatus.textContent = safeCorrections.length > 0
-      ? `${safeCorrections.length}개 계좌 연결 보정됨`
-      : "계좌 연결 정상";
-    const detail = summarizeAccountCorrections(safeCorrections);
-    if (detail) {
-      dom.sankeyCorrectionStatus.setAttribute("title", detail);
-    } else {
-      dom.sankeyCorrectionStatus.removeAttribute("title");
-    }
+    dom.sankeyCorrectionStatus.textContent = "";
+    dom.sankeyCorrectionStatus.removeAttribute("title");
   }
 
   function refreshSankeyAccountCorrections() {
@@ -44,9 +37,7 @@ export function createVisualizationController({ markPendingChanges }) {
     )?.itemType;
     if (afterCorrections === 0) {
       if (dom.sankeyCorrectionStatus) {
-        dom.sankeyCorrectionStatus.textContent = beforeCorrections > 0
-          ? "자동 보정 완료 · 직접 확인 가능"
-          : "자동 보정 없음 · 직접 확인 가능";
+        dom.sankeyCorrectionStatus.textContent = "";
       }
       document.dispatchEvent(new CustomEvent("open-financial-modal", { detail: { category: "account" } }));
     } else {
