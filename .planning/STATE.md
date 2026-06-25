@@ -2,36 +2,36 @@
 gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: milestone
-current_phase: 10.5
-current_phase_name: Financial Settings UX Integration Repair
+current_phase: 10.6
+current_phase_name: Financial Detail Modal Editing UX Repair
 status: executing
-stopped_at: Phase 10.6 context gathered
-last_updated: "2026-06-25T02:35:21.488Z"
-last_activity: 2026-06-24
-last_activity_desc: Phase 10.5 complete
+stopped_at: Completed 10.6-01-PLAN.md
+last_updated: "2026-06-25T02:58:43.587Z"
+last_activity: 2026-06-25
+last_activity_desc: Phase 10.6 Plan 01 complete
 progress:
   total_phases: 7
   completed_phases: 2
-  total_plans: 8
-  completed_plans: 8
-  percent: 29
+  total_plans: 11
+  completed_plans: 9
+  percent: 82
 ---
 
 # Project State
 
 ## Current Position
 
-Phase: 10.5 — Financial Settings UX Integration Repair
-Plan: Complete
-Status: Ready to execute
-Last activity: 2026-06-24 — Phase 10.5 complete
+Phase: 10.6 — Financial Detail Modal Editing UX Repair
+Plan: 02 of 03
+Status: Ready to execute next plan
+Last activity: 2026-06-25 — Phase 10.6 Plan 01 complete
 
 ## Project Reference
 
 See: .planning/PROJECT.md (updated 2026-06-22)
 
 **Core value:** 단순한 프리셋과 단계별 카드/시뮬레이션 흐름으로 개인 자산 흐름을 빠르게 이해하고 조정하게 한다.
-**Current focus:** Phase 10.5 — Financial Settings UX Integration Repair complete
+**Current focus:** Phase 10.6 — Financial Detail Modal Editing UX Repair in progress
 
 ## Accumulated Context
 
@@ -39,6 +39,7 @@ See: .planning/PROJECT.md (updated 2026-06-22)
 
 - Phase 9 added: Step 1 Financial Settings Input UIUX Rebuild
 - Phase 10.5 inserted after Phase 10 (URGENT): Financial Settings UX Integration Repair
+- Phase 10.6 inserted after Phase 10.5: Financial Detail Modal Editing UX Repair
 - v1.8 shipped: portfolio creation/storage, Step 1 modular and financial setup rebuild, Step 2 strategy comparison redesign.
 
 ## Key Decisions
@@ -61,6 +62,7 @@ See: .planning/PROJECT.md (updated 2026-06-22)
 | Phase 09-step-1-financial-settings-input-uiux-rebuild P05 | 52 min | 4 tasks | 5 files |
 | Phase 10.5-financial-settings-ux-integration-repair P01 | 22 min | 2 tasks | 4 files |
 | Phase 10.5 P03 | 29 min | 2 tasks | 4 files |
+| Phase 10.6-financial-detail-modal-editing-ux-repair P01 | 18 min | 2 tasks | 5 files |
 
 ## Decisions
 
@@ -89,14 +91,16 @@ See: .planning/PROJECT.md (updated 2026-06-22)
 - [Phase 10.5-01]: Default Step 1 financial summary now has one static `재무설정 상세` CTA, and summary cards route to the same financial modal controller path.
 - [Phase 10.5-01]: Visible Phase 10 couple/household overview UI was removed from the financial modal while sanitizer and household-budget data helpers remain intact.
 - [Phase 10.5]: Phase 10.5-03: 월 생활비 uses dedicated variable/fixed sections; variable actual edits stay draft-only until 재무설정 저장. — Plan 03 requires selected variable rows to expose actual controls while fixed expenses remain actual-free.
+- [Phase 10.6-01]: Financial modal dirty state now uses full baseline-vs-draft input comparison instead of row selection, modal open, empty add setup, or tab state.
+- [Phase 10.6-01]: Variable expense range persists as variable-only `varianceAmount`; fixed rows strip it while existing `actualSpent` compatibility remains.
 
 ## Operator Next Steps
 
-- Phase 10.5 is complete and committed.
-- Start Phase 11 later only when explicitly ready with `$gsd-discuss-phase 11`.
+- Phase 10.6 Plan 01 is complete and committed.
+- Continue with Phase 10.6 Plan 02 only when explicitly requested.
 
 ## Session
 
-**Last session:** 2026-06-25T01:52:44.921Z
-**Stopped at:** Phase 10.6 context gathered
-**Resume file:** .planning/phases/10.6-financial-detail-modal-editing-ux-repair/10.6-CONTEXT.md
+**Last session:** 2026-06-25T02:58:43.575Z
+**Stopped at:** Completed 10.6-01-PLAN.md
+**Resume file:** None
