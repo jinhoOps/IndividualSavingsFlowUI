@@ -848,7 +848,10 @@ test.describe('Phase 09 financial summary card surface', () => {
           { id: 'acc-living', name: '생활비계좌' },
           { id: 'acc-stock', name: '투자계좌' },
         ],
-        expenseItems: [{ id: 'rent', name: '월세', amount: 800000, group: '고정비', accountId: 'acc-living' }],
+        expenseItems: [
+          { id: 'rent', name: '월세', amount: 800000, group: '고정비', accountId: 'acc-living' },
+          { id: 'food', name: '식비', amount: 300000, group: '변동비', accountId: 'acc-living' },
+        ],
         savingsItems: [{ id: 'saving', name: '청년적금', amount: 300000, group: '저축', accountId: 'acc-salary' }],
         investItems: [{ id: 'invest', name: 'ETF', amount: 200000, group: '투자', accountId: 'acc-stock' }],
         horizonYears: 5,
@@ -865,6 +868,7 @@ test.describe('Phase 09 financial summary card surface', () => {
         groupTitles: groups.map((group: any) => group.title),
         cardLabels: groups.flatMap((group: any) => group.cards.map((card: any) => card.label)),
         firstCard: groups[0].cards[0],
+        expenseCard: groups[1].cards.find((card: any) => card.category === 'expense'),
         metricCards: metricCards.map((card) => (card as HTMLElement).dataset.financialMetric),
         cardCategories: cardButtons.map((button) => (button as HTMLElement).dataset.financialCategory),
         cardRoles: cardButtons.map((button) => button.getAttribute('role') || button.tagName.toLowerCase()),
@@ -879,13 +883,17 @@ test.describe('Phase 09 financial summary card surface', () => {
     expect(result.cardLabels).toEqual(['5년 후 순자산', '미래자산 투입률', '지출', '저축', '투자']);
     expect(result.firstCard).toMatchObject({ type: 'metric', metric: 'future-net-asset', label: '5년 후 순자산' });
     expect(result.firstCard.value).toMatch(/원|만|억|조/);
+    expect(result.expenseCard.total).toBe(1100000);
+    expect(result.expenseCard.representatives).toEqual(['고정비 80만원', '변동비 30만원']);
     expect(result.metricCards).toEqual(['future-net-asset', 'future-asset-rate']);
     expect(result.cardCategories).toEqual(['expense', 'savings', 'invest']);
     expect(result.cardRoles.every((role: string) => role === 'button')).toBe(true);
     expect(result.groupTitleElements).toBe(0);
     expect(result.correctionNotes).toBe(0);
     expect(result.summaryBeforeSankey).toBe(true);
-    expect(result.renderedText).toContain('월세');
+    expect(result.renderedText).toContain('고정비 80만원');
+    expect(result.renderedText).toContain('변동비 30만원');
+    expect(result.renderedText).not.toContain('월세 80만원');
     expect(result.renderedText).not.toContain('자동 보정');
   });
 });
@@ -940,7 +948,8 @@ test.describe('Phase 09 financial category detail modal', () => {
 
     const savedName = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}').expenseItems?.[0]?.name);
     expect(savedName).toBe('주거비 수정');
-    await expect(page.locator('[data-financial-category="expense"]')).toContainText('주거비 수정');
+    await expect(page.locator('[data-financial-category="expense"]')).toContainText('고정비');
+    await expect(page.locator('[data-financial-category="expense"]')).not.toContainText('주거비 수정');
   });
 
   test('Phase 09 financial modal compact editing keeps only the selected item expanded on mobile', async ({ page }) => {

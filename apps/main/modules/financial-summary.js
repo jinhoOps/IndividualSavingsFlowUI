@@ -3,6 +3,7 @@ import { IsfUtils } from "../../../shared/core/utils.js";
 import {
   getMonthlyAllocationTotalWon,
   getMonthlyIncomeTotalWon,
+  isVariableExpenseItem,
 } from "./input-sanitizer.js";
 
 const CATEGORY_META = {
@@ -54,6 +55,32 @@ function buildItemRepresentatives(items, limit = 3) {
     });
 }
 
+function buildExpenseGroupRepresentatives(items, limit = 3) {
+  const totals = new Map([
+    ["고정비", 0],
+    ["변동비", 0],
+  ]);
+  safeItems(items).forEach((item) => {
+    const group = isVariableExpenseItem(item) ? "변동비" : "고정비";
+    totals.set(group, (totals.get(group) || 0) + (Number(item?.amount) || 0));
+  });
+
+  const preferredOrder = ["고정비", "변동비"];
+  return Array.from(totals, ([group, amount]) => ({ group, amount }))
+    .filter(({ amount }) => amount > 0)
+    .sort((left, right) => {
+      const leftOrder = preferredOrder.includes(left.group) ? preferredOrder.indexOf(left.group) : preferredOrder.length;
+      const rightOrder = preferredOrder.includes(right.group) ? preferredOrder.indexOf(right.group) : preferredOrder.length;
+      if (leftOrder !== rightOrder) return leftOrder - rightOrder;
+      return right.amount - left.amount;
+    })
+    .slice(0, limit)
+    .map(({ group, amount }) => {
+      const amountLabel = formatRepresentativeAmount(amount);
+      return amountLabel ? `${group} ${amountLabel}` : group;
+    });
+}
+
 function buildAccountRepresentatives(inputs, limit = 3) {
   return safeItems(inputs.accounts)
     .slice(0, limit)
@@ -84,7 +111,9 @@ function buildCard(inputs, category) {
       : getMonthlyAllocationTotalWon(items);
   const representatives = category === "account"
     ? buildAccountRepresentatives(inputs)
-    : buildItemRepresentatives(items);
+    : category === "expense"
+      ? buildExpenseGroupRepresentatives(items)
+      : buildItemRepresentatives(items);
   const correctionCount = countCorrections(inputs, category);
 
   return {
