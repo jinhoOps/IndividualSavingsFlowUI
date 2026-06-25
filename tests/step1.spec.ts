@@ -2034,7 +2034,7 @@ test.describe('Phase 10.6 financial detail modal editing repair', () => {
     await expect(modal.locator('#financialModalPendingBar')).toBeHidden();
     await modal.getByRole('tab', { name: '월 생활비', exact: true }).click();
     await expect(modal.locator('#financialModalPendingBar')).toBeHidden();
-    await modal.locator('#financialModalCreate').click();
+    await modal.locator('[data-financial-inline-add]').click();
     await expect(modal.locator('#financialModalPendingBar')).toBeHidden();
   });
 
