@@ -502,7 +502,7 @@
         <a href="#boot">1. 앱 부팅</a>
         <a href="#direct-input">2. 기본 입력 변경</a>
         <a href="#financial-modal">3. 재무설정 상세 모달</a>
-        <a href="#item-editor">4. 고급 항목 편집</a>
+        <a href="#item-editor">4. 보조 고급 항목 편집</a>
         <a href="#visualization">5. 시각화 조작</a>
         <a href="#data-hub">6. 데이터 허브</a>
         <a href="#responsive">7. 반응형/전역 이벤트</a>
@@ -693,8 +693,8 @@
       <section class="section" id="item-editor">
         <div class="section-head">
           <div>
-            <h2>4. 고급 항목 편집 시퀀스</h2>
-            <p>레거시/고급 패널 편집기는 항목 배열을 editor state로 복사하고, 적용 시 main state에 반영한다.</p>
+            <h2>4. 보조 고급 항목 편집 시퀀스</h2>
+            <p>주 편집 표면은 재무설정 상세 모달이며, 이 흐름은 이전 고급 패널 계약과 보조 편집 경계를 설명한다.</p>
           </div>
           <div class="source-links">
             <span>item-editor-controller.js</span>
@@ -704,7 +704,7 @@
         </div>
         <div class="sequence">
           <div class="lanes">
-            <div class="lane-head"><strong>User</strong><span>고급 패널</span></div>
+            <div class="lane-head"><strong>User</strong><span>보조 고급 패널</span></div>
             <div class="lane-head"><strong>DOM</strong><span>mgmt tabs / rows</span></div>
             <div class="lane-head"><strong>Item Editor</strong><span>editor lifecycle</span></div>
             <div class="lane-head"><strong>Editor State</strong><span>state.itemEditors</span></div>
@@ -734,7 +734,7 @@
             <div class="cell"><div class="event state" data-n="15"><strong><code>markPendingChanges()</code></strong><span>저장 및 renderAll</span></div></div>
             <div class="cell"><div class="event render" data-n="16"><strong>전체 화면 갱신</strong><span>summary, charts, table</span></div></div>
           </div>
-          <div class="note">현재 주 편집 UX는 재무 상세 모달이지만, 고급 패널은 여전히 일부 세부 항목/정렬/이전 테스트 계약을 담당한다.</div>
+          <div class="note">저장 경계 안내: 신규/일상 편집은 재무설정 상세 모달의 펜딩바가 기준이다. 이 보조 흐름은 레거시 패널과 이전 테스트 계약이 남아 있는 영역을 분리해 기록한다.</div>
         </div>
       </section>
 

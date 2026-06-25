@@ -310,6 +310,7 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
   function showFinancialModalPendingBar() {
     if (!dom.financialModalPendingBar) return;
     clearPendingBarHideTimer();
+    dom.financialModalPendingBar.setAttribute("aria-label", "저장되지 않은 재무설정 변경사항");
     dom.financialModalPendingBar.hidden = false;
     dom.financialModalPendingBar.style.display = "";
     dom.financialModalPendingBar.dataset.pendingState = "entering";
@@ -356,6 +357,16 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
     } else {
       hideFinancialModalPendingBar(reason);
     }
+  }
+
+  function hasActiveUnsavedDraft() {
+    return Boolean(dom.financialModal && !dom.financialModal.hidden && hasDraftChanges());
+  }
+
+  function handleBeforeUnload(event) {
+    if (!hasActiveUnsavedDraft()) return;
+    event.preventDefault();
+    event.returnValue = "";
   }
 
   function convertToSelect(badge, idx, accounts) {
@@ -1990,6 +2001,7 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
       if (event.key !== "Escape" || !dom.financialModal || dom.financialModal.hidden) return;
       close();
     });
+    window.addEventListener("beforeunload", handleBeforeUnload);
     document.addEventListener("open-financial-modal", (event) => {
       const category = event.detail?.category;
       if (category) open(category);

@@ -698,7 +698,7 @@
   </div>
 
   <div id="financialModal" class="modal-overlay" hidden>
-    <div class="modal-content modal-content--financial">
+    <div class="modal-content modal-content--financial" role="dialog" aria-modal="true" aria-labelledby="financialModalTitle" aria-describedby="financialModalDescription">
       <div class="modal-header">
         <div>
           <h2 id="financialModalTitle" class="modal-title">재무설정 상세</h2>
@@ -715,8 +715,9 @@
       </div>
       <div class="modal-footer" style="display: none;">
       </div>
-      <div id="financialModalPendingBar" class="financial-modal-pending-bar" style="display: none;">
+      <div id="financialModalPendingBar" class="financial-modal-pending-bar" role="status" aria-live="polite" style="display: none;">
         <div class="financial-modal-pending-bar-inner">
+          <span id="financialModalPendingMessage" class="financial-modal-pending-bar-message">변경사항을 적용해야 저장됩니다.</span>
           <div class="financial-modal-pending-bar-buttons">
             <button type="button" id="financialModalCancel" class="btn btn-ghost btn-sm">취소</button>
             <button type="button" id="financialModalSave" class="btn btn-primary btn-sm">적용</button>

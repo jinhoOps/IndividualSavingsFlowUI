@@ -2127,6 +2127,10 @@ test.describe('Phase 10.6 financial detail modal editing repair', () => {
     await seedRegressionFlow(page);
 
     const modal = await openFinancialDetail(page);
+    await expect(modal.locator('.modal-content--financial')).toHaveAttribute('role', 'dialog');
+    await expect(modal.locator('.modal-content--financial')).toHaveAttribute('aria-modal', 'true');
+    await expect(modal.locator('.modal-content--financial')).toHaveAttribute('aria-labelledby', 'financialModalTitle');
+    await expect(modal.locator('.modal-content--financial')).toHaveAttribute('aria-describedby', 'financialModalDescription');
     await expect(modal.locator('#financialModalCancel')).toHaveText('취소');
     await expect(modal.locator('#financialModalSave')).toHaveText('적용');
     const pendingBar = modal.locator('#financialModalPendingBar');
@@ -2135,6 +2139,9 @@ test.describe('Phase 10.6 financial detail modal editing repair', () => {
     const incomeRow = modal.locator('.financial-modal-row--editing[data-modal-row-category="income"]');
     await incomeRow.locator('[data-financial-modal-field="amount"]').fill('4400000');
     await expect(pendingBar).toBeVisible();
+    await expect(pendingBar).toHaveAttribute('role', 'status');
+    await expect(pendingBar).toHaveAttribute('aria-live', 'polite');
+    await expect(pendingBar.locator('#financialModalPendingMessage')).toContainText('변경사항을 적용해야 저장됩니다.');
 
     await modal.locator('#financialModalCancel').click();
     await expect(modal).toBeVisible();
@@ -2156,6 +2163,29 @@ test.describe('Phase 10.6 financial detail modal editing repair', () => {
     await expect(pendingBar).toBeHidden();
     saved = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}'));
     expect(saved.incomes.find((item: any) => item.id === 'income-main')?.amount).toBe(4500000);
+  });
+
+  test('Phase 10.6 pending modal edits warn before page unload', async ({ page }) => {
+    await seedRegressionFlow(page);
+
+    const modal = await openFinancialDetail(page);
+    await modal.locator('[data-modal-row-category="income"]').first().click();
+    await modal.locator('.financial-modal-row--editing[data-modal-row-category="income"] [data-financial-modal-field="amount"]').fill('4700000');
+
+    const prevented = await page.evaluate(() => {
+      const event = new Event('beforeunload', { cancelable: true });
+      window.dispatchEvent(event);
+      return event.defaultPrevented;
+    });
+    expect(prevented).toBe(true);
+
+    await modal.locator('#financialModalCancel').click();
+    const cleanPrevented = await page.evaluate(() => {
+      const event = new Event('beforeunload', { cancelable: true });
+      window.dispatchEvent(event);
+      return event.defaultPrevented;
+    });
+    expect(cleanPrevented).toBe(false);
   });
 
   test('Phase 10.6 add creates inline temporary rows that persist only on apply', async ({ page }) => {

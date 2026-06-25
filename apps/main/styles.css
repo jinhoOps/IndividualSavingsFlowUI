@@ -1061,10 +1061,18 @@ to{opacity:1;transform:translateY(0)}
 }
 .financial-modal-pending-bar-inner {
   display: grid;
+  gap: 8px;
   justify-content: center;
   align-items: center;
   padding: 10px 12px;
   min-width: 0;
+}
+.financial-modal-pending-bar-message {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-align: center;
+  white-space: normal;
 }
 .financial-modal-pending-bar-buttons {
   display: flex;
