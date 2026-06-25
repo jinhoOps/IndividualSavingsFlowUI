@@ -1,0 +1,931 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Step 1 전체 동작 시퀀스 다이어그램</title>
+  <style>
+    :root {
+      --bg: #f6f4ee;
+      --panel: #fffdf8;
+      --ink: #17211f;
+      --muted: #65706c;
+      --line: #ddd6c8;
+      --accent: #1e8b7c;
+      --accent-2: #ea5b2a;
+      --blue: #2563eb;
+      --green: #15803d;
+      --red: #b91c1c;
+      --shadow: 0 18px 45px rgba(24, 32, 30, 0.09);
+      --radius: 8px;
+      color-scheme: light;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Inter, Pretendard, "Noto Sans KR", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a {
+      color: inherit;
+    }
+
+    .shell {
+      display: grid;
+      grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+      min-height: 100vh;
+    }
+
+    aside {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow: auto;
+      padding: 24px 18px;
+      border-right: 1px solid var(--line);
+      background: rgba(255, 253, 248, 0.84);
+      backdrop-filter: blur(14px);
+    }
+
+    main {
+      min-width: 0;
+      padding: 28px;
+    }
+
+    h1,
+    h2,
+    h3 {
+      margin: 0;
+      letter-spacing: 0;
+      text-wrap: balance;
+    }
+
+    h1 {
+      font-size: 1.8rem;
+      line-height: 1.15;
+    }
+
+    h2 {
+      font-size: 1.24rem;
+      line-height: 1.25;
+    }
+
+    h3 {
+      font-size: 0.95rem;
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+      text-wrap: pretty;
+    }
+
+    code {
+      border: 1px solid rgba(23, 33, 31, 0.12);
+      border-radius: 5px;
+      background: rgba(255, 255, 255, 0.7);
+      padding: 1px 5px;
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 0.86em;
+      color: #263330;
+    }
+
+    .eyebrow {
+      margin-bottom: 10px;
+      color: var(--accent);
+      font-size: 0.74rem;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+
+    .nav-title {
+      display: grid;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+
+    .nav-title strong {
+      font-size: 0.94rem;
+    }
+
+    .nav-title span {
+      color: var(--muted);
+      font-size: 0.78rem;
+    }
+
+    .nav {
+      display: grid;
+      gap: 8px;
+    }
+
+    .nav a {
+      display: block;
+      border: 1px solid transparent;
+      border-radius: var(--radius);
+      padding: 8px 10px;
+      color: var(--muted);
+      font-size: 0.84rem;
+      font-weight: 800;
+      text-decoration: none;
+    }
+
+    .nav a:hover,
+    .nav a:focus-visible {
+      border-color: rgba(30, 139, 124, 0.18);
+      background: rgba(30, 139, 124, 0.08);
+      color: var(--ink);
+      outline: 0;
+    }
+
+    .hero {
+      display: grid;
+      gap: 16px;
+      margin: 0 0 22px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--panel);
+      padding: 24px;
+      box-shadow: var(--shadow);
+    }
+
+    .hero-copy {
+      max-width: 980px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 30px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.62);
+      padding: 4px 10px;
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      margin-right: 7px;
+      border-radius: 999px;
+      background: var(--accent);
+    }
+
+    .dot.user { background: var(--accent-2); }
+    .dot.dom { background: #7c3aed; }
+    .dot.controller { background: var(--blue); }
+    .dot.state { background: var(--green); }
+    .dot.render { background: #0891b2; }
+    .dot.storage { background: #92400e; }
+    .dot.guard { background: var(--red); }
+
+    .overview {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 22px;
+    }
+
+    .summary-card {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--panel);
+      padding: 14px;
+      min-width: 0;
+      box-shadow: 0 10px 25px rgba(24, 32, 30, 0.05);
+    }
+
+    .summary-card strong {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 0.92rem;
+    }
+
+    .summary-card p {
+      font-size: 0.8rem;
+    }
+
+    .section {
+      scroll-margin-top: 18px;
+      margin-bottom: 24px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .section-head {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 16px;
+      align-items: start;
+      border-bottom: 1px solid var(--line);
+      padding: 18px 20px;
+      background: rgba(255, 255, 255, 0.56);
+    }
+
+    .section-head p {
+      margin-top: 5px;
+      font-size: 0.84rem;
+    }
+
+    .source-links {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 6px;
+      max-width: 520px;
+    }
+
+    .source-links span {
+      border: 1px solid rgba(23, 33, 31, 0.12);
+      border-radius: 6px;
+      background: rgba(246, 244, 238, 0.7);
+      padding: 3px 7px;
+      color: var(--muted);
+      font-size: 0.72rem;
+      font-family: "SFMono-Regular", Consolas, monospace;
+      white-space: nowrap;
+    }
+
+    .sequence {
+      padding: 18px 20px 20px;
+      overflow-x: auto;
+    }
+
+    .lanes {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(148px, 1fr));
+      min-width: 1120px;
+      border: 1px solid rgba(23, 33, 31, 0.1);
+      border-radius: var(--radius);
+      overflow: hidden;
+      background:
+        linear-gradient(90deg, rgba(23, 33, 31, 0.06) 1px, transparent 1px) 0 0 / calc(100% / 7) 100%,
+        rgba(255, 255, 255, 0.58);
+    }
+
+    .lane-head {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      border-bottom: 1px solid var(--line);
+      background: #fbfaf5;
+      padding: 10px 12px;
+      min-height: 58px;
+    }
+
+    .lane-head strong {
+      display: block;
+      font-size: 0.82rem;
+    }
+
+    .lane-head span {
+      display: block;
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 0.68rem;
+      font-family: "SFMono-Regular", Consolas, monospace;
+      word-break: break-word;
+    }
+
+    .step-row {
+      display: contents;
+    }
+
+    .cell {
+      min-height: 72px;
+      border-top: 1px solid rgba(23, 33, 31, 0.07);
+      padding: 10px 8px;
+    }
+
+    .cell:nth-child(7n + 1) {
+      background: rgba(234, 91, 42, 0.025);
+    }
+
+    .event {
+      position: relative;
+      display: grid;
+      gap: 4px;
+      border: 1px solid rgba(23, 33, 31, 0.12);
+      border-radius: 7px;
+      background: #fffefa;
+      padding: 8px 9px;
+      min-height: 52px;
+      box-shadow: 0 7px 16px rgba(24, 32, 30, 0.05);
+    }
+
+    .event::before {
+      content: attr(data-n);
+      position: absolute;
+      top: -9px;
+      left: 8px;
+      display: grid;
+      place-items: center;
+      width: 18px;
+      height: 18px;
+      border-radius: 999px;
+      background: var(--ink);
+      color: white;
+      font-size: 0.66rem;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .event strong {
+      margin-top: 4px;
+      font-size: 0.78rem;
+      line-height: 1.25;
+    }
+
+    .event span {
+      color: var(--muted);
+      font-size: 0.7rem;
+      line-height: 1.35;
+    }
+
+    .event.user { border-color: rgba(234, 91, 42, 0.32); }
+    .event.dom { border-color: rgba(124, 58, 237, 0.26); }
+    .event.controller { border-color: rgba(37, 99, 235, 0.28); }
+    .event.state { border-color: rgba(21, 128, 61, 0.28); }
+    .event.render { border-color: rgba(8, 145, 178, 0.28); }
+    .event.storage { border-color: rgba(146, 64, 14, 0.26); }
+    .event.guard { border-color: rgba(185, 28, 28, 0.26); }
+
+    .arrow {
+      position: relative;
+      margin-top: 10px;
+      border-top: 2px solid rgba(23, 33, 31, 0.26);
+      color: var(--muted);
+      font-size: 0.67rem;
+      font-weight: 800;
+      text-align: center;
+    }
+
+    .arrow::after {
+      content: "";
+      position: absolute;
+      top: -5px;
+      right: -2px;
+      width: 0;
+      height: 0;
+      border-top: 4px solid transparent;
+      border-bottom: 4px solid transparent;
+      border-left: 7px solid rgba(23, 33, 31, 0.38);
+    }
+
+    .note {
+      margin-top: 12px;
+      border-left: 3px solid var(--accent);
+      background: rgba(30, 139, 124, 0.07);
+      padding: 10px 12px;
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+
+    .matrix {
+      display: grid;
+      grid-template-columns: 1fr 1.2fr 1fr 1.2fr;
+      gap: 1px;
+      margin: 18px 20px 20px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      overflow: hidden;
+      background: var(--line);
+    }
+
+    .matrix div {
+      background: #fffefa;
+      padding: 10px 12px;
+      min-width: 0;
+      font-size: 0.8rem;
+    }
+
+    .matrix .th {
+      background: #f1eee5;
+      font-weight: 900;
+      color: var(--ink);
+    }
+
+    .matrix code {
+      font-size: 0.78rem;
+    }
+
+    @media (max-width: 960px) {
+      .shell {
+        grid-template-columns: 1fr;
+      }
+
+      aside {
+        position: static;
+        height: auto;
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      main {
+        padding: 18px;
+      }
+
+      .overview {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .section-head {
+        grid-template-columns: 1fr;
+      }
+
+      .source-links {
+        justify-content: flex-start;
+      }
+
+      .matrix {
+        grid-template-columns: 1fr;
+      }
+
+      .matrix .th:nth-child(n) {
+        display: none;
+      }
+    }
+
+    @media print {
+      aside {
+        display: none;
+      }
+
+      .shell {
+        display: block;
+      }
+
+      main {
+        padding: 0;
+      }
+
+      .section,
+      .hero {
+        box-shadow: none;
+        break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <aside>
+      <div class="nav-title">
+        <strong>Step 1 동작 지도</strong>
+        <span>IndividualSavings Flow UIUX / apps/main</span>
+      </div>
+      <nav class="nav" aria-label="다이어그램 섹션">
+        <a href="#overview">전체 구조</a>
+        <a href="#boot">1. 앱 부팅</a>
+        <a href="#direct-input">2. 기본 입력 변경</a>
+        <a href="#financial-modal">3. 재무설정 상세 모달</a>
+        <a href="#item-editor">4. 고급 항목 편집</a>
+        <a href="#visualization">5. 시각화 조작</a>
+        <a href="#data-hub">6. 데이터 허브</a>
+        <a href="#responsive">7. 반응형/전역 이벤트</a>
+        <a href="#state-map">상태/저장 경계</a>
+      </nav>
+    </aside>
+
+    <main>
+      <header class="hero" id="overview">
+        <div class="hero-copy">
+          <div class="eyebrow">Sequence Diagram</div>
+          <h1>Step 1 전체 동작 시퀀스 다이어그램</h1>
+          <p>
+            Step 1은 단일 화면이지만, 실제 흐름은 부팅, 입력 추적, 재무 상세 모달, 고급 항목 편집,
+            Sankey/Network 시각화, 데이터 허브, 저장/백업이 서로 물려 돌아간다.
+            이 문서는 큰 흐름을 보기 위한 운영 지도다.
+          </p>
+        </div>
+        <div class="legend" aria-label="범례">
+          <span class="pill"><span class="dot user"></span>사용자</span>
+          <span class="pill"><span class="dot dom"></span>DOM/Event</span>
+          <span class="pill"><span class="dot controller"></span>Controller</span>
+          <span class="pill"><span class="dot state"></span>State/Persistence</span>
+          <span class="pill"><span class="dot render"></span>Render/Calc</span>
+          <span class="pill"><span class="dot storage"></span>Storage/Share</span>
+          <span class="pill"><span class="dot guard"></span>Guard/Validation</span>
+        </div>
+      </header>
+
+      <section class="overview" aria-label="핵심 요약">
+        <div class="summary-card">
+          <strong>단일 진입점</strong>
+          <p><code>startStep1App()</code>이 DOM 준비 후 컨트롤러 생성, 이벤트 바인딩, 초기 렌더를 순서대로 실행한다.</p>
+        </div>
+        <div class="summary-card">
+          <strong>저장 경계</strong>
+          <p>기본 입력은 즉시 저장, 모달 편집은 draft 후 <code>적용</code>에서 <code>commitImmediateInputs()</code>로 저장된다.</p>
+        </div>
+        <div class="summary-card">
+          <strong>렌더 경계</strong>
+          <p><code>renderAll()</code>이 snapshot, projection, summary, Sankey, Network, hints, panels를 한 번에 갱신한다.</p>
+        </div>
+        <div class="summary-card">
+          <strong>사용자 흐름</strong>
+          <p>요약 먼저 보고, 필요하면 <code>재무설정 상세</code>에서 항목을 고친 뒤 시각화와 표를 확인한다.</p>
+        </div>
+      </section>
+
+      <section class="section" id="boot">
+        <div class="section-head">
+          <div>
+            <h2>1. 앱 부팅 시퀀스</h2>
+            <p>페이지 로드 후 컨트롤러, 이벤트, 초기 UI, 저장소/공유 상태가 차례로 연결된다.</p>
+          </div>
+          <div class="source-links">
+            <span>bootstrap-controller.js</span>
+            <span>event-bindings.js</span>
+            <span>render-orchestrator.js</span>
+          </div>
+        </div>
+        <div class="sequence">
+          <div class="lanes">
+            <div class="lane-head"><strong>User</strong><span>브라우저 진입</span></div>
+            <div class="lane-head"><strong>DOM</strong><span>DOMContentLoaded</span></div>
+            <div class="lane-head"><strong>Bootstrap</strong><span>startStep1App / init</span></div>
+            <div class="lane-head"><strong>Controllers</strong><span>render / persistence / item / viz</span></div>
+            <div class="lane-head"><strong>State</strong><span>state.inputs</span></div>
+            <div class="lane-head"><strong>Render</strong><span>renderAll</span></div>
+            <div class="lane-head"><strong>Storage</strong><span>local / share / backup</span></div>
+
+            <div class="cell"><div class="event user" data-n="1"><strong>Step 1 URL 진입</strong><span><code>apps/main/index.html</code></span></div></div>
+            <div class="cell"><div class="arrow">readyState 확인</div></div>
+            <div class="cell"><div class="event controller" data-n="2"><strong><code>startStep1App()</code></strong><span>loading이면 DOMContentLoaded 대기</span></div></div>
+            <div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+
+            <div class="cell"></div>
+            <div class="cell"><div class="event dom" data-n="3"><strong>DOM 준비</strong><span>main, app-header, data-hub-modal 존재</span></div></div>
+            <div class="cell"><div class="event controller" data-n="4"><strong><code>init()</code></strong><span>컨트롤러 생성 및 초기화 시작</span></div></div>
+            <div class="cell"><div class="event controller" data-n="5"><strong><code>createControllers()</code></strong><span>render, persistence, visualization, itemEditor</span></div></div>
+            <div class="cell"></div><div class="cell"></div><div class="cell"></div>
+
+            <div class="cell"></div><div class="cell"></div>
+            <div class="cell"><div class="event controller" data-n="6"><strong><code>bindStep1Events()</code></strong><span>입력, 모달, Sankey, 프리셋, 데이터허브, 전역 이벤트 연결</span></div></div>
+            <div class="cell"><div class="event controller" data-n="7"><strong>하위 컨트롤러 bind</strong><span>financial modal, preset, item editor, visualization</span></div></div>
+            <div class="cell"></div><div class="cell"></div><div class="cell"></div>
+
+            <div class="cell"></div><div class="cell"></div>
+            <div class="cell"><div class="event controller" data-n="8"><strong>초기 UI 동기화</strong><span>view mode, backup, sort, grouping, mobile panel</span></div></div>
+            <div class="cell"></div>
+            <div class="cell"><div class="event state" data-n="9"><strong>초기 state 읽기</strong><span>기본값 또는 local/share 상태</span></div></div>
+            <div class="cell"><div class="event render" data-n="10"><strong><code>renderAll()</code></strong><span>요약, Sankey, Network, Projection, hints 렌더</span></div></div>
+            <div class="cell"><div class="event storage" data-n="11"><strong>backup/share 초기화</strong><span>IndexedDB backup, shareId 로드</span></div></div>
+          </div>
+          <div class="note">핵심: 초기 렌더는 저장보다 먼저 UI 뼈대를 세우고, 이후 shareId가 있으면 외부 데이터를 정규화해 다시 <code>commitImmediateInputs()</code>로 들어온다.</div>
+        </div>
+      </section>
+
+      <section class="section" id="direct-input">
+        <div class="section-head">
+          <div>
+            <h2>2. 기본 입력 변경 시퀀스</h2>
+            <p>가정값/기본 숫자 입력은 draft 없이 즉시 sanitize, 저장, 지연 렌더를 탄다.</p>
+          </div>
+          <div class="source-links">
+            <span>event-bindings.js: bindFormTracking</span>
+            <span>input-sanitizer.js</span>
+            <span>persistence-controller.js</span>
+          </div>
+        </div>
+        <div class="sequence">
+          <div class="lanes">
+            <div class="lane-head"><strong>User</strong><span>input 변경</span></div>
+            <div class="lane-head"><strong>DOM</strong><span>inputsForm</span></div>
+            <div class="lane-head"><strong>Event Binding</strong><span>handleFormValueEvent</span></div>
+            <div class="lane-head"><strong>Sanitizer</strong><span>sanitizeInputs</span></div>
+            <div class="lane-head"><strong>State/Persist</strong><span>state.inputs / localStorage</span></div>
+            <div class="lane-head"><strong>Render</strong><span>debounced renderAll</span></div>
+            <div class="lane-head"><strong>Feedback</strong><span>header status</span></div>
+
+            <div class="cell"><div class="event user" data-n="1"><strong>금액/기간/금리 입력</strong><span>예: 시작 현금, 부채, 성장률</span></div></div>
+            <div class="cell"><div class="event dom" data-n="2"><strong><code>input</code> capture</strong><span>FORM_FIELD_KEYS 대상만 처리</span></div></div>
+            <div class="cell"><div class="event controller" data-n="3"><strong>폼 값 읽기</strong><span><code>readInputsFromForm()</code></span></div></div>
+            <div class="cell"><div class="event guard" data-n="4"><strong>정규화</strong><span>won, percent, horizon, household defaults</span></div></div>
+            <div class="cell"><div class="event state" data-n="5"><strong><code>state.inputs</code> 갱신</strong><span>derived values sync 후 local 저장</span></div></div>
+            <div class="cell"><div class="event render" data-n="6"><strong>150ms 지연 렌더</strong><span>연속 타이핑 중 과도한 렌더 방지</span></div></div>
+            <div class="cell"><div class="event storage" data-n="7"><strong>저장 상태 표시</strong><span>app-header saving / success / error</span></div></div>
+          </div>
+          <div class="note">기본 입력은 즉시 저장 모델이다. 반면 항목 배열 수정은 대부분 모달/항목 편집 컨트롤러에서 별도 draft 경계를 가진다.</div>
+        </div>
+      </section>
+
+      <section class="section" id="financial-modal">
+        <div class="section-head">
+          <div>
+            <h2>3. 재무설정 상세 모달 시퀀스</h2>
+            <p>Phase 10.5/10.6 이후 핵심 편집 표면이다. compact read, row edit, pending bar, apply/cancel을 가진다.</p>
+          </div>
+          <div class="source-links">
+            <span>financial-modal-controller.js</span>
+            <span>financial-summary.js</span>
+            <span>tests/step1.spec.ts Phase 10.6</span>
+          </div>
+        </div>
+        <div class="sequence">
+          <div class="lanes">
+            <div class="lane-head"><strong>User</strong><span>상세 열기/편집</span></div>
+            <div class="lane-head"><strong>DOM</strong><span>financialModal</span></div>
+            <div class="lane-head"><strong>Controller</strong><span>financial modal</span></div>
+            <div class="lane-head"><strong>Draft</strong><span>baseline / outflowDrafts</span></div>
+            <div class="lane-head"><strong>Validation</strong><span>row-local errors</span></div>
+            <div class="lane-head"><strong>Persistence</strong><span>commitImmediateInputs</span></div>
+            <div class="lane-head"><strong>Render</strong><span>summary / Sankey refresh</span></div>
+
+            <div class="cell"><div class="event user" data-n="1"><strong>재무설정 상세 클릭</strong><span>또는 summary card 클릭</span></div></div>
+            <div class="cell"><div class="event dom" data-n="2"><strong><code>open-financial-modal</code></strong><span>category: income/expense/savings/invest/account</span></div></div>
+            <div class="cell"><div class="event controller" data-n="3"><strong><code>open(category)</code></strong><span>title, description, active tab 설정</span></div></div>
+            <div class="cell"><div class="event state" data-n="4"><strong>baseline 복사</strong><span>통합 탭이면 income/expense/savings/invest draft 생성</span></div></div>
+            <div class="cell"></div>
+            <div class="cell"></div>
+            <div class="cell"><div class="event render" data-n="5"><strong>compact rows 렌더</strong><span>summary rail, tabs, grouped sections</span></div></div>
+
+            <div class="cell"><div class="event user" data-n="6"><strong>row 클릭</strong><span>선택 row만 편집 모드</span></div></div>
+            <div class="cell"><div class="event dom" data-n="7"><strong>input/change/click</strong><span>name, amount, account/group, stepper, quick amount</span></div></div>
+            <div class="cell"><div class="event controller" data-n="8"><strong><code>updateDraftFromField()</code></strong><span>금액 정규화, row error sync</span></div></div>
+            <div class="cell"><div class="event state" data-n="9"><strong>draft 갱신</strong><span>baseline diff가 true면 pending bar 표시</span></div></div>
+            <div class="cell"><div class="event guard" data-n="10"><strong>로컬 검증</strong><span>0원 이상, 1,000원 단위, 이름 필수</span></div></div>
+            <div class="cell"></div>
+            <div class="cell"><div class="event render" data-n="11"><strong>row/rail 부분 갱신</strong><span>변동비 range summary도 갱신</span></div></div>
+
+            <div class="cell"><div class="event user" data-n="12"><strong>+ 메뉴</strong><span>항목 추가 / 그룹 추가</span></div></div>
+            <div class="cell"><div class="event dom" data-n="13"><strong>menu role</strong><span>Escape는 메뉴만 닫음</span></div></div>
+            <div class="cell"><div class="event controller" data-n="14"><strong>임시 row 생성</strong><span>빈 row는 pending 아님</span></div></div>
+            <div class="cell"><div class="event state" data-n="15"><strong>meaningful value부터 dirty</strong><span>취소 시 임시 row 제거</span></div></div>
+            <div class="cell"></div><div class="cell"></div><div class="cell"></div>
+
+            <div class="cell"><div class="event user" data-n="16"><strong>적용 / 취소</strong><span>펜딩바 버튼</span></div></div>
+            <div class="cell"><div class="event dom" data-n="17"><strong>pending bar state</strong><span>entering, exiting, applied</span></div></div>
+            <div class="cell"><div class="event controller" data-n="18"><strong><code>save()</code> 또는 reset</strong><span>모달은 열린 상태 유지</span></div></div>
+            <div class="cell"><div class="event state" data-n="19"><strong>persistable draft 생성</strong><span>empty temp 제거, deleted 반영</span></div></div>
+            <div class="cell"><div class="event guard" data-n="20"><strong>첫 오류 row 확장</strong><span>실패 시 pending 유지</span></div></div>
+            <div class="cell"><div class="event state" data-n="21"><strong><code>commitImmediateInputs()</code></strong><span>sanitize, local save, draft null</span></div></div>
+            <div class="cell"><div class="event render" data-n="22"><strong><code>renderAll()</code></strong><span>summary/Sankey/Network/table 재계산</span></div></div>
+          </div>
+          <div class="note">중요 경계: row 선택, tab 이동, 빈 추가 row는 pending이 아니다. 실제 값 차이가 생긴 뒤에만 펜딩바가 뜬다.</div>
+        </div>
+      </section>
+
+      <section class="section" id="item-editor">
+        <div class="section-head">
+          <div>
+            <h2>4. 고급 항목 편집 시퀀스</h2>
+            <p>레거시/고급 패널 편집기는 항목 배열을 editor state로 복사하고, 적용 시 main state에 반영한다.</p>
+          </div>
+          <div class="source-links">
+            <span>item-editor-controller.js</span>
+            <span>list-renderer.js</span>
+            <span>ui-controller.js</span>
+          </div>
+        </div>
+        <div class="sequence">
+          <div class="lanes">
+            <div class="lane-head"><strong>User</strong><span>고급 패널</span></div>
+            <div class="lane-head"><strong>DOM</strong><span>mgmt tabs / rows</span></div>
+            <div class="lane-head"><strong>Item Editor</strong><span>editor lifecycle</span></div>
+            <div class="lane-head"><strong>Editor State</strong><span>state.itemEditors</span></div>
+            <div class="lane-head"><strong>Validation</strong><span>alert guards</span></div>
+            <div class="lane-head"><strong>Persistence</strong><span>markPendingChanges</span></div>
+            <div class="lane-head"><strong>Render</strong><span>item list / hints</span></div>
+
+            <div class="cell"><div class="event user" data-n="1"><strong>관리 탭/row 클릭</strong><span>income/account/flow</span></div></div>
+            <div class="cell"><div class="event dom" data-n="2"><strong><code>activateMgmtTab()</code></strong><span>패널 표시 전환</span></div></div>
+            <div class="cell"><div class="event controller" data-n="3"><strong><code>startItemEditor()</code></strong><span>현재 visible inputs를 clone</span></div></div>
+            <div class="cell"><div class="event state" data-n="4"><strong>baselineSignature 저장</strong><span>변경 여부 추적</span></div></div>
+            <div class="cell"></div><div class="cell"></div>
+            <div class="cell"><div class="event render" data-n="5"><strong><code>renderItemList()</code></strong><span>편집 row, quick buttons, group options</span></div></div>
+
+            <div class="cell"><div class="event user" data-n="6"><strong>항목 값 수정</strong><span>name, amount, group, account, maturity</span></div></div>
+            <div class="cell"><div class="event dom" data-n="7"><strong>input / click</strong><span>stepper, quick amount, add/remove allocation</span></div></div>
+            <div class="cell"><div class="event controller" data-n="8"><strong><code>handleItemInput()</code></strong><span>editor item에 직접 반영</span></div></div>
+            <div class="cell"><div class="event state" data-n="9"><strong>editor draft 갱신</strong><span>active editor apply 버튼 상태 sync</span></div></div>
+            <div class="cell"></div><div class="cell"></div>
+            <div class="cell"><div class="event render" data-n="10"><strong>total hint 갱신</strong><span>수입/지출/저축/투자 합계</span></div></div>
+
+            <div class="cell"><div class="event user" data-n="11"><strong>적용</strong><span>항목 편집 완료</span></div></div>
+            <div class="cell"></div>
+            <div class="cell"><div class="event controller" data-n="12"><strong><code>applyItemEditor()</code></strong><span>group별 draft를 state.draftInputs로 반영</span></div></div>
+            <div class="cell"><div class="event state" data-n="13"><strong>state.inputs sanitize</strong><span>editor 종료 후 pending 표시</span></div></div>
+            <div class="cell"><div class="event guard" data-n="14"><strong>이름/금액/분배 검증</strong><span>실패 시 alert 후 중단</span></div></div>
+            <div class="cell"><div class="event state" data-n="15"><strong><code>markPendingChanges()</code></strong><span>저장 및 renderAll</span></div></div>
+            <div class="cell"><div class="event render" data-n="16"><strong>전체 화면 갱신</strong><span>summary, charts, table</span></div></div>
+          </div>
+          <div class="note">현재 주 편집 UX는 재무 상세 모달이지만, 고급 패널은 여전히 일부 세부 항목/정렬/이전 테스트 계약을 담당한다.</div>
+        </div>
+      </section>
+
+      <section class="section" id="visualization">
+        <div class="section-head">
+          <div>
+            <h2>5. 시각화 조작 시퀀스</h2>
+            <p>Sankey, Network, Projection은 같은 snapshot/inputs를 공유하고, 보기 옵션 변경 시 재렌더된다.</p>
+          </div>
+          <div class="source-links">
+            <span>visualization-controller.js</span>
+            <span>sankey-builder.js</span>
+            <span>sankey-renderer.js</span>
+            <span>network-map-renderer.js</span>
+          </div>
+        </div>
+        <div class="sequence">
+          <div class="lanes">
+            <div class="lane-head"><strong>User</strong><span>보기 옵션</span></div>
+            <div class="lane-head"><strong>DOM</strong><span>tabs/select/buttons</span></div>
+            <div class="lane-head"><strong>Event Binding</strong><span>bindSankeyControls</span></div>
+            <div class="lane-head"><strong>State</strong><span>sankey mode/grouping</span></div>
+            <div class="lane-head"><strong>Builder</strong><span>snapshot to graph</span></div>
+            <div class="lane-head"><strong>Renderer</strong><span>Sankey / Network</span></div>
+            <div class="lane-head"><strong>Feedback</strong><span>tooltip / warning</span></div>
+
+            <div class="cell"><div class="event user" data-n="1"><strong>금액/비율 전환</strong><span>또는 정렬/그룹 변경</span></div></div>
+            <div class="cell"><div class="event dom" data-n="2"><strong>click/change</strong><span>sankey controls</span></div></div>
+            <div class="cell"><div class="event controller" data-n="3"><strong>visualization setter</strong><span>valueMode, sortMode, grouping</span></div></div>
+            <div class="cell"><div class="event state" data-n="4"><strong>state 갱신</strong><span>sankeySortMode, sankeyGrouping</span></div></div>
+            <div class="cell"><div class="event render" data-n="5"><strong><code>buildSankeyData()</code></strong><span>총수입, 계좌, 지출/저축/투자 노드/링크</span></div></div>
+            <div class="cell"><div class="event render" data-n="6"><strong><code>renderSankey()</code></strong><span>SVG path, labels, legend</span></div></div>
+            <div class="cell"><div class="event render" data-n="7"><strong>tooltip/status</strong><span>계좌 보정 상태는 차트 헤더에서 숨김</span></div></div>
+
+            <div class="cell"><div class="event user" data-n="8"><strong>Network 탭 보기</strong><span>계좌 흐름도</span></div></div>
+            <div class="cell"></div><div class="cell"></div>
+            <div class="cell"><div class="event state" data-n="9"><strong>snapshot 공유</strong><span>account nodes + transfers</span></div></div>
+            <div class="cell"><div class="event render" data-n="10"><strong>계좌별 value 계산</strong><span>column 1 / 1.5 account nodes</span></div></div>
+            <div class="cell"><div class="event render" data-n="11"><strong><code>renderNetworkMap()</code></strong><span>계좌 노드/이체 관계 표시</span></div></div>
+            <div class="cell"></div>
+
+            <div class="cell"><div class="event user" data-n="12"><strong>Projection 옵션</strong><span>TR/PR, column 표시</span></div></div>
+            <div class="cell"><div class="event dom" data-n="13"><strong>click/change</strong><span>projection controls</span></div></div>
+            <div class="cell"><div class="event controller" data-n="14"><strong><code>setProjectionMode()</code></strong><span>mode state sync</span></div></div>
+            <div class="cell"><div class="event state" data-n="15"><strong>projectionOptions</strong><span>showFlow/showBalance/showDividend</span></div></div>
+            <div class="cell"><div class="event render" data-n="16"><strong><code>simulateProjection()</code></strong><span>월별 자산/현금흐름 계산</span></div></div>
+            <div class="cell"><div class="event render" data-n="17"><strong>Projection table</strong><span>기간, 실질/명목, 배당/현금흐름</span></div></div>
+            <div class="cell"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="data-hub">
+        <div class="section-head">
+          <div>
+            <h2>6. 데이터 허브 / 공유 / 백업 시퀀스</h2>
+            <p>앱 헤더의 데이터 허브는 로컬 저장, 백업, JSON, ISF CODE, 병합 흐름을 persistence에 위임한다.</p>
+          </div>
+          <div class="source-links">
+            <span>data-hub-modal.js</span>
+            <span>persistence-controller.js</span>
+            <span>storage-manager.js</span>
+            <span>share utils</span>
+          </div>
+        </div>
+        <div class="sequence">
+          <div class="lanes">
+            <div class="lane-head"><strong>User</strong><span>Data Hub</span></div>
+            <div class="lane-head"><strong>App Header</strong><span>open-data-hub</span></div>
+            <div class="lane-head"><strong>Data Hub Modal</strong><span>custom element</span></div>
+            <div class="lane-head"><strong>Persistence</strong><span>handlers</span></div>
+            <div class="lane-head"><strong>Guard</strong><span>normalize external</span></div>
+            <div class="lane-head"><strong>Storage</strong><span>local / IndexedDB / code</span></div>
+            <div class="lane-head"><strong>Render</strong><span>commit result</span></div>
+
+            <div class="cell"><div class="event user" data-n="1"><strong>데이터 허브 열기</strong><span>app-header action</span></div></div>
+            <div class="cell"><div class="event dom" data-n="2"><strong><code>open-data-hub</code></strong><span>backup list 갱신 후 open</span></div></div>
+            <div class="cell"><div class="event dom" data-n="3"><strong><code>data-hub-modal</code></strong><span>shadow DOM tabs, buttons</span></div></div>
+            <div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+
+            <div class="cell"><div class="event user" data-n="4"><strong>JSON 가져오기/복원/코드 적용</strong><span>외부 입력 경로</span></div></div>
+            <div class="cell"></div>
+            <div class="cell"><div class="event dom" data-n="5"><strong>custom event</strong><span>import-json, restore-backup, apply-isf-code</span></div></div>
+            <div class="cell"><div class="event controller" data-n="6"><strong>persistence handler</strong><span>parse/decode/load backup</span></div></div>
+            <div class="cell"><div class="event guard" data-n="7"><strong><code>normalizeExternalStep1Inputs()</code></strong><span>스키마/기본값/위험 입력 보정</span></div></div>
+            <div class="cell"><div class="event storage" data-n="8"><strong>local/backup/code</strong><span>StorageHub, BackupManager, Share</span></div></div>
+            <div class="cell"><div class="event render" data-n="9"><strong><code>commitImmediateInputs()</code></strong><span>sanitize, save, renderAll</span></div></div>
+
+            <div class="cell"><div class="event user" data-n="10"><strong>ISF CODE 발급</strong><span>현재 state 공유</span></div></div>
+            <div class="cell"></div>
+            <div class="cell"><div class="event dom" data-n="11"><strong>generate-isf-code</strong><span>모달 input에 코드 표시</span></div></div>
+            <div class="cell"><div class="event controller" data-n="12"><strong><code>handleGenerateIsfCode()</code></strong><span>state envelope encode</span></div></div>
+            <div class="cell"></div>
+            <div class="cell"><div class="event storage" data-n="13"><strong>clipboard/local context</strong><span>코드 발급 및 복사 시도</span></div></div>
+            <div class="cell"><div class="event render" data-n="14"><strong>feedback</strong><span>발급 완료 메시지</span></div></div>
+          </div>
+          <div class="note">데이터 허브에서 들어오는 값은 모두 외부 입력으로 취급된다. 직접 state에 넣지 않고 normalize와 sanitize를 거친다.</div>
+        </div>
+      </section>
+
+      <section class="section" id="responsive">
+        <div class="section-head">
+          <div>
+            <h2>7. 반응형 / 전역 이벤트 시퀀스</h2>
+            <p>모바일 패널, orientation, resize, hashchange, view mode는 전역 이벤트에서 UI와 render를 다시 맞춘다.</p>
+          </div>
+          <div class="source-links">
+            <span>event-bindings.js: bindGlobalEvents</span>
+            <span>ui-controller.js</span>
+            <span>render-orchestrator.js</span>
+          </div>
+        </div>
+        <div class="sequence">
+          <div class="lanes">
+            <div class="lane-head"><strong>User/System</strong><span>resize/hash/orientation</span></div>
+            <div class="lane-head"><strong>Window</strong><span>global event</span></div>
+            <div class="lane-head"><strong>Binding</strong><span>bindGlobalEvents</span></div>
+            <div class="lane-head"><strong>State</strong><span>view/mobile mode</span></div>
+            <div class="lane-head"><strong>UI Controller</strong><span>sync functions</span></div>
+            <div class="lane-head"><strong>Render</strong><span>Sankey/renderAll</span></div>
+            <div class="lane-head"><strong>Storage</strong><span>hash/share</span></div>
+
+            <div class="cell"><div class="event user" data-n="1"><strong>브라우저 크기 변경</strong><span>resize / orientationchange</span></div></div>
+            <div class="cell"><div class="event dom" data-n="2"><strong>window event</strong><span>debounce 또는 200ms timeout</span></div></div>
+            <div class="cell"><div class="event controller" data-n="3"><strong>global handler</strong><span>Sankey viewBox reset, render 호출</span></div></div>
+            <div class="cell"></div>
+            <div class="cell"><div class="event render" data-n="4"><strong>mobile UI sync</strong><span>inputs collapsed, advanced tab visibility, FAB</span></div></div>
+            <div class="cell"><div class="event render" data-n="5"><strong>chart/table 재배치</strong><span>renderSankey 또는 renderAll</span></div></div>
+            <div class="cell"></div>
+
+            <div class="cell"><div class="event user" data-n="6"><strong>공유 hash 변경</strong><span>뒤로가기/링크 적용</span></div></div>
+            <div class="cell"><div class="event dom" data-n="7"><strong>hashchange/popstate</strong><span>view mode UI sync</span></div></div>
+            <div class="cell"><div class="event controller" data-n="8"><strong><code>handleHashChange()</code></strong><span>중복 적용 guard</span></div></div>
+            <div class="cell"><div class="event state" data-n="9"><strong>state.isApplyingHashState</strong><span>순환 방지</span></div></div>
+            <div class="cell"></div>
+            <div class="cell"><div class="event render" data-n="10"><strong>commit 후 renderAll</strong><span>새 공유 상태 표시</span></div></div>
+            <div class="cell"><div class="event storage" data-n="11"><strong>decode hash payload</strong><span>share schema 확인</span></div></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="state-map">
+        <div class="section-head">
+          <div>
+            <h2>상태/저장 경계 요약</h2>
+            <p>어떤 흐름이 어떤 상태를 만지는지 빠르게 보기 위한 매트릭스다.</p>
+          </div>
+          <div class="source-links">
+            <span>state.js</span>
+            <span>state-helpers.js</span>
+            <span>persistence-controller.js</span>
+          </div>
+        </div>
+        <div class="matrix" role="table" aria-label="상태 경계 매트릭스">
+          <div class="th">흐름</div>
+          <div class="th">임시 상태</div>
+          <div class="th">저장 시점</div>
+          <div class="th">렌더 트리거</div>
+
+          <div>기본 입력</div>
+          <div><code>state.inputs</code> 직접 갱신</div>
+          <div><code>persistPrimaryState()</code> 즉시</div>
+          <div>150ms debounce 후 <code>renderAll()</code></div>
+
+          <div>재무설정 상세</div>
+          <div><code>baselineInputs</code>, <code>draftItems</code>, <code>outflowDrafts</code></div>
+          <div>펜딩바 <code>적용</code>에서 <code>commitImmediateInputs()</code></div>
+          <div>row partial render, 적용 후 <code>renderAll()</code></div>
+
+          <div>고급 항목 편집</div>
+          <div><code>state.itemEditors[group]</code></div>
+          <div><code>applyItemEditor()</code> 후 <code>markPendingChanges()</code></div>
+          <div><code>renderItemList()</code>, <code>renderAll()</code></div>
+
+          <div>프리셋 설정</div>
+          <div><code>draftPreview</code></div>
+          <div>확인 단계에서 <code>commitImmediateInputs()</code></div>
+          <div>모달 닫힘 후 전체 렌더</div>
+
+          <div>데이터 허브</div>
+          <div>imported/decoded/backup data</div>
+          <div>정규화 후 <code>commitImmediateInputs()</code></div>
+          <div>summary, chart, table 전체 갱신</div>
+
+          <div>시각화 옵션</div>
+          <div><code>sankeySortMode</code>, <code>sankeyGrouping</code>, <code>projectionOptions</code></div>
+          <div>대부분 저장 없음, view state만 변경</div>
+          <div><code>renderSankey()</code> 또는 <code>renderAll()</code></div>
+        </div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

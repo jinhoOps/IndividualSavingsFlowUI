@@ -214,7 +214,7 @@ input[type=number]{-moz-appearance:textfield}
 .financial-add-menu__trigger{width:40px;min-width:40px;min-height:40px;padding:0;justify-content:center;font-size:1.2rem;font-weight:900;line-height:1}
 .financial-add-menu__panel{position:absolute;top:calc(100% + 6px);right:0;z-index:5;display:grid;gap:4px;min-width:136px;padding:6px;border:1px solid var(--line);border-radius:var(--rd-sm);background:rgba(255,255,255,0.98);box-shadow:0 10px 24px rgba(16,34,32,0.12)}
 .financial-add-menu__item{border:0;border-radius:6px;background:transparent;color:var(--ink);font:inherit;font-size:0.82rem;font-weight:900;text-align:left;padding:8px 10px;cursor:pointer;white-space:nowrap}
-.financial-add-menu__item:hover{background:rgba(30,139,124,0.08);color:var(--tone-accent)}
+.financial-add-menu__item:hover,.financial-add-menu__item:focus-visible{background:rgba(30,139,124,0.08);color:var(--tone-accent);outline:0}
 .financial-detail-panel__title{margin:0;font-family:var(--font-display);font-size:var(--text-title-md);color:var(--ink)}
 .financial-detail-panel__lead{margin:0;border:1px solid var(--line);border-radius:var(--rd-sm);background:var(--panel);padding:12px;color:var(--ink);font-size:0.88rem}
 .financial-result{border:1px solid var(--line);border-radius:var(--rd-sm);background:var(--panel);padding:14px;display:grid;gap:5px;min-width:0}
@@ -1025,7 +1025,7 @@ to{opacity:1;transform:translateY(0)}
 .financial-money-control__input-row{display:grid;grid-template-columns:40px minmax(96px,1fr) 40px;gap:4px;align-items:center;min-width:0}
 .financial-money-control__input-row input{min-width:0;text-align:right}
 .financial-money-control__step{width:40px;min-width:40px;min-height:38px;padding:0;justify-content:center;font-weight:900}
-.financial-money-control .quick-amount-buttons{display:flex;gap:4px;margin-top:0;flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-x:contain;max-width:100%;padding-bottom:1px}
+.financial-money-control .quick-amount-buttons{display:flex;gap:4px;margin-top:0;flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-x:contain;max-width:100%;padding:0 14px 3px 0;scrollbar-width:thin;mask-image:linear-gradient(90deg,#000 calc(100% - 16px),transparent);-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 16px),transparent)}
 .financial-money-control .btn-quick-amount{flex:0 0 auto;min-height:28px;white-space:nowrap}
 .financial-modal-row__error{grid-column:1 / -1;margin:0;color:#b91c1c;font-size:0.78rem;font-weight:700}
 .financial-modal-pending-bar {
@@ -1042,6 +1042,22 @@ to{opacity:1;transform:translateY(0)}
   z-index: 1010;
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 180ms ease, transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+  will-change: opacity, transform;
+}
+.financial-modal-pending-bar.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.financial-modal-pending-bar.is-exiting {
+  opacity: 0;
+  transform: translateY(8px);
+}
+.financial-modal-pending-bar.is-applied {
+  border-color: var(--tone-accent);
+  box-shadow: 0 0 0 3px rgba(30,139,124,0.16),0 10px 30px rgba(30,139,124,0.16);
 }
 .financial-modal-pending-bar-inner {
   display: grid;
@@ -1059,13 +1075,4 @@ to{opacity:1;transform:translateY(0)}
 }
 .financial-modal-pending-bar-buttons .btn {
   min-height: 44px;
-}
-.financial-modal-pending-bar.anim-slide-up {
-  animation: none;
-}
-.financial-modal-pending-bar.anim-fade-scale {
-  animation: none;
-}
-.financial-modal-pending-bar.anim-bounce-in {
-  animation: none;
 }

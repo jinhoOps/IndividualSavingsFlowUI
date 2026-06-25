@@ -1961,6 +1961,37 @@ test.describe('Phase 10.6 financial detail modal editing repair', () => {
     await expect(modal.locator('#financialModalPendingBar')).toBeHidden();
   });
 
+  test('Phase 10.6 account rows and add menu keep compact accessible polish', async ({ page }) => {
+    await seedRegressionFlow(page);
+
+    const modal = page.locator('#financialModal');
+    await page.evaluate(() => {
+      document.dispatchEvent(new CustomEvent('open-financial-modal', { detail: { category: 'account' } }));
+    });
+    await expect(modal).toBeVisible();
+    const accountRow = modal.locator('[data-modal-row-category="account"]').first();
+    await expect(accountRow).toContainText('급여계좌');
+    await expect(accountRow).not.toContainText('계좌 별칭');
+    await expect(accountRow.locator('[data-financial-modal-edit]')).toHaveCount(0);
+
+    await modal.locator('#financialModalClose').click();
+    await expect(modal).toBeHidden();
+
+    const detailModal = await openFinancialDetail(page);
+    await openFinancialAddMenu(detailModal);
+    const trigger = detailModal.locator('[data-financial-add-menu-toggle]');
+    const menu = detailModal.locator('[data-financial-add-menu]');
+    await expect(trigger).toHaveAttribute('aria-haspopup', 'menu');
+    await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+    await expect(menu).toHaveAttribute('role', 'menu');
+    await expect(menu.getByRole('menuitem', { name: '수입 추가' })).toBeVisible();
+    await expect(menu.getByRole('menuitem', { name: '그룹 추가' })).toBeVisible();
+
+    await trigger.press('Escape');
+    await expect(detailModal.locator('[data-financial-add-menu]')).toHaveCount(0);
+    await expect(detailModal.locator('[data-financial-add-menu-toggle]')).toHaveAttribute('aria-expanded', 'false');
+  });
+
   test('Phase 10.6 row editing folds one row while preserving changed drafts across tabs', async ({ page }) => {
     await seedRegressionFlow(page);
 
@@ -2098,16 +2129,18 @@ test.describe('Phase 10.6 financial detail modal editing repair', () => {
     const modal = await openFinancialDetail(page);
     await expect(modal.locator('#financialModalCancel')).toHaveText('취소');
     await expect(modal.locator('#financialModalSave')).toHaveText('적용');
+    const pendingBar = modal.locator('#financialModalPendingBar');
 
     await modal.locator('[data-modal-row-category="income"]').first().click();
     const incomeRow = modal.locator('.financial-modal-row--editing[data-modal-row-category="income"]');
     await incomeRow.locator('[data-financial-modal-field="amount"]').fill('4400000');
-    await expect(modal.locator('#financialModalPendingBar')).toBeVisible();
+    await expect(pendingBar).toBeVisible();
 
     await modal.locator('#financialModalCancel').click();
     await expect(modal).toBeVisible();
     await expect(modal.locator('.financial-modal-row--editing')).toHaveCount(0);
-    await expect(modal.locator('#financialModalPendingBar')).toBeHidden();
+    await expect(pendingBar).toHaveAttribute('data-pending-state', 'exiting');
+    await expect(pendingBar).toBeHidden();
     await expect(modal.locator('[data-modal-row-category="income"]').first()).toContainText('420만');
     let saved = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}'));
     expect(saved.incomes.find((item: any) => item.id === 'income-main')?.amount).toBe(4200000);
@@ -2119,7 +2152,8 @@ test.describe('Phase 10.6 financial detail modal editing repair', () => {
     await expect(modal).toBeVisible();
     await expect(modal.getByRole('tab', { name: '월 수입', exact: true })).toHaveAttribute('aria-selected', 'true');
     await expect(modal.locator('.financial-modal-row--editing')).toHaveCount(0);
-    await expect(modal.locator('#financialModalPendingBar')).toBeHidden();
+    await expect(pendingBar).toHaveAttribute('data-pending-state', 'applied');
+    await expect(pendingBar).toBeHidden();
     saved = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}'));
     expect(saved.incomes.find((item: any) => item.id === 'income-main')?.amount).toBe(4500000);
   });
@@ -2345,6 +2379,15 @@ test.describe('Phase 10.6 financial detail modal editing repair', () => {
       await incomeRow.click();
       const editingRow = modal.locator('.financial-modal-row--editing[data-modal-row-category="income"]');
       await editingRow.locator('[data-financial-modal-field="amount"]').fill('4300000');
+      const quickAffordance = await editingRow.locator('.financial-money-control .quick-amount-buttons').first().evaluate((element) => {
+        const style = window.getComputedStyle(element as HTMLElement);
+        return {
+          overflowX: style.overflowX,
+          maskImage: style.maskImage || style.webkitMaskImage || '',
+        };
+      });
+      expect(quickAffordance.overflowX).toBe('auto');
+      expect(quickAffordance.maskImage).toContain('linear-gradient');
       await expect(modal.locator('#financialModalPendingBar')).toBeVisible();
       await modal.locator('.financial-modal-row:last-of-type').evaluate((row) =>
         row.scrollIntoView({ block: 'end', inline: 'nearest' })

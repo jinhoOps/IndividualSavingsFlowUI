@@ -220,6 +220,7 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
   let adjustmentFeedback = "";
   let rowErrors = {};
   let addMenuOpen = false;
+  let pendingBarHideTimer = null;
 
   function getInputs() {
     return typeof getVisibleInputs === "function" ? getVisibleInputs() : {};
@@ -300,24 +301,60 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
     return Boolean(editingIndex?.category) && Number(editingIndex.index) >= 0;
   }
 
-  function syncFinancialModalPendingBar() {
+  function clearPendingBarHideTimer() {
+    if (!pendingBarHideTimer) return;
+    window.clearTimeout(pendingBarHideTimer);
+    pendingBarHideTimer = null;
+  }
+
+  function showFinancialModalPendingBar() {
+    if (!dom.financialModalPendingBar) return;
+    clearPendingBarHideTimer();
+    dom.financialModalPendingBar.hidden = false;
+    dom.financialModalPendingBar.style.display = "";
+    dom.financialModalPendingBar.dataset.pendingState = "entering";
+    dom.financialModalPendingBar.classList.remove("is-exiting", "is-applied");
+    dom.financialModalPendingBar.classList.add("is-visible", "is-entering");
+    window.requestAnimationFrame(() => {
+      if (dom.financialModalPendingBar?.dataset.pendingState !== "entering") return;
+      dom.financialModalPendingBar?.classList.remove("is-entering");
+      dom.financialModalPendingBar?.dataset && (dom.financialModalPendingBar.dataset.pendingState = "pending");
+    });
+  }
+
+  function hideFinancialModalPendingBar(reason = "exiting") {
+    if (!dom.financialModalPendingBar) return;
+    clearPendingBarHideTimer();
+    if (dom.financialModalPendingBar.hidden || dom.financialModalPendingBar.style.display === "none") {
+      dom.financialModalPendingBar.hidden = true;
+      dom.financialModalPendingBar.style.display = "none";
+      dom.financialModalPendingBar.classList.remove("is-visible", "is-entering", "is-exiting", "is-applied");
+      delete dom.financialModalPendingBar.dataset.pendingState;
+      return;
+    }
+
+    const state = reason === "applied" ? "applied" : "exiting";
+    dom.financialModalPendingBar.dataset.pendingState = state;
+    dom.financialModalPendingBar.classList.remove("is-entering");
+    dom.financialModalPendingBar.classList.add("is-exiting");
+    dom.financialModalPendingBar.classList.toggle("is-applied", state === "applied");
+    pendingBarHideTimer = window.setTimeout(() => {
+      dom.financialModalPendingBar.hidden = true;
+      dom.financialModalPendingBar.style.display = "none";
+      dom.financialModalPendingBar.classList.remove("is-visible", "is-entering", "is-exiting", "is-applied");
+      delete dom.financialModalPendingBar.dataset.pendingState;
+      pendingBarHideTimer = null;
+    }, 180);
+  }
+
+  function syncFinancialModalPendingBar(reason = "exiting") {
     if (!dom.financialModalPendingBar) return;
     const isVisible = hasDraftChanges();
 
     if (isVisible) {
-      if (dom.financialModalPendingBar.hidden || dom.financialModalPendingBar.style.display === "none") {
-        const animations = ["anim-slide-up", "anim-fade-scale", "anim-bounce-in"];
-        const randomAnim = animations[Math.floor(Math.random() * animations.length)];
-        
-        dom.financialModalPendingBar.classList.remove("anim-slide-up", "anim-fade-scale", "anim-bounce-in");
-        dom.financialModalPendingBar.classList.add(randomAnim);
-        
-        dom.financialModalPendingBar.hidden = false;
-        dom.financialModalPendingBar.style.display = "";
-      }
+      showFinancialModalPendingBar();
     } else {
-      dom.financialModalPendingBar.hidden = true;
-      dom.financialModalPendingBar.style.display = "none";
+      hideFinancialModalPendingBar(reason);
     }
   }
 
@@ -616,7 +653,7 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
 
   function cancelPendingChanges() {
     resetDraftsFromBaseline();
-    syncFinancialModalPendingBar();
+    hideFinancialModalPendingBar("cancelled");
   }
 
   function updateDraftFromField(row, field, value) {
@@ -703,9 +740,7 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
 
     const summary = document.createElement("div");
     summary.className = "financial-modal-row__summary";
-    if (rowCategory === "account") {
-      summary.appendChild(createText("span", "", "계좌 별칭"));
-    } else {
+    if (rowCategory !== "account") {
       summary.appendChild(createText("span", "", IsfUtils.formatMoney(Number(item.amount) || 0)));
     }
     row.appendChild(summary);
@@ -993,6 +1028,7 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
     add.className = "btn btn-ghost btn-sm financial-add-menu__trigger";
     add.dataset.financialAddMenuToggle = "true";
     add.setAttribute("aria-label", "항목 추가 메뉴");
+    add.setAttribute("aria-haspopup", "menu");
     add.setAttribute("aria-expanded", String(addMenuOpen));
     add.textContent = "+";
     addWrap.appendChild(add);
@@ -1001,10 +1037,12 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
       const menu = document.createElement("div");
       menu.className = "financial-add-menu__panel";
       menu.dataset.financialAddMenu = "true";
+      menu.role = "menu";
       const addItem = document.createElement("button");
       addItem.type = "button";
       addItem.className = "financial-add-menu__item";
       addItem.dataset.financialInlineAdd = "true";
+      addItem.role = "menuitem";
       addItem.textContent = getActiveAddLabel();
       menu.appendChild(addItem);
 
@@ -1013,6 +1051,7 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
         addGroup.type = "button";
         addGroup.className = "financial-add-menu__item";
         addGroup.dataset.financialAddGroup = "true";
+        addGroup.role = "menuitem";
         addGroup.textContent = "그룹 추가";
         menu.appendChild(addGroup);
       }
@@ -1357,11 +1396,7 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
     rowErrors = {};
     householdContextChanged = false;
     resetDraftsFromBaseline();
-    syncFinancialModalPendingBar();
-    if (dom.financialModalPendingBar) {
-      dom.financialModalPendingBar.hidden = true;
-      dom.financialModalPendingBar.style.display = "none";
-    }
+    hideFinancialModalPendingBar("applied");
   }
 
   function handleAdjustmentClick(target) {
@@ -1713,6 +1748,14 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
       });
     }
     if (dom.financialModalRows) {
+      dom.financialModalRows.addEventListener("keydown", (event) => {
+        if (event.key !== "Escape" || !addMenuOpen) return;
+        event.preventDefault();
+        event.stopPropagation();
+        addMenuOpen = false;
+        renderRows();
+        dom.financialModalRows?.querySelector("[data-financial-add-menu-toggle]")?.focus?.();
+      });
       dom.financialModalRows.addEventListener("input", (event) => {
         const target = event.target;
         if (!(target instanceof HTMLInputElement) && !(target instanceof HTMLSelectElement)) return;
