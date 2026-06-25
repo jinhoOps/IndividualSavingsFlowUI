@@ -1839,6 +1839,205 @@ test.describe('Phase 10.5 automatic savings adjustment', () => {
   });
 });
 
+test.describe('Phase 10.6 financial detail modal editing repair', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.clear();
+      sessionStorage.clear();
+    });
+    await page.goto('apps/main/index.html');
+    await page.waitForSelector('main');
+  });
+
+  async function seedRegressionFlow(page: import('@playwright/test').Page) {
+    await page.evaluate(async () => {
+      const [
+        { state },
+        { sanitizeInputs },
+        { buildMonthlySnapshot },
+        { createRenderOrchestrator },
+        { STORAGE_KEY },
+      ] = await Promise.all([
+        import('/IndividualSavingsFlowUI/apps/main/modules/state.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/input-sanitizer.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/calculator.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/render-orchestrator.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/constants.js'),
+      ]);
+      state.inputs = sanitizeInputs({
+        modelVersion: 10,
+        incomes: [{ id: 'income-main', name: '급여', amount: 4200000, accountId: 'acc-salary' }],
+        accounts: [
+          { id: 'acc-salary', name: '급여계좌' },
+          { id: 'acc-living', name: '생활비계좌' },
+          { id: 'acc-saving', name: '저축계좌' },
+          { id: 'acc-stock', name: '투자계좌' },
+        ],
+        expenseItems: [
+          { id: 'rent', name: '월세', amount: 1000000, group: '고정비', actualSpent: 111111, varianceAmount: 90000, accountId: 'acc-living' },
+          { id: 'food', name: '식비', amount: 500000, group: '변동비', actualSpent: 210000, varianceAmount: 50000, accountId: 'acc-living' },
+        ],
+        savingsItems: [{ id: 'saving-main', name: '적금', amount: 600000, group: '저축', accountId: 'acc-saving' }],
+        investItems: [{ id: 'invest-main', name: 'ETF', amount: 500000, group: '투자', accountId: 'acc-stock' }],
+      });
+      state.snapshot = buildMonthlySnapshot(state.inputs);
+      window.IsfStorageHub.saveLocal(STORAGE_KEY, state.inputs);
+      createRenderOrchestrator().renderAll();
+    });
+  }
+
+  async function openFinancialDetail(page: import('@playwright/test').Page) {
+    const modal = page.locator('#financialModal');
+    await page.locator('[data-financial-settings-detail]').click();
+    await expect(modal).toBeVisible();
+    return modal;
+  }
+
+  async function assertForbiddenCoupleUiAbsent(page: import('@playwright/test').Page) {
+    await expect(page.locator('#householdBudgetPanel')).toHaveCount(0);
+    await expect(page.locator('[data-household-overview]')).toHaveCount(0);
+    await expect(page.locator('.household-mode-toggle')).toHaveCount(0);
+    await expect(page.locator('.household-person-tabs')).toHaveCount(0);
+    await expect(page.locator('[data-household-field="spouseMonthlyIncome"]')).toHaveCount(0);
+    await expect(page.getByText('부부합산', { exact: true })).toHaveCount(0);
+    await expect(page.getByText('본인 설정', { exact: true })).toHaveCount(0);
+    await expect(page.getByText('배우자 설정', { exact: true })).toHaveCount(0);
+    await expect(page.locator('.modal-overlay:not(#financialModal):visible')).toHaveCount(0);
+  }
+
+  test('Phase 10.6 compact rows open cleanly without duplicated labels or pending state', async ({ page }) => {
+    await seedRegressionFlow(page);
+
+    const modal = await openFinancialDetail(page);
+    await expect(modal.locator('#financialModalPendingBar')).toBeHidden();
+    await expect(modal.locator('.financial-detail-panel__title')).toHaveCount(0);
+    await expect(modal).not.toContainText('신설 모달');
+    await assertForbiddenCoupleUiAbsent(page);
+
+    const firstIncomeRow = modal.locator('[data-modal-row-category="income"]').first();
+    await expect(firstIncomeRow).toContainText('급여');
+    await expect(firstIncomeRow).toContainText('420만');
+    await expect(firstIncomeRow).not.toContainText('급여계좌');
+    await expect(firstIncomeRow).not.toContainText('수입, 수입');
+
+    await modal.getByRole('tab', { name: '월 생활비', exact: true }).click();
+    const variableRow = modal.locator('[data-financial-variable-row]').filter({ hasText: '식비' });
+    await expect(variableRow).toContainText('식비');
+    await expect(variableRow).toContainText('50만');
+    await expect(variableRow).not.toContainText('±');
+    await expect(modal.locator('[data-financial-variable-range-summary]')).toContainText('45만');
+    await expect(modal.locator('[data-financial-variable-range-summary]')).toContainText('55만');
+    await expect(modal.locator('#financialModalPendingBar')).toBeHidden();
+  });
+
+  test('Phase 10.6 row editing folds one row while preserving changed drafts across tabs', async ({ page }) => {
+    await seedRegressionFlow(page);
+
+    const modal = await openFinancialDetail(page);
+    const firstIncomeRow = modal.locator('[data-modal-row-category="income"]').first();
+    await firstIncomeRow.click();
+    const editingIncome = modal.locator('.financial-modal-row--editing[data-modal-row-category="income"]');
+    await expect(editingIncome).toHaveCount(1);
+    await expect(editingIncome.locator('[data-financial-modal-field="name"]')).toHaveValue('급여');
+    await expect(editingIncome.locator('[data-financial-modal-field="amount"]')).toHaveValue('4,200,000');
+    await expect(editingIncome.locator('[data-financial-modal-field="accountId"]')).toBeVisible();
+
+    await modal.locator('.modal-header').click();
+    await expect(modal.locator('.financial-modal-row--editing')).toHaveCount(0);
+    await expect(modal.locator('#financialModalPendingBar')).toBeHidden();
+
+    await firstIncomeRow.click();
+    await editingIncome.locator('[data-financial-modal-field="amount"]').fill('4300000');
+    await expect(modal.locator('#financialModalPendingBar')).toBeVisible();
+    const beforeApply = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}'));
+    expect(beforeApply.incomes.find((item: any) => item.id === 'income-main')?.amount).toBe(4200000);
+
+    await modal.getByRole('tab', { name: '저축', exact: true }).click();
+    await expect(modal.locator('.financial-modal-row--editing')).toHaveCount(0);
+    await expect(modal.locator('#financialModalPendingBar')).toBeVisible();
+    await modal.getByRole('tab', { name: '월 수입', exact: true }).click();
+    await expect(modal.locator('[data-modal-row-category="income"]').first()).toContainText('430만');
+
+    await modal.locator('#financialModalSave').click();
+    await expect(modal).toBeVisible();
+    await expect(modal.locator('#financialModalPendingBar')).toBeHidden();
+    const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}'));
+    expect(saved.incomes.find((item: any) => item.id === 'income-main')?.amount).toBe(4300000);
+  });
+
+  test('Phase 10.6 money controls enforce direct input, 10000 steppers, quick increases, and local errors', async ({ page }) => {
+    await seedRegressionFlow(page);
+
+    const modal = await openFinancialDetail(page);
+    await modal.locator('[data-modal-row-category="income"]').first().click();
+    const row = modal.locator('.financial-modal-row--editing[data-modal-row-category="income"]');
+    const amount = row.locator('[data-financial-modal-field="amount"]');
+
+    await row.locator('[data-money-step="down"]').click();
+    await expect(amount).toHaveValue('4,190,000');
+    await row.locator('[data-money-step="up"]').click();
+    await expect(amount).toHaveValue('4,200,000');
+    await row.locator('[data-money-quick="50000"]').click();
+    await expect(amount).toHaveValue('4,250,000');
+    await row.locator('[data-money-quick="100000"]').click();
+    await expect(amount).toHaveValue('4,350,000');
+    await row.locator('[data-money-quick="1000000"]').click();
+    await expect(amount).toHaveValue('5,350,000');
+
+    await amount.fill('1234567');
+    await expect(row.locator('[data-financial-row-error]')).toContainText('금액은 1,000원 단위로 입력해 주세요.');
+    await modal.locator('#financialModalSave').click();
+    await expect(modal).toBeVisible();
+    await expect(row.locator('[data-financial-row-error]')).toContainText('금액은 1,000원 단위로 입력해 주세요.');
+
+    await amount.fill('-1000');
+    await expect(amount).toHaveValue('0');
+    await expect(row.locator('[data-financial-row-error]')).toContainText('금액은 0원 이상이어야 합니다.');
+  });
+
+  test('Phase 10.6 variable rows edit varianceAmount directly with exact quick buttons', async ({ page }) => {
+    await seedRegressionFlow(page);
+
+    const modal = await openFinancialDetail(page);
+    await modal.getByRole('tab', { name: '월 생활비', exact: true }).click();
+    const variableRow = modal.locator('[data-financial-variable-row]').filter({ hasText: '식비' });
+    await variableRow.click();
+    await expect(variableRow.locator('[data-financial-modal-field="amount"]')).toHaveValue('500,000');
+    await expect(variableRow.locator('[data-financial-modal-field="varianceAmount"]')).toHaveValue('50,000');
+    await expect(variableRow.locator('[data-variance-quick="10000"]')).toHaveText('±1만');
+    await expect(variableRow.locator('[data-variance-quick="50000"]')).toHaveText('±5만');
+    await expect(variableRow.locator('[data-variance-quick="100000"]')).toHaveText('±10만');
+    await expect(variableRow).not.toContainText('월말 예상');
+    await expect(variableRow).not.toContainText('현재 사용 속도');
+
+    await variableRow.locator('[data-financial-modal-field="varianceAmount"]').fill('70000');
+    await expect(modal.locator('[data-financial-variable-range-summary]')).toContainText('43만');
+    await expect(modal.locator('[data-financial-variable-range-summary]')).toContainText('57만');
+    await expect(variableRow).not.toContainText('±7만');
+
+    await variableRow.locator('[data-variance-quick="10000"]').click();
+    await expect(variableRow.locator('[data-financial-modal-field="varianceAmount"]')).toHaveValue('80,000');
+    await modal.locator('#financialModalSave').click();
+    const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}'));
+    expect(saved.expenseItems.find((item: any) => item.id === 'food')).toMatchObject({ amount: 500000, actualSpent: 210000, varianceAmount: 80000 });
+    expect(saved.expenseItems.find((item: any) => item.id === 'rent')).not.toHaveProperty('varianceAmount');
+    await expect(modal.locator('[data-financial-modal-field="actualSpent"]')).toHaveCount(0);
+  });
+
+  test('Phase 10.6 dirty state ignores modal open, row selection, tabs, and empty add row', async ({ page }) => {
+    await seedRegressionFlow(page);
+
+    const modal = await openFinancialDetail(page);
+    await expect(modal.locator('#financialModalPendingBar')).toBeHidden();
+    await modal.locator('[data-modal-row-category="income"]').first().click();
+    await expect(modal.locator('#financialModalPendingBar')).toBeHidden();
+    await modal.getByRole('tab', { name: '월 생활비', exact: true }).click();
+    await expect(modal.locator('#financialModalPendingBar')).toBeHidden();
+    await modal.locator('#financialModalCreate').click();
+    await expect(modal.locator('#financialModalPendingBar')).toBeHidden();
+  });
+});
+
 test.describe('Phase 10.5 regression hardening', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
