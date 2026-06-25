@@ -995,6 +995,10 @@ to{opacity:1;transform:translateY(0)}
   background: var(--panel);
   color: var(--ink);
 }
+.financial-money-control{display:grid;gap:6px;min-width:0}
+.financial-money-control__steppers{display:flex;gap:4px;align-items:center}
+.financial-money-control__steppers .btn{min-width:36px;min-height:32px;padding:4px 8px}
+.financial-modal-row__error{grid-column:1 / -1;margin:0;color:#b91c1c;font-size:0.78rem;font-weight:700}
 .financial-modal-pending-bar {
   position: sticky;
   bottom: 12px;

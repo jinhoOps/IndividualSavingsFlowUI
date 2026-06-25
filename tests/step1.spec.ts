@@ -1847,6 +1847,7 @@ test.describe('Phase 10.6 financial detail modal editing repair', () => {
     });
     await page.goto('apps/main/index.html');
     await page.waitForSelector('main');
+    await page.waitForFunction(() => Boolean((window as any).IsfShare?.detectViewMode));
   });
 
   async function seedRegressionFlow(page: import('@playwright/test').Page) {

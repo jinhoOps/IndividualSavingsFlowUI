@@ -243,6 +243,7 @@ export function getMonthlyIncomeTotalWon(incomes) {
 
 export function sanitizeExpenseItems(items, fallbackAmount) {
   const actualSpentById = new Map();
+  const varianceAmountById = new Map();
   if (Array.isArray(items)) {
     items.forEach((rawItem) => {
       const safeItem = rawItem && typeof rawItem === "object" ? rawItem : null;
@@ -254,19 +255,20 @@ export function sanitizeExpenseItems(items, fallbackAmount) {
         return;
       }
       actualSpentById.set(itemId, window.IsfUtils.sanitizeMoney(safeItem.actualSpent, 0, 0));
+      varianceAmountById.set(itemId, window.IsfUtils.sanitizeMoney(safeItem.varianceAmount, 0, 0));
     });
   }
 
   return sanitizeAllocationItems(items, DEFAULT_EXPENSE_ITEMS, fallbackAmount, "expense", "생활비")
     .map((item) => {
-      if (!isVariableExpenseItem(item) || !actualSpentById.has(item.id)) {
-        const { actualSpent: _actualSpent, ...rest } = item;
+      if (!isVariableExpenseItem(item)) {
+        const { actualSpent: _actualSpent, varianceAmount: _varianceAmount, ...rest } = item;
         return rest;
       }
-      return {
-        ...item,
-        actualSpent: actualSpentById.get(item.id),
-      };
+      const nextItem = { ...item };
+      if (actualSpentById.has(item.id)) nextItem.actualSpent = actualSpentById.get(item.id);
+      if (varianceAmountById.has(item.id)) nextItem.varianceAmount = varianceAmountById.get(item.id);
+      return nextItem;
     });
 }
 

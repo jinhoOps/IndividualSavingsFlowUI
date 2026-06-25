@@ -68,6 +68,7 @@ export function buildVariableExpenseBudgetRows(inputs, now = new Date()) {
     .map(({ item, sourceIndex }) => {
       const target = safeMoney(item.amount);
       const actual = safeMoney(item.actualSpent);
+      const varianceAmount = safeMoney(item.varianceAmount);
       const projectedMonthEnd = projectMonthEndSpending(actual, now);
       const remaining = target - actual;
       const progressRate = target > 0 ? Math.min(actual / target, 1) : 0;
@@ -79,17 +80,42 @@ export function buildVariableExpenseBudgetRows(inputs, now = new Date()) {
         name: item.name || item.id || "변동비",
         group: item.group || "변동비",
         target,
+        varianceAmount: safeMoney(item.varianceAmount),
         actual,
+        varianceAmount,
+        expectedLow: Math.max(0, target - varianceAmount),
+        expectedHigh: target + varianceAmount,
         remaining,
         progressRate,
         projectedMonthEnd,
         status,
         targetLabel: IsfUtils.formatMoney(target),
         actualLabel: IsfUtils.formatMoney(actual),
+        varianceAmountLabel: IsfUtils.formatMoney(varianceAmount),
         remainingLabel: IsfUtils.formatMoney(Math.abs(remaining)),
         projectedMonthEndLabel: IsfUtils.formatMoney(projectedMonthEnd),
       };
     });
+}
+
+export function buildVariableExpenseRangeSummary(inputs) {
+  const expenses = Array.isArray(inputs?.expenseItems) ? inputs.expenseItems : [];
+  const variableItems = expenses.filter((item) => isVariableExpenseItem(item));
+  const averageTotal = getMonthlyAllocationTotalWon(variableItems);
+  const varianceTotal = getMonthlyAllocationTotalWon(variableItems.map((item) => ({ amount: safeMoney(item.varianceAmount) })));
+  const low = Math.max(0, averageTotal - varianceTotal);
+  const high = averageTotal + varianceTotal;
+  return {
+    count: variableItems.length,
+    averageTotal,
+    varianceTotal,
+    low,
+    high,
+    averageLabel: IsfUtils.formatMoney(averageTotal),
+    varianceLabel: IsfUtils.formatMoney(varianceTotal),
+    lowLabel: IsfUtils.formatMoney(low),
+    highLabel: IsfUtils.formatMoney(high),
+  };
 }
 
 export function buildHouseholdBudgetSummary(inputs, now = new Date()) {
