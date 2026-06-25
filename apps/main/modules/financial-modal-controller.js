@@ -376,11 +376,13 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
     const futureCommitment = savings + invest;
     const automaticSavings = Math.max(0, availableAfterLiving - futureCommitment);
     const overBudget = futureCommitment > availableAfterLiving;
+    const totalSavings = savings + automaticSavings;
     return {
       income,
       living,
       invest,
       savings,
+      totalSavings,
       availableAfterLiving,
       futureCommitment,
       automaticSavings,
@@ -505,11 +507,10 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
     rail.className = "financial-detail-rail";
     rail.dataset.financialDetailRail = "true";
     rail.setAttribute("aria-label", "월 현금흐름 요약");
-    appendRailItem(rail, "월 수입", IsfUtils.formatMoney(railState.income));
-    appendRailItem(rail, "월 생활비", IsfUtils.formatMoney(railState.living));
-    appendRailItem(rail, "월 투자", IsfUtils.formatMoney(railState.invest));
-    appendRailItem(rail, "자동 저축", IsfUtils.formatMoney(railState.automaticSavings));
-    appendRailItem(rail, "상태", railState.overBudget ? "조정 필요" : "균형", { status: true });
+    appendRailItem(rail, "수입", IsfUtils.formatMoney(railState.income));
+    appendRailItem(rail, "생활비", IsfUtils.formatMoney(railState.living));
+    appendRailItem(rail, "투자", IsfUtils.formatMoney(railState.invest));
+    appendRailItem(rail, "저축", IsfUtils.formatMoney(railState.totalSavings));
 
     if (railState.overBudget) {
       const warning = createText("p", "financial-detail-rail__warning", `저축+투자가 생활비 제외 수입보다 ${IsfUtils.formatMoney(railState.excess)} 많습니다.`);

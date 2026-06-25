@@ -913,17 +913,20 @@ test.describe('Phase 09 financial category detail modal', () => {
     await expect(modal.locator('#financialModalTitle')).toContainText('재무설정 상세');
     await expect(modal.locator('[data-outflow-tab="living"]')).toHaveClass(/is-active/);
     await expect(modal.locator('[data-modal-row-category="expense"]').first()).toContainText('주거비');
-    await expect(modal.locator('.financial-modal-account-badge').first()).toBeVisible();
+    await expect(modal.locator('[data-financial-modal-field="accountId"]')).toHaveCount(0);
 
-    await modal.locator('[data-financial-modal-edit]').first().click();
+    await modal.locator('[data-modal-row-category="expense"]').first().click();
     const firstName = modal.locator('[data-financial-modal-field="name"]').first();
     await firstName.fill('주거비 수정');
     await modal.locator('#financialModalCancel').click();
-    await expect(modal).toBeHidden();
+    await expect(modal).toBeVisible();
+    await expect(modal.locator('#financialModalPendingBar')).toBeHidden();
     expect(await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}').expenseItems?.[0]?.name || '')).not.toBe('주거비 수정');
+    await modal.locator('#financialModalClose').click();
+    await expect(modal).toBeHidden();
 
     await page.locator('[data-financial-category="expense"]').click();
-    await modal.locator('[data-financial-modal-edit]').first().click();
+    await modal.locator('[data-modal-row-category="expense"]').first().click();
     await modal.locator('[data-financial-modal-field="name"]').first().fill('주거비 수정');
     await modal.locator('#financialModalSave').click();
     if (await modal.isVisible()) {
@@ -931,7 +934,8 @@ test.describe('Phase 09 financial category detail modal', () => {
       await chooseAdjustmentIfVisible(modal);
       await modal.locator('#financialModalSave').click();
     }
-    await expect(modal).toBeHidden();
+    await expect(modal).toBeVisible();
+    await expect(modal.locator('#financialModalPendingBar')).toBeHidden();
 
     const savedName = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}').expenseItems?.[0]?.name);
     expect(savedName).toBe('주거비 수정');
@@ -948,7 +952,7 @@ test.describe('Phase 09 financial category detail modal', () => {
     expect(compactCardCount).toBeGreaterThan(1);
     await expect(modal.locator('[data-financial-modal-field="name"]')).toHaveCount(0);
 
-    await modal.locator('[data-financial-modal-edit]').first().click();
+    await modal.locator('[data-modal-row-category="expense"]').first().click();
     await expect(modal.locator('[data-financial-modal-field="name"]')).toHaveCount(1);
     await expect(modal.locator('[data-financial-modal-field="amount"]')).toHaveCount(1);
     await expect(modal.locator('.financial-modal-row--editing')).toHaveCount(1);
@@ -1014,7 +1018,8 @@ test.describe('Phase 09 financial category detail modal', () => {
     await expect(modal.locator('[data-group-drop-name="테스트그룹"] [data-modal-row-index="0"]')).toBeVisible();
     await chooseAdjustmentIfVisible(modal);
     await modal.locator('#financialModalSave').click();
-    await expect(modal).toBeHidden();
+    await expect(modal).toBeVisible();
+    await expect(modal.locator('#financialModalPendingBar')).toBeHidden();
 
     const savedGroup = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}').investItems?.[0]?.group);
     expect(savedGroup).toBe('테스트그룹');
@@ -1089,30 +1094,25 @@ test.describe('Phase 09 guided item and inline account creation', () => {
     const modal = page.locator('#financialModal');
     await expect(modal).toBeVisible();
     await expect(modal.locator('[data-outflow-tab="invest"]')).toHaveClass(/is-active/);
-    await modal.locator('#financialModalCreate').click();
-
-    await expect(modal.locator('[data-create-step="details"]')).toBeVisible();
-    await expect(modal.locator('#financialCreateAccountSelect')).toHaveValue('acc-stock');
-    await modal.locator('[data-create-field="name"]').fill('테스트 ETF');
-    await modal.locator('[data-create-field="amount"]').fill('100000');
-    await expect(modal.locator('[data-create-field="group"]')).toHaveCount(0);
-    await expect(modal.locator('#financialCreateNewAccountToggle')).toHaveCount(0);
-    await modal.locator('#financialCreateReview').click();
-
-    const confirm = modal.locator('#financialCreateConfirm');
-    await expect(confirm).toBeVisible();
-    await expect(confirm).toContainText('테스트 ETF');
-    await expect(confirm).toContainText('10만 원');
-    await expect(confirm).toContainText('투자계좌');
-    await expect(confirm).toContainText('투자');
-    await modal.locator('#financialCreateSave').click();
-    await expect(modal.locator('[data-modal-row-category="invest"]').filter({ hasText: '테스트 ETF' })).toBeVisible();
+    await modal.locator('[data-financial-inline-add]').click();
+    const newRow = modal.locator('.financial-modal-row--editing[data-modal-row-category="invest"]').last();
+    await expect(newRow.locator('[data-financial-modal-field="accountId"]')).toHaveValue('acc-stock');
+    await newRow.locator('[data-financial-modal-field="name"]').fill('테스트 ETF');
+    await newRow.locator('[data-financial-modal-field="amount"]').fill('100000');
+    await expect(newRow.locator('[data-financial-modal-field="group"]')).toHaveCount(0);
+    await expect(newRow.locator('[data-financial-modal-field="name"]')).toHaveValue('테스트 ETF');
     const choice = modal.locator('[data-financial-adjustment-choice]').filter({ hasText: '투자 먼저 줄이기' });
     if (await choice.count()) {
       await choice.click();
     }
     await modal.locator('#financialModalSave').click();
-    await expect(modal).toBeHidden();
+    if (await modal.locator('#financialModalPendingBar').isVisible()) {
+      await expect(modal.locator('[data-financial-adjustment-feedback]')).toContainText('조정 방식을 선택');
+      await modal.locator('[data-financial-adjustment-choice]').filter({ hasText: '투자 먼저 줄이기' }).click();
+      await modal.locator('#financialModalSave').click();
+    }
+    await expect(modal).toBeVisible();
+    await expect(modal.locator('#financialModalPendingBar')).toBeHidden();
 
     const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}'));
     const createdItem = saved.investItems.find((item: any) => item.name === '테스트 ETF');
@@ -1494,7 +1494,8 @@ test.describe('Phase 10.5 financial settings entry contract', () => {
     await expect(modal.locator('[data-financial-detail-tab]')).toHaveText(['월 수입', '월 생활비', '투자', '저축', '결과/자동 저축']);
     await modal.locator('[data-financial-modal-edit]').first().click();
     await expect(modal.locator('[data-financial-modal-field="amount"]').first()).toBeVisible();
-    await expect(modal.locator('#financialModalCreate')).toBeVisible();
+    await expect(modal.locator('#financialModalCreate')).toBeHidden();
+    await expect(modal.locator('[data-financial-inline-add]')).toBeVisible();
   });
 
   test('opens the same integrated modal from the detail action and summary category cards', async ({ page }) => {
@@ -1504,8 +1505,8 @@ test.describe('Phase 10.5 financial settings entry contract', () => {
     await detailAction.click();
     await expect(modal).toBeVisible();
     await expect(modal.locator('#financialModalTitle')).toHaveText('재무설정 상세');
-    await expect(modal.locator('#financialModalCancel')).toHaveText('편집 취소');
-    await expect(modal.locator('#financialModalSave')).toHaveText('재무설정 저장');
+    await expect(modal.locator('#financialModalCancel')).toHaveText('취소');
+    await expect(modal.locator('#financialModalSave')).toHaveText('적용');
     await expect(modal.locator('[data-household-overview]')).toHaveCount(0);
     await expect(modal.getByText('부부합산', { exact: true })).toHaveCount(0);
     await expect(modal.getByText('본인 설정', { exact: true })).toHaveCount(0);
@@ -1542,7 +1543,7 @@ test.describe('Phase 10.5 integrated modal shell', () => {
     await page.waitForSelector('main');
   });
 
-  test('renders ordered tabs and keeps the five-value summary rail visible', async ({ page }) => {
+  test('renders ordered tabs and keeps the compact cashflow summary rail visible', async ({ page }) => {
     const modal = page.locator('#financialModal');
     await page.locator('[data-financial-settings-detail]').click();
     await expect(modal).toBeVisible();
@@ -1553,13 +1554,11 @@ test.describe('Phase 10.5 integrated modal shell', () => {
     const rail = modal.locator('[data-financial-detail-rail]');
     await expect(rail).toBeVisible();
     await expect(rail.locator('[data-financial-rail-label]')).toHaveText([
-      '월 수입',
-      '월 생활비',
-      '월 투자',
-      '자동 저축',
-      '상태',
+      '수입',
+      '생활비',
+      '투자',
+      '저축',
     ]);
-    await expect(rail.locator('[data-financial-rail-status]')).toBeVisible();
     await expect(modal.locator('[data-financial-overbudget-action]')).toBeVisible();
     await expect(modal.locator('[data-financial-adjustment-choice]')).toHaveText([
       '투자 먼저 줄이기',
@@ -1571,7 +1570,7 @@ test.describe('Phase 10.5 integrated modal shell', () => {
       await modal.getByRole('tab', { name: label, exact: true }).click();
       await expect(rail, `summary rail should remain visible on ${label}`).toBeVisible();
       await expect(modal.locator('[data-financial-detail-panel]')).toBeVisible();
-      await expect(modal.locator('[data-financial-detail-panel]')).toContainText(label);
+      await expect(modal.locator('[data-financial-detail-panel]')).toContainText(label === '결과/자동 저축' ? '자동 저축' : label);
       await expect(page.locator('.modal-overlay:not(#financialModal):visible')).toHaveCount(0);
     }
 
@@ -1650,7 +1649,7 @@ test.describe('Phase 10.5 living expense variable rows', () => {
     }, { includeVariable });
   }
 
-  test('shows compact variable summaries and expands one editable target/actual row', async ({ page }) => {
+  test('shows compact variable summaries and expands one editable average/range row', async ({ page }) => {
     await seedLivingExpenseRows(page);
 
     const modal = page.locator('#financialModal');
@@ -1661,42 +1660,42 @@ test.describe('Phase 10.5 living expense variable rows', () => {
     const variableRows = modal.locator('[data-financial-variable-row]');
     await expect(variableRows).toHaveCount(1);
     await expect(variableRows.first()).toContainText('식비');
-    await expect(variableRows.first()).toContainText('목표');
-    await expect(variableRows.first()).toContainText('실제');
+    await expect(variableRows.first()).toContainText('45만');
     await expect(modal.locator('[data-financial-variable-detail]')).toHaveCount(0);
     await expect(modal.locator('[data-financial-modal-field="actualSpent"]')).toHaveCount(0);
 
     await variableRows.first().click();
     await expect(modal.locator('[data-financial-variable-detail]')).toHaveCount(1);
     await expect(modal.locator('[data-financial-modal-field="amount"]')).toHaveCount(1);
-    await expect(modal.locator('[data-financial-modal-field="actualSpent"]')).toHaveCount(1);
-    await expect(modal.locator('[data-financial-variable-detail]')).toContainText('남은 금액');
-    await expect(modal.locator('[data-financial-variable-detail]')).toContainText('상태');
-    await expect(modal.locator('[data-financial-variable-detail]')).toContainText('월말 예상');
-    await expect(modal.locator('[data-financial-variable-detail]')).toContainText('현재 사용 속도를 단순 환산한 참고값입니다.');
+    await expect(modal.locator('[data-financial-modal-field="varianceAmount"]')).toHaveCount(1);
+    await expect(modal.locator('[data-financial-modal-field="actualSpent"]')).toHaveCount(0);
+    await expect(modal.locator('[data-financial-variable-detail]')).not.toContainText('월말 예상');
+    await expect(modal.locator('[data-financial-variable-detail]')).not.toContainText('현재 사용 속도를 단순 환산한 참고값입니다.');
 
     await modal.locator('[data-financial-modal-field="amount"]').fill('500000');
-    await modal.locator('[data-financial-modal-field="actualSpent"]').fill('230000');
-    await expect(modal.locator('[data-financial-variable-detail]')).toContainText('27만');
+    await modal.locator('[data-financial-modal-field="varianceAmount"]').fill('70000');
     expect(await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}').expenseItems?.find((item: any) => item.id === 'food')?.actualSpent)).not.toBe(230000);
 
     const fixedRow = modal.locator('[data-financial-fixed-row]').filter({ hasText: '월세' });
     await expect(fixedRow).toBeVisible();
     await fixedRow.click();
     await expect(fixedRow.locator('[data-financial-modal-field="actualSpent"]')).toHaveCount(0);
+    await expect(fixedRow.locator('[data-financial-modal-field="varianceAmount"]')).toHaveCount(0);
     await expect(modal.locator('[data-financial-modal-field="actualSpent"]')).toHaveCount(0);
 
     await variableRows.first().click();
     await modal.locator('[data-financial-modal-field="amount"]').fill('500000');
-    await modal.locator('[data-financial-modal-field="actualSpent"]').fill('230000');
+    await modal.locator('[data-financial-modal-field="varianceAmount"]').fill('70000');
     await modal.locator('#financialModalSave').click();
-    await expect(modal).toBeHidden();
+    await expect(modal).toBeVisible();
+    await expect(modal.locator('#financialModalPendingBar')).toBeHidden();
 
     const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}'));
     const variable = saved.expenseItems.find((item: any) => item.id === 'food');
     const fixed = saved.expenseItems.find((item: any) => item.id === 'rent');
-    expect(variable).toMatchObject({ amount: 500000, actualSpent: 230000 });
+    expect(variable).toMatchObject({ amount: 500000, actualSpent: 180000, varianceAmount: 70000 });
     expect(fixed).not.toHaveProperty('actualSpent');
+    expect(fixed).not.toHaveProperty('varianceAmount');
   });
 
   test('renders an empty variable state and avoids 390px overflow', async ({ page }) => {
@@ -1773,8 +1772,9 @@ test.describe('Phase 10.5 automatic savings adjustment', () => {
     const modal = page.locator('#financialModal');
     await page.locator('[data-financial-settings-detail]').click();
     await expect(modal).toBeVisible();
-    await expect(modal.locator('[data-financial-detail-rail]')).toContainText('자동 저축');
-    await expect(modal.locator('[data-financial-detail-rail]')).toContainText('80만');
+    await expect(modal.locator('[data-financial-detail-rail]')).toContainText('저축');
+    await expect(modal.locator('[data-financial-detail-rail]')).toContainText('150만');
+    await expect(modal.locator('[data-financial-detail-rail]')).not.toContainText('자동 저축');
     await expect(modal.locator('[data-financial-automatic-savings-input]')).toHaveCount(0);
 
     await modal.getByRole('tab', { name: '결과/자동 저축', exact: true }).click();
@@ -1802,6 +1802,9 @@ test.describe('Phase 10.5 automatic savings adjustment', () => {
     ]);
 
     const beforeSave = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}'));
+    await modal.getByRole('tab', { name: '투자', exact: true }).click();
+    await modal.locator('[data-modal-row-category="invest"]').first().click();
+    await modal.locator('[data-financial-modal-field="amount"]').fill('1210000');
     await modal.locator('#financialModalSave').click();
     await expect(modal).toBeVisible();
     await expect(modal.locator('[data-financial-adjustment-feedback]')).toContainText('조정 방식을 선택');
@@ -1811,15 +1814,27 @@ test.describe('Phase 10.5 automatic savings adjustment', () => {
 
     await choices.filter({ hasText: '투자 먼저 줄이기' }).click();
     await modal.locator('#financialModalCancel').click();
-    await expect(modal).toBeHidden();
+    await expect(modal).toBeVisible();
+    await expect(modal.locator('#financialModalPendingBar')).toBeHidden();
     const afterCancel = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}'));
     expect(afterCancel.savingsItems).toEqual(beforeSave.savingsItems);
     expect(afterCancel.investItems).toEqual(beforeSave.investItems);
+    await modal.locator('#financialModalClose').click();
+    await expect(modal).toBeHidden();
 
     await page.locator('[data-financial-settings-detail]').click();
+    await modal.getByRole('tab', { name: '투자', exact: true }).click();
+    await modal.locator('[data-modal-row-category="invest"]').first().click();
+    await modal.locator('[data-financial-modal-field="amount"]').fill('1210000');
     await modal.locator('[data-financial-adjustment-choice]').filter({ hasText: '투자 먼저 줄이기' }).click();
     await modal.locator('#financialModalSave').click();
-    await expect(modal).toBeHidden();
+    if (await modal.locator('#financialModalPendingBar').isVisible()) {
+      await expect(modal.locator('[data-financial-adjustment-feedback]')).toContainText('조정 방식을 선택');
+      await modal.locator('[data-financial-adjustment-choice]').filter({ hasText: '투자 먼저 줄이기' }).click();
+      await modal.locator('#financialModalSave').click();
+    }
+    await expect(modal).toBeVisible();
+    await expect(modal.locator('#financialModalPendingBar')).toBeHidden();
 
     const adjusted = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}'));
     expect(adjusted.savingsItems.map((item: any) => item.id)).toEqual(['saving-main']);
@@ -1827,9 +1842,11 @@ test.describe('Phase 10.5 automatic savings adjustment', () => {
     expect(adjusted.savingsItems[0].amount).toBe(1800000);
     expect(adjusted.investItems[0].amount).toBe(400000);
 
-    await page.locator('[data-financial-settings-detail]').click();
+    await modal.getByRole('tab', { name: '월 수입', exact: true }).click();
+    await modal.locator('[data-modal-row-category="income"]').first().click();
+    await modal.locator('[data-financial-modal-field="amount"]').fill('4210000');
     await modal.locator('#financialModalSave').click();
-    await expect(modal).toBeHidden();
+    await expect(modal).toBeVisible();
     const repeated = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}'));
     expect(repeated.savingsItems.map((item: any) => item.id)).toEqual(['saving-main']);
     expect(repeated.investItems.map((item: any) => item.id)).toEqual(['invest-main']);
@@ -2287,6 +2304,9 @@ test.describe('Phase 10.6 financial detail modal editing repair', () => {
       const editingRow = modal.locator('.financial-modal-row--editing[data-modal-row-category="income"]');
       await editingRow.locator('[data-financial-modal-field="amount"]').fill('4300000');
       await expect(modal.locator('#financialModalPendingBar')).toBeVisible();
+      await modal.locator('.financial-modal-row:last-of-type').evaluate((row) =>
+        row.scrollIntoView({ block: 'end', inline: 'nearest' })
+      );
       const pendingSafety = await modal.evaluate((element) => {
         const modalBody = element.querySelector('.modal-body') as HTMLElement | null;
         const pending = element.querySelector('#financialModalPendingBar') as HTMLElement | null;
@@ -2462,11 +2482,11 @@ test.describe('Phase 10.5 regression hardening', () => {
     await modal.getByRole('tab', { name: '월 생활비', exact: true }).click();
     const variableRow = modal.locator('[data-financial-variable-row]').filter({ hasText: '식비' });
     await variableRow.click();
-    await expect(modal.locator('[data-financial-variable-detail]')).toContainText('월말 예상');
     await modal.locator('[data-financial-modal-field="amount"]').fill('550000');
-    await modal.locator('[data-financial-modal-field="actualSpent"]').fill('280000');
-    await expect(modal.locator('[data-financial-variable-detail]')).toContainText('현재 사용 속도를 단순 환산한 참고값입니다.');
-    await expect(modal.locator('[data-financial-fixed-row]').filter({ hasText: '월세' }).locator('[data-financial-modal-field="actualSpent"]')).toHaveCount(0);
+    await modal.locator('[data-financial-modal-field="varianceAmount"]').fill('80000');
+    await expect(modal.locator('[data-financial-variable-detail]')).not.toContainText('월말 예상');
+    await expect(modal.locator('[data-financial-modal-field="actualSpent"]')).toHaveCount(0);
+    await expect(modal.locator('[data-financial-fixed-row]').filter({ hasText: '월세' }).locator('[data-financial-modal-field="varianceAmount"]')).toHaveCount(0);
 
     await modal.getByRole('tab', { name: '투자', exact: true }).click();
     await editFirstAmount(modal, 'invest', '4000000');
@@ -2475,12 +2495,14 @@ test.describe('Phase 10.5 regression hardening', () => {
     await expect(modal.locator('[data-financial-adjustment-feedback]')).toContainText('조정 방식을 선택');
     await modal.locator('[data-financial-adjustment-choice]').filter({ hasText: '투자 먼저 줄이기' }).click();
     await modal.locator('#financialModalSave').click();
-    await expect(modal).toBeHidden();
+    await expect(modal).toBeVisible();
+    await expect(modal.locator('#financialModalPendingBar')).toBeHidden();
 
     let saved = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}'));
     expect(saved.incomes.find((item: any) => item.id === 'income-main')?.amount).toBe(5000000);
-    expect(saved.expenseItems.find((item: any) => item.id === 'food')).toMatchObject({ amount: 550000, actualSpent: 280000 });
+    expect(saved.expenseItems.find((item: any) => item.id === 'food')).toMatchObject({ amount: 550000, actualSpent: 210000, varianceAmount: 80000 });
     expect(saved.expenseItems.find((item: any) => item.id === 'rent')).not.toHaveProperty('actualSpent');
+    expect(saved.expenseItems.find((item: any) => item.id === 'rent')).not.toHaveProperty('varianceAmount');
     expect(saved.savingsItems.map((item: any) => item.id)).toEqual(['saving-main']);
     expect(saved.investItems.map((item: any) => item.id)).toEqual(['invest-main']);
     expect(saved.investItems[0].amount).toBe(2850000);
@@ -2497,21 +2519,23 @@ test.describe('Phase 10.5 regression hardening', () => {
     expect(labels.filter((label) => label.includes('적금')).length).toBeLessThanOrEqual(1);
     expect(labels.filter((label) => label.includes('ETF')).length).toBeLessThanOrEqual(1);
 
-    modal = await openFinancialDetail(page);
+    await modal.getByRole('tab', { name: '월 수입', exact: true }).click();
+    await editFirstAmount(modal, 'income', '5010000');
     await modal.locator('#financialModalSave').click();
-    await expect(modal).toBeHidden();
+    await expect(modal).toBeVisible();
     saved = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}'));
+    expect(saved.incomes.find((item: any) => item.id === 'income-main')?.amount).toBe(5010000);
     expect(saved.expenseItems.filter((item: any) => item.id === 'food')).toHaveLength(1);
     expect(saved.savingsItems.filter((item: any) => item.id === 'saving-main')).toHaveLength(1);
     expect(saved.investItems.filter((item: any) => item.id === 'invest-main')).toHaveLength(1);
 
-    modal = await openFinancialDetail(page);
     await modal.getByRole('tab', { name: '월 수입', exact: true }).click();
     await editFirstAmount(modal, 'income', '6000000');
     await modal.locator('#financialModalCancel').click();
-    await expect(modal).toBeHidden();
+    await expect(modal).toBeVisible();
+    await expect(modal.locator('#financialModalPendingBar')).toBeHidden();
     const afterCancel = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}'));
-    expect(afterCancel.incomes.find((item: any) => item.id === 'income-main')?.amount).toBe(5000000);
+    expect(afterCancel.incomes.find((item: any) => item.id === 'income-main')?.amount).toBe(5010000);
     await assertForbiddenCoupleUiAbsent(page);
   });
 
