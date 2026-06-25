@@ -2037,6 +2037,164 @@ test.describe('Phase 10.6 financial detail modal editing repair', () => {
     await modal.locator('#financialModalCreate').click();
     await expect(modal.locator('#financialModalPendingBar')).toBeHidden();
   });
+
+  test('Phase 10.6 pending bar applies and cancels draft changes in place', async ({ page }) => {
+    await seedRegressionFlow(page);
+
+    const modal = await openFinancialDetail(page);
+    await expect(modal.locator('#financialModalCancel')).toHaveText('취소');
+    await expect(modal.locator('#financialModalSave')).toHaveText('적용');
+
+    await modal.locator('[data-modal-row-category="income"]').first().click();
+    const incomeRow = modal.locator('.financial-modal-row--editing[data-modal-row-category="income"]');
+    await incomeRow.locator('[data-financial-modal-field="amount"]').fill('4400000');
+    await expect(modal.locator('#financialModalPendingBar')).toBeVisible();
+
+    await modal.locator('#financialModalCancel').click();
+    await expect(modal).toBeVisible();
+    await expect(modal.locator('.financial-modal-row--editing')).toHaveCount(0);
+    await expect(modal.locator('#financialModalPendingBar')).toBeHidden();
+    await expect(modal.locator('[data-modal-row-category="income"]').first()).toContainText('420만');
+    let saved = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}'));
+    expect(saved.incomes.find((item: any) => item.id === 'income-main')?.amount).toBe(4200000);
+    await assertForbiddenCoupleUiAbsent(page);
+
+    await modal.locator('[data-modal-row-category="income"]').first().click();
+    await modal.locator('.financial-modal-row--editing[data-modal-row-category="income"] [data-financial-modal-field="amount"]').fill('4500000');
+    await modal.locator('#financialModalSave').click();
+    await expect(modal).toBeVisible();
+    await expect(modal.getByRole('tab', { name: '월 수입', exact: true })).toHaveAttribute('aria-selected', 'true');
+    await expect(modal.locator('.financial-modal-row--editing')).toHaveCount(0);
+    await expect(modal.locator('#financialModalPendingBar')).toBeHidden();
+    saved = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}'));
+    expect(saved.incomes.find((item: any) => item.id === 'income-main')?.amount).toBe(4500000);
+  });
+
+  test('Phase 10.6 add creates inline temporary rows that persist only on apply', async ({ page }) => {
+    await seedRegressionFlow(page);
+
+    const modal = await openFinancialDetail(page);
+    await expect(modal.locator('[data-financial-inline-add]')).toHaveText('수입 추가');
+    await modal.locator('[data-financial-inline-add]').click();
+    let tempRow = modal.locator('.financial-modal-row--editing[data-modal-row-category="income"]').last();
+    await expect(tempRow.locator('[data-financial-modal-field="name"]')).toHaveValue('');
+    await expect(modal.locator('#financialModalPendingBar')).toBeHidden();
+
+    await modal.locator('.modal-header').click();
+    await expect(modal.locator('.financial-modal-row--editing')).toHaveCount(0);
+    await expect(modal.locator('[data-modal-row-category="income"]')).toHaveCount(1);
+    await expect(modal.locator('#financialModalPendingBar')).toBeHidden();
+
+    await modal.locator('[data-financial-inline-add]').click();
+    tempRow = modal.locator('.financial-modal-row--editing[data-modal-row-category="income"]').last();
+    await tempRow.locator('[data-financial-modal-field="name"]').fill('부업');
+    await tempRow.locator('[data-financial-modal-field="amount"]').fill('300000');
+    await expect(modal.locator('#financialModalPendingBar')).toBeVisible();
+    let saved = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}'));
+    expect(saved.incomes.map((item: any) => item.name)).not.toContain('부업');
+
+    await modal.locator('#financialModalCancel').click();
+    await expect(modal.locator('[data-modal-row-category="income"]')).toHaveCount(1);
+    await expect(modal.locator('#financialModalPendingBar')).toBeHidden();
+
+    await modal.locator('[data-financial-inline-add]').click();
+    tempRow = modal.locator('.financial-modal-row--editing[data-modal-row-category="income"]').last();
+    await tempRow.locator('[data-financial-modal-field="name"]').fill('부업');
+    await tempRow.locator('[data-financial-modal-field="amount"]').fill('300000');
+    await modal.locator('#financialModalSave').click();
+    saved = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}'));
+    expect(saved.incomes.find((item: any) => item.name === '부업')?.amount).toBe(300000);
+    await expect(modal).toBeVisible();
+  });
+
+  test('Phase 10.6 delete keeps existing removals draft-only and discards empty temp rows immediately', async ({ page }) => {
+    await seedRegressionFlow(page);
+
+    const modal = await openFinancialDetail(page);
+    await modal.getByRole('tab', { name: '저축', exact: true }).click();
+    await modal.locator('[data-modal-row-category="savings"]').first().click();
+    await modal.locator('.financial-modal-row--editing[data-modal-row-category="savings"] [data-financial-modal-remove]').click();
+    await expect(modal.locator('[data-modal-row-category="savings"]')).toHaveCount(0);
+    await expect(modal.locator('#financialModalPendingBar')).toBeVisible();
+    let saved = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}'));
+    expect(saved.savingsItems.map((item: any) => item.id)).toContain('saving-main');
+
+    await modal.locator('#financialModalCancel').click();
+    await modal.getByRole('tab', { name: '저축', exact: true }).click();
+    await expect(modal.locator('[data-modal-row-category="savings"]')).toHaveCount(1);
+    await expect(modal.locator('#financialModalPendingBar')).toBeHidden();
+
+    await modal.locator('[data-financial-inline-add]').click();
+    await modal.locator('.financial-modal-row--editing[data-modal-row-category="savings"] [data-financial-modal-remove]').click();
+    await expect(modal.locator('[data-modal-row-category="savings"]')).toHaveCount(1);
+    await expect(modal.locator('#financialModalPendingBar')).toBeHidden();
+
+    await modal.locator('[data-modal-row-category="savings"]').first().click();
+    await modal.locator('.financial-modal-row--editing[data-modal-row-category="savings"] [data-financial-modal-remove]').click();
+    await modal.locator('#financialModalSave').click();
+    saved = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}'));
+    expect(saved.savingsItems.map((item: any) => item.id)).not.toContain('saving-main');
+    await expect(modal).toBeVisible();
+  });
+
+  test('Phase 10.6 close prompts only when pending changes exist for x overlay and escape', async ({ page }) => {
+    await seedRegressionFlow(page);
+
+    const modal = await openFinancialDetail(page);
+    await modal.locator('#financialModalClose').click();
+    await expect(modal).toBeHidden();
+
+    await openFinancialDetail(page);
+    await modal.locator('[data-modal-row-category="income"]').first().click();
+    await modal.locator('.financial-modal-row--editing[data-modal-row-category="income"] [data-financial-modal-field="amount"]').fill('4600000');
+    await expect(modal.locator('#financialModalPendingBar')).toBeVisible();
+
+    page.once('dialog', async (dialog) => {
+      expect(dialog.message()).toBe('변경된 내용을 저장하지 않고 닫으시겠습니까?');
+      await dialog.dismiss();
+    });
+    await modal.locator('#financialModalClose').click();
+    await expect(modal).toBeVisible();
+    await expect(modal.locator('#financialModalPendingBar')).toBeVisible();
+
+    page.once('dialog', async (dialog) => {
+      expect(dialog.message()).toBe('변경된 내용을 저장하지 않고 닫으시겠습니까?');
+      await dialog.dismiss();
+    });
+    await modal.click({ position: { x: 8, y: 8 } });
+    await expect(modal).toBeVisible();
+    await expect(modal.locator('#financialModalPendingBar')).toBeVisible();
+
+    page.once('dialog', async (dialog) => {
+      expect(dialog.message()).toBe('변경된 내용을 저장하지 않고 닫으시겠습니까?');
+      await dialog.accept();
+    });
+    await page.keyboard.press('Escape');
+    await expect(modal).toBeHidden();
+    const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}'));
+    expect(saved.incomes.find((item: any) => item.id === 'income-main')?.amount).toBe(4200000);
+  });
+
+  test('Phase 10.6 validation keeps pending bar open and expands first invalid row', async ({ page }) => {
+    await seedRegressionFlow(page);
+
+    const modal = await openFinancialDetail(page);
+    await modal.locator('[data-financial-inline-add]').click();
+    const tempRow = modal.locator('.financial-modal-row--editing[data-modal-row-category="income"]').last();
+    await tempRow.locator('[data-financial-modal-field="amount"]').fill('1234567');
+    await expect(modal.locator('#financialModalPendingBar')).toBeVisible();
+    await modal.locator('#financialModalSave').click();
+
+    const invalidRow = modal.locator('.financial-modal-row--editing[data-modal-row-category="income"]').last();
+    await expect(invalidRow.locator('[data-financial-row-error]')).toContainText('이름을 입력해 주세요.');
+    await expect(modal.locator('#financialModalPendingBar')).toBeVisible();
+
+    await invalidRow.locator('[data-financial-modal-field="name"]').fill('부업');
+    await modal.locator('#financialModalSave').click();
+    await expect(invalidRow.locator('[data-financial-row-error]')).toContainText('금액은 1,000원 단위로 입력해 주세요.');
+    await expect(modal).toBeVisible();
+    await expect(modal.locator('#financialModalPendingBar')).toBeVisible();
+  });
 });
 
 test.describe('Phase 10.5 regression hardening', () => {
