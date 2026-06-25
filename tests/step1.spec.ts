@@ -2195,6 +2195,181 @@ test.describe('Phase 10.6 financial detail modal editing repair', () => {
     await expect(modal).toBeVisible();
     await expect(modal.locator('#financialModalPendingBar')).toBeVisible();
   });
+
+  test('Phase 10.6 mobile summary rail is four-cell and combines automatic savings', async ({ page }) => {
+    await seedRegressionFlow(page);
+
+    for (const viewport of [
+      { width: 768, height: 1024 },
+      { width: 390, height: 844 },
+    ]) {
+      await page.setViewportSize(viewport);
+      const modal = await openFinancialDetail(page);
+      const rail = modal.locator('[data-financial-detail-rail]');
+      await expect(rail).toBeVisible();
+
+      const labels = await rail.locator('[data-financial-rail-label]').evaluateAll((nodes) =>
+        nodes.map((node) => (node.textContent || '').trim())
+      );
+      expect(labels).toEqual(['수입', '생활비', '투자', '저축']);
+      await expect(rail).not.toContainText('자동 저축');
+      await expect(rail).not.toContainText('상태');
+
+      const savingsCell = rail.locator('.financial-detail-rail__item').filter({ hasText: '저축' });
+      await expect(savingsCell).toContainText('220만');
+      const layout = await rail.evaluate((element) => {
+        const boxes = Array.from(element.querySelectorAll('.financial-detail-rail__item')).map((node) =>
+          (node as HTMLElement).getBoundingClientRect()
+        );
+        const rows = new Set(boxes.map((box) => Math.round(box.top)));
+        const columns = new Set(boxes.map((box) => Math.round(box.left)));
+        return {
+          count: boxes.length,
+          rows: rows.size,
+          columns: columns.size,
+          contained: element.scrollWidth <= element.clientWidth + 4,
+        };
+      });
+      expect(layout).toEqual({ count: 4, rows: 2, columns: 2, contained: true });
+
+      await modal.locator('#financialModalClose').click();
+      await expect(modal).toBeHidden();
+    }
+  });
+
+  test('Phase 10.6 mobile rows preserve amount visibility and pending bar safety', async ({ page }) => {
+    await seedRegressionFlow(page);
+    await page.evaluate(async () => {
+      const [{ state }, { STORAGE_KEY }, { createRenderOrchestrator }] = await Promise.all([
+        import('/IndividualSavingsFlowUI/apps/main/modules/state.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/constants.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/render-orchestrator.js'),
+      ]);
+      state.inputs.incomes[0].name = '아주 긴 이름의 월급과 상여 수입 항목';
+      state.inputs.expenseItems[1].name = '모바일에서 매우 긴 식비와 생활용품 비용';
+      window.IsfStorageHub.saveLocal(STORAGE_KEY, state.inputs);
+      createRenderOrchestrator().renderAll();
+    });
+
+    for (const viewport of [
+      { width: 768, height: 1024 },
+      { width: 390, height: 844 },
+    ]) {
+      await page.setViewportSize(viewport);
+      const modal = await openFinancialDetail(page);
+      const incomeRow = modal.locator('[data-modal-row-category="income"]').first();
+      await expect(incomeRow).toContainText('420만');
+
+      const readLayout = await incomeRow.evaluate((row) => {
+        const name = row.querySelector('.financial-modal-row__header strong') as HTMLElement | null;
+        const amount = row.querySelector('.financial-modal-row__summary span') as HTMLElement | null;
+        const box = (row as HTMLElement).getBoundingClientRect();
+        const amountBox = amount?.getBoundingClientRect();
+        const amountStyle = amount ? window.getComputedStyle(amount) : null;
+        const nameStyle = name ? window.getComputedStyle(name) : null;
+        return {
+          rowHeight: box.height,
+          amountWrap: amountStyle?.whiteSpace,
+          amountContained: Boolean(amountBox && amountBox.right <= box.right + 1 && amountBox.left >= box.left - 1),
+          amountTextVisible: Boolean(amount && amount.scrollWidth <= amount.clientWidth + 4),
+          nameOneLine: Boolean(name && name.scrollHeight <= name.clientHeight + 4),
+          nameOverflow: nameStyle?.overflow,
+        };
+      });
+      expect(readLayout.amountWrap).toBe('nowrap');
+      expect(readLayout.amountContained).toBe(true);
+      expect(readLayout.amountTextVisible).toBe(true);
+      expect(readLayout.nameOneLine).toBe(true);
+      expect(readLayout.nameOverflow).toBe('hidden');
+      expect(readLayout.rowHeight).toBeLessThanOrEqual(viewport.width === 390 ? 76 : 84);
+
+      await incomeRow.click();
+      const editingRow = modal.locator('.financial-modal-row--editing[data-modal-row-category="income"]');
+      await editingRow.locator('[data-financial-modal-field="amount"]').fill('4300000');
+      await expect(modal.locator('#financialModalPendingBar')).toBeVisible();
+      const pendingSafety = await modal.evaluate((element) => {
+        const modalBody = element.querySelector('.modal-body') as HTMLElement | null;
+        const pending = element.querySelector('#financialModalPendingBar') as HTMLElement | null;
+        const lastRow = element.querySelector('.financial-modal-row:last-of-type') as HTMLElement | null;
+        const save = element.querySelector('#financialModalSave') as HTMLElement | null;
+        const cancel = element.querySelector('#financialModalCancel') as HTMLElement | null;
+        const pendingBox = pending?.getBoundingClientRect();
+        const rowBox = lastRow?.getBoundingClientRect();
+        return {
+          saveHeight: save?.getBoundingClientRect().height || 0,
+          cancelHeight: cancel?.getBoundingClientRect().height || 0,
+          bodyPadding: modalBody ? parseFloat(window.getComputedStyle(modalBody).paddingBottom) : 0,
+          clearOfLastRow: Boolean(pendingBox && rowBox && pendingBox.top >= rowBox.bottom - 1),
+        };
+      });
+      expect(pendingSafety.saveHeight).toBeGreaterThanOrEqual(44);
+      expect(pendingSafety.cancelHeight).toBeGreaterThanOrEqual(44);
+      expect(pendingSafety.bodyPadding).toBeGreaterThanOrEqual(96);
+      expect(pendingSafety.clearOfLastRow).toBe(true);
+
+      await modal.locator('#financialModalCancel').click();
+      await modal.locator('#financialModalClose').click();
+      await expect(modal).toBeHidden();
+    }
+  });
+
+  test('Phase 10.6 regression preserves no-couple sanitizer persistence and Sankey contracts', async ({ page }) => {
+    await seedRegressionFlow(page);
+    await assertForbiddenCoupleUiAbsent(page);
+    await expect(page.locator('.financial-modal-row')).toHaveCount(0);
+    await expect(page.locator('[data-household-overview]')).toHaveCount(0);
+
+    const forbiddenPhraseFound = await page.evaluate(async () => {
+      const sources = await Promise.all([
+        fetch('apps/main/index.html').then((response) => response.text()),
+        fetch('apps/main/modules/financial-modal-controller.js').then((response) => response.text()),
+      ]);
+      return sources.some((source) => source.includes('신설 모달'));
+    });
+    expect(forbiddenPhraseFound).toBe(false);
+
+    const modal = await openFinancialDetail(page);
+    await assertForbiddenCoupleUiAbsent(page);
+
+    await modal.getByRole('tab', { name: '월 생활비', exact: true }).click();
+    const variableRow = modal.locator('[data-financial-variable-row]').filter({ hasText: '식비' });
+    await variableRow.click();
+    await variableRow.locator('[data-financial-modal-field="amount"]').fill('550000');
+    await variableRow.locator('[data-financial-modal-field="varianceAmount"]').fill('80000');
+    await expect(modal.locator('[data-financial-fixed-row]').filter({ hasText: '월세' }).locator('[data-financial-modal-field="varianceAmount"]')).toHaveCount(0);
+
+    await modal.getByRole('tab', { name: '월 수입', exact: true }).click();
+    await modal.locator('[data-modal-row-category="income"]').first().click();
+    await modal.locator('.financial-modal-row--editing[data-modal-row-category="income"] [data-financial-modal-field="amount"]').fill('5000000');
+    await modal.locator('#financialModalSave').click();
+    await expect(modal).toBeVisible();
+    await expect(modal.locator('#financialModalPendingBar')).toBeHidden();
+
+    let saved = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}'));
+    expect(saved.incomes.find((item: any) => item.id === 'income-main')?.amount).toBe(5000000);
+    expect(saved.expenseItems.find((item: any) => item.id === 'food')).toMatchObject({ amount: 550000, actualSpent: 210000, varianceAmount: 80000 });
+    expect(saved.expenseItems.find((item: any) => item.id === 'rent')).not.toHaveProperty('actualSpent');
+    expect(saved.expenseItems.find((item: any) => item.id === 'rent')).not.toHaveProperty('varianceAmount');
+
+    await modal.getByRole('tab', { name: '월 수입', exact: true }).click();
+    await modal.locator('[data-modal-row-category="income"]').first().click();
+    await modal.locator('.financial-modal-row--editing[data-modal-row-category="income"] [data-financial-modal-field="amount"]').fill('5010000');
+    await modal.locator('#financialModalSave').click();
+    await expect(modal).toBeVisible();
+    saved = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}'));
+    expect(saved.incomes.find((item: any) => item.id === 'income-main')?.amount).toBe(5010000);
+    expect(saved.expenseItems.filter((item: any) => item.id === 'food')).toHaveLength(1);
+    expect(saved.savingsItems.filter((item: any) => item.id === 'saving-main')).toHaveLength(1);
+    expect(saved.investItems.filter((item: any) => item.id === 'invest-main')).toHaveLength(1);
+
+    await modal.locator('#financialModalClose').click();
+    await expect(modal).toBeHidden();
+    await assertForbiddenCoupleUiAbsent(page);
+    const labels = await page.locator('#sankeySvg .sankey-label').evaluateAll((nodes) => nodes.map((node) => node.textContent || ''));
+    expect(labels).toEqual(expect.arrayContaining(['총수입', '급여계좌', '생활비계좌', '투자계좌']));
+    expect(labels.filter((label) => label.includes('적금')).length).toBeLessThanOrEqual(1);
+    expect(labels.filter((label) => label.includes('ETF')).length).toBeLessThanOrEqual(1);
+  });
 });
 
 test.describe('Phase 10.5 regression hardening', () => {
