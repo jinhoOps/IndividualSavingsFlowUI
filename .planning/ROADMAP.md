@@ -228,4 +228,4 @@ Plans:
 
 ## Next
 
-Phase 10.6.1 is complete. Next recommended step is `$gsd-discuss-phase 11` to gather context for Zero-Input Spending Capture before planning.
+Phase 10.7 context is gathered. Next recommended step is `$gsd-plan-phase 10.7` to plan account-flow extraction before Phase 11 resumes.
