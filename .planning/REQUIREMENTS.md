@@ -26,8 +26,8 @@
 - [x] **UXR-10**: User can edit income account allocation inside the Financial Detail Modal row edit state without using separate transfer-rule or legacy item-editor UI.
 - [x] **UXR-11**: User can edit savings maturity month inside the Financial Detail Modal row edit state, and matured savings stop receiving new monthly contributions while retained balances remain in projections.
 - [x] **UXR-12**: User can edit item-level savings yield inside the Financial Detail Modal row edit state without replacing the global default yield behavior for other items.
-- [ ] **UXR-13**: User sees Step 1 financial flow as a simple income-to-consumption/savings/investment model without account-flow management concepts.
-- [ ] **UXR-14**: Step 1 Sankey generation no longer depends on account/allocation modeling or automatic account correction in the primary path.
+- [x] **UXR-13**: User sees Step 1 financial flow as a simple income-to-consumption/savings/investment model without account-flow management concepts.
+- [x] **UXR-14**: Step 1 Sankey generation no longer depends on account/allocation modeling or automatic account correction in the primary path.
 - [ ] **UXR-15**: Existing account/allocation data is preserved or converted for Portfolio/account-flow handoff without corrupting simplified Step 1 data.
 - [ ] **UXR-16**: Rich account-flow management has a documented destination boundary: Portfolio integration or a separate app/page, with main-to-destination user guidance.
 
@@ -98,8 +98,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | UXR-10 | Phase 10.6.1 | Complete |
 | UXR-11 | Phase 10.6.1 | Complete |
 | UXR-12 | Phase 10.6.1 | Complete |
-| UXR-13 | Phase 10.7 | Pending |
-| UXR-14 | Phase 10.7 | Pending |
+| UXR-13 | Phase 10.7 | Complete |
+| UXR-14 | Phase 10.7 | Complete |
 | UXR-15 | Phase 10.7 | Pending |
 | UXR-16 | Phase 10.7 | Pending |
 | CAP-01 | Phase 11 | Pending |

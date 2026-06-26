@@ -115,11 +115,11 @@ Plans:
 
 **Requirements:** UXR-13, UXR-14, UXR-15, UXR-16
 
-**Plans:** 6 plans
+**Plans:** 1/6 plans complete
 Plans:
 **Wave 1**
 
-- [ ] 10.7-01-PLAN.md — Simple Step 1 Sankey core and topology regression tests.
+- [x] 10.7-01-PLAN.md — Simple Step 1 Sankey core and topology regression tests.
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -222,8 +222,8 @@ Plans:
 | UXR-06 | Phase 10.6 | Complete |
 | UXR-07 | Phase 10.6 | Complete |
 | UXR-08 | Phase 10.6 | Complete |
-| UXR-13 | Phase 10.7 | Pending |
-| UXR-14 | Phase 10.7 | Pending |
+| UXR-13 | Phase 10.7 | Complete |
+| UXR-14 | Phase 10.7 | Complete |
 | UXR-15 | Phase 10.7 | Pending |
 | UXR-16 | Phase 10.7 | Pending |
 | CAP-01 | Phase 11 | Pending |

@@ -4,17 +4,17 @@ milestone: v1.9
 milestone_name: milestone
 current_phase: 10.7
 current_phase_name: Account Flow Extraction and Portfolio Boundary
-status: ready_to_execute
-stopped_at: Phase 10.7 planned
-last_updated: "2026-06-26T05:39:49.469Z"
+status: in_progress
+stopped_at: Completed 10.7-01-PLAN.md
+last_updated: "2026-06-26T05:58:10.000Z"
 last_activity: 2026-06-26
-last_activity_desc: Phase 10.7 planned; ready to execute account-flow extraction
+last_activity_desc: Phase 10.7 Plan 01 completed; simple Step 1 Sankey core extracted from account-flow topology
 progress:
   total_phases: 9
   completed_phases: 4
-  total_plans: 14
-  completed_plans: 14
-  percent: 44
+  total_plans: 20
+  completed_plans: 15
+  percent: 50
 ---
 
 # Project State
@@ -22,9 +22,9 @@ progress:
 ## Current Position
 
 Phase: 10.7 — Account Flow Extraction and Portfolio Boundary
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-06-26 — Phase 10.7 planned; ready to execute account-flow extraction
+Plan: 01 complete; 02 next
+Status: In progress
+Last activity: 2026-06-26 — Phase 10.7 Plan 01 completed; simple Step 1 Sankey core extracted from account-flow topology
 
 ## Project Reference
 
@@ -68,6 +68,7 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 | Phase 10.6.1 P01 | 10 min | 2 tasks | 3 files |
 | Phase 10.6.1 P02 | 13 min | 2 tasks | 9 files |
 | Phase 10.6.1 P03 | 25 minutes | 2 tasks | 8 files |
+| Phase 10.7-account-flow-extraction-and-portfolio-boundary P01 | 38 min | 2 tasks | 3 files |
 
 ## Decisions
 
@@ -107,14 +108,16 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 - [Phase 10.6.1-02]: Financial Detail Modal remains the only ordinary Step 1 editor; the auxiliary item-editor controller, hidden legacy panels, global pending bar, and mobile editor FAB were removed. — ADR 0001 and UXR-09 require no second primary financial editor path after Plan 01 absorbed useful capabilities.
 - [Phase ?]: 10.6.1-03: List renderer and state helpers were reduced to display-only support now that ordinary editing is modal-only.
 - [Phase ?]: 10.6.1-03: Build output is verification-only for this phase; generated version/build artifacts are not committed under the source-first policy.
+- [Phase 10.7-01]: Step 1 primary Sankey now ignores legacy account/allocation/correction/transfer fields and renders income through total-income directly to category destinations.
+- [Phase 10.7-01]: Sankey help copy describes simple category flow instead of account network exploration.
 
 ## Operator Next Steps
 
-- Phase 10.7 context is gathered.
-- Next recommended step is `$gsd-execute-phase 10.7`.
+- Phase 10.7 Plan 01 is complete.
+- Next recommended step is executing `10.7-02-PLAN.md` for sanitizer/storage migration sidecar and import/share compatibility.
 
 ## Session
 
-**Last session:** 2026-06-26T04:39:34.460Z
-**Stopped at:** Phase 10.7 context gathered
-**Resume file:** .planning/phases/10.7-account-flow-extraction-and-portfolio-boundary/10.7-CONTEXT.md
+**Last session:** 2026-06-26T05:58:10.000Z
+**Stopped at:** Completed 10.7-01-PLAN.md
+**Resume file:** None
