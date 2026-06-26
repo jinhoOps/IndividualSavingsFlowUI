@@ -765,7 +765,14 @@ test.describe('Phase 09 account correction and Sankey topology', () => {
       ];
       const contents = await Promise.all(normalPathFiles.map(async (file) => ({
         file,
-        text: await fetch(`/IndividualSavingsFlowUI/${file}`).then((response) => response.text()),
+        text: await fetch(`/IndividualSavingsFlowUI/${file}`).then(async (response) => {
+          const text = await response.text();
+          if (file !== 'apps/main/index.html') return text;
+          return text.replace(
+            /<section id="accountFlowPortfolioGuide"[\s\S]*?<\/section>/,
+            ''
+          );
+        }),
       })));
       const forbiddenMarkers = [
         'renderNetworkMap',

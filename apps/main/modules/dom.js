@@ -40,6 +40,7 @@ export const dom = {
   summaryPanel: document.querySelector(".summary-panel"),
   summaryCards: document.getElementById("summaryCards"),
   financialSettingsDetail: document.getElementById("financialSettingsDetail"),
+  accountFlowPortfolioGuide: document.getElementById("accountFlowPortfolioGuide"),
   sankeySvg: document.getElementById("sankeySvg"),
   sankeyWrap: document.getElementById("sankeyWrap"),
   sankeyMeta: document.getElementById("sankeyMeta"),

@@ -17,6 +17,27 @@ export function createRenderOrchestrator() {
     return helpers.getVisibleInputs(state);
   }
 
+  function hasAccountFlowHandoff(inputs) {
+    const handoff = inputs?.accountFlowHandoff;
+    if (!handoff || typeof handoff !== "object") return false;
+    const lists = [
+      handoff.accounts,
+      handoff.incomes,
+      handoff.incomeAllocations,
+      handoff.expenseItems,
+      handoff.savingsItems,
+      handoff.investItems,
+      handoff.itemAccounts,
+      handoff.transfers,
+    ];
+    return lists.some((list) => Array.isArray(list) && list.length > 0);
+  }
+
+  function renderAccountFlowPortfolioGuide(inputs) {
+    if (!dom.accountFlowPortfolioGuide) return;
+    dom.accountFlowPortfolioGuide.hidden = !hasAccountFlowHandoff(inputs);
+  }
+
   function renderAll() {
     const inputs = getVisibleInputs();
     const snapshot = buildMonthlySnapshot(inputs);
@@ -28,7 +49,8 @@ export function createRenderOrchestrator() {
     if (dom.appHeader && typeof dom.appHeader.setFinancialWarning === "function") {
       dom.appHeader.setFinancialWarning("none", "");
     }
-
+	
+    renderAccountFlowPortfolioGuide(inputs);
     renderSankey(snapshot, buildSankeyData, state.sankeySortMode);
 
     listRenderer.renderProjectionTable(projection, inputs.horizonYears, inputs.annualExpenseGrowth);
