@@ -752,6 +752,73 @@ test.describe('Phase 09 account correction and Sankey topology', () => {
     expect(result.monthlyExpense).toBe(900000);
   });
 
+  test('Phase 10.7 D-01/D-02/D-03/D-09 source audit removes normal Step 1 account-flow paths', async ({ page }) => {
+    const audit = await page.evaluate(async () => {
+      const normalPathFiles = [
+        'apps/main/index.html',
+        'apps/main/modules/dom.js',
+        'apps/main/modules/render-orchestrator.js',
+        'apps/main/modules/visualization-controller.js',
+        'apps/main/modules/event-bindings.js',
+        'apps/main/modules/ui-controller.js',
+        'apps/main/styles.css',
+      ];
+      const contents = await Promise.all(normalPathFiles.map(async (file) => ({
+        file,
+        text: await fetch(`/IndividualSavingsFlowUI/${file}`).then((response) => response.text()),
+      })));
+      const forbiddenMarkers = [
+        'renderNetworkMap',
+        'showNetworkBtn',
+        'networkMap',
+        'accountFlowNetworkMap',
+        'sankeyCorrectionRefresh',
+        'sankeyCorrectionStatus',
+        'sankey-correction-control',
+        'surplusTransferAccountSelect',
+        'surplusTransferAccountId',
+        'renderTransferRulesList',
+        'renderTransferSelectOptions',
+        'updateSourceBalanceHint',
+        'addTransferRuleBtn',
+        'transferRuleList',
+        'transferSourceSelect',
+        'transferTargetSelect',
+        '계좌흐름도',
+        '계좌 보정',
+        '잉여현금 자동 이체 계좌',
+        '계좌 간 자금 흐름',
+      ];
+      return {
+        files: contents.map((entry) => entry.file),
+        hits: contents.flatMap((entry) =>
+          forbiddenMarkers
+            .filter((marker) => entry.text.includes(marker))
+            .map((marker) => ({ file: entry.file, marker }))
+        ),
+      };
+    });
+
+    expect(audit.files).toContain('apps/main/modules/render-orchestrator.js');
+    expect(audit.hits).toEqual([]);
+  });
+
+  test('Phase 10.7 D-01/D-02/D-03/D-09 UI renders only simple Sankey controls', async ({ page }) => {
+    await expect(page.locator('#sankeySvg')).toBeVisible();
+    await expect(page.locator('#showSankeyBasicBtn')).toBeVisible();
+    await expect(page.locator('#showSankeyDetailBtn')).toBeVisible();
+    await expect(page.locator('#showNetworkBtn')).toHaveCount(0);
+    await expect(page.locator('#networkMapWrap')).toHaveCount(0);
+    await expect(page.locator('#accountFlowNetworkMap')).toHaveCount(0);
+    await expect(page.locator('#sankeyCorrectionRefresh')).toHaveCount(0);
+    await expect(page.locator('#sankeyCorrectionStatus')).toHaveCount(0);
+    await expect(page.locator('#surplusTransferAccountSelect')).toHaveCount(0);
+    await expect(page.locator('#transferEditorSection')).toHaveCount(0);
+    await expect(page.locator('.sankey-panel')).not.toContainText('계좌흐름도');
+    await expect(page.locator('.sankey-panel')).not.toContainText('계좌 보정');
+    await expect(page.locator('.controls-panel')).not.toContainText('잉여현금 자동 이체');
+  });
+
   test('repairs invalid account links and emits correction metadata', async ({ page }) => {
     const result = await page.evaluate(async () => {
       const { sanitizeInputs } = await import('/IndividualSavingsFlowUI/apps/main/modules/input-sanitizer.js');
