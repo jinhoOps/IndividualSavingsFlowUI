@@ -16,6 +16,7 @@ Resolve the next Step 1 household-flow work from `TODO.md` and open GitHub issue
 | 10.5 | Financial Settings UX Integration Repair | 5/5 | Complete    | 2026-06-24 |
 | 10.6 | Financial Detail Modal Editing UX Repair | 3/3 | Complete   | 2026-06-25 |
 | 10.6.1 | Legacy Editor Removal and Detail Modal Capability Absorption | 3/3 | Complete    | 2026-06-26 |
+| 10.7 | Account Flow Extraction and Portfolio Boundary | Remove account-flow modeling from Step 1 and define its Portfolio/separate-app boundary. | UXR-13, UXR-14, UXR-15, UXR-16 | 4 |
 | 11 | Zero-Input Spending Capture | Parse pasted Korean bank/card text into reviewable spending actuals. | CAP-01, CAP-02, CAP-03, CAP-04 | 4 |
 | 12 | Dual-Flow Household Merge | Combine two shared Step 1 data sources into one household flow preview. | HH-03, HH-04, HH-05 | 4 |
 | 13 | Historical Spending Comparison | Compare current Step 1 expenses against prior DataHub snapshots with a grouped bar chart. | CMP-01, CMP-02, CMP-03, CMP-04, CMP-05 | 5 |
@@ -107,6 +108,21 @@ Plans:
 2. Financial Detail Modal supports the useful capabilities formerly reachable only through the legacy editor, including income account allocation, savings maturity month, and item-level savings yield.
 3. Removed legacy editor modules, DOM, tests, selectors, and copy leave no user-facing traces such as secondary editor language, "main editor", or duplicated pending controls.
 4. Existing sanitizer, persistence, Sankey rendering, share/import, and Phase 10.6 modal row-editing contracts continue to pass targeted regression checks.
+
+### Phase 10.7: Account Flow Extraction and Portfolio Boundary *(INSERTED)*
+
+**Goal:** Remove account-flow modeling from Step 1 so its Sankey returns to the simple `수입 → 지출(소비/저축/투자)` model, while defining whether richer 계좌흐름도 behavior belongs in Portfolio or a separate app/page.
+
+**Requirements:** UXR-13, UXR-14, UXR-15, UXR-16
+
+**Depends on:** Phase 10.6.1
+
+**Success criteria:**
+
+1. Step 1 no longer exposes or depends on account/allocation concepts for its primary financial setup and Sankey generation.
+2. Step 1 Sankey generation uses a simple income-to-consumption/savings/investment flow and avoids automatic account correction side effects in the primary path.
+3. Existing saved account/allocation data is preserved or converted only for Portfolio/계좌흐름도 handoff, while Step 1 stores and renders the simplified model.
+4. The phase documents and tests the boundary for moving richer account-flow management to Portfolio or a separate app/page before Phase 11 resumes.
 
 ### Phase 11: Zero-Input Spending Capture
 
