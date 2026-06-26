@@ -16,7 +16,7 @@ Resolve the next Step 1 household-flow work from `TODO.md` and open GitHub issue
 | 10.5 | Financial Settings UX Integration Repair | 5/5 | Complete    | 2026-06-24 |
 | 10.6 | Financial Detail Modal Editing UX Repair | 3/3 | Complete   | 2026-06-25 |
 | 10.6.1 | Legacy Editor Removal and Detail Modal Capability Absorption | 3/3 | Complete    | 2026-06-26 |
-| 10.7 | Account Flow Extraction and Portfolio Boundary | Remove account-flow modeling from Step 1 and define its Portfolio/separate-app boundary. | UXR-13, UXR-14, UXR-15, UXR-16 | 4 |
+| 10.7 | Account Flow Extraction and Portfolio Boundary | 2/6 | In Progress|  |
 | 11 | Zero-Input Spending Capture | Parse pasted Korean bank/card text into reviewable spending actuals. | CAP-01, CAP-02, CAP-03, CAP-04 | 4 |
 | 12 | Dual-Flow Household Merge | Combine two shared Step 1 data sources into one household flow preview. | HH-03, HH-04, HH-05 | 4 |
 | 13 | Historical Spending Comparison | Compare current Step 1 expenses against prior DataHub snapshots with a grouped bar chart. | CMP-01, CMP-02, CMP-03, CMP-04, CMP-05 | 5 |
@@ -115,7 +115,7 @@ Plans:
 
 **Requirements:** UXR-13, UXR-14, UXR-15, UXR-16
 
-**Plans:** 1/6 plans complete
+**Plans:** 2/6 plans executed
 Plans:
 **Wave 1**
 
@@ -123,7 +123,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 10.7-02-PLAN.md — Sanitizer/storage migration sidecar and import/share compatibility.
+- [x] 10.7-02-PLAN.md — Sanitizer/storage migration sidecar and import/share compatibility.
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -224,7 +224,7 @@ Plans:
 | UXR-08 | Phase 10.6 | Complete |
 | UXR-13 | Phase 10.7 | Complete |
 | UXR-14 | Phase 10.7 | Complete |
-| UXR-15 | Phase 10.7 | Pending |
+| UXR-15 | Phase 10.7 | Complete |
 | UXR-16 | Phase 10.7 | Pending |
 | CAP-01 | Phase 11 | Pending |
 | CAP-02 | Phase 11 | Pending |

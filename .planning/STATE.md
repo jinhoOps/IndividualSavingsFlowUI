@@ -5,16 +5,16 @@ milestone_name: milestone
 current_phase: 10.7
 current_phase_name: Account Flow Extraction and Portfolio Boundary
 status: in_progress
-stopped_at: Completed 10.7-01-PLAN.md
-last_updated: "2026-06-26T05:58:10.000Z"
+stopped_at: Completed 10.7-02-PLAN.md
+last_updated: "2026-06-26T06:12:10.127Z"
 last_activity: 2026-06-26
-last_activity_desc: Phase 10.7 Plan 01 completed; simple Step 1 Sankey core extracted from account-flow topology
+last_activity_desc: Phase 10.7 Plan 02 completed; sanitizer/storage sidecar preserves legacy account-flow data outside primary Step 1
 progress:
   total_phases: 9
   completed_phases: 4
   total_plans: 20
-  completed_plans: 15
-  percent: 50
+  completed_plans: 16
+  percent: 80
 ---
 
 # Project State
@@ -22,9 +22,9 @@ progress:
 ## Current Position
 
 Phase: 10.7 — Account Flow Extraction and Portfolio Boundary
-Plan: 01 complete; 02 next
+Plan: 02 complete; 03 next
 Status: In progress
-Last activity: 2026-06-26 — Phase 10.7 Plan 01 completed; simple Step 1 Sankey core extracted from account-flow topology
+Last activity: 2026-06-26 — Phase 10.7 Plan 02 completed; sanitizer/storage sidecar preserves legacy account-flow data outside primary Step 1
 
 ## Project Reference
 
@@ -69,6 +69,7 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 | Phase 10.6.1 P02 | 13 min | 2 tasks | 9 files |
 | Phase 10.6.1 P03 | 25 minutes | 2 tasks | 8 files |
 | Phase 10.7-account-flow-extraction-and-portfolio-boundary P01 | 38 min | 2 tasks | 3 files |
+| Phase 10.7-account-flow-extraction-and-portfolio-boundary P02 | 8 min | 2 tasks | 3 files |
 
 ## Decisions
 
@@ -110,14 +111,16 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 - [Phase ?]: 10.6.1-03: Build output is verification-only for this phase; generated version/build artifacts are not committed under the source-first policy.
 - [Phase 10.7-01]: Step 1 primary Sankey now ignores legacy account/allocation/correction/transfer fields and renders income through total-income directly to category destinations.
 - [Phase 10.7-01]: Sankey help copy describes simple category flow instead of account network exploration.
+- [Phase 10.7-02]: Legacy account/allocation/transfer data is preserved in `accountFlowHandoff` sidecar while primary Step 1 sanitize/snapshot paths strip account-flow fields.
+- [Phase 10.7-02]: Import/share paths rely on `sanitizeInputs()` for sidecar retention, so persistence-controller changes were unnecessary.
 
 ## Operator Next Steps
 
-- Phase 10.7 Plan 01 is complete.
-- Next recommended step is executing `10.7-02-PLAN.md` for sanitizer/storage migration sidecar and import/share compatibility.
+- Phase 10.7 Plan 02 is complete.
+- Next recommended step is executing `10.7-03-PLAN.md` for Financial Detail Modal account-concept removal while preserving non-account editing.
 
 ## Session
 
-**Last session:** 2026-06-26T05:58:10.000Z
-**Stopped at:** Completed 10.7-01-PLAN.md
+**Last session:** 2026-06-26T06:12:10.116Z
+**Stopped at:** Completed 10.7-02-PLAN.md
 **Resume file:** None
