@@ -115,7 +115,7 @@ Plans:
 
 **Requirements:** UXR-13, UXR-14, UXR-15, UXR-16
 
-**Plans:** 5 plans
+**Plans:** 6 plans
 Plans:
 **Wave 1**
 
@@ -135,7 +135,11 @@ Plans:
 
 **Wave 5** *(blocked on Wave 2 and Wave 4 completion)*
 
-- [ ] 10.7-05-PLAN.md — Portfolio handoff boundary, guidance, destination tests, and ADR.
+- [ ] 10.7-05-PLAN.md — Portfolio sidecar handoff detection, state boundary, and destination tests.
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [ ] 10.7-06-PLAN.md — Step 1 Portfolio guidance, source-boundary tests, and account-flow boundary ADR.
 
 **Depends on:** Phase 10.6.1
 
@@ -254,4 +258,4 @@ Plans:
 
 ## Next
 
-Phase 10.7 context is gathered. Next recommended step is `$gsd-plan-phase 10.7` to plan account-flow extraction before Phase 11 resumes.
+Phase 10.7 is planned. Next recommended step is `$gsd-execute-phase 10.7` to execute account-flow extraction before Phase 11 resumes.
