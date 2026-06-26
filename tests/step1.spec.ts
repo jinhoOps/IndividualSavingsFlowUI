@@ -2687,14 +2687,14 @@ test.describe('Phase 10.6.1 modal capability absorption', () => {
         maturityMonth,
         firstPositiveSavings: firstPositiveSavings?.savings || 0,
         closedSavings: closedRecordIndex >= 0 ? records[closedRecordIndex].savings : null,
-        cashAfterClose: closedRecordIndex >= 0 ? records[closedRecordIndex].cash : 0,
+        netAssetAfterClose: closedRecordIndex >= 0 ? records[closedRecordIndex].netAsset : 0,
         nextSavings: closedRecordIndex >= 0 ? records[closedRecordIndex + 1]?.savings : null,
       };
     });
     expect(projectionProbe.rates).toEqual([6, 3]);
     expect(projectionProbe.firstPositiveSavings).toBeGreaterThan(0);
     expect(projectionProbe.closedSavings).toBe(0);
-    expect(projectionProbe.cashAfterClose).toBeGreaterThan(0);
+    expect(projectionProbe.netAssetAfterClose).toBeGreaterThan(0);
     expect(projectionProbe.nextSavings).toBe(0);
   });
 });

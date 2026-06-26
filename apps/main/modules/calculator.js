@@ -147,19 +147,24 @@ export function buildSavingsBuckets(inputs) {
   const monthlyTargets = savingsItems.map((item) => window.IsfUtils.sanitizeMoney(item?.amount, 0));
   const initialBalances = allocateByWeights(window.IsfUtils.sanitizeMoney(inputs.startSavings, 0), monthlyTargets);
 
-  return savingsItems.map((item, index) => ({
-    id: typeof item?.id === "string" && item.id.trim()
-      ? item.id.trim()
-      : createAllocationItemId("savings", index),
-    accountId: item?.accountId || "",
-    monthlyTarget: monthlyTargets[index] || 0,
-    annualRate: sanitizeSavingsAnnualRate(item?.annualRate, fallbackRate),
-    monthlyFactor: toMonthlyFactor(sanitizeSavingsAnnualRate(item?.annualRate, fallbackRate)),
-    balance: initialBalances[index] || 0,
-    maturityMonth: normalizeMaturityMonth(item?.maturityMonth),
-    maturityMonthIndex: getMaturityMonthIndex(item?.maturityMonth),
-    closed: false,
-  }));
+  return savingsItems.map((item, index) => {
+    const annualRate = Object.prototype.hasOwnProperty.call(item || {}, "annualRate")
+      ? sanitizeSavingsAnnualRate(item?.annualRate, fallbackRate)
+      : fallbackRate;
+    return {
+      id: typeof item?.id === "string" && item.id.trim()
+        ? item.id.trim()
+        : createAllocationItemId("savings", index),
+      accountId: item?.accountId || "",
+      monthlyTarget: monthlyTargets[index] || 0,
+      annualRate,
+      monthlyFactor: toMonthlyFactor(annualRate),
+      balance: initialBalances[index] || 0,
+      maturityMonth: normalizeMaturityMonth(item?.maturityMonth),
+      maturityMonthIndex: getMaturityMonthIndex(item?.maturityMonth),
+      closed: false,
+    };
+  });
 }
 
 export function buildInvestBuckets(inputs) {
