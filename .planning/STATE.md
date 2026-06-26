@@ -6,15 +6,15 @@ current_phase: 10.7
 current_phase_name: Account Flow Extraction and Portfolio Boundary
 status: in_progress
 stopped_at: Completed 10.7-04-PLAN.md
-last_updated: "2026-06-26T07:47:54.565Z"
+last_updated: "2026-06-26T08:27:55.945Z"
 last_activity: 2026-06-26
-last_activity_desc: Phase 10.7 Plan 04 completed; Step 1 primary render and controller paths no longer expose account-flow/network/transfer controls
+last_activity_desc: Phase 10.7 Plan 05 completed; Portfolio now detects Step 1 accountFlowHandoff sidecar data without rehydrating Step 1 primary account fields
 progress:
   total_phases: 9
   completed_phases: 4
   total_plans: 20
-  completed_plans: 18
-  percent: 90
+  completed_plans: 19
+  percent: 95
 ---
 
 # Project State
@@ -22,9 +22,9 @@ progress:
 ## Current Position
 
 Phase: 10.7 — Account Flow Extraction and Portfolio Boundary
-Plan: 04 complete; 05 next
+Plan: 05 complete; 06 next
 Status: In progress
-Last activity: 2026-06-26 — Phase 10.7 Plan 04 completed; Step 1 primary render and controller paths no longer expose account-flow/network/transfer controls
+Last activity: 2026-06-26 — Phase 10.7 Plan 05 completed; Portfolio now detects Step 1 accountFlowHandoff sidecar data without rehydrating Step 1 primary account fields
 
 ## Project Reference
 
@@ -72,6 +72,7 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 | Phase 10.7-account-flow-extraction-and-portfolio-boundary P02 | 8 min | 2 tasks | 3 files |
 | Phase 10.7-account-flow-extraction-and-portfolio-boundary P03 | 36 min | 2 tasks | 5 files |
 | Phase 10.7-account-flow-extraction-and-portfolio-boundary P04 | 8 min | 2 tasks | 9 files |
+| Phase 10.7-account-flow-extraction-and-portfolio-boundary P05 | 31 min | 2 tasks | 7 files |
 
 ## Decisions
 
@@ -120,14 +121,16 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 - [Phase 10.7-03]: The render orchestrator treats primary Step 1 as a simple Sankey/read surface and does not require live accounts for network-map rendering.
 - [Phase 10.7-04]: Step 1 primary visualization now exposes only simple Sankey basic/detail modes; account network and transfer controls are removed from DOM and controller paths.
 - [Phase 10.7-04]: Correction refresh and transfer-rule handlers were deleted from ordinary Step 1 so account sidecar data cannot mutate primary Sankey state.
+- [Phase 10.7-05]: Portfolio consumes `accountFlowHandoff` only as destination-owned status data; visiting Portfolio does not rehydrate Step 1 primary account fields.
+- [Phase 10.7-05]: Portfolio connector falls back from IndexedDB latest snapshot to `isf-step1-active` local data so browser-local handoff detection remains reliable.
 
 ## Operator Next Steps
 
-- Phase 10.7 Plan 04 is complete.
-- Next recommended step is executing `10.7-05-PLAN.md` after Wave 5 dependencies are satisfied.
+- Phase 10.7 Plan 05 is complete.
+- Next recommended step is executing `10.7-06-PLAN.md` after Wave 6 dependencies are satisfied.
 
 ## Session
 
-**Last session:** 2026-06-26T07:47:54.554Z
-**Stopped at:** Completed 10.7-04-PLAN.md
+**Last session:** 2026-06-26T08:26:40Z
+**Stopped at:** Completed 10.7-05-PLAN.md
 **Resume file:** None
