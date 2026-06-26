@@ -5,16 +5,16 @@ milestone_name: milestone
 current_phase: 10.6.1
 current_phase_name: Legacy Editor Removal and Detail Modal Capability Absorption
 status: in_progress
-stopped_at: Completed 10.6.1-02-PLAN.md
-last_updated: "2026-06-26T01:13:58.919Z"
+stopped_at: Completed 10.6.1-03-PLAN.md
+last_updated: "2026-06-26T01:45:53.454Z"
 last_activity: 2026-06-26
 last_activity_desc: Phase 10.6.1 Plan 02 complete
 progress:
   total_phases: 8
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 14
-  completed_plans: 13
-  percent: 93
+  completed_plans: 14
+  percent: 50
 ---
 
 # Project State
@@ -22,7 +22,7 @@ progress:
 ## Current Position
 
 Phase: 10.6.1 — Legacy Editor Removal and Detail Modal Capability Absorption
-Plan: 2 of 03
+Plan: 3 of 03
 Status: Ready to execute
 Last activity: 2026-06-26 — Phase 10.6.1 Plan 02 complete
 
@@ -67,6 +67,7 @@ See: .planning/PROJECT.md (updated 2026-06-22)
 | Phase 10.6-financial-detail-modal-editing-ux-repair P03 | 24min | 2 tasks | 4 files |
 | Phase 10.6.1 P01 | 10 min | 2 tasks | 3 files |
 | Phase 10.6.1 P02 | 13 min | 2 tasks | 9 files |
+| Phase 10.6.1 P03 | 25 minutes | 2 tasks | 8 files |
 
 ## Decisions
 
@@ -104,6 +105,8 @@ See: .planning/PROJECT.md (updated 2026-06-22)
 - [Phase 10.6.1-01]: Income allocation editing now lives inside Financial Detail Modal income row edit state and persists by enabling split income account data when multiple allocations exist.
 - [Phase 10.6.1-01]: Savings row additional settings expose item-level annual yield and maturity month while rows without item yield continue to use the global savings yield fallback.
 - [Phase 10.6.1-02]: Financial Detail Modal remains the only ordinary Step 1 editor; the auxiliary item-editor controller, hidden legacy panels, global pending bar, and mobile editor FAB were removed. — ADR 0001 and UXR-09 require no second primary financial editor path after Plan 01 absorbed useful capabilities.
+- [Phase ?]: 10.6.1-03: List renderer and state helpers were reduced to display-only support now that ordinary editing is modal-only.
+- [Phase ?]: 10.6.1-03: Build output is verification-only for this phase; generated version/build artifacts are not committed under the source-first policy.
 
 ## Operator Next Steps
 
@@ -112,6 +115,6 @@ See: .planning/PROJECT.md (updated 2026-06-22)
 
 ## Session
 
-**Last session:** 2026-06-26T01:13:33.452Z
-**Stopped at:** Completed 10.6.1-02-PLAN.md
+**Last session:** 2026-06-26T01:45:53.444Z
+**Stopped at:** Completed 10.6.1-03-PLAN.md
 **Resume file:** None
