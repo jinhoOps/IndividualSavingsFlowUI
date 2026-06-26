@@ -291,33 +291,45 @@ test.describe('Individual Savings Flow Main UI/UX Audit', () => {
     await expect(modal.locator('.financial-group-section').first()).toContainText('투자');
   });
 
-  test('Phase 07 controller modules expose focused interfaces', async ({ page }) => {
+  test('Phase 10.6.1 legacy editor removal keeps controller modules modal-only', async ({ page }) => {
     const contracts = await page.evaluate(async () => {
       const [
         eventBindings,
         persistenceController,
         renderOrchestrator,
         visualizationController,
-        itemEditorController,
       ] = await Promise.all([
         import('/IndividualSavingsFlowUI/apps/main/modules/event-bindings.js'),
         import('/IndividualSavingsFlowUI/apps/main/modules/persistence-controller.js'),
         import('/IndividualSavingsFlowUI/apps/main/modules/render-orchestrator.js'),
         import('/IndividualSavingsFlowUI/apps/main/modules/visualization-controller.js'),
-        import('/IndividualSavingsFlowUI/apps/main/modules/item-editor-controller.js'),
       ]);
 
-      const source = await fetch('/IndividualSavingsFlowUI/apps/main/modules/bootstrap-controller.js').then((response) => response.text());
+      const [
+        bootstrapSource,
+        eventSource,
+        domSource,
+        uiSource,
+        itemEditorResponse,
+      ] = await Promise.all([
+        fetch('/IndividualSavingsFlowUI/apps/main/modules/bootstrap-controller.js').then((response) => response.text()),
+        fetch('/IndividualSavingsFlowUI/apps/main/modules/event-bindings.js').then((response) => response.text()),
+        fetch('/IndividualSavingsFlowUI/apps/main/modules/dom.js').then((response) => response.text()),
+        fetch('/IndividualSavingsFlowUI/apps/main/modules/ui-controller.js').then((response) => response.text()),
+        fetch('/IndividualSavingsFlowUI/apps/main/modules/item-editor-controller.js'),
+      ]);
+      const source = [bootstrapSource, eventSource, domSource, uiSource].join('\n');
       return {
         exports: {
           bindStep1Events: typeof eventBindings.bindStep1Events,
           createPersistenceController: typeof persistenceController.createPersistenceController,
           createRenderOrchestrator: typeof renderOrchestrator.createRenderOrchestrator,
           createVisualizationController: typeof visualizationController.createVisualizationController,
-          createItemEditorController: typeof itemEditorController.createItemEditorController,
         },
-        bootstrapLineCount: source.split(/\r?\n/).length,
+        itemEditorSourceExists: itemEditorResponse.ok,
+        bootstrapLineCount: bootstrapSource.split(/\r?\n/).length,
         blockedBodies: /function (bindControls|bindVisualizationAndTooltipEvents|renderAll|commitImmediateInputs|handleHashChange|applyItemEditor)\b/.test(source),
+        legacyMarkers: /createItemEditorController|item-editor-controller|commands\.itemEditor|syncMobileItemEditorFab|syncPendingBar|mobileEditorFab|pendingBar/.test(source),
       };
     });
 
@@ -326,10 +338,30 @@ test.describe('Individual Savings Flow Main UI/UX Audit', () => {
       createPersistenceController: 'function',
       createRenderOrchestrator: 'function',
       createVisualizationController: 'function',
-      createItemEditorController: 'function',
     });
+    expect(contracts.itemEditorSourceExists).toBe(false);
     expect(contracts.bootstrapLineCount).toBeLessThanOrEqual(350);
     expect(contracts.blockedBodies).toBe(false);
+    expect(contracts.legacyMarkers).toBe(false);
+    await expect(page.locator('[data-legacy-flow-editor]')).toHaveCount(0);
+    await expect(page.locator('#pendingBar')).toHaveCount(0);
+    await expect(page.locator('#mobileEditorFab')).toHaveCount(0);
+    await expect(page.locator('#editIncomeItems, #editExpenseItems, #editSavingsItems, #editInvestItems, #editAccountItems')).toHaveCount(0);
+
+    await page.locator('[data-financial-settings-detail]').click();
+    const modal = page.locator('#financialModal');
+    await expect(modal).toBeVisible();
+    await modal.getByRole('tab', { name: '월 수입', exact: true }).click();
+    await modal.locator('[data-modal-row-category="income"]').first().click();
+    const editingIncome = modal.locator('.financial-modal-row--editing[data-modal-row-category="income"]').first();
+    await expect(editingIncome).toBeVisible();
+    await editingIncome.locator('[data-financial-modal-field="amount"]').fill('3320000');
+    await expect(modal.locator('#financialModalPendingBar')).toBeVisible();
+    await modal.locator('#financialModalSave').click();
+    await expect(modal).toBeVisible();
+    await expect(modal.locator('#financialModalPendingBar')).toBeHidden();
+    const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}'));
+    expect(saved.incomes?.[0]?.amount).toBe(3320000);
   });
 
   test('Phase 07 group datalist options are DOM-built and safe for imported values', async ({ page }) => {
