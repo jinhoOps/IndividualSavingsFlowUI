@@ -20,6 +20,13 @@
 - [x] **BUD-03**: User can see budget progress, remaining amount, and overspend state for each tracked variable expense.
 - [x] **BUD-04**: User can see an end-of-month spending projection from current actual spending pace.
 
+### Financial Detail Modal Primary Editing
+
+- [ ] **UXR-09**: User completes ordinary Step 1 income, expense, investment, savings, and account edits in the Financial Detail Modal without a second primary financial editor path.
+- [ ] **UXR-10**: User can edit income account allocation inside the Financial Detail Modal row edit state without using separate transfer-rule or legacy item-editor UI.
+- [ ] **UXR-11**: User can edit savings maturity month inside the Financial Detail Modal row edit state, and matured savings stop receiving new monthly contributions while retained balances remain in projections.
+- [ ] **UXR-12**: User can edit item-level savings yield inside the Financial Detail Modal row edit state without replacing the global default yield behavior for other items.
+
 ### Zero-Input Capture
 
 - [ ] **CAP-01**: User can paste Korean bank or card notification text into a Step 1.2 capture input.
@@ -83,6 +90,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | BUD-02 | Phase 10 | Complete |
 | BUD-03 | Phase 10 | Complete |
 | BUD-04 | Phase 10 | Complete |
+| UXR-09 | Phase 10.6.1 | Pending |
+| UXR-10 | Phase 10.6.1 | Pending |
+| UXR-11 | Phase 10.6.1 | Pending |
+| UXR-12 | Phase 10.6.1 | Pending |
 | CAP-01 | Phase 11 | Pending |
 | CAP-02 | Phase 11 | Pending |
 | CAP-03 | Phase 11 | Pending |
@@ -100,10 +111,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 **Coverage:**
 
-- v1.9 requirements: 23 total
-- Mapped to phases: 23
+- v1.9 requirements: 27 total
+- Mapped to phases: 27
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-06-19*
-*Last updated: 2026-06-19 after v1.9 requirement definition*
+*Last updated: 2026-06-26 after Phase 10.6.1 primary-editor requirement insertion*
