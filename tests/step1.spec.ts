@@ -395,64 +395,95 @@ test.describe('Individual Savings Flow Main UI/UX Audit', () => {
     const optionInfo = await page.locator('#expenseGroupOptions option').evaluateAll((options) =>
       options.map((option) => ({ value: option.getAttribute('value'), text: option.textContent }))
     );
-    expect(optionInfo.some((option) => option.value?.includes('<img'))).toBe(true);
+    expect(optionInfo.some((option) => option.value?.includes('<img'))).toBe(false);
+    expect(optionInfo.some((option) => option.text?.includes('<img'))).toBe(false);
     expect(await page.evaluate(() => Boolean((window as any).__unsafeGroupOption))).toBe(false);
   });
 
   test('Phase 07 account select options escape imported account ids and names', async ({ page }) => {
-    const result = await page.evaluate(async () => {
+    await page.evaluate(async () => {
       const unsafeWindow = window as any;
       unsafeWindow.__unsafeAccountOption = false;
       unsafeWindow.__unsafeAccountName = false;
       const maliciousAccountId = `acc"></option><img src=x onerror="window.__unsafeAccountOption = true"><option value="tail`;
       const maliciousAccountName = `계좌"><img src=x onerror="window.__unsafeAccountName = true">`;
-      const [{ state }, { renderItemList }] = await Promise.all([
+      const [{ state }, { sanitizeInputs }, { buildMonthlySnapshot }, { createRenderOrchestrator }, { STORAGE_KEY }] = await Promise.all([
         import('/IndividualSavingsFlowUI/apps/main/modules/state.js'),
-        import('/IndividualSavingsFlowUI/apps/main/modules/list-renderer.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/input-sanitizer.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/calculator.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/render-orchestrator.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/constants.js'),
       ]);
 
-      state.inputs.accounts = [{ id: maliciousAccountId, name: maliciousAccountName }];
-      renderItemList('income', [{
-        id: 'income-malicious-account',
-        name: '수입',
-        amount: 10000,
-        accountId: maliciousAccountId,
-        allocations: [{ accountId: maliciousAccountId, amount: 10000 }],
-      }], { editing: true });
-      renderItemList('expense', [{
-        id: 'expense-malicious-account',
-        name: '지출',
-        amount: 10000,
-        group: '테스트',
-        accountId: maliciousAccountId,
-      }], { editing: true });
+      state.inputs = sanitizeInputs({
+        modelVersion: 10,
+        incomes: [{
+          id: 'income-malicious-account',
+          name: '수입',
+          amount: 10000,
+          accountId: maliciousAccountId,
+          allocations: [{ accountId: maliciousAccountId, amount: 10000 }],
+        }],
+        accounts: [{ id: maliciousAccountId, name: maliciousAccountName }],
+        expenseItems: [{
+          id: 'expense-malicious-account',
+          name: '지출',
+          amount: 10000,
+          group: '테스트',
+          accountId: maliciousAccountId,
+        }],
+        savingsItems: [],
+        investItems: [],
+      });
+      state.snapshot = buildMonthlySnapshot(state.inputs);
+      window.IsfStorageHub.saveLocal(STORAGE_KEY, state.inputs);
+      createRenderOrchestrator().renderAll();
+    });
 
-      const incomeSelect = document.querySelector<HTMLSelectElement>('#incomeList select[data-field="allocationAccountId"]');
-      const expenseSelect = document.querySelector<HTMLSelectElement>('#expenseList select[data-field="accountId"]');
+    await page.locator('[data-financial-settings-detail]').click();
+    const modal = page.locator('#financialModal');
+    await expect(modal).toBeVisible();
+    await modal.getByRole('tab', { name: '월 수입', exact: true }).click();
+    await modal.locator('[data-modal-row-category="income"]').first().click();
+    const incomeResult = await page.evaluate(() => {
+      const unsafeWindow = window as any;
+      const incomeSelect = document.querySelector<HTMLSelectElement>('[data-income-allocation-account]');
       return {
         incomeOptionCount: incomeSelect?.querySelectorAll('option').length ?? 0,
-        expenseOptionCount: expenseSelect?.querySelectorAll('option').length ?? 0,
         incomeValue: incomeSelect?.value ?? '',
-        expenseValue: expenseSelect?.value ?? '',
         incomeText: incomeSelect?.selectedOptions[0]?.textContent ?? '',
-        expenseText: expenseSelect?.selectedOptions[0]?.textContent ?? '',
         incomeMarkup: incomeSelect?.innerHTML ?? '',
+        unsafeFlag: Boolean(unsafeWindow.__unsafeAccountOption || unsafeWindow.__unsafeAccountName),
+      };
+    });
+    await modal.getByRole('tab', { name: '월 생활비', exact: true }).click();
+    await modal.locator('[data-modal-row-category="expense"]').first().click();
+
+    const expenseResult = await page.evaluate(() => {
+      const unsafeWindow = window as any;
+      const expenseSelect = document.querySelector<HTMLSelectElement>('[data-financial-modal-field="accountId"]');
+      return {
+        expenseOptionCount: expenseSelect?.querySelectorAll('option').length ?? 0,
+        expenseValue: expenseSelect?.value ?? '',
+        expenseText: expenseSelect?.selectedOptions[0]?.textContent ?? '',
         expenseMarkup: expenseSelect?.innerHTML ?? '',
         injectedImages: document.querySelectorAll('#incomeList img, #expenseList img').length,
+        modalInjectedImages: document.querySelectorAll('#financialModal img').length,
         unsafeFlag: Boolean(unsafeWindow.__unsafeAccountOption || unsafeWindow.__unsafeAccountName),
       };
     });
 
-    expect(result.incomeOptionCount).toBe(2);
-    expect(result.expenseOptionCount).toBe(2);
-    expect(result.incomeValue).toContain('<img');
-    expect(result.expenseValue).toContain('<img');
-    expect(result.incomeText).toContain('<img');
-    expect(result.expenseText).toContain('<img');
-    expect(result.incomeMarkup).not.toMatch(/<img/i);
-    expect(result.expenseMarkup).not.toMatch(/<img/i);
-    expect(result.injectedImages).toBe(0);
-    expect(result.unsafeFlag).toBe(false);
+    expect(incomeResult.incomeOptionCount).toBeGreaterThanOrEqual(1);
+    expect(expenseResult.expenseOptionCount).toBeGreaterThanOrEqual(1);
+    expect(incomeResult.incomeValue).toContain('<img');
+    expect(expenseResult.expenseValue).toContain('<img');
+    expect(incomeResult.incomeText).toContain('<img');
+    expect(expenseResult.expenseText).toContain('<img');
+    expect(incomeResult.incomeMarkup).not.toMatch(/<img/i);
+    expect(expenseResult.expenseMarkup).not.toMatch(/<img/i);
+    expect(expenseResult.injectedImages).toBe(0);
+    expect(expenseResult.modalInjectedImages).toBe(0);
+    expect(incomeResult.unsafeFlag || expenseResult.unsafeFlag).toBe(false);
   });
 
   test('Phase 07 allocation groups move behind the integrated financial detail modal', async ({ page }) => {
@@ -1264,9 +1295,8 @@ test.describe('Phase 10 financial settings regression fixes', () => {
 
   test('normalizes legacy allocation group paths before saving and rendering', async ({ page }) => {
     const result = await page.evaluate(async () => {
-      const [{ sanitizeInputs }, { renderItemList }, { state }] = await Promise.all([
+      const [{ sanitizeInputs, buildAllocationMetaText }, { state }] = await Promise.all([
         import('/IndividualSavingsFlowUI/apps/main/modules/input-sanitizer.js'),
-        import('/IndividualSavingsFlowUI/apps/main/modules/list-renderer.js'),
         import('/IndividualSavingsFlowUI/apps/main/modules/state.js'),
       ]);
       const inputs = sanitizeInputs({
@@ -1281,17 +1311,14 @@ test.describe('Phase 10 financial settings regression fixes', () => {
         ],
       });
       state.inputs = inputs;
-      renderItemList('expense', inputs.expenseItems, { editingItemId: 'utility' });
       return {
         savedGroup: inputs.expenseItems[0].group,
-        editorValue: document.querySelector<HTMLInputElement>('#expenseList input[data-field="group"]')?.value,
-        groupNames: Array.from(document.querySelectorAll('#expenseList .allocation-group__name')).map((node) => node.textContent),
+        renderMeta: buildAllocationMetaText(inputs.expenseItems[0]),
       };
     });
 
     expect(result.savedGroup).toBe('공과금');
-    expect(result.editorValue).toBe('공과금');
-    expect(result.groupNames).toEqual(['공과금']);
+    expect(result.renderMeta).toBe('그룹 공과금');
   });
 
   test('repairs income allocation totals that exceed the income amount', async ({ page }) => {

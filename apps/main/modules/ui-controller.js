@@ -103,7 +103,6 @@ export function refreshInputsPanel(inputs, warnings) {
   ["income", "account", "expense", "savings", "invest"].forEach(group => {
     const rawItems = group === "income" ? rawInputs.incomes : (group === "account" ? rawInputs.accounts : rawInputs[`${group}Items`]);
     listRenderer.renderItemList(group, rawItems, { 
-      editing: state.itemEditors[group].active,
       warnings: group === "account" ? warnings : undefined
     });
   });
