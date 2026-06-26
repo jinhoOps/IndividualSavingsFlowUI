@@ -139,7 +139,7 @@ export function renderSankey(snapshot, buildSankeyData, sortMode) {
     dom.sankeyMeta.textContent = metaInfo;
   }
   if (dom.sankeyMetaTooltipTrigger) {
-    dom.sankeyMetaTooltipTrigger.setAttribute("data-tooltip", `${metaInfo}\n\n[도움말]\n수입에서 계좌를 거쳐 최종 소비처로 흘러가는 가계 흐름(Sankey) 및 계좌 간의 다대다(N:N) 이체 관계망(Network)을 번갈아 탐색할 수 있습니다.`);
+    dom.sankeyMetaTooltipTrigger.setAttribute("data-tooltip", `${metaInfo}\n\n[도움말]\n수입이 총수입으로 모이고 생활비, 저축, 투자 같은 최종 카테고리로 나뉘는 단순 가계 흐름(Sankey)을 탐색할 수 있습니다.`);
   }
 
   const columns = [...new Set(data.nodes.map((node) => node.column))].sort((a, b) => a - b);

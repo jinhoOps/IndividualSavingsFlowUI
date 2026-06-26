@@ -584,7 +584,7 @@ test.describe('Phase 09 account correction and Sankey topology', () => {
     expect(result.labels).toEqual(expect.arrayContaining(['총수입', '고정비(고정지출)', '저축', '투자']));
     expect(result.labels).not.toEqual(expect.arrayContaining(['급여계좌', '생활비계좌', '저축계좌', '투자계좌']));
     expect(result.links).toEqual(expect.arrayContaining([
-      expect.objectContaining({ source: 'income-main', target: 'total-income' }),
+      expect.objectContaining({ source: 'income-income-main', target: 'total-income' }),
       expect.objectContaining({ source: 'total-income', target: 'total-expense' }),
       expect.objectContaining({ source: 'total-income', target: 'total-savings' }),
       expect.objectContaining({ source: 'total-income', target: 'total-invest' }),
