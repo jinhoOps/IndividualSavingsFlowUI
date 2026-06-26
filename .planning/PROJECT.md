@@ -10,10 +10,10 @@
 
 ## Current State
 
-**Shipped:** v1.9 Phase 10.6.1 Legacy Editor Removal and Detail Modal Capability Absorption (2026-06-26)
+**Shipped:** v1.9 Phase 10.7 Account Flow Extraction and Portfolio Boundary (2026-06-26)
 **Tech Stack:** Modern Hybrid (Vite/TS/Tailwind), React 19 (Partial), PWA, IndexedDB
 **Codebase:** Mobile-first multi-step web app with shared components, Step-specific ES modules, Playwright regression coverage, and IndexedDB/LocalStorage persistence paths
-**Key Features:** 프리셋 기반 자산 흐름 시각화 + 데이터 허브(백업/복원/공유) + 포트폴리오 생성/저장 + Step 2 전략 비교 시뮬레이션 + Step 1 통합 재무설정 상세 플로우 + 모달 전용 재무 편집 + 수입 계좌 배분 + 저축 만기월/항목별 수익률 + 변동비 실제 관리 + 자동 저축/초과 조정 + Sankey 계좌 보정
+**Key Features:** 프리셋 기반 자산 흐름 시각화 + 데이터 허브(백업/복원/공유) + 포트폴리오 생성/저장 + Step 2 전략 비교 시뮬레이션 + Step 1 통합 재무설정 상세 플로우 + 모달 전용 재무 편집 + 단순 수입->소비/저축/투자 Sankey + Portfolio account-flow handoff + 저축 만기월/항목별 수익률 + 변동비 실제 관리 + 자동 저축/초과 조정
 
 ---
 
@@ -56,6 +56,7 @@
 - ✓ UXR-01~UXR-04: Step 1 financial settings integrated detail flow, couple UI removal, variable expense row editing, automatic savings adjustment, and strict UI review — Phase 10.5
 - ✓ UXR-05~UXR-08: Step 1 Financial Detail Modal compact row editing, modal-local pending bar, inline add/delete, validation, mobile rail, and sanitizer/persistence/Sankey preservation — Phase 10.6
 - ✓ UXR-09~UXR-12: Financial Detail Modal as the only primary editor, income account allocation, savings maturity month, and item-level savings yield absorption — Phase 10.6.1
+- ✓ UXR-13~UXR-16: Step 1 account-flow concept extraction, simple primary Sankey, legacy account-flow sidecar preservation, and Portfolio destination boundary — Phase 10.7
 
 ### Active
 
