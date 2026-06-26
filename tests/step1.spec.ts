@@ -515,6 +515,87 @@ test.describe('Phase 09 account correction and Sankey topology', () => {
     await page.waitForSelector('main');
   });
 
+  test('Phase 10.7 simple Sankey ignores legacy account flow fields', async ({ page }) => {
+    const result = await page.evaluate(async () => {
+      const [{ sanitizeInputs }, { buildMonthlySnapshot }, { buildSankeyData }] = await Promise.all([
+        import('/IndividualSavingsFlowUI/apps/main/modules/input-sanitizer.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/calculator.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/sankey-builder.js'),
+      ]);
+
+      const inputs = sanitizeInputs({
+        modelVersion: 10,
+        splitIncomeAccounts: true,
+        incomes: [{
+          id: 'income-main',
+          name: '급여',
+          amount: 4200000,
+          accountId: 'acc-salary',
+          allocations: [
+            { accountId: 'acc-salary', amount: 2800000 },
+            { accountId: 'acc-living', amount: 1400000 },
+          ],
+        }],
+        accounts: [
+          { id: 'acc-salary', name: '급여계좌' },
+          { id: 'acc-living', name: '생활비계좌' },
+          { id: 'acc-saving', name: '저축계좌' },
+          { id: 'acc-stock', name: '투자계좌' },
+        ],
+        expenseItems: [
+          { id: 'rent', name: '월세', amount: 900000, group: '고정비', accountId: 'acc-living' },
+          { id: 'food', name: '식비', amount: 500000, group: '생활비', accountId: 'acc-living' },
+        ],
+        savingsItems: [{ id: 'saving-main', name: '적금', amount: 600000, group: '저축', accountId: 'acc-saving' }],
+        investItems: [{ id: 'invest-main', name: 'ETF', amount: 700000, group: '투자', accountId: 'acc-stock' }],
+        transfers: [{ id: 'legacy-transfer', fromAccountId: 'acc-salary', toAccountId: 'acc-stock', amount: 100000 }],
+        accountCorrections: [{ itemType: 'expense', message: 'legacy correction marker' }],
+        surplusTransferAccountId: 'acc-stock',
+        monthlyDebtPayment: 0,
+        startCash: 0,
+        startSavings: 0,
+        startInvest: 0,
+        startDebt: 0,
+        annualIncomeGrowth: 0,
+        annualExpenseGrowth: 0,
+        annualSavingsYield: 3,
+        annualInvestReturn: 7,
+        annualDebtInterest: 0,
+        horizonYears: 5,
+      });
+
+      const sankey = buildSankeyData(
+        buildMonthlySnapshot(inputs),
+        'group',
+        { expense: 'total', savings: 'total', invest: 'total' }
+      );
+      return {
+        labels: sankey?.nodes.map((node: { label: string }) => node.label) || [],
+        links: sankey?.links.map((link: { source: string; target: string; value: number }) => ({
+          source: link.source,
+          target: link.target,
+          value: link.value,
+        })) || [],
+        transferLabels: sankey?.transfers.map((transfer: { label: string }) => transfer.label) || [],
+        topLevelTargetIds: sankey?.topLevelTargetIds || [],
+      };
+    });
+
+    expect(result.labels).toEqual(expect.arrayContaining(['총수입', '고정비(고정지출)', '저축', '투자']));
+    expect(result.labels).not.toEqual(expect.arrayContaining(['급여계좌', '생활비계좌', '저축계좌', '투자계좌']));
+    expect(result.links).toEqual(expect.arrayContaining([
+      expect.objectContaining({ source: 'income-main', target: 'total-income' }),
+      expect.objectContaining({ source: 'total-income', target: 'total-expense' }),
+      expect.objectContaining({ source: 'total-income', target: 'total-savings' }),
+      expect.objectContaining({ source: 'total-income', target: 'total-invest' }),
+    ]));
+    expect(result.links.some((link: { source: string; target: string }) =>
+      link.source.startsWith('acc-') || link.target.startsWith('acc-')
+    )).toBe(false);
+    expect(result.transferLabels).not.toContain('자동 잔액 맞춤');
+    expect(result.topLevelTargetIds).toEqual(expect.arrayContaining(['total-expense', 'total-savings', 'total-invest']));
+  });
+
   test('repairs invalid account links and emits correction metadata', async ({ page }) => {
     const result = await page.evaluate(async () => {
       const { sanitizeInputs } = await import('/IndividualSavingsFlowUI/apps/main/modules/input-sanitizer.js');
