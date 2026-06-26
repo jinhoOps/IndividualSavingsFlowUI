@@ -15,7 +15,7 @@ Resolve the next Step 1 household-flow work from `TODO.md` and open GitHub issue
 | 10 | Step 1.2 Household Budget Foundation | Add the Step 1.2 surface and adaptive budget model without breaking existing Step 1 setup. | HH-01, HH-02, BUD-01, BUD-02, BUD-03, BUD-04 | 5 |
 | 10.5 | Financial Settings UX Integration Repair | 5/5 | Complete    | 2026-06-24 |
 | 10.6 | Financial Detail Modal Editing UX Repair | 3/3 | Complete   | 2026-06-25 |
-| 10.6.1 | Legacy Editor Removal and Detail Modal Capability Absorption | Remove the auxiliary legacy financial editor path and absorb useful capabilities into the Financial Detail Modal. | UXR-09, UXR-10, UXR-11, UXR-12 | 1/3 In Progress |
+| 10.6.1 | Legacy Editor Removal and Detail Modal Capability Absorption | 2/3 | In Progress|  |
 | 11 | Zero-Input Spending Capture | Parse pasted Korean bank/card text into reviewable spending actuals. | CAP-01, CAP-02, CAP-03, CAP-04 | 4 |
 | 12 | Dual-Flow Household Merge | Combine two shared Step 1 data sources into one household flow preview. | HH-03, HH-04, HH-05 | 4 |
 | 13 | Historical Spending Comparison | Compare current Step 1 expenses against prior DataHub snapshots with a grouped bar chart. | CMP-01, CMP-02, CMP-03, CMP-04, CMP-05 | 5 |
@@ -85,7 +85,7 @@ Plans:
 
 **Requirements:** UXR-09, UXR-10, UXR-11, UXR-12
 
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 Plans:
 **Wave 1**
 
@@ -93,7 +93,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 10.6.1-02-PLAN.md — Delete the auxiliary item editor module and remove normal-path legacy DOM/controller wiring.
+- [x] 10.6.1-02-PLAN.md — Delete the auxiliary item editor module and remove normal-path legacy DOM/controller wiring.
 
 **Wave 3** *(blocked on Wave 2 completion)*
 

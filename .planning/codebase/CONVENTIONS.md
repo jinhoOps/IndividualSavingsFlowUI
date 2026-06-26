@@ -64,7 +64,7 @@
 - For optional browser APIs and storage bridges, catch errors and degrade gracefully: IndexedDB failures activate LocalStorage fallback in `apps/simulation/modules/storage-fallback.js`.
 - User-facing recoverable errors should update UI feedback with `window.IsfFeedback.showFeedback`, as in `apps/simulation/modules/ui-controller.js` and `apps/main/modules/persistence-controller.js`.
 - Critical initialization failures are logged with `console.error` in app entry points such as `apps/simulation/app.js`.
-- Validation failures in legacy/direct UI flows use `window.alert` or `alert`, visible in `apps/main/modules/item-editor-controller.js`, `apps/main/modules/financial-modal-controller.js`, and `apps/portfolio/app.js`.
+- Validation failures in direct UI flows use `window.alert` or `alert`, visible in `apps/main/modules/financial-modal-controller.js` and `apps/portfolio/app.js`.
 - Throw explicit machine-readable errors only for invalid internal states or contracts: `INVALID_STEP2_ENTRY` in `apps/simulation/modules/storage-fallback.js`, `DB_NOT_INITIALIZED` in `src/core/storage/IsfStore.ts`.
 
 ## Logging

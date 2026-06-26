@@ -22,7 +22,7 @@
 
 ### Financial Detail Modal Primary Editing
 
-- [ ] **UXR-09**: User completes ordinary Step 1 income, expense, investment, savings, and account edits in the Financial Detail Modal without a second primary financial editor path.
+- [x] **UXR-09**: User completes ordinary Step 1 income, expense, investment, savings, and account edits in the Financial Detail Modal without a second primary financial editor path.
 - [x] **UXR-10**: User can edit income account allocation inside the Financial Detail Modal row edit state without using separate transfer-rule or legacy item-editor UI.
 - [x] **UXR-11**: User can edit savings maturity month inside the Financial Detail Modal row edit state, and matured savings stop receiving new monthly contributions while retained balances remain in projections.
 - [x] **UXR-12**: User can edit item-level savings yield inside the Financial Detail Modal row edit state without replacing the global default yield behavior for other items.
@@ -90,7 +90,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | BUD-02 | Phase 10 | Complete |
 | BUD-03 | Phase 10 | Complete |
 | BUD-04 | Phase 10 | Complete |
-| UXR-09 | Phase 10.6.1 | Pending |
+| UXR-09 | Phase 10.6.1 | Complete |
 | UXR-10 | Phase 10.6.1 | Complete |
 | UXR-11 | Phase 10.6.1 | Complete |
 | UXR-12 | Phase 10.6.1 | Complete |

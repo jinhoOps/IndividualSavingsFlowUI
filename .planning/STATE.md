@@ -5,16 +5,16 @@ milestone_name: milestone
 current_phase: 10.6.1
 current_phase_name: Legacy Editor Removal and Detail Modal Capability Absorption
 status: in_progress
-stopped_at: Completed 10.6.1-01-PLAN.md
-last_updated: "2026-06-26T00:55:19.021Z"
+stopped_at: Completed 10.6.1-02-PLAN.md
+last_updated: "2026-06-26T01:13:58.919Z"
 last_activity: 2026-06-26
-last_activity_desc: Phase 10.6.1 Plan 01 complete
+last_activity_desc: Phase 10.6.1 Plan 02 complete
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 14
-  completed_plans: 12
-  percent: 86
+  completed_plans: 13
+  percent: 93
 ---
 
 # Project State
@@ -22,9 +22,9 @@ progress:
 ## Current Position
 
 Phase: 10.6.1 — Legacy Editor Removal and Detail Modal Capability Absorption
-Plan: 1 of 03
-Status: In Progress
-Last activity: 2026-06-26 — Phase 10.6.1 Plan 01 complete
+Plan: 2 of 03
+Status: Ready to execute
+Last activity: 2026-06-26 — Phase 10.6.1 Plan 02 complete
 
 ## Project Reference
 
@@ -66,6 +66,7 @@ See: .planning/PROJECT.md (updated 2026-06-22)
 | Phase 10.6-financial-detail-modal-editing-ux-repair P02 | 52 min | 2 tasks | 4 files |
 | Phase 10.6-financial-detail-modal-editing-ux-repair P03 | 24min | 2 tasks | 4 files |
 | Phase 10.6.1 P01 | 10 min | 2 tasks | 3 files |
+| Phase 10.6.1 P02 | 13 min | 2 tasks | 9 files |
 
 ## Decisions
 
@@ -102,14 +103,15 @@ See: .planning/PROJECT.md (updated 2026-06-22)
 - [Phase 10.6-03]: Legacy modal regression tests now assert Phase 09/10.5 contracts through row-click, inline-add, and in-place apply/cancel semantics.
 - [Phase 10.6.1-01]: Income allocation editing now lives inside Financial Detail Modal income row edit state and persists by enabling split income account data when multiple allocations exist.
 - [Phase 10.6.1-01]: Savings row additional settings expose item-level annual yield and maturity month while rows without item yield continue to use the global savings yield fallback.
+- [Phase 10.6.1-02]: Financial Detail Modal remains the only ordinary Step 1 editor; the auxiliary item-editor controller, hidden legacy panels, global pending bar, and mobile editor FAB were removed. — ADR 0001 and UXR-09 require no second primary financial editor path after Plan 01 absorbed useful capabilities.
 
 ## Operator Next Steps
 
-- Phase 10.6.1 Plan 01 is complete.
-- Next plan candidate is 10.6.1-02 legacy auxiliary editor removal.
+- Phase 10.6.1 Plan 02 is complete.
+- Next plan candidate is 10.6.1-03 stale renderer/state/style trace cleanup and source-first build verification.
 
 ## Session
 
-**Last session:** 2026-06-26T00:55:00.005Z
-**Stopped at:** Completed 10.6.1-01-PLAN.md
+**Last session:** 2026-06-26T01:13:33.452Z
+**Stopped at:** Completed 10.6.1-02-PLAN.md
 **Resume file:** None
