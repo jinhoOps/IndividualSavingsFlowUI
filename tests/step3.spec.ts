@@ -69,6 +69,7 @@ async function seedStep1LocalSnapshot(page, snapshot) {
   }, snapshot);
 }
 
+// ADR 0002 keeps account-flow sidecar consumption destination-owned by Portfolio.
 test.describe('Step 3 Phase 10.7 Portfolio account-flow handoff boundary', () => {
   test('detects Step 1 accountFlowHandoff sidecar without rehydrating Step 1 primary account fields', async ({ page }) => {
     await seedStep1LocalSnapshot(page, STEP1_WITH_ACCOUNT_FLOW_HANDOFF);

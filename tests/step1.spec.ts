@@ -826,6 +826,7 @@ test.describe('Phase 09 account correction and Sankey topology', () => {
     await expect(page.locator('.controls-panel')).not.toContainText('잉여현금 자동 이체');
   });
 
+  // ADR 0002: Step 1 may guide to Portfolio, but it must not become the account-flow editor again.
   test('Phase 10.7 Portfolio guidance appears as navigation when account-flow handoff exists', async ({ page }) => {
     await page.evaluate(async () => {
       const [
