@@ -5,16 +5,16 @@ milestone_name: milestone
 current_phase: 10.7
 current_phase_name: Account Flow Extraction and Portfolio Boundary
 status: in_progress
-stopped_at: Completed 10.7-03-PLAN.md
-last_updated: "2026-06-26T06:35:39.604Z"
+stopped_at: Completed 10.7-04-PLAN.md
+last_updated: "2026-06-26T07:47:54.565Z"
 last_activity: 2026-06-26
-last_activity_desc: Phase 10.7 Plan 03 completed; Financial Detail Modal and Step 1 read surfaces no longer expose ordinary account-flow controls
+last_activity_desc: Phase 10.7 Plan 04 completed; Step 1 primary render and controller paths no longer expose account-flow/network/transfer controls
 progress:
   total_phases: 9
   completed_phases: 4
   total_plans: 20
-  completed_plans: 17
-  percent: 85
+  completed_plans: 18
+  percent: 90
 ---
 
 # Project State
@@ -22,9 +22,9 @@ progress:
 ## Current Position
 
 Phase: 10.7 — Account Flow Extraction and Portfolio Boundary
-Plan: 03 complete; 04 next
+Plan: 04 complete; 05 next
 Status: In progress
-Last activity: 2026-06-26 — Phase 10.7 Plan 03 completed; Financial Detail Modal and Step 1 read surfaces no longer expose ordinary account-flow controls
+Last activity: 2026-06-26 — Phase 10.7 Plan 04 completed; Step 1 primary render and controller paths no longer expose account-flow/network/transfer controls
 
 ## Project Reference
 
@@ -71,6 +71,7 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 | Phase 10.7-account-flow-extraction-and-portfolio-boundary P01 | 38 min | 2 tasks | 3 files |
 | Phase 10.7-account-flow-extraction-and-portfolio-boundary P02 | 8 min | 2 tasks | 3 files |
 | Phase 10.7-account-flow-extraction-and-portfolio-boundary P03 | 36 min | 2 tasks | 5 files |
+| Phase 10.7-account-flow-extraction-and-portfolio-boundary P04 | 8 min | 2 tasks | 9 files |
 
 ## Decisions
 
@@ -117,14 +118,16 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 - [Phase 10.7-03]: Financial Detail Modal no longer exposes account category, account selects, or income allocation controls in ordinary Step 1.
 - [Phase 10.7-03]: Step 1 read surfaces render financial items without account badges, account cards, or account-specific warning calculations.
 - [Phase 10.7-03]: The render orchestrator treats primary Step 1 as a simple Sankey/read surface and does not require live accounts for network-map rendering.
+- [Phase 10.7-04]: Step 1 primary visualization now exposes only simple Sankey basic/detail modes; account network and transfer controls are removed from DOM and controller paths.
+- [Phase 10.7-04]: Correction refresh and transfer-rule handlers were deleted from ordinary Step 1 so account sidecar data cannot mutate primary Sankey state.
 
 ## Operator Next Steps
 
-- Phase 10.7 Plan 03 is complete.
-- Next recommended step is executing `10.7-04-PLAN.md` for Step 1 render/UI/controller cleanup and source audit tests.
+- Phase 10.7 Plan 04 is complete.
+- Next recommended step is executing `10.7-05-PLAN.md` after Wave 5 dependencies are satisfied.
 
 ## Session
 
-**Last session:** 2026-06-26T06:35:39.594Z
-**Stopped at:** Completed 10.7-03-PLAN.md
+**Last session:** 2026-06-26T07:47:54.554Z
+**Stopped at:** Completed 10.7-04-PLAN.md
 **Resume file:** None
