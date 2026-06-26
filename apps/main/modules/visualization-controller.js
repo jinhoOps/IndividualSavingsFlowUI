@@ -1,50 +1,15 @@
-import { IsfUtils } from "../../../shared/core/utils.js";
-
 import { SANKEY_VALUE_MODES } from "./constants.js";
 import { buildSankeyData } from "./sankey-builder.js";
 import { renderSankey } from "./sankey-renderer.js";
 import { dom } from "./dom.js";
 import { state } from "./state.js";
-import { sanitizeInputs } from "./input-sanitizer.js";
-import * as helpers from "./state-helpers.js";
-import * as listRenderer from "./list-renderer.js";
 import {
   syncSankeyValueModeUi,
   syncSankeySortModeUi,
   syncSankeyGroupingUi,
 } from "./ui-controller.js";
 
-export function createVisualizationController({ markPendingChanges }) {
-  function updateSankeyCorrectionStatus(corrections = state.inputs?.accountCorrections) {
-    if (!dom.sankeyCorrectionStatus) return;
-    const safeCorrections = Array.isArray(corrections) ? corrections : [];
-    dom.sankeyCorrectionStatus.closest(".sankey-correction-control")?.setAttribute("hidden", "");
-    dom.sankeyCorrectionStatus.classList.toggle("is-warning", safeCorrections.length > 0);
-    dom.sankeyCorrectionStatus.textContent = "";
-    dom.sankeyCorrectionStatus.removeAttribute("title");
-  }
-
-  function refreshSankeyAccountCorrections() {
-    const beforeCorrections = Array.isArray(state.inputs?.accountCorrections) ? state.inputs.accountCorrections.length : 0;
-    const repairedInputs = sanitizeInputs(state.inputs);
-    state.inputs = repairedInputs;
-    state.draftInputs = null;
-    markPendingChanges();
-    updateSankeyCorrectionStatus(repairedInputs.accountCorrections);
-    const afterCorrections = Array.isArray(repairedInputs.accountCorrections) ? repairedInputs.accountCorrections.length : 0;
-    const firstCorrectionType = repairedInputs.accountCorrections?.find?.((correction) =>
-      ["income", "expense", "savings", "invest"].includes(correction.itemType)
-    )?.itemType;
-    if (afterCorrections === 0) {
-      if (dom.sankeyCorrectionStatus) {
-        dom.sankeyCorrectionStatus.textContent = "";
-      }
-      document.dispatchEvent(new CustomEvent("open-financial-modal", { detail: { category: "account" } }));
-    } else {
-      document.dispatchEvent(new CustomEvent("open-financial-modal", { detail: { category: firstCorrectionType || "account" } }));
-    }
-  }
-
+export function createVisualizationController() {
   function setSankeyValueMode(mode) {
     state.sankeyValueMode = mode;
     syncSankeyValueModeUi();
@@ -70,96 +35,17 @@ export function createVisualizationController({ markPendingChanges }) {
   }
 
   function bindVisualizationAndTooltipEvents() {
-    const sankeyTabButtons = [dom.showSankeyBasicBtn, dom.showSankeyDetailBtn, dom.showNetworkBtn].filter(Boolean);
-    if (sankeyTabButtons.length === 3 && dom.visualizationSlider) {
-      const switchVisualization = (activeButton, detailMode, sliderIndex) => {
+    const sankeyTabButtons = [dom.showSankeyBasicBtn, dom.showSankeyDetailBtn].filter(Boolean);
+    if (sankeyTabButtons.length === 2) {
+      const switchVisualization = (activeButton, detailMode) => {
         sankeyTabButtons.forEach((button) => {
           button.classList.toggle("is-active", button === activeButton);
           button.setAttribute("aria-selected", button === activeButton ? "true" : "false");
         });
-        dom.visualizationSlider.style.transform = sliderIndex === 1 ? "translateX(-50%)" : "translateX(0%)";
-        if (detailMode !== null) setSankeyDetailMode(detailMode);
-        if (detailMode === null) {
-          const controls = dom.sankeyGroupingExpense ? dom.sankeyGroupingExpense.closest(".sankey-grouping-controls") : null;
-          if (controls) {
-            controls.hidden = true;
-            controls.setAttribute("aria-hidden", "true");
-          }
-        }
+        setSankeyDetailMode(detailMode);
       };
-      dom.showSankeyBasicBtn.addEventListener("click", () => switchVisualization(dom.showSankeyBasicBtn, "basic", 0));
-      dom.showSankeyDetailBtn.addEventListener("click", () => switchVisualization(dom.showSankeyDetailBtn, "detail", 0));
-      dom.showNetworkBtn.addEventListener("click", () => switchVisualization(dom.showNetworkBtn, null, 1));
-    }
-
-    if (dom.addTransferRuleBtn) {
-      dom.addTransferRuleBtn.addEventListener("click", () => {
-        const sourceId = dom.transferSourceSelect.value;
-        const targetId = dom.transferTargetSelect.value;
-        const amount = IsfUtils.toWon(dom.transferAmount.value);
-        const label = dom.transferLabel.value.trim();
-
-        if (!sourceId || !targetId) {
-          alert("출발 계좌와 도착 계좌를 모두 선택해주세요.");
-          return;
-        }
-        if (sourceId === targetId) {
-          alert("출발 계좌와 도착 계좌는 서로 달라야 합니다.");
-          return;
-        }
-        if (amount <= 0) {
-          alert("이체할 금액을 0보다 큰 값으로 입력해주세요.");
-          return;
-        }
-
-        const draft = helpers.ensureDraftInputs(state);
-        const transfers = Array.isArray(draft.transfers) ? draft.transfers : [];
-        const isDuplicate = transfers.some((transfer) =>
-          transfer.sourceAccountId === sourceId && transfer.targetAccountId === targetId && transfer.label === label
-        );
-        if (isDuplicate) {
-          alert("동일한 이체 규칙이 이미 존재합니다.");
-          return;
-        }
-
-        state.inputs.transfers = [
-          ...transfers,
-          {
-            id: `tr-${Date.now()}`,
-            sourceAccountId: sourceId,
-            targetAccountId: targetId,
-            amount,
-            label: label || "계좌 이체",
-          },
-        ];
-        state.inputs = sanitizeInputs(state.inputs);
-        markPendingChanges();
-        dom.transferAmount.value = "";
-        dom.transferLabel.value = "";
-      });
-    }
-
-    if (dom.sankeyCorrectionRefresh) {
-      dom.sankeyCorrectionRefresh.addEventListener("click", refreshSankeyAccountCorrections);
-    }
-
-    if (dom.transferRuleList) {
-      dom.transferRuleList.addEventListener("click", (event) => {
-        const button = event.target.closest(".btn-delete-transfer");
-        if (!button) return;
-        const transferId = button.dataset.deleteTransferId;
-        const transfers = Array.isArray(state.inputs.transfers) ? state.inputs.transfers : [];
-        state.inputs.transfers = transfers.filter((transfer) => transfer.id !== transferId);
-        state.inputs = sanitizeInputs(state.inputs);
-        markPendingChanges();
-      });
-    }
-
-    if (dom.transferSourceSelect) {
-      dom.transferSourceSelect.addEventListener("change", () => {
-        const inputs = state.draftInputs || state.inputs;
-        listRenderer.updateSourceBalanceHint(inputs, dom.transferSourceSelect.value);
-      });
+      dom.showSankeyBasicBtn.addEventListener("click", () => switchVisualization(dom.showSankeyBasicBtn, "basic"));
+      dom.showSankeyDetailBtn.addEventListener("click", () => switchVisualization(dom.showSankeyDetailBtn, "detail"));
     }
 
     document.addEventListener("mouseenter", (event) => {
@@ -212,21 +98,10 @@ export function createVisualizationController({ markPendingChanges }) {
       }
     }, true);
 
-    const accordionHead = document.getElementById("transferAccordionHead");
-    const accordionBody = document.getElementById("transferAccordionBody");
-    const accordionIcon = document.getElementById("transferAccordionIcon");
-    if (accordionHead && accordionBody && accordionIcon) {
-      accordionHead.addEventListener("click", () => {
-        const isVisible = accordionBody.style.display === "block";
-        accordionBody.style.display = isVisible ? "none" : "block";
-        accordionIcon.style.transform = isVisible ? "rotate(0deg)" : "rotate(180deg)";
-      });
-    }
   }
 
   return {
     bindVisualizationAndTooltipEvents,
-    updateSankeyCorrectionStatus,
     setSankeyValueMode,
     setSankeySortMode,
     setSankeyGrouping,

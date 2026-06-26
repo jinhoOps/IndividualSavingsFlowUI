@@ -13,13 +13,6 @@ export const dom = {
   presetStyleBtns: document.querySelectorAll(".preset-style-btn"),
   applyPresetBtn: document.getElementById("applyPresetBtn"),
 
-  surplusTransferBanner: document.getElementById("surplusTransferBanner"),
-  surplusAmountText: document.getElementById("surplusAmountText"),
-  surplusTransferAccountSelect: document.getElementById("surplusTransferAccountSelect"),
-  surplusNormalWrapper: document.getElementById("surplusNormalWrapper"),
-  surplusDeficitWrapper: document.getElementById("surplusDeficitWrapper"),
-  deficitAmountText: document.getElementById("deficitAmountText"),
-
   checkLatestVersion: document.getElementById("checkLatestVersion"),
   advancedSettings: document.getElementById("advancedSettings"),
   advancedTabExpense: document.getElementById("advancedTabExpense"),
@@ -50,11 +43,7 @@ export const dom = {
   sankeySvg: document.getElementById("sankeySvg"),
   sankeyWrap: document.getElementById("sankeyWrap"),
   sankeyMeta: document.getElementById("sankeyMeta"),
-  sankeyCorrectionRefresh: document.getElementById("sankeyCorrectionRefresh"),
-  sankeyCorrectionStatus: document.getElementById("sankeyCorrectionStatus"),
   sankeyLegend: document.getElementById("sankeyLegend"),
-  accountTransferBoard: document.getElementById("accountTransferBoard"),
-  transferCardList: document.getElementById("transferCardList"),
   sankeyViewAmount: document.getElementById("sankeyViewAmount"),
   sankeyViewPercent: document.getElementById("sankeyViewPercent"),
   sankeySortMode: document.getElementById("sankeySortMode"),
@@ -126,24 +115,8 @@ export const dom = {
   // 시각화 토글 및 슬라이더 관련
   showSankeyBasicBtn: document.getElementById("showSankeyBasicBtn"),
   showSankeyDetailBtn: document.getElementById("showSankeyDetailBtn"),
-  showNetworkBtn: document.getElementById("showNetworkBtn"),
   visualizationViewport: document.getElementById("visualizationViewport"),
   visualizationSlider: document.getElementById("visualizationSlider"),
-  networkMapWrap: document.getElementById("networkMapWrap"),
-  networkMapInner: document.getElementById("networkMapInner"),
-  accountFlowNetworkMap: document.getElementById("accountFlowNetworkMap"),
-  networkMapEmpty: document.getElementById("networkMapEmpty"),
- 
-  // 수동 이체 에디터 관련
-  transferEditorSection: document.getElementById("transferEditorSection"),
-  transferRuleForm: document.getElementById("transferRuleForm"),
-  transferSourceSelect: document.getElementById("transferSourceSelect"),
-  transferTargetSelect: document.getElementById("transferTargetSelect"),
-  transferAmount: document.getElementById("transferAmount"),
-  transferLabel: document.getElementById("transferLabel"),
-  addTransferRuleBtn: document.getElementById("addTransferRuleBtn"),
-  sourceBalanceHint: document.getElementById("sourceBalanceHint"),
-  transferRuleList: document.getElementById("transferRuleList"),
  
   // 도움말 및 툴팁
   globalTooltip: document.getElementById("globalTooltip"),
