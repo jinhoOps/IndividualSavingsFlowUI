@@ -596,6 +596,99 @@ test.describe('Phase 09 account correction and Sankey topology', () => {
     expect(result.topLevelTargetIds).toEqual(expect.arrayContaining(['total-expense', 'total-savings', 'total-invest']));
   });
 
+  test('Phase 10.7 sanitizer preserves D-07/D-08 account flow data as handoff sidecar only', async ({ page }) => {
+    const result = await page.evaluate(async () => {
+      const { sanitizeInputs } = await import('/IndividualSavingsFlowUI/apps/main/modules/input-sanitizer.js');
+      const sanitized = sanitizeInputs({
+        modelVersion: 10,
+        splitIncomeAccounts: true,
+        incomes: [{
+          id: 'income-main',
+          name: '급여',
+          amount: 4200000,
+          accountId: 'acc-salary',
+          allocations: [
+            { accountId: 'acc-salary', amount: 2800000 },
+            { accountId: 'acc-living', amount: 1400000 },
+          ],
+        }],
+        accounts: [
+          { id: 'acc-salary', name: '급여계좌' },
+          { id: 'acc-living', name: '생활비계좌' },
+          { id: 'acc-saving', name: '저축계좌' },
+          { id: 'acc-stock', name: '투자계좌' },
+        ],
+        expenseItems: [
+          { id: 'rent', name: '월세', amount: 900000, group: '고정비', actualSpent: 111111, accountId: 'acc-living' },
+          { id: 'food', name: '식비', amount: 500000, group: '변동비', actualSpent: 222222, varianceAmount: 80000, accountId: 'acc-living' },
+        ],
+        savingsItems: [{ id: 'saving-main', name: '적금', amount: 600000, group: '저축', accountId: 'acc-saving', annualRate: 5.1, maturityMonth: '2027-03' }],
+        investItems: [{ id: 'invest-main', name: 'ETF', amount: 700000, group: '투자', accountId: 'acc-stock' }],
+        transfers: [{ id: 'legacy-transfer', sourceAccountId: 'acc-salary', targetAccountId: 'acc-stock', amount: 100000, label: '투자 이체' }],
+        accountCorrections: [{ itemType: 'expense', message: 'legacy correction marker' }],
+        surplusTransferAccountId: 'acc-stock',
+        monthlyDebtPayment: 0,
+        startCash: 0,
+        startSavings: 0,
+        startInvest: 0,
+        startDebt: 0,
+        annualIncomeGrowth: 0,
+        annualExpenseGrowth: 0,
+        annualSavingsYield: 3,
+        annualInvestReturn: 7,
+        annualDebtInterest: 0,
+        horizonYears: 5,
+      });
+
+      return {
+        primaryKeys: Object.keys(sanitized),
+        income: sanitized.incomes[0],
+        fixedExpense: sanitized.expenseItems.find((item: any) => item.id === 'rent'),
+        variableExpense: sanitized.expenseItems.find((item: any) => item.id === 'food'),
+        saving: sanitized.savingsItems.find((item: any) => item.id === 'saving-main'),
+        invest: sanitized.investItems.find((item: any) => item.id === 'invest-main'),
+        monthlyExpense: sanitized.monthlyExpense,
+        handoff: sanitized.accountFlowHandoff,
+      };
+    });
+
+    expect(result.primaryKeys).not.toEqual(expect.arrayContaining([
+      'accounts',
+      'splitIncomeAccounts',
+      'surplusTransferAccountId',
+      'transfers',
+      'accountCorrections',
+    ]));
+    expect(result.income).toMatchObject({ id: 'income-main', name: '급여', amount: 4200000 });
+    expect(result.income).not.toHaveProperty('accountId');
+    expect(result.income).not.toHaveProperty('allocations');
+    expect(result.fixedExpense).toMatchObject({ id: 'rent', name: '월세', amount: 900000, group: '고정비' });
+    expect(result.fixedExpense).not.toHaveProperty('accountId');
+    expect(result.fixedExpense).not.toHaveProperty('actualSpent');
+    expect(result.variableExpense).toMatchObject({ id: 'food', name: '식비', amount: 500000, group: '변동비', actualSpent: 222222, varianceAmount: 80000 });
+    expect(result.variableExpense).not.toHaveProperty('accountId');
+    expect(result.saving).toMatchObject({ id: 'saving-main', annualRate: 5.1, maturityMonth: '2027-03' });
+    expect(result.saving).not.toHaveProperty('accountId');
+    expect(result.invest).toMatchObject({ id: 'invest-main', amount: 700000 });
+    expect(result.invest).not.toHaveProperty('accountId');
+    expect(result.monthlyExpense).toBe(1400000);
+    expect(result.handoff).toMatchObject({
+      version: 1,
+      accounts: expect.arrayContaining([{ id: 'acc-salary', name: '급여계좌' }]),
+      splitIncomeAccounts: true,
+      surplusTransferAccountId: 'acc-stock',
+      transfers: expect.arrayContaining([{ id: 'legacy-transfer', sourceAccountId: 'acc-salary', targetAccountId: 'acc-stock', amount: 100000, label: '투자 이체' }]),
+      accountCorrections: expect.arrayContaining([{ itemType: 'expense', message: 'legacy correction marker' }]),
+    });
+    expect(result.handoff.incomes[0].allocations).toEqual([
+      { accountId: 'acc-salary', amount: 2800000 },
+      { accountId: 'acc-living', amount: 1400000 },
+    ]);
+    expect(result.handoff.expenseItems.find((item: any) => item.id === 'rent')).toMatchObject({ accountId: 'acc-living' });
+    expect(result.handoff.savingsItems.find((item: any) => item.id === 'saving-main')).toMatchObject({ accountId: 'acc-saving' });
+    expect(result.handoff.investItems.find((item: any) => item.id === 'invest-main')).toMatchObject({ accountId: 'acc-stock' });
+  });
+
   test('repairs invalid account links and emits correction metadata', async ({ page }) => {
     const result = await page.evaluate(async () => {
       const { sanitizeInputs } = await import('/IndividualSavingsFlowUI/apps/main/modules/input-sanitizer.js');
