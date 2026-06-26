@@ -3,7 +3,6 @@ import { IsfUtils } from "../../../shared/core/utils.js";
 import {
   buildMonthlySnapshot,
   simulateProjection,
-  calculateAccountFinancialIncomes,
 } from "./calculator.js";
 import { buildSankeyData } from "./sankey-builder.js";
 import { renderSankey } from "./sankey-renderer.js";
@@ -38,43 +37,17 @@ export function createRenderOrchestrator() {
     renderFinancialSummaryGroups(dom.summaryCards, buildFinancialSummaryGroups(inputs, { projection }));
     updateSankeyCorrectionStatus(inputs);
 
-    const { warnings } = calculateAccountFinancialIncomes(inputs);
+    const warnings = {};
     if (dom.appHeader && typeof dom.appHeader.setFinancialWarning === "function") {
-      let maxStatus = "none";
-      let message = "";
-      if (warnings && typeof warnings === "object") {
-        const warningValues = Object.values(warnings);
-        const hasCrit = warningValues.some((warning) => warning.status === "crit");
-        const hasWarn = warningValues.some((warning) => warning.status === "warn");
-        if (hasCrit) {
-          maxStatus = "crit";
-          const critWarnings = warningValues.filter((warning) => warning.status === "crit");
-          message = `⚠️ 금융소득 종합과세 한도 초과!\n(${critWarnings.map((warning) => warning.message).join(", ")})`;
-        } else if (hasWarn) {
-          maxStatus = "warn";
-          const warnWarnings = warningValues.filter((warning) => warning.status === "warn");
-          message = `💡 금융소득 종합과세 주의 (Safety Margin 도달)\n(${warnWarnings.map((warning) => warning.message).join(", ")})`;
-        }
-      }
-      dom.appHeader.setFinancialWarning(maxStatus, message);
+      dom.appHeader.setFinancialWarning("none", "");
     }
 
     const sankeyData = buildSankeyData(snapshot, state.sankeySortMode, state.sankeyGrouping);
-    const transfers = sankeyData ? sankeyData.transfers : [];
     renderSankey(snapshot, buildSankeyData, state.sankeySortMode);
 
-    listRenderer.renderTransferRulesList(inputs.transfers || [], inputs.accounts);
-    listRenderer.renderTransferSelectOptions(inputs.accounts);
-
-    const accountNodes = sankeyData ? sankeyData.nodes.filter((node) => node.column === 1 || node.column === 1.5) : [];
-    const accountsWithValues = inputs.accounts.map((account) => {
-      const node = accountNodes.find((candidate) => candidate.id === account.id);
-      return {
-        ...account,
-        value: node ? node.value : 0,
-      };
-    });
-    renderNetworkMap(dom.networkMapInner, accountsWithValues, transfers);
+    listRenderer.renderTransferRulesList([], []);
+    listRenderer.renderTransferSelectOptions([]);
+    renderNetworkMap(dom.networkMapInner, [], []);
     listRenderer.updateSourceBalanceHint(inputs, dom.transferSourceSelect ? dom.transferSourceSelect.value : "");
 
     listRenderer.renderProjectionTable(projection, inputs.horizonYears, inputs.annualExpenseGrowth);

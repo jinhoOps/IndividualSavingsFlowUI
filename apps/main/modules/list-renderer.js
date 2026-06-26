@@ -3,7 +3,6 @@ import { state } from "./state.js";
 import { IsfUtils } from "../../../shared/core/utils.js";
 import { formatCurrency } from "./formatters.js";
 import { buildAllocationMetaText, getMonthlyIncomeTotalWon } from "./input-sanitizer.js";
-import { calculateAccountFinancialIncomes } from "./calculator.js";
 
 export function renderCards(cards, horizonYears) {
   if (!dom.summaryCards) return;
@@ -48,18 +47,12 @@ export function renderProjectionTable(records, horizonYears, expenseGrowth) {
 export function renderItemList(group, items, options = {}) {
   const list = dom[`${group}List`]; if (!list) return;
 
-  if (group === "account" || group === "income") {
-    if (group === "account") {
-      let warnings = options.warnings;
-      if (!warnings) {
-        const inputs = state.inputs;
-        const res = calculateAccountFinancialIncomes(inputs);
-        warnings = res.warnings;
-      }
-      list.innerHTML = items.map(item => renderAccountItemHtml(item, { ...options, warnings })).join("");
-    } else {
-      list.innerHTML = items.map((item) => renderIncomeItemHtml(item, options)).join("");
-    }
+  if (group === "account") {
+    list.innerHTML = "";
+    return;
+  }
+  if (group === "income") {
+    list.innerHTML = items.map((item) => renderIncomeItemHtml(item, options)).join("");
     return;
   }
   const sortMode = state.itemSortModes[group] || "default";
@@ -135,45 +128,22 @@ function renderGroupedAllocationList(group, items, options, openState) {
   }).join("");
 }
 
-function getShortAccountName(name) {
-  if (!name) return "";
-  return name.replace(/(계좌|통장)$/, "");
-}
-
 export function renderIncomeItemHtml(item, opts) {
-  const accounts = (state.inputs.accounts || []);
-  let accHtml = "";
-  if (Array.isArray(item.allocations) && item.allocations.length > 0) {
-    accHtml = item.allocations.map(al => {
-      const acc = accounts.find(a => a.id === al.accountId);
-      const name = acc ? getShortAccountName(acc.name) : "미지정";
-      return `<span class="badge-account badge-account--income">${IsfUtils.escapeHtml(name)}: ${formatCurrency(al.amount)}</span>`;
-    }).join(" ");
-  } else {
-    const acc = accounts.find(a => a.id === item.accountId);
-    const name = acc ? getShortAccountName(acc.name) : "미지정";
-    accHtml = acc ? `<span class="badge-account badge-account--income">${IsfUtils.escapeHtml(name)}</span>` : `<span class="badge-account badge-account--none">미지정</span>`;
-  }
   return `
     <div class="income-row clickable-row" data-item-id="${item.id}" data-group="income" style="cursor: pointer;">
       <span class="income-name">${IsfUtils.escapeHtml(item.name)}</span>
       <span class="value">${formatCurrency(item.amount)}</span>
-      <div class="income-meta">${accHtml}</div>
     </div>
   `;
 }
 
 export function renderAllocationItemHtml(group, item, opts) {
   const baseMeta = buildAllocationMetaText(item, { showMaturity: group !== "expense" });
-  const acc = (state.inputs.accounts || []).find(a => a.id === item.accountId);
-  const name = acc ? getShortAccountName(acc.name) : "미지정";
-  const accHtml = acc ? `<span class="badge-account badge-account--outflow">${IsfUtils.escapeHtml(name)}</span>` : `<span class="badge-account badge-account--none">미지정</span>`;
-  const metaHtml = `
+  const metaHtml = baseMeta ? `
     <div class="allocation-meta">
-      ${baseMeta ? `<span class="allocation-base-meta">${baseMeta}</span> · ` : ""}
-      ${accHtml}
+      <span class="allocation-base-meta">${baseMeta}</span>
     </div>
-  `;
+  ` : "";
 
   return `
     <div class="${group}-row clickable-row" data-item-id="${item.id}" data-group="${group}" style="cursor: pointer;">
@@ -203,23 +173,7 @@ export function renderSavingsTotalHint(won, count) { if (dom.savingsTotalHint) d
 export function renderInvestTotalHint(won, count) { if (dom.investTotalHint) dom.investTotalHint.textContent = `총 ${count}개 항목: ${formatCurrency(won)}`; }
 
 export function renderAccountItemHtml(item, opts) {
-  const warnings = opts.warnings || {};
-  const warning = warnings[item.id];
-
-  let warningClass = "";
-  if (warning) {
-    if (warning.status === "warn") {
-      warningClass = "account-row--warn";
-    } else if (warning.status === "crit") {
-      warningClass = "account-row--crit";
-    }
-  }
-
-  return `
-    <div class="account-row ${warningClass} clickable-row" data-item-id="${item.id}" data-group="account" style="cursor: pointer;">
-      <span class="account-name">${IsfUtils.escapeHtml(item.name)}</span>
-    </div>
-  `;
+  return "";
 }
 
 export function renderTransferBoard(transfers, accounts) {
@@ -260,14 +214,15 @@ export function renderTransferRulesList(transfers, accounts) {
   dom.transferRuleList.innerHTML = "";
 
   const safeTransfers = Array.isArray(transfers) ? transfers : [];
+  const safeAccounts = Array.isArray(accounts) ? accounts : [];
   if (safeTransfers.length === 0) {
     dom.transferRuleList.innerHTML = `<p class="empty" style="text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 12px 0;">설정된 수동 이체 규칙이 없습니다.</p>`;
     return;
   }
 
   dom.transferRuleList.innerHTML = safeTransfers.map(tr => {
-    const src = accounts.find(a => a.id === tr.sourceAccountId);
-    const tgt = accounts.find(a => a.id === tr.targetAccountId);
+    const src = safeAccounts.find(a => a.id === tr.sourceAccountId);
+    const tgt = safeAccounts.find(a => a.id === tr.targetAccountId);
     const srcName = src ? src.name : "알 수 없음";
     const tgtName = tgt ? tgt.name : "알 수 없음";
     return `
@@ -287,6 +242,7 @@ export function renderTransferRulesList(transfers, accounts) {
 
 export function renderTransferSelectOptions(accounts) {
   if (!dom.transferSourceSelect || !dom.transferTargetSelect) return;
+  const safeAccounts = Array.isArray(accounts) ? accounts : [];
   
   const defaultSource = dom.transferSourceSelect.value;
   const defaultTarget = dom.transferTargetSelect.value;
@@ -297,7 +253,7 @@ export function renderTransferSelectOptions(accounts) {
     placeholder.textContent = "계좌 선택...";
     return [
       placeholder,
-      ...accounts.map((account) => {
+      ...safeAccounts.map((account) => {
         const option = document.createElement("option");
         option.value = account.id;
         option.textContent = account.name;

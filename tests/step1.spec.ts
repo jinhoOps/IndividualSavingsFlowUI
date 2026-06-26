@@ -2268,21 +2268,15 @@ test.describe('Phase 10.6 financial detail modal editing repair', () => {
     await expect(modal.locator('#financialModalPendingBar')).toBeHidden();
   });
 
-  test('Phase 10.6 account rows and add menu keep compact accessible polish', async ({ page }) => {
+  test('Phase 10.6 add menu keeps compact accessible polish without account rows', async ({ page }) => {
     await seedRegressionFlow(page);
 
     const modal = page.locator('#financialModal');
     await page.evaluate(() => {
       document.dispatchEvent(new CustomEvent('open-financial-modal', { detail: { category: 'account' } }));
     });
-    await expect(modal).toBeVisible();
-    const accountRow = modal.locator('[data-modal-row-category="account"]').first();
-    await expect(accountRow).toContainText('급여계좌');
-    await expect(accountRow).not.toContainText('계좌 별칭');
-    await expect(accountRow.locator('[data-financial-modal-edit]')).toHaveCount(0);
-
-    await modal.locator('#financialModalClose').click();
     await expect(modal).toBeHidden();
+    await expect(page.locator('[data-modal-row-category="account"]')).toHaveCount(0);
 
     const detailModal = await openFinancialDetail(page);
     await openFinancialAddMenu(detailModal);
@@ -2309,7 +2303,7 @@ test.describe('Phase 10.6 financial detail modal editing repair', () => {
     await expect(editingIncome).toHaveCount(1);
     await expect(editingIncome.locator('[data-financial-modal-field="name"]')).toHaveValue('급여');
     await expect(editingIncome.locator('[data-financial-modal-field="amount"]')).toHaveValue('4,200,000');
-    await expect(editingIncome.locator('[data-financial-modal-field="accountId"]')).toBeVisible();
+    await expect(editingIncome.locator('[data-financial-modal-field="accountId"]')).toHaveCount(0);
 
     await modal.locator('.modal-header').click();
     await expect(modal.locator('.financial-modal-row--editing')).toHaveCount(0);
@@ -2347,7 +2341,6 @@ test.describe('Phase 10.6 financial detail modal editing repair', () => {
       const down = node.querySelector('[data-money-step="down"]') as HTMLElement;
       const up = node.querySelector('[data-money-step="up"]') as HTMLElement;
       const quick = node.querySelector('[data-money-quick="50000"]') as HTMLElement;
-      const account = node.querySelector('[data-financial-modal-field="accountId"]') as HTMLElement;
       const rect = (element: HTMLElement) => element.getBoundingClientRect();
       return {
         downRight: rect(down).right,
@@ -2356,14 +2349,12 @@ test.describe('Phase 10.6 financial detail modal editing repair', () => {
         upLeft: rect(up).left,
         quickTop: rect(quick).top,
         inputBottom: rect(input).bottom,
-        amountTop: rect(input).top,
-        accountTop: rect(account).top,
       };
     });
     expect(layout.downRight).toBeLessThanOrEqual(layout.inputLeft + 4);
     expect(layout.inputRight).toBeLessThanOrEqual(layout.upLeft + 4);
     expect(layout.quickTop).toBeGreaterThanOrEqual(layout.inputBottom - 1);
-    expect(Math.abs(layout.accountTop - layout.amountTop)).toBeLessThanOrEqual(8);
+    await expect(row.locator('[data-financial-modal-field="accountId"]')).toHaveCount(0);
 
     await row.locator('[data-money-step="down"]').click();
     await expect(amount).toHaveValue('4,190,000');
@@ -2808,7 +2799,8 @@ test.describe('Phase 10.6 financial detail modal editing repair', () => {
     await expect(modal).toBeHidden();
     await assertForbiddenCoupleUiAbsent(page);
     const labels = await page.locator('#sankeySvg .sankey-label').evaluateAll((nodes) => nodes.map((node) => node.textContent || ''));
-    expect(labels).toEqual(expect.arrayContaining(['총수입', '급여계좌', '생활비계좌', '투자계좌']));
+    expect(labels).toEqual(expect.arrayContaining(['총수입', '고정비(고정지출)', '저축', '투자']));
+    expect(labels).not.toEqual(expect.arrayContaining(['급여계좌', '생활비계좌', '투자계좌']));
     expect(labels.filter((label) => label.includes('적금')).length).toBeLessThanOrEqual(1);
     expect(labels.filter((label) => label.includes('ETF')).length).toBeLessThanOrEqual(1);
   });
@@ -3099,15 +3091,16 @@ test.describe('Phase 10.6.1 final regression', () => {
     return modal;
   }
 
-  test('keeps absorbed modal fields through apply, storage, import envelope, and Sankey refresh', async ({ page }) => {
+  test('keeps non-account modal fields through apply, storage, import envelope, and Sankey refresh', async ({ page }) => {
     await seedFinalRegressionFlow(page);
 
     const modal = await openFinancialDetail(page);
     await modal.getByRole('tab', { name: '월 수입', exact: true }).click();
     await modal.locator('[data-modal-row-category="income"]').first().click();
     const income = modal.locator('.financial-modal-row--editing[data-modal-row-category="income"]');
-    await income.locator('[data-income-allocation-row]').nth(0).locator('[data-income-allocation-amount]').fill('2800000');
-    await income.locator('[data-income-allocation-row]').nth(1).locator('[data-income-allocation-amount]').fill('1400000');
+    await expect(income.locator('[data-income-allocation-row]')).toHaveCount(0);
+    await expect(income.locator('[data-financial-modal-field="accountId"]')).toHaveCount(0);
+    await income.locator('[data-financial-modal-field="amount"]').fill('4300000');
 
     await modal.getByRole('tab', { name: '저축', exact: true }).click();
     const saving = modal.locator('[data-modal-row-category="savings"]').filter({ hasText: '적금' });
@@ -3120,10 +3113,9 @@ test.describe('Phase 10.6.1 final regression', () => {
     await expect(modal.locator('#financialModalPendingBar')).toBeHidden();
 
     const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}'));
-    expect(saved.incomes[0].allocations).toEqual([
-      { accountId: 'acc-salary', amount: 2800000 },
-      { accountId: 'acc-living', amount: 1400000 },
-    ]);
+    expect(saved.incomes[0]).toMatchObject({ id: 'income-main', amount: 4300000 });
+    expect(saved.incomes[0]).not.toHaveProperty('accountId');
+    expect(saved.incomes[0]).not.toHaveProperty('allocations');
     expect(saved.savingsItems.find((item: any) => item.id === 'saving-main')).toMatchObject({
       annualRate: 6.1,
       maturityMonth: '2027-04',
@@ -3131,7 +3123,8 @@ test.describe('Phase 10.6.1 final regression', () => {
     expect(saved.savingsItems.find((item: any) => item.id === 'saving-fallback')).not.toHaveProperty('annualRate');
 
     const labels = await page.locator('#sankeySvg .sankey-label').evaluateAll((nodes) => nodes.map((node) => node.textContent || ''));
-    expect(labels).toEqual(expect.arrayContaining(['급여계좌', '생활비계좌']));
+    expect(labels).toEqual(expect.arrayContaining(['총수입', '고정비(고정지출)', '저축', '투자']));
+    expect(labels).not.toEqual(expect.arrayContaining(['급여계좌', '생활비계좌']));
 
     const importProbe = await page.evaluate(async (storedInputs) => {
       const [
@@ -3153,18 +3146,20 @@ test.describe('Phase 10.6.1 final regression', () => {
       const sankey = buildSankeyData(buildMonthlySnapshot(normalized), 'group');
       const buckets = buildSavingsBuckets(normalized);
       return {
-        allocations: normalized.incomes[0].allocations,
+        income: normalized.incomes[0],
         maturityMonth: normalized.savingsItems.find((item: any) => item.id === 'saving-main')?.maturityMonth,
         annualRate: normalized.savingsItems.find((item: any) => item.id === 'saving-main')?.annualRate,
         fallbackRate: buckets.find((bucket: any) => bucket.id === 'saving-fallback')?.annualRate,
         labels: sankey.nodes.map((node: any) => node.label),
       };
     }, saved);
-    expect(importProbe.allocations).toEqual(saved.incomes[0].allocations);
+    expect(importProbe.income).not.toHaveProperty('accountId');
+    expect(importProbe.income).not.toHaveProperty('allocations');
     expect(importProbe.maturityMonth).toBe('2027-04');
     expect(importProbe.annualRate).toBe(6.1);
     expect(importProbe.fallbackRate).toBe(3);
-    expect(importProbe.labels).toEqual(expect.arrayContaining(['급여계좌', '생활비계좌']));
+    expect(importProbe.labels).toEqual(expect.arrayContaining(['총수입', '고정비(고정지출)', '저축', '투자']));
+    expect(importProbe.labels).not.toEqual(expect.arrayContaining(['급여계좌', '생활비계좌']));
   });
 
   test('audits source-first cleanup markers without treating dist as source', async ({ page }) => {
