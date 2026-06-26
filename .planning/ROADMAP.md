@@ -212,4 +212,4 @@ Plans:
 
 ## Next
 
-Phase 10.5 is complete. Next recommended step is `$gsd-discuss-phase 10.6` when ready to refine the `재무설정 상세` modal editing UX; start Phase 11 later only after Phase 10.6 is intentionally skipped or completed.
+Phase 10.6.1 is complete. Next recommended step is `$gsd-discuss-phase 11` to gather context for Zero-Input Spending Capture before planning.

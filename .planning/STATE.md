@@ -4,8 +4,8 @@ milestone: v1.9
 milestone_name: milestone
 current_phase: 11
 current_phase_name: Zero-Input Spending Capture
-status: executing
-stopped_at: Completed 10.6.1-03-PLAN.md
+status: ready_to_plan
+stopped_at: Phase 10.6.1 complete, ready to plan Phase 11
 last_updated: "2026-06-26T02:03:07.607Z"
 last_activity: 2026-06-26
 last_activity_desc: Phase 10.6.1 complete, transitioned to Phase 11
@@ -23,15 +23,15 @@ progress:
 
 Phase: 11 — Zero-Input Spending Capture
 Plan: Not started
-Status: Ready to execute
+Status: Ready to plan
 Last activity: 2026-06-26 — Phase 10.6.1 complete, transitioned to Phase 11
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-06-22)
+See: .planning/PROJECT.md (updated 2026-06-26)
 
-**Core value:** 단순한 프리셋과 단계별 카드/시뮬레이션 흐름으로 개인 자산 흐름을 빠르게 이해하고 조정하게 한다.
-**Current focus:** Phase 10.6.1 — Legacy editor removal and Financial Detail Modal capability absorption is in progress
+**Core value:** 단순한 프리셋 선택만으로 즉각적인 자산 시각화 결과를 제공하고, 복잡한 재무 계산의 부담 없이 직관적인 개인 예산 흐름을 파악하게 한다.
+**Current focus:** Phase 11 — Zero-Input Spending Capture is ready for discussion and planning
 
 ## Accumulated Context
 
