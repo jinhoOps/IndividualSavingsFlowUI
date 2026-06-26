@@ -115,6 +115,28 @@ Plans:
 
 **Requirements:** UXR-13, UXR-14, UXR-15, UXR-16
 
+**Plans:** 5 plans
+Plans:
+**Wave 1**
+
+- [ ] 10.7-01-PLAN.md — Simple Step 1 Sankey core and topology regression tests.
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 10.7-02-PLAN.md — Sanitizer/storage migration sidecar and import/share compatibility.
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 10.7-03-PLAN.md — Financial Detail Modal account-concept removal while preserving non-account editing.
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 10.7-04-PLAN.md — Step 1 render/UI/controller cleanup and source audit tests.
+
+**Wave 5** *(blocked on Wave 2 and Wave 4 completion)*
+
+- [ ] 10.7-05-PLAN.md — Portfolio handoff boundary, guidance, destination tests, and ADR.
+
 **Depends on:** Phase 10.6.1
 
 **Success criteria:**
@@ -196,6 +218,10 @@ Plans:
 | UXR-06 | Phase 10.6 | Complete |
 | UXR-07 | Phase 10.6 | Complete |
 | UXR-08 | Phase 10.6 | Complete |
+| UXR-13 | Phase 10.7 | Pending |
+| UXR-14 | Phase 10.7 | Pending |
+| UXR-15 | Phase 10.7 | Pending |
+| UXR-16 | Phase 10.7 | Pending |
 | CAP-01 | Phase 11 | Pending |
 | CAP-02 | Phase 11 | Pending |
 | CAP-03 | Phase 11 | Pending |
