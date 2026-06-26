@@ -2,36 +2,36 @@
 gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: milestone
-current_phase: 10.6
-current_phase_name: Financial Detail Modal Editing UX Repair
-status: complete
-stopped_at: Phase 10.6 verified
-last_updated: "2026-06-25T03:49:00.000Z"
-last_activity: 2026-06-25
-last_activity_desc: Phase 10.6 complete and verified
+current_phase: 10.6.1
+current_phase_name: Legacy Editor Removal and Detail Modal Capability Absorption
+status: in_progress
+stopped_at: Completed 10.6.1-01-PLAN.md
+last_updated: "2026-06-26T00:55:19.021Z"
+last_activity: 2026-06-26
+last_activity_desc: Phase 10.6.1 Plan 01 complete
 progress:
-  total_phases: 7
+  total_phases: 8
   completed_phases: 3
-  total_plans: 11
-  completed_plans: 11
-  percent: 43
+  total_plans: 14
+  completed_plans: 12
+  percent: 86
 ---
 
 # Project State
 
 ## Current Position
 
-Phase: 10.6 — Financial Detail Modal Editing UX Repair
-Plan: 3 of 03
-Status: Complete and verified
-Last activity: 2026-06-25 — Phase 10.6 complete and verified
+Phase: 10.6.1 — Legacy Editor Removal and Detail Modal Capability Absorption
+Plan: 1 of 03
+Status: In Progress
+Last activity: 2026-06-26 — Phase 10.6.1 Plan 01 complete
 
 ## Project Reference
 
 See: .planning/PROJECT.md (updated 2026-06-22)
 
 **Core value:** 단순한 프리셋과 단계별 카드/시뮬레이션 흐름으로 개인 자산 흐름을 빠르게 이해하고 조정하게 한다.
-**Current focus:** Phase 10.6 — Financial Detail Modal Editing UX Repair complete; Phase 11 is the next roadmap candidate
+**Current focus:** Phase 10.6.1 — Legacy editor removal and Financial Detail Modal capability absorption is in progress
 
 ## Accumulated Context
 
@@ -65,6 +65,7 @@ See: .planning/PROJECT.md (updated 2026-06-22)
 | Phase 10.6-financial-detail-modal-editing-ux-repair P01 | 18 min | 2 tasks | 5 files |
 | Phase 10.6-financial-detail-modal-editing-ux-repair P02 | 52 min | 2 tasks | 4 files |
 | Phase 10.6-financial-detail-modal-editing-ux-repair P03 | 24min | 2 tasks | 4 files |
+| Phase 10.6.1 P01 | 10 min | 2 tasks | 3 files |
 
 ## Decisions
 
@@ -99,14 +100,16 @@ See: .planning/PROJECT.md (updated 2026-06-22)
 - [Phase 10.6-02]: The integrated financial detail modal uses tab-header add actions and guarded pending close prompts while preserving commitImmediateInputs as the persistence boundary.
 - [Phase 10.6-03]: Mobile financial rail uses four user-facing cells (수입, 생활비, 투자, 저축), with 저축 combining explicit and automatic savings.
 - [Phase 10.6-03]: Legacy modal regression tests now assert Phase 09/10.5 contracts through row-click, inline-add, and in-place apply/cancel semantics.
+- [Phase 10.6.1-01]: Income allocation editing now lives inside Financial Detail Modal income row edit state and persists by enabling split income account data when multiple allocations exist.
+- [Phase 10.6.1-01]: Savings row additional settings expose item-level annual yield and maturity month while rows without item yield continue to use the global savings yield fallback.
 
 ## Operator Next Steps
 
-- Phase 10.6 is complete and verifier-passed.
-- Next roadmap candidate is Phase 11: Zero-Input Spending Capture.
+- Phase 10.6.1 Plan 01 is complete.
+- Next plan candidate is 10.6.1-02 legacy auxiliary editor removal.
 
 ## Session
 
-**Last session:** 2026-06-25T03:49:00.000Z
-**Stopped at:** Phase 10.6 verified
+**Last session:** 2026-06-26T00:55:00.005Z
+**Stopped at:** Completed 10.6.1-01-PLAN.md
 **Resume file:** None
