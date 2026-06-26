@@ -1,6 +1,33 @@
 import { IsfStorageHub } from '../../../shared/storage/hub-storage.js';
 
 const STORAGE_KEY_PORTFOLIOS = 'isf-step3-portfolios-v2';
+const EMPTY_ACCOUNT_FLOW_HANDOFF = {
+  available: false,
+  counts: {
+    accounts: 0,
+    incomeAllocations: 0,
+    itemAccounts: 0,
+    transfers: 0
+  },
+  labels: []
+};
+
+function normalizeAccountFlowHandoff(handoff) {
+  const counts = handoff && typeof handoff === 'object' ? handoff.counts || {} : {};
+  const labels = Array.isArray(handoff?.labels) ? handoff.labels.filter(Boolean) : [];
+  const normalized = {
+    available: Boolean(handoff?.available),
+    counts: {
+      accounts: Number(counts.accounts) || 0,
+      incomeAllocations: Number(counts.incomeAllocations) || 0,
+      itemAccounts: Number(counts.itemAccounts) || 0,
+      transfers: Number(counts.transfers) || 0
+    },
+    labels
+  };
+  normalized.available = normalized.available || Object.values(normalized.counts).some(count => count > 0);
+  return normalized;
+}
 
 export class IsfState {
   constructor() {
@@ -11,6 +38,7 @@ export class IsfState {
         period: '매일',
         assets: []
       },
+      accountFlowHandoff: { ...EMPTY_ACCOUNT_FLOW_HANDOFF, counts: { ...EMPTY_ACCOUNT_FLOW_HANDOFF.counts } },
       lastUpdated: new Date().toISOString()
     };
   }
@@ -21,6 +49,7 @@ export class IsfState {
       this.data = {
         portfolios: saved.portfolios || [],
         activeCreator: saved.activeCreator || { name: '', period: '매일', assets: [] },
+        accountFlowHandoff: normalizeAccountFlowHandoff(saved.accountFlowHandoff),
         lastUpdated: saved.lastUpdated || new Date().toISOString()
       };
     } else {
@@ -37,6 +66,11 @@ export class IsfState {
         { id: `as-${Date.now()}-2`, name: '', ticker: '', amount: 0, ratio: 0 }
       ]
     };
+    this.saveToStorage();
+  }
+
+  setAccountFlowHandoff(handoff) {
+    this.data.accountFlowHandoff = normalizeAccountFlowHandoff(handoff);
     this.saveToStorage();
   }
 

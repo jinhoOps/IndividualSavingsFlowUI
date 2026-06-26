@@ -23,6 +23,16 @@
     </section>
 
     <main class="dashboard-grid" style="display: grid; grid-template-columns: 1fr; gap: 20px;">
+      <section class="panel account-flow-handoff-section" aria-labelledby="accountFlowHandoffTitle">
+        <div class="section-head">
+          <h2 id="accountFlowHandoffTitle">계좌흐름도 연결</h2>
+        </div>
+        <div id="accountFlowHandoffStatus" class="handoff-status" data-account-flow-handoff-status aria-live="polite">
+          <div class="handoff-status__title">연결된 계좌흐름도 데이터가 없습니다</div>
+          <p class="handoff-status__body">Step 1의 단순 재무 입력은 그대로 유지되고, 보존된 sidecar가 있을 때만 Portfolio에서 감지합니다.</p>
+        </div>
+      </section>
+
       <!-- 1. 포트폴리오 목록 섹션 -->
       <section class="panel summary-section">
         <div class="section-head" style="display: flex; justify-content: space-between; align-items: center; gap: 12px; width: 100%;">
