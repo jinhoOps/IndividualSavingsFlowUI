@@ -1,48 +1,40 @@
 // @ts-nocheck
 import { test, expect } from '@playwright/test';
 
-const STEP1_WITH_ACCOUNT_FLOW_HANDOFF = {
+const LEGACY_STEP1_WITH_ACCOUNT_FLOW_DATA = {
   modelVersion: 10,
+  accounts: [
+    { id: 'account-salary', name: '급여계좌', type: 'checking' },
+    { id: 'account-living', name: '생활비계좌', type: 'checking' },
+    { id: 'account-invest', name: '투자계좌', type: 'investment' },
+  ],
   incomes: [
-    { id: 'income-salary', name: '월급', amount: 5000000 },
+    {
+      id: 'income-salary',
+      name: '월급',
+      amount: 5000000,
+      allocations: [
+        { accountId: 'account-salary', amount: 5000000 },
+      ],
+    },
   ],
   expenseItems: [
-    { id: 'expense-living', name: '생활비', amount: 1800000, group: 'fixed' },
+    { id: 'expense-living', name: '생활비', amount: 1800000, group: 'fixed', accountId: 'account-living' },
   ],
   savingsItems: [
     { id: 'savings-home', name: '주택자금', amount: 900000 },
   ],
   investItems: [
-    { id: 'invest-etf', name: 'ETF', amount: 800000 },
+    { id: 'invest-etf', name: 'ETF', amount: 800000, accountId: 'account-invest' },
   ],
   monthlyExpense: 1800000,
   monthlySavings: 900000,
   monthlyInvest: 800000,
-  accountFlowHandoff: {
-    accounts: [
-      { id: 'account-salary', name: '급여계좌', type: 'checking' },
-      { id: 'account-living', name: '생활비계좌', type: 'checking' },
-      { id: 'account-invest', name: '투자계좌', type: 'investment' },
-    ],
-    incomeAllocations: [
-      {
-        incomeId: 'income-salary',
-        incomeName: '월급',
-        allocations: [
-          { accountId: 'account-salary', amount: 5000000 },
-        ],
-      },
-    ],
-    itemAccounts: [
-      { itemId: 'expense-living', itemName: '생활비', category: 'expense', accountId: 'account-living' },
-      { itemId: 'invest-etf', itemName: 'ETF', category: 'invest', accountId: 'account-invest' },
-    ],
-    transfers: [
-      { fromAccountId: 'account-salary', toAccountId: 'account-invest', amount: 800000, memo: 'ETF 적립' },
-    ],
-    splitIncomeAccounts: true,
-    surplusTransferAccountId: 'account-salary',
-  },
+  transfers: [
+    { fromAccountId: 'account-salary', toAccountId: 'account-invest', amount: 800000, memo: 'ETF 적립' },
+  ],
+  splitIncomeAccounts: true,
+  surplusTransferAccountId: 'account-salary',
 };
 
 const STEP1_WITHOUT_HANDOFF = {
@@ -69,10 +61,28 @@ async function seedStep1LocalSnapshot(page, snapshot) {
   }, snapshot);
 }
 
+async function seedSanitizedStep1LocalSnapshot(page, rawInputs) {
+  await page.goto('apps/main/index.html');
+  await page.waitForSelector('main');
+
+  const sanitized = await page.evaluate(async (source) => {
+    const { sanitizeInputs } = await import('/IndividualSavingsFlowUI/apps/main/modules/input-sanitizer.js');
+    return sanitizeInputs(source);
+  }, rawInputs);
+
+  await page.evaluate((snapshot) => {
+    localStorage.clear();
+    sessionStorage.clear();
+    localStorage.setItem('isf-step1-active', JSON.stringify(snapshot));
+  }, sanitized);
+
+  return sanitized;
+}
+
 // ADR 0002 keeps account-flow sidecar consumption destination-owned by Portfolio.
 test.describe('Step 3 Phase 10.7 Portfolio account-flow handoff boundary', () => {
   test('detects Step 1 accountFlowHandoff sidecar without rehydrating Step 1 primary account fields', async ({ page }) => {
-    await seedStep1LocalSnapshot(page, STEP1_WITH_ACCOUNT_FLOW_HANDOFF);
+    const sanitizedStep1 = await seedSanitizedStep1LocalSnapshot(page, LEGACY_STEP1_WITH_ACCOUNT_FLOW_DATA);
     await page.goto('apps/portfolio/index.html');
     await page.waitForSelector('main');
 
@@ -106,6 +116,11 @@ test.describe('Step 3 Phase 10.7 Portfolio account-flow handoff boundary', () =>
     expect(sourceAfterPortfolioVisit.incomes[0].allocations).toBeUndefined();
     expect(sourceAfterPortfolioVisit.expenseItems[0].accountId).toBeUndefined();
     expect(sourceAfterPortfolioVisit.accountFlowHandoff.accounts).toHaveLength(3);
+    expect(sourceAfterPortfolioVisit.accountFlowHandoff.incomes).toEqual(sanitizedStep1.accountFlowHandoff.incomes);
+    expect(sourceAfterPortfolioVisit.accountFlowHandoff.expenseItems).toEqual(sanitizedStep1.accountFlowHandoff.expenseItems);
+    expect(sourceAfterPortfolioVisit.accountFlowHandoff.investItems).toEqual(sanitizedStep1.accountFlowHandoff.investItems);
+    expect(sourceAfterPortfolioVisit.accountFlowHandoff.incomeAllocations).toBeUndefined();
+    expect(sourceAfterPortfolioVisit.accountFlowHandoff.itemAccounts).toBeUndefined();
   });
 
   test('reports an empty Portfolio handoff state when Step 1 has no sidecar', async ({ page }) => {

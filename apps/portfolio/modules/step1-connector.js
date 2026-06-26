@@ -27,6 +27,31 @@ function cloneEmptyHandoff() {
   };
 }
 
+function countIncomeAllocations(sidecar) {
+  const sanitizerCount = asArray(sidecar.incomes)
+    .filter(income => income && typeof income === 'object')
+    .reduce((count, income) => {
+      const allocations = asArray(income.allocations)
+        .filter(allocation => allocation && typeof allocation === 'object' && allocation.accountId);
+      if (allocations.length > 0) {
+        return count + allocations.length;
+      }
+      return income.accountId ? count + 1 : count;
+    }, 0);
+
+  return sanitizerCount || asArray(sidecar.incomeAllocations).length;
+}
+
+function countItemAccounts(sidecar) {
+  const sanitizerCount = [
+    ...asArray(sidecar.expenseItems),
+    ...asArray(sidecar.savingsItems),
+    ...asArray(sidecar.investItems),
+  ].filter(item => item && typeof item === 'object' && item.accountId).length;
+
+  return sanitizerCount || asArray(sidecar.itemAccounts).length;
+}
+
 function normalizeAccountFlowHandoff(data) {
   const sidecar = data && typeof data === 'object' ? data.accountFlowHandoff : null;
   if (!sidecar || typeof sidecar !== 'object') {
@@ -41,8 +66,6 @@ function normalizeAccountFlowHandoff(data) {
       type: typeof account.type === 'string' ? account.type.trim() : '',
     }))
     .filter(account => account.id || account.name);
-  const incomeAllocations = asArray(sidecar.incomeAllocations);
-  const itemAccounts = asArray(sidecar.itemAccounts);
   const transfers = asArray(sidecar.transfers);
   const labels = accounts
     .map(account => account.name || account.id)
@@ -51,8 +74,8 @@ function normalizeAccountFlowHandoff(data) {
 
   const counts = {
     accounts: accounts.length,
-    incomeAllocations: incomeAllocations.length,
-    itemAccounts: itemAccounts.length,
+    incomeAllocations: countIncomeAllocations(sidecar),
+    itemAccounts: countItemAccounts(sidecar),
     transfers: transfers.length,
   };
   const available = Object.values(counts).some(count => count > 0);
