@@ -5,16 +5,16 @@ milestone_name: milestone
 current_phase: 10.7
 current_phase_name: Account Flow Extraction and Portfolio Boundary
 status: in_progress
-stopped_at: Completed 10.7-04-PLAN.md
-last_updated: "2026-06-26T08:27:55.945Z"
+stopped_at: Completed 10.7-06-PLAN.md
+last_updated: "2026-06-26T09:05:05.648Z"
 last_activity: 2026-06-26
-last_activity_desc: Phase 10.7 Plan 05 completed; Portfolio now detects Step 1 accountFlowHandoff sidecar data without rehydrating Step 1 primary account fields
+last_activity_desc: Phase 10.7 Plan 06 completed; Step 1 now guides account-flow handoff users to Portfolio and ADR 0002 fixes the boundary
 progress:
   total_phases: 9
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 20
-  completed_plans: 19
-  percent: 95
+  completed_plans: 20
+  percent: 56
 ---
 
 # Project State
@@ -22,9 +22,9 @@ progress:
 ## Current Position
 
 Phase: 10.7 — Account Flow Extraction and Portfolio Boundary
-Plan: 05 complete; 06 next
-Status: In progress
-Last activity: 2026-06-26 — Phase 10.7 Plan 05 completed; Portfolio now detects Step 1 accountFlowHandoff sidecar data without rehydrating Step 1 primary account fields
+Plan: 06 complete
+Status: Phase 10.7 complete; awaiting orchestrator verification
+Last activity: 2026-06-26 — Phase 10.7 Plan 06 completed; Step 1 now guides account-flow handoff users to Portfolio and ADR 0002 fixes the boundary
 
 ## Project Reference
 
@@ -73,6 +73,7 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 | Phase 10.7-account-flow-extraction-and-portfolio-boundary P03 | 36 min | 2 tasks | 5 files |
 | Phase 10.7-account-flow-extraction-and-portfolio-boundary P04 | 8 min | 2 tasks | 9 files |
 | Phase 10.7-account-flow-extraction-and-portfolio-boundary P05 | 31 min | 2 tasks | 7 files |
+| Phase 10.7-account-flow-extraction-and-portfolio-boundary P06 | 32 min | 3 tasks | 6 files |
 
 ## Decisions
 
@@ -123,14 +124,16 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 - [Phase 10.7-04]: Correction refresh and transfer-rule handlers were deleted from ordinary Step 1 so account sidecar data cannot mutate primary Sankey state.
 - [Phase 10.7-05]: Portfolio consumes `accountFlowHandoff` only as destination-owned status data; visiting Portfolio does not rehydrate Step 1 primary account fields.
 - [Phase 10.7-05]: Portfolio connector falls back from IndexedDB latest snapshot to `isf-step1-active` local data so browser-local handoff detection remains reliable.
+- [Phase 10.7-06]: Portfolio is the account-flow destination boundary; Step 1 only shows navigation guidance when `accountFlowHandoff` exists.
+- [Phase 10.7-06]: `accountFlowHandoff` remains handoff-only compatibility data and must not rehydrate Step 1 primary account fields.
 
 ## Operator Next Steps
 
-- Phase 10.7 Plan 05 is complete.
-- Next recommended step is executing `10.7-06-PLAN.md` after Wave 6 dependencies are satisfied.
+- Phase 10.7 Plan 06 is complete.
+- Next recommended step is orchestrator-owned phase-level verification for Phase 10.7.
 
 ## Session
 
-**Last session:** 2026-06-26T08:26:40Z
-**Stopped at:** Completed 10.7-05-PLAN.md
+**Last session:** 2026-06-26T09:04:37.348Z
+**Stopped at:** Completed 10.7-06-PLAN.md
 **Resume file:** None
