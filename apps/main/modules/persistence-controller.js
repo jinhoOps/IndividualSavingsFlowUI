@@ -27,11 +27,7 @@ export function createPersistenceController({ renderAll }) {
     window.location.href = window.location.pathname;
   }
 
-  function setPendingBarVisible(visible) {
-    if (dom.pendingBar) dom.pendingBar.hidden = !visible;
-    if (dom.pendingSummary) {
-      dom.pendingSummary.textContent = visible ? listRenderer.getPendingSummaryText(state.draftInputs) : "";
-    }
+  function setPendingBarVisible() {
   }
 
   function persistPrimaryState(inputs, options = {}) {

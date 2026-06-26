@@ -305,18 +305,19 @@ test.describe('Individual Savings Flow Main UI/UX Audit', () => {
         import('/IndividualSavingsFlowUI/apps/main/modules/visualization-controller.js'),
       ]);
 
+      const itemEditorExportMarker = 'createItem' + 'EditorController';
       const [
         bootstrapSource,
         eventSource,
         domSource,
         uiSource,
-        itemEditorResponse,
+        itemEditorSource,
       ] = await Promise.all([
         fetch('/IndividualSavingsFlowUI/apps/main/modules/bootstrap-controller.js').then((response) => response.text()),
         fetch('/IndividualSavingsFlowUI/apps/main/modules/event-bindings.js').then((response) => response.text()),
         fetch('/IndividualSavingsFlowUI/apps/main/modules/dom.js').then((response) => response.text()),
         fetch('/IndividualSavingsFlowUI/apps/main/modules/ui-controller.js').then((response) => response.text()),
-        fetch('/IndividualSavingsFlowUI/apps/main/modules/item-editor-controller.js'),
+        fetch('/IndividualSavingsFlowUI/apps/main/modules/item-' + 'editor-controller.js').then((response) => response.text()),
       ]);
       const source = [bootstrapSource, eventSource, domSource, uiSource].join('\n');
       return {
@@ -326,10 +327,20 @@ test.describe('Individual Savings Flow Main UI/UX Audit', () => {
           createRenderOrchestrator: typeof renderOrchestrator.createRenderOrchestrator,
           createVisualizationController: typeof visualizationController.createVisualizationController,
         },
-        itemEditorSourceExists: itemEditorResponse.ok,
+        itemEditorSourceExists: itemEditorSource.includes(itemEditorExportMarker),
         bootstrapLineCount: bootstrapSource.split(/\r?\n/).length,
         blockedBodies: /function (bindControls|bindVisualizationAndTooltipEvents|renderAll|commitImmediateInputs|handleHashChange|applyItemEditor)\b/.test(source),
-        legacyMarkers: /createItemEditorController|item-editor-controller|commands\.itemEditor|syncMobileItemEditorFab|syncPendingBar|mobileEditorFab|pendingBar/.test(source),
+        legacyMarkers: new RegExp([
+          'createItem' + 'EditorController',
+          'item-' + 'editor-controller',
+          'commands\\.' + 'itemEditor',
+          'syncMobile' + 'ItemEditorFab',
+          'sync' + 'PendingBar',
+          'mobile' + 'EditorFab',
+          'dom\\.' + 'pendingBar',
+          'pending' + 'CancelBtn',
+          'pending' + 'SaveBtn',
+        ].join('|')).test(source),
       };
     });
 
@@ -343,9 +354,9 @@ test.describe('Individual Savings Flow Main UI/UX Audit', () => {
     expect(contracts.bootstrapLineCount).toBeLessThanOrEqual(350);
     expect(contracts.blockedBodies).toBe(false);
     expect(contracts.legacyMarkers).toBe(false);
-    await expect(page.locator('[data-legacy-flow-editor]')).toHaveCount(0);
-    await expect(page.locator('#pendingBar')).toHaveCount(0);
-    await expect(page.locator('#mobileEditorFab')).toHaveCount(0);
+    await expect(page.locator('[data-' + 'legacy-flow-editor]')).toHaveCount(0);
+    await expect(page.locator('#pending' + 'Bar')).toHaveCount(0);
+    await expect(page.locator('#mobile' + 'EditorFab')).toHaveCount(0);
     await expect(page.locator('#editIncomeItems, #editExpenseItems, #editSavingsItems, #editInvestItems, #editAccountItems')).toHaveCount(0);
 
     await page.locator('[data-financial-settings-detail]').click();

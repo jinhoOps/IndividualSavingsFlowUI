@@ -31,20 +31,9 @@ import {
   syncViewModeGuideUi,
   syncMobileInputsPanelVisibility,
   syncAdvancedTabBlockVisibility,
-  syncMobileItemEditorFab,
 } from "./ui-controller.js";
 
 export function activateMgmtTab(tabKey) {
-  if (dom.controlsPanel?.classList.contains("controls-panel--assumptions")) {
-    document.querySelectorAll("[data-legacy-flow-editor]").forEach((panel) => {
-      panel.hidden = true;
-      panel.setAttribute("aria-hidden", "true");
-    });
-    const settingsPanel = document.getElementById("mgmtPanelSettings");
-    if (settingsPanel) settingsPanel.hidden = false;
-    return;
-  }
-
   const tabs = document.querySelectorAll(".mgmt-tab[data-mgmt-tab]");
   const panels = document.querySelectorAll(".mgmt-panel[id^='mgmtPanel']");
   tabs.forEach((tab) => {
@@ -58,14 +47,13 @@ export function activateMgmtTab(tabKey) {
   });
 }
 
-export function initMgmtTabs(commands) {
+export function initMgmtTabs() {
   if (dom.controlsPanel?.classList.contains("controls-panel--assumptions")) {
     document.querySelectorAll(".mgmt-tab[data-mgmt-tab]").forEach((tab) => {
       tab.setAttribute("aria-hidden", "true");
       tab.setAttribute("tabindex", "-1");
     });
     activateMgmtTab("settings");
-    if (commands && commands.itemEditor) commands.itemEditor.closeAllItemEditors();
     return;
   }
 
@@ -74,36 +62,18 @@ export function initMgmtTabs(commands) {
     tab.addEventListener("click", () => {
       const tabKey = tab.dataset.mgmtTab;
       activateMgmtTab(tabKey);
-
-      const isE2e = navigator.webdriver;
-
-      if (commands && commands.itemEditor && !isE2e) {
-        if (tabKey === "income") {
-          commands.itemEditor.startItemEditor("income");
-        } else if (tabKey === "account") {
-          commands.itemEditor.startItemEditor("account");
-        } else if (tabKey === "flow") {
-          commands.itemEditor.startItemEditor(state.activeAdvancedTab || "expense");
-        } else {
-          commands.itemEditor.closeAllItemEditors();
-        }
-      }
     });
   });
   
   activateMgmtTab("income");
-  const isE2e = navigator.webdriver;
-  if (commands && commands.itemEditor && !isE2e) {
-    commands.itemEditor.startItemEditor("income");
-  }
 }
 
 export function bindStep1Events(commands) {
   bindModalEvents(commands.persistence);
   bindFormTracking(commands);
-  bindReadonlyAdvancedNavigation(commands.itemEditor.navigateToAdvancedGroup);
-  bindAdvancedTabs(commands.itemEditor.navigateToAdvancedGroup);
-  bindSortControls(commands.itemEditor.setItemSortMode);
+  bindReadonlyAdvancedNavigation(openFinancialModalCategory);
+  bindAdvancedTabs(openFinancialModalCategory);
+  bindSortControls();
   bindSankeyControls(commands.visualization);
   bindProjectionControls(commands.render);
   bindViewModeControls(commands.persistence);
@@ -119,10 +89,14 @@ export function bindStep1Events(commands) {
     getVisibleInputs: commands.render.getVisibleInputs,
     renderAll: commands.render.renderAll,
   }).bind();
-  commands.itemEditor.bindItemEditorEvents();
   bindActionButtons(commands.persistence.handleResetInputs);
   bindGlobalEvents(commands);
   commands.visualization.bindVisualizationAndTooltipEvents();
+}
+
+function openFinancialModalCategory(category) {
+  if (!category) return;
+  document.dispatchEvent(new CustomEvent("open-financial-modal", { detail: { category } }));
 }
 
 function bindFormTracking({ persistence, render }) {
@@ -171,10 +145,13 @@ function bindAdvancedTabs(navigateToAdvancedGroup) {
   });
 }
 
-function bindSortControls(setItemSortMode) {
+function bindSortControls() {
   [dom.expenseSortMode, dom.savingsSortMode, dom.investSortMode].forEach((select) => {
     if (!select) return;
-    select.addEventListener("change", () => setItemSortMode(select.id.replace("SortMode", ""), select.value));
+    select.addEventListener("change", () => {
+      const group = select.id.replace("SortMode", "");
+      state.itemSortModes[group] = select.value;
+    });
   });
 }
 
@@ -356,7 +333,6 @@ function bindGlobalEvents({ persistence, render }) {
     }
     syncMobileInputsPanelVisibility();
     syncAdvancedTabBlockVisibility();
-    syncMobileItemEditorFab();
   };
   mq.addEventListener("change", onChange);
   window.addEventListener("orientationchange", () => {

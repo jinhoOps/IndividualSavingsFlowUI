@@ -27,7 +27,6 @@ import {
 import { createPersistenceController } from "./persistence-controller.js";
 import { createRenderOrchestrator } from "./render-orchestrator.js";
 import { createVisualizationController } from "./visualization-controller.js";
-import { createItemEditorController } from "./item-editor-controller.js";
 
 export function startStep1App() {
   if (document.readyState === "loading") {
@@ -65,20 +64,11 @@ function createControllers() {
   const visualization = createVisualizationController({
     markPendingChanges: () => persistence.markPendingChanges(),
   });
-  const itemEditor = createItemEditorController({
-    markPendingChanges: () => persistence.markPendingChanges(),
-    getVisibleInputs: () => render.getVisibleInputs(),
-    activateMgmtTab,
-    openFinancialModal: (category) => {
-      document.dispatchEvent(new CustomEvent("open-financial-modal", { detail: { category } }));
-    },
-  });
 
   return {
     render,
     persistence,
     visualization,
-    itemEditor,
   };
 }
 
