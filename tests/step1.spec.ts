@@ -2814,7 +2814,7 @@ test.describe('Phase 10.6 financial detail modal editing repair', () => {
   });
 });
 
-test.describe('Phase 10.6.1 modal capability absorption', () => {
+test.describe('Phase 10.7 modal account boundary', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
       localStorage.clear();
@@ -2856,7 +2856,10 @@ test.describe('Phase 10.6.1 modal capability absorption', () => {
           { id: 'acc-saving', name: '저축계좌' },
           { id: 'acc-stock', name: '투자계좌' },
         ],
-        expenseItems: [{ id: 'rent', name: '월세', amount: 900000, group: '고정비', accountId: 'acc-living' }],
+        expenseItems: [
+          { id: 'rent', name: '월세', amount: 900000, group: '고정비', accountId: 'acc-living' },
+          { id: 'food', name: '식비', amount: 500000, group: '변동비', actualSpent: 210000, varianceAmount: 50000, accountId: 'acc-living' },
+        ],
         savingsItems: [
           { id: 'saving-main', name: '적금', amount: 500000, group: '저축', accountId: 'acc-saving' },
           { id: 'saving-fallback', name: '비상금', amount: 300000, group: '저축', accountId: 'acc-saving' },
@@ -2876,10 +2879,17 @@ test.describe('Phase 10.6.1 modal capability absorption', () => {
     return modal;
   }
 
-  test('edits income destination allocations inside the modal and blocks over-allocation', async ({ page }) => {
+  test('Phase 10.7 modal removes account-flow controls while preserving simple row edits', async ({ page }) => {
     await seedAbsorptionFlow(page);
 
     const modal = await openFinancialDetail(page);
+    for (const label of ['월 수입', '월 생활비', '투자', '저축', '결과/자동 저축']) {
+      await expect(modal.getByRole('tab', { name: label, exact: true })).toBeVisible();
+    }
+    await expect(modal.getByRole('tab', { name: /계좌/ })).toHaveCount(0);
+    await expect(modal.getByText('계좌흐름도')).toHaveCount(0);
+
+    await modal.getByRole('tab', { name: '월 수입', exact: true }).click();
     const incomeRow = modal.locator('[data-modal-row-category="income"]').first();
     await expect(incomeRow).toContainText('급여');
     await expect(incomeRow).toContainText('420만');
@@ -2888,41 +2898,49 @@ test.describe('Phase 10.6.1 modal capability absorption', () => {
 
     await incomeRow.click();
     const editingIncome = modal.locator('.financial-modal-row--editing[data-modal-row-category="income"]');
-    await expect(editingIncome.locator('[data-income-allocation-row]')).toHaveCount(1);
-    await editingIncome.locator('[data-income-allocation-add]').click();
-    await expect(editingIncome.locator('[data-income-allocation-row]')).toHaveCount(2);
+    await expect(editingIncome.locator('[data-income-allocation-row]')).toHaveCount(0);
+    await expect(editingIncome.locator('[data-income-allocation-add]')).toHaveCount(0);
+    await expect(editingIncome.locator('[data-income-allocation-remove]')).toHaveCount(0);
+    await expect(editingIncome.locator('[data-income-allocation-account]')).toHaveCount(0);
+    await expect(editingIncome.locator('[data-financial-modal-field="accountId"]')).toHaveCount(0);
+    await expect(editingIncome).not.toContainText('입금 배분');
+    await expect(editingIncome).not.toContainText('입금 계좌');
 
-    await editingIncome.locator('[data-income-allocation-row]').nth(0).locator('[data-income-allocation-amount]').fill('3000000');
-    await editingIncome.locator('[data-income-allocation-row]').nth(1).locator('[data-income-allocation-account]').selectOption('acc-living');
-    await editingIncome.locator('[data-income-allocation-row]').nth(1).locator('[data-income-allocation-amount]').fill('1300000');
-    await modal.locator('#financialModalSave').click();
-    await expect(editingIncome.locator('[data-financial-row-error]')).toContainText('수입 금액을 넘지 않게 배분해 주세요.');
-    let saved = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}'));
-    expect(saved.incomes[0].allocations).toEqual([{ accountId: 'acc-salary', amount: 4200000 }]);
+    await editingIncome.locator('[data-financial-modal-field="amount"]').fill('4300000');
+    await modal.getByRole('tab', { name: '월 생활비', exact: true }).click();
+    const variableRow = modal.locator('[data-financial-variable-row]').filter({ hasText: '식비' });
+    await variableRow.click();
+    await expect(variableRow.locator('[data-financial-modal-field="accountId"]')).toHaveCount(0);
+    await variableRow.locator('[data-financial-modal-field="amount"]').fill('550000');
+    await variableRow.locator('[data-financial-modal-field="varianceAmount"]').fill('80000');
 
-    await editingIncome.locator('[data-income-allocation-row]').nth(1).locator('[data-income-allocation-amount]').fill('1200000');
+    await modal.getByRole('tab', { name: '저축', exact: true }).click();
+    const savingRow = modal.locator('[data-modal-row-category="savings"]').filter({ hasText: '적금' });
+    await savingRow.click();
+    const editingSaving = modal.locator('.financial-modal-row--editing[data-modal-row-category="savings"]').filter({ hasText: '적금' });
+    await expect(editingSaving.locator('[data-financial-modal-field="accountId"]')).toHaveCount(0);
+    await editingSaving.locator('[data-savings-additional-toggle]').click();
+    await editingSaving.locator('[data-financial-modal-field="annualRate"]').fill('5.5');
+    await editingSaving.locator('[data-financial-modal-field="maturityMonth"]').fill('2027-03');
     await modal.locator('#financialModalSave').click();
     await expect(modal).toBeVisible();
     await expect(modal.locator('#financialModalPendingBar')).toBeHidden();
-    saved = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}'));
-    expect(saved.incomes[0]).toMatchObject({
-      amount: 4200000,
-      accountId: 'acc-salary',
-      allocations: [
-        { accountId: 'acc-salary', amount: 3000000 },
-        { accountId: 'acc-living', amount: 1200000 },
-      ],
-    });
 
-    await modal.getByRole('tab', { name: '월 수입', exact: true }).click();
-    await modal.locator('[data-modal-row-category="income"]').first().click();
-    const reopenedIncome = modal.locator('.financial-modal-row--editing[data-modal-row-category="income"]');
-    await reopenedIncome.locator('[data-income-allocation-row]').nth(1).locator('[data-income-allocation-remove]').click();
-    await expect(reopenedIncome.locator('[data-income-allocation-row]')).toHaveCount(1);
-    await modal.locator('#financialModalCancel').click();
-    await expect(modal.locator('#financialModalPendingBar')).toBeHidden();
-    saved = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}'));
-    expect(saved.incomes[0].allocations).toHaveLength(2);
+    const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}'));
+    expect(saved.incomes[0]).toMatchObject({ id: 'income-main', amount: 4300000 });
+    expect(saved.incomes[0]).not.toHaveProperty('accountId');
+    expect(saved.incomes[0]).not.toHaveProperty('allocations');
+    expect(saved.expenseItems.find((item: any) => item.id === 'food')).toMatchObject({
+      amount: 550000,
+      actualSpent: 210000,
+      varianceAmount: 80000,
+    });
+    expect(saved.expenseItems.find((item: any) => item.id === 'food')).not.toHaveProperty('accountId');
+    expect(saved.savingsItems.find((item: any) => item.id === 'saving-main')).toMatchObject({
+      annualRate: 5.5,
+      maturityMonth: '2027-03',
+    });
+    expect(saved.savingsItems.find((item: any) => item.id === 'saving-main')).not.toHaveProperty('accountId');
   });
 
   test('persists savings maturity and one item yield while global fallback remains effective', async ({ page }) => {
