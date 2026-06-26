@@ -5,9 +5,7 @@ import {
   DEFAULT_INVEST_ITEMS,
   MAX_INCOME_ITEMS,
   MAX_ALLOCATION_ITEMS,
-  MAGIC_MAPPING_DEFAULTS,
 } from "./constants.js";
-import { repairAccountConnections, SIMPLE_ACCOUNT_ALIASES } from "./account-correction.js";
 
 export function cloneInputs(inputs) {
   if (typeof structuredClone === "function") {
@@ -62,43 +60,11 @@ export function sanitizeInputs(rawInputs) {
   const expenseItems = sanitizeExpenseItems(raw.expenseItems, monthlyExpenseFallback);
   const savingsItems = sanitizeSavingsItems(raw.savingsItems, monthlySavingsFallback, annualSavingsYield);
   const investItems = sanitizeInvestItems(raw.investItems, monthlyInvestFallback);
-
-  let sanitizedAccounts = [];
-  if (!Array.isArray(raw.accounts) || raw.accounts.length === 0) {
-    sanitizedAccounts = SIMPLE_ACCOUNT_ALIASES.map((account) => ({ ...account }));
-  } else {
-    sanitizedAccounts = raw.accounts.map((acc, index) => {
-      const safeAcc = acc && typeof acc === "object" ? acc : {};
-      const id = typeof safeAcc.id === "string" && safeAcc.id.trim()
-        ? safeAcc.id.trim()
-        : `acc-${Date.now()}-${index}`;
-      const name = typeof safeAcc.name === "string" && safeAcc.name.trim()
-        ? safeAcc.name.trim()
-        : `계좌 ${index + 1}`;
-      return { id, name };
-    });
-  }
-
-  let surplusId = typeof raw.surplusTransferAccountId === "string" && raw.surplusTransferAccountId.trim()
-    ? raw.surplusTransferAccountId.trim()
-    : "";
-  if (!sanitizedAccounts.some(acc => acc.id === surplusId)) {
-    if (sanitizedAccounts.some(acc => acc.id === "acc-stock")) {
-      surplusId = "acc-stock";
-    } else if (sanitizedAccounts.length > 0) {
-      surplusId = sanitizedAccounts[0].id;
-    } else {
-      surplusId = "acc-stock";
-    }
-  }
+  const accountFlowHandoff = buildAccountFlowHandoff(raw);
 
   const sanitized = {
     modelVersion: 10,
     incomes: sanitizeIncomeItems(raw.incomes, monthlyIncomeFallback),
-    accounts: sanitizedAccounts,
-    splitIncomeAccounts: Boolean(raw.splitIncomeAccounts),
-    surplusTransferAccountId: surplusId,
-    transfers: sanitizeTransfers(raw.transfers, sanitizedAccounts),
     householdContext: sanitizeHouseholdContext(raw.householdContext),
     expenseItems,
     savingsItems,
@@ -119,13 +85,179 @@ export function sanitizeInputs(rawInputs) {
     horizonYears: sanitizeInteger(raw.horizonYears, DEFAULT_INPUTS.horizonYears, 1, 40),
   };
 
-  const repaired = repairAccountConnections(sanitized);
+  if (accountFlowHandoff) {
+    sanitized.accountFlowHandoff = accountFlowHandoff;
+  }
+
   return {
-    ...repaired,
-    monthlyExpense: getMonthlyAllocationTotalWon(repaired.expenseItems),
-    monthlySavings: getMonthlyAllocationTotalWon(repaired.savingsItems),
-    monthlyInvest: getMonthlyAllocationTotalWon(repaired.investItems),
+    ...sanitized,
+    monthlyExpense: getMonthlyAllocationTotalWon(sanitized.expenseItems),
+    monthlySavings: getMonthlyAllocationTotalWon(sanitized.savingsItems),
+    monthlyInvest: getMonthlyAllocationTotalWon(sanitized.investItems),
   };
+}
+
+export function buildAccountFlowHandoff(rawInputs) {
+  const raw = rawInputs && typeof rawInputs === "object" ? rawInputs : {};
+  const existing = raw.accountFlowHandoff && typeof raw.accountFlowHandoff === "object"
+    ? raw.accountFlowHandoff
+    : null;
+  const source = existing || raw;
+
+  const accounts = sanitizeHandoffAccounts(source.accounts);
+  const incomes = sanitizeHandoffItems(source.incomes, { includeAllocations: true });
+  const expenseItems = sanitizeHandoffItems(source.expenseItems);
+  const savingsItems = sanitizeHandoffItems(source.savingsItems);
+  const investItems = sanitizeHandoffItems(source.investItems);
+  const transfers = sanitizeHandoffTransfers(source.transfers);
+  const accountCorrections = sanitizeHandoffCorrections(source.accountCorrections);
+  const surplusTransferAccountId = sanitizeHandoffText(source.surplusTransferAccountId);
+  const hasAccountFlowData = accounts.length > 0
+    || incomes.length > 0
+    || expenseItems.length > 0
+    || savingsItems.length > 0
+    || investItems.length > 0
+    || transfers.length > 0
+    || accountCorrections.length > 0
+    || surplusTransferAccountId
+    || Object.prototype.hasOwnProperty.call(source, "splitIncomeAccounts");
+
+  if (!hasAccountFlowData) {
+    return null;
+  }
+
+  return {
+    version: 1,
+    accounts,
+    incomes,
+    expenseItems,
+    savingsItems,
+    investItems,
+    splitIncomeAccounts: Boolean(source.splitIncomeAccounts),
+    surplusTransferAccountId,
+    transfers,
+    accountCorrections,
+  };
+}
+
+function sanitizeHandoffText(value, maxLength = 80) {
+  const text = String(value ?? "").trim();
+  return text ? text.slice(0, maxLength) : "";
+}
+
+function sanitizeHandoffAccounts(accounts) {
+  if (!Array.isArray(accounts)) {
+    return [];
+  }
+  const usedIds = new Set();
+  return accounts
+    .map((account, index) => {
+      const safeAccount = account && typeof account === "object" ? account : {};
+      let id = sanitizeHandoffText(safeAccount.id, 80);
+      if (!id) {
+        id = `legacy-account-${index + 1}`;
+      }
+      if (usedIds.has(id)) {
+        id = `${id}-${index + 1}`;
+      }
+      usedIds.add(id);
+      return {
+        id,
+        name: sanitizeHandoffText(safeAccount.name, 80) || `계좌 ${index + 1}`,
+      };
+    })
+    .slice(0, MAX_ALLOCATION_ITEMS);
+}
+
+function sanitizeHandoffItems(items, options = {}) {
+  if (!Array.isArray(items)) {
+    return [];
+  }
+  const includeAllocations = Boolean(options.includeAllocations);
+  return items
+    .map((item, index) => {
+      const safeItem = item && typeof item === "object" ? item : {};
+      const accountId = sanitizeHandoffText(safeItem.accountId, 80);
+      const allocations = includeAllocations ? sanitizeHandoffAllocations(safeItem.allocations) : [];
+      if (!accountId && allocations.length === 0) {
+        return null;
+      }
+      const handoffItem = {
+        id: sanitizeHandoffText(safeItem.id, 80) || `legacy-item-${index + 1}`,
+        name: sanitizeHandoffText(safeItem.name, 80) || `항목 ${index + 1}`,
+      };
+      if (accountId) {
+        handoffItem.accountId = accountId;
+      }
+      if (allocations.length > 0) {
+        handoffItem.allocations = allocations;
+      }
+      return handoffItem;
+    })
+    .filter(Boolean)
+    .slice(0, MAX_ALLOCATION_ITEMS);
+}
+
+function sanitizeHandoffAllocations(allocations) {
+  if (!Array.isArray(allocations)) {
+    return [];
+  }
+  return allocations
+    .map((allocation) => {
+      const safeAllocation = allocation && typeof allocation === "object" ? allocation : {};
+      const accountId = sanitizeHandoffText(safeAllocation.accountId, 80);
+      if (!accountId) {
+        return null;
+      }
+      return {
+        accountId,
+        amount: window.IsfUtils.sanitizeMoney(safeAllocation.amount, 0),
+      };
+    })
+    .filter(Boolean)
+    .slice(0, MAX_ALLOCATION_ITEMS);
+}
+
+function sanitizeHandoffTransfers(transfers) {
+  if (!Array.isArray(transfers)) {
+    return [];
+  }
+  return transfers
+    .map((transfer, index) => {
+      const safeTransfer = transfer && typeof transfer === "object" ? transfer : {};
+      const sourceAccountId = sanitizeHandoffText(safeTransfer.sourceAccountId || safeTransfer.fromAccountId, 80);
+      const targetAccountId = sanitizeHandoffText(safeTransfer.targetAccountId || safeTransfer.toAccountId, 80);
+      if (!sourceAccountId || !targetAccountId || sourceAccountId === targetAccountId) {
+        return null;
+      }
+      return {
+        id: sanitizeHandoffText(safeTransfer.id, 80) || `legacy-transfer-${index + 1}`,
+        sourceAccountId,
+        targetAccountId,
+        amount: window.IsfUtils.sanitizeMoney(safeTransfer.amount, 0),
+        label: sanitizeHandoffText(safeTransfer.label, 80) || `이체 ${index + 1}`,
+      };
+    })
+    .filter(Boolean)
+    .slice(0, MAX_ALLOCATION_ITEMS);
+}
+
+function sanitizeHandoffCorrections(corrections) {
+  if (!Array.isArray(corrections)) {
+    return [];
+  }
+  return corrections
+    .map((correction) => {
+      const safeCorrection = correction && typeof correction === "object" ? correction : {};
+      const itemType = sanitizeHandoffText(safeCorrection.itemType, 40);
+      const message = sanitizeHandoffText(safeCorrection.message || safeCorrection.reason, 160);
+      if (!itemType && !message) {
+        return null;
+      }
+      return { itemType, message };
+    })
+    .filter(Boolean)
+    .slice(0, MAX_ALLOCATION_ITEMS);
 }
 
 export function sanitizeHouseholdContext(rawContext) {
@@ -148,7 +280,7 @@ export function isVariableExpenseItem(item) {
 
 export function sanitizeIncomeItems(items, fallbackAmount) {
   if (!Array.isArray(items) || items.length === 0) {
-    return [createIncomeItem({ name: "급여", amount: fallbackAmount, accountId: MAGIC_MAPPING_DEFAULTS.income })];
+    return [createIncomeItem({ name: "급여", amount: fallbackAmount })];
   }
 
   const sanitized = items
@@ -159,31 +291,10 @@ export function sanitizeIncomeItems(items, fallbackAmount) {
       const safeId = typeof safeItem.id === "string" && safeItem.id.trim()
         ? safeItem.id.trim()
         : createIncomeId();
-      const safeAccountId = typeof safeItem.accountId === "string" && safeItem.accountId.trim()
-        ? safeItem.accountId.trim()
-        : (MAGIC_MAPPING_DEFAULTS?.income || "acc-salary");
-      
-      const rawAllocs = Array.isArray(safeItem.allocations) ? safeItem.allocations : [];
-      const safeAllocations = rawAllocs.map(al => {
-        const safeAl = al && typeof al === "object" ? al : {};
-        return {
-          accountId: typeof safeAl.accountId === "string" && safeAl.accountId.trim()
-            ? safeAl.accountId.trim()
-            : safeAccountId,
-          amount: window.IsfUtils.sanitizeMoney(safeAl.amount, 0)
-        };
-      });
-
-      if (safeAllocations.length === 0) {
-        safeAllocations.push({ accountId: safeAccountId, amount: safeAmount });
-      }
-
       return {
         id: safeId,
         name: safeName,
         amount: safeAmount,
-        accountId: safeAccountId,
-        allocations: safeAllocations
       };
     })
     .filter((item) => item.name || item.amount > 0)
@@ -193,7 +304,7 @@ export function sanitizeIncomeItems(items, fallbackAmount) {
     return sanitized;
   }
 
-  return [createIncomeItem({ name: "급여", amount: fallbackAmount, accountId: MAGIC_MAPPING_DEFAULTS.income })];
+  return [createIncomeItem({ name: "급여", amount: fallbackAmount })];
 }
 
 function normalizeIncomeName(name, index) {
@@ -208,29 +319,12 @@ function createIncomeId() {
   return `income-${Date.now()}-${Math.floor(Math.random() * 100000)}`;
 }
 
-export function createIncomeItem({ id, name, amount, accountId, allocations } = {}) {
+export function createIncomeItem({ id, name, amount } = {}) {
   const safeAmount = window.IsfUtils.sanitizeMoney(amount, 0);
-  const defaultAccountId = typeof accountId === "string" && accountId.trim() ? accountId.trim() : (MAGIC_MAPPING_DEFAULTS?.income || "acc-salary");
-  
-  const rawAllocs = Array.isArray(allocations) ? allocations : [];
-  const safeAllocations = rawAllocs.map(al => {
-    const safeAl = al && typeof al === "object" ? al : {};
-    return {
-      accountId: typeof safeAl.accountId === "string" && safeAl.accountId.trim() ? safeAl.accountId.trim() : defaultAccountId,
-      amount: window.IsfUtils.sanitizeMoney(safeAl.amount, 0)
-    };
-  });
-
-  if (safeAllocations.length === 0) {
-    safeAllocations.push({ accountId: defaultAccountId, amount: safeAmount });
-  }
-
   return {
     id: typeof id === "string" && id.trim() ? id.trim() : createIncomeId(),
     name: normalizeIncomeName(name, 0),
     amount: safeAmount,
-    accountId: defaultAccountId,
-    allocations: safeAllocations
   };
 }
 
@@ -368,16 +462,10 @@ export function sanitizeAllocationItems(
       }
       usedIds.add(safeId);
 
-      const fallbackAccountId = (MAGIC_MAPPING_DEFAULTS && MAGIC_MAPPING_DEFAULTS[prefix]) || (MAGIC_MAPPING_DEFAULTS && MAGIC_MAPPING_DEFAULTS.expense) || "acc-living";
-      const safeAccountId = typeof item.accountId === "string" && item.accountId.trim()
-        ? item.accountId.trim()
-        : fallbackAccountId;
-
       const normalizedItem = {
         id: safeId,
         name: normalizeAllocationName(item.name, label, index),
         amount: window.IsfUtils.sanitizeMoney(item.amount, 0),
-        accountId: safeAccountId,
       };
       const normalizedGroup = normalizeAllocationGroupName(item.group);
       if (normalizedGroup) {
@@ -498,12 +586,12 @@ export function scaleDefaultAllocationItemsToTotal(defaultItems, totalAmount) {
   const factor = safeTotal / baseTotal;
   const scaled = defaultItems.map((item) => {
     const safeItem = item && typeof item === "object" ? item : {};
+    const { accountId: _accountId, ...primaryItem } = safeItem;
     return {
-      ...safeItem,
+      ...primaryItem,
       id: safeItem.id,
       name: safeItem.name,
       amount: window.IsfUtils.sanitizeMoney(safeItem.amount * factor, 0),
-      accountId: safeItem.accountId,
     };
   });
 

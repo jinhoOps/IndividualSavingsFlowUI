@@ -689,6 +689,69 @@ test.describe('Phase 09 account correction and Sankey topology', () => {
     expect(result.handoff.investItems.find((item: any) => item.id === 'invest-main')).toMatchObject({ accountId: 'acc-stock' });
   });
 
+  test('Phase 10.7 handoff survives share import without rehydrating primary account fields', async ({ page }) => {
+    const result = await page.evaluate(async () => {
+      const [
+        { SHARE_STATE_KEY, SHARE_STATE_SCHEMA },
+        { normalizeExternalStep1Inputs },
+        { sanitizeInputs },
+        { buildMonthlySnapshot },
+      ] = await Promise.all([
+        import('/IndividualSavingsFlowUI/apps/main/modules/constants.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/external-input-guard.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/input-sanitizer.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/calculator.js'),
+      ]);
+      const legacyPayload = {
+        modelVersion: 10,
+        splitIncomeAccounts: true,
+        incomes: [{
+          id: 'income-main',
+          name: '급여',
+          amount: 4200000,
+          accountId: 'acc-salary',
+          allocations: [{ accountId: 'acc-salary', amount: 4200000 }],
+        }],
+        accounts: [{ id: 'acc-salary', name: '급여계좌' }],
+        expenseItems: [{ id: 'rent', name: '월세', amount: 900000, group: '고정비', accountId: 'acc-living' }],
+        savingsItems: [{ id: 'saving-main', name: '적금', amount: 600000, group: '저축', annualRate: 5, maturityMonth: '2027-03', accountId: 'acc-saving' }],
+        investItems: [{ id: 'invest-main', name: 'ETF', amount: 700000, group: '투자', accountId: 'acc-stock' }],
+        transfers: [{ id: 'legacy-transfer', sourceAccountId: 'acc-salary', targetAccountId: 'acc-stock', amount: 100000, label: '투자 이체' }],
+        surplusTransferAccountId: 'acc-stock',
+      };
+      const saved = sanitizeInputs(legacyPayload);
+      const envelope = window.IsfShare.buildStateEnvelope(SHARE_STATE_KEY, SHARE_STATE_SCHEMA, saved);
+      const imported = window.IsfShare.parseImportedJson(JSON.stringify(envelope), SHARE_STATE_KEY);
+      const normalized = sanitizeInputs(normalizeExternalStep1Inputs('json-import', imported));
+      const snapshot = buildMonthlySnapshot(normalized);
+
+      return {
+        primaryKeys: Object.keys(normalized),
+        income: normalized.incomes[0],
+        expense: normalized.expenseItems[0],
+        saving: normalized.savingsItems[0],
+        invest: normalized.investItems[0],
+        handoff: normalized.accountFlowHandoff,
+        snapshotKeys: Object.keys(snapshot),
+        monthlyExpense: normalized.monthlyExpense,
+      };
+    });
+
+    expect(result.primaryKeys).not.toEqual(expect.arrayContaining(['accounts', 'splitIncomeAccounts', 'surplusTransferAccountId', 'transfers']));
+    expect(result.income).toMatchObject({ id: 'income-main', name: '급여', amount: 4200000 });
+    expect(result.income).not.toHaveProperty('accountId');
+    expect(result.income).not.toHaveProperty('allocations');
+    expect(result.expense).not.toHaveProperty('accountId');
+    expect(result.saving).toMatchObject({ annualRate: 5, maturityMonth: '2027-03' });
+    expect(result.saving).not.toHaveProperty('accountId');
+    expect(result.invest).not.toHaveProperty('accountId');
+    expect(result.handoff.accounts).toEqual([{ id: 'acc-salary', name: '급여계좌' }]);
+    expect(result.handoff.incomes[0].allocations).toEqual([{ accountId: 'acc-salary', amount: 4200000 }]);
+    expect(result.handoff.transfers).toEqual([{ id: 'legacy-transfer', sourceAccountId: 'acc-salary', targetAccountId: 'acc-stock', amount: 100000, label: '투자 이체' }]);
+    expect(result.snapshotKeys).not.toEqual(expect.arrayContaining(['accounts', 'splitIncomeAccounts', 'surplusTransferAccountId', 'transfers', 'accountCorrections']));
+    expect(result.monthlyExpense).toBe(900000);
+  });
+
   test('repairs invalid account links and emits correction metadata', async ({ page }) => {
     const result = await page.evaluate(async () => {
       const { sanitizeInputs } = await import('/IndividualSavingsFlowUI/apps/main/modules/input-sanitizer.js');
