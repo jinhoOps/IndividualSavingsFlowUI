@@ -819,6 +819,103 @@ test.describe('Phase 09 account correction and Sankey topology', () => {
     await expect(page.locator('.controls-panel')).not.toContainText('잉여현금 자동 이체');
   });
 
+  test('Phase 10.7 Portfolio guidance appears as navigation when account-flow handoff exists', async ({ page }) => {
+    await page.evaluate(async () => {
+      const [
+        { state },
+        { sanitizeInputs },
+        { buildMonthlySnapshot },
+        { createRenderOrchestrator },
+        { STORAGE_KEY },
+      ] = await Promise.all([
+        import('/IndividualSavingsFlowUI/apps/main/modules/state.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/input-sanitizer.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/calculator.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/render-orchestrator.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/constants.js'),
+      ]);
+
+      state.inputs = sanitizeInputs({
+        modelVersion: 10,
+        incomes: [{ id: 'income-main', name: '급여', amount: 4200000 }],
+        expenseItems: [{ id: 'rent', name: '월세', amount: 900000, group: '고정비' }],
+        savingsItems: [{ id: 'saving-main', name: '적금', amount: 600000, group: '저축' }],
+        investItems: [{ id: 'invest-main', name: 'ETF', amount: 700000, group: '투자' }],
+        accountFlowHandoff: {
+          version: 1,
+          accounts: [
+            { id: 'acc-salary', name: '급여계좌' },
+            { id: 'acc-living', name: '생활비계좌' },
+          ],
+          transfers: [{ id: 'legacy-transfer', sourceAccountId: 'acc-salary', targetAccountId: 'acc-living', amount: 900000 }],
+        },
+        monthlyDebtPayment: 0,
+        startCash: 0,
+        startSavings: 0,
+        startInvest: 0,
+        startDebt: 0,
+        annualIncomeGrowth: 0,
+        annualExpenseGrowth: 0,
+        annualSavingsYield: 3,
+        annualInvestReturn: 7,
+        annualDebtInterest: 0,
+        horizonYears: 5,
+      });
+      state.snapshot = buildMonthlySnapshot(state.inputs);
+      window.IsfStorageHub.saveLocal(STORAGE_KEY, state.inputs);
+      createRenderOrchestrator().renderAll();
+    });
+
+    const guide = page.locator('[data-account-flow-portfolio-guide]');
+    await expect(guide).toBeVisible();
+    await expect(guide).toContainText('Portfolio');
+    await expect(guide).toContainText('계좌흐름도');
+    await expect(guide.locator('a[href*="apps/portfolio/index.html"]')).toBeVisible();
+    await expect(guide).not.toContainText('급여계좌');
+    await expect(guide).not.toContainText('생활비계좌');
+    await expect(page.locator('[data-income-allocation-row]')).toHaveCount(0);
+    await expect(page.locator('[data-financial-modal-field="accountId"]')).toHaveCount(0);
+    await expect(page.locator('#showNetworkBtn')).toHaveCount(0);
+  });
+
+  test('Phase 10.7 source boundary keeps Portfolio guidance as navigation only', async ({ page }) => {
+    const audit = await page.evaluate(async () => {
+      const files = [
+        'apps/main/index.html',
+        'apps/main/modules/dom.js',
+        'apps/main/modules/render-orchestrator.js',
+      ];
+      const contents = await Promise.all(files.map(async (file) => ({
+        file,
+        text: await fetch(`/IndividualSavingsFlowUI/${file}`).then((response) => response.text()),
+      })));
+      const sourceText = contents.map((entry) => entry.text).join('\n');
+      const forbiddenMarkers = [
+        'data-income-allocation-row',
+        'data-financial-modal-field="accountId"',
+        'renderNetworkMap',
+        'sankeyCorrectionRefresh',
+        'transferRuleList',
+        'surplusTransferAccountId',
+      ];
+      return {
+        files: contents.map((entry) => entry.file),
+        hasPortfolioHref: sourceText.includes('apps/portfolio/index.html'),
+        hasGuideSelector: sourceText.includes('account-flow-portfolio-guide'),
+        forbiddenHits: forbiddenMarkers.filter((marker) => sourceText.includes(marker)),
+      };
+    });
+
+    expect(audit.files).toEqual([
+      'apps/main/index.html',
+      'apps/main/modules/dom.js',
+      'apps/main/modules/render-orchestrator.js',
+    ]);
+    expect(audit.hasPortfolioHref).toBe(true);
+    expect(audit.hasGuideSelector).toBe(true);
+    expect(audit.forbiddenHits).toEqual([]);
+  });
+
   test('repairs invalid account links and emits correction metadata', async ({ page }) => {
     const result = await page.evaluate(async () => {
       const { sanitizeInputs } = await import('/IndividualSavingsFlowUI/apps/main/modules/input-sanitizer.js');
