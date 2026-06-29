@@ -12,6 +12,11 @@ export function createEmptyAccountMapDraft() {
   };
 }
 
+function cleanText(value, fallback = "") {
+  const text = String(value ?? "").trim();
+  return text || fallback;
+}
+
 function getStorageHub() {
   return window.IsfStorageHub || window.IsfHubStorage || null;
 }
@@ -81,8 +86,67 @@ export class AccountMapState {
     saveLocalDraft(this.data);
   }
 
+  async acceptCandidate(candidateId) {
+    const candidate = this.data.candidates.find((item) => item.id === candidateId);
+    if (!candidate) return null;
+    const targetAccountId = `payee-${cleanText(candidate.sourceRef?.id || candidate.id, "candidate")}`;
+    if (!this.data.accounts.some((account) => account.id === targetAccountId)) {
+      this.data.accounts.push({
+        id: targetAccountId,
+        name: cleanText(candidate.label, "고정 결제처"),
+        role: "payment",
+        sourceAccountId: targetAccountId,
+      });
+    }
+
+    const relationship = {
+      id: `rel-candidate-${cleanText(candidate.sourceRef?.id || candidate.id, "candidate")}`,
+      type: inferCandidateRelationshipType(candidate),
+      sourceAccountId: cleanText(candidate.accountId, "acc-living"),
+      targetAccountId,
+      label: cleanText(candidate.label, "고정 결제"),
+      amount: Number(candidate.amount) || 0,
+      paymentDay: cleanText(candidate.paymentDay),
+      memo: cleanText(candidate.memo),
+      confidence: candidate.confidence || "needs-confirmation",
+      sourceRef: candidate.sourceRef || { collection: "candidates", id: candidate.id },
+    };
+    this.data.relationships = [
+      ...this.data.relationships.filter((item) => item.id !== relationship.id),
+      relationship,
+    ];
+    this.data.candidates = this.data.candidates.filter((item) => item.id !== candidateId);
+    this.data.selectedId = `relationship:${relationship.id}`;
+    await this.saveToStorage();
+    return relationship;
+  }
+
+  async excludeCandidate(candidateId) {
+    this.data.candidates = this.data.candidates.filter((item) => item.id !== candidateId);
+    await this.saveToStorage();
+  }
+
+  async updateRelationship(relationshipId, patch) {
+    this.data.relationships = this.data.relationships.map((relationship) => {
+      if (relationship.id !== relationshipId) return relationship;
+      return {
+        ...relationship,
+        paymentDay: patch.paymentDay !== undefined ? cleanText(patch.paymentDay) : relationship.paymentDay,
+        memo: patch.memo !== undefined ? cleanText(patch.memo) : relationship.memo,
+      };
+    });
+    await this.saveToStorage();
+  }
+
   async saveToStorage() {
     this.data.lastUpdated = new Date().toISOString();
     saveLocalDraft(this.data);
   }
+}
+
+function inferCandidateRelationshipType(candidate) {
+  const text = `${candidate?.label || ""} ${candidate?.reason || ""}`;
+  if (text.includes("카드")) return "card-payment";
+  if (text.includes("대출") || text.includes("보험") || text.includes("렌탈")) return "loan-payment";
+  return "utility-payment";
 }

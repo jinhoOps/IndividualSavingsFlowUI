@@ -39,7 +39,7 @@
 }
 
 .account-map-canvas {
-  min-height: 360px;
+  min-height: 430px;
   border: 1px solid var(--line);
   border-radius: var(--rd-sm);
   background: color-mix(in srgb, var(--surface) 82%, white);
@@ -60,15 +60,63 @@
   color: var(--ink);
 }
 
-.account-map-graph {
-  display: grid;
-  grid-template-columns: minmax(180px, 0.7fr) minmax(220px, 1fr);
-  gap: var(--sp-md);
-  padding: var(--sp-md);
+.account-map-svg {
+  display: block;
+  width: 100%;
+  min-height: 430px;
 }
 
-.account-map-node-list,
-.account-map-relationship-list,
+.account-map-svg__edge {
+  cursor: pointer;
+  opacity: 0.85;
+}
+
+.account-map-svg__edge:hover,
+.account-map-svg__edge:focus,
+.account-map-svg__edge.is-selected {
+  opacity: 1;
+  outline: none;
+}
+
+.account-map-svg__edge-chip {
+  cursor: pointer;
+}
+
+.account-map-svg__edge-text {
+  fill: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  pointer-events: none;
+}
+
+.account-map-svg__node {
+  cursor: pointer;
+}
+
+.account-map-svg__node rect {
+  fill: var(--surface);
+  stroke: var(--line-strong);
+  stroke-width: 1.2;
+}
+
+.account-map-svg__node:hover rect,
+.account-map-svg__node:focus rect,
+.account-map-svg__node.is-selected rect {
+  stroke: var(--tone-primary);
+  stroke-width: 2.5;
+}
+
+.account-map-svg__node--external rect {
+  fill: var(--surface-muted);
+}
+
+.account-map-svg__node-text {
+  fill: var(--ink);
+  font-size: 12px;
+  font-weight: 800;
+  pointer-events: none;
+}
+
 .account-map-candidate-list {
   list-style: none;
   margin: 0;
@@ -77,8 +125,6 @@
   gap: var(--sp-sm);
 }
 
-.account-map-node-list li,
-.account-map-relationship-list li,
 .account-map-candidate-list li {
   border: 1px solid var(--line);
   border-radius: var(--rd-sm);
@@ -86,15 +132,24 @@
   background: var(--surface);
 }
 
-.account-map-relationship-list li,
 .account-map-candidate-list li {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
-  justify-content: space-between;
   gap: var(--sp-sm);
 }
 
-.account-map-relationship-type,
+.account-map-candidate-body {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.account-map-candidate-body span {
+  color: var(--muted);
+  font-size: var(--text-body-xs);
+}
+
 .account-map-candidate-status {
   flex: 0 0 auto;
   min-width: 44px;
@@ -107,12 +162,102 @@
   text-align: center;
 }
 
+.account-map-candidate-actions {
+  display: flex;
+  gap: var(--sp-xs);
+}
+
+.account-map-detail-card {
+  display: grid;
+  gap: var(--sp-sm);
+}
+
+.account-map-detail-card h3 {
+  margin: 0;
+}
+
+.account-map-detail-chip {
+  width: max-content;
+  border-radius: var(--rd-sm);
+  padding: 2px 7px;
+  background: var(--tone-primary-soft);
+  color: var(--tone-primary);
+  font-size: var(--text-body-xs);
+  font-weight: 800;
+}
+
+.account-map-detail-field {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sp-sm);
+  padding: var(--sp-xs) 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.account-map-detail-field__label {
+  color: var(--muted);
+}
+
+.account-map-editor-label {
+  display: grid;
+  gap: 4px;
+  color: var(--muted);
+  font-size: var(--text-body-sm);
+  font-weight: 700;
+}
+
+.account-map-editor-label input,
+.account-map-editor-label textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: var(--rd-sm);
+  padding: var(--sp-xs) var(--sp-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+}
+
+.account-map-linked-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--sp-xs);
+}
+
+.account-map-linked-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-sm);
+  border: 1px solid var(--line);
+  border-radius: var(--rd-sm);
+  padding: var(--sp-xs);
+}
+
 @media (max-width: 860px) {
   .account-map-layout {
     grid-template-columns: 1fr;
   }
 
-  .account-map-graph {
+  .account-map-summary {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+
+  .account-map-summary__item {
+    min-height: 24px;
+    padding: 0 8px;
+    white-space: nowrap;
+  }
+
+  .account-map-canvas,
+  .account-map-svg {
+    min-height: 330px;
+  }
+
+  .account-map-candidate-list li {
     grid-template-columns: 1fr;
+    align-items: stretch;
   }
 }
