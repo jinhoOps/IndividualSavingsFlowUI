@@ -17,7 +17,7 @@ Resolve the next Step 1 household-flow work from `TODO.md` and open GitHub issue
 | 10.6 | Financial Detail Modal Editing UX Repair | 3/3 | Complete   | 2026-06-25 |
 | 10.6.1 | Legacy Editor Removal and Detail Modal Capability Absorption | 3/3 | Complete    | 2026-06-26 |
 | 10.7 | Account Flow Extraction and Portfolio Boundary | 6/6 | Complete    | 2026-06-26 |
-| 10.8 | 계좌 관리 맵 | Create a user-friendly account-management map that makes real automatic transfers, card/payment links, and account flow relationships easy to understand at a glance. | TBD | 0 |
+| 10.8 | 계좌 관리 맵 | Create a user-friendly account-management map that makes real automatic transfers, card/payment links, and account flow relationships easy to understand at a glance. | UXR-17, UXR-18, UXR-19, UXR-20, UXR-21 | 5 |
 | 11 | Zero-Input Spending Capture | Parse pasted Korean bank/card text into reviewable spending actuals. | CAP-01, CAP-02, CAP-03, CAP-04 | 4 |
 | 12 | Dual-Flow Household Merge | Combine two shared Step 1 data sources into one household flow preview. | HH-03, HH-04, HH-05 | 4 |
 | 13 | Historical Spending Comparison | Compare current Step 1 expenses against prior DataHub snapshots with a grouped bar chart. | CMP-01, CMP-02, CMP-03, CMP-04, CMP-05 | 5 |
@@ -154,13 +154,28 @@ Plans:
 ### Phase 10.8: 계좌 관리 맵 (INSERTED)
 
 **Goal:** Create a user-friendly account-management map that makes real automatic transfers, card/payment links, and account flow relationships easy to understand at a glance.
-**Requirements**: TBD
+**Requirements:** UXR-17, UXR-18, UXR-19, UXR-20, UXR-21
 **Depends on:** Phase 10.7
-**Plans:** 0 plans
+**Plans:** 3 plans
 
 Plans:
 
-- [ ] TBD (run /gsd-plan-phase 10.8 to break down)
+**Wave 1**
+
+- [ ] 10.8-01-PLAN.md — Dedicated Account Map route, page-owned draft storage, Main connector, and draft builder.
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 10.8-02-PLAN.md — Relationship-first map renderer, detail reveal, candidate review, and Account Map draft persistence.
+- [ ] 10.8-03-PLAN.md — Shared navigation plus lightweight Main entry/mini-summary while preserving restored Main account-flow behavior.
+
+**Success criteria:**
+
+1. Account Map exists as a separate destination, not Portfolio, and Main exposes only a lightweight entry/mini-map/summary.
+2. User can generate a page-owned Account Map draft from current Main account-flow data without writes back to Main.
+3. Automatic transfers, income deposits, savings/investment flows, and card/payment candidates render as understandable account relationships.
+4. Exact monthly amounts remain hidden in the map overview and appear only in selected relationship/account details.
+5. Restored Main network/account-flow behavior and compatibility fields remain intact unless a later explicit contract changes them.
 
 ### Phase 11: Zero-Input Spending Capture
 
@@ -238,6 +253,11 @@ Plans:
 | UXR-14 | Phase 10.7 | Complete |
 | UXR-15 | Phase 10.7 | Complete |
 | UXR-16 | Phase 10.7 | Complete |
+| UXR-17 | Phase 10.8 | Pending |
+| UXR-18 | Phase 10.8 | Pending |
+| UXR-19 | Phase 10.8 | Pending |
+| UXR-20 | Phase 10.8 | Pending |
+| UXR-21 | Phase 10.8 | Pending |
 | CAP-01 | Phase 11 | Pending |
 | CAP-02 | Phase 11 | Pending |
 | CAP-03 | Phase 11 | Pending |
@@ -258,8 +278,8 @@ Plans:
 
 **Coverage:**
 
-- v1.9 requirements: 31 total
-- Mapped to phases: 31
+- v1.9 requirements: 36 total
+- Mapped to phases: 36
 - Unmapped: 0
 
 ## Out of Scope Guardrails

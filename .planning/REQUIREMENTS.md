@@ -30,6 +30,11 @@
 - [x] **UXR-14**: Step 1 Sankey generation no longer depends on account/allocation modeling or automatic account correction in the primary path.
 - [x] **UXR-15**: Existing account/allocation data is preserved or converted for Portfolio/account-flow handoff without corrupting simplified Step 1 data.
 - [x] **UXR-16**: Rich account-flow management has a documented destination boundary: Portfolio integration or a separate app/page, with main-to-destination user guidance.
+- [ ] **UXR-17**: User can open Account Map as a separate account-management destination, while Main exposes only a lightweight entry, mini-map, or summary and Portfolio is not used as the destination.
+- [ ] **UXR-18**: User can generate and save an Account Map-owned draft from current Main account-flow data without writing accepted Account Map changes back to Main in this phase.
+- [ ] **UXR-19**: User can understand account relationships at a glance through a map-first view with typed/color-coded links while exact monthly amounts remain hidden until selecting an account or relationship.
+- [ ] **UXR-20**: User can review card/payment and recurring fixed-expense relationship candidates before accepting them, while ordinary variable or one-off spending is excluded from accepted Account Map relationships by default.
+- [ ] **UXR-21**: Existing restored Main network/account-flow behavior, manual transfers, income allocations, account links, and surplus routing remain compatible while Account Map is added.
 
 ### Zero-Input Capture
 
@@ -102,6 +107,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | UXR-14 | Phase 10.7 | Complete |
 | UXR-15 | Phase 10.7 | Complete |
 | UXR-16 | Phase 10.7 | Complete |
+| UXR-17 | Phase 10.8 | Pending |
+| UXR-18 | Phase 10.8 | Pending |
+| UXR-19 | Phase 10.8 | Pending |
+| UXR-20 | Phase 10.8 | Pending |
+| UXR-21 | Phase 10.8 | Pending |
 | CAP-01 | Phase 11 | Pending |
 | CAP-02 | Phase 11 | Pending |
 | CAP-03 | Phase 11 | Pending |
@@ -119,10 +129,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 **Coverage:**
 
-- v1.9 requirements: 31 total
-- Mapped to phases: 31
+- v1.9 requirements: 36 total
+- Mapped to phases: 36
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-06-19*
-*Last updated: 2026-06-26 after Phase 10.7 account-flow boundary insertion*
+*Last updated: 2026-06-29 after Phase 10.8 account-management map insertion*
