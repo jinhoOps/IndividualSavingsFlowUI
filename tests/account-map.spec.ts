@@ -137,4 +137,16 @@ test.describe('Account Map route and draft import', () => {
     expect(result.draft.relationships.map((relationship: { sourceRef: { id: string } }) => relationship.sourceRef?.id)).not.toContain('travel');
     expect(result.savedMain).toEqual(createSeedMainInputs());
   });
+
+  test('stays independent from Portfolio modules on the Account Map route', async ({ page }) => {
+    const requestedUrls: string[] = [];
+    page.on('request', (request) => requestedUrls.push(request.url()));
+
+    await page.goto('apps/account-map/index.html');
+    await expect(page.locator('app-header')).toContainText('Account Map');
+
+    expect(requestedUrls.some((url) => url.includes('/apps/portfolio/app.js'))).toBe(false);
+    expect(requestedUrls.some((url) => url.includes('/src/entries/step3.ts'))).toBe(false);
+    expect(requestedUrls.some((url) => url.includes('/src/entries/account-map.ts'))).toBe(true);
+  });
 });
