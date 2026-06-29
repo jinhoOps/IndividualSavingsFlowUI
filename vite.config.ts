@@ -82,7 +82,8 @@ export default defineConfig({
         mainApp: resolve(__dirname, 'apps/main/index.html'),
         simulation: resolve(__dirname, 'apps/simulation/index.html'),
         portfolio: resolve(__dirname, 'apps/portfolio/index.html'),
-
+        accountMap: resolve(__dirname, 'apps/account-map/index.html'),
+	
       },
     },
   },

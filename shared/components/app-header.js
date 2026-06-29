@@ -70,11 +70,12 @@ export class AppHeader extends HTMLElement {
   render() {
     const version = this.getAttribute('version') || (IsfUtils ? IsfUtils.APP_VERSION : '0.0.0');
     
-    const stepLabels = {
-      '1': '나의 가계 흐름',
-      '2': '전략 선택 가이드',
-      '3': '나의 적립식 포트폴리오'
-    };
+	    const stepLabels = {
+	      '1': '나의 가계 흐름',
+	      '2': '전략 선택 가이드',
+	      '3': '나의 적립식 포트폴리오',
+	      'account-map': 'Account Map'
+	    };
     const currentLabel = stepLabels[this.currentStep] || 'ISF UIUX';
 
     this.innerHTML = `
@@ -119,10 +120,14 @@ export class AppHeader extends HTMLElement {
                   <span class="launcher-item__icon">💰</span>
                   <span class="launcher-item__text">배당 시뮬레이션</span>
                 </a>
-                <a href="../portfolio/" class="launcher-item ${this.currentStep === '3' ? 'is-active' : ''}">
-                  <span class="launcher-item__icon">💼</span>
-                  <span class="launcher-item__text">주식 모으기</span>
-                </a>
+	                <a href="../portfolio/" class="launcher-item ${this.currentStep === '3' ? 'is-active' : ''}">
+	                  <span class="launcher-item__icon">💼</span>
+	                  <span class="launcher-item__text">주식 모으기</span>
+	                </a>
+	                <a href="../account-map/" class="launcher-item ${this.currentStep === 'account-map' ? 'is-active' : ''}">
+	                  <span class="launcher-item__icon">🧭</span>
+	                  <span class="launcher-item__text">Account Map</span>
+	                </a>
                 <div style="margin-top: var(--sp-xs); border-top: 1px solid var(--line);"></div>
                 <button type="button" id="headerDataHubBtn" class="launcher-item" style="width: 100%; border: none; background: none; text-align: left; cursor: pointer;">
                   <span class="launcher-item__icon">⚙️</span>

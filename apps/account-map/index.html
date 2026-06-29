@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ISF UIUX | Account Map</title>
+    <meta name="description" content="Main 계좌 흐름 데이터를 바탕으로 반복 계좌 관계를 검토하는 Account Map 화면" />
+    <meta name="theme-color" content="#ea5b2a" />
+    <link rel="manifest" href="../../manifest.webmanifest" />
+    <link rel="icon" href="../../icons/icon-192.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="../../icons/icon-192.svg" />
+    <script type="module" src="../../src/entries/account-map.ts"></script>
+  </head>
+  <body>
+    <app-header current-step="account-map"></app-header>
+    <data-hub-modal current-step="account-map"></data-hub-modal>
+
+    <div class="ambient" aria-hidden="true"></div>
+
+    <div class="page account-map-page">
+      <section class="panel page-intro account-map-intro">
+        <p class="eyebrow">Account Map</p>
+        <h1>계좌 관계를 먼저 보고, 필요한 연결만 검토합니다.</h1>
+        <p class="lead">Main에 저장된 계좌 흐름을 기반으로 자동이체, 저축, 투자, 고정 결제 후보를 별도 초안으로 가져옵니다.</p>
+      </section>
+
+      <main class="account-map-layout" aria-live="polite">
+        <section class="panel account-map-surface" aria-labelledby="accountMapTitle">
+          <div class="section-head">
+            <div>
+              <h2 id="accountMapTitle">계좌 흐름 맵</h2>
+              <p class="section-note">금액은 관계를 선택했을 때만 표시합니다.</p>
+            </div>
+            <div class="section-head-tools">
+              <button id="importMainData" class="btn btn-primary btn-sm" type="button">Main 데이터 가져오기</button>
+            </div>
+          </div>
+
+          <div id="accountMapSummary" class="account-map-summary" aria-label="Account Map 요약"></div>
+          <div id="accountMapCanvas" class="account-map-canvas" role="img" aria-label="계좌 관계 맵"></div>
+        </section>
+
+        <aside class="panel account-map-detail" aria-labelledby="accountMapDetailTitle">
+          <h2 id="accountMapDetailTitle">선택 상세</h2>
+          <div id="accountMapDetail"></div>
+        </aside>
+
+        <section class="panel account-map-candidates" aria-labelledby="accountMapCandidatesTitle">
+          <div class="section-head">
+            <div>
+              <h2 id="accountMapCandidatesTitle">고정 결제 후보</h2>
+              <p class="section-note">후보는 검토 목록이며 기본 관계로 확정하지 않습니다.</p>
+            </div>
+          </div>
+          <div id="accountMapCandidates"></div>
+        </section>
+
+        <p id="accountMapFeedback" class="feedback" aria-live="polite" hidden></p>
+      </main>
+    </div>
+  </body>
+</html>
