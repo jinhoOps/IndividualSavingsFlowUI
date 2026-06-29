@@ -34,7 +34,7 @@
 - [x] **UXR-18**: User can generate and save an Account Map-owned draft from current Main account-flow data without writing accepted Account Map changes back to Main in this phase.
 - [x] **UXR-19**: User can understand account relationships at a glance through a map-first view with typed/color-coded links while exact monthly amounts remain hidden until selecting an account or relationship.
 - [x] **UXR-20**: User can review card/payment and recurring fixed-expense relationship candidates before accepting them, while ordinary variable or one-off spending is excluded from accepted Account Map relationships by default.
-- [ ] **UXR-21**: Existing restored Main network/account-flow behavior, manual transfers, income allocations, account links, and surplus routing remain compatible while Account Map is added.
+- [x] **UXR-21**: Existing restored Main network/account-flow behavior, manual transfers, income allocations, account links, and surplus routing remain compatible while Account Map is added.
 
 ### Zero-Input Capture
 
@@ -111,7 +111,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | UXR-18 | Phase 10.8 | Complete |
 | UXR-19 | Phase 10.8 | Complete |
 | UXR-20 | Phase 10.8 | Complete |
-| UXR-21 | Phase 10.8 | Pending |
+| UXR-21 | Phase 10.8 | Complete |
 | CAP-01 | Phase 11 | Pending |
 | CAP-02 | Phase 11 | Pending |
 | CAP-03 | Phase 11 | Pending |
@@ -135,4 +135,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-06-19*
-*Last updated: 2026-06-29 after Phase 10.8 Plan 10.8-02 execution*
+*Last updated: 2026-06-29 after Phase 10.8 Plan 10.8-03 execution*
