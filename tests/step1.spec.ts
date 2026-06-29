@@ -570,7 +570,7 @@ test.describe('Phase 09 account correction and Sankey topology', () => {
     expect(result.correctionMessages.join(' ')).toContain('보정');
   });
 
-  test('builds Sankey links around mandatory total-income node', async ({ page }) => {
+  test('builds simple Sankey links around mandatory total-income node without account nodes', async ({ page }) => {
     const result = await page.evaluate(async () => {
       const [{ sanitizeInputs }, { buildMonthlySnapshot }, { buildSankeyData }] = await Promise.all([
         import('/IndividualSavingsFlowUI/apps/main/modules/input-sanitizer.js'),
@@ -606,20 +606,22 @@ test.describe('Phase 09 account correction and Sankey topology', () => {
         incomeToTotal: sankey?.links.some((link: { source: string; target: string }) =>
           link.source === 'income-main' && link.target === 'total-income'
         ),
-        totalToAccount: sankey?.links.some((link: { source: string; target: string }) =>
-          link.source === 'total-income' && link.target === 'acc-salary'
+        totalToExpense: sankey?.links.some((link: { source: string; target: string }) =>
+          link.source === 'total-income' && link.target === 'expense-rent'
         ),
-        accountToExpense: sankey?.links.some((link: { source: string; target: string }) =>
-          link.source === 'acc-living' && link.target === 'expense-rent'
-        ),
+        accountNodeIds: sankey?.nodes.filter((node: { id: string }) => node.id.startsWith('acc-')).map((node: { id: string }) => node.id) || [],
+        accountLinks: sankey?.links.filter((link: { source: string; target: string }) =>
+          link.source.startsWith('acc-') || link.target.startsWith('acc-')
+        ) || [],
         labels: sankey?.nodes.map((node: { label: string }) => node.label) || [],
       };
     });
 
     expect(result.totalIncomeNode).toMatchObject({ id: 'total-income', label: '총수입', tone: 'income' });
     expect(result.incomeToTotal).toBe(true);
-    expect(result.totalToAccount).toBe(true);
-    expect(result.accountToExpense).toBe(true);
+    expect(result.totalToExpense).toBe(true);
+    expect(result.accountNodeIds).toEqual([]);
+    expect(result.accountLinks).toEqual([]);
     expect(result.labels).not.toContain('미지정 계좌');
   });
 
@@ -741,7 +743,8 @@ test.describe('Phase 09 account correction and Sankey topology', () => {
     const basicLabels = await page.locator('#sankeySvg .sankey-label').evaluateAll((labels) =>
       labels.map((label) => label.textContent || '')
     );
-    expect(basicLabels).toEqual(expect.arrayContaining(['총수입', '급여계좌', '생활비계좌', '투자계좌', '고정비(고정지출)', '저축', '투자']));
+    expect(basicLabels).toEqual(expect.arrayContaining(['총수입', '고정비(고정지출)', '저축', '투자']));
+    expect(basicLabels).not.toEqual(expect.arrayContaining(['급여계좌', '생활비계좌', '투자계좌']));
     expect(basicLabels).not.toEqual(expect.arrayContaining(['본업 급여', '부업 수입', '월세', '적금', 'ETF']));
 
     await page.locator('#showSankeyDetailBtn').click();
@@ -1148,7 +1151,7 @@ test.describe('Phase 09 source account automatic flow', () => {
         transfers: [{ id: 'legacy', sourceAccountId: 'acc-salary', targetAccountId: 'acc-living', amount: 999999, label: 'legacy' }],
       });
       state.snapshot = buildMonthlySnapshot(state.inputs);
-      (window as any).__phase09Flow = buildSankeyData(state.snapshot, 'group', state.sankeyGrouping);
+      (window as any).__phase09Flow = buildSankeyData(state.snapshot, 'group', state.sankeyGrouping, { includeAccountFlow: true });
     });
 
     const result = await page.evaluate(() => {
@@ -1268,6 +1271,7 @@ test.describe('Phase 10.8 Account Map Main entry and compatibility', () => {
       });
       state.snapshot = buildMonthlySnapshot(state.inputs);
       const sankey = buildSankeyData(state.snapshot, 'group', state.sankeyGrouping);
+      const accountFlow = buildSankeyData(state.snapshot, 'group', state.sankeyGrouping, { includeAccountFlow: true });
       createRenderOrchestrator().renderAll();
 
       const metrics = Array.from(document.querySelectorAll('.account-map-entry__metric')).map((node) => node.textContent || '');
@@ -1281,7 +1285,8 @@ test.describe('Phase 10.8 Account Map Main entry and compatibility', () => {
         investAccountId: state.inputs.investItems[0].accountId,
         transfers: state.inputs.transfers,
         surplusTransferAccountId: state.inputs.surplusTransferAccountId,
-        manualTransfer: sankey.transfers.find((transfer: any) => transfer.id === 'manual-rent'),
+        sankeyLabels: sankey.nodes.map((node: any) => node.label),
+        manualTransfer: accountFlow.transfers.find((transfer: any) => transfer.id === 'manual-rent'),
         entryMetrics: metrics.join(' '),
         entryLink: document.querySelector('[data-account-map-link="dedicated"]')?.getAttribute('href'),
       };
@@ -1304,6 +1309,8 @@ test.describe('Phase 10.8 Account Map Main entry and compatibility', () => {
       label: '월세 보전',
     }]);
     expect(result.surplusTransferAccountId).toBe('acc-stock');
+    expect(result.sankeyLabels).toEqual(expect.arrayContaining(['총수입', '고정비(고정지출)', '저축', '투자']));
+    expect(result.sankeyLabels).not.toEqual(expect.arrayContaining(['급여계좌', '생활비계좌', '투자계좌']));
     expect(result.manualTransfer).toMatchObject({
       source: 'acc-salary',
       target: 'acc-living',
@@ -2723,7 +2730,8 @@ test.describe('Phase 10.6 financial detail modal editing repair', () => {
     await expect(modal).toBeHidden();
     await assertForbiddenCoupleUiAbsent(page);
     const labels = await page.locator('#sankeySvg .sankey-label').evaluateAll((nodes) => nodes.map((node) => node.textContent || ''));
-    expect(labels).toEqual(expect.arrayContaining(['총수입', '급여계좌', '생활비계좌', '투자계좌']));
+    expect(labels).toEqual(expect.arrayContaining(['총수입', '고정비(고정지출)', '저축', '투자']));
+    expect(labels).not.toEqual(expect.arrayContaining(['급여계좌', '생활비계좌', '투자계좌']));
     expect(labels.filter((label) => label.includes('적금')).length).toBeLessThanOrEqual(1);
     expect(labels.filter((label) => label.includes('ETF')).length).toBeLessThanOrEqual(1);
   });
@@ -3075,7 +3083,7 @@ test.describe('Phase 10.6.1 final regression', () => {
     expect(saved.savingsItems.find((item: any) => item.id === 'saving-fallback')).not.toHaveProperty('annualRate');
 
     const labels = await page.locator('#sankeySvg .sankey-label').evaluateAll((nodes) => nodes.map((node) => node.textContent || ''));
-    expect(labels).toEqual(expect.arrayContaining(['급여계좌', '생활비계좌']));
+    expect(labels).not.toEqual(expect.arrayContaining(['급여계좌', '생활비계좌']));
 
     const importProbe = await page.evaluate(async (storedInputs) => {
       const [
@@ -3108,7 +3116,7 @@ test.describe('Phase 10.6.1 final regression', () => {
     expect(importProbe.maturityMonth).toBe('2027-04');
     expect(importProbe.annualRate).toBe(6.1);
     expect(importProbe.fallbackRate).toBe(3);
-    expect(importProbe.labels).toEqual(expect.arrayContaining(['급여계좌', '생활비계좌']));
+    expect(importProbe.labels).not.toEqual(expect.arrayContaining(['급여계좌', '생활비계좌']));
   });
 
   test('audits source-first cleanup markers without treating dist as source', async ({ page }) => {
@@ -3285,7 +3293,8 @@ test.describe('Phase 10.5 regression hardening', () => {
     });
     expect(order).toBe(true);
     const labels = await page.locator('#sankeySvg .sankey-label').evaluateAll((nodes) => nodes.map((node) => node.textContent || ''));
-    expect(labels).toEqual(expect.arrayContaining(['총수입', '급여계좌', '생활비계좌', '투자계좌']));
+    expect(labels).toEqual(expect.arrayContaining(['총수입', '고정비(고정지출)', '저축', '투자']));
+    expect(labels).not.toEqual(expect.arrayContaining(['급여계좌', '생활비계좌', '투자계좌']));
     expect(labels.filter((label) => label.includes('적금')).length).toBeLessThanOrEqual(1);
     expect(labels.filter((label) => label.includes('ETF')).length).toBeLessThanOrEqual(1);
 

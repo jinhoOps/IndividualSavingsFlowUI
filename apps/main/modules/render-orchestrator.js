@@ -61,14 +61,14 @@ export function createRenderOrchestrator() {
       dom.appHeader.setFinancialWarning(maxStatus, message);
     }
 
-    const sankeyData = buildSankeyData(snapshot, state.sankeySortMode, state.sankeyGrouping);
-    const transfers = sankeyData ? sankeyData.transfers : [];
+    const accountFlowData = buildSankeyData(snapshot, state.sankeySortMode, state.sankeyGrouping, { includeAccountFlow: true });
+    const transfers = accountFlowData ? accountFlowData.transfers : [];
     renderSankey(snapshot, buildSankeyData, state.sankeySortMode);
 
     listRenderer.renderTransferRulesList(inputs.transfers || [], inputs.accounts);
     listRenderer.renderTransferSelectOptions(inputs.accounts);
 
-    const accountNodes = sankeyData ? sankeyData.nodes.filter((node) => node.column === 1 || node.column === 1.5) : [];
+    const accountNodes = accountFlowData ? accountFlowData.nodes.filter((node) => node.column === 1 || node.column === 1.5) : [];
     const accountsWithValues = inputs.accounts.map((account) => {
       const node = accountNodes.find((candidate) => candidate.id === account.id);
       return {

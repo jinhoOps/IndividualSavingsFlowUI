@@ -56,13 +56,14 @@ function sortBreakdownItemsForSankey(items, sortMode) {
   return clusterAllocationItemsByGroup(safeItems);
 }
 
-export function buildSankeyData(snapshot, sortMode, sankeyGrouping) {
+export function buildSankeyData(snapshot, sortMode, sankeyGrouping, options = {}) {
   const incomeSources = (snapshot.incomeBreakdown || [])
     .filter((item) => item.value > 0 && item.id !== "income-deficit" && item.tone !== "deficit");
   if (!incomeSources.length) {
     return null;
   }
 
+  const includeAccountFlow = Boolean(options.includeAccountFlow);
   const nodes = [];
   const links = [];
   const splitGroups = [];
@@ -71,6 +72,7 @@ export function buildSankeyData(snapshot, sortMode, sankeyGrouping) {
   const accountIds = new Set(accounts.map((a) => a.id));
 
   function resolveAccountId(itemAccountId, category) {
+    if (!includeAccountFlow) return null;
     if (itemAccountId && accountIds.has(itemAccountId)) return itemAccountId;
     return recommendAccountId({ accounts }, category, { accountId: itemAccountId }) || null;
   }
@@ -95,16 +97,18 @@ export function buildSankeyData(snapshot, sortMode, sankeyGrouping) {
     column: 1
   });
 
-  // 계좌 노드들 (총수입 이후 계좌 레이어)
-  accounts.forEach((acc) => {
-    nodes.push({
-      id: acc.id,
-      label: acc.name || acc.label || `계좌-${acc.id}`,
-      value: 0,
-      tone: acc.tone || "account",
-      column: 1.5
+  if (includeAccountFlow) {
+    // 계좌 노드들 (총수입 이후 계좌 레이어)
+    accounts.forEach((acc) => {
+      nodes.push({
+        id: acc.id,
+        label: acc.name || acc.label || `계좌-${acc.id}`,
+        value: 0,
+        tone: acc.tone || "account",
+        column: 1.5
+      });
     });
-  });
+  }
 
   // 세부 항목 카테고리별 묶음 연산 헬퍼
   const resolveCategoryNodesAndLinks = (category, breakdownItems, groupingSetting, defaultNodeLabel) => {
@@ -161,23 +165,32 @@ export function buildSankeyData(snapshot, sortMode, sankeyGrouping) {
         ungrouped
       });
 
-      // 계좌별로 합산 링크
-      const accountValues = new Map();
-      activeItems.forEach((item) => {
-        const sourceAccountId = resolveAccountId(item.accountId, category);
-        if (sourceAccountId) {
-          accountValues.set(sourceAccountId, (accountValues.get(sourceAccountId) || 0) + item.value);
-        }
-      });
+      if (includeAccountFlow) {
+        // 계좌별로 합산 링크
+        const accountValues = new Map();
+        activeItems.forEach((item) => {
+          const sourceAccountId = resolveAccountId(item.accountId, category);
+          if (sourceAccountId) {
+            accountValues.set(sourceAccountId, (accountValues.get(sourceAccountId) || 0) + item.value);
+          }
+        });
 
-      accountValues.forEach((val, sourceAccountId) => {
+        accountValues.forEach((val, sourceAccountId) => {
+          categoryLinks.push({
+            source: sourceAccountId,
+            target: nodeId,
+            value: val,
+            tone: tone
+          });
+        });
+      } else {
         categoryLinks.push({
-          source: sourceAccountId,
+          source: "total-income",
           target: nodeId,
-          value: val,
+          value: totalValue,
           tone: tone
         });
-      });
+      }
 
     } else if (setting === "group") {
       const groupsMap = new Map();
@@ -213,23 +226,32 @@ export function buildSankeyData(snapshot, sortMode, sankeyGrouping) {
           ungrouped: breakdown
         });
 
-        // 계좌별로 합산 링크
-        const accountValues = new Map();
-        itemsInGroup.forEach((item) => {
-          const sourceAccountId = resolveAccountId(item.accountId, category);
-          if (sourceAccountId) {
-            accountValues.set(sourceAccountId, (accountValues.get(sourceAccountId) || 0) + item.value);
-          }
-        });
+        if (includeAccountFlow) {
+          // 계좌별로 합산 링크
+          const accountValues = new Map();
+          itemsInGroup.forEach((item) => {
+            const sourceAccountId = resolveAccountId(item.accountId, category);
+            if (sourceAccountId) {
+              accountValues.set(sourceAccountId, (accountValues.get(sourceAccountId) || 0) + item.value);
+            }
+          });
 
-        accountValues.forEach((val, sourceAccountId) => {
+          accountValues.forEach((val, sourceAccountId) => {
+            categoryLinks.push({
+              source: sourceAccountId,
+              target: nodeId,
+              value: val,
+              tone: tone
+            });
+          });
+        } else {
           categoryLinks.push({
-            source: sourceAccountId,
+            source: "total-income",
             target: nodeId,
-            value: val,
+            value: totalValue,
             tone: tone
           });
-        });
+        }
       });
 
     } else {
@@ -246,9 +268,16 @@ export function buildSankeyData(snapshot, sortMode, sankeyGrouping) {
         });
 
         const sourceAccountId = resolveAccountId(item.accountId, category);
-        if (sourceAccountId) {
+        if (includeAccountFlow && sourceAccountId) {
           categoryLinks.push({
             source: sourceAccountId,
+            target: item.id,
+            value: item.value,
+            tone: tone
+          });
+        } else {
+          categoryLinks.push({
+            source: "total-income",
             target: item.id,
             value: item.value,
             tone: tone
@@ -312,7 +341,7 @@ export function buildSankeyData(snapshot, sortMode, sankeyGrouping) {
   }
 
   // 2. 링크 목록(links) 생성
-  // 수입 ➔ 총수입 ➔ 계좌 allocation 링크 생성
+  // 수입 ➔ 총수입 링크 생성. 계좌 흐름은 별도 네트워크/Account Map 보조 데이터에서만 확장한다.
   const accountIncomeValues = new Map();
   incomeSources.forEach((src) => {
     links.push({
@@ -322,29 +351,33 @@ export function buildSankeyData(snapshot, sortMode, sankeyGrouping) {
       tone: src.tone
     });
 
-    const allocations = Array.isArray(src.allocations) && src.allocations.length > 0
-      ? src.allocations
-      : [{ accountId: src.accountId, amount: src.value }];
-    allocations.forEach((alloc) => {
-      const amount = Number(alloc?.amount) || 0;
-      if (amount <= 0) return;
-      const targetAccountId = resolveAccountId(alloc.accountId, "income");
-      if (!targetAccountId) return;
-      accountIncomeValues.set(targetAccountId, (accountIncomeValues.get(targetAccountId) || 0) + amount);
-    });
+    if (includeAccountFlow) {
+      const allocations = Array.isArray(src.allocations) && src.allocations.length > 0
+        ? src.allocations
+        : [{ accountId: src.accountId, amount: src.value }];
+      allocations.forEach((alloc) => {
+        const amount = Number(alloc?.amount) || 0;
+        if (amount <= 0) return;
+        const targetAccountId = resolveAccountId(alloc.accountId, "income");
+        if (!targetAccountId) return;
+        accountIncomeValues.set(targetAccountId, (accountIncomeValues.get(targetAccountId) || 0) + amount);
+      });
+    }
   });
 
-  accountIncomeValues.forEach((value, accountId) => {
-    if (value <= 0) {
-      return;
-    }
-    links.push({
-      source: "total-income",
-      target: accountId,
-      value,
-      tone: "income"
+  if (includeAccountFlow) {
+    accountIncomeValues.forEach((value, accountId) => {
+      if (value <= 0) {
+        return;
+      }
+      links.push({
+        source: "total-income",
+        target: accountId,
+        value,
+        tone: "income"
+      });
     });
-  });
+  }
 
   // 계좌 ➔ 세부 항목 링크들 주입
   links.push(...expenseRes.links, ...savingsRes.links, ...investRes.links);
@@ -352,9 +385,16 @@ export function buildSankeyData(snapshot, sortMode, sankeyGrouping) {
   // 부채상환 링크
   if (snapshot.debtPayment > 0) {
     const debtSourceId = resolveAccountId(null, "expense");
-    if (debtSourceId) {
+    if (includeAccountFlow && debtSourceId) {
       links.push({
         source: debtSourceId,
+        target: "debt",
+        value: snapshot.debtPayment,
+        tone: "debt"
+      });
+    } else {
+      links.push({
+        source: "total-income",
         target: "debt",
         value: snapshot.debtPayment,
         tone: "debt"
@@ -365,9 +405,16 @@ export function buildSankeyData(snapshot, sortMode, sankeyGrouping) {
   // 잉여현금 링크
   if (snapshot.surplus > 0) {
     const surplusSourceId = resolveAccountId(snapshot.surplusTransferAccountId, "invest");
-    if (surplusSourceId) {
+    if (includeAccountFlow && surplusSourceId) {
       links.push({
         source: surplusSourceId,
+        target: "surplus",
+        value: snapshot.surplus,
+        tone: "surplus"
+      });
+    } else {
+      links.push({
+        source: "total-income",
         target: "surplus",
         value: snapshot.surplus,
         tone: "surplus"
@@ -376,7 +423,7 @@ export function buildSankeyData(snapshot, sortMode, sankeyGrouping) {
   }
 
   // 3. 계좌 간 이체(내부 링크) 계산
-  const transfers = (Array.isArray(snapshot.transfers) ? snapshot.transfers : [])
+  const transfers = includeAccountFlow ? (Array.isArray(snapshot.transfers) ? snapshot.transfers : [])
     .map((transfer) => {
       const source = resolveAccountId(transfer?.sourceAccountId, "transfer");
       const target = resolveAccountId(transfer?.targetAccountId, "transfer");
@@ -390,12 +437,13 @@ export function buildSankeyData(snapshot, sortMode, sankeyGrouping) {
         isManual: true
       };
     })
-    .filter((transfer) => transfer.source && transfer.target && transfer.source !== transfer.target && transfer.value > 0);
+    .filter((transfer) => transfer.source && transfer.target && transfer.source !== transfer.target && transfer.value > 0) : [];
 
   const providers = [];
   const consumers = [];
  
-  accounts.forEach((acc) => {
+  if (includeAccountFlow) {
+    accounts.forEach((acc) => {
     // 수입 -> 계좌 링크 합산 (계좌 간 분배 링크는 제외하기 위해 source가 계좌가 아닌 것만 필터)
     const totalInflow = links
       .filter((link) => link.target === acc.id && !accountIds.has(link.source))
@@ -421,11 +469,12 @@ export function buildSankeyData(snapshot, sortMode, sankeyGrouping) {
     } else if (balance < -0.01) {
       consumers.push({ id: acc.id, balance });
     }
-  });
+    });
+  }
  
   // 3.2 항목별 출처 계좌 기준으로 남은 과부족에 대해 자동 Greedy 매칭 적용
   let pIdx = 0, cIdx = 0;
-  while (pIdx < providers.length && cIdx < consumers.length) {
+  while (includeAccountFlow && pIdx < providers.length && cIdx < consumers.length) {
     const p = providers[pIdx];
     const c = consumers[cIdx];
     const transfer = Math.min(p.balance, -c.balance);
@@ -447,7 +496,7 @@ export function buildSankeyData(snapshot, sortMode, sankeyGrouping) {
 
   // 3.5 계좌 노드들의 실제 금액(value) 계산 및 갱신
   nodes.forEach((node) => {
-    if (node.column === 1 || node.column === 1.5) {
+    if (includeAccountFlow && (node.column === 1 || node.column === 1.5)) {
       const totalInflow = [...links, ...transfers]
         .filter((link) => link.target === node.id)
         .reduce((sum, link) => sum + link.value, 0);
@@ -466,7 +515,7 @@ export function buildSankeyData(snapshot, sortMode, sankeyGrouping) {
     hasIncomeInflow: incomeSources.length >= 2,
     hasGroupLayer: false,
     splitGroups,
-    topLevelTargetIds: accounts.map((a) => a.id)
+    topLevelTargetIds: includeAccountFlow ? accounts.map((a) => a.id) : allBreakdowns.map((node) => node.id)
   };
 }
 
