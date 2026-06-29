@@ -1,110 +1,115 @@
 # External Integrations
 
-**Analysis Date:** 2026-06-23
+**Analysis Date:** 2026-06-29
 
 ## APIs & External Services
 
 **Static Hosting:**
-- GitHub Pages - Production deployment target for the static Vite build.
-  - SDK/Client: GitHub Actions actions in `.github/workflows/deploy.yml` (`actions/checkout@v4`, `actions/setup-node@v4`, `actions/configure-pages@v5`, `actions/upload-pages-artifact@v3`, `actions/deploy-pages@v4`).
-  - Auth: GitHub-provided `GITHUB_TOKEN` permissions declared in `.github/workflows/deploy.yml`.
+- GitHub Pages - Production hosting for the built static app.
+  - SDK/Client: GitHub Actions workflow in `.github/workflows/deploy.yml`
+  - Auth: GitHub-provided `GITHUB_TOKEN` permissions declared as `contents: read`, `pages: write`, and `id-token: write`
 
 **Browser Platform APIs:**
-- IndexedDB - Primary local persistence for snapshots, simulations, and backup entries.
-  - SDK/Client: Native browser `indexedDB` in `src/core/storage/IsfStore.ts`, `shared/storage/hub-storage.js`, `shared/storage/backup-manager.js`, and `apps/main/modules/storage-manager.js`.
-  - Auth: Not applicable.
-- localStorage - Active state, compatibility storage, PWA notices, onboarding flags, and fallback Step 2 simulation storage.
-  - SDK/Client: Native browser `localStorage` in `src/core/storage/CompatibilityBridge.ts`, `src/core/storage/IsfStore.ts`, `shared/storage/hub-storage.js`, `shared/pwa/pwa-manager.js`, `apps/main/modules/onboarding-manager.js`, `apps/simulation/modules/storage-fallback.js`.
-  - Auth: Not applicable.
-- Service Worker / Cache Storage - Offline behavior and PWA lifecycle.
-  - SDK/Client: Native `navigator.serviceWorker` in `shared/pwa/pwa-manager.js`; generated PWA configuration in `vite.config.ts`; legacy cache worker in `shared/legacy/sw.js`.
-  - Auth: Not applicable.
-- URL hash/query sharing - Portable state export/import and view mode detection.
-  - SDK/Client: Native `URL`, `URLSearchParams`, `TextEncoder`, `TextDecoder`, `Blob`, and `URL.createObjectURL` in `shared/core/share-utils.js`.
-  - Auth: Not applicable.
+- IndexedDB - Primary client-side structured storage.
+  - SDK/Client: Native browser `indexedDB` API in `src/core/storage/IsfStore.ts`, `apps/main/modules/storage-manager.js`, `shared/storage/hub-storage.js`, and `shared/storage/backup-manager.js`
+  - Auth: Not applicable
+- Web Storage - Fast local persistence and draft state.
+  - SDK/Client: Native `localStorage` and `sessionStorage` in `src/core/storage/CompatibilityBridge.ts`, `apps/main/modules/storage-manager.js`, `apps/simulation/modules/state.js`, and `apps/simulation/modules/storage-fallback.js`
+  - Auth: Not applicable
+- Service Worker and Cache Storage - Offline/PWA caching and update lifecycle.
+  - SDK/Client: Native `navigator.serviceWorker` and `caches` in `shared/pwa/pwa-manager.js` and `shared/legacy/sw.js`; generated PWA behavior configured by `vite-plugin-pwa` in `vite.config.ts`
+  - Auth: Not applicable
 
-**External Assets:**
-- Google Fonts - Runtime CSS font import for Gowun Batang and Gowun Dodum.
-  - SDK/Client: CSS `@import` in `src/styles/globals.css` and `shared/styles/step-theme.css`.
-  - Auth: Not applicable.
-- GitHub repository links - App pages link to the repository for navigation/reference.
-  - SDK/Client: Static anchors in `apps/main/index.html`, `apps/simulation/index.html`, `apps/portfolio/index.html`.
-  - Auth: Not applicable.
+**Runtime Static Data:**
+- Market evidence JSON files - Local static benchmark data used by Step 2 assumptions.
+  - SDK/Client: Static files in `public/data/indices/*.json`; assumptions reference them by path in `apps/simulation/modules/assumptions.js`
+  - Auth: Not applicable
 
-**Market Data:**
-- Runtime market evidence is local static JSON, not a live external market-data API.
-  - SDK/Client: `public/data/indices/*.json`, documented in `public/data/indices/README.md`.
-  - Auth: Not applicable.
-- Market-data generation is offline and synthetic/project-local.
-  - SDK/Client: Python standard library only in `scripts/generate_qqq_data.py`, `scripts/generate_market_data.py`, `scripts/generate_extra_indices.py`, `scripts/generate_kospi_data.py`.
-  - Auth: Not applicable.
+**Remote Fetches:**
+- PWA manifest version check - Fetches the app's own manifest to detect newer deployed versions.
+  - SDK/Client: Native `fetch` in `shared/pwa/pwa-manager.js`
+  - Auth: Not applicable
+- Service worker same-origin asset fetch/cache - Fetches same-origin app assets and navigations only.
+  - SDK/Client: Native `fetch` and Cache Storage in `shared/legacy/sw.js`
+  - Auth: Not applicable
 
 ## Data Storage
 
 **Databases:**
-- Browser IndexedDB
-  - Connection: Native browser storage; no server connection string.
-  - Client: `isfStore` in `src/core/storage/IsfStore.ts` opens `isf-v2-db` with stores `step1_history`, `step2_simulations`, and `backups`.
-- Browser IndexedDB legacy/shared hub
-  - Connection: Native browser storage; no server connection string.
-  - Client: `window.IsfStorageHub` and `window.IsfHubStorage` in `shared/storage/hub-storage.js` open `isf-hub-db-v1` with stores `step1Snapshots` and `step2Entries`.
-- Browser IndexedDB backup database
-  - Connection: Native browser storage; no server connection string.
-  - Client: `window.IsfBackupManager` in `shared/storage/backup-manager.js` opens `isf-backup-db-v1` with store `backupEntries`.
+- Browser IndexedDB `isf-v2-db`, version 1.
+  - Connection: Native browser storage; no env var.
+  - Client: `src/core/storage/IsfStore.ts`
+  - Stores: `step1_history`, `step2_simulations`, and `backups`
+- Browser IndexedDB `isf-share-pointer-db-v1`, version 1.
+  - Connection: Native browser storage; no env var.
+  - Client: `apps/main/modules/storage-manager.js`
+  - Store: `shareSnapshots`
+- Legacy browser IndexedDB `isf-hub-db-v1`, version 2.
+  - Connection: Native browser storage; no env var.
+  - Client: `shared/storage/hub-storage.js`
+  - Stores: `step1Snapshots` and `step2Entries`
+- Legacy browser IndexedDB `isf-backup-db-v1`, version 2.
+  - Connection: Native browser storage; no env var.
+  - Client: `shared/storage/backup-manager.js`
+  - Store: `backupEntries`
 
 **File Storage:**
-- Local browser export/import only - JSON exports use `Blob` download in `shared/core/share-utils.js`; image exports are generated from SVG/canvas in `apps/main/modules/sankey-renderer.js`.
-- Static project files - PWA icons and market evidence are stored under `public/icons/` and `public/data/indices/`.
+- Browser JSON import/export only - Data hub events are emitted by `shared/components/data-hub-modal.js` and handled by app controllers such as `apps/main/modules/persistence-controller.js` and `apps/simulation/modules/ui-controller.js`.
+- Static runtime assets - `public/manifest.webmanifest`, `public/icons/*`, and `public/data/indices/*.json` are served as bundled/static files.
 
 **Caching:**
-- Browser Cache Storage - `shared/legacy/sw.js` caches app shell/static assets at install/fetch time.
-- Workbox runtime generated by `vite-plugin-pwa` - Configured in `vite.config.ts` using `workbox.globPatterns`, `skipWaiting`, `clientsClaim`, and `navigateFallback`.
+- Browser Cache Storage - `shared/legacy/sw.js` caches core same-origin app assets under `isf-static-v${APP_VERSION}`.
+- Workbox-generated PWA cache - `vite.config.ts` configures `vite-plugin-pwa` Workbox `globPatterns` for JS, CSS, HTML, icons, PNG, SVG, and webmanifest assets.
 
 ## Authentication & Identity
 
 **Auth Provider:**
-- None detected.
-  - Implementation: The app is a client-side personal finance tool with no login, no user accounts, and no remote identity provider in `apps/`, `src/`, or `shared/`.
+- None - `README.md` states the app operates without server accounts or bank integrations.
+  - Implementation: Local-first browser storage, manually entered data, optional JSON export/import, and hash/code sharing.
+
+**User Identity:**
+- Not detected - No login, OAuth, session token, Supabase, Firebase, or custom auth provider code was detected.
 
 ## Monitoring & Observability
 
 **Error Tracking:**
-- None detected - No Sentry, Datadog, OpenTelemetry, analytics SDK, or similar dependency appears in `package.json` or source imports.
+- None - No Sentry, Datadog, OpenTelemetry, LogRocket, or equivalent dependency is present in `package.json`.
 
 **Logs:**
-- Browser console logging only - `console.warn`, `console.error`, and `console.log` are used in files such as `shared/storage/hub-storage.js`, `shared/pwa/pwa-manager.js`, `shared/storage/backup-manager.js`, `apps/main/modules/storage-manager.js`, and `apps/simulation/modules/storage-fallback.js`.
-- User-facing feedback uses `window.IsfFeedback` from `shared/components/feedback-manager.js` and callers in `apps/main/modules/persistence-controller.js`, `apps/simulation/modules/ui-controller.js`, and `shared/pwa/pwa-manager.js`.
+- Browser console logging only - `console.log`, `console.warn`, and `console.error` appear in storage, PWA, and service-worker code such as `src/core/storage/CompatibilityBridge.ts`, `shared/pwa/pwa-manager.js`, `shared/storage/hub-storage.js`, and `apps/main/modules/storage-manager.js`.
+- Playwright reporter is `list` in `playwright.config.ts`.
 
 ## CI/CD & Deployment
 
 **Hosting:**
-- GitHub Pages - `.github/workflows/deploy.yml` deploys `dist` to the `github-pages` environment.
-- Public base URL - `README.md` points to `https://jinhoops.github.io/IndividualSavingsFlowUI/`; `vite.config.ts` and `public/manifest.webmanifest` use `/IndividualSavingsFlowUI/`.
+- GitHub Pages - `README.md` lists `https://jinhoops.github.io/IndividualSavingsFlowUI/`, and `vite.config.ts` sets `base: '/IndividualSavingsFlowUI/'`.
 
 **CI Pipeline:**
 - GitHub Actions - `.github/workflows/deploy.yml` runs on pushes to `main` and `feat/backtest-simulator`, plus manual `workflow_dispatch`.
-- Deploy steps - `.github/workflows/deploy.yml` checks out code, installs Node 22, runs `npm install --legacy-peer-deps`, runs `npm run build`, uploads `dist`, and deploys to Pages.
+- CI steps: checkout, `actions/setup-node@v4` with Node 22 and npm cache, `npm install --legacy-peer-deps`, `npm run build`, `actions/configure-pages@v5`, `actions/upload-pages-artifact@v3`, and `actions/deploy-pages@v4`.
 
 ## Environment Configuration
 
 **Required env vars:**
-- None detected for the app runtime.
-- `CI` is optionally read by `playwright.config.ts` to enable `forbidOnly` and retries in CI.
+- None for app runtime.
+- `CI` is optional and read by `playwright.config.ts` to alter test behavior.
 
 **Secrets location:**
-- No project-managed secrets detected.
-- GitHub Actions uses repository-provided token permissions in `.github/workflows/deploy.yml`; no secret values are declared in the workflow.
+- Not applicable for the app - No `.env*` files were detected and no secret-backed runtime integrations were found.
+- GitHub Pages deployment uses GitHub Actions' built-in OIDC/token permissions in `.github/workflows/deploy.yml`.
 
 ## Webhooks & Callbacks
 
 **Incoming:**
-- None detected - No HTTP server, webhook endpoint, API route, or backend callback handler exists in the scanned app code.
+- None - No server endpoints, API routes, webhook receivers, or callback handlers were detected.
 
 **Outgoing:**
-- PWA manifest version check - `shared/pwa/pwa-manager.js` calls `fetch(`${manifestUrl}?vchk=${now}`, { cache: "no-store" })` against the same-origin `public/manifest.webmanifest`.
-- Service worker fetch passthrough/cache - `shared/legacy/sw.js` handles browser fetch events and fetches same-origin requests when cache misses occur.
-- No outgoing third-party API calls detected in runtime application code.
+- None to third-party services - Runtime `fetch` usage is limited to same-origin manifest/version checks and service-worker asset caching in `shared/pwa/pwa-manager.js` and `shared/legacy/sw.js`.
+
+**Share/Callback-Like Local Flows:**
+- URL hash sharing - `shared/core/share-utils.js` encodes and decodes app state into the `s` hash parameter, consumed by `apps/main/modules/state.js`, `apps/main/modules/persistence-controller.js`, and `apps/simulation/app.js`.
+- Query-parameter view mode - `shared/core/share-utils.js` recognizes `sid` and `view=1`; `apps/main/modules/storage-manager.js` can load `sid` from local IndexedDB `shareSnapshots`.
 
 ---
 
-*Integration audit: 2026-06-23*
+*Integration audit: 2026-06-29*

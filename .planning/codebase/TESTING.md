@@ -1,47 +1,45 @@
 # Testing Patterns
 
-**Analysis Date:** 2026-06-23
+**Analysis Date:** 2026-06-29
 
 ## Test Framework
 
 **Runner:**
-- Playwright `^1.60.0` is the active automated test runner.
-- Config: `playwright.config.ts`.
-- Test directory: `tests/`.
-- Vitest `^4.1.5` and `@vitest/ui` `^4.1.5` are installed in `package.json`, but no `vitest.config.*` file or `npm test` script is present.
-- `shared/core/clipboard-parser.test.js` is a direct Node script-style smoke test, not a Vitest suite.
+- Playwright `@playwright/test` `^1.60.0` is the configured runner for browser coverage.
+- Config: `playwright.config.ts`
+- `playwright.config.ts` sets `testDir: './tests'`, `fullyParallel: false`, `workers: 1`, `reporter: 'list'`, Chromium-only project, and `serviceWorkers: 'block'`.
+- `playwright.config.ts` starts Vite with `node ./node_modules/vite/bin/vite.js --host 127.0.0.1` and uses `http://localhost:5173/IndividualSavingsFlowUI/` as the base URL.
 
 **Assertion Library:**
-- Playwright `expect` from `@playwright/test` in `tests/step1.spec.ts` and `tests/step2.spec.ts`.
-- The parser smoke test in `shared/core/clipboard-parser.test.js` uses manual boolean checks and `console.log`.
+- Playwright `expect` from `@playwright/test`, used in `tests/step1.spec.ts` and `tests/step2.spec.ts`.
+- The standalone `shared/core/clipboard-parser.test.js` does not use an assertion library; it prints PASS/FAIL with `console.log`.
 
 **Run Commands:**
 ```bash
-npm run test:e2e      # Run Playwright end-to-end tests
-npm run check         # Run TypeScript no-emit checks
-npm run lint          # Same as check; runs tsc --noEmit
-node shared/core/clipboard-parser.test.js  # Run parser smoke test manually
+npm run test:e2e        # Run all configured Playwright tests in tests/
+npx playwright test     # Equivalent direct Playwright run
+npm run check           # TypeScript compiler gate for src/, apps/, and shared/
 ```
 
 ## Test File Organization
 
 **Location:**
-- E2E and browser integration tests live under `tests/`: `tests/step1.spec.ts`, `tests/step2.spec.ts`.
-- The parser smoke test is colocated with the implementation: `shared/core/clipboard-parser.test.js` next to `shared/core/clipboard-parser.js`.
+- Configured E2E tests live in `tests/`, specifically `tests/step1.spec.ts` and `tests/step2.spec.ts`.
+- A standalone parser test lives beside its implementation at `shared/core/clipboard-parser.test.js`, but this file is not under the `testDir` configured in `playwright.config.ts`.
+- Playwright artifacts are written under `test-results/`, such as `test-results/.last-run.json`; screenshot paths in tests also target `test-results/`.
 
 **Naming:**
-- Use `*.spec.ts` for Playwright suites under `tests/`.
-- Use `*.test.js` only for standalone JavaScript smoke tests when keeping them near source.
+- Use `*.spec.ts` for Playwright tests under `tests/`, as in `tests/step1.spec.ts` and `tests/step2.spec.ts`.
+- Avoid new `*.test.js` console scripts like `shared/core/clipboard-parser.test.js` unless they are wired into a script or converted to a configured runner.
 
 **Structure:**
 ```text
 tests/
-├── step1.spec.ts      # Main app UI/UX, layout, storage, and flow contracts
-└── step2.spec.ts      # Simulation app tutorial, import, storage fallback, and strategy contracts
+├── step1.spec.ts       # Main app UI, data, sanitizer, Sankey, financial-modal, responsive contracts
+└── step2.spec.ts       # Simulation app tutorial, storage/import, strategy comparison, mobile UI contracts
 
 shared/core/
-├── clipboard-parser.js
-└── clipboard-parser.test.js
+└── clipboard-parser.test.js  # Standalone console-driven parser checks, not configured by Playwright
 ```
 
 ## Test Structure
@@ -49,8 +47,16 @@ shared/core/
 **Suite Organization:**
 ```typescript
 // tests/step2.spec.ts
-// @ts-nocheck
 import { test, expect } from '@playwright/test';
+
+const STEP1_SOURCE = {
+  version: 2,
+  updatedAt: Date.now(),
+  incomes: [],
+  expenseItems: [],
+  savingsItems: [],
+  investItems: [],
+};
 
 test.describe('Step 2 Phase 08 storage and import contracts', () => {
   test.beforeEach(async ({ page }) => {
@@ -70,17 +76,16 @@ test.describe('Step 2 Phase 08 storage and import contracts', () => {
 ```
 
 **Patterns:**
-- Group tests by feature phase or contract area with `test.describe`, as in `tests/step1.spec.ts` and `tests/step2.spec.ts`.
-- Use `test.beforeEach` to reset browser storage and IndexedDB before navigation.
-- Use `test.afterEach` to close pages when the suite opens long-running UI flows, as in `tests/step1.spec.ts`.
-- Navigate to app entry HTML files directly: `page.goto('apps/main/index.html')`, `page.goto('apps/simulation/index.html')`.
-- Wait for stable selectors before assertions: `page.waitForSelector('main')`, `page.waitForSelector('#totalMonthlyInvestCapacity')`.
-- Prefer Playwright locators and web assertions: `await expect(page.locator('#step1SyncBanner')).toBeVisible()`.
-- Use `page.evaluate` for direct browser-context contract checks against app modules and LocalStorage.
+- Group tests by app step and phase/regression topic with `test.describe`, as in `tests/step1.spec.ts` suites for Main UI audits, Phase 09, Phase 10.6, and final responsive flows.
+- Reset browser storage in `test.beforeEach` with `page.addInitScript`, clearing `localStorage`, `sessionStorage`, and sometimes IndexedDB in `tests/step1.spec.ts` and `tests/step2.spec.ts`.
+- Navigate with relative app entry paths such as `apps/main/index.html` in `tests/step1.spec.ts` and `apps/simulation/index.html` in `tests/step2.spec.ts`.
+- Use locator assertions for visible UI state, such as `await expect(page.locator('#totalInitialAsset')).toHaveValue(...)` and `await expect(modal).toBeVisible()` in `tests/step1.spec.ts` and `tests/step2.spec.ts`.
+- Use `page.evaluate` and dynamic `import('/IndividualSavingsFlowUI/...')` to exercise module-level contracts from the browser runtime, as in `tests/step1.spec.ts` importing `apps/main/modules/input-sanitizer.js` and `apps/main/modules/sankey-builder.js`.
+- Assert layout and responsive behavior through `boundingBox`, `getComputedStyle`, document overflow checks, viewport loops, and screenshots in `tests/step1.spec.ts` and `tests/step2.spec.ts`.
 
 ## Mocking
 
-**Framework:** Playwright browser context primitives; no Vitest mocking pattern is active.
+**Framework:** Playwright browser context and hand-written fakes
 
 **Patterns:**
 ```typescript
@@ -107,14 +112,15 @@ const result = await page.evaluate(async () => {
 ```
 
 **What to Mock:**
-- Mock browser globals in `page.evaluate` when testing fallback paths: `window.IsfStorageHub`, `window.IsfHubStorage` in `tests/step2.spec.ts`.
-- Seed `localStorage` and clear `sessionStorage`/IndexedDB in `page.addInitScript` before loading the app.
-- Mock user confirmation flows with `page.once('dialog', ...)` when clicks trigger `confirm` or `alert`.
+- Mock browser storage bridge failures by replacing `window.IsfStorageHub` and `window.IsfHubStorage`, as in `tests/step2.spec.ts`.
+- Mock dialog behavior with `page.once('dialog', ...)` or `page.on('dialog', ...)`, as in `tests/step1.spec.ts` and `tests/step2.spec.ts`.
+- Seed app state through `localStorage.setItem` in `page.addInitScript` or through runtime module imports in `page.evaluate`, as in `tests/step1.spec.ts` and `tests/step2.spec.ts`.
+- Use malicious string fixtures in browser-state tests to verify DOM escaping and injection safety, such as account and group option tests in `tests/step1.spec.ts`.
 
 **What NOT to Mock:**
-- Do not mock rendering for layout and visual contract tests in `tests/step1.spec.ts`; assert real DOM boxes, overflow, visibility, SVG contents, and screenshots.
-- Do not mock app calculators when testing strategy comparison contracts in `tests/step2.spec.ts`; dynamically import and execute `apps/simulation/modules/calculator.js` in the page.
-- Do not bypass LocalStorage/IndexedDB state setup when the behavior under test depends on persistence contracts.
+- Do not mock DOM rendering when testing UI contracts; tests assert actual rendered elements in `apps/main/index.html` and `apps/simulation/index.html`.
+- Do not mock calculation modules when validating financial results; tests import real calculators such as `apps/simulation/modules/calculator.js`, `apps/simulation/modules/comparison-calculator.js`, `apps/main/modules/calculator.js`, and `apps/main/modules/sankey-builder.js`.
+- Do not rely on service worker behavior in E2E tests because `playwright.config.ts` blocks service workers.
 
 ## Fixtures and Factories
 
@@ -135,97 +141,74 @@ const STEP1_SOURCE = {
 ```
 
 **Location:**
-- Inline constants live at the top of the relevant spec file, such as `STEP1_SOURCE` in `tests/step2.spec.ts`.
-- UI fixtures are established through browser storage in `page.addInitScript`, not external fixture files.
-- Parser examples live inline in `testCases` inside `shared/core/clipboard-parser.test.js`.
+- Inline fixtures are defined near the suite that uses them, such as `STEP1_SOURCE` at the top of `tests/step2.spec.ts`.
+- Larger state fixtures are constructed inside individual `page.evaluate` calls in `tests/step1.spec.ts`, often passed through `sanitizeInputs` from `apps/main/modules/input-sanitizer.js`.
+- Reusable Playwright helper functions live at the top of the spec file, such as `openControlsPanel` and `openFinancialAddMenu` in `tests/step1.spec.ts`.
 
 ## Coverage
 
-**Requirements:** None enforced.
+**Requirements:** None enforced. No coverage script is present in `package.json`, and no coverage configuration was detected in `playwright.config.ts`, Vitest config, Jest config, or package scripts.
 
 **View Coverage:**
 ```bash
-# No configured coverage command is present in package.json.
-# Add a runner/config first before relying on coverage reports.
+Not detected
 ```
-
-**Current Signals:**
-- Playwright produces behavior confidence for major UI flows in `tests/step1.spec.ts` and `tests/step2.spec.ts`.
-- No coverage thresholds are configured in `playwright.config.ts`, `vite.config.ts`, or `package.json`.
-- Vitest coverage packages are optional peer entries in `package-lock.json`, but no local coverage provider is configured.
 
 ## Test Types
 
 **Unit Tests:**
-- Not formally configured. `shared/core/clipboard-parser.test.js` is a manual script that imports `ClipboardParser` from `shared/core/clipboard-parser.js`, iterates cases, and logs pass/fail.
-- For new pure functions in `apps/main/modules/input-sanitizer.js`, `apps/main/modules/comparison-engine.js`, or `apps/simulation/modules/calculator.js`, prefer adding a real Vitest script/config before creating more manual test scripts.
+- Minimal configured unit-test coverage. `shared/core/clipboard-parser.test.js` exercises `shared/core/clipboard-parser.js` with inline cases but is not part of the Playwright test directory or `package.json` scripts.
+- `vitest` and `@vitest/ui` are present in `package.json`, but no `vitest.config.*` file or `npm test` script is present.
 
 **Integration Tests:**
-- Playwright specs act as browser integration tests. They load real app pages, interact with controls, inspect LocalStorage, and dynamically import modules.
-- `tests/step2.spec.ts` checks storage bridge fallback behavior by injecting failing storage globals and asserting app state.
-- `tests/step1.spec.ts` checks Main UI layout hierarchy, Sankey/network rendering, controls, screenshots, and saved input contracts.
+- Browser-level integration tests dominate. `tests/step1.spec.ts` and `tests/step2.spec.ts` combine UI interactions, runtime module imports, localStorage, IndexedDB cleanup, storage hub fakes, DOM rendering, and calculator outputs.
+- Module contract checks are run inside the real browser with `page.evaluate`, such as sanitizer, Sankey topology, strategy assumptions, and storage fallback checks in `tests/step1.spec.ts` and `tests/step2.spec.ts`.
 
 **E2E Tests:**
-- Playwright is configured in `playwright.config.ts` with `testDir: './tests'`, Chromium only, `workers: 1`, `fullyParallel: false`, `trace: 'on-first-retry'`, `serviceWorkers: 'block'`, and a Vite web server.
-- Base URL is `http://localhost:5173/IndividualSavingsFlowUI/`.
-- The web server command is `node ./node_modules/vite/bin/vite.js --host 127.0.0.1`.
+- Playwright E2E tests are the primary automated test type, configured by `playwright.config.ts`.
+- Tests run serially with one worker because `playwright.config.ts` sets `fullyParallel: false` and `workers: 1`.
+- The configured browser project is Chromium Desktop Chrome only in `playwright.config.ts`.
 
 ## Common Patterns
 
 **Async Testing:**
 ```typescript
-await page.goto('apps/main/index.html');
-await page.waitForSelector('main');
-const sankeySvg = page.locator('#sankeySvg');
-await expect(sankeySvg).toBeVisible();
-const box = await sankeySvg.boundingBox();
-expect(box).not.toBeNull();
+// tests/step1.spec.ts
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+    indexedDB.databases?.().then((databases) => {
+      for (const database of databases) {
+        if (database.name) indexedDB.deleteDatabase(database.name);
+      }
+    }).catch(() => {});
+  });
+  await page.goto('apps/main/index.html');
+  await page.waitForSelector('main');
+});
 ```
 
 **Error Testing:**
 ```typescript
+// tests/step2.spec.ts
 page.on('dialog', async (dialog) => {
-  dialogs.push(dialog.message());
   await dialog.dismiss();
 });
 
-const failingHub = {
-  saveStep2Entry: async () => { throw new Error('IDB_BLOCKED_SAVE'); },
-};
-window.IsfStorageHub = failingHub;
+await page.evaluate(() => {
+  const failingHub = {
+    saveStep2Entry: async () => { throw new Error('IDB_BLOCKED_SAVE'); },
+    listStep2Entries: async () => { throw new Error('IDB_BLOCKED_LIST'); },
+    getStep2EntryById: async () => { throw new Error('IDB_BLOCKED_LOAD'); },
+    deleteStep2Entry: async () => { throw new Error('IDB_BLOCKED_DELETE'); },
+    triggerAutoBackup: async () => ({ created: false }),
+  };
+  window.IsfStorageHub = failingHub;
+  window.IsfHubStorage = failingHub;
+});
 ```
-
-**Responsive/Layout Testing:**
-```typescript
-for (const viewport of [{ width: 768, height: 1024 }, { width: 390, height: 844 }]) {
-  await page.setViewportSize(viewport);
-  await page.waitForTimeout(100);
-  const overflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth - document.documentElement.clientWidth
-  );
-  expect(overflow).toBeLessThanOrEqual(4);
-}
-```
-
-**Visual Artifacts:**
-- `tests/step1.spec.ts` writes screenshots under `test-results/`, for example `test-results/phase07-step1-mobile-390.png`.
-- Treat `test-results/` as generated verification output, not source.
-
-## Adding New Tests
-
-**For UI behavior:**
-- Add a focused Playwright `test(...)` to `tests/step1.spec.ts` for Main app behavior or `tests/step2.spec.ts` for Simulation app behavior.
-- Reset storage in `beforeEach` before relying on persisted state.
-- Assert user-visible DOM state with locators before checking internal state with `page.evaluate`.
-
-**For pure logic:**
-- Prefer creating a proper Vitest configuration and `npm test` script before expanding unit tests.
-- Put test cases near the source when testing isolated shared utilities, following the colocated pattern of `shared/core/clipboard-parser.test.js`, but use real assertions rather than console-only pass/fail.
-
-**For storage and import contracts:**
-- Use browser-context dynamic imports and controlled `window.*` globals, following `tests/step2.spec.ts`.
-- Assert both returned values and persisted browser storage keys.
 
 ---
 
-*Testing analysis: 2026-06-23*
+*Testing analysis: 2026-06-29*
