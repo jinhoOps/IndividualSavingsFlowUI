@@ -5,16 +5,16 @@ milestone_name: milestone
 current_phase: 10.8
 current_phase_name: 계좌 관리 맵
 status: executing
-stopped_at: Phase 10.8 context gathered
-last_updated: "2026-06-29T08:35:11.031Z"
+stopped_at: Completed 10.8-01-PLAN.md
+last_updated: "2026-06-29T08:54:35.604Z"
 last_activity: 2026-06-29
 last_activity_desc: Phase 10.8 inserted after Phase 10.7 for account management map work
 progress:
   total_phases: 10
   completed_phases: 5
-  total_plans: 20
-  completed_plans: 20
-  percent: 50
+  total_plans: 23
+  completed_plans: 21
+  percent: 91
 ---
 
 # Project State
@@ -22,16 +22,16 @@ progress:
 ## Current Position
 
 Phase: 10.8 — 계좌 관리 맵
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-06-29 — Phase 10.8 inserted after Phase 10.7 for account management map work
+Plan: 10.8-02 next
+Status: Phase 10.8 in progress
+Last activity: 2026-06-29 — Plan 10.8-01 completed: dedicated Account Map route, page-owned draft storage, Main connector, and draft builder
 
 ## Project Reference
 
 See: .planning/PROJECT.md (updated 2026-06-26)
 
 **Core value:** 단순한 프리셋 선택만으로 즉각적인 자산 시각화 결과를 제공하고, 복잡한 재무 계산의 부담 없이 직관적인 개인 예산 흐름을 파악하게 한다.
-**Current focus:** Phase 10.8 — 계좌 관리 맵 is ready for discussion and planning
+**Current focus:** Phase 10.8 — 계좌 관리 맵 is executing; Plan 10.8-02 is next.
 
 ## Accumulated Context
 
@@ -42,6 +42,7 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 - Phase 10.6 inserted after Phase 10.5: Financial Detail Modal Editing UX Repair
 - v1.8 shipped: portfolio creation/storage, Step 1 modular and financial setup rebuild, Step 2 strategy comparison redesign.
 - Phase 10.8 inserted after Phase 10.7: 계좌 관리 맵 (URGENT)
+- Plan 10.8-01 completed: dedicated Account Map route, page-owned draft storage, Main connector, and draft builder.
 
 ## Key Decisions
 
@@ -75,6 +76,7 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 | Phase 10.7-account-flow-extraction-and-portfolio-boundary P04 | 8 min | 2 tasks | 9 files |
 | Phase 10.7-account-flow-extraction-and-portfolio-boundary P05 | 31 min | 2 tasks | 7 files |
 | Phase 10.7-account-flow-extraction-and-portfolio-boundary P06 | 32 min | 3 tasks | 6 files |
+| Phase 10.8-account-management-map P01 | 55 min | 3 tasks | 10 files |
 
 ## Decisions
 
@@ -127,14 +129,16 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 - [Phase 10.7-05]: Portfolio connector falls back from IndexedDB latest snapshot to `isf-step1-active` local data so browser-local handoff detection remains reliable.
 - [Phase 10.7-06]: Portfolio is the account-flow destination boundary; Step 1 only shows navigation guidance when `accountFlowHandoff` exists.
 - [Phase 10.7-06]: `accountFlowHandoff` remains handoff-only compatibility data and must not rehydrate Step 1 primary account fields.
+- [Phase 10.8-01]: Account Map drafts save under isf-account-map-v1 and Main imports do not write back to isf-rebuild-v1.
+- [Phase 10.8-01]: Account Map uses a distinct account-map route/header step and Vite entry instead of Portfolio routing.
+- [Phase 10.8-01]: Account Map connector prefers active bridge/local Main data before older snapshot history.
 
 ## Operator Next Steps
 
-- Phase 10.8 is inserted after Phase 10.7 and ready for context discussion.
-- Next recommended step is `$gsd-discuss-phase 10.8`.
+- Continue Phase 10.8 with Plan 10.8-02: relationship-first map renderer, detail reveal, candidate review, and Account Map draft persistence.
 
 ## Session
 
-**Last session:** 2026-06-29T07:54:50.472Z
-**Stopped at:** Phase 10.8 context gathered
-**Resume file:** .planning/phases/10.8-account-management-map/10.8-CONTEXT.md
+**Last session:** 2026-06-29T08:54:06.843Z
+**Stopped at:** Completed 10.8-01-PLAN.md
+**Resume file:** None
