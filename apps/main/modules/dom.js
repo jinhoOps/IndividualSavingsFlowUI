@@ -46,6 +46,7 @@ export const dom = {
   applyFeedback: document.getElementById("applyFeedback"),
   summaryPanel: document.querySelector(".summary-panel"),
   summaryCards: document.getElementById("summaryCards"),
+  accountMapEntry: document.getElementById("accountMapEntry"),
   financialSettingsDetail: document.getElementById("financialSettingsDetail"),
   sankeySvg: document.getElementById("sankeySvg"),
   sankeyWrap: document.getElementById("sankeyWrap"),

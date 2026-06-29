@@ -10,6 +10,7 @@ import { renderSankey } from "./sankey-renderer.js";
 import { renderNetworkMap } from "./network-map-renderer.js";
 import { buildFinancialSummaryGroups } from "./financial-summary.js";
 import { renderFinancialSummaryGroups } from "./financial-summary-renderer.js";
+import { renderAccountMapEntry } from "./account-map-entry-renderer.js";
 import { dom } from "./dom.js";
 import { state } from "./state.js";
 import * as helpers from "./state-helpers.js";
@@ -36,6 +37,7 @@ export function createRenderOrchestrator() {
     state.snapshot = snapshot;
     const projection = simulateProjection(inputs, { mode: state.projectionOptions.mode });
     renderFinancialSummaryGroups(dom.summaryCards, buildFinancialSummaryGroups(inputs, { projection }));
+    renderAccountMapEntry(dom.accountMapEntry, inputs);
     updateSankeyCorrectionStatus(inputs);
 
     const { warnings } = calculateAccountFinancialIncomes(inputs);

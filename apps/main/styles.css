@@ -130,6 +130,21 @@ input[type=number]{-moz-appearance:textfield}
 .financial-summary-card--expense .financial-summary-card__total{color:var(--expense)}
 .financial-summary-card--savings .financial-summary-card__total{color:var(--savings)}
 .financial-summary-card--invest .financial-summary-card__total{color:var(--invest)}
+.account-map-entry{margin-top:var(--sp-md);min-width:0}
+.account-map-entry__card{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:var(--sp-md);border:1px solid rgba(16,34,32,0.1);border-radius:var(--rd-sm);background:rgba(255,255,255,0.78);padding:var(--sp-md);min-width:0}
+.account-map-entry__mini{display:grid;grid-template-columns:auto 28px auto 28px auto;align-items:center;gap:6px;min-width:0}
+.account-map-entry__mini.is-muted{opacity:0.72}
+.account-map-entry__node{display:inline-grid;place-items:center;min-width:42px;min-height:30px;border:1px solid var(--line);border-radius:var(--rd-sm);background:var(--panel);font-size:0.72rem;font-weight:800;color:var(--ink);white-space:nowrap}
+.account-map-entry__edge{height:2px;background:linear-gradient(90deg,var(--tone-primary),var(--tone-accent));position:relative;border-radius:999px}
+.account-map-entry__edge::after{content:"";position:absolute;right:-2px;top:50%;width:6px;height:6px;border-top:2px solid var(--tone-accent);border-right:2px solid var(--tone-accent);transform:translateY(-50%) rotate(45deg)}
+.account-map-entry__body{display:grid;gap:4px;min-width:0}
+.account-map-entry__kicker{font-size:0.7rem;font-weight:900;letter-spacing:0;color:var(--tone-primary);text-transform:uppercase}
+.account-map-entry__title{margin:0;font-size:0.98rem;line-height:1.25;color:var(--ink);overflow-wrap:anywhere}
+.account-map-entry__status{margin:0;color:var(--muted);font-size:0.8rem;line-height:1.35}
+.account-map-entry__metrics{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:2px}
+.account-map-entry__metric{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);border-radius:999px;background:rgba(249,246,240,0.78);padding:3px 8px;font-size:0.73rem;color:var(--muted);white-space:nowrap}
+.account-map-entry__metric strong{font-size:0.82rem;color:var(--ink)}
+.account-map-entry__link{white-space:nowrap}
 .sankey-view-toggle{display:inline-flex;border:1px solid var(--line);border-radius:var(--rd-sm);padding:2px;background:rgba(255,255,255,0.8);height:32px;align-items:center;box-sizing:border-box}
 .sankey-view-btn.is-active{background:var(--ink);color:#fff}
 .sankey-correction-control{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:var(--rd-sm);background:rgba(255,255,255,0.8);padding:2px 6px;min-height:32px;max-width:100%}
@@ -760,6 +775,10 @@ to{opacity:1;transform:translateY(0)}
 .isf-tooltip .formula-box{background:rgba(234,91,42,0.04);border:1px solid rgba(234,91,42,0.12);border-radius:var(--rd-sm);padding:6px 10px;margin:6px 0;text-align:center;font-weight:600;color:var(--tone-primary,#ea5b2a);font-size:0.8rem;font-family:monospace}
 @media (max-width:760px){
 .scroll-hint-banner.mobile-only{display:inline-flex;align-items:center;justify-content:center;width:100%;box-sizing:border-box}
+.account-map-entry__card{grid-template-columns:1fr;gap:var(--sp-sm);padding:var(--sp-sm)}
+.account-map-entry__mini{grid-template-columns:auto 1fr auto 1fr auto;width:100%}
+.account-map-entry__node{min-width:38px;min-height:28px;font-size:0.68rem}
+.account-map-entry__link{width:100%;justify-content:center}
 }
 .panel-toggle-btn{background:none;border:none;color:var(--muted);font-size:1.1rem;font-weight:700;cursor:pointer;padding:4px 8px;border-radius:var(--rd-sm);transition:all 0.2s ease;display:inline-flex;align-items:center;justify-content:center;margin-left:6px;vertical-align:middle}
 .panel-toggle-btn:hover{color:var(--ink);background:rgba(16,34,32,0.04)}
