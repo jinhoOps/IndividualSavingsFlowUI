@@ -1,5 +1,9 @@
 # Account Flow Belongs to the Portfolio Boundary
 
+Status: Superseded as of 2026-06-29.
+
+Superseded by: Phase 10.7 account-flow restoration review fixes. Step 1 account-flow visualization, income allocation editing, manual transfer rules, and source-account network controls are active product requirements again. This ADR remains as historical context for the earlier simplification attempt, but it must not be used to remove or hide the restored account-flow feature.
+
 Step 1 is the ordinary household cash-flow input surface. Its primary model and Sankey visualization show income flowing to living expense, savings, and investment categories. Step 1 must not restore account tabs, account selectors, income allocation editors, account-transfer controls, network-map controls, or automatic account correction as normal user paths.
 
 Richer account-flow behavior belongs at the Portfolio destination boundary for Phase 10.7. Step 1 may guide users to Portfolio when preserved account-flow handoff data exists or when they need destination-level account-flow review, but that guidance is navigation only. It must not expose detailed legacy account labels in Step 1 or make Step 1 the live account-flow editor again.

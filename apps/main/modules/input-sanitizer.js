@@ -164,7 +164,7 @@ export function sanitizeIncomeItems(items, fallbackAmount) {
         : (MAGIC_MAPPING_DEFAULTS?.income || "acc-salary");
       
       const rawAllocs = Array.isArray(safeItem.allocations) ? safeItem.allocations : [];
-      const safeAllocations = rawAllocs.map(al => {
+      let safeAllocations = rawAllocs.map(al => {
         const safeAl = al && typeof al === "object" ? al : {};
         return {
           accountId: typeof safeAl.accountId === "string" && safeAl.accountId.trim()
@@ -172,10 +172,14 @@ export function sanitizeIncomeItems(items, fallbackAmount) {
             : safeAccountId,
           amount: window.IsfUtils.sanitizeMoney(safeAl.amount, 0)
         };
-      });
+      }).filter((allocation) => allocation.accountId && allocation.amount > 0);
 
       if (safeAllocations.length === 0) {
         safeAllocations.push({ accountId: safeAccountId, amount: safeAmount });
+      }
+      const allocationTotal = safeAllocations.reduce((sum, allocation) => sum + allocation.amount, 0);
+      if (allocationTotal !== safeAmount) {
+        safeAllocations = [{ accountId: safeAccountId, amount: safeAmount }];
       }
 
       return {
@@ -213,16 +217,20 @@ export function createIncomeItem({ id, name, amount, accountId, allocations } = 
   const defaultAccountId = typeof accountId === "string" && accountId.trim() ? accountId.trim() : (MAGIC_MAPPING_DEFAULTS?.income || "acc-salary");
   
   const rawAllocs = Array.isArray(allocations) ? allocations : [];
-  const safeAllocations = rawAllocs.map(al => {
+  let safeAllocations = rawAllocs.map(al => {
     const safeAl = al && typeof al === "object" ? al : {};
     return {
       accountId: typeof safeAl.accountId === "string" && safeAl.accountId.trim() ? safeAl.accountId.trim() : defaultAccountId,
       amount: window.IsfUtils.sanitizeMoney(safeAl.amount, 0)
     };
-  });
+  }).filter((allocation) => allocation.accountId && allocation.amount > 0);
 
   if (safeAllocations.length === 0) {
     safeAllocations.push({ accountId: defaultAccountId, amount: safeAmount });
+  }
+  const allocationTotal = safeAllocations.reduce((sum, allocation) => sum + allocation.amount, 0);
+  if (allocationTotal !== safeAmount) {
+    safeAllocations = [{ accountId: defaultAccountId, amount: safeAmount }];
   }
 
   return {

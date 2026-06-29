@@ -568,6 +568,7 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
       }
       if (category === "income") {
         const allocations = getIncomeAllocations(item, getInputs().accounts);
+        const allocated = sumAllocations(allocations);
         for (const allocation of allocations) {
           const allocationAmount = Number(allocation?.amount) || 0;
           if (allocationAmount < 0) {
@@ -579,8 +580,8 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
             return false;
           }
         }
-        if (sumAllocations(allocations) > amount) {
-          setRowError(category, index, "수입 금액을 넘지 않게 배분해 주세요.");
+        if (allocated !== amount) {
+          setRowError(category, index, "수입 금액과 배분 합계가 일치해야 합니다.");
           return false;
         }
       }

@@ -5,6 +5,15 @@
 import { IsfUtils } from '../../../shared/core/utils.js';
 import { IsfCalculator } from './calculator.js';
 
+function escapeAttr(value) {
+  return IsfUtils.escapeHtml(String(value ?? ''));
+}
+
+function findByDataId(root, selector, id, datasetKey = 'id') {
+  if (!root) return null;
+  return Array.from(root.querySelectorAll(selector)).find((node) => node.dataset?.[datasetKey] === id) || null;
+}
+
 export const IsfDom = {
   // Selectors
   nodes: {
@@ -56,12 +65,14 @@ export const IsfDom = {
     }
 
     portfolioList.innerHTML = portfolios.map(p => {
+      const id = escapeAttr(p.id);
+      const period = escapeAttr(p.period);
       return `
-        <div class="portfolio-card" data-id="${p.id}" style="position: relative; display: flex; flex-direction: column; gap: 12px;">
-          <button type="button" class="btn-delete-portfolio" data-id="${p.id}" style="position: absolute; top: 12px; right: 12px; background: transparent; border: none; color: var(--muted); font-size: 1.2rem; cursor: pointer; transition: color 0.2s;" title="삭제">&times;</button>
+        <div class="portfolio-card" data-id="${id}" style="position: relative; display: flex; flex-direction: column; gap: 12px;">
+          <button type="button" class="btn-delete-portfolio" data-id="${id}" style="position: absolute; top: 12px; right: 12px; background: transparent; border: none; color: var(--muted); font-size: 1.2rem; cursor: pointer; transition: color 0.2s;" title="삭제">&times;</button>
           <div style="font-size: 1.15rem; font-weight: 700; color: var(--ink); max-width: calc(100% - 24px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${IsfUtils.escapeHtml(p.name)}</div>
           <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
-            <span class="badge" style="background: rgba(234, 91, 42, 0.15); color: var(--primary, #ea5b2a); padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 600;">${p.period}</span>
+            <span class="badge" style="background: rgba(234, 91, 42, 0.15); color: var(--primary, #ea5b2a); padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 600;">${period}</span>
             <span style="font-size: 0.85rem; color: var(--muted);">종목 ${p.assets ? p.assets.length : 0}개</span>
           </div>
           <div style="border-top: 1px solid var(--line); padding-top: 10px; margin-top: 4px; display: flex; justify-content: space-between; align-items: baseline;">
@@ -124,24 +135,27 @@ export const IsfDom = {
       const amountVal = Number(as.amount) || 0;
       const isAmountValid = amountVal === 0 || IsfCalculator.validateAssetAmount(amountVal);
       const borderBottomStyle = isAmountValid ? 'var(--line)' : 'var(--status-error, #ff5e5e)';
+      const id = escapeAttr(as.id);
+      const name = escapeAttr(as.name);
+      const amount = escapeAttr(as.amount || '');
 
       return `
-        <tr data-asset-id="${as.id}" style="border-bottom: 1px solid var(--line);">
+        <tr data-asset-id="${id}" style="border-bottom: 1px solid var(--line);">
           <td style="padding: 10px 4px; vertical-align: middle;">
-            <input type="text" class="input-minimal asset-name-input" data-id="${as.id}" data-field="name" value="${IsfUtils.escapeHtml(as.name)}" placeholder="종목명" style="width: 100%; border: none; background: transparent; color: var(--ink); padding: 6px; border-bottom: 1px solid var(--line); transition: border-color 0.2s; font-size: 0.9rem;" />
+            <input type="text" class="input-minimal asset-name-input" data-id="${id}" data-field="name" value="${name}" placeholder="종목명" style="width: 100%; border: none; background: transparent; color: var(--ink); padding: 6px; border-bottom: 1px solid var(--line); transition: border-color 0.2s; font-size: 0.9rem;" />
           </td>
           <td style="padding: 10px 4px;">
             <div style="display: flex; align-items: center; gap: 4px; width: 100%;">
-              <button type="button" class="btn-creator-adjust minus" data-id="${as.id}" style="width: 22px; height: 22px; border-radius: 4px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font-size: 0.9rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1; padding: 0;">-</button>
-              <input type="number" class="input-minimal asset-amount-input no-won-hint" data-id="${as.id}" data-field="amount" value="${as.amount || ''}" placeholder="금액" style="width: 80px; border: none; background: transparent; color: var(--ink); padding: 6px; border-bottom: 1px solid ${borderBottomStyle}; font-size: 0.9rem; text-align: right;" />원
-              <button type="button" class="btn-creator-adjust plus" data-id="${as.id}" style="width: 22px; height: 22px; border-radius: 4px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font-size: 0.9rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1; padding: 0;">+</button>
+              <button type="button" class="btn-creator-adjust minus" data-id="${id}" style="width: 22px; height: 22px; border-radius: 4px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font-size: 0.9rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1; padding: 0;">-</button>
+              <input type="number" class="input-minimal asset-amount-input no-won-hint" data-id="${id}" data-field="amount" value="${amount}" placeholder="금액" style="width: 80px; border: none; background: transparent; color: var(--ink); padding: 6px; border-bottom: 1px solid ${borderBottomStyle}; font-size: 0.9rem; text-align: right;" />원
+              <button type="button" class="btn-creator-adjust plus" data-id="${id}" style="width: 22px; height: 22px; border-radius: 4px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font-size: 0.9rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1; padding: 0;">+</button>
             </div>
           </td>
           <td style="padding: 10px 4px; text-align: right; font-weight: 600; color: var(--ink); vertical-align: middle;">
             <span class="asset-ratio-display" style="font-size: 0.95rem;">${as.ratio}%</span>
           </td>
           <td style="padding: 10px 4px; text-align: center; vertical-align: middle;">
-            <button type="button" class="btn-remove-creator-asset" data-id="${as.id}" style="background: transparent; border: none; color: var(--status-error, #ff5e5e); font-size: 1.4rem; cursor: pointer; padding: 4px 10px; line-height: 1; transition: opacity 0.2s;">&times;</button>
+            <button type="button" class="btn-remove-creator-asset" data-id="${id}" style="background: transparent; border: none; color: var(--status-error, #ff5e5e); font-size: 1.4rem; cursor: pointer; padding: 4px 10px; line-height: 1; transition: opacity 0.2s;">&times;</button>
           </td>
         </tr>
       `;
@@ -179,7 +193,7 @@ export const IsfDom = {
 
     // 각 행의 비중 부분 갱신
     assetsWithRatios.forEach(as => {
-      const row = creatorAssetTable.querySelector(`tr[data-asset-id="${as.id}"]`);
+      const row = findByDataId(creatorAssetTable, 'tr[data-asset-id]', as.id, 'assetId');
       if (row) {
         const amountInput = row.querySelector('.asset-amount-input');
         const ratioSpan = row.querySelector('.asset-ratio-display');
@@ -237,11 +251,11 @@ export const IsfDom = {
     // 금액 인풋 포커스에 따른 tr 스타일 트랜지션 바인딩 및 입력 핸들러
     creatorAssetTable.querySelectorAll('.asset-amount-input').forEach(input => {
       input.onfocus = () => {
-        const tr = creatorAssetTable.querySelector(`tr[data-asset-id="${input.dataset.id}"]`);
+        const tr = findByDataId(creatorAssetTable, 'tr[data-asset-id]', input.dataset.id, 'assetId');
         if (tr) tr.classList.add('editing');
       };
       input.onblur = () => {
-        const tr = creatorAssetTable.querySelector(`tr[data-asset-id="${input.dataset.id}"]`);
+        const tr = findByDataId(creatorAssetTable, 'tr[data-asset-id]', input.dataset.id, 'assetId');
         if (tr) tr.classList.remove('editing');
       };
       input.oninput = (e) => {
@@ -255,7 +269,7 @@ export const IsfDom = {
     creatorAssetTable.querySelectorAll('.btn-creator-adjust').forEach(btn => {
       btn.onclick = () => {
         const id = btn.dataset.id;
-        const inputEl = creatorAssetTable.querySelector(`input[data-id="${id}"][data-field="amount"]`);
+        const inputEl = findByDataId(creatorAssetTable, 'input[data-id][data-field="amount"]', id);
         if (inputEl) {
           let val = parseFloat(inputEl.value) || 0;
           if (btn.classList.contains('minus')) {
@@ -314,21 +328,23 @@ export const IsfDom = {
 
       modalAssetList.innerHTML = assetsWithRatios.map(as => {
         const hintText = as.amount > 0 ? `(${IsfUtils.formatMoney(as.amount)})` : '';
+        const id = escapeAttr(as.id);
+        const amount = escapeAttr(as.amount);
         return `
-          <tr data-asset-id="${as.id}" style="border-bottom: 1px solid var(--line); transition: all 0.25s ease;">
+          <tr data-asset-id="${id}" style="border-bottom: 1px solid var(--line); transition: all 0.25s ease;">
             <td style="padding: 10px 4px; color: var(--ink); vertical-align: middle; transition: all 0.25s ease;">${IsfUtils.escapeHtml(as.name)}</td>
             <td style="padding: 10px 4px; text-align: right;">
               <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 2px;">
                 <div style="display: flex; align-items: center; gap: 4px;">
-                  <button type="button" class="btn-modal-adjust minus" data-id="${as.id}" style="width: 22px; height: 22px; border-radius: 4px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font-size: 0.9rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1; padding: 0;">-</button>
-                  <input type="number" class="input-minimal modal-asset-amount-input no-won-hint" data-id="${as.id}" value="${as.amount}" style="width: 100px; text-align: right; border: none; background: transparent; border-bottom: 1px solid var(--line); color: var(--ink); padding: 4px;" />원
-                  <button type="button" class="btn-modal-adjust plus" data-id="${as.id}" style="width: 22px; height: 22px; border-radius: 4px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font-size: 0.9rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1; padding: 0;">+</button>
+                  <button type="button" class="btn-modal-adjust minus" data-id="${id}" style="width: 22px; height: 22px; border-radius: 4px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font-size: 0.9rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1; padding: 0;">-</button>
+                  <input type="number" class="input-minimal modal-asset-amount-input no-won-hint" data-id="${id}" value="${amount}" style="width: 100px; text-align: right; border: none; background: transparent; border-bottom: 1px solid var(--line); color: var(--ink); padding: 4px;" />원
+                  <button type="button" class="btn-modal-adjust plus" data-id="${id}" style="width: 22px; height: 22px; border-radius: 4px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font-size: 0.9rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1; padding: 0;">+</button>
                 </div>
-                <span class="modal-asset-won-hint" data-id="${as.id}" style="font-size: 0.75rem; color: var(--primary, #ea5b2a); font-weight: 500; text-align: right; min-height: 14px;">${hintText}</span>
+                <span class="modal-asset-won-hint" data-id="${id}" style="font-size: 0.75rem; color: var(--primary, #ea5b2a); font-weight: 500; text-align: right; min-height: 14px;">${hintText}</span>
               </div>
             </td>
             <td style="padding: 10px 4px; text-align: right; font-weight: 600; color: var(--primary, #ea5b2a); vertical-align: middle; transition: all 0.25s ease;">
-              <span class="modal-asset-ratio-display" data-id="${as.id}">${as.ratio}%</span>
+              <span class="modal-asset-ratio-display" data-id="${id}">${as.ratio}%</span>
             </td>
           </tr>
         `;
@@ -343,7 +359,7 @@ export const IsfDom = {
       const period = modalPortfolioPeriod.value;
 
       const updatedAssets = assets.map(as => {
-        const inputEl = modalAssetList.querySelector(`input[data-id="${as.id}"]`);
+        const inputEl = findByDataId(modalAssetList, 'input[data-id]', as.id);
         const amount = inputEl ? (parseFloat(inputEl.value) || 0) : as.amount;
         return {
           ...as,
@@ -359,11 +375,11 @@ export const IsfDom = {
 
       // 개별 한글 금액 힌트 및 비중 업데이트
       assetsWithRatios.forEach(as => {
-        const hintSpan = modalAssetList.querySelector(`.modal-asset-won-hint[data-id="${as.id}"]`);
+        const hintSpan = findByDataId(modalAssetList, '.modal-asset-won-hint[data-id]', as.id);
         if (hintSpan) {
           hintSpan.textContent = as.amount > 0 ? `(${IsfUtils.formatMoney(as.amount)})` : '';
         }
-        const ratioSpan = modalAssetList.querySelector(`.modal-asset-ratio-display[data-id="${as.id}"]`);
+        const ratioSpan = findByDataId(modalAssetList, '.modal-asset-ratio-display[data-id]', as.id);
         if (ratioSpan) {
           ratioSpan.textContent = `${as.ratio}%`;
         }
@@ -434,11 +450,11 @@ export const IsfDom = {
     const bindFocusTransitions = () => {
       modalAssetList.querySelectorAll('.modal-asset-amount-input').forEach(input => {
         input.onfocus = () => {
-          const tr = modalAssetList.querySelector(`tr[data-asset-id="${input.dataset.id}"]`);
+          const tr = findByDataId(modalAssetList, 'tr[data-asset-id]', input.dataset.id, 'assetId');
           if (tr) tr.classList.add('editing');
         };
         input.onblur = () => {
-          const tr = modalAssetList.querySelector(`tr[data-asset-id="${input.dataset.id}"]`);
+          const tr = findByDataId(modalAssetList, 'tr[data-asset-id]', input.dataset.id, 'assetId');
           if (tr) tr.classList.remove('editing');
         };
         input.oninput = () => {
@@ -453,7 +469,7 @@ export const IsfDom = {
     modalAssetList.querySelectorAll('.btn-modal-adjust').forEach(btn => {
       btn.onclick = () => {
         const id = btn.dataset.id;
-        const inputEl = modalAssetList.querySelector(`input[data-id="${id}"]`);
+        const inputEl = findByDataId(modalAssetList, 'input[data-id]', id);
         if (inputEl) {
           let val = parseFloat(inputEl.value) || 0;
           if (btn.classList.contains('minus')) {

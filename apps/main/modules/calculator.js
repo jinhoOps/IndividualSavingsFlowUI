@@ -342,17 +342,11 @@ export function simulateProjection(inputs, options = {}) {
         const surplusAmount = nextCash;
         const surplusAdds = allocateByWeights(surplusAmount, targetBuckets.map(b => b.monthlyTarget || 1));
         
-        targetSavings.forEach((bucket) => {
-          const idx = savingsBuckets.indexOf(bucket);
-          if (idx !== -1) {
-            bucket.balance += surplusAdds[idx] || 0;
-          }
+        targetSavings.forEach((bucket, localIndex) => {
+          bucket.balance += surplusAdds[localIndex] || 0;
         });
-        targetInvests.forEach((bucket) => {
-          const idx = investBuckets.indexOf(bucket);
-          if (idx !== -1) {
-            bucket.balance += surplusAdds[targetSavings.length + idx] || 0;
-          }
+        targetInvests.forEach((bucket, localIndex) => {
+          bucket.balance += surplusAdds[targetSavings.length + localIndex] || 0;
         });
         
         savings = savingsBuckets.reduce((sum, bucket) => sum + bucket.balance, 0);

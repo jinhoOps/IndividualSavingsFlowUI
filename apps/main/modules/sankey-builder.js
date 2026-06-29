@@ -376,30 +376,21 @@ export function buildSankeyData(snapshot, sortMode, sankeyGrouping) {
   }
 
   // 3. 계좌 간 이체(내부 링크) 계산
-  const transfers = [];
-
-  // 소득 분배를 transfers에 추가
-  incomeSources.forEach((src) => {
-    const mainAccountId = resolveAccountId(src.accountId, "income");
-    if (!mainAccountId) return;
-
-    if (Array.isArray(src.allocations) && src.allocations.length > 0) {
-      src.allocations.forEach((alloc) => {
-        if (alloc.amount <= 0) return;
-        const targetAccountId = resolveAccountId(alloc.accountId, "income");
-        if (!targetAccountId || targetAccountId === mainAccountId) return;
-
-        transfers.push({
-          source: mainAccountId,
-          target: targetAccountId,
-          value: alloc.amount,
-          tone: src.tone,
-          label: `${src.label} 분배`,
-          isManual: false
-        });
-      });
-    }
-  });
+  const transfers = (Array.isArray(snapshot.transfers) ? snapshot.transfers : [])
+    .map((transfer) => {
+      const source = resolveAccountId(transfer?.sourceAccountId, "transfer");
+      const target = resolveAccountId(transfer?.targetAccountId, "transfer");
+      return {
+        id: transfer?.id,
+        source,
+        target,
+        value: Number(transfer?.amount) || 0,
+        tone: "transfer",
+        label: transfer?.label || "계좌 이체",
+        isManual: true
+      };
+    })
+    .filter((transfer) => transfer.source && transfer.target && transfer.source !== transfer.target && transfer.value > 0);
 
   const providers = [];
   const consumers = [];

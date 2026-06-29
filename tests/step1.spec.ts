@@ -1122,10 +1122,10 @@ test.describe('Phase 09 source account automatic flow', () => {
     await page.waitForSelector('main');
   });
 
-  test('removes manual transfer settings while preserving source-account surplus and deficit display', async ({ page }) => {
+  test('preserves manual transfer settings in source-account network flow', async ({ page }) => {
     await openControlsPanel(page);
-    await expect(page.locator('text=계좌 간 수동 이체 설정')).toHaveCount(0);
-    await expect(page.locator('#transferEditorSection')).toHaveCount(0);
+    await expect(page.locator('text=계좌 간 수동 이체 설정')).toBeVisible();
+    await expect(page.locator('#transferEditorSection')).toBeVisible();
 
     await page.evaluate(async () => {
       const [{ state }, { sanitizeInputs }, { buildMonthlySnapshot }, { buildSankeyData }] = await Promise.all([
@@ -1157,11 +1157,19 @@ test.describe('Phase 09 source account automatic flow', () => {
         surplus: flow.nodes.some((node: any) => node.id === 'surplus'),
         sourceLinks: flow.links.filter((link: any) => ['expense', 'savings', 'invest'].includes(link.tone)).map((link: any) => link.source),
         legacyManual: flow.transfers.some((transfer: any) => transfer.isManual && transfer.id === 'legacy'),
+        manualTransfer: flow.transfers.find((transfer: any) => transfer.id === 'legacy'),
       };
     });
     expect(result.surplus).toBe(true);
     expect(result.sourceLinks).toEqual(expect.arrayContaining(['acc-living', 'acc-salary', 'acc-stock']));
-    expect(result.legacyManual).toBe(false);
+    expect(result.legacyManual).toBe(true);
+    expect(result.manualTransfer).toMatchObject({
+      source: 'acc-salary',
+      target: 'acc-living',
+      value: 999999,
+      label: 'legacy',
+      isManual: true,
+    });
   });
 });
 
@@ -2639,7 +2647,7 @@ test.describe('Phase 10.6.1 modal capability absorption', () => {
     return modal;
   }
 
-  test('edits income destination allocations inside the modal and blocks over-allocation', async ({ page }) => {
+  test('edits income destination allocations inside the modal and blocks mismatched allocation totals', async ({ page }) => {
     await seedAbsorptionFlow(page);
 
     const modal = await openFinancialDetail(page);
@@ -2659,8 +2667,14 @@ test.describe('Phase 10.6.1 modal capability absorption', () => {
     await editingIncome.locator('[data-income-allocation-row]').nth(1).locator('[data-income-allocation-account]').selectOption('acc-living');
     await editingIncome.locator('[data-income-allocation-row]').nth(1).locator('[data-income-allocation-amount]').fill('1300000');
     await modal.locator('#financialModalSave').click();
-    await expect(editingIncome.locator('[data-financial-row-error]')).toContainText('수입 금액을 넘지 않게 배분해 주세요.');
+    await expect(editingIncome.locator('[data-financial-row-error]')).toContainText('수입 금액과 배분 합계가 일치해야 합니다.');
     let saved = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}'));
+    expect(saved.incomes[0].allocations).toEqual([{ accountId: 'acc-salary', amount: 4200000 }]);
+
+    await editingIncome.locator('[data-income-allocation-row]').nth(1).locator('[data-income-allocation-amount]').fill('500000');
+    await modal.locator('#financialModalSave').click();
+    await expect(editingIncome.locator('[data-financial-row-error]')).toContainText('수입 금액과 배분 합계가 일치해야 합니다.');
+    saved = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}'));
     expect(saved.incomes[0].allocations).toEqual([{ accountId: 'acc-salary', amount: 4200000 }]);
 
     await editingIncome.locator('[data-income-allocation-row]').nth(1).locator('[data-income-allocation-amount]').fill('1200000');
@@ -2766,6 +2780,47 @@ test.describe('Phase 10.6.1 modal capability absorption', () => {
     expect(projectionProbe.closedSavings).toBe(0);
     expect(projectionProbe.netAssetAfterClose).toBeGreaterThan(0);
     expect(projectionProbe.nextSavings).toBe(0);
+  });
+
+  test('routes surplus to the selected non-leading investment account', async ({ page }) => {
+    const projection = await page.evaluate(async () => {
+      const { simulateProjection } = await import('/IndividualSavingsFlowUI/apps/main/modules/calculator.js');
+      const records = simulateProjection({
+        modelVersion: 10,
+        horizonYears: 1,
+        annualSavingsYield: 0,
+        annualIncomeGrowth: 0,
+        annualExpenseGrowth: 0,
+        annualInvestReturn: 0,
+        annualDebtInterest: 0,
+        startCash: 0,
+        startSavings: 0,
+        startInvest: 0,
+        startDebt: 0,
+        monthlyExpense: 1000000,
+        monthlySavings: 0,
+        monthlyInvest: 1000000,
+        monthlyDebtPayment: 0,
+        surplusTransferAccountId: 'acc-stock-b',
+        incomes: [{
+          id: 'income-main',
+          name: '급여',
+          amount: 5000000,
+          accountId: 'acc-salary',
+          allocations: [{ accountId: 'acc-salary', amount: 5000000 }],
+        }],
+        expenseItems: [{ id: 'rent', name: '월세', amount: 1000000, group: '고정비', accountId: 'acc-salary' }],
+        savingsItems: [],
+        investItems: [
+          { id: 'invest-a', name: 'ETF A', amount: 500000, group: '투자', accountId: 'acc-stock-a' },
+          { id: 'invest-b', name: 'ETF B', amount: 500000, group: '투자', accountId: 'acc-stock-b' },
+        ],
+      } as any);
+
+      return { firstMonthInvest: records[1].invest };
+    });
+
+    expect(projection.firstMonthInvest).toBe(4000000);
   });
 });
 

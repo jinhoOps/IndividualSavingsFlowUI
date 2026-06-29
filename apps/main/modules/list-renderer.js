@@ -270,6 +270,7 @@ export function renderTransferRulesList(transfers, accounts) {
     const tgt = accounts.find(a => a.id === tr.targetAccountId);
     const srcName = src ? src.name : "알 수 없음";
     const tgtName = tgt ? tgt.name : "알 수 없음";
+    const transferId = IsfUtils.escapeHtml(tr.id);
     return `
       <div class="transfer-rule-card">
         <div class="transfer-rule-card__info">
@@ -278,7 +279,7 @@ export function renderTransferRulesList(transfers, accounts) {
         </div>
         <div class="transfer-rule-card__action">
           <span class="badge-transfer">${tr.amount.toLocaleString()}원 <small style="font-size: 0.72rem; opacity: 0.85;">(${IsfUtils.convertToKoreanWon(tr.amount)})</small></span>
-          <button type="button" class="btn-delete-transfer" data-delete-transfer-id="${tr.id}" title="이체 규칙 삭제">×</button>
+          <button type="button" class="btn-delete-transfer" data-delete-transfer-id="${transferId}" title="이체 규칙 삭제">×</button>
         </div>
       </div>
     `;
