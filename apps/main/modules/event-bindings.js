@@ -79,6 +79,7 @@ export function bindStep1Events(commands) {
   bindViewModeControls(commands.persistence);
   bindSnapshotControls();
   bindSmartAddControls();
+  bindSurplusTransferControl(commands.persistence.markPendingChanges);
   createPresetSetupController({
     persistence: commands.persistence,
     getInputs: () => state.inputs,
@@ -206,6 +207,15 @@ function bindSmartAddControls() {
   if (dom.applySmartAddBtn) {
     dom.applySmartAddBtn.addEventListener("click", () => handleApplySmartAdd(listRenderer.renderItemList));
   }
+}
+
+function bindSurplusTransferControl(markPendingChanges) {
+  if (!dom.surplusTransferAccountSelect) return;
+  dom.surplusTransferAccountSelect.addEventListener("change", (event) => {
+    state.inputs.surplusTransferAccountId = event.target.value;
+    state.inputs = sanitizeInputs(state.inputs);
+    markPendingChanges();
+  });
 }
 
 function bindModalEvents(persistence) {

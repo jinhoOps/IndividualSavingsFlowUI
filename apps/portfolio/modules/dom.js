@@ -9,7 +9,6 @@ export const IsfDom = {
   // Selectors
   nodes: {
     portfolioList: document.getElementById('portfolioList'),
-    accountFlowHandoffStatus: document.getElementById('accountFlowHandoffStatus'),
     portfolioCreator: document.getElementById('portfolioCreator'),
     portfolioName: document.getElementById('portfolioName'),
     periodSegment: document.getElementById('periodSegment'),
@@ -40,42 +39,6 @@ export const IsfDom = {
     confirmSaveBtn: document.getElementById('confirmSaveBtn'),
     confirmCancelBtn: document.getElementById('confirmCancelBtn'),
     confirmCloseModalBtn: document.getElementById('confirmCloseModalBtn'),
-  },
-
-  renderAccountFlowHandoffStatus(handoff) {
-    const { accountFlowHandoffStatus } = this.nodes;
-    if (!accountFlowHandoffStatus) return;
-
-    const counts = handoff?.counts || {};
-    if (!handoff?.available) {
-      accountFlowHandoffStatus.classList.remove('is-available');
-      accountFlowHandoffStatus.innerHTML = `
-        <div class="handoff-status__title">연결된 계좌흐름도 데이터가 없습니다</div>
-        <p class="handoff-status__body">Step 1의 단순 재무 입력은 그대로 유지되고, 보존된 sidecar가 있을 때만 Portfolio에서 감지합니다.</p>
-      `;
-      return;
-    }
-
-    const accountCount = Number(counts.accounts) || 0;
-    const incomeAllocationCount = Number(counts.incomeAllocations) || 0;
-    const itemAccountCount = Number(counts.itemAccounts) || 0;
-    const transferCount = Number(counts.transfers) || 0;
-    const labels = Array.isArray(handoff.labels) && handoff.labels.length > 0
-      ? handoff.labels.slice(0, 3).map(label => IsfUtils.escapeHtml(label)).join(' · ')
-      : '계좌 이름 없음';
-
-    accountFlowHandoffStatus.classList.add('is-available');
-    accountFlowHandoffStatus.innerHTML = `
-      <div class="handoff-status__title">계좌흐름도 데이터 감지됨</div>
-      <p class="handoff-status__body">Portfolio에서 관리할 수 있도록 Step 1 sidecar를 읽었습니다. Step 1 기본 입력은 다시 계좌 필드로 복원하지 않습니다.</p>
-      <div class="handoff-status__metrics" aria-label="계좌흐름도 요약">
-        <span>계좌 ${accountCount}개</span>
-        <span>수입배분 ${incomeAllocationCount}개</span>
-        <span>항목연결 ${itemAccountCount}개</span>
-        <span>이체 ${transferCount}개</span>
-      </div>
-      <div class="handoff-status__labels">${labels}</div>
-    `;
   },
 
   /**

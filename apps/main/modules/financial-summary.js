@@ -8,6 +8,7 @@ import {
 
 const CATEGORY_META = {
   income: { label: "수입", tone: "income", itemKey: "incomes" },
+  account: { label: "계좌", tone: "account", itemKey: "accounts" },
   expense: { label: "지출", tone: "expense", itemKey: "expenseItems" },
   savings: { label: "저축", tone: "savings", itemKey: "savingsItems" },
   invest: { label: "투자", tone: "invest", itemKey: "investItems" },
@@ -20,6 +21,22 @@ const SUMMARY_GROUPS = [
 
 function safeItems(items) {
   return Array.isArray(items) ? items : [];
+}
+
+function getShortAccountName(name) {
+  return String(name || "").replace(/(계좌|통장)$/, "");
+}
+
+function sumIncomeToAccount(inputs, accountId) {
+  return safeItems(inputs.incomes).reduce((sum, income) => {
+    const allocations = safeItems(income.allocations);
+    if (allocations.length > 0) {
+      return sum + allocations
+        .filter((allocation) => allocation.accountId === accountId)
+        .reduce((allocationSum, allocation) => allocationSum + (Number(allocation.amount) || 0), 0);
+    }
+    return income.accountId === accountId ? sum + (Number(income.amount) || 0) : sum;
+  }, 0);
 }
 
 function formatRepresentativeAmount(amount) {
@@ -64,6 +81,24 @@ function buildExpenseGroupRepresentatives(items, limit = 3) {
     });
 }
 
+function buildAccountRepresentatives(inputs, limit = 3) {
+  return safeItems(inputs.accounts)
+    .slice(0, limit)
+    .map((account) => {
+      const inflow = sumIncomeToAccount(inputs, account.id);
+      const amountLabel = formatRepresentativeAmount(inflow);
+      return amountLabel
+        ? `${getShortAccountName(account.name)} 입금 ${amountLabel}`
+        : getShortAccountName(account.name);
+    });
+}
+
+function countCorrections(inputs, category) {
+  const corrections = safeItems(inputs.accountCorrections);
+  if (category === "account") return corrections.length;
+  return corrections.filter((correction) => correction.itemType === category).length;
+}
+
 function buildCard(inputs, category) {
   const meta = CATEGORY_META[category];
   if (!meta) return null;
@@ -71,10 +106,15 @@ function buildCard(inputs, category) {
   const items = safeItems(inputs[meta.itemKey]);
   const total = category === "income"
     ? getMonthlyIncomeTotalWon(inputs.incomes)
-    : getMonthlyAllocationTotalWon(items);
-  const representatives = category === "expense"
+    : category === "account"
+      ? getMonthlyIncomeTotalWon(inputs.incomes)
+      : getMonthlyAllocationTotalWon(items);
+  const representatives = category === "account"
+    ? buildAccountRepresentatives(inputs)
+    : category === "expense"
       ? buildExpenseGroupRepresentatives(items)
       : buildItemRepresentatives(items);
+  const correctionCount = countCorrections(inputs, category);
 
   return {
     type: "category",
@@ -84,7 +124,7 @@ function buildCard(inputs, category) {
     total,
     count: items.length,
     representatives,
-    correctionCount: 0,
+    correctionCount,
   };
 }
 

@@ -7,7 +7,6 @@ import { IsfUtils } from '../../shared/core/utils.js';
 import { IsfState } from './modules/state.js';
 import { IsfDom } from './modules/dom.js';
 import { IsfCalculator } from './modules/calculator.js';
-import { Step1Connector } from './modules/step1-connector.js';
 
 const App = {
   // 1. State
@@ -22,18 +21,12 @@ const App = {
     
     try {
       await this.state.loadFromStorage();
-      await this.syncAccountFlowHandoff();
       this.bindEvents();
       this.render();
       console.log('[Step3] Initialization Complete.');
     } catch (error) {
       console.error('[Step3] Initialization Failed:', error);
     }
-  },
-
-  async syncAccountFlowHandoff() {
-    const handoff = await Step1Connector.fetchAccountFlowHandoff();
-    this.state.setAccountFlowHandoff(handoff);
   },
 
   bindEvents() {
@@ -212,8 +205,6 @@ const App = {
 
   // 3. UI Logic & Render Pipeline
   render() {
-    IsfDom.renderAccountFlowHandoffStatus(this.state.data.accountFlowHandoff);
-
     // 포트폴리오 목록 렌더링
     IsfDom.renderPortfolioList(this.state.data.portfolios, {
       onRemovePortfolio: (id) => {

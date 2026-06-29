@@ -178,8 +178,20 @@ test.describe('Individual Savings Flow Main UI/UX Audit', () => {
     expect(sankeyBox!.width).toBeGreaterThan(0);
     expect(sankeyBox!.height).toBeGreaterThan(0);
 
-    await expect(page.locator('#showNetworkBtn')).toHaveCount(0);
-    await expect(page.locator('#accountFlowNetworkMap')).toHaveCount(0);
+    const showNetworkBtn = page.locator('#showNetworkBtn');
+    await expect(showNetworkBtn).toBeVisible();
+    await showNetworkBtn.click();
+    await page.waitForTimeout(600); // 슬라이드 애니메이션 대기
+
+    // translateX(-50%) 이동으로 인해 Playwright 가시성 오판정이 날 수 있으므로 toBeAttached 및 boundingBox 크기로만 검증
+    const networkSvg = page.locator('#accountFlowNetworkMap');
+    await expect(networkSvg).toBeAttached();
+    const networkBox = await networkSvg.boundingBox();
+    expect(networkBox).not.toBeNull();
+    expect(networkBox!.width).toBeGreaterThan(0);
+    expect(networkBox!.height).toBeGreaterThan(0);
+    const networkText = await networkSvg.locator('text').evaluateAll((nodes) => nodes.map((node) => node.textContent || '').join(' '));
+    expect(networkText).not.toContain('억');
 
     await page.setViewportSize({ width: 768, height: 1024 });
     await page.waitForTimeout(200);
@@ -246,9 +258,9 @@ test.describe('Individual Savings Flow Main UI/UX Audit', () => {
     );
     expect(detailExpenseLabels).toBeGreaterThanOrEqual(2);
 
-    await expect(page.locator('.sankey-grouping-controls')).toBeVisible();
-    await expect(page.locator('#showNetworkBtn')).toHaveCount(0);
-    await expect(page.locator('#accountFlowNetworkMap')).toHaveCount(0);
+    await page.locator('#showNetworkBtn').click();
+    await page.waitForTimeout(300);
+    await expect(page.locator('.sankey-grouping-controls')).toBeHidden();
   });
 
   test('Phase 07 rerun formats money fields and groups long item lists', async ({ page }) => {
@@ -388,7 +400,7 @@ test.describe('Individual Savings Flow Main UI/UX Audit', () => {
     expect(await page.evaluate(() => Boolean((window as any).__unsafeGroupOption))).toBe(false);
   });
 
-  test('Phase 10.7 removes account selects while preserving imported account data in handoff', async ({ page }) => {
+  test('Phase 07 account select options escape imported account ids and names', async ({ page }) => {
     await page.evaluate(async () => {
       const unsafeWindow = window as any;
       unsafeWindow.__unsafeAccountOption = false;
@@ -436,14 +448,11 @@ test.describe('Individual Savings Flow Main UI/UX Audit', () => {
     const incomeResult = await page.evaluate(() => {
       const unsafeWindow = window as any;
       const incomeSelect = document.querySelector<HTMLSelectElement>('[data-income-allocation-account]');
-      const saved = JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}');
       return {
         incomeOptionCount: incomeSelect?.querySelectorAll('option').length ?? 0,
-        incomeHasAccountId: Object.prototype.hasOwnProperty.call(saved.incomes?.[0] || {}, 'accountId'),
-        incomeHasAllocations: Object.prototype.hasOwnProperty.call(saved.incomes?.[0] || {}, 'allocations'),
-        handoffIncomeAccountId: saved.accountFlowHandoff?.incomes?.[0]?.accountId ?? '',
-        handoffIncomeAllocationAccountId: saved.accountFlowHandoff?.incomes?.[0]?.allocations?.[0]?.accountId ?? '',
-        handoffAccountName: saved.accountFlowHandoff?.accounts?.[0]?.name ?? '',
+        incomeValue: incomeSelect?.value ?? '',
+        incomeText: incomeSelect?.selectedOptions[0]?.textContent ?? '',
+        incomeMarkup: incomeSelect?.innerHTML ?? '',
         unsafeFlag: Boolean(unsafeWindow.__unsafeAccountOption || unsafeWindow.__unsafeAccountName),
       };
     });
@@ -453,26 +462,25 @@ test.describe('Individual Savings Flow Main UI/UX Audit', () => {
     const expenseResult = await page.evaluate(() => {
       const unsafeWindow = window as any;
       const expenseSelect = document.querySelector<HTMLSelectElement>('[data-financial-modal-field="accountId"]');
-      const saved = JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}');
       return {
         expenseOptionCount: expenseSelect?.querySelectorAll('option').length ?? 0,
-        expenseHasAccountId: Object.prototype.hasOwnProperty.call(saved.expenseItems?.[0] || {}, 'accountId'),
-        handoffExpenseAccountId: saved.accountFlowHandoff?.expenseItems?.[0]?.accountId ?? '',
+        expenseValue: expenseSelect?.value ?? '',
+        expenseText: expenseSelect?.selectedOptions[0]?.textContent ?? '',
+        expenseMarkup: expenseSelect?.innerHTML ?? '',
         injectedImages: document.querySelectorAll('#incomeList img, #expenseList img').length,
         modalInjectedImages: document.querySelectorAll('#financialModal img').length,
         unsafeFlag: Boolean(unsafeWindow.__unsafeAccountOption || unsafeWindow.__unsafeAccountName),
       };
     });
 
-    expect(incomeResult.incomeOptionCount).toBe(0);
-    expect(expenseResult.expenseOptionCount).toBe(0);
-    expect(incomeResult.incomeHasAccountId).toBe(false);
-    expect(incomeResult.incomeHasAllocations).toBe(false);
-    expect(expenseResult.expenseHasAccountId).toBe(false);
-    expect(incomeResult.handoffIncomeAccountId).toContain('<img');
-    expect(incomeResult.handoffIncomeAllocationAccountId).toContain('<img');
-    expect(incomeResult.handoffAccountName).toContain('<img');
-    expect(expenseResult.handoffExpenseAccountId).toContain('<img');
+    expect(incomeResult.incomeOptionCount).toBeGreaterThanOrEqual(1);
+    expect(expenseResult.expenseOptionCount).toBeGreaterThanOrEqual(1);
+    expect(incomeResult.incomeValue).toContain('<img');
+    expect(expenseResult.expenseValue).toContain('<img');
+    expect(incomeResult.incomeText).toContain('<img');
+    expect(expenseResult.expenseText).toContain('<img');
+    expect(incomeResult.incomeMarkup).not.toMatch(/<img/i);
+    expect(expenseResult.expenseMarkup).not.toMatch(/<img/i);
     expect(expenseResult.injectedImages).toBe(0);
     expect(expenseResult.modalInjectedImages).toBe(0);
     expect(incomeResult.unsafeFlag || expenseResult.unsafeFlag).toBe(false);
@@ -507,416 +515,7 @@ test.describe('Phase 09 account correction and Sankey topology', () => {
     await page.waitForSelector('main');
   });
 
-  test('Phase 10.7 simple Sankey ignores legacy account flow fields', async ({ page }) => {
-    const result = await page.evaluate(async () => {
-      const [{ sanitizeInputs }, { buildMonthlySnapshot }, { buildSankeyData }] = await Promise.all([
-        import('/IndividualSavingsFlowUI/apps/main/modules/input-sanitizer.js'),
-        import('/IndividualSavingsFlowUI/apps/main/modules/calculator.js'),
-        import('/IndividualSavingsFlowUI/apps/main/modules/sankey-builder.js'),
-      ]);
-
-      const inputs = sanitizeInputs({
-        modelVersion: 10,
-        splitIncomeAccounts: true,
-        incomes: [{
-          id: 'income-main',
-          name: '급여',
-          amount: 4200000,
-          accountId: 'acc-salary',
-          allocations: [
-            { accountId: 'acc-salary', amount: 2800000 },
-            { accountId: 'acc-living', amount: 1400000 },
-          ],
-        }],
-        accounts: [
-          { id: 'acc-salary', name: '급여계좌' },
-          { id: 'acc-living', name: '생활비계좌' },
-          { id: 'acc-saving', name: '저축계좌' },
-          { id: 'acc-stock', name: '투자계좌' },
-        ],
-        expenseItems: [
-          { id: 'rent', name: '월세', amount: 900000, group: '고정비', accountId: 'acc-living' },
-          { id: 'food', name: '식비', amount: 500000, group: '생활비', accountId: 'acc-living' },
-        ],
-        savingsItems: [{ id: 'saving-main', name: '적금', amount: 600000, group: '저축', accountId: 'acc-saving' }],
-        investItems: [{ id: 'invest-main', name: 'ETF', amount: 700000, group: '투자', accountId: 'acc-stock' }],
-        transfers: [{ id: 'legacy-transfer', fromAccountId: 'acc-salary', toAccountId: 'acc-stock', amount: 100000 }],
-        accountCorrections: [{ itemType: 'expense', message: 'legacy correction marker' }],
-        surplusTransferAccountId: 'acc-stock',
-        monthlyDebtPayment: 0,
-        startCash: 0,
-        startSavings: 0,
-        startInvest: 0,
-        startDebt: 0,
-        annualIncomeGrowth: 0,
-        annualExpenseGrowth: 0,
-        annualSavingsYield: 3,
-        annualInvestReturn: 7,
-        annualDebtInterest: 0,
-        horizonYears: 5,
-      });
-
-      const sankey = buildSankeyData(
-        buildMonthlySnapshot(inputs),
-        'group',
-        { expense: 'total', savings: 'total', invest: 'total' }
-      );
-      return {
-        labels: sankey?.nodes.map((node: { label: string }) => node.label) || [],
-        links: sankey?.links.map((link: { source: string; target: string; value: number }) => ({
-          source: link.source,
-          target: link.target,
-          value: link.value,
-        })) || [],
-        transferLabels: sankey?.transfers.map((transfer: { label: string }) => transfer.label) || [],
-        topLevelTargetIds: sankey?.topLevelTargetIds || [],
-      };
-    });
-
-    expect(result.labels).toEqual(expect.arrayContaining(['총수입', '고정비(고정지출)', '저축', '투자']));
-    expect(result.labels).not.toEqual(expect.arrayContaining(['급여계좌', '생활비계좌', '저축계좌', '투자계좌']));
-    expect(result.links).toEqual(expect.arrayContaining([
-      expect.objectContaining({ source: 'income-income-main', target: 'total-income' }),
-      expect.objectContaining({ source: 'total-income', target: 'total-expense' }),
-      expect.objectContaining({ source: 'total-income', target: 'total-savings' }),
-      expect.objectContaining({ source: 'total-income', target: 'total-invest' }),
-    ]));
-    expect(result.links.some((link: { source: string; target: string }) =>
-      link.source.startsWith('acc-') || link.target.startsWith('acc-')
-    )).toBe(false);
-    expect(result.transferLabels).not.toContain('자동 잔액 맞춤');
-    expect(result.topLevelTargetIds).toEqual(expect.arrayContaining(['total-expense', 'total-savings', 'total-invest']));
-  });
-
-  test('Phase 10.7 sanitizer preserves D-07/D-08 account flow data as handoff sidecar only', async ({ page }) => {
-    const result = await page.evaluate(async () => {
-      const { sanitizeInputs } = await import('/IndividualSavingsFlowUI/apps/main/modules/input-sanitizer.js');
-      const sanitized = sanitizeInputs({
-        modelVersion: 10,
-        splitIncomeAccounts: true,
-        incomes: [{
-          id: 'income-main',
-          name: '급여',
-          amount: 4200000,
-          accountId: 'acc-salary',
-          allocations: [
-            { accountId: 'acc-salary', amount: 2800000 },
-            { accountId: 'acc-living', amount: 1400000 },
-          ],
-        }],
-        accounts: [
-          { id: 'acc-salary', name: '급여계좌' },
-          { id: 'acc-living', name: '생활비계좌' },
-          { id: 'acc-saving', name: '저축계좌' },
-          { id: 'acc-stock', name: '투자계좌' },
-        ],
-        expenseItems: [
-          { id: 'rent', name: '월세', amount: 900000, group: '고정비', actualSpent: 111111, accountId: 'acc-living' },
-          { id: 'food', name: '식비', amount: 500000, group: '변동비', actualSpent: 222222, varianceAmount: 80000, accountId: 'acc-living' },
-        ],
-        savingsItems: [{ id: 'saving-main', name: '적금', amount: 600000, group: '저축', accountId: 'acc-saving', annualRate: 5.1, maturityMonth: '2027-03' }],
-        investItems: [{ id: 'invest-main', name: 'ETF', amount: 700000, group: '투자', accountId: 'acc-stock' }],
-        transfers: [{ id: 'legacy-transfer', sourceAccountId: 'acc-salary', targetAccountId: 'acc-stock', amount: 100000, label: '투자 이체' }],
-        accountCorrections: [{ itemType: 'expense', message: 'legacy correction marker' }],
-        surplusTransferAccountId: 'acc-stock',
-        monthlyDebtPayment: 0,
-        startCash: 0,
-        startSavings: 0,
-        startInvest: 0,
-        startDebt: 0,
-        annualIncomeGrowth: 0,
-        annualExpenseGrowth: 0,
-        annualSavingsYield: 3,
-        annualInvestReturn: 7,
-        annualDebtInterest: 0,
-        horizonYears: 5,
-      });
-
-      return {
-        primaryKeys: Object.keys(sanitized),
-        income: sanitized.incomes[0],
-        fixedExpense: sanitized.expenseItems.find((item: any) => item.id === 'rent'),
-        variableExpense: sanitized.expenseItems.find((item: any) => item.id === 'food'),
-        saving: sanitized.savingsItems.find((item: any) => item.id === 'saving-main'),
-        invest: sanitized.investItems.find((item: any) => item.id === 'invest-main'),
-        monthlyExpense: sanitized.monthlyExpense,
-        handoff: sanitized.accountFlowHandoff,
-      };
-    });
-
-    expect(result.primaryKeys).not.toEqual(expect.arrayContaining([
-      'accounts',
-      'splitIncomeAccounts',
-      'surplusTransferAccountId',
-      'transfers',
-      'accountCorrections',
-    ]));
-    expect(result.income).toMatchObject({ id: 'income-main', name: '급여', amount: 4200000 });
-    expect(result.income).not.toHaveProperty('accountId');
-    expect(result.income).not.toHaveProperty('allocations');
-    expect(result.fixedExpense).toMatchObject({ id: 'rent', name: '월세', amount: 900000, group: '고정비' });
-    expect(result.fixedExpense).not.toHaveProperty('accountId');
-    expect(result.fixedExpense).not.toHaveProperty('actualSpent');
-    expect(result.variableExpense).toMatchObject({ id: 'food', name: '식비', amount: 500000, group: '변동비', actualSpent: 222222, varianceAmount: 80000 });
-    expect(result.variableExpense).not.toHaveProperty('accountId');
-    expect(result.saving).toMatchObject({ id: 'saving-main', annualRate: 5.1, maturityMonth: '2027-03' });
-    expect(result.saving).not.toHaveProperty('accountId');
-    expect(result.invest).toMatchObject({ id: 'invest-main', amount: 700000 });
-    expect(result.invest).not.toHaveProperty('accountId');
-    expect(result.monthlyExpense).toBe(1400000);
-    expect(result.handoff).toMatchObject({
-      version: 1,
-      accounts: expect.arrayContaining([{ id: 'acc-salary', name: '급여계좌' }]),
-      splitIncomeAccounts: true,
-      surplusTransferAccountId: 'acc-stock',
-      transfers: expect.arrayContaining([{ id: 'legacy-transfer', sourceAccountId: 'acc-salary', targetAccountId: 'acc-stock', amount: 100000, label: '투자 이체' }]),
-      accountCorrections: expect.arrayContaining([{ itemType: 'expense', message: 'legacy correction marker' }]),
-    });
-    expect(result.handoff.incomes[0].allocations).toEqual([
-      { accountId: 'acc-salary', amount: 2800000 },
-      { accountId: 'acc-living', amount: 1400000 },
-    ]);
-    expect(result.handoff.expenseItems.find((item: any) => item.id === 'rent')).toMatchObject({ accountId: 'acc-living' });
-    expect(result.handoff.savingsItems.find((item: any) => item.id === 'saving-main')).toMatchObject({ accountId: 'acc-saving' });
-    expect(result.handoff.investItems.find((item: any) => item.id === 'invest-main')).toMatchObject({ accountId: 'acc-stock' });
-  });
-
-  test('Phase 10.7 handoff survives share import without rehydrating primary account fields', async ({ page }) => {
-    const result = await page.evaluate(async () => {
-      const [
-        { SHARE_STATE_KEY, SHARE_STATE_SCHEMA },
-        { normalizeExternalStep1Inputs },
-        { sanitizeInputs },
-        { buildMonthlySnapshot },
-      ] = await Promise.all([
-        import('/IndividualSavingsFlowUI/apps/main/modules/constants.js'),
-        import('/IndividualSavingsFlowUI/apps/main/modules/external-input-guard.js'),
-        import('/IndividualSavingsFlowUI/apps/main/modules/input-sanitizer.js'),
-        import('/IndividualSavingsFlowUI/apps/main/modules/calculator.js'),
-      ]);
-      const legacyPayload = {
-        modelVersion: 10,
-        splitIncomeAccounts: true,
-        incomes: [{
-          id: 'income-main',
-          name: '급여',
-          amount: 4200000,
-          accountId: 'acc-salary',
-          allocations: [{ accountId: 'acc-salary', amount: 4200000 }],
-        }],
-        accounts: [{ id: 'acc-salary', name: '급여계좌' }],
-        expenseItems: [{ id: 'rent', name: '월세', amount: 900000, group: '고정비', accountId: 'acc-living' }],
-        savingsItems: [{ id: 'saving-main', name: '적금', amount: 600000, group: '저축', annualRate: 5, maturityMonth: '2027-03', accountId: 'acc-saving' }],
-        investItems: [{ id: 'invest-main', name: 'ETF', amount: 700000, group: '투자', accountId: 'acc-stock' }],
-        transfers: [{ id: 'legacy-transfer', sourceAccountId: 'acc-salary', targetAccountId: 'acc-stock', amount: 100000, label: '투자 이체' }],
-        surplusTransferAccountId: 'acc-stock',
-      };
-      const saved = sanitizeInputs(legacyPayload);
-      const envelope = window.IsfShare.buildStateEnvelope(SHARE_STATE_KEY, SHARE_STATE_SCHEMA, saved);
-      const imported = window.IsfShare.parseImportedJson(JSON.stringify(envelope), SHARE_STATE_KEY);
-      const normalized = sanitizeInputs(normalizeExternalStep1Inputs('json-import', imported));
-      const snapshot = buildMonthlySnapshot(normalized);
-
-      return {
-        primaryKeys: Object.keys(normalized),
-        income: normalized.incomes[0],
-        expense: normalized.expenseItems[0],
-        saving: normalized.savingsItems[0],
-        invest: normalized.investItems[0],
-        handoff: normalized.accountFlowHandoff,
-        snapshotKeys: Object.keys(snapshot),
-        monthlyExpense: normalized.monthlyExpense,
-      };
-    });
-
-    expect(result.primaryKeys).not.toEqual(expect.arrayContaining(['accounts', 'splitIncomeAccounts', 'surplusTransferAccountId', 'transfers']));
-    expect(result.income).toMatchObject({ id: 'income-main', name: '급여', amount: 4200000 });
-    expect(result.income).not.toHaveProperty('accountId');
-    expect(result.income).not.toHaveProperty('allocations');
-    expect(result.expense).not.toHaveProperty('accountId');
-    expect(result.saving).toMatchObject({ annualRate: 5, maturityMonth: '2027-03' });
-    expect(result.saving).not.toHaveProperty('accountId');
-    expect(result.invest).not.toHaveProperty('accountId');
-    expect(result.handoff.accounts).toEqual([{ id: 'acc-salary', name: '급여계좌' }]);
-    expect(result.handoff.incomes[0].allocations).toEqual([{ accountId: 'acc-salary', amount: 4200000 }]);
-    expect(result.handoff.transfers).toEqual([{ id: 'legacy-transfer', sourceAccountId: 'acc-salary', targetAccountId: 'acc-stock', amount: 100000, label: '투자 이체' }]);
-    expect(result.snapshotKeys).not.toEqual(expect.arrayContaining(['accounts', 'splitIncomeAccounts', 'surplusTransferAccountId', 'transfers', 'accountCorrections']));
-    expect(result.monthlyExpense).toBe(900000);
-  });
-
-  test('Phase 10.7 D-01/D-02/D-03/D-09 source audit removes normal Step 1 account-flow paths', async ({ page }) => {
-    const audit = await page.evaluate(async () => {
-      const normalPathFiles = [
-        'apps/main/index.html',
-        'apps/main/modules/dom.js',
-        'apps/main/modules/render-orchestrator.js',
-        'apps/main/modules/visualization-controller.js',
-        'apps/main/modules/event-bindings.js',
-        'apps/main/modules/ui-controller.js',
-        'apps/main/styles.css',
-      ];
-      const contents = await Promise.all(normalPathFiles.map(async (file) => ({
-        file,
-        text: await fetch(`/IndividualSavingsFlowUI/${file}`).then(async (response) => {
-          const text = await response.text();
-          if (file !== 'apps/main/index.html') return text;
-          return text.replace(
-            /<section id="accountFlowPortfolioGuide"[\s\S]*?<\/section>/,
-            ''
-          );
-        }),
-      })));
-      const forbiddenMarkers = [
-        'renderNetworkMap',
-        'showNetworkBtn',
-        'networkMap',
-        'accountFlowNetworkMap',
-        'sankeyCorrectionRefresh',
-        'sankeyCorrectionStatus',
-        'sankey-correction-control',
-        'surplusTransferAccountSelect',
-        'surplusTransferAccountId',
-        'renderTransferRulesList',
-        'renderTransferSelectOptions',
-        'updateSourceBalanceHint',
-        'addTransferRuleBtn',
-        'transferRuleList',
-        'transferSourceSelect',
-        'transferTargetSelect',
-        '계좌흐름도',
-        '계좌 보정',
-        '잉여현금 자동 이체 계좌',
-        '계좌 간 자금 흐름',
-      ];
-      return {
-        files: contents.map((entry) => entry.file),
-        hits: contents.flatMap((entry) =>
-          forbiddenMarkers
-            .filter((marker) => entry.text.includes(marker))
-            .map((marker) => ({ file: entry.file, marker }))
-        ),
-      };
-    });
-
-    expect(audit.files).toContain('apps/main/modules/render-orchestrator.js');
-    expect(audit.hits).toEqual([]);
-  });
-
-  test('Phase 10.7 D-01/D-02/D-03/D-09 UI renders only simple Sankey controls', async ({ page }) => {
-    await expect(page.locator('#sankeySvg')).toBeVisible();
-    await expect(page.locator('#showSankeyBasicBtn')).toBeVisible();
-    await expect(page.locator('#showSankeyDetailBtn')).toBeVisible();
-    await expect(page.locator('#showNetworkBtn')).toHaveCount(0);
-    await expect(page.locator('#networkMapWrap')).toHaveCount(0);
-    await expect(page.locator('#accountFlowNetworkMap')).toHaveCount(0);
-    await expect(page.locator('#sankeyCorrectionRefresh')).toHaveCount(0);
-    await expect(page.locator('#sankeyCorrectionStatus')).toHaveCount(0);
-    await expect(page.locator('#surplusTransferAccountSelect')).toHaveCount(0);
-    await expect(page.locator('#transferEditorSection')).toHaveCount(0);
-    await expect(page.locator('.sankey-panel')).not.toContainText('계좌흐름도');
-    await expect(page.locator('.sankey-panel')).not.toContainText('계좌 보정');
-    await expect(page.locator('.controls-panel')).not.toContainText('잉여현금 자동 이체');
-  });
-
-  // ADR 0002: Step 1 may guide to Portfolio, but it must not become the account-flow editor again.
-  test('Phase 10.7 Portfolio guidance appears as navigation when account-flow handoff exists', async ({ page }) => {
-    await page.evaluate(async () => {
-      const [
-        { state },
-        { sanitizeInputs },
-        { buildMonthlySnapshot },
-        { createRenderOrchestrator },
-        { STORAGE_KEY },
-      ] = await Promise.all([
-        import('/IndividualSavingsFlowUI/apps/main/modules/state.js'),
-        import('/IndividualSavingsFlowUI/apps/main/modules/input-sanitizer.js'),
-        import('/IndividualSavingsFlowUI/apps/main/modules/calculator.js'),
-        import('/IndividualSavingsFlowUI/apps/main/modules/render-orchestrator.js'),
-        import('/IndividualSavingsFlowUI/apps/main/modules/constants.js'),
-      ]);
-
-      state.inputs = sanitizeInputs({
-        modelVersion: 10,
-        incomes: [{ id: 'income-main', name: '급여', amount: 4200000 }],
-        expenseItems: [{ id: 'rent', name: '월세', amount: 900000, group: '고정비' }],
-        savingsItems: [{ id: 'saving-main', name: '적금', amount: 600000, group: '저축' }],
-        investItems: [{ id: 'invest-main', name: 'ETF', amount: 700000, group: '투자' }],
-        accountFlowHandoff: {
-          version: 1,
-          accounts: [
-            { id: 'acc-salary', name: '급여계좌' },
-            { id: 'acc-living', name: '생활비계좌' },
-          ],
-          transfers: [{ id: 'legacy-transfer', sourceAccountId: 'acc-salary', targetAccountId: 'acc-living', amount: 900000 }],
-        },
-        monthlyDebtPayment: 0,
-        startCash: 0,
-        startSavings: 0,
-        startInvest: 0,
-        startDebt: 0,
-        annualIncomeGrowth: 0,
-        annualExpenseGrowth: 0,
-        annualSavingsYield: 3,
-        annualInvestReturn: 7,
-        annualDebtInterest: 0,
-        horizonYears: 5,
-      });
-      state.snapshot = buildMonthlySnapshot(state.inputs);
-      window.IsfStorageHub.saveLocal(STORAGE_KEY, state.inputs);
-      createRenderOrchestrator().renderAll();
-    });
-
-    const guide = page.locator('[data-account-flow-portfolio-guide]');
-    await expect(guide).toBeVisible();
-    await expect(guide).toContainText('Portfolio');
-    await expect(guide).toContainText('계좌흐름도');
-    await expect(guide.locator('a[href*="apps/portfolio/index.html"]')).toBeVisible();
-    await expect(guide).not.toContainText('급여계좌');
-    await expect(guide).not.toContainText('생활비계좌');
-    await expect(page.locator('[data-income-allocation-row]')).toHaveCount(0);
-    await expect(page.locator('[data-financial-modal-field="accountId"]')).toHaveCount(0);
-    await expect(page.locator('#showNetworkBtn')).toHaveCount(0);
-  });
-
-  test('Phase 10.7 source boundary keeps Portfolio guidance as navigation only', async ({ page }) => {
-    const audit = await page.evaluate(async () => {
-      const files = [
-        'apps/main/index.html',
-        'apps/main/modules/dom.js',
-        'apps/main/modules/render-orchestrator.js',
-      ];
-      const contents = await Promise.all(files.map(async (file) => ({
-        file,
-        text: await fetch(`/IndividualSavingsFlowUI/${file}`).then((response) => response.text()),
-      })));
-      const sourceText = contents.map((entry) => entry.text).join('\n');
-      const forbiddenMarkers = [
-        'data-income-allocation-row',
-        'data-financial-modal-field="accountId"',
-        'renderNetworkMap',
-        'sankeyCorrectionRefresh',
-        'transferRuleList',
-        'surplusTransferAccountId',
-      ];
-      return {
-        files: contents.map((entry) => entry.file),
-        hasPortfolioHref: sourceText.includes('apps/portfolio/index.html'),
-        hasGuideSelector: sourceText.includes('account-flow-portfolio-guide'),
-        forbiddenHits: forbiddenMarkers.filter((marker) => sourceText.includes(marker)),
-      };
-    });
-
-    expect(audit.files).toEqual([
-      'apps/main/index.html',
-      'apps/main/modules/dom.js',
-      'apps/main/modules/render-orchestrator.js',
-    ]);
-    expect(audit.hasPortfolioHref).toBe(true);
-    expect(audit.hasGuideSelector).toBe(true);
-    expect(audit.forbiddenHits).toEqual([]);
-  });
-
-  test('preserves invalid legacy account links only in accountFlowHandoff sidecar', async ({ page }) => {
+  test('repairs invalid account links and emits correction metadata', async ({ page }) => {
     const result = await page.evaluate(async () => {
       const { sanitizeInputs } = await import('/IndividualSavingsFlowUI/apps/main/modules/input-sanitizer.js');
       const sanitized = sanitizeInputs({
@@ -949,34 +548,26 @@ test.describe('Phase 09 account correction and Sankey topology', () => {
       });
 
       return {
-        primaryKeys: Object.keys(sanitized),
-        incomeHasAccountId: Object.prototype.hasOwnProperty.call(sanitized.incomes[0], 'accountId'),
-        incomeHasAllocations: Object.prototype.hasOwnProperty.call(sanitized.incomes[0], 'allocations'),
-        expenseHasAccountId: Object.prototype.hasOwnProperty.call(sanitized.expenseItems[0], 'accountId'),
-        savingsHasAccountId: Object.prototype.hasOwnProperty.call(sanitized.savingsItems[0], 'accountId'),
-        investHasAccountId: Object.prototype.hasOwnProperty.call(sanitized.investItems[0], 'accountId'),
-        handoffIncomeAccountId: sanitized.accountFlowHandoff?.incomes?.[0]?.accountId,
-        handoffIncomeAllocations: sanitized.accountFlowHandoff?.incomes?.[0]?.allocations,
-        handoffExpenseAccountId: sanitized.accountFlowHandoff?.expenseItems?.[0]?.accountId,
-        handoffSavingsAccountId: sanitized.accountFlowHandoff?.savingsItems?.[0]?.accountId,
-        handoffInvestAccountId: sanitized.accountFlowHandoff?.investItems?.[0]?.accountId,
+        accountNames: sanitized.accounts.map((account: { name: string }) => account.name),
+        incomeAccountId: sanitized.incomes[0].accountId,
+        incomeAllocations: sanitized.incomes[0].allocations,
+        expenseAccountId: sanitized.expenseItems[0].accountId,
+        savingsAccountId: sanitized.savingsItems[0].accountId,
+        investAccountId: sanitized.investItems[0].accountId,
+        correctionMessages: sanitized.accountCorrections.map((correction: { message: string }) => correction.message),
+        correctionTypes: sanitized.accountCorrections.map((correction: { itemType: string }) => correction.itemType),
       };
     });
 
-    expect(result.primaryKeys).not.toEqual(expect.arrayContaining(['accounts', 'accountCorrections']));
-    expect(result.incomeHasAccountId).toBe(false);
-    expect(result.incomeHasAllocations).toBe(false);
-    expect(result.expenseHasAccountId).toBe(false);
-    expect(result.savingsHasAccountId).toBe(false);
-    expect(result.investHasAccountId).toBe(false);
-    expect(result.handoffIncomeAccountId).toBe('missing-income');
-    expect(result.handoffIncomeAllocations).toEqual([
-      { accountId: 'missing-income', amount: 1000000 },
-      { accountId: 'acc-living', amount: 500000 },
-    ]);
-    expect(result.handoffExpenseAccountId).toBe('missing-expense');
-    expect(result.handoffSavingsAccountId).toBe('missing-saving');
-    expect(result.handoffInvestAccountId).toBe('missing-invest');
+    expect(result.accountNames).toEqual(expect.arrayContaining(['급여계좌', '생활비계좌', '투자계좌']));
+    expect(result.incomeAccountId).toBe('acc-salary');
+    expect(result.incomeAllocations).toEqual([{ accountId: 'acc-salary', amount: 3000000 }]);
+    expect(result.expenseAccountId).toBe('acc-living');
+    expect(result.savingsAccountId).toBe('acc-salary');
+    expect(result.investAccountId).toBe('acc-stock');
+    expect(result.correctionTypes).toEqual(expect.arrayContaining(['income', 'expense', 'savings', 'invest']));
+    expect(result.correctionMessages.join(' ')).toContain('계좌');
+    expect(result.correctionMessages.join(' ')).toContain('보정');
   });
 
   test('builds Sankey links around mandatory total-income node', async ({ page }) => {
@@ -1015,20 +606,20 @@ test.describe('Phase 09 account correction and Sankey topology', () => {
         incomeToTotal: sankey?.links.some((link: { source: string; target: string }) =>
           link.source === 'income-main' && link.target === 'total-income'
         ),
-        totalToExpense: sankey?.links.some((link: { source: string; target: string }) =>
-          link.source === 'total-income' && link.target === 'expense-rent'
+        totalToAccount: sankey?.links.some((link: { source: string; target: string }) =>
+          link.source === 'total-income' && link.target === 'acc-salary'
         ),
-        accountLinks: sankey?.links.filter((link: { source: string; target: string }) =>
-          link.source.startsWith('acc-') || link.target.startsWith('acc-')
-        ) || [],
+        accountToExpense: sankey?.links.some((link: { source: string; target: string }) =>
+          link.source === 'acc-living' && link.target === 'expense-rent'
+        ),
         labels: sankey?.nodes.map((node: { label: string }) => node.label) || [],
       };
     });
 
     expect(result.totalIncomeNode).toMatchObject({ id: 'total-income', label: '총수입', tone: 'income' });
     expect(result.incomeToTotal).toBe(true);
-    expect(result.totalToExpense).toBe(true);
-    expect(result.accountLinks).toEqual([]);
+    expect(result.totalToAccount).toBe(true);
+    expect(result.accountToExpense).toBe(true);
     expect(result.labels).not.toContain('미지정 계좌');
   });
 
@@ -1150,8 +741,7 @@ test.describe('Phase 09 account correction and Sankey topology', () => {
     const basicLabels = await page.locator('#sankeySvg .sankey-label').evaluateAll((labels) =>
       labels.map((label) => label.textContent || '')
     );
-    expect(basicLabels).toEqual(expect.arrayContaining(['총수입', '고정비(고정지출)', '저축', '투자']));
-    expect(basicLabels).not.toEqual(expect.arrayContaining(['급여계좌', '생활비계좌', '투자계좌']));
+    expect(basicLabels).toEqual(expect.arrayContaining(['총수입', '급여계좌', '생활비계좌', '투자계좌', '고정비(고정지출)', '저축', '투자']));
     expect(basicLabels).not.toEqual(expect.arrayContaining(['본업 급여', '부업 수입', '월세', '적금', 'ETF']));
 
     await page.locator('#showSankeyDetailBtn').click();
@@ -1488,7 +1078,7 @@ test.describe('Phase 09 financial category detail modal', () => {
     await modal.locator('[data-financial-modal-edit]').first().click();
 
     await expect(modal.locator('[data-financial-modal-field="name"]')).toBeVisible();
-    await expect(modal.locator('[data-financial-modal-field="accountId"]')).toHaveCount(0);
+    await expect(modal.locator('[data-financial-modal-field="accountId"]')).toBeVisible();
     await expect(modal.locator('[data-financial-modal-field="amount"]')).toBeVisible();
     await expect(modal.locator('[data-financial-modal-field="groupMode"]')).toHaveCount(0);
     await expect(modal.locator('[data-financial-modal-field="group"]')).toHaveCount(0);
@@ -1532,7 +1122,7 @@ test.describe('Phase 09 source account automatic flow', () => {
     await page.waitForSelector('main');
   });
 
-  test('removes manual transfer settings while simple Sankey preserves surplus display', async ({ page }) => {
+  test('removes manual transfer settings while preserving source-account surplus and deficit display', async ({ page }) => {
     await openControlsPanel(page);
     await expect(page.locator('text=계좌 간 수동 이체 설정')).toHaveCount(0);
     await expect(page.locator('#transferEditorSection')).toHaveCount(0);
@@ -1565,21 +1155,12 @@ test.describe('Phase 09 source account automatic flow', () => {
       const flow = (window as any).__phase09Flow;
       return {
         surplus: flow.nodes.some((node: any) => node.id === 'surplus'),
-        categoryLinks: flow.links.filter((link: any) => ['expense', 'savings', 'invest'].includes(link.tone)).map((link: any) => ({
-          source: link.source,
-          target: link.target,
-        })),
-        accountLinks: flow.links.filter((link: any) => String(link.source).startsWith('acc-') || String(link.target).startsWith('acc-')),
+        sourceLinks: flow.links.filter((link: any) => ['expense', 'savings', 'invest'].includes(link.tone)).map((link: any) => link.source),
         legacyManual: flow.transfers.some((transfer: any) => transfer.isManual && transfer.id === 'legacy'),
       };
     });
     expect(result.surplus).toBe(true);
-    expect(result.categoryLinks).toEqual(expect.arrayContaining([
-      { source: 'total-income', target: 'total-expense' },
-      { source: 'total-income', target: 'total-savings' },
-      { source: 'total-income', target: 'total-invest' },
-    ]));
-    expect(result.accountLinks).toEqual([]);
+    expect(result.sourceLinks).toEqual(expect.arrayContaining(['acc-living', 'acc-salary', 'acc-stock']));
     expect(result.legacyManual).toBe(false);
   });
 });
@@ -1602,7 +1183,7 @@ test.describe('Phase 09 guided item and inline account creation', () => {
     await openFinancialAddMenu(modal);
     await modal.locator('[data-financial-inline-add]').click();
     const newRow = modal.locator('.financial-modal-row--editing[data-modal-row-category="invest"]').last();
-    await expect(newRow.locator('[data-financial-modal-field="accountId"]')).toHaveCount(0);
+    await expect(newRow.locator('[data-financial-modal-field="accountId"]')).toHaveValue('acc-stock');
     await newRow.locator('[data-financial-modal-field="name"]').fill('테스트 ETF');
     await newRow.locator('[data-financial-modal-field="amount"]').fill('100000');
     await expect(newRow.locator('[data-financial-modal-field="group"]')).toHaveCount(0);
@@ -1622,8 +1203,7 @@ test.describe('Phase 09 guided item and inline account creation', () => {
 
     const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}'));
     const createdItem = saved.investItems.find((item: any) => item.name === '테스트 ETF');
-    expect(createdItem).toMatchObject({ amount: 100000, group: '투자' });
-    expect(createdItem).not.toHaveProperty('accountId');
+    expect(createdItem).toMatchObject({ amount: 100000, group: '투자', accountId: 'acc-stock' });
     await expect(page.locator('[data-financial-category="invest"]')).toContainText('4개');
   });
 });
@@ -1770,24 +1350,20 @@ test.describe('Phase 10 financial settings regression fixes', () => {
         savingsItems: [{ id: 'saving', name: '적금', amount: 500000, group: '저축', accountId: 'acc-salary' }],
         investItems: [{ id: 'invest', name: 'ETF', amount: 400000, group: '투자', accountId: 'acc-stock' }],
       });
-      const handoffAllocationTotal = inputs.accountFlowHandoff.incomes[0].allocations.reduce((sum: number, allocation: any) => sum + allocation.amount, 0);
+      const allocationTotal = inputs.incomes[0].allocations.reduce((sum: number, allocation: any) => sum + allocation.amount, 0);
       const flow = buildSankeyData(buildMonthlySnapshot(inputs), 'group', { expense: 'total', savings: 'total', invest: 'total' });
-      const topLevelTotal = flow.links
-        .filter((link: any) => link.source === 'total-income' && link.target !== 'surplus')
+      const accountIncomeTotal = flow.links
+        .filter((link: any) => link.source === 'total-income')
         .reduce((sum: number, link: any) => sum + link.value, 0);
       return {
         incomeAmount: inputs.incomes[0].amount,
-        hasPrimaryAllocations: Object.prototype.hasOwnProperty.call(inputs.incomes[0], 'allocations'),
-        handoffAllocationTotal,
-        topLevelTotal,
-        accountLinks: flow.links.filter((link: any) => String(link.source).startsWith('acc-') || String(link.target).startsWith('acc-')),
+        allocationTotal,
+        accountIncomeTotal,
       };
     });
 
-    expect(result.hasPrimaryAllocations).toBe(false);
-    expect(result.handoffAllocationTotal).toBe(4000000);
-    expect(result.topLevelTotal).toBeLessThanOrEqual(result.incomeAmount);
-    expect(result.accountLinks).toEqual([]);
+    expect(result.allocationTotal).toBe(result.incomeAmount);
+    expect(result.accountIncomeTotal).toBeLessThanOrEqual(result.incomeAmount);
   });
 
 });
@@ -2455,15 +2031,21 @@ test.describe('Phase 10.6 financial detail modal editing repair', () => {
     await expect(modal.locator('#financialModalPendingBar')).toBeHidden();
   });
 
-  test('Phase 10.6 add menu keeps compact accessible polish without account rows', async ({ page }) => {
+  test('Phase 10.6 account rows and add menu keep compact accessible polish', async ({ page }) => {
     await seedRegressionFlow(page);
 
     const modal = page.locator('#financialModal');
     await page.evaluate(() => {
       document.dispatchEvent(new CustomEvent('open-financial-modal', { detail: { category: 'account' } }));
     });
+    await expect(modal).toBeVisible();
+    const accountRow = modal.locator('[data-modal-row-category="account"]').first();
+    await expect(accountRow).toContainText('급여계좌');
+    await expect(accountRow).not.toContainText('계좌 별칭');
+    await expect(accountRow.locator('[data-financial-modal-edit]')).toHaveCount(0);
+
+    await modal.locator('#financialModalClose').click();
     await expect(modal).toBeHidden();
-    await expect(page.locator('[data-modal-row-category="account"]')).toHaveCount(0);
 
     const detailModal = await openFinancialDetail(page);
     await openFinancialAddMenu(detailModal);
@@ -2490,7 +2072,7 @@ test.describe('Phase 10.6 financial detail modal editing repair', () => {
     await expect(editingIncome).toHaveCount(1);
     await expect(editingIncome.locator('[data-financial-modal-field="name"]')).toHaveValue('급여');
     await expect(editingIncome.locator('[data-financial-modal-field="amount"]')).toHaveValue('4,200,000');
-    await expect(editingIncome.locator('[data-financial-modal-field="accountId"]')).toHaveCount(0);
+    await expect(editingIncome.locator('[data-financial-modal-field="accountId"]')).toBeVisible();
 
     await modal.locator('.modal-header').click();
     await expect(modal.locator('.financial-modal-row--editing')).toHaveCount(0);
@@ -2528,6 +2110,7 @@ test.describe('Phase 10.6 financial detail modal editing repair', () => {
       const down = node.querySelector('[data-money-step="down"]') as HTMLElement;
       const up = node.querySelector('[data-money-step="up"]') as HTMLElement;
       const quick = node.querySelector('[data-money-quick="50000"]') as HTMLElement;
+      const account = node.querySelector('[data-financial-modal-field="accountId"]') as HTMLElement;
       const rect = (element: HTMLElement) => element.getBoundingClientRect();
       return {
         downRight: rect(down).right,
@@ -2536,12 +2119,14 @@ test.describe('Phase 10.6 financial detail modal editing repair', () => {
         upLeft: rect(up).left,
         quickTop: rect(quick).top,
         inputBottom: rect(input).bottom,
+        amountTop: rect(input).top,
+        accountTop: rect(account).top,
       };
     });
     expect(layout.downRight).toBeLessThanOrEqual(layout.inputLeft + 4);
     expect(layout.inputRight).toBeLessThanOrEqual(layout.upLeft + 4);
     expect(layout.quickTop).toBeGreaterThanOrEqual(layout.inputBottom - 1);
-    await expect(row.locator('[data-financial-modal-field="accountId"]')).toHaveCount(0);
+    expect(Math.abs(layout.accountTop - layout.amountTop)).toBeLessThanOrEqual(8);
 
     await row.locator('[data-money-step="down"]').click();
     await expect(amount).toHaveValue('4,190,000');
@@ -2986,14 +2571,13 @@ test.describe('Phase 10.6 financial detail modal editing repair', () => {
     await expect(modal).toBeHidden();
     await assertForbiddenCoupleUiAbsent(page);
     const labels = await page.locator('#sankeySvg .sankey-label').evaluateAll((nodes) => nodes.map((node) => node.textContent || ''));
-    expect(labels).toEqual(expect.arrayContaining(['총수입', '고정비(고정지출)', '저축', '투자']));
-    expect(labels).not.toEqual(expect.arrayContaining(['급여계좌', '생활비계좌', '투자계좌']));
+    expect(labels).toEqual(expect.arrayContaining(['총수입', '급여계좌', '생활비계좌', '투자계좌']));
     expect(labels.filter((label) => label.includes('적금')).length).toBeLessThanOrEqual(1);
     expect(labels.filter((label) => label.includes('ETF')).length).toBeLessThanOrEqual(1);
   });
 });
 
-test.describe('Phase 10.7 modal account boundary', () => {
+test.describe('Phase 10.6.1 modal capability absorption', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
       localStorage.clear();
@@ -3035,10 +2619,7 @@ test.describe('Phase 10.7 modal account boundary', () => {
           { id: 'acc-saving', name: '저축계좌' },
           { id: 'acc-stock', name: '투자계좌' },
         ],
-        expenseItems: [
-          { id: 'rent', name: '월세', amount: 900000, group: '고정비', accountId: 'acc-living' },
-          { id: 'food', name: '식비', amount: 500000, group: '변동비', actualSpent: 210000, varianceAmount: 50000, accountId: 'acc-living' },
-        ],
+        expenseItems: [{ id: 'rent', name: '월세', amount: 900000, group: '고정비', accountId: 'acc-living' }],
         savingsItems: [
           { id: 'saving-main', name: '적금', amount: 500000, group: '저축', accountId: 'acc-saving' },
           { id: 'saving-fallback', name: '비상금', amount: 300000, group: '저축', accountId: 'acc-saving' },
@@ -3058,17 +2639,10 @@ test.describe('Phase 10.7 modal account boundary', () => {
     return modal;
   }
 
-  test('Phase 10.7 modal removes account-flow controls while preserving simple row edits', async ({ page }) => {
+  test('edits income destination allocations inside the modal and blocks over-allocation', async ({ page }) => {
     await seedAbsorptionFlow(page);
 
     const modal = await openFinancialDetail(page);
-    for (const label of ['월 수입', '월 생활비', '투자', '저축', '결과/자동 저축']) {
-      await expect(modal.getByRole('tab', { name: label, exact: true })).toBeVisible();
-    }
-    await expect(modal.getByRole('tab', { name: /계좌/ })).toHaveCount(0);
-    await expect(modal.getByText('계좌흐름도')).toHaveCount(0);
-
-    await modal.getByRole('tab', { name: '월 수입', exact: true }).click();
     const incomeRow = modal.locator('[data-modal-row-category="income"]').first();
     await expect(incomeRow).toContainText('급여');
     await expect(incomeRow).toContainText('420만');
@@ -3077,49 +2651,41 @@ test.describe('Phase 10.7 modal account boundary', () => {
 
     await incomeRow.click();
     const editingIncome = modal.locator('.financial-modal-row--editing[data-modal-row-category="income"]');
-    await expect(editingIncome.locator('[data-income-allocation-row]')).toHaveCount(0);
-    await expect(editingIncome.locator('[data-income-allocation-add]')).toHaveCount(0);
-    await expect(editingIncome.locator('[data-income-allocation-remove]')).toHaveCount(0);
-    await expect(editingIncome.locator('[data-income-allocation-account]')).toHaveCount(0);
-    await expect(editingIncome.locator('[data-financial-modal-field="accountId"]')).toHaveCount(0);
-    await expect(editingIncome).not.toContainText('입금 배분');
-    await expect(editingIncome).not.toContainText('입금 계좌');
+    await expect(editingIncome.locator('[data-income-allocation-row]')).toHaveCount(1);
+    await editingIncome.locator('[data-income-allocation-add]').click();
+    await expect(editingIncome.locator('[data-income-allocation-row]')).toHaveCount(2);
 
-    await editingIncome.locator('[data-financial-modal-field="amount"]').fill('4300000');
-    await modal.getByRole('tab', { name: '월 생활비', exact: true }).click();
-    const variableRow = modal.locator('[data-financial-variable-row]').filter({ hasText: '식비' });
-    await variableRow.click();
-    await expect(variableRow.locator('[data-financial-modal-field="accountId"]')).toHaveCount(0);
-    await variableRow.locator('[data-financial-modal-field="amount"]').fill('550000');
-    await variableRow.locator('[data-financial-modal-field="varianceAmount"]').fill('80000');
+    await editingIncome.locator('[data-income-allocation-row]').nth(0).locator('[data-income-allocation-amount]').fill('3000000');
+    await editingIncome.locator('[data-income-allocation-row]').nth(1).locator('[data-income-allocation-account]').selectOption('acc-living');
+    await editingIncome.locator('[data-income-allocation-row]').nth(1).locator('[data-income-allocation-amount]').fill('1300000');
+    await modal.locator('#financialModalSave').click();
+    await expect(editingIncome.locator('[data-financial-row-error]')).toContainText('수입 금액을 넘지 않게 배분해 주세요.');
+    let saved = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}'));
+    expect(saved.incomes[0].allocations).toEqual([{ accountId: 'acc-salary', amount: 4200000 }]);
 
-    await modal.getByRole('tab', { name: '저축', exact: true }).click();
-    const savingRow = modal.locator('[data-modal-row-category="savings"]').filter({ hasText: '적금' });
-    await savingRow.click();
-    const editingSaving = modal.locator('.financial-modal-row--editing[data-modal-row-category="savings"]').filter({ hasText: '적금' });
-    await expect(editingSaving.locator('[data-financial-modal-field="accountId"]')).toHaveCount(0);
-    await editingSaving.locator('[data-savings-additional-toggle]').click();
-    await editingSaving.locator('[data-financial-modal-field="annualRate"]').fill('5.5');
-    await editingSaving.locator('[data-financial-modal-field="maturityMonth"]').fill('2027-03');
+    await editingIncome.locator('[data-income-allocation-row]').nth(1).locator('[data-income-allocation-amount]').fill('1200000');
     await modal.locator('#financialModalSave').click();
     await expect(modal).toBeVisible();
     await expect(modal.locator('#financialModalPendingBar')).toBeHidden();
+    saved = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}'));
+    expect(saved.incomes[0]).toMatchObject({
+      amount: 4200000,
+      accountId: 'acc-salary',
+      allocations: [
+        { accountId: 'acc-salary', amount: 3000000 },
+        { accountId: 'acc-living', amount: 1200000 },
+      ],
+    });
 
-    const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}'));
-    expect(saved.incomes[0]).toMatchObject({ id: 'income-main', amount: 4300000 });
-    expect(saved.incomes[0]).not.toHaveProperty('accountId');
-    expect(saved.incomes[0]).not.toHaveProperty('allocations');
-    expect(saved.expenseItems.find((item: any) => item.id === 'food')).toMatchObject({
-      amount: 550000,
-      actualSpent: 210000,
-      varianceAmount: 80000,
-    });
-    expect(saved.expenseItems.find((item: any) => item.id === 'food')).not.toHaveProperty('accountId');
-    expect(saved.savingsItems.find((item: any) => item.id === 'saving-main')).toMatchObject({
-      annualRate: 5.5,
-      maturityMonth: '2027-03',
-    });
-    expect(saved.savingsItems.find((item: any) => item.id === 'saving-main')).not.toHaveProperty('accountId');
+    await modal.getByRole('tab', { name: '월 수입', exact: true }).click();
+    await modal.locator('[data-modal-row-category="income"]').first().click();
+    const reopenedIncome = modal.locator('.financial-modal-row--editing[data-modal-row-category="income"]');
+    await reopenedIncome.locator('[data-income-allocation-row]').nth(1).locator('[data-income-allocation-remove]').click();
+    await expect(reopenedIncome.locator('[data-income-allocation-row]')).toHaveCount(1);
+    await modal.locator('#financialModalCancel').click();
+    await expect(modal.locator('#financialModalPendingBar')).toBeHidden();
+    saved = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}'));
+    expect(saved.incomes[0].allocations).toHaveLength(2);
   });
 
   test('persists savings maturity and one item yield while global fallback remains effective', async ({ page }) => {
@@ -3278,16 +2844,15 @@ test.describe('Phase 10.6.1 final regression', () => {
     return modal;
   }
 
-  test('keeps non-account modal fields through apply, storage, import envelope, and Sankey refresh', async ({ page }) => {
+  test('keeps absorbed modal fields through apply, storage, import envelope, and Sankey refresh', async ({ page }) => {
     await seedFinalRegressionFlow(page);
 
     const modal = await openFinancialDetail(page);
     await modal.getByRole('tab', { name: '월 수입', exact: true }).click();
     await modal.locator('[data-modal-row-category="income"]').first().click();
     const income = modal.locator('.financial-modal-row--editing[data-modal-row-category="income"]');
-    await expect(income.locator('[data-income-allocation-row]')).toHaveCount(0);
-    await expect(income.locator('[data-financial-modal-field="accountId"]')).toHaveCount(0);
-    await income.locator('[data-financial-modal-field="amount"]').fill('4300000');
+    await income.locator('[data-income-allocation-row]').nth(0).locator('[data-income-allocation-amount]').fill('2800000');
+    await income.locator('[data-income-allocation-row]').nth(1).locator('[data-income-allocation-amount]').fill('1400000');
 
     await modal.getByRole('tab', { name: '저축', exact: true }).click();
     const saving = modal.locator('[data-modal-row-category="savings"]').filter({ hasText: '적금' });
@@ -3300,9 +2865,10 @@ test.describe('Phase 10.6.1 final regression', () => {
     await expect(modal.locator('#financialModalPendingBar')).toBeHidden();
 
     const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-rebuild-v1') || '{}'));
-    expect(saved.incomes[0]).toMatchObject({ id: 'income-main', amount: 4300000 });
-    expect(saved.incomes[0]).not.toHaveProperty('accountId');
-    expect(saved.incomes[0]).not.toHaveProperty('allocations');
+    expect(saved.incomes[0].allocations).toEqual([
+      { accountId: 'acc-salary', amount: 2800000 },
+      { accountId: 'acc-living', amount: 1400000 },
+    ]);
     expect(saved.savingsItems.find((item: any) => item.id === 'saving-main')).toMatchObject({
       annualRate: 6.1,
       maturityMonth: '2027-04',
@@ -3310,8 +2876,7 @@ test.describe('Phase 10.6.1 final regression', () => {
     expect(saved.savingsItems.find((item: any) => item.id === 'saving-fallback')).not.toHaveProperty('annualRate');
 
     const labels = await page.locator('#sankeySvg .sankey-label').evaluateAll((nodes) => nodes.map((node) => node.textContent || ''));
-    expect(labels).toEqual(expect.arrayContaining(['총수입', '고정비(고정지출)', '저축', '투자']));
-    expect(labels).not.toEqual(expect.arrayContaining(['급여계좌', '생활비계좌']));
+    expect(labels).toEqual(expect.arrayContaining(['급여계좌', '생활비계좌']));
 
     const importProbe = await page.evaluate(async (storedInputs) => {
       const [
@@ -3333,20 +2898,18 @@ test.describe('Phase 10.6.1 final regression', () => {
       const sankey = buildSankeyData(buildMonthlySnapshot(normalized), 'group');
       const buckets = buildSavingsBuckets(normalized);
       return {
-        income: normalized.incomes[0],
+        allocations: normalized.incomes[0].allocations,
         maturityMonth: normalized.savingsItems.find((item: any) => item.id === 'saving-main')?.maturityMonth,
         annualRate: normalized.savingsItems.find((item: any) => item.id === 'saving-main')?.annualRate,
         fallbackRate: buckets.find((bucket: any) => bucket.id === 'saving-fallback')?.annualRate,
         labels: sankey.nodes.map((node: any) => node.label),
       };
     }, saved);
-    expect(importProbe.income).not.toHaveProperty('accountId');
-    expect(importProbe.income).not.toHaveProperty('allocations');
+    expect(importProbe.allocations).toEqual(saved.incomes[0].allocations);
     expect(importProbe.maturityMonth).toBe('2027-04');
     expect(importProbe.annualRate).toBe(6.1);
     expect(importProbe.fallbackRate).toBe(3);
-    expect(importProbe.labels).toEqual(expect.arrayContaining(['총수입', '고정비(고정지출)', '저축', '투자']));
-    expect(importProbe.labels).not.toEqual(expect.arrayContaining(['급여계좌', '생활비계좌']));
+    expect(importProbe.labels).toEqual(expect.arrayContaining(['급여계좌', '생활비계좌']));
   });
 
   test('audits source-first cleanup markers without treating dist as source', async ({ page }) => {
@@ -3523,8 +3086,7 @@ test.describe('Phase 10.5 regression hardening', () => {
     });
     expect(order).toBe(true);
     const labels = await page.locator('#sankeySvg .sankey-label').evaluateAll((nodes) => nodes.map((node) => node.textContent || ''));
-    expect(labels).toEqual(expect.arrayContaining(['총수입', '고정비(고정지출)', '저축', '투자']));
-    expect(labels).not.toEqual(expect.arrayContaining(['급여계좌', '생활비계좌', '투자계좌']));
+    expect(labels).toEqual(expect.arrayContaining(['총수입', '급여계좌', '생활비계좌', '투자계좌']));
     expect(labels.filter((label) => label.includes('적금')).length).toBeLessThanOrEqual(1);
     expect(labels.filter((label) => label.includes('ETF')).length).toBeLessThanOrEqual(1);
 

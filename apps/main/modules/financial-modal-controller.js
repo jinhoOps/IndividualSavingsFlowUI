@@ -5,6 +5,7 @@ import {
   parseSavingsAnnualRateInput,
   isVariableExpenseItem,
 } from "./input-sanitizer.js";
+import { recommendAccountId } from "./account-correction.js";
 import { dom } from "./dom.js";
 import {
   buildVariableExpenseBudgetRows,
@@ -12,10 +13,11 @@ import {
 } from "./household-budget.js";
 
 const CATEGORY_CONFIG = {
-  income: { label: "수입", itemKey: "incomes" },
-  expense: { label: "지출", itemKey: "expenseItems" },
-  savings: { label: "저축", itemKey: "savingsItems" },
-  invest: { label: "투자", itemKey: "investItems" },
+  income: { label: "수입", itemKey: "incomes", accountLabel: "입금 계좌" },
+  account: { label: "계좌", itemKey: "accounts", accountLabel: "" },
+  expense: { label: "지출", itemKey: "expenseItems", accountLabel: "출금 계좌" },
+  savings: { label: "저축", itemKey: "savingsItems", accountLabel: "이체 계좌" },
+  invest: { label: "투자", itemKey: "investItems", accountLabel: "투자 계좌" },
 };
 
 const OUTFLOW_CATEGORIES = ["expense", "savings", "invest"];
@@ -47,6 +49,10 @@ function createText(tagName, className, text) {
   if (className) element.className = className;
   element.textContent = text;
   return element;
+}
+
+function getAccountName(accounts, accountId) {
+  return safeItems(accounts).find((account) => account.id === accountId)?.name || "계좌 선택";
 }
 
 function formatAmount(value) {
@@ -87,6 +93,55 @@ function isEmptyTemporaryItem(item) {
 function stripDraftItemMeta(item) {
   const { __temporary: _temporary, ...rest } = item || {};
   return rest;
+}
+
+function getIncomeAllocations(item, accounts = []) {
+  const fallbackAccountId = item?.accountId || safeItems(accounts)[0]?.id || "";
+  const rawAllocations = Array.isArray(item?.allocations) ? item.allocations : [];
+  const allocations = rawAllocations
+    .map((allocation) => ({
+      accountId: typeof allocation?.accountId === "string" && allocation.accountId
+        ? allocation.accountId
+        : fallbackAccountId,
+      amount: Math.max(0, Number(allocation?.amount) || 0),
+    }))
+    .filter((allocation) => allocation.accountId || allocation.amount > 0);
+
+  if (allocations.length > 0) {
+    return allocations;
+  }
+
+  return [{ accountId: fallbackAccountId, amount: Math.max(0, Number(item?.amount) || 0) }];
+}
+
+function sumAllocations(allocations) {
+  return safeItems(allocations).reduce((sum, allocation) => sum + (Number(allocation?.amount) || 0), 0);
+}
+
+function createAccountSelect(accounts, selectedAccountId, fieldName) {
+  const select = document.createElement("select");
+  select.dataset.financialModalField = fieldName;
+
+  safeItems(accounts).forEach((account) => {
+    const option = document.createElement("option");
+    option.value = account.id;
+    option.textContent = account.name;
+    option.selected = account.id === selectedAccountId;
+    select.appendChild(option);
+  });
+  return select;
+}
+
+function createPlainAccountSelect(accounts, selectedAccountId) {
+  const select = document.createElement("select");
+  safeItems(accounts).forEach((account) => {
+    const option = document.createElement("option");
+    option.value = account.id;
+    option.textContent = account.name;
+    option.selected = account.id === selectedAccountId;
+    select.appendChild(option);
+  });
+  return select;
 }
 
 function getItemLabel(item, category, index) {
@@ -155,9 +210,11 @@ function validateItems(category, items) {
     if (!String(item.name || "").trim()) {
       return `${display} 이름을 입력해 주세요.`;
     }
-    const amount = Number(item.amount) || 0;
-    if (amount < 1000) return `${display} 금액은 최소 1,000원 이상이어야 합니다.`;
-    if (amount % 1000 !== 0) return `${display} 금액은 1,000원 단위로 입력해 주세요.`;
+    if (category !== "account") {
+      const amount = Number(item.amount) || 0;
+      if (amount < 1000) return `${display} 금액은 최소 1,000원 이상이어야 합니다.`;
+      if (amount % 1000 !== 0) return `${display} 금액은 1,000원 단위로 입력해 주세요.`;
+    }
   }
   return "";
 }
@@ -169,12 +226,14 @@ function findFirstValidationError(category, items) {
     if (!String(item.name || "").trim()) {
       return { category, index, message: "이름을 입력해 주세요." };
     }
-    const amount = Number(item.amount) || 0;
-    if (amount < 0) return { category, index, message: "금액은 0원 이상이어야 합니다." };
-    if (amount % 1000 !== 0) return { category, index, message: "금액은 1,000원 단위로 입력해 주세요." };
-    if (amount < 1000) return { category, index, message: `${config.label} 금액은 최소 1,000원 이상이어야 합니다.` };
-    if (category === "expense" && isVariableExpenseItem(item) && (Number(item.varianceAmount) || 0) % 1000 !== 0) {
-      return { category, index, message: "금액은 1,000원 단위로 입력해 주세요." };
+    if (category !== "account") {
+      const amount = Number(item.amount) || 0;
+      if (amount < 0) return { category, index, message: "금액은 0원 이상이어야 합니다." };
+      if (amount % 1000 !== 0) return { category, index, message: "금액은 1,000원 단위로 입력해 주세요." };
+      if (amount < 1000) return { category, index, message: `${config.label} 금액은 최소 1,000원 이상이어야 합니다.` };
+      if (category === "expense" && isVariableExpenseItem(item) && (Number(item.varianceAmount) || 0) % 1000 !== 0) {
+        return { category, index, message: "금액은 1,000원 단위로 입력해 주세요." };
+      }
     }
   }
   return null;
@@ -346,14 +405,46 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
     event.returnValue = "";
   }
 
+  function convertToSelect(badge, idx, accounts) {
+    const category = badge.dataset.badgeAccountCategory || activeCategory;
+    const select = document.createElement("select");
+    select.className = "financial-modal-account-inline-select";
+    accounts.forEach((acc) => {
+      const opt = document.createElement("option");
+      opt.value = acc.id;
+      opt.textContent = acc.name;
+      if (acc.id === getDraftItemsForCategory(category)[idx]?.accountId) opt.selected = true;
+      select.appendChild(opt);
+    });
+    
+    select.onchange = () => {
+      const items = getDraftItemsForCategory(category);
+      if (!items[idx]) return;
+      items[idx].accountId = select.value;
+      if (category === "income") {
+        items[idx].allocations = [{ accountId: select.value, amount: Number(items[idx].amount) || 0 }];
+      }
+      setDraftItemsForCategory(category, items);
+      renderRows();
+      syncFinancialModalPendingBar();
+    };
+    select.onblur = () => {
+      renderRows();
+    };
+    badge.replaceWith(select);
+    select.focus();
+  }
+
   function syncStats() {
     if (!dom.financialModalSummary) return;
     if (isOutflowMode()) {
       renderSummaryRail();
       return;
     }
-    const total = draftItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
-    const totalLabel = IsfUtils.formatMoney(total);
+    const total = activeCategory === "account"
+      ? draftItems.length
+      : draftItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+    const totalLabel = activeCategory === "account" ? `${draftItems.length}개 계좌` : IsfUtils.formatMoney(total);
     dom.financialModalSummary.textContent = `${CATEGORY_CONFIG[activeCategory]?.label || ""} ${draftItems.length}개 · ${totalLabel}`;
   }
 
@@ -386,17 +477,22 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
   }
 
   function getOutflowDraftInputs() {
-    return INTEGRATED_CATEGORIES.reduce((inputs, category) => setItemsForCategory(inputs, category, getPersistableDraftItemsForCategory(category)), baselineInputs || getInputs());
+    return withIncomeSplitFlag(INTEGRATED_CATEGORIES.reduce((inputs, category) => setItemsForCategory(inputs, category, getPersistableDraftItemsForCategory(category)), baselineInputs || getInputs()));
   }
 
   function getCandidateDraftInputs() {
     if (!activeCategory || !baselineInputs) return null;
     if (isOutflowMode()) return getOutflowDraftInputs();
-    return setItemsForCategory(baselineInputs, activeCategory, getPersistableDraftItemsForCategory(activeCategory));
+    return withIncomeSplitFlag(setItemsForCategory(baselineInputs, activeCategory, getPersistableDraftItemsForCategory(activeCategory)));
   }
 
   function withIncomeSplitFlag(inputs) {
-    return inputs;
+    const incomes = safeItems(inputs?.incomes);
+    const hasMultipleAllocations = incomes.some((income) => getIncomeAllocations(income, inputs?.accounts).length > 1);
+    return {
+      ...inputs,
+      splitIncomeAccounts: hasMultipleAllocations || Boolean(inputs?.splitIncomeAccounts),
+    };
   }
 
   function hasDraftChanges() {
@@ -449,24 +545,44 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
       setRowError(category, index, "이름을 입력해 주세요.");
       return false;
     }
-    const amount = Number(item?.amount) || 0;
-    if (amount < 0) {
-      setRowError(category, index, "금액은 0원 이상이어야 합니다.");
-      return false;
-    }
-    if (amount % 1000 !== 0) {
-      setRowError(category, index, "금액은 1,000원 단위로 입력해 주세요.");
-      return false;
-    }
-    if (category === "expense" && isVariableExpenseItem(item)) {
-      const varianceAmount = Number(item?.varianceAmount) || 0;
-      if (varianceAmount < 0) {
+    if (category !== "account") {
+      const amount = Number(item?.amount) || 0;
+      if (amount < 0) {
         setRowError(category, index, "금액은 0원 이상이어야 합니다.");
         return false;
       }
-      if (varianceAmount % 1000 !== 0) {
+      if (amount % 1000 !== 0) {
         setRowError(category, index, "금액은 1,000원 단위로 입력해 주세요.");
         return false;
+      }
+      if (category === "expense" && isVariableExpenseItem(item)) {
+        const varianceAmount = Number(item?.varianceAmount) || 0;
+        if (varianceAmount < 0) {
+          setRowError(category, index, "금액은 0원 이상이어야 합니다.");
+          return false;
+        }
+        if (varianceAmount % 1000 !== 0) {
+          setRowError(category, index, "금액은 1,000원 단위로 입력해 주세요.");
+          return false;
+        }
+      }
+      if (category === "income") {
+        const allocations = getIncomeAllocations(item, getInputs().accounts);
+        for (const allocation of allocations) {
+          const allocationAmount = Number(allocation?.amount) || 0;
+          if (allocationAmount < 0) {
+            setRowError(category, index, "금액은 0원 이상이어야 합니다.");
+            return false;
+          }
+          if (allocationAmount % 1000 !== 0) {
+            setRowError(category, index, "금액은 1,000원 단위로 입력해 주세요.");
+            return false;
+          }
+        }
+        if (sumAllocations(allocations) > amount) {
+          setRowError(category, index, "수입 금액을 넘지 않게 배분해 주세요.");
+          return false;
+        }
       }
     }
     setRowError(category, index, "");
@@ -627,6 +743,15 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
     if (field === "amount" || (field === "varianceAmount" && category === "expense" && isVariableExpenseItem(item))) {
       const normalized = normalizeMoneyValue(value);
       nextItem[field] = normalized.value;
+      if (category === "income" && field === "amount") {
+        const allocations = getIncomeAllocations(nextItem, getInputs().accounts);
+        const previousAmount = Number(item.amount) || 0;
+        if (allocations.length <= 1 || sumAllocations(allocations) === previousAmount) {
+          nextItem.allocations = [{ accountId: nextItem.accountId, amount: normalized.value }];
+        } else {
+          nextItem.allocations = allocations;
+        }
+      }
       setRowError(category, index, normalized.error);
       syncRowErrorNode(row, normalized.error);
       if (normalized.error && String(value || "").trim().startsWith("-")) {
@@ -653,6 +778,35 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
         renderRows();
       }
       return;
+    }
+    if (field === "accountId") {
+      nextItem.accountId = value;
+      if (category === "income") {
+        const allocations = getIncomeAllocations(nextItem, getInputs().accounts);
+        nextItem.allocations = allocations.length <= 1
+          ? [{ accountId: value, amount: Number(nextItem.amount) || 0 }]
+          : allocations;
+      }
+    }
+    if (field === "allocationAccountId" && category === "income") {
+      const allocationIndex = Number(row.dataset.allocationIndex);
+      const allocations = getIncomeAllocations(nextItem, getInputs().accounts);
+      if (allocations[allocationIndex]) {
+        allocations[allocationIndex] = { ...allocations[allocationIndex], accountId: value };
+      }
+      nextItem.allocations = allocations;
+      nextItem.accountId = allocations[0]?.accountId || nextItem.accountId;
+    }
+    if (field === "allocationAmount" && category === "income") {
+      const allocationIndex = Number(row.dataset.allocationIndex);
+      const normalized = normalizeMoneyValue(value);
+      const allocations = getIncomeAllocations(nextItem, getInputs().accounts);
+      if (allocations[allocationIndex]) {
+        allocations[allocationIndex] = { ...allocations[allocationIndex], amount: normalized.value };
+      }
+      nextItem.allocations = allocations;
+      setRowError(category, index, normalized.error);
+      syncRowErrorNode(row.closest(".financial-modal-row") || row, normalized.error);
     }
     if (field === "annualRate") {
       const parsed = parseSavingsAnnualRateInput(value || "", getInputs().annualSavingsYield);
@@ -759,6 +913,53 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
     return input;
   }
 
+  function renderIncomeAllocationEditor(item, index, accounts) {
+    const section = document.createElement("section");
+    section.className = "financial-income-allocations";
+    section.dataset.incomeAllocationEditor = "true";
+
+    const header = document.createElement("div");
+    header.className = "financial-income-allocations__head";
+    header.appendChild(createText("strong", "", "입금 배분"));
+    const add = document.createElement("button");
+    add.type = "button";
+    add.className = "btn btn-ghost btn-sm";
+    add.dataset.incomeAllocationAdd = "true";
+    add.textContent = "배분 추가";
+    header.appendChild(add);
+    section.appendChild(header);
+
+    getIncomeAllocations(item, accounts).forEach((allocation, allocationIndex) => {
+      const row = document.createElement("div");
+      row.className = "financial-income-allocation-row";
+      row.dataset.incomeAllocationRow = "true";
+      row.dataset.modalRowCategory = "income";
+      row.dataset.modalRowIndex = String(index);
+      row.dataset.allocationIndex = String(allocationIndex);
+
+      const account = createPlainAccountSelect(accounts, allocation.accountId);
+      account.dataset.financialModalField = "allocationAccountId";
+      account.dataset.incomeAllocationAccount = "true";
+      appendField(row, "입금 계좌", account);
+
+      const amount = createMoneyInput("allocationAmount", allocation.amount);
+      amount.dataset.incomeAllocationAmount = "true";
+      appendField(row, "배분 금액", amount);
+
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "btn btn-ghost btn-sm";
+      remove.dataset.incomeAllocationRemove = "true";
+      remove.textContent = "삭제";
+      remove.disabled = getIncomeAllocations(item, accounts).length <= 1;
+      row.appendChild(remove);
+
+      section.appendChild(row);
+    });
+
+    return section;
+  }
+
   function renderSavingsAdditionalSettings(item, rowCategory, index) {
     if (rowCategory !== "savings") return null;
 
@@ -809,15 +1010,21 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
     nameInput.type = "text";
     nameInput.value = item.name || "";
     nameInput.dataset.financialModalField = "name";
-    appendField(fields, rowCategory === "income" ? "수입 이름" : "항목 이름", nameInput);
+    appendField(fields, rowCategory === "account" ? "계좌 별칭" : "비용 이름", nameInput);
 
     if (rowCategory !== "account") {
+      const selectedAccountId = item.accountId || recommendAccountId(getInputs(), rowCategory, item);
+      item.accountId = selectedAccountId;
       const amountInput = createMoneyInput("amount", item.amount);
       appendField(fields, "금액", appendMoneyControls("금액", amountInput));
+      appendField(fields, "출처 계좌", createAccountSelect(accounts, selectedAccountId, "accountId"));
 
       if (rowCategory === "expense" && isVariableExpenseItem(item)) {
         const varianceInput = createMoneyInput("varianceAmount", item.varianceAmount);
         appendField(fields, "±범위", appendMoneyControls("범위", varianceInput, { variance: true }));
+      }
+      if (rowCategory === "income") {
+        fields.appendChild(renderIncomeAllocationEditor(item, index, accounts));
       }
       const savingsAdditional = renderSavingsAdditionalSettings(item, rowCategory, index);
       if (savingsAdditional) {
@@ -905,6 +1112,10 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
 
       const varianceInput = createMoneyInput("varianceAmount", row.varianceAmount);
       appendField(detail, "±범위", appendMoneyControls("범위", varianceInput, { variance: true }));
+
+      const selectedAccountId = sourceItem.accountId || recommendAccountId(getInputs(), "expense", sourceItem);
+      sourceItem.accountId = selectedAccountId;
+      appendField(detail, "출금 계좌", createAccountSelect(getInputs().accounts, selectedAccountId, "accountId"));
 
       const errorMessage = getRowError("expense", sourceIndex);
       if (errorMessage) {
@@ -995,7 +1206,7 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
     if (createCategory === "invest") return "투자 추가";
     if (createCategory === "savings") return "저축 추가";
     if (createCategory === "expense") return "생활비 추가";
-    return "항목 추가";
+    return createCategory === "account" ? "계좌 추가" : "항목 추가";
   }
 
   function appendPanelHeader(panel) {
@@ -1306,7 +1517,9 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
     if (dom.financialModalDescription) {
       dom.financialModalDescription.textContent = isOutflowCategory(category)
         ? "월 수입부터 자동 저축 결과까지 한 흐름에서 확인합니다. 변경 내용은 저장할 때만 요약 화면에 반영됩니다."
-        : "항목 이름과 금액을 확인하고 저장할 때만 요약 화면에 반영합니다.";
+        : category === "account"
+        ? "계좌 별칭만 가볍게 정리합니다. 별도 계좌 관리 화면은 만들지 않습니다."
+        : "항목 이름, 금액, 연결 계좌를 확인하고 저장할 때만 요약 화면에 반영합니다.";
     }
     renderRows();
     if (dom.financialModalSave) {
@@ -1318,7 +1531,7 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
     }
     if (dom.financialModalCreate) {
       dom.financialModalCreate.hidden = isOutflowCategory(category);
-      dom.financialModalCreate.textContent = "새 항목 추가";
+      dom.financialModalCreate.textContent = category === "account" ? "새 계좌 추가" : "새 항목 추가";
     }
     dom.financialModal.hidden = false;
     window.setTimeout(() => dom.financialModal.classList.add("is-active"), 10);
@@ -1410,6 +1623,12 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
     if (!item) return;
     const nextValue = Math.max(0, (Number(item[field]) || 0) + delta);
     const nextItem = { ...item, [field]: nextValue };
+    if (category === "income" && field === "amount") {
+      const allocations = getIncomeAllocations(nextItem, getInputs().accounts);
+      if (allocations.length <= 1 || sumAllocations(allocations) === (Number(item.amount) || 0)) {
+        nextItem.allocations = [{ accountId: nextItem.accountId, amount: nextValue }];
+      }
+    }
     items[index] = nextItem;
     setRowError(category, index, "");
     setDraftItemsForCategory(category, items);
@@ -1420,6 +1639,51 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
     if (category === "expense" && (field === "amount" || field === "varianceAmount")) {
       syncVariableRangeSummaryNode();
     }
+    syncFinancialModalPendingBar();
+  }
+
+  function addIncomeAllocation(row) {
+    if (!row) return;
+    const category = row.dataset.modalRowCategory || activeCategory;
+    if (category !== "income") return;
+    const index = Number(row.dataset.modalRowIndex);
+    const items = getDraftItemsForCategory(category);
+    const item = items[index];
+    if (!item) return;
+    const accounts = safeItems(getInputs().accounts);
+    const allocations = getIncomeAllocations(item, accounts);
+    const nextAccountId = accounts.find((account) => !allocations.some((allocation) => allocation.accountId === account.id))?.id
+      || accounts[0]?.id
+      || item.accountId
+      || "";
+    items[index] = {
+      ...item,
+      allocations: [...allocations, { accountId: nextAccountId, amount: 0 }],
+    };
+    setDraftItemsForCategory(category, items);
+    renderRows();
+    syncFinancialModalPendingBar();
+  }
+
+  function removeIncomeAllocation(row) {
+    if (!row) return;
+    const category = row.dataset.modalRowCategory || activeCategory;
+    if (category !== "income") return;
+    const index = Number(row.dataset.modalRowIndex);
+    const allocationIndex = Number(row.dataset.allocationIndex);
+    const items = getDraftItemsForCategory(category);
+    const item = items[index];
+    if (!item) return;
+    const allocations = getIncomeAllocations(item, getInputs().accounts);
+    if (allocations.length <= 1) return;
+    const nextAllocations = allocations.filter((_, itemIndex) => itemIndex !== allocationIndex);
+    items[index] = {
+      ...item,
+      accountId: nextAllocations[0]?.accountId || item.accountId,
+      allocations: nextAllocations,
+    };
+    setDraftItemsForCategory(category, items);
+    renderRows();
     syncFinancialModalPendingBar();
   }
 
@@ -1436,15 +1700,23 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
     renderRows();
   }
 
+  function getRecommendedAccountId() {
+    const inputs = getInputs();
+    return recommendAccountId(inputs, getCreateCategory(), {});
+  }
+
   function buildTemporaryItem(category) {
+    const accountId = category === "account" ? "" : getRecommendedAccountId();
     const item = {
       __temporary: true,
       id: `tmp-${category}-${Date.now()}`,
       name: "",
       amount: 0,
+      accountId,
     };
     if (category === "income") {
       item.tone = "income";
+      item.allocations = [{ accountId, amount: 0 }];
     } else if (category !== "account") {
       item.group = getGroupNames(category)[0] || CATEGORY_CONFIG[category]?.label || "";
       item.tone = category;
@@ -1496,11 +1768,15 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
     grid.className = "financial-create-grid";
 
     grid.appendChild(makeCreateField(
-      createCategory === "income" ? "수입 이름" : "항목 이름",
+      createCategory === "account" ? "계좌 별칭" : "비용 이름",
       createInput("name", createDraft.name),
     ));
 
     if (createCategory !== "account") {
+      const accountSelect = createAccountSelect(getInputs().accounts, createDraft.accountId, "accountId");
+      accountSelect.id = "financialCreateAccountSelect";
+      grid.appendChild(makeCreateField("출처 계좌", accountSelect));
+
       grid.appendChild(makeCreateField(
         "금액",
         createInput("amount", createDraft.amount ? formatAmount(createDraft.amount) : "", { inputMode: "decimal" }),
@@ -1509,6 +1785,18 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
       if (!isOutflowMode()) {
         const groupInput = createInput("group", createDraft.group || CATEGORY_CONFIG[createCategory].label);
         grid.appendChild(makeCreateField("그룹", groupInput));
+
+        const toggle = document.createElement("button");
+        toggle.type = "button";
+        toggle.id = "financialCreateNewAccountToggle";
+        toggle.className = `btn btn-ghost btn-sm ${createDraft.useNewAccount ? "is-active" : ""}`;
+        toggle.textContent = createDraft.useNewAccount ? "기존 계좌 선택으로 돌아가기" : "새 계좌 만들기";
+        step.appendChild(toggle);
+
+        if (createDraft.useNewAccount) {
+          const accountName = createInput("accountName", createDraft.accountName);
+          step.appendChild(makeCreateField("새 계좌 이름", accountName));
+        }
       }
     }
 
@@ -1540,6 +1828,10 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
       if (key === "amount") createDraft.amount = IsfUtils.toWon(field.value || "0");
       else createDraft[key] = field.value || "";
     });
+    const accountSelect = dom.financialModalRows.querySelector("#financialCreateAccountSelect");
+    if (accountSelect && !createDraft.useNewAccount) {
+      createDraft.accountId = accountSelect.value;
+    }
   }
 
   function validateCreateDraft() {
@@ -1549,8 +1841,17 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
     if (createCategory !== "account") {
       if ((Number(createDraft.amount) || 0) < 1000) return "금액은 최소 1,000원 이상이어야 합니다.";
       if ((Number(createDraft.amount) || 0) % 1000 !== 0) return "금액은 1,000원 단위로 입력해 주세요.";
+      if (createDraft.useNewAccount && !String(createDraft.accountName || "").trim()) {
+        return "새 계좌 이름을 입력해 주세요.";
+      }
+      if (!createDraft.useNewAccount && !createDraft.accountId) return "연결 계좌를 선택해 주세요.";
     }
     return "";
+  }
+
+  function getCreateAccountName() {
+    if (createDraft.useNewAccount) return createDraft.accountName;
+    return getAccountName(getInputs().accounts, createDraft.accountId);
   }
 
   function renderCreateConfirm() {
@@ -1573,9 +1874,13 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
 
     const summaryRows = [
       ["항목", createDraft.name],
-      ["금액", IsfUtils.convertToKoreanWon(createDraft.amount)],
-      ["그룹/유형", `${CATEGORY_CONFIG[createCategory].label} · ${createDraft.group || CATEGORY_CONFIG[createCategory].label}`],
+      ["금액", createCategory === "account" ? "계좌 별칭" : IsfUtils.convertToKoreanWon(createDraft.amount)],
+      ["연결 계좌", createCategory === "account" ? createDraft.name : getCreateAccountName()],
+      ["그룹/유형", createCategory === "account" ? "계좌" : `${CATEGORY_CONFIG[createCategory].label} · ${createDraft.group || CATEGORY_CONFIG[createCategory].label}`],
     ];
+    if (!isOutflowMode()) {
+      summaryRows.push(["보정", createDraft.useNewAccount ? "새 계좌 생성 후 연결" : "자동 보정 없음"]);
+    }
     summaryRows.forEach(([label, value]) => {
       const row = document.createElement("div");
       row.className = "financial-create-confirm__row";
@@ -1601,6 +1906,25 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
     dom.financialModalRows.replaceChildren(confirm);
   }
 
+  function buildCreatedAccount(nextInputs) {
+    const createCategory = createDraft.category || getCreateCategory();
+    if (!createDraft.useNewAccount || createCategory === "account") return null;
+    const safeName = String(createDraft.accountName || "").trim();
+    if (!safeName) return null;
+    const idBase = safeName
+      .toLowerCase()
+      .replace(/[^a-z0-9가-힣]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "account";
+    let candidateId = `acc-${idBase}`;
+    let suffix = 1;
+    const accountIds = new Set(safeItems(nextInputs.accounts).map((account) => account.id));
+    while (accountIds.has(candidateId)) {
+      candidateId = `acc-${idBase}-${suffix}`;
+      suffix += 1;
+    }
+    return { id: candidateId, name: safeName };
+  }
+
   function commitCreateDraft() {
     const message = validateCreateDraft();
     if (message) {
@@ -1615,6 +1939,7 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
         name: String(createDraft.name || "").trim(),
         amount: Number(createDraft.amount) || 0,
         group: normalizeAllocationGroupName(createDraft.group || getGroupNames(createCategory)[0] || CATEGORY_CONFIG[createCategory].label),
+        accountId: createDraft.accountId,
         tone: createCategory,
       };
       setDraftItemsForCategory(createCategory, [...getDraftItemsForCategory(createCategory), newItem]);
@@ -1625,20 +1950,33 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
       renderRows();
       return;
     }
-    let nextInputs = { ...base };
+    let nextInputs = {
+      ...base,
+      accounts: safeItems(base.accounts).map((account) => ({ ...account })),
+    };
 
     if (createCategory === "account") {
-      return;
+      const account = {
+        id: `acc-${Date.now()}`,
+        name: String(createDraft.name || "").trim(),
+      };
+      nextInputs.accounts = [...nextInputs.accounts, account];
     } else {
+      const createdAccount = buildCreatedAccount(nextInputs);
+      const accountId = createdAccount ? createdAccount.id : createDraft.accountId;
+      if (createdAccount) nextInputs.accounts = [...nextInputs.accounts, createdAccount];
+
       const newItem = {
         id: `${createCategory}-${Date.now()}`,
         name: String(createDraft.name || "").trim(),
         amount: Number(createDraft.amount) || 0,
         group: normalizeAllocationGroupName(createDraft.group || CATEGORY_CONFIG[createCategory].label),
+        accountId,
       };
       if (createCategory === "income") {
         delete newItem.group;
         newItem.tone = "income";
+        newItem.allocations = [{ accountId, amount: newItem.amount }];
       } else {
         newItem.tone = createCategory;
       }
@@ -1739,6 +2077,16 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
           return;
         }
         if (handleAdjustmentClick(target)) return;
+        if (target.closest?.("[data-income-allocation-add]")) {
+          event.preventDefault();
+          addIncomeAllocation(target.closest(".financial-modal-row"));
+          return;
+        }
+        if (target.closest?.("[data-income-allocation-remove]")) {
+          event.preventDefault();
+          removeIncomeAllocation(target.closest("[data-income-allocation-row]"));
+          return;
+        }
         if (target.closest?.("[data-savings-additional-toggle]")) {
           event.preventDefault();
           toggleSavingsAdditional(target.closest(".financial-modal-row"));
@@ -1757,6 +2105,12 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
         if (target.closest?.("[data-financial-add-group]")) {
           addMenuOpen = false;
           addGroupToActiveTab();
+          return;
+        }
+        if (target.closest?.("#financialCreateNewAccountToggle")) {
+          readCreateFields();
+          createDraft.useNewAccount = !createDraft.useNewAccount;
+          renderCreateDetails();
           return;
         }
         if (target.closest?.("#financialCreateReview")) {
@@ -1788,6 +2142,16 @@ export function createFinancialModalController({ persistence, getVisibleInputs, 
             removeButton.dataset.financialModalCategory || activeCategory,
             Number(removeButton.dataset.financialModalRemove),
           );
+          return;
+        }
+
+        // 배지 클릭 시 인라인 셀렉트 변환
+        const badge = target.closest("[data-badge-account-index]");
+        if (badge) {
+          event.stopPropagation();
+          const idx = Number(badge.dataset.badgeAccountIndex);
+          const accounts = safeItems(getInputs().accounts);
+          convertToSelect(badge, idx, accounts);
           return;
         }
 

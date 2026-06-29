@@ -3,7 +3,8 @@ import {
   DEFAULT_EXPENSE_ITEMS,
   DEFAULT_SAVINGS_ITEMS,
   DEFAULT_INVEST_ITEMS,
-  PR_MODE_ASSUMED_ANNUAL_DIV_YIELD
+  PR_MODE_ASSUMED_ANNUAL_DIV_YIELD,
+  MAGIC_MAPPING_DEFAULTS
 } from "./constants.js";
 import {
   getMonthlyIncomeTotalWon,
@@ -30,6 +31,8 @@ export function buildMonthlySnapshot(inputs) {
       label: String(item?.name || `수입 ${index + 1}`),
       tone: "income",
       value: window.IsfUtils.sanitizeMoney(item?.amount, 0),
+      accountId: item?.accountId,
+      allocations: item?.allocations,
     }))
     .filter((item) => item.value > 0);
   const expenseBreakdown = (Array.isArray(inputs.expenseItems) ? inputs.expenseItems : [])
@@ -39,6 +42,7 @@ export function buildMonthlySnapshot(inputs) {
       tone: "expense",
       value: window.IsfUtils.sanitizeMoney(item?.amount, 0),
       group: normalizeAllocationGroupName(item?.group),
+      accountId: item?.accountId,
     }))
     .filter((item) => item.value > 0);
   const savingsBreakdown = (Array.isArray(inputs.savingsItems) ? inputs.savingsItems : [])
@@ -48,6 +52,7 @@ export function buildMonthlySnapshot(inputs) {
       tone: "savings",
       value: window.IsfUtils.sanitizeMoney(item?.amount, 0),
       group: normalizeAllocationGroupName(item?.group),
+      accountId: item?.accountId,
     }))
     .filter((item) => item.value > 0);
   const investBreakdown = (Array.isArray(inputs.investItems) ? inputs.investItems : [])
@@ -57,6 +62,7 @@ export function buildMonthlySnapshot(inputs) {
       tone: "invest",
       value: window.IsfUtils.sanitizeMoney(item?.amount, 0),
       group: normalizeAllocationGroupName(item?.group),
+      accountId: item?.accountId,
     }))
     .filter((item) => item.value > 0);
   const expense = expenseBreakdown.reduce((sum, item) => sum + item.value, 0);
@@ -75,6 +81,7 @@ export function buildMonthlySnapshot(inputs) {
       label: "결손(부채/자산인출)",
       tone: "deficit",
       value: deficit,
+      accountId: MAGIC_MAPPING_DEFAULTS.expense || "acc-living",
     });
   }
 
@@ -104,6 +111,11 @@ export function buildMonthlySnapshot(inputs) {
     surplus,
     deficit,
     targets,
+    accounts: inputs.accounts || [],
+    splitIncomeAccounts: Boolean(inputs.splitIncomeAccounts),
+    accountCorrections: Array.isArray(inputs.accountCorrections) ? inputs.accountCorrections : [],
+    surplusTransferAccountId: inputs.surplusTransferAccountId || "",
+    transfers: inputs.transfers || [],
   };
 }
 
@@ -143,6 +155,7 @@ export function buildSavingsBuckets(inputs) {
       id: typeof item?.id === "string" && item.id.trim()
         ? item.id.trim()
         : createAllocationItemId("savings", index),
+      accountId: item?.accountId || "",
       monthlyTarget: monthlyTargets[index] || 0,
       annualRate,
       monthlyFactor: toMonthlyFactor(annualRate),
@@ -166,6 +179,7 @@ export function buildInvestBuckets(inputs) {
     id: typeof item?.id === "string" && item.id.trim()
       ? item.id.trim()
       : createAllocationItemId("invest", index),
+    accountId: item?.accountId || "",
     monthlyTarget: monthlyTargets[index] || 0,
     monthlyFactor,
     balance: initialBalances[index] || 0,
@@ -318,6 +332,35 @@ export function simulateProjection(inputs, options = {}) {
     });
     invest = investBuckets.reduce((sum, bucket) => sum + bucket.balance, 0);
 
+    const surplusTransferAccountId = inputs.surplusTransferAccountId;
+    if (nextCash > 0 && surplusTransferAccountId) {
+      const targetSavings = savingsBuckets.filter(b => !b.closed && b.accountId === surplusTransferAccountId);
+      const targetInvests = investBuckets.filter(b => !b.closed && b.accountId === surplusTransferAccountId);
+      const targetBuckets = [...targetSavings, ...targetInvests];
+      
+      if (targetBuckets.length > 0) {
+        const surplusAmount = nextCash;
+        const surplusAdds = allocateByWeights(surplusAmount, targetBuckets.map(b => b.monthlyTarget || 1));
+        
+        targetSavings.forEach((bucket) => {
+          const idx = savingsBuckets.indexOf(bucket);
+          if (idx !== -1) {
+            bucket.balance += surplusAdds[idx] || 0;
+          }
+        });
+        targetInvests.forEach((bucket) => {
+          const idx = investBuckets.indexOf(bucket);
+          if (idx !== -1) {
+            bucket.balance += surplusAdds[targetSavings.length + idx] || 0;
+          }
+        });
+        
+        savings = savingsBuckets.reduce((sum, bucket) => sum + bucket.balance, 0);
+        invest = investBuckets.reduce((sum, bucket) => sum + bucket.balance, 0);
+        nextCash = 0;
+      }
+    }
+
     let newBorrowing = 0;
     if (nextCash < 0) {
       newBorrowing = -nextCash;
@@ -430,43 +473,54 @@ export function buildSummaryCards(snapshot, projection, horizonYears) {
 export function calculateAccountFinancialIncomes(inputs) {
   const savingsItems = Array.isArray(inputs.savingsItems) ? inputs.savingsItems : [];
   const investItems = Array.isArray(inputs.investItems) ? inputs.investItems : [];
+  const accounts = Array.isArray(inputs.accounts) ? inputs.accounts : [];
+  const accountIds = new Set(accounts.map((a) => a.id));
+
+  function resolveAccountId(itemAccountId, magicDefault) {
+    if (itemAccountId && accountIds.has(itemAccountId)) return itemAccountId;
+    if (magicDefault && accountIds.has(magicDefault)) return magicDefault;
+    return accounts[0]?.id || null;
+  }
+
   const savingsBuckets = buildSavingsBuckets(inputs);
   const investBuckets = buildInvestBuckets(inputs);
-  const itemIncomeMap = {};
+
+  const accountIncomeMap = {};
+  accounts.forEach((acc) => {
+    accountIncomeMap[acc.id] = 0;
+  });
 
   savingsBuckets.forEach((bucket, index) => {
     const originalItem = savingsItems[index];
-    const itemId = typeof originalItem?.id === "string" && originalItem.id.trim()
-      ? originalItem.id.trim()
-      : bucket.id;
+    const accId = resolveAccountId(originalItem?.accountId, MAGIC_MAPPING_DEFAULTS.savings);
+    if (!accId) return;
 
     const annualRate = bucket.annualRate || 0;
     const balance = bucket.balance || 0;
     const annualIncome = balance * (annualRate / 100);
 
-    if (itemIncomeMap[itemId] === undefined) {
-      itemIncomeMap[itemId] = 0;
+    if (accountIncomeMap[accId] === undefined) {
+      accountIncomeMap[accId] = 0;
     }
-    itemIncomeMap[itemId] += annualIncome;
+    accountIncomeMap[accId] += annualIncome;
   });
 
   investBuckets.forEach((bucket, index) => {
     const originalItem = investItems[index];
-    const itemId = typeof originalItem?.id === "string" && originalItem.id.trim()
-      ? originalItem.id.trim()
-      : bucket.id;
+    const accId = resolveAccountId(originalItem?.accountId, MAGIC_MAPPING_DEFAULTS.invest);
+    if (!accId) return;
 
     const balance = bucket.balance || 0;
     const annualIncome = balance * 0.02;
 
-    if (itemIncomeMap[itemId] === undefined) {
-      itemIncomeMap[itemId] = 0;
+    if (accountIncomeMap[accId] === undefined) {
+      accountIncomeMap[accId] = 0;
     }
-    itemIncomeMap[itemId] += annualIncome;
+    accountIncomeMap[accId] += annualIncome;
   });
 
   let totalFinancialIncome = 0;
-  Object.values(itemIncomeMap).forEach((val) => {
+  Object.values(accountIncomeMap).forEach((val) => {
     totalFinancialIncome += val;
   });
 
@@ -478,15 +532,15 @@ export function calculateAccountFinancialIncomes(inputs) {
       ? "금융소득 종합과세 대상 (한도 초과)"
       : "금융소득 종합과세 주의";
 
-    Object.keys(itemIncomeMap).forEach((itemId) => {
-      if (itemIncomeMap[itemId] > 0) {
-        warnings[itemId] = { status, message };
+    Object.keys(accountIncomeMap).forEach((accId) => {
+      if (accountIncomeMap[accId] > 0) {
+        warnings[accId] = { status, message };
       }
     });
   }
 
   return {
-    accountIncomeMap: itemIncomeMap,
+    accountIncomeMap,
     totalFinancialIncome,
     warnings
   };

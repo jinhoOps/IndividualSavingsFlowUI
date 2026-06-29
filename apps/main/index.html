@@ -57,18 +57,6 @@
         </div>
       </section>
 
-      <section id="accountFlowPortfolioGuide" class="panel account-flow-portfolio-guide" data-account-flow-portfolio-guide hidden aria-labelledby="accountFlowPortfolioGuideTitle">
-        <div class="section-head">
-          <div>
-            <h2 id="accountFlowPortfolioGuideTitle">계좌흐름도는 Portfolio에서 확인</h2>
-            <p class="hint">Step 1은 수입, 생활비, 저축, 투자 흐름만 관리합니다. 보존된 계좌흐름도 handoff 데이터는 Portfolio에서 이어서 검토하세요.</p>
-          </div>
-          <a class="btn btn-ghost btn-sm" href="/IndividualSavingsFlowUI/apps/portfolio/index.html">
-            Portfolio로 이동
-          </a>
-        </div>
-      </section>
-
       <section class="panel controls-panel controls-panel--assumptions is-collapsed" aria-labelledby="inputsTitle">
         <div class="section-head section-head--controls">
           <h2 id="inputsTitle">
@@ -84,8 +72,19 @@
         </div>
         <div id="inputsPanelContent" hidden>
           <p class="controls-panel__intro">
-            월 수입, 생활비, 저축, 투자 금액은 재무설정 상세에서 편집합니다.
+            월 수입, 생활비, 저축, 투자 금액과 연결 계좌는 재무설정 상세에서 편집합니다.
           </p>
+          <div id="surplusTransferBanner" class="surplus-transfer-banner" hidden>
+            <span id="surplusNormalWrapper" style="display: inline-flex; align-items: center; gap: var(--sp-xs); flex-wrap: wrap;">
+              💡 이번 달 남는 잉여현금 <span id="surplusAmountText">0원</span>은 
+              <select id="surplusTransferAccountSelect" class="surplus-select" aria-label="잉여현금 자동 이체 계좌"></select> 
+              으로 자동 이체합니다.
+              <span class="help-tooltip-trigger" data-tooltip="지출, 저축, 투자를 모두 배분하고 남은 수입(잉여현금)이 있을 때 지정된 계좌로 자동 입금 흐름이 생성됩니다.">?</span>
+            </span>
+            <span id="surplusDeficitWrapper" style="display: inline-flex; align-items: center; gap: var(--sp-xs); flex-wrap: wrap;" hidden>
+              ⚠️ 이번 달 수입보다 지출/저축/투자가 <span id="deficitAmountText">0원</span> 많습니다 (결손)
+            </span>
+          </div>
 
           <form id="inputsForm" autocomplete="off">
             <div id="mgmtPanelSettings" class="mgmt-panel mgmt-panel--assumptions" role="group" aria-labelledby="inputsTitle">
@@ -174,11 +173,20 @@
             <div id="visualizationToggle" class="tab-list tab-list--sm" role="tablist" aria-label="시각화 선택">
               <button id="showSankeyBasicBtn" class="tab-btn tab-btn--sm is-active" data-vis="basic" role="tab" aria-selected="true">기본</button>
               <button id="showSankeyDetailBtn" class="tab-btn tab-btn--sm" data-vis="detail" role="tab" aria-selected="false">상세</button>
+              <button id="showNetworkBtn" class="tab-btn tab-btn--sm" data-vis="network" role="tab" aria-selected="false">계좌흐름도</button>
             </div>
-            <span id="sankeyMetaTooltipTrigger" class="help-tooltip-trigger" data-tooltip="월수입이 생활비, 저축, 투자로 나뉘는 흐름을 기본 또는 상세 단위로 확인할 수 있습니다.">?</span>
+            <span id="sankeyMetaTooltipTrigger" class="help-tooltip-trigger" data-tooltip="수입에서 계좌를 거쳐 최종 소비처로 흘러가는 가계 흐름(Sankey) 및 계좌 간의 다대다(N:N) 이체 관계망(Network)을 번갈아 탐색할 수 있습니다.">?</span>
           </div>
           <div class="sankey-head-tools">
             <p id="sankeyMeta" class="hint" hidden></p>
+            <div class="sankey-correction-control" role="group" aria-label="Sankey 계좌 보정" hidden aria-hidden="true">
+              <button id="sankeyCorrectionRefresh" class="btn btn-ghost btn-sm" type="button">
+                계좌 보정
+              </button>
+              <span id="sankeyCorrectionStatus" class="sankey-correction-status" aria-live="polite">
+                계좌 연결 정상
+              </span>
+            </div>
             <div class="sankey-view-toggle" role="group" aria-label="Sankey Diagram 표기 방식">
               <button id="sankeyViewAmount" class="btn btn-ghost btn-sm sankey-view-btn is-active" type="button"
                 data-sankey-view="amount" aria-pressed="true">
@@ -242,6 +250,13 @@
               <svg id="sankeySvg" role="img" aria-label="월 가계 흐름 Sankey Diagram"></svg>
               <p id="sankeyEmpty" class="empty" hidden>표시할 흐름이 없습니다.</p>
               <div id="sankeyTooltip" class="sankey-tooltip" hidden></div>
+            </div>
+            <div id="networkMapWrap" class="network-map-wrap visualization-slide">
+              <div id="networkMapInner" class="network-map-inner">
+                <div class="scroll-hint-banner mobile-only">↔ 좌우로 드래그/스크롤하여 계좌망을 확인하세요</div>
+                <svg id="accountFlowNetworkMap" role="img" aria-label="계좌 간 자금 흐름 지도"></svg>
+                <p id="networkMapEmpty" class="empty" hidden>표시할 이체 흐름이 없습니다.</p>
+              </div>
             </div>
           </div>
         </div>
