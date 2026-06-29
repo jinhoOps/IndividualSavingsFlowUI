@@ -13,6 +13,7 @@ function createSeedMainInputs() {
       { id: 'acc-stock', name: '투자계좌' },
       { id: 'acc-cma', name: 'CMA' },
     ],
+    splitIncomeAccounts: true,
     incomes: [
       {
         id: 'income-main',
@@ -75,7 +76,7 @@ test.describe('Account Map route and draft import', () => {
     await page.locator('#importMainData').click();
 
     await expect(page.locator('#accountMapSummary')).toContainText('4개 계좌');
-    await expect(page.locator('#accountMapSummary')).toContainText('6개 관계');
+    await expect(page.locator('#accountMapSummary')).toContainText('7개 관계');
     await expect(page.locator('#accountMapCandidates')).toContainText('통신비');
     await expect(page.locator('#accountMapCandidates')).toContainText('추천');
     await expect(page.locator('#accountMapCanvas')).toContainText('급여계좌');

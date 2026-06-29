@@ -60,16 +60,25 @@
   color: var(--ink);
 }
 
+.account-map-graph {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.7fr) minmax(220px, 1fr);
+  gap: var(--sp-md);
+  padding: var(--sp-md);
+}
+
 .account-map-node-list,
+.account-map-relationship-list,
 .account-map-candidate-list {
   list-style: none;
   margin: 0;
-  padding: var(--sp-md);
+  padding: 0;
   display: grid;
   gap: var(--sp-sm);
 }
 
 .account-map-node-list li,
+.account-map-relationship-list li,
 .account-map-candidate-list li {
   border: 1px solid var(--line);
   border-radius: var(--rd-sm);
@@ -77,8 +86,33 @@
   background: var(--surface);
 }
 
+.account-map-relationship-list li,
+.account-map-candidate-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-sm);
+}
+
+.account-map-relationship-type,
+.account-map-candidate-status {
+  flex: 0 0 auto;
+  min-width: 44px;
+  border-radius: var(--rd-sm);
+  padding: 2px 6px;
+  background: var(--tone-primary-soft);
+  color: var(--tone-primary);
+  font-size: var(--text-body-xs);
+  font-weight: 800;
+  text-align: center;
+}
+
 @media (max-width: 860px) {
   .account-map-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .account-map-graph {
     grid-template-columns: 1fr;
   }
 }

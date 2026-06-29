@@ -1,4 +1,6 @@
 import { AccountMapState } from "./modules/state.js";
+import { resolveLatestMainInputs } from "./modules/step1-connector.js";
+import { buildAccountMapDraftFromMain } from "./modules/draft-builder.js";
 
 function formatCount(value, label) {
   return `${Number(value) || 0}${label}`;
@@ -41,9 +43,22 @@ const AccountMapApp = {
   },
 
   bindEvents() {
-    this.nodes.importMainData?.addEventListener("click", () => {
-      this.showFeedback("Main 데이터 가져오기는 다음 작업에서 연결됩니다.");
+    this.nodes.importMainData?.addEventListener("click", async () => {
+      await this.importMainData();
     });
+  },
+
+  async importMainData() {
+    const latest = await resolveLatestMainInputs();
+    if (!latest?.data) {
+      this.showFeedback("가져올 Main 데이터가 없습니다.");
+      return;
+    }
+
+    const draft = buildAccountMapDraftFromMain(latest.data, latest.source);
+    await this.state.replaceDraft(draft);
+    this.render();
+    this.showFeedback("Main 데이터로 Account Map 초안을 만들었습니다.");
   },
 
   showFeedback(message) {
@@ -84,14 +99,30 @@ const AccountMapApp = {
       return;
     }
 
-    const list = document.createElement("ul");
-    list.className = "account-map-node-list";
+    const wrap = document.createElement("div");
+    wrap.className = "account-map-graph";
+
+    const accountList = document.createElement("ul");
+    accountList.className = "account-map-node-list";
     draft.accounts.forEach((account) => {
       const item = document.createElement("li");
+      item.dataset.accountId = account.id || "";
       item.textContent = account.name || account.id || "계좌";
-      list.appendChild(item);
+      accountList.appendChild(item);
     });
-    this.nodes.canvas.replaceChildren(list);
+
+    const relationshipList = document.createElement("ul");
+    relationshipList.className = "account-map-relationship-list";
+    draft.relationships.forEach((relationship) => {
+      const item = document.createElement("li");
+      item.dataset.relationshipId = relationship.id || "";
+      const type = createText("span", "account-map-relationship-type", getRelationshipTypeLabel(relationship.type));
+      const label = createText("strong", "", relationship.label || "관계");
+      item.append(type, label);
+      relationshipList.appendChild(item);
+    });
+    wrap.append(accountList, relationshipList);
+    this.nodes.canvas.replaceChildren(wrap);
   },
 
   renderDetail() {
@@ -110,11 +141,23 @@ const AccountMapApp = {
     list.className = "account-map-candidate-list";
     draft.candidates.forEach((candidate) => {
       const item = document.createElement("li");
-      item.textContent = candidate.label || candidate.id || "후보";
+      const label = createText("strong", "", candidate.label || candidate.id || "후보");
+      const status = createText("span", "account-map-candidate-status", candidate.recommended ? "추천" : "검토 필요");
+      item.append(label, status);
       list.appendChild(item);
     });
     this.nodes.candidates.replaceChildren(list);
   },
 };
+
+function getRelationshipTypeLabel(type) {
+  const labels = {
+    "income-deposit": "입금",
+    "auto-transfer": "이체",
+    "savings-transfer": "저축",
+    "investment-transfer": "투자",
+  };
+  return labels[type] || "관계";
+}
 
 document.addEventListener("DOMContentLoaded", () => AccountMapApp.init());
