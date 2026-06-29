@@ -1173,6 +1173,150 @@ test.describe('Phase 09 source account automatic flow', () => {
   });
 });
 
+test.describe('Phase 10.8 Account Map Main entry and compatibility', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.clear();
+      sessionStorage.clear();
+    });
+    await page.goto('apps/main/index.html');
+    await page.waitForSelector('main');
+  });
+
+  test('shows only a lightweight Account Map entry on Main with the dedicated route', async ({ page }) => {
+    const entry = page.locator('[data-account-map-entry="lightweight"]');
+    await expect(entry).toBeVisible();
+    await expect(entry).toContainText('Account Map');
+    await expect(entry).toContainText('계좌 관계');
+
+    const link = entry.locator('[data-account-map-link="dedicated"]');
+    await expect(link).toHaveAttribute('href', '../account-map/');
+
+    await expect(page.locator('#accountMapCanvas')).toHaveCount(0);
+    await expect(page.locator('#importMainData')).toHaveCount(0);
+    await expect(page.locator('[data-candidate-action]')).toHaveCount(0);
+    await expect(page.locator('[data-relationship-editor]')).toHaveCount(0);
+  });
+
+  test('routes Account Map through shared navigation without using Portfolio', async ({ page }) => {
+    await page.locator('#appLauncherBtn').click();
+    const accountMapLink = page.locator('#appLauncherMenu a[href="../account-map/"]');
+    const portfolioLink = page.locator('#appLauncherMenu a[href="../portfolio/"]');
+    await expect(accountMapLink).toBeVisible();
+    await expect(accountMapLink).toContainText('Account Map');
+    await expect(portfolioLink).toBeVisible();
+    await expect(portfolioLink).toContainText('주식 모으기');
+    await expect(accountMapLink).not.toHaveAttribute('href', '../portfolio/');
+
+    await page.goto('apps/account-map/index.html');
+    await expect(page.locator('.current-step-label')).toHaveText('Account Map');
+    await page.locator('#appLauncherBtn').click();
+    await expect(page.locator('#appLauncherMenu a[href="../account-map/"]')).toHaveClass(/is-active/);
+    await expect(page.locator('#appLauncherMenu a[href="../portfolio/"]')).not.toHaveClass(/is-active/);
+  });
+
+  test('preserves restored account-flow fields through sanitizer, Sankey, and Main entry rendering', async ({ page }) => {
+    const result = await page.evaluate(async () => {
+      const [
+        { state },
+        { sanitizeInputs },
+        { buildMonthlySnapshot },
+        { buildSankeyData },
+        { createRenderOrchestrator },
+      ] = await Promise.all([
+        import('/IndividualSavingsFlowUI/apps/main/modules/state.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/input-sanitizer.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/calculator.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/sankey-builder.js'),
+        import('/IndividualSavingsFlowUI/apps/main/modules/render-orchestrator.js'),
+      ]);
+
+      state.inputs = sanitizeInputs({
+        modelVersion: 10,
+        splitIncomeAccounts: true,
+        accounts: [
+          { id: 'acc-salary', name: '급여계좌' },
+          { id: 'acc-living', name: '생활비계좌' },
+          { id: 'acc-stock', name: '투자계좌' },
+        ],
+        incomes: [{
+          id: 'salary',
+          name: '월급',
+          amount: 4200000,
+          accountId: 'acc-salary',
+          allocations: [
+            { accountId: 'acc-salary', amount: 3200000 },
+            { accountId: 'acc-living', amount: 1000000 },
+          ],
+        }],
+        expenseItems: [{ id: 'rent', name: '월세', amount: 900000, group: '고정비', accountId: 'acc-living' }],
+        savingsItems: [{ id: 'saving', name: '적금', amount: 500000, group: '저축', accountId: 'acc-salary' }],
+        investItems: [{ id: 'invest', name: 'ETF', amount: 300000, group: '투자', accountId: 'acc-stock' }],
+        transfers: [{ id: 'manual-rent', sourceAccountId: 'acc-salary', targetAccountId: 'acc-living', amount: 700000, label: '월세 보전' }],
+        surplusTransferAccountId: 'acc-stock',
+        monthlyDebtPayment: 0,
+        startCash: 0,
+        startSavings: 0,
+        startInvest: 0,
+        startDebt: 0,
+        annualIncomeGrowth: 0,
+        annualExpenseGrowth: 0,
+        annualSavingsYield: 3,
+        annualInvestReturn: 7,
+        annualDebtInterest: 0,
+        horizonYears: 5,
+      });
+      state.snapshot = buildMonthlySnapshot(state.inputs);
+      const sankey = buildSankeyData(state.snapshot, 'group', state.sankeyGrouping);
+      createRenderOrchestrator().renderAll();
+
+      const metrics = Array.from(document.querySelectorAll('.account-map-entry__metric')).map((node) => node.textContent || '');
+
+      return {
+        accountIds: state.inputs.accounts.map((account: any) => account.id),
+        splitIncomeAccounts: state.inputs.splitIncomeAccounts,
+        incomeAllocations: state.inputs.incomes[0].allocations,
+        expenseAccountId: state.inputs.expenseItems[0].accountId,
+        savingsAccountId: state.inputs.savingsItems[0].accountId,
+        investAccountId: state.inputs.investItems[0].accountId,
+        transfers: state.inputs.transfers,
+        surplusTransferAccountId: state.inputs.surplusTransferAccountId,
+        manualTransfer: sankey.transfers.find((transfer: any) => transfer.id === 'manual-rent'),
+        entryMetrics: metrics.join(' '),
+        entryLink: document.querySelector('[data-account-map-link="dedicated"]')?.getAttribute('href'),
+      };
+    });
+
+    expect(result.accountIds).toEqual(['acc-salary', 'acc-living', 'acc-stock']);
+    expect(result.splitIncomeAccounts).toBe(true);
+    expect(result.incomeAllocations).toEqual([
+      { accountId: 'acc-salary', amount: 3200000 },
+      { accountId: 'acc-living', amount: 1000000 },
+    ]);
+    expect(result.expenseAccountId).toBe('acc-living');
+    expect(result.savingsAccountId).toBe('acc-salary');
+    expect(result.investAccountId).toBe('acc-stock');
+    expect(result.transfers).toEqual([{
+      id: 'manual-rent',
+      sourceAccountId: 'acc-salary',
+      targetAccountId: 'acc-living',
+      amount: 700000,
+      label: '월세 보전',
+    }]);
+    expect(result.surplusTransferAccountId).toBe('acc-stock');
+    expect(result.manualTransfer).toMatchObject({
+      source: 'acc-salary',
+      target: 'acc-living',
+      value: 700000,
+      label: '월세 보전',
+      isManual: true,
+    });
+    expect(result.entryMetrics).toContain('3계좌');
+    expect(result.entryMetrics).toContain('확인필요');
+    expect(result.entryLink).toBe('../account-map/');
+  });
+});
+
 test.describe('Phase 09 guided item and inline account creation', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
