@@ -17,7 +17,7 @@ Resolve the next Step 1 household-flow work from `TODO.md` and open GitHub issue
 | 10.6 | Financial Detail Modal Editing UX Repair | 3/3 | Complete   | 2026-06-25 |
 | 10.6.1 | Legacy Editor Removal and Detail Modal Capability Absorption | 3/3 | Complete    | 2026-06-26 |
 | 10.7 | Account Flow Extraction and Portfolio Boundary | 6/6 | Complete    | 2026-06-26 |
-| 10.8 | 계좌 관리 맵 | 1/3 | In Progress|  |
+| 10.8 | 계좌 관리 맵 | 2/3 | In Progress|  |
 | 11 | Zero-Input Spending Capture | Parse pasted Korean bank/card text into reviewable spending actuals. | CAP-01, CAP-02, CAP-03, CAP-04 | 4 |
 | 12 | Dual-Flow Household Merge | Combine two shared Step 1 data sources into one household flow preview. | HH-03, HH-04, HH-05 | 4 |
 | 13 | Historical Spending Comparison | Compare current Step 1 expenses against prior DataHub snapshots with a grouped bar chart. | CMP-01, CMP-02, CMP-03, CMP-04, CMP-05 | 5 |
@@ -156,7 +156,7 @@ Plans:
 **Goal:** Create a user-friendly account-management map that makes real automatic transfers, card/payment links, and account flow relationships easy to understand at a glance.
 **Requirements:** UXR-17, UXR-18, UXR-19, UXR-20, UXR-21
 **Depends on:** Phase 10.7
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 
 Plans:
 
@@ -166,7 +166,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 10.8-02-PLAN.md — Relationship-first map renderer, detail reveal, candidate review, and Account Map draft persistence.
+- [x] 10.8-02-PLAN.md — Relationship-first map renderer, detail reveal, candidate review, and Account Map draft persistence.
 - [ ] 10.8-03-PLAN.md — Shared navigation plus lightweight Main entry/mini-summary while preserving restored Main account-flow behavior.
 
 **Success criteria:**
@@ -255,7 +255,7 @@ Plans:
 | UXR-16 | Phase 10.7 | Complete |
 | UXR-17 | Phase 10.8 | Complete |
 | UXR-18 | Phase 10.8 | Complete |
-| UXR-19 | Phase 10.8 | Pending |
+| UXR-19 | Phase 10.8 | Complete |
 | UXR-20 | Phase 10.8 | Complete |
 | UXR-21 | Phase 10.8 | Pending |
 | CAP-01 | Phase 11 | Pending |
@@ -290,4 +290,4 @@ Plans:
 
 ## Next
 
-Phase 10.8 is ready for planning. Next recommended step is `$gsd-plan-phase 10.8` to plan the dedicated account management map before Phase 11 resumes.
+Phase 10.8 is in progress. Next recommended step is executing `10.8-03-PLAN.md` for the Main entry/mini-summary while preserving restored Main account-flow behavior.

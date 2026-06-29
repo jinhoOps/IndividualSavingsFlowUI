@@ -5,16 +5,16 @@ milestone_name: milestone
 current_phase: 10.8
 current_phase_name: 계좌 관리 맵
 status: executing
-stopped_at: Completed 10.8-01-PLAN.md
-last_updated: "2026-06-29T08:54:35.604Z"
+stopped_at: Completed 10.8-02-PLAN.md
+last_updated: "2026-06-29T09:09:15.370Z"
 last_activity: 2026-06-29
-last_activity_desc: Phase 10.8 inserted after Phase 10.7 for account management map work
+last_activity_desc: "Plan 10.8-02 completed: map-first Account Map renderer, detail reveal, candidate review, and draft persistence"
 progress:
   total_phases: 10
   completed_phases: 5
   total_plans: 23
-  completed_plans: 21
-  percent: 91
+  completed_plans: 22
+  percent: 96
 ---
 
 # Project State
@@ -22,16 +22,16 @@ progress:
 ## Current Position
 
 Phase: 10.8 — 계좌 관리 맵
-Plan: 10.8-02 next
+Plan: 10.8-03 next
 Status: Phase 10.8 in progress
-Last activity: 2026-06-29 — Plan 10.8-01 completed: dedicated Account Map route, page-owned draft storage, Main connector, and draft builder
+Last activity: 2026-06-29 — Plan 10.8-02 completed: map-first Account Map renderer, detail reveal, candidate review, and draft persistence
 
 ## Project Reference
 
 See: .planning/PROJECT.md (updated 2026-06-26)
 
 **Core value:** 단순한 프리셋 선택만으로 즉각적인 자산 시각화 결과를 제공하고, 복잡한 재무 계산의 부담 없이 직관적인 개인 예산 흐름을 파악하게 한다.
-**Current focus:** Phase 10.8 — 계좌 관리 맵 is executing; Plan 10.8-02 is next.
+**Current focus:** Phase 10.8 — 계좌 관리 맵 is executing; Plan 10.8-03 is next.
 
 ## Accumulated Context
 
@@ -43,6 +43,7 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 - v1.8 shipped: portfolio creation/storage, Step 1 modular and financial setup rebuild, Step 2 strategy comparison redesign.
 - Phase 10.8 inserted after Phase 10.7: 계좌 관리 맵 (URGENT)
 - Plan 10.8-01 completed: dedicated Account Map route, page-owned draft storage, Main connector, and draft builder.
+- Plan 10.8-02 completed: map-first renderer, selection detail, candidate accept/exclude flow, relationship edit persistence, and Account Map interaction tests.
 
 ## Key Decisions
 
@@ -77,6 +78,7 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 | Phase 10.7-account-flow-extraction-and-portfolio-boundary P05 | 31 min | 2 tasks | 7 files |
 | Phase 10.7-account-flow-extraction-and-portfolio-boundary P06 | 32 min | 3 tasks | 6 files |
 | Phase 10.8-account-management-map P01 | 55 min | 3 tasks | 10 files |
+| Phase 10.8-account-management-map P02 | 11 min | 3 tasks | 6 files |
 
 ## Decisions
 
@@ -132,13 +134,15 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 - [Phase 10.8-01]: Account Map drafts save under isf-account-map-v1 and Main imports do not write back to isf-rebuild-v1.
 - [Phase 10.8-01]: Account Map uses a distinct account-map route/header step and Vite entry instead of Portfolio routing.
 - [Phase 10.8-01]: Account Map connector prefers active bridge/local Main data before older snapshot history.
+- [Phase 10.8-02]: Account Map overview hides exact monthly amounts and shows only typed/color-coded relationship labels until an account or relationship is selected.
+- [Phase 10.8-02]: Candidate accept/exclude and relationship payment-day/memo edits persist only to isf-account-map-v1 and do not mutate Main storage.
 
 ## Operator Next Steps
 
-- Continue Phase 10.8 with Plan 10.8-02: relationship-first map renderer, detail reveal, candidate review, and Account Map draft persistence.
+- Continue Phase 10.8 with Plan 10.8-03: shared navigation plus lightweight Main entry/mini-summary while preserving restored Main account-flow behavior.
 
 ## Session
 
-**Last session:** 2026-06-29T08:54:06.843Z
-**Stopped at:** Completed 10.8-01-PLAN.md
+**Last session:** 2026-06-29T09:09:15.346Z
+**Stopped at:** Completed 10.8-02-PLAN.md
 **Resume file:** None
