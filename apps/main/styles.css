@@ -140,7 +140,6 @@ input[type=number]{-moz-appearance:textfield}
 .account-map-entry__body{display:grid;gap:4px;min-width:0}
 .account-map-entry__kicker{font-size:0.7rem;font-weight:900;letter-spacing:0;color:var(--tone-primary);text-transform:uppercase}
 .account-map-entry__title{margin:0;font-size:0.98rem;line-height:1.25;color:var(--ink);overflow-wrap:anywhere}
-.account-map-entry__status{margin:0;color:var(--muted);font-size:0.8rem;line-height:1.35}
 .account-map-entry__metrics{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:2px}
 .account-map-entry__metric{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);border-radius:999px;background:rgba(249,246,240,0.78);padding:3px 8px;font-size:0.73rem;color:var(--muted);white-space:nowrap}
 .account-map-entry__metric strong{font-size:0.82rem;color:var(--ink)}

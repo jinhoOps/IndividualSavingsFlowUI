@@ -82,7 +82,7 @@ function createMiniMap(summary) {
   miniMap.className = "account-map-entry__mini";
   miniMap.setAttribute("aria-hidden", "true");
 
-  ["가계 흐름", "계좌", "반복 결제"].forEach((label, index) => {
+  ["계좌", "자동이체", "고정결제"].forEach((label, index) => {
     const node = document.createElement("span");
     node.className = "account-map-entry__node";
     node.textContent = label;
@@ -116,13 +116,7 @@ export function renderAccountMapEntry(host, inputs) {
 
   const title = document.createElement("h3");
   title.className = "account-map-entry__title";
-  title.textContent = "계좌·자동이체·고정 결제 후보 보기";
-
-  const status = document.createElement("p");
-  status.className = "account-map-entry__status";
-  status.textContent = summary.confirmationNeeded > 0
-    ? "월 가계 흐름에서 분리한 계좌 연결과 반복 결제 후보를 전용 화면에서 검토합니다."
-    : "월 가계 흐름은 간결하게 두고, 계좌 관계 초안은 전용 화면에서 따로 확인합니다.";
+  title.textContent = "계좌 연결 현황";
 
   const metrics = document.createElement("div");
   metrics.className = "account-map-entry__metrics";
@@ -132,7 +126,7 @@ export function renderAccountMapEntry(host, inputs) {
     createMetric("결제 후보", summary.confirmationNeeded),
   );
 
-  body.append(kicker, title, status, metrics);
+  body.append(kicker, title, metrics);
 
   const action = document.createElement("a");
   action.className = "btn btn-ghost btn-sm account-map-entry__link";

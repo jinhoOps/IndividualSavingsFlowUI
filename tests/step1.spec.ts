@@ -1190,7 +1190,9 @@ test.describe('Phase 10.8 Account Map Main entry and compatibility', () => {
     const entry = page.locator('[data-account-map-entry="lightweight"]');
     await expect(entry).toBeVisible();
     await expect(entry).toContainText('Account Map');
-    await expect(entry).toContainText('계좌·자동이체·고정 결제 후보');
+    await expect(entry).toContainText('계좌 연결 현황');
+    await expect(entry).toContainText('자동이체');
+    await expect(entry).toContainText('고정결제');
     await expect(entry).toContainText('계좌 후보');
     await expect(entry).toContainText('연결 후보');
     await expect(entry).toContainText('결제 후보');
