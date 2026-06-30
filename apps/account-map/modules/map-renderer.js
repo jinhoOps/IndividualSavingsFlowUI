@@ -65,7 +65,28 @@ function buildRenderNodes(accounts = [], relationships = []) {
   return Array.from(nodes.values());
 }
 
-function computePositions(nodes, width, height) {
+function stableOffset(id, spread = 1) {
+  const text = String(id || "");
+  let hash = 0;
+  for (let index = 0; index < text.length; index += 1) {
+    hash = (hash * 31 + text.charCodeAt(index)) % 997;
+  }
+  return ((hash % 7) - 3) * spread;
+}
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function createFallbackVector(sourceId, targetId) {
+  const angle = ((stableOffset(`${sourceId}:${targetId}`, 1) + 4) / 8) * Math.PI;
+  return {
+    x: Math.cos(angle) || 1,
+    y: Math.sin(angle) || 0,
+  };
+}
+
+function computePositions(nodes, relationships, width, height) {
   const left = nodes.filter((node) => node.id.startsWith("income-source-"));
   const right = nodes.filter((node) => node.role === "external" && !node.id.startsWith("income-source-"));
   const middle = nodes.filter((node) => !left.includes(node) && !right.includes(node));
@@ -75,16 +96,108 @@ function computePositions(nodes, width, height) {
     { nodes: right, x: width - 116 },
   ].filter((column) => column.nodes.length > 0);
   const positions = new Map();
+  const anchors = new Map();
 
   columns.forEach((column) => {
     const gap = height / (column.nodes.length + 1);
     column.nodes.forEach((node, index) => {
-      positions.set(node.id, {
+      const anchor = {
         x: column.x,
         y: Math.max(58, Math.min(height - 44, gap * (index + 1))),
+      };
+      const lateralSpread = column.nodes === middle ? 12 : 5;
+      anchors.set(node.id, anchor);
+      positions.set(node.id, {
+        x: clamp(anchor.x + stableOffset(node.id, lateralSpread), 70, width - 70),
+        y: anchor.y,
       });
     });
   });
+
+  const links = (Array.isArray(relationships) ? relationships : [])
+    .map((relationship) => {
+      const sourceId = String(relationship?.sourceAccountId || "");
+      const targetId = String(relationship?.targetAccountId || "");
+      const sourceAnchor = anchors.get(sourceId);
+      const targetAnchor = anchors.get(targetId);
+      if (!sourceAnchor || !targetAnchor) return null;
+      const laneDistance = Math.abs(sourceAnchor.x - targetAnchor.x);
+      return {
+        sourceId,
+        targetId,
+        sameLane: laneDistance < 80,
+        lateralDirection: stableOffset(`${sourceId}:${targetId}`, 1) >= 0 ? 1 : -1,
+        distance: laneDistance < 80 ? 138 : clamp(laneDistance * 0.82, 156, 330),
+      };
+    })
+    .filter(Boolean);
+
+  const renderNodeIds = nodes.map((node) => node.id);
+  const minDistance = 92;
+  for (let iteration = 0; iteration < 72; iteration += 1) {
+    links.forEach((link) => {
+      const source = positions.get(link.sourceId);
+      const target = positions.get(link.targetId);
+      if (!source || !target) return;
+      let dx = target.x - source.x;
+      let dy = target.y - source.y;
+      let distance = Math.hypot(dx, dy);
+      if (distance < 0.001) {
+        const vector = createFallbackVector(link.sourceId, link.targetId);
+        dx = vector.x;
+        dy = vector.y;
+        distance = 1;
+      }
+      const force = (distance - link.distance) * 0.035;
+      const fx = (dx / distance) * force;
+      const fy = (dy / distance) * force;
+      source.x += fx;
+      source.y += fy;
+      target.x -= fx;
+      target.y -= fy;
+      if (link.sameLane && Math.abs(target.x - source.x) < 46) {
+        source.x -= link.lateralDirection * 0.42;
+        target.x += link.lateralDirection * 0.42;
+      }
+    });
+
+    for (let sourceIndex = 0; sourceIndex < renderNodeIds.length; sourceIndex += 1) {
+      for (let targetIndex = sourceIndex + 1; targetIndex < renderNodeIds.length; targetIndex += 1) {
+        const sourceId = renderNodeIds[sourceIndex];
+        const targetId = renderNodeIds[targetIndex];
+        const source = positions.get(sourceId);
+        const target = positions.get(targetId);
+        if (!source || !target) continue;
+        let dx = target.x - source.x;
+        let dy = target.y - source.y;
+        let distance = Math.hypot(dx, dy);
+        if (distance < 0.001) {
+          const vector = createFallbackVector(sourceId, targetId);
+          dx = vector.x;
+          dy = vector.y;
+          distance = 1;
+        }
+        if (distance >= minDistance) continue;
+        const force = ((minDistance - distance) / minDistance) * 4.5;
+        const fx = (dx / distance) * force;
+        const fy = (dy / distance) * force;
+        source.x -= fx;
+        source.y -= fy;
+        target.x += fx;
+        target.y += fy;
+      }
+    }
+
+    renderNodeIds.forEach((id) => {
+      const position = positions.get(id);
+      const anchor = anchors.get(id);
+      if (!position || !anchor) return;
+      position.x += (anchor.x - position.x) * 0.018;
+      position.y += (anchor.y - position.y) * 0.006;
+      position.x = clamp(position.x, 70, width - 70);
+      position.y = clamp(position.y, 52, height - 52);
+    });
+  }
 
   return positions;
 }
@@ -128,7 +241,7 @@ export function renderAccountMap(container, draft = {}, options = {}) {
   const width = Math.max(720, Math.round(bounds.width || 860));
   const height = Math.max(360, Math.round(bounds.height || 420));
   const renderNodes = buildRenderNodes(accounts, relationships);
-  const positions = computePositions(renderNodes, width, height);
+  const positions = computePositions(renderNodes, relationships, width, height);
   const selectedId = options.selectedId || "";
 
   const svg = svgElement("svg", {
@@ -157,7 +270,9 @@ export function renderAccountMap(container, draft = {}, options = {}) {
     const offset = (index % 3 - 1) * 18;
     const midX = (source.x + target.x) / 2;
     const midY = (source.y + target.y) / 2 + offset;
-    const d = `M ${source.x + 42} ${source.y} Q ${midX} ${midY} ${target.x - 42} ${target.y}`;
+    const sourceDirection = source.x <= target.x ? 1 : -1;
+    const targetDirection = source.x <= target.x ? -1 : 1;
+    const d = `M ${source.x + (42 * sourceDirection)} ${source.y} Q ${midX} ${midY} ${target.x + (42 * targetDirection)} ${target.y}`;
     const id = String(relationship.id || `relationship-${index + 1}`);
     const selected = selectedId === `relationship:${id}`;
 

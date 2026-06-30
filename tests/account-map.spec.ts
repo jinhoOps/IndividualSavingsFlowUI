@@ -126,6 +126,39 @@ test.describe('Account Map route and draft import', () => {
     expect(nodeColors.stroke).not.toMatch(/^(#000|#000000|black|rgb\(0,\s*0,\s*0\))$/i);
     expect(nodeColors.textFill).toBe('#102220');
 
+    const layout = await page.locator('#accountMapCanvas').evaluate((canvas) => {
+      const parseTranslate = (value: string | null) => {
+        const match = String(value || '').match(/translate\(([-\d.]+),\s*([-\d.]+)\)/);
+        return match ? { x: Number(match[1]), y: Number(match[2]) } : { x: 0, y: 0 };
+      };
+      const positions = new Map(
+        Array.from(canvas.querySelectorAll('[data-account-map-select="account"]')).map((node) => [
+          (node as HTMLElement).dataset.accountId || '',
+          parseTranslate(node.getAttribute('transform')),
+        ])
+      );
+      const allPositions = Array.from(positions.values());
+      const minDistance = allPositions.reduce((minimum, source, sourceIndex) => {
+        return Math.min(
+          minimum,
+          ...allPositions.slice(sourceIndex + 1).map((target) => Math.hypot(source.x - target.x, source.y - target.y))
+        );
+      }, Number.POSITIVE_INFINITY);
+      const salary = positions.get('acc-salary');
+      const living = positions.get('acc-living');
+      return {
+        nodeCount: positions.size,
+        minDistance,
+        salaryToLivingDx: salary && living ? Math.abs(salary.x - living.x) : 0,
+        salaryToLivingDistance: salary && living ? Math.hypot(salary.x - living.x, salary.y - living.y) : 0,
+      };
+    });
+    expect(layout.nodeCount).toBeGreaterThanOrEqual(4);
+    expect(layout.minDistance).toBeGreaterThan(58);
+    expect(layout.salaryToLivingDx).toBeGreaterThan(18);
+    expect(layout.salaryToLivingDistance).toBeGreaterThan(96);
+    expect(layout.salaryToLivingDistance).toBeLessThan(260);
+
     const persisted = await page.evaluate((key) => JSON.parse(localStorage.getItem(key) || '{}'), ACCOUNT_MAP_STORAGE_KEY);
     expect(persisted.source).toMatchObject({ type: 'main', storageKey: MAIN_STORAGE_KEY });
     expect(persisted.accounts.map((account: { id: string }) => account.id)).toEqual(['acc-salary', 'acc-living', 'acc-stock', 'acc-cma']);
