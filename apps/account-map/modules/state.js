@@ -41,12 +41,17 @@ function saveLocalDraft(data) {
   try {
     const hub = getStorageHub();
     if (hub?.saveLocal) {
-      hub.saveLocal(ACCOUNT_MAP_STORAGE_KEY, data);
-      return;
+      const result = hub.saveLocal(ACCOUNT_MAP_STORAGE_KEY, data);
+      if (result !== false) return true;
     }
   } catch (_error) {}
 
-  localStorage.setItem(ACCOUNT_MAP_STORAGE_KEY, JSON.stringify(data));
+  try {
+    localStorage.setItem(ACCOUNT_MAP_STORAGE_KEY, JSON.stringify(data));
+    return true;
+  } catch (_error) {
+    return false;
+  }
 }
 
 export class AccountMapState {
@@ -85,7 +90,7 @@ export class AccountMapState {
   setSelectedId(selectedId) {
     this.data.selectedId = typeof selectedId === "string" ? selectedId : "";
     this.data.lastUpdated = new Date().toISOString();
-    saveLocalDraft(this.data);
+    return saveLocalDraft(this.data);
   }
 
   async setNodePosition(nodeId, position) {
@@ -159,7 +164,9 @@ export class AccountMapState {
 
   async saveToStorage() {
     this.data.lastUpdated = new Date().toISOString();
-    saveLocalDraft(this.data);
+    if (!saveLocalDraft(this.data)) {
+      throw new Error("Account Map draft save failed.");
+    }
   }
 }
 

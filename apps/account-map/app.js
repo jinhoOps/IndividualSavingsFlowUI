@@ -56,12 +56,18 @@ const AccountMapApp = {
       const button = event.target?.closest?.("[data-candidate-action]");
       if (!button) return;
       const candidateId = button.dataset.candidateId || "";
-      if (button.dataset.candidateAction === "accept") {
-        await this.state.acceptCandidate(candidateId);
-        this.showFeedback("고정 결제 후보를 관계로 수락했습니다.");
-      } else {
-        await this.state.excludeCandidate(candidateId);
-        this.showFeedback("고정 결제 후보를 제외했습니다.");
+      try {
+        if (button.dataset.candidateAction === "accept") {
+          await this.state.acceptCandidate(candidateId);
+          this.showFeedback("고정 결제 후보를 관계로 수락했습니다.");
+        } else {
+          await this.state.excludeCandidate(candidateId);
+          this.showFeedback("고정 결제 후보를 제외했습니다.");
+        }
+      } catch (error) {
+        console.error("[AccountMap] Save failed:", error);
+        await this.state.loadFromStorage();
+        this.showFeedback("Account Map 변경을 저장하지 못했습니다.");
       }
       this.render();
     });
@@ -70,8 +76,15 @@ const AccountMapApp = {
       if (!field) return;
       const editor = event.target.closest("[data-relationship-editor]");
       const relationshipId = editor?.dataset?.relationshipEditor || "";
-      await this.state.updateRelationship(relationshipId, { [field]: event.target.value });
-      this.renderSummary(this.state.data);
+      try {
+        await this.state.updateRelationship(relationshipId, { [field]: event.target.value });
+        this.renderSummary(this.state.data);
+      } catch (error) {
+        console.error("[AccountMap] Relationship save failed:", error);
+        await this.state.loadFromStorage();
+        this.render();
+        this.showFeedback("Account Map 변경을 저장하지 못했습니다.");
+      }
     });
   },
 
@@ -82,10 +95,15 @@ const AccountMapApp = {
       return;
     }
 
-    const draft = buildAccountMapDraftFromMain(latest.data, latest.source);
-    await this.state.replaceDraft(draft);
-    this.render();
-    this.showFeedback("Main 데이터로 Account Map 초안을 만들었습니다.");
+    try {
+      const draft = buildAccountMapDraftFromMain(latest.data, latest.source);
+      await this.state.replaceDraft(draft);
+      this.render();
+      this.showFeedback("Main 데이터로 Account Map 초안을 만들었습니다.");
+    } catch (error) {
+      console.error("[AccountMap] Import save failed:", error);
+      this.showFeedback("Account Map 초안을 저장하지 못했습니다.");
+    }
   },
 
   showFeedback(message) {
@@ -111,7 +129,12 @@ const AccountMapApp = {
       selectedId: draft.selectedId,
       positions: draft.positions,
       onNodePositionChange: async (nodeId, position) => {
-        await this.state.setNodePosition(nodeId, position);
+        try {
+          await this.state.setNodePosition(nodeId, position);
+        } catch (error) {
+          console.error("[AccountMap] Position save failed:", error);
+          this.showFeedback("Account Map 위치를 저장하지 못했습니다.");
+        }
       },
     });
   },

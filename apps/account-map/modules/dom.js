@@ -40,6 +40,15 @@ function createField(label, value) {
   return row;
 }
 
+function parseSelectedId(selectedId) {
+  const separatorIndex = selectedId.indexOf(":");
+  if (separatorIndex < 0) return { kind: "", id: "" };
+  return {
+    kind: selectedId.slice(0, separatorIndex),
+    id: selectedId.slice(separatorIndex + 1),
+  };
+}
+
 export function renderDetail(host, draft = {}) {
   if (!host) return;
   const selectedId = String(draft.selectedId || "");
@@ -48,7 +57,7 @@ export function renderDetail(host, draft = {}) {
     return;
   }
 
-  const [kind, id] = selectedId.split(":");
+  const { kind, id } = parseSelectedId(selectedId);
   if (kind === "relationship") {
     const relationship = (draft.relationships || []).find((item) => item.id === id);
     if (!relationship) {

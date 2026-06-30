@@ -384,6 +384,7 @@ export function renderAccountMap(container, draft = {}, options = {}) {
           nodeId: node.id,
           sourceElement: group,
           pointerId: event.pointerId,
+          originalPosition: { x: position.x, y: position.y },
           startX: start.x,
           startY: start.y,
           offsetX: start.x - position.x,
@@ -425,6 +426,7 @@ export function renderAccountMap(container, draft = {}, options = {}) {
     const sourceElement = dragState.sourceElement;
     const position = positions.get(nodeId);
     const moved = dragState.moved;
+    const originalPosition = dragState.originalPosition;
     dragState = null;
     svg.classList.remove("is-dragging");
     try {
@@ -435,6 +437,9 @@ export function renderAccountMap(container, draft = {}, options = {}) {
     if (!moved && persist && sourceElement) {
       sourceElement.dispatchEvent(new MouseEvent("click", { bubbles: true }));
       return;
+    }
+    if (!persist && originalPosition) {
+      positions.set(nodeId, originalPosition);
     }
     if (moved) redrawGraph();
     if (persist && moved && position && typeof options.onNodePositionChange === "function") {

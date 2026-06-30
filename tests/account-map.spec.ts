@@ -250,6 +250,42 @@ test.describe('Account Map route and draft import', () => {
     await expect(page.locator('[data-relationship-field="memo"]')).toHaveValue('월급 다음날 이체');
   });
 
+  test('selects account and relationship IDs that contain colons', async ({ page }) => {
+    await page.goto('apps/account-map/index.html');
+    await page.evaluate((key) => {
+      localStorage.setItem(key, JSON.stringify({
+        schemaVersion: 1,
+        source: { type: 'test' },
+        accounts: [
+          { id: 'acc:living', name: '생활비:계좌', role: 'spending' },
+          { id: 'payee:telecom', name: '통신비:결제처', role: 'payment' },
+        ],
+        relationships: [{
+          id: 'rel:telecom:payment',
+          type: 'utility-payment',
+          sourceAccountId: 'acc:living',
+          targetAccountId: 'payee:telecom',
+          label: '통신비:자동결제',
+          amount: 60000,
+          confidence: 'confirmed',
+          sourceRef: { collection: 'expenseItems', id: 'telecom:main' },
+        }],
+        candidates: [],
+        positions: {},
+        selectedId: '',
+        lastUpdated: new Date().toISOString(),
+      }));
+    }, ACCOUNT_MAP_STORAGE_KEY);
+
+    await page.reload();
+    await page.locator('[data-account-id="acc:living"]').click();
+    await expect(page.locator('#accountMapDetail')).toContainText('생활비:계좌');
+
+    await page.locator('[data-relationship-id="rel:telecom:payment"].account-map-svg__edge-chip').click();
+    await expect(page.locator('#accountMapDetail')).toContainText('통신비:자동결제');
+    await expect(page.locator('#accountMapDetail')).toContainText('60,000원');
+  });
+
   test('persists dragged node positions locally and resets them with auto layout', async ({ page }) => {
     await page.goto('apps/account-map/index.html');
     await page.locator('#importMainData').click();
@@ -302,6 +338,7 @@ test.describe('Account Map route and draft import', () => {
     await expect(page.locator('#accountMapCanvas svg.account-map-svg')).toBeVisible();
 
     const result = await page.locator('#accountMapCanvas').evaluate((canvas) => {
+      const transformBefore = canvas.querySelector('[data-account-id="acc-salary"]')?.getAttribute('transform') || '';
       const svg = canvas.querySelector('svg.account-map-svg') as SVGSVGElement;
       const node = canvas.querySelector('[data-account-id="acc-salary"]') as SVGGElement;
       const rect = node.getBoundingClientRect();
@@ -333,13 +370,44 @@ test.describe('Account Map route and draft import', () => {
       return {
         svgDragging: svg.classList.contains('is-dragging'),
         nodeDraggingCount: canvas.querySelectorAll('.account-map-svg__node.is-dragging').length,
+        transformBefore,
+        transformAfter: canvas.querySelector('[data-account-id="acc-salary"]')?.getAttribute('transform') || '',
         saved: JSON.parse(localStorage.getItem('isf-account-map-v1') || '{}'),
       };
     });
 
     expect(result.svgDragging).toBe(false);
     expect(result.nodeDraggingCount).toBe(0);
+    expect(result.transformAfter).toBe(result.transformBefore);
     expect(result.saved.positions || {}).not.toHaveProperty('acc-salary');
+  });
+
+  test('does not show candidate success feedback when local draft save fails', async ({ page }) => {
+    await page.goto('apps/account-map/index.html');
+    await page.locator('#importMainData').click();
+    await expect(page.locator('li[data-candidate-id="candidate-expense-telecom"]')).toBeVisible();
+    await page.evaluate(() => {
+      window.IsfStorageHub = {
+        loadLocal(key: string) {
+          const raw = localStorage.getItem(key);
+          return raw ? JSON.parse(raw) : null;
+        },
+        saveLocal() {
+          return false;
+        },
+      };
+      const originalSetItem = Storage.prototype.setItem;
+      Storage.prototype.setItem = function patchedSetItem(key: string, value: string) {
+        if (key === 'isf-account-map-v1') {
+          throw new Error('forced account map save failure');
+        }
+        return originalSetItem.call(this, key, value);
+      };
+    });
+    await page.locator('[data-candidate-id="candidate-expense-telecom"] [data-candidate-action="accept"]').click();
+
+    await expect(page.locator('#accountMapFeedback')).toContainText('저장하지 못했습니다');
+    await expect(page.locator('#accountMapFeedback')).not.toContainText('수락했습니다');
   });
 
   test('shows account linked relationships without exposing an ordinary Step 1 editor', async ({ page }) => {
