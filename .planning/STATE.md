@@ -6,9 +6,9 @@ current_phase: 11
 current_phase_name: Zero-Input Spending Capture
 status: completed
 stopped_at: Completed 10.8-03-PLAN.md
-last_updated: "2026-06-29T09:32:31.951Z"
-last_activity: 2026-06-29
-last_activity_desc: Phase 10.8 complete, transitioned to Phase 11
+last_updated: "2026-06-30T02:14:42.133Z"
+last_activity: 2026-06-30
+last_activity_desc: "Completed quick task 260630-fm9: 계좌 관리 맵 Main placement and transfer editor removal"
 progress:
   total_phases: 10
   completed_phases: 6
@@ -24,7 +24,7 @@ progress:
 Phase: 11 — Zero-Input Spending Capture
 Plan: Not started
 Status: Phase 10.8 complete
-Last activity: 2026-06-29 — Phase 10.8 complete, transitioned to Phase 11
+Last activity: 2026-06-30 — Completed quick task 260630-fm9: 계좌 관리 맵 Main placement and transfer editor removal
 
 ## Project Reference
 
@@ -86,6 +86,7 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 
 | Date | Quick ID | Slug | Summary |
 |------|----------|------|---------|
+| 2026-06-30 | 260630-fm9 | main-main | Main 계좌 관리 맵을 월 가계 흐름 다음에 고정하고, 계좌 간 수동 이체 설정 UI를 Main에서 제거했습니다. |
 | 2026-06-30 | 260630-cqu | move-main-account-map-summary-after-mont | Moved the Main Account Map summary after 월 가계 흐름, clarified its account-relationship scope, and fixed Account Map SVG node contrast. |
 | 2026-06-29 | 260629-psu | main-sankey-should-exclude-account-nodes | Restored Main Sankey to exclude account nodes/links by default while keeping explicit account-flow projection for network/Account Map helpers. |
 
@@ -148,6 +149,7 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 - [Phase 10.8-03]: Main exposes Account Map through a compact scan-only summary entry that links to ../account-map/; Account Map editing remains page-owned.
 - [Phase 10.8-03]: Shared header Account Map navigation remains a distinct account-map destination, with Portfolio preserved as a separate launcher item.
 - [Quick 260630-cqu]: Main Account Map summary belongs after 월 가계 흐름 as a separate account-relationship follow-up, and Account Map SVG nodes must carry explicit light fill/stroke/text colors to avoid unreadable black fallback rendering.
+- [Quick 260630-fm9]: Main must show the 계좌 관리 맵 entry after 월 가계 흐름 via explicit CSS order, and must not expose the 계좌 간 수동 이체 설정 editor on Main.
 - [Quick 260629-psu]: Main Sankey intentionally excludes account nodes, account links, and account transfers so the 가계 흐름 view stays concise at a glance; account relationship detail belongs in Account Map or explicit account-flow projections.
 
 ## Operator Next Steps
