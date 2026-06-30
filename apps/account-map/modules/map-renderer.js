@@ -15,8 +15,11 @@ const NODE_COLORS = {
   spending: { fill: "#fff8e8", stroke: "#e6bd63", text: "#102220" },
   savings: { fill: "#e9f8ef", stroke: "#74be8a", text: "#102220" },
   investment: { fill: "#eef0ff", stroke: "#8d96e8", text: "#102220" },
+  payment: { fill: "#fff8e8", stroke: "#e6bd63", text: "#102220" },
   external: { fill: "#f6f4ef", stroke: "#cfc8bb", text: "#102220" },
 };
+
+const EXTERNAL_ROLES = new Set(["external", "payment"]);
 
 function svgElement(tagName, attributes = {}) {
   const element = document.createElementNS(SVG_NS, tagName);
@@ -38,6 +41,10 @@ function getTypeMeta(type) {
 
 function getNodeColors(role) {
   return NODE_COLORS[role] || NODE_COLORS.spending;
+}
+
+function isExternalNode(node) {
+  return EXTERNAL_ROLES.has(node?.role) && !String(node?.id || "").startsWith("income-source-");
 }
 
 function buildRenderNodes(accounts = [], relationships = []) {
@@ -88,7 +95,7 @@ function createFallbackVector(sourceId, targetId) {
 
 function computePositions(nodes, relationships, width, height) {
   const left = nodes.filter((node) => node.id.startsWith("income-source-"));
-  const right = nodes.filter((node) => node.role === "external" && !node.id.startsWith("income-source-"));
+  const right = nodes.filter(isExternalNode);
   const middle = nodes.filter((node) => !left.includes(node) && !right.includes(node));
   const columns = [
     { nodes: left, x: 92 },
@@ -230,6 +237,11 @@ function createMarker(color, id) {
   return marker;
 }
 
+function getStableLayoutHeight(container) {
+  const minHeight = Number.parseFloat(window.getComputedStyle(container).minHeight);
+  return Math.max(330, Math.round(Number.isFinite(minHeight) ? minHeight : 430));
+}
+
 export function getRelationshipTypeMeta(type) {
   return getTypeMeta(type);
 }
@@ -253,7 +265,7 @@ export function renderAccountMap(container, draft = {}, options = {}) {
 
   const bounds = container.getBoundingClientRect();
   const width = Math.max(720, Math.round(bounds.width || 860));
-  const height = Math.max(360, Math.round(bounds.height || 420));
+  const height = getStableLayoutHeight(container);
   const renderNodes = buildRenderNodes(accounts, relationships);
   const positions = computePositions(renderNodes, relationships, width, height);
   applySavedPositions(positions, options.positions, width, height);
@@ -262,6 +274,8 @@ export function renderAccountMap(container, draft = {}, options = {}) {
   const svg = svgElement("svg", {
     class: "account-map-svg",
     viewBox: `0 0 ${width} ${height}`,
+    width,
+    height,
     role: "img",
     "aria-label": "Account Map 관계도",
   });

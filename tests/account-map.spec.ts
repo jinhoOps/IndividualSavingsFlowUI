@@ -340,6 +340,46 @@ test.describe('Account Map route and draft import', () => {
     expect(result.accountMap.candidates.map((candidate: { id: string }) => candidate.id)).toEqual([]);
   });
 
+  test('keeps accepted payment candidates in the external lane with stable auto layout sizing', async ({ page }) => {
+    await page.goto('apps/account-map/index.html');
+    await page.locator('#importMainData').click();
+    await page.locator('[data-candidate-id="candidate-expense-telecom"] [data-candidate-action="accept"]').click();
+    await expect(page.locator('[data-account-id="payee-telecom"]')).toBeVisible();
+
+    const initialLayout = await page.locator('#accountMapCanvas').evaluate((canvas) => {
+      const parseTranslate = (node: Element | null) => {
+        const match = String(node?.getAttribute('transform') || '').match(/translate\(([-\d.]+),\s*([-\d.]+)\)/);
+        return { x: Number(match?.[1] || 0), y: Number(match?.[2] || 0) };
+      };
+      const svg = canvas.querySelector('svg.account-map-svg') as SVGSVGElement | null;
+      const living = parseTranslate(canvas.querySelector('[data-account-id="acc-living"]'));
+      const payee = parseTranslate(canvas.querySelector('[data-account-id="payee-telecom"]'));
+      const path = canvas.querySelector('[data-relationship-id="rel-candidate-telecom"].account-map-svg__edge');
+      return {
+        viewBox: svg?.getAttribute('viewBox') || '',
+        height: canvas.getBoundingClientRect().height,
+        dx: payee.x - living.x,
+        path: path?.getAttribute('d') || '',
+      };
+    });
+    expect(initialLayout.dx).toBeGreaterThan(120);
+    expect(initialLayout.path).not.toContain('NaN');
+
+    const sizes = [];
+    for (let index = 0; index < 3; index += 1) {
+      await page.locator('#autoLayoutMap').click();
+      sizes.push(await page.locator('#accountMapCanvas').evaluate((canvas) => {
+        const svg = canvas.querySelector('svg.account-map-svg') as SVGSVGElement | null;
+        return {
+          viewBox: svg?.getAttribute('viewBox') || '',
+          height: Math.round(canvas.getBoundingClientRect().height),
+        };
+      }));
+    }
+    expect(new Set(sizes.map((size) => size.viewBox)).size).toBe(1);
+    expect(Math.max(...sizes.map((size) => size.height)) - Math.min(...sizes.map((size) => size.height))).toBeLessThanOrEqual(1);
+  });
+
   test('renders imported unsafe text as text, not markup', async ({ page }) => {
     await page.goto('apps/account-map/index.html');
     await page.evaluate((seed) => {
