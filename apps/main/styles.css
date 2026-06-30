@@ -7,10 +7,10 @@ main{display:grid;gap:var(--sp-xl);min-width:0}
 .page-intro .lead{font-size:var(--text-body-md);color:var(--muted)}
 .summary-panel{order:1}
 .sankey-panel{order:2}
-.controls-panel{order:3}
-.projection-panel{order:4}
-.comparison-panel{order:5}
-#transferEditorSection{margin-top:var(--sp-md);border-top:1px solid var(--line);padding-top:var(--sp-md)}
+.account-map-entry-panel{order:3}
+.controls-panel{order:4}
+.projection-panel{order:5}
+.comparison-panel{order:6}
 .accordion-head{display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none}
 .accordion-head h3{margin:0;display:flex;align-items:center;gap:4px}
 #transferAccordionIcon{font-size:1rem;color:var(--muted);transition:transform 0.2s ease}
@@ -53,9 +53,10 @@ main{display:grid;gap:var(--sp-xl);min-width:0}
 .chart-value{font-size:10px;fill:var(--muted)}
 body.is-dashboard-mode .summary-panel{order:1}
 body.is-dashboard-mode .sankey-panel{order:2}
-body.is-dashboard-mode .controls-panel{order:3}
-body.is-dashboard-mode .projection-panel{order:4}
-body.is-dashboard-mode .comparison-panel{order:5}
+body.is-dashboard-mode .account-map-entry-panel{order:3}
+body.is-dashboard-mode .controls-panel{order:4}
+body.is-dashboard-mode .projection-panel{order:5}
+body.is-dashboard-mode .comparison-panel{order:6}
 .view-mode-guide{margin-top:var(--sp-md);padding:var(--sp-md);border-style:dashed;background:rgba(255,251,236,0.92);display:flex;align-items:center;justify-content:space-between;gap:10px}
 .view-mode-guide[hidden]{display:none !important}
 .view-mode-guide__text{margin:0;font-size:0.84rem;color:var(--ink)}
@@ -335,9 +336,10 @@ main{order:2;gap:14px;display:grid}
 .view-mode-guide{order:1}
 .summary-panel{order:1}
 .sankey-panel{order:2}
-.controls-panel{order:3}
-.projection-panel{order:4}
-.comparison-panel{order:5}
+.account-map-entry-panel{order:3}
+.controls-panel{order:4}
+.projection-panel{order:5}
+.comparison-panel{order:6}
 .preset-controls{flex-direction:column;align-items:stretch}
 .preset-select{min-width:0;width:100%}
 .preset-styles{width:100%;justify-content:space-between;padding:4px}

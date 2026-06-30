@@ -272,29 +272,6 @@
         <div id="accountMapEntry" class="account-map-entry" aria-live="polite"></div>
       </section>
 
-      <section id="transferEditorSection" class="panel" aria-labelledby="transferEditorTitle">
-        <div id="transferAccordionHead" class="accordion-head" role="button" tabindex="0" aria-controls="transferAccordionBody">
-          <h3 id="transferEditorTitle">계좌 간 수동 이체 설정</h3>
-          <span id="transferAccordionIcon" aria-hidden="true">▾</span>
-        </div>
-        <div id="transferAccordionBody">
-          <div id="transferRuleForm" class="transfer-rule-form">
-            <div class="sentence-ui">
-              <select id="transferSourceSelect" class="editor-select" aria-label="출발 계좌"></select>
-              <span>에서</span>
-              <select id="transferTargetSelect" class="editor-select" aria-label="도착 계좌"></select>
-              <span>로</span>
-              <input id="transferAmount" class="editor-input" type="text" inputmode="numeric" aria-label="이체 금액" placeholder="금액" />
-              <span>원 이동</span>
-              <input id="transferLabel" class="editor-input" type="text" aria-label="이체 이름" placeholder="이체 이름" />
-              <button id="addTransferRuleBtn" class="btn btn-ghost btn-sm" type="button">추가</button>
-            </div>
-            <p id="sourceBalanceHint" hidden></p>
-          </div>
-          <div id="transferRuleList" class="transfer-rule-list" aria-live="polite"></div>
-        </div>
-      </section>
-
       <section class="panel projection-panel is-collapsed" aria-labelledby="projectionTitle">
         <div class="section-head">
           <h2 id="projectionTitle">

@@ -1127,8 +1127,8 @@ test.describe('Phase 09 source account automatic flow', () => {
 
   test('preserves manual transfer settings in source-account network flow', async ({ page }) => {
     await openControlsPanel(page);
-    await expect(page.locator('text=계좌 간 수동 이체 설정')).toBeVisible();
-    await expect(page.locator('#transferEditorSection')).toBeVisible();
+    await expect(page.locator('text=계좌 간 수동 이체 설정')).toHaveCount(0);
+    await expect(page.locator('#transferEditorSection')).toHaveCount(0);
 
     await page.evaluate(async () => {
       const [{ state }, { sanitizeInputs }, { buildMonthlySnapshot }, { buildSankeyData }] = await Promise.all([
@@ -1204,14 +1204,21 @@ test.describe('Phase 10.8 Account Map Main entry and compatibility', () => {
     const order = await page.evaluate(() => {
       const sankey = document.querySelector('.sankey-panel');
       const accountMap = document.querySelector('.account-map-entry-panel');
-      return Boolean(sankey && accountMap && sankey.compareDocumentPosition(accountMap) & Node.DOCUMENT_POSITION_FOLLOWING);
+      return {
+        dom: Boolean(sankey && accountMap && sankey.compareDocumentPosition(accountMap) & Node.DOCUMENT_POSITION_FOLLOWING),
+        sankeyOrder: sankey ? Number(window.getComputedStyle(sankey).order) : null,
+        accountMapOrder: accountMap ? Number(window.getComputedStyle(accountMap).order) : null,
+      };
     });
-    expect(order).toBe(true);
+    expect(order.dom).toBe(true);
+    expect(order.accountMapOrder).toBeGreaterThan(order.sankeyOrder ?? 0);
 
     await expect(page.locator('#accountMapCanvas')).toHaveCount(0);
     await expect(page.locator('#importMainData')).toHaveCount(0);
     await expect(page.locator('[data-candidate-action]')).toHaveCount(0);
     await expect(page.locator('[data-relationship-editor]')).toHaveCount(0);
+    await expect(page.locator('#transferEditorSection')).toHaveCount(0);
+    await expect(page.locator('text=계좌 간 수동 이체 설정')).toHaveCount(0);
   });
 
   test('routes Account Map through shared navigation without using Portfolio', async ({ page }) => {
