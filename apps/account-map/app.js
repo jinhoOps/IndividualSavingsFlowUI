@@ -25,6 +25,7 @@ const AccountMapApp = {
   cacheNodes() {
     this.nodes = {
       importMainData: document.querySelector("#importMainData"),
+      autoLayoutMap: document.querySelector("#autoLayoutMap"),
       summary: document.querySelector("#accountMapSummary"),
       canvas: document.querySelector("#accountMapCanvas"),
       detail: document.querySelector("#accountMapDetail"),
@@ -36,6 +37,11 @@ const AccountMapApp = {
   bindEvents() {
     this.nodes.importMainData?.addEventListener("click", async () => {
       await this.importMainData();
+    });
+    this.nodes.autoLayoutMap?.addEventListener("click", async () => {
+      await this.state.resetNodePositions();
+      this.render();
+      this.showFeedback("Account Map을 자동정렬했습니다.");
     });
 
     this.nodes.canvas?.addEventListener("click", (event) => {
@@ -101,7 +107,13 @@ const AccountMapApp = {
   },
 
   renderCanvas(draft) {
-    renderAccountMap(this.nodes.canvas, draft, { selectedId: draft.selectedId });
+    renderAccountMap(this.nodes.canvas, draft, {
+      selectedId: draft.selectedId,
+      positions: draft.positions,
+      onNodePositionChange: async (nodeId, position) => {
+        await this.state.setNodePosition(nodeId, position);
+      },
+    });
   },
 
   renderDetail(draft) {

@@ -7,6 +7,7 @@ export function createEmptyAccountMapDraft() {
     accounts: [],
     relationships: [],
     candidates: [],
+    positions: {},
     selectedId: "",
     lastUpdated: new Date().toISOString(),
   };
@@ -66,6 +67,7 @@ export class AccountMapState {
       accounts: Array.isArray(saved.accounts) ? saved.accounts : [],
       relationships: Array.isArray(saved.relationships) ? saved.relationships : [],
       candidates: Array.isArray(saved.candidates) ? saved.candidates : [],
+      positions: saved.positions && typeof saved.positions === "object" ? saved.positions : {},
       selectedId: typeof saved.selectedId === "string" ? saved.selectedId : "",
       lastUpdated: saved.lastUpdated || new Date().toISOString(),
     };
@@ -84,6 +86,23 @@ export class AccountMapState {
     this.data.selectedId = typeof selectedId === "string" ? selectedId : "";
     this.data.lastUpdated = new Date().toISOString();
     saveLocalDraft(this.data);
+  }
+
+  async setNodePosition(nodeId, position) {
+    const id = cleanText(nodeId);
+    const x = Number(position?.x);
+    const y = Number(position?.y);
+    if (!id || !Number.isFinite(x) || !Number.isFinite(y)) return;
+    this.data.positions = {
+      ...(this.data.positions && typeof this.data.positions === "object" ? this.data.positions : {}),
+      [id]: { x, y },
+    };
+    await this.saveToStorage();
+  }
+
+  async resetNodePositions() {
+    this.data.positions = {};
+    await this.saveToStorage();
   }
 
   async acceptCandidate(candidateId) {

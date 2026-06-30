@@ -93,8 +93,18 @@
   cursor: pointer;
 }
 
+.account-map-svg.is-dragging {
+  cursor: grabbing;
+  user-select: none;
+}
+
+.account-map-svg__node.is-dragging {
+  cursor: grabbing;
+}
+
 .account-map-svg__node rect {
   stroke-width: 1.2;
+  transition: filter 0.16s ease, stroke-width 0.16s ease;
 }
 
 .account-map-svg__node--income rect {
@@ -122,6 +132,12 @@
 .account-map-svg__node.is-selected rect {
   stroke: var(--tone-primary);
   stroke-width: 2.5;
+}
+
+.account-map-svg__node.is-dragging rect {
+  filter: drop-shadow(0 12px 18px rgba(16, 34, 32, 0.2));
+  stroke: var(--tone-primary);
+  stroke-width: 2.8;
 }
 
 .account-map-svg__node--external rect {

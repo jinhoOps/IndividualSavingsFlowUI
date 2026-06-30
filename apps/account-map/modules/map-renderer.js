@@ -202,6 +202,20 @@ function computePositions(nodes, relationships, width, height) {
   return positions;
 }
 
+function applySavedPositions(positions, savedPositions, width, height) {
+  if (!savedPositions || typeof savedPositions !== "object") return;
+  Object.entries(savedPositions).forEach(([id, position]) => {
+    if (!positions.has(id)) return;
+    const x = Number(position?.x);
+    const y = Number(position?.y);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+    positions.set(id, {
+      x: clamp(x, 70, width - 70),
+      y: clamp(y, 52, height - 52),
+    });
+  });
+}
+
 function createMarker(color, id) {
   const marker = svgElement("marker", {
     id,
@@ -242,6 +256,7 @@ export function renderAccountMap(container, draft = {}, options = {}) {
   const height = Math.max(360, Math.round(bounds.height || 420));
   const renderNodes = buildRenderNodes(accounts, relationships);
   const positions = computePositions(renderNodes, relationships, width, height);
+  applySavedPositions(positions, options.positions, width, height);
   const selectedId = options.selectedId || "";
 
   const svg = svgElement("svg", {
@@ -261,95 +276,182 @@ export function renderAccountMap(container, draft = {}, options = {}) {
   const edgeLayer = svgElement("g", { class: "account-map-svg__edges" });
   const labelLayer = svgElement("g", { class: "account-map-svg__edge-labels" });
   const nodeLayer = svgElement("g", { class: "account-map-svg__nodes" });
+  let dragState = null;
 
-  relationships.forEach((relationship, index) => {
-    const source = positions.get(String(relationship.sourceAccountId || ""));
-    const target = positions.get(String(relationship.targetAccountId || ""));
-    if (!source || !target) return;
-    const meta = getTypeMeta(relationship.type);
-    const offset = (index % 3 - 1) * 18;
-    const midX = (source.x + target.x) / 2;
-    const midY = (source.y + target.y) / 2 + offset;
-    const sourceDirection = source.x <= target.x ? 1 : -1;
-    const targetDirection = source.x <= target.x ? -1 : 1;
-    const d = `M ${source.x + (42 * sourceDirection)} ${source.y} Q ${midX} ${midY} ${target.x + (42 * targetDirection)} ${target.y}`;
-    const id = String(relationship.id || `relationship-${index + 1}`);
-    const selected = selectedId === `relationship:${id}`;
+  const getSvgPoint = (event) => {
+    const rect = svg.getBoundingClientRect();
+    const scaleX = width / Math.max(1, rect.width);
+    const scaleY = height / Math.max(1, rect.height);
+    return {
+      x: (event.clientX - rect.left) * scaleX,
+      y: (event.clientY - rect.top) * scaleY,
+    };
+  };
 
-    const path = svgElement("path", {
-      class: `account-map-svg__edge${selected ? " is-selected" : ""}`,
-      d,
-      fill: "none",
-      stroke: meta.color,
-      "stroke-width": selected ? "4" : "2.5",
-      "marker-end": markerByColor.get(meta.color) || "",
-      tabindex: "0",
-      role: "button",
-      "aria-label": `${meta.label} 관계 선택`,
-      "data-account-map-select": "relationship",
-      "data-relationship-id": id,
+  const drawEdges = () => {
+    edgeLayer.replaceChildren();
+    labelLayer.replaceChildren();
+    relationships.forEach((relationship, index) => {
+      const source = positions.get(String(relationship.sourceAccountId || ""));
+      const target = positions.get(String(relationship.targetAccountId || ""));
+      if (!source || !target) return;
+      const meta = getTypeMeta(relationship.type);
+      const offset = (index % 3 - 1) * 18;
+      const midX = (source.x + target.x) / 2;
+      const midY = (source.y + target.y) / 2 + offset;
+      const sourceDirection = source.x <= target.x ? 1 : -1;
+      const targetDirection = source.x <= target.x ? -1 : 1;
+      const d = `M ${source.x + (42 * sourceDirection)} ${source.y} Q ${midX} ${midY} ${target.x + (42 * targetDirection)} ${target.y}`;
+      const id = String(relationship.id || `relationship-${index + 1}`);
+      const selected = selectedId === `relationship:${id}`;
+
+      const path = svgElement("path", {
+        class: `account-map-svg__edge${selected ? " is-selected" : ""}`,
+        d,
+        fill: "none",
+        stroke: meta.color,
+        "stroke-width": selected ? "4" : "2.5",
+        "marker-end": markerByColor.get(meta.color) || "",
+        tabindex: "0",
+        role: "button",
+        "aria-label": `${meta.label} 관계 선택`,
+        "data-account-map-select": "relationship",
+        "data-relationship-id": id,
+      });
+      edgeLayer.appendChild(path);
+
+      const chip = svgElement("g", {
+        class: `account-map-svg__edge-chip${selected ? " is-selected" : ""}`,
+        "data-account-map-select": "relationship",
+        "data-relationship-id": id,
+        tabindex: "0",
+        role: "button",
+      });
+      chip.appendChild(svgElement("rect", {
+        x: midX - 32,
+        y: midY - 14,
+        width: "64",
+        height: "24",
+        rx: "6",
+        fill: meta.color,
+      }));
+      chip.appendChild(createSvgText(meta.label, {
+        x: midX,
+        y: midY + 3,
+        "text-anchor": "middle",
+        class: "account-map-svg__edge-text",
+        fill: "#ffffff",
+      }));
+      labelLayer.appendChild(chip);
     });
-    edgeLayer.appendChild(path);
+  };
 
-    const chip = svgElement("g", {
-      class: `account-map-svg__edge-chip${selected ? " is-selected" : ""}`,
-      "data-account-map-select": "relationship",
-      "data-relationship-id": id,
-      tabindex: "0",
-      role: "button",
+  const drawNodes = () => {
+    nodeLayer.replaceChildren();
+    renderNodes.forEach((node) => {
+      const position = positions.get(node.id);
+      if (!position) return;
+      const selected = selectedId === `account:${node.id}`;
+      const isDragging = dragState?.nodeId === node.id;
+      const colors = getNodeColors(node.role || "spending");
+      const group = svgElement("g", {
+        class: `account-map-svg__node account-map-svg__node--${node.role || "spending"}${selected ? " is-selected" : ""}${isDragging ? " is-dragging" : ""}`,
+        transform: `translate(${position.x}, ${position.y})`,
+        tabindex: "0",
+        role: "button",
+        "aria-label": `${node.name} 계좌 선택`,
+        "data-account-map-select": "account",
+        "data-account-id": node.id,
+      });
+      group.addEventListener("pointerdown", (event) => {
+        const start = getSvgPoint(event);
+        dragState = {
+          nodeId: node.id,
+          startX: start.x,
+          startY: start.y,
+          offsetX: start.x - position.x,
+          offsetY: start.y - position.y,
+          moved: false,
+        };
+        svg.classList.add("is-dragging");
+        event.preventDefault();
+        event.stopPropagation();
+      });
+      group.appendChild(svgElement("rect", {
+        x: "-58",
+        y: "-25",
+        width: "116",
+        height: "50",
+        rx: "8",
+        fill: colors.fill,
+        stroke: colors.stroke,
+        "stroke-width": selected ? "2.5" : "1.4",
+      }));
+      group.appendChild(createSvgText(node.name, {
+        x: "0",
+        y: "3",
+        "text-anchor": "middle",
+        class: "account-map-svg__node-text",
+        fill: colors.text,
+      }));
+      nodeLayer.appendChild(group);
     });
-    chip.appendChild(svgElement("rect", {
-      x: midX - 32,
-      y: midY - 14,
-      width: "64",
-      height: "24",
-      rx: "6",
-      fill: meta.color,
-    }));
-    chip.appendChild(createSvgText(meta.label, {
-      x: midX,
-      y: midY + 3,
-      "text-anchor": "middle",
-      class: "account-map-svg__edge-text",
-      fill: "#ffffff",
-    }));
-    labelLayer.appendChild(chip);
+  };
+
+  const redrawGraph = () => {
+    drawEdges();
+    drawNodes();
+  };
+
+  svg.addEventListener("pointermove", (event) => {
+    if (!dragState) return;
+    const point = getSvgPoint(event);
+    if (!dragState.moved && Math.hypot(point.x - dragState.startX, point.y - dragState.startY) < 4) {
+      return;
+    }
+    dragState.moved = true;
+    positions.set(dragState.nodeId, {
+      x: clamp(point.x - dragState.offsetX, 70, width - 70),
+      y: clamp(point.y - dragState.offsetY, 52, height - 52),
+    });
+    redrawGraph();
   });
 
-  renderNodes.forEach((node) => {
-    const position = positions.get(node.id);
-    if (!position) return;
-    const selected = selectedId === `account:${node.id}`;
-    const colors = getNodeColors(node.role || "spending");
-    const group = svgElement("g", {
-      class: `account-map-svg__node account-map-svg__node--${node.role || "spending"}${selected ? " is-selected" : ""}`,
-      transform: `translate(${position.x}, ${position.y})`,
-      tabindex: "0",
-      role: "button",
-      "aria-label": `${node.name} 계좌 선택`,
-      "data-account-map-select": "account",
-      "data-account-id": node.id,
-    });
-    group.appendChild(svgElement("rect", {
-      x: "-58",
-      y: "-25",
-      width: "116",
-      height: "50",
-      rx: "8",
-      fill: colors.fill,
-      stroke: colors.stroke,
-      "stroke-width": selected ? "2.5" : "1.4",
-    }));
-    group.appendChild(createSvgText(node.name, {
-      x: "0",
-      y: "3",
-      "text-anchor": "middle",
-      class: "account-map-svg__node-text",
-      fill: colors.text,
-    }));
-    nodeLayer.appendChild(group);
+  svg.addEventListener("pointerup", async () => {
+    if (!dragState) return;
+    if (!dragState.moved) {
+      dragState = null;
+      svg.classList.remove("is-dragging");
+      return;
+    }
+    const nodeId = dragState.nodeId;
+    const position = positions.get(nodeId);
+    dragState = null;
+    svg.classList.remove("is-dragging");
+    redrawGraph();
+    if (position && typeof options.onNodePositionChange === "function") {
+      await options.onNodePositionChange(nodeId, position);
+    }
   });
 
+  svg.addEventListener("pointerleave", async () => {
+    if (!dragState) return;
+    if (!dragState.moved) {
+      dragState = null;
+      svg.classList.remove("is-dragging");
+      return;
+    }
+    const nodeId = dragState.nodeId;
+    const position = positions.get(nodeId);
+    dragState = null;
+    svg.classList.remove("is-dragging");
+    redrawGraph();
+    if (position && typeof options.onNodePositionChange === "function") {
+      await options.onNodePositionChange(nodeId, position);
+    }
+  });
+
+  redrawGraph();
   svg.append(edgeLayer, labelLayer, nodeLayer);
   container.replaceChildren(svg);
 }

@@ -250,6 +250,52 @@ test.describe('Account Map route and draft import', () => {
     await expect(page.locator('[data-relationship-field="memo"]')).toHaveValue('월급 다음날 이체');
   });
 
+  test('persists dragged node positions locally and resets them with auto layout', async ({ page }) => {
+    await page.goto('apps/account-map/index.html');
+    await page.locator('#importMainData').click();
+    await expect(page.locator('#accountMapCanvas svg.account-map-svg')).toBeVisible();
+
+    const salaryNode = page.locator('[data-account-map-select="account"][data-account-id="acc-salary"]');
+    const initial = await salaryNode.evaluate((node) => {
+      const match = String(node.getAttribute('transform') || '').match(/translate\(([-\d.]+),\s*([-\d.]+)\)/);
+      return { x: Number(match?.[1] || 0), y: Number(match?.[2] || 0) };
+    });
+    const box = await salaryNode.boundingBox();
+    expect(box).not.toBeNull();
+    await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box!.x + box!.width / 2 + 84, box!.y + box!.height / 2 + 36, { steps: 6 });
+    await page.mouse.up();
+
+    const dragged = await salaryNode.evaluate((node) => {
+      const match = String(node.getAttribute('transform') || '').match(/translate\(([-\d.]+),\s*([-\d.]+)\)/);
+      return { x: Number(match?.[1] || 0), y: Number(match?.[2] || 0) };
+    });
+    expect(dragged.x).toBeGreaterThan(initial.x + 40);
+    expect(dragged.y).toBeGreaterThan(initial.y + 20);
+
+    const savedAfterDrag = await page.evaluate((key) => JSON.parse(localStorage.getItem(key) || '{}'), ACCOUNT_MAP_STORAGE_KEY);
+    expect(savedAfterDrag.positions['acc-salary'].x).toBeCloseTo(dragged.x, 0);
+    expect(savedAfterDrag.positions['acc-salary'].y).toBeCloseTo(dragged.y, 0);
+
+    await page.reload();
+    const restored = await page.locator('[data-account-map-select="account"][data-account-id="acc-salary"]').evaluate((node) => {
+      const match = String(node.getAttribute('transform') || '').match(/translate\(([-\d.]+),\s*([-\d.]+)\)/);
+      return { x: Number(match?.[1] || 0), y: Number(match?.[2] || 0) };
+    });
+    expect(restored.x).toBeCloseTo(dragged.x, 0);
+    expect(restored.y).toBeCloseTo(dragged.y, 0);
+
+    await page.locator('#autoLayoutMap').click();
+    const savedAfterAutoLayout = await page.evaluate((key) => JSON.parse(localStorage.getItem(key) || '{}'), ACCOUNT_MAP_STORAGE_KEY);
+    expect(savedAfterAutoLayout.positions || {}).not.toHaveProperty('acc-salary');
+    const reset = await page.locator('[data-account-map-select="account"][data-account-id="acc-salary"]').evaluate((node) => {
+      const match = String(node.getAttribute('transform') || '').match(/translate\(([-\d.]+),\s*([-\d.]+)\)/);
+      return { x: Number(match?.[1] || 0), y: Number(match?.[2] || 0) };
+    });
+    expect(Math.abs(reset.x - dragged.x)).toBeGreaterThan(20);
+  });
+
   test('shows account linked relationships without exposing an ordinary Step 1 editor', async ({ page }) => {
     await page.goto('apps/account-map/index.html');
     await page.locator('#importMainData').click();
