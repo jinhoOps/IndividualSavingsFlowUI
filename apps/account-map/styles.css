@@ -64,6 +64,7 @@
   display: block;
   width: 100%;
   min-height: 430px;
+  touch-action: none;
 }
 
 .account-map-svg__edge {
@@ -91,6 +92,7 @@
 
 .account-map-svg__node {
   cursor: pointer;
+  touch-action: none;
 }
 
 .account-map-svg.is-dragging {

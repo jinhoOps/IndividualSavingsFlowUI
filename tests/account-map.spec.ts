@@ -296,6 +296,52 @@ test.describe('Account Map route and draft import', () => {
     expect(Math.abs(reset.x - dragged.x)).toBeGreaterThan(20);
   });
 
+  test('cleans up drag state on pointer cancel without persisting partial positions', async ({ page }) => {
+    await page.goto('apps/account-map/index.html');
+    await page.locator('#importMainData').click();
+    await expect(page.locator('#accountMapCanvas svg.account-map-svg')).toBeVisible();
+
+    const result = await page.locator('#accountMapCanvas').evaluate((canvas) => {
+      const svg = canvas.querySelector('svg.account-map-svg') as SVGSVGElement;
+      const node = canvas.querySelector('[data-account-id="acc-salary"]') as SVGGElement;
+      const rect = node.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+
+      node.dispatchEvent(new PointerEvent('pointerdown', {
+        bubbles: true,
+        pointerId: 101,
+        clientX: centerX,
+        clientY: centerY,
+        pointerType: 'touch',
+      }));
+      svg.dispatchEvent(new PointerEvent('pointermove', {
+        bubbles: true,
+        pointerId: 101,
+        clientX: centerX + 72,
+        clientY: centerY + 28,
+        pointerType: 'touch',
+      }));
+      svg.dispatchEvent(new PointerEvent('pointercancel', {
+        bubbles: true,
+        pointerId: 101,
+        clientX: centerX + 72,
+        clientY: centerY + 28,
+        pointerType: 'touch',
+      }));
+
+      return {
+        svgDragging: svg.classList.contains('is-dragging'),
+        nodeDraggingCount: canvas.querySelectorAll('.account-map-svg__node.is-dragging').length,
+        saved: JSON.parse(localStorage.getItem('isf-account-map-v1') || '{}'),
+      };
+    });
+
+    expect(result.svgDragging).toBe(false);
+    expect(result.nodeDraggingCount).toBe(0);
+    expect(result.saved.positions || {}).not.toHaveProperty('acc-salary');
+  });
+
   test('shows account linked relationships without exposing an ordinary Step 1 editor', async ({ page }) => {
     await page.goto('apps/account-map/index.html');
     await page.locator('#importMainData').click();

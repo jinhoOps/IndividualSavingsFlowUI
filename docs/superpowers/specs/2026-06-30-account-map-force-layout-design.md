@@ -23,4 +23,4 @@ Run TypeScript checks and focused Account Map Playwright coverage:
 - `npx playwright test tests/account-map.spec.ts`
 
 ## Scope
-No new dependency, no D3 runtime, no interactive drag behavior, and no animated simulation loop.
+No new dependency, no D3 runtime, and no animated simulation loop. The map supports persisted manual node dragging and an explicit auto-layout reset.

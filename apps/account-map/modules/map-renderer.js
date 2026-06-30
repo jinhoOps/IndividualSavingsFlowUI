@@ -379,8 +379,11 @@ export function renderAccountMap(container, draft = {}, options = {}) {
       });
       group.addEventListener("pointerdown", (event) => {
         const start = getSvgPoint(event);
+        svg.setPointerCapture?.(event.pointerId);
         dragState = {
           nodeId: node.id,
+          sourceElement: group,
+          pointerId: event.pointerId,
           startX: start.x,
           startY: start.y,
           offsetX: start.x - position.x,
@@ -388,8 +391,6 @@ export function renderAccountMap(container, draft = {}, options = {}) {
           moved: false,
         };
         svg.classList.add("is-dragging");
-        event.preventDefault();
-        event.stopPropagation();
       });
       group.appendChild(svgElement("rect", {
         x: "-58",
@@ -417,8 +418,32 @@ export function renderAccountMap(container, draft = {}, options = {}) {
     drawNodes();
   };
 
-  svg.addEventListener("pointermove", (event) => {
+  const finishDrag = async ({ persist }) => {
     if (!dragState) return;
+    const nodeId = dragState.nodeId;
+    const pointerId = dragState.pointerId;
+    const sourceElement = dragState.sourceElement;
+    const position = positions.get(nodeId);
+    const moved = dragState.moved;
+    dragState = null;
+    svg.classList.remove("is-dragging");
+    try {
+      if (pointerId !== undefined && svg.hasPointerCapture?.(pointerId)) {
+        svg.releasePointerCapture(pointerId);
+      }
+    } catch (_error) {}
+    if (!moved && persist && sourceElement) {
+      sourceElement.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      return;
+    }
+    if (moved) redrawGraph();
+    if (persist && moved && position && typeof options.onNodePositionChange === "function") {
+      await options.onNodePositionChange(nodeId, position);
+    }
+  };
+
+  svg.addEventListener("pointermove", (event) => {
+    if (!dragState || event.pointerId !== dragState.pointerId) return;
     const point = getSvgPoint(event);
     if (!dragState.moved && Math.hypot(point.x - dragState.startX, point.y - dragState.startY) < 4) {
       return;
@@ -428,41 +453,23 @@ export function renderAccountMap(container, draft = {}, options = {}) {
       x: clamp(point.x - dragState.offsetX, 70, width - 70),
       y: clamp(point.y - dragState.offsetY, 52, height - 52),
     });
+    event.preventDefault();
     redrawGraph();
   });
 
-  svg.addEventListener("pointerup", async () => {
-    if (!dragState) return;
-    if (!dragState.moved) {
-      dragState = null;
-      svg.classList.remove("is-dragging");
-      return;
-    }
-    const nodeId = dragState.nodeId;
-    const position = positions.get(nodeId);
-    dragState = null;
-    svg.classList.remove("is-dragging");
-    redrawGraph();
-    if (position && typeof options.onNodePositionChange === "function") {
-      await options.onNodePositionChange(nodeId, position);
-    }
+  svg.addEventListener("pointerup", async (event) => {
+    if (dragState && event.pointerId !== dragState.pointerId) return;
+    await finishDrag({ persist: true });
+  });
+
+  svg.addEventListener("pointercancel", async (event) => {
+    if (dragState && event.pointerId !== dragState.pointerId) return;
+    await finishDrag({ persist: false });
   });
 
   svg.addEventListener("pointerleave", async () => {
     if (!dragState) return;
-    if (!dragState.moved) {
-      dragState = null;
-      svg.classList.remove("is-dragging");
-      return;
-    }
-    const nodeId = dragState.nodeId;
-    const position = positions.get(nodeId);
-    dragState = null;
-    svg.classList.remove("is-dragging");
-    redrawGraph();
-    if (position && typeof options.onNodePositionChange === "function") {
-      await options.onNodePositionChange(nodeId, position);
-    }
+    await finishDrag({ persist: true });
   });
 
   redrawGraph();
