@@ -113,6 +113,18 @@ test.describe('Account Map route and draft import', () => {
     await expect(page.locator('#accountMapCanvas')).not.toContainText('500000');
     await expect(page.locator('#accountMapCanvas [role="tab"], #accountMapCanvas button')).toHaveCount(0);
     await expect(page.locator('#accountMapCanvas')).not.toContainText(/필터|전체|이체만|카드만/);
+    const nodeColors = await page.locator('[data-account-map-select="account"][data-account-id="acc-salary"]').evaluate((node) => {
+      const rect = node.querySelector('rect');
+      const text = node.querySelector('text');
+      return {
+        fill: rect?.getAttribute('fill') || window.getComputedStyle(rect as Element).fill,
+        stroke: rect?.getAttribute('stroke') || window.getComputedStyle(rect as Element).stroke,
+        textFill: text?.getAttribute('fill') || window.getComputedStyle(text as Element).fill,
+      };
+    });
+    expect(nodeColors.fill).not.toMatch(/^(#000|#000000|black|rgb\(0,\s*0,\s*0\))$/i);
+    expect(nodeColors.stroke).not.toMatch(/^(#000|#000000|black|rgb\(0,\s*0,\s*0\))$/i);
+    expect(nodeColors.textFill).toBe('#102220');
 
     const persisted = await page.evaluate((key) => JSON.parse(localStorage.getItem(key) || '{}'), ACCOUNT_MAP_STORAGE_KEY);
     expect(persisted.source).toMatchObject({ type: 'main', storageKey: MAIN_STORAGE_KEY });

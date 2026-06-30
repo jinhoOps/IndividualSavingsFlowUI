@@ -86,6 +86,7 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 
 | Date | Quick ID | Slug | Summary |
 |------|----------|------|---------|
+| 2026-06-30 | 260630-cqu | move-main-account-map-summary-after-mont | Moved the Main Account Map summary after 월 가계 흐름, clarified its account-relationship scope, and fixed Account Map SVG node contrast. |
 | 2026-06-29 | 260629-psu | main-sankey-should-exclude-account-nodes | Restored Main Sankey to exclude account nodes/links by default while keeping explicit account-flow projection for network/Account Map helpers. |
 
 ## Decisions
@@ -146,6 +147,7 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 - [Phase 10.8-02]: Candidate accept/exclude and relationship payment-day/memo edits persist only to isf-account-map-v1 and do not mutate Main storage.
 - [Phase 10.8-03]: Main exposes Account Map through a compact scan-only summary entry that links to ../account-map/; Account Map editing remains page-owned.
 - [Phase 10.8-03]: Shared header Account Map navigation remains a distinct account-map destination, with Portfolio preserved as a separate launcher item.
+- [Quick 260630-cqu]: Main Account Map summary belongs after 월 가계 흐름 as a separate account-relationship follow-up, and Account Map SVG nodes must carry explicit light fill/stroke/text colors to avoid unreadable black fallback rendering.
 - [Quick 260629-psu]: Main Sankey intentionally excludes account nodes, account links, and account transfers so the 가계 흐름 view stays concise at a glance; account relationship detail belongs in Account Map or explicit account-flow projections.
 
 ## Operator Next Steps

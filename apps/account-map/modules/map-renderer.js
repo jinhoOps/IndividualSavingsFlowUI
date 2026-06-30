@@ -10,6 +10,14 @@ const TYPE_META = {
   "investment-transfer": { label: "invest", color: "#4f46e5" },
 };
 
+const NODE_COLORS = {
+  income: { fill: "#eaf2ff", stroke: "#7aa7e8", text: "#102220" },
+  spending: { fill: "#fff8e8", stroke: "#e6bd63", text: "#102220" },
+  savings: { fill: "#e9f8ef", stroke: "#74be8a", text: "#102220" },
+  investment: { fill: "#eef0ff", stroke: "#8d96e8", text: "#102220" },
+  external: { fill: "#f6f4ef", stroke: "#cfc8bb", text: "#102220" },
+};
+
 function svgElement(tagName, attributes = {}) {
   const element = document.createElementNS(SVG_NS, tagName);
   Object.entries(attributes).forEach(([key, value]) => {
@@ -26,6 +34,10 @@ function createSvgText(text, attributes = {}) {
 
 function getTypeMeta(type) {
   return TYPE_META[type] || { label: "link", color: "#64748b" };
+}
+
+function getNodeColors(role) {
+  return NODE_COLORS[role] || NODE_COLORS.spending;
 }
 
 function buildRenderNodes(accounts = [], relationships = []) {
@@ -184,6 +196,7 @@ export function renderAccountMap(container, draft = {}, options = {}) {
       y: midY + 3,
       "text-anchor": "middle",
       class: "account-map-svg__edge-text",
+      fill: "#ffffff",
     }));
     labelLayer.appendChild(chip);
   });
@@ -192,6 +205,7 @@ export function renderAccountMap(container, draft = {}, options = {}) {
     const position = positions.get(node.id);
     if (!position) return;
     const selected = selectedId === `account:${node.id}`;
+    const colors = getNodeColors(node.role || "spending");
     const group = svgElement("g", {
       class: `account-map-svg__node account-map-svg__node--${node.role || "spending"}${selected ? " is-selected" : ""}`,
       transform: `translate(${position.x}, ${position.y})`,
@@ -201,12 +215,22 @@ export function renderAccountMap(container, draft = {}, options = {}) {
       "data-account-map-select": "account",
       "data-account-id": node.id,
     });
-    group.appendChild(svgElement("rect", { x: "-58", y: "-25", width: "116", height: "50", rx: "8" }));
+    group.appendChild(svgElement("rect", {
+      x: "-58",
+      y: "-25",
+      width: "116",
+      height: "50",
+      rx: "8",
+      fill: colors.fill,
+      stroke: colors.stroke,
+      "stroke-width": selected ? "2.5" : "1.4",
+    }));
     group.appendChild(createSvgText(node.name, {
       x: "0",
       y: "3",
       "text-anchor": "middle",
       class: "account-map-svg__node-text",
+      fill: colors.text,
     }));
     nodeLayer.appendChild(group);
   });

@@ -94,9 +94,27 @@
 }
 
 .account-map-svg__node rect {
-  fill: var(--surface);
-  stroke: var(--line-strong);
   stroke-width: 1.2;
+}
+
+.account-map-svg__node--income rect {
+  fill: #eaf2ff;
+  stroke: #7aa7e8;
+}
+
+.account-map-svg__node--spending rect {
+  fill: #fff8e8;
+  stroke: #e6bd63;
+}
+
+.account-map-svg__node--savings rect {
+  fill: #e9f8ef;
+  stroke: #74be8a;
+}
+
+.account-map-svg__node--investment rect {
+  fill: #eef0ff;
+  stroke: #8d96e8;
 }
 
 .account-map-svg__node:hover rect,
@@ -107,11 +125,12 @@
 }
 
 .account-map-svg__node--external rect {
-  fill: var(--surface-muted);
+  fill: #f6f4ef;
+  stroke: #cfc8bb;
 }
 
 .account-map-svg__node-text {
-  fill: var(--ink);
+  fill: #102220;
   font-size: 12px;
   font-weight: 800;
   pointer-events: none;

@@ -1190,10 +1190,21 @@ test.describe('Phase 10.8 Account Map Main entry and compatibility', () => {
     const entry = page.locator('[data-account-map-entry="lightweight"]');
     await expect(entry).toBeVisible();
     await expect(entry).toContainText('Account Map');
-    await expect(entry).toContainText('계좌 관계');
+    await expect(entry).toContainText('계좌·자동이체·고정 결제 후보');
+    await expect(entry).toContainText('계좌 후보');
+    await expect(entry).toContainText('연결 후보');
+    await expect(entry).toContainText('결제 후보');
 
     const link = entry.locator('[data-account-map-link="dedicated"]');
     await expect(link).toHaveAttribute('href', '../account-map/');
+    await expect(link).toHaveText('맵 열기');
+
+    const order = await page.evaluate(() => {
+      const sankey = document.querySelector('.sankey-panel');
+      const accountMap = document.querySelector('.account-map-entry-panel');
+      return Boolean(sankey && accountMap && sankey.compareDocumentPosition(accountMap) & Node.DOCUMENT_POSITION_FOLLOWING);
+    });
+    expect(order).toBe(true);
 
     await expect(page.locator('#accountMapCanvas')).toHaveCount(0);
     await expect(page.locator('#importMainData')).toHaveCount(0);
@@ -1319,7 +1330,8 @@ test.describe('Phase 10.8 Account Map Main entry and compatibility', () => {
       isManual: true,
     });
     expect(result.entryMetrics).toContain('3계좌');
-    expect(result.entryMetrics).toContain('확인필요');
+    expect(result.entryMetrics).toContain('6연결');
+    expect(result.entryMetrics).toContain('1결제');
     expect(result.entryLink).toBe('../account-map/');
   });
 });
