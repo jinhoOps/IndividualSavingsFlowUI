@@ -84,14 +84,14 @@ function IncomeStep({ draft, issues, onChange }: Pick<SetupFlowProps, 'draft' | 
         label="수입 이름"
         value={income.name}
         error={issue}
-        onChange={(name) => onChange({ ...draft, incomes: [{ ...income, name }] })}
+        onChange={(name) => onChange({ ...draft, incomes: replaceFirst(draft.incomes, { ...income, name }) })}
       />
       <MoneyField
         id="income-amount"
         label="월 금액"
         valueWon={income.amountWon}
         error={amountIssue}
-        onChange={(amountWon) => onChange({ ...draft, incomes: [{ ...income, amountWon }] })}
+        onChange={(amountWon) => onChange({ ...draft, incomes: replaceFirst(draft.incomes, { ...income, amountWon }) })}
       />
     </>
   );
@@ -111,14 +111,14 @@ function ExpenseStep({ draft, issues, onChange }: Pick<SetupFlowProps, 'draft' |
         label="생활비 이름"
         value={expense.name}
         error={nameIssue}
-        onChange={(name) => onChange({ ...draft, expenses: [{ ...expense, name }] })}
+        onChange={(name) => onChange({ ...draft, expenses: replaceFirst(draft.expenses, { ...expense, name }) })}
       />
       <MoneyField
         id="expense-amount"
         label="월 금액"
         valueWon={expense.amountWon}
         error={amountIssue}
-        onChange={(amountWon) => onChange({ ...draft, expenses: [{ ...expense, amountWon }] })}
+        onChange={(amountWon) => onChange({ ...draft, expenses: replaceFirst(draft.expenses, { ...expense, amountWon }) })}
       />
     </>
   );
@@ -137,14 +137,14 @@ function SavingInvestmentStep({ draft, issues, onChange }: Pick<SetupFlowProps, 
         label="월 저축 금액"
         valueWon={saving.amountWon}
         error={findIssue(issues, `savings.${saving.id}.amountWon`)}
-        onChange={(amountWon) => onChange({ ...draft, savings: [{ ...saving, amountWon }] })}
+        onChange={(amountWon) => onChange({ ...draft, savings: replaceFirst(draft.savings, { ...saving, amountWon }) })}
       />
       <MoneyField
         id="investment-amount"
         label="월 투자 금액"
         valueWon={investment.amountWon}
         error={findIssue(issues, `investments.${investment.id}.amountWon`)}
-        onChange={(amountWon) => onChange({ ...draft, investments: [{ ...investment, amountWon }] })}
+        onChange={(amountWon) => onChange({ ...draft, investments: replaceFirst(draft.investments, { ...investment, amountWon }) })}
       />
     </>
   );
@@ -162,7 +162,7 @@ function AccountStep({ draft, issues, onChange }: Pick<SetupFlowProps, 'draft' |
         label="계좌 이름"
         value={account.name}
         error={findIssue(issues, `accounts.${account.id}.name`)}
-        onChange={(name) => onChange({ ...draft, accounts: [{ ...account, name }] })}
+        onChange={(name) => onChange({ ...draft, accounts: replaceFirst(draft.accounts, { ...account, name }) })}
       />
     </>
   );
@@ -217,6 +217,10 @@ function createItem(kind: 'income' | 'expense' | 'saving' | 'investment', index:
 
 function createAccount(index: number): Account {
   return { id: `account-${index + 1}`, name: '', kind: 'other' };
+}
+
+function replaceFirst<T>(items: T[], first: T): T[] {
+  return items.length === 0 ? [first] : [first, ...items.slice(1)];
 }
 
 function findIssue(issues: ValidationIssue[], path: string): string | undefined {

@@ -7,13 +7,17 @@ import { SetupFlow, type ValidationIssue } from '../../../src/main/ui/setup/Setu
 
 afterEach(cleanup);
 
-function renderFlow(initialStep: SetupStep, issues: ValidationIssue[] = []) {
+function renderFlow(
+  initialStep: SetupStep,
+  issues: ValidationIssue[] = [],
+  initialDraft: MainData = createEmptyMainData(),
+) {
   const onChange = vi.fn();
   const onStepChange = vi.fn();
   const onApply = vi.fn();
 
   function Harness() {
-    const [draft, setDraft] = useState<MainData>(createEmptyMainData);
+    const [draft, setDraft] = useState<MainData>(initialDraft);
     const [step, setStep] = useState<SetupStep>(initialStep);
 
     return (
@@ -85,5 +89,56 @@ describe('SetupFlow', () => {
     fireEvent.click(screen.getByRole('button', { name: '계획 적용' }));
 
     expect(onApply).toHaveBeenCalledOnce();
+  });
+
+  it('preserves later resumed entries while editing the first entry of every setup collection', () => {
+    const draft: MainData = {
+      schemaVersion: 1,
+      updatedAt: 1,
+      incomes: [
+        { id: 'income-1', name: '급여', amountWon: 4_000_000, allocations: [] },
+        { id: 'income-2', name: '부수입', amountWon: 300_000, allocations: [{ accountId: 'account-2', amountWon: 300_000 }] },
+      ],
+      expenses: [
+        { id: 'expense-1', name: '생활비', amountWon: 1_500_000 },
+        { id: 'expense-2', name: '통신비', amountWon: 80_000, group: '고정비', accountId: 'account-2' },
+      ],
+      savings: [
+        { id: 'saving-1', name: '적금', amountWon: 400_000 },
+        { id: 'saving-2', name: '비상금', amountWon: 200_000, annualRate: 3.2, maturityMonth: '2027-01' },
+      ],
+      investments: [
+        { id: 'investment-1', name: 'ETF', amountWon: 300_000 },
+        { id: 'investment-2', name: '연금', amountWon: 250_000, group: '장기', accountId: 'account-2' },
+      ],
+      accounts: [
+        { id: 'account-1', name: '급여통장', kind: 'income' },
+        { id: 'account-2', name: '보조통장', kind: 'other' },
+      ],
+    };
+    const preserved = {
+      income: structuredClone(draft.incomes[1]),
+      expense: structuredClone(draft.expenses[1]),
+      saving: structuredClone(draft.savings[1]),
+      investment: structuredClone(draft.investments[1]),
+      account: structuredClone(draft.accounts[1]),
+    };
+    const { onChange } = renderFlow('income', [], draft);
+
+    fireEvent.change(screen.getByLabelText('수입 이름'), { target: { value: '본업 급여' } });
+    fireEvent.click(screen.getByRole('button', { name: '다음' }));
+    fireEvent.change(screen.getByLabelText('생활비 이름'), { target: { value: '월 생활비' } });
+    fireEvent.click(screen.getByRole('button', { name: '다음' }));
+    fireEvent.change(screen.getByLabelText('월 저축 금액'), { target: { value: '500000' } });
+    fireEvent.change(screen.getByLabelText('월 투자 금액'), { target: { value: '350000' } });
+    fireEvent.click(screen.getByRole('button', { name: '다음' }));
+    fireEvent.change(screen.getByLabelText('계좌 이름'), { target: { value: '주거래 통장' } });
+
+    const edited = onChange.mock.lastCall?.[0] as MainData;
+    expect(edited.incomes[1]).toStrictEqual(preserved.income);
+    expect(edited.expenses[1]).toStrictEqual(preserved.expense);
+    expect(edited.savings[1]).toStrictEqual(preserved.saving);
+    expect(edited.investments[1]).toStrictEqual(preserved.investment);
+    expect(edited.accounts[1]).toStrictEqual(preserved.account);
   });
 });
