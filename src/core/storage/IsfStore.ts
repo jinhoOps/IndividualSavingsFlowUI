@@ -1,12 +1,14 @@
 import { Step1State, Step2Simulation, BackupEntry } from '../types/models';
+import type { MainData } from '../../main/domain/model';
 
 const DB_NAME = 'isf-v2-db';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 const STORES = {
   STEP1_HISTORY: 'step1_history',
   STEP2_SIMULATIONS: 'step2_simulations',
-  BACKUPS: 'backups'
+  BACKUPS: 'backups',
+  MAIN_V1_HISTORY: 'main_v1_history'
 } as const;
 
 export class IsfStore {
@@ -41,6 +43,10 @@ export class IsfStore {
           const b = db.createObjectStore(STORES.BACKUPS, { keyPath: 'id' });
           b.createIndex('appKey', 'appKey');
           b.createIndex('createdAt', 'createdAt');
+        }
+        if (!db.objectStoreNames.contains(STORES.MAIN_V1_HISTORY)) {
+          const main = db.createObjectStore(STORES.MAIN_V1_HISTORY, { keyPath: 'updatedAt' });
+          main.createIndex('updatedAt', 'updatedAt');
         }
       };
 
@@ -117,6 +123,18 @@ export class IsfStore {
 
   async deleteStep2Simulation(id: string): Promise<void> {
     await this.perform(STORES.STEP2_SIMULATIONS, 'readwrite', (s) => s.delete(id));
+  }
+
+  // --- Main v1 Methods ---
+
+  async saveMainV1(data: MainData): Promise<void> {
+    await this.perform(STORES.MAIN_V1_HISTORY, 'readwrite', (store) => store.put(data));
+  }
+
+  async loadLatestMainV1(): Promise<MainData | null> {
+    return this.perform<IDBCursorWithValue | null>(STORES.MAIN_V1_HISTORY, 'readonly', (store) => {
+      return store.index('updatedAt').openCursor(null, 'prev');
+    }).then((cursor) => (cursor?.value as MainData) || null);
   }
 
   // --- Utility ---
