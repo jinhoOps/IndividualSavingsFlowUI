@@ -15,6 +15,10 @@ const LEGACY_ACTIVE_KEY = 'isf-step1-active';
 const SETUP_PROGRESS_KEY = 'isf-main-v1-setup-progress';
 const DISMISSED_RECOVERY_KEY = 'isf-main-v1-dismissed-recovery';
 const MAIN_SAVE_LOCK_NAME = 'isf-main-v1-save';
+const MAIN_SAVE_LEASE_PREFIX = 'isf-main-v1-save-lease:';
+const DEFAULT_LEASE_DURATION_MS = 10_000;
+const DEFAULT_ACQUIRE_TIMEOUT_MS = 2_000;
+const DEFAULT_RETRY_DELAY_MS = 25;
 
 const setupSteps = new Set<SetupStep>(['welcome', 'income', 'expense', 'saving-investment', 'account', 'review']);
 let lastIssuedUpdatedAt = 0;
@@ -25,7 +29,7 @@ export interface MainRepository {
   saveSetupProgress(step: SetupStep, draft: MainData, kind?: SetupProgressKind): void;
   loadSetupProgress(): SetupProgress | null;
   clearSetupProgress(): void;
-  discardPending(): void;
+  discardPending(expectedUpdatedAt?: number): void;
   discardRecovery(updatedAt: number): void;
 }
 
@@ -39,40 +43,244 @@ export interface SetupProgress {
 
 export type MainHistoryStore = Pick<IsfStore, 'saveMainV1'> & Partial<Pick<IsfStore, 'loadLatestMainV1'>>;
 
-export interface MainSaveLock {
-  runExclusive<T>(task: () => Promise<T>): Promise<T>;
+export interface MainSaveGuard {
+  assertOwned(): void;
 }
 
-class BrowserMainSaveLock implements MainSaveLock {
+export interface MainSaveLock {
+  runExclusive<T>(task: (guard: MainSaveGuard) => Promise<T>): Promise<T>;
+}
+
+export interface MainSaveLeaseOptions {
+  createOwnerToken?: () => string;
+  now?: () => number;
+  wait?: (delayMs: number) => Promise<void>;
+  yieldAfterSnapshot?: () => Promise<void>;
+  yieldAfterClaim?: () => Promise<void>;
+  leaseDurationMs?: number;
+  acquireTimeoutMs?: number;
+  retryDelayMs?: number;
+}
+
+interface MainSaveLease {
+  owner: string;
+  choosing: boolean;
+  ticket: number;
+  expiresAt: number;
+}
+
+export class BrowserMainSaveLock implements MainSaveLock {
+  private readonly createOwnerToken: () => string;
+  private readonly now: () => number;
+  private readonly wait: (delayMs: number) => Promise<void>;
+  private readonly yieldAfterSnapshot: () => Promise<void>;
+  private readonly yieldAfterClaim: () => Promise<void>;
+  private readonly leaseDurationMs: number;
+  private readonly acquireTimeoutMs: number;
+  private readonly retryDelayMs: number;
+  private readonly owner: string;
   private localTail = Promise.resolve();
 
-  async runExclusive<T>(task: () => Promise<T>): Promise<T> {
+  constructor(
+    private readonly storageOverride?: Storage,
+    options: MainSaveLeaseOptions = {},
+  ) {
+    this.createOwnerToken = options.createOwnerToken ?? createLeaseOwnerToken;
+    this.now = options.now ?? Date.now;
+    this.wait = options.wait ?? waitFor;
+    this.yieldAfterSnapshot = options.yieldAfterSnapshot ?? (() => Promise.resolve());
+    this.yieldAfterClaim = options.yieldAfterClaim ?? (() => waitFor(0));
+    this.leaseDurationMs = positiveDuration(options.leaseDurationMs, DEFAULT_LEASE_DURATION_MS);
+    this.acquireTimeoutMs = positiveDuration(options.acquireTimeoutMs, DEFAULT_ACQUIRE_TIMEOUT_MS);
+    this.retryDelayMs = positiveDuration(options.retryDelayMs, DEFAULT_RETRY_DELAY_MS);
+    this.owner = this.createOwnerToken();
+  }
+
+  private get storage(): Storage {
+    return this.storageOverride ?? window.localStorage;
+  }
+
+  async runExclusive<T>(task: (guard: MainSaveGuard) => Promise<T>): Promise<T> {
     if (typeof navigator !== 'undefined' && navigator.locks !== undefined) {
-      return await navigator.locks.request(MAIN_SAVE_LOCK_NAME, task);
+      return await navigator.locks.request(MAIN_SAVE_LOCK_NAME, () => task({ assertOwned: () => undefined }));
     }
 
-    const result = this.localTail.then(task, task);
+    const result = this.localTail.then(
+      () => this.runFallbackExclusive(task),
+      () => this.runFallbackExclusive(task),
+    );
     this.localTail = result.then(() => undefined, () => undefined);
-    return result;
+    return await result;
+  }
+
+  private async runFallbackExclusive<T>(task: (guard: MainSaveGuard) => Promise<T>): Promise<T> {
+    const key = mainSaveLeaseKey(this.owner);
+    const ticket = await this.acquireBakeryTurn(this.owner, key);
+    const guard = { assertOwned: () => this.renewAndAssertOwned(this.owner, key, ticket) };
+    try {
+      guard.assertOwned();
+      return await task(guard);
+    } finally {
+      this.releaseIfOwned(this.owner, key, ticket);
+    }
+  }
+
+  private async acquireBakeryTurn(owner: string, key: string): Promise<number> {
+    try {
+      const startedAt = this.now();
+      const deadline = startedAt + this.acquireTimeoutMs;
+      const maxAttempts = Math.max(1, Math.ceil(this.acquireTimeoutMs / this.retryDelayMs) + 1);
+      const choosing = {
+        owner,
+        choosing: true,
+        ticket: 0,
+        expiresAt: startedAt + this.leaseDurationMs,
+      };
+      this.writeAndConfirmLease(key, choosing);
+      const snapshot = this.readActiveLeases(startedAt);
+      await this.yieldAfterSnapshot();
+      const highestTicket = snapshot.reduce((highest, contender) => (
+        contender.ticket > highest ? contender.ticket : highest
+      ), 0);
+      if (highestTicket >= Number.MAX_SAFE_INTEGER) {
+        throw new Error('Could not acquire the Main save lock.');
+      }
+
+      const ticket = highestTicket + 1;
+      this.writeAndConfirmLease(key, {
+        owner,
+        choosing: false,
+        ticket,
+        expiresAt: this.now() + this.leaseDurationMs,
+      });
+      await this.yieldAfterClaim();
+
+      for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+        const now = this.now();
+        this.renewAndAssertOwned(owner, key, ticket);
+        if (this.hasBakeryTurn(owner, key, ticket, now)) return ticket;
+
+        const remainingMs = deadline - now;
+        if (remainingMs <= 0 || attempt === maxAttempts - 1) break;
+        await this.wait(Math.min(this.retryDelayMs, remainingMs));
+      }
+
+      throw new Error('Could not acquire the Main save lock.');
+    } catch (error) {
+      this.abandonIfOwned(owner, key);
+      throw error;
+    }
+  }
+
+  private hasBakeryTurn(owner: string, key: string, ticket: number, now: number): boolean {
+    return !this.readActiveLeases(now).some((contender) => {
+      if (mainSaveLeaseKey(contender.owner) === key) return false;
+      if (contender.choosing) return true;
+      return contender.ticket < ticket
+        || (contender.ticket === ticket && contender.owner < owner);
+    });
+  }
+
+  private readActiveLeases(now: number): MainSaveLease[] {
+    const leases: MainSaveLease[] = [];
+    const length = this.storage.length;
+    for (let index = 0; index < length; index += 1) {
+      const key = this.storage.key(index);
+      if (key === null || !key.startsWith(MAIN_SAVE_LEASE_PREFIX)) continue;
+      const lease = readMainSaveLease(this.storage.getItem(key));
+      if (lease === null
+        || key !== mainSaveLeaseKey(lease.owner)
+        || lease.expiresAt <= now
+        || (!lease.choosing && lease.ticket === 0)) {
+        continue;
+      }
+      leases.push(lease);
+    }
+    return leases;
+  }
+
+  private renewAndAssertOwned(owner: string, key: string, ticket: number): void {
+    const now = this.now();
+    const current = readMainSaveLease(this.storage.getItem(key));
+    if (current?.owner !== owner
+      || current.choosing
+      || current.ticket !== ticket
+      || current.expiresAt <= now) {
+      throw new Error('Main save lock ownership was lost.');
+    }
+
+    this.writeAndConfirmLease(key, {
+      owner,
+      choosing: false,
+      ticket,
+      expiresAt: now + this.leaseDurationMs,
+    });
+  }
+
+  private writeAndConfirmLease(key: string, lease: MainSaveLease): void {
+    const serialized = JSON.stringify(lease);
+    this.storage.setItem(key, serialized);
+    if (this.storage.getItem(key) !== serialized) {
+      throw new Error('Main save lock ownership was lost.');
+    }
+  }
+
+  private abandonIfOwned(owner: string, key: string): void {
+    try {
+      const currentRaw = this.storage.getItem(key);
+      const current = readMainSaveLease(currentRaw);
+      if (current?.owner === owner && this.storage.getItem(key) === currentRaw) {
+        this.storage.setItem(key, inactiveMainSaveLease(owner));
+      }
+    } catch {
+      // An abandoned contender expires and is ignored by other tabs.
+    }
+  }
+
+  private releaseIfOwned(owner: string, key: string, ticket: number): void {
+    try {
+      const currentRaw = this.storage.getItem(key);
+      const current = readMainSaveLease(currentRaw);
+      if (current?.owner === owner
+        && !current.choosing
+        && current.ticket === ticket
+        && current.expiresAt > this.now()
+        && this.storage.getItem(key) === currentRaw) {
+        this.storage.setItem(key, inactiveMainSaveLease(owner));
+      }
+    } catch {
+      // An unreleased lease expires, allowing another tab to recover after a crash or storage failure.
+    }
   }
 }
 
-const defaultMainSaveLock = new BrowserMainSaveLock();
-
 export class BrowserMainRepository implements MainRepository {
+  private readonly saveLock: MainSaveLock;
+  private pendingWrittenByRepository: string | null = null;
+  private readonly storageOverride?: Storage;
+
   constructor(
     private readonly historyStore: MainHistoryStore = isfStore,
-    private readonly saveLock: MainSaveLock = defaultMainSaveLock,
-  ) {}
+    saveLock?: MainSaveLock,
+    storage?: Storage,
+    saveLeaseOptions: MainSaveLeaseOptions = {},
+  ) {
+    this.storageOverride = storage;
+    this.saveLock = saveLock ?? new BrowserMainSaveLock(storage, saveLeaseOptions);
+  }
+
+  private get storage(): Storage {
+    return this.storageOverride ?? window.localStorage;
+  }
 
   async load(): Promise<MigrationResult> {
-    const currentRaw = window.localStorage.getItem(MAIN_KEY);
-    const pendingRaw = window.localStorage.getItem(PENDING_KEY);
+    const currentRaw = this.storage.getItem(MAIN_KEY);
+    const pendingRaw = this.storage.getItem(PENDING_KEY);
     const current = currentRaw === null ? null : migrateStored(currentRaw);
     const pending = pendingRaw === null ? null : migrateStored(pendingRaw);
     const history = await this.loadHistoryCandidate();
     const currentData = current?.data ?? null;
-    const dismissedUpdatedAt = readDismissedRecoveryUpdatedAt();
+    const dismissedUpdatedAt = readDismissedRecoveryUpdatedAt(this.storage);
     let recoveryCandidate: {
       data: MainData;
       original: unknown;
@@ -114,7 +322,7 @@ export class BrowserMainRepository implements MainRepository {
     if (current !== null) return current;
     if (pending !== null && pending.data === null) return pending;
 
-    const legacy = window.localStorage.getItem(LEGACY_KEY);
+    const legacy = this.storage.getItem(LEGACY_KEY);
     return legacy === null ? migrateLegacyMain(null) : migrateStored(legacy);
   }
 
@@ -124,52 +332,105 @@ export class BrowserMainRepository implements MainRepository {
       throw new Error(`Cannot save invalid main data: ${validation.issues.map((issue) => issue.code).join(', ')}`);
     }
 
-    return this.saveLock.runExclusive(() => this.saveLocked(data));
+    return this.saveLock.runExclusive((guard) => this.saveLocked(data, guard));
   }
 
-  private async saveLocked(data: MainData): Promise<MainData> {
+  private async saveLocked(data: MainData, guard: MainSaveGuard): Promise<MainData> {
     const next = cloneMainData(data);
     next.updatedAt = this.nextUpdatedAt();
     let previousCurrent: string | null = null;
     let previousLegacy: string | null = null;
     let previousLegacyActive: string | null = null;
-    let currentWritten = false;
-    let legacyWritten = false;
-    let legacyActiveWritten = false;
+    let currentWriteAttempted = false;
+    let legacyWriteAttempted = false;
+    let legacyActiveWriteAttempted = false;
+    let serialized = '';
+    let compatibility = '';
 
     try {
-      const serialized = JSON.stringify(next);
-      previousCurrent = window.localStorage.getItem(MAIN_KEY);
-      previousLegacy = window.localStorage.getItem(LEGACY_KEY);
-      previousLegacyActive = window.localStorage.getItem(LEGACY_ACTIVE_KEY);
-      const compatibility = JSON.stringify(createLegacyProjection(
+      serialized = JSON.stringify(next);
+      previousCurrent = this.storage.getItem(MAIN_KEY);
+      previousLegacy = this.storage.getItem(LEGACY_KEY);
+      previousLegacyActive = this.storage.getItem(LEGACY_ACTIVE_KEY);
+      compatibility = JSON.stringify(createLegacyProjection(
         next,
         previousLegacy,
       ));
+      guard.assertOwned();
       await this.historyStore.saveMainV1(next);
-      window.localStorage.setItem(PENDING_KEY, serialized);
-      window.localStorage.setItem(MAIN_KEY, serialized);
-      currentWritten = true;
-      window.localStorage.setItem(LEGACY_KEY, compatibility);
-      legacyWritten = true;
-      window.localStorage.setItem(LEGACY_ACTIVE_KEY, compatibility);
-      legacyActiveWritten = true;
-      window.localStorage.removeItem(PENDING_KEY);
+      guard.assertOwned();
+      this.storage.setItem(PENDING_KEY, serialized);
+      this.pendingWrittenByRepository = serialized;
+      guard.assertOwned();
+      currentWriteAttempted = true;
+      this.storage.setItem(MAIN_KEY, serialized);
+      guard.assertOwned();
+      legacyWriteAttempted = true;
+      this.storage.setItem(LEGACY_KEY, compatibility);
+      guard.assertOwned();
+      legacyActiveWriteAttempted = true;
+      this.storage.setItem(LEGACY_ACTIVE_KEY, compatibility);
+      if (this.removeIfOwnedAndEqual(guard, PENDING_KEY, serialized)) {
+        this.pendingWrittenByRepository = null;
+      }
       return next;
     } catch (error) {
-      if (legacyActiveWritten) restoreStorageValue(LEGACY_ACTIVE_KEY, previousLegacyActive);
-      if (legacyWritten) restoreStorageValue(LEGACY_KEY, previousLegacy);
-      if (currentWritten) restoreStorageValue(MAIN_KEY, previousCurrent);
+      if (currentWriteAttempted && serialized !== '') {
+        if (legacyActiveWriteAttempted) {
+          this.restoreIfTransactionCurrent(
+            guard,
+            LEGACY_ACTIVE_KEY,
+            compatibility,
+            previousLegacyActive,
+            serialized,
+          );
+        }
+        if (legacyWriteAttempted) {
+          this.restoreIfTransactionCurrent(guard, LEGACY_KEY, compatibility, previousLegacy, serialized);
+        }
+        this.restoreIfTransactionCurrent(guard, MAIN_KEY, serialized, previousCurrent, serialized);
+      }
       throw error;
     }
   }
 
+  private removeIfOwnedAndEqual(guard: MainSaveGuard, key: string, expectedValue: string): boolean {
+    guard.assertOwned();
+    if (this.storage.getItem(key) !== expectedValue) return false;
+    guard.assertOwned();
+    if (this.storage.getItem(key) === expectedValue) {
+      this.storage.removeItem(key);
+      return true;
+    }
+    return false;
+  }
+
+  private restoreIfTransactionCurrent(
+    guard: MainSaveGuard,
+    key: string,
+    expectedValue: string,
+    previousValue: string | null,
+    transactionCurrent: string,
+  ): void {
+    try {
+      guard.assertOwned();
+      if (this.storage.getItem(MAIN_KEY) !== transactionCurrent) return;
+      if (this.storage.getItem(key) !== expectedValue) return;
+      guard.assertOwned();
+      if (this.storage.getItem(MAIN_KEY) !== transactionCurrent) return;
+      if (this.storage.getItem(key) !== expectedValue) return;
+      restoreStorageValue(this.storage, key, previousValue);
+    } catch {
+      // The pending draft remains available; a lost lease or newer revision must never be rolled back.
+    }
+  }
+
   saveSetupProgress(step: SetupStep, draft: MainData, kind: SetupProgressKind = 'initial'): void {
-    window.localStorage.setItem(SETUP_PROGRESS_KEY, JSON.stringify({ kind, step, draft: cloneMainData(draft) }));
+    this.storage.setItem(SETUP_PROGRESS_KEY, JSON.stringify({ kind, step, draft: cloneMainData(draft) }));
   }
 
   loadSetupProgress(): SetupProgress | null {
-    const stored = window.localStorage.getItem(SETUP_PROGRESS_KEY);
+    const stored = this.storage.getItem(SETUP_PROGRESS_KEY);
     if (stored === null) return null;
 
     try {
@@ -186,27 +447,40 @@ export class BrowserMainRepository implements MainRepository {
   }
 
   clearSetupProgress(): void {
-    window.localStorage.removeItem(SETUP_PROGRESS_KEY);
+    this.storage.removeItem(SETUP_PROGRESS_KEY);
   }
 
-  discardPending(): void {
-    const pendingUpdatedAt = readStoredUpdatedAt(window.localStorage.getItem(PENDING_KEY));
-    window.localStorage.removeItem(PENDING_KEY);
+  discardPending(expectedUpdatedAt?: number): void {
+    const pendingRaw = this.storage.getItem(PENDING_KEY);
+    if (pendingRaw === null) return;
+    const targetRaw = expectedUpdatedAt === undefined ? this.pendingWrittenByRepository : pendingRaw;
+    if (targetRaw === null || pendingRaw !== targetRaw) return;
+    const pendingUpdatedAt = readStoredUpdatedAt(targetRaw);
+    if (expectedUpdatedAt !== undefined && pendingUpdatedAt !== expectedUpdatedAt) return;
+    if (this.storage.getItem(PENDING_KEY) !== targetRaw) return;
+    this.storage.removeItem(PENDING_KEY);
+    this.pendingWrittenByRepository = null;
     this.discardRecovery(pendingUpdatedAt);
   }
 
   discardRecovery(updatedAt: number): void {
     if (!Number.isFinite(updatedAt) || updatedAt <= 0) return;
-    const current = readDismissedRecoveryUpdatedAt();
-    window.localStorage.setItem(DISMISSED_RECOVERY_KEY, String(Math.max(current, updatedAt)));
+    const current = readDismissedRecoveryUpdatedAt(this.storage);
+    this.storage.setItem(DISMISSED_RECOVERY_KEY, String(Math.max(current, updatedAt)));
   }
 
   private nextUpdatedAt(): number {
-    const persistedUpdatedAt = readStoredUpdatedAt(window.localStorage.getItem(MAIN_KEY));
-    if (persistedUpdatedAt === 0) {
+    const persistedUpdatedAt = readStoredUpdatedAt(this.storage.getItem(MAIN_KEY));
+    const pendingUpdatedAt = readStoredUpdatedAt(this.storage.getItem(PENDING_KEY));
+    if (persistedUpdatedAt === 0 && pendingUpdatedAt === 0) {
       lastIssuedUpdatedAt = 0;
     }
-    const updatedAt = Math.max(Date.now(), persistedUpdatedAt + 1, lastIssuedUpdatedAt + 1);
+    const updatedAt = Math.max(
+      Date.now(),
+      persistedUpdatedAt + 1,
+      pendingUpdatedAt + 1,
+      lastIssuedUpdatedAt + 1,
+    );
     lastIssuedUpdatedAt = updatedAt;
     return updatedAt;
   }
@@ -433,12 +707,12 @@ function validAccountId(value: unknown, data: MainData): string | null {
     : null;
 }
 
-function restoreStorageValue(key: string, value: string | null): void {
+function restoreStorageValue(storage: Storage, key: string, value: string | null): void {
   try {
     if (value === null) {
-      window.localStorage.removeItem(key);
+      storage.removeItem(key);
     } else {
-      window.localStorage.setItem(key, value);
+      storage.setItem(key, value);
     }
   } catch {
     // The pending draft remains available for explicit recovery if rollback is blocked.
@@ -475,7 +749,62 @@ function readStoredUpdatedAt(raw: string | null): number {
   }
 }
 
-function readDismissedRecoveryUpdatedAt(): number {
-  const parsed = Number(window.localStorage.getItem(DISMISSED_RECOVERY_KEY));
+function readMainSaveLease(raw: string | null): MainSaveLease | null {
+  if (raw === null) return null;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return isRecord(parsed)
+      && typeof parsed.owner === 'string'
+      && parsed.owner !== ''
+      && typeof parsed.choosing === 'boolean'
+      && typeof parsed.ticket === 'number'
+      && Number.isSafeInteger(parsed.ticket)
+      && parsed.ticket >= 0
+      && typeof parsed.expiresAt === 'number'
+      && Number.isFinite(parsed.expiresAt)
+      ? {
+          owner: parsed.owner,
+          choosing: parsed.choosing,
+          ticket: parsed.ticket,
+          expiresAt: parsed.expiresAt,
+        }
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function mainSaveLeaseKey(owner: string): string {
+  return `${MAIN_SAVE_LEASE_PREFIX}${encodeURIComponent(owner)}`;
+}
+
+function inactiveMainSaveLease(owner: string): string {
+  return JSON.stringify({
+    owner,
+    choosing: false,
+    ticket: 0,
+    expiresAt: 0,
+  } satisfies MainSaveLease);
+}
+
+function createLeaseOwnerToken(): string {
+  if (typeof globalThis.crypto?.randomUUID === 'function') {
+    return globalThis.crypto.randomUUID();
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function waitFor(delayMs: number): Promise<void> {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, delayMs);
+  });
+}
+
+function positiveDuration(value: number | undefined, fallback: number): number {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
+function readDismissedRecoveryUpdatedAt(storage: Storage): number {
+  const parsed = Number(storage.getItem(DISMISSED_RECOVERY_KEY));
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
 }

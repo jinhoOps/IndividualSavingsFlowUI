@@ -1,9 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { BrowserMainRepository } from '../../../src/main/infrastructure/mainRepository';
+import {
+  BrowserMainRepository,
+  BrowserMainSaveLock,
+} from '../../../src/main/infrastructure/mainRepository';
 import type { MainData } from '../../../src/main/domain/model';
 
 class MemoryStorage implements Storage {
-  private readonly values = new Map<string, string>();
+  constructor(protected readonly values = new Map<string, string>()) {}
 
   get length(): number {
     return this.values.size;
@@ -30,6 +33,33 @@ class MemoryStorage implements Storage {
   }
 }
 
+class HookedStorage extends MemoryStorage {
+  constructor(
+    values: Map<string, string>,
+    private readonly setHook: (key: string, value: string, commit: () => void) => void,
+    private readonly getHook?: (key: string, read: () => string | null) => string | null,
+    private readonly removeHook?: (key: string, remove: () => void) => void,
+  ) {
+    super(values);
+  }
+
+  override getItem(key: string): string | null {
+    return this.getHook?.(key, () => super.getItem(key)) ?? super.getItem(key);
+  }
+
+  override setItem(key: string, value: string): void {
+    this.setHook(key, value, () => super.setItem(key, value));
+  }
+
+  override removeItem(key: string): void {
+    if (this.removeHook === undefined) {
+      super.removeItem(key);
+      return;
+    }
+    this.removeHook(key, () => super.removeItem(key));
+  }
+}
+
 const validData = (): MainData => ({
   schemaVersion: 1,
   updatedAt: 0,
@@ -44,6 +74,139 @@ const validData = (): MainData => ({
   savings: [],
   investments: [],
   accounts: [{ id: 'acc-salary', name: '급여통장', kind: 'income' }],
+});
+
+describe('BrowserMainSaveLock', () => {
+  it('does not let a contender paused after a free snapshot overwrite an owner already inside', async () => {
+    const sharedValues = new Map<string, string>();
+    let releaseFirstSnapshot: (() => void) | undefined;
+    let markFirstSnapshot: (() => void) | undefined;
+    const firstSnapshot = new Promise<void>((resolve) => {
+      markFirstSnapshot = resolve;
+    });
+    const snapshotGate = new Promise<void>((resolve) => {
+      releaseFirstSnapshot = resolve;
+    });
+    const releases = new Map<string, () => void>();
+    const releasePromises = new Map<string, Promise<void>>();
+    for (const owner of ['tab-a', 'tab-b']) {
+      releasePromises.set(owner, new Promise<void>((resolve) => {
+        releases.set(owner, resolve);
+      }));
+    }
+    const active = new Set<string>();
+    const entered: string[] = [];
+    let maxActive = 0;
+    const task = (owner: string) => async () => {
+      active.add(owner);
+      entered.push(owner);
+      maxActive = Math.max(maxActive, active.size);
+      await releasePromises.get(owner);
+      active.delete(owner);
+    };
+    const commonOptions = {
+      now: () => 1_000,
+      wait: () => new Promise<void>((resolve) => setTimeout(resolve, 0)),
+      yieldAfterClaim: async () => undefined,
+      leaseDurationMs: 100,
+      acquireTimeoutMs: 500,
+      retryDelayMs: 10,
+    };
+    const firstLock = new BrowserMainSaveLock(new MemoryStorage(sharedValues), {
+      ...commonOptions,
+      createOwnerToken: () => 'tab-a',
+      yieldAfterSnapshot: async () => {
+        markFirstSnapshot?.();
+        await snapshotGate;
+      },
+    });
+    const secondLock = new BrowserMainSaveLock(new MemoryStorage(sharedValues), {
+      ...commonOptions,
+      createOwnerToken: () => 'tab-b',
+    });
+
+    const firstRun = firstLock.runExclusive(task('tab-a'));
+    await firstSnapshot;
+    const secondRun = secondLock.runExclusive(task('tab-b'));
+    await Promise.resolve();
+    await Promise.resolve();
+    releaseFirstSnapshot?.();
+    await vi.waitFor(() => expect(entered.length).toBeGreaterThan(0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    releases.get('tab-a')?.();
+    releases.get('tab-b')?.();
+    await Promise.all([firstRun, secondRun]);
+
+    expect(entered).toHaveLength(2);
+    expect(maxActive).toBe(1);
+  });
+
+  it('orders contenders that select the same bakery ticket without overlapping', async () => {
+    const sharedValues = new Map<string, string>();
+    const entered: string[] = [];
+    const snapshotWaiters: Array<{ owner: string; resolve: () => void }> = [];
+    let releaseFirstTask: (() => void) | undefined;
+    const firstTaskGate = new Promise<void>((resolve) => {
+      releaseFirstTask = resolve;
+    });
+    const options = (owner: string) => ({
+      createOwnerToken: () => owner,
+      now: () => 1_000,
+      wait: () => new Promise<void>((resolve) => setTimeout(resolve, 0)),
+      yieldAfterSnapshot: () => new Promise<void>((resolve) => snapshotWaiters.push({ owner, resolve })),
+      yieldAfterClaim: async () => undefined,
+      leaseDurationMs: 100,
+      acquireTimeoutMs: 500,
+      retryDelayMs: 10,
+    });
+    const firstLock = new BrowserMainSaveLock(new MemoryStorage(sharedValues), options('tab-a'));
+    const secondLock = new BrowserMainSaveLock(new MemoryStorage(sharedValues), options('tab-b'));
+
+    const firstRun = firstLock.runExclusive(async () => {
+      entered.push('tab-a');
+      await firstTaskGate;
+    });
+    await vi.waitFor(() => expect(snapshotWaiters).toHaveLength(1));
+    const secondRun = secondLock.runExclusive(async () => {
+      entered.push('tab-b');
+    });
+    await vi.waitFor(() => expect(snapshotWaiters).toHaveLength(2));
+    releaseClaim(snapshotWaiters, 'tab-b');
+    releaseClaim(snapshotWaiters, 'tab-a');
+    await vi.waitFor(() => expect(entered).toEqual(['tab-a']));
+
+    expect(entered).toEqual(['tab-a']);
+    releaseFirstTask?.();
+    await Promise.all([firstRun, secondRun]);
+    expect(entered).toEqual(['tab-a', 'tab-b']);
+  });
+
+  it('does not remove a successor lease installed after the former owner final read', async () => {
+    const sharedValues = new Map<string, string>();
+    const firstKey = leaseStorageKey('tab-a');
+    const successorRaw = activeLeaseRecord('tab-b', 2_000, 2);
+    let replaceLeaseOnRelease = false;
+    const storage = new HookedStorage(
+      sharedValues,
+      (_key, _value, commit) => commit(),
+      (key, read) => {
+        const current = read();
+        if (key === firstKey && replaceLeaseOnRelease) {
+          replaceLeaseOnRelease = false;
+          sharedValues.set(key, successorRaw);
+        }
+        return current;
+      },
+    );
+    const clock = createControlledLeaseClock(1_000);
+    const lock = new BrowserMainSaveLock(storage, leaseOptions('tab-a', clock));
+
+    await lock.runExclusive(async () => {
+      replaceLeaseOnRelease = true;
+    });
+
+    expect(storage.getItem(firstKey)).toBe(successorRaw);
+  });
 });
 
 describe('BrowserMainRepository', () => {
@@ -520,12 +683,60 @@ describe('BrowserMainRepository', () => {
   });
 
   it('discards a pending recovery draft explicitly', () => {
-    window.localStorage.setItem('isf-main-v1-pending', JSON.stringify(validData()));
+    const pending = validData();
+    pending.updatedAt = 10;
+    window.localStorage.setItem('isf-main-v1-pending', JSON.stringify(pending));
     const repository = new BrowserMainRepository({ saveMainV1: vi.fn() });
 
-    repository.discardPending();
+    repository.discardPending(10);
 
     expect(window.localStorage.getItem('isf-main-v1-pending')).toBeNull();
+  });
+
+  it('does not discard or suppress a successor pending draft from another tab', () => {
+    const sharedValues = new Map<string, string>();
+    const target = validData();
+    target.updatedAt = 10;
+    const targetRaw = JSON.stringify(target);
+    const successor = validData();
+    successor.updatedAt = 20;
+    successor.incomes[0].amountWon = 6_000_000;
+    successor.incomes[0].allocations[0].amountWon = 6_000_000;
+    const successorRaw = JSON.stringify(successor);
+    sharedValues.set('isf-main-v1-pending', targetRaw);
+    let pendingReads = 0;
+    const storage = new HookedStorage(
+      sharedValues,
+      (_key, _value, commit) => commit(),
+      (key, read) => {
+        const current = read();
+        if (key === 'isf-main-v1-pending') {
+          pendingReads += 1;
+          if (pendingReads === 2) {
+            sharedValues.set(key, successorRaw);
+            return successorRaw;
+          }
+        }
+        return current;
+      },
+      (key, remove) => {
+        if (key === 'isf-main-v1-pending' && pendingReads === 1) {
+          sharedValues.set(key, successorRaw);
+        }
+        remove();
+      },
+    );
+    const repository = new BrowserMainRepository(
+      { saveMainV1: vi.fn() },
+      undefined,
+      storage,
+      leaseOptions('tab-a', createControlledLeaseClock(1_000)),
+    );
+
+    repository.discardPending(10);
+
+    expect(storage.getItem('isf-main-v1-pending')).toBe(successorRaw);
+    expect(storage.getItem('isf-main-v1-dismissed-recovery')).toBeNull();
   });
 
   it('round-trips restart setup progress separately from first-run progress', () => {
@@ -600,6 +811,364 @@ describe('BrowserMainRepository', () => {
     });
   });
 
+  it('serializes fallback saves across independent repository and storage instances', async () => {
+    const sharedValues = new Map<string, string>();
+    const firstStorage = new MemoryStorage(sharedValues);
+    const secondStorage = new MemoryStorage(sharedValues);
+    const leaseClock = createControlledLeaseClock(1_000);
+    let releaseFirstHistory: (() => void) | undefined;
+    let markFirstHistoryStarted: (() => void) | undefined;
+    const firstHistoryStarted = new Promise<void>((resolve) => {
+      markFirstHistoryStarted = resolve;
+    });
+    const firstHistory = vi.fn(() => new Promise<void>((resolve) => {
+      releaseFirstHistory = resolve;
+      markFirstHistoryStarted?.();
+    }));
+    const secondHistory = vi.fn().mockResolvedValue(undefined);
+    const firstRepository = new BrowserMainRepository(
+      { saveMainV1: firstHistory },
+      undefined,
+      firstStorage,
+      leaseOptions('tab-a', leaseClock),
+    );
+    const secondRepository = new BrowserMainRepository(
+      { saveMainV1: secondHistory },
+      undefined,
+      secondStorage,
+      leaseOptions('tab-b', leaseClock),
+    );
+    const firstDraft = validData();
+    firstDraft.incomes[0].amountWon = 5_000_000;
+    firstDraft.incomes[0].allocations[0].amountWon = 5_000_000;
+    const secondDraft = validData();
+    secondDraft.incomes[0].amountWon = 6_000_000;
+    secondDraft.incomes[0].allocations[0].amountWon = 6_000_000;
+
+    const firstSave = firstRepository.save(firstDraft);
+    await firstHistoryStarted;
+    const secondSave = secondRepository.save(secondDraft);
+    await vi.waitFor(() => expect(leaseClock.pendingWaits()).toBe(1));
+
+    expect(secondHistory).not.toHaveBeenCalled();
+    releaseFirstHistory?.();
+    await expect(firstSave).resolves.toMatchObject({ incomes: [{ amountWon: 5_000_000 }] });
+    await leaseClock.releaseNextWait();
+    await expect(secondSave).resolves.toMatchObject({ incomes: [{ amountWon: 6_000_000 }] });
+    expect(secondHistory).toHaveBeenCalledOnce();
+    expect(JSON.parse(secondStorage.getItem('isf-main-v1') ?? '')).toMatchObject({
+      incomes: [{ amountWon: 6_000_000 }],
+    });
+    expectInactiveLease(secondStorage, 'tab-a');
+    expectInactiveLease(secondStorage, 'tab-b');
+  });
+
+  it('lets a stale fallback lease be taken over after its owner tab disappears', async () => {
+    const sharedValues = new Map<string, string>();
+    const storage = new MemoryStorage(sharedValues);
+    const leaseClock = createControlledLeaseClock(1_000);
+    storage.setItem(
+      leaseStorageKey('crashed-tab'),
+      activeLeaseRecord('crashed-tab', 999),
+    );
+    const repository = new BrowserMainRepository(
+      { saveMainV1: vi.fn().mockResolvedValue(undefined) },
+      undefined,
+      storage,
+      leaseOptions('replacement-tab', leaseClock),
+    );
+
+    await expect(repository.save(validData())).resolves.toMatchObject({
+      incomes: [{ amountWon: 4_200_000 }],
+    });
+
+    expect(storage.getItem('isf-main-v1')).not.toBeNull();
+    expectInactiveLease(storage, 'replacement-tab');
+  });
+
+  it('issues a revision newer than a pending draft left by a crashed tab', async () => {
+    const sharedValues = new Map<string, string>();
+    const storage = new MemoryStorage(sharedValues);
+    const pending = validData();
+    pending.updatedAt = 100;
+    storage.setItem('isf-main-v1-pending', JSON.stringify(pending));
+    vi.spyOn(Date, 'now').mockReturnValue(50);
+    const leaseClock = createControlledLeaseClock(1_000);
+    const repository = new BrowserMainRepository(
+      { saveMainV1: vi.fn().mockResolvedValue(undefined) },
+      undefined,
+      storage,
+      leaseOptions('replacement-tab', leaseClock),
+    );
+
+    const saved = await repository.save(validData());
+
+    expect(saved.updatedAt).toBeGreaterThan(100);
+  });
+
+  it('does not let a former lease owner release the new owner lease after stale takeover', async () => {
+    const sharedValues = new Map<string, string>();
+    const firstStorage = new MemoryStorage(sharedValues);
+    const secondStorage = new MemoryStorage(sharedValues);
+    const leaseClock = createControlledLeaseClock(1_000);
+    let releaseFirstHistory: (() => void) | undefined;
+    let markFirstHistoryStarted: (() => void) | undefined;
+    const firstHistoryStarted = new Promise<void>((resolve) => {
+      markFirstHistoryStarted = resolve;
+    });
+    const firstHistory = vi.fn(() => new Promise<void>((resolve) => {
+      releaseFirstHistory = resolve;
+      markFirstHistoryStarted?.();
+    }));
+    let releaseSecondHistory: (() => void) | undefined;
+    let markSecondHistoryStarted: (() => void) | undefined;
+    const secondHistoryStarted = new Promise<void>((resolve) => {
+      markSecondHistoryStarted = resolve;
+    });
+    const secondHistory = vi.fn(() => new Promise<void>((resolve) => {
+      releaseSecondHistory = resolve;
+      markSecondHistoryStarted?.();
+    }));
+    const firstRepository = new BrowserMainRepository(
+      { saveMainV1: firstHistory },
+      undefined,
+      firstStorage,
+      leaseOptions('tab-a', leaseClock),
+    );
+    const secondRepository = new BrowserMainRepository(
+      { saveMainV1: secondHistory },
+      undefined,
+      secondStorage,
+      leaseOptions('tab-b', leaseClock),
+    );
+
+    const firstSave = firstRepository.save(validData());
+    await firstHistoryStarted;
+    leaseClock.setNow(1_101);
+    const secondSave = secondRepository.save(validData());
+    await secondHistoryStarted;
+    releaseFirstHistory?.();
+
+    await expect(firstSave).rejects.toThrow('Main save lock ownership was lost');
+    expect(JSON.parse(firstStorage.getItem(leaseStorageKey('tab-b')) ?? '')).toMatchObject({
+      owner: 'tab-b',
+      ticket: 1,
+    });
+
+    releaseSecondHistory?.();
+    await expect(secondSave).resolves.toBeTruthy();
+    expectInactiveLease(secondStorage, 'tab-b');
+  });
+
+  it('does not let a late expired writer erase a newer successful fallback save', async () => {
+    const sharedValues = new Map<string, string>();
+    const firstStorage = new MemoryStorage(sharedValues);
+    const secondStorage = new MemoryStorage(sharedValues);
+    const leaseClock = createControlledLeaseClock(1_000);
+    let releaseFirstHistory: (() => void) | undefined;
+    let markFirstHistoryStarted: (() => void) | undefined;
+    const firstHistoryStarted = new Promise<void>((resolve) => {
+      markFirstHistoryStarted = resolve;
+    });
+    const firstHistory = vi.fn(() => new Promise<void>((resolve) => {
+      releaseFirstHistory = resolve;
+      markFirstHistoryStarted?.();
+    }));
+    const firstRepository = new BrowserMainRepository(
+      { saveMainV1: firstHistory },
+      undefined,
+      firstStorage,
+      leaseOptions('tab-a', leaseClock),
+    );
+    const secondRepository = new BrowserMainRepository(
+      { saveMainV1: vi.fn().mockResolvedValue(undefined) },
+      undefined,
+      secondStorage,
+      leaseOptions('tab-b', leaseClock),
+    );
+    const firstDraft = validData();
+    firstDraft.incomes[0].amountWon = 5_000_000;
+    firstDraft.incomes[0].allocations[0].amountWon = 5_000_000;
+    const secondDraft = validData();
+    secondDraft.incomes[0].amountWon = 6_000_000;
+    secondDraft.incomes[0].allocations[0].amountWon = 6_000_000;
+
+    const firstSave = firstRepository.save(firstDraft);
+    await firstHistoryStarted;
+    leaseClock.setNow(1_101);
+    const secondSave = secondRepository.save(secondDraft);
+    await expect(secondSave).resolves.toMatchObject({ incomes: [{ amountWon: 6_000_000 }] });
+    releaseFirstHistory?.();
+
+    await expect(firstSave).rejects.toThrow('Main save lock ownership was lost');
+    expect(JSON.parse(firstStorage.getItem('isf-main-v1') ?? '')).toMatchObject({
+      incomes: [{ amountWon: 6_000_000 }],
+    });
+  });
+
+  it('does not roll back snapshots when current no longer matches the failing writer revision', async () => {
+    const sharedValues = new Map<string, string>();
+    const current = validData();
+    current.updatedAt = 10;
+    sharedValues.set('isf-main-v1', JSON.stringify(current));
+    const newer = validData();
+    newer.updatedAt = 9_999;
+    newer.incomes[0].amountWon = 6_000_000;
+    newer.incomes[0].allocations[0].amountWon = 6_000_000;
+    const newerLegacy = JSON.stringify({ modelVersion: 10, updatedAt: 9_999, monthlyIncome: 6_000_000 });
+    const storage = new HookedStorage(sharedValues, (key, value, commit) => {
+      commit();
+      if (key !== 'isf-step1-active') return;
+      sharedValues.set('isf-main-v1', JSON.stringify(newer));
+      sharedValues.set('isf-rebuild-v1', newerLegacy);
+      sharedValues.set('isf-step1-active', newerLegacy);
+      throw new Error('late compatibility failure');
+    });
+    const leaseClock = createControlledLeaseClock(1_000);
+    const failingDraft = validData();
+    failingDraft.incomes[0].amountWon = 5_000_000;
+    failingDraft.incomes[0].allocations[0].amountWon = 5_000_000;
+    const repository = new BrowserMainRepository(
+      { saveMainV1: vi.fn().mockResolvedValue(undefined) },
+      undefined,
+      storage,
+      leaseOptions('tab-a', leaseClock),
+    );
+
+    await expect(repository.save(failingDraft)).rejects.toThrow('late compatibility failure');
+
+    expect(JSON.parse(storage.getItem('isf-main-v1') ?? '')).toEqual(newer);
+    expect(storage.getItem('isf-rebuild-v1')).toBe(newerLegacy);
+    expect(storage.getItem('isf-step1-active')).toBe(newerLegacy);
+  });
+
+  it('rechecks ownership and current immediately before each rollback mutation', async () => {
+    const sharedValues = new Map<string, string>();
+    const current = validData();
+    current.updatedAt = 10;
+    const previousLegacy = JSON.stringify({ modelVersion: 10, updatedAt: 10, monthlyIncome: 4_200_000 });
+    sharedValues.set('isf-main-v1', JSON.stringify(current));
+    sharedValues.set('isf-rebuild-v1', previousLegacy);
+    const newer = validData();
+    newer.updatedAt = 9_999;
+    newer.incomes[0].amountWon = 6_000_000;
+    newer.incomes[0].allocations[0].amountWon = 6_000_000;
+    const newerRaw = JSON.stringify(newer);
+    const newerLegacy = JSON.stringify({ modelVersion: 10, updatedAt: 9_999, monthlyIncome: 6_000_000 });
+    let replaceDuringLegacyRollback = false;
+    const storage = new HookedStorage(
+      sharedValues,
+      (key, _value, commit) => {
+        if (key === 'isf-step1-active') {
+          replaceDuringLegacyRollback = true;
+          throw new Error('compatibility write failed');
+        }
+        commit();
+      },
+      (key, read) => {
+        const currentValue = read();
+        if (key === 'isf-rebuild-v1' && replaceDuringLegacyRollback) {
+          replaceDuringLegacyRollback = false;
+          sharedValues.set('isf-main-v1', newerRaw);
+          sharedValues.set('isf-rebuild-v1', newerLegacy);
+        }
+        return currentValue;
+      },
+    );
+    const leaseClock = createControlledLeaseClock(1_000);
+    const repository = new BrowserMainRepository(
+      { saveMainV1: vi.fn().mockResolvedValue(undefined) },
+      undefined,
+      storage,
+      leaseOptions('tab-a', leaseClock),
+    );
+
+    await expect(repository.save(validData())).rejects.toThrow('compatibility write failed');
+
+    expect(storage.getItem('isf-main-v1')).toBe(newerRaw);
+    expect(storage.getItem('isf-rebuild-v1')).toBe(newerLegacy);
+  });
+
+  it('does not remove a successor pending draft during an older writer success cleanup', async () => {
+    const sharedValues = new Map<string, string>();
+    const successor = validData();
+    successor.updatedAt = 9_999;
+    successor.incomes[0].amountWon = 6_000_000;
+    successor.incomes[0].allocations[0].amountWon = 6_000_000;
+    const successorRaw = JSON.stringify(successor);
+    let replacePendingOnRead = false;
+    const storage = new HookedStorage(
+      sharedValues,
+      (key, _value, commit) => {
+        commit();
+        if (key === 'isf-step1-active') replacePendingOnRead = true;
+      },
+      (key, read) => {
+        if (key === 'isf-main-v1-pending' && replacePendingOnRead) {
+          replacePendingOnRead = false;
+          sharedValues.set(key, successorRaw);
+        }
+        return read();
+      },
+      (key, remove) => {
+        if (key === 'isf-main-v1-pending' && replacePendingOnRead) {
+          replacePendingOnRead = false;
+          sharedValues.set(key, successorRaw);
+        }
+        remove();
+      },
+    );
+    const leaseClock = createControlledLeaseClock(1_000);
+    const repository = new BrowserMainRepository(
+      { saveMainV1: vi.fn().mockResolvedValue(undefined) },
+      undefined,
+      storage,
+      leaseOptions('tab-a', leaseClock),
+    );
+
+    await expect(repository.save(validData())).resolves.toBeTruthy();
+
+    expect(storage.getItem('isf-main-v1-pending')).toBe(successorRaw);
+  });
+
+  it('bounds fallback lease acquisition and leaves the draft untouched when another owner stays active', async () => {
+    const sharedValues = new Map<string, string>();
+    const storage = new MemoryStorage(sharedValues);
+    let now = 1_000;
+    storage.setItem(
+      leaseStorageKey('active-tab'),
+      activeLeaseRecord('active-tab', 5_000),
+    );
+    const history = vi.fn();
+    const input = validData();
+    const repository = new BrowserMainRepository(
+      { saveMainV1: history },
+      undefined,
+      storage,
+      {
+        ...leaseOptions('waiting-tab', createControlledLeaseClock(1_000)),
+        now: () => now,
+        wait: async (delayMs: number) => {
+          now += delayMs;
+        },
+        acquireTimeoutMs: 20,
+        retryDelayMs: 10,
+      },
+    );
+
+    await expect(repository.save(input)).rejects.toThrow('Could not acquire the Main save lock');
+
+    expect(history).not.toHaveBeenCalled();
+    expect(storage.getItem('isf-main-v1')).toBeNull();
+    expect(storage.getItem('isf-main-v1-pending')).toBeNull();
+    expect(input.updatedAt).toBe(0);
+    expect(JSON.parse(storage.getItem(leaseStorageKey('active-tab')) ?? '')).toMatchObject({
+      owner: 'active-tab',
+      ticket: 1,
+    });
+    expectInactiveLease(storage, 'waiting-tab');
+  });
+
   it('exposes a pending recovery draft without replacing the last applied current data', async () => {
     const existing = validData();
     existing.updatedAt = 10;
@@ -624,11 +1193,85 @@ describe('BrowserMainRepository', () => {
 
 function createSerialLock() {
   let tail = Promise.resolve();
+  const guard = { assertOwned: () => undefined };
   return {
-    runExclusive<T>(task: () => Promise<T>): Promise<T> {
-      const result = tail.then(task, task);
+    runExclusive<T>(task: (guard: { assertOwned(): void }) => Promise<T>): Promise<T> {
+      const result = tail.then(() => task(guard), () => task(guard));
       tail = result.then(() => undefined, () => undefined);
       return result;
     },
   };
+}
+
+interface ControlledLeaseClock {
+  now(): number;
+  wait(delayMs: number): Promise<void>;
+  pendingWaits(): number;
+  releaseNextWait(): Promise<void>;
+  setNow(value: number): void;
+}
+
+function createControlledLeaseClock(initialNow: number): ControlledLeaseClock {
+  let now = initialNow;
+  const waiters: Array<{ delayMs: number; resolve: () => void }> = [];
+  return {
+    now: () => now,
+    wait: (delayMs) => new Promise<void>((resolve) => {
+      waiters.push({ delayMs, resolve });
+    }),
+    pendingWaits: () => waiters.length,
+    releaseNextWait: async () => {
+      const waiter = waiters.shift();
+      if (waiter === undefined) throw new Error('Expected a pending lease wait.');
+      now += waiter.delayMs;
+      waiter.resolve();
+      await Promise.resolve();
+    },
+    setNow: (value) => {
+      now = value;
+    },
+  };
+}
+
+function leaseOptions(owner: string, clock: ControlledLeaseClock) {
+  return {
+    createOwnerToken: () => owner,
+    now: clock.now,
+    wait: clock.wait,
+    yieldAfterClaim: async () => undefined,
+    leaseDurationMs: 100,
+    acquireTimeoutMs: 500,
+    retryDelayMs: 10,
+  };
+}
+
+function leaseStorageKey(owner: string): string {
+  return `isf-main-v1-save-lease:${encodeURIComponent(owner)}`;
+}
+
+function activeLeaseRecord(owner: string, expiresAt: number, ticket = 1): string {
+  return JSON.stringify({
+    owner,
+    choosing: false,
+    ticket,
+    expiresAt,
+  });
+}
+
+function expectInactiveLease(storage: Storage, owner: string): void {
+  expect(JSON.parse(storage.getItem(leaseStorageKey(owner)) ?? '')).toEqual({
+    owner,
+    choosing: false,
+    ticket: 0,
+    expiresAt: 0,
+  });
+}
+
+function releaseClaim(
+  waiters: Array<{ owner: string; resolve: () => void }>,
+  owner: string,
+): void {
+  const index = waiters.findIndex((waiter) => waiter.owner === owner);
+  if (index === -1) throw new Error(`Expected a pending claim for ${owner}.`);
+  waiters.splice(index, 1)[0]?.resolve();
 }

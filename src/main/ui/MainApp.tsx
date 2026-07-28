@@ -104,7 +104,7 @@ export function MainApp({ repository = browserRepository }: MainAppProps) {
   }
 
   function startEmptySetup() {
-    repository.discardPending();
+    repository.discardPending(state?.mode === 'recovery' ? state.draft.updatedAt : undefined);
     clearSetupProgress();
     setIssues([]);
     setState({
@@ -121,7 +121,7 @@ export function MainApp({ repository = browserRepository }: MainAppProps) {
   function discardRecoveryCandidate() {
     if (state === null || state.mode !== 'recovery' || savingRef.current) return;
     repository.discardRecovery(state.draft.updatedAt);
-    repository.discardPending();
+    repository.discardPending(state.draft.updatedAt);
     clearSetupProgress();
     setIssues([]);
     setState({
@@ -138,7 +138,7 @@ export function MainApp({ repository = browserRepository }: MainAppProps) {
   function returnToCurrentPlan() {
     if (state === null || state.mode !== 'recovery' || state.applied === null || savingRef.current) return;
     repository.discardRecovery(state.draft.updatedAt);
-    repository.discardPending();
+    repository.discardPending(state.draft.updatedAt);
     clearSetupProgress();
     setIssues([]);
     dispatch({ type: 'cancel-draft' });

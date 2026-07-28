@@ -98,6 +98,40 @@ test('keeps the editable draft when saving the updated plan fails', async ({ pag
   await expect(page.getByRole('button', { name: '수입 편집' })).toContainText('420만 원');
 });
 
+test('shares the fallback save lease across tabs and preserves the draft on lock timeout', async ({ context, page }) => {
+  await context.addInitScript(() => {
+    Object.defineProperty(Navigator.prototype, 'locks', {
+      configurable: true,
+      get: () => undefined,
+    });
+  });
+  await seedCurrentMain(page);
+  await page.goto('apps/main/');
+  const leaseHolder = await context.newPage();
+  await leaseHolder.goto('apps/main/');
+  await leaseHolder.evaluate(() => {
+    localStorage.setItem('isf-main-v1-save-lease:other-tab', JSON.stringify({
+      owner: 'other-tab',
+      choosing: false,
+      ticket: 1,
+      expiresAt: Date.now() + 60_000,
+    }));
+  });
+
+  await page.getByRole('button', { name: /수입 편집/ }).click();
+  await page.getByLabel('급여 월 금액').fill('5000000');
+  await page.getByRole('button', { name: '적용' }).click();
+
+  await expect(page.getByRole('status')).toHaveText('저장에 실패했습니다', { timeout: 5_000 });
+  await expect(page.getByLabel('급여 월 금액')).toHaveValue('5,000,000');
+  await expect(page.getByRole('button', { name: '수입 편집' })).toContainText('420만 원');
+  await leaseHolder.evaluate(() => localStorage.removeItem('isf-main-v1-save-lease:other-tab'));
+  await page.getByRole('button', { name: '다시 시도' }).click();
+  await expect(page.getByRole('status')).toHaveText('저장됨');
+  await expect(page.getByRole('button', { name: '수입 편집' })).toContainText('500만 원');
+  await leaseHolder.close();
+});
+
 test('mobile setup validates focus, applies, edits, and cancels without losing the saved plan', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.addInitScript(() => localStorage.clear());
