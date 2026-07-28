@@ -2,13 +2,14 @@ import { Step1State, Step2Simulation, BackupEntry } from '../types/models';
 import type { MainData } from '../../main/domain/model';
 
 const DB_NAME = 'isf-v2-db';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 const STORES = {
   STEP1_HISTORY: 'step1_history',
   STEP2_SIMULATIONS: 'step2_simulations',
   BACKUPS: 'backups',
-  MAIN_V1_HISTORY: 'main_v1_history'
+  MAIN_V1_HISTORY: 'main_v1_history',
+  MAIN_V1_HISTORY_ENTRIES: 'main_v1_history_entries'
 } as const;
 
 export class IsfStore {
@@ -47,6 +48,10 @@ export class IsfStore {
         if (!db.objectStoreNames.contains(STORES.MAIN_V1_HISTORY)) {
           const main = db.createObjectStore(STORES.MAIN_V1_HISTORY, { keyPath: 'updatedAt' });
           main.createIndex('updatedAt', 'updatedAt');
+        }
+        if (!db.objectStoreNames.contains(STORES.MAIN_V1_HISTORY_ENTRIES)) {
+          const mainEntries = db.createObjectStore(STORES.MAIN_V1_HISTORY_ENTRIES, { autoIncrement: true });
+          mainEntries.createIndex('updatedAt', 'updatedAt');
         }
       };
 
@@ -128,11 +133,21 @@ export class IsfStore {
   // --- Main v1 Methods ---
 
   async saveMainV1(data: MainData): Promise<void> {
-    await this.perform(STORES.MAIN_V1_HISTORY, 'readwrite', (store) => store.put(data));
+    await this.perform(STORES.MAIN_V1_HISTORY_ENTRIES, 'readwrite', (store) => store.add(data));
   }
 
   async loadLatestMainV1(): Promise<MainData | null> {
-    return this.perform<IDBCursorWithValue | null>(STORES.MAIN_V1_HISTORY, 'readonly', (store) => {
+    const [latestEntry, latestLegacy] = await Promise.all([
+      this.loadLatestMainV1From(STORES.MAIN_V1_HISTORY_ENTRIES),
+      this.loadLatestMainV1From(STORES.MAIN_V1_HISTORY),
+    ]);
+    if (latestEntry === null) return latestLegacy;
+    if (latestLegacy === null || latestEntry.updatedAt >= latestLegacy.updatedAt) return latestEntry;
+    return latestLegacy;
+  }
+
+  private async loadLatestMainV1From(storeName: string): Promise<MainData | null> {
+    return this.perform<IDBCursorWithValue | null>(storeName, 'readonly', (store) => {
       return store.index('updatedAt').openCursor(null, 'prev');
     }).then((cursor) => (cursor?.value as MainData) || null);
   }

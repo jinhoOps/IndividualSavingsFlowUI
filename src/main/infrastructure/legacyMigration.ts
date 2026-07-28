@@ -5,6 +5,7 @@ export type MigrationResult =
   | { status: 'empty'; data: null; original: null }
   | { status: 'current'; data: MainData; original: unknown }
   | { status: 'migrated'; data: MainData; original: unknown }
+  | { status: 'recovery'; data: MainData; original: unknown; current: MainData }
   | { status: 'failed'; data: null; original: unknown; reason: string };
 
 type UnknownRecord = Record<string, unknown>;

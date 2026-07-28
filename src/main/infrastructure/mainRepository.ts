@@ -9,6 +9,8 @@ const LEGACY_KEY = 'isf-rebuild-v1';
 const SETUP_PROGRESS_KEY = 'isf-main-v1-setup-progress';
 
 const setupSteps = new Set<SetupStep>(['welcome', 'income', 'expense', 'saving-investment', 'account', 'review']);
+let lastIssuedUpdatedAt = 0;
+let activeMainSaves = 0;
 
 export interface MainRepository {
   load(): Promise<MigrationResult>;
@@ -21,16 +23,25 @@ export interface MainRepository {
 export type MainHistoryStore = Pick<IsfStore, 'saveMainV1'>;
 
 export class BrowserMainRepository implements MainRepository {
-  private lastIssuedUpdatedAt = 0;
-
   constructor(private readonly historyStore: MainHistoryStore = isfStore) {}
 
   async load(): Promise<MigrationResult> {
-    const current = window.localStorage.getItem(MAIN_KEY);
-    if (current !== null) return migrateStored(current);
+    const currentRaw = window.localStorage.getItem(MAIN_KEY);
+    const pendingRaw = window.localStorage.getItem(PENDING_KEY);
+    const current = currentRaw === null ? null : migrateStored(currentRaw);
+    const pending = pendingRaw === null ? null : migrateStored(pendingRaw);
 
-    const pending = window.localStorage.getItem(PENDING_KEY);
-    if (pending !== null) return migrateStored(pending);
+    if (current?.data != null && pending?.data != null) {
+      return {
+        status: 'recovery',
+        data: pending.data,
+        original: pending.original,
+        current: current.data,
+      };
+    }
+    if (current !== null) return current;
+
+    if (pending !== null) return pending;
 
     const legacy = window.localStorage.getItem(LEGACY_KEY);
     return legacy === null ? migrateLegacyMain(null) : migrateStored(legacy);
@@ -46,10 +57,14 @@ export class BrowserMainRepository implements MainRepository {
     next.updatedAt = this.nextUpdatedAt();
     const serialized = JSON.stringify(next);
 
-    await this.historyStore.saveMainV1(next);
-    window.localStorage.setItem(PENDING_KEY, serialized);
-    window.localStorage.setItem(MAIN_KEY, serialized);
-    window.localStorage.removeItem(PENDING_KEY);
+    try {
+      await this.historyStore.saveMainV1(next);
+      window.localStorage.setItem(PENDING_KEY, serialized);
+      window.localStorage.setItem(MAIN_KEY, serialized);
+      window.localStorage.removeItem(PENDING_KEY);
+    } finally {
+      activeMainSaves--;
+    }
   }
 
   saveSetupProgress(step: SetupStep, draft: MainData): void {
@@ -75,8 +90,12 @@ export class BrowserMainRepository implements MainRepository {
 
   private nextUpdatedAt(): number {
     const persistedUpdatedAt = readStoredUpdatedAt(window.localStorage.getItem(MAIN_KEY));
-    const updatedAt = Math.max(Date.now(), persistedUpdatedAt + 1, this.lastIssuedUpdatedAt + 1);
-    this.lastIssuedUpdatedAt = updatedAt;
+    if (persistedUpdatedAt === 0 && activeMainSaves === 0) {
+      lastIssuedUpdatedAt = 0;
+    }
+    const updatedAt = Math.max(Date.now(), persistedUpdatedAt + 1, lastIssuedUpdatedAt + 1);
+    lastIssuedUpdatedAt = updatedAt;
+    activeMainSaves++;
     return updatedAt;
   }
 }
