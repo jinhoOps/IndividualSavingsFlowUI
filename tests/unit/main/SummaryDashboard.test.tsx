@@ -110,6 +110,17 @@ describe('SummaryDashboard', () => {
     expect(screen.getByRole('img', { name: '월간 현금흐름 Sankey 그래프' })).toBeVisible();
   });
 
+  it('includes each primary metric value and context in its accessible description', () => {
+    render(<DashboardHarness />);
+
+    expect(screen.getByRole('button', { name: '수입 편집' }))
+      .toHaveAccessibleDescription(expect.stringMatching(/420만 원/));
+    expect(screen.getByRole('button', { name: '생활비 편집' }))
+      .toHaveAccessibleDescription(expect.stringMatching(/300만 원.*생활비 180만 원/));
+    expect(screen.getByRole('button', { name: '남는 금액 편집' }))
+      .toHaveAccessibleDescription(expect.stringMatching(/120만 원.*투자 가능액/));
+  });
+
   it('opens the income editor from the income summary card', () => {
     render(<DashboardHarness />);
     const opener = screen.getByRole('button', { name: '수입 편집' });
@@ -176,6 +187,34 @@ describe('SummaryDashboard', () => {
 
     fireEvent.click(close);
     expect(opener).toHaveFocus();
+  });
+
+  it('announces a mobile save failure inside the dialog and exposes a retry action', () => {
+    vi.stubGlobal('matchMedia', vi.fn().mockImplementation(() => ({
+      matches: true,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    })));
+    const onApply = vi.fn();
+    render(
+      <SummaryDashboard
+        applied={appliedData}
+        draft={{ ...appliedData, incomes: [{ ...appliedData.incomes[0], amountWon: 5_000_000 }] }}
+        dirty
+        issues={[]}
+        saveStatus="error"
+        onDraftChange={vi.fn()}
+        onApply={onApply}
+        onCancel={vi.fn()}
+        onRestart={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: '수입 편집' }));
+
+    const dialog = screen.getByRole('dialog', { name: '수입 편집' });
+    expect(within(dialog).getByRole('alert')).toHaveTextContent('저장하지 못했습니다');
+    fireEvent.click(within(dialog).getByRole('button', { name: '다시 시도' }));
+    expect(onApply).toHaveBeenCalledOnce();
   });
 
   it('asks before discarding a dirty mobile editor from Escape or its backdrop', () => {

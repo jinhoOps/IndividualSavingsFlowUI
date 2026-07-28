@@ -28,6 +28,7 @@ function repository(result: MigrationResult): MainRepository {
     loadSetupProgress: () => null,
     clearSetupProgress: () => undefined,
     discardPending: () => undefined,
+    discardRecovery: () => undefined,
   };
 }
 
@@ -54,14 +55,62 @@ describe('MainApp', () => {
       current: data(3_000_000),
       data: data(4_000_000),
       original: { pending: true },
+      source: 'pending',
     })} />);
 
     expect(await screen.findByRole('heading', { name: '저장 복구가 필요합니다' })).toBeVisible();
     expect(screen.getByText('현재 적용 중 · 300만 원')).toBeVisible();
     expect(screen.getByText('저장 대기 중 · 400만 원')).toBeVisible();
     expect(screen.getByRole('button', { name: '기존 원본 JSON 다운로드' })).toBeVisible();
-    fireEvent.click(screen.getByRole('button', { name: '빈 초안으로 다시 시작' }));
+    expect(screen.getByRole('button', { name: '저장 다시 시도' })).toBeVisible();
+    expect(screen.getByRole('button', { name: '복구 초안 버리기' })).toBeVisible();
+    expect(screen.getByRole('button', { name: '현재 계획으로 돌아가기' })).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: '복구 초안 버리기' }));
     expect(await screen.findByRole('heading', { name: '내 자금 계획을 시작합니다' })).toBeVisible();
+  });
+
+  it('retries a recovery candidate only after the user explicitly requests it', async () => {
+    const storage = repository({
+      status: 'recovery',
+      current: data(3_000_000),
+      data: data(4_000_000),
+      original: { pending: true },
+      source: 'pending',
+    });
+    storage.save = vi.fn(async (draft) => ({ ...draft, updatedAt: 30 }));
+    render(<MainApp repository={storage} />);
+    await screen.findByRole('heading', { name: '저장 복구가 필요합니다' });
+
+    fireEvent.click(screen.getByRole('button', { name: '저장 다시 시도' }));
+
+    expect(await screen.findByRole('heading', { name: '이번 달 자금 흐름' })).toBeVisible();
+    expect(storage.save).toHaveBeenCalledWith(expect.objectContaining({
+      incomes: expect.arrayContaining([
+        expect.objectContaining({ amountWon: 4_000_000 }),
+      ]),
+    }));
+    expect(screen.getByRole('button', { name: '수입 편집' })).toHaveTextContent('400만 원');
+  });
+
+  it('durably suppresses the recovery revision before returning to current data', async () => {
+    const storage = repository({
+      status: 'recovery',
+      current: data(3_000_000),
+      data: data(4_000_000),
+      original: { history: true },
+      source: 'history',
+    });
+    storage.discardPending = vi.fn();
+    storage.discardRecovery = vi.fn();
+    render(<MainApp repository={storage} />);
+    await screen.findByRole('heading', { name: '저장 복구가 필요합니다' });
+
+    fireEvent.click(screen.getByRole('button', { name: '현재 계획으로 돌아가기' }));
+
+    expect(await screen.findByRole('heading', { name: '이번 달 자금 흐름' })).toBeVisible();
+    expect(screen.getByRole('button', { name: '수입 편집' })).toHaveTextContent('300만 원');
+    expect(storage.discardRecovery).toHaveBeenCalledWith(1);
+    expect(storage.discardPending).toHaveBeenCalledOnce();
   });
 
   it('locks editor mutations while a save is pending so the submitted revision is not overwritten', async () => {
@@ -102,5 +151,51 @@ describe('MainApp', () => {
     fireEvent.click(screen.getByRole('button', { name: '취소' }));
 
     expect(discardPending).toHaveBeenCalledOnce();
+  });
+
+  it('imports a JSON backup into the draft and waits for explicit apply before saving', async () => {
+    const storage = repository({ status: 'current', data: data(3_000_000), original: {} });
+    storage.save = vi.fn(async (draft) => ({ ...draft, updatedAt: 2 }));
+    render(<MainApp repository={storage} />);
+    await screen.findByRole('heading', { name: '이번 달 자금 흐름' });
+    const file = new File([JSON.stringify(data(4_000_000))], 'plan.json', { type: 'application/json' });
+
+    fireEvent.change(screen.getByLabelText('JSON 백업 파일'), { target: { files: [file] } });
+
+    expect(await screen.findByText('백업을 초안으로 불러왔습니다. 적용해야 저장됩니다.')).toBeVisible();
+    expect(screen.getByRole('button', { name: '수입 편집' })).toHaveTextContent('300만 원');
+    expect(storage.save).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: '적용' }));
+    expect(await screen.findByRole('button', { name: '수입 편집' })).toHaveTextContent('400만 원');
+    expect(storage.save).toHaveBeenCalledOnce();
+  });
+
+  it('rejects an invalid JSON backup without mutating the applied plan', async () => {
+    const storage = repository({ status: 'current', data: data(3_000_000), original: {} });
+    storage.save = vi.fn(async (draft) => draft);
+    render(<MainApp repository={storage} />);
+    await screen.findByRole('heading', { name: '이번 달 자금 흐름' });
+    const file = new File(['{invalid'], 'invalid.json', { type: 'application/json' });
+
+    fireEvent.change(screen.getByLabelText('JSON 백업 파일'), { target: { files: [file] } });
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('백업 파일을 불러오지 못했습니다');
+    expect(screen.getByRole('button', { name: '수입 편집' })).toHaveTextContent('300만 원');
+    expect(storage.save).not.toHaveBeenCalled();
+  });
+
+  it('keeps setup editing available when progress persistence fails', async () => {
+    const storage = repository({ status: 'empty', data: null, original: null });
+    storage.loadSetupProgress = () => ({ kind: 'initial', step: 'income', draft: data(3_000_000) });
+    storage.saveSetupProgress = vi.fn(() => {
+      throw new Error('quota');
+    });
+    render(<MainApp repository={storage} />);
+    await screen.findByRole('heading', { name: '월 수입을 알려주세요' });
+
+    fireEvent.change(screen.getByLabelText('수입 이름'), { target: { value: '새 급여' } });
+
+    expect(screen.getByLabelText('수입 이름')).toHaveValue('새 급여');
+    expect(screen.getByText('설정 진행 상황을 저장하지 못했습니다. 이 화면에서는 계속 입력할 수 있습니다.')).toBeVisible();
   });
 });

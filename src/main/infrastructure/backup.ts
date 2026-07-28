@@ -1,4 +1,5 @@
 import type { MainData } from '../domain/model';
+import { validateMainData } from '../domain/validation';
 import { migrateLegacyMain } from './legacyMigration';
 
 export function exportMainData(data: MainData): string {
@@ -16,6 +17,9 @@ export function importMainData(json: string): MainData {
   const result = migrateLegacyMain(parsed);
   if (result.status !== 'current') {
     throw new Error('Backup data is not valid MainData.');
+  }
+  if (!validateMainData(result.data).valid) {
+    throw new Error('Backup data contains an invalid plan.');
   }
   return result.data;
 }

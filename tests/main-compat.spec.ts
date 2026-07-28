@@ -116,6 +116,48 @@ test('React Main save feeds the Account Map connector', async ({ page }) => {
   ]));
 });
 
+test('React Main preserves arbitrary account roles through the Account Map connector', async ({ page }) => {
+  await page.addInitScript((data) => {
+    if (sessionStorage.getItem('__arbitraryRoleCompatSeeded') === '1') return;
+    localStorage.clear();
+    sessionStorage.clear();
+    localStorage.setItem('isf-main-v1', JSON.stringify(data));
+    sessionStorage.setItem('__arbitraryRoleCompatSeeded', '1');
+  }, {
+    schemaVersion: 1,
+    updatedAt: 1,
+    incomes: [{
+      id: 'salary',
+      name: '급여',
+      amountWon: 4_200_000,
+      accountId: 'paycheck-wallet',
+      allocations: [{ accountId: 'paycheck-wallet', amountWon: 4_200_000 }],
+    }],
+    expenses: [],
+    savings: [],
+    investments: [{ id: 'etf', name: 'ETF', amountWon: 500_000, accountId: 'brokerage-wallet' }],
+    accounts: [
+      { id: 'paycheck-wallet', name: '급여 지갑', kind: 'income' },
+      { id: 'brokerage-wallet', name: '증권 지갑', kind: 'investment' },
+    ],
+  });
+  await page.goto('apps/main/');
+  await page.getByRole('button', { name: '투자 편집' }).click();
+  await page.getByLabel('ETF 월 금액').fill('600000');
+  await page.getByRole('button', { name: '적용' }).click();
+  await expect(page.getByRole('status')).toHaveText('저장됨');
+
+  await page.goto('apps/account-map/');
+  await page.locator('#importMainData').click();
+
+  await expect(page.locator('#accountMapSummary')).toContainText('2개 계좌');
+  const accounts = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-account-map-v1') ?? '{}').accounts);
+  expect(accounts).toEqual([
+    expect.objectContaining({ id: 'paycheck-wallet', role: 'income' }),
+    expect.objectContaining({ id: 'brokerage-wallet', role: 'investment' }),
+  ]);
+});
+
 test('active legacy sanitizer accepts the React compatibility projection without unit inflation', async ({ page }) => {
   await saveReactMain(page, 640_000);
   await page.goto('apps/simulation/');

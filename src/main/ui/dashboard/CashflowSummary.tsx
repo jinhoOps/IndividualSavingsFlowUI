@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import type { CashflowSummary as CashflowTotals } from '../../domain/cashflow';
 
 export type DashboardSection = 'income' | 'expense' | 'saving' | 'investment';
@@ -69,11 +70,14 @@ interface MetricButtonProps {
 }
 
 function MetricButton({ label, valueWon, importance, children, disabled, onClick }: MetricButtonProps) {
+  const descriptionId = useId();
+  const contextId = useId();
   return (
     <button
       type="button"
       disabled={disabled}
       aria-label={`${label === '계획 유출' ? '생활비' : label} 편집`}
+      aria-describedby={children ? `${descriptionId} ${contextId}` : descriptionId}
       data-importance={importance}
       className={importance === 'primary'
         ? 'group min-h-44 rounded-3xl border border-white/80 bg-white p-6 text-left shadow-float transition hover:-translate-y-0.5 hover:border-accent/25'
@@ -83,10 +87,10 @@ function MetricButton({ label, valueWon, importance, children, disabled, onClick
       <span className={importance === 'primary'
         ? 'block text-sm font-black tracking-wide text-accent'
         : 'block text-sm font-bold text-slate-500'}>{label}</span>
-      <strong className={importance === 'primary'
+      <strong id={descriptionId} className={importance === 'primary'
         ? 'mt-5 block text-4xl font-black tracking-tight text-slate-950'
         : 'mt-2 block text-2xl font-black tracking-tight text-slate-800'}>{formatDashboardWon(valueWon)}</strong>
-      {children ? <small className="mt-4 flex flex-wrap gap-2 text-sm font-bold text-slate-500">{children}</small> : null}
+      {children ? <small id={contextId} className="mt-4 flex flex-wrap gap-2 text-sm font-bold text-slate-500">{children}</small> : null}
     </button>
   );
 }

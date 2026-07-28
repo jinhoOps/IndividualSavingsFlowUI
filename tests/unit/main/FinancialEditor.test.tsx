@@ -45,7 +45,7 @@ function EditorHarness() {
         issues={issues}
         onChange={setDraft}
       />
-      <ApplyBar dirty saving={false} onApply={apply} onCancel={() => setDraft(clone(original))} />
+      <ApplyBar dirty saveStatus="idle" onApply={apply} onCancel={() => setDraft(clone(original))} />
       <output aria-label="저장 결과">{saved ? '저장됨' : '저장 안 됨'}</output>
     </>
   );
@@ -101,7 +101,7 @@ function LastIncomeHarness() {
       <FinancialEditor section="income" draft={draft} issues={issues} onChange={setDraft} />
       <ApplyBar
         dirty
-        saving={false}
+        saveStatus="idle"
         onApply={() => setIssues(validateMainData(draft).issues)}
         onCancel={vi.fn()}
       />

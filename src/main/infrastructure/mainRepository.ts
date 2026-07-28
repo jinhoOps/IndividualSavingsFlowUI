@@ -1,17 +1,23 @@
 import { isfStore, type IsfStore } from '../../core/storage/IsfStore';
 import type { MainData, SetupStep } from '../domain/model';
 import { validateMainData } from '../domain/validation';
-import { isMainDataShape, migrateLegacyMain, type MigrationResult } from './legacyMigration';
+import {
+  isMainDataShape,
+  migrateLegacyMain,
+  normalizeLegacyMainRecord,
+  type MigrationResult,
+} from './legacyMigration';
 
 const MAIN_KEY = 'isf-main-v1';
 const PENDING_KEY = 'isf-main-v1-pending';
 const LEGACY_KEY = 'isf-rebuild-v1';
 const LEGACY_ACTIVE_KEY = 'isf-step1-active';
 const SETUP_PROGRESS_KEY = 'isf-main-v1-setup-progress';
+const DISMISSED_RECOVERY_KEY = 'isf-main-v1-dismissed-recovery';
+const MAIN_SAVE_LOCK_NAME = 'isf-main-v1-save';
 
 const setupSteps = new Set<SetupStep>(['welcome', 'income', 'expense', 'saving-investment', 'account', 'review']);
 let lastIssuedUpdatedAt = 0;
-let activeMainSaves = 0;
 
 export interface MainRepository {
   load(): Promise<MigrationResult>;
@@ -20,6 +26,7 @@ export interface MainRepository {
   loadSetupProgress(): SetupProgress | null;
   clearSetupProgress(): void;
   discardPending(): void;
+  discardRecovery(updatedAt: number): void;
 }
 
 export type SetupProgressKind = 'initial' | 'restart';
@@ -30,28 +37,82 @@ export interface SetupProgress {
   draft: MainData;
 }
 
-export type MainHistoryStore = Pick<IsfStore, 'saveMainV1'>;
+export type MainHistoryStore = Pick<IsfStore, 'saveMainV1'> & Partial<Pick<IsfStore, 'loadLatestMainV1'>>;
+
+export interface MainSaveLock {
+  runExclusive<T>(task: () => Promise<T>): Promise<T>;
+}
+
+class BrowserMainSaveLock implements MainSaveLock {
+  private localTail = Promise.resolve();
+
+  async runExclusive<T>(task: () => Promise<T>): Promise<T> {
+    if (typeof navigator !== 'undefined' && navigator.locks !== undefined) {
+      return await navigator.locks.request(MAIN_SAVE_LOCK_NAME, task);
+    }
+
+    const result = this.localTail.then(task, task);
+    this.localTail = result.then(() => undefined, () => undefined);
+    return result;
+  }
+}
+
+const defaultMainSaveLock = new BrowserMainSaveLock();
 
 export class BrowserMainRepository implements MainRepository {
-  constructor(private readonly historyStore: MainHistoryStore = isfStore) {}
+  constructor(
+    private readonly historyStore: MainHistoryStore = isfStore,
+    private readonly saveLock: MainSaveLock = defaultMainSaveLock,
+  ) {}
 
   async load(): Promise<MigrationResult> {
     const currentRaw = window.localStorage.getItem(MAIN_KEY);
     const pendingRaw = window.localStorage.getItem(PENDING_KEY);
     const current = currentRaw === null ? null : migrateStored(currentRaw);
     const pending = pendingRaw === null ? null : migrateStored(pendingRaw);
+    const history = await this.loadHistoryCandidate();
+    const currentData = current?.data ?? null;
+    const dismissedUpdatedAt = readDismissedRecoveryUpdatedAt();
+    let recoveryCandidate: {
+      data: MainData;
+      original: unknown;
+      source: 'pending' | 'history';
+    } | null = null;
 
-    if (current?.data != null && pending?.data != null) {
-      return {
-        status: 'recovery',
+    if (pending?.data != null
+      && pending.data.updatedAt > dismissedUpdatedAt
+      && (currentData === null || pending.data.updatedAt >= currentData.updatedAt)) {
+      recoveryCandidate = {
         data: pending.data,
         original: pending.original,
-        current: current.data,
+        source: 'pending',
       };
     }
-    if (current !== null) return current;
 
-    if (pending !== null) return pending;
+    if (history?.data != null
+      && history.data.updatedAt > dismissedUpdatedAt
+      && (currentData === null || history.data.updatedAt > currentData.updatedAt)
+      && (recoveryCandidate === null || history.data.updatedAt > recoveryCandidate.data.updatedAt)) {
+      recoveryCandidate = {
+        data: history.data,
+        original: history.original,
+        source: 'history',
+      };
+    }
+
+    if (recoveryCandidate !== null) {
+      return {
+        status: 'recovery',
+        data: recoveryCandidate.data,
+        original: recoveryCandidate.original,
+        current: currentData,
+        source: recoveryCandidate.source,
+      };
+    }
+
+    if (currentData !== null && current !== null) return current;
+    if (current !== null) return current;
+    if (pending !== null && pending.data === null) return pending;
 
     const legacy = window.localStorage.getItem(LEGACY_KEY);
     return legacy === null ? migrateLegacyMain(null) : migrateStored(legacy);
@@ -63,6 +124,10 @@ export class BrowserMainRepository implements MainRepository {
       throw new Error(`Cannot save invalid main data: ${validation.issues.map((issue) => issue.code).join(', ')}`);
     }
 
+    return this.saveLock.runExclusive(() => this.saveLocked(data));
+  }
+
+  private async saveLocked(data: MainData): Promise<MainData> {
     const next = cloneMainData(data);
     next.updatedAt = this.nextUpdatedAt();
     let previousCurrent: string | null = null;
@@ -96,8 +161,6 @@ export class BrowserMainRepository implements MainRepository {
       if (legacyWritten) restoreStorageValue(LEGACY_KEY, previousLegacy);
       if (currentWritten) restoreStorageValue(MAIN_KEY, previousCurrent);
       throw error;
-    } finally {
-      activeMainSaves--;
     }
   }
 
@@ -127,18 +190,35 @@ export class BrowserMainRepository implements MainRepository {
   }
 
   discardPending(): void {
+    const pendingUpdatedAt = readStoredUpdatedAt(window.localStorage.getItem(PENDING_KEY));
     window.localStorage.removeItem(PENDING_KEY);
+    this.discardRecovery(pendingUpdatedAt);
+  }
+
+  discardRecovery(updatedAt: number): void {
+    if (!Number.isFinite(updatedAt) || updatedAt <= 0) return;
+    const current = readDismissedRecoveryUpdatedAt();
+    window.localStorage.setItem(DISMISSED_RECOVERY_KEY, String(Math.max(current, updatedAt)));
   }
 
   private nextUpdatedAt(): number {
     const persistedUpdatedAt = readStoredUpdatedAt(window.localStorage.getItem(MAIN_KEY));
-    if (persistedUpdatedAt === 0 && activeMainSaves === 0) {
+    if (persistedUpdatedAt === 0) {
       lastIssuedUpdatedAt = 0;
     }
     const updatedAt = Math.max(Date.now(), persistedUpdatedAt + 1, lastIssuedUpdatedAt + 1);
     lastIssuedUpdatedAt = updatedAt;
-    activeMainSaves++;
     return updatedAt;
+  }
+
+  private async loadHistoryCandidate(): Promise<MigrationResult | null> {
+    if (this.historyStore.loadLatestMainV1 === undefined) return null;
+    try {
+      const latest = await this.historyStore.loadLatestMainV1();
+      return latest === null ? null : migrateLegacyMain(latest);
+    } catch {
+      return null;
+    }
   }
 }
 
@@ -161,7 +241,7 @@ function isSetupProgress(value: unknown): value is {
 }
 
 function createLegacyProjection(data: MainData, previousRaw: string | null): Record<string, unknown> {
-  const previous = parseRecord(previousRaw);
+  const previous = normalizeLegacyMainRecord(parseRecord(previousRaw));
   const accounts = mergeRecordsById(previous.accounts, data.accounts.map((account) => ({
     id: account.id,
     name: account.name,
@@ -393,4 +473,9 @@ function readStoredUpdatedAt(raw: string | null): number {
   } catch {
     return 0;
   }
+}
+
+function readDismissedRecoveryUpdatedAt(): number {
+  const parsed = Number(window.localStorage.getItem(DISMISSED_RECOVERY_KEY));
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
 }

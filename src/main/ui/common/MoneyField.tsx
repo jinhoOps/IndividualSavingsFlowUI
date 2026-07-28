@@ -1,3 +1,5 @@
+import { parseWonInput } from '../../domain/money';
+
 export interface MoneyFieldProps {
   id: string;
   label: string;
@@ -24,15 +26,9 @@ export function MoneyField({ id, label, valueWon, error, validationPath, disable
         aria-invalid={error ? 'true' : undefined}
         aria-describedby={error ? errorId : undefined}
         disabled={disabled}
-        onChange={(event) => onChange(parseWon(event.target.value))}
+        onChange={(event) => onChange(parseWonInput(event.target.value))}
       />
       {error ? <p className="m-0 text-sm font-bold text-red-700" id={errorId} role="alert">{error}</p> : null}
     </div>
   );
-}
-
-function parseWon(value: string): number {
-  const normalized = value.replace(/[^0-9-]/g, '');
-  const parsed = Number(normalized);
-  return Number.isFinite(parsed) ? parsed : 0;
 }

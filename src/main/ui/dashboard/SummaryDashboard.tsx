@@ -4,6 +4,7 @@ import type { MainData } from '../../domain/model';
 import { buildSankeyGraph } from '../../domain/sankey';
 import type { ValidationResult } from '../../domain/validation';
 import type { MainState } from '../../application/mainReducer';
+import { AppErrorBoundary } from '../common/AppErrorBoundary';
 import { ApplyBar } from '../editor/ApplyBar';
 import { FinancialEditor } from '../editor/FinancialEditor';
 import { CashflowSankey } from './CashflowSankey';
@@ -20,6 +21,9 @@ export interface SummaryDashboardProps {
   onApply(): void;
   onCancel(): void;
   onRestart(): void;
+  onExport?(): void;
+  onImportFile?(file: File): void;
+  backupStatus?: { kind: 'success' | 'error'; message: string } | null;
 }
 
 const sectionLabels: Record<DashboardSection, string> = {
@@ -40,6 +44,9 @@ export function SummaryDashboard({
   onApply,
   onCancel,
   onRestart,
+  onExport,
+  onImportFile,
+  backupStatus = null,
 }: SummaryDashboardProps) {
   const [activeSection, setActiveSection] = useState<DashboardSection | null>(null);
   const openerRef = useRef<HTMLElement | null>(null);
@@ -142,14 +149,51 @@ export function SummaryDashboard({
           <h1 className="m-0 mt-2 text-4xl font-bold tracking-tight text-slate-950 sm:text-5xl" id="summary-dashboard-title">이번 달 자금 흐름</h1>
           <p className="mb-0 mt-3 text-lg text-slate-600">수입과 계획 유출, 남는 금액을 먼저 확인하세요.</p>
         </div>
-        <button className="self-start rounded-full border border-slate-300 bg-white/80 px-4 py-2 text-sm font-bold text-slate-700 shadow-sm" type="button" disabled={saving} onClick={requestRestart}>처음부터 다시 설정</button>
+        <div className="flex flex-wrap items-center gap-2 self-start">
+          {onExport === undefined ? null : (
+            <button className="rounded-full border border-slate-300 bg-white/80 px-4 py-2 text-sm font-bold text-slate-700 shadow-sm" type="button" disabled={saving} onClick={onExport}>
+              백업 내보내기
+            </button>
+          )}
+          {onImportFile === undefined ? null : (
+            <label className="cursor-pointer rounded-full border border-slate-300 bg-white/80 px-4 py-2 text-sm font-bold text-slate-700 shadow-sm">
+              백업 가져오기
+              <input
+                className="sr-only"
+                type="file"
+                accept="application/json,.json"
+                aria-label="JSON 백업 파일"
+                disabled={saving}
+                onChange={(event) => {
+                  const file = event.currentTarget.files?.[0];
+                  if (file !== undefined) onImportFile(file);
+                  event.currentTarget.value = '';
+                }}
+              />
+            </label>
+          )}
+          <button className="rounded-full border border-slate-300 bg-white/80 px-4 py-2 text-sm font-bold text-slate-700 shadow-sm" type="button" disabled={saving} onClick={requestRestart}>처음부터 다시 설정</button>
+        </div>
       </header>
+
+      {backupStatus === null ? null : (
+        <p
+          className={`m-0 rounded-xl px-4 py-3 text-sm font-bold ${backupStatus.kind === 'error' ? 'bg-rose-50 text-rose-700' : 'bg-teal-50 text-teal-800'}`}
+          role={backupStatus.kind === 'error' ? 'alert' : 'status'}
+        >
+          {backupStatus.message}
+        </p>
+      )}
 
       <CashflowSummary summary={summary} disabled={saving} onEdit={openEditor} />
 
       <section className="min-w-0 rounded-3xl border border-white/80 bg-white/85 p-5 shadow-float sm:p-7" aria-labelledby="sankey-title">
         <h2 className="m-0 text-2xl font-bold text-slate-950" id="sankey-title">월간 현금흐름</h2>
-        <div className="mt-5 overflow-x-auto pb-2"><CashflowSankey graph={buildSankeyGraph(applied)} /></div>
+        <AppErrorBoundary
+          fallback={<p className="mt-5 rounded-2xl bg-amber-50 p-5 font-bold text-amber-900" role="status">현금흐름 차트를 표시하지 못했습니다.</p>}
+        >
+          <SankeyVisualization data={applied} />
+        </AppErrorBoundary>
       </section>
 
       <section className="rounded-3xl border border-slate-200/80 bg-white/65 p-5 sm:p-7" aria-labelledby="category-summary-title">
@@ -172,6 +216,15 @@ export function SummaryDashboard({
       </section>
       </div>
 
+      {activeSection === null && dirty ? (
+        <ApplyBar
+          dirty={dirty}
+          saveStatus={saveStatus}
+          onApply={onApply}
+          onCancel={onCancel}
+        />
+      ) : null}
+
       {activeSection ? (
         isMobile ? (
           <>
@@ -189,7 +242,7 @@ export function SummaryDashboard({
               />
               <ApplyBar
                 dirty={dirty}
-                saving={saveStatus === 'saving'}
+                saveStatus={saveStatus}
                 onApply={onApply}
                 onCancel={onCancel}
               />
@@ -210,7 +263,7 @@ export function SummaryDashboard({
           />
           <ApplyBar
             dirty={dirty}
-            saving={saveStatus === 'saving'}
+            saveStatus={saveStatus}
             onApply={onApply}
             onCancel={onCancel}
           />
@@ -219,6 +272,14 @@ export function SummaryDashboard({
         )
       ) : null}
     </main>
+  );
+}
+
+function SankeyVisualization({ data }: { data: MainData }) {
+  return (
+    <div className="mt-5 overflow-x-auto pb-2">
+      <CashflowSankey graph={buildSankeyGraph(data)} />
+    </div>
   );
 }
 

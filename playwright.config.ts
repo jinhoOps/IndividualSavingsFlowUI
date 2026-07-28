@@ -4,9 +4,6 @@ export default defineConfig({
   testDir: './tests',
   testIgnore: [
     '**/unit/**',
-    // Frozen pre-React DOM suite; live Main and connector contracts are covered
-    // by main-react.spec.ts, main-compat.spec.ts, and tests/unit/main.
-    '**/step1.spec.ts',
   ],
   fullyParallel: false,
   forbidOnly: !!process.env.CI,

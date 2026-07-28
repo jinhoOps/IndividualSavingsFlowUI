@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
 
 const currentMain = {
   schemaVersion: 1,
@@ -112,9 +113,11 @@ test('mobile setup validates focus, applies, edits, and cancels without losing t
   await expect(incomeHeading).toBeFocused();
   await page.getByLabel('수입 이름').fill('급여');
   await page.getByLabel('월 금액').fill('4200000');
-  for (let step = 0; step < 4; step += 1) {
+  for (let step = 0; step < 3; step += 1) {
     await page.getByRole('button', { name: '다음' }).click();
   }
+  await page.getByLabel('계좌 이름').fill('급여통장');
+  await page.getByRole('button', { name: '다음' }).click();
   await page.getByRole('button', { name: '계획 적용' }).click();
   await expect(page.getByRole('heading', { name: '이번 달 자금 흐름' })).toBeVisible();
 
@@ -159,6 +162,48 @@ test('resumes restart setup after reload with the current plan still applied', a
   await expect(page.getByRole('button', { name: '수입 편집' })).toContainText('420만 원');
 });
 
+test('keeps a restarted single-account income allocation synchronized', async ({ page }) => {
+  await seedCurrentMain(page);
+  await page.goto('apps/main/');
+  await page.getByRole('button', { name: '처음부터 다시 설정' }).click();
+  await page.getByRole('button', { name: '다음' }).click();
+
+  await page.getByLabel('월 금액').fill('5000000');
+
+  await expect.poll(() => page.evaluate(() => {
+    const progress = localStorage.getItem('isf-main-v1-setup-progress');
+    return progress === null ? null : JSON.parse(progress).draft.incomes[0].allocations[0];
+  })).toEqual({ accountId: 'salary-account', amountWon: 5_000_000 });
+});
+
+test('exports the applied plan and imports a backup as a draft until explicit apply', async ({ page }) => {
+  await seedCurrentMain(page);
+  await page.goto('apps/main/');
+
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: '백업 내보내기' }).click();
+  const download = await downloadPromise;
+  const downloadPath = await download.path();
+  expect(download.suggestedFilename()).toBe('individual-savings-flow-main.json');
+  expect(downloadPath).not.toBeNull();
+  const exported = JSON.parse(await readFile(downloadPath!, 'utf8'));
+  expect(exported.incomes[0].amountWon).toBe(4_200_000);
+
+  const imported = structuredClone(currentMain);
+  imported.incomes[0].amountWon = 5_000_000;
+  imported.incomes[0].allocations[0].amountWon = 5_000_000;
+  await page.getByLabel('JSON 백업 파일').setInputFiles({
+    name: 'main-backup.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(imported)),
+  });
+
+  await expect(page.getByText('백업을 초안으로 불러왔습니다. 적용해야 저장됩니다.')).toBeVisible();
+  await expect(page.getByRole('button', { name: '수입 편집' })).toContainText('420만 원');
+  await page.getByRole('button', { name: '적용' }).click();
+  await expect(page.getByRole('button', { name: '수입 편집' })).toContainText('500만 원');
+});
+
 test('resumes an unfinished setup at its saved step', async ({ page }) => {
   await page.addInitScript((draft) => {
     localStorage.clear();
@@ -182,8 +227,8 @@ test('opens a legacy isf-rebuild-v1 fixture as the converted dashboard', async (
   await page.addInitScript(() => {
     localStorage.clear();
     localStorage.setItem('isf-rebuild-v1', JSON.stringify({
-      incomes: [{ id: 'salary', name: '급여', amount: 4_200_000, allocations: [] }],
-      expenseItems: [{ id: 'living', name: '생활비', amount: 1_800_000 }],
+      incomes: [{ id: 'salary', name: '급여', amount: 420, allocations: [] }],
+      expenseItems: [{ id: 'living', name: '생활비', amount: 180 }],
       savingsItems: [],
       investItems: [],
       accounts: [],

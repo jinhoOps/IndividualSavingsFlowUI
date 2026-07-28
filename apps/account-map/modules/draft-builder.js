@@ -48,6 +48,11 @@ function isFixedExpenseCandidate(item) {
   return group.includes("고정") || RECURRING_PAYMENT_KEYWORDS.some((keyword) => text.includes(keyword));
 }
 
+function normalizeAccountRole(value) {
+  const role = cleanText(value);
+  return role === "saving" ? "savings" : role;
+}
+
 export function classifyRecurringPaymentCandidate(item) {
   const text = `${item?.name || ""} ${item?.group || ""}`;
   const keyword = RECURRING_PAYMENT_KEYWORDS.find((candidate) => text.includes(candidate)) || "";
@@ -63,11 +68,18 @@ function buildAccountNodes(inputs) {
     .filter((account) => account && typeof account === "object")
     .map((account, index) => {
       const id = cleanText(account.id, `acc-${index + 1}`);
+      const declaredRole = normalizeAccountRole(account.role || account.kind || account.type);
       return {
         ...account,
         id,
         name: cleanText(account.name, `계좌 ${index + 1}`),
-        role: id === DEFAULT_ACCOUNT_IDS.income ? "income" : id === DEFAULT_ACCOUNT_IDS.invest ? "investment" : "spending",
+        role: declaredRole || (
+          id === DEFAULT_ACCOUNT_IDS.income
+            ? "income"
+            : id === DEFAULT_ACCOUNT_IDS.invest
+              ? "investment"
+              : "spending"
+        ),
         sourceAccountId: id,
       };
     });

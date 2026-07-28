@@ -29,6 +29,7 @@ export class IsfStore {
 
     return new Promise((resolve, reject) => {
       const request = indexedDB.open(DB_NAME, DB_VERSION);
+      let settled = false;
 
       request.onupgradeneeded = (event) => {
         const db = request.result;
@@ -56,11 +57,31 @@ export class IsfStore {
       };
 
       request.onsuccess = () => {
-        this.db = request.result;
+        const database = request.result;
+        if (settled) {
+          database.close();
+          return;
+        }
+        this.db = database;
+        database.onversionchange = () => {
+          database.close();
+          if (this.db === database) this.db = null;
+        };
+        settled = true;
         resolve();
       };
 
-      request.onerror = () => reject(request.error);
+      request.onblocked = () => {
+        if (settled) return;
+        settled = true;
+        reject(new Error('IndexedDB upgrade was blocked by another open tab.'));
+      };
+
+      request.onerror = () => {
+        if (settled) return;
+        settled = true;
+        reject(request.error ?? new Error('IndexedDB could not be opened.'));
+      };
     });
   }
 
@@ -76,14 +97,29 @@ export class IsfStore {
       const tx = this.db!.transaction(storeName, mode);
       const store = tx.objectStore(storeName);
       const request = callback(store);
+      let requestResult: T | undefined;
+      let settled = false;
 
       if (request) {
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error);
-      } else {
-        tx.oncomplete = () => resolve(undefined as T);
+        request.onsuccess = () => {
+          requestResult = request.result;
+        };
+        request.onerror = () => {
+          if (settled) return;
+          settled = true;
+          reject(request.error ?? new Error('IDB_REQUEST_FAILED'));
+        };
       }
-      tx.onabort = () => reject(tx.error || new Error('TX_ABORTED'));
+      tx.oncomplete = () => {
+        if (settled) return;
+        settled = true;
+        resolve(requestResult as T);
+      };
+      tx.onabort = () => {
+        if (settled) return;
+        settled = true;
+        reject(tx.error || new Error('TX_ABORTED'));
+      };
     });
   }
 

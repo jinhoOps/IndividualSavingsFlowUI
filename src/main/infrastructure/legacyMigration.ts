@@ -5,10 +5,29 @@ export type MigrationResult =
   | { status: 'empty'; data: null; original: null }
   | { status: 'current'; data: MainData; original: unknown }
   | { status: 'migrated'; data: MainData; original: unknown }
-  | { status: 'recovery'; data: MainData; original: unknown; current: MainData }
+  | {
+    status: 'recovery';
+    data: MainData;
+    original: unknown;
+    current: MainData | null;
+    source: 'pending' | 'history';
+  }
   | { status: 'failed'; data: null; original: unknown; reason: string };
 
 type UnknownRecord = Record<string, unknown>;
+
+const LEGACY_WON_FACTOR = 10_000;
+const legacyTopLevelMoneyKeys = [
+  'monthlyExpense',
+  'monthlySavings',
+  'monthlyInvest',
+  'monthlyDebtPayment',
+  'startCash',
+  'startSavings',
+  'startInvest',
+  'startDebt',
+  'monthlyIncome',
+] as const;
 
 export function migrateLegacyMain(input: unknown): MigrationResult {
   if (input === null || input === undefined) {
@@ -60,11 +79,12 @@ export function isMainDataShape(value: unknown): value is MainData {
 }
 
 function migrateLegacyRecord(input: UnknownRecord): MainData | null {
-  const incomes = mapArray(input.incomes, migrateIncome);
-  const expenses = mapArray(input.expenseItems, migrateFinancialItem);
-  const savings = mapArray(input.savingsItems, migrateFinancialItem);
-  const investments = mapArray(input.investItems, migrateFinancialItem);
-  const accounts = mapArray(input.accounts, migrateAccount);
+  const normalized = normalizeLegacyMainRecord(input);
+  const incomes = mapArray(normalized.incomes, migrateIncome);
+  const expenses = mapArray(normalized.expenseItems, migrateFinancialItem);
+  const savings = mapArray(normalized.savingsItems, migrateFinancialItem);
+  const investments = mapArray(normalized.investItems, migrateFinancialItem);
+  const accounts = mapArray(normalized.accounts, migrateAccount);
 
   if (incomes === null || expenses === null || savings === null || investments === null || accounts === null) {
     return null;
@@ -121,8 +141,64 @@ function migrateAccount(value: unknown): Account | null {
   if (!isRecord(value) || !isString(value.id) || !isString(value.name)) return null;
 
   const kind = value.kind ?? value.type;
-  if (!isAccountKind(kind)) return null;
-  return { id: value.id, name: value.name, kind };
+  return {
+    id: value.id,
+    name: value.name,
+    kind: isAccountKind(kind) ? kind : inferLegacyAccountKind(value.id),
+  };
+}
+
+export function normalizeLegacyMainRecord(input: UnknownRecord): UnknownRecord {
+  if (isFiniteNumber(input.modelVersion) && input.modelVersion >= 10) {
+    return input;
+  }
+
+  const normalized: UnknownRecord = { ...input, modelVersion: 10 };
+  for (const key of legacyTopLevelMoneyKeys) {
+    normalized[key] = normalizeLegacyMoney(input[key]);
+  }
+  normalized.incomes = normalizeLegacyMoneyCollection(input.incomes, true);
+  normalized.expenseItems = normalizeLegacyMoneyCollection(input.expenseItems);
+  normalized.savingsItems = normalizeLegacyMoneyCollection(input.savingsItems);
+  normalized.investItems = normalizeLegacyMoneyCollection(input.investItems);
+  normalized.transfers = normalizeLegacyMoneyCollection(input.transfers);
+  normalized.relationships = normalizeLegacyMoneyCollection(input.relationships);
+  normalized.householdContext = normalizeLegacyHouseholdContext(input.householdContext);
+  return normalized;
+}
+
+function normalizeLegacyMoneyCollection(value: unknown, includeAllocations = false): unknown {
+  if (!Array.isArray(value)) return value;
+  return value.map((entry) => {
+    if (!isRecord(entry)) return entry;
+    const normalized: UnknownRecord = { ...entry };
+    for (const key of ['amount', 'actualSpent', 'varianceAmount']) {
+      normalized[key] = normalizeLegacyMoney(entry[key]);
+    }
+    if (includeAllocations) {
+      normalized.allocations = normalizeLegacyMoneyCollection(entry.allocations);
+    }
+    return normalized;
+  });
+}
+
+function normalizeLegacyHouseholdContext(value: unknown): unknown {
+  if (!isRecord(value)) return value;
+  return {
+    ...value,
+    spouseMonthlyIncome: normalizeLegacyMoney(value.spouseMonthlyIncome),
+  };
+}
+
+function normalizeLegacyMoney(value: unknown): unknown {
+  return isFiniteNumber(value) ? value * LEGACY_WON_FACTOR : value;
+}
+
+function inferLegacyAccountKind(id: string): Account['kind'] {
+  if (id === 'acc-salary') return 'income';
+  if (id === 'acc-living') return 'spending';
+  if (id === 'acc-stock') return 'investment';
+  return 'other';
 }
 
 function isIncomeItem(value: unknown): value is IncomeItem {

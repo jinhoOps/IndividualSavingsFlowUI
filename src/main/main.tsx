@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { registerSW } from 'virtual:pwa-register';
 import { MainApp } from './ui/MainApp';
+import { MainErrorBoundary } from './ui/common/AppErrorBoundary';
 import './ui/main.css';
 
 const root = document.getElementById('root');
@@ -12,7 +13,9 @@ if (root === null) {
 
 createRoot(root).render(
   <StrictMode>
-    <MainApp />
+    <MainErrorBoundary>
+      <MainApp />
+    </MainErrorBoundary>
   </StrictMode>,
 );
 

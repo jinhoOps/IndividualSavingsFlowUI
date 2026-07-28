@@ -57,18 +57,208 @@ describe('BrowserMainRepository', () => {
 
   it('loads and migrates isf-rebuild-v1 when no current main data exists', async () => {
     window.localStorage.setItem('isf-rebuild-v1', JSON.stringify({
+      modelVersion: 10,
       incomes: [{
         id: 'income-main', name: '급여', amount: 4_200_000,
         allocations: [{ accountId: 'acc-salary', amount: 4_200_000 }],
       }],
       expenseItems: [], savingsItems: [], investItems: [],
-      accounts: [{ id: 'acc-salary', name: '급여통장', type: 'income' }],
+      accounts: [
+        { id: 'acc-salary', name: '급여통장', type: 'income' },
+        { id: 'acc-living', name: '생활비통장', type: 'spending' },
+      ],
     }));
 
     const result = await new BrowserMainRepository({ saveMainV1: vi.fn() }).load();
 
     expect(result.status).toBe('migrated');
     expect(result.data?.incomes[0].amountWon).toBe(4_200_000);
+  });
+
+  it('offers a newer validated history revision for explicit recovery without auto-applying it', async () => {
+    const current = validData();
+    current.updatedAt = 10;
+    const history = validData();
+    history.updatedAt = 20;
+    history.incomes[0].amountWon = 5_000_000;
+    history.incomes[0].allocations[0].amountWon = 5_000_000;
+    window.localStorage.setItem('isf-main-v1', JSON.stringify(current));
+    const repository = new BrowserMainRepository({
+      saveMainV1: vi.fn(),
+      loadLatestMainV1: vi.fn().mockResolvedValue(history),
+    });
+
+    const result = await repository.load();
+
+    expect(result).toMatchObject({
+      status: 'recovery',
+      source: 'history',
+      current: { updatedAt: 10 },
+      data: { updatedAt: 20, incomes: [{ amountWon: 5_000_000 }] },
+    });
+    expect(JSON.parse(window.localStorage.getItem('isf-main-v1') ?? '')).toEqual(current);
+  });
+
+  it('durably suppresses a discarded history revision across repository reloads', async () => {
+    const current = validData();
+    current.updatedAt = 10;
+    const history = validData();
+    history.updatedAt = 20;
+    window.localStorage.setItem('isf-main-v1', JSON.stringify(current));
+    const repository = new BrowserMainRepository({
+      saveMainV1: vi.fn(),
+      loadLatestMainV1: vi.fn().mockResolvedValue(history),
+    });
+    expect(await repository.load()).toMatchObject({ status: 'recovery', source: 'history' });
+
+    repository.discardRecovery(history.updatedAt);
+
+    expect(await repository.load()).toMatchObject({ status: 'current', data: { updatedAt: 10 } });
+    expect(window.localStorage.getItem('isf-main-v1-dismissed-recovery')).toBe('20');
+  });
+
+  it('offers newer validated history instead of masking it with an older pending draft', async () => {
+    const current = validData();
+    current.updatedAt = 10;
+    const pending = validData();
+    pending.updatedAt = 20;
+    pending.incomes[0].amountWon = 5_000_000;
+    pending.incomes[0].allocations[0].amountWon = 5_000_000;
+    const history = validData();
+    history.updatedAt = 30;
+    history.incomes[0].amountWon = 6_000_000;
+    history.incomes[0].allocations[0].amountWon = 6_000_000;
+    window.localStorage.setItem('isf-main-v1', JSON.stringify(current));
+    window.localStorage.setItem('isf-main-v1-pending', JSON.stringify(pending));
+    const repository = new BrowserMainRepository({
+      saveMainV1: vi.fn(),
+      loadLatestMainV1: vi.fn().mockResolvedValue(history),
+    });
+
+    const result = await repository.load();
+
+    expect(result).toMatchObject({
+      status: 'recovery',
+      source: 'history',
+      current: { updatedAt: 10 },
+      data: { updatedAt: 30, incomes: [{ amountWon: 6_000_000 }] },
+    });
+  });
+
+  it('does not offer an older pending draft over a newer applied revision', async () => {
+    const current = validData();
+    current.updatedAt = 30;
+    current.incomes[0].amountWon = 6_000_000;
+    current.incomes[0].allocations[0].amountWon = 6_000_000;
+    const pending = validData();
+    pending.updatedAt = 20;
+    pending.incomes[0].amountWon = 5_000_000;
+    pending.incomes[0].allocations[0].amountWon = 5_000_000;
+    window.localStorage.setItem('isf-main-v1', JSON.stringify(current));
+    window.localStorage.setItem('isf-main-v1-pending', JSON.stringify(pending));
+    const repository = new BrowserMainRepository({
+      saveMainV1: vi.fn(),
+      loadLatestMainV1: vi.fn().mockResolvedValue(null),
+    });
+
+    const result = await repository.load();
+
+    expect(result).toMatchObject({
+      status: 'current',
+      data: { updatedAt: 30, incomes: [{ amountWon: 6_000_000 }] },
+    });
+  });
+
+  it('does not let malformed current data mask a valid pending recovery draft', async () => {
+    const pending = validData();
+    pending.updatedAt = 20;
+    pending.incomes[0].amountWon = 5_000_000;
+    pending.incomes[0].allocations[0].amountWon = 5_000_000;
+    window.localStorage.setItem('isf-main-v1', '{malformed-current');
+    window.localStorage.setItem('isf-main-v1-pending', JSON.stringify(pending));
+    const repository = new BrowserMainRepository({
+      saveMainV1: vi.fn(),
+      loadLatestMainV1: vi.fn().mockResolvedValue(null),
+    });
+
+    const result = await repository.load();
+
+    expect(result).toMatchObject({
+      status: 'recovery',
+      source: 'pending',
+      current: null,
+      data: { updatedAt: 20 },
+    });
+  });
+
+  it('treats a pending-only first save as recovery instead of applied current data', async () => {
+    const pending = validData();
+    pending.updatedAt = 20;
+    window.localStorage.setItem('isf-main-v1-pending', JSON.stringify(pending));
+    const repository = new BrowserMainRepository({
+      saveMainV1: vi.fn(),
+      loadLatestMainV1: vi.fn().mockResolvedValue(pending),
+    });
+
+    const result = await repository.load();
+
+    expect(result).toMatchObject({
+      status: 'recovery',
+      source: 'pending',
+      current: null,
+      data: { updatedAt: 20 },
+    });
+  });
+
+  it('projects every preserved pre-v10 monetary field as won before stamping modelVersion 10', async () => {
+    window.localStorage.setItem('isf-rebuild-v1', JSON.stringify({
+      modelVersion: 9,
+      startCash: 500,
+      householdContext: { profile: 'newlywed', incomeMode: 'dual-income', spouseMonthlyIncome: 200 },
+      incomes: [{
+        id: 'income-main',
+        name: '급여',
+        amount: 420,
+        accountId: 'acc-salary',
+        allocations: [{ accountId: 'acc-salary', amount: 420 }],
+      }],
+      expenseItems: [{ id: 'rent', name: '월세', amount: 90, accountId: 'acc-salary' }],
+      savingsItems: [],
+      investItems: [],
+      accounts: [
+        { id: 'acc-salary', name: '급여통장', type: 'income' },
+        { id: 'acc-living', name: '생활비통장', type: 'spending' },
+      ],
+      transfers: [{
+        id: 'transfer-living',
+        sourceAccountId: 'acc-salary',
+        targetAccountId: 'acc-living',
+        amount: 30,
+      }],
+      relationships: [{
+        id: 'relationship-rent',
+        amount: 90,
+        sourceRef: { collection: 'expenseItems', id: 'rent' },
+      }],
+    }));
+    const repository = new BrowserMainRepository({ saveMainV1: vi.fn().mockResolvedValue(undefined) });
+    const migrated = await repository.load();
+    if (migrated.data === null) throw new Error('Expected the pre-v10 fixture to migrate.');
+
+    await repository.save(migrated.data);
+
+    expect(JSON.parse(window.localStorage.getItem('isf-rebuild-v1') ?? '')).toMatchObject({
+      modelVersion: 10,
+      startCash: 5_000_000,
+      householdContext: { spouseMonthlyIncome: 2_000_000 },
+      incomes: [{
+        amount: 4_200_000,
+        allocations: [{ amount: 4_200_000 }],
+      }],
+      expenseItems: [{ amount: 900_000 }],
+      transfers: [{ id: 'transfer-living', amount: 300_000 }],
+      relationships: [{ id: 'relationship-rent', amount: 900_000 }],
+    });
   });
 
   it('keeps the existing main key when history persistence fails', async () => {
@@ -105,6 +295,7 @@ describe('BrowserMainRepository', () => {
   it('projects a successful Main save to every live legacy connector key', async () => {
     vi.spyOn(Date, 'now').mockReturnValue(1_750_000_000_000);
     window.localStorage.setItem('isf-rebuild-v1', JSON.stringify({
+      modelVersion: 10,
       startInvest: 12_000_000,
       annualSavingsYield: 3.2,
       annualInvestReturn: 8.5,
@@ -364,6 +555,51 @@ describe('BrowserMainRepository', () => {
     expect([...history.keys()]).toEqual([1_850_000_000_000, 1_850_000_000_001]);
   });
 
+  it('serializes two writers so a late failing rollback cannot erase the successful revision', async () => {
+    const existing = validData();
+    existing.updatedAt = 10;
+    window.localStorage.setItem('isf-main-v1', JSON.stringify(existing));
+    let releaseFirstHistory: (() => void) | undefined;
+    let firstHistoryStarted: (() => void) | undefined;
+    const firstStarted = new Promise<void>((resolve) => {
+      firstHistoryStarted = resolve;
+    });
+    const firstHistory = vi.fn(() => new Promise<void>((resolve) => {
+      releaseFirstHistory = resolve;
+      firstHistoryStarted?.();
+    }));
+    const secondHistory = vi.fn().mockResolvedValue(undefined);
+    const lock = createSerialLock();
+    const firstRepository = new BrowserMainRepository({ saveMainV1: firstHistory }, lock);
+    const secondRepository = new BrowserMainRepository({ saveMainV1: secondHistory }, lock);
+    vi.spyOn(window.localStorage, 'setItem').mockImplementation((key, value) => {
+      if (key === 'isf-step1-active' && JSON.parse(value).monthlyIncome === 5_000_000) {
+        throw new Error('first compatibility write failed');
+      }
+      MemoryStorage.prototype.setItem.call(window.localStorage, key, value);
+    });
+    const firstDraft = validData();
+    firstDraft.incomes[0].amountWon = 5_000_000;
+    firstDraft.incomes[0].allocations[0].amountWon = 5_000_000;
+    const secondDraft = validData();
+    secondDraft.incomes[0].amountWon = 6_000_000;
+    secondDraft.incomes[0].allocations[0].amountWon = 6_000_000;
+
+    const firstSave = firstRepository.save(firstDraft);
+    await firstStarted;
+    const secondSave = secondRepository.save(secondDraft);
+    await Promise.resolve();
+    const secondEnteredBeforeRelease = secondHistory.mock.calls.length;
+    releaseFirstHistory?.();
+
+    await expect(firstSave).rejects.toThrow('first compatibility write failed');
+    await expect(secondSave).resolves.toMatchObject({ incomes: [{ amountWon: 6_000_000 }] });
+    expect(secondEnteredBeforeRelease).toBe(0);
+    expect(JSON.parse(window.localStorage.getItem('isf-main-v1') ?? '')).toMatchObject({
+      incomes: [{ amountWon: 6_000_000 }],
+    });
+  });
+
   it('exposes a pending recovery draft without replacing the last applied current data', async () => {
     const existing = validData();
     existing.updatedAt = 10;
@@ -385,3 +621,14 @@ describe('BrowserMainRepository', () => {
     expect(JSON.parse(window.localStorage.getItem('isf-main-v1') ?? '')).toEqual(existing);
   });
 });
+
+function createSerialLock() {
+  let tail = Promise.resolve();
+  return {
+    runExclusive<T>(task: () => Promise<T>): Promise<T> {
+      const result = tail.then(task, task);
+      tail = result.then(() => undefined, () => undefined);
+      return result;
+    },
+  };
+}

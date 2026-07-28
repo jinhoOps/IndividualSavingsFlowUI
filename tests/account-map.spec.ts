@@ -216,6 +216,33 @@ test.describe('Account Map route and draft import', () => {
     expect(result.savedMain).toEqual(createSeedMainInputs());
   });
 
+  test('preserves arbitrary Main account roles from role, kind, and type fields', async ({ page }) => {
+    await page.goto('apps/account-map/index.html');
+
+    const roles = await page.evaluate(async () => {
+      const { buildAccountMapDraftFromMain } = await import('/IndividualSavingsFlowUI/apps/account-map/modules/draft-builder.js');
+      const draft = buildAccountMapDraftFromMain({
+        accounts: [
+          { id: 'paycheck-wallet', name: '급여 지갑', role: 'income' },
+          { id: 'brokerage-wallet', name: '증권 지갑', kind: 'investment' },
+          { id: 'emergency-wallet', name: '비상금 지갑', kind: 'saving' },
+          { id: 'daily-wallet', name: '생활비 지갑', type: 'spending' },
+        ],
+      });
+      return draft.accounts.map((account: { id: string; role: string }) => ({
+        id: account.id,
+        role: account.role,
+      }));
+    });
+
+    expect(roles).toEqual([
+      { id: 'paycheck-wallet', role: 'income' },
+      { id: 'brokerage-wallet', role: 'investment' },
+      { id: 'emergency-wallet', role: 'savings' },
+      { id: 'daily-wallet', role: 'spending' },
+    ]);
+  });
+
   test('stays independent from Portfolio modules on the Account Map route', async ({ page }) => {
     const requestedUrls: string[] = [];
     page.on('request', (request) => requestedUrls.push(request.url()));

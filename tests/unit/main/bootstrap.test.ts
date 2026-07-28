@@ -35,6 +35,7 @@ function repository(
     loadSetupProgress: () => progress,
     clearSetupProgress: () => undefined,
     discardPending: () => undefined,
+    discardRecovery: () => undefined,
     saveCalls,
   };
 }
@@ -95,12 +96,32 @@ describe('bootstrapMain', () => {
     const pending = validData();
     pending.incomes[0].amountWon = 4_000_000;
 
-    const state = await bootstrapMain(repository({ status: 'recovery', current, data: pending, original: {} }));
+    const state = await bootstrapMain(repository({
+      status: 'recovery',
+      current,
+      data: pending,
+      original: {},
+      source: 'pending',
+    }));
 
     expect(state.mode).toBe('recovery');
     expect(state.applied).toEqual(current);
     expect(state.draft).toEqual(pending);
     expect(state.dirty).toBe(true);
+  });
+
+  it('presents a pending-only recovery candidate without inventing applied data', async () => {
+    const pending = validData();
+
+    const state = await bootstrapMain(repository({
+      status: 'recovery',
+      current: null,
+      data: pending,
+      original: {},
+      source: 'pending',
+    }));
+
+    expect(state).toMatchObject({ mode: 'recovery', applied: null, draft: pending, dirty: true });
   });
 
   it('enters recovery and retains the original data when migration fails', async () => {

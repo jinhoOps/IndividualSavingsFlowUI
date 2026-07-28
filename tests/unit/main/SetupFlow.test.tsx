@@ -71,6 +71,109 @@ describe('SetupFlow', () => {
     expect(onStepChange).toHaveBeenCalledWith('expense');
   });
 
+  it('moves focus to each stage heading during normal forward and backward navigation', () => {
+    renderFlow('welcome');
+
+    expect(screen.getByRole('heading', { name: '내 자금 계획을 시작합니다' })).toHaveFocus();
+    fireEvent.click(screen.getByRole('button', { name: '다음' }));
+    expect(screen.getByRole('heading', { name: '월 수입을 알려주세요' })).toHaveFocus();
+    fireEvent.click(screen.getByRole('button', { name: '다음' }));
+    expect(screen.getByRole('heading', { name: '월 생활비를 알려주세요' })).toHaveFocus();
+    fireEvent.click(screen.getByRole('button', { name: '이전' }));
+    expect(screen.getByRole('heading', { name: '월 수입을 알려주세요' })).toHaveFocus();
+  });
+
+  it('keeps a single full income allocation synchronized with the edited income amount', () => {
+    const draft: MainData = {
+      ...createEmptyMainData(),
+      incomes: [{
+        id: 'salary',
+        name: '급여',
+        amountWon: 3_000_000,
+        accountId: 'salary-account',
+        allocations: [{ accountId: 'salary-account', amountWon: 3_000_000 }],
+      }],
+      accounts: [{ id: 'salary-account', name: '급여통장', kind: 'income' }],
+    };
+    const { onChange } = renderFlow('income', [], draft);
+
+    fireEvent.change(screen.getByLabelText('월 금액'), { target: { value: '4000000' } });
+
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({
+      incomes: [expect.objectContaining({
+        amountWon: 4_000_000,
+        accountId: 'salary-account',
+        allocations: [{ accountId: 'salary-account', amountWon: 4_000_000 }],
+      })],
+    }));
+  });
+
+  it('lets a restarted split-income draft repair allocation amounts before apply', () => {
+    const draft: MainData = {
+      ...createEmptyMainData(),
+      incomes: [{
+        id: 'salary',
+        name: '급여',
+        amountWon: 3_000_000,
+        accountId: 'salary-account',
+        allocations: [
+          { accountId: 'salary-account', amountWon: 1_000_000 },
+          { accountId: 'living-account', amountWon: 2_000_000 },
+        ],
+      }],
+      accounts: [
+        { id: 'salary-account', name: '급여통장', kind: 'income' },
+        { id: 'living-account', name: '생활비통장', kind: 'spending' },
+      ],
+    };
+    const { onChange } = renderFlow('income', [], draft);
+    fireEvent.change(screen.getByLabelText('월 금액'), { target: { value: '4000000' } });
+    for (let step = 0; step < 3; step += 1) {
+      fireEvent.click(screen.getByRole('button', { name: '다음' }));
+    }
+
+    expect(screen.getByRole('heading', { name: '계좌를 알려주세요' })).toBeVisible();
+    expect(screen.getByLabelText('급여 배분 1 금액')).toHaveValue('1,000,000');
+    expect(screen.getByLabelText('급여 배분 2 금액')).toHaveValue('2,000,000');
+    fireEvent.change(screen.getByLabelText('급여 배분 2 금액'), { target: { value: '3000000' } });
+
+    const next = onChange.mock.lastCall?.[0] as MainData;
+    expect(next.incomes[0]).toMatchObject({
+      amountWon: 4_000_000,
+      allocations: [
+        { accountId: 'salary-account', amountWon: 1_000_000 },
+        { accountId: 'living-account', amountWon: 3_000_000 },
+      ],
+    });
+  });
+
+  it('lets the account stage select and persist the income destination account', () => {
+    const draft: MainData = {
+      ...createEmptyMainData(),
+      incomes: [{
+        id: 'salary',
+        name: '급여',
+        amountWon: 3_000_000,
+        accountId: 'salary-account',
+        allocations: [{ accountId: 'salary-account', amountWon: 3_000_000 }],
+      }],
+      accounts: [
+        { id: 'salary-account', name: '급여통장', kind: 'income' },
+        { id: 'shared-account', name: '공동통장', kind: 'spending' },
+      ],
+    };
+    const { onChange } = renderFlow('account', [], draft);
+
+    fireEvent.change(screen.getByLabelText('수입 입금 계좌'), { target: { value: 'shared-account' } });
+
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({
+      incomes: [expect.objectContaining({
+        accountId: 'shared-account',
+        allocations: [{ accountId: 'shared-account', amountWon: 3_000_000 }],
+      })],
+    }));
+  });
+
   it('connects a field issue to its matching input', () => {
     renderFlow('income', [{ path: 'incomes.income-1.name', code: 'name_required' }]);
 

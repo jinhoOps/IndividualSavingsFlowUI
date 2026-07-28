@@ -45,6 +45,10 @@ export function SetupFlow({
   const nextStep = steps[stepIndex + 1];
 
   useEffect(() => {
+    document.querySelector<HTMLElement>('[data-setup-heading]')?.focus();
+  }, [step]);
+
+  useEffect(() => {
     const firstIssue = issues[0];
     if (firstIssue === undefined) return;
     const target = document.querySelector<HTMLElement>(validationPathSelector(firstIssue.path))
@@ -120,7 +124,7 @@ function IncomeStep({ draft, issues, onChange }: Pick<SetupFlowProps, 'draft' | 
         value={income.name}
         error={issue}
         validationPath={`incomes.${income.id}.name`}
-        onChange={(name) => onChange({ ...draft, incomes: replaceFirst(draft.incomes, { ...income, name }) })}
+        onChange={(name) => onChange(updatePrimaryIncome(draft, income, { name }))}
       />
       <MoneyField
         id="income-amount"
@@ -128,7 +132,7 @@ function IncomeStep({ draft, issues, onChange }: Pick<SetupFlowProps, 'draft' | 
         valueWon={income.amountWon}
         error={amountIssue}
         validationPath={`incomes.${income.id}.amountWon`}
-        onChange={(amountWon) => onChange({ ...draft, incomes: replaceFirst(draft.incomes, { ...income, amountWon }) })}
+        onChange={(amountWon) => onChange(updatePrimaryIncome(draft, income, { amountWon }))}
       />
     </>
   );
@@ -192,7 +196,22 @@ function SavingInvestmentStep({ draft, issues, onChange }: Pick<SetupFlowProps, 
 }
 
 function AccountStep({ draft, issues, onChange }: Pick<SetupFlowProps, 'draft' | 'issues' | 'onChange'>) {
-  const account = draft.accounts[0] ?? createAccount(draft.accounts.length);
+  const income = draft.incomes[0];
+  const fallbackAccount = createAccount(draft.accounts.length);
+  const accounts = draft.accounts.length === 0 ? [fallbackAccount] : draft.accounts;
+  const destinationId = income === undefined
+    ? accounts[0].id
+    : findIncomeDestination(accounts, income) ?? accounts[0].id;
+  const account = accounts.find((candidate) => candidate.id === destinationId) ?? accounts[0];
+  const allocationIssue = income === undefined
+    ? undefined
+    : findIssue(issues, `incomes.${income.id}.allocations`);
+  const hasSplitAllocations = income !== undefined && income.allocations.length > 1;
+
+  function updateAccounts(nextAccounts: Account[]): MainData {
+    const withAccounts = { ...draft, accounts: nextAccounts };
+    return income === undefined ? withAccounts : connectIncomeDestination(withAccounts, destinationId);
+  }
 
   return (
     <>
@@ -204,8 +223,74 @@ function AccountStep({ draft, issues, onChange }: Pick<SetupFlowProps, 'draft' |
         value={account.name}
         error={findIssue(issues, `accounts.${account.id}.name`)}
         validationPath={`accounts.${account.id}.name`}
-        onChange={(name) => onChange({ ...draft, accounts: replaceFirst(draft.accounts, { ...account, name }) })}
+        onChange={(name) => onChange(updateAccounts(replaceAccount(accounts, { ...account, name })))}
       />
+      {hasSplitAllocations ? (
+        <section className="grid gap-4" aria-labelledby="income-allocations-title">
+          <h2 className="m-0 text-lg font-bold text-slate-900" id="income-allocations-title">수입 배분</h2>
+          {income.allocations.map((allocation, index) => {
+            const accountId = accounts.some((candidate) => candidate.id === allocation.accountId)
+              ? allocation.accountId
+              : accounts[0].id;
+            const accountFieldId = `income-allocation-${index}-account`;
+            const amountFieldId = `income-allocation-${index}-amount`;
+            return (
+              <div className="grid gap-3 rounded-2xl border border-slate-200 p-4" key={`${allocation.accountId}-${index}`}>
+                <div className="grid gap-2">
+                  <label className="text-sm font-bold text-slate-700" htmlFor={accountFieldId}>
+                    {income.name || '수입'} 배분 {index + 1} 계좌
+                  </label>
+                  <select
+                    id={accountFieldId}
+                    value={accountId}
+                    data-validation-path={`incomes.${income.id}.allocations`}
+                    aria-invalid={allocationIssue ? 'true' : undefined}
+                    aria-describedby={allocationIssue ? 'income-allocation-0-amount-error' : undefined}
+                    onChange={(event) => onChange(updateIncomeAllocation(draft, index, { accountId: event.target.value }))}
+                  >
+                    {accounts.map((candidate) => (
+                      <option key={candidate.id} value={candidate.id}>
+                        {candidate.name.trim() === '' ? '이름 없는 계좌' : candidate.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <MoneyField
+                  id={amountFieldId}
+                  label={`${income.name || '수입'} 배분 ${index + 1} 금액`}
+                  valueWon={allocation.amountWon}
+                  error={index === 0 ? allocationIssue : undefined}
+                  validationPath={`incomes.${income.id}.allocations`}
+                  onChange={(amountWon) => onChange(updateIncomeAllocation(draft, index, { amountWon }))}
+                />
+              </div>
+            );
+          })}
+        </section>
+      ) : (
+        <div className="grid gap-2">
+          <label className="text-sm font-bold text-slate-700" htmlFor="income-destination">수입 입금 계좌</label>
+          <select
+            id="income-destination"
+            value={destinationId}
+            data-validation-path={income === undefined ? undefined : `incomes.${income.id}.allocations`}
+            aria-invalid={allocationIssue ? 'true' : undefined}
+            aria-describedby={allocationIssue ? 'income-destination-error' : undefined}
+            onChange={(event) => onChange(connectIncomeDestination({ ...draft, accounts }, event.target.value))}
+          >
+            {accounts.map((candidate) => (
+              <option key={candidate.id} value={candidate.id}>
+                {candidate.name.trim() === '' ? '이름 없는 계좌' : candidate.name}
+              </option>
+            ))}
+          </select>
+          {allocationIssue ? (
+            <p className="m-0 text-sm font-bold text-red-700" id="income-destination-error" role="alert">
+              {allocationIssue}
+            </p>
+          ) : null}
+        </div>
+      )}
     </>
   );
 }
@@ -260,11 +345,93 @@ function createItem(kind: 'income' | 'expense' | 'saving' | 'investment', index:
 }
 
 function createAccount(index: number): Account {
-  return { id: `account-${index + 1}`, name: '', kind: 'other' };
+  return { id: `account-${index + 1}`, name: '', kind: 'income' };
 }
 
 function replaceFirst<T>(items: T[], first: T): T[] {
   return items.length === 0 ? [first] : [first, ...items.slice(1)];
+}
+
+function replaceAccount(accounts: Account[], next: Account): Account[] {
+  const index = accounts.findIndex((account) => account.id === next.id);
+  if (index === -1) return [...accounts, next];
+  return accounts.map((account, accountIndex) => accountIndex === index ? next : account);
+}
+
+function updatePrimaryIncome(
+  draft: MainData,
+  income: IncomeItem,
+  change: Partial<Pick<IncomeItem, 'name' | 'amountWon'>>,
+): MainData {
+  let accounts = draft.accounts;
+  let destinationId = findIncomeDestination(accounts, income);
+  if (destinationId === undefined) {
+    const account = createAccount(accounts.length);
+    accounts = [...accounts, account];
+    destinationId = account.id;
+  }
+
+  const amountWon = change.amountWon ?? income.amountWon;
+  let allocations = income.allocations;
+  if (allocations.length === 0) {
+    allocations = [{ accountId: destinationId, amountWon }];
+  } else if (allocations.length === 1 && allocations[0].amountWon === income.amountWon) {
+    allocations = [{ accountId: destinationId, amountWon }];
+  }
+
+  const nextIncome: IncomeItem = {
+    ...income,
+    ...change,
+    amountWon,
+    accountId: destinationId,
+    allocations,
+  };
+  return {
+    ...draft,
+    accounts,
+    incomes: replaceFirst(draft.incomes, nextIncome),
+  };
+}
+
+function connectIncomeDestination(draft: MainData, accountId: string): MainData {
+  const income = draft.incomes[0];
+  if (income === undefined || !draft.accounts.some((account) => account.id === accountId)) return draft;
+
+  const allocations = income.allocations.length <= 1
+    ? [{ accountId, amountWon: income.amountWon }]
+    : income.allocations.map((allocation, index) => index === 0 ? { ...allocation, accountId } : allocation);
+  return {
+    ...draft,
+    incomes: replaceFirst(draft.incomes, { ...income, accountId, allocations }),
+  };
+}
+
+function updateIncomeAllocation(
+  draft: MainData,
+  index: number,
+  change: Partial<IncomeItem['allocations'][number]>,
+): MainData {
+  const income = draft.incomes[0];
+  if (income === undefined || income.allocations[index] === undefined) return draft;
+
+  const allocations = income.allocations.map((allocation, allocationIndex) => (
+    allocationIndex === index ? { ...allocation, ...change } : allocation
+  ));
+  return {
+    ...draft,
+    incomes: replaceFirst(draft.incomes, {
+      ...income,
+      accountId: allocations[0]?.accountId ?? income.accountId,
+      allocations,
+    }),
+  };
+}
+
+function findIncomeDestination(accounts: Account[], income: IncomeItem): string | undefined {
+  const accountIds = new Set(accounts.map((account) => account.id));
+  if (income.accountId !== undefined && accountIds.has(income.accountId)) return income.accountId;
+  const allocationAccountId = income.allocations.find((allocation) => accountIds.has(allocation.accountId))?.accountId;
+  return allocationAccountId;
 }
 
 function findIssue(issues: ValidationIssue[], path: string): string | undefined {

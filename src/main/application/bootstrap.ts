@@ -33,7 +33,7 @@ export async function bootstrapMain(repository: MainRepository): Promise<MainSta
       case 'recovery':
         return {
           mode: 'recovery',
-          applied: cloneMainData(result.current),
+          applied: result.current === null ? null : cloneMainData(result.current),
           draft: cloneMainData(result.data),
           setupStep: null,
           dirty: true,
