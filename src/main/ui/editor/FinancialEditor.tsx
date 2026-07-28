@@ -12,6 +12,7 @@ export interface FinancialEditorProps {
   section: DashboardSection;
   draft: MainData;
   issues: ValidationIssue[];
+  focusAttempt?: number;
   onChange(draft: MainData): void;
   presentation?: EditorPresentation;
   onRequestClose?(): void;
@@ -28,6 +29,7 @@ export function FinancialEditor({
   section,
   draft,
   issues,
+  focusAttempt = 0,
   onChange,
   presentation = 'panel',
   onRequestClose,
@@ -42,7 +44,7 @@ export function FinancialEditor({
     const element = document.querySelector<HTMLElement>(validationPathSelector(firstIssue.path))
       ?? document.querySelector<HTMLElement>('[aria-invalid="true"]');
     element?.focus();
-  }, [firstIssue?.path, section]);
+  }, [firstIssue?.path, section, focusAttempt]);
 
   function replaceItems(nextItems: FinancialItem[] | IncomeItem[]) {
     onChange({ ...draft, [meta.collection]: nextItems } as MainData);

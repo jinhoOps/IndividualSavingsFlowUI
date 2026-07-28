@@ -61,8 +61,16 @@ function DashboardHarness({ mobile = false }: { mobile?: boolean }) {
   );
 }
 
-function CrossSectionValidationHarness() {
+function CrossSectionValidationHarness({ mobile = false }: { mobile?: boolean }) {
   const [issues, setIssues] = useState<SummaryDashboardProps['issues']>([]);
+
+  if (mobile) {
+    vi.stubGlobal('matchMedia', vi.fn().mockImplementation(() => ({
+      matches: true,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    })));
+  }
 
   return (
     <>
@@ -143,13 +151,17 @@ describe('SummaryDashboard', () => {
     const dialog = screen.getByRole('dialog', { name: '수입 편집' });
     const dialogScope = within(dialog);
     const close = dialogScope.getByRole('button', { name: '편집기 닫기' });
+    const cancel = dialogScope.getByRole('button', { name: '취소' });
     const apply = dialogScope.getByRole('button', { name: '적용' });
 
     expect(dialogScope.getByLabelText('급여 월 금액')).toBeVisible();
     expect(apply).toBeInTheDocument();
-    expect(dialogScope.getByRole('heading', { name: '수입 편집' })).toHaveFocus();
+    expect(close).toHaveFocus();
     expect(screen.getByTestId('dashboard-controls')).toHaveAttribute('aria-hidden', 'true');
     expect(screen.getByTestId('dashboard-controls')).toHaveAttribute('inert');
+
+    fireEvent.keyDown(dialog, { key: 'Tab', shiftKey: true });
+    expect(cancel).toHaveFocus();
 
     fireEvent.change(dialogScope.getByLabelText('급여 월 금액'), { target: { value: '5000000' } });
     apply.focus();
@@ -231,6 +243,15 @@ describe('SummaryDashboard', () => {
     fireEvent.click(screen.getByRole('button', { name: '생활비 검증 오류 표시' }));
 
     expect(screen.getByRole('complementary', { name: '생활비 편집' })).toBeVisible();
+    expect(screen.getByLabelText('생활비 계좌')).toHaveFocus();
+  });
+
+  it('lets an invalid field keep focus when a mobile validation issue switches sections', () => {
+    render(<CrossSectionValidationHarness mobile />);
+    fireEvent.click(screen.getByRole('button', { name: '수입 편집' }));
+    fireEvent.click(screen.getByRole('button', { name: '생활비 검증 오류 표시' }));
+
+    expect(screen.getByRole('dialog', { name: '생활비 편집' })).toBeVisible();
     expect(screen.getByLabelText('생활비 계좌')).toHaveFocus();
   });
 

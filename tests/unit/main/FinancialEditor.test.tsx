@@ -109,6 +109,24 @@ function LastIncomeHarness() {
   );
 }
 
+function RepeatInvalidFocusHarness() {
+  const [focusAttempt, setFocusAttempt] = useState(1);
+  const issues: ValidationResult['issues'] = [{ path: 'incomes.salary.name', code: 'name_required' }];
+
+  return (
+    <>
+      <FinancialEditor
+        section="income"
+        draft={original}
+        issues={issues}
+        focusAttempt={focusAttempt}
+        onChange={vi.fn()}
+      />
+      <button type="button" onClick={() => setFocusAttempt((attempt) => attempt + 1)}>다시 적용</button>
+    </>
+  );
+}
+
 describe('FinancialEditor', () => {
   it('updates only the draft item being edited and preserves later entries', () => {
     const onChange = vi.fn();
@@ -155,6 +173,18 @@ describe('FinancialEditor', () => {
     );
 
     expect(screen.getByLabelText('계좌 1 이름')).toHaveFocus();
+  });
+
+  it('refocuses the same unresolved first issue for every validation attempt', () => {
+    render(<RepeatInvalidFocusHarness />);
+    const name = screen.getByLabelText('급여 이름');
+
+    expect(name).toHaveFocus();
+    const retry = screen.getByRole('button', { name: '다시 적용' });
+    retry.focus();
+    fireEvent.click(retry);
+
+    expect(name).toHaveFocus();
   });
 
   it('connects account name and item account errors to stable descriptions', () => {

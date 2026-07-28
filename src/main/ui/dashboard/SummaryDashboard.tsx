@@ -14,6 +14,7 @@ export interface SummaryDashboardProps {
   draft: MainData;
   dirty: boolean;
   issues: ValidationResult['issues'];
+  validationAttempt?: number;
   saveStatus: MainState['saveStatus'];
   onDraftChange(draft: MainData): void;
   onApply(): void;
@@ -33,6 +34,7 @@ export function SummaryDashboard({
   draft,
   dirty,
   issues,
+  validationAttempt = 0,
   saveStatus,
   onDraftChange,
   onApply,
@@ -64,14 +66,16 @@ export function SummaryDashboard({
 
   useEffect(() => {
     if (activeSection !== null && isMobile) {
-      modalRef.current?.querySelector<HTMLElement>('[data-dialog-initial-focus]')?.focus();
+      if (issues.length === 0 && modalRef.current !== null) {
+        getFocusableElements(modalRef.current)[0]?.focus();
+      }
       return;
     }
     if (activeSection === null && openerRef.current !== null) {
       openerRef.current.focus();
       openerRef.current = null;
     }
-  }, [activeSection, isMobile]);
+  }, [activeSection, isMobile, issues.length]);
 
   useEffect(() => {
     if (activeSection === null) return;
@@ -164,6 +168,7 @@ export function SummaryDashboard({
                 section={activeSection}
                 draft={draft}
                 issues={issues}
+                focusAttempt={validationAttempt}
                 presentation="content"
                 onChange={onDraftChange}
                 onRequestClose={requestClose}
@@ -182,6 +187,7 @@ export function SummaryDashboard({
             section={activeSection}
             draft={draft}
             issues={issues}
+            focusAttempt={validationAttempt}
             presentation="panel"
             onChange={onDraftChange}
             onRequestClose={requestClose}
