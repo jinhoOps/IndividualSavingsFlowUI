@@ -162,33 +162,50 @@ function isSetupProgress(value: unknown): value is {
 
 function createLegacyProjection(data: MainData, previousRaw: string | null): Record<string, unknown> {
   const previous = parseRecord(previousRaw);
-  const accounts = data.accounts.map((account) => ({
+  const accounts = mergeRecordsById(previous.accounts, data.accounts.map((account) => ({
     id: account.id,
     name: account.name,
     type: account.kind,
+  })));
+  const incomeItems = mergeRecordsById(previous.incomes, data.incomes.map((income) => {
+    const previousIncome = findRecordById(previous.incomes, income.id);
+    return {
+      id: income.id,
+      name: income.name,
+      amount: income.amountWon,
+      group: income.group,
+      accountId: income.accountId,
+      allocations: mergeRecordsByKey(
+        previousIncome?.allocations,
+        income.allocations.map((allocation) => ({
+          accountId: allocation.accountId,
+          amount: allocation.amountWon,
+        })),
+        'accountId',
+      ),
+    };
   }));
-  const incomeItems = data.incomes.map((income) => ({
-    id: income.id,
-    name: income.name,
-    amount: income.amountWon,
-    ...(income.group === undefined ? {} : { group: income.group }),
-    ...(income.accountId === undefined ? {} : { accountId: income.accountId }),
-    allocations: income.allocations.map((allocation) => ({
-      accountId: allocation.accountId,
-      amount: allocation.amountWon,
-    })),
-  }));
+  const expenseItems = projectFinancialItems(data.expenses, previous.expenseItems);
+  const savingsItems = projectFinancialItems(data.savings, previous.savingsItems);
+  const investItems = projectFinancialItems(data.investments, previous.investItems);
+  const accountIds = new Set(data.accounts.map((account) => account.id));
+  const transfers = preserveTransfers(previous.transfers, accountIds);
+  const ownerIds = createLegacyOwnerIds(data, transfers);
+  const previousAccountIds = recordIds(previous.accounts);
+  const relationships = preserveRelationships(previous.relationships, ownerIds, accountIds, previousAccountIds);
 
   return {
+    ...previous,
     modelVersion: 10,
     version: 2,
     updatedAt: data.updatedAt,
     incomes: incomeItems,
-    expenseItems: projectFinancialItems(data.expenses),
-    savingsItems: projectFinancialItems(data.savings),
-    investItems: projectFinancialItems(data.investments),
+    expenseItems,
+    savingsItems,
+    investItems,
     accounts,
-    transfers: [],
+    transfers,
+    relationships,
     splitIncomeAccounts: data.incomes.some((income) => income.allocations.length > 1),
     surplusTransferAccountId: validAccountId(previous.surplusTransferAccountId, data)
       ?? data.accounts[0]?.id
@@ -211,16 +228,105 @@ function createLegacyProjection(data: MainData, previousRaw: string | null): Rec
   };
 }
 
-function projectFinancialItems(items: MainData['expenses']): Array<Record<string, unknown>> {
-  return items.map((item) => ({
+function projectFinancialItems(
+  items: MainData['expenses'],
+  previousItems: unknown,
+): Array<Record<string, unknown>> {
+  return mergeRecordsById(previousItems, items.map((item) => ({
     id: item.id,
     name: item.name,
     amount: item.amountWon,
-    ...(item.group === undefined ? {} : { group: item.group }),
-    ...(item.accountId === undefined ? {} : { accountId: item.accountId }),
-    ...(item.annualRate === undefined ? {} : { annualRate: item.annualRate }),
-    ...(item.maturityMonth === undefined ? {} : { maturityMonth: item.maturityMonth }),
-  }));
+    group: item.group,
+    accountId: item.accountId,
+    annualRate: item.annualRate,
+    maturityMonth: item.maturityMonth,
+  })));
+}
+
+function mergeRecordsById(previousItems: unknown, nextItems: Array<Record<string, unknown>>): Array<Record<string, unknown>> {
+  return mergeRecordsByKey(previousItems, nextItems, 'id');
+}
+
+function mergeRecordsByKey(
+  previousItems: unknown,
+  nextItems: Array<Record<string, unknown>>,
+  key: string,
+): Array<Record<string, unknown>> {
+  const previousByKey = new Map<string, Record<string, unknown>>();
+  if (Array.isArray(previousItems)) {
+    previousItems.forEach((item) => {
+      if (!isRecord(item) || typeof item[key] !== 'string') return;
+      previousByKey.set(item[key], item);
+    });
+  }
+
+  return nextItems.map((item) => {
+    const value = item[key];
+    const previous = typeof value === 'string' ? previousByKey.get(value) : undefined;
+    return previous === undefined ? item : { ...previous, ...item };
+  });
+}
+
+function findRecordById(value: unknown, id: string): Record<string, unknown> | null {
+  if (!Array.isArray(value)) return null;
+  return value.find((item): item is Record<string, unknown> => isRecord(item) && item.id === id) ?? null;
+}
+
+function recordIds(value: unknown): Set<string> {
+  if (!Array.isArray(value)) return new Set();
+  return new Set(value.flatMap((item) => (
+    isRecord(item) && typeof item.id === 'string' ? [item.id] : []
+  )));
+}
+
+function preserveTransfers(value: unknown, accountIds: Set<string>): Array<Record<string, unknown>> {
+  if (!Array.isArray(value)) return [];
+  return value.filter((transfer): transfer is Record<string, unknown> => (
+    isRecord(transfer)
+    && typeof transfer.id === 'string'
+    && typeof transfer.sourceAccountId === 'string'
+    && typeof transfer.targetAccountId === 'string'
+    && transfer.sourceAccountId !== transfer.targetAccountId
+    && accountIds.has(transfer.sourceAccountId)
+    && accountIds.has(transfer.targetAccountId)
+  )).map((transfer) => ({ ...transfer }));
+}
+
+function createLegacyOwnerIds(
+  data: MainData,
+  transfers: Array<Record<string, unknown>>,
+): Map<string, Set<string>> {
+  return new Map([
+    ['accounts', new Set(data.accounts.map((item) => item.id))],
+    ['incomes', new Set(data.incomes.map((item) => item.id))],
+    ['expenseItems', new Set(data.expenses.map((item) => item.id))],
+    ['expenses', new Set(data.expenses.map((item) => item.id))],
+    ['savingsItems', new Set(data.savings.map((item) => item.id))],
+    ['savings', new Set(data.savings.map((item) => item.id))],
+    ['investItems', new Set(data.investments.map((item) => item.id))],
+    ['investments', new Set(data.investments.map((item) => item.id))],
+    ['transfers', new Set(transfers.flatMap((item) => typeof item.id === 'string' ? [item.id] : []))],
+  ]);
+}
+
+function preserveRelationships(
+  value: unknown,
+  ownerIds: Map<string, Set<string>>,
+  accountIds: Set<string>,
+  previousAccountIds: Set<string>,
+): Array<Record<string, unknown>> {
+  if (!Array.isArray(value)) return [];
+  return value.filter((relationship): relationship is Record<string, unknown> => {
+    if (!isRecord(relationship) || typeof relationship.id !== 'string') return false;
+    const sourceRef = relationship.sourceRef;
+    if (isRecord(sourceRef) && typeof sourceRef.collection === 'string' && typeof sourceRef.id === 'string') {
+      return ownerIds.get(sourceRef.collection)?.has(sourceRef.id) === true;
+    }
+
+    const referencedAccounts = [relationship.accountId, relationship.sourceAccountId, relationship.targetAccountId]
+      .filter((id): id is string => typeof id === 'string' && previousAccountIds.has(id));
+    return referencedAccounts.length > 0 && referencedAccounts.every((id) => accountIds.has(id));
+  }).map((relationship) => ({ ...relationship }));
 }
 
 function sumAmounts(items: Array<{ amountWon: number }>): number {

@@ -64,6 +64,7 @@ function buildAccountNodes(inputs) {
     .map((account, index) => {
       const id = cleanText(account.id, `acc-${index + 1}`);
       return {
+        ...account,
         id,
         name: cleanText(account.name, `계좌 ${index + 1}`),
         role: id === DEFAULT_ACCOUNT_IDS.income ? "income" : id === DEFAULT_ACCOUNT_IDS.invest ? "investment" : "spending",
@@ -138,16 +139,21 @@ export function buildRelationshipsFromTransfers(inputs) {
     .filter((transfer) => transfer?.sourceAccountId && transfer?.targetAccountId)
     .map((transfer, index) => {
       const transferId = cleanText(transfer.id, `transfer-${index + 1}`);
-      return createRelationship({
-        id: buildRelationshipId("transfer", transferId, index),
-        type: "auto-transfer",
-        sourceAccountId: transfer.sourceAccountId,
-        targetAccountId: transfer.targetAccountId,
-        label: cleanText(transfer.label, "자동이체"),
-        amount: transfer.amount,
-        confidence: "confirmed",
-        sourceRef: { collection: "transfers", id: transferId },
-      });
+      return {
+        ...transfer,
+        ...createRelationship({
+          id: buildRelationshipId("transfer", transferId, index),
+          type: "auto-transfer",
+          sourceAccountId: transfer.sourceAccountId,
+          targetAccountId: transfer.targetAccountId,
+          label: cleanText(transfer.label, "자동이체"),
+          amount: transfer.amount,
+          paymentDay: transfer.paymentDay,
+          memo: transfer.memo,
+          confidence: "confirmed",
+          sourceRef: { collection: "transfers", id: transferId },
+        }),
+      };
     });
 }
 
@@ -214,6 +220,18 @@ export function buildFixedExpenseCandidates(inputs) {
 
 export function buildAccountMapDraftFromMain(inputs = {}, options = {}) {
   const now = options.importedAt || new Date().toISOString();
+  const derivedRelationships = [
+    ...buildRelationshipsFromIncome(inputs),
+    ...buildRelationshipsFromTransfers(inputs),
+    ...buildSavingsInvestmentRelationships(inputs),
+  ];
+  const relationships = mergeStoredRelationships(inputs, derivedRelationships);
+  const claimedExpenseIds = new Set(relationships.flatMap((relationship) => (
+    relationship?.sourceRef?.collection === "expenseItems" && relationship.sourceRef.id
+      ? [relationship.sourceRef.id]
+      : []
+  )));
+
   return {
     schemaVersion: 1,
     source: {
@@ -223,13 +241,95 @@ export function buildAccountMapDraftFromMain(inputs = {}, options = {}) {
       importedAt: now,
     },
     accounts: buildAccountNodes(inputs),
-    relationships: [
-      ...buildRelationshipsFromIncome(inputs),
-      ...buildRelationshipsFromTransfers(inputs),
-      ...buildSavingsInvestmentRelationships(inputs),
-    ],
-    candidates: buildFixedExpenseCandidates(inputs),
+    relationships,
+    candidates: buildFixedExpenseCandidates(inputs)
+      .filter((candidate) => !claimedExpenseIds.has(candidate.sourceRef?.id)),
     selectedId: "",
     lastUpdated: now,
   };
+}
+
+function sourceRefKey(sourceRef) {
+  if (!sourceRef || typeof sourceRef !== "object") return "";
+  const collection = cleanText(sourceRef.collection);
+  const id = cleanText(sourceRef.id);
+  return collection && id ? `${collection}:${id}` : "";
+}
+
+function mergeRelationshipMetadata(stored, derived) {
+  if (!stored) return derived;
+  const merged = { ...stored, ...derived };
+  ["paymentDay", "memo", "confidence"].forEach((key) => {
+    if (stored[key] !== undefined && stored[key] !== null && String(stored[key]).trim()) {
+      merged[key] = stored[key];
+    }
+  });
+  return merged;
+}
+
+function refreshStoredRelationship(inputs, relationship) {
+  const sourceRef = relationship?.sourceRef;
+  const collection = cleanText(sourceRef?.collection);
+  const ownerId = cleanText(sourceRef?.id);
+  if (!collection || !ownerId) return { ...relationship };
+
+  const collections = {
+    incomes: inputs?.incomes,
+    expenseItems: inputs?.expenseItems,
+    savingsItems: inputs?.savingsItems,
+    investItems: inputs?.investItems,
+    transfers: inputs?.transfers,
+    accounts: inputs?.accounts,
+  };
+  const owner = (Array.isArray(collections[collection]) ? collections[collection] : [])
+    .find((item) => cleanText(item?.id) === ownerId);
+  if (!owner) return null;
+  if (collection === "accounts") return { ...relationship };
+  if (collection === "transfers") {
+    return {
+      ...relationship,
+      sourceAccountId: cleanText(owner.sourceAccountId, relationship.sourceAccountId),
+      targetAccountId: cleanText(owner.targetAccountId, relationship.targetAccountId),
+      label: cleanText(owner.label, relationship.label),
+      amount: toAmount(owner.amount),
+      paymentDay: cleanText(relationship.paymentDay, owner.paymentDay),
+      memo: cleanText(relationship.memo, owner.memo),
+    };
+  }
+
+  return {
+    ...relationship,
+    sourceAccountId: cleanText(owner.accountId, relationship.sourceAccountId),
+    label: cleanText(owner.name, relationship.label),
+    amount: toAmount(owner.amount),
+    paymentDay: cleanText(relationship.paymentDay, owner.paymentDay),
+    memo: cleanText(relationship.memo, owner.memo),
+  };
+}
+
+function mergeStoredRelationships(inputs, derivedRelationships) {
+  const storedRelationships = Array.isArray(inputs?.relationships)
+    ? inputs.relationships.filter((relationship) => relationship && typeof relationship === "object")
+    : [];
+  const storedById = new Map(storedRelationships
+    .filter((relationship) => cleanText(relationship.id))
+    .map((relationship) => [cleanText(relationship.id), relationship]));
+  const storedBySourceRef = new Map(storedRelationships
+    .filter((relationship) => sourceRefKey(relationship.sourceRef))
+    .map((relationship) => [sourceRefKey(relationship.sourceRef), relationship]));
+  const usedStored = new Set();
+
+  const merged = derivedRelationships.map((derived) => {
+    const stored = storedById.get(derived.id)
+      || storedBySourceRef.get(sourceRefKey(derived.sourceRef));
+    if (stored) usedStored.add(stored);
+    return mergeRelationshipMetadata(stored, derived);
+  });
+
+  storedRelationships.forEach((stored) => {
+    if (usedStored.has(stored)) return;
+    const refreshed = refreshStoredRelationship(inputs, stored);
+    if (refreshed) merged.push(refreshed);
+  });
+  return merged;
 }

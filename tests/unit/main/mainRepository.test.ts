@@ -140,6 +140,134 @@ describe('BrowserMainRepository', () => {
     expect(activeHistory).toEqual(legacy);
   });
 
+  it('merges legacy metadata by stable ID while pruning deleted owners and their relationships', async () => {
+    window.localStorage.setItem('isf-rebuild-v1', JSON.stringify({
+      modelVersion: 10,
+      householdContext: { profile: 'newlywed', incomeMode: 'dual-income' },
+      accounts: [
+        { id: 'acc-salary', name: '이전 급여통장', type: 'income', bankCode: 'BANK-A' },
+        { id: 'acc-living', name: '이전 생활비통장', type: 'spending', color: '#0f766e' },
+        { id: 'acc-ghost', name: '삭제 계좌', type: 'other', memo: 'remove me' },
+      ],
+      incomes: [{
+        id: 'income-main',
+        name: '이전 급여',
+        amount: 4_000_000,
+        accountId: 'acc-salary',
+        payrollCode: 'P-1',
+        allocations: [{ accountId: 'acc-salary', amount: 4_000_000 }],
+      }],
+      expenseItems: [
+        {
+          id: 'rent',
+          name: '이전 월세',
+          amount: 900_000,
+          group: '고정비',
+          accountId: 'acc-living',
+          paymentDay: '25일',
+          memo: '임대인 자동이체',
+        },
+        { id: 'ghost-expense', name: '삭제 지출', amount: 10_000, accountId: 'acc-ghost', memo: 'remove me' },
+      ],
+      savingsItems: [],
+      investItems: [],
+      transfers: [
+        {
+          id: 'transfer-living',
+          sourceAccountId: 'acc-salary',
+          targetAccountId: 'acc-living',
+          amount: 500_000,
+          label: '생활비 자동이체',
+          paymentDay: '2일',
+          memo: '월급 다음날',
+        },
+        {
+          id: 'transfer-ghost',
+          sourceAccountId: 'acc-salary',
+          targetAccountId: 'acc-ghost',
+          amount: 10_000,
+          label: '삭제 이체',
+        },
+      ],
+      relationships: [
+        {
+          id: 'rel-candidate-rent',
+          type: 'utility-payment',
+          sourceAccountId: 'acc-living',
+          targetAccountId: 'merchant-rent',
+          amount: 900_000,
+          label: '이전 월세',
+          paymentDay: '25일',
+          memo: '관계 메모',
+          confidence: 'confirmed',
+          sourceRef: { collection: 'expenseItems', id: 'rent' },
+          relationshipMeta: { lane: 'external' },
+        },
+        {
+          id: 'rel-candidate-ghost',
+          type: 'utility-payment',
+          sourceAccountId: 'acc-ghost',
+          targetAccountId: 'merchant-ghost',
+          amount: 10_000,
+          label: '삭제 관계',
+          sourceRef: { collection: 'expenseItems', id: 'ghost-expense' },
+        },
+      ],
+    }));
+    const input = validData();
+    input.incomes[0].amountWon = 4_500_000;
+    input.incomes[0].allocations[0].amountWon = 4_500_000;
+    input.accounts = [
+      { id: 'acc-salary', name: '급여통장', kind: 'income' },
+      { id: 'acc-living', name: '생활비통장', kind: 'spending' },
+    ];
+    input.expenses = [{
+      id: 'rent',
+      name: '월세',
+      amountWon: 1_100_000,
+      group: '고정비',
+      accountId: 'acc-living',
+    }];
+    const repository = new BrowserMainRepository({ saveMainV1: vi.fn().mockResolvedValue(undefined) });
+
+    await repository.save(input);
+
+    const legacy = JSON.parse(window.localStorage.getItem('isf-rebuild-v1') ?? '');
+    expect(legacy.householdContext).toEqual({ profile: 'newlywed', incomeMode: 'dual-income' });
+    expect(legacy.accounts).toEqual([
+      expect.objectContaining({ id: 'acc-salary', name: '급여통장', type: 'income', bankCode: 'BANK-A' }),
+      expect.objectContaining({ id: 'acc-living', name: '생활비통장', type: 'spending', color: '#0f766e' }),
+    ]);
+    expect(legacy.incomes).toEqual([
+      expect.objectContaining({ id: 'income-main', amount: 4_500_000, payrollCode: 'P-1' }),
+    ]);
+    expect(legacy.expenseItems).toEqual([
+      expect.objectContaining({
+        id: 'rent',
+        name: '월세',
+        amount: 1_100_000,
+        paymentDay: '25일',
+        memo: '임대인 자동이체',
+      }),
+    ]);
+    expect(legacy.transfers).toEqual([
+      expect.objectContaining({
+        id: 'transfer-living',
+        sourceAccountId: 'acc-salary',
+        targetAccountId: 'acc-living',
+        paymentDay: '2일',
+        memo: '월급 다음날',
+      }),
+    ]);
+    expect(legacy.relationships).toEqual([
+      expect.objectContaining({
+        id: 'rel-candidate-rent',
+        sourceRef: { collection: 'expenseItems', id: 'rent' },
+        relationshipMeta: { lane: 'external' },
+      }),
+    ]);
+  });
+
   it('keeps separate history entries when two saves share a millisecond', async () => {
     const history = new Map<number, MainData>();
     const saveMainV1 = vi.fn(async (data: MainData) => {
