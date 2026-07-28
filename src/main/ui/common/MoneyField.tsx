@@ -1,0 +1,34 @@
+export interface MoneyFieldProps {
+  id: string;
+  label: string;
+  valueWon: number;
+  error?: string;
+  onChange(valueWon: number): void;
+}
+
+export function MoneyField({ id, label, valueWon, error, onChange }: MoneyFieldProps) {
+  const errorId = `${id}-error`;
+
+  return (
+    <div>
+      <label htmlFor={id}>{label}</label>
+      <input
+        id={id}
+        name={id}
+        type="text"
+        inputMode="numeric"
+        value={valueWon === 0 ? '' : valueWon.toLocaleString('ko-KR')}
+        aria-invalid={error ? 'true' : undefined}
+        aria-describedby={error ? errorId : undefined}
+        onChange={(event) => onChange(parseWon(event.target.value))}
+      />
+      {error ? <p id={errorId} role="alert">{error}</p> : null}
+    </div>
+  );
+}
+
+function parseWon(value: string): number {
+  const normalized = value.replace(/[^0-9-]/g, '');
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
