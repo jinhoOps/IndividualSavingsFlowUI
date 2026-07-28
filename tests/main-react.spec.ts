@@ -61,6 +61,8 @@ test('apply persists edits and cancel restores the last applied value', async ({
   await page.getByLabel('급여 월 금액').fill('6000000');
   await page.getByRole('button', { name: '취소' }).click();
   await expect(page.getByText('500만 원')).toBeVisible();
+  await page.getByRole('button', { name: /수입 편집/ }).click();
+  await expect(page.getByLabel('급여 월 금액')).toHaveValue('5,000,000');
 });
 
 test('keeps the editable draft when saving the updated plan fails', async ({ page }) => {
@@ -81,6 +83,16 @@ test('keeps the editable draft when saving the updated plan fails', async ({ pag
 
   await expect(page.getByRole('status')).toHaveText('저장에 실패했습니다');
   await expect(page.getByLabel('급여 월 금액')).toHaveValue('5,000,000');
+  await expect(page.getByText('420만 원')).toBeVisible();
+  await expect.poll(async () => page.evaluate(() => {
+    const stored = localStorage.getItem('isf-main-v1');
+    return stored === null ? null : JSON.parse(stored).incomes[0].amountWon;
+  })).toBe(4_200_000);
+  await page.getByRole('button', { name: '취소' }).click();
+  await page.getByRole('button', { name: /수입 편집/ }).click();
+  await expect(page.getByLabel('급여 월 금액')).toHaveValue('4,200,000');
+  await page.reload();
+  await expect(page.getByText('420만 원')).toBeVisible();
 });
 
 test('cancels restart setup without replacing the current plan', async ({ page }) => {
@@ -100,5 +112,5 @@ test('does not overflow horizontally at 390px', async ({ page }) => {
   await page.goto('apps/main/');
 
   await expect(page.getByRole('heading', { name: '이번 달 자금 흐름' })).toBeVisible();
-  await expect(page.locator('html')).toEvaluate((element) => element.scrollWidth <= window.innerWidth);
+  expect(await page.locator('html').evaluate((element) => element.scrollWidth <= window.innerWidth)).toBe(true);
 });

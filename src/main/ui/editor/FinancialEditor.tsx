@@ -4,7 +4,7 @@ import type { ValidationCode, ValidationResult } from '../../domain/validation';
 import { MoneyField } from '../common/MoneyField';
 import type { DashboardSection } from '../dashboard/CashflowSummary';
 
-type EditorPresentation = 'panel' | 'dialog';
+type EditorPresentation = 'panel' | 'content';
 type EditableCollection = 'incomes' | 'expenses' | 'savings' | 'investments';
 type ValidationIssue = ValidationResult['issues'][number];
 
@@ -42,16 +42,7 @@ export function FinancialEditor({
     const element = document.querySelector<HTMLElement>(validationPathSelector(firstIssue.path))
       ?? document.querySelector<HTMLElement>('[aria-invalid="true"]');
     element?.focus();
-  }, [firstIssue]);
-
-  useEffect(() => {
-    if (onRequestClose === undefined) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onRequestClose();
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [onRequestClose]);
+  }, [firstIssue?.path, section]);
 
   function replaceItems(nextItems: FinancialItem[] | IncomeItem[]) {
     onChange({ ...draft, [meta.collection]: nextItems } as MainData);
@@ -74,7 +65,7 @@ export function FinancialEditor({
   const content = (
     <>
       <header>
-        <h2 id={titleId}>{meta.label} 편집</h2>
+        <h2 id={titleId} data-dialog-initial-focus tabIndex={-1}>{meta.label} 편집</h2>
         {onRequestClose ? <button type="button" aria-label="편집기 닫기" onClick={onRequestClose}>닫기</button> : null}
       </header>
 
@@ -99,8 +90,8 @@ export function FinancialEditor({
     </>
   );
 
-  if (presentation === 'dialog') {
-    return <div aria-labelledby={titleId} aria-modal="true" role="dialog">{content}</div>;
+  if (presentation === 'content') {
+    return <section aria-labelledby={titleId}>{content}</section>;
   }
 
   return <aside aria-labelledby={titleId}>{content}</aside>;
@@ -155,12 +146,13 @@ function ItemEditor({ item, index, collection, label, accounts, issues, onChange
         value={item.accountId ?? ''}
         data-validation-path={accountPath}
         aria-invalid={accountIssue ? 'true' : undefined}
+        aria-describedby={accountIssue ? `${item.id}-account-error` : undefined}
         onChange={(event) => onChange({ ...item, accountId: event.target.value || undefined })}
       >
         <option value="">연결 안 함</option>
         {accounts.map((account) => <option key={account.id} value={account.id}>{account.name}</option>)}
       </select>
-      {accountIssue ? <p role="alert">{issueMessage(accountIssue.code)}</p> : null}
+      {accountIssue ? <p id={`${item.id}-account-error`} role="alert">{issueMessage(accountIssue.code)}</p> : null}
 
       {collection === 'incomes' ? (
         <AllocationEditor
@@ -260,6 +252,7 @@ function AccountEditor({ accounts, issues, onChange }: AccountEditorProps) {
       <h3 id="account-editor-title">연결 계좌</h3>
       {accounts.map((account, index) => {
         const issue = findIssue(issues, `accounts.${account.id}.name`);
+        const errorId = `${account.id}-name-error`;
         return (
           <div key={account.id}>
             <label htmlFor={`${account.id}-account-name`}>계좌 {index + 1} 이름</label>
@@ -268,11 +261,12 @@ function AccountEditor({ accounts, issues, onChange }: AccountEditorProps) {
               value={account.name}
               data-validation-path={`accounts.${account.id}.name`}
               aria-invalid={issue ? 'true' : undefined}
+              aria-describedby={issue ? errorId : undefined}
               onChange={(event) => onChange(accounts.map((current, currentIndex) => (
                 currentIndex === index ? { ...current, name: event.target.value } : current
               )))}
             />
-            {issue ? <p role="alert">{issueMessage(issue.code)}</p> : null}
+            {issue ? <p id={errorId} role="alert">{issueMessage(issue.code)}</p> : null}
             <label htmlFor={`${account.id}-account-kind`}>계좌 {index + 1} 종류</label>
             <select
               id={`${account.id}-account-kind`}

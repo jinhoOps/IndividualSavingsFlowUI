@@ -157,6 +157,30 @@ describe('FinancialEditor', () => {
     expect(screen.getByLabelText('계좌 1 이름')).toHaveFocus();
   });
 
+  it('connects account name and item account errors to stable descriptions', () => {
+    render(
+      <FinancialEditor
+        section="income"
+        draft={original}
+        issues={[
+          { path: 'incomes.salary.accountId', code: 'account_missing' },
+          { path: 'accounts.salary-account.name', code: 'name_required' },
+        ]}
+        onChange={vi.fn()}
+      />,
+    );
+
+    const itemAccount = screen.getByLabelText('급여 계좌');
+    const accountName = screen.getByLabelText('계좌 1 이름');
+
+    expect(itemAccount).toHaveAttribute('aria-invalid', 'true');
+    expect(itemAccount).toHaveAttribute('aria-describedby', 'salary-account-error');
+    expect(document.getElementById('salary-account-error')).toHaveTextContent('연결한 계좌를 확인해주세요.');
+    expect(accountName).toHaveAttribute('aria-invalid', 'true');
+    expect(accountName).toHaveAttribute('aria-describedby', 'salary-account-name-error');
+    expect(screen.getByText('이름을 입력해주세요.')).toHaveAttribute('id', 'salary-account-name-error');
+  });
+
   it('focuses income add when the final income is deleted and apply is blocked', () => {
     render(<LastIncomeHarness />);
 
