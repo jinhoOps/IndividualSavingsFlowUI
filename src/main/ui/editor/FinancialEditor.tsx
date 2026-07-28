@@ -13,6 +13,7 @@ export interface FinancialEditorProps {
   draft: MainData;
   issues: ValidationIssue[];
   focusAttempt?: number;
+  saving?: boolean;
   onChange(draft: MainData): void;
   presentation?: EditorPresentation;
   onRequestClose?(): void;
@@ -32,6 +33,7 @@ export function FinancialEditor({
   draft,
   issues,
   focusAttempt = 0,
+  saving = false,
   onChange,
   presentation = 'panel',
   onRequestClose,
@@ -70,12 +72,12 @@ export function FinancialEditor({
     <>
       <header>
         <h2 id={titleId} data-dialog-initial-focus tabIndex={-1}>{meta.label} 편집</h2>
-        {onRequestClose ? <button type="button" aria-label="편집기 닫기" onClick={onRequestClose}>닫기</button> : null}
+        {onRequestClose ? <button type="button" aria-label="편집기 닫기" disabled={saving} onClick={onRequestClose}>닫기</button> : null}
       </header>
 
       {firstIssue?.path === meta.collection ? <p role="alert">{issueMessage(firstIssue.code)}</p> : null}
       <div>
-        <button type="button" data-validation-path={meta.collection} onClick={addItem}>{meta.label} 추가</button>
+        <button type="button" data-validation-path={meta.collection} disabled={saving} onClick={addItem}>{meta.label} 추가</button>
         {items.map((item, index) => (
           <ItemEditor
             key={item.id}
@@ -85,20 +87,21 @@ export function FinancialEditor({
             label={meta.label}
             accounts={draft.accounts}
             issues={issues}
+            disabled={saving}
             onChange={(next) => updateItem(index, next)}
             onDelete={() => deleteItem(index)}
           />
         ))}
       </div>
-      <AccountEditor accounts={draft.accounts} issues={issues} onChange={(accounts) => onChange({ ...draft, accounts })} />
+      <AccountEditor accounts={draft.accounts} issues={issues} disabled={saving} onChange={(accounts) => onChange({ ...draft, accounts })} />
     </>
   );
 
   if (presentation === 'content') {
-    return <section className={editorClassName} aria-labelledby={titleId}>{content}</section>;
+    return <section className={editorClassName} aria-busy={saving ? 'true' : undefined} aria-labelledby={titleId}>{content}</section>;
   }
 
-  return <aside className={editorClassName} aria-labelledby={titleId}>{content}</aside>;
+  return <aside className={editorClassName} aria-busy={saving ? 'true' : undefined} aria-labelledby={titleId}>{content}</aside>;
 }
 
 interface ItemEditorProps {
@@ -108,11 +111,12 @@ interface ItemEditorProps {
   label: string;
   accounts: MainData['accounts'];
   issues: ValidationIssue[];
+  disabled: boolean;
   onChange(item: FinancialItem | IncomeItem): void;
   onDelete(): void;
 }
 
-function ItemEditor({ item, index, collection, label, accounts, issues, onChange, onDelete }: ItemEditorProps) {
+function ItemEditor({ item, index, collection, label, accounts, issues, disabled, onChange, onDelete }: ItemEditorProps) {
   const itemLabel = item.name.trim() || `${label} ${index + 1}`;
   const namePath = `${collection}.${item.id}.name`;
   const amountPath = `${collection}.${item.id}.amountWon`;
@@ -122,7 +126,7 @@ function ItemEditor({ item, index, collection, label, accounts, issues, onChange
   const accountIssue = findIssue(issues, accountPath);
 
   return (
-    <fieldset>
+    <fieldset disabled={disabled}>
       <legend>{itemLabel}</legend>
       <label htmlFor={`${item.id}-name`}>{itemLabel} 이름</label>
       <input
@@ -257,10 +261,11 @@ function AllocationEditor({ income, accounts, issues, onChange }: AllocationEdit
 interface AccountEditorProps {
   accounts: MainData['accounts'];
   issues: ValidationIssue[];
+  disabled: boolean;
   onChange(accounts: MainData['accounts']): void;
 }
 
-function AccountEditor({ accounts, issues, onChange }: AccountEditorProps) {
+function AccountEditor({ accounts, issues, disabled, onChange }: AccountEditorProps) {
   function addAccount() {
     let nextNumber = accounts.length + 1;
     while (accounts.some((account) => account.id === `account-${nextNumber}`)) nextNumber += 1;
@@ -282,6 +287,7 @@ function AccountEditor({ accounts, issues, onChange }: AccountEditorProps) {
               data-validation-path={`accounts.${account.id}.name`}
               aria-invalid={issue ? 'true' : undefined}
               aria-describedby={issue ? errorId : undefined}
+              disabled={disabled}
               onChange={(event) => onChange(accounts.map((current, currentIndex) => (
                 currentIndex === index ? { ...current, name: event.target.value } : current
               )))}
@@ -291,6 +297,7 @@ function AccountEditor({ accounts, issues, onChange }: AccountEditorProps) {
             <select
               id={`${account.id}-account-kind`}
               value={account.kind}
+              disabled={disabled}
               onChange={(event) => onChange(accounts.map((current, currentIndex) => (
                 currentIndex === index ? { ...current, kind: event.target.value as MainData['accounts'][number]['kind'] } : current
               )))}
@@ -301,11 +308,11 @@ function AccountEditor({ accounts, issues, onChange }: AccountEditorProps) {
               <option value="investment">투자</option>
               <option value="other">기타</option>
             </select>
-            <button type="button" aria-label={`계좌 ${index + 1} 삭제`} onClick={() => onChange(accounts.filter((_, accountIndex) => accountIndex !== index))}>삭제</button>
+            <button type="button" disabled={disabled} aria-label={`계좌 ${index + 1} 삭제`} onClick={() => onChange(accounts.filter((_, accountIndex) => accountIndex !== index))}>삭제</button>
           </div>
         );
       })}
-      <button type="button" onClick={addAccount}>계좌 추가</button>
+      <button type="button" disabled={disabled} onClick={addAccount}>계좌 추가</button>
     </section>
   );
 }

@@ -4,10 +4,11 @@ export type DashboardSection = 'income' | 'expense' | 'saving' | 'investment';
 
 export interface CashflowSummaryProps {
   summary: CashflowTotals;
+  disabled?: boolean;
   onEdit(section: DashboardSection, opener: HTMLElement): void;
 }
 
-export function CashflowSummary({ summary, onEdit }: CashflowSummaryProps) {
+export function CashflowSummary({ summary, disabled = false, onEdit }: CashflowSummaryProps) {
   return (
     <section className="grid gap-4" aria-label="월간 핵심 수치">
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -15,12 +16,14 @@ export function CashflowSummary({ summary, onEdit }: CashflowSummaryProps) {
           label="수입"
           valueWon={summary.incomeWon}
           importance="primary"
+          disabled={disabled}
           onClick={(opener) => onEdit('income', opener)}
         />
         <MetricButton
           label="계획 유출"
           valueWon={summary.plannedOutflowWon}
           importance="primary"
+          disabled={disabled}
           onClick={(opener) => onEdit('expense', opener)}
         >
           <span>생활비 {formatDashboardWon(summary.expenseWon)}</span>
@@ -29,6 +32,7 @@ export function CashflowSummary({ summary, onEdit }: CashflowSummaryProps) {
           label="남는 금액"
           valueWon={summary.availableWon}
           importance="primary"
+          disabled={disabled}
           onClick={(opener) => onEdit('investment', opener)}
         >
           <span>투자 가능액</span>
@@ -40,12 +44,14 @@ export function CashflowSummary({ summary, onEdit }: CashflowSummaryProps) {
           label="저축"
           valueWon={summary.savingWon}
           importance="secondary"
+          disabled={disabled}
           onClick={(opener) => onEdit('saving', opener)}
         />
         <MetricButton
           label="투자"
           valueWon={summary.investmentWon}
           importance="secondary"
+          disabled={disabled}
           onClick={(opener) => onEdit('investment', opener)}
         />
       </div>
@@ -58,13 +64,15 @@ interface MetricButtonProps {
   valueWon: number;
   importance: 'primary' | 'secondary';
   children?: React.ReactNode;
+  disabled: boolean;
   onClick(opener: HTMLButtonElement): void;
 }
 
-function MetricButton({ label, valueWon, importance, children, onClick }: MetricButtonProps) {
+function MetricButton({ label, valueWon, importance, children, disabled, onClick }: MetricButtonProps) {
   return (
     <button
       type="button"
+      disabled={disabled}
       aria-label={`${label === '계획 유출' ? '생활비' : label} 편집`}
       data-importance={importance}
       className={importance === 'primary'

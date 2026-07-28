@@ -23,8 +23,13 @@ export async function bootstrapMain(repository: MainRepository): Promise<MainSta
           : setupState(progress.draft, progress.step);
       }
       case 'current':
-      case 'migrated':
+      case 'migrated': {
+        const progress = repository.loadSetupProgress();
+        if (progress?.kind === 'restart') {
+          return setupState(progress.draft, progress.step, result.data);
+        }
         return dashboardState(result.data);
+      }
       case 'recovery':
         return {
           mode: 'recovery',
@@ -74,10 +79,10 @@ export async function applyDraft(state: MainState, repository: MainRepository): 
   }
 }
 
-function setupState(draft: MainData, setupStep: SetupStep): MainState {
+function setupState(draft: MainData, setupStep: SetupStep, applied: MainData | null = null): MainState {
   return {
     mode: 'setup',
-    applied: null,
+    applied: applied === null ? null : cloneMainData(applied),
     draft: cloneMainData(draft),
     setupStep,
     dirty: false,

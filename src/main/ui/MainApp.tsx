@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { applyDraft, bootstrapMain, type ValidationIssue } from '../application/bootstrap';
 import { mainReducer, type MainAction, type MainState } from '../application/mainReducer';
 import { calculateCashflow } from '../domain/cashflow';
@@ -19,6 +19,7 @@ export function MainApp({ repository = browserRepository }: MainAppProps) {
   const [state, setState] = useState<MainState | null>(null);
   const [issues, setIssues] = useState<ValidationIssue[]>([]);
   const [validationAttempt, setValidationAttempt] = useState(0);
+  const savingRef = useRef(false);
 
   useEffect(() => {
     let active = true;
@@ -35,57 +36,71 @@ export function MainApp({ repository = browserRepository }: MainAppProps) {
   }
 
   function changeDraft(draft: MainData) {
+    if (savingRef.current) return;
     if (state?.mode === 'setup' && state.setupStep !== null) {
-      repository.saveSetupProgress(state.setupStep, draft);
+      repository.saveSetupProgress(state.setupStep, draft, state.applied === null ? 'initial' : 'restart');
     }
     setIssues([]);
     dispatch({ type: 'replace-draft', draft });
   }
 
   function changeSetupStep(step: SetupStep) {
-    if (state !== null) repository.saveSetupProgress(step, state.draft);
+    if (savingRef.current) return;
+    if (state !== null) {
+      repository.saveSetupProgress(step, state.draft, state.applied === null ? 'initial' : 'restart');
+    }
     setIssues([]);
     dispatch({ type: 'set-setup-step', step });
   }
 
   async function apply() {
-    if (state === null || state.saveStatus === 'saving') return;
+    if (state === null || savingRef.current) return;
 
+    savingRef.current = true;
     dispatch({ type: 'save-started' });
-    const result = await applyDraft(state, repository);
-    if (result.ok) {
-      repository.clearSetupProgress();
-      setIssues([]);
-      dispatch({ type: 'save-succeeded', data: result.data });
-      return;
-    }
-
-    if (result.kind === 'validation') {
-      setIssues(result.issues);
-      setValidationAttempt((attempt) => attempt + 1);
-      if (state.mode === 'setup') {
-        const step = setupStepForIssue(result.issues[0]?.path);
-        if (step !== null) dispatch({ type: 'set-setup-step', step });
+    try {
+      const result = await applyDraft(state, repository);
+      if (result.ok) {
+        repository.clearSetupProgress();
+        setIssues([]);
+        dispatch({ type: 'save-succeeded', data: result.data });
+        return;
       }
-      dispatch({ type: 'save-failed' });
-      return;
-    }
 
-    dispatch({ type: 'save-failed' });
+      if (result.kind === 'validation') {
+        setIssues(result.issues);
+        setValidationAttempt((attempt) => attempt + 1);
+        if (state.mode === 'setup') {
+          const step = setupStepForIssue(result.issues[0]?.path);
+          if (step !== null) dispatch({ type: 'set-setup-step', step });
+        }
+        dispatch({ type: 'save-failed' });
+        return;
+      }
+
+      dispatch({ type: 'save-failed' });
+    } finally {
+      savingRef.current = false;
+    }
   }
 
   function cancelDraft() {
+    if (savingRef.current) return;
+    repository.discardPending();
     repository.clearSetupProgress();
     setIssues([]);
     dispatch({ type: 'cancel-draft' });
   }
 
   function restartSetup() {
+    if (state === null || state.applied === null || savingRef.current) return;
+    repository.saveSetupProgress('welcome', state.applied, 'restart');
     setIssues([]);
     dispatch({ type: 'restart-setup' });
   }
 
   function startEmptySetup() {
+    repository.discardPending();
     repository.clearSetupProgress();
     setIssues([]);
     setState({
@@ -126,6 +141,7 @@ export function MainApp({ repository = browserRepository }: MainAppProps) {
             <button
               className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-700 shadow-sm hover:border-slate-400"
               type="button"
+              disabled={state.saveStatus === 'saving'}
               onClick={cancelDraft}
             >
               취소
@@ -136,6 +152,8 @@ export function MainApp({ repository = browserRepository }: MainAppProps) {
           draft={state.draft}
           step={state.setupStep}
           issues={issues}
+          validationAttempt={validationAttempt}
+          saving={state.saveStatus === 'saving'}
           onChange={changeDraft}
           onStepChange={changeSetupStep}
           onApply={apply}

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { bootstrapMain, applyDraft } from '../../../src/main/application/bootstrap';
 import type { MainState } from '../../../src/main/application/mainReducer';
-import { createEmptyMainData, type MainData, type SetupStep } from '../../../src/main/domain/model';
-import type { MainRepository } from '../../../src/main/infrastructure/mainRepository';
+import { createEmptyMainData, type MainData } from '../../../src/main/domain/model';
+import type { MainRepository, SetupProgress } from '../../../src/main/infrastructure/mainRepository';
 import type { MigrationResult } from '../../../src/main/infrastructure/legacyMigration';
 
 function validData(): MainData {
@@ -19,7 +19,7 @@ function validData(): MainData {
 
 function repository(
   loadResult: MigrationResult,
-  progress: { step: SetupStep; draft: MainData } | null = null,
+  progress: SetupProgress | null = null,
   persistedData?: MainData,
 ): MainRepository & {
   saveCalls: MainData[];
@@ -34,6 +34,7 @@ function repository(
     saveSetupProgress: () => undefined,
     loadSetupProgress: () => progress,
     clearSetupProgress: () => undefined,
+    discardPending: () => undefined,
     saveCalls,
   };
 }
@@ -50,7 +51,7 @@ describe('bootstrapMain', () => {
     const draft = validData();
     const state = await bootstrapMain(repository(
       { status: 'empty', data: null, original: null },
-      { step: 'account', draft },
+      { kind: 'initial', step: 'account', draft },
     ));
 
     expect(state).toMatchObject({ mode: 'setup', setupStep: 'account', applied: null, dirty: false });
@@ -67,6 +68,25 @@ describe('bootstrapMain', () => {
       expect(state.draft).toEqual(data);
       expect(state.draft).not.toBe(data);
     }
+  });
+
+  it('resumes restart setup with the persisted current plan still applied', async () => {
+    const applied = validData();
+    const restartDraft = structuredClone(applied);
+    restartDraft.expenses = [{ id: 'rent', name: '월세', amountWon: 900_000 }];
+    const state = await bootstrapMain(repository(
+      { status: 'current', data: applied, original: applied },
+      { kind: 'restart', step: 'expense', draft: restartDraft },
+    ));
+
+    expect(state).toMatchObject({
+      mode: 'setup',
+      setupStep: 'expense',
+      applied,
+      draft: restartDraft,
+    });
+    expect(state.applied).not.toBe(applied);
+    expect(state.draft).not.toBe(restartDraft);
   });
 
   it('keeps current data applied while presenting a pending draft for recovery', async () => {

@@ -112,11 +112,15 @@ describe('SummaryDashboard', () => {
 
   it('opens the income editor from the income summary card', () => {
     render(<DashboardHarness />);
+    const opener = screen.getByRole('button', { name: '수입 편집' });
 
-    fireEvent.click(screen.getByRole('button', { name: '수입 편집' }));
+    fireEvent.click(opener);
 
     expect(screen.getByRole('complementary', { name: '수입 편집' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: '수입 편집' })).toHaveFocus();
     expect(screen.getByLabelText('급여 월 금액')).toHaveValue('4,200,000');
+    fireEvent.click(screen.getByRole('button', { name: '편집기 닫기' }));
+    expect(opener).toHaveFocus();
   });
 
   it('keeps the dashboard on the applied value and restores the draft on cancel', () => {

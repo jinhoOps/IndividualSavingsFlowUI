@@ -1,6 +1,6 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { MainData } from '../../../src/main/domain/model';
 import type { MainRepository } from '../../../src/main/infrastructure/mainRepository';
 import type { MigrationResult } from '../../../src/main/infrastructure/legacyMigration';
@@ -27,6 +27,7 @@ function repository(result: MigrationResult): MainRepository {
     saveSetupProgress: () => undefined,
     loadSetupProgress: () => null,
     clearSetupProgress: () => undefined,
+    discardPending: () => undefined,
   };
 }
 
@@ -61,5 +62,45 @@ describe('MainApp', () => {
     expect(screen.getByRole('button', { name: '기존 원본 JSON 다운로드' })).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: '빈 초안으로 다시 시작' }));
     expect(await screen.findByRole('heading', { name: '내 자금 계획을 시작합니다' })).toBeVisible();
+  });
+
+  it('locks editor mutations while a save is pending so the submitted revision is not overwritten', async () => {
+    let resolveSave: ((saved: MainData) => void) | undefined;
+    const storage = repository({ status: 'current', data: data(3_000_000), original: {} });
+    storage.save = vi.fn(() => new Promise<MainData>((resolve) => {
+      resolveSave = resolve;
+    }));
+    render(<MainApp repository={storage} />);
+    await screen.findByRole('heading', { name: '이번 달 자금 흐름' });
+    fireEvent.click(screen.getByRole('button', { name: '수입 편집' }));
+    const amount = screen.getByLabelText('급여 월 금액');
+    fireEvent.change(amount, { target: { value: '4000000' } });
+
+    fireEvent.click(screen.getByRole('button', { name: '적용' }));
+
+    expect(screen.getByRole('complementary', { name: '수입 편집' })).toHaveAttribute('aria-busy', 'true');
+    expect(amount).toBeDisabled();
+    fireEvent.change(amount, { target: { value: '5000000' } });
+    expect(amount).toHaveValue('4,000,000');
+
+    await act(async () => {
+      resolveSave?.({ ...data(4_000_000), updatedAt: 2 });
+    });
+    expect(await screen.findByRole('status')).toHaveTextContent('저장됨');
+    expect(screen.getByRole('button', { name: '수입 편집' })).toHaveTextContent('400만 원');
+  });
+
+  it('discards pending recovery data when the user cancels an edit', async () => {
+    const discardPending = vi.fn();
+    const storage = repository({ status: 'current', data: data(3_000_000), original: {} });
+    storage.discardPending = discardPending;
+    render(<MainApp repository={storage} />);
+    await screen.findByRole('heading', { name: '이번 달 자금 흐름' });
+    fireEvent.click(screen.getByRole('button', { name: '수입 편집' }));
+    fireEvent.change(screen.getByLabelText('급여 월 금액'), { target: { value: '4000000' } });
+
+    fireEvent.click(screen.getByRole('button', { name: '취소' }));
+
+    expect(discardPending).toHaveBeenCalledOnce();
   });
 });

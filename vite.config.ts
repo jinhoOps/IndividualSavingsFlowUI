@@ -4,6 +4,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 import tailwindcss from '@tailwindcss/vite';
 import { resolve } from 'path';
 import packageJson from './package.json';
+import { createMpaNavigationCaching } from './src/main/infrastructure/pwaRoutes';
 
 export default defineConfig({
   define: {
@@ -65,10 +66,10 @@ export default defineConfig({
         ]
       },
       workbox: {
+        ...createMpaNavigationCaching('/IndividualSavingsFlowUI/'),
         globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest}'],
         skipWaiting: true,
         clientsClaim: true,
-        navigateFallback: '/IndividualSavingsFlowUI/index.html'
       }
     })
   ],

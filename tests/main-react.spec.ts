@@ -68,9 +68,9 @@ test('apply persists edits and cancel restores the last applied value', async ({
 
 test('keeps the editable draft when saving the updated plan fails', async ({ page }) => {
   await page.addInitScript((data) => {
-    localStorage.clear();
-    sessionStorage.clear();
-    localStorage.setItem('isf-main-v1', JSON.stringify(data));
+    if (localStorage.getItem('isf-main-v1') === null) {
+      localStorage.setItem('isf-main-v1', JSON.stringify(data));
+    }
     const setItem = Storage.prototype.setItem;
     Storage.prototype.setItem = function setItemWithMainFailure(key, value) {
       if (key === 'isf-main-v1') throw new DOMException('Storage quota exceeded.', 'QuotaExceededError');
@@ -90,10 +90,47 @@ test('keeps the editable draft when saving the updated plan fails', async ({ pag
     return stored === null ? null : JSON.parse(stored).incomes[0].amountWon;
   })).toBe(4_200_000);
   await page.getByRole('button', { name: '취소' }).click();
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('isf-main-v1-pending'))).toBeNull();
   await page.getByRole('button', { name: /수입 편집/ }).click();
   await expect(page.getByLabel('급여 월 금액')).toHaveValue('4,200,000');
   await page.reload();
   await expect(page.getByRole('button', { name: '수입 편집' })).toContainText('420만 원');
+});
+
+test('mobile setup validates focus, applies, edits, and cancels without losing the saved plan', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript(() => localStorage.clear());
+  await page.goto('apps/main/');
+  await page.getByRole('button', { name: '다음' }).click();
+  await page.getByRole('button', { name: '다음' }).click();
+  await page.getByRole('button', { name: '다음' }).click();
+  await page.getByRole('button', { name: '다음' }).click();
+  await page.getByRole('button', { name: '다음' }).click();
+  await page.getByRole('button', { name: '계획 적용' }).click();
+
+  const incomeHeading = page.getByRole('heading', { name: '월 수입을 알려주세요' });
+  await expect(incomeHeading).toBeFocused();
+  await page.getByLabel('수입 이름').fill('급여');
+  await page.getByLabel('월 금액').fill('4200000');
+  for (let step = 0; step < 4; step += 1) {
+    await page.getByRole('button', { name: '다음' }).click();
+  }
+  await page.getByRole('button', { name: '계획 적용' }).click();
+  await expect(page.getByRole('heading', { name: '이번 달 자금 흐름' })).toBeVisible();
+
+  await page.getByRole('button', { name: '수입 편집' }).click();
+  const dialog = page.getByRole('dialog', { name: '수입 편집' });
+  await expect(dialog).toBeVisible();
+  await page.getByLabel('급여 월 금액').fill('5000000');
+  await dialog.getByRole('button', { name: '적용' }).click();
+  await expect(page.getByRole('status', { includeHidden: true })).toHaveText('저장됨');
+  await dialog.getByRole('button', { name: '편집기 닫기' }).click();
+  await page.getByRole('button', { name: '수입 편집' }).click();
+  await page.getByLabel('급여 월 금액').fill('6000000');
+  await dialog.getByRole('button', { name: '취소' }).click();
+  await expect(page.getByLabel('급여 월 금액')).toHaveValue('5,000,000');
+  await dialog.getByRole('button', { name: '편집기 닫기' }).click();
+  await expect(page.getByRole('button', { name: '수입 편집' })).toContainText('500만 원');
 });
 
 test('cancels restart setup without replacing the current plan', async ({ page }) => {
@@ -104,6 +141,21 @@ test('cancels restart setup without replacing the current plan', async ({ page }
   await page.getByRole('button', { name: '취소' }).click();
 
   await expect(page.getByRole('heading', { name: '이번 달 자금 흐름' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '수입 편집' })).toContainText('420만 원');
+});
+
+test('resumes restart setup after reload with the current plan still applied', async ({ page }) => {
+  await seedCurrentMain(page);
+  await page.goto('apps/main/');
+  await page.getByRole('button', { name: '처음부터 다시 설정' }).click();
+  await page.getByRole('button', { name: '다음' }).click();
+  await page.getByLabel('수입 이름').fill('재개한 초안');
+
+  await page.reload();
+
+  await expect(page.getByRole('heading', { name: '월 수입을 알려주세요' })).toBeVisible();
+  await expect(page.getByLabel('수입 이름')).toHaveValue('재개한 초안');
+  await page.getByRole('button', { name: '취소' }).click();
   await expect(page.getByRole('button', { name: '수입 편집' })).toContainText('420만 원');
 });
 

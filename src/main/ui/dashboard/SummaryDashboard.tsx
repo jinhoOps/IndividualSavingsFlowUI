@@ -47,6 +47,7 @@ export function SummaryDashboard({
   const isMobile = useMobileEditor();
   const summary = calculateCashflow(applied);
   const mobileModalOpen = isMobile && activeSection !== null;
+  const saving = saveStatus === 'saving';
 
   useEffect(() => {
     if (!dirty) return;
@@ -65,9 +66,13 @@ export function SummaryDashboard({
   }, [activeSection, issues]);
 
   useEffect(() => {
-    if (activeSection !== null && isMobile) {
-      if (issues.length === 0 && modalRef.current !== null) {
-        getFocusableElements(modalRef.current)[0]?.focus();
+    if (activeSection !== null) {
+      if (issues.length === 0) {
+        if (isMobile && modalRef.current !== null) {
+          getFocusableElements(modalRef.current)[0]?.focus();
+        } else {
+          document.querySelector<HTMLElement>('[data-dialog-initial-focus]')?.focus();
+        }
       }
       return;
     }
@@ -75,7 +80,7 @@ export function SummaryDashboard({
       openerRef.current.focus();
       openerRef.current = null;
     }
-  }, [activeSection, isMobile, issues.length]);
+  }, [activeSection, isMobile]);
 
   useEffect(() => {
     if (activeSection === null) return;
@@ -86,21 +91,24 @@ export function SummaryDashboard({
     };
     window.addEventListener('keydown', closeOnEscape);
     return () => window.removeEventListener('keydown', closeOnEscape);
-  }, [activeSection, dirty, onCancel]);
+  }, [activeSection, dirty, onCancel, saving]);
 
   function requestClose() {
+    if (saving) return;
     if (dirty && !window.confirm('저장하지 않은 변경사항을 버릴까요?')) return;
     if (dirty) onCancel();
     setActiveSection(null);
   }
 
   function requestRestart() {
+    if (saving) return;
     if (dirty && !window.confirm('저장하지 않은 변경사항을 버릴까요?')) return;
     if (dirty) onCancel();
     onRestart();
   }
 
   function openEditor(section: DashboardSection, opener: HTMLElement) {
+    if (saving) return;
     openerRef.current = opener;
     setActiveSection(section);
   }
@@ -134,10 +142,10 @@ export function SummaryDashboard({
           <h1 className="m-0 mt-2 text-4xl font-bold tracking-tight text-slate-950 sm:text-5xl" id="summary-dashboard-title">이번 달 자금 흐름</h1>
           <p className="mb-0 mt-3 text-lg text-slate-600">수입과 계획 유출, 남는 금액을 먼저 확인하세요.</p>
         </div>
-        <button className="self-start rounded-full border border-slate-300 bg-white/80 px-4 py-2 text-sm font-bold text-slate-700 shadow-sm" type="button" onClick={requestRestart}>처음부터 다시 설정</button>
+        <button className="self-start rounded-full border border-slate-300 bg-white/80 px-4 py-2 text-sm font-bold text-slate-700 shadow-sm" type="button" disabled={saving} onClick={requestRestart}>처음부터 다시 설정</button>
       </header>
 
-      <CashflowSummary summary={summary} onEdit={openEditor} />
+      <CashflowSummary summary={summary} disabled={saving} onEdit={openEditor} />
 
       <section className="min-w-0 rounded-3xl border border-white/80 bg-white/85 p-5 shadow-float sm:p-7" aria-labelledby="sankey-title">
         <h2 className="m-0 text-2xl font-bold text-slate-950" id="sankey-title">월간 현금흐름</h2>
@@ -152,6 +160,7 @@ export function SummaryDashboard({
             className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 text-left transition hover:border-accent/30"
             key={section}
             type="button"
+            disabled={saving}
             aria-label={`${sectionLabels[section]} 항목 관리`}
             onClick={(event) => openEditor(section, event.currentTarget)}
           >
@@ -173,6 +182,7 @@ export function SummaryDashboard({
                 draft={draft}
                 issues={issues}
                 focusAttempt={validationAttempt}
+                saving={saving}
                 presentation="content"
                 onChange={onDraftChange}
                 onRequestClose={requestClose}
@@ -193,6 +203,7 @@ export function SummaryDashboard({
             draft={draft}
             issues={issues}
             focusAttempt={validationAttempt}
+            saving={saving}
             presentation="panel"
             onChange={onDraftChange}
             onRequestClose={requestClose}

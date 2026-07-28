@@ -102,6 +102,44 @@ describe('BrowserMainRepository', () => {
     expect(window.localStorage.getItem('isf-main-v1-pending')).toBeNull();
   });
 
+  it('projects a successful Main save to every live legacy connector key', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(1_750_000_000_000);
+    window.localStorage.setItem('isf-rebuild-v1', JSON.stringify({
+      startInvest: 12_000_000,
+      annualSavingsYield: 3.2,
+      annualInvestReturn: 8.5,
+      horizonYears: 12,
+    }));
+    const input = validData();
+    input.expenses = [{ id: 'rent', name: '월세', amountWon: 900_000, accountId: 'acc-salary' }];
+    input.savings = [{ id: 'deposit', name: '적금', amountWon: 500_000, accountId: 'acc-salary' }];
+    input.investments = [{ id: 'etf', name: 'ETF', amountWon: 700_000, accountId: 'acc-salary' }];
+    const repository = new BrowserMainRepository({ saveMainV1: vi.fn().mockResolvedValue(undefined) });
+
+    await repository.save(input);
+
+    const legacy = JSON.parse(window.localStorage.getItem('isf-rebuild-v1') ?? '');
+    const activeHistory = JSON.parse(window.localStorage.getItem('isf-step1-active') ?? '');
+    expect(legacy).toMatchObject({
+      modelVersion: 10,
+      version: 2,
+      updatedAt: 1_750_000_000_000,
+      monthlyExpense: 900_000,
+      monthlySavings: 500_000,
+      monthlyInvest: 700_000,
+      startInvest: 12_000_000,
+      annualSavingsYield: 3.2,
+      annualInvestReturn: 8.5,
+      horizonYears: 12,
+      incomes: [{ id: 'income-main', amount: 4_200_000 }],
+      expenseItems: [{ id: 'rent', amount: 900_000 }],
+      savingsItems: [{ id: 'deposit', amount: 500_000 }],
+      investItems: [{ id: 'etf', amount: 700_000 }],
+      accounts: [{ id: 'acc-salary', name: '급여통장' }],
+    });
+    expect(activeHistory).toEqual(legacy);
+  });
+
   it('keeps separate history entries when two saves share a millisecond', async () => {
     const history = new Map<number, MainData>();
     const saveMainV1 = vi.fn(async (data: MainData) => {
@@ -124,6 +162,8 @@ describe('BrowserMainRepository', () => {
     const existing = validData();
     existing.updatedAt = 10;
     window.localStorage.setItem('isf-main-v1', JSON.stringify(existing));
+    const existingLegacy = { modelVersion: 10, monthlyInvest: 123_000 };
+    window.localStorage.setItem('isf-rebuild-v1', JSON.stringify(existingLegacy));
     const setItem = vi.spyOn(window.localStorage, 'setItem');
     setItem.mockImplementation((key, value) => {
       if (key === 'isf-main-v1') throw new Error('quota exceeded');
@@ -135,6 +175,50 @@ describe('BrowserMainRepository', () => {
 
     expect(JSON.parse(window.localStorage.getItem('isf-main-v1') ?? '')).toEqual(existing);
     expect(JSON.parse(window.localStorage.getItem('isf-main-v1-pending') ?? '').updatedAt).toBeGreaterThan(10);
+    expect(JSON.parse(window.localStorage.getItem('isf-rebuild-v1') ?? '')).toEqual(existingLegacy);
+  });
+
+  it('rolls back the current and compatibility keys when a compatibility write fails', async () => {
+    const existing = validData();
+    existing.updatedAt = 10;
+    const existingLegacy = { modelVersion: 10, monthlyInvest: 123_000 };
+    const existingActive = { modelVersion: 10, monthlyInvest: 120_000 };
+    window.localStorage.setItem('isf-main-v1', JSON.stringify(existing));
+    window.localStorage.setItem('isf-rebuild-v1', JSON.stringify(existingLegacy));
+    window.localStorage.setItem('isf-step1-active', JSON.stringify(existingActive));
+    vi.spyOn(window.localStorage, 'setItem').mockImplementation((key, value) => {
+      if (key === 'isf-step1-active') throw new Error('compatibility quota exceeded');
+      MemoryStorage.prototype.setItem.call(window.localStorage, key, value);
+    });
+    const repository = new BrowserMainRepository({ saveMainV1: vi.fn().mockResolvedValue(undefined) });
+
+    await expect(repository.save(validData())).rejects.toThrow('compatibility quota exceeded');
+
+    expect(JSON.parse(window.localStorage.getItem('isf-main-v1') ?? '')).toEqual(existing);
+    expect(JSON.parse(window.localStorage.getItem('isf-rebuild-v1') ?? '')).toEqual(existingLegacy);
+    expect(JSON.parse(window.localStorage.getItem('isf-step1-active') ?? '')).toEqual(existingActive);
+    expect(JSON.parse(window.localStorage.getItem('isf-main-v1-pending') ?? '').updatedAt).toBeGreaterThan(10);
+  });
+
+  it('discards a pending recovery draft explicitly', () => {
+    window.localStorage.setItem('isf-main-v1-pending', JSON.stringify(validData()));
+    const repository = new BrowserMainRepository({ saveMainV1: vi.fn() });
+
+    repository.discardPending();
+
+    expect(window.localStorage.getItem('isf-main-v1-pending')).toBeNull();
+  });
+
+  it('round-trips restart setup progress separately from first-run progress', () => {
+    const repository = new BrowserMainRepository({ saveMainV1: vi.fn() });
+
+    repository.saveSetupProgress('expense', validData(), 'restart');
+
+    expect(repository.loadSetupProgress()).toMatchObject({
+      kind: 'restart',
+      step: 'expense',
+      draft: { incomes: [{ amountWon: 4_200_000 }] },
+    });
   });
 
   it('keeps two concurrent repository saves when their clocks share a millisecond', async () => {

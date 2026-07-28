@@ -80,6 +80,7 @@ describe('SetupFlow', () => {
     expect(error).toHaveTextContent('이름을 입력해주세요.');
     expect(incomeName).toHaveAttribute('aria-invalid', 'true');
     expect(incomeName).toHaveAttribute('aria-describedby', error.id);
+    expect(incomeName).toHaveFocus();
   });
 
   it('applies the plan from the review stage', () => {

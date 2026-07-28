@@ -4,7 +4,8 @@ export default defineConfig({
   testDir: './tests',
   testIgnore: [
     '**/unit/**',
-    // Superseded by main-react.spec.ts after the Main React cutover.
+    // Frozen pre-React DOM suite; live Main and connector contracts are covered
+    // by main-react.spec.ts, main-compat.spec.ts, and tests/unit/main.
     '**/step1.spec.ts',
   ],
   fullyParallel: false,
