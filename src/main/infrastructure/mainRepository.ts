@@ -21,6 +21,8 @@ export interface MainRepository {
 export type MainHistoryStore = Pick<IsfStore, 'saveMainV1'>;
 
 export class BrowserMainRepository implements MainRepository {
+  private lastIssuedUpdatedAt = 0;
+
   constructor(private readonly historyStore: MainHistoryStore = isfStore) {}
 
   async load(): Promise<MigrationResult> {
@@ -41,7 +43,7 @@ export class BrowserMainRepository implements MainRepository {
     }
 
     const next = cloneMainData(data);
-    next.updatedAt = Date.now();
+    next.updatedAt = this.nextUpdatedAt();
     const serialized = JSON.stringify(next);
 
     await this.historyStore.saveMainV1(next);
@@ -69,6 +71,13 @@ export class BrowserMainRepository implements MainRepository {
 
   clearSetupProgress(): void {
     window.localStorage.removeItem(SETUP_PROGRESS_KEY);
+  }
+
+  private nextUpdatedAt(): number {
+    const persistedUpdatedAt = readStoredUpdatedAt(window.localStorage.getItem(MAIN_KEY));
+    const updatedAt = Math.max(Date.now(), persistedUpdatedAt + 1, this.lastIssuedUpdatedAt + 1);
+    this.lastIssuedUpdatedAt = updatedAt;
+    return updatedAt;
   }
 }
 
@@ -101,4 +110,16 @@ function cloneMainData(data: MainData): MainData {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function readStoredUpdatedAt(raw: string | null): number {
+  if (raw === null) return 0;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return isRecord(parsed) && typeof parsed.updatedAt === 'number' && Number.isFinite(parsed.updatedAt)
+      ? parsed.updatedAt
+      : 0;
+  } catch {
+    return 0;
+  }
 }

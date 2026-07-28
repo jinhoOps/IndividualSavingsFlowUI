@@ -99,4 +99,39 @@ describe('BrowserMainRepository', () => {
     expect(input.updatedAt).toBe(0);
     expect(window.localStorage.getItem('isf-main-v1-pending')).toBeNull();
   });
+
+  it('keeps separate history entries when two saves share a millisecond', async () => {
+    const history = new Map<number, MainData>();
+    const saveMainV1 = vi.fn(async (data: MainData) => {
+      history.set(data.updatedAt, structuredClone(data));
+    });
+    vi.spyOn(Date, 'now').mockReturnValue(1_750_000_000_000);
+    const repository = new BrowserMainRepository({ saveMainV1 });
+
+    await repository.save(validData());
+    const second = validData();
+    second.expenses = [{ id: 'rent', name: '주거비', amountWon: 900_000 }];
+    await repository.save(second);
+
+    expect(history.size).toBe(2);
+    expect([...history.keys()]).toEqual([1_750_000_000_000, 1_750_000_000_001]);
+    expect(JSON.parse(window.localStorage.getItem('isf-main-v1') ?? '').updatedAt).toBe(1_750_000_000_001);
+  });
+
+  it('retains the old current data and recovery pending data when replacing the current key fails', async () => {
+    const existing = validData();
+    existing.updatedAt = 10;
+    window.localStorage.setItem('isf-main-v1', JSON.stringify(existing));
+    const setItem = vi.spyOn(window.localStorage, 'setItem');
+    setItem.mockImplementation((key, value) => {
+      if (key === 'isf-main-v1') throw new Error('quota exceeded');
+      MemoryStorage.prototype.setItem.call(window.localStorage, key, value);
+    });
+    const repository = new BrowserMainRepository({ saveMainV1: vi.fn().mockResolvedValue(undefined) });
+
+    await expect(repository.save(validData())).rejects.toThrow('quota exceeded');
+
+    expect(JSON.parse(window.localStorage.getItem('isf-main-v1') ?? '')).toEqual(existing);
+    expect(JSON.parse(window.localStorage.getItem('isf-main-v1-pending') ?? '').updatedAt).toBeGreaterThan(10);
+  });
 });
