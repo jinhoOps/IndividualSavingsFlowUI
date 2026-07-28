@@ -1,4 +1,5 @@
 import { createEmptyMainData, type MainData, type SetupStep } from '../domain/model';
+import { calculateCashflow, type CashflowSummary } from '../domain/cashflow';
 import { validateMainData, type ValidationResult } from '../domain/validation';
 import type { MainRepository } from '../infrastructure/mainRepository';
 import { cloneMainData, type MainState } from './mainReducer';
@@ -6,7 +7,7 @@ import { cloneMainData, type MainState } from './mainReducer';
 export type ValidationIssue = ValidationResult['issues'][number];
 
 export type ApplyResult =
-  | { ok: true; data: MainData }
+  | { ok: true; data: MainData; summary: CashflowSummary }
   | { ok: false; kind: 'validation'; issues: ValidationIssue[] }
   | { ok: false; kind: 'storage'; error: Error };
 
@@ -66,8 +67,8 @@ export async function applyDraft(state: MainState, repository: MainRepository): 
 
   const data = cloneMainData(state.draft);
   try {
-    await repository.save(data);
-    return { ok: true, data };
+    const persisted = await repository.save(data);
+    return { ok: true, data: persisted, summary: calculateCashflow(persisted) };
   } catch (error) {
     return { ok: false, kind: 'storage', error: toError(error) };
   }

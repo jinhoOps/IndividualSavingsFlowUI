@@ -91,10 +91,12 @@ describe('BrowserMainRepository', () => {
     const input = validData();
     const repository = new BrowserMainRepository({ saveMainV1 });
 
-    await repository.save(input);
+    const persisted = await repository.save(input);
 
     const stored = JSON.parse(window.localStorage.getItem('isf-main-v1') ?? '');
     expect(stored.updatedAt).toBe(1_750_000_000_000);
+    expect(persisted).toEqual(stored);
+    expect(persisted).not.toBe(input);
     expect(saveMainV1).toHaveBeenCalledWith(expect.objectContaining({ updatedAt: 1_750_000_000_000 }));
     expect(input.updatedAt).toBe(0);
     expect(window.localStorage.getItem('isf-main-v1-pending')).toBeNull();

@@ -14,7 +14,7 @@ let activeMainSaves = 0;
 
 export interface MainRepository {
   load(): Promise<MigrationResult>;
-  save(data: MainData): Promise<void>;
+  save(data: MainData): Promise<MainData>;
   saveSetupProgress(step: SetupStep, draft: MainData): void;
   loadSetupProgress(): { step: SetupStep; draft: MainData } | null;
   clearSetupProgress(): void;
@@ -47,7 +47,7 @@ export class BrowserMainRepository implements MainRepository {
     return legacy === null ? migrateLegacyMain(null) : migrateStored(legacy);
   }
 
-  async save(data: MainData): Promise<void> {
+  async save(data: MainData): Promise<MainData> {
     const validation = validateMainData(data);
     if (!validation.valid) {
       throw new Error(`Cannot save invalid main data: ${validation.issues.map((issue) => issue.code).join(', ')}`);
@@ -62,6 +62,7 @@ export class BrowserMainRepository implements MainRepository {
       window.localStorage.setItem(PENDING_KEY, serialized);
       window.localStorage.setItem(MAIN_KEY, serialized);
       window.localStorage.removeItem(PENDING_KEY);
+      return next;
     } finally {
       activeMainSaves--;
     }
