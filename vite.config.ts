@@ -19,13 +19,14 @@ export default defineConfig({
       manifest: {
         name: '나의 가계 흐름',
         short_name: '가계흐름',
+        lang: 'ko-KR',
         version: packageJson.version,
         description: '월 단위 가계 흐름을 카드와 Sankey Diagram으로 확인하는 개인 자산 흐름 프로토타입',
-        theme_color: '#ea5b2a',
-        background_color: '#f9f6f0',
+        theme_color: '#0f766e',
+        background_color: '#f8f6f1',
         display: 'standalone',
-        start_url: '/IndividualSavingsFlowUI/',
-        scope: '/IndividualSavingsFlowUI/',
+        start_url: './apps/main/',
+        scope: './',
         icons: [
           {
             src: 'icons/icon-192.png',

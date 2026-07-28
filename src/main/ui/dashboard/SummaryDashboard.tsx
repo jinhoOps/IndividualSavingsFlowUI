@@ -121,32 +121,35 @@ export function SummaryDashboard({
   }
 
   return (
-    <main aria-labelledby="summary-dashboard-title">
+    <main className="relative mx-auto grid min-h-dvh w-full max-w-[1200px] gap-6 px-5 py-7 sm:px-8 sm:py-10" aria-labelledby="summary-dashboard-title">
       <div
+        className="grid min-w-0 gap-6"
         aria-hidden={mobileModalOpen ? 'true' : undefined}
         data-testid="dashboard-controls"
         inert={mobileModalOpen || undefined}
       >
-      <header>
+      <header className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p role="status">{saveStatusMessage(saveStatus)}</p>
-          <h1 id="summary-dashboard-title">이번 달 자금 흐름</h1>
-          <p>수입과 계획 유출, 남는 금액을 먼저 확인하세요.</p>
+          <p className="m-0 text-sm font-black tracking-wide text-accent" role="status">{saveStatusMessage(saveStatus)}</p>
+          <h1 className="m-0 mt-2 text-4xl font-bold tracking-tight text-slate-950 sm:text-5xl" id="summary-dashboard-title">이번 달 자금 흐름</h1>
+          <p className="mb-0 mt-3 text-lg text-slate-600">수입과 계획 유출, 남는 금액을 먼저 확인하세요.</p>
         </div>
-        <button type="button" onClick={requestRestart}>처음부터 다시 설정</button>
+        <button className="self-start rounded-full border border-slate-300 bg-white/80 px-4 py-2 text-sm font-bold text-slate-700 shadow-sm" type="button" onClick={requestRestart}>처음부터 다시 설정</button>
       </header>
 
       <CashflowSummary summary={summary} onEdit={openEditor} />
 
-      <section aria-labelledby="sankey-title">
-        <h2 id="sankey-title">월간 현금흐름</h2>
-        <CashflowSankey graph={buildSankeyGraph(applied)} />
+      <section className="min-w-0 rounded-3xl border border-white/80 bg-white/85 p-5 shadow-float sm:p-7" aria-labelledby="sankey-title">
+        <h2 className="m-0 text-2xl font-bold text-slate-950" id="sankey-title">월간 현금흐름</h2>
+        <div className="mt-5 overflow-x-auto pb-2"><CashflowSankey graph={buildSankeyGraph(applied)} /></div>
       </section>
 
-      <section aria-labelledby="category-summary-title">
-        <h2 id="category-summary-title">항목별 요약</h2>
+      <section className="rounded-3xl border border-slate-200/80 bg-white/65 p-5 sm:p-7" aria-labelledby="category-summary-title">
+        <h2 className="m-0 text-xl font-bold text-slate-900" id="category-summary-title">항목별 요약</h2>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {(Object.keys(sectionLabels) as DashboardSection[]).map((section) => (
           <button
+            className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 text-left transition hover:border-accent/30"
             key={section}
             type="button"
             aria-label={`${sectionLabels[section]} 항목 관리`}
@@ -156,14 +159,15 @@ export function SummaryDashboard({
             <span>{sectionTotalLabel(section, applied)}</span>
           </button>
         ))}
+        </div>
       </section>
       </div>
 
       {activeSection ? (
         isMobile ? (
           <>
-            <div aria-hidden="true" data-testid="editor-backdrop" onClick={requestClose} />
-            <div aria-labelledby={`${activeSection}-editor-title`} aria-modal="true" onKeyDown={trapModalFocus} ref={modalRef} role="dialog">
+            <div className="fixed inset-0 z-30 bg-slate-950/45 backdrop-blur-sm" aria-hidden="true" data-testid="editor-backdrop" onClick={requestClose} />
+            <div className="editor-dialog fixed inset-x-0 bottom-0 z-40 max-h-[88dvh] overflow-y-auto rounded-t-3xl bg-white shadow-2xl" aria-labelledby={`${activeSection}-editor-title`} aria-modal="true" onKeyDown={trapModalFocus} ref={modalRef} role="dialog">
               <FinancialEditor
                 section={activeSection}
                 draft={draft}
@@ -183,6 +187,7 @@ export function SummaryDashboard({
           </>
         ) : (
           <>
+          <div className="fixed inset-y-0 right-0 z-30 flex w-[min(34rem,42vw)] flex-col overflow-y-auto border-l border-slate-200 bg-white shadow-2xl">
           <FinancialEditor
             section={activeSection}
             draft={draft}
@@ -198,6 +203,7 @@ export function SummaryDashboard({
             onApply={onApply}
             onCancel={onCancel}
           />
+          </div>
           </>
         )
       ) : null}

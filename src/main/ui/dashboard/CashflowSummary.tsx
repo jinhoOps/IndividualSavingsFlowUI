@@ -9,8 +9,8 @@ export interface CashflowSummaryProps {
 
 export function CashflowSummary({ summary, onEdit }: CashflowSummaryProps) {
   return (
-    <section aria-label="월간 핵심 수치">
-      <div>
+    <section className="grid gap-4" aria-label="월간 핵심 수치">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <MetricButton
           label="수입"
           valueWon={summary.incomeWon}
@@ -35,7 +35,7 @@ export function CashflowSummary({ summary, onEdit }: CashflowSummaryProps) {
           {summary.deficitWon > 0 ? <span>부족 {formatDashboardWon(summary.deficitWon)}</span> : null}
         </MetricButton>
       </div>
-      <div>
+      <div className="grid gap-3 sm:grid-cols-2">
         <MetricButton
           label="저축"
           valueWon={summary.savingWon}
@@ -67,11 +67,18 @@ function MetricButton({ label, valueWon, importance, children, onClick }: Metric
       type="button"
       aria-label={`${label === '계획 유출' ? '생활비' : label} 편집`}
       data-importance={importance}
+      className={importance === 'primary'
+        ? 'group min-h-44 rounded-3xl border border-white/80 bg-white p-6 text-left shadow-float transition hover:-translate-y-0.5 hover:border-accent/25'
+        : 'group rounded-2xl border border-slate-200/80 bg-white/70 p-5 text-left transition hover:border-slate-300 hover:bg-white'}
       onClick={(event) => onClick(event.currentTarget)}
     >
-      <span>{label}</span>
-      <strong>{formatDashboardWon(valueWon)}</strong>
-      {children ? <small>{children}</small> : null}
+      <span className={importance === 'primary'
+        ? 'block text-sm font-black tracking-wide text-accent'
+        : 'block text-sm font-bold text-slate-500'}>{label}</span>
+      <strong className={importance === 'primary'
+        ? 'mt-5 block text-4xl font-black tracking-tight text-slate-950'
+        : 'mt-2 block text-2xl font-black tracking-tight text-slate-800'}>{formatDashboardWon(valueWon)}</strong>
+      {children ? <small className="mt-4 flex flex-wrap gap-2 text-sm font-bold text-slate-500">{children}</small> : null}
     </button>
   );
 }

@@ -11,8 +11,8 @@ export function MoneyField({ id, label, valueWon, error, validationPath, onChang
   const errorId = `${id}-error`;
 
   return (
-    <div>
-      <label htmlFor={id}>{label}</label>
+    <div className="grid gap-2">
+      <label className="text-sm font-bold text-slate-700" htmlFor={id}>{label}</label>
       <input
         id={id}
         name={id}
@@ -24,7 +24,7 @@ export function MoneyField({ id, label, valueWon, error, validationPath, onChang
         aria-describedby={error ? errorId : undefined}
         onChange={(event) => onChange(parseWon(event.target.value))}
       />
-      {error ? <p id={errorId} role="alert">{error}</p> : null}
+      {error ? <p className="m-0 text-sm font-bold text-red-700" id={errorId} role="alert">{error}</p> : null}
     </div>
   );
 }

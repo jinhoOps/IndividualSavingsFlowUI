@@ -42,9 +42,14 @@ export function SetupFlow({ draft, step, issues, onChange, onStepChange, onApply
   }
 
   return (
-    <section aria-labelledby="setup-flow-title">
-      <p id="setup-flow-title" role="status">{stepIndex + 1} / {steps.length} · {stepLabels[step]}</p>
-      <form aria-label="설정 단계" onSubmit={submit}>
+    <section className="overflow-hidden rounded-3xl border border-white/70 bg-white/92 shadow-float" aria-labelledby="setup-flow-title">
+      <div className="h-1.5 bg-slate-100">
+        <div className="h-full bg-accent transition-[width]" style={{ width: `${((stepIndex + 1) / steps.length) * 100}%` }} />
+      </div>
+      <p className="mx-6 mt-6 text-sm font-black tracking-wide text-accent sm:mx-10" id="setup-flow-title" role="status">
+        {stepIndex + 1} / {steps.length} · {stepLabels[step]}
+      </p>
+      <form className="grid min-h-[31rem] content-start gap-6 px-6 pb-6 pt-5 sm:px-10 sm:pb-10" aria-label="설정 단계" onSubmit={submit}>
         {step === 'welcome' ? <WelcomeStep /> : null}
         {step === 'income' ? <IncomeStep draft={draft} issues={issues} onChange={onChange} /> : null}
         {step === 'expense' ? <ExpenseStep draft={draft} issues={issues} onChange={onChange} /> : null}
@@ -52,9 +57,15 @@ export function SetupFlow({ draft, step, issues, onChange, onStepChange, onApply
         {step === 'account' ? <AccountStep draft={draft} issues={issues} onChange={onChange} /> : null}
         {step === 'review' ? <ReviewStep draft={draft} /> : null}
 
-        <nav aria-label="설정 이동">
-          {previousStep ? <button type="button" onClick={() => onStepChange(previousStep)}>이전</button> : null}
-          <button type="submit">{step === 'review' ? '계획 적용' : '다음'}</button>
+        <nav className="mt-auto flex justify-end gap-3 pt-6" aria-label="설정 이동">
+          {previousStep ? (
+            <button className="rounded-xl border border-slate-300 bg-white px-5 py-3 font-bold text-slate-700" type="button" onClick={() => onStepChange(previousStep)}>
+              이전
+            </button>
+          ) : null}
+          <button className="rounded-xl bg-slate-950 px-6 py-3 font-bold text-white shadow-lg shadow-slate-950/10" type="submit">
+            {step === 'review' ? '계획 적용' : '다음'}
+          </button>
         </nav>
       </form>
     </section>
@@ -64,8 +75,9 @@ export function SetupFlow({ draft, step, issues, onChange, onStepChange, onApply
 function WelcomeStep() {
   return (
     <>
-      <h1>내 자금 계획을 시작합니다</h1>
-      <p>먼저 매달 들어오는 수입과 생활비를 간단히 적어볼게요.</p>
+      <p className="m-0 text-sm font-black tracking-[0.18em] text-primary">MONTHLY FLOW</p>
+      <h1 className="m-0 max-w-xl text-4xl font-bold leading-tight tracking-tight text-slate-950 sm:text-5xl">내 자금 계획을 시작합니다</h1>
+      <p className="m-0 max-w-xl text-lg leading-8 text-slate-600">먼저 매달 들어오는 수입과 생활비를 간단히 적어볼게요.</p>
     </>
   );
 }
@@ -77,8 +89,8 @@ function IncomeStep({ draft, issues, onChange }: Pick<SetupFlowProps, 'draft' | 
 
   return (
     <>
-      <h1>월 수입을 알려주세요</h1>
-      <p>흐름의 출발점입니다. 한 달에 실제로 들어오는 금액을 적어주세요.</p>
+      <h1 className="m-0 text-3xl font-bold tracking-tight text-slate-950">월 수입을 알려주세요</h1>
+      <p className="m-0 text-slate-600">흐름의 출발점입니다. 한 달에 실제로 들어오는 금액을 적어주세요.</p>
       <TextField
         id="income-name"
         label="수입 이름"
@@ -104,8 +116,8 @@ function ExpenseStep({ draft, issues, onChange }: Pick<SetupFlowProps, 'draft' |
 
   return (
     <>
-      <h1>월 생활비를 알려주세요</h1>
-      <p>매달 꼭 나가는 생활비부터 적으면 수입과 지출의 균형을 바로 볼 수 있어요.</p>
+      <h1 className="m-0 text-3xl font-bold tracking-tight text-slate-950">월 생활비를 알려주세요</h1>
+      <p className="m-0 text-slate-600">매달 꼭 나가는 생활비부터 적으면 수입과 지출의 균형을 바로 볼 수 있어요.</p>
       <TextField
         id="expense-name"
         label="생활비 이름"
@@ -130,8 +142,8 @@ function SavingInvestmentStep({ draft, issues, onChange }: Pick<SetupFlowProps, 
 
   return (
     <>
-      <h1>저축과 투자를 알려주세요</h1>
-      <p>지금 정해둔 금액이 있다면 적어주세요. 나중에 언제든 바꿀 수 있어요.</p>
+      <h1 className="m-0 text-3xl font-bold tracking-tight text-slate-950">저축과 투자를 알려주세요</h1>
+      <p className="m-0 text-slate-600">지금 정해둔 금액이 있다면 적어주세요. 나중에 언제든 바꿀 수 있어요.</p>
       <MoneyField
         id="saving-amount"
         label="월 저축 금액"
@@ -155,8 +167,8 @@ function AccountStep({ draft, issues, onChange }: Pick<SetupFlowProps, 'draft' |
 
   return (
     <>
-      <h1>계좌를 알려주세요</h1>
-      <p>계좌 이름은 나중에 자금의 이동을 이해하는 데만 쓰입니다.</p>
+      <h1 className="m-0 text-3xl font-bold tracking-tight text-slate-950">계좌를 알려주세요</h1>
+      <p className="m-0 text-slate-600">계좌 이름은 나중에 자금의 이동을 이해하는 데만 쓰입니다.</p>
       <TextField
         id="account-name"
         label="계좌 이름"
@@ -171,12 +183,12 @@ function AccountStep({ draft, issues, onChange }: Pick<SetupFlowProps, 'draft' |
 function ReviewStep({ draft }: Pick<SetupFlowProps, 'draft'>) {
   return (
     <>
-      <h1>입력한 월 자금 계획을 확인해주세요</h1>
-      <dl>
-        <div><dt>월 수입</dt><dd>{formatWon(total(draft.incomes))}</dd></div>
-        <div><dt>월 생활비</dt><dd>{formatWon(total(draft.expenses))}</dd></div>
-        <div><dt>월 저축</dt><dd>{formatWon(total(draft.savings))}</dd></div>
-        <div><dt>월 투자</dt><dd>{formatWon(total(draft.investments))}</dd></div>
+      <h1 className="m-0 text-3xl font-bold tracking-tight text-slate-950">입력한 월 자금 계획을 확인해주세요</h1>
+      <dl className="grid gap-3 sm:grid-cols-2">
+        <div className="rounded-2xl bg-teal-50 p-4"><dt className="text-sm font-bold text-teal-800">월 수입</dt><dd className="m-0 mt-2 text-2xl font-black text-slate-950">{formatWon(total(draft.incomes))}</dd></div>
+        <div className="rounded-2xl bg-orange-50 p-4"><dt className="text-sm font-bold text-orange-800">월 생활비</dt><dd className="m-0 mt-2 text-2xl font-black text-slate-950">{formatWon(total(draft.expenses))}</dd></div>
+        <div className="rounded-2xl bg-slate-100 p-4"><dt className="text-sm font-bold text-slate-600">월 저축</dt><dd className="m-0 mt-2 text-xl font-black text-slate-800">{formatWon(total(draft.savings))}</dd></div>
+        <div className="rounded-2xl bg-slate-100 p-4"><dt className="text-sm font-bold text-slate-600">월 투자</dt><dd className="m-0 mt-2 text-xl font-black text-slate-800">{formatWon(total(draft.investments))}</dd></div>
       </dl>
     </>
   );
@@ -193,8 +205,8 @@ interface TextFieldProps {
 function TextField({ id, label, value, error, onChange }: TextFieldProps) {
   const errorId = `${id}-error`;
   return (
-    <div>
-      <label htmlFor={id}>{label}</label>
+    <div className="grid gap-2">
+      <label className="text-sm font-bold text-slate-700" htmlFor={id}>{label}</label>
       <input
         id={id}
         value={value}
@@ -202,7 +214,7 @@ function TextField({ id, label, value, error, onChange }: TextFieldProps) {
         aria-describedby={error ? errorId : undefined}
         onChange={(event) => onChange(event.target.value)}
       />
-      {error ? <p id={errorId} role="alert">{error}</p> : null}
+      {error ? <p className="m-0 text-sm font-bold text-red-700" id={errorId} role="alert">{error}</p> : null}
     </div>
   );
 }

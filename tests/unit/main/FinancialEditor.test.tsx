@@ -128,7 +128,7 @@ function RepeatInvalidFocusHarness() {
 }
 
 describe('FinancialEditor', () => {
-  it('updates only the draft item being edited and preserves later entries', () => {
+  it('updates only the draft item being edited and keeps its single full allocation in sync', () => {
     const onChange = vi.fn();
     render(
       <FinancialEditor
@@ -143,6 +143,7 @@ describe('FinancialEditor', () => {
 
     const next = onChange.mock.lastCall?.[0] as MainData;
     expect(next.incomes[0]).toMatchObject({ id: 'salary', amountWon: 5_000_000 });
+    expect(next.incomes[0].allocations).toEqual([{ accountId: 'salary-account', amountWon: 5_000_000 }]);
     expect(next.incomes[1]).toStrictEqual(original.incomes[1]);
     expect(original.incomes[0].amountWon).toBe(4_200_000);
   });

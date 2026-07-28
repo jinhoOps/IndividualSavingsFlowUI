@@ -65,6 +65,7 @@ export function CashflowSankey({ graph }: CashflowSankeyProps) {
   return (
     <svg
       aria-label="월간 현금흐름 Sankey 그래프"
+      className="cashflow-sankey"
       role="img"
       viewBox="0 0 960 420"
       width="100%"

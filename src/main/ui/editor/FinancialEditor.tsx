@@ -25,6 +25,8 @@ const sectionMeta: Record<DashboardSection, { label: string; collection: Editabl
   investment: { label: '투자', collection: 'investments', itemLabel: '새 투자' },
 };
 
+const editorClassName = 'grid gap-6 p-5 sm:p-7 [&_header]:flex [&_header]:items-center [&_header]:justify-between [&_h2]:m-0 [&_h2]:text-3xl [&_h2]:font-bold [&_h3]:m-0 [&_h3]:text-lg [&_label]:text-sm [&_label]:font-bold [&_label]:text-slate-700 [&_fieldset]:grid [&_fieldset]:gap-3 [&_fieldset]:rounded-2xl [&_fieldset]:border [&_fieldset]:border-slate-200 [&_fieldset]:bg-slate-50/70 [&_fieldset]:p-4 [&_legend]:px-2 [&_legend]:font-black [&_button]:rounded-lg [&_button]:border [&_button]:border-slate-300 [&_button]:bg-white [&_button]:px-3 [&_button]:py-2 [&_button]:font-bold [&_button]:text-slate-700 [&_[role=alert]]:m-0 [&_[role=alert]]:text-sm [&_[role=alert]]:font-bold [&_[role=alert]]:text-red-700';
+
 export function FinancialEditor({
   section,
   draft,
@@ -93,10 +95,10 @@ export function FinancialEditor({
   );
 
   if (presentation === 'content') {
-    return <section aria-labelledby={titleId}>{content}</section>;
+    return <section className={editorClassName} aria-labelledby={titleId}>{content}</section>;
   }
 
-  return <aside aria-labelledby={titleId}>{content}</aside>;
+  return <aside className={editorClassName} aria-labelledby={titleId}>{content}</aside>;
 }
 
 interface ItemEditorProps {
@@ -139,7 +141,7 @@ function ItemEditor({ item, index, collection, label, accounts, issues, onChange
         valueWon={item.amountWon}
         error={amountIssue ? issueMessage(amountIssue.code) : undefined}
         validationPath={amountPath}
-        onChange={(amountWon) => onChange({ ...item, amountWon })}
+        onChange={(amountWon) => onChange(withUpdatedAmount(item, amountWon))}
       />
 
       <label htmlFor={`${item.id}-account`}>{itemLabel} 계좌</label>
@@ -167,6 +169,22 @@ function ItemEditor({ item, index, collection, label, accounts, issues, onChange
       <button type="button" onClick={onDelete}>{itemLabel} 삭제</button>
     </fieldset>
   );
+}
+
+function withUpdatedAmount(item: FinancialItem | IncomeItem, amountWon: number): FinancialItem | IncomeItem {
+  if (
+    'allocations' in item
+    && item.allocations.length === 1
+    && item.allocations[0].amountWon === item.amountWon
+  ) {
+    return {
+      ...item,
+      amountWon,
+      allocations: [{ ...item.allocations[0], amountWon }],
+    };
+  }
+
+  return { ...item, amountWon };
 }
 
 interface AllocationEditorProps {
