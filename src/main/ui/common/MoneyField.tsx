@@ -3,10 +3,11 @@ export interface MoneyFieldProps {
   label: string;
   valueWon: number;
   error?: string;
+  validationPath?: string;
   onChange(valueWon: number): void;
 }
 
-export function MoneyField({ id, label, valueWon, error, onChange }: MoneyFieldProps) {
+export function MoneyField({ id, label, valueWon, error, validationPath, onChange }: MoneyFieldProps) {
   const errorId = `${id}-error`;
 
   return (
@@ -18,6 +19,7 @@ export function MoneyField({ id, label, valueWon, error, onChange }: MoneyFieldP
         type="text"
         inputMode="numeric"
         value={valueWon === 0 ? '' : valueWon.toLocaleString('ko-KR')}
+        data-validation-path={validationPath}
         aria-invalid={error ? 'true' : undefined}
         aria-describedby={error ? errorId : undefined}
         onChange={(event) => onChange(parseWon(event.target.value))}
