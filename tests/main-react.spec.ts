@@ -38,16 +38,16 @@ test('new user applies the v2 quick setup and refreshes into matching dashboard 
 
   await page.getByLabel('월 주거 고정비').fill('800000');
   await expect(page.getByLabel('월 주거 고정비')).toHaveValue('800,000');
-  await expect(page.getByText('남는 돈 240만 원')).toBeVisible();
+  await expect(page.getByRole('meter', { name: '수입 대비 현재 계획' })).toHaveAttribute('aria-valuetext', '25.0%');
   await page.getByRole('button', { name: '다음' }).click();
 
   await page.getByLabel('월평균 생활비').fill('1000000');
-  await expect(page.getByText('남는 돈 140만 원')).toBeVisible();
+  await expect(page.getByRole('meter', { name: '수입 대비 현재 계획' })).toHaveAttribute('aria-valuetext', '56.3%');
   await page.getByRole('button', { name: '다음' }).click();
 
   await page.getByLabel('월 저축액').fill('300000');
   await page.getByLabel('월 투자액').fill('200000');
-  await expect(page.getByText('남는 돈 90만 원')).toBeVisible();
+  await expect(page.getByRole('meter', { name: '수입 대비 현재 계획' })).toHaveAttribute('aria-valuetext', '71.9%');
   await page.getByRole('button', { name: '다음' }).click();
 
   await expect(page.getByRole('button', { name: '소비 56.3%' })).toBeVisible();
@@ -107,10 +107,17 @@ test.describe('mobile quick setup', () => {
     await page.getByRole('button', { name: '다음' }).tap();
 
     await page.getByLabel('월 주거 고정비').fill('800000');
-    await expect(page.getByRole('meter', { name: '수입 대비 현재 계획' })).toHaveAttribute('aria-valuetext', '25.0%');
-    await page.getByRole('meter', { name: '수입 대비 현재 계획' }).tap();
-    await expect(page.getByRole('tooltip')).toHaveText('25.0%');
-    await expect(page.getByText('남는 돈 240만 원')).toBeVisible();
+    const meter = page.getByRole('meter', { name: '수입 대비 현재 계획' });
+    await expect(meter).toHaveAttribute('aria-valuetext', '25.0%');
+    await meter.hover();
+    await expect(page.getByRole('tooltip')).toHaveText(/^\d+\.\d%$/);
+    await expect(page.getByText(/^월 수입 \d/)).toHaveCount(0);
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await meter.tap();
+    await expect(page.getByRole('tooltip')).toBeVisible();
+    await page.getByRole('heading', { name: '주거비로 매달 얼마가 나가나요?' }).tap();
+    await expect(page.getByRole('tooltip')).toHaveCount(0);
     expect(await page.locator('html').evaluate((element) => element.scrollWidth <= window.innerWidth)).toBe(true);
   });
 });
@@ -171,8 +178,8 @@ test('interrupted setup reloads at housing with its v2 draft intact', async ({ p
 
   await expect(page.getByRole('heading', { name: '주거비로 매달 얼마가 나가나요?' })).toBeVisible();
   await expect(page.getByLabel('월 주거 고정비')).toHaveValue('800,000');
-  await expect(page.getByText('월 수입 320만 원')).toBeVisible();
-  await expect(page.getByText('남는 돈 240만 원')).toBeVisible();
+  await expect(page.getByRole('meter', { name: '수입 대비 현재 계획' })).toHaveAttribute('aria-valuetext', '25.0%');
+  await expect(page.getByText(/^월 수입 \d/)).toHaveCount(0);
 });
 
 test('dashboard edit persists only the v2 scalar plan', async ({ page }) => {

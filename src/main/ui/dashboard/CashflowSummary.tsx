@@ -1,5 +1,6 @@
 import { useId } from 'react';
 import type { CashflowSummary as CashflowTotals } from '../../domain/cashflow';
+import { Button } from '../common/Button';
 
 export interface CashflowSummaryProps {
   summary: CashflowTotals;
@@ -71,15 +72,16 @@ function MetricButton({ label, valueWon, importance, children, disabled, onClick
   const descriptionId = useId();
   const contextId = useId();
   return (
-    <button
+    <Button
       type="button"
+      variant="quiet"
       disabled={disabled}
       aria-label={`${label} 편집`}
       aria-describedby={children ? `${descriptionId} ${contextId}` : descriptionId}
       data-importance={importance}
       className={importance === 'primary'
-        ? 'group min-h-44 rounded-3xl border border-white/80 bg-white p-6 text-left shadow-float transition hover:-translate-y-0.5 hover:border-accent/25'
-        : 'group rounded-2xl border border-slate-200/80 bg-white/70 p-5 text-left transition hover:border-slate-300 hover:bg-white'}
+        ? 'group h-auto min-h-44 w-full flex-col items-stretch justify-start whitespace-normal rounded-3xl border-white/80 bg-white p-6 text-left shadow-float hover:-translate-y-0.5 hover:border-accent/25'
+        : 'group h-auto w-full flex-col items-stretch justify-start whitespace-normal rounded-2xl border-slate-200/80 bg-white/70 p-5 text-left hover:border-slate-300 hover:bg-white'}
       onClick={(event) => onClick(event.currentTarget)}
     >
       <span className={importance === 'primary'
@@ -89,7 +91,7 @@ function MetricButton({ label, valueWon, importance, children, disabled, onClick
         ? 'mt-5 block text-4xl font-black tracking-tight text-slate-950'
         : 'mt-2 block text-2xl font-black tracking-tight text-slate-800'}>{formatDashboardWon(valueWon)}</strong>
       {children ? <small id={contextId} className="mt-4 flex flex-wrap gap-2 text-sm font-bold text-slate-500">{children}</small> : null}
-    </button>
+    </Button>
   );
 }
 

@@ -25,6 +25,12 @@ const emptyFixture: MainData = {
   monthlyInvestmentWon: 0,
 };
 
+const tinyFixture: MainData = {
+  ...emptyFixture,
+  monthlyNetIncomeWon: 3_200_000,
+  monthlyInvestmentWon: 1_000,
+};
+
 describe('AllocationBar', () => {
   it('keeps the legend to allocation labels and amounts', () => {
     render(<AllocationBar data={cashflowFixture} />);
@@ -76,6 +82,24 @@ describe('AllocationBar', () => {
 
     fireEvent.focus(screen.getByRole('button', { name: '소비 0.0%' }));
     expect(screen.getByRole('tooltip')).toHaveTextContent(/^0\.0%$/);
+  });
+
+  it.each([
+    ['zero-width', emptyFixture, '소비 0.0%'],
+    ['tiny-width', tinyFixture, '투자 0.0%'],
+  ])('toggles the %s legend tooltip by tap and closes it on click-away', (_case, fixture, accessibleName) => {
+    render(<AllocationBar data={fixture} />);
+    const legendTarget = screen.getByRole('button', { name: accessibleName });
+
+    fireEvent.click(legendTarget);
+    expect(screen.getByRole('tooltip')).toHaveTextContent(/^0\.0%$/);
+    fireEvent.click(legendTarget);
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+
+    fireEvent.click(legendTarget);
+    expect(screen.getByRole('tooltip')).toHaveTextContent(/^0\.0%$/);
+    fireEvent.click(screen.getByText('월 수입을 이렇게 나눠 쓰고 있어요'));
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
   });
 
   it('represents a deficit against planned outflow without a negative remaining segment', () => {

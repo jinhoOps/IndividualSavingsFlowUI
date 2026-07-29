@@ -1,7 +1,9 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import type { MainData, SetupStep } from '../../domain/model';
 import type { ValidationCode } from '../../domain/validation';
+import { Button } from '../common/Button';
 import { MoneyField } from '../common/MoneyField';
+import { Surface } from '../common/Surface';
 import { AllocationBar } from './AllocationBar';
 import { FlowContextSummary } from './FlowContextSummary';
 
@@ -85,7 +87,7 @@ export function SetupFlow({
   }
 
   return (
-    <section className="overflow-hidden rounded-3xl border border-white/70 bg-white/92 shadow-float" aria-labelledby="setup-flow-title">
+    <Surface as="section" className="overflow-hidden shadow-float" aria-labelledby="setup-flow-title">
       <div className="h-1.5 bg-slate-100">
         <div className="h-full bg-accent transition-[width]" style={{ width: `${((stepIndex + 1) / steps.length) * 100}%` }} />
       </div>
@@ -118,21 +120,22 @@ export function SetupFlow({
 
           <nav className="mt-auto flex justify-end gap-3 pt-6" aria-label="설정 이동">
             {previousStep ? (
-              <button
-                className="rounded-xl border border-slate-300 bg-white px-5 py-3 font-bold text-slate-700"
+              <Button
+                className="px-5 py-3"
                 type="button"
+                variant="secondary"
                 onClick={() => onStepChange(previousStep)}
               >
                 이전
-              </button>
+              </Button>
             ) : null}
-            <button className="rounded-xl bg-slate-950 px-6 py-3 font-bold text-white shadow-lg shadow-slate-950/10" type="submit">
+            <Button className="px-6 py-3 shadow-lg shadow-primary/10" type="submit" variant="primary">
               {step === 'review' ? '계획 적용' : '다음'}
-            </button>
+            </Button>
           </nav>
         </fieldset>
       </form>
-    </section>
+    </Surface>
   );
 }
 

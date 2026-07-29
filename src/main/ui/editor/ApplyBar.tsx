@@ -1,4 +1,5 @@
 import type { MainState } from '../../application/mainReducer';
+import { Button } from '../common/Button';
 
 export interface ApplyBarProps {
   dirty: boolean;
@@ -25,10 +26,10 @@ export function ApplyBar({ dirty, saveStatus, onApply, onCancel }: ApplyBarProps
               ? '저장하지 않은 변경사항이 있습니다.'
               : '저장된 계획과 동일합니다.'}
       </p>
-      <button className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 font-bold text-slate-700 disabled:cursor-not-allowed disabled:opacity-50" type="button" disabled={saving} onClick={onCancel}>취소</button>
-      <button className="rounded-xl bg-slate-950 px-5 py-2.5 font-bold text-white disabled:cursor-not-allowed disabled:opacity-40" type="button" disabled={!dirty || saving} onClick={onApply}>
+      <Button className="py-2.5" type="button" variant="secondary" disabled={saving} onClick={onCancel}>취소</Button>
+      <Button className="px-5 py-2.5" type="button" variant="primary" disabled={!dirty || saving} onClick={onApply}>
         {saving ? '저장 중' : failed ? '다시 시도' : '적용'}
-      </button>
+      </Button>
     </footer>
   );
 }

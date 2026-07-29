@@ -3,7 +3,9 @@ import type { MainState } from '../../application/mainReducer';
 import { calculateCashflow } from '../../domain/cashflow';
 import type { MainData } from '../../domain/model';
 import type { ValidationCode, ValidationResult } from '../../domain/validation';
+import { Button } from '../common/Button';
 import { MoneyField } from '../common/MoneyField';
+import { Surface } from '../common/Surface';
 import { ApplyBar } from '../editor/ApplyBar';
 import { AllocationBar } from '../setup/AllocationBar';
 import { CashflowSummary } from './CashflowSummary';
@@ -145,9 +147,9 @@ export function SummaryDashboard({
           </div>
           <div className="flex flex-wrap items-center gap-2 self-start">
             {onExport === undefined ? null : (
-              <button className="rounded-full border border-slate-300 bg-white/80 px-4 py-2 text-sm font-bold text-slate-700 shadow-sm" type="button" disabled={saving} onClick={onExport}>
+              <Button className="rounded-full bg-white/80 text-sm shadow-sm" type="button" disabled={saving} onClick={onExport}>
                 백업 내보내기
-              </button>
+              </Button>
             )}
             {onImportFile === undefined ? null : (
               <label className="cursor-pointer rounded-full border border-slate-300 bg-white/80 px-4 py-2 text-sm font-bold text-slate-700 shadow-sm">
@@ -166,7 +168,7 @@ export function SummaryDashboard({
                 />
               </label>
             )}
-            <button className="rounded-full border border-slate-300 bg-white/80 px-4 py-2 text-sm font-bold text-slate-700 shadow-sm" type="button" disabled={saving} onClick={requestRestart}>처음부터 다시 설정</button>
+            <Button className="rounded-full bg-white/80 text-sm shadow-sm" type="button" disabled={saving} onClick={requestRestart}>처음부터 다시 설정</Button>
           </div>
         </header>
 
@@ -181,12 +183,12 @@ export function SummaryDashboard({
 
         <CashflowSummary summary={summary} disabled={saving} onEdit={openEditor} />
 
-        <section className="min-w-0 rounded-3xl border border-white/80 bg-white/85 p-5 shadow-float sm:p-7" aria-labelledby="cashflow-allocation-title">
+        <Surface as="section" className="min-w-0 bg-white/85 p-5 shadow-float sm:p-7" aria-labelledby="cashflow-allocation-title">
           <h2 className="m-0 text-2xl font-bold text-slate-950" id="cashflow-allocation-title">월 자금 구성</h2>
           <div className="mt-5">
             <AllocationBar data={applied} />
           </div>
-        </section>
+        </Surface>
       </div>
 
       {!editorOpen && dirty ? (
@@ -269,7 +271,7 @@ function ScalarEditor({
           <p className="m-0 text-sm font-black tracking-wide text-accent">MONTHLY FLOW</p>
           <h2 className="m-0 mt-2 text-2xl font-bold text-slate-950" id="cashflow-editor-title">월 자금 계획 편집</h2>
         </div>
-        <button type="button" aria-label="편집기 닫기" data-dialog-initial-focus disabled={saving} onClick={onRequestClose}>닫기</button>
+        <Button type="button" variant="quiet" aria-label="편집기 닫기" data-dialog-initial-focus disabled={saving} onClick={onRequestClose}>닫기</Button>
       </header>
       <fieldset className="grid gap-6" disabled={saving}>
         <legend className="sr-only">월 자금 계획</legend>

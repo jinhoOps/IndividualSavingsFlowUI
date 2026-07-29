@@ -164,7 +164,8 @@
   }
 
   .allocation-bar__legend-target {
-    @apply -m-1 rounded border-0 bg-transparent p-1 font-inherit text-inherit outline-none hover:text-ink focus-visible:ring-3 focus-visible:ring-accent/35;
+    @apply -m-1 rounded border-0 bg-transparent p-1 text-inherit outline-none hover:text-ink focus-visible:ring-3 focus-visible:ring-accent/35;
+    font: inherit;
   }
 
   .allocation-bar__deficit { @apply text-red-700; }
@@ -175,11 +176,6 @@
 
   .flow-bar-wrapper .flow-tooltip {
     @apply absolute bottom-full mb-2 -translate-x-1/2;
-  }
-
-  .cashflow-sankey {
-    min-width: 680px;
-    filter: drop-shadow(0 12px 24px rgba(16, 34, 32, 0.06));
   }
 
   .editor-dialog {

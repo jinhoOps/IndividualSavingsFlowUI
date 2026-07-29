@@ -94,6 +94,18 @@ function ValidationHarness({ mobile = false }: { mobile?: boolean }) {
 }
 
 describe('SummaryDashboard', () => {
+  it('uses the shared surface and button variants across the dashboard editor', () => {
+    render(<DashboardHarness />);
+
+    expect(screen.getByRole('region', { name: '월 자금 구성' })).toHaveClass('ui-surface');
+    const opener = screen.getByRole('button', { name: '월 실수령액 편집' });
+    expect(opener).toHaveClass('ui-button--quiet');
+    fireEvent.click(opener);
+    expect(screen.getByRole('button', { name: '편집기 닫기' })).toHaveClass('ui-button--quiet');
+    expect(screen.getByRole('button', { name: '적용' })).toHaveClass('ui-button--primary');
+    expect(screen.getByRole('button', { name: '취소' })).toHaveClass('ui-button--secondary');
+  });
+
   it('prioritizes scalar cashflow and has no legacy account, allocation, or Sankey UI', () => {
     render(<DashboardHarness />);
 
