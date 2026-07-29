@@ -32,7 +32,7 @@ ISF를 네 개의 연결된 제품 목적지와 공통 로컬 우선 인프라�
 3. **Portfolio**는 투자 방향을 실제 적립식 자산 배분으로 구체화하고 저장한다.
 4. **Account Map**은 Main의 계좌 데이터를 읽어 독립 초안을 만들고 입금·이체·결제 관계를 검토한다.
 5. **레거시 코드**는 기능 및 데이터 계약 마이그레이션에만 사용하는 임시자산으로 관리하고, 이관 또는 폐기 결정과 검증이 끝난 뒤 제거한다.
-6. **문서 체계**는 제품 PRD를 기준 문서로 삼고 루트에는 README와 DESIGN만 유지한다.
+6. **문서 체계**는 제품 PRD를 기준 문서로 삼고 루트에는 README, DESIGN과 역할별 기준 문서를 안내하는 AGENTS를 유지한다.
 
 ### Impact
 
@@ -137,7 +137,7 @@ ISF를 네 개의 연결된 제품 목적지와 공통 로컬 우선 인프라�
 39. As a 기여자, I want README에서 현재 제품 구조와 실행 방법을 확인, so that 빠르게 프로젝트를 이해할 수 있다.
 40. As a 기여자, I want DESIGN에서 현재 UI 계약을 확인, so that 새 화면이 일관된 사용자 경험을 유지한다.
 41. As a 기여자, I want 제품 PRD에서 현재·전환·향후 상태를 구분, so that 완료된 기능과 계획을 혼동하지 않는다.
-42. As a 프로젝트 유지관리자, I want 루트에 README와 DESIGN만 유지, so that 노후 문서가 현재 기준처럼 보이지 않는다.
+42. As a 프로젝트 유지관리자, I want 루트에 README·DESIGN·AGENTS만 유지하고 AGENTS에서 역할별 기준 문서를 안내, so that 노후 문서와 반복 초기화 없이 작업을 시작할 수 있다.
 43. As a 가구 단위 계획 사용자, I want 금융 알림 텍스트를 검토 가능한 지출로 변환, so that 실제 지출 반영을 반복 입력하지 않는다.
 44. As a 가구 단위 계획 사용자, I want 두 사람의 데이터를 원본을 보존한 채 병합 미리보기, so that 안전하게 공동 가계 흐름을 만들 수 있다.
 45. As a 가구 단위 계획 사용자, I want 현재 지출을 과거 snapshot과 비교, so that 소비 변화를 이해할 수 있다.
@@ -208,8 +208,10 @@ ISF를 네 개의 연결된 제품 목적지와 공통 로컬 우선 인프라�
 - 제품 PRD는 현재 제품 범위, 전환 상태와 향후 확장의 단일 기준이어야 한다.
 - 루트의 README는 제품 소개, 실행, 검증과 상세 문서 진입점을 제공해야 한다.
 - 루트의 DESIGN은 현재 UI와 반응형 계약을 제공해야 한다.
-- 루트 Markdown은 README와 DESIGN만 유지해야 한다.
-- 현재 공통 에이전트 지침이 없으므로 AGENTS를 생성하지 않아야 한다.
+- 루트의 AGENTS는 역할별로 필요한 기준 문서, 최소 저장소 규칙, 검증과 인계 방법을 안내하되 원문을 복제하지 않아야 한다.
+- 루트 Markdown은 README, DESIGN과 AGENTS만 유지해야 한다.
+- 기존 `.codegraph/` 상태를 재사용하고 일반 작업자는 CodeGraph를 초기화하거나 rebuild하지 않아야 한다.
+- CodeGraph 복구는 상태가 없거나 실제로 사용할 수 없고 일반 탐색으로 부족할 때 Coordinator 또는 단일 graph owner만 수행해야 한다.
 
 #### Future Product Expansion
 
@@ -276,8 +278,10 @@ ISF를 네 개의 연결된 제품 목적지와 공통 로컬 우선 인프라�
 - [ ] README가 레거시를 임시 마이그레이션 자산으로 설명한다.
 - [ ] DESIGN이 현재 디자인과 반응형 계약만 설명한다.
 - [ ] 제품 PRD가 `Current Product Baseline`, `Migration Transition`, `Future Product Expansion`을 구분한다.
-- [ ] 루트 Markdown 목록에는 README와 DESIGN만 존재한다.
-- [ ] AGENTS가 존재하지 않는다.
+- [ ] 루트 Markdown 목록에는 README, DESIGN과 AGENTS만 존재한다.
+- [ ] AGENTS가 역할별 시작 문서, 최소 규칙, CodeGraph 단일 소유권, 변경 유형별 검증과 인계 형식을 안내한다.
+- [ ] 일반 작업자가 기존 `.codegraph/`를 재초기화하거나 rebuild하도록 요구하는 현재 문서가 없다.
+- [ ] 현재 기준 문서 중 AGENTS가 없어야 한다고 명시하는 문서가 없다.
 - [ ] 삭제한 루트 문서의 유효 정보가 PRD, README, DESIGN, Roadmap 또는 Git 이력에 남아 있다.
 
 ### AC-6 Future Expansion Boundaries
@@ -381,7 +385,6 @@ ISF를 네 개의 연결된 제품 목적지와 공통 로컬 우선 인프라�
 - Account Map 변경을 Main에 자동 write-back하는 양방향 동기화
 - 전체 애플리케이션의 일괄 React 재작성
 - 서버 계정, 클라우드 동기화와 실시간 협업
-- 현재 필요하지 않은 AGENTS 생성
 
 ## 11. Delivery State
 

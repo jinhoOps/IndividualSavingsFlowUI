@@ -201,6 +201,7 @@ Main 개편과 Account Map 기반은 완료되었습니다. 다음 제품 확장
 ## 제품 문서
 
 - [Product PRD](docs/ways-of-work/plan/isf-rebuild/connected-financial-planning-workspace/prd.md)
+- [Agent Guide](AGENTS.md)
 - [Design Contract](DESIGN.md)
 - [Product Direction and Documentation Spec](docs/superpowers/specs/2026-07-29-product-direction-and-documentation-design.md)
 - [Active Roadmap](.planning/ROADMAP.md)
