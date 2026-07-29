@@ -7,11 +7,20 @@ import { SetupFlow, type ValidationIssue } from '../../../src/main/ui/setup/Setu
 
 afterEach(cleanup);
 
-function renderFlow(
-  initialStep: SetupStep,
-  issues: ValidationIssue[] = [],
-  initialDraft: MainData = createEmptyMainData(),
-) {
+interface RenderFlowOptions {
+  issues?: ValidationIssue[];
+  initialDraft?: MainData;
+  saving?: boolean;
+  validationAttempt?: number;
+}
+
+function renderFlow(initialStep: SetupStep, options: RenderFlowOptions = {}) {
+  const {
+    issues = [],
+    initialDraft = createEmptyMainData(),
+    saving = false,
+    validationAttempt = 0,
+  } = options;
   const onChange = vi.fn();
   const onStepChange = vi.fn();
   const onApply = vi.fn();
@@ -25,6 +34,8 @@ function renderFlow(
         draft={draft}
         step={step}
         issues={issues}
+        validationAttempt={validationAttempt}
+        saving={saving}
         onChange={(nextDraft) => {
           onChange(nextDraft);
           setDraft(nextDraft);
@@ -42,207 +53,171 @@ function renderFlow(
   return { onApply, onChange, onStepChange };
 }
 
+function expectOneFormWithoutLegacyControls() {
+  expect(screen.getAllByRole('form')).toHaveLength(1);
+  expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+  expect(screen.queryByRole('textbox', { name: /이름/ })).not.toBeInTheDocument();
+  expect(screen.queryByLabelText('수입 이름')).not.toBeInTheDocument();
+  expect(screen.queryByLabelText('생활비 이름')).not.toBeInTheDocument();
+  expect(screen.queryByLabelText('계좌 이름')).not.toBeInTheDocument();
+  expect(screen.queryByLabelText('수입 입금 계좌')).not.toBeInTheDocument();
+}
+
 describe('SetupFlow', () => {
-  it('captures monthly income and advances to the expense step on form submit', () => {
-    const { onChange, onStepChange } = renderFlow('income');
+  it('completes the approved scalar setup journey with live cashflow context', () => {
+    const { onApply, onChange, onStepChange } = renderFlow('welcome');
 
-    expect(screen.getByRole('heading', { name: '월 수입을 알려주세요' })).toBeVisible();
-    fireEvent.change(screen.getByLabelText('수입 이름'), { target: { value: '급여' } });
-    fireEvent.change(screen.getByLabelText('월 금액'), { target: { value: '4200000' } });
+    expect(screen.getByRole('status')).toHaveTextContent('1 / 6 · 시작');
+    expect(screen.getByRole('heading', { name: '한 달 돈의 흐름, 2분이면 확인할 수 있어요.' })).toHaveFocus();
+    expectOneFormWithoutLegacyControls();
+
     fireEvent.click(screen.getByRole('button', { name: '다음' }));
+    expect(screen.getByRole('heading', { name: '한 달에 실제로 들어오는 돈은 얼마인가요?' })).toBeVisible();
+    expect(screen.queryByLabelText('월 실수령액')).toHaveValue('');
+    expectOneFormWithoutLegacyControls();
 
-    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({
-      incomes: [expect.objectContaining({ name: '급여', amountWon: 4_200_000 })],
-    }));
-    expect(onStepChange).toHaveBeenCalledWith('expense');
-    expect(screen.getByRole('heading', { name: '월 생활비를 알려주세요' })).toBeVisible();
-  });
-
-  it('uses one accessible form per stage and navigates the secondary saving and investment stage', () => {
-    const { onStepChange } = renderFlow('saving-investment');
-
-    expect(screen.getByRole('status')).toHaveTextContent('4 / 6');
-    expect(screen.getByRole('heading', { name: '저축과 투자를 알려주세요' })).toBeVisible();
-    expect(screen.getByLabelText('월 저축 금액')).toBeVisible();
-    expect(screen.getByLabelText('월 투자 금액')).toBeVisible();
-    expect(screen.getAllByRole('form')).toHaveLength(1);
-
-    fireEvent.click(screen.getByRole('button', { name: '이전' }));
-    expect(onStepChange).toHaveBeenCalledWith('expense');
-  });
-
-  it('moves focus to each stage heading during normal forward and backward navigation', () => {
-    renderFlow('welcome');
-
-    expect(screen.getByRole('heading', { name: '내 자금 계획을 시작합니다' })).toHaveFocus();
-    fireEvent.click(screen.getByRole('button', { name: '다음' }));
-    expect(screen.getByRole('heading', { name: '월 수입을 알려주세요' })).toHaveFocus();
-    fireEvent.click(screen.getByRole('button', { name: '다음' }));
-    expect(screen.getByRole('heading', { name: '월 생활비를 알려주세요' })).toHaveFocus();
-    fireEvent.click(screen.getByRole('button', { name: '이전' }));
-    expect(screen.getByRole('heading', { name: '월 수입을 알려주세요' })).toHaveFocus();
-  });
-
-  it('keeps a single full income allocation synchronized with the edited income amount', () => {
-    const draft: MainData = {
+    fireEvent.change(screen.getByLabelText('월 실수령액'), { target: { value: '3200000' } });
+    expect(screen.getByLabelText('월 실수령액')).toHaveValue('3,200,000');
+    expect(onChange).toHaveBeenLastCalledWith({
       ...createEmptyMainData(),
-      incomes: [{
-        id: 'salary',
-        name: '급여',
-        amountWon: 3_000_000,
-        accountId: 'salary-account',
-        allocations: [{ accountId: 'salary-account', amountWon: 3_000_000 }],
-      }],
-      accounts: [{ id: 'salary-account', name: '급여통장', kind: 'income' }],
-    };
-    const { onChange } = renderFlow('income', [], draft);
-
-    fireEvent.change(screen.getByLabelText('월 금액'), { target: { value: '4000000' } });
-
-    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({
-      incomes: [expect.objectContaining({
-        amountWon: 4_000_000,
-        accountId: 'salary-account',
-        allocations: [{ accountId: 'salary-account', amountWon: 4_000_000 }],
-      })],
-    }));
-  });
-
-  it('lets a restarted split-income draft repair allocation amounts before apply', () => {
-    const draft: MainData = {
-      ...createEmptyMainData(),
-      incomes: [{
-        id: 'salary',
-        name: '급여',
-        amountWon: 3_000_000,
-        accountId: 'salary-account',
-        allocations: [
-          { accountId: 'salary-account', amountWon: 1_000_000 },
-          { accountId: 'living-account', amountWon: 2_000_000 },
-        ],
-      }],
-      accounts: [
-        { id: 'salary-account', name: '급여통장', kind: 'income' },
-        { id: 'living-account', name: '생활비통장', kind: 'spending' },
-      ],
-    };
-    const { onChange } = renderFlow('income', [], draft);
-    fireEvent.change(screen.getByLabelText('월 금액'), { target: { value: '4000000' } });
-    for (let step = 0; step < 3; step += 1) {
-      fireEvent.click(screen.getByRole('button', { name: '다음' }));
-    }
-
-    expect(screen.getByRole('heading', { name: '계좌를 알려주세요' })).toBeVisible();
-    expect(screen.getByLabelText('급여 배분 1 금액')).toHaveValue('1,000,000');
-    expect(screen.getByLabelText('급여 배분 2 금액')).toHaveValue('2,000,000');
-    fireEvent.change(screen.getByLabelText('급여 배분 2 금액'), { target: { value: '3000000' } });
-
-    const next = onChange.mock.lastCall?.[0] as MainData;
-    expect(next.incomes[0]).toMatchObject({
-      amountWon: 4_000_000,
-      allocations: [
-        { accountId: 'salary-account', amountWon: 1_000_000 },
-        { accountId: 'living-account', amountWon: 3_000_000 },
-      ],
+      monthlyNetIncomeWon: 3_200_000,
     });
-  });
+    fireEvent.click(screen.getByRole('button', { name: '다음' }));
 
-  it('lets the account stage select and persist the income destination account', () => {
-    const draft: MainData = {
-      ...createEmptyMainData(),
-      incomes: [{
-        id: 'salary',
-        name: '급여',
-        amountWon: 3_000_000,
-        accountId: 'salary-account',
-        allocations: [{ accountId: 'salary-account', amountWon: 3_000_000 }],
-      }],
-      accounts: [
-        { id: 'salary-account', name: '급여통장', kind: 'income' },
-        { id: 'shared-account', name: '공동통장', kind: 'spending' },
-      ],
-    };
-    const { onChange } = renderFlow('account', [], draft);
+    expect(screen.getByRole('heading', { name: '주거비로 매달 얼마가 나가나요?' })).toBeVisible();
+    expect(screen.getByLabelText('월 주거 고정비')).toHaveValue('');
+    expect(screen.getByText('월세 또는 전세대출 이자, 관리비, 공과금을 합친 금액')).toBeVisible();
+    expect(screen.getByText('월 수입 320만 원')).toBeVisible();
+    expect(screen.getByText('현재 계획 0원')).toBeVisible();
+    expect(screen.getByText('남는 돈 320만 원')).toBeVisible();
+    expectOneFormWithoutLegacyControls();
 
-    fireEvent.change(screen.getByLabelText('수입 입금 계좌'), { target: { value: 'shared-account' } });
+    fireEvent.change(screen.getByLabelText('월 주거 고정비'), { target: { value: '800000' } });
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ monthlyHousingWon: 800_000 }));
+    expect(screen.getByText('현재 계획 80만 원')).toBeVisible();
+    expect(screen.getByText('남는 돈 240만 원')).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: '다음' }));
 
-    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({
-      incomes: [expect.objectContaining({
-        accountId: 'shared-account',
-        allocations: [{ accountId: 'shared-account', amountWon: 3_000_000 }],
-      })],
-    }));
-  });
+    expect(screen.getByRole('heading', { name: '그 밖의 생활비는 보통 얼마인가요?' })).toBeVisible();
+    expect(screen.getByLabelText('월평균 생활비')).toHaveValue('');
+    expect(screen.getByText('식비, 교통비, 경조사비 등 최근 몇 달의 평균')).toBeVisible();
+    expect(screen.getByText('현재 계획 80만 원')).toBeVisible();
+    expectOneFormWithoutLegacyControls();
 
-  it('connects a field issue to its matching input', () => {
-    renderFlow('income', [{ path: 'incomes.income-1.name', code: 'name_required' }]);
+    fireEvent.change(screen.getByLabelText('월평균 생활비'), { target: { value: '1000000' } });
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ monthlyLivingWon: 1_000_000 }));
+    expect(screen.getByText('현재 계획 180만 원')).toBeVisible();
+    expect(screen.getByText('남는 돈 140만 원')).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: '다음' }));
 
-    const incomeName = screen.getByLabelText('수입 이름');
-    const error = screen.getByRole('alert');
+    expect(screen.getByRole('heading', { name: '매달 저축과 투자는 얼마나 하나요?' })).toBeVisible();
+    expect(screen.getByText('정해둔 금액이 없다면 건너뛰어도 돼요.')).toBeVisible();
+    expect(screen.getByLabelText('월 저축액')).toHaveValue('');
+    expect(screen.getByLabelText('월 투자액')).toHaveValue('');
+    expect(screen.getByText('현재 계획 180만 원')).toBeVisible();
+    expectOneFormWithoutLegacyControls();
 
-    expect(error).toHaveTextContent('이름을 입력해주세요.');
-    expect(incomeName).toHaveAttribute('aria-invalid', 'true');
-    expect(incomeName).toHaveAttribute('aria-describedby', error.id);
-    expect(incomeName).toHaveFocus();
-  });
-
-  it('applies the plan from the review stage', () => {
-    const { onApply } = renderFlow('review');
+    fireEvent.change(screen.getByLabelText('월 저축액'), { target: { value: '300000' } });
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ monthlySavingWon: 300_000 }));
+    expect(screen.getByText('현재 계획 210만 원')).toBeVisible();
+    expect(screen.getByText('남는 돈 110만 원')).toBeVisible();
+    fireEvent.change(screen.getByLabelText('월 투자액'), { target: { value: '200000' } });
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ monthlyInvestmentWon: 200_000 }));
+    expect(screen.getByText('현재 계획 230만 원')).toBeVisible();
+    expect(screen.getByText('남는 돈 90만 원')).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: '다음' }));
 
     expect(screen.getByRole('heading', { name: '입력한 월 자금 계획을 확인해주세요' })).toBeVisible();
-    fireEvent.click(screen.getByRole('button', { name: '계획 적용' }));
+    expect(screen.getByText('현재 계획 230만 원')).toBeVisible();
+    expect(screen.getByLabelText('소비 56.3%')).toBeVisible();
+    expect(screen.getByLabelText('저축 9.4%')).toBeVisible();
+    expect(screen.getByLabelText('투자 6.3%')).toBeVisible();
+    expect(screen.getByLabelText('남는 돈 28.1%')).toBeVisible();
+    expectOneFormWithoutLegacyControls();
 
+    fireEvent.click(screen.getByRole('button', { name: '계획 적용' }));
     expect(onApply).toHaveBeenCalledOnce();
+    expect(onStepChange.mock.calls.map(([nextStep]) => nextStep)).toEqual([
+      'income',
+      'housing',
+      'living',
+      'saving-investment',
+      'review',
+    ]);
   });
 
-  it('preserves later resumed entries while editing the first entry of every setup collection', () => {
-    const draft: MainData = {
-      schemaVersion: 1,
-      updatedAt: 1,
-      incomes: [
-        { id: 'income-1', name: '급여', amountWon: 4_000_000, allocations: [] },
-        { id: 'income-2', name: '부수입', amountWon: 300_000, allocations: [{ accountId: 'account-2', amountWon: 300_000 }] },
-      ],
-      expenses: [
-        { id: 'expense-1', name: '생활비', amountWon: 1_500_000 },
-        { id: 'expense-2', name: '통신비', amountWon: 80_000, group: '고정비', accountId: 'account-2' },
-      ],
-      savings: [
-        { id: 'saving-1', name: '적금', amountWon: 400_000 },
-        { id: 'saving-2', name: '비상금', amountWon: 200_000, annualRate: 3.2, maturityMonth: '2027-01' },
-      ],
-      investments: [
-        { id: 'investment-1', name: 'ETF', amountWon: 300_000 },
-        { id: 'investment-2', name: '연금', amountWon: 250_000, group: '장기', accountId: 'account-2' },
-      ],
-      accounts: [
-        { id: 'account-1', name: '급여통장', kind: 'income' },
-        { id: 'account-2', name: '보조통장', kind: 'other' },
-      ],
-    };
-    const preserved = {
-      income: structuredClone(draft.incomes[1]),
-      expense: structuredClone(draft.expenses[1]),
-      saving: structuredClone(draft.savings[1]),
-      investment: structuredClone(draft.investments[1]),
-      account: structuredClone(draft.accounts[1]),
-    };
-    const { onChange } = renderFlow('income', [], draft);
+  it('blocks zero income, explains the requirement, and focuses the exact field', () => {
+    const { onStepChange } = renderFlow('income');
 
-    fireEvent.change(screen.getByLabelText('수입 이름'), { target: { value: '본업 급여' } });
     fireEvent.click(screen.getByRole('button', { name: '다음' }));
-    fireEvent.change(screen.getByLabelText('생활비 이름'), { target: { value: '월 생활비' } });
-    fireEvent.click(screen.getByRole('button', { name: '다음' }));
-    fireEvent.change(screen.getByLabelText('월 저축 금액'), { target: { value: '500000' } });
-    fireEvent.change(screen.getByLabelText('월 투자 금액'), { target: { value: '350000' } });
-    fireEvent.click(screen.getByRole('button', { name: '다음' }));
-    fireEvent.change(screen.getByLabelText('계좌 이름'), { target: { value: '주거래 통장' } });
 
-    const edited = onChange.mock.lastCall?.[0] as MainData;
-    expect(edited.incomes[1]).toStrictEqual(preserved.income);
-    expect(edited.expenses[1]).toStrictEqual(preserved.expense);
-    expect(edited.savings[1]).toStrictEqual(preserved.saving);
-    expect(edited.investments[1]).toStrictEqual(preserved.investment);
-    expect(edited.accounts[1]).toStrictEqual(preserved.account);
+    const income = screen.getByLabelText('월 실수령액');
+    const error = screen.getByRole('alert');
+    expect(onStepChange).not.toHaveBeenCalled();
+    expect(error).toHaveTextContent('수입을 먼저 입력해주세요.');
+    expect(income).toHaveAttribute('aria-invalid', 'true');
+    expect(income).toHaveAttribute('aria-describedby', error.id);
+    expect(income).toHaveFocus();
+  });
+
+  it('allows every non-income amount to stay at zero while moving forward', () => {
+    const draft = { ...createEmptyMainData(), monthlyNetIncomeWon: 3_200_000 };
+    const { onStepChange } = renderFlow('housing', { initialDraft: draft });
+
+    fireEvent.click(screen.getByRole('button', { name: '다음' }));
+    expect(screen.getByRole('heading', { name: '그 밖의 생활비는 보통 얼마인가요?' })).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: '다음' }));
+    expect(screen.getByRole('heading', { name: '매달 저축과 투자는 얼마나 하나요?' })).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: '다음' }));
+
+    expect(screen.getByRole('heading', { name: '입력한 월 자금 계획을 확인해주세요' })).toBeVisible();
+    expect(onStepChange.mock.calls.map(([nextStep]) => nextStep)).toEqual([
+      'living',
+      'saving-investment',
+      'review',
+    ]);
+  });
+
+  it('moves focus to stage headings during forward and previous navigation', () => {
+    renderFlow('housing', {
+      initialDraft: { ...createEmptyMainData(), monthlyNetIncomeWon: 3_200_000 },
+    });
+
+    expect(screen.getByRole('heading', { name: '주거비로 매달 얼마가 나가나요?' })).toHaveFocus();
+    fireEvent.click(screen.getByRole('button', { name: '다음' }));
+    expect(screen.getByRole('heading', { name: '그 밖의 생활비는 보통 얼마인가요?' })).toHaveFocus();
+    fireEvent.click(screen.getByRole('button', { name: '이전' }));
+    expect(screen.getByRole('heading', { name: '주거비로 매달 얼마가 나가나요?' })).toHaveFocus();
+  });
+
+  it('connects an apply validation issue to the exact scalar field and focuses it', () => {
+    renderFlow('income', {
+      issues: [{ path: 'monthlyNetIncomeWon', code: 'income_required' }],
+      validationAttempt: 1,
+    });
+
+    const income = screen.getByLabelText('월 실수령액');
+    const error = screen.getByRole('alert');
+    expect(error).toHaveTextContent('수입을 먼저 입력해주세요.');
+    expect(income).toHaveAttribute('aria-invalid', 'true');
+    expect(income).toHaveAttribute('aria-describedby', error.id);
+    expect(income).toHaveFocus();
+  });
+
+  it('keeps every form control disabled while the plan is saving', () => {
+    const { onApply, onStepChange } = renderFlow('review', {
+      initialDraft: { ...createEmptyMainData(), monthlyNetIncomeWon: 3_200_000 },
+      saving: true,
+    });
+
+    const form = screen.getByRole('form');
+    expect(form).toHaveAttribute('aria-busy', 'true');
+    for (const button of screen.getAllByRole('button')) {
+      expect(button).toBeDisabled();
+    }
+
+    fireEvent.click(screen.getByRole('button', { name: '계획 적용' }));
+    expect(onApply).not.toHaveBeenCalled();
+    expect(onStepChange).not.toHaveBeenCalled();
   });
 });
