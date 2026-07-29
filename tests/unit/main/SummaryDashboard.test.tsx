@@ -12,33 +12,32 @@ afterEach(() => {
 });
 
 const appliedData: MainData = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   updatedAt: 1,
-  incomes: [{ id: 'salary', name: '급여', amountWon: 4_200_000, allocations: [{ accountId: 'salary-account', amountWon: 4_200_000 }] }],
-  expenses: [{ id: 'living', name: '생활비', amountWon: 1_800_000, accountId: 'spending-account' }],
-  savings: [{ id: 'deposit', name: '적금', amountWon: 700_000 }],
-  investments: [{ id: 'etf', name: 'ETF', amountWon: 500_000 }],
-  accounts: [
-    { id: 'salary-account', name: '급여통장', kind: 'income' },
-    { id: 'spending-account', name: '생활비통장', kind: 'spending' },
-  ],
+  monthlyNetIncomeWon: 3_200_000,
+  monthlyHousingWon: 800_000,
+  monthlyLivingWon: 1_000_000,
+  monthlySavingWon: 300_000,
+  monthlyInvestmentWon: 200_000,
 };
 
 function clone(data: MainData): MainData {
-  return structuredClone(data);
+  return { ...data };
+}
+
+function stubMobileViewport() {
+  vi.stubGlobal('matchMedia', vi.fn().mockImplementation(() => ({
+    matches: true,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+  })));
 }
 
 function DashboardHarness({ mobile = false }: { mobile?: boolean }) {
   const [draft, setDraft] = useState(() => clone(appliedData));
   const [dirty, setDirty] = useState(false);
 
-  if (mobile) {
-    vi.stubGlobal('matchMedia', vi.fn().mockImplementation(() => ({
-      matches: true,
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-    })));
-  }
+  if (mobile) stubMobileViewport();
 
   return (
     <SummaryDashboard
@@ -61,22 +60,20 @@ function DashboardHarness({ mobile = false }: { mobile?: boolean }) {
   );
 }
 
-function CrossSectionValidationHarness({ mobile = false }: { mobile?: boolean }) {
+function ValidationHarness({ mobile = false }: { mobile?: boolean }) {
   const [issues, setIssues] = useState<SummaryDashboardProps['issues']>([]);
+  const [validationAttempt, setValidationAttempt] = useState(0);
 
-  if (mobile) {
-    vi.stubGlobal('matchMedia', vi.fn().mockImplementation(() => ({
-      matches: true,
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-    })));
-  }
+  if (mobile) stubMobileViewport();
 
   return (
     <>
       <button
         type="button"
-        onClick={() => setIssues([{ path: 'expenses.living.accountId', code: 'account_missing' }])}
+        onClick={() => {
+          setIssues([{ path: 'monthlyLivingWon', code: 'amount_negative' }]);
+          setValidationAttempt((attempt) => attempt + 1);
+        }}
       >
         생활비 검증 오류 표시
       </button>
@@ -85,6 +82,7 @@ function CrossSectionValidationHarness({ mobile = false }: { mobile?: boolean })
         draft={appliedData}
         dirty={false}
         issues={issues}
+        validationAttempt={validationAttempt}
         saveStatus="idle"
         onDraftChange={vi.fn()}
         onApply={vi.fn()}
@@ -96,89 +94,98 @@ function CrossSectionValidationHarness({ mobile = false }: { mobile?: boolean })
 }
 
 describe('SummaryDashboard', () => {
-  it('prioritizes income, planned outflow and remaining cash while keeping all five required values available', () => {
+  it('prioritizes scalar cashflow and has no legacy account, allocation, or Sankey UI', () => {
     render(<DashboardHarness />);
 
     expect(screen.getByRole('heading', { name: '이번 달 자금 흐름' })).toBeVisible();
     expect(screen.getByRole('status')).toHaveTextContent('저장됨');
-    expect(screen.getByRole('button', { name: '수입 편집' })).toHaveTextContent('수입');
-    expect(screen.getByRole('button', { name: '생활비 편집' })).toHaveTextContent('생활비');
-    expect(screen.getByRole('button', { name: '저축 편집' })).toHaveTextContent('저축');
-    expect(screen.getByRole('button', { name: '투자 편집' })).toHaveTextContent('투자');
-    expect(screen.getByText('계획 유출')).toBeVisible();
-    expect(screen.getByText('투자 가능액')).toBeVisible();
-    expect(screen.getByRole('img', { name: '월간 현금흐름 Sankey 그래프' })).toBeVisible();
+    expect(screen.getByText('월 실수령액')).toBeVisible();
+    expect(screen.getByText('월 소비')).toBeVisible();
+    expect(screen.getByText('남는 돈')).toBeVisible();
+    expect(screen.getByText('월 저축')).toBeVisible();
+    expect(screen.getByText('월 투자')).toBeVisible();
+    expect(screen.getByLabelText(/소비 56\.3%/)).toBeVisible();
+    expect(screen.queryByText(/계좌|배분|Sankey/)).not.toBeInTheDocument();
   });
 
-  it('includes each primary metric value and context in its accessible description', () => {
+  it('describes the applied primary values and consumption breakdown accessibly', () => {
     render(<DashboardHarness />);
 
-    expect(screen.getByRole('button', { name: '수입 편집' }))
-      .toHaveAccessibleDescription(expect.stringMatching(/420만 원/));
-    expect(screen.getByRole('button', { name: '생활비 편집' }))
-      .toHaveAccessibleDescription(expect.stringMatching(/300만 원.*생활비 180만 원/));
-    expect(screen.getByRole('button', { name: '남는 금액 편집' }))
-      .toHaveAccessibleDescription(expect.stringMatching(/120만 원.*투자 가능액/));
+    expect(screen.getByRole('button', { name: '월 실수령액 편집' }))
+      .toHaveAccessibleDescription(expect.stringMatching(/320만 원/));
+    expect(screen.getByRole('button', { name: '월 소비 편집' }))
+      .toHaveAccessibleDescription(expect.stringMatching(/180만 원.*주거 80만 원.*생활 100만 원/));
+    expect(screen.getByRole('button', { name: '남는 돈 편집' }))
+      .toHaveAccessibleDescription(expect.stringMatching(/90만 원/));
   });
 
-  it('opens the income editor from the income summary card', () => {
+  it('opens one desktop scalar editor containing the five canonical fields', () => {
     render(<DashboardHarness />);
-    const opener = screen.getByRole('button', { name: '수입 편집' });
+    const opener = screen.getByRole('button', { name: '월 실수령액 편집' });
 
     fireEvent.click(opener);
 
-    expect(screen.getByRole('complementary', { name: '수입 편집' })).toBeVisible();
-    expect(screen.getByRole('heading', { name: '수입 편집' })).toHaveFocus();
-    expect(screen.getByLabelText('급여 월 금액')).toHaveValue('4,200,000');
-    fireEvent.click(screen.getByRole('button', { name: '편집기 닫기' }));
+    const editor = screen.getByRole('complementary', { name: '월 자금 계획 편집' });
+    expect(editor).toBeVisible();
+    expect(within(editor).getByRole('heading', { name: '월 자금 계획 편집' })).toBeVisible();
+    expect(within(editor).getByLabelText('월 실수령액')).toHaveValue('3,200,000');
+    expect(within(editor).getByLabelText('월 주거 고정비')).toHaveValue('800,000');
+    expect(within(editor).getByLabelText('월평균 생활비')).toHaveValue('1,000,000');
+    expect(within(editor).getByLabelText('월 저축액')).toHaveValue('300,000');
+    expect(within(editor).getByLabelText('월 투자액')).toHaveValue('200,000');
+
+    fireEvent.click(within(editor).getByRole('button', { name: '편집기 닫기' }));
     expect(opener).toHaveFocus();
   });
 
-  it('keeps the dashboard on the applied value and restores the draft on cancel', () => {
+  it('keeps applied dashboard values visible while editing and restores the draft on cancel', () => {
     render(<DashboardHarness />);
-    fireEvent.click(screen.getByRole('button', { name: '수입 편집' }));
+    fireEvent.click(screen.getByRole('button', { name: '월 실수령액 편집' }));
 
-    fireEvent.change(screen.getByLabelText('급여 월 금액'), { target: { value: '5000000' } });
+    fireEvent.change(screen.getByLabelText('월 실수령액'), { target: { value: '4000000' } });
 
-    expect(screen.getByRole('button', { name: '수입 편집' })).toHaveTextContent('420만 원');
-    expect(screen.getByLabelText('급여 월 금액')).toHaveValue('5,000,000');
+    expect(screen.getByRole('button', { name: '월 실수령액 편집' })).toHaveTextContent('320만 원');
+    expect(screen.getByLabelText('월 실수령액')).toHaveValue('4,000,000');
 
     fireEvent.click(screen.getByRole('button', { name: '취소' }));
 
-    expect(screen.getByLabelText('급여 월 금액')).toHaveValue('4,200,000');
-    expect(screen.getByRole('button', { name: '수입 편집' })).toHaveTextContent('420만 원');
+    expect(screen.getByLabelText('월 실수령액')).toHaveValue('3,200,000');
+    expect(screen.getByRole('button', { name: '월 실수령액 편집' })).toHaveTextContent('320만 원');
   });
 
-  it('uses a modal dialog on mobile while retaining the same editor fields', () => {
+  it('uses a modal dialog on mobile with the same five scalar fields', () => {
     render(<DashboardHarness mobile />);
-    fireEvent.click(screen.getByRole('button', { name: '수입 편집' }));
+    fireEvent.click(screen.getByRole('button', { name: '월 소비 편집' }));
 
-    expect(screen.getByRole('dialog', { name: '수입 편집' })).toBeVisible();
-    expect(screen.getByLabelText('급여 월 금액')).toBeVisible();
+    const dialog = screen.getByRole('dialog', { name: '월 자금 계획 편집' });
+    expect(within(dialog).getByLabelText('월 실수령액')).toBeVisible();
+    expect(within(dialog).getByLabelText('월 주거 고정비')).toBeVisible();
+    expect(within(dialog).getByLabelText('월평균 생활비')).toBeVisible();
+    expect(within(dialog).getByLabelText('월 저축액')).toBeVisible();
+    expect(within(dialog).getByLabelText('월 투자액')).toBeVisible();
   });
 
-  it('contains the editor and apply controls in one mobile modal, traps focus, and hides dashboard controls', () => {
+  it('contains edit and apply controls in one mobile modal, traps focus, and hides dashboard controls', () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     render(<DashboardHarness mobile />);
-    const opener = screen.getByRole('button', { name: '수입 편집' });
+    const opener = screen.getByRole('button', { name: '월 실수령액 편집' });
     fireEvent.click(opener);
 
-    const dialog = screen.getByRole('dialog', { name: '수입 편집' });
+    const dialog = screen.getByRole('dialog', { name: '월 자금 계획 편집' });
     const dialogScope = within(dialog);
     const close = dialogScope.getByRole('button', { name: '편집기 닫기' });
     const cancel = dialogScope.getByRole('button', { name: '취소' });
     const apply = dialogScope.getByRole('button', { name: '적용' });
 
-    expect(dialogScope.getByLabelText('급여 월 금액')).toBeVisible();
-    expect(apply).toBeInTheDocument();
     expect(close).toHaveFocus();
+    expect(apply).toBeDisabled();
     expect(screen.getByTestId('dashboard-controls')).toHaveAttribute('aria-hidden', 'true');
     expect(screen.getByTestId('dashboard-controls')).toHaveAttribute('inert');
 
     fireEvent.keyDown(dialog, { key: 'Tab', shiftKey: true });
     expect(cancel).toHaveFocus();
 
-    fireEvent.change(dialogScope.getByLabelText('급여 월 금액'), { target: { value: '5000000' } });
+    fireEvent.change(dialogScope.getByLabelText('월 실수령액'), { target: { value: '4000000' } });
     apply.focus();
     fireEvent.keyDown(dialog, { key: 'Tab' });
     expect(close).toHaveFocus();
@@ -190,16 +197,12 @@ describe('SummaryDashboard', () => {
   });
 
   it('announces a mobile save failure inside the dialog and exposes a retry action', () => {
-    vi.stubGlobal('matchMedia', vi.fn().mockImplementation(() => ({
-      matches: true,
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-    })));
+    stubMobileViewport();
     const onApply = vi.fn();
     render(
       <SummaryDashboard
         applied={appliedData}
-        draft={{ ...appliedData, incomes: [{ ...appliedData.incomes[0], amountWon: 5_000_000 }] }}
+        draft={{ ...appliedData, monthlyNetIncomeWon: 4_000_000 }}
         dirty
         issues={[]}
         saveStatus="error"
@@ -209,9 +212,9 @@ describe('SummaryDashboard', () => {
         onRestart={vi.fn()}
       />,
     );
-    fireEvent.click(screen.getByRole('button', { name: '수입 편집' }));
+    fireEvent.click(screen.getByRole('button', { name: '월 실수령액 편집' }));
 
-    const dialog = screen.getByRole('dialog', { name: '수입 편집' });
+    const dialog = screen.getByRole('dialog', { name: '월 자금 계획 편집' });
     expect(within(dialog).getByRole('alert')).toHaveTextContent('저장하지 못했습니다');
     fireEvent.click(within(dialog).getByRole('button', { name: '다시 시도' }));
     expect(onApply).toHaveBeenCalledOnce();
@@ -220,36 +223,36 @@ describe('SummaryDashboard', () => {
   it('asks before discarding a dirty mobile editor from Escape or its backdrop', () => {
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
     render(<DashboardHarness mobile />);
-    const opener = screen.getByRole('button', { name: '수입 편집' });
+    const opener = screen.getByRole('button', { name: '월 실수령액 편집' });
     fireEvent.click(opener);
-    fireEvent.change(screen.getByLabelText('급여 월 금액'), { target: { value: '5000000' } });
+    fireEvent.change(screen.getByLabelText('월 실수령액'), { target: { value: '4000000' } });
 
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(confirm).toHaveBeenCalledOnce();
-    expect(screen.getByRole('dialog', { name: '수입 편집' })).toBeVisible();
+    expect(screen.getByRole('dialog', { name: '월 자금 계획 편집' })).toBeVisible();
 
     fireEvent.click(screen.getByTestId('editor-backdrop'));
     expect(confirm).toHaveBeenCalledTimes(2);
-    expect(screen.getByRole('dialog', { name: '수입 편집' })).toBeVisible();
+    expect(screen.getByRole('dialog', { name: '월 자금 계획 편집' })).toBeVisible();
 
     confirm.mockReturnValue(true);
     fireEvent.click(screen.getByTestId('editor-backdrop'));
-    expect(screen.queryByRole('dialog', { name: '수입 편집' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: '월 자금 계획 편집' })).not.toBeInTheDocument();
     expect(opener).toHaveFocus();
   });
 
-  it('discards a dirty draft after confirming that the editor should close', () => {
+  it('discards a dirty draft after confirming that the desktop editor should close', () => {
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
     render(<DashboardHarness />);
-    fireEvent.click(screen.getByRole('button', { name: '수입 편집' }));
-    fireEvent.change(screen.getByLabelText('급여 월 금액'), { target: { value: '5000000' } });
+    fireEvent.click(screen.getByRole('button', { name: '월 실수령액 편집' }));
+    fireEvent.change(screen.getByLabelText('월 실수령액'), { target: { value: '4000000' } });
 
     fireEvent.click(screen.getByRole('button', { name: '편집기 닫기' }));
     expect(confirm).toHaveBeenCalledOnce();
-    expect(screen.queryByRole('complementary', { name: '수입 편집' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('complementary', { name: '월 자금 계획 편집' })).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: '수입 편집' }));
-    expect(screen.getByLabelText('급여 월 금액')).toHaveValue('4,200,000');
+    fireEvent.click(screen.getByRole('button', { name: '월 실수령액 편집' }));
+    expect(screen.getByLabelText('월 실수령액')).toHaveValue('3,200,000');
   });
 
   it('confirms a dirty draft before starting over and only restarts after discard is accepted', () => {
@@ -259,7 +262,7 @@ describe('SummaryDashboard', () => {
     render(
       <SummaryDashboard
         applied={appliedData}
-        draft={{ ...appliedData, incomes: [{ ...appliedData.incomes[0], amountWon: 5_000_000 }] }}
+        draft={{ ...appliedData, monthlyNetIncomeWon: 4_000_000 }}
         dirty
         issues={[]}
         saveStatus="idle"
@@ -280,26 +283,27 @@ describe('SummaryDashboard', () => {
     expect(onRestart).toHaveBeenCalledOnce();
   });
 
-  it('opens the section containing the first validation issue and focuses its exact field', () => {
-    render(<CrossSectionValidationHarness />);
-    fireEvent.click(screen.getByRole('button', { name: '수입 편집' }));
+  it('opens the scalar editor and focuses the exact invalid field', () => {
+    render(<ValidationHarness />);
     fireEvent.click(screen.getByRole('button', { name: '생활비 검증 오류 표시' }));
 
-    expect(screen.getByRole('complementary', { name: '생활비 편집' })).toBeVisible();
-    expect(screen.getByLabelText('생활비 계좌')).toHaveFocus();
+    expect(screen.getByRole('complementary', { name: '월 자금 계획 편집' })).toBeVisible();
+    expect(screen.getByLabelText('월평균 생활비')).toHaveFocus();
   });
 
-  it('lets an invalid field keep focus when a mobile validation issue switches sections', () => {
-    render(<CrossSectionValidationHarness mobile />);
-    fireEvent.click(screen.getByRole('button', { name: '수입 편집' }));
+  it('keeps the exact invalid field focused when mobile validation opens the dialog', () => {
+    render(<ValidationHarness mobile />);
     fireEvent.click(screen.getByRole('button', { name: '생활비 검증 오류 표시' }));
 
-    expect(screen.getByRole('dialog', { name: '생활비 편집' })).toBeVisible();
-    expect(screen.getByLabelText('생활비 계좌')).toHaveFocus();
+    expect(screen.getByRole('dialog', { name: '월 자금 계획 편집' })).toBeVisible();
+    expect(screen.getByLabelText('월평균 생활비')).toHaveFocus();
   });
 
-  it('only warns on browser exit when the draft is dirty', () => {
-    const { rerender } = render(
+  it('retains backup export and import controls', () => {
+    const onExport = vi.fn();
+    const onImportFile = vi.fn();
+    const backup = new File(['{"schemaVersion":2}'], 'backup.json', { type: 'application/json' });
+    render(
       <SummaryDashboard
         applied={appliedData}
         draft={appliedData}
@@ -310,25 +314,35 @@ describe('SummaryDashboard', () => {
         onApply={vi.fn()}
         onCancel={vi.fn()}
         onRestart={vi.fn()}
+        onExport={onExport}
+        onImportFile={onImportFile}
       />,
     );
+
+    fireEvent.click(screen.getByRole('button', { name: '백업 내보내기' }));
+    expect(onExport).toHaveBeenCalledOnce();
+
+    fireEvent.change(screen.getByLabelText('JSON 백업 파일'), { target: { files: [backup] } });
+    expect(onImportFile).toHaveBeenCalledWith(backup);
+  });
+
+  it('only warns on browser exit when the scalar draft is dirty', () => {
+    const props = {
+      applied: appliedData,
+      draft: appliedData,
+      issues: [],
+      saveStatus: 'idle' as const,
+      onDraftChange: vi.fn(),
+      onApply: vi.fn(),
+      onCancel: vi.fn(),
+      onRestart: vi.fn(),
+    };
+    const { rerender } = render(<SummaryDashboard {...props} dirty={false} />);
     const cleanExit = new Event('beforeunload', { cancelable: true });
     window.dispatchEvent(cleanExit);
     expect(cleanExit.defaultPrevented).toBe(false);
 
-    rerender(
-      <SummaryDashboard
-        applied={appliedData}
-        draft={appliedData}
-        dirty
-        issues={[]}
-        saveStatus="idle"
-        onDraftChange={vi.fn()}
-        onApply={vi.fn()}
-        onCancel={vi.fn()}
-        onRestart={vi.fn()}
-      />,
-    );
+    rerender(<SummaryDashboard {...props} dirty />);
     const dirtyExit = new Event('beforeunload', { cancelable: true });
     window.dispatchEvent(dirtyExit);
     expect(dirtyExit.defaultPrevented).toBe(true);

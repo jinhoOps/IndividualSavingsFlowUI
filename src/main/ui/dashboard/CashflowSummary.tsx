@@ -1,12 +1,10 @@
 import { useId } from 'react';
 import type { CashflowSummary as CashflowTotals } from '../../domain/cashflow';
 
-export type DashboardSection = 'income' | 'expense' | 'saving' | 'investment';
-
 export interface CashflowSummaryProps {
   summary: CashflowTotals;
   disabled?: boolean;
-  onEdit(section: DashboardSection, opener: HTMLElement): void;
+  onEdit(opener: HTMLElement): void;
 }
 
 export function CashflowSummary({ summary, disabled = false, onEdit }: CashflowSummaryProps) {
@@ -14,46 +12,46 @@ export function CashflowSummary({ summary, disabled = false, onEdit }: CashflowS
     <section className="grid gap-4" aria-label="월간 핵심 수치">
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <MetricButton
-          label="수입"
+          label="월 실수령액"
           valueWon={summary.incomeWon}
           importance="primary"
           disabled={disabled}
-          onClick={(opener) => onEdit('income', opener)}
+          onClick={onEdit}
         />
         <MetricButton
-          label="계획 유출"
-          valueWon={summary.plannedOutflowWon}
+          label="월 소비"
+          valueWon={summary.consumptionWon}
           importance="primary"
           disabled={disabled}
-          onClick={(opener) => onEdit('expense', opener)}
+          onClick={onEdit}
         >
-          <span>생활비 {formatDashboardWon(summary.expenseWon)}</span>
+          <span>주거 {formatDashboardWon(summary.housingWon)}</span>
+          <span>생활 {formatDashboardWon(summary.livingWon)}</span>
         </MetricButton>
         <MetricButton
-          label="남는 금액"
-          valueWon={summary.availableWon}
+          label="남는 돈"
+          valueWon={summary.remainingWon}
           importance="primary"
           disabled={disabled}
-          onClick={(opener) => onEdit('investment', opener)}
+          onClick={onEdit}
         >
-          <span>투자 가능액</span>
-          {summary.deficitWon > 0 ? <span>부족 {formatDashboardWon(summary.deficitWon)}</span> : null}
+          {summary.deficitWon > 0 ? <span>수입보다 {formatDashboardWon(summary.deficitWon)} 초과</span> : null}
         </MetricButton>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <MetricButton
-          label="저축"
+          label="월 저축"
           valueWon={summary.savingWon}
           importance="secondary"
           disabled={disabled}
-          onClick={(opener) => onEdit('saving', opener)}
+          onClick={onEdit}
         />
         <MetricButton
-          label="투자"
+          label="월 투자"
           valueWon={summary.investmentWon}
           importance="secondary"
           disabled={disabled}
-          onClick={(opener) => onEdit('investment', opener)}
+          onClick={onEdit}
         />
       </div>
     </section>
@@ -76,7 +74,7 @@ function MetricButton({ label, valueWon, importance, children, disabled, onClick
     <button
       type="button"
       disabled={disabled}
-      aria-label={`${label === '계획 유출' ? '생활비' : label} 편집`}
+      aria-label={`${label} 편집`}
       aria-describedby={children ? `${descriptionId} ${contextId}` : descriptionId}
       data-importance={importance}
       className={importance === 'primary'

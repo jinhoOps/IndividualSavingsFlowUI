@@ -5,6 +5,7 @@ import { formatContextWon, formatPercentage } from './FlowContextSummary';
 
 export interface AllocationBarProps {
   data: MainData;
+  contextLabel?: string;
 }
 
 interface Allocation {
@@ -14,7 +15,7 @@ interface Allocation {
   percentage: number | null;
 }
 
-export function AllocationBar({ data }: AllocationBarProps) {
+export function AllocationBar({ data, contextLabel }: AllocationBarProps) {
   const [hoveredId, setHoveredId] = useState<string>();
   const [focusedId, setFocusedId] = useState<string>();
   const [tappedId, setTappedId] = useState<string>();
@@ -37,7 +38,7 @@ export function AllocationBar({ data }: AllocationBarProps) {
   return (
     <section className="allocation-bar" aria-label="수입 배분">
       <p className="allocation-bar__context">
-        {isDeficit ? '계획 유출을 기준으로 배분했습니다' : '월 수입을 기준으로 배분했습니다'}
+        {contextLabel ?? (isDeficit ? '계획 유출을 기준으로 배분했습니다' : '월 수입을 기준으로 배분했습니다')}
       </p>
       <div className="allocation-bar__segments">
         {allocations.map((allocation) => {
