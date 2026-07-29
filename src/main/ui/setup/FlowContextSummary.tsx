@@ -7,12 +7,15 @@ export interface FlowContextSummaryProps {
 }
 
 export function FlowContextSummary({ data }: FlowContextSummaryProps) {
-  const [tooltipOpen, setTooltipOpen] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
+  const [isTapped, setIsTapped] = useState(false);
   const tooltipId = useId();
   const cashflow = calculateCashflow(data);
   const plannedPercentage = percentageOfIncome(cashflow.plannedOutflowWon, cashflow.incomeWon);
   const visualPercentage = Math.min(100, Math.max(0, plannedPercentage ?? 0));
   const formattedPercentage = formatPercentage(plannedPercentage);
+  const tooltipOpen = isHovered || isFocused || isTapped;
 
   return (
     <section className="flow-context-summary" aria-label="현재 자금 계획 요약">
@@ -31,11 +34,14 @@ export function FlowContextSummary({ data }: FlowContextSummaryProps) {
           role="meter"
           style={{ width: `${visualPercentage}%` }}
           tabIndex={0}
-          onBlur={() => setTooltipOpen(false)}
-          onClick={() => setTooltipOpen((open) => !open)}
-          onFocus={() => setTooltipOpen(true)}
-          onMouseEnter={() => setTooltipOpen(true)}
-          onMouseLeave={() => setTooltipOpen(false)}
+          onBlur={() => {
+            setIsFocused(false);
+            setIsTapped(false);
+          }}
+          onClick={() => setIsTapped((tapped) => !tapped)}
+          onFocus={() => setIsFocused(true)}
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
         />
       </div>
       {plannedPercentage === null ? <p className="flow-context-summary__notice">수입이 없어 비율을 계산할 수 없습니다</p> : null}

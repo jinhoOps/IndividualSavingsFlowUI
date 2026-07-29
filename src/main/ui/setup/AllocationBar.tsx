@@ -15,7 +15,9 @@ interface Allocation {
 }
 
 export function AllocationBar({ data }: AllocationBarProps) {
-  const [activeId, setActiveId] = useState<string>();
+  const [hoveredId, setHoveredId] = useState<string>();
+  const [focusedId, setFocusedId] = useState<string>();
+  const [tappedId, setTappedId] = useState<string>();
   const tooltipId = useId();
   const cashflow = calculateCashflow(data);
   const isDeficit = cashflow.deficitWon > 0;
@@ -29,6 +31,8 @@ export function AllocationBar({ data }: AllocationBarProps) {
   if (!isDeficit) {
     allocations.push({ id: 'remaining', label: '남는 돈', amountWon: cashflow.remainingWon, percentage: percentageOfIncome(cashflow.remainingWon, denominator) });
   }
+
+  const activeId = hoveredId ?? focusedId ?? tappedId;
 
   return (
     <section className="allocation-bar" aria-label="수입 배분">
@@ -47,11 +51,14 @@ export function AllocationBar({ data }: AllocationBarProps) {
               key={allocation.id}
               style={{ width: `${Math.min(100, Math.max(0, allocation.percentage ?? 0))}%` }}
               type="button"
-              onBlur={() => setActiveId(undefined)}
-              onClick={() => setActiveId((active) => active === allocation.id ? undefined : allocation.id)}
-              onFocus={() => setActiveId(allocation.id)}
-              onMouseEnter={() => setActiveId(allocation.id)}
-              onMouseLeave={() => setActiveId(undefined)}
+              onBlur={() => {
+                setFocusedId(undefined);
+                setTappedId(undefined);
+              }}
+              onClick={() => setTappedId((active) => active === allocation.id ? undefined : allocation.id)}
+              onFocus={() => setFocusedId(allocation.id)}
+              onMouseEnter={() => setHoveredId(allocation.id)}
+              onMouseLeave={() => setHoveredId(undefined)}
             >
               <span className="sr-only">{allocation.label} {formatContextWon(allocation.amountWon)}</span>
             </button>

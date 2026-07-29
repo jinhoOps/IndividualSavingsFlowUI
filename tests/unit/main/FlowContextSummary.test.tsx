@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { MainData } from '../../../src/main/domain/model';
@@ -47,5 +47,16 @@ describe('FlowContextSummary', () => {
 
     expect(screen.getByText('수입이 없어 비율을 계산할 수 없습니다')).toBeVisible();
     expect(screen.getByRole('meter')).toHaveAttribute('aria-valuetext', '비율을 계산할 수 없음');
+  });
+
+  it('keeps a focused meter tooltip open after the pointer leaves, then closes it on blur', () => {
+    render(<FlowContextSummary data={cashflowFixture} />);
+    const meter = screen.getByRole('meter');
+
+    fireEvent.focus(meter);
+    fireEvent.mouseLeave(meter);
+    expect(screen.getByRole('tooltip')).toHaveTextContent('71.9%');
+    fireEvent.blur(meter);
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
   });
 });

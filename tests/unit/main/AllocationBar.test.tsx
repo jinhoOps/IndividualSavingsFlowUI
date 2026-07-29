@@ -36,7 +36,21 @@ describe('AllocationBar', () => {
     fireEvent.mouseLeave(consumption);
     fireEvent.focus(consumption);
     expect(screen.getByRole('tooltip')).toHaveTextContent(/^56\.3%$/);
+    fireEvent.blur(consumption);
     fireEvent.click(consumption);
+    expect(screen.getByRole('tooltip')).toHaveTextContent(/^56\.3%$/);
+    fireEvent.click(consumption);
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+  });
+
+  it('keeps a focused segment tooltip open after the pointer leaves, then closes it on blur', () => {
+    render(<AllocationBar data={cashflowFixture} />);
+    const consumption = screen.getByLabelText('소비 56.3%');
+
+    fireEvent.focus(consumption);
+    fireEvent.mouseLeave(consumption);
+    expect(screen.getByRole('tooltip')).toHaveTextContent('56.3%');
+    fireEvent.blur(consumption);
     expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
   });
 
