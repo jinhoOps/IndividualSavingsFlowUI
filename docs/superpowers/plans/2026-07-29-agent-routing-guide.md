@@ -40,7 +40,7 @@
 - Consumes: canonical repository-relative paths and policies defined by the approved agent-routing design.
 - Produces: a root routing contract read before role-specific work begins.
 
-- [ ] **Step 1: Confirm every canonical target exists**
+- [x] **Step 1: Confirm every canonical target exists**
 
 Run:
 
@@ -61,7 +61,7 @@ test -f .planning/codebase/TESTING.md
 
 Expected: exit status `0`.
 
-- [ ] **Step 2: Write the thin routing guide**
+- [x] **Step 2: Write the thin routing guide**
 
 Create `AGENTS.md` with these exact top-level sections:
 
@@ -87,7 +87,7 @@ The content must:
 - map documentation-only, TypeScript/shared-contract, user-flow, UI, and legacy-removal work to concrete verification;
 - define document conflict priority and the completion handoff fields: changed files, commands and results, remaining risks, and next owner.
 
-- [ ] **Step 3: Validate the guide structure and links**
+- [x] **Step 3: Validate the guide structure and links**
 
 Run:
 
@@ -98,7 +98,7 @@ rg -n 'Coordinator|Planner|UX|Developer|Legacy|QA|Documentation|\\.codegraph/|np
 
 Expected: all seven headings and all routing and verification terms are present.
 
-- [ ] **Step 4: Commit the waypoint**
+- [x] **Step 4: Commit the waypoint**
 
 ```bash
 git add AGENTS.md
@@ -119,7 +119,7 @@ Expected: commit succeeds with only `AGENTS.md` staged.
 - Consumes: the root routing contract from Task 1.
 - Produces: one consistent root-document policy across the README, Product PRD, and superseded documentation design.
 
-- [ ] **Step 1: Update the README documentation index**
+- [x] **Step 1: Update the README documentation index**
 
 Add this entry to `## 제품 문서`:
 
@@ -129,7 +129,7 @@ Add this entry to `## 제품 문서`:
 
 Place it immediately after the Product PRD so agents encounter the routing guide before specialized documentation.
 
-- [ ] **Step 2: Update Product PRD documentation requirements**
+- [x] **Step 2: Update Product PRD documentation requirements**
 
 Change the PRD so it consistently requires:
 
@@ -141,7 +141,7 @@ Change the PRD so it consistently requires:
 
 Keep the existing Current Product Baseline, Migration Transition, and Future Product Expansion boundaries unchanged.
 
-- [ ] **Step 3: Mark the earlier documentation decision as superseded**
+- [x] **Step 3: Mark the earlier documentation decision as superseded**
 
 Update `docs/superpowers/specs/2026-07-29-product-direction-and-documentation-design.md`:
 
@@ -152,7 +152,7 @@ Update `docs/superpowers/specs/2026-07-29-product-direction-and-documentation-de
 
 Do not rewrite the historical cleanup decisions for CONTEXT, TODO, prd-10, or GEMINI.
 
-- [ ] **Step 4: Verify consistency**
+- [x] **Step 4: Verify consistency**
 
 Run:
 
@@ -163,7 +163,7 @@ rg -n 'AGENTS|CodeGraph|\\.codegraph/' README.md AGENTS.md docs/ways-of-work/pla
 
 Expected: the first command shows the new routing and graph policy; the second command returns success because no prohibition remains.
 
-- [ ] **Step 5: Commit canonical documentation reconciliation**
+- [x] **Step 5: Commit canonical documentation reconciliation**
 
 ```bash
 git add README.md docs/ways-of-work/plan/isf-rebuild/connected-financial-planning-workspace/prd.md docs/superpowers/specs/2026-07-29-product-direction-and-documentation-design.md
@@ -188,7 +188,7 @@ Expected: commit succeeds with the three canonical documents staged.
 - Consumes: Tasks 1 and 2.
 - Produces: fresh evidence that the routing guide is complete, linked, and consistent.
 
-- [ ] **Step 1: Verify the root Markdown policy**
+- [x] **Step 1: Verify the root Markdown policy**
 
 Run:
 
@@ -204,7 +204,7 @@ Expected:
 ./README.md
 ```
 
-- [ ] **Step 2: Validate every inline Markdown link in the changed documents**
+- [x] **Step 2: Validate every inline Markdown link in the changed documents**
 
 Run:
 
@@ -222,7 +222,7 @@ const files = [
 ];
 const failures = [];
 for (const file of files) {
-  const text = fs.readFileSync(file, 'utf8');
+  const text = fs.readFileSync(file, 'utf8').replace(/```[\s\S]*?```/g, '');
   for (const match of text.matchAll(/\[[^\]]+\]\(([^)]+)\)/g)) {
     const target = match[1].split('#')[0];
     if (!target || /^(https?:|mailto:)/.test(target)) continue;
@@ -240,7 +240,7 @@ NODE
 
 Expected: `validated links in 6 files`.
 
-- [ ] **Step 3: Run final Markdown and repository checks**
+- [x] **Step 3: Run final Markdown and repository checks**
 
 Run:
 
@@ -251,7 +251,7 @@ git status --short
 
 Expected: no whitespace errors; only the implementation plan may remain uncommitted before the final plan commit.
 
-- [ ] **Step 4: Record completion in the plan and commit**
+- [x] **Step 4: Record completion in the plan and commit**
 
 Mark every completed checkbox in this plan as `[x]`, then run:
 
