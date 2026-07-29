@@ -1,66 +1,107 @@
-import { useId, useState } from 'react';
+import { useEffect, useId, useRef, useState, type PointerEvent } from 'react';
 import { calculateCashflow, percentageOfIncome } from '../../domain/cashflow';
 import type { MainData } from '../../domain/model';
+import { PercentageTooltip } from '../common/PercentageTooltip';
 
 export interface FlowContextSummaryProps {
   data: MainData;
 }
 
 export function FlowContextSummary({ data }: FlowContextSummaryProps) {
-  const [isHovered, setIsHovered] = useState(false);
+  const [isPointerActive, setIsPointerActive] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const [isTapped, setIsTapped] = useState(false);
+  const [pointerPosition, setPointerPosition] = useState<number>();
+  const [tapPosition, setTapPosition] = useState<number>();
+  const flowBarWrapperRef = useRef<HTMLDivElement>(null);
   const tooltipId = useId();
   const cashflow = calculateCashflow(data);
   const plannedPercentage = percentageOfIncome(cashflow.plannedOutflowWon, cashflow.incomeWon);
-  const visualPercentage = Math.min(100, Math.max(0, plannedPercentage ?? 0));
+  const visualPercentage = clampPercentage(plannedPercentage ?? 0);
   const formattedPercentage = formatPercentage(plannedPercentage);
-  const tooltipOpen = isHovered || isFocused || isTapped;
-  const isDeficit = cashflow.deficitWon > 0;
+  const tooltipOpen = plannedPercentage !== null && (isPointerActive || isFocused || isTapped);
+  const tooltipPosition = isTapped
+    ? tapPosition ?? visualPercentage
+    : isPointerActive
+      ? pointerPosition ?? visualPercentage
+      : visualPercentage;
   const unavailableCopy = '수입을 먼저 입력해주세요.';
 
+  useEffect(() => {
+    if (!isTapped) {
+      return;
+    }
+
+    const closeTappedTooltip = (event: MouseEvent) => {
+      if (!flowBarWrapperRef.current?.contains(event.target as Node)) {
+        setIsTapped(false);
+      }
+    };
+
+    document.addEventListener('click', closeTappedTooltip);
+    return () => document.removeEventListener('click', closeTappedTooltip);
+  }, [isTapped]);
+
+  const updatePointerPosition = (event: PointerEvent<HTMLDivElement>) => {
+    setPointerPosition(pointerPercentage(event));
+  };
+
+  const toggleTappedTooltip = (event: PointerEvent<HTMLDivElement>) => {
+    setTapPosition(pointerPercentage(event));
+    setIsTapped((tapped) => !tapped);
+  };
+
   return (
-    <section
-      className={`flow-context-summary${isDeficit ? ' flow-context-summary--warning' : ''}`}
-      aria-label="현재 자금 계획 요약"
-    >
-      <p className="flow-context-summary__amount">월 수입 {formatContextWon(cashflow.incomeWon)}</p>
-      <p className="flow-context-summary__amount">현재 계획 {formatContextWon(cashflow.plannedOutflowWon)}</p>
-      <p className="flow-context-summary__amount">남는 돈 {formatContextWon(cashflow.remainingWon)}</p>
-      <div
-        aria-describedby={tooltipOpen && plannedPercentage !== null ? tooltipId : undefined}
-        aria-label="수입 대비 현재 계획"
-        aria-valuemax={100}
-        aria-valuemin={0}
-        aria-valuenow={visualPercentage}
-        aria-valuetext={plannedPercentage === null ? unavailableCopy : formattedPercentage}
-        className="flow-context-summary__meter-track"
-        role="meter"
-        tabIndex={0}
-        onBlur={() => {
-          setIsFocused(false);
-          setIsTapped(false);
-        }}
-        onClick={() => setIsTapped((tapped) => !tapped)}
-        onFocus={() => setIsFocused(true)}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-      >
+    <section className="flow-context-summary" aria-label="현재 자금 계획 요약">
+      <div className="flow-bar-wrapper" ref={flowBarWrapperRef}>
         <div
-          aria-hidden="true"
-          className={`flow-context-summary__meter${isDeficit ? ' flow-context-summary__meter--warning' : ''}`}
-          style={{ width: `${visualPercentage}%` }}
+          aria-describedby={tooltipOpen ? tooltipId : undefined}
+          aria-label="수입 대비 현재 계획"
+          aria-valuemax={100}
+          aria-valuemin={0}
+          aria-valuenow={visualPercentage}
+          aria-valuetext={plannedPercentage === null ? unavailableCopy : formattedPercentage}
+          className="flow-bar"
+          role="meter"
+          tabIndex={0}
+          onBlur={() => setIsFocused(false)}
+          onClick={toggleTappedTooltip}
+          onFocus={() => setIsFocused(true)}
+          onPointerEnter={(event) => {
+            updatePointerPosition(event);
+            setIsPointerActive(true);
+          }}
+          onPointerLeave={() => setIsPointerActive(false)}
+          onPointerMove={updatePointerPosition}
+        >
+          <div
+            aria-hidden="true"
+            className="flow-bar__fill"
+            style={{ width: `${visualPercentage}%` }}
+          />
+        </div>
+        <PercentageTooltip
+          id={tooltipId}
+          open={tooltipOpen}
+          position={{ xPercent: tooltipPosition }}
+          value={formattedPercentage}
         />
       </div>
-      {plannedPercentage === null ? <p className="flow-context-summary__notice">{unavailableCopy}</p> : null}
-      {isDeficit ? (
-        <p className="flow-context-summary__warning">
-          월 수입보다 {formatContextWon(cashflow.deficitWon)} 많아요
-        </p>
-      ) : null}
-      {tooltipOpen && plannedPercentage !== null ? <span className="flow-tooltip" id={tooltipId} role="tooltip">{formattedPercentage}</span> : null}
     </section>
   );
+}
+
+function pointerPercentage(event: PointerEvent<HTMLDivElement>): number {
+  const rect = event.currentTarget.getBoundingClientRect();
+  if (rect.width <= 0) {
+    return 0;
+  }
+
+  return clampPercentage(((event.clientX - rect.left) / rect.width) * 100);
+}
+
+function clampPercentage(percentage: number): number {
+  return Math.min(100, Math.max(0, percentage));
 }
 
 export function formatContextWon(amountWon: number): string {

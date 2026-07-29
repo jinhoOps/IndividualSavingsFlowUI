@@ -123,42 +123,30 @@
     border-radius: var(--ui-surface-radius);
   }
 
-  .flow-context-summary,
   .allocation-bar {
     @apply grid gap-3 rounded-2xl border border-line bg-white/75 p-4 text-sm text-muted-text;
   }
 
-  .flow-context-summary__amount,
-  .flow-context-summary__notice,
-  .flow-context-summary__warning,
   .allocation-bar__context,
   .allocation-bar__deficit {
     @apply m-0 font-bold;
   }
 
-  .flow-context-summary__meter-track,
   .allocation-bar__segments {
     @apply flex h-4 overflow-hidden rounded-full bg-slate-200;
   }
 
-  .flow-context-summary__meter-track {
+  .flow-bar-wrapper {
+    @apply relative;
+  }
+
+  .flow-bar {
+    @apply flex h-1.5 w-full overflow-hidden rounded-full bg-slate-200;
     @apply outline-none focus-visible:ring-3 focus-visible:ring-accent/35;
   }
 
-  .flow-context-summary__meter {
+  .flow-bar__fill {
     @apply block h-full rounded-full bg-accent transition-[width];
-  }
-
-  .flow-context-summary--warning {
-    @apply border-amber-300 bg-amber-50/90;
-  }
-
-  .flow-context-summary__meter--warning {
-    @apply bg-amber-600;
-  }
-
-  .flow-context-summary__warning {
-    @apply text-amber-900;
   }
 
   .allocation-bar__segment {
@@ -179,6 +167,10 @@
 
   .flow-tooltip {
     @apply w-fit rounded-md bg-slate-950 px-2 py-1 text-xs font-bold text-white;
+  }
+
+  .flow-bar-wrapper .flow-tooltip {
+    @apply absolute bottom-full mb-2 -translate-x-1/2;
   }
 
   .cashflow-sankey {
