@@ -48,7 +48,10 @@
 }
 
 .journey-action {
+  display: inline-flex;
+  align-items: center;
   min-height: 44px;
+  padding: 0.5rem 0.75rem;
 }
 
 @media (min-width: 768px) {

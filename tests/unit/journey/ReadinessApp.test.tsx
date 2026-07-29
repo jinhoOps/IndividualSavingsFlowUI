@@ -1,5 +1,9 @@
+/// <reference types="node" />
+
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ReadinessApp } from '../../../src/journey/ui/ReadinessApp';
 
@@ -48,6 +52,18 @@ describe('ReadinessApp', () => {
 
     expect(screen.getByText(message)).toBeVisible();
     expect(screen.getByRole('link', { name: 'Main으로 이동' })).toHaveAttribute('href', expect.stringContaining('/apps/main/'));
+  });
+
+  it('renders the Main recovery link as a padded 44px touch target', () => {
+    render(<ReadinessApp destination="simulation" repository={{
+      load: () => ({ status: 'empty' }),
+      save: vi.fn(),
+    }} />);
+
+    expect(screen.getByRole('link', { name: 'Main으로 이동' })).toHaveClass('journey-action');
+    const journeyCss = readFileSync(resolve(process.cwd(), 'src/journey/ui/journey.css'), 'utf8');
+
+    expect(journeyCss).toMatch(/\.journey-action\s*\{[^}]*display:\s*inline-flex;[^}]*align-items:\s*center;[^}]*min-height:\s*44px;[^}]*padding:\s*0\.5rem 0\.75rem;/s);
   });
 
   it('saves the Portfolio handoff before navigation', () => {

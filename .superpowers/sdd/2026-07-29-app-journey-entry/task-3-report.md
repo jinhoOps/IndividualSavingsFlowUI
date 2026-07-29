@@ -32,3 +32,11 @@ Completed and committed as `feat(journey): add readiness screens`.
 ## Concerns
 
 The entry files are intentionally not wired into the existing `apps/*` HTML files in this task; that integration belongs to the separately scoped entry-replacement work.
+
+## Fix round 1 — Main recovery touch target
+
+- Added the `.journey-action` inline-flex, center alignment, and `0.5rem 0.75rem` padding contract while preserving its 44px minimum height.
+- Added a ReadinessApp component/style contract test that confirms the recovery link uses `.journey-action` and the stylesheet supplies the touch-target declarations.
+- RED: `npx vitest run tests/unit/journey/ReadinessApp.test.tsx` failed because `.journey-action` lacked `display: inline-flex`, alignment, and padding.
+- GREEN: `npx vitest run tests/unit/journey/ReadinessApp.test.tsx` — 1 file, 9 tests passed.
+- Verification: `npm run check` passed source and unit TypeScript checks; `git diff --check` passed.
