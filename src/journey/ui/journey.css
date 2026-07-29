@@ -1,0 +1,62 @@
+.journey-launcher {
+  min-width: 0;
+}
+
+.journey-launcher details {
+  border: 1px solid var(--line, var(--color-line));
+  border-radius: var(--rd-sm, 8px);
+  background: var(--panel, var(--color-panel));
+}
+
+.journey-launcher summary,
+.journey-launcher a {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0.5rem 0.75rem;
+}
+
+.journey-launcher summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.journey-launcher ul {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0.25rem;
+  list-style: none;
+}
+
+.journey-launcher a {
+  justify-content: space-between;
+  gap: 0.5rem;
+  border-radius: var(--rd-sm, 8px);
+  color: var(--ink, var(--color-ink));
+  text-decoration: none;
+}
+
+.journey-launcher a:hover,
+.journey-launcher a:focus-visible {
+  background: color-mix(in srgb, var(--tone-accent, var(--color-accent)) 12%, transparent);
+}
+
+.journey-launcher a span {
+  color: var(--muted, var(--color-muted-text));
+  font-size: var(--text-caption, 0.875rem);
+}
+
+.journey-action {
+  min-height: 44px;
+}
+
+@media (min-width: 768px) {
+  .journey-launcher summary {
+    display: none;
+  }
+
+  .journey-launcher details > ul {
+    display: flex;
+  }
+}
