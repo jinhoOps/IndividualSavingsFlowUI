@@ -133,7 +133,7 @@
   }
 
   .allocation-bar__segments {
-    @apply flex h-4 overflow-hidden rounded-full bg-slate-200;
+    @apply flex;
   }
 
   .flow-bar-wrapper {
@@ -150,7 +150,7 @@
   }
 
   .allocation-bar__segment {
-    @apply h-full min-w-0 border-0 p-0 outline-none transition-opacity hover:opacity-80 focus-visible:ring-3 focus-visible:ring-offset-2;
+    @apply h-full shrink-0 border-0 p-0 outline-none transition-opacity hover:opacity-80 focus-visible:ring-3 focus-visible:ring-offset-2;
   }
 
   .allocation-bar__segment--consumption { @apply bg-primary; }
@@ -161,6 +161,10 @@
   .allocation-bar__legend {
     @apply m-0 flex flex-wrap gap-x-3 gap-y-1 p-0 text-xs font-bold text-slate-600;
     list-style: none;
+  }
+
+  .allocation-bar__legend-target {
+    @apply -m-1 rounded border-0 bg-transparent p-1 font-inherit text-inherit outline-none hover:text-ink focus-visible:ring-3 focus-visible:ring-accent/35;
   }
 
   .allocation-bar__deficit { @apply text-red-700; }

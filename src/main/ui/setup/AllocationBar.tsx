@@ -1,6 +1,7 @@
-import { useId, useState } from 'react';
+import { useEffect, useId, useRef, useState, type MouseEvent, type PointerEvent } from 'react';
 import { calculateCashflow, percentageOfIncome } from '../../domain/cashflow';
 import type { MainData } from '../../domain/model';
+import { PercentageTooltip } from '../common/PercentageTooltip';
 import { formatContextWon, formatPercentage } from './FlowContextSummary';
 
 export interface AllocationBarProps {
@@ -14,10 +15,17 @@ interface Allocation {
   percentage: number | null;
 }
 
+const MIN_INTERACTIVE_PERCENTAGE = 2;
+
 export function AllocationBar({ data }: AllocationBarProps) {
   const [hoveredId, setHoveredId] = useState<string>();
   const [focusedId, setFocusedId] = useState<string>();
   const [tappedId, setTappedId] = useState<string>();
+  const [pointerPosition, setPointerPosition] = useState<number>();
+  const [tapPosition, setTapPosition] = useState<number>();
+  const barRef = useRef<HTMLDivElement>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const isPointerFocusRef = useRef(false);
   const tooltipId = useId();
   const cashflow = calculateCashflow(data);
   const isDeficit = cashflow.deficitWon > 0;
@@ -33,51 +41,149 @@ export function AllocationBar({ data }: AllocationBarProps) {
   }
 
   const activeId = hoveredId ?? focusedId ?? tappedId;
+  const activeAllocation = allocations.find((allocation) => allocation.id === activeId);
+  const activePosition = activeAllocation ? allocationCenter(activeAllocation.id, allocations) : 0;
+  const tooltipPosition = activeId === hoveredId
+    ? pointerPosition ?? activePosition
+    : activeId === tappedId
+      ? tapPosition ?? activePosition
+      : activePosition;
+
+  useEffect(() => {
+    if (!tappedId) {
+      return;
+    }
+
+    const closeTappedTooltip = (event: globalThis.MouseEvent) => {
+      if (!wrapperRef.current?.contains(event.target as Node)) {
+        setTappedId(undefined);
+      }
+    };
+
+    document.addEventListener('click', closeTappedTooltip);
+    return () => document.removeEventListener('click', closeTappedTooltip);
+  }, [tappedId]);
+
+  const setPointerPositionFromEvent = (event: PointerEvent<HTMLButtonElement>) => {
+    setPointerPosition(pointerPercentage(event.clientX, barRef.current));
+  };
+
+  const activatePointer = (allocationId: string, event?: PointerEvent<HTMLButtonElement>) => {
+    if (event) {
+      setPointerPositionFromEvent(event);
+    } else {
+      setPointerPosition(undefined);
+    }
+    setHoveredId(allocationId);
+  };
+
+  const toggleTappedTooltip = (allocationId: string, event: MouseEvent<HTMLButtonElement>, isVisualTarget: boolean) => {
+    isPointerFocusRef.current = false;
+    setTapPosition(isVisualTarget && event.detail > 0 ? pointerPercentage(event.clientX, barRef.current) : undefined);
+    setTappedId((tapped) => tapped === allocationId ? undefined : allocationId);
+  };
+
+  const triggerProps = (allocation: Allocation, isVisualTarget: boolean) => {
+    const isActive = activeId === allocation.id;
+    return {
+      'aria-describedby': isActive ? tooltipId : undefined,
+      'aria-label': `${allocation.label} ${formatPercentage(allocation.percentage)}`,
+      onBlur: () => {
+        isPointerFocusRef.current = false;
+        setFocusedId(undefined);
+      },
+      onClick: (event: MouseEvent<HTMLButtonElement>) => toggleTappedTooltip(allocation.id, event, isVisualTarget),
+      onFocus: () => {
+        if (!isPointerFocusRef.current) {
+          setFocusedId(allocation.id);
+        }
+      },
+      onPointerDown: () => {
+        isPointerFocusRef.current = true;
+        setFocusedId(undefined);
+      },
+      onPointerEnter: (event: PointerEvent<HTMLButtonElement>) => activatePointer(allocation.id, isVisualTarget ? event : undefined),
+      onPointerLeave: () => setHoveredId(undefined),
+      onPointerMove: isVisualTarget ? setPointerPositionFromEvent : undefined,
+      type: 'button' as const,
+    };
+  };
 
   return (
     <section className="allocation-bar" aria-label="월 수입 나누기">
       <p className="allocation-bar__context">
         월 수입을 이렇게 나눠 쓰고 있어요
       </p>
-      <div className="allocation-bar__segments">
-        {allocations.map((allocation) => {
-          const formattedPercentage = formatPercentage(allocation.percentage);
-          const isActive = activeId === allocation.id;
-          return (
-            <button
-              aria-describedby={isActive ? tooltipId : undefined}
-              aria-label={`${allocation.label} ${formattedPercentage}`}
-              className={`allocation-bar__segment allocation-bar__segment--${allocation.id}`}
-              key={allocation.id}
-              style={{ width: `${Math.min(100, Math.max(0, allocation.percentage ?? 0))}%` }}
-              type="button"
-              onBlur={() => {
-                setFocusedId(undefined);
-                setTappedId(undefined);
-              }}
-              onClick={() => setTappedId((active) => active === allocation.id ? undefined : allocation.id)}
-              onFocus={() => setFocusedId(allocation.id)}
-              onMouseEnter={() => setHoveredId(allocation.id)}
-              onMouseLeave={() => setHoveredId(undefined)}
-            >
-              <span className="sr-only">{allocation.label} {formatContextWon(allocation.amountWon)}</span>
-            </button>
-          );
-        })}
+      <div className="flow-bar-wrapper" ref={wrapperRef}>
+        <div className="flow-bar allocation-bar__segments" ref={barRef}>
+          {allocations.map((allocation) => {
+            const visualPercentage = clampPercentage(allocation.percentage ?? 0);
+            const requiresLegendTarget = visualPercentage < MIN_INTERACTIVE_PERCENTAGE;
+            const className = `allocation-bar__segment allocation-bar__segment--${allocation.id}`;
+
+            return requiresLegendTarget ? (
+              <span aria-hidden="true" className={className} key={allocation.id} style={{ width: `${visualPercentage}%` }} />
+            ) : (
+              <button
+                {...triggerProps(allocation, true)}
+                className={className}
+                key={allocation.id}
+                style={{ width: `${visualPercentage}%` }}
+              />
+            );
+          })}
+        </div>
+        <ul className="allocation-bar__legend" aria-label="월 자금 항목">
+          {allocations.map((allocation) => {
+            const requiresLegendTarget = clampPercentage(allocation.percentage ?? 0) < MIN_INTERACTIVE_PERCENTAGE;
+            const text = `${allocation.label} ${formatContextWon(allocation.amountWon)}`;
+
+            return (
+              <li key={allocation.id}>
+                {requiresLegendTarget ? (
+                  <button {...triggerProps(allocation, false)} className="allocation-bar__legend-target">
+                    {text}
+                  </button>
+                ) : text}
+              </li>
+            );
+          })}
+        </ul>
+        <PercentageTooltip
+          id={tooltipId}
+          open={activeAllocation !== undefined}
+          position={{ xPercent: tooltipPosition }}
+          value={formatPercentage(activeAllocation?.percentage ?? null)}
+        />
       </div>
-      <ul className="allocation-bar__legend" aria-label="월 자금 항목">
-        {allocations.map((allocation) => (
-          <li key={allocation.id}>
-            {allocation.label} {formatContextWon(allocation.amountWon)} ({formatPercentage(allocation.percentage)})
-          </li>
-        ))}
-      </ul>
       {isDeficit ? <p className="allocation-bar__deficit" role="status">수입보다 {formatContextWon(cashflow.deficitWon)} 초과</p> : null}
-      {activeId ? (
-        <span className="flow-tooltip" id={tooltipId} role="tooltip">
-          {formatPercentage(allocations.find((allocation) => allocation.id === activeId)?.percentage ?? null)}
-        </span>
-      ) : null}
     </section>
   );
+}
+
+function allocationCenter(allocationId: string, allocations: Allocation[]): number {
+  let offset = 0;
+
+  for (const allocation of allocations) {
+    const percentage = clampPercentage(allocation.percentage ?? 0);
+    if (allocation.id === allocationId) {
+      return clampPercentage(offset + percentage / 2);
+    }
+    offset += percentage;
+  }
+
+  return 0;
+}
+
+function pointerPercentage(clientX: number, element: HTMLDivElement | null): number {
+  const rect = element?.getBoundingClientRect();
+  if (!rect || rect.width <= 0) {
+    return 0;
+  }
+
+  return clampPercentage(((clientX - rect.left) / rect.width) * 100);
+}
+
+function clampPercentage(percentage: number): number {
+  return Math.min(100, Math.max(0, percentage));
 }

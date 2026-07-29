@@ -16,26 +16,37 @@ const cashflowFixture: MainData = {
   monthlyInvestmentWon: 200_000,
 };
 
+const emptyFixture: MainData = {
+  ...cashflowFixture,
+  monthlyNetIncomeWon: 0,
+  monthlyHousingWon: 0,
+  monthlyLivingWon: 0,
+  monthlySavingWon: 0,
+  monthlyInvestmentWon: 0,
+};
+
 describe('AllocationBar', () => {
-  it('labels each allocation using its percentage of income', () => {
+  it('keeps the legend to allocation labels and amounts', () => {
     render(<AllocationBar data={cashflowFixture} />);
 
     expect(screen.getByText('월 수입을 이렇게 나눠 쓰고 있어요')).toBeVisible();
     expect(screen.queryByText(/배분/)).not.toBeInTheDocument();
+    expect(screen.getByText('소비 180만 원')).toBeVisible();
+    expect(screen.queryByText('소비 180만 원 (56.3%)')).not.toBeInTheDocument();
     expect(screen.getByLabelText('소비 56.3%')).toBeVisible();
     expect(screen.getByLabelText('저축 9.4%')).toBeVisible();
     expect(screen.getByLabelText('투자 6.3%')).toBeVisible();
     expect(screen.getByLabelText('남는 돈 28.1%')).toBeVisible();
   });
 
-  it('shows a percentage-only tooltip for hover, focus, and tap', () => {
+  it('shows a shared percentage tooltip for hover, focus, and tap', () => {
     render(<AllocationBar data={cashflowFixture} />);
     const consumption = screen.getByLabelText('소비 56.3%');
 
-    fireEvent.mouseEnter(consumption);
+    fireEvent.pointerEnter(consumption);
     expect(screen.getByRole('tooltip')).toHaveTextContent('56.3%');
     expect(screen.getByRole('tooltip')).toHaveTextContent(/^56\.3%$/);
-    fireEvent.mouseLeave(consumption);
+    fireEvent.pointerLeave(consumption);
     fireEvent.focus(consumption);
     expect(screen.getByRole('tooltip')).toHaveTextContent(/^56\.3%$/);
     fireEvent.blur(consumption);
@@ -50,19 +61,21 @@ describe('AllocationBar', () => {
     const consumption = screen.getByLabelText('소비 56.3%');
 
     fireEvent.focus(consumption);
-    fireEvent.mouseLeave(consumption);
+    fireEvent.pointerLeave(consumption);
     expect(screen.getByRole('tooltip')).toHaveTextContent('56.3%');
     fireEvent.blur(consumption);
     expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
   });
 
-  it('uses zero-width allocation labels when income is zero', () => {
-    render(<AllocationBar data={{ ...cashflowFixture, monthlyNetIncomeWon: 0, monthlyHousingWon: 0, monthlyLivingWon: 0, monthlySavingWon: 0, monthlyInvestmentWon: 0 }} />);
+  it('provides a legend-linked control for zero-width allocations', () => {
+    render(<AllocationBar data={emptyFixture} />);
 
-    expect(screen.getByLabelText('소비 0.0%')).toBeVisible();
-    expect(screen.getByLabelText('남는 돈 0.0%')).toBeVisible();
-    expect(screen.getByText('소비 0원 (0.0%)')).toBeVisible();
-    expect(screen.getByText('남는 돈 0원 (0.0%)')).toBeVisible();
+    expect(screen.getByText('소비 0원')).toBeVisible();
+    expect(screen.getByRole('button', { name: '소비 0.0%' })).toBeVisible();
+    expect(screen.getByRole('button', { name: '남는 돈 0.0%' })).toBeVisible();
+
+    fireEvent.focus(screen.getByRole('button', { name: '소비 0.0%' }));
+    expect(screen.getByRole('tooltip')).toHaveTextContent(/^0\.0%$/);
   });
 
   it('represents a deficit against planned outflow without a negative remaining segment', () => {
