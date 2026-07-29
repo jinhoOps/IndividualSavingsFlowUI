@@ -61,6 +61,47 @@
 }
 
 @layer components {
+  .flow-context-summary,
+  .allocation-bar {
+    @apply grid gap-3 rounded-2xl border border-line bg-white/75 p-4 text-sm text-muted-text;
+  }
+
+  .flow-context-summary__amount,
+  .flow-context-summary__notice,
+  .allocation-bar__context,
+  .allocation-bar__deficit {
+    @apply m-0 font-bold;
+  }
+
+  .flow-context-summary__meter-track,
+  .allocation-bar__segments {
+    @apply flex h-4 overflow-hidden rounded-full bg-slate-200;
+  }
+
+  .flow-context-summary__meter {
+    @apply block h-full rounded-full bg-accent outline-none transition-[width] focus-visible:ring-3 focus-visible:ring-accent/35;
+  }
+
+  .allocation-bar__segment {
+    @apply h-full min-w-0 border-0 p-0 outline-none transition-opacity hover:opacity-80 focus-visible:ring-3 focus-visible:ring-offset-2;
+  }
+
+  .allocation-bar__segment--consumption { @apply bg-primary; }
+  .allocation-bar__segment--saving { @apply bg-accent; }
+  .allocation-bar__segment--investment { @apply bg-slate-700; }
+  .allocation-bar__segment--remaining { @apply bg-slate-300; }
+
+  .allocation-bar__legend {
+    @apply m-0 flex flex-wrap gap-x-3 gap-y-1 p-0 text-xs font-bold text-slate-600;
+    list-style: none;
+  }
+
+  .allocation-bar__deficit { @apply text-red-700; }
+
+  .flow-tooltip {
+    @apply w-fit rounded-md bg-slate-950 px-2 py-1 text-xs font-bold text-white;
+  }
+
   .cashflow-sankey {
     min-width: 680px;
     filter: drop-shadow(0 12px 24px rgba(16, 34, 32, 0.06));
