@@ -36,7 +36,7 @@
 - Consumes: Vite Rollup input map and each HTML module entry.
 - Produces: authoritative current-entry list and evidence that legacy Main modules are not Main runtime entries.
 
-- [ ] **Step 1: List Vite and HTML entries**
+- [x] **Step 1: List Vite and HTML entries**
 
 Run:
 
@@ -52,7 +52,7 @@ Expected:
 - Portfolio loads `src/entries/step3.ts`.
 - Account Map loads `src/entries/account-map.ts`.
 
-- [ ] **Step 2: Trace entry-wrapper runtime imports**
+- [x] **Step 2: Trace entry-wrapper runtime imports**
 
 Run:
 
@@ -62,7 +62,7 @@ rg -n "^import " src/entries src/main/main.tsx
 
 Expected: non-Main wrappers load their current JavaScript apps; Main does not load `apps/main/app.js`.
 
-- [ ] **Step 3: Record evidence in the approved spec**
+- [x] **Step 3: Record evidence in the approved spec**
 
 Update the `기준선` section only when command output differs from existing claims. Keep Bedrock ownership explicit:
 
@@ -71,7 +71,7 @@ Update the `기준선` section only when command output differs from existing cl
 - Tailwind CSS owns presentation.
 - Vite PWA owns current service-worker generation.
 
-- [ ] **Step 4: Verify documentation diff**
+- [x] **Step 4: Verify documentation diff**
 
 Run:
 
@@ -81,7 +81,7 @@ git diff --check
 
 Expected: exit 0.
 
-- [ ] **Step 5: Commit runtime-boundary corrections if any**
+- [x] **Step 5: Commit runtime-boundary corrections if any**
 
 ```bash
 git add docs/superpowers/specs/2026-07-29-legacy-capability-inventory-design.md
@@ -104,7 +104,7 @@ Skip the commit when the verification produced no document change.
 - Consumes: every legacy Main module export and build-time legacy reference.
 - Produces: complete capability rows with no unclassified module.
 
-- [ ] **Step 1: Enumerate legacy Main modules and exports**
+- [x] **Step 1: Enumerate legacy Main modules and exports**
 
 Run:
 
@@ -117,7 +117,7 @@ done
 
 Expected: every module can be assigned to shell/UI, editing, calculation, visualization, compatibility, storage or onboarding.
 
-- [ ] **Step 2: Find legacy build and service-worker references**
+- [x] **Step 2: Find legacy build and service-worker references**
 
 Run:
 
@@ -128,7 +128,7 @@ rg -n "apps/main/modules|shared/legacy/sw|legacy/sw" \
 
 Expected: direct references are limited to compatibility consumers, legacy tests, version sync or legacy precache.
 
-- [ ] **Step 3: Enforce complete filename coverage**
+- [x] **Step 3: Enforce complete filename coverage**
 
 Run:
 
@@ -142,7 +142,7 @@ done
 
 Expected: no output.
 
-- [ ] **Step 4: Correct missing or misplaced capability rows**
+- [x] **Step 4: Correct missing or misplaced capability rows**
 
 For each missing module, add its filename to one existing capability row or create a new row. Every row must contain:
 
@@ -152,7 +152,7 @@ For each missing module, add its filename to one existing capability row or crea
 - one classification;
 - explicit follow-up gate.
 
-- [ ] **Step 5: Commit coverage corrections if any**
+- [x] **Step 5: Commit coverage corrections if any**
 
 ```bash
 git add docs/superpowers/specs/2026-07-29-legacy-capability-inventory-design.md
@@ -177,7 +177,7 @@ Skip the commit when no correction was required.
 - Consumes: `isf-rebuild-v1`, historical Step 1 snapshots and `IsfStorageHub`.
 - Produces: exact consumer-field and API-method inventory for future typed adapters.
 
-- [ ] **Step 1: List v1 storage consumers**
+- [x] **Step 1: List v1 storage consumers**
 
 Run:
 
@@ -188,7 +188,7 @@ rg -n "isf-rebuild-v1|STEP1_PRIMARY_STORAGE_KEY|STEP1_LOCAL_STORAGE_KEY" \
 
 Expected: Account Map, Simulation, Portfolio and compatibility tests remain visible.
 
-- [ ] **Step 2: Extract fields read by each connector**
+- [x] **Step 2: Extract fields read by each connector**
 
 Review:
 
@@ -205,7 +205,7 @@ rg -n "mainInputs\\.|inputs\\.|payloadData\\.|localInputs\\.|data\\." \
 
 Record exact fields by consumer in the spec’s `데이터 계약 Inventory` section. Do not infer unused fields from old schemas.
 
-- [ ] **Step 3: List global storage API methods**
+- [x] **Step 3: List global storage API methods**
 
 Run:
 
@@ -216,7 +216,7 @@ rg -o "IsfStorageHub\\??\\.[A-Za-z0-9_]+|window\\.IsfStorageHub\\??\\.[A-Za-z0-9
 
 Record each called method and owning consumer. Separate required methods from fallback-only methods.
 
-- [ ] **Step 4: Define adapter boundaries**
+- [x] **Step 4: Define adapter boundaries**
 
 Expand the follow-up section with three non-overlapping interfaces:
 
@@ -226,7 +226,7 @@ Expand the follow-up section with three non-overlapping interfaces:
 
 Do not specify implementation code before each adapter receives its own approved Superpowers spec.
 
-- [ ] **Step 5: Commit field and API inventory**
+- [x] **Step 5: Commit field and API inventory**
 
 ```bash
 git add docs/superpowers/specs/2026-07-29-legacy-capability-inventory-design.md
@@ -247,7 +247,7 @@ git commit -m "docs: map legacy data consumers"
 - Consumes: approved Bedrock Main specs and observed runtime.
 - Produces: reviewed classifications that do not depend on stale GSD status or outdated PRD feature claims.
 
-- [ ] **Step 1: Verify current Main capabilities**
+- [x] **Step 1: Verify current Main capabilities**
 
 Run:
 
@@ -260,7 +260,7 @@ rg -n "Financial Detail|Sankey|Account Map|ScalarEditor|isf-main-v2" \
 
 Expected: runtime uses `ScalarEditor` and v2; older scope text may describe capabilities not present in runtime.
 
-- [ ] **Step 2: Review each classification**
+- [x] **Step 2: Review each classification**
 
 Use these rules:
 
@@ -271,7 +271,7 @@ Use these rules:
 
 Never promote a `판정 대기` capability to `이관` solely because an outdated document mentions it.
 
-- [ ] **Step 3: Review each removal gate**
+- [x] **Step 3: Review each removal gate**
 
 Every `폐기` or `이관` row must identify:
 
@@ -280,7 +280,7 @@ Every `폐기` or `이관` row must identify:
 - replacement test;
 - service-worker/build reference cleanup when applicable.
 
-- [ ] **Step 4: Scan for ambiguous language**
+- [x] **Step 4: Scan for ambiguous language**
 
 Run:
 
@@ -291,7 +291,7 @@ rg -n "TBD|TODO|FIXME|XXX|적절한|나중에|필요하면" \
 
 Expected: no output.
 
-- [ ] **Step 5: Commit classification corrections if any**
+- [x] **Step 5: Commit classification corrections if any**
 
 ```bash
 git add docs/superpowers/specs/2026-07-29-legacy-capability-inventory-design.md
@@ -311,7 +311,7 @@ Skip the commit when no correction was required.
 - Consumes: completed runtime, module, field, API and classification evidence.
 - Produces: verified inventory and ordered follow-up spec queue.
 
-- [ ] **Step 1: Run final coverage checks**
+- [x] **Step 1: Run final coverage checks**
 
 ```bash
 spec=docs/superpowers/specs/2026-07-29-legacy-capability-inventory-design.md
@@ -325,7 +325,7 @@ git diff --check
 
 Expected: all module checks succeed, classified rows print and diff check exits 0.
 
-- [ ] **Step 2: Confirm no runtime files changed**
+- [x] **Step 2: Confirm no runtime files changed**
 
 Run:
 
@@ -335,7 +335,7 @@ git diff --name-only main...HEAD
 
 Expected: only Superpowers spec and plan documents.
 
-- [ ] **Step 3: Confirm ordered follow-up specs**
+- [x] **Step 3: Confirm ordered follow-up specs**
 
 The approved order must remain:
 
@@ -347,11 +347,11 @@ The approved order must remain:
 
 Product-decision items remain outside this queue until separately approved.
 
-- [ ] **Step 4: Mark completed checklist items**
+- [x] **Step 4: Mark completed checklist items**
 
 Update this plan’s checkbox state only for commands and evidence actually completed.
 
-- [ ] **Step 5: Commit verification record**
+- [x] **Step 5: Commit verification record**
 
 ```bash
 git add \
