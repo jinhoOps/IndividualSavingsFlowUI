@@ -47,7 +47,12 @@ export async function bootstrapMain(repository: MainRepository): Promise<MainSta
           setupStep: null,
           dirty: false,
           saveStatus: 'idle',
-          loadError: { message: result.reason, original: result.original, raw: result.raw },
+          loadError: {
+            message: result.reason,
+            original: result.original,
+            raw: result.raw,
+            source: result.source,
+          },
         };
     }
   } catch (error) {

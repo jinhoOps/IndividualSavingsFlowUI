@@ -7,6 +7,7 @@ const PENDING_KEY = 'isf-main-v2-pending';
 const SETUP_PROGRESS_KEY = 'isf-main-v2-setup-progress';
 const DISMISSED_RECOVERY_KEY = 'isf-main-v2-dismissed-recovery';
 const QUARANTINED_CURRENT_KEY = 'isf-main-v2-quarantined-current';
+const QUARANTINED_PENDING_KEY = 'isf-main-v2-quarantined-pending';
 const MAIN_SAVE_LOCK_NAME = 'isf-main-v2-save';
 const MAIN_SAVE_LEASE_PREFIX = 'isf-main-v2-save-lease:';
 const DEFAULT_LEASE_DURATION_MS = 10_000;
@@ -35,7 +36,14 @@ export type MainLoadResult =
     current: MainData | null;
     source: 'pending' | 'history';
   }
-  | { status: 'failed'; data: null; original: unknown; raw?: string; reason: string };
+  | {
+    status: 'failed';
+    data: null;
+    original: unknown;
+    raw?: string;
+    source?: 'current' | 'pending';
+    reason: string;
+  };
 
 export interface MainRepository {
   load(): Promise<MainLoadResult>;
@@ -46,6 +54,7 @@ export interface MainRepository {
   discardPending(expectedUpdatedAt?: number): void;
   discardRecovery(updatedAt: number): void;
   acknowledgeFailedCurrent(raw: string): void;
+  acknowledgeFailedPending(raw: string): void;
 }
 
 export type SetupProgressKind = 'initial' | 'restart';
@@ -335,7 +344,9 @@ export class BrowserMainRepository implements MainRepository {
     const storedCurrentRaw = this.storage.getItem(MAIN_KEY);
     const acknowledgedCurrentRaw = this.storage.getItem(QUARANTINED_CURRENT_KEY);
     const currentRaw = storedCurrentRaw === acknowledgedCurrentRaw ? null : storedCurrentRaw;
-    const pendingRaw = this.storage.getItem(PENDING_KEY);
+    const storedPendingRaw = this.storage.getItem(PENDING_KEY);
+    const acknowledgedPendingRaw = this.storage.getItem(QUARANTINED_PENDING_KEY);
+    const pendingRaw = storedPendingRaw === acknowledgedPendingRaw ? null : storedPendingRaw;
     const current = currentRaw === null ? null : parseStoredMain(currentRaw);
     const pending = pendingRaw === null ? null : parseStoredMain(pendingRaw);
     const history = await this.loadHistoryCandidate();
@@ -378,8 +389,10 @@ export class BrowserMainRepository implements MainRepository {
       };
     }
 
-    if (current !== null) return current;
-    if (pending !== null && pending.data === null) return pending;
+    if (current !== null) {
+      return current.status === 'failed' ? { ...current, source: 'current' } : current;
+    }
+    if (pending?.status === 'failed') return { ...pending, source: 'pending' };
     return { status: 'empty', data: null, original: null };
   }
 
@@ -397,10 +410,10 @@ export class BrowserMainRepository implements MainRepository {
 
   private async saveLocked(data: MainData, guard: MainSaveGuard): Promise<MainData> {
     guard.assertOwned();
-    const history = await this.loadHistoryCandidate();
+    const historyUpdatedAt = await this.loadHistoryUpdatedAtForSave();
     guard.assertOwned();
     const next = cloneMainData(data);
-    next.updatedAt = this.nextUpdatedAt(data.updatedAt, history?.data?.updatedAt ?? 0);
+    next.updatedAt = this.nextUpdatedAt(data.updatedAt, historyUpdatedAt);
     let previousCurrent: string | null = null;
     let currentWriteAttempted = false;
     let serialized = '';
@@ -510,6 +523,14 @@ export class BrowserMainRepository implements MainRepository {
     }
   }
 
+  acknowledgeFailedPending(raw: string): void {
+    if (this.storage.getItem(PENDING_KEY) !== raw) return;
+    this.storage.setItem(QUARANTINED_PENDING_KEY, raw);
+    if (this.storage.getItem(QUARANTINED_PENDING_KEY) !== raw) {
+      throw new Error('Could not quarantine malformed pending Main data.');
+    }
+  }
+
   private nextUpdatedAt(inputUpdatedAt: number, historyUpdatedAt: number): number {
     const persistedUpdatedAt = readStoredUpdatedAt(this.storage.getItem(MAIN_KEY));
     const pendingUpdatedAt = readStoredUpdatedAt(this.storage.getItem(PENDING_KEY));
@@ -551,6 +572,13 @@ export class BrowserMainRepository implements MainRepository {
     } catch {
       return null;
     }
+  }
+
+  private async loadHistoryUpdatedAtForSave(): Promise<number> {
+    if (this.historyStore.loadLatestMainV2 === undefined) return 0;
+    const latest = await this.historyStore.loadLatestMainV2();
+    if (latest === null) return 0;
+    return parseMainValue(latest).data?.updatedAt ?? 0;
   }
 }
 

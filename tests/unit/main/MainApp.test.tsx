@@ -102,6 +102,7 @@ function repository(result: MainLoadResult): MainRepository {
     discardPending: () => undefined,
     discardRecovery: () => undefined,
     acknowledgeFailedCurrent: () => undefined,
+    acknowledgeFailedPending: () => undefined,
   };
 }
 
@@ -225,6 +226,73 @@ describe('MainApp', () => {
     expect(screen.getByText('4000000')).toBeVisible();
     expect(screen.queryByRole('heading', { name: '저장 복구가 필요합니다' })).not.toBeInTheDocument();
     expect(storage.acknowledgeFailedCurrent).toHaveBeenCalledWith(raw);
+  });
+
+  it('acknowledges malformed pending data so setup progress resumes after reload', async () => {
+    const raw = '{malformed-pending';
+    let acknowledged = false;
+    let progress: { kind: 'initial'; step: SetupStep; draft: MainData } | null = null;
+    const failed = {
+      status: 'failed',
+      data: null,
+      original: raw,
+      raw,
+      source: 'pending',
+      reason: 'Stored main data is not valid JSON.',
+    } satisfies MainLoadResult;
+    const storage = repository(failed);
+    storage.acknowledgeFailedCurrent = vi.fn();
+    storage.load = async () => acknowledged
+      ? { status: 'empty', data: null, original: null }
+      : failed;
+    const acknowledgeFailedPending = vi.fn(() => {
+      acknowledged = true;
+    });
+    storage.acknowledgeFailedPending = acknowledgeFailedPending;
+    storage.saveSetupProgress = vi.fn((step, draft) => {
+      progress = { kind: 'initial', step, draft: { ...draft } };
+    });
+    storage.loadSetupProgress = () => progress;
+    const first = render(<MainApp repository={storage} />);
+    await screen.findByRole('heading', { name: '저장 복구가 필요합니다' });
+
+    fireEvent.click(screen.getByRole('button', { name: '빈 초안으로 다시 시작' }));
+    await screen.findByRole('heading', { name: 'setup:welcome' });
+    fireEvent.click(screen.getByRole('button', { name: 'change-income' }));
+    expect(screen.getByText('4000000')).toBeVisible();
+    first.unmount();
+    render(<MainApp repository={storage} />);
+
+    expect(await screen.findByRole('heading', { name: 'setup:welcome' })).toBeVisible();
+    expect(screen.getByText('4000000')).toBeVisible();
+    expect(screen.queryByRole('heading', { name: '저장 복구가 필요합니다' })).not.toBeInTheDocument();
+    expect(acknowledgeFailedPending).toHaveBeenCalledWith(raw);
+    expect(storage.acknowledgeFailedCurrent).not.toHaveBeenCalled();
+  });
+
+  it('stays in recovery when malformed pending quarantine cannot be written', async () => {
+    const raw = '{malformed-pending';
+    const failed = {
+      status: 'failed',
+      data: null,
+      original: raw,
+      raw,
+      source: 'pending',
+      reason: 'Stored main data is not valid JSON.',
+    } satisfies MainLoadResult;
+    const storage = repository(failed);
+    const acknowledgeFailedPending = vi.fn(() => {
+      throw new Error('quota');
+    });
+    storage.acknowledgeFailedPending = acknowledgeFailedPending;
+    render(<MainApp repository={storage} />);
+    await screen.findByRole('heading', { name: '저장 복구가 필요합니다' });
+
+    fireEvent.click(screen.getByRole('button', { name: '빈 초안으로 다시 시작' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('저장하지 못했습니다');
+    expect(screen.getByRole('heading', { name: '저장 복구가 필요합니다' })).toBeVisible();
+    expect(acknowledgeFailedPending).toHaveBeenCalledWith(raw);
   });
 
   it('retries a pending v2 recovery candidate only after explicit confirmation', async () => {

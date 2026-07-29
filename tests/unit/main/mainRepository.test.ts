@@ -408,6 +408,107 @@ describe('BrowserMainRepository', () => {
     await expect(repository.load()).resolves.toEqual({ status: 'empty', data: null, original: null });
   });
 
+  it('identifies malformed pending data as the failed source', async () => {
+    const raw = '{malformed-pending';
+    window.localStorage.setItem('isf-main-v2-pending', raw);
+    const repository = new BrowserMainRepository({
+      saveMainV2: vi.fn(),
+      loadLatestMainV2: vi.fn().mockResolvedValue(null),
+    });
+
+    await expect(repository.load()).resolves.toMatchObject({
+      status: 'failed',
+      source: 'pending',
+      raw,
+      original: raw,
+    });
+  });
+
+  it('durably acknowledges malformed pending data without deleting its downloadable raw value', async () => {
+    const raw = '{malformed-pending';
+    window.localStorage.setItem('isf-main-v2-pending', raw);
+    const repository = new BrowserMainRepository({
+      saveMainV2: vi.fn(),
+      loadLatestMainV2: vi.fn().mockResolvedValue(null),
+    });
+
+    repository.acknowledgeFailedPending(raw);
+
+    expect(window.localStorage.getItem('isf-main-v2-pending')).toBe(raw);
+    expect(window.localStorage.getItem('isf-main-v2-quarantined-pending')).toBe(raw);
+    await expect(repository.load()).resolves.toEqual({ status: 'empty', data: null, original: null });
+  });
+
+  it('keeps malformed pending recovery active when its quarantine write fails', async () => {
+    const raw = '{malformed-pending';
+    const sharedValues = new Map<string, string>([
+      ['isf-main-v2-pending', raw],
+    ]);
+    const storage = new HookedStorage(
+      sharedValues,
+      (key, _value, commit) => {
+        if (key === 'isf-main-v2-quarantined-pending') throw new Error('quota');
+        commit();
+      },
+    );
+    const repository = new BrowserMainRepository(
+      {
+        saveMainV2: vi.fn(),
+        loadLatestMainV2: vi.fn().mockResolvedValue(null),
+      },
+      createSerialLock(),
+      storage,
+    );
+
+    expect(() => repository.acknowledgeFailedPending(raw)).toThrow('quota');
+
+    expect(storage.getItem('isf-main-v2-pending')).toBe(raw);
+    expect(storage.getItem('isf-main-v2-quarantined-pending')).toBeNull();
+    await expect(repository.load()).resolves.toMatchObject({
+      status: 'failed',
+      source: 'pending',
+      raw,
+    });
+  });
+
+  it('keeps a concurrent pending successor active while acknowledging only the exact malformed raw', async () => {
+    const targetRaw = '{malformed-pending';
+    const successor = validData();
+    successor.updatedAt = 30;
+    successor.monthlyNetIncomeWon = 6_000_000;
+    const successorRaw = JSON.stringify(successor);
+    const sharedValues = new Map<string, string>([
+      ['isf-main-v2-pending', targetRaw],
+    ]);
+    const storage = new HookedStorage(
+      sharedValues,
+      (key, _value, commit) => {
+        if (key === 'isf-main-v2-quarantined-pending') {
+          sharedValues.set('isf-main-v2-pending', successorRaw);
+        }
+        commit();
+      },
+    );
+    const repository = new BrowserMainRepository(
+      {
+        saveMainV2: vi.fn(),
+        loadLatestMainV2: vi.fn().mockResolvedValue(null),
+      },
+      createSerialLock(),
+      storage,
+    );
+
+    repository.acknowledgeFailedPending(targetRaw);
+
+    expect(storage.getItem('isf-main-v2-pending')).toBe(successorRaw);
+    expect(storage.getItem('isf-main-v2-quarantined-pending')).toBe(targetRaw);
+    await expect(repository.load()).resolves.toMatchObject({
+      status: 'recovery',
+      source: 'pending',
+      data: { updatedAt: 30, monthlyNetIncomeWon: 6_000_000 },
+    });
+  });
+
   it('returns a failed load for a schema v1 document stored under the v2 key', async () => {
     const v1 = { schemaVersion: 1, updatedAt: 10 };
     window.localStorage.setItem('isf-main-v2', JSON.stringify(v1));
@@ -577,6 +678,30 @@ describe('BrowserMainRepository', () => {
 
     expect(JSON.parse(window.localStorage.getItem('isf-main-v2') ?? '')).toEqual(existing);
     expect(window.localStorage.getItem('isf-main-v2-pending')).toBeNull();
+  });
+
+  it('fails before every write when latest history cannot be read for revision issuance', async () => {
+    const current = validData();
+    current.updatedAt = 10;
+    const pending = validData();
+    pending.updatedAt = 20;
+    const currentRaw = JSON.stringify(current);
+    const pendingRaw = JSON.stringify(pending);
+    window.localStorage.setItem('isf-main-v2', currentRaw);
+    window.localStorage.setItem('isf-main-v2-pending', pendingRaw);
+    const saveMainV2 = vi.fn().mockResolvedValue(undefined);
+    const loadLatestMainV2 = vi.fn().mockRejectedValue(new Error('history read unavailable'));
+    const repository = new BrowserMainRepository({
+      saveMainV2,
+      loadLatestMainV2,
+    });
+
+    await expect(repository.save(validData())).rejects.toThrow('history read unavailable');
+
+    expect(loadLatestMainV2).toHaveBeenCalledOnce();
+    expect(saveMainV2).not.toHaveBeenCalled();
+    expect(window.localStorage.getItem('isf-main-v2')).toBe(currentRaw);
+    expect(window.localStorage.getItem('isf-main-v2-pending')).toBe(pendingRaw);
   });
 
   it('writes v2 with matching timestamps in current storage and history without touching legacy keys', async () => {

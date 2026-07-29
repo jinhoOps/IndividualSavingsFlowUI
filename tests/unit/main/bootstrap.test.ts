@@ -38,6 +38,7 @@ function repository(
     discardPending: () => undefined,
     discardRecovery: () => undefined,
     acknowledgeFailedCurrent: () => undefined,
+    acknowledgeFailedPending: () => undefined,
     saveCalls,
   };
 }

@@ -109,7 +109,11 @@ export function MainApp({ repository = browserRepository }: MainAppProps) {
   function startEmptySetup() {
     if (state?.mode === 'recovery' && state.loadError?.raw !== undefined) {
       try {
-        repository.acknowledgeFailedCurrent(state.loadError.raw);
+        if (state.loadError.source === 'pending') {
+          repository.acknowledgeFailedPending(state.loadError.raw);
+        } else {
+          repository.acknowledgeFailedCurrent(state.loadError.raw);
+        }
       } catch {
         dispatch({ type: 'save-failed' });
         return;
