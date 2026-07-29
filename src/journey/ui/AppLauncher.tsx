@@ -15,7 +15,7 @@ const apps: ReadonlyArray<{ id: JourneyApp; label: string }> = [
 export function AppLauncher({ currentApp }: AppLauncherProps) {
   return (
     <nav className="journey-launcher" aria-label="ISF 앱">
-      <details open>
+      <details>
         <summary>ISF 앱 메뉴</summary>
         <ul>
           {apps.map(({ id, label }) => {

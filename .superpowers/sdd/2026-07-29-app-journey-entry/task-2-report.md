@@ -25,3 +25,12 @@
 ## 위험
 
 런처는 공용 UI지만 아직 개별 앱 진입점에 연결되지 않았습니다. 이후 앱 셸 통합 작업에서 `AppLauncher`를 렌더링해야 합니다.
+
+## Fix round 1
+
+- RED: `npx vitest run tests/unit/journey/AppLauncher.test.tsx` — `details`에 `open` 속성이 남아 있어 기본 접힘 assertion이 실패했습니다.
+- GREEN: `npx vitest run tests/unit/journey/AppLauncher.test.tsx tests/unit/journey/routes.test.ts` — 2 files, 3 tests passed
+- Type check: `npm run check` — source/unit TypeScript 검사 통과
+- Whitespace: `git diff --check` — 공백 오류 없음
+
+`AppLauncher`는 이제 모바일에서 닫힌 `<details>`로 시작합니다. 768px 이상에서는 기존 `.journey-launcher details > ul { display: flex; }` 규칙으로 같은 단일 메뉴를 가로 표시합니다.
