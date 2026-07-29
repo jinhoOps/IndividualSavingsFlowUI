@@ -63,6 +63,7 @@ export interface SetupProgress {
   kind: SetupProgressKind;
   step: SetupStep;
   draft: MainData;
+  savedAt: number;
 }
 
 export type MainHistoryStore = Pick<IsfStore, 'saveMainV2'> & Partial<Pick<IsfStore, 'loadLatestMainV2'>>;
@@ -324,6 +325,7 @@ export class BrowserMainSaveLock implements MainSaveLock {
 export class BrowserMainRepository implements MainRepository {
   private readonly saveLock: MainSaveLock;
   private pendingWrittenByRepository: string | null = null;
+  private malformedRecoverySources: Array<{ source: 'current' | 'pending'; raw: string }> = [];
   private readonly storageOverride?: Storage;
 
   constructor(
@@ -341,6 +343,7 @@ export class BrowserMainRepository implements MainRepository {
   }
 
   async load(): Promise<MainLoadResult> {
+    this.malformedRecoverySources = [];
     const storedCurrentRaw = this.storage.getItem(MAIN_KEY);
     const acknowledgedCurrentRaw = this.storage.getItem(QUARANTINED_CURRENT_KEY);
     const currentRaw = storedCurrentRaw === acknowledgedCurrentRaw ? null : storedCurrentRaw;
@@ -380,6 +383,12 @@ export class BrowserMainRepository implements MainRepository {
     }
 
     if (recoveryCandidate !== null) {
+      if (current?.status === 'failed' && current.raw !== undefined) {
+        this.malformedRecoverySources.push({ source: 'current', raw: current.raw });
+      }
+      if (pending?.status === 'failed' && pending.raw !== undefined) {
+        this.malformedRecoverySources.push({ source: 'pending', raw: pending.raw });
+      }
       return {
         status: 'recovery',
         data: recoveryCandidate.data,
@@ -473,7 +482,12 @@ export class BrowserMainRepository implements MainRepository {
   }
 
   saveSetupProgress(step: SetupStep, draft: MainData, kind: SetupProgressKind = 'initial'): void {
-    this.storage.setItem(SETUP_PROGRESS_KEY, JSON.stringify({ kind, step, draft: cloneMainData(draft) }));
+    this.storage.setItem(SETUP_PROGRESS_KEY, JSON.stringify({
+      kind,
+      step,
+      draft: cloneMainData(draft),
+      savedAt: Date.now(),
+    }));
   }
 
   loadSetupProgress(): SetupProgress | null {
@@ -487,6 +501,7 @@ export class BrowserMainRepository implements MainRepository {
         kind: parsed.kind === 'restart' ? 'restart' : 'initial',
         step: parsed.step,
         draft: cloneMainData(parsed.draft),
+        savedAt: parsed.savedAt ?? parsed.draft.updatedAt,
       };
     } catch {
       return null;
@@ -511,6 +526,14 @@ export class BrowserMainRepository implements MainRepository {
 
   discardRecovery(updatedAt: number): void {
     if (!Number.isSafeInteger(updatedAt) || updatedAt <= 0) return;
+    for (const malformed of this.malformedRecoverySources) {
+      if (malformed.source === 'current') {
+        this.acknowledgeFailedCurrent(malformed.raw);
+      } else {
+        this.acknowledgeFailedPending(malformed.raw);
+      }
+    }
+    this.malformedRecoverySources = [];
     const current = readDismissedRecoveryUpdatedAt(this.storage);
     this.storage.setItem(DISMISSED_RECOVERY_KEY, String(Math.max(current, updatedAt)));
   }
@@ -637,9 +660,11 @@ function isSetupProgress(value: unknown): value is {
   kind?: SetupProgressKind;
   step: SetupStep;
   draft: MainData;
+  savedAt?: number;
 } {
   if (!isRecord(value) || typeof value.step !== 'string' || !setupSteps.has(value.step as SetupStep)) return false;
   if (value.kind !== undefined && value.kind !== 'initial' && value.kind !== 'restart') return false;
+  if (value.savedAt !== undefined && !isNonnegativeSafeInteger(value.savedAt)) return false;
   return isMainDataShape(value.draft) && validateMainDraft(value.draft).valid;
 }
 

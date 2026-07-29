@@ -188,7 +188,7 @@ describe('MainApp', () => {
   it('acknowledges malformed current data so setup progress resumes after reload', async () => {
     const raw = '{malformed-v2';
     let acknowledged = false;
-    let progress: { kind: 'initial'; step: SetupStep; draft: MainData } | null = null;
+    let progress: { kind: 'initial'; step: SetupStep; draft: MainData; savedAt: number } | null = null;
     const storage = repository({
       status: 'failed',
       data: null,
@@ -209,7 +209,7 @@ describe('MainApp', () => {
       acknowledged = true;
     });
     storage.saveSetupProgress = vi.fn((step, draft) => {
-      progress = { kind: 'initial', step, draft: { ...draft } };
+      progress = { kind: 'initial', step, draft: { ...draft }, savedAt: Date.now() };
     });
     storage.loadSetupProgress = () => progress;
     const first = render(<MainApp repository={storage} />);
@@ -231,7 +231,7 @@ describe('MainApp', () => {
   it('acknowledges malformed pending data so setup progress resumes after reload', async () => {
     const raw = '{malformed-pending';
     let acknowledged = false;
-    let progress: { kind: 'initial'; step: SetupStep; draft: MainData } | null = null;
+    let progress: { kind: 'initial'; step: SetupStep; draft: MainData; savedAt: number } | null = null;
     const failed = {
       status: 'failed',
       data: null,
@@ -250,7 +250,7 @@ describe('MainApp', () => {
     });
     storage.acknowledgeFailedPending = acknowledgeFailedPending;
     storage.saveSetupProgress = vi.fn((step, draft) => {
-      progress = { kind: 'initial', step, draft: { ...draft } };
+      progress = { kind: 'initial', step, draft: { ...draft }, savedAt: Date.now() };
     });
     storage.loadSetupProgress = () => progress;
     const first = render(<MainApp repository={storage} />);

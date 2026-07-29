@@ -66,7 +66,11 @@ export function AllocationBar({ data }: AllocationBarProps) {
         })}
       </div>
       <ul className="allocation-bar__legend" aria-label="월 자금 항목">
-        {allocations.map((allocation) => <li key={allocation.id}>{allocation.label} {formatContextWon(allocation.amountWon)}</li>)}
+        {allocations.map((allocation) => (
+          <li key={allocation.id}>
+            {allocation.label} {formatContextWon(allocation.amountWon)} ({formatPercentage(allocation.percentage)})
+          </li>
+        ))}
       </ul>
       {isDeficit ? <p className="allocation-bar__deficit" role="status">수입보다 {formatContextWon(cashflow.deficitWon)} 초과</p> : null}
       {activeId ? (

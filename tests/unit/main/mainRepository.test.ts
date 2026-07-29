@@ -647,6 +647,11 @@ describe('BrowserMainRepository', () => {
       current: null,
       data: { updatedAt: 20, monthlyNetIncomeWon: 5_000_000 },
     });
+
+    repository.discardRecovery(pending.updatedAt);
+
+    expect(window.localStorage.getItem('isf-main-v2-quarantined-current')).toBe('{malformed-current');
+    await expect(repository.load()).resolves.toEqual({ status: 'empty', data: null, original: null });
   });
 
   it('treats a pending-only first save as explicit recovery', async () => {
@@ -830,6 +835,36 @@ describe('BrowserMainRepository', () => {
 
     expect(JSON.parse(window.localStorage.getItem('isf-main-v2') ?? '')).toEqual(existing);
     expect(JSON.parse(window.localStorage.getItem('isf-main-v2-pending') ?? '').updatedAt).toBeGreaterThan(10);
+  });
+
+  it('lets the exact history revision from a failed save be dismissed when pending persistence fails', async () => {
+    const history: MainData[] = [];
+    const storage = new HookedStorage(
+      new Map(),
+      (key, _value, commit) => {
+        if (key === 'isf-main-v2-pending') throw new Error('pending unavailable');
+        commit();
+      },
+    );
+    const repository = new BrowserMainRepository(
+      {
+        saveMainV2: vi.fn(async (data) => {
+          history.push(structuredClone(data));
+        }),
+        loadLatestMainV2: vi.fn(async () => history.at(-1) ?? null),
+      },
+      createSerialLock(),
+      storage,
+    );
+
+    await expect(repository.save(validData())).rejects.toThrow('pending unavailable');
+    const recovery = await repository.load();
+    expect(recovery).toMatchObject({ status: 'recovery', source: 'history' });
+    if (recovery.status !== 'recovery') throw new Error('Expected history recovery');
+
+    repository.discardRecovery(recovery.data.updatedAt);
+
+    await expect(repository.load()).resolves.toEqual({ status: 'empty', data: null, original: null });
   });
 
   it('rolls current back when pending cleanup fails after the current write', async () => {
@@ -1024,7 +1059,8 @@ describe('BrowserMainRepository', () => {
     repository.saveSetupProgress('housing', draft, 'restart');
 
     expect(window.localStorage.getItem('isf-main-v2-setup-progress')).toContain('"step":"housing"');
-    expect(repository.loadSetupProgress()).toEqual({ kind: 'restart', step: 'housing', draft });
+    expect(repository.loadSetupProgress()).toMatchObject({ kind: 'restart', step: 'housing', draft });
+    expect(repository.loadSetupProgress()?.savedAt).toEqual(expect.any(Number));
     expect(window.localStorage.getItem('isf-main-v1-setup-progress')).toBe(legacyProgressRaw);
     repository.clearSetupProgress();
     expect(window.localStorage.getItem('isf-main-v2-setup-progress')).toBeNull();

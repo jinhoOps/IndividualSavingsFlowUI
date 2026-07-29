@@ -57,7 +57,7 @@ describe('bootstrapMain', () => {
     for (const step of ['income', 'housing', 'living', 'saving-investment', 'review'] as const) {
       const state = await bootstrapMain(repository(
         { status: 'empty', data: null, original: null },
-        { kind: 'initial', step, draft },
+        { kind: 'initial', step, draft, savedAt: 10 },
       ));
 
       expect(state).toMatchObject({ mode: 'setup', setupStep: step, applied: null, dirty: false });
@@ -81,7 +81,7 @@ describe('bootstrapMain', () => {
     const restartDraft = validData({ monthlyHousingWon: 1_100_000 });
     const state = await bootstrapMain(repository(
       { status: 'current', data: applied, original: applied },
-      { kind: 'restart', step: 'housing', draft: restartDraft },
+      { kind: 'restart', step: 'housing', draft: restartDraft, savedAt: 10 },
     ));
 
     expect(state).toMatchObject({
@@ -100,7 +100,7 @@ describe('bootstrapMain', () => {
 
     const state = await bootstrapMain(repository(
       { status: 'current', data: applied, original: applied },
-      { kind: 'restart', step: 'housing', draft: staleRestart },
+      { kind: 'restart', step: 'housing', draft: staleRestart, savedAt: 10 },
     ));
 
     expect(state).toMatchObject({
@@ -117,7 +117,7 @@ describe('bootstrapMain', () => {
 
     const state = await bootstrapMain(repository(
       { status: 'current', data: applied, original: applied },
-      { kind: 'restart', step: 'housing', draft: newerRestart },
+      { kind: 'restart', step: 'housing', draft: newerRestart, savedAt: 30 },
     ));
 
     expect(state).toMatchObject({
@@ -144,6 +144,24 @@ describe('bootstrapMain', () => {
     expect(state.applied).toEqual(current);
     expect(state.draft).toEqual(pending);
     expect(state.dirty).toBe(true);
+  });
+
+  it('resumes setup progress saved after a recovery revision', async () => {
+    const current = validData({ updatedAt: 10 });
+    const recovery = validData({ updatedAt: 20 });
+    const progressDraft = validData({ updatedAt: 10, monthlyLivingWon: 1_100_000 });
+
+    const state = await bootstrapMain(repository(
+      { status: 'recovery', current, data: recovery, original: recovery, source: 'history' },
+      { kind: 'restart', step: 'living', draft: progressDraft, savedAt: 30 },
+    ));
+
+    expect(state).toMatchObject({
+      mode: 'setup',
+      setupStep: 'living',
+      applied: current,
+      draft: progressDraft,
+    });
   });
 
   it('presents a pending-only v2 recovery candidate without inventing applied data', async () => {

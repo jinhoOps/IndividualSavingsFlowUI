@@ -29,7 +29,11 @@ export async function bootstrapMain(repository: MainRepository): Promise<MainSta
         }
         return dashboardState(result.data);
       }
-      case 'recovery':
+      case 'recovery': {
+        const progress = repository.loadSetupProgress();
+        if (progress !== null && progress.savedAt > result.data.updatedAt) {
+          return setupState(progress.draft, progress.step, result.current);
+        }
         return {
           mode: 'recovery',
           applied: result.current === null ? null : cloneMainData(result.current),
@@ -39,6 +43,7 @@ export async function bootstrapMain(repository: MainRepository): Promise<MainSta
           saveStatus: 'idle',
           loadError: null,
         };
+      }
       case 'failed':
         return {
           mode: 'recovery',

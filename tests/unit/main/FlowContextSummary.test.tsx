@@ -34,8 +34,9 @@ describe('FlowContextSummary', () => {
     const meter = screen.getByRole('meter');
     expect(meter).toHaveAttribute('aria-valuenow', '100');
     expect(meter).toHaveAttribute('aria-valuetext', '125.0%');
-    expect(meter).toHaveClass('flow-context-summary__meter--warning');
-    expect(meter).toHaveStyle({ width: '100%' });
+    const fill = meter.querySelector('[aria-hidden="true"]');
+    expect(fill).toHaveClass('flow-context-summary__meter--warning');
+    expect(fill).toHaveStyle({ width: '100%' });
   });
 
   it('shows a fully planned income as exactly 100 percent', () => {
@@ -51,7 +52,10 @@ describe('FlowContextSummary', () => {
     render(<FlowContextSummary data={{ ...cashflowFixture, monthlyNetIncomeWon: 0, monthlyHousingWon: 0, monthlyLivingWon: 0, monthlySavingWon: 0, monthlyInvestmentWon: 0 }} />);
 
     expect(screen.getByText('수입을 먼저 입력해주세요.')).toBeVisible();
-    expect(screen.getByRole('meter')).toHaveAttribute('aria-valuetext', '수입을 먼저 입력해주세요.');
+    const meter = screen.getByRole('meter');
+    expect(meter).toHaveAttribute('aria-valuetext', '수입을 먼저 입력해주세요.');
+    expect(meter).toHaveClass('flow-context-summary__meter-track');
+    expect(meter).not.toHaveStyle({ width: '0%' });
   });
 
   it('keeps a focused meter tooltip open after the pointer leaves, then closes it on blur', () => {

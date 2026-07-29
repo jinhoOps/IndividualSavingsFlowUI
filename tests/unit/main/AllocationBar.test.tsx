@@ -61,6 +61,8 @@ describe('AllocationBar', () => {
 
     expect(screen.getByLabelText('소비 0.0%')).toBeVisible();
     expect(screen.getByLabelText('남는 돈 0.0%')).toBeVisible();
+    expect(screen.getByText('소비 0원 (0.0%)')).toBeVisible();
+    expect(screen.getByText('남는 돈 0원 (0.0%)')).toBeVisible();
   });
 
   it('represents a deficit against planned outflow without a negative remaining segment', () => {

@@ -79,8 +79,12 @@
     @apply flex h-4 overflow-hidden rounded-full bg-slate-200;
   }
 
+  .flow-context-summary__meter-track {
+    @apply outline-none focus-visible:ring-3 focus-visible:ring-accent/35;
+  }
+
   .flow-context-summary__meter {
-    @apply block h-full rounded-full bg-accent outline-none transition-[width] focus-visible:ring-3 focus-visible:ring-accent/35;
+    @apply block h-full rounded-full bg-accent transition-[width];
   }
 
   .flow-context-summary--warning {

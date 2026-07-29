@@ -27,26 +27,29 @@ export function FlowContextSummary({ data }: FlowContextSummaryProps) {
       <p className="flow-context-summary__amount">월 수입 {formatContextWon(cashflow.incomeWon)}</p>
       <p className="flow-context-summary__amount">현재 계획 {formatContextWon(cashflow.plannedOutflowWon)}</p>
       <p className="flow-context-summary__amount">남는 돈 {formatContextWon(cashflow.remainingWon)}</p>
-      <div className="flow-context-summary__meter-track">
+      <div
+        aria-describedby={tooltipOpen && plannedPercentage !== null ? tooltipId : undefined}
+        aria-label="수입 대비 현재 계획"
+        aria-valuemax={100}
+        aria-valuemin={0}
+        aria-valuenow={visualPercentage}
+        aria-valuetext={plannedPercentage === null ? unavailableCopy : formattedPercentage}
+        className="flow-context-summary__meter-track"
+        role="meter"
+        tabIndex={0}
+        onBlur={() => {
+          setIsFocused(false);
+          setIsTapped(false);
+        }}
+        onClick={() => setIsTapped((tapped) => !tapped)}
+        onFocus={() => setIsFocused(true)}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
         <div
-          aria-describedby={tooltipOpen && plannedPercentage !== null ? tooltipId : undefined}
-          aria-label="수입 대비 현재 계획"
-          aria-valuemax={100}
-          aria-valuemin={0}
-          aria-valuenow={visualPercentage}
-          aria-valuetext={plannedPercentage === null ? unavailableCopy : formattedPercentage}
+          aria-hidden="true"
           className={`flow-context-summary__meter${isDeficit ? ' flow-context-summary__meter--warning' : ''}`}
-          role="meter"
           style={{ width: `${visualPercentage}%` }}
-          tabIndex={0}
-          onBlur={() => {
-            setIsFocused(false);
-            setIsTapped(false);
-          }}
-          onClick={() => setIsTapped((tapped) => !tapped)}
-          onFocus={() => setIsFocused(true)}
-          onMouseEnter={() => setIsHovered(true)}
-          onMouseLeave={() => setIsHovered(false)}
         />
       </div>
       {plannedPercentage === null ? <p className="flow-context-summary__notice">{unavailableCopy}</p> : null}

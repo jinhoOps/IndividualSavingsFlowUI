@@ -119,6 +119,7 @@ export function MainApp({ repository = browserRepository }: MainAppProps) {
         return;
       }
     }
+    if (state?.mode === 'recovery') repository.discardRecovery(state.draft.updatedAt);
     repository.discardPending(state?.mode === 'recovery' ? state.draft.updatedAt : undefined);
     clearSetupProgress();
     setIssues([]);
