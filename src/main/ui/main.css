@@ -75,13 +75,15 @@
     min-height: var(--ui-control-min-height);
     border-radius: var(--ui-control-radius);
     border: var(--ui-control-border);
+    cursor: pointer;
   }
 
   .ui-button:focus-visible {
     box-shadow: var(--ui-focus-ring);
   }
 
-  .ui-button:disabled {
+  .ui-button:disabled,
+  .ui-button[aria-disabled="true"] {
     cursor: not-allowed;
     opacity: var(--ui-disabled-opacity);
   }

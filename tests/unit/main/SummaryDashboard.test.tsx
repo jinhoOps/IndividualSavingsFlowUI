@@ -339,6 +339,32 @@ describe('SummaryDashboard', () => {
     expect(onImportFile).toHaveBeenCalledWith(backup);
   });
 
+  it('uses the shared secondary import action and exposes its saving disabled state', () => {
+    const props = {
+      applied: appliedData,
+      draft: appliedData,
+      dirty: false,
+      issues: [],
+      onDraftChange: vi.fn(),
+      onApply: vi.fn(),
+      onCancel: vi.fn(),
+      onRestart: vi.fn(),
+      onImportFile: vi.fn(),
+    };
+    const { rerender } = render(<SummaryDashboard {...props} saveStatus="idle" />);
+    const importLabel = screen.getByText('백업 가져오기').closest('label');
+    const fileInput = screen.getByLabelText('JSON 백업 파일');
+
+    expect(importLabel).toHaveClass('ui-button', 'ui-button--secondary');
+    expect(importLabel).not.toHaveAttribute('aria-disabled');
+    expect(fileInput).toBeEnabled();
+
+    rerender(<SummaryDashboard {...props} saveStatus="saving" />);
+
+    expect(importLabel).toHaveAttribute('aria-disabled', 'true');
+    expect(fileInput).toBeDisabled();
+  });
+
   it('only warns on browser exit when the scalar draft is dirty', () => {
     const props = {
       applied: appliedData,

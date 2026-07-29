@@ -152,7 +152,10 @@ export function SummaryDashboard({
               </Button>
             )}
             {onImportFile === undefined ? null : (
-              <label className="cursor-pointer rounded-full border border-slate-300 bg-white/80 px-4 py-2 text-sm font-bold text-slate-700 shadow-sm">
+              <label
+                aria-disabled={saving ? 'true' : undefined}
+                className="ui-button ui-button--secondary rounded-full bg-white/80 text-sm shadow-sm"
+              >
                 백업 가져오기
                 <input
                   className="sr-only"
