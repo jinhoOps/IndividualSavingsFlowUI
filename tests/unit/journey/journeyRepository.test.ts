@@ -60,4 +60,21 @@ describe('BrowserJourneyRepository', () => {
     localStorage.setItem(JOURNEY_STORAGE_KEY, '{broken');
     expect(new BrowserJourneyRepository().load()).toEqual({ status: 'invalid' });
   });
+
+  it('propagates the original storage error when saving', () => {
+    const error = new Error('Storage quota exceeded');
+    window.localStorage.setItem = () => {
+      throw error;
+    };
+
+    expect(() => new BrowserJourneyRepository().save({
+      version: 1,
+      sourceApp: 'main',
+      sourceView: 'dashboard',
+      destinationApp: 'simulation',
+      monthlyInvestableAmountWon: 1_100_000,
+      mainUpdatedAt: 10,
+      createdAt: 20,
+    })).toThrow(error);
+  });
 });
