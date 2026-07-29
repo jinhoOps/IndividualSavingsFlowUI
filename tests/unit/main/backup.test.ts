@@ -44,4 +44,31 @@ describe('Main JSON backup', () => {
       monthlyInvestmentWon: 800_000,
     }))).toThrow('Backup data contains an invalid plan.');
   });
+
+  it('rejects an otherwise valid v2 backup with an unknown nested field', () => {
+    expect(() => importMainData(JSON.stringify({
+      schemaVersion: 2,
+      updatedAt: 42,
+      monthlyNetIncomeWon: 4_200_000,
+      monthlyHousingWon: 900_000,
+      monthlyLivingWon: 1_000_000,
+      monthlySavingWon: 600_000,
+      monthlyInvestmentWon: 800_000,
+      metadata: { currency: 'KRW' },
+    }))).toThrow('Backup data is not valid MainData.');
+  });
+
+  it('rejects v2 scalar data mixed with legacy collection fields', () => {
+    expect(() => importMainData(JSON.stringify({
+      schemaVersion: 2,
+      updatedAt: 42,
+      monthlyNetIncomeWon: 4_200_000,
+      monthlyHousingWon: 900_000,
+      monthlyLivingWon: 1_000_000,
+      monthlySavingWon: 600_000,
+      monthlyInvestmentWon: 800_000,
+      incomes: [],
+      accounts: [],
+    }))).toThrow('Backup data is not valid MainData.');
+  });
 });

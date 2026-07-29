@@ -20,7 +20,15 @@ export function importMainData(json: string): MainData {
   if (!validateMainData(parsed).valid) {
     throw new Error('Backup data contains an invalid plan.');
   }
-  return { ...parsed };
+  return {
+    schemaVersion: parsed.schemaVersion,
+    updatedAt: parsed.updatedAt,
+    monthlyNetIncomeWon: parsed.monthlyNetIncomeWon,
+    monthlyHousingWon: parsed.monthlyHousingWon,
+    monthlyLivingWon: parsed.monthlyLivingWon,
+    monthlySavingWon: parsed.monthlySavingWon,
+    monthlyInvestmentWon: parsed.monthlyInvestmentWon,
+  };
 }
 
 export function exportRecoveryData(original: unknown): string {

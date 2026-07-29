@@ -11,6 +11,15 @@ const MAIN_SAVE_LEASE_PREFIX = 'isf-main-v1-save-lease:';
 const DEFAULT_LEASE_DURATION_MS = 10_000;
 const DEFAULT_ACQUIRE_TIMEOUT_MS = 2_000;
 const DEFAULT_RETRY_DELAY_MS = 25;
+const mainDataKeys = new Set([
+  'schemaVersion',
+  'updatedAt',
+  'monthlyNetIncomeWon',
+  'monthlyHousingWon',
+  'monthlyLivingWon',
+  'monthlySavingWon',
+  'monthlyInvestmentWon',
+]);
 
 const setupSteps = new Set<SetupStep>(['welcome', 'income', 'housing', 'living', 'saving-investment', 'review']);
 let lastIssuedUpdatedAt = 0;
@@ -514,6 +523,8 @@ export class BrowserMainRepository implements MainRepository {
 
 export function isMainDataShape(value: unknown): value is MainData {
   return isRecord(value)
+    && Object.keys(value).length === mainDataKeys.size
+    && Object.keys(value).every((key) => mainDataKeys.has(key))
     && value.schemaVersion === 2
     && isFiniteNumber(value.updatedAt)
     && isFiniteNumber(value.monthlyNetIncomeWon)
