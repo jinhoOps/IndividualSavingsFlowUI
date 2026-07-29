@@ -69,15 +69,5 @@ export function mainReducer(state: MainState, action: MainAction): MainState {
 }
 
 export function cloneMainData(data: MainData): MainData {
-  return {
-    ...data,
-    incomes: data.incomes.map((income) => ({
-      ...income,
-      allocations: income.allocations.map((allocation) => ({ ...allocation })),
-    })),
-    expenses: data.expenses.map((item) => ({ ...item })),
-    savings: data.savings.map((item) => ({ ...item })),
-    investments: data.investments.map((item) => ({ ...item })),
-    accounts: data.accounts.map((account) => ({ ...account })),
-  };
+  return { ...data };
 }

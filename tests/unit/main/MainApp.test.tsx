@@ -1,26 +1,93 @@
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { MainData } from '../../../src/main/domain/model';
-import type { MainRepository } from '../../../src/main/infrastructure/mainRepository';
-import type { MigrationResult } from '../../../src/main/infrastructure/legacyMigration';
-import { MainApp } from '../../../src/main/ui/MainApp';
+import type { MainData, SetupStep } from '../../../src/main/domain/model';
+import type {
+  MainLoadResult,
+  MainRepository,
+} from '../../../src/main/infrastructure/mainRepository';
+import { MainApp, setupStepForIssue } from '../../../src/main/ui/MainApp';
+
+vi.mock('../../../src/main/ui/setup/SetupFlow', () => ({
+  SetupFlow: ({
+    draft,
+    step,
+    saving,
+    onChange,
+    onStepChange,
+    onApply,
+  }: {
+    draft: MainData;
+    step: SetupStep;
+    saving: boolean;
+    onChange(draft: MainData): void;
+    onStepChange(step: SetupStep): void;
+    onApply(): void;
+  }) => (
+    <section aria-label="setup-flow">
+      <h1>{`setup:${step}`}</h1>
+      <output>{draft.monthlyNetIncomeWon}</output>
+      <button
+        type="button"
+        disabled={saving}
+        onClick={() => onChange({ ...draft, monthlyNetIncomeWon: 4_000_000 })}
+      >
+        change-income
+      </button>
+      <button type="button" disabled={saving} onClick={() => onStepChange('housing')}>
+        next-housing
+      </button>
+      <button type="button" disabled={saving} onClick={onApply}>apply-setup</button>
+    </section>
+  ),
+}));
+
+vi.mock('../../../src/main/ui/dashboard/SummaryDashboard', () => ({
+  SummaryDashboard: ({
+    applied,
+    draft,
+    onDraftChange,
+    onApply,
+    onCancel,
+    onRestart,
+  }: {
+    applied: MainData;
+    draft: MainData;
+    onDraftChange(draft: MainData): void;
+    onApply(): void;
+    onCancel(): void;
+    onRestart(): void;
+  }) => (
+    <section aria-label="dashboard">
+      <h1>dashboard</h1>
+      <output aria-label="applied-income">{applied.monthlyNetIncomeWon}</output>
+      <output aria-label="draft-income">{draft.monthlyNetIncomeWon}</output>
+      <button type="button" onClick={() => onDraftChange({ ...draft, monthlyNetIncomeWon: 4_000_000 })}>
+        edit-draft
+      </button>
+      <button type="button" onClick={onApply}>apply-dashboard</button>
+      <button type="button" onClick={onCancel}>cancel-dashboard</button>
+      <button type="button" onClick={onRestart}>restart-setup</button>
+    </section>
+  ),
+}));
 
 afterEach(cleanup);
 
-function data(amountWon: number): MainData {
+function data(monthlyNetIncomeWon: number, overrides: Partial<MainData> = {}): MainData {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     updatedAt: 1,
-    incomes: [{ id: 'salary', name: '급여', amountWon, allocations: [] }],
-    expenses: [],
-    savings: [],
-    investments: [],
-    accounts: [],
+    monthlyNetIncomeWon,
+    monthlyHousingWon: 900_000,
+    monthlyLivingWon: 700_000,
+    monthlySavingWon: 500_000,
+    monthlyInvestmentWon: 400_000,
+    ...overrides,
   };
 }
 
-function repository(result: MigrationResult): MainRepository {
+function repository(result: MainLoadResult): MainRepository {
   return {
     load: async () => result,
     save: async (draft) => draft,
@@ -32,9 +99,26 @@ function repository(result: MigrationResult): MainRepository {
   };
 }
 
+describe('setupStepForIssue', () => {
+  it.each([
+    ['monthlyNetIncomeWon', 'income'],
+    ['monthlyHousingWon', 'housing'],
+    ['monthlyLivingWon', 'living'],
+    ['monthlySavingWon', 'saving-investment'],
+    ['monthlyInvestmentWon', 'saving-investment'],
+  ] as const)('routes %s validation to %s', (path, expected) => {
+    expect(setupStepForIssue(path)).toBe(expected);
+  });
+
+  it('does not invent a setup route for an unknown issue', () => {
+    expect(setupStepForIssue('unknown')).toBeNull();
+    expect(setupStepForIssue(undefined)).toBeNull();
+  });
+});
+
 describe('MainApp', () => {
-  it('shows loading until bootstrap finishes and then starts setup for a new user', async () => {
-    let resolveLoad: ((value: MigrationResult) => void) | undefined;
+  it('shows loading until bootstrap finishes and then starts setup at welcome', async () => {
+    let resolveLoad: ((value: MainLoadResult) => void) | undefined;
     const storage = repository({ status: 'empty', data: null, original: null });
     storage.load = () => new Promise((resolve) => {
       resolveLoad = resolve;
@@ -43,13 +127,37 @@ describe('MainApp', () => {
     render(<MainApp repository={storage} />);
 
     expect(screen.getByRole('status')).toHaveTextContent('자금 계획을 불러오는 중');
-
     resolveLoad?.({ status: 'empty', data: null, original: null });
 
-    expect(await screen.findByRole('heading', { name: '내 자금 계획을 시작합니다' })).toBeVisible();
+    expect(await screen.findByRole('heading', { name: 'setup:welcome' })).toBeVisible();
   });
 
-  it('exposes both the applied plan and pending draft in recovery', async () => {
+  it('persists progress before moving to a v2 setup stage', async () => {
+    const storage = repository({ status: 'empty', data: null, original: null });
+    storage.saveSetupProgress = vi.fn();
+    render(<MainApp repository={storage} />);
+    await screen.findByRole('heading', { name: 'setup:welcome' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'next-housing' }));
+
+    expect(await screen.findByRole('heading', { name: 'setup:housing' })).toBeVisible();
+    expect(storage.saveSetupProgress).toHaveBeenCalledWith(
+      'housing',
+      expect.objectContaining({ schemaVersion: 2, monthlyNetIncomeWon: 0 }),
+      'initial',
+    );
+  });
+
+  it('routes failed scalar validation to its setup stage', async () => {
+    render(<MainApp repository={repository({ status: 'empty', data: null, original: null })} />);
+    await screen.findByRole('heading', { name: 'setup:welcome' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'apply-setup' }));
+
+    expect(await screen.findByRole('heading', { name: 'setup:income' })).toBeVisible();
+  });
+
+  it('keeps applied and pending v2 data separate in recovery', async () => {
     render(<MainApp repository={repository({
       status: 'recovery',
       current: data(3_000_000),
@@ -61,15 +169,9 @@ describe('MainApp', () => {
     expect(await screen.findByRole('heading', { name: '저장 복구가 필요합니다' })).toBeVisible();
     expect(screen.getByText('현재 적용 중 · 300만 원')).toBeVisible();
     expect(screen.getByText('저장 대기 중 · 400만 원')).toBeVisible();
-    expect(screen.getByRole('button', { name: '기존 원본 JSON 다운로드' })).toBeVisible();
-    expect(screen.getByRole('button', { name: '저장 다시 시도' })).toBeVisible();
-    expect(screen.getByRole('button', { name: '복구 초안 버리기' })).toBeVisible();
-    expect(screen.getByRole('button', { name: '현재 계획으로 돌아가기' })).toBeVisible();
-    fireEvent.click(screen.getByRole('button', { name: '복구 초안 버리기' }));
-    expect(await screen.findByRole('heading', { name: '내 자금 계획을 시작합니다' })).toBeVisible();
   });
 
-  it('retries a recovery candidate only after the user explicitly requests it', async () => {
+  it('retries a pending v2 recovery candidate only after explicit confirmation', async () => {
     const storage = repository({
       status: 'recovery',
       current: data(3_000_000),
@@ -80,23 +182,45 @@ describe('MainApp', () => {
     storage.save = vi.fn(async (draft) => ({ ...draft, updatedAt: 30 }));
     render(<MainApp repository={storage} />);
     await screen.findByRole('heading', { name: '저장 복구가 필요합니다' });
+    expect(storage.save).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole('button', { name: '저장 다시 시도' }));
 
-    expect(await screen.findByRole('heading', { name: '이번 달 자금 흐름' })).toBeVisible();
+    expect(await screen.findByRole('heading', { name: 'dashboard' })).toBeVisible();
+    expect(screen.getByLabelText('applied-income')).toHaveTextContent('4000000');
     expect(storage.save).toHaveBeenCalledWith(expect.objectContaining({
-      incomes: expect.arrayContaining([
-        expect.objectContaining({ amountWon: 4_000_000 }),
-      ]),
+      schemaVersion: 2,
+      monthlyNetIncomeWon: 4_000_000,
     }));
-    expect(screen.getByRole('button', { name: '수입 편집' })).toHaveTextContent('400만 원');
   });
 
-  it('durably suppresses the recovery revision before returning to current data', async () => {
+  it('discards a pending-only recovery candidate and returns to empty setup', async () => {
+    const pending = data(4_000_000);
+    const storage = repository({
+      status: 'recovery',
+      current: null,
+      data: pending,
+      original: { pending: true },
+      source: 'pending',
+    });
+    storage.discardPending = vi.fn();
+    storage.discardRecovery = vi.fn();
+    render(<MainApp repository={storage} />);
+    await screen.findByRole('heading', { name: '저장 복구가 필요합니다' });
+
+    fireEvent.click(screen.getByRole('button', { name: '복구 초안 버리기' }));
+
+    expect(await screen.findByRole('heading', { name: 'setup:welcome' })).toBeVisible();
+    expect(storage.discardRecovery).toHaveBeenCalledWith(pending.updatedAt);
+    expect(storage.discardPending).toHaveBeenCalledWith(pending.updatedAt);
+  });
+
+  it('returns from recovery to the unchanged applied v2 plan', async () => {
+    const pending = data(4_000_000);
     const storage = repository({
       status: 'recovery',
       current: data(3_000_000),
-      data: data(4_000_000),
+      data: pending,
       original: { history: true },
       source: 'history',
     });
@@ -107,95 +231,65 @@ describe('MainApp', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '현재 계획으로 돌아가기' }));
 
-    expect(await screen.findByRole('heading', { name: '이번 달 자금 흐름' })).toBeVisible();
-    expect(screen.getByRole('button', { name: '수입 편집' })).toHaveTextContent('300만 원');
-    expect(storage.discardRecovery).toHaveBeenCalledWith(1);
+    expect(await screen.findByRole('heading', { name: 'dashboard' })).toBeVisible();
+    expect(screen.getByLabelText('applied-income')).toHaveTextContent('3000000');
+    expect(storage.discardRecovery).toHaveBeenCalledWith(pending.updatedAt);
+    expect(storage.discardPending).toHaveBeenCalledWith(pending.updatedAt);
+  });
+
+  it('keeps the applied plan when saving a changed draft is rejected', async () => {
+    const storage = repository({ status: 'current', data: data(3_000_000), original: {} });
+    storage.save = vi.fn(async () => {
+      throw new Error('quota');
+    });
+    render(<MainApp repository={storage} />);
+    await screen.findByRole('heading', { name: 'dashboard' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'edit-draft' }));
+    fireEvent.click(screen.getByRole('button', { name: 'apply-dashboard' }));
+
+    expect(await screen.findByLabelText('applied-income')).toHaveTextContent('3000000');
+    expect(screen.getByLabelText('draft-income')).toHaveTextContent('4000000');
+  });
+
+  it('cancel restores the applied v2 data and discards pending recovery', async () => {
+    const storage = repository({ status: 'current', data: data(3_000_000), original: {} });
+    storage.discardPending = vi.fn();
+    render(<MainApp repository={storage} />);
+    await screen.findByRole('heading', { name: 'dashboard' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'edit-draft' }));
+    fireEvent.click(screen.getByRole('button', { name: 'cancel-dashboard' }));
+
+    expect(screen.getByLabelText('draft-income')).toHaveTextContent('3000000');
     expect(storage.discardPending).toHaveBeenCalledOnce();
   });
 
-  it('locks editor mutations while a save is pending so the submitted revision is not overwritten', async () => {
-    let resolveSave: ((saved: MainData) => void) | undefined;
-    const storage = repository({ status: 'current', data: data(3_000_000), original: {} });
-    storage.save = vi.fn(() => new Promise<MainData>((resolve) => {
-      resolveSave = resolve;
-    }));
+  it('restarts setup from applied v2 data at welcome and persists restart progress', async () => {
+    const applied = data(3_000_000);
+    const storage = repository({ status: 'current', data: applied, original: {} });
+    storage.saveSetupProgress = vi.fn();
     render(<MainApp repository={storage} />);
-    await screen.findByRole('heading', { name: '이번 달 자금 흐름' });
-    fireEvent.click(screen.getByRole('button', { name: '수입 편집' }));
-    const amount = screen.getByLabelText('급여 월 금액');
-    fireEvent.change(amount, { target: { value: '4000000' } });
+    await screen.findByRole('heading', { name: 'dashboard' });
 
-    fireEvent.click(screen.getByRole('button', { name: '적용' }));
+    fireEvent.click(screen.getByRole('button', { name: 'restart-setup' }));
 
-    expect(screen.getByRole('complementary', { name: '수입 편집' })).toHaveAttribute('aria-busy', 'true');
-    expect(amount).toBeDisabled();
-    fireEvent.change(amount, { target: { value: '5000000' } });
-    expect(amount).toHaveValue('4,000,000');
-
-    await act(async () => {
-      resolveSave?.({ ...data(4_000_000), updatedAt: 2 });
-    });
-    expect(await screen.findByRole('status')).toHaveTextContent('저장됨');
-    expect(screen.getByRole('button', { name: '수입 편집' })).toHaveTextContent('400만 원');
-  });
-
-  it('discards pending recovery data when the user cancels an edit', async () => {
-    const discardPending = vi.fn();
-    const storage = repository({ status: 'current', data: data(3_000_000), original: {} });
-    storage.discardPending = discardPending;
-    render(<MainApp repository={storage} />);
-    await screen.findByRole('heading', { name: '이번 달 자금 흐름' });
-    fireEvent.click(screen.getByRole('button', { name: '수입 편집' }));
-    fireEvent.change(screen.getByLabelText('급여 월 금액'), { target: { value: '4000000' } });
-
-    fireEvent.click(screen.getByRole('button', { name: '취소' }));
-
-    expect(discardPending).toHaveBeenCalledOnce();
-  });
-
-  it('imports a JSON backup into the draft and waits for explicit apply before saving', async () => {
-    const storage = repository({ status: 'current', data: data(3_000_000), original: {} });
-    storage.save = vi.fn(async (draft) => ({ ...draft, updatedAt: 2 }));
-    render(<MainApp repository={storage} />);
-    await screen.findByRole('heading', { name: '이번 달 자금 흐름' });
-    const file = new File([JSON.stringify(data(4_000_000))], 'plan.json', { type: 'application/json' });
-
-    fireEvent.change(screen.getByLabelText('JSON 백업 파일'), { target: { files: [file] } });
-
-    expect(await screen.findByText('백업을 초안으로 불러왔습니다. 적용해야 저장됩니다.')).toBeVisible();
-    expect(screen.getByRole('button', { name: '수입 편집' })).toHaveTextContent('300만 원');
-    expect(storage.save).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole('button', { name: '적용' }));
-    expect(await screen.findByRole('button', { name: '수입 편집' })).toHaveTextContent('400만 원');
-    expect(storage.save).toHaveBeenCalledOnce();
-  });
-
-  it('rejects an invalid JSON backup without mutating the applied plan', async () => {
-    const storage = repository({ status: 'current', data: data(3_000_000), original: {} });
-    storage.save = vi.fn(async (draft) => draft);
-    render(<MainApp repository={storage} />);
-    await screen.findByRole('heading', { name: '이번 달 자금 흐름' });
-    const file = new File(['{invalid'], 'invalid.json', { type: 'application/json' });
-
-    fireEvent.change(screen.getByLabelText('JSON 백업 파일'), { target: { files: [file] } });
-
-    expect(await screen.findByRole('alert')).toHaveTextContent('백업 파일을 불러오지 못했습니다');
-    expect(screen.getByRole('button', { name: '수입 편집' })).toHaveTextContent('300만 원');
-    expect(storage.save).not.toHaveBeenCalled();
+    expect(await screen.findByRole('heading', { name: 'setup:welcome' })).toBeVisible();
+    expect(screen.getByText('3000000')).toBeVisible();
+    expect(storage.saveSetupProgress).toHaveBeenCalledWith('welcome', applied, 'restart');
   });
 
   it('keeps setup editing available when progress persistence fails', async () => {
     const storage = repository({ status: 'empty', data: null, original: null });
-    storage.loadSetupProgress = () => ({ kind: 'initial', step: 'income', draft: data(3_000_000) });
     storage.saveSetupProgress = vi.fn(() => {
       throw new Error('quota');
     });
     render(<MainApp repository={storage} />);
-    await screen.findByRole('heading', { name: '월 수입을 알려주세요' });
+    await screen.findByRole('heading', { name: 'setup:welcome' });
 
-    fireEvent.change(screen.getByLabelText('수입 이름'), { target: { value: '새 급여' } });
+    fireEvent.click(screen.getByRole('button', { name: 'change-income' }));
 
-    expect(screen.getByLabelText('수입 이름')).toHaveValue('새 급여');
+    expect(screen.getByText('4000000')).toBeVisible();
     expect(screen.getByText('설정 진행 상황을 저장하지 못했습니다. 이 화면에서는 계속 입력할 수 있습니다.')).toBeVisible();
   });
 });

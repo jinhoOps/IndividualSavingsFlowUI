@@ -1,29 +1,30 @@
 import { describe, expect, it } from 'vitest';
-import { bootstrapMain, applyDraft } from '../../../src/main/application/bootstrap';
+import { applyDraft, bootstrapMain } from '../../../src/main/application/bootstrap';
 import type { MainState } from '../../../src/main/application/mainReducer';
 import { createEmptyMainData, type MainData } from '../../../src/main/domain/model';
-import type { MainRepository, SetupProgress } from '../../../src/main/infrastructure/mainRepository';
-import type { MigrationResult } from '../../../src/main/infrastructure/legacyMigration';
+import type {
+  MainLoadResult,
+  MainRepository,
+  SetupProgress,
+} from '../../../src/main/infrastructure/mainRepository';
 
-function validData(): MainData {
-  const data = createEmptyMainData();
-  data.accounts = [{ id: 'salary-account', name: '급여통장', kind: 'income' }];
-  data.incomes = [{
-    id: 'salary',
-    name: '급여',
-    amountWon: 3_000_000,
-    allocations: [{ accountId: 'salary-account', amountWon: 3_000_000 }],
-  }];
-  return data;
+function validData(overrides: Partial<MainData> = {}): MainData {
+  return {
+    ...createEmptyMainData(),
+    monthlyNetIncomeWon: 3_000_000,
+    monthlyHousingWon: 900_000,
+    monthlyLivingWon: 700_000,
+    monthlySavingWon: 500_000,
+    monthlyInvestmentWon: 400_000,
+    ...overrides,
+  };
 }
 
 function repository(
-  loadResult: MigrationResult,
+  loadResult: MainLoadResult,
   progress: SetupProgress | null = null,
   persistedData?: MainData,
-): MainRepository & {
-  saveCalls: MainData[];
-} {
+): MainRepository & { saveCalls: MainData[] } {
   const saveCalls: MainData[] = [];
   return {
     load: async () => loadResult,
@@ -48,41 +49,42 @@ describe('bootstrapMain', () => {
     expect(state.draft).toEqual(createEmptyMainData());
   });
 
-  it('resumes the saved setup step and draft when no applied data exists', async () => {
+  it('resumes each persisted v2 setup stage and keeps a detached draft', async () => {
     const draft = validData();
-    const state = await bootstrapMain(repository(
-      { status: 'empty', data: null, original: null },
-      { kind: 'initial', step: 'account', draft },
-    ));
 
-    expect(state).toMatchObject({ mode: 'setup', setupStep: 'account', applied: null, dirty: false });
-    expect(state.draft).toEqual(draft);
-    expect(state.draft).not.toBe(draft);
+    for (const step of ['income', 'housing', 'living', 'saving-investment', 'review'] as const) {
+      const state = await bootstrapMain(repository(
+        { status: 'empty', data: null, original: null },
+        { kind: 'initial', step, draft },
+      ));
+
+      expect(state).toMatchObject({ mode: 'setup', setupStep: step, applied: null, dirty: false });
+      expect(state.draft).toEqual(draft);
+      expect(state.draft).not.toBe(draft);
+    }
   });
 
-  it('opens current or migrated data on the dashboard', async () => {
+  it('opens current v2 data on the dashboard', async () => {
     const data = validData();
 
-    for (const status of ['current', 'migrated'] as const) {
-      const state = await bootstrapMain(repository({ status, data, original: {} }));
-      expect(state).toMatchObject({ mode: 'dashboard', applied: data, setupStep: null, dirty: false });
-      expect(state.draft).toEqual(data);
-      expect(state.draft).not.toBe(data);
-    }
+    const state = await bootstrapMain(repository({ status: 'current', data, original: {} }));
+
+    expect(state).toMatchObject({ mode: 'dashboard', applied: data, setupStep: null, dirty: false });
+    expect(state.draft).toEqual(data);
+    expect(state.draft).not.toBe(data);
   });
 
   it('resumes restart setup with the persisted current plan still applied', async () => {
     const applied = validData();
-    const restartDraft = structuredClone(applied);
-    restartDraft.expenses = [{ id: 'rent', name: '월세', amountWon: 900_000 }];
+    const restartDraft = validData({ monthlyHousingWon: 1_100_000 });
     const state = await bootstrapMain(repository(
       { status: 'current', data: applied, original: applied },
-      { kind: 'restart', step: 'expense', draft: restartDraft },
+      { kind: 'restart', step: 'housing', draft: restartDraft },
     ));
 
     expect(state).toMatchObject({
       mode: 'setup',
-      setupStep: 'expense',
+      setupStep: 'housing',
       applied,
       draft: restartDraft,
     });
@@ -90,11 +92,9 @@ describe('bootstrapMain', () => {
     expect(state.draft).not.toBe(restartDraft);
   });
 
-  it('keeps current data applied while presenting a pending draft for recovery', async () => {
-    const current = validData();
-    current.incomes[0].amountWon = 3_000_000;
-    const pending = validData();
-    pending.incomes[0].amountWon = 4_000_000;
+  it('keeps current data applied while presenting a pending v2 draft for recovery', async () => {
+    const current = validData({ monthlyNetIncomeWon: 3_000_000 });
+    const pending = validData({ monthlyNetIncomeWon: 4_000_000 });
 
     const state = await bootstrapMain(repository({
       status: 'recovery',
@@ -110,7 +110,7 @@ describe('bootstrapMain', () => {
     expect(state.dirty).toBe(true);
   });
 
-  it('presents a pending-only recovery candidate without inventing applied data', async () => {
+  it('presents a pending-only v2 recovery candidate without inventing applied data', async () => {
     const pending = validData();
 
     const state = await bootstrapMain(repository({
@@ -124,28 +124,28 @@ describe('bootstrapMain', () => {
     expect(state).toMatchObject({ mode: 'recovery', applied: null, draft: pending, dirty: true });
   });
 
-  it('enters recovery and retains the original data when migration fails', async () => {
-    const original = { bad: 'legacy-data' };
+  it('enters recovery and retains malformed v2 data from a failed load', async () => {
+    const original = { schemaVersion: 2, monthlyNetIncomeWon: 'bad' };
     const state = await bootstrapMain(repository({
       status: 'failed',
       data: null,
       original,
-      reason: 'Legacy data has an unsupported shape.',
+      reason: 'Stored Main v2 data has an unsupported shape.',
     }));
 
     expect(state.mode).toBe('recovery');
     expect(state.applied).toBeNull();
-    expect(state.loadError).toMatchObject({ message: 'Legacy data has an unsupported shape.', original });
+    expect(state.loadError).toMatchObject({
+      message: 'Stored Main v2 data has an unsupported shape.',
+      original,
+    });
   });
 });
 
 describe('applyDraft', () => {
-  it('returns the persisted draft and recalculates its cashflow summary after saving', async () => {
+  it('returns the persisted v2 draft and recalculates its cashflow summary after saving', async () => {
     const draft = validData();
-    draft.expenses = [{ id: 'rent', name: '월세', amountWon: 1_000_000 }];
-    draft.savings = [{ id: 'deposit', name: '적금', amountWon: 500_000 }];
-    draft.investments = [{ id: 'etf', name: 'ETF', amountWon: 400_000 }];
-    const persisted = { ...structuredClone(draft), updatedAt: 1_750_000_000_000 };
+    const persisted = { ...draft, updatedAt: 1_750_000_000_000 };
     const storage = repository({ status: 'empty', data: null, original: null }, null, persisted);
     const state: MainState = {
       mode: 'setup', applied: null, draft, setupStep: 'review', dirty: true, saveStatus: 'idle', loadError: null,
@@ -158,11 +158,13 @@ describe('applyDraft', () => {
       data: persisted,
       summary: {
         incomeWon: 3_000_000,
-        expenseWon: 1_000_000,
+        housingWon: 900_000,
+        livingWon: 700_000,
+        consumptionWon: 1_600_000,
         savingWon: 500_000,
         investmentWon: 400_000,
-        plannedOutflowWon: 1_900_000,
-        availableWon: 1_100_000,
+        plannedOutflowWon: 2_500_000,
+        remainingWon: 500_000,
         deficitWon: 0,
       },
     });
@@ -182,9 +184,7 @@ describe('applyDraft', () => {
 
   it('does not replace applied data when storage rejects the draft', async () => {
     const applied = validData();
-    const draft = structuredClone(applied);
-    draft.incomes[0].amountWon = 4_000_000;
-    draft.incomes[0].allocations[0].amountWon = 4_000_000;
+    const draft = validData({ monthlyNetIncomeWon: 4_000_000 });
     const storage = repository({ status: 'empty', data: null, original: null });
     storage.save = async () => { throw new Error('quota exceeded'); };
     const state: MainState = {
@@ -193,6 +193,6 @@ describe('applyDraft', () => {
 
     await expect(applyDraft(state, storage)).resolves.toMatchObject({ ok: false, kind: 'storage' });
     expect(state.applied).toBe(applied);
-    expect(state.applied?.incomes[0].amountWon).toBe(3_000_000);
+    expect(state.applied?.monthlyNetIncomeWon).toBe(3_000_000);
   });
 });

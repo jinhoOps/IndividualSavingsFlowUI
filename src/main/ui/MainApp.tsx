@@ -349,13 +349,12 @@ function RecoveryView({
   );
 }
 
-function setupStepForIssue(path: string | undefined): SetupStep | null {
+export function setupStepForIssue(path: string | undefined): SetupStep | null {
   if (path === undefined) return null;
-  if (path.startsWith('incomes.') && path.endsWith('.allocations')) return 'account';
-  if (path === 'incomes' || path.startsWith('incomes.')) return 'income';
-  if (path.startsWith('expenses.')) return 'expense';
-  if (path.startsWith('savings.') || path.startsWith('investments.')) return 'saving-investment';
-  if (path.startsWith('accounts.')) return 'account';
+  if (path === 'monthlyNetIncomeWon') return 'income';
+  if (path === 'monthlyHousingWon') return 'housing';
+  if (path === 'monthlyLivingWon') return 'living';
+  if (path === 'monthlySavingWon' || path === 'monthlyInvestmentWon') return 'saving-investment';
   return null;
 }
 

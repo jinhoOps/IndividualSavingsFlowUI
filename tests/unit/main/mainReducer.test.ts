@@ -1,11 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { createEmptyMainData, type MainData } from '../../../src/main/domain/model';
 import { mainReducer, type MainState } from '../../../src/main/application/mainReducer';
+import { createEmptyMainData, type MainData } from '../../../src/main/domain/model';
 
-function appliedData(): MainData {
-  const data = createEmptyMainData();
-  data.incomes = [{ id: 'salary', name: '급여', amountWon: 3_000_000, allocations: [] }];
-  return data;
+function appliedData(overrides: Partial<MainData> = {}): MainData {
+  return {
+    ...createEmptyMainData(),
+    monthlyNetIncomeWon: 3_000_000,
+    monthlyHousingWon: 900_000,
+    monthlyLivingWon: 700_000,
+    monthlySavingWon: 500_000,
+    monthlyInvestmentWon: 400_000,
+    ...overrides,
+  };
 }
 
 function dashboardState(applied: MainData): MainState {
@@ -21,16 +27,16 @@ function dashboardState(applied: MainData): MainState {
 }
 
 describe('mainReducer', () => {
-  it('edits only the draft and cancel restores applied data', () => {
+  it('edits only the v2 draft and cancel restores applied data', () => {
     const applied = appliedData();
     const initial = dashboardState(applied);
 
     const edited = mainReducer(initial, {
       type: 'replace-draft',
-      draft: { ...initial.draft, incomes: [{ ...initial.draft.incomes[0], amountWon: 4_000_000 }] },
+      draft: { ...initial.draft, monthlyNetIncomeWon: 4_000_000 },
     });
 
-    expect(edited.applied?.incomes[0].amountWon).toBe(3_000_000);
+    expect(edited.applied?.monthlyNetIncomeWon).toBe(3_000_000);
     expect(edited.dirty).toBe(true);
 
     const cancelled = mainReducer(edited, { type: 'cancel-draft' });
@@ -40,7 +46,7 @@ describe('mainReducer', () => {
     expect(cancelled.dirty).toBe(false);
   });
 
-  it('restarts setup from a copy of applied data without changing the dashboard data', () => {
+  it('restarts setup at welcome from a copy without changing applied data', () => {
     const applied = appliedData();
 
     const restarted = mainReducer(dashboardState(applied), { type: 'restart-setup' });
@@ -52,19 +58,19 @@ describe('mainReducer', () => {
     expect(restarted.applied).toBe(applied);
   });
 
-  it('commits a saved copy only after save succeeds', () => {
+  it('commits a saved v2 copy only after save succeeds', () => {
     const original = appliedData();
-    const changed = { ...original, incomes: [{ ...original.incomes[0], amountWon: 4_000_000 }] };
+    const changed = appliedData({ monthlyNetIncomeWon: 4_000_000 });
     const started = mainReducer(mainReducer(dashboardState(original), { type: 'replace-draft', draft: changed }), {
       type: 'save-started',
     });
 
     const failed = mainReducer(started, { type: 'save-failed' });
-    expect(failed.applied?.incomes[0].amountWon).toBe(3_000_000);
+    expect(failed.applied?.monthlyNetIncomeWon).toBe(3_000_000);
     expect(failed.saveStatus).toBe('error');
 
     const saved = mainReducer(started, { type: 'save-succeeded', data: changed });
-    expect(saved.applied?.incomes[0].amountWon).toBe(4_000_000);
+    expect(saved.applied?.monthlyNetIncomeWon).toBe(4_000_000);
     expect(saved.dirty).toBe(false);
     expect(saved.saveStatus).toBe('saved');
   });

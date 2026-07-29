@@ -27,7 +27,6 @@ let lastIssuedUpdatedAt = 0;
 export type MainLoadResult =
   | { status: 'empty'; data: null; original: null }
   | { status: 'current'; data: MainData; original: unknown }
-  | { status: 'migrated'; data: MainData; original: unknown }
   | {
     status: 'recovery';
     data: MainData;

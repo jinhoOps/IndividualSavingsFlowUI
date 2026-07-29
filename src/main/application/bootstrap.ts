@@ -22,8 +22,7 @@ export async function bootstrapMain(repository: MainRepository): Promise<MainSta
           ? setupState(createEmptyMainData(), 'welcome')
           : setupState(progress.draft, progress.step);
       }
-      case 'current':
-      case 'migrated': {
+      case 'current': {
         const progress = repository.loadSetupProgress();
         if (progress?.kind === 'restart') {
           return setupState(progress.draft, progress.step, result.data);
