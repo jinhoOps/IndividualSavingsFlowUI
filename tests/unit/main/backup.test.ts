@@ -5,19 +5,13 @@ import { exportMainData, importMainData } from '../../../src/main/infrastructure
 describe('Main JSON backup', () => {
   it('round-trips a current MainData document without changing it', () => {
     const data: MainData = {
-      schemaVersion: 1,
+      schemaVersion: 2,
       updatedAt: 42,
-      incomes: [{
-        id: 'salary',
-        name: '급여',
-        amountWon: 4_200_000,
-        accountId: 'salary-account',
-        allocations: [{ accountId: 'salary-account', amountWon: 4_200_000 }],
-      }],
-      expenses: [],
-      savings: [],
-      investments: [],
-      accounts: [{ id: 'salary-account', name: '급여통장', kind: 'income' }],
+      monthlyNetIncomeWon: 4_200_000,
+      monthlyHousingWon: 900_000,
+      monthlyLivingWon: 1_000_000,
+      monthlySavingWon: 600_000,
+      monthlyInvestmentWon: 800_000,
     };
 
     expect(importMainData(exportMainData(data))).toStrictEqual(data);
@@ -25,5 +19,29 @@ describe('Main JSON backup', () => {
 
   it('rejects malformed JSON', () => {
     expect(() => importMainData('{bad')).toThrow('Backup data is not valid JSON.');
+  });
+
+  it('rejects schema v1 JSON instead of migrating it', () => {
+    expect(() => importMainData(JSON.stringify({
+      schemaVersion: 1,
+      updatedAt: 42,
+      incomes: [],
+      expenses: [],
+      savings: [],
+      investments: [],
+      accounts: [],
+    }))).toThrow('Backup data is not valid MainData.');
+  });
+
+  it('rejects a v2 plan whose income is not valid', () => {
+    expect(() => importMainData(JSON.stringify({
+      schemaVersion: 2,
+      updatedAt: 42,
+      monthlyNetIncomeWon: 0,
+      monthlyHousingWon: 900_000,
+      monthlyLivingWon: 1_000_000,
+      monthlySavingWon: 600_000,
+      monthlyInvestmentWon: 800_000,
+    }))).toThrow('Backup data contains an invalid plan.');
   });
 });

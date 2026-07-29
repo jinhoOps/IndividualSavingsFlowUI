@@ -1,6 +1,6 @@
 import type { MainData } from '../domain/model';
 import { validateMainData } from '../domain/validation';
-import { migrateLegacyMain } from './legacyMigration';
+import { isMainDataShape } from './mainRepository';
 
 export function exportMainData(data: MainData): string {
   return JSON.stringify(data);
@@ -14,14 +14,13 @@ export function importMainData(json: string): MainData {
     throw new Error('Backup data is not valid JSON.');
   }
 
-  const result = migrateLegacyMain(parsed);
-  if (result.status !== 'current') {
+  if (!isMainDataShape(parsed)) {
     throw new Error('Backup data is not valid MainData.');
   }
-  if (!validateMainData(result.data).valid) {
+  if (!validateMainData(parsed).valid) {
     throw new Error('Backup data contains an invalid plan.');
   }
-  return result.data;
+  return { ...parsed };
 }
 
 export function exportRecoveryData(original: unknown): string {
