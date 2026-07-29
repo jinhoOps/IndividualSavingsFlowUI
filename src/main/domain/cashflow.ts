@@ -2,31 +2,34 @@ import type { MainData } from './model';
 
 export interface CashflowSummary {
   incomeWon: number;
-  expenseWon: number;
+  housingWon: number;
+  livingWon: number;
+  consumptionWon: number;
   savingWon: number;
   investmentWon: number;
   plannedOutflowWon: number;
-  availableWon: number;
+  remainingWon: number;
   deficitWon: number;
 }
 
-const total = (items: { amountWon: number }[]) =>
-  items.reduce((sum, item) => sum + Math.max(0, item.amountWon), 0);
-
 export function calculateCashflow(data: MainData): CashflowSummary {
-  const incomeWon = total(data.incomes);
-  const expenseWon = total(data.expenses);
-  const savingWon = total(data.savings);
-  const investmentWon = total(data.investments);
-  const plannedOutflowWon = expenseWon + savingWon + investmentWon;
+  const consumptionWon = data.monthlyHousingWon + data.monthlyLivingWon;
+  const plannedOutflowWon = consumptionWon + data.monthlySavingWon + data.monthlyInvestmentWon;
+  const remainingWon = data.monthlyNetIncomeWon - plannedOutflowWon;
 
   return {
-    incomeWon,
-    expenseWon,
-    savingWon,
-    investmentWon,
+    incomeWon: data.monthlyNetIncomeWon,
+    housingWon: data.monthlyHousingWon,
+    livingWon: data.monthlyLivingWon,
+    consumptionWon,
+    savingWon: data.monthlySavingWon,
+    investmentWon: data.monthlyInvestmentWon,
     plannedOutflowWon,
-    availableWon: Math.max(0, incomeWon - plannedOutflowWon),
-    deficitWon: Math.max(0, plannedOutflowWon - incomeWon),
+    remainingWon,
+    deficitWon: Math.max(0, -remainingWon),
   };
+}
+
+export function percentageOfIncome(amountWon: number, incomeWon: number): number | null {
+  return incomeWon > 0 ? (amountWon / incomeWon) * 100 : null;
 }

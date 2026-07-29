@@ -1,58 +1,48 @@
 import { describe, expect, it } from 'vitest';
-import { validateMainData } from '../../../src/main/domain/validation';
 import { createEmptyMainData } from '../../../src/main/domain/model';
+import { validateMainData } from '../../../src/main/domain/validation';
 
 describe('validateMainData', () => {
-  it('rejects a monthly flow without income', () => {
+  it('rejects zero monthly net income', () => {
     expect(validateMainData(createEmptyMainData()).issues).toContainEqual({
-      path: 'incomes',
+      path: 'monthlyNetIncomeWon',
       code: 'income_required',
     });
   });
 
-  it('rejects income allocations that do not match the income', () => {
-    const invalid = createEmptyMainData();
-    invalid.accounts = [{ id: 'salary-account', name: '급여통장', kind: 'income' }];
-    invalid.incomes = [{
-      id: 'salary',
-      name: '급여',
-      amountWon: 3_000_000,
-      allocations: [{ accountId: 'salary-account', amountWon: 2_000_000 }],
-    }];
+  it.each([
+    'monthlyNetIncomeWon',
+    'monthlyHousingWon',
+    'monthlyLivingWon',
+    'monthlySavingWon',
+    'monthlyInvestmentWon',
+  ] as const)('rejects a negative %s amount', (field) => {
+    const data = createEmptyMainData();
+    data.monthlyNetIncomeWon = 1;
+    data[field] = -1;
 
-    expect(validateMainData(invalid).issues).toContainEqual({
-      path: 'incomes.salary.allocations',
-      code: 'allocation_total_mismatch',
+    expect(validateMainData(data).issues).toContainEqual({
+      path: field,
+      code: 'amount_negative',
     });
   });
 
-  it('rejects negative amounts and references to missing accounts', () => {
-    const invalid = createEmptyMainData();
-    invalid.incomes = [{ id: 'salary', name: '급여', amountWon: 3_000_000, allocations: [] }];
-    invalid.expenses = [{ id: 'rent', name: '월세', amountWon: -800_000 }];
-    invalid.savings = [{
-      id: 'deposit',
-      name: '적금',
-      amountWon: 300_000,
-      accountId: 'missing-account',
-    }];
+  it('accepts an exact 100 percent plan', () => {
+    const data = createEmptyMainData();
+    data.monthlyNetIncomeWon = 1_000_000;
+    data.monthlyHousingWon = 400_000;
+    data.monthlyLivingWon = 300_000;
+    data.monthlySavingWon = 200_000;
+    data.monthlyInvestmentWon = 100_000;
 
-    expect(validateMainData(invalid).issues).toEqual(expect.arrayContaining([
-      { path: 'expenses.rent.amountWon', code: 'amount_negative' },
-      { path: 'savings.deposit.accountId', code: 'account_missing' },
-    ]));
+    expect(validateMainData(data)).toEqual({ valid: true, issues: [] });
   });
 
-  it('accepts income allocations that fully explain the income', () => {
-    const valid = createEmptyMainData();
-    valid.accounts = [{ id: 'salary-account', name: '급여통장', kind: 'income' }];
-    valid.incomes = [{
-      id: 'salary',
-      name: '급여',
-      amountWon: 3_000_000,
-      allocations: [{ accountId: 'salary-account', amountWon: 3_000_000 }],
-    }];
+  it('accepts a plan over 100 percent of income', () => {
+    const data = createEmptyMainData();
+    data.monthlyNetIncomeWon = 1_000_000;
+    data.monthlyHousingWon = 1_000_001;
 
-    expect(validateMainData(valid)).toEqual({ valid: true, issues: [] });
+    expect(validateMainData(data)).toEqual({ valid: true, issues: [] });
   });
 });
