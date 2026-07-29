@@ -1,6 +1,15 @@
 @import url("https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Gowun+Dodum:wght@400;700&display=swap");
 @import "tailwindcss";
 
+:root {
+  --ui-control-min-height: 44px;
+  --ui-control-radius: 12px;
+  --ui-surface-radius: 24px;
+  --ui-control-border: 1px solid var(--color-line);
+  --ui-focus-ring: 0 0 0 3px rgb(15 118 110 / 35%);
+  --ui-disabled-opacity: 0.5;
+}
+
 @theme {
   --color-primary: #ea5b2a;
   --color-accent: #0f766e;
@@ -61,6 +70,39 @@
 }
 
 @layer components {
+  .ui-button {
+    @apply inline-flex min-h-11 items-center justify-center gap-2 px-4 py-2 font-bold transition;
+    min-height: var(--ui-control-min-height);
+    border-radius: var(--ui-control-radius);
+    border: var(--ui-control-border);
+  }
+
+  .ui-button:focus-visible {
+    box-shadow: var(--ui-focus-ring);
+  }
+
+  .ui-button:disabled {
+    cursor: not-allowed;
+    opacity: var(--ui-disabled-opacity);
+  }
+
+  .ui-button--primary {
+    @apply border-primary bg-primary text-white hover:bg-primary/90;
+  }
+
+  .ui-button--secondary {
+    @apply border-line bg-panel text-ink hover:bg-slate-50;
+  }
+
+  .ui-button--quiet {
+    @apply border-transparent bg-transparent text-accent hover:bg-accent/10;
+  }
+
+  .ui-surface {
+    @apply border border-line bg-panel;
+    border-radius: var(--ui-surface-radius);
+  }
+
   .flow-context-summary,
   .allocation-bar {
     @apply grid gap-3 rounded-2xl border border-line bg-white/75 p-4 text-sm text-muted-text;
