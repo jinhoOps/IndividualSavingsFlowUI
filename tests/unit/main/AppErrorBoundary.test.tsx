@@ -22,6 +22,10 @@ describe('MainErrorBoundary', () => {
     );
 
     expect(screen.getByRole('heading', { name: '화면을 표시하지 못했습니다' })).toBeVisible();
-    expect(screen.getByRole('button', { name: '페이지 다시 불러오기' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: '화면을 표시하지 못했습니다' }).closest('section')).toHaveClass('ui-surface');
+    expect(screen.getByRole('button', { name: '페이지 다시 불러오기' })).toHaveClass(
+      'ui-button',
+      'ui-button--primary',
+    );
   });
 });

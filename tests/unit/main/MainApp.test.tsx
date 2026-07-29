@@ -183,6 +183,10 @@ describe('MainApp', () => {
     expect(await screen.findByRole('heading', { name: '저장 복구가 필요합니다' })).toBeVisible();
     expect(screen.getByText('현재 적용 중 · 300만 원')).toBeVisible();
     expect(screen.getByText('저장 대기 중 · 400만 원')).toBeVisible();
+    expect(screen.getByRole('heading', { name: '저장 복구가 필요합니다' }).closest('section')).toHaveClass('ui-surface');
+    for (const name of ['기존 원본 JSON 다운로드', '저장 다시 시도', '복구 초안 버리기', '현재 계획으로 돌아가기']) {
+      expect(screen.getByRole('button', { name })).toHaveClass('ui-button');
+    }
   });
 
   it('acknowledges malformed current data so setup progress resumes after reload', async () => {
@@ -387,9 +391,13 @@ describe('MainApp', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'apply-setup' }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('저장하지 못했습니다');
+    const saveFailure = await screen.findByRole('alert');
+    expect(saveFailure).toHaveTextContent('저장하지 못했습니다');
+    expect(saveFailure).toHaveClass('ui-surface');
     expect(screen.getByText('4000000')).toBeVisible();
-    fireEvent.click(screen.getByRole('button', { name: '저장 다시 시도' }));
+    const retry = screen.getByRole('button', { name: '저장 다시 시도' });
+    expect(retry).toHaveClass('ui-button', 'ui-button--primary');
+    fireEvent.click(retry);
     expect(await screen.findByRole('heading', { name: 'dashboard' })).toBeVisible();
     expect(screen.getByLabelText('applied-income')).toHaveTextContent('4000000');
     expect(storage.save).toHaveBeenCalledTimes(2);
@@ -436,6 +444,7 @@ describe('MainApp', () => {
     fireEvent.click(screen.getByRole('button', { name: 'restart-setup' }));
 
     expect(await screen.findByRole('heading', { name: 'setup:welcome' })).toBeVisible();
+    expect(screen.getByRole('button', { name: '취소' })).toHaveClass('ui-button', 'ui-button--secondary');
     expect(screen.getByText('3000000')).toBeVisible();
     expect(storage.saveSetupProgress).toHaveBeenCalledWith('welcome', applied, 'restart');
   });

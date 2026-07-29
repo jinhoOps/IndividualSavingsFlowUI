@@ -45,7 +45,11 @@ export function MoneyField({ id, label, valueWon, error, validationPath, disable
       <div className="money-field__input-row">
         <input
           ref={inputRef}
-          className="money-field__input"
+          className={[
+            'money-field__input',
+            error ? 'money-field__input--invalid' : '',
+            disabled ? 'money-field__input--disabled' : '',
+          ].filter(Boolean).join(' ')}
           id={id}
           name={id}
           type="text"

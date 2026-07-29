@@ -73,6 +73,21 @@ describe('AllocationBar', () => {
     expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
   });
 
+  it('closes a tapped segment tooltip when focus moves outside its wrapper', () => {
+    render(<><AllocationBar data={cashflowFixture} /><button type="button">outside</button></>);
+    const consumption = screen.getByLabelText('소비 56.3%');
+    const outside = screen.getByRole('button', { name: 'outside' });
+
+    fireEvent.pointerDown(consumption);
+    fireEvent.focus(consumption);
+    fireEvent.click(consumption);
+    expect(screen.getByRole('tooltip')).toHaveTextContent(/^56\.3%$/);
+
+    fireEvent.blur(consumption, { relatedTarget: outside });
+    fireEvent.focus(outside);
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+  });
+
   it('provides a legend-linked control for zero-width allocations', () => {
     render(<AllocationBar data={emptyFixture} />);
 

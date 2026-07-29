@@ -87,7 +87,11 @@ describe('FlowContextSummary', () => {
     fireEvent.pointerEnter(meter, { clientX: 80 });
     fireEvent.focus(meter);
     fireEvent.pointerLeave(meter);
-    fireEvent.blur(meter);
+    expect(screen.getByRole('tooltip')).toHaveStyle({ left: '15%' });
+    fireEvent.blur(meter, { relatedTarget: document.body });
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+
+    fireEvent.click(meter, { clientX: 40 });
     expect(screen.getByRole('tooltip')).toHaveStyle({ left: '15%' });
     fireEvent.click(meter, { clientX: 40 });
     expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
@@ -122,6 +126,22 @@ describe('FlowContextSummary', () => {
     fireEvent.click(screen.getByRole('button', { name: 'outside' }));
     expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
     expect(removeEventListener).toHaveBeenCalledWith('click', clickAwayListener);
+  });
+
+  it('closes a tap tooltip when focus moves outside its wrapper', () => {
+    render(<><FlowContextSummary data={cashflowFixture} /><button type="button">outside</button></>);
+    const meter = screen.getByRole('meter');
+    const outside = screen.getByRole('button', { name: 'outside' });
+    setMeterRect(meter);
+
+    fireEvent.pointerDown(meter, { clientX: 40 });
+    fireEvent.focus(meter);
+    fireEvent.click(meter, { clientX: 40 });
+    expect(screen.getByRole('tooltip')).toBeInTheDocument();
+
+    fireEvent.blur(meter, { relatedTarget: outside });
+    fireEvent.focus(outside);
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
   });
 
   it('keeps a tapped tooltip open when the tooltip itself is clicked', () => {

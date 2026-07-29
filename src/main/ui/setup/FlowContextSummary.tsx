@@ -55,7 +55,15 @@ export function FlowContextSummary({ data }: FlowContextSummaryProps) {
 
   return (
     <section className="flow-context-summary" aria-label="현재 자금 계획 요약">
-      <div className="flow-bar-wrapper" ref={flowBarWrapperRef}>
+      <div
+        className="flow-bar-wrapper"
+        ref={flowBarWrapperRef}
+        onBlur={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget)) {
+            setIsTapped(false);
+          }
+        }}
+      >
         <div
           aria-describedby={tooltipOpen ? tooltipId : undefined}
           aria-label="수입 대비 현재 계획"

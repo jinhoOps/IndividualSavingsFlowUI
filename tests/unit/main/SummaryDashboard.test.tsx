@@ -335,7 +335,7 @@ describe('SummaryDashboard', () => {
     fireEvent.click(screen.getByRole('button', { name: '백업 내보내기' }));
     expect(onExport).toHaveBeenCalledOnce();
 
-    fireEvent.change(screen.getByLabelText('JSON 백업 파일'), { target: { files: [backup] } });
+    fireEvent.change(screen.getByLabelText('백업 가져오기'), { target: { files: [backup] } });
     expect(onImportFile).toHaveBeenCalledWith(backup);
   });
 
@@ -353,9 +353,10 @@ describe('SummaryDashboard', () => {
     };
     const { rerender } = render(<SummaryDashboard {...props} saveStatus="idle" />);
     const importLabel = screen.getByText('백업 가져오기').closest('label');
-    const fileInput = screen.getByLabelText('JSON 백업 파일');
+    const fileInput = screen.getByLabelText('백업 가져오기');
 
-    expect(importLabel).toHaveClass('ui-button', 'ui-button--secondary');
+    expect(importLabel).toHaveClass('ui-button', 'ui-button--secondary', 'backup-import-action');
+    expect(fileInput).toHaveAccessibleName('백업 가져오기');
     expect(importLabel).not.toHaveAttribute('aria-disabled');
     expect(fileInput).toBeEnabled();
 

@@ -154,14 +154,14 @@ export function SummaryDashboard({
             {onImportFile === undefined ? null : (
               <label
                 aria-disabled={saving ? 'true' : undefined}
-                className="ui-button ui-button--secondary rounded-full bg-white/80 text-sm shadow-sm"
+                className="backup-import-action ui-button ui-button--secondary rounded-full bg-white/80 text-sm shadow-sm"
               >
                 백업 가져오기
                 <input
                   className="sr-only"
                   type="file"
                   accept="application/json,.json"
-                  aria-label="JSON 백업 파일"
+                  aria-label="백업 가져오기"
                   disabled={saving}
                   onChange={(event) => {
                     const file = event.currentTarget.files?.[0];

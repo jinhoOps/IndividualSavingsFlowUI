@@ -5,6 +5,8 @@ import { calculateCashflow } from '../domain/cashflow';
 import { createEmptyMainData, type MainData, type SetupStep } from '../domain/model';
 import { exportMainData, exportRecoveryData, importMainData } from '../infrastructure/backup';
 import { BrowserMainRepository, type MainRepository } from '../infrastructure/mainRepository';
+import { Button } from './common/Button';
+import { Surface } from './common/Surface';
 import { formatDashboardWon } from './dashboard/CashflowSummary';
 import { SummaryDashboard } from './dashboard/SummaryDashboard';
 import { SetupFlow } from './setup/SetupFlow';
@@ -231,27 +233,28 @@ export function MainApp({ repository = browserRepository }: MainAppProps) {
         )}
         {state.applied !== null ? (
           <div className="mb-4 flex justify-end">
-            <button
-              className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-700 shadow-sm hover:border-slate-400"
+            <Button
+              className="rounded-full bg-white text-sm text-slate-700 shadow-sm"
               type="button"
               disabled={state.saveStatus === 'saving'}
               onClick={cancelDraft}
             >
               취소
-            </button>
+            </Button>
           </div>
         ) : null}
         {state.saveStatus === 'error' && issues.length === 0 ? (
-          <div className="mb-4 rounded-xl bg-rose-50 px-4 py-3 text-sm font-bold text-rose-800" role="alert">
+          <Surface className="mb-4 rounded-xl border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-800" role="alert">
             <p className="m-0">저장하지 못했습니다. 입력한 내용은 그대로 보존되어 있습니다.</p>
-            <button
-              className="mt-3 rounded-full border border-rose-300 bg-white px-4 py-2 text-sm font-bold text-rose-800"
+            <Button
+              className="mt-3 rounded-full"
+              variant="primary"
               type="button"
               onClick={apply}
             >
               저장 다시 시도
-            </button>
-          </div>
+            </Button>
+          </Surface>
         ) : null}
         <SetupFlow
           draft={state.draft}
@@ -314,7 +317,7 @@ function RecoveryView({
 
   return (
     <main className="grid min-h-dvh place-items-center px-5 py-10">
-      <section className="w-full max-w-xl rounded-3xl border border-amber-200 bg-white p-6 shadow-xl shadow-amber-950/5 sm:p-10" aria-labelledby="recovery-title">
+      <Surface as="section" className="w-full max-w-xl border-amber-200 p-6 shadow-xl shadow-amber-950/5 sm:p-10" aria-labelledby="recovery-title">
         <p className="mb-3 text-sm font-black tracking-wide text-amber-700">안전한 데이터 복구</p>
         <h1 className="text-3xl font-black tracking-tight text-slate-950" id="recovery-title">저장 복구가 필요합니다</h1>
         <p className="mt-4 leading-7 text-slate-600">
@@ -331,42 +334,41 @@ function RecoveryView({
           </p>
         </div>
         <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-          <button className="rounded-xl border border-slate-300 bg-white px-4 py-3 font-bold text-slate-800" type="button" onClick={onDownload}>
+          <Button type="button" onClick={onDownload}>
             기존 원본 JSON 다운로드
-          </button>
+          </Button>
           {hasRecoveryCandidate ? (
             <>
-              <button
-                className="rounded-xl bg-slate-950 px-4 py-3 font-bold text-white disabled:opacity-60"
+              <Button
+                variant="primary"
                 type="button"
                 disabled={saving}
                 onClick={onRetry}
               >
                 {saving ? '저장 중' : '저장 다시 시도'}
-              </button>
-              <button
-                className="rounded-xl border border-rose-200 bg-white px-4 py-3 font-bold text-rose-700 disabled:opacity-60"
+              </Button>
+              <Button
+                className="border-rose-200 text-rose-700"
                 type="button"
                 disabled={saving}
                 onClick={onDiscard}
               >
                 복구 초안 버리기
-              </button>
+              </Button>
               {state.applied === null ? null : (
-                <button
-                  className="rounded-xl border border-slate-300 bg-white px-4 py-3 font-bold text-slate-800 disabled:opacity-60"
+                <Button
                   type="button"
                   disabled={saving}
                   onClick={onReturnCurrent}
                 >
                   현재 계획으로 돌아가기
-                </button>
+                </Button>
               )}
             </>
           ) : (
-            <button className="rounded-xl bg-slate-950 px-4 py-3 font-bold text-white" type="button" onClick={onStartEmpty}>
+            <Button variant="primary" type="button" onClick={onStartEmpty}>
               빈 초안으로 다시 시작
-            </button>
+            </Button>
           )}
         </div>
         {state.saveStatus === 'error' ? (
@@ -374,7 +376,7 @@ function RecoveryView({
             저장하지 못했습니다. 초안은 그대로 보존되어 있습니다. 다시 시도해 주세요.
           </p>
         ) : null}
-      </section>
+      </Surface>
     </main>
   );
 }

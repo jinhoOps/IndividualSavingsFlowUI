@@ -21,9 +21,25 @@ describe('MoneyField', () => {
     render(<MoneyField id="amount" label="금액" valueWon={0} disabled onChange={vi.fn()} />);
 
     expect(screen.getByLabelText('금액')).toBeDisabled();
+    expect(screen.getByLabelText('금액')).toHaveClass('money-field__input--disabled');
     for (const name of ['-10만', '+10만', '+50만', '초기화']) {
       expect(screen.getByRole('button', { name })).toBeDisabled();
     }
+  });
+
+  it('exposes invalid semantics and a dedicated invalid visual state', () => {
+    render(
+      <MoneyField
+        id="amount"
+        label="금액"
+        valueWon={0}
+        error="금액을 확인해주세요."
+        onChange={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByLabelText('금액')).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByLabelText('금액')).toHaveClass('money-field__input--invalid');
   });
 
   it.each([

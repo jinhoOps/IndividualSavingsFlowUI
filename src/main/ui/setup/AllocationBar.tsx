@@ -114,21 +114,42 @@ export function AllocationBar({ data }: AllocationBarProps) {
       <p className="allocation-bar__context">
         월 수입을 이렇게 나눠 쓰고 있어요
       </p>
-      <div className="flow-bar-wrapper" ref={wrapperRef}>
+      <div
+        className="flow-bar-wrapper"
+        ref={wrapperRef}
+        onBlur={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget)) {
+            setTappedId(undefined);
+          }
+        }}
+      >
         <div className="flow-bar allocation-bar__segments" ref={barRef}>
+          <div aria-hidden="true" className="allocation-bar__visual-track">
+            {allocations.map((allocation) => {
+              const visualPercentage = clampPercentage(allocation.percentage ?? 0);
+              return (
+                <span
+                  className={`allocation-bar__visual-segment allocation-bar__visual-segment--${allocation.id}`}
+                  key={allocation.id}
+                  style={{ width: `${visualPercentage}%` }}
+                />
+              );
+            })}
+          </div>
           {allocations.map((allocation) => {
             const visualPercentage = clampPercentage(allocation.percentage ?? 0);
             const requiresLegendTarget = visualPercentage < MIN_INTERACTIVE_PERCENTAGE;
-            const className = `allocation-bar__segment allocation-bar__segment--${allocation.id}`;
+            const center = allocationCenter(allocation.id, allocations);
 
-            return requiresLegendTarget ? (
-              <span aria-hidden="true" className={className} key={allocation.id} style={{ width: `${visualPercentage}%` }} />
-            ) : (
+            return requiresLegendTarget ? null : (
               <button
                 {...triggerProps(allocation, true)}
-                className={className}
+                className="allocation-bar__segment-target"
                 key={allocation.id}
-                style={{ width: `${visualPercentage}%` }}
+                style={{
+                  left: `clamp(22px, ${center}%, calc(100% - 22px))`,
+                  width: `max(${visualPercentage}%, var(--ui-control-min-height))`,
+                }}
               />
             );
           })}

@@ -114,12 +114,58 @@ test.describe('mobile quick setup', () => {
     await expect(page.getByText(/^월 수입 \d/)).toHaveCount(0);
 
     await page.setViewportSize({ width: 390, height: 844 });
+    const meterBox = await meter.boundingBox();
+    expect(meterBox).not.toBeNull();
+    expect(meterBox!.height).toBeGreaterThanOrEqual(44);
+    await meter.tap();
+    await expect(page.getByRole('tooltip')).toBeVisible();
+    await page.keyboard.press('Tab');
+    await expect(page.getByRole('tooltip')).toHaveCount(0);
     await meter.tap();
     await expect(page.getByRole('tooltip')).toBeVisible();
     await page.getByRole('heading', { name: '주거비로 매달 얼마가 나가나요?' }).tap();
     await expect(page.getByRole('tooltip')).toHaveCount(0);
     expect(await page.locator('html').evaluate((element) => element.scrollWidth <= window.innerWidth)).toBe(true);
   });
+
+  test('keeps allocation segment and tiny legend targets at least 44px', async ({ page }) => {
+    await clearBrowserStorage(page);
+    await page.goto('apps/main/');
+    await page.getByRole('button', { name: '다음' }).tap();
+    await page.getByLabel('월 실수령액').fill('3200000');
+    await page.getByRole('button', { name: '다음' }).tap();
+    await page.getByRole('button', { name: '다음' }).tap();
+    await page.getByRole('button', { name: '다음' }).tap();
+    await page.getByLabel('월 투자액').fill('1000');
+    await page.getByRole('button', { name: '다음' }).tap();
+
+    for (const name of ['남는 돈 100.0%', '소비 0.0%', '투자 0.0%']) {
+      const box = await page.getByRole('button', { name }).boundingBox();
+      expect(box, `${name} target`).not.toBeNull();
+      expect(box!.width, `${name} width`).toBeGreaterThanOrEqual(44);
+      expect(box!.height, `${name} height`).toBeGreaterThanOrEqual(44);
+    }
+
+    const tinyTarget = page.getByRole('button', { name: '투자 0.0%' });
+    await tinyTarget.tap();
+    await expect(page.getByRole('tooltip')).toHaveText(/^0\.0%$/);
+    await page.keyboard.press('Tab');
+    await expect(page.getByRole('tooltip')).toHaveCount(0);
+  });
+});
+
+test('backup import has a matching accessible name and visible keyboard focus ring', async ({ page }) => {
+  await page.addInitScript((fixture) => {
+    localStorage.setItem('isf-main-v2', JSON.stringify(fixture));
+  }, appliedMainV2);
+  await page.goto('apps/main/');
+
+  const input = page.getByLabel('백업 가져오기');
+  await expect(input).toHaveAttribute('type', 'file');
+  await input.focus();
+  const label = input.locator('..');
+  await expect(label).toHaveCSS('box-shadow', /rgba?\(/);
+  await expect(page.getByLabel('JSON 백업 파일')).toHaveCount(0);
 });
 
 test('keyboard-only user completes the full quick setup', async ({ page }) => {
