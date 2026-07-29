@@ -9,11 +9,23 @@ describe('createMpaNavigationCaching', () => {
     expect(config.navigateFallback).toBeNull();
     expect(route.handler).toBe('NetworkFirst');
     expect(route.urlPattern).toBeInstanceOf(RegExp);
-    for (const path of ['main', 'simulation', 'portfolio', 'account-map']) {
-      expect(route.urlPattern.test(`https://example.com/IndividualSavingsFlowUI/apps/${path}/`)).toBe(true);
-      expect(route.urlPattern.test(`https://example.com/IndividualSavingsFlowUI/apps/${path}/index.html`)).toBe(true);
+    const routes = [
+      ['apps/main/', true],
+      ['apps/main/index.html', true],
+      ['apps/simulation/', true],
+      ['apps/simulation/index.html', true],
+      ['apps/portfolio/', true],
+      ['apps/portfolio/index.html', true],
+      ['apps/account-map/', true],
+      ['apps/account-map/index.html', true],
+      ['apps/legacy/', false],
+      ['apps/legacy/index.html', false],
+      ['', false],
+      ['assets/main.js', false],
+    ] as const;
+
+    for (const [path, expected] of routes) {
+      expect(route.urlPattern.test(`https://example.com/IndividualSavingsFlowUI/${path}`)).toBe(expected);
     }
-    expect(route.urlPattern.test('https://example.com/IndividualSavingsFlowUI/')).toBe(false);
-    expect(route.urlPattern.test('https://example.com/IndividualSavingsFlowUI/assets/main.js')).toBe(false);
   });
 });
