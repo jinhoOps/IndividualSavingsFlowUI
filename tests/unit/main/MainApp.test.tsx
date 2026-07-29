@@ -149,12 +149,19 @@ describe('MainApp', () => {
   });
 
   it('routes failed scalar validation to its setup stage', async () => {
-    render(<MainApp repository={repository({ status: 'empty', data: null, original: null })} />);
+    const storage = repository({ status: 'empty', data: null, original: null });
+    storage.saveSetupProgress = vi.fn();
+    render(<MainApp repository={storage} />);
     await screen.findByRole('heading', { name: 'setup:welcome' });
 
     fireEvent.click(screen.getByRole('button', { name: 'apply-setup' }));
 
     expect(await screen.findByRole('heading', { name: 'setup:income' })).toBeVisible();
+    expect(storage.saveSetupProgress).toHaveBeenCalledWith(
+      'income',
+      expect.objectContaining({ schemaVersion: 2, monthlyNetIncomeWon: 0 }),
+      'initial',
+    );
   });
 
   it('keeps applied and pending v2 data separate in recovery', async () => {

@@ -75,7 +75,10 @@ export function MainApp({ repository = browserRepository }: MainAppProps) {
         setValidationAttempt((attempt) => attempt + 1);
         if (state.mode === 'setup') {
           const step = setupStepForIssue(result.issues[0]?.path);
-          if (step !== null) dispatch({ type: 'set-setup-step', step });
+          if (step !== null) {
+            persistSetupProgress(step, state.draft, state.applied === null ? 'initial' : 'restart');
+            dispatch({ type: 'set-setup-step', step });
+          }
         }
         dispatch({ type: 'save-failed' });
         return;
