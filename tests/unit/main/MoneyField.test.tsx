@@ -10,11 +10,9 @@ describe('MoneyField', () => {
     render(<MoneyField id="amount" label="금액" valueWon={3_000_000} onChange={vi.fn()} />);
 
     expect(screen.getByLabelText('금액')).toHaveClass('money-field__input');
+    expect(screen.getByRole('button', { name: '-50만' })).toHaveClass('ui-button--quiet');
     expect(screen.getByRole('button', { name: '-10만' })).toHaveClass('ui-button--quiet');
-    expect(screen.getByRole('button', { name: '초기화' })).toHaveClass(
-      'ui-button--quiet',
-      'money-field__reset',
-    );
+    expect(screen.queryByRole('button', { name: '초기화' })).not.toBeInTheDocument();
   });
 
   it('disables the input and every adjustment control', () => {
@@ -22,7 +20,7 @@ describe('MoneyField', () => {
 
     expect(screen.getByLabelText('금액')).toBeDisabled();
     expect(screen.getByLabelText('금액')).toHaveClass('money-field__input--disabled');
-    for (const name of ['-10만', '+10만', '+50만', '초기화']) {
+    for (const name of ['-50만', '-10만', '+10만', '+50만']) {
       expect(screen.getByRole('button', { name })).toBeDisabled();
     }
   });
@@ -68,15 +66,19 @@ describe('MoneyField', () => {
     expect(input.selectionStart).toBe(3);
   });
 
-  it('offers increment controls and reset around the input', () => {
+  it('offers symmetric quick adjustments around the input', () => {
     const onChange = vi.fn();
     render(<MoneyField id="amount" label="금액" valueWon={3_000_000} onChange={onChange} />);
 
     expect(screen.getByText('원')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '-50만' }));
+    fireEvent.click(screen.getByRole('button', { name: '-10만' }));
+    fireEvent.click(screen.getByRole('button', { name: '+10만' }));
     fireEvent.click(screen.getByRole('button', { name: '+50만' }));
-    fireEvent.click(screen.getByRole('button', { name: '초기화' }));
 
-    expect(onChange).toHaveBeenNthCalledWith(1, 3_500_000);
-    expect(onChange).toHaveBeenNthCalledWith(2, 0);
+    expect(onChange).toHaveBeenNthCalledWith(1, 2_500_000);
+    expect(onChange).toHaveBeenNthCalledWith(2, 2_900_000);
+    expect(onChange).toHaveBeenNthCalledWith(3, 3_100_000);
+    expect(onChange).toHaveBeenNthCalledWith(4, 3_500_000);
   });
 });

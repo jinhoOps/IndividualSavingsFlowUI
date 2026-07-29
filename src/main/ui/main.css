@@ -116,10 +116,6 @@
     @apply flex flex-wrap gap-2;
   }
 
-  .money-field__reset {
-    @apply text-muted-text hover:bg-slate-100;
-  }
-
   .money-field__input--invalid,
   .money-field__input[aria-invalid="true"] {
     @apply border-rose-500 bg-rose-50 text-rose-950;

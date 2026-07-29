@@ -34,6 +34,7 @@ export function MoneyField({ id, label, valueWon, error, validationPath, disable
   });
 
   const adjustmentButtons = [
+    { label: '-50만', deltaWon: -500_000 },
     { label: '-10만', deltaWon: -100_000 },
     { label: '+10만', deltaWon: 100_000 },
     { label: '+50만', deltaWon: 500_000 },
@@ -74,7 +75,6 @@ export function MoneyField({ id, label, valueWon, error, validationPath, disable
             {adjustmentLabel}
           </Button>
         ))}
-        <Button className="money-field__reset" type="button" variant="quiet" disabled={disabled} onClick={() => onChange(0)}>초기화</Button>
       </div>
       {error ? <p className="m-0 text-sm font-bold text-red-700" id={errorId} role="alert">{error}</p> : null}
     </div>
