@@ -98,6 +98,26 @@
     @apply border-transparent bg-transparent text-accent hover:bg-accent/10;
   }
 
+  .money-field {
+    @apply grid gap-2;
+  }
+
+  .money-field__input-row {
+    @apply flex items-center gap-2;
+  }
+
+  .money-field__unit {
+    @apply shrink-0 font-bold text-muted-text;
+  }
+
+  .money-field__adjustments {
+    @apply flex flex-wrap gap-2;
+  }
+
+  .money-field__reset {
+    @apply text-muted-text hover:bg-slate-100;
+  }
+
   .ui-surface {
     @apply border border-line bg-panel;
     border-radius: var(--ui-surface-radius);

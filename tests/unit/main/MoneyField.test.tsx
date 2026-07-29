@@ -6,6 +6,26 @@ import { MoneyField } from '../../../src/main/ui/common/MoneyField';
 afterEach(cleanup);
 
 describe('MoneyField', () => {
+  it('uses the shared money-field and quiet button styles', () => {
+    render(<MoneyField id="amount" label="금액" valueWon={3_000_000} onChange={vi.fn()} />);
+
+    expect(screen.getByLabelText('금액')).toHaveClass('money-field__input');
+    expect(screen.getByRole('button', { name: '-10만' })).toHaveClass('ui-button--quiet');
+    expect(screen.getByRole('button', { name: '초기화' })).toHaveClass(
+      'ui-button--quiet',
+      'money-field__reset',
+    );
+  });
+
+  it('disables the input and every adjustment control', () => {
+    render(<MoneyField id="amount" label="금액" valueWon={0} disabled onChange={vi.fn()} />);
+
+    expect(screen.getByLabelText('금액')).toBeDisabled();
+    for (const name of ['-10만', '+10만', '+50만', '초기화']) {
+      expect(screen.getByRole('button', { name })).toBeDisabled();
+    }
+  });
+
   it.each([
     ['unsafe integer', '9007199254740992', 0],
     ['decimal punctuation', '1.5', 15],

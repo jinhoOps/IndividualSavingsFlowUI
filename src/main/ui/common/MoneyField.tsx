@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import { adjustWon, formatWonInput, normalizeMoneyEdit } from '../../domain/money';
+import { Button } from './Button';
 
 export interface MoneyFieldProps {
   id: string;
@@ -33,17 +34,18 @@ export function MoneyField({ id, label, valueWon, error, validationPath, disable
   });
 
   const adjustmentButtons = [
-    { label: '−10만', deltaWon: -100_000 },
+    { label: '-10만', deltaWon: -100_000 },
     { label: '+10만', deltaWon: 100_000 },
     { label: '+50만', deltaWon: 500_000 },
   ] as const;
 
   return (
-    <div className="grid gap-2">
+    <div className="money-field">
       <label className="text-sm font-bold text-slate-700" htmlFor={id}>{label}</label>
-      <div className="flex items-center gap-2">
+      <div className="money-field__input-row">
         <input
           ref={inputRef}
+          className="money-field__input"
           id={id}
           name={id}
           type="text"
@@ -60,15 +62,15 @@ export function MoneyField({ id, label, valueWon, error, validationPath, disable
             onChange(normalized.valueWon);
           }}
         />
-        <span aria-hidden="true">원</span>
+        <span className="money-field__unit" aria-hidden="true">원</span>
       </div>
-      <div className="flex gap-2">
+      <div className="money-field__adjustments">
         {adjustmentButtons.map(({ label: adjustmentLabel, deltaWon }) => (
-          <button key={adjustmentLabel} type="button" disabled={disabled} onClick={() => onChange(adjustWon(valueWon, deltaWon))}>
+          <Button key={adjustmentLabel} type="button" variant="quiet" disabled={disabled} onClick={() => onChange(adjustWon(valueWon, deltaWon))}>
             {adjustmentLabel}
-          </button>
+          </Button>
         ))}
-        <button type="button" disabled={disabled} onClick={() => onChange(0)}>초기화</button>
+        <Button className="money-field__reset" type="button" variant="quiet" disabled={disabled} onClick={() => onChange(0)}>초기화</Button>
       </div>
       {error ? <p className="m-0 text-sm font-bold text-red-700" id={errorId} role="alert">{error}</p> : null}
     </div>
