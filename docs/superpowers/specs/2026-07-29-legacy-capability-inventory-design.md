@@ -103,22 +103,52 @@
 | --- | --- | --- | --- |
 | `isf-main-v2` | React Main, Main history | 현재 | 변경하지 않음 |
 | `isf-main-v2-pending`, setup progress, recovery keys | React Main | 현재 | 변경하지 않음 |
-| `isf-rebuild-v1` | Account Map, Simulation, Portfolio, legacy tests | 이관 대상 | 소비 field를 앱별로 목록화한 adapter spec 필요 |
+| `isf-rebuild-v1` | Account Map, Simulation, Portfolio, legacy tests | 이관 대상 | 아래 앱별 소비 field만 typed adapter에 노출 |
 | 이전 Step 1 IndexedDB snapshot | Simulation, Portfolio, Account Map | 이관 대상 | fallback 순서와 timestamp 의미 보존 |
 | `IsfStorageHub` global API | non-Main apps | compatibility bridge | 호출 method와 실패 fallback을 inventory한 뒤 typed facade 검토 |
 | legacy share/hash schema | legacy Main tests와 module | 판정 대기 | 현재 지원 여부와 사용자 데이터 보존 정책 확정 전 삭제 금지 |
+
+### Cross-app v1 소비 field
+
+| 소비자 | 실제 읽는 field | 의미 |
+| --- | --- | --- |
+| Simulation | `startInvest`, `monthlyInvest`, `horizonYears`, `updatedAt` | 초기 투자자산, 월 투자 여력, 시뮬레이션 기간과 source timestamp |
+| Portfolio | `monthlyInvest`; fallback `investItems[].amount` | 월 적립식 투자 가능액 |
+| Account Map account | `accounts[].id`, `name`, `role`, `kind`, `type` | 계좌 node와 역할 |
+| Account Map income | `incomes[].id`, `name`, `accountId`, `amount`, `allocations[].accountId`, `allocations[].amount` | 입금 관계 |
+| Account Map transfer | `transfers[].id`, `sourceAccountId`, `targetAccountId`, `label`, `amount`, `paymentDay`, `memo` | 자동이체 관계 |
+| Account Map savings/investment | `savingsItems[]`, `investItems[]`의 `id`, `accountId`, `name`, `amount`, `maturityMonth`; 저축의 `annualRate` | 저축·투자 상품 관계 |
+| Account Map expense | `expenseItems[].id`, `group`, `name`, `amount`, `accountId`, `paymentDay`, `memo` | 반복 결제 후보 |
+| Account Map preserved relation | `relationships[].id`, `sourceRef`, `paymentDay`, `memo`, `confidence`, source/target/label/amount | Main에서 저장된 관계 metadata 병합 |
+
+Simulation은 snapshot의 `id`, `updatedAt`, `data` wrapper도 읽는다. Portfolio와 Account Map도 local v1 값이 없을 때 이전 Step 1 snapshot의 `data` 또는 snapshot 자체를 fallback으로 읽는다.
+
+### 현재 global storage API 소비
+
+| 소비자 | 필수 method | fallback·보조 method |
+| --- | --- | --- |
+| Simulation | `saveStep2Entry`, `listStep2Entries`, `getStep2EntryById`, `deleteStep2Entry` | `loadLocal`, `getLatestStep1Snapshot`, `triggerAutoBackup`, `createManualBackup` |
+| Portfolio | `loadLocal`, `saveLocal` | `getLatestStep1Snapshot` |
+| Account Map | `loadLocal`, `saveLocal` | `getLatestStep1Snapshot` |
+
+`src/core/storage/CompatibilityBridge.ts`는 위 method를 `IsfStore`, `BackupService`와 LocalStorage에 연결한다. bridge에는 `saveStep1Snapshot`, `listStep1Snapshots`, `getStep1SnapshotById`, Step 2 portfolio alias와 `persistViewDataLocally`도 남아 있지만 현재 non-Main entry의 직접 호출은 확인되지 않았다. 직접 소비가 없는 method는 storage migration spec에서 보존 근거를 다시 확인한다.
 
 ## 후속 작업 경계
 
 Inventory 결과는 다음 순서의 독립 spec으로 나눈다.
 
 1. Cross-app Main read adapter
-   - `isf-main-v2`에서 Simulation, Portfolio, Account Map이 필요한 최소 projection을 제공한다.
+   - Simulation용 `initialAssetWon`, `monthlyInvestmentWon`, `horizonYears`, `updatedAt` projection을 제공한다.
+   - Portfolio용 `monthlyInvestmentWon` projection을 제공한다.
+   - `isf-main-v2`에는 초기자산과 기간이 없으므로 0 또는 앱 자체 기본값을 쓰는 정책을 별도 spec에서 승인한다.
    - v1 snapshot은 read-only compatibility fallback으로 격리한다.
 2. Account Map sanitizer extraction
+   - Account Map 전용 import adapter가 위 v1 account, income, transfer, savings, investment, expense와 preserved relationship field만 받는다.
    - Account Map이 `apps/main/modules/input-sanitizer.js`를 import하지 않게 한다.
 3. Storage bridge migration
-   - non-Main 앱의 `IsfStorageHub` 사용 method와 fallback을 typed facade로 이동한다.
+   - Simulation의 Step 2 CRUD와 backup method를 typed facade로 이동한다.
+   - Portfolio와 Account Map의 local draft load/save, legacy Step 1 snapshot fallback을 typed facade로 이동한다.
+   - 직접 소비가 확인되지 않은 bridge alias는 제거 전 별도 참조 검증을 거친다.
 4. Legacy Main test replacement
    - 사용자 관찰 동작과 공개 데이터 계약만 현재 test suite로 이전한다.
 5. Legacy Main runtime removal
