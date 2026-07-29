@@ -1,0 +1,250 @@
+@import url("https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Gowun+Dodum:wght@400;700&display=swap");
+@import "tailwindcss";
+
+:root {
+  --ui-control-min-height: 44px;
+  --ui-control-radius: 12px;
+  --ui-surface-radius: 24px;
+  --ui-control-border: 1px solid var(--color-line);
+  --ui-focus-ring: 0 0 0 3px rgb(15 118 110 / 35%);
+  --ui-disabled-opacity: 0.5;
+}
+
+@theme {
+  --color-primary: #ea5b2a;
+  --color-accent: #0f766e;
+  --color-canvas: #f8f6f1;
+  --color-panel: #ffffff;
+  --color-ink: #102220;
+  --color-muted-text: #5f6f6c;
+  --color-line: rgba(16, 34, 32, 0.12);
+  --color-line-strong: rgba(16, 34, 32, 0.28);
+  --font-display: "Gowun Batang", serif;
+  --font-body: "Gowun Dodum", "Nanum Gothic", sans-serif;
+  --shadow-float: 0 18px 60px rgba(16, 34, 32, 0.08);
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html {
+    background: var(--color-canvas);
+    overflow-x: hidden;
+  }
+
+  body {
+    @apply m-0 min-w-0 bg-canvas font-body text-ink antialiased;
+    background-image:
+      radial-gradient(circle at 0% 0%, rgba(15, 118, 110, 0.09), transparent 32rem),
+      radial-gradient(circle at 100% 8%, rgba(234, 91, 42, 0.08), transparent 28rem);
+    letter-spacing: -0.015em;
+  }
+
+  button,
+  input,
+  select {
+    font: inherit;
+  }
+
+  button {
+    @apply cursor-pointer focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-accent/35;
+  }
+
+  input,
+  select {
+    @apply min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-950 outline-none transition focus:border-accent focus:ring-3 focus:ring-accent/15;
+  }
+
+  fieldset {
+    @apply m-0 min-w-0 border-0 p-0;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+  }
+}
+
+@layer components {
+  .ui-button {
+    @apply inline-flex min-h-11 items-center justify-center gap-2 px-4 py-2 font-bold transition;
+    min-height: var(--ui-control-min-height);
+    border-radius: var(--ui-control-radius);
+    border: var(--ui-control-border);
+    cursor: pointer;
+  }
+
+  .ui-button:focus-visible {
+    box-shadow: var(--ui-focus-ring);
+  }
+
+  .ui-button:disabled,
+  .ui-button[aria-disabled="true"] {
+    cursor: not-allowed;
+    opacity: var(--ui-disabled-opacity);
+  }
+
+  .ui-button--primary {
+    @apply border-primary bg-primary text-white hover:bg-primary/90;
+  }
+
+  .ui-button--secondary {
+    @apply border-line bg-panel text-ink hover:bg-slate-50;
+  }
+
+  .ui-button--quiet {
+    @apply border-transparent bg-transparent text-accent hover:bg-accent/10;
+  }
+
+  .money-field {
+    @apply grid gap-2;
+  }
+
+  .money-field__input-row {
+    @apply flex items-center gap-2;
+  }
+
+  .money-field__unit {
+    @apply shrink-0 font-bold text-muted-text;
+  }
+
+  .money-field__adjustments {
+    @apply flex flex-wrap gap-2;
+  }
+
+  .money-field__reset {
+    @apply text-muted-text hover:bg-slate-100;
+  }
+
+  .money-field__input--invalid,
+  .money-field__input[aria-invalid="true"] {
+    @apply border-rose-500 bg-rose-50 text-rose-950;
+    box-shadow: 0 0 0 3px rgb(225 29 72 / 18%);
+  }
+
+  .money-field__input--invalid:focus,
+  .money-field__input[aria-invalid="true"]:focus {
+    @apply border-rose-600;
+    box-shadow: 0 0 0 3px rgb(225 29 72 / 24%);
+  }
+
+  .money-field__input--disabled,
+  .money-field__input:disabled {
+    @apply cursor-not-allowed border-slate-200 bg-slate-100 text-slate-500;
+    -webkit-text-fill-color: var(--color-slate-500);
+    box-shadow: none;
+    opacity: 1;
+  }
+
+  .ui-surface {
+    @apply border border-line bg-panel;
+    border-radius: var(--ui-surface-radius);
+  }
+
+  .allocation-bar {
+    @apply grid gap-3 rounded-2xl border border-line bg-white/75 p-4 text-sm text-muted-text;
+  }
+
+  .allocation-bar__context,
+  .allocation-bar__deficit {
+    @apply m-0 font-bold;
+  }
+
+  .allocation-bar__segments {
+    @apply relative;
+  }
+
+  .flow-bar-wrapper {
+    @apply relative;
+  }
+
+  .flow-bar {
+    @apply relative h-11 w-full rounded-xl bg-transparent;
+    @apply outline-none focus-visible:ring-3 focus-visible:ring-accent/35;
+    min-height: var(--ui-control-min-height);
+  }
+
+  .flow-bar::before {
+    @apply absolute inset-x-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-slate-200;
+    content: "";
+  }
+
+  .flow-bar__fill {
+    @apply absolute left-0 top-1/2 z-1 block h-1.5 -translate-y-1/2 rounded-full bg-accent transition-[width];
+  }
+
+  .allocation-bar__segments::before {
+    content: none;
+  }
+
+  .allocation-bar__visual-track {
+    @apply absolute inset-x-0 top-1/2 flex h-1.5 -translate-y-1/2 overflow-hidden rounded-full bg-slate-200;
+  }
+
+  .allocation-bar__visual-segment {
+    @apply h-full shrink-0;
+  }
+
+  .allocation-bar__visual-segment--consumption { @apply bg-primary; }
+  .allocation-bar__visual-segment--saving { @apply bg-accent; }
+  .allocation-bar__visual-segment--investment { @apply bg-slate-700; }
+  .allocation-bar__visual-segment--remaining { @apply bg-slate-300; }
+
+  .allocation-bar__segment-target {
+    @apply absolute top-0 h-11 rounded-xl border-0 bg-transparent p-0 outline-none transition-colors hover:bg-white/15 focus-visible:ring-3 focus-visible:ring-accent/35;
+    min-height: var(--ui-control-min-height);
+    min-width: 0;
+  }
+
+  .allocation-bar__legend {
+    @apply m-0 flex flex-wrap gap-x-3 gap-y-1 p-0 text-xs font-bold text-slate-600;
+    list-style: none;
+  }
+
+  .allocation-bar__legend-target {
+    @apply inline-flex items-center justify-center rounded-xl border-0 bg-transparent px-2 py-1 text-inherit outline-none hover:text-ink focus-visible:ring-3 focus-visible:ring-accent/35;
+    font: inherit;
+    min-height: var(--ui-control-min-height);
+    min-width: var(--ui-control-min-height);
+  }
+
+  .allocation-bar__deficit { @apply text-red-700; }
+
+  .flow-tooltip {
+    @apply w-fit rounded-md bg-slate-950 px-2 py-1 text-xs font-bold text-white;
+  }
+
+  .flow-bar-wrapper .flow-tooltip {
+    @apply absolute bottom-full mb-2 -translate-x-1/2;
+  }
+
+  .backup-import-action:focus-within {
+    box-shadow: var(--ui-focus-ring);
+  }
+
+  .editor-dialog {
+    animation: editor-in 180ms ease-out;
+  }
+
+  @keyframes editor-in {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

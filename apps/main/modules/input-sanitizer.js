@@ -75,7 +75,7 @@ export function sanitizeInputs(rawInputs) {
       const name = typeof safeAcc.name === "string" && safeAcc.name.trim()
         ? safeAcc.name.trim()
         : `계좌 ${index + 1}`;
-      return { id, name };
+      return { ...safeAcc, id, name };
     });
   }
 
@@ -99,6 +99,10 @@ export function sanitizeInputs(rawInputs) {
     splitIncomeAccounts: Boolean(raw.splitIncomeAccounts),
     surplusTransferAccountId: surplusId,
     transfers: sanitizeTransfers(raw.transfers, sanitizedAccounts),
+    relationships: Array.isArray(raw.relationships)
+      ? raw.relationships.filter((relationship) => relationship && typeof relationship === "object")
+        .map((relationship) => ({ ...relationship }))
+      : [],
     householdContext: sanitizeHouseholdContext(raw.householdContext),
     expenseItems,
     savingsItems,
@@ -167,6 +171,7 @@ export function sanitizeIncomeItems(items, fallbackAmount) {
       let safeAllocations = rawAllocs.map(al => {
         const safeAl = al && typeof al === "object" ? al : {};
         return {
+          ...safeAl,
           accountId: typeof safeAl.accountId === "string" && safeAl.accountId.trim()
             ? safeAl.accountId.trim()
             : safeAccountId,
@@ -183,6 +188,7 @@ export function sanitizeIncomeItems(items, fallbackAmount) {
       }
 
       return {
+        ...safeItem,
         id: safeId,
         name: safeName,
         amount: safeAmount,
@@ -382,6 +388,7 @@ export function sanitizeAllocationItems(
         : fallbackAccountId;
 
       const normalizedItem = {
+        ...item,
         id: safeId,
         name: normalizeAllocationName(item.name, label, index),
         amount: window.IsfUtils.sanitizeMoney(item.amount, 0),
@@ -556,10 +563,9 @@ export function sanitizeTransfers(transfers, accounts) {
       const label = typeof safeTr.label === "string" && safeTr.label.trim() ? safeTr.label.trim() : `이체 ${index + 1}`;
  
       if (sourceAccountId && targetAccountId && sourceAccountId !== targetAccountId && accountIds.has(sourceAccountId) && accountIds.has(targetAccountId)) {
-        return { id, sourceAccountId, targetAccountId, amount, label };
+        return { ...safeTr, id, sourceAccountId, targetAccountId, amount, label };
       }
       return null;
     })
     .filter(Boolean);
 }
-

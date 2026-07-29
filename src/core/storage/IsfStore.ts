@@ -1,12 +1,14 @@
 import { Step1State, Step2Simulation, BackupEntry } from '../types/models';
+import type { MainData } from '../../main/domain/model';
 
 const DB_NAME = 'isf-v2-db';
-const DB_VERSION = 1;
+const DB_VERSION = 4;
 
 const STORES = {
   STEP1_HISTORY: 'step1_history',
   STEP2_SIMULATIONS: 'step2_simulations',
-  BACKUPS: 'backups'
+  BACKUPS: 'backups',
+  MAIN_V2_HISTORY_ENTRIES: 'main_v2_history_entries'
 } as const;
 
 export class IsfStore {
@@ -15,17 +17,9 @@ export class IsfStore {
   async init(): Promise<void> {
     if (this.db) return;
 
-    // Legacy Wipe: Delete old DB if it exists (Per user: "Legacy can be wiped")
-    try {
-      const oldDbs = await window.indexedDB.databases();
-      if (oldDbs.find(d => d.name === 'isf-hub-db-v1')) {
-        console.warn('IsfStore: Wiping legacy isf-hub-db-v1');
-        window.indexedDB.deleteDatabase('isf-hub-db-v1');
-      }
-    } catch (e) { /* ignore */ }
-
     return new Promise((resolve, reject) => {
       const request = indexedDB.open(DB_NAME, DB_VERSION);
+      let settled = false;
 
       request.onupgradeneeded = (event) => {
         const db = request.result;
@@ -42,14 +36,38 @@ export class IsfStore {
           b.createIndex('appKey', 'appKey');
           b.createIndex('createdAt', 'createdAt');
         }
+        if (!db.objectStoreNames.contains(STORES.MAIN_V2_HISTORY_ENTRIES)) {
+          const mainEntries = db.createObjectStore(STORES.MAIN_V2_HISTORY_ENTRIES, { autoIncrement: true });
+          mainEntries.createIndex('updatedAt', 'updatedAt');
+        }
       };
 
       request.onsuccess = () => {
-        this.db = request.result;
+        const database = request.result;
+        if (settled) {
+          database.close();
+          return;
+        }
+        this.db = database;
+        database.onversionchange = () => {
+          database.close();
+          if (this.db === database) this.db = null;
+        };
+        settled = true;
         resolve();
       };
 
-      request.onerror = () => reject(request.error);
+      request.onblocked = () => {
+        if (settled) return;
+        settled = true;
+        reject(new Error('IndexedDB upgrade was blocked by another open tab.'));
+      };
+
+      request.onerror = () => {
+        if (settled) return;
+        settled = true;
+        reject(request.error ?? new Error('IndexedDB could not be opened.'));
+      };
     });
   }
 
@@ -65,14 +83,29 @@ export class IsfStore {
       const tx = this.db!.transaction(storeName, mode);
       const store = tx.objectStore(storeName);
       const request = callback(store);
+      let requestResult: T | undefined;
+      let settled = false;
 
       if (request) {
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error);
-      } else {
-        tx.oncomplete = () => resolve(undefined as T);
+        request.onsuccess = () => {
+          requestResult = request.result;
+        };
+        request.onerror = () => {
+          if (settled) return;
+          settled = true;
+          reject(request.error ?? new Error('IDB_REQUEST_FAILED'));
+        };
       }
-      tx.onabort = () => reject(tx.error || new Error('TX_ABORTED'));
+      tx.oncomplete = () => {
+        if (settled) return;
+        settled = true;
+        resolve(requestResult as T);
+      };
+      tx.onabort = () => {
+        if (settled) return;
+        settled = true;
+        reject(tx.error || new Error('TX_ABORTED'));
+      };
     });
   }
 
@@ -117,6 +150,18 @@ export class IsfStore {
 
   async deleteStep2Simulation(id: string): Promise<void> {
     await this.perform(STORES.STEP2_SIMULATIONS, 'readwrite', (s) => s.delete(id));
+  }
+
+  // --- Main v2 Methods ---
+
+  async saveMainV2(data: MainData): Promise<void> {
+    await this.perform(STORES.MAIN_V2_HISTORY_ENTRIES, 'readwrite', (store) => store.add(data));
+  }
+
+  async loadLatestMainV2(): Promise<MainData | null> {
+    return this.perform<IDBCursorWithValue | null>(STORES.MAIN_V2_HISTORY_ENTRIES, 'readonly', (store) => {
+      return store.index('updatedAt').openCursor(null, 'prev');
+    }).then((cursor) => (cursor?.value as MainData) || null);
   }
 
   // --- Utility ---

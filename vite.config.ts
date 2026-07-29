@@ -4,6 +4,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 import tailwindcss from '@tailwindcss/vite';
 import { resolve } from 'path';
 import packageJson from './package.json';
+import { createMpaNavigationCaching } from './src/main/infrastructure/pwaRoutes';
 
 export default defineConfig({
   define: {
@@ -19,13 +20,14 @@ export default defineConfig({
       manifest: {
         name: '나의 가계 흐름',
         short_name: '가계흐름',
+        lang: 'ko-KR',
         version: packageJson.version,
-        description: '월 단위 가계 흐름을 카드와 Sankey Diagram으로 확인하는 개인 자산 흐름 프로토타입',
-        theme_color: '#ea5b2a',
-        background_color: '#f9f6f0',
+        description: '월 실수령액, 소비, 저축, 투자와 남는 돈을 한눈에 확인하는 월간 자금 흐름 도구',
+        theme_color: '#0f766e',
+        background_color: '#f8f6f1',
         display: 'standalone',
-        start_url: '/IndividualSavingsFlowUI/',
-        scope: '/IndividualSavingsFlowUI/',
+        start_url: './apps/main/',
+        scope: './',
         icons: [
           {
             src: 'icons/icon-192.png',
@@ -64,10 +66,10 @@ export default defineConfig({
         ]
       },
       workbox: {
+        ...createMpaNavigationCaching('/IndividualSavingsFlowUI/'),
         globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest}'],
         skipWaiting: true,
         clientsClaim: true,
-        navigateFallback: '/IndividualSavingsFlowUI/index.html'
       }
     })
   ],

@@ -11,14 +11,15 @@ export const Step1Connector = {
    */
   async fetchLatestSnapshot() {
     try {
-      const snapshot = await IsfStorageHub.getLatestStep1Snapshot();
-      if (!snapshot) return null;
+      const local = readCurrentMainProjection();
+      const snapshot = local === null ? await IsfStorageHub.getLatestStep1Snapshot() : null;
+      if (local === null && !snapshot) return null;
 
       // Step 1 데이터 구조에서 투자 가능 금액 추출
       // 1. 저장된 monthlyInvest 필드 확인
       // 2. 필드가 없을 경우 investItems의 합계로 계산
       // 3. 그래도 없으면 0 (startInvest는 초기 자산이므로 여력으로 쓰기 부적절)
-      const data = snapshot.data || {};
+      const data = local ?? snapshot?.data ?? {};
       let investCapacity = 0;
       
       if (typeof data.monthlyInvest === 'number') {
@@ -36,3 +37,14 @@ export const Step1Connector = {
     }
   }
 };
+
+function readCurrentMainProjection() {
+  try {
+    const raw = window.localStorage.getItem('isf-rebuild-v1');
+    if (raw === null) return null;
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
