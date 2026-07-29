@@ -72,7 +72,7 @@ describe('SetupFlow', () => {
     expect(screen.getByLabelText('설정 단계').closest('.ui-surface')).not.toBeNull();
     expect(screen.getByRole('button', { name: '다음' })).toHaveClass('ui-button--primary');
     expect(screen.getByRole('button', { name: '이전' })).toHaveClass('ui-button--secondary');
-    expect(screen.getByRole('meter', { name: '수입 대비 현재 계획' })).toHaveClass('flow-bar');
+    expect(screen.getByRole('progressbar', { name: '수입 대비 현재 계획' })).toHaveClass('flow-bar');
     expect(screen.queryByText(/^월 수입 /)).not.toBeInTheDocument();
   });
 
@@ -99,49 +99,49 @@ describe('SetupFlow', () => {
     expect(screen.getByRole('heading', { name: '주거비로 매달 얼마가 나가나요?' })).toBeVisible();
     expect(screen.getByLabelText('월 주거 고정비')).toHaveValue('');
     expect(screen.getByText('월세 또는 전세대출 이자, 관리비, 공과금을 합친 금액')).toBeVisible();
-    expect(screen.getByRole('meter', { name: '수입 대비 현재 계획' })).toHaveAttribute('aria-valuetext', '0.0%');
+    expect(screen.getByRole('progressbar', { name: '수입 대비 현재 계획' })).toHaveAttribute('aria-valuetext', '현재 계획 0원 · 수입의 0.0%');
     expect(screen.queryByText(/^월 수입 /)).not.toBeInTheDocument();
     expectOneFormWithoutLegacyControls();
 
     fireEvent.change(screen.getByLabelText('월 주거 고정비'), { target: { value: '800000' } });
     expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ monthlyHousingWon: 800_000 }));
-    expect(screen.getByRole('meter', { name: '수입 대비 현재 계획' })).toHaveAttribute('aria-valuetext', '25.0%');
+    expect(screen.getByRole('progressbar', { name: '수입 대비 현재 계획' })).toHaveAttribute('aria-valuetext', '현재 계획 80만 원 · 수입의 25.0%');
     fireEvent.click(screen.getByRole('button', { name: '다음' }));
 
     expect(screen.getByRole('heading', { name: '그 밖의 생활비는 보통 얼마인가요?' })).toBeVisible();
     expect(screen.getByLabelText('월평균 생활비')).toHaveValue('');
     expect(screen.getByText('식비, 교통비, 경조사비 등 최근 몇 달의 평균')).toBeVisible();
-    expect(screen.getByRole('meter', { name: '수입 대비 현재 계획' })).toHaveAttribute('aria-valuetext', '25.0%');
+    expect(screen.getByRole('progressbar', { name: '수입 대비 현재 계획' })).toHaveAttribute('aria-valuetext', '현재 계획 80만 원 · 수입의 25.0%');
     expectOneFormWithoutLegacyControls();
 
     fireEvent.change(screen.getByLabelText('월평균 생활비'), { target: { value: '1000000' } });
     expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ monthlyLivingWon: 1_000_000 }));
-    expect(screen.getByRole('meter', { name: '수입 대비 현재 계획' })).toHaveAttribute('aria-valuetext', '56.3%');
+    expect(screen.getByRole('progressbar', { name: '수입 대비 현재 계획' })).toHaveAttribute('aria-valuetext', '현재 계획 180만 원 · 수입의 56.3%');
     fireEvent.click(screen.getByRole('button', { name: '다음' }));
 
     expect(screen.getByRole('heading', { name: '매달 저축과 투자는 얼마나 하나요?' })).toBeVisible();
     expect(screen.getByText('정해둔 금액이 없다면 건너뛰어도 돼요.')).toBeVisible();
     expect(screen.getByLabelText('월 저축액')).toHaveValue('');
     expect(screen.getByLabelText('월 투자액')).toHaveValue('');
-    expect(screen.getByRole('meter', { name: '수입 대비 현재 계획' })).toHaveAttribute('aria-valuetext', '56.3%');
+    expect(screen.getByRole('progressbar', { name: '수입 대비 현재 계획' })).toHaveAttribute('aria-valuetext', '현재 계획 180만 원 · 수입의 56.3%');
     expectOneFormWithoutLegacyControls();
 
     fireEvent.change(screen.getByLabelText('월 저축액'), { target: { value: '300000' } });
     expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ monthlySavingWon: 300_000 }));
-    expect(screen.getByRole('meter', { name: '수입 대비 현재 계획' })).toHaveAttribute('aria-valuetext', '65.6%');
+    expect(screen.getByRole('progressbar', { name: '수입 대비 현재 계획' })).toHaveAttribute('aria-valuetext', '현재 계획 210만 원 · 수입의 65.6%');
     fireEvent.change(screen.getByLabelText('월 투자액'), { target: { value: '200000' } });
     expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ monthlyInvestmentWon: 200_000 }));
-    expect(screen.getByRole('meter', { name: '수입 대비 현재 계획' })).toHaveAttribute('aria-valuetext', '71.9%');
+    expect(screen.getByRole('progressbar', { name: '수입 대비 현재 계획' })).toHaveAttribute('aria-valuetext', '현재 계획 230만 원 · 수입의 71.9%');
     fireEvent.click(screen.getByRole('button', { name: '다음' }));
 
     expect(screen.getByRole('heading', { name: '입력한 월 자금 계획을 확인해주세요' })).toBeVisible();
-    expect(screen.getByRole('meter', { name: '수입 대비 현재 계획' })).toHaveAttribute('aria-valuetext', '71.9%');
+    expect(screen.getByRole('progressbar', { name: '수입 대비 현재 계획' })).toHaveAttribute('aria-valuetext', '현재 계획 230만 원 · 수입의 71.9%');
     expect(screen.getByText('월 수입을 이렇게 나눠 쓰고 있어요')).toBeVisible();
     expect(screen.queryByText(/배분/)).not.toBeInTheDocument();
-    expect(screen.getByLabelText('소비 56.3%')).toBeVisible();
-    expect(screen.getByLabelText('저축 9.4%')).toBeVisible();
-    expect(screen.getByLabelText('투자 6.3%')).toBeVisible();
-    expect(screen.getByLabelText('남는 돈 28.1%')).toBeVisible();
+    expect(screen.getByRole('button', { name: '소비 상세 정보' })).toBeVisible();
+    expect(screen.getByRole('button', { name: '저축 상세 정보' })).toBeVisible();
+    expect(screen.getByRole('button', { name: '투자 상세 정보' })).toBeVisible();
+    expect(screen.getByRole('button', { name: '남는 돈 상세 정보' })).toBeVisible();
     expectOneFormWithoutLegacyControls();
 
     fireEvent.click(screen.getByRole('button', { name: '계획 적용' }));

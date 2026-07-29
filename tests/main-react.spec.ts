@@ -38,26 +38,27 @@ test('new user applies the v2 quick setup and refreshes into matching dashboard 
 
   await page.getByLabel('월 주거 고정비').fill('800000');
   await expect(page.getByLabel('월 주거 고정비')).toHaveValue('800,000');
-  await expect(page.getByRole('meter', { name: '수입 대비 현재 계획' })).toHaveAttribute('aria-valuetext', '25.0%');
+  await expect(page.getByRole('progressbar', { name: '수입 대비 현재 계획' })).toHaveAttribute('aria-valuetext', '현재 계획 80만 원 · 수입의 25.0%');
   await page.getByRole('button', { name: '다음' }).click();
 
   await page.getByLabel('월평균 생활비').fill('1000000');
-  await expect(page.getByRole('meter', { name: '수입 대비 현재 계획' })).toHaveAttribute('aria-valuetext', '56.3%');
+  await expect(page.getByRole('progressbar', { name: '수입 대비 현재 계획' })).toHaveAttribute('aria-valuetext', '현재 계획 180만 원 · 수입의 56.3%');
   await page.getByRole('button', { name: '다음' }).click();
 
   await page.getByLabel('월 저축액').fill('300000');
   await page.getByLabel('월 투자액').fill('200000');
-  await expect(page.getByRole('meter', { name: '수입 대비 현재 계획' })).toHaveAttribute('aria-valuetext', '71.9%');
+  await expect(page.getByRole('progressbar', { name: '수입 대비 현재 계획' })).toHaveAttribute('aria-valuetext', '현재 계획 230만 원 · 수입의 71.9%');
   await page.getByRole('button', { name: '다음' }).click();
 
-  await expect(page.getByRole('button', { name: '소비 56.3%' })).toBeVisible();
-  await expect(page.getByRole('button', { name: '저축 9.4%' })).toBeVisible();
-  await expect(page.getByRole('button', { name: '투자 6.3%' })).toBeVisible();
-  await expect(page.getByRole('button', { name: '남는 돈 28.1%' })).toBeVisible();
-  await expect(page.getByRole('list', { name: '월 자금 항목' })).toContainText('소비 180만 원');
-  await expect(page.getByRole('list', { name: '월 자금 항목' })).toContainText('저축 30만 원');
-  await expect(page.getByRole('list', { name: '월 자금 항목' })).toContainText('투자 20만 원');
-  await expect(page.getByRole('list', { name: '월 자금 항목' })).toContainText('남는 돈 90만 원');
+  await expect(page.getByRole('button', { name: '소비 · 180만 원 · 56.3%' })).toBeVisible();
+  await expect(page.getByRole('button', { name: /저축 (상세 정보|· 30만 원 · 9\.4%)/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /투자 (상세 정보|· 20만 원 · 6\.3%)/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: '남는 돈 · 90만 원 · 28.1%' })).toBeVisible();
+  const reviewTable = page.getByRole('table', { name: '월 자금 항목' });
+  await expect(reviewTable.getByRole('row', { name: /소비.*180만 원.*56\.3%/ })).toBeVisible();
+  await expect(reviewTable.getByRole('row', { name: /저축.*30만 원.*9\.4%/ })).toBeVisible();
+  await expect(reviewTable.getByRole('row', { name: /투자.*20만 원.*6\.3%/ })).toBeVisible();
+  await expect(reviewTable.getByRole('row', { name: /남는 돈.*90만 원.*28\.1%/ })).toBeVisible();
   await page.getByRole('button', { name: '계획 적용' }).click();
 
   await expect(page.getByRole('heading', { name: '이번 달 자금 흐름' })).toBeVisible();
@@ -107,10 +108,10 @@ test.describe('mobile quick setup', () => {
     await page.getByRole('button', { name: '다음' }).tap();
 
     await page.getByLabel('월 주거 고정비').fill('800000');
-    const meter = page.getByRole('meter', { name: '수입 대비 현재 계획' });
-    await expect(meter).toHaveAttribute('aria-valuetext', '25.0%');
+    const meter = page.getByRole('progressbar', { name: '수입 대비 현재 계획' });
+    await expect(meter).toHaveAttribute('aria-valuetext', '현재 계획 80만 원 · 수입의 25.0%');
     await meter.hover();
-    await expect(page.getByRole('tooltip')).toHaveText(/^\d+\.\d%$/);
+    await expect(page.getByRole('tooltip')).toHaveText('현재 계획 80만 원 · 수입의 25.0%');
     await expect(page.getByText(/^월 수입 \d/)).toHaveCount(0);
 
     await page.setViewportSize({ width: 390, height: 844 });
@@ -128,7 +129,7 @@ test.describe('mobile quick setup', () => {
     expect(await page.locator('html').evaluate((element) => element.scrollWidth <= window.innerWidth)).toBe(true);
   });
 
-  test('keeps allocation segment and tiny legend targets at least 44px', async ({ page }) => {
+  test('shows an ordered review table and keeps tiny table targets at least 44px', async ({ page }) => {
     await clearBrowserStorage(page);
     await page.goto('apps/main/');
     await page.getByRole('button', { name: '다음' }).tap();
@@ -139,21 +140,35 @@ test.describe('mobile quick setup', () => {
     await page.getByLabel('월 투자액').fill('1000');
     await page.getByRole('button', { name: '다음' }).tap();
 
-    for (const name of ['남는 돈 100.0%', '소비 0.0%', '투자 0.0%']) {
+    const table = page.getByRole('table', { name: '월 자금 항목' });
+    await expect(table.getByRole('columnheader')).toHaveText(['종류', '금액', '수입 대비']);
+    await expect(table.getByRole('row')).toHaveText([
+      '종류금액수입 대비',
+      '소비0원0.0%',
+      '저축0원0.0%',
+      '투자1,000원0.0%',
+      '남는 돈319.9만 원100.0%',
+    ]);
+
+    for (const name of [
+      '남는 돈 · 319.9만 원 · 100.0%',
+      '소비 상세 정보',
+      '투자 상세 정보',
+    ]) {
       const box = await page.getByRole('button', { name }).boundingBox();
       expect(box, `${name} target`).not.toBeNull();
       expect(box!.width, `${name} width`).toBeGreaterThanOrEqual(44);
       expect(box!.height, `${name} height`).toBeGreaterThanOrEqual(44);
     }
 
-    const tinyTarget = page.getByRole('button', { name: '투자 0.0%' });
+    const tinyTarget = page.getByRole('button', { name: '투자 상세 정보' });
     await tinyTarget.tap();
-    await expect(page.getByRole('tooltip')).toHaveText(/^0\.0%$/);
+    await expect(page.getByRole('tooltip')).toHaveText('투자 · 1,000원 · 0.0%');
     await page.keyboard.press('Tab');
     await expect(page.getByRole('tooltip')).toHaveCount(0);
   });
 
-  test('routes adjacent small allocations to non-overlapping legend targets', async ({ page }) => {
+  test('routes adjacent small allocations to non-overlapping table targets', async ({ page }) => {
     await clearBrowserStorage(page);
     await page.goto('apps/main/');
     await page.getByRole('button', { name: '다음' }).tap();
@@ -168,12 +183,12 @@ test.describe('mobile quick setup', () => {
     await page.getByRole('button', { name: '다음' }).tap();
 
     for (const [name, percentage] of [
-      ['소비 5.0%', '5.0%'],
-      ['저축 6.0%', '6.0%'],
-      ['투자 7.0%', '7.0%'],
+      ['소비 상세 정보', '소비 · 50만 원 · 5.0%'],
+      ['저축 상세 정보', '저축 · 60만 원 · 6.0%'],
+      ['투자 상세 정보', '투자 · 70만 원 · 7.0%'],
     ] as const) {
       const target = page.getByRole('button', { name });
-      await expect(target).toHaveClass(/allocation-bar__legend-target/);
+      await expect(target).toHaveClass(/allocation-table__label-target/);
       const box = await target.boundingBox();
       expect(box, `${name} target`).not.toBeNull();
       expect(box!.width, `${name} width`).toBeGreaterThanOrEqual(44);
@@ -182,7 +197,7 @@ test.describe('mobile quick setup', () => {
       await expect(page.getByRole('tooltip')).toHaveText(percentage);
     }
 
-    const remaining = page.getByRole('button', { name: '남는 돈 82.0%' });
+    const remaining = page.getByRole('button', { name: '남는 돈 · 820만 원 · 82.0%' });
     await expect(remaining).toHaveClass(/allocation-bar__segment-target/);
     await expect(remaining).toHaveCSS('min-width', '0px');
     await expect(page.locator('.allocation-bar__segment-target')).toHaveCount(1);
@@ -259,7 +274,7 @@ test('interrupted setup reloads at housing with its v2 draft intact', async ({ p
 
   await expect(page.getByRole('heading', { name: '주거비로 매달 얼마가 나가나요?' })).toBeVisible();
   await expect(page.getByLabel('월 주거 고정비')).toHaveValue('800,000');
-  await expect(page.getByRole('meter', { name: '수입 대비 현재 계획' })).toHaveAttribute('aria-valuetext', '25.0%');
+  await expect(page.getByRole('progressbar', { name: '수입 대비 현재 계획' })).toHaveAttribute('aria-valuetext', '현재 계획 80만 원 · 수입의 25.0%');
   await expect(page.getByText(/^월 수입 \d/)).toHaveCount(0);
 });
 
