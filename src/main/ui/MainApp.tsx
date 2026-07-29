@@ -107,6 +107,14 @@ export function MainApp({ repository = browserRepository }: MainAppProps) {
   }
 
   function startEmptySetup() {
+    if (state?.mode === 'recovery' && state.loadError?.raw !== undefined) {
+      try {
+        repository.acknowledgeFailedCurrent(state.loadError.raw);
+      } catch {
+        dispatch({ type: 'save-failed' });
+        return;
+      }
+    }
     repository.discardPending(state?.mode === 'recovery' ? state.draft.updatedAt : undefined);
     clearSetupProgress();
     setIssues([]);
@@ -228,6 +236,18 @@ export function MainApp({ repository = browserRepository }: MainAppProps) {
             </button>
           </div>
         ) : null}
+        {state.saveStatus === 'error' && issues.length === 0 ? (
+          <div className="mb-4 rounded-xl bg-rose-50 px-4 py-3 text-sm font-bold text-rose-800" role="alert">
+            <p className="m-0">저장하지 못했습니다. 입력한 내용은 그대로 보존되어 있습니다.</p>
+            <button
+              className="mt-3 rounded-full border border-rose-300 bg-white px-4 py-2 text-sm font-bold text-rose-800"
+              type="button"
+              onClick={apply}
+            >
+              저장 다시 시도
+            </button>
+          </div>
+        ) : null}
         <SetupFlow
           draft={state.draft}
           step={state.setupStep}
@@ -258,7 +278,9 @@ export function MainApp({ repository = browserRepository }: MainAppProps) {
       onRestart={restartSetup}
       onExport={exportAppliedBackup}
       onImportFile={importBackup}
-      backupStatus={backupStatus}
+      backupStatus={progressWarning === null
+        ? backupStatus
+        : { kind: 'error', message: progressWarning }}
     />
   );
 }

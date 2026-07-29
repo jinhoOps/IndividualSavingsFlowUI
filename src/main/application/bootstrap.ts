@@ -24,7 +24,7 @@ export async function bootstrapMain(repository: MainRepository): Promise<MainSta
       }
       case 'current': {
         const progress = repository.loadSetupProgress();
-        if (progress?.kind === 'restart') {
+        if (progress?.kind === 'restart' && progress.draft.updatedAt >= result.data.updatedAt) {
           return setupState(progress.draft, progress.step, result.data);
         }
         return dashboardState(result.data);
@@ -47,7 +47,7 @@ export async function bootstrapMain(repository: MainRepository): Promise<MainSta
           setupStep: null,
           dirty: false,
           saveStatus: 'idle',
-          loadError: { message: result.reason, original: result.original },
+          loadError: { message: result.reason, original: result.original, raw: result.raw },
         };
     }
   } catch (error) {

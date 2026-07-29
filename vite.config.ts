@@ -22,7 +22,7 @@ export default defineConfig({
         short_name: '가계흐름',
         lang: 'ko-KR',
         version: packageJson.version,
-        description: '월 단위 가계 흐름을 카드와 Sankey Diagram으로 확인하는 개인 자산 흐름 프로토타입',
+        description: '월 실수령액, 소비, 저축, 투자와 남는 돈을 한눈에 확인하는 월간 자금 흐름 도구',
         theme_color: '#0f766e',
         background_color: '#f8f6f1',
         display: 'standalone',

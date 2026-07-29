@@ -413,7 +413,7 @@ test.describe('Step 2 Phase 08 first-screen mobile UI flows', () => {
     await page.addInitScript((source) => {
       localStorage.clear();
       sessionStorage.clear();
-      localStorage.setItem('isf-step1-active', JSON.stringify(source));
+      localStorage.setItem('isf-rebuild-v1', JSON.stringify(source));
     }, STEP1_SOURCE);
   });
 
@@ -529,6 +529,10 @@ test.describe('Step 2 Phase 08 first-screen mobile UI flows', () => {
     await page.setViewportSize({ width: 390, height: 900 });
     await page.goto('apps/simulation/index.html');
     await page.waitForSelector('#simChartSvg polyline.strategy-line');
+    const syncTutorial = page.locator('#step1SyncBanner');
+    await expect(syncTutorial).toContainText('Main에서 새로운 투자 여력 데이터를 가져왔습니다.');
+    await syncTutorial.locator('#directStep2Setup').click();
+    await expect(syncTutorial).toBeHidden();
 
     const chartBox = await page.locator('#simChartSvg').boundingBox();
     expect(chartBox?.width || 0).toBeGreaterThan(240);

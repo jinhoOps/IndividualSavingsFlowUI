@@ -1,8 +1,35 @@
 import { describe, expect, it } from 'vitest';
 import { createEmptyMainData } from '../../../src/main/domain/model';
-import { validateMainData } from '../../../src/main/domain/validation';
+import { validateMainData, validateMainDraft } from '../../../src/main/domain/validation';
 
 describe('validateMainData', () => {
+  it('permits zero income in an otherwise valid setup draft', () => {
+    expect(validateMainDraft(createEmptyMainData())).toEqual({ valid: true, issues: [] });
+  });
+
+  it.each([
+    ['monthlyNetIncomeWon', -1, 'amount_negative'],
+    ['monthlyNetIncomeWon', 0.5, 'amount_not_safe_integer'],
+    ['monthlyNetIncomeWon', Number.MAX_SAFE_INTEGER + 1, 'amount_not_safe_integer'],
+    ['monthlyHousingWon', -1, 'amount_negative'],
+    ['monthlyHousingWon', 0.5, 'amount_not_safe_integer'],
+    ['monthlyHousingWon', Number.MAX_SAFE_INTEGER + 1, 'amount_not_safe_integer'],
+    ['monthlyLivingWon', -1, 'amount_negative'],
+    ['monthlyLivingWon', 0.5, 'amount_not_safe_integer'],
+    ['monthlyLivingWon', Number.MAX_SAFE_INTEGER + 1, 'amount_not_safe_integer'],
+    ['monthlySavingWon', -1, 'amount_negative'],
+    ['monthlySavingWon', 0.5, 'amount_not_safe_integer'],
+    ['monthlySavingWon', Number.MAX_SAFE_INTEGER + 1, 'amount_not_safe_integer'],
+    ['monthlyInvestmentWon', -1, 'amount_negative'],
+    ['monthlyInvestmentWon', 0.5, 'amount_not_safe_integer'],
+    ['monthlyInvestmentWon', Number.MAX_SAFE_INTEGER + 1, 'amount_not_safe_integer'],
+  ] as const)('rejects invalid setup draft money %s=%s', (field, amountWon, code) => {
+    const draft = createEmptyMainData();
+    draft[field] = amountWon;
+
+    expect(validateMainDraft(draft).issues).toContainEqual({ path: field, code });
+  });
+
   it('rejects zero monthly net income', () => {
     expect(validateMainData(createEmptyMainData()).issues).toContainEqual({
       path: 'monthlyNetIncomeWon',

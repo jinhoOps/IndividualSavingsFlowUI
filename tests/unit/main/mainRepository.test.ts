@@ -3,6 +3,7 @@ import type { MainData } from '../../../src/main/domain/model';
 import {
   BrowserMainRepository,
   BrowserMainSaveLock,
+  isMainDataShape,
 } from '../../../src/main/infrastructure/mainRepository';
 
 class MemoryStorage implements Storage {
@@ -317,6 +318,24 @@ describe('BrowserMainSaveLock', () => {
     expect(storage.getItem(foreignKey)).toBe(foreignTombstone);
     expect(storage.getItem(malformedKey)).toBe('{malformed');
   });
+
+  it('isolates v2 save leases from the untouched v1 lease namespace', async () => {
+    const storage = new MemoryStorage();
+    const legacyKey = 'isf-main-v1-save-lease:legacy-tab';
+    const legacyRaw = inactiveLeaseRecord('legacy-tab');
+    storage.setItem(legacyKey, legacyRaw);
+    const lock = new BrowserMainSaveLock(
+      storage,
+      leaseOptions('tab-a', createControlledLeaseClock(1_000)),
+    );
+
+    await lock.runExclusive(async () => {
+      expect(storage.getItem(leaseStorageKey('tab-a'))).not.toBeNull();
+      expect(storage.getItem('isf-main-v1-save-lease:tab-a')).toBeNull();
+    });
+
+    expect(storage.getItem(legacyKey)).toBe(legacyRaw);
+  });
 });
 
 describe('BrowserMainRepository', () => {
@@ -336,7 +355,7 @@ describe('BrowserMainRepository', () => {
     window.localStorage.setItem('isf-rebuild-v1', legacyRaw);
     window.localStorage.setItem('isf-step1-active', activeRaw);
 
-    const result = await new BrowserMainRepository({ saveMainV1: vi.fn() }).load();
+    const result = await new BrowserMainRepository({ saveMainV2: vi.fn() }).load();
 
     expect(result).toEqual({ status: 'empty', data: null, original: null });
     expect(window.localStorage.getItem('isf-main-v1')).toBe(v1Raw);
@@ -350,7 +369,7 @@ describe('BrowserMainRepository', () => {
     const raw = JSON.stringify(current);
     window.localStorage.setItem('isf-main-v2', raw);
 
-    const result = await new BrowserMainRepository({ saveMainV1: vi.fn() }).load();
+    const result = await new BrowserMainRepository({ saveMainV2: vi.fn() }).load();
 
     expect(result).toEqual({ status: 'current', data: current, original: current });
     expect(window.localStorage.getItem('isf-main-v2')).toBe(raw);
@@ -361,23 +380,68 @@ describe('BrowserMainRepository', () => {
     window.localStorage.setItem('isf-main-v1', JSON.stringify({ schemaVersion: 1, updatedAt: 10 }));
     window.localStorage.setItem('isf-rebuild-v1', JSON.stringify({ modelVersion: 10, monthlyIncome: 4_200_000 }));
 
-    const result = await new BrowserMainRepository({ saveMainV1: vi.fn() }).load();
+    const result = await new BrowserMainRepository({ saveMainV2: vi.fn() }).load();
 
     expect(result).toMatchObject({
       status: 'failed',
       data: null,
       original: '{malformed-v2',
+      raw: '{malformed-v2',
       reason: 'Stored main data is not valid JSON.',
     });
+  });
+
+  it('durably acknowledges malformed current data without deleting its downloadable raw value', async () => {
+    const raw = '{malformed-v2';
+    window.localStorage.setItem('isf-main-v2', raw);
+    const repository = new BrowserMainRepository({
+      saveMainV2: vi.fn(),
+      loadLatestMainV2: vi.fn().mockResolvedValue(null),
+    });
+    const failed = await repository.load();
+    expect(failed).toMatchObject({ status: 'failed', raw });
+
+    repository.acknowledgeFailedCurrent(raw);
+
+    expect(window.localStorage.getItem('isf-main-v2')).toBe(raw);
+    expect(window.localStorage.getItem('isf-main-v2-quarantined-current')).toBe(raw);
+    await expect(repository.load()).resolves.toEqual({ status: 'empty', data: null, original: null });
   });
 
   it('returns a failed load for a schema v1 document stored under the v2 key', async () => {
     const v1 = { schemaVersion: 1, updatedAt: 10 };
     window.localStorage.setItem('isf-main-v2', JSON.stringify(v1));
 
-    const result = await new BrowserMainRepository({ saveMainV1: vi.fn() }).load();
+    const result = await new BrowserMainRepository({ saveMainV2: vi.fn() }).load();
 
     expect(result).toMatchObject({ status: 'failed', data: null, original: v1 });
+  });
+
+  it.each([
+    -1,
+    0.5,
+    Number.MAX_SAFE_INTEGER + 1,
+    Number.NaN,
+    Number.POSITIVE_INFINITY,
+  ])('rejects an invalid persisted revision %s at the scalar boundary', (updatedAt) => {
+    expect(isMainDataShape({ ...validData(), updatedAt })).toBe(false);
+  });
+
+  it.each([
+    -1,
+    0.5,
+    Number.MAX_SAFE_INTEGER + 1,
+    Number.NaN,
+    Number.POSITIVE_INFINITY,
+  ])('rejects an invalid input revision %s before any durable save write', async (updatedAt) => {
+    const saveMainV2 = vi.fn();
+    const repository = new BrowserMainRepository({ saveMainV2 });
+
+    await expect(repository.save({ ...validData(), updatedAt })).rejects.toThrow('invalid');
+
+    expect(saveMainV2).not.toHaveBeenCalled();
+    expect(window.localStorage.getItem('isf-main-v2')).toBeNull();
+    expect(window.localStorage.getItem('isf-main-v2-pending')).toBeNull();
   });
 
   it('offers newer validated history for explicit recovery without auto-applying it', async () => {
@@ -388,8 +452,8 @@ describe('BrowserMainRepository', () => {
     history.monthlyNetIncomeWon = 5_000_000;
     window.localStorage.setItem('isf-main-v2', JSON.stringify(current));
     const repository = new BrowserMainRepository({
-      saveMainV1: vi.fn(),
-      loadLatestMainV1: vi.fn().mockResolvedValue(history),
+      saveMainV2: vi.fn(),
+      loadLatestMainV2: vi.fn().mockResolvedValue(history),
     });
 
     const result = await repository.load();
@@ -410,8 +474,8 @@ describe('BrowserMainRepository', () => {
     history.updatedAt = 20;
     window.localStorage.setItem('isf-main-v2', JSON.stringify(current));
     const repository = new BrowserMainRepository({
-      saveMainV1: vi.fn(),
-      loadLatestMainV1: vi.fn().mockResolvedValue(history),
+      saveMainV2: vi.fn(),
+      loadLatestMainV2: vi.fn().mockResolvedValue(history),
     });
 
     expect(await repository.load()).toMatchObject({ status: 'recovery', source: 'history' });
@@ -433,8 +497,8 @@ describe('BrowserMainRepository', () => {
     window.localStorage.setItem('isf-main-v2', JSON.stringify(current));
     window.localStorage.setItem('isf-main-v2-pending', JSON.stringify(pending));
     const repository = new BrowserMainRepository({
-      saveMainV1: vi.fn(),
-      loadLatestMainV1: vi.fn().mockResolvedValue(history),
+      saveMainV2: vi.fn(),
+      loadLatestMainV2: vi.fn().mockResolvedValue(history),
     });
 
     expect(await repository.load()).toMatchObject({
@@ -455,8 +519,8 @@ describe('BrowserMainRepository', () => {
     window.localStorage.setItem('isf-main-v2', JSON.stringify(current));
     window.localStorage.setItem('isf-main-v2-pending', JSON.stringify(pending));
     const repository = new BrowserMainRepository({
-      saveMainV1: vi.fn(),
-      loadLatestMainV1: vi.fn().mockResolvedValue(null),
+      saveMainV2: vi.fn(),
+      loadLatestMainV2: vi.fn().mockResolvedValue(null),
     });
 
     expect(await repository.load()).toMatchObject({
@@ -472,8 +536,8 @@ describe('BrowserMainRepository', () => {
     window.localStorage.setItem('isf-main-v2', '{malformed-current');
     window.localStorage.setItem('isf-main-v2-pending', JSON.stringify(pending));
     const repository = new BrowserMainRepository({
-      saveMainV1: vi.fn(),
-      loadLatestMainV1: vi.fn().mockResolvedValue(null),
+      saveMainV2: vi.fn(),
+      loadLatestMainV2: vi.fn().mockResolvedValue(null),
     });
 
     expect(await repository.load()).toMatchObject({
@@ -489,8 +553,8 @@ describe('BrowserMainRepository', () => {
     pending.updatedAt = 20;
     window.localStorage.setItem('isf-main-v2-pending', JSON.stringify(pending));
     const repository = new BrowserMainRepository({
-      saveMainV1: vi.fn(),
-      loadLatestMainV1: vi.fn().mockResolvedValue(pending),
+      saveMainV2: vi.fn(),
+      loadLatestMainV2: vi.fn().mockResolvedValue(pending),
     });
 
     expect(await repository.load()).toMatchObject({
@@ -506,7 +570,7 @@ describe('BrowserMainRepository', () => {
     existing.updatedAt = 10;
     window.localStorage.setItem('isf-main-v2', JSON.stringify(existing));
     const repository = new BrowserMainRepository({
-      saveMainV1: vi.fn().mockRejectedValue(new Error('indexeddb unavailable')),
+      saveMainV2: vi.fn().mockRejectedValue(new Error('indexeddb unavailable')),
     });
 
     await expect(repository.save(validData())).rejects.toThrow('indexeddb unavailable');
@@ -516,20 +580,20 @@ describe('BrowserMainRepository', () => {
   });
 
   it('writes v2 with matching timestamps in current storage and history without touching legacy keys', async () => {
-    const saveMainV1 = vi.fn().mockResolvedValue(undefined);
+    const saveMainV2 = vi.fn().mockResolvedValue(undefined);
     const v1Raw = JSON.stringify({ schemaVersion: 1, updatedAt: 10 });
     const legacyRaw = JSON.stringify({ modelVersion: 10, monthlyIncome: 3_000_000 });
     window.localStorage.setItem('isf-main-v1', v1Raw);
     window.localStorage.setItem('isf-rebuild-v1', legacyRaw);
     vi.spyOn(Date, 'now').mockReturnValue(1_750_000_000_000);
     const input = validData();
-    const repository = new BrowserMainRepository({ saveMainV1 });
+    const repository = new BrowserMainRepository({ saveMainV2 });
 
     const saved = await repository.save(input);
 
     expect(window.localStorage.getItem('isf-main-v2')).toBe(JSON.stringify(saved));
-    expect(saved.updatedAt).toBe(1_750_000_000_000);
-    expect(saveMainV1).toHaveBeenCalledWith(saved);
+    expect(saved.updatedAt).toBeGreaterThanOrEqual(1_750_000_000_000);
+    expect(saveMainV2).toHaveBeenCalledWith(saved);
     expect(saved).not.toBe(input);
     expect(input.updatedAt).toBe(0);
     expect(window.localStorage.getItem('isf-main-v2-pending')).toBeNull();
@@ -539,12 +603,12 @@ describe('BrowserMainRepository', () => {
 
   it('keeps separate monotonically increasing history entries when saves share a millisecond', async () => {
     const history = new Map<number, MainData>();
-    const saveMainV1 = vi.fn(async (data: MainData) => {
+    const saveMainV2 = vi.fn(async (data: MainData) => {
       history.set(data.updatedAt, structuredClone(data));
     });
     vi.spyOn(Date, 'now').mockReturnValue(1_850_000_000_000);
-    const first = new BrowserMainRepository({ saveMainV1 });
-    const second = new BrowserMainRepository({ saveMainV1 });
+    const first = new BrowserMainRepository({ saveMainV2 });
+    const second = new BrowserMainRepository({ saveMainV2 });
 
     await Promise.all([first.save(validData()), second.save(validData())]);
 
@@ -557,11 +621,74 @@ describe('BrowserMainRepository', () => {
     pending.updatedAt = 100;
     window.localStorage.setItem('isf-main-v2-pending', JSON.stringify(pending));
     vi.spyOn(Date, 'now').mockReturnValue(50);
-    const repository = new BrowserMainRepository({ saveMainV1: vi.fn().mockResolvedValue(undefined) });
+    const repository = new BrowserMainRepository({ saveMainV2: vi.fn().mockResolvedValue(undefined) });
 
     const saved = await repository.save(validData());
 
     expect(saved.updatedAt).toBeGreaterThan(100);
+  });
+
+  it('issues above a future dismissal tombstone when the clock rolls back', async () => {
+    const futureTombstone = 3_000_000_000_000;
+    window.localStorage.setItem('isf-main-v2-dismissed-recovery', String(futureTombstone));
+    vi.spyOn(Date, 'now').mockReturnValue(50);
+    const repository = new BrowserMainRepository({
+      saveMainV2: vi.fn().mockResolvedValue(undefined),
+      loadLatestMainV2: vi.fn().mockResolvedValue(null),
+    });
+
+    const saved = await repository.save(validData());
+
+    expect(saved.updatedAt).toBe(futureTombstone + 1);
+  });
+
+  it('issues above both the recovered input revision and latest v2 history', async () => {
+    const history = validData();
+    history.updatedAt = 4_000_000_000_000;
+    const recoveredDraft = validData();
+    recoveredDraft.updatedAt = 5_000_000_000_000;
+    vi.spyOn(Date, 'now').mockReturnValue(50);
+    const repository = new BrowserMainRepository({
+      saveMainV2: vi.fn().mockResolvedValue(undefined),
+      loadLatestMainV2: vi.fn().mockResolvedValue(history),
+    });
+
+    const saved = await repository.save(recoveredDraft);
+
+    expect(saved.updatedAt).toBe(recoveredDraft.updatedAt + 1);
+  });
+
+  it('issues above latest v2 history when it is newer than the recovered input', async () => {
+    const history = validData();
+    history.updatedAt = 6_000_000_000_000;
+    const recoveredDraft = validData();
+    recoveredDraft.updatedAt = 5_000_000_000_000;
+    vi.spyOn(Date, 'now').mockReturnValue(50);
+    const repository = new BrowserMainRepository({
+      saveMainV2: vi.fn().mockResolvedValue(undefined),
+      loadLatestMainV2: vi.fn().mockResolvedValue(history),
+    });
+
+    const saved = await repository.save(recoveredDraft);
+
+    expect(saved.updatedAt).toBe(history.updatedAt + 1);
+  });
+
+  it('fails before any durable write when the revision ceiling is exhausted', async () => {
+    const history = validData();
+    history.updatedAt = Number.MAX_SAFE_INTEGER;
+    const saveMainV2 = vi.fn().mockResolvedValue(undefined);
+    vi.spyOn(Date, 'now').mockReturnValue(50);
+    const repository = new BrowserMainRepository({
+      saveMainV2,
+      loadLatestMainV2: vi.fn().mockResolvedValue(history),
+    });
+
+    await expect(repository.save(validData())).rejects.toThrow('revision');
+
+    expect(saveMainV2).not.toHaveBeenCalled();
+    expect(window.localStorage.getItem('isf-main-v2')).toBeNull();
+    expect(window.localStorage.getItem('isf-main-v2-pending')).toBeNull();
   });
 
   it('retains old current data and pending recovery when replacing current fails', async () => {
@@ -572,7 +699,7 @@ describe('BrowserMainRepository', () => {
       if (key === 'isf-main-v2') throw new Error('quota exceeded');
       MemoryStorage.prototype.setItem.call(window.localStorage, key, value);
     });
-    const repository = new BrowserMainRepository({ saveMainV1: vi.fn().mockResolvedValue(undefined) });
+    const repository = new BrowserMainRepository({ saveMainV2: vi.fn().mockResolvedValue(undefined) });
 
     await expect(repository.save(validData())).rejects.toThrow('quota exceeded');
 
@@ -595,7 +722,7 @@ describe('BrowserMainRepository', () => {
       },
     );
     const repository = new BrowserMainRepository(
-      { saveMainV1: vi.fn().mockResolvedValue(undefined) },
+      { saveMainV2: vi.fn().mockResolvedValue(undefined) },
       createSerialLock(),
       storage,
     );
@@ -636,7 +763,7 @@ describe('BrowserMainRepository', () => {
       },
     );
     const repository = new BrowserMainRepository(
-      { saveMainV1: vi.fn().mockResolvedValue(undefined) },
+      { saveMainV2: vi.fn().mockResolvedValue(undefined) },
       createSerialLock(),
       storage,
     );
@@ -646,16 +773,34 @@ describe('BrowserMainRepository', () => {
     expect(storage.getItem('isf-main-v2')).toBe(successorRaw);
   });
 
-  it('discards a pending recovery draft explicitly', () => {
+  it('durably dismisses a pending recovery draft without physically deleting its raw data', async () => {
     const pending = validData();
     pending.updatedAt = 20;
     window.localStorage.setItem('isf-main-v2-pending', JSON.stringify(pending));
-    const repository = new BrowserMainRepository({ saveMainV1: vi.fn() });
+    const repository = new BrowserMainRepository({
+      saveMainV2: vi.fn(),
+      loadLatestMainV2: vi.fn().mockResolvedValue(null),
+    });
 
     repository.discardPending(pending.updatedAt);
 
-    expect(window.localStorage.getItem('isf-main-v2-pending')).toBeNull();
+    expect(window.localStorage.getItem('isf-main-v2-pending')).toBe(JSON.stringify(pending));
     expect(window.localStorage.getItem('isf-main-v2-dismissed-recovery')).toBe('20');
+    await expect(repository.load()).resolves.toEqual({ status: 'empty', data: null, original: null });
+  });
+
+  it.each([
+    -1,
+    0.5,
+    Number.MAX_SAFE_INTEGER + 1,
+    Number.NaN,
+    Number.POSITIVE_INFINITY,
+  ])('does not persist an invalid dismissed recovery revision %s', (updatedAt) => {
+    const repository = new BrowserMainRepository({ saveMainV2: vi.fn() });
+
+    repository.discardRecovery(updatedAt);
+
+    expect(window.localStorage.getItem('isf-main-v2-dismissed-recovery')).toBeNull();
   });
 
   it('does not discard or suppress a successor pending draft from another tab', () => {
@@ -691,7 +836,7 @@ describe('BrowserMainRepository', () => {
       },
     );
     const repository = new BrowserMainRepository(
-      { saveMainV1: vi.fn() },
+      { saveMainV2: vi.fn() },
       createSerialLock(),
       storage,
     );
@@ -702,8 +847,51 @@ describe('BrowserMainRepository', () => {
     expect(storage.getItem('isf-main-v2-dismissed-recovery')).toBeNull();
   });
 
+  it('does not delete a successor that replaces pending immediately after the final comparison', async () => {
+    const sharedValues = new Map<string, string>();
+    const target = validData();
+    target.updatedAt = 20;
+    const successor = validData();
+    successor.updatedAt = 30;
+    successor.monthlyNetIncomeWon = 6_000_000;
+    const targetRaw = JSON.stringify(target);
+    const successorRaw = JSON.stringify(successor);
+    sharedValues.set('isf-main-v2-pending', targetRaw);
+    let pendingReads = 0;
+    const storage = new HookedStorage(
+      sharedValues,
+      (_key, _value, commit) => commit(),
+      (key, read) => {
+        const current = read();
+        if (key === 'isf-main-v2-pending') {
+          pendingReads += 1;
+          if (pendingReads === 2) sharedValues.set(key, successorRaw);
+        }
+        return current;
+      },
+    );
+    const repository = new BrowserMainRepository(
+      {
+        saveMainV2: vi.fn(),
+        loadLatestMainV2: vi.fn().mockResolvedValue(null),
+      },
+      createSerialLock(),
+      storage,
+    );
+
+    repository.discardPending(target.updatedAt);
+
+    expect(storage.getItem('isf-main-v2-pending')).toBe(successorRaw);
+    expect(storage.getItem('isf-main-v2-dismissed-recovery')).toBe('20');
+    await expect(repository.load()).resolves.toMatchObject({
+      status: 'recovery',
+      source: 'pending',
+      data: { updatedAt: 30, monthlyNetIncomeWon: 6_000_000 },
+    });
+  });
+
   it('round-trips housing setup progress under the v2 progress key', () => {
-    const repository = new BrowserMainRepository({ saveMainV1: vi.fn() });
+    const repository = new BrowserMainRepository({ saveMainV2: vi.fn() });
     const draft = validData();
     const legacyProgressRaw = JSON.stringify({ step: 'account' });
     window.localStorage.setItem('isf-main-v1-setup-progress', legacyProgressRaw);
@@ -715,6 +903,34 @@ describe('BrowserMainRepository', () => {
     expect(window.localStorage.getItem('isf-main-v1-setup-progress')).toBe(legacyProgressRaw);
     repository.clearSetupProgress();
     expect(window.localStorage.getItem('isf-main-v2-setup-progress')).toBeNull();
+  });
+
+  it.each([
+    ['monthlyNetIncomeWon', -1],
+    ['monthlyNetIncomeWon', 0.5],
+    ['monthlyNetIncomeWon', Number.MAX_SAFE_INTEGER + 1],
+    ['monthlyHousingWon', -1],
+    ['monthlyHousingWon', 0.5],
+    ['monthlyHousingWon', Number.MAX_SAFE_INTEGER + 1],
+    ['monthlyLivingWon', -1],
+    ['monthlyLivingWon', 0.5],
+    ['monthlyLivingWon', Number.MAX_SAFE_INTEGER + 1],
+    ['monthlySavingWon', -1],
+    ['monthlySavingWon', 0.5],
+    ['monthlySavingWon', Number.MAX_SAFE_INTEGER + 1],
+    ['monthlyInvestmentWon', -1],
+    ['monthlyInvestmentWon', 0.5],
+    ['monthlyInvestmentWon', Number.MAX_SAFE_INTEGER + 1],
+  ] as const)('does not resume setup progress with invalid money %s=%s', (field, value) => {
+    const repository = new BrowserMainRepository({ saveMainV2: vi.fn() });
+    const draft = validData();
+    draft[field] = value;
+    window.localStorage.setItem(
+      'isf-main-v2-setup-progress',
+      JSON.stringify({ kind: 'initial', step: 'housing', draft }),
+    );
+
+    expect(repository.loadSetupProgress()).toBeNull();
   });
 
   it('serializes fallback saves across independent repository and storage instances', async () => {
@@ -733,13 +949,13 @@ describe('BrowserMainRepository', () => {
     }));
     const secondHistory = vi.fn().mockResolvedValue(undefined);
     const firstRepository = new BrowserMainRepository(
-      { saveMainV1: firstHistory },
+      { saveMainV2: firstHistory },
       undefined,
       firstStorage,
       leaseOptions('tab-a', leaseClock),
     );
     const secondRepository = new BrowserMainRepository(
-      { saveMainV1: secondHistory },
+      { saveMainV2: secondHistory },
       undefined,
       secondStorage,
       leaseOptions('tab-b', leaseClock),
@@ -772,7 +988,7 @@ describe('BrowserMainRepository', () => {
     const leaseClock = createControlledLeaseClock(1_000);
     storage.setItem(leaseStorageKey('crashed-tab'), activeLeaseRecord('crashed-tab', 999));
     const repository = new BrowserMainRepository(
-      { saveMainV1: vi.fn().mockResolvedValue(undefined) },
+      { saveMainV2: vi.fn().mockResolvedValue(undefined) },
       undefined,
       storage,
       leaseOptions('replacement-tab', leaseClock),
@@ -810,13 +1026,13 @@ describe('BrowserMainRepository', () => {
       markSecondHistoryStarted?.();
     }));
     const firstRepository = new BrowserMainRepository(
-      { saveMainV1: firstHistory },
+      { saveMainV2: firstHistory },
       undefined,
       firstStorage,
       leaseOptions('tab-a', leaseClock),
     );
     const secondRepository = new BrowserMainRepository(
-      { saveMainV1: secondHistory },
+      { saveMainV2: secondHistory },
       undefined,
       secondStorage,
       leaseOptions('tab-b', leaseClock),
@@ -854,13 +1070,13 @@ describe('BrowserMainRepository', () => {
       markFirstHistoryStarted?.();
     }));
     const firstRepository = new BrowserMainRepository(
-      { saveMainV1: firstHistory },
+      { saveMainV2: firstHistory },
       undefined,
       firstStorage,
       leaseOptions('tab-a', leaseClock),
     );
     const secondRepository = new BrowserMainRepository(
-      { saveMainV1: vi.fn().mockResolvedValue(undefined) },
+      { saveMainV2: vi.fn().mockResolvedValue(undefined) },
       undefined,
       secondStorage,
       leaseOptions('tab-b', leaseClock),
@@ -904,7 +1120,7 @@ describe('BrowserMainRepository', () => {
       },
     );
     const repository = new BrowserMainRepository(
-      { saveMainV1: vi.fn().mockResolvedValue(undefined) },
+      { saveMainV2: vi.fn().mockResolvedValue(undefined) },
       createSerialLock(),
       storage,
     );
@@ -922,7 +1138,7 @@ describe('BrowserMainRepository', () => {
     const history = vi.fn();
     const input = validData();
     const repository = new BrowserMainRepository(
-      { saveMainV1: history },
+      { saveMainV2: history },
       undefined,
       storage,
       {
@@ -954,10 +1170,10 @@ describe('BrowserMainRepository', () => {
       if (key === 'isf-main-v2') throw new Error('quota exceeded');
       MemoryStorage.prototype.setItem.call(window.localStorage, key, value);
     });
-    const failedSave = new BrowserMainRepository({ saveMainV1: vi.fn().mockResolvedValue(undefined) });
+    const failedSave = new BrowserMainRepository({ saveMainV2: vi.fn().mockResolvedValue(undefined) });
 
     await expect(failedSave.save(validData())).rejects.toThrow('quota exceeded');
-    const recovered = await new BrowserMainRepository({ saveMainV1: vi.fn() }).load();
+    const recovered = await new BrowserMainRepository({ saveMainV2: vi.fn() }).load();
 
     expect(recovered).toMatchObject({ status: 'recovery', current: { updatedAt: 10 } });
     expect(recovered.data?.updatedAt).toBeGreaterThan(10);
@@ -1020,7 +1236,7 @@ function leaseOptions(owner: string, clock: ControlledLeaseClock) {
 }
 
 function leaseStorageKey(owner: string): string {
-  return `isf-main-v1-save-lease:${encodeURIComponent(owner)}`;
+  return `isf-main-v2-save-lease:${encodeURIComponent(owner)}`;
 }
 
 function activeLeaseRecord(owner: string, expiresAt: number, ticket = 1): string {

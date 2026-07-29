@@ -71,6 +71,7 @@ export const uiController = {
 
     if (dom.directStep2Setup) {
       dom.directStep2Setup.addEventListener("click", () => {
+        if (dom.step1SyncBanner) dom.step1SyncBanner.hidden = true;
         dom.primaryInputsPanel?.scrollIntoView({ behavior: "smooth", block: "center" });
         dom.totalInitialAsset?.focus({ preventScroll: true });
       });

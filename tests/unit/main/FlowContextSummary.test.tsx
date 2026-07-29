@@ -29,9 +29,12 @@ describe('FlowContextSummary', () => {
   it('keeps an over-income plan visually capped while announcing its true percentage', () => {
     render(<FlowContextSummary data={{ ...cashflowFixture, monthlyInvestmentWon: 1_900_000 }} />);
 
+    expect(screen.getByLabelText('현재 자금 계획 요약')).toHaveClass('flow-context-summary--warning');
+    expect(screen.getByText('월 수입보다 80만 원 많아요')).toBeVisible();
     const meter = screen.getByRole('meter');
     expect(meter).toHaveAttribute('aria-valuenow', '100');
     expect(meter).toHaveAttribute('aria-valuetext', '125.0%');
+    expect(meter).toHaveClass('flow-context-summary__meter--warning');
     expect(meter).toHaveStyle({ width: '100%' });
   });
 
@@ -40,13 +43,15 @@ describe('FlowContextSummary', () => {
 
     expect(screen.getByRole('meter')).toHaveAttribute('aria-valuenow', '100');
     expect(screen.getByRole('meter')).toHaveAttribute('aria-valuetext', '100.0%');
+    expect(screen.queryByText(/월 수입보다/)).not.toBeInTheDocument();
+    expect(screen.getByLabelText('현재 자금 계획 요약')).not.toHaveClass('flow-context-summary--warning');
   });
 
   it('explains that a percentage is unavailable when income is zero', () => {
     render(<FlowContextSummary data={{ ...cashflowFixture, monthlyNetIncomeWon: 0, monthlyHousingWon: 0, monthlyLivingWon: 0, monthlySavingWon: 0, monthlyInvestmentWon: 0 }} />);
 
-    expect(screen.getByText('수입이 없어 비율을 계산할 수 없습니다')).toBeVisible();
-    expect(screen.getByRole('meter')).toHaveAttribute('aria-valuetext', '비율을 계산할 수 없음');
+    expect(screen.getByText('수입을 먼저 입력해주세요.')).toBeVisible();
+    expect(screen.getByRole('meter')).toHaveAttribute('aria-valuetext', '수입을 먼저 입력해주세요.');
   });
 
   it('keeps a focused meter tooltip open after the pointer leaves, then closes it on blur', () => {

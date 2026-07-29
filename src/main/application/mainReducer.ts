@@ -7,7 +7,7 @@ export interface MainState {
   setupStep: SetupStep | null;
   dirty: boolean;
   saveStatus: 'idle' | 'saving' | 'saved' | 'error';
-  loadError: { message: string; original: unknown } | null;
+  loadError: { message: string; original: unknown; raw?: string } | null;
 }
 
 export type MainAction =

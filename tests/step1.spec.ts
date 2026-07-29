@@ -3377,20 +3377,15 @@ test.describe('Phase 09 final responsive user flow coverage', () => {
     await page.addInitScript((current) => {
       localStorage.clear();
       sessionStorage.clear();
-      localStorage.setItem('isf-main-v1', JSON.stringify(current));
+      localStorage.setItem('isf-main-v2', JSON.stringify(current));
     }, {
-      schemaVersion: 1,
+      schemaVersion: 2,
       updatedAt: 1,
-      incomes: [{
-        id: 'salary',
-        name: '급여',
-        amountWon: 4200000,
-        allocations: [{ accountId: 'salary-account', amountWon: 4200000 }],
-      }],
-      expenses: [{ id: 'living', name: '생활비', amountWon: 1800000, accountId: 'salary-account' }],
-      savings: [{ id: 'deposit', name: '적금', amountWon: 700000, accountId: 'salary-account' }],
-      investments: [{ id: 'etf', name: 'ETF', amountWon: 500000, accountId: 'salary-account' }],
-      accounts: [{ id: 'salary-account', name: '급여통장', kind: 'income' }],
+      monthlyNetIncomeWon: 4_200_000,
+      monthlyHousingWon: 900_000,
+      monthlyLivingWon: 900_000,
+      monthlySavingWon: 700_000,
+      monthlyInvestmentWon: 500_000,
     });
     await page.goto('apps/main/index.html');
     await page.waitForSelector('main');
@@ -3404,7 +3399,8 @@ test.describe('Phase 09 final responsive user flow coverage', () => {
     ]) {
       await page.setViewportSize(viewport);
       await expect(page.getByRole('heading', { name: '이번 달 자금 흐름' })).toBeVisible();
-      await expect(page.getByRole('button', { name: '수입 편집' })).toBeVisible();
+      await expect(page.getByRole('button', { name: '월 실수령액 편집' })).toContainText('420만 원');
+      await expect(page.getByRole('button', { name: '남는 돈 편집' })).toContainText('120만 원');
 
       const overflow = await page.evaluate(() => ({
         document: document.documentElement.scrollWidth - document.documentElement.clientWidth,

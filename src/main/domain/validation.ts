@@ -22,6 +22,14 @@ export function validateMainData(data: MainData): ValidationResult {
     issues.push({ path: 'monthlyNetIncomeWon', code: 'income_required' });
   }
 
+  issues.push(...validateMainDraft(data).issues);
+
+  return { valid: issues.length === 0, issues };
+}
+
+export function validateMainDraft(data: MainData): ValidationResult {
+  const issues: ValidationResult['issues'] = [];
+
   for (const field of amountFields) {
     const amountWon = data[field];
     if (amountWon < 0) {

@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { MainData } from '../../../src/main/domain/model';
 import { IsfStore } from '../../../src/core/storage/IsfStore';
 
 afterEach(() => {
@@ -7,6 +8,128 @@ afterEach(() => {
 });
 
 describe('IsfStore', () => {
+  it('never deletes a pre-existing v1 database during initialization', async () => {
+    const { indexedDb, openRequests } = installIndexedDb([
+      { name: 'isf-hub-db-v1', version: 1 },
+    ]);
+    const store = new IsfStore();
+
+    const initialization = store.init();
+    await vi.waitFor(() => expect(openRequests).toHaveLength(1));
+
+    expect(indexedDb.databases).not.toHaveBeenCalled();
+    expect(indexedDb.deleteDatabase).not.toHaveBeenCalled();
+
+    openRequests[0].result = fakeDatabase().database;
+    openRequests[0].onsuccess?.(new Event('success'));
+    await expect(initialization).resolves.toBeUndefined();
+  });
+
+  it('never creates legacy Main stores in a fresh v4 database', async () => {
+    const { openRequests } = installIndexedDb();
+    const storeNames = new Set<string>();
+    const createObjectStore = vi.fn((name: string) => {
+      storeNames.add(name);
+      return { createIndex: vi.fn() };
+    });
+    const database = {
+      close: vi.fn(),
+      onversionchange: null,
+      objectStoreNames: {
+        contains: (name: string) => storeNames.has(name),
+      },
+      createObjectStore,
+    } as unknown as IDBDatabase;
+    const store = new IsfStore();
+
+    const initialization = store.init();
+    await vi.waitFor(() => expect(openRequests).toHaveLength(1));
+    openRequests[0].result = database;
+    openRequests[0].onupgradeneeded?.({ oldVersion: 0 } as IDBVersionChangeEvent);
+
+    expect([...storeNames]).toEqual([
+      'step1_history',
+      'step2_simulations',
+      'backups',
+      'main_v2_history_entries',
+    ]);
+    expect(createObjectStore).not.toHaveBeenCalledWith('main_v1_history', expect.anything());
+    expect(createObjectStore).not.toHaveBeenCalledWith('main_v1_history_entries', expect.anything());
+
+    openRequests[0].onsuccess?.(new Event('success'));
+    await expect(initialization).resolves.toBeUndefined();
+  });
+
+  it('adds a v2 Main history store without deleting existing v1 stores during the v4 upgrade', async () => {
+    const { indexedDb, openRequests } = installIndexedDb();
+    const existingStoreNames = new Set([
+      'step1_history',
+      'step2_simulations',
+      'backups',
+      'main_v1_history',
+      'main_v1_history_entries',
+    ]);
+    const createIndex = vi.fn();
+    const createObjectStore = vi.fn((name: string) => {
+      existingStoreNames.add(name);
+      return { createIndex };
+    });
+    const deleteObjectStore = vi.fn();
+    const database = {
+      close: vi.fn(),
+      onversionchange: null,
+      objectStoreNames: {
+        contains: (name: string) => existingStoreNames.has(name),
+      },
+      createObjectStore,
+      deleteObjectStore,
+    } as unknown as IDBDatabase;
+    const store = new IsfStore();
+
+    const initialization = store.init();
+    await vi.waitFor(() => expect(openRequests).toHaveLength(1));
+    expect(indexedDb.open).toHaveBeenCalledWith('isf-v2-db', 4);
+    openRequests[0].result = database;
+    openRequests[0].onupgradeneeded?.({ oldVersion: 3 } as IDBVersionChangeEvent);
+
+    expect(createObjectStore).toHaveBeenCalledWith('main_v2_history_entries', { autoIncrement: true });
+    expect(createIndex).toHaveBeenCalledWith('updatedAt', 'updatedAt');
+    expect(deleteObjectStore).not.toHaveBeenCalled();
+    expect(existingStoreNames.has('main_v1_history')).toBe(true);
+    expect(existingStoreNames.has('main_v1_history_entries')).toBe(true);
+
+    openRequests[0].onsuccess?.(new Event('success'));
+    await expect(initialization).resolves.toBeUndefined();
+  });
+
+  it('loads v2 history without consulting a future-dated v1 history record', async () => {
+    const v2: MainData = {
+      schemaVersion: 2,
+      updatedAt: 20,
+      monthlyNetIncomeWon: 4_200_000,
+      monthlyHousingWon: 900_000,
+      monthlyLivingWon: 1_000_000,
+      monthlySavingWon: 600_000,
+      monthlyInvestmentWon: 800_000,
+    };
+    const futureV1 = { schemaVersion: 1, updatedAt: 9_999_999_999_999 };
+    const records: Record<string, unknown> = {
+      main_v1_history: futureV1,
+      main_v1_history_entries: futureV1,
+      main_v2_history_entries: v2,
+    };
+    const touchedStores: string[] = [];
+    const store = new IsfStore();
+    vi.spyOn(store, 'perform').mockImplementation(async (storeName) => {
+      touchedStores.push(storeName);
+      return { value: records[storeName] } as IDBCursorWithValue;
+    });
+
+    await expect(store.loadLatestMainV2()).resolves.toEqual(v2);
+
+    expect(touchedStores).toEqual(['main_v2_history_entries']);
+  });
+
   it('rejects a blocked database upgrade instead of leaving initialization pending', async () => {
     const { openRequests } = installIndexedDb();
     const store = new IsfStore();
@@ -53,7 +176,7 @@ describe('IsfStore', () => {
     let settled = false;
 
     const result = store.perform(
-      'main_v1_history_entries',
+      'main_v2_history_entries',
       'readwrite',
       () => request as unknown as IDBRequest<string>,
     );
@@ -78,7 +201,7 @@ describe('IsfStore', () => {
     setDatabase(store, transaction.value);
 
     const result = store.perform(
-      'main_v1_history_entries',
+      'main_v2_history_entries',
       'readwrite',
       () => request as unknown as IDBRequest<string>,
     );
@@ -108,10 +231,10 @@ interface ControlledRequest<T> {
   onerror: ((event: Event) => void) | null;
 }
 
-function installIndexedDb() {
+function installIndexedDb(databases: IDBDatabaseInfo[] = []) {
   const openRequests: ControlledOpenRequest[] = [];
   const indexedDb = {
-    databases: vi.fn().mockResolvedValue([]),
+    databases: vi.fn().mockResolvedValue(databases),
     deleteDatabase: vi.fn(),
     open: vi.fn(() => {
       const request = {

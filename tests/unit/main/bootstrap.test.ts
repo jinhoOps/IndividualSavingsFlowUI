@@ -37,6 +37,7 @@ function repository(
     clearSetupProgress: () => undefined,
     discardPending: () => undefined,
     discardRecovery: () => undefined,
+    acknowledgeFailedCurrent: () => undefined,
     saveCalls,
   };
 }
@@ -90,6 +91,40 @@ describe('bootstrapMain', () => {
     });
     expect(state.applied).not.toBe(applied);
     expect(state.draft).not.toBe(restartDraft);
+  });
+
+  it('ignores restart progress superseded by a newer applied revision', async () => {
+    const applied = validData({ updatedAt: 20 });
+    const staleRestart = validData({ updatedAt: 10, monthlyHousingWon: 1_100_000 });
+
+    const state = await bootstrapMain(repository(
+      { status: 'current', data: applied, original: applied },
+      { kind: 'restart', step: 'housing', draft: staleRestart },
+    ));
+
+    expect(state).toMatchObject({
+      mode: 'dashboard',
+      setupStep: null,
+      applied,
+      draft: applied,
+    });
+  });
+
+  it('resumes restart progress based on a revision newer than the current tab', async () => {
+    const applied = validData({ updatedAt: 20 });
+    const newerRestart = validData({ updatedAt: 30, monthlyHousingWon: 1_100_000 });
+
+    const state = await bootstrapMain(repository(
+      { status: 'current', data: applied, original: applied },
+      { kind: 'restart', step: 'housing', draft: newerRestart },
+    ));
+
+    expect(state).toMatchObject({
+      mode: 'setup',
+      setupStep: 'housing',
+      applied,
+      draft: newerRestart,
+    });
   });
 
   it('keeps current data applied while presenting a pending v2 draft for recovery', async () => {

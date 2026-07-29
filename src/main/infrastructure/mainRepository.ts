@@ -1,13 +1,14 @@
 import { isfStore, type IsfStore } from '../../core/storage/IsfStore';
 import type { MainData, SetupStep } from '../domain/model';
-import { validateMainData } from '../domain/validation';
+import { validateMainData, validateMainDraft } from '../domain/validation';
 
 const MAIN_KEY = 'isf-main-v2';
 const PENDING_KEY = 'isf-main-v2-pending';
 const SETUP_PROGRESS_KEY = 'isf-main-v2-setup-progress';
 const DISMISSED_RECOVERY_KEY = 'isf-main-v2-dismissed-recovery';
-const MAIN_SAVE_LOCK_NAME = 'isf-main-v1-save';
-const MAIN_SAVE_LEASE_PREFIX = 'isf-main-v1-save-lease:';
+const QUARANTINED_CURRENT_KEY = 'isf-main-v2-quarantined-current';
+const MAIN_SAVE_LOCK_NAME = 'isf-main-v2-save';
+const MAIN_SAVE_LEASE_PREFIX = 'isf-main-v2-save-lease:';
 const DEFAULT_LEASE_DURATION_MS = 10_000;
 const DEFAULT_ACQUIRE_TIMEOUT_MS = 2_000;
 const DEFAULT_RETRY_DELAY_MS = 25;
@@ -34,7 +35,7 @@ export type MainLoadResult =
     current: MainData | null;
     source: 'pending' | 'history';
   }
-  | { status: 'failed'; data: null; original: unknown; reason: string };
+  | { status: 'failed'; data: null; original: unknown; raw?: string; reason: string };
 
 export interface MainRepository {
   load(): Promise<MainLoadResult>;
@@ -44,6 +45,7 @@ export interface MainRepository {
   clearSetupProgress(): void;
   discardPending(expectedUpdatedAt?: number): void;
   discardRecovery(updatedAt: number): void;
+  acknowledgeFailedCurrent(raw: string): void;
 }
 
 export type SetupProgressKind = 'initial' | 'restart';
@@ -54,7 +56,7 @@ export interface SetupProgress {
   draft: MainData;
 }
 
-export type MainHistoryStore = Pick<IsfStore, 'saveMainV1'> & Partial<Pick<IsfStore, 'loadLatestMainV1'>>;
+export type MainHistoryStore = Pick<IsfStore, 'saveMainV2'> & Partial<Pick<IsfStore, 'loadLatestMainV2'>>;
 
 export interface MainSaveGuard {
   assertOwned(): void;
@@ -330,7 +332,9 @@ export class BrowserMainRepository implements MainRepository {
   }
 
   async load(): Promise<MainLoadResult> {
-    const currentRaw = this.storage.getItem(MAIN_KEY);
+    const storedCurrentRaw = this.storage.getItem(MAIN_KEY);
+    const acknowledgedCurrentRaw = this.storage.getItem(QUARANTINED_CURRENT_KEY);
+    const currentRaw = storedCurrentRaw === acknowledgedCurrentRaw ? null : storedCurrentRaw;
     const pendingRaw = this.storage.getItem(PENDING_KEY);
     const current = currentRaw === null ? null : parseStoredMain(currentRaw);
     const pending = pendingRaw === null ? null : parseStoredMain(pendingRaw);
@@ -380,6 +384,9 @@ export class BrowserMainRepository implements MainRepository {
   }
 
   async save(data: MainData): Promise<MainData> {
+    if (!isMainDataShape(data)) {
+      throw new Error('Cannot save invalid main data shape.');
+    }
     const validation = validateMainData(data);
     if (!validation.valid) {
       throw new Error(`Cannot save invalid main data: ${validation.issues.map((issue) => issue.code).join(', ')}`);
@@ -389,8 +396,11 @@ export class BrowserMainRepository implements MainRepository {
   }
 
   private async saveLocked(data: MainData, guard: MainSaveGuard): Promise<MainData> {
+    guard.assertOwned();
+    const history = await this.loadHistoryCandidate();
+    guard.assertOwned();
     const next = cloneMainData(data);
-    next.updatedAt = this.nextUpdatedAt();
+    next.updatedAt = this.nextUpdatedAt(data.updatedAt, history?.data?.updatedAt ?? 0);
     let previousCurrent: string | null = null;
     let currentWriteAttempted = false;
     let serialized = '';
@@ -399,7 +409,7 @@ export class BrowserMainRepository implements MainRepository {
       serialized = JSON.stringify(next);
       previousCurrent = this.storage.getItem(MAIN_KEY);
       guard.assertOwned();
-      await this.historyStore.saveMainV1(next);
+      await this.historyStore.saveMainV2(next);
       guard.assertOwned();
       this.storage.setItem(PENDING_KEY, serialized);
       this.pendingWrittenByRepository = serialized;
@@ -482,37 +492,61 @@ export class BrowserMainRepository implements MainRepository {
     const pendingUpdatedAt = readStoredUpdatedAt(targetRaw);
     if (expectedUpdatedAt !== undefined && pendingUpdatedAt !== expectedUpdatedAt) return;
     if (this.storage.getItem(PENDING_KEY) !== targetRaw) return;
-    this.storage.removeItem(PENDING_KEY);
     this.pendingWrittenByRepository = null;
     this.discardRecovery(pendingUpdatedAt);
   }
 
   discardRecovery(updatedAt: number): void {
-    if (!Number.isFinite(updatedAt) || updatedAt <= 0) return;
+    if (!Number.isSafeInteger(updatedAt) || updatedAt <= 0) return;
     const current = readDismissedRecoveryUpdatedAt(this.storage);
     this.storage.setItem(DISMISSED_RECOVERY_KEY, String(Math.max(current, updatedAt)));
   }
 
-  private nextUpdatedAt(): number {
+  acknowledgeFailedCurrent(raw: string): void {
+    if (this.storage.getItem(MAIN_KEY) !== raw) return;
+    this.storage.setItem(QUARANTINED_CURRENT_KEY, raw);
+    if (this.storage.getItem(QUARANTINED_CURRENT_KEY) !== raw) {
+      throw new Error('Could not quarantine malformed Main data.');
+    }
+  }
+
+  private nextUpdatedAt(inputUpdatedAt: number, historyUpdatedAt: number): number {
     const persistedUpdatedAt = readStoredUpdatedAt(this.storage.getItem(MAIN_KEY));
     const pendingUpdatedAt = readStoredUpdatedAt(this.storage.getItem(PENDING_KEY));
-    if (persistedUpdatedAt === 0 && pendingUpdatedAt === 0) {
-      lastIssuedUpdatedAt = 0;
+    const dismissedUpdatedAt = readDismissedRecoveryUpdatedAt(this.storage);
+    const clockUpdatedAt = Date.now();
+    if (!isNonnegativeSafeInteger(clockUpdatedAt)) {
+      throw new Error('Cannot issue a safe Main revision.');
     }
+
+    const ceiling = Math.max(
+      persistedUpdatedAt,
+      pendingUpdatedAt,
+      inputUpdatedAt,
+      historyUpdatedAt,
+      dismissedUpdatedAt,
+      lastIssuedUpdatedAt,
+    );
+    if (!isNonnegativeSafeInteger(ceiling) || ceiling >= Number.MAX_SAFE_INTEGER) {
+      throw new Error('Cannot issue a safe Main revision.');
+    }
+
     const updatedAt = Math.max(
-      Date.now(),
-      persistedUpdatedAt + 1,
-      pendingUpdatedAt + 1,
+      clockUpdatedAt,
+      ceiling + 1,
       lastIssuedUpdatedAt + 1,
     );
+    if (!isNonnegativeSafeInteger(updatedAt)) {
+      throw new Error('Cannot issue a safe Main revision.');
+    }
     lastIssuedUpdatedAt = updatedAt;
     return updatedAt;
   }
 
   private async loadHistoryCandidate(): Promise<MainLoadResult | null> {
-    if (this.historyStore.loadLatestMainV1 === undefined) return null;
+    if (this.historyStore.loadLatestMainV2 === undefined) return null;
     try {
-      const latest = await this.historyStore.loadLatestMainV1();
+      const latest = await this.historyStore.loadLatestMainV2();
       return latest === null ? null : parseMainValue(latest);
     } catch {
       return null;
@@ -525,28 +559,35 @@ export function isMainDataShape(value: unknown): value is MainData {
     && Object.keys(value).length === mainDataKeys.size
     && Object.keys(value).every((key) => mainDataKeys.has(key))
     && value.schemaVersion === 2
-    && isFiniteNumber(value.updatedAt)
-    && isFiniteNumber(value.monthlyNetIncomeWon)
-    && isFiniteNumber(value.monthlyHousingWon)
-    && isFiniteNumber(value.monthlyLivingWon)
-    && isFiniteNumber(value.monthlySavingWon)
-    && isFiniteNumber(value.monthlyInvestmentWon);
+    && isNonnegativeSafeInteger(value.updatedAt)
+    && isNonnegativeSafeInteger(value.monthlyNetIncomeWon)
+    && isNonnegativeSafeInteger(value.monthlyHousingWon)
+    && isNonnegativeSafeInteger(value.monthlyLivingWon)
+    && isNonnegativeSafeInteger(value.monthlySavingWon)
+    && isNonnegativeSafeInteger(value.monthlyInvestmentWon);
 }
 
 function parseStoredMain(raw: string): MainLoadResult {
   try {
-    return parseMainValue(JSON.parse(raw));
+    return parseMainValue(JSON.parse(raw), raw);
   } catch {
-    return { status: 'failed', data: null, original: raw, reason: 'Stored main data is not valid JSON.' };
+    return {
+      status: 'failed',
+      data: null,
+      original: raw,
+      raw,
+      reason: 'Stored main data is not valid JSON.',
+    };
   }
 }
 
-function parseMainValue(value: unknown): MainLoadResult {
+function parseMainValue(value: unknown, raw?: string): MainLoadResult {
   if (!isMainDataShape(value)) {
     return {
       status: 'failed',
       data: null,
       original: value,
+      ...(raw === undefined ? {} : { raw }),
       reason: 'Stored main data has an unsupported schema.',
     };
   }
@@ -559,6 +600,7 @@ function parseMainValue(value: unknown): MainLoadResult {
       status: 'failed',
       data: null,
       original: value,
+      ...(raw === undefined ? {} : { raw }),
       reason: validationReason(validation.issues),
     };
 }
@@ -570,7 +612,7 @@ function isSetupProgress(value: unknown): value is {
 } {
   if (!isRecord(value) || typeof value.step !== 'string' || !setupSteps.has(value.step as SetupStep)) return false;
   if (value.kind !== undefined && value.kind !== 'initial' && value.kind !== 'restart') return false;
-  return isMainDataShape(value.draft);
+  return isMainDataShape(value.draft) && validateMainDraft(value.draft).valid;
 }
 
 function cloneMainData(data: MainData): MainData {
@@ -589,11 +631,15 @@ function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);
 }
 
+function isNonnegativeSafeInteger(value: unknown): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
+}
+
 function readStoredUpdatedAt(raw: string | null): number {
   if (raw === null) return 0;
   try {
     const parsed: unknown = JSON.parse(raw);
-    return isRecord(parsed) && isFiniteNumber(parsed.updatedAt) ? parsed.updatedAt : 0;
+    return isRecord(parsed) && isNonnegativeSafeInteger(parsed.updatedAt) ? parsed.updatedAt : 0;
   } catch {
     return 0;
   }
@@ -660,5 +706,5 @@ function positiveDuration(value: number | undefined, fallback: number): number {
 
 function readDismissedRecoveryUpdatedAt(storage: Storage): number {
   const parsed = Number(storage.getItem(DISMISSED_RECOVERY_KEY));
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : 0;
 }
