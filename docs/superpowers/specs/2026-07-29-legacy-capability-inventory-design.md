@@ -87,15 +87,26 @@
 | 장기 projection·summary cards | `calculator.js` | 현재 Main TypeScript에 동일 기능 없음. Product PRD의 projection 표현과 현재 UI 사이 확인 필요 | 판정 대기 | 제품 기준 확정 후 Main, Simulation 또는 폐기 중 선택 |
 | Sankey build·render·PNG export | `sankey-builder.js`, `sankey-renderer.js` | 현재 Main scalar UI에는 이전 module runtime 연결 없음. 기준 문서는 Sankey를 현재 기능으로도 기술 | 판정 대기 | 현재 제품 요구 정정 또는 새 소유 경계 승인 |
 | household budget·historical comparison | `household-budget.js`, `comparison-engine.js`, `comparison-renderer.js` | 현재 Main v2 schema와 UI에서 사용하지 않음. 향후 제품 후보와 일부 의미가 겹침 | 판정 대기 | 향후 기능 spec에서 재사용할 계약만 추출하고 UI 구현은 복사하지 않음 |
-| account correction·network map·transfer | `account-correction.js`, `network-map-renderer.js`, sanitizer의 account/transfer 처리 | Main에서는 제외. Account Map은 v1-shaped Main data와 sanitizer를 사용 | 이관 | Account Map 전용 TypeScript 입력 adapter와 schema를 만든 뒤 legacy Main import 제거 |
-| Account Map entry summary | `account-map-entry-renderer.js` | 현재 React Main 기준선과 Account Map 진입 계약 대조 필요 | 판정 대기 | 현재 Main 진입 동작 확인 후 폐기 또는 React 소유로 명시 |
+| account correction·transfer normalize | `account-correction.js`, sanitizer의 account/transfer 처리 | Main에서는 제외. Account Map이 legacy sanitizer를 통해 정규화 결과를 소비 | 이관 | Account Map 전용 TypeScript 입력 adapter와 fixture test를 만든 뒤 legacy Main import 제거 |
+| 이전 network map renderer | `network-map-renderer.js` | 현재 Main과 Account Map runtime 모두 직접 사용하지 않음 | 폐기 | Account Map 관계·layout 회귀를 유지하고 legacy render test와 orchestrator 참조 제거 |
+| 이전 Account Map entry summary | `account-map-entry-renderer.js` | 현재 React Main에는 진입 UI가 없고 legacy orchestrator만 호출 | 폐기 | 현재 Main smoke test를 유지하고 legacy orchestrator·entry test 참조 제거 |
 | v1 입력 sanitize·구버전 schema | `input-sanitizer.js`, `external-input-guard.js`, `constants.js`의 `isf-rebuild-v1` 계약 | Account Map이 동적 import. 다른 앱 connector도 v1 key와 snapshot shape 사용 | 이관 | 공용 compatibility adapter로 최소 계약 추출, fixture 기반 호환성 검증 |
 | v1 snapshot·share·storage | `storage-manager.js`, `snapshot-manager.js`, `persistence-controller.js`, shared storage bridge | Simulation·Portfolio·Account Map이 hub와 과거 snapshot에 의존 | 이관 | 앱별 read/write 방향과 key 목록 확정, current adapter로 이전 |
 | 이전 Main formatter·UI renderer | `formatters.js`, `financial-summary.js`, `financial-summary-renderer.js` | Main runtime 미사용. 일부 순수 표현 계약만 중복 가능 | 폐기 | 현재 TypeScript UI snapshot/format test로 필요한 표현 확인 |
-| legacy service worker precache | `shared/legacy/sw.js` | 이전 Main module을 precache. version script가 파일을 갱신 | 이관 | 현재 Vite PWA 산출물 소유권 확인, 이전 precache와 version sync 참조 제거 |
+| legacy service worker precache | `shared/legacy/sw.js` | 현재 Main은 `virtual:pwa-register`와 Vite PWA 생성 service worker 사용. 이전 파일은 version script만 갱신 | 폐기 | PWA build·offline navigation 검증 후 이전 precache, `sync-version.js`, package `version` 참조 제거 |
 | legacy Main browser tests | `tests/step1.spec.ts` | 이전 module, DOM, `isf-rebuild-v1` 동작을 대량 직접 검증 | 폐기 | 현재 사용자 동작·공개 compatibility 계약으로 필요한 coverage 이전 후 삭제 |
 | compatibility browser tests | `tests/main-compat.spec.ts` | v2가 legacy store를 건드리지 않는 계약과 sanitizer 비교를 함께 검증 | 이관 | store 비변경 계약은 유지하고 legacy module 직접 import assertion 제거 |
 | 다른 앱 JavaScript runtime | `apps/simulation/**`, `apps/portfolio/**`, `apps/account-map/**` | 현재 Vite entry가 실제 로드하는 지원 제품 | 현재 제품 | 별도 현대화 spec 없이는 레거시 삭제 범위에 포함하지 않음 |
+
+### 공통 삭제 gate
+
+각 `폐기`와 `이관` 항목에는 행별 후속 gate와 함께 다음 조건을 모두 적용한다.
+
+1. 현재 Vite entry에서 legacy runtime import가 없거나 replacement adapter로 교체됐음을 검색한다.
+2. 저장 key, snapshot wrapper와 import/export 호환성에 영향이 있으면 fixture로 이전 값을 검증한다.
+3. legacy 내부 구조 test를 현재 사용자 동작 또는 공개 데이터 계약 test로 교체한다.
+4. `shared/legacy/sw.js`, `scripts/sync-version.js`, package script와 생성 PWA asset 참조를 검색한다.
+5. TypeScript check, 영향 앱 focused test와 PWA build/offline 검증을 통과한 뒤에만 파일을 삭제한다.
 
 ## 데이터 계약 Inventory
 
