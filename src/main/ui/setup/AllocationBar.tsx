@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type MouseEvent, type PointerEvent } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState, type MouseEvent, type PointerEvent } from 'react';
 import { calculateCashflow, percentageOfIncome } from '../../domain/cashflow';
 import type { MainData } from '../../domain/model';
 import { PercentageTooltip } from '../common/PercentageTooltip';
@@ -15,7 +15,7 @@ interface Allocation {
   percentage: number | null;
 }
 
-const MIN_INTERACTIVE_PERCENTAGE = 2;
+const MIN_INTERACTIVE_SIZE_PX = 44;
 
 export function AllocationBar({ data }: AllocationBarProps) {
   const [hoveredId, setHoveredId] = useState<string>();
@@ -23,6 +23,7 @@ export function AllocationBar({ data }: AllocationBarProps) {
   const [tappedId, setTappedId] = useState<string>();
   const [pointerPosition, setPointerPosition] = useState<number>();
   const [tapPosition, setTapPosition] = useState<number>();
+  const [barWidth, setBarWidth] = useState(0);
   const barRef = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const isPointerFocusRef = useRef(false);
@@ -48,6 +49,30 @@ export function AllocationBar({ data }: AllocationBarProps) {
     : activeId === tappedId
       ? tapPosition ?? activePosition
       : activePosition;
+
+  useLayoutEffect(() => {
+    const bar = barRef.current;
+    if (bar === null) {
+      return;
+    }
+
+    const updateBarWidth = () => {
+      const nextWidth = bar.getBoundingClientRect().width;
+      setBarWidth((currentWidth) => currentWidth === nextWidth ? currentWidth : nextWidth);
+    };
+    updateBarWidth();
+
+    const resizeObserver = typeof ResizeObserver === 'undefined'
+      ? null
+      : new ResizeObserver(updateBarWidth);
+    resizeObserver?.observe(bar);
+    window.addEventListener('resize', updateBarWidth);
+
+    return () => {
+      resizeObserver?.disconnect();
+      window.removeEventListener('resize', updateBarWidth);
+    };
+  }, []);
 
   useEffect(() => {
     if (!tappedId) {
@@ -138,8 +163,8 @@ export function AllocationBar({ data }: AllocationBarProps) {
           </div>
           {allocations.map((allocation) => {
             const visualPercentage = clampPercentage(allocation.percentage ?? 0);
-            const requiresLegendTarget = visualPercentage < MIN_INTERACTIVE_PERCENTAGE;
-            const center = allocationCenter(allocation.id, allocations);
+            const requiresLegendTarget = !hasIndependentTarget(visualPercentage, barWidth);
+            const offset = allocationOffset(allocation.id, allocations);
 
             return requiresLegendTarget ? null : (
               <button
@@ -147,8 +172,8 @@ export function AllocationBar({ data }: AllocationBarProps) {
                 className="allocation-bar__segment-target"
                 key={allocation.id}
                 style={{
-                  left: `clamp(22px, ${center}%, calc(100% - 22px))`,
-                  width: `max(${visualPercentage}%, var(--ui-control-min-height))`,
+                  left: `${offset}%`,
+                  width: `${visualPercentage}%`,
                 }}
               />
             );
@@ -156,7 +181,8 @@ export function AllocationBar({ data }: AllocationBarProps) {
         </div>
         <ul className="allocation-bar__legend" aria-label="월 자금 항목">
           {allocations.map((allocation) => {
-            const requiresLegendTarget = clampPercentage(allocation.percentage ?? 0) < MIN_INTERACTIVE_PERCENTAGE;
+            const visualPercentage = clampPercentage(allocation.percentage ?? 0);
+            const requiresLegendTarget = !hasIndependentTarget(visualPercentage, barWidth);
             const text = `${allocation.label} ${formatContextWon(allocation.amountWon)}`;
 
             return (
@@ -183,17 +209,29 @@ export function AllocationBar({ data }: AllocationBarProps) {
 }
 
 function allocationCenter(allocationId: string, allocations: Allocation[]): number {
+  const allocation = allocations.find((candidate) => candidate.id === allocationId);
+  return clampPercentage(
+    allocationOffset(allocationId, allocations)
+      + clampPercentage(allocation?.percentage ?? 0) / 2,
+  );
+}
+
+function allocationOffset(allocationId: string, allocations: Allocation[]): number {
   let offset = 0;
 
   for (const allocation of allocations) {
     const percentage = clampPercentage(allocation.percentage ?? 0);
     if (allocation.id === allocationId) {
-      return clampPercentage(offset + percentage / 2);
+      return clampPercentage(offset);
     }
     offset += percentage;
   }
 
   return 0;
+}
+
+function hasIndependentTarget(percentage: number, barWidth: number): boolean {
+  return barWidth > 0 && barWidth * percentage / 100 >= MIN_INTERACTIVE_SIZE_PX;
 }
 
 function pointerPercentage(clientX: number, element: HTMLDivElement | null): number {

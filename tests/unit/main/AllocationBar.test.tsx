@@ -1,10 +1,13 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { MainData } from '../../../src/main/domain/model';
 import { AllocationBar } from '../../../src/main/ui/setup/AllocationBar';
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
 
 const cashflowFixture: MainData = {
   schemaVersion: 2,
@@ -29,6 +32,15 @@ const tinyFixture: MainData = {
   ...emptyFixture,
   monthlyNetIncomeWon: 3_200_000,
   monthlyInvestmentWon: 1_000,
+};
+
+const adjacentSmallFixture: MainData = {
+  ...emptyFixture,
+  monthlyNetIncomeWon: 10_000_000,
+  monthlyHousingWon: 200_000,
+  monthlyLivingWon: 300_000,
+  monthlySavingWon: 600_000,
+  monthlyInvestmentWon: 700_000,
 };
 
 describe('AllocationBar', () => {
@@ -115,6 +127,42 @@ describe('AllocationBar', () => {
     expect(screen.getByRole('tooltip')).toHaveTextContent(/^0\.0%$/);
     fireEvent.click(screen.getByText('월 수입을 이렇게 나눠 쓰고 있어요'));
     expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+  });
+
+  it('routes adjacent segments narrower than 44px to distinct legend targets', () => {
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      const width = this.classList.contains('allocation-bar__segments') ? 320 : 0;
+      return {
+        bottom: 44,
+        height: 44,
+        left: 0,
+        right: width,
+        top: 0,
+        width,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      };
+    });
+    render(<AllocationBar data={adjacentSmallFixture} />);
+
+    for (const [name, text, percentage] of [
+      ['소비 5.0%', '소비 50만 원', '5.0%'],
+      ['저축 6.0%', '저축 60만 원', '6.0%'],
+      ['투자 7.0%', '투자 70만 원', '7.0%'],
+    ] as const) {
+      const target = screen.getByRole('button', { name });
+      expect(target).toHaveClass('allocation-bar__legend-target');
+      expect(target).toHaveTextContent(text);
+
+      fireEvent.click(target);
+      expect(screen.getByRole('tooltip')).toHaveTextContent(new RegExp(`^${percentage.replace('.', '\\.')}$`));
+    }
+
+    const remaining = screen.getByRole('button', { name: '남는 돈 82.0%' });
+    expect(remaining).toHaveClass('allocation-bar__segment-target');
+    expect(remaining).toHaveStyle({ left: '18%', width: '82%' });
+    expect(document.querySelectorAll('.allocation-bar__segment-target')).toHaveLength(1);
   });
 
   it('represents a deficit against planned outflow without a negative remaining segment', () => {

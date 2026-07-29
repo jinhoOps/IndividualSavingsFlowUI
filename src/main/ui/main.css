@@ -195,9 +195,9 @@
   .allocation-bar__visual-segment--remaining { @apply bg-slate-300; }
 
   .allocation-bar__segment-target {
-    @apply absolute top-0 h-11 -translate-x-1/2 rounded-xl border-0 bg-transparent p-0 outline-none transition-colors hover:bg-white/15 focus-visible:ring-3 focus-visible:ring-accent/35;
+    @apply absolute top-0 h-11 rounded-xl border-0 bg-transparent p-0 outline-none transition-colors hover:bg-white/15 focus-visible:ring-3 focus-visible:ring-accent/35;
     min-height: var(--ui-control-min-height);
-    min-width: var(--ui-control-min-height);
+    min-width: 0;
   }
 
   .allocation-bar__legend {

@@ -152,6 +152,41 @@ test.describe('mobile quick setup', () => {
     await page.keyboard.press('Tab');
     await expect(page.getByRole('tooltip')).toHaveCount(0);
   });
+
+  test('routes adjacent small allocations to non-overlapping legend targets', async ({ page }) => {
+    await clearBrowserStorage(page);
+    await page.goto('apps/main/');
+    await page.getByRole('button', { name: '다음' }).tap();
+    await page.getByLabel('월 실수령액').fill('10000000');
+    await page.getByRole('button', { name: '다음' }).tap();
+    await page.getByLabel('월 주거 고정비').fill('200000');
+    await page.getByRole('button', { name: '다음' }).tap();
+    await page.getByLabel('월평균 생활비').fill('300000');
+    await page.getByRole('button', { name: '다음' }).tap();
+    await page.getByLabel('월 저축액').fill('600000');
+    await page.getByLabel('월 투자액').fill('700000');
+    await page.getByRole('button', { name: '다음' }).tap();
+
+    for (const [name, percentage] of [
+      ['소비 5.0%', '5.0%'],
+      ['저축 6.0%', '6.0%'],
+      ['투자 7.0%', '7.0%'],
+    ] as const) {
+      const target = page.getByRole('button', { name });
+      await expect(target).toHaveClass(/allocation-bar__legend-target/);
+      const box = await target.boundingBox();
+      expect(box, `${name} target`).not.toBeNull();
+      expect(box!.width, `${name} width`).toBeGreaterThanOrEqual(44);
+      expect(box!.height, `${name} height`).toBeGreaterThanOrEqual(44);
+      await target.tap();
+      await expect(page.getByRole('tooltip')).toHaveText(percentage);
+    }
+
+    const remaining = page.getByRole('button', { name: '남는 돈 82.0%' });
+    await expect(remaining).toHaveClass(/allocation-bar__segment-target/);
+    await expect(remaining).toHaveCSS('min-width', '0px');
+    await expect(page.locator('.allocation-bar__segment-target')).toHaveCount(1);
+  });
 });
 
 test('backup import has a matching accessible name and visible keyboard focus ring', async ({ page }) => {
