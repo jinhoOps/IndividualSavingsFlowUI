@@ -5,7 +5,6 @@ import { formatContextWon, formatPercentage } from './FlowContextSummary';
 
 export interface AllocationBarProps {
   data: MainData;
-  contextLabel?: string;
 }
 
 interface Allocation {
@@ -15,7 +14,7 @@ interface Allocation {
   percentage: number | null;
 }
 
-export function AllocationBar({ data, contextLabel }: AllocationBarProps) {
+export function AllocationBar({ data }: AllocationBarProps) {
   const [hoveredId, setHoveredId] = useState<string>();
   const [focusedId, setFocusedId] = useState<string>();
   const [tappedId, setTappedId] = useState<string>();
@@ -36,9 +35,9 @@ export function AllocationBar({ data, contextLabel }: AllocationBarProps) {
   const activeId = hoveredId ?? focusedId ?? tappedId;
 
   return (
-    <section className="allocation-bar" aria-label="수입 배분">
+    <section className="allocation-bar" aria-label="월 수입 나누기">
       <p className="allocation-bar__context">
-        {contextLabel ?? (isDeficit ? '계획 유출을 기준으로 배분했습니다' : '월 수입을 기준으로 배분했습니다')}
+        월 수입을 이렇게 나눠 쓰고 있어요
       </p>
       <div className="allocation-bar__segments">
         {allocations.map((allocation) => {
@@ -66,7 +65,7 @@ export function AllocationBar({ data, contextLabel }: AllocationBarProps) {
           );
         })}
       </div>
-      <ul className="allocation-bar__legend" aria-label="배분 항목">
+      <ul className="allocation-bar__legend" aria-label="월 자금 항목">
         {allocations.map((allocation) => <li key={allocation.id}>{allocation.label} {formatContextWon(allocation.amountWon)}</li>)}
       </ul>
       {isDeficit ? <p className="allocation-bar__deficit" role="status">수입보다 {formatContextWon(cashflow.deficitWon)} 초과</p> : null}

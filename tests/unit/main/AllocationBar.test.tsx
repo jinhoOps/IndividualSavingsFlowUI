@@ -20,6 +20,8 @@ describe('AllocationBar', () => {
   it('labels each allocation using its percentage of income', () => {
     render(<AllocationBar data={cashflowFixture} />);
 
+    expect(screen.getByText('월 수입을 이렇게 나눠 쓰고 있어요')).toBeVisible();
+    expect(screen.queryByText(/배분/)).not.toBeInTheDocument();
     expect(screen.getByLabelText('소비 56.3%')).toBeVisible();
     expect(screen.getByLabelText('저축 9.4%')).toBeVisible();
     expect(screen.getByLabelText('투자 6.3%')).toBeVisible();

@@ -129,6 +129,8 @@ describe('SetupFlow', () => {
 
     expect(screen.getByRole('heading', { name: '입력한 월 자금 계획을 확인해주세요' })).toBeVisible();
     expect(screen.getByText('현재 계획 230만 원')).toBeVisible();
+    expect(screen.getByText('월 수입을 이렇게 나눠 쓰고 있어요')).toBeVisible();
+    expect(screen.queryByText(/배분/)).not.toBeInTheDocument();
     expect(screen.getByLabelText('소비 56.3%')).toBeVisible();
     expect(screen.getByLabelText('저축 9.4%')).toBeVisible();
     expect(screen.getByLabelText('투자 6.3%')).toBeVisible();

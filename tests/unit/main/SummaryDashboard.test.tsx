@@ -104,6 +104,7 @@ describe('SummaryDashboard', () => {
     expect(screen.getByText('남는 돈')).toBeVisible();
     expect(screen.getByText('월 저축')).toBeVisible();
     expect(screen.getByText('월 투자')).toBeVisible();
+    expect(screen.getByText('월 수입을 이렇게 나눠 쓰고 있어요')).toBeVisible();
     expect(screen.getByLabelText(/소비 56\.3%/)).toBeVisible();
     expect(screen.queryByText(/계좌|배분|Sankey/)).not.toBeInTheDocument();
   });

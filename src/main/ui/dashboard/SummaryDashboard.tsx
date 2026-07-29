@@ -184,12 +184,7 @@ export function SummaryDashboard({
         <section className="min-w-0 rounded-3xl border border-white/80 bg-white/85 p-5 shadow-float sm:p-7" aria-labelledby="cashflow-allocation-title">
           <h2 className="m-0 text-2xl font-bold text-slate-950" id="cashflow-allocation-title">월 자금 구성</h2>
           <div className="mt-5">
-            <AllocationBar
-              data={applied}
-              contextLabel={summary.deficitWon > 0
-                ? '계획 유출을 기준으로 구성했습니다'
-                : '월 수입을 기준으로 구성했습니다'}
-            />
+            <AllocationBar data={applied} />
           </div>
         </section>
       </div>
