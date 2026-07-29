@@ -17,9 +17,11 @@ export function FlowContextSummary({ data }: FlowContextSummaryProps) {
   const isPointerFocusRef = useRef(false);
   const tooltipId = useId();
   const cashflow = calculateCashflow(data);
+  const isDeficit = cashflow.deficitWon > 0;
   const plannedPercentage = percentageOfIncome(cashflow.plannedOutflowWon, cashflow.incomeWon);
   const visualPercentage = clampPercentage(plannedPercentage ?? 0);
   const formattedPercentage = formatPercentage(plannedPercentage);
+  const tooltipValue = `현재 계획 ${formatContextWon(cashflow.plannedOutflowWon)} · 수입의 ${formattedPercentage}`;
   const tooltipOpen = plannedPercentage !== null && (isPointerActive || isFocused || isTapped);
   const tooltipPosition = isTapped
     ? tapPosition ?? visualPercentage
@@ -57,6 +59,7 @@ export function FlowContextSummary({ data }: FlowContextSummaryProps) {
     <section className="flow-context-summary" aria-label="현재 자금 계획 요약">
       <div
         className="flow-bar-wrapper"
+        data-overflow={isDeficit ? 'true' : 'false'}
         ref={flowBarWrapperRef}
         onBlur={(event) => {
           if (!event.currentTarget.contains(event.relatedTarget)) {
@@ -70,9 +73,9 @@ export function FlowContextSummary({ data }: FlowContextSummaryProps) {
           aria-valuemax={100}
           aria-valuemin={0}
           aria-valuenow={visualPercentage}
-          aria-valuetext={plannedPercentage === null ? unavailableCopy : formattedPercentage}
+          aria-valuetext={plannedPercentage === null ? unavailableCopy : tooltipValue}
           className="flow-bar"
-          role="meter"
+          role="progressbar"
           tabIndex={0}
           onBlur={() => {
             isPointerFocusRef.current = false;
@@ -101,13 +104,20 @@ export function FlowContextSummary({ data }: FlowContextSummaryProps) {
             style={{ width: `${visualPercentage}%` }}
           />
         </div>
+        {isDeficit ? (
+          <span aria-hidden="true" className="flow-overflow-pressure">
+            <span className="flow-overflow-droplet" />
+            <span className="flow-overflow-droplet" />
+          </span>
+        ) : null}
         <PercentageTooltip
           id={tooltipId}
           open={tooltipOpen}
           position={{ xPercent: tooltipPosition }}
-          value={formattedPercentage}
+          value={tooltipValue}
         />
       </div>
+      {isDeficit ? <p className="allocation-bar__deficit" role="status">수입보다 {formatContextWon(cashflow.deficitWon)} 초과</p> : null}
     </section>
   );
 }

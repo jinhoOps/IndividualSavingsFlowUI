@@ -113,11 +113,11 @@ describe('SummaryDashboard', () => {
     expect(screen.getByRole('status')).toHaveTextContent('저장됨');
     expect(screen.getByText('월 실수령액')).toBeVisible();
     expect(screen.getByText('월 소비')).toBeVisible();
-    expect(screen.getByText('남는 돈')).toBeVisible();
+    expect(screen.getByRole('button', { name: '남는 돈 편집' })).toHaveTextContent('남는 돈');
     expect(screen.getByText('월 저축')).toBeVisible();
     expect(screen.getByText('월 투자')).toBeVisible();
     expect(screen.getByText('월 수입을 이렇게 나눠 쓰고 있어요')).toBeVisible();
-    expect(screen.getByLabelText(/소비 56\.3%/)).toBeVisible();
+    expect(screen.getByRole('button', { name: '소비 상세 정보' })).toBeVisible();
     expect(screen.queryByText(/계좌|배분|Sankey/)).not.toBeInTheDocument();
   });
 

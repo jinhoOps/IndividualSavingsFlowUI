@@ -13,6 +13,7 @@ interface Allocation {
   label: string;
   amountWon: number;
   percentage: number | null;
+  visualPercentage: number;
 }
 
 const MIN_INTERACTIVE_SIZE_PX = 44;
@@ -30,15 +31,22 @@ export function AllocationBar({ data }: AllocationBarProps) {
   const tooltipId = useId();
   const cashflow = calculateCashflow(data);
   const isDeficit = cashflow.deficitWon > 0;
-  const denominator = isDeficit ? cashflow.plannedOutflowWon : cashflow.incomeWon;
+  const visualDenominator = isDeficit ? cashflow.plannedOutflowWon : cashflow.incomeWon;
+  const allocation = (id: string, label: string, amountWon: number): Allocation => ({
+    id,
+    label,
+    amountWon,
+    percentage: percentageOfIncome(amountWon, cashflow.incomeWon),
+    visualPercentage: clampPercentage(percentageOfIncome(amountWon, visualDenominator) ?? 0),
+  });
   const allocations: Allocation[] = [
-    { id: 'consumption', label: '소비', amountWon: cashflow.consumptionWon, percentage: percentageOfIncome(cashflow.consumptionWon, denominator) },
-    { id: 'saving', label: '저축', amountWon: cashflow.savingWon, percentage: percentageOfIncome(cashflow.savingWon, denominator) },
-    { id: 'investment', label: '투자', amountWon: cashflow.investmentWon, percentage: percentageOfIncome(cashflow.investmentWon, denominator) },
+    allocation('consumption', '소비', cashflow.consumptionWon),
+    allocation('saving', '저축', cashflow.savingWon),
+    allocation('investment', '투자', cashflow.investmentWon),
   ];
 
   if (!isDeficit) {
-    allocations.push({ id: 'remaining', label: '남는 돈', amountWon: cashflow.remainingWon, percentage: percentageOfIncome(cashflow.remainingWon, denominator) });
+    allocations.push(allocation('remaining', '남는 돈', cashflow.remainingWon));
   }
 
   const activeId = hoveredId ?? focusedId ?? tappedId;
@@ -108,11 +116,11 @@ export function AllocationBar({ data }: AllocationBarProps) {
     setTappedId((tapped) => tapped === allocationId ? undefined : allocationId);
   };
 
-  const triggerProps = (allocation: Allocation, isVisualTarget: boolean) => {
+  const triggerProps = (allocation: Allocation, isVisualTarget: boolean, accessibleName = allocationText(allocation)) => {
     const isActive = activeId === allocation.id;
     return {
       'aria-describedby': isActive ? tooltipId : undefined,
-      'aria-label': `${allocation.label} ${formatPercentage(allocation.percentage)}`,
+      'aria-label': accessibleName,
       onBlur: () => {
         isPointerFocusRef.current = false;
         setFocusedId(undefined);
@@ -148,21 +156,20 @@ export function AllocationBar({ data }: AllocationBarProps) {
           }
         }}
       >
-        <div className="flow-bar allocation-bar__segments" ref={barRef}>
+        <div className="flow-bar allocation-bar__segments" data-overflow={isDeficit ? 'true' : 'false'} ref={barRef}>
           <div aria-hidden="true" className="allocation-bar__visual-track">
             {allocations.map((allocation) => {
-              const visualPercentage = clampPercentage(allocation.percentage ?? 0);
               return (
                 <span
                   className={`allocation-bar__visual-segment allocation-bar__visual-segment--${allocation.id}`}
                   key={allocation.id}
-                  style={{ width: `${visualPercentage}%` }}
+                  style={{ width: `${allocation.visualPercentage}%` }}
                 />
               );
             })}
           </div>
           {allocations.map((allocation) => {
-            const visualPercentage = clampPercentage(allocation.percentage ?? 0);
+            const visualPercentage = allocation.visualPercentage;
             const requiresLegendTarget = !hasIndependentTarget(visualPercentage, barWidth);
             const offset = allocationOffset(allocation.id, allocations);
 
@@ -178,29 +185,55 @@ export function AllocationBar({ data }: AllocationBarProps) {
               />
             );
           })}
+          {isDeficit ? (
+            <span aria-hidden="true" className="allocation-bar__pressure">
+              <span className="allocation-bar__droplet" />
+              <span className="allocation-bar__droplet" />
+            </span>
+          ) : null}
         </div>
-        <ul className="allocation-bar__legend" aria-label="월 자금 항목">
-          {allocations.map((allocation) => {
-            const visualPercentage = clampPercentage(allocation.percentage ?? 0);
-            const requiresLegendTarget = !hasIndependentTarget(visualPercentage, barWidth);
-            const text = `${allocation.label} ${formatContextWon(allocation.amountWon)}`;
-
-            return (
-              <li key={allocation.id}>
-                {requiresLegendTarget ? (
-                  <button {...triggerProps(allocation, false)} className="allocation-bar__legend-target">
-                    {text}
-                  </button>
-                ) : text}
-              </li>
-            );
-          })}
-        </ul>
+        <table className="allocation-table" aria-label="월 자금 항목">
+          <thead>
+            <tr>
+              <th scope="col">종류</th>
+              <th scope="col">금액</th>
+              <th scope="col">수입 대비</th>
+            </tr>
+          </thead>
+          <tbody>
+            {allocations.map((allocation) => {
+              const requiresTableTarget = !hasIndependentTarget(allocation.visualPercentage, barWidth);
+              return (
+                <tr key={allocation.id}>
+                  <th scope="row">
+                    {requiresTableTarget ? (
+                      <button
+                        {...triggerProps(allocation, false, `${allocation.label} 상세 정보`)}
+                        className="allocation-table__label-target"
+                      >
+                        {allocation.label}
+                      </button>
+                    ) : allocation.label}
+                  </th>
+                  <td>{formatContextWon(allocation.amountWon)}</td>
+                  <td>{formatPercentage(allocation.percentage)}</td>
+                </tr>
+              );
+            })}
+            {isDeficit ? (
+              <tr className="allocation-table__overflow-row">
+                <th scope="row">초과</th>
+                <td>{formatContextWon(cashflow.deficitWon)}</td>
+                <td>{formatPercentage(percentageOfIncome(cashflow.deficitWon, cashflow.incomeWon))}</td>
+              </tr>
+            ) : null}
+          </tbody>
+        </table>
         <PercentageTooltip
           id={tooltipId}
           open={activeAllocation !== undefined}
           position={{ xPercent: tooltipPosition }}
-          value={formatPercentage(activeAllocation?.percentage ?? null)}
+          value={activeAllocation ? allocationText(activeAllocation) : ''}
         />
       </div>
       {isDeficit ? <p className="allocation-bar__deficit" role="status">수입보다 {formatContextWon(cashflow.deficitWon)} 초과</p> : null}
@@ -212,7 +245,7 @@ function allocationCenter(allocationId: string, allocations: Allocation[]): numb
   const allocation = allocations.find((candidate) => candidate.id === allocationId);
   return clampPercentage(
     allocationOffset(allocationId, allocations)
-      + clampPercentage(allocation?.percentage ?? 0) / 2,
+      + (allocation?.visualPercentage ?? 0) / 2,
   );
 }
 
@@ -220,7 +253,7 @@ function allocationOffset(allocationId: string, allocations: Allocation[]): numb
   let offset = 0;
 
   for (const allocation of allocations) {
-    const percentage = clampPercentage(allocation.percentage ?? 0);
+    const percentage = allocation.visualPercentage;
     if (allocation.id === allocationId) {
       return clampPercentage(offset);
     }
@@ -228,6 +261,10 @@ function allocationOffset(allocationId: string, allocations: Allocation[]): numb
   }
 
   return 0;
+}
+
+function allocationText(allocation: Allocation): string {
+  return `${allocation.label} · ${formatContextWon(allocation.amountWon)} · ${formatPercentage(allocation.percentage)}`;
 }
 
 function hasIndependentTarget(percentage: number, barWidth: number): boolean {

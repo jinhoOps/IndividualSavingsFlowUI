@@ -30,8 +30,8 @@ const deficitFixture: MainData = {
   monthlyInvestmentWon: 1_900_000,
 };
 
-function setMeterRect(meter: HTMLElement) {
-  Object.defineProperty(meter, 'getBoundingClientRect', {
+function setProgressbarRect(progressbar: HTMLElement) {
+  Object.defineProperty(progressbar, 'getBoundingClientRect', {
     configurable: true,
     value: () => ({ bottom: 6, height: 6, left: 10, right: 210, top: 0, width: 200, x: 10, y: 0 }),
   });
@@ -42,23 +42,23 @@ function movePointer(meter: HTMLElement, clientX: number) {
 }
 
 describe('FlowContextSummary', () => {
-  it('renders only a compact flow meter instead of the verbose context copy', () => {
+  it('renders only a compact flow progressbar instead of verbose context copy', () => {
     render(<FlowContextSummary data={cashflowFixture} />);
 
     expect(screen.queryByText('월 수입 320만 원')).not.toBeInTheDocument();
     expect(screen.queryByText('현재 계획 230만 원')).not.toBeInTheDocument();
     expect(screen.queryByText('남는 돈 90만 원')).not.toBeInTheDocument();
-    expect(screen.getByRole('meter')).toHaveClass('flow-bar');
+    expect(screen.getByRole('progressbar')).toHaveClass('flow-bar');
   });
 
   it('positions the percentage tooltip from a clamped pointer coordinate', () => {
     render(<FlowContextSummary data={cashflowFixture} />);
-    const meter = screen.getByRole('meter');
-    setMeterRect(meter);
+    const meter = screen.getByRole('progressbar');
+    setProgressbarRect(meter);
 
     fireEvent.pointerEnter(meter, { clientX: 40 });
     movePointer(meter, 40);
-    expect(screen.getByRole('tooltip')).toHaveTextContent(/^71\.9%$/);
+    expect(screen.getByRole('tooltip')).toHaveTextContent(/^현재 계획 230만 원 · 수입의 71\.9%$/);
     expect(screen.getByRole('tooltip')).toHaveStyle({ left: '15%' });
 
     movePointer(meter, -20);
@@ -69,20 +69,20 @@ describe('FlowContextSummary', () => {
 
   it('keeps pointer, focus, and tap tooltip state independent', () => {
     render(<FlowContextSummary data={cashflowFixture} />);
-    const meter = screen.getByRole('meter');
-    setMeterRect(meter);
+    const meter = screen.getByRole('progressbar');
+    setProgressbarRect(meter);
 
     fireEvent.pointerEnter(meter, { clientX: 40 });
     fireEvent.focus(meter);
     fireEvent.pointerLeave(meter);
-    expect(screen.getByRole('tooltip')).toHaveTextContent(/^71\.9%$/);
+    expect(screen.getByRole('tooltip')).toHaveTextContent(/^현재 계획 230만 원 · 수입의 71\.9%$/);
     expect(screen.getByRole('tooltip')).toHaveStyle({ left: '71.875%' });
 
     fireEvent.blur(meter);
     expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
 
     fireEvent.click(meter, { clientX: 40 });
-    expect(screen.getByRole('tooltip')).toHaveTextContent(/^71\.9%$/);
+    expect(screen.getByRole('tooltip')).toHaveTextContent(/^현재 계획 230만 원 · 수입의 71\.9%$/);
     expect(screen.getByRole('tooltip')).toHaveStyle({ left: '15%' });
     fireEvent.pointerEnter(meter, { clientX: 80 });
     fireEvent.focus(meter);
@@ -99,8 +99,8 @@ describe('FlowContextSummary', () => {
 
   it('closes on the second pointer tap when the meter retains focus', () => {
     render(<FlowContextSummary data={cashflowFixture} />);
-    const meter = screen.getByRole('meter');
-    setMeterRect(meter);
+    const meter = screen.getByRole('progressbar');
+    setProgressbarRect(meter);
 
     fireEvent.pointerDown(meter, { clientX: 40 });
     fireEvent.focus(meter);
@@ -116,8 +116,8 @@ describe('FlowContextSummary', () => {
     const addEventListener = vi.spyOn(document, 'addEventListener');
     const removeEventListener = vi.spyOn(document, 'removeEventListener');
     render(<><FlowContextSummary data={cashflowFixture} /><button type="button">outside</button></>);
-    const meter = screen.getByRole('meter');
-    setMeterRect(meter);
+    const meter = screen.getByRole('progressbar');
+    setProgressbarRect(meter);
 
     fireEvent.click(meter, { clientX: 40 });
     expect(screen.getByRole('tooltip')).toBeInTheDocument();
@@ -130,9 +130,9 @@ describe('FlowContextSummary', () => {
 
   it('closes a tap tooltip when focus moves outside its wrapper', () => {
     render(<><FlowContextSummary data={cashflowFixture} /><button type="button">outside</button></>);
-    const meter = screen.getByRole('meter');
+    const meter = screen.getByRole('progressbar');
     const outside = screen.getByRole('button', { name: 'outside' });
-    setMeterRect(meter);
+    setProgressbarRect(meter);
 
     fireEvent.pointerDown(meter, { clientX: 40 });
     fireEvent.focus(meter);
@@ -146,8 +146,8 @@ describe('FlowContextSummary', () => {
 
   it('keeps a tapped tooltip open when the tooltip itself is clicked', () => {
     render(<FlowContextSummary data={cashflowFixture} />);
-    const meter = screen.getByRole('meter');
-    setMeterRect(meter);
+    const meter = screen.getByRole('progressbar');
+    setProgressbarRect(meter);
 
     fireEvent.click(meter, { clientX: 40 });
     fireEvent.click(screen.getByRole('tooltip'));
@@ -158,8 +158,8 @@ describe('FlowContextSummary', () => {
     const addEventListener = vi.spyOn(document, 'addEventListener');
     const removeEventListener = vi.spyOn(document, 'removeEventListener');
     const { unmount } = render(<FlowContextSummary data={cashflowFixture} />);
-    const meter = screen.getByRole('meter');
-    setMeterRect(meter);
+    const meter = screen.getByRole('progressbar');
+    setProgressbarRect(meter);
 
     fireEvent.click(meter, { clientX: 40 });
     const clickAwayListener = addEventListener.mock.calls.find(([type]) => type === 'click')?.[1];
@@ -167,14 +167,27 @@ describe('FlowContextSummary', () => {
     expect(removeEventListener).toHaveBeenCalledWith('click', clickAwayListener);
   });
 
-  it('keeps unavailable income and deficit details in meter ARIA attributes', () => {
+  it('keeps unavailable income and actual deficit details in progressbar ARIA attributes', () => {
     const { rerender } = render(<FlowContextSummary data={emptyFixture} />);
-    expect(screen.getByRole('meter')).toHaveAttribute('aria-valuetext', '수입을 먼저 입력해주세요.');
+    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuetext', '수입을 먼저 입력해주세요.');
     expect(screen.queryByText('수입을 먼저 입력해주세요.')).not.toBeInTheDocument();
 
     rerender(<FlowContextSummary data={deficitFixture} />);
-    const meter = screen.getByRole('meter');
-    expect(meter).toHaveAttribute('aria-valuetext', '125.0%');
+    const meter = screen.getByRole('progressbar');
+    expect(meter).toHaveAttribute('aria-valuetext', '현재 계획 400만 원 · 수입의 125.0%');
+    expect(meter).toHaveAttribute('aria-valuenow', '100');
     expect(meter.firstElementChild).toHaveStyle({ width: '100%' });
+    expect(screen.getByRole('status')).toHaveTextContent('수입보다 80만 원 초과');
+  });
+
+  it('shows contained pressure overflow hooks only for a deficit', () => {
+    const { rerender } = render(<FlowContextSummary data={cashflowFixture} />);
+    expect(screen.getByRole('progressbar').parentElement).toHaveAttribute('data-overflow', 'false');
+    expect(document.querySelector('.flow-overflow-pressure')).not.toBeInTheDocument();
+
+    rerender(<FlowContextSummary data={deficitFixture} />);
+    expect(screen.getByRole('progressbar').parentElement).toHaveAttribute('data-overflow', 'true');
+    expect(document.querySelector('.flow-overflow-pressure')).toBeInTheDocument();
+    expect(document.querySelectorAll('.flow-overflow-droplet')).toHaveLength(2);
   });
 });
