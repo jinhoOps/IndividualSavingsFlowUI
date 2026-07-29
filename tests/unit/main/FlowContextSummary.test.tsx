@@ -93,6 +93,21 @@ describe('FlowContextSummary', () => {
     expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
   });
 
+  it('closes on the second pointer tap when the meter retains focus', () => {
+    render(<FlowContextSummary data={cashflowFixture} />);
+    const meter = screen.getByRole('meter');
+    setMeterRect(meter);
+
+    fireEvent.pointerDown(meter, { clientX: 40 });
+    fireEvent.focus(meter);
+    fireEvent.click(meter, { clientX: 40 });
+    expect(screen.getByRole('tooltip')).toBeInTheDocument();
+
+    fireEvent.pointerDown(meter, { clientX: 40 });
+    fireEvent.click(meter, { clientX: 40 });
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+  });
+
   it('closes a tap tooltip when clicking outside the meter', () => {
     const addEventListener = vi.spyOn(document, 'addEventListener');
     const removeEventListener = vi.spyOn(document, 'removeEventListener');

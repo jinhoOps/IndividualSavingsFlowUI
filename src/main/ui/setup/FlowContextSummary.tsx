@@ -14,6 +14,7 @@ export function FlowContextSummary({ data }: FlowContextSummaryProps) {
   const [pointerPosition, setPointerPosition] = useState<number>();
   const [tapPosition, setTapPosition] = useState<number>();
   const flowBarWrapperRef = useRef<HTMLDivElement>(null);
+  const isPointerFocusRef = useRef(false);
   const tooltipId = useId();
   const cashflow = calculateCashflow(data);
   const plannedPercentage = percentageOfIncome(cashflow.plannedOutflowWon, cashflow.incomeWon);
@@ -47,6 +48,7 @@ export function FlowContextSummary({ data }: FlowContextSummaryProps) {
   };
 
   const toggleTappedTooltip = (event: PointerEvent<HTMLDivElement>) => {
+    isPointerFocusRef.current = false;
     setTapPosition(pointerPercentage(event));
     setIsTapped((tapped) => !tapped);
   };
@@ -64,9 +66,20 @@ export function FlowContextSummary({ data }: FlowContextSummaryProps) {
           className="flow-bar"
           role="meter"
           tabIndex={0}
-          onBlur={() => setIsFocused(false)}
+          onBlur={() => {
+            isPointerFocusRef.current = false;
+            setIsFocused(false);
+          }}
           onClick={toggleTappedTooltip}
-          onFocus={() => setIsFocused(true)}
+          onFocus={() => {
+            if (!isPointerFocusRef.current) {
+              setIsFocused(true);
+            }
+          }}
+          onPointerDown={() => {
+            isPointerFocusRef.current = true;
+            setIsFocused(false);
+          }}
           onPointerEnter={(event) => {
             updatePointerPosition(event);
             setIsPointerActive(true);
