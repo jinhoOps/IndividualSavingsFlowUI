@@ -41,3 +41,6 @@ graphify-out/cache/
 .agent/*
 /test-results/
 /playwright-report/
+
+# retired local GSD runtime state
+/.gsd/

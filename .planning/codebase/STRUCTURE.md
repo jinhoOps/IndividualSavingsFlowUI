@@ -46,7 +46,7 @@ IndividualSavingsFlowUI/
 ├── scripts/                   # Version bump/sync scripts
 ├── dist/                      # Build output
 ├── test-results/              # Playwright run artifacts
-└── .planning/                 # GSD planning, codebase maps, milestone/phase docs
+└── .planning/                 # Planning, codebase maps, milestone/phase docs
 ```
 
 ## Directory Purposes
@@ -127,7 +127,7 @@ IndividualSavingsFlowUI/
 - Key files: `scripts/bump-version.js`, `scripts/sync-version.js`
 
 **`.planning/`:**
-- Purpose: GSD planning system artifacts and codebase maps.
+- Purpose: Project planning artifacts and codebase maps.
 - Contains: Project state, roadmap, requirements, phase/milestone docs, diagrams, codebase map outputs.
 - Key files: `.planning/STATE.md`, `.planning/ROADMAP.md`, `.planning/REQUIREMENTS.md`, `.planning/codebase/ARCHITECTURE.md`, `.planning/codebase/STRUCTURE.md`
 
@@ -300,7 +300,7 @@ IndividualSavingsFlowUI/
 - Committed: Project-dependent; treat as tool-managed.
 
 **`.planning/`:**
-- Purpose: GSD project state, roadmap, requirements, phase artifacts, and codebase maps.
+- Purpose: Project state, roadmap, requirements, phase artifacts, and codebase maps.
 - Generated: Partially
 - Committed: Yes for planning artifacts intended to guide future work.
 
