@@ -132,12 +132,29 @@
   .allocation-table__overflow-row td,
   .allocation-bar__deficit { @apply text-red-700; }
 
+  .flow-overflow-bridge,
+  .flow-overflow-extension {
+    @apply pointer-events-none absolute top-1/2 z-2 block -translate-y-1/2;
+    height: 0.375rem;
+  }
+
+  .flow-overflow-bridge {
+    left: 96%;
+    width: calc(4% + 1px);
+    border-radius: 999px 0 0 999px;
+    background: linear-gradient(
+      90deg,
+      rgb(15 118 110 / 0%),
+      rgb(225 29 72 / 76%) 72%,
+      rgb(225 29 72 / 92%)
+    );
+  }
+
   .flow-overflow-extension {
     --overflow-length: 0%;
     --overflow-duration: 1400ms;
-    @apply pointer-events-none absolute left-full top-1/2 z-2 block -translate-y-1/2;
+    @apply left-full;
     width: var(--overflow-length);
-    height: 0.375rem;
     border-radius: 0 999px 999px 0;
     transform-origin: left center;
     background: linear-gradient(90deg, rgb(225 29 72 / 92%), rgb(251 146 60 / 88%));

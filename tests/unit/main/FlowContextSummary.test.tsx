@@ -188,10 +188,12 @@ describe('FlowContextSummary', () => {
   it('renders compressed liquid overflow and adds droplets only from 30%', () => {
     const { rerender } = render(<FlowContextSummary data={cashflowFixture} />);
     expect(screen.getByRole('progressbar').parentElement).toHaveAttribute('data-overflow', 'false');
+    expect(document.querySelector('.flow-overflow-bridge')).not.toBeInTheDocument();
     expect(document.querySelector('.flow-overflow-extension')).not.toBeInTheDocument();
 
     rerender(<FlowContextSummary data={deficitFixture} />);
     expect(screen.getByRole('progressbar').parentElement).toHaveAttribute('data-overflow-intensity', 'active');
+    expect(document.querySelector('.flow-overflow-bridge')).toBeInTheDocument();
     expect(document.querySelector('.flow-overflow-extension')).toHaveStyle({
       '--overflow-length': '5%',
     });
