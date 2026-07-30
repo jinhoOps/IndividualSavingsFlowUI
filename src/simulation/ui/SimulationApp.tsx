@@ -47,6 +47,7 @@ export function SimulationApp({
   const [saveFailed, setSaveFailed] = useState(
     initial.kind === 'ready' && !initial.persistenceAvailable,
   );
+  const [restartFailed, setRestartFailed] = useState(false);
 
   if (runtime.kind === 'main-required') {
     return (
@@ -79,7 +80,11 @@ export function SimulationApp({
   }
 
   function restart(): void {
-    repository.clear();
+    if (repository.clear().status === 'unavailable') {
+      setRestartFailed(true);
+      return;
+    }
+    setRestartFailed(false);
     setRuntime(bootstrapSimulation(mainRepository.load(), { status: 'empty' }));
     setDraft(null);
   }
@@ -96,6 +101,7 @@ export function SimulationApp({
               <p role="status">Main의 저축·투자 금액이 변경되었습니다.</p>
             ) : null}
             {saveFailed ? <p role="status">자동 저장을 사용할 수 없습니다.</p> : null}
+            {restartFailed ? <p role="alert">처음부터 다시 시작할 수 없습니다.</p> : null}
             <p className="simulation-assumption">
               기대수익률을 계속 재투자한다고 가정한 계산이며, 백테스트나 금융 자문이 아닙니다.
             </p>

@@ -87,4 +87,18 @@ describe('SimulationApp', () => {
     fireEvent.click(screen.getByRole('button', { name: '없어요' }));
     expect(screen.getByText('90만 원')).toBeVisible();
   });
+
+  it('keeps the active simulation when clearing its draft is unavailable', () => {
+    const repository = emptyRepository();
+    repository.clear = () => ({ status: 'unavailable' });
+    render(<SimulationApp
+      mainSourceRepository={mainRepository(source)}
+      repository={repository}
+    />);
+    fireEvent.click(screen.getByRole('button', { name: '없어요' }));
+    fireEvent.click(screen.getByRole('button', { name: '처음부터 다시' }));
+
+    expect(screen.getByRole('heading', { name: '20년 뒤 예상금액' })).toBeVisible();
+    expect(screen.getByText('처음부터 다시 시작할 수 없습니다.')).toBeVisible();
+  });
 });
