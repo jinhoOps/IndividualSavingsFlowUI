@@ -14,6 +14,7 @@ import {
   type SimulationRepository,
 } from '../infrastructure/simulationRepository';
 import { AdvancedSettings } from './AdvancedSettings';
+import { GrowthChart } from './GrowthChart';
 import { SimulationControls } from './SimulationControls';
 import { SimulationSummary } from './SimulationSummary';
 import { StartingPrincipalPrompt } from './StartingPrincipalPrompt';
@@ -88,7 +89,15 @@ export function SimulationApp({
               <p role="status">Main의 저축·투자 금액이 변경되었습니다.</p>
             ) : null}
             {saveFailed ? <p role="status">자동 저장을 사용할 수 없습니다.</p> : null}
-            <SimulationSummary draft={draft} result={projectCompoundGrowth(draft)} />
+            {(() => {
+              const result = projectCompoundGrowth(draft);
+              return (
+                <>
+                  <SimulationSummary draft={draft} result={result} />
+                  <GrowthChart result={result} amountMode={draft.amountMode} />
+                </>
+              );
+            })()}
             <SimulationControls draft={draft} onChange={(next) => saveDraft({
               ...next,
               updatedAt: now(),
