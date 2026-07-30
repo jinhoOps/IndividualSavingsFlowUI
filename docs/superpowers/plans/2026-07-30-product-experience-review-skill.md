@@ -30,7 +30,7 @@
 - Consumes: Product PRD, STATE, ROADMAP, REQUIREMENTS, DESIGN, README, Git evidence, relevant code/tests, and browser evidence.
 - Produces: concise conversational cross-functional feedback, an optional durable report, or a bounded approved-minor-edit handoff.
 
-- [ ] **Step 1: Record baseline validation scenarios**
+- [x] **Step 1: Record baseline validation scenarios**
 
 Use these scenarios to establish the required behavior before authoring:
 
@@ -47,7 +47,7 @@ Use these scenarios to establish the required behavior before authoring:
 
 Expected baseline without the skill: the repository has no single discoverable instruction that guarantees all four behaviors.
 
-- [ ] **Step 2: Initialize the repository-local skill**
+- [x] **Step 2: Initialize the repository-local skill**
 
 Run the skill-creator initializer with:
 
@@ -55,13 +55,13 @@ Run the skill-creator initializer with:
 python3 /Users/jinho/.codex/skills/.system/skill-creator/scripts/init_skill.py review-product-experience \
   --path .agents/skills \
   --interface display_name='Review Product Experience' \
-  --interface short_description='Review product progress across planning, design, frontend, and UX' \
+  --interface short_description='Review planning, design, frontend, and UX progress' \
   --interface default_prompt='Review the current project across planning, design, frontend implementation, and actual UX. Lead with evidence and actionable gaps.'
 ```
 
 Remove generated optional metadata so the repository keeps only the requested `SKILL.md`.
 
-- [ ] **Step 3: Write the skill**
+- [x] **Step 3: Write the skill**
 
 The YAML frontmatter must be:
 
@@ -84,7 +84,7 @@ The body must define:
 - allowed minor edits and mandatory separate-task boundaries;
 - exact handoff and verification expectations.
 
-- [ ] **Step 4: Link the skill from AGENTS**
+- [x] **Step 4: Link the skill from AGENTS**
 
 Add a short `Product Experience Review` entry under role routing or canonical guidance:
 
@@ -92,12 +92,12 @@ Add a short `Product Experience Review` entry under role routing or canonical gu
 For cross-functional progress, product, design, frontend, and UX assessment, use [Review Product Experience](.agents/skills/review-product-experience/SKILL.md).
 ```
 
-- [ ] **Step 5: Validate structure and scenario coverage**
+- [x] **Step 5: Validate structure and scenario coverage**
 
 Run:
 
 ```bash
-python3 /Users/jinho/.codex/skills/.system/skill-creator/scripts/quick_validate.py .agents/skills/review-product-experience
+uv run --with pyyaml python /Users/jinho/.codex/skills/.system/skill-creator/scripts/quick_validate.py .agents/skills/review-product-experience
 test "$(find .agents/skills/review-product-experience -type f | wc -l | tr -d ' ')" = "1"
 rg -n 'Product PRD|STATE|ROADMAP|REQUIREMENTS|DESIGN|browser|390px|768px|conversational|docs/reviews|explicit approval|minor|separate task' .agents/skills/review-product-experience/SKILL.md
 git diff --check
@@ -105,10 +105,11 @@ git diff --check
 
 Expected: validation succeeds, only `SKILL.md` exists in the skill folder, and every scenario keyword is present.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
-git add .agents/skills/review-product-experience/SKILL.md AGENTS.md docs/superpowers/plans/2026-07-30-product-experience-review-skill.md
+git add -f .agents/skills/review-product-experience/SKILL.md
+git add AGENTS.md docs/superpowers/plans/2026-07-30-product-experience-review-skill.md
 git diff --cached --check
 git commit -m "docs: add product experience review skill"
 ```

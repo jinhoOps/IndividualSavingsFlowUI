@@ -49,6 +49,8 @@
 
 한 작업자가 여러 역할을 맡으면 목록을 합치고 중복 문서는 한 번만 읽는다. 과거 milestone은 특정 계약의 역사 확인이 필요할 때만 연다.
 
+기획·디자인·프론트엔드·실제 UX를 함께 보는 진행상황 검토에는 [Review Product Experience](.agents/skills/review-product-experience/SKILL.md)를 사용한다.
+
 ## CodeGraph
 
 저장소에는 이미 `.codegraph/`가 있다. 이를 재사용하며 일반 작업자는 CodeGraph `init`, 재초기화, rebuild 또는 삭제를 실행하지 않는다. 일반적인 탐색은 `rg`, `rg --files`, 역할별 문서를 우선 사용하고 CodeGraph 초기화를 완료 조건으로 삼지 않는다.
