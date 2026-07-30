@@ -1,0 +1,92 @@
+.simulation-shell {
+  min-height: 100dvh;
+  padding: 1rem;
+}
+
+.simulation-content,
+.simulation-recovery,
+.simulation-prompt {
+  width: min(100%, 68rem);
+  margin: 1rem auto;
+}
+
+.simulation-content {
+  display: grid;
+  gap: 1rem;
+}
+
+.simulation-summary,
+.simulation-controls,
+.simulation-advanced,
+.simulation-prompt,
+.simulation-recovery {
+  min-width: 0;
+  padding: clamp(1rem, 3vw, 2rem);
+  border: 1px solid var(--line);
+  border-radius: 1.5rem;
+  background: rgb(255 255 255 / 88%);
+}
+
+.simulation-summary__amount {
+  display: block;
+  overflow-wrap: anywhere;
+  font-size: clamp(2rem, 8vw, 4rem);
+}
+
+.simulation-source,
+.simulation-summary dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .75rem;
+  padding: 0;
+}
+
+.simulation-source div,
+.simulation-summary dl div {
+  min-width: 0;
+}
+
+.simulation-source dt,
+.simulation-summary dt {
+  color: var(--muted);
+  font-size: .85rem;
+}
+
+.simulation-source dd,
+.simulation-summary dd {
+  margin: .25rem 0 0;
+  font-weight: 700;
+}
+
+.simulation-controls {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.simulation-stepper,
+.simulation-preset-row,
+.simulation-prompt__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+}
+
+.simulation-stepper button,
+.simulation-preset-row button,
+.simulation-advanced button {
+  min-width: 44px;
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: .75rem;
+  background: white;
+}
+
+.simulation-stepper input {
+  width: 7rem;
+}
+
+@media (max-width: 480px) {
+  .simulation-source {
+    grid-template-columns: 1fr;
+  }
+}
