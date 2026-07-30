@@ -208,7 +208,9 @@ export function AllocationBar({ data, transitioning = false }: AllocationBarProp
           <div
             className="setup-review-transition"
             aria-hidden="true"
-            onAnimationEnd={() => setTransitionVisible(false)}
+            onAnimationEnd={(event) => {
+              if (event.target === event.currentTarget) setTransitionVisible(false);
+            }}
           >
             <div className="setup-review-transition__track">
               {visualSegments.map((segment) => (
