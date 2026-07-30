@@ -3482,26 +3482,45 @@ test.describe('Main liquid overflow presentation', () => {
       expect(geometry.documentOverflow).toBeLessThanOrEqual(4);
       expect(geometry.insideViewport).toBe(true);
       expect(geometry.sameHeight).toBe(true);
+
+      await page.getByRole('button', { name: '처음부터 다시 설정' }).click();
+      await page.getByRole('button', { name: '다음' }).click();
+      await page.getByRole('button', { name: '다음' }).click();
+
+      const summary = page.locator('.flow-context-summary');
+      await expect(summary).toHaveAttribute('data-overflow', 'true');
+      const summaryGeometry = await summary.evaluate((element) => {
+        const extension = element.querySelector('.flow-overflow-extension')!.getBoundingClientRect();
+        return {
+          marginInlineEnd: Number.parseFloat(getComputedStyle(element).marginInlineEnd),
+          documentOverflow:
+            document.documentElement.scrollWidth - document.documentElement.clientWidth,
+          extensionInsideViewport: extension.right <= document.documentElement.clientWidth,
+        };
+      });
+      expect(summaryGeometry.marginInlineEnd).toBeGreaterThan(0);
+      expect(summaryGeometry.documentOverflow).toBeLessThanOrEqual(4);
+      expect(summaryGeometry.extensionInsideViewport).toBe(true);
     }
   });
 
   test('keeps both original bars symmetric without an overflow gutter at 100%', async ({ page }) => {
     const readGeometry = (selector: string) => page.locator(selector).evaluate((bar, currentSelector) => {
-        const barRect = bar.getBoundingClientRect();
-        const form = bar.closest('form');
-        const parent = currentSelector === '.flow-context-summary' ? form! : bar.parentElement!;
-        const parentRect = parent.getBoundingClientRect();
-        const parentStyle = getComputedStyle(parent);
-        const contentLeft = parentRect.left + Number.parseFloat(parentStyle.paddingLeft);
-        const contentRight = parentRect.right - Number.parseFloat(parentStyle.paddingRight);
-        return {
-          leftGap: barRect.left - contentLeft,
-          rightGap: contentRight - barRect.right,
-          marginInlineEnd: Number.parseFloat(getComputedStyle(bar).marginInlineEnd),
-          hasBridge: bar.querySelector('.flow-overflow-bridge') !== null,
-          hasExtension: bar.querySelector('.flow-overflow-extension') !== null,
-        };
-      }, selector);
+      const barRect = bar.getBoundingClientRect();
+      const form = bar.closest('form');
+      const parent = currentSelector === '.flow-context-summary' ? form! : bar.parentElement!;
+      const parentRect = parent.getBoundingClientRect();
+      const parentStyle = getComputedStyle(parent);
+      const contentLeft = parentRect.left + Number.parseFloat(parentStyle.paddingLeft);
+      const contentRight = parentRect.right - Number.parseFloat(parentStyle.paddingRight);
+      return {
+        leftGap: barRect.left - contentLeft,
+        rightGap: contentRight - barRect.right,
+        marginInlineEnd: Number.parseFloat(getComputedStyle(bar).marginInlineEnd),
+        hasBridge: bar.querySelector('.flow-overflow-bridge') !== null,
+        hasExtension: bar.querySelector('.flow-overflow-extension') !== null,
+      };
+    }, selector);
 
     for (const selector of ['.allocation-bar__segments']) {
       const geometry = await readGeometry(selector);
