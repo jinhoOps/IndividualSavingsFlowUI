@@ -180,7 +180,7 @@ test.describe('mobile quick setup', () => {
     expect(layout.borderAlpha).toBeGreaterThan(0);
     expect(layout.borderAlpha).toBeLessThanOrEqual(0.2);
     expect(layout.tableMatchesCard).toBe(true);
-    expect(layout.barRightMargin).toBeGreaterThan(0);
+    expect(layout.barRightMargin).toBe(0);
 
     for (const name of [
       '남는 돈 · 319.9만 원 · 100.0%',
