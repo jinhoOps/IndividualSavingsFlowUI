@@ -335,3 +335,40 @@ MDD는 단일 고정 기대수익률 곡선을 과거 백테스트로 바꾸지 
 - 모바일, 태블릿과 desktop에서 동일한 계산과 그래프 상세를 사용할 수 있다.
 - 신규 구현이 레거시 Simulation module을 runtime import하지 않는다.
 - 레거시 Simulation의 이관·폐기·참조 제거와 회귀 증거가 확보된 뒤 임시 구현을 삭제할 수 있다.
+
+## 구현·제거 증거
+
+2026-07-30 구현에서 다음 경계를 적용했다.
+
+- 지원 route: `apps/simulation/index.html` → `src/simulation/main.tsx`
+- 현재 Main read adapter: `src/simulation/infrastructure/mainSourceRepository.ts`
+- 단일 draft key: `isf-simulation-compound-v1`
+- 순수 계산: `src/simulation/domain/projection.ts`
+- 반응형 SVG: `src/simulation/ui/GrowthChart.tsx`
+- 외부 동작 회귀: `tests/simulation.spec.ts`, `tests/app-journey.spec.ts`
+
+제거:
+
+- `apps/simulation/app.js`
+- `apps/simulation/styles.css`
+- `apps/simulation/modules/**`
+- `src/entries/step2.ts`
+- `src/journey/simulation.tsx`
+- `tests/step2.spec.ts`
+- Simulation 전용 `public/data/indices/**`
+- `shared/legacy/sw.js`의 이전 Simulation precache 항목
+
+보존:
+
+- `src/core/storage/CompatibilityBridge.ts`와 `shared/storage/hub-storage.js`의 Step 2 CRUD alias는 Portfolio 호환 API가 같은 저장 method를 소비하므로 이번 제거 범위에 포함하지 않았다.
+- 구버전 Simulation과 Main storage key는 신규 Simulation이 읽거나 쓰지 않으며 손상 방지 회귀를 유지한다.
+
+검증 명령:
+
+```bash
+rg -n "apps/simulation/(app|modules|styles)|src/entries/step2" apps src shared public scripts tests
+npm run check
+npx vitest run tests/unit/simulation tests/unit/journey
+npx playwright test tests/simulation.spec.ts tests/app-journey.spec.ts --reporter=list
+npx vite build
+```

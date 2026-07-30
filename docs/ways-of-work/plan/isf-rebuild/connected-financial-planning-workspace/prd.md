@@ -9,7 +9,7 @@
 ## 2. Epic
 
 - **Epic:** ISF 제품 기준선 확립 및 안전한 레거시 기능 마이그레이션
-- **제품 상태:** Main은 현재 제품 기준선, Simulation·Portfolio·Account Map은 준비 화면만 제공하는 향후 신규 앱, 기존 동명 구현은 레거시 마이그레이션 참고 자원
+- **제품 상태:** Main과 Simulation은 현재 제품 기준선, Portfolio·Account Map은 준비 화면만 제공하는 향후 신규 앱
 - **제품 설계:** [ISF 제품 방향 및 문서 체계 정리 설계](../../../../superpowers/specs/2026-07-29-product-direction-and-documentation-design.md)
 - **활성 Roadmap:** [ISF Roadmap](../../../../../.planning/ROADMAP.md)
 - **제품 편집 경계:** [Financial Detail Modal Is the Only Primary Editor](../../../../../docs/adr/0001-financial-detail-modal-is-the-only-primary-editor.md)
@@ -19,17 +19,17 @@
 
 ### Problem Statement
 
-ISF의 Main 개편은 완료되었으며 사용자는 현재 제품에서 월간 가계 흐름을 요약하고 상세 재무 항목을 수정할 수 있다. Simulation, Portfolio와 Account Map은 모두 후속 명세에서 새로 개발할 앱이며 현재 제품 경로에는 준비 화면만 있다. 이후의 핵심 과제는 Main을 다시 만드는 것이 아니라, 최소 앱 여정 계약을 유지하면서 각 신규 앱을 명세하고 레거시에 남은 유효 기능과 데이터 계약을 안전하게 판정·이관하는 것이다.
+ISF의 Main 개편과 신규 Simulation은 완료되었다. 사용자는 월간 가계 흐름을 관리하고 같은 월 저축·투자의 장기 복리 성장을 전부 저축 기준선과 비교할 수 있다. Portfolio와 Account Map은 후속 명세에서 새로 개발할 앱이며 현재 제품 경로에는 준비 화면만 있다.
 
 레거시 코드에는 아직 이관하지 않은 기능 또는 구버전 저장 데이터의 의미를 확인하는 데 필요한 지식이 남아 있다. 이를 너무 일찍 삭제하면 기능과 호환성이 손실될 수 있지만, 일반 사용자 경로나 신규 기능 기반으로 계속 사용하면 현재 제품과 과거 구조가 다시 뒤섞인다. 프로젝트 문서 또한 현재 제품, 과거 요구사항, 에이전트 지침과 단편 메모가 혼재해 제품 기준을 찾기 어렵다.
 
 ### Solution
 
-ISF를 현재 제품인 Main과 세 개의 향후 신규 목적지, 공통 로컬 우선 인프라로 정의한다.
+ISF를 현재 제품인 Main·Simulation, 두 향후 신규 목적지와 공통 로컬 우선 인프라로 정의한다.
 
 1. **Main**은 완료된 현재 제품 기준선으로서 월간 현금흐름을 요약하고 Financial Detail Modal에서 편집한다.
-2. **Simulation**은 향후 새로 개발할 앱이다. 현재는 Main의 최소 요약 연결과 갱신 시각을 보여주는 준비 화면만 제공한다.
-3. **Portfolio**는 향후 새로 개발할 앱이다. 현재는 Simulation 준비 화면에서 전달된 최소 요약을 확인하는 준비 화면만 제공한다.
+2. **Simulation**은 Main의 월 저축·투자를 읽어 현재 계획과 전부 저축의 장기 복리 성장을 비교한다.
+3. **Portfolio**는 향후 새로 개발할 앱이다. 현재는 준비 화면만 제공한다.
 4. **Account Map**은 향후 새로 개발할 앱이다. 현재는 상세 데이터나 초안을 읽고 저장하지 않는 준비 화면만 제공한다.
 5. **레거시 코드**는 기능 및 데이터 계약 마이그레이션에만 사용하는 임시자산으로 관리하고, 이관 또는 폐기 결정과 검증이 끝난 뒤 제거한다.
 6. **문서 체계**는 제품 PRD를 기준 문서로 삼고 루트에는 README, DESIGN과 역할별 기준 문서를 안내하는 AGENTS를 유지한다.
@@ -163,21 +163,21 @@ ISF를 현재 제품인 Main과 세 개의 향후 신규 목적지, 공통 로�
 
 #### Current Journey Entry
 
-- 공통 런처는 Main을 `사용 중`, Simulation·Portfolio·Account Map을 `준비 중`으로 고정 표시해야 한다.
+- 공통 런처는 Main·Simulation을 `사용 중`, Portfolio·Account Map을 `준비 중`으로 표시해야 한다.
 - 현재 위치는 제품 가용 상태와 분리해 보이는 텍스트와 `aria-current`로 표시해야 한다.
 - Main은 사용자가 명시적으로 이동할 때 최소 `JourneySnapshot`만 저장해야 한다.
-- Simulation과 Portfolio 준비 화면은 연결 상태, 월 투자 가능액과 Main 갱신 시각을 표시해야 한다.
+- Simulation은 현재 Main의 월 저축액·투자액을 직접 읽어야 한다.
 - 준비 화면은 `Main에서 최신 정보 가져오기` 행동과 손상·부재·저장 접근 실패 시 Main 복구 경로를 제공해야 한다.
 - 준비 화면은 상세 계산, 편집, 독립 제품 저장 또는 Main write-back을 수행하지 않아야 한다.
 - Account Map 준비 화면은 Main 또는 journey 데이터를 읽거나 수정하지 않아야 한다.
 
-#### Future Simulation
+#### Current Simulation
 
-- Main의 최신 투자 여력을 명시적 import로 가져올 수 있어야 한다.
+- Main의 최신 월 저축·투자를 읽을 수 있어야 한다.
 - Simulation의 수정값과 저장 상태는 Main을 자동 변경하지 않아야 한다.
-- 전략 비교는 동일한 기간과 납입 가정에서 총자산과 월 현금흐름을 제공해야 한다.
-- 전략별 가정, 한계와 금융 면책을 표시해야 한다.
-- 시뮬레이션 생성, 조회와 삭제를 지원해야 한다.
+- 현재 저축·투자 계획과 전부 저축 기준선을 동일한 기간·납입 조건으로 비교해야 한다.
+- 기대수익률은 사용자 가정이며 백테스트가 아님을 명확히 해야 한다.
+- 현재 Simulation 하나를 자동 유지하고 최신 Main 기준 재시작을 지원해야 한다.
 
 #### Future Portfolio
 
@@ -261,10 +261,9 @@ ISF를 현재 제품인 Main과 세 개의 향후 신규 목적지, 공통 로�
 
 ### AC-2 Connected Apps
 
-- [ ] 런처가 Main은 `사용 중`, 세 향후 앱은 `준비 중`으로 표시하고 현재 위치를 별도로 알린다.
-- [ ] Main의 명시적 CTA가 최소 스냅샷을 저장한 뒤 Simulation 준비 화면으로 이동한다.
-- [ ] Simulation과 Portfolio 준비 화면이 연결 상태, 월 투자 가능액과 Main 갱신 시각을 표시한다.
-- [ ] Simulation → Portfolio → Simulation 이동에서도 각 목적지의 유효한 연결이 유지된다.
+- [ ] 런처가 Main·Simulation은 `사용 중`, 두 향후 앱은 `준비 중`으로 표시하고 현재 위치를 별도로 알린다.
+- [ ] Main의 명시적 CTA가 상세 Simulation으로 이동한다.
+- [ ] Simulation이 현재 Main의 월 저축·투자를 읽고 Main을 변경하지 않는다.
 - [ ] 저장 값이 없거나 손상되었거나 브라우저 저장소 읽기가 차단되어도 Main 복구 행동을 제공한다.
 - [ ] 준비 화면은 상세 계산·편집·독립 제품 저장·Main write-back을 제공하지 않는다.
 - [ ] Account Map은 별도 준비 목적지로 열리며 journey 또는 Main 데이터를 읽지 않는다.
@@ -313,9 +312,9 @@ ISF를 현재 제품인 Main과 세 개의 향후 신규 목적지, 공통 로�
 ### Product Boundaries
 
 - Main은 월간 재무 상태와 편집 데이터의 기준 소유자다.
-- 현재 Simulation과 Portfolio 준비 화면은 최소 `JourneySnapshot`을 읽을 뿐 상세 편집·저장 상태를 소유하지 않는다.
+- Simulation은 자체 단일 draft를 소유하며 Main을 read-only로 소비한다. Portfolio 준비 화면은 상세 편집 상태를 소유하지 않는다.
 - 현재 Account Map 준비 화면은 Main 또는 journey 데이터를 읽거나 별도 초안을 저장하지 않는다.
-- 향후 Simulation, Portfolio와 Account Map의 상세 상태 소유권은 각 승인된 신규 앱 명세에서 정의한다.
+- 향후 Portfolio와 Account Map의 상세 상태 소유권은 각 승인된 신규 앱 명세에서 정의한다.
 - 현재 앱 간 데이터 전달은 명시적 CTA와 최소 `JourneySnapshot` 계약을 사용한다.
 
 ### Primary Editing Boundary
@@ -360,7 +359,7 @@ ISF를 현재 제품인 Main과 세 개의 향후 신규 목적지, 공통 로�
 - Main summary-first 흐름
 - Financial Detail의 추가·수정·삭제·검증·적용·취소·이탈 경고
 - 월간 계산, Sankey 합계와 projection
-- Main → Simulation → Portfolio 준비 화면의 최소 스냅샷 연결과 갱신 시각
+- Main → Simulation 직접 진입과 read-only 데이터 연결
 - 고정 가용 상태, 현재 위치, Main 복구, 목적지별 연결 보존
 - 390px, 768px와 desktop의 런처·CTA·overflow·키보드 동작
 - 저장, import/export, 백업과 오프라인 폴백
@@ -408,14 +407,14 @@ Prior Art는 향후 명세의 기능·데이터 계약 조사 자료이며 현�
 
 - Main summary-first 화면과 Financial Detail Modal 편집
 - Main의 월간 snapshot, Sankey와 장기 projection
-- 네 목적지 공통 런처와 Main → Simulation → Portfolio 준비 여정
+- 네 목적지 공통 런처와 Main → Simulation 직접 진입
 - 최소 `JourneySnapshot`, 목적지별 새로고침 복구와 Main 최신 정보 경로
-- Simulation, Portfolio와 Account Map의 신규 앱 준비 화면
+- 현재 Simulation과 Portfolio·Account Map 준비 화면
 - Main 데이터 허브, 백업·복원·공유와 공통 PWA·스타일 기반
 
 ### Migration Transition
 
-- 기존 Simulation, Portfolio와 Account Map 상세 구현을 정상 제품 경로와 신규 runtime에서 격리
+- 기존 Simulation 상세 구현 제거와 Portfolio·Account Map 상세 구현 격리
 - 레거시 기능과 데이터 계약 목록화
 - 현재 제품 필요 여부 판정
 - 필요한 기능의 현재 모듈 이전
@@ -426,18 +425,17 @@ Prior Art는 향후 명세의 기능·데이터 계약 조사 자료이며 현�
 
 ### Future Product Expansion
 
-1. 승인된 상세 명세와 레거시 마이그레이션 계획에 따른 신규 Simulation
-2. 승인된 상세 명세와 레거시 마이그레이션 계획에 따른 신규 Portfolio
-3. 승인된 상세 명세와 레거시 마이그레이션 계획에 따른 신규 Account Map
-4. 한국어 은행·카드 알림 텍스트 기반 지출 capture
-5. 두 사람의 Main 데이터를 이용한 가구 병합 미리보기
-6. 과거 snapshot 대비 현재 지출 비교
-7. 가구 소득·부채·DSR·LTV 기반 부동산 구매력 계획
+1. 승인된 상세 명세와 레거시 마이그레이션 계획에 따른 신규 Portfolio
+2. 승인된 상세 명세와 레거시 마이그레이션 계획에 따른 신규 Account Map
+3. 한국어 은행·카드 알림 텍스트 기반 지출 capture
+4. 두 사람의 Main 데이터를 이용한 가구 병합 미리보기
+5. 과거 snapshot 대비 현재 지출 비교
+6. 가구 소득·부채·DSR·LTV 기반 부동산 구매력 계획
 
 ## 12. Further Notes
 
 - Main은 현재 완료된 제품 기준선이다. 향후 PRD는 Main 재구축이 아니라 기준선 보존과 확장을 다룬다.
-- Simulation, Portfolio와 Account Map은 모두 향후 새로 개발할 앱이며 현재 동명 제품 경로는 준비 화면이다.
+- Simulation은 현재 상세 제품이다. Portfolio와 Account Map은 향후 신규 앱이며 현재 경로는 준비 화면이다.
 - 레거시 코드는 현재 제품 기능이 아니라 기능 마이그레이션을 위한 임시자산이다.
 - 레거시 파일이 존재한다는 사실은 신규 기능에서 이를 사용할 근거가 아니다.
 - 레거시 삭제는 필요한 기능과 데이터 계약의 이관 또는 명시적 폐기, 호환성 검증과 참조 제거가 모두 끝났을 때 수행한다.
