@@ -30,6 +30,8 @@ test('new user applies the v2 quick setup and refreshes into matching dashboard 
 
   await expect(page).toHaveURL(/\/IndividualSavingsFlowUI\/apps\/main\/$/);
   await expect(page.getByRole('heading', { name: '한 달 돈의 흐름, 2분이면 확인할 수 있어요.' })).toBeVisible();
+  await expect(page.getByRole('navigation', { name: 'ISF 앱' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Simulation으로 이어가기' })).toHaveCount(0);
   await page.getByRole('button', { name: '다음' }).click();
 
   await page.getByLabel('월 실수령액').fill('3200000');
@@ -50,6 +52,8 @@ test('new user applies the v2 quick setup and refreshes into matching dashboard 
   await expect(page.getByRole('progressbar', { name: '수입 대비 현재 계획' })).toHaveAttribute('aria-valuetext', '현재 계획 230만 원 · 수입의 71.9%');
   await page.getByRole('button', { name: '다음' }).click();
 
+  await expect(page.getByRole('progressbar', { name: '수입 대비 현재 계획' })).toHaveCount(0);
+  await expect(page.locator('.setup-review-transition')).toBeVisible();
   await expect(page.getByRole('button', { name: '소비 · 180만 원 · 56.3%' })).toBeVisible();
   await expect(page.getByRole('button', { name: /저축 (상세 정보|· 30만 원 · 9\.4%)/ })).toBeVisible();
   await expect(page.getByRole('button', { name: /투자 (상세 정보|· 20만 원 · 6\.3%)/ })).toBeVisible();
@@ -59,6 +63,9 @@ test('new user applies the v2 quick setup and refreshes into matching dashboard 
   await expect(reviewTable.getByRole('row', { name: /저축.*30만 원.*9\.4%/ })).toBeVisible();
   await expect(reviewTable.getByRole('row', { name: /투자.*20만 원.*6\.3%/ })).toBeVisible();
   await expect(reviewTable.getByRole('row', { name: /남는 돈.*90만 원.*28\.1%/ })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => (
+    document.documentElement.scrollWidth <= window.innerWidth
+  ))).toBe(true);
   await page.getByRole('button', { name: '계획 적용' }).click();
 
   await expect(page.getByRole('heading', { name: '이번 달 자금 흐름' })).toBeVisible();
@@ -92,6 +99,39 @@ test('new user applies the v2 quick setup and refreshes into matching dashboard 
   await expect(page.getByRole('button', { name: '월 실수령액 편집' })).toContainText('320만 원');
   await expect(page.getByRole('button', { name: '월 소비 편집' })).toContainText('180만 원');
   await expect(page.getByRole('button', { name: '남는 돈 편집' })).toContainText('90만 원');
+});
+
+test('review transition stays contained and respects reduced motion', async ({ page }) => {
+  await page.addInitScript((draft) => {
+    localStorage.clear();
+    localStorage.setItem('isf-main-v2-setup-progress', JSON.stringify({
+      kind: 'initial',
+      step: 'review',
+      draft,
+      savedAt: Date.now(),
+    }));
+  }, appliedMainV2);
+
+  for (const viewport of [
+    { width: 390, height: 844 },
+    { width: 768, height: 900 },
+    { width: 1280, height: 900 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await page.goto('apps/main/');
+    await expect(page.getByRole('navigation', { name: 'ISF 앱' })).toHaveCount(0);
+    await expect(page.getByRole('progressbar', { name: '수입 대비 현재 계획' })).toHaveCount(0);
+    await expect(page.locator('.setup-review-transition')).toBeVisible();
+    await expect(page.getByRole('table', { name: '월 자금 항목' })).toBeVisible();
+    await expect.poll(() => page.evaluate(() => (
+      document.documentElement.scrollWidth <= window.innerWidth
+    ))).toBe(true);
+  }
+
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.reload();
+  await expect(page.locator('.setup-review-transition')).toBeHidden();
+  await expect(page.getByRole('table', { name: '월 자금 항목' })).toBeVisible();
 });
 
 test.describe('mobile quick setup', () => {
