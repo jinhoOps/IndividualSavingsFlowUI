@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import type { MainData, SetupStep } from '../../domain/model';
 import type { ValidationCode } from '../../domain/validation';
 import { Button } from '../common/Button';
@@ -22,6 +22,7 @@ export interface SetupFlowProps {
   onStepChange(step: SetupStep): void;
   onApply(): void;
   onCancel?: () => void;
+  notice?: ReactNode;
 }
 
 const steps: SetupStep[] = ['welcome', 'income', 'housing', 'living', 'saving-investment', 'review'];
@@ -45,6 +46,7 @@ export function SetupFlow({
   onStepChange,
   onApply,
   onCancel,
+  notice,
 }: SetupFlowProps) {
   const [incomeSubmittedEmpty, setIncomeSubmittedEmpty] = useState(false);
   const stepIndex = steps.indexOf(step);
@@ -109,6 +111,7 @@ export function SetupFlow({
           </Button>
         ) : null}
       </div>
+      {notice ? <div className="mx-6 mt-4 sm:mx-10">{notice}</div> : null}
       <form
         className="grid min-h-[31rem] content-start gap-6 px-6 pb-6 pt-5 sm:px-10 sm:pb-10"
         aria-busy={saving ? 'true' : undefined}

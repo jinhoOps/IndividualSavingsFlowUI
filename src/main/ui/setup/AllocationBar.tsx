@@ -46,6 +46,7 @@ export function createAllocationVisualSegments(data: MainData): AllocationVisual
 }
 
 export function AllocationBar({ data, transitioning = false }: AllocationBarProps) {
+  const [transitionVisible, setTransitionVisible] = useState(transitioning);
   const [hoveredId, setHoveredId] = useState<string>();
   const [focusedId, setFocusedId] = useState<string>();
   const [tappedId, setTappedId] = useState<string>();
@@ -65,6 +66,9 @@ export function AllocationBar({ data, transitioning = false }: AllocationBarProp
   } as CSSProperties;
   const visualDenominator = isDeficit ? cashflow.plannedOutflowWon : cashflow.incomeWon;
   const visualSegments = createAllocationVisualSegments(data);
+  const plannedPercentage = clampPercentage(
+    percentageOfIncome(cashflow.plannedOutflowWon, cashflow.incomeWon) ?? 0,
+  );
   const allocation = (id: string, label: string, amountWon: number): Allocation => ({
     id,
     label,
@@ -91,6 +95,12 @@ export function AllocationBar({ data, transitioning = false }: AllocationBarProp
     : activeId === tappedId
       ? tapPosition ?? activePosition
       : activePosition;
+
+  useEffect(() => {
+    if (!transitionVisible) return undefined;
+    const timeout = window.setTimeout(() => setTransitionVisible(false), 700);
+    return () => window.clearTimeout(timeout);
+  }, [transitionVisible]);
 
   useLayoutEffect(() => {
     const bar = barRef.current;
@@ -194,8 +204,12 @@ export function AllocationBar({ data, transitioning = false }: AllocationBarProp
           }
         }}
       >
-        {transitioning ? (
-          <div className="setup-review-transition" aria-hidden="true">
+        {transitionVisible ? (
+          <div
+            className="setup-review-transition"
+            aria-hidden="true"
+            onAnimationEnd={() => setTransitionVisible(false)}
+          >
             <div className="setup-review-transition__track">
               {visualSegments.map((segment) => (
                 <span
@@ -204,7 +218,10 @@ export function AllocationBar({ data, transitioning = false }: AllocationBarProp
                   style={{ width: `${segment.visualPercentage}%` }}
                 />
               ))}
-              <span className="setup-review-transition__accent" />
+              <span
+                className="setup-review-transition__accent"
+                style={{ width: `${plannedPercentage}%` }}
+              />
             </div>
           </div>
         ) : null}

@@ -258,16 +258,15 @@ export function MainApp({
 
   if (state.mode === 'setup' && state.setupStep !== null) {
     const isRestartSetup = state.applied !== null;
-    return (
-      <MainAppShell journeyError={journeyError} showLauncher={false}>
-        <main className="mx-auto min-h-dvh w-full max-w-3xl px-5 py-8 sm:px-8 sm:py-12">
+    const setupNotice = (
+      <>
         {progressWarning === null ? null : (
-          <p className="mb-4 rounded-xl bg-amber-50 px-4 py-3 text-sm font-bold text-amber-900" role="status">
+          <p className="m-0 rounded-xl bg-amber-50 px-4 py-3 text-sm font-bold text-amber-900" role="status">
             {progressWarning}
           </p>
         )}
         {state.saveStatus === 'error' && issues.length === 0 ? (
-          <Surface className="mb-4 rounded-xl border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-800" role="alert">
+          <Surface className="mt-3 rounded-xl border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-800" role="alert">
             <p className="m-0">저장하지 못했습니다. 입력한 내용은 그대로 보존되어 있습니다.</p>
             <Button
               className="mt-3 rounded-full"
@@ -279,6 +278,11 @@ export function MainApp({
             </Button>
           </Surface>
         ) : null}
+      </>
+    );
+    return (
+      <MainAppShell journeyError={journeyError} showLauncher={false}>
+        <main className="mx-auto min-h-dvh w-full max-w-3xl px-5 py-8 sm:px-8 sm:py-12">
         <SetupFlow
           draft={state.draft}
           step={state.setupStep}
@@ -289,6 +293,7 @@ export function MainApp({
           onStepChange={changeSetupStep}
           onApply={apply}
           onCancel={isRestartSetup ? cancelDraft : undefined}
+          notice={setupNotice}
         />
         </main>
       </MainAppShell>

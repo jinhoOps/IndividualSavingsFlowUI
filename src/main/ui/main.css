@@ -83,7 +83,7 @@
   }
 
   .setup-review-transition__accent {
-    @apply absolute inset-0 rounded-full bg-accent;
+    @apply absolute inset-y-0 left-0 rounded-full bg-accent;
     animation: setup-review-accent 620ms cubic-bezier(.22, 1, .36, 1) both;
   }
 

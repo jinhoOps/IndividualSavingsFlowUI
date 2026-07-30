@@ -18,6 +18,7 @@ vi.mock('../../../src/main/ui/setup/SetupFlow', () => ({
     onStepChange,
     onApply,
     onCancel,
+    notice,
   }: {
     draft: MainData;
     step: SetupStep;
@@ -26,8 +27,10 @@ vi.mock('../../../src/main/ui/setup/SetupFlow', () => ({
     onStepChange(step: SetupStep): void;
     onApply(): void;
     onCancel?: () => void;
+    notice?: ReactNode;
   }) => (
     <section aria-label="setup-flow" className="setup-flow-surface">
+      {notice}
       <h1>{`setup:${step}`}</h1>
       <output>{draft.monthlyNetIncomeWon}</output>
       <button
@@ -546,5 +549,7 @@ describe('MainApp', () => {
 
     expect(screen.getByText('4000000')).toBeVisible();
     expect(screen.getByText('설정 진행 상황을 저장하지 못했습니다. 이 화면에서는 계속 입력할 수 있습니다.')).toBeVisible();
+    expect(screen.getByText('설정 진행 상황을 저장하지 못했습니다. 이 화면에서는 계속 입력할 수 있습니다.')
+      .closest('.setup-flow-surface')).not.toBeNull();
   });
 });

@@ -66,6 +66,10 @@ test('new user applies the v2 quick setup and refreshes into matching dashboard 
   await expect.poll(() => page.evaluate(() => (
     document.documentElement.scrollWidth <= window.innerWidth
   ))).toBe(true);
+  await expect(page.locator('.setup-review-transition')).toHaveCount(0);
+  await page.getByRole('button', { name: '이전' }).click();
+  await page.getByRole('button', { name: '다음' }).click();
+  await expect(page.locator('.setup-review-transition')).toBeVisible();
   await page.getByRole('button', { name: '계획 적용' }).click();
 
   await expect(page.getByRole('heading', { name: '이번 달 자금 흐름' })).toBeVisible();

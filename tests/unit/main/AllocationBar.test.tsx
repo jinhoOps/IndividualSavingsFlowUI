@@ -71,6 +71,13 @@ describe('AllocationBar', () => {
     ]);
   });
 
+  it('starts the review transition at the current planned-outflow width', () => {
+    const { container } = render(<AllocationBar data={cashflowFixture} transitioning />);
+    expect(container.querySelector('.setup-review-transition__accent')).toHaveStyle({
+      width: '71.875%',
+    });
+  });
+
   it('shows allocation labels, amounts, and income percentages in a table', () => {
     render(<AllocationBar data={cashflowFixture} />);
 
