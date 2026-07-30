@@ -5,6 +5,7 @@ describe('appPath', () => {
   it('keeps every destination under the configured base', () => {
     expect(appPath('main', '/IndividualSavingsFlowUI/')).toBe('/IndividualSavingsFlowUI/apps/main/');
     expect(appPath('simulation', '/IndividualSavingsFlowUI/')).toBe('/IndividualSavingsFlowUI/apps/simulation/');
+    expect(appPath('portfolio', '/')).toBe('/apps/portfolio/');
   });
 
   it('normalizes missing base boundary slashes', () => {
