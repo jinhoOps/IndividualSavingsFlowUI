@@ -3461,14 +3461,23 @@ test.describe('Main liquid overflow presentation', () => {
       const geometry = await extension.evaluate((liquid) => {
         const bar = liquid.parentElement!.getBoundingClientRect();
         const overflow = liquid.getBoundingClientRect();
+        const bridge = liquid.parentElement!.querySelector('.flow-overflow-bridge')!.getBoundingClientRect();
         return {
           ratio: overflow.width / bar.width,
+          bridgeStartRatio: (bridge.left - bar.left) / bar.width,
+          bridgeRatio: bridge.width / bar.width,
+          seamGap: overflow.left - bridge.right,
+          totalRatio: (overflow.right - bridge.left) / bar.width,
           documentOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
           insideViewport: overflow.right <= document.documentElement.clientWidth,
           sameHeight: Math.abs(overflow.height - 6) < 1,
         };
       });
       expect(geometry.ratio).toBeCloseTo(0.1, 2);
+      expect(geometry.bridgeStartRatio).toBeCloseTo(0.96, 2);
+      expect(geometry.bridgeRatio).toBeCloseTo(0.04, 2);
+      expect(geometry.seamGap).toBeLessThanOrEqual(0);
+      expect(geometry.totalRatio).toBeCloseTo(0.14, 2);
       expect(geometry.documentOverflow).toBeLessThanOrEqual(4);
       expect(geometry.insideViewport).toBe(true);
       expect(geometry.sameHeight).toBe(true);

@@ -197,15 +197,20 @@ export function AllocationBar({ data }: AllocationBarProps) {
             );
           })}
           {overflow.intensity === 'none' ? null : (
-            <span aria-hidden="true" className="flow-overflow-extension" style={overflowStyle}>
-              <span className="flow-overflow-sheen" />
-              {overflow.showDroplets ? (
-                <span className="flow-overflow-droplets">
-                  <span className="flow-overflow-droplet" />
-                  <span className="flow-overflow-droplet" />
-                </span>
-              ) : null}
-            </span>
+            <>
+              <span aria-hidden="true" className="flow-overflow-bridge">
+                <span className="flow-overflow-sheen" />
+              </span>
+              <span aria-hidden="true" className="flow-overflow-extension" style={overflowStyle}>
+                <span className="flow-overflow-sheen" />
+                {overflow.showDroplets ? (
+                  <span className="flow-overflow-droplets">
+                    <span className="flow-overflow-droplet" />
+                    <span className="flow-overflow-droplet" />
+                  </span>
+                ) : null}
+              </span>
+            </>
           )}
         </div>
         <table className="allocation-table" aria-label="월 자금 항목">

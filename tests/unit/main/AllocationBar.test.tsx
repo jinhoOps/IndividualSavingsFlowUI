@@ -196,10 +196,12 @@ describe('AllocationBar', () => {
   it('renders compressed liquid overflow and adds droplets only from 30%', () => {
     const { rerender } = render(<AllocationBar data={cashflowFixture} />);
     expect(document.querySelector('.allocation-bar__segments')).toHaveAttribute('data-overflow', 'false');
+    expect(document.querySelector('.flow-overflow-bridge')).not.toBeInTheDocument();
     expect(document.querySelector('.flow-overflow-extension')).not.toBeInTheDocument();
 
     rerender(<AllocationBar data={belowDropletFixture} />);
     expect(document.querySelector('.allocation-bar__segments')).toHaveAttribute('data-overflow-intensity', 'active');
+    expect(document.querySelector('.flow-overflow-bridge')).toBeInTheDocument();
     expect(document.querySelector('.flow-overflow-extension')).toHaveStyle({
       '--overflow-length': '2.5%',
     });
