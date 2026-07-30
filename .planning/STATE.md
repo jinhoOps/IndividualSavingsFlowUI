@@ -2,36 +2,43 @@
 gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: milestone
-current_phase: 11
-current_phase_name: Zero-Input Spending Capture
+current_phase: 10.9
+current_phase_name: App Journey Entry and Legacy Route Isolation
 status: completed
-stopped_at: Completed 10.8-03-PLAN.md
-last_updated: "2026-06-30T02:14:42.133Z"
-last_activity: 2026-06-30
-last_activity_desc: "Completed quick task 260630-fm9: 계좌 관리 맵 Main placement and transfer editor removal"
+stopped_at: Completed app journey entry final fix
+last_updated: "2026-07-30T09:51:42+09:00"
+last_activity: 2026-07-30
+last_activity_desc: "Aligned Main-only current product state and completed readiness journey review fixes"
 progress:
-  total_phases: 10
-  completed_phases: 6
-  total_plans: 23
-  completed_plans: 23
-  percent: 60
+  total_phases: 11
+  completed_phases: 7
+  total_plans: 24
+  completed_plans: 24
+  percent: 64
 ---
 
 # Project State
 
 ## Current Position
 
-Phase: 11 — Zero-Input Spending Capture
-Plan: Not started
-Status: Phase 10.8 complete
-Last activity: 2026-06-30 — Completed quick task 260630-fm9: 계좌 관리 맵 Main placement and transfer editor removal
+Phase: 10.9 — App Journey Entry and Legacy Route Isolation
+Plan: Complete
+Status: Main plus readiness-route baseline complete
+Last activity: 2026-07-30 — Aligned canonical product state and completed journey final-review fixes
+
+## Current Product-State Override
+
+- Main is the only detailed current product.
+- Simulation, Portfolio, and Account Map are future new apps; their supported routes currently show readiness only.
+- Phase 10.7/10.8 and older “shipped” entries below are historical implementation records and migration-reference evidence, not claims that those detailed apps remain supported.
+- Retained legacy sources are not deleted until each future app has an approved feature inventory, disposition, compatibility policy, reference-removal proof, and regression evidence.
 
 ## Project Reference
 
 See: .planning/PROJECT.md (updated 2026-06-26)
 
 **Core value:** 단순한 프리셋 선택만으로 즉각적인 자산 시각화 결과를 제공하고, 복잡한 재무 계산의 부담 없이 직관적인 개인 예산 흐름을 파악하게 한다.
-**Current focus:** Phase 10.8 — 계좌 관리 맵 is complete; Phase 11 Zero-Input Spending Capture is next.
+**Current focus:** Preserve the Main + readiness journey baseline. Phase 11 remains the next planned Main expansion; any detailed Simulation, Portfolio, or Account Map work starts with an approved new-app and migration/removal spec.
 
 ## Accumulated Context
 
@@ -40,16 +47,15 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 - Phase 9 added: Step 1 Financial Settings Input UIUX Rebuild
 - Phase 10.5 inserted after Phase 10 (URGENT): Financial Settings UX Integration Repair
 - Phase 10.6 inserted after Phase 10.5: Financial Detail Modal Editing UX Repair
-- v1.8 shipped: portfolio creation/storage, Step 1 modular and financial setup rebuild, Step 2 strategy comparison redesign.
-- Phase 10.8 inserted after Phase 10.7: 계좌 관리 맵 (URGENT)
-- Plan 10.8-01 completed: dedicated Account Map route, page-owned draft storage, Main connector, and draft builder.
-- Plan 10.8-02 completed: map-first renderer, selection detail, candidate accept/exclude flow, relationship edit persistence, and Account Map interaction tests.
-- Plan 10.8-03 completed: shared Account Map navigation, lightweight Main entry/mini-summary, and restored Main account-flow compatibility regressions.
+- v1.8 historical implementation record: portfolio creation/storage, Step 1 modular and financial setup rebuild, Step 2 strategy comparison redesign. Detailed non-Main apps are now migration references.
+- Phase 10.8 historical record: legacy 계좌 관리 맵 implementation and tests retained for future inventory/compatibility work.
+- Phase 10.9 established Main as the current product and Simulation, Portfolio, and Account Map as readiness-only future destinations.
 
 ## Key Decisions
 
 - **AI Removal (D-04)**: 시스템 복잡성 감소 및 정적 웹의 오프라인 안정성을 위해 실험적 AI 기능을 제거하고 코어 엔진 고도화에 집중함.
 - **Phase 07 Gap Closure**: Step 1 bootstrap was split into focused vanilla ES module controllers; safe datalist rendering and allocation group open-state regressions are covered by the full Phase 07 Playwright gate.
+- **Current app status (2026-07-30)**: Main is `사용 중`; Simulation, Portfolio, and Account Map are `준비 중`. Their detailed legacy implementations are not supported routes or new-runtime foundations.
 
 ## Performance Metrics
 
@@ -154,10 +160,10 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 
 ## Operator Next Steps
 
-- Start Phase 11: Zero-Input Spending Capture.
+- Start Phase 11 for the next Main expansion, or create an approved detailed new-app plus legacy migration/removal spec before implementing Simulation, Portfolio, or Account Map.
 
 ## Session
 
-**Last session:** 2026-06-29T09:21:51.826Z
-**Stopped at:** Completed 10.8-03-PLAN.md
+**Last session:** 2026-07-30T09:51:42+09:00
+**Stopped at:** Completed app journey entry final fix
 **Resume file:** None

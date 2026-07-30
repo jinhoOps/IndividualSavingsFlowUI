@@ -1,6 +1,7 @@
 import type { MainData } from '../../main/domain/model';
 
 export const JOURNEY_SNAPSHOT_VERSION = 1 as const;
+const MAX_DATE_TIMESTAMP_MS = 8_640_000_000_000_000;
 
 export type JourneySnapshot =
   | {
@@ -54,8 +55,8 @@ export function parseJourneySnapshot(value: unknown): JourneySnapshot | null {
   if (!isRecord(value)
     || value.version !== JOURNEY_SNAPSHOT_VERSION
     || !isSafeInteger(value.monthlyInvestableAmountWon)
-    || !isNonNegativeSafeInteger(value.mainUpdatedAt)
-    || !isNonNegativeSafeInteger(value.createdAt)) {
+    || !isValidTimestamp(value.mainUpdatedAt)
+    || !isValidTimestamp(value.createdAt)) {
     return null;
   }
 
@@ -98,6 +99,6 @@ function isSafeInteger(value: unknown): value is number {
   return typeof value === 'number' && Number.isSafeInteger(value);
 }
 
-function isNonNegativeSafeInteger(value: unknown): value is number {
-  return isSafeInteger(value) && value >= 0;
+function isValidTimestamp(value: unknown): value is number {
+  return isSafeInteger(value) && value >= 0 && value <= MAX_DATE_TIMESTAMP_MS;
 }

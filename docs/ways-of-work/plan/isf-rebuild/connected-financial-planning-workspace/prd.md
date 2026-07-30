@@ -4,12 +4,12 @@
 
 **ISF 연결형 개인 재무 계획 워크스페이스**
 
-월간 가계 흐름을 기준으로 장기 투자 전략, 적립식 포트폴리오, 실제 계좌 관계를 연결하는 로컬 우선 개인 재무 계획 제품이다.
+완료된 Main의 월간 가계 흐름을 기준으로 향후 장기 투자 전략, 적립식 포트폴리오와 실제 계좌 관계를 연결할 수 있도록 준비하는 로컬 우선 개인 재무 계획 제품이다.
 
 ## 2. Epic
 
 - **Epic:** ISF 제품 기준선 확립 및 안전한 레거시 기능 마이그레이션
-- **제품 상태:** Main 개편 완료, 연결 앱 운영, 레거시 기능 마이그레이션 전환 중
+- **제품 상태:** Main은 현재 제품 기준선, Simulation·Portfolio·Account Map은 준비 화면만 제공하는 향후 신규 앱, 기존 동명 구현은 레거시 마이그레이션 참고 자원
 - **제품 설계:** [ISF 제품 방향 및 문서 체계 정리 설계](../../../../superpowers/specs/2026-07-29-product-direction-and-documentation-design.md)
 - **활성 Roadmap:** [ISF Roadmap](../../../../../.planning/ROADMAP.md)
 - **제품 편집 경계:** [Financial Detail Modal Is the Only Primary Editor](../../../../../docs/adr/0001-financial-detail-modal-is-the-only-primary-editor.md)
@@ -19,18 +19,18 @@
 
 ### Problem Statement
 
-ISF의 Main 개편은 완료되었으며 사용자는 현재 제품에서 월간 가계 흐름을 요약하고 상세 재무 항목을 수정할 수 있다. 이후의 핵심 과제는 Main을 다시 만드는 것이 아니라, Main·Simulation·Portfolio·Account Map의 역할과 연결을 일관되게 유지하면서 레거시에 남은 유효 기능과 데이터 계약을 안전하게 현재 구조로 옮기는 것이다.
+ISF의 Main 개편은 완료되었으며 사용자는 현재 제품에서 월간 가계 흐름을 요약하고 상세 재무 항목을 수정할 수 있다. Simulation, Portfolio와 Account Map은 모두 후속 명세에서 새로 개발할 앱이며 현재 제품 경로에는 준비 화면만 있다. 이후의 핵심 과제는 Main을 다시 만드는 것이 아니라, 최소 앱 여정 계약을 유지하면서 각 신규 앱을 명세하고 레거시에 남은 유효 기능과 데이터 계약을 안전하게 판정·이관하는 것이다.
 
 레거시 코드에는 아직 이관하지 않은 기능 또는 구버전 저장 데이터의 의미를 확인하는 데 필요한 지식이 남아 있다. 이를 너무 일찍 삭제하면 기능과 호환성이 손실될 수 있지만, 일반 사용자 경로나 신규 기능 기반으로 계속 사용하면 현재 제품과 과거 구조가 다시 뒤섞인다. 프로젝트 문서 또한 현재 제품, 과거 요구사항, 에이전트 지침과 단편 메모가 혼재해 제품 기준을 찾기 어렵다.
 
 ### Solution
 
-ISF를 네 개의 연결된 제품 목적지와 공통 로컬 우선 인프라로 정의한다.
+ISF를 현재 제품인 Main과 세 개의 향후 신규 목적지, 공통 로컬 우선 인프라로 정의한다.
 
 1. **Main**은 완료된 현재 제품 기준선으로서 월간 현금흐름을 요약하고 Financial Detail Modal에서 편집한다.
-2. **Simulation**은 Main의 투자 여력을 가져와 여러 장기 투자 전략의 총자산과 월 현금흐름을 비교한다.
-3. **Portfolio**는 투자 방향을 실제 적립식 자산 배분으로 구체화하고 저장한다.
-4. **Account Map**은 Main의 계좌 데이터를 읽어 독립 초안을 만들고 입금·이체·결제 관계를 검토한다.
+2. **Simulation**은 향후 새로 개발할 앱이다. 현재는 Main의 최소 요약 연결과 갱신 시각을 보여주는 준비 화면만 제공한다.
+3. **Portfolio**는 향후 새로 개발할 앱이다. 현재는 Simulation 준비 화면에서 전달된 최소 요약을 확인하는 준비 화면만 제공한다.
+4. **Account Map**은 향후 새로 개발할 앱이다. 현재는 상세 데이터나 초안을 읽고 저장하지 않는 준비 화면만 제공한다.
 5. **레거시 코드**는 기능 및 데이터 계약 마이그레이션에만 사용하는 임시자산으로 관리하고, 이관 또는 폐기 결정과 검증이 끝난 뒤 제거한다.
 6. **문서 체계**는 제품 PRD를 기준 문서로 삼고 루트에는 README, DESIGN과 역할별 기준 문서를 안내하는 AGENTS를 유지한다.
 
@@ -41,7 +41,7 @@ ISF를 네 개의 연결된 제품 목적지와 공통 로컬 우선 인프라�
 - 필요한 레거시 기능과 구버전 데이터 호환성을 잃지 않고 단계적으로 이관할 수 있다.
 - 레거시 삭제 여부를 추측이 아니라 검증 가능한 증거로 판단할 수 있다.
 - 개발자와 에이전트가 현재 제품, 전환 작업, 향후 기능을 구분할 수 있다.
-- 사용자는 서버 계정이나 금융기관 연동 없이 계획·비교·실행·백업을 이어갈 수 있다.
+- 사용자는 서버 계정이나 금융기관 연동 없이 Main 계획을 관리하고, 향후 앱으로 이어질 경로와 전달 정보를 확인할 수 있다.
 
 ## 4. User Personas
 
@@ -92,7 +92,9 @@ ISF를 네 개의 연결된 제품 목적지와 공통 로컬 우선 인프라�
 9. As a 모바일 사용자, I want 작은 화면에서도 요약·modal·Sankey·pending bar를 사용, so that 데스크톱 없이 계획을 점검할 수 있다.
 10. As a 기존 데이터 보유 사용자, I want 구버전 금액과 항목이 현재 schema로 정규화됨, so that 업데이트 후에도 기존 계획을 사용할 수 있다.
 
-### Simulation과 Portfolio
+### 향후 신규 Simulation과 Portfolio
+
+아래 항목은 현재 제공 기능이 아니라 각 앱의 승인된 상세 명세가 생긴 뒤 적용할 미래 사용자 요구다.
 
 11. As a 저축·투자 계획 사용자, I want Main의 월 투자 여력을 Simulation으로 가져옴, so that 같은 값을 다시 입력하지 않는다.
 12. As a 저축·투자 계획 사용자, I want 가져온 값을 Main과 분리해 실험, so that 원래 가계 계획을 훼손하지 않는다.
@@ -103,7 +105,9 @@ ISF를 네 개의 연결된 제품 목적지와 공통 로컬 우선 인프라�
 17. As a 저축·투자 계획 사용자, I want 총 매수 금액과 자산별 비중을 실시간 확인, so that 배분 오류를 저장 전에 수정할 수 있다.
 18. As a 저축·투자 계획 사용자, I want 저장 전 최종 구성을 확인, so that 잘못된 포트폴리오를 확정하지 않는다.
 
-### Account Map
+### 향후 신규 Account Map
+
+아래 항목은 현재 제공 기능이 아니라 승인된 Account Map 상세 명세가 생긴 뒤 적용할 미래 사용자 요구다.
 
 19. As a 다중 계좌 사용자, I want Main의 현재 데이터로 Account Map 초안을 생성, so that 계좌 관계를 처음부터 다시 입력하지 않는다.
 20. As a 다중 계좌 사용자, I want Account Map을 수정해도 Main 원본이 자동 변경되지 않음, so that 관계 검토를 안전하게 수행할 수 있다.
@@ -157,7 +161,17 @@ ISF를 네 개의 연결된 제품 목적지와 공통 로컬 우선 인프라�
 - 요약, 월간 snapshot, Sankey와 projection은 동일한 정규화 데이터 계약을 사용해야 한다.
 - 사용자 표시 금액은 읽기 쉬운 원화 형식을 사용하고 내부 계산과 저장은 원 단위를 유지해야 한다.
 
-#### Simulation
+#### Current Journey Entry
+
+- 공통 런처는 Main을 `사용 중`, Simulation·Portfolio·Account Map을 `준비 중`으로 고정 표시해야 한다.
+- 현재 위치는 제품 가용 상태와 분리해 보이는 텍스트와 `aria-current`로 표시해야 한다.
+- Main은 사용자가 명시적으로 이동할 때 최소 `JourneySnapshot`만 저장해야 한다.
+- Simulation과 Portfolio 준비 화면은 연결 상태, 월 투자 가능액과 Main 갱신 시각을 표시해야 한다.
+- 준비 화면은 `Main에서 최신 정보 가져오기` 행동과 손상·부재·저장 접근 실패 시 Main 복구 경로를 제공해야 한다.
+- 준비 화면은 상세 계산, 편집, 독립 제품 저장 또는 Main write-back을 수행하지 않아야 한다.
+- Account Map 준비 화면은 Main 또는 journey 데이터를 읽거나 수정하지 않아야 한다.
+
+#### Future Simulation
 
 - Main의 최신 투자 여력을 명시적 import로 가져올 수 있어야 한다.
 - Simulation의 수정값과 저장 상태는 Main을 자동 변경하지 않아야 한다.
@@ -165,14 +179,14 @@ ISF를 네 개의 연결된 제품 목적지와 공통 로컬 우선 인프라�
 - 전략별 가정, 한계와 금융 면책을 표시해야 한다.
 - 시뮬레이션 생성, 조회와 삭제를 지원해야 한다.
 
-#### Portfolio
+#### Future Portfolio
 
 - 포트폴리오 이름, 적립 주기, 둘 이상의 자산과 자산별 금액을 입력할 수 있어야 한다.
 - 총액과 자산별 비중을 실시간으로 계산해야 한다.
 - 최종 확인 후 저장해야 한다.
 - 저장한 포트폴리오의 조회, 수정과 삭제를 지원해야 한다.
 
-#### Account Map
+#### Future Account Map
 
 - Account Map은 Main 및 Portfolio와 구분되는 독립 목적지여야 한다.
 - Main은 Account Map의 가벼운 요약과 이동 경로만 제공해야 한다.
@@ -189,7 +203,7 @@ ISF를 네 개의 연결된 제품 목적지와 공통 로컬 우선 인프라�
 - 백업, 복원, JSON과 공유 코드 import/export를 제공해야 한다.
 - 외부 및 구버전 데이터는 저장 또는 렌더링 전에 정규화해야 한다.
 - 마이그레이션 실패는 현재 저장 상태에 부분 변경을 남기지 않아야 한다.
-- 앱별 데이터 소유권과 connector의 read/write 방향을 명시해야 한다.
+- 향후 앱별 상세 명세는 데이터 소유권과 connector의 read/write 방향을 명시해야 한다.
 
 #### Legacy Migration
 
@@ -215,6 +229,7 @@ ISF를 네 개의 연결된 제품 목적지와 공통 로컬 우선 인프라�
 
 #### Future Product Expansion
 
+- Simulation, Portfolio와 Account Map은 각각 승인된 상세 요구사항과 레거시 판정·호환·제거 계획을 갖춘 신규 앱으로 개발해야 한다.
 - 한국어 금융 알림 텍스트는 저장 전 검토 가능한 구조화 지출 후보로 변환해야 한다.
 - 가구 병합은 두 원본을 보존하고 충돌을 저장 전에 표시해야 한다.
 - 과거 비교는 동일 원화 단위와 카테고리 기준을 사용해야 한다.
@@ -226,7 +241,7 @@ ISF를 네 개의 연결된 제품 목적지와 공통 로컬 우선 인프라�
 - **Privacy:** 명시적 내보내기 또는 공유 전에는 사용자 데이터를 브라우저 밖으로 전송하지 않아야 한다.
 - **Accessibility:** modal focus, label, role, 오류 메시지, 키보드 조작과 그래프 대체 설명을 제공해야 한다.
 - **Responsive:** 390px급 모바일과 768px 이하 화면에서 가로 넘침이나 가려진 주요 컨트롤이 없어야 한다.
-- **Determinism:** 계산, 정규화와 Account Map 자동배치는 동일 입력에 동일 결과를 제공해야 한다.
+- **Determinism:** 현재 계산과 정규화는 동일 입력에 동일 결과를 제공해야 하며, 향후 Account Map 자동배치도 같은 원칙을 따라야 한다.
 - **Compatibility:** 기존 저장 데이터와 공유 데이터의 유효 기능을 명시적 결정 없이 잃어서는 안 된다.
 - **Security:** 사용자 입력은 안전한 텍스트 또는 DOM API로 렌더링해야 한다.
 - **Maintainability:** 계산, 정규화, 저장, 렌더링과 연결 책임을 분리해야 한다.
@@ -246,16 +261,17 @@ ISF를 네 개의 연결된 제품 목적지와 공통 로컬 우선 인프라�
 
 ### AC-2 Connected Apps
 
-- [ ] Simulation이 Main 값을 명시적으로 가져오고 자체 수정은 Main을 변경하지 않는다.
-- [ ] 세 투자 전략의 총자산과 월 현금흐름을 동일 조건으로 비교한다.
-- [ ] Portfolio 총액과 비중이 정확히 계산되고 확인 후 저장된다.
-- [ ] Account Map은 별도 목적지로 열리고 Main에는 가벼운 진입점만 존재한다.
-- [ ] Account Map import와 편집 후 Main 저장 데이터가 바뀌지 않는다.
-- [ ] Account Map 개요에서는 금액이 숨겨지고 선택 상세에서만 나타난다.
+- [ ] 런처가 Main은 `사용 중`, 세 향후 앱은 `준비 중`으로 표시하고 현재 위치를 별도로 알린다.
+- [ ] Main의 명시적 CTA가 최소 스냅샷을 저장한 뒤 Simulation 준비 화면으로 이동한다.
+- [ ] Simulation과 Portfolio 준비 화면이 연결 상태, 월 투자 가능액과 Main 갱신 시각을 표시한다.
+- [ ] Simulation → Portfolio → Simulation 이동에서도 각 목적지의 유효한 연결이 유지된다.
+- [ ] 저장 값이 없거나 손상되었거나 브라우저 저장소 읽기가 차단되어도 Main 복구 행동을 제공한다.
+- [ ] 준비 화면은 상세 계산·편집·독립 제품 저장·Main write-back을 제공하지 않는다.
+- [ ] Account Map은 별도 준비 목적지로 열리며 journey 또는 Main 데이터를 읽지 않는다.
 
 ### AC-3 Storage and Existing Data
 
-- [ ] 새로고침 후 각 앱의 저장 상태가 복원된다.
+- [ ] 새로고침 후 Main 저장 상태와 목적지별 유효한 journey 연결이 복원된다.
 - [ ] 구버전 데이터가 현재 schema로 정규화된다.
 - [ ] import 실패가 부분 저장을 만들지 않는다.
 - [ ] JSON과 공유 코드가 사용자 입력을 안전하게 처리한다.
@@ -274,7 +290,7 @@ ISF를 네 개의 연결된 제품 목적지와 공통 로컬 우선 인프라�
 
 ### AC-5 Documentation
 
-- [ ] README가 네 제품 목적지와 Main 완료 상태를 설명한다.
+- [ ] README가 Main 현재 상태와 세 향후 신규 목적지의 준비 상태를 설명한다.
 - [ ] README가 레거시를 임시 마이그레이션 자산으로 설명한다.
 - [ ] DESIGN이 현재 디자인과 반응형 계약만 설명한다.
 - [ ] 제품 PRD가 `Current Product Baseline`, `Migration Transition`, `Future Product Expansion`을 구분한다.
@@ -297,10 +313,10 @@ ISF를 네 개의 연결된 제품 목적지와 공통 로컬 우선 인프라�
 ### Product Boundaries
 
 - Main은 월간 재무 상태와 편집 데이터의 기준 소유자다.
-- Simulation은 Main을 읽되 전략 가정과 저장 상태를 독립적으로 소유한다.
-- Portfolio는 적립식 자산 배분과 저장 상태를 소유한다.
-- Account Map은 Main을 read-only source로 사용하고 별도 초안을 소유한다.
-- 앱 간 데이터 전달은 명시적 connector와 import 행동을 사용한다.
+- 현재 Simulation과 Portfolio 준비 화면은 최소 `JourneySnapshot`을 읽을 뿐 상세 편집·저장 상태를 소유하지 않는다.
+- 현재 Account Map 준비 화면은 Main 또는 journey 데이터를 읽거나 별도 초안을 저장하지 않는다.
+- 향후 Simulation, Portfolio와 Account Map의 상세 상태 소유권은 각 승인된 신규 앱 명세에서 정의한다.
+- 현재 앱 간 데이터 전달은 명시적 CTA와 최소 `JourneySnapshot` 계약을 사용한다.
 
 ### Primary Editing Boundary
 
@@ -314,13 +330,11 @@ ISF를 네 개의 연결된 제품 목적지와 공통 로컬 우선 인프라�
 - 월간 snapshot과 장기 projection 계산
 - Financial Detail draft, dirty 판정, 검증, 적용과 취소
 - Sankey 데이터 구축
-- Account Map draft 생성과 후보 판정
-- Account Map 결정적 배치
-- 투자 전략 비교 계산
-- Portfolio 자산 배분 계산
 - 저장 및 compatibility bridge
 
-각 모듈은 내부 구현을 노출하지 않는 작고 안정된 인터페이스로 많은 동작을 캡슐화해야 한다.
+향후 신규 앱은 승인된 상세 명세에 따라 Account Map draft·배치, 투자 전략 비교, Portfolio 자산 배분 같은 전용 deep module을 새로 소유한다. 현재 레거시의 동명 모듈은 제품 기준선이 아니다.
+
+각 현재 또는 향후 모듈은 내부 구현을 노출하지 않는 작고 안정된 인터페이스로 많은 동작을 캡슐화해야 한다.
 
 ### Legacy Lifecycle
 
@@ -346,9 +360,9 @@ ISF를 네 개의 연결된 제품 목적지와 공통 로컬 우선 인프라�
 - Main summary-first 흐름
 - Financial Detail의 추가·수정·삭제·검증·적용·취소·이탈 경고
 - 월간 계산, Sankey 합계와 projection
-- Simulation Main import와 독립 수정
-- Portfolio 생성, 확인, 저장, 수정과 삭제
-- Account Map import, 독립 저장, 후보 처리, 노드 배치와 Main 비변경
+- Main → Simulation → Portfolio 준비 화면의 최소 스냅샷 연결과 갱신 시각
+- 고정 가용 상태, 현재 위치, Main 복구, 목적지별 연결 보존
+- 390px, 768px와 desktop의 런처·CTA·overflow·키보드 동작
 - 저장, import/export, 백업과 오프라인 폴백
 
 ### Migration Coverage
@@ -370,8 +384,10 @@ ISF를 네 개의 연결된 제품 목적지와 공통 로컬 우선 인프라�
 ### Prior Art
 
 - 기존 Main 브라우저 테스트의 Financial Detail lifecycle, sanitizer, Sankey와 모바일 회귀
-- 기존 Account Map 브라우저 테스트의 별도 route, Main import, 독립 저장, 후보 처리와 node layout
-- 기존 Simulation과 Portfolio의 저장 및 계산 계약 테스트
+- 레거시 Account Map 브라우저 테스트의 별도 route, Main import, 독립 저장, 후보 처리와 node layout 기록
+- 레거시 Simulation과 Portfolio의 저장 및 계산 계약 테스트
+
+Prior Art는 향후 명세의 기능·데이터 계약 조사 자료이며 현재 지원 제품 동작을 뜻하지 않는다.
 
 ## 10. Out of Scope
 
@@ -391,14 +407,15 @@ ISF를 네 개의 연결된 제품 목적지와 공통 로컬 우선 인프라�
 ### Current Product Baseline
 
 - Main summary-first 화면과 Financial Detail Modal 편집
-- 월간 snapshot, Sankey, 계좌 흐름과 장기 projection
-- Simulation 전략 비교와 Main 데이터 import
-- Portfolio 생성, 확인과 로컬 저장
-- 독립 Account Map, Main 기반 초안과 관계 검토
-- 공통 헤더, 데이터 허브, 백업·복원·공유와 PWA 기반
+- Main의 월간 snapshot, Sankey와 장기 projection
+- 네 목적지 공통 런처와 Main → Simulation → Portfolio 준비 여정
+- 최소 `JourneySnapshot`, 목적지별 새로고침 복구와 Main 최신 정보 경로
+- Simulation, Portfolio와 Account Map의 신규 앱 준비 화면
+- Main 데이터 허브, 백업·복원·공유와 공통 PWA·스타일 기반
 
 ### Migration Transition
 
+- 기존 Simulation, Portfolio와 Account Map 상세 구현을 정상 제품 경로와 신규 runtime에서 격리
 - 레거시 기능과 데이터 계약 목록화
 - 현재 제품 필요 여부 판정
 - 필요한 기능의 현재 모듈 이전
@@ -409,17 +426,20 @@ ISF를 네 개의 연결된 제품 목적지와 공통 로컬 우선 인프라�
 
 ### Future Product Expansion
 
-1. 한국어 은행·카드 알림 텍스트 기반 지출 capture
-2. 두 사람의 Main 데이터를 이용한 가구 병합 미리보기
-3. 과거 snapshot 대비 현재 지출 비교
-4. 가구 소득·부채·DSR·LTV 기반 부동산 구매력 계획
-5. Main·Simulation·Portfolio 사이의 계획-비교-실행 연결 강화
+1. 승인된 상세 명세와 레거시 마이그레이션 계획에 따른 신규 Simulation
+2. 승인된 상세 명세와 레거시 마이그레이션 계획에 따른 신규 Portfolio
+3. 승인된 상세 명세와 레거시 마이그레이션 계획에 따른 신규 Account Map
+4. 한국어 은행·카드 알림 텍스트 기반 지출 capture
+5. 두 사람의 Main 데이터를 이용한 가구 병합 미리보기
+6. 과거 snapshot 대비 현재 지출 비교
+7. 가구 소득·부채·DSR·LTV 기반 부동산 구매력 계획
 
 ## 12. Further Notes
 
 - Main은 현재 완료된 제품 기준선이다. 향후 PRD는 Main 재구축이 아니라 기준선 보존과 확장을 다룬다.
+- Simulation, Portfolio와 Account Map은 모두 향후 새로 개발할 앱이며 현재 동명 제품 경로는 준비 화면이다.
 - 레거시 코드는 현재 제품 기능이 아니라 기능 마이그레이션을 위한 임시자산이다.
 - 레거시 파일이 존재한다는 사실은 신규 기능에서 이를 사용할 근거가 아니다.
 - 레거시 삭제는 필요한 기능과 데이터 계약의 이관 또는 명시적 폐기, 호환성 검증과 참조 제거가 모두 끝났을 때 수행한다.
-- 과거 Portfolio 중심 계좌 흐름 결정은 이후 Account Map 요구로 대체되었다. 현재의 Main 호환성과 독립 Account Map 경계를 따른다.
+- 과거 Portfolio·Account Map 계좌 흐름 결정과 구현은 향후 신규 앱 명세를 위한 마이그레이션 참고 이력이다.
 - 모든 투자 및 주거 결과는 사용자 가정에 기반한 계획용 추정이며 실제 금융기관 조건과 전문가 판단을 대체하지 않는다.

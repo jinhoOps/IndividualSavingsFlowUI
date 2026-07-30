@@ -1,9 +1,5 @@
-/// <reference types="node" />
-
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ReadinessApp } from '../../../src/journey/ui/ReadinessApp';
 
@@ -17,6 +13,16 @@ const validMainSnapshot = {
   monthlyInvestableAmountWon: 1_100_000,
   mainUpdatedAt: 10,
   createdAt: 20,
+};
+
+const validPortfolioSnapshot = {
+  version: 1 as const,
+  sourceApp: 'simulation' as const,
+  sourceView: 'simulation-readiness' as const,
+  destinationApp: 'portfolio' as const,
+  monthlyInvestableAmountWon: 1_100_000,
+  mainUpdatedAt: Date.UTC(2026, 6, 29, 3, 15),
+  createdAt: Date.UTC(2026, 6, 29, 3, 16),
 };
 
 describe('ReadinessApp', () => {
@@ -54,16 +60,29 @@ describe('ReadinessApp', () => {
     expect(screen.getByRole('link', { name: 'Main으로 이동' })).toHaveAttribute('href', expect.stringContaining('/apps/main/'));
   });
 
-  it('renders the Main recovery link as a padded 44px touch target', () => {
-    render(<ReadinessApp destination="simulation" repository={{
-      load: () => ({ status: 'empty' }),
+  it.each([
+    ['simulation' as const, validMainSnapshot],
+    ['portfolio' as const, validPortfolioSnapshot],
+  ])('shows semantic Main freshness and an explicit latest-data action for %s', (destination, snapshot) => {
+    render(<ReadinessApp destination={destination} repository={{
+      load: () => ({ status: 'found', snapshot }),
       save: vi.fn(),
     }} />);
 
-    expect(screen.getByRole('link', { name: 'Main으로 이동' })).toHaveClass('journey-action');
-    const journeyCss = readFileSync(resolve(process.cwd(), 'src/journey/ui/journey.css'), 'utf8');
+    const time = screen.getByText(/Main 갱신/);
+    expect(time.tagName).toBe('TIME');
+    expect(time).toHaveAttribute('dateTime', new Date(snapshot.mainUpdatedAt).toISOString());
+    expect(time).toHaveAttribute('lang', 'ko-KR');
+    expect(screen.getByRole('link', { name: 'Main에서 최신 정보 가져오기' }))
+      .toHaveAttribute('href', expect.stringContaining('/apps/main/'));
+  });
 
-    expect(journeyCss).toMatch(/\.journey-action\s*\{[^}]*display:\s*inline-flex;[^}]*align-items:\s*center;[^}]*min-height:\s*44px;[^}]*padding:\s*0\.5rem 0\.75rem;/s);
+  it('loads only the snapshot slot for its destination', () => {
+    const load = vi.fn(() => ({ status: 'found' as const, snapshot: validPortfolioSnapshot }));
+
+    render(<ReadinessApp destination="portfolio" repository={{ load, save: vi.fn() }} />);
+
+    expect(load).toHaveBeenCalledWith('portfolio');
   });
 
   it('saves the Portfolio handoff before navigation', () => {

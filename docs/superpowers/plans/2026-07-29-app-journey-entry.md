@@ -312,7 +312,7 @@ Expected: FAIL because both modules are missing.
 
 - [ ] **Step 3: 최소 경로와 런처 구현**
 
-`appPath`는 `'main' | 'simulation' | 'portfolio' | 'account-map'`만 받고 base의 앞뒤 slash를 정규화한다. `AppLauncher`는 `<nav aria-label="ISF 앱">` 안에 네 링크를 렌더링한다. 현재 앱 링크에 `aria-current="page"`와 `사용 중`, 나머지 링크에 `준비 중` 텍스트를 함께 표시한다.
+`appPath`는 `'main' | 'simulation' | 'portfolio' | 'account-map'`만 받고 base의 앞뒤 slash를 정규화한다. `AppLauncher`는 `<nav aria-label="ISF 앱">` 안에 네 링크를 렌더링한다. 제품 가용 상태는 Main `사용 중`, Simulation·Portfolio·Account Map `준비 중`으로 고정하고, 현재 앱 링크에는 이 상태와 별도로 보이는 `현재 위치`와 `aria-current="page"`를 표시한다.
 
 모바일은 CSS로 768px 미만에서 `<details>` 기반 축약 메뉴를 사용하고, 데스크톱은 네 링크를 가로로 표시한다. 두 표현을 동시에 DOM에 중복하지 않고 동일 `<details>`를 breakpoint에 따라 열린 형태처럼 배치하여 중복 접근성 이름을 피한다.
 

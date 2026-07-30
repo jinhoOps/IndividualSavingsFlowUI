@@ -1,3 +1,5 @@
+/// <reference types="node" />
+
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { expect, it } from 'vitest';
@@ -7,19 +9,19 @@ it.each([
     app: 'simulation',
     entry: '../../src/journey/simulation.tsx',
     title: 'ISF UIUX | Simulation',
-    description: '개인 자산 흐름 프로젝트의 Simulation 화면으로, 월 투자 여력을 바탕으로 배당 성장 복리 효과를 시뮬레이션하는 UI',
+    description: 'Main 계획과 연결될 신규 Simulation 앱의 준비 상태를 안내하는 화면',
   },
   {
     app: 'portfolio',
     entry: '../../src/journey/portfolio.tsx',
     title: 'ISF UIUX | Portfolio',
-    description: '개인 자산 흐름 Portfolio 준비 화면',
+    description: '신규 Portfolio 앱의 준비 상태를 안내하는 화면',
   },
   {
     app: 'account-map',
     entry: '../../src/journey/accountMap.tsx',
     title: 'ISF UIUX | Account Map',
-    description: 'Main 계좌 흐름 데이터를 바탕으로 반복 계좌 관계를 검토하는 Account Map 화면',
+    description: 'Main과 분리해 설계할 신규 Account Map 앱의 준비 상태를 안내하는 화면',
   },
 ])('$app retains route metadata and loads only its new React entry', async ({ app, entry, title, description }) => {
   const html = await readFile(resolve(process.cwd(), 'apps', app, 'index.html'), 'utf8');

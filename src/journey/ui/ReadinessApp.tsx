@@ -44,7 +44,7 @@ export function ReadinessApp({
   const connection = useMemo(
     () => destination === 'account-map'
       ? null
-      : loadConnection(destination, repository.load()),
+      : loadConnection(destination, repository.load(destination)),
     [destination, repository],
   );
   const [handoffError, setHandoffError] = useState(false);
@@ -72,19 +72,23 @@ export function ReadinessApp({
         <p>ISF 앱 준비 화면</p>
         <h1 id="readiness-title">{title}</h1>
         {destination === 'account-map' ? (
-          <p>Account Map은 Main 계획과 별도의 초안으로 준비됩니다.</p>
+          <p className="journey-message">Account Map은 Main과 분리된 신규 앱으로 설계될 예정입니다.</p>
         ) : (
           <ConnectionPanel connection={connection!} />
         )}
         {handoffError ? (
-          <p role="alert">연결 정보를 저장하지 못했습니다. Main 데이터는 변경되지 않았습니다.</p>
+          <p className="journey-message journey-message--error" role="alert">
+            연결 정보를 저장하지 못했습니다. Main 데이터는 변경되지 않았습니다.
+          </p>
         ) : null}
         {destination === 'simulation' && connectedSnapshot !== null ? (
-          <button className="journey-action" type="button" onClick={continueToPortfolio}>
+          <button className="journey-action journey-action--primary" type="button" onClick={continueToPortfolio}>
             Portfolio로 이어가기
           </button>
         ) : null}
-        <a className="journey-action" href={appPath('main')}>Main으로 이동</a>
+        <a className="journey-action journey-action--secondary" href={appPath('main')}>
+          {connectedSnapshot === null ? 'Main으로 이동' : 'Main에서 최신 정보 가져오기'}
+        </a>
       </section>
     </main>
   );
@@ -92,17 +96,26 @@ export function ReadinessApp({
 
 function ConnectionPanel({ connection }: { connection: ConnectionState }) {
   if (connection.kind === 'empty') {
-    return <p>Main에서 계획을 먼저 완성해 주세요</p>;
+    return <p className="journey-message">Main에서 계획을 먼저 완성해 주세요</p>;
   }
 
   if (connection.kind === 'invalid') {
-    return <p>연결 정보를 확인하지 못했습니다</p>;
+    return <p className="journey-message journey-message--error">연결 정보를 확인하지 못했습니다</p>;
   }
 
   return (
-    <section aria-label="연결된 Main 계획">
-      <p role="status">연결되었습니다</p>
-      <p>월 투자 가능액 {formatJourneyWon(connection.snapshot.monthlyInvestableAmountWon)}</p>
+    <section className="journey-connection" aria-label="연결된 Main 계획">
+      <p className="journey-connection__status" role="status">연결되었습니다</p>
+      <p className="journey-connection__amount">
+        월 투자 가능액 {formatJourneyWon(connection.snapshot.monthlyInvestableAmountWon)}
+      </p>
+      <time
+        className="journey-connection__time"
+        dateTime={new Date(connection.snapshot.mainUpdatedAt).toISOString()}
+        lang="ko-KR"
+      >
+        Main 갱신 {formatMainUpdatedAt(connection.snapshot.mainUpdatedAt)}
+      </time>
     </section>
   );
 }
@@ -132,6 +145,13 @@ function formatJourneyWon(amountWon: number): string {
   }
 
   return `${sign}${new Intl.NumberFormat('ko-KR').format(absoluteAmountWon)}원`;
+}
+
+function formatMainUpdatedAt(timestamp: number): string {
+  return new Intl.DateTimeFormat('ko-KR', {
+    dateStyle: 'long',
+    timeStyle: 'short',
+  }).format(new Date(timestamp));
 }
 
 function navigateTo(path: string): void {

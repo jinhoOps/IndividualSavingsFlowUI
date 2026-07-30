@@ -6,7 +6,14 @@
 
 ## Milestone Goal
 
-Resolve the next Step 1 household-flow work from `TODO.md` and open GitHub issues, focusing on newlywed/household planning, real-estate affordability, and historical spending comparison while keeping backtesting out of this project.
+Preserve Main as the supported product baseline, keep the readiness-only app journey explicit, and sequence later Main or new-app work without reviving legacy product routes.
+
+## Current Product-State Override
+
+- Main is the only detailed current product.
+- Simulation, Portfolio, and Account Map are future new apps; their current routes are readiness screens.
+- Phase 10.7/10.8 completion records below are historical migration-reference evidence, not supported current product behavior.
+- Their retained source and tests remain available for feature/data-contract inventory. No legacy implementation is deleted until the per-app spec, disposition, compatibility, reference-removal, and regression gates pass.
 
 ## Phase Summary
 
@@ -16,8 +23,9 @@ Resolve the next Step 1 household-flow work from `TODO.md` and open GitHub issue
 | 10.5 | Financial Settings UX Integration Repair | 5/5 | Complete    | 2026-06-24 |
 | 10.6 | Financial Detail Modal Editing UX Repair | 3/3 | Complete   | 2026-06-25 |
 | 10.6.1 | Legacy Editor Removal and Detail Modal Capability Absorption | 3/3 | Complete    | 2026-06-26 |
-| 10.7 | Account Flow Extraction and Portfolio Boundary | 6/6 | Complete    | 2026-06-26 |
-| 10.8 | 계좌 관리 맵 | 3/3 | Complete    | 2026-06-29 |
+| 10.7 | Account Flow Extraction and Portfolio Boundary *(historical reference)* | 6/6 | Historical complete | 2026-06-26 |
+| 10.8 | 계좌 관리 맵 *(historical reference)* | 3/3 | Historical complete | 2026-06-29 |
+| 10.9 | App Journey Entry and Legacy Route Isolation | 1/1 | Complete | 2026-07-30 |
 | 11 | Zero-Input Spending Capture | Parse pasted Korean bank/card text into reviewable spending actuals. | CAP-01, CAP-02, CAP-03, CAP-04 | 4 |
 | 12 | Dual-Flow Household Merge | Combine two shared Step 1 data sources into one household flow preview. | HH-03, HH-04, HH-05 | 4 |
 | 13 | Historical Spending Comparison | Compare current Step 1 expenses against prior DataHub snapshots with a grouped bar chart. | CMP-01, CMP-02, CMP-03, CMP-04, CMP-05 | 5 |
@@ -110,7 +118,7 @@ Plans:
 3. Removed legacy editor modules, DOM, tests, selectors, and copy leave no user-facing traces such as secondary editor language, "main editor", or duplicated pending controls.
 4. Existing sanitizer, persistence, Sankey rendering, share/import, and Phase 10.6 modal row-editing contracts continue to pass targeted regression checks.
 
-### Phase 10.7: Account Flow Extraction and Portfolio Boundary *(INSERTED)*
+### Phase 10.7: Account Flow Extraction and Portfolio Boundary *(HISTORICAL REFERENCE)*
 
 **Goal:** Remove account-flow modeling from Step 1 so its Sankey returns to the simple `수입 → 지출(소비/저축/투자)` model, while defining whether richer 계좌흐름도 behavior belongs in Portfolio or a separate app/page.
 
@@ -151,7 +159,7 @@ Plans:
 3. Existing saved account/allocation data is preserved or converted only for Portfolio/계좌흐름도 handoff, while Step 1 stores and renders the simplified model.
 4. The phase documents and tests the boundary for moving richer account-flow management to Portfolio or a separate app/page before Phase 11 resumes.
 
-### Phase 10.8: 계좌 관리 맵 (INSERTED)
+### Phase 10.8: 계좌 관리 맵 *(HISTORICAL REFERENCE)*
 
 **Goal:** Create a user-friendly account-management map that makes real automatic transfers, card/payment links, and account flow relationships easy to understand at a glance.
 **Requirements:** UXR-17, UXR-18, UXR-19, UXR-20, UXR-21
@@ -176,6 +184,24 @@ Plans:
 3. Automatic transfers, income deposits, savings/investment flows, and card/payment candidates render as understandable account relationships.
 4. Exact monthly amounts remain hidden in the map overview and appear only in selected relationship/account details.
 5. Restored Main network/account-flow behavior and compatibility fields remain intact unless a later explicit contract changes them.
+
+These outcomes describe the retained legacy implementation and migration knowledge. The supported `/apps/account-map/` route is now a readiness screen, and the future Account Map must be designed as a new app under an approved detailed spec.
+
+### Phase 10.9: App Journey Entry and Legacy Route Isolation
+
+**Goal:** Keep Main as the home, expose fixed availability and current-location semantics for four destinations, and validate `Main → Simulation readiness → Portfolio readiness` without using legacy app runtimes.
+
+**Plan:** 1/1 complete
+
+- [x] [App Journey Entry Plan](../docs/superpowers/plans/2026-07-29-app-journey-entry.md) — Minimal destination-scoped journey snapshot, readiness routes, shared launcher/foundation, responsive browser coverage, and legacy runtime isolation.
+
+**Success criteria:**
+
+1. Main is `사용 중`; Simulation, Portfolio, and Account Map are `준비 중`, with current location shown separately.
+2. Simulation and Portfolio show a validated amount, semantic Main update time, and explicit latest-Main recovery path.
+3. Destination-scoped refresh state preserves Portfolio → Simulation navigation without relaxing route tuples.
+4. Storage-read failures recover to a Main path, and 390px/768px/desktop UI checks cover width, focus, containment, status, current location, and overflow.
+5. Legacy app source remains present as migration-reference material but is absent from supported route shells and runtime chunks.
 
 ### Phase 11: Zero-Input Spending Capture
 
@@ -253,11 +279,11 @@ Plans:
 | UXR-14 | Phase 10.7 | Complete |
 | UXR-15 | Phase 10.7 | Complete |
 | UXR-16 | Phase 10.7 | Complete |
-| UXR-17 | Phase 10.8 | Complete |
-| UXR-18 | Phase 10.8 | Complete |
-| UXR-19 | Phase 10.8 | Complete |
-| UXR-20 | Phase 10.8 | Complete |
-| UXR-21 | Phase 10.8 | Complete |
+| UXR-17 | Phase 10.8 | Historical reference |
+| UXR-18 | Phase 10.8 | Historical reference |
+| UXR-19 | Phase 10.8 | Historical reference |
+| UXR-20 | Phase 10.8 | Historical reference |
+| UXR-21 | Phase 10.8 | Historical reference |
 | CAP-01 | Phase 11 | Pending |
 | CAP-02 | Phase 11 | Pending |
 | CAP-03 | Phase 11 | Pending |
@@ -290,4 +316,4 @@ Plans:
 
 ## Next
 
-Phase 10.8 is complete. Next recommended step is Phase 11 Zero-Input Spending Capture.
+Phase 10.9 establishes the current route baseline. Phase 11 remains the next planned Main expansion. Any detailed Simulation, Portfolio, or Account Map work must begin with its own approved new-app spec and legacy migration/removal plan.
