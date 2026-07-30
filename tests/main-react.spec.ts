@@ -151,6 +151,37 @@ test.describe('mobile quick setup', () => {
       '남는 돈319.9만 원100.0%',
     ]);
 
+    const layout = await page.locator('.allocation-bar').evaluate((card) => {
+      const cardRect = card.getBoundingClientRect();
+      const parentRect = card.closest('form')!.getBoundingClientRect();
+      const tableRect = card.querySelector('.allocation-table')!.getBoundingClientRect();
+      const bar = card.querySelector('.allocation-bar__segments')!;
+      const cardStyle = getComputedStyle(card);
+      const barStyle = getComputedStyle(bar);
+      const borderMatch = cardStyle.borderLeftColor.match(/rgba?\(([^)]+)\)/);
+      const borderParts = borderMatch?.[1].split(',').map((part) => Number.parseFloat(part.trim())) ?? [];
+      return {
+        leftGap: cardRect.left - parentRect.left,
+        rightGap: parentRect.right - cardRect.right,
+        paddingLeft: Number.parseFloat(cardStyle.paddingLeft),
+        paddingRight: Number.parseFloat(cardStyle.paddingRight),
+        borderWidth: Number.parseFloat(cardStyle.borderLeftWidth),
+        borderAlpha: borderParts.length === 4 ? borderParts[3] : 1,
+        tableMatchesCard:
+          Math.abs(tableRect.left - (cardRect.left + 13)) <= 1
+          && Math.abs(tableRect.right - (cardRect.right - 13)) <= 1,
+        barRightMargin: Number.parseFloat(barStyle.marginRight),
+      };
+    });
+    expect(Math.abs(layout.leftGap - layout.rightGap)).toBeLessThanOrEqual(1);
+    expect(layout.paddingLeft).toBe(12);
+    expect(layout.paddingRight).toBe(12);
+    expect(layout.borderWidth).toBe(1);
+    expect(layout.borderAlpha).toBeGreaterThan(0);
+    expect(layout.borderAlpha).toBeLessThanOrEqual(0.2);
+    expect(layout.tableMatchesCard).toBe(true);
+    expect(layout.barRightMargin).toBeGreaterThan(0);
+
     for (const name of [
       '남는 돈 · 319.9만 원 · 100.0%',
       '소비 상세 정보',

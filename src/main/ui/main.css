@@ -38,8 +38,9 @@
   }
 
   .allocation-bar {
-    @apply grid gap-3 rounded-2xl border border-line bg-white/75 p-4 text-sm text-muted-text;
-    margin-inline-end: min(10%, 2.5rem);
+    @apply grid gap-3 rounded-2xl border bg-white/75 py-4 text-sm text-muted-text;
+    padding-inline: 0.75rem;
+    border-color: rgb(100 116 139 / 18%);
   }
 
   .allocation-bar__context,
@@ -49,6 +50,7 @@
 
   .allocation-bar__segments {
     @apply relative;
+    margin-inline-end: min(10%, 2.5rem);
   }
 
   .flow-bar-wrapper {
@@ -245,6 +247,12 @@
       opacity: 0;
       transform: translateY(9px) scale(0.96);
     }
+  }
+}
+
+@media (min-width: 640px) {
+  .allocation-bar {
+    padding-inline: 1rem;
   }
 }
 
