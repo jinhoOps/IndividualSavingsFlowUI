@@ -98,7 +98,7 @@ export function AllocationBar({ data, transitioning = false }: AllocationBarProp
 
   useEffect(() => {
     if (!transitionVisible) return undefined;
-    const timeout = window.setTimeout(() => setTransitionVisible(false), 700);
+    const timeout = window.setTimeout(() => setTransitionVisible(false), 1_350);
     return () => window.clearTimeout(timeout);
   }, [transitionVisible]);
 
