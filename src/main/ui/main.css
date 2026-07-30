@@ -71,6 +71,49 @@
     overflow: visible;
   }
 
+  .setup-review-transition {
+    @apply pointer-events-none absolute inset-x-0 top-[1.1875rem] z-10;
+    animation: setup-review-transition-exit 620ms cubic-bezier(.22, 1, .36, 1) both;
+    transform-origin: center;
+  }
+
+  .setup-review-transition__track {
+    @apply relative flex h-1.5 overflow-hidden rounded-full bg-slate-200;
+    animation: setup-review-track 620ms cubic-bezier(.22, 1, .36, 1) both;
+  }
+
+  .setup-review-transition__accent {
+    @apply absolute inset-y-0 left-0 rounded-full bg-accent;
+    animation: setup-review-accent 620ms cubic-bezier(.22, 1, .36, 1) both;
+  }
+
+  .allocation-bar[data-transitioning="true"] .allocation-table,
+  .allocation-bar[data-transitioning="true"] .allocation-bar__context,
+  .allocation-bar[data-transitioning="true"] .allocation-bar__deficit {
+    animation: setup-review-content 260ms ease-out 360ms both;
+  }
+
+  @keyframes setup-review-track {
+    0% { transform: translateY(-4.5rem) scaleX(.92); }
+    55% { transform: translateY(0) scaleX(1); }
+    100% { transform: translateY(0) scaleX(1); }
+  }
+
+  @keyframes setup-review-accent {
+    0%, 34% { opacity: 1; }
+    72%, 100% { opacity: 0; }
+  }
+
+  @keyframes setup-review-transition-exit {
+    0%, 76% { opacity: 1; visibility: visible; }
+    100% { opacity: 0; visibility: hidden; }
+  }
+
+  @keyframes setup-review-content {
+    from { opacity: 0; transform: translateY(.5rem); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
   .flow-bar {
     @apply relative h-11 w-full rounded-xl bg-transparent;
     @apply outline-none focus-visible:ring-3 focus-visible:ring-accent/35;
@@ -102,6 +145,19 @@
   .allocation-bar__visual-segment--saving { @apply bg-accent; }
   .allocation-bar__visual-segment--investment { @apply bg-slate-700; }
   .allocation-bar__visual-segment--remaining { @apply bg-slate-300; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .setup-review-transition {
+      display: none;
+      animation: none;
+    }
+
+    .allocation-bar[data-transitioning="true"] .allocation-table,
+    .allocation-bar[data-transitioning="true"] .allocation-bar__context,
+    .allocation-bar[data-transitioning="true"] .allocation-bar__deficit {
+      animation: none;
+    }
+  }
 
   .allocation-bar__segment-target {
     @apply absolute top-0 h-11 rounded-xl border-0 bg-transparent p-0 outline-none transition-colors hover:bg-white/15 focus-visible:ring-3 focus-visible:ring-accent/35;

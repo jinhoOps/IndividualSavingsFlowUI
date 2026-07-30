@@ -17,6 +17,8 @@ vi.mock('../../../src/main/ui/setup/SetupFlow', () => ({
     onChange,
     onStepChange,
     onApply,
+    onCancel,
+    notice,
   }: {
     draft: MainData;
     step: SetupStep;
@@ -24,8 +26,11 @@ vi.mock('../../../src/main/ui/setup/SetupFlow', () => ({
     onChange(draft: MainData): void;
     onStepChange(step: SetupStep): void;
     onApply(): void;
+    onCancel?: () => void;
+    notice?: ReactNode;
   }) => (
-    <section aria-label="setup-flow">
+    <section aria-label="setup-flow" className="setup-flow-surface">
+      {notice}
       <h1>{`setup:${step}`}</h1>
       <output>{draft.monthlyNetIncomeWon}</output>
       <button
@@ -39,6 +44,7 @@ vi.mock('../../../src/main/ui/setup/SetupFlow', () => ({
         next-housing
       </button>
       <button type="button" disabled={saving} onClick={onApply}>apply-setup</button>
+      {onCancel ? <button type="button" aria-label="설정 취소" onClick={onCancel}>취소</button> : null}
     </section>
   ),
 }));
@@ -149,13 +155,13 @@ describe('MainApp', () => {
     expect(navigate).toHaveBeenCalledWith(expect.stringContaining('/apps/simulation/'));
   });
 
-  it('shows the launcher and disabled CTA during first setup', async () => {
+  it('hides navigation and journey actions during first setup', async () => {
     render(<MainApp repository={repository({ status: 'empty', data: null, original: null })} />);
 
     await screen.findByRole('heading', { name: 'setup:welcome' });
 
-    expect(screen.getByRole('navigation', { name: 'ISF 앱' })).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Simulation으로 이어가기' })).toBeDisabled();
+    expect(screen.queryByRole('navigation', { name: 'ISF 앱' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Simulation으로 이어가기' })).not.toBeInTheDocument();
   });
 
   it('does not navigate when journey storage fails', async () => {
@@ -519,11 +525,12 @@ describe('MainApp', () => {
     expect(await screen.findByRole('heading', { name: 'setup:welcome' })).toBeVisible();
     expect(screen.queryByRole('navigation', { name: 'ISF 앱' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Simulation으로 이어가기' })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '취소' })).toHaveClass('ui-button', 'ui-button--secondary');
+    const cancel = screen.getByRole('button', { name: '설정 취소' });
+    expect(cancel.closest('.setup-flow-surface')).not.toBeNull();
     expect(screen.getByText('3000000')).toBeVisible();
     expect(storage.saveSetupProgress).toHaveBeenCalledWith('welcome', applied, 'restart');
 
-    fireEvent.click(screen.getByRole('button', { name: '취소' }));
+    fireEvent.click(cancel);
 
     expect(await screen.findByRole('heading', { name: 'dashboard' })).toBeVisible();
     expect(screen.getByRole('navigation', { name: 'ISF 앱' })).toBeVisible();
@@ -542,5 +549,7 @@ describe('MainApp', () => {
 
     expect(screen.getByText('4000000')).toBeVisible();
     expect(screen.getByText('설정 진행 상황을 저장하지 못했습니다. 이 화면에서는 계속 입력할 수 있습니다.')).toBeVisible();
+    expect(screen.getByText('설정 진행 상황을 저장하지 못했습니다. 이 화면에서는 계속 입력할 수 있습니다.')
+      .closest('.setup-flow-surface')).not.toBeNull();
   });
 });

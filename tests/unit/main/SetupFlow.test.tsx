@@ -135,8 +135,16 @@ describe('SetupFlow', () => {
     fireEvent.click(screen.getByRole('button', { name: '다음' }));
 
     expect(screen.getByRole('heading', { name: '입력한 월 자금 계획을 확인해주세요' })).toBeVisible();
-    expect(screen.getByRole('progressbar', { name: '수입 대비 현재 계획' })).toHaveAttribute('aria-valuetext', '현재 계획 230만 원 · 수입의 71.9%');
+    expect(screen.queryByRole('progressbar', { name: '수입 대비 현재 계획' })).not.toBeInTheDocument();
     expect(screen.getByText('월 수입을 이렇게 나눠 쓰고 있어요')).toBeVisible();
+    expect(screen.getByRole('table', { name: '월 자금 항목' })).toBeVisible();
+    expect(document.querySelector('.setup-review-transition')).not.toBeNull();
+    expect(document.querySelector('.setup-review-transition__track')).not.toBeNull();
+    fireEvent.animationEnd(document.querySelector('.setup-review-transition')!);
+    expect(document.querySelector('.setup-review-transition')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: '이전' }));
+    fireEvent.click(screen.getByRole('button', { name: '다음' }));
+    expect(document.querySelector('.setup-review-transition')).not.toBeNull();
     expect(screen.queryByText(/배분/)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: '소비 상세 정보' })).toBeVisible();
     expect(screen.getByRole('button', { name: '저축 상세 정보' })).toBeVisible();
@@ -150,6 +158,8 @@ describe('SetupFlow', () => {
       'income',
       'housing',
       'living',
+      'saving-investment',
+      'review',
       'saving-investment',
       'review',
     ]);

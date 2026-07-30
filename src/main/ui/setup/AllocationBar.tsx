@@ -7,6 +7,7 @@ import { createOverflowPresentation } from './overflowPresentation';
 
 export interface AllocationBarProps {
   data: MainData;
+  transitioning?: boolean;
 }
 
 interface Allocation {
@@ -17,9 +18,35 @@ interface Allocation {
   visualPercentage: number;
 }
 
+export interface AllocationVisualSegment {
+  id: 'consumption' | 'saving' | 'investment' | 'remaining';
+  visualPercentage: number;
+}
+
 const MIN_INTERACTIVE_SIZE_PX = 44;
 
-export function AllocationBar({ data }: AllocationBarProps) {
+export function createAllocationVisualSegments(data: MainData): AllocationVisualSegment[] {
+  const cashflow = calculateCashflow(data);
+  const isDeficit = cashflow.deficitWon > 0;
+  const denominator = isDeficit ? cashflow.plannedOutflowWon : cashflow.incomeWon;
+  const segment = (
+    id: AllocationVisualSegment['id'],
+    amountWon: number,
+  ): AllocationVisualSegment => ({
+    id,
+    visualPercentage: clampPercentage(percentageOfIncome(amountWon, denominator) ?? 0),
+  });
+  const segments = [
+    segment('consumption', cashflow.consumptionWon),
+    segment('saving', cashflow.savingWon),
+    segment('investment', cashflow.investmentWon),
+  ];
+  if (!isDeficit) segments.push(segment('remaining', cashflow.remainingWon));
+  return segments;
+}
+
+export function AllocationBar({ data, transitioning = false }: AllocationBarProps) {
+  const [transitionVisible, setTransitionVisible] = useState(transitioning);
   const [hoveredId, setHoveredId] = useState<string>();
   const [focusedId, setFocusedId] = useState<string>();
   const [tappedId, setTappedId] = useState<string>();
@@ -38,12 +65,17 @@ export function AllocationBar({ data }: AllocationBarProps) {
     '--overflow-duration': `${overflow.flowDurationMs}ms`,
   } as CSSProperties;
   const visualDenominator = isDeficit ? cashflow.plannedOutflowWon : cashflow.incomeWon;
+  const visualSegments = createAllocationVisualSegments(data);
+  const plannedPercentage = clampPercentage(
+    percentageOfIncome(cashflow.plannedOutflowWon, cashflow.incomeWon) ?? 0,
+  );
   const allocation = (id: string, label: string, amountWon: number): Allocation => ({
     id,
     label,
     amountWon,
     percentage: percentageOfIncome(amountWon, cashflow.incomeWon),
-    visualPercentage: clampPercentage(percentageOfIncome(amountWon, visualDenominator) ?? 0),
+    visualPercentage: visualSegments.find((segment) => segment.id === id)?.visualPercentage
+      ?? clampPercentage(percentageOfIncome(amountWon, visualDenominator) ?? 0),
   });
   const allocations: Allocation[] = [
     allocation('consumption', '소비', cashflow.consumptionWon),
@@ -63,6 +95,12 @@ export function AllocationBar({ data }: AllocationBarProps) {
     : activeId === tappedId
       ? tapPosition ?? activePosition
       : activePosition;
+
+  useEffect(() => {
+    if (!transitionVisible) return undefined;
+    const timeout = window.setTimeout(() => setTransitionVisible(false), 700);
+    return () => window.clearTimeout(timeout);
+  }, [transitionVisible]);
 
   useLayoutEffect(() => {
     const bar = barRef.current;
@@ -149,7 +187,11 @@ export function AllocationBar({ data }: AllocationBarProps) {
   };
 
   return (
-    <section className="allocation-bar" aria-label="월 수입 나누기">
+    <section
+      className="allocation-bar"
+      aria-label="월 수입 나누기"
+      data-transitioning={transitioning ? 'true' : undefined}
+    >
       <p className="allocation-bar__context">
         월 수입을 이렇게 나눠 쓰고 있어요
       </p>
@@ -162,6 +204,27 @@ export function AllocationBar({ data }: AllocationBarProps) {
           }
         }}
       >
+        {transitionVisible ? (
+          <div
+            className="setup-review-transition"
+            aria-hidden="true"
+            onAnimationEnd={() => setTransitionVisible(false)}
+          >
+            <div className="setup-review-transition__track">
+              {visualSegments.map((segment) => (
+                <span
+                  className={`allocation-bar__visual-segment allocation-bar__visual-segment--${segment.id}`}
+                  key={segment.id}
+                  style={{ width: `${segment.visualPercentage}%` }}
+                />
+              ))}
+              <span
+                className="setup-review-transition__accent"
+                style={{ width: `${plannedPercentage}%` }}
+              />
+            </div>
+          </div>
+        ) : null}
         <div
           className="flow-bar allocation-bar__segments"
           data-overflow={isDeficit ? 'true' : 'false'}

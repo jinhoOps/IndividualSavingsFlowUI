@@ -2,7 +2,10 @@ import { cleanup, fireEvent, render, screen, within } from '@testing-library/rea
 import '@testing-library/jest-dom/vitest';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { MainData } from '../../../src/main/domain/model';
-import { AllocationBar } from '../../../src/main/ui/setup/AllocationBar';
+import {
+  AllocationBar,
+  createAllocationVisualSegments,
+} from '../../../src/main/ui/setup/AllocationBar';
 
 afterEach(() => {
   cleanup();
@@ -59,6 +62,22 @@ const cappedDeficitFixture: MainData = {
 };
 
 describe('AllocationBar', () => {
+  it('provides the same visual segments used by the review transition', () => {
+    expect(createAllocationVisualSegments(cashflowFixture)).toEqual([
+      { id: 'consumption', visualPercentage: 56.25 },
+      { id: 'saving', visualPercentage: 9.375 },
+      { id: 'investment', visualPercentage: 6.25 },
+      { id: 'remaining', visualPercentage: 28.125 },
+    ]);
+  });
+
+  it('starts the review transition at the current planned-outflow width', () => {
+    const { container } = render(<AllocationBar data={cashflowFixture} transitioning />);
+    expect(container.querySelector('.setup-review-transition__accent')).toHaveStyle({
+      width: '71.875%',
+    });
+  });
+
   it('shows allocation labels, amounts, and income percentages in a table', () => {
     render(<AllocationBar data={cashflowFixture} />);
 

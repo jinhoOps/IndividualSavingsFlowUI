@@ -3420,7 +3420,7 @@ test.describe('Phase 09 final responsive user flow coverage', () => {
 
     await page.getByRole('button', { name: '다음' }).click();
     await expect(page.getByRole('textbox', { name: '월 실수령액' })).toHaveValue('4,200,000');
-    await page.getByRole('button', { name: '취소' }).click();
+    await page.getByRole('button', { name: '설정 취소' }).click();
 
     await expect(page.getByRole('heading', { name: '이번 달 자금 흐름' })).toBeVisible();
     await expect(page.getByRole('navigation', { name: 'ISF 앱' })).toBeVisible();

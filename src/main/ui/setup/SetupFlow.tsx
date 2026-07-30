@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import type { MainData, SetupStep } from '../../domain/model';
 import type { ValidationCode } from '../../domain/validation';
 import { Button } from '../common/Button';
@@ -21,6 +21,8 @@ export interface SetupFlowProps {
   onChange(draft: MainData): void;
   onStepChange(step: SetupStep): void;
   onApply(): void;
+  onCancel?: () => void;
+  notice?: ReactNode;
 }
 
 const steps: SetupStep[] = ['welcome', 'income', 'housing', 'living', 'saving-investment', 'review'];
@@ -43,6 +45,8 @@ export function SetupFlow({
   onChange,
   onStepChange,
   onApply,
+  onCancel,
+  notice,
 }: SetupFlowProps) {
   const [incomeSubmittedEmpty, setIncomeSubmittedEmpty] = useState(false);
   const stepIndex = steps.indexOf(step);
@@ -50,8 +54,7 @@ export function SetupFlow({
   const nextStep = steps[stepIndex + 1];
   const showContext = step === 'housing'
     || step === 'living'
-    || step === 'saving-investment'
-    || step === 'review';
+    || step === 'saving-investment';
   const incomeError = findIssue(issues, 'monthlyNetIncomeWon')
     ?? (incomeSubmittedEmpty ? issueMessage('income_required') : undefined);
 
@@ -88,12 +91,27 @@ export function SetupFlow({
 
   return (
     <Surface as="section" className="setup-flow-surface shadow-float" aria-labelledby="setup-flow-title">
-      <div className="h-1.5 overflow-hidden rounded-t-[inherit] bg-slate-100">
+      <div className="mx-6 mt-6 h-1.5 overflow-hidden rounded-full bg-slate-100 sm:mx-10">
         <div className="h-full bg-accent transition-[width]" style={{ width: `${((stepIndex + 1) / steps.length) * 100}%` }} />
       </div>
-      <p className="mx-6 mt-6 text-sm font-black tracking-wide text-accent sm:mx-10" id="setup-flow-title" role="status">
-        {stepIndex + 1} / {steps.length} · {stepLabels[step]}
-      </p>
+      <div className="mx-6 mt-5 flex items-center justify-between gap-4 sm:mx-10">
+        <p className="m-0 text-sm font-black tracking-wide text-accent" id="setup-flow-title" role="status">
+          {stepIndex + 1} / {steps.length} · {stepLabels[step]}
+        </p>
+        {onCancel ? (
+          <Button
+            className="rounded-full bg-white text-sm text-slate-700 shadow-sm"
+            type="button"
+            variant="secondary"
+            aria-label="설정 취소"
+            disabled={saving}
+            onClick={onCancel}
+          >
+            취소
+          </Button>
+        ) : null}
+      </div>
+      {notice ? <div className="mx-6 mt-4 sm:mx-10">{notice}</div> : null}
       <form
         className="grid min-h-[31rem] content-start gap-6 px-6 pb-6 pt-5 sm:px-10 sm:pb-10"
         aria-busy={saving ? 'true' : undefined}
@@ -246,7 +264,7 @@ function ReviewStep({ draft }: Pick<SetupFlowProps, 'draft'>) {
   return (
     <>
       <StepHeading>입력한 월 자금 계획을 확인해주세요</StepHeading>
-      <AllocationBar data={draft} />
+      <AllocationBar data={draft} transitioning />
     </>
   );
 }
