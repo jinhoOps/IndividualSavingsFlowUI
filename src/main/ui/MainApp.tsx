@@ -1,10 +1,15 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { applyDraft, bootstrapMain, type ValidationIssue } from '../application/bootstrap';
 import { mainReducer, type MainAction, type MainState } from '../application/mainReducer';
 import { calculateCashflow } from '../domain/cashflow';
 import { createEmptyMainData, type MainData, type SetupStep } from '../domain/model';
 import { exportMainData, exportRecoveryData, importMainData } from '../infrastructure/backup';
 import { BrowserMainRepository, type MainRepository } from '../infrastructure/mainRepository';
+import { createMainJourneySnapshot } from '../../journey/domain/journeySnapshot';
+import { BrowserJourneyRepository, type JourneyRepository } from '../../journey/infrastructure/journeyRepository';
+import { appPath } from '../../journey/routes';
+import { AppLauncher } from '../../journey/ui/AppLauncher';
+import { JourneyEntryCard } from '../../journey/ui/JourneyEntryCard';
 import { Button } from './common/Button';
 import { Surface } from './common/Surface';
 import { formatDashboardWon } from './dashboard/CashflowSummary';
@@ -13,16 +18,26 @@ import { SetupFlow } from './setup/SetupFlow';
 
 export interface MainAppProps {
   repository?: MainRepository;
+  journeyRepository?: JourneyRepository;
+  navigate?(href: string): void;
+  now?(): number;
 }
 
 const browserRepository = new BrowserMainRepository();
+const browserJourneyRepository = new BrowserJourneyRepository();
 
-export function MainApp({ repository = browserRepository }: MainAppProps) {
+export function MainApp({
+  repository = browserRepository,
+  journeyRepository = browserJourneyRepository,
+  navigate = navigateTo,
+  now = Date.now,
+}: MainAppProps) {
   const [state, setState] = useState<MainState | null>(null);
   const [issues, setIssues] = useState<ValidationIssue[]>([]);
   const [validationAttempt, setValidationAttempt] = useState(0);
   const [backupStatus, setBackupStatus] = useState<{ kind: 'success' | 'error'; message: string } | null>(null);
   const [progressWarning, setProgressWarning] = useState<string | null>(null);
+  const [journeyError, setJourneyError] = useState<string | null>(null);
   const savingRef = useRef(false);
 
   useEffect(() => {
@@ -201,31 +216,50 @@ export function MainApp({ repository = browserRepository }: MainAppProps) {
     downloadJson(exportMainData(state.applied), 'individual-savings-flow-main.json');
   }
 
+  function continueToSimulation() {
+    if (state?.applied === null || state?.applied === undefined) return;
+
+    try {
+      journeyRepository.save(createMainJourneySnapshot(state.applied, now()));
+      setJourneyError(null);
+      navigate(appPath('simulation'));
+    } catch {
+      setJourneyError('연결 정보를 저장하지 못했습니다. Main 계획은 변경되지 않았습니다.');
+    }
+  }
+
+  const journeyEntry = <JourneyEntryCard enabled={state?.applied !== null && state?.applied !== undefined} onContinue={continueToSimulation} />;
+
   if (state === null) {
     return (
-      <main className="grid min-h-dvh place-items-center px-6">
-        <p className="text-sm font-bold text-slate-600" role="status">자금 계획을 불러오는 중입니다.</p>
-      </main>
+      <MainAppShell journeyError={journeyError}>
+        <main className="grid min-h-dvh place-items-center px-6">
+          <p className="text-sm font-bold text-slate-600" role="status">자금 계획을 불러오는 중입니다.</p>
+        </main>
+      </MainAppShell>
     );
   }
 
   if (state.mode === 'recovery') {
     const original = state.loadError?.original ?? state.draft;
     return (
-      <RecoveryView
-        state={state}
-        onDownload={() => downloadRecovery(original)}
-        onStartEmpty={startEmptySetup}
-        onRetry={apply}
-        onDiscard={discardRecoveryCandidate}
-        onReturnCurrent={returnToCurrentPlan}
-      />
+      <MainAppShell journeyError={journeyError}>
+        <RecoveryView
+          state={state}
+          onDownload={() => downloadRecovery(original)}
+          onStartEmpty={startEmptySetup}
+          onRetry={apply}
+          onDiscard={discardRecoveryCandidate}
+          onReturnCurrent={returnToCurrentPlan}
+        />
+      </MainAppShell>
     );
   }
 
   if (state.mode === 'setup' && state.setupStep !== null) {
     return (
-      <main className="mx-auto min-h-dvh w-full max-w-3xl px-5 py-8 sm:px-8 sm:py-12">
+      <MainAppShell journeyError={journeyError}>
+        <main className="mx-auto min-h-dvh w-full max-w-3xl px-5 py-8 sm:px-8 sm:py-12">
         {progressWarning === null ? null : (
           <p className="mb-4 rounded-xl bg-amber-50 px-4 py-3 text-sm font-bold text-amber-900" role="status">
             {progressWarning}
@@ -256,6 +290,7 @@ export function MainApp({ repository = browserRepository }: MainAppProps) {
             </Button>
           </Surface>
         ) : null}
+        {journeyEntry}
         <SetupFlow
           draft={state.draft}
           step={state.setupStep}
@@ -266,30 +301,46 @@ export function MainApp({ repository = browserRepository }: MainAppProps) {
           onStepChange={changeSetupStep}
           onApply={apply}
         />
-      </main>
+        </main>
+      </MainAppShell>
     );
   }
 
   if (state.applied === null) return null;
 
   return (
-    <SummaryDashboard
-      applied={state.applied}
-      draft={state.draft}
-      dirty={state.dirty}
-      issues={issues}
-      validationAttempt={validationAttempt}
-      saveStatus={state.saveStatus}
-      onDraftChange={changeDraft}
-      onApply={apply}
-      onCancel={cancelDraft}
-      onRestart={restartSetup}
-      onExport={exportAppliedBackup}
-      onImportFile={importBackup}
-      backupStatus={progressWarning === null
-        ? backupStatus
-        : { kind: 'error', message: progressWarning }}
-    />
+    <MainAppShell journeyError={journeyError}>
+      <SummaryDashboard
+        applied={state.applied}
+        draft={state.draft}
+        dirty={state.dirty}
+        issues={issues}
+        validationAttempt={validationAttempt}
+        saveStatus={state.saveStatus}
+        onDraftChange={changeDraft}
+        onApply={apply}
+        onCancel={cancelDraft}
+        onRestart={restartSetup}
+        onExport={exportAppliedBackup}
+        onImportFile={importBackup}
+        backupStatus={progressWarning === null
+          ? backupStatus
+          : { kind: 'error', message: progressWarning }}
+        journeyEntry={journeyEntry}
+      />
+    </MainAppShell>
+  );
+}
+
+function MainAppShell({ children, journeyError }: { children: ReactNode; journeyError: string | null }) {
+  return (
+    <div>
+      <div className="mx-auto w-full max-w-[1200px] px-5 pt-5 sm:px-8">
+        <AppLauncher currentApp="main" />
+        {journeyError === null ? null : <p className="mt-4 text-sm font-bold text-rose-700" role="alert">{journeyError}</p>}
+      </div>
+      {children}
+    </div>
   );
 }
 
@@ -411,4 +462,8 @@ function readFileText(file: File): Promise<string> {
     reader.onerror = () => reject(reader.error ?? new Error('Backup file could not be read.'));
     reader.readAsText(file);
   });
+}
+
+function navigateTo(href: string): void {
+  window.location.assign(href);
 }

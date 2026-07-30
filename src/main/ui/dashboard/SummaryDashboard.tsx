@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { MainState } from '../../application/mainReducer';
 import { calculateCashflow } from '../../domain/cashflow';
 import type { MainData } from '../../domain/model';
@@ -24,6 +24,7 @@ export interface SummaryDashboardProps {
   onExport?(): void;
   onImportFile?(file: File): void;
   backupStatus?: { kind: 'success' | 'error'; message: string } | null;
+  journeyEntry?: ReactNode;
 }
 
 export function SummaryDashboard({
@@ -40,6 +41,7 @@ export function SummaryDashboard({
   onExport,
   onImportFile,
   backupStatus = null,
+  journeyEntry,
 }: SummaryDashboardProps) {
   const [editorOpen, setEditorOpen] = useState(false);
   const openerRef = useRef<HTMLElement | null>(null);
@@ -174,6 +176,8 @@ export function SummaryDashboard({
             <Button className="rounded-full bg-white/80 text-sm shadow-sm" type="button" disabled={saving} onClick={requestRestart}>처음부터 다시 설정</Button>
           </div>
         </header>
+
+        {journeyEntry === undefined ? null : journeyEntry}
 
         {backupStatus === null ? null : (
           <p

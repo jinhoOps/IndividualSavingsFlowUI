@@ -1,5 +1,6 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
+import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { MainData, SetupStep } from '../../../src/main/domain/model';
 import type {
@@ -51,6 +52,7 @@ vi.mock('../../../src/main/ui/dashboard/SummaryDashboard', () => ({
     onCancel,
     onRestart,
     backupStatus,
+    journeyEntry,
   }: {
     applied: MainData;
     draft: MainData;
@@ -59,6 +61,7 @@ vi.mock('../../../src/main/ui/dashboard/SummaryDashboard', () => ({
     onCancel(): void;
     onRestart(): void;
     backupStatus?: { kind: 'success' | 'error'; message: string } | null;
+    journeyEntry?: ReactNode;
   }) => (
     <section aria-label="dashboard">
       <h1>dashboard</h1>
@@ -70,6 +73,7 @@ vi.mock('../../../src/main/ui/dashboard/SummaryDashboard', () => ({
       <button type="button" onClick={onApply}>apply-dashboard</button>
       <button type="button" onClick={onCancel}>cancel-dashboard</button>
       <button type="button" onClick={onRestart}>restart-setup</button>
+      {journeyEntry}
       {backupStatus === null || backupStatus === undefined ? null : (
         <p role={backupStatus.kind === 'error' ? 'alert' : 'status'}>{backupStatus.message}</p>
       )}
@@ -124,6 +128,75 @@ describe('setupStepForIssue', () => {
 });
 
 describe('MainApp', () => {
+  it('stores the applied Main summary before opening Simulation', async () => {
+    const save = vi.fn();
+    const navigate = vi.fn();
+    render(<MainApp
+      repository={repository({ status: 'current', data: data(3_000_000), original: null })}
+      journeyRepository={{ load: vi.fn(), save }}
+      navigate={navigate}
+      now={() => 50}
+    />);
+    await screen.findByRole('heading', { name: 'dashboard' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Simulation으로 이어가기' }));
+
+    expect(save).toHaveBeenCalledWith(expect.objectContaining({
+      sourceApp: 'main',
+      destinationApp: 'simulation',
+      createdAt: 50,
+    }));
+    expect(navigate).toHaveBeenCalledWith(expect.stringContaining('/apps/simulation/'));
+  });
+
+  it('shows the launcher and disabled CTA during first setup', async () => {
+    render(<MainApp repository={repository({ status: 'empty', data: null, original: null })} />);
+
+    await screen.findByRole('heading', { name: 'setup:welcome' });
+
+    expect(screen.getByRole('navigation', { name: 'ISF 앱' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Simulation으로 이어가기' })).toBeDisabled();
+  });
+
+  it('does not navigate when journey storage fails', async () => {
+    const navigate = vi.fn();
+    render(<MainApp
+      repository={repository({ status: 'current', data: data(3_000_000), original: null })}
+      journeyRepository={{ load: vi.fn(), save: () => { throw new Error('quota'); } }}
+      navigate={navigate}
+    />);
+    await screen.findByRole('heading', { name: 'dashboard' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Simulation으로 이어가기' }));
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Main 계획은 변경되지 않았습니다');
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it('stores a negative investable amount for an applied deficit plan', async () => {
+    const save = vi.fn();
+    render(<MainApp
+      repository={repository({
+        status: 'current',
+        data: data(1_000_000, {
+          monthlyHousingWon: 800_000,
+          monthlyLivingWon: 500_000,
+          monthlySavingWon: 100_000,
+        }),
+        original: null,
+      })}
+      journeyRepository={{ load: vi.fn(), save }}
+      navigate={vi.fn()}
+    />);
+    await screen.findByRole('heading', { name: 'dashboard' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Simulation으로 이어가기' }));
+
+    expect(save).toHaveBeenCalledWith(expect.objectContaining({
+      monthlyInvestableAmountWon: -400_000,
+    }));
+  });
+
   it('shows loading until bootstrap finishes and then starts setup at welcome', async () => {
     let resolveLoad: ((value: MainLoadResult) => void) | undefined;
     const storage = repository({ status: 'empty', data: null, original: null });

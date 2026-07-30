@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { useState } from 'react';
+import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { MainData } from '../../../src/main/domain/model';
 import { SummaryDashboard, type SummaryDashboardProps } from '../../../src/main/ui/dashboard/SummaryDashboard';
@@ -94,6 +95,26 @@ function ValidationHarness({ mobile = false }: { mobile?: boolean }) {
 }
 
 describe('SummaryDashboard', () => {
+  it('renders the supplied journey entry beside the applied Main summary', () => {
+    const journeyEntry: ReactNode = <button type="button">Simulation으로 이어가기</button>;
+    render(
+      <SummaryDashboard
+        applied={appliedData}
+        draft={appliedData}
+        dirty={false}
+        issues={[]}
+        saveStatus="idle"
+        onDraftChange={vi.fn()}
+        onApply={vi.fn()}
+        onCancel={vi.fn()}
+        onRestart={vi.fn()}
+        journeyEntry={journeyEntry}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: 'Simulation으로 이어가기' })).toBeVisible();
+  });
+
   it('uses the shared surface and button variants across the dashboard editor', () => {
     render(<DashboardHarness />);
 
