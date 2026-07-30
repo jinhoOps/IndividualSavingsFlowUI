@@ -3410,4 +3410,89 @@ test.describe('Phase 09 final responsive user flow coverage', () => {
       expect(overflow.main, `Main content fits at ${viewport.width}px`).toBeLessThanOrEqual(4);
     }
   });
+
+  test('focuses restart setup and restores journey navigation after cancel', async ({ page }) => {
+    await page.getByRole('button', { name: '처음부터 다시 설정' }).click();
+
+    await expect(page.getByRole('heading', { name: '한 달 돈의 흐름, 2분이면 확인할 수 있어요.' })).toBeVisible();
+    await expect(page.getByRole('navigation', { name: 'ISF 앱' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Simulation으로 이어가기' })).toHaveCount(0);
+
+    await page.getByRole('button', { name: '다음' }).click();
+    await expect(page.getByRole('textbox', { name: '월 실수령액' })).toHaveValue('4,200,000');
+    await page.getByRole('button', { name: '취소' }).click();
+
+    await expect(page.getByRole('heading', { name: '이번 달 자금 흐름' })).toBeVisible();
+    await expect(page.getByRole('navigation', { name: 'ISF 앱' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Simulation으로 이어가기' })).toBeEnabled();
+  });
+
+});
+
+test.describe('Main liquid overflow presentation', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript((current) => {
+      localStorage.clear();
+      sessionStorage.clear();
+      localStorage.setItem('isf-main-v2', JSON.stringify(current));
+    }, {
+      schemaVersion: 2,
+      updatedAt: 1,
+      monthlyNetIncomeWon: 4_200_000,
+      monthlyHousingWon: 900_000,
+      monthlyLivingWon: 900_000,
+      monthlySavingWon: 700_000,
+      monthlyInvestmentWon: 5_060_000,
+    });
+    await page.goto('apps/main/index.html');
+    await page.waitForSelector('main');
+  });
+
+  test('contains a maximum liquid breakout at mobile and tablet widths', async ({ page }) => {
+    for (const viewport of [
+      { width: 390, height: 844 },
+      { width: 768, height: 1024 },
+    ]) {
+      await page.setViewportSize(viewport);
+      await page.reload();
+      const extension = page.locator('.flow-overflow-extension').first();
+      await expect(extension).toBeVisible();
+
+      const geometry = await extension.evaluate((liquid) => {
+        const bar = liquid.parentElement!.getBoundingClientRect();
+        const overflow = liquid.getBoundingClientRect();
+        return {
+          ratio: overflow.width / bar.width,
+          documentOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+          insideViewport: overflow.right <= document.documentElement.clientWidth,
+          sameHeight: Math.abs(overflow.height - 6) < 1,
+        };
+      });
+      expect(geometry.ratio).toBeCloseTo(0.1, 2);
+      expect(geometry.documentOverflow).toBeLessThanOrEqual(4);
+      expect(geometry.insideViewport).toBe(true);
+      expect(geometry.sameHeight).toBe(true);
+    }
+  });
+
+  test('removes liquid motion and droplets when reduced motion is requested', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.reload();
+
+    const motion = await page.locator('.flow-overflow-extension').first().evaluate((element) => {
+      const extension = getComputedStyle(element);
+      const sheen = getComputedStyle(element.querySelector('.flow-overflow-sheen')!, '::after');
+      const droplets = element.querySelector('.flow-overflow-droplets');
+      return {
+        extensionAnimation: extension.animationName,
+        extensionTransitionSeconds: Number.parseFloat(extension.transitionDuration),
+        sheenAnimation: sheen.animationName,
+        dropletsDisplay: droplets === null ? 'absent' : getComputedStyle(droplets).display,
+      };
+    });
+    expect(motion.extensionAnimation).toBe('none');
+    expect(motion.extensionTransitionSeconds).toBeLessThanOrEqual(0.00001);
+    expect(motion.sheenAnimation).toBe('none');
+    expect(motion.dropletsDisplay).toBe('none');
+  });
 });

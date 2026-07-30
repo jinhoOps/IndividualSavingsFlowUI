@@ -507,7 +507,7 @@ describe('MainApp', () => {
     expect(storage.discardPending).toHaveBeenCalledOnce();
   });
 
-  it('restarts setup from applied v2 data at welcome and persists restart progress', async () => {
+  it('focuses restart setup without journey navigation and restores it on cancel', async () => {
     const applied = data(3_000_000);
     const storage = repository({ status: 'current', data: applied, original: {} });
     storage.saveSetupProgress = vi.fn();
@@ -517,9 +517,17 @@ describe('MainApp', () => {
     fireEvent.click(screen.getByRole('button', { name: 'restart-setup' }));
 
     expect(await screen.findByRole('heading', { name: 'setup:welcome' })).toBeVisible();
+    expect(screen.queryByRole('navigation', { name: 'ISF 앱' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Simulation으로 이어가기' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: '취소' })).toHaveClass('ui-button', 'ui-button--secondary');
     expect(screen.getByText('3000000')).toBeVisible();
     expect(storage.saveSetupProgress).toHaveBeenCalledWith('welcome', applied, 'restart');
+
+    fireEvent.click(screen.getByRole('button', { name: '취소' }));
+
+    expect(await screen.findByRole('heading', { name: 'dashboard' })).toBeVisible();
+    expect(screen.getByRole('navigation', { name: 'ISF 앱' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Simulation으로 이어가기' })).toBeEnabled();
   });
 
   it('keeps setup editing available when progress persistence fails', async () => {

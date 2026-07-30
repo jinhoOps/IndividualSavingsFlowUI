@@ -43,6 +43,21 @@ const adjacentSmallFixture: MainData = {
   monthlyInvestmentWon: 700_000,
 };
 
+const belowDropletFixture: MainData = {
+  ...cashflowFixture,
+  monthlyInvestmentWon: 1_500_000,
+};
+
+const liquidDeficitFixture: MainData = {
+  ...cashflowFixture,
+  monthlyInvestmentWon: 2_100_000,
+};
+
+const cappedDeficitFixture: MainData = {
+  ...cashflowFixture,
+  monthlyInvestmentWon: 3_660_000,
+};
+
 describe('AllocationBar', () => {
   it('shows allocation labels, amounts, and income percentages in a table', () => {
     render(<AllocationBar data={cashflowFixture} />);
@@ -178,14 +193,33 @@ describe('AllocationBar', () => {
     expect(screen.getByText('수입보다 40만 원 초과')).toBeVisible();
   });
 
-  it('shows contained pressure overflow hooks only for a deficit', () => {
+  it('renders compressed liquid overflow and adds droplets only from 30%', () => {
     const { rerender } = render(<AllocationBar data={cashflowFixture} />);
     expect(document.querySelector('.allocation-bar__segments')).toHaveAttribute('data-overflow', 'false');
-    expect(document.querySelector('.allocation-bar__pressure')).not.toBeInTheDocument();
+    expect(document.querySelector('.flow-overflow-extension')).not.toBeInTheDocument();
 
-    rerender(<AllocationBar data={{ ...cashflowFixture, monthlyInvestmentWon: 1_500_000 }} />);
-    expect(document.querySelector('.allocation-bar__segments')).toHaveAttribute('data-overflow', 'true');
-    expect(document.querySelector('.allocation-bar__pressure')).toBeInTheDocument();
-    expect(document.querySelectorAll('.allocation-bar__droplet')).toHaveLength(2);
+    rerender(<AllocationBar data={belowDropletFixture} />);
+    expect(document.querySelector('.allocation-bar__segments')).toHaveAttribute('data-overflow-intensity', 'active');
+    expect(document.querySelector('.flow-overflow-extension')).toHaveStyle({
+      '--overflow-length': '2.5%',
+    });
+    expect(document.querySelector('.flow-overflow-droplets')).not.toBeInTheDocument();
+
+    rerender(<AllocationBar data={liquidDeficitFixture} />);
+    expect(document.querySelector('.allocation-bar__segments')).toHaveAttribute('data-overflow-intensity', 'liquid');
+    expect(document.querySelector('.flow-overflow-extension')).toHaveStyle({
+      '--overflow-length': '6.25%',
+    });
+    expect(document.querySelectorAll('.flow-overflow-droplet')).toHaveLength(2);
+  });
+
+  it('caps visual overflow at 10% while preserving the actual 80% table value', () => {
+    render(<AllocationBar data={cappedDeficitFixture} />);
+
+    expect(document.querySelector('.allocation-bar__segments')).toHaveAttribute('data-overflow-intensity', 'maximum');
+    expect(document.querySelector('.flow-overflow-extension')).toHaveStyle({
+      '--overflow-length': '10%',
+    });
+    expect(screen.getByRole('row', { name: /초과 256만 원 80\.0%/ })).toBeVisible();
   });
 });
