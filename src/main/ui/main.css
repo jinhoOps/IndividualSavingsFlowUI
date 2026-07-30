@@ -50,7 +50,7 @@
 
   .allocation-bar__segments {
     @apply relative;
-    margin-inline-end: min(10%, 2.5rem);
+    margin-inline-end: 0;
   }
 
   .flow-bar-wrapper {
@@ -59,6 +59,11 @@
   }
 
   .flow-context-summary {
+    margin-inline-end: 0;
+  }
+
+  .allocation-bar__segments[data-overflow="true"],
+  .flow-context-summary[data-overflow="true"] {
     margin-inline-end: min(10%, 2.5rem);
   }
 
@@ -141,8 +146,8 @@
   }
 
   .flow-overflow-bridge {
-    left: 96%;
-    width: calc(4% + 1px);
+    left: 98%;
+    width: calc(2% + 1px);
     border-radius: 999px 0 0 999px;
     background: linear-gradient(
       90deg,

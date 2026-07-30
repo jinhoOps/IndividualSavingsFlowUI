@@ -3430,7 +3430,8 @@ test.describe('Phase 09 final responsive user flow coverage', () => {
 });
 
 test.describe('Main liquid overflow presentation', () => {
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    const investmentWon = testInfo.title.includes('at 100%') ? 1_700_000 : 5_060_000;
     await page.addInitScript((current) => {
       localStorage.clear();
       sessionStorage.clear();
@@ -3442,7 +3443,7 @@ test.describe('Main liquid overflow presentation', () => {
       monthlyHousingWon: 900_000,
       monthlyLivingWon: 900_000,
       monthlySavingWon: 700_000,
-      monthlyInvestmentWon: 5_060_000,
+      monthlyInvestmentWon: investmentWon,
     });
     await page.goto('apps/main/index.html');
     await page.waitForSelector('main');
@@ -3474,14 +3475,51 @@ test.describe('Main liquid overflow presentation', () => {
         };
       });
       expect(geometry.ratio).toBeCloseTo(0.1, 2);
-      expect(geometry.bridgeStartRatio).toBeCloseTo(0.96, 2);
-      expect(geometry.bridgeRatio).toBeCloseTo(0.04, 2);
+      expect(geometry.bridgeStartRatio).toBeCloseTo(0.98, 2);
+      expect(geometry.bridgeRatio).toBeCloseTo(0.02, 2);
       expect(geometry.seamGap).toBeLessThanOrEqual(0);
-      expect(geometry.totalRatio).toBeCloseTo(0.14, 2);
+      expect(geometry.totalRatio).toBeCloseTo(0.12, 2);
       expect(geometry.documentOverflow).toBeLessThanOrEqual(4);
       expect(geometry.insideViewport).toBe(true);
       expect(geometry.sameHeight).toBe(true);
     }
+  });
+
+  test('keeps both original bars symmetric without an overflow gutter at 100%', async ({ page }) => {
+    const readGeometry = (selector: string) => page.locator(selector).evaluate((bar, currentSelector) => {
+        const barRect = bar.getBoundingClientRect();
+        const form = bar.closest('form');
+        const parent = currentSelector === '.flow-context-summary' ? form! : bar.parentElement!;
+        const parentRect = parent.getBoundingClientRect();
+        const parentStyle = getComputedStyle(parent);
+        const contentLeft = parentRect.left + Number.parseFloat(parentStyle.paddingLeft);
+        const contentRight = parentRect.right - Number.parseFloat(parentStyle.paddingRight);
+        return {
+          leftGap: barRect.left - contentLeft,
+          rightGap: contentRight - barRect.right,
+          marginInlineEnd: Number.parseFloat(getComputedStyle(bar).marginInlineEnd),
+          hasBridge: bar.querySelector('.flow-overflow-bridge') !== null,
+          hasExtension: bar.querySelector('.flow-overflow-extension') !== null,
+        };
+      }, selector);
+
+    for (const selector of ['.allocation-bar__segments']) {
+      const geometry = await readGeometry(selector);
+      expect(Math.abs(geometry.leftGap - geometry.rightGap)).toBeLessThanOrEqual(1);
+      expect(geometry.marginInlineEnd).toBe(0);
+      expect(geometry.hasBridge).toBe(false);
+      expect(geometry.hasExtension).toBe(false);
+    }
+
+    await page.getByRole('button', { name: '처음부터 다시 설정' }).click();
+    await page.getByRole('button', { name: '다음' }).click();
+    await page.getByRole('button', { name: '다음' }).click();
+
+    const summaryGeometry = await readGeometry('.flow-context-summary');
+    expect(Math.abs(summaryGeometry.leftGap - summaryGeometry.rightGap)).toBeLessThanOrEqual(1);
+    expect(summaryGeometry.marginInlineEnd).toBe(0);
+    expect(summaryGeometry.hasBridge).toBe(false);
+    expect(summaryGeometry.hasExtension).toBe(false);
   });
 
   test('removes liquid motion and droplets when reduced motion is requested', async ({ page }) => {
