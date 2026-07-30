@@ -3411,6 +3411,22 @@ test.describe('Phase 09 final responsive user flow coverage', () => {
     }
   });
 
+  test('focuses restart setup and restores journey navigation after cancel', async ({ page }) => {
+    await page.getByRole('button', { name: '처음부터 다시 설정' }).click();
+
+    await expect(page.getByRole('heading', { name: '한 달 돈의 흐름, 2분이면 확인할 수 있어요.' })).toBeVisible();
+    await expect(page.getByRole('navigation', { name: 'ISF 앱' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Simulation으로 이어가기' })).toHaveCount(0);
+
+    await page.getByRole('button', { name: '다음' }).click();
+    await expect(page.getByRole('textbox', { name: '월 실수령액' })).toHaveValue('4,200,000');
+    await page.getByRole('button', { name: '취소' }).click();
+
+    await expect(page.getByRole('heading', { name: '이번 달 자금 흐름' })).toBeVisible();
+    await expect(page.getByRole('navigation', { name: 'ISF 앱' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Simulation으로 이어가기' })).toBeEnabled();
+  });
+
 });
 
 test.describe('Main liquid overflow presentation', () => {

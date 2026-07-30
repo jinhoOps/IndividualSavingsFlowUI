@@ -257,8 +257,9 @@ export function MainApp({
   }
 
   if (state.mode === 'setup' && state.setupStep !== null) {
+    const isRestartSetup = state.applied !== null;
     return (
-      <MainAppShell journeyError={journeyError}>
+      <MainAppShell journeyError={journeyError} showLauncher={!isRestartSetup}>
         <main className="mx-auto min-h-dvh w-full max-w-3xl px-5 py-8 sm:px-8 sm:py-12">
         {progressWarning === null ? null : (
           <p className="mb-4 rounded-xl bg-amber-50 px-4 py-3 text-sm font-bold text-amber-900" role="status">
@@ -290,7 +291,7 @@ export function MainApp({
             </Button>
           </Surface>
         ) : null}
-        {journeyEntry}
+        {isRestartSetup ? null : journeyEntry}
         <SetupFlow
           draft={state.draft}
           step={state.setupStep}
@@ -332,13 +333,23 @@ export function MainApp({
   );
 }
 
-function MainAppShell({ children, journeyError }: { children: ReactNode; journeyError: string | null }) {
+function MainAppShell({
+  children,
+  journeyError,
+  showLauncher = true,
+}: {
+  children: ReactNode;
+  journeyError: string | null;
+  showLauncher?: boolean;
+}) {
   return (
     <div>
-      <div className="mx-auto w-full max-w-[1200px] px-5 pt-5 sm:px-8">
-        <AppLauncher currentApp="main" />
-        {journeyError === null ? null : <p className="mt-4 text-sm font-bold text-rose-700" role="alert">{journeyError}</p>}
-      </div>
+      {showLauncher ? (
+        <div className="mx-auto w-full max-w-[1200px] px-5 pt-5 sm:px-8">
+          <AppLauncher currentApp="main" />
+          {journeyError === null ? null : <p className="mt-4 text-sm font-bold text-rose-700" role="alert">{journeyError}</p>}
+        </div>
+      ) : null}
       {children}
     </div>
   );
