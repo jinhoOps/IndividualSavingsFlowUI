@@ -73,18 +73,18 @@
 
   .setup-review-transition {
     @apply pointer-events-none absolute inset-x-0 top-[1.1875rem] z-10;
-    animation: setup-review-transition-exit 620ms cubic-bezier(.22, 1, .36, 1) both;
+    animation: setup-review-transition-exit 920ms linear 350ms both;
     transform-origin: center;
   }
 
   .setup-review-transition__track {
     @apply relative flex h-1.5 overflow-hidden rounded-full bg-slate-200;
-    animation: setup-review-track 620ms cubic-bezier(.22, 1, .36, 1) both;
+    animation: setup-review-track 620ms cubic-bezier(.22, 1, .36, 1) 350ms both;
   }
 
   .setup-review-transition__accent {
     @apply absolute inset-y-0 left-0 rounded-full bg-accent;
-    animation: setup-review-accent 620ms cubic-bezier(.22, 1, .36, 1) both;
+    animation: setup-review-accent 920ms ease-out 350ms both;
   }
 
   .allocation-bar[data-transitioning="true"] .allocation-table,
@@ -100,13 +100,13 @@
   }
 
   @keyframes setup-review-accent {
-    0%, 34% { opacity: 1; }
-    72%, 100% { opacity: 0; }
+    0%, 67.4% { opacity: 1; }
+    100% { opacity: 0; }
   }
 
   @keyframes setup-review-transition-exit {
-    0%, 76% { opacity: 1; visibility: visible; }
-    100% { opacity: 0; visibility: hidden; }
+    0%, 99.9% { visibility: visible; }
+    100% { visibility: hidden; }
   }
 
   @keyframes setup-review-content {

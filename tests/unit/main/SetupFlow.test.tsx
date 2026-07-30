@@ -140,6 +140,8 @@ describe('SetupFlow', () => {
     expect(screen.getByRole('table', { name: '월 자금 항목' })).toBeVisible();
     expect(document.querySelector('.setup-review-transition')).not.toBeNull();
     expect(document.querySelector('.setup-review-transition__track')).not.toBeNull();
+    fireEvent.animationEnd(document.querySelector('.setup-review-transition__track')!);
+    expect(document.querySelector('.setup-review-transition')).not.toBeNull();
     fireEvent.animationEnd(document.querySelector('.setup-review-transition')!);
     expect(document.querySelector('.setup-review-transition')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: '이전' }));

@@ -126,6 +126,31 @@ test('review transition stays contained and respects reduced motion', async ({ p
     await expect(page.getByRole('navigation', { name: 'ISF 앱' })).toHaveCount(0);
     await expect(page.getByRole('progressbar', { name: '수입 대비 현재 계획' })).toHaveCount(0);
     await expect(page.locator('.setup-review-transition')).toBeVisible();
+    await expect.poll(() => page.locator('.setup-review-transition__track').evaluate((element) => {
+      const style = getComputedStyle(element);
+      return { delay: style.animationDelay, duration: style.animationDuration };
+    })).toEqual({ delay: '0.35s', duration: '0.62s' });
+    await expect.poll(() => page.locator('.setup-review-transition__accent').evaluate((element) => {
+      const style = getComputedStyle(element);
+      return { delay: style.animationDelay, duration: style.animationDuration };
+    })).toEqual({ delay: '0.35s', duration: '0.92s' });
+    if (viewport.width === 390) {
+      await expect.poll(() => page.evaluate(() => {
+        const track = document.querySelector('.setup-review-transition__track');
+        const accent = document.querySelector('.setup-review-transition__accent');
+        return {
+          track: track?.getAnimations()[0]?.playState,
+          accent: accent?.getAnimations()[0]?.playState,
+        };
+      })).toEqual({ track: 'finished', accent: 'running' });
+      await expect(page.locator('.setup-review-transition')).toBeVisible();
+      const opacity = await page.locator('.setup-review-transition__accent').evaluate(
+        (element) => Number(getComputedStyle(element).opacity),
+      );
+      expect(opacity).toBeGreaterThan(0);
+      expect(opacity).toBeLessThan(1);
+      await expect(page.locator('.setup-review-transition')).toHaveCount(0);
+    }
     await expect(page.getByRole('table', { name: '월 자금 항목' })).toBeVisible();
     await expect.poll(() => page.evaluate(() => (
       document.documentElement.scrollWidth <= window.innerWidth
