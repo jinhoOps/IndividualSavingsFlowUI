@@ -13,9 +13,9 @@
 
 ## 제품 컨셉
 
-ISF는 단순히 수입과 지출을 기록하는 도구가 아닙니다. 지금 들어오는 돈이 생활비, 저축, 투자와 여러 계좌로 어떻게 흘러가는지 이해하고, 현재 선택이 앞으로의 자산에 어떤 차이를 만들 수 있는지 살펴보기 위한 개인 재무 플래닝 도구입니다.
+ISF는 단순히 수입과 지출을 기록하는 도구가 아닙니다. 지금 들어오는 돈이 생활비, 저축과 투자로 어떻게 나뉘는지 이해하고, 현재 선택을 장기 계획과 실제 실행으로 연결해 가기 위한 개인 재무 플래닝 도구입니다.
 
-사용자는 자신의 현재 현금흐름을 정리한 뒤 투자 기간과 수익률 같은 가정을 바꾸며 N년 후 기대 자산과 월 현금흐름을 비교할 수 있습니다. 그 결과를 적립식 포트폴리오와 실제 계좌 흐름으로 연결해, 막연한 목표를 매달 실행할 수 있는 계획으로 구체화합니다.
+현재는 자신의 월간 현금흐름을 간단히 정리하는 Main을 제공합니다. 앞으로는 투자 기간과 수익률 같은 가정에 따른 N년 후 기대 자산을 비교하고, 그 결과를 적립식 포트폴리오와 실제 계좌 흐름으로 연결해 막연한 목표를 매달 실행할 수 있는 계획으로 구체화하려 합니다.
 
 여기서 보여주는 미래 값은 확정된 예측이나 수익 보장이 아닙니다. 사용자가 입력한 현재 상황과 가정을 바탕으로 여러 선택지를 비교하고 더 나은 질문을 만들기 위한 계획용 시나리오입니다.
 
@@ -85,11 +85,11 @@ Main의 계좌 데이터를 명시적으로 읽어 독립 초안에서 입금·�
 ## 제품 원칙
 
 - **요약 먼저**: 기본 화면은 입력 폼보다 현재 상태와 다음 행동을 먼저 보여줍니다.
-- **하나의 기본 편집 경로**: Main의 일반 재무 항목 편집은 Financial Detail Modal에서 완료합니다.
+- **작고 명확한 입력 계약**: Main은 다섯 월간 금액만 직접 소유합니다.
 - **명시적 저장**: 큰 편집은 적용 전까지 draft로 유지합니다.
 - **로컬 우선**: 서버 계정 없이 브라우저 저장소와 백업으로 동작합니다.
 - **한국어 금액 UX**: 사용자는 만 원·억 원 단위로 읽고 내부 계산과 저장은 원 단위를 유지합니다.
-- **시각화 중심**: 현재 Main의 Sankey와 향후 앱별 시각화는 숫자의 관계를 설명해야 합니다.
+- **시각화 중심**: 현재 Main의 월 자금 구성과 향후 앱별 시각화는 숫자의 관계를 설명해야 합니다.
 - **명시적 연결**: 현재 앱 간 데이터 전달은 사용자 CTA와 최소 `JourneySnapshot`을 사용합니다.
 - **책임 분리**: 준비 화면은 상세 상태를 소유하지 않으며, 향후 신규 앱의 독립 상태는 각 상세 명세에서 정의합니다.
 
@@ -146,8 +146,8 @@ npm run build
 
 - **입력과 정규화**: 사용자 입력, 구버전 데이터와 외부 payload 정규화
 - **draft와 상태**: 편집 중 상태, dirty 판정, 적용과 취소
-- **현재 계산**: Main 월간 현금흐름과 장기 projection
-- **현재 시각화**: Main 요약 카드와 Sankey
+- **현재 계산**: Main 월간 현금흐름, 잔액과 적자
+- **현재 시각화**: Main 요약 카드와 월 자금 구성
 - **저장과 공유**: 로컬 저장, IndexedDB, JSON, ISF CODE와 compatibility bridge
 - **앱 연결**: Main → Simulation → Portfolio 준비 화면의 최소 `JourneySnapshot`
 - **공통 UI**: 앱 런처, Main 데이터 허브, 피드백, 테마와 PWA
@@ -198,7 +198,7 @@ Main 개편과 앱 여정 준비 화면은 현재 기준선입니다. 다음 제
 - [Design Contract](DESIGN.md)
 - [Product Direction and Documentation Spec](docs/superpowers/specs/2026-07-29-product-direction-and-documentation-design.md)
 - [Active Roadmap](.planning/ROADMAP.md)
-- [Financial Detail Editing Boundary](docs/adr/0001-financial-detail-modal-is-the-only-primary-editor.md)
+- [Current Project State](.planning/STATE.md)
 - [Account Flow Decision History](docs/adr/0002-account-flow-belongs-to-portfolio-boundary.md)
 
 ## 데이터와 주의사항

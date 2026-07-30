@@ -1,146 +1,52 @@
-# Requirements: IndividualSavings Flow UIUX v1.9
+# Active Product Requirements
 
-**Defined:** 2026-06-19
-**Core Value:** 단순한 프리셋 선택만으로 즉각적인 자산 시각화 결과를 제공하고, 복잡한 재무 계산의 부담 없이 직관적인 개인 예산 흐름을 파악하게 한다.
+**Last reviewed:** 2026-07-30
 
-## v1.9 Requirements
+This document tracks the supported baseline and transition obligations. Future ideas are explicitly non-committed until a separate PRD or feature specification is approved.
 
-### Household Hub
+## Supported Main
 
-- [x] **HH-01**: User can open a Step 1.2 household planning surface from the Step 1 flow without losing the existing Step 1 financial setup context.
-- [x] **HH-02**: User can mark household context for one-income or dual-income couples so downstream calculations do not assume both partners earn income.
-- [ ] **HH-03**: User can merge two shared Step 1 data hashes into one household flow preview.
-- [ ] **HH-04**: User can see shared or meeting-account nodes merged into a single household node without duplicate Sankey branches.
-- [ ] **HH-05**: User can review merge warnings when two data sources contain conflicting account or category names.
+- [x] **MAIN-01**: A user can create a monthly plan from net income, housing cost, living cost, saving, and investment.
+- [x] **MAIN-02**: A user can leave and resume the quick setup without losing a valid draft.
+- [x] **MAIN-03**: A user can review consumption, saving, investment, remaining money, or deficit from the same five-value model.
+- [x] **MAIN-04**: A user can edit the current monthly values and explicitly apply a valid plan.
+- [x] **MAIN-05**: Main persists the current plan locally and recovers compatible prior data without silently replacing newer valid data.
+- [x] **MAIN-06**: A user can export and import the current Main data as validated JSON.
+- [x] **MAIN-07**: A user can explicitly continue from an applied Main plan to the Simulation readiness route.
+- [x] **MAIN-08**: Main remains usable at the required mobile and desktop breakpoints with accessible controls and state feedback.
 
-### Adaptive Budgeting
+## Supported Journey Readiness
 
-- [x] **BUD-01**: User can set a monthly target budget on variable expense items.
-- [x] **BUD-02**: User can enter actual spending for a variable expense item separately from the planned amount.
-- [x] **BUD-03**: User can see budget progress, remaining amount, and overspend state for each tracked variable expense.
-- [x] **BUD-04**: User can see an end-of-month spending projection from current actual spending pace.
+- [x] **JOURNEY-01**: The launcher identifies Main as `사용 중` and Simulation, Portfolio, and Account Map as `준비 중`.
+- [x] **JOURNEY-02**: Product availability and the user’s current location are communicated as separate states.
+- [x] **JOURNEY-03**: Simulation readiness can show validated Main connection state, investment capacity, and update time.
+- [x] **JOURNEY-04**: Portfolio readiness continues the same minimal journey contract.
+- [x] **JOURNEY-05**: Readiness routes do not expose detailed editing, independent product storage, or implicit Main write-back.
 
-### Financial Detail Modal Primary Editing
+## Legacy Transition
 
-- [x] **UXR-09**: User completes ordinary Step 1 income, expense, investment, savings, and account edits in the Financial Detail Modal without a second primary financial editor path.
-- [x] **UXR-10**: User can edit income account allocation inside the Financial Detail Modal row edit state without using separate transfer-rule or legacy item-editor UI.
-- [x] **UXR-11**: User can edit savings maturity month inside the Financial Detail Modal row edit state, and matured savings stop receiving new monthly contributions while retained balances remain in projections.
-- [x] **UXR-12**: User can edit item-level savings yield inside the Financial Detail Modal row edit state without replacing the global default yield behavior for other items.
-- [x] **UXR-13**: User sees Step 1 financial flow as a simple income-to-consumption/savings/investment model without account-flow management concepts.
-- [x] **UXR-14**: Step 1 Sankey generation no longer depends on account/allocation modeling or automatic account correction in the primary path.
-- [x] **UXR-15**: Existing account/allocation data is preserved or converted for Portfolio/account-flow handoff without corrupting simplified Step 1 data.
-- [x] **UXR-16**: Rich account-flow management has a documented destination boundary: Portfolio integration or a separate app/page, with main-to-destination user guidance.
+- [ ] **MIG-01**: Each future app has a reviewed inventory of relevant legacy behavior, calculations, schemas, compatibility paths, and tests.
+- [ ] **MIG-02**: Every inventoried capability has an approved disposition: migrate, redesign, defer, or remove.
+- [ ] **MIG-03**: Each future app has an approved data-ownership and import/write-back boundary before detailed implementation.
+- [ ] **MIG-04**: Required old-data compatibility is demonstrated with fixtures and regression tests.
+- [ ] **MIG-05**: Runtime imports, routes, selectors, storage keys, compatibility paths, and tests no longer reference a legacy implementation before it is deleted.
+- [ ] **MIG-06**: Canonical product documents and user-facing copy are updated in the same change that alters a product boundary.
 
-UXR-17 through UXR-21 were completed only in the historical Phase 10.8 legacy implementation. They do not describe the current readiness-only Account Map route and remain below as historical/future inputs pending an approved new-app specification and migration/removal plan.
+## Quality Requirements
 
-### Zero-Input Capture
+- [x] **QUAL-01**: Current TypeScript and static validation are available through `npm run check`.
+- [x] **QUAL-02**: Current Main and readiness journeys have focused Playwright coverage.
+- [ ] **QUAL-03**: Every future user-facing feature includes 390px, 768px, desktop, keyboard, focus, overflow, and touch-target evidence appropriate to its surface.
+- [ ] **QUAL-04**: Financial assumptions and estimates identify their inputs, limitations, and non-advisory status near the result.
 
-- [ ] **CAP-01**: User can paste Korean bank or card notification text into a Step 1.2 capture input.
-- [ ] **CAP-02**: User can preview parsed date, amount, merchant, and candidate expense category before saving.
-- [ ] **CAP-03**: User can correct a parsed transaction before it updates Step 1 expense actuals.
-- [ ] **CAP-04**: User sees a clear fallback message when pasted text cannot be parsed confidently.
+## Future Discovery Candidates
 
-### Spending Comparison
+The following are not current requirements and must not be marked complete from legacy evidence:
 
-- [ ] **CMP-01**: User can select a prior DataHub Step 1 snapshot for comparison against current Step 1 values.
-- [ ] **CMP-02**: User can view previous and current expense categories in a grouped bar chart using consistent won-unit conversion.
-- [ ] **CMP-03**: User can see category-by-category spending differences in chart labels or tooltips.
-- [ ] **CMP-04**: User can use the comparison view on mobile without broken layout or hidden labels.
-- [ ] **CMP-05**: User sees an empty-state explanation when no comparable prior snapshot exists.
-
-### Real-Estate Affordability
-
-- [ ] **REAL-01**: User can enter household income assumptions for apartment affordability, including spouse income as optional.
-- [ ] **REAL-02**: User can configure DSR, LTV, available cash, interest rate, and loan term assumptions.
-- [ ] **REAL-03**: User can see estimated maximum purchase price, loan amount, monthly repayment, and required cash in a concise result table.
-- [ ] **REAL-04**: User can compare multiple affordability scenarios across conservative, balanced, and aggressive assumption presets.
-- [ ] **REAL-05**: User can see a plain-language affordability classification for extreme and mixed result bands, including an explicit middle-band state.
-
-## Future Requirements
-
-### Household Hub
-
-- **HH-06**: User can persist household-merged profiles as reusable shared household plans.
-- **HH-07**: User can resolve merge conflicts with a dedicated side-by-side editor.
-
-### Zero-Input Capture
-
-- **CAP-05**: User can maintain custom parser rules for unsupported bank or card text formats.
-
-### Real-Estate Affordability
-
-- **REAL-06**: User can export real-estate affordability results as a shareable image or DataHub entry.
-- **REAL-07**: User can compare affordability against live or imported apartment price datasets.
-
-### Account Map — Historical/Future
-
-- **UXR-17**: User can open Account Map as a separate account-management destination, while Main exposes only a lightweight entry, mini-map, or summary and Portfolio is not used as the destination.
-- **UXR-18**: User can generate and save an Account Map-owned draft from current Main account-flow data without writing accepted Account Map changes back to Main in this phase.
-- **UXR-19**: User can understand account relationships at a glance through a map-first view with typed/color-coded links while exact monthly amounts remain hidden until selecting an account or relationship.
-- **UXR-20**: User can review card/payment and recurring fixed-expense relationship candidates before accepting them, while ordinary variable or one-off spending is excluded from accepted Account Map relationships by default.
-- **UXR-21**: Existing restored Main network/account-flow behavior, manual transfers, income allocations, account links, and surplus routing remain compatible while Account Map is added.
-
-These five requirements preserve Phase 10.8 migration evidence only. A future Account Map specification must confirm, revise, or explicitly retire them before implementation; the current preparation route does not satisfy them.
-
-## Out of Scope
-
-| Feature | Reason |
-|---------|--------|
-| GitHub issue #7 major index and asset backtesting dashboard | Backtesting was already moved out to `stock-snowball`; reintroducing it here conflicts with the project direction. |
-| Live bank/card account scraping | The project should stay static/offline-first; pasted text parsing is enough for this milestone. |
-| Live mortgage rate or real-estate listing integration | v1.9 should prove the planning model first with user-editable assumptions. |
-| Legal or financial advice wording | The app can provide planning estimates, not binding lending or purchase advice. |
-
-## Traceability
-
-Which phases cover which requirements. Updated during roadmap creation.
-
-| Requirement | Phase | Status |
-|-------------|-------|--------|
-| HH-01 | Phase 10 | Complete |
-| HH-02 | Phase 10 | Complete |
-| HH-03 | Phase 12 | Pending |
-| HH-04 | Phase 12 | Pending |
-| HH-05 | Phase 12 | Pending |
-| BUD-01 | Phase 10 | Complete |
-| BUD-02 | Phase 10 | Complete |
-| BUD-03 | Phase 10 | Complete |
-| BUD-04 | Phase 10 | Complete |
-| UXR-09 | Phase 10.6.1 | Complete |
-| UXR-10 | Phase 10.6.1 | Complete |
-| UXR-11 | Phase 10.6.1 | Complete |
-| UXR-12 | Phase 10.6.1 | Complete |
-| UXR-13 | Phase 10.7 | Complete |
-| UXR-14 | Phase 10.7 | Complete |
-| UXR-15 | Phase 10.7 | Complete |
-| UXR-16 | Phase 10.7 | Complete |
-| UXR-17 | Phase 10.8 | Historical / Future re-specification |
-| UXR-18 | Phase 10.8 | Historical / Future re-specification |
-| UXR-19 | Phase 10.8 | Historical / Future re-specification |
-| UXR-20 | Phase 10.8 | Historical / Future re-specification |
-| UXR-21 | Phase 10.8 | Historical / Future re-specification |
-| CAP-01 | Phase 11 | Pending |
-| CAP-02 | Phase 11 | Pending |
-| CAP-03 | Phase 11 | Pending |
-| CAP-04 | Phase 11 | Pending |
-| CMP-01 | Phase 13 | Pending |
-| CMP-02 | Phase 13 | Pending |
-| CMP-03 | Phase 13 | Pending |
-| CMP-04 | Phase 13 | Pending |
-| CMP-05 | Phase 13 | Pending |
-| REAL-01 | Phase 14 | Pending |
-| REAL-02 | Phase 14 | Pending |
-| REAL-03 | Phase 14 | Pending |
-| REAL-04 | Phase 14 | Pending |
-| REAL-05 | Phase 14 | Pending |
-
-**Coverage:**
-
-- Active v1.9 requirements: 31 total
-- Historical/future requirements retained: 5
-- Active requirements mapped to phases: 31
-- Active requirements unmapped: 0
-
----
-*Requirements defined: 2026-06-19*
-*Last updated: 2026-07-30 after current product-state alignment*
+- Korean bank or card notification text capture
+- household income and plan merge
+- historical spending comparison
+- housing-affordability scenarios
+- detailed Simulation strategy comparison
+- saved Portfolio construction and allocation
+- editable Account Map relationships

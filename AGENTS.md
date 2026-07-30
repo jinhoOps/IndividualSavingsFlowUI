@@ -16,7 +16,7 @@
 ## Minimum Rules
 
 - Main은 완료된 현재 제품 기준선이다.
-- Main의 일반 재무 편집 경로는 Financial Detail Modal이다.
+- Main이 직접 소유하는 제품 데이터는 다섯 월간 금액이며 현재 Main UI에서 수정한다.
 - Simulation, Portfolio, Account Map은 모두 향후 새로 개발할 앱이며 현재 제품 경로는 준비 화면이다.
 - 준비 화면은 상세 편집·독립 제품 저장을 소유하지 않는다. 향후 앱의 상태 소유권은 승인된 상세 명세에서 정의하고 Account Map은 Main에 암묵적으로 write-back하지 않는다.
 - 레거시 코드는 기능과 데이터 계약 이관을 위한 임시자산이며 지원 제품 경로나 신규 기능 기반이 아니다.
@@ -41,13 +41,13 @@
 | --- | --- | --- |
 | Coordinator | [Roadmap](.planning/ROADMAP.md), [State](.planning/STATE.md), 활성 spec·plan | 겹치지 않는 작업 분리, 공유 초기화의 단일 소유자 지정, 검증과 위험 취합 |
 | Planner / Product | [Requirements](.planning/REQUIREMENTS.md), [Roadmap](.planning/ROADMAP.md), 관련 spec | 현재 제품·마이그레이션·향후 범위를 구분하고 요구사항과 인수 조건 정의 |
-| UX / Design | [DESIGN](DESIGN.md), 관련 spec, 관련 브라우저 테스트 | summary-first와 Financial Detail 경계 유지, 390px·768px·desktop 및 접근성 검증 |
+| UX / Design | [DESIGN](DESIGN.md), 관련 spec, 관련 브라우저 테스트 | summary-first와 다섯 값의 명확한 편집 경계 유지, 390px·768px·desktop 및 접근성 검증 |
 | Architecture / Development | [Architecture](.planning/codebase/ARCHITECTURE.md), [Structure](.planning/codebase/STRUCTURE.md), [Conventions](.planning/codebase/CONVENTIONS.md), 관련 ADR·spec·plan | 현재 모듈과 데이터 소유권 안에서 구현하고 외부 동작 테스트 갱신 |
 | Storage / Legacy Migration | PRD의 Migration Transition, [Integrations](.planning/codebase/INTEGRATIONS.md), [Concerns](.planning/codebase/CONCERNS.md), 관련 호환성 코드 | 기능·schema 의미를 먼저 목록화하고 저장·import·export·backup·share 호환성과 참조 제거 입증 |
 | QA / Review | PRD 인수 조건, [Testing](.planning/codebase/TESTING.md), 관련 spec·plan, 현재 diff | 요구사항, 회귀, 모바일, 저장 호환성, 보안을 사용자 관찰 동작 기준으로 검토 |
 | Documentation | [README](README.md), [DESIGN](DESIGN.md), [Roadmap](.planning/ROADMAP.md), 관련 ADR·spec | 원문을 중복하지 않고 현재·전환·향후 상태와 링크·용어·상태 주장을 일치시킴 |
 
-한 작업자가 여러 역할을 맡으면 목록을 합치고 중복 문서는 한 번만 읽는다. 과거 milestone은 특정 계약의 역사 확인이 필요할 때만 연다.
+한 작업자가 여러 역할을 맡으면 목록을 합치고 중복 문서는 한 번만 읽는다. 과거 구현의 확인이 필요하면 Git 이력과 해당 코드·테스트를 사용하되 현재 제품 사실로 승격하지 않는다.
 
 기획·디자인·프론트엔드·실제 UX를 함께 보는 진행상황 검토에는 [Review Product Experience](.agents/skills/review-product-experience/SKILL.md)를 사용한다.
 
@@ -64,7 +64,7 @@
 | 문서만 변경 | 상대 링크 확인, `git diff --check`, PRD·Roadmap 상태 주장 대조 |
 | TypeScript 또는 공유 계약 | `npm run check`, 영향 소비자의 focused test |
 | 사용자 흐름 | 관련 Playwright spec 또는 focused group; 여러 앱이나 공유 인프라 영향 시 전체 E2E |
-| UI | 390px, 768px, desktop에서 overflow·modal containment·focus·touch target·graph visibility |
+| UI | 390px, 768px, desktop에서 overflow·overlay containment·focus·touch target·visualization visibility |
 | 레거시 제거 | runtime import·route·selector·storage key·compatibility path·test reference 검색, 구데이터 호환성, 타입 검사와 관련 전체 회귀 |
 
 검증이 실패하면 원인을 해결하거나 미해결 상태와 재현 명령을 인계한다. 실패를 성공처럼 요약하지 않는다.
@@ -79,7 +79,7 @@
 4. 폐기되지 않은 ADR
 5. 활성 Roadmap과 Requirements
 6. Codebase Maps
-7. 과거 milestone 문서
+7. Git 이력의 과거 구현 기록
 
 작업 범위가 PRD와 충돌하면 멈추고 차이를 보고한다. 다른 작업자가 같은 파일을 소유하면 덮어쓰지 말고 조율한다.
 

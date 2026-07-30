@@ -1,169 +1,53 @@
----
-gsd_state_version: 1.0
-milestone: v1.9
-milestone_name: milestone
-current_phase: 10.9
-current_phase_name: App Journey Entry and Legacy Route Isolation
-status: completed
-stopped_at: Completed app journey entry final fix
-last_updated: "2026-07-30T09:51:42+09:00"
-last_activity: 2026-07-30
-last_activity_desc: "Aligned Main-only current product state and completed readiness journey review fixes"
-progress:
-  total_phases: 11
-  completed_phases: 7
-  total_plans: 24
-  completed_plans: 24
-  percent: 64
----
+# Current Project State
 
-# Project State
+**Last reviewed:** 2026-07-30
 
-## Current Position
+## Product Baseline
 
-Phase: 10.9 — App Journey Entry and Legacy Route Isolation
-Plan: Complete
-Status: Main plus readiness-route baseline complete
-Last activity: 2026-07-30 — Aligned canonical product state and completed journey final-review fixes
+- Main is the only supported detailed product.
+- Simulation, Portfolio, and Account Map are future apps. Their supported routes currently provide readiness and journey continuity only.
+- Retained legacy implementations are temporary evidence for feature and data-contract migration. They are not supported product routes or foundations for new work.
 
-## Current Product-State Override
+## Current Main Contract
 
-- Main is the only detailed current product.
-- Simulation, Portfolio, and Account Map are future new apps; their supported routes currently show readiness only.
-- Phase 10.7/10.8 and older “shipped” entries below are historical implementation records and migration-reference evidence, not claims that those detailed apps remain supported.
-- Retained legacy sources are not deleted until each future app has an approved feature inventory, disposition, compatibility policy, reference-removal proof, and regression evidence.
+Main stores five monthly scalar values in the v2 model:
 
-## Project Reference
+- net income
+- housing cost
+- living cost
+- saving
+- investment
 
-See: .planning/PROJECT.md (updated 2026-06-26)
+From those values Main derives consumption, planned outflow, remaining money or deficit, and the allocation percentages shown during setup and on the dashboard.
 
-**Core value:** 단순한 프리셋 선택만으로 즉각적인 자산 시각화 결과를 제공하고, 복잡한 재무 계산의 부담 없이 직관적인 개인 예산 흐름을 파악하게 한다.
-**Current focus:** Preserve the Main + readiness journey baseline. Phase 11 remains the next planned Main expansion; any detailed Simulation, Portfolio, or Account Map work starts with an approved new-app and migration/removal spec.
+Current user-facing capabilities:
 
-## Accumulated Context
+- resumable quick setup
+- monthly cashflow summary and allocation visualization
+- editing the five monthly values from the current Main experience
+- local persistence with compatibility recovery
+- JSON export and import
+- explicit Main-to-Simulation journey handoff
 
-### Roadmap Evolution
+Main does not currently provide itemized accounts, category rows, household budgeting, actual-spend capture, Sankey, or long-term projection. Those concepts may exist in retained legacy code and documents but are not current product behavior.
 
-- Phase 9 added: Step 1 Financial Settings Input UIUX Rebuild
-- Phase 10.5 inserted after Phase 10 (URGENT): Financial Settings UX Integration Repair
-- Phase 10.6 inserted after Phase 10.5: Financial Detail Modal Editing UX Repair
-- v1.8 historical implementation record: portfolio creation/storage, Step 1 modular and financial setup rebuild, Step 2 strategy comparison redesign. Detailed non-Main apps are now migration references.
-- Phase 10.8 historical record: legacy 계좌 관리 맵 implementation and tests retained for future inventory/compatibility work.
-- Phase 10.9 established Main as the current product and Simulation, Portfolio, and Account Map as readiness-only future destinations.
+## Readiness Routes
 
-## Key Decisions
+- Simulation shows connection state, Main investment capacity, and Main update time.
+- Portfolio continues the minimal readiness journey from Simulation.
+- Account Map is readiness-only and does not read, edit, store, or write back a detailed map.
 
-- **AI Removal (D-04)**: 시스템 복잡성 감소 및 정적 웹의 오프라인 안정성을 위해 실험적 AI 기능을 제거하고 코어 엔진 고도화에 집중함.
-- **Phase 07 Gap Closure**: Step 1 bootstrap was split into focused vanilla ES module controllers; safe datalist rendering and allocation group open-state regressions are covered by the full Phase 07 Playwright gate.
-- **Current app status (2026-07-30)**: Main is `사용 중`; Simulation, Portfolio, and Account Map are `준비 중`. Their detailed legacy implementations are not supported routes or new-runtime foundations.
+## Transition State
 
-## Performance Metrics
+- Legacy runtime sources remain in the repository until each destination has an approved feature inventory and migration/removal specification.
+- Deletion requires a disposition for each useful behavior and data contract, compatibility evidence, reference removal, and regression verification.
+- Historical GSD phase and milestone documents were retired because their completion claims no longer described the supported product.
 
-| Phase | Plan | Duration | Notes |
-|-------|------|----------|-------|
-| Phase 08-step-2-redesign-re-planning P01 | 33 min | 3 tasks | 8 files |
-| Phase 08-step-2-redesign-re-planning P02 | 17 min | 2 tasks | 6 files |
-| Phase 08-step-2-redesign-re-planning P03 | 19 min | 3 tasks | 7 files |
-| Phase 08-step-2-redesign-re-planning P04 | 13 min | 2 tasks | 6 files |
-| Phase 09-step-1-financial-settings-input-uiux-rebuild P01 | 28 min | 3 tasks | 6 files |
-| Phase 09-step-1-financial-settings-input-uiux-rebuild P02 | 32 min | 3 tasks | 8 files |
-| Phase 09-step-1-financial-settings-input-uiux-rebuild P03 | 21 min | 3 tasks | 9 files |
-| Phase 09-step-1-financial-settings-input-uiux-rebuild P04 | 22 min | 3 tasks | 7 files |
-| Phase 09-step-1-financial-settings-input-uiux-rebuild P05 | 52 min | 4 tasks | 5 files |
-| Phase 10.5-financial-settings-ux-integration-repair P01 | 22 min | 2 tasks | 4 files |
-| Phase 10.5 P03 | 29 min | 2 tasks | 4 files |
-| Phase 10.6-financial-detail-modal-editing-ux-repair P01 | 18 min | 2 tasks | 5 files |
-| Phase 10.6-financial-detail-modal-editing-ux-repair P02 | 52 min | 2 tasks | 4 files |
-| Phase 10.6-financial-detail-modal-editing-ux-repair P03 | 24min | 2 tasks | 4 files |
-| Phase 10.6.1 P01 | 10 min | 2 tasks | 3 files |
-| Phase 10.6.1 P02 | 13 min | 2 tasks | 9 files |
-| Phase 10.6.1 P03 | 25 minutes | 2 tasks | 8 files |
-| Phase 10.7-account-flow-extraction-and-portfolio-boundary P01 | 38 min | 2 tasks | 3 files |
-| Phase 10.7-account-flow-extraction-and-portfolio-boundary P02 | 8 min | 2 tasks | 3 files |
-| Phase 10.7-account-flow-extraction-and-portfolio-boundary P03 | 36 min | 2 tasks | 5 files |
-| Phase 10.7-account-flow-extraction-and-portfolio-boundary P04 | 8 min | 2 tasks | 9 files |
-| Phase 10.7-account-flow-extraction-and-portfolio-boundary P05 | 31 min | 2 tasks | 7 files |
-| Phase 10.7-account-flow-extraction-and-portfolio-boundary P06 | 32 min | 3 tasks | 6 files |
-| Phase 10.8-account-management-map P01 | 55 min | 3 tasks | 10 files |
-| Phase 10.8-account-management-map P02 | 11 min | 3 tasks | 6 files |
-| Phase 10.8-account-management-map P03 | 11 min | 3 tasks | 6 files |
+## Evidence
 
-## Quick Tasks Completed
-
-| Date | Quick ID | Slug | Summary |
-|------|----------|------|---------|
-| 2026-06-30 | 260630-fm9 | main-main | Main 계좌 관리 맵을 월 가계 흐름 다음에 고정하고, 계좌 간 수동 이체 설정 UI를 Main에서 제거했습니다. |
-| 2026-06-30 | 260630-cqu | move-main-account-map-summary-after-mont | Moved the Main Account Map summary after 월 가계 흐름, clarified its account-relationship scope, and fixed Account Map SVG node contrast. |
-| 2026-06-29 | 260629-psu | main-sankey-should-exclude-account-nodes | Restored Main Sankey to exclude account nodes/links by default while keeping explicit account-flow projection for network/Account Map helpers. |
-
-## Decisions
-
-- [Phase 10]: Step 1.2 household budgeting now uses a compact `신혼부부 예산` summary panel plus a separate draft modal with explicit `예산 저장` / `편집 취소` persistence.
-- [Phase 10]: Household context (`single-income` / `dual-income` with optional spouse income) and variable expense `actualSpent` are sanitized at the Step 1 boundary so later phases can reuse the same fields.
-- [Phase 08-01]: Step 2 save/list/load/delete now routes through a narrow storage facade; backup behavior remains on IndexedDB-capable paths only.
-- [Phase 08-01]: Reset prefers the latest Step 1 source snapshot and falls back to cached original source metadata before returning to an empty draft.
-- [Phase 08-01]: Saved Step 2 entries generate a display name from strategy context, horizon, and save timestamp when no existing name is present.
-- [Phase 08-02]: Strategy assumptions are centralized in assumptions.js with conservative numeric defaults separated from display ranges.
-- [Phase 08-02]: Strategy comparison rows expose signed Won benchmark deltas so underperformance versus Nasdaq or S&P 500 remains visible.
-- [Phase 08-03]: Step 2 first-screen order now follows the mobile judgment flow in actual DOM order.
-- [Phase 08-03]: DataHub simulation list names and ids are rendered with textContent and dataset while static modal templates remain unchanged.
-- [Phase 08-04]: Step 2 runtime market evidence is documented under public/data/indices/*.json, while JEPI/QQQI/DIVO remain editable conservative assumptions in assumptions.js.
-- [Phase 08-04]: Loose root QQQ CSV backdata files were deleted after runtime path scanning found no dependency.
-- [Phase 09-01]: Account correction now runs at the Step 1 sanitizer boundary so saved, imported, shared, and rendered data use the same repaired account links.
-- [Phase 09-01]: Sankey uses a real `total-income` / `총수입` node between individual income sources and account outflows, excluding deficit pseudo-income from total income.
-- [Phase 09-02]: Preset setup uses Korean percentage presets (`안정`, `균형`, `성장`, `야수`, `사용자 지정`) and confirms overwrite inside the modal before persistence commit.
-- [Phase 09-02]: Korean high-unit money labels stop at one lower unit: `억` displays down to `만`, and `조` displays down to `억`.
-- [Phase 09-03]: Step 1 summaryCards now render two financial setup groups and five category cards before Sankey. — Phase 09 requires the default screen to be summary-first while keeping Sankey directly below.
-- [Phase 09-03]: Category detail edits stay in financial modal draft state until persistence.commitImmediateInputs() save. — This preserves explicit save/cancel behavior and keeps sanitizer/persistence as the durable boundary.
-- [Phase 09-03]: Guided item creation and simple account alias creation live inside the relevant category modal. — The standalone account-management path is rejected for Phase 09; account work belongs inside item flows.
-- [Phase 09-04]: Manual Sankey account correction refresh reuses sanitizeInputs()/repairAccountConnections before persistence and rerender. — This keeps D-25 correction behavior aligned with saved/imported/shared Step 1 data.
-- [Phase 09-04]: Merged Sankey tooltip metadata remains textContent-based and uses newline-separated rows with CSS pre-line wrapping. — This satisfies D-27 readability without opening an HTML injection surface.
-- [Phase 09-05]: Expense/savings/invest detail editing now opens as compact cards and expands only the selected item. — This closes the UAT mobile density issue while preserving explicit save/cancel.
-- [Phase 09-05]: Step 1 no longer exposes manual account-transfer settings; item source accounts drive automatic flow balancing. — This removes duplicate cash-flow modeling and keeps surplus/deficit output derived from required item account selections.
-- [Phase 10.5-01]: Default Step 1 financial summary now has one static `재무설정 상세` CTA, and summary cards route to the same financial modal controller path.
-- [Phase 10.5-01]: Visible Phase 10 couple/household overview UI was removed from the financial modal while sanitizer and household-budget data helpers remain intact.
-- [Phase 10.5]: Phase 10.5-03: 월 생활비 uses dedicated variable/fixed sections; variable actual edits stay draft-only until 재무설정 저장. — Plan 03 requires selected variable rows to expose actual controls while fixed expenses remain actual-free.
-- [Phase 10.6-01]: Financial modal dirty state now uses full baseline-vs-draft input comparison instead of row selection, modal open, empty add setup, or tab state.
-- [Phase 10.6-01]: Variable expense range persists as variable-only `varianceAmount`; fixed rows strip it while existing `actualSpent` compatibility remains.
-- [Phase 10.6-02]: Empty inline temporary rows are draft metadata and are filtered from dirty detection/persistence until meaningful values are entered.
-- [Phase 10.6-02]: The integrated financial detail modal uses tab-header add actions and guarded pending close prompts while preserving commitImmediateInputs as the persistence boundary.
-- [Phase 10.6-03]: Mobile financial rail uses four user-facing cells (수입, 생활비, 투자, 저축), with 저축 combining explicit and automatic savings.
-- [Phase 10.6-03]: Legacy modal regression tests now assert Phase 09/10.5 contracts through row-click, inline-add, and in-place apply/cancel semantics.
-- [Phase 10.6.1-01]: Income allocation editing now lives inside Financial Detail Modal income row edit state and persists by enabling split income account data when multiple allocations exist.
-- [Phase 10.6.1-01]: Savings row additional settings expose item-level annual yield and maturity month while rows without item yield continue to use the global savings yield fallback.
-- [Phase 10.6.1-02]: Financial Detail Modal remains the only ordinary Step 1 editor; the auxiliary item-editor controller, hidden legacy panels, global pending bar, and mobile editor FAB were removed. — ADR 0001 and UXR-09 require no second primary financial editor path after Plan 01 absorbed useful capabilities.
-- [Phase ?]: 10.6.1-03: List renderer and state helpers were reduced to display-only support now that ordinary editing is modal-only.
-- [Phase ?]: 10.6.1-03: Build output is verification-only for this phase; generated version/build artifacts are not committed under the source-first policy.
-- [Phase 10.7-01]: Step 1 primary Sankey now ignores legacy account/allocation/correction/transfer fields and renders income through total-income directly to category destinations.
-- [Phase 10.7-01]: Sankey help copy describes simple category flow instead of account network exploration.
-- [Phase 10.7-02]: Legacy account/allocation/transfer data is preserved in `accountFlowHandoff` sidecar while primary Step 1 sanitize/snapshot paths strip account-flow fields.
-- [Phase 10.7-02]: Import/share paths rely on `sanitizeInputs()` for sidecar retention, so persistence-controller changes were unnecessary.
-- [Phase 10.7-03]: Financial Detail Modal no longer exposes account category, account selects, or income allocation controls in ordinary Step 1.
-- [Phase 10.7-03]: Step 1 read surfaces render financial items without account badges, account cards, or account-specific warning calculations.
-- [Phase 10.7-03]: The render orchestrator treats primary Step 1 as a simple Sankey/read surface and does not require live accounts for network-map rendering.
-- [Phase 10.7-04]: Step 1 primary visualization now exposes only simple Sankey basic/detail modes; account network and transfer controls are removed from DOM and controller paths.
-- [Phase 10.7-04]: Correction refresh and transfer-rule handlers were deleted from ordinary Step 1 so account sidecar data cannot mutate primary Sankey state.
-- [Phase 10.7-05]: Portfolio consumes `accountFlowHandoff` only as destination-owned status data; visiting Portfolio does not rehydrate Step 1 primary account fields.
-- [Phase 10.7-05]: Portfolio connector falls back from IndexedDB latest snapshot to `isf-step1-active` local data so browser-local handoff detection remains reliable.
-- [Phase 10.7-06]: Portfolio is the account-flow destination boundary; Step 1 only shows navigation guidance when `accountFlowHandoff` exists.
-- [Phase 10.7-06]: `accountFlowHandoff` remains handoff-only compatibility data and must not rehydrate Step 1 primary account fields.
-- [Phase 10.8-01]: Account Map drafts save under isf-account-map-v1 and Main imports do not write back to isf-rebuild-v1.
-- [Phase 10.8-01]: Account Map uses a distinct account-map route/header step and Vite entry instead of Portfolio routing.
-- [Phase 10.8-01]: Account Map connector prefers active bridge/local Main data before older snapshot history.
-- [Phase 10.8-02]: Account Map overview hides exact monthly amounts and shows only typed/color-coded relationship labels until an account or relationship is selected.
-- [Phase 10.8-02]: Candidate accept/exclude and relationship payment-day/memo edits persist only to isf-account-map-v1 and do not mutate Main storage.
-- [Phase 10.8-03]: Main exposes Account Map through a compact scan-only summary entry that links to ../account-map/; Account Map editing remains page-owned.
-- [Phase 10.8-03]: Shared header Account Map navigation remains a distinct account-map destination, with Portfolio preserved as a separate launcher item.
-- [Quick 260630-cqu]: Main Account Map summary belongs after 월 가계 흐름 as a separate account-relationship follow-up, and Account Map SVG nodes must carry explicit light fill/stroke/text colors to avoid unreadable black fallback rendering.
-- [Quick 260630-fm9]: Main must show the 계좌 관리 맵 entry after 월 가계 흐름 via explicit CSS order, and must not expose the 계좌 간 수동 이체 설정 editor on Main.
-- [Quick 260629-psu]: Main Sankey intentionally excludes account nodes, account links, and account transfers so the 가계 흐름 view stays concise at a glance; account relationship detail belongs in Account Map or explicit account-flow projections.
-
-## Operator Next Steps
-
-- Start Phase 11 for the next Main expansion, or create an approved detailed new-app plus legacy migration/removal spec before implementing Simulation, Portfolio, or Account Map.
-
-## Session
-
-**Last session:** 2026-07-30T09:51:42+09:00
-**Stopped at:** Completed app journey entry final fix
-**Resume file:** None
+- Product scope: [Product PRD](../docs/ways-of-work/plan/isf-rebuild/connected-financial-planning-workspace/prd.md)
+- Active requirements: [Requirements](REQUIREMENTS.md)
+- Forward order: [Roadmap](ROADMAP.md)
+- Runtime model: [`src/main/domain/model.ts`](../src/main/domain/model.ts)
+- Current Main behavior: [`tests/main-react.spec.ts`](../tests/main-react.spec.ts)
+- Readiness journey: [`tests/app-journey.spec.ts`](../tests/app-journey.spec.ts)

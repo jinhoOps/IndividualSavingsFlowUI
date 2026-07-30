@@ -15,16 +15,16 @@ Read only what the scope needs, in this order:
 
 1. `AGENTS.md`
 2. Product PRD
-3. `.planning/STATE.md`
-4. `.planning/ROADMAP.md`
-5. `.planning/REQUIREMENTS.md`
+3. `.planning/REQUIREMENTS.md`
+4. `.planning/STATE.md`
+5. `.planning/ROADMAP.md`
 6. `DESIGN.md`
 7. `README.md`
 8. recent commits and `git status`
 9. relevant code and tests
 10. local or deployed browser UI
 
-Current canonical sources override historical milestones and legacy code. Never present roadmap percentage as product completion without explaining what it counts.
+Current canonical sources and current runtime evidence override Git history and legacy code. Do not infer product completion from retired phase records.
 
 ## Review Workflow
 

@@ -10,9 +10,9 @@ Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계획 �
 
 1. **Discoverability**: 앱 런처와 명확한 섹션 제목으로 현재 위치와 다음 행동을 보여줍니다.
 2. **Summary First**: 기본 화면은 세부 입력보다 현재 상태와 핵심 결과를 먼저 보여줍니다.
-3. **One Primary Editing Path**: Main의 일반 재무 항목은 Financial Detail Modal에서 편집합니다.
+3. **One Small Data Contract**: Main은 월 실수령액, 주거비, 생활비, 저축과 투자만 직접 편집합니다.
 4. **Explicit Feedback**: draft 변경, 적용, 취소, 오류와 저장 결과를 해당 편집 맥락에서 즉시 알립니다.
-5. **Consistent Model**: 요약, 시각화와 projection은 동일한 정규화 데이터에서 만들어집니다.
+5. **Consistent Model**: 요약과 월 자금 구성은 동일한 정규화 데이터에서 만들어집니다.
 6. **Safe Constraints**: 유효하지 않은 금액, 초과 배분과 저장 실패는 조용히 무시하지 않습니다.
 7. **Progressive Disclosure**: 개요는 관계와 결과를 보여주고 민감하거나 복잡한 세부정보는 선택 후 공개합니다.
 8. **Local-first Trust**: 저장 위치, import, export와 앱 간 데이터 이동은 사용자가 이해할 수 있어야 합니다.
@@ -22,11 +22,11 @@ Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계획 �
 ### Main
 
 - 기본 화면은 월 수입, 생활비, 저축, 투자와 순현금흐름을 우선 보여줍니다.
-- Financial Detail Modal은 일반 재무 항목의 유일한 기본 편집 경로입니다.
-- modal을 열거나 탐색하는 것만으로 dirty 상태를 만들지 않습니다.
-- 실제 draft 변경이 있을 때 modal 내부 Pending Bar가 나타납니다.
-- `취소`와 `적용`은 modal을 자동으로 닫지 않고 현재 맥락을 유지합니다.
-- Sankey와 projection은 적용된 데이터만 반영합니다.
+- Main은 다섯 월간 금액만 직접 소유하며 항목·계좌·카테고리 편집을 제공하지 않습니다.
+- dashboard 편집기를 열거나 탐색하는 것만으로 dirty 상태를 만들지 않습니다.
+- 실제 draft 변경이 있을 때 Apply Bar가 나타납니다.
+- `취소`와 `적용`은 현재 draft와 적용된 계획의 차이를 명확히 처리합니다.
+- 요약과 월 자금 구성은 적용된 데이터만 반영합니다.
 
 ### Current Journey Readiness
 
@@ -109,19 +109,19 @@ Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계획 �
 - 제품 가용 상태는 현재 위치와 독립적으로 Main `사용 중`, 세 향후 앱 `준비 중`을 유지합니다.
 - 데이터 연결 상태는 실제 journey snapshot이 검증된 경우에만 표시합니다.
 
-### Financial Detail Modal
+### Main Cashflow Editor
 
-- tab과 compact row를 사용해 정보 밀도를 관리합니다.
-- 한 번에 하나의 행을 펼쳐 편집합니다.
-- 오류가 있으면 첫 오류 행을 열고 수정 방법을 알려줍니다.
-- focus를 modal 안에서 관리하고 닫힌 뒤 진입 컨트롤로 돌려보냅니다.
+- 다섯 월간 값을 한 덩어리의 이해 가능한 양식으로 제공합니다.
+- desktop에서는 dashboard 옆 편집 영역, mobile에서는 dialog로 같은 계약을 제공합니다.
+- 오류가 있으면 해당 필드 가까이에서 수정 방법을 알려줍니다.
+- mobile dialog의 focus를 내부에서 관리하고 닫힌 뒤 진입 컨트롤로 돌려보냅니다.
 
-### Pending Bar
+### Apply Bar
 
-- 저장 모델이 draft/apply를 요구하는 편집 맥락에서만 사용합니다.
-- 단순 탐색이나 선택은 Pending Bar를 만들지 않습니다.
+- Main의 draft/apply 편집 맥락에서 사용합니다.
+- 단순 탐색은 Apply Bar를 만들지 않습니다.
 - `취소`와 `적용` 같은 결과 중심 문구를 사용합니다.
-- 모바일 safe area와 modal footer를 가리지 않습니다.
+- 모바일 safe area와 편집 내용을 가리지 않습니다.
 
 ### Toast Message
 
@@ -188,7 +188,7 @@ gradient와 반투명 card를 기본 스타일로 사용하지 않습니다.
 - 390px에서 준비 화면과 Main 여정 CTA는 콘텐츠 너비를 채우고 최소 44px touch target을 가져야 합니다.
 - modal 콘텐츠는 viewport 안에서 스크롤되고 footer 또는 Pending Bar가 가려지지 않아야 합니다.
 - 다중 열 control은 768px 이하에서 단일 열 또는 읽을 수 있는 compact layout으로 전환합니다.
-- 현재 Main Sankey와 향후 Account Map은 의미를 잃도록 과도하게 축소하지 않고 필요한 경우 안내가 있는 내부 스크롤을 사용합니다.
+- 현재 Main 월 자금 구성과 향후 Account Map은 의미를 잃도록 과도하게 축소하지 않고 필요한 경우 안내가 있는 내부 스크롤을 사용합니다.
 - 향후 Account Map의 compact summary는 모바일 첫 화면에서 관계도를 밀어내지 않아야 합니다.
 
 ## Accessibility
@@ -203,7 +203,7 @@ gradient와 반투명 card를 기본 스타일로 사용하지 않습니다.
 
 - 공통 header, feedback, storage와 formatting utility를 먼저 확인합니다.
 - Main 현재 데이터 소유권, 최소 journey 계약과 향후 앱의 명시적 import 경계를 유지합니다.
-- Financial Detail Modal을 Main의 기본 편집기로 사용합니다.
+- Main의 다섯 값 계약을 넘어서는 편집 UI를 현재 제품에 추가하지 않습니다.
 - 외부 동작과 모바일 화면을 함께 검증합니다.
 - CSS 수정 전후 responsive media query와 파일 구조를 확인합니다.
 
