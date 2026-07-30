@@ -1,8 +1,9 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState, type MouseEvent, type PointerEvent } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type MouseEvent, type PointerEvent } from 'react';
 import { calculateCashflow, percentageOfIncome } from '../../domain/cashflow';
 import type { MainData } from '../../domain/model';
 import { PercentageTooltip } from '../common/PercentageTooltip';
 import { formatContextWon, formatPercentage } from './FlowContextSummary';
+import { createOverflowPresentation } from './overflowPresentation';
 
 export interface AllocationBarProps {
   data: MainData;
@@ -31,6 +32,11 @@ export function AllocationBar({ data }: AllocationBarProps) {
   const tooltipId = useId();
   const cashflow = calculateCashflow(data);
   const isDeficit = cashflow.deficitWon > 0;
+  const overflow = createOverflowPresentation(cashflow.deficitWon, cashflow.incomeWon);
+  const overflowStyle = {
+    '--overflow-length': `${overflow.displayLengthPercent}%`,
+    '--overflow-duration': `${overflow.flowDurationMs}ms`,
+  } as CSSProperties;
   const visualDenominator = isDeficit ? cashflow.plannedOutflowWon : cashflow.incomeWon;
   const allocation = (id: string, label: string, amountWon: number): Allocation => ({
     id,
@@ -156,7 +162,12 @@ export function AllocationBar({ data }: AllocationBarProps) {
           }
         }}
       >
-        <div className="flow-bar allocation-bar__segments" data-overflow={isDeficit ? 'true' : 'false'} ref={barRef}>
+        <div
+          className="flow-bar allocation-bar__segments"
+          data-overflow={isDeficit ? 'true' : 'false'}
+          data-overflow-intensity={overflow.intensity}
+          ref={barRef}
+        >
           <div aria-hidden="true" className="allocation-bar__visual-track">
             {allocations.map((allocation) => {
               return (
@@ -185,12 +196,17 @@ export function AllocationBar({ data }: AllocationBarProps) {
               />
             );
           })}
-          {isDeficit ? (
-            <span aria-hidden="true" className="allocation-bar__pressure">
-              <span className="allocation-bar__droplet" />
-              <span className="allocation-bar__droplet" />
+          {overflow.intensity === 'none' ? null : (
+            <span aria-hidden="true" className="flow-overflow-extension" style={overflowStyle}>
+              <span className="flow-overflow-sheen" />
+              {overflow.showDroplets ? (
+                <span className="flow-overflow-droplets">
+                  <span className="flow-overflow-droplet" />
+                  <span className="flow-overflow-droplet" />
+                </span>
+              ) : null}
             </span>
-          ) : null}
+          )}
         </div>
         <table className="allocation-table" aria-label="월 자금 항목">
           <thead>

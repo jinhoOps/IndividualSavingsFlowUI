@@ -30,6 +30,11 @@ const deficitFixture: MainData = {
   monthlyInvestmentWon: 1_900_000,
 };
 
+const liquidDeficitFixture: MainData = {
+  ...cashflowFixture,
+  monthlyInvestmentWon: 2_100_000,
+};
+
 function setProgressbarRect(progressbar: HTMLElement) {
   Object.defineProperty(progressbar, 'getBoundingClientRect', {
     configurable: true,
@@ -180,14 +185,23 @@ describe('FlowContextSummary', () => {
     expect(screen.getByRole('status')).toHaveTextContent('수입보다 80만 원 초과');
   });
 
-  it('shows contained pressure overflow hooks only for a deficit', () => {
+  it('renders compressed liquid overflow and adds droplets only from 30%', () => {
     const { rerender } = render(<FlowContextSummary data={cashflowFixture} />);
     expect(screen.getByRole('progressbar').parentElement).toHaveAttribute('data-overflow', 'false');
-    expect(document.querySelector('.flow-overflow-pressure')).not.toBeInTheDocument();
+    expect(document.querySelector('.flow-overflow-extension')).not.toBeInTheDocument();
 
     rerender(<FlowContextSummary data={deficitFixture} />);
-    expect(screen.getByRole('progressbar').parentElement).toHaveAttribute('data-overflow', 'true');
-    expect(document.querySelector('.flow-overflow-pressure')).toBeInTheDocument();
+    expect(screen.getByRole('progressbar').parentElement).toHaveAttribute('data-overflow-intensity', 'active');
+    expect(document.querySelector('.flow-overflow-extension')).toHaveStyle({
+      '--overflow-length': '5%',
+    });
+    expect(document.querySelector('.flow-overflow-droplets')).not.toBeInTheDocument();
+
+    rerender(<FlowContextSummary data={liquidDeficitFixture} />);
+    expect(screen.getByRole('progressbar').parentElement).toHaveAttribute('data-overflow-intensity', 'liquid');
+    expect(document.querySelector('.flow-overflow-extension')).toHaveStyle({
+      '--overflow-length': '6.25%',
+    });
     expect(document.querySelectorAll('.flow-overflow-droplet')).toHaveLength(2);
   });
 });

@@ -87,8 +87,8 @@ export function SetupFlow({
   }
 
   return (
-    <Surface as="section" className="overflow-hidden shadow-float" aria-labelledby="setup-flow-title">
-      <div className="h-1.5 bg-slate-100">
+    <Surface as="section" className="setup-flow-surface shadow-float" aria-labelledby="setup-flow-title">
+      <div className="h-1.5 overflow-hidden rounded-t-[inherit] bg-slate-100">
         <div className="h-full bg-accent transition-[width]" style={{ width: `${((stepIndex + 1) / steps.length) * 100}%` }} />
       </div>
       <p className="mx-6 mt-6 text-sm font-black tracking-wide text-accent sm:mx-10" id="setup-flow-title" role="status">

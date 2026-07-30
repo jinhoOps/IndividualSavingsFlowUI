@@ -1,7 +1,8 @@
-import { useEffect, useId, useRef, useState, type PointerEvent } from 'react';
+import { useEffect, useId, useRef, useState, type CSSProperties, type PointerEvent } from 'react';
 import { calculateCashflow, percentageOfIncome } from '../../domain/cashflow';
 import type { MainData } from '../../domain/model';
 import { PercentageTooltip } from '../common/PercentageTooltip';
+import { createOverflowPresentation } from './overflowPresentation';
 
 export interface FlowContextSummaryProps {
   data: MainData;
@@ -18,6 +19,11 @@ export function FlowContextSummary({ data }: FlowContextSummaryProps) {
   const tooltipId = useId();
   const cashflow = calculateCashflow(data);
   const isDeficit = cashflow.deficitWon > 0;
+  const overflow = createOverflowPresentation(cashflow.deficitWon, cashflow.incomeWon);
+  const overflowStyle = {
+    '--overflow-length': `${overflow.displayLengthPercent}%`,
+    '--overflow-duration': `${overflow.flowDurationMs}ms`,
+  } as CSSProperties;
   const plannedPercentage = percentageOfIncome(cashflow.plannedOutflowWon, cashflow.incomeWon);
   const visualPercentage = clampPercentage(plannedPercentage ?? 0);
   const formattedPercentage = formatPercentage(plannedPercentage);
@@ -60,6 +66,7 @@ export function FlowContextSummary({ data }: FlowContextSummaryProps) {
       <div
         className="flow-bar-wrapper"
         data-overflow={isDeficit ? 'true' : 'false'}
+        data-overflow-intensity={overflow.intensity}
         ref={flowBarWrapperRef}
         onBlur={(event) => {
           if (!event.currentTarget.contains(event.relatedTarget)) {
@@ -104,12 +111,17 @@ export function FlowContextSummary({ data }: FlowContextSummaryProps) {
             style={{ width: `${visualPercentage}%` }}
           />
         </div>
-        {isDeficit ? (
-          <span aria-hidden="true" className="flow-overflow-pressure">
-            <span className="flow-overflow-droplet" />
-            <span className="flow-overflow-droplet" />
+        {overflow.intensity === 'none' ? null : (
+          <span aria-hidden="true" className="flow-overflow-extension" style={overflowStyle}>
+            <span className="flow-overflow-sheen" />
+            {overflow.showDroplets ? (
+              <span className="flow-overflow-droplets">
+                <span className="flow-overflow-droplet" />
+                <span className="flow-overflow-droplet" />
+              </span>
+            ) : null}
           </span>
-        ) : null}
+        )}
         <PercentageTooltip
           id={tooltipId}
           open={tooltipOpen}
