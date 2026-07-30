@@ -22,8 +22,11 @@ export interface ProjectionPoint {
   year: number;
   month: number;
   contributedPrincipalWon: number;
+  contributedPrincipalRealWon: number;
   savingsNominalWon: number;
+  savingsRealWon: number;
   investmentNominalWon: number;
+  investmentRealWon: number;
   currentPlanNominalWon: number;
   allSavingsNominalWon: number;
   currentPlanRealWon: number;

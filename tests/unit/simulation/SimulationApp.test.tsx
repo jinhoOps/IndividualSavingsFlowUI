@@ -73,4 +73,18 @@ describe('SimulationApp', () => {
     fireEvent.click(screen.getByRole('button', { name: '계산 시작' }));
     expect(screen.getByText('1,000만 원')).toBeVisible();
   });
+
+  it('reloads the latest Main values when restarting', () => {
+    let current = source;
+    render(<SimulationApp
+      mainSourceRepository={{ load: () => ({ status: 'found', source: current }) }}
+      repository={emptyRepository()}
+      now={() => 456}
+    />);
+    fireEvent.click(screen.getByRole('button', { name: '없어요' }));
+    current = { ...source, monthlySavingsWon: 900_000, mainUpdatedAt: 999 };
+    fireEvent.click(screen.getByRole('button', { name: '처음부터 다시' }));
+    fireEvent.click(screen.getByRole('button', { name: '없어요' }));
+    expect(screen.getByText('90만 원')).toBeVisible();
+  });
 });

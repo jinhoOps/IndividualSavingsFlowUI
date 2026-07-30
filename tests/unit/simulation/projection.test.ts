@@ -58,5 +58,11 @@ describe('projectCompoundGrowth', () => {
     expect(real.points.at(-1)!.currentPlanNominalWon).toBe(
       nominal.points.at(-1)!.currentPlanNominalWon,
     );
+    const final = real.points.at(-1)!;
+    expect(final.currentPlanRealWon).toBe(final.savingsRealWon + final.investmentRealWon);
+    expect(real.principalRatioPercent).toBeCloseTo(
+      final.currentPlanRealWon / final.contributedPrincipalRealWon * 100,
+      6,
+    );
   });
 });

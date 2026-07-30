@@ -60,7 +60,11 @@ export function projectCompoundGrowth(draft: CompoundSimulationDraft): Projectio
     finalAllSavingsWon,
     advantageOverAllSavingsWon: finalCurrentPlanWon - finalAllSavingsWon,
     principalRatioPercent: final.contributedPrincipalWon > 0
-      ? finalCurrentPlanWon / final.contributedPrincipalWon * 100
+      ? finalCurrentPlanWon / selectAmount(
+        draft.amountMode,
+        final.contributedPrincipalWon,
+        final.contributedPrincipalRealWon,
+      ) * 100
       : null,
   };
 
@@ -74,16 +78,21 @@ export function projectCompoundGrowth(draft: CompoundSimulationDraft): Projectio
     const currentPlanNominalWon = savingsNominalWon + investmentNominalWon;
     const allSavingsNominalWon = Math.round(allSavingsBalance);
     const realFactor = Math.pow(1 + inflationAnnualRate, month / 12);
+    const savingsRealWon = Math.round(savingsNominalWon / realFactor);
+    const investmentRealWon = Math.round(investmentNominalWon / realFactor);
 
     points.push({
       year: month / 12,
       month,
       contributedPrincipalWon,
+      contributedPrincipalRealWon: Math.round(contributedPrincipalWon / realFactor),
       savingsNominalWon,
+      savingsRealWon,
       investmentNominalWon,
+      investmentRealWon,
       currentPlanNominalWon,
       allSavingsNominalWon,
-      currentPlanRealWon: Math.round(currentPlanNominalWon / realFactor),
+      currentPlanRealWon: savingsRealWon + investmentRealWon,
       allSavingsRealWon: Math.round(allSavingsNominalWon / realFactor),
     });
   }

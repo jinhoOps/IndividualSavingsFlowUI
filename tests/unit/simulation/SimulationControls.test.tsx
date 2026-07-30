@@ -42,4 +42,21 @@ describe('SimulationControls', () => {
     expect(screen.getByRole('slider', { name: '투자 기간' })).toHaveAttribute('min', '1');
     expect(screen.getByRole('slider', { name: '투자 기간' })).toHaveAttribute('max', '50');
   });
+
+  it('keeps invalid direct input visible without changing the saved draft', () => {
+    const onChange = vi.fn();
+    render(<SimulationControls draft={draft} onChange={onChange} />);
+
+    fireEvent.change(screen.getByRole('spinbutton', { name: '투자 기간 숫자' }), {
+      target: { value: '' },
+    });
+    expect(screen.getByRole('spinbutton', { name: '투자 기간 숫자' })).toHaveValue(null);
+    expect(screen.getByText('1~50년 사이의 정수를 입력해주세요.')).toBeVisible();
+
+    fireEvent.change(screen.getByRole('spinbutton', { name: '연 기대수익률 직접 입력' }), {
+      target: { value: '9.123' },
+    });
+    expect(screen.getByText('0~30 사이, 소수점 둘째 자리까지 입력해주세요.')).toBeVisible();
+    expect(onChange).not.toHaveBeenCalled();
+  });
 });

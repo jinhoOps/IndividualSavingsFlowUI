@@ -4,7 +4,7 @@ import { appPath } from '../../journey/routes';
 import { bootstrapSimulation } from '../application/bootstrap';
 import type { CompoundSimulationDraft } from '../domain/model';
 import { projectCompoundGrowth } from '../domain/projection';
-import { createDefaultSimulationDraft } from '../domain/validation';
+import { createDefaultSimulationDraft, parseSimulationDraft } from '../domain/validation';
 import {
   BrowserMainSourceRepository,
   type MainSourceRepository,
@@ -40,6 +40,7 @@ export function SimulationApp({
     () => bootstrapSimulation(mainRepository.load(), repository.load()),
     [mainRepository, repository],
   );
+  const [runtime, setRuntime] = useState(initial);
   const [draft, setDraft] = useState<CompoundSimulationDraft | null>(
     initial.kind === 'ready' ? initial.draft : null,
   );
@@ -47,7 +48,7 @@ export function SimulationApp({
     initial.kind === 'ready' && !initial.persistenceAvailable,
   );
 
-  if (initial.kind === 'main-required') {
+  if (runtime.kind === 'main-required') {
     return (
       <main className="simulation-shell">
         <AppLauncher currentApp="simulation" />
@@ -58,11 +59,16 @@ export function SimulationApp({
       </main>
     );
   }
-  const ready = initial;
+  const ready = runtime;
 
   function saveDraft(next: CompoundSimulationDraft): void {
-    setDraft(next);
-    setSaveFailed(repository.save(next).status === 'unavailable');
+    const valid = parseSimulationDraft(next);
+    if (valid === null) {
+      setSaveFailed(true);
+      return;
+    }
+    setDraft(valid);
+    setSaveFailed(repository.save(valid).status === 'unavailable');
   }
 
   function start(initialInvestmentWon: number): void {
@@ -74,6 +80,7 @@ export function SimulationApp({
 
   function restart(): void {
     repository.clear();
+    setRuntime(bootstrapSimulation(mainRepository.load(), { status: 'empty' }));
     setDraft(null);
   }
 
@@ -89,6 +96,9 @@ export function SimulationApp({
               <p role="status">Main의 저축·투자 금액이 변경되었습니다.</p>
             ) : null}
             {saveFailed ? <p role="status">자동 저장을 사용할 수 없습니다.</p> : null}
+            <p className="simulation-assumption">
+              기대수익률을 계속 재투자한다고 가정한 계산이며, 백테스트나 금융 자문이 아닙니다.
+            </p>
             {(() => {
               const result = projectCompoundGrowth(draft);
               return (

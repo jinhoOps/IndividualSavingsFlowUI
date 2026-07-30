@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type {
   CompoundSimulationDraft,
   ProjectionPoint,
@@ -15,13 +15,29 @@ export function GrowthChart({
   amountMode: CompoundSimulationDraft['amountMode'];
 }) {
   const [active, setActive] = useState<ProjectionPoint | null>(null);
+  const chartRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (active === null) return undefined;
+    const dismissOutside = (event: PointerEvent) => {
+      if (!chartRef.current?.contains(event.target as Node)) setActive(null);
+    };
+    document.addEventListener('pointerdown', dismissOutside);
+    return () => document.removeEventListener('pointerdown', dismissOutside);
+  }, [active]);
   const geometry = buildChartGeometry(result.points, amountMode);
   const last = result.points.at(-1)!;
   const finalCurrent = displayed(last, 'current', amountMode);
   const finalSavings = displayed(last, 'allSavings', amountMode);
 
   return (
-    <section className="growth-chart" aria-labelledby="growth-chart-title">
+    <section
+      ref={chartRef}
+      className="growth-chart"
+      aria-labelledby="growth-chart-title"
+      onKeyDown={(event) => {
+        if (event.key === 'Escape') setActive(null);
+      }}
+    >
       <div className="growth-chart__header">
         <h2 id="growth-chart-title">시간이 만든 차이</h2>
         <div className="growth-chart__legend" aria-label="그래프 범례">
@@ -37,12 +53,14 @@ export function GrowthChart({
           viewBox="0 0 680 285"
           role="img"
           aria-label="연도별 복리 성장 그래프"
+          onPointerDown={(event) => {
+            const point = pointAt(event.currentTarget, event.clientX, result.points);
+            setActive((current) => current?.month === point?.month ? null : point);
+          }}
           onPointerMove={(event) => {
-            const bounds = event.currentTarget.getBoundingClientRect();
-            if (bounds.width <= 0) return;
-            const ratio = Math.max(0, Math.min(1, (event.clientX - bounds.left) / bounds.width));
-            const index = Math.round(ratio * (result.points.length - 1));
-            setActive(result.points[index] ?? null);
+            if (event.pointerType !== 'touch') {
+              setActive(pointAt(event.currentTarget, event.clientX, result.points));
+            }
           }}
         >
           <path className="growth-chart__area" d={geometry.currentPlanAreaPath} />
@@ -66,15 +84,34 @@ export function GrowthChart({
             <strong>{active.year}년</strong>
             <Detail label="현재 계획 총액" value={displayed(active, 'current', amountMode)} />
             <Detail label="전부 저축 총액" value={displayed(active, 'allSavings', amountMode)} />
-            <Detail label="누적 납입원금" value={active.contributedPrincipalWon} />
-            <Detail label="저축 잔액" value={active.savingsNominalWon} />
-            <Detail label="투자 잔액" value={active.investmentNominalWon} />
+            <Detail label="누적 납입원금" value={
+              amountMode === 'real'
+                ? active.contributedPrincipalRealWon
+                : active.contributedPrincipalWon
+            } />
+            <Detail label="저축 잔액" value={
+              amountMode === 'real' ? active.savingsRealWon : active.savingsNominalWon
+            } />
+            <Detail label="투자 잔액" value={
+              amountMode === 'real' ? active.investmentRealWon : active.investmentNominalWon
+            } />
             <button type="button" onClick={() => setActive(null)}>닫기</button>
           </aside>
         )}
       </div>
     </section>
   );
+}
+
+function pointAt(
+  element: SVGSVGElement,
+  clientX: number,
+  points: ProjectionPoint[],
+): ProjectionPoint | null {
+  const bounds = element.getBoundingClientRect();
+  if (bounds.width <= 0) return null;
+  const ratio = Math.max(0, Math.min(1, (clientX - bounds.left) / bounds.width));
+  return points[Math.round(ratio * (points.length - 1))] ?? null;
 }
 
 function Detail({ label, value }: { label: string; value: number }) {

@@ -24,6 +24,7 @@ test('starts from current Main and keeps Main read-only while changing projectio
   await expect(page.getByRole('heading', { name: '20년 뒤 예상금액' })).toBeVisible();
   await expect(page.getByText('현재 계획', { exact: true })).toBeVisible();
   await expect(page.getByText('전부 저축', { exact: true })).toBeVisible();
+  await expect(page.getByText(/백테스트나 금융 자문이 아닙니다/)).toBeVisible();
 
   await page.getByRole('button', { name: '연 기대수익률 13%' }).click();
   await page.getByRole('button', { name: '30년' }).click();
@@ -44,6 +45,8 @@ for (const viewport of [
     await page.getByRole('slider', { name: '그래프 연도 상세' }).fill('10');
     await expect(page.getByText('현재 계획 총액')).toBeVisible();
     await expect(page.getByText('누적 납입원금')).toBeVisible();
+    await page.getByRole('slider', { name: '그래프 연도 상세' }).press('Escape');
+    await expect(page.getByText('현재 계획 총액')).toBeHidden();
     expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
   });
 }
