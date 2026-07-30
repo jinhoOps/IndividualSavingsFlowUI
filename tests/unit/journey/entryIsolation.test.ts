@@ -7,9 +7,9 @@ import { expect, it } from 'vitest';
 it.each([
   {
     app: 'simulation',
-    entry: '../../src/journey/simulation.tsx',
-    title: 'ISF UIUX | Simulation',
-    description: 'Main 계획과 연결될 신규 Simulation 앱의 준비 상태를 안내하는 화면',
+    entry: '../../src/simulation/main.tsx',
+    title: '복리 성장 Simulation | ISF',
+    description: '월 저축과 투자가 시간과 복리로 성장하는 모습을 확인하는 시뮬레이션',
   },
   {
     app: 'portfolio',
