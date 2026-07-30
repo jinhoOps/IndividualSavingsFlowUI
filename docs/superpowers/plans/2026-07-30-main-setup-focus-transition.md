@@ -14,6 +14,7 @@
 - 재설정 `취소`만 설정 카드 내부에 유지한다.
 - 6/6 최종 상태에는 색상 배분 바와 표만 남고 단순 `flow-bar`는 없어야 한다.
 - `prefers-reduced-motion: reduce`에서는 최종 상태를 즉시 표시한다.
+- 6/6 전환은 화면 진입 후 350ms 정지한 다음 시작하며 기존 620ms 이동 시간은 유지한다.
 - Main 데이터, 계산, 저장 계약은 변경하지 않는다.
 
 ---
@@ -259,4 +260,3 @@ Expected: 타입 검사 통과, 전체 단위 테스트 통과, 지원 E2E 통�
 git add tests/main-react.spec.ts src/main/ui/main.css
 git commit -m "test(main): cover focused setup transition"
 ```
-
