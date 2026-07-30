@@ -4,7 +4,7 @@
 
 ISF는 지금의 월간 돈 흐름을 정리하고, 그 결과를 장기 전략과 실행 계획으로 점차 연결하는 로컬 우선 개인 재무 계획 도구다.
 
-현재 제품은 **Main**이다. Main은 다섯 가지 월간 금액으로 소비·저축·투자·남는 돈을 이해하도록 돕는다. **Simulation, Portfolio, Account Map**은 제품 비전에는 포함되지만 현재는 연결 상태를 설명하는 준비 화면만 제공한다.
+현재 제품은 **Main과 Simulation**이다. Main은 다섯 가지 월간 금액으로 소비·저축·투자·남는 돈을 이해하도록 돕고, Simulation은 그 월 저축·투자를 장기 복리와 전부 저축 기준선으로 비교한다. **Portfolio와 Account Map**은 현재 연결 상태를 설명하는 준비 화면만 제공한다.
 
 ## 2. Epic
 
@@ -33,12 +33,12 @@ ISF는 지금의 월간 돈 흐름을 정리하고, 그 결과를 장기 전략�
 
 현재 범위는 다음을 제공하지 않는다.
 
-- 상세 Simulation 계산과 전략 비교
+- 백테스트, 변동성·MDD, 세금 또는 수수료 계산
 - Portfolio 구성·편집·저장
 - Account Map 관계 생성·편집·저장
 - 항목별 계좌 배분이나 자동이체 관리
 - 지출 카테고리·실제 사용액·가구 예산 관리
-- Sankey 또는 장기 자산 projection
+- 레거시 Sankey 또는 계좌별 장기 자산 projection
 - 금융기관 연결, 실시간 시세, 금융 자문
 
 위 기능은 레거시에 존재하더라도 현재 지원 기능이 아니다.
@@ -85,13 +85,13 @@ ISF는 지금의 월간 돈 흐름을 정리하고, 그 결과를 장기 전략�
 - 적자 상태
 - 현재 다섯 값 수정
 - JSON 내보내기와 가져오기
-- Simulation 준비 화면으로 이어지는 명시적 행동
+- Simulation으로 이어지는 명시적 행동
 
-### Readiness journey
+### Simulation과 readiness journey
 
-- 런처는 Main을 `사용 중`, 나머지 세 앱을 `준비 중`으로 표시한다.
-- Simulation은 Main 연결 상태, 월 투자 가능액과 갱신 시각을 보여준다.
-- Portfolio는 같은 최소 journey 정보를 이어받는다.
+- 런처는 Main과 Simulation을 `사용 중`, 나머지 두 앱을 `준비 중`으로 표시한다.
+- Simulation은 Main의 월 저축·투자를 읽기 전용으로 사용하고 장기 복리 성장과 전부 저축 기준선을 비교한다.
+- Portfolio는 최소 journey 정보를 이어받는 준비 화면이다.
 - Account Map은 준비 상태만 설명한다.
 - 준비 화면은 상세 계산·편집·독립 저장·Main write-back을 수행하지 않는다.
 
@@ -114,6 +114,14 @@ ISF는 지금의 월간 돈 흐름을 정리하고, 그 결과를 장기 전략�
 - 전달 payload는 필요한 최소 데이터만 포함한다.
 - 준비 화면이 상세 앱 상태를 소유하는 것처럼 표현하지 않는다.
 - Account Map은 Main을 암묵적으로 수정하지 않는다.
+
+### Simulation
+
+- 최초 진입 시 시작 원금 유무를 묻고 이후 초안은 Simulation 전용 저장소에 저장한다.
+- 기간, 연 기대수익률, 기준금리, 물가상승률 차이와 명목·실질금액을 조정한다.
+- 현재 계획과 같은 월 납입액을 전부 기준금리 저축에 넣은 경우를 낮은 시각 우선순위로 비교한다.
+- 기대수익률은 재투자를 가정한 사용자 입력값이며 백테스트나 금융 자문으로 표현하지 않는다.
+- 처음부터 다시 시작하면 최신 Main 값을 다시 읽고 Main 원본은 변경하지 않는다.
 
 ### Legacy transition
 
@@ -144,7 +152,7 @@ Main이 계산하는 요약:
 - `plannedOutflowWon = consumptionWon + monthlySavingWon + monthlyInvestmentWon`
 - `remainingWon = monthlyNetIncomeWon - plannedOutflowWon`
 
-향후 앱은 이 계약을 무단 확장하지 않고 별도 소유 상태와 명시적 import 계약을 정의한다.
+Simulation과 향후 앱은 이 계약을 무단 확장하지 않고 별도 소유 상태와 명시적 import 계약을 정의한다.
 
 ## 10. UX and Design Requirements
 
@@ -166,14 +174,15 @@ Main이 계산하는 요약:
 - [x] 소비·저축·투자·남는 돈 또는 적자가 동일한 데이터에서 계산된다.
 - [x] 유효한 계획을 로컬에 저장하고 다시 불러올 수 있다.
 - [x] 현재 JSON을 내보내고 검증된 JSON을 가져올 수 있다.
-- [x] Main에서 Simulation readiness로 명시적으로 이동할 수 있다.
-- [x] Simulation과 Portfolio readiness가 최소 journey 상태를 보여준다.
-- [x] Account Map을 포함한 세 목적지는 `준비 중`으로 표시된다.
+- [x] Main에서 Simulation으로 명시적으로 이동할 수 있다.
+- [x] Simulation은 Main을 변경하지 않고 장기 복리와 전부 저축 기준선을 비교한다.
+- [x] Portfolio와 Account Map readiness가 최소 journey 상태를 보여준다.
+- [x] Portfolio와 Account Map은 `준비 중`으로 표시된다.
 - [x] readiness 화면은 상세 편집·독립 저장·Main write-back을 제공하지 않는다.
 
 ### Transition
 
-- [ ] Simulation의 승인된 기능 명세와 레거시 disposition이 있다.
+- [x] Simulation의 승인된 기능 명세와 레거시 disposition이 있다.
 - [ ] Portfolio의 승인된 기능 명세와 레거시 disposition이 있다.
 - [ ] Account Map의 승인된 기능 명세와 레거시 disposition이 있다.
 - [ ] 각 레거시 삭제는 구데이터 호환성과 전체 참조 제거를 입증한다.
@@ -183,7 +192,7 @@ Main이 계산하는 요약:
 제품 비전은 다음 질문을 차례로 연결하는 것이다.
 
 1. 지금 내 돈은 한 달에 어떻게 나뉘는가? — Main
-2. 이 투자 여력을 오래 유지하면 어떤 차이가 생기는가? — Future Simulation
+2. 이 투자 여력을 오래 유지하면 어떤 차이가 생기는가? — Simulation
 3. 선택한 방향을 매달 무엇에 투자할 것인가? — Future Portfolio
 4. 실제 계좌와 자동이체를 어떻게 단순하게 관리할 것인가? — Future Account Map
 
@@ -194,7 +203,7 @@ Main이 계산하는 요약:
 - 사용자가 초기 설정을 완료하고 적용된 월간 계획을 다시 확인한다.
 - 적자와 남는 돈을 잘못 해석하지 않는다.
 - JSON 백업과 복구 실패가 현재 데이터를 훼손하지 않는다.
-- 준비 화면을 완성된 앱으로 오해하지 않는다.
+- Portfolio와 Account Map 준비 화면을 완성된 앱으로 오해하지 않는다.
 - 신규 앱 작업이 레거시 route를 되살리지 않고 승인된 계약에서 시작한다.
 - 문서 검토자가 현재 지원 기능을 런타임 및 테스트와 동일하게 설명한다.
 
