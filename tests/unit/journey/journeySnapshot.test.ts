@@ -95,9 +95,11 @@ describe('JourneySnapshot', () => {
     ['negative Main timestamp', { mainUpdatedAt: -1 }],
     ['fractional Main timestamp', { mainUpdatedAt: 1.5 }],
     ['out-of-range Main timestamp', { mainUpdatedAt: 8_640_000_000_000_001 }],
+    ['unsafe Main timestamp', { mainUpdatedAt: Number.MAX_SAFE_INTEGER + 1 }],
     ['negative creation timestamp', { createdAt: -1 }],
     ['fractional creation timestamp', { createdAt: 1.5 }],
     ['out-of-range creation timestamp', { createdAt: 8_640_000_000_000_001 }],
+    ['unsafe creation timestamp', { createdAt: Number.MAX_SAFE_INTEGER + 1 }],
   ])('rejects the numeric boundary: %s', (_label, mutation) => {
     expect(parseJourneySnapshot({ ...validMainSnapshot, ...mutation })).toBeNull();
   });

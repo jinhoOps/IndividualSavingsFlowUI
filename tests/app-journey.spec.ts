@@ -186,6 +186,23 @@ test.describe('tablet app journey', () => {
       await expect(page.getByRole('link', { name: label })).toBeVisible();
     }
 
+    const simulationLauncherLink = page.getByRole('link', { name: 'Simulation 준비 중' });
+    await simulationLauncherLink.focus();
+    await expect(simulationLauncherLink).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(/\/apps\/simulation\/$/);
+    await expect(page.getByRole('link', { name: /Simulation 준비 중.*현재 위치/ }))
+      .toHaveAttribute('aria-current', 'page');
+    expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
+
+    const mainLauncherLink = page.getByRole('link', { name: 'Main 사용 중' });
+    await mainLauncherLink.focus();
+    await expect(mainLauncherLink).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(/\/apps\/main\/$/);
+    await expect(page.getByRole('link', { name: /Main 사용 중.*현재 위치/ }))
+      .toHaveAttribute('aria-current', 'page');
+
     const mainAction = page.getByRole('button', { name: 'Simulation으로 이어가기' });
     await mainAction.focus();
     await page.keyboard.press('Enter');

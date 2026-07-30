@@ -4,15 +4,15 @@
 
 현재 ISF의 제품 기준선과 문서 체계를 실제 개발 상태에 맞춘다.
 
-Main 앱 변경은 완료된 현재 제품으로 취급한다. 레거시 코드는 사용자에게 제공하는 병행 제품이 아니라, 아직 옮기지 않은 기능과 데이터 계약을 확인하고 새 구조로 이전하기 위한 임시자산으로 취급한다. 프로젝트 루트에는 현재 개발자가 즉시 읽어야 하는 문서만 남긴다.
+Main 앱 변경은 완료된 현재 제품으로 취급한다. Simulation, Portfolio와 Account Map은 향후 새로 개발할 앱이며 현재 동명 제품 경로는 준비 화면으로 취급한다. 레거시 코드는 사용자에게 제공하는 병행 제품이 아니라, 아직 옮기지 않은 기능과 데이터 계약을 확인하고 새 구조로 이전하기 위한 임시자산으로 취급한다. 프로젝트 루트에는 현재 개발자가 즉시 읽어야 하는 문서만 남긴다.
 
 ## 현재 상태
 
-- Main은 summary-first 화면, Financial Detail Modal 중심 편집, 월간 흐름 시각화와 Account Map 진입을 제공한다.
+- Main은 summary-first 화면, Financial Detail Modal 중심 편집, 월간 흐름 시각화와 공통 앱 런처를 제공한다.
 - Main 개편 자체는 향후 구현 대상이 아니라 완료된 제품 기준선이다.
-- Simulation은 Main의 투자 여력을 받아 전략별 장기 결과를 비교한다.
-- Portfolio는 적립식 실행 계획을 생성하고 저장한다.
-- Account Map은 Main의 계좌 관계를 별도 초안으로 가져와 검토하고 편집한다.
+- Simulation과 Portfolio의 현재 경로는 최소 journey 연결 상태만 보여주는 준비 화면이다.
+- Account Map의 현재 경로는 Main 또는 journey 데이터를 읽지 않는 준비 화면이다.
+- 세 앱의 상세 동작과 상태 소유권은 승인된 향후 신규 앱 명세에서 정의한다.
 - 일부 레거시 코드와 문서는 기능 마이그레이션 및 호환성 확인을 위해 남아 있다.
 - 루트 Markdown은 제품 문서, 에이전트 지침, 과거 요구사항, 메모가 혼재한다.
 
@@ -30,12 +30,12 @@ Main은 사용자의 월간 가계 흐름을 읽고 수정하는 완성된 시�
 
 향후 기능은 Main을 다시 설계하는 작업이 아니라 이 기준선을 보존하면서 확장한다.
 
-### 연결 앱
+### 현재 준비 목적지와 향후 연결 앱
 
-- Simulation은 Main 데이터를 읽되 자체 가정과 저장 상태를 소유한다.
-- Portfolio는 실제 적립식 자산 배분과 저장 상태를 소유한다.
-- Account Map은 Main 데이터를 read-only source로 사용하며 page-owned draft를 소유한다.
-- 앱 사이의 데이터 전달은 명시적 import 또는 connector 계약을 사용한다.
+- 현재 Simulation과 Portfolio 준비 화면은 최소 `JourneySnapshot`만 읽고 상세 편집이나 독립 제품 저장을 소유하지 않는다.
+- 현재 Account Map 준비 화면은 Main 또는 journey 데이터를 읽거나 page-owned draft를 저장하지 않는다.
+- 향후 Simulation, Portfolio와 Account Map은 승인된 상세 명세에서 자체 가정, 자산 배분, draft와 저장 상태의 소유권을 정의한다.
+- 현재와 향후 앱 사이의 데이터 전달은 명시적 CTA, import 또는 connector 계약을 사용하며 Account Map은 Main에 암묵적으로 write-back하지 않는다.
 
 ## 레거시 임시자산 정책
 
@@ -88,10 +88,16 @@ Main은 사용자의 월간 가계 흐름을 읽고 수정하는 완성된 시�
 - 월간 snapshot과 장기 projection 계산
 - Financial Detail Modal draft 및 검증
 - Sankey 데이터 구축과 렌더링
+- 앱 런처와 최소 journey snapshot 전달
+- 준비 화면의 연결 상태와 복구 행동
+- Main 저장 및 compatibility bridge
+
+### 향후 신규 앱 모듈
+
 - Account Map draft 생성, 관계 관리 및 결정적 배치
-- Simulation 전략 비교
-- Portfolio 자산 배분
-- 앱 간 connector와 저장 브리지
+- Simulation 전략 비교와 자체 가정
+- Portfolio 자산 배분과 실행 계획 저장
+- 승인된 앱 간 connector와 저장 브리지
 
 ### 마이그레이션 경계
 
@@ -167,10 +173,9 @@ AGENTS는 PRD, DESIGN, codebase map 또는 계획 문서의 내용을 복제하�
 ### 현재 제공
 
 - 완료된 Main 경험
-- Simulation
-- Portfolio
-- Account Map
-- 로컬 저장 및 공유 인프라
+- Simulation과 Portfolio의 journey 준비 화면
+- Account Map 준비 화면
+- Main 로컬 저장, 공유 인프라와 최소 journey snapshot
 
 ### 전환 중
 
@@ -181,6 +186,9 @@ AGENTS는 PRD, DESIGN, codebase map 또는 계획 문서의 내용을 복제하�
 
 ### 향후 확장
 
+- 승인된 상세 명세와 마이그레이션 계획에 따른 신규 Simulation
+- 승인된 상세 명세와 마이그레이션 계획에 따른 신규 Portfolio
+- 승인된 상세 명세와 마이그레이션 계획에 따른 신규 Account Map
 - 지출 알림 텍스트 기반 capture
 - 가구 데이터 병합
 - 과거 지출 비교
@@ -204,13 +212,14 @@ PRD는 Main 재구축을 미래 요구사항으로 표현하지 않는다. 완�
 - Main의 summary-first 흐름과 Financial Detail Modal
 - draft 적용, 취소, 유효성 검증과 이탈 경고
 - 월간 계산, Sankey 및 projection
-- Account Map import, 독립 저장 및 Main 비변경
-- Simulation의 Main import와 독립 가정
-- Portfolio 생성, 확인, 저장, 수정과 삭제
+- Main → Simulation → Portfolio 준비 화면의 최소 snapshot 연결
+- 공통 런처의 고정 가용 상태, 현재 위치와 키보드 이동
+- 준비 화면의 Main 갱신 시각, 복구 행동과 Account Map 데이터 격리
 
 ### 마이그레이션 검증
 
 - 레거시와 현재 모듈의 사용자 관찰 결과 비교
+- 레거시 Account Map import·독립 저장, Simulation 가정과 Portfolio 실행 계획의 기능·데이터 계약 목록화
 - 구버전 데이터 import와 현재 schema 정규화
 - 내보내기 및 공유 데이터 보존
 - 마이그레이션 이후 레거시 import, selector, route와 runtime 참조 부재
