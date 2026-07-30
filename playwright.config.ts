@@ -4,6 +4,9 @@ export default defineConfig({
   testDir: './tests',
   testIgnore: [
     '**/unit/**',
+    // Migration-reference suites return only with each app's approved detailed spec/migration.
+    '**/account-map.spec.ts',
+    '**/step2.spec.ts',
   ],
   fullyParallel: false,
   forbidOnly: !!process.env.CI,

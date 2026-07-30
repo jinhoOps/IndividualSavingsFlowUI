@@ -1,105 +1,6 @@
-@import url("https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Gowun+Dodum:wght@400;700&display=swap");
-@import "tailwindcss";
-
-:root {
-  --ui-control-min-height: 44px;
-  --ui-control-radius: 12px;
-  --ui-surface-radius: 24px;
-  --ui-control-border: 1px solid var(--color-line);
-  --ui-focus-ring: 0 0 0 3px rgb(15 118 110 / 35%);
-  --ui-disabled-opacity: 0.5;
-}
-
-@theme {
-  --color-primary: #ea5b2a;
-  --color-accent: #0f766e;
-  --color-canvas: #f8f6f1;
-  --color-panel: #ffffff;
-  --color-ink: #102220;
-  --color-muted-text: #5f6f6c;
-  --color-line: rgba(16, 34, 32, 0.12);
-  --color-line-strong: rgba(16, 34, 32, 0.28);
-  --font-display: "Gowun Batang", serif;
-  --font-body: "Gowun Dodum", "Nanum Gothic", sans-serif;
-  --shadow-float: 0 18px 60px rgba(16, 34, 32, 0.08);
-}
-
-@layer base {
-  * {
-    box-sizing: border-box;
-    -webkit-tap-highlight-color: transparent;
-  }
-
-  html {
-    background: var(--color-canvas);
-    overflow-x: hidden;
-  }
-
-  body {
-    @apply m-0 min-w-0 bg-canvas font-body text-ink antialiased;
-    background-image:
-      radial-gradient(circle at 0% 0%, rgba(15, 118, 110, 0.09), transparent 32rem),
-      radial-gradient(circle at 100% 8%, rgba(234, 91, 42, 0.08), transparent 28rem);
-    letter-spacing: -0.015em;
-  }
-
-  button,
-  input,
-  select {
-    font: inherit;
-  }
-
-  button {
-    @apply cursor-pointer focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-accent/35;
-  }
-
-  input,
-  select {
-    @apply min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-950 outline-none transition focus:border-accent focus:ring-3 focus:ring-accent/15;
-  }
-
-  fieldset {
-    @apply m-0 min-w-0 border-0 p-0;
-  }
-
-  h1,
-  h2,
-  h3 {
-    font-family: var(--font-display);
-  }
-}
+@reference "../../styles/app-foundation.css";
 
 @layer components {
-  .ui-button {
-    @apply inline-flex min-h-11 items-center justify-center gap-2 px-4 py-2 font-bold transition;
-    min-height: var(--ui-control-min-height);
-    border-radius: var(--ui-control-radius);
-    border: var(--ui-control-border);
-    cursor: pointer;
-  }
-
-  .ui-button:focus-visible {
-    box-shadow: var(--ui-focus-ring);
-  }
-
-  .ui-button:disabled,
-  .ui-button[aria-disabled="true"] {
-    cursor: not-allowed;
-    opacity: var(--ui-disabled-opacity);
-  }
-
-  .ui-button--primary {
-    @apply border-primary bg-primary text-white hover:bg-primary/90;
-  }
-
-  .ui-button--secondary {
-    @apply border-line bg-panel text-ink hover:bg-slate-50;
-  }
-
-  .ui-button--quiet {
-    @apply border-transparent bg-transparent text-accent hover:bg-accent/10;
-  }
-
   .money-field {
     @apply grid gap-2;
   }
@@ -134,11 +35,6 @@
     -webkit-text-fill-color: var(--color-slate-500);
     box-shadow: none;
     opacity: 1;
-  }
-
-  .ui-surface {
-    @apply border border-line bg-panel;
-    border-radius: var(--ui-surface-radius);
   }
 
   .allocation-bar {

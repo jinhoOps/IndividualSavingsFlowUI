@@ -62,6 +62,7 @@ test('new user applies the v2 quick setup and refreshes into matching dashboard 
   await page.getByRole('button', { name: '계획 적용' }).click();
 
   await expect(page.getByRole('heading', { name: '이번 달 자금 흐름' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Simulation으로 이어가기' })).toBeEnabled();
   await expect(page.getByRole('button', { name: '월 실수령액 편집' })).toContainText('320만 원');
   await expect(page.getByRole('button', { name: '월 소비 편집' })).toContainText('180만 원');
   await expect(page.getByRole('button', { name: '월 저축 편집' })).toContainText('30만 원');
