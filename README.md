@@ -2,11 +2,11 @@
 
 개인 재무 흐름을 입력하고 향후 장기 투자 전략과 실행 계획으로 연결할 수 있도록 준비하는 로컬 우선 웹 앱입니다.
 
-현재 제품은 Main이며, 세 개의 후속 목적지는 새 앱으로 개발하기 전 준비 화면만 제공합니다.
+현재 상세 제품은 Main과 Simulation이며, Portfolio와 Account Map은 신규 개발 전 준비 화면입니다.
 
 - **Main**: 월 실수령액, 소비, 저축, 투자와 남는 돈을 한눈에 보여주는 현재 제품 기준선입니다.
-- **Simulation**: 향후 새로 개발할 앱입니다. 현재는 Main의 최소 요약과 갱신 시각을 확인하는 준비 화면입니다.
-- **Portfolio**: 향후 새로 개발할 앱입니다. 현재는 Simulation에서 이어진 최소 요약을 확인하는 준비 화면입니다.
+- **Simulation**: Main의 월 저축·투자를 기준으로 장기 복리 성장과 전부 저축 기준선을 비교합니다.
+- **Portfolio**: 향후 새로 개발할 앱입니다. 현재는 최소 연결 상태를 확인하는 준비 화면입니다.
 - **Account Map**: 향후 새로 개발할 앱입니다. 현재 준비 화면은 Main 또는 journey 데이터를 읽거나 저장하지 않습니다.
 
 배포 페이지: https://jinhoops.github.io/IndividualSavingsFlowUI/
@@ -21,11 +21,11 @@ ISF는 단순히 수입과 지출을 기록하는 도구가 아닙니다. 지금
 
 ## 프로젝트 목표
 
-ISF의 현재 Main은 다음 두 질문에 답하고, 나머지 질문은 향후 신규 앱이 담당합니다.
+ISF의 Main과 Simulation은 다음 세 질문에 답하고, 나머지 질문은 향후 신규 앱이 담당합니다.
 
 - 내 월 수입은 어디로 흘러가는가?
 - 생활비, 저축과 투자 비중은 현재 계획에 맞는가?
-- **향후 Simulation**: 남는 현금흐름을 투자하면 장기적으로 어떤 차이가 생기는가?
+- **Simulation**: 정한 월 저축·투자가 장기 복리로 얼마나 커지는가?
 - **향후 Portfolio**: 선택한 전략을 어떤 적립식 포트폴리오로 실행할 것인가?
 - **향후 Account Map**: 실제 계좌와 자동이체 관계는 어떻게 연결되어 있는가?
 
@@ -47,17 +47,13 @@ Main에서 다루는 주요 내용:
 - 월 실수령액과 월간 계획 수치 편집
 - JSON 백업 내보내기와 가져오기
 
-### 앱 여정 준비 화면
-
-Main에 적용된 계획이 있으면 `Simulation으로 이어가기`로 최소 `JourneySnapshot`을 저장한 뒤 Simulation 준비 화면으로 이동할 수 있습니다. 준비 화면은 연결 상태, 월 투자 가능액과 Main 갱신 시각을 보여주고 Portfolio 준비 화면까지 같은 계약으로 이어집니다.
-
-런처의 제품 가용 상태는 Main `사용 중`, Simulation·Portfolio·Account Map `준비 중`으로 고정됩니다. 현재 위치는 이 상태와 별도로 표시됩니다. 준비 화면은 계산, 편집, 독립 제품 저장 또는 Main write-back을 수행하지 않습니다.
-
-## 향후 신규 앱
-
 ### Simulation
 
-Main의 월 투자 여력을 가져와 여러 장기 투자 전략의 총자산과 월 현금흐름을 비교하는 신규 앱으로 설계할 예정입니다.
+Main에 적용된 계획이 있으면 `Simulation으로 이어가기`로 이동합니다. Simulation은 현재 Main의 월 저축액과 투자액을 읽어 현재 계획과 같은 금액을 전부 저축했을 때를 비교합니다. 연 기대수익률, 기간, 시작 원금, 기준금리와 명목·실질금액을 조정할 수 있으며 Main 원본은 변경하지 않습니다.
+
+런처는 Main과 Simulation을 `사용 중`, Portfolio와 Account Map을 `준비 중`으로 표시합니다. 현재 위치는 가용 상태와 별도로 표시됩니다.
+
+## 향후 신규 앱
 
 ### Portfolio
 
@@ -71,7 +67,7 @@ Main의 계좌 데이터를 명시적으로 읽어 독립 초안에서 입금·�
 
 ## 공유 인프라
 
-현재 Main과 준비 화면은 다음 기반을 공유합니다.
+현재 Main, Simulation과 준비 화면은 다음 기반을 공유합니다.
 
 - 네 목적지 앱 런처와 현재 위치 표시
 - Main의 데이터 허브, 브라우저 로컬 저장과 IndexedDB 백업
@@ -99,7 +95,7 @@ Main의 계좌 데이터를 명시적으로 읽어 독립 초안에서 입금·�
 
 레거시는 지원되는 사용자 경로나 신규 기능의 기반이 아닙니다. 각 기능을 목록화하고 현재 제품에 필요한지 판정한 뒤, 필요한 기능은 현재 책임 경계로 이관하고 불필요한 기능은 폐기 근거를 기록합니다. 사용자 동작과 구버전 저장 데이터의 호환성을 검증하고 모든 runtime·route·selector·storage·test 참조를 제거한 후 레거시 구현을 삭제합니다.
 
-현재 전환 단계에서는 레거시 런타임 코드를 삭제하지 않습니다.
+승인된 이관·폐기 gate를 통과한 레거시 Simulation runtime은 제거했습니다. Portfolio와 Account Map 참고 자원은 각 신규 앱 명세 전까지 보존합니다.
 
 ## 실행하기
 
@@ -140,7 +136,7 @@ npm run build
 
 ## 개발 구조
 
-이 저장소는 Vite 기반 정적 멀티페이지 앱입니다. 현재 Main과 세 준비 화면은 React·TypeScript·Tailwind CSS로 구성됩니다. 기존 Simulation·Portfolio·Account Map 바닐라 모듈은 정상 제품 runtime이 아니라 기능·데이터 계약 조사를 위한 레거시 참고 자원으로 보존합니다.
+이 저장소는 Vite 기반 정적 멀티페이지 앱입니다. 현재 Main, Simulation과 두 준비 화면은 React·TypeScript·Tailwind CSS로 구성됩니다. 기존 Portfolio·Account Map 바닐라 모듈은 정상 제품 runtime이 아니라 기능·데이터 계약 조사를 위한 레거시 참고 자원으로 보존합니다.
 
 큰 책임 경계:
 
@@ -149,7 +145,7 @@ npm run build
 - **현재 계산**: Main 월간 현금흐름, 잔액과 적자
 - **현재 시각화**: Main 요약 카드와 월 자금 구성
 - **저장과 공유**: 로컬 저장, IndexedDB, JSON, ISF CODE와 compatibility bridge
-- **앱 연결**: Main → Simulation → Portfolio 준비 화면의 최소 `JourneySnapshot`
+- **앱 연결**: Main → Simulation 직접 진입과 Portfolio·Account Map 준비 화면
 - **공통 UI**: 앱 런처, Main 데이터 허브, 피드백, 테마와 PWA
 
 ## 검증 기준
@@ -180,9 +176,8 @@ npx playwright test tests/account-map.spec.ts --reporter=list
 
 ## 현재 로드맵
 
-Main 개편과 앱 여정 준비 화면은 현재 기준선입니다. 다음 제품 확장은 이 기준선을 보존하며 진행합니다.
+Main과 Simulation은 현재 기준선입니다. 다음 제품 확장은 이 기준선을 보존하며 진행합니다.
 
-- 승인된 상세 명세와 레거시 마이그레이션 계획에 따른 신규 Simulation
 - 승인된 상세 명세와 레거시 마이그레이션 계획에 따른 신규 Portfolio
 - 승인된 상세 명세와 레거시 마이그레이션 계획에 따른 신규 Account Map
 - 한국어 은행·카드 알림 텍스트 기반 지출 capture

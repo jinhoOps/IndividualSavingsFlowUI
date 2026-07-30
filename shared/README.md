@@ -1,11 +1,11 @@
 # shared
 
-Main/Simulation 공통 모듈을 배치하는 폴더입니다.
+앱 간 호환을 위해 남겨둔 공통 스타일과 레거시 저장소 계약입니다.
 
 ## styles/step-theme.css
 
 - Step 공통 테마(폰트/컬러 토큰/버튼/패널 기본 스타일)를 제공합니다.
-- Simulation은 이 파일을 먼저 로드하고, 전용 레이아웃 CSS로 추가 커스터마이즈합니다.
+- Main과 Simulation이 이 파일을 먼저 로드하고 전용 CSS를 덧붙입니다.
 
 ## storage/hub-storage.js
 
@@ -17,6 +17,7 @@ Main/Simulation 공통 모듈을 배치하는 폴더입니다.
     - v1(레거시): `{ id, name, targetAllocations, notes, updatedAt }`
   - `bridgeStep1ToStep2`: `{ id, step1SnapshotId, payload, createdAt }`
 
-Main은 적용 시 `step1Snapshots`와 `bridgeStep1ToStep2`에 기록하고,
-Simulation은 `step2Portfolios` 저장/불러오기와 `bridgeStep1ToStep2` 읽기를 사용합니다.
-레거시(v1) 포트폴리오는 로드 시 v2 계좌형 모델로 자동 변환됩니다.
+이 계약은 Portfolio 호환과 레거시 기능 파악용입니다. 현재 Simulation은 사용하지 않습니다.
+
+현재 Simulation은 Main의 `localStorage` 키 `isf-main-v2`를 읽기 전용으로 사용하고,
+자체 초안 하나만 `isf-simulation-compound-v1`에 저장합니다.
