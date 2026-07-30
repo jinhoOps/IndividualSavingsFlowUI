@@ -52,8 +52,7 @@ export function SetupFlow({
   const nextStep = steps[stepIndex + 1];
   const showContext = step === 'housing'
     || step === 'living'
-    || step === 'saving-investment'
-    || step === 'review';
+    || step === 'saving-investment';
   const incomeError = findIssue(issues, 'monthlyNetIncomeWon')
     ?? (incomeSubmittedEmpty ? issueMessage('income_required') : undefined);
 
@@ -262,7 +261,7 @@ function ReviewStep({ draft }: Pick<SetupFlowProps, 'draft'>) {
   return (
     <>
       <StepHeading>입력한 월 자금 계획을 확인해주세요</StepHeading>
-      <AllocationBar data={draft} />
+      <AllocationBar data={draft} transitioning />
     </>
   );
 }
