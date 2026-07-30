@@ -598,14 +598,14 @@ Run:
 ```bash
 npx vitest run tests/unit/journey/entryIsolation.test.ts tests/unit/main/pwaRoutes.test.ts
 npx vite build
-rg -n "src/entries/step2|src/entries/account-map|apps/(simulation|portfolio|account-map)/(app|modules|styles)" dist
+rg -n "src/entries/step2|src/entries/account-map|apps/(simulation|portfolio|account-map)/(app|modules|styles)" dist/assets dist/apps/simulation/index.html dist/apps/portfolio/index.html dist/apps/account-map/index.html
 ```
 
 Expected:
 
 - Vitest PASS.
 - Vite build exits 0.
-- final `rg` exits 1 with no matches.
+- final runtime-output `rg` exits 1 with no matches.
 
 `npm run build`는 버전 파일을 변경하므로 이 검증에서는 사용하지 않는다.
 
@@ -892,7 +892,7 @@ npm run check
 npm run test:unit
 npx playwright test --reporter=list
 npx vite build
-rg -n "src/entries/step2|src/entries/account-map|apps/(simulation|portfolio|account-map)/(app|modules|styles)" dist
+rg -n "src/entries/step2|src/entries/account-map|apps/(simulation|portfolio|account-map)/(app|modules|styles)" dist/assets dist/apps/simulation/index.html dist/apps/portfolio/index.html dist/apps/account-map/index.html
 git diff --check
 ```
 
@@ -902,7 +902,7 @@ Expected:
 - 전체 Vitest PASS.
 - 전체 Playwright PASS.
 - Vite build PASS.
-- `rg` exits 1 with no legacy runtime matches.
+- runtime-output `rg` exits 1 with no legacy runtime matches.
 - `git diff --check` exits 0.
 
 - [ ] **Step 6: 커밋**
