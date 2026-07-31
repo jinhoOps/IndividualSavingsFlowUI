@@ -17,6 +17,24 @@
     @apply flex flex-wrap gap-2;
   }
 
+  .setup-flow-surface .money-field__adjustments {
+    @apply grid grid-cols-4 gap-1;
+  }
+
+  .setup-flow-surface .money-field__adjustments > .ui-button {
+    @apply min-w-0 whitespace-nowrap px-1.5 text-sm;
+  }
+
+  @media (min-width: 640px) {
+    .setup-flow-surface .money-field__adjustments {
+      @apply gap-2;
+    }
+
+    .setup-flow-surface .money-field__adjustments > .ui-button {
+      @apply px-4;
+    }
+  }
+
   .money-field__input--invalid,
   .money-field__input[aria-invalid="true"] {
     @apply border-rose-500 bg-rose-50 text-rose-950;

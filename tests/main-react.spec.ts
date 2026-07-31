@@ -178,6 +178,14 @@ test.describe('mobile quick setup', () => {
     await page.getByRole('button', { name: '다음' }).tap();
 
     await page.getByLabel('월 주거 고정비').fill('800000');
+    const quickAdjustments = ['-50만', '-10만', '+10만', '+50만'].map(
+      (name) => page.getByRole('button', { name }),
+    );
+    const adjustmentBoxes = await Promise.all(quickAdjustments.map((button) => button.boundingBox()));
+    expect(new Set(adjustmentBoxes.map((box) => Math.round(box!.y))).size).toBe(1);
+    for (const box of adjustmentBoxes) {
+      expect(box!.height).toBeGreaterThanOrEqual(44);
+    }
     const meter = page.getByRole('progressbar', { name: '수입 대비 현재 계획' });
     await expect(meter).toHaveAttribute('aria-valuetext', '현재 계획 80만 원 · 수입의 25.0%');
     await meter.hover();
