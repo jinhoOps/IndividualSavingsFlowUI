@@ -76,7 +76,7 @@ export function calculateCashflowInsight(data: MainData): CashflowInsight {
       return {
         ...allocation,
         percentage,
-        displayPercentage: isOverIncome && ringTotalWon > 0
+        displayPercentage: cashflow.incomeWon === 0 && ringTotalWon > 0
           ? (allocation.amountWon / ringTotalWon) * 100
           : percentage,
       };

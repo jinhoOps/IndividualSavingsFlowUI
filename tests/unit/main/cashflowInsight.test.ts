@@ -83,7 +83,7 @@ describe('calculateCashflowInsight', () => {
     ]);
   });
 
-  it('clips deficit allocations proportionally without a negative remaining segment', () => {
+  it('keeps deficit allocations at their actual income percentages without a negative remaining segment', () => {
     const deficitData: MainData = {
       ...appliedData,
       monthlyNetIncomeWon: 100,
@@ -96,10 +96,10 @@ describe('calculateCashflowInsight', () => {
 
     expect(insight.isOverIncome).toBe(true);
     expect(insight.allocations).toEqual([
-      expect.objectContaining({ id: 'consumption', percentage: 70, displayPercentage: 70 / 1.3 }),
-      expect.objectContaining({ id: 'saving', percentage: 30, displayPercentage: 30 / 1.3 }),
-      expect.objectContaining({ id: 'investment', percentage: 30, displayPercentage: 30 / 1.3 }),
+      expect.objectContaining({ id: 'consumption', percentage: 70, displayPercentage: 70 }),
+      expect.objectContaining({ id: 'saving', percentage: 30, displayPercentage: 30 }),
+      expect.objectContaining({ id: 'investment', percentage: 30, displayPercentage: 30 }),
     ]);
-    expect(insight.allocations.reduce((total, allocation) => total + allocation.displayPercentage, 0)).toBeCloseTo(100);
+    expect(insight.allocations.reduce((total, allocation) => total + allocation.displayPercentage, 0)).toBe(130);
   });
 });

@@ -50,10 +50,14 @@ describe('CashflowDonutSummary', () => {
     expect(screen.queryByRole('img')).not.toBeInTheDocument();
   });
 
-  it('marks an over-income plan as a deficit', () => {
-    render(<CashflowDonutSummary data={{ ...appliedData, monthlyInvestmentWon: 1_500_000 }} />);
+  it('clips over-income segments in actual income order while retaining the deficit state', () => {
+    const { container } = render(<CashflowDonutSummary data={{ ...appliedData, monthlyInvestmentWon: 1_500_000 }} />);
 
     expect(screen.getByText('소득 초과')).toBeVisible();
     expect(screen.queryByRole('button', { name: '남는 돈 상세 정보' })).not.toBeInTheDocument();
+    expect(container.querySelector('circle.cashflow-donut__segment--consumption')).toHaveAttribute('stroke-dasharray', '56.25 43.75');
+    expect(container.querySelector('circle.cashflow-donut__segment--saving')).toHaveAttribute('stroke-dasharray', '9.375 90.625');
+    expect(container.querySelector('circle.cashflow-donut__segment--investment')).toHaveAttribute('stroke-dasharray', '34.375 65.625');
+    expect(container.querySelector('circle.cashflow-donut__segment--investment')).toHaveAttribute('stroke-dashoffset', '-65.625');
   });
 });

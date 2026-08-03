@@ -28,8 +28,9 @@ export function CashflowDonutSummary({ data }: CashflowDonutSummaryProps) {
             aria-label={insight.allocations.map((allocation) => `${allocation.label} ${formatPercentage(allocation.percentage)}`).join(', ')}
           >
             {insight.allocations.map((allocation) => {
+              const visiblePercentage = Math.min(allocation.displayPercentage, Math.max(0, 100 - offset));
               const dashoffset = -offset;
-              offset += allocation.displayPercentage;
+              offset += visiblePercentage;
               return (
                 <circle
                   aria-hidden="true"
@@ -40,7 +41,7 @@ export function CashflowDonutSummary({ data }: CashflowDonutSummaryProps) {
                   key={allocation.id}
                   pathLength="100"
                   r="40"
-                  strokeDasharray={`${allocation.displayPercentage} ${100 - allocation.displayPercentage}`}
+                  strokeDasharray={`${visiblePercentage} ${100 - visiblePercentage}`}
                   strokeDashoffset={dashoffset}
                   strokeWidth="14"
                   transform="rotate(-90 50 50)"
