@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { SimulationMainSource } from '../../../src/simulation/domain/model';
 import { createDefaultSimulationDraft } from '../../../src/simulation/domain/validation';
 import type {
@@ -76,9 +76,11 @@ describe('SimulationApp', () => {
   });
 
   it('accepts a starting investment principal', () => {
+    const repository = emptyRepository();
+    repository.save = vi.fn(() => ({ status: 'saved' as const }));
     render(<SimulationApp
       mainSourceRepository={mainRepository(source)}
-      repository={emptyRepository()}
+      repository={repository}
       now={() => 456}
     />);
 
@@ -87,21 +89,27 @@ describe('SimulationApp', () => {
       target: { value: '10000000' },
     });
     fireEvent.click(screen.getByRole('button', { name: '계산 시작' }));
-    expect(screen.getByText('1,000만 원')).toBeVisible();
+    expect(repository.save).toHaveBeenLastCalledWith(expect.objectContaining({
+      initialInvestmentWon: 10_000_000,
+    }));
   });
 
   it('reloads the latest Main values when restarting', () => {
     let current = source;
+    const repository = emptyRepository();
+    repository.save = vi.fn(() => ({ status: 'saved' as const }));
     render(<SimulationApp
       mainSourceRepository={{ load: () => ({ status: 'found', source: current }) }}
-      repository={emptyRepository()}
+      repository={repository}
       now={() => 456}
     />);
     fireEvent.click(screen.getByRole('button', { name: '없어요' }));
     current = { ...source, monthlySavingsWon: 900_000, mainUpdatedAt: 999 };
     fireEvent.click(screen.getByRole('button', { name: '처음부터 다시' }));
     fireEvent.click(screen.getByRole('button', { name: '없어요' }));
-    expect(screen.getByText('90만 원')).toBeVisible();
+    expect(repository.save).toHaveBeenLastCalledWith(expect.objectContaining({
+      source: expect.objectContaining({ monthlySavingsWon: 900_000 }),
+    }));
   });
 
   it('keeps the active simulation when clearing its draft is unavailable', () => {
