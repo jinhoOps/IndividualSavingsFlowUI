@@ -91,6 +91,11 @@ async function expectResponsiveDashboardFlow(page: Page, viewport: { width: numb
   await expect(details).toHaveAttribute('open', '');
   await expect(details.locator('.allocation-bar')).toBeVisible();
   await expect(details.getByRole('table', { name: '월 자금 항목' })).toBeVisible();
+  if (viewport.width <= 768) {
+    await expect.poll(() => page.evaluate(() => (
+      document.documentElement.scrollWidth <= window.innerWidth
+    ))).toBe(true);
+  }
 
   await page.getByRole('button', { name: '월 소비 편집' }).click();
   const editor = viewport.width < 768
@@ -297,6 +302,24 @@ test('live dashboard keeps the donut, cards, Simulation, details, and editor con
   ]) {
     await expectResponsiveDashboardFlow(page, viewport);
   }
+});
+
+test('live dashboard removes donut circle transitions when reduced motion is requested', async ({ page }) => {
+  await page.addInitScript((fixture) => {
+    localStorage.clear();
+    localStorage.setItem('isf-main-v2', JSON.stringify(fixture));
+  }, appliedMainV2);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('apps/main/');
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.reload();
+
+  await expect(page.getByRole('region', { name: '월 자금 구성 요약' })).toBeVisible();
+  const transition = await page.locator('.cashflow-donut__chart circle').first().evaluate((element) => {
+    const style = getComputedStyle(element);
+    return { duration: style.transitionDuration, property: style.transitionProperty };
+  });
+  expect(transition).toEqual({ duration: '0s', property: 'none' });
 });
 
 test.describe('mobile quick setup', () => {
