@@ -30,8 +30,10 @@ async function expectDashboardSummary(page: Page, amounts: {
   saving: string;
   investment: string;
 }) {
-  await expect(page.getByRole('region', { name: '월 자금 구성 요약' })).toBeVisible();
-  await expect(page.getByText('15.6%', { exact: true })).toBeVisible();
+  const summary = page.getByRole('region', { name: '월 자금 구성 요약' });
+  await expect(summary).toBeVisible();
+  await expect(summary.getByText('15.6%', { exact: true })).toBeVisible();
+  await expect(summary.getByText('저축·투자', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: '월 실수령액 편집' })).toHaveCount(0);
   await expect(page.locator('details.allocation-details')).not.toHaveAttribute('open');
   await expect(page.getByRole('button', { name: '월 소비 편집' })).toContainText(amounts.consumption);
@@ -40,6 +42,73 @@ async function expectDashboardSummary(page: Page, amounts: {
   await expect(page.getByRole('button', { name: '월 투자 편집' })).toContainText(amounts.investment);
   await page.getByText('자세히 보기', { exact: true }).click();
   await expect(page.getByRole('table', { name: '월 자금 항목' })).toBeVisible();
+}
+
+async function expectResponsiveDashboardFlow(page: Page, viewport: { width: number; height: number }) {
+  await page.setViewportSize(viewport);
+  await page.goto('apps/main/');
+
+  const summary = page.getByRole('region', { name: '월 자금 구성 요약' });
+  const donut = summary.getByRole('region', { name: '월 수입 배분' });
+  const cards = page.getByRole('region', { name: '월간 핵심 수치' });
+  const simulation = page.getByRole('region', { name: 'Simulation으로 계획 이어가기' });
+  await expect(donut).toBeVisible();
+  await expect(cards).toBeVisible();
+  await expect(simulation).toBeVisible();
+
+  const layout = await page.evaluate(() => {
+    const donut = document.querySelector<HTMLElement>('.cashflow-donut')!;
+    const cards = document.querySelector<HTMLElement>('[aria-label="월간 핵심 수치"]')!;
+    const simulation = document.querySelector<HTMLElement>('[aria-labelledby="journey-entry-title"]')!;
+    const chart = donut.querySelector<HTMLElement>('.cashflow-donut__chart')!;
+    const center = donut.querySelector<HTMLElement>('.cashflow-donut__center')!;
+    const centerValue = center.querySelector<HTMLElement>('strong')!;
+    const centerLabel = center.querySelector<HTMLElement>('span')!;
+    const chartRect = chart.getBoundingClientRect();
+    const valueRect = centerValue.getBoundingClientRect();
+    const labelRect = centerLabel.getBoundingClientRect();
+    return {
+      domOrder: (donut.compareDocumentPosition(cards) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0
+        && (cards.compareDocumentPosition(simulation) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
+      visualOrder: [donut, cards, simulation].map((element) => element.getBoundingClientRect().top),
+      centerWithinChart: valueRect.top >= chartRect.top
+        && labelRect.bottom <= chartRect.bottom
+        && valueRect.bottom <= labelRect.top,
+      legendHeights: Array.from(donut.querySelectorAll<HTMLElement>('.cashflow-donut__legend-button')).map((element) => element.getBoundingClientRect().height),
+      overflow: document.documentElement.scrollWidth <= window.innerWidth,
+    };
+  });
+  expect(layout.domOrder).toBe(true);
+  expect(layout.visualOrder[0]).toBeLessThan(layout.visualOrder[1]);
+  expect(layout.visualOrder[1]).toBeLessThan(layout.visualOrder[2]);
+  expect(layout.centerWithinChart).toBe(true);
+  for (const height of layout.legendHeights) expect(height).toBeGreaterThanOrEqual(43.99);
+  expect(layout.overflow).toBe(true);
+
+  const details = page.locator('details.allocation-details');
+  await expect(details).not.toHaveAttribute('open');
+  await page.getByText('자세히 보기', { exact: true }).click();
+  await expect(details).toHaveAttribute('open', '');
+  await expect(details.locator('.allocation-bar')).toBeVisible();
+  await expect(details.getByRole('table', { name: '월 자금 항목' })).toBeVisible();
+
+  await page.getByRole('button', { name: '월 소비 편집' }).click();
+  const editor = viewport.width < 768
+    ? page.getByRole('dialog')
+    : page.locator('div.fixed.inset-y-0.right-0');
+  await expect(editor).toBeVisible();
+  await expect.poll(() => editor.evaluate((element) => (
+    element.getAnimations().every((animation) => animation.playState === 'finished')
+  ))).toBe(true);
+  const containment = await editor.evaluate((element) => {
+    const bounds = element.getBoundingClientRect();
+    return {
+      bounds: { left: bounds.left, top: bounds.top, right: bounds.right, bottom: bounds.bottom },
+      contained: bounds.left >= 0 && bounds.top >= 0 && bounds.right <= window.innerWidth && bounds.bottom <= window.innerHeight,
+      viewport: { width: window.innerWidth, height: window.innerHeight },
+    };
+  });
+  expect(containment.contained, JSON.stringify(containment)).toBe(true);
 }
 
 test('new user applies the v2 quick setup and refreshes into matching dashboard totals', async ({ page }) => {
@@ -213,6 +282,21 @@ test('review transition stays contained and respects reduced motion', async ({ p
   await page.reload();
   await expect(page.locator('.setup-review-transition')).toBeHidden();
   await expect(page.getByRole('table', { name: '월 자금 항목' })).toBeVisible();
+});
+
+test('live dashboard keeps the donut, cards, Simulation, details, and editor contained at required viewports', async ({ page }) => {
+  await page.addInitScript((fixture) => {
+    localStorage.clear();
+    localStorage.setItem('isf-main-v2', JSON.stringify(fixture));
+  }, appliedMainV2);
+
+  for (const viewport of [
+    { width: 390, height: 844 },
+    { width: 768, height: 900 },
+    { width: 1280, height: 900 },
+  ]) {
+    await expectResponsiveDashboardFlow(page, viewport);
+  }
 });
 
 test.describe('mobile quick setup', () => {
