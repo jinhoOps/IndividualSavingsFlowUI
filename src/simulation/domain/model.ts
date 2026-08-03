@@ -1,4 +1,6 @@
-export const SIMULATION_SCHEMA_VERSION = 1 as const;
+export const SIMULATION_SCHEMA_VERSION = 2 as const;
+
+export type SimulationDraftMigration = 'schema-upgraded' | 'duration-capped';
 
 export interface SimulationMainSource {
   monthlySavingsWon: number;

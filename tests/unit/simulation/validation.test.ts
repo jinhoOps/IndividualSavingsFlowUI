@@ -13,7 +13,7 @@ const source = {
 describe('Simulation draft validation', () => {
   it('creates the approved first-run defaults', () => {
     expect(createDefaultSimulationDraft(source, 456)).toEqual({
-      schemaVersion: 1,
+      schemaVersion: 2,
       source,
       initialInvestmentWon: 0,
       years: 20,
@@ -30,10 +30,17 @@ describe('Simulation draft validation', () => {
     expect(parseSimulationDraft(draft)).toEqual(draft);
   });
 
-  it('rejects out-of-range duration and legacy collections', () => {
+  it('accepts 0 through 30 years and rejects values outside the current range', () => {
     const draft = createDefaultSimulationDraft(source, 456);
 
-    expect(parseSimulationDraft({ ...draft, years: 51 })).toBeNull();
+    expect(parseSimulationDraft({ ...draft, years: 0 })).not.toBeNull();
+    expect(parseSimulationDraft({ ...draft, years: 30 })).not.toBeNull();
+    expect(parseSimulationDraft({ ...draft, years: -1 })).toBeNull();
+    expect(parseSimulationDraft({ ...draft, years: 31 })).toBeNull();
+  });
+
+  it('rejects legacy collections', () => {
+    const draft = createDefaultSimulationDraft(source, 456);
     expect(parseSimulationDraft({ ...draft, strategies: [] })).toBeNull();
   });
 

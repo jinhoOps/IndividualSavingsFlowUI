@@ -14,7 +14,7 @@ describe('bootstrapSimulation', () => {
     const latest = { ...source, mainUpdatedAt: 200 };
     const result = bootstrapSimulation(
       { status: 'found', source: latest },
-      { status: 'found', draft },
+      { status: 'found', draft, migration: null },
     );
 
     expect(result).toEqual({

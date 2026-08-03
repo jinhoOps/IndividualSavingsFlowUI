@@ -6,7 +6,7 @@ import {
 } from '../../../src/simulation/domain/projection';
 
 const draft: CompoundSimulationDraft = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   source: {
     monthlySavingsWon: 300_000,
     monthlyInvestmentWon: 200_000,
