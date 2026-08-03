@@ -3399,8 +3399,12 @@ test.describe('Phase 09 final responsive user flow coverage', () => {
     ]) {
       await page.setViewportSize(viewport);
       await expect(page.getByRole('heading', { name: '이번 달 자금 흐름' })).toBeVisible();
-      await expect(page.getByRole('button', { name: '월 실수령액 편집' })).toContainText('420만 원');
+      await expect(page.getByRole('region', { name: '월 자금 구성 요약' })).toBeVisible();
+      await expect(page.locator('details.allocation-details')).not.toHaveAttribute('open');
+      await expect(page.getByRole('button', { name: '월 소비 편집' })).toContainText('180만 원');
       await expect(page.getByRole('button', { name: '남는 돈 편집' })).toContainText('120만 원');
+      await expect(page.getByRole('button', { name: '월 저축 편집' })).toContainText('70만 원');
+      await expect(page.getByRole('button', { name: '월 투자 편집' })).toContainText('50만 원');
 
       const overflow = await page.evaluate(() => ({
         document: document.documentElement.scrollWidth - document.documentElement.clientWidth,

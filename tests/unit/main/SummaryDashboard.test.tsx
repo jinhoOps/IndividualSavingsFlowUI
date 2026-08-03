@@ -115,11 +115,14 @@ describe('SummaryDashboard', () => {
     expect(screen.queryByRole('button', { name: '월 실수령액 편집' })).not.toBeInTheDocument();
     const donut = screen.getByRole('region', { name: '월 자금 구성 요약' });
     const consumption = screen.getByRole('button', { name: '월 소비 편집' });
+    const remaining = screen.getByRole('button', { name: '남는 돈 편집' });
+    const saving = screen.getByRole('button', { name: '월 저축 편집' });
+    const investment = screen.getByRole('button', { name: '월 투자 편집' });
     expect(donut).toBeVisible();
     expect(consumption).toBeVisible();
-    expect(screen.getByRole('button', { name: '남는 돈 편집' })).toBeVisible();
-    expect(screen.getByRole('button', { name: '월 저축 편집' })).toBeVisible();
-    expect(screen.getByRole('button', { name: '월 투자 편집' })).toBeVisible();
+    expect(remaining).toBeVisible();
+    expect(saving).toBeVisible();
+    expect(investment).toBeVisible();
     const details = screen.getByText('자세히 보기').closest('details');
     expect(details).not.toHaveAttribute('open');
     expect(screen.queryByRole('table', { name: '월 자금 항목' })).not.toBeVisible();
@@ -127,7 +130,9 @@ describe('SummaryDashboard', () => {
     const journey = screen.getByRole('button', { name: 'Simulation으로 이어가기' });
     expect(journey).toBeVisible();
     expect(donut.compareDocumentPosition(consumption) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
-    expect(consumption.compareDocumentPosition(journey) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
+    for (const card of [consumption, remaining, saving, investment]) {
+      expect(card.compareDocumentPosition(journey) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
+    }
     expect(journey.compareDocumentPosition(details!) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
 
     fireEvent.click(screen.getByText('자세히 보기'));

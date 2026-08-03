@@ -24,6 +24,20 @@ async function pressTab(page: Page, count: number) {
   }
 }
 
+async function expectDashboardSummary(page: Page, amounts: {
+  consumption: string;
+  remaining: string;
+  saving: string;
+  investment: string;
+}) {
+  await expect(page.getByRole('region', { name: '월 자금 구성 요약' })).toBeVisible();
+  await expect(page.locator('details.allocation-details')).not.toHaveAttribute('open');
+  await expect(page.getByRole('button', { name: '월 소비 편집' })).toContainText(amounts.consumption);
+  await expect(page.getByRole('button', { name: '남는 돈 편집' })).toContainText(amounts.remaining);
+  await expect(page.getByRole('button', { name: '월 저축 편집' })).toContainText(amounts.saving);
+  await expect(page.getByRole('button', { name: '월 투자 편집' })).toContainText(amounts.investment);
+}
+
 test('new user applies the v2 quick setup and refreshes into matching dashboard totals', async ({ page }) => {
   await clearBrowserStorage(page);
   await page.goto('apps/main/');
@@ -74,11 +88,12 @@ test('new user applies the v2 quick setup and refreshes into matching dashboard 
 
   await expect(page.getByRole('heading', { name: '이번 달 자금 흐름' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Simulation으로 이어가기' })).toBeEnabled();
-  await expect(page.getByRole('button', { name: '월 실수령액 편집' })).toContainText('320만 원');
-  await expect(page.getByRole('button', { name: '월 소비 편집' })).toContainText('180만 원');
-  await expect(page.getByRole('button', { name: '월 저축 편집' })).toContainText('30만 원');
-  await expect(page.getByRole('button', { name: '월 투자 편집' })).toContainText('20만 원');
-  await expect(page.getByRole('button', { name: '남는 돈 편집' })).toContainText('90만 원');
+  await expectDashboardSummary(page, {
+    consumption: '180만 원',
+    remaining: '90만 원',
+    saving: '30만 원',
+    investment: '20만 원',
+  });
 
   await expect.poll(() => page.evaluate(() => {
     const raw = localStorage.getItem('isf-main-v2');
@@ -100,9 +115,12 @@ test('new user applies the v2 quick setup and refreshes into matching dashboard 
 
   await expect(page).toHaveURL(/\/IndividualSavingsFlowUI\/apps\/main\/$/);
   await expect(page.getByRole('heading', { name: '이번 달 자금 흐름' })).toBeVisible();
-  await expect(page.getByRole('button', { name: '월 실수령액 편집' })).toContainText('320만 원');
-  await expect(page.getByRole('button', { name: '월 소비 편집' })).toContainText('180만 원');
-  await expect(page.getByRole('button', { name: '남는 돈 편집' })).toContainText('90만 원');
+  await expectDashboardSummary(page, {
+    consumption: '180만 원',
+    remaining: '90만 원',
+    saving: '30만 원',
+    investment: '20만 원',
+  });
 });
 
 test('review transition stays contained and respects reduced motion', async ({ page }) => {
