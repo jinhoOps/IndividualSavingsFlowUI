@@ -5,9 +5,10 @@ This roadmap records decision order, not release promises or historical completi
 ## Now — Protect the Current Baseline
 
 1. Keep Main’s five-value monthly cashflow model, quick setup, dashboard, persistence, backup, and journey handoff reliable.
-2. Keep Simulation, Portfolio, and Account Map visibly readiness-only.
-3. Align PRD, README, DESIGN, AGENTS, requirements, tests, and runtime claims.
-4. Treat retained legacy code as migration evidence and prevent it from becoming an accidental product dependency.
+2. Keep detailed Simulation result-first, read-only toward Main, and reliable across its 0–30-year contract.
+3. Keep Portfolio and Account Map visibly readiness-only.
+4. Align PRD, README, DESIGN, AGENTS, requirements, tests, and runtime claims.
+5. Treat retained legacy code as migration evidence and prevent it from becoming an accidental product dependency.
 
 ## Next — Inventory Before Migration
 
@@ -21,9 +22,8 @@ For each future app, perform the following in order:
 
 The recommended destination order is:
 
-1. Simulation
-2. Portfolio
-3. Account Map
+1. Portfolio
+2. Account Map
 
 This sequence follows the intended user journey. It may change when an approved product decision provides stronger evidence.
 

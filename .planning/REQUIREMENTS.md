@@ -1,6 +1,6 @@
 # Active Product Requirements
 
-**Last reviewed:** 2026-07-30
+**Last reviewed:** 2026-08-03
 
 This document tracks the supported baseline and transition obligations. Future ideas are explicitly non-committed until a separate PRD or feature specification is approved.
 
@@ -12,16 +12,20 @@ This document tracks the supported baseline and transition obligations. Future i
 - [x] **MAIN-04**: A user can edit the current monthly values and explicitly apply a valid plan.
 - [x] **MAIN-05**: Main persists the current plan locally and recovers compatible prior data without silently replacing newer valid data.
 - [x] **MAIN-06**: A user can export and import the current Main data as validated JSON.
-- [x] **MAIN-07**: A user can explicitly continue from an applied Main plan to the Simulation readiness route.
+- [x] **MAIN-07**: A user can explicitly continue from an applied Main plan to detailed Simulation.
 - [x] **MAIN-08**: Main remains usable at the required mobile and desktop breakpoints with accessible controls and state feedback.
 
-## Supported Journey Readiness
+## Supported Simulation and Journey
 
-- [x] **JOURNEY-01**: The launcher identifies Main as `사용 중` and Simulation, Portfolio, and Account Map as `준비 중`.
+- [x] **JOURNEY-01**: The launcher identifies Main and Simulation as `사용 중`, and Portfolio and Account Map as `준비 중`.
 - [x] **JOURNEY-02**: Product availability and the user’s current location are communicated as separate states.
-- [x] **JOURNEY-03**: Simulation readiness can show validated Main connection state, investment capacity, and update time.
+- [x] **SIM-01**: First-run Simulation guides starting principal and scenario settings in two stages; revisits open the result directly.
+- [x] **SIM-02**: Simulation automatically syncs current Main saving and investment on entry without writing back to Main.
+- [x] **SIM-03**: Duration supports 0–30 years and result amounts use the approved Korean integer-unit rounding.
+- [x] **SIM-04**: The result prioritizes one sentence, a full-width graph, two comparisons, and equivalent pointer, touch, and keyboard detail.
+- [x] **SIM-05**: Simulation owns and saves only its scenario draft, exposes low-emphasis save state, and confirms reset from its menu.
 - [x] **JOURNEY-04**: Portfolio readiness continues the same minimal journey contract.
-- [x] **JOURNEY-05**: Readiness routes do not expose detailed editing, independent product storage, or implicit Main write-back.
+- [x] **JOURNEY-05**: Portfolio and Account Map readiness routes do not expose detailed editing, independent product storage, or implicit Main write-back.
 
 ## Legacy Transition
 
@@ -35,9 +39,9 @@ This document tracks the supported baseline and transition obligations. Future i
 ## Quality Requirements
 
 - [x] **QUAL-01**: Current TypeScript and static validation are available through `npm run check`.
-- [x] **QUAL-02**: Current Main and readiness journeys have focused Playwright coverage.
-- [ ] **QUAL-03**: Every future user-facing feature includes 390px, 768px, desktop, keyboard, focus, overflow, and touch-target evidence appropriate to its surface.
-- [ ] **QUAL-04**: Financial assumptions and estimates identify their inputs, limitations, and non-advisory status near the result.
+- [x] **QUAL-02**: Current Main, Simulation, and readiness journeys have focused Playwright coverage.
+- [x] **QUAL-03**: Current detailed Simulation includes 390px, 768px, desktop, keyboard, focus, overflow, tooltip-containment, and touch-target evidence.
+- [x] **QUAL-04**: Simulation identifies financial assumptions, inputs, limitations, and non-advisory status through progressive disclosure.
 
 ## Future Discovery Candidates
 
@@ -47,6 +51,5 @@ The following are not current requirements and must not be marked complete from 
 - household income and plan merge
 - historical spending comparison
 - housing-affordability scenarios
-- detailed Simulation strategy comparison
 - saved Portfolio construction and allocation
 - editable Account Map relationships

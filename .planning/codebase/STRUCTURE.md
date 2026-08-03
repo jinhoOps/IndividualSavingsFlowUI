@@ -7,6 +7,11 @@ src/
     application/      bootstrap and reducer
     infrastructure/   persistence, compatibility, backup, routing
     ui/               setup and dashboard experience
+  simulation/
+    domain/           current compound-growth draft and projection
+    application/      Main-aware startup behavior
+    infrastructure/   read-only Main source and Simulation persistence
+    ui/               onboarding, result, graph, and controls
   journey/
     domain/           minimal JourneySnapshot
     infrastructure/   journey persistence
@@ -20,6 +25,7 @@ tests/
   main-react.spec.ts  supported Main browser behavior
   main-compat.spec.ts current compatibility behavior
   app-journey.spec.ts supported readiness journey
+  simulation.spec.ts  supported detailed Simulation behavior
 apps/                 retained legacy detailed applications
 shared/legacy/        retained legacy shared runtime
 docs/
@@ -33,4 +39,4 @@ docs/
   codebase/           these navigation maps
 ```
 
-Use `src/main/` for supported Main changes and `src/journey/` for readiness contracts. Do not add supported behavior under `apps/`; those paths are temporary migration assets.
+Use `src/main/` and `src/simulation/` for their supported products, and `src/journey/` for Portfolio and Account Map readiness contracts. Do not add supported behavior under retained legacy paths.
