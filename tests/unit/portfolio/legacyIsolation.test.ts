@@ -19,7 +19,7 @@ describe('Portfolio legacy isolation', () => {
     expect(graph.has(mainSource)).toBe(true);
     expect(graph.has(mainValidation)).toBe(true);
 
-    const htmlRuntimePaths = await readHtmlModuleScriptPaths(projectRoot, htmlPath);
+    const htmlRuntimePaths = await readHtmlScriptPaths(projectRoot, htmlPath);
     expect(findForbiddenRuntimePaths(projectRoot, [...graph.keys(), ...htmlRuntimePaths])).toEqual([]);
 
     const entry = await readFile(htmlPath, 'utf8');
@@ -63,9 +63,18 @@ describe('canonical runtime path isolation', () => {
   });
 
   it('detects a forbidden canonical path resolved from an HTML module script', async () => {
-    const htmlPaths = await readHtmlModuleScriptPaths(
+    const htmlPaths = await readHtmlScriptPaths(
       projectRoot,
       join(projectRoot, 'apps/portfolio/index.html'),
+    );
+
+    expect(findForbiddenRuntimePaths(projectRoot, htmlPaths)).toEqual([forbiddenApp]);
+  });
+
+  it('detects a forbidden canonical path resolved from a classic HTML script', async () => {
+    const htmlPaths = await readHtmlScriptPaths(
+      projectRoot,
+      join(projectRoot, 'apps/portfolio/classic.html'),
     );
 
     expect(findForbiddenRuntimePaths(projectRoot, htmlPaths)).toEqual([forbiddenApp]);
@@ -92,10 +101,10 @@ async function readRuntimeGraph(entryPath: string): Promise<Map<string, string>>
   return graph;
 }
 
-async function readHtmlModuleScriptPaths(projectRoot: string, htmlPath: string): Promise<string[]> {
+async function readHtmlScriptPaths(projectRoot: string, htmlPath: string): Promise<string[]> {
   const html = await readFile(htmlPath, 'utf8');
   const document = new DOMParser().parseFromString(html, 'text/html');
-  return [...document.querySelectorAll<HTMLScriptElement>('script[type="module"][src]')]
+  return [...document.querySelectorAll<HTMLScriptElement>('script[src]')]
     .map((script) => resolveHtmlScriptPath(projectRoot, htmlPath, script.getAttribute('src')))
     .filter((scriptPath): scriptPath is string => scriptPath !== null);
 }
