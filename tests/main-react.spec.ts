@@ -91,11 +91,9 @@ async function expectResponsiveDashboardFlow(page: Page, viewport: { width: numb
   await expect(details).toHaveAttribute('open', '');
   await expect(details.locator('.allocation-bar')).toBeVisible();
   await expect(details.getByRole('table', { name: '월 자금 항목' })).toBeVisible();
-  if (viewport.width <= 768) {
-    await expect.poll(() => page.evaluate(() => (
-      document.documentElement.scrollWidth <= window.innerWidth
-    ))).toBe(true);
-  }
+  await expect.poll(() => page.evaluate(() => (
+    document.documentElement.scrollWidth <= window.innerWidth
+  ))).toBe(true);
 
   await page.getByRole('button', { name: '월 소비 편집' }).click();
   const editor = viewport.width < 768
