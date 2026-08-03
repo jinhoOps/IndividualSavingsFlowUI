@@ -104,6 +104,7 @@ describe('SimulationApp', () => {
       years: draft.years,
       expectedAnnualReturnPercent: draft.expectedAnnualReturnPercent,
     })));
+    expect(repository.save).toHaveBeenCalledTimes(1);
     expect(screen.queryByText('이전 Main 기준')).not.toBeInTheDocument();
     expect(screen.getByText(/월 저축 90만 원/)).toBeVisible();
   });

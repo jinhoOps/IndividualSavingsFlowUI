@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
+import { useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { SimulationMenu } from '../../../src/simulation/ui/SimulationMenu';
 
@@ -31,6 +32,22 @@ describe('SimulationMenu', () => {
 
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(opener).toHaveFocus();
+  });
+
+  it('restores focus to the reset opener when reset fails', () => {
+    function FailingMenu() {
+      const [failed, setFailed] = useState(false);
+      return <SimulationMenu onReset={() => setFailed(true)} resetFailed={failed} />;
+    }
+    render(<FailingMenu />);
+
+    fireEvent.click(screen.getByText('Simulation 메뉴'));
+    const opener = screen.getByRole('button', { name: '시뮬레이션 다시 설정' });
+    fireEvent.click(opener);
+    fireEvent.click(screen.getByRole('button', { name: '다시 설정 확인' }));
+
+    expect(screen.getByRole('alert')).toHaveTextContent('시뮬레이션을 다시 설정하지 못했어요.');
     expect(opener).toHaveFocus();
   });
 });

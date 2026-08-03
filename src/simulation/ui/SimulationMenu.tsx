@@ -63,7 +63,7 @@ export function SimulationMenu({
             type="button"
             onClick={() => {
               onReset();
-              setConfirming(false);
+              closeConfirmation();
             }}
           >
             다시 설정 확인
