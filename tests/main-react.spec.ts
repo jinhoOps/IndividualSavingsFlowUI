@@ -31,11 +31,15 @@ async function expectDashboardSummary(page: Page, amounts: {
   investment: string;
 }) {
   await expect(page.getByRole('region', { name: '월 자금 구성 요약' })).toBeVisible();
+  await expect(page.getByText('15.6%', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: '월 실수령액 편집' })).toHaveCount(0);
   await expect(page.locator('details.allocation-details')).not.toHaveAttribute('open');
   await expect(page.getByRole('button', { name: '월 소비 편집' })).toContainText(amounts.consumption);
   await expect(page.getByRole('button', { name: '남는 돈 편집' })).toContainText(amounts.remaining);
   await expect(page.getByRole('button', { name: '월 저축 편집' })).toContainText(amounts.saving);
   await expect(page.getByRole('button', { name: '월 투자 편집' })).toContainText(amounts.investment);
+  await page.getByText('자세히 보기', { exact: true }).click();
+  await expect(page.getByRole('table', { name: '월 자금 항목' })).toBeVisible();
 }
 
 test('new user applies the v2 quick setup and refreshes into matching dashboard totals', async ({ page }) => {
@@ -275,6 +279,7 @@ test.describe('mobile quick setup', () => {
       '투자1,000원0.0%',
       '남는 돈319.9만 원100.0%',
     ]);
+    await expect(page.locator('.setup-review-transition')).toHaveCount(0);
 
     const layout = await page.locator('.allocation-bar').evaluate((card) => {
       const cardRect = card.getBoundingClientRect();
@@ -312,10 +317,12 @@ test.describe('mobile quick setup', () => {
       '소비 상세 정보',
       '투자 상세 정보',
     ]) {
-      const box = await page.getByRole('button', { name }).boundingBox();
+      const target = page.getByRole('button', { name });
+      await expect(target).toHaveCSS('min-height', '44px');
+      const box = await target.boundingBox();
       expect(box, `${name} target`).not.toBeNull();
       expect(box!.width, `${name} width`).toBeGreaterThanOrEqual(44);
-      expect(box!.height, `${name} height`).toBeGreaterThanOrEqual(44);
+      expect(box!.height, `${name} height`).toBeGreaterThanOrEqual(43.99);
     }
 
     const tinyTarget = page.getByRole('button', { name: '투자 상세 정보' });
