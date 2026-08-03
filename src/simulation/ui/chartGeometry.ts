@@ -14,6 +14,8 @@ export interface ChartGeometry {
   currentPlanPath: string;
   allSavingsPath: string;
   currentPlanAreaPath: string;
+  xTicks: Array<{ x: number; label: string }>;
+  yTicks: Array<{ y: number; label: string }>;
 }
 
 export function buildChartGeometry(
@@ -53,13 +55,45 @@ export function buildChartGeometry(
     ? ''
     : `${currentPlanPath} L ${last.x} ${plot.bottom} L ${first.x} ${plot.bottom} Z`;
 
+  const tickPoints = geometryPoints.filter((point, index) => (
+    index === 0
+    || index === geometryPoints.length - 1
+    || (geometryPoints.length > 6 && point.year % 5 === 0)
+  ));
+  const xTicks = tickPoints.map((point) => ({
+    x: point.x,
+    label: point.year === 0 ? '현재' : `${point.year}년`,
+  }));
+  const yTicks = [0, maxAmount / 2, maxAmount].map((value) => ({
+    y: plot.bottom - value / maxAmount * (plot.bottom - plot.top),
+    label: formatChartAxisWon(value),
+  }));
+
   return {
     plot,
     points: geometryPoints,
     currentPlanPath,
     allSavingsPath,
     currentPlanAreaPath,
+    xTicks,
+    yTicks,
   };
+}
+
+export function tooltipSide(
+  anchorX: number,
+  chartWidth: number,
+  tooltipWidth: number,
+): 'left' | 'right' {
+  return anchorX + 12 + tooltipWidth > chartWidth ? 'left' : 'right';
+}
+
+export function formatChartAxisWon(amountWon: number): string {
+  const absolute = Math.abs(amountWon);
+  if (absolute >= 100_000_000) return `${Math.round(amountWon / 100_000_000)}억`;
+  if (absolute >= 10_000) return `${Math.round(amountWon / 10_000)}만`;
+  if (absolute >= 1_000) return `${Math.round(amountWon / 1_000)}천`;
+  return `${Math.round(amountWon)}`;
 }
 
 function pathFor(
