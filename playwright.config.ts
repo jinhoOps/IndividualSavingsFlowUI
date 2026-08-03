@@ -1,5 +1,16 @@
 import { defineConfig, devices } from '@playwright/test';
 
+function workspacePort(workspacePath: string): number {
+  let hash = 0;
+  for (const character of workspacePath) {
+    hash = ((hash * 31) + character.charCodeAt(0)) >>> 0;
+  }
+  return 5300 + (hash % 500);
+}
+
+const e2ePort = Number(process.env.ISF_E2E_PORT ?? workspacePort(process.cwd()));
+const e2eOrigin = `http://127.0.0.1:${e2ePort}`;
+
 export default defineConfig({
   testDir: './tests',
   testIgnore: [
@@ -14,7 +25,7 @@ export default defineConfig({
   workers: 1,
   reporter: 'list',
   use: {
-    baseURL: 'http://localhost:5173/IndividualSavingsFlowUI/',
+    baseURL: `${e2eOrigin}/IndividualSavingsFlowUI/`,
     trace: 'on-first-retry',
     viewport: { width: 1280, height: 720 },
     serviceWorkers: 'block',
@@ -26,8 +37,8 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'node ./node_modules/vite/bin/vite.js --host 127.0.0.1',
-    url: 'http://localhost:5173/IndividualSavingsFlowUI/apps/main/index.html',
+    command: `node ./node_modules/vite/bin/vite.js --host 127.0.0.1 --port ${e2ePort}`,
+    url: `${e2eOrigin}/IndividualSavingsFlowUI/apps/main/index.html`,
     reuseExistingServer: true,
     timeout: 120000,
   },
