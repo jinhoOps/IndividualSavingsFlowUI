@@ -59,6 +59,7 @@ vi.mock('../../../src/main/ui/dashboard/SummaryDashboard', () => ({
     onRestart,
     backupStatus,
     journeyEntry,
+    initialFocusPath,
   }: {
     applied: MainData;
     draft: MainData;
@@ -68,6 +69,7 @@ vi.mock('../../../src/main/ui/dashboard/SummaryDashboard', () => ({
     onRestart(): void;
     backupStatus?: { kind: 'success' | 'error'; message: string } | null;
     journeyEntry?: ReactNode;
+    initialFocusPath?: keyof MainData;
   }) => (
     <section aria-label="dashboard">
       <h1>dashboard</h1>
@@ -80,6 +82,7 @@ vi.mock('../../../src/main/ui/dashboard/SummaryDashboard', () => ({
       <button type="button" onClick={onCancel}>cancel-dashboard</button>
       <button type="button" onClick={onRestart}>restart-setup</button>
       {journeyEntry}
+      {initialFocusPath ? <output aria-label="initial-focus-path">{initialFocusPath}</output> : null}
       {backupStatus === null || backupStatus === undefined ? null : (
         <p role={backupStatus.kind === 'error' ? 'alert' : 'status'}>{backupStatus.message}</p>
       )}
@@ -87,7 +90,10 @@ vi.mock('../../../src/main/ui/dashboard/SummaryDashboard', () => ({
   ),
 }));
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  window.history.replaceState(null, '', '/');
+});
 
 function data(monthlyNetIncomeWon: number, overrides: Partial<MainData> = {}): MainData {
   return {
@@ -134,6 +140,14 @@ describe('setupStepForIssue', () => {
 });
 
 describe('MainApp', () => {
+  it('consumes a Portfolio investment edit intent once', async () => {
+    window.history.replaceState(null, '', '/apps/main/?edit=investment');
+    render(<MainApp repository={repository({ status: 'current', data: data(3_000_000), original: null })} />);
+    await screen.findByRole('heading', { name: 'dashboard' });
+    expect(screen.getByLabelText('initial-focus-path')).toHaveTextContent('monthlyInvestmentWon');
+    expect(window.location.search).toBe('');
+  });
+
   it('stores the applied Main summary before opening Simulation', async () => {
     const save = vi.fn();
     const navigate = vi.fn();

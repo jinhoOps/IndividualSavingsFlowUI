@@ -13,9 +13,9 @@ it.each([
   },
   {
     app: 'portfolio',
-    entry: '../../src/journey/portfolio.tsx',
-    title: 'ISF UIUX | Portfolio',
-    description: '신규 Portfolio 앱의 준비 상태를 안내하는 화면',
+    entry: '../../src/portfolio/main.tsx',
+    title: '투자 배분 Portfolio | ISF',
+    description: 'Main의 투자금을 대상별 금액과 비율로 배분하는 Portfolio',
   },
   {
     app: 'account-map',

@@ -39,6 +39,7 @@ export function MainApp({
   const [progressWarning, setProgressWarning] = useState<string | null>(null);
   const [journeyError, setJourneyError] = useState<string | null>(null);
   const savingRef = useRef(false);
+  const [initialEditPath] = useState<keyof MainData | undefined>(() => consumeEditIntent());
 
   useEffect(() => {
     let active = true;
@@ -321,9 +322,19 @@ export function MainApp({
           ? backupStatus
           : { kind: 'error', message: progressWarning }}
         journeyEntry={journeyEntry}
+        initialFocusPath={initialEditPath}
       />
     </MainAppShell>
   );
+}
+
+function consumeEditIntent(): keyof MainData | undefined {
+  if (typeof window === 'undefined') return undefined;
+  const url = new URL(window.location.href);
+  if (url.searchParams.get('edit') !== 'investment') return undefined;
+  url.searchParams.delete('edit');
+  window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
+  return 'monthlyInvestmentWon';
 }
 
 function MainAppShell({

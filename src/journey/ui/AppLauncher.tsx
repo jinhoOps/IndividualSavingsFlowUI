@@ -38,7 +38,7 @@ export function AppLauncher({ currentApp }: AppLauncherProps) {
         <ul>
           {apps.map(({ id, label }) => {
             const isCurrent = id === currentApp;
-            const availability = id === 'main' || id === 'simulation' ? '사용 중' : '준비 중';
+            const availability = id === 'account-map' ? '준비 중' : '사용 중';
             return (
               <li key={id}>
                 <a href={appPath(id)} aria-current={isCurrent ? 'page' : undefined}>

@@ -19,7 +19,7 @@ describe('AppLauncher', () => {
 
       expect(screen.getByRole('navigation', { name: 'ISF 앱' })).toBeVisible();
       expect(screen.getByRole('link', { name: /Main.*사용 중/ })).toBeInTheDocument();
-      for (const name of ['Simulation 사용 중', 'Portfolio 준비 중', 'Account Map 준비 중']) {
+      for (const name of ['Simulation 사용 중', 'Portfolio 사용 중', 'Account Map 준비 중']) {
         expect(screen.getByText(name)).toBeInTheDocument();
       }
 
