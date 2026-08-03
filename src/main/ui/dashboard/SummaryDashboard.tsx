@@ -177,8 +177,6 @@ export function SummaryDashboard({
           </div>
         </header>
 
-        {journeyEntry === undefined ? null : journeyEntry}
-
         {backupStatus === null ? null : (
           <p
             className={`m-0 rounded-xl px-4 py-3 text-sm font-bold ${backupStatus.kind === 'error' ? 'bg-rose-50 text-rose-700' : 'bg-teal-50 text-teal-800'}`}
@@ -189,6 +187,8 @@ export function SummaryDashboard({
         )}
 
         <CashflowSummary summary={summary} disabled={saving} onEdit={openEditor} />
+
+        {journeyEntry === undefined ? null : journeyEntry}
 
         <Surface as="section" className="min-w-0 bg-white/85 p-5 shadow-float sm:p-7" aria-labelledby="cashflow-allocation-title">
           <h2 className="m-0 text-2xl font-bold text-slate-950" id="cashflow-allocation-title">월 자금 구성</h2>
