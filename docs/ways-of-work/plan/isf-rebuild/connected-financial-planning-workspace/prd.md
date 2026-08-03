@@ -14,6 +14,7 @@ ISF는 지금의 월간 돈 흐름을 정리하고, 그 결과를 장기 전략�
 - [Product Roadmap](../../../../../.planning/ROADMAP.md)
 - [Current State](../../../../../.planning/STATE.md)
 - [Design Contract](../../../../../DESIGN.md)
+- [Journey Snapshot 폐기 설계](../../../../superpowers/specs/2026-08-03-journey-snapshot-retirement-design.md)
 
 ## 3. Problem
 
@@ -90,9 +91,10 @@ ISF는 지금의 월간 돈 흐름을 정리하고, 그 결과를 장기 전략�
 ### Simulation, Portfolio와 readiness journey
 
 - 런처는 Main, Simulation과 Portfolio를 `사용 중`, Account Map을 `준비 중`으로 표시한다.
-- Simulation은 Main의 월 저축·투자를 읽기 전용으로 사용하고 장기 복리 성장과 전부 저축 기준선을 비교한다.
+- 런처와 CTA는 URL 탐색만 수행하고 별도 전달 데이터를 저장하지 않는다.
+- Simulation은 최신 Main 월 저축·투자를 직접 읽어 장기 복리 성장과 전부 저축 기준선을 비교한다.
 - Portfolio는 최신 Main 투자금을 직접 읽고 하나의 적용 배분과 편집 초안을 소유한다.
-- Account Map은 준비 상태만 설명한다.
+- Account Map만 준비 상태를 설명한다.
 - 준비 화면은 상세 계산·편집·독립 저장·Main write-back을 수행하지 않는다.
 
 ## 8. Functional Requirements
@@ -110,8 +112,9 @@ ISF는 지금의 월간 돈 흐름을 정리하고, 그 결과를 장기 전략�
 
 ### Journey
 
-- 앱 간 전달은 사용자 행동으로 시작한다.
-- 전달 payload는 필요한 최소 데이터만 포함한다.
+- 앱 간 이동은 사용자의 런처 링크 또는 CTA 행동으로 시작한다.
+- 앱 이동은 URL 탐색만 수행하고 Simulation과 Portfolio는 최신 Main을 각자의 읽기 전용 adapter로 직접 읽는다.
+- Main은 폐기된 `isf-journey-snapshot-v1`을 읽거나 변환하지 않고 시작 시 best-effort로 삭제한다.
 - 준비 화면이 상세 앱 상태를 소유하는 것처럼 표현하지 않는다.
 - Account Map은 Main을 암묵적으로 수정하지 않는다.
 
@@ -156,7 +159,7 @@ Main이 계산하는 요약:
 - `plannedOutflowWon = consumptionWon + monthlySavingWon + monthlyInvestmentWon`
 - `remainingWon = monthlyNetIncomeWon - plannedOutflowWon`
 
-Simulation과 향후 앱은 이 계약을 무단 확장하지 않고 별도 소유 상태와 명시적 import 계약을 정의한다.
+Simulation과 Portfolio는 최신 Main을 읽기 전용으로 직접 읽으며 이 계약을 무단 확장하지 않는다. 각 상세 앱은 Main과 분리된 소유 상태를 저장하고 Main에 write-back하지 않는다.
 
 ## 10. UX and Design Requirements
 
@@ -179,6 +182,7 @@ Simulation과 향후 앱은 이 계약을 무단 확장하지 않고 별도 소�
 - [x] 유효한 계획을 로컬에 저장하고 다시 불러올 수 있다.
 - [x] 현재 JSON을 내보내고 검증된 JSON을 가져올 수 있다.
 - [x] Main에서 Simulation으로 명시적으로 이동할 수 있다.
+- [x] 앱 이동은 URL만 사용하고 Main 시작은 폐기된 journey key를 읽거나 변환하지 않고 삭제한다.
 - [x] Simulation은 Main을 변경하지 않고 장기 복리와 전부 저축 기준선을 비교한다.
 - [x] Simulation은 최초 두 단계 설정, 재방문 결과 우선 진입과 최신 Main 자동 동기화를 제공한다.
 - [x] Simulation은 0~30년, 한국식 정수 금액, pointer·touch·keyboard 그래프 탐색을 제공한다.

@@ -15,13 +15,13 @@
 
 ISF는 단순히 수입과 지출을 기록하는 도구가 아닙니다. 지금 들어오는 돈이 생활비, 저축과 투자로 어떻게 나뉘는지 이해하고, 현재 선택을 장기 계획과 실제 실행으로 연결해 가기 위한 개인 재무 플래닝 도구입니다.
 
-현재는 자신의 월간 현금흐름을 간단히 정리하는 Main을 제공합니다. 앞으로는 투자 기간과 수익률 같은 가정에 따른 N년 후 기대 자산을 비교하고, 그 결과를 적립식 포트폴리오와 실제 계좌 흐름으로 연결해 막연한 목표를 매달 실행할 수 있는 계획으로 구체화하려 합니다.
+현재는 월간 현금흐름을 정리하는 Main, N년 후 기대 자산을 비교하는 Simulation과 최신 Main 투자금을 배분하는 Portfolio를 제공합니다. 앞으로는 이 계획을 실제 계좌 흐름으로 연결하는 Account Map을 별도 명세에 따라 개발하려 합니다.
 
 여기서 보여주는 미래 값은 확정된 예측이나 수익 보장이 아닙니다. 사용자가 입력한 현재 상황과 가정을 바탕으로 여러 선택지를 비교하고 더 나은 질문을 만들기 위한 계획용 시나리오입니다.
 
 ## 프로젝트 목표
 
-ISF의 Main과 Simulation은 다음 세 질문에 답하고, 나머지 질문은 향후 신규 앱이 담당합니다.
+ISF의 Main, Simulation과 Portfolio는 다음 질문 중 현재 제품 범위에 답하고, 마지막 질문은 향후 Account Map이 담당합니다.
 
 - 내 월 수입은 어디로 흘러가는가?
 - 생활비, 저축과 투자 비중은 현재 계획에 맞는가?
@@ -49,19 +49,19 @@ Main에서 다루는 주요 내용:
 
 ### Simulation
 
-Main에 적용된 계획이 있으면 `Simulation으로 이어가기`로 이동합니다. 최초에는 시작 원금과 기간·기대수익률을 두 단계로 설정하고, 이후에는 결과로 바로 진입합니다. 진입할 때마다 최신 Main 월 저축·투자를 자동으로 읽되 Simulation 설정과 Main 원본은 변경하지 않습니다.
+Main에 적용된 계획이 있으면 `Simulation으로 이어가기`가 URL로만 이동합니다. 최초에는 시작 원금과 기간·기대수익률을 두 단계로 설정하고, 이후에는 결과로 바로 진입합니다. Simulation은 진입할 때마다 `isf-main-v2`의 최신 Main 월 저축·투자를 직접 읽되 Simulation 설정과 Main 원본은 변경하지 않습니다.
 
 기간은 현재를 뜻하는 0년부터 30년까지 조정합니다. 결과는 한국식 정수 금액, 전체 폭 성장 그래프와 전부 저축 비교를 제공하며 pointer·touch·keyboard로 연도별 상세를 확인할 수 있습니다.
 
 런처는 Main, Simulation과 Portfolio를 `사용 중`, Account Map을 `준비 중`으로 표시합니다. 현재 위치는 가용 상태와 별도로 표시됩니다.
 
-## 향후 신규 앱
+## Portfolio와 향후 Account Map
 
 ### Portfolio
 
 최신 Main 투자금을 직접 읽어 최대 10개 자유 이름 투자 대상과 현금에 배분합니다. 금액 또는 비율로 편집하고 결과에서는 두 값을 도넛과 표로 함께 확인합니다. Portfolio는 적용 계획 하나와 초안을 저장하며 Main을 수정하지 않습니다. 계좌, 시세, 수익률과 복수 계획은 현재 범위가 아닙니다.
 
-선택한 투자 방향을 종목·자산별 적립 금액과 비중으로 구체화하는 신규 앱으로 설계할 예정입니다.
+선택한 투자 방향을 종목·자산별 적립 금액과 비중으로 구체화합니다.
 
 ### Account Map
 
@@ -71,12 +71,12 @@ Main의 계좌 데이터를 명시적으로 읽어 독립 초안에서 입금·�
 
 ## 공유 인프라
 
-현재 Main, Simulation과 준비 화면은 다음 기반을 공유합니다.
+현재 Main, Simulation, Portfolio와 Account Map 준비 화면은 다음 기반을 공유합니다.
 
 - 네 목적지 앱 런처와 현재 위치 표시
 - Main의 데이터 허브, 브라우저 로컬 저장과 IndexedDB 백업
 - Main의 JSON 내보내기·가져오기와 구버전 데이터 정규화
-- 목적지별 최소 journey 저장
+- URL 기반 앱 탐색과 앱별 명시적인 읽기 전용 Main adapter
 - PWA 매니페스트와 서비스워커
 - 공통 디자인 토큰과 버튼·패널 스타일
 
@@ -90,7 +90,7 @@ Main의 계좌 데이터를 명시적으로 읽어 독립 초안에서 입금·�
 - **로컬 우선**: 서버 계정 없이 브라우저 저장소와 백업으로 동작합니다.
 - **한국어 금액 UX**: 사용자는 만 원·억 원 단위로 읽고 내부 계산과 저장은 원 단위를 유지합니다.
 - **시각화 중심**: 현재 Main의 월 자금 구성과 향후 앱별 시각화는 숫자의 관계를 설명해야 합니다.
-- **명시적 연결**: 현재 앱 간 데이터 전달은 사용자 CTA와 최소 `JourneySnapshot`을 사용합니다.
+- **명시적 연결**: 앱 이동은 URL만 사용하고 Simulation과 Portfolio가 최신 Main을 각자의 읽기 전용 adapter로 직접 읽습니다.
 - **책임 분리**: 준비 화면은 상세 상태를 소유하지 않으며, 향후 신규 앱의 독립 상태는 각 상세 명세에서 정의합니다.
 
 ## Legacy Migration Status
@@ -99,7 +99,7 @@ Main의 계좌 데이터를 명시적으로 읽어 독립 초안에서 입금·�
 
 레거시는 지원되는 사용자 경로나 신규 기능의 기반이 아닙니다. 각 기능을 목록화하고 현재 제품에 필요한지 판정한 뒤, 필요한 기능은 현재 책임 경계로 이관하고 불필요한 기능은 폐기 근거를 기록합니다. 사용자 동작과 구버전 저장 데이터의 호환성을 검증하고 모든 runtime·route·selector·storage·test 참조를 제거한 후 레거시 구현을 삭제합니다.
 
-승인된 이관·폐기 gate를 통과한 레거시 Simulation과 Portfolio runtime은 제거했습니다. Account Map 참고 자원은 신규 앱 명세 전까지 보존합니다.
+승인된 이관·폐기 gate를 통과한 레거시 Simulation과 Portfolio runtime은 제거했습니다. 사용되지 않던 journey snapshot 계약도 [승인된 폐기 설계](docs/superpowers/specs/2026-08-03-journey-snapshot-retirement-design.md)에 따라 제거했으며, Main은 폐기 키를 읽거나 변환하지 않고 시작 시 best-effort로 삭제합니다. Account Map 참고 자원은 신규 앱 명세 전까지 보존합니다.
 
 ## 실행하기
 
@@ -149,7 +149,7 @@ npm run build
 - **현재 계산**: Main 월간 현금흐름, 잔액과 적자
 - **현재 시각화**: Main 요약 카드와 월 자금 구성
 - **저장과 공유**: 로컬 저장, IndexedDB, JSON, ISF CODE와 compatibility bridge
-- **앱 연결**: Main → Simulation → Portfolio 상세 화면과 Account Map 준비 화면
+- **앱 연결**: URL로 이동하는 Main → Simulation → Portfolio 상세 화면과 Account Map-only 준비 화면
 - **공통 UI**: 앱 런처, Main 데이터 허브, 피드백, 테마와 PWA
 
 ## 검증 기준
@@ -180,7 +180,7 @@ npx playwright test tests/account-map.spec.ts --reporter=list
 
 ## 현재 로드맵
 
-Main과 Simulation은 현재 기준선입니다. 다음 제품 확장은 이 기준선을 보존하며 진행합니다.
+Main, Simulation과 Portfolio는 현재 기준선입니다. 다음 제품 확장은 이 기준선을 보존하며 진행합니다.
 
 - 승인된 상세 명세와 레거시 마이그레이션 계획에 따른 신규 Account Map
 - 한국어 은행·카드 알림 텍스트 기반 지출 capture
@@ -195,6 +195,7 @@ Main과 Simulation은 현재 기준선입니다. 다음 제품 확장은 이 기
 - [Agent Guide](AGENTS.md)
 - [Design Contract](DESIGN.md)
 - [Product Direction and Documentation Spec](docs/superpowers/specs/2026-07-29-product-direction-and-documentation-design.md)
+- [Journey Snapshot Retirement Spec](docs/superpowers/specs/2026-08-03-journey-snapshot-retirement-design.md)
 - [Active Roadmap](.planning/ROADMAP.md)
 - [Current Project State](.planning/STATE.md)
 - [Account Flow Decision History](docs/adr/0002-account-flow-belongs-to-portfolio-boundary.md)

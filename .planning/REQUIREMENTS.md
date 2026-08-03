@@ -12,13 +12,15 @@ This document tracks the supported baseline and transition obligations. Future i
 - [x] **MAIN-04**: A user can edit the current monthly values and explicitly apply a valid plan.
 - [x] **MAIN-05**: Main persists the current plan locally and recovers compatible prior data without silently replacing newer valid data.
 - [x] **MAIN-06**: A user can export and import the current Main data as validated JSON.
-- [x] **MAIN-07**: A user can explicitly continue from an applied Main plan to detailed Simulation.
+- [x] **MAIN-07**: A user can explicitly continue from an applied Main plan to detailed Simulation through URL-only navigation.
 - [x] **MAIN-08**: Main remains usable at the required mobile and desktop breakpoints with accessible controls and state feedback.
 
 ## Supported Simulation and Journey
 
 - [x] **JOURNEY-01**: The launcher identifies Main, Simulation, and Portfolio as `사용 중`, and Account Map as `준비 중`.
 - [x] **JOURNEY-02**: Product availability and the user’s current location are communicated as separate states.
+- [x] **JOURNEY-03**: Launcher links and CTAs navigate by URL without persisting an app-to-app transfer payload.
+- [x] **JOURNEY-04**: Main removes the retired journey key without reading or migrating it, and removal failure does not block startup.
 - [x] **SIM-01**: First-run Simulation guides starting principal and scenario settings in two stages; revisits open the result directly.
 - [x] **SIM-02**: Simulation automatically syncs current Main saving and investment on entry without writing back to Main.
 - [x] **SIM-03**: Duration supports 0–30 years and result amounts use the approved Korean integer-unit rounding.
@@ -45,6 +47,8 @@ This document tracks the supported baseline and transition obligations. Future i
 - [x] **QUAL-02**: Current Main, Simulation, and readiness journeys have focused Playwright coverage.
 - [x] **QUAL-03**: Current detailed Simulation includes 390px, 768px, desktop, keyboard, focus, overflow, tooltip-containment, and touch-target evidence.
 - [x] **QUAL-04**: Simulation identifies financial assumptions, inputs, limitations, and non-advisory status through progressive disclosure.
+
+The current journey boundary is defined by the [Journey Snapshot Retirement Spec](../docs/superpowers/specs/2026-08-03-journey-snapshot-retirement-design.md).
 
 ## Future Discovery Candidates
 

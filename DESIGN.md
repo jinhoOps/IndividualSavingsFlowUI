@@ -4,7 +4,7 @@
 
 Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계획 경험으로 바꾸는 로컬 우선 도구입니다. 시각적 기반은 종이 같은 **ISF Pearl** 캔버스와 단색 테두리의 **flat editorial panel**입니다. 전통적인 스프레드시트의 긴장감은 줄이되 숫자의 정밀성과 신뢰감은 유지합니다.
 
-이 문서의 현재 UI 계약은 상세 제품인 Main, Simulation과 Portfolio, 그리고 Account Map 준비 화면에 적용됩니다. 과거 레거시 화면의 모양이나 상호작용은 새 UI의 기준이 아닙니다.
+이 문서의 현재 UI 계약은 상세 제품인 Main, Simulation과 Portfolio, 그리고 Account Map 준비 화면에 적용됩니다. 앱 이동과 데이터 경계는 [Journey Snapshot 폐기 설계](docs/superpowers/specs/2026-08-03-journey-snapshot-retirement-design.md)를 따르며, 과거 레거시 화면의 모양이나 상호작용은 새 UI의 기준이 아닙니다.
 
 ## Experience Principles
 
@@ -32,8 +32,9 @@ Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계획 �
 
 - 앱 런처는 Main, Simulation과 Portfolio를 `사용 중`, Account Map을 `준비 중`으로 표시합니다.
 - 현재 위치는 제품 가용 상태와 분리된 보이는 텍스트와 `aria-current`로 표시합니다.
-- Simulation은 진입 시 최신 Main 월 저축·투자를 읽기 전용으로 자동 동기화합니다.
-- Portfolio는 최신 Main 투자금을 읽지만 write-back하지 않고 Account Map 준비 화면은 상세 편집·독립 저장을 제공하지 않습니다.
+- 앱 런처와 CTA는 URL 탐색만 수행하며 데이터를 전달하거나 저장하지 않습니다.
+- Simulation은 진입 시 최신 Main 월 저축·투자를, Portfolio는 최신 Main 투자금을 각자의 읽기 전용 adapter로 직접 읽고 write-back하지 않습니다.
+- Account Map만 준비 화면이며 상세 편집·독립 저장이나 Main 데이터 read/write를 제공하지 않습니다.
 
 ### Simulation
 
@@ -110,7 +111,7 @@ Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계획 �
 - Main, Simulation, Portfolio와 Account Map의 위치를 보여줍니다.
 - 현재 목적지를 `현재 위치` 텍스트와 `aria-current`로 분명히 표시합니다.
 - 제품 가용 상태는 현재 위치와 독립적으로 Main·Simulation·Portfolio `사용 중`, Account Map `준비 중`을 유지합니다.
-- 데이터 연결 상태는 실제 journey snapshot이 검증된 경우에만 표시합니다.
+- 런처 링크는 URL 탐색만 수행하며 앱 간 데이터 연결 상태를 소유하거나 표시하지 않습니다.
 
 ### Main Cashflow Editor
 
@@ -206,7 +207,7 @@ gradient와 반투명 card를 기본 스타일로 사용하지 않습니다.
 ## Do
 
 - 공통 header, feedback, storage와 formatting utility를 먼저 확인합니다.
-- Main 현재 데이터 소유권, 최소 journey 계약과 향후 앱의 명시적 import 경계를 유지합니다.
+- Main 현재 데이터 소유권, URL-only 탐색과 상세 앱의 명시적인 최신 Main read 경계를 유지합니다.
 - Main의 다섯 값 계약을 넘어서는 편집 UI를 현재 제품에 추가하지 않습니다.
 - 외부 동작과 모바일 화면을 함께 검증합니다.
 - CSS 수정 전후 responsive media query와 파일 구조를 확인합니다.

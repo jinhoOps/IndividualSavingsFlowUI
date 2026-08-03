@@ -5,7 +5,7 @@
 ## Product Baseline
 
 - Main, Simulation, and Portfolio are supported detailed products.
-- Account Map is a future app whose route provides readiness and journey continuity only.
+- Account Map is the only readiness-only destination; its route does not read or store Main or app-transfer data.
 - Retained legacy implementations are temporary evidence for feature and data-contract migration. They are not supported product routes or foundations for new work.
 
 ## Current Main Contract
@@ -27,20 +27,21 @@ Current user-facing capabilities:
 - editing the five monthly values from the current Main experience
 - local persistence with compatibility recovery
 - JSON export and import
-- explicit Main-to-Simulation journey handoff
+- explicit URL-only Main-to-Simulation navigation
+- best-effort removal of the retired journey key without reading or migrating it
 
 Main does not currently provide itemized accounts, category rows, household budgeting, actual-spend capture, Sankey, or long-term projection. Those concepts may exist in retained legacy code and documents but are not current product behavior.
 
 ## Current Simulation
 
 - First run guides starting principal, then duration and expected return; a valid saved draft opens result-first.
-- Entry automatically refreshes Main-owned monthly saving and investment without write-back while preserving Simulation settings.
+- Entry directly reads and refreshes the latest Main-owned monthly saving and investment without write-back while preserving Simulation settings.
 - The result supports 0–30 years, Korean integer-unit formatting, nominal/real values, and pointer, touch, and keyboard graph exploration.
 - Focused unit tests and browser tests cover 390px, 768px, and desktop behavior.
 
 ## Current Portfolio and Readiness
 
-- Portfolio reads current Main investment, owns one allocation and draft, and presents amount/percentage results without Main write-back.
+- Portfolio directly reads the latest Main investment, owns one allocation and draft, and presents amount/percentage results without Main write-back.
 - Account Map is readiness-only and does not read, edit, store, or write back a detailed map.
 
 ## Transition State
@@ -48,6 +49,7 @@ Main does not currently provide itemized accounts, category rows, household budg
 - Legacy runtime sources remain in the repository until each destination has an approved feature inventory and migration/removal specification.
 - Deletion requires a disposition for each useful behavior and data contract, compatibility evidence, reference removal, and regression verification.
 - Historical GSD phase and milestone documents were retired because their completion claims no longer described the supported product.
+- The [Journey Snapshot Retirement Spec](../docs/superpowers/specs/2026-08-03-journey-snapshot-retirement-design.md) supersedes snapshot-transfer claims in historical journey documents without rewriting that history.
 
 ## Evidence
 
