@@ -91,7 +91,10 @@
 
   .setup-review-transition {
     @apply pointer-events-none absolute inset-x-0 top-[1.1875rem] z-10;
-    animation: setup-review-transition-exit 920ms linear 350ms both;
+    opacity: 0;
+    animation:
+      setup-review-show 1ms step-end 350ms forwards,
+      setup-review-transition-exit 920ms linear 350ms both;
     transform-origin: center;
   }
 
@@ -105,10 +108,27 @@
     animation: setup-review-accent 920ms ease-out 350ms both;
   }
 
+  .setup-review-transition__track > .allocation-bar__visual-segment {
+    animation: setup-review-segments 920ms ease-out 350ms both;
+  }
+
+  .allocation-bar[data-transitioning="true"] {
+    animation: setup-review-shell 250ms ease-out 1270ms both;
+  }
+
   .allocation-bar[data-transitioning="true"] .allocation-table,
   .allocation-bar[data-transitioning="true"] .allocation-bar__context,
   .allocation-bar[data-transitioning="true"] .allocation-bar__deficit {
-    animation: setup-review-content 260ms ease-out 360ms both;
+    animation: setup-review-content 250ms ease-out 1270ms both;
+  }
+
+  .allocation-bar[data-transitioning="true"] .allocation-bar__segments {
+    animation: setup-review-final-track 1ms linear 1269ms both;
+  }
+
+  @keyframes setup-review-show {
+    from { opacity: 0; }
+    to { opacity: 1; }
   }
 
   @keyframes setup-review-track {
@@ -122,6 +142,11 @@
     100% { opacity: 0; }
   }
 
+  @keyframes setup-review-segments {
+    0%, 67.4% { opacity: 0; }
+    100% { opacity: 1; }
+  }
+
   @keyframes setup-review-transition-exit {
     0%, 99.9% { visibility: visible; }
     100% { visibility: hidden; }
@@ -130,6 +155,16 @@
   @keyframes setup-review-content {
     from { opacity: 0; transform: translateY(.5rem); }
     to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes setup-review-shell {
+    from { border-color: transparent; background-color: transparent; }
+    to { border-color: rgb(100 116 139 / 18%); background-color: rgb(255 255 255 / 75%); }
+  }
+
+  @keyframes setup-review-final-track {
+    from { opacity: 0; }
+    to { opacity: 1; }
   }
 
   .flow-bar {
@@ -170,9 +205,11 @@
       animation: none;
     }
 
+    .allocation-bar[data-transitioning="true"],
     .allocation-bar[data-transitioning="true"] .allocation-table,
     .allocation-bar[data-transitioning="true"] .allocation-bar__context,
-    .allocation-bar[data-transitioning="true"] .allocation-bar__deficit {
+    .allocation-bar[data-transitioning="true"] .allocation-bar__deficit,
+    .allocation-bar[data-transitioning="true"] .allocation-bar__segments {
       animation: none;
     }
   }
