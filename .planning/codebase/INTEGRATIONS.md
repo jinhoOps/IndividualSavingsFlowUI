@@ -13,7 +13,7 @@ ISF has no required server account, bank connection, or market-data integration.
 
 - Main creates a minimal `JourneySnapshot`.
 - Detailed Simulation reads current Main saving and investment directly through a read-only adapter on every entry; it does not write back.
-- Portfolio readiness receives the same minimum contract.
+- Detailed Portfolio reads current Main investment directly through a read-only adapter and keeps its allocation in Portfolio-only local keys.
 - Account Map readiness owns no detailed import contract yet.
 
 ## PWA

@@ -12,10 +12,11 @@ src/
     application/      Main-aware startup behavior
     infrastructure/   read-only Main source and Simulation persistence
     ui/               onboarding, result, graph, and controls
+  portfolio/         current allocation domain, storage, app, donut, table, editor
   journey/
     domain/           minimal JourneySnapshot
     infrastructure/   journey persistence
-    ui/               launcher and readiness UI
+    ui/               launcher and Account Map readiness UI
   entries/            readiness page entry points
   core/               shared storage and types
   components/         small shared React components
@@ -26,6 +27,7 @@ tests/
   main-compat.spec.ts current compatibility behavior
   app-journey.spec.ts supported readiness journey
   simulation.spec.ts  supported detailed Simulation behavior
+  portfolio.spec.ts   supported detailed Portfolio behavior
 apps/                 retained legacy detailed applications
 shared/legacy/        retained legacy shared runtime
 docs/
@@ -39,4 +41,4 @@ docs/
   codebase/           these navigation maps
 ```
 
-Use `src/main/` and `src/simulation/` for their supported products, and `src/journey/` for Portfolio and Account Map readiness contracts. Do not add supported behavior under retained legacy paths.
+Use `src/main/`, `src/simulation/`, and `src/portfolio/` for supported products, and `src/journey/` for shared navigation and Account Map readiness. Do not add supported behavior under retained legacy paths.

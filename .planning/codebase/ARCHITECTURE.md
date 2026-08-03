@@ -17,14 +17,19 @@ Simulation React app
   ├─ infrastructure: Main reader and Simulation repository
   └─ UI: onboarding, result, graph, controls
 
-Journey React apps
-  ├─ Portfolio readiness
+Portfolio React app
+  ├─ domain: allocation, cash, validation
+  ├─ application: bootstrap and draft/apply state
+  ├─ infrastructure: Main reader and Portfolio repository
+  └─ UI: editor, donut, table, recovery
+
+Journey React app
   └─ Account Map readiness
 ```
 
 Main starts at `src/main/main.tsx`. Its domain owns five monthly scalar values and derives consumption, outflow, remaining money, deficit, and allocation percentages.
 
-Simulation starts at `src/simulation/main.tsx`, reads Main through a narrow adapter, and owns only its scenario draft. The remaining readiness entries under `src/entries/` mount components from `src/journey/`.
+Simulation starts at `src/simulation/main.tsx`. Portfolio starts at `src/portfolio/main.tsx`, reads only Main investment, and owns its allocation. Account Map remains under `src/journey/`.
 
 ## Data Ownership
 

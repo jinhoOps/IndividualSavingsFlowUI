@@ -2,11 +2,11 @@
 
 개인 재무 흐름을 입력하고 향후 장기 투자 전략과 실행 계획으로 연결할 수 있도록 준비하는 로컬 우선 웹 앱입니다.
 
-현재 상세 제품은 Main과 Simulation이며, Portfolio와 Account Map은 신규 개발 전 준비 화면입니다.
+현재 상세 제품은 Main, Simulation과 Portfolio이며, Account Map은 신규 개발 전 준비 화면입니다.
 
 - **Main**: 월 실수령액, 소비, 저축, 투자와 남는 돈을 한눈에 보여주는 현재 제품 기준선입니다.
 - **Simulation**: Main의 월 저축·투자를 기준으로 장기 복리 성장과 전부 저축 기준선을 비교합니다.
-- **Portfolio**: 향후 새로 개발할 앱입니다. 현재는 최소 연결 상태를 확인하는 준비 화면입니다.
+- **Portfolio**: 최신 Main 투자금을 자유 이름 투자 대상과 현금에 금액·비율로 배분하는 현재 제품입니다.
 - **Account Map**: 향후 새로 개발할 앱입니다. 현재 준비 화면은 Main 또는 journey 데이터를 읽거나 저장하지 않습니다.
 
 배포 페이지: https://jinhoops.github.io/IndividualSavingsFlowUI/
@@ -26,7 +26,7 @@ ISF의 Main과 Simulation은 다음 세 질문에 답하고, 나머지 질문은
 - 내 월 수입은 어디로 흘러가는가?
 - 생활비, 저축과 투자 비중은 현재 계획에 맞는가?
 - **Simulation**: 정한 월 저축·투자가 장기 복리로 얼마나 커지는가?
-- **향후 Portfolio**: 선택한 전략을 어떤 적립식 포트폴리오로 실행할 것인가?
+- **Portfolio**: 선택한 전략을 어떤 투자 대상으로 배분할 것인가?
 - **향후 Account Map**: 실제 계좌와 자동이체 관계는 어떻게 연결되어 있는가?
 
 서버 계정이나 은행 연동 없이 사용자가 입력한 데이터를 브라우저 안에서 계산하고 시각화합니다.
@@ -53,11 +53,13 @@ Main에 적용된 계획이 있으면 `Simulation으로 이어가기`로 이동�
 
 기간은 현재를 뜻하는 0년부터 30년까지 조정합니다. 결과는 한국식 정수 금액, 전체 폭 성장 그래프와 전부 저축 비교를 제공하며 pointer·touch·keyboard로 연도별 상세를 확인할 수 있습니다.
 
-런처는 Main과 Simulation을 `사용 중`, Portfolio와 Account Map을 `준비 중`으로 표시합니다. 현재 위치는 가용 상태와 별도로 표시됩니다.
+런처는 Main, Simulation과 Portfolio를 `사용 중`, Account Map을 `준비 중`으로 표시합니다. 현재 위치는 가용 상태와 별도로 표시됩니다.
 
 ## 향후 신규 앱
 
 ### Portfolio
+
+최신 Main 투자금을 직접 읽어 최대 10개 자유 이름 투자 대상과 현금에 배분합니다. 금액 또는 비율로 편집하고 결과에서는 두 값을 도넛과 표로 함께 확인합니다. Portfolio는 적용 계획 하나와 초안을 저장하며 Main을 수정하지 않습니다. 계좌, 시세, 수익률과 복수 계획은 현재 범위가 아닙니다.
 
 선택한 투자 방향을 종목·자산별 적립 금액과 비중으로 구체화하는 신규 앱으로 설계할 예정입니다.
 
@@ -97,7 +99,7 @@ Main의 계좌 데이터를 명시적으로 읽어 독립 초안에서 입금·�
 
 레거시는 지원되는 사용자 경로나 신규 기능의 기반이 아닙니다. 각 기능을 목록화하고 현재 제품에 필요한지 판정한 뒤, 필요한 기능은 현재 책임 경계로 이관하고 불필요한 기능은 폐기 근거를 기록합니다. 사용자 동작과 구버전 저장 데이터의 호환성을 검증하고 모든 runtime·route·selector·storage·test 참조를 제거한 후 레거시 구현을 삭제합니다.
 
-승인된 이관·폐기 gate를 통과한 레거시 Simulation runtime은 제거했습니다. Portfolio와 Account Map 참고 자원은 각 신규 앱 명세 전까지 보존합니다.
+승인된 이관·폐기 gate를 통과한 레거시 Simulation과 Portfolio runtime은 제거했습니다. Account Map 참고 자원은 신규 앱 명세 전까지 보존합니다.
 
 ## 실행하기
 
@@ -138,7 +140,7 @@ npm run build
 
 ## 개발 구조
 
-이 저장소는 Vite 기반 정적 멀티페이지 앱입니다. 현재 Main, Simulation과 두 준비 화면은 React·TypeScript·Tailwind CSS로 구성됩니다. 기존 Portfolio·Account Map 바닐라 모듈은 정상 제품 runtime이 아니라 기능·데이터 계약 조사를 위한 레거시 참고 자원으로 보존합니다.
+이 저장소는 Vite 기반 정적 멀티페이지 앱입니다. 현재 Main, Simulation, Portfolio와 Account Map 준비 화면은 React·TypeScript·Tailwind CSS로 구성됩니다. 기존 Account Map 바닐라 모듈은 기능·데이터 계약 조사를 위한 레거시 참고 자원으로 보존합니다.
 
 큰 책임 경계:
 
@@ -147,7 +149,7 @@ npm run build
 - **현재 계산**: Main 월간 현금흐름, 잔액과 적자
 - **현재 시각화**: Main 요약 카드와 월 자금 구성
 - **저장과 공유**: 로컬 저장, IndexedDB, JSON, ISF CODE와 compatibility bridge
-- **앱 연결**: Main → Simulation 직접 진입과 Portfolio·Account Map 준비 화면
+- **앱 연결**: Main → Simulation → Portfolio 상세 화면과 Account Map 준비 화면
 - **공통 UI**: 앱 런처, Main 데이터 허브, 피드백, 테마와 PWA
 
 ## 검증 기준
@@ -180,7 +182,6 @@ npx playwright test tests/account-map.spec.ts --reporter=list
 
 Main과 Simulation은 현재 기준선입니다. 다음 제품 확장은 이 기준선을 보존하며 진행합니다.
 
-- 승인된 상세 명세와 레거시 마이그레이션 계획에 따른 신규 Portfolio
 - 승인된 상세 명세와 레거시 마이그레이션 계획에 따른 신규 Account Map
 - 한국어 은행·카드 알림 텍스트 기반 지출 capture
 - 두 사람의 Main 데이터를 이용한 가구 병합 미리보기

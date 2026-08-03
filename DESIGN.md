@@ -4,7 +4,7 @@
 
 Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계획 경험으로 바꾸는 로컬 우선 도구입니다. 시각적 기반은 종이 같은 **ISF Pearl** 캔버스와 단색 테두리의 **flat editorial panel**입니다. 전통적인 스프레드시트의 긴장감은 줄이되 숫자의 정밀성과 신뢰감은 유지합니다.
 
-이 문서의 현재 UI 계약은 상세 제품인 Main과 Simulation, 그리고 Portfolio·Account Map 준비 화면에 적용됩니다. 두 미래 앱 섹션은 후속 신규 앱을 위한 설계 제약이며 현재 제공 기능을 뜻하지 않습니다. 과거 레거시 화면의 모양이나 상호작용은 새 UI의 기준이 아닙니다.
+이 문서의 현재 UI 계약은 상세 제품인 Main, Simulation과 Portfolio, 그리고 Account Map 준비 화면에 적용됩니다. 과거 레거시 화면의 모양이나 상호작용은 새 UI의 기준이 아닙니다.
 
 ## Experience Principles
 
@@ -30,10 +30,10 @@ Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계획 �
 
 ### Current Journey
 
-- 앱 런처는 Main과 Simulation을 `사용 중`, Portfolio와 Account Map을 `준비 중`으로 표시합니다.
+- 앱 런처는 Main, Simulation과 Portfolio를 `사용 중`, Account Map을 `준비 중`으로 표시합니다.
 - 현재 위치는 제품 가용 상태와 분리된 보이는 텍스트와 `aria-current`로 표시합니다.
 - Simulation은 진입 시 최신 Main 월 저축·투자를 읽기 전용으로 자동 동기화합니다.
-- Portfolio와 Account Map 준비 화면은 계산, 편집, 독립 제품 저장 또는 Main write-back UI를 만들지 않습니다.
+- Portfolio는 최신 Main 투자금을 읽지만 write-back하지 않고 Account Map 준비 화면은 상세 편집·독립 저장을 제공하지 않습니다.
 
 ### Simulation
 
@@ -44,11 +44,13 @@ Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계획 �
 - 명목·실질은 항상 보이고 기준금리, 물가와 면책은 `계산 기준`에서 점진적으로 공개합니다.
 - 저장 성공은 낮은 강조로 상시 표시하고 오류만 강조합니다. 재설정은 Simulation 메뉴 안에서 확인합니다.
 
-### Future Portfolio
+### Portfolio
 
 - 자산별 금액과 전체 비중을 동시에 확인할 수 있어야 합니다.
-- 저장 전 확인 단계에서 종목 수, 총액, 설정일과 주기를 요약합니다.
+- 저장 전 확인 단계에서 투자 대상 수, 투자금과 현금 비중을 요약합니다.
 - 편집 중 변경과 저장 상태를 명확히 구분합니다.
+- 결과는 도넛과 표를 함께 사용하고 pointer·touch·keyboard에 동등한 정보를 제공합니다.
+- 투자금 0원은 기존 계획을 보존하고 Main 투자금 편집으로 안내합니다.
 
 ### Future Account Map
 
@@ -107,7 +109,7 @@ Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계획 �
 
 - Main, Simulation, Portfolio와 Account Map의 위치를 보여줍니다.
 - 현재 목적지를 `현재 위치` 텍스트와 `aria-current`로 분명히 표시합니다.
-- 제품 가용 상태는 현재 위치와 독립적으로 Main·Simulation `사용 중`, Portfolio·Account Map `준비 중`을 유지합니다.
+- 제품 가용 상태는 현재 위치와 독립적으로 Main·Simulation·Portfolio `사용 중`, Account Map `준비 중`을 유지합니다.
 - 데이터 연결 상태는 실제 journey snapshot이 검증된 경우에만 표시합니다.
 
 ### Main Cashflow Editor

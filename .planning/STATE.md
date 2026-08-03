@@ -4,8 +4,8 @@
 
 ## Product Baseline
 
-- Main and Simulation are supported detailed products.
-- Portfolio and Account Map are future apps whose routes provide readiness and journey continuity only.
+- Main, Simulation, and Portfolio are supported detailed products.
+- Account Map is a future app whose route provides readiness and journey continuity only.
 - Retained legacy implementations are temporary evidence for feature and data-contract migration. They are not supported product routes or foundations for new work.
 
 ## Current Main Contract
@@ -38,9 +38,9 @@ Main does not currently provide itemized accounts, category rows, household budg
 - The result supports 0–30 years, Korean integer-unit formatting, nominal/real values, and pointer, touch, and keyboard graph exploration.
 - Focused unit tests and browser tests cover 390px, 768px, and desktop behavior.
 
-## Readiness Routes
+## Current Portfolio and Readiness
 
-- Portfolio continues the minimal readiness journey from Simulation.
+- Portfolio reads current Main investment, owns one allocation and draft, and presents amount/percentage results without Main write-back.
 - Account Map is readiness-only and does not read, edit, store, or write back a detailed map.
 
 ## Transition State

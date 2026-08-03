@@ -16,7 +16,8 @@ npm run test:unit
 
 - `tests/unit/main/`: current Main domain, state, persistence, setup, dashboard, responsive presentation, and components.
 - `tests/unit/simulation/`: current Simulation projection, storage, onboarding, controls, result, and graph behavior.
-- `tests/unit/journey/`: current readiness routes, launcher, snapshot, persistence, and isolation.
+- `tests/unit/portfolio/`: current allocation, persistence, UI, and Main-link contracts.
+- `tests/unit/journey/`: current launcher, snapshot, Account Map readiness, persistence, and isolation.
 - `tests/unit/core/`: shared storage behavior.
 
 ## Supported Browser Flows
@@ -30,7 +31,7 @@ npx playwright test tests/app-journey.spec.ts
 
 These files are the primary browser evidence for the current supported product.
 
-Other Step 1, Portfolio, or Account Map browser tests may cover retained legacy implementations. Run them only when inventorying or migrating that capability.
+Other Step 1 or Account Map browser tests may cover retained legacy implementations. Run them only when inventorying or migrating that capability.
 
 ## Change Guidance
 

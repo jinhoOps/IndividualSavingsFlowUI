@@ -6,7 +6,7 @@ This roadmap records decision order, not release promises or historical completi
 
 1. Keep Main’s five-value monthly cashflow model, quick setup, dashboard, persistence, backup, and journey handoff reliable.
 2. Keep detailed Simulation result-first, read-only toward Main, and reliable across its 0–30-year contract.
-3. Keep Portfolio and Account Map visibly readiness-only.
+3. Keep detailed Portfolio Main-linked and Account Map visibly readiness-only.
 4. Align PRD, README, DESIGN, AGENTS, requirements, tests, and runtime claims.
 5. Treat retained legacy code as migration evidence and prevent it from becoming an accidental product dependency.
 
@@ -20,10 +20,7 @@ For each future app, perform the following in order:
 4. Implement against the current architecture rather than reviving the legacy route.
 5. Prove compatibility and regression coverage, remove all legacy references, then delete the corresponding legacy implementation.
 
-The recommended destination order is:
-
-1. Portfolio
-2. Account Map
+The next destination is Account Map. Portfolio inventory, disposition, ownership, implementation, and legacy removal are complete.
 
 This sequence follows the intended user journey. It may change when an approved product decision provides stronger evidence.
 
