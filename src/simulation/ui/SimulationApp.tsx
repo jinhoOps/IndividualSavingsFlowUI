@@ -102,7 +102,25 @@ export function SimulationApp({
     setSaveState(next.kind !== 'main-required' && !next.persistenceAvailable ? 'error' : 'saved');
   }
 
+  function retryMain(): void {
+    if (runtime.kind !== 'stale-main' || draft === null) return;
+    const next = bootstrapSimulation(mainRepository.load(), {
+      status: 'found',
+      draft,
+      migration: null,
+    }, now());
+    if (next.kind !== 'ready') return;
+
+    setRuntime(next);
+    setDraft(next.draft);
+    if (next.shouldPersist && next.draft !== null) {
+      setSaveState('saving');
+      setSaveState(repository.save(next.draft).status === 'saved' ? 'saved' : 'error');
+    }
+  }
+
   const result = draft === null ? null : projectCompoundGrowth(draft);
+  const resultIsFinite = result !== null && projectionIsFinite(result);
   const latestSource = runtime.kind === 'ready' ? runtime.latestMainSource : null;
 
   return (
@@ -124,12 +142,21 @@ export function SimulationApp({
               <aside className="simulation-stale-main">
                 <p role="status">이전 Main 기준</p>
                 <p>최신 Main 정보를 불러오지 못했어요.</p>
+                <button type="button" onClick={retryMain}>최신 Main 다시 불러오기</button>
                 <a href={appPath('main')}>Main 확인하기</a>
               </aside>
             ) : null}
-            <SimulationHero draft={draft} result={result} />
-            <GrowthChart result={result} amountMode={draft.amountMode} />
-            <SimulationComparison result={result} />
+            {resultIsFinite ? (
+              <>
+                <SimulationHero draft={draft} result={result} />
+                <GrowthChart result={result} amountMode={draft.amountMode} />
+                <SimulationComparison result={result} />
+              </>
+            ) : (
+              <p role="alert" className="simulation-calculation-error">
+                계산 결과를 표시할 수 없어요. 계산 기준을 조정해주세요.
+              </p>
+            )}
             <SimulationControls draft={draft} onChange={(next) => saveDraft({
               ...next,
               updatedAt: now(),
@@ -145,4 +172,14 @@ export function SimulationApp({
       </div>
     </main>
   );
+}
+
+function projectionIsFinite(result: ReturnType<typeof projectCompoundGrowth>): boolean {
+  return [
+    result.finalCurrentPlanWon,
+    result.finalAllSavingsWon,
+    result.advantageOverAllSavingsWon,
+    result.principalRatioPercent ?? 0,
+    ...result.points.flatMap((point) => Object.values(point)),
+  ].every(Number.isFinite);
 }

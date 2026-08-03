@@ -83,6 +83,50 @@ describe('SimulationApp', () => {
     expect(screen.getByRole('heading', { name: /이대로 20년 유지하면/ })).toBeVisible();
   });
 
+  it('retries a stale Main source in place and persists only the refreshed source', async () => {
+    const draft = createDefaultSimulationDraft(source, 456);
+    const latest = { ...source, monthlySavingsWon: 900_000, mainUpdatedAt: 999 };
+    const load = vi.fn()
+      .mockReturnValueOnce({ status: 'unavailable' as const })
+      .mockReturnValueOnce({ status: 'found' as const, source: latest });
+    const repository = simulationRepository({ status: 'found', draft, migration: null });
+    render(<SimulationApp
+      mainSourceRepository={{ load }}
+      repository={repository}
+      now={() => 1_000}
+    />);
+
+    fireEvent.click(screen.getByRole('button', { name: '최신 Main 다시 불러오기' }));
+
+    await waitFor(() => expect(repository.save).toHaveBeenCalledWith(expect.objectContaining({
+      source: latest,
+      years: draft.years,
+      expectedAnnualReturnPercent: draft.expectedAnnualReturnPercent,
+    })));
+    expect(screen.queryByText('이전 Main 기준')).not.toBeInTheDocument();
+    expect(screen.getByText(/월 저축 90만 원/)).toBeVisible();
+  });
+
+  it('keeps controls available instead of rendering a non-finite projection', () => {
+    const draft: CompoundSimulationDraft = {
+      ...createDefaultSimulationDraft(source, 456),
+      years: 30,
+      baseRatePercent: 1e100,
+    };
+    render(<SimulationApp
+      mainSourceRepository={mainRepository(source)}
+      repository={simulationRepository({ status: 'found', draft, migration: null })}
+    />);
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      '계산 결과를 표시할 수 없어요. 계산 기준을 조정해주세요.',
+    );
+    expect(screen.queryByRole('img', { name: '연도별 복리 성장 그래프' }))
+      .not.toBeInTheDocument();
+    expect(screen.getByRole('spinbutton', { name: '기간 숫자' })).toBeVisible();
+    expect(screen.getByText('계산 기준')).toBeVisible();
+  });
+
   it('explains a migrated duration once while preserving the result', () => {
     const draft: CompoundSimulationDraft = {
       ...createDefaultSimulationDraft(source, 456),

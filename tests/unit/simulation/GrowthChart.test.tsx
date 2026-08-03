@@ -58,6 +58,25 @@ describe('GrowthChart', () => {
     expect(screen.queryByText('현재 계획 총액')).not.toBeInTheDocument();
   });
 
+  it('maps the first and last plotted x positions to their exact years', () => {
+    const { container } = render(<GrowthChart result={result} amountMode="nominal" />);
+    const chart = screen.getByRole('img', { name: '연도별 복리 성장 그래프' });
+    Object.defineProperty(chart, 'getBoundingClientRect', {
+      value: () => ({ left: 100, width: 340 }),
+    });
+
+    fireEvent(chart, new MouseEvent('pointerdown', {
+      bubbles: true,
+      clientX: 100 + 36 / 680 * 340,
+    }));
+    expect(container.querySelector('.growth-chart__tooltip > strong')).toHaveTextContent('0년');
+    fireEvent(chart, new MouseEvent('pointerdown', {
+      bubbles: true,
+      clientX: 100 + 656 / 680 * 340,
+    }));
+    expect(container.querySelector('.growth-chart__tooltip > strong')).toHaveTextContent('20년');
+  });
+
   it('shows real component balances consistently in real mode', () => {
     render(<GrowthChart result={result} amountMode="real" />);
     fireEvent.keyDown(screen.getByRole('application', { name: '그래프 연도 탐색' }), {

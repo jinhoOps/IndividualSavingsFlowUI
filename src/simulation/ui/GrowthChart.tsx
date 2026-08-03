@@ -72,12 +72,22 @@ export function GrowthChart({
           role="img"
           aria-label="연도별 복리 성장 그래프"
           onPointerDown={(event) => {
-            const index = indexAt(event.currentTarget, event.clientX, result.points);
+            const index = indexAt(
+              event.currentTarget,
+              event.clientX,
+              result.points,
+              geometry.plot,
+            );
             setActiveIndex((current) => current === index ? null : index);
           }}
           onPointerMove={(event) => {
             if (event.pointerType !== 'touch') {
-              setActiveIndex(indexAt(event.currentTarget, event.clientX, result.points));
+              setActiveIndex(indexAt(
+                event.currentTarget,
+                event.clientX,
+                result.points,
+                geometry.plot,
+              ));
             }
           }}
         >
@@ -135,10 +145,12 @@ function indexAt(
   element: SVGSVGElement,
   clientX: number,
   points: ProjectionPoint[],
+  plot: { left: number; right: number },
 ): number | null {
   const bounds = element.getBoundingClientRect();
   if (bounds.width <= 0) return null;
-  const ratio = Math.max(0, Math.min(1, (clientX - bounds.left) / bounds.width));
+  const viewBoxX = (clientX - bounds.left) / bounds.width * 680;
+  const ratio = Math.max(0, Math.min(1, (viewBoxX - plot.left) / (plot.right - plot.left)));
   const index = Math.round(ratio * (points.length - 1));
   return points[index] === undefined ? null : index;
 }
