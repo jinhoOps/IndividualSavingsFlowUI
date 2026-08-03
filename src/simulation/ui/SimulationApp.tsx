@@ -1,10 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AppLauncher } from '../../journey/ui/AppLauncher';
 import { appPath } from '../../journey/routes';
 import { bootstrapSimulation } from '../application/bootstrap';
 import type { CompoundSimulationDraft } from '../domain/model';
 import { projectCompoundGrowth } from '../domain/projection';
-import { createDefaultSimulationDraft, parseSimulationDraft } from '../domain/validation';
+import { parseSimulationDraft } from '../domain/validation';
 import {
   BrowserMainSourceRepository,
   type MainSourceRepository,
@@ -15,9 +15,12 @@ import {
 } from '../infrastructure/simulationRepository';
 import { AdvancedSettings } from './AdvancedSettings';
 import { GrowthChart } from './GrowthChart';
+import { SaveIndicator, type SimulationSaveState } from './SaveIndicator';
+import { SimulationComparison } from './SimulationComparison';
 import { SimulationControls } from './SimulationControls';
-import { SimulationSummary } from './SimulationSummary';
-import { StartingPrincipalPrompt } from './StartingPrincipalPrompt';
+import { SimulationHero } from './SimulationHero';
+import { SimulationMenu } from './SimulationMenu';
+import { SimulationOnboarding } from './SimulationOnboarding';
 
 export function SimulationApp({
   mainSourceRepository: providedMainRepository,
@@ -37,17 +40,33 @@ export function SimulationApp({
     [providedRepository],
   );
   const initial = useMemo(
-    () => bootstrapSimulation(mainRepository.load(), repository.load()),
-    [mainRepository, repository],
+    () => bootstrapSimulation(mainRepository.load(), repository.load(), now()),
+    [mainRepository, repository, now],
   );
   const [runtime, setRuntime] = useState(initial);
   const [draft, setDraft] = useState<CompoundSimulationDraft | null>(
-    initial.kind === 'ready' ? initial.draft : null,
+    initial.kind === 'ready'
+      ? initial.draft
+      : initial.kind === 'stale-main' ? initial.draft : null,
   );
-  const [saveFailed, setSaveFailed] = useState(
-    initial.kind === 'ready' && !initial.persistenceAvailable,
+  const [saveState, setSaveState] = useState<SimulationSaveState>(
+    initial.kind !== 'main-required' && !initial.persistenceAvailable ? 'error' : 'saved',
   );
-  const [restartFailed, setRestartFailed] = useState(false);
+  const [resetFailed, setResetFailed] = useState(false);
+  const initialPersisted = useRef(false);
+
+  useEffect(() => {
+    if (
+      initialPersisted.current
+      || runtime.kind === 'main-required'
+      || !runtime.shouldPersist
+      || draft === null
+    ) return;
+
+    initialPersisted.current = true;
+    setSaveState('saving');
+    setSaveState(repository.save(draft).status === 'saved' ? 'saved' : 'error');
+  }, [draft, repository, runtime]);
 
   if (runtime.kind === 'main-required') {
     return (
@@ -60,72 +79,57 @@ export function SimulationApp({
       </main>
     );
   }
-  if (runtime.kind === 'stale-main') {
-    const result = projectCompoundGrowth(runtime.draft);
-    return (
-      <main className="simulation-shell">
-        <AppLauncher currentApp="simulation" />
-        <div className="simulation-content">
-          <p role="status">이전 Main 기준</p>
-          <p>최신 Main 정보를 불러오지 못했습니다.</p>
-          <a className="ui-button ui-button--secondary" href={appPath('main')}>Main 확인하기</a>
-          <SimulationSummary draft={runtime.draft} result={result} />
-          <GrowthChart result={result} amountMode={runtime.draft.amountMode} />
-        </div>
-      </main>
-    );
-  }
-  const ready = runtime;
-
   function saveDraft(next: CompoundSimulationDraft): void {
     const valid = parseSimulationDraft(next);
     if (valid === null) {
-      setSaveFailed(true);
+      setSaveState('error');
       return;
     }
     setDraft(valid);
-    setSaveFailed(repository.save(valid).status === 'unavailable');
+    setSaveState('saving');
+    setSaveState(repository.save(valid).status === 'saved' ? 'saved' : 'error');
   }
 
-  function start(initialInvestmentWon: number): void {
-    saveDraft({
-      ...createDefaultSimulationDraft(ready.latestMainSource, now()),
-      initialInvestmentWon,
-    });
-  }
-
-  function restart(): void {
+  function reset(): void {
     if (repository.clear().status === 'unavailable') {
-      setRestartFailed(true);
+      setResetFailed(true);
       return;
     }
-    setRestartFailed(false);
-    setRuntime(bootstrapSimulation(mainRepository.load(), { status: 'empty' }));
+    setResetFailed(false);
+    const next = bootstrapSimulation(mainRepository.load(), { status: 'empty' }, now());
+    setRuntime(next);
     setDraft(null);
+    setSaveState(next.kind !== 'main-required' && !next.persistenceAvailable ? 'error' : 'saved');
   }
+
+  const result = draft === null ? null : projectCompoundGrowth(draft);
+  const latestSource = runtime.kind === 'ready' ? runtime.latestMainSource : null;
 
   return (
     <main className="simulation-shell">
       <AppLauncher currentApp="simulation" />
       <div className="simulation-content">
-        {draft === null ? (
-          <StartingPrincipalPrompt onStart={start} />
-        ) : (
+        {draft === null && latestSource !== null ? (
+          <SimulationOnboarding source={latestSource} now={now} onComplete={saveDraft} />
+        ) : draft !== null && result !== null ? (
           <>
-            {saveFailed ? <p role="status">자동 저장을 사용할 수 없습니다.</p> : null}
-            {restartFailed ? <p role="alert">처음부터 다시 시작할 수 없습니다.</p> : null}
-            <p className="simulation-assumption">
-              기대수익률을 계속 재투자한다고 가정한 계산이며, 백테스트나 금융 자문이 아닙니다.
-            </p>
-            {(() => {
-              const result = projectCompoundGrowth(draft);
-              return (
-                <>
-                  <SimulationSummary draft={draft} result={result} />
-                  <GrowthChart result={result} amountMode={draft.amountMode} />
-                </>
-              );
-            })()}
+            <div className="simulation-toolbar">
+              <SaveIndicator state={saveState} />
+              <SimulationMenu onReset={reset} resetFailed={resetFailed} />
+            </div>
+            {runtime.durationAdjusted ? (
+              <p role="status">기간 범위가 변경되어 30년으로 조정됐어요.</p>
+            ) : null}
+            {runtime.kind === 'stale-main' ? (
+              <aside className="simulation-stale-main">
+                <p role="status">이전 Main 기준</p>
+                <p>최신 Main 정보를 불러오지 못했어요.</p>
+                <a href={appPath('main')}>Main 확인하기</a>
+              </aside>
+            ) : null}
+            <SimulationHero draft={draft} result={result} />
+            <GrowthChart result={result} amountMode={draft.amountMode} />
+            <SimulationComparison result={result} />
             <SimulationControls draft={draft} onChange={(next) => saveDraft({
               ...next,
               updatedAt: now(),
@@ -134,10 +138,9 @@ export function SimulationApp({
               ...next,
               updatedAt: now(),
             })} />
-            <button type="button" className="ui-button ui-button--quiet" onClick={restart}>
-              처음부터 다시
-            </button>
           </>
+        ) : (
+          <p role="alert">시뮬레이션을 시작할 수 없어요.</p>
         )}
       </div>
     </main>

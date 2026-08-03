@@ -17,7 +17,9 @@ describe('AdvancedSettings', () => {
   it('does not persist blank, nonfinite, or over-precise rates', () => {
     const onChange = vi.fn();
     render(<AdvancedSettings draft={draft} onChange={onChange} />);
-    fireEvent.click(screen.getByText('고급 설정'));
+    expect(screen.getByRole('button', { name: '명목' })).toBeVisible();
+    expect(screen.getByRole('button', { name: '실질' })).toBeVisible();
+    fireEvent.click(screen.getByText('계산 기준'));
 
     fireEvent.change(screen.getByRole('spinbutton', { name: '기준금리' }), {
       target: { value: '' },
