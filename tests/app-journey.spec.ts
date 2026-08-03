@@ -12,6 +12,10 @@ const appliedMain = {
 
 test('connects Main directly to the detailed Simulation', async ({ page }) => {
   await page.addInitScript((fixture) => {
+    const seedMarker = 'isf-test-journey-fixture-seeded';
+    if (sessionStorage.getItem(seedMarker) !== null) return;
+    sessionStorage.setItem(seedMarker, 'true');
+
     localStorage.setItem('isf-main-v2', JSON.stringify(fixture));
     localStorage.setItem('isf-journey-snapshot-v1', JSON.stringify({
       monthlySavingWon: 900_000,
@@ -39,6 +43,9 @@ test('connects Main directly to the detailed Simulation', async ({ page }) => {
   )).toBeNull();
   await page.getByRole('button', { name: 'Simulation으로 이어가기' }).click();
   await expect(page).toHaveURL(/\/apps\/simulation\/$/);
+  await expect.poll(() => page.evaluate(
+    () => localStorage.getItem('isf-journey-snapshot-v1'),
+  )).toBeNull();
   await expect(page.getByRole('heading', { name: /이대로 20년 유지하면/ })).toBeVisible();
   await expect(page.getByText('월 저축 30만 원 · 투자 20만 원 · 연 9%')).toBeVisible();
   await expect(page.getByRole('link', { name: /Simulation 사용 중.*현재 위치/ }))
