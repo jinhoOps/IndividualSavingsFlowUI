@@ -10,19 +10,69 @@ const source = {
 const draft = createDefaultSimulationDraft(source, 456);
 
 describe('bootstrapSimulation', () => {
-  it('resumes a draft while flagging a newer Main source without overwriting it', () => {
-    const latest = { ...source, mainUpdatedAt: 200 };
+  it('replaces only Main-owned source fields and requests persistence', () => {
+    const latest = { ...source, monthlySavingsWon: 900_000, mainUpdatedAt: 200 };
     const result = bootstrapSimulation(
       { status: 'found', source: latest },
-      { status: 'found', draft },
+      { status: 'found', draft, migration: null },
+      999,
     );
 
     expect(result).toEqual({
       kind: 'ready',
-      draft,
+      draft: {
+        ...draft,
+        source: latest,
+        updatedAt: 999,
+      },
       latestMainSource: latest,
-      mainChanged: true,
       persistenceAvailable: true,
+      shouldPersist: true,
+      durationAdjusted: false,
+    });
+  });
+
+  it('does not rewrite an unchanged current draft', () => {
+    expect(bootstrapSimulation(
+      { status: 'found', source },
+      { status: 'found', draft, migration: null },
+      999,
+    )).toEqual({
+      kind: 'ready',
+      draft,
+      latestMainSource: source,
+      persistenceAvailable: true,
+      shouldPersist: false,
+      durationAdjusted: false,
+    });
+  });
+
+  it('keeps a valid saved result when Main storage is unavailable', () => {
+    expect(bootstrapSimulation(
+      { status: 'unavailable' },
+      { status: 'found', draft, migration: null },
+      999,
+    )).toEqual({
+      kind: 'stale-main',
+      draft,
+      persistenceAvailable: true,
+      shouldPersist: false,
+      durationAdjusted: false,
+    });
+  });
+
+  it('preserves a duration migration notice when Main is unavailable', () => {
+    const adjusted = { ...draft, years: 30 };
+    expect(bootstrapSimulation(
+      { status: 'unavailable' },
+      { status: 'found', draft: adjusted, migration: 'duration-capped' },
+      999,
+    )).toEqual({
+      kind: 'stale-main',
+      draft: adjusted,
+      persistenceAvailable: true,
+      shouldPersist: true,
+      durationAdjusted: true,
     });
   });
 
@@ -37,6 +87,7 @@ describe('bootstrapSimulation', () => {
         },
       },
       { status: 'empty' },
+      999,
     )).toEqual({ kind: 'main-required', reason: 'zero-contribution' });
   });
 
@@ -44,12 +95,14 @@ describe('bootstrapSimulation', () => {
     expect(bootstrapSimulation(
       { status: 'found', source },
       { status: 'unavailable' },
+      999,
     )).toEqual({
       kind: 'ready',
       draft: null,
       latestMainSource: source,
-      mainChanged: false,
       persistenceAvailable: false,
+      shouldPersist: false,
+      durationAdjusted: false,
     });
   });
 });

@@ -22,6 +22,40 @@ test('connects Main directly to the detailed Simulation', async ({ page }) => {
     .toHaveAttribute('aria-current', 'page');
 });
 
+test('revisits Simulation at the result and refreshes only its Main source', async ({ page }) => {
+  const previousSource = {
+    monthlySavingsWon: 100_000,
+    monthlyInvestmentWon: 100_000,
+    mainUpdatedAt: appliedMain.updatedAt - 1,
+  };
+  await page.addInitScript(({ main, source }) => {
+    localStorage.setItem('isf-main-v2', JSON.stringify(main));
+    localStorage.setItem('isf-simulation-compound-v1', JSON.stringify({
+      schemaVersion: 2,
+      source,
+      initialInvestmentWon: 10_000_000,
+      years: 20,
+      expectedAnnualReturnPercent: 9,
+      baseRatePercent: 2.75,
+      inflationOffsetPercentPoints: -0.25,
+      amountMode: 'nominal',
+      updatedAt: source.mainUpdatedAt,
+    }));
+  }, { main: appliedMain, source: previousSource });
+
+  await page.goto('apps/simulation/');
+  await expect(page.getByRole('heading', { name: /이대로 20년 유지하면/ })).toBeVisible();
+  await expect(page.getByText(/월 저축 30만 원 · 투자 20만 원/)).toBeVisible();
+  await expect(page.getByRole('heading', { name: '지금 모아둔 투자금이 있나요?' }))
+    .toHaveCount(0);
+
+  const stored = await page.evaluate(() => JSON.parse(
+    localStorage.getItem('isf-simulation-compound-v1')!,
+  ));
+  expect(stored.source.monthlySavingsWon).toBe(300_000);
+  expect(stored.initialInvestmentWon).toBe(10_000_000);
+});
+
 test('keeps Portfolio and Account Map as isolated readiness routes', async ({ page }) => {
   for (const app of ['portfolio', 'account-map'] as const) {
     await page.goto(`apps/${app}/`);

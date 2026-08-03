@@ -1,6 +1,7 @@
 import {
   SIMULATION_SCHEMA_VERSION,
   type CompoundSimulationDraft,
+  type SimulationDraftMigration,
   type SimulationMainSource,
 } from './model';
 
@@ -39,6 +40,44 @@ export function createDefaultSimulationDraft(
 }
 
 export function parseSimulationDraft(value: unknown): CompoundSimulationDraft | null {
+  const parsed = parseDraftValues(value, SIMULATION_SCHEMA_VERSION, 0, 30);
+  return parsed === null ? null : {
+    schemaVersion: SIMULATION_SCHEMA_VERSION,
+    ...parsed,
+  };
+}
+
+export interface StoredSimulationDraftParseResult {
+  draft: CompoundSimulationDraft;
+  migration: SimulationDraftMigration | null;
+}
+
+export function parseStoredSimulationDraft(
+  value: unknown,
+): StoredSimulationDraftParseResult | null {
+  const current = parseSimulationDraft(value);
+  if (current !== null) return { draft: current, migration: null };
+
+  const legacy = parseDraftValues(value, 1, 1, 50);
+  if (legacy === null) return null;
+
+  const years = Math.min(legacy.years, 30);
+  return {
+    draft: {
+      schemaVersion: SIMULATION_SCHEMA_VERSION,
+      ...legacy,
+      years,
+    },
+    migration: legacy.years > 30 ? 'duration-capped' : 'schema-upgraded',
+  };
+}
+
+function parseDraftValues(
+  value: unknown,
+  schemaVersion: number,
+  minimumYears: number,
+  maximumYears: number,
+): Omit<CompoundSimulationDraft, 'schemaVersion'> | null {
   if (!hasExactKeys(value, draftKeys)) return null;
   if (!hasExactKeys(value.source, sourceKeys)) return null;
 
@@ -47,9 +86,9 @@ export function parseSimulationDraft(value: unknown): CompoundSimulationDraft | 
     !isNonnegativeSafeInteger(source.monthlySavingsWon)
     || !isNonnegativeSafeInteger(source.monthlyInvestmentWon)
     || !isPositiveSafeInteger(source.mainUpdatedAt)
-    || value.schemaVersion !== SIMULATION_SCHEMA_VERSION
+    || value.schemaVersion !== schemaVersion
     || !isNonnegativeSafeInteger(value.initialInvestmentWon)
-    || !isIntegerInRange(value.years, 1, 50)
+    || !isIntegerInRange(value.years, minimumYears, maximumYears)
     || !isTwoDecimalNumber(value.expectedAnnualReturnPercent)
     || value.expectedAnnualReturnPercent < 0
     || value.expectedAnnualReturnPercent > 30
@@ -64,7 +103,6 @@ export function parseSimulationDraft(value: unknown): CompoundSimulationDraft | 
   }
 
   return {
-    schemaVersion: value.schemaVersion,
     source: {
       monthlySavingsWon: source.monthlySavingsWon,
       monthlyInvestmentWon: source.monthlyInvestmentWon,

@@ -1,10 +1,14 @@
-import type { CompoundSimulationDraft } from '../domain/model';
-import { parseSimulationDraft } from '../domain/validation';
+import type { CompoundSimulationDraft, SimulationDraftMigration } from '../domain/model';
+import { parseStoredSimulationDraft } from '../domain/validation';
 
 export const SIMULATION_STORAGE_KEY = 'isf-simulation-compound-v1';
 
 export type SimulationLoadResult =
-  | { status: 'found'; draft: CompoundSimulationDraft }
+  | {
+    status: 'found';
+    draft: CompoundSimulationDraft;
+    migration: SimulationDraftMigration | null;
+  }
   | { status: 'empty' }
   | { status: 'invalid' }
   | { status: 'unavailable' };
@@ -27,8 +31,8 @@ export class BrowserSimulationRepository implements SimulationRepository {
     try {
       const raw = this.getStorage().getItem(SIMULATION_STORAGE_KEY);
       if (raw === null) return { status: 'empty' };
-      const draft = parseSimulationDraft(JSON.parse(raw));
-      return draft === null ? { status: 'invalid' } : { status: 'found', draft };
+      const parsed = parseStoredSimulationDraft(JSON.parse(raw));
+      return parsed === null ? { status: 'invalid' } : { status: 'found', ...parsed };
     } catch (error) {
       return error instanceof SyntaxError
         ? { status: 'invalid' }

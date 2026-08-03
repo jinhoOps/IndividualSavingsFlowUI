@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { ProjectionPoint } from '../../../src/simulation/domain/model';
-import { buildChartGeometry } from '../../../src/simulation/ui/chartGeometry';
+import {
+  buildChartGeometry,
+  tooltipSide,
+} from '../../../src/simulation/ui/chartGeometry';
 
 const points: ProjectionPoint[] = [
   {
@@ -33,5 +36,24 @@ describe('buildChartGeometry', () => {
       expect(point.currentY).toBeGreaterThanOrEqual(geometry.plot.top);
       expect(point.currentY).toBeLessThanOrEqual(geometry.plot.bottom);
     }
+  });
+
+  it('builds sparse integer ticks and finite zero-year geometry', () => {
+    const geometry = buildChartGeometry([points[0]], 'nominal');
+
+    expect(geometry.xTicks.map((tick) => tick.label)).toEqual(['현재']);
+    expect(geometry.yTicks.every((tick) => !tick.label.includes('.'))).toBe(true);
+    expect(geometry.currentPlanPath).not.toContain('NaN');
+
+    const thirtyYear = buildChartGeometry([
+      points[0],
+      { ...points[1], year: 30, month: 360 },
+    ], 'nominal');
+    expect(thirtyYear.xTicks.at(-1)?.label).toBe('30년');
+  });
+
+  it('places the tooltip opposite the nearest viewport edge', () => {
+    expect(tooltipSide(620, 680, 240)).toBe('left');
+    expect(tooltipSide(120, 680, 240)).toBe('right');
   });
 });

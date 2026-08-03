@@ -1,11 +1,11 @@
 # Current Project State
 
-**Last reviewed:** 2026-07-30
+**Last reviewed:** 2026-08-03
 
 ## Product Baseline
 
-- Main is the only supported detailed product.
-- Simulation, Portfolio, and Account Map are future apps. Their supported routes currently provide readiness and journey continuity only.
+- Main and Simulation are supported detailed products.
+- Portfolio and Account Map are future apps whose routes provide readiness and journey continuity only.
 - Retained legacy implementations are temporary evidence for feature and data-contract migration. They are not supported product routes or foundations for new work.
 
 ## Current Main Contract
@@ -31,9 +31,15 @@ Current user-facing capabilities:
 
 Main does not currently provide itemized accounts, category rows, household budgeting, actual-spend capture, Sankey, or long-term projection. Those concepts may exist in retained legacy code and documents but are not current product behavior.
 
+## Current Simulation
+
+- First run guides starting principal, then duration and expected return; a valid saved draft opens result-first.
+- Entry automatically refreshes Main-owned monthly saving and investment without write-back while preserving Simulation settings.
+- The result supports 0–30 years, Korean integer-unit formatting, nominal/real values, and pointer, touch, and keyboard graph exploration.
+- Focused unit tests and browser tests cover 390px, 768px, and desktop behavior.
+
 ## Readiness Routes
 
-- Simulation shows connection state, Main investment capacity, and Main update time.
 - Portfolio continues the minimal readiness journey from Simulation.
 - Account Map is readiness-only and does not read, edit, store, or write back a detailed map.
 
@@ -50,4 +56,5 @@ Main does not currently provide itemized accounts, category rows, household budg
 - Forward order: [Roadmap](ROADMAP.md)
 - Runtime model: [`src/main/domain/model.ts`](../src/main/domain/model.ts)
 - Current Main behavior: [`tests/main-react.spec.ts`](../tests/main-react.spec.ts)
-- Readiness journey: [`tests/app-journey.spec.ts`](../tests/app-journey.spec.ts)
+- Current Simulation behavior: [`tests/simulation.spec.ts`](../tests/simulation.spec.ts)
+- Current journey: [`tests/app-journey.spec.ts`](../tests/app-journey.spec.ts)

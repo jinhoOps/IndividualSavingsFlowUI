@@ -26,7 +26,7 @@ describe('BrowserSimulationRepository', () => {
     const repository = new BrowserSimulationRepository(() => storage);
 
     expect(repository.save(draft)).toEqual({ status: 'saved' });
-    expect(repository.load()).toEqual({ status: 'found', draft });
+    expect(repository.load()).toEqual({ status: 'found', draft, migration: null });
     expect(storage.getItem('isf-main-v2')).toBe('{"main":true}');
     expect(storage.getItem('isf-rebuild-v1')).toBe('{"legacy":true}');
   });
@@ -47,5 +47,16 @@ describe('BrowserSimulationRepository', () => {
     expect(repository.clear()).toEqual({ status: 'cleared' });
     expect(storage.getItem(SIMULATION_STORAGE_KEY)).toBeNull();
     expect(storage.getItem('isf-step2-saves')).toBe('keep');
+  });
+
+  it('migrates a v1 duration above 30 years without dropping other settings', () => {
+    const legacy = { ...draft, schemaVersion: 1, years: 47 };
+    storage.setItem(SIMULATION_STORAGE_KEY, JSON.stringify(legacy));
+
+    expect(new BrowserSimulationRepository(() => storage).load()).toEqual({
+      status: 'found',
+      draft: { ...legacy, schemaVersion: 2, years: 30 },
+      migration: 'duration-capped',
+    });
   });
 });

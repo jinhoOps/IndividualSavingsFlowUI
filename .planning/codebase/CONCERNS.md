@@ -32,7 +32,7 @@ Mitigation:
 
 ## Documentation Can Drift Toward Future Vision
 
-ISF’s concept includes long-term simulation, portfolios, and account relationships, while the supported product currently stops at readiness.
+ISF currently supports Main and long-term Simulation, while Portfolio and account relationships remain readiness or future concepts.
 
 Mitigation:
 

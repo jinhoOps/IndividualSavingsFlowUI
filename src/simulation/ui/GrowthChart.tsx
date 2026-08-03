@@ -4,8 +4,9 @@ import type {
   ProjectionPoint,
   ProjectionResult,
 } from '../domain/model';
-import { buildChartGeometry } from './chartGeometry';
+import { buildChartGeometry, tooltipSide } from './chartGeometry';
 import { formatWon } from './format';
+import { GrowthChartTooltip } from './GrowthChartTooltip';
 
 export function GrowthChart({
   result,
@@ -14,29 +15,28 @@ export function GrowthChart({
   result: ProjectionResult;
   amountMode: CompoundSimulationDraft['amountMode'];
 }) {
-  const [active, setActive] = useState<ProjectionPoint | null>(null);
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const chartRef = useRef<HTMLElement>(null);
   useEffect(() => {
-    if (active === null) return undefined;
+    if (activeIndex === null) return undefined;
     const dismissOutside = (event: PointerEvent) => {
-      if (!chartRef.current?.contains(event.target as Node)) setActive(null);
+      if (!chartRef.current?.contains(event.target as Node)) setActiveIndex(null);
     };
     document.addEventListener('pointerdown', dismissOutside);
     return () => document.removeEventListener('pointerdown', dismissOutside);
-  }, [active]);
+  }, [activeIndex]);
   const geometry = buildChartGeometry(result.points, amountMode);
   const last = result.points.at(-1)!;
   const finalCurrent = displayed(last, 'current', amountMode);
   const finalSavings = displayed(last, 'allSavings', amountMode);
+  const activeGeometry = activeIndex === null ? null : geometry.points[activeIndex] ?? null;
+  const active = activeGeometry?.point ?? null;
 
   return (
     <section
       ref={chartRef}
       className="growth-chart"
       aria-labelledby="growth-chart-title"
-      onKeyDown={(event) => {
-        if (event.key === 'Escape') setActive(null);
-      }}
     >
       <div className="growth-chart__header">
         <h2 id="growth-chart-title">시간이 만든 차이</h2>
@@ -46,76 +46,113 @@ export function GrowthChart({
         </div>
       </div>
       <p className="sr-only">
-        {`현재 계획 ${formatWon(finalCurrent)}, 전부 저축 ${formatWon(finalSavings)}, 차이 ${formatWon(finalCurrent - finalSavings)}`}
+        {`${amountMode === 'nominal' ? '명목' : '실질'} 기준 ${last.year}년, 현재 계획 ${formatWon(finalCurrent)}, 전부 저축 ${formatWon(finalSavings)}, 차이 ${formatWon(finalCurrent - finalSavings)}`}
       </p>
-      <div className="growth-chart__canvas">
+      <div
+        className="growth-chart__canvas"
+        role="application"
+        aria-label="그래프 연도 탐색"
+        tabIndex={0}
+        onKeyDown={(event) => {
+          if (event.key === 'Escape') setActiveIndex(null);
+          if (event.key === 'Home') setActiveIndex(0);
+          if (event.key === 'End') setActiveIndex(result.points.length - 1);
+          if (event.key === 'ArrowLeft') {
+            event.preventDefault();
+            setActiveIndex((current) => Math.max(0, (current ?? 1) - 1));
+          }
+          if (event.key === 'ArrowRight') {
+            event.preventDefault();
+            setActiveIndex((current) => Math.min(result.points.length - 1, (current ?? -1) + 1));
+          }
+        }}
+      >
         <svg
           viewBox="0 0 680 285"
           role="img"
           aria-label="연도별 복리 성장 그래프"
           onPointerDown={(event) => {
-            const point = pointAt(event.currentTarget, event.clientX, result.points);
-            setActive((current) => current?.month === point?.month ? null : point);
+            const index = indexAt(
+              event.currentTarget,
+              event.clientX,
+              result.points,
+              geometry.plot,
+            );
+            setActiveIndex((current) => current === index ? null : index);
           }}
           onPointerMove={(event) => {
             if (event.pointerType !== 'touch') {
-              setActive(pointAt(event.currentTarget, event.clientX, result.points));
+              setActiveIndex(indexAt(
+                event.currentTarget,
+                event.clientX,
+                result.points,
+                geometry.plot,
+              ));
             }
           }}
         >
+          {geometry.yTicks.map((tick) => (
+            <g className="growth-chart__y-tick" key={tick.y}>
+              <line x1={geometry.plot.left} x2={geometry.plot.right} y1={tick.y} y2={tick.y} />
+              <text x={geometry.plot.left} y={tick.y}>{tick.label}</text>
+            </g>
+          ))}
           <path className="growth-chart__area" d={geometry.currentPlanAreaPath} />
           <path className="growth-chart__current" d={geometry.currentPlanPath} />
           <path className="growth-chart__savings" d={geometry.allSavingsPath} />
+          {activeGeometry === null ? null : (
+            <>
+              <line
+                className="growth-chart__guide"
+                x1={activeGeometry.x}
+                x2={activeGeometry.x}
+                y1={geometry.plot.top}
+                y2={geometry.plot.bottom}
+              />
+              <circle className="growth-chart__marker" cx={activeGeometry.x} cy={activeGeometry.currentY} r="5" />
+              <circle className="growth-chart__marker" cx={activeGeometry.x} cy={activeGeometry.allSavingsY} r="4" />
+            </>
+          )}
+          {geometry.xTicks.map((tick) => (
+            <text className="growth-chart__x-tick" key={tick.x} x={tick.x} y="277">{tick.label}</text>
+          ))}
         </svg>
-        <input
-          className="growth-chart__scrubber"
-          aria-label="그래프 연도 상세"
-          type="range"
-          min="0"
-          max={result.points.length - 1}
-          step="1"
-          value={active?.year ?? result.points.length - 1}
-          onChange={(event) => {
-            setActive(result.points[Number(event.target.value)] ?? null);
-          }}
-        />
-        {active === null ? null : (
-          <aside className="growth-chart__tooltip" aria-live="polite">
-            <strong>{active.year}년</strong>
-            <Detail label="현재 계획 총액" value={displayed(active, 'current', amountMode)} />
-            <Detail label="전부 저축 총액" value={displayed(active, 'allSavings', amountMode)} />
-            <Detail label="누적 납입원금" value={
-              amountMode === 'real'
+        {active === null || activeGeometry === null ? null : (
+          <GrowthChartTooltip
+            side={tooltipSide(activeGeometry.x, 680, 240)}
+            anchorPercent={activeGeometry.x / 680 * 100}
+            onClose={() => setActiveIndex(null)}
+            values={{
+              year: active.year,
+              currentPlanWon: displayed(active, 'current', amountMode),
+              allSavingsWon: displayed(active, 'allSavings', amountMode),
+              principalWon: amountMode === 'real'
                 ? active.contributedPrincipalRealWon
-                : active.contributedPrincipalWon
-            } />
-            <Detail label="저축 잔액" value={
-              amountMode === 'real' ? active.savingsRealWon : active.savingsNominalWon
-            } />
-            <Detail label="투자 잔액" value={
-              amountMode === 'real' ? active.investmentRealWon : active.investmentNominalWon
-            } />
-            <button type="button" onClick={() => setActive(null)}>닫기</button>
-          </aside>
+                : active.contributedPrincipalWon,
+              savingsWon: amountMode === 'real' ? active.savingsRealWon : active.savingsNominalWon,
+              investmentWon: amountMode === 'real'
+                ? active.investmentRealWon
+                : active.investmentNominalWon,
+            }}
+          />
         )}
       </div>
     </section>
   );
 }
 
-function pointAt(
+function indexAt(
   element: SVGSVGElement,
   clientX: number,
   points: ProjectionPoint[],
-): ProjectionPoint | null {
+  plot: { left: number; right: number },
+): number | null {
   const bounds = element.getBoundingClientRect();
   if (bounds.width <= 0) return null;
-  const ratio = Math.max(0, Math.min(1, (clientX - bounds.left) / bounds.width));
-  return points[Math.round(ratio * (points.length - 1))] ?? null;
-}
-
-function Detail({ label, value }: { label: string; value: number }) {
-  return <p><span>{label}</span><b>{formatWon(value)}</b></p>;
+  const viewBoxX = (clientX - bounds.left) / bounds.width * 680;
+  const ratio = Math.max(0, Math.min(1, (viewBoxX - plot.left) / (plot.right - plot.left)));
+  const index = Math.round(ratio * (points.length - 1));
+  return points[index] === undefined ? null : index;
 }
 
 function displayed(

@@ -4,7 +4,7 @@
 
 Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계획 경험으로 바꾸는 로컬 우선 도구입니다. 시각적 기반은 종이 같은 **ISF Pearl** 캔버스와 단색 테두리의 **flat editorial panel**입니다. 전통적인 스프레드시트의 긴장감은 줄이되 숫자의 정밀성과 신뢰감은 유지합니다.
 
-이 문서의 현재 UI 계약은 Main과 Simulation·Portfolio·Account Map 준비 화면에 적용됩니다. 세 상세 앱 섹션은 후속 신규 앱을 위한 미래 설계 제약이며 현재 제공 기능을 뜻하지 않습니다. 과거 레거시 화면의 모양이나 상호작용은 새 UI의 기준이 아닙니다.
+이 문서의 현재 UI 계약은 상세 제품인 Main과 Simulation, 그리고 Portfolio·Account Map 준비 화면에 적용됩니다. 두 미래 앱 섹션은 후속 신규 앱을 위한 설계 제약이며 현재 제공 기능을 뜻하지 않습니다. 과거 레거시 화면의 모양이나 상호작용은 새 UI의 기준이 아닙니다.
 
 ## Experience Principles
 
@@ -28,20 +28,21 @@ Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계획 �
 - `취소`와 `적용`은 현재 draft와 적용된 계획의 차이를 명확히 처리합니다.
 - 요약과 월 자금 구성은 적용된 데이터만 반영합니다.
 
-### Current Journey Readiness
+### Current Journey
 
-- 앱 런처는 Main을 `사용 중`, Simulation·Portfolio·Account Map을 `준비 중`으로 고정 표시합니다.
+- 앱 런처는 Main과 Simulation을 `사용 중`, Portfolio와 Account Map을 `준비 중`으로 표시합니다.
 - 현재 위치는 제품 가용 상태와 분리된 보이는 텍스트와 `aria-current`로 표시합니다.
-- Simulation과 Portfolio 준비 화면은 연결 상태, 월 투자 가능액과 Main 갱신 시각을 표시합니다.
-- 연결된 준비 화면은 `Main에서 최신 정보 가져오기` 행동을 제공하고 오류 상태는 Main 복구 경로를 제공합니다.
-- 준비 화면은 계산, 편집, 독립 제품 저장 또는 Main write-back UI를 만들지 않습니다.
+- Simulation은 진입 시 최신 Main 월 저축·투자를 읽기 전용으로 자동 동기화합니다.
+- Portfolio와 Account Map 준비 화면은 계산, 편집, 독립 제품 저장 또는 Main write-back UI를 만들지 않습니다.
 
-### Future Simulation
+### Simulation
 
-- Main 데이터 가져오기는 명시적 행동으로 표시합니다.
-- 가져온 값과 사용자가 Simulation에서 수정한 값을 구분합니다.
-- 총자산과 월 현금흐름을 함께 보여줘 전략의 tradeoff를 숨기지 않습니다.
-- 계산 가정과 면책을 결과 가까이에 배치합니다.
+- 최초 설정은 시작 원금과 기간·기대수익률 두 단계로 안내하고, 재방문은 저장된 결과를 먼저 보여줍니다.
+- 결과는 핵심 문장 하나, 조건 한 줄, 전체 폭 그래프, 비교값 두 개 순서로 읽힙니다.
+- 기간은 0~30년 슬라이더와 숫자 입력을 함께 제공하고 직접 기대수익률은 ±0.25%p 조작을 제공합니다.
+- 그래프는 기본 상태를 절제하고 pointer·touch·keyboard 탐색 시 연도와 현재 계획·전부 저축·납입원금·저축·투자 잔액을 카드로 보여줍니다.
+- 명목·실질은 항상 보이고 기준금리, 물가와 면책은 `계산 기준`에서 점진적으로 공개합니다.
+- 저장 성공은 낮은 강조로 상시 표시하고 오류만 강조합니다. 재설정은 Simulation 메뉴 안에서 확인합니다.
 
 ### Future Portfolio
 
@@ -96,7 +97,7 @@ Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계획 �
 - 내부 계산과 영속화는 **원 단위**를 사용합니다.
 - 사용자가 입력하는 금액 필드는 현재 화면 계약에 맞는 원화 형식을 사용하고 단위를 명시합니다.
 - 요약과 읽기 화면에서는 만 원·억 원 단위를 사용해 빠르게 읽을 수 있게 합니다.
-- 1억 원 이상은 억·만 원 조합 등 의미가 보존되는 형식으로 표시합니다.
+- 1억 원 미만은 백 원 단위까지 반올림해 천 원까지, 1억 원 이상은 천 원 단위까지 반올림해 억·만 원 조합으로 소수점 없이 표시합니다.
 - 금액 변환과 표시는 공통 utility를 사용해 화면별 오차를 만들지 않습니다.
 - 사용자 편집 금액의 허용 범위와 비정상 값은 저장 전에 검증합니다. 계산 결과인 0원 또는 음수 월 투자 가능액은 정상 journey 상태로 표시할 수 있습니다.
 
@@ -106,7 +107,7 @@ Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계획 �
 
 - Main, Simulation, Portfolio와 Account Map의 위치를 보여줍니다.
 - 현재 목적지를 `현재 위치` 텍스트와 `aria-current`로 분명히 표시합니다.
-- 제품 가용 상태는 현재 위치와 독립적으로 Main `사용 중`, 세 향후 앱 `준비 중`을 유지합니다.
+- 제품 가용 상태는 현재 위치와 독립적으로 Main·Simulation `사용 중`, Portfolio·Account Map `준비 중`을 유지합니다.
 - 데이터 연결 상태는 실제 journey snapshot이 검증된 경우에만 표시합니다.
 
 ### Main Cashflow Editor
@@ -185,10 +186,11 @@ gradient와 반투명 card를 기본 스타일로 사용하지 않습니다.
 ### Contracts
 
 - 390px에서 body의 예기치 않은 가로 overflow가 없어야 합니다.
-- 390px에서 준비 화면과 Main 여정 CTA는 콘텐츠 너비를 채우고 최소 44px touch target을 가져야 합니다.
+- 390px에서 Simulation 그래프와 비교값은 보이고 tooltip은 viewport 안에 머물러야 합니다.
+- 보이는 주요 버튼과 입력은 최소 44px touch target을 가져야 합니다.
 - modal 콘텐츠는 viewport 안에서 스크롤되고 footer 또는 Pending Bar가 가려지지 않아야 합니다.
 - 다중 열 control은 768px 이하에서 단일 열 또는 읽을 수 있는 compact layout으로 전환합니다.
-- 현재 Main 월 자금 구성과 향후 Account Map은 의미를 잃도록 과도하게 축소하지 않고 필요한 경우 안내가 있는 내부 스크롤을 사용합니다.
+- 현재 Main 월 자금 구성, Simulation 그래프와 향후 Account Map은 의미를 잃도록 과도하게 축소하지 않습니다.
 - 향후 Account Map의 compact summary는 모바일 첫 화면에서 관계도를 밀어내지 않아야 합니다.
 
 ## Accessibility

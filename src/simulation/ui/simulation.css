@@ -1,35 +1,226 @@
 .simulation-shell {
   min-height: 100dvh;
-  padding: 1rem;
+  padding: clamp(.75rem, 2vw, 1.5rem);
+  overflow-x: clip;
+  background: var(--bg);
 }
 
 .simulation-content,
 .simulation-recovery,
-.simulation-prompt {
-  width: min(100%, 68rem);
-  margin: 1rem auto;
+.simulation-onboarding-step {
+  width: min(100%, 70rem);
+  margin: clamp(1.25rem, 4vw, 3.5rem) auto;
 }
 
 .simulation-content {
   display: grid;
-  gap: 1rem;
+  gap: clamp(1.5rem, 4vw, 3rem);
 }
 
-.simulation-summary,
-.simulation-controls,
-.simulation-advanced,
-.growth-chart,
-.simulation-prompt,
+.simulation-onboarding-step,
 .simulation-recovery {
-  min-width: 0;
-  padding: clamp(1rem, 3vw, 2rem);
+  padding: clamp(1.25rem, 5vw, 4rem);
   border: 1px solid var(--line);
-  border-radius: 1.5rem;
-  background: rgb(255 255 255 / 88%);
+  border-radius: var(--ui-surface-radius);
+  background: var(--panel);
+}
+
+.simulation-onboarding-step {
+  max-width: 56rem;
+}
+
+.simulation-eyebrow {
+  margin: 0 0 .5rem;
+  color: var(--tone-primary);
+  font-weight: 700;
+}
+
+.simulation-onboarding-step h1,
+.simulation-recovery h1,
+.simulation-hero h1 {
+  margin: 0;
+  text-wrap: balance;
+}
+
+.simulation-onboarding-step h1 {
+  max-width: 19ch;
+  font-size: clamp(1.8rem, 5vw, 3.35rem);
+  line-height: 1.25;
+}
+
+.simulation-prompt__actions,
+.simulation-preset-row,
+.simulation-custom-return,
+.simulation-toolbar,
+.simulation-amount-mode {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: .625rem;
+}
+
+.simulation-prompt__actions {
+  margin-top: 2rem;
+}
+
+.simulation-onboarding-step form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: .75rem;
+  margin-top: 2rem;
+}
+
+.simulation-onboarding-step form label {
+  grid-column: 1 / -1;
+}
+
+.simulation-onboarding-step > .ui-button {
+  margin-top: 1.5rem;
+}
+
+.simulation-onboarding-preview {
+  display: grid;
+  gap: .75rem;
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--line);
+}
+
+.simulation-onboarding-preview strong {
+  font-family: var(--font-display);
+  font-size: clamp(1.2rem, 3vw, 1.75rem);
+}
+
+.simulation-onboarding-preview svg {
+  width: 100%;
+  max-height: 13rem;
+}
+
+.simulation-toolbar {
+  justify-content: flex-end;
+  min-height: 2.75rem;
+  color: var(--muted);
+}
+
+.simulation-save-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  margin: 0;
+  font-size: .85rem;
+}
+
+.simulation-save-indicator span {
+  width: .5rem;
+  height: .5rem;
+  border-radius: 50%;
+  background: var(--status-success);
+}
+
+.simulation-save-indicator[data-state="saving"] span {
+  background: var(--muted);
+}
+
+.simulation-save-indicator[data-state="error"] {
+  color: var(--status-error);
+  font-weight: 700;
+}
+
+.simulation-save-indicator[data-state="error"] span {
+  background: var(--status-error);
+}
+
+.simulation-menu {
+  position: relative;
+}
+
+.simulation-menu > summary,
+.simulation-advanced > summary {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  cursor: pointer;
+}
+
+.simulation-menu > button {
+  min-height: 44px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--status-error);
+}
+
+.simulation-menu[open] > button {
+  position: absolute;
+  right: 0;
+  z-index: 5;
+  width: max-content;
+  padding: .65rem 1rem;
+}
+
+.simulation-menu [role="dialog"] {
+  position: fixed;
+  inset: 50% auto auto 50%;
+  z-index: 20;
+  width: min(calc(100vw - 2rem), 28rem);
+  padding: 1.5rem;
+  transform: translate(-50%, -50%);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--ui-surface-radius);
+  background: var(--panel);
+  box-shadow: var(--shadow-float);
+}
+
+.simulation-menu [role="dialog"]::backdrop {
+  background: rgb(16 34 32 / 32%);
+}
+
+.simulation-menu [role="dialog"] button,
+.simulation-controls button,
+.simulation-amount-mode button,
+.simulation-custom-return button {
+  min-width: 44px;
+  min-height: 44px;
+  padding: .55rem .85rem;
+  border: 1px solid var(--line);
+  border-radius: var(--ui-control-radius);
+  background: var(--panel);
+}
+
+.simulation-hero {
+  display: grid;
+  gap: .75rem;
+  padding-block: clamp(.5rem, 2vw, 1.5rem);
+}
+
+.simulation-hero h1 {
+  max-width: 24ch;
+  font-size: clamp(2rem, 6vw, 4.75rem);
+  line-height: 1.18;
+  letter-spacing: -.04em;
+  word-break: keep-all;
+}
+
+.simulation-hero__conditions {
+  margin: 0;
+  color: var(--muted);
+  font-size: clamp(.95rem, 2vw, 1.15rem);
+}
+
+.simulation-stale-main {
+  padding: 1rem;
+  border-left: 3px solid var(--tone-primary);
+  background: var(--panel);
+}
+
+.simulation-stale-main p {
+  margin: .25rem 0;
 }
 
 .growth-chart {
   min-width: 0;
+  padding-block: clamp(1rem, 3vw, 2rem);
+  border-block: 1px solid var(--line);
 }
 
 .growth-chart__header,
@@ -45,6 +236,16 @@
   flex-wrap: wrap;
 }
 
+.growth-chart__header h2 {
+  margin: 0;
+  font-size: clamp(1.25rem, 3vw, 1.75rem);
+}
+
+.growth-chart__legend {
+  color: var(--muted);
+  font-size: .85rem;
+}
+
 .growth-chart__legend i {
   display: inline-block;
   width: 1.75rem;
@@ -56,22 +257,29 @@
 }
 
 .growth-chart__legend-savings {
-  border-top: 2px dashed #9ca3af;
+  border-top: 2px dashed #8a9693;
 }
 
 .growth-chart__canvas {
   position: relative;
   min-width: 0;
+  outline: none;
+}
+
+.growth-chart__canvas:focus-visible {
+  border-radius: .5rem;
+  box-shadow: var(--ui-focus-ring);
 }
 
 .growth-chart svg {
   display: block;
   width: 100%;
+  min-height: 17rem;
   overflow: visible;
 }
 
 .growth-chart__area {
-  fill: rgb(15 118 110 / 14%);
+  fill: rgb(15 118 110 / 11%);
 }
 
 .growth-chart__current {
@@ -84,101 +292,287 @@
 
 .growth-chart__savings {
   fill: none;
-  stroke: #9ca3af;
+  stroke: #8a9693;
   stroke-width: 2;
   stroke-dasharray: 7 7;
 }
 
-.growth-chart__scrubber {
-  min-height: 44px;
-  padding-inline: 0;
-  accent-color: var(--tone-accent);
+.growth-chart__y-tick line {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.growth-chart__y-tick text,
+.growth-chart__x-tick {
+  fill: var(--muted);
+  font-family: var(--font-body);
+  font-size: 11px;
+}
+
+.growth-chart__x-tick {
+  text-anchor: middle;
+}
+
+.growth-chart__guide {
+  stroke: var(--ink);
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+}
+
+.growth-chart__marker {
+  fill: var(--panel);
+  stroke: var(--tone-accent);
+  stroke-width: 3;
+}
+
+.growth-chart__marker + .growth-chart__marker {
+  stroke: #74817e;
 }
 
 .growth-chart__tooltip {
   position: absolute;
-  top: 1rem;
-  right: 1rem;
-  z-index: 2;
-  width: min(18rem, calc(100% - 2rem));
-  padding: .9rem;
-  border: 1px solid var(--line);
+  top: 1.25rem;
+  z-index: 4;
+  width: min(15rem, calc(100% - 1rem));
+  padding: 1rem;
+  border: 1px solid var(--line-strong);
   border-radius: 1rem;
-  background: rgb(255 255 255 / 96%);
+  background: rgb(255 255 255 / 97%);
   box-shadow: var(--shadow-float);
 }
 
+.growth-chart__tooltip--left {
+  left: calc(var(--tooltip-anchor) - .75rem);
+  transform: translateX(-100%);
+}
+
+.growth-chart__tooltip--right {
+  left: calc(var(--tooltip-anchor) + .75rem);
+}
+
+.growth-chart__tooltip > strong {
+  color: var(--tone-primary);
+}
+
 .growth-chart__tooltip p {
-  display: flex;
-  justify-content: space-between;
-  gap: .75rem;
-  margin: .4rem 0;
+  margin: .35rem 0;
 }
 
-.growth-chart__tooltip span {
-  color: var(--muted);
-}
-
-.simulation-summary__amount {
+.growth-chart__tooltip p span,
+.growth-chart__tooltip p b {
   display: block;
-  overflow-wrap: anywhere;
-  font-size: clamp(2rem, 8vw, 4rem);
 }
 
-.simulation-source,
-.simulation-summary dl {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: .75rem;
-  padding: 0;
-}
-
-.simulation-source div,
-.simulation-summary dl div {
-  min-width: 0;
-}
-
-.simulation-source dt,
-.simulation-summary dt {
+.growth-chart__tooltip p span {
   color: var(--muted);
-  font-size: .85rem;
+  font-size: .76rem;
 }
 
-.simulation-source dd,
-.simulation-summary dd {
-  margin: .25rem 0 0;
+.growth-chart__tooltip-primary {
+  padding-bottom: .75rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.growth-chart__tooltip-primary b {
+  margin-top: .15rem;
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+}
+
+.growth-chart__tooltip-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .35rem .75rem;
+}
+
+.growth-chart__tooltip button {
+  min-height: 44px;
+  margin-top: .5rem;
+  border: 0;
+  background: transparent;
+  color: var(--tone-accent);
+}
+
+.simulation-comparison {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(1rem, 4vw, 3rem);
+  margin: 0;
+}
+
+.simulation-comparison div {
+  min-width: 0;
+  padding-block: 1rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.simulation-comparison dt {
+  color: var(--muted);
+}
+
+.simulation-comparison dd {
+  margin: .35rem 0 0;
+  overflow-wrap: anywhere;
+  font-family: var(--font-display);
+  font-size: clamp(1.35rem, 4vw, 2.5rem);
   font-weight: 700;
 }
 
 .simulation-controls {
   display: grid;
-  gap: 1.25rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(1.5rem, 4vw, 3rem);
+  padding-block: clamp(1rem, 3vw, 2rem);
 }
 
-.simulation-stepper,
-.simulation-preset-row,
-.simulation-prompt__actions {
+.simulation-control-group {
+  display: grid;
+  align-content: start;
+  gap: .75rem;
+}
+
+.simulation-control-group legend,
+.simulation-amount-mode legend {
+  margin-bottom: .75rem;
+  font-weight: 700;
+}
+
+.simulation-duration-control {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 7rem;
+  align-items: center;
+  gap: .75rem;
+}
+
+.simulation-duration-control input[type="range"] {
+  padding-inline: 0;
+  accent-color: var(--tone-primary);
+}
+
+.simulation-number-field {
   display: flex;
-  flex-wrap: wrap;
-  gap: .5rem;
-}
-
-.simulation-stepper button,
-.simulation-preset-row button,
-.simulation-advanced button {
-  min-width: 44px;
-  min-height: 44px;
+  align-items: center;
   border: 1px solid var(--line);
-  border-radius: .75rem;
-  background: white;
+  border-radius: var(--ui-control-radius);
+  background: var(--panel);
 }
 
-.simulation-stepper input {
-  width: 7rem;
+.simulation-number-field input {
+  min-width: 0;
+  border: 0;
+  box-shadow: none;
 }
 
-@media (max-width: 480px) {
-  .simulation-source {
+.simulation-number-field > span:last-child {
+  padding-right: .75rem;
+  color: var(--muted);
+}
+
+.simulation-controls button[aria-pressed="true"],
+.simulation-amount-mode button[aria-pressed="true"] {
+  border-color: var(--tone-primary);
+  background: var(--tone-primary);
+  color: white;
+}
+
+.simulation-custom-return {
+  margin-top: .25rem;
+}
+
+.simulation-custom-return .simulation-number-field {
+  width: 8rem;
+}
+
+.simulation-preset-note {
+  color: var(--muted);
+  font-size: .85rem;
+}
+
+.simulation-calculation-settings {
+  display: grid;
+  gap: 1rem;
+  padding-block: 1rem 3rem;
+  border-top: 1px solid var(--line);
+}
+
+.simulation-amount-mode {
+  align-items: end;
+}
+
+.simulation-amount-mode legend {
+  width: 100%;
+}
+
+.simulation-advanced {
+  border-top: 1px solid var(--line);
+}
+
+.simulation-advanced__content {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  padding-block: 1rem;
+}
+
+.simulation-advanced__content label {
+  display: grid;
+  gap: .4rem;
+}
+
+.simulation-advanced__content p {
+  margin: 0;
+  color: var(--muted);
+}
+
+@media (max-width: 767px) {
+  .simulation-shell {
+    padding-inline: .75rem;
+  }
+
+  .simulation-content {
+    gap: 1.5rem;
+  }
+
+  .simulation-toolbar {
+    justify-content: space-between;
+  }
+
+  .simulation-hero h1 {
+    font-size: clamp(2rem, 10vw, 3rem);
+  }
+
+  .growth-chart svg {
+    min-height: 15rem;
+  }
+
+  .growth-chart__tooltip,
+  .growth-chart__tooltip--left,
+  .growth-chart__tooltip--right {
+    right: .5rem;
+    left: .5rem;
+    width: auto;
+    transform: none;
+  }
+
+  .simulation-controls {
     grid-template-columns: 1fr;
+  }
+
+  .simulation-advanced__content {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (min-width: 768px) {
+  .simulation-content {
+    padding-inline: clamp(1rem, 4vw, 3rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .simulation-save-indicator span,
+  .growth-chart__tooltip {
+    animation: none;
+    transition: none;
   }
 }

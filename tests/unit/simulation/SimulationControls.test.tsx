@@ -16,43 +16,53 @@ const draft = createDefaultSimulationDraft({
 describe('SimulationControls', () => {
   it('selects expected-return presets and changes custom return by 0.25%p', () => {
     const onChange = vi.fn();
-    const { rerender } = render(<SimulationControls draft={draft} onChange={onChange} />);
+    render(<SimulationControls draft={draft} onChange={onChange} />);
 
     fireEvent.click(screen.getByRole('button', { name: '연 기대수익률 13%' }));
     expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({
       expectedAnnualReturnPercent: 13,
     }));
 
-    const custom = { ...draft, expectedAnnualReturnPercent: 9.25 };
-    rerender(<SimulationControls draft={custom} onChange={onChange} />);
+    expect(screen.queryByRole('spinbutton', { name: '연 기대수익률 직접 입력' }))
+      .not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '직접 입력' }));
+    expect(screen.getByRole('spinbutton', { name: '연 기대수익률 직접 입력' }))
+      .toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: '기대수익률 0.25%p 올리기' }));
     expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({
-      expectedAnnualReturnPercent: 9.5,
+      expectedAnnualReturnPercent: 9.25,
     }));
   });
 
-  it('changes duration through one-year controls and shortcuts', () => {
+  it('changes duration through a 0 to 30 slider and connected number input', () => {
     const onChange = vi.fn();
     render(<SimulationControls draft={draft} onChange={onChange} />);
 
-    fireEvent.click(screen.getByRole('button', { name: '기간 1년 늘리기' }));
-    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ years: 21 }));
-    fireEvent.click(screen.getByRole('button', { name: '30년' }));
+    const slider = screen.getByRole('slider', { name: '기간' });
+    expect(slider).toHaveAttribute('min', '0');
+    expect(slider).toHaveAttribute('max', '30');
+    fireEvent.change(slider, { target: { value: '0' } });
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ years: 0 }));
+
+    fireEvent.change(screen.getByRole('spinbutton', { name: '기간 숫자' }), {
+      target: { value: '30' },
+    });
     expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ years: 30 }));
-    expect(screen.getByRole('slider', { name: '투자 기간' })).toHaveAttribute('min', '1');
-    expect(screen.getByRole('slider', { name: '투자 기간' })).toHaveAttribute('max', '50');
+    expect(screen.queryByRole('button', { name: '기간 1년 늘리기' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '10년' })).not.toBeInTheDocument();
   });
 
   it('keeps invalid direct input visible without changing the saved draft', () => {
     const onChange = vi.fn();
     render(<SimulationControls draft={draft} onChange={onChange} />);
 
-    fireEvent.change(screen.getByRole('spinbutton', { name: '투자 기간 숫자' }), {
+    fireEvent.change(screen.getByRole('spinbutton', { name: '기간 숫자' }), {
       target: { value: '' },
     });
-    expect(screen.getByRole('spinbutton', { name: '투자 기간 숫자' })).toHaveValue(null);
-    expect(screen.getByText('1~50년 사이의 정수를 입력해주세요.')).toBeVisible();
+    expect(screen.getByRole('spinbutton', { name: '기간 숫자' })).toHaveValue(null);
+    expect(screen.getByText('0~30년 사이의 정수를 입력해주세요.')).toBeVisible();
 
+    fireEvent.click(screen.getByRole('button', { name: '직접 입력' }));
     fireEvent.change(screen.getByRole('spinbutton', { name: '연 기대수익률 직접 입력' }), {
       target: { value: '9.123' },
     });
