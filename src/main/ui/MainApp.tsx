@@ -5,8 +5,6 @@ import { calculateCashflow } from '../domain/cashflow';
 import { createEmptyMainData, type MainData, type SetupStep } from '../domain/model';
 import { exportMainData, exportRecoveryData, importMainData } from '../infrastructure/backup';
 import { BrowserMainRepository, type MainRepository } from '../infrastructure/mainRepository';
-import { createMainJourneySnapshot } from '../../journey/domain/journeySnapshot';
-import { BrowserJourneyRepository, type JourneyRepository } from '../../journey/infrastructure/journeyRepository';
 import { appPath } from '../../journey/routes';
 import { AppLauncher } from '../../journey/ui/AppLauncher';
 import { JourneyEntryCard } from '../../journey/ui/JourneyEntryCard';
@@ -18,26 +16,20 @@ import { SetupFlow } from './setup/SetupFlow';
 
 export interface MainAppProps {
   repository?: MainRepository;
-  journeyRepository?: JourneyRepository;
   navigate?(href: string): void;
-  now?(): number;
 }
 
 const browserRepository = new BrowserMainRepository();
-const browserJourneyRepository = new BrowserJourneyRepository();
 
 export function MainApp({
   repository = browserRepository,
-  journeyRepository = browserJourneyRepository,
   navigate = navigateTo,
-  now = Date.now,
 }: MainAppProps) {
   const [state, setState] = useState<MainState | null>(null);
   const [issues, setIssues] = useState<ValidationIssue[]>([]);
   const [validationAttempt, setValidationAttempt] = useState(0);
   const [backupStatus, setBackupStatus] = useState<{ kind: 'success' | 'error'; message: string } | null>(null);
   const [progressWarning, setProgressWarning] = useState<string | null>(null);
-  const [journeyError, setJourneyError] = useState<string | null>(null);
   const savingRef = useRef(false);
   const [initialEditPath] = useState<keyof MainData | undefined>(() => consumeEditIntent());
 
@@ -219,21 +211,14 @@ export function MainApp({
 
   function continueToSimulation() {
     if (state?.applied === null || state?.applied === undefined) return;
-
-    try {
-      journeyRepository.save(createMainJourneySnapshot(state.applied, now()));
-      setJourneyError(null);
-      navigate(appPath('simulation'));
-    } catch {
-      setJourneyError('연결 정보를 저장하지 못했습니다. Main 계획은 변경되지 않았습니다.');
-    }
+    navigate(appPath('simulation'));
   }
 
   const journeyEntry = <JourneyEntryCard enabled={state?.applied !== null && state?.applied !== undefined} onContinue={continueToSimulation} />;
 
   if (state === null) {
     return (
-      <MainAppShell journeyError={journeyError}>
+      <MainAppShell>
         <main className="grid min-h-dvh place-items-center px-6">
           <p className="text-sm font-bold text-slate-600" role="status">자금 계획을 불러오는 중입니다.</p>
         </main>
@@ -244,7 +229,7 @@ export function MainApp({
   if (state.mode === 'recovery') {
     const original = state.loadError?.original ?? state.draft;
     return (
-      <MainAppShell journeyError={journeyError}>
+      <MainAppShell>
         <RecoveryView
           state={state}
           onDownload={() => downloadRecovery(original)}
@@ -282,7 +267,7 @@ export function MainApp({
       </>
     );
     return (
-      <MainAppShell journeyError={journeyError} showLauncher={false}>
+      <MainAppShell showLauncher={false}>
         <main className="mx-auto min-h-dvh w-full max-w-3xl px-5 py-8 sm:px-8 sm:py-12">
         <SetupFlow
           draft={state.draft}
@@ -304,7 +289,7 @@ export function MainApp({
   if (state.applied === null) return null;
 
   return (
-    <MainAppShell journeyError={journeyError}>
+    <MainAppShell>
       <SummaryDashboard
         applied={state.applied}
         draft={state.draft}
@@ -339,11 +324,9 @@ function consumeEditIntent(): keyof MainData | undefined {
 
 function MainAppShell({
   children,
-  journeyError,
   showLauncher = true,
 }: {
   children: ReactNode;
-  journeyError: string | null;
   showLauncher?: boolean;
 }) {
   return (
@@ -351,7 +334,6 @@ function MainAppShell({
       {showLauncher ? (
         <div className="mx-auto w-full max-w-[1200px] px-5 pt-5 sm:px-8">
           <AppLauncher currentApp="main" />
-          {journeyError === null ? null : <p className="mt-4 text-sm font-bold text-rose-700" role="alert">{journeyError}</p>}
         </div>
       ) : null}
       {children}

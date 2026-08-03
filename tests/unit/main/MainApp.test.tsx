@@ -1,13 +1,14 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import type { ReactNode } from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MainData, SetupStep } from '../../../src/main/domain/model';
 import type {
   MainLoadResult,
   MainRepository,
 } from '../../../src/main/infrastructure/mainRepository';
 import { MainApp, setupStepForIssue } from '../../../src/main/ui/MainApp';
+import { MemoryStorage } from '../simulation/MemoryStorage';
 
 vi.mock('../../../src/main/ui/setup/SetupFlow', () => ({
   SetupFlow: ({
@@ -90,6 +91,12 @@ vi.mock('../../../src/main/ui/dashboard/SummaryDashboard', () => ({
   ),
 }));
 
+beforeEach(() => {
+  const storage = new MemoryStorage();
+  Object.defineProperty(window, 'localStorage', { configurable: true, value: storage });
+  Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: storage });
+});
+
 afterEach(() => {
   cleanup();
   window.history.replaceState(null, '', '/');
@@ -148,25 +155,18 @@ describe('MainApp', () => {
     expect(window.location.search).toBe('');
   });
 
-  it('stores the applied Main summary before opening Simulation', async () => {
-    const save = vi.fn();
+  it('opens Simulation without writing a journey snapshot', async () => {
     const navigate = vi.fn();
     render(<MainApp
       repository={repository({ status: 'current', data: data(3_000_000), original: null })}
-      journeyRepository={{ load: vi.fn(), save }}
       navigate={navigate}
-      now={() => 50}
     />);
     await screen.findByRole('heading', { name: 'dashboard' });
 
     fireEvent.click(screen.getByRole('button', { name: 'Simulation으로 이어가기' }));
 
-    expect(save).toHaveBeenCalledWith(expect.objectContaining({
-      sourceApp: 'main',
-      destinationApp: 'simulation',
-      createdAt: 50,
-    }));
     expect(navigate).toHaveBeenCalledWith(expect.stringContaining('/apps/simulation/'));
+    expect(localStorage.getItem('isf-journey-snapshot-v1')).toBeNull();
   });
 
   it('hides navigation and journey actions during first setup', async () => {
@@ -176,45 +176,6 @@ describe('MainApp', () => {
 
     expect(screen.queryByRole('navigation', { name: 'ISF 앱' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Simulation으로 이어가기' })).not.toBeInTheDocument();
-  });
-
-  it('does not navigate when journey storage fails', async () => {
-    const navigate = vi.fn();
-    render(<MainApp
-      repository={repository({ status: 'current', data: data(3_000_000), original: null })}
-      journeyRepository={{ load: vi.fn(), save: () => { throw new Error('quota'); } }}
-      navigate={navigate}
-    />);
-    await screen.findByRole('heading', { name: 'dashboard' });
-
-    fireEvent.click(screen.getByRole('button', { name: 'Simulation으로 이어가기' }));
-
-    expect(screen.getByRole('alert')).toHaveTextContent('Main 계획은 변경되지 않았습니다');
-    expect(navigate).not.toHaveBeenCalled();
-  });
-
-  it('stores a negative investable amount for an applied deficit plan', async () => {
-    const save = vi.fn();
-    render(<MainApp
-      repository={repository({
-        status: 'current',
-        data: data(1_000_000, {
-          monthlyHousingWon: 800_000,
-          monthlyLivingWon: 500_000,
-          monthlySavingWon: 100_000,
-        }),
-        original: null,
-      })}
-      journeyRepository={{ load: vi.fn(), save }}
-      navigate={vi.fn()}
-    />);
-    await screen.findByRole('heading', { name: 'dashboard' });
-
-    fireEvent.click(screen.getByRole('button', { name: 'Simulation으로 이어가기' }));
-
-    expect(save).toHaveBeenCalledWith(expect.objectContaining({
-      monthlyInvestableAmountWon: -400_000,
-    }));
   });
 
   it('shows loading until bootstrap finishes and then starts setup at welcome', async () => {
