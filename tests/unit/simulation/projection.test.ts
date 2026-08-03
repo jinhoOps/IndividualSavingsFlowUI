@@ -50,6 +50,15 @@ describe('projectCompoundGrowth', () => {
     expect(result.points[0].investmentNominalWon).toBe(10_000_000);
   });
 
+  it('returns only the starting principal at year zero', () => {
+    const result = projectCompoundGrowth({ ...draft, years: 0 });
+
+    expect(result.points).toHaveLength(1);
+    expect(result.finalCurrentPlanWon).toBe(10_000_000);
+    expect(result.finalAllSavingsWon).toBe(10_000_000);
+    expect(result.advantageOverAllSavingsWon).toBe(0);
+  });
+
   it('discounts displayed totals in real mode without changing nominal paths', () => {
     const nominal = projectCompoundGrowth(draft);
     const real = projectCompoundGrowth({ ...draft, amountMode: 'real' });
