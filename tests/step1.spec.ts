@@ -3527,6 +3527,7 @@ test.describe('Main liquid overflow presentation', () => {
       };
     }, selector);
 
+    await page.getByText('자세히 보기', { exact: true }).click();
     for (const selector of ['.allocation-bar__segments']) {
       const geometry = await readGeometry(selector);
       expect(Math.abs(geometry.leftGap - geometry.rightGap)).toBeLessThanOrEqual(1);
@@ -3549,6 +3550,7 @@ test.describe('Main liquid overflow presentation', () => {
   test('removes liquid motion and droplets when reduced motion is requested', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.reload();
+    await page.getByText('자세히 보기', { exact: true }).click();
 
     const motion = await page.locator('.flow-overflow-extension').first().evaluate((element) => {
       const extension = getComputedStyle(element);
