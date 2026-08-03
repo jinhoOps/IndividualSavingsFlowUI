@@ -142,7 +142,13 @@ describe('SetupFlow', () => {
     expect(document.querySelector('.setup-review-transition__track')).not.toBeNull();
     fireEvent.animationEnd(document.querySelector('.setup-review-transition__track')!);
     expect(document.querySelector('.setup-review-transition')).not.toBeNull();
-    fireEvent.animationEnd(document.querySelector('.setup-review-transition')!);
+    const showAnimationEnd = new Event('animationend', { bubbles: true });
+    Object.defineProperty(showAnimationEnd, 'animationName', { value: 'setup-review-show' });
+    fireEvent(document.querySelector('.setup-review-transition')!, showAnimationEnd);
+    expect(document.querySelector('.setup-review-transition')).not.toBeNull();
+    const exitAnimationEnd = new Event('animationend', { bubbles: true });
+    Object.defineProperty(exitAnimationEnd, 'animationName', { value: 'setup-review-transition-exit' });
+    fireEvent(document.querySelector('.setup-review-transition')!, exitAnimationEnd);
     expect(document.querySelector('.setup-review-transition')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: '이전' }));
     fireEvent.click(screen.getByRole('button', { name: '다음' }));

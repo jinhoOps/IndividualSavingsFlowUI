@@ -209,7 +209,12 @@ export function AllocationBar({ data, transitioning = false }: AllocationBarProp
             className="setup-review-transition"
             aria-hidden="true"
             onAnimationEnd={(event) => {
-              if (event.target === event.currentTarget) setTransitionVisible(false);
+              if (
+                event.target === event.currentTarget
+                && event.animationName === 'setup-review-transition-exit'
+              ) {
+                setTransitionVisible(false);
+              }
             }}
           >
             <div className="setup-review-transition__track">
