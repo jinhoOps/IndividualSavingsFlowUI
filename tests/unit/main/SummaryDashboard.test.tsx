@@ -95,7 +95,7 @@ function ValidationHarness({ mobile = false }: { mobile?: boolean }) {
 }
 
 describe('SummaryDashboard', () => {
-  it('renders the supplied journey entry beside the applied Main summary', () => {
+  it('renders the supplied journey entry after the applied Main summary', () => {
     const journeyEntry: ReactNode = <button type="button">Simulation으로 이어가기</button>;
     render(
       <SummaryDashboard
@@ -112,7 +112,10 @@ describe('SummaryDashboard', () => {
       />,
     );
 
-    expect(screen.getByRole('button', { name: 'Simulation으로 이어가기' })).toBeVisible();
+    const summary = screen.getByRole('button', { name: '월 실수령액 편집' });
+    const journey = screen.getByRole('button', { name: 'Simulation으로 이어가기' });
+    expect(journey).toBeVisible();
+    expect(summary.compareDocumentPosition(journey) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
   });
 
   it('uses the shared surface and button variants across the dashboard editor', () => {
