@@ -67,6 +67,16 @@ async function expectResponsiveDashboardFlow(page: Page, viewport: { width: numb
     const chartRect = chart.getBoundingClientRect();
     const valueRect = centerValue.getBoundingClientRect();
     const labelRect = centerLabel.getBoundingClientRect();
+    const relativeLuminance = (color: string) => {
+      const channels = color.match(/\d+(?:\.\d+)?/g)!.slice(0, 3).map((value) => {
+        const normalized = Number(value) / 255;
+        return normalized <= 0.04045
+          ? normalized / 12.92
+          : ((normalized + 0.055) / 1.055) ** 2.4;
+      });
+      return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+    };
+    const whiteLuminance = 1;
     return {
       domOrder: (donut.compareDocumentPosition(cards) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0
         && (cards.compareDocumentPosition(simulation) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
@@ -75,6 +85,11 @@ async function expectResponsiveDashboardFlow(page: Page, viewport: { width: numb
         && labelRect.bottom <= chartRect.bottom
         && valueRect.bottom <= labelRect.top,
       legendHeights: Array.from(donut.querySelectorAll<HTMLElement>('.cashflow-donut__legend-button')).map((element) => element.getBoundingClientRect().height),
+      legendTextContrast: Array.from(donut.querySelectorAll<HTMLElement>('.cashflow-donut__legend-button span')).map((element) => {
+        const luminance = relativeLuminance(getComputedStyle(element).color);
+        return (whiteLuminance + 0.05) / (luminance + 0.05);
+      }),
+      detailsSummaryHeight: document.querySelector<HTMLElement>('.allocation-details > summary')!.getBoundingClientRect().height,
       overflow: document.documentElement.scrollWidth <= window.innerWidth,
     };
   });
@@ -83,6 +98,8 @@ async function expectResponsiveDashboardFlow(page: Page, viewport: { width: numb
   expect(layout.visualOrder[1]).toBeLessThan(layout.visualOrder[2]);
   expect(layout.centerWithinChart).toBe(true);
   for (const height of layout.legendHeights) expect(height).toBeGreaterThanOrEqual(43.99);
+  expect(layout.detailsSummaryHeight).toBeGreaterThanOrEqual(43.99);
+  for (const contrast of layout.legendTextContrast) expect(contrast).toBeGreaterThanOrEqual(4.5);
   expect(layout.overflow).toBe(true);
 
   const details = page.locator('details.allocation-details');

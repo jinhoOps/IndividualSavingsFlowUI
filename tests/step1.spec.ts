@@ -3460,6 +3460,7 @@ test.describe('Main liquid overflow presentation', () => {
     ]) {
       await page.setViewportSize(viewport);
       await page.reload();
+      await page.getByText('자세히 보기', { exact: true }).click();
       const extension = page.locator('.flow-overflow-extension').first();
       await expect(extension).toBeVisible();
 
