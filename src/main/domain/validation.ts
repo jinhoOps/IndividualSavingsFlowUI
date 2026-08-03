@@ -1,5 +1,15 @@
 import type { MainData } from './model';
 
+const mainDataKeys = new Set([
+  'schemaVersion',
+  'updatedAt',
+  'monthlyNetIncomeWon',
+  'monthlyHousingWon',
+  'monthlyLivingWon',
+  'monthlySavingWon',
+  'monthlyInvestmentWon',
+]);
+
 export type ValidationCode = 'income_required' | 'amount_negative' | 'amount_not_safe_integer';
 
 export interface ValidationResult {
@@ -14,6 +24,19 @@ const amountFields = [
   'monthlySavingWon',
   'monthlyInvestmentWon',
 ] as const;
+
+export function isMainDataShape(value: unknown): value is MainData {
+  return isRecord(value)
+    && Object.keys(value).length === mainDataKeys.size
+    && Object.keys(value).every((key) => mainDataKeys.has(key))
+    && value.schemaVersion === 2
+    && isNonnegativeSafeInteger(value.updatedAt)
+    && isNonnegativeSafeInteger(value.monthlyNetIncomeWon)
+    && isNonnegativeSafeInteger(value.monthlyHousingWon)
+    && isNonnegativeSafeInteger(value.monthlyLivingWon)
+    && isNonnegativeSafeInteger(value.monthlySavingWon)
+    && isNonnegativeSafeInteger(value.monthlyInvestmentWon);
+}
 
 export function validateMainData(data: MainData): ValidationResult {
   const issues: ValidationResult['issues'] = [];
@@ -40,4 +63,12 @@ export function validateMainDraft(data: MainData): ValidationResult {
   }
 
   return { valid: issues.length === 0, issues };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isNonnegativeSafeInteger(value: unknown): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
 }
