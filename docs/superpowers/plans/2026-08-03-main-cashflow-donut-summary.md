@@ -107,7 +107,7 @@ expect(calculateCashflowInsight(zeroIncome).savingsInvestmentPercentage).toBeNul
 expect(calculateCashflowInsight(deficitData).isOverIncome).toBe(true);
 ```
 
-Assert normal allocations `56.25`, `9.375`, `6.25`, `28.125`. For deficit data, actual percentages may total over 100 while `displayPercentage` values are clipped proportionally into one 100% ring and no negative remaining segment is returned.
+Assert normal allocations `56.25`, `9.375`, `6.25`, `28.125`. For deficit data, actual-income percentages are kept and rendering clips cumulative segments at 100% in consumption → saving → investment order; no negative remaining segment is returned.
 
 - [ ] **Step 5: Implement `calculateCashflowInsight` and verify GREEN**
 
