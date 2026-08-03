@@ -10,35 +10,30 @@ export function SimulationMenu({
   const [confirming, setConfirming] = useState(false);
   const openerRef = useRef<HTMLButtonElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
-  const dialogRef = useRef<HTMLDivElement>(null);
+  const dialogRef = useRef<HTMLDialogElement>(null);
 
   function closeConfirmation(): void {
+    const dialog = dialogRef.current;
+    if (dialog?.open) {
+      if (typeof dialog.close === 'function') dialog.close();
+      else dialog.removeAttribute('open');
+    }
     setConfirming(false);
     openerRef.current?.focus();
   }
 
   useEffect(() => {
     if (!confirming) return undefined;
+    const dialog = dialogRef.current;
+    if (dialog !== null && !dialog.open) {
+      if (typeof dialog.showModal === 'function') dialog.showModal();
+      else dialog.setAttribute('open', '');
+    }
     cancelRef.current?.focus();
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault();
         closeConfirmation();
-      }
-      if (event.key === 'Tab') {
-        const controls = Array.from(
-          dialogRef.current?.querySelectorAll<HTMLElement>('button') ?? [],
-        );
-        const first = controls[0];
-        const last = controls.at(-1);
-        if (first === undefined || last === undefined) return;
-        if (event.shiftKey && document.activeElement === first) {
-          event.preventDefault();
-          last.focus();
-        } else if (!event.shiftKey && document.activeElement === last) {
-          event.preventDefault();
-          first.focus();
-        }
       }
     };
     document.addEventListener('keydown', closeOnEscape);
@@ -52,11 +47,14 @@ export function SimulationMenu({
         시뮬레이션 다시 설정
       </button>
       {confirming ? (
-        <div
+        <dialog
           ref={dialogRef}
-          role="dialog"
           aria-modal="true"
           aria-labelledby="simulation-reset-title"
+          onCancel={(event) => {
+            event.preventDefault();
+            closeConfirmation();
+          }}
         >
           <h2 id="simulation-reset-title">시뮬레이션 다시 설정</h2>
           <p>Simulation에서 설정한 값만 지우고 다시 시작합니다.</p>
@@ -70,7 +68,7 @@ export function SimulationMenu({
           >
             다시 설정 확인
           </button>
-        </div>
+        </dialog>
       ) : null}
       {resetFailed ? <p role="alert">시뮬레이션을 다시 설정하지 못했어요.</p> : null}
     </details>

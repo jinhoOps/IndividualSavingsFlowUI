@@ -70,6 +70,7 @@ describe('SimulationApp', () => {
       initialInvestmentWon: 10_000_000,
       years: 20,
     })));
+    expect(repository.save).toHaveBeenCalledTimes(1);
   });
 
   it('keeps the last result visible when current Main storage is unavailable', () => {

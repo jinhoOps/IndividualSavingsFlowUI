@@ -114,6 +114,7 @@ export function SimulationApp({
     setRuntime(next);
     setDraft(next.draft);
     if (next.shouldPersist && next.draft !== null) {
+      initialPersisted.current = true;
       setSaveState('saving');
       setSaveState(repository.save(next.draft).status === 'saved' ? 'saved' : 'error');
     }

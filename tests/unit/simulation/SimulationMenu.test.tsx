@@ -27,10 +27,6 @@ describe('SimulationMenu', () => {
     fireEvent.click(opener);
     expect(screen.getByRole('dialog')).toHaveAttribute('aria-modal', 'true');
     const cancel = screen.getByRole('button', { name: '취소' });
-    const confirm = screen.getByRole('button', { name: '다시 설정 확인' });
-    expect(cancel).toHaveFocus();
-    confirm.focus();
-    fireEvent.keyDown(document, { key: 'Tab' });
     expect(cancel).toHaveFocus();
 
     fireEvent.keyDown(document, { key: 'Escape' });

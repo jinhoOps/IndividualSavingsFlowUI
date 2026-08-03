@@ -171,6 +171,10 @@
   box-shadow: var(--shadow-float);
 }
 
+.simulation-menu [role="dialog"]::backdrop {
+  background: rgb(16 34 32 / 32%);
+}
+
 .simulation-menu [role="dialog"] button,
 .simulation-controls button,
 .simulation-amount-mode button,
