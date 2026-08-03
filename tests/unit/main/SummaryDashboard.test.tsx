@@ -95,7 +95,7 @@ function ValidationHarness({ mobile = false }: { mobile?: boolean }) {
 }
 
 describe('SummaryDashboard', () => {
-  it('renders the supplied journey entry after the applied Main summary', () => {
+  it('prioritizes the donut, editing cards, journey entry, and collapsed allocation details', () => {
     const journeyEntry: ReactNode = <button type="button">Simulation으로 이어가기</button>;
     render(
       <SummaryDashboard
@@ -112,17 +112,38 @@ describe('SummaryDashboard', () => {
       />,
     );
 
-    const summary = screen.getByRole('button', { name: '월 실수령액 편집' });
+    expect(screen.queryByRole('button', { name: '월 실수령액 편집' })).not.toBeInTheDocument();
+    const donut = screen.getByRole('region', { name: '월 자금 구성 요약' });
+    const consumption = screen.getByRole('button', { name: '월 소비 편집' });
+    const remaining = screen.getByRole('button', { name: '남는 돈 편집' });
+    const saving = screen.getByRole('button', { name: '월 저축 편집' });
+    const investment = screen.getByRole('button', { name: '월 투자 편집' });
+    expect(donut).toBeVisible();
+    expect(consumption).toBeVisible();
+    expect(remaining).toBeVisible();
+    expect(saving).toBeVisible();
+    expect(investment).toBeVisible();
+    const details = screen.getByText('자세히 보기').closest('details');
+    expect(details).not.toHaveAttribute('open');
+    expect(screen.queryByRole('table', { name: '월 자금 항목' })).not.toBeVisible();
+
     const journey = screen.getByRole('button', { name: 'Simulation으로 이어가기' });
     expect(journey).toBeVisible();
-    expect(summary.compareDocumentPosition(journey) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
+    expect(donut.compareDocumentPosition(consumption) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
+    for (const card of [consumption, remaining, saving, investment]) {
+      expect(card.compareDocumentPosition(journey) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
+    }
+    expect(journey.compareDocumentPosition(details!) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
+
+    fireEvent.click(screen.getByText('자세히 보기'));
+    expect(screen.getByRole('table', { name: '월 자금 항목' })).toBeVisible();
   });
 
   it('uses the shared surface and button variants across the dashboard editor', () => {
     render(<DashboardHarness />);
 
-    expect(screen.getByRole('region', { name: '월 자금 구성' })).toHaveClass('ui-surface');
-    const opener = screen.getByRole('button', { name: '월 실수령액 편집' });
+    expect(screen.getByRole('region', { name: '월 자금 구성 요약' })).toHaveClass('ui-surface');
+    const opener = screen.getByRole('button', { name: '월 소비 편집' });
     expect(opener).toHaveClass('ui-button--quiet');
     fireEvent.click(opener);
     expect(screen.getByRole('button', { name: '편집기 닫기' })).toHaveClass('ui-button--quiet');
@@ -130,26 +151,23 @@ describe('SummaryDashboard', () => {
     expect(screen.getByRole('button', { name: '취소' })).toHaveClass('ui-button--secondary');
   });
 
-  it('prioritizes scalar cashflow and has no legacy account, allocation, or Sankey UI', () => {
+  it('prioritizes scalar cashflow and has no legacy account or Sankey UI', () => {
     render(<DashboardHarness />);
 
     expect(screen.getByRole('heading', { name: '이번 달 자금 흐름' })).toBeVisible();
     expect(screen.getByRole('status')).toHaveTextContent('저장됨');
-    expect(screen.getByText('월 실수령액')).toBeVisible();
+    expect(screen.queryByText('월 실수령액')).not.toBeInTheDocument();
     expect(screen.getByText('월 소비')).toBeVisible();
     expect(screen.getByRole('button', { name: '남는 돈 편집' })).toHaveTextContent('남는 돈');
     expect(screen.getByText('월 저축')).toBeVisible();
     expect(screen.getByText('월 투자')).toBeVisible();
-    expect(screen.getByText('월 수입을 이렇게 나눠 쓰고 있어요')).toBeVisible();
-    expect(screen.getByRole('button', { name: '소비 상세 정보' })).toBeVisible();
-    expect(screen.queryByText(/계좌|배분|Sankey/)).not.toBeInTheDocument();
+    expect(screen.getByText('자세히 보기').closest('details')).not.toHaveAttribute('open');
+    expect(screen.queryByText(/계좌|Sankey/)).not.toBeInTheDocument();
   });
 
   it('describes the applied primary values and consumption breakdown accessibly', () => {
     render(<DashboardHarness />);
 
-    expect(screen.getByRole('button', { name: '월 실수령액 편집' }))
-      .toHaveAccessibleDescription(expect.stringMatching(/320만 원/));
     expect(screen.getByRole('button', { name: '월 소비 편집' }))
       .toHaveAccessibleDescription(expect.stringMatching(/180만 원.*주거 80만 원.*생활 100만 원/));
     expect(screen.getByRole('button', { name: '남는 돈 편집' }))
@@ -158,7 +176,7 @@ describe('SummaryDashboard', () => {
 
   it('opens one desktop scalar editor containing the five canonical fields', () => {
     render(<DashboardHarness />);
-    const opener = screen.getByRole('button', { name: '월 실수령액 편집' });
+    const opener = screen.getByRole('button', { name: '월 소비 편집' });
 
     fireEvent.click(opener);
 
@@ -177,17 +195,17 @@ describe('SummaryDashboard', () => {
 
   it('keeps applied dashboard values visible while editing and restores the draft on cancel', () => {
     render(<DashboardHarness />);
-    fireEvent.click(screen.getByRole('button', { name: '월 실수령액 편집' }));
+    fireEvent.click(screen.getByRole('button', { name: '월 소비 편집' }));
 
     fireEvent.change(screen.getByLabelText('월 실수령액'), { target: { value: '4000000' } });
 
-    expect(screen.getByRole('button', { name: '월 실수령액 편집' })).toHaveTextContent('320만 원');
+    expect(screen.getByRole('button', { name: '월 소비 편집' })).toHaveTextContent('180만 원');
     expect(screen.getByLabelText('월 실수령액')).toHaveValue('4,000,000');
 
     fireEvent.click(screen.getByRole('button', { name: '취소' }));
 
     expect(screen.getByLabelText('월 실수령액')).toHaveValue('3,200,000');
-    expect(screen.getByRole('button', { name: '월 실수령액 편집' })).toHaveTextContent('320만 원');
+    expect(screen.getByRole('button', { name: '월 소비 편집' })).toHaveTextContent('180만 원');
   });
 
   it('uses a modal dialog on mobile with the same five scalar fields', () => {
@@ -205,7 +223,7 @@ describe('SummaryDashboard', () => {
   it('contains edit and apply controls in one mobile modal, traps focus, and hides dashboard controls', () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     render(<DashboardHarness mobile />);
-    const opener = screen.getByRole('button', { name: '월 실수령액 편집' });
+    const opener = screen.getByRole('button', { name: '월 소비 편집' });
     fireEvent.click(opener);
 
     const dialog = screen.getByRole('dialog', { name: '월 자금 계획 편집' });
@@ -249,7 +267,7 @@ describe('SummaryDashboard', () => {
         onRestart={vi.fn()}
       />,
     );
-    fireEvent.click(screen.getByRole('button', { name: '월 실수령액 편집' }));
+    fireEvent.click(screen.getByRole('button', { name: '월 소비 편집' }));
 
     const dialog = screen.getByRole('dialog', { name: '월 자금 계획 편집' });
     expect(within(dialog).getByRole('alert')).toHaveTextContent('저장하지 못했습니다');
@@ -260,7 +278,7 @@ describe('SummaryDashboard', () => {
   it('asks before discarding a dirty mobile editor from Escape or its backdrop', () => {
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
     render(<DashboardHarness mobile />);
-    const opener = screen.getByRole('button', { name: '월 실수령액 편집' });
+    const opener = screen.getByRole('button', { name: '월 소비 편집' });
     fireEvent.click(opener);
     fireEvent.change(screen.getByLabelText('월 실수령액'), { target: { value: '4000000' } });
 
@@ -281,14 +299,14 @@ describe('SummaryDashboard', () => {
   it('discards a dirty draft after confirming that the desktop editor should close', () => {
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
     render(<DashboardHarness />);
-    fireEvent.click(screen.getByRole('button', { name: '월 실수령액 편집' }));
+    fireEvent.click(screen.getByRole('button', { name: '월 소비 편집' }));
     fireEvent.change(screen.getByLabelText('월 실수령액'), { target: { value: '4000000' } });
 
     fireEvent.click(screen.getByRole('button', { name: '편집기 닫기' }));
     expect(confirm).toHaveBeenCalledOnce();
     expect(screen.queryByRole('complementary', { name: '월 자금 계획 편집' })).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: '월 실수령액 편집' }));
+    fireEvent.click(screen.getByRole('button', { name: '월 소비 편집' }));
     expect(screen.getByLabelText('월 실수령액')).toHaveValue('3,200,000');
   });
 

@@ -8,6 +8,7 @@ import { MoneyField } from '../common/MoneyField';
 import { Surface } from '../common/Surface';
 import { ApplyBar } from '../editor/ApplyBar';
 import { AllocationBar } from '../setup/AllocationBar';
+import { CashflowDonutSummary } from './CashflowDonutSummary';
 import { CashflowSummary } from './CashflowSummary';
 
 export interface SummaryDashboardProps {
@@ -186,16 +187,23 @@ export function SummaryDashboard({
           </p>
         )}
 
+        <Surface as="section" className="min-w-0 bg-white/85 p-5 shadow-float sm:p-7" aria-label="월 자금 구성 요약">
+          <CashflowDonutSummary data={applied} />
+        </Surface>
+
         <CashflowSummary summary={summary} disabled={saving} onEdit={openEditor} />
 
         {journeyEntry === undefined ? null : journeyEntry}
 
-        <Surface as="section" className="min-w-0 bg-white/85 p-5 shadow-float sm:p-7" aria-labelledby="cashflow-allocation-title">
-          <h2 className="m-0 text-2xl font-bold text-slate-950" id="cashflow-allocation-title">월 자금 구성</h2>
-          <div className="mt-5">
-            <AllocationBar data={applied} />
-          </div>
-        </Surface>
+        <details className="allocation-details">
+          <summary className="allocation-details__summary">자세히 보기</summary>
+          <Surface as="section" className="mt-4 min-w-0 bg-white/85 p-5 shadow-float sm:p-7" aria-labelledby="cashflow-allocation-title">
+            <h2 className="m-0 text-2xl font-bold text-slate-950" id="cashflow-allocation-title">월 자금 구성</h2>
+            <div className="mt-5">
+              <AllocationBar data={applied} />
+            </div>
+          </Surface>
+        </details>
       </div>
 
       {!editorOpen && dirty ? (

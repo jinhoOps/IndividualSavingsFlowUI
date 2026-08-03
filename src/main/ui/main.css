@@ -318,6 +318,66 @@
     @apply w-fit rounded-md bg-slate-950 px-2 py-1 text-xs font-bold text-white;
   }
 
+  .cashflow-donut {
+    @apply grid gap-4 rounded-3xl border border-slate-200/80 bg-white/75 p-5 text-slate-700;
+    --donut-consumption: #ea7a3b;
+    --donut-saving: #2f8f83;
+    --donut-investment: #3f6f9f;
+    --donut-remaining: rgb(148 163 184 / 28%);
+  }
+
+  .cashflow-donut__chart {
+    @apply relative mx-auto grid w-48 place-items-center;
+  }
+
+  .cashflow-donut__chart svg {
+    @apply block w-full;
+  }
+
+  .cashflow-donut__segment--consumption { stroke: var(--donut-consumption); }
+  .cashflow-donut__segment--saving { stroke: var(--donut-saving); }
+  .cashflow-donut__segment--investment { stroke: var(--donut-investment); }
+  .cashflow-donut__segment--remaining { stroke: var(--donut-remaining); }
+
+  .cashflow-donut__chart circle {
+    transition: stroke-dasharray 220ms ease-out, stroke-dashoffset 220ms ease-out;
+  }
+
+  .cashflow-donut__center {
+    @apply pointer-events-none absolute inset-0 grid place-content-center text-center;
+  }
+
+  .cashflow-donut__center strong { @apply text-2xl font-black text-slate-950; }
+  .cashflow-donut__center span { @apply text-xs font-bold text-slate-500; }
+  .cashflow-donut__center small { @apply mt-1 text-xs font-bold text-rose-700; }
+
+  .cashflow-donut__legend { @apply grid grid-cols-2 gap-2; }
+
+  .cashflow-donut__legend-button {
+    @apply grid min-h-11 grid-cols-[auto_1fr_auto] items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-left text-xs font-bold text-slate-600 outline-none focus-visible:ring-3 focus-visible:ring-accent/35;
+  }
+
+  .cashflow-donut__legend-button::before {
+    @apply h-2.5 w-2.5 rounded-full;
+    background-color: var(--legend-swatch);
+    content: "";
+  }
+
+  .cashflow-donut__legend-button.cashflow-donut__segment--consumption { --legend-swatch: var(--donut-consumption); }
+  .cashflow-donut__legend-button.cashflow-donut__segment--saving { --legend-swatch: var(--donut-saving); }
+  .cashflow-donut__legend-button.cashflow-donut__segment--investment { --legend-swatch: var(--donut-investment); }
+  .cashflow-donut__legend-button.cashflow-donut__segment--remaining { --legend-swatch: #64748b; }
+  .cashflow-donut__legend-button span:first-child { @apply text-slate-700; }
+  .cashflow-donut__legend-button span:nth-child(2) { @apply text-slate-700; }
+  .cashflow-donut__legend-button span:last-child { @apply text-slate-500; }
+
+  .cashflow-donut__tooltip { @apply m-0 rounded-md bg-slate-950 px-2 py-1 text-xs font-bold text-white; }
+  .cashflow-donut__guidance { @apply m-0 rounded-xl bg-slate-100 px-4 py-8 text-center font-bold text-slate-600; }
+
+  .allocation-details__summary {
+    @apply flex min-h-11 cursor-pointer items-center;
+  }
+
   .flow-bar-wrapper .flow-tooltip {
     @apply absolute bottom-full mb-2 -translate-x-1/2;
   }
@@ -395,5 +455,10 @@
 
   .flow-overflow-droplets {
     display: none;
+  }
+
+  .cashflow-donut__chart circle {
+    transition: none;
+    transition-duration: 0s !important;
   }
 }

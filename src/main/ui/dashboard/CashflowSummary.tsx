@@ -13,13 +13,6 @@ export function CashflowSummary({ summary, disabled = false, onEdit }: CashflowS
     <section className="grid gap-4" aria-label="월간 핵심 수치">
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <MetricButton
-          label="월 실수령액"
-          valueWon={summary.incomeWon}
-          importance="primary"
-          disabled={disabled}
-          onClick={onEdit}
-        />
-        <MetricButton
           label="월 소비"
           valueWon={summary.consumptionWon}
           importance="primary"
