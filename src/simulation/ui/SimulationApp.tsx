@@ -60,6 +60,21 @@ export function SimulationApp({
       </main>
     );
   }
+  if (runtime.kind === 'stale-main') {
+    const result = projectCompoundGrowth(runtime.draft);
+    return (
+      <main className="simulation-shell">
+        <AppLauncher currentApp="simulation" />
+        <div className="simulation-content">
+          <p role="status">이전 Main 기준</p>
+          <p>최신 Main 정보를 불러오지 못했습니다.</p>
+          <a className="ui-button ui-button--secondary" href={appPath('main')}>Main 확인하기</a>
+          <SimulationSummary draft={runtime.draft} result={result} />
+          <GrowthChart result={result} amountMode={runtime.draft.amountMode} />
+        </div>
+      </main>
+    );
+  }
   const ready = runtime;
 
   function saveDraft(next: CompoundSimulationDraft): void {
@@ -97,9 +112,6 @@ export function SimulationApp({
           <StartingPrincipalPrompt onStart={start} />
         ) : (
           <>
-            {ready.mainChanged ? (
-              <p role="status">Main의 저축·투자 금액이 변경되었습니다.</p>
-            ) : null}
             {saveFailed ? <p role="status">자동 저장을 사용할 수 없습니다.</p> : null}
             {restartFailed ? <p role="alert">처음부터 다시 시작할 수 없습니다.</p> : null}
             <p className="simulation-assumption">

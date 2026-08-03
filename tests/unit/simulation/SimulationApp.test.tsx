@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { SimulationMainSource } from '../../../src/simulation/domain/model';
+import { createDefaultSimulationDraft } from '../../../src/simulation/domain/validation';
 import type {
   MainSourceRepository,
 } from '../../../src/simulation/infrastructure/mainSourceRepository';
@@ -32,6 +33,21 @@ function emptyRepository(): SimulationRepository {
 }
 
 describe('SimulationApp', () => {
+  it('keeps the last result visible when current Main storage is unavailable', () => {
+    const draft = createDefaultSimulationDraft(source, 456);
+    render(<SimulationApp
+      mainSourceRepository={{ load: () => ({ status: 'unavailable' }) }}
+      repository={{
+        load: () => ({ status: 'found', draft, migration: null }),
+        save: () => ({ status: 'saved' }),
+        clear: () => ({ status: 'cleared' }),
+      }}
+    />);
+
+    expect(screen.getByText('이전 Main 기준')).toBeVisible();
+    expect(screen.getByRole('heading', { name: '20년 뒤 예상금액' })).toBeVisible();
+  });
+
   it('asks the simple starting-principal question and starts from zero', () => {
     render(<SimulationApp
       mainSourceRepository={mainRepository(source)}
