@@ -7,33 +7,49 @@ import { describe, expect, it } from 'vitest';
 
 const fixtureRoot = resolve(process.cwd(), 'tests/unit/portfolio/fixtures/legacyIsolation');
 
+const forbiddenRuntimeTokens = [
+  'apps/portfolio/app.js',
+  'apps/portfolio/modules',
+  'apps/portfolio/styles.css',
+  'src/entries/step3.ts',
+  'isf-step3-portfolios-v2',
+  'isf-step3-snapshots-v1',
+  'IsfStorageHub',
+  'isf-rebuild-v1',
+  'portfolioCreator',
+  '.journey-message--error',
+  '.journey-connection',
+  '.journey-action--primary',
+];
+
 describe('Portfolio legacy isolation', () => {
-  it('keeps current runtime free of legacy Portfolio contracts', async () => {
+  it('keeps Portfolio and Account Map route assets free of retired runtime contracts', async () => {
     const projectRoot = process.cwd();
-    const portfolioEntry = resolve(process.cwd(), 'src/portfolio/main.tsx');
     const mainSource = resolve(process.cwd(), 'src/portfolio/infrastructure/mainSourceRepository.ts');
     const mainValidation = resolve(process.cwd(), 'src/main/domain/validation.ts');
-    const htmlPath = resolve(process.cwd(), 'apps/portfolio/index.html');
-    const graph = await readRuntimeGraph(portfolioEntry);
+    const portfolioCss = resolve(process.cwd(), 'src/portfolio/ui/portfolio.css');
+    const journeyCss = resolve(process.cwd(), 'src/journey/ui/journey.css');
 
-    expect(graph.has(mainSource)).toBe(true);
-    expect(graph.has(mainValidation)).toBe(true);
-
-    const htmlRuntimePaths = await readHtmlScriptPaths(projectRoot, htmlPath);
-    expect(findForbiddenRuntimePaths(projectRoot, [...graph.keys(), ...htmlRuntimePaths])).toEqual([]);
-
-    const entry = await readFile(htmlPath, 'utf8');
-    const runtime = `${[...graph.values()].join('\n')}\n${entry}`;
-    for (const forbidden of [
-      'apps/portfolio/app.js',
-      'apps/portfolio/modules',
-      'src/entries/step3.ts',
-      'isf-step3-portfolios-v2',
-      'isf-step3-snapshots-v1',
-      'IsfStorageHub',
-      'isf-rebuild-v1',
+    for (const route of [
+      {
+        htmlPath: resolve(process.cwd(), 'apps/portfolio/index.html'),
+        expectedAssets: [mainSource, mainValidation, portfolioCss, journeyCss],
+      },
+      {
+        htmlPath: resolve(process.cwd(), 'apps/account-map/index.html'),
+        expectedAssets: [journeyCss],
+      },
     ]) {
-      expect(runtime).not.toContain(forbidden);
+      const assets = await readRouteAssets(projectRoot, route.htmlPath);
+      for (const expectedAsset of route.expectedAssets) {
+        expect(assets.has(expectedAsset)).toBe(true);
+      }
+      expect(findForbiddenRuntimePaths(projectRoot, assets.keys())).toEqual([]);
+
+      const runtime = [...assets.values()].join('\n');
+      for (const forbidden of forbiddenRuntimeTokens) {
+        expect(runtime).not.toContain(forbidden);
+      }
     }
   });
 });
@@ -49,6 +65,12 @@ describe('readRuntimeGraph', () => {
     const graph = await readRuntimeGraph(join(fixtureRoot, 'ast/entry.ts'));
 
     expect(graph.has(join(fixtureRoot, 'ast/type-only.ts'))).toBe(false);
+  });
+
+  it('includes stylesheets imported by runtime modules', async () => {
+    const graph = await readRuntimeGraph(join(fixtureRoot, 'ast/entry.ts'));
+
+    expect(graph.has(join(fixtureRoot, 'ast/styles.css'))).toBe(true);
   });
 });
 
@@ -79,7 +101,28 @@ describe('canonical runtime path isolation', () => {
 
     expect(findForbiddenRuntimePaths(projectRoot, htmlPaths)).toEqual([forbiddenApp]);
   });
+
+  it('detects a forbidden stylesheet and selector in an HTML route closure', async () => {
+    const forbiddenStylesheet = join(projectRoot, 'apps/portfolio/styles.css');
+    const assets = await readRouteAssets(
+      projectRoot,
+      join(projectRoot, 'apps/portfolio/stylesheet.html'),
+    );
+
+    expect(findForbiddenRuntimePaths(projectRoot, assets.keys())).toEqual([forbiddenStylesheet]);
+    expect([...assets.values()].join('\n')).toContain('portfolioCreator');
+  });
 });
+
+async function readRouteAssets(projectRoot: string, htmlPath: string): Promise<Map<string, string>> {
+  const assets = new Map<string, string>();
+  assets.set(resolve(htmlPath), await readFile(htmlPath, 'utf8'));
+  for (const assetPath of await readHtmlAssetPaths(projectRoot, htmlPath)) {
+    const graph = await readRuntimeGraph(assetPath);
+    for (const entry of graph) assets.set(...entry);
+  }
+  return assets;
+}
 
 async function readRuntimeGraph(entryPath: string): Promise<Map<string, string>> {
   const graph = new Map<string, string>();
@@ -91,7 +134,10 @@ async function readRuntimeGraph(entryPath: string): Promise<Map<string, string>>
     const source = await readFile(resolvedPath, 'utf8');
     graph.set(resolvedPath, source);
 
-    for (const specifier of readStaticRelativeImports(resolvedPath, source)) {
+    const specifiers = extname(resolvedPath) === '.css'
+      ? readStaticRelativeCssImports(source)
+      : readStaticRelativeImports(resolvedPath, source);
+    for (const specifier of specifiers) {
       const importedPath = await resolveStaticImport(resolvedPath, specifier);
       if (importedPath !== null) await visit(importedPath);
     }
@@ -102,14 +148,25 @@ async function readRuntimeGraph(entryPath: string): Promise<Map<string, string>>
 }
 
 async function readHtmlScriptPaths(projectRoot: string, htmlPath: string): Promise<string[]> {
-  const html = await readFile(htmlPath, 'utf8');
-  const document = new DOMParser().parseFromString(html, 'text/html');
-  return [...document.querySelectorAll<HTMLScriptElement>('script[src]')]
-    .map((script) => resolveHtmlScriptPath(projectRoot, htmlPath, script.getAttribute('src')))
-    .filter((scriptPath): scriptPath is string => scriptPath !== null);
+  const paths = await readHtmlAssetPaths(projectRoot, htmlPath);
+  return paths.filter((assetPath) => extname(assetPath) !== '.css');
 }
 
-function resolveHtmlScriptPath(projectRoot: string, htmlPath: string, source: string | null): string | null {
+async function readHtmlAssetPaths(projectRoot: string, htmlPath: string): Promise<string[]> {
+  const html = await readFile(htmlPath, 'utf8');
+  const document = new DOMParser().parseFromString(html, 'text/html');
+  return [...document.querySelectorAll<HTMLScriptElement | HTMLLinkElement>(
+    'script[src], link[rel~="stylesheet"][href]',
+  )]
+    .map((asset) => resolveHtmlAssetPath(
+      projectRoot,
+      htmlPath,
+      asset.tagName === 'SCRIPT' ? asset.getAttribute('src') : asset.getAttribute('href'),
+    ))
+    .filter((assetPath): assetPath is string => assetPath !== null);
+}
+
+function resolveHtmlAssetPath(projectRoot: string, htmlPath: string, source: string | null): string | null {
   if (source === null || /^(?:[a-z][a-z+.-]*:|\/\/)/i.test(source)) return null;
   const [pathWithoutQuery] = source.split(/[?#]/, 1);
   if (pathWithoutQuery === '') return null;
@@ -121,6 +178,7 @@ function resolveHtmlScriptPath(projectRoot: string, htmlPath: string, source: st
 function findForbiddenRuntimePaths(projectRoot: string, runtimePaths: Iterable<string>): string[] {
   const forbiddenFiles = new Set([
     resolve(projectRoot, 'apps/portfolio/app.js'),
+    resolve(projectRoot, 'apps/portfolio/styles.css'),
     resolve(projectRoot, 'src/entries/step3.ts'),
   ]);
   const forbiddenDirectories = [resolve(projectRoot, 'apps/portfolio/modules')];
@@ -134,6 +192,12 @@ function findForbiddenRuntimePaths(projectRoot: string, runtimePaths: Iterable<s
     }
   }
   return [...matches];
+}
+
+function readStaticRelativeCssImports(source: string): string[] {
+  return [...source.matchAll(/@import\s+(?:url\(\s*)?["']([^"']+)["']\s*\)?/g)]
+    .map((match) => match[1])
+    .filter((specifier) => specifier.startsWith('.'));
 }
 
 function readStaticRelativeImports(modulePath: string, source: string): string[] {
@@ -177,7 +241,7 @@ function isTypeOnlyExport(declaration: ts.ExportDeclaration): boolean {
 }
 
 async function resolveStaticImport(importerPath: string, specifier: string): Promise<string | null> {
-  const supportedExtensions = ['.ts', '.tsx', '.js', '.jsx'];
+  const supportedExtensions = ['.ts', '.tsx', '.js', '.jsx', '.css'];
   const basePath = resolve(dirname(importerPath), specifier);
   const extension = extname(basePath);
   if (extension !== '' && !supportedExtensions.includes(extension)) return null;

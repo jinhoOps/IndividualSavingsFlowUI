@@ -96,7 +96,7 @@ test('keeps detailed Portfolio and readiness-only Account Map isolated', async (
   await expect(page.locator('app-header, data-hub-modal, #portfolioCreator, #accountMapCanvas')).toHaveCount(0);
 });
 
-test('contains launcher and current route at mobile, tablet, and desktop widths', async ({ page }) => {
+test('contains launcher and current Simulation route at mobile, tablet, and desktop widths', async ({ page }) => {
   await page.addInitScript((fixture) => {
     localStorage.setItem('isf-main-v2', JSON.stringify(fixture));
   }, appliedMain);
@@ -113,6 +113,55 @@ test('contains launcher and current route at mobile, tablet, and desktop widths'
     }
     await expect(page.getByRole('link', { name: /Simulation 사용 중.*현재 위치/ }))
       .toHaveAttribute('aria-current', 'page');
+    expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
+  }
+});
+
+test('keeps Account Map usable at mobile, tablet, and desktop widths', async ({ page }) => {
+  for (const viewport of [
+    { width: 390, height: 844 },
+    { width: 768, height: 900 },
+    { width: 1280, height: 900 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await page.goto('apps/account-map/');
+
+    const launcher = page.getByRole('navigation', { name: 'ISF 앱' });
+    const accountMapLink = page.getByRole('link', { name: /Account Map 준비 중.*현재 위치/ });
+    const mainLink = page.getByRole('link', { name: 'Main으로 이동' });
+    await expect(launcher).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Account Map 준비 중' })).toBeVisible();
+    await expect(mainLink).toBeVisible();
+    await expect(mainLink).toHaveAttribute('href', /\/apps\/main\/$/);
+
+    if (viewport.width < 768) {
+      await page.locator('.journey-launcher summary').click();
+    }
+    await expect(accountMapLink).toHaveAttribute('aria-current', 'page');
+
+    const visibleTargetSizes = await page.locator(
+      '.journey-launcher summary, .journey-launcher a, .journey-readiness__content .journey-action',
+    ).evaluateAll((elements) => elements
+      .map((element) => element.getBoundingClientRect())
+      .filter((rect) => rect.width > 0 && rect.height > 0)
+      .map((rect) => ({ width: rect.width, height: rect.height })));
+    expect(visibleTargetSizes.length).toBeGreaterThan(0);
+    for (const size of visibleTargetSizes) {
+      expect(size.width).toBeGreaterThanOrEqual(44);
+      expect(size.height).toBeGreaterThanOrEqual(44);
+    }
+
+    for (let attempt = 0; attempt < 6 && !await mainLink.evaluate(
+      (element) => document.activeElement === element,
+    ); attempt += 1) {
+      await page.keyboard.press('Tab');
+    }
+    await expect(mainLink).toBeFocused();
+    expect(await mainLink.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return style.outlineStyle !== 'none' && Number.parseFloat(style.outlineWidth) >= 1;
+    })).toBe(true);
+
     expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
   }
 });

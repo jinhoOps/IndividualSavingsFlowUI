@@ -118,42 +118,6 @@
   line-height: 1.65;
 }
 
-.journey-message--error {
-  border: 1px solid color-mix(in srgb, var(--status-error) 25%, transparent);
-  background: color-mix(in srgb, var(--status-error) 7%, var(--panel));
-  color: var(--status-error);
-}
-
-.journey-connection {
-  display: grid;
-  gap: 0.5rem;
-  border: 1px solid color-mix(in srgb, var(--tone-accent) 24%, var(--line));
-  border-radius: 18px;
-  background: color-mix(in srgb, var(--tone-accent) 6%, var(--panel));
-  padding: 1.25rem;
-}
-
-.journey-connection p {
-  margin: 0;
-}
-
-.journey-connection__status {
-  color: var(--status-success);
-  font-weight: 700;
-}
-
-.journey-connection__amount {
-  color: var(--ink);
-  font-family: var(--font-display);
-  font-size: 1.4rem;
-  font-weight: 700;
-}
-
-.journey-connection__time {
-  color: var(--muted);
-  font-size: 0.875rem;
-}
-
 .journey-action {
   display: inline-flex;
   align-items: center;
@@ -172,16 +136,6 @@
 
 .journey-action:active {
   transform: scale(0.98);
-}
-
-.journey-action--primary {
-  border-color: var(--tone-primary);
-  background: var(--tone-primary);
-  color: #fff;
-}
-
-.journey-action--primary:hover {
-  background: color-mix(in srgb, var(--tone-primary) 90%, #000);
 }
 
 .journey-action--secondary {
