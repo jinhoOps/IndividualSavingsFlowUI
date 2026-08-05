@@ -8,6 +8,7 @@ import type {
 export interface MemoryPortfolioRepository extends PortfolioRepository {
   applied: PortfolioPlan | null;
   draft: PortfolioDraft | null;
+  failClearDraft: boolean;
   failNextWrite(): void;
 }
 
@@ -19,6 +20,7 @@ export function createMemoryPortfolioRepository(initial: {
   const repository: MemoryPortfolioRepository = {
     applied: initial.applied ?? null,
     draft: initial.draft ?? null,
+    failClearDraft: false,
     load(): PortfolioStorageLoadResult {
       return {
         applied: this.applied === null ? { status: 'empty' } : { status: 'found', plan: this.applied },
@@ -36,6 +38,7 @@ export function createMemoryPortfolioRepository(initial: {
       return { status: 'saved' };
     },
     clearDraft(): PortfolioWriteResult {
+      if (this.failClearDraft) return { status: 'unavailable' };
       if (consumeFailure()) return { status: 'unavailable' };
       this.draft = null;
       return { status: 'saved' };

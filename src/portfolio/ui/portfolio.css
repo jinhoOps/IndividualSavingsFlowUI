@@ -23,9 +23,10 @@
 .portfolio-table th:first-child { text-align: left; }
 .portfolio-table tbody tr { transition: background-color 150ms ease; }
 .portfolio-table tbody tr[data-active='true'] { background: #eff6ff; outline: 2px solid #93c5fd; outline-offset: -2px; }
-.portfolio-tooltip { position: fixed; z-index: 20; display: flex; gap: .5rem; max-width: calc(100vw - 2rem); padding: .65rem .8rem; border: 1px solid var(--line); background: white; animation: portfolio-tooltip-in 150ms ease both; }
+.portfolio-tooltip { position: fixed; z-index: 20; display: flex; box-sizing: border-box; width: max-content; max-width: calc(100vw - 2rem); gap: .5rem; padding: .65rem .8rem; border: 1px solid var(--line); background: white; animation: portfolio-tooltip-in 150ms ease both; }
 .portfolio-tooltip--fixed { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); }
 .portfolio-editor__items, .portfolio-editor__row, .portfolio-editor__cash { display: grid; gap: .75rem; }
+.portfolio-editor__field-error { display: block; margin-top: .25rem; color: #b91c1c; font-size: .8rem; font-weight: 700; }
 .portfolio-editor input, .portfolio-editor button, .portfolio-apply-bar button, .portfolio-menu button { min-height: 44px; }
 .portfolio-apply-bar { position: fixed; z-index: 30; inset: auto 1rem 1rem; display: flex; justify-content: flex-end; gap: .5rem; }
 .portfolio-dialog { position: fixed; z-index: 40; inset: 50% auto auto 50%; transform: translate(-50%, -50%); width: min(90vw, 28rem); padding: 1.5rem; border: 1px solid var(--line); background: white; }

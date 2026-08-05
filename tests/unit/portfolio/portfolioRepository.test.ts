@@ -46,4 +46,17 @@ describe('BrowserPortfolioRepository', () => {
     expect(storage.getItem('isf-step3-portfolios-v2')).toBe(legacyPlans);
     expect(storage.getItem('isf-step3-snapshots-v1')).toBe(legacySnapshots);
   });
+
+  it('reports unavailable for every operation when storage access throws', () => {
+    const repository = new BrowserPortfolioRepository(() => { throw new Error('blocked'); });
+
+    expect(repository.load()).toEqual({
+      applied: { status: 'unavailable' },
+      draft: { status: 'unavailable' },
+    });
+    expect(repository.saveApplied(plan)).toEqual({ status: 'unavailable' });
+    expect(repository.saveDraft(createCashOnlyDraft(200_000, 2))).toEqual({ status: 'unavailable' });
+    expect(repository.clearDraft()).toEqual({ status: 'unavailable' });
+    expect(repository.clearAll()).toEqual({ status: 'unavailable' });
+  });
 });

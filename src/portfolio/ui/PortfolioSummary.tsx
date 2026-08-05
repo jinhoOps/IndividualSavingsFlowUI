@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { sortResultItems } from '../domain/allocation';
 import type { MaterializedAllocation } from '../domain/model';
 import {
@@ -8,6 +8,7 @@ import {
 } from './AllocationDonut';
 import { AllocationTable } from './AllocationTable';
 import { formatAllocationPercent, formatPortfolioWon } from './format';
+import { clampTooltipPosition } from './tooltipPosition';
 
 export function PortfolioSummary({
   investmentWon,
@@ -17,6 +18,8 @@ export function PortfolioSummary({
   allocation: MaterializedAllocation;
 }) {
   const [active, setActive] = useState<AllocationSelection | null>(null);
+  const [tooltipPosition, setTooltipPosition] = useState<{ left: number; top: number } | null>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
   const items = useMemo<AllocationResultItem[]>(() => [
     ...sortResultItems(allocation.items).map((item) => ({ ...item, isCash: false })),
     {
@@ -28,6 +31,34 @@ export function PortfolioSummary({
     },
   ], [allocation]);
   const activeItem = items.find((item) => item.id === active?.id) ?? null;
+
+  useLayoutEffect(() => {
+    if (active?.mode !== 'pointer' || tooltipRef.current === null) {
+      setTooltipPosition(null);
+      return undefined;
+    }
+    const update = () => {
+      const bounds = tooltipRef.current?.getBoundingClientRect();
+      const tooltip = tooltipRef.current;
+      if (bounds === undefined || tooltip === null) return;
+      setTooltipPosition(clampTooltipPosition(
+        active,
+        {
+          width: tooltip.offsetWidth || bounds.width,
+          height: tooltip.offsetHeight || bounds.height,
+        },
+        { width: window.innerWidth, height: window.innerHeight },
+      ));
+    };
+    update();
+    const resizeObserver = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(update);
+    resizeObserver?.observe(tooltipRef.current);
+    window.addEventListener('resize', update);
+    return () => {
+      resizeObserver?.disconnect();
+      window.removeEventListener('resize', update);
+    };
+  }, [active]);
 
   return (
     <section className="portfolio-summary" aria-labelledby="portfolio-summary-title">
@@ -46,9 +77,12 @@ export function PortfolioSummary({
       </div>
       {active !== null && activeItem !== null ? (
         <div
+          ref={tooltipRef}
           role="tooltip"
           className={`portfolio-tooltip portfolio-tooltip--${active.mode}`}
-          style={active.mode === 'pointer' ? { left: active.x + 12, top: active.y + 12 } : undefined}
+          style={active.mode === 'pointer'
+            ? tooltipPosition ?? { left: active.x + 12, top: active.y + 12, visibility: 'hidden' }
+            : undefined}
         >
           <strong>{activeItem.name}</strong>
           <span>{formatPortfolioWon(activeItem.amountWon)}</span>

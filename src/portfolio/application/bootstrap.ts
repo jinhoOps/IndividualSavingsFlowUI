@@ -9,6 +9,7 @@ export type PortfolioBootstrapResult =
     plan: PortfolioPlan | null;
     draft: PortfolioDraft;
     shouldPersistApplied: boolean;
+    shouldPersistDraft: boolean;
     persistenceAvailable: boolean;
   }
   | { kind: 'investment-required'; preservedPlan: PortfolioPlan | null; reason: 'zero-investment' }
@@ -35,12 +36,22 @@ export function bootstrapPortfolio(
   }
 
   const shouldPersistApplied = loadedPlan !== null && loadedPlan.syncedInvestmentWon !== investmentWon;
-  const plan = loadedPlan === null ? null : syncPlanToInvestment(loadedPlan, investmentWon, now);
-  const baseDraft = loadedDraft ?? (plan === null ? createCashOnlyDraft(investmentWon, now) : draftFromPlan(plan));
-  const draft = baseDraft.syncedInvestmentWon === investmentWon
+  const plan = loadedPlan === null
+    ? null
+    : shouldPersistApplied
+      ? syncPlanToInvestment(loadedPlan, investmentWon, now)
+      : loadedPlan;
+  const usableLoadedDraft = loadedDraft !== null
+    && (loadedPlan === null || loadedDraft.updatedAt > loadedPlan.updatedAt)
+    ? loadedDraft
+    : null;
+  const baseDraft = usableLoadedDraft ?? (plan === null ? createCashOnlyDraft(investmentWon, now) : draftFromPlan(plan));
+  const shouldAdvanceDirtyDraft = usableLoadedDraft !== null && shouldPersistApplied;
+  const draft = baseDraft.syncedInvestmentWon === investmentWon && !shouldAdvanceDirtyDraft
     ? baseDraft
-    : syncPlanToInvestment(baseDraft, investmentWon, now);
-  return { kind: 'ready', plan, draft, shouldPersistApplied, persistenceAvailable };
+    : syncPlanToInvestment(baseDraft, investmentWon, usableLoadedDraft === null ? now : now + 1);
+  const shouldPersistDraft = usableLoadedDraft !== null && draft !== loadedDraft;
+  return { kind: 'ready', plan, draft, shouldPersistApplied, shouldPersistDraft, persistenceAvailable };
 }
 
 export function draftFromPlan(plan: PortfolioPlan): PortfolioDraft {

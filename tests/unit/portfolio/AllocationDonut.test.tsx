@@ -42,4 +42,33 @@ describe('AllocationDonut', () => {
     expect(screen.getByRole('button', { name: '현금 80,000원 40%' }))
       .toHaveAttribute('data-active', 'true');
   });
+
+  it('clamps a pointer tooltip inside the viewport edges', () => {
+    const originalPointerEvent = window.PointerEvent;
+    Object.defineProperties(window, {
+      innerWidth: { configurable: true, value: 390 },
+      innerHeight: { configurable: true, value: 844 },
+      PointerEvent: { configurable: true, value: MouseEvent },
+    });
+    const original = HTMLElement.prototype.getBoundingClientRect;
+    HTMLElement.prototype.getBoundingClientRect = function getBoundingClientRect() {
+      if (this.getAttribute('role') === 'tooltip') {
+        return { x: 0, y: 0, width: 140, height: 64, top: 0, right: 140, bottom: 64, left: 0, toJSON: () => ({}) };
+      }
+      return original.call(this);
+    };
+
+    try {
+      render(<PortfolioSummary investmentWon={200_000} allocation={allocation} />);
+      fireEvent.pointerEnter(screen.getByRole('button', { name: '미국 인덱스 120,000원 60%' }), {
+        clientX: 385,
+        clientY: 840,
+      });
+
+      expect(screen.getByRole('tooltip')).toHaveStyle({ left: '234px', top: '764px' });
+    } finally {
+      HTMLElement.prototype.getBoundingClientRect = original;
+      Object.defineProperty(window, 'PointerEvent', { configurable: true, value: originalPointerEvent });
+    }
+  });
 });

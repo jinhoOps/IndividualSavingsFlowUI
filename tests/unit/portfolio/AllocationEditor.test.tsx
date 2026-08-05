@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { PortfolioAction } from '../../../src/portfolio/application/portfolioReducer';
@@ -48,7 +48,30 @@ describe('AllocationEditor', () => {
     expect(screen.getByText('투자 대상은 최대 10개까지 추가할 수 있습니다')).toBeVisible();
   });
 
-  it('confirms apply and returns focus when cancelled', () => {
+  it('explains blank and normalized duplicate names at their fields', () => {
+    const invalidDraft = {
+      ...draft,
+      items: [
+        { id: 'blank', name: '   ', shareUnits: 200_000, order: 0 },
+        { id: 'first', name: 'US INDEX', shareUnits: 200_000, order: 1 },
+        { id: 'second', name: ' us   index ', shareUnits: 200_000, order: 2 },
+      ],
+      cashShareUnits: 400_000,
+    };
+    render(<AllocationEditor draft={invalidDraft} investmentWon={200_000} onAction={vi.fn()} now={() => 2} />);
+
+    const blank = screen.getByRole('textbox', { name: '투자 대상 이름 1' });
+    expect(blank).toHaveAttribute('aria-invalid', 'true');
+    expect(blank).toHaveAccessibleDescription('투자 대상 이름을 입력해 주세요.');
+
+    for (const name of ['투자 대상 이름 2', '투자 대상 이름 3']) {
+      const duplicate = screen.getByRole('textbox', { name });
+      expect(duplicate).toHaveAttribute('aria-invalid', 'true');
+      expect(duplicate).toHaveAccessibleDescription('같은 이름의 투자 대상이 이미 있습니다.');
+    }
+  });
+
+  it('confirms apply and returns focus when cancelled', async () => {
     render(<PortfolioApplyBar
       dirty
       draft={draft}
@@ -60,6 +83,6 @@ describe('AllocationEditor', () => {
     fireEvent.click(trigger);
     expect(screen.getByRole('dialog', { name: '투자 배분 적용' })).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: '확인 취소' }));
-    expect(trigger).toHaveFocus();
+    await waitFor(() => expect(trigger).toHaveFocus());
   });
 });

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { PortfolioAction } from '../application/portfolioReducer';
-import { materializeAllocation } from '../domain/allocation';
+import { materializeAllocation, normalizePortfolioName } from '../domain/allocation';
 import type { PortfolioDraft } from '../domain/model';
 import { formatAllocationPercent, formatPortfolioWon } from './format';
 
@@ -22,6 +22,11 @@ export function AllocationEditor({
   const allocation = materializeAllocation(draft, investmentWon);
   const [rawValues, setRawValues] = useState<Record<string, string>>({});
   const isAtLimit = draft.items.length >= 10;
+  const normalizedNameCounts = draft.items.reduce<Map<string, number>>((counts, item) => {
+    const normalized = normalizePortfolioName(item.name);
+    if (normalized.length > 0) counts.set(normalized, (counts.get(normalized) ?? 0) + 1);
+    return counts;
+  }, new Map());
 
   function commitItem(id: string, fallback: number): void {
     const raw = rawValues[id];
@@ -50,15 +55,25 @@ export function AllocationEditor({
           const result = allocation.items.find((candidate) => candidate.id === item.id)!;
           const editableValue = draft.inputMode === 'amount' ? result.amountWon : result.percentage;
           const inputLabel = `${item.name || `투자 대상 ${index + 1}`} ${draft.inputMode === 'amount' ? '금액' : '비율'}`;
+          const normalizedName = normalizePortfolioName(item.name);
+          const nameError = normalizedName.length === 0
+            ? '투자 대상 이름을 입력해 주세요.'
+            : (normalizedNameCounts.get(normalizedName) ?? 0) > 1
+              ? '같은 이름의 투자 대상이 이미 있습니다.'
+              : null;
+          const nameErrorId = `portfolio-name-error-${index}`;
           return (
             <div className="portfolio-editor__row" key={item.id}>
               <label>
                 <span>투자 대상 이름 {index + 1}</span>
                 <input
                   aria-label={`투자 대상 이름 ${index + 1}`}
+                  aria-invalid={nameError ? 'true' : undefined}
+                  aria-describedby={nameError ? nameErrorId : undefined}
                   value={item.name}
                   onChange={(event) => onAction({ type: 'draft-name-changed', id: item.id, name: event.target.value, now: now() })}
                 />
+                {nameError ? <span className="portfolio-editor__field-error" id={nameErrorId}>{nameError}</span> : null}
               </label>
               <label>
                 <span>{draft.inputMode === 'amount' ? '금액' : '비율'}</span>

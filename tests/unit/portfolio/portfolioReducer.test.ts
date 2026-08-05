@@ -21,6 +21,7 @@ const readyWithoutPlan: Extract<PortfolioBootstrapResult, { kind: 'ready' }> = {
   plan: null,
   draft: createCashOnlyDraft(200_000, 1),
   shouldPersistApplied: false,
+  shouldPersistDraft: false,
   persistenceAvailable: true,
 };
 const readyWithPlan: Extract<PortfolioBootstrapResult, { kind: 'ready' }> = {
@@ -33,6 +34,19 @@ describe('portfolioReducer', () => {
   it('opens first-run setup but revisits a saved plan result-first', () => {
     expect(createPortfolioState(readyWithoutPlan).view).toBe('edit');
     expect(createPortfolioState(readyWithPlan).view).toBe('result');
+  });
+
+  it('resumes a saved draft in editing when it differs from the applied plan', () => {
+    const changedDraft = {
+      ...draftFromPlan(plan),
+      items: [{ ...plan.items[0], shareUnits: 500_000 }],
+      cashShareUnits: 500_000,
+      updatedAt: 2,
+    };
+    const state = createPortfolioState({ ...readyWithPlan, draft: changedDraft });
+
+    expect(state.view).toBe('edit');
+    expect(state.dirty).toBe(true);
   });
 
   it('keeps applied result unchanged while draft changes', () => {

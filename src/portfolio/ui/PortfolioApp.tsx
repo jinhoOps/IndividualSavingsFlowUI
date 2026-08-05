@@ -51,8 +51,18 @@ export function PortfolioApp({
   );
 
   useEffect(() => {
-    if (initial.kind !== 'ready' || !initial.shouldPersistApplied || initial.plan === null) return;
-    repository.saveApplied(initial.plan);
+    if (initial.kind !== 'ready') return;
+    const draftFailed = initial.shouldPersistDraft
+      && repository.saveDraft(initial.draft).status === 'unavailable';
+    const appliedFailed = !draftFailed
+      && initial.shouldPersistApplied
+      && initial.plan !== null
+      && repository.saveApplied(initial.plan).status === 'unavailable';
+    if (appliedFailed || draftFailed) {
+      setState((current) => current === null
+        ? current
+        : portfolioReducer(current, { type: 'save-failed' }));
+    }
   }, [initial, repository]);
 
   function dispatchDraft(action: PortfolioAction): void {
@@ -71,11 +81,13 @@ export function PortfolioApp({
       if (current === null || !validateApplicableDraft(current.draft)) return current;
       const saving = portfolioReducer(current, { type: 'apply-started' });
       const plan = planFromDraft(current.draft, now());
-      if (repository.saveApplied(plan).status === 'unavailable'
-        || repository.clearDraft().status === 'unavailable') {
+      if (repository.saveApplied(plan).status === 'unavailable') {
         return portfolioReducer(saving, { type: 'save-failed' });
       }
-      return portfolioReducer(saving, { type: 'apply-succeeded', plan });
+      const applied = portfolioReducer(saving, { type: 'apply-succeeded', plan });
+      return repository.clearDraft().status === 'unavailable'
+        ? portfolioReducer(applied, { type: 'draft-cleanup-failed' })
+        : applied;
     });
   }
 
@@ -83,12 +95,12 @@ export function PortfolioApp({
     setState((current) => {
       if (current === null) return current;
       const next = portfolioReducer(current, { type: 'reset-confirmed', now: now() });
-      if (next.applied === null
-        || repository.saveApplied(next.applied).status === 'unavailable'
-        || repository.clearDraft().status === 'unavailable') {
+      if (next.applied === null || repository.saveApplied(next.applied).status === 'unavailable') {
         return portfolioReducer(current, { type: 'save-failed' });
       }
-      return next;
+      return repository.clearDraft().status === 'unavailable'
+        ? portfolioReducer(next, { type: 'draft-cleanup-failed' })
+        : next;
     });
   }
 
@@ -108,8 +120,12 @@ export function PortfolioApp({
           {state.view === 'result' && state.applied !== null ? (
             <>
               <div className="portfolio-toolbar">
-                <span role={state.saveState === 'error' ? 'alert' : 'status'}>
-                  {state.saveState === 'error' ? '저장하지 못했습니다. 다시 시도해 주세요.' : '저장됨'}
+                <span role={state.saveState === 'saved' ? 'status' : 'alert'}>
+                  {state.saveState === 'error'
+                    ? '저장하지 못했습니다. 다시 시도해 주세요.'
+                    : state.saveState === 'cleanup-error'
+                      ? '배분은 적용했지만 편집 초안을 정리하지 못했습니다.'
+                      : '저장됨'}
                 </span>
                 <button type="button" onClick={() => dispatchDraft({ type: 'edit-opened' })}>배분 수정</button>
                 <PortfolioMenu onReset={reset} />
@@ -130,6 +146,7 @@ export function PortfolioApp({
               />
               <PortfolioApplyBar
                 dirty={state.dirty || state.applied === null}
+                saveError={state.saveState === 'error'}
                 draft={state.draft}
                 investmentWon={state.draft.syncedInvestmentWon}
                 onCancel={() => dispatchDraft({ type: 'cancel-edit' })}

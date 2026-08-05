@@ -57,4 +57,103 @@ describe('bootstrapPortfolio', () => {
       persistenceAvailable: true,
     });
   });
+
+  it('ignores a draft older than the applied plan after partial cleanup failure', () => {
+    const newerPlan = { ...plan, appliedAt: 5, updatedAt: 5 };
+    const staleDraft = {
+      schemaVersion: 1 as const,
+      items: [{ id: 'old', name: '이전 초안', shareUnits: 500_000, order: 0 }],
+      cashShareUnits: 500_000,
+      cashMode: 'automatic' as const,
+      inputMode: 'amount' as const,
+      syncedInvestmentWon: 200_000,
+      updatedAt: 4,
+      isApplicable: true,
+    };
+
+    expect(bootstrapPortfolio(
+      { status: 'found', source: { monthlyInvestmentWon: 200_000, mainUpdatedAt: 2 } },
+      {
+        applied: { status: 'found', plan: newerPlan },
+        draft: { status: 'found', draft: staleDraft },
+      },
+      6,
+    )).toMatchObject({
+      kind: 'ready',
+      draft: { items: newerPlan.items, updatedAt: 5 },
+    });
+  });
+
+  it('resumes a newer draft when Main investment changes', () => {
+    const newerDraft = {
+      schemaVersion: 1 as const,
+      items: [{ id: 'draft', name: '성장', shareUnits: 500_000, order: 0 }],
+      cashShareUnits: 500_000,
+      cashMode: 'automatic' as const,
+      inputMode: 'amount' as const,
+      syncedInvestmentWon: 200_000,
+      updatedAt: 2,
+      isApplicable: true,
+    };
+
+    const first = bootstrapPortfolio(
+      { status: 'found', source: { monthlyInvestmentWon: 300_000, mainUpdatedAt: 3 } },
+      {
+        applied: { status: 'found', plan },
+        draft: { status: 'found', draft: newerDraft },
+      },
+      4,
+    );
+    expect(first).toMatchObject({
+      kind: 'ready',
+      plan: { syncedInvestmentWon: 300_000 },
+      shouldPersistDraft: true,
+      draft: {
+        items: [{ id: 'draft', name: '성장', order: 0 }],
+        syncedInvestmentWon: 300_000,
+      },
+    });
+    if (first.kind !== 'ready' || first.plan === null) throw new Error('expected ready plan');
+
+    expect(bootstrapPortfolio(
+      { status: 'found', source: { monthlyInvestmentWon: 300_000, mainUpdatedAt: 3 } },
+      {
+        applied: { status: 'found', plan: first.plan },
+        draft: { status: 'found', draft: first.draft },
+      },
+      6,
+    )).toMatchObject({
+      kind: 'ready',
+      draft: { items: [{ id: 'draft', name: '성장', order: 0 }] },
+    });
+  });
+
+  it('advances and persists an already Main-synced dirty draft above a synchronized plan', () => {
+    const alreadySyncedDraft = {
+      schemaVersion: 1 as const,
+      items: [{ id: 'draft', name: '성장', shareUnits: 500_000, order: 0 }],
+      cashShareUnits: 500_000,
+      cashMode: 'automatic' as const,
+      inputMode: 'amount' as const,
+      syncedInvestmentWon: 300_000,
+      updatedAt: 2,
+      isApplicable: true,
+    };
+    const result = bootstrapPortfolio(
+      { status: 'found', source: { monthlyInvestmentWon: 300_000, mainUpdatedAt: 3 } },
+      {
+        applied: { status: 'found', plan },
+        draft: { status: 'found', draft: alreadySyncedDraft },
+      },
+      4,
+    );
+
+    expect(result).toMatchObject({
+      kind: 'ready',
+      shouldPersistApplied: true,
+      shouldPersistDraft: true,
+      plan: { updatedAt: 4 },
+      draft: { updatedAt: 5, items: alreadySyncedDraft.items },
+    });
+  });
 });

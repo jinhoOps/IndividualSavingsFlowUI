@@ -19,7 +19,7 @@ export interface PortfolioState {
   applied: PortfolioPlan | null;
   draft: PortfolioDraft;
   dirty: boolean;
-  saveState: 'saved' | 'saving' | 'error';
+  saveState: 'saved' | 'saving' | 'error' | 'cleanup-error';
   fieldError: string | null;
 }
 
@@ -37,16 +37,20 @@ export type PortfolioAction =
   | { type: 'apply-started' }
   | { type: 'apply-succeeded'; plan: PortfolioPlan }
   | { type: 'save-failed' }
+  | { type: 'draft-cleanup-failed' }
   | { type: 'reset-confirmed'; now: number };
 
 type ReadyBootstrap = Extract<PortfolioBootstrapResult, { kind: 'ready' }>;
 
 export function createPortfolioState(result: ReadyBootstrap): PortfolioState {
+  const dirty = result.plan === null
+    ? !isCashOnly(result.draft)
+    : !sameAllocation(result.draft, result.plan);
   return {
-    view: result.plan === null ? 'edit' : 'result',
+    view: result.plan === null || dirty ? 'edit' : 'result',
     applied: result.plan,
     draft: result.draft,
-    dirty: result.plan === null ? !isCashOnly(result.draft) : !sameAllocation(result.draft, result.plan),
+    dirty,
     saveState: result.persistenceAvailable ? 'saved' : 'error',
     fieldError: null,
   };
@@ -107,6 +111,8 @@ export function portfolioReducer(state: PortfolioState, action: PortfolioAction)
       };
     case 'save-failed':
       return { ...state, saveState: 'error' };
+    case 'draft-cleanup-failed':
+      return { ...state, saveState: 'cleanup-error' };
     case 'reset-confirmed': {
       const draft = createCashOnlyDraft(state.draft.syncedInvestmentWon, action.now);
       const plan = planFromDraft(draft, action.now);
