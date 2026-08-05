@@ -178,8 +178,11 @@ export function GrowthChart({
 
 function useCompactTooltip(): boolean {
   const query = '(max-width: 767px)';
-  const [compact, setCompact] = useState(() => window.matchMedia(query).matches);
+  const [compact, setCompact] = useState(() => (
+    typeof window.matchMedia === 'function' && window.matchMedia(query).matches
+  ));
   useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return undefined;
     const media = window.matchMedia(query);
     const update = () => setCompact(media.matches);
     update();

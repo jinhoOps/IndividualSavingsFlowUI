@@ -35,6 +35,16 @@ const result = projectCompoundGrowth(createDefaultSimulationDraft({
 }, 456));
 
 describe('GrowthChart', () => {
+  it('defaults to detailed mode when matchMedia is unavailable', () => {
+    vi.unstubAllGlobals();
+    render(<GrowthChart result={result} amountMode="nominal" />);
+    fireEvent.keyDown(screen.getByRole('application', { name: '그래프 연도 탐색' }), {
+      key: 'Home',
+    });
+
+    expect(screen.getByText('누적 납입원금')).toBeVisible();
+  });
+
   it('names both series and exposes yearly detail by keyboard focus', () => {
     render(<GrowthChart result={result} amountMode="nominal" />);
     expect(screen.getByText('현재 계획')).toBeVisible();
