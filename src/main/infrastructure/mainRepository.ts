@@ -1,6 +1,8 @@
 import { isfStore, type IsfStore } from '../../core/storage/IsfStore';
 import type { MainData, SetupStep } from '../domain/model';
-import { validateMainData, validateMainDraft } from '../domain/validation';
+import { isMainDataShape, validateMainData, validateMainDraft } from '../domain/validation';
+
+export { isMainDataShape } from '../domain/validation';
 
 const MAIN_KEY = 'isf-main-v2';
 const PENDING_KEY = 'isf-main-v2-pending';
@@ -13,16 +15,6 @@ const MAIN_SAVE_LEASE_PREFIX = 'isf-main-v2-save-lease:';
 const DEFAULT_LEASE_DURATION_MS = 10_000;
 const DEFAULT_ACQUIRE_TIMEOUT_MS = 2_000;
 const DEFAULT_RETRY_DELAY_MS = 25;
-const mainDataKeys = new Set([
-  'schemaVersion',
-  'updatedAt',
-  'monthlyNetIncomeWon',
-  'monthlyHousingWon',
-  'monthlyLivingWon',
-  'monthlySavingWon',
-  'monthlyInvestmentWon',
-]);
-
 const setupSteps = new Set<SetupStep>(['welcome', 'income', 'housing', 'living', 'saving-investment', 'review']);
 let lastIssuedUpdatedAt = 0;
 
@@ -603,19 +595,6 @@ export class BrowserMainRepository implements MainRepository {
     if (latest === null) return 0;
     return parseMainValue(latest).data?.updatedAt ?? 0;
   }
-}
-
-export function isMainDataShape(value: unknown): value is MainData {
-  return isRecord(value)
-    && Object.keys(value).length === mainDataKeys.size
-    && Object.keys(value).every((key) => mainDataKeys.has(key))
-    && value.schemaVersion === 2
-    && isNonnegativeSafeInteger(value.updatedAt)
-    && isNonnegativeSafeInteger(value.monthlyNetIncomeWon)
-    && isNonnegativeSafeInteger(value.monthlyHousingWon)
-    && isNonnegativeSafeInteger(value.monthlyLivingWon)
-    && isNonnegativeSafeInteger(value.monthlySavingWon)
-    && isNonnegativeSafeInteger(value.monthlyInvestmentWon);
 }
 
 function parseStoredMain(raw: string): MainLoadResult {

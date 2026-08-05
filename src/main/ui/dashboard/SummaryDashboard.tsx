@@ -26,6 +26,7 @@ export interface SummaryDashboardProps {
   onImportFile?(file: File): void;
   backupStatus?: { kind: 'success' | 'error'; message: string } | null;
   journeyEntry?: ReactNode;
+  initialFocusPath?: keyof MainData;
 }
 
 export function SummaryDashboard({
@@ -43,6 +44,7 @@ export function SummaryDashboard({
   onImportFile,
   backupStatus = null,
   journeyEntry,
+  initialFocusPath,
 }: SummaryDashboardProps) {
   const [editorOpen, setEditorOpen] = useState(false);
   const openerRef = useRef<HTMLElement | null>(null);
@@ -53,6 +55,7 @@ export function SummaryDashboard({
   const mobileModalOpen = isMobile && editorOpen;
   const saving = saveStatus === 'saving';
   const firstIssuePath = issues[0]?.path;
+  const initialFocusConsumed = useRef(false);
 
   useEffect(() => {
     if (!dirty) return;
@@ -69,11 +72,18 @@ export function SummaryDashboard({
   }, [firstIssuePath, validationAttempt]);
 
   useEffect(() => {
+    if (initialFocusPath === undefined || initialFocusConsumed.current) return;
+    initialFocusConsumed.current = true;
+    setEditorOpen(true);
+  }, [initialFocusPath]);
+
+  useEffect(() => {
     if (editorOpen) {
       const container = isMobile ? modalRef.current : desktopEditorRef.current;
       if (container === null) return;
-      if (firstIssuePath !== undefined) {
-        container.querySelector<HTMLElement>(validationPathSelector(firstIssuePath))?.focus();
+      const focusPath = firstIssuePath ?? initialFocusPath;
+      if (focusPath !== undefined) {
+        container.querySelector<HTMLElement>(validationPathSelector(focusPath))?.focus();
       } else if (isMobile) {
         getFocusableElements(container)[0]?.focus();
       } else {
@@ -86,7 +96,7 @@ export function SummaryDashboard({
       openerRef.current.focus();
       openerRef.current = null;
     }
-  }, [editorOpen, firstIssuePath, isMobile, validationAttempt]);
+  }, [editorOpen, firstIssuePath, initialFocusPath, isMobile, validationAttempt]);
 
   useEffect(() => {
     if (!editorOpen) return;
@@ -297,6 +307,7 @@ function ScalarEditor({
           error={findIssue(issues, 'monthlyNetIncomeWon')}
           validationPath="monthlyNetIncomeWon"
           disabled={saving}
+          adjustmentsVisibility="focused"
           onChange={(valueWon) => onChange({ ...draft, monthlyNetIncomeWon: valueWon })}
         />
         <MoneyField
@@ -306,6 +317,7 @@ function ScalarEditor({
           error={findIssue(issues, 'monthlyHousingWon')}
           validationPath="monthlyHousingWon"
           disabled={saving}
+          adjustmentsVisibility="focused"
           onChange={(valueWon) => onChange({ ...draft, monthlyHousingWon: valueWon })}
         />
         <MoneyField
@@ -315,6 +327,7 @@ function ScalarEditor({
           error={findIssue(issues, 'monthlyLivingWon')}
           validationPath="monthlyLivingWon"
           disabled={saving}
+          adjustmentsVisibility="focused"
           onChange={(valueWon) => onChange({ ...draft, monthlyLivingWon: valueWon })}
         />
         <MoneyField
@@ -324,6 +337,7 @@ function ScalarEditor({
           error={findIssue(issues, 'monthlySavingWon')}
           validationPath="monthlySavingWon"
           disabled={saving}
+          adjustmentsVisibility="focused"
           onChange={(valueWon) => onChange({ ...draft, monthlySavingWon: valueWon })}
         />
         <MoneyField
@@ -333,6 +347,7 @@ function ScalarEditor({
           error={findIssue(issues, 'monthlyInvestmentWon')}
           validationPath="monthlyInvestmentWon"
           disabled={saving}
+          adjustmentsVisibility="focused"
           onChange={(valueWon) => onChange({ ...draft, monthlyInvestmentWon: valueWon })}
         />
       </fieldset>

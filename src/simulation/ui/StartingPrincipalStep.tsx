@@ -1,5 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
 
+const principalAdjustments = [
+  { label: '-1000만', deltaWon: -10_000_000 },
+  { label: '-100만', deltaWon: -1_000_000 },
+  { label: '+100만', deltaWon: 1_000_000 },
+  { label: '+1000만', deltaWon: 10_000_000 },
+] as const;
+
+function adjustPrincipal(rawAmount: string, deltaWon: number): string {
+  const current = Number(rawAmount);
+  const safeCurrent = Number.isSafeInteger(current) && current >= 0 ? current : 0;
+  return String(Math.max(0, safeCurrent + deltaWon));
+}
+
 export function StartingPrincipalStep({
   onContinue,
 }: {
@@ -50,6 +63,18 @@ export function StartingPrincipalStep({
             aria-invalid={rawAmount.length > 0 && !validAmount}
             onChange={(event) => setRawAmount(event.target.value.replace(/[^\d]/g, ''))}
           />
+          <div className="simulation-principal-adjustments">
+            {principalAdjustments.map(({ label, deltaWon }) => (
+              <button
+                key={label}
+                type="button"
+                className="ui-button ui-button--secondary"
+                onClick={() => setRawAmount((value) => adjustPrincipal(value, deltaWon))}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
           <button type="submit" className="ui-button ui-button--primary" disabled={!validAmount}>
             다음
           </button>

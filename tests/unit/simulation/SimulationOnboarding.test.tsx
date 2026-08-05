@@ -53,4 +53,21 @@ describe('SimulationOnboarding', () => {
       initialInvestmentWon: 10_000_000,
     }));
   });
+
+  it('adjusts principal with large presets and never drops below zero', () => {
+    render(<SimulationOnboarding source={source} now={() => 456} onComplete={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: '있어요' }));
+    const input = screen.getByRole('textbox', { name: '현재 모아둔 투자금' });
+    fireEvent.change(input, { target: { value: '5000000' } });
+
+    fireEvent.click(screen.getByRole('button', { name: '-1000만' }));
+    expect(input).toHaveValue('0');
+    fireEvent.click(screen.getByRole('button', { name: '+100만' }));
+    expect(input).toHaveValue('1000000');
+    fireEvent.click(screen.getByRole('button', { name: '+1000만' }));
+    expect(input).toHaveValue('11000000');
+    fireEvent.click(screen.getByRole('button', { name: '-100만' }));
+    expect(input).toHaveValue('10000000');
+  });
 });

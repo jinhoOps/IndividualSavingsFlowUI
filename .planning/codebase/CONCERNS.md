@@ -32,7 +32,7 @@ Mitigation:
 
 ## Documentation Can Drift Toward Future Vision
 
-ISF currently supports Main and long-term Simulation, while Portfolio and account relationships remain readiness or future concepts.
+ISF currently supports Main, long-term Simulation, and Portfolio, while Account Map remains a readiness or future concept.
 
 Mitigation:
 

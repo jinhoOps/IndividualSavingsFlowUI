@@ -595,3 +595,24 @@ test('dashboard edit persists only the v2 scalar plan', async ({ page }) => {
     'updatedAt',
   ]);
 });
+
+test('월 자금 계획 편집은 편집 중인 금액의 빠른 조정만 표시한다', async ({ page }) => {
+  await page.addInitScript((fixture) => {
+    localStorage.setItem('isf-main-v2', JSON.stringify(fixture));
+  }, appliedMainV2);
+  await page.goto('apps/main/');
+  await page.getByRole('button', { name: '월 소비 편집' }).click();
+
+  const editor = page.locator('[aria-labelledby="cashflow-editor-title"]');
+  const fields = editor.locator('.money-field');
+  await fields.nth(0).getByRole('textbox').focus();
+  await expect(fields.nth(0).locator('.money-field__adjustments')).toBeVisible();
+  await expect(fields.nth(1).locator('.money-field__adjustments')).toBeHidden();
+
+  await fields.nth(0).getByRole('button', { name: '+10만' }).focus();
+  await expect(fields.nth(0).locator('.money-field__adjustments')).toBeVisible();
+
+  await fields.nth(1).getByRole('textbox').focus();
+  await expect(fields.nth(0).locator('.money-field__adjustments')).toBeHidden();
+  await expect(fields.nth(1).locator('.money-field__adjustments')).toBeVisible();
+});

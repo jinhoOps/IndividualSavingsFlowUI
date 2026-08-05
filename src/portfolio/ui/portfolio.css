@@ -1,0 +1,38 @@
+@import '../../styles/globals.css';
+
+.portfolio-shell { min-height: 100dvh; background: var(--bg); color: #0f172a; }
+.portfolio-launcher, .portfolio-content, .portfolio-recovery { width: min(100% - 2rem, 72rem); margin-inline: auto; }
+.portfolio-launcher { padding-top: 1.25rem; }
+.portfolio-content { padding-block: 2rem 6rem; }
+.portfolio-content--blurred { filter: blur(10px); pointer-events: none; user-select: none; }
+.portfolio-gate { position: relative; min-height: 32rem; }
+.portfolio-gate::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgb(249 246 240 / .35), rgb(249 246 240 / .9)); }
+.portfolio-gate__message { position: absolute; z-index: 2; inset: 25% 1rem auto; text-align: center; }
+.portfolio-summary, .portfolio-editor, .portfolio-recovery { border: 1px solid var(--line); background: white; padding: 1.5rem; }
+.portfolio-summary__content { display: grid; gap: 1.5rem; align-items: center; }
+.portfolio-donut-wrap { position: relative; width: min(100%, 22rem); margin-inline: auto; }
+.portfolio-donut { width: 100%; overflow: visible; transform: rotate(-90deg); }
+.portfolio-donut__track, .portfolio-donut__segment { fill: none; stroke-width: 16; }
+.portfolio-donut__track { stroke: #e2e8f0; }
+.portfolio-donut__segment { stroke: var(--segment-color); cursor: pointer; transform-box: fill-box; transform-origin: center; transition: opacity 150ms ease, transform 150ms ease; }
+.portfolio-donut:has(.portfolio-donut__segment[data-active='true']) .portfolio-donut__segment[data-active='false'] { opacity: .45; }
+.portfolio-donut__segment[data-active='true'] { transform: scale(1.025); }
+.portfolio-donut__center { position: absolute; inset: 44% 0 auto; text-align: center; pointer-events: none; }
+.portfolio-table { width: 100%; border-collapse: collapse; }
+.portfolio-table th, .portfolio-table td { padding: .75rem .5rem; border-bottom: 1px solid var(--line); text-align: right; }
+.portfolio-table th:first-child { text-align: left; }
+.portfolio-table tbody tr { transition: background-color 150ms ease; }
+.portfolio-table tbody tr[data-active='true'] { background: #eff6ff; outline: 2px solid #93c5fd; outline-offset: -2px; }
+.portfolio-tooltip { position: fixed; z-index: 20; display: flex; box-sizing: border-box; width: max-content; max-width: calc(100vw - 2rem); gap: .5rem; padding: .65rem .8rem; border: 1px solid var(--line); background: white; animation: portfolio-tooltip-in 150ms ease both; }
+.portfolio-tooltip--fixed { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); }
+.portfolio-editor__items, .portfolio-editor__row, .portfolio-editor__cash { display: grid; gap: .75rem; }
+.portfolio-editor__field-error { display: block; margin-top: .25rem; color: #b91c1c; font-size: .8rem; font-weight: 700; }
+.portfolio-editor input, .portfolio-editor button, .portfolio-apply-bar button, .portfolio-menu button { min-height: 44px; }
+.portfolio-apply-bar { position: fixed; z-index: 30; inset: auto 1rem 1rem; display: flex; justify-content: flex-end; gap: .5rem; }
+.portfolio-dialog { position: fixed; z-index: 40; inset: 50% auto auto 50%; transform: translate(-50%, -50%); width: min(90vw, 28rem); padding: 1.5rem; border: 1px solid var(--line); background: white; }
+:root { --portfolio-cash: #94a3b8; --portfolio-color-0: #2563eb; --portfolio-color-1: #0891b2; --portfolio-color-2: #0d9488; --portfolio-color-3: #7c3aed; --portfolio-color-4: #4f46e5; --portfolio-color-5: #0284c7; --portfolio-color-6: #0f766e; --portfolio-color-7: #6d28d9; --portfolio-color-8: #1d4ed8; --portfolio-color-9: #0e7490; }
+
+@keyframes portfolio-tooltip-in { from { opacity: 0; transform: translateY(3px) scale(.98); } }
+@media (min-width: 900px) { .portfolio-summary__content { grid-template-columns: minmax(18rem, .8fr) minmax(24rem, 1.2fr); } }
+@media (max-width: 767px) { .portfolio-summary, .portfolio-editor, .portfolio-recovery { padding: 1rem; } .portfolio-table th, .portfolio-table td { padding-inline: .35rem; } }
+@media (prefers-reduced-motion: reduce) { .portfolio-donut__segment, .portfolio-table tbody tr, .portfolio-tooltip { transition: none; animation: none; } .portfolio-donut__segment[data-active='true'] { transform: none; } }

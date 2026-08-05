@@ -4,7 +4,7 @@
 
 ISF는 지금의 월간 돈 흐름을 정리하고, 그 결과를 장기 전략과 실행 계획으로 점차 연결하는 로컬 우선 개인 재무 계획 도구다.
 
-현재 제품은 **Main과 Simulation**이다. Main은 다섯 가지 월간 금액으로 소비·저축·투자·남는 돈을 이해하도록 돕고, Simulation은 그 월 저축·투자를 장기 복리와 전부 저축 기준선으로 비교한다. **Portfolio와 Account Map**은 현재 연결 상태를 설명하는 준비 화면만 제공한다.
+현재 제품은 **Main, Simulation과 Portfolio**다. Main은 월 자금 흐름을, Simulation은 장기 복리를, Portfolio는 최신 Main 투자금의 대상별 배분을 보여준다. **Account Map**은 현재 연결 상태를 설명하는 준비 화면만 제공한다.
 
 ## 2. Epic
 
@@ -14,6 +14,7 @@ ISF는 지금의 월간 돈 흐름을 정리하고, 그 결과를 장기 전략�
 - [Product Roadmap](../../../../../.planning/ROADMAP.md)
 - [Current State](../../../../../.planning/STATE.md)
 - [Design Contract](../../../../../DESIGN.md)
+- [Journey Snapshot 폐기 설계](../../../../superpowers/specs/2026-08-03-journey-snapshot-retirement-design.md)
 
 ## 3. Problem
 
@@ -34,7 +35,7 @@ ISF는 지금의 월간 돈 흐름을 정리하고, 그 결과를 장기 전략�
 현재 범위는 다음을 제공하지 않는다.
 
 - 백테스트, 변동성·MDD, 세금 또는 수수료 계산
-- Portfolio 구성·편집·저장
+- 복수 Portfolio, 계좌별 Portfolio, 시세·수익률·매수 실행
 - Account Map 관계 생성·편집·저장
 - 항목별 계좌 배분이나 자동이체 관리
 - 지출 카테고리·실제 사용액·가구 예산 관리
@@ -87,12 +88,13 @@ ISF는 지금의 월간 돈 흐름을 정리하고, 그 결과를 장기 전략�
 - JSON 내보내기와 가져오기
 - Simulation으로 이어지는 명시적 행동
 
-### Simulation과 readiness journey
+### Simulation, Portfolio와 readiness journey
 
-- 런처는 Main과 Simulation을 `사용 중`, 나머지 두 앱을 `준비 중`으로 표시한다.
-- Simulation은 Main의 월 저축·투자를 읽기 전용으로 사용하고 장기 복리 성장과 전부 저축 기준선을 비교한다.
-- Portfolio는 최소 journey 정보를 이어받는 준비 화면이다.
-- Account Map은 준비 상태만 설명한다.
+- 런처는 Main, Simulation, Portfolio와 Account Map을 아이콘으로 표시한다. 현재 앱은 선택선과 접근성 상태로 구분하고 Account Map만 중립 점·도움말·접근 가능한 이름에서 `준비 중`으로 표시한다.
+- 런처와 CTA는 URL 탐색만 수행하고 별도 전달 데이터를 저장하지 않는다.
+- Simulation은 최신 Main 월 저축·투자를 직접 읽어 장기 복리 성장과 전부 저축 기준선을 비교한다.
+- Portfolio는 최신 Main 투자금을 직접 읽고 하나의 적용 배분과 편집 초안을 소유한다.
+- Account Map만 준비 상태를 설명한다.
 - 준비 화면은 상세 계산·편집·독립 저장·Main write-back을 수행하지 않는다.
 
 ## 8. Functional Requirements
@@ -110,8 +112,9 @@ ISF는 지금의 월간 돈 흐름을 정리하고, 그 결과를 장기 전략�
 
 ### Journey
 
-- 앱 간 전달은 사용자 행동으로 시작한다.
-- 전달 payload는 필요한 최소 데이터만 포함한다.
+- 앱 간 이동은 사용자의 런처 링크 또는 CTA 행동으로 시작한다.
+- 앱 이동은 URL 탐색만 수행하고 Simulation과 Portfolio는 최신 Main을 각자의 읽기 전용 adapter로 직접 읽는다.
+- Main은 폐기된 `isf-journey-snapshot-v1`을 읽거나 변환하지 않고 시작 시 best-effort로 삭제한다.
 - 준비 화면이 상세 앱 상태를 소유하는 것처럼 표현하지 않는다.
 - Account Map은 Main을 암묵적으로 수정하지 않는다.
 
@@ -156,7 +159,7 @@ Main이 계산하는 요약:
 - `plannedOutflowWon = consumptionWon + monthlySavingWon + monthlyInvestmentWon`
 - `remainingWon = monthlyNetIncomeWon - plannedOutflowWon`
 
-Simulation과 향후 앱은 이 계약을 무단 확장하지 않고 별도 소유 상태와 명시적 import 계약을 정의한다.
+Simulation과 Portfolio는 최신 Main을 읽기 전용으로 직접 읽으며 이 계약을 무단 확장하지 않는다. 각 상세 앱은 Main과 분리된 소유 상태를 저장하고 Main에 write-back하지 않는다.
 
 ## 10. UX and Design Requirements
 
@@ -179,17 +182,18 @@ Simulation과 향후 앱은 이 계약을 무단 확장하지 않고 별도 소�
 - [x] 유효한 계획을 로컬에 저장하고 다시 불러올 수 있다.
 - [x] 현재 JSON을 내보내고 검증된 JSON을 가져올 수 있다.
 - [x] Main에서 Simulation으로 명시적으로 이동할 수 있다.
+- [x] 앱 이동은 URL만 사용하고 Main 시작은 폐기된 journey key를 읽거나 변환하지 않고 삭제한다.
 - [x] Simulation은 Main을 변경하지 않고 장기 복리와 전부 저축 기준선을 비교한다.
 - [x] Simulation은 최초 두 단계 설정, 재방문 결과 우선 진입과 최신 Main 자동 동기화를 제공한다.
 - [x] Simulation은 0~30년, 한국식 정수 금액, pointer·touch·keyboard 그래프 탐색을 제공한다.
-- [x] Portfolio와 Account Map readiness가 최소 journey 상태를 보여준다.
-- [x] Portfolio와 Account Map은 `준비 중`으로 표시된다.
-- [x] readiness 화면은 상세 편집·독립 저장·Main write-back을 제공하지 않는다.
+- [x] Portfolio는 최신 Main 투자금을 최대 10개 투자 대상과 현금에 배분한다.
+- [x] Portfolio는 금액·비율, 결과 우선 도넛·표와 초안·적용 경계를 제공한다.
+- [x] Portfolio는 Main을 수정하지 않고 Account Map은 `준비 중`으로 유지된다.
 
 ### Transition
 
 - [x] Simulation의 승인된 기능 명세와 레거시 disposition이 있다.
-- [ ] Portfolio의 승인된 기능 명세와 레거시 disposition이 있다.
+- [x] Portfolio의 승인된 기능 명세와 레거시 disposition이 있다.
 - [ ] Account Map의 승인된 기능 명세와 레거시 disposition이 있다.
 - [ ] 각 레거시 삭제는 구데이터 호환성과 전체 참조 제거를 입증한다.
 
@@ -199,7 +203,7 @@ Simulation과 향후 앱은 이 계약을 무단 확장하지 않고 별도 소�
 
 1. 지금 내 돈은 한 달에 어떻게 나뉘는가? — Main
 2. 이 투자 여력을 오래 유지하면 어떤 차이가 생기는가? — Simulation
-3. 선택한 방향을 매달 무엇에 투자할 것인가? — Future Portfolio
+3. 선택한 방향을 매달 무엇에 투자할 것인가? — Portfolio
 4. 실제 계좌와 자동이체를 어떻게 단순하게 관리할 것인가? — Future Account Map
 
 지출 capture, 가구 병합, 과거 비교와 주거 구매력은 발견 단계의 후보다. 별도 문제 검증과 PRD 승인 전에는 구현 범위나 완료 요구사항으로 취급하지 않는다.
@@ -209,7 +213,7 @@ Simulation과 향후 앱은 이 계약을 무단 확장하지 않고 별도 소�
 - 사용자가 초기 설정을 완료하고 적용된 월간 계획을 다시 확인한다.
 - 적자와 남는 돈을 잘못 해석하지 않는다.
 - JSON 백업과 복구 실패가 현재 데이터를 훼손하지 않는다.
-- Portfolio와 Account Map 준비 화면을 완성된 앱으로 오해하지 않는다.
+- Portfolio 배분을 시세·수익률·계좌 관리로 오해하지 않고 Account Map 준비 화면을 완성된 앱으로 오해하지 않는다.
 - 신규 앱 작업이 레거시 route를 되살리지 않고 승인된 계약에서 시작한다.
 - 문서 검토자가 현재 지원 기능을 런타임 및 테스트와 동일하게 설명한다.
 

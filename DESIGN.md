@@ -4,7 +4,7 @@
 
 Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계획 경험으로 바꾸는 로컬 우선 도구입니다. 시각적 기반은 종이 같은 **ISF Pearl** 캔버스와 단색 테두리의 **flat editorial panel**입니다. 전통적인 스프레드시트의 긴장감은 줄이되 숫자의 정밀성과 신뢰감은 유지합니다.
 
-이 문서의 현재 UI 계약은 상세 제품인 Main과 Simulation, 그리고 Portfolio·Account Map 준비 화면에 적용됩니다. 두 미래 앱 섹션은 후속 신규 앱을 위한 설계 제약이며 현재 제공 기능을 뜻하지 않습니다. 과거 레거시 화면의 모양이나 상호작용은 새 UI의 기준이 아닙니다.
+이 문서의 현재 UI 계약은 상세 제품인 Main, Simulation과 Portfolio, 그리고 Account Map 준비 화면에 적용됩니다. 앱 이동과 데이터 경계는 [Journey Snapshot 폐기 설계](docs/superpowers/specs/2026-08-03-journey-snapshot-retirement-design.md)를 따르며, 과거 레거시 화면의 모양이나 상호작용은 새 UI의 기준이 아닙니다.
 
 ## Experience Principles
 
@@ -30,25 +30,31 @@ Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계획 �
 
 ### Current Journey
 
-- 앱 런처는 Main과 Simulation을 `사용 중`, Portfolio와 Account Map을 `준비 중`으로 표시합니다.
-- 현재 위치는 제품 가용 상태와 분리된 보이는 텍스트와 `aria-current`로 표시합니다.
-- Simulation은 진입 시 최신 Main 월 저축·투자를 읽기 전용으로 자동 동기화합니다.
-- Portfolio와 Account Map 준비 화면은 계산, 편집, 독립 제품 저장 또는 Main write-back UI를 만들지 않습니다.
+- 앱 런처는 `자금 흐름 (Main)`, `미래 성장 (Simulation)`, `투자 배분 (Portfolio)`, `계좌 연결 (Account Map)`을 각각 집, 상승 그래프, 분할 도넛, 펼친 통장 아이콘으로 표시합니다.
+- 현재 위치는 아이콘 아래 선과 `aria-current`로 표시하고 Account Map의 `준비 중` 상태는 별도 점과 접근 가능한 이름으로 구분합니다.
+- 앱 런처와 CTA는 URL 탐색만 수행하며 데이터를 전달하거나 저장하지 않습니다.
+- Simulation은 진입 시 최신 Main 월 저축·투자를, Portfolio는 최신 Main 투자금을 각자의 읽기 전용 adapter로 직접 읽고 write-back하지 않습니다.
+- Account Map만 준비 화면이며 상세 편집·독립 저장이나 Main 데이터 read/write를 제공하지 않습니다.
 
 ### Simulation
 
 - 최초 설정은 시작 원금과 기간·기대수익률 두 단계로 안내하고, 재방문은 저장된 결과를 먼저 보여줍니다.
 - 결과는 핵심 문장 하나, 조건 한 줄, 전체 폭 그래프, 비교값 두 개 순서로 읽힙니다.
 - 기간은 0~30년 슬라이더와 숫자 입력을 함께 제공하고 직접 기대수익률은 ±0.25%p 조작을 제공합니다.
-- 그래프는 기본 상태를 절제하고 pointer·touch·keyboard 탐색 시 연도와 현재 계획·전부 저축·납입원금·저축·투자 잔액을 카드로 보여줍니다.
+- 그래프는 기본 상태를 절제하고 desktop pointer·keyboard 탐색에서는 연도와 현재 계획·전부 저축·납입원금·저축·투자 잔액을 상세 카드로 보여줍니다.
+- 767px 이하 touch 탐색은 누른 채 연도를 이동하고 손을 뗀 뒤 선택을 유지합니다. 고정 크기 compact tooltip은 연도·현재 계획 총액·전부 저축 총액만 한 줄로 보여주며 그래프 밖 touch나 scroll에서 닫힙니다.
+- 그래프 tooltip은 닫기 버튼을 두지 않으며 `Escape`와 그래프 밖 pointer로 닫힙니다.
+- 한국식 정수 금액은 tooltip과 비교 영역에서 임의 글자 단위로 줄바꿈하거나 잘라내지 않습니다.
 - 명목·실질은 항상 보이고 기준금리, 물가와 면책은 `계산 기준`에서 점진적으로 공개합니다.
 - 저장 성공은 낮은 강조로 상시 표시하고 오류만 강조합니다. 재설정은 Simulation 메뉴 안에서 확인합니다.
 
-### Future Portfolio
+### Portfolio
 
 - 자산별 금액과 전체 비중을 동시에 확인할 수 있어야 합니다.
-- 저장 전 확인 단계에서 종목 수, 총액, 설정일과 주기를 요약합니다.
+- 저장 전 확인 단계에서 투자 대상 수, 투자금과 현금 비중을 요약합니다.
 - 편집 중 변경과 저장 상태를 명확히 구분합니다.
+- 결과는 도넛과 표를 함께 사용하고 pointer·touch·keyboard에 동등한 정보를 제공합니다.
+- 투자금 0원은 기존 계획을 보존하고 Main 투자금 편집으로 안내합니다.
 
 ### Future Account Map
 
@@ -105,10 +111,12 @@ Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계획 �
 
 ### App Launcher
 
-- Main, Simulation, Portfolio와 Account Map의 위치를 보여줍니다.
-- 현재 목적지를 `현재 위치` 텍스트와 `aria-current`로 분명히 표시합니다.
-- 제품 가용 상태는 현재 위치와 독립적으로 Main·Simulation `사용 중`, Portfolio·Account Map `준비 중`을 유지합니다.
-- 데이터 연결 상태는 실제 journey snapshot이 검증된 경우에만 표시합니다.
+- Main, Simulation, Portfolio와 Account Map을 고정된 한 줄의 아이콘으로 보여줍니다. 앱 링크의 선택 영역은 44×44px이며 모바일에서도 줄바꿈하지 않습니다.
+- 현재 목적지는 안정적인 아이콘 아래 선과 `aria-current`로 분명히 표시합니다. Account Map의 `준비 중` 상태는 현재 위치와 독립적으로 유지합니다.
+- pointer hover와 keyboard focus는 동일한 한글·영문 툴팁을 제공하고, touch는 450ms 길게 누르면 같은 정보를 표시하되 해당 탭의 탐색과 context menu를 한 번 억제합니다.
+- 전체 의미를 확인하는 `?` 도움말은 정보성 narrow 규격을 사용합니다. 선택 영역은 32×44px, 보이는 원은 30×30px이고 패널은 폭 220px 이하와 viewport 좌우 16px 여백을 지킵니다.
+- 툴팁과 도움말은 Escape 또는 바깥 pointer 입력으로 닫히며 `prefers-reduced-motion`에서는 전환 효과를 제거합니다.
+- 런처 링크는 URL 탐색만 수행하며 앱 간 데이터 연결 상태를 소유하거나 표시하지 않습니다.
 
 ### Main Cashflow Editor
 
@@ -204,7 +212,7 @@ gradient와 반투명 card를 기본 스타일로 사용하지 않습니다.
 ## Do
 
 - 공통 header, feedback, storage와 formatting utility를 먼저 확인합니다.
-- Main 현재 데이터 소유권, 최소 journey 계약과 향후 앱의 명시적 import 경계를 유지합니다.
+- Main 현재 데이터 소유권, URL-only 탐색과 상세 앱의 명시적인 최신 Main read 경계를 유지합니다.
 - Main의 다섯 값 계약을 넘어서는 편집 UI를 현재 제품에 추가하지 않습니다.
 - 외부 동작과 모바일 화면을 함께 검증합니다.
 - CSS 수정 전후 responsive media query와 파일 구조를 확인합니다.

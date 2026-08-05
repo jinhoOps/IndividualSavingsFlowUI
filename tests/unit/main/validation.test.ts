@@ -1,8 +1,26 @@
 import { describe, expect, it } from 'vitest';
 import { createEmptyMainData } from '../../../src/main/domain/model';
-import { validateMainData, validateMainDraft } from '../../../src/main/domain/validation';
+import { isMainDataShape, validateMainData, validateMainDraft } from '../../../src/main/domain/validation';
+
+const validMain = {
+  schemaVersion: 2,
+  updatedAt: 10,
+  monthlyNetIncomeWon: 3_000_000,
+  monthlyHousingWon: 700_000,
+  monthlyLivingWon: 900_000,
+  monthlySavingWon: 400_000,
+  monthlyInvestmentWon: 200_000,
+} as const;
 
 describe('validateMainData', () => {
+  it.each([
+    [{ ...validMain, schemaVersion: 1 }, false],
+    [{ ...validMain, monthlyInvestmentWon: -1 }, false],
+    [{ ...validMain, monthlyInvestmentWon: 250_000 }, true],
+  ])('owns the current Main storage shape', (candidate, expected) => {
+    expect(isMainDataShape(candidate)).toBe(expected);
+  });
+
   it('permits zero income in an otherwise valid setup draft', () => {
     expect(validateMainDraft(createEmptyMainData())).toEqual({ valid: true, issues: [] });
   });

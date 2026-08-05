@@ -15,7 +15,7 @@ if (root === null) {
 createRoot(root).render(
   <StrictMode>
     <MainErrorBoundary>
-      <ReadinessApp destination="account-map" />
+      <ReadinessApp />
     </MainErrorBoundary>
   </StrictMode>,
 );
