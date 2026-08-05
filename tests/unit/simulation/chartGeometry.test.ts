@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { ProjectionPoint } from '../../../src/simulation/domain/model';
 import {
   buildChartGeometry,
-  tooltipSide,
+  tooltipPlacement,
 } from '../../../src/simulation/ui/chartGeometry';
 
 const points: ProjectionPoint[] = [
@@ -52,8 +52,18 @@ describe('buildChartGeometry', () => {
     expect(thirtyYear.xTicks.at(-1)?.label).toBe('30년');
   });
 
-  it('places the tooltip opposite the nearest viewport edge', () => {
-    expect(tooltipSide(620, 680, 240)).toBe('left');
-    expect(tooltipSide(120, 680, 240)).toBe('right');
+  it('keeps a fixed tooltip inside horizontal and top chart edges', () => {
+    expect(tooltipPlacement({
+      anchorX: 620, anchorY: 140,
+      chartWidth: 680, tooltipWidth: 240, tooltipHeight: 112,
+    })).toEqual({ horizontal: 'left', vertical: 'above' });
+    expect(tooltipPlacement({
+      anchorX: 120, anchorY: 140,
+      chartWidth: 680, tooltipWidth: 240, tooltipHeight: 112,
+    })).toEqual({ horizontal: 'right', vertical: 'above' });
+    expect(tooltipPlacement({
+      anchorX: 120, anchorY: 40,
+      chartWidth: 680, tooltipWidth: 240, tooltipHeight: 112,
+    })).toEqual({ horizontal: 'right', vertical: 'below' });
   });
 });
