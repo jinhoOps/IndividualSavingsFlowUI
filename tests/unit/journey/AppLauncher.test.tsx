@@ -137,6 +137,31 @@ describe('AppLauncher', () => {
     expect(dispatchObservedClick(link)).toBe(false);
   });
 
+  it('keeps the established long-press click suppressed when a second touch joins', () => {
+    vi.useFakeTimers();
+    render(<AppLauncher currentApp="main" />);
+    const link = screen.getByRole('link', { name: /미래 성장 \(Simulation\)/ });
+
+    fireTouchPointerEvent(link, 'pointerdown', 1);
+    act(() => vi.advanceTimersByTime(450));
+    fireTouchPointerEvent(link, 'pointerdown', 2);
+    expect(link.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))).toBe(false);
+  });
+
+  it('clears stale touch suppression when a mouse gesture starts', () => {
+    vi.useFakeTimers();
+    render(<AppLauncher currentApp="main" />);
+    const link = screen.getByRole('link', { name: /미래 성장 \(Simulation\)/ });
+
+    fireTouchPointerEvent(link, 'pointerdown', 1);
+    act(() => vi.advanceTimersByTime(450));
+    fireTouchPointerEvent(link, 'pointerup', 1);
+    const mouseDown = new Event('pointerdown', { bubbles: true, cancelable: true });
+    Object.defineProperty(mouseDown, 'pointerType', { value: 'mouse' });
+    fireEvent(link, mouseDown);
+    expect(link.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }))).toBe(true);
+  });
+
   it.each(['pointerUp', 'pointerMove', 'pointerCancel'] as const)(
     'cancels touch explanation on %s before the threshold',
     (eventName) => {

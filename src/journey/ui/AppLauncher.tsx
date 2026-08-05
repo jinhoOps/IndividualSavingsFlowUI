@@ -74,8 +74,11 @@ export function AppLauncher({ currentApp }: AppLauncherProps) {
   }, [helpOpen]);
 
   const startLongPress = (event: ReactPointerEvent<HTMLAnchorElement>, app: JourneyApp) => {
-    if (event.pointerType !== 'touch') return;
-    clearSuppression();
+    if (event.pointerType !== 'touch') {
+      clearSuppression();
+      return;
+    }
+    if (activeTouchPointersRef.current.size === 0) clearSuppression();
     activeTouchPointersRef.current.add(event.pointerId);
     if (activeTouchPointersRef.current.size > 1) {
       cancelLongPress();
