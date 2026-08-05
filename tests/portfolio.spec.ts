@@ -31,7 +31,7 @@ test('creates one allocation and revisits result-first', async ({ page }) => {
   await expect(page.getByText('한 달 투자금을 배분합니다')).toBeVisible();
   await page.reload();
   await expect(page.getByRole('row', { name: /미국 인덱스.*120,000원.*60%/ })).toBeVisible();
-  await expect(page.getByRole('link', { name: /Portfolio 사용 중.*현재 위치/ }))
+  await expect(page.getByRole('link', { name: /투자 배분 \(Portfolio\).*현재 위치/ }))
     .toHaveAttribute('aria-current', 'page');
 });
 
