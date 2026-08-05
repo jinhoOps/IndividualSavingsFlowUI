@@ -47,6 +47,10 @@
   background: color-mix(in srgb, var(--tone-accent) 8%, transparent);
 }
 
+.journey-launcher__app-link[aria-current='page'] svg {
+  stroke-width: 2.15;
+}
+
 .journey-launcher__app-link:active,
 .journey-launcher__help-hit:active {
   transform: scale(0.94);
@@ -82,7 +86,7 @@
   width: 5px;
   height: 5px;
   border-radius: 999px;
-  background: var(--tone-primary);
+  background: color-mix(in srgb, var(--muted) 72%, transparent);
 }
 
 .journey-launcher__tooltip {

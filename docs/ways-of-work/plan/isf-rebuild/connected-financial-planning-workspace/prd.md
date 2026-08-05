@@ -90,7 +90,7 @@ ISF는 지금의 월간 돈 흐름을 정리하고, 그 결과를 장기 전략�
 
 ### Simulation, Portfolio와 readiness journey
 
-- 런처는 Main, Simulation과 Portfolio를 `사용 중`, Account Map을 `준비 중`으로 표시한다.
+- 런처는 Main, Simulation, Portfolio와 Account Map을 아이콘으로 표시한다. 현재 앱은 선택선과 접근성 상태로 구분하고 Account Map만 중립 점·도움말·접근 가능한 이름에서 `준비 중`으로 표시한다.
 - 런처와 CTA는 URL 탐색만 수행하고 별도 전달 데이터를 저장하지 않는다.
 - Simulation은 최신 Main 월 저축·투자를 직접 읽어 장기 복리 성장과 전부 저축 기준선을 비교한다.
 - Portfolio는 최신 Main 투자금을 직접 읽고 하나의 적용 배분과 편집 초안을 소유한다.

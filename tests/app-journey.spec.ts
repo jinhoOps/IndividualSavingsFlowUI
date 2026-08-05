@@ -111,6 +111,12 @@ test('contains launcher and current Simulation route at mobile, tablet, and desk
     await expect(launcher).toBeVisible();
     await expect(page.getByRole('link', { name: /미래 성장 \(Simulation\).*현재 위치/ }))
       .toHaveAttribute('aria-current', 'page');
+    const currentLink = page.getByRole('link', { name: /미래 성장 \(Simulation\).*현재 위치/ });
+    await currentLink.focus();
+    expect(await currentLink.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return style.outlineStyle !== 'none' && Number.parseFloat(style.outlineWidth) >= 1;
+    })).toBe(true);
 
     const appTargets = await launcher.locator('.journey-launcher__app-link').evaluateAll((links) =>
       links.map((link) => {
@@ -193,7 +199,10 @@ test('explains app icons with pointer, keyboard, touch and narrow help', async (
   const mainLink = page.getByRole('link', { name: '자금 흐름 (Main)' });
   await mainLink.hover();
   await expect(page.getByRole('tooltip')).toHaveText('자금 흐름 (Main)');
+  await page.locator('main').hover();
+  await expect(page.getByRole('tooltip')).toHaveCount(0);
   await mainLink.focus();
+  await expect(page.getByRole('tooltip')).toHaveText('자금 흐름 (Main)');
   await page.keyboard.press('Escape');
   await expect(page.getByRole('tooltip')).toHaveCount(0);
 
@@ -208,8 +217,12 @@ test('explains app icons with pointer, keyboard, touch and narrow help', async (
   expect(panelBox!.x).toBeGreaterThanOrEqual(16);
   expect(panelBox!.x + panelBox!.width).toBeLessThanOrEqual(374);
 
-  await page.locator('main').click({ position: { x: 1, y: 1 } });
+  await mainLink.focus();
   await expect(panel).toHaveCount(0);
+
+  await help.click();
+  await page.locator('main').click({ position: { x: 1, y: 1 } });
+  await expect(page.getByRole('region', { name: '앱 아이콘 안내' })).toHaveCount(0);
 
   const portfolioLink = page.getByRole('link', { name: '투자 배분 (Portfolio)' });
   const before = page.url();
@@ -225,6 +238,11 @@ test('explains app icons with pointer, keyboard, touch and narrow help', async (
     const value = getComputedStyle(element).transitionDuration;
     return value.endsWith('ms') ? Number.parseFloat(value) : Number.parseFloat(value) * 1_000;
   })).toBeLessThan(1);
+
+  await mainLink.dispatchEvent('pointerdown', { pointerType: 'touch', pointerId: 8 });
+  await mainLink.dispatchEvent('pointerup', { pointerType: 'touch', pointerId: 8 });
+  await mainLink.click();
+  await expect(page).toHaveURL(/\/apps\/main\/$/);
 });
 
 test('legacy Simulation DOM is absent from the supported route', async ({ page }) => {

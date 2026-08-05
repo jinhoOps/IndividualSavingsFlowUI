@@ -9,13 +9,23 @@ export interface AppLauncherProps {
 }
 
 const LONG_PRESS_MS = 450;
+const TOOLTIP_CLOSE_MS = 80;
+const SUPPRESSION_TTL_MS = 1_500;
 const HELP_PANEL_ID = 'journey-app-icon-help';
+
+interface TouchSuppression {
+  app: JourneyApp;
+  click: boolean;
+  contextMenu: boolean;
+}
 
 export function AppLauncher({ currentApp }: AppLauncherProps) {
   const launcherRef = useRef<HTMLElement>(null);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const suppressClickRef = useRef(false);
-  const suppressContextMenuRef = useRef(false);
+  const tooltipCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const suppressionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const activeTouchPointerRef = useRef<number | null>(null);
+  const touchSuppressionRef = useRef<TouchSuppression | null>(null);
   const [activeTooltip, setActiveTooltip] = useState<JourneyApp | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
 
@@ -26,7 +36,31 @@ export function AppLauncher({ currentApp }: AppLauncherProps) {
     }
   };
 
-  useEffect(() => cancelLongPress, []);
+  const clearSuppression = () => {
+    if (suppressionTimerRef.current !== null) clearTimeout(suppressionTimerRef.current);
+    suppressionTimerRef.current = null;
+    touchSuppressionRef.current = null;
+  };
+
+  const openTooltip = (app: JourneyApp) => {
+    if (tooltipCloseTimerRef.current !== null) clearTimeout(tooltipCloseTimerRef.current);
+    tooltipCloseTimerRef.current = null;
+    setActiveTooltip(app);
+  };
+
+  const scheduleTooltipClose = (app: JourneyApp) => {
+    if (tooltipCloseTimerRef.current !== null) clearTimeout(tooltipCloseTimerRef.current);
+    tooltipCloseTimerRef.current = setTimeout(() => {
+      setActiveTooltip((active) => active === app ? null : active);
+      tooltipCloseTimerRef.current = null;
+    }, TOOLTIP_CLOSE_MS);
+  };
+
+  useEffect(() => () => {
+    cancelLongPress();
+    clearSuppression();
+    if (tooltipCloseTimerRef.current !== null) clearTimeout(tooltipCloseTimerRef.current);
+  }, []);
 
   useEffect(() => {
     if (!helpOpen) return;
@@ -40,17 +74,48 @@ export function AppLauncher({ currentApp }: AppLauncherProps) {
 
   const startLongPress = (event: ReactPointerEvent<HTMLAnchorElement>, app: JourneyApp) => {
     if (event.pointerType !== 'touch') return;
+    if (activeTouchPointerRef.current !== null) {
+      cancelLongPress();
+      activeTouchPointerRef.current = null;
+      return;
+    }
+
+    activeTouchPointerRef.current = event.pointerId;
     cancelLongPress();
     longPressTimerRef.current = setTimeout(() => {
-      setActiveTooltip(app);
-      suppressClickRef.current = true;
-      suppressContextMenuRef.current = true;
+      openTooltip(app);
+      clearSuppression();
+      touchSuppressionRef.current = { app, click: true, contextMenu: true };
+      suppressionTimerRef.current = setTimeout(clearSuppression, SUPPRESSION_TTL_MS);
       longPressTimerRef.current = null;
     }, LONG_PRESS_MS);
   };
 
+  const finishTouch = (event: ReactPointerEvent<HTMLAnchorElement>) => {
+    if (event.pointerType !== 'touch') return;
+    if (activeTouchPointerRef.current !== event.pointerId) return;
+    cancelLongPress();
+    activeTouchPointerRef.current = null;
+  };
+
+  const cancelTouchGesture = (event: ReactPointerEvent<HTMLAnchorElement>) => {
+    if (event.pointerType !== 'touch') return;
+    cancelLongPress();
+    activeTouchPointerRef.current = null;
+  };
+
+  const consumeSuppression = (app: JourneyApp, kind: 'click' | 'contextMenu') => {
+    const suppression = touchSuppressionRef.current;
+    if (suppression?.app !== app || !suppression[kind]) return false;
+    suppression[kind] = false;
+    if (!suppression.click && !suppression.contextMenu) clearSuppression();
+    return true;
+  };
+
   const closeAll = () => {
     cancelLongPress();
+    if (tooltipCloseTimerRef.current !== null) clearTimeout(tooltipCloseTimerRef.current);
+    tooltipCloseTimerRef.current = null;
     setActiveTooltip(null);
     setHelpOpen(false);
   };
@@ -62,6 +127,9 @@ export function AppLauncher({ currentApp }: AppLauncherProps) {
       aria-label="ISF 앱"
       onKeyDown={(event) => {
         if (event.key === 'Escape') closeAll();
+      }}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setHelpOpen(false);
       }}
     >
       <ul className="journey-launcher__list">
@@ -82,23 +150,24 @@ export function AppLauncher({ currentApp }: AppLauncherProps) {
                 aria-label={accessibleName}
                 aria-current={isCurrent ? 'page' : undefined}
                 aria-describedby={activeTooltip === item.id ? tooltipId : undefined}
-                onMouseEnter={() => setActiveTooltip(item.id)}
-                onMouseLeave={() => setActiveTooltip((active) => active === item.id ? null : active)}
-                onFocus={() => setActiveTooltip(item.id)}
-                onBlur={() => setActiveTooltip((active) => active === item.id ? null : active)}
+                onMouseEnter={() => openTooltip(item.id)}
+                onMouseLeave={() => scheduleTooltipClose(item.id)}
+                onFocus={() => {
+                  setHelpOpen(false);
+                  openTooltip(item.id);
+                }}
+                onBlur={() => scheduleTooltipClose(item.id)}
                 onPointerDown={(event) => startLongPress(event, item.id)}
-                onPointerUp={cancelLongPress}
-                onPointerMove={cancelLongPress}
-                onPointerCancel={cancelLongPress}
+                onPointerUp={finishTouch}
+                onPointerMove={cancelTouchGesture}
+                onPointerCancel={cancelTouchGesture}
                 onClick={(event) => {
-                  if (!suppressClickRef.current) return;
+                  if (!consumeSuppression(item.id, 'click')) return;
                   event.preventDefault();
-                  suppressClickRef.current = false;
                 }}
                 onContextMenu={(event) => {
-                  if (!suppressContextMenuRef.current) return;
+                  if (!consumeSuppression(item.id, 'contextMenu')) return;
                   event.preventDefault();
-                  suppressContextMenuRef.current = false;
                 }}
               >
                 <AppNavigationIcon app={item.id} />

@@ -53,7 +53,7 @@ Main에 적용된 계획이 있으면 `Simulation으로 이어가기`가 URL로�
 
 기간은 현재를 뜻하는 0년부터 30년까지 조정합니다. 결과는 한국식 정수 금액, 전체 폭 성장 그래프와 전부 저축 비교를 제공하며 pointer·touch·keyboard로 연도별 상세를 확인할 수 있습니다.
 
-런처는 Main, Simulation과 Portfolio를 `사용 중`, Account Map을 `준비 중`으로 표시합니다. 현재 위치는 가용 상태와 별도로 표시됩니다.
+런처는 Main, Simulation, Portfolio와 Account Map을 한 줄 아이콘으로 표시합니다. 현재 앱은 선택선으로 구분하고 Account Map만 중립 점과 도움말에서 `준비 중`임을 알립니다. 아이콘의 한글·영문 명칭은 hover, keyboard focus, 모바일 길게 누르기 또는 `?` 도움말로 확인할 수 있습니다.
 
 ## Portfolio와 향후 Account Map
 

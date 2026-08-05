@@ -17,8 +17,8 @@ This document tracks the supported baseline and transition obligations. Future i
 
 ## Supported Simulation and Journey
 
-- [x] **JOURNEY-01**: The launcher identifies Main, Simulation, and Portfolio as `사용 중`, and Account Map as `준비 중`.
-- [x] **JOURNEY-02**: Product availability and the user’s current location are communicated as separate states.
+- [x] **JOURNEY-01**: The icon launcher exposes Main, Simulation, Portfolio, and Account Map; only Account Map carries a neutral-dot and accessible `준비 중` state.
+- [x] **JOURNEY-02**: The current app uses an underline and `aria-current`, independently from Account Map readiness.
 - [x] **JOURNEY-03**: Launcher links and CTAs navigate by URL without persisting an app-to-app transfer payload.
 - [x] **JOURNEY-04**: Main removes the retired journey key without reading or migrating it, and removal failure does not block startup.
 - [x] **SIM-01**: First-run Simulation guides starting principal and scenario settings in two stages; revisits open the result directly.
