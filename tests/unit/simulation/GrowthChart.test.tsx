@@ -1,13 +1,32 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDefaultSimulationDraft } from '../../../src/simulation/domain/validation';
 import { projectCompoundGrowth } from '../../../src/simulation/domain/projection';
 import { GrowthChart } from '../../../src/simulation/ui/GrowthChart';
 import { formatWon } from '../../../src/simulation/ui/format';
 
-afterEach(cleanup);
+let compactViewport = false;
+
+beforeEach(() => {
+  vi.stubGlobal('matchMedia', vi.fn().mockImplementation(() => ({
+    matches: compactViewport,
+    media: '(max-width: 767px)',
+    onchange: null,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  })));
+});
+
+afterEach(() => {
+  compactViewport = false;
+  vi.unstubAllGlobals();
+  cleanup();
+});
 
 const result = projectCompoundGrowth(createDefaultSimulationDraft({
   monthlySavingsWon: 300_000,
@@ -46,16 +65,53 @@ describe('GrowthChart', () => {
     expect(screen.queryByText('현재 계획 총액')).not.toBeInTheDocument();
   });
 
-  it('toggles the same chart point off on a repeated tap', () => {
+  it('shows only two comparison totals in compact mode without a close button', () => {
+    compactViewport = true;
     render(<GrowthChart result={result} amountMode="nominal" />);
+    fireEvent.keyDown(screen.getByRole('application', { name: '그래프 연도 탐색' }), {
+      key: 'Home',
+    });
+
+    expect(screen.getByText('현재 계획 총액')).toBeVisible();
+    expect(screen.getByText('전부 저축 총액')).toBeVisible();
+    expect(screen.queryByText('누적 납입원금')).not.toBeInTheDocument();
+    expect(screen.queryByText('저축 잔액')).not.toBeInTheDocument();
+    expect(screen.queryByText('투자 잔액')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '닫기' })).not.toBeInTheDocument();
+  });
+
+  it('keeps detailed desktop values but removes the close button', () => {
+    render(<GrowthChart result={result} amountMode="nominal" />);
+    fireEvent.keyDown(screen.getByRole('application', { name: '그래프 연도 탐색' }), {
+      key: 'Home',
+    });
+
+    expect(screen.getByText('누적 납입원금')).toBeVisible();
+    expect(screen.getByText('저축 잔액')).toBeVisible();
+    expect(screen.getByText('투자 잔액')).toBeVisible();
+    expect(screen.queryByRole('button', { name: '닫기' })).not.toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent(
+      /0년, 현재 계획 총액 .* 전부 저축 총액/,
+    );
+  });
+
+  it('drags through touch years, keeps release selection, and closes on scroll', () => {
+    compactViewport = true;
+    const { container } = render(<GrowthChart result={result} amountMode="nominal" />);
     const chart = screen.getByRole('img', { name: '연도별 복리 성장 그래프' });
     Object.defineProperty(chart, 'getBoundingClientRect', {
       value: () => ({ left: 0, width: 680 }),
     });
-    fireEvent(chart, new MouseEvent('pointerdown', { bubbles: true, clientX: 340 }));
-    expect(screen.getByText('현재 계획 총액')).toBeVisible();
-    fireEvent(chart, new MouseEvent('pointerdown', { bubbles: true, clientX: 340 }));
-    expect(screen.queryByText('현재 계획 총액')).not.toBeInTheDocument();
+    Object.defineProperty(chart, 'setPointerCapture', { value: vi.fn() });
+    Object.defineProperty(chart, 'releasePointerCapture', { value: vi.fn() });
+
+    fireEvent(chart, pointerEvent('pointerdown', 36));
+    fireEvent(chart, pointerEvent('pointermove', 656));
+    fireEvent(chart, pointerEvent('pointerup', 656));
+    expect(container.querySelector('.growth-chart__tooltip > strong')).toHaveTextContent('20년');
+
+    fireEvent.scroll(window);
+    expect(container.querySelector('.growth-chart__tooltip')).not.toBeInTheDocument();
   });
 
   it('maps the first and last plotted x positions to their exact years', () => {
@@ -111,3 +167,12 @@ describe('GrowthChart', () => {
     expect(screen.getByText(new RegExp(formatWon(result.finalCurrentPlanWon)))).toBeVisible();
   });
 });
+
+function pointerEvent(type: string, clientX: number): MouseEvent {
+  const event = new MouseEvent(type, { bubbles: true, clientX });
+  Object.defineProperties(event, {
+    pointerId: { value: 7 },
+    pointerType: { value: 'touch' },
+  });
+  return event;
+}

@@ -4,7 +4,7 @@ import type {
   ProjectionPoint,
   ProjectionResult,
 } from '../domain/model';
-import { buildChartGeometry, tooltipSide } from './chartGeometry';
+import { buildChartGeometry, tooltipPlacement } from './chartGeometry';
 import { formatWon } from './format';
 import { GrowthChartTooltip } from './GrowthChartTooltip';
 
@@ -17,13 +17,20 @@ export function GrowthChart({
 }) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const chartRef = useRef<HTMLElement>(null);
+  const touchPointerRef = useRef<number | null>(null);
+  const compactTooltip = useCompactTooltip();
   useEffect(() => {
     if (activeIndex === null) return undefined;
+    const dismiss = () => setActiveIndex(null);
     const dismissOutside = (event: PointerEvent) => {
-      if (!chartRef.current?.contains(event.target as Node)) setActiveIndex(null);
+      if (!chartRef.current?.contains(event.target as Node)) dismiss();
     };
     document.addEventListener('pointerdown', dismissOutside);
-    return () => document.removeEventListener('pointerdown', dismissOutside);
+    window.addEventListener('scroll', dismiss, { passive: true });
+    return () => {
+      document.removeEventListener('pointerdown', dismissOutside);
+      window.removeEventListener('scroll', dismiss);
+    };
   }, [activeIndex]);
   const geometry = buildChartGeometry(result.points, amountMode);
   const last = result.points.at(-1)!;
@@ -31,6 +38,16 @@ export function GrowthChart({
   const finalSavings = displayed(last, 'allSavings', amountMode);
   const activeGeometry = activeIndex === null ? null : geometry.points[activeIndex] ?? null;
   const active = activeGeometry?.point ?? null;
+  const tooltipSize = compactTooltip
+    ? { width: 192, height: 112 }
+    : { width: 240, height: 230 };
+  const placement = activeGeometry === null ? null : tooltipPlacement({
+    anchorX: activeGeometry.x,
+    anchorY: Math.min(activeGeometry.currentY, activeGeometry.allSavingsY),
+    chartWidth: 680,
+    tooltipWidth: tooltipSize.width,
+    tooltipHeight: tooltipSize.height,
+  });
 
   return (
     <section
@@ -78,10 +95,14 @@ export function GrowthChart({
               result.points,
               geometry.plot,
             );
-            setActiveIndex((current) => current === index ? null : index);
+            setActiveIndex(index);
+            if (event.pointerType === 'touch') {
+              touchPointerRef.current = event.pointerId;
+              event.currentTarget.setPointerCapture(event.pointerId);
+            }
           }}
           onPointerMove={(event) => {
-            if (event.pointerType !== 'touch') {
+            if (event.pointerType !== 'touch' || touchPointerRef.current === event.pointerId) {
               setActiveIndex(indexAt(
                 event.currentTarget,
                 event.clientX,
@@ -89,6 +110,14 @@ export function GrowthChart({
                 geometry.plot,
               ));
             }
+          }}
+          onPointerUp={(event) => {
+            if (touchPointerRef.current !== event.pointerId) return;
+            touchPointerRef.current = null;
+            event.currentTarget.releasePointerCapture(event.pointerId);
+          }}
+          onPointerCancel={(event) => {
+            if (touchPointerRef.current === event.pointerId) touchPointerRef.current = null;
           }}
         >
           {geometry.yTicks.map((tick) => (
@@ -117,28 +146,47 @@ export function GrowthChart({
             <text className="growth-chart__x-tick" key={tick.x} x={tick.x} y="277">{tick.label}</text>
           ))}
         </svg>
-        {active === null || activeGeometry === null ? null : (
-          <GrowthChartTooltip
-            side={tooltipSide(activeGeometry.x, 680, 240)}
-            anchorPercent={activeGeometry.x / 680 * 100}
-            onClose={() => setActiveIndex(null)}
-            values={{
-              year: active.year,
-              currentPlanWon: displayed(active, 'current', amountMode),
-              allSavingsWon: displayed(active, 'allSavings', amountMode),
-              principalWon: amountMode === 'real'
-                ? active.contributedPrincipalRealWon
-                : active.contributedPrincipalWon,
-              savingsWon: amountMode === 'real' ? active.savingsRealWon : active.savingsNominalWon,
-              investmentWon: amountMode === 'real'
-                ? active.investmentRealWon
-                : active.investmentNominalWon,
-            }}
-          />
+        {active === null || activeGeometry === null || placement === null ? null : (
+          <>
+            <p className="sr-only" role="status">
+              {`${active.year}년, 현재 계획 총액 ${formatWon(displayed(active, 'current', amountMode))}, 전부 저축 총액 ${formatWon(displayed(active, 'allSavings', amountMode))}`}
+            </p>
+            <GrowthChartTooltip
+              variant={compactTooltip ? 'compact' : 'detailed'}
+              placement={placement}
+              anchorPercent={activeGeometry.x / 680 * 100}
+              anchorYPercent={Math.min(activeGeometry.currentY, activeGeometry.allSavingsY) / 285 * 100}
+              values={{
+                year: active.year,
+                currentPlanWon: displayed(active, 'current', amountMode),
+                allSavingsWon: displayed(active, 'allSavings', amountMode),
+                principalWon: amountMode === 'real'
+                  ? active.contributedPrincipalRealWon
+                  : active.contributedPrincipalWon,
+                savingsWon: amountMode === 'real' ? active.savingsRealWon : active.savingsNominalWon,
+                investmentWon: amountMode === 'real'
+                  ? active.investmentRealWon
+                  : active.investmentNominalWon,
+              }}
+            />
+          </>
         )}
       </div>
     </section>
   );
+}
+
+function useCompactTooltip(): boolean {
+  const query = '(max-width: 767px)';
+  const [compact, setCompact] = useState(() => window.matchMedia(query).matches);
+  useEffect(() => {
+    const media = window.matchMedia(query);
+    const update = () => setCompact(media.matches);
+    update();
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, []);
+  return compact;
 }
 
 function indexAt(
