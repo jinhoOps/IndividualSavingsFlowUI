@@ -29,6 +29,22 @@ async function openFirstResult(page: Page) {
     .toBeVisible();
 }
 
+test('390px 시작 자산 빠른 조정은 한 줄 터치 영역을 유지한다', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await seedMain(page);
+  await page.goto('apps/simulation/');
+  await page.getByRole('button', { name: '있어요' }).click();
+
+  const buttons = ['-1000만', '-100만', '+100만', '+1000만']
+    .map((name) => page.getByRole('button', { name }));
+  const boxes = await Promise.all(buttons.map((button) => button.boundingBox()));
+
+  expect(boxes.every((box) => box !== null)).toBe(true);
+  expect(new Set(boxes.map((box) => Math.round(box!.y))).size).toBe(1);
+  expect(boxes.every((box) => box !== null && box.height >= 44)).toBe(true);
+  expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
+});
+
 test('guides first run, supports boundary years and keeps Main read-only', async ({ page }) => {
   await seedMain(page);
   await openFirstResult(page);
