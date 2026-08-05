@@ -102,6 +102,15 @@ describe('AppLauncher', () => {
     fireTouchPointerEvent(simulation, 'pointerdown', 1);
     act(() => vi.advanceTimersByTime(450));
     expect(dispatchObservedClick(portfolio)).toBe(false);
+
+    fireTouchPointerEvent(simulation, 'pointerup', 1);
+    fireTouchPointerEvent(simulation, 'pointerdown', 2);
+    fireTouchPointerEvent(simulation, 'pointerup', 2);
+    expect(dispatchObservedClick(simulation)).toBe(false);
+
+    fireTouchPointerEvent(simulation, 'pointerdown', 3);
+    act(() => vi.advanceTimersByTime(450));
+    fireTouchPointerEvent(simulation, 'pointerup', 3);
     act(() => vi.advanceTimersByTime(1_500));
     expect(dispatchObservedClick(simulation)).toBe(false);
   });
@@ -117,7 +126,14 @@ describe('AppLauncher', () => {
     expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
 
     fireTouchPointerEvent(link, 'pointerdown', 3);
+    act(() => vi.advanceTimersByTime(450));
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+    fireTouchPointerEvent(link, 'pointerup', 1);
+    fireTouchPointerEvent(link, 'pointerup', 2);
     fireTouchPointerEvent(link, 'pointerup', 3);
+
+    fireTouchPointerEvent(link, 'pointerdown', 4);
+    fireTouchPointerEvent(link, 'pointerup', 4);
     expect(dispatchObservedClick(link)).toBe(false);
   });
 
@@ -150,7 +166,7 @@ function fireTouchPointerEvent(element: Element, type: string, pointerId = 1): v
 
 function dispatchObservedClick(element: Element): boolean {
   let preventedByLauncher = false;
-  element.addEventListener('click', (event) => {
+  document.addEventListener('click', (event) => {
     preventedByLauncher = event.defaultPrevented;
     event.preventDefault();
   }, { once: true });

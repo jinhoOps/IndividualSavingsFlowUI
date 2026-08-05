@@ -24,7 +24,8 @@ export function AppLauncher({ currentApp }: AppLauncherProps) {
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const tooltipCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const suppressionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const activeTouchPointerRef = useRef<number | null>(null);
+  const activeTouchPointersRef = useRef(new Set<number>());
+  const multitouchBlockedRef = useRef(false);
   const touchSuppressionRef = useRef<TouchSuppression | null>(null);
   const [activeTooltip, setActiveTooltip] = useState<JourneyApp | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
@@ -74,13 +75,14 @@ export function AppLauncher({ currentApp }: AppLauncherProps) {
 
   const startLongPress = (event: ReactPointerEvent<HTMLAnchorElement>, app: JourneyApp) => {
     if (event.pointerType !== 'touch') return;
-    if (activeTouchPointerRef.current !== null) {
+    clearSuppression();
+    activeTouchPointersRef.current.add(event.pointerId);
+    if (activeTouchPointersRef.current.size > 1) {
       cancelLongPress();
-      activeTouchPointerRef.current = null;
+      multitouchBlockedRef.current = true;
       return;
     }
-
-    activeTouchPointerRef.current = event.pointerId;
+    if (multitouchBlockedRef.current) return;
     cancelLongPress();
     longPressTimerRef.current = setTimeout(() => {
       openTooltip(app);
@@ -93,15 +95,18 @@ export function AppLauncher({ currentApp }: AppLauncherProps) {
 
   const finishTouch = (event: ReactPointerEvent<HTMLAnchorElement>) => {
     if (event.pointerType !== 'touch') return;
-    if (activeTouchPointerRef.current !== event.pointerId) return;
     cancelLongPress();
-    activeTouchPointerRef.current = null;
+    activeTouchPointersRef.current.delete(event.pointerId);
+    if (activeTouchPointersRef.current.size === 0) multitouchBlockedRef.current = false;
   };
 
   const cancelTouchGesture = (event: ReactPointerEvent<HTMLAnchorElement>) => {
     if (event.pointerType !== 'touch') return;
     cancelLongPress();
-    activeTouchPointerRef.current = null;
+    if (event.type === 'pointercancel') {
+      activeTouchPointersRef.current.delete(event.pointerId);
+      if (activeTouchPointersRef.current.size === 0) multitouchBlockedRef.current = false;
+    }
   };
 
   const consumeSuppression = (app: JourneyApp, kind: 'click' | 'contextMenu') => {
