@@ -29,7 +29,7 @@
 - Escape, 바깥 클릭, 메뉴 항목 실행으로 팝오버가 닫힌다.
 - 팝오버가 닫히면 톱니 버튼으로 포커스가 돌아간다.
 - 팝오버는 본문 전체를 차단하지 않는다. 사용자가 다른 앱 아이콘이나 본문을 누르면 메뉴를 먼저 닫고 해당 동작을 계속할 수 있다.
-- 초기화처럼 되돌리기 어려운 항목은 즉시 실행하지 않고 modal confirmation dialog를 연다.
+- 초기화처럼 되돌리기 어려운 항목은 즉시 실행하지 않고 modal confirmation dialog를 연다. PRD의 `Simulation 메뉴`는 이 공통 앱 관리 메뉴를 가리킨다.
 - confirmation dialog는 초기 포커스, Tab 순환, Escape 취소, 배경 차단과 종료 후 톱니 버튼 포커스 복귀를 제공한다.
 
 ### 앱별 항목
@@ -64,13 +64,14 @@
 - `AppManagementMenu`는 톱니 trigger, 팝오버 배치, 열림 상태, 바깥 클릭, Escape와 포커스 복귀를 담당한다.
 - 메뉴 항목은 앱이 label, tone, action 또는 file input adapter 형태로 전달한다.
 - 공통 confirmation dialog는 문구와 confirm action을 주입받고 접근성 동작만 소유한다.
-- `AppLauncher`는 navigation과 도움말 책임을 유지한다. 관리 메뉴는 런처와 같은 행에 배치되지만 앱별 작업을 직접 import하지 않는다.
+- `AppLauncher`는 navigation과 도움말 책임을 유지하고 `?` 다음 위치에 표시할 management slot만 받는다. 관리 메뉴는 같은 목록 안에 배치되지만 `AppLauncher`가 앱별 작업을 직접 import하지 않는다.
 - Main, Simulation, Portfolio와 Account Map entry component가 자신의 관리 항목을 조립한다.
 
 ## 오류 처리
 
 - 백업 내보내기·가져오기 실패는 Main의 기존 오류 상태로 전달한다.
-- 초기화 저장 실패 시 현재 화면과 저장 데이터를 보존하고 해당 앱의 alert를 표시한다.
+- 초기화의 주 저장이 실패하면 현재 화면과 적용 데이터를 보존하고 해당 앱의 alert를 표시한다.
+- 주 저장은 성공하고 초안 정리만 실패한 부분 성공은 새 적용 상태를 유지하면서 `적용 완료·초안 정리 실패`로 정확히 알린다.
 - 팝오버 또는 dialog가 열린 상태에서 오류가 발생해도 오류 메시지가 inert 배경에만 남지 않도록 현재 활성 표면에서 읽을 수 있게 한다.
 - Account Map 안내는 status나 alert가 아닌 정적인 설명으로 제공한다.
 
@@ -87,7 +88,8 @@
 ### 공통화할 표면
 
 - 페이지 배경, 최대 폭과 외곽 여백을 Main 앱 셸의 spacing 단계에 맞춘다.
-- 온보딩, 그래프, 비교 결과, 기본 설정과 고급 설정을 공통 `ui-surface`의 radius, 반투명 hairline, 배경과 shadow 토큰으로 표현한다.
+- 온보딩, 그래프, 비교 결과, 기본 설정과 고급 설정은 공통 `ui-surface`의 radius와 흰색 flat panel, 단색 hairline을 사용한다.
+- shadow는 관리 팝오버와 modal 같은 floating 계층에만 사용하고 일반 Simulation Surface에는 사용하지 않는다.
 - 버튼은 공통 `ui-button` variant를 사용하고 입력은 공통 control radius, border, focus ring과 disabled 상태를 사용한다.
 - 모든 주요 입력과 버튼은 최소 44px touch target을 유지한다.
 - 제목, 설명과 보조 정보는 Main typography와 muted color 단계에 맞춘다.
@@ -117,7 +119,7 @@
 - confirmation dialog의 초기 포커스, Tab 순환, 취소와 확인
 - Main file input 연결과 파일 선택 취소
 - 앱별 메뉴 항목 구성과 Account Map 안내
-- 각 앱 초기화 실패 시 상태 보존과 활성 alert
+- 각 앱 초기화의 주 저장 실패 시 상태 보존과 활성 alert, 초안 정리 실패 시 부분 성공 안내
 
 ### Playwright
 
