@@ -307,6 +307,7 @@ function ScalarEditor({
           error={findIssue(issues, 'monthlyNetIncomeWon')}
           validationPath="monthlyNetIncomeWon"
           disabled={saving}
+          adjustmentsVisibility="focused"
           onChange={(valueWon) => onChange({ ...draft, monthlyNetIncomeWon: valueWon })}
         />
         <MoneyField
@@ -316,6 +317,7 @@ function ScalarEditor({
           error={findIssue(issues, 'monthlyHousingWon')}
           validationPath="monthlyHousingWon"
           disabled={saving}
+          adjustmentsVisibility="focused"
           onChange={(valueWon) => onChange({ ...draft, monthlyHousingWon: valueWon })}
         />
         <MoneyField
@@ -325,6 +327,7 @@ function ScalarEditor({
           error={findIssue(issues, 'monthlyLivingWon')}
           validationPath="monthlyLivingWon"
           disabled={saving}
+          adjustmentsVisibility="focused"
           onChange={(valueWon) => onChange({ ...draft, monthlyLivingWon: valueWon })}
         />
         <MoneyField
@@ -334,6 +337,7 @@ function ScalarEditor({
           error={findIssue(issues, 'monthlySavingWon')}
           validationPath="monthlySavingWon"
           disabled={saving}
+          adjustmentsVisibility="focused"
           onChange={(valueWon) => onChange({ ...draft, monthlySavingWon: valueWon })}
         />
         <MoneyField
@@ -343,6 +347,7 @@ function ScalarEditor({
           error={findIssue(issues, 'monthlyInvestmentWon')}
           validationPath="monthlyInvestmentWon"
           disabled={saving}
+          adjustmentsVisibility="focused"
           onChange={(valueWon) => onChange({ ...draft, monthlyInvestmentWon: valueWon })}
         />
       </fieldset>

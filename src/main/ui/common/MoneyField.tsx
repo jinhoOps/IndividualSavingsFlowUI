@@ -9,10 +9,20 @@ export interface MoneyFieldProps {
   error?: string;
   validationPath?: string;
   disabled?: boolean;
+  adjustmentsVisibility?: 'always' | 'focused';
   onChange(valueWon: number): void;
 }
 
-export function MoneyField({ id, label, valueWon, error, validationPath, disabled = false, onChange }: MoneyFieldProps) {
+export function MoneyField({
+  id,
+  label,
+  valueWon,
+  error,
+  validationPath,
+  disabled = false,
+  adjustmentsVisibility = 'always',
+  onChange,
+}: MoneyFieldProps) {
   const errorId = `${id}-error`;
   const inputRef = useRef<HTMLInputElement>(null);
   const pendingCaretRef = useRef<number | null>(null);
@@ -41,7 +51,9 @@ export function MoneyField({ id, label, valueWon, error, validationPath, disable
   ] as const;
 
   return (
-    <div className="money-field">
+    <div className={adjustmentsVisibility === 'focused'
+      ? 'money-field money-field--focused-adjustments'
+      : 'money-field'}>
       <label className="text-sm font-bold text-slate-700" htmlFor={id}>{label}</label>
       <div className="money-field__input-row">
         <input

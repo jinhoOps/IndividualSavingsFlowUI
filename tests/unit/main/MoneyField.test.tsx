@@ -6,6 +6,28 @@ import { MoneyField } from '../../../src/main/ui/common/MoneyField';
 afterEach(cleanup);
 
 describe('MoneyField', () => {
+  it('marks only opt-in fields for focus-based adjustment visibility', () => {
+    const { rerender } = render(
+      <MoneyField id="amount" label="금액" valueWon={0} onChange={vi.fn()} />,
+    );
+
+    expect(screen.getByLabelText('금액').closest('.money-field'))
+      .not.toHaveClass('money-field--focused-adjustments');
+
+    rerender(
+      <MoneyField
+        id="amount"
+        label="금액"
+        valueWon={0}
+        adjustmentsVisibility="focused"
+        onChange={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByLabelText('금액').closest('.money-field'))
+      .toHaveClass('money-field--focused-adjustments');
+  });
+
   it('uses the shared money-field and quiet button styles', () => {
     render(<MoneyField id="amount" label="금액" valueWon={3_000_000} onChange={vi.fn()} />);
 
