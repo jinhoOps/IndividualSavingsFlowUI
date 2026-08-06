@@ -18,6 +18,11 @@ describe('SimulationOnboarding', () => {
     const onComplete = vi.fn();
     render(<SimulationOnboarding source={source} now={() => 456} onComplete={onComplete} />);
 
+    expect(screen.getByRole('region', { name: '지금 모아둔 투자금이 있나요?' }))
+      .toHaveClass('ui-surface');
+    expect(screen.getByRole('button', { name: '있어요' }))
+      .toHaveClass('ui-button', 'ui-button--primary');
+
     fireEvent.click(screen.getByRole('button', { name: '없어요' }));
 
     expect(screen.getByRole('heading', {
@@ -27,6 +32,8 @@ describe('SimulationOnboarding', () => {
     expect(screen.getByRole('img', { name: '설정 결과 미리보기' })).toBeVisible();
     expect(screen.queryByText('기준금리')).not.toBeInTheDocument();
     expect(screen.queryByText('명목')).not.toBeInTheDocument();
+    expect(screen.getByRole('region', { name: '얼마나 오래, 어느 정도 수익을 기대할까요?' }))
+      .toHaveClass('ui-surface');
 
     fireEvent.click(screen.getByRole('button', { name: '결과 보기' }));
     expect(onComplete).toHaveBeenCalledWith(expect.objectContaining({

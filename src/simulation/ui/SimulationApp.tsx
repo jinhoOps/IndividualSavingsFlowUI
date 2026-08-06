@@ -75,7 +75,7 @@ export function SimulationApp({
           currentApp="simulation"
           managementMenu={<SimulationManagementMenu onReset={reset} resetFailed={resetFailed} />}
         />
-        <section className="simulation-recovery">
+        <section className="simulation-recovery ui-surface">
           <h1>Main에서 월 저축·투자 금액을 먼저 정해주세요.</h1>
           <a className="ui-button ui-button--primary" href={appPath('main')}>Main에서 설정하기</a>
         </section>

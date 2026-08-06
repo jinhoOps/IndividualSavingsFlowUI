@@ -3,7 +3,7 @@ import { formatWon } from './format';
 
 export function SimulationComparison({ result }: { result: ProjectionResult }) {
   return (
-    <dl className="simulation-comparison" aria-label="핵심 비교">
+    <dl className="simulation-comparison ui-surface" aria-label="핵심 비교">
       <div>
         <dt>전부 저축보다</dt>
         <dd>{formatWon(result.advantageOverAllSavingsWon)}</dd>

@@ -27,7 +27,7 @@ export function StartingPrincipalStep({
   useEffect(() => headingRef.current?.focus(), []);
 
   return (
-    <section className="simulation-onboarding-step" aria-labelledby="principal-title">
+    <section className="simulation-onboarding-step ui-surface" aria-labelledby="principal-title">
       <p className="simulation-eyebrow">시작 자산</p>
       <h1 id="principal-title" ref={headingRef} tabIndex={-1}>
         지금 모아둔 투자금이 있나요?

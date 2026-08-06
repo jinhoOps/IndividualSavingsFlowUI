@@ -106,6 +106,29 @@ for (const viewport of [
     await expect(page.getByText('납입원금 대비')).toBeVisible();
     expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
 
+    const surfaceStyles = await page.locator([
+      '.growth-chart',
+      '.simulation-controls',
+      '.simulation-calculation-settings',
+    ].join(',')).evaluateAll((surfaces) => surfaces.map((surface) => {
+      const style = getComputedStyle(surface);
+      return {
+        backgroundColor: style.backgroundColor,
+        borderStyle: style.borderTopStyle,
+        borderWidth: style.borderTopWidth,
+        borderRadius: style.borderTopLeftRadius,
+        boxShadow: style.boxShadow,
+      };
+    }));
+    expect(surfaceStyles).toHaveLength(3);
+    for (const style of surfaceStyles) {
+      expect(style.backgroundColor).toBe('rgb(255, 255, 255)');
+      expect(style.borderStyle).toBe('solid');
+      expect(style.borderWidth).toBe('1px');
+      expect(style.borderRadius).toBe('24px');
+      expect(style.boxShadow).toBe('none');
+    }
+
     const box = await graph.boundingBox();
     if (box === null) throw new Error('graph has no bounding box');
     await graph.dispatchEvent('pointerdown', {

@@ -27,12 +27,13 @@ export function AdvancedSettings({
   });
 
   return (
-    <section className="simulation-calculation-settings" aria-label="금액과 계산 기준">
+    <section className="simulation-calculation-settings ui-surface" aria-label="금액과 계산 기준">
       <fieldset className="simulation-amount-mode">
         <legend>금액 기준</legend>
         {(['nominal', 'real'] as const).map((mode) => (
           <button
             type="button"
+            className="ui-button ui-button--secondary"
             key={mode}
             aria-pressed={draft.amountMode === mode}
             onClick={() => update({ amountMode: mode })}

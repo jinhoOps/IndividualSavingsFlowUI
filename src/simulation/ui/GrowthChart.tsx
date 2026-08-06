@@ -52,8 +52,9 @@ export function GrowthChart({
   return (
     <section
       ref={chartRef}
-      className="growth-chart"
+      className="growth-chart ui-surface"
       aria-labelledby="growth-chart-title"
+      aria-label="복리 성장 그래프"
     >
       <div className="growth-chart__header">
         <h2 id="growth-chart-title">시간이 만든 차이</h2>
