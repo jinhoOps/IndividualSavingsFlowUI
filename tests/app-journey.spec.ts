@@ -176,7 +176,7 @@ test('keeps Account Map usable at mobile, tablet, and desktop widths', async ({ 
       expect(size.height).toBeGreaterThanOrEqual(44);
     }
 
-    for (let attempt = 0; attempt < 6 && !await mainLink.evaluate(
+    for (let attempt = 0; attempt < 8 && !await mainLink.evaluate(
       (element) => document.activeElement === element,
     ); attempt += 1) {
       await page.keyboard.press('Tab');

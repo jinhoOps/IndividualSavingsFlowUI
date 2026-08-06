@@ -81,9 +81,9 @@ test('reloads latest Main values and resets only Simulation from its menu', asyn
   await page.reload();
   await expect(page.getByText(/월 저축 90만 원/)).toBeVisible();
 
-  await page.getByText('Simulation 메뉴').click();
-  await page.getByRole('button', { name: '시뮬레이션 다시 설정' }).click();
-  await page.getByRole('button', { name: '다시 설정 확인' }).click();
+  await page.getByRole('button', { name: '관리 메뉴' }).click();
+  await page.getByRole('menuitem', { name: '시뮬레이션 다시 설정' }).click();
+  await page.getByRole('button', { name: '다시 설정' }).click();
   await expect(page.getByRole('heading', { name: '지금 모아둔 투자금이 있나요?' })).toBeVisible();
   expect(await page.evaluate(() => localStorage.getItem('isf-main-v2'))).not.toBeNull();
 });

@@ -154,9 +154,9 @@ describe('SimulationApp', () => {
       repository={repository}
     />);
 
-    fireEvent.click(screen.getByText('Simulation 메뉴'));
-    fireEvent.click(screen.getByRole('button', { name: '시뮬레이션 다시 설정' }));
-    fireEvent.click(screen.getByRole('button', { name: '다시 설정 확인' }));
+    fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: '시뮬레이션 다시 설정' }));
+    fireEvent.click(screen.getByRole('button', { name: '다시 설정' }));
 
     expect(repository.clear).toHaveBeenCalledOnce();
     expect(screen.getByRole('heading', { name: '지금 모아둔 투자금이 있나요?' })).toBeVisible();

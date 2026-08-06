@@ -22,7 +22,7 @@ import {
 } from '../infrastructure/portfolioRepository';
 import { AllocationEditor } from './AllocationEditor';
 import { PortfolioApplyBar } from './PortfolioApplyBar';
-import { PortfolioMenu } from './PortfolioMenu';
+import { PortfolioManagementMenu } from './PortfolioManagementMenu';
 import { PortfolioSummary } from './PortfolioSummary';
 
 export function PortfolioApp({
@@ -106,7 +106,9 @@ export function PortfolioApp({
 
   return (
     <main className="portfolio-shell">
-      <div className="portfolio-launcher"><AppLauncher currentApp="portfolio" /></div>
+      <div className="portfolio-launcher">
+        <AppLauncher currentApp="portfolio" managementMenu={<PortfolioManagementMenu onReset={reset} />} />
+      </div>
       {initial.kind === 'main-required' ? (
         <RecoveryPanel message="Main 계획에서 투자금을 먼저 설정해 주세요." />
       ) : initial.kind === 'investment-required' ? (
@@ -128,7 +130,6 @@ export function PortfolioApp({
                       : '저장됨'}
                 </span>
                 <button type="button" onClick={() => dispatchDraft({ type: 'edit-opened' })}>배분 수정</button>
-                <PortfolioMenu onReset={reset} />
               </div>
               <PortfolioSummary
                 investmentWon={state.applied.syncedInvestmentWon}

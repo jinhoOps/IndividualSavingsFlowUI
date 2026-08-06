@@ -19,7 +19,7 @@ import { SaveIndicator, type SimulationSaveState } from './SaveIndicator';
 import { SimulationComparison } from './SimulationComparison';
 import { SimulationControls } from './SimulationControls';
 import { SimulationHero } from './SimulationHero';
-import { SimulationMenu } from './SimulationMenu';
+import { SimulationManagementMenu } from './SimulationManagementMenu';
 import { SimulationOnboarding } from './SimulationOnboarding';
 
 export function SimulationApp({
@@ -71,7 +71,10 @@ export function SimulationApp({
   if (runtime.kind === 'main-required') {
     return (
       <main className="simulation-shell">
-        <AppLauncher currentApp="simulation" />
+        <AppLauncher
+          currentApp="simulation"
+          managementMenu={<SimulationManagementMenu onReset={reset} resetFailed={resetFailed} />}
+        />
         <section className="simulation-recovery">
           <h1>Main에서 월 저축·투자 금액을 먼저 정해주세요.</h1>
           <a className="ui-button ui-button--primary" href={appPath('main')}>Main에서 설정하기</a>
@@ -126,7 +129,10 @@ export function SimulationApp({
 
   return (
     <main className="simulation-shell">
-      <AppLauncher currentApp="simulation" />
+      <AppLauncher
+        currentApp="simulation"
+        managementMenu={<SimulationManagementMenu onReset={reset} resetFailed={resetFailed} />}
+      />
       <div className="simulation-content">
         {draft === null && latestSource !== null ? (
           <SimulationOnboarding source={latestSource} now={now} onComplete={saveDraft} />
@@ -134,7 +140,6 @@ export function SimulationApp({
           <>
             <div className="simulation-toolbar">
               <SaveIndicator state={saveState} />
-              <SimulationMenu onReset={reset} resetFailed={resetFailed} />
             </div>
             {runtime.durationAdjusted ? (
               <p role="status">기간 범위가 변경되어 30년으로 조정됐어요.</p>
