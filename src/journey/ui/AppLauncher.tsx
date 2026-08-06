@@ -31,7 +31,7 @@ export function AppLauncher({ currentApp, managementMenu }: AppLauncherProps) {
   const activeTouchPointersRef = useRef(new Set<number>());
   const multitouchBlockedRef = useRef(false);
   const touchSuppressionRef = useRef<TouchSuppression | null>(null);
-  const pendingResizeFocusRef = useRef<JourneyApp | null>(null);
+  const pendingResizeFocusRef = useRef<JourneyApp | 'overflow-trigger' | null>(null);
   const [activeTooltip, setActiveTooltip] = useState<JourneyApp | null>(null);
   const [availableWidth, setAvailableWidth] = useState<number>();
   const [overflowOpen, setOverflowOpen] = useState(false);
@@ -91,6 +91,12 @@ export function AppLauncher({ currentApp, managementMenu }: AppLauncherProps) {
         && nextPartition.visible.some(({ id }) => id === activeApp)
       ) {
         pendingResizeFocusRef.current = activeApp;
+      } else if (
+        activeApp !== undefined
+        && navigation.contains(active)
+        && !nextPartition.visible.some(({ id }) => id === activeApp)
+      ) {
+        pendingResizeFocusRef.current = 'overflow-trigger';
       } else if (active === overflowTriggerRef.current && nextPartition.overflow.length === 0) {
         pendingResizeFocusRef.current = currentApp;
       }
@@ -106,6 +112,10 @@ export function AppLauncher({ currentApp, managementMenu }: AppLauncherProps) {
     const app = pendingResizeFocusRef.current;
     if (app === null) return;
     pendingResizeFocusRef.current = null;
+    if (app === 'overflow-trigger') {
+      overflowTriggerRef.current?.focus();
+      return;
+    }
     navigationRef.current
       ?.querySelector<HTMLElement>(`[data-journey-app="${app}"]`)
       ?.focus();

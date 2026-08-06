@@ -129,7 +129,12 @@ describe('AppLauncher', () => {
     act(() => resize([], {} as ResizeObserver));
 
     expect(screen.queryByRole('button', { name: '앱 더보기' })).not.toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /미래 성장 \(Simulation\)/ })).toHaveFocus();
+    const directSimulation = screen.getByRole('link', { name: /미래 성장 \(Simulation\)/ });
+    expect(directSimulation).toHaveFocus();
+
+    width = 140;
+    act(() => resize([], {} as ResizeObserver));
+    expect(screen.getByRole('button', { name: '앱 더보기' })).toHaveFocus();
   });
 
   it('closes an active app tooltip when entering management tools', () => {
