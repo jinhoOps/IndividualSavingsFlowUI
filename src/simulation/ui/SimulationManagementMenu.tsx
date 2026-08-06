@@ -2,10 +2,8 @@ import { AppManagementMenu, type AppManagementItem } from '../../journey/ui/AppM
 
 export function SimulationManagementMenu({
   onReset,
-  resetFailed,
 }: {
-  onReset(): void;
-  resetFailed: boolean;
+  onReset(): boolean;
 }) {
   const items = [{
     kind: 'action',
@@ -17,13 +15,9 @@ export function SimulationManagementMenu({
       title: '시뮬레이션을 다시 설정할까요?',
       description: 'Simulation에서 설정한 값만 지우고 다시 시작합니다.',
       confirmLabel: '다시 설정',
+      failureMessage: '시뮬레이션을 다시 설정하지 못했어요.',
     },
   }] satisfies AppManagementItem[];
 
-  return (
-    <div className="journey-management-adapter">
-      <AppManagementMenu items={items} />
-      {resetFailed ? <p className="journey-management__inline-alert" role="alert">시뮬레이션을 다시 설정하지 못했어요.</p> : null}
-    </div>
-  );
+  return <AppManagementMenu items={items} />;
 }

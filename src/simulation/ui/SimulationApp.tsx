@@ -52,7 +52,6 @@ export function SimulationApp({
   const [saveState, setSaveState] = useState<SimulationSaveState>(
     initial.kind !== 'main-required' && !initial.persistenceAvailable ? 'error' : 'saved',
   );
-  const [resetFailed, setResetFailed] = useState(false);
   const initialPersisted = useRef(false);
 
   useEffect(() => {
@@ -73,7 +72,7 @@ export function SimulationApp({
       <main className="simulation-shell">
         <AppLauncher
           currentApp="simulation"
-          managementMenu={<SimulationManagementMenu onReset={reset} resetFailed={resetFailed} />}
+          managementMenu={<SimulationManagementMenu onReset={reset} />}
         />
         <section className="simulation-recovery ui-surface">
           <h1>Main에서 월 저축·투자 금액을 먼저 정해주세요.</h1>
@@ -93,16 +92,15 @@ export function SimulationApp({
     setSaveState(repository.save(valid).status === 'saved' ? 'saved' : 'error');
   }
 
-  function reset(): void {
+  function reset(): boolean {
     if (repository.clear().status === 'unavailable') {
-      setResetFailed(true);
-      return;
+      return false;
     }
-    setResetFailed(false);
     const next = bootstrapSimulation(mainRepository.load(), { status: 'empty' }, now());
     setRuntime(next);
     setDraft(null);
     setSaveState(next.kind !== 'main-required' && !next.persistenceAvailable ? 'error' : 'saved');
+    return true;
   }
 
   function retryMain(): void {
@@ -131,7 +129,7 @@ export function SimulationApp({
     <main className="simulation-shell">
       <AppLauncher
         currentApp="simulation"
-        managementMenu={<SimulationManagementMenu onReset={reset} resetFailed={resetFailed} />}
+        managementMenu={<SimulationManagementMenu onReset={reset} />}
       />
       <div className="simulation-content">
         {draft === null && latestSource !== null ? (

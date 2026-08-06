@@ -3,11 +3,13 @@ import type { ManagementConfirmation } from './AppManagementMenu';
 
 export function ManagementConfirmationDialog({
   confirmation,
+  errorMessage,
   returnFocusRef,
   onCancel,
   onConfirm,
 }: {
   confirmation: ManagementConfirmation;
+  errorMessage?: string;
   returnFocusRef: RefObject<HTMLElement | null>;
   onCancel(): void;
   onConfirm(): void;
@@ -62,9 +64,15 @@ export function ManagementConfirmationDialog({
         onCancel();
       }}
       onKeyDown={trapFocus}
+      onPointerDown={(event) => {
+        if (event.target === event.currentTarget) onCancel();
+      }}
     >
       <h2 id={titleId}>{confirmation.title}</h2>
       <p>{confirmation.description}</p>
+      {errorMessage === undefined ? null : (
+        <p className="journey-management__dialog-alert" role="alert">{errorMessage}</p>
+      )}
       <div className="journey-management__dialog-actions">
         <button className="ui-button ui-button--secondary" type="button" data-dialog-initial-focus onClick={onCancel}>취소</button>
         <button className="ui-button journey-management__danger" type="button" onClick={onConfirm}>{confirmation.confirmLabel}</button>

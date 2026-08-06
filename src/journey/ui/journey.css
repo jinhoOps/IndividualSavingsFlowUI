@@ -70,27 +70,6 @@
   position: relative;
 }
 
-.journey-management-adapter {
-  position: relative;
-}
-
-.journey-management__inline-alert {
-  position: absolute;
-  z-index: 35;
-  top: calc(100% + 7px);
-  right: 0;
-  width: min(17rem, calc(100vw - 32px));
-  margin: 0;
-  border: 1px solid color-mix(in srgb, var(--status-error) 30%, transparent);
-  border-radius: var(--ui-control-radius);
-  background: var(--panel);
-  box-shadow: var(--shadow-float);
-  color: var(--status-error);
-  padding: .75rem;
-  font-size: .875rem;
-  font-weight: 700;
-}
-
 .journey-launcher__management-trigger {
   display: grid;
   width: 44px;
@@ -189,6 +168,14 @@
 .journey-management__dialog h2,
 .journey-management__dialog p {
   margin-top: 0;
+}
+
+.journey-management__dialog-alert {
+  border-radius: var(--ui-control-radius);
+  background: color-mix(in srgb, var(--status-error) 8%, var(--panel));
+  color: var(--status-error);
+  padding: .75rem;
+  font-weight: 700;
 }
 
 .journey-management__dialog-actions {

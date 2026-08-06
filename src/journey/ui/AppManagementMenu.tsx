@@ -5,10 +5,11 @@ export interface ManagementConfirmation {
   title: string;
   description: string;
   confirmLabel: string;
+  failureMessage?: string;
 }
 
 export type AppManagementItem =
-  | { kind: 'action'; id: string; label: string; tone?: 'default' | 'danger'; disabled?: boolean; onSelect(): void; confirmation?: ManagementConfirmation }
+  | { kind: 'action'; id: string; label: string; tone?: 'default' | 'danger'; disabled?: boolean; onSelect(): void | boolean; confirmation?: ManagementConfirmation }
   | { kind: 'file'; id: string; label: string; accept: string; disabled?: boolean; onFile(file: File): void }
   | { kind: 'separator'; id: string }
   | { kind: 'message'; id: string; text: string };
@@ -19,6 +20,7 @@ export function AppManagementMenu({ items }: { items: readonly AppManagementItem
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState<Extract<AppManagementItem, { kind: 'action' }> | null>(null);
+  const [confirmationFailed, setConfirmationFailed] = useState(false);
 
   function closeAndRestoreFocus(): void {
     setOpen(false);
@@ -46,6 +48,7 @@ export function AppManagementMenu({ items }: { items: readonly AppManagementItem
   function chooseAction(item: Extract<AppManagementItem, { kind: 'action' }>): void {
     setOpen(false);
     if (item.confirmation !== undefined) {
+      setConfirmationFailed(false);
       setPending(item);
       return;
     }
@@ -111,10 +114,14 @@ export function AppManagementMenu({ items }: { items: readonly AppManagementItem
       {pending?.confirmation === undefined ? null : (
         <ManagementConfirmationDialog
           confirmation={pending.confirmation}
+          errorMessage={confirmationFailed ? pending.confirmation.failureMessage : undefined}
           returnFocusRef={triggerRef}
           onCancel={() => setPending(null)}
           onConfirm={() => {
-            pending.onSelect();
+            if (pending.onSelect() === false) {
+              setConfirmationFailed(true);
+              return;
+            }
             setPending(null);
           }}
         />

@@ -9,7 +9,7 @@ afterEach(cleanup);
 describe('SimulationManagementMenu', () => {
   it('keeps Simulation-only reset behind confirmation', () => {
     const onReset = vi.fn();
-    render(<SimulationManagementMenu onReset={onReset} resetFailed={false} />);
+    render(<SimulationManagementMenu onReset={() => { onReset(); return true; }} />);
     fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
     fireEvent.click(screen.getByRole('menuitem', { name: '시뮬레이션 다시 설정' }));
     expect(screen.getByRole('dialog', { name: '시뮬레이션을 다시 설정할까요?' })).toBeVisible();
@@ -19,10 +19,25 @@ describe('SimulationManagementMenu', () => {
   });
 
   it('shows reset failure and returns focus to the gear', async () => {
-    const { rerender } = render(<SimulationManagementMenu onReset={vi.fn()} resetFailed={false} />);
-    const trigger = screen.getByRole('button', { name: '관리 메뉴' });
-    rerender(<SimulationManagementMenu onReset={vi.fn()} resetFailed />);
+    render(<SimulationManagementMenu onReset={() => false} />);
+    fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: '시뮬레이션 다시 설정' }));
+    fireEvent.click(screen.getByRole('button', { name: '다시 설정' }));
+
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).toBeVisible();
     expect(screen.getByRole('alert')).toHaveTextContent('시뮬레이션을 다시 설정하지 못했어요.');
-    await waitFor(() => expect(trigger).toBeInTheDocument());
+    expect(dialog).toContainElement(screen.getByRole('alert'));
+  });
+
+  it('closes the confirmation from its backdrop and restores the gear', async () => {
+    render(<SimulationManagementMenu onReset={() => true} />);
+    const trigger = screen.getByRole('button', { name: '관리 메뉴' });
+    fireEvent.click(trigger);
+    fireEvent.click(screen.getByRole('menuitem', { name: '시뮬레이션 다시 설정' }));
+    fireEvent.pointerDown(screen.getByRole('dialog'));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    await waitFor(() => expect(trigger).toHaveFocus());
   });
 });
