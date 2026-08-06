@@ -18,6 +18,25 @@ const plan: PortfolioPlan = {
   appliedAt: 1,
   updatedAt: 1,
 };
+const legacyPlan = {
+  schemaVersion: 1,
+  items: plan.items,
+  cashShareUnits: plan.cashShareUnits,
+  cashMode: plan.cashMode,
+  syncedInvestmentWon: plan.syncedInvestmentWon,
+  appliedAt: plan.appliedAt,
+  updatedAt: plan.updatedAt,
+};
+const legacyDraft = {
+  schemaVersion: 1,
+  items: plan.items,
+  cashShareUnits: plan.cashShareUnits,
+  cashMode: plan.cashMode,
+  inputMode: 'amount',
+  syncedInvestmentWon: plan.syncedInvestmentWon,
+  updatedAt: plan.updatedAt,
+  isApplicable: true,
+};
 
 describe('BrowserPortfolioRepository', () => {
   let storage: MemoryStorage;
@@ -30,6 +49,23 @@ describe('BrowserPortfolioRepository', () => {
     expect(new BrowserPortfolioRepository(() => storage).load()).toEqual({
       applied: { status: 'found', plan },
       draft: { status: 'invalid' },
+    });
+  });
+
+  it('preserves schema-v1 data only at the active old-key repository boundary', () => {
+    storage.setItem(PORTFOLIO_APPLIED_KEY, JSON.stringify(legacyPlan));
+    storage.setItem(PORTFOLIO_DRAFT_KEY, JSON.stringify(legacyDraft));
+
+    expect(new BrowserPortfolioRepository(() => storage).load()).toEqual({
+      applied: { status: 'found', plan },
+      draft: {
+        status: 'found',
+        draft: {
+          ...legacyDraft,
+          schemaVersion: 2,
+          scope: { type: 'aggregate' },
+        },
+      },
     });
   });
 

@@ -35,8 +35,8 @@ export class BrowserPortfolioRepository implements PortfolioRepository {
       return { applied: { status: 'unavailable' }, draft: { status: 'unavailable' } };
     }
     return {
-      applied: loadValue(storage, PORTFOLIO_APPLIED_KEY, parsePortfolioPlan, 'plan'),
-      draft: loadValue(storage, PORTFOLIO_DRAFT_KEY, parsePortfolioDraft, 'draft'),
+      applied: loadValue(storage, PORTFOLIO_APPLIED_KEY, parseOldKeyPortfolioPlan, 'plan'),
+      draft: loadValue(storage, PORTFOLIO_DRAFT_KEY, parseOldKeyPortfolioDraft, 'draft'),
     };
   }
 
@@ -68,6 +68,29 @@ export class BrowserPortfolioRepository implements PortfolioRepository {
       return { status: 'unavailable' };
     }
   }
+}
+
+function parseOldKeyPortfolioPlan(value: unknown): PortfolioPlan | null {
+  const current = parsePortfolioPlan(value);
+  if (current !== null) return current;
+  if (!isSchemaV1WithoutScope(value)) return null;
+  return parsePortfolioPlan({ ...value, schemaVersion: 2, scope: { type: 'aggregate' } });
+}
+
+function parseOldKeyPortfolioDraft(value: unknown): PortfolioDraft | null {
+  const current = parsePortfolioDraft(value);
+  if (current !== null) return current;
+  if (!isSchemaV1WithoutScope(value)) return null;
+  return parsePortfolioDraft({ ...value, schemaVersion: 2, scope: { type: 'aggregate' } });
+}
+
+function isSchemaV1WithoutScope(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object'
+    && value !== null
+    && !Array.isArray(value)
+    && 'schemaVersion' in value
+    && value.schemaVersion === 1
+    && !Object.prototype.hasOwnProperty.call(value, 'scope');
 }
 
 function loadValue<T, K extends 'plan' | 'draft'>(

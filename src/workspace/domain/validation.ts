@@ -31,7 +31,7 @@ const setupSteps = new Set<SetupStep>([
 ]);
 
 export function parseWorkspaceDocument(value: unknown): WorkspaceDocument | null {
-  if (!hasExactKeys(value, [
+  if (hasSymbolOwnKeyDeep(value) || !hasExactKeys(value, [
     'schemaVersion',
     'revision',
     'updatedAt',
@@ -56,17 +56,7 @@ export function parseWorkspaceDocument(value: unknown): WorkspaceDocument | null
     || locations === null
     || accountMap === null) return null;
 
-  if (!hasUniqueIds(locations)
-    || !hasUniqueActiveLocationNames(locations)
-    || !withinPurposeCapacities(locations, accountMap.instruments)
-    || !hasValidPortfolioReferences(portfolio, locations)
-    || !hasValidAccountMapReferences(accountMap.instruments, accountMap.flows, locations)) {
-    return null;
-  }
-
-  if (accountMap.instruments.length > 0 || accountMap.flows.length > 0) return null;
-
-  return {
+  const workspace: WorkspaceDocument = {
     schemaVersion: WORKSPACE_SCHEMA_VERSION,
     revision: value.revision,
     updatedAt: value.updatedAt,
@@ -76,6 +66,22 @@ export function parseWorkspaceDocument(value: unknown): WorkspaceDocument | null
     locations,
     accountMap,
   };
+  if (!validateWorkspaceCrossReferences(workspace)) return null;
+  if (accountMap.instruments.length > 0 || accountMap.flows.length > 0) return null;
+
+  return workspace;
+}
+
+export function validateWorkspaceCrossReferences(workspace: WorkspaceDocument): boolean {
+  return hasUniqueIds(workspace.locations)
+    && hasUniqueActiveLocationNames(workspace.locations)
+    && withinPurposeCapacities(workspace.locations, workspace.accountMap.instruments)
+    && hasValidPortfolioReferences(workspace.portfolio, workspace.locations)
+    && hasValidAccountMapReferences(
+      workspace.accountMap.instruments,
+      workspace.accountMap.flows,
+      workspace.locations,
+    );
 }
 
 function parseMainSlice(value: unknown): WorkspaceDocument['main'] | null {
@@ -210,6 +216,14 @@ function hasExactKeys<const Keys extends readonly string[]>(
   const expected = new Set<string>(keys);
   return actual.length === expected.size
     && actual.every((key) => typeof key === 'string' && expected.has(key));
+}
+
+function hasSymbolOwnKeyDeep(value: unknown, seen = new Set<object>()): boolean {
+  if (typeof value !== 'object' || value === null || seen.has(value)) return false;
+  seen.add(value);
+  const keys = Reflect.ownKeys(value);
+  return keys.some((key) => typeof key === 'symbol')
+    || keys.some((key) => hasSymbolOwnKeyDeep(value[key as keyof typeof value], seen));
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
