@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **완료 기록 (2026-08-06):** 구현, 독립 코드 리뷰와 회귀 검증을 완료하고 `main`에 병합·푸시했다. 병합 커밋은 `c368dac`이며, 최종 검증에서 `npm run check`, 단위 테스트 428개, E2E 50개와 `git diff --check`가 통과했다. 리뷰에서 발견된 관리 메뉴 포커스 복귀, Main 가져오기 노출 범위와 Simulation 초기화 실패 dialog 처리도 병합 전에 반영했다. 아래 체크박스는 실행 당시 계획을 보존한 기록이며 현재 미완료 상태를 뜻하지 않는다.
+
 **Goal:** Add one accessible gear management menu beside the app-launcher help control in every app and align Simulation surfaces and controls with the shared ISF visual foundation.
 
 **Architecture:** `AppLauncher` receives a render-only management slot; a journey-owned `AppManagementMenu` implements the shared trigger, popover, file row, confirmation dialog, and focus behavior without importing app persistence. Main, Simulation, Portfolio, and Account Map each construct their own item list and retain ownership of backup/reset effects. Simulation keeps chart geometry and hierarchy while replacing duplicated shell, surface, button, input, and dialog styling with shared foundation classes.
@@ -435,4 +437,3 @@ Use `superpowers:requesting-code-review` against the branch base. Require review
 git add DESIGN.md tests/app-journey.spec.ts tests/main-react.spec.ts tests/simulation.spec.ts tests/portfolio.spec.ts
 git commit -m "docs(ui): record app management contract"
 ```
-
