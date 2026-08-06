@@ -42,11 +42,12 @@ export function PortfolioSummary({
       const bounds = tooltipRef.current?.getBoundingClientRect();
       const tooltip = tooltipRef.current;
       if (bounds === undefined || tooltip === null) return;
+      const styles = window.getComputedStyle(tooltip);
       setTooltipPosition(clampTooltipPosition(
         active,
         {
-          width: bounds.width,
-          height: bounds.height,
+          width: Number.parseFloat(styles.width) || bounds.width,
+          height: Number.parseFloat(styles.height) || bounds.height,
         },
         { width: window.innerWidth, height: window.innerHeight },
       ));

@@ -48,7 +48,7 @@
 
 @keyframes portfolio-tooltip-in { from { opacity: 0; transform: translateY(3px) scale(.98); } }
 @media (min-width: 900px) { .portfolio-summary__content { grid-template-columns: minmax(18rem, .8fr) minmax(24rem, 1.2fr); } }
-@media (max-width: 767px) {
+@media (max-width: 768px) {
   .portfolio-summary, .portfolio-editor, .portfolio-recovery { padding: 1rem; }
   .portfolio-toolbar { align-items: stretch; flex-direction: column; }
   .portfolio-toolbar .ui-button { width: 100%; }

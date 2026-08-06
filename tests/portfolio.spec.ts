@@ -234,3 +234,36 @@ test('contains the mobile editor, apply bar, and confirmation dialog', async ({ 
   await page.getByRole('button', { name: '적용' }).click();
   await assertContained(page.getByRole('dialog', { name: '투자 배분 적용' }));
 });
+
+test('uses a single editor column at 768px', async ({ page }) => {
+  await page.setViewportSize({ width: 768, height: 900 });
+  await seedMain(page, 200_000);
+  await page.goto('apps/portfolio/');
+  await page.getByRole('button', { name: '투자 대상 추가' }).click();
+
+  expect(await page.locator('.portfolio-editor__row').first().evaluate((element) =>
+    getComputedStyle(element).gridTemplateColumns.split(' ').length,
+  )).toBe(1);
+});
+
+test('keeps the final animated pointer tooltip inside the viewport gutter', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await seedAppliedPortfolio(page);
+  await seedMain(page, 200_000);
+  await page.goto('apps/portfolio/');
+
+  const segment = page.getByRole('button', { name: /인덱스.*120,000원.*60%/ });
+  await segment.dispatchEvent('pointerover', { clientX: 389, clientY: 843, pointerType: 'mouse' });
+  const tooltip = page.getByRole('tooltip');
+  await expect(tooltip).toBeVisible();
+  await tooltip.evaluate(async (element) => {
+    await Promise.all(element.getAnimations().map((animation) => animation.finished.catch(() => undefined)));
+  });
+
+  const box = await tooltip.boundingBox();
+  expect(box).not.toBeNull();
+  expect(box!.x).toBeGreaterThanOrEqual(16);
+  expect(box!.y).toBeGreaterThanOrEqual(16);
+  expect(box!.x + box!.width).toBeLessThanOrEqual(374);
+  expect(box!.y + box!.height).toBeLessThanOrEqual(828);
+});
