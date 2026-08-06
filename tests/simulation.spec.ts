@@ -132,6 +132,7 @@ for (const viewport of [
     const box = await graph.boundingBox();
     if (box === null) throw new Error('graph has no bounding box');
     await graph.dispatchEvent('pointerdown', {
+      pointerId: 11,
       clientX: box.x + box.width / 2,
       pointerType: 'touch',
     });
@@ -143,6 +144,11 @@ for (const viewport of [
     expect(tooltipBox.x + tooltipBox.width).toBeLessThanOrEqual(viewport.width);
     expect(tooltipBox.y).toBeGreaterThanOrEqual(box.y);
     expect(tooltipBox.y + tooltipBox.height).toBeLessThanOrEqual(box.y + box.height);
+    await graph.dispatchEvent('pointerup', {
+      pointerId: 11,
+      clientX: box.x + box.width / 2,
+      pointerType: 'touch',
+    });
 
     const comparisonWraps = await page.locator('.simulation-comparison dd').evaluateAll((values) => (
       values.some((value) => {
@@ -154,10 +160,12 @@ for (const viewport of [
     ));
     expect(comparisonWraps).toBe(false);
 
-    await explorer.focus();
+    await explorer.evaluate((element) => element.focus({ preventScroll: true }));
+    await expect(explorer).toBeFocused();
     await explorer.press('Home');
+    await expect(explorer.getByRole('status')).toContainText('0년');
     await explorer.press('ArrowRight');
-    await expect(page.getByText('1년', { exact: true })).toBeVisible();
+    await expect(explorer.getByRole('status')).toContainText('1년');
 
     const undersized = await page.locator('button:visible, input:visible').evaluateAll((controls) => (
       controls.filter((control) => control.getBoundingClientRect().height < 44).length

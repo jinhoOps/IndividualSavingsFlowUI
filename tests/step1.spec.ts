@@ -3490,7 +3490,9 @@ test.describe('Main liquid overflow presentation', () => {
       expect(geometry.insideViewport).toBe(true);
       expect(geometry.sameHeight).toBe(true);
 
-      await page.getByRole('button', { name: '처음부터 다시 설정' }).click();
+      await page.getByRole('button', { name: '관리 메뉴' }).click();
+      await page.getByRole('menuitem', { name: '처음부터 다시' }).click();
+      await page.getByRole('button', { name: '다시 시작' }).click();
       await page.getByRole('button', { name: '다음' }).click();
       await page.getByRole('button', { name: '다음' }).click();
 
@@ -3538,7 +3540,9 @@ test.describe('Main liquid overflow presentation', () => {
       expect(geometry.hasExtension).toBe(false);
     }
 
-    await page.getByRole('button', { name: '처음부터 다시 설정' }).click();
+    await page.getByRole('button', { name: '관리 메뉴' }).click();
+    await page.getByRole('menuitem', { name: '처음부터 다시' }).click();
+    await page.getByRole('button', { name: '다시 시작' }).click();
     await page.getByRole('button', { name: '다음' }).click();
     await page.getByRole('button', { name: '다음' }).click();
 

@@ -145,6 +145,48 @@ test('contains launcher and current Simulation route at mobile, tablet, and desk
   }
 });
 
+test('keeps each app management menu reachable and contained across viewports', async ({ page }) => {
+  await page.addInitScript((fixture) => {
+    localStorage.setItem('isf-main-v2', JSON.stringify(fixture));
+  }, appliedMain);
+  const apps = [
+    { path: 'apps/main/', text: '백업 가져오기' },
+    { path: 'apps/simulation/', text: '시뮬레이션 다시 설정' },
+    { path: 'apps/portfolio/', text: '투자 배분 처음부터 다시' },
+    { path: 'apps/account-map/', text: '아직 관리할 설정이 없습니다' },
+  ];
+
+  for (const viewport of [
+    { width: 390, height: 844 },
+    { width: 768, height: 900 },
+    { width: 1280, height: 900 },
+  ]) {
+    await page.setViewportSize(viewport);
+    for (const app of apps) {
+      await page.goto(app.path);
+      const trigger = page.getByRole('button', { name: '관리 메뉴' });
+      await expect(trigger).toBeVisible();
+      const triggerBox = await trigger.boundingBox();
+      expect(triggerBox?.width).toBe(44);
+      expect(triggerBox?.height).toBe(44);
+
+      await trigger.click();
+      const menu = page.getByRole('menu', { name: '관리 메뉴' });
+      await expect(menu).toBeVisible();
+      await expect(menu.getByText(app.text)).toBeVisible();
+      const menuBox = await menu.boundingBox();
+      expect(menuBox).not.toBeNull();
+      expect(menuBox!.x).toBeGreaterThanOrEqual(16);
+      expect(menuBox!.x + menuBox!.width).toBeLessThanOrEqual(viewport.width - 16);
+
+      await page.keyboard.press('Escape');
+      await expect(menu).toBeHidden();
+      await expect(trigger).toBeFocused();
+      expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
+    }
+  }
+});
+
 test('keeps Account Map usable at mobile, tablet, and desktop widths', async ({ page }) => {
   for (const viewport of [
     { width: 390, height: 844 },
