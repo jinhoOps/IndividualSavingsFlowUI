@@ -23,6 +23,29 @@ function buildItems(overrides: {
 }
 
 describe('AppManagementMenu', () => {
+  it('shows app icon guidance inside the popover but outside the action menu', async () => {
+    render(<AppManagementMenu items={buildItems()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
+    const menu = screen.getByRole('menu', { name: '관리 메뉴' });
+    const help = within(menu).getByRole('menuitem', { name: '앱 아이콘 안내' });
+    expect(help).toHaveAttribute('aria-expanded', 'false');
+
+    fireEvent.click(help);
+    expect(help).toHaveAttribute('aria-expanded', 'true');
+    const guide = screen.getByRole('region', { name: '앱 아이콘 안내' });
+    expect(menu).not.toContainElement(guide);
+    expect(within(guide).getByText('자금 흐름 (Main)')).toBeVisible();
+    expect(within(guide).getByText('미래 성장 (Simulation)')).toBeVisible();
+    expect(within(guide).getByText('투자 배분 (Portfolio)')).toBeVisible();
+    expect(within(guide).getByText('계좌 연결 (Account Map)')).toBeVisible();
+    expect(within(guide).getByText('준비 중')).toBeVisible();
+
+    fireEvent.click(help);
+    expect(screen.queryByRole('region', { name: '앱 아이콘 안내' })).not.toBeInTheDocument();
+    await waitFor(() => expect(help).toHaveFocus());
+  });
+
   it('opens actions, executes a row, and handles file selection and cancellation', async () => {
     const onExport = vi.fn();
     const onFile = vi.fn();
@@ -91,6 +114,7 @@ describe('AppManagementMenu', () => {
     render(<AppManagementMenu items={[{ kind: 'message', id: 'empty', text: '아직 관리할 설정이 없습니다' }]} />);
     fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
     expect(screen.getByText('아직 관리할 설정이 없습니다')).toBeVisible();
-    expect(screen.queryByRole('menuitem')).not.toBeInTheDocument();
+    expect(screen.getAllByRole('menuitem')).toHaveLength(1);
+    expect(screen.getByRole('menuitem', { name: '앱 아이콘 안내' })).toBeVisible();
   });
 });
