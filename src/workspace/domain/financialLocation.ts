@@ -40,6 +40,7 @@ const locationKeysWithoutArchivedAt = locationKeys.filter((key) => key !== 'arch
 const requiredLocationKeys = locationKeys.filter((key) => key !== 'institution' && key !== 'archivedAt');
 
 const maximumTimestamp = 8_640_000_000_000_000;
+const allowedDisplayNameCharacters = /^[\p{Script=Hangul}\p{Script=Latin}0-9 ]+$/u;
 
 export function countDisplayCharacters(value: string): number {
   return Array.from(value).length;
@@ -71,6 +72,7 @@ export function parseFinancialLocation(value: unknown): FinancialLocation | null
   const roles = value.roles.filter(isFinancialRole);
   if (shortName === null
     || countDisplayCharacters(shortName) > 8
+    || !allowedDisplayNameCharacters.test(shortName)
     || roles.length === 0
     || roles.length !== value.roles.length
     || new Set(roles).size !== roles.length) return null;

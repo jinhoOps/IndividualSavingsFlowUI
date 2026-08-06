@@ -42,6 +42,10 @@ describe('Financial location domain', () => {
       .toMatchObject({ shortName: 'Toss ISA' });
   });
 
+  it.each(['토스!', '은행🙂', '東京', 'A_1'])('rejects unsupported display characters: %s', (shortName) => {
+    expect(parseFinancialLocation({ ...validLocation, shortName })).toBeNull();
+  });
+
   it.each([
     ['empty name', { shortName: '   ' }],
     ['nine-code-point name', { shortName: '123456789' }],
