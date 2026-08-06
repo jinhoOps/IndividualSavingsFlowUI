@@ -45,8 +45,8 @@ export function PortfolioSummary({
       setTooltipPosition(clampTooltipPosition(
         active,
         {
-          width: tooltip.offsetWidth || bounds.width,
-          height: tooltip.offsetHeight || bounds.height,
+          width: bounds.width,
+          height: bounds.height,
         },
         { width: window.innerWidth, height: window.innerHeight },
       ));
@@ -69,12 +69,14 @@ export function PortfolioSummary({
       </div>
       <div className="portfolio-summary__content">
         <AllocationDonut items={items} active={active} onActive={setActive} onClear={() => setActive(null)} />
-        <AllocationTable
-          items={items}
-          activeId={active?.id ?? null}
-          onActive={(id) => setActive({ id, mode: 'fixed', x: 50, y: 50 })}
-          onClear={() => setActive(null)}
-        />
+        <div className="portfolio-table-wrap">
+          <AllocationTable
+            items={items}
+            activeId={active?.id ?? null}
+            onActive={(id) => setActive({ id, mode: 'fixed', x: 50, y: 50 })}
+            onClear={() => setActive(null)}
+          />
+        </div>
       </div>
       {active !== null && activeItem !== null ? (
         <div
