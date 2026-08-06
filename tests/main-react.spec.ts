@@ -319,6 +319,112 @@ test('live dashboard keeps the donut, cards, Simulation, details, and editor con
   }
 });
 
+test.describe('mobile cashflow donut', () => {
+  test.use({
+    viewport: { width: 390, height: 844 },
+    hasTouch: true,
+  });
+
+  test('keeps a compact legend and reveals touched ring details', async ({ page }) => {
+    await page.addInitScript((fixture) => {
+      localStorage.clear();
+      localStorage.setItem('isf-main-v2', JSON.stringify(fixture));
+    }, appliedMainV2);
+    await page.goto('apps/main/');
+
+    const donut = page.getByRole('region', { name: '월 수입 배분' });
+    const legendLayout = await donut.locator('.cashflow-donut__legend-button').evaluateAll((buttons) => (
+      buttons.map((button) => {
+        const rect = button.getBoundingClientRect();
+        const label = button.querySelector('span:first-child')!.getBoundingClientRect();
+        const percentage = button.querySelector('span:last-child')!.getBoundingClientRect();
+        const amount = button.querySelector<HTMLElement>('.cashflow-donut__legend-amount')!;
+        return {
+          height: rect.height,
+          oneLine: Math.abs(label.top - percentage.top) <= 1,
+          amountDisplay: getComputedStyle(amount).display,
+        };
+      })
+    ));
+
+    expect(legendLayout).toHaveLength(4);
+    for (const item of legendLayout) {
+      expect(item.height).toBeGreaterThanOrEqual(44);
+      expect(item.oneLine).toBe(true);
+      expect(item.amountDisplay).toBe('none');
+    }
+
+    const chart = donut.getByRole('img', { name: /소비 56\.3%.*여윳돈 28\.1%/ });
+    const chartBox = await chart.boundingBox();
+    expect(chartBox).not.toBeNull();
+    const center = donut.locator('.cashflow-donut__center');
+    for (const allocation of [
+      { id: 'consumption', label: '소비', amount: '180만 원', percentage: '56.3%', x: 89.2, y: 57.8 },
+      { id: 'saving', label: '저축', amount: '30만 원', percentage: '9.4%', x: 24.6, y: 80.9 },
+      { id: 'investment', label: '투자', amount: '20만 원', percentage: '6.3%', x: 13, y: 65.3 },
+      { id: 'remaining', label: '여윳돈', amount: '90만 원', percentage: '28.1%', x: 19.1, y: 24.6 },
+    ]) {
+      await chart.tap({
+        position: {
+          x: chartBox!.width * allocation.x / 100,
+          y: chartBox!.height * allocation.y / 100,
+        },
+      });
+      await expect(center.getByText(allocation.percentage, { exact: true })).toBeVisible();
+      await expect(center.getByText(allocation.label, { exact: true })).toBeVisible();
+      await expect(donut.getByRole('tooltip')).toHaveText(
+        `${allocation.label} · ${allocation.amount} · ${allocation.percentage}`,
+      );
+      await expect(donut.getByRole('button', {
+        name: `${allocation.label} · ${allocation.amount} · ${allocation.percentage}`,
+      })).toHaveAttribute('aria-pressed', 'true');
+      await expect.poll(() => (
+        donut.locator(`circle.cashflow-donut__segment--${allocation.id}`).evaluate((circle) => {
+          const style = getComputedStyle(circle);
+          return { r: style.r, strokeWidth: style.strokeWidth };
+        })
+      )).toEqual({ r: '42px', strokeWidth: '15px' });
+    }
+
+    await page.getByRole('heading', { name: '이번 달 자금 흐름' }).tap();
+    await expect(center.getByText('15.6%', { exact: true })).toBeVisible();
+    await expect(center.getByText('저축·투자', { exact: true })).toBeVisible();
+    await expect(donut.locator('.cashflow-donut__segment--active')).toHaveCount(0);
+    expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
+
+    await page.setViewportSize({ width: 768, height: 900 });
+    for (const amount of await donut.locator('.cashflow-donut__legend-amount').all()) {
+      await expect(amount).toBeVisible();
+    }
+
+    const tabletChartBox = await chart.boundingBox();
+    expect(tabletChartBox).not.toBeNull();
+    await chart.tap({
+      position: {
+        x: tabletChartBox!.width * 0.13,
+        y: tabletChartBox!.height * 0.653,
+      },
+    });
+    const saving = donut.getByRole('button', { name: '저축 · 30만 원 · 9.4%' });
+    await saving.focus();
+    await expect(center.getByText('9.4%', { exact: true })).toBeVisible();
+    await expect(center.getByText('저축', { exact: true })).toBeVisible();
+    await expect(donut.getByRole('tooltip')).toHaveText('저축 · 30만 원 · 9.4%');
+    await expect(donut.getByRole('button', { name: '투자 · 20만 원 · 6.3%' }))
+      .toHaveAttribute('aria-pressed', 'true');
+    await expect(donut.locator('circle.cashflow-donut__segment--saving'))
+      .toHaveClass(/cashflow-donut__segment--active/);
+    await saving.evaluate((button) => button.blur());
+    await expect(center.getByText('6.3%', { exact: true })).toBeVisible();
+    await expect(center.getByText('투자', { exact: true })).toBeVisible();
+
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await saving.hover();
+    await expect(center.getByText('9.4%', { exact: true })).toBeVisible();
+    await expect(donut.getByRole('tooltip')).toHaveText('저축 · 30만 원 · 9.4%');
+  });
+});
+
 test('live dashboard removes donut circle transitions when reduced motion is requested', async ({ page }) => {
   await page.addInitScript((fixture) => {
     localStorage.clear();
@@ -330,11 +436,15 @@ test('live dashboard removes donut circle transitions when reduced motion is req
   await page.reload();
 
   await expect(page.getByRole('region', { name: '월 자금 구성 요약' })).toBeVisible();
-  const transition = await page.locator('.cashflow-donut__chart circle').first().evaluate((element) => {
+  const chart = page.getByRole('img', { name: /소비 56\.3%/ });
+  const chartBox = await chart.boundingBox();
+  expect(chartBox).not.toBeNull();
+  await chart.click({ position: { x: chartBox!.width / 2, y: chartBox!.height * 0.1 } });
+  const transition = await page.locator('.cashflow-donut__segment--active').evaluate((element) => {
     const style = getComputedStyle(element);
-    return { duration: style.transitionDuration, property: style.transitionProperty };
+    return { duration: style.transitionDuration, property: style.transitionProperty, r: style.r };
   });
-  expect(transition).toEqual({ duration: '0s', property: 'none' });
+  expect(transition).toEqual({ duration: '0s', property: 'none', r: '42px' });
 });
 
 test.describe('mobile quick setup', () => {
