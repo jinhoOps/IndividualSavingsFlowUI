@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { MainData } from '../../../src/main/domain/model';
@@ -20,17 +20,23 @@ describe('CashflowDonutSummary', () => {
   it('renders the accessible allocation chart, savings-investment center, and legend controls', () => {
     render(<CashflowDonutSummary data={appliedData} />);
 
-    expect(screen.getByRole('img', { name: /소비 56\.3%.*저축 9\.4%.*투자 6\.3%.*남는 돈 28\.1%/ })).toBeVisible();
+    expect(screen.getByRole('img', { name: /소비 56\.3%.*저축 9\.4%.*투자 6\.3%.*여윳돈 28\.1%/ })).toBeVisible();
     expect(screen.getByText('15.6%')).toBeVisible();
     expect(screen.getByText('저축·투자')).toBeVisible();
-    for (const label of ['소비', '저축', '투자', '남는 돈']) {
-      expect(screen.getByRole('button', { name: `${label} 상세 정보` })).toBeVisible();
+    for (const [label, amount, percentage] of [
+      ['소비', '180만 원', '56.3%'],
+      ['저축', '30만 원', '9.4%'],
+      ['투자', '20만 원', '6.3%'],
+      ['여윳돈', '90만 원', '28.1%'],
+    ]) {
+      expect(screen.getByRole('button', { name: `${label} · ${amount} · ${percentage}` })).toBeVisible();
     }
+    expect(document.querySelectorAll('.cashflow-donut__legend-amount')).toHaveLength(4);
   });
 
   it('shows allocation detail for focus and tap', () => {
     render(<CashflowDonutSummary data={appliedData} />);
-    const consumption = screen.getByRole('button', { name: '소비 상세 정보' });
+    const consumption = screen.getByRole('button', { name: '소비 · 180만 원 · 56.3%' });
 
     fireEvent.focus(consumption);
     expect(screen.getByRole('tooltip')).toHaveTextContent('소비 · 180만 원 · 56.3%');
@@ -41,6 +47,64 @@ describe('CashflowDonutSummary', () => {
     expect(screen.getByRole('tooltip')).toHaveTextContent('소비 · 180만 원 · 56.3%');
     fireEvent.click(consumption);
     expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+  });
+
+  it('selects a touched ring segment and dismisses the fixed detail outside', () => {
+    const { container } = render(
+      <>
+        <CashflowDonutSummary data={appliedData} />
+        <button type="button">outside</button>
+      </>,
+    );
+    const chart = screen.getByRole('img', { name: /소비 56\.3%/ });
+    Object.defineProperty(chart, 'getBoundingClientRect', {
+      value: () => ({ left: 0, top: 0, width: 100, height: 100 }),
+    });
+
+    fireEvent(chart, new MouseEvent('pointerdown', {
+      bubbles: true,
+      clientX: 50,
+      clientY: 10,
+    }));
+
+    const center = container.querySelector('.cashflow-donut__center');
+    expect(center).not.toBeNull();
+    expect(within(center as HTMLElement).getByText('56.3%')).toBeVisible();
+    expect(within(center as HTMLElement).getByText('소비')).toBeVisible();
+    expect(container.querySelector('.cashflow-donut__segment--consumption'))
+      .toHaveClass('cashflow-donut__segment--active');
+    expect(screen.getByRole('button', { name: '소비 · 180만 원 · 56.3%' }))
+      .toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('tooltip')).toHaveTextContent('소비 · 180만 원 · 56.3%');
+
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'outside' }));
+
+    expect(within(center as HTMLElement).getByText('15.6%')).toBeVisible();
+    expect(within(center as HTMLElement).getByText('저축·투자')).toBeVisible();
+    expect(container.querySelector('.cashflow-donut__segment--active')).not.toBeInTheDocument();
+  });
+
+  it('ignores pointer input inside the hole or outside the ring', () => {
+    const { container } = render(<CashflowDonutSummary data={appliedData} />);
+    const chart = screen.getByRole('img', { name: /소비 56\.3%/ });
+    Object.defineProperty(chart, 'getBoundingClientRect', {
+      value: () => ({ left: 0, top: 0, width: 100, height: 100 }),
+    });
+
+    fireEvent(chart, new MouseEvent('pointerdown', {
+      bubbles: true,
+      clientX: 50,
+      clientY: 50,
+    }));
+    fireEvent(chart, new MouseEvent('pointerdown', {
+      bubbles: true,
+      clientX: 99,
+      clientY: 50,
+    }));
+
+    const center = container.querySelector('.cashflow-donut__center');
+    expect(within(center as HTMLElement).getByText('15.6%')).toBeVisible();
+    expect(container.querySelector('.cashflow-donut__segment--active')).not.toBeInTheDocument();
   });
 
   it('asks for monthly income instead of rendering a chart when income is zero', () => {
@@ -54,7 +118,7 @@ describe('CashflowDonutSummary', () => {
     const { container } = render(<CashflowDonutSummary data={{ ...appliedData, monthlyInvestmentWon: 1_500_000 }} />);
 
     expect(screen.getByText('소득 초과')).toBeVisible();
-    expect(screen.queryByRole('button', { name: '남는 돈 상세 정보' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /여윳돈/ })).not.toBeInTheDocument();
     expect(container.querySelector('circle.cashflow-donut__segment--consumption')).toHaveAttribute('stroke-dasharray', '56.25 43.75');
     expect(container.querySelector('circle.cashflow-donut__segment--saving')).toHaveAttribute('stroke-dasharray', '9.375 90.625');
     expect(container.querySelector('circle.cashflow-donut__segment--investment')).toHaveAttribute('stroke-dasharray', '34.375 65.625');

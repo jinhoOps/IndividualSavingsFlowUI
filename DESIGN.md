@@ -27,6 +27,8 @@ Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계획 �
 - 실제 draft 변경이 있을 때 Apply Bar가 나타납니다.
 - `취소`와 `적용`은 현재 draft와 적용된 계획의 차이를 명확히 처리합니다.
 - 요약과 월 자금 구성은 적용된 데이터만 반영합니다.
+- 월 자금 구성 도넛의 네 항목은 `소비`, `저축`, `투자`, `여윳돈`으로 표시합니다. 모바일 범례는 44px 터치 영역 안에 색상·명칭·비율만 두 열로 표시하고 desktop에서는 금액도 함께 표시합니다.
+- 도넛 조각의 pointer·touch 선택은 중앙을 해당 명칭과 비율로 바꾸고 선택 조각을 확장합니다. keyboard 범례도 같은 상세 정보와 금액 tooltip을 제공합니다.
 
 ### Current Journey
 
@@ -112,13 +114,13 @@ Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계획 �
 
 ### App Launcher
 
-- Main, Simulation, Portfolio와 Account Map을 고정된 한 줄의 아이콘으로 보여줍니다. 앱 링크의 선택 영역은 44×44px이며 모바일에서도 줄바꿈하지 않습니다.
+- 왼쪽 `ISF 앱` 탐색과 오른쪽 `앱 도구` 그룹을 여백과 세로 hairline으로 구분하며 페이지와 함께 스크롤합니다. 앱 링크와 오른쪽 끝 `관리 메뉴` 톱니는 모두 44×44px 선택 영역을 유지합니다.
+- Main, Simulation, Portfolio와 Account Map을 한 줄의 아이콘으로 보여주되, 가용 폭이 부족할 때만 `더보기`에 원래 순서대로 이동합니다. 현재 앱은 항상 직접 표시하고 네 앱이 모두 들어가면 `더보기`를 렌더링하지 않습니다.
 - 현재 목적지는 안정적인 아이콘 아래 선과 `aria-current`로 분명히 표시합니다. Account Map의 `준비 중` 상태는 현재 위치와 독립적으로 유지합니다.
 - pointer hover와 keyboard focus는 동일한 한글·영문 툴팁을 제공하고, touch는 450ms 길게 누르면 같은 정보를 표시하되 해당 탭의 탐색과 context menu를 한 번 억제합니다.
-- 전체 의미를 확인하는 `?` 도움말은 정보성 narrow 규격을 사용합니다. 선택 영역은 32×44px, 보이는 원은 30×30px이고 패널은 폭 220px 이하와 viewport 좌우 16px 여백을 지킵니다.
-- 도움말 뒤의 44×44px 톱니 버튼은 현재 앱의 관리 메뉴를 엽니다. Main은 백업 내보내기·가져오기와 처음부터 다시, Simulation과 Portfolio는 해당 앱 재설정을 소유하며 Account Map도 버튼을 유지하되 관리할 설정이 없음을 알립니다.
+- 톱니 팝오버의 첫 항목 `앱 아이콘 안내`는 네 아이콘의 한글·영문 의미와 준비 상태를 같은 팝오버 안에 펼칩니다. 그 뒤에 Main의 백업·재설정, Simulation과 Portfolio의 해당 앱 재설정, Account Map의 빈 관리 상태를 표시합니다.
 - 관리 popover는 viewport 좌우 16px 안에 머물고, Escape 또는 바깥 pointer 입력으로 닫힌 뒤 톱니 버튼으로 focus를 돌려보냅니다. 파괴적 행동은 별도 확인 dialog와 내부 focus 관리를 거칩니다.
-- 툴팁과 도움말은 Escape 또는 바깥 pointer 입력으로 닫히며 `prefers-reduced-motion`에서는 전환 효과를 제거합니다.
+- 툴팁, `더보기`, 관리 메뉴는 Escape 또는 바깥 pointer 입력으로 닫히고 소유 trigger로 focus를 돌려보냅니다. 두 popover는 동시에 열리지 않으며 `prefers-reduced-motion`에서는 전환 효과를 제거합니다.
 - 런처 링크는 URL 탐색만 수행하며 앱 간 데이터 연결 상태를 소유하거나 표시하지 않습니다.
 
 ### Main Cashflow Editor

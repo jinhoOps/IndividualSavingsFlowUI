@@ -17,6 +17,7 @@ describe('ReadinessApp', () => {
       .not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
     expect(screen.getByText('아직 관리할 설정이 없습니다')).toBeVisible();
-    expect(screen.queryByRole('menuitem')).not.toBeInTheDocument();
+    expect(screen.getAllByRole('menuitem')).toHaveLength(1);
+    expect(screen.getByRole('menuitem', { name: '앱 아이콘 안내' })).toBeVisible();
   });
 });
