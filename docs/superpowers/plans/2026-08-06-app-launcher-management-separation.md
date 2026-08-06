@@ -1,5 +1,7 @@
 # App Launcher Management Separation Implementation Plan
 
+**Status:** Complete — 2026-08-06. Type checks, 440 unit tests, and 52 active E2E tests pass; 60 retired legacy E2E tests remain explicitly skipped.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Separate app navigation from the right-aligned management tool, move icon help into the gear popover, and add automatic app overflow that stays dormant while the current four apps fit.

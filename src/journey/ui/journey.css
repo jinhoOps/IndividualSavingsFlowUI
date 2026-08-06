@@ -117,7 +117,7 @@
   position: absolute;
   z-index: 40;
   top: calc(100% + 7px);
-  right: -0.25rem;
+  right: 0;
   display: grid;
   width: min(17rem, calc(100vw - 32px));
   overflow: hidden;
