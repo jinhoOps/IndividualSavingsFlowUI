@@ -44,7 +44,7 @@ export function SimulationControls({
   }
 
   return (
-    <section className="simulation-controls" aria-label="시뮬레이션 조건">
+    <section className="simulation-controls ui-surface" aria-label="시뮬레이션 조건">
       <fieldset className="simulation-control-group">
         <legend>기간</legend>
         <div className="simulation-duration-control">
@@ -89,6 +89,7 @@ export function SimulationControls({
           {RETURN_PRESETS.map((rate) => (
             <button
               type="button"
+              className="ui-button ui-button--secondary"
               key={rate}
               aria-label={`연 기대수익률 ${rate}%`}
               aria-pressed={!customReturn && draft.expectedAnnualReturnPercent === rate}
@@ -102,6 +103,7 @@ export function SimulationControls({
           ))}
           <button
             type="button"
+            className="ui-button ui-button--secondary"
             aria-pressed={customReturn}
             onClick={() => {
               setCustomReturn(true);
@@ -116,6 +118,7 @@ export function SimulationControls({
           <div className="simulation-custom-return">
             <button
               type="button"
+              className="ui-button ui-button--secondary"
               aria-label="기대수익률 0.25%p 내리기"
               disabled={draft.expectedAnnualReturnPercent <= 0}
               onClick={() => updateReturn(draft.expectedAnnualReturnPercent - 0.25)}
@@ -147,6 +150,7 @@ export function SimulationControls({
             </label>
             <button
               type="button"
+              className="ui-button ui-button--secondary"
               aria-label="기대수익률 0.25%p 올리기"
               disabled={draft.expectedAnnualReturnPercent >= 30}
               onClick={() => updateReturn(draft.expectedAnnualReturnPercent + 0.25)}

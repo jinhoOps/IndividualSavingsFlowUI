@@ -390,10 +390,6 @@
     @apply absolute bottom-full mb-2 -translate-x-1/2;
   }
 
-  .backup-import-action:focus-within {
-    box-shadow: var(--ui-focus-ring);
-  }
-
   .editor-dialog {
     animation: editor-in 180ms ease-out;
   }

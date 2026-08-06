@@ -18,6 +18,12 @@ describe('SimulationControls', () => {
     const onChange = vi.fn();
     render(<SimulationControls draft={draft} onChange={onChange} />);
 
+    expect(screen.getByRole('region', { name: '시뮬레이션 조건' })).toHaveClass('ui-surface');
+    expect(screen.getByRole('button', { name: '연 기대수익률 9%' }))
+      .toHaveClass('ui-button', 'ui-button--secondary');
+    expect(screen.getByRole('button', { name: '직접 입력' }))
+      .toHaveClass('ui-button', 'ui-button--secondary');
+
     fireEvent.click(screen.getByRole('button', { name: '연 기대수익률 13%' }));
     expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({
       expectedAnnualReturnPercent: 13,

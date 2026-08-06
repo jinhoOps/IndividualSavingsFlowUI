@@ -4,7 +4,7 @@ import '@testing-library/jest-dom/vitest';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createCashOnlyDraft } from '../../../src/portfolio/domain/allocation';
 import { PortfolioApplyBar } from '../../../src/portfolio/ui/PortfolioApplyBar';
-import { PortfolioMenu } from '../../../src/portfolio/ui/PortfolioMenu';
+import { PortfolioManagementMenu } from '../../../src/portfolio/ui/PortfolioManagementMenu';
 
 afterEach(cleanup);
 
@@ -39,11 +39,12 @@ describe('Portfolio confirmation dialogs', () => {
   });
 
   it('focuses reset cancel and restores its trigger after Escape', async () => {
-    render(<PortfolioMenu onReset={vi.fn()} />);
+    render(<PortfolioManagementMenu onReset={vi.fn()} />);
 
-    const trigger = screen.getByRole('button', { name: '처음부터 다시' });
+    const trigger = screen.getByRole('button', { name: '관리 메뉴' });
     fireEvent.click(trigger);
-    const dialog = screen.getByRole('dialog', { name: '투자 배분을 초기화할까요?' });
+    fireEvent.click(screen.getByRole('menuitem', { name: '투자 배분 처음부터 다시' }));
+    const dialog = screen.getByRole('dialog', { name: '투자 배분을 처음부터 다시 할까요?' });
     expect(within(dialog).getByRole('button', { name: '취소' })).toHaveFocus();
 
     fireEvent.keyDown(dialog, { key: 'Escape' });

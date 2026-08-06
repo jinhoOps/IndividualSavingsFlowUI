@@ -46,7 +46,8 @@ Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계획 �
 - 그래프 tooltip은 닫기 버튼을 두지 않으며 `Escape`와 그래프 밖 pointer로 닫힙니다.
 - 한국식 정수 금액은 tooltip과 비교 영역에서 임의 글자 단위로 줄바꿈하거나 잘라내지 않습니다.
 - 명목·실질은 항상 보이고 기준금리, 물가와 면책은 `계산 기준`에서 점진적으로 공개합니다.
-- 저장 성공은 낮은 강조로 상시 표시하고 오류만 강조합니다. 재설정은 Simulation 메뉴 안에서 확인합니다.
+- 저장 성공은 낮은 강조로 상시 표시하고 오류만 강조합니다. 재설정은 앱 런처의 관리 메뉴 안에서 확인합니다.
+- 일반 결과·조작 영역은 공통 `Flat Panel`과 버튼 규격을 사용하고, 그래프 선·면·tooltip처럼 정보 해석에 필요한 시각 요소만 Simulation 고유 표현을 유지합니다.
 
 ### Portfolio
 
@@ -115,6 +116,8 @@ Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계획 �
 - 현재 목적지는 안정적인 아이콘 아래 선과 `aria-current`로 분명히 표시합니다. Account Map의 `준비 중` 상태는 현재 위치와 독립적으로 유지합니다.
 - pointer hover와 keyboard focus는 동일한 한글·영문 툴팁을 제공하고, touch는 450ms 길게 누르면 같은 정보를 표시하되 해당 탭의 탐색과 context menu를 한 번 억제합니다.
 - 전체 의미를 확인하는 `?` 도움말은 정보성 narrow 규격을 사용합니다. 선택 영역은 32×44px, 보이는 원은 30×30px이고 패널은 폭 220px 이하와 viewport 좌우 16px 여백을 지킵니다.
+- 도움말 뒤의 44×44px 톱니 버튼은 현재 앱의 관리 메뉴를 엽니다. Main은 백업 내보내기·가져오기와 처음부터 다시, Simulation과 Portfolio는 해당 앱 재설정을 소유하며 Account Map도 버튼을 유지하되 관리할 설정이 없음을 알립니다.
+- 관리 popover는 viewport 좌우 16px 안에 머물고, Escape 또는 바깥 pointer 입력으로 닫힌 뒤 톱니 버튼으로 focus를 돌려보냅니다. 파괴적 행동은 별도 확인 dialog와 내부 focus 관리를 거칩니다.
 - 툴팁과 도움말은 Escape 또는 바깥 pointer 입력으로 닫히며 `prefers-reduced-motion`에서는 전환 효과를 제거합니다.
 - 런처 링크는 URL 탐색만 수행하며 앱 간 데이터 연결 상태를 소유하거나 표시하지 않습니다.
 

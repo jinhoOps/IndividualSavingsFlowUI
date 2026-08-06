@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { afterEach, describe, expect, it } from 'vitest';
 import { ReadinessApp } from '../../../src/journey/ui/ReadinessApp';
@@ -15,5 +15,8 @@ describe('ReadinessApp', () => {
       .toHaveAttribute('href', expect.stringContaining('/apps/main/'));
     expect(screen.queryByText(/연결되었습니다|월 투자 가능액|Portfolio로 이어가기/))
       .not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
+    expect(screen.getByText('아직 관리할 설정이 없습니다')).toBeVisible();
+    expect(screen.queryByRole('menuitem')).not.toBeInTheDocument();
   });
 });

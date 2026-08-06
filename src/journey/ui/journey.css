@@ -17,7 +17,8 @@
 }
 
 .journey-launcher__item,
-.journey-launcher__help-item {
+.journey-launcher__help-item,
+.journey-launcher__management-item {
   position: relative;
   flex: 0 0 auto;
 }
@@ -52,15 +53,136 @@
 }
 
 .journey-launcher__app-link:active,
-.journey-launcher__help-hit:active {
+.journey-launcher__help-hit:active,
+.journey-launcher__management-trigger:active {
   transform: scale(0.94);
 }
 
 .journey-launcher__app-link:focus-visible,
 .journey-launcher__help-hit:focus-visible,
+.journey-launcher__management-trigger:focus-visible,
 .journey-action:focus-visible {
   outline: 3px solid color-mix(in srgb, var(--tone-accent) 40%, transparent);
   outline-offset: 2px;
+}
+
+.journey-management {
+  position: relative;
+}
+
+.journey-launcher__management-trigger {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--muted);
+  padding: 0;
+  transition: color 160ms ease, background-color 160ms ease, transform 160ms ease;
+}
+
+.journey-launcher__management-trigger svg {
+  width: 22px;
+  height: 22px;
+}
+
+.journey-launcher__management-trigger:hover,
+.journey-launcher__management-trigger:focus-visible,
+.journey-launcher__management-trigger[aria-expanded='true'] {
+  color: var(--tone-accent);
+  background: color-mix(in srgb, var(--tone-accent) 8%, transparent);
+}
+
+.journey-management__popover {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 7px);
+  right: -0.25rem;
+  display: grid;
+  width: min(17rem, calc(100vw - 32px));
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--ui-control-radius);
+  background: var(--panel);
+  box-shadow: var(--shadow-float);
+  padding: .375rem;
+}
+
+.journey-management__row {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  width: 100%;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--ink);
+  padding: .65rem .75rem;
+  text-align: left;
+}
+
+.journey-management__row:hover,
+.journey-management__row:focus-within,
+.journey-management__row:focus-visible {
+  background: color-mix(in srgb, var(--tone-accent) 8%, transparent);
+  box-shadow: var(--ui-focus-ring);
+}
+
+.journey-management__danger {
+  color: var(--status-error);
+}
+
+.journey-management__popover hr {
+  width: 100%;
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: .25rem 0;
+}
+
+.journey-management__message {
+  margin: 0;
+  padding: .75rem;
+  color: var(--muted);
+  font-size: .875rem;
+}
+
+.journey-management__dialog {
+  position: fixed;
+  inset: 50% auto auto 50%;
+  width: min(28rem, calc(100vw - 32px));
+  transform: translate(-50%, -50%);
+  border: 1px solid var(--line);
+  border-radius: var(--ui-surface-radius);
+  background: var(--panel);
+  box-shadow: var(--shadow-float);
+  color: var(--ink);
+  padding: 1.5rem;
+}
+
+.journey-management__dialog::backdrop {
+  background: rgb(16 34 32 / 32%);
+}
+
+.journey-management__dialog h2,
+.journey-management__dialog p {
+  margin-top: 0;
+}
+
+.journey-management__dialog-alert {
+  border-radius: var(--ui-control-radius);
+  background: color-mix(in srgb, var(--status-error) 8%, var(--panel));
+  color: var(--status-error);
+  padding: .75rem;
+  font-weight: 700;
+}
+
+.journey-management__dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: .625rem;
+  margin-top: 1.5rem;
 }
 
 .journey-launcher__current-line {
@@ -275,7 +397,8 @@
 @media (prefers-reduced-motion: reduce) {
   .journey-launcher__app-link,
   .journey-launcher__current-line,
-  .journey-launcher__help-hit {
+  .journey-launcher__help-hit,
+  .journey-launcher__management-trigger {
     transition: none;
   }
 }

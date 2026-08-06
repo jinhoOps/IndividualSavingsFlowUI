@@ -81,9 +81,9 @@ test('reloads latest Main values and resets only Simulation from its menu', asyn
   await page.reload();
   await expect(page.getByText(/월 저축 90만 원/)).toBeVisible();
 
-  await page.getByText('Simulation 메뉴').click();
-  await page.getByRole('button', { name: '시뮬레이션 다시 설정' }).click();
-  await page.getByRole('button', { name: '다시 설정 확인' }).click();
+  await page.getByRole('button', { name: '관리 메뉴' }).click();
+  await page.getByRole('menuitem', { name: '시뮬레이션 다시 설정' }).click();
+  await page.getByRole('button', { name: '다시 설정' }).click();
   await expect(page.getByRole('heading', { name: '지금 모아둔 투자금이 있나요?' })).toBeVisible();
   expect(await page.evaluate(() => localStorage.getItem('isf-main-v2'))).not.toBeNull();
 });
@@ -106,9 +106,33 @@ for (const viewport of [
     await expect(page.getByText('납입원금 대비')).toBeVisible();
     expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
 
+    const surfaceStyles = await page.locator([
+      '.growth-chart',
+      '.simulation-controls',
+      '.simulation-calculation-settings',
+    ].join(',')).evaluateAll((surfaces) => surfaces.map((surface) => {
+      const style = getComputedStyle(surface);
+      return {
+        backgroundColor: style.backgroundColor,
+        borderStyle: style.borderTopStyle,
+        borderWidth: style.borderTopWidth,
+        borderRadius: style.borderTopLeftRadius,
+        boxShadow: style.boxShadow,
+      };
+    }));
+    expect(surfaceStyles).toHaveLength(3);
+    for (const style of surfaceStyles) {
+      expect(style.backgroundColor).toBe('rgb(255, 255, 255)');
+      expect(style.borderStyle).toBe('solid');
+      expect(style.borderWidth).toBe('1px');
+      expect(style.borderRadius).toBe('24px');
+      expect(style.boxShadow).toBe('none');
+    }
+
     const box = await graph.boundingBox();
     if (box === null) throw new Error('graph has no bounding box');
     await graph.dispatchEvent('pointerdown', {
+      pointerId: 11,
       clientX: box.x + box.width / 2,
       pointerType: 'touch',
     });
@@ -120,6 +144,11 @@ for (const viewport of [
     expect(tooltipBox.x + tooltipBox.width).toBeLessThanOrEqual(viewport.width);
     expect(tooltipBox.y).toBeGreaterThanOrEqual(box.y);
     expect(tooltipBox.y + tooltipBox.height).toBeLessThanOrEqual(box.y + box.height);
+    await graph.dispatchEvent('pointerup', {
+      pointerId: 11,
+      clientX: box.x + box.width / 2,
+      pointerType: 'touch',
+    });
 
     const comparisonWraps = await page.locator('.simulation-comparison dd').evaluateAll((values) => (
       values.some((value) => {
@@ -131,10 +160,12 @@ for (const viewport of [
     ));
     expect(comparisonWraps).toBe(false);
 
-    await explorer.focus();
+    await explorer.evaluate((element) => element.focus({ preventScroll: true }));
+    await expect(explorer).toBeFocused();
     await explorer.press('Home');
+    await expect(explorer.getByRole('status')).toContainText('0년');
     await explorer.press('ArrowRight');
-    await expect(page.getByText('1년', { exact: true })).toBeVisible();
+    await expect(explorer.getByRole('status')).toContainText('1년');
 
     const undersized = await page.locator('button:visible, input:visible').evaluateAll((controls) => (
       controls.filter((control) => control.getBoundingClientRect().height < 44).length

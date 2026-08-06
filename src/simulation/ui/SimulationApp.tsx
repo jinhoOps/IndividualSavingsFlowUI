@@ -19,7 +19,7 @@ import { SaveIndicator, type SimulationSaveState } from './SaveIndicator';
 import { SimulationComparison } from './SimulationComparison';
 import { SimulationControls } from './SimulationControls';
 import { SimulationHero } from './SimulationHero';
-import { SimulationMenu } from './SimulationMenu';
+import { SimulationManagementMenu } from './SimulationManagementMenu';
 import { SimulationOnboarding } from './SimulationOnboarding';
 
 export function SimulationApp({
@@ -52,7 +52,6 @@ export function SimulationApp({
   const [saveState, setSaveState] = useState<SimulationSaveState>(
     initial.kind !== 'main-required' && !initial.persistenceAvailable ? 'error' : 'saved',
   );
-  const [resetFailed, setResetFailed] = useState(false);
   const initialPersisted = useRef(false);
 
   useEffect(() => {
@@ -71,8 +70,11 @@ export function SimulationApp({
   if (runtime.kind === 'main-required') {
     return (
       <main className="simulation-shell">
-        <AppLauncher currentApp="simulation" />
-        <section className="simulation-recovery">
+        <AppLauncher
+          currentApp="simulation"
+          managementMenu={<SimulationManagementMenu onReset={reset} />}
+        />
+        <section className="simulation-recovery ui-surface">
           <h1>Main에서 월 저축·투자 금액을 먼저 정해주세요.</h1>
           <a className="ui-button ui-button--primary" href={appPath('main')}>Main에서 설정하기</a>
         </section>
@@ -90,16 +92,15 @@ export function SimulationApp({
     setSaveState(repository.save(valid).status === 'saved' ? 'saved' : 'error');
   }
 
-  function reset(): void {
+  function reset(): boolean {
     if (repository.clear().status === 'unavailable') {
-      setResetFailed(true);
-      return;
+      return false;
     }
-    setResetFailed(false);
     const next = bootstrapSimulation(mainRepository.load(), { status: 'empty' }, now());
     setRuntime(next);
     setDraft(null);
     setSaveState(next.kind !== 'main-required' && !next.persistenceAvailable ? 'error' : 'saved');
+    return true;
   }
 
   function retryMain(): void {
@@ -126,7 +127,10 @@ export function SimulationApp({
 
   return (
     <main className="simulation-shell">
-      <AppLauncher currentApp="simulation" />
+      <AppLauncher
+        currentApp="simulation"
+        managementMenu={<SimulationManagementMenu onReset={reset} />}
+      />
       <div className="simulation-content">
         {draft === null && latestSource !== null ? (
           <SimulationOnboarding source={latestSource} now={now} onComplete={saveDraft} />
@@ -134,7 +138,6 @@ export function SimulationApp({
           <>
             <div className="simulation-toolbar">
               <SaveIndicator state={saveState} />
-              <SimulationMenu onReset={reset} resetFailed={resetFailed} />
             </div>
             {runtime.durationAdjusted ? (
               <p role="status">기간 범위가 변경되어 30년으로 조정됐어요.</p>

@@ -24,7 +24,7 @@ export function ScenarioSetupStep({
   });
 
   return (
-    <section className="simulation-onboarding-step" aria-labelledby="scenario-title">
+    <section className="simulation-onboarding-step ui-surface" aria-labelledby="scenario-title">
       <p className="simulation-eyebrow">계산 조건</p>
       <h1 id="scenario-title" ref={headingRef} tabIndex={-1}>
         얼마나 오래, 어느 정도 수익을 기대할까요?

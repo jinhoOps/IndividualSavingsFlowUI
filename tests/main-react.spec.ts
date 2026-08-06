@@ -496,12 +496,20 @@ test('backup import has a matching accessible name and visible keyboard focus ri
   }, appliedMainV2);
   await page.goto('apps/main/');
 
+  const trigger = page.getByRole('button', { name: '관리 메뉴' });
+  await trigger.click();
   const input = page.getByLabel('백업 가져오기');
   await expect(input).toHaveAttribute('type', 'file');
   await input.focus();
   const label = input.locator('..');
   await expect(label).toHaveCSS('box-shadow', /rgba?\(/);
   await expect(page.getByLabel('JSON 백업 파일')).toHaveCount(0);
+  await input.setInputFiles({
+    name: 'main-backup.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(appliedMainV2)),
+  });
+  await expect(trigger).toBeFocused();
 });
 
 test('keyboard-only user completes the full quick setup', async ({ page }) => {

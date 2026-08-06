@@ -20,9 +20,6 @@
 .simulation-onboarding-step,
 .simulation-recovery {
   padding: clamp(1.25rem, 5vw, 4rem);
-  border: 1px solid var(--line);
-  border-radius: var(--ui-surface-radius);
-  background: var(--panel);
 }
 
 .simulation-onboarding-step {
@@ -144,61 +141,11 @@
   background: var(--status-error);
 }
 
-.simulation-menu {
-  position: relative;
-}
-
-.simulation-menu > summary,
 .simulation-advanced > summary {
   display: flex;
   min-height: 44px;
   align-items: center;
   cursor: pointer;
-}
-
-.simulation-menu > button {
-  min-height: 44px;
-  border: 0;
-  border-bottom: 1px solid var(--line);
-  background: var(--panel);
-  color: var(--status-error);
-}
-
-.simulation-menu[open] > button {
-  position: absolute;
-  right: 0;
-  z-index: 5;
-  width: max-content;
-  padding: .65rem 1rem;
-}
-
-.simulation-menu [role="dialog"] {
-  position: fixed;
-  inset: 50% auto auto 50%;
-  z-index: 20;
-  width: min(calc(100vw - 2rem), 28rem);
-  padding: 1.5rem;
-  transform: translate(-50%, -50%);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--ui-surface-radius);
-  background: var(--panel);
-  box-shadow: var(--shadow-float);
-}
-
-.simulation-menu [role="dialog"]::backdrop {
-  background: rgb(16 34 32 / 32%);
-}
-
-.simulation-menu [role="dialog"] button,
-.simulation-controls button,
-.simulation-amount-mode button,
-.simulation-custom-return button {
-  min-width: 44px;
-  min-height: 44px;
-  padding: .55rem .85rem;
-  border: 1px solid var(--line);
-  border-radius: var(--ui-control-radius);
-  background: var(--panel);
 }
 
 .simulation-hero {
@@ -233,8 +180,7 @@
 
 .growth-chart {
   min-width: 0;
-  padding-block: clamp(1rem, 3vw, 2rem);
-  border-block: 1px solid var(--line);
+  padding: clamp(1rem, 3vw, 2rem);
 }
 
 .growth-chart__header,
@@ -485,6 +431,7 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: clamp(1rem, 4vw, 3rem);
   margin: 0;
+  padding: clamp(1rem, 3vw, 2rem);
 }
 
 .simulation-comparison div {
@@ -511,7 +458,7 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: clamp(1.5rem, 4vw, 3rem);
-  padding-block: clamp(1rem, 3vw, 2rem);
+  padding: clamp(1rem, 3vw, 2rem);
 }
 
 .simulation-control-group {
@@ -580,8 +527,7 @@
 .simulation-calculation-settings {
   display: grid;
   gap: 1rem;
-  padding-block: 1rem 3rem;
-  border-top: 1px solid var(--line);
+  padding: clamp(1rem, 3vw, 2rem);
 }
 
 .simulation-amount-mode {

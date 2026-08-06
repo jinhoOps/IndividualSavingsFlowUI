@@ -1,11 +1,17 @@
 import type { JSX } from 'react';
 import { appPath } from '../routes';
 import { AppLauncher } from './AppLauncher';
+import { AppManagementMenu } from './AppManagementMenu';
 
 export function ReadinessApp(): JSX.Element {
   return (
     <main className="journey-readiness" aria-labelledby="readiness-title">
-      <AppLauncher currentApp="account-map" />
+      <AppLauncher
+        currentApp="account-map"
+        managementMenu={<AppManagementMenu items={[
+          { kind: 'message', id: 'account-map-empty', text: '아직 관리할 설정이 없습니다' },
+        ]} />}
+      />
       <section className="journey-readiness__content">
         <p>ISF 앱 준비 화면</p>
         <h1 id="readiness-title">Account Map 준비 중</h1>

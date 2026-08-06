@@ -57,7 +57,6 @@ vi.mock('../../../src/main/ui/dashboard/SummaryDashboard', () => ({
     onDraftChange,
     onApply,
     onCancel,
-    onRestart,
     backupStatus,
     journeyEntry,
     initialFocusPath,
@@ -67,7 +66,6 @@ vi.mock('../../../src/main/ui/dashboard/SummaryDashboard', () => ({
     onDraftChange(draft: MainData): void;
     onApply(): void;
     onCancel(): void;
-    onRestart(): void;
     backupStatus?: { kind: 'success' | 'error'; message: string } | null;
     journeyEntry?: ReactNode;
     initialFocusPath?: keyof MainData;
@@ -81,7 +79,6 @@ vi.mock('../../../src/main/ui/dashboard/SummaryDashboard', () => ({
       </button>
       <button type="button" onClick={onApply}>apply-dashboard</button>
       <button type="button" onClick={onCancel}>cancel-dashboard</button>
-      <button type="button" onClick={onRestart}>restart-setup</button>
       {journeyEntry}
       {initialFocusPath ? <output aria-label="initial-focus-path">{initialFocusPath}</output> : null}
       {backupStatus === null || backupStatus === undefined ? null : (
@@ -147,6 +144,20 @@ describe('setupStepForIssue', () => {
 });
 
 describe('MainApp', () => {
+  it('offers dashboard backup and restart actions from the management menu', async () => {
+    render(<MainApp repository={repository({ status: 'current', data: data(3_000_000), original: null })} />);
+    await screen.findByRole('heading', { name: 'dashboard' });
+
+    fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
+    expect(screen.getByRole('menuitem', { name: '백업 내보내기' })).toBeVisible();
+    expect(screen.getByLabelText('백업 가져오기')).toBeVisible();
+    fireEvent.click(screen.getByRole('menuitem', { name: '처음부터 다시' }));
+    fireEvent.click(screen.getByRole('button', { name: '다시 시작' }));
+
+    expect(await screen.findByRole('heading', { name: 'setup:welcome' })).toBeVisible();
+    expect(screen.queryByRole('navigation', { name: 'ISF 앱' })).not.toBeInTheDocument();
+  });
+
   it('consumes a Portfolio investment edit intent once', async () => {
     window.history.replaceState(null, '', '/apps/main/?edit=investment');
     render(<MainApp repository={repository({ status: 'current', data: data(3_000_000), original: null })} />);
@@ -188,6 +199,8 @@ describe('MainApp', () => {
     render(<MainApp repository={storage} />);
 
     expect(screen.getByRole('status')).toHaveTextContent('자금 계획을 불러오는 중');
+    fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
+    expect(screen.getByLabelText('백업 가져오기')).toBeDisabled();
     resolveLoad?.({ status: 'empty', data: null, original: null });
 
     expect(await screen.findByRole('heading', { name: 'setup:welcome' })).toBeVisible();
@@ -235,6 +248,8 @@ describe('MainApp', () => {
     })} />);
 
     expect(await screen.findByRole('heading', { name: '저장 복구가 필요합니다' })).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
+    expect(screen.getByLabelText('백업 가져오기')).toBeDisabled();
     expect(screen.getByText('현재 적용 중 · 300만 원')).toBeVisible();
     expect(screen.getByText('저장 대기 중 · 400만 원')).toBeVisible();
     expect(screen.getByRole('heading', { name: '저장 복구가 필요합니다' }).closest('section')).toHaveClass('ui-surface');
@@ -495,7 +510,9 @@ describe('MainApp', () => {
     render(<MainApp repository={storage} />);
     await screen.findByRole('heading', { name: 'dashboard' });
 
-    fireEvent.click(screen.getByRole('button', { name: 'restart-setup' }));
+    fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: '처음부터 다시' }));
+    fireEvent.click(screen.getByRole('button', { name: '다시 시작' }));
 
     expect(await screen.findByRole('heading', { name: 'setup:welcome' })).toBeVisible();
     expect(screen.queryByRole('navigation', { name: 'ISF 앱' })).not.toBeInTheDocument();

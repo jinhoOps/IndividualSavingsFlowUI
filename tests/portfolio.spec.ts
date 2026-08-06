@@ -93,13 +93,16 @@ test('resumes and cancels a draft, validates manual cash, and confirms reset', a
   await page.getByRole('button', { name: '현금 자동 배분 켜기' }).click();
   await page.getByRole('button', { name: '취소' }).click();
 
-  await page.getByRole('button', { name: '처음부터 다시' }).click();
-  const resetDialog = page.getByRole('dialog', { name: '투자 배분을 초기화할까요?' });
+  const management = page.getByRole('button', { name: '관리 메뉴' });
+  await management.click();
+  await page.getByRole('menuitem', { name: '투자 배분 처음부터 다시' }).click();
+  const resetDialog = page.getByRole('dialog', { name: '투자 배분을 처음부터 다시 할까요?' });
   await expect(resetDialog.getByRole('button', { name: '취소' })).toBeFocused();
   await page.keyboard.press('Escape');
-  await expect(page.getByRole('button', { name: '처음부터 다시' })).toBeFocused();
-  await page.getByRole('button', { name: '처음부터 다시' }).click();
-  await page.getByRole('dialog', { name: '투자 배분을 초기화할까요?' })
+  await expect(management).toBeFocused();
+  await management.click();
+  await page.getByRole('menuitem', { name: '투자 배분 처음부터 다시' }).click();
+  await page.getByRole('dialog', { name: '투자 배분을 처음부터 다시 할까요?' })
     .getByRole('button', { name: '초기화' }).click();
   await expect(page.getByRole('row', { name: /현금.*200,000원.*100%/ })).toBeVisible();
 });
