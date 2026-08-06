@@ -56,7 +56,6 @@ function DashboardHarness({ mobile = false }: { mobile?: boolean }) {
         setDraft(clone(appliedData));
         setDirty(false);
       }}
-      onRestart={vi.fn()}
     />
   );
 }
@@ -88,7 +87,6 @@ function ValidationHarness({ mobile = false }: { mobile?: boolean }) {
         onDraftChange={vi.fn()}
         onApply={vi.fn()}
         onCancel={vi.fn()}
-        onRestart={vi.fn()}
       />
     </>
   );
@@ -107,7 +105,6 @@ describe('SummaryDashboard', () => {
         onDraftChange={vi.fn()}
         onApply={vi.fn()}
         onCancel={vi.fn()}
-        onRestart={vi.fn()}
         journeyEntry={journeyEntry}
       />,
     );
@@ -264,7 +261,6 @@ describe('SummaryDashboard', () => {
         onDraftChange={vi.fn()}
         onApply={onApply}
         onCancel={vi.fn()}
-        onRestart={vi.fn()}
       />,
     );
     fireEvent.click(screen.getByRole('button', { name: '월 소비 편집' }));
@@ -310,32 +306,11 @@ describe('SummaryDashboard', () => {
     expect(screen.getByLabelText('월 실수령액')).toHaveValue('3,200,000');
   });
 
-  it('confirms a dirty draft before starting over and only restarts after discard is accepted', () => {
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
-    const onCancel = vi.fn();
-    const onRestart = vi.fn();
-    render(
-      <SummaryDashboard
-        applied={appliedData}
-        draft={{ ...appliedData, monthlyNetIncomeWon: 4_000_000 }}
-        dirty
-        issues={[]}
-        saveStatus="idle"
-        onDraftChange={vi.fn()}
-        onApply={vi.fn()}
-        onCancel={onCancel}
-        onRestart={onRestart}
-      />,
-    );
-
-    fireEvent.click(screen.getByRole('button', { name: '처음부터 다시 설정' }));
-    expect(onCancel).not.toHaveBeenCalled();
-    expect(onRestart).not.toHaveBeenCalled();
-
-    confirm.mockReturnValue(true);
-    fireEvent.click(screen.getByRole('button', { name: '처음부터 다시 설정' }));
-    expect(onCancel).toHaveBeenCalledOnce();
-    expect(onRestart).toHaveBeenCalledOnce();
+  it('keeps management actions out of the dashboard header', () => {
+    render(<DashboardHarness />);
+    expect(screen.queryByRole('button', { name: '백업 내보내기' })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('백업 가져오기')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '처음부터 다시 설정' })).not.toBeInTheDocument();
   });
 
   it('opens the scalar editor and focuses the exact invalid field', () => {
@@ -354,60 +329,6 @@ describe('SummaryDashboard', () => {
     expect(screen.getByLabelText('월평균 생활비')).toHaveFocus();
   });
 
-  it('retains backup export and import controls', () => {
-    const onExport = vi.fn();
-    const onImportFile = vi.fn();
-    const backup = new File(['{"schemaVersion":2}'], 'backup.json', { type: 'application/json' });
-    render(
-      <SummaryDashboard
-        applied={appliedData}
-        draft={appliedData}
-        dirty={false}
-        issues={[]}
-        saveStatus="idle"
-        onDraftChange={vi.fn()}
-        onApply={vi.fn()}
-        onCancel={vi.fn()}
-        onRestart={vi.fn()}
-        onExport={onExport}
-        onImportFile={onImportFile}
-      />,
-    );
-
-    fireEvent.click(screen.getByRole('button', { name: '백업 내보내기' }));
-    expect(onExport).toHaveBeenCalledOnce();
-
-    fireEvent.change(screen.getByLabelText('백업 가져오기'), { target: { files: [backup] } });
-    expect(onImportFile).toHaveBeenCalledWith(backup);
-  });
-
-  it('uses the shared secondary import action and exposes its saving disabled state', () => {
-    const props = {
-      applied: appliedData,
-      draft: appliedData,
-      dirty: false,
-      issues: [],
-      onDraftChange: vi.fn(),
-      onApply: vi.fn(),
-      onCancel: vi.fn(),
-      onRestart: vi.fn(),
-      onImportFile: vi.fn(),
-    };
-    const { rerender } = render(<SummaryDashboard {...props} saveStatus="idle" />);
-    const importLabel = screen.getByText('백업 가져오기').closest('label');
-    const fileInput = screen.getByLabelText('백업 가져오기');
-
-    expect(importLabel).toHaveClass('ui-button', 'ui-button--secondary', 'backup-import-action');
-    expect(fileInput).toHaveAccessibleName('백업 가져오기');
-    expect(importLabel).not.toHaveAttribute('aria-disabled');
-    expect(fileInput).toBeEnabled();
-
-    rerender(<SummaryDashboard {...props} saveStatus="saving" />);
-
-    expect(importLabel).toHaveAttribute('aria-disabled', 'true');
-    expect(fileInput).toBeDisabled();
-  });
-
   it('only warns on browser exit when the scalar draft is dirty', () => {
     const props = {
       applied: appliedData,
@@ -417,7 +338,6 @@ describe('SummaryDashboard', () => {
       onDraftChange: vi.fn(),
       onApply: vi.fn(),
       onCancel: vi.fn(),
-      onRestart: vi.fn(),
     };
     const { rerender } = render(<SummaryDashboard {...props} dirty={false} />);
     const cleanExit = new Event('beforeunload', { cancelable: true });

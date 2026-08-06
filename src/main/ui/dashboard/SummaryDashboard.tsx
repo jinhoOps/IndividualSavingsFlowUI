@@ -21,9 +21,6 @@ export interface SummaryDashboardProps {
   onDraftChange(draft: MainData): void;
   onApply(): void;
   onCancel(): void;
-  onRestart(): void;
-  onExport?(): void;
-  onImportFile?(file: File): void;
   backupStatus?: { kind: 'success' | 'error'; message: string } | null;
   journeyEntry?: ReactNode;
   initialFocusPath?: keyof MainData;
@@ -39,9 +36,6 @@ export function SummaryDashboard({
   onDraftChange,
   onApply,
   onCancel,
-  onRestart,
-  onExport,
-  onImportFile,
   backupStatus = null,
   journeyEntry,
   initialFocusPath,
@@ -116,13 +110,6 @@ export function SummaryDashboard({
     setEditorOpen(false);
   }
 
-  function requestRestart() {
-    if (saving) return;
-    if (dirty && !window.confirm('저장하지 않은 변경사항을 버릴까요?')) return;
-    if (dirty) onCancel();
-    onRestart();
-  }
-
   function openEditor(opener: HTMLElement) {
     if (saving) return;
     openerRef.current = opener;
@@ -157,34 +144,6 @@ export function SummaryDashboard({
             <p className="m-0 text-sm font-black tracking-wide text-accent" role="status">{saveStatusMessage(saveStatus)}</p>
             <h1 className="m-0 mt-2 text-4xl font-bold tracking-tight text-slate-950 sm:text-5xl" id="summary-dashboard-title">이번 달 자금 흐름</h1>
             <p className="mb-0 mt-3 text-lg text-slate-600">수입과 소비, 저축, 투자 뒤에 남는 돈을 확인하세요.</p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2 self-start">
-            {onExport === undefined ? null : (
-              <Button className="rounded-full bg-white/80 text-sm shadow-sm" type="button" disabled={saving} onClick={onExport}>
-                백업 내보내기
-              </Button>
-            )}
-            {onImportFile === undefined ? null : (
-              <label
-                aria-disabled={saving ? 'true' : undefined}
-                className="backup-import-action ui-button ui-button--secondary rounded-full bg-white/80 text-sm shadow-sm"
-              >
-                백업 가져오기
-                <input
-                  className="sr-only"
-                  type="file"
-                  accept="application/json,.json"
-                  aria-label="백업 가져오기"
-                  disabled={saving}
-                  onChange={(event) => {
-                    const file = event.currentTarget.files?.[0];
-                    if (file !== undefined) onImportFile(file);
-                    event.currentTarget.value = '';
-                  }}
-                />
-              </label>
-            )}
-            <Button className="rounded-full bg-white/80 text-sm shadow-sm" type="button" disabled={saving} onClick={requestRestart}>처음부터 다시 설정</Button>
           </div>
         </header>
 

@@ -12,6 +12,7 @@ import { Button } from './common/Button';
 import { Surface } from './common/Surface';
 import { formatDashboardWon } from './dashboard/CashflowSummary';
 import { SummaryDashboard } from './dashboard/SummaryDashboard';
+import { MainManagementMenu } from './MainManagementMenu';
 import { SetupFlow } from './setup/SetupFlow';
 
 export interface MainAppProps {
@@ -215,10 +216,22 @@ export function MainApp({
   }
 
   const journeyEntry = <JourneyEntryCard enabled={state?.applied !== null && state?.applied !== undefined} onContinue={continueToSimulation} />;
+  const managementMenu = (
+    <MainManagementMenu
+      saving={state?.saveStatus === 'saving'}
+      dirty={state?.dirty ?? false}
+      canExport={state?.applied !== null && state?.applied !== undefined}
+      canRestart={state?.applied !== null && state?.applied !== undefined}
+      onCancel={cancelDraft}
+      onRestart={restartSetup}
+      onExport={exportAppliedBackup}
+      onImportFile={importBackup}
+    />
+  );
 
   if (state === null) {
     return (
-      <MainAppShell>
+      <MainAppShell managementMenu={managementMenu}>
         <main className="grid min-h-dvh place-items-center px-6">
           <p className="text-sm font-bold text-slate-600" role="status">자금 계획을 불러오는 중입니다.</p>
         </main>
@@ -229,7 +242,7 @@ export function MainApp({
   if (state.mode === 'recovery') {
     const original = state.loadError?.original ?? state.draft;
     return (
-      <MainAppShell>
+      <MainAppShell managementMenu={managementMenu}>
         <RecoveryView
           state={state}
           onDownload={() => downloadRecovery(original)}
@@ -289,7 +302,7 @@ export function MainApp({
   if (state.applied === null) return null;
 
   return (
-    <MainAppShell>
+    <MainAppShell managementMenu={managementMenu}>
       <SummaryDashboard
         applied={state.applied}
         draft={state.draft}
@@ -300,9 +313,6 @@ export function MainApp({
         onDraftChange={changeDraft}
         onApply={apply}
         onCancel={cancelDraft}
-        onRestart={restartSetup}
-        onExport={exportAppliedBackup}
-        onImportFile={importBackup}
         backupStatus={progressWarning === null
           ? backupStatus
           : { kind: 'error', message: progressWarning }}
@@ -325,15 +335,17 @@ function consumeEditIntent(): keyof MainData | undefined {
 function MainAppShell({
   children,
   showLauncher = true,
+  managementMenu,
 }: {
   children: ReactNode;
   showLauncher?: boolean;
+  managementMenu?: ReactNode;
 }) {
   return (
     <div>
       {showLauncher ? (
         <div className="mx-auto w-full max-w-[1200px] px-5 pt-5 sm:px-8">
-          <AppLauncher currentApp="main" />
+          <AppLauncher currentApp="main" managementMenu={managementMenu} />
         </div>
       ) : null}
       {children}

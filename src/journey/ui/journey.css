@@ -127,6 +127,7 @@
 .journey-management__row:focus-within,
 .journey-management__row:focus-visible {
   background: color-mix(in srgb, var(--tone-accent) 8%, transparent);
+  box-shadow: var(--ui-focus-ring);
 }
 
 .journey-management__danger {

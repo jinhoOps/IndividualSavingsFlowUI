@@ -3416,7 +3416,9 @@ test.describe('Phase 09 final responsive user flow coverage', () => {
   });
 
   test('focuses restart setup and restores journey navigation after cancel', async ({ page }) => {
-    await page.getByRole('button', { name: '처음부터 다시 설정' }).click();
+    await page.getByRole('button', { name: '관리 메뉴' }).click();
+    await page.getByRole('menuitem', { name: '처음부터 다시' }).click();
+    await page.getByRole('button', { name: '다시 시작' }).click();
 
     await expect(page.getByRole('heading', { name: '한 달 돈의 흐름, 2분이면 확인할 수 있어요.' })).toBeVisible();
     await expect(page.getByRole('navigation', { name: 'ISF 앱' })).toHaveCount(0);
