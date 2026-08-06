@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Button } from '../../components/common/Button';
+import { Surface } from '../../components/common/Surface';
 import { AppLauncher } from '../../journey/ui/AppLauncher';
 import { appPath } from '../../journey/routes';
 import { bootstrapSimulation } from '../application/bootstrap';
@@ -74,10 +76,10 @@ export function SimulationApp({
           currentApp="simulation"
           managementMenu={<SimulationManagementMenu onReset={reset} />}
         />
-        <section className="simulation-recovery ui-surface">
+        <Surface as="section" className="simulation-recovery">
           <h1>Main에서 월 저축·투자 금액을 먼저 정해주세요.</h1>
           <a className="ui-button ui-button--primary" href={appPath('main')}>Main에서 설정하기</a>
-        </section>
+        </Surface>
       </main>
     );
   }
@@ -146,7 +148,7 @@ export function SimulationApp({
               <aside className="simulation-stale-main">
                 <p role="status">이전 Main 기준</p>
                 <p>최신 Main 정보를 불러오지 못했어요.</p>
-                <button type="button" onClick={retryMain}>최신 Main 다시 불러오기</button>
+                <Button type="button" variant="secondary" onClick={retryMain}>최신 Main 다시 불러오기</Button>
                 <a href={appPath('main')}>Main 확인하기</a>
               </aside>
             ) : null}

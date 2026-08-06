@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { Button } from '../../components/common/Button';
+import { Surface } from '../../components/common/Surface';
 import type { CompoundSimulationDraft } from '../domain/model';
 import { formatPercent } from './format';
 
@@ -27,19 +29,19 @@ export function AdvancedSettings({
   });
 
   return (
-    <section className="simulation-calculation-settings ui-surface" aria-label="금액과 계산 기준">
+    <Surface as="section" className="simulation-calculation-settings" aria-label="금액과 계산 기준">
       <fieldset className="simulation-amount-mode">
         <legend>금액 기준</legend>
         {(['nominal', 'real'] as const).map((mode) => (
-          <button
+          <Button
             type="button"
-            className="ui-button ui-button--secondary"
+            variant="secondary"
             key={mode}
             aria-pressed={draft.amountMode === mode}
             onClick={() => update({ amountMode: mode })}
           >
             {mode === 'nominal' ? '명목' : '실질'}
-          </button>
+          </Button>
         ))}
       </fieldset>
 
@@ -87,7 +89,7 @@ export function AdvancedSettings({
           <p>수익을 계속 재투자한다고 가정한 계산이며, 백테스트나 금융 자문이 아닙니다.</p>
         </div>
       </details>
-    </section>
+    </Surface>
   );
 }
 

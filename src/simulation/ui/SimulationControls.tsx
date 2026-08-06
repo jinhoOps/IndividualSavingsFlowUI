@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { Button } from '../../components/common/Button';
+import { Surface } from '../../components/common/Surface';
 import type { CompoundSimulationDraft } from '../domain/model';
 
 const RETURN_PRESETS = [5, 9, 13] as const;
@@ -44,7 +46,7 @@ export function SimulationControls({
   }
 
   return (
-    <section className="simulation-controls ui-surface" aria-label="시뮬레이션 조건">
+    <Surface as="section" className="simulation-controls" aria-label="시뮬레이션 조건">
       <fieldset className="simulation-control-group">
         <legend>기간</legend>
         <div className="simulation-duration-control">
@@ -87,9 +89,9 @@ export function SimulationControls({
         <legend>연 기대수익률</legend>
         <div className="simulation-preset-row">
           {RETURN_PRESETS.map((rate) => (
-            <button
+            <Button
               type="button"
-              className="ui-button ui-button--secondary"
+              variant="secondary"
               key={rate}
               aria-label={`연 기대수익률 ${rate}%`}
               aria-pressed={!customReturn && draft.expectedAnnualReturnPercent === rate}
@@ -99,11 +101,11 @@ export function SimulationControls({
               }}
             >
               {rate}%
-            </button>
+            </Button>
           ))}
-          <button
+          <Button
             type="button"
-            className="ui-button ui-button--secondary"
+            variant="secondary"
             aria-pressed={customReturn}
             onClick={() => {
               setCustomReturn(true);
@@ -111,20 +113,20 @@ export function SimulationControls({
             }}
           >
             직접 입력
-          </button>
+          </Button>
         </div>
 
         {customReturn ? (
           <div className="simulation-custom-return">
-            <button
+            <Button
               type="button"
-              className="ui-button ui-button--secondary"
+              variant="secondary"
               aria-label="기대수익률 0.25%p 내리기"
               disabled={draft.expectedAnnualReturnPercent <= 0}
               onClick={() => updateReturn(draft.expectedAnnualReturnPercent - 0.25)}
             >
               −
-            </button>
+            </Button>
             <label className="simulation-number-field">
               <span className="sr-only">연 기대수익률 직접 입력</span>
               <input
@@ -148,15 +150,15 @@ export function SimulationControls({
               />
               <span aria-hidden="true">%</span>
             </label>
-            <button
+            <Button
               type="button"
-              className="ui-button ui-button--secondary"
+              variant="secondary"
               aria-label="기대수익률 0.25%p 올리기"
               disabled={draft.expectedAnnualReturnPercent >= 30}
               onClick={() => updateReturn(draft.expectedAnnualReturnPercent + 0.25)}
             >
               +
-            </button>
+            </Button>
           </div>
         ) : null}
         {returnError ? (
@@ -165,6 +167,6 @@ export function SimulationControls({
           </p>
         ) : null}
       </fieldset>
-    </section>
+    </Surface>
   );
 }
