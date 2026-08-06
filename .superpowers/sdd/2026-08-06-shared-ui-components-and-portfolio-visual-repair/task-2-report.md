@@ -35,3 +35,8 @@
 ## Concerns
 
 None. `AGENTS.md` and `package-lock.json` were pre-existing user changes and are deliberately not staged.
+
+## Fix round 1
+
+- Removed the out-of-scope GrowthChart Home/End `preventDefault` behavior and its dedicated unit test. The shared `Surface` integration and its typed ref contract remain unchanged.
+- Covering verification: `npx vitest run tests/unit/simulation/GrowthChart.test.tsx tests/unit/simulation/sharedComponents.test.ts && npx playwright test tests/simulation.spec.ts --reporter=list` — 21 unit tests and 8 Playwright tests passed.

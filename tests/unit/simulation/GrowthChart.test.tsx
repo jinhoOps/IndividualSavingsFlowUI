@@ -63,17 +63,6 @@ describe('GrowthChart', () => {
     expect(screen.getByText('투자 잔액')).toBeVisible();
   });
 
-  it('prevents Home and End from scrolling away keyboard chart detail', () => {
-    render(<GrowthChart result={result} amountMode="nominal" />);
-    const explorer = screen.getByRole('application', { name: '그래프 연도 탐색' });
-
-    for (const key of ['Home', 'End']) {
-      const event = new KeyboardEvent('keydown', { bubbles: true, cancelable: true, key });
-      fireEvent(explorer, event);
-      expect(event.defaultPrevented).toBe(true);
-    }
-  });
-
   it('dismisses detail with Escape or an outside pointer', () => {
     render(<GrowthChart result={result} amountMode="nominal" />);
     const explorer = screen.getByRole('application', { name: '그래프 연도 탐색' });
