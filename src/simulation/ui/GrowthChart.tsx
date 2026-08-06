@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState, type ReactElement, type RefAttributes } from 'react';
-import { Surface, type SurfaceProps } from '../../components/common/Surface';
+import { useEffect, useRef, useState } from 'react';
+import { Surface } from '../../components/common/Surface';
 import type {
   CompoundSimulationDraft,
   ProjectionPoint,
@@ -8,10 +8,6 @@ import type {
 import { buildChartGeometry, tooltipPlacement } from './chartGeometry';
 import { formatWon } from './format';
 import { GrowthChartTooltip } from './GrowthChartTooltip';
-
-const SurfaceWithRef = Surface as (
-  props: SurfaceProps & RefAttributes<HTMLElement>
-) => ReactElement;
 
 export function GrowthChart({
   result,
@@ -55,7 +51,7 @@ export function GrowthChart({
   });
 
   return (
-    <SurfaceWithRef
+    <Surface
       as="section"
       ref={chartRef}
       className="growth-chart"
@@ -179,7 +175,7 @@ export function GrowthChart({
           </>
         )}
       </div>
-    </SurfaceWithRef>
+    </Surface>
   );
 }
 

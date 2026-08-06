@@ -235,6 +235,35 @@ test('contains the mobile editor, apply bar, and confirmation dialog', async ({ 
   await assertContained(page.getByRole('dialog', { name: '투자 배분 적용' }));
 });
 
+test('keeps the final mobile editor control above the save-error apply bar', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await seedMain(page, 200_000);
+  await page.goto('apps/portfolio/');
+  await page.evaluate(() => {
+    const originalSetItem = Storage.prototype.setItem;
+    Storage.prototype.setItem = function setItem(key: string, value: string) {
+      if (key === 'isf-portfolio-allocation-draft-v1') {
+        throw new DOMException('Portfolio draft writes are blocked for this test', 'QuotaExceededError');
+      }
+      originalSetItem.call(this, key, value);
+    };
+  });
+
+  await page.getByRole('button', { name: '투자 대상 추가' }).click();
+  const applyBar = page.getByRole('complementary', { name: '배분 변경' });
+  await expect(applyBar.getByRole('alert')).toContainText('저장하지 못했습니다');
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+
+  const finalControl = page.locator(
+    '.portfolio-editor button:visible, .portfolio-editor input:visible',
+  ).last();
+  const finalControlBox = await finalControl.boundingBox();
+  const applyBarBox = await applyBar.boundingBox();
+  expect(finalControlBox).not.toBeNull();
+  expect(applyBarBox).not.toBeNull();
+  expect(finalControlBox!.y + finalControlBox!.height).toBeLessThanOrEqual(applyBarBox!.y);
+});
+
 test('uses a single editor column at 768px', async ({ page }) => {
   await page.setViewportSize({ width: 768, height: 900 });
   await seedMain(page, 200_000);
