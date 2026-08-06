@@ -41,6 +41,8 @@ describe('SimulationApp', () => {
       now={() => 456}
     />);
 
+    expect(screen.getByTestId('app-shell')).toBeInTheDocument();
+    expect(screen.getByTestId('app-shell-launcher')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '없어요' }));
     expect(screen.getByRole('heading', {
       name: '얼마나 오래, 어느 정도 수익을 기대할까요?',
@@ -172,6 +174,8 @@ describe('SimulationApp', () => {
       repository={simulationRepository()}
     />);
 
+    expect(screen.getByTestId('app-shell')).toBeInTheDocument();
+    expect(screen.getByTestId('app-shell-launcher')).toBeInTheDocument();
     expect(screen.getByText('Main에서 월 저축·투자 금액을 먼저 정해주세요.')).toBeVisible();
     expect(screen.getByRole('link', { name: 'Main에서 설정하기' }))
       .toHaveAttribute('href', '/apps/main/');

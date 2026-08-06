@@ -22,6 +22,16 @@ const surfaceFiles = [
 ];
 
 describe('Simulation shared component architecture', () => {
+  it('delegates app chrome and canvas to AppShell', () => {
+    const simulationCss = source('src/simulation/ui/simulation.css');
+    const portfolioCss = source('src/portfolio/ui/portfolio.css');
+    const portfolioSource = source('src/portfolio/ui/PortfolioApp.tsx');
+
+    expect(simulationCss).not.toMatch(/\.simulation-shell[^}]*background:/s);
+    expect(portfolioCss).not.toMatch(/\.portfolio-shell[^}]*background:/s);
+    expect(portfolioSource).not.toContain('portfolio-launcher');
+  });
+
   it.each(buttonFiles)('uses Button instead of direct ui-button markup in %s', (file) => {
     const contents = source(file);
 

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
+import { AppShell } from '../../components/common/AppShell';
 import { Button } from '../../components/common/Button';
 import { Surface } from '../../components/common/Surface';
-import { AppLauncher } from '../../journey/ui/AppLauncher';
 import { appPath } from '../../journey/routes';
 import { bootstrapPortfolio } from '../application/bootstrap';
 import {
@@ -107,20 +107,21 @@ export function PortfolioApp({
   }
 
   return (
-    <main className="portfolio-shell">
-      <div className="portfolio-launcher">
-        <AppLauncher currentApp="portfolio" managementMenu={<PortfolioManagementMenu onReset={reset} />} />
-      </div>
-      {initial.kind === 'main-required' ? (
-        <RecoveryPanel message="Main 계획에서 투자금을 먼저 설정해 주세요." />
-      ) : initial.kind === 'investment-required' ? (
-        <InvestmentRequired plan={initial.preservedPlan} />
-      ) : initial.kind === 'stale-main' ? (
-        <StaleMain plan={initial.plan} />
-      ) : state === null ? (
-        <RecoveryPanel message="Portfolio를 시작할 수 없습니다." />
-      ) : (
-        <div className="portfolio-content">
+    <AppShell
+      currentApp="portfolio"
+      managementMenu={<PortfolioManagementMenu onReset={reset} />}
+    >
+      <main className="portfolio-shell">
+        {initial.kind === 'main-required' ? (
+          <RecoveryPanel message="Main 계획에서 투자금을 먼저 설정해 주세요." />
+        ) : initial.kind === 'investment-required' ? (
+          <InvestmentRequired plan={initial.preservedPlan} />
+        ) : initial.kind === 'stale-main' ? (
+          <StaleMain plan={initial.plan} />
+        ) : state === null ? (
+          <RecoveryPanel message="Portfolio를 시작할 수 없습니다." />
+        ) : (
+          <div className="portfolio-content">
           {state.view === 'result' && state.applied !== null ? (
             <>
               <div className="portfolio-toolbar">
@@ -157,9 +158,10 @@ export function PortfolioApp({
               />
             </>
           )}
-        </div>
-      )}
-    </main>
+          </div>
+        )}
+      </main>
+    </AppShell>
   );
 }
 

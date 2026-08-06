@@ -1,6 +1,5 @@
-.portfolio-shell { min-height: 100dvh; background: var(--bg); color: #0f172a; }
-.portfolio-launcher, .portfolio-content, .portfolio-recovery { width: min(100% - 2rem, 72rem); margin-inline: auto; }
-.portfolio-launcher { padding-top: 1.25rem; }
+.portfolio-shell { min-height: 100dvh; }
+.portfolio-content, .portfolio-recovery { width: min(100% - 2rem, 72rem); margin-inline: auto; }
 .portfolio-content { padding-block: 2rem 6rem; }
 .portfolio-content--blurred { filter: blur(10px); pointer-events: none; user-select: none; }
 .portfolio-gate { position: relative; min-height: 32rem; }

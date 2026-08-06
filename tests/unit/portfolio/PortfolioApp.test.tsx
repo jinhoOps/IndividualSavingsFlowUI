@@ -27,6 +27,8 @@ const zeroMain: PortfolioMainSourceRepository = {
 describe('PortfolioApp', () => {
   it('opens setup on first run', () => {
     render(<PortfolioApp mainSourceRepository={mainFound} repository={createMemoryPortfolioRepository()} now={() => 1} />);
+    expect(screen.getByTestId('app-shell')).toBeInTheDocument();
+    expect(screen.getByTestId('app-shell-launcher')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: '투자 배분 설정' })).toBeVisible();
   });
 

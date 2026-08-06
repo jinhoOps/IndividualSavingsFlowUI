@@ -1,14 +1,12 @@
 .simulation-shell {
   min-height: 100dvh;
-  padding: clamp(.75rem, 2vw, 1.5rem);
   overflow-x: clip;
-  background: var(--bg);
 }
 
 .simulation-content,
 .simulation-recovery,
 .simulation-onboarding-step {
-  width: min(100%, 70rem);
+  width: min(calc(100% - clamp(1.5rem, 4vw, 3rem)), 70rem);
   margin: clamp(1.25rem, 4vw, 3.5rem) auto;
 }
 
@@ -560,10 +558,6 @@
 }
 
 @media (max-width: 767px) {
-  .simulation-shell {
-    padding-inline: .75rem;
-  }
-
   .simulation-content {
     gap: 1.5rem;
   }
