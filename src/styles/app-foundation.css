@@ -82,6 +82,19 @@
 }
 
 @layer components {
+  .app-shell {
+    min-height: 100dvh;
+    color: var(--ink);
+  }
+
+  .app-shell__launcher-frame {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 1200px;
+    margin-inline: auto;
+    padding: 20px 20px 0;
+  }
+
   .ui-button {
     @apply inline-flex min-h-11 items-center justify-center gap-2 px-4 py-2 font-bold transition;
     min-height: var(--ui-control-min-height);
@@ -115,6 +128,12 @@
   .ui-surface {
     @apply border border-line bg-panel;
     border-radius: var(--ui-surface-radius);
+  }
+}
+
+@media (min-width: 640px) {
+  .app-shell__launcher-frame {
+    padding-inline: 32px;
   }
 }
 
