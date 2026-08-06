@@ -20,10 +20,10 @@ describe('CashflowDonutSummary', () => {
   it('renders the accessible allocation chart, savings-investment center, and legend controls', () => {
     render(<CashflowDonutSummary data={appliedData} />);
 
-    expect(screen.getByRole('img', { name: /소비 56\.3%.*저축 9\.4%.*투자 6\.3%.*남는 돈 28\.1%/ })).toBeVisible();
+    expect(screen.getByRole('img', { name: /소비 56\.3%.*저축 9\.4%.*투자 6\.3%.*여윳돈 28\.1%/ })).toBeVisible();
     expect(screen.getByText('15.6%')).toBeVisible();
     expect(screen.getByText('저축·투자')).toBeVisible();
-    for (const label of ['소비', '저축', '투자', '남는 돈']) {
+    for (const label of ['소비', '저축', '투자', '여윳돈']) {
       expect(screen.getByRole('button', { name: `${label} 상세 정보` })).toBeVisible();
     }
   });
