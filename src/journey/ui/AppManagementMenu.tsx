@@ -1,5 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { ManagementConfirmationDialog } from './ManagementConfirmationDialog';
+import { AppNavigationIcon } from './AppNavigationIcon';
+import { APP_NAV_ITEMS } from './appNavigation';
 
 export interface ManagementConfirmation {
   title: string;
@@ -16,26 +18,33 @@ export type AppManagementItem =
 
 export function AppManagementMenu({ items }: { items: readonly AppManagementItem[] }) {
   const menuId = useId();
+  const helpId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   const [pending, setPending] = useState<Extract<AppManagementItem, { kind: 'action' }> | null>(null);
   const [confirmationFailed, setConfirmationFailed] = useState(false);
 
-  function closeAndRestoreFocus(): void {
+  function closePopover(restoreFocus = true): void {
     setOpen(false);
-    window.setTimeout(() => triggerRef.current?.focus(), 0);
+    setHelpOpen(false);
+    if (restoreFocus) window.setTimeout(() => triggerRef.current?.focus(), 0);
   }
 
   useEffect(() => {
     if (!open) return;
     const closeOutside = (event: PointerEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) closeAndRestoreFocus();
+      const root = rootRef.current;
+      const target = event.target as Node;
+      if (root?.contains(target)) return;
+      const movingWithinLauncher = root?.closest('.journey-launcher')?.contains(target) ?? false;
+      closePopover(!movingWithinLauncher);
     };
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
       event.preventDefault();
-      closeAndRestoreFocus();
+      closePopover();
     };
     document.addEventListener('pointerdown', closeOutside);
     document.addEventListener('keydown', closeOnEscape);
@@ -57,7 +66,16 @@ export function AppManagementMenu({ items }: { items: readonly AppManagementItem
   }
 
   return (
-    <div ref={rootRef} className="journey-management">
+    <div
+      ref={rootRef}
+      className="journey-management"
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+          setOpen(false);
+          setHelpOpen(false);
+        }
+      }}
+    >
       <button
         ref={triggerRef}
         type="button"
@@ -65,13 +83,32 @@ export function AppManagementMenu({ items }: { items: readonly AppManagementItem
         aria-label="관리 메뉴"
         aria-expanded={open}
         aria-controls={menuId}
-        onClick={() => setOpen((current) => !current)}
+        onClick={() => {
+          setOpen((current) => !current);
+          setHelpOpen(false);
+        }}
       >
         <GearIcon />
       </button>
       {open ? (
-        <div id={menuId} className="journey-management__popover" role="menu" aria-label="관리 메뉴">
-          {items.map((item) => {
+        <div id={menuId} className="journey-management__popover">
+          <div role="menu" aria-label="관리 메뉴">
+            <button
+              type="button"
+              role="menuitem"
+              className="journey-management__row journey-management__help-trigger"
+              aria-expanded={helpOpen}
+              aria-controls={helpId}
+              onClick={(event) => {
+                const trigger = event.currentTarget;
+                setHelpOpen((current) => !current);
+                if (helpOpen) window.setTimeout(() => trigger.focus(), 0);
+              }}
+            >
+              <span>앱 아이콘 안내</span>
+              <ChevronIcon expanded={helpOpen} />
+            </button>
+            {items.map((item) => {
             if (item.kind === 'separator') return <hr key={item.id} role="separator" />;
             if (item.kind === 'message') return <p key={item.id} className="journey-management__message">{item.text}</p>;
             if (item.kind === 'file') {
@@ -88,7 +125,7 @@ export function AppManagementMenu({ items }: { items: readonly AppManagementItem
                       const file = event.currentTarget.files?.[0];
                       if (file !== undefined) {
                         item.onFile(file);
-                        closeAndRestoreFocus();
+                        closePopover();
                       }
                       event.currentTarget.value = '';
                     }}
@@ -108,7 +145,19 @@ export function AppManagementMenu({ items }: { items: readonly AppManagementItem
                 {item.label}
               </button>
             );
-          })}
+            })}
+          </div>
+          {helpOpen ? (
+            <div id={helpId} role="region" aria-label="앱 아이콘 안내" className="journey-management__app-help">
+              {APP_NAV_ITEMS.map((item) => (
+                <div key={item.id} className="journey-management__app-help-row">
+                  <AppNavigationIcon app={item.id} />
+                  <span>{item.accessibleLabel}</span>
+                  {item.availability === 'readiness' ? <small>준비 중</small> : null}
+                </div>
+              ))}
+            </div>
+          ) : null}
         </div>
       ) : null}
       {pending?.confirmation === undefined ? null : (
@@ -127,6 +176,14 @@ export function AppManagementMenu({ items }: { items: readonly AppManagementItem
         />
       )}
     </div>
+  );
+}
+
+function ChevronIcon({ expanded }: { expanded: boolean }) {
+  return (
+    <svg className={expanded ? 'is-expanded' : undefined} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+      <path d="m6.5 8 3.5 3.5L13.5 8" />
+    </svg>
   );
 }
 

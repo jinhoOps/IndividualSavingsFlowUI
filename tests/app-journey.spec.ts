@@ -96,7 +96,7 @@ test('keeps detailed Portfolio and readiness-only Account Map isolated', async (
   await expect(page.locator('app-header, data-hub-modal, #portfolioCreator, #accountMapCanvas')).toHaveCount(0);
 });
 
-test('contains launcher and current Simulation route at mobile, tablet, and desktop widths', async ({ page }) => {
+test('separates app navigation and the right-aligned management tool across viewports', async ({ page }) => {
   await page.addInitScript((fixture) => {
     localStorage.setItem('isf-main-v2', JSON.stringify(fixture));
   }, appliedMain);
@@ -108,6 +108,8 @@ test('contains launcher and current Simulation route at mobile, tablet, and desk
     await page.setViewportSize(viewport);
     await page.goto('apps/simulation/');
     const launcher = page.getByRole('navigation', { name: 'ISF 앱' });
+    const launcherRoot = page.locator('.journey-launcher');
+    const tools = page.getByRole('group', { name: '앱 도구' });
     await expect(launcher).toBeVisible();
     await expect(page.getByRole('link', { name: /미래 성장 \(Simulation\).*현재 위치/ }))
       .toHaveAttribute('aria-current', 'page');
@@ -130,17 +132,25 @@ test('contains launcher and current Simulation route at mobile, tablet, and desk
       expect(target.top).toBe(appTargets[0].top);
     }
 
-    const helpTarget = await launcher.getByRole('button', { name: '앱 아이콘 도움말' })
-      .evaluate((button) => {
-        const hit = button.getBoundingClientRect();
-        const visual = button.querySelector('[data-help-visual]')!.getBoundingClientRect();
-        return {
-          hit: { width: hit.width, height: hit.height, top: hit.top },
-          visual: { width: visual.width, height: visual.height },
-        };
-      });
-    expect(helpTarget.hit).toEqual({ width: 32, height: 44, top: appTargets[0].top });
-    expect(helpTarget.visual).toEqual({ width: 30, height: 30 });
+    await expect(launcher.getByRole('button', { name: '관리 메뉴' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: '앱 아이콘 도움말' })).toHaveCount(0);
+    const management = tools.getByRole('button', { name: '관리 메뉴' });
+    const geometry = await page.evaluate(([root, group, trigger]) => {
+      const rootRect = root.getBoundingClientRect();
+      const groupRect = group.getBoundingClientRect();
+      const triggerRect = trigger.getBoundingClientRect();
+      const style = getComputedStyle(group);
+      return {
+        trigger: { width: triggerRect.width, height: triggerRect.height, top: triggerRect.top },
+        rightDelta: Math.abs(rootRect.right - groupRect.right),
+        borderWidth: Number.parseFloat(style.borderLeftWidth),
+        borderColor: style.borderLeftColor,
+      };
+    }, [await launcherRoot.elementHandle(), await tools.elementHandle(), await management.elementHandle()] as const);
+    expect(geometry.trigger).toEqual({ width: 44, height: 44, top: appTargets[0].top });
+    expect(geometry.rightDelta).toBeLessThanOrEqual(1);
+    expect(geometry.borderWidth).toBe(1);
+    expect(geometry.borderColor).not.toBe('rgba(0, 0, 0, 0)');
     expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
   }
 });
@@ -173,6 +183,22 @@ test('keeps each app management menu reachable and contained across viewports', 
       await trigger.click();
       const menu = page.getByRole('menu', { name: '관리 메뉴' });
       await expect(menu).toBeVisible();
+      const help = menu.getByRole('menuitem', { name: '앱 아이콘 안내' });
+      await expect(help).toHaveAttribute('aria-expanded', 'false');
+      await help.click();
+      const guide = page.getByRole('region', { name: '앱 아이콘 안내' });
+      await expect(guide).toContainText('자금 흐름 (Main)');
+      await expect(guide).toContainText('미래 성장 (Simulation)');
+      await expect(guide).toContainText('투자 배분 (Portfolio)');
+      await expect(guide).toContainText('계좌 연결 (Account Map)');
+      await expect(guide).toContainText('준비 중');
+      expect(await menu.evaluate((node) => node.querySelector('[role="region"]'))).toBeNull();
+      const guideBox = await guide.boundingBox();
+      expect(guideBox).not.toBeNull();
+      expect(guideBox!.x).toBeGreaterThanOrEqual(16);
+      expect(guideBox!.x + guideBox!.width).toBeLessThanOrEqual(viewport.width - 16);
+      await help.click();
+      await expect(guide).toHaveCount(0);
       await expect(menu.getByText(app.text)).toBeVisible();
       const menuBox = await menu.boundingBox();
       expect(menuBox).not.toBeNull();
@@ -238,7 +264,7 @@ test('keeps Account Map usable at mobile, tablet, and desktop widths', async ({ 
   }
 });
 
-test('explains app icons with pointer, keyboard, touch and narrow help', async ({ page }) => {
+test('explains app icons with pointer, keyboard, touch and integrated management help', async ({ page }) => {
   await page.addInitScript((fixture) => localStorage.setItem('isf-main-v2', JSON.stringify(fixture)), appliedMain);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('apps/simulation/');
@@ -253,18 +279,18 @@ test('explains app icons with pointer, keyboard, touch and narrow help', async (
   await page.keyboard.press('Escape');
   await expect(page.getByRole('tooltip')).toHaveCount(0);
 
-  const help = page.getByRole('button', { name: '앱 아이콘 도움말' });
+  await page.getByRole('button', { name: '관리 메뉴' }).click();
+  const help = page.getByRole('menuitem', { name: '앱 아이콘 안내' });
   await help.click();
   const panel = page.getByRole('region', { name: '앱 아이콘 안내' });
   await expect(panel).toContainText('계좌 연결 (Account Map)');
   await expect(panel).toContainText('준비 중');
   const panelBox = await panel.boundingBox();
   expect(panelBox).not.toBeNull();
-  expect(panelBox!.width).toBeLessThanOrEqual(220);
   expect(panelBox!.x).toBeGreaterThanOrEqual(16);
   expect(panelBox!.x + panelBox!.width).toBeLessThanOrEqual(374);
 
-  await mainLink.focus();
+  await help.click();
   await expect(panel).toHaveCount(0);
 
   await help.click();
@@ -290,6 +316,45 @@ test('explains app icons with pointer, keyboard, touch and narrow help', async (
   await mainLink.dispatchEvent('pointerup', { pointerType: 'touch', pointerId: 8 });
   await mainLink.click();
   await expect(page).toHaveURL(/\/apps\/main\/$/);
+});
+
+test('keeps the current app direct and exposes hidden apps through overflow', async ({ page }) => {
+  await page.addInitScript((fixture) => localStorage.setItem('isf-main-v2', JSON.stringify(fixture)), appliedMain);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('apps/account-map/');
+  await page.addStyleTag({ content: '.journey-launcher { width: 220px !important; }' });
+
+  const navigation = page.getByRole('navigation', { name: 'ISF 앱' });
+  await expect(navigation.getByRole('link', { name: /계좌 연결 \(Account Map\).*현재 위치/ })).toBeVisible();
+  const more = navigation.getByRole('button', { name: '앱 더보기' });
+  await expect(more).toBeVisible();
+  await more.click();
+  const overflow = page.getByRole('region', { name: '추가 앱' });
+  const overflowBox = await overflow.boundingBox();
+  expect(overflowBox).not.toBeNull();
+  expect(overflowBox!.x).toBeGreaterThanOrEqual(16);
+  expect(overflowBox!.x + overflowBox!.width).toBeLessThanOrEqual(374);
+  await expect(overflow.getByRole('link')).toHaveCount(2);
+  await expect(overflow.getByRole('link').nth(0)).toContainText('미래 성장 (Simulation)');
+  await expect(overflow.getByRole('link').nth(1)).toContainText('투자 배분 (Portfolio)');
+
+  const gear = page.getByRole('button', { name: '관리 메뉴' });
+  await gear.click();
+  await expect(overflow).toHaveCount(0);
+  await expect(page.getByRole('menu', { name: '관리 메뉴' })).toBeVisible();
+  await more.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('menu', { name: '관리 메뉴' })).toHaveCount(0);
+  await expect(overflow).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(overflow).toHaveCount(0);
+  await expect(more).toBeFocused();
+
+  await more.click();
+  await page.locator('main').click({ position: { x: 1, y: 1 } });
+  await expect(overflow).toHaveCount(0);
+  await expect(more).toBeFocused();
+  expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
 });
 
 test('legacy Simulation DOM is absent from the supported route', async ({ page }) => {
