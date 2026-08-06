@@ -9,6 +9,8 @@ describe('ReadinessApp', () => {
   it('shows only Account Map readiness and Main recovery', () => {
     render(<ReadinessApp />);
 
+    expect(screen.getByTestId('app-shell')).toBeInTheDocument();
+    expect(screen.getByTestId('app-shell-launcher')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Account Map 준비 중' })).toBeVisible();
     expect(screen.getByText('Account Map은 Main과 분리된 신규 앱으로 설계될 예정입니다.')).toBeVisible();
     expect(screen.getByRole('link', { name: 'Main으로 이동' }))

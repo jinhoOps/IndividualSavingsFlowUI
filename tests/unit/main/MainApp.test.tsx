@@ -148,6 +148,8 @@ describe('MainApp', () => {
     render(<MainApp repository={repository({ status: 'current', data: data(3_000_000), original: null })} />);
     await screen.findByRole('heading', { name: 'dashboard' });
 
+    expect(screen.getByTestId('app-shell')).toBeInTheDocument();
+    expect(screen.getByTestId('app-shell-launcher')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
     expect(screen.getByRole('menuitem', { name: '백업 내보내기' })).toBeVisible();
     expect(screen.getByLabelText('백업 가져오기')).toBeVisible();
@@ -185,6 +187,8 @@ describe('MainApp', () => {
 
     await screen.findByRole('heading', { name: 'setup:welcome' });
 
+    expect(screen.getByTestId('app-shell')).toBeInTheDocument();
+    expect(screen.queryByTestId('app-shell-launcher')).not.toBeInTheDocument();
     expect(screen.queryByRole('navigation', { name: 'ISF 앱' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Simulation으로 이어가기' })).not.toBeInTheDocument();
   });

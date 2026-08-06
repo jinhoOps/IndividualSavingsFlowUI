@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { AppShell } from '../../components/common/AppShell';
 import { applyDraft, bootstrapMain, type ValidationIssue } from '../application/bootstrap';
 import { mainReducer, type MainAction, type MainState } from '../application/mainReducer';
 import { calculateCashflow } from '../domain/cashflow';
@@ -6,7 +7,6 @@ import { createEmptyMainData, type MainData, type SetupStep } from '../domain/mo
 import { exportMainData, exportRecoveryData, importMainData } from '../infrastructure/backup';
 import { BrowserMainRepository, type MainRepository } from '../infrastructure/mainRepository';
 import { appPath } from '../../journey/routes';
-import { AppLauncher } from '../../journey/ui/AppLauncher';
 import { JourneyEntryCard } from '../../journey/ui/JourneyEntryCard';
 import { Button } from './common/Button';
 import { Surface } from './common/Surface';
@@ -232,18 +232,18 @@ export function MainApp({
 
   if (state === null) {
     return (
-      <MainAppShell managementMenu={managementMenu}>
+      <AppShell currentApp="main" managementMenu={managementMenu}>
         <main className="grid min-h-dvh place-items-center px-6">
           <p className="text-sm font-bold text-slate-600" role="status">자금 계획을 불러오는 중입니다.</p>
         </main>
-      </MainAppShell>
+      </AppShell>
     );
   }
 
   if (state.mode === 'recovery') {
     const original = state.loadError?.original ?? state.draft;
     return (
-      <MainAppShell managementMenu={managementMenu}>
+      <AppShell currentApp="main" managementMenu={managementMenu}>
         <RecoveryView
           state={state}
           onDownload={() => downloadRecovery(original)}
@@ -252,7 +252,7 @@ export function MainApp({
           onDiscard={discardRecoveryCandidate}
           onReturnCurrent={returnToCurrentPlan}
         />
-      </MainAppShell>
+      </AppShell>
     );
   }
 
@@ -281,7 +281,7 @@ export function MainApp({
       </>
     );
     return (
-      <MainAppShell showLauncher={false}>
+      <AppShell currentApp="main" showLauncher={false}>
         <main className="mx-auto min-h-dvh w-full max-w-3xl px-5 py-8 sm:px-8 sm:py-12">
         <SetupFlow
           draft={state.draft}
@@ -296,14 +296,14 @@ export function MainApp({
           notice={setupNotice}
         />
         </main>
-      </MainAppShell>
+      </AppShell>
     );
   }
 
   if (state.applied === null) return null;
 
   return (
-    <MainAppShell managementMenu={managementMenu}>
+    <AppShell currentApp="main" managementMenu={managementMenu}>
       <SummaryDashboard
         applied={state.applied}
         draft={state.draft}
@@ -320,7 +320,7 @@ export function MainApp({
         journeyEntry={journeyEntry}
         initialFocusPath={initialEditPath}
       />
-    </MainAppShell>
+    </AppShell>
   );
 }
 
@@ -331,27 +331,6 @@ function consumeEditIntent(): keyof MainData | undefined {
   url.searchParams.delete('edit');
   window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
   return 'monthlyInvestmentWon';
-}
-
-function MainAppShell({
-  children,
-  showLauncher = true,
-  managementMenu,
-}: {
-  children: ReactNode;
-  showLauncher?: boolean;
-  managementMenu?: ReactNode;
-}) {
-  return (
-    <div>
-      {showLauncher ? (
-        <div className="mx-auto w-full max-w-[1200px] px-5 pt-5 sm:px-8">
-          <AppLauncher currentApp="main" managementMenu={managementMenu} />
-        </div>
-      ) : null}
-      {children}
-    </div>
-  );
 }
 
 interface RecoveryViewProps {
