@@ -10,6 +10,61 @@ const appliedMain = {
   monthlyInvestmentWon: 200_000,
 };
 
+const sharedShellViewports = [
+  { width: 390, height: 844, launcherX: 20, launcherWidth: 350 },
+  { width: 768, height: 1024, launcherX: 32, launcherWidth: 704 },
+  { width: 1280, height: 900, launcherX: 72, launcherWidth: 1136 },
+] as const;
+
+for (const viewport of sharedShellViewports) {
+  test(`shares Main launcher geometry and canvas at ${viewport.width}px`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await page.addInitScript((fixture) => {
+      localStorage.setItem('isf-main-v2', JSON.stringify(fixture));
+    }, appliedMain);
+
+    const routes = [
+      'apps/main/',
+      'apps/simulation/',
+      'apps/portfolio/',
+      'apps/account-map/',
+    ];
+    const geometries: Array<{ frame: { x: number; y: number; width: number }; launcher: { x: number; y: number; width: number } }> = [];
+
+    for (const route of routes) {
+      await page.goto(route);
+      const frame = page.getByTestId('app-shell-launcher');
+      const launcher = frame.locator('.journey-launcher');
+      await expect(launcher).toBeVisible();
+
+      const frameBox = await frame.boundingBox();
+      const launcherBox = await launcher.boundingBox();
+      expect(frameBox).not.toBeNull();
+      expect(launcherBox).not.toBeNull();
+      geometries.push({
+        frame: { x: frameBox!.x, y: frameBox!.y, width: frameBox!.width },
+        launcher: { x: launcherBox!.x, y: launcherBox!.y, width: launcherBox!.width },
+      });
+
+      expect(await page.getByTestId('app-shell').evaluate(
+        (element) => getComputedStyle(element).backgroundColor,
+      )).toBe('rgba(0, 0, 0, 0)');
+      expect(await page.locator('body').evaluate(
+        (body) => getComputedStyle(body).backgroundImage,
+      )).not.toBe('none');
+    }
+
+    expect(new Set(geometries.map((value) => JSON.stringify(value))).size).toBe(1);
+    const [{ frame, launcher }] = geometries;
+    expect(frame.x).toBe(viewport.width === 1280 ? 40 : 0);
+    expect(frame.y).toBe(0);
+    expect(frame.width).toBe(viewport.width === 1280 ? 1200 : viewport.width);
+    expect(launcher.x).toBe(viewport.launcherX);
+    expect(launcher.y).toBe(20);
+    expect(launcher.width).toBe(viewport.launcherWidth);
+  });
+}
+
 test('connects Main directly to the detailed Simulation', async ({ page }) => {
   await page.addInitScript((fixture) => {
     const seedMarker = 'isf-test-journey-fixture-seeded';
