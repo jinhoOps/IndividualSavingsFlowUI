@@ -12,7 +12,7 @@ export type InvestmentSavingBand =
 
 export interface DonutAllocation {
   id: 'consumption' | 'saving' | 'investment' | 'remaining';
-  label: '소비' | '저축' | '투자' | '남는 돈';
+  label: '소비' | '저축' | '투자' | '여윳돈';
   amountWon: number;
   percentage: number;
   displayPercentage: number;
@@ -60,7 +60,7 @@ export function calculateCashflowInsight(data: MainData): CashflowInsight {
     { id: 'saving' as const, label: '저축' as const, amountWon: cashflow.savingWon },
     { id: 'investment' as const, label: '투자' as const, amountWon: cashflow.investmentWon },
     ...(cashflow.remainingWon >= 0
-      ? [{ id: 'remaining' as const, label: '남는 돈' as const, amountWon: cashflow.remainingWon }]
+      ? [{ id: 'remaining' as const, label: '여윳돈' as const, amountWon: cashflow.remainingWon }]
       : []),
   ];
   const ringTotalWon = rawAllocations.reduce((total, allocation) => total + allocation.amountWon, 0);
