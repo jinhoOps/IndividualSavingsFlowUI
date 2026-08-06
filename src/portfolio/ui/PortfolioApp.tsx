@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Button } from '../../components/common/Button';
+import { Surface } from '../../components/common/Surface';
 import { AppLauncher } from '../../journey/ui/AppLauncher';
 import { appPath } from '../../journey/routes';
 import { bootstrapPortfolio } from '../application/bootstrap';
@@ -129,7 +131,7 @@ export function PortfolioApp({
                       ? '배분은 적용했지만 편집 초안을 정리하지 못했습니다.'
                       : '저장됨'}
                 </span>
-                <button type="button" onClick={() => dispatchDraft({ type: 'edit-opened' })}>배분 수정</button>
+                <Button type="button" variant="primary" onClick={() => dispatchDraft({ type: 'edit-opened' })}>배분 수정</Button>
               </div>
               <PortfolioSummary
                 investmentWon={state.applied.syncedInvestmentWon}
@@ -187,12 +189,12 @@ function InvestmentRequired({ plan }: { plan: PortfolioPlan | null }) {
 function StaleMain({ plan }: { plan: PortfolioPlan }) {
   return (
     <div className="portfolio-content">
-      <aside className="portfolio-recovery">
+      <Surface as="aside" className="portfolio-recovery">
         <p role="status">이전 Main 기준</p>
         <p>최신 Main 정보를 불러오지 못했습니다.</p>
         <a href={appPath('portfolio')}>최신 Main 다시 불러오기</a>
         <a href={appPath('main')}>Main 확인하기</a>
-      </aside>
+      </Surface>
       <PortfolioSummary investmentWon={plan.syncedInvestmentWon} allocation={materializeAllocation(plan, plan.syncedInvestmentWon)} />
     </div>
   );
@@ -200,9 +202,9 @@ function StaleMain({ plan }: { plan: PortfolioPlan }) {
 
 function RecoveryPanel({ message }: { message: string }) {
   return (
-    <section className="portfolio-recovery">
+    <Surface as="section" className="portfolio-recovery">
       <h1>{message}</h1>
       <a href={`${appPath('main')}?edit=investment`}>Main에서 투자금 설정</a>
-    </section>
+    </Surface>
   );
 }

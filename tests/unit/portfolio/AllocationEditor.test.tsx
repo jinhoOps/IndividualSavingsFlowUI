@@ -23,6 +23,15 @@ describe('AllocationEditor', () => {
     expect(screen.getByText('60%')).toBeVisible();
   });
 
+  it('uses the shared surface and secondary add action', () => {
+    render(<AllocationEditor draft={draft} investmentWon={200_000} onAction={vi.fn()} now={() => 2} />);
+
+    expect(screen.getByRole('heading', { name: '투자 배분 설정' }).closest('section'))
+      .toHaveClass('ui-surface', 'portfolio-editor');
+    expect(screen.getByRole('button', { name: '투자 대상 추가' }))
+      .toHaveClass('ui-button', 'ui-button--secondary');
+  });
+
   it('explains manual cash and offers explicit automatic action', () => {
     render(<AllocationEditor
       draft={{ ...draft, cashMode: 'manual' }}

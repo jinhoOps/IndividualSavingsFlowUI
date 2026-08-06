@@ -34,6 +34,10 @@ describe('PortfolioApp', () => {
     render(<PortfolioApp mainSourceRepository={mainFound} repository={createMemoryPortfolioRepository({ applied: plan })} now={() => 2} />);
     expect(screen.getByText('한 달 투자금을 배분합니다')).toBeVisible();
     expect(screen.getByRole('heading', { name: /투자금/ })).toBeVisible();
+    expect(screen.getByRole('heading', { name: /투자금/ }).closest('section'))
+      .toHaveClass('ui-surface', 'portfolio-summary');
+    expect(screen.getByRole('button', { name: '배분 수정' }))
+      .toHaveClass('ui-button', 'ui-button--primary');
   });
 
   it('preserves the plan behind a zero-investment blurred gate', () => {

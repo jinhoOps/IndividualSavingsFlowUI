@@ -1,4 +1,5 @@
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Surface } from '../../components/common/Surface';
 import { sortResultItems } from '../domain/allocation';
 import type { MaterializedAllocation } from '../domain/model';
 import {
@@ -61,7 +62,7 @@ export function PortfolioSummary({
   }, [active]);
 
   return (
-    <section className="portfolio-summary" aria-labelledby="portfolio-summary-title">
+    <Surface as="section" className="portfolio-summary" aria-labelledby="portfolio-summary-title">
       <div className="portfolio-summary__hero">
         <p>한 달 투자금을 배분합니다</p>
         <h1 id="portfolio-summary-title">투자금 {formatPortfolioWon(investmentWon)}</h1>
@@ -89,6 +90,6 @@ export function PortfolioSummary({
           <span>{formatAllocationPercent(activeItem.percentage)}</span>
         </div>
       ) : null}
-    </section>
+    </Surface>
   );
 }
