@@ -32,6 +32,17 @@ describe('AppLauncher', () => {
     },
   );
 
+  it('renders the management slot after the narrow help control', () => {
+    const { container } = render(
+      <AppLauncher currentApp="main" managementMenu={<button type="button">관리 메뉴</button>} />,
+    );
+
+    const help = screen.getByRole('button', { name: '앱 아이콘 도움말' });
+    const management = screen.getByRole('button', { name: '관리 메뉴' });
+    expect(help.closest('li')?.nextElementSibling).toContainElement(management);
+    expect(container.querySelector('.journey-launcher__management-item')).toContainElement(management);
+  });
+
   it('shows equivalent pointer, focus and narrow-help labels', () => {
     render(<><AppLauncher currentApp="portfolio" /><button type="button">바깥 행동</button></>);
     const main = screen.getByRole('link', { name: /자금 흐름 \(Main\)/ });

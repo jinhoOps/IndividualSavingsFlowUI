@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { appPath, type JourneyApp } from '../routes';
 import { AppNavigationIcon } from './AppNavigationIcon';
 import { APP_NAV_ITEMS } from './appNavigation';
@@ -6,6 +6,7 @@ import './journey.css';
 
 export interface AppLauncherProps {
   currentApp: JourneyApp;
+  managementMenu?: ReactNode;
 }
 
 const LONG_PRESS_MS = 450;
@@ -19,7 +20,7 @@ interface TouchSuppression {
   contextMenu: boolean;
 }
 
-export function AppLauncher({ currentApp }: AppLauncherProps) {
+export function AppLauncher({ currentApp, managementMenu }: AppLauncherProps) {
   const launcherRef = useRef<HTMLElement>(null);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const tooltipCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -225,6 +226,9 @@ export function AppLauncher({ currentApp }: AppLauncherProps) {
             </section>
           ) : null}
         </li>
+        {managementMenu === undefined ? null : (
+          <li className="journey-launcher__management-item">{managementMenu}</li>
+        )}
       </ul>
     </nav>
   );
