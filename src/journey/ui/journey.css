@@ -410,7 +410,8 @@
 @media (prefers-reduced-motion: reduce) {
   .journey-launcher__app-link,
   .journey-launcher__current-line,
-  .journey-launcher__help-hit {
+  .journey-launcher__help-hit,
+  .journey-launcher__management-trigger {
     transition: none;
   }
 }

@@ -182,6 +182,11 @@ test('keeps each app management menu reachable and contained across viewports', 
       await page.keyboard.press('Escape');
       await expect(menu).toBeHidden();
       await expect(trigger).toBeFocused();
+
+      await trigger.click();
+      await page.locator('main').click({ position: { x: 1, y: 1 } });
+      await expect(menu).toBeHidden();
+      await expect(trigger).toBeFocused();
       expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
     }
   }

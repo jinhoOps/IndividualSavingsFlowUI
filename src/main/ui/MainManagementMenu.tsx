@@ -4,6 +4,7 @@ export interface MainManagementMenuProps {
   saving: boolean;
   dirty: boolean;
   canExport: boolean;
+  canImport: boolean;
   canRestart: boolean;
   onCancel(): void;
   onRestart(): void;
@@ -15,6 +16,7 @@ export function MainManagementMenu({
   saving,
   dirty,
   canExport,
+  canImport,
   canRestart,
   onCancel,
   onRestart,
@@ -23,7 +25,7 @@ export function MainManagementMenu({
 }: MainManagementMenuProps) {
   const items = [
     { kind: 'action', id: 'main-export', label: '백업 내보내기', disabled: saving || !canExport, onSelect: onExport },
-    { kind: 'file', id: 'main-import', label: '백업 가져오기', accept: 'application/json,.json', disabled: saving, onFile: onImportFile },
+    { kind: 'file', id: 'main-import', label: '백업 가져오기', accept: 'application/json,.json', disabled: saving || !canImport, onFile: onImportFile },
     { kind: 'separator', id: 'main-reset-separator' },
     {
       kind: 'action',

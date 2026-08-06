@@ -20,16 +20,20 @@ export function AppManagementMenu({ items }: { items: readonly AppManagementItem
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState<Extract<AppManagementItem, { kind: 'action' }> | null>(null);
 
+  function closeAndRestoreFocus(): void {
+    setOpen(false);
+    window.setTimeout(() => triggerRef.current?.focus(), 0);
+  }
+
   useEffect(() => {
     if (!open) return;
     const closeOutside = (event: PointerEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+      if (!rootRef.current?.contains(event.target as Node)) closeAndRestoreFocus();
     };
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
       event.preventDefault();
-      setOpen(false);
-      queueMicrotask(() => triggerRef.current?.focus());
+      closeAndRestoreFocus();
     };
     document.addEventListener('pointerdown', closeOutside);
     document.addEventListener('keydown', closeOnEscape);
@@ -46,7 +50,7 @@ export function AppManagementMenu({ items }: { items: readonly AppManagementItem
       return;
     }
     item.onSelect();
-    queueMicrotask(() => triggerRef.current?.focus());
+    window.setTimeout(() => triggerRef.current?.focus(), 0);
   }
 
   return (
@@ -81,7 +85,7 @@ export function AppManagementMenu({ items }: { items: readonly AppManagementItem
                       const file = event.currentTarget.files?.[0];
                       if (file !== undefined) {
                         item.onFile(file);
-                        setOpen(false);
+                        closeAndRestoreFocus();
                       }
                       event.currentTarget.value = '';
                     }}

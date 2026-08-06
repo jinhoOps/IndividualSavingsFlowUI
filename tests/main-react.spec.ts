@@ -504,7 +504,11 @@ test('backup import has a matching accessible name and visible keyboard focus ri
   const label = input.locator('..');
   await expect(label).toHaveCSS('box-shadow', /rgba?\(/);
   await expect(page.getByLabel('JSON 백업 파일')).toHaveCount(0);
-  await page.keyboard.press('Escape');
+  await input.setInputFiles({
+    name: 'main-backup.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(appliedMainV2)),
+  });
   await expect(trigger).toBeFocused();
 });
 

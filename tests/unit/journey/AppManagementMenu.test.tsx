@@ -23,7 +23,7 @@ function buildItems(overrides: {
 }
 
 describe('AppManagementMenu', () => {
-  it('opens actions, executes a row, and handles file selection and cancellation', () => {
+  it('opens actions, executes a row, and handles file selection and cancellation', async () => {
     const onExport = vi.fn();
     const onFile = vi.fn();
     const file = new File(['{}'], 'backup.json', { type: 'application/json' });
@@ -45,6 +45,7 @@ describe('AppManagementMenu', () => {
     fireEvent.change(input, { target: { files: [file] } });
     expect(onFile).toHaveBeenCalledWith(file);
     expect(input).toHaveValue('');
+    await waitFor(() => expect(trigger).toHaveFocus());
   });
 
   it('closes on outside pointer and Escape and restores trigger focus', async () => {
@@ -53,6 +54,7 @@ describe('AppManagementMenu', () => {
     fireEvent.click(trigger);
     fireEvent.pointerDown(screen.getByRole('button', { name: '바깥' }));
     expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    await waitFor(() => expect(trigger).toHaveFocus());
     fireEvent.click(trigger);
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(screen.queryByRole('menu')).not.toBeInTheDocument();

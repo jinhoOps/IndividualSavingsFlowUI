@@ -194,7 +194,7 @@ export function MainApp({
   }
 
   async function importBackup(file: File) {
-    if (state === null || savingRef.current) return;
+    if (state === null || state.mode !== 'dashboard' || savingRef.current) return;
     try {
       const imported = importMainData(await readFileText(file));
       setIssues([]);
@@ -221,6 +221,7 @@ export function MainApp({
       saving={state?.saveStatus === 'saving'}
       dirty={state?.dirty ?? false}
       canExport={state?.applied !== null && state?.applied !== undefined}
+      canImport={state?.mode === 'dashboard'}
       canRestart={state?.applied !== null && state?.applied !== undefined}
       onCancel={cancelDraft}
       onRestart={restartSetup}

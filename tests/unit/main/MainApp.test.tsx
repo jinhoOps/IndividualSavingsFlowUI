@@ -199,6 +199,8 @@ describe('MainApp', () => {
     render(<MainApp repository={storage} />);
 
     expect(screen.getByRole('status')).toHaveTextContent('자금 계획을 불러오는 중');
+    fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
+    expect(screen.getByLabelText('백업 가져오기')).toBeDisabled();
     resolveLoad?.({ status: 'empty', data: null, original: null });
 
     expect(await screen.findByRole('heading', { name: 'setup:welcome' })).toBeVisible();
@@ -246,6 +248,8 @@ describe('MainApp', () => {
     })} />);
 
     expect(await screen.findByRole('heading', { name: '저장 복구가 필요합니다' })).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
+    expect(screen.getByLabelText('백업 가져오기')).toBeDisabled();
     expect(screen.getByText('현재 적용 중 · 300만 원')).toBeVisible();
     expect(screen.getByText('저장 대기 중 · 400만 원')).toBeVisible();
     expect(screen.getByRole('heading', { name: '저장 복구가 필요합니다' }).closest('section')).toHaveClass('ui-surface');
