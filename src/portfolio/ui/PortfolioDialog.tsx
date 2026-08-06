@@ -54,7 +54,7 @@ export function PortfolioDialog({
       ref={dialogRef}
       aria-modal="true"
       aria-labelledby={labelledBy}
-      className="portfolio-dialog"
+      className="portfolio-dialog ui-surface"
       onCancel={(event) => {
         event.preventDefault();
         onClose();

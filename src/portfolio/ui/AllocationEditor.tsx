@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { Button } from '../../components/common/Button';
+import { Surface } from '../../components/common/Surface';
 import type { PortfolioAction } from '../application/portfolioReducer';
 import { materializeAllocation, normalizePortfolioName } from '../domain/allocation';
 import type { PortfolioDraft } from '../domain/model';
@@ -39,7 +41,7 @@ export function AllocationEditor({
   }
 
   return (
-    <section className="portfolio-editor" aria-labelledby="portfolio-editor-title">
+    <Surface as="section" className="portfolio-editor" aria-labelledby="portfolio-editor-title">
       <header>
         <p>한 달 투자금을 배분합니다</p>
         <h1 id="portfolio-editor-title">투자 배분 설정</h1>
@@ -89,23 +91,24 @@ export function AllocationEditor({
                 <span>{formatPortfolioWon(result.amountWon)}</span>
                 <span>{formatAllocationPercent(result.percentage)}</span>
               </div>
-              <button type="button" onClick={() => onAction({ type: 'draft-item-removed', id: item.id, now: now() })}>
+              <Button type="button" variant="quiet" onClick={() => onAction({ type: 'draft-item-removed', id: item.id, now: now() })}>
                 {item.name || `투자 대상 ${index + 1}`} 삭제
-              </button>
+              </Button>
             </div>
           );
         })}
       </div>
 
-      <button
+      <Button
         type="button"
+        variant="secondary"
         disabled={isAtLimit}
         onClick={() => onAction({
           type: 'draft-item-added',
           item: { id: createId(), name: '', order: draft.items.length },
           now: now(),
         })}
-      >투자 대상 추가</button>
+      >투자 대상 추가</Button>
       {isAtLimit ? <p role="status">투자 대상은 최대 10개까지 추가할 수 있습니다</p> : null}
 
       <section className="portfolio-editor__cash" aria-labelledby="portfolio-cash-title">
@@ -130,14 +133,14 @@ export function AllocationEditor({
           <div>
             <p role="status">현금 직접 배분 중</p>
             <p>남은 투자금을 현금으로 자동 배분합니다</p>
-            <button type="button" onClick={() => onAction({ type: 'automatic-cash-enabled', now: now() })}>
+            <Button type="button" variant="quiet" onClick={() => onAction({ type: 'automatic-cash-enabled', now: now() })}>
               현금 자동 배분 켜기
-            </button>
+            </Button>
           </div>
         ) : <p role="status">남은 투자금 자동 배분</p>}
       </section>
       {fieldError ? <p role="alert">{errorMessage(fieldError)}</p> : null}
-    </section>
+    </Surface>
   );
 }
 

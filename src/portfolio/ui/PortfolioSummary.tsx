@@ -1,4 +1,5 @@
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Surface } from '../../components/common/Surface';
 import { sortResultItems } from '../domain/allocation';
 import type { MaterializedAllocation } from '../domain/model';
 import {
@@ -41,11 +42,12 @@ export function PortfolioSummary({
       const bounds = tooltipRef.current?.getBoundingClientRect();
       const tooltip = tooltipRef.current;
       if (bounds === undefined || tooltip === null) return;
+      const styles = window.getComputedStyle(tooltip);
       setTooltipPosition(clampTooltipPosition(
         active,
         {
-          width: tooltip.offsetWidth || bounds.width,
-          height: tooltip.offsetHeight || bounds.height,
+          width: Number.parseFloat(styles.width) || bounds.width,
+          height: Number.parseFloat(styles.height) || bounds.height,
         },
         { width: window.innerWidth, height: window.innerHeight },
       ));
@@ -61,19 +63,21 @@ export function PortfolioSummary({
   }, [active]);
 
   return (
-    <section className="portfolio-summary" aria-labelledby="portfolio-summary-title">
+    <Surface as="section" className="portfolio-summary" aria-labelledby="portfolio-summary-title">
       <div className="portfolio-summary__hero">
         <p>한 달 투자금을 배분합니다</p>
         <h1 id="portfolio-summary-title">투자금 {formatPortfolioWon(investmentWon)}</h1>
       </div>
       <div className="portfolio-summary__content">
         <AllocationDonut items={items} active={active} onActive={setActive} onClear={() => setActive(null)} />
-        <AllocationTable
-          items={items}
-          activeId={active?.id ?? null}
-          onActive={(id) => setActive({ id, mode: 'fixed', x: 50, y: 50 })}
-          onClear={() => setActive(null)}
-        />
+        <div className="portfolio-table-wrap">
+          <AllocationTable
+            items={items}
+            activeId={active?.id ?? null}
+            onActive={(id) => setActive({ id, mode: 'fixed', x: 50, y: 50 })}
+            onClear={() => setActive(null)}
+          />
+        </div>
       </div>
       {active !== null && activeItem !== null ? (
         <div
@@ -89,6 +93,6 @@ export function PortfolioSummary({
           <span>{formatAllocationPercent(activeItem.percentage)}</span>
         </div>
       ) : null}
-    </section>
+    </Surface>
   );
 }

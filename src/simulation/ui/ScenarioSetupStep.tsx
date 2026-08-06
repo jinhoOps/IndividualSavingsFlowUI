@@ -1,4 +1,6 @@
 import { useEffect, useRef } from 'react';
+import { Button } from '../../components/common/Button';
+import { Surface } from '../../components/common/Surface';
 import type { CompoundSimulationDraft } from '../domain/model';
 import { projectCompoundGrowth } from '../domain/projection';
 import { buildChartGeometry } from './chartGeometry';
@@ -24,7 +26,7 @@ export function ScenarioSetupStep({
   });
 
   return (
-    <section className="simulation-onboarding-step ui-surface" aria-labelledby="scenario-title">
+    <Surface as="section" className="simulation-onboarding-step" aria-labelledby="scenario-title">
       <p className="simulation-eyebrow">계산 조건</p>
       <h1 id="scenario-title" ref={headingRef} tabIndex={-1}>
         얼마나 오래, 어느 정도 수익을 기대할까요?
@@ -45,9 +47,9 @@ export function ScenarioSetupStep({
           <path className="growth-chart__savings" d={geometry.allSavingsPath} />
         </svg>
       </div>
-      <button type="button" className="ui-button ui-button--primary" onClick={onComplete}>
+      <Button type="button" variant="primary" onClick={onComplete}>
         결과 보기
-      </button>
-    </section>
+      </Button>
+    </Surface>
   );
 }

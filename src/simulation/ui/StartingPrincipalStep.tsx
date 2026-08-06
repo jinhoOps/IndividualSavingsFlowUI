@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
+import { Button } from '../../components/common/Button';
+import { Surface } from '../../components/common/Surface';
 
 const principalAdjustments = [
   { label: '-1000만', deltaWon: -10_000_000 },
@@ -27,27 +29,27 @@ export function StartingPrincipalStep({
   useEffect(() => headingRef.current?.focus(), []);
 
   return (
-    <section className="simulation-onboarding-step ui-surface" aria-labelledby="principal-title">
+    <Surface as="section" className="simulation-onboarding-step" aria-labelledby="principal-title">
       <p className="simulation-eyebrow">시작 자산</p>
       <h1 id="principal-title" ref={headingRef} tabIndex={-1}>
         지금 모아둔 투자금이 있나요?
       </h1>
       {!hasPrincipal ? (
         <div className="simulation-prompt__actions">
-          <button
+          <Button
             type="button"
-            className="ui-button ui-button--primary"
+            variant="primary"
             onClick={() => setHasPrincipal(true)}
           >
             있어요
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            className="ui-button ui-button--secondary"
+            variant="secondary"
             onClick={() => onContinue(0)}
           >
             없어요
-          </button>
+          </Button>
         </div>
       ) : (
         <form onSubmit={(event) => {
@@ -65,21 +67,21 @@ export function StartingPrincipalStep({
           />
           <div className="simulation-principal-adjustments">
             {principalAdjustments.map(({ label, deltaWon }) => (
-              <button
+              <Button
                 key={label}
                 type="button"
-                className="ui-button ui-button--secondary"
+                variant="secondary"
                 onClick={() => setRawAmount((value) => adjustPrincipal(value, deltaWon))}
               >
                 {label}
-              </button>
+              </Button>
             ))}
           </div>
-          <button type="submit" className="ui-button ui-button--primary" disabled={!validAmount}>
+          <Button type="submit" variant="primary" disabled={!validAmount}>
             다음
-          </button>
+          </Button>
         </form>
       )}
-    </section>
+    </Surface>
   );
 }

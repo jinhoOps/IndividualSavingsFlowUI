@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Surface } from '../../components/common/Surface';
 import type {
   CompoundSimulationDraft,
   ProjectionPoint,
@@ -50,9 +51,10 @@ export function GrowthChart({
   });
 
   return (
-    <section
+    <Surface
+      as="section"
       ref={chartRef}
-      className="growth-chart ui-surface"
+      className="growth-chart"
       aria-labelledby="growth-chart-title"
       aria-label="복리 성장 그래프"
     >
@@ -73,8 +75,14 @@ export function GrowthChart({
         tabIndex={0}
         onKeyDown={(event) => {
           if (event.key === 'Escape') setActiveIndex(null);
-          if (event.key === 'Home') setActiveIndex(0);
-          if (event.key === 'End') setActiveIndex(result.points.length - 1);
+          if (event.key === 'Home') {
+            event.preventDefault();
+            setActiveIndex(0);
+          }
+          if (event.key === 'End') {
+            event.preventDefault();
+            setActiveIndex(result.points.length - 1);
+          }
           if (event.key === 'ArrowLeft') {
             event.preventDefault();
             setActiveIndex((current) => Math.max(0, (current ?? 1) - 1));
@@ -173,7 +181,7 @@ export function GrowthChart({
           </>
         )}
       </div>
-    </section>
+    </Surface>
   );
 }
 

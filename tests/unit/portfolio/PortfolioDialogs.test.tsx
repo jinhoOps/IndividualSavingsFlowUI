@@ -23,6 +23,8 @@ describe('Portfolio confirmation dialogs', () => {
     const trigger = screen.getByRole('button', { name: '적용' });
     fireEvent.click(trigger);
     const dialog = screen.getByRole('dialog', { name: '투자 배분 적용' });
+    expect(screen.getByRole('complementary', { name: '배분 변경' })).toHaveClass('ui-surface');
+    expect(dialog).toHaveClass('ui-surface');
     const cancel = within(dialog).getByRole('button', { name: '확인 취소' });
     const confirm = within(dialog).getByRole('button', { name: '적용' });
     expect(cancel).toHaveFocus();

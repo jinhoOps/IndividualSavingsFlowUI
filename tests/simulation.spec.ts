@@ -98,6 +98,7 @@ for (const viewport of [
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await seedMain(page);
     await openFirstResult(page);
+    await page.evaluate(() => document.fonts.ready.then(() => undefined));
 
     const graph = page.getByRole('img', { name: '연도별 복리 성장 그래프' });
     const explorer = page.getByRole('application', { name: '그래프 연도 탐색' });

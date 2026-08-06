@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 
 const mainFixture = {
   schemaVersion: 2,
@@ -170,6 +170,15 @@ test('keeps donut, table and tooltip usable across required widths', async ({ pa
     await page.goto('apps/portfolio/');
     await expect(page.getByLabel('투자 배분 도넛')).toBeVisible();
     await expect(page.getByRole('table')).toBeVisible();
+    await expect(page.locator('.portfolio-table-wrap')).toBeVisible();
+    const summary = page.locator('.portfolio-summary');
+    await expect(summary).toHaveClass(/ui-surface/);
+    expect(await summary.evaluate((element) => getComputedStyle(element).borderRadius)).not.toBe('0px');
+    for (const control of await page.locator('.portfolio-content button:visible, .portfolio-content input:visible').all()) {
+      const box = await control.boundingBox();
+      expect(box).not.toBeNull();
+      expect(box!.height).toBeGreaterThanOrEqual(44);
+    }
     expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
     const segment = page.getByRole('button', { name: /인덱스.*120,000원.*60%/ });
     const donutBox = await page.getByLabel('투자 배분 도넛').boundingBox();
@@ -200,4 +209,90 @@ test('keeps donut, table and tooltip usable across required widths', async ({ pa
     await page.keyboard.press('ArrowRight');
     await expect(page.getByRole('tooltip')).toContainText('현금');
   }
+});
+
+test('contains the mobile editor, apply bar, and confirmation dialog', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await seedMain(page, 200_000);
+  await page.goto('apps/portfolio/');
+  await page.getByRole('button', { name: '투자 대상 추가' }).click();
+
+  const rowBox = await page.locator('.portfolio-editor__row').first().boundingBox();
+  expect(rowBox).not.toBeNull();
+  expect(rowBox!.x).toBeGreaterThanOrEqual(16);
+  expect(rowBox!.x + rowBox!.width).toBeLessThanOrEqual(374);
+  expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
+
+  const assertContained = async (locator: Locator) => {
+    const box = await locator.boundingBox();
+    expect(box).not.toBeNull();
+    expect(box!.x).toBeGreaterThanOrEqual(16);
+    expect(box!.x + box!.width).toBeLessThanOrEqual(374);
+  };
+
+  await assertContained(page.getByRole('complementary', { name: '배분 변경' }));
+  await page.getByRole('button', { name: '적용' }).click();
+  await assertContained(page.getByRole('dialog', { name: '투자 배분 적용' }));
+});
+
+test('keeps the final mobile editor control above the save-error apply bar', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await seedMain(page, 200_000);
+  await page.goto('apps/portfolio/');
+  await page.evaluate(() => {
+    const originalSetItem = Storage.prototype.setItem;
+    Storage.prototype.setItem = function setItem(key: string, value: string) {
+      if (key === 'isf-portfolio-allocation-draft-v1') {
+        throw new DOMException('Portfolio draft writes are blocked for this test', 'QuotaExceededError');
+      }
+      originalSetItem.call(this, key, value);
+    };
+  });
+
+  await page.getByRole('button', { name: '투자 대상 추가' }).click();
+  const applyBar = page.getByRole('complementary', { name: '배분 변경' });
+  await expect(applyBar.getByRole('alert')).toContainText('저장하지 못했습니다');
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+
+  const finalControl = page.locator(
+    '.portfolio-editor button:visible, .portfolio-editor input:visible',
+  ).last();
+  const finalControlBox = await finalControl.boundingBox();
+  const applyBarBox = await applyBar.boundingBox();
+  expect(finalControlBox).not.toBeNull();
+  expect(applyBarBox).not.toBeNull();
+  expect(finalControlBox!.y + finalControlBox!.height).toBeLessThanOrEqual(applyBarBox!.y);
+});
+
+test('uses a single editor column at 768px', async ({ page }) => {
+  await page.setViewportSize({ width: 768, height: 900 });
+  await seedMain(page, 200_000);
+  await page.goto('apps/portfolio/');
+  await page.getByRole('button', { name: '투자 대상 추가' }).click();
+
+  expect(await page.locator('.portfolio-editor__row').first().evaluate((element) =>
+    getComputedStyle(element).gridTemplateColumns.split(' ').length,
+  )).toBe(1);
+});
+
+test('keeps the final animated pointer tooltip inside the viewport gutter', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await seedAppliedPortfolio(page);
+  await seedMain(page, 200_000);
+  await page.goto('apps/portfolio/');
+
+  const segment = page.getByRole('button', { name: /인덱스.*120,000원.*60%/ });
+  await segment.dispatchEvent('pointerover', { clientX: 389, clientY: 843, pointerType: 'mouse' });
+  const tooltip = page.getByRole('tooltip');
+  await expect(tooltip).toBeVisible();
+  await tooltip.evaluate(async (element) => {
+    await Promise.all(element.getAnimations().map((animation) => animation.finished.catch(() => undefined)));
+  });
+
+  const box = await tooltip.boundingBox();
+  expect(box).not.toBeNull();
+  expect(box!.x).toBeGreaterThanOrEqual(16);
+  expect(box!.y).toBeGreaterThanOrEqual(16);
+  expect(box!.x + box!.width).toBeLessThanOrEqual(374);
+  expect(box!.y + box!.height).toBeLessThanOrEqual(828);
 });
