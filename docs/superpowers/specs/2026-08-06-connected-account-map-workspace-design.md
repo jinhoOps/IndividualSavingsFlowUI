@@ -1,6 +1,6 @@
 # Connected Account Map Workspace Design
 
-**Status:** Approved design, pending written-spec review  
+**Status:** Approved  
 **Date:** 2026-08-06
 
 ## 1. Purpose
