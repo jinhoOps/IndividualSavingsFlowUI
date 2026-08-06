@@ -63,6 +63,16 @@ describe('GrowthChart', () => {
     expect(screen.getByText('투자 잔액')).toBeVisible();
   });
 
+  it('consumes Home and End while selecting their existing boundary years', () => {
+    render(<GrowthChart result={result} amountMode="nominal" />);
+    const explorer = screen.getByRole('application', { name: '그래프 연도 탐색' });
+
+    expect(fireEvent.keyDown(explorer, { key: 'Home' })).toBe(false);
+    expect(screen.getByRole('status')).toHaveTextContent('0년');
+    expect(fireEvent.keyDown(explorer, { key: 'End' })).toBe(false);
+    expect(screen.getByRole('status')).toHaveTextContent('20년');
+  });
+
   it('dismisses detail with Escape or an outside pointer', () => {
     render(<GrowthChart result={result} amountMode="nominal" />);
     const explorer = screen.getByRole('application', { name: '그래프 연도 탐색' });

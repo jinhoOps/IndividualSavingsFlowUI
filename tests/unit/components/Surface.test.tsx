@@ -20,22 +20,27 @@ describe('shared Surface', () => {
     expect(ref.current).toBe(screen.getByRole('complementary', { name: '배분 변경' }));
   });
 
-  it('preserves React 19 callback ref cleanup', () => {
+  it('keeps a stable callback ref attached across rerenders and cleans it on unmount', () => {
     const lifecycle: string[] = [];
-    const { unmount } = render(
-      <Surface ref={(element) => {
-        if (element === null) {
-          lifecycle.push('detached');
-          return;
-        }
-        lifecycle.push('attached');
-        return () => {
-          lifecycle.push('cleaned');
-        };
-      }}>
+    const stableRef = (element: HTMLElement | null) => {
+      if (element === null) {
+        lifecycle.push('detached');
+        return;
+      }
+      lifecycle.push('attached');
+      return () => {
+        lifecycle.push('cleaned');
+      };
+    };
+    const { rerender, unmount } = render(
+      <Surface ref={stableRef}>
         내용
       </Surface>,
     );
+
+    rerender(<Surface ref={stableRef}>수정된 내용</Surface>);
+
+    expect(lifecycle).toEqual(['attached']);
 
     unmount();
 

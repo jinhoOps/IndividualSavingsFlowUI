@@ -8,12 +8,8 @@ export type SurfaceProps = HTMLAttributes<HTMLElement> & {
 
 export function Surface({ as = 'div', className = '', children, ref, ...props }: SurfaceProps) {
   const classes = `ui-surface ${className}`.trim();
-  const assignRef = ref == null ? undefined : (element: HTMLElement | null) => {
-    if (typeof ref === 'function') return ref(element);
-    else ref.current = element;
-  };
 
-  if (as === 'section') return <section ref={assignRef} className={classes} {...props}>{children}</section>;
-  if (as === 'aside') return <aside ref={assignRef} className={classes} {...props}>{children}</aside>;
-  return <div ref={assignRef} className={classes} {...props}>{children}</div>;
+  if (as === 'section') return <section ref={ref} className={classes} {...props}>{children}</section>;
+  if (as === 'aside') return <aside ref={ref} className={classes} {...props}>{children}</aside>;
+  return <div ref={ref as Ref<HTMLDivElement>} className={classes} {...props}>{children}</div>;
 }
