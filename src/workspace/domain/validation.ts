@@ -152,11 +152,9 @@ function hasValidPortfolioReferences(
   const scopeKeys = portfolio.plans.map(({ scope }) => scopeKey(scope));
   if (new Set(scopeKeys).size !== scopeKeys.length) return false;
 
-  const activeInvestingIds = new Set(locations
-    .filter((location) => location.archivedAt === undefined && location.roles.includes('investing'))
-    .map((location) => location.id));
+  const locationIds = new Set(locations.map((location) => location.id));
   return [...portfolio.plans, ...(portfolio.draft === null ? [] : [portfolio.draft])]
-    .every(({ scope }) => scope.type === 'aggregate' || activeInvestingIds.has(scope.locationId));
+    .every(({ scope }) => scope.type === 'aggregate' || locationIds.has(scope.locationId));
 }
 
 function hasValidAccountMapReferences(

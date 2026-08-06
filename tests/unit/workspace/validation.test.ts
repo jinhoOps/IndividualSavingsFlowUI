@@ -251,7 +251,33 @@ describe('Workspace validation', () => {
     expect(parseWorkspaceDocument(workspace)).toBeNull();
   });
 
-  it('requires an active investing location for a location-scoped plan', () => {
+  it('preserves existing location-scoped Portfolio references across role removal and archive', () => {
+    const scopedPlan = {
+      ...aggregatePlan,
+      scope: { type: 'location', locationId: investingLocation.id },
+    };
+    const { appliedAt: _appliedAt, ...scopedPlanCommon } = scopedPlan;
+    const scopedDraft = {
+      ...scopedPlanCommon,
+      inputMode: 'amount',
+      isApplicable: true,
+    };
+    const workspace = validWorkspace();
+    workspace.portfolio.plans = [scopedPlan];
+
+    expect(parseWorkspaceDocument({
+      ...workspace,
+      portfolio: { plans: [scopedPlan], draft: scopedDraft },
+      locations: [{ ...investingLocation, roles: ['saving'] }],
+    })).not.toBeNull();
+    expect(parseWorkspaceDocument({
+      ...workspace,
+      portfolio: { plans: [scopedPlan], draft: scopedDraft },
+      locations: [{ ...investingLocation, archivedAt: 30 }],
+    })).not.toBeNull();
+  });
+
+  it('continues to reject a missing location ID from a location-scoped Portfolio reference', () => {
     const scopedPlan = {
       ...aggregatePlan,
       scope: { type: 'location', locationId: investingLocation.id },
@@ -261,14 +287,6 @@ describe('Workspace validation', () => {
 
     expect(parseWorkspaceDocument(workspace)).not.toBeNull();
     expect(parseWorkspaceDocument({ ...workspace, locations: [] })).toBeNull();
-    expect(parseWorkspaceDocument({
-      ...workspace,
-      locations: [{ ...investingLocation, roles: ['saving'] }],
-    })).toBeNull();
-    expect(parseWorkspaceDocument({
-      ...workspace,
-      locations: [{ ...investingLocation, archivedAt: 30 }],
-    })).toBeNull();
   });
 
   it('rejects duplicate active normalized location names', () => {
