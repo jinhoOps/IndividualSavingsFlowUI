@@ -1,9 +1,19 @@
 .journey-launcher {
+  display: flex;
   position: relative;
   width: 100%;
   max-width: 72rem;
+  align-items: center;
   margin-inline: auto;
   min-width: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 68%, transparent);
+  padding-bottom: 0.25rem;
+}
+
+.journey-launcher__navigation {
+  position: relative;
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
 .journey-launcher__list {
@@ -11,16 +21,24 @@
   align-items: center;
   gap: 0.25rem;
   margin: 0;
-  border-bottom: 1px solid color-mix(in srgb, var(--line) 68%, transparent);
-  padding: 0 0 0.25rem;
+  padding: 0;
   list-style: none;
 }
 
 .journey-launcher__item,
-.journey-launcher__help-item,
-.journey-launcher__management-item {
+.journey-launcher__overflow-item {
   position: relative;
   flex: 0 0 auto;
+}
+
+.journey-launcher__tools {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  align-self: stretch;
+  margin-left: 0.75rem;
+  border-left: 1px solid var(--line);
+  padding-left: 0.75rem;
 }
 
 .journey-launcher__app-link {
@@ -53,13 +71,13 @@
 }
 
 .journey-launcher__app-link:active,
-.journey-launcher__help-hit:active,
+.journey-launcher__overflow-trigger:active,
 .journey-launcher__management-trigger:active {
   transform: scale(0.94);
 }
 
 .journey-launcher__app-link:focus-visible,
-.journey-launcher__help-hit:focus-visible,
+.journey-launcher__overflow-trigger:focus-visible,
 .journey-launcher__management-trigger:focus-visible,
 .journey-action:focus-visible {
   outline: 3px solid color-mix(in srgb, var(--tone-accent) 40%, transparent);
@@ -237,43 +255,40 @@
   transform: none;
 }
 
-.journey-launcher__help-hit {
+.journey-launcher__overflow-trigger {
   display: grid;
-  width: 32px;
+  width: 44px;
   height: 44px;
   place-items: center;
-  border: 0;
+  border: 1px solid transparent;
+  border-radius: 12px;
   background: transparent;
   padding: 0;
   color: var(--muted);
   cursor: pointer;
-  transition: color 160ms ease, transform 160ms ease;
+  transition: color 160ms ease, background-color 160ms ease, transform 160ms ease;
 }
 
-.journey-launcher__help-visual {
-  display: grid;
-  width: 30px;
-  height: 30px;
-  place-items: center;
-  border: 1px solid color-mix(in srgb, var(--line) 78%, transparent);
-  border-radius: 50%;
-  font-size: 0.8rem;
-  font-weight: 700;
+.journey-launcher__overflow-trigger svg {
+  width: 22px;
+  height: 22px;
 }
 
-.journey-launcher__help-hit:hover,
-.journey-launcher__help-hit:focus-visible,
-.journey-launcher__help-hit[aria-expanded='true'] {
+.journey-launcher__overflow-trigger:hover,
+.journey-launcher__overflow-trigger:focus-visible,
+.journey-launcher__overflow-trigger[aria-expanded='true'] {
   color: var(--tone-accent);
+  background: color-mix(in srgb, var(--tone-accent) 8%, transparent);
 }
 
-.journey-launcher__help-panel {
+.journey-launcher__overflow-menu {
   position: absolute;
   z-index: 30;
   top: calc(100% + 7px);
   right: 0;
-  width: 220px;
-  max-width: calc(100vw - 32px);
+  display: grid;
+  width: min(17rem, calc(100vw - 32px));
+  overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
   border-radius: 12px;
   background: color-mix(in srgb, var(--panel) 98%, transparent);
@@ -281,32 +296,34 @@
   padding: 0.5rem;
 }
 
-.journey-launcher__help-panel ul {
-  display: grid;
-  gap: 0.125rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.journey-launcher__help-panel li {
+.journey-launcher__overflow-link {
   display: grid;
   grid-template-columns: 24px minmax(0, 1fr) auto;
   align-items: center;
   gap: 0.45rem;
-  min-height: 36px;
-  padding: 0.25rem;
+  min-height: 44px;
+  border-radius: 9px;
+  padding: 0.4rem 0.5rem;
   color: var(--ink);
-  font-size: 0.76rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-decoration: none;
 }
 
-.journey-launcher__help-panel svg {
+.journey-launcher__overflow-link:hover,
+.journey-launcher__overflow-link:focus-visible {
+  background: color-mix(in srgb, var(--tone-accent) 8%, transparent);
+  outline: 0;
+  box-shadow: var(--ui-focus-ring);
+}
+
+.journey-launcher__overflow-link svg {
   width: 20px;
   height: 20px;
   color: var(--muted);
 }
 
-.journey-launcher__help-panel small {
+.journey-launcher__overflow-link small {
   color: var(--tone-primary);
   font-size: 0.68rem;
   white-space: nowrap;
@@ -397,7 +414,7 @@
 @media (prefers-reduced-motion: reduce) {
   .journey-launcher__app-link,
   .journey-launcher__current-line,
-  .journey-launcher__help-hit,
+  .journey-launcher__overflow-trigger,
   .journey-launcher__management-trigger {
     transition: none;
   }
