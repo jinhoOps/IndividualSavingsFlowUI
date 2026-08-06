@@ -329,10 +329,14 @@ test('keeps the current app direct and exposes hidden apps through overflow', as
   const more = navigation.getByRole('button', { name: '앱 더보기' });
   await expect(more).toBeVisible();
   await more.click();
-  const overflow = page.getByRole('menu', { name: '추가 앱' });
-  await expect(overflow.getByRole('menuitem')).toHaveCount(2);
-  await expect(overflow.getByRole('menuitem').nth(0)).toContainText('미래 성장 (Simulation)');
-  await expect(overflow.getByRole('menuitem').nth(1)).toContainText('투자 배분 (Portfolio)');
+  const overflow = page.getByRole('region', { name: '추가 앱' });
+  const overflowBox = await overflow.boundingBox();
+  expect(overflowBox).not.toBeNull();
+  expect(overflowBox!.x).toBeGreaterThanOrEqual(16);
+  expect(overflowBox!.x + overflowBox!.width).toBeLessThanOrEqual(374);
+  await expect(overflow.getByRole('link')).toHaveCount(2);
+  await expect(overflow.getByRole('link').nth(0)).toContainText('미래 성장 (Simulation)');
+  await expect(overflow.getByRole('link').nth(1)).toContainText('투자 배분 (Portfolio)');
 
   const gear = page.getByRole('button', { name: '관리 메뉴' });
   await gear.click();

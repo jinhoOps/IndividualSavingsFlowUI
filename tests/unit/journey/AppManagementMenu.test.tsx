@@ -84,6 +84,23 @@ describe('AppManagementMenu', () => {
     await waitFor(() => expect(trigger).toHaveFocus());
   });
 
+  it('does not steal focus when moving to another launcher control', async () => {
+    render(
+      <div className="journey-launcher">
+        <button type="button">앱 더보기</button>
+        <AppManagementMenu items={buildItems()} />
+      </div>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
+    const more = screen.getByRole('button', { name: '앱 더보기' });
+    fireEvent.pointerDown(more);
+    more.focus();
+
+    expect(screen.queryByRole('menu', { name: '관리 메뉴' })).not.toBeInTheDocument();
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
+    expect(more).toHaveFocus();
+  });
+
   it('confirms danger actions with trapped focus and restores the gear', async () => {
     const onReset = vi.fn();
     render(<AppManagementMenu items={buildItems({ onReset })} />);

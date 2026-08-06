@@ -1,6 +1,6 @@
 # App Launcher Management Separation Implementation Plan
 
-**Status:** Complete — 2026-08-06. Type checks, 440 unit tests, and 52 active E2E tests pass; 60 retired legacy E2E tests remain explicitly skipped.
+**Status:** Complete — 2026-08-06. Type checks, 443 unit tests, and 52 active E2E tests pass; 60 retired legacy E2E tests remain explicitly skipped.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -272,7 +272,7 @@ The observer callback reads only the navigation area's assigned flex width, whic
 Add local `overflowOpen` state, a trigger ref, and an overflow root ref. Render `더보기` only when `overflow.length > 0`.
 
 - trigger: 44×44px, `aria-label="앱 더보기"`, `aria-expanded`, `aria-controls`;
-- popup: `role="menu"`, `aria-label="추가 앱"`;
+- popup: ordinary link disclosure with `role="region"`, `aria-label="추가 앱"`;
 - each hidden app: an anchor with `role="menuitem"`, shared icon, accessible label, and readiness text;
 - Escape/outside pointer: close and restore trigger focus;
 - focus leaving the navigation area: close without stealing focus;

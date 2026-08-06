@@ -26,21 +26,25 @@ export function AppManagementMenu({ items }: { items: readonly AppManagementItem
   const [pending, setPending] = useState<Extract<AppManagementItem, { kind: 'action' }> | null>(null);
   const [confirmationFailed, setConfirmationFailed] = useState(false);
 
-  function closeAndRestoreFocus(): void {
+  function closePopover(restoreFocus = true): void {
     setOpen(false);
     setHelpOpen(false);
-    window.setTimeout(() => triggerRef.current?.focus(), 0);
+    if (restoreFocus) window.setTimeout(() => triggerRef.current?.focus(), 0);
   }
 
   useEffect(() => {
     if (!open) return;
     const closeOutside = (event: PointerEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) closeAndRestoreFocus();
+      const root = rootRef.current;
+      const target = event.target as Node;
+      if (root?.contains(target)) return;
+      const movingWithinLauncher = root?.closest('.journey-launcher')?.contains(target) ?? false;
+      closePopover(!movingWithinLauncher);
     };
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
       event.preventDefault();
-      closeAndRestoreFocus();
+      closePopover();
     };
     document.addEventListener('pointerdown', closeOutside);
     document.addEventListener('keydown', closeOnEscape);
@@ -121,7 +125,7 @@ export function AppManagementMenu({ items }: { items: readonly AppManagementItem
                       const file = event.currentTarget.files?.[0];
                       if (file !== undefined) {
                         item.onFile(file);
-                        closeAndRestoreFocus();
+                        closePopover();
                       }
                       event.currentTarget.value = '';
                     }}

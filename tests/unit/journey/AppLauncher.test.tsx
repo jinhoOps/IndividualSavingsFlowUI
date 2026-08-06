@@ -87,21 +87,61 @@ describe('AppLauncher', () => {
     expect(within(navigation).getAllByRole('link')).toHaveLength(2);
     const more = within(navigation).getByRole('button', { name: '앱 더보기' });
     fireEvent.click(more);
-    const menu = screen.getByRole('menu', { name: '추가 앱' });
-    expect(within(menu).getAllByRole('menuitem')).toHaveLength(2);
-    expect(within(menu).getByRole('menuitem', { name: /미래 성장 \(Simulation\)/ }))
+    const menu = screen.getByRole('region', { name: '추가 앱' });
+    expect(within(menu).getAllByRole('link')).toHaveLength(2);
+    expect(within(menu).getByRole('link', { name: /미래 성장 \(Simulation\)/ }))
       .toHaveAttribute('href', expect.stringContaining('/apps/simulation/'));
-    expect(within(menu).getByRole('menuitem', { name: /계좌 연결 \(Account Map\).*준비 중/ }))
+    expect(within(menu).getByRole('link', { name: /계좌 연결 \(Account Map\).*준비 중/ }))
       .toHaveAttribute('href', expect.stringContaining('/apps/account-map/'));
 
     fireEvent.keyDown(document, { key: 'Escape' });
-    expect(screen.queryByRole('menu', { name: '추가 앱' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: '추가 앱' })).not.toBeInTheDocument();
     await act(async () => undefined);
     expect(more).toHaveFocus();
 
     fireEvent.click(more);
     fireEvent.pointerDown(screen.getByRole('button', { name: '바깥 행동' }));
-    expect(screen.queryByRole('menu', { name: '추가 앱' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: '추가 앱' })).not.toBeInTheDocument();
+  });
+
+  it('preserves app focus when a resize moves an overflow link into direct navigation', () => {
+    let width = 140;
+    let resize: ResizeObserverCallback = () => undefined;
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockImplementation(function (this: HTMLElement) {
+      return this.classList.contains('journey-launcher__navigation') ? width : 0;
+    });
+    class ControlledResizeObserver {
+      observe(target: Element) {
+        resize([{ target } as ResizeObserverEntry], this as unknown as ResizeObserver);
+      }
+      unobserve() {}
+      disconnect() {}
+      constructor(callback: ResizeObserverCallback) { resize = callback; }
+    }
+    vi.stubGlobal('ResizeObserver', ControlledResizeObserver);
+    render(<AppLauncher currentApp="account-map" />);
+
+    fireEvent.click(screen.getByRole('button', { name: '앱 더보기' }));
+    const hiddenSimulation = within(screen.getByRole('region', { name: '추가 앱' }))
+      .getByRole('link', { name: /미래 성장 \(Simulation\)/ });
+    hiddenSimulation.focus();
+    width = 300;
+    act(() => resize([], {} as ResizeObserver));
+
+    expect(screen.queryByRole('button', { name: '앱 더보기' })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /미래 성장 \(Simulation\)/ })).toHaveFocus();
+  });
+
+  it('closes an active app tooltip when entering management tools', () => {
+    vi.useFakeTimers();
+    render(<AppLauncher currentApp="main" managementMenu={<button type="button">관리 메뉴</button>} />);
+    const simulation = screen.getByRole('link', { name: /미래 성장 \(Simulation\)/ });
+    fireTouchPointerEvent(simulation, 'pointerdown');
+    act(() => vi.advanceTimersByTime(450));
+    expect(screen.getByRole('tooltip')).toBeVisible();
+
+    fireEvent.pointerDown(screen.getByRole('button', { name: '관리 메뉴' }));
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
   });
 
   it('keeps a pointer tooltip briefly available while moving across its boundary', () => {

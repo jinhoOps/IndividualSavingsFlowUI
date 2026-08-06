@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { appPath, type JourneyApp } from '../routes';
 import { AppNavigationIcon } from './AppNavigationIcon';
 import { APP_NAV_ITEMS } from './appNavigation';
@@ -31,6 +31,7 @@ export function AppLauncher({ currentApp, managementMenu }: AppLauncherProps) {
   const activeTouchPointersRef = useRef(new Set<number>());
   const multitouchBlockedRef = useRef(false);
   const touchSuppressionRef = useRef<TouchSuppression | null>(null);
+  const pendingResizeFocusRef = useRef<JourneyApp | null>(null);
   const [activeTooltip, setActiveTooltip] = useState<JourneyApp | null>(null);
   const [availableWidth, setAvailableWidth] = useState<number>();
   const [overflowOpen, setOverflowOpen] = useState(false);
@@ -77,12 +78,38 @@ export function AppLauncher({ currentApp, managementMenu }: AppLauncherProps) {
   useEffect(() => {
     const navigation = navigationRef.current;
     if (navigation === null || typeof ResizeObserver === 'undefined') return undefined;
-    const updateWidth = () => setAvailableWidth(navigation.clientWidth);
+    const updateWidth = () => {
+      const nextWidth = navigation.clientWidth;
+      const nextPartition = partitionAppNavigation(APP_NAV_ITEMS, currentApp, nextWidth);
+      const active = document.activeElement;
+      const activeApp = active instanceof HTMLElement
+        ? active.dataset.journeyApp as JourneyApp | undefined
+        : undefined;
+      if (
+        activeApp !== undefined
+        && overflowRootRef.current?.contains(active)
+        && nextPartition.visible.some(({ id }) => id === activeApp)
+      ) {
+        pendingResizeFocusRef.current = activeApp;
+      } else if (active === overflowTriggerRef.current && nextPartition.overflow.length === 0) {
+        pendingResizeFocusRef.current = currentApp;
+      }
+      setAvailableWidth(nextWidth);
+    };
     const observer = new ResizeObserver(updateWidth);
     updateWidth();
     observer.observe(navigation);
     return () => observer.disconnect();
-  }, []);
+  }, [currentApp]);
+
+  useLayoutEffect(() => {
+    const app = pendingResizeFocusRef.current;
+    if (app === null) return;
+    pendingResizeFocusRef.current = null;
+    navigationRef.current
+      ?.querySelector<HTMLElement>(`[data-journey-app="${app}"]`)
+      ?.focus();
+  }, [availableWidth]);
 
   useEffect(() => {
     if (!overflowOpen) return undefined;
@@ -206,6 +233,7 @@ export function AppLauncher({ currentApp, managementMenu }: AppLauncherProps) {
               <li key={item.id} className="journey-launcher__item">
                 <a
                   className="journey-launcher__app-link"
+                  data-journey-app={item.id}
                   href={appPath(item.id)}
                   aria-label={accessibleName}
                   aria-current={isCurrent ? 'page' : undefined}
@@ -264,7 +292,7 @@ export function AppLauncher({ currentApp, managementMenu }: AppLauncherProps) {
                 <MoreIcon />
               </button>
               {overflowOpen ? (
-                <div id={overflowId} className="journey-launcher__overflow-menu" role="menu" aria-label="추가 앱">
+                <div id={overflowId} className="journey-launcher__overflow-menu" role="region" aria-label="추가 앱">
                   {overflow.map((item) => {
                     const accessibleName = [
                       item.accessibleLabel,
@@ -273,8 +301,8 @@ export function AppLauncher({ currentApp, managementMenu }: AppLauncherProps) {
                     return (
                       <a
                         key={item.id}
-                        role="menuitem"
                         className="journey-launcher__overflow-link"
+                        data-journey-app={item.id}
                         href={appPath(item.id)}
                         aria-label={accessibleName}
                       >
@@ -290,7 +318,19 @@ export function AppLauncher({ currentApp, managementMenu }: AppLauncherProps) {
           )}
         </ul>
       </nav>
-      <div ref={toolsRef} className="journey-launcher__tools" role="group" aria-label="앱 도구">
+      <div
+        ref={toolsRef}
+        className="journey-launcher__tools"
+        role="group"
+        aria-label="앱 도구"
+        onPointerDown={closeAll}
+        onFocusCapture={() => {
+          if (tooltipCloseTimerRef.current !== null) clearTimeout(tooltipCloseTimerRef.current);
+          tooltipCloseTimerRef.current = null;
+          setActiveTooltip(null);
+          setOverflowOpen(false);
+        }}
+      >
         {managementMenu}
       </div>
     </div>

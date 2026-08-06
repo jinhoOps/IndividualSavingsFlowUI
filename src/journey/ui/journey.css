@@ -331,7 +331,7 @@
   top: calc(100% + 7px);
   right: 0;
   display: grid;
-  width: min(17rem, calc(100vw - 32px));
+  width: min(13rem, calc(100vw - 32px));
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
   border-radius: 12px;
@@ -459,7 +459,8 @@
   .journey-launcher__app-link,
   .journey-launcher__current-line,
   .journey-launcher__overflow-trigger,
-  .journey-launcher__management-trigger {
+  .journey-launcher__management-trigger,
+  .journey-management__help-trigger svg {
     transition: none;
   }
 }
