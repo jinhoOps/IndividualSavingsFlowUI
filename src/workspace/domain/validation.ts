@@ -31,7 +31,7 @@ const setupSteps = new Set<SetupStep>([
 ]);
 
 export function parseWorkspaceDocument(value: unknown): WorkspaceDocument | null {
-  if (hasSymbolOwnKeyDeep(value) || !hasExactKeys(value, [
+  if (!hasExactKeys(value, [
     'schemaVersion',
     'revision',
     'updatedAt',
@@ -94,7 +94,9 @@ function parseMainSlice(value: unknown): WorkspaceDocument['main'] | null {
 }
 
 function parseAppliedMain(value: unknown): MainData | null {
-  if (!isMainDataShape(value) || !validateMainData(value).valid) return null;
+  if (!hasOnlyStringOwnKeys(value)
+    || !isMainDataShape(value)
+    || !validateMainData(value).valid) return null;
   return { ...value };
 }
 
@@ -103,6 +105,7 @@ function parseSetupProgress(value: unknown): SetupProgress | null {
     || !isSetupProgressKind(value.kind)
     || typeof value.step !== 'string'
     || !setupSteps.has(value.step as SetupStep)
+    || !hasOnlyStringOwnKeys(value.draft)
     || !isMainDataShape(value.draft)
     || !validateMainDraft(value.draft).valid
     || !isTimestamp(value.savedAt)) return null;
@@ -117,6 +120,9 @@ function parseSetupProgress(value: unknown): SetupProgress | null {
 function parseSimulationSlice(value: unknown): WorkspaceDocument['simulation'] | null {
   if (!hasExactKeys(value, ['draft'])) return null;
   if (value.draft === null) return { draft: null };
+  if (!hasOnlyStringOwnKeys(value.draft)
+    || !isRecord(value.draft)
+    || !hasOnlyStringOwnKeys(value.draft.source)) return null;
   const draft = parseSimulationDraft(value.draft);
   return draft === null ? null : { draft };
 }
@@ -218,12 +224,10 @@ function hasExactKeys<const Keys extends readonly string[]>(
     && actual.every((key) => typeof key === 'string' && expected.has(key));
 }
 
-function hasSymbolOwnKeyDeep(value: unknown, seen = new Set<object>()): boolean {
-  if (typeof value !== 'object' || value === null || seen.has(value)) return false;
-  seen.add(value);
-  const keys = Reflect.ownKeys(value);
-  return keys.some((key) => typeof key === 'symbol')
-    || keys.some((key) => hasSymbolOwnKeyDeep(value[key as keyof typeof value], seen));
+function hasOnlyStringOwnKeys(value: unknown): boolean {
+  return typeof value === 'object'
+    && value !== null
+    && Reflect.ownKeys(value).every((key) => typeof key === 'string');
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

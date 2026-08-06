@@ -144,6 +144,18 @@ describe('Workspace validation', () => {
     });
   });
 
+  it('returns null instead of overflowing on a deeply malformed Main slice', () => {
+    let malformedMain: unknown = null;
+    for (let depth = 0; depth < 20_000; depth += 1) {
+      malformedMain = { nested: malformedMain };
+    }
+
+    expect(parseWorkspaceDocument({
+      ...createEmptyWorkspace(100),
+      main: malformedMain,
+    })).toBeNull();
+  });
+
   it('parses one exact current workspace and deeply reconstructs it', () => {
     const original = validWorkspace();
     const parsed = parseWorkspaceDocument(original);
