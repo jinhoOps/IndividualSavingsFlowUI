@@ -11,6 +11,10 @@ import {
 } from '../../../src/portfolio/domain/allocation';
 
 describe('Portfolio allocation', () => {
+  it('creates Phase A drafts in the aggregate scope', () => {
+    expect(createCashOnlyDraft(200_000, 1).scope).toEqual({ type: 'aggregate' });
+  });
+
   it('uses unallocated investment as automatic cash', () => {
     const draft = setItemAmount(
       createCashOnlyDraft(200_000, 1),

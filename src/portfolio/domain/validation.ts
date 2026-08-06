@@ -7,11 +7,12 @@ import {
   type PortfolioDraft,
   type PortfolioItem,
   type PortfolioPlan,
+  type PortfolioScope,
 } from './model';
 
 export function parsePortfolioPlan(value: unknown): PortfolioPlan | null {
   if (!isRecord(value) || !hasExactKeys(value, [
-    'schemaVersion', 'items', 'cashShareUnits', 'cashMode',
+    'schemaVersion', 'scope', 'items', 'cashShareUnits', 'cashMode',
     'syncedInvestmentWon', 'appliedAt', 'updatedAt',
   ])) return null;
   const common = parseCommon(value);
@@ -22,7 +23,7 @@ export function parsePortfolioPlan(value: unknown): PortfolioPlan | null {
 
 export function parsePortfolioDraft(value: unknown): PortfolioDraft | null {
   if (!isRecord(value) || !hasExactKeys(value, [
-    'schemaVersion', 'items', 'cashShareUnits', 'cashMode', 'inputMode',
+    'schemaVersion', 'scope', 'items', 'cashShareUnits', 'cashMode', 'inputMode',
     'syncedInvestmentWon', 'updatedAt', 'isApplicable',
   ])) return null;
   const common = parseCommon(value);
@@ -41,7 +42,9 @@ export function validateApplicableDraft(draft: PortfolioDraft): boolean {
 }
 
 function parseCommon(value: Record<string, unknown>): Omit<PortfolioPlan, 'appliedAt'> | null {
+  const scope = parseScope(value.scope);
   if (value.schemaVersion !== PORTFOLIO_SCHEMA_VERSION
+    || scope === null
     || !Array.isArray(value.items)
     || value.items.length > 10
     || !isCashMode(value.cashMode)
@@ -59,12 +62,27 @@ function parseCommon(value: Record<string, unknown>): Omit<PortfolioPlan, 'appli
     || orders.some((order, index) => order !== index)) return null;
   return {
     schemaVersion: PORTFOLIO_SCHEMA_VERSION,
+    scope,
     items: validItems,
     cashShareUnits: value.cashShareUnits,
     cashMode: value.cashMode,
     syncedInvestmentWon: value.syncedInvestmentWon,
     updatedAt: value.updatedAt,
   };
+}
+
+function parseScope(value: unknown): PortfolioScope | null {
+  if (!isRecord(value) || typeof value.type !== 'string') return null;
+  if (value.type === 'aggregate' && hasExactKeys(value, ['type'])) {
+    return { type: 'aggregate' };
+  }
+  if (value.type === 'location'
+    && hasExactKeys(value, ['type', 'locationId'])
+    && typeof value.locationId === 'string'
+    && value.locationId.length > 0) {
+    return { type: 'location', locationId: value.locationId };
+  }
+  return null;
 }
 
 function parseItem(value: unknown): PortfolioItem | null {
@@ -80,9 +98,10 @@ function parseItem(value: unknown): PortfolioItem | null {
 }
 
 function hasExactKeys(value: Record<string, unknown>, keys: string[]): boolean {
-  const actual = Object.keys(value).sort();
-  const expected = [...keys].sort();
-  return actual.length === expected.length && actual.every((key, index) => key === expected[index]);
+  const actual = Reflect.ownKeys(value);
+  const expected = new Set(keys);
+  return actual.length === expected.size
+    && actual.every((key) => typeof key === 'string' && expected.has(key));
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

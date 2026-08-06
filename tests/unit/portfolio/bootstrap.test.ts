@@ -4,7 +4,8 @@ import type { PortfolioPlan } from '../../../src/portfolio/domain/model';
 import type { PortfolioStorageLoadResult } from '../../../src/portfolio/infrastructure/portfolioRepository';
 
 const plan: PortfolioPlan = {
-  schemaVersion: 1,
+  schemaVersion: 2,
+  scope: { type: 'aggregate' },
   items: [{ id: 'a', name: '인덱스', shareUnits: 600_000, order: 0 }],
   cashShareUnits: 400_000,
   cashMode: 'automatic',
@@ -61,7 +62,8 @@ describe('bootstrapPortfolio', () => {
   it('ignores a draft older than the applied plan after partial cleanup failure', () => {
     const newerPlan = { ...plan, appliedAt: 5, updatedAt: 5 };
     const staleDraft = {
-      schemaVersion: 1 as const,
+      schemaVersion: 2 as const,
+      scope: { type: 'aggregate' } as const,
       items: [{ id: 'old', name: '이전 초안', shareUnits: 500_000, order: 0 }],
       cashShareUnits: 500_000,
       cashMode: 'automatic' as const,
@@ -86,7 +88,8 @@ describe('bootstrapPortfolio', () => {
 
   it('resumes a newer draft when Main investment changes', () => {
     const newerDraft = {
-      schemaVersion: 1 as const,
+      schemaVersion: 2 as const,
+      scope: { type: 'aggregate' } as const,
       items: [{ id: 'draft', name: '성장', shareUnits: 500_000, order: 0 }],
       cashShareUnits: 500_000,
       cashMode: 'automatic' as const,
@@ -130,7 +133,8 @@ describe('bootstrapPortfolio', () => {
 
   it('advances and persists an already Main-synced dirty draft above a synchronized plan', () => {
     const alreadySyncedDraft = {
-      schemaVersion: 1 as const,
+      schemaVersion: 2 as const,
+      scope: { type: 'aggregate' } as const,
       items: [{ id: 'draft', name: '성장', shareUnits: 500_000, order: 0 }],
       cashShareUnits: 500_000,
       cashMode: 'automatic' as const,

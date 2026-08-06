@@ -9,7 +9,8 @@ import {
 import { MemoryStorage } from '../simulation/MemoryStorage';
 
 const plan: PortfolioPlan = {
-  schemaVersion: 1,
+  schemaVersion: 2,
+  scope: { type: 'aggregate' },
   items: [{ id: 'a', name: '인덱스', shareUnits: 600_000, order: 0 }],
   cashShareUnits: 400_000,
   cashMode: 'automatic',

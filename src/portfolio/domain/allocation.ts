@@ -12,6 +12,7 @@ export function createCashOnlyDraft(investmentWon: number, now: number): Portfol
   assertNonnegativeSafeInteger(investmentWon, 'invalid-investment');
   return {
     schemaVersion: PORTFOLIO_SCHEMA_VERSION,
+    scope: { type: 'aggregate' },
     items: [],
     cashShareUnits: SHARE_SCALE,
     cashMode: 'automatic',

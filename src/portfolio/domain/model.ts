@@ -1,8 +1,11 @@
-export const PORTFOLIO_SCHEMA_VERSION = 1 as const;
+export const PORTFOLIO_SCHEMA_VERSION = 2 as const;
 export const SHARE_SCALE = 1_000_000 as const;
 
 export type CashMode = 'automatic' | 'manual';
 export type InputMode = 'amount' | 'percentage';
+export type PortfolioScope =
+  | { type: 'aggregate' }
+  | { type: 'location'; locationId: string };
 
 export interface PortfolioItem {
   id: string;
@@ -13,6 +16,7 @@ export interface PortfolioItem {
 
 export interface PortfolioDraft {
   schemaVersion: typeof PORTFOLIO_SCHEMA_VERSION;
+  scope: PortfolioScope;
   items: PortfolioItem[];
   cashShareUnits: number;
   cashMode: CashMode;
@@ -24,6 +28,7 @@ export interface PortfolioDraft {
 
 export interface PortfolioPlan {
   schemaVersion: typeof PORTFOLIO_SCHEMA_VERSION;
+  scope: PortfolioScope;
   items: PortfolioItem[];
   cashShareUnits: number;
   cashMode: CashMode;
@@ -48,4 +53,8 @@ export interface PortfolioItemIdentity {
   id: string;
   name: string;
   order: number;
+}
+
+export function scopeKey(scope: PortfolioScope): string {
+  return scope.type === 'aggregate' ? 'aggregate' : `location:${scope.locationId}`;
 }

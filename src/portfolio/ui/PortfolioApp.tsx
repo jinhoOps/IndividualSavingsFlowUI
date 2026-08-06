@@ -167,7 +167,8 @@ export function PortfolioApp({
 
 function InvestmentRequired({ plan }: { plan: PortfolioPlan | null }) {
   const placeholder = plan ?? {
-    schemaVersion: 1 as const,
+    schemaVersion: 2 as const,
+    scope: { type: 'aggregate' } as const,
     items: [],
     cashShareUnits: 1_000_000,
     cashMode: 'automatic' as const,

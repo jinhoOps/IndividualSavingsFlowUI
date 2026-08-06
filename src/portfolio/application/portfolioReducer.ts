@@ -132,6 +132,7 @@ export function portfolioReducer(state: PortfolioState, action: PortfolioAction)
 export function planFromDraft(draft: PortfolioDraft, now: number): PortfolioPlan {
   return {
     schemaVersion: draft.schemaVersion,
+    scope: { ...draft.scope },
     items: draft.items.map((item) => ({ ...item })),
     cashShareUnits: draft.cashShareUnits,
     cashMode: draft.cashMode,

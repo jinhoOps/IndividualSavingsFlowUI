@@ -57,6 +57,7 @@ export function bootstrapPortfolio(
 export function draftFromPlan(plan: PortfolioPlan): PortfolioDraft {
   return {
     schemaVersion: plan.schemaVersion,
+    scope: { ...plan.scope },
     items: plan.items.map((item) => ({ ...item })),
     cashShareUnits: plan.cashShareUnits,
     cashMode: plan.cashMode,
