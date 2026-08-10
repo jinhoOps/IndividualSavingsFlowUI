@@ -11,6 +11,12 @@ import type { FinancialLocation } from '../../../src/workspace/domain/financialL
 
 afterEach(cleanup);
 
+function deferredResult() {
+  let resolve!: (result: LocationWriteResult) => void;
+  const promise = new Promise<LocationWriteResult>((settle) => { resolve = settle; });
+  return { promise, resolve };
+}
+
 function location(shortName: string = 'ISA'): InvestmentLocationView {
   return {
     id: `location-${shortName}`,
@@ -30,9 +36,11 @@ function createRepository(
   let locations = [...initial];
   let listener: ((next: InvestmentLocationView[]) => void) | undefined;
   let nextResult: LocationWriteResult | undefined;
+  let nextPendingResult: Promise<LocationWriteResult> | undefined;
   const linkCandidates = new Map<string, FinancialLocation>();
   const repository: InvestmentLocationRepository & {
     publish(next: InvestmentLocationView[]): void;
+    setNextPendingResult(result: Promise<LocationWriteResult>): void;
     setNextResult(result: LocationWriteResult): void;
   } = {
     list: () => locations,
@@ -73,6 +81,7 @@ function createRepository(
       return { status: 'saved', location: linked };
     }),
     rename: vi.fn(async (id, shortName): Promise<LocationWriteResult> => {
+      if (nextPendingResult !== undefined) return await consumePendingResult();
       if (nextResult !== undefined) return consumeResult();
       locations = locations.map((item) => item.id === id
         ? { ...item, shortName, updatedAt: 200 }
@@ -84,6 +93,7 @@ function createRepository(
       if (disposition === undefined && archiveReferenced) {
         return { status: 'portfolio-reference', referencedScopes: [`location:${id}`] };
       }
+      if (nextPendingResult !== undefined) return await consumePendingResult();
       if (nextResult !== undefined) return consumeResult();
       locations = locations.filter((item) => item.id !== id);
       listener?.(locations);
@@ -103,6 +113,9 @@ function createRepository(
     setNextResult(result) {
       nextResult = result;
     },
+    setNextPendingResult(result) {
+      nextPendingResult = result;
+    },
   };
   return repository;
 
@@ -110,6 +123,12 @@ function createRepository(
     const result = nextResult!;
     nextResult = undefined;
     return result;
+  }
+
+  async function consumePendingResult(): Promise<LocationWriteResult> {
+    const result = nextPendingResult!;
+    nextPendingResult = undefined;
+    return await result;
   }
 }
 
@@ -264,6 +283,8 @@ describe('InvestmentLocations', () => {
     await waitFor(() => expect(repository.rename)
       .toHaveBeenCalledWith('location-ISA', '연금 ISA'));
     expect(await screen.findByText('연금 ISA')).toBeVisible();
+    expect(screen.queryByText('다른 화면에서 위치가 변경되어 작업을 닫았습니다.'))
+      .not.toBeInTheDocument();
   });
 
   it('keeps rename errors and input beside the location form', async () => {
@@ -303,8 +324,46 @@ describe('InvestmentLocations', () => {
 
     repository.publish([{ ...location(), shortName: '외부 ISA', updatedAt: 300 }]);
 
-    expect(await screen.findByLabelText('외부 ISA 새 이름')).toHaveValue('외부 ISA');
+    await waitFor(() => expect(screen.getByLabelText('외부 ISA 새 이름')).toHaveValue('외부 ISA'));
     expect(screen.queryByLabelText('ISA 새 이름')).not.toBeInTheDocument();
+  });
+
+  it('reconciles a pending rename removal after its local conflict settles', async () => {
+    const repository = createRepository([location()]);
+    const pending = deferredResult();
+    repository.setNextPendingResult(pending.promise);
+    render(<InvestmentLocations repository={repository} />);
+    fireEvent.click(screen.getByRole('button', { name: 'ISA 이름 바꾸기' }));
+    fireEvent.change(screen.getByLabelText('ISA 새 이름'), { target: { value: '내 변경' } });
+    fireEvent.click(screen.getByRole('button', { name: '이름 저장' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: '이름 저장' })).toBeDisabled());
+
+    repository.publish([]);
+    expect(await screen.findByText('아직 등록한 투자 위치가 없습니다.')).toBeVisible();
+    expect(screen.queryByText('다른 화면에서 위치가 변경되어 작업을 닫았습니다.'))
+      .not.toBeInTheDocument();
+    pending.resolve({ status: 'conflict' });
+
+    expect(await screen.findByRole('alert'))
+      .toHaveTextContent('다른 화면에서 위치가 변경되어 작업을 닫았습니다.');
+    await waitFor(() => expect(screen.getByRole('heading', { name: '투자 위치' })).toHaveFocus());
+  });
+
+  it('reconciles a pending rename snapshot after its local conflict settles', async () => {
+    const repository = createRepository([location()]);
+    const pending = deferredResult();
+    repository.setNextPendingResult(pending.promise);
+    render(<InvestmentLocations repository={repository} />);
+    fireEvent.click(screen.getByRole('button', { name: 'ISA 이름 바꾸기' }));
+    fireEvent.change(screen.getByLabelText('ISA 새 이름'), { target: { value: '내 변경' } });
+    fireEvent.click(screen.getByRole('button', { name: '이름 저장' }));
+
+    repository.publish([{ ...location(), shortName: '외부 ISA', updatedAt: 300 }]);
+    expect(await screen.findByLabelText('외부 ISA 새 이름')).toHaveValue('내 변경');
+    pending.resolve({ status: 'conflict' });
+
+    await waitFor(() => expect(screen.getByLabelText('외부 ISA 새 이름')).toHaveValue('외부 ISA'));
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
   it('confirms referenced archive disposition with preservation selected by default', async () => {
@@ -324,6 +383,8 @@ describe('InvestmentLocations', () => {
       .toHaveBeenLastCalledWith('location-ISA', 'preserve'));
     expect(screen.queryByText('ISA')).not.toBeInTheDocument();
     await waitFor(() => expect(screen.getByRole('heading', { name: '투자 위치' })).toHaveFocus());
+    expect(screen.queryByText('다른 화면에서 위치가 변경되어 작업을 닫았습니다.'))
+      .not.toBeInTheDocument();
   });
 
   it('moves focus to the location heading after direct unreferenced archive', async () => {
@@ -338,6 +399,28 @@ describe('InvestmentLocations', () => {
       .not.toBeInTheDocument());
     await waitFor(() => expect(screen.getByRole('heading', { name: '투자 위치' })).toHaveFocus());
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(screen.queryByText('다른 화면에서 위치가 변경되어 작업을 닫았습니다.'))
+      .not.toBeInTheDocument();
+  });
+
+  it('reconciles a pending direct archive removal after its local conflict settles', async () => {
+    const repository = createRepository([location()], { archiveReferenced: false });
+    const pending = deferredResult();
+    repository.setNextPendingResult(pending.promise);
+    render(<InvestmentLocations repository={repository} />);
+    const archiveTrigger = screen.getByRole('button', { name: 'ISA 보관하기' });
+    archiveTrigger.focus();
+    fireEvent.click(archiveTrigger);
+    await waitFor(() => expect(repository.archive).toHaveBeenCalledWith('location-ISA'));
+    await waitFor(() => expect(archiveTrigger).toBeDisabled());
+
+    repository.publish([]);
+    expect(await screen.findByText('아직 등록한 투자 위치가 없습니다.')).toBeVisible();
+    pending.resolve({ status: 'conflict' });
+
+    expect(await screen.findByRole('alert'))
+      .toHaveTextContent('다른 화면에서 위치가 변경되어 작업을 닫았습니다.');
+    await waitFor(() => expect(screen.getByRole('heading', { name: '투자 위치' })).toHaveFocus());
   });
 
   it('sends explicit delete disposition and keeps archive failures in the dialog', async () => {
@@ -381,5 +464,48 @@ describe('InvestmentLocations', () => {
 
     expect(await screen.findByRole('dialog', { name: '외부 ISA 위치를 보관할까요?' })).toBeVisible();
     expect(screen.queryByRole('dialog', { name: 'ISA 위치를 보관할까요?' })).not.toBeInTheDocument();
+  });
+
+  it('closes a pending archive after external role removal and local conflict settlement', async () => {
+    const repository = createRepository([location()]);
+    render(<InvestmentLocations repository={repository} />);
+    fireEvent.click(screen.getByRole('button', { name: 'ISA 보관하기' }));
+    const dialog = await screen.findByRole('dialog', { name: 'ISA 위치를 보관할까요?' });
+    const pending = deferredResult();
+    repository.setNextPendingResult(pending.promise);
+    fireEvent.click(within(dialog).getByRole('button', { name: '보관' }));
+    await waitFor(() => expect(within(dialog).getByRole('group', { name: 'Portfolio 데이터' }))
+      .toBeDisabled());
+
+    repository.publish([]);
+    expect(await screen.findByText('아직 등록한 투자 위치가 없습니다.')).toBeVisible();
+    expect(dialog).toBeVisible();
+    pending.resolve({ status: 'conflict' });
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(await screen.findByRole('alert'))
+      .toHaveTextContent('다른 화면에서 위치가 변경되어 작업을 닫았습니다.');
+    await waitFor(() => expect(screen.getByRole('heading', { name: '투자 위치' })).toHaveFocus());
+  });
+
+  it('closes a pending explicit-delete archive after external archive and local conflict settlement', async () => {
+    const repository = createRepository([location()]);
+    render(<InvestmentLocations repository={repository} />);
+    fireEvent.click(screen.getByRole('button', { name: 'ISA 보관하기' }));
+    const dialog = await screen.findByRole('dialog', { name: 'ISA 위치를 보관할까요?' });
+    fireEvent.click(within(dialog).getByRole('radio', { name: 'Portfolio 데이터 삭제' }));
+    const pending = deferredResult();
+    repository.setNextPendingResult(pending.promise);
+    fireEvent.click(within(dialog).getByRole('button', { name: '보관' }));
+
+    repository.publish([]);
+    expect(await screen.findByText('아직 등록한 투자 위치가 없습니다.')).toBeVisible();
+    expect(dialog).toBeVisible();
+    pending.resolve({ status: 'conflict' });
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(await screen.findByRole('alert'))
+      .toHaveTextContent('다른 화면에서 위치가 변경되어 작업을 닫았습니다.');
+    await waitFor(() => expect(screen.getByRole('heading', { name: '투자 위치' })).toHaveFocus());
   });
 });

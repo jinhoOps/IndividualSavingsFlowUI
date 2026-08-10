@@ -36,6 +36,12 @@ interface ArchiveState {
   error?: string;
 }
 
+interface DirectArchiveState {
+  id: string;
+  pending: boolean;
+  error?: string;
+}
+
 export function InvestmentLocations({
   repository: providedRepository,
 }: {
@@ -55,9 +61,11 @@ export function InvestmentLocations({
   const [linkCandidate, setLinkCandidate] = useState<FinancialLocation>();
   const [rename, setRename] = useState<RenameState>();
   const [archive, setArchive] = useState<ArchiveState>();
+  const [directArchive, setDirectArchive] = useState<DirectArchiveState>();
   const [focusHeadingAfterArchive, setFocusHeadingAfterArchive] = useState(false);
   const [locationErrors, setLocationErrors] = useState<Record<string, string>>({});
   const [syncNotice, setSyncNotice] = useState<string>();
+  const [settlementGeneration, setSettlementGeneration] = useState(0);
   const archiveReturnFocusRef = useRef<HTMLElement | null>(null);
   const locationHeadingRef = useRef<HTMLHeadingElement>(null);
 
@@ -82,6 +90,16 @@ export function InvestmentLocations({
         });
       }
     }
+    if (directArchive !== undefined && !directArchive.pending) {
+      const currentLocation = locations.find((location) => location.id === directArchive.id);
+      setDirectArchive(undefined);
+      if (currentLocation === undefined) {
+        archiveReturnFocusRef.current = null;
+        closedStaleWork = true;
+      } else {
+        setLocationError(directArchive.id, directArchive.error);
+      }
+    }
     if (archive !== undefined && !archive.pending) {
       const currentLocation = locations.find((location) => location.id === archive.location.id);
       if (currentLocation === undefined) {
@@ -97,7 +115,7 @@ export function InvestmentLocations({
       setSyncNotice('다른 화면에서 위치가 변경되어 작업을 닫았습니다.');
       setFocusHeadingAfterArchive(true);
     }
-  }, [locations]);
+  }, [locations, settlementGeneration]);
 
   useEffect(() => {
     if (!focusHeadingAfterArchive || archive !== undefined) return;
@@ -172,6 +190,7 @@ export function InvestmentLocations({
         pending: false,
         error: writeErrorMessage(result.status),
       });
+      setSettlementGeneration((generation) => generation + 1);
       return;
     }
     setRename(undefined);
@@ -184,21 +203,31 @@ export function InvestmentLocations({
   ): Promise<void> {
     archiveReturnFocusRef.current = event.currentTarget;
     setLocationError(location.id, undefined);
+    setDirectArchive({ id: location.id, pending: true });
     const result = await repository.archive(location.id);
     if (result.status === 'saved') {
+      setDirectArchive(undefined);
       setFocusHeadingAfterArchive(true);
       refreshLocations();
       return;
     }
     if (result.status === 'portfolio-reference') {
+      setDirectArchive(undefined);
       setArchive({ location, disposition: 'preserve', pending: false });
       return;
     }
     if (result.status === 'stale-location' || result.status === 'location-not-found') {
+      setDirectArchive(undefined);
+      archiveReturnFocusRef.current = null;
       closeStaleOperation();
       return;
     }
-    setLocationError(location.id, writeErrorMessage(result.status));
+    setDirectArchive({
+      id: location.id,
+      pending: false,
+      error: writeErrorMessage(result.status),
+    });
+    setSettlementGeneration((generation) => generation + 1);
   }
 
   async function confirmArchive(): Promise<void> {
@@ -217,6 +246,7 @@ export function InvestmentLocations({
         pending: false,
         error: writeErrorMessage(result.status),
       });
+      setSettlementGeneration((generation) => generation + 1);
       return;
     }
     setFocusHeadingAfterArchive(true);
@@ -307,6 +337,7 @@ export function InvestmentLocations({
                   <Button
                     type="button"
                     variant="quiet"
+                    disabled={directArchive?.id === location.id && directArchive.pending}
                     aria-label={`${location.shortName} 보관하기`}
                     aria-describedby={errorId}
                     onClick={(event) => void requestArchive(location, event)}
