@@ -21,8 +21,14 @@ export function bootstrapPortfolio(
   storageResult: PortfolioStorageLoadResult,
   now: number = Date.now(),
 ): PortfolioBootstrapResult {
-  const loadedPlan = storageResult.applied.status === 'found' ? storageResult.applied.plan : null;
-  const loadedDraft = storageResult.draft.status === 'found' ? storageResult.draft.draft : null;
+  const loadedPlan = storageResult.applied.status === 'found'
+    && storageResult.applied.plan.scope.type === 'aggregate'
+    ? storageResult.applied.plan
+    : null;
+  const loadedDraft = storageResult.draft.status === 'found'
+    && storageResult.draft.draft.scope.type === 'aggregate'
+    ? storageResult.draft.draft
+    : null;
   const persistenceAvailable = storageResult.applied.status !== 'unavailable'
     && storageResult.draft.status !== 'unavailable';
 

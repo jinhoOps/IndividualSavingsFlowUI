@@ -55,6 +55,8 @@ export function SimulationApp({
     initial.kind !== 'main-required' && !initial.persistenceAvailable ? 'error' : 'saved',
   );
   const initialPersisted = useRef(false);
+  const persistenceQueue = useRef<Promise<void>>(Promise.resolve());
+  const latestOperation = useRef(0);
 
   useEffect(() => {
     if (
@@ -65,8 +67,7 @@ export function SimulationApp({
     ) return;
 
     initialPersisted.current = true;
-    setSaveState('saving');
-    setSaveState(repository.save(draft).status === 'saved' ? 'saved' : 'error');
+    queueSave(draft);
   }, [draft, repository, runtime]);
 
   if (runtime.kind === 'main-required') {
@@ -91,18 +92,25 @@ export function SimulationApp({
       return;
     }
     setDraft(valid);
-    setSaveState('saving');
-    setSaveState(repository.save(valid).status === 'saved' ? 'saved' : 'error');
+    queueSave(valid);
   }
 
   function reset(): boolean {
-    if (repository.clear().status === 'unavailable') {
-      return false;
-    }
-    const next = bootstrapSimulation(mainRepository.load(), { status: 'empty' }, now());
-    setRuntime(next);
-    setDraft(null);
-    setSaveState(next.kind !== 'main-required' && !next.persistenceAvailable ? 'error' : 'saved');
+    const token = beginOperation();
+    enqueuePersistence(
+      () => repository.clear(),
+      (result) => {
+        if (token !== latestOperation.current) return;
+        if (result?.status !== 'cleared') {
+          setSaveState('error');
+          return;
+        }
+        const next = bootstrapSimulation(mainRepository.load(), { status: 'empty' }, now());
+        setRuntime(next);
+        setDraft(null);
+        setSaveState(next.kind !== 'main-required' && !next.persistenceAvailable ? 'error' : 'saved');
+      },
+    );
     return true;
   }
 
@@ -119,9 +127,35 @@ export function SimulationApp({
     setDraft(next.draft);
     if (next.shouldPersist && next.draft !== null) {
       initialPersisted.current = true;
-      setSaveState('saving');
-      setSaveState(repository.save(next.draft).status === 'saved' ? 'saved' : 'error');
+      queueSave(next.draft);
     }
+  }
+
+  function queueSave(next: CompoundSimulationDraft): void {
+    const token = beginOperation();
+    enqueuePersistence(
+      () => repository.save(next),
+      (result) => {
+        if (token !== latestOperation.current) return;
+        setSaveState(result?.status === 'saved' ? 'saved' : 'error');
+      },
+    );
+  }
+
+  function beginOperation(): number {
+    const token = latestOperation.current + 1;
+    latestOperation.current = token;
+    setSaveState('saving');
+    return token;
+  }
+
+  function enqueuePersistence<T>(
+    operation: () => Promise<T>,
+    onSettled: (result: T | null) => void,
+  ): void {
+    const run = persistenceQueue.current.then(operation, operation);
+    persistenceQueue.current = run.then(() => undefined, () => undefined);
+    void run.then(onSettled, () => onSettled(null));
   }
 
   const result = draft === null ? null : projectCompoundGrowth(draft);

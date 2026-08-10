@@ -73,13 +73,15 @@ describe('portfolioReducer', () => {
     expect(cancelled.dirty).toBe(false);
   });
 
-  it('confirmed reset creates an applied cash-only plan', () => {
+  it('confirmed reset returns to a clean aggregate setup after the scope is cleared', () => {
     const reset = portfolioReducer(createPortfolioState(readyWithPlan), {
       type: 'reset-confirmed', now: 3,
     });
-    expect(reset.applied?.items).toEqual([]);
-    expect(reset.applied?.cashShareUnits).toBe(1_000_000);
-    expect(reset.view).toBe('result');
+    expect(reset.applied).toBeNull();
+    expect(reset.draft).toEqual(createCashOnlyDraft(200_000, 3));
+    expect(reset.draft.scope).toEqual({ type: 'aggregate' });
+    expect(reset.view).toBe('edit');
+    expect(reset.dirty).toBe(false);
   });
 
   it('opening edit and changing only the input mode do not dirty allocation', () => {

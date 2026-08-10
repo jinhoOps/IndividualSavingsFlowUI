@@ -26,14 +26,14 @@ function mainRepository(next: SimulationMainSource): MainSourceRepository {
 function simulationRepository(loadResult: SimulationLoadResult = { status: 'empty' }) {
   const repository: SimulationRepository = {
     load: () => loadResult,
-    save: vi.fn(() => ({ status: 'saved' as const })),
-    clear: vi.fn(() => ({ status: 'cleared' as const })),
+    save: vi.fn(async () => ({ status: 'saved' as const })),
+    clear: vi.fn(async () => ({ status: 'cleared' as const })),
   };
   return repository;
 }
 
 describe('SimulationApp', () => {
-  it('completes two-stage onboarding before saving the first result', () => {
+  it('completes two-stage onboarding before saving the first result', async () => {
     const repository = simulationRepository();
     render(<SimulationApp
       mainSourceRepository={mainRepository(source)}
@@ -50,7 +50,7 @@ describe('SimulationApp', () => {
     fireEvent.click(screen.getByRole('button', { name: '결과 보기' }));
 
     expect(screen.getByRole('heading', { name: /이대로 20년 유지하면/ })).toBeVisible();
-    expect(repository.save).toHaveBeenCalledOnce();
+    await waitFor(() => expect(repository.save).toHaveBeenCalledOnce());
   });
 
   it('revisits the result directly and persists only the latest Main source', async () => {
@@ -148,7 +148,7 @@ describe('SimulationApp', () => {
     expect(screen.getByText('기간 범위가 변경되어 30년으로 조정됐어요.')).toBeVisible();
   });
 
-  it('resets only Simulation from its menu and returns to onboarding', () => {
+  it('resets only Simulation from its menu and returns to onboarding', async () => {
     const draft = createDefaultSimulationDraft(source, 456);
     const repository = simulationRepository({ status: 'found', draft, migration: null });
     render(<SimulationApp
@@ -160,8 +160,54 @@ describe('SimulationApp', () => {
     fireEvent.click(screen.getByRole('menuitem', { name: '시뮬레이션 다시 설정' }));
     fireEvent.click(screen.getByRole('button', { name: '다시 설정' }));
 
-    expect(repository.clear).toHaveBeenCalledOnce();
-    expect(screen.getByRole('heading', { name: '지금 모아둔 투자금이 있나요?' })).toBeVisible();
+    await waitFor(() => expect(repository.clear).toHaveBeenCalledOnce());
+    expect(await screen.findByRole('heading', { name: '지금 모아둔 투자금이 있나요?' })).toBeVisible();
+  });
+
+  it('queues saves so a slower earlier result cannot overwrite the latest UI state', async () => {
+    const repository = simulationRepository();
+    let releaseFirst: (() => void) | undefined;
+    const firstGate = new Promise<void>((resolve) => { releaseFirst = resolve; });
+    let saveCount = 0;
+    repository.save = vi.fn(async () => {
+      saveCount += 1;
+      if (saveCount === 1) await firstGate;
+      return { status: 'saved' as const };
+    });
+    render(<SimulationApp
+      mainSourceRepository={mainRepository(source)}
+      repository={repository}
+      now={() => 456}
+    />);
+
+    fireEvent.click(screen.getByRole('button', { name: '없어요' }));
+    fireEvent.click(screen.getByRole('button', { name: '결과 보기' }));
+    await waitFor(() => expect(repository.save).toHaveBeenCalledTimes(1));
+    fireEvent.change(screen.getByRole('spinbutton', { name: '기간 숫자' }), {
+      target: { value: '25' },
+    });
+    expect(repository.save).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('heading', { name: /이대로 25년 유지하면/ })).toBeVisible();
+    expect(screen.getByRole('status')).toHaveTextContent('저장 중');
+
+    releaseFirst?.();
+    await waitFor(() => expect(repository.save).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('저장됨'));
+    expect(repository.save).toHaveBeenLastCalledWith(expect.objectContaining({ years: 25 }));
+  });
+
+  it('keeps the current result visible and reports an asynchronous clear failure', async () => {
+    const saved = createDefaultSimulationDraft(source, 456);
+    const repository = simulationRepository({ status: 'found', draft: saved, migration: null });
+    repository.clear = vi.fn(async () => ({ status: 'unavailable' as const }));
+    render(<SimulationApp mainSourceRepository={mainRepository(source)} repository={repository} />);
+
+    fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: '시뮬레이션 다시 설정' }));
+    fireEvent.click(screen.getByRole('button', { name: '다시 설정' }));
+
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('자동 저장하지 못했어요'));
+    expect(screen.getByRole('heading', { name: /이대로 20년 유지하면/ })).toBeVisible();
   });
 
   it('routes zero Main contributions back to Main', () => {

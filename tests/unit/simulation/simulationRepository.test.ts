@@ -1,11 +1,16 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createDefaultSimulationDraft } from '../../../src/simulation/domain/validation';
+import { BrowserSimulationRepository } from '../../../src/simulation/infrastructure/simulationRepository';
 import {
-  BrowserSimulationRepository,
-  SIMULATION_STORAGE_KEY,
-} from '../../../src/simulation/infrastructure/simulationRepository';
-import { MemoryStorage } from './MemoryStorage';
+  WORKSPACE_STORAGE_KEY,
+  type WorkspaceDocument,
+} from '../../../src/workspace/domain/model';
+import {
+  BrowserWorkspaceRepository,
+  type WorkspaceRepository,
+} from '../../../src/workspace/infrastructure/workspaceRepository';
 
+const oldSimulationKey = 'isf-simulation-compound-v1';
 const source = {
   monthlySavingsWon: 300_000,
   monthlyInvestmentWon: 200_000,
@@ -13,50 +18,198 @@ const source = {
 };
 const draft = createDefaultSimulationDraft(source, 456);
 
-describe('BrowserSimulationRepository', () => {
-  let storage: MemoryStorage;
+class TrackingStorage implements Storage {
+  readonly reads: string[] = [];
+  readonly writes: string[] = [];
 
-  beforeEach(() => {
-    storage = new MemoryStorage();
+  constructor(private readonly values = new Map<string, string>()) {}
+
+  get length(): number { return this.values.size; }
+  clear(): void { this.values.clear(); }
+  getItem(key: string): string | null {
+    this.reads.push(key);
+    return this.values.get(key) ?? null;
+  }
+  key(index: number): string | null { return [...this.values.keys()][index] ?? null; }
+  removeItem(key: string): void {
+    this.writes.push(key);
+    this.values.delete(key);
+  }
+  setItem(key: string, value: string): void {
+    this.writes.push(key);
+    this.values.set(key, value);
+  }
+  resetLog(): void {
+    this.reads.length = 0;
+    this.writes.length = 0;
+  }
+}
+
+function serialLock() {
+  return {
+    async runExclusive<T>(task: (guard: { assertOwned(): void }) => T | Promise<T>): Promise<T> {
+      return await task({ assertOwned: () => undefined });
+    },
+  };
+}
+
+function workspaceWithSimulation(savedDraft = draft): WorkspaceDocument {
+  return {
+    schemaVersion: 1,
+    revision: 4,
+    updatedAt: 400,
+    main: {
+      applied: {
+        schemaVersion: 2,
+        updatedAt: 100,
+        monthlyNetIncomeWon: 4_000_000,
+        monthlyHousingWon: 900_000,
+        monthlyLivingWon: 1_000_000,
+        monthlySavingWon: 300_000,
+        monthlyInvestmentWon: 200_000,
+      },
+      setupProgress: null,
+    },
+    simulation: { draft: savedDraft },
+    portfolio: {
+      plans: [{
+        schemaVersion: 2,
+        scope: { type: 'aggregate' },
+        items: [],
+        cashShareUnits: 1_000_000,
+        cashMode: 'automatic',
+        syncedInvestmentWon: 200_000,
+        appliedAt: 300,
+        updatedAt: 300,
+      }],
+      draft: null,
+    },
+    locations: [],
+    accountMap: { applied: null, draft: null, instruments: [], flows: [] },
+  };
+}
+
+function browserRepository(storage: Storage, now = 500) {
+  return new BrowserSimulationRepository(new BrowserWorkspaceRepository(storage, {
+    now: () => now,
+    saveLock: serialLock(),
+  }));
+}
+
+describe('BrowserSimulationRepository workspace adapter', () => {
+  it('starts empty when the workspace is absent and never consumes the populated old key', () => {
+    const oldRaw = JSON.stringify({ ...draft, years: 29 });
+    const storage = new TrackingStorage(new Map([[oldSimulationKey, oldRaw]]));
+    const repository = browserRepository(storage);
+
+    expect(repository.load()).toEqual({ status: 'empty' });
+
+    expect(storage.reads).toEqual([WORKSPACE_STORAGE_KEY]);
+    expect(storage.writes).toEqual([]);
+    expect(storage.getItem(oldSimulationKey)).toBe(oldRaw);
   });
 
-  it('round-trips one valid draft without changing Main or legacy stores', () => {
-    storage.setItem('isf-main-v2', '{"main":true}');
-    storage.setItem('isf-rebuild-v1', '{"legacy":true}');
-    const repository = new BrowserSimulationRepository(() => storage);
+  it('loads only the valid workspace Simulation slice', () => {
+    const workspace = workspaceWithSimulation();
+    const storage = new TrackingStorage(new Map([
+      [WORKSPACE_STORAGE_KEY, JSON.stringify(workspace)],
+      [oldSimulationKey, JSON.stringify({ ...draft, years: 29 })],
+    ]));
+    storage.resetLog();
 
-    expect(repository.save(draft)).toEqual({ status: 'saved' });
-    expect(repository.load()).toEqual({ status: 'found', draft, migration: null });
-    expect(storage.getItem('isf-main-v2')).toBe('{"main":true}');
-    expect(storage.getItem('isf-rebuild-v1')).toBe('{"legacy":true}');
-  });
-
-  it('reports malformed and unavailable storage separately', () => {
-    storage.setItem(SIMULATION_STORAGE_KEY, '{broken');
-    expect(new BrowserSimulationRepository(() => storage).load()).toEqual({ status: 'invalid' });
-    expect(new BrowserSimulationRepository(() => {
-      throw new DOMException('blocked', 'SecurityError');
-    }).load()).toEqual({ status: 'unavailable' });
-  });
-
-  it('clears only the compound draft key', () => {
-    storage.setItem(SIMULATION_STORAGE_KEY, JSON.stringify(draft));
-    storage.setItem('isf-step2-saves', 'keep');
-    const repository = new BrowserSimulationRepository(() => storage);
-
-    expect(repository.clear()).toEqual({ status: 'cleared' });
-    expect(storage.getItem(SIMULATION_STORAGE_KEY)).toBeNull();
-    expect(storage.getItem('isf-step2-saves')).toBe('keep');
-  });
-
-  it('migrates a v1 duration above 30 years without dropping other settings', () => {
-    const legacy = { ...draft, schemaVersion: 1, years: 47 };
-    storage.setItem(SIMULATION_STORAGE_KEY, JSON.stringify(legacy));
-
-    expect(new BrowserSimulationRepository(() => storage).load()).toEqual({
+    expect(browserRepository(storage).load()).toEqual({
       status: 'found',
-      draft: { ...legacy, schemaVersion: 2, years: 30 },
-      migration: 'duration-capped',
+      draft,
+      migration: null,
+    });
+    expect(storage.reads).toEqual([WORKSPACE_STORAGE_KEY]);
+  });
+
+  it('saves one new workspace revision while preserving every non-Simulation slice', async () => {
+    const workspace = workspaceWithSimulation();
+    const oldRaw = JSON.stringify({ ...draft, years: 29 });
+    const storage = new TrackingStorage(new Map([
+      [WORKSPACE_STORAGE_KEY, JSON.stringify(workspace)],
+      [oldSimulationKey, oldRaw],
+    ]));
+    const repository = browserRepository(storage, 600);
+    repository.load();
+    const nextDraft = { ...draft, years: 25, updatedAt: 550 };
+    storage.resetLog();
+
+    await expect(repository.save(nextDraft)).resolves.toEqual({ status: 'saved' });
+
+    const saved = JSON.parse(storage.getItem(WORKSPACE_STORAGE_KEY) ?? '') as WorkspaceDocument;
+    expect(saved.revision).toBe(5);
+    expect(saved.updatedAt).toBe(600);
+    expect(saved.simulation).toEqual({ draft: nextDraft });
+    for (const slice of ['main', 'portfolio', 'locations', 'accountMap'] as const) {
+      expect(saved[slice]).toEqual(workspace[slice]);
+    }
+    expect(storage.reads.filter((key) => key === oldSimulationKey)).toEqual([]);
+    expect(storage.writes.filter((key) => key === oldSimulationKey)).toEqual([]);
+    expect(storage.getItem(oldSimulationKey)).toBe(oldRaw);
+  });
+
+  it('clears only the Simulation slice and preserves a newer unrelated slice', async () => {
+    const workspace = workspaceWithSimulation();
+    const storage = new TrackingStorage(new Map([[WORKSPACE_STORAGE_KEY, JSON.stringify(workspace)]]));
+    const repository = browserRepository(storage, 700);
+    repository.load();
+    const current = workspaceWithSimulation();
+    current.revision = 5;
+    current.updatedAt = 650;
+    current.main.applied = { ...current.main.applied!, monthlySavingWon: 900_000, updatedAt: 650 };
+    storage.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify(current));
+
+    await expect(repository.clear()).resolves.toEqual({ status: 'cleared' });
+
+    const saved = JSON.parse(storage.getItem(WORKSPACE_STORAGE_KEY) ?? '') as WorkspaceDocument;
+    expect(saved.revision).toBe(6);
+    expect(saved.simulation).toEqual({ draft: null });
+    expect(saved.main).toEqual(current.main);
+    expect(saved.portfolio).toEqual(current.portfolio);
+  });
+
+  it('rejects a changed Simulation base without overwriting its winner', async () => {
+    const storage = new TrackingStorage(new Map([[
+      WORKSPACE_STORAGE_KEY,
+      JSON.stringify(workspaceWithSimulation()),
+    ]]));
+    const first = browserRepository(storage, 700);
+    const winner = browserRepository(storage, 800);
+    first.load();
+    winner.load();
+    const winningDraft = { ...draft, years: 26, updatedAt: 700 };
+    await expect(winner.save(winningDraft)).resolves.toEqual({ status: 'saved' });
+
+    await expect(first.save({ ...draft, years: 27, updatedAt: 800 }))
+      .resolves.toEqual({ status: 'unavailable' });
+    expect(browserRepository(storage).load()).toEqual({
+      status: 'found',
+      draft: winningDraft,
+      migration: null,
     });
   });
+
+  it.each(['conflict', 'unavailable'] as const)(
+    'maps a workspace %s write to the current unavailable result',
+    async (status) => {
+      const workspace = workspaceWithSimulation();
+      const workspaceRepository: WorkspaceRepository = {
+        load: vi.fn(() => ({ status: 'found' as const, workspace: structuredClone(workspace) })),
+        update: vi.fn(async () => status === 'conflict'
+          ? { status: 'conflict' as const, currentRevision: 5 }
+          : { status: 'unavailable' as const }),
+        replace: vi.fn(),
+        resetInvalid: vi.fn(),
+        subscribe: vi.fn(() => () => undefined),
+      };
+      const repository = new BrowserSimulationRepository(workspaceRepository);
+      repository.load();
+
+      await expect(repository.save({ ...draft, years: 24 })).resolves.toEqual({ status: 'unavailable' });
+      await expect(repository.clear()).resolves.toEqual({ status: 'unavailable' });
+    },
+  );
 });

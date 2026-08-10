@@ -1,4 +1,4 @@
-import type { PortfolioDraft, PortfolioPlan } from '../../../src/portfolio/domain/model';
+import { scopeKey, type PortfolioDraft, type PortfolioPlan } from '../../../src/portfolio/domain/model';
 import type {
   PortfolioRepository,
   PortfolioStorageLoadResult,
@@ -27,26 +27,30 @@ export function createMemoryPortfolioRepository(initial: {
         draft: this.draft === null ? { status: 'empty' } : { status: 'found', draft: this.draft },
       };
     },
-    saveApplied(plan): PortfolioWriteResult {
+    async saveApplied(plan): Promise<PortfolioWriteResult> {
       if (consumeFailure()) return { status: 'unavailable' };
       this.applied = plan;
       return { status: 'saved' };
     },
-    saveDraft(draft): PortfolioWriteResult {
+    async saveDraft(draft): Promise<PortfolioWriteResult> {
       if (consumeFailure()) return { status: 'unavailable' };
       this.draft = draft;
       return { status: 'saved' };
     },
-    clearDraft(): PortfolioWriteResult {
+    async clearDraft(): Promise<PortfolioWriteResult> {
       if (this.failClearDraft) return { status: 'unavailable' };
       if (consumeFailure()) return { status: 'unavailable' };
       this.draft = null;
       return { status: 'saved' };
     },
-    clearAll(): PortfolioWriteResult {
+    async clearScope(scope): Promise<PortfolioWriteResult> {
       if (consumeFailure()) return { status: 'unavailable' };
-      this.applied = null;
-      this.draft = null;
+      if (this.applied !== null && scopeKey(this.applied.scope) === scopeKey(scope)) {
+        this.applied = null;
+      }
+      if (this.draft !== null && scopeKey(this.draft.scope) === scopeKey(scope)) {
+        this.draft = null;
+      }
       return { status: 'saved' };
     },
     failNextWrite(): void {

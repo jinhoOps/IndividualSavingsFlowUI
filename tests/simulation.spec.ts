@@ -9,13 +9,36 @@ const appliedMain = {
   monthlySavingWon: 300_000,
   monthlyInvestmentWon: 200_000,
 };
+const oldMainRaw = JSON.stringify({ ...appliedMain, monthlySavingWon: 1_900_000 });
+const oldSimulationRaw = JSON.stringify({
+  schemaVersion: 2,
+  source: { monthlySavingsWon: 1, monthlyInvestmentWon: 1, mainUpdatedAt: 1 },
+  initialInvestmentWon: 0,
+  years: 29,
+  expectedAnnualReturnPercent: 5,
+  baseRatePercent: 2.75,
+  inflationOffsetPercentPoints: -0.25,
+  amountMode: 'nominal',
+  updatedAt: 1,
+});
 
 async function seedMain(page: Page, fixture = appliedMain) {
-  await page.addInitScript((value) => {
-    if (localStorage.getItem('isf-main-v2') === null) {
-      localStorage.setItem('isf-main-v2', JSON.stringify(value));
-    }
-  }, fixture);
+  await page.addInitScript(({ value, seededOldMain, seededOldSimulation }) => {
+    if (sessionStorage.getItem('isf-simulation-e2e-seeded') !== null) return;
+    localStorage.setItem('isf-workspace-v1', JSON.stringify({
+      schemaVersion: 1,
+      revision: 1,
+      updatedAt: value.updatedAt,
+      main: { applied: value, setupProgress: null },
+      simulation: { draft: null },
+      portfolio: { plans: [], draft: null },
+      locations: [],
+      accountMap: { applied: null, draft: null, instruments: [], flows: [] },
+    }));
+    localStorage.setItem('isf-main-v2', seededOldMain);
+    localStorage.setItem('isf-simulation-compound-v1', seededOldSimulation);
+    sessionStorage.setItem('isf-simulation-e2e-seeded', 'true');
+  }, { value: fixture, seededOldMain: oldMainRaw, seededOldSimulation: oldSimulationRaw });
 }
 
 async function openFirstResult(page: Page) {
@@ -60,32 +83,69 @@ test('guides first run, supports boundary years and keeps Main read-only', async
   await expect(page.getByText(/백테스트나 금융 자문이 아닙니다/)).toBeHidden();
   await page.getByText('계산 기준').click();
   await expect(page.getByText(/백테스트나 금융 자문이 아닙니다/)).toBeVisible();
-  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('isf-main-v2')!)))
-    .toEqual(appliedMain);
+  expect(await page.evaluate(() => ({
+    workspace: JSON.parse(localStorage.getItem('isf-workspace-v1')!),
+    oldMain: localStorage.getItem('isf-main-v2'),
+    oldSimulation: localStorage.getItem('isf-simulation-compound-v1'),
+  }))).toMatchObject({
+    workspace: {
+      main: { applied: appliedMain },
+      simulation: { draft: { years: 30, expectedAnnualReturnPercent: 8.75 } },
+    },
+    oldMain: oldMainRaw,
+    oldSimulation: oldSimulationRaw,
+  });
 });
 
 test('reloads latest Main values and resets only Simulation from its menu', async ({ page }) => {
   await seedMain(page);
   await openFirstResult(page);
+  await expect.poll(() => page.evaluate(() => (
+    JSON.parse(localStorage.getItem('isf-workspace-v1')!).simulation.draft?.years
+  ))).toBe(20);
   await page.reload();
   await expect(page.getByRole('heading', { name: /이대로 20년 유지하면/ })).toBeVisible();
 
   await page.evaluate(() => {
-    const main = JSON.parse(localStorage.getItem('isf-main-v2')!);
-    localStorage.setItem('isf-main-v2', JSON.stringify({
-      ...main,
-      monthlySavingWon: 900_000,
-      updatedAt: main.updatedAt + 1,
+    const workspace = JSON.parse(localStorage.getItem('isf-workspace-v1')!);
+    localStorage.setItem('isf-workspace-v1', JSON.stringify({
+      ...workspace,
+      revision: workspace.revision + 1,
+      updatedAt: workspace.updatedAt + 1,
+      main: {
+        ...workspace.main,
+        applied: {
+          ...workspace.main.applied,
+          monthlySavingWon: 900_000,
+          updatedAt: workspace.main.applied.updatedAt + 1,
+        },
+      },
     }));
   });
   await page.reload();
   await expect(page.getByText(/월 저축 90만 원/)).toBeVisible();
+  await expect.poll(() => page.evaluate(() => (
+    JSON.parse(localStorage.getItem('isf-workspace-v1')!).simulation.draft?.source.monthlySavingsWon
+  ))).toBe(900_000);
 
   await page.getByRole('button', { name: '관리 메뉴' }).click();
   await page.getByRole('menuitem', { name: '시뮬레이션 다시 설정' }).click();
   await page.getByRole('button', { name: '다시 설정' }).click();
   await expect(page.getByRole('heading', { name: '지금 모아둔 투자금이 있나요?' })).toBeVisible();
-  expect(await page.evaluate(() => localStorage.getItem('isf-main-v2'))).not.toBeNull();
+  expect(await page.evaluate(() => {
+    const workspace = JSON.parse(localStorage.getItem('isf-workspace-v1')!);
+    return {
+      mainSaving: workspace.main.applied.monthlySavingWon,
+      simulation: workspace.simulation,
+      oldMain: localStorage.getItem('isf-main-v2'),
+      oldSimulation: localStorage.getItem('isf-simulation-compound-v1'),
+    };
+  })).toEqual({
+    mainSaving: 900_000,
+    simulation: { draft: null },
+    oldMain: oldMainRaw,
+    oldSimulation: oldSimulationRaw,
+  });
 });
 
 for (const viewport of [

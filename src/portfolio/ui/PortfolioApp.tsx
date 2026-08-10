@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AppShell } from '../../components/common/AppShell';
 import { Button } from '../../components/common/Button';
 import { Surface } from '../../components/common/Surface';
@@ -51,59 +51,119 @@ export function PortfolioApp({
   const [state, setState] = useState<PortfolioState | null>(
     initial.kind === 'ready' ? createPortfolioState(initial) : null,
   );
+  const stateRef = useRef(state);
+  const persistenceQueue = useRef<Promise<void>>(Promise.resolve());
+  const latestOperation = useRef(0);
 
   useEffect(() => {
     if (initial.kind !== 'ready') return;
-    const draftFailed = initial.shouldPersistDraft
-      && repository.saveDraft(initial.draft).status === 'unavailable';
-    const appliedFailed = !draftFailed
-      && initial.shouldPersistApplied
-      && initial.plan !== null
-      && repository.saveApplied(initial.plan).status === 'unavailable';
-    if (appliedFailed || draftFailed) {
-      setState((current) => current === null
-        ? current
-        : portfolioReducer(current, { type: 'save-failed' }));
-    }
+    if (!initial.shouldPersistDraft && !initial.shouldPersistApplied) return;
+    const token = beginOperation();
+    enqueuePersistence(async () => {
+      if (initial.shouldPersistDraft) {
+        const draftResult = await repository.saveDraft(initial.draft);
+        if (draftResult.status === 'unavailable') return 'failed' as const;
+      }
+      if (initial.shouldPersistApplied && initial.plan !== null) {
+        const appliedResult = await repository.saveApplied(initial.plan);
+        if (appliedResult.status === 'unavailable') return 'failed' as const;
+      }
+      return 'saved' as const;
+    }, (result) => {
+      if (token !== latestOperation.current) return;
+      dispatchState({ type: result === 'saved' ? 'save-succeeded' : 'save-failed' });
+    });
   }, [initial, repository]);
 
   function dispatchDraft(action: PortfolioAction): void {
-    setState((current) => {
-      if (current === null) return current;
-      const next = portfolioReducer(current, action);
-      if (next.draft !== current.draft && repository.saveDraft(next.draft).status === 'unavailable') {
-        return portfolioReducer(next, { type: 'save-failed' });
-      }
-      return next;
-    });
+    const current = stateRef.current;
+    if (current === null) return;
+    const next = portfolioReducer(current, action);
+    commitState(next);
+    if (next.draft === current.draft) return;
+    const token = beginOperation();
+    enqueuePersistence(
+      action.type === 'cancel-edit'
+        ? () => repository.clearDraft()
+        : () => repository.saveDraft(next.draft),
+      (result) => {
+        if (token !== latestOperation.current) return;
+        dispatchState(result?.status === 'saved'
+          ? { type: 'save-succeeded' }
+          : action.type === 'cancel-edit'
+            ? { type: 'draft-cleanup-failed' }
+            : { type: 'save-failed' });
+      },
+    );
   }
 
   function apply(): void {
-    setState((current) => {
-      if (current === null || !validateApplicableDraft(current.draft)) return current;
-      const saving = portfolioReducer(current, { type: 'apply-started' });
-      const plan = planFromDraft(current.draft, now());
-      if (repository.saveApplied(plan).status === 'unavailable') {
-        return portfolioReducer(saving, { type: 'save-failed' });
+    const current = stateRef.current;
+    if (current === null || !validateApplicableDraft(current.draft)) return;
+    commitState(portfolioReducer(current, { type: 'apply-started' }));
+    const plan = planFromDraft(current.draft, now());
+    const token = nextOperationToken();
+    enqueuePersistence(async () => {
+      const appliedResult = await repository.saveApplied(plan);
+      if (appliedResult.status === 'unavailable') return 'failed' as const;
+      const clearResult = await repository.clearDraft();
+      return clearResult.status === 'saved' ? 'saved' as const : 'cleanup-failed' as const;
+    }, (result) => {
+      if (token !== latestOperation.current) return;
+      if (result === 'failed' || result === null) {
+        dispatchState({ type: 'save-failed' });
+        return;
       }
-      const applied = portfolioReducer(saving, { type: 'apply-succeeded', plan });
-      return repository.clearDraft().status === 'unavailable'
-        ? portfolioReducer(applied, { type: 'draft-cleanup-failed' })
-        : applied;
+      dispatchState({ type: 'apply-succeeded', plan });
+      if (result === 'cleanup-failed') dispatchState({ type: 'draft-cleanup-failed' });
     });
   }
 
   function reset(): void {
-    setState((current) => {
-      if (current === null) return current;
-      const next = portfolioReducer(current, { type: 'reset-confirmed', now: now() });
-      if (next.applied === null || repository.saveApplied(next.applied).status === 'unavailable') {
-        return portfolioReducer(current, { type: 'save-failed' });
-      }
-      return repository.clearDraft().status === 'unavailable'
-        ? portfolioReducer(next, { type: 'draft-cleanup-failed' })
-        : next;
-    });
+    if (stateRef.current === null) return;
+    const token = beginOperation();
+    enqueuePersistence(
+      () => repository.clearScope({ type: 'aggregate' }),
+      (result) => {
+        if (token !== latestOperation.current) return;
+        if (result?.status !== 'saved') {
+          dispatchState({ type: 'save-failed' });
+          return;
+        }
+        dispatchState({ type: 'reset-confirmed', now: now() });
+      },
+    );
+  }
+
+  function commitState(next: PortfolioState | null): void {
+    stateRef.current = next;
+    setState(next);
+  }
+
+  function dispatchState(action: PortfolioAction): void {
+    const current = stateRef.current;
+    if (current === null) return;
+    commitState(portfolioReducer(current, action));
+  }
+
+  function nextOperationToken(): number {
+    latestOperation.current += 1;
+    return latestOperation.current;
+  }
+
+  function beginOperation(): number {
+    const token = nextOperationToken();
+    dispatchState({ type: 'save-started' });
+    return token;
+  }
+
+  function enqueuePersistence<T>(
+    operation: () => Promise<T>,
+    onSettled: (result: T | null) => void,
+  ): void {
+    const run = persistenceQueue.current.then(operation, operation);
+    persistenceQueue.current = run.then(() => undefined, () => undefined);
+    void run.then(onSettled, () => onSettled(null));
   }
 
   return (
@@ -130,7 +190,7 @@ export function PortfolioApp({
                     ? '저장하지 못했습니다. 다시 시도해 주세요.'
                     : state.saveState === 'cleanup-error'
                       ? '배분은 적용했지만 편집 초안을 정리하지 못했습니다.'
-                      : '저장됨'}
+                      : state.saveState === 'saving' ? '저장 중' : '저장됨'}
                 </span>
                 <Button type="button" variant="primary" onClick={() => dispatchDraft({ type: 'edit-opened' })}>배분 수정</Button>
               </div>

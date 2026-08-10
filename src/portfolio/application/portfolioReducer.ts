@@ -34,6 +34,8 @@ export type PortfolioAction =
   | { type: 'automatic-cash-enabled'; now: number }
   | { type: 'input-mode-changed'; mode: InputMode }
   | { type: 'cancel-edit' }
+  | { type: 'save-started' }
+  | { type: 'save-succeeded' }
   | { type: 'apply-started' }
   | { type: 'apply-succeeded'; plan: PortfolioPlan }
   | { type: 'save-failed' }
@@ -97,6 +99,10 @@ export function portfolioReducer(state: PortfolioState, action: PortfolioAction)
         fieldError: null,
       };
     }
+    case 'save-started':
+      return { ...state, saveState: 'saving' };
+    case 'save-succeeded':
+      return { ...state, saveState: 'saved' };
     case 'apply-started':
       return { ...state, saveState: 'saving', fieldError: null };
     case 'apply-succeeded':
@@ -115,12 +121,11 @@ export function portfolioReducer(state: PortfolioState, action: PortfolioAction)
       return { ...state, saveState: 'cleanup-error' };
     case 'reset-confirmed': {
       const draft = createCashOnlyDraft(state.draft.syncedInvestmentWon, action.now);
-      const plan = planFromDraft(draft, action.now);
       return {
         ...state,
-        view: 'result',
-        applied: plan,
-        draft: draftFromPlan(plan),
+        view: 'edit',
+        applied: null,
+        draft,
         dirty: false,
         saveState: 'saved',
         fieldError: null,

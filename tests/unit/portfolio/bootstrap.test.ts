@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bootstrapPortfolio } from '../../../src/portfolio/application/bootstrap';
+import { bootstrapPortfolio, draftFromPlan } from '../../../src/portfolio/application/bootstrap';
 import type { PortfolioPlan } from '../../../src/portfolio/domain/model';
 import type { PortfolioStorageLoadResult } from '../../../src/portfolio/infrastructure/portfolioRepository';
 
@@ -158,6 +158,32 @@ describe('bootstrapPortfolio', () => {
       shouldPersistDraft: true,
       plan: { updatedAt: 4 },
       draft: { updatedAt: 5, items: alreadySyncedDraft.items },
+    });
+  });
+
+  it('keeps the current UI aggregate-only when storage exposes location-scoped values', () => {
+    const locationPlan = {
+      ...plan,
+      scope: { type: 'location' as const, locationId: 'loc-isa' },
+    };
+    const locationDraft = {
+      ...draftFromPlan(locationPlan),
+      updatedAt: 2,
+    };
+
+    const result = bootstrapPortfolio(
+      { status: 'found', source: { monthlyInvestmentWon: 200_000, mainUpdatedAt: 3 } },
+      {
+        applied: { status: 'found', plan: locationPlan },
+        draft: { status: 'found', draft: locationDraft },
+      },
+      4,
+    );
+
+    expect(result).toMatchObject({
+      kind: 'ready',
+      plan: null,
+      draft: { scope: { type: 'aggregate' } },
     });
   });
 });

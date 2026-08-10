@@ -1,8 +1,15 @@
-import type { PortfolioDraft, PortfolioPlan } from '../domain/model';
+import {
+  BrowserWorkspaceRepository,
+  type WorkspaceLoadResult,
+  type WorkspaceRepository,
+} from '../../workspace/infrastructure/workspaceRepository';
+import {
+  scopeKey,
+  type PortfolioDraft,
+  type PortfolioPlan,
+  type PortfolioScope,
+} from '../domain/model';
 import { parsePortfolioDraft, parsePortfolioPlan } from '../domain/validation';
-
-export const PORTFOLIO_APPLIED_KEY = 'isf-portfolio-allocation-v1';
-export const PORTFOLIO_DRAFT_KEY = 'isf-portfolio-allocation-draft-v1';
 
 export type PortfolioAppliedLoadResult =
   | { status: 'found'; plan: PortfolioPlan }
@@ -18,95 +25,195 @@ export type PortfolioWriteResult = { status: 'saved' } | { status: 'unavailable'
 
 export interface PortfolioRepository {
   load(): PortfolioStorageLoadResult;
-  saveApplied(plan: PortfolioPlan): PortfolioWriteResult;
-  saveDraft(draft: PortfolioDraft): PortfolioWriteResult;
-  clearDraft(): PortfolioWriteResult;
-  clearAll(): PortfolioWriteResult;
+  saveApplied(plan: PortfolioPlan): Promise<PortfolioWriteResult>;
+  saveDraft(draft: PortfolioDraft): Promise<PortfolioWriteResult>;
+  clearDraft(): Promise<PortfolioWriteResult>;
+  clearScope(scope: PortfolioScope): Promise<PortfolioWriteResult>;
 }
 
 export class BrowserPortfolioRepository implements PortfolioRepository {
-  constructor(private readonly getStorage: () => Storage = () => window.localStorage) {}
+  private planBases: Map<string, PortfolioPlan> | typeof untrackedBase = untrackedBase;
+  private draftBase: PortfolioDraft | null | typeof untrackedBase = untrackedBase;
+
+  constructor(
+    private readonly workspaceRepository: WorkspaceRepository = new BrowserWorkspaceRepository(),
+  ) {}
 
   load(): PortfolioStorageLoadResult {
-    let storage: Storage;
-    try {
-      storage = this.getStorage();
-    } catch {
-      return { applied: { status: 'unavailable' }, draft: { status: 'unavailable' } };
+    const loaded = this.workspaceRepository.load();
+    if (loaded.status === 'invalid' || loaded.status === 'unavailable') {
+      this.planBases = untrackedBase;
+      this.draftBase = untrackedBase;
+      return {
+        applied: { status: loaded.status },
+        draft: { status: loaded.status },
+      };
     }
+
+    this.planBases = new Map(loaded.workspace.portfolio.plans.map((plan) => [
+      scopeKey(plan.scope),
+      structuredClone(plan),
+    ]));
+    this.draftBase = cloneDraft(loaded.workspace.portfolio.draft);
+    const aggregatePlan = loaded.workspace.portfolio.plans.find(isAggregate);
+    const aggregateDraft = loaded.workspace.portfolio.draft?.scope.type === 'aggregate'
+      ? loaded.workspace.portfolio.draft
+      : null;
     return {
-      applied: loadValue(storage, PORTFOLIO_APPLIED_KEY, parseOldKeyPortfolioPlan, 'plan'),
-      draft: loadValue(storage, PORTFOLIO_DRAFT_KEY, parseOldKeyPortfolioDraft, 'draft'),
+      applied: aggregatePlan === undefined
+        ? { status: 'empty' }
+        : { status: 'found', plan: structuredClone(aggregatePlan) },
+      draft: aggregateDraft === null
+        ? { status: 'empty' }
+        : { status: 'found', draft: structuredClone(aggregateDraft) },
     };
   }
 
-  saveApplied(plan: PortfolioPlan): PortfolioWriteResult {
-    return this.write(() => this.getStorage().setItem(PORTFOLIO_APPLIED_KEY, JSON.stringify(plan)));
-  }
-
-  saveDraft(draft: PortfolioDraft): PortfolioWriteResult {
-    return this.write(() => this.getStorage().setItem(PORTFOLIO_DRAFT_KEY, JSON.stringify(draft)));
-  }
-
-  clearDraft(): PortfolioWriteResult {
-    return this.write(() => this.getStorage().removeItem(PORTFOLIO_DRAFT_KEY));
-  }
-
-  clearAll(): PortfolioWriteResult {
-    return this.write(() => {
-      const storage = this.getStorage();
-      storage.removeItem(PORTFOLIO_APPLIED_KEY);
-      storage.removeItem(PORTFOLIO_DRAFT_KEY);
-    });
-  }
-
-  private write(action: () => void): PortfolioWriteResult {
-    try {
-      action();
-      return { status: 'saved' };
-    } catch {
-      return { status: 'unavailable' };
+  async saveApplied(plan: PortfolioPlan): Promise<PortfolioWriteResult> {
+    const parsed = parsePortfolioPlan(plan);
+    if (parsed === null || this.planBases === untrackedBase) return unavailable();
+    const key = scopeKey(parsed.scope);
+    const loaded = loadWritableWorkspace(this.workspaceRepository);
+    if (loaded === null
+      || !samePlan(findPlan(loaded.workspace.portfolio.plans, key), this.planBases.get(key) ?? null)) {
+      return unavailable();
     }
+    const result = await this.workspaceRepository.update(
+      loaded.workspace.revision,
+      (current) => ({
+        ...current,
+        portfolio: {
+          ...current.portfolio,
+          plans: upsertPlan(current.portfolio.plans, parsed),
+        },
+      }),
+    );
+    if (result.status !== 'saved') return unavailable();
+    const saved = findPlan(result.workspace.portfolio.plans, key);
+    if (saved === null) return unavailable();
+    this.planBases.set(key, structuredClone(saved));
+    return { status: 'saved' };
+  }
+
+  async saveDraft(draft: PortfolioDraft): Promise<PortfolioWriteResult> {
+    const parsed = parsePortfolioDraft(draft);
+    if (parsed === null || this.draftBase === untrackedBase) return unavailable();
+    if (this.draftBase !== null && scopeKey(this.draftBase.scope) !== scopeKey(parsed.scope)) {
+      return unavailable();
+    }
+    const loaded = loadWritableWorkspace(this.workspaceRepository);
+    if (loaded === null || !sameDraft(loaded.workspace.portfolio.draft, this.draftBase)) {
+      return unavailable();
+    }
+    const result = await this.workspaceRepository.update(
+      loaded.workspace.revision,
+      (current) => ({
+        ...current,
+        portfolio: { ...current.portfolio, draft: structuredClone(parsed) },
+      }),
+    );
+    if (result.status !== 'saved') return unavailable();
+    this.draftBase = cloneDraft(result.workspace.portfolio.draft);
+    return { status: 'saved' };
+  }
+
+  async clearDraft(): Promise<PortfolioWriteResult> {
+    if (this.draftBase === untrackedBase) return unavailable();
+    const loaded = loadWritableWorkspace(this.workspaceRepository);
+    if (loaded === null || !sameDraft(loaded.workspace.portfolio.draft, this.draftBase)) {
+      return unavailable();
+    }
+    if (this.draftBase === null || this.draftBase.scope.type !== 'aggregate') {
+      return { status: 'saved' };
+    }
+    const result = await this.workspaceRepository.update(
+      loaded.workspace.revision,
+      (current) => ({
+        ...current,
+        portfolio: { ...current.portfolio, draft: null },
+      }),
+    );
+    if (result.status !== 'saved') return unavailable();
+    this.draftBase = null;
+    return { status: 'saved' };
+  }
+
+  async clearScope(scope: PortfolioScope): Promise<PortfolioWriteResult> {
+    if (this.planBases === untrackedBase || this.draftBase === untrackedBase) return unavailable();
+    const key = scopeKey(scope);
+    const loaded = loadWritableWorkspace(this.workspaceRepository);
+    if (loaded === null
+      || !samePlan(findPlan(loaded.workspace.portfolio.plans, key), this.planBases.get(key) ?? null)
+      || !sameDraft(
+        draftForScope(loaded.workspace.portfolio.draft, key),
+        draftForScope(this.draftBase, key),
+      )) {
+      return unavailable();
+    }
+    const hasPlan = findPlan(loaded.workspace.portfolio.plans, key) !== null;
+    const hasDraft = draftForScope(loaded.workspace.portfolio.draft, key) !== null;
+    if (!hasPlan && !hasDraft) return { status: 'saved' };
+    const result = await this.workspaceRepository.update(
+      loaded.workspace.revision,
+      (current) => ({
+        ...current,
+        portfolio: {
+          plans: current.portfolio.plans.filter((plan) => scopeKey(plan.scope) !== key),
+          draft: draftForScope(current.portfolio.draft, key) === null
+            ? current.portfolio.draft
+            : null,
+        },
+      }),
+    );
+    if (result.status !== 'saved') return unavailable();
+    this.planBases.delete(key);
+    if (draftForScope(this.draftBase, key) !== null) this.draftBase = null;
+    return { status: 'saved' };
   }
 }
 
-function parseOldKeyPortfolioPlan(value: unknown): PortfolioPlan | null {
-  const current = parsePortfolioPlan(value);
-  if (current !== null) return current;
-  if (!isSchemaV1WithoutScope(value)) return null;
-  return parsePortfolioPlan({ ...value, schemaVersion: 2, scope: { type: 'aggregate' } });
+const untrackedBase = Symbol('untracked Portfolio workspace slice');
+
+function loadWritableWorkspace(repository: WorkspaceRepository): Extract<WorkspaceLoadResult, {
+  status: 'found' | 'empty';
+}> | null {
+  const loaded = repository.load();
+  return loaded.status === 'found' || loaded.status === 'empty' ? loaded : null;
 }
 
-function parseOldKeyPortfolioDraft(value: unknown): PortfolioDraft | null {
-  const current = parsePortfolioDraft(value);
-  if (current !== null) return current;
-  if (!isSchemaV1WithoutScope(value)) return null;
-  return parsePortfolioDraft({ ...value, schemaVersion: 2, scope: { type: 'aggregate' } });
+function upsertPlan(plans: PortfolioPlan[], plan: PortfolioPlan): PortfolioPlan[] {
+  const key = scopeKey(plan.scope);
+  const index = plans.findIndex((candidate) => scopeKey(candidate.scope) === key);
+  if (index < 0) return [...plans, structuredClone(plan)];
+  return plans.map((candidate, candidateIndex) => (
+    candidateIndex === index ? structuredClone(plan) : candidate
+  ));
 }
 
-function isSchemaV1WithoutScope(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object'
-    && value !== null
-    && !Array.isArray(value)
-    && 'schemaVersion' in value
-    && value.schemaVersion === 1
-    && !Object.prototype.hasOwnProperty.call(value, 'scope');
+function findPlan(plans: PortfolioPlan[], key: string): PortfolioPlan | null {
+  return plans.find((plan) => scopeKey(plan.scope) === key) ?? null;
 }
 
-function loadValue<T, K extends 'plan' | 'draft'>(
-  storage: Storage,
-  key: string,
-  parser: (value: unknown) => T | null,
-  resultKey: K,
-): ({ status: 'found' } & Record<K, T>) | { status: 'empty' | 'invalid' | 'unavailable' } {
-  try {
-    const raw = storage.getItem(key);
-    if (raw === null) return { status: 'empty' };
-    const parsed = parser(JSON.parse(raw));
-    return parsed === null
-      ? { status: 'invalid' }
-      : { status: 'found', [resultKey]: parsed } as { status: 'found' } & Record<K, T>;
-  } catch (error) {
-    return error instanceof SyntaxError ? { status: 'invalid' } : { status: 'unavailable' };
-  }
+function draftForScope(draft: PortfolioDraft | null, key: string): PortfolioDraft | null {
+  return draft !== null && scopeKey(draft.scope) === key ? draft : null;
+}
+
+function isAggregate(plan: PortfolioPlan): boolean {
+  return plan.scope.type === 'aggregate';
+}
+
+function cloneDraft(draft: PortfolioDraft | null): PortfolioDraft | null {
+  return draft === null ? null : structuredClone(draft);
+}
+
+function samePlan(left: PortfolioPlan | null, right: PortfolioPlan | null): boolean {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
+function sameDraft(left: PortfolioDraft | null, right: PortfolioDraft | null): boolean {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
+function unavailable(): PortfolioWriteResult {
+  return { status: 'unavailable' };
 }

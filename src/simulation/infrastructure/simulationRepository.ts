@@ -1,7 +1,10 @@
+import {
+  BrowserWorkspaceRepository,
+  type WorkspaceLoadResult,
+  type WorkspaceRepository,
+} from '../../workspace/infrastructure/workspaceRepository';
 import type { CompoundSimulationDraft, SimulationDraftMigration } from '../domain/model';
-import { parseStoredSimulationDraft } from '../domain/validation';
-
-export const SIMULATION_STORAGE_KEY = 'isf-simulation-compound-v1';
+import { parseSimulationDraft } from '../domain/validation';
 
 export type SimulationLoadResult =
   | {
@@ -18,43 +21,85 @@ export type SimulationClearResult = { status: 'cleared' } | { status: 'unavailab
 
 export interface SimulationRepository {
   load(): SimulationLoadResult;
-  save(draft: CompoundSimulationDraft): SimulationSaveResult;
-  clear(): SimulationClearResult;
+  save(draft: CompoundSimulationDraft): Promise<SimulationSaveResult>;
+  clear(): Promise<SimulationClearResult>;
 }
 
 export class BrowserSimulationRepository implements SimulationRepository {
+  private draftBase: CompoundSimulationDraft | null | typeof untrackedBase = untrackedBase;
+
   constructor(
-    private readonly getStorage: () => Storage = () => window.localStorage,
+    private readonly workspaceRepository: WorkspaceRepository = new BrowserWorkspaceRepository(),
   ) {}
 
   load(): SimulationLoadResult {
-    try {
-      const raw = this.getStorage().getItem(SIMULATION_STORAGE_KEY);
-      if (raw === null) return { status: 'empty' };
-      const parsed = parseStoredSimulationDraft(JSON.parse(raw));
-      return parsed === null ? { status: 'invalid' } : { status: 'found', ...parsed };
-    } catch (error) {
-      return error instanceof SyntaxError
-        ? { status: 'invalid' }
-        : { status: 'unavailable' };
+    const loaded = this.workspaceRepository.load();
+    if (loaded.status === 'invalid' || loaded.status === 'unavailable') {
+      this.draftBase = untrackedBase;
+      return { status: loaded.status };
     }
+    const draft = loaded.workspace.simulation.draft;
+    this.draftBase = cloneDraft(draft);
+    return draft === null
+      ? { status: 'empty' }
+      : { status: 'found', draft: structuredClone(draft), migration: null };
   }
 
-  save(draft: CompoundSimulationDraft): SimulationSaveResult {
-    try {
-      this.getStorage().setItem(SIMULATION_STORAGE_KEY, JSON.stringify(draft));
-      return { status: 'saved' };
-    } catch {
+  async save(draft: CompoundSimulationDraft): Promise<SimulationSaveResult> {
+    const parsed = parseSimulationDraft(draft);
+    if (parsed === null || this.draftBase === untrackedBase) return { status: 'unavailable' };
+    const loaded = loadWritableWorkspace(this.workspaceRepository);
+    if (loaded === null || !sameDraft(loaded.workspace.simulation.draft, this.draftBase)) {
       return { status: 'unavailable' };
     }
+    const result = await this.workspaceRepository.update(
+      loaded.workspace.revision,
+      (current) => ({
+        ...current,
+        simulation: { draft: structuredClone(parsed) },
+      }),
+    );
+    if (result.status !== 'saved') return { status: 'unavailable' };
+    this.draftBase = cloneDraft(result.workspace.simulation.draft);
+    return { status: 'saved' };
   }
 
-  clear(): SimulationClearResult {
-    try {
-      this.getStorage().removeItem(SIMULATION_STORAGE_KEY);
+  async clear(): Promise<SimulationClearResult> {
+    if (this.draftBase === untrackedBase) return { status: 'unavailable' };
+    const loaded = loadWritableWorkspace(this.workspaceRepository);
+    if (loaded === null || !sameDraft(loaded.workspace.simulation.draft, this.draftBase)) {
+      return { status: 'unavailable' };
+    }
+    if (loaded.workspace.simulation.draft === null) {
+      this.draftBase = null;
       return { status: 'cleared' };
-    } catch {
-      return { status: 'unavailable' };
     }
+    const result = await this.workspaceRepository.update(
+      loaded.workspace.revision,
+      (current) => ({ ...current, simulation: { draft: null } }),
+    );
+    if (result.status !== 'saved') return { status: 'unavailable' };
+    this.draftBase = null;
+    return { status: 'cleared' };
   }
+}
+
+const untrackedBase = Symbol('untracked Simulation workspace slice');
+
+function loadWritableWorkspace(repository: WorkspaceRepository): Extract<WorkspaceLoadResult, {
+  status: 'found' | 'empty';
+}> | null {
+  const loaded = repository.load();
+  return loaded.status === 'found' || loaded.status === 'empty' ? loaded : null;
+}
+
+function cloneDraft(draft: CompoundSimulationDraft | null): CompoundSimulationDraft | null {
+  return draft === null ? null : structuredClone(draft);
+}
+
+function sameDraft(
+  left: CompoundSimulationDraft | null,
+  right: CompoundSimulationDraft | null,
+): boolean {
+  return JSON.stringify(left) === JSON.stringify(right);
 }
