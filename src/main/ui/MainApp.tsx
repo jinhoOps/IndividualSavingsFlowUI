@@ -31,6 +31,7 @@ export function MainApp({
   const [validationAttempt, setValidationAttempt] = useState(0);
   const [backupStatus, setBackupStatus] = useState<{ kind: 'success' | 'error'; message: string } | null>(null);
   const [progressWarning, setProgressWarning] = useState<string | null>(null);
+  const progressWriteTailRef = useRef<Promise<void>>(Promise.resolve());
   const savingRef = useRef(false);
   const [initialEditPath] = useState<keyof MainData | undefined>(() => consumeEditIntent());
 
@@ -51,7 +52,7 @@ export function MainApp({
   function changeDraft(draft: MainData) {
     if (savingRef.current) return;
     if (state?.mode === 'setup' && state.setupStep !== null) {
-      persistSetupProgress(state.setupStep, draft, state.applied === null ? 'initial' : 'restart');
+      void persistSetupProgress(state.setupStep, draft, state.applied === null ? 'initial' : 'restart');
     }
     setIssues([]);
     dispatch({ type: 'replace-draft', draft });
@@ -60,7 +61,7 @@ export function MainApp({
   function changeSetupStep(step: SetupStep) {
     if (savingRef.current) return;
     if (state !== null) {
-      persistSetupProgress(step, state.draft, state.applied === null ? 'initial' : 'restart');
+      void persistSetupProgress(step, state.draft, state.applied === null ? 'initial' : 'restart');
     }
     setIssues([]);
     dispatch({ type: 'set-setup-step', step });
@@ -72,9 +73,10 @@ export function MainApp({
     savingRef.current = true;
     dispatch({ type: 'save-started' });
     try {
+      await progressWriteTailRef.current;
       const result = await applyDraft(state, repository);
       if (result.ok) {
-        clearSetupProgress();
+        await clearSetupProgress();
         setIssues([]);
         setBackupStatus(null);
         dispatch({ type: 'save-succeeded', data: result.data });
@@ -104,7 +106,7 @@ export function MainApp({
   function cancelDraft() {
     if (savingRef.current) return;
     repository.discardPending();
-    clearSetupProgress();
+    void clearSetupProgress();
     setIssues([]);
     setBackupStatus(null);
     dispatch({ type: 'cancel-draft' });
@@ -112,7 +114,7 @@ export function MainApp({
 
   function restartSetup() {
     if (state === null || state.applied === null || savingRef.current) return;
-    persistSetupProgress('welcome', state.applied, 'restart');
+    void persistSetupProgress('welcome', state.applied, 'restart');
     setIssues([]);
     dispatch({ type: 'restart-setup' });
   }
@@ -132,7 +134,7 @@ export function MainApp({
     }
     if (state?.mode === 'recovery') repository.discardRecovery(state.draft.updatedAt);
     repository.discardPending(state?.mode === 'recovery' ? state.draft.updatedAt : undefined);
-    clearSetupProgress();
+    void clearSetupProgress();
     setIssues([]);
     setState({
       mode: 'setup',
@@ -149,7 +151,7 @@ export function MainApp({
     if (state === null || state.mode !== 'recovery' || savingRef.current) return;
     repository.discardRecovery(state.draft.updatedAt);
     repository.discardPending(state.draft.updatedAt);
-    clearSetupProgress();
+    void clearSetupProgress();
     setIssues([]);
     setState({
       mode: 'setup',
@@ -166,7 +168,7 @@ export function MainApp({
     if (state === null || state.mode !== 'recovery' || state.applied === null || savingRef.current) return;
     repository.discardRecovery(state.draft.updatedAt);
     repository.discardPending(state.draft.updatedAt);
-    clearSetupProgress();
+    void clearSetupProgress();
     setIssues([]);
     dispatch({ type: 'cancel-draft' });
   }
@@ -175,22 +177,31 @@ export function MainApp({
     step: SetupStep,
     draft: MainData,
     kind: 'initial' | 'restart',
-  ) {
-    try {
-      repository.saveSetupProgress(step, draft, kind);
-      setProgressWarning(null);
-    } catch {
-      setProgressWarning('설정 진행 상황을 저장하지 못했습니다. 이 화면에서는 계속 입력할 수 있습니다.');
-    }
+  ): Promise<void> {
+    return queueProgressWrite(
+      () => repository.saveSetupProgress(step, draft, kind),
+      '설정 진행 상황을 저장하지 못했습니다. 이 화면에서는 계속 입력할 수 있습니다.',
+    );
   }
 
-  function clearSetupProgress() {
-    try {
-      repository.clearSetupProgress();
-      setProgressWarning(null);
-    } catch {
-      setProgressWarning('설정 진행 상황을 정리하지 못했습니다. 저장된 계획에는 영향이 없습니다.');
-    }
+  function clearSetupProgress(): Promise<void> {
+    return queueProgressWrite(
+      () => repository.clearSetupProgress(),
+      '설정 진행 상황을 정리하지 못했습니다. 저장된 계획에는 영향이 없습니다.',
+    );
+  }
+
+  function queueProgressWrite(
+    operation: () => Promise<void>,
+    failureMessage: string,
+  ): Promise<void> {
+    const attempted = progressWriteTailRef.current.then(operation);
+    const handled = attempted.then(
+      () => setProgressWarning(null),
+      () => setProgressWarning(failureMessage),
+    );
+    progressWriteTailRef.current = handled;
+    return handled;
   }
 
   async function importBackup(file: File) {
@@ -246,7 +257,7 @@ export function MainApp({
       <AppShell currentApp="main" managementMenu={managementMenu}>
         <RecoveryView
           state={state}
-          onDownload={() => downloadRecovery(original)}
+          onDownload={() => downloadRecovery(original, state.loadError?.raw)}
           onStartEmpty={startEmptySetup}
           onRetry={apply}
           onDiscard={discardRecoveryCandidate}
@@ -430,8 +441,8 @@ export function setupStepForIssue(path: string | undefined): SetupStep | null {
   return null;
 }
 
-function downloadRecovery(original: unknown) {
-  downloadJson(exportRecoveryData(original), 'individual-savings-flow-recovery.json');
+function downloadRecovery(original: unknown, raw?: string) {
+  downloadJson(raw ?? exportRecoveryData(original), 'individual-savings-flow-recovery.json');
 }
 
 function downloadJson(contents: string, filename: string) {

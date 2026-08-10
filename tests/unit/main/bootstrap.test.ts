@@ -32,9 +32,9 @@ function repository(
       saveCalls.push(data);
       return persistedData ?? data;
     },
-    saveSetupProgress: () => undefined,
+    saveSetupProgress: async () => undefined,
     loadSetupProgress: () => progress,
-    clearSetupProgress: () => undefined,
+    clearSetupProgress: async () => undefined,
     discardPending: () => undefined,
     discardRecovery: () => undefined,
     acknowledgeFailedCurrent: () => undefined,

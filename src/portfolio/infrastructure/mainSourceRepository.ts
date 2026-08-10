@@ -1,6 +1,11 @@
-import { isMainDataShape } from '../../main/domain/validation';
+import { isMainDataShape, validateMainData } from '../../main/domain/validation';
+import { WORKSPACE_STORAGE_KEY } from '../../workspace/domain/model';
+import {
+  BrowserWorkspaceRepository,
+  type WorkspaceRepository,
+} from '../../workspace/infrastructure/workspaceRepository';
 
-export const MAIN_STORAGE_KEY = 'isf-main-v2';
+export const MAIN_STORAGE_KEY = WORKSPACE_STORAGE_KEY;
 
 export interface PortfolioMainSource {
   monthlyInvestmentWon: number;
@@ -18,23 +23,26 @@ export interface PortfolioMainSourceRepository {
 }
 
 export class BrowserPortfolioMainSourceRepository implements PortfolioMainSourceRepository {
-  constructor(private readonly getStorage: () => Storage = () => window.localStorage) {}
+  constructor(
+    private readonly workspaceRepository: Pick<WorkspaceRepository, 'load'> = new BrowserWorkspaceRepository(),
+  ) {}
 
   load(): PortfolioMainSourceLoadResult {
-    try {
-      const raw = this.getStorage().getItem(MAIN_STORAGE_KEY);
-      if (raw === null) return { status: 'empty' };
-      const value: unknown = JSON.parse(raw);
-      if (!isMainDataShape(value)) return { status: 'invalid' };
-      return {
-        status: 'found',
-        source: {
-          monthlyInvestmentWon: value.monthlyInvestmentWon,
-          mainUpdatedAt: value.updatedAt,
-        },
-      };
-    } catch (error) {
-      return error instanceof SyntaxError ? { status: 'invalid' } : { status: 'unavailable' };
+    const loaded = this.workspaceRepository.load();
+    if (loaded.status === 'invalid' || loaded.status === 'unavailable') {
+      return { status: loaded.status };
     }
+    const applied = loaded.workspace.main.applied;
+    if (applied === null) return { status: 'empty' };
+    if (!isMainDataShape(applied) || !validateMainData(applied).valid) {
+      return { status: 'invalid' };
+    }
+    return {
+      status: 'found',
+      source: {
+        monthlyInvestmentWon: applied.monthlyInvestmentWon,
+        mainUpdatedAt: applied.updatedAt,
+      },
+    };
   }
 }

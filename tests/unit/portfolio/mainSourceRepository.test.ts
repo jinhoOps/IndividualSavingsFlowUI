@@ -1,12 +1,13 @@
-import { beforeEach, describe, expect, it } from 'vitest';
-import { isMainDataShape } from '../../../src/main/domain/validation';
+import { describe, expect, it, vi } from 'vitest';
 import {
   BrowserPortfolioMainSourceRepository,
-  type PortfolioMainSourceRepository,
 } from '../../../src/portfolio/infrastructure/mainSourceRepository';
+import type { MainData } from '../../../src/main/domain/model';
+import { createEmptyWorkspace, WORKSPACE_STORAGE_KEY, type WorkspaceDocument } from '../../../src/workspace/domain/model';
+import { BrowserWorkspaceRepository } from '../../../src/workspace/infrastructure/workspaceRepository';
 import { MemoryStorage } from '../simulation/MemoryStorage';
 
-const validMain = {
+const validMain: MainData = {
   schemaVersion: 2,
   updatedAt: 10,
   monthlyNetIncomeWon: 3_000_000,
@@ -17,40 +18,54 @@ const validMain = {
 };
 
 describe('BrowserPortfolioMainSourceRepository', () => {
-  let storage: MemoryStorage;
+  it('reads the applied Main slice and preserves the current result projection', () => {
+    const storage = new MemoryStorage();
+    const workspace = createEmptyWorkspace(100);
+    workspace.main.applied = validMain;
+    storage.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify(workspace));
 
-  beforeEach(() => { storage = new MemoryStorage(); });
-
-  it.each([
-    ['schema v1', { ...validMain, schemaVersion: 1 }, false],
-    ['negative amount', { ...validMain, monthlyInvestmentWon: -1 }, false],
-    ['extra key', { ...validMain, accountId: 'legacy-account' }, false],
-    ['valid v2', validMain, true],
-  ] as const)('matches the canonical Main shape for %s', (_label, candidate, expected) => {
-    expect(isMainDataShape(candidate)).toBe(expected);
-    storage.setItem('isf-main-v2', JSON.stringify(candidate));
-
-    expect(new BrowserPortfolioMainSourceRepository(() => storage).load()).toEqual(
-      expected
-        ? {
-          status: 'found',
-          source: { monthlyInvestmentWon: 250_000, mainUpdatedAt: 10 },
-        }
-        : { status: 'invalid' },
-    );
+    expect(new BrowserPortfolioMainSourceRepository(new BrowserWorkspaceRepository(storage)).load())
+      .toEqual({
+        status: 'found',
+        source: { monthlyInvestmentWon: 250_000, mainUpdatedAt: 10 },
+      });
   });
 
-  it('does not read legacy Main keys', () => {
+  it('does not consume old Main keys when the workspace or applied slice is missing', () => {
+    const storage = new MemoryStorage();
+    const oldRaw = JSON.stringify(validMain);
+    storage.setItem('isf-main-v2', oldRaw);
     storage.setItem('isf-rebuild-v1', JSON.stringify({ monthlyInvest: 999_000 }));
-    expect(new BrowserPortfolioMainSourceRepository(() => storage).load()).toEqual({ status: 'empty' });
+
+    const repository = new BrowserPortfolioMainSourceRepository(new BrowserWorkspaceRepository(storage));
+    expect(repository.load()).toEqual({ status: 'empty' });
+    expect(storage.getItem('isf-main-v2')).toBe(oldRaw);
+
+    storage.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify(createEmptyWorkspace(100)));
+    expect(repository.load()).toEqual({ status: 'empty' });
   });
 
-  it('distinguishes invalid and unavailable storage', () => {
-    storage.setItem('isf-main-v2', '{');
-    expect(new BrowserPortfolioMainSourceRepository(() => storage).load()).toEqual({ status: 'invalid' });
-    const repository: PortfolioMainSourceRepository = new BrowserPortfolioMainSourceRepository(() => {
-      throw new DOMException('blocked');
-    });
-    expect(repository.load()).toEqual({ status: 'unavailable' });
+  it('validates the applied value with the canonical Main parser at the reader boundary', () => {
+    const workspace = createEmptyWorkspace(100);
+    const malformed = {
+      ...workspace,
+      main: { ...workspace.main, applied: { ...validMain, monthlyInvestmentWon: -1 } },
+    } as unknown as WorkspaceDocument;
+
+    expect(new BrowserPortfolioMainSourceRepository({
+      load: () => ({ status: 'found', workspace: malformed }),
+    }).load()).toEqual({ status: 'invalid' });
+  });
+
+  it('preserves invalid and unavailable results without subscribing or writing', () => {
+    const invalidLoad = vi.fn(() => ({ status: 'invalid', raw: '{' } as const));
+    const unavailableLoad = vi.fn(() => ({ status: 'unavailable' } as const));
+
+    expect(new BrowserPortfolioMainSourceRepository({ load: invalidLoad }).load())
+      .toEqual({ status: 'invalid' });
+    expect(new BrowserPortfolioMainSourceRepository({ load: unavailableLoad }).load())
+      .toEqual({ status: 'unavailable' });
+    expect(invalidLoad).toHaveBeenCalledOnce();
+    expect(unavailableLoad).toHaveBeenCalledOnce();
   });
 });

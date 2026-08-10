@@ -10,12 +10,42 @@ const appliedMainV2 = {
   monthlyInvestmentWon: 200_000,
 };
 
-async function clearBrowserStorage(page: Page) {
-  await page.addInitScript(() => {
+const appliedWorkspaceV1 = {
+  schemaVersion: 1 as const,
+  revision: 1,
+  updatedAt: 1,
+  main: { applied: appliedMainV2, setupProgress: null },
+  simulation: { draft: null },
+  portfolio: { plans: [], draft: null },
+  locations: [],
+  accountMap: { applied: null, draft: null, instruments: [], flows: [] },
+};
+
+const seededOldMainRecords = {
+  'isf-main-v2': JSON.stringify({ ...appliedMainV2, monthlyNetIncomeWon: 9_900_000 }),
+  'isf-main-v2-pending': '{old-pending',
+  'isf-main-v2-setup-progress': JSON.stringify({
+    kind: 'initial',
+    step: 'review',
+    draft: { ...appliedMainV2, monthlyNetIncomeWon: 8_800_000 },
+    savedAt: 999,
+  }),
+  'isf-main-v2-dismissed-recovery': '999',
+  'isf-main-v2-quarantined-current': '{old-current-quarantine',
+  'isf-main-v2-quarantined-pending': '{old-pending-quarantine',
+  'isf-main-v2-history': '[{"updatedAt":999}]',
+  'isf-main-v1': '{old-v1',
+  'isf-rebuild-v1': '{old-rebuild',
+  'isf-step1-active': '{old-active',
+};
+
+async function clearBrowserStorage(page: Page, seededRecords: Record<string, string> = {}) {
+  await page.addInitScript((records) => {
     if (sessionStorage.getItem('isf-e2e-storage-cleared') !== null) return;
     localStorage.clear();
+    for (const [key, raw] of Object.entries(records)) localStorage.setItem(key, raw);
     sessionStorage.setItem('isf-e2e-storage-cleared', 'true');
-  });
+  }, seededRecords);
 }
 
 async function pressTab(page: Page, count: number) {
@@ -132,7 +162,7 @@ async function expectResponsiveDashboardFlow(page: Page, viewport: { width: numb
 }
 
 test('new user applies the v2 quick setup and refreshes into matching dashboard totals', async ({ page }) => {
-  await clearBrowserStorage(page);
+  await clearBrowserStorage(page, seededOldMainRecords);
   await page.goto('apps/main/');
 
   await expect(page).toHaveURL(/\/IndividualSavingsFlowUI\/apps\/main\/$/);
@@ -189,20 +219,36 @@ test('new user applies the v2 quick setup and refreshes into matching dashboard 
   });
 
   await expect.poll(() => page.evaluate(() => {
-    const raw = localStorage.getItem('isf-main-v2');
+    const raw = localStorage.getItem('isf-workspace-v1');
     if (raw === null) return null;
-    const { updatedAt: _updatedAt, ...stored } = JSON.parse(raw);
-    return stored;
+    const workspace = JSON.parse(raw);
+    const { updatedAt: _updatedAt, ...stored } = workspace.main.applied;
+    return {
+      applied: stored,
+      setupProgress: workspace.main.setupProgress,
+      simulation: workspace.simulation,
+      portfolio: workspace.portfolio,
+      locations: workspace.locations,
+      accountMap: workspace.accountMap,
+    };
   })).toEqual({
-    schemaVersion: 2,
-    monthlyNetIncomeWon: 3_200_000,
-    monthlyHousingWon: 800_000,
-    monthlyLivingWon: 1_000_000,
-    monthlySavingWon: 300_000,
-    monthlyInvestmentWon: 200_000,
+    applied: {
+      schemaVersion: 2,
+      monthlyNetIncomeWon: 3_200_000,
+      monthlyHousingWon: 800_000,
+      monthlyLivingWon: 1_000_000,
+      monthlySavingWon: 300_000,
+      monthlyInvestmentWon: 200_000,
+    },
+    setupProgress: null,
+    simulation: { draft: null },
+    portfolio: { plans: [], draft: null },
+    locations: [],
+    accountMap: { applied: null, draft: null, instruments: [], flows: [] },
   });
-  await expect.poll(() => page.evaluate(() => localStorage.getItem('isf-main-v2-setup-progress'))).toBeNull();
-  await expect.poll(() => page.evaluate(() => localStorage.getItem('isf-main-v1'))).toBeNull();
+  await expect.poll(() => page.evaluate((keys) => Object.fromEntries(
+    keys.map((key) => [key, localStorage.getItem(key)]),
+  ), Object.keys(seededOldMainRecords))).toEqual(seededOldMainRecords);
 
   await page.reload();
 
@@ -217,15 +263,21 @@ test('new user applies the v2 quick setup and refreshes into matching dashboard 
 });
 
 test('review transition stays contained and respects reduced motion', async ({ page }) => {
-  await page.addInitScript((draft) => {
+  await page.addInitScript((fixture) => {
     localStorage.clear();
-    localStorage.setItem('isf-main-v2-setup-progress', JSON.stringify({
-      kind: 'initial',
-      step: 'review',
-      draft,
-      savedAt: Date.now(),
+    localStorage.setItem('isf-workspace-v1', JSON.stringify({
+      ...fixture,
+      main: {
+        applied: null,
+        setupProgress: {
+          kind: 'initial',
+          step: 'review',
+          draft: fixture.main.applied,
+          savedAt: Date.now(),
+        },
+      },
     }));
-  }, appliedMainV2);
+  }, appliedWorkspaceV1);
 
   for (const viewport of [
     { width: 390, height: 844 },
@@ -307,8 +359,8 @@ test('review transition stays contained and respects reduced motion', async ({ p
 test('live dashboard keeps the donut, cards, Simulation, details, and editor contained at required viewports', async ({ page }) => {
   await page.addInitScript((fixture) => {
     localStorage.clear();
-    localStorage.setItem('isf-main-v2', JSON.stringify(fixture));
-  }, appliedMainV2);
+    localStorage.setItem('isf-workspace-v1', JSON.stringify(fixture));
+  }, appliedWorkspaceV1);
 
   for (const viewport of [
     { width: 390, height: 844 },
@@ -328,8 +380,8 @@ test.describe('mobile cashflow donut', () => {
   test('keeps a compact legend and reveals touched ring details', async ({ page }) => {
     await page.addInitScript((fixture) => {
       localStorage.clear();
-      localStorage.setItem('isf-main-v2', JSON.stringify(fixture));
-    }, appliedMainV2);
+      localStorage.setItem('isf-workspace-v1', JSON.stringify(fixture));
+    }, appliedWorkspaceV1);
     await page.goto('apps/main/');
 
     const donut = page.getByRole('region', { name: '월 수입 배분' });
@@ -428,8 +480,8 @@ test.describe('mobile cashflow donut', () => {
 test('live dashboard removes donut circle transitions when reduced motion is requested', async ({ page }) => {
   await page.addInitScript((fixture) => {
     localStorage.clear();
-    localStorage.setItem('isf-main-v2', JSON.stringify(fixture));
-  }, appliedMainV2);
+    localStorage.setItem('isf-workspace-v1', JSON.stringify(fixture));
+  }, appliedWorkspaceV1);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('apps/main/');
   await page.emulateMedia({ reducedMotion: 'reduce' });
@@ -602,8 +654,8 @@ test.describe('mobile quick setup', () => {
 
 test('backup import has a matching accessible name and visible keyboard focus ring', async ({ page }) => {
   await page.addInitScript((fixture) => {
-    localStorage.setItem('isf-main-v2', JSON.stringify(fixture));
-  }, appliedMainV2);
+    localStorage.setItem('isf-workspace-v1', JSON.stringify(fixture));
+  }, appliedWorkspaceV1);
   await page.goto('apps/main/');
 
   const trigger = page.getByRole('button', { name: '관리 메뉴' });
@@ -662,8 +714,8 @@ test('interrupted setup reloads at housing with its v2 draft intact', async ({ p
   await page.getByLabel('월 주거 고정비').fill('800000');
 
   await expect.poll(() => page.evaluate(() => {
-    const raw = localStorage.getItem('isf-main-v2-setup-progress');
-    return raw === null ? null : JSON.parse(raw);
+    const raw = localStorage.getItem('isf-workspace-v1');
+    return raw === null ? null : JSON.parse(raw).main.setupProgress;
   })).toMatchObject({
     kind: 'initial',
     step: 'housing',
@@ -684,10 +736,10 @@ test('interrupted setup reloads at housing with its v2 draft intact', async ({ p
 
 test('dashboard edit persists only the v2 scalar plan', async ({ page }) => {
   await page.addInitScript((fixture) => {
-    if (localStorage.getItem('isf-main-v2') === null) {
-      localStorage.setItem('isf-main-v2', JSON.stringify(fixture));
+    if (localStorage.getItem('isf-workspace-v1') === null) {
+      localStorage.setItem('isf-workspace-v1', JSON.stringify(fixture));
     }
-  }, appliedMainV2);
+  }, appliedWorkspaceV1);
   await page.goto('apps/main/');
 
   await page.getByRole('button', { name: '월 소비 편집' }).click();
@@ -701,8 +753,8 @@ test('dashboard edit persists only the v2 scalar plan', async ({ page }) => {
 
   await expect(page.getByRole('button', { name: '월 소비 편집' })).toContainText('190만 원');
   await expect.poll(() => page.evaluate(() => {
-    const raw = localStorage.getItem('isf-main-v2');
-    return raw === null ? null : Object.keys(JSON.parse(raw)).sort();
+    const raw = localStorage.getItem('isf-workspace-v1');
+    return raw === null ? null : Object.keys(JSON.parse(raw).main.applied).sort();
   })).toEqual([
     'monthlyHousingWon',
     'monthlyInvestmentWon',
@@ -716,8 +768,8 @@ test('dashboard edit persists only the v2 scalar plan', async ({ page }) => {
 
 test('월 자금 계획 편집은 편집 중인 금액의 빠른 조정만 표시한다', async ({ page }) => {
   await page.addInitScript((fixture) => {
-    localStorage.setItem('isf-main-v2', JSON.stringify(fixture));
-  }, appliedMainV2);
+    localStorage.setItem('isf-workspace-v1', JSON.stringify(fixture));
+  }, appliedWorkspaceV1);
   await page.goto('apps/main/');
   await page.getByRole('button', { name: '월 소비 편집' }).click();
 

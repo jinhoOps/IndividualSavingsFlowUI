@@ -1,7 +1,12 @@
-import { isMainDataShape } from '../../main/infrastructure/mainRepository';
+import { isMainDataShape, validateMainData } from '../../main/domain/validation';
+import { WORKSPACE_STORAGE_KEY } from '../../workspace/domain/model';
+import {
+  BrowserWorkspaceRepository,
+  type WorkspaceRepository,
+} from '../../workspace/infrastructure/workspaceRepository';
 import type { SimulationMainSource } from '../domain/model';
 
-export const MAIN_STORAGE_KEY = 'isf-main-v2';
+export const MAIN_STORAGE_KEY = WORKSPACE_STORAGE_KEY;
 
 export type MainSourceLoadResult =
   | { status: 'found'; source: SimulationMainSource }
@@ -15,28 +20,26 @@ export interface MainSourceRepository {
 
 export class BrowserMainSourceRepository implements MainSourceRepository {
   constructor(
-    private readonly getStorage: () => Storage = () => window.localStorage,
+    private readonly workspaceRepository: Pick<WorkspaceRepository, 'load'> = new BrowserWorkspaceRepository(),
   ) {}
 
   load(): MainSourceLoadResult {
-    try {
-      const raw = this.getStorage().getItem(MAIN_STORAGE_KEY);
-      if (raw === null) return { status: 'empty' };
-      const value: unknown = JSON.parse(raw);
-      if (!isMainDataShape(value)) return { status: 'invalid' };
-
-      return {
-        status: 'found',
-        source: {
-          monthlySavingsWon: value.monthlySavingWon,
-          monthlyInvestmentWon: value.monthlyInvestmentWon,
-          mainUpdatedAt: value.updatedAt,
-        },
-      };
-    } catch (error) {
-      return error instanceof SyntaxError
-        ? { status: 'invalid' }
-        : { status: 'unavailable' };
+    const loaded = this.workspaceRepository.load();
+    if (loaded.status === 'invalid' || loaded.status === 'unavailable') {
+      return { status: loaded.status };
     }
+    const applied = loaded.workspace.main.applied;
+    if (applied === null) return { status: 'empty' };
+    if (!isMainDataShape(applied) || !validateMainData(applied).valid) {
+      return { status: 'invalid' };
+    }
+    return {
+      status: 'found',
+      source: {
+        monthlySavingsWon: applied.monthlySavingWon,
+        monthlyInvestmentWon: applied.monthlyInvestmentWon,
+        mainUpdatedAt: applied.updatedAt,
+      },
+    };
   }
 }

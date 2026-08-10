@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -112,13 +112,22 @@ function data(monthlyNetIncomeWon: number, overrides: Partial<MainData> = {}): M
   };
 }
 
+function readBlob(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsText(blob);
+  });
+}
+
 function repository(result: MainLoadResult): MainRepository {
   return {
     load: async () => result,
     save: async (draft) => draft,
-    saveSetupProgress: () => undefined,
+    saveSetupProgress: async () => undefined,
     loadSetupProgress: () => null,
-    clearSetupProgress: () => undefined,
+    clearSetupProgress: async () => undefined,
     discardPending: () => undefined,
     discardRecovery: () => undefined,
     acknowledgeFailedCurrent: () => undefined,
@@ -262,6 +271,29 @@ describe('MainApp', () => {
     }
   });
 
+  it('downloads the exact invalid workspace raw from recovery', async () => {
+    const raw = '{malformed-workspace';
+    const createObjectURL = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:workspace-recovery');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+    render(<MainApp repository={repository({
+      status: 'failed',
+      data: null,
+      original: raw,
+      raw,
+      source: 'current',
+      reason: 'Stored workspace data is invalid.',
+    })} />);
+    await screen.findByRole('heading', { name: '저장 복구가 필요합니다' });
+
+    fireEvent.click(screen.getByRole('button', { name: '기존 원본 JSON 다운로드' }));
+
+    expect(createObjectURL).toHaveBeenCalledOnce();
+    const blob = createObjectURL.mock.calls[0]?.[0];
+    expect(blob).toBeInstanceOf(Blob);
+    await expect(readBlob(blob as Blob)).resolves.toBe(raw);
+  });
+
   it('acknowledges malformed current data so setup progress resumes after reload', async () => {
     const raw = '{malformed-v2';
     let acknowledged = false;
@@ -285,7 +317,7 @@ describe('MainApp', () => {
     storage.acknowledgeFailedCurrent = vi.fn(() => {
       acknowledged = true;
     });
-    storage.saveSetupProgress = vi.fn((step, draft) => {
+    storage.saveSetupProgress = vi.fn(async (step, draft) => {
       progress = { kind: 'initial', step, draft: { ...draft }, savedAt: Date.now() };
     });
     storage.loadSetupProgress = () => progress;
@@ -326,7 +358,7 @@ describe('MainApp', () => {
       acknowledged = true;
     });
     storage.acknowledgeFailedPending = acknowledgeFailedPending;
-    storage.saveSetupProgress = vi.fn((step, draft) => {
+    storage.saveSetupProgress = vi.fn(async (step, draft) => {
       progress = { kind: 'initial', step, draft: { ...draft }, savedAt: Date.now() };
     });
     storage.loadSetupProgress = () => progress;
@@ -479,7 +511,7 @@ describe('MainApp', () => {
   it('shows a dashboard warning when applied setup progress cannot be cleaned up', async () => {
     const storage = repository({ status: 'empty', data: null, original: null });
     storage.save = vi.fn(async (draft: MainData) => ({ ...draft, updatedAt: 30 }));
-    storage.clearSetupProgress = vi.fn(() => {
+    storage.clearSetupProgress = vi.fn(async () => {
       throw new Error('quota');
     });
     render(<MainApp repository={storage} />);
@@ -535,7 +567,7 @@ describe('MainApp', () => {
 
   it('keeps setup editing available when progress persistence fails', async () => {
     const storage = repository({ status: 'empty', data: null, original: null });
-    storage.saveSetupProgress = vi.fn(() => {
+    storage.saveSetupProgress = vi.fn(async () => {
       throw new Error('quota');
     });
     render(<MainApp repository={storage} />);
@@ -544,8 +576,30 @@ describe('MainApp', () => {
     fireEvent.click(screen.getByRole('button', { name: 'change-income' }));
 
     expect(screen.getByText('4000000')).toBeVisible();
-    expect(screen.getByText('설정 진행 상황을 저장하지 못했습니다. 이 화면에서는 계속 입력할 수 있습니다.')).toBeVisible();
+    expect(await screen.findByText('설정 진행 상황을 저장하지 못했습니다. 이 화면에서는 계속 입력할 수 있습니다.')).toBeVisible();
     expect(screen.getByText('설정 진행 상황을 저장하지 못했습니다. 이 화면에서는 계속 입력할 수 있습니다.')
       .closest('.setup-flow-surface')).not.toBeNull();
+  });
+
+  it('waits for the latest setup-progress write before applying the draft', async () => {
+    let releaseProgress: (() => void) | undefined;
+    const progressGate = new Promise<void>((resolve) => {
+      releaseProgress = resolve;
+    });
+    const storage = repository({ status: 'empty', data: null, original: null });
+    storage.saveSetupProgress = vi.fn(() => progressGate);
+    storage.save = vi.fn(async (draft: MainData) => ({ ...draft, updatedAt: 30 }));
+    render(<MainApp repository={storage} />);
+    await screen.findByRole('heading', { name: 'setup:welcome' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'change-income' }));
+    await waitFor(() => expect(storage.saveSetupProgress).toHaveBeenCalledOnce());
+    fireEvent.click(screen.getByRole('button', { name: 'apply-setup' }));
+    await Promise.resolve();
+
+    expect(storage.save).not.toHaveBeenCalled();
+    releaseProgress?.();
+    expect(await screen.findByRole('heading', { name: 'dashboard' })).toBeVisible();
+    expect(storage.save).toHaveBeenCalledOnce();
   });
 });
