@@ -18,7 +18,8 @@ export type LocationCommandError =
   | 'name-too-long'
   | 'purpose-capacity'
   | 'location-not-found'
-  | 'portfolio-reference';
+  | 'portfolio-reference'
+  | 'invalid-input';
 
 export type LocationCommandResult =
   | { ok: true; workspace: WorkspaceDocument; location: FinancialLocation }
@@ -43,32 +44,36 @@ export function createLocation(
   input: CreateLocationInput,
   dependencies: Partial<LocationCommandDependencies> = {},
 ): LocationCommandResult {
-  const name = validateDisplayName(input.shortName);
-  if (typeof name !== 'string') return name;
-  if (hasActiveDuplicate(workspace.locations, name)) {
+  const currentWorkspace = parseWorkspaceDocument(workspace);
+  if (currentWorkspace === null) return invalidInput();
+  const parsedInput = parseCreateInput(input);
+  if ('ok' in parsedInput) return parsedInput;
+  const parsedDependencies = parseDependencies(dependencies);
+  if (parsedDependencies === null) return invalidInput();
+  if (hasActiveDuplicate(currentWorkspace.locations, parsedInput.shortName)) {
     return { ok: false, reason: 'duplicate-name' };
   }
 
-  const timestamp = (dependencies.now ?? Date.now)();
-  const id = (dependencies.createId ?? defaultCreateId)();
+  const timestamp = (parsedDependencies.now ?? Date.now)();
+  const id = (parsedDependencies.createId ?? defaultCreateId)();
   const parsedLocation = parseFinancialLocation({
     id,
-    shortName: name,
-    ...(input.institution === undefined
+    shortName: parsedInput.shortName,
+    ...(parsedInput.institution === undefined
       ? {}
-      : { institution: { ...input.institution } }),
-    kind: input.kind,
-    roles: [...input.roles],
+      : { institution: parsedInput.institution }),
+    kind: parsedInput.kind,
+    roles: parsedInput.roles,
     createdAt: timestamp,
     updatedAt: timestamp,
   });
-  if (parsedLocation === null) throw new Error('invalid-location-input');
+  if (parsedLocation === null) return invalidInput();
 
-  const locations = [...workspace.locations, parsedLocation];
-  if (exceedsPurposeCapacity(workspace, locations)) {
+  const locations = [...currentWorkspace.locations, parsedLocation];
+  if (exceedsPurposeCapacity(currentWorkspace, locations)) {
     return { ok: false, reason: 'purpose-capacity' };
   }
-  return parseSuccess({ ...workspace, updatedAt: timestamp, locations }, id);
+  return parseSuccess({ ...currentWorkspace, updatedAt: timestamp, locations }, id);
 }
 
 export function renameLocation(
@@ -77,19 +82,23 @@ export function renameLocation(
   shortName: string,
   now: number = Date.now(),
 ): LocationCommandResult {
-  const current = workspace.locations.find(({ id }) => id === locationId);
-  if (current === undefined) return { ok: false, reason: 'location-not-found' };
-
+  const currentWorkspace = parseWorkspaceDocument(workspace);
+  if (currentWorkspace === null || !isLocationId(locationId) || !isTimestamp(now)) {
+    return invalidInput();
+  }
   const name = validateDisplayName(shortName);
   if (typeof name !== 'string') return name;
-  if (current.archivedAt === undefined && hasActiveDuplicate(workspace.locations, name, locationId)) {
+  const current = currentWorkspace.locations.find(({ id }) => id === locationId);
+  if (current === undefined) return { ok: false, reason: 'location-not-found' };
+  if (current.archivedAt === undefined
+    && hasActiveDuplicate(currentWorkspace.locations, name, locationId)) {
     return { ok: false, reason: 'duplicate-name' };
   }
 
   const next = parseFinancialLocation({ ...current, shortName: name, updatedAt: now });
-  if (next === null) throw new Error('invalid-location-input');
-  const locations = replaceLocation(workspace.locations, next);
-  return parseSuccess({ ...workspace, updatedAt: now, locations }, locationId);
+  if (next === null) return invalidInput();
+  const locations = replaceLocation(currentWorkspace.locations, next);
+  return parseSuccess({ ...currentWorkspace, updatedAt: now, locations }, locationId);
 }
 
 export function setLocationRoles(
@@ -99,26 +108,33 @@ export function setLocationRoles(
   disposition?: PortfolioReferenceDisposition,
   now: number = Date.now(),
 ): LocationCommandResult {
-  const current = workspace.locations.find(({ id }) => id === locationId);
-  if (current === undefined) return { ok: false, reason: 'location-not-found' };
+  const currentWorkspace = parseWorkspaceDocument(workspace);
+  const parsedRoles = parseRoles(roles);
+  if (currentWorkspace === null
+    || !isLocationId(locationId)
+    || !isDisposition(disposition)
+    || !isTimestamp(now)
+    || 'ok' in parsedRoles) return invalidInput();
 
-  const removesInvesting = current.roles.includes('investing') && !roles.includes('investing');
-  const references = referencedPlans(workspace, locationId);
+  const current = currentWorkspace.locations.find(({ id }) => id === locationId);
+  if (current === undefined) return { ok: false, reason: 'location-not-found' };
+  const removesInvesting = current.roles.includes('investing') && !parsedRoles.includes('investing');
+  const references = referencedScopeKeys(currentWorkspace, locationId);
   if (removesInvesting && references.length > 0 && disposition === undefined) {
     return portfolioReferenceError(references);
   }
 
-  const next = parseFinancialLocation({ ...current, roles: [...roles], updatedAt: now });
-  if (next === null) throw new Error('invalid-location-input');
-  const locations = replaceLocation(workspace.locations, next);
-  if (exceedsPurposeCapacity(workspace, locations)) {
+  const next = parseFinancialLocation({ ...current, roles: parsedRoles, updatedAt: now });
+  if (next === null) return invalidInput();
+  const locations = replaceLocation(currentWorkspace.locations, next);
+  if (exceedsPurposeCapacity(currentWorkspace, locations)) {
     return { ok: false, reason: 'purpose-capacity' };
   }
 
   const portfolio = removesInvesting && disposition === 'delete'
-    ? withoutLocationPortfolio(workspace, locationId)
-    : workspace.portfolio;
-  return parseSuccess({ ...workspace, updatedAt: now, locations, portfolio }, locationId);
+    ? withoutLocationPortfolio(currentWorkspace, locationId)
+    : currentWorkspace.portfolio;
+  return parseSuccess({ ...currentWorkspace, updatedAt: now, locations, portfolio }, locationId);
 }
 
 export function archiveLocation(
@@ -127,21 +143,27 @@ export function archiveLocation(
   disposition?: PortfolioReferenceDisposition,
   now: number = Date.now(),
 ): LocationCommandResult {
-  const current = workspace.locations.find(({ id }) => id === locationId);
+  const currentWorkspace = parseWorkspaceDocument(workspace);
+  if (currentWorkspace === null
+    || !isLocationId(locationId)
+    || !isDisposition(disposition)
+    || !isTimestamp(now)) return invalidInput();
+
+  const current = currentWorkspace.locations.find(({ id }) => id === locationId);
   if (current === undefined) return { ok: false, reason: 'location-not-found' };
 
-  const references = referencedPlans(workspace, locationId);
+  const references = referencedScopeKeys(currentWorkspace, locationId);
   if (references.length > 0 && disposition === undefined) {
     return portfolioReferenceError(references);
   }
 
   const next = parseFinancialLocation({ ...current, archivedAt: now, updatedAt: now });
-  if (next === null) throw new Error('invalid-location-input');
-  const locations = replaceLocation(workspace.locations, next);
+  if (next === null) return invalidInput();
+  const locations = replaceLocation(currentWorkspace.locations, next);
   const portfolio = disposition === 'delete'
-    ? withoutLocationPortfolio(workspace, locationId)
-    : workspace.portfolio;
-  return parseSuccess({ ...workspace, updatedAt: now, locations, portfolio }, locationId);
+    ? withoutLocationPortfolio(currentWorkspace, locationId)
+    : currentWorkspace.portfolio;
+  return parseSuccess({ ...currentWorkspace, updatedAt: now, locations, portfolio }, locationId);
 }
 
 export function restoreLocation(
@@ -149,27 +171,87 @@ export function restoreLocation(
   locationId: string,
   now: number = Date.now(),
 ): LocationCommandResult {
-  const current = workspace.locations.find(({ id }) => id === locationId);
+  const currentWorkspace = parseWorkspaceDocument(workspace);
+  if (currentWorkspace === null || !isLocationId(locationId) || !isTimestamp(now)) {
+    return invalidInput();
+  }
+
+  const current = currentWorkspace.locations.find(({ id }) => id === locationId);
   if (current === undefined) return { ok: false, reason: 'location-not-found' };
-  if (hasActiveDuplicate(workspace.locations, current.shortName, locationId)) {
+  if (hasActiveDuplicate(currentWorkspace.locations, current.shortName, locationId)) {
     return { ok: false, reason: 'duplicate-name' };
   }
 
   const { archivedAt: _archivedAt, ...active } = current;
   const next = parseFinancialLocation({ ...active, updatedAt: now });
-  if (next === null) throw new Error('invalid-location-input');
-  const locations = replaceLocation(workspace.locations, next);
-  if (exceedsPurposeCapacity(workspace, locations)) {
+  if (next === null) return invalidInput();
+  const locations = replaceLocation(currentWorkspace.locations, next);
+  if (exceedsPurposeCapacity(currentWorkspace, locations)) {
     return { ok: false, reason: 'purpose-capacity' };
   }
-  return parseSuccess({ ...workspace, updatedAt: now, locations }, locationId);
+  return parseSuccess({ ...currentWorkspace, updatedAt: now, locations }, locationId);
 }
 
-function validateDisplayName(shortName: string): string | Extract<LocationCommandResult, { ok: false }> {
+type LocationCommandFailure = Extract<LocationCommandResult, { ok: false }>;
+
+function parseCreateInput(input: unknown): CreateLocationInput | LocationCommandFailure {
+  if (!isRecord(input)) return invalidInput();
+  const shortName = validateDisplayName(input.shortName);
+  if (typeof shortName !== 'string') return shortName;
+  const parsed = parseFinancialLocation({
+    id: 'location-input-validation',
+    shortName,
+    ...(input.institution === undefined ? {} : { institution: input.institution }),
+    kind: input.kind,
+    roles: input.roles,
+    createdAt: 0,
+    updatedAt: 0,
+  });
+  if (parsed === null) return invalidInput();
+  return {
+    shortName: parsed.shortName,
+    ...(parsed.institution === undefined ? {} : { institution: parsed.institution }),
+    kind: parsed.kind,
+    roles: parsed.roles,
+  };
+}
+
+function parseDependencies(value: unknown): Partial<LocationCommandDependencies> | null {
+  if (!isRecord(value)
+    || (value.createId !== undefined && typeof value.createId !== 'function')
+    || (value.now !== undefined && typeof value.now !== 'function')) return null;
+  return {
+    ...(typeof value.createId === 'function' ? { createId: value.createId as () => string } : {}),
+    ...(typeof value.now === 'function' ? { now: value.now as () => number } : {}),
+  };
+}
+
+function validateDisplayName(shortName: unknown): string | LocationCommandFailure {
+  if (typeof shortName !== 'string') return invalidInput();
   const displayName = shortName.trim().replace(/\s+/gu, ' ');
   if (displayName.length === 0) return { ok: false, reason: 'name-required' };
   if (countDisplayCharacters(displayName) > 8) return { ok: false, reason: 'name-too-long' };
-  return displayName;
+  const parsed = parseFinancialLocation({
+    id: 'location-name-validation',
+    shortName: displayName,
+    kind: 'bank',
+    roles: ['saving'],
+    createdAt: 0,
+    updatedAt: 0,
+  });
+  return parsed?.shortName ?? invalidInput();
+}
+
+function parseRoles(roles: unknown): FinancialRole[] | LocationCommandFailure {
+  const parsed = parseFinancialLocation({
+    id: 'location-role-validation',
+    shortName: 'Valid',
+    kind: 'bank',
+    roles,
+    createdAt: 0,
+    updatedAt: 0,
+  });
+  return parsed?.roles ?? invalidInput();
 }
 
 function hasActiveDuplicate(
@@ -204,19 +286,22 @@ function replaceLocation(
   return locations.map((location) => location.id === next.id ? next : location);
 }
 
-function referencedPlans(workspace: WorkspaceDocument, locationId: string) {
-  return workspace.portfolio.plans.filter(
-    ({ scope }) => scope.type === 'location' && scope.locationId === locationId,
-  );
+function referencedScopeKeys(workspace: WorkspaceDocument, locationId: string): string[] {
+  const keys = workspace.portfolio.plans
+    .filter(({ scope }) => scope.type === 'location' && scope.locationId === locationId)
+    .map(({ scope }) => scopeKey(scope));
+  const draft = workspace.portfolio.draft;
+  if (draft?.scope.type === 'location' && draft.scope.locationId === locationId) {
+    keys.push(scopeKey(draft.scope));
+  }
+  return [...new Set(keys)];
 }
 
-function portfolioReferenceError(
-  references: ReturnType<typeof referencedPlans>,
-): LocationCommandResult {
+function portfolioReferenceError(referencedScopes: string[]): LocationCommandResult {
   return {
     ok: false,
     reason: 'portfolio-reference',
-    referencedScopes: references.map(({ scope }) => scopeKey(scope)),
+    referencedScopes,
   };
 }
 
@@ -240,8 +325,31 @@ function parseSuccess(
 ): LocationCommandResult {
   const workspace = parseWorkspaceDocument(candidate);
   const location = workspace?.locations.find(({ id }) => id === locationId);
-  if (workspace === null || location === undefined) throw new Error('invalid-workspace-candidate');
+  if (workspace === null || location === undefined) return invalidInput();
   return { ok: true, workspace, location };
+}
+
+function invalidInput(): LocationCommandFailure {
+  return { ok: false, reason: 'invalid-input' };
+}
+
+function isDisposition(value: unknown): value is PortfolioReferenceDisposition | undefined {
+  return value === undefined || value === 'preserve' || value === 'delete';
+}
+
+function isLocationId(value: unknown): value is string {
+  return typeof value === 'string' && value.length > 0;
+}
+
+function isTimestamp(value: unknown): value is number {
+  return typeof value === 'number'
+    && Number.isSafeInteger(value)
+    && value >= 0
+    && value <= 8_640_000_000_000_000;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function defaultCreateId(): string {

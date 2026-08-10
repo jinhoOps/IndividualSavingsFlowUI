@@ -289,6 +289,22 @@ describe('Workspace validation', () => {
     expect(parseWorkspaceDocument({ ...workspace, locations: [] })).toBeNull();
   });
 
+  it('rejects a draft-only Portfolio scope whose location ID is missing from the registry', () => {
+    const { appliedAt: _appliedAt, ...scopedPlanCommon } = {
+      ...aggregatePlan,
+      scope: { type: 'location', locationId: 'missing-location' },
+    };
+    const workspace = validWorkspace();
+
+    expect(parseWorkspaceDocument({
+      ...workspace,
+      portfolio: {
+        plans: [],
+        draft: { ...scopedPlanCommon, inputMode: 'amount', isApplicable: true },
+      },
+    })).toBeNull();
+  });
+
   it('rejects duplicate active normalized location names', () => {
     const workspace = validWorkspace();
     workspace.locations = [

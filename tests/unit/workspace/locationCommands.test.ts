@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import type { PortfolioDraft, PortfolioPlan } from '../../../src/portfolio/domain/model';
 import type { FinancialLocation, FinancialRole } from '../../../src/workspace/domain/financialLocation';
 import {
-  createLocation,
   archiveLocation,
+  createLocation,
   renameLocation,
   restoreLocation,
   setLocationRoles,
@@ -109,6 +109,38 @@ describe('Shared location commands', () => {
     expect(workspace).toEqual(before);
   });
 
+  it.each([
+    ['unsupported name characters', {
+      shortName: 'ISA!', kind: 'brokerage', roles: ['investing'],
+    }],
+    ['null name', {
+      shortName: null, kind: 'brokerage', roles: ['investing'],
+    }],
+    ['empty roles', {
+      shortName: 'ISA', kind: 'brokerage', roles: [],
+    }],
+    ['duplicate roles', {
+      shortName: 'ISA', kind: 'brokerage', roles: ['investing', 'investing'],
+    }],
+    ['unknown role', {
+      shortName: 'ISA', kind: 'brokerage', roles: ['retirement'],
+    }],
+    ['invalid institution', {
+      shortName: 'ISA', institution: { name: '   ' }, kind: 'brokerage', roles: ['investing'],
+    }],
+  ])('returns invalid-input without mutation for create with %s', (_name, input) => {
+    const workspace = createEmptyWorkspace(100);
+    const before = structuredClone(workspace);
+
+    const result = createLocation(workspace, input as never, {
+      createId: () => 'location-new',
+      now: () => 500,
+    });
+
+    expect(result).toEqual({ ok: false, reason: 'invalid-input' });
+    expect(workspace).toEqual(before);
+  });
+
   it('accepts the tenth active location for a purpose and rejects the eleventh', () => {
     const workspace = workspaceWith(Array.from({ length: 9 }, (_, index) => (
       location(`location-${index}`, `I${index}`, ['income'])
@@ -192,6 +224,56 @@ describe('Shared location commands', () => {
     expect(result.workspace.portfolio.plans[0]).not.toHaveProperty('locationName');
   });
 
+  it.each([
+    ['null name', (workspace: WorkspaceDocument) => (
+      renameLocation(workspace, 'location-isa', null as never, 500)
+    )],
+    ['invalid archive disposition', (workspace: WorkspaceDocument) => (
+      archiveLocation(workspace, 'location-isa', 'discard' as never, 500)
+    )],
+    ['invalid restore timestamp', (workspace: WorkspaceDocument) => (
+      restoreLocation(workspace, 'location-isa', -1)
+    )],
+  ])('returns invalid-input without mutation for %s', (_name, run) => {
+    const sharedLocation = location('location-isa', 'ISA', ['investing'], 200);
+    const workspace = workspaceWith([sharedLocation]);
+    const before = structuredClone(workspace);
+
+    const result = run(workspace);
+
+    expect(result).toEqual({ ok: false, reason: 'invalid-input' });
+    expect(workspace).toEqual(before);
+  });
+
+  it.each([
+    ['create', (workspace: WorkspaceDocument) => createLocation(workspace, {
+      shortName: 'ISA', kind: 'brokerage', roles: ['investing'],
+    }, { createId: () => 'location-new', now: () => 500 })],
+    ['rename', (workspace: WorkspaceDocument) => (
+      renameLocation(workspace, 'location-isa', 'New ISA', 500)
+    )],
+    ['set roles', (workspace: WorkspaceDocument) => (
+      setLocationRoles(workspace, 'location-isa', ['saving'], 'preserve', 500)
+    )],
+    ['archive', (workspace: WorkspaceDocument) => (
+      archiveLocation(workspace, 'location-isa', 'preserve', 500)
+    )],
+    ['restore', (workspace: WorkspaceDocument) => (
+      restoreLocation(workspace, 'location-isa', 500)
+    )],
+  ])('returns invalid-input without mutation when %s receives a malformed workspace', (_name, run) => {
+    const workspace = {
+      ...workspaceWith([location('location-isa', 'ISA', ['investing'], 200)]),
+      schemaVersion: 999,
+    } as unknown as WorkspaceDocument;
+    const before = structuredClone(workspace);
+
+    const result = run(workspace);
+
+    expect(result).toEqual({ ok: false, reason: 'invalid-input' });
+    expect(workspace).toEqual(before);
+  });
+
   it('requires an explicit archive disposition and reports referenced scope keys', () => {
     const sharedLocation = location('location-isa', 'ISA', ['investing']);
     const workspace: WorkspaceDocument = {
@@ -200,6 +282,24 @@ describe('Shared location commands', () => {
         plans: [aggregatePlan, scopedPlan(sharedLocation.id)],
         draft: scopedDraft(sharedLocation.id),
       },
+    };
+    const before = structuredClone(workspace);
+
+    const result = archiveLocation(workspace, sharedLocation.id, undefined, 500);
+
+    expect(result).toEqual({
+      ok: false,
+      reason: 'portfolio-reference',
+      referencedScopes: ['location:location-isa'],
+    });
+    expect(workspace).toEqual(before);
+  });
+
+  it('requires archive confirmation for a matching draft without a matching plan', () => {
+    const sharedLocation = location('location-isa', 'ISA', ['investing']);
+    const workspace: WorkspaceDocument = {
+      ...workspaceWith([sharedLocation]),
+      portfolio: { plans: [aggregatePlan], draft: scopedDraft(sharedLocation.id) },
     };
     const before = structuredClone(workspace);
 
@@ -254,6 +354,25 @@ describe('Shared location commands', () => {
     expect(result.workspace.locations.find(({ id }) => id === other.id)).toEqual(other);
   });
 
+  it('preserves a nonmatching location draft when deleting a matching location plan', () => {
+    const target = location('location-isa', 'ISA', ['investing']);
+    const other = location('location-other', 'Pension', ['investing']);
+    const otherDraft = scopedDraft(other.id);
+    const workspace: WorkspaceDocument = {
+      ...workspaceWith([target, other]),
+      portfolio: {
+        plans: [aggregatePlan, scopedPlan(target.id)],
+        draft: otherDraft,
+      },
+    };
+
+    const result = archiveLocation(workspace, target.id, 'delete', 500);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected deleting archive to succeed');
+    expect(result.workspace.portfolio).toEqual({ plans: [aggregatePlan], draft: otherDraft });
+  });
+
   it('blocks investing-role removal with a plan until a disposition is supplied', () => {
     const sharedLocation = location('location-isa', 'ISA', ['saving', 'investing']);
     const workspace: WorkspaceDocument = {
@@ -269,6 +388,48 @@ describe('Shared location commands', () => {
       reason: 'portfolio-reference',
       referencedScopes: ['location:location-isa'],
     });
+    expect(workspace).toEqual(before);
+  });
+
+  it('blocks investing-role removal for a matching draft without a matching plan', () => {
+    const sharedLocation = location('location-isa', 'ISA', ['saving', 'investing']);
+    const workspace: WorkspaceDocument = {
+      ...workspaceWith([sharedLocation]),
+      portfolio: { plans: [aggregatePlan], draft: scopedDraft(sharedLocation.id) },
+    };
+    const before = structuredClone(workspace);
+
+    const result = setLocationRoles(workspace, sharedLocation.id, ['saving'], undefined, 500);
+
+    expect(result).toEqual({
+      ok: false,
+      reason: 'portfolio-reference',
+      referencedScopes: ['location:location-isa'],
+    });
+    expect(workspace).toEqual(before);
+  });
+
+  it.each([
+    ['empty roles', []],
+    ['duplicate roles', ['saving', 'saving']],
+    ['unknown role', ['retirement']],
+  ])('validates %s before investing-reference confirmation', (_name, roles) => {
+    const sharedLocation = location('location-isa', 'ISA', ['saving', 'investing']);
+    const workspace: WorkspaceDocument = {
+      ...workspaceWith([sharedLocation]),
+      portfolio: { plans: [scopedPlan(sharedLocation.id)], draft: null },
+    };
+    const before = structuredClone(workspace);
+
+    const result = setLocationRoles(
+      workspace,
+      sharedLocation.id,
+      roles as FinancialRole[],
+      undefined,
+      500,
+    );
+
+    expect(result).toEqual({ ok: false, reason: 'invalid-input' });
     expect(workspace).toEqual(before);
   });
 
