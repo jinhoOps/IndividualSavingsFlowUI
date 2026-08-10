@@ -49,6 +49,7 @@ describe('AllocationEditor', () => {
       ...draft,
       items: Array.from({ length: 10 }, (_, index) => ({
         id: `a-${index}`, name: `대상 ${index + 1}`, shareUnits: 10_000, order: index,
+        classification: 'growth' as const, classificationOrigin: 'automatic' as const,
       })),
       cashShareUnits: 900_000,
     };
@@ -61,9 +62,18 @@ describe('AllocationEditor', () => {
     const invalidDraft = {
       ...draft,
       items: [
-        { id: 'blank', name: '   ', shareUnits: 200_000, order: 0 },
-        { id: 'first', name: 'US INDEX', shareUnits: 200_000, order: 1 },
-        { id: 'second', name: ' us   index ', shareUnits: 200_000, order: 2 },
+        {
+          id: 'blank', name: '   ', shareUnits: 200_000, order: 0,
+          classification: 'growth' as const, classificationOrigin: 'automatic' as const,
+        },
+        {
+          id: 'first', name: 'US INDEX', shareUnits: 200_000, order: 1,
+          classification: 'growth' as const, classificationOrigin: 'automatic' as const,
+        },
+        {
+          id: 'second', name: ' us   index ', shareUnits: 200_000, order: 2,
+          classification: 'growth' as const, classificationOrigin: 'automatic' as const,
+        },
       ],
       cashShareUnits: 400_000,
     };

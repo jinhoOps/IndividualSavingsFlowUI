@@ -9,8 +9,11 @@ import { createMemoryPortfolioRepository } from './MemoryPortfolioRepository';
 afterEach(cleanup);
 
 const plan: PortfolioPlan = {
-  schemaVersion: 1,
-  items: [{ id: 'a', name: '인덱스', shareUnits: 600_000, order: 0 }],
+  schemaVersion: 2,
+  items: [{
+    id: 'a', name: '인덱스', shareUnits: 600_000, order: 0,
+    classification: 'growth', classificationOrigin: 'automatic',
+  }],
   cashShareUnits: 400_000,
   cashMode: 'automatic',
   syncedInvestmentWon: 200_000,

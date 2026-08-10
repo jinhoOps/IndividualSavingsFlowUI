@@ -9,8 +9,11 @@ import {
 import { MemoryStorage } from '../simulation/MemoryStorage';
 
 const plan: PortfolioPlan = {
-  schemaVersion: 1,
-  items: [{ id: 'a', name: '인덱스', shareUnits: 600_000, order: 0 }],
+  schemaVersion: 2,
+  items: [{
+    id: 'a', name: '인덱스', shareUnits: 600_000, order: 0,
+    classification: 'growth', classificationOrigin: 'automatic',
+  }],
   cashShareUnits: 400_000,
   cashMode: 'automatic',
   syncedInvestmentWon: 200_000,
@@ -28,6 +31,58 @@ describe('BrowserPortfolioRepository', () => {
     storage.setItem(PORTFOLIO_DRAFT_KEY, '{');
     expect(new BrowserPortfolioRepository(() => storage).load()).toEqual({
       applied: { status: 'found', plan },
+      draft: { status: 'invalid' },
+    });
+  });
+
+  it('ignores v1-only storage', () => {
+    const v1Plan = {
+      schemaVersion: 1,
+      items: [{ id: 'gold', name: '금 ETF', shareUnits: 600_000, order: 0 }],
+      cashShareUnits: 400_000,
+      cashMode: 'automatic',
+      syncedInvestmentWon: 200_000,
+      appliedAt: 11,
+      updatedAt: 12,
+    };
+    const v1Draft = {
+      schemaVersion: 1,
+      items: [],
+      cashShareUnits: 1_000_000,
+      cashMode: 'automatic',
+      inputMode: 'percentage',
+      syncedInvestmentWon: 200_000,
+      isApplicable: true,
+      updatedAt: 13,
+    };
+    storage.setItem('isf-portfolio-allocation-v1', JSON.stringify(v1Plan));
+    storage.setItem('isf-portfolio-allocation-draft-v1', JSON.stringify(v1Draft));
+
+    const loaded = new BrowserPortfolioRepository(() => storage).load();
+
+    expect(loaded).toEqual({
+      applied: { status: 'empty' },
+      draft: { status: 'empty' },
+    });
+  });
+
+  it('reports invalid v2 without inspecting another key', () => {
+    const v1Plan = {
+      schemaVersion: 1,
+      items: [],
+      cashShareUnits: 1_000_000,
+      cashMode: 'automatic',
+      syncedInvestmentWon: 200_000,
+      appliedAt: 1,
+      updatedAt: 1,
+    };
+    storage.setItem(PORTFOLIO_APPLIED_KEY, JSON.stringify({ ...plan, items: [{ ...plan.items[0], classification: 'invalid' }] }));
+    storage.setItem(PORTFOLIO_DRAFT_KEY, '{');
+    storage.setItem('isf-portfolio-allocation-v1', JSON.stringify(v1Plan));
+    storage.setItem('isf-portfolio-allocation-draft-v1', JSON.stringify({ ...v1Plan, inputMode: 'amount', isApplicable: true }));
+
+    expect(new BrowserPortfolioRepository(() => storage).load()).toEqual({
+      applied: { status: 'invalid' },
       draft: { status: 'invalid' },
     });
   });

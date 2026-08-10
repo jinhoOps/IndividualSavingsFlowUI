@@ -10,6 +10,7 @@ const allocation: MaterializedAllocation = {
   items: [{
     id: 'index', name: '미국 인덱스', order: 0,
     shareUnits: 600_000, amountWon: 120_000, percentage: 60,
+    classification: 'growth', classificationOrigin: 'automatic',
   }],
   cashAmountWon: 80_000,
   cashPercentage: 40,

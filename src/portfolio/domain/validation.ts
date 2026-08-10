@@ -3,6 +3,8 @@ import {
   PORTFOLIO_SCHEMA_VERSION,
   SHARE_SCALE,
   type CashMode,
+  type Classification,
+  type ClassificationOrigin,
   type InputMode,
   type PortfolioDraft,
   type PortfolioItem,
@@ -14,7 +16,7 @@ export function parsePortfolioPlan(value: unknown): PortfolioPlan | null {
     'schemaVersion', 'items', 'cashShareUnits', 'cashMode',
     'syncedInvestmentWon', 'appliedAt', 'updatedAt',
   ])) return null;
-  const common = parseCommon(value);
+  const common = parseV2Common(value);
   if (common === null || !isTimestamp(value.appliedAt)) return null;
   if (sumShares(common.items, common.cashShareUnits) !== SHARE_SCALE) return null;
   return { ...common, appliedAt: value.appliedAt };
@@ -25,7 +27,7 @@ export function parsePortfolioDraft(value: unknown): PortfolioDraft | null {
     'schemaVersion', 'items', 'cashShareUnits', 'cashMode', 'inputMode',
     'syncedInvestmentWon', 'updatedAt', 'isApplicable',
   ])) return null;
-  const common = parseCommon(value);
+  const common = parseV2Common(value);
   if (common === null || !isInputMode(value.inputMode)) return null;
   const total = sumShares(common.items, common.cashShareUnits);
   if (total > SHARE_SCALE || (common.cashMode === 'automatic' && total !== SHARE_SCALE)) return null;
@@ -40,7 +42,7 @@ export function validateApplicableDraft(draft: PortfolioDraft): boolean {
   return parsePortfolioDraft(draft)?.isApplicable === true;
 }
 
-function parseCommon(value: Record<string, unknown>): Omit<PortfolioPlan, 'appliedAt'> | null {
+function parseV2Common(value: Record<string, unknown>): Omit<PortfolioPlan, 'appliedAt'> | null {
   if (value.schemaVersion !== PORTFOLIO_SCHEMA_VERSION
     || !Array.isArray(value.items)
     || value.items.length > 10
@@ -69,14 +71,23 @@ function parseCommon(value: Record<string, unknown>): Omit<PortfolioPlan, 'appli
 
 function parseItem(value: unknown): PortfolioItem | null {
   if (!isRecord(value)
-    || !hasExactKeys(value, ['id', 'name', 'shareUnits', 'order'])
+    || !hasExactKeys(value, ['id', 'name', 'shareUnits', 'order', 'classification', 'classificationOrigin'])
     || typeof value.id !== 'string'
     || value.id.length === 0
     || typeof value.name !== 'string'
     || normalizePortfolioName(value.name).length === 0
     || !isShare(value.shareUnits)
-    || !isNonnegativeSafeInteger(value.order)) return null;
-  return { id: value.id, name: value.name, shareUnits: value.shareUnits, order: value.order };
+    || !isNonnegativeSafeInteger(value.order)
+    || !isClassification(value.classification)
+    || !isClassificationOrigin(value.classificationOrigin)) return null;
+  return {
+    id: value.id,
+    name: value.name,
+    shareUnits: value.shareUnits,
+    order: value.order,
+    classification: value.classification,
+    classificationOrigin: value.classificationOrigin,
+  };
 }
 
 function hasExactKeys(value: Record<string, unknown>, keys: string[]): boolean {
@@ -95,6 +106,14 @@ function isCashMode(value: unknown): value is CashMode {
 
 function isInputMode(value: unknown): value is InputMode {
   return value === 'amount' || value === 'percentage';
+}
+
+function isClassification(value: unknown): value is Classification {
+  return value === 'growth' || value === 'stable';
+}
+
+function isClassificationOrigin(value: unknown): value is ClassificationOrigin {
+  return value === 'automatic' || value === 'user';
 }
 
 function isShare(value: unknown): value is number {

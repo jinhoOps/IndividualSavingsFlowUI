@@ -4,8 +4,11 @@ import type { PortfolioPlan } from '../../../src/portfolio/domain/model';
 import type { PortfolioStorageLoadResult } from '../../../src/portfolio/infrastructure/portfolioRepository';
 
 const plan: PortfolioPlan = {
-  schemaVersion: 1,
-  items: [{ id: 'a', name: '인덱스', shareUnits: 600_000, order: 0 }],
+  schemaVersion: 2,
+  items: [{
+    id: 'a', name: '인덱스', shareUnits: 600_000, order: 0,
+    classification: 'growth', classificationOrigin: 'automatic',
+  }],
   cashShareUnits: 400_000,
   cashMode: 'automatic',
   syncedInvestmentWon: 200_000,
@@ -22,6 +25,24 @@ const empty: PortfolioStorageLoadResult = {
 };
 
 describe('bootstrapPortfolio', () => {
+  it('starts a cash-only v2 draft from the latest Main investment when storage is empty', () => {
+    expect(bootstrapPortfolio(
+      { status: 'found', source: { monthlyInvestmentWon: 200_000, mainUpdatedAt: 2 } },
+      empty,
+      3,
+    )).toMatchObject({
+      kind: 'ready',
+      plan: null,
+      draft: {
+        schemaVersion: 2,
+        items: [],
+        cashShareUnits: 1_000_000,
+        syncedInvestmentWon: 200_000,
+        isApplicable: true,
+      },
+    });
+  });
+
   it.each(['empty', 'invalid'] as const)('requires Main for %s source', (status) => {
     expect(bootstrapPortfolio({ status }, empty, 1)).toEqual({
       kind: 'main-required',
@@ -61,8 +82,11 @@ describe('bootstrapPortfolio', () => {
   it('ignores a draft older than the applied plan after partial cleanup failure', () => {
     const newerPlan = { ...plan, appliedAt: 5, updatedAt: 5 };
     const staleDraft = {
-      schemaVersion: 1 as const,
-      items: [{ id: 'old', name: '이전 초안', shareUnits: 500_000, order: 0 }],
+      schemaVersion: 2 as const,
+      items: [{
+        id: 'old', name: '이전 초안', shareUnits: 500_000, order: 0,
+        classification: 'growth' as const, classificationOrigin: 'automatic' as const,
+      }],
       cashShareUnits: 500_000,
       cashMode: 'automatic' as const,
       inputMode: 'amount' as const,
@@ -86,8 +110,11 @@ describe('bootstrapPortfolio', () => {
 
   it('resumes a newer draft when Main investment changes', () => {
     const newerDraft = {
-      schemaVersion: 1 as const,
-      items: [{ id: 'draft', name: '성장', shareUnits: 500_000, order: 0 }],
+      schemaVersion: 2 as const,
+      items: [{
+        id: 'draft', name: '성장', shareUnits: 500_000, order: 0,
+        classification: 'growth' as const, classificationOrigin: 'automatic' as const,
+      }],
       cashShareUnits: 500_000,
       cashMode: 'automatic' as const,
       inputMode: 'amount' as const,
@@ -130,8 +157,11 @@ describe('bootstrapPortfolio', () => {
 
   it('advances and persists an already Main-synced dirty draft above a synchronized plan', () => {
     const alreadySyncedDraft = {
-      schemaVersion: 1 as const,
-      items: [{ id: 'draft', name: '성장', shareUnits: 500_000, order: 0 }],
+      schemaVersion: 2 as const,
+      items: [{
+        id: 'draft', name: '성장', shareUnits: 500_000, order: 0,
+        classification: 'growth' as const, classificationOrigin: 'automatic' as const,
+      }],
       cashShareUnits: 500_000,
       cashMode: 'automatic' as const,
       inputMode: 'amount' as const,

@@ -1,8 +1,8 @@
 import type { PortfolioDraft, PortfolioPlan } from '../domain/model';
 import { parsePortfolioDraft, parsePortfolioPlan } from '../domain/validation';
 
-export const PORTFOLIO_APPLIED_KEY = 'isf-portfolio-allocation-v1';
-export const PORTFOLIO_DRAFT_KEY = 'isf-portfolio-allocation-draft-v1';
+export const PORTFOLIO_APPLIED_KEY = 'isf-portfolio-allocation-v2';
+export const PORTFOLIO_DRAFT_KEY = 'isf-portfolio-allocation-draft-v2';
 
 export type PortfolioAppliedLoadResult =
   | { status: 'found'; plan: PortfolioPlan }
