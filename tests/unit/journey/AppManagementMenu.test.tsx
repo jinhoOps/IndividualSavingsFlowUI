@@ -134,4 +134,28 @@ describe('AppManagementMenu', () => {
     expect(screen.getAllByRole('menuitem')).toHaveLength(1);
     expect(screen.getByRole('menuitem', { name: '앱 아이콘 안내' })).toBeVisible();
   });
+
+  it('keeps the popover open while interacting with a control group', () => {
+    render(
+      <AppManagementMenu
+        items={[{
+          kind: 'control',
+          id: 'view-preferences',
+          content: (
+            <fieldset>
+              <legend>보기 설정</legend>
+              <label><input type="checkbox" role="switch" />금액 보기</label>
+            </fieldset>
+          ),
+        }]}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
+    fireEvent.click(screen.getByRole('switch', { name: '금액 보기' }));
+
+    expect(screen.getByRole('group', { name: '보기 설정' })).toBeVisible();
+    expect(screen.getByRole('menu', { name: '관리 메뉴' })).toBeVisible();
+    expect(screen.getByRole('switch', { name: '금액 보기' })).toBeChecked();
+  });
 });

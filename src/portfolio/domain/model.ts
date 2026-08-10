@@ -7,6 +7,16 @@ export type Classification = 'growth' | 'stable';
 export type ClassificationOrigin = 'automatic' | 'user';
 export type PortfolioSortMode = 'ratio' | 'input';
 
+export interface PortfolioViewPreferences {
+  showAmounts: boolean;
+  sortMode: PortfolioSortMode;
+}
+
+export const DEFAULT_PORTFOLIO_VIEW_PREFERENCES = {
+  showAmounts: false,
+  sortMode: 'ratio',
+} as const satisfies PortfolioViewPreferences;
+
 export interface PortfolioItem {
   id: string;
   name: string;

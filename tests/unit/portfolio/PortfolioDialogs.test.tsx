@@ -53,4 +53,25 @@ describe('Portfolio confirmation dialogs', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     await waitFor(() => expect(trigger).toHaveFocus());
   });
+
+  it('changes view preferences without closing the management menu', () => {
+    const onPreferencesChange = vi.fn();
+    render(
+      <PortfolioManagementMenu
+        onReset={vi.fn()}
+        preferences={{ showAmounts: false, sortMode: 'ratio' }}
+        onPreferencesChange={onPreferencesChange}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
+    expect(screen.getByRole('switch', { name: '금액 보기' })).not.toBeChecked();
+    expect(screen.getByRole('radio', { name: '비율순' })).toBeChecked();
+
+    fireEvent.click(screen.getByRole('radio', { name: '입력순' }));
+
+    expect(onPreferencesChange).toHaveBeenCalledWith({ showAmounts: false, sortMode: 'input' });
+    expect(screen.getByRole('group', { name: '보기 설정' })).toBeVisible();
+    expect(screen.getByRole('menuitem', { name: '투자 배분 처음부터 다시' })).toBeVisible();
+  });
 });

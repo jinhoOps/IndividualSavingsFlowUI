@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { ManagementConfirmationDialog } from './ManagementConfirmationDialog';
 import { AppNavigationIcon } from './AppNavigationIcon';
 import { APP_NAV_ITEMS } from './appNavigation';
@@ -14,7 +14,8 @@ export type AppManagementItem =
   | { kind: 'action'; id: string; label: string; tone?: 'default' | 'danger'; disabled?: boolean; onSelect(): void | boolean; confirmation?: ManagementConfirmation }
   | { kind: 'file'; id: string; label: string; accept: string; disabled?: boolean; onFile(file: File): void }
   | { kind: 'separator'; id: string }
-  | { kind: 'message'; id: string; text: string };
+  | { kind: 'message'; id: string; text: string }
+  | { kind: 'control'; id: string; content: ReactNode };
 
 export function AppManagementMenu({ items }: { items: readonly AppManagementItem[] }) {
   const menuId = useId();
@@ -111,6 +112,9 @@ export function AppManagementMenu({ items }: { items: readonly AppManagementItem
             {items.map((item) => {
             if (item.kind === 'separator') return <hr key={item.id} role="separator" />;
             if (item.kind === 'message') return <p key={item.id} className="journey-management__message">{item.text}</p>;
+            if (item.kind === 'control') {
+              return <div key={item.id} role="group" className="journey-management__control">{item.content}</div>;
+            }
             if (item.kind === 'file') {
               return (
                 <label key={item.id} className="journey-management__row" role="menuitem" aria-disabled={item.disabled || undefined}>
