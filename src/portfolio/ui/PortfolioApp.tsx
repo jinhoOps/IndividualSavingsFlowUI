@@ -12,7 +12,11 @@ import {
   type PortfolioState,
 } from '../application/portfolioReducer';
 import { materializeAllocation } from '../domain/allocation';
-import type { PortfolioPlan } from '../domain/model';
+import {
+  DEFAULT_PORTFOLIO_VIEW_PREFERENCES,
+  type PortfolioPlan,
+  type PortfolioViewPreferences,
+} from '../domain/model';
 import { validateApplicableDraft } from '../domain/validation';
 import {
   BrowserPortfolioMainSourceRepository,
@@ -22,6 +26,10 @@ import {
   BrowserPortfolioRepository,
   type PortfolioRepository,
 } from '../infrastructure/portfolioRepository';
+import {
+  BrowserPortfolioPreferencesRepository,
+  type PortfolioPreferencesRepository,
+} from '../infrastructure/portfolioPreferencesRepository';
 import { AllocationEditor } from './AllocationEditor';
 import { PortfolioApplyBar } from './PortfolioApplyBar';
 import { PortfolioManagementMenu } from './PortfolioManagementMenu';
@@ -30,10 +38,12 @@ import { PortfolioSummary } from './PortfolioSummary';
 export function PortfolioApp({
   mainSourceRepository: providedMainRepository,
   repository: providedRepository,
+  preferencesRepository: providedPreferencesRepository,
   now = Date.now,
 }: {
   mainSourceRepository?: PortfolioMainSourceRepository;
   repository?: PortfolioRepository;
+  preferencesRepository?: PortfolioPreferencesRepository;
   now?: () => number;
 }) {
   const mainRepository = useMemo(
@@ -44,12 +54,19 @@ export function PortfolioApp({
     () => providedRepository ?? new BrowserPortfolioRepository(),
     [providedRepository],
   );
+  const preferencesRepository = useMemo(
+    () => providedPreferencesRepository ?? new BrowserPortfolioPreferencesRepository(),
+    [providedPreferencesRepository],
+  );
   const initial = useMemo(
     () => bootstrapPortfolio(mainRepository.load(), repository.load(), now()),
     [mainRepository, repository, now],
   );
   const [state, setState] = useState<PortfolioState | null>(
     initial.kind === 'ready' ? createPortfolioState(initial) : null,
+  );
+  const [preferences, setPreferences] = useState<PortfolioViewPreferences>(
+    () => preferencesRepository.load() ?? DEFAULT_PORTFOLIO_VIEW_PREFERENCES,
   );
 
   useEffect(() => {
@@ -106,10 +123,21 @@ export function PortfolioApp({
     });
   }
 
+  function updatePreferences(next: PortfolioViewPreferences): void {
+    setPreferences(next);
+    preferencesRepository.save(next);
+  }
+
   return (
     <AppShell
       currentApp="portfolio"
-      managementMenu={<PortfolioManagementMenu onReset={reset} />}
+      managementMenu={(
+        <PortfolioManagementMenu
+          onReset={reset}
+          preferences={preferences}
+          onPreferencesChange={updatePreferences}
+        />
+      )}
     >
       <main className="portfolio-shell">
         {initial.kind === 'main-required' ? (

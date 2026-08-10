@@ -66,6 +66,45 @@ export function AppManagementMenu({ items }: { items: readonly AppManagementItem
     window.setTimeout(() => triggerRef.current?.focus(), 0);
   }
 
+  function renderMenuItem(item: Exclude<AppManagementItem, { kind: 'control' }>): ReactNode {
+    if (item.kind === 'separator') return <hr key={item.id} role="separator" />;
+    if (item.kind === 'message') return <p key={item.id} className="journey-management__message">{item.text}</p>;
+    if (item.kind === 'file') {
+      return (
+        <label key={item.id} className="journey-management__row" role="menuitem" aria-disabled={item.disabled || undefined}>
+          {item.label}
+          <input
+            className="sr-only"
+            type="file"
+            accept={item.accept}
+            aria-label={item.label}
+            disabled={item.disabled}
+            onChange={(event) => {
+              const file = event.currentTarget.files?.[0];
+              if (file !== undefined) {
+                item.onFile(file);
+                closePopover();
+              }
+              event.currentTarget.value = '';
+            }}
+          />
+        </label>
+      );
+    }
+    return (
+      <button
+        key={item.id}
+        type="button"
+        role="menuitem"
+        className={`journey-management__row${item.tone === 'danger' ? ' journey-management__danger' : ''}`}
+        disabled={item.disabled}
+        onClick={() => chooseAction(item)}
+      >
+        {item.label}
+      </button>
+    );
+  }
+
   return (
     <div
       ref={rootRef}
@@ -93,64 +132,30 @@ export function AppManagementMenu({ items }: { items: readonly AppManagementItem
       </button>
       {open ? (
         <div id={menuId} className="journey-management__popover">
-          <div role="menu" aria-label="관리 메뉴">
-            <button
-              type="button"
-              role="menuitem"
-              className="journey-management__row journey-management__help-trigger"
-              aria-expanded={helpOpen}
-              aria-controls={helpId}
-              onClick={(event) => {
-                const trigger = event.currentTarget;
-                setHelpOpen((current) => !current);
-                if (helpOpen) window.setTimeout(() => trigger.focus(), 0);
-              }}
-            >
-              <span>앱 아이콘 안내</span>
-              <ChevronIcon expanded={helpOpen} />
-            </button>
-            {items.map((item) => {
-            if (item.kind === 'separator') return <hr key={item.id} role="separator" />;
-            if (item.kind === 'message') return <p key={item.id} className="journey-management__message">{item.text}</p>;
-            if (item.kind === 'control') {
-              return <div key={item.id} role="group" className="journey-management__control">{item.content}</div>;
-            }
-            if (item.kind === 'file') {
-              return (
-                <label key={item.id} className="journey-management__row" role="menuitem" aria-disabled={item.disabled || undefined}>
-                  {item.label}
-                  <input
-                    className="sr-only"
-                    type="file"
-                    accept={item.accept}
-                    aria-label={item.label}
-                    disabled={item.disabled}
-                    onChange={(event) => {
-                      const file = event.currentTarget.files?.[0];
-                      if (file !== undefined) {
-                        item.onFile(file);
-                        closePopover();
-                      }
-                      event.currentTarget.value = '';
-                    }}
-                  />
-                </label>
-              );
-            }
-            return (
-              <button
-                key={item.id}
-                type="button"
-                role="menuitem"
-                className={`journey-management__row${item.tone === 'danger' ? ' journey-management__danger' : ''}`}
-                disabled={item.disabled}
-                onClick={() => chooseAction(item)}
-              >
-                {item.label}
-              </button>
-            );
-            })}
-          </div>
+          {splitMenuSections(items).map((section, index) => section.kind === 'control' ? (
+            <div key={section.item.id} role="group" className="journey-management__control">{section.item.content}</div>
+          ) : (
+            <div key={`menu-${index}`} role="menu" aria-label={section.includesHelp ? '관리 메뉴' : '관리 메뉴 행동'}>
+              {section.includesHelp ? (
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="journey-management__row journey-management__help-trigger"
+                  aria-expanded={helpOpen}
+                  aria-controls={helpId}
+                  onClick={(event) => {
+                    const trigger = event.currentTarget;
+                    setHelpOpen((current) => !current);
+                    if (helpOpen) window.setTimeout(() => trigger.focus(), 0);
+                  }}
+                >
+                  <span>앱 아이콘 안내</span>
+                  <ChevronIcon expanded={helpOpen} />
+                </button>
+              ) : null}
+              {section.items.map(renderMenuItem)}
+            </div>
+          ))}
           {helpOpen ? (
             <div id={helpId} role="region" aria-label="앱 아이콘 안내" className="journey-management__app-help">
               {APP_NAV_ITEMS.map((item) => (
@@ -181,6 +186,24 @@ export function AppManagementMenu({ items }: { items: readonly AppManagementItem
       )}
     </div>
   );
+}
+
+type AppManagementMenuEntry = Exclude<AppManagementItem, { kind: 'control' }>;
+type MenuSection =
+  | { kind: 'menu'; includesHelp: boolean; items: AppManagementMenuEntry[] }
+  | { kind: 'control'; item: Extract<AppManagementItem, { kind: 'control' }> };
+
+function splitMenuSections(items: readonly AppManagementItem[]): MenuSection[] {
+  const sections: MenuSection[] = [{ kind: 'menu', includesHelp: true, items: [] }];
+  for (const item of items) {
+    if (item.kind === 'control') {
+      sections.push({ kind: 'control', item }, { kind: 'menu', includesHelp: false, items: [] });
+      continue;
+    }
+    const current = sections.at(-1);
+    if (current?.kind === 'menu') current.items.push(item);
+  }
+  return sections.filter((section) => section.kind !== 'menu' || section.includesHelp || section.items.length > 0);
 }
 
 function ChevronIcon({ expanded }: { expanded: boolean }) {

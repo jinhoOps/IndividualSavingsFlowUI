@@ -156,6 +156,8 @@ describe('AppManagementMenu', () => {
 
     expect(screen.getByRole('group', { name: '보기 설정' })).toBeVisible();
     expect(screen.getByRole('menu', { name: '관리 메뉴' })).toBeVisible();
+    expect(screen.getByRole('menu', { name: '관리 메뉴' }))
+      .not.toContainElement(screen.getByRole('group', { name: '보기 설정' }));
     expect(screen.getByRole('switch', { name: '금액 보기' })).toBeChecked();
   });
 });

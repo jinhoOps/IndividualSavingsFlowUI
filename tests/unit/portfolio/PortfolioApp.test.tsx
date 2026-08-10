@@ -3,6 +3,7 @@ import '@testing-library/jest-dom/vitest';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { PortfolioPlan } from '../../../src/portfolio/domain/model';
 import type { PortfolioMainSourceRepository } from '../../../src/portfolio/infrastructure/mainSourceRepository';
+import type { PortfolioPreferencesRepository } from '../../../src/portfolio/infrastructure/portfolioPreferencesRepository';
 import { PortfolioApp } from '../../../src/portfolio/ui/PortfolioApp';
 import { createMemoryPortfolioRepository } from './MemoryPortfolioRepository';
 
@@ -101,5 +102,32 @@ describe('PortfolioApp', () => {
     render(<PortfolioApp mainSourceRepository={mainFound} repository={repository} now={() => 2} />);
 
     expect(screen.getByRole('heading', { name: '투자금 200,000원' })).toBeVisible();
+  });
+
+  it('keeps an unavailable view-preference save out of allocation save state', () => {
+    let savedPreferences: { showAmounts: boolean; sortMode: 'ratio' | 'input' } | null = null;
+    const preferencesRepository: PortfolioPreferencesRepository = {
+      load: () => ({ showAmounts: false, sortMode: 'ratio' }),
+      save: (value) => {
+        savedPreferences = value;
+        return { status: 'unavailable' };
+      },
+    };
+
+    render(
+      <PortfolioApp
+        mainSourceRepository={mainFound}
+        repository={createMemoryPortfolioRepository({ applied: plan })}
+        preferencesRepository={preferencesRepository}
+        now={() => 2}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
+    fireEvent.click(screen.getByRole('radio', { name: '입력순' }));
+
+    expect(savedPreferences).toEqual({ showAmounts: false, sortMode: 'input' });
+    expect(screen.getByRole('radio', { name: '입력순' })).toBeChecked();
+    expect(screen.getByRole('status')).toHaveTextContent('저장됨');
   });
 });
