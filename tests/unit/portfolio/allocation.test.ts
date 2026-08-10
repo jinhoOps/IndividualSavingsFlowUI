@@ -4,10 +4,13 @@ import {
   enableAutomaticCash,
   materializeAllocation,
   removeItem,
+  orderedResultItems,
   setCashAmount,
   setItemAmount,
+  setItemClassification,
   setItemPercentage,
   syncPlanToInvestment,
+  largestResultItem,
 } from '../../../src/portfolio/domain/allocation';
 
 describe('Portfolio allocation', () => {
@@ -81,5 +84,69 @@ describe('Portfolio allocation', () => {
       items: [{ amountWon: 60_000 }],
       cashAmountWon: 90_000,
     });
+  });
+
+  it('classifies a new item as automatically growth', () => {
+    const draft = setItemAmount(
+      createCashOnlyDraft(100_000, 1),
+      { id: 'asset-1', name: '미국 인덱스', order: 0 },
+      50_000,
+    );
+
+    expect(draft.items).toMatchObject([{
+      id: 'asset-1',
+      classification: 'growth',
+      classificationOrigin: 'automatic',
+    }]);
+  });
+
+  it('recommends a new classification only while the item remains automatic', () => {
+    const automatic = setItemAmount(
+      createCashOnlyDraft(100_000, 1),
+      { id: 'asset-1', name: '미국 인덱스', order: 0 },
+      50_000,
+    );
+    const renamedAutomatic = setItemAmount(
+      automatic,
+      { id: 'asset-1', name: '금현물', order: 0 },
+      50_000,
+    );
+    const userClassified = setItemClassification(renamedAutomatic, 'asset-1', 'growth', 'user');
+    const renamedUserClassified = setItemAmount(
+      userClassified,
+      { id: 'asset-1', name: '미국 국채 ETF', order: 0 },
+      50_000,
+    );
+
+    expect(renamedAutomatic.items[0]).toMatchObject({ classification: 'stable', classificationOrigin: 'automatic' });
+    expect(renamedUserClassified.items[0]).toMatchObject({ classification: 'growth', classificationOrigin: 'user' });
+  });
+
+  it('orders result items by ratio and places cash after tied investments', () => {
+    const items = orderedResultItems([
+      { id: 'asset-2', name: '두번째', shareUnits: 400_000, order: 1, classification: 'growth', classificationOrigin: 'automatic' },
+      { id: 'asset-1', name: '첫번째', shareUnits: 400_000, order: 0, classification: 'stable', classificationOrigin: 'user' },
+    ], 400_000, 'ratio');
+
+    expect(items.map((item) => item.id)).toEqual(['asset-1', 'asset-2', 'cash']);
+  });
+
+  it('keeps input order and puts cash last in input results', () => {
+    const items = orderedResultItems([
+      { id: 'asset-2', name: '두번째', shareUnits: 200_000, order: 1, classification: 'growth', classificationOrigin: 'automatic' },
+      { id: 'asset-1', name: '첫번째', shareUnits: 600_000, order: 0, classification: 'stable', classificationOrigin: 'user' },
+    ], 200_000, 'input');
+
+    expect(items.map((item) => item.id)).toEqual(['asset-1', 'asset-2', 'cash']);
+  });
+
+  it('uses the first current result item when the largest shares tie', () => {
+    const ordered = orderedResultItems([
+      { id: 'asset-2', name: '두번째', shareUnits: 400_000, order: 1, classification: 'growth', classificationOrigin: 'automatic' },
+      { id: 'asset-1', name: '첫번째', shareUnits: 400_000, order: 0, classification: 'stable', classificationOrigin: 'user' },
+    ], 400_000, 'ratio');
+
+    expect(largestResultItem(ordered)).toMatchObject({ id: 'asset-1', isCash: false });
+    expect(largestResultItem([])).toBeNull();
   });
 });

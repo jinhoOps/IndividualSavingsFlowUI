@@ -1,14 +1,19 @@
-export const PORTFOLIO_SCHEMA_VERSION = 1 as const;
+export const PORTFOLIO_SCHEMA_VERSION = 2 as const;
 export const SHARE_SCALE = 1_000_000 as const;
 
 export type CashMode = 'automatic' | 'manual';
 export type InputMode = 'amount' | 'percentage';
+export type Classification = 'growth' | 'stable';
+export type ClassificationOrigin = 'automatic' | 'user';
+export type PortfolioSortMode = 'ratio' | 'input';
 
 export interface PortfolioItem {
   id: string;
   name: string;
   shareUnits: number;
   order: number;
+  classification: Classification;
+  classificationOrigin: ClassificationOrigin;
 }
 
 export interface PortfolioDraft {
@@ -42,6 +47,14 @@ export interface MaterializedAllocation {
   cashAmountWon: number;
   cashPercentage: number;
   totalAmountWon: number;
+}
+
+export interface AllocationResultItem {
+  id: string;
+  name: string;
+  shareUnits: number;
+  order: number;
+  isCash: boolean;
 }
 
 export interface PortfolioItemIdentity {
