@@ -27,6 +27,9 @@ const mainFound: PortfolioMainSourceRepository = {
 const zeroMain: PortfolioMainSourceRepository = {
   load: () => ({ status: 'found', source: { monthlyInvestmentWon: 0, mainUpdatedAt: 1 } }),
 };
+const unavailableMain: PortfolioMainSourceRepository = {
+  load: () => ({ status: 'unavailable' }),
+};
 
 describe('PortfolioApp', () => {
   it('opens setup on first run', () => {
@@ -93,6 +96,25 @@ describe('PortfolioApp', () => {
     expect(screen.getByTestId('portfolio-gated-content')).toHaveClass('portfolio-content--blurred');
     expect(screen.getByRole('link', { name: 'Main에서 투자금 설정' }))
       .toHaveAttribute('href', expect.stringContaining('?edit=investment'));
+  });
+
+  it('keeps loaded amount preferences consistent in a stale Main result', () => {
+    const preferencesRepository: PortfolioPreferencesRepository = {
+      load: () => ({ showAmounts: true, sortMode: 'ratio' }),
+      save: () => ({ status: 'saved' }),
+    };
+    render(
+      <PortfolioApp
+        mainSourceRepository={unavailableMain}
+        repository={createMemoryPortfolioRepository({ applied: plan })}
+        preferencesRepository={preferencesRepository}
+        now={() => 2}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
+    expect(screen.getByRole('switch', { name: '금액 보기' })).toBeChecked();
+    expect(screen.getByRole('heading', { name: '이번 달 투자금 200,000원' })).toBeVisible();
   });
 
   it('shows the newly applied plan when draft cleanup fails after the applied write', () => {

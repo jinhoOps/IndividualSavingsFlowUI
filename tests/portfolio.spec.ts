@@ -171,10 +171,16 @@ test('keeps the summary-first ratio list usable across required widths', async (
     localStorage.setItem('isf-portfolio-allocation-v2', JSON.stringify({
       schemaVersion: 2,
       items: [{
-        id: 'index', name: '인덱스', shareUnits: 600_000, order: 0,
+        id: 'index', name: '인덱스', shareUnits: 400_000, order: 0,
         classification: 'growth', classificationOrigin: 'automatic',
+      }, {
+        id: 'bond', name: '채권', shareUnits: 300_000, order: 1,
+        classification: 'stable', classificationOrigin: 'automatic',
+      }, {
+        id: 'gold', name: '금', shareUnits: 200_000, order: 2,
+        classification: 'stable', classificationOrigin: 'automatic',
       }],
-      cashShareUnits: 400_000,
+      cashShareUnits: 100_000,
       cashMode: 'automatic', syncedInvestmentWon: 200_000, appliedAt: 1, updatedAt: 1,
     }));
   }, { fixture: mainFixture });
@@ -189,9 +195,17 @@ test('keeps the summary-first ratio list usable across required widths', async (
     await page.goto('apps/portfolio/');
     const summary = page.locator('.portfolio-summary');
     await expect(summary).toHaveClass(/ui-surface/);
-    await expect(page.getByRole('heading', { name: '안정 40%' })).toBeVisible();
-    await expect(summary.getByRole('listitem').filter({ hasText: /인덱스.*60%/ })).toBeVisible();
-    await expect(summary.getByRole('listitem').filter({ hasText: /현금.*40%/ })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '안정 60%' })).toBeVisible();
+    const summaryBox = await summary.boundingBox();
+    expect(summaryBox).not.toBeNull();
+    for (const [name, ratio] of [['인덱스', '40%'], ['채권', '30%'], ['금', '20%'], ['현금', '10%']]) {
+      const row = summary.getByRole('listitem').filter({ hasText: new RegExp(`${name}.*${ratio}`) });
+      await expect(row).toBeVisible();
+      const rowBox = await row.boundingBox();
+      expect(rowBox).not.toBeNull();
+      expect(rowBox!.x).toBeGreaterThanOrEqual(summaryBox!.x);
+      expect(rowBox!.x + rowBox!.width).toBeLessThanOrEqual(summaryBox!.x + summaryBox!.width);
+    }
     await expect(page.getByLabel('투자 배분 도넛')).toHaveCount(0);
     await expect(page.getByRole('table')).toHaveCount(0);
     await expect(page.getByRole('tooltip')).toHaveCount(0);
@@ -201,16 +215,24 @@ test('keeps the summary-first ratio list usable across required widths', async (
     expect(editBox).not.toBeNull();
     expect(editBox!.width).toBeGreaterThanOrEqual(44);
     expect(editBox!.height).toBeGreaterThanOrEqual(44);
+    const editIcon = edit.locator('img');
+    await expect(editIcon).toHaveAttribute('src', '/IndividualSavingsFlowUI/icons/portfolio-edit.svg');
+    expect(await editIcon.evaluate((image: HTMLImageElement) => image.naturalWidth)).toBeGreaterThan(0);
     await edit.focus();
     await expect(edit).toBeFocused();
+    expect(await edit.evaluate((element) => getComputedStyle(element).boxShadow)).not.toBe('none');
     expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
     expect(await summary.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+    if (viewport.width === 1280) {
+      expect(summaryBox!.width).toBeGreaterThanOrEqual(767);
+      expect(summaryBox!.width).toBeLessThanOrEqual(768);
+    }
     const fill = summary.locator('.portfolio-allocation-row__fill').first();
     const track = summary.locator('.portfolio-allocation-row__track').first();
     const [fillBox, trackBox] = await Promise.all([fill.boundingBox(), track.boundingBox()]);
     expect(fillBox).not.toBeNull();
     expect(trackBox).not.toBeNull();
-    expect(fillBox!.width / trackBox!.width).toBeCloseTo(0.6, 1);
+    expect(fillBox!.width / trackBox!.width).toBeCloseTo(0.4, 1);
   }
 });
 

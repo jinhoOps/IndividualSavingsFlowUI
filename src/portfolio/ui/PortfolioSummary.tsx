@@ -69,7 +69,11 @@ export function PortfolioSummary({
               aria-label="배분 수정"
               onClick={onEdit}
             >
-              <img src="/icons/portfolio-edit.svg" alt="" aria-hidden="true" />
+              <img
+                src={`${import.meta.env.BASE_URL}icons/portfolio-edit.svg`}
+                alt=""
+                aria-hidden="true"
+              />
             </button>
           )}
         </div>

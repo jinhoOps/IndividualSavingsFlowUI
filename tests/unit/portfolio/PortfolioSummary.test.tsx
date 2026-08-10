@@ -4,7 +4,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { MaterializedAllocation } from '../../../src/portfolio/domain/model';
 import { PortfolioSummary } from '../../../src/portfolio/ui/PortfolioSummary';
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.unstubAllEnvs();
+});
 
 const allocation: MaterializedAllocation = {
   items: [{
@@ -58,6 +61,24 @@ describe('PortfolioSummary', () => {
     expect(edit).toHaveClass('portfolio-summary__edit');
     fireEvent.click(edit);
     expect(onEdit).toHaveBeenCalledOnce();
+  });
+
+  it('uses the configured Vite base for the vendored edit icon', () => {
+    vi.stubEnv('BASE_URL', '/IndividualSavingsFlowUI/');
+    render(
+      <PortfolioSummary
+        investmentWon={800_000}
+        allocation={allocation}
+        preferences={{ showAmounts: false, sortMode: 'ratio' }}
+        onEdit={() => undefined}
+      />,
+    );
+
+    const icon = screen.getByRole('button', { name: '배분 수정' }).querySelector('img');
+    expect(icon).toHaveAttribute(
+      'src',
+      '/IndividualSavingsFlowUI/icons/portfolio-edit.svg',
+    );
   });
 
   it('keeps ratios primary and reveals the total and every row amount together', () => {

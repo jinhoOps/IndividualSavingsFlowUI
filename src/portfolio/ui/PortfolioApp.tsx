@@ -144,7 +144,7 @@ export function PortfolioApp({
         ) : initial.kind === 'investment-required' ? (
           <InvestmentRequired plan={initial.preservedPlan} />
         ) : initial.kind === 'stale-main' ? (
-          <StaleMain plan={initial.plan} />
+          <StaleMain plan={initial.plan} preferences={preferences} />
         ) : state === null ? (
           <RecoveryPanel message="Portfolio를 시작할 수 없습니다." />
         ) : (
@@ -219,7 +219,13 @@ function InvestmentRequired({ plan }: { plan: PortfolioPlan | null }) {
   );
 }
 
-function StaleMain({ plan }: { plan: PortfolioPlan }) {
+function StaleMain({
+  plan,
+  preferences,
+}: {
+  plan: PortfolioPlan;
+  preferences: PortfolioViewPreferences;
+}) {
   return (
     <div className="portfolio-content">
       <Surface as="aside" className="portfolio-recovery">
@@ -231,7 +237,7 @@ function StaleMain({ plan }: { plan: PortfolioPlan }) {
       <PortfolioSummary
         investmentWon={plan.syncedInvestmentWon}
         allocation={materializeAllocation(plan, plan.syncedInvestmentWon)}
-        preferences={DEFAULT_PORTFOLIO_VIEW_PREFERENCES}
+        preferences={preferences}
       />
     </div>
   );
