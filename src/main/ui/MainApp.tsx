@@ -4,10 +4,19 @@ import { applyDraft, bootstrapMain, type ValidationIssue } from '../application/
 import { mainReducer, type MainAction, type MainState } from '../application/mainReducer';
 import { calculateCashflow } from '../domain/cashflow';
 import { createEmptyMainData, type MainData, type SetupStep } from '../domain/model';
-import { exportMainData, exportRecoveryData, importMainData } from '../infrastructure/backup';
+import { exportRecoveryData } from '../infrastructure/backup';
 import { BrowserMainRepository, type MainRepository } from '../infrastructure/mainRepository';
 import { appPath } from '../../journey/routes';
 import { JourneyEntryCard } from '../../journey/ui/JourneyEntryCard';
+import type { WorkspaceDocument } from '../../workspace/domain/model';
+import {
+  exportWorkspaceBackup,
+  importWorkspaceBackup,
+} from '../../workspace/infrastructure/workspaceBackup';
+import {
+  BrowserWorkspaceRepository,
+  type WorkspaceRepository,
+} from '../../workspace/infrastructure/workspaceRepository';
 import { Button } from './common/Button';
 import { Surface } from './common/Surface';
 import { formatDashboardWon } from './dashboard/CashflowSummary';
@@ -17,19 +26,24 @@ import { SetupFlow } from './setup/SetupFlow';
 
 export interface MainAppProps {
   repository?: MainRepository;
+  workspaceRepository?: Pick<WorkspaceRepository, 'load' | 'replace'>;
   navigate?(href: string): void;
 }
 
-const browserRepository = new BrowserMainRepository();
+const browserWorkspaceRepository = new BrowserWorkspaceRepository();
+const browserRepository = new BrowserMainRepository(browserWorkspaceRepository);
 
 export function MainApp({
   repository = browserRepository,
+  workspaceRepository = browserWorkspaceRepository,
   navigate = navigateTo,
 }: MainAppProps) {
   const [state, setState] = useState<MainState | null>(null);
   const [issues, setIssues] = useState<ValidationIssue[]>([]);
   const [validationAttempt, setValidationAttempt] = useState(0);
   const [backupStatus, setBackupStatus] = useState<{ kind: 'success' | 'error'; message: string } | null>(null);
+  const [pendingImport, setPendingImport] = useState<WorkspaceDocument | null>(null);
+  const [restorePending, setRestorePending] = useState(false);
   const [progressWarning, setProgressWarning] = useState<string | null>(null);
   const progressWriteTailRef = useRef<Promise<void>>(Promise.resolve());
   const savingRef = useRef(false);
@@ -213,21 +227,78 @@ export function MainApp({
     return handled;
   }
 
-  async function importBackup(file: File) {
+  async function prepareWorkspaceImport(file: File) {
     if (state === null || state.mode !== 'dashboard' || savingRef.current) return;
     try {
-      const imported = importMainData(await readFileText(file));
+      const imported = importWorkspaceBackup(await readFileText(file));
       setIssues([]);
-      setBackupStatus({ kind: 'success', message: '백업을 초안으로 불러왔습니다. 적용해야 저장됩니다.' });
-      dispatch({ type: 'replace-draft', draft: imported });
-    } catch {
-      setBackupStatus({ kind: 'error', message: '백업 파일을 불러오지 못했습니다. 올바른 JSON 백업인지 확인해 주세요.' });
+      setBackupStatus(null);
+      setPendingImport(imported);
+    } catch (error) {
+      setPendingImport(null);
+      setBackupStatus({ kind: 'error', message: importFailureMessage(error) });
     }
   }
 
-  function exportAppliedBackup() {
-    if (state?.applied === null || state?.applied === undefined) return;
-    downloadJson(exportMainData(state.applied), 'individual-savings-flow-main.json');
+  async function restoreWorkspaceBackup(): Promise<boolean> {
+    if (pendingImport === null || savingRef.current) return false;
+    savingRef.current = true;
+    setRestorePending(true);
+    try {
+      const loaded = workspaceRepository.load();
+      if (loaded.status === 'invalid') {
+        return failRestore('현재 저장된 workspace를 먼저 복구해야 합니다. 현재 데이터는 바뀌지 않았습니다.');
+      }
+      if (loaded.status === 'unavailable') {
+        return failRestore('저장소를 사용할 수 없습니다. 현재 데이터는 바뀌지 않았습니다. 다시 시도해 주세요.');
+      }
+
+      const result = await workspaceRepository.replace(loaded.workspace.revision, pendingImport);
+      if (result.status === 'conflict') {
+        return failRestore('다른 탭에서 데이터가 변경되었습니다. 현재 데이터는 바뀌지 않았습니다.');
+      }
+      if (result.status === 'invalid') {
+        return failRestore('백업의 앱 데이터를 적용할 수 없습니다. 현재 데이터는 바뀌지 않았습니다.');
+      }
+      if (result.status === 'unavailable') {
+        return failRestore('백업을 저장하지 못했습니다. 현재 데이터는 바뀌지 않았습니다. 다시 시도해 주세요.');
+      }
+
+      const reloaded = await bootstrapMain(repository);
+      setIssues([]);
+      setProgressWarning(null);
+      setPendingImport(null);
+      setState(reloaded);
+      setBackupStatus({ kind: 'success', message: '모든 앱 데이터를 백업에서 복원했습니다.' });
+      return true;
+    } catch {
+      return failRestore('백업을 복원하지 못했습니다. 현재 데이터는 바뀌지 않았습니다. 다시 시도해 주세요.');
+    } finally {
+      savingRef.current = false;
+      setRestorePending(false);
+    }
+  }
+
+  function failRestore(message: string): false {
+    setBackupStatus({ kind: 'error', message });
+    return false;
+  }
+
+  function exportCurrentWorkspace() {
+    const loaded = workspaceRepository.load();
+    if (loaded.status === 'invalid') {
+      setBackupStatus({
+        kind: 'error',
+        message: '현재 저장된 workspace를 먼저 복구해야 백업할 수 있습니다.',
+      });
+      return;
+    }
+    if (loaded.status === 'unavailable') {
+      setBackupStatus({ kind: 'error', message: '저장소를 사용할 수 없어 백업하지 못했습니다.' });
+      return;
+    }
+    downloadJson(exportWorkspaceBackup(loaded.workspace), 'individual-savings-flow-workspace.json');
+    setBackupStatus({ kind: 'success', message: '모든 앱 데이터 백업을 내보냈습니다.' });
   }
 
   function continueToSimulation() {
@@ -238,15 +309,21 @@ export function MainApp({
   const journeyEntry = <JourneyEntryCard enabled={state?.applied !== null && state?.applied !== undefined} onContinue={continueToSimulation} />;
   const managementMenu = (
     <MainManagementMenu
-      saving={state?.saveStatus === 'saving'}
+      saving={state?.saveStatus === 'saving' || restorePending}
       dirty={state?.dirty ?? false}
       canExport={state?.applied !== null && state?.applied !== undefined}
       canImport={state?.mode === 'dashboard'}
       canRestart={state?.applied !== null && state?.applied !== undefined}
+      importConfirmationOpen={pendingImport !== null}
+      importFailureMessage={pendingImport === null || backupStatus?.kind !== 'error'
+        ? undefined
+        : backupStatus.message}
       onCancel={cancelDraft}
       onRestart={restartSetup}
-      onExport={exportAppliedBackup}
-      onImportFile={importBackup}
+      onExport={exportCurrentWorkspace}
+      onImportFile={prepareWorkspaceImport}
+      onCancelImport={() => setPendingImport(null)}
+      onConfirmImport={restoreWorkspaceBackup}
     />
   );
 
@@ -334,9 +411,11 @@ export function MainApp({
         onDraftChange={changeDraft}
         onApply={apply}
         onCancel={cancelDraft}
-        backupStatus={progressWarning === null
-          ? backupStatus
-          : { kind: 'error', message: progressWarning }}
+        backupStatus={pendingImport !== null
+          ? null
+          : progressWarning === null
+            ? backupStatus
+            : { kind: 'error', message: progressWarning }}
         journeyEntry={journeyEntry}
         initialFocusPath={initialEditPath}
       />
@@ -471,6 +550,24 @@ function readFileText(file: File): Promise<string> {
     reader.onerror = () => reject(reader.error ?? new Error('Backup file could not be read.'));
     reader.readAsText(file);
   });
+}
+
+function importFailureMessage(error: unknown): string {
+  if (!(error instanceof Error)) {
+    return '백업 파일을 읽지 못했습니다. 현재 데이터는 바뀌지 않았습니다.';
+  }
+  switch (error.message) {
+    case 'backup-json':
+      return '백업 JSON을 읽을 수 없습니다. 현재 데이터는 바뀌지 않았습니다.';
+    case 'backup-format':
+      return '새 전체 workspace 백업 파일만 가져올 수 있습니다. 현재 데이터는 바뀌지 않았습니다.';
+    case 'backup-reference':
+      return '백업의 앱 연결 정보가 올바르지 않습니다. 현재 데이터는 바뀌지 않았습니다.';
+    case 'backup-schema':
+      return '백업의 앱 데이터가 올바르지 않습니다. 현재 데이터는 바뀌지 않았습니다.';
+    default:
+      return '백업 파일을 읽지 못했습니다. 현재 데이터는 바뀌지 않았습니다.';
+  }
 }
 
 function navigateTo(href: string): void {

@@ -22,6 +22,63 @@ const appliedWorkspaceV1 = {
   accountMap: { applied: null, draft: null, instruments: [], flows: [] },
 };
 
+const connectedWorkspaceV1 = {
+  ...appliedWorkspaceV1,
+  revision: 7,
+  updatedAt: 700,
+  simulation: {
+    draft: {
+      schemaVersion: 2 as const,
+      source: {
+        monthlySavingsWon: appliedMainV2.monthlySavingWon,
+        monthlyInvestmentWon: appliedMainV2.monthlyInvestmentWon,
+        mainUpdatedAt: appliedMainV2.updatedAt,
+      },
+      initialInvestmentWon: 2_000_000,
+      years: 20,
+      expectedAnnualReturnPercent: 8,
+      baseRatePercent: 2.5,
+      inflationOffsetPercentPoints: -0.5,
+      amountMode: 'nominal' as const,
+      updatedAt: 200,
+    },
+  },
+  portfolio: {
+    plans: [
+      {
+        schemaVersion: 2 as const,
+        scope: { type: 'aggregate' as const },
+        items: [{ id: 'asset-us', name: '미국 인덱스', shareUnits: 700_000, order: 0 }],
+        cashShareUnits: 300_000,
+        cashMode: 'automatic' as const,
+        syncedInvestmentWon: appliedMainV2.monthlyInvestmentWon,
+        appliedAt: 300,
+        updatedAt: 300,
+      },
+      {
+        schemaVersion: 2 as const,
+        scope: { type: 'location' as const, locationId: 'loc-isa' },
+        items: [{ id: 'asset-bond', name: '국채', shareUnits: 400_000, order: 0 }],
+        cashShareUnits: 600_000,
+        cashMode: 'automatic' as const,
+        syncedInvestmentWon: appliedMainV2.monthlyInvestmentWon,
+        appliedAt: 301,
+        updatedAt: 301,
+      },
+    ],
+    draft: null,
+  },
+  locations: [{
+    id: 'loc-isa',
+    shortName: 'ISA',
+    institution: { id: 'bank-1', name: '미래은행' },
+    kind: 'brokerage' as const,
+    roles: ['saving' as const, 'investing' as const],
+    createdAt: 10,
+    updatedAt: 20,
+  }],
+};
+
 const seededOldMainRecords = {
   'isf-main-v2': JSON.stringify({ ...appliedMainV2, monthlyNetIncomeWon: 9_900_000 }),
   'isf-main-v2-pending': '{old-pending',
@@ -694,6 +751,179 @@ test.describe('mobile quick setup', () => {
   });
 });
 
+test('whole-workspace backup round-trips atomically in the contained mobile confirmation', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript(({ workspace, oldRecords }) => {
+    if (sessionStorage.getItem('isf-backup-roundtrip-seeded') === null) {
+      localStorage.clear();
+      localStorage.setItem('isf-workspace-v1', JSON.stringify(workspace));
+      for (const [key, raw] of Object.entries(oldRecords)) localStorage.setItem(key, raw);
+      sessionStorage.setItem('isf-backup-roundtrip-seeded', 'true');
+    }
+    const originalSetItem = Storage.prototype.setItem;
+    Object.defineProperty(window, '__workspaceWrites', { configurable: true, value: 0, writable: true });
+    Storage.prototype.setItem = function setItem(key: string, value: string) {
+      if (key === 'isf-workspace-v1') {
+        (window as typeof window & { __workspaceWrites: number }).__workspaceWrites += 1;
+      }
+      originalSetItem.call(this, key, value);
+    };
+  }, { workspace: connectedWorkspaceV1, oldRecords: seededOldMainRecords });
+  await page.goto('apps/main/');
+
+  const trigger = page.getByRole('button', { name: '관리 메뉴' });
+  await trigger.click();
+  await expect(page.getByText(/모든 앱 데이터를 한 번에 백업하고 복원/)).toBeVisible();
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('menuitem', { name: '백업 내보내기' }).click();
+  const download = await downloadPromise;
+  const downloadPath = await download.path();
+  expect(downloadPath).not.toBeNull();
+  const exportedText = await readFile(downloadPath!, 'utf8');
+  const exported = JSON.parse(exportedText);
+  expect(Object.keys(exported).sort()).toEqual(['exportedAt', 'format', 'formatVersion', 'workspace']);
+  expect(exported).toMatchObject({
+    format: 'isf-workspace-backup',
+    formatVersion: 1,
+    workspace: connectedWorkspaceV1,
+  });
+  for (const excluded of ['isf-main-v2', 'save-lease', 'trophy', '트로피']) {
+    expect(exportedText).not.toContain(excluded);
+  }
+
+  const mutatedWorkspace = {
+    ...appliedWorkspaceV1,
+    revision: 10,
+    updatedAt: 1_000,
+    main: {
+      applied: { ...appliedMainV2, monthlyNetIncomeWon: 6_000_000, updatedAt: 1_000 },
+      setupProgress: null,
+    },
+  };
+  const mutatedRaw = JSON.stringify(mutatedWorkspace);
+  await page.evaluate((raw) => {
+    localStorage.setItem('isf-workspace-v1', raw);
+    (window as typeof window & { __workspaceWrites: number }).__workspaceWrites = 0;
+  }, mutatedRaw);
+  await page.reload();
+  await expect(page.getByRole('button', { name: '남는 돈 편집' })).toContainText('370만 원');
+
+  await trigger.click();
+  const input = page.getByLabel('백업 가져오기');
+  await expect(input).toHaveAttribute('type', 'file');
+  await input.focus();
+  await expect(input.locator('..')).toHaveCSS('box-shadow', /rgba?\(/);
+  await input.setInputFiles({
+    name: 'workspace-backup.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(exportedText),
+  });
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByRole('heading', { name: '모든 앱 데이터를 이 백업으로 바꿀까요?' })).toBeVisible();
+  await expect(dialog.getByRole('button', { name: '취소' })).toBeFocused();
+  const containment = await dialog.evaluate((element) => {
+    const bounds = element.getBoundingClientRect();
+    return bounds.left >= 0
+      && bounds.top >= 0
+      && bounds.right <= window.innerWidth
+      && bounds.bottom <= window.innerHeight
+      && document.documentElement.scrollWidth <= window.innerWidth;
+  });
+  expect(containment).toBe(true);
+  expect(await page.evaluate(() => localStorage.getItem('isf-workspace-v1'))).toBe(mutatedRaw);
+
+  await dialog.getByRole('button', { name: '백업으로 바꾸기' }).click();
+
+  await expect(page.getByRole('button', { name: '남는 돈 편집' })).toContainText('90만 원');
+  await expect(page.getByRole('status').filter({ hasText: '모든 앱 데이터를 백업에서 복원했습니다.' })).toBeVisible();
+  await expect(trigger).toBeFocused();
+  const durable = await page.evaluate(() => ({
+    raw: localStorage.getItem('isf-workspace-v1'),
+    old: Object.fromEntries(Object.keys(localStorage)
+      .filter((key) => key !== 'isf-workspace-v1' && key.startsWith('isf-'))
+      .map((key) => [key, localStorage.getItem(key)])),
+    writes: (window as typeof window & { __workspaceWrites: number }).__workspaceWrites,
+  }));
+  const restored = JSON.parse(durable.raw!);
+  expect(restored.revision).toBe(11);
+  expect(restored.main).toEqual(connectedWorkspaceV1.main);
+  expect(restored.simulation).toEqual(connectedWorkspaceV1.simulation);
+  expect(restored.portfolio).toEqual(connectedWorkspaceV1.portfolio);
+  expect(restored.locations).toEqual(connectedWorkspaceV1.locations);
+  expect(restored.accountMap).toEqual(connectedWorkspaceV1.accountMap);
+  expect(durable.writes).toBe(1);
+  expect(durable.old).toEqual(seededOldMainRecords);
+});
+
+test('invalid, old, reference, duplicate, and capacity backups retain the exact raw workspace', async ({ page }) => {
+  await page.addInitScript(({ workspace, oldRecords }) => {
+    localStorage.clear();
+    localStorage.setItem('isf-workspace-v1', JSON.stringify(workspace));
+    for (const [key, raw] of Object.entries(oldRecords)) localStorage.setItem(key, raw);
+  }, { workspace: connectedWorkspaceV1, oldRecords: seededOldMainRecords });
+  await page.goto('apps/main/');
+  const raw = JSON.stringify(connectedWorkspaceV1);
+  const trigger = page.getByRole('button', { name: '관리 메뉴' });
+  const referenceWorkspace = { ...connectedWorkspaceV1, locations: [] };
+  const duplicateWorkspace = {
+    ...connectedWorkspaceV1,
+    locations: [
+      ...connectedWorkspaceV1.locations,
+      { ...connectedWorkspaceV1.locations[0], id: 'loc-duplicate', shortName: ' isa ' },
+    ],
+  };
+  const capacityWorkspace = {
+    ...connectedWorkspaceV1,
+    locations: [
+      ...connectedWorkspaceV1.locations,
+      ...Array.from({ length: 11 }, (_, index) => ({
+        id: `loc-income-${index}`,
+        shortName: `L${index}`,
+        kind: 'bank',
+        roles: ['income'],
+        createdAt: 10,
+        updatedAt: 20,
+      })),
+    ],
+  };
+  const envelope = (workspace: unknown) => JSON.stringify({
+    format: 'isf-workspace-backup',
+    formatVersion: 1,
+    exportedAt: 900,
+    workspace,
+  });
+  const failures = [
+    ['malformed.json', '{bad', '백업 JSON을 읽을 수 없습니다.'],
+    ['old-main.json', JSON.stringify(appliedMainV2), '새 전체 workspace 백업 파일만 가져올 수 있습니다.'],
+    ['schema.json', envelope({
+      ...connectedWorkspaceV1,
+      main: {
+        applied: { ...appliedMainV2, monthlyNetIncomeWon: -1 },
+        setupProgress: null,
+      },
+    }), '백업의 앱 데이터가 올바르지 않습니다.'],
+    ['reference.json', envelope(referenceWorkspace), '백업의 앱 연결 정보가 올바르지 않습니다.'],
+    ['duplicate.json', envelope(duplicateWorkspace), '백업의 앱 연결 정보가 올바르지 않습니다.'],
+    ['capacity.json', envelope(capacityWorkspace), '백업의 앱 연결 정보가 올바르지 않습니다.'],
+  ] as const;
+
+  for (const [name, contents, expectedMessage] of failures) {
+    await trigger.click();
+    await page.getByLabel('백업 가져오기').setInputFiles({
+      name,
+      mimeType: 'application/json',
+      buffer: Buffer.from(contents),
+    });
+    await expect(page.getByRole('alert')).toContainText(expectedMessage);
+    await expect(trigger).toBeFocused();
+    expect(await page.evaluate(() => localStorage.getItem('isf-workspace-v1'))).toBe(raw);
+    expect(await page.evaluate((keys) => Object.fromEntries(
+      keys.map((key) => [key, localStorage.getItem(key)]),
+    ), Object.keys(seededOldMainRecords))).toEqual(seededOldMainRecords);
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+  }
+});
+
 test('backup import has a matching accessible name and visible keyboard focus ring', async ({ page }) => {
   await page.addInitScript((fixture) => {
     localStorage.setItem('isf-workspace-v1', JSON.stringify(fixture));
@@ -714,6 +944,7 @@ test('backup import has a matching accessible name and visible keyboard focus ri
     buffer: Buffer.from(JSON.stringify(appliedMainV2)),
   });
   await expect(trigger).toBeFocused();
+  await expect(page.getByRole('alert')).toContainText('새 전체 workspace 백업 파일만');
 });
 
 test('keyboard-only user completes the full quick setup', async ({ page }) => {

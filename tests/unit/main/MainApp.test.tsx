@@ -10,8 +10,12 @@ import {
 } from '../../../src/main/infrastructure/mainRepository';
 import {
   BrowserWorkspaceRepository,
+  type WorkspaceRepository,
 } from '../../../src/workspace/infrastructure/workspaceRepository';
-import { WORKSPACE_STORAGE_KEY } from '../../../src/workspace/domain/model';
+import {
+  WORKSPACE_STORAGE_KEY,
+  type WorkspaceDocument,
+} from '../../../src/workspace/domain/model';
 import type {
   WorkspaceSaveGuard,
   WorkspaceSaveLock,
@@ -105,6 +109,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  vi.restoreAllMocks();
   window.history.replaceState(null, '', '/');
 });
 
@@ -128,6 +133,68 @@ function readBlob(blob: Blob): Promise<string> {
     reader.onerror = () => reject(reader.error);
     reader.readAsText(blob);
   });
+}
+
+function workspace(monthlyNetIncomeWon: number, revision = 1): WorkspaceDocument {
+  const applied = data(monthlyNetIncomeWon, { updatedAt: 100 });
+  return {
+    schemaVersion: 1,
+    revision,
+    updatedAt: 500,
+    main: { applied, setupProgress: null },
+    simulation: {
+      draft: {
+        schemaVersion: 2,
+        source: {
+          monthlySavingsWon: applied.monthlySavingWon,
+          monthlyInvestmentWon: applied.monthlyInvestmentWon,
+          mainUpdatedAt: applied.updatedAt,
+        },
+        initialInvestmentWon: 2_000_000,
+        years: 20,
+        expectedAnnualReturnPercent: 8,
+        baseRatePercent: 2.5,
+        inflationOffsetPercentPoints: -0.5,
+        amountMode: 'nominal',
+        updatedAt: 200,
+      },
+    },
+    portfolio: {
+      plans: [{
+        schemaVersion: 2,
+        scope: { type: 'location', locationId: 'loc-isa' },
+        items: [{ id: 'asset-us', name: '미국 인덱스', shareUnits: 700_000, order: 0 }],
+        cashShareUnits: 300_000,
+        cashMode: 'automatic',
+        syncedInvestmentWon: applied.monthlyInvestmentWon,
+        appliedAt: 300,
+        updatedAt: 300,
+      }],
+      draft: null,
+    },
+    locations: [{
+      id: 'loc-isa',
+      shortName: 'ISA',
+      kind: 'brokerage',
+      roles: ['investing'],
+      createdAt: 10,
+      updatedAt: 20,
+    }],
+    accountMap: { applied: null, draft: null, instruments: [], flows: [] },
+  };
+}
+
+function backupFile(value: unknown): File {
+  return new File([JSON.stringify(value)], 'workspace.json', { type: 'application/json' });
+}
+
+function backupEnvelope(value: WorkspaceDocument): unknown {
+  return {
+    format: 'isf-workspace-backup',
+    formatVersion: 1,
+    exportedAt: 900,
+    workspace: value,
+  };
 }
 
 function repository(result: MainLoadResult): MainRepository {
@@ -159,6 +226,133 @@ describe('setupStepForIssue', () => {
 });
 
 describe('MainApp', () => {
+  it('exports the current whole workspace from the management menu', async () => {
+    const storage = new MemoryStorage();
+    const current = workspace(3_000_000, 7);
+    storage.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify(current));
+    const workspaceRepository = new BrowserWorkspaceRepository(storage, {
+      saveLock: testSerialLock(),
+      now: () => 800,
+    });
+    const createObjectURL = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:workspace-backup');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+    render(<MainApp
+      repository={new BrowserMainRepository(workspaceRepository)}
+      workspaceRepository={workspaceRepository}
+    />);
+    await screen.findByRole('heading', { name: 'dashboard' });
+
+    fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
+    expect(screen.getByText(/모든 앱 데이터를 한 번에 백업하고 복원/)).toBeVisible();
+    fireEvent.click(screen.getByRole('menuitem', { name: '백업 내보내기' }));
+
+    const blob = createObjectURL.mock.calls[0]?.[0];
+    const parsed = JSON.parse(await readBlob(blob as Blob));
+    expect(parsed).toMatchObject({
+      format: 'isf-workspace-backup',
+      formatVersion: 1,
+      workspace: current,
+    });
+    expect(Object.keys(parsed).sort()).toEqual(['exportedAt', 'format', 'formatVersion', 'workspace']);
+  });
+
+  it('confirms and atomically restores all slices before reloading Main', async () => {
+    const storage = new MemoryStorage();
+    const current = workspace(3_000_000, 7);
+    const imported = workspace(4_000_000, 99);
+    const oldRaw = '{old-main-record';
+    storage.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify(current));
+    storage.setItem('isf-main-v2', oldRaw);
+    const workspaceRepository = new BrowserWorkspaceRepository(storage, {
+      saveLock: testSerialLock(),
+      now: () => 800,
+    });
+    const setItem = vi.spyOn(storage, 'setItem');
+    render(<MainApp
+      repository={new BrowserMainRepository(workspaceRepository, () => 800)}
+      workspaceRepository={workspaceRepository}
+    />);
+    await screen.findByRole('heading', { name: 'dashboard' });
+
+    fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
+    fireEvent.change(screen.getByLabelText('백업 가져오기'), {
+      target: { files: [backupFile(backupEnvelope(imported))] },
+    });
+
+    expect(await screen.findByRole('heading', { name: '모든 앱 데이터를 이 백업으로 바꿀까요?' })).toBeVisible();
+    expect(storage.getItem(WORKSPACE_STORAGE_KEY)).toBe(JSON.stringify(current));
+    fireEvent.click(screen.getByRole('button', { name: '백업으로 바꾸기' }));
+
+    expect(await screen.findByLabelText('applied-income')).toHaveTextContent('4000000');
+    expect(screen.getByText('모든 앱 데이터를 백업에서 복원했습니다.')).toBeVisible();
+    const saved = JSON.parse(storage.getItem(WORKSPACE_STORAGE_KEY) ?? '') as WorkspaceDocument;
+    expect(saved.revision).toBe(8);
+    expect(saved.main).toEqual(imported.main);
+    expect(saved.simulation).toEqual(imported.simulation);
+    expect(saved.portfolio).toEqual(imported.portfolio);
+    expect(saved.locations).toEqual(imported.locations);
+    expect(saved.accountMap).toEqual(imported.accountMap);
+    expect(setItem.mock.calls.filter(([key]) => key === WORKSPACE_STORAGE_KEY)).toHaveLength(1);
+    expect(storage.getItem('isf-main-v2')).toBe(oldRaw);
+    await waitFor(() => expect(screen.getByRole('button', { name: '관리 메뉴' })).toHaveFocus());
+  });
+
+  it('rejects invalid and old Main-only imports without changing the raw workspace', async () => {
+    const storage = new MemoryStorage();
+    const current = workspace(3_000_000, 7);
+    const raw = JSON.stringify(current);
+    storage.setItem(WORKSPACE_STORAGE_KEY, raw);
+    const workspaceRepository = new BrowserWorkspaceRepository(storage, {
+      saveLock: testSerialLock(),
+    });
+    render(<MainApp
+      repository={new BrowserMainRepository(workspaceRepository)}
+      workspaceRepository={workspaceRepository}
+    />);
+    await screen.findByRole('heading', { name: 'dashboard' });
+
+    for (const file of [
+      new File(['{bad'], 'invalid.json', { type: 'application/json' }),
+      backupFile(data(9_000_000)),
+    ]) {
+      fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
+      fireEvent.change(screen.getByLabelText('백업 가져오기'), { target: { files: [file] } });
+      expect(await screen.findByRole('alert')).toHaveTextContent('현재 데이터는 바뀌지 않았습니다.');
+      expect(storage.getItem(WORKSPACE_STORAGE_KEY)).toBe(raw);
+      expect(screen.queryByRole('heading', { name: '모든 앱 데이터를 이 백업으로 바꿀까요?' })).not.toBeInTheDocument();
+    }
+  });
+
+  it('uses the current revision token and reports a no-change replace conflict', async () => {
+    const current = workspace(3_000_000, 7);
+    const imported = workspace(4_000_000, 99);
+    const replace = vi.fn<WorkspaceRepository['replace']>(async () => ({
+      status: 'conflict',
+      currentRevision: 8,
+    }));
+    const workspaceRepository: Pick<WorkspaceRepository, 'load' | 'replace'> = {
+      load: () => ({ status: 'found', workspace: current }),
+      replace,
+    };
+    render(<MainApp
+      repository={repository({ status: 'current', data: current.main.applied!, original: null })}
+      workspaceRepository={workspaceRepository}
+    />);
+    await screen.findByRole('heading', { name: 'dashboard' });
+
+    fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
+    fireEvent.change(screen.getByLabelText('백업 가져오기'), {
+      target: { files: [backupFile(backupEnvelope(imported))] },
+    });
+    await screen.findByRole('heading', { name: '모든 앱 데이터를 이 백업으로 바꿀까요?' });
+    fireEvent.click(screen.getByRole('button', { name: '백업으로 바꾸기' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('다른 탭에서 데이터가 변경되었습니다. 현재 데이터는 바뀌지 않았습니다.');
+    expect(replace).toHaveBeenCalledWith(7, imported);
+    expect(screen.getByLabelText('applied-income')).toHaveTextContent('3000000');
+  });
+
   it('offers dashboard backup and restart actions from the management menu', async () => {
     render(<MainApp repository={repository({ status: 'current', data: data(3_000_000), original: null })} />);
     await screen.findByRole('heading', { name: 'dashboard' });
