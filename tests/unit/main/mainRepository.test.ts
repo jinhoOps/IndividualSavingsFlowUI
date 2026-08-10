@@ -2,7 +2,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MainData } from '../../../src/main/domain/model';
 import {
   BrowserMainRepository,
-  BrowserMainSaveLock,
   isMainDataShape,
 } from '../../../src/main/infrastructure/mainRepository';
 
@@ -69,273 +68,6 @@ const validData = (): MainData => ({
   monthlyLivingWon: 1_000_000,
   monthlySavingWon: 600_000,
   monthlyInvestmentWon: 800_000,
-});
-
-describe('BrowserMainSaveLock', () => {
-  it('does not let a contender paused after a free snapshot overwrite an owner already inside', async () => {
-    const sharedValues = new Map<string, string>();
-    let releaseFirstSnapshot: (() => void) | undefined;
-    let markFirstSnapshot: (() => void) | undefined;
-    const firstSnapshot = new Promise<void>((resolve) => {
-      markFirstSnapshot = resolve;
-    });
-    const snapshotGate = new Promise<void>((resolve) => {
-      releaseFirstSnapshot = resolve;
-    });
-    const releases = new Map<string, () => void>();
-    const releasePromises = new Map<string, Promise<void>>();
-    for (const owner of ['tab-a', 'tab-b']) {
-      releasePromises.set(owner, new Promise<void>((resolve) => {
-        releases.set(owner, resolve);
-      }));
-    }
-    const active = new Set<string>();
-    const entered: string[] = [];
-    let maxActive = 0;
-    const task = (owner: string) => async () => {
-      active.add(owner);
-      entered.push(owner);
-      maxActive = Math.max(maxActive, active.size);
-      await releasePromises.get(owner);
-      active.delete(owner);
-    };
-    const commonOptions = {
-      now: () => 1_000,
-      wait: () => new Promise<void>((resolve) => setTimeout(resolve, 0)),
-      yieldAfterClaim: async () => undefined,
-      leaseDurationMs: 100,
-      acquireTimeoutMs: 500,
-      retryDelayMs: 10,
-    };
-    const firstLock = new BrowserMainSaveLock(new MemoryStorage(sharedValues), {
-      ...commonOptions,
-      createOwnerToken: () => 'tab-a',
-      yieldAfterSnapshot: async () => {
-        markFirstSnapshot?.();
-        await snapshotGate;
-      },
-    });
-    const secondLock = new BrowserMainSaveLock(new MemoryStorage(sharedValues), {
-      ...commonOptions,
-      createOwnerToken: () => 'tab-b',
-    });
-
-    const firstRun = firstLock.runExclusive(task('tab-a'));
-    await firstSnapshot;
-    const secondRun = secondLock.runExclusive(task('tab-b'));
-    await Promise.resolve();
-    await Promise.resolve();
-    releaseFirstSnapshot?.();
-    await vi.waitFor(() => expect(entered.length).toBeGreaterThan(0));
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    releases.get('tab-a')?.();
-    releases.get('tab-b')?.();
-    await Promise.all([firstRun, secondRun]);
-
-    expect(entered).toHaveLength(2);
-    expect(maxActive).toBe(1);
-  });
-
-  it('rejects a contender whose choosing lease expires while paused after its snapshot', async () => {
-    const sharedValues = new Map<string, string>();
-    const storage = new MemoryStorage(sharedValues);
-    const clock = createControlledLeaseClock(1_000);
-    let releaseFirstSnapshot: (() => void) | undefined;
-    let markFirstSnapshot: (() => void) | undefined;
-    const firstSnapshot = new Promise<void>((resolve) => {
-      markFirstSnapshot = resolve;
-    });
-    const snapshotGate = new Promise<void>((resolve) => {
-      releaseFirstSnapshot = resolve;
-    });
-    let releaseSecondTask: (() => void) | undefined;
-    let markSecondTask: (() => void) | undefined;
-    const secondTaskStarted = new Promise<void>((resolve) => {
-      markSecondTask = resolve;
-    });
-    const secondTaskGate = new Promise<void>((resolve) => {
-      releaseSecondTask = resolve;
-    });
-    const staleTask = vi.fn();
-    const firstLock = new BrowserMainSaveLock(storage, {
-      ...leaseOptions('tab-a', clock),
-      yieldAfterSnapshot: async () => {
-        markFirstSnapshot?.();
-        await snapshotGate;
-      },
-    });
-    const secondLock = new BrowserMainSaveLock(storage, leaseOptions('tab-b', clock));
-
-    const firstRun = firstLock.runExclusive(staleTask);
-    await firstSnapshot;
-    clock.setNow(1_101);
-    const secondRun = secondLock.runExclusive(async () => {
-      markSecondTask?.();
-      await secondTaskGate;
-    });
-    await secondTaskStarted;
-    releaseFirstSnapshot?.();
-
-    await expect(firstRun).rejects.toThrow('Main save lock ownership was lost');
-    expect(staleTask).not.toHaveBeenCalled();
-    expect(JSON.parse(storage.getItem(leaseStorageKey('tab-b')) ?? '')).toMatchObject({
-      owner: 'tab-b',
-      choosing: false,
-      ticket: 1,
-    });
-
-    releaseSecondTask?.();
-    await secondRun;
-  });
-
-  it('rejects a contender when its exact choosing record changes before the ready write', async () => {
-    const storage = new MemoryStorage();
-    let releaseSnapshot: (() => void) | undefined;
-    let markSnapshot: (() => void) | undefined;
-    const snapshotReached = new Promise<void>((resolve) => {
-      markSnapshot = resolve;
-    });
-    const snapshotGate = new Promise<void>((resolve) => {
-      releaseSnapshot = resolve;
-    });
-    const task = vi.fn();
-    const lock = new BrowserMainSaveLock(storage, {
-      ...leaseOptions('tab-a', createControlledLeaseClock(1_000)),
-      yieldAfterSnapshot: async () => {
-        markSnapshot?.();
-        await snapshotGate;
-      },
-    });
-
-    const run = lock.runExclusive(task);
-    await snapshotReached;
-    storage.setItem(leaseStorageKey('tab-a'), JSON.stringify({
-      owner: 'tab-a',
-      choosing: true,
-      ticket: 0,
-      expiresAt: 1_099,
-    }));
-    releaseSnapshot?.();
-
-    await expect(run).rejects.toThrow('Main save lock ownership was lost');
-    expect(task).not.toHaveBeenCalled();
-  });
-
-  it('rechecks the acquisition deadline immediately before returning a successful turn', async () => {
-    const clock = createControlledLeaseClock(1_000);
-    const task = vi.fn();
-    const lock = new BrowserMainSaveLock(new MemoryStorage(), {
-      ...leaseOptions('tab-a', clock),
-      leaseDurationMs: 500,
-      acquireTimeoutMs: 100,
-      yieldAfterClaim: async () => {
-        clock.setNow(1_100);
-      },
-    });
-
-    await expect(lock.runExclusive(task)).rejects.toThrow('Could not acquire the Main save lock');
-    expect(task).not.toHaveBeenCalled();
-  });
-
-  it('orders contenders that select the same bakery ticket without overlapping', async () => {
-    const sharedValues = new Map<string, string>();
-    const entered: string[] = [];
-    const snapshotWaiters: Array<{ owner: string; resolve: () => void }> = [];
-    let releaseFirstTask: (() => void) | undefined;
-    const firstTaskGate = new Promise<void>((resolve) => {
-      releaseFirstTask = resolve;
-    });
-    const options = (owner: string) => ({
-      createOwnerToken: () => owner,
-      now: () => 1_000,
-      wait: () => new Promise<void>((resolve) => setTimeout(resolve, 0)),
-      yieldAfterSnapshot: () => new Promise<void>((resolve) => snapshotWaiters.push({ owner, resolve })),
-      yieldAfterClaim: async () => undefined,
-      leaseDurationMs: 100,
-      acquireTimeoutMs: 500,
-      retryDelayMs: 10,
-    });
-    const firstLock = new BrowserMainSaveLock(new MemoryStorage(sharedValues), options('tab-a'));
-    const secondLock = new BrowserMainSaveLock(new MemoryStorage(sharedValues), options('tab-b'));
-
-    const firstRun = firstLock.runExclusive(async () => {
-      entered.push('tab-a');
-      await firstTaskGate;
-    });
-    await vi.waitFor(() => expect(snapshotWaiters).toHaveLength(1));
-    const secondRun = secondLock.runExclusive(async () => {
-      entered.push('tab-b');
-    });
-    await vi.waitFor(() => expect(snapshotWaiters).toHaveLength(2));
-    releaseClaim(snapshotWaiters, 'tab-b');
-    releaseClaim(snapshotWaiters, 'tab-a');
-    await vi.waitFor(() => expect(entered).toEqual(['tab-a']));
-
-    releaseFirstTask?.();
-    await Promise.all([firstRun, secondRun]);
-    expect(entered).toEqual(['tab-a', 'tab-b']);
-  });
-
-  it('does not remove a successor lease installed after the former owner final read', async () => {
-    const sharedValues = new Map<string, string>();
-    const firstKey = leaseStorageKey('tab-a');
-    const successorRaw = activeLeaseRecord('tab-b', 2_000, 2);
-    let replaceLeaseOnRelease = false;
-    const storage = new HookedStorage(
-      sharedValues,
-      (_key, _value, commit) => commit(),
-      (key, read) => {
-        const current = read();
-        if (key === firstKey && replaceLeaseOnRelease) {
-          replaceLeaseOnRelease = false;
-          sharedValues.set(key, successorRaw);
-        }
-        return current;
-      },
-    );
-    const clock = createControlledLeaseClock(1_000);
-    const lock = new BrowserMainSaveLock(storage, leaseOptions('tab-a', clock));
-
-    await lock.runExclusive(async () => {
-      replaceLeaseOnRelease = true;
-    });
-
-    expect(storage.getItem(firstKey)).toBe(successorRaw);
-  });
-
-  it('leaves foreign tombstones and malformed lease entries untouched while scanning storage indexes', async () => {
-    const sharedValues = new Map<string, string>();
-    const foreignKey = leaseStorageKey('foreign-tab');
-    const foreignTombstone = inactiveLeaseRecord('foreign-tab');
-    const malformedKey = leaseStorageKey('malformed-tab');
-    sharedValues.set(foreignKey, foreignTombstone);
-    sharedValues.set(malformedKey, '{malformed');
-    const storage = new MemoryStorage(sharedValues);
-    const lock = new BrowserMainSaveLock(storage, leaseOptions('tab-a', createControlledLeaseClock(1_000)));
-
-    await lock.runExclusive(async () => undefined);
-
-    expect(storage.getItem(foreignKey)).toBe(foreignTombstone);
-    expect(storage.getItem(malformedKey)).toBe('{malformed');
-  });
-
-  it('isolates v2 save leases from the untouched v1 lease namespace', async () => {
-    const storage = new MemoryStorage();
-    const legacyKey = 'isf-main-v1-save-lease:legacy-tab';
-    const legacyRaw = inactiveLeaseRecord('legacy-tab');
-    storage.setItem(legacyKey, legacyRaw);
-    const lock = new BrowserMainSaveLock(
-      storage,
-      leaseOptions('tab-a', createControlledLeaseClock(1_000)),
-    );
-
-    await lock.runExclusive(async () => {
-      expect(storage.getItem(leaseStorageKey('tab-a'))).not.toBeNull();
-      expect(storage.getItem('isf-main-v1-save-lease:tab-a')).toBeNull();
-    });
-
-    expect(storage.getItem(legacyKey)).toBe(legacyRaw);
-  });
 });
 
 describe('BrowserMainRepository', () => {
@@ -1206,7 +938,7 @@ describe('BrowserMainRepository', () => {
     await secondHistoryStarted;
     releaseFirstHistory?.();
 
-    await expect(firstSave).rejects.toThrow('Main save lock ownership was lost');
+    await expect(firstSave).rejects.toThrow('Workspace save lock ownership was lost');
     expect(JSON.parse(firstStorage.getItem(leaseStorageKey('tab-b')) ?? '')).toMatchObject({
       owner: 'tab-b',
       ticket: 1,
@@ -1255,7 +987,7 @@ describe('BrowserMainRepository', () => {
     });
     releaseFirstHistory?.();
 
-    await expect(firstSave).rejects.toThrow('Main save lock ownership was lost');
+    await expect(firstSave).rejects.toThrow('Workspace save lock ownership was lost');
     expect(JSON.parse(firstStorage.getItem('isf-main-v2') ?? '')).toMatchObject({
       monthlyNetIncomeWon: 6_000_000,
     });
@@ -1313,7 +1045,7 @@ describe('BrowserMainRepository', () => {
       },
     );
 
-    await expect(repository.save(input)).rejects.toThrow('Could not acquire the Main save lock');
+    await expect(repository.save(input)).rejects.toThrow('Could not acquire the Workspace save lock');
 
     expect(history).not.toHaveBeenCalled();
     expect(storage.getItem('isf-main-v2')).toBeNull();
@@ -1397,7 +1129,7 @@ function leaseOptions(owner: string, clock: ControlledLeaseClock) {
 }
 
 function leaseStorageKey(owner: string): string {
-  return `isf-main-v2-save-lease:${encodeURIComponent(owner)}`;
+  return `isf-workspace-v1-save-lease:${encodeURIComponent(owner)}`;
 }
 
 function activeLeaseRecord(owner: string, expiresAt: number, ticket = 1): string {
