@@ -345,7 +345,8 @@ Create `tests/unit/workspace/validation.test.ts` with fixtures using exact curre
 - extra root or slice keys fail;
 - old app-only objects fail;
 - Portfolio plan scopes are unique;
-- a location-scoped plan requires an active registry entry with `investing` role;
+- a persisted location-scoped plan requires a matching registry entry, including preserved archived or non-investing historical scopes;
+- new location-scoped plan or draft creation requires the latest matching registry entry to be active and include the `investing` role at the Portfolio repository write boundary;
 - consumer-instrument funding IDs and flow endpoint IDs resolve;
 - duplicate active normalized location names fail;
 - each purpose capacity is enforced;

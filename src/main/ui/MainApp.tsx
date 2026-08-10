@@ -317,8 +317,26 @@ export function MainApp({
       setBackupStatus({ kind: 'error', message: '저장소를 사용할 수 없어 백업하지 못했습니다.' });
       return;
     }
-    downloadJson(exportWorkspaceBackup(loaded.workspace), 'individual-savings-flow-workspace.json');
-    setBackupStatus({ kind: 'success', message: '모든 앱 데이터 백업을 내보냈습니다.' });
+    const downloaded = downloadJson(
+      exportWorkspaceBackup(loaded.workspace),
+      'individual-savings-flow-workspace.json',
+    );
+    setBackupStatus(downloaded
+      ? { kind: 'success', message: '모든 앱 데이터 백업을 내보냈습니다.' }
+      : {
+        kind: 'error',
+        message: '백업 파일을 다운로드하지 못했습니다. 브라우저 다운로드 설정을 확인하고 다시 시도해 주세요.',
+      });
+  }
+
+  function exportRecoveryOriginal(original: unknown, raw?: string) {
+    const downloaded = downloadRecovery(original, raw);
+    setBackupStatus(downloaded
+      ? { kind: 'success', message: '기존 원본 JSON을 다운로드했습니다.' }
+      : {
+        kind: 'error',
+        message: '원본 JSON을 다운로드하지 못했습니다. 브라우저 다운로드 설정을 확인하고 다시 시도해 주세요.',
+      });
   }
 
   function continueToSimulation() {
@@ -381,7 +399,7 @@ export function MainApp({
       <AppShell currentApp="main" managementMenu={managementMenu} statusRegion={backupStatusRegion}>
         <RecoveryView
           state={state}
-          onDownload={() => downloadRecovery(original, state.loadError?.raw)}
+          onDownload={() => exportRecoveryOriginal(original, state.loadError?.raw)}
           onStartEmpty={startEmptySetup}
           onRetry={apply}
           onDiscard={discardRecoveryCandidate}
@@ -565,18 +583,40 @@ export function setupStepForIssue(path: string | undefined): SetupStep | null {
   return null;
 }
 
-function downloadRecovery(original: unknown, raw?: string) {
-  downloadJson(raw ?? exportRecoveryData(original), 'individual-savings-flow-recovery.json');
+function downloadRecovery(original: unknown, raw?: string): boolean {
+  return downloadJson(
+    raw ?? exportRecoveryData(original),
+    'individual-savings-flow-recovery.json',
+  );
 }
 
-function downloadJson(contents: string, filename: string) {
-  const blob = new Blob([contents], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = filename;
-  anchor.click();
-  URL.revokeObjectURL(url);
+function downloadJson(contents: string, filename: string): boolean {
+  let url: string | null = null;
+  let anchor: HTMLAnchorElement | null = null;
+  try {
+    const blob = new Blob([contents], { type: 'application/json' });
+    url = URL.createObjectURL(blob);
+    anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = filename;
+    document.body.append(anchor);
+    anchor.click();
+    return true;
+  } catch {
+    return false;
+  } finally {
+    anchor?.remove();
+    if (url !== null) {
+      const objectUrl = url;
+      window.setTimeout(() => {
+        try {
+          URL.revokeObjectURL(objectUrl);
+        } catch {
+          // Download already settled; URL cleanup failure must not change its reported result.
+        }
+      }, 0);
+    }
+  }
 }
 
 function readFileText(file: File): Promise<string> {

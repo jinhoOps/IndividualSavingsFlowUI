@@ -68,7 +68,7 @@ export function parseFinancialLocation(value: unknown): FinancialLocation | null
     archivedAt = value.archivedAt;
   }
 
-  const shortName = normalizeDisplayName(value.shortName);
+  const shortName = normalizeLocationDisplayName(value.shortName);
   const roles = value.roles.filter(isFinancialRole);
   if (shortName === null
     || countDisplayCharacters(shortName) > 8
@@ -103,12 +103,13 @@ function parseInstitution(value: unknown): InstitutionRef | null {
   if (!hasExactKeys(value, ['name']) && !hasExactKeys(value, ['id', 'name'])) return null;
   if (typeof value.name !== 'string') return null;
 
-  const name = normalizeDisplayName(value.name);
+  const name = normalizeLocationDisplayName(value.name);
   if (name === null) return null;
 
-  if ('id' in value) {
-    if (typeof value.id !== 'string' || value.id.length === 0) return null;
-    return { id: value.id, name };
+  const institution = value as Record<string, unknown>;
+  if (hasOwnKey(institution, 'id')) {
+    if (typeof institution.id !== 'string' || institution.id.length === 0) return null;
+    return { id: institution.id, name };
   }
 
   return { name };
@@ -129,7 +130,7 @@ function hasOwnKey(value: Record<string, unknown>, key: string): boolean {
   return Object.prototype.hasOwnProperty.call(value, key);
 }
 
-function normalizeDisplayName(value: string): string | null {
+export function normalizeLocationDisplayName(value: string): string | null {
   const normalized = value.trim().replace(/\s+/gu, ' ');
   return normalized.length === 0 ? null : normalized;
 }

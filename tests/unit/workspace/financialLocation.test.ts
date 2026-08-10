@@ -69,6 +69,16 @@ describe('Financial location domain', () => {
       .toBeNull();
   });
 
+  it('does not materialize an inherited institution id', () => {
+    const institution = Object.create({ id: 'inherited-id' }) as { name: string };
+    institution.name = '토스뱅크';
+
+    expect(parseFinancialLocation({ ...validLocation, institution })).toEqual({
+      ...validLocation,
+      institution: { name: '토스뱅크' },
+    });
+  });
+
   it('accepts an optional non-negative safe archived timestamp only', () => {
     expect(parseFinancialLocation({ ...validLocation, archivedAt: 300 }))
       .toMatchObject({ archivedAt: 300 });

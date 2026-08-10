@@ -220,7 +220,9 @@
   background: var(--panel);
   box-shadow: var(--shadow-float);
   color: var(--ink);
+  max-block-size: calc(100dvh - 2rem);
   padding: 1.5rem;
+  overflow-y: auto;
 }
 
 .journey-management__dialog::backdrop {

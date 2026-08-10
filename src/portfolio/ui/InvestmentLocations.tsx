@@ -9,6 +9,7 @@ import { Button } from '../../components/common/Button';
 import { Surface } from '../../components/common/Surface';
 import {
   countDisplayCharacters,
+  normalizeLocationDisplayName,
   type FinancialLocation,
   type FinancialLocationKind,
 } from '../../workspace/domain/financialLocation';
@@ -67,7 +68,9 @@ export function InvestmentLocations({
   const [syncNotice, setSyncNotice] = useState<string>();
   const [settlementGeneration, setSettlementGeneration] = useState(0);
   const archiveReturnFocusRef = useRef<HTMLElement | null>(null);
+  const renameReturnFocusRef = useRef<HTMLElement | null>(null);
   const locationHeadingRef = useRef<HTMLHeadingElement>(null);
+  const [focusRenameTrigger, setFocusRenameTrigger] = useState(false);
 
   useEffect(() => {
     setLocations(repository.list());
@@ -121,6 +124,17 @@ export function InvestmentLocations({
     locationHeadingRef.current?.focus();
     setFocusHeadingAfterArchive(false);
   }, [archive, focusHeadingAfterArchive]);
+
+  useEffect(() => {
+    if (!focusRenameTrigger || rename !== undefined) return;
+    if (renameReturnFocusRef.current?.isConnected) {
+      renameReturnFocusRef.current.focus();
+    } else {
+      locationHeadingRef.current?.focus();
+    }
+    renameReturnFocusRef.current = null;
+    setFocusRenameTrigger(false);
+  }, [focusRenameTrigger, rename]);
 
   async function addLocation(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -192,7 +206,7 @@ export function InvestmentLocations({
       setSettlementGeneration((generation) => generation + 1);
       return;
     }
-    setRename(undefined);
+    closeRename();
     refreshLocations();
   }
 
@@ -265,6 +279,11 @@ export function InvestmentLocations({
     refreshLocations();
   }
 
+  function closeRename(): void {
+    setRename(undefined);
+    setFocusRenameTrigger(true);
+  }
+
   function setLocationError(id: string, message: string | undefined): void {
     setLocationErrors((current) => {
       const next = { ...current };
@@ -276,6 +295,7 @@ export function InvestmentLocations({
 
   const createErrorId = createError === undefined ? undefined : 'investment-location-create-error';
   const createCounterId = 'investment-location-name-counter';
+  const createShortNameCount = countDisplayCharacters(normalizeLocationDisplayName(shortName) ?? '');
 
   return (
     <Surface
@@ -321,13 +341,18 @@ export function InvestmentLocations({
                     variant="secondary"
                     aria-label={`${location.shortName} 이름 바꾸기`}
                     aria-expanded={renaming}
-                    onClick={() => {
-                      setRename(renaming ? undefined : {
-                        id: location.id,
-                        sourceShortName: location.shortName,
-                        value: location.shortName,
-                        pending: false,
-                      });
+                    onClick={(event) => {
+                      if (renaming) {
+                        closeRename();
+                      } else {
+                        renameReturnFocusRef.current = event.currentTarget;
+                        setRename({
+                          id: location.id,
+                          sourceShortName: location.shortName,
+                          value: location.shortName,
+                          pending: false,
+                        });
+                      }
                       setLocationError(location.id, undefined);
                     }}
                   >
@@ -350,7 +375,6 @@ export function InvestmentLocations({
                       <span>{location.shortName} 새 이름</span>
                       <input
                         value={rename.value}
-                        maxLength={8}
                         required
                         disabled={rename.pending}
                         aria-describedby={rename.error === undefined
@@ -364,7 +388,7 @@ export function InvestmentLocations({
                       />
                     </label>
                     <span className="portfolio-locations__counter">
-                      {countDisplayCharacters(rename.value)}/8자
+                      {countDisplayCharacters(normalizeLocationDisplayName(rename.value) ?? '')}/8자
                     </span>
                     {rename.error === undefined ? null : (
                       <p
@@ -380,7 +404,7 @@ export function InvestmentLocations({
                         type="button"
                         variant="quiet"
                         disabled={rename.pending}
-                        onClick={() => setRename(undefined)}
+                        onClick={closeRename}
                       >
                         취소
                       </Button>
@@ -413,7 +437,6 @@ export function InvestmentLocations({
               <span>짧은 이름</span>
               <input
                 value={shortName}
-                maxLength={8}
                 required
                 disabled={createPending}
                 aria-describedby={[createCounterId, createErrorId].filter(Boolean).join(' ') || undefined}
@@ -425,7 +448,7 @@ export function InvestmentLocations({
               />
             </label>
             <span id={createCounterId} className="portfolio-locations__counter">
-              {countDisplayCharacters(shortName)}/8자
+              {createShortNameCount}/8자
             </span>
           </div>
           <label>

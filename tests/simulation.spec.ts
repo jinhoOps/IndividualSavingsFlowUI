@@ -148,6 +148,46 @@ test('reloads latest Main values and resets only Simulation from its menu', asyn
   });
 });
 
+test('keeps a failed reset dialog scrollable, contained, and focused in a short viewport', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 220 });
+  await seedMain(page);
+  await openFirstResult(page);
+
+  await page.getByRole('button', { name: '관리 메뉴' }).click();
+  await page.getByRole('menuitem', { name: '시뮬레이션 다시 설정' }).click();
+  await page.evaluate(() => {
+    const workspace = JSON.parse(localStorage.getItem('isf-workspace-v1')!);
+    workspace.simulation.draft.years = workspace.simulation.draft.years === 20 ? 19 : 20;
+    localStorage.setItem('isf-workspace-v1', JSON.stringify(workspace));
+  });
+
+  await page.getByRole('button', { name: '다시 설정' }).click();
+  const dialog = page.getByRole('dialog', { name: '시뮬레이션을 다시 설정할까요?' });
+  await expect(dialog.getByRole('alert')).toHaveText('시뮬레이션을 다시 설정하지 못했어요.');
+  await expect(dialog).toBeFocused();
+
+  const containment = await dialog.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    const style = getComputedStyle(element);
+    return {
+      top: rect.top,
+      bottom: rect.bottom,
+      viewportHeight: innerHeight,
+      scrollHeight: element.scrollHeight,
+      clientHeight: element.clientHeight,
+      maxBlockSize: style.maxBlockSize,
+      overflowY: style.overflowY,
+    };
+  });
+  expect(containment.top).toBeGreaterThanOrEqual(16);
+  expect(containment.bottom).toBeLessThanOrEqual(containment.viewportHeight - 16);
+  expect(Number.parseFloat(containment.maxBlockSize)).toBeLessThanOrEqual(
+    containment.viewportHeight - 32,
+  );
+  expect(containment.overflowY).toBe('auto');
+  expect(containment.scrollHeight).toBeGreaterThan(containment.clientHeight);
+});
+
 for (const viewport of [
   { width: 390, height: 844, label: 'mobile' },
   { width: 768, height: 900, label: 'tablet' },

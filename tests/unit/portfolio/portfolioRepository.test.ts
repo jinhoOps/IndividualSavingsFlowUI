@@ -201,6 +201,199 @@ describe('BrowserPortfolioRepository workspace adapter', () => {
     expect(next.simulation).toEqual(saved.simulation);
   });
 
+  it('creates a location-scoped applied plan only for an active investing location', async () => {
+    const saved = workspace({ plans: [aggregatePlan] });
+    const storage = new TrackingStorage(new Map([[WORKSPACE_STORAGE_KEY, JSON.stringify(saved)]]));
+    const repository = browserRepository(storage, 600);
+    repository.load();
+
+    await expect(repository.saveApplied(locationPlan)).resolves.toEqual({ status: 'saved' });
+
+    expect(readWorkspace(storage).portfolio.plans).toEqual([aggregatePlan, locationPlan]);
+  });
+
+  it('creates a location-scoped draft only for an active investing location', async () => {
+    const locationDraft: PortfolioDraft = {
+      ...createCashOnlyDraft(200_000, 3),
+      scope: { type: 'location', locationId: 'loc-isa' },
+    };
+    const saved = workspace({ draft: null });
+    const storage = new TrackingStorage(new Map([[WORKSPACE_STORAGE_KEY, JSON.stringify(saved)]]));
+    const repository = browserRepository(storage, 600);
+    repository.load();
+
+    await expect(repository.saveDraft(locationDraft)).resolves.toEqual({ status: 'saved' });
+
+    expect(readWorkspace(storage).portfolio.draft).toEqual(locationDraft);
+  });
+
+  it.each([
+    ['archived', [{ ...workspace().locations[0], archivedAt: 2 }]],
+    ['non-investing', [{ ...workspace().locations[0], roles: ['saving'] as ('saving')[] }]],
+    ['missing', []],
+  ])('rejects a new location-scoped applied plan for a %s registry target', async (
+    _state,
+    locations,
+  ) => {
+    const saved = workspace({ plans: [aggregatePlan] });
+    saved.locations = locations;
+    const storage = new TrackingStorage(new Map([[WORKSPACE_STORAGE_KEY, JSON.stringify(saved)]]));
+    const repository = browserRepository(storage, 600);
+    repository.load();
+
+    await expect(repository.saveApplied(locationPlan)).resolves.toEqual({ status: 'unavailable' });
+
+    expect(readWorkspace(storage)).toEqual(saved);
+  });
+
+  it('rejects a location-scoped applied creation when the locked current registry target is archived', async () => {
+    const initiallyActive = workspace({ plans: [aggregatePlan] });
+    let lockedCurrent = structuredClone(initiallyActive);
+    lockedCurrent.locations[0] = { ...lockedCurrent.locations[0], archivedAt: 2 };
+    const workspaceRepository: WorkspaceRepository = {
+      load: vi.fn(() => ({ status: 'found' as const, workspace: structuredClone(initiallyActive) })),
+      update: vi.fn(async (_revision, mutate) => {
+        try {
+          lockedCurrent = mutate(structuredClone(lockedCurrent));
+          return { status: 'saved' as const, workspace: structuredClone(lockedCurrent) };
+        } catch {
+          return { status: 'unavailable' as const };
+        }
+      }),
+      replace: vi.fn(),
+      resetInvalid: vi.fn(),
+      subscribe: vi.fn(() => () => undefined),
+    };
+    const repository = new BrowserPortfolioRepository(workspaceRepository);
+    repository.load();
+
+    await expect(repository.saveApplied(locationPlan)).resolves.toEqual({ status: 'unavailable' });
+
+    expect(lockedCurrent.portfolio.plans).toEqual([aggregatePlan]);
+  });
+
+  it.each([
+    ['archived', [{ ...workspace().locations[0], archivedAt: 2 }]],
+    ['non-investing', [{ ...workspace().locations[0], roles: ['saving'] as ('saving')[] }]],
+    ['missing', []],
+  ])('rejects a new location-scoped draft for a %s registry target', async (_state, locations) => {
+    const locationDraft: PortfolioDraft = {
+      ...createCashOnlyDraft(200_000, 3),
+      scope: { type: 'location', locationId: 'loc-isa' },
+    };
+    const saved = workspace({ draft: null });
+    saved.locations = locations;
+    const storage = new TrackingStorage(new Map([[WORKSPACE_STORAGE_KEY, JSON.stringify(saved)]]));
+    const repository = browserRepository(storage, 600);
+    repository.load();
+
+    await expect(repository.saveDraft(locationDraft)).resolves.toEqual({ status: 'unavailable' });
+
+    expect(readWorkspace(storage)).toEqual(saved);
+  });
+
+  it('rejects a location-scoped draft creation when the locked current registry target loses investing', async () => {
+    const locationDraft: PortfolioDraft = {
+      ...createCashOnlyDraft(200_000, 3),
+      scope: { type: 'location', locationId: 'loc-isa' },
+    };
+    const initiallyActive = workspace({ draft: null });
+    let lockedCurrent = structuredClone(initiallyActive);
+    lockedCurrent.locations[0] = { ...lockedCurrent.locations[0], roles: ['saving'] as ('saving')[] };
+    const workspaceRepository: WorkspaceRepository = {
+      load: vi.fn(() => ({ status: 'found' as const, workspace: structuredClone(initiallyActive) })),
+      update: vi.fn(async (_revision, mutate) => {
+        try {
+          lockedCurrent = mutate(structuredClone(lockedCurrent));
+          return { status: 'saved' as const, workspace: structuredClone(lockedCurrent) };
+        } catch {
+          return { status: 'unavailable' as const };
+        }
+      }),
+      replace: vi.fn(),
+      resetInvalid: vi.fn(),
+      subscribe: vi.fn(() => () => undefined),
+    };
+    const repository = new BrowserPortfolioRepository(workspaceRepository);
+    repository.load();
+
+    await expect(repository.saveDraft(locationDraft)).resolves.toEqual({ status: 'unavailable' });
+
+    expect(lockedCurrent.portfolio.draft).toBeNull();
+  });
+
+  it.each([
+    ['archived', [{ ...workspace().locations[0], archivedAt: 2 }]],
+    ['non-investing', [{ ...workspace().locations[0], roles: ['saving'] as ('saving')[] }]],
+  ])('updates an existing %s location-scoped applied plan while preserving its draft', async (
+    _state,
+    locations,
+  ) => {
+    const historicalDraft: PortfolioDraft = {
+      ...createCashOnlyDraft(200_000, 3),
+      scope: { type: 'location', locationId: 'loc-isa' },
+    };
+    const saved = workspace({ plans: [aggregatePlan, locationPlan], draft: historicalDraft });
+    saved.locations = locations;
+    const storage = new TrackingStorage(new Map([[WORKSPACE_STORAGE_KEY, JSON.stringify(saved)]]));
+    const repository = browserRepository(storage, 600);
+    repository.load();
+    const nextPlan = { ...locationPlan, updatedAt: 4 };
+
+    await expect(repository.saveApplied(nextPlan)).resolves.toEqual({ status: 'saved' });
+
+    expect(readWorkspace(storage).portfolio).toEqual({
+      plans: [aggregatePlan, nextPlan],
+      draft: historicalDraft,
+    });
+  });
+
+  it.each([
+    ['archived', [{ ...workspace().locations[0], archivedAt: 2 }]],
+    ['non-investing', [{ ...workspace().locations[0], roles: ['saving'] as ('saving')[] }]],
+  ])('updates an existing %s location-scoped draft while preserving its plan', async (
+    _state,
+    locations,
+  ) => {
+    const historicalDraft: PortfolioDraft = {
+      ...createCashOnlyDraft(200_000, 3),
+      scope: { type: 'location', locationId: 'loc-isa' },
+    };
+    const saved = workspace({ plans: [aggregatePlan, locationPlan], draft: historicalDraft });
+    saved.locations = locations;
+    const storage = new TrackingStorage(new Map([[WORKSPACE_STORAGE_KEY, JSON.stringify(saved)]]));
+    const repository = browserRepository(storage, 600);
+    repository.load();
+    const nextDraft = { ...historicalDraft, updatedAt: 4 };
+
+    await expect(repository.saveDraft(nextDraft)).resolves.toEqual({ status: 'saved' });
+
+    expect(readWorkspace(storage).portfolio).toEqual({
+      plans: [aggregatePlan, locationPlan],
+      draft: nextDraft,
+    });
+  });
+
+  it.each([
+    ['archived', [{ ...workspace().locations[0], archivedAt: 2 }]],
+    ['non-investing', [{ ...workspace().locations[0], roles: ['saving'] as ('saving')[] }]],
+  ])('clears an existing %s location scope', async (_state, locations) => {
+    const historicalDraft: PortfolioDraft = {
+      ...createCashOnlyDraft(200_000, 3),
+      scope: { type: 'location', locationId: 'loc-isa' },
+    };
+    const saved = workspace({ plans: [aggregatePlan, locationPlan], draft: historicalDraft });
+    saved.locations = locations;
+    const storage = new TrackingStorage(new Map([[WORKSPACE_STORAGE_KEY, JSON.stringify(saved)]]));
+    const repository = browserRepository(storage, 600);
+    repository.load();
+
+    await expect(repository.clearScope({ type: 'location', locationId: 'loc-isa' }))
+      .resolves.toEqual({ status: 'saved' });
+
+    expect(readWorkspace(storage).portfolio).toEqual({ plans: [aggregatePlan], draft: null });
+  });
+
   it('clearScope removes only the matching plan and matching draft', async () => {
     const locationDraft: PortfolioDraft = {
       ...createCashOnlyDraft(200_000, 4),

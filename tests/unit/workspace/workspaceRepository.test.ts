@@ -791,6 +791,48 @@ describe('BrowserWorkspaceRepository', () => {
     expect(listener).not.toHaveBeenCalled();
   });
 
+  it('keeps a duplicate callback subscription active until its own handle unsubscribes', async () => {
+    const storage = new MemoryStorage();
+    const repository = new BrowserWorkspaceRepository(storage, {
+      saveLock: createSerialLock(),
+      now: () => 100,
+    });
+    const listener = vi.fn();
+    const unsubscribeFirst = repository.subscribe(listener);
+    const unsubscribeSecond = repository.subscribe(listener);
+
+    await repository.update(0, (workspace) => workspace);
+    expect(listener).toHaveBeenCalledTimes(2);
+
+    unsubscribeFirst();
+    await repository.update(1, (workspace) => workspace);
+    expect(listener).toHaveBeenCalledTimes(3);
+    unsubscribeSecond();
+    await repository.update(2, (workspace) => workspace);
+    expect(listener).toHaveBeenCalledTimes(3);
+  });
+
+  it('continues notification after another subscriber throws', async () => {
+    const storage = new MemoryStorage();
+    const repository = new BrowserWorkspaceRepository(storage, {
+      saveLock: createSerialLock(),
+      now: () => 100,
+    });
+    const throwingListener = vi.fn(() => {
+      throw new Error('subscriber failure');
+    });
+    const receivingListener = vi.fn();
+    const unsubscribeThrowing = repository.subscribe(throwingListener);
+    const unsubscribeReceiving = repository.subscribe(receivingListener);
+
+    await repository.update(0, (workspace) => workspace);
+
+    expect(throwingListener).toHaveBeenCalledTimes(1);
+    expect(receivingListener).toHaveBeenCalledTimes(1);
+    unsubscribeThrowing();
+    unsubscribeReceiving();
+  });
+
   it('shares one storage-event handler and removes it after the group last unsubscribe', async () => {
     const storage = new MemoryStorage();
     const eventTarget = createTrackingWindow();

@@ -56,12 +56,15 @@ export function PortfolioApp({
     initial.kind === 'ready' ? createPortfolioState(initial) : null,
   );
   const stateRef = useRef(state);
+  const initialPersistenceStarted = useRef(false);
   const persistenceQueue = useRef<Promise<void>>(Promise.resolve());
   const latestOperation = useRef(0);
 
   useEffect(() => {
     if (initial.kind !== 'ready') return;
     if (!initial.shouldPersistDraft && !initial.shouldPersistApplied) return;
+    if (initialPersistenceStarted.current) return;
+    initialPersistenceStarted.current = true;
     const token = beginOperation();
     enqueuePersistence(async () => {
       if (initial.shouldPersistDraft) {

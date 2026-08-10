@@ -1,5 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
+import { StrictMode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { PortfolioPlan } from '../../../src/portfolio/domain/model';
 import type { PortfolioMainSourceRepository } from '../../../src/portfolio/infrastructure/mainSourceRepository';
@@ -152,6 +153,40 @@ describe('PortfolioApp', () => {
     render(<PortfolioApp locationRepository={emptyInvestmentLocations} mainSourceRepository={mainFound} repository={repository} now={() => 2} />);
 
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('저장하지 못했습니다'));
+  });
+
+  it('persists automatic Main reconciliation once under StrictMode', async () => {
+    const storage = new MemoryStorage();
+    const saved = createEmptyWorkspace(400);
+    saved.revision = 4;
+    saved.portfolio.plans = [{ ...plan, syncedInvestmentWon: 100_000 }];
+    storage.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify(saved));
+    const gated = firstSaveGate();
+    const repository = new BrowserPortfolioRepository(new BrowserWorkspaceRepository(storage, {
+      now: () => 500,
+      saveLock: gated.lock,
+    }));
+    const saveApplied = vi.spyOn(repository, 'saveApplied');
+
+    render(
+      <StrictMode>
+        <PortfolioApp
+          locationRepository={emptyInvestmentLocations}
+          mainSourceRepository={mainFound}
+          repository={repository}
+          now={() => 500}
+        />
+      </StrictMode>,
+    );
+
+    await gated.started;
+    expect(screen.getByText('저장 중')).toBeVisible();
+    gated.release();
+    await waitFor(() => expect(screen.getByText('저장됨')).toBeVisible());
+
+    expect(saveApplied).toHaveBeenCalledOnce();
+    const persisted = JSON.parse(storage.getItem(WORKSPACE_STORAGE_KEY) ?? '') as WorkspaceDocument;
+    expect(persisted.revision).toBe(5);
   });
 
   it('reports an applied write failure while staying in the editor', async () => {

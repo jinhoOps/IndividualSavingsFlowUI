@@ -439,6 +439,25 @@ test('creates and preserves a contained shared investment location at required w
   await expect(page.getByRole('heading', { name: '투자 위치', exact: true })).toBeFocused();
 });
 
+test('returns keyboard focus to an investment-location rename trigger after cancel and save', async ({ page }) => {
+  await seedMain(page, 200_000);
+  await seedAppliedPortfolio(page);
+  await page.goto('apps/portfolio/');
+
+  const originalTrigger = page.getByRole('button', { name: 'ISA 이름 바꾸기' });
+  await originalTrigger.focus();
+  await page.keyboard.press('Enter');
+  await page.getByRole('button', { name: '취소' }).focus();
+  await page.keyboard.press('Enter');
+  await expect(originalTrigger).toBeFocused();
+
+  await page.keyboard.press('Enter');
+  await page.getByLabel('ISA 새 이름').fill('연금 ISA');
+  await page.getByRole('button', { name: '이름 저장' }).focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('button', { name: '연금 ISA 이름 바꾸기' })).toBeFocused();
+});
+
 test('links an existing non-investing shared identity without duplicating its ID', async ({ page }) => {
   await seedMain(page, 200_000);
   await page.goto('apps/portfolio/');

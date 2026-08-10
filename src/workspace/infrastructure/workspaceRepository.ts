@@ -289,13 +289,14 @@ function subscribeToWorkspaceChannel(
     channel = createWorkspaceNotificationChannel(eventTarget, storageGroup);
     channels.set(storageGroup, channel);
   }
-  channel.listeners.add(listener);
+  const subscription: WorkspaceListener = (workspace) => listener(workspace);
+  channel.listeners.add(subscription);
 
   let subscribed = true;
   return () => {
     if (!subscribed) return;
     subscribed = false;
-    channel?.listeners.delete(listener);
+    channel?.listeners.delete(subscription);
     if (channel?.listeners.size !== 0) return;
     eventTarget.removeEventListener('storage', channel.handleStorageEvent);
     channels?.delete(storageGroup);

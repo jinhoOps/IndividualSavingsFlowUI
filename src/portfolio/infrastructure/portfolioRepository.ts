@@ -3,6 +3,7 @@ import {
   type WorkspaceLoadResult,
   type WorkspaceRepository,
 } from '../../workspace/infrastructure/workspaceRepository';
+import type { FinancialLocation } from '../../workspace/domain/financialLocation';
 import {
   scopeKey,
   type PortfolioDraft,
@@ -78,16 +79,27 @@ export class BrowserPortfolioRepository implements PortfolioRepository {
       || !samePlan(findPlan(loaded.workspace.portfolio.plans, key), this.planBases.get(key) ?? null)) {
       return unavailable();
     }
-    const result = await this.workspaceRepository.update(
-      loaded.workspace.revision,
-      (current) => ({
-        ...current,
-        portfolio: {
-          ...current.portfolio,
-          plans: upsertPlan(current.portfolio.plans, parsed),
+    let result;
+    try {
+      result = await this.workspaceRepository.update(
+        loaded.workspace.revision,
+        (current) => {
+          if (findPlan(current.portfolio.plans, key) === null
+            && !canCreateLocationScopedValue(parsed.scope, current.locations)) {
+            throw new Error('Cannot create Portfolio data for an inactive investing location');
+          }
+          return {
+            ...current,
+            portfolio: {
+              ...current.portfolio,
+              plans: upsertPlan(current.portfolio.plans, parsed),
+            },
+          };
         },
-      }),
-    );
+      );
+    } catch {
+      return unavailable();
+    }
     if (result.status !== 'saved') return unavailable();
     const saved = findPlan(result.workspace.portfolio.plans, key);
     if (saved === null) return unavailable();
@@ -105,13 +117,24 @@ export class BrowserPortfolioRepository implements PortfolioRepository {
     if (loaded === null || !sameDraft(loaded.workspace.portfolio.draft, this.draftBase)) {
       return unavailable();
     }
-    const result = await this.workspaceRepository.update(
-      loaded.workspace.revision,
-      (current) => ({
-        ...current,
-        portfolio: { ...current.portfolio, draft: structuredClone(parsed) },
-      }),
-    );
+    let result;
+    try {
+      result = await this.workspaceRepository.update(
+        loaded.workspace.revision,
+        (current) => {
+          if (current.portfolio.draft === null
+            && !canCreateLocationScopedValue(parsed.scope, current.locations)) {
+            throw new Error('Cannot create Portfolio data for an inactive investing location');
+          }
+          return {
+            ...current,
+            portfolio: { ...current.portfolio, draft: structuredClone(parsed) },
+          };
+        },
+      );
+    } catch {
+      return unavailable();
+    }
     if (result.status !== 'saved') return unavailable();
     this.draftBase = cloneDraft(result.workspace.portfolio.draft);
     return { status: 'saved' };
@@ -207,6 +230,17 @@ function draftForScope(draft: PortfolioDraft | null, key: string): PortfolioDraf
 
 function isAggregate(plan: PortfolioPlan): boolean {
   return plan.scope.type === 'aggregate';
+}
+
+function canCreateLocationScopedValue(
+  scope: PortfolioScope,
+  locations: FinancialLocation[],
+): boolean {
+  return scope.type === 'aggregate' || locations.some((location) => (
+    location.id === scope.locationId
+    && location.archivedAt === undefined
+    && location.roles.includes('investing')
+  ));
 }
 
 function cloneDraft(draft: PortfolioDraft | null): PortfolioDraft | null {

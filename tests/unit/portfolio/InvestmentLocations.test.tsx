@@ -188,6 +188,20 @@ describe('InvestmentLocations', () => {
     expect(await screen.findByText('연금저축')).toBeVisible();
   });
 
+  it('counts normalized location names without imposing a raw input limit', () => {
+    const repository = createRepository();
+    render(<InvestmentLocations repository={repository} />);
+
+    const input = screen.getByLabelText('짧은 이름');
+    expect(input).not.toHaveAttribute('maxlength');
+
+    fireEvent.change(input, { target: { value: '  연금   ISA  ' } });
+    expect(screen.getByText('6/8자')).toBeVisible();
+
+    fireEvent.change(input, { target: { value: 'A😀  B' } });
+    expect(screen.getByText('4/8자')).toBeVisible();
+  });
+
   it('links an active non-investing normalized duplicate instead of creating a second identity', async () => {
     const repository = createRepository();
     const existing: FinancialLocation = {
@@ -285,6 +299,40 @@ describe('InvestmentLocations', () => {
     expect(await screen.findByText('연금 ISA')).toBeVisible();
     expect(screen.queryByText('다른 화면에서 위치가 변경되어 작업을 닫았습니다.'))
       .not.toBeInTheDocument();
+  });
+
+  it('returns keyboard focus to the renamed location trigger after a successful save', async () => {
+    const repository = createRepository([location()]);
+    render(<InvestmentLocations repository={repository} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'ISA 이름 바꾸기' }));
+    fireEvent.change(screen.getByLabelText('ISA 새 이름'), { target: { value: '연금 ISA' } });
+    fireEvent.click(screen.getByRole('button', { name: '이름 저장' }));
+
+    const renamedTrigger = await screen.findByRole('button', { name: '연금 ISA 이름 바꾸기' });
+    await waitFor(() => expect(renamedTrigger).toHaveFocus());
+  });
+
+  it('returns keyboard focus to the rename trigger after cancel', async () => {
+    const repository = createRepository([location()]);
+    render(<InvestmentLocations repository={repository} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'ISA 이름 바꾸기' }));
+    fireEvent.click(screen.getByRole('button', { name: '취소' }));
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'ISA 이름 바꾸기' })).toHaveFocus());
+  });
+
+  it('counts a normalized rename without imposing a raw input limit', () => {
+    const repository = createRepository([location()]);
+    render(<InvestmentLocations repository={repository} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'ISA 이름 바꾸기' }));
+    const input = screen.getByLabelText('ISA 새 이름');
+    expect(input).not.toHaveAttribute('maxlength');
+
+    fireEvent.change(input, { target: { value: 'A😀  B' } });
+    expect(screen.getByText('4/8자')).toBeVisible();
   });
 
   it('keeps rename errors and input beside the location form', async () => {

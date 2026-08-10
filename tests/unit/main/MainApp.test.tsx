@@ -258,6 +258,30 @@ describe('MainApp', () => {
     expect(Object.keys(parsed).sort()).toEqual(['exportedAt', 'format', 'formatVersion', 'workspace']);
   });
 
+  it('reports an actionable error when a workspace export URL cannot be created', async () => {
+    const current = workspace(3_000_000, 7);
+    const workspaceRepository: Pick<WorkspaceRepository, 'load' | 'replace'> = {
+      load: () => ({ status: 'found', workspace: current }),
+      replace: vi.fn(),
+    };
+    vi.spyOn(URL, 'createObjectURL').mockImplementation(() => {
+      throw new Error('object URLs unavailable');
+    });
+    render(<MainApp
+      repository={repository({ status: 'current', data: current.main.applied!, original: null })}
+      workspaceRepository={workspaceRepository}
+    />);
+    await screen.findByRole('heading', { name: 'dashboard' });
+
+    fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: '백업 내보내기' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      '백업 파일을 다운로드하지 못했습니다. 브라우저 다운로드 설정을 확인하고 다시 시도해 주세요.',
+    );
+    expect(screen.queryByText('모든 앱 데이터 백업을 내보냈습니다.')).not.toBeInTheDocument();
+  });
+
   it('confirms and atomically restores all slices before reloading Main', async () => {
     const storage = new MemoryStorage();
     const current = workspace(3_000_000, 7);
@@ -620,6 +644,48 @@ describe('MainApp', () => {
     const blob = createObjectURL.mock.calls[0]?.[0];
     expect(blob).toBeInstanceOf(Blob);
     await expect(readBlob(blob as Blob)).resolves.toBe(raw);
+  });
+
+  it('reports invalid-raw download failure and cleans up its temporary anchor', async () => {
+    const raw = '{malformed-workspace';
+    const createObjectURL = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:failed-recovery');
+    const revokeObjectURL = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+    let connectedDuringClick = false;
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function click(
+      this: HTMLAnchorElement,
+    ) {
+      connectedDuringClick = this.isConnected;
+      throw new Error('download blocked');
+    });
+    render(<MainApp repository={repository({
+      status: 'failed',
+      data: null,
+      original: raw,
+      raw,
+      source: 'current',
+      reason: 'Stored workspace data is invalid.',
+    })} />);
+    await screen.findByRole('heading', { name: '저장 복구가 필요합니다' });
+    let scheduledRevoke: TimerHandler | undefined;
+    vi.spyOn(window, 'setTimeout').mockImplementation(((handler: TimerHandler) => {
+      scheduledRevoke = handler;
+      return 1;
+    }) as typeof window.setTimeout);
+
+    fireEvent.click(screen.getByRole('button', { name: '기존 원본 JSON 다운로드' }));
+
+    expect(createObjectURL).toHaveBeenCalledOnce();
+    expect(connectedDuringClick).toBe(true);
+    expect(document.querySelector('a[download="individual-savings-flow-recovery.json"]')).toBeNull();
+    expect(revokeObjectURL).not.toHaveBeenCalled();
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      '원본 JSON을 다운로드하지 못했습니다. 브라우저 다운로드 설정을 확인하고 다시 시도해 주세요.',
+    );
+
+    act(() => {
+      if (typeof scheduledRevoke === 'function') scheduledRevoke();
+    });
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:failed-recovery');
   });
 
   it('downloads, explicitly resets, applies, and reloads an invalid workspace with production repositories', async () => {
