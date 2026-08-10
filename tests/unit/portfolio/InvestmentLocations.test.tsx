@@ -349,7 +349,7 @@ describe('InvestmentLocations', () => {
     await waitFor(() => expect(screen.getByRole('heading', { name: '투자 위치' })).toHaveFocus());
   });
 
-  it('reconciles a pending rename snapshot after its local conflict settles', async () => {
+  it('reconciles a pending rename snapshot and preserves its local conflict alert', async () => {
     const repository = createRepository([location()]);
     const pending = deferredResult();
     repository.setNextPendingResult(pending.promise);
@@ -363,7 +363,8 @@ describe('InvestmentLocations', () => {
     pending.resolve({ status: 'conflict' });
 
     await waitFor(() => expect(screen.getByLabelText('외부 ISA 새 이름')).toHaveValue('외부 ISA'));
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(await screen.findByRole('alert'))
+      .toHaveTextContent('다른 화면에서 변경되었습니다. 다시 시도해 주세요.');
   });
 
   it('confirms referenced archive disposition with preservation selected by default', async () => {

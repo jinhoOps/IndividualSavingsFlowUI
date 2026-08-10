@@ -86,7 +86,6 @@ export function InvestmentLocations({
           ...rename,
           sourceShortName: currentLocation.shortName,
           value: currentLocation.shortName,
-          error: undefined,
         });
       }
     }
