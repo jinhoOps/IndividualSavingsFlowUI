@@ -179,6 +179,7 @@ export function PortfolioApp({
               <PortfolioApplyBar
                 dirty={state.dirty || state.applied === null}
                 saveError={state.saveState === 'error'}
+                showAmounts={preferences.showAmounts}
                 draft={state.draft}
                 investmentWon={state.draft.syncedInvestmentWon}
                 onCancel={() => dispatchDraft({ type: 'cancel-edit' })}

@@ -178,6 +178,11 @@ function ClassificationEditor({
           type="radio"
           name={`classification-${id}`}
           checked={classification === 'growth'}
+          onClick={() => {
+            if (classification === 'growth') {
+              onAction({ type: 'draft-classification-changed', id, classification: 'growth', now: now() });
+            }
+          }}
           onChange={() => onAction({ type: 'draft-classification-changed', id, classification: 'growth', now: now() })}
         />성장
       </label>
@@ -186,6 +191,11 @@ function ClassificationEditor({
           type="radio"
           name={`classification-${id}`}
           checked={classification === 'stable'}
+          onClick={() => {
+            if (classification === 'stable') {
+              onAction({ type: 'draft-classification-changed', id, classification: 'stable', now: now() });
+            }
+          }}
           onChange={() => onAction({ type: 'draft-classification-changed', id, classification: 'stable', now: now() })}
         />안정
       </label>

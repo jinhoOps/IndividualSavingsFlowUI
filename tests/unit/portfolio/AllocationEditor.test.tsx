@@ -52,14 +52,36 @@ describe('AllocationEditor', () => {
     expect(within(classification).getByRole('radio', { name: '성장' })).toBeChecked();
     expect(within(classification).getByRole('status')).toHaveTextContent('자동 추천: 성장');
 
+    fireEvent.click(within(classification).getByRole('radio', { name: '성장' }));
+    expect(onAction).toHaveBeenCalledWith({
+      type: 'draft-classification-changed', id: 'index', classification: 'growth', now: 2,
+    });
+    expect(onAction).toHaveBeenCalledTimes(1);
+    onAction.mockClear();
+
     fireEvent.click(within(classification).getByRole('radio', { name: '안정' }));
     expect(onAction).toHaveBeenCalledWith({
       type: 'draft-classification-changed', id: 'index', classification: 'stable', now: 2,
     });
+    expect(onAction).toHaveBeenCalledTimes(1);
 
     const cash = screen.getByRole('heading', { name: '현금' }).closest('section')!;
     expect(cash).toHaveTextContent('분류 안정');
     expect(within(cash).queryByRole('radio')).not.toBeInTheDocument();
+  });
+
+  it('announces a user classification and restores automatic recommendation explicitly', () => {
+    const onAction = vi.fn<(action: PortfolioAction) => void>();
+    const userDraft = {
+      ...draft,
+      items: [{ ...draft.items[0], classification: 'stable' as const, classificationOrigin: 'user' as const }],
+    };
+    render(<AllocationEditor draft={userDraft} investmentWon={200_000} onAction={onAction} now={() => 2} />);
+
+    const classification = screen.getByRole('group', { name: '미국 인덱스 분류' });
+    expect(within(classification).getByRole('status')).toHaveTextContent('직접 선택: 안정');
+    fireEvent.click(within(classification).getByRole('button', { name: '자동 추천 사용' }));
+    expect(onAction).toHaveBeenCalledWith({ type: 'draft-classification-auto-enabled', id: 'index', now: 2 });
   });
 
   it('announces the ten-item limit', () => {

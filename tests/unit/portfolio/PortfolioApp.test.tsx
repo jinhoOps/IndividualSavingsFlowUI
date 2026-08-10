@@ -46,6 +46,46 @@ describe('PortfolioApp', () => {
       .toHaveClass('ui-button', 'ui-button--primary');
   });
 
+  it('keeps an automatic classification in the applied plan until an explicit re-selection is applied', () => {
+    const repository = createMemoryPortfolioRepository({ applied: plan });
+    render(<PortfolioApp mainSourceRepository={mainFound} repository={repository} now={() => 2} />);
+
+    fireEvent.click(screen.getByRole('button', { name: '배분 수정' }));
+    const classification = screen.getByRole('group', { name: '인덱스 분류' });
+    fireEvent.click(within(classification).getByRole('radio', { name: '성장' }));
+
+    expect(within(classification).getByRole('status')).toHaveTextContent('직접 선택: 성장');
+    expect(repository.applied?.items[0].classificationOrigin).toBe('automatic');
+    expect(repository.draft?.items[0].classificationOrigin).toBe('user');
+
+    fireEvent.click(screen.getByRole('button', { name: '적용' }));
+    fireEvent.click(within(screen.getByRole('dialog', { name: '투자 배분 적용' }))
+      .getByRole('button', { name: '적용' }));
+    expect(repository.applied?.items[0].classificationOrigin).toBe('user');
+  });
+
+  it('shows the total investment in apply confirmation only when the amount preference is enabled', () => {
+    const preferencesRepository: PortfolioPreferencesRepository = {
+      load: () => ({ showAmounts: true, sortMode: 'ratio' }),
+      save: () => ({ status: 'saved' }),
+    };
+    render(
+      <PortfolioApp
+        mainSourceRepository={mainFound}
+        repository={createMemoryPortfolioRepository({ applied: plan })}
+        preferencesRepository={preferencesRepository}
+        now={() => 2}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '배분 수정' }));
+    fireEvent.click(within(screen.getByRole('group', { name: '인덱스 분류' })).getByRole('radio', { name: '안정' }));
+    fireEvent.click(screen.getByRole('button', { name: '적용' }));
+    const dialog = screen.getByRole('dialog', { name: '투자 배분 적용' });
+    expect(within(dialog).getByText('총 투자금')).toBeVisible();
+    expect(within(dialog).getByText('200,000원')).toBeVisible();
+  });
+
   it('preserves the plan behind a zero-investment blurred gate', () => {
     render(<PortfolioApp mainSourceRepository={zeroMain} repository={createMemoryPortfolioRepository({ applied: plan })} now={() => 1} />);
     expect(screen.getByTestId('portfolio-gated-content')).toHaveClass('portfolio-content--blurred');
