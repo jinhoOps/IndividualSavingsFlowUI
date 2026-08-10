@@ -33,6 +33,10 @@ export function ManagementConfirmationDialog({
     };
   }, [returnFocusRef]);
 
+  useEffect(() => {
+    if (pending) dialogRef.current?.focus();
+  }, [pending]);
+
   function trapFocus(event: KeyboardEvent<HTMLDialogElement>): void {
     if (event.key === 'Escape') {
       event.preventDefault();
@@ -43,7 +47,11 @@ export function ManagementConfirmationDialog({
     const controls = Array.from(event.currentTarget.querySelectorAll<HTMLElement>(
       'button:not(:disabled), [href], input:not(:disabled), [tabindex]:not([tabindex="-1"])',
     ));
-    if (controls.length === 0) return;
+    if (controls.length === 0) {
+      event.preventDefault();
+      event.currentTarget.focus();
+      return;
+    }
     const first = controls[0];
     const last = controls[controls.length - 1];
     if (event.shiftKey && document.activeElement === first) {
@@ -62,6 +70,7 @@ export function ManagementConfirmationDialog({
       aria-modal="true"
       aria-labelledby={titleId}
       aria-busy={pending}
+      tabIndex={-1}
       onCancel={(event) => {
         event.preventDefault();
         if (!pending) onCancel();

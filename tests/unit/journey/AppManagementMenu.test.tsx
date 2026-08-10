@@ -167,6 +167,26 @@ describe('AppManagementMenu', () => {
     expect(onReset).toHaveBeenCalledTimes(2);
   });
 
+  it('keeps Tab and Shift+Tab focus inside an async confirmation while pending', async () => {
+    let settle: ((result: boolean) => void) | undefined;
+    const onReset = vi.fn(() => new Promise<boolean>((resolve) => { settle = resolve; }));
+    render(<><AppManagementMenu items={buildItems({ onReset })} /><button type="button">바깥</button></>);
+    fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: '처음부터 다시' }));
+    const dialog = screen.getByRole('dialog', { name: '처음부터 다시 할까요?' });
+    fireEvent.click(within(dialog).getByRole('button', { name: '다시 시작' }));
+
+    expect(dialog).toHaveFocus();
+    for (const shiftKey of [false, true]) {
+      const defaultAllowed = fireEvent.keyDown(dialog, { key: 'Tab', shiftKey });
+      if (defaultAllowed) screen.getByRole('button', { name: '바깥' }).focus();
+      expect(dialog).toContainElement(document.activeElement as HTMLElement);
+    }
+
+    settle?.(true);
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  });
+
   it('renders an informational empty state without an action', () => {
     render(<AppManagementMenu items={[{ kind: 'message', id: 'empty', text: '아직 관리할 설정이 없습니다' }]} />);
     fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
