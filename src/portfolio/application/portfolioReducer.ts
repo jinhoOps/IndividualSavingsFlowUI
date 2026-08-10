@@ -4,10 +4,13 @@ import {
   enableAutomaticCash,
   removeItem,
   setCashAmount,
+  setItemClassification,
   setItemAmount,
   setItemPercentage,
 } from '../domain/allocation';
+import { recommendClassification } from '../domain/classification';
 import type {
+  Classification,
   InputMode,
   PortfolioDraft,
   PortfolioItemIdentity,
@@ -26,6 +29,8 @@ export interface PortfolioState {
 export type PortfolioAction =
   | { type: 'edit-opened' }
   | { type: 'draft-name-changed'; id: string; name: string; now: number }
+  | { type: 'draft-classification-changed'; id: string; classification: Classification; now: number }
+  | { type: 'draft-classification-auto-enabled'; id: string; now: number }
   | { type: 'draft-item-added'; item: PortfolioItemIdentity; now: number }
   | { type: 'draft-item-removed'; id: string; now: number }
   | { type: 'draft-item-amount-changed'; id: string; amountWon: number; now: number }
@@ -65,9 +70,30 @@ export function portfolioReducer(state: PortfolioState, action: PortfolioAction)
     case 'draft-name-changed':
       return updateDraft(state, {
         ...state.draft,
-        items: state.draft.items.map((item) => item.id === action.id ? { ...item, name: action.name } : item),
+        items: state.draft.items.map((item) => item.id === action.id
+          ? {
+            ...item,
+            name: action.name,
+            classification: item.classificationOrigin === 'automatic'
+              ? recommendClassification(action.name)
+              : item.classification,
+          }
+          : item),
         updatedAt: action.now,
       });
+    case 'draft-classification-changed':
+      return updateDraft(state, {
+        ...setItemClassification(state.draft, action.id, action.classification, 'user'),
+        updatedAt: action.now,
+      });
+    case 'draft-classification-auto-enabled': {
+      const item = state.draft.items.find((candidate) => candidate.id === action.id);
+      if (item === undefined) return state;
+      return updateDraft(state, {
+        ...setItemClassification(state.draft, action.id, recommendClassification(item.name), 'automatic'),
+        updatedAt: action.now,
+      });
+    }
     case 'draft-item-added':
       return tryDraft(state, action.now, (draft) => setItemAmount(draft, action.item, 0));
     case 'draft-item-removed':

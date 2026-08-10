@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { PortfolioAction } from '../../../src/portfolio/application/portfolioReducer';
@@ -42,6 +42,24 @@ describe('AllocationEditor', () => {
     expect(screen.getByText('현금 직접 배분 중')).toBeVisible();
     expect(screen.getByRole('button', { name: '현금 자동 배분 켜기' })).toBeVisible();
     expect(screen.getByText('남은 투자금을 현금으로 자동 배분합니다')).toBeVisible();
+  });
+
+  it('provides each investment classification as an announced radio group and presents cash as stable without a control', () => {
+    const onAction = vi.fn<(action: PortfolioAction) => void>();
+    render(<AllocationEditor draft={draft} investmentWon={200_000} onAction={onAction} now={() => 2} />);
+
+    const classification = screen.getByRole('group', { name: '미국 인덱스 분류' });
+    expect(within(classification).getByRole('radio', { name: '성장' })).toBeChecked();
+    expect(within(classification).getByRole('status')).toHaveTextContent('자동 추천: 성장');
+
+    fireEvent.click(within(classification).getByRole('radio', { name: '안정' }));
+    expect(onAction).toHaveBeenCalledWith({
+      type: 'draft-classification-changed', id: 'index', classification: 'stable', now: 2,
+    });
+
+    const cash = screen.getByRole('heading', { name: '현금' }).closest('section')!;
+    expect(cash).toHaveTextContent('분류 안정');
+    expect(within(cash).queryByRole('radio')).not.toBeInTheDocument();
   });
 
   it('announces the ten-item limit', () => {
@@ -103,5 +121,26 @@ describe('AllocationEditor', () => {
     expect(screen.getByRole('dialog', { name: '투자 배분 적용' })).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: '확인 취소' }));
     await waitFor(() => expect(trigger).toHaveFocus());
+  });
+
+  it('summarizes target count, stable share, then cash share before applying', () => {
+    const classifiedDraft = {
+      ...draft,
+      items: [{ ...draft.items[0], classification: 'stable' as const }],
+    };
+    render(<PortfolioApplyBar
+      dirty
+      draft={classifiedDraft}
+      investmentWon={200_000}
+      onCancel={vi.fn()}
+      onApply={vi.fn()}
+    />);
+
+    fireEvent.click(screen.getByRole('button', { name: '적용' }));
+    const dialog = screen.getByRole('dialog', { name: '투자 배분 적용' });
+    expect(within(dialog).getAllByRole('term').map((term) => term.textContent))
+      .toEqual(['투자 대상', '안정 비중', '현금 비중']);
+    expect(within(dialog).getByText('100%')).toBeVisible();
+    expect(within(dialog).getByText('40%')).toBeVisible();
   });
 });

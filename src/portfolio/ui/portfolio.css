@@ -27,14 +27,20 @@
 .portfolio-table tbody tr[data-active='true'] { background: #eff6ff; outline: 2px solid #93c5fd; outline-offset: -2px; }
 .portfolio-tooltip { position: fixed; z-index: 20; display: flex; box-sizing: border-box; width: max-content; max-width: calc(100vw - 2rem); gap: .5rem; padding: .65rem .8rem; border: 1px solid var(--line); background: white; animation: portfolio-tooltip-in 150ms ease both; }
 .portfolio-tooltip--fixed { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); }
-.portfolio-editor__items, .portfolio-editor__row, .portfolio-editor__cash { display: grid; gap: .75rem; }
+.portfolio-editor__items, .portfolio-editor__row, .portfolio-editor__cash, .portfolio-editor__classification { display: grid; gap: .75rem; }
 .portfolio-editor__mode, .portfolio-editor__computed { min-width: 0; }
 .portfolio-editor__mode { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1.5rem 0; }
 .portfolio-editor__mode legend { width: 100%; margin-bottom: .25rem; font-weight: 700; }
 .portfolio-editor__mode label { display: inline-flex; min-height: var(--ui-control-min-height); align-items: center; gap: .5rem; padding: .5rem .75rem; border: 1px solid var(--line); border-radius: var(--ui-control-radius); }
 .portfolio-editor__mode input { width: auto; min-height: 0; }
-.portfolio-editor__row { grid-template-columns: minmax(0, 1.4fr) minmax(9rem, 1fr) auto auto; align-items: end; }
+.portfolio-editor__row { grid-template-columns: minmax(0, 1.4fr) minmax(10rem, 1fr) minmax(9rem, 1fr) auto auto; align-items: end; }
 .portfolio-editor__row label { display: grid; min-width: 0; gap: .35rem; }
+.portfolio-editor__classification { min-width: 0; margin: 0; padding: 0; border: 0; }
+.portfolio-editor__classification legend { font-size: .875rem; font-weight: 700; }
+.portfolio-editor__classification label { display: inline-flex; min-height: var(--ui-control-min-height); align-items: center; gap: .35rem; }
+.portfolio-editor__classification input { width: auto; min-height: 0; }
+.portfolio-editor__classification [role='status'] { margin: 0; color: var(--muted); font-size: .8125rem; }
+.portfolio-editor__classification .ui-button { justify-self: start; }
 .portfolio-editor__computed { display: grid; gap: .25rem; padding-bottom: .625rem; text-align: right; white-space: nowrap; }
 .portfolio-editor__computed span:last-child { color: var(--muted); font-size: .875rem; }
 .portfolio-editor__cash { margin-top: 1.5rem; }

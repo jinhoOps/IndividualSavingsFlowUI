@@ -90,4 +90,20 @@ describe('portfolioReducer', () => {
     expect(switched.view).toBe('edit');
     expect(switched.dirty).toBe(false);
   });
+
+  it('recommends again on automatic renames but preserves a user classification until automatic is restored', () => {
+    let state = createPortfolioState(readyWithPlan);
+
+    state = portfolioReducer(state, { type: 'draft-name-changed', id: 'a', name: '국채 ETF', now: 2 });
+    expect(state.draft.items[0]).toMatchObject({ classification: 'stable', classificationOrigin: 'automatic' });
+
+    state = portfolioReducer(state, {
+      type: 'draft-classification-changed', id: 'a', classification: 'growth', now: 3,
+    });
+    state = portfolioReducer(state, { type: 'draft-name-changed', id: 'a', name: '금현물', now: 4 });
+    expect(state.draft.items[0]).toMatchObject({ classification: 'growth', classificationOrigin: 'user' });
+
+    state = portfolioReducer(state, { type: 'draft-classification-auto-enabled', id: 'a', now: 5 });
+    expect(state.draft.items[0]).toMatchObject({ classification: 'stable', classificationOrigin: 'automatic' });
+  });
 });
