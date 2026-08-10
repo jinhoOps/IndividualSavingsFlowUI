@@ -31,10 +31,12 @@ export function parsePortfolioDraft(value: unknown): PortfolioDraft | null {
   if (common === null || !isInputMode(value.inputMode)) return null;
   const total = sumShares(common.items, common.cashShareUnits);
   if (total > SHARE_SCALE || (common.cashMode === 'automatic' && total !== SHARE_SCALE)) return null;
+  const isApplicable = common.syncedInvestmentWon > 0 && total === SHARE_SCALE;
+  if (typeof value.isApplicable !== 'boolean' || value.isApplicable !== isApplicable) return null;
   return {
     ...common,
     inputMode: value.inputMode,
-    isApplicable: common.syncedInvestmentWon > 0 && total === SHARE_SCALE,
+    isApplicable,
   };
 }
 

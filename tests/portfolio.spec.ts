@@ -18,9 +18,12 @@ async function seedMain(page: Page, monthlyInvestmentWon: number): Promise<void>
 
 async function seedAppliedPortfolio(page: Page): Promise<void> {
   await page.addInitScript(() => {
-    localStorage.setItem('isf-portfolio-allocation-v1', JSON.stringify({
-      schemaVersion: 1,
-      items: [{ id: 'index', name: '인덱스', shareUnits: 600_000, order: 0 }],
+    localStorage.setItem('isf-portfolio-allocation-v2', JSON.stringify({
+      schemaVersion: 2,
+      items: [{
+        id: 'index', name: '인덱스', shareUnits: 600_000, order: 0,
+        classification: 'growth', classificationOrigin: 'automatic',
+      }],
       cashShareUnits: 400_000,
       cashMode: 'automatic',
       syncedInvestmentWon: 200_000,
@@ -54,10 +57,12 @@ test('creates one allocation and revisits result-first', async ({ page }) => {
     .toHaveAttribute('aria-current', 'page');
   expect(await page.evaluate(() => ({
     main: localStorage.getItem('isf-main-v2'),
+    applied: localStorage.getItem('isf-portfolio-allocation-v2'),
     legacyPlans: localStorage.getItem('isf-step3-portfolios-v2'),
     legacySnapshots: localStorage.getItem('isf-step3-snapshots-v1'),
   }))).toEqual({
     main: mainBefore,
+    applied: expect.stringContaining('"schemaVersion":2'),
     legacyPlans: '{"legacy":"plans"}',
     legacySnapshots: '{"legacy":"snapshots"}',
   });
@@ -71,7 +76,7 @@ test('resumes and cancels a draft, validates manual cash, and confirms reset', a
   await page.getByRole('button', { name: '배분 수정' }).click();
   await page.getByLabel('인덱스 금액').fill('100000');
   await page.getByLabel('인덱스 금액').blur();
-  await expect.poll(() => page.evaluate(() => localStorage.getItem('isf-portfolio-allocation-draft-v1')))
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('isf-portfolio-allocation-draft-v2')))
     .toContain('500000');
   await page.reload();
   await expect(page.getByRole('heading', { name: '투자 배분 설정' })).toBeVisible();
@@ -125,9 +130,12 @@ test('explains duplicate names and blocks confirmation until corrected', async (
 test('puts a Main investment increase into cash', async ({ page }) => {
   await page.addInitScript(({ fixture }) => {
     localStorage.setItem('isf-main-v2', JSON.stringify({ ...fixture, monthlyInvestmentWon: 300_000 }));
-    localStorage.setItem('isf-portfolio-allocation-v1', JSON.stringify({
-      schemaVersion: 1,
-      items: [{ id: 'index', name: '인덱스', shareUnits: 600_000, order: 0 }],
+    localStorage.setItem('isf-portfolio-allocation-v2', JSON.stringify({
+      schemaVersion: 2,
+      items: [{
+        id: 'index', name: '인덱스', shareUnits: 600_000, order: 0,
+        classification: 'growth', classificationOrigin: 'automatic',
+      }],
       cashShareUnits: 400_000,
       cashMode: 'automatic',
       syncedInvestmentWon: 200_000,
@@ -152,9 +160,12 @@ test('gates zero investment and focuses Main investment editing', async ({ page 
 test('keeps donut, table and tooltip usable across required widths', async ({ page }) => {
   await page.addInitScript(({ fixture }) => {
     localStorage.setItem('isf-main-v2', JSON.stringify(fixture));
-    localStorage.setItem('isf-portfolio-allocation-v1', JSON.stringify({
-      schemaVersion: 1,
-      items: [{ id: 'index', name: '인덱스', shareUnits: 600_000, order: 0 }],
+    localStorage.setItem('isf-portfolio-allocation-v2', JSON.stringify({
+      schemaVersion: 2,
+      items: [{
+        id: 'index', name: '인덱스', shareUnits: 600_000, order: 0,
+        classification: 'growth', classificationOrigin: 'automatic',
+      }],
       cashShareUnits: 400_000,
       cashMode: 'automatic', syncedInvestmentWon: 200_000, appliedAt: 1, updatedAt: 1,
     }));
@@ -242,7 +253,7 @@ test('keeps the final mobile editor control above the save-error apply bar', asy
   await page.evaluate(() => {
     const originalSetItem = Storage.prototype.setItem;
     Storage.prototype.setItem = function setItem(key: string, value: string) {
-      if (key === 'isf-portfolio-allocation-draft-v1') {
+      if (key === 'isf-portfolio-allocation-draft-v2') {
         throw new DOMException('Portfolio draft writes are blocked for this test', 'QuotaExceededError');
       }
       originalSetItem.call(this, key, value);
