@@ -192,6 +192,7 @@ describe('BrowserMainRepository workspace adapter', () => {
     storage.resetLog();
     const { mainRepository } = browserRepositories(storage, 500, 600);
     const draft = mainData({ monthlyNetIncomeWon: 5_000_000, updatedAt: 100 });
+    await mainRepository.load();
 
     await expect(mainRepository.save(draft)).resolves.toEqual({ ...draft, updatedAt: 500 });
 
@@ -221,6 +222,7 @@ describe('BrowserMainRepository workspace adapter', () => {
       locations: workspace.locations,
       accountMap: workspace.accountMap,
     };
+    mainRepository.loadSetupProgress();
 
     await mainRepository.saveSetupProgress('housing', draft, 'restart');
     expect(mainRepository.loadSetupProgress()).toEqual({
@@ -262,14 +264,86 @@ describe('BrowserMainRepository workspace adapter', () => {
         return { status: 'conflict', currentRevision: winner.revision } as const;
       }),
       replace: vi.fn(),
+      resetInvalid: vi.fn(),
       subscribe: vi.fn(() => () => undefined),
     };
     const repository = new BrowserMainRepository(workspaceRepository, () => 1_000);
+    await repository.load();
 
     await expect(repository.save(mainData({ monthlyNetIncomeWon: 5_000_000 })))
       .rejects.toThrow('workspace');
 
     expect(durable).toEqual(winner);
+  });
+
+  it('rejects a stale applied Main after another repository commits its winner', async () => {
+    const storage = new MemoryStorage();
+    seedWorkspace(storage, populatedWorkspace());
+    const first = browserRepositories(storage, 700, 700).mainRepository;
+    const second = browserRepositories(storage, 800, 800).mainRepository;
+    await first.load();
+    await second.load();
+    const winnerDraft = mainData({ monthlyNetIncomeWon: 6_000_000 });
+    const staleDraft = mainData({ monthlyNetIncomeWon: 5_000_000 });
+
+    await second.save(winnerDraft);
+    await expect(first.save(staleDraft)).rejects.toThrow('workspace');
+
+    const durable = JSON.parse(storage.getItem(WORKSPACE_STORAGE_KEY) ?? '') as WorkspaceDocument;
+    expect(durable.main.applied).toEqual({ ...winnerDraft, updatedAt: 800 });
+  });
+
+  it('rejects stale setup progress after another repository commits its winner', async () => {
+    const storage = new MemoryStorage();
+    seedWorkspace(storage, populatedWorkspace());
+    const first = browserRepositories(storage, 700, 700).mainRepository;
+    const second = browserRepositories(storage, 800, 800).mainRepository;
+    expect(first.loadSetupProgress()).toBeNull();
+    expect(second.loadSetupProgress()).toBeNull();
+    const winnerDraft = mainData({ monthlyLivingWon: 1_200_000 });
+    const staleDraft = mainData({ monthlyHousingWon: 1_200_000 });
+
+    await second.saveSetupProgress('living', winnerDraft, 'restart');
+    await expect(first.saveSetupProgress('housing', staleDraft, 'restart'))
+      .rejects.toThrow('workspace');
+
+    const durable = JSON.parse(storage.getItem(WORKSPACE_STORAGE_KEY) ?? '') as WorkspaceDocument;
+    expect(durable.main.setupProgress).toEqual({
+      kind: 'restart',
+      step: 'living',
+      draft: winnerDraft,
+      savedAt: 800,
+    });
+  });
+
+  it('preserves a newer unrelated slice while saving against the same applied Main base', async () => {
+    const storage = new MemoryStorage();
+    seedWorkspace(storage, populatedWorkspace());
+    const firstPair = browserRepositories(storage, 700, 700);
+    const secondPair = browserRepositories(storage, 800, 800);
+    await firstPair.mainRepository.load();
+    const loaded = secondPair.workspaceRepository.load();
+    if (loaded.status !== 'found') throw new Error('expected workspace fixture');
+    await secondPair.workspaceRepository.update(loaded.workspace.revision, (current) => ({
+      ...current,
+      locations: [...current.locations, {
+        id: 'loc-bank',
+        shortName: '생활비',
+        kind: 'bank',
+        roles: ['spending'],
+        createdAt: 30,
+        updatedAt: 30,
+      }],
+    }));
+    const draft = mainData({ monthlyNetIncomeWon: 5_000_000 });
+
+    await expect(firstPair.mainRepository.save(draft)).resolves.toEqual({
+      ...draft,
+      updatedAt: 700,
+    });
+
+    const durable = JSON.parse(storage.getItem(WORKSPACE_STORAGE_KEY) ?? '') as WorkspaceDocument;
+    expect(durable.locations.map(({ id }) => id)).toEqual(['loc-isa', 'loc-bank']);
   });
 
   it('returns the invalid workspace raw for the existing recovery presentation', async () => {
@@ -288,11 +362,43 @@ describe('BrowserMainRepository workspace adapter', () => {
     expect(storage.getItem(WORKSPACE_STORAGE_KEY)).toBe(raw);
   });
 
+  it('explicitly resets only the exact invalid workspace raw and leaves old keys untouched', async () => {
+    const raw = '{malformed-workspace';
+    const storage = new MemoryStorage(new Map(oldRecords));
+    storage.seed(WORKSPACE_STORAGE_KEY, raw);
+    storage.resetLog();
+    const { mainRepository } = browserRepositories(storage, 700, 800);
+    await expect(mainRepository.load()).resolves.toMatchObject({ status: 'failed', raw });
+
+    await mainRepository.resetInvalidWorkspace(raw);
+
+    await expect(mainRepository.load()).resolves.toEqual({ status: 'empty', data: null, original: null });
+    const reset = JSON.parse(storage.getItem(WORKSPACE_STORAGE_KEY) ?? '') as WorkspaceDocument;
+    expect(reset).toEqual({ ...createEmptyWorkspace(800), revision: 1 });
+    expect(storage.reads.filter((key) => oldRecords.has(key))).toEqual([]);
+    expect(storage.writes.filter((key) => oldRecords.has(key))).toEqual([]);
+    for (const [key, oldRaw] of oldRecords) expect(storage.getItem(key)).toBe(oldRaw);
+  });
+
+  it('rejects an invalid-workspace reset after the raw changes and preserves the winner', async () => {
+    const expectedRaw = '{first-invalid';
+    const winnerRaw = '{winner-invalid';
+    const storage = new MemoryStorage();
+    storage.seed(WORKSPACE_STORAGE_KEY, expectedRaw);
+    const { mainRepository } = browserRepositories(storage);
+    await expect(mainRepository.load()).resolves.toMatchObject({ status: 'failed', raw: expectedRaw });
+    storage.seed(WORKSPACE_STORAGE_KEY, winnerRaw);
+
+    await expect(mainRepository.resetInvalidWorkspace(expectedRaw)).rejects.toThrow('changed');
+    expect(storage.getItem(WORKSPACE_STORAGE_KEY)).toBe(winnerRaw);
+  });
+
   it('rejects invalid applied and setup drafts before a workspace write', async () => {
     const workspaceRepository: WorkspaceRepository = {
       load: vi.fn(() => ({ status: 'empty', workspace: createEmptyWorkspace(100) } as const)),
       update: vi.fn(),
       replace: vi.fn(),
+      resetInvalid: vi.fn(),
       subscribe: vi.fn(() => () => undefined),
     };
     const repository = new BrowserMainRepository(workspaceRepository, () => 200);

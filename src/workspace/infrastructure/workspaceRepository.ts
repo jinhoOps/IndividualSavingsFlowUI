@@ -32,6 +32,10 @@ export type WorkspaceWriteResult =
   | { status: 'conflict'; currentRevision: number }
   | { status: 'invalid' | 'unavailable' };
 
+export type WorkspaceInvalidResetResult =
+  | { status: 'saved'; workspace: WorkspaceDocument }
+  | { status: 'changed' | 'unavailable' };
+
 export interface WorkspaceRepository {
   load(): WorkspaceLoadResult;
   update(
@@ -42,6 +46,7 @@ export interface WorkspaceRepository {
     expectedRevision: number,
     candidate: WorkspaceDocument,
   ): Promise<WorkspaceWriteResult>;
+  resetInvalid(expectedRaw: string): Promise<WorkspaceInvalidResetResult>;
   subscribe(listener: (workspace: WorkspaceDocument) => void): () => void;
 }
 
@@ -119,6 +124,16 @@ export class BrowserWorkspaceRepository implements WorkspaceRepository {
     return await this.update(expectedRevision, () => candidate);
   }
 
+  async resetInvalid(expectedRaw: string): Promise<WorkspaceInvalidResetResult> {
+    try {
+      return await this.saveLock.runExclusive(async (guard) => (
+        this.resetInvalidLocked(expectedRaw, guard)
+      ));
+    } catch {
+      return { status: 'unavailable' };
+    }
+  }
+
   subscribe(listener: (workspace: WorkspaceDocument) => void): () => void {
     return subscribeToWorkspaceChannel(
       this.eventTarget,
@@ -164,6 +179,54 @@ export class BrowserWorkspaceRepository implements WorkspaceRepository {
       if (previousRaw !== undefined) {
         this.restorePreviousRaw(guard, previousRaw, this.readCurrentRawSafely());
       }
+      return { status: 'unavailable' };
+    }
+
+    publishToWorkspaceChannel(this.eventTarget, this.notificationStorageGroup, next);
+    return { status: 'saved', workspace: next };
+  }
+
+  private resetInvalidLocked(
+    expectedRaw: string,
+    guard: WorkspaceSaveGuard,
+  ): WorkspaceInvalidResetResult {
+    let observedRaw: string;
+    try {
+      const currentRaw = this.storage.getItem(WORKSPACE_STORAGE_KEY);
+      if (currentRaw !== expectedRaw) return { status: 'changed' };
+      try {
+        if (parseWorkspaceDocument(JSON.parse(currentRaw)) !== null) {
+          return { status: 'changed' };
+        }
+      } catch (error) {
+        if (!(error instanceof SyntaxError)) return { status: 'unavailable' };
+      }
+      observedRaw = currentRaw;
+    } catch {
+      return { status: 'unavailable' };
+    }
+
+    const next = parseWorkspaceDocument({
+      ...createEmptyWorkspace(this.now()),
+      revision: 1,
+    });
+    if (next === null) return { status: 'unavailable' };
+    const serialized = JSON.stringify(next);
+
+    try {
+      guard.assertOwned();
+      if (this.storage.getItem(WORKSPACE_STORAGE_KEY) !== observedRaw) {
+        return { status: 'changed' };
+      }
+      guard.assertOwned();
+      this.storage.setItem(WORKSPACE_STORAGE_KEY, serialized);
+      const verifiedRaw = this.storage.getItem(WORKSPACE_STORAGE_KEY);
+      if (verifiedRaw !== serialized) {
+        this.restorePreviousRaw(guard, observedRaw, verifiedRaw);
+        return { status: 'unavailable' };
+      }
+    } catch {
+      this.restorePreviousRaw(guard, observedRaw, this.readCurrentRawSafely());
       return { status: 'unavailable' };
     }
 

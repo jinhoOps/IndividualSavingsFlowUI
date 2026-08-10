@@ -103,13 +103,17 @@ export function MainApp({
     }
   }
 
-  function cancelDraft() {
+  async function cancelDraft() {
     if (savingRef.current) return;
-    repository.discardPending();
-    void clearSetupProgress();
-    setIssues([]);
-    setBackupStatus(null);
-    dispatch({ type: 'cancel-draft' });
+    savingRef.current = true;
+    try {
+      if (!await clearSetupProgress()) return;
+      setIssues([]);
+      setBackupStatus(null);
+      dispatch({ type: 'cancel-draft' });
+    } finally {
+      savingRef.current = false;
+    }
   }
 
   function restartSetup() {
@@ -119,39 +123,37 @@ export function MainApp({
     dispatch({ type: 'restart-setup' });
   }
 
-  function startEmptySetup() {
-    if (state?.mode === 'recovery' && state.loadError?.raw !== undefined) {
-      try {
-        if (state.loadError.source === 'pending') {
-          repository.acknowledgeFailedPending(state.loadError.raw);
-        } else {
-          repository.acknowledgeFailedCurrent(state.loadError.raw);
-        }
-      } catch {
-        dispatch({ type: 'save-failed' });
-        return;
+  async function startEmptySetup() {
+    if (state === null || savingRef.current) return;
+    savingRef.current = true;
+    dispatch({ type: 'save-started' });
+    try {
+      if (state.mode === 'recovery' && state.loadError?.raw !== undefined) {
+        await repository.resetInvalidWorkspace(state.loadError.raw);
       }
+      setIssues([]);
+      setState({
+        mode: 'setup',
+        applied: null,
+        draft: createEmptyMainData(),
+        setupStep: 'welcome',
+        dirty: false,
+        saveStatus: 'idle',
+        loadError: null,
+      });
+    } catch {
+      dispatch({ type: 'save-failed' });
+    } finally {
+      savingRef.current = false;
     }
-    if (state?.mode === 'recovery') repository.discardRecovery(state.draft.updatedAt);
-    repository.discardPending(state?.mode === 'recovery' ? state.draft.updatedAt : undefined);
-    void clearSetupProgress();
-    setIssues([]);
-    setState({
-      mode: 'setup',
-      applied: null,
-      draft: createEmptyMainData(),
-      setupStep: 'welcome',
-      dirty: false,
-      saveStatus: 'idle',
-      loadError: null,
-    });
   }
 
-  function discardRecoveryCandidate() {
+  async function discardRecoveryCandidate() {
     if (state === null || state.mode !== 'recovery' || savingRef.current) return;
-    repository.discardRecovery(state.draft.updatedAt);
-    repository.discardPending(state.draft.updatedAt);
-    void clearSetupProgress();
+    savingRef.current = true;
+    const cleared = await clearSetupProgress();
+    savingRef.current = false;
+    if (!cleared) return;
     setIssues([]);
     setState({
       mode: 'setup',
@@ -164,11 +166,12 @@ export function MainApp({
     });
   }
 
-  function returnToCurrentPlan() {
+  async function returnToCurrentPlan() {
     if (state === null || state.mode !== 'recovery' || state.applied === null || savingRef.current) return;
-    repository.discardRecovery(state.draft.updatedAt);
-    repository.discardPending(state.draft.updatedAt);
-    void clearSetupProgress();
+    savingRef.current = true;
+    const cleared = await clearSetupProgress();
+    savingRef.current = false;
+    if (!cleared) return;
     setIssues([]);
     dispatch({ type: 'cancel-draft' });
   }
@@ -177,14 +180,14 @@ export function MainApp({
     step: SetupStep,
     draft: MainData,
     kind: 'initial' | 'restart',
-  ): Promise<void> {
+  ): Promise<boolean> {
     return queueProgressWrite(
       () => repository.saveSetupProgress(step, draft, kind),
       '설정 진행 상황을 저장하지 못했습니다. 이 화면에서는 계속 입력할 수 있습니다.',
     );
   }
 
-  function clearSetupProgress(): Promise<void> {
+  function clearSetupProgress(): Promise<boolean> {
     return queueProgressWrite(
       () => repository.clearSetupProgress(),
       '설정 진행 상황을 정리하지 못했습니다. 저장된 계획에는 영향이 없습니다.',
@@ -194,13 +197,19 @@ export function MainApp({
   function queueProgressWrite(
     operation: () => Promise<void>,
     failureMessage: string,
-  ): Promise<void> {
+  ): Promise<boolean> {
     const attempted = progressWriteTailRef.current.then(operation);
     const handled = attempted.then(
-      () => setProgressWarning(null),
-      () => setProgressWarning(failureMessage),
+      () => {
+        setProgressWarning(null);
+        return true;
+      },
+      () => {
+        setProgressWarning(failureMessage);
+        return false;
+      },
     );
-    progressWriteTailRef.current = handled;
+    progressWriteTailRef.current = handled.then(() => undefined);
     return handled;
   }
 

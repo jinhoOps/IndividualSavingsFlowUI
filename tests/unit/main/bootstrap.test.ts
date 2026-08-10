@@ -35,10 +35,7 @@ function repository(
     saveSetupProgress: async () => undefined,
     loadSetupProgress: () => progress,
     clearSetupProgress: async () => undefined,
-    discardPending: () => undefined,
-    discardRecovery: () => undefined,
-    acknowledgeFailedCurrent: () => undefined,
-    acknowledgeFailedPending: () => undefined,
+    resetInvalidWorkspace: async () => undefined,
     saveCalls,
   };
 }

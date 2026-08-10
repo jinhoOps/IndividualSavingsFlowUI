@@ -408,6 +408,57 @@ describe('BrowserWorkspaceRepository', () => {
     expect(new BrowserWorkspaceRepository(storage).load()).toEqual({ status: 'unavailable' });
   });
 
+  it('resets one exact invalid raw to a committed empty workspace under the save lock', async () => {
+    const invalidRaw = '{malformed-workspace';
+    const storage = new MemoryStorage();
+    storage.setItem(WORKSPACE_STORAGE_KEY, invalidRaw);
+    storage.setItem('isf-main-v2', '{old-main');
+    const setItem = vi.spyOn(storage, 'setItem');
+    const repository = new BrowserWorkspaceRepository(storage, {
+      saveLock: createSerialLock(),
+      now: () => 200,
+    });
+
+    await expect(repository.resetInvalid(invalidRaw)).resolves.toEqual({
+      status: 'saved',
+      workspace: { ...createEmptyWorkspace(200), revision: 1 },
+    });
+
+    expect(setItem.mock.calls.filter(([key]) => key === WORKSPACE_STORAGE_KEY)).toHaveLength(1);
+    expect(storage.getItem('isf-main-v2')).toBe('{old-main');
+  });
+
+  it('does not reset when another writer replaces the invalid raw before lock entry', async () => {
+    const expectedRaw = '{first-invalid';
+    const winnerRaw = '{winner-invalid';
+    const storage = new MemoryStorage();
+    storage.setItem(WORKSPACE_STORAGE_KEY, expectedRaw);
+    const saveLock: WorkspaceSaveLock = {
+      async runExclusive<T>(task: (guard: WorkspaceSaveGuard) => Promise<T>): Promise<T> {
+        storage.setItem(WORKSPACE_STORAGE_KEY, winnerRaw);
+        return await task({ assertOwned: () => undefined });
+      },
+    };
+    const repository = new BrowserWorkspaceRepository(storage, { saveLock, now: () => 200 });
+
+    await expect(repository.resetInvalid(expectedRaw)).resolves.toEqual({ status: 'changed' });
+    expect(storage.getItem(WORKSPACE_STORAGE_KEY)).toBe(winnerRaw);
+  });
+
+  it('does not reset an exact raw that is already a valid workspace', async () => {
+    const workspace = { ...createEmptyWorkspace(400), revision: 4 };
+    const raw = JSON.stringify(workspace);
+    const storage = new MemoryStorage();
+    storage.setItem(WORKSPACE_STORAGE_KEY, raw);
+    const repository = new BrowserWorkspaceRepository(storage, {
+      saveLock: createSerialLock(),
+      now: () => 500,
+    });
+
+    await expect(repository.resetInvalid(raw)).resolves.toEqual({ status: 'changed' });
+    expect(storage.getItem(WORKSPACE_STORAGE_KEY)).toBe(raw);
+  });
+
   it('checks the expected revision after entering the acquired lock', async () => {
     const storage = new MemoryStorage();
     const winner = { ...createEmptyWorkspace(100), revision: 1, updatedAt: 101 };

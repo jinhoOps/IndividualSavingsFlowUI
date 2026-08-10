@@ -3,10 +3,19 @@ import '@testing-library/jest-dom/vitest';
 import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MainData, SetupStep } from '../../../src/main/domain/model';
-import type {
-  MainLoadResult,
-  MainRepository,
+import {
+  BrowserMainRepository,
+  type MainLoadResult,
+  type MainRepository,
 } from '../../../src/main/infrastructure/mainRepository';
+import {
+  BrowserWorkspaceRepository,
+} from '../../../src/workspace/infrastructure/workspaceRepository';
+import { WORKSPACE_STORAGE_KEY } from '../../../src/workspace/domain/model';
+import type {
+  WorkspaceSaveGuard,
+  WorkspaceSaveLock,
+} from '../../../src/workspace/infrastructure/workspaceSaveLock';
 import { MainApp, setupStepForIssue } from '../../../src/main/ui/MainApp';
 import { MemoryStorage } from '../simulation/MemoryStorage';
 
@@ -128,10 +137,7 @@ function repository(result: MainLoadResult): MainRepository {
     saveSetupProgress: async () => undefined,
     loadSetupProgress: () => null,
     clearSetupProgress: async () => undefined,
-    discardPending: () => undefined,
-    discardRecovery: () => undefined,
-    acknowledgeFailedCurrent: () => undefined,
-    acknowledgeFailedPending: () => undefined,
+    resetInvalidWorkspace: async () => undefined,
   };
 }
 
@@ -294,106 +300,57 @@ describe('MainApp', () => {
     await expect(readBlob(blob as Blob)).resolves.toBe(raw);
   });
 
-  it('acknowledges malformed current data so setup progress resumes after reload', async () => {
-    const raw = '{malformed-v2';
-    let acknowledged = false;
-    let progress: { kind: 'initial'; step: SetupStep; draft: MainData; savedAt: number } | null = null;
+  it('downloads, explicitly resets, applies, and reloads an invalid workspace with production repositories', async () => {
+    const raw = '{malformed-workspace';
+    const oldRaw = JSON.stringify({ schemaVersion: 2, monthlyNetIncomeWon: 9_999_999 });
+    const storage = new MemoryStorage();
+    storage.setItem(WORKSPACE_STORAGE_KEY, raw);
+    storage.setItem('isf-main-v2', oldRaw);
+    const workspaceRepository = new BrowserWorkspaceRepository(storage, {
+      saveLock: testSerialLock(),
+      now: () => 200,
+    });
+    const mainRepository = new BrowserMainRepository(workspaceRepository, () => 300);
+    const createObjectURL = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:workspace-recovery');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+    const first = render(<MainApp repository={mainRepository} />);
+    await screen.findByRole('heading', { name: '저장 복구가 필요합니다' });
+
+    fireEvent.click(screen.getByRole('button', { name: '기존 원본 JSON 다운로드' }));
+    const blob = createObjectURL.mock.calls[0]?.[0];
+    await expect(readBlob(blob as Blob)).resolves.toBe(raw);
+    fireEvent.click(screen.getByRole('button', { name: '빈 초안으로 다시 시작' }));
+    await screen.findByRole('heading', { name: 'setup:welcome' });
+    fireEvent.click(screen.getByRole('button', { name: 'change-income' }));
+    fireEvent.click(screen.getByRole('button', { name: 'apply-setup' }));
+    expect(await screen.findByRole('heading', { name: 'dashboard' })).toBeVisible();
+    expect(screen.getByLabelText('applied-income')).toHaveTextContent('4000000');
+    first.unmount();
+
+    render(<MainApp repository={new BrowserMainRepository(
+      new BrowserWorkspaceRepository(storage, { saveLock: testSerialLock(), now: () => 400 }),
+      () => 400,
+    )} />);
+
+    expect(await screen.findByRole('heading', { name: 'dashboard' })).toBeVisible();
+    expect(screen.getByLabelText('applied-income')).toHaveTextContent('4000000');
+    expect(storage.getItem('isf-main-v2')).toBe(oldRaw);
+  });
+
+  it('stays in recovery when the exact invalid workspace can no longer be reset', async () => {
+    const raw = '{malformed-workspace';
     const storage = repository({
       status: 'failed',
       data: null,
       original: raw,
       raw,
-      reason: 'Stored main data is not valid JSON.',
+      source: 'current',
+      reason: 'Stored workspace data is invalid.',
     });
-    storage.load = async () => acknowledged
-      ? { status: 'empty', data: null, original: null }
-      : {
-        status: 'failed',
-        data: null,
-        original: raw,
-        raw,
-        reason: 'Stored main data is not valid JSON.',
-      };
-    storage.acknowledgeFailedCurrent = vi.fn(() => {
-      acknowledged = true;
+    storage.resetInvalidWorkspace = vi.fn(async () => {
+      throw new Error('workspace changed');
     });
-    storage.saveSetupProgress = vi.fn(async (step, draft) => {
-      progress = { kind: 'initial', step, draft: { ...draft }, savedAt: Date.now() };
-    });
-    storage.loadSetupProgress = () => progress;
-    const first = render(<MainApp repository={storage} />);
-    await screen.findByRole('heading', { name: '저장 복구가 필요합니다' });
-
-    fireEvent.click(screen.getByRole('button', { name: '빈 초안으로 다시 시작' }));
-    await screen.findByRole('heading', { name: 'setup:welcome' });
-    fireEvent.click(screen.getByRole('button', { name: 'change-income' }));
-    expect(screen.getByText('4000000')).toBeVisible();
-    first.unmount();
-    render(<MainApp repository={storage} />);
-
-    expect(await screen.findByRole('heading', { name: 'setup:welcome' })).toBeVisible();
-    expect(screen.getByText('4000000')).toBeVisible();
-    expect(screen.queryByRole('heading', { name: '저장 복구가 필요합니다' })).not.toBeInTheDocument();
-    expect(storage.acknowledgeFailedCurrent).toHaveBeenCalledWith(raw);
-  });
-
-  it('acknowledges malformed pending data so setup progress resumes after reload', async () => {
-    const raw = '{malformed-pending';
-    let acknowledged = false;
-    let progress: { kind: 'initial'; step: SetupStep; draft: MainData; savedAt: number } | null = null;
-    const failed = {
-      status: 'failed',
-      data: null,
-      original: raw,
-      raw,
-      source: 'pending',
-      reason: 'Stored main data is not valid JSON.',
-    } satisfies MainLoadResult;
-    const storage = repository(failed);
-    storage.acknowledgeFailedCurrent = vi.fn();
-    storage.load = async () => acknowledged
-      ? { status: 'empty', data: null, original: null }
-      : failed;
-    const acknowledgeFailedPending = vi.fn(() => {
-      acknowledged = true;
-    });
-    storage.acknowledgeFailedPending = acknowledgeFailedPending;
-    storage.saveSetupProgress = vi.fn(async (step, draft) => {
-      progress = { kind: 'initial', step, draft: { ...draft }, savedAt: Date.now() };
-    });
-    storage.loadSetupProgress = () => progress;
-    const first = render(<MainApp repository={storage} />);
-    await screen.findByRole('heading', { name: '저장 복구가 필요합니다' });
-
-    fireEvent.click(screen.getByRole('button', { name: '빈 초안으로 다시 시작' }));
-    await screen.findByRole('heading', { name: 'setup:welcome' });
-    fireEvent.click(screen.getByRole('button', { name: 'change-income' }));
-    expect(screen.getByText('4000000')).toBeVisible();
-    first.unmount();
-    render(<MainApp repository={storage} />);
-
-    expect(await screen.findByRole('heading', { name: 'setup:welcome' })).toBeVisible();
-    expect(screen.getByText('4000000')).toBeVisible();
-    expect(screen.queryByRole('heading', { name: '저장 복구가 필요합니다' })).not.toBeInTheDocument();
-    expect(acknowledgeFailedPending).toHaveBeenCalledWith(raw);
-    expect(storage.acknowledgeFailedCurrent).not.toHaveBeenCalled();
-  });
-
-  it('stays in recovery when malformed pending quarantine cannot be written', async () => {
-    const raw = '{malformed-pending';
-    const failed = {
-      status: 'failed',
-      data: null,
-      original: raw,
-      raw,
-      source: 'pending',
-      reason: 'Stored main data is not valid JSON.',
-    } satisfies MainLoadResult;
-    const storage = repository(failed);
-    const acknowledgeFailedPending = vi.fn(() => {
-      throw new Error('quota');
-    });
-    storage.acknowledgeFailedPending = acknowledgeFailedPending;
     render(<MainApp repository={storage} />);
     await screen.findByRole('heading', { name: '저장 복구가 필요합니다' });
 
@@ -401,7 +358,7 @@ describe('MainApp', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('저장하지 못했습니다');
     expect(screen.getByRole('heading', { name: '저장 복구가 필요합니다' })).toBeVisible();
-    expect(acknowledgeFailedPending).toHaveBeenCalledWith(raw);
+    expect(storage.resetInvalidWorkspace).toHaveBeenCalledWith(raw);
   });
 
   it('retries a pending v2 recovery candidate only after explicit confirmation', async () => {
@@ -436,16 +393,14 @@ describe('MainApp', () => {
       original: { pending: true },
       source: 'pending',
     });
-    storage.discardPending = vi.fn();
-    storage.discardRecovery = vi.fn();
+    storage.clearSetupProgress = vi.fn();
     render(<MainApp repository={storage} />);
     await screen.findByRole('heading', { name: '저장 복구가 필요합니다' });
 
     fireEvent.click(screen.getByRole('button', { name: '복구 초안 버리기' }));
 
     expect(await screen.findByRole('heading', { name: 'setup:welcome' })).toBeVisible();
-    expect(storage.discardRecovery).toHaveBeenCalledWith(pending.updatedAt);
-    expect(storage.discardPending).toHaveBeenCalledWith(pending.updatedAt);
+    expect(storage.clearSetupProgress).toHaveBeenCalledOnce();
   });
 
   it('returns from recovery to the unchanged applied v2 plan', async () => {
@@ -457,8 +412,7 @@ describe('MainApp', () => {
       original: { history: true },
       source: 'history',
     });
-    storage.discardPending = vi.fn();
-    storage.discardRecovery = vi.fn();
+    storage.clearSetupProgress = vi.fn();
     render(<MainApp repository={storage} />);
     await screen.findByRole('heading', { name: '저장 복구가 필요합니다' });
 
@@ -466,8 +420,7 @@ describe('MainApp', () => {
 
     expect(await screen.findByRole('heading', { name: 'dashboard' })).toBeVisible();
     expect(screen.getByLabelText('applied-income')).toHaveTextContent('3000000');
-    expect(storage.discardRecovery).toHaveBeenCalledWith(pending.updatedAt);
-    expect(storage.discardPending).toHaveBeenCalledWith(pending.updatedAt);
+    expect(storage.clearSetupProgress).toHaveBeenCalledOnce();
   });
 
   it('keeps the applied plan when saving a changed draft is rejected', async () => {
@@ -526,17 +479,17 @@ describe('MainApp', () => {
     );
   });
 
-  it('cancel restores the applied v2 data and discards pending recovery', async () => {
+  it('cancel restores the applied data after setup progress is cleared', async () => {
     const storage = repository({ status: 'current', data: data(3_000_000), original: {} });
-    storage.discardPending = vi.fn();
+    storage.clearSetupProgress = vi.fn();
     render(<MainApp repository={storage} />);
     await screen.findByRole('heading', { name: 'dashboard' });
 
     fireEvent.click(screen.getByRole('button', { name: 'edit-draft' }));
     fireEvent.click(screen.getByRole('button', { name: 'cancel-dashboard' }));
 
-    expect(screen.getByLabelText('draft-income')).toHaveTextContent('3000000');
-    expect(storage.discardPending).toHaveBeenCalledOnce();
+    await waitFor(() => expect(screen.getByLabelText('draft-income')).toHaveTextContent('3000000'));
+    expect(storage.clearSetupProgress).toHaveBeenCalledOnce();
   });
 
   it('focuses restart setup without journey navigation and restores it on cancel', async () => {
@@ -563,6 +516,72 @@ describe('MainApp', () => {
     expect(await screen.findByRole('heading', { name: 'dashboard' })).toBeVisible();
     expect(screen.getByRole('navigation', { name: 'ISF 앱' })).toBeVisible();
     expect(screen.getByRole('button', { name: 'Simulation으로 이어가기' })).toBeEnabled();
+  });
+
+  it('keeps restart setup visible until a delayed progress save and queued clear both finish', async () => {
+    const applied = data(3_000_000);
+    let progress: ReturnType<MainRepository['loadSetupProgress']> = {
+      kind: 'restart' as const,
+      step: 'welcome' as const,
+      draft: applied,
+      savedAt: 2,
+    };
+    let releaseProgress: (() => void) | undefined;
+    const progressGate = new Promise<void>((resolve) => {
+      releaseProgress = resolve;
+    });
+    const storage = repository({ status: 'current', data: applied, original: applied });
+    storage.loadSetupProgress = () => progress;
+    storage.saveSetupProgress = vi.fn(async (step, draft) => {
+      await progressGate;
+      progress = { kind: 'restart', step, draft: { ...draft }, savedAt: 3 };
+    });
+    storage.clearSetupProgress = vi.fn(async () => {
+      progress = null;
+    });
+    const first = render(<MainApp repository={storage} />);
+    await screen.findByRole('heading', { name: 'setup:welcome' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'change-income' }));
+    await waitFor(() => expect(storage.saveSetupProgress).toHaveBeenCalledOnce());
+    fireEvent.click(screen.getByRole('button', { name: '설정 취소' }));
+    await Promise.resolve();
+
+    expect(screen.getByRole('heading', { name: 'setup:welcome' })).toBeVisible();
+    expect(storage.clearSetupProgress).not.toHaveBeenCalled();
+    releaseProgress?.();
+    expect(await screen.findByRole('heading', { name: 'dashboard' })).toBeVisible();
+    expect(storage.clearSetupProgress).toHaveBeenCalledOnce();
+    first.unmount();
+    render(<MainApp repository={storage} />);
+    expect(await screen.findByRole('heading', { name: 'dashboard' })).toBeVisible();
+  });
+
+  it('does not complete restart cancel when setup-progress clear rejects', async () => {
+    const applied = data(3_000_000);
+    const progress = {
+      kind: 'restart' as const,
+      step: 'welcome' as const,
+      draft: applied,
+      savedAt: 2,
+    };
+    const storage = repository({ status: 'current', data: applied, original: applied });
+    storage.loadSetupProgress = () => progress;
+    storage.clearSetupProgress = vi.fn(async () => {
+      throw new Error('quota');
+    });
+    const first = render(<MainApp repository={storage} />);
+    await screen.findByRole('heading', { name: 'setup:welcome' });
+
+    fireEvent.click(screen.getByRole('button', { name: '설정 취소' }));
+
+    expect(await screen.findByText(
+      '설정 진행 상황을 정리하지 못했습니다. 저장된 계획에는 영향이 없습니다.',
+    )).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'setup:welcome' })).toBeVisible();
+    first.unmount();
+    render(<MainApp repository={storage} />);
+    expect(await screen.findByRole('heading', { name: 'setup:welcome' })).toBeVisible();
   });
 
   it('keeps setup editing available when progress persistence fails', async () => {
@@ -603,3 +622,11 @@ describe('MainApp', () => {
     expect(storage.save).toHaveBeenCalledOnce();
   });
 });
+
+function testSerialLock(): WorkspaceSaveLock {
+  return {
+    async runExclusive<T>(task: (guard: WorkspaceSaveGuard) => Promise<T>): Promise<T> {
+      return await task({ assertOwned: () => undefined });
+    },
+  };
+}

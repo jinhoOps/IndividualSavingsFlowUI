@@ -10,6 +10,17 @@ const appliedMain = {
   monthlyInvestmentWon: 200_000,
 };
 
+const appliedWorkspace = {
+  schemaVersion: 1,
+  revision: 1,
+  updatedAt: appliedMain.updatedAt,
+  main: { applied: appliedMain, setupProgress: null },
+  simulation: { draft: null },
+  portfolio: { plans: [], draft: null },
+  locations: [],
+  accountMap: { applied: null, draft: null, instruments: [], flows: [] },
+};
+
 const sharedShellViewports = [
   { width: 390, height: 844, launcherX: 20, launcherWidth: 350 },
   { width: 768, height: 1024, launcherX: 32, launcherWidth: 704 },
@@ -20,8 +31,8 @@ for (const viewport of sharedShellViewports) {
   test(`shares Main launcher geometry and canvas at ${viewport.width}px`, async ({ page }) => {
     await page.setViewportSize(viewport);
     await page.addInitScript((fixture) => {
-      localStorage.setItem('isf-main-v2', JSON.stringify(fixture));
-    }, appliedMain);
+      localStorage.setItem('isf-workspace-v1', JSON.stringify(fixture));
+    }, appliedWorkspace);
 
     const routes = [
       'apps/main/',
@@ -71,7 +82,7 @@ test('connects Main directly to the detailed Simulation', async ({ page }) => {
     if (sessionStorage.getItem(seedMarker) !== null) return;
     sessionStorage.setItem(seedMarker, 'true');
 
-    localStorage.setItem('isf-main-v2', JSON.stringify(fixture));
+    localStorage.setItem('isf-workspace-v1', JSON.stringify(fixture));
     localStorage.setItem('isf-journey-snapshot-v1', JSON.stringify({
       monthlySavingWon: 900_000,
       monthlyInvestmentWon: 900_000,
@@ -81,7 +92,7 @@ test('connects Main directly to the detailed Simulation', async ({ page }) => {
       source: {
         monthlySavingsWon: 100_000,
         monthlyInvestmentWon: 100_000,
-        mainUpdatedAt: fixture.updatedAt - 1,
+        mainUpdatedAt: fixture.main.applied.updatedAt - 1,
       },
       initialInvestmentWon: 10_000_000,
       years: 20,
@@ -89,9 +100,9 @@ test('connects Main directly to the detailed Simulation', async ({ page }) => {
       baseRatePercent: 2.75,
       inflationOffsetPercentPoints: -0.25,
       amountMode: 'nominal',
-      updatedAt: fixture.updatedAt - 1,
+      updatedAt: fixture.main.applied.updatedAt - 1,
     }));
-  }, appliedMain);
+  }, appliedWorkspace);
   await page.goto('apps/main/');
   await expect.poll(() => page.evaluate(
     () => localStorage.getItem('isf-journey-snapshot-v1'),
@@ -113,8 +124,8 @@ test('revisits Simulation at the result and refreshes only its Main source', asy
     monthlyInvestmentWon: 100_000,
     mainUpdatedAt: appliedMain.updatedAt - 1,
   };
-  await page.addInitScript(({ main, source }) => {
-    localStorage.setItem('isf-main-v2', JSON.stringify(main));
+  await page.addInitScript(({ workspace, source }) => {
+    localStorage.setItem('isf-workspace-v1', JSON.stringify(workspace));
     localStorage.setItem('isf-simulation-compound-v1', JSON.stringify({
       schemaVersion: 2,
       source,
@@ -126,7 +137,7 @@ test('revisits Simulation at the result and refreshes only its Main source', asy
       amountMode: 'nominal',
       updatedAt: source.mainUpdatedAt,
     }));
-  }, { main: appliedMain, source: previousSource });
+  }, { workspace: appliedWorkspace, source: previousSource });
 
   await page.goto('apps/simulation/');
   await expect(page.getByRole('heading', { name: /이대로 20년 유지하면/ })).toBeVisible();
@@ -142,7 +153,7 @@ test('revisits Simulation at the result and refreshes only its Main source', asy
 });
 
 test('keeps detailed Portfolio and readiness-only Account Map isolated', async ({ page }) => {
-  await page.addInitScript((fixture) => localStorage.setItem('isf-main-v2', JSON.stringify(fixture)), appliedMain);
+  await page.addInitScript((fixture) => localStorage.setItem('isf-workspace-v1', JSON.stringify(fixture)), appliedWorkspace);
   await page.goto('apps/portfolio/');
   await expect(page.getByRole('heading', { name: '투자 배분 설정' })).toBeVisible();
   await expect(page.getByRole('link', { name: /투자 배분 \(Portfolio\).*현재 위치/ })).toBeVisible();
@@ -153,8 +164,8 @@ test('keeps detailed Portfolio and readiness-only Account Map isolated', async (
 
 test('separates app navigation and the right-aligned management tool across viewports', async ({ page }) => {
   await page.addInitScript((fixture) => {
-    localStorage.setItem('isf-main-v2', JSON.stringify(fixture));
-  }, appliedMain);
+    localStorage.setItem('isf-workspace-v1', JSON.stringify(fixture));
+  }, appliedWorkspace);
   for (const viewport of [
     { width: 390, height: 844 },
     { width: 768, height: 900 },
@@ -212,8 +223,8 @@ test('separates app navigation and the right-aligned management tool across view
 
 test('keeps each app management menu reachable and contained across viewports', async ({ page }) => {
   await page.addInitScript((fixture) => {
-    localStorage.setItem('isf-main-v2', JSON.stringify(fixture));
-  }, appliedMain);
+    localStorage.setItem('isf-workspace-v1', JSON.stringify(fixture));
+  }, appliedWorkspace);
   const apps = [
     { path: 'apps/main/', text: '백업 가져오기' },
     { path: 'apps/simulation/', text: '시뮬레이션 다시 설정' },
@@ -320,7 +331,7 @@ test('keeps Account Map usable at mobile, tablet, and desktop widths', async ({ 
 });
 
 test('explains app icons with pointer, keyboard, touch and integrated management help', async ({ page }) => {
-  await page.addInitScript((fixture) => localStorage.setItem('isf-main-v2', JSON.stringify(fixture)), appliedMain);
+  await page.addInitScript((fixture) => localStorage.setItem('isf-workspace-v1', JSON.stringify(fixture)), appliedWorkspace);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('apps/simulation/');
 
@@ -374,7 +385,7 @@ test('explains app icons with pointer, keyboard, touch and integrated management
 });
 
 test('keeps the current app direct and exposes hidden apps through overflow', async ({ page }) => {
-  await page.addInitScript((fixture) => localStorage.setItem('isf-main-v2', JSON.stringify(fixture)), appliedMain);
+  await page.addInitScript((fixture) => localStorage.setItem('isf-workspace-v1', JSON.stringify(fixture)), appliedWorkspace);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('apps/account-map/');
   await page.addStyleTag({ content: '.journey-launcher { width: 220px !important; }' });
@@ -414,8 +425,8 @@ test('keeps the current app direct and exposes hidden apps through overflow', as
 
 test('legacy Simulation DOM is absent from the supported route', async ({ page }) => {
   await page.addInitScript((fixture) => {
-    localStorage.setItem('isf-main-v2', JSON.stringify(fixture));
-  }, appliedMain);
+    localStorage.setItem('isf-workspace-v1', JSON.stringify(fixture));
+  }, appliedWorkspace);
   await page.goto('apps/simulation/');
   await expect(page.locator('app-header, data-hub-modal, #strategyCardGroup')).toHaveCount(0);
 });

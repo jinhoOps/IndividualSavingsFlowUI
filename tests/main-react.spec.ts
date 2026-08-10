@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
 
 const appliedMainV2 = {
   schemaVersion: 2 as const,
@@ -160,6 +161,47 @@ async function expectResponsiveDashboardFlow(page: Page, viewport: { width: numb
   });
   expect(containment.contained, JSON.stringify(containment)).toBe(true);
 }
+
+test('downloads and explicitly resets an invalid workspace before a durable apply', async ({ page }) => {
+  const invalidRaw = '{malformed-workspace';
+  await clearBrowserStorage(page, {
+    ...seededOldMainRecords,
+    'isf-workspace-v1': invalidRaw,
+  });
+  await page.goto('apps/main/');
+  await expect(page.getByRole('heading', { name: '저장 복구가 필요합니다' })).toBeVisible();
+
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: '기존 원본 JSON 다운로드' }).click();
+  const download = await downloadPromise;
+  const downloadPath = await download.path();
+  expect(downloadPath).not.toBeNull();
+  expect(await readFile(downloadPath!, 'utf8')).toBe(invalidRaw);
+
+  await page.getByRole('button', { name: '빈 초안으로 다시 시작' }).click();
+  await expect(page.getByRole('heading', { name: '한 달 돈의 흐름, 2분이면 확인할 수 있어요.' })).toBeVisible();
+  await page.getByRole('button', { name: '다음' }).click();
+  await page.getByLabel('월 실수령액').fill('3200000');
+  await page.getByRole('button', { name: '다음' }).click();
+  await page.getByLabel('월 주거 고정비').fill('800000');
+  await page.getByRole('button', { name: '다음' }).click();
+  await page.getByLabel('월평균 생활비').fill('1000000');
+  await page.getByRole('button', { name: '다음' }).click();
+  await page.getByLabel('월 저축액').fill('300000');
+  await page.getByLabel('월 투자액').fill('200000');
+  await page.getByRole('button', { name: '다음' }).click();
+  await page.getByRole('button', { name: '계획 적용' }).click();
+  await expect(page.getByRole('heading', { name: '이번 달 자금 흐름' })).toBeVisible();
+
+  await page.reload();
+  await expect(page.getByRole('heading', { name: '이번 달 자금 흐름' })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => (
+    JSON.parse(localStorage.getItem('isf-workspace-v1')!).main.applied.monthlyNetIncomeWon
+  ))).toBe(3_200_000);
+  await expect.poll(() => page.evaluate((keys) => Object.fromEntries(
+    keys.map((key) => [key, localStorage.getItem(key)]),
+  ), Object.keys(seededOldMainRecords))).toEqual(seededOldMainRecords);
+});
 
 test('new user applies the v2 quick setup and refreshes into matching dashboard totals', async ({ page }) => {
   await clearBrowserStorage(page, seededOldMainRecords);

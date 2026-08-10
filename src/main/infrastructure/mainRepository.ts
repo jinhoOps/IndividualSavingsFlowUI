@@ -47,10 +47,7 @@ export interface MainRepository {
   ): Promise<void>;
   loadSetupProgress(): SetupProgress | null;
   clearSetupProgress(): Promise<void>;
-  discardPending(expectedUpdatedAt?: number): void;
-  discardRecovery(updatedAt: number): void;
-  acknowledgeFailedCurrent(raw: string): void;
-  acknowledgeFailedPending(raw: string): void;
+  resetInvalidWorkspace(expectedRaw: string): Promise<void>;
 }
 
 export type SetupProgressKind = 'initial' | 'restart';
@@ -63,6 +60,9 @@ export interface SetupProgress {
 }
 
 export class BrowserMainRepository implements MainRepository {
+  private appliedBase: MainData | null | typeof untrackedBase = untrackedBase;
+  private setupProgressBase: SetupProgress | null | typeof untrackedBase = untrackedBase;
+
   constructor(
     private readonly workspaceRepository: WorkspaceRepository = new BrowserWorkspaceRepository(),
     private readonly now: () => number = Date.now,
@@ -71,6 +71,7 @@ export class BrowserMainRepository implements MainRepository {
   async load(): Promise<MainLoadResult> {
     const loaded = this.workspaceRepository.load();
     if (loaded.status === 'invalid') {
+      this.appliedBase = untrackedBase;
       return {
         status: 'failed',
         data: null,
@@ -81,10 +82,12 @@ export class BrowserMainRepository implements MainRepository {
       };
     }
     if (loaded.status === 'unavailable') {
+      this.appliedBase = untrackedBase;
       throw new Error('Workspace storage is unavailable.');
     }
 
     const applied = loaded.workspace.main.applied;
+    this.appliedBase = applied === null ? null : cloneMainData(applied);
     if (applied === null) return { status: 'empty', data: null, original: null };
     const data = cloneMainData(applied);
     return { status: 'current', data, original: cloneMainData(data) };
@@ -92,7 +95,13 @@ export class BrowserMainRepository implements MainRepository {
 
   async save(data: MainData): Promise<MainData> {
     assertValidAppliedMain(data);
+    if (this.appliedBase === untrackedBase) {
+      throw new Error('Could not save Main data: workspace Main base was not loaded.');
+    }
     const loaded = loadWritableWorkspace(this.workspaceRepository);
+    if (!sameMainData(loaded.workspace.main.applied, this.appliedBase)) {
+      throw new Error('Could not save Main data: workspace Main slice changed.');
+    }
     const result = await this.workspaceRepository.update(
       loaded.workspace.revision,
       (current) => {
@@ -111,6 +120,7 @@ export class BrowserMainRepository implements MainRepository {
     assertSaved(result, 'save Main data');
     const applied = result.workspace.main.applied;
     if (applied === null) throw new Error('Could not save Main data: workspace result is invalid.');
+    this.appliedBase = cloneMainData(applied);
     return cloneMainData(applied);
   }
 
@@ -120,8 +130,14 @@ export class BrowserMainRepository implements MainRepository {
     kind: SetupProgressKind = 'initial',
   ): Promise<void> {
     assertValidSetupProgress(step, draft, kind);
+    if (this.setupProgressBase === untrackedBase) {
+      throw new Error('Could not save Main setup progress: workspace progress base was not loaded.');
+    }
     const savedAt = validTimestamp(this.now(), 'setup progress');
     const loaded = loadWritableWorkspace(this.workspaceRepository);
+    if (!sameSetupProgress(loaded.workspace.main.setupProgress, this.setupProgressBase)) {
+      throw new Error('Could not save Main setup progress: workspace progress slice changed.');
+    }
     const result = await this.workspaceRepository.update(
       loaded.workspace.revision,
       (current) => ({
@@ -138,18 +154,36 @@ export class BrowserMainRepository implements MainRepository {
       }),
     );
     assertSaved(result, 'save Main setup progress');
+    const progress = result.workspace.main.setupProgress;
+    if (progress === null) {
+      throw new Error('Could not save Main setup progress: workspace result is invalid.');
+    }
+    this.setupProgressBase = cloneSetupProgress(progress);
   }
 
   loadSetupProgress(): SetupProgress | null {
     const loaded = this.workspaceRepository.load();
-    if (loaded.status !== 'found' && loaded.status !== 'empty') return null;
+    if (loaded.status !== 'found' && loaded.status !== 'empty') {
+      this.setupProgressBase = untrackedBase;
+      return null;
+    }
     const progress = loaded.workspace.main.setupProgress;
+    this.setupProgressBase = progress === null ? null : cloneSetupProgress(progress);
     return progress === null ? null : cloneSetupProgress(progress);
   }
 
   async clearSetupProgress(): Promise<void> {
+    if (this.setupProgressBase === untrackedBase) {
+      throw new Error('Could not clear Main setup progress: workspace progress base was not loaded.');
+    }
     const loaded = loadWritableWorkspace(this.workspaceRepository);
-    if (loaded.workspace.main.setupProgress === null) return;
+    if (!sameSetupProgress(loaded.workspace.main.setupProgress, this.setupProgressBase)) {
+      throw new Error('Could not clear Main setup progress: workspace progress slice changed.');
+    }
+    if (loaded.workspace.main.setupProgress === null) {
+      this.setupProgressBase = null;
+      return;
+    }
     const result = await this.workspaceRepository.update(
       loaded.workspace.revision,
       (current) => ({
@@ -158,17 +192,23 @@ export class BrowserMainRepository implements MainRepository {
       }),
     );
     assertSaved(result, 'clear Main setup progress');
+    this.setupProgressBase = null;
   }
 
-  // Phase A never consumes or mutates retired pending, history, dismissal, or quarantine records.
-  discardPending(_expectedUpdatedAt?: number): void {}
-
-  discardRecovery(_updatedAt: number): void {}
-
-  acknowledgeFailedCurrent(_raw: string): void {}
-
-  acknowledgeFailedPending(_raw: string): void {}
+  async resetInvalidWorkspace(expectedRaw: string): Promise<void> {
+    const result = await this.workspaceRepository.resetInvalid(expectedRaw);
+    if (result.status === 'changed') {
+      throw new Error('Could not reset workspace: stored workspace changed.');
+    }
+    if (result.status === 'unavailable') {
+      throw new Error('Could not reset workspace: storage is unavailable.');
+    }
+    this.appliedBase = null;
+    this.setupProgressBase = null;
+  }
 }
+
+const untrackedBase = Symbol('untracked Main workspace slice');
 
 function loadWritableWorkspace(repository: WorkspaceRepository): Extract<WorkspaceLoadResult, {
   status: 'found' | 'empty';
@@ -242,4 +282,26 @@ function cloneMainData(data: MainData): MainData {
 
 function cloneSetupProgress(progress: SetupProgress): SetupProgress {
   return { ...progress, draft: cloneMainData(progress.draft) };
+}
+
+function sameMainData(left: MainData | null, right: MainData | null): boolean {
+  if (left === null || right === null) return left === right;
+  return left.schemaVersion === right.schemaVersion
+    && left.monthlyNetIncomeWon === right.monthlyNetIncomeWon
+    && left.monthlyHousingWon === right.monthlyHousingWon
+    && left.monthlyLivingWon === right.monthlyLivingWon
+    && left.monthlySavingWon === right.monthlySavingWon
+    && left.monthlyInvestmentWon === right.monthlyInvestmentWon
+    && left.updatedAt === right.updatedAt;
+}
+
+function sameSetupProgress(
+  left: SetupProgress | null,
+  right: SetupProgress | null,
+): boolean {
+  if (left === null || right === null) return left === right;
+  return left.kind === right.kind
+    && left.step === right.step
+    && left.savedAt === right.savedAt
+    && sameMainData(left.draft, right.draft);
 }
