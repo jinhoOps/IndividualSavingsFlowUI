@@ -5,6 +5,7 @@ import { AppLauncher } from '../../journey/ui/AppLauncher';
 export interface AppShellProps {
   currentApp: JourneyApp;
   managementMenu?: ReactNode;
+  statusRegion?: ReactNode;
   showLauncher?: boolean;
   children: ReactNode;
 }
@@ -12,6 +13,7 @@ export interface AppShellProps {
 export function AppShell({
   currentApp,
   managementMenu,
+  statusRegion,
   showLauncher = true,
   children,
 }: AppShellProps) {
@@ -22,6 +24,7 @@ export function AppShell({
           <AppLauncher currentApp={currentApp} managementMenu={managementMenu} />
         </div>
       ) : null}
+      {statusRegion}
       {children}
     </div>
   );

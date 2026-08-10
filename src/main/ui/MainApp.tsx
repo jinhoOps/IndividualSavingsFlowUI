@@ -46,6 +46,8 @@ export function MainApp({
   const [restorePending, setRestorePending] = useState(false);
   const [progressWarning, setProgressWarning] = useState<string | null>(null);
   const progressWriteTailRef = useRef<Promise<void>>(Promise.resolve());
+  const importSelectionRef = useRef(0);
+  const restoreFocusRequestedRef = useRef(false);
   const savingRef = useRef(false);
   const [initialEditPath] = useState<keyof MainData | undefined>(() => consumeEditIntent());
 
@@ -58,6 +60,19 @@ export function MainApp({
       active = false;
     };
   }, [repository]);
+
+  useEffect(() => {
+    if (!restoreFocusRequestedRef.current || backupStatus?.kind !== 'success') return;
+    restoreFocusRequestedRef.current = false;
+    const target = document.querySelector<HTMLElement>('[aria-label="관리 메뉴"]')
+      ?? document.querySelector<HTMLElement>('[data-setup-heading]')
+      ?? document.querySelector<HTMLElement>([
+        '[aria-label="설정 단계"] button:not(:disabled)',
+        '[aria-label="설정 단계"] input:not(:disabled)',
+        '[aria-label="설정 단계"] [tabindex]:not([tabindex="-1"])',
+      ].join(', '));
+    target?.focus();
+  }, [backupStatus, state]);
 
   function dispatch(action: MainAction) {
     setState((current) => current === null ? current : mainReducer(current, action));
@@ -229,12 +244,16 @@ export function MainApp({
 
   async function prepareWorkspaceImport(file: File) {
     if (state === null || state.mode !== 'dashboard' || savingRef.current) return;
+    const selection = importSelectionRef.current + 1;
+    importSelectionRef.current = selection;
     try {
       const imported = importWorkspaceBackup(await readFileText(file));
+      if (selection !== importSelectionRef.current) return;
       setIssues([]);
       setBackupStatus(null);
       setPendingImport(imported);
     } catch (error) {
+      if (selection !== importSelectionRef.current) return;
       setPendingImport(null);
       setBackupStatus({ kind: 'error', message: importFailureMessage(error) });
     }
@@ -265,6 +284,7 @@ export function MainApp({
       }
 
       const reloaded = await bootstrapMain(repository);
+      restoreFocusRequestedRef.current = true;
       setIssues([]);
       setProgressWarning(null);
       setPendingImport(null);
@@ -307,6 +327,24 @@ export function MainApp({
   }
 
   const journeyEntry = <JourneyEntryCard enabled={state?.applied !== null && state?.applied !== undefined} onContinue={continueToSimulation} />;
+  const showBackupStatus = pendingImport === null && backupStatus !== null;
+  const backupStatusRegion = (
+    <div
+      className={`mx-auto w-full max-w-6xl ${showBackupStatus ? 'px-5 pt-4 sm:px-8' : ''}`}
+      aria-live="polite"
+      aria-atomic="true"
+      data-testid="workspace-backup-status"
+    >
+      {showBackupStatus ? (
+        <p
+          className={`m-0 rounded-xl px-4 py-3 text-sm font-bold ${backupStatus.kind === 'error' ? 'bg-rose-50 text-rose-700' : 'bg-teal-50 text-teal-800'}`}
+          role={backupStatus.kind === 'error' ? 'alert' : 'status'}
+        >
+          {backupStatus.message}
+        </p>
+      ) : null}
+    </div>
+  );
   const managementMenu = (
     <MainManagementMenu
       saving={state?.saveStatus === 'saving' || restorePending}
@@ -329,7 +367,7 @@ export function MainApp({
 
   if (state === null) {
     return (
-      <AppShell currentApp="main" managementMenu={managementMenu}>
+      <AppShell currentApp="main" managementMenu={managementMenu} statusRegion={backupStatusRegion}>
         <main className="grid min-h-dvh place-items-center px-6">
           <p className="text-sm font-bold text-slate-600" role="status">자금 계획을 불러오는 중입니다.</p>
         </main>
@@ -340,7 +378,7 @@ export function MainApp({
   if (state.mode === 'recovery') {
     const original = state.loadError?.original ?? state.draft;
     return (
-      <AppShell currentApp="main" managementMenu={managementMenu}>
+      <AppShell currentApp="main" managementMenu={managementMenu} statusRegion={backupStatusRegion}>
         <RecoveryView
           state={state}
           onDownload={() => downloadRecovery(original, state.loadError?.raw)}
@@ -378,7 +416,7 @@ export function MainApp({
       </>
     );
     return (
-      <AppShell currentApp="main" showLauncher={false}>
+      <AppShell currentApp="main" showLauncher={false} statusRegion={backupStatusRegion}>
         <main className="mx-auto min-h-dvh w-full max-w-3xl px-5 py-8 sm:px-8 sm:py-12">
         <SetupFlow
           draft={state.draft}
@@ -400,7 +438,7 @@ export function MainApp({
   if (state.applied === null) return null;
 
   return (
-    <AppShell currentApp="main" managementMenu={managementMenu}>
+    <AppShell currentApp="main" managementMenu={managementMenu} statusRegion={backupStatusRegion}>
       <SummaryDashboard
         applied={state.applied}
         draft={state.draft}
@@ -411,11 +449,9 @@ export function MainApp({
         onDraftChange={changeDraft}
         onApply={apply}
         onCancel={cancelDraft}
-        backupStatus={pendingImport !== null
+        backupStatus={progressWarning === null
           ? null
-          : progressWarning === null
-            ? backupStatus
-            : { kind: 'error', message: progressWarning }}
+          : { kind: 'error', message: progressWarning }}
         journeyEntry={journeyEntry}
         initialFocusPath={initialEditPath}
       />

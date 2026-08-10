@@ -855,6 +855,90 @@ test('whole-workspace backup round-trips atomically in the contained mobile conf
   expect(durable.old).toEqual(seededOldMainRecords);
 });
 
+for (const restoreCase of [
+  {
+    name: 'empty Main',
+    main: { applied: null, setupProgress: null },
+    heading: '한 달 돈의 흐름, 2분이면 확인할 수 있어요.',
+  },
+  {
+    name: 'initial setup progress',
+    main: {
+      applied: null,
+      setupProgress: {
+        kind: 'initial' as const,
+        step: 'housing' as const,
+        draft: { ...appliedMainV2, updatedAt: 101 },
+        savedAt: 600,
+      },
+    },
+    heading: '주거비로 매달 얼마가 나가나요?',
+  },
+  {
+    name: 'restart setup progress',
+    main: {
+      applied: appliedMainV2,
+      setupProgress: {
+        kind: 'restart' as const,
+        step: 'living' as const,
+        draft: { ...appliedMainV2, monthlyLivingWon: 1_100_000, updatedAt: 101 },
+        savedAt: 600,
+      },
+    },
+    heading: '그 밖의 생활비는 보통 얼마인가요?',
+  },
+] as const) {
+  test(`canonical backup restores ${restoreCase.name} with persistent status and setup focus`, async ({ page }) => {
+    const importedWorkspace = { ...connectedWorkspaceV1, main: restoreCase.main };
+    await page.addInitScript((workspace) => {
+      localStorage.clear();
+      localStorage.setItem('isf-workspace-v1', JSON.stringify(workspace));
+    }, connectedWorkspaceV1);
+    await page.goto('apps/main/');
+
+    await page.getByRole('button', { name: '관리 메뉴' }).click();
+    await page.getByLabel('백업 가져오기').setInputFiles({
+      name: `${restoreCase.name.replaceAll(' ', '-')}.json`,
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify({
+        format: 'isf-workspace-backup',
+        formatVersion: 1,
+        exportedAt: 900,
+        workspace: importedWorkspace,
+      })),
+    });
+    await page.getByRole('dialog').getByRole('button', { name: '백업으로 바꾸기' }).click();
+
+    const heading = page.getByRole('heading', { name: restoreCase.heading });
+    await expect(heading).toBeVisible();
+    await expect(heading).toBeFocused();
+    await expect(page.getByTestId('workspace-backup-status')).toContainText('모든 앱 데이터를 백업에서 복원했습니다.');
+    await expect(page.getByRole('status').filter({ hasText: '모든 앱 데이터를 백업에서 복원했습니다.' })).toBeVisible();
+    await expect(page.getByRole('button', { name: '관리 메뉴' })).toHaveCount(0);
+
+    await expect.poll(() => page.evaluate(() => {
+      const raw = localStorage.getItem('isf-workspace-v1');
+      if (raw === null) return null;
+      const workspace = JSON.parse(raw);
+      return {
+        revision: workspace.revision,
+        main: workspace.main,
+        simulation: workspace.simulation,
+        portfolio: workspace.portfolio,
+        locations: workspace.locations,
+        accountMap: workspace.accountMap,
+      };
+    })).toEqual({
+      revision: 8,
+      main: importedWorkspace.main,
+      simulation: importedWorkspace.simulation,
+      portfolio: importedWorkspace.portfolio,
+      locations: importedWorkspace.locations,
+      accountMap: importedWorkspace.accountMap,
+    });
+  });
+}
+
 test('invalid, old, reference, duplicate, and capacity backups retain the exact raw workspace', async ({ page }) => {
   await page.addInitScript(({ workspace, oldRecords }) => {
     localStorage.clear();

@@ -229,6 +229,20 @@ describe('workspace backup', () => {
     expect(errorCode(() => importWorkspaceBackup(envelope(makeWorkspace())))).toBe('backup-reference');
   });
 
+  it('gives schema failures precedence over simultaneous reference failures', () => {
+    const mixedFailure = {
+      ...completeWorkspace(),
+      main: {
+        applied: { ...completeWorkspace().main.applied, monthlyNetIncomeWon: -1 },
+        setupProgress: null,
+      },
+      locations: [],
+    } as WorkspaceDocument;
+
+    expect(errorCode(() => importWorkspaceBackup(envelope(mixedFailure)))).toBe('backup-schema');
+    expect(errorCode(() => exportWorkspaceBackup(mixedFailure, 900))).toBe('backup-schema');
+  });
+
   it('parses without touching browser storage', () => {
     const storage = new MemoryStorage();
     Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: storage });

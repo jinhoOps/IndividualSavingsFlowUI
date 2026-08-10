@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -45,7 +45,7 @@ vi.mock('../../../src/main/ui/setup/SetupFlow', () => ({
   }) => (
     <section aria-label="setup-flow" className="setup-flow-surface">
       {notice}
-      <h1>{`setup:${step}`}</h1>
+      <h1 data-setup-heading tabIndex={-1}>{`setup:${step}`}</h1>
       <output>{draft.monthlyNetIncomeWon}</output>
       <button
         type="button"
@@ -110,6 +110,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
   window.history.replaceState(null, '', '/');
 });
 
@@ -351,6 +352,133 @@ describe('MainApp', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('다른 탭에서 데이터가 변경되었습니다. 현재 데이터는 바뀌지 않았습니다.');
     expect(replace).toHaveBeenCalledWith(7, imported);
     expect(screen.getByLabelText('applied-income')).toHaveTextContent('3000000');
+  });
+
+  it.each([
+    ['confirmation', 'late valid A', JSON.stringify(backupEnvelope(workspace(5_000_000, 51))), false],
+    ['confirmation', 'late invalid A', '{bad', false],
+    ['success status', 'late valid A', JSON.stringify(backupEnvelope(workspace(5_000_000, 51))), true],
+    ['success status', 'late invalid A', '{bad', true],
+  ])('keeps the newer B %s when %s finishes last', async (
+    _state,
+    _label,
+    lateAContents,
+    confirmBFirst,
+  ) => {
+    const reads = deferredFileReaders();
+    vi.stubGlobal('FileReader', reads.Reader);
+    const current = workspace(3_000_000, 7);
+    const newerB = workspace(4_000_000, 99);
+    const replace = vi.fn<WorkspaceRepository['replace']>(async (_revision, candidate) => ({
+      status: 'saved',
+      workspace: { ...candidate, revision: 8, updatedAt: 800 },
+    }));
+    const workspaceRepository: Pick<WorkspaceRepository, 'load' | 'replace'> = {
+      load: () => ({ status: 'found', workspace: current }),
+      replace,
+    };
+    render(<MainApp
+      repository={repository({ status: 'current', data: current.main.applied!, original: null })}
+      workspaceRepository={workspaceRepository}
+    />);
+    await screen.findByRole('heading', { name: 'dashboard' });
+    const trigger = screen.getByRole('button', { name: '관리 메뉴' });
+
+    fireEvent.click(trigger);
+    fireEvent.change(screen.getByLabelText('백업 가져오기'), {
+      target: { files: [new File(['A'], 'A.json', { type: 'application/json' })] },
+    });
+    fireEvent.click(trigger);
+    fireEvent.change(screen.getByLabelText('백업 가져오기'), {
+      target: { files: [new File(['B'], 'B.json', { type: 'application/json' })] },
+    });
+    await reads.resolve('B.json', JSON.stringify(backupEnvelope(newerB)));
+    expect(await screen.findByRole('heading', { name: '모든 앱 데이터를 이 백업으로 바꿀까요?' })).toBeVisible();
+    if (confirmBFirst) {
+      fireEvent.click(screen.getByRole('button', { name: '백업으로 바꾸기' }));
+      expect(await screen.findByText('모든 앱 데이터를 백업에서 복원했습니다.')).toBeVisible();
+    }
+
+    await reads.resolve('A.json', lateAContents);
+
+    if (confirmBFirst) {
+      expect(screen.getByText('모든 앱 데이터를 백업에서 복원했습니다.')).toBeVisible();
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    } else {
+      expect(screen.getByRole('heading', { name: '모든 앱 데이터를 이 백업으로 바꿀까요?' })).toBeVisible();
+      fireEvent.click(screen.getByRole('button', { name: '백업으로 바꾸기' }));
+    }
+    expect(screen.queryByText(/백업 JSON을 읽을 수 없습니다/)).not.toBeInTheDocument();
+    await waitFor(() => expect(replace).toHaveBeenCalledWith(7, newerB));
+    expect(replace).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ['empty Main', (base: WorkspaceDocument) => ({
+      ...base,
+      main: { applied: null, setupProgress: null },
+    }), 'setup:welcome'],
+    ['initial progress', (base: WorkspaceDocument) => ({
+      ...base,
+      main: {
+        applied: null,
+        setupProgress: {
+          kind: 'initial' as const,
+          step: 'housing' as const,
+          draft: data(4_000_000, { updatedAt: 101 }),
+          savedAt: 600,
+        },
+      },
+    }), 'setup:housing'],
+    ['restart progress', (base: WorkspaceDocument) => ({
+      ...base,
+      main: {
+        applied: data(4_000_000, { updatedAt: 100 }),
+        setupProgress: {
+          kind: 'restart' as const,
+          step: 'living' as const,
+          draft: data(5_000_000, { updatedAt: 101 }),
+          savedAt: 600,
+        },
+      },
+    }), 'setup:living'],
+  ])('announces and focuses canonical %s restore after committing every slice', async (
+    _label,
+    makeImported,
+    expectedHeading,
+  ) => {
+    const storage = new MemoryStorage();
+    const current = workspace(3_000_000, 7);
+    const imported = makeImported(workspace(4_000_000, 99));
+    storage.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify(current));
+    const workspaceRepository = new BrowserWorkspaceRepository(storage, {
+      saveLock: testSerialLock(),
+      now: () => 800,
+    });
+    render(<MainApp
+      repository={new BrowserMainRepository(workspaceRepository, () => 800)}
+      workspaceRepository={workspaceRepository}
+    />);
+    await screen.findByRole('heading', { name: 'dashboard' });
+
+    fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
+    fireEvent.change(screen.getByLabelText('백업 가져오기'), {
+      target: { files: [backupFile(backupEnvelope(imported))] },
+    });
+    await screen.findByRole('heading', { name: '모든 앱 데이터를 이 백업으로 바꿀까요?' });
+    fireEvent.click(screen.getByRole('button', { name: '백업으로 바꾸기' }));
+
+    const setupHeading = await screen.findByRole('heading', { name: expectedHeading });
+    expect(screen.getByText('모든 앱 데이터를 백업에서 복원했습니다.')).toBeVisible();
+    expect(screen.queryByRole('button', { name: '관리 메뉴' })).not.toBeInTheDocument();
+    await waitFor(() => expect(setupHeading).toHaveFocus());
+    const saved = JSON.parse(storage.getItem(WORKSPACE_STORAGE_KEY) ?? '') as WorkspaceDocument;
+    expect(saved.revision).toBe(8);
+    expect(saved.main).toEqual(imported.main);
+    expect(saved.simulation).toEqual(imported.simulation);
+    expect(saved.portfolio).toEqual(imported.portfolio);
+    expect(saved.locations).toEqual(imported.locations);
+    expect(saved.accountMap).toEqual(imported.accountMap);
   });
 
   it('offers dashboard backup and restart actions from the management menu', async () => {
@@ -821,6 +949,42 @@ function testSerialLock(): WorkspaceSaveLock {
   return {
     async runExclusive<T>(task: (guard: WorkspaceSaveGuard) => Promise<T>): Promise<T> {
       return await task({ assertOwned: () => undefined });
+    },
+  };
+}
+
+function deferredFileReaders() {
+  type DeferredReader = {
+    result: string | ArrayBuffer | null;
+    error: DOMException | null;
+    onload: ((this: FileReader, event: ProgressEvent<FileReader>) => unknown) | null;
+    onerror: ((this: FileReader, event: ProgressEvent<FileReader>) => unknown) | null;
+  };
+  const pending = new Map<string, DeferredReader>();
+  class Reader {
+    result: string | ArrayBuffer | null = null;
+    error: DOMException | null = null;
+    onload: DeferredReader['onload'] = null;
+    onerror: DeferredReader['onerror'] = null;
+
+    readAsText(file: File): void {
+      pending.set(file.name, this as DeferredReader);
+    }
+  }
+
+  return {
+    Reader: Reader as unknown as typeof FileReader,
+    async resolve(filename: string, contents: string): Promise<void> {
+      const reader = pending.get(filename);
+      if (reader === undefined) throw new Error(`No pending FileReader for ${filename}`);
+      reader.result = contents;
+      await act(async () => {
+        reader.onload?.call(
+          reader as unknown as FileReader,
+          new ProgressEvent('load') as ProgressEvent<FileReader>,
+        );
+        await Promise.resolve();
+      });
     },
   };
 }

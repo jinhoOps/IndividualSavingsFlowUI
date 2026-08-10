@@ -1,8 +1,5 @@
 import type { WorkspaceDocument } from '../domain/model';
-import {
-  parseWorkspaceDocument,
-  validateWorkspaceCrossReferences,
-} from '../domain/validation';
+import { validateWorkspaceDocument } from '../domain/validation';
 
 export interface WorkspaceBackupEnvelope {
   format: 'isf-workspace-backup';
@@ -43,29 +40,9 @@ export function importWorkspaceBackup(text: string): WorkspaceDocument {
 }
 
 function parseWorkspace(value: unknown): WorkspaceDocument {
-  const parsed = parseWorkspaceDocument(value);
-  if (parsed !== null) return parsed;
-  if (hasCrossReferenceShape(value)) {
-    try {
-      if (!validateWorkspaceCrossReferences(value as WorkspaceDocument)) {
-        throw new Error('backup-reference');
-      }
-    } catch (error) {
-      if (error instanceof Error && error.message === 'backup-reference') throw error;
-    }
-  }
-  throw new Error('backup-schema');
-}
-
-function hasCrossReferenceShape(value: unknown): boolean {
-  if (!isRecord(value)
-    || !isRecord(value.portfolio)
-    || !Array.isArray(value.portfolio.plans)
-    || !Array.isArray(value.locations)
-    || !isRecord(value.accountMap)
-    || !Array.isArray(value.accountMap.instruments)
-    || !Array.isArray(value.accountMap.flows)) return false;
-  return true;
+  const result = validateWorkspaceDocument(value);
+  if (result.status === 'valid') return result.workspace;
+  throw new Error(result.status === 'reference' ? 'backup-reference' : 'backup-schema');
 }
 
 function hasExactKeys<const Keys extends readonly string[]>(

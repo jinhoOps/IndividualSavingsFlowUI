@@ -30,7 +30,16 @@ const setupSteps = new Set<SetupStep>([
   'review',
 ]);
 
+export type WorkspaceDocumentValidationResult =
+  | { status: 'valid'; workspace: WorkspaceDocument }
+  | { status: 'schema' | 'reference' };
+
 export function parseWorkspaceDocument(value: unknown): WorkspaceDocument | null {
+  const result = validateWorkspaceDocument(value);
+  return result.status === 'valid' ? result.workspace : null;
+}
+
+export function validateWorkspaceDocument(value: unknown): WorkspaceDocumentValidationResult {
   if (!hasExactKeys(value, [
     'schemaVersion',
     'revision',
@@ -43,7 +52,7 @@ export function parseWorkspaceDocument(value: unknown): WorkspaceDocument | null
   ])
     || value.schemaVersion !== WORKSPACE_SCHEMA_VERSION
     || !isNonnegativeSafeInteger(value.revision)
-    || !isTimestamp(value.updatedAt)) return null;
+    || !isTimestamp(value.updatedAt)) return { status: 'schema' };
 
   const main = parseMainSlice(value.main);
   const simulation = parseSimulationSlice(value.simulation);
@@ -54,7 +63,7 @@ export function parseWorkspaceDocument(value: unknown): WorkspaceDocument | null
     || simulation === null
     || portfolio === null
     || locations === null
-    || accountMap === null) return null;
+    || accountMap === null) return { status: 'schema' };
 
   const workspace: WorkspaceDocument = {
     schemaVersion: WORKSPACE_SCHEMA_VERSION,
@@ -66,10 +75,12 @@ export function parseWorkspaceDocument(value: unknown): WorkspaceDocument | null
     locations,
     accountMap,
   };
-  if (!validateWorkspaceCrossReferences(workspace)) return null;
-  if (accountMap.instruments.length > 0 || accountMap.flows.length > 0) return null;
+  if (accountMap.instruments.length > 0 || accountMap.flows.length > 0) {
+    return { status: 'schema' };
+  }
+  if (!validateWorkspaceCrossReferences(workspace)) return { status: 'reference' };
 
-  return workspace;
+  return { status: 'valid', workspace };
 }
 
 export function validateWorkspaceCrossReferences(workspace: WorkspaceDocument): boolean {
