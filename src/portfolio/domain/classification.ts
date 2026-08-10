@@ -6,9 +6,10 @@ export function normalizePortfolioName(name: string): string {
 
 export function recommendClassification(name: string): Classification {
   const normalized = normalizePortfolioName(name);
-  const gold = /(^|[\s_\-/])(금(현물|선물)?|골드|gold)(?=$|[\s_\-/])/.test(normalized);
+  const explicitGold = /금현물|금선물|골드/.test(normalized);
+  const boundaryGold = /(^|[\s_\-/])(금|gold)(?=$|[\s_\-/])/.test(normalized);
   const bond = /채권|국채|회사채|(^|[\s_\-/])bond(?=$|[\s_\-/])/.test(normalized);
-  return gold || bond ? 'stable' : 'growth';
+  return explicitGold || boundaryGold || bond ? 'stable' : 'growth';
 }
 
 export function stableShareUnits(value: Pick<PortfolioPlan, 'items' | 'cashShareUnits'>): number {

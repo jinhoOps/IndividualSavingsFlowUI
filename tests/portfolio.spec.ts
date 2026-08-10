@@ -184,9 +184,16 @@ test('shows the source-state summary first and keeps view preferences separate',
   await seedSourceVisualPortfolio(page);
   await page.goto('apps/portfolio/');
 
-  await expect(page.getByRole('heading', { name: '안정 50%' })).toBeVisible();
-  await expect(page.getByText('글로벌 인덱스에 50%를 배분해요')).toBeVisible();
-  await expect(page.getByText(/원$/)).toHaveCount(0);
+  const summary = page.locator('.portfolio-summary');
+  const summaryHeading = summary.getByRole('heading', { name: '안정 50%' });
+  await expect(summaryHeading).toBeVisible();
+  await expect(summaryHeading).not.toContainText('원');
+  await expect(summary.getByText('글로벌 인덱스에 50%를 배분해요')).toBeVisible();
+  const summaryRows = summary.getByRole('listitem');
+  await expect(summaryRows).toHaveCount(4);
+  for (const row of await summaryRows.all()) {
+    await expect(row).not.toContainText('원');
+  }
 
   await page.getByRole('button', { name: '관리 메뉴' }).click();
   await page.getByRole('switch', { name: '금액 보기' }).check();

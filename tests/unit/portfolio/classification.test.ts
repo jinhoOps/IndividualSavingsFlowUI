@@ -22,6 +22,14 @@ describe('Portfolio classification', () => {
     expect(recommendClassification(name)).toBe(expected);
   });
 
+  it.each([
+    'KODEX골드선물(H)',
+    'KODEX금현물',
+    'TIGER금선물',
+  ])('recognizes an embedded explicit gold product token in %s', (name) => {
+    expect(recommendClassification(name)).toBe('stable');
+  });
+
   it('adds stable items and cash using integer share units', () => {
     expect(stableShareUnits({
       items: [item('growth', 500_000), item('stable', 250_000)],

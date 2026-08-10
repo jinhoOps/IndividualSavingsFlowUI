@@ -3,13 +3,14 @@
 - Date: 2026-08-10
 - Reviewed route: `apps/portfolio/`
 - Theme/auth: light, local-only state, no authentication
-- Source visual truth: `/Users/jinho/.codex/generated_images/019fd4cb-220c-77c3-8228-057e79269eeb/exec-9a07df2b-d42c-49d9-9e14-e22eec7827b9.png`
-- Primary implementation screenshot: `/Users/jinho/orca/workspaces/IndividualSavingsFlowUI/hind/.superpowers/sdd/2026-08-10-portfolio-summary-first-ux-implementation/artifacts/task-6/implementation-390-result.png`
-- Final side-by-side comparison: `/Users/jinho/orca/workspaces/IndividualSavingsFlowUI/hind/.superpowers/sdd/2026-08-10-portfolio-summary-first-ux-implementation/artifacts/task-6/combined-390-final.png`
+- Source visual truth: [normalized 390×844 source](docs/superpowers/evidence/portfolio-summary-first/source-390-normalized.png)
+- Original generated source provenance (external, not required for review): `/Users/jinho/.codex/generated_images/019fd4cb-220c-77c3-8228-057e79269eeb/exec-9a07df2b-d42c-49d9-9e14-e22eec7827b9.png`
+- Primary implementation screenshot: [390×844 result](docs/superpowers/evidence/portfolio-summary-first/implementation-390-result.png)
+- Final side-by-side comparison: [normalized source and implementation](docs/superpowers/evidence/portfolio-summary-first/combined-390-final.png)
 
 ## Normalization and state
 
-- Source pixels: 852x1846. It was downsampled to 390x844 at `/Users/jinho/orca/workspaces/IndividualSavingsFlowUI/hind/.superpowers/sdd/2026-08-10-portfolio-summary-first-ux-implementation/artifacts/task-6/source-390-normalized.png`; the generated source density is approximately 2.185x relative to the 390px CSS target.
+- Source pixels: 852x1846. It was downsampled to the tracked [390x844 normalized source](docs/superpowers/evidence/portfolio-summary-first/source-390-normalized.png); the generated source density is approximately 2.185x relative to the 390px CSS target.
 - Implementation pixels: 390x844 at a 390x844 CSS viewport and `deviceScaleFactor: 1`.
 - State: Main monthly investment 800,000 won; Global Index 50% growth, Bonds 25% stable, Gold 15% stable, Cash 10% stable; amount display off; ratio sort; reduced motion enabled.
 - Crop: both primary images are viewport-only with no browser chrome or device frame. The combined image places normalized source on the left and implementation on the right.
@@ -35,11 +36,11 @@ No actionable P0, P1, or P2 findings remain.
 
 ## Comparison evidence
 
-- Full view: `/Users/jinho/orca/workspaces/IndividualSavingsFlowUI/hind/.superpowers/sdd/2026-08-10-portfolio-summary-first-ux-implementation/artifacts/task-6/combined-390-final.png` (780x844, source left/implementation right).
-- Hero focus: `/Users/jinho/orca/workspaces/IndividualSavingsFlowUI/hind/.superpowers/sdd/2026-08-10-portfolio-summary-first-ux-implementation/artifacts/task-6/combined-390-final-hero-focus.png` (780x170).
-- Allocation-list focus: `/Users/jinho/orca/workspaces/IndividualSavingsFlowUI/hind/.superpowers/sdd/2026-08-10-portfolio-summary-first-ux-implementation/artifacts/task-6/combined-390-final-list-focus.png` (780x540).
-- Responsive results: `implementation-768-result.png` (768x900) and `implementation-1280-result.png` (1280x900) in the same task-6 artifact directory.
-- Additional states: `implementation-390-management-open.png` (272x329 element capture from a 390x844 viewport), `implementation-390-amount-on.png` (390x844), `implementation-390-edit.png` (390x844), `implementation-390-focus.png` (390x844), and `implementation-640-zoom-200-long-name.png` (640x900).
+- Full view: [combined-390-final.png](docs/superpowers/evidence/portfolio-summary-first/combined-390-final.png) (780x844, source left/implementation right).
+- Hero focus: [combined-390-final-hero-focus.png](docs/superpowers/evidence/portfolio-summary-first/combined-390-final-hero-focus.png) (780x170).
+- Allocation-list focus: [combined-390-final-list-focus.png](docs/superpowers/evidence/portfolio-summary-first/combined-390-final-list-focus.png) (780x540).
+- Responsive results: [implementation-768-result.png](docs/superpowers/evidence/portfolio-summary-first/implementation-768-result.png) (768x900) and [implementation-1280-result.png](docs/superpowers/evidence/portfolio-summary-first/implementation-1280-result.png) (1280x900).
+- Additional states: [management open](docs/superpowers/evidence/portfolio-summary-first/implementation-390-management-open.png) (272x329 element capture from a 390x844 viewport), [amount on](docs/superpowers/evidence/portfolio-summary-first/implementation-390-amount-on.png) (390x844), [edit](docs/superpowers/evidence/portfolio-summary-first/implementation-390-edit.png) (390x844), [focus](docs/superpowers/evidence/portfolio-summary-first/implementation-390-focus.png) (390x844), and [200% zoom equivalent](docs/superpowers/evidence/portfolio-summary-first/implementation-640-zoom-200-long-name.png) (640x900).
 
 ## Iteration history
 
