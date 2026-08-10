@@ -33,6 +33,29 @@ async function seedAppliedPortfolio(page: Page): Promise<void> {
   });
 }
 
+async function seedSourceVisualPortfolio(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    localStorage.setItem('isf-portfolio-allocation-v2', JSON.stringify({
+      schemaVersion: 2,
+      items: [{
+        id: 'global-index', name: '글로벌 인덱스', shareUnits: 500_000, order: 0,
+        classification: 'growth', classificationOrigin: 'automatic',
+      }, {
+        id: 'bond', name: '채권', shareUnits: 250_000, order: 1,
+        classification: 'stable', classificationOrigin: 'automatic',
+      }, {
+        id: 'gold', name: '금', shareUnits: 150_000, order: 2,
+        classification: 'stable', classificationOrigin: 'automatic',
+      }],
+      cashShareUnits: 100_000,
+      cashMode: 'automatic',
+      syncedInvestmentWon: 800_000,
+      appliedAt: 1,
+      updatedAt: 1,
+    }));
+  });
+}
+
 test('creates one allocation and revisits result-first', async ({ page }) => {
   await seedMain(page, 200_000);
   await page.addInitScript(() => {
@@ -156,6 +179,23 @@ test('puts a Main investment increase into cash', async ({ page }) => {
   await expect(summary).not.toContainText('원');
 });
 
+test('shows the source-state summary first and keeps view preferences separate', async ({ page }) => {
+  await seedMain(page, 800_000);
+  await seedSourceVisualPortfolio(page);
+  await page.goto('apps/portfolio/');
+
+  await expect(page.getByRole('heading', { name: '안정 50%' })).toBeVisible();
+  await expect(page.getByText('글로벌 인덱스에 50%를 배분해요')).toBeVisible();
+  await expect(page.getByText(/원$/)).toHaveCount(0);
+
+  await page.getByRole('button', { name: '관리 메뉴' }).click();
+  await page.getByRole('switch', { name: '금액 보기' }).check();
+  await expect(page.getByRole('heading', { name: '이번 달 투자금 800,000원' })).toBeVisible();
+  await page.getByRole('radio', { name: '입력순' }).check();
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('isf-portfolio-view-preferences-v1')))
+    .toContain('"sortMode":"input"');
+});
+
 test('gates zero investment and focuses Main investment editing', async ({ page }) => {
   await seedMain(page, 0);
   await page.goto('apps/portfolio/');
@@ -166,24 +206,8 @@ test('gates zero investment and focuses Main investment editing', async ({ page 
 });
 
 test('keeps the summary-first ratio list usable across required widths', async ({ page }) => {
-  await page.addInitScript(({ fixture }) => {
-    localStorage.setItem('isf-main-v2', JSON.stringify(fixture));
-    localStorage.setItem('isf-portfolio-allocation-v2', JSON.stringify({
-      schemaVersion: 2,
-      items: [{
-        id: 'index', name: '인덱스', shareUnits: 400_000, order: 0,
-        classification: 'growth', classificationOrigin: 'automatic',
-      }, {
-        id: 'bond', name: '채권', shareUnits: 300_000, order: 1,
-        classification: 'stable', classificationOrigin: 'automatic',
-      }, {
-        id: 'gold', name: '금', shareUnits: 200_000, order: 2,
-        classification: 'stable', classificationOrigin: 'automatic',
-      }],
-      cashShareUnits: 100_000,
-      cashMode: 'automatic', syncedInvestmentWon: 200_000, appliedAt: 1, updatedAt: 1,
-    }));
-  }, { fixture: mainFixture });
+  await seedMain(page, 800_000);
+  await seedSourceVisualPortfolio(page);
 
   for (const viewport of [
     { width: 390, height: 844 },
@@ -195,10 +219,10 @@ test('keeps the summary-first ratio list usable across required widths', async (
     await page.goto('apps/portfolio/');
     const summary = page.locator('.portfolio-summary');
     await expect(summary).toHaveClass(/ui-surface/);
-    await expect(page.getByRole('heading', { name: '안정 60%' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '안정 50%' })).toBeVisible();
     const summaryBox = await summary.boundingBox();
     expect(summaryBox).not.toBeNull();
-    for (const [name, ratio] of [['인덱스', '40%'], ['채권', '30%'], ['금', '20%'], ['현금', '10%']]) {
+    for (const [name, ratio] of [['글로벌 인덱스', '50%'], ['채권', '25%'], ['금', '15%'], ['현금', '10%']]) {
       const row = summary.getByRole('listitem').filter({ hasText: new RegExp(`${name}.*${ratio}`) });
       await expect(row).toBeVisible();
       const rowBox = await row.boundingBox();
@@ -209,7 +233,8 @@ test('keeps the summary-first ratio list usable across required widths', async (
     await expect(page.getByLabel('투자 배분 도넛')).toHaveCount(0);
     await expect(page.getByRole('table')).toHaveCount(0);
     await expect(page.getByRole('tooltip')).toHaveCount(0);
-    expect(await summary.evaluate((element) => getComputedStyle(element).borderRadius)).not.toBe('0px');
+    expect(await summary.locator('.portfolio-allocation-list')
+      .evaluate((element) => getComputedStyle(element).borderRadius)).not.toBe('0px');
     const edit = page.getByRole('button', { name: '배분 수정' });
     const editBox = await edit.boundingBox();
     expect(editBox).not.toBeNull();
@@ -223,6 +248,28 @@ test('keeps the summary-first ratio list usable across required widths', async (
     expect(await edit.evaluate((element) => getComputedStyle(element).boxShadow)).not.toBe('none');
     expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
     expect(await summary.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+    if (viewport.width === 390) {
+      const hero = summary.locator('.portfolio-summary__hero');
+      const list = summary.locator('.portfolio-allocation-list');
+      const [heroBox, listBox] = await Promise.all([hero.boundingBox(), list.boundingBox()]);
+      expect(heroBox).not.toBeNull();
+      expect(listBox).not.toBeNull();
+      expect(listBox!.y - (heroBox!.y + heroBox!.height)).toBeGreaterThanOrEqual(24);
+      expect(await summary.evaluate((element) => getComputedStyle(element).backgroundColor))
+        .toBe('rgba(0, 0, 0, 0)');
+      expect(await list.evaluate((element) => getComputedStyle(element).backgroundColor))
+        .toBe('rgb(255, 255, 255)');
+      expect(Number.parseInt(await page.getByRole('heading', { name: '안정 50%' })
+        .evaluate((element) => getComputedStyle(element).fontWeight), 10)).toBeGreaterThanOrEqual(700);
+      const rows = summary.getByRole('listitem');
+      await expect(rows).toHaveCount(4);
+      for (const row of await rows.all()) {
+        const rowBox = await row.boundingBox();
+        expect(rowBox).not.toBeNull();
+        expect(rowBox!.height).toBeGreaterThanOrEqual(100);
+        expect(rowBox!.y + rowBox!.height).toBeLessThanOrEqual(viewport.height);
+      }
+    }
     if (viewport.width === 1280) {
       expect(summaryBox!.width).toBeGreaterThanOrEqual(767);
       expect(summaryBox!.width).toBeLessThanOrEqual(768);
@@ -232,7 +279,7 @@ test('keeps the summary-first ratio list usable across required widths', async (
     const [fillBox, trackBox] = await Promise.all([fill.boundingBox(), track.boundingBox()]);
     expect(fillBox).not.toBeNull();
     expect(trackBox).not.toBeNull();
-    expect(fillBox!.width / trackBox!.width).toBeCloseTo(0.4, 1);
+    expect(fillBox!.width / trackBox!.width).toBeCloseTo(0.5, 1);
   }
 });
 
@@ -258,6 +305,40 @@ test('contains the mobile editor, apply bar, and confirmation dialog', async ({ 
   await assertContained(page.getByRole('complementary', { name: '배분 변경' }));
   await page.getByRole('button', { name: '적용' }).click();
   await assertContained(page.getByRole('dialog', { name: '투자 배분 적용' }));
+});
+
+test('reflows a long Korean target name at a 200% desktop-zoom equivalent width', async ({ page }) => {
+  await page.setViewportSize({ width: 640, height: 900 });
+  await seedMain(page, 800_000);
+  await page.addInitScript(() => {
+    localStorage.setItem('isf-portfolio-allocation-v2', JSON.stringify({
+      schemaVersion: 2,
+      items: [{
+        id: 'long-name',
+        name: '전 세계 소형주 가치주 지수를 따르는 장기 투자 대상',
+        shareUnits: 900_000,
+        order: 0,
+        classification: 'growth',
+        classificationOrigin: 'user',
+      }],
+      cashShareUnits: 100_000,
+      cashMode: 'automatic',
+      syncedInvestmentWon: 800_000,
+      appliedAt: 1,
+      updatedAt: 1,
+    }));
+  });
+  await page.goto('apps/portfolio/');
+
+  const row = page.locator('.portfolio-allocation-row').first();
+  const name = row.locator('.portfolio-allocation-row__name');
+  const ratio = row.locator('.portfolio-allocation-row__ratio');
+  const [nameBox, ratioBox] = await Promise.all([name.boundingBox(), ratio.boundingBox()]);
+  expect(nameBox).not.toBeNull();
+  expect(ratioBox).not.toBeNull();
+  expect(nameBox!.x + nameBox!.width).toBeLessThanOrEqual(ratioBox!.x);
+  expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
+  expect(await row.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
 });
 
 test('keeps the final mobile editor control above the save-error apply bar', async ({ page }) => {
