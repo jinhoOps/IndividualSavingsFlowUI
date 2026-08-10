@@ -11,7 +11,7 @@
 5. 범위를 벗어난 인접 리팩터링 없이 맡은 작업을 수행한다.
 6. 변경 표면에 해당하는 검증을 실행하고 결과와 위험을 인계한다.
 
-`.planning` 전체, 과거 milestone 전체, 저장소 전체를 선행 탐색할 필요는 없다. 먼저 `rg`와 `rg --files`로 필요한 범위를 좁힌다.
+과거 milestone 전체나 저장소 전체를 선행 탐색할 필요는 없다. 먼저 `rg`와 `rg --files`로 관련 spec·plan, 코드와 테스트 범위를 좁힌다.
 
 ## Minimum Rules
 
@@ -31,8 +31,8 @@
 - 제품 범위·요구사항·인수 조건: [Product PRD](docs/ways-of-work/plan/isf-rebuild/connected-financial-planning-workspace/prd.md)
 - 제품 소개·실행 명령: [README](README.md)
 - UI·반응형·접근성 계약: [DESIGN](DESIGN.md)
-- 구현 구조·관례: [Codebase Maps](.planning/codebase/)
-- 전달 순서·현재 위치: [Roadmap](.planning/ROADMAP.md), [State](.planning/STATE.md)
+- 현재 제품 범위·상태·전달 우선순위: [Product PRD](docs/ways-of-work/plan/isf-rebuild/connected-financial-planning-workspace/prd.md)
+- 구현 구조·관례: 관련 [Superpowers Specs](docs/superpowers/specs/), [Superpowers Plans](docs/superpowers/plans/), 현재 코드와 테스트
 - 주요 아키텍처 결정: [ADRs](docs/adr/)
 - 기능 설계·실행 기록: [Superpowers Specs](docs/superpowers/specs/), [Superpowers Plans](docs/superpowers/plans/)
 
@@ -40,13 +40,13 @@
 
 | 역할 | 추가로 읽을 문서 | 핵심 책임 |
 | --- | --- | --- |
-| Coordinator | [Roadmap](.planning/ROADMAP.md), [State](.planning/STATE.md), 활성 spec·plan | 겹치지 않는 작업 분리, 공유 초기화의 단일 소유자 지정, 검증과 위험 취합 |
-| Planner / Product | [Requirements](.planning/REQUIREMENTS.md), [Roadmap](.planning/ROADMAP.md), 관련 spec | 현재 제품·마이그레이션·향후 범위를 구분하고 요구사항과 인수 조건 정의 |
+| Coordinator | [Product PRD](docs/ways-of-work/plan/isf-rebuild/connected-financial-planning-workspace/prd.md), 활성 spec·plan, 현재 Git 상태 | 겹치지 않는 작업 분리, 공유 초기화의 단일 소유자 지정, 검증과 위험 취합 |
+| Planner / Product | [Product PRD](docs/ways-of-work/plan/isf-rebuild/connected-financial-planning-workspace/prd.md), 관련 spec·ADR | 현재 제품·마이그레이션·향후 범위를 구분하고 요구사항과 인수 조건 정의 |
 | UX / Design | [DESIGN](DESIGN.md), 관련 spec, 관련 브라우저 테스트 | summary-first와 다섯 값의 명확한 편집 경계 유지, 390px·768px·desktop 및 접근성 검증 |
-| Architecture / Development | [Architecture](.planning/codebase/ARCHITECTURE.md), [Structure](.planning/codebase/STRUCTURE.md), [Conventions](.planning/codebase/CONVENTIONS.md), 관련 ADR·spec·plan | 현재 모듈과 데이터 소유권 안에서 구현하고 외부 동작 테스트 갱신 |
-| Storage / Legacy Migration | PRD의 Migration Transition, [Integrations](.planning/codebase/INTEGRATIONS.md), [Concerns](.planning/codebase/CONCERNS.md), 관련 호환성 코드 | 기능·schema 의미를 먼저 목록화하고 저장·import·export·backup·share 호환성과 참조 제거 입증 |
-| QA / Review | PRD 인수 조건, [Testing](.planning/codebase/TESTING.md), 관련 spec·plan, 현재 diff | 요구사항, 회귀, 모바일, 저장 호환성, 보안을 사용자 관찰 동작 기준으로 검토 |
-| Documentation | [README](README.md), [DESIGN](DESIGN.md), [Roadmap](.planning/ROADMAP.md), 관련 ADR·spec | 원문을 중복하지 않고 현재·전환·향후 상태와 링크·용어·상태 주장을 일치시킴 |
+| Architecture / Development | PRD 데이터 계약, 관련 ADR·spec·plan, 현재 코드와 테스트 | 현재 모듈과 데이터 소유권 안에서 구현하고 외부 동작 테스트 갱신 |
+| Storage / Legacy Migration | PRD의 Legacy transition, 관련 ADR·spec, 호환성 코드와 테스트 | 기능·schema 의미를 먼저 목록화하고 저장·import·export·backup·share 호환성과 참조 제거 입증 |
+| QA / Review | PRD 인수 조건, [DESIGN](DESIGN.md), 관련 spec·plan, 현재 diff와 테스트 | 요구사항, 회귀, 모바일, 저장 호환성, 보안을 사용자 관찰 동작 기준으로 검토 |
+| Documentation | [README](README.md), [Product PRD](docs/ways-of-work/plan/isf-rebuild/connected-financial-planning-workspace/prd.md), [DESIGN](DESIGN.md), 관련 ADR·spec | 원문을 중복하지 않고 현재·전환·향후 상태와 링크·용어·상태 주장을 일치시킴 |
 
 한 작업자가 여러 역할을 맡으면 목록을 합치고 중복 문서는 한 번만 읽는다. 과거 구현의 확인이 필요하면 Git 이력과 해당 코드·테스트를 사용하되 현재 제품 사실로 승격하지 않는다.
 
@@ -62,7 +62,7 @@
 
 | 변경 표면 | 필수 검증 |
 | --- | --- |
-| 문서만 변경 | 상대 링크 확인, `git diff --check`, PRD·Roadmap 상태 주장 대조 |
+| 문서만 변경 | 상대 링크 확인, `git diff --check`, PRD·README·DESIGN과 관련 spec의 상태 주장 대조 |
 | TypeScript 또는 공유 계약 | `npm run check`, 영향 소비자의 focused test |
 | 사용자 흐름 | 관련 Playwright spec 또는 focused group; 여러 앱이나 공유 인프라 영향 시 전체 E2E |
 | UI | 390px, 768px, desktop에서 overflow·overlay containment·focus·touch target·visualization visibility |
@@ -78,8 +78,8 @@
 2. Product PRD
 3. 현재 승인된 Superpowers spec
 4. 폐기되지 않은 ADR
-5. 활성 Roadmap과 Requirements
-6. Codebase Maps
+5. DESIGN과 README의 담당 범위
+6. 현재 코드와 테스트의 관찰 가능한 동작
 7. Git 이력의 과거 구현 기록
 
 작업 범위가 PRD와 충돌하면 멈추고 차이를 보고한다. 다른 작업자가 같은 파일을 소유하면 덮어쓰지 말고 조율한다.
@@ -96,10 +96,6 @@
 - [Product PRD](docs/ways-of-work/plan/isf-rebuild/connected-financial-planning-workspace/prd.md)
 - [README](README.md)
 - [DESIGN](DESIGN.md)
-- [Active Roadmap](.planning/ROADMAP.md)
-- [Project State](.planning/STATE.md)
-- [Active Requirements](.planning/REQUIREMENTS.md)
-- [Codebase Maps](.planning/codebase/)
 - [ADRs](docs/adr/)
 - [Superpowers Specs](docs/superpowers/specs/)
 - [Superpowers Plans](docs/superpowers/plans/)

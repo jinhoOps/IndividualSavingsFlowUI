@@ -14,6 +14,7 @@ ISF는 지금의 월간 돈 흐름을 정리하고, 그 결과를 장기 전략�
 - [Connected Account Map Workspace Design](../../../../superpowers/specs/2026-08-06-connected-account-map-workspace-design.md)
 - [Shared Workspace Foundation Plan](../../../../superpowers/plans/2026-08-06-shared-workspace-foundation.md)
 - [Journey Snapshot 폐기 설계](../../../../superpowers/specs/2026-08-03-journey-snapshot-retirement-design.md)
+- [Portfolio 투자 배분 설계](../../../../superpowers/specs/2026-08-03-portfolio-allocation-design.md)
 
 ## 3. Problem
 
@@ -143,6 +144,12 @@ ISF는 지금의 월간 돈 흐름을 정리하고, 그 결과를 장기 전략�
 
 ### Portfolio와 shared investment locations
 
+- 진입할 때마다 Main의 최신 월 투자금을 읽되 Main 원본은 변경하지 않는다.
+- 최대 10개 자유 이름 투자 대상과 현금에 현재 투자금을 금액 또는 비율로 배분한다.
+- 적용 계획 하나와 편집 초안을 Portfolio slice에 보존하고, 수정 중 값과 적용된 값을 구분한다.
+- Main 투자금이 바뀌면 기존 배분 의도를 유지할 수 있는 범위에서 다시 계산하고 사용자가 변화를 확인하도록 한다.
+- 결과는 금액과 비율을 도넛과 표로 함께 보여주며 pointer·touch·keyboard에 동등한 정보를 제공한다.
+- 다시 설정은 aggregate Portfolio 데이터만 초기화하며 Main과 다른 앱의 데이터를 변경하지 않는다.
 - 현재 UI는 하나의 `aggregate` scope만 만들고 편집한다.
 - Portfolio plan과 draft 계약은 향후 location scope를 표현할 수 있지만 Phase A는 위치별 배분 편집 UI를 제공하지 않는다.
 - 투자 역할을 가진 공유 금융 위치는 전체 기준 배분 아래에 표시되며, 이름·기관·형태 metadata를 Portfolio plan에 복사하지 않는다.
@@ -189,6 +196,8 @@ Simulation과 Portfolio는 workspace 안의 최신 Main을 읽기 전용으로 �
 - 저장, 복구, import와 연결 결과를 명시적으로 알린다.
 - 원화 단위와 음수·적자 의미를 숨기지 않는다.
 - 390px, 768px, desktop에서 가로 overflow 없이 사용할 수 있어야 한다.
+- 앱을 이동해도 런처의 위치와 공통 화면 틀이 일관되어야 한다.
+- Main 도넛과 Simulation·Portfolio 시각화의 핵심 정보는 pointer·touch·keyboard로 탐색할 수 있어야 한다.
 - 주요 터치 대상은 최소 44px을 확보한다.
 - 키보드, focus, accessible name, 상태 텍스트를 제공한다.
 - UI 세부 계약은 [DESIGN](../../../../../DESIGN.md)을 따른다.
@@ -203,7 +212,9 @@ Simulation과 Portfolio는 workspace 안의 최신 Main을 읽기 전용으로 �
 - [x] 유효한 계획을 로컬에 저장하고 다시 불러올 수 있다.
 - [x] 현재 JSON을 내보내고 검증된 JSON을 가져올 수 있다.
 - [x] Main에서 Simulation으로 명시적으로 이동할 수 있다.
+- [x] Main 월 자금 구성 도넛은 pointer·touch·keyboard로 항목을 탐색하며 모바일에서도 명칭과 상세 금액에 접근할 수 있다.
 - [x] 앱 이동은 URL만 사용하고 Main 시작은 폐기된 journey key를 읽거나 변환하지 않고 삭제한다.
+- [x] 네 앱 경로는 같은 런처 위치와 공통 화면 틀을 유지한다.
 - [x] Simulation은 Main을 변경하지 않고 장기 복리와 전부 저축 기준선을 비교한다.
 - [x] Simulation은 최초 두 단계 설정, 재방문 결과 우선 진입과 최신 Main 자동 동기화를 제공한다.
 - [x] Simulation은 0~30년, 한국식 정수 금액, pointer·touch·keyboard 그래프 탐색을 제공한다.
@@ -216,6 +227,7 @@ Simulation과 Portfolio는 workspace 안의 최신 Main을 읽기 전용으로 �
 - [x] Portfolio는 전체 기준 배분을 유지하면서 공유 투자 위치의 생성·이름 변경·보관과 readiness 상태를 제공한다.
 - [x] whole-workspace 백업은 유효한 모든 slice를 한 번에 교체하고 invalid 또는 old-format 입력에는 현재 raw workspace를 유지한다.
 - [x] Account Map은 Phase B 전까지 readiness-only이며 Main의 연결 결과 카드는 Phase C 전까지 기존 UI를 유지한다.
+- [x] Simulation과 Portfolio의 다시 설정은 해당 앱 데이터만 변경하고 Main과 다른 앱의 데이터를 보존한다.
 
 ### Transition
 
@@ -253,4 +265,9 @@ Phase C는 현재 Main의 metric 영역을 Main·Simulation·Portfolio·Account 
 - cross-app 브라우저 흐름: `npx playwright test tests/app-journey.spec.ts tests/main-react.spec.ts tests/simulation.spec.ts tests/portfolio.spec.ts --reporter=list`
 - 전체 브라우저 흐름: `npm run test:e2e -- --reporter=list`
 - production build: `npm run build`
+- Main 브라우저 흐름: `npx playwright test tests/main-react.spec.ts`
+- 앱 연결 흐름: `npx playwright test tests/app-journey.spec.ts`
+- Simulation 브라우저 흐름: `npx playwright test tests/simulation.spec.ts`
+- Portfolio 브라우저 흐름: `npx playwright test tests/portfolio.spec.ts`
+- Account Map 준비 상태: `npx playwright test tests/account-map.spec.ts`
 - 레거시 제거 시: runtime import, route, selector, storage key, compatibility path와 test reference 검색 및 관련 전체 회귀
