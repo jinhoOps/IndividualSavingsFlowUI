@@ -212,4 +212,43 @@ describe('BrowserSimulationRepository workspace adapter', () => {
       await expect(repository.clear()).resolves.toEqual({ status: 'unavailable' });
     },
   );
+
+  it.each(['invalid', 'unavailable'] as const)(
+    'fails closed after an initially %s workspace without attempting any mutation',
+    async (status) => {
+      let raw = '{"schemaVersion":1,"broken":true}';
+      const initialRaw = raw;
+      let durable = structuredClone(workspaceWithSimulation());
+      const initialDurable = structuredClone(durable);
+      const update = vi.fn(async (
+        _revision: number,
+        mutate: (current: WorkspaceDocument) => WorkspaceDocument,
+      ) => {
+        durable = mutate(durable);
+        raw = JSON.stringify(durable);
+        return { status: 'saved' as const, workspace: structuredClone(durable) };
+      });
+      const workspaceRepository: WorkspaceRepository = {
+        load: vi.fn(() => status === 'invalid'
+          ? { status: 'invalid' as const, raw }
+          : { status: 'unavailable' as const }),
+        update,
+        replace: vi.fn(),
+        resetInvalid: vi.fn(),
+        subscribe: vi.fn(() => () => undefined),
+      };
+      const repository = new BrowserSimulationRepository(workspaceRepository);
+
+      expect(repository.load()).toEqual(status === 'invalid'
+        ? { status: 'invalid' }
+        : { status: 'unavailable' });
+      await expect(repository.save({ ...draft, years: 24 }))
+        .resolves.toEqual({ status: 'unavailable' });
+      await expect(repository.clear()).resolves.toEqual({ status: 'unavailable' });
+
+      expect(update).not.toHaveBeenCalled();
+      expect(durable).toEqual(initialDurable);
+      expect(raw).toBe(initialRaw);
+    },
+  );
 });

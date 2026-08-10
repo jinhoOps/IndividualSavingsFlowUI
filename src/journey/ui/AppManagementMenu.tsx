@@ -11,7 +11,7 @@ export interface ManagementConfirmation {
 }
 
 export type AppManagementItem =
-  | { kind: 'action'; id: string; label: string; tone?: 'default' | 'danger'; disabled?: boolean; onSelect(): void | boolean; confirmation?: ManagementConfirmation }
+  | { kind: 'action'; id: string; label: string; tone?: 'default' | 'danger'; disabled?: boolean; onSelect(): void | boolean | Promise<void | boolean>; confirmation?: ManagementConfirmation }
   | { kind: 'file'; id: string; label: string; accept: string; disabled?: boolean; onFile(file: File): void }
   | { kind: 'separator'; id: string }
   | { kind: 'message'; id: string; text: string };
@@ -21,10 +21,12 @@ export function AppManagementMenu({ items }: { items: readonly AppManagementItem
   const helpId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const confirmationPendingRef = useRef(false);
   const [open, setOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [pending, setPending] = useState<Extract<AppManagementItem, { kind: 'action' }> | null>(null);
   const [confirmationFailed, setConfirmationFailed] = useState(false);
+  const [confirmationPending, setConfirmationPending] = useState(false);
 
   function closePopover(restoreFocus = true): void {
     setOpen(false);
@@ -57,6 +59,8 @@ export function AppManagementMenu({ items }: { items: readonly AppManagementItem
   function chooseAction(item: Extract<AppManagementItem, { kind: 'action' }>): void {
     setOpen(false);
     if (item.confirmation !== undefined) {
+      confirmationPendingRef.current = false;
+      setConfirmationPending(false);
       setConfirmationFailed(false);
       setPending(item);
       return;
@@ -163,15 +167,38 @@ export function AppManagementMenu({ items }: { items: readonly AppManagementItem
       {pending?.confirmation === undefined ? null : (
         <ManagementConfirmationDialog
           confirmation={pending.confirmation}
+          pending={confirmationPending}
           errorMessage={confirmationFailed ? pending.confirmation.failureMessage : undefined}
           returnFocusRef={triggerRef}
-          onCancel={() => setPending(null)}
-          onConfirm={() => {
-            if (pending.onSelect() === false) {
-              setConfirmationFailed(true);
-              return;
-            }
+          onCancel={() => {
+            confirmationPendingRef.current = false;
             setPending(null);
+          }}
+          onConfirm={() => {
+            if (confirmationPendingRef.current) return;
+            confirmationPendingRef.current = true;
+            setConfirmationPending(true);
+            setConfirmationFailed(false);
+
+            const settle = (result: void | boolean) => {
+              confirmationPendingRef.current = false;
+              setConfirmationPending(false);
+              if (result !== false) {
+                setPending(null);
+                return;
+              }
+              setConfirmationFailed(true);
+            };
+            try {
+              const result = pending.onSelect();
+              if (result instanceof Promise) {
+                void result.then(settle, () => settle(false));
+              } else {
+                settle(result);
+              }
+            } catch {
+              settle(false);
+            }
           }}
         />
       )}

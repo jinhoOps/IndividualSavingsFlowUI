@@ -9,7 +9,7 @@ afterEach(cleanup);
 function buildItems(overrides: {
   onExport?: () => void;
   onFile?: (file: File) => void;
-  onReset?: () => void;
+  onReset?: () => void | boolean | Promise<void | boolean>;
 } = {}): AppManagementItem[] {
   return [
     { kind: 'action', id: 'export', label: '백업 내보내기', onSelect: overrides.onExport ?? vi.fn() },
@@ -17,7 +17,12 @@ function buildItems(overrides: {
     { kind: 'separator', id: 'split' },
     {
       kind: 'action', id: 'reset', label: '처음부터 다시', tone: 'danger', onSelect: overrides.onReset ?? vi.fn(),
-      confirmation: { title: '처음부터 다시 할까요?', description: '현재 설정을 다시 확인합니다.', confirmLabel: '다시 시작' },
+      confirmation: {
+        title: '처음부터 다시 할까요?',
+        description: '현재 설정을 다시 확인합니다.',
+        confirmLabel: '다시 시작',
+        failureMessage: '다시 시작하지 못했습니다.',
+      },
     },
   ];
 }
@@ -125,6 +130,41 @@ describe('AppManagementMenu', () => {
     fireEvent.click(screen.getByRole('menuitem', { name: '처음부터 다시' }));
     fireEvent.click(screen.getByRole('button', { name: '다시 시작' }));
     expect(onReset).toHaveBeenCalledOnce();
+  });
+
+  it('keeps an async confirmation pending, blocks duplicates, and shows failure in place', async () => {
+    let settle: ((result: boolean) => void) | undefined;
+    const firstResult = new Promise<boolean>((resolve) => { settle = resolve; });
+    const onReset = vi.fn()
+      .mockReturnValueOnce(firstResult)
+      .mockResolvedValueOnce(true);
+    render(<AppManagementMenu items={buildItems({ onReset })} />);
+    fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: '처음부터 다시' }));
+    const dialog = screen.getByRole('dialog', { name: '처음부터 다시 할까요?' });
+    const confirm = within(dialog).getByRole('button', { name: '다시 시작' });
+    const cancel = within(dialog).getByRole('button', { name: '취소' });
+
+    fireEvent.click(confirm);
+
+    expect(dialog).toHaveAttribute('aria-busy', 'true');
+    expect(confirm).toBeDisabled();
+    expect(cancel).toBeDisabled();
+    fireEvent.click(confirm);
+    fireEvent.keyDown(dialog, { key: 'Escape' });
+    fireEvent.pointerDown(dialog);
+    expect(onReset).toHaveBeenCalledOnce();
+    expect(dialog).toBeVisible();
+
+    settle?.(false);
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('다시 시작하지 못했습니다.');
+    expect(dialog).toHaveAttribute('aria-busy', 'false');
+    expect(confirm).toBeEnabled();
+    expect(cancel).toBeEnabled();
+
+    fireEvent.click(confirm);
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(onReset).toHaveBeenCalledTimes(2);
   });
 
   it('renders an informational empty state without an action', () => {

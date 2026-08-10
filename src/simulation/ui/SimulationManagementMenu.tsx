@@ -3,7 +3,7 @@ import { AppManagementMenu, type AppManagementItem } from '../../journey/ui/AppM
 export function SimulationManagementMenu({
   onReset,
 }: {
-  onReset(): boolean;
+  onReset(): boolean | Promise<boolean>;
 }) {
   const items = [{
     kind: 'action',

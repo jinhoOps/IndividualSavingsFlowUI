@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { CompoundSimulationDraft, SimulationMainSource } from '../../../src/simulation/domain/model';
@@ -9,7 +9,19 @@ import type {
   SimulationLoadResult,
   SimulationRepository,
 } from '../../../src/simulation/infrastructure/simulationRepository';
+import { BrowserSimulationRepository } from '../../../src/simulation/infrastructure/simulationRepository';
 import { SimulationApp } from '../../../src/simulation/ui/SimulationApp';
+import {
+  WORKSPACE_STORAGE_KEY,
+  createEmptyWorkspace,
+  type WorkspaceDocument,
+} from '../../../src/workspace/domain/model';
+import { BrowserWorkspaceRepository } from '../../../src/workspace/infrastructure/workspaceRepository';
+import type {
+  WorkspaceSaveGuard,
+  WorkspaceSaveLock,
+} from '../../../src/workspace/infrastructure/workspaceSaveLock';
+import { MemoryStorage } from './MemoryStorage';
 
 afterEach(cleanup);
 
@@ -30,6 +42,32 @@ function simulationRepository(loadResult: SimulationLoadResult = { status: 'empt
     clear: vi.fn(async () => ({ status: 'cleared' as const })),
   };
   return repository;
+}
+
+function firstSaveGate(): {
+  lock: WorkspaceSaveLock;
+  started: Promise<void>;
+  release(): void;
+} {
+  let release: (() => void) | undefined;
+  let markStarted: (() => void) | undefined;
+  const gate = new Promise<void>((resolve) => { release = resolve; });
+  const started = new Promise<void>((resolve) => { markStarted = resolve; });
+  let count = 0;
+  return {
+    lock: {
+      async runExclusive<T>(task: (guard: WorkspaceSaveGuard) => Promise<T>): Promise<T> {
+        count += 1;
+        if (count === 1) {
+          markStarted?.();
+          await gate;
+        }
+        return await task({ assertOwned: () => undefined });
+      },
+    },
+    started,
+    release: () => release?.(),
+  };
 }
 
 describe('SimulationApp', () => {
@@ -166,14 +204,11 @@ describe('SimulationApp', () => {
 
   it('queues saves so a slower earlier result cannot overwrite the latest UI state', async () => {
     const repository = simulationRepository();
-    let releaseFirst: (() => void) | undefined;
-    const firstGate = new Promise<void>((resolve) => { releaseFirst = resolve; });
-    let saveCount = 0;
-    repository.save = vi.fn(async () => {
-      saveCount += 1;
-      if (saveCount === 1) await firstGate;
-      return { status: 'saved' as const };
-    });
+    let settleFirst: ((result: { status: 'unavailable' }) => void) | undefined;
+    let settleSecond: ((result: { status: 'saved' }) => void) | undefined;
+    repository.save = vi.fn()
+      .mockReturnValueOnce(new Promise((resolve) => { settleFirst = resolve; }))
+      .mockReturnValueOnce(new Promise((resolve) => { settleSecond = resolve; }));
     render(<SimulationApp
       mainSourceRepository={mainRepository(source)}
       repository={repository}
@@ -190,10 +225,62 @@ describe('SimulationApp', () => {
     expect(screen.getByRole('heading', { name: /이대로 25년 유지하면/ })).toBeVisible();
     expect(screen.getByRole('status')).toHaveTextContent('저장 중');
 
-    releaseFirst?.();
+    settleFirst?.({ status: 'unavailable' });
     await waitFor(() => expect(repository.save).toHaveBeenCalledTimes(2));
+    expect(screen.getByRole('status')).toHaveTextContent('저장 중');
+    expect(screen.getByRole('status')).not.toHaveTextContent('자동 저장하지 못했어요');
+    settleSecond?.({ status: 'saved' });
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('저장됨'));
     expect(repository.save).toHaveBeenLastCalledWith(expect.objectContaining({ years: 25 }));
+  });
+
+  it('persists a pending draft before reset and ends with the exact cleared workspace', async () => {
+    const storage = new MemoryStorage();
+    const saved = createEmptyWorkspace(400);
+    saved.revision = 4;
+    saved.main.applied = {
+      schemaVersion: 2,
+      updatedAt: source.mainUpdatedAt,
+      monthlyNetIncomeWon: 4_000_000,
+      monthlyHousingWon: 900_000,
+      monthlyLivingWon: 1_000_000,
+      monthlySavingWon: source.monthlySavingsWon,
+      monthlyInvestmentWon: source.monthlyInvestmentWon,
+    };
+    saved.simulation.draft = createDefaultSimulationDraft(source, 456);
+    storage.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify(saved));
+    const gated = firstSaveGate();
+    const repository = new BrowserSimulationRepository(new BrowserWorkspaceRepository(storage, {
+      now: () => 500,
+      saveLock: gated.lock,
+    }));
+    render(<SimulationApp
+      mainSourceRepository={mainRepository(source)}
+      repository={repository}
+      now={() => 500}
+    />);
+
+    fireEvent.change(screen.getByRole('spinbutton', { name: '기간 숫자' }), {
+      target: { value: '25' },
+    });
+    await gated.started;
+    fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: '시뮬레이션 다시 설정' }));
+    const dialog = screen.getByRole('dialog', { name: '시뮬레이션을 다시 설정할까요?' });
+    fireEvent.click(within(dialog).getByRole('button', { name: '다시 설정' }));
+
+    expect(dialog).toHaveAttribute('aria-busy', 'true');
+    expect(dialog).toBeVisible();
+    gated.release();
+
+    expect(await screen.findByRole('heading', { name: '지금 모아둔 투자금이 있나요?' })).toBeVisible();
+    const persisted = JSON.parse(storage.getItem(WORKSPACE_STORAGE_KEY) ?? '') as WorkspaceDocument;
+    expect(persisted).toEqual({
+      ...saved,
+      revision: 6,
+      updatedAt: 501,
+      simulation: { draft: null },
+    });
   });
 
   it('keeps the current result visible and reports an asynchronous clear failure', async () => {
@@ -206,8 +293,35 @@ describe('SimulationApp', () => {
     fireEvent.click(screen.getByRole('menuitem', { name: '시뮬레이션 다시 설정' }));
     fireEvent.click(screen.getByRole('button', { name: '다시 설정' }));
 
-    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('자동 저장하지 못했어요'));
+    const dialog = await screen.findByRole('dialog', { name: '시뮬레이션을 다시 설정할까요?' });
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('시뮬레이션을 다시 설정하지 못했어요.');
     expect(screen.getByRole('heading', { name: /이대로 20년 유지하면/ })).toBeVisible();
+  });
+
+  it('reports reset failure in the confirmation even when Main is required', async () => {
+    let settle: ((result: { status: 'unavailable' }) => void) | undefined;
+    const repository = simulationRepository({ status: 'empty' });
+    repository.clear = vi.fn(() => new Promise<{ status: 'unavailable' }>((resolve) => {
+      settle = resolve;
+    }));
+    render(<SimulationApp
+      mainSourceRepository={{ load: () => ({ status: 'empty' }) }}
+      repository={repository}
+    />);
+
+    fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: '시뮬레이션 다시 설정' }));
+    const dialog = screen.getByRole('dialog', { name: '시뮬레이션을 다시 설정할까요?' });
+    fireEvent.click(within(dialog).getByRole('button', { name: '다시 설정' }));
+
+    expect(dialog).toHaveAttribute('aria-busy', 'true');
+    expect(dialog).toBeVisible();
+    await waitFor(() => expect(repository.clear).toHaveBeenCalledOnce());
+    settle?.({ status: 'unavailable' });
+    expect(await within(dialog).findByRole('alert'))
+      .toHaveTextContent('시뮬레이션을 다시 설정하지 못했어요.');
+    expect(screen.getByRole('heading', { name: 'Main에서 월 저축·투자 금액을 먼저 정해주세요.' }))
+      .toBeVisible();
   });
 
   it('routes zero Main contributions back to Main', () => {

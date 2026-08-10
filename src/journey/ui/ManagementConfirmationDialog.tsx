@@ -3,12 +3,14 @@ import type { ManagementConfirmation } from './AppManagementMenu';
 
 export function ManagementConfirmationDialog({
   confirmation,
+  pending,
   errorMessage,
   returnFocusRef,
   onCancel,
   onConfirm,
 }: {
   confirmation: ManagementConfirmation;
+  pending: boolean;
   errorMessage?: string;
   returnFocusRef: RefObject<HTMLElement | null>;
   onCancel(): void;
@@ -34,7 +36,7 @@ export function ManagementConfirmationDialog({
   function trapFocus(event: KeyboardEvent<HTMLDialogElement>): void {
     if (event.key === 'Escape') {
       event.preventDefault();
-      onCancel();
+      if (!pending) onCancel();
       return;
     }
     if (event.key !== 'Tab') return;
@@ -59,13 +61,14 @@ export function ManagementConfirmationDialog({
       className="journey-management__dialog"
       aria-modal="true"
       aria-labelledby={titleId}
+      aria-busy={pending}
       onCancel={(event) => {
         event.preventDefault();
-        onCancel();
+        if (!pending) onCancel();
       }}
       onKeyDown={trapFocus}
       onPointerDown={(event) => {
-        if (event.target === event.currentTarget) onCancel();
+        if (!pending && event.target === event.currentTarget) onCancel();
       }}
     >
       <h2 id={titleId}>{confirmation.title}</h2>
@@ -74,8 +77,8 @@ export function ManagementConfirmationDialog({
         <p className="journey-management__dialog-alert" role="alert">{errorMessage}</p>
       )}
       <div className="journey-management__dialog-actions">
-        <button className="ui-button ui-button--secondary" type="button" data-dialog-initial-focus onClick={onCancel}>취소</button>
-        <button className="ui-button journey-management__danger" type="button" onClick={onConfirm}>{confirmation.confirmLabel}</button>
+        <button className="ui-button ui-button--secondary" type="button" data-dialog-initial-focus disabled={pending} onClick={onCancel}>취소</button>
+        <button className="ui-button journey-management__danger" type="button" disabled={pending} onClick={onConfirm}>{confirmation.confirmLabel}</button>
       </div>
     </dialog>
   );

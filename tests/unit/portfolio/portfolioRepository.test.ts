@@ -240,6 +240,33 @@ describe('BrowserPortfolioRepository workspace adapter', () => {
     expect(readWorkspace(storage).portfolio.plans).toEqual([nextPlan, newerLocation]);
   });
 
+  it('preserves a concurrently changed location draft when clearing the aggregate draft', async () => {
+    const saved = workspace();
+    const storage = new TrackingStorage(new Map([[WORKSPACE_STORAGE_KEY, JSON.stringify(saved)]]));
+    const repository = browserRepository(storage, 700);
+    repository.load();
+    const changedLocationDraft: PortfolioDraft = {
+      ...createCashOnlyDraft(200_000, 6),
+      scope: { type: 'location', locationId: 'loc-isa' },
+      items: [{ id: 'loc-new', name: '새 ISA 배분', shareUnits: 400_000, order: 0 }],
+      cashShareUnits: 600_000,
+      updatedAt: 6,
+    };
+    const current = workspace({ draft: changedLocationDraft });
+    current.revision = 5;
+    current.updatedAt = 650;
+    storage.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify(current));
+    const nextPlan = { ...aggregatePlan, updatedAt: 7 };
+
+    await expect(repository.saveApplied(nextPlan)).resolves.toEqual({ status: 'saved' });
+    await expect(repository.clearDraft()).resolves.toEqual({ status: 'saved' });
+
+    expect(readWorkspace(storage).portfolio).toEqual({
+      plans: [nextPlan, locationPlan],
+      draft: changedLocationDraft,
+    });
+  });
+
   it('rejects a stale matching scope without overwriting its winner', async () => {
     const storage = new TrackingStorage(new Map([[WORKSPACE_STORAGE_KEY, JSON.stringify(workspace())]]));
     const first = browserRepository(storage, 600);
@@ -276,6 +303,49 @@ describe('BrowserPortfolioRepository workspace adapter', () => {
         .resolves.toEqual({ status: 'unavailable' });
       await expect(repository.clearDraft()).resolves.toEqual({ status: 'unavailable' });
       await expect(repository.clearScope(scope)).resolves.toEqual({ status: 'unavailable' });
+    },
+  );
+
+  it.each(['invalid', 'unavailable'] as const)(
+    'fails closed after an initially %s workspace without attempting any mutation',
+    async (status) => {
+      let raw = '{"schemaVersion":1,"broken":true}';
+      const initialRaw = raw;
+      let durable = structuredClone(workspace());
+      const initialDurable = structuredClone(durable);
+      const update = vi.fn(async (
+        _revision: number,
+        mutate: (current: WorkspaceDocument) => WorkspaceDocument,
+      ) => {
+        durable = mutate(durable);
+        raw = JSON.stringify(durable);
+        return { status: 'saved' as const, workspace: structuredClone(durable) };
+      });
+      const workspaceRepository: WorkspaceRepository = {
+        load: vi.fn(() => status === 'invalid'
+          ? { status: 'invalid' as const, raw }
+          : { status: 'unavailable' as const }),
+        update,
+        replace: vi.fn(),
+        resetInvalid: vi.fn(),
+        subscribe: vi.fn(() => () => undefined),
+      };
+      const repository = new BrowserPortfolioRepository(workspaceRepository);
+
+      expect(repository.load()).toEqual(status === 'invalid'
+        ? { applied: { status: 'invalid' }, draft: { status: 'invalid' } }
+        : { applied: { status: 'unavailable' }, draft: { status: 'unavailable' } });
+      await expect(repository.saveApplied(aggregatePlan))
+        .resolves.toEqual({ status: 'unavailable' });
+      await expect(repository.saveDraft(createCashOnlyDraft(200_000, 5)))
+        .resolves.toEqual({ status: 'unavailable' });
+      await expect(repository.clearDraft()).resolves.toEqual({ status: 'unavailable' });
+      await expect(repository.clearScope({ type: 'aggregate' }))
+        .resolves.toEqual({ status: 'unavailable' });
+
+      expect(update).not.toHaveBeenCalled();
+      expect(durable).toEqual(initialDurable);
+      expect(raw).toBe(initialRaw);
     },
   );
 });

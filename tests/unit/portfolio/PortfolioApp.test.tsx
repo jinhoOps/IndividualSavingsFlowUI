@@ -3,7 +3,19 @@ import '@testing-library/jest-dom/vitest';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { PortfolioPlan } from '../../../src/portfolio/domain/model';
 import type { PortfolioMainSourceRepository } from '../../../src/portfolio/infrastructure/mainSourceRepository';
+import { BrowserPortfolioRepository } from '../../../src/portfolio/infrastructure/portfolioRepository';
 import { PortfolioApp } from '../../../src/portfolio/ui/PortfolioApp';
+import {
+  WORKSPACE_STORAGE_KEY,
+  createEmptyWorkspace,
+  type WorkspaceDocument,
+} from '../../../src/workspace/domain/model';
+import { BrowserWorkspaceRepository } from '../../../src/workspace/infrastructure/workspaceRepository';
+import type {
+  WorkspaceSaveGuard,
+  WorkspaceSaveLock,
+} from '../../../src/workspace/infrastructure/workspaceSaveLock';
+import { MemoryStorage } from '../simulation/MemoryStorage';
 import { createMemoryPortfolioRepository } from './MemoryPortfolioRepository';
 
 afterEach(cleanup);
@@ -24,6 +36,32 @@ const mainFound: PortfolioMainSourceRepository = {
 const zeroMain: PortfolioMainSourceRepository = {
   load: () => ({ status: 'found', source: { monthlyInvestmentWon: 0, mainUpdatedAt: 1 } }),
 };
+
+function firstSaveGate(): {
+  lock: WorkspaceSaveLock;
+  started: Promise<void>;
+  release(): void;
+} {
+  let release: (() => void) | undefined;
+  let markStarted: (() => void) | undefined;
+  const gate = new Promise<void>((resolve) => { release = resolve; });
+  const started = new Promise<void>((resolve) => { markStarted = resolve; });
+  let count = 0;
+  return {
+    lock: {
+      async runExclusive<T>(task: (guard: WorkspaceSaveGuard) => Promise<T>): Promise<T> {
+        count += 1;
+        if (count === 1) {
+          markStarted?.();
+          await gate;
+        }
+        return await task({ assertOwned: () => undefined });
+      },
+    },
+    started,
+    release: () => release?.(),
+  };
+}
 
 describe('PortfolioApp', () => {
   it('opens setup on first run', () => {
@@ -91,15 +129,16 @@ describe('PortfolioApp', () => {
 
   it('queues draft persistence so a slower earlier save cannot win over later UI state', async () => {
     const repository = createMemoryPortfolioRepository();
-    let releaseFirst: (() => void) | undefined;
-    const firstGate = new Promise<void>((resolve) => { releaseFirst = resolve; });
-    let saveCount = 0;
-    repository.saveDraft = vi.fn(async (draft) => {
-      saveCount += 1;
-      if (saveCount === 1) await firstGate;
-      repository.draft = structuredClone(draft);
-      return { status: 'saved' as const };
-    });
+    let settleFirst: ((result: { status: 'unavailable' }) => void) | undefined;
+    let settleSecond: ((result: { status: 'saved' }) => void) | undefined;
+    repository.saveDraft = vi.fn()
+      .mockImplementationOnce(() => new Promise((resolve) => { settleFirst = resolve; }))
+      .mockImplementationOnce((draft) => new Promise((resolve) => {
+        settleSecond = (result) => {
+          repository.draft = structuredClone(draft);
+          resolve(result);
+        };
+      }));
     render(<PortfolioApp mainSourceRepository={mainFound} repository={repository} now={() => 2} />);
 
     fireEvent.click(screen.getByRole('button', { name: '투자 대상 추가' }));
@@ -107,9 +146,57 @@ describe('PortfolioApp', () => {
     fireEvent.change(screen.getByLabelText('투자 대상 이름 1'), { target: { value: '최신 이름' } });
     expect(repository.saveDraft).toHaveBeenCalledTimes(1);
 
-    releaseFirst?.();
+    settleFirst?.({ status: 'unavailable' });
     await waitFor(() => expect(repository.saveDraft).toHaveBeenCalledTimes(2));
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    settleSecond?.({ status: 'saved' });
     await waitFor(() => expect(repository.draft?.items[0]?.name).toBe('최신 이름'));
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('persists pending draft, apply, and cleanup in invocation order', async () => {
+    const storage = new MemoryStorage();
+    const saved = createEmptyWorkspace(400);
+    saved.revision = 4;
+    storage.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify(saved));
+    const gated = firstSaveGate();
+    const repository = new BrowserPortfolioRepository(new BrowserWorkspaceRepository(storage, {
+      now: () => 500,
+      saveLock: gated.lock,
+    }));
+    render(<PortfolioApp
+      mainSourceRepository={mainFound}
+      repository={repository}
+      now={() => 500}
+    />);
+
+    fireEvent.click(screen.getByRole('radio', { name: '비율' }));
+    await gated.started;
+    fireEvent.click(screen.getByRole('button', { name: '적용' }));
+    fireEvent.click(within(screen.getByRole('dialog', { name: '투자 배분 적용' }))
+      .getByRole('button', { name: '적용' }));
+    gated.release();
+
+    expect(await screen.findByRole('heading', { name: '투자금 200,000원' })).toBeVisible();
+    const persisted = JSON.parse(storage.getItem(WORKSPACE_STORAGE_KEY) ?? '') as WorkspaceDocument;
+    expect(persisted).toEqual({
+      ...saved,
+      revision: 7,
+      updatedAt: 502,
+      portfolio: {
+        plans: [{
+          schemaVersion: 2,
+          scope: { type: 'aggregate' },
+          items: [],
+          cashShareUnits: 1_000_000,
+          cashMode: 'automatic',
+          syncedInvestmentWon: 200_000,
+          appliedAt: 500,
+          updatedAt: 500,
+        }],
+        draft: null,
+      },
+    });
   });
 
   it('clears only the aggregate scope on reset and waits before changing the visible state', async () => {

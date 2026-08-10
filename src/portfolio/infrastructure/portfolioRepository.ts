@@ -120,21 +120,28 @@ export class BrowserPortfolioRepository implements PortfolioRepository {
   async clearDraft(): Promise<PortfolioWriteResult> {
     if (this.draftBase === untrackedBase) return unavailable();
     const loaded = loadWritableWorkspace(this.workspaceRepository);
-    if (loaded === null || !sameDraft(loaded.workspace.portfolio.draft, this.draftBase)) {
-      return unavailable();
-    }
-    if (this.draftBase === null || this.draftBase.scope.type !== 'aggregate') {
+    if (loaded === null) return unavailable();
+    const key = scopeKey({ type: 'aggregate' });
+    const currentDraft = draftForScope(loaded.workspace.portfolio.draft, key);
+    if (currentDraft === null) {
+      this.draftBase = cloneDraft(loaded.workspace.portfolio.draft);
       return { status: 'saved' };
     }
+    if (!sameDraft(currentDraft, draftForScope(this.draftBase, key))) return unavailable();
     const result = await this.workspaceRepository.update(
       loaded.workspace.revision,
       (current) => ({
         ...current,
-        portfolio: { ...current.portfolio, draft: null },
+        portfolio: {
+          ...current.portfolio,
+          draft: draftForScope(current.portfolio.draft, key) === null
+            ? current.portfolio.draft
+            : null,
+        },
       }),
     );
     if (result.status !== 'saved') return unavailable();
-    this.draftBase = null;
+    this.draftBase = cloneDraft(result.workspace.portfolio.draft);
     return { status: 'saved' };
   }
 

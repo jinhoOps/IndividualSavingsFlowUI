@@ -95,9 +95,9 @@ export function SimulationApp({
     queueSave(valid);
   }
 
-  function reset(): boolean {
+  function reset(): Promise<boolean> {
     const token = beginOperation();
-    enqueuePersistence(
+    return enqueuePersistence(
       () => repository.clear(),
       (result) => {
         if (token !== latestOperation.current) return;
@@ -110,8 +110,7 @@ export function SimulationApp({
         setDraft(null);
         setSaveState(next.kind !== 'main-required' && !next.persistenceAvailable ? 'error' : 'saved');
       },
-    );
-    return true;
+    ).then((result) => result?.status === 'cleared');
   }
 
   function retryMain(): void {
@@ -152,10 +151,12 @@ export function SimulationApp({
   function enqueuePersistence<T>(
     operation: () => Promise<T>,
     onSettled: (result: T | null) => void,
-  ): void {
+  ): Promise<T | null> {
     const run = persistenceQueue.current.then(operation, operation);
-    persistenceQueue.current = run.then(() => undefined, () => undefined);
-    void run.then(onSettled, () => onSettled(null));
+    const settled = run.then((result) => result, () => null);
+    persistenceQueue.current = settled.then(() => undefined);
+    void settled.then(onSettled);
+    return settled;
   }
 
   const result = draft === null ? null : projectCompoundGrowth(draft);
