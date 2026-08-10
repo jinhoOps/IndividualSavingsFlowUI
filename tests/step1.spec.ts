@@ -1,6 +1,37 @@
 // @ts-nocheck
 import { test, expect } from '@playwright/test';
 
+const oldMainV2SentinelRaw = '{"legacy-main-v2":"untouched"}';
+
+async function seedCurrentMainWorkspace(
+  page: import('@playwright/test').Page,
+  current: Record<string, unknown>,
+) {
+  await page.addInitScript(({ workspace, oldMainRaw }) => {
+    localStorage.clear();
+    sessionStorage.clear();
+    localStorage.setItem('isf-workspace-v1', JSON.stringify(workspace));
+    localStorage.setItem('isf-main-v2', oldMainRaw);
+  }, {
+    workspace: {
+      schemaVersion: 1,
+      revision: 1,
+      updatedAt: current.updatedAt,
+      main: { applied: current, setupProgress: null },
+      simulation: { draft: null },
+      portfolio: { plans: [], draft: null },
+      locations: [],
+      accountMap: { applied: null, draft: null, instruments: [], flows: [] },
+    },
+    oldMainRaw: oldMainV2SentinelRaw,
+  });
+}
+
+async function expectOldMainV2SentinelUntouched(page: import('@playwright/test').Page) {
+  expect(await page.evaluate(() => localStorage.getItem('isf-main-v2')))
+    .toBe(oldMainV2SentinelRaw);
+}
+
 async function openControlsPanel(page: import('@playwright/test').Page) {
   const toggleButton = page.locator('#toggleControlsBtn');
   if (await toggleButton.getAttribute('aria-expanded') === 'false') {
@@ -3374,11 +3405,7 @@ test.describe.skip('Phase 10.5 regression hardening', () => {
 
 test.describe('Phase 09 final responsive user flow coverage', () => {
   test.beforeEach(async ({ page }) => {
-    await page.addInitScript((current) => {
-      localStorage.clear();
-      sessionStorage.clear();
-      localStorage.setItem('isf-main-v2', JSON.stringify(current));
-    }, {
+    await seedCurrentMainWorkspace(page, {
       schemaVersion: 2,
       updatedAt: 1,
       monthlyNetIncomeWon: 4_200_000,
@@ -3389,6 +3416,10 @@ test.describe('Phase 09 final responsive user flow coverage', () => {
     });
     await page.goto('apps/main/index.html');
     await page.waitForSelector('main');
+  });
+
+  test.afterEach(async ({ page }) => {
+    await expectOldMainV2SentinelUntouched(page);
   });
 
   test('keeps the live Main summary usable without horizontal overflow', async ({ page }) => {
@@ -3438,11 +3469,7 @@ test.describe('Phase 09 final responsive user flow coverage', () => {
 test.describe('Main liquid overflow presentation', () => {
   test.beforeEach(async ({ page }, testInfo) => {
     const investmentWon = testInfo.title.includes('at 100%') ? 1_700_000 : 5_060_000;
-    await page.addInitScript((current) => {
-      localStorage.clear();
-      sessionStorage.clear();
-      localStorage.setItem('isf-main-v2', JSON.stringify(current));
-    }, {
+    await seedCurrentMainWorkspace(page, {
       schemaVersion: 2,
       updatedAt: 1,
       monthlyNetIncomeWon: 4_200_000,
@@ -3453,6 +3480,10 @@ test.describe('Main liquid overflow presentation', () => {
     });
     await page.goto('apps/main/index.html');
     await page.waitForSelector('main');
+  });
+
+  test.afterEach(async ({ page }) => {
+    await expectOldMainV2SentinelUntouched(page);
   });
 
   test('contains a maximum liquid breakout at mobile and tablet widths', async ({ page }) => {

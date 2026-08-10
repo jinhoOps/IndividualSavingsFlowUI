@@ -8,6 +8,8 @@
 
 **Tech Stack:** React 19, TypeScript, browser localStorage with the existing lease/revision concurrency pattern, Vitest + Testing Library, Playwright, Vite.
 
+**Status (2026-08-10):** Phase A is current. Fresh final verification counted 633 passed unit tests and 69 passed / 60 skipped E2E tests (129 discovered). Type checks and the production build passed. The final independent controller review is recorded separately from this implementer commit.
+
 ## Global Constraints
 
 - Follow [Connected Account Map Workspace Design](../specs/2026-08-06-connected-account-map-workspace-design.md).
@@ -1010,12 +1012,15 @@ git commit -m "feat(workspace): back up the full workspace"
 - Modify: `README.md`
 - Modify: `DESIGN.md`
 - Modify: `docs/superpowers/plans/2026-08-06-shared-workspace-foundation.md`
+- Modify: `tests/app-journey.spec.ts`
+- Modify: `tests/main-compat.spec.ts`
+- Modify: `tests/step1.spec.ts`
 
 **Interfaces:**
 - Consumes: completed Phase-A code and fresh verification evidence.
 - Produces: canonical documentation that calls Phase A current while keeping Account Map UI, connected Main cards, trophy room, and legacy extinction future.
 
-- [ ] **Step 1: Update canonical status without claiming future phases**
+- [x] **Step 1: Update canonical status without claiming future phases**
 
 Document:
 
@@ -1028,7 +1033,7 @@ Document:
 
 Do not mark Account Map or repository-wide legacy extinction complete.
 
-- [ ] **Step 2: Run focused cross-app E2E**
+- [x] **Step 2: Run focused cross-app E2E**
 
 ```bash
 npx playwright test \
@@ -1041,7 +1046,7 @@ npx playwright test \
 
 Expected: connected routes, new workspace storage, location surface, reset, and backup pass.
 
-- [ ] **Step 3: Run complete required verification**
+- [x] **Step 3: Run complete required verification**
 
 ```bash
 npm run check
@@ -1053,7 +1058,7 @@ git diff --check
 
 Expected: all current checks pass. Warnings are reported separately and never summarized as failures or successes they do not represent.
 
-- [ ] **Step 4: Prove old stores are ignored but not yet deleted**
+- [x] **Step 4: Prove old stores are ignored but not yet deleted**
 
 Run:
 
@@ -1067,11 +1072,11 @@ Classify every result as:
 - legacy runtime retained for Phase D;
 - unexpected new-product reference, which must be fixed before completion.
 
-- [ ] **Step 5: Request independent code review**
+- [ ] **Step 5: Request independent code review (controller-owned after the implementer commit)**
 
 Use `superpowers:requesting-code-review` with the Phase-A base and head SHAs. Fix every Critical and Important finding, then rerun the affected focused tests and the full required verification.
 
-- [ ] **Step 6: Mark this plan complete and commit documentation**
+- [x] **Step 6: Mark this plan complete and commit documentation**
 
 Add a status line with the exact fresh unit/E2E counts only after the final run.
 

@@ -4,7 +4,9 @@
 
 Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계획 경험으로 바꾸는 로컬 우선 도구입니다. 시각적 기반은 종이 같은 **ISF Pearl** 캔버스와 단색 테두리의 **flat editorial panel**입니다. 전통적인 스프레드시트의 긴장감은 줄이되 숫자의 정밀성과 신뢰감은 유지합니다.
 
-이 문서의 현재 UI 계약은 상세 제품인 Main, Simulation과 Portfolio, 그리고 Account Map 준비 화면에 적용됩니다. 앱 이동과 데이터 경계는 [Journey Snapshot 폐기 설계](docs/superpowers/specs/2026-08-03-journey-snapshot-retirement-design.md)를 따르며, 과거 레거시 화면의 모양이나 상호작용은 새 UI의 기준이 아닙니다.
+이 문서의 현재 UI 계약은 상세 제품인 Main, Simulation과 aggregate-first Portfolio, 그리고 Account Map 준비 화면에 적용됩니다. 저장과 앱 ownership 경계는 [Connected Account Map Workspace Design](docs/superpowers/specs/2026-08-06-connected-account-map-workspace-design.md)의 Phase A를 따릅니다. 과거 레거시 화면의 모양이나 상호작용은 새 UI의 기준이 아닙니다.
+
+현재 delivery boundary는 명확히 나눕니다. Phase A의 단일 workspace, whole-workspace backup과 Portfolio 공유 투자 위치만 현재입니다. Account Map 상세 UI는 Phase B, Main 연결 결과 카드는 Phase C, legacy extinction은 Phase D입니다. hidden trophy room은 금융 상태와 분리된 별도 후속 작업입니다.
 
 ## Experience Principles
 
@@ -15,7 +17,7 @@ Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계획 �
 5. **Consistent Model**: 요약과 월 자금 구성은 동일한 정규화 데이터에서 만들어집니다.
 6. **Safe Constraints**: 유효하지 않은 금액, 초과 배분과 저장 실패는 조용히 무시하지 않습니다.
 7. **Progressive Disclosure**: 개요는 관계와 결과를 보여주고 민감하거나 복잡한 세부정보는 선택 후 공개합니다.
-8. **Local-first Trust**: 저장 위치, import, export와 앱 간 데이터 이동은 사용자가 이해할 수 있어야 합니다.
+8. **Local-first Trust**: 한 workspace의 저장 위치, whole-workspace import/export와 앱별 소유 slice를 사용자가 이해할 수 있어야 합니다.
 
 ## Product-Specific Interaction Contracts
 
@@ -35,8 +37,9 @@ Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계획 �
 - 앱 런처는 `자금 흐름 (Main)`, `미래 성장 (Simulation)`, `투자 배분 (Portfolio)`, `계좌 연결 (Account Map)`을 각각 집, 상승 그래프, 분할 도넛, 펼친 통장 아이콘으로 표시합니다.
 - 현재 위치는 아이콘 아래 선과 `aria-current`로 표시하고 Account Map의 `준비 중` 상태는 별도 점과 접근 가능한 이름으로 구분합니다.
 - 앱 런처와 CTA는 URL 탐색만 수행하며 데이터를 전달하거나 저장하지 않습니다.
-- Simulation은 진입 시 최신 Main 월 저축·투자를, Portfolio는 최신 Main 투자금을 각자의 읽기 전용 adapter로 직접 읽고 write-back하지 않습니다.
-- Account Map만 준비 화면이며 상세 편집·독립 저장이나 Main 데이터 read/write를 제공하지 않습니다.
+- Simulation은 진입 시 `isf-workspace-v1`의 최신 Main 월 저축·투자를, Portfolio는 최신 Main 투자금을 각자의 읽기 전용 adapter로 읽고 write-back하지 않습니다.
+- 각 상세 앱의 저장 행동은 하나의 workspace에서 자기 slice만 갱신하며 성공한 write마다 monotonic revision을 증가시킵니다.
+- Account Map만 준비 화면이며 Phase B 전까지 상세 편집·독립 저장이나 Main/workspace data read/write를 제공하지 않습니다.
 
 ### Simulation
 
@@ -58,14 +61,19 @@ Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계획 �
 - 편집 중 변경과 저장 상태를 명확히 구분합니다.
 - 결과는 도넛과 표를 함께 사용하고 pointer·touch·keyboard에 동등한 정보를 제공합니다.
 - 투자금 0원은 기존 계획을 보존하고 Main 투자금 편집으로 안내합니다.
+- 현재 배분 편집과 결과는 항상 `전체 기준`이 우선입니다.
+- 배분 결과·편집 다음에 `투자 위치`를 두고 공유 금융 위치의 생성, 이름 변경, 보관을 제공합니다.
+- 투자 위치는 최대 8자 이름, 형태와 선택 기관을 보여주며 빈 위치는 `아직 배분하지 않음`으로 명시합니다.
+- Phase A의 위치 상태 action은 44px touch target을 유지하고 위치별 배분을 편집할 수 있는 것처럼 표현하지 않습니다.
 
-### Future Account Map
+### Phase B Account Map
 
-- 전체 관계도를 첫 화면의 주요 시각 요소로 사용합니다.
-- 관계 유형은 색상과 짧은 텍스트를 함께 사용해 색상만으로 구분하지 않습니다.
-- 정확한 월 금액은 개요에서 숨기고 선택 상세에서 공개합니다.
-- 모바일 요약은 관계도를 첫 viewport 밖으로 밀어내지 않아야 합니다.
-- drag 상태, 저장 결과와 자동정렬 결과를 명확히 피드백합니다.
+- Phase B가 시작되기 전 제품 route는 readiness-only 상태를 유지합니다.
+- 구현 후에는 들어오는 돈·생활비·저축·투자의 purpose-first 관계도를 첫 화면의 주요 시각 요소로 사용합니다.
+- 관계 유형, unresolved·excess와 선택 상태는 색상과 짧은 텍스트를 함께 사용해 색상만으로 구분하지 않습니다.
+- 정확한 월 금액은 overview에서 숨기고 pointer·touch·keyboard 선택 상세에서 공개합니다.
+- 전체·기본·상세 semantic zoom을 제공하고 임의 node 좌표나 drag edge를 저장하지 않습니다.
+- 모바일 요약은 관계도를 첫 viewport 밖으로 밀어내지 않아야 하며 Account Map은 Main에 write-back하지 않습니다.
 
 ## Colors
 
@@ -144,8 +152,9 @@ Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계획 �
 
 ### DataHubModal
 
-- 백업, 공유, import와 이력 관리의 일관된 진입점입니다.
-- 외부 데이터는 적용 전에 검증하고 실패 시 현재 저장 상태를 유지합니다.
+- Main 관리 메뉴는 current whole-workspace 백업의 진입점입니다.
+- export는 Main·Simulation·Portfolio·공유 위치와 Account Map contract를 하나의 versioned envelope로 내보냅니다.
+- import는 모든 slice와 참조를 적용 전에 검증하고 유효하면 확인 dialog 뒤 한 번에 교체합니다. invalid 또는 old-format 입력은 현재 raw workspace를 유지합니다.
 
 ### Button
 
@@ -203,8 +212,9 @@ gradient와 반투명 card를 기본 스타일로 사용하지 않습니다.
 - 보이는 주요 버튼과 입력은 최소 44px touch target을 가져야 합니다.
 - modal 콘텐츠는 viewport 안에서 스크롤되고 footer 또는 Pending Bar가 가려지지 않아야 합니다.
 - 다중 열 control은 768px 이하에서 단일 열 또는 읽을 수 있는 compact layout으로 전환합니다.
-- 현재 Main 월 자금 구성, Simulation 그래프와 향후 Account Map은 의미를 잃도록 과도하게 축소하지 않습니다.
-- 향후 Account Map의 compact summary는 모바일 첫 화면에서 관계도를 밀어내지 않아야 합니다.
+- 현재 Main 월 자금 구성, Simulation 그래프와 Phase B Account Map은 의미를 잃도록 과도하게 축소하지 않습니다.
+- Portfolio 공유 투자 위치는 390px에서 이름·상태·action이 패널 밖으로 넘치지 않아야 합니다.
+- Phase B Account Map의 compact summary는 모바일 첫 화면에서 관계도를 밀어내지 않아야 합니다.
 
 ## Accessibility
 
@@ -217,7 +227,8 @@ gradient와 반투명 card를 기본 스타일로 사용하지 않습니다.
 ## Do
 
 - 공통 header, feedback, storage와 formatting utility를 먼저 확인합니다.
-- Main 현재 데이터 소유권, URL-only 탐색과 상세 앱의 명시적인 최신 Main read 경계를 유지합니다.
+- Main 현재 데이터 소유권, URL-only 탐색과 상세 앱의 명시적인 workspace Main read 경계를 유지합니다.
+- workspace write는 자기 slice와 공유 위치 ownership만 갱신하고 stale revision을 조용히 덮어쓰지 않습니다.
 - Main의 다섯 값 계약을 넘어서는 편집 UI를 현재 제품에 추가하지 않습니다.
 - 외부 동작과 모바일 화면을 함께 검증합니다.
 - CSS 수정 전후 responsive media query와 파일 구조를 확인합니다.
@@ -226,6 +237,8 @@ gradient와 반투명 card를 기본 스타일로 사용하지 않습니다.
 
 - 레거시 UI를 새 화면의 디자인 기준으로 사용하지 않습니다.
 - Main에 두 번째 일반 재무 편집기를 만들지 않습니다.
+- Phase B 전에 Account Map 상세 UI를, Phase C 전에 Main 연결 결과 카드를 현재 계약처럼 표시하지 않습니다.
+- Phase A Portfolio 위치 행에 location-scoped 배분 편집 action을 추가하지 않습니다.
 - 모든 앱에 하나의 전역 Pending Bar 동작을 강제하지 않습니다.
 - 향후 Account Map 수정이 Main에 자동 반영되는 것처럼 표현하지 않습니다.
 - 카드에 gradient 또는 과도한 translucent effect를 사용하지 않습니다.

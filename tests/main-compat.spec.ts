@@ -41,18 +41,32 @@ test('React Main ignores v1-only data and leaves every legacy store untouched', 
   }))).toEqual({ ...legacy, mainV2: null });
 });
 
-test('React Main v2 save never writes a legacy adapter projection', async ({ page }) => {
+test('React Main workspace save leaves legacy adapter records untouched', async ({ page }) => {
   const legacy = {
+    mainV2: JSON.stringify(appliedMainV2),
     mainV1: JSON.stringify({ schemaVersion: 1, updatedAt: 10 }),
     rebuildV1: JSON.stringify({ modelVersion: 10, updatedAt: 10, monthlyInvest: 123_000 }),
   };
-  await page.addInitScript(({ current, raw }) => {
+  await page.addInitScript(({ workspace, raw }) => {
     localStorage.clear();
     sessionStorage.clear();
-    localStorage.setItem('isf-main-v2', JSON.stringify(current));
+    localStorage.setItem('isf-workspace-v1', JSON.stringify(workspace));
+    localStorage.setItem('isf-main-v2', raw.mainV2);
     localStorage.setItem('isf-main-v1', raw.mainV1);
     localStorage.setItem('isf-rebuild-v1', raw.rebuildV1);
-  }, { current: appliedMainV2, raw: legacy });
+  }, {
+    workspace: {
+      schemaVersion: 1,
+      revision: 1,
+      updatedAt: appliedMainV2.updatedAt,
+      main: { applied: appliedMainV2, setupProgress: null },
+      simulation: { draft: null },
+      portfolio: { plans: [], draft: null },
+      locations: [],
+      accountMap: { applied: null, draft: null, instruments: [], flows: [] },
+    },
+    raw: legacy,
+  });
   await page.goto('apps/main/');
 
   await page.getByRole('button', { name: '월 투자 편집' }).click();
@@ -61,17 +75,17 @@ test('React Main v2 save never writes a legacy adapter projection', async ({ pag
   await expect(page.getByRole('status')).toHaveText('저장됨');
 
   await expect.poll(() => page.evaluate(() => {
-    const current = JSON.parse(localStorage.getItem('isf-main-v2') ?? '{}');
+    const workspace = JSON.parse(localStorage.getItem('isf-workspace-v1') ?? '{}');
     return {
-      investmentWon: current.monthlyInvestmentWon,
+      investmentWon: workspace.main?.applied?.monthlyInvestmentWon,
+      mainV2: localStorage.getItem('isf-main-v2'),
       mainV1: localStorage.getItem('isf-main-v1'),
       rebuildV1: localStorage.getItem('isf-rebuild-v1'),
       accountMap: localStorage.getItem('isf-account-map-v1'),
     };
   })).toEqual({
     investmentWon: 650_000,
-    mainV1: legacy.mainV1,
-    rebuildV1: legacy.rebuildV1,
+    ...legacy,
     accountMap: null,
   });
 });

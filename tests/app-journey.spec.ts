@@ -21,6 +21,42 @@ const appliedWorkspace = {
   accountMap: { applied: null, draft: null, instruments: [], flows: [] },
 };
 
+const previousSimulationSource = {
+  monthlySavingsWon: 100_000,
+  monthlyInvestmentWon: 100_000,
+  mainUpdatedAt: appliedMain.updatedAt - 1,
+};
+
+const appliedSimulationDraft = {
+  schemaVersion: 2,
+  source: previousSimulationSource,
+  initialInvestmentWon: 10_000_000,
+  years: 20,
+  expectedAnnualReturnPercent: 9,
+  baseRatePercent: 2.75,
+  inflationOffsetPercentPoints: -0.25,
+  amountMode: 'nominal',
+  updatedAt: previousSimulationSource.mainUpdatedAt,
+};
+
+const oldSimulationRaw = JSON.stringify({
+  ...appliedSimulationDraft,
+  source: {
+    monthlySavingsWon: 1,
+    monthlyInvestmentWon: 1,
+    mainUpdatedAt: 1,
+  },
+  initialInvestmentWon: 1,
+  years: 29,
+  expectedAnnualReturnPercent: 5,
+  updatedAt: 1,
+});
+
+const workspaceWithSimulationDraft = {
+  ...appliedWorkspace,
+  simulation: { draft: appliedSimulationDraft },
+};
+
 const sharedShellViewports = [
   { width: 390, height: 844, launcherX: 20, launcherWidth: 350 },
   { width: 768, height: 1024, launcherX: 32, launcherWidth: 704 },
@@ -77,32 +113,18 @@ for (const viewport of sharedShellViewports) {
 }
 
 test('connects Main directly to the detailed Simulation', async ({ page }) => {
-  await page.addInitScript((fixture) => {
+  await page.addInitScript(({ workspace, seededOldSimulation }) => {
     const seedMarker = 'isf-test-journey-fixture-seeded';
     if (sessionStorage.getItem(seedMarker) !== null) return;
     sessionStorage.setItem(seedMarker, 'true');
 
-    localStorage.setItem('isf-workspace-v1', JSON.stringify(fixture));
+    localStorage.setItem('isf-workspace-v1', JSON.stringify(workspace));
     localStorage.setItem('isf-journey-snapshot-v1', JSON.stringify({
       monthlySavingWon: 900_000,
       monthlyInvestmentWon: 900_000,
     }));
-    localStorage.setItem('isf-simulation-compound-v1', JSON.stringify({
-      schemaVersion: 2,
-      source: {
-        monthlySavingsWon: 100_000,
-        monthlyInvestmentWon: 100_000,
-        mainUpdatedAt: fixture.main.applied.updatedAt - 1,
-      },
-      initialInvestmentWon: 10_000_000,
-      years: 20,
-      expectedAnnualReturnPercent: 9,
-      baseRatePercent: 2.75,
-      inflationOffsetPercentPoints: -0.25,
-      amountMode: 'nominal',
-      updatedAt: fixture.main.applied.updatedAt - 1,
-    }));
-  }, appliedWorkspace);
+    localStorage.setItem('isf-simulation-compound-v1', seededOldSimulation);
+  }, { workspace: workspaceWithSimulationDraft, seededOldSimulation: oldSimulationRaw });
   await page.goto('apps/main/');
   await expect.poll(() => page.evaluate(
     () => localStorage.getItem('isf-journey-snapshot-v1'),
@@ -116,28 +138,15 @@ test('connects Main directly to the detailed Simulation', async ({ page }) => {
   await expect(page.getByText('월 저축 30만 원 · 투자 20만 원 · 연 9%')).toBeVisible();
   await expect(page.getByRole('link', { name: /미래 성장 \(Simulation\).*현재 위치/ }))
     .toHaveAttribute('aria-current', 'page');
+  expect(await page.evaluate(() => localStorage.getItem('isf-simulation-compound-v1')))
+    .toBe(oldSimulationRaw);
 });
 
 test('revisits Simulation at the result and refreshes only its Main source', async ({ page }) => {
-  const previousSource = {
-    monthlySavingsWon: 100_000,
-    monthlyInvestmentWon: 100_000,
-    mainUpdatedAt: appliedMain.updatedAt - 1,
-  };
-  await page.addInitScript(({ workspace, source }) => {
+  await page.addInitScript(({ workspace, seededOldSimulation }) => {
     localStorage.setItem('isf-workspace-v1', JSON.stringify(workspace));
-    localStorage.setItem('isf-simulation-compound-v1', JSON.stringify({
-      schemaVersion: 2,
-      source,
-      initialInvestmentWon: 10_000_000,
-      years: 20,
-      expectedAnnualReturnPercent: 9,
-      baseRatePercent: 2.75,
-      inflationOffsetPercentPoints: -0.25,
-      amountMode: 'nominal',
-      updatedAt: source.mainUpdatedAt,
-    }));
-  }, { workspace: appliedWorkspace, source: previousSource });
+    localStorage.setItem('isf-simulation-compound-v1', seededOldSimulation);
+  }, { workspace: workspaceWithSimulationDraft, seededOldSimulation: oldSimulationRaw });
 
   await page.goto('apps/simulation/');
   await expect(page.getByRole('heading', { name: /이대로 20년 유지하면/ })).toBeVisible();
@@ -145,11 +154,13 @@ test('revisits Simulation at the result and refreshes only its Main source', asy
   await expect(page.getByRole('heading', { name: '지금 모아둔 투자금이 있나요?' }))
     .toHaveCount(0);
 
-  const stored = await page.evaluate(() => JSON.parse(
-    localStorage.getItem('isf-simulation-compound-v1')!,
-  ));
-  expect(stored.source.monthlySavingsWon).toBe(300_000);
-  expect(stored.initialInvestmentWon).toBe(10_000_000);
+  const stored = await page.evaluate(() => ({
+    workspace: JSON.parse(localStorage.getItem('isf-workspace-v1')!),
+    oldSimulation: localStorage.getItem('isf-simulation-compound-v1'),
+  }));
+  expect(stored.workspace.simulation.draft.source.monthlySavingsWon).toBe(300_000);
+  expect(stored.workspace.simulation.draft.initialInvestmentWon).toBe(10_000_000);
+  expect(stored.oldSimulation).toBe(oldSimulationRaw);
 });
 
 test('keeps detailed Portfolio and readiness-only Account Map isolated', async ({ page }) => {
