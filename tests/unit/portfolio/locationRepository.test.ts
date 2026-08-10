@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { PortfolioPlan } from '../../../src/portfolio/domain/model';
+import type { PortfolioDraft, PortfolioPlan } from '../../../src/portfolio/domain/model';
 import {
   BrowserInvestmentLocationRepository,
 } from '../../../src/portfolio/infrastructure/locationRepository';
@@ -48,6 +48,20 @@ function scopedPlan(locationId: string): PortfolioPlan {
   };
 }
 
+function scopedDraft(locationId: string): PortfolioDraft {
+  return {
+    schemaVersion: 2,
+    scope: { type: 'location', locationId },
+    items: [],
+    cashShareUnits: 1_000_000,
+    cashMode: 'automatic',
+    inputMode: 'amount',
+    syncedInvestmentWon: 200_000,
+    updatedAt: 100,
+    isApplicable: true,
+  };
+}
+
 function setup(initial: Partial<WorkspaceDocument> = {}) {
   const storage = new MemoryStorage();
   const workspace = { ...createEmptyWorkspace(100), ...initial };
@@ -76,6 +90,36 @@ describe('BrowserInvestmentLocationRepository', () => {
     });
 
     expect(repository.list().map(({ id }) => id)).toEqual(['alpha', 'zulu']);
+  });
+
+  it('projects applied and draft-only location-scoped Portfolio state without creating an editor', () => {
+    const applied = location('applied', 'ISA', ['investing']);
+    const draftOnly = location('draft', '연금', ['investing']);
+    const empty = location('empty', '해외', ['investing']);
+    const { repository } = setup({
+      locations: [applied, draftOnly, empty],
+      portfolio: {
+        plans: [scopedPlan(applied.id)],
+        draft: scopedDraft(draftOnly.id),
+      },
+    });
+
+    expect(repository.list()).toEqual([
+      { ...draftOnly, portfolioStatus: 'draft' },
+      { ...empty, portfolioStatus: 'empty' },
+      { ...applied, portfolioStatus: 'applied' },
+    ]);
+
+    const combined = setup({
+      locations: [applied],
+      portfolio: {
+        plans: [scopedPlan(applied.id)],
+        draft: scopedDraft(applied.id),
+      },
+    });
+    expect(combined.repository.list()).toEqual([
+      { ...applied, portfolioStatus: 'applied-and-draft' },
+    ]);
   });
 
   it('creates one shared investing identity and commits its latest workspace revision', async () => {
@@ -121,6 +165,50 @@ describe('BrowserInvestmentLocationRepository', () => {
       .resolves.toEqual({ status: 'invalid-input' });
   });
 
+  it('returns the active non-investing shared identity with a normalized duplicate', async () => {
+    const existing = location('existing', 'Toss ISA', ['saving']);
+    const { repository } = setup({ locations: [existing] });
+
+    await expect(repository.create({
+      shortName: ' toss   isa ',
+      kind: 'brokerage',
+    })).resolves.toEqual({
+      status: 'duplicate-name',
+      existingLocation: existing,
+    });
+  });
+
+  it('links an existing active shared identity by adding investing to its current roles', async () => {
+    const existing = location('existing', 'Toss ISA', ['saving']);
+    const { repository, storage } = setup({ locations: [existing] });
+
+    const result = await repository.link(existing.id);
+
+    expect(result).toMatchObject({
+      status: 'saved',
+      location: { id: existing.id, roles: ['saving', 'investing'] },
+    });
+    expect(persisted(storage).locations).toEqual([
+      { ...existing, roles: ['saving', 'investing'], updatedAt: 400 },
+    ]);
+  });
+
+  it('rejects linking when the investing role is at capacity without duplicating the identity', async () => {
+    const existing = location('existing', 'Toss ISA', ['saving']);
+    const investing = Array.from({ length: 10 }, (_, index) => (
+      location(`location-${index}`, `ISA ${index}`, ['investing'])
+    ));
+    const { repository, storage } = setup({ locations: [...investing, existing] });
+
+    const result = await repository.link(existing.id);
+
+    expect(result).toEqual({ status: 'purpose-capacity' });
+    expect(persisted(storage)).toMatchObject({
+      revision: 0,
+      locations: [...investing, existing],
+    });
+  });
+
   it('maps workspace conflict and unavailable outcomes distinctly', async () => {
     const workspace = createEmptyWorkspace(100);
     const conflictRepository: WorkspaceRepository = {
@@ -143,6 +231,47 @@ describe('BrowserInvestmentLocationRepository', () => {
       shortName: 'ISA',
       kind: 'brokerage',
     })).resolves.toEqual({ status: 'unavailable' });
+  });
+
+  it('rejects a stale rename when the latest target is no longer an active investing location', async () => {
+    const removed = location('location-isa', 'ISA', ['saving']);
+    const { repository, storage } = setup({ locations: [removed] });
+    const before = storage.getItem(WORKSPACE_STORAGE_KEY);
+
+    await expect(repository.rename(removed.id, '새 ISA'))
+      .resolves.toEqual({ status: 'stale-location' });
+    expect(storage.getItem(WORKSPACE_STORAGE_KEY)).toBe(before);
+  });
+
+  it('blocks a stale archive delete from removing preserved location Portfolio data', async () => {
+    const removed = location('location-isa', 'ISA', ['investing'], 300);
+    const plan = scopedPlan(removed.id);
+    const draft = scopedDraft(removed.id);
+    const { repository, storage } = setup({
+      locations: [removed],
+      portfolio: { plans: [plan], draft },
+    });
+    const before = storage.getItem(WORKSPACE_STORAGE_KEY);
+
+    await expect(repository.archive(removed.id, 'delete'))
+      .resolves.toEqual({ status: 'stale-location' });
+    expect(storage.getItem(WORKSPACE_STORAGE_KEY)).toBe(before);
+    expect(persisted(storage).portfolio).toEqual({ plans: [plan], draft });
+  });
+
+  it('links only an active non-investing target and distinguishes stale from not found', async () => {
+    const alreadyLinked = location('linked', 'ISA', ['investing']);
+    const archived = location('archived', '연금', ['saving'], 200);
+    const { repository, storage } = setup({ locations: [alreadyLinked, archived] });
+    const before = storage.getItem(WORKSPACE_STORAGE_KEY);
+
+    await expect(repository.link(alreadyLinked.id))
+      .resolves.toEqual({ status: 'stale-location' });
+    await expect(repository.link(archived.id))
+      .resolves.toEqual({ status: 'stale-location' });
+    await expect(repository.link('missing'))
+      .resolves.toEqual({ status: 'location-not-found' });
+    expect(storage.getItem(WORKSPACE_STORAGE_KEY)).toBe(before);
   });
 
   it('publishes active investing locations after a same-tab committed change', async () => {

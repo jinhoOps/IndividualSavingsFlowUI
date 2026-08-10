@@ -15,6 +15,7 @@ import {
 import {
   BrowserInvestmentLocationRepository,
   type InvestmentLocationRepository,
+  type LocationPortfolioStatus,
   type LocationWriteError,
   type LocationWriteResult,
 } from '../infrastructure/locationRepository';
@@ -22,6 +23,7 @@ import { PortfolioDialog } from './PortfolioDialog';
 
 interface RenameState {
   id: string;
+  sourceShortName: string;
   value: string;
   pending: boolean;
   error?: string;
@@ -50,10 +52,12 @@ export function InvestmentLocations({
   const [institution, setInstitution] = useState('');
   const [createPending, setCreatePending] = useState(false);
   const [createError, setCreateError] = useState<string>();
+  const [linkCandidate, setLinkCandidate] = useState<FinancialLocation>();
   const [rename, setRename] = useState<RenameState>();
   const [archive, setArchive] = useState<ArchiveState>();
   const [focusHeadingAfterArchive, setFocusHeadingAfterArchive] = useState(false);
   const [locationErrors, setLocationErrors] = useState<Record<string, string>>({});
+  const [syncNotice, setSyncNotice] = useState<string>();
   const archiveReturnFocusRef = useRef<HTMLElement | null>(null);
   const locationHeadingRef = useRef<HTMLHeadingElement>(null);
 
@@ -61,6 +65,39 @@ export function InvestmentLocations({
     setLocations(repository.list());
     return repository.subscribe(setLocations);
   }, [repository]);
+
+  useEffect(() => {
+    let closedStaleWork = false;
+    if (rename !== undefined && !rename.pending) {
+      const currentLocation = locations.find((location) => location.id === rename.id);
+      if (currentLocation === undefined) {
+        setRename(undefined);
+        closedStaleWork = true;
+      } else if (currentLocation.shortName !== rename.sourceShortName) {
+        setRename({
+          ...rename,
+          sourceShortName: currentLocation.shortName,
+          value: currentLocation.shortName,
+          error: undefined,
+        });
+      }
+    }
+    if (archive !== undefined && !archive.pending) {
+      const currentLocation = locations.find((location) => location.id === archive.location.id);
+      if (currentLocation === undefined) {
+        archiveReturnFocusRef.current = null;
+        setArchive(undefined);
+        closedStaleWork = true;
+      } else if (currentLocation.shortName !== archive.location.shortName
+        || currentLocation.updatedAt !== archive.location.updatedAt) {
+        setArchive({ ...archive, location: currentLocation });
+      }
+    }
+    if (closedStaleWork) {
+      setSyncNotice('다른 화면에서 위치가 변경되어 작업을 닫았습니다.');
+      setFocusHeadingAfterArchive(true);
+    }
+  }, [locations]);
 
   useEffect(() => {
     if (!focusHeadingAfterArchive || archive !== undefined) return;
@@ -73,6 +110,7 @@ export function InvestmentLocations({
     if (createPending) return;
     setCreatePending(true);
     setCreateError(undefined);
+    setLinkCandidate(undefined);
     const trimmedInstitution = institution.trim().replace(/\s+/gu, ' ');
     const result = await repository.create({
       shortName,
@@ -84,11 +122,37 @@ export function InvestmentLocations({
     setCreatePending(false);
     if (result.status !== 'saved') {
       setCreateError(writeErrorMessage(result.status));
+      if (result.existingLocation !== undefined) {
+        setLinkCandidate(result.existingLocation);
+      }
       return;
     }
     setShortName('');
     setInstitution('');
     setKind('brokerage');
+    refreshLocations();
+  }
+
+  async function linkExistingLocation(): Promise<void> {
+    if (createPending || linkCandidate === undefined) return;
+    setCreatePending(true);
+    setCreateError(undefined);
+    const result = await repository.link(linkCandidate.id);
+    setCreatePending(false);
+    if (result.status !== 'saved') {
+      if (result.status === 'stale-location' || result.status === 'location-not-found') {
+        setLinkCandidate(undefined);
+        setCreateError('기존 위치가 다른 화면에서 변경되었습니다. 다시 확인해 주세요.');
+        refreshLocations();
+        return;
+      }
+      setCreateError(writeErrorMessage(result.status));
+      return;
+    }
+    setShortName('');
+    setInstitution('');
+    setKind('brokerage');
+    setLinkCandidate(undefined);
     refreshLocations();
   }
 
@@ -99,6 +163,10 @@ export function InvestmentLocations({
     setRename({ ...current, pending: true, error: undefined });
     const result = await repository.rename(current.id, current.value);
     if (result.status !== 'saved') {
+      if (result.status === 'stale-location' || result.status === 'location-not-found') {
+        closeStaleOperation();
+        return;
+      }
       setRename({
         ...current,
         pending: false,
@@ -126,6 +194,10 @@ export function InvestmentLocations({
       setArchive({ location, disposition: 'preserve', pending: false });
       return;
     }
+    if (result.status === 'stale-location' || result.status === 'location-not-found') {
+      closeStaleOperation();
+      return;
+    }
     setLocationError(location.id, writeErrorMessage(result.status));
   }
 
@@ -135,6 +207,11 @@ export function InvestmentLocations({
     setArchive({ ...current, pending: true, error: undefined });
     const result = await repository.archive(current.location.id, current.disposition);
     if (result.status !== 'saved') {
+      if (result.status === 'stale-location' || result.status === 'location-not-found') {
+        archiveReturnFocusRef.current = null;
+        closeStaleOperation();
+        return;
+      }
       setArchive({
         ...current,
         pending: false,
@@ -149,6 +226,14 @@ export function InvestmentLocations({
 
   function refreshLocations(): void {
     setLocations(repository.list());
+  }
+
+  function closeStaleOperation(): void {
+    setRename(undefined);
+    setArchive(undefined);
+    setSyncNotice('다른 화면에서 위치가 변경되어 작업을 닫았습니다.');
+    setFocusHeadingAfterArchive(true);
+    refreshLocations();
   }
 
   function setLocationError(id: string, message: string | undefined): void {
@@ -179,6 +264,10 @@ export function InvestmentLocations({
         <p>전체 기준 배분은 그대로 유지됩니다</p>
       </header>
 
+      {syncNotice === undefined ? null : (
+        <p className="portfolio-locations__error" role="alert">{syncNotice}</p>
+      )}
+
       {locations.length === 0 ? (
         <p className="portfolio-locations__empty">아직 등록한 투자 위치가 없습니다.</p>
       ) : (
@@ -195,7 +284,7 @@ export function InvestmentLocations({
                   <span>{location.institution?.name ?? kindLabel(location.kind)}</span>
                 </div>
                 <Button type="button" variant="quiet" disabled>
-                  아직 배분하지 않음
+                  {portfolioStatusLabel(location.portfolioStatus)}
                 </Button>
                 <div className="portfolio-locations__actions">
                   <Button
@@ -206,6 +295,7 @@ export function InvestmentLocations({
                     onClick={() => {
                       setRename(renaming ? undefined : {
                         id: location.id,
+                        sourceShortName: location.shortName,
                         value: location.shortName,
                         pending: false,
                       });
@@ -300,6 +390,7 @@ export function InvestmentLocations({
                 onChange={(event) => {
                   setShortName(event.target.value);
                   setCreateError(undefined);
+                  setLinkCandidate(undefined);
                 }}
               />
             </label>
@@ -328,6 +419,7 @@ export function InvestmentLocations({
               onChange={(event) => {
                 setInstitution(event.target.value);
                 setCreateError(undefined);
+                setLinkCandidate(undefined);
               }}
             />
           </label>
@@ -337,7 +429,22 @@ export function InvestmentLocations({
             {createError}
           </p>
         )}
+        {linkCandidate === undefined ? null : (
+          <p className="portfolio-locations__link-candidate">
+            {linkCandidate.shortName} 공유 위치를 투자 위치로 연결할 수 있습니다.
+          </p>
+        )}
         <div className="portfolio-locations__form-actions">
+          {linkCandidate === undefined ? null : (
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={createPending}
+              onClick={() => void linkExistingLocation()}
+            >
+              기존 위치 연결
+            </Button>
+          )}
           <Button type="submit" variant="primary" disabled={createPending}>
             투자 위치 추가
           </Button>
@@ -417,6 +524,13 @@ function kindLabel(kind: FinancialLocationKind): string {
   return '현금';
 }
 
+function portfolioStatusLabel(status: LocationPortfolioStatus): string {
+  if (status === 'applied') return '배분 데이터 있음';
+  if (status === 'draft') return '배분 초안 있음';
+  if (status === 'applied-and-draft') return '배분 데이터 및 초안 있음';
+  return '아직 배분하지 않음';
+}
+
 function writeErrorMessage(status: LocationWriteResult['status']): string {
   const messages: Record<LocationWriteError, string> = {
     'duplicate-name': '이미 같은 이름의 위치가 있습니다.',
@@ -424,6 +538,7 @@ function writeErrorMessage(status: LocationWriteResult['status']): string {
     'name-too-long': '짧은 이름은 8자까지 입력할 수 있습니다.',
     'purpose-capacity': '투자 위치는 최대 10개까지 추가할 수 있습니다.',
     'location-not-found': '이 위치를 찾을 수 없습니다.',
+    'stale-location': '이 위치가 다른 화면에서 변경되었습니다. 다시 확인해 주세요.',
     'portfolio-reference': '연결된 Portfolio 데이터 처리 방법을 선택해 주세요.',
     'invalid-input': '한글, 영문, 숫자와 공백만 입력해 주세요.',
     conflict: '다른 화면에서 변경되었습니다. 다시 시도해 주세요.',
