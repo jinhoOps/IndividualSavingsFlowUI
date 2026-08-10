@@ -4,7 +4,7 @@
 
 **Goal:** Portfolio를 기본 금액 숨김, `안정 N%` 요약, 비례 목록, 성장·안정 분류를 갖춘 summary-first 경험으로 변경합니다.
 
-**Architecture:** 기존 Portfolio의 Main 읽기 전용 adapter와 draft/apply 상태 경계를 유지합니다. 배분 schema v2는 항목 분류를 소유하고 repository가 v1을 lossless하게 이관하며, 보기 설정은 배분과 분리된 localStorage repository가 소유합니다. 결과 UI는 도넛·표·tooltip을 하나의 접근 가능한 비례 목록으로 교체합니다.
+**Architecture:** 기존 Portfolio의 Main 읽기 전용 adapter와 draft/apply 상태 경계를 유지합니다. 배분 schema v2는 항목 분류를 소유하고 기존 v1 Portfolio 저장값과 분리해 새로 시작하며, 보기 설정은 배분과 분리된 localStorage repository가 소유합니다. 결과 UI는 도넛·표·tooltip을 하나의 접근 가능한 비례 목록으로 교체합니다.
 
 **Tech Stack:** React 19, TypeScript 5.5, Vite 5, CSS, Vitest, Testing Library, Playwright
 
@@ -13,7 +13,7 @@
 - Main은 수정하지 않고 Portfolio는 최신 Main 투자금만 읽습니다.
 - 원화 총액과 행 금액은 기본적으로 렌더링하지 않습니다.
 - 현금은 항상 `안정`이며 별도 분류 control을 제공하지 않습니다.
-- v1 항목은 이름을 재해석하지 않고 `growth`·`automatic`으로 이관합니다.
+- v1 Portfolio plan/draft는 읽거나 이관하거나 삭제하지 않습니다.
 - 금·채권 관련 이름은 자동 추천일 뿐이며 사용자 지정이 항상 우선합니다.
 - `ETF` 단독은 안정 추천 근거가 아닙니다.
 - 결과 정렬은 표시만 변경하고 저장된 `order`와 계산을 바꾸지 않습니다.
@@ -27,11 +27,11 @@
 - `src/portfolio/domain/model.ts`: schema v2, 항목 분류와 보기 설정 타입.
 - `src/portfolio/domain/classification.ts`: 이름 기반 자동 추천과 안정 비중 순수 함수.
 - `src/portfolio/domain/allocation.ts`: 새 항목 분류 기본값, 표시 정렬과 최대 비중 선택.
-- `src/portfolio/domain/validation.ts`: strict v2 validation과 v1 migration parser.
-- `src/portfolio/infrastructure/portfolioRepository.ts`: v2 key 저장, v1 plan/draft 호환 로드.
+- `src/portfolio/domain/validation.ts`: strict v2 validation.
+- `src/portfolio/infrastructure/portfolioRepository.ts`: v2 key만 읽고 저장하며 v1 key는 무시.
 - `src/portfolio/infrastructure/portfolioPreferencesRepository.ts`: 별도 보기 설정 load/save와 invalid fallback.
 - `src/portfolio/application/portfolioReducer.ts`: 분류 변경·자동 추천 복귀 action.
-- `src/portfolio/application/bootstrap.ts`: v2 plan/draft 유지와 migrated value 재저장 신호.
+- `src/portfolio/application/bootstrap.ts`: v2 plan/draft 유지와 최신 Main 기반 신규 draft 생성.
 - `src/journey/ui/AppManagementMenu.tsx`: menu 내부 switch/radio group을 위한 일반 control item.
 - `src/portfolio/ui/PortfolioManagementMenu.tsx`: 금액 보기·정렬·reset 구성.
 - `src/portfolio/ui/AllocationEditor.tsx`: 성장·안정 선택, 추천 상태, 현금 안정 표시.
@@ -39,7 +39,7 @@
 - `src/portfolio/ui/PortfolioApplyBar.tsx`: 확인 dialog의 안정·현금 요약.
 - `src/portfolio/ui/PortfolioApp.tsx`: preference와 결과/오류/편집 진입 통합.
 - `src/portfolio/ui/portfolio.css`: 선택 시안에 맞춘 반응형 시각 문법.
-- `tests/unit/portfolio/*`: 도메인, migration, preference, reducer, editor, summary, dialog 계약.
+- `tests/unit/portfolio/*`: 도메인, v1 격리, preference, reducer, editor, summary, dialog 계약.
 - `tests/unit/journey/AppManagementMenu.test.tsx`: 새 control item의 keyboard/focus 회귀.
 - `tests/portfolio.spec.ts`: 실제 저장·편집·설정·반응형 사용자 흐름.
 - `docs/ways-of-work/plan/isf-rebuild/connected-financial-planning-workspace/prd.md`: Portfolio v2 상태 소유권과 인수 조건.
@@ -132,7 +132,7 @@ git commit -m "feat(portfolio): add allocation classification"
 
 ---
 
-### Task 2: v1 → v2 저장 마이그레이션
+### Task 2: v2 저장 시작과 v1 격리
 
 **Files:**
 - Modify: `src/portfolio/domain/validation.ts`
@@ -146,16 +146,17 @@ git commit -m "feat(portfolio): add allocation classification"
 **Interfaces:**
 - Consumes: Task 1의 `PortfolioItem` v2와 분류 타입.
 - Produces: `parsePortfolioPlan`·`parsePortfolioDraft`의 strict v2 결과.
-- Produces: repository load result의 `migrated: boolean`과 v2 저장 key.
+- Produces: v2-only repository load와 최신 Main 기반 cash-only 신규 draft.
 
-- [ ] **Step 1: lossless migration과 invalid v2 격리 테스트를 작성합니다**
+- [ ] **Step 1: v1 무시와 invalid v2 격리 테스트를 작성합니다**
 
 ```ts
-it('migrates every v1 item to automatic growth without keyword inference', () => {
+it('ignores v1 allocation data and starts from current Main investment', () => {
   const loaded = repository.load();
-  expect(loaded.applied).toMatchObject({ status: 'found', migrated: true, plan: {
-    schemaVersion: 2,
-    items: [{ name: '금 ETF', classification: 'growth', classificationOrigin: 'automatic' }],
+  expect(loaded).toEqual({ applied: { status: 'empty' }, draft: { status: 'empty' } });
+  const result = bootstrapPortfolio(foundMain(800_000), loaded, 10);
+  expect(result).toMatchObject({ kind: 'ready', plan: null, draft: {
+    schemaVersion: 2, items: [], cashShareUnits: 1_000_000, syncedInvestmentWon: 800_000,
   }});
 });
 
@@ -164,34 +165,24 @@ it.each(['classification', 'classificationOrigin'])('rejects invalid v2 %s', (fi
 });
 ```
 
-plan과 draft 각각 금액·shareUnits·order·timestamp가 보존되고, malformed v2가 v1 migration으로 우회하지 못하는 assertion을 포함합니다.
+v1 key는 읽거나 삭제하지 않으며, malformed v2가 v1 값으로 fallback하지 않는 assertion을 포함합니다.
 
 - [ ] **Step 2: repository/validation test가 실패하는지 확인합니다**
 
 Run: `npx vitest run tests/unit/portfolio/validation.test.ts tests/unit/portfolio/portfolioRepository.test.ts tests/unit/portfolio/bootstrap.test.ts`
 
-Expected: FAIL — v1이 현재 타입으로 직접 parse되거나 migration metadata가 없습니다.
+Expected: FAIL — repository가 아직 v1 key를 현재 저장값으로 읽거나 v2 타입 소비자가 갱신되지 않았습니다.
 
-- [ ] **Step 3: strict v2 parser와 명시적 v1 migration을 구현합니다**
+- [ ] **Step 3: strict v2 parser와 v2-only repository를 구현합니다**
 
 ```ts
 const V2_APPLIED_KEY = 'isf-portfolio-allocation-v2';
 const V2_DRAFT_KEY = 'isf-portfolio-allocation-draft-v2';
-const V1_APPLIED_KEY = 'isf-portfolio-allocation-v1';
-const V1_DRAFT_KEY = 'isf-portfolio-allocation-draft-v1';
-
-function migrateV1Item(item: V1PortfolioItem): PortfolioItem {
-  return {
-    ...item,
-    classification: 'growth',
-    classificationOrigin: 'automatic',
-  };
-}
 ```
 
-repository는 v2 key를 먼저 읽고, v2가 없을 때만 v1을 parse+migrate합니다. v2 invalid는 v1으로 fallback하지 않습니다. bootstrap은 migrated plan/draft에 각각 `shouldPersistApplied`·`shouldPersistDraft`를 세워 v2 key에 다시 저장하고 v1 원본은 호환성 증거로 보존합니다.
+repository는 v2 key만 읽고 씁니다. v1 key는 읽거나 삭제하지 않습니다. v2가 없으면 bootstrap은 최신 Main 투자금으로 현금 100%인 새 v2 draft를 만들며, v2 invalid는 격리하고 v1으로 fallback하지 않습니다. `PortfolioApp`의 cash-only placeholder와 test fixture도 classification 필드를 가진 v2 타입으로 갱신합니다.
 
-- [ ] **Step 4: migration test와 전체 Portfolio unit test를 실행합니다**
+- [ ] **Step 4: v1 격리 test와 전체 Portfolio unit test를 실행합니다**
 
 Run: `npx vitest run tests/unit/portfolio`
 
@@ -201,7 +192,7 @@ Expected: PASS
 
 ```bash
 git add src/portfolio/domain/validation.ts src/portfolio/infrastructure/portfolioRepository.ts src/portfolio/application/bootstrap.ts tests/unit/portfolio/validation.test.ts tests/unit/portfolio/portfolioRepository.test.ts tests/unit/portfolio/bootstrap.test.ts tests/unit/portfolio/MemoryPortfolioRepository.ts
-git commit -m "feat(portfolio): migrate allocations to v2"
+git commit -m "feat(portfolio): start fresh with v2 storage"
 ```
 
 ---
@@ -409,7 +400,7 @@ git commit -m "feat(portfolio): show summary-first allocation"
 - Modify: `docs/ways-of-work/plan/isf-rebuild/connected-financial-planning-workspace/prd.md`
 
 **Interfaces:**
-- Consumes: Task 2 repository migration, Task 3 preferences, Task 4 editor, Task 5 summary.
+- Consumes: Task 2 v2-only repository, Task 3 preferences, Task 4 editor, Task 5 summary.
 - Produces: 저장 설정이 연결된 완성 Portfolio 사용자 흐름과 v2 PRD 인수 조건.
 
 - [ ] **Step 1: 새 사용자 흐름의 Playwright assertion을 먼저 작성합니다**
@@ -458,7 +449,7 @@ Expected: FAIL — 설정 persistence, 새 요약 또는 분류 UI가 아직 완
 
 - [ ] **Step 5: PRD의 오래된 Portfolio 인수 조건을 v2 계약으로 갱신합니다**
 
-`결과 우선 도넛·표`를 `비율 우선 요약·비례 목록·기본 금액 숨김`으로 바꾸고 다음 항목을 명시합니다: 성장/안정 분류 소유권, 현금 안정, 자동 추천보다 사용자 지정 우선, v1 lossless migration, 별도 보기 설정, Main read-only/no write-back.
+`결과 우선 도넛·표`를 `비율 우선 요약·비례 목록·기본 금액 숨김`으로 바꾸고 다음 항목을 명시합니다: 성장/안정 분류 소유권, 현금 안정, 자동 추천보다 사용자 지정 우선, v1 Portfolio 저장값 비이관, 별도 보기 설정, Main read-only/no write-back.
 
 - [ ] **Step 6: 정적·unit·focused E2E 검증을 실행합니다**
 

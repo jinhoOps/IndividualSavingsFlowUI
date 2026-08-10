@@ -111,18 +111,17 @@ stable item shareUnits 합계 + cashShareUnits
 
 화면 표시에서는 기존 percentage formatting과 반올림 계약을 사용한다. 합계 계산은 표시 문자열이 아니라 정수 `shareUnits`로 수행한다.
 
-## 7. 기존 데이터 마이그레이션
+## 7. v2 저장 시작과 기존 데이터 경계
 
 Portfolio plan과 draft schema를 v2로 올린다.
 
-- v1 item은 모두 `classification: growth`, `classificationOrigin: automatic`으로 이관한다.
-- 기존 데이터를 이관할 때 이름 키워드로 과거 항목을 재분류하지 않는다.
-- 이관 뒤 사용자가 이름을 편집하기 전까지 기존 분류는 성장으로 유지한다.
+- v1 Portfolio plan과 draft는 현재 제품 데이터로 이관하지 않으며 읽거나 삭제하지 않는다.
+- v2 저장값이 없으면 최신 Main 투자금을 기준으로 현금 100%인 새 v2 draft를 시작한다.
+- v2 저장값만 strict validation하며 잘못된 v2 값은 기존 격리 규칙을 따른다.
 - 현금은 schema와 무관하게 안정으로 계산한다.
-- plan, draft, import 가능한 호환 경로와 저장 실패 격리는 기존 계약을 유지한다.
-- v1 원본이 유효하면 분류 필드 추가 외에 금액·비율·순서·timestamp 의미를 바꾸지 않는다.
+- 저장 실패 격리와 Main read-only 계약을 유지한다.
 
-보기 설정은 배분 schema와 별도이므로 v2 마이그레이션에 포함하지 않는다. 설정 record가 없거나 잘못됐으면 `금액 숨김 + 비율순`을 사용한다.
+보기 설정은 배분 schema와 별도다. 설정 record가 없거나 잘못됐으면 `금액 숨김 + 비율순`을 사용한다.
 
 ## 8. 편집 화면
 
@@ -172,7 +171,7 @@ dialog의 적용/취소, focus trap, 초기 focus, Escape와 trigger focus 복�
 - 안정 키워드와 false-positive 경계(`금` 대 `금융`, ETF 단독 대 금·채권 ETF)
 - automatic 이름 변경 재추천과 user override 보존
 - 안정 비중의 item + cash 합계
-- v1 plan/draft의 lossless v2 migration과 기존 항목 성장 기본값
+- v1 plan/draft를 읽지 않고 최신 Main 투자금으로 새 v2 draft 시작
 - 잘못된 v2 분류 격리
 - 별도 보기 설정의 기본값·저장·invalid fallback
 
@@ -208,5 +207,5 @@ dialog의 적용/취소, focus trap, 초기 focus, Escape와 trigger focus 복�
 구현 시 다음 원문을 함께 갱신한다.
 
 - `DESIGN.md`: Portfolio summary-first 결과, 금액 숨김, 보기 설정과 성장·안정 UI 계약
-- Product PRD: Portfolio item 분류 소유권과 schema v2 migration 인수 조건
-- 관련 Superpowers plan: 단계별 TDD와 migration·E2E 검증 순서
+- Product PRD: Portfolio item 분류 소유권과 v2 신규 저장 인수 조건
+- 관련 Superpowers plan: 단계별 TDD와 v1 격리·E2E 검증 순서
