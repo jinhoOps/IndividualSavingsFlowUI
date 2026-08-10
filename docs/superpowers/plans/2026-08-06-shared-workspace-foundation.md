@@ -8,7 +8,7 @@
 
 **Tech Stack:** React 19, TypeScript, browser localStorage with the existing lease/revision concurrency pattern, Vitest + Testing Library, Playwright, Vite.
 
-**Status (2026-08-10):** Phase A is current. Fresh final verification counted 633 passed unit tests and 69 passed / 60 skipped E2E tests (129 discovered). Type checks and the production build passed. Final independent controller acceptance is pending while review findings are resolved.
+**Status (2026-08-10):** Phase A is current and independently accepted. Fresh post-review verification counted 659 passed unit tests and 71 passed / 60 skipped E2E tests (131 discovered). Type checks, the production build, and the exact-range whitespace gate passed.
 
 ## Global Constraints
 
@@ -1074,7 +1074,7 @@ Classify every result as:
 - legacy runtime retained for Phase D;
 - unexpected new-product reference, which must be fixed before completion.
 
-- [ ] **Step 5: Request independent code review (controller-owned after the implementer commit)**
+- [x] **Step 5: Request independent code review (controller-owned after the implementer commit)**
 
 Use `superpowers:requesting-code-review` with the Phase-A base and head SHAs. Fix every Critical and Important finding, then rerun the affected focused tests and the full required verification.
 
