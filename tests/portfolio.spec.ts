@@ -380,3 +380,93 @@ test('keeps the final animated pointer tooltip inside the viewport gutter', asyn
   expect(box!.x + box!.width).toBeLessThanOrEqual(374);
   expect(box!.y + box!.height).toBeLessThanOrEqual(828);
 });
+
+test('creates and preserves a contained shared investment location at required widths', async ({ page }) => {
+  await seedMain(page, 200_000);
+  await page.goto('apps/portfolio/');
+
+  const locationName = '해외투자12AB';
+  const aggregateTask = page.getByRole('heading', { name: '투자 배분 설정' });
+  const locationTask = page.getByRole('heading', { name: '투자 위치', exact: true });
+  expect(await aggregateTask.evaluate((aggregate, location) => (
+    Boolean(aggregate.compareDocumentPosition(location as Node) & Node.DOCUMENT_POSITION_FOLLOWING)
+  ), await locationTask.elementHandle())).toBe(true);
+  await page.getByLabel('짧은 이름').fill(locationName);
+  await expect(page.getByText('8/8자')).toBeVisible();
+  await page.getByLabel('형태').selectOption('brokerage');
+  await page.getByLabel('기관 (선택)').fill('미래에셋');
+  await page.getByRole('button', { name: '투자 위치 추가' }).click();
+
+  await expect(page.getByText(locationName, { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: '아직 배분하지 않음' })).toBeDisabled();
+  await expect.poll(() => page.evaluate((name) => {
+    const workspace = JSON.parse(localStorage.getItem('isf-workspace-v1')!);
+    return workspace.locations.find((location: { shortName: string }) => (
+      location.shortName === name
+    ));
+  }, locationName)).toMatchObject({
+    shortName: locationName,
+    institution: { name: '미래에셋' },
+    roles: ['investing'],
+  });
+
+  await page.reload();
+  await expect(page.getByText(locationName, { exact: true })).toBeVisible();
+
+  for (const viewport of [
+    { width: 390, height: 844 },
+    { width: 768, height: 900 },
+    { width: 1280, height: 900 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await expect(page.getByRole('region', { name: '투자 위치' })).toBeVisible();
+    await expect(page.getByText(locationName, { exact: true })).toBeVisible();
+    expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
+    for (const control of await page.locator(
+      '.portfolio-locations button:visible, .portfolio-locations input:visible, .portfolio-locations select:visible',
+    ).all()) {
+      const box = await control.boundingBox();
+      expect(box).not.toBeNull();
+      expect(box!.height).toBeGreaterThanOrEqual(44);
+    }
+  }
+
+  await page.getByRole('button', { name: `${locationName} 보관하기` }).click();
+  await expect(page.getByRole('button', { name: `${locationName} 보관하기` })).not.toBeVisible();
+  await expect(page.getByRole('heading', { name: '투자 위치', exact: true })).toBeFocused();
+});
+
+test('confirms linked location archival with preservation as the accessible default', async ({ page }) => {
+  await seedMain(page, 200_000);
+  await seedAppliedPortfolio(page);
+  await page.goto('apps/portfolio/');
+  const archiveTrigger = page.getByRole('button', { name: 'ISA 보관하기' });
+
+  await archiveTrigger.click();
+
+  const dialog = page.getByRole('dialog', { name: 'ISA 위치를 보관할까요?' });
+  await expect(dialog.getByRole('radio', { name: 'Portfolio 데이터 유지' })).toBeChecked();
+  await expect(dialog.getByRole('button', { name: '취소' })).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(dialog).not.toBeVisible();
+  await expect(archiveTrigger).toBeFocused();
+
+  await archiveTrigger.click();
+  await dialog.getByRole('button', { name: '보관' }).click();
+  await expect(dialog).not.toBeVisible();
+  await expect(page.getByRole('button', { name: 'ISA 보관하기' })).not.toBeVisible();
+  await expect(page.getByRole('heading', { name: '투자 위치', exact: true })).toBeFocused();
+  await expect.poll(() => page.evaluate(() => {
+    const workspace = JSON.parse(localStorage.getItem('isf-workspace-v1')!);
+    return {
+      archivedAt: workspace.locations[0]?.archivedAt,
+      scopes: workspace.portfolio.plans.map((plan: { scope: unknown }) => plan.scope),
+    };
+  })).toEqual({
+    archivedAt: expect.any(Number),
+    scopes: [
+      { type: 'aggregate' },
+      { type: 'location', locationId: 'loc-isa' },
+    ],
+  });
+});

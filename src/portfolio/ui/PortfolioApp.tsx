@@ -18,11 +18,13 @@ import {
   BrowserPortfolioMainSourceRepository,
   type PortfolioMainSourceRepository,
 } from '../infrastructure/mainSourceRepository';
+import type { InvestmentLocationRepository } from '../infrastructure/locationRepository';
 import {
   BrowserPortfolioRepository,
   type PortfolioRepository,
 } from '../infrastructure/portfolioRepository';
 import { AllocationEditor } from './AllocationEditor';
+import { InvestmentLocations } from './InvestmentLocations';
 import { PortfolioApplyBar } from './PortfolioApplyBar';
 import { PortfolioManagementMenu } from './PortfolioManagementMenu';
 import { PortfolioSummary } from './PortfolioSummary';
@@ -30,10 +32,12 @@ import { PortfolioSummary } from './PortfolioSummary';
 export function PortfolioApp({
   mainSourceRepository: providedMainRepository,
   repository: providedRepository,
+  locationRepository,
   now = Date.now,
 }: {
   mainSourceRepository?: PortfolioMainSourceRepository;
   repository?: PortfolioRepository;
+  locationRepository?: InvestmentLocationRepository;
   now?: () => number;
 }) {
   const mainRepository = useMemo(
@@ -218,6 +222,7 @@ export function PortfolioApp({
               />
             </>
           )}
+          <InvestmentLocations repository={locationRepository} />
           </div>
         )}
       </main>

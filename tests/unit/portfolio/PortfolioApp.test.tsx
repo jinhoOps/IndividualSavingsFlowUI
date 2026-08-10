@@ -4,6 +4,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { PortfolioPlan } from '../../../src/portfolio/domain/model';
 import type { PortfolioMainSourceRepository } from '../../../src/portfolio/infrastructure/mainSourceRepository';
 import { BrowserPortfolioRepository } from '../../../src/portfolio/infrastructure/portfolioRepository';
+import type {
+  InvestmentLocationRepository,
+  LocationWriteResult,
+} from '../../../src/portfolio/infrastructure/locationRepository';
 import { PortfolioApp } from '../../../src/portfolio/ui/PortfolioApp';
 import {
   WORKSPACE_STORAGE_KEY,
@@ -37,6 +41,25 @@ const zeroMain: PortfolioMainSourceRepository = {
   load: () => ({ status: 'found', source: { monthlyInvestmentWon: 0, mainUpdatedAt: 1 } }),
 };
 
+const investmentLocations: InvestmentLocationRepository = {
+  list: () => [{
+    id: 'location-isa',
+    shortName: 'ISA',
+    kind: 'brokerage',
+    roles: ['investing'],
+    createdAt: 1,
+    updatedAt: 1,
+  }],
+  create: vi.fn(async (): Promise<LocationWriteResult> => ({ status: 'unavailable' })),
+  rename: vi.fn(async (): Promise<LocationWriteResult> => ({ status: 'unavailable' })),
+  archive: vi.fn(async (): Promise<LocationWriteResult> => ({ status: 'unavailable' })),
+  subscribe: () => () => undefined,
+};
+const emptyInvestmentLocations: InvestmentLocationRepository = {
+  ...investmentLocations,
+  list: () => [],
+};
+
 function firstSaveGate(): {
   lock: WorkspaceSaveLock;
   started: Promise<void>;
@@ -65,14 +88,14 @@ function firstSaveGate(): {
 
 describe('PortfolioApp', () => {
   it('opens setup on first run', () => {
-    render(<PortfolioApp mainSourceRepository={mainFound} repository={createMemoryPortfolioRepository()} now={() => 1} />);
+    render(<PortfolioApp locationRepository={emptyInvestmentLocations} mainSourceRepository={mainFound} repository={createMemoryPortfolioRepository()} now={() => 1} />);
     expect(screen.getByTestId('app-shell')).toBeInTheDocument();
     expect(screen.getByTestId('app-shell-launcher')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: '투자 배분 설정' })).toBeVisible();
   });
 
   it('revisits a saved plan result-first', () => {
-    render(<PortfolioApp mainSourceRepository={mainFound} repository={createMemoryPortfolioRepository({ applied: plan })} now={() => 2} />);
+    render(<PortfolioApp locationRepository={emptyInvestmentLocations} mainSourceRepository={mainFound} repository={createMemoryPortfolioRepository({ applied: plan })} now={() => 2} />);
     expect(screen.getByText('한 달 투자금을 배분합니다')).toBeVisible();
     expect(screen.getByRole('heading', { name: /투자금/ })).toBeVisible();
     expect(screen.getByRole('heading', { name: /투자금/ }).closest('section'))
@@ -81,8 +104,24 @@ describe('PortfolioApp', () => {
       .toHaveClass('ui-button', 'ui-button--primary');
   });
 
+  it('places shared investment locations after the aggregate Portfolio task', () => {
+    render(<PortfolioApp
+      mainSourceRepository={mainFound}
+      repository={createMemoryPortfolioRepository({ applied: plan })}
+      locationRepository={investmentLocations}
+      now={() => 2}
+    />);
+
+    const aggregateHeading = screen.getByRole('heading', { name: '투자금 200,000원' });
+    const locationHeading = screen.getByRole('heading', { name: '투자 위치' });
+    expect(aggregateHeading.compareDocumentPosition(locationHeading)
+      & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByText('ISA')).toBeVisible();
+    expect(screen.queryByRole('button', { name: /ISA.*배분/ })).not.toBeInTheDocument();
+  });
+
   it('preserves the plan behind a zero-investment blurred gate', () => {
-    render(<PortfolioApp mainSourceRepository={zeroMain} repository={createMemoryPortfolioRepository({ applied: plan })} now={() => 1} />);
+    render(<PortfolioApp locationRepository={emptyInvestmentLocations} mainSourceRepository={zeroMain} repository={createMemoryPortfolioRepository({ applied: plan })} now={() => 1} />);
     expect(screen.getByTestId('portfolio-gated-content')).toHaveClass('portfolio-content--blurred');
     expect(screen.getByRole('link', { name: 'Main에서 투자금 설정' }))
       .toHaveAttribute('href', expect.stringContaining('?edit=investment'));
@@ -91,7 +130,7 @@ describe('PortfolioApp', () => {
   it('shows the newly applied plan when draft cleanup fails after the applied write', async () => {
     const repository = createMemoryPortfolioRepository();
     repository.failClearDraft = true;
-    render(<PortfolioApp mainSourceRepository={mainFound} repository={repository} now={() => 2} />);
+    render(<PortfolioApp locationRepository={emptyInvestmentLocations} mainSourceRepository={mainFound} repository={repository} now={() => 2} />);
 
     fireEvent.click(screen.getByRole('button', { name: '적용' }));
     fireEvent.click(within(screen.getByRole('dialog', { name: '투자 배분 적용' }))
@@ -108,7 +147,7 @@ describe('PortfolioApp', () => {
     });
     repository.failNextWrite();
 
-    render(<PortfolioApp mainSourceRepository={mainFound} repository={repository} now={() => 2} />);
+    render(<PortfolioApp locationRepository={emptyInvestmentLocations} mainSourceRepository={mainFound} repository={repository} now={() => 2} />);
 
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('저장하지 못했습니다'));
   });
@@ -116,7 +155,7 @@ describe('PortfolioApp', () => {
   it('reports an applied write failure while staying in the editor', async () => {
     const repository = createMemoryPortfolioRepository();
     repository.failNextWrite();
-    render(<PortfolioApp mainSourceRepository={mainFound} repository={repository} now={() => 2} />);
+    render(<PortfolioApp locationRepository={emptyInvestmentLocations} mainSourceRepository={mainFound} repository={repository} now={() => 2} />);
 
     fireEvent.click(screen.getByRole('button', { name: '적용' }));
     fireEvent.click(within(screen.getByRole('dialog', { name: '투자 배분 적용' }))
@@ -139,7 +178,7 @@ describe('PortfolioApp', () => {
           resolve(result);
         };
       }));
-    render(<PortfolioApp mainSourceRepository={mainFound} repository={repository} now={() => 2} />);
+    render(<PortfolioApp locationRepository={emptyInvestmentLocations} mainSourceRepository={mainFound} repository={repository} now={() => 2} />);
 
     fireEvent.click(screen.getByRole('button', { name: '투자 대상 추가' }));
     await waitFor(() => expect(repository.saveDraft).toHaveBeenCalledTimes(1));
@@ -165,6 +204,7 @@ describe('PortfolioApp', () => {
       saveLock: gated.lock,
     }));
     render(<PortfolioApp
+      locationRepository={emptyInvestmentLocations}
       mainSourceRepository={mainFound}
       repository={repository}
       now={() => 500}
@@ -208,7 +248,7 @@ describe('PortfolioApp', () => {
       await clearGate;
       return await originalClearScope(scope);
     });
-    render(<PortfolioApp mainSourceRepository={mainFound} repository={repository} now={() => 3} />);
+    render(<PortfolioApp locationRepository={emptyInvestmentLocations} mainSourceRepository={mainFound} repository={repository} now={() => 3} />);
 
     fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
     fireEvent.click(screen.getByRole('menuitem', { name: '투자 배분 처음부터 다시' }));
@@ -224,7 +264,7 @@ describe('PortfolioApp', () => {
   it('keeps the applied result and reports an asynchronous reset failure', async () => {
     const repository = createMemoryPortfolioRepository({ applied: plan });
     repository.clearScope = vi.fn(async () => ({ status: 'unavailable' as const }));
-    render(<PortfolioApp mainSourceRepository={mainFound} repository={repository} now={() => 3} />);
+    render(<PortfolioApp locationRepository={emptyInvestmentLocations} mainSourceRepository={mainFound} repository={repository} now={() => 3} />);
 
     fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
     fireEvent.click(screen.getByRole('menuitem', { name: '투자 배분 처음부터 다시' }));
@@ -241,7 +281,7 @@ describe('PortfolioApp', () => {
       draft: { status: 'invalid' },
     });
 
-    render(<PortfolioApp mainSourceRepository={mainFound} repository={repository} now={() => 2} />);
+    render(<PortfolioApp locationRepository={emptyInvestmentLocations} mainSourceRepository={mainFound} repository={repository} now={() => 2} />);
 
     expect(screen.getByRole('heading', { name: '투자금 200,000원' })).toBeVisible();
   });
