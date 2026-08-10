@@ -1,98 +1,113 @@
-import { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, type CSSProperties } from 'react';
 import { Surface } from '../../components/common/Surface';
-import { sortResultItems } from '../domain/allocation';
-import type { MaterializedAllocation } from '../domain/model';
-import {
-  AllocationDonut,
-  type AllocationResultItem,
-  type AllocationSelection,
-} from './AllocationDonut';
-import { AllocationTable } from './AllocationTable';
+import { largestResultItem, orderedResultItems } from '../domain/allocation';
+import { stableShareUnits } from '../domain/classification';
+import type {
+  AllocationResultItem,
+  MaterializedAllocation,
+  PortfolioViewPreferences,
+} from '../domain/model';
 import { formatAllocationPercent, formatPortfolioWon } from './format';
-import { clampTooltipPosition } from './tooltipPosition';
+
+interface DisplayResultItem extends AllocationResultItem {
+  amountWon: number;
+  percentage: number;
+}
 
 export function PortfolioSummary({
   investmentWon,
   allocation,
+  preferences,
+  onEdit,
 }: {
   investmentWon: number;
   allocation: MaterializedAllocation;
+  preferences: PortfolioViewPreferences;
+  onEdit?: () => void;
 }) {
-  const [active, setActive] = useState<AllocationSelection | null>(null);
-  const [tooltipPosition, setTooltipPosition] = useState<{ left: number; top: number } | null>(null);
-  const tooltipRef = useRef<HTMLDivElement>(null);
-  const items = useMemo<AllocationResultItem[]>(() => [
-    ...sortResultItems(allocation.items).map((item) => ({ ...item, isCash: false })),
-    {
-      id: 'cash',
-      name: '현금',
-      amountWon: allocation.cashAmountWon,
-      percentage: allocation.cashPercentage,
-      isCash: true,
-    },
-  ], [allocation]);
-  const activeItem = items.find((item) => item.id === active?.id) ?? null;
-
-  useLayoutEffect(() => {
-    if (active?.mode !== 'pointer' || tooltipRef.current === null) {
-      setTooltipPosition(null);
-      return undefined;
+  const cashShareUnits = Math.round(allocation.cashPercentage * 10_000);
+  const items = useMemo<DisplayResultItem[]>(() => orderedResultItems(
+    allocation.items,
+    cashShareUnits,
+    preferences.sortMode,
+  ).map((item) => {
+    if (item.isCash) {
+      return {
+        ...item,
+        amountWon: allocation.cashAmountWon,
+        percentage: allocation.cashPercentage,
+      };
     }
-    const update = () => {
-      const bounds = tooltipRef.current?.getBoundingClientRect();
-      const tooltip = tooltipRef.current;
-      if (bounds === undefined || tooltip === null) return;
-      const styles = window.getComputedStyle(tooltip);
-      setTooltipPosition(clampTooltipPosition(
-        active,
-        {
-          width: Number.parseFloat(styles.width) || bounds.width,
-          height: Number.parseFloat(styles.height) || bounds.height,
-        },
-        { width: window.innerWidth, height: window.innerHeight },
-      ));
+    const materialized = allocation.items.find((candidate) => candidate.id === item.id);
+    return {
+      ...item,
+      amountWon: materialized?.amountWon ?? 0,
+      percentage: materialized?.percentage ?? 0,
     };
-    update();
-    const resizeObserver = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(update);
-    resizeObserver?.observe(tooltipRef.current);
-    window.addEventListener('resize', update);
-    return () => {
-      resizeObserver?.disconnect();
-      window.removeEventListener('resize', update);
-    };
-  }, [active]);
+  }), [allocation, cashShareUnits, preferences.sortMode]);
+  const largestResult = largestResultItem(items);
+  const largest = items.find((item) => item.id === largestResult?.id) ?? items[0];
+  const stablePercent = formatAllocationPercent(stableShareUnits({
+    items: allocation.items,
+    cashShareUnits,
+  }) / 10_000);
 
   return (
     <Surface as="section" className="portfolio-summary" aria-labelledby="portfolio-summary-title">
-      <div className="portfolio-summary__hero">
-        <p>한 달 투자금을 배분합니다</p>
-        <h1 id="portfolio-summary-title">투자금 {formatPortfolioWon(investmentWon)}</h1>
-      </div>
-      <div className="portfolio-summary__content">
-        <AllocationDonut items={items} active={active} onActive={setActive} onClear={() => setActive(null)} />
-        <div className="portfolio-table-wrap">
-          <AllocationTable
-            items={items}
-            activeId={active?.id ?? null}
-            onActive={(id) => setActive({ id, mode: 'fixed', x: 50, y: 50 })}
-            onClear={() => setActive(null)}
-          />
+      <header className="portfolio-summary__hero">
+        <p className="portfolio-summary__eyebrow">이번 달 투자금</p>
+        <div className="portfolio-summary__headline">
+          <h1 id="portfolio-summary-title">
+            {preferences.showAmounts
+              ? `이번 달 투자금 ${formatPortfolioWon(investmentWon)}`
+              : `안정 ${stablePercent}`}
+          </h1>
+          {onEdit === undefined ? null : (
+            <button
+              type="button"
+              className="portfolio-summary__edit"
+              aria-label="배분 수정"
+              onClick={onEdit}
+            >
+              <img src="/icons/portfolio-edit.svg" alt="" aria-hidden="true" />
+            </button>
+          )}
         </div>
-      </div>
-      {active !== null && activeItem !== null ? (
-        <div
-          ref={tooltipRef}
-          role="tooltip"
-          className={`portfolio-tooltip portfolio-tooltip--${active.mode}`}
-          style={active.mode === 'pointer'
-            ? tooltipPosition ?? { left: active.x + 12, top: active.y + 12, visibility: 'hidden' }
-            : undefined}
-        >
-          <strong>{activeItem.name}</strong>
-          <span>{formatPortfolioWon(activeItem.amountWon)}</span>
-          <span>{formatAllocationPercent(activeItem.percentage)}</span>
-        </div>
-      ) : null}
+        {preferences.showAmounts ? <p className="portfolio-summary__stable">안정 {stablePercent}</p> : null}
+        {largest === undefined ? null : (
+          <p className="portfolio-summary__largest">
+            {largest.name}에 {formatAllocationPercent(largest.percentage)}를 배분해요
+          </p>
+        )}
+      </header>
+
+      <ul className="portfolio-allocation-list" aria-label="투자 배분 비율">
+        {items.map((item, index) => {
+          const style = {
+            '--allocation-width': `${Math.max(0, Math.min(100, item.percentage))}%`,
+            '--allocation-color': item.isCash
+              ? 'var(--portfolio-cash)'
+              : `var(--portfolio-color-${index % 10})`,
+          } as CSSProperties;
+          return (
+            <li key={item.id} className="portfolio-allocation-row" style={style}>
+              <h2 className="portfolio-allocation-row__name">
+                <span className="portfolio-allocation-row__marker" aria-hidden="true" />
+                {item.name}
+              </h2>
+              <strong className="portfolio-allocation-row__ratio">
+                {formatAllocationPercent(item.percentage)}
+              </strong>
+              {preferences.showAmounts ? (
+                <span className="portfolio-allocation-row__amount">{formatPortfolioWon(item.amountWon)}</span>
+              ) : null}
+              <span className="portfolio-allocation-row__track" aria-hidden="true">
+                <span className="portfolio-allocation-row__fill" />
+              </span>
+            </li>
+          );
+        })}
+      </ul>
     </Surface>
   );
 }

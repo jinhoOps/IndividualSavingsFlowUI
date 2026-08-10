@@ -50,9 +50,11 @@ test('creates one allocation and revisits result-first', async ({ page }) => {
   await page.getByRole('button', { name: '적용' }).click();
   await page.getByRole('dialog', { name: '투자 배분 적용' })
     .getByRole('button', { name: '적용' }).click();
-  await expect(page.getByText('한 달 투자금을 배분합니다')).toBeVisible();
+  await expect(page.getByRole('heading', { name: '안정 40%' })).toBeVisible();
   await page.reload();
-  await expect(page.getByRole('row', { name: /미국 인덱스.*120,000원.*60%/ })).toBeVisible();
+  await expect(page.locator('.portfolio-summary').getByRole('listitem').filter({ hasText: /미국 인덱스.*60%/ }))
+    .toBeVisible();
+  await expect(page.locator('.portfolio-summary')).not.toContainText('120,000원');
   await expect(page.getByRole('link', { name: /투자 배분 \(Portfolio\).*현재 위치/ }))
     .toHaveAttribute('aria-current', 'page');
   expect(await page.evaluate(() => ({
@@ -83,7 +85,8 @@ test('resumes and cancels a draft, validates manual cash, and confirms reset', a
   await expect(page.getByLabel('인덱스 금액')).toHaveValue('100000');
 
   await page.getByRole('button', { name: '취소' }).click();
-  await expect(page.getByRole('row', { name: /인덱스.*120,000원.*60%/ })).toBeVisible();
+  await expect(page.locator('.portfolio-summary').getByRole('listitem').filter({ hasText: /인덱스.*60%/ }))
+    .toBeVisible();
   await page.getByRole('button', { name: '배분 수정' }).click();
   await page.getByLabel('인덱스 금액').fill('100000');
   await page.getByLabel('인덱스 금액').blur();
@@ -109,7 +112,9 @@ test('resumes and cancels a draft, validates manual cash, and confirms reset', a
   await page.getByRole('menuitem', { name: '투자 배분 처음부터 다시' }).click();
   await page.getByRole('dialog', { name: '투자 배분을 처음부터 다시 할까요?' })
     .getByRole('button', { name: '초기화' }).click();
-  await expect(page.getByRole('row', { name: /현금.*200,000원.*100%/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '안정 100%' })).toBeVisible();
+  await expect(page.locator('.portfolio-summary').getByRole('listitem').filter({ hasText: /현금.*100%/ }))
+    .toBeVisible();
 });
 
 test('explains duplicate names and blocks confirmation until corrected', async ({ page }) => {
@@ -144,8 +149,11 @@ test('puts a Main investment increase into cash', async ({ page }) => {
     }));
   }, { fixture: mainFixture });
   await page.goto('apps/portfolio/');
-  await expect(page.getByRole('row', { name: /인덱스.*120,000원.*40%/ })).toBeVisible();
-  await expect(page.getByRole('row', { name: /현금.*180,000원.*60%/ })).toBeVisible();
+  const summary = page.locator('.portfolio-summary');
+  await expect(page.getByRole('heading', { name: '안정 60%' })).toBeVisible();
+  await expect(summary.getByRole('listitem').filter({ hasText: /현금.*60%/ })).toBeVisible();
+  await expect(summary.getByRole('listitem').filter({ hasText: /인덱스.*40%/ })).toBeVisible();
+  await expect(summary).not.toContainText('원');
 });
 
 test('gates zero investment and focuses Main investment editing', async ({ page }) => {
@@ -157,7 +165,7 @@ test('gates zero investment and focuses Main investment editing', async ({ page 
   await expect(page.getByLabel('월 투자액')).toBeFocused();
 });
 
-test('keeps donut, table and tooltip usable across required widths', async ({ page }) => {
+test('keeps the summary-first ratio list usable across required widths', async ({ page }) => {
   await page.addInitScript(({ fixture }) => {
     localStorage.setItem('isf-main-v2', JSON.stringify(fixture));
     localStorage.setItem('isf-portfolio-allocation-v2', JSON.stringify({
@@ -179,46 +187,30 @@ test('keeps donut, table and tooltip usable across required widths', async ({ pa
     await page.setViewportSize(viewport);
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto('apps/portfolio/');
-    await expect(page.getByLabel('투자 배분 도넛')).toBeVisible();
-    await expect(page.getByRole('table')).toBeVisible();
-    await expect(page.locator('.portfolio-table-wrap')).toBeVisible();
     const summary = page.locator('.portfolio-summary');
     await expect(summary).toHaveClass(/ui-surface/);
+    await expect(page.getByRole('heading', { name: '안정 40%' })).toBeVisible();
+    await expect(summary.getByRole('listitem').filter({ hasText: /인덱스.*60%/ })).toBeVisible();
+    await expect(summary.getByRole('listitem').filter({ hasText: /현금.*40%/ })).toBeVisible();
+    await expect(page.getByLabel('투자 배분 도넛')).toHaveCount(0);
+    await expect(page.getByRole('table')).toHaveCount(0);
+    await expect(page.getByRole('tooltip')).toHaveCount(0);
     expect(await summary.evaluate((element) => getComputedStyle(element).borderRadius)).not.toBe('0px');
-    for (const control of await page.locator('.portfolio-content button:visible, .portfolio-content input:visible').all()) {
-      const box = await control.boundingBox();
-      expect(box).not.toBeNull();
-      expect(box!.height).toBeGreaterThanOrEqual(44);
-    }
+    const edit = page.getByRole('button', { name: '배분 수정' });
+    const editBox = await edit.boundingBox();
+    expect(editBox).not.toBeNull();
+    expect(editBox!.width).toBeGreaterThanOrEqual(44);
+    expect(editBox!.height).toBeGreaterThanOrEqual(44);
+    await edit.focus();
+    await expect(edit).toBeFocused();
     expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
-    const segment = page.getByRole('button', { name: /인덱스.*120,000원.*60%/ });
-    const donutBox = await page.getByLabel('투자 배분 도넛').boundingBox();
-    expect(donutBox).not.toBeNull();
-    await segment.dispatchEvent('pointerover', {
-      clientX: viewport.width - 1,
-      clientY: viewport.height - 1,
-      pointerType: 'mouse',
-    });
-    await expect(page.getByRole('tooltip')).toContainText('인덱스');
-    const tooltipBox = await page.getByRole('tooltip').boundingBox();
-    expect(tooltipBox).not.toBeNull();
-    const tooltipMetrics = await page.getByRole('tooltip').evaluate((element) => ({
-      style: element.getAttribute('style'),
-      offsetWidth: (element as HTMLElement).offsetWidth,
-      offsetHeight: (element as HTMLElement).offsetHeight,
-      viewport: { width: innerWidth, height: innerHeight },
-    }));
-    expect(tooltipBox!.x).toBeGreaterThanOrEqual(16);
-    expect(tooltipBox!.y).toBeGreaterThanOrEqual(16);
-    expect(tooltipBox!.x + tooltipBox!.width, JSON.stringify(tooltipMetrics)).toBeLessThanOrEqual(viewport.width - 16);
-    expect(tooltipBox!.y + tooltipBox!.height, JSON.stringify(tooltipMetrics)).toBeLessThanOrEqual(viewport.height - 16);
-    expect(await segment.evaluate((element) => parseFloat(getComputedStyle(element).transitionDuration))).toBeLessThanOrEqual(0.01);
-    expect(await page.getByRole('tooltip').evaluate((element) => parseFloat(getComputedStyle(element).animationDuration))).toBeLessThanOrEqual(0.01);
-    await segment.dispatchEvent('pointerdown', { pointerType: 'touch' });
-    await expect(page.getByRole('tooltip')).toContainText('인덱스');
-    await segment.focus();
-    await page.keyboard.press('ArrowRight');
-    await expect(page.getByRole('tooltip')).toContainText('현금');
+    expect(await summary.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+    const fill = summary.locator('.portfolio-allocation-row__fill').first();
+    const track = summary.locator('.portfolio-allocation-row__track').first();
+    const [fillBox, trackBox] = await Promise.all([fill.boundingBox(), track.boundingBox()]);
+    expect(fillBox).not.toBeNull();
+    expect(trackBox).not.toBeNull();
+    expect(fillBox!.width / trackBox!.width).toBeCloseTo(0.6, 1);
   }
 });
 
@@ -284,26 +276,4 @@ test('uses a single editor column at 768px', async ({ page }) => {
   expect(await page.locator('.portfolio-editor__row').first().evaluate((element) =>
     getComputedStyle(element).gridTemplateColumns.split(' ').length,
   )).toBe(1);
-});
-
-test('keeps the final animated pointer tooltip inside the viewport gutter', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await seedAppliedPortfolio(page);
-  await seedMain(page, 200_000);
-  await page.goto('apps/portfolio/');
-
-  const segment = page.getByRole('button', { name: /인덱스.*120,000원.*60%/ });
-  await segment.dispatchEvent('pointerover', { clientX: 389, clientY: 843, pointerType: 'mouse' });
-  const tooltip = page.getByRole('tooltip');
-  await expect(tooltip).toBeVisible();
-  await tooltip.evaluate(async (element) => {
-    await Promise.all(element.getAnimations().map((animation) => animation.finished.catch(() => undefined)));
-  });
-
-  const box = await tooltip.boundingBox();
-  expect(box).not.toBeNull();
-  expect(box!.x).toBeGreaterThanOrEqual(16);
-  expect(box!.y).toBeGreaterThanOrEqual(16);
-  expect(box!.x + box!.width).toBeLessThanOrEqual(374);
-  expect(box!.y + box!.height).toBeLessThanOrEqual(828);
 });

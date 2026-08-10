@@ -38,12 +38,14 @@ describe('PortfolioApp', () => {
 
   it('revisits a saved plan result-first', () => {
     render(<PortfolioApp mainSourceRepository={mainFound} repository={createMemoryPortfolioRepository({ applied: plan })} now={() => 2} />);
-    expect(screen.getByText('한 달 투자금을 배분합니다')).toBeVisible();
-    expect(screen.getByRole('heading', { name: /투자금/ })).toBeVisible();
-    expect(screen.getByRole('heading', { name: /투자금/ }).closest('section'))
+    expect(screen.getByText('이번 달 투자금')).toBeVisible();
+    expect(screen.getByRole('heading', { name: '안정 40%' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: '안정 40%' }).closest('section'))
       .toHaveClass('ui-surface', 'portfolio-summary');
     expect(screen.getByRole('button', { name: '배분 수정' }))
-      .toHaveClass('ui-button', 'ui-button--primary');
+      .toHaveClass('portfolio-summary__edit');
+    expect(screen.queryByText('저장됨')).not.toBeInTheDocument();
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
   });
 
   it('keeps an automatic classification in the applied plan until an explicit re-selection is applied', () => {
@@ -102,7 +104,7 @@ describe('PortfolioApp', () => {
     fireEvent.click(within(screen.getByRole('dialog', { name: '투자 배분 적용' }))
       .getByRole('button', { name: '적용' }));
 
-    expect(screen.getByRole('heading', { name: '투자금 200,000원' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: '안정 100%' })).toBeVisible();
     expect(screen.getByRole('alert')).toHaveTextContent('배분은 적용했지만 편집 초안을 정리하지 못했습니다');
     expect(repository.applied).not.toBeNull();
   });
@@ -141,7 +143,7 @@ describe('PortfolioApp', () => {
 
     render(<PortfolioApp mainSourceRepository={mainFound} repository={repository} now={() => 2} />);
 
-    expect(screen.getByRole('heading', { name: '투자금 200,000원' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: '안정 40%' })).toBeVisible();
   });
 
   it('keeps an unavailable view-preference save out of allocation save state', () => {
@@ -168,6 +170,7 @@ describe('PortfolioApp', () => {
 
     expect(savedPreferences).toEqual({ showAmounts: false, sortMode: 'input' });
     expect(screen.getByRole('radio', { name: '입력순' })).toBeChecked();
-    expect(screen.getByRole('status')).toHaveTextContent('저장됨');
+    expect(screen.queryByText('저장됨')).not.toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 });

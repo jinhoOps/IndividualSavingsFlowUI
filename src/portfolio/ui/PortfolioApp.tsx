@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AppShell } from '../../components/common/AppShell';
-import { Button } from '../../components/common/Button';
 import { Surface } from '../../components/common/Surface';
 import { appPath } from '../../journey/routes';
 import { bootstrapPortfolio } from '../application/bootstrap';
@@ -152,19 +151,18 @@ export function PortfolioApp({
           <div className="portfolio-content">
           {state.view === 'result' && state.applied !== null ? (
             <>
-              <div className="portfolio-toolbar">
-                <span role={state.saveState === 'saved' ? 'status' : 'alert'}>
+              {state.saveState === 'error' || state.saveState === 'cleanup-error' ? (
+                <p role="alert" className="portfolio-summary-error">
                   {state.saveState === 'error'
                     ? '저장하지 못했습니다. 다시 시도해 주세요.'
-                    : state.saveState === 'cleanup-error'
-                      ? '배분은 적용했지만 편집 초안을 정리하지 못했습니다.'
-                      : '저장됨'}
-                </span>
-                <Button type="button" variant="primary" onClick={() => dispatchDraft({ type: 'edit-opened' })}>배분 수정</Button>
-              </div>
+                    : '배분은 적용했지만 편집 초안을 정리하지 못했습니다.'}
+                </p>
+              ) : null}
               <PortfolioSummary
                 investmentWon={state.applied.syncedInvestmentWon}
                 allocation={materializeAllocation(state.applied, state.applied.syncedInvestmentWon)}
+                preferences={preferences}
+                onEdit={() => dispatchDraft({ type: 'edit-opened' })}
               />
             </>
           ) : (
@@ -207,7 +205,11 @@ function InvestmentRequired({ plan }: { plan: PortfolioPlan | null }) {
   return (
     <section className="portfolio-gate" aria-labelledby="portfolio-gate-title">
       <div data-testid="portfolio-gated-content" className="portfolio-content portfolio-content--blurred" inert>
-        <PortfolioSummary investmentWon={placeholder.syncedInvestmentWon} allocation={materializeAllocation(placeholder, placeholder.syncedInvestmentWon)} />
+        <PortfolioSummary
+          investmentWon={placeholder.syncedInvestmentWon}
+          allocation={materializeAllocation(placeholder, placeholder.syncedInvestmentWon)}
+          preferences={DEFAULT_PORTFOLIO_VIEW_PREFERENCES}
+        />
       </div>
       <div className="portfolio-gate__message">
         <h1 id="portfolio-gate-title">투자금을 먼저 정해 주세요</h1>
@@ -226,7 +228,11 @@ function StaleMain({ plan }: { plan: PortfolioPlan }) {
         <a href={appPath('portfolio')}>최신 Main 다시 불러오기</a>
         <a href={appPath('main')}>Main 확인하기</a>
       </Surface>
-      <PortfolioSummary investmentWon={plan.syncedInvestmentWon} allocation={materializeAllocation(plan, plan.syncedInvestmentWon)} />
+      <PortfolioSummary
+        investmentWon={plan.syncedInvestmentWon}
+        allocation={materializeAllocation(plan, plan.syncedInvestmentWon)}
+        preferences={DEFAULT_PORTFOLIO_VIEW_PREFERENCES}
+      />
     </div>
   );
 }
