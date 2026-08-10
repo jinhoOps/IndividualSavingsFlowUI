@@ -11,6 +11,16 @@ import {
   type WorkspaceSaveLock,
 } from './workspaceSaveLock';
 
+type WorkspaceListener = (workspace: WorkspaceDocument) => void;
+
+interface WorkspaceNotificationChannel {
+  listeners: Set<WorkspaceListener>;
+  handleStorageEvent: (event: StorageEvent) => void;
+}
+
+const unavailableStorageGroup = {};
+const notificationChannels = new WeakMap<Window, Map<object, WorkspaceNotificationChannel>>();
+
 export type WorkspaceLoadResult =
   | { status: 'found'; workspace: WorkspaceDocument }
   | { status: 'empty'; workspace: WorkspaceDocument }
@@ -46,8 +56,7 @@ export class BrowserWorkspaceRepository implements WorkspaceRepository {
   private readonly now: () => number;
   private readonly saveLock: WorkspaceSaveLock;
   private readonly eventTarget: Window;
-  private readonly listeners = new Set<(workspace: WorkspaceDocument) => void>();
-  private listeningForStorageEvents = false;
+  private readonly notificationStorageGroup: object;
 
   constructor(
     private readonly storageOverride?: Storage,
@@ -57,6 +66,7 @@ export class BrowserWorkspaceRepository implements WorkspaceRepository {
     this.saveLock = options.saveLock
       ?? new BrowserWorkspaceSaveLock(storageOverride, options.saveLeaseOptions);
     this.eventTarget = options.eventTarget ?? window;
+    this.notificationStorageGroup = resolveStorageGroup(storageOverride);
   }
 
   private get storage(): Storage {
@@ -110,21 +120,11 @@ export class BrowserWorkspaceRepository implements WorkspaceRepository {
   }
 
   subscribe(listener: (workspace: WorkspaceDocument) => void): () => void {
-    this.listeners.add(listener);
-    if (!this.listeningForStorageEvents) {
-      this.eventTarget.addEventListener('storage', this.handleStorageEvent);
-      this.listeningForStorageEvents = true;
-    }
-    let subscribed = true;
-    return () => {
-      if (!subscribed) return;
-      subscribed = false;
-      this.listeners.delete(listener);
-      if (this.listeners.size === 0 && this.listeningForStorageEvents) {
-        this.eventTarget.removeEventListener('storage', this.handleStorageEvent);
-        this.listeningForStorageEvents = false;
-      }
-    };
+    return subscribeToWorkspaceChannel(
+      this.eventTarget,
+      this.notificationStorageGroup,
+      listener,
+    );
   }
 
   private updateLocked(
@@ -167,35 +167,8 @@ export class BrowserWorkspaceRepository implements WorkspaceRepository {
       return { status: 'unavailable' };
     }
 
-    this.notify(next);
+    publishToWorkspaceChannel(this.eventTarget, this.notificationStorageGroup, next);
     return { status: 'saved', workspace: next };
-  }
-
-  private readonly handleStorageEvent = (event: StorageEvent): void => {
-    if (event.key !== WORKSPACE_STORAGE_KEY || event.newValue === null) return;
-    if (event.storageArea !== null) {
-      try {
-        if (event.storageArea !== this.storage) return;
-      } catch {
-        return;
-      }
-    }
-    try {
-      const workspace = parseWorkspaceDocument(JSON.parse(event.newValue));
-      if (workspace !== null) this.notify(workspace);
-    } catch {
-      // Ignore malformed cross-tab notifications; load() retains the invalid raw for recovery UI.
-    }
-  };
-
-  private notify(workspace: WorkspaceDocument): void {
-    for (const listener of this.listeners) {
-      try {
-        listener(structuredClone(workspace));
-      } catch {
-        // A subscriber cannot undo a verified workspace commit or block other subscribers.
-      }
-    }
   }
 
   private restorePreviousRaw(
@@ -227,4 +200,84 @@ export class BrowserWorkspaceRepository implements WorkspaceRepository {
 
 function monotonicTimestamp(current: number, now: number): number {
   return Math.max(current + 1, now);
+}
+
+function resolveStorageGroup(storageOverride?: Storage): object {
+  if (storageOverride !== undefined) return storageOverride;
+  try {
+    return window.localStorage;
+  } catch {
+    return unavailableStorageGroup;
+  }
+}
+
+function subscribeToWorkspaceChannel(
+  eventTarget: Window,
+  storageGroup: object,
+  listener: WorkspaceListener,
+): () => void {
+  let channels = notificationChannels.get(eventTarget);
+  if (channels === undefined) {
+    channels = new Map();
+    notificationChannels.set(eventTarget, channels);
+  }
+  let channel = channels.get(storageGroup);
+  if (channel === undefined) {
+    channel = createWorkspaceNotificationChannel(eventTarget, storageGroup);
+    channels.set(storageGroup, channel);
+  }
+  channel.listeners.add(listener);
+
+  let subscribed = true;
+  return () => {
+    if (!subscribed) return;
+    subscribed = false;
+    channel?.listeners.delete(listener);
+    if (channel?.listeners.size !== 0) return;
+    eventTarget.removeEventListener('storage', channel.handleStorageEvent);
+    channels?.delete(storageGroup);
+  };
+}
+
+function createWorkspaceNotificationChannel(
+  eventTarget: Window,
+  storageGroup: object,
+): WorkspaceNotificationChannel {
+  const channel: WorkspaceNotificationChannel = {
+    listeners: new Set(),
+    handleStorageEvent: (event) => {
+      if (event.key !== WORKSPACE_STORAGE_KEY || event.newValue === null) return;
+      if (event.storageArea !== null && event.storageArea !== storageGroup) return;
+      try {
+        const workspace = parseWorkspaceDocument(JSON.parse(event.newValue));
+        if (workspace !== null) notifyWorkspaceListeners(channel.listeners, workspace);
+      } catch {
+        // Ignore malformed cross-tab notifications; load() retains the invalid raw for recovery UI.
+      }
+    },
+  };
+  eventTarget.addEventListener('storage', channel.handleStorageEvent);
+  return channel;
+}
+
+function publishToWorkspaceChannel(
+  eventTarget: Window,
+  storageGroup: object,
+  workspace: WorkspaceDocument,
+): void {
+  const channel = notificationChannels.get(eventTarget)?.get(storageGroup);
+  if (channel !== undefined) notifyWorkspaceListeners(channel.listeners, workspace);
+}
+
+function notifyWorkspaceListeners(
+  listeners: Set<WorkspaceListener>,
+  workspace: WorkspaceDocument,
+): void {
+  for (const listener of listeners) {
+    try {
+      listener(structuredClone(workspace));
+    } catch {
+      // A subscriber cannot undo a verified workspace commit or block other subscribers.
+    }
+  }
 }

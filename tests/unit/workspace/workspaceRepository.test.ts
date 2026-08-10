@@ -575,6 +575,74 @@ describe('BrowserWorkspaceRepository', () => {
     unsubscribe();
   });
 
+  it('notifies another repository instance in the same storage and window exactly once', async () => {
+    const storage = new MemoryStorage();
+    const subscriberRepository = new BrowserWorkspaceRepository(storage, {
+      saveLock: createSerialLock(),
+      now: () => 100,
+    });
+    const writerRepository = new BrowserWorkspaceRepository(storage, {
+      saveLock: createSerialLock(),
+      now: () => 100,
+    });
+    const listener = vi.fn((workspace: WorkspaceDocument) => {
+      expect(storage.getItem(WORKSPACE_STORAGE_KEY)).toBe(JSON.stringify(workspace));
+    });
+    const unsubscribe = subscriberRepository.subscribe(listener);
+
+    const result = await writerRepository.update(0, (workspace) => workspace);
+
+    expect(result.status).toBe('saved');
+    expect(listener).toHaveBeenCalledTimes(1);
+    expect(listener).toHaveBeenCalledWith(expect.objectContaining({ revision: 1, updatedAt: 101 }));
+    unsubscribe();
+  });
+
+  it('does not broadcast same-tab commits to a different storage group', async () => {
+    const subscriberRepository = new BrowserWorkspaceRepository(new MemoryStorage(), {
+      saveLock: createSerialLock(),
+    });
+    const writerRepository = new BrowserWorkspaceRepository(new MemoryStorage(), {
+      saveLock: createSerialLock(),
+      now: () => 100,
+    });
+    const listener = vi.fn();
+    const unsubscribe = subscriberRepository.subscribe(listener);
+
+    await expect(writerRepository.update(0, (workspace) => workspace)).resolves.toMatchObject({
+      status: 'saved',
+      workspace: { revision: 1 },
+    });
+
+    expect(listener).not.toHaveBeenCalled();
+    unsubscribe();
+  });
+
+  it('does not broadcast same-tab commits to a different window group', async () => {
+    const storage = new MemoryStorage();
+    const subscriberWindow = createTrackingWindow();
+    const writerWindow = createTrackingWindow();
+    const subscriberRepository = new BrowserWorkspaceRepository(storage, {
+      eventTarget: subscriberWindow,
+      saveLock: createSerialLock(),
+    });
+    const writerRepository = new BrowserWorkspaceRepository(storage, {
+      eventTarget: writerWindow,
+      saveLock: createSerialLock(),
+      now: () => 100,
+    });
+    const listener = vi.fn();
+    const unsubscribe = subscriberRepository.subscribe(listener);
+
+    await expect(writerRepository.update(0, (workspace) => workspace)).resolves.toMatchObject({
+      status: 'saved',
+      workspace: { revision: 1 },
+    });
+
+    expect(listener).not.toHaveBeenCalled();
+    unsubscribe();
+  });
+
   it('does not notify same-tab subscribers when serialized verification fails', async () => {
     const values = new Map<string, string>();
     let corruptNextWorkspaceWrite = true;
@@ -671,6 +739,34 @@ describe('BrowserWorkspaceRepository', () => {
 
     expect(listener).not.toHaveBeenCalled();
   });
+
+  it('shares one storage-event handler and removes it after the group last unsubscribe', async () => {
+    const storage = new MemoryStorage();
+    const eventTarget = createTrackingWindow();
+    const first = new BrowserWorkspaceRepository(storage, {
+      eventTarget,
+      saveLock: createSerialLock(),
+    });
+    const second = new BrowserWorkspaceRepository(storage, {
+      eventTarget,
+      saveLock: createSerialLock(),
+      now: () => 100,
+    });
+    const firstListener = vi.fn();
+    const secondListener = vi.fn();
+    const unsubscribeFirst = first.subscribe(firstListener);
+    const unsubscribeSecond = second.subscribe(secondListener);
+
+    expect(eventTarget.storageListenerCount()).toBe(1);
+    unsubscribeFirst();
+    expect(eventTarget.storageListenerCount()).toBe(1);
+    unsubscribeSecond();
+    expect(eventTarget.storageListenerCount()).toBe(0);
+
+    await second.update(0, (workspace) => workspace);
+    expect(firstListener).not.toHaveBeenCalled();
+    expect(secondListener).not.toHaveBeenCalled();
+  });
 });
 
 function createSerialLock(): WorkspaceSaveLock {
@@ -746,4 +842,23 @@ function releaseClaim(
   const index = waiters.findIndex((waiter) => waiter.owner === owner);
   if (index === -1) throw new Error(`Expected a pending claim for ${owner}.`);
   waiters.splice(index, 1)[0]?.resolve();
+}
+
+type TrackingWindow = Window & { storageListenerCount(): number };
+
+function createTrackingWindow(): TrackingWindow {
+  const target = new EventTarget();
+  const storageListeners = new Set<EventListenerOrEventListenerObject>();
+  return {
+    addEventListener(type: string, listener: EventListenerOrEventListenerObject): void {
+      target.addEventListener(type, listener);
+      if (type === 'storage') storageListeners.add(listener);
+    },
+    removeEventListener(type: string, listener: EventListenerOrEventListenerObject): void {
+      target.removeEventListener(type, listener);
+      if (type === 'storage') storageListeners.delete(listener);
+    },
+    dispatchEvent: (event: Event) => target.dispatchEvent(event),
+    storageListenerCount: () => storageListeners.size,
+  } as unknown as TrackingWindow;
 }
