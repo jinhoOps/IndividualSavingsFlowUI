@@ -67,6 +67,13 @@ describe('Portfolio confirmation dialogs', () => {
     fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
     expect(screen.getByRole('switch', { name: '금액 보기' })).not.toBeChecked();
     expect(screen.getByRole('radio', { name: '비율순' })).toBeChecked();
+    expect(screen.getByRole('group', { name: '보기 설정' })).toHaveClass('portfolio-view-preferences');
+    expect(screen.getByRole('switch', { name: '금액 보기' }))
+      .toHaveClass('portfolio-view-preferences__choice-input');
+    expect(screen.getByRole('switch', { name: '금액 보기' }).closest('label'))
+      .toHaveClass('portfolio-view-preferences__choice');
+    expect(screen.getByRole('radio', { name: '비율순' }).closest('label'))
+      .toHaveClass('portfolio-view-preferences__choice');
 
     fireEvent.click(screen.getByRole('radio', { name: '입력순' }));
 

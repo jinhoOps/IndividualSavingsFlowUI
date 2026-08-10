@@ -40,6 +40,12 @@
 .portfolio-editor__cash { margin-top: 1.5rem; }
 .portfolio-editor__field-error { display: block; margin-top: .25rem; color: #b91c1c; font-size: .8rem; font-weight: 700; }
 .portfolio-editor input, .portfolio-editor button, .portfolio-apply-bar button, .portfolio-menu button { min-height: 44px; }
+.portfolio-view-preferences, .portfolio-view-preferences__sort { display: grid; gap: .25rem; margin: 0; padding: 0; }
+.portfolio-view-preferences { gap: .5rem; padding: .5rem .375rem; }
+.portfolio-view-preferences__legend { margin-bottom: .25rem; font-weight: 700; }
+.portfolio-view-preferences__choice { display: flex; min-height: 44px; align-items: center; gap: .625rem; border-radius: 9px; padding: .5rem .75rem; cursor: pointer; }
+.portfolio-view-preferences__choice:hover, .portfolio-view-preferences__choice:focus-within { background: color-mix(in srgb, var(--tone-accent) 8%, transparent); }
+.portfolio-view-preferences__choice-input { flex: 0 0 auto; width: 1.125rem; min-width: 1.125rem; min-height: 1.125rem; margin: 0; padding: 0; }
 .portfolio-apply-bar { position: fixed; z-index: 30; inset: auto max(1rem, env(safe-area-inset-right)) max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left)); display: flex; align-items: center; justify-content: flex-end; gap: .5rem; padding: .75rem; box-shadow: var(--shadow-float); }
 .portfolio-dialog { position: fixed; z-index: 40; inset: 50% auto auto 50%; width: min(calc(100vw - 2rem), 28rem); max-height: calc(100dvh - 2rem); margin: 0; padding: 1.5rem; overflow: auto; transform: translate(-50%, -50%); }
 .portfolio-dialog::backdrop { background: rgb(16 34 32 / 35%); }
