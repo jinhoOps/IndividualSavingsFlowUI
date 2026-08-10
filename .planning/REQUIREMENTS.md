@@ -1,6 +1,6 @@
 # Active Product Requirements
 
-**Last reviewed:** 2026-08-03
+**Last reviewed:** 2026-08-10
 
 This document tracks the supported baseline and transition obligations. Future ideas are explicitly non-committed until a separate PRD or feature specification is approved.
 
@@ -27,9 +27,10 @@ This document tracks the supported baseline and transition obligations. Future i
 - [x] **SIM-04**: The result prioritizes one sentence, a full-width graph, two comparisons, and equivalent pointer, touch, and keyboard detail.
 - [x] **SIM-05**: Simulation owns and saves only its scenario draft, exposes low-emphasis save state, and confirms reset from its menu.
 - [x] **PORT-01**: Portfolio reads the latest Main investment without write-back and owns one applied allocation plus draft.
-- [x] **PORT-02**: Up to ten named targets and cash support amount or percentage editing with both values shown.
+- [x] **PORT-02**: Up to ten named targets and cash support amount or percentage editing; result amounts are hidden by default.
 - [x] **PORT-03**: Main increases flow to cash, decreases preserve allocation ratios, and zero investment links to Main editing.
-- [x] **PORT-04**: Result-first donut and table provide equivalent pointer, touch, keyboard, and responsive information.
+- [x] **PORT-04**: The result starts with stable share and largest-target helper copy, then one proportional name-and-ratio list without a duplicate donut or table.
+- [x] **PORT-05**: The management menu controls whole-result amount visibility and ratio or input-order sorting separately from the saved allocation.
 - [x] **JOURNEY-05**: Account Map remains readiness-only without detailed editing, independent storage, or implicit Main write-back.
 
 ## Legacy Transition
