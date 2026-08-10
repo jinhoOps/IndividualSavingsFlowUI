@@ -38,7 +38,7 @@ Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계획 �
 - 현재 위치는 아이콘 아래 선과 `aria-current`로 표시하고 Account Map의 `준비 중` 상태는 별도 점과 접근 가능한 이름으로 구분합니다.
 - 앱 런처와 CTA는 URL 탐색만 수행하며 데이터를 전달하거나 저장하지 않습니다.
 - Simulation은 진입 시 `isf-workspace-v1`의 최신 Main 월 저축·투자를, Portfolio는 최신 Main 투자금을 각자의 읽기 전용 adapter로 읽고 write-back하지 않습니다.
-- 각 상세 앱의 저장 행동은 하나의 workspace에서 자기 slice만 갱신하며 성공한 write마다 monotonic revision을 증가시킵니다.
+- 각 상세 앱의 write ownership은 기본적으로 자기 slice에 한정됩니다. Simulation과 Portfolio의 Main read는 읽기 전용이고, Portfolio만 승인된 shared location command 경계를 통해 공유 금융 위치 registry를 갱신할 수 있습니다. 성공한 write마다 monotonic revision을 증가시킵니다.
 - Account Map만 준비 화면이며 Phase B 전까지 상세 편집·독립 저장이나 Main/workspace data read/write를 제공하지 않습니다.
 
 ### Simulation
@@ -228,7 +228,7 @@ gradient와 반투명 card를 기본 스타일로 사용하지 않습니다.
 
 - 공통 header, feedback, storage와 formatting utility를 먼저 확인합니다.
 - Main 현재 데이터 소유권, URL-only 탐색과 상세 앱의 명시적인 workspace Main read 경계를 유지합니다.
-- workspace write는 자기 slice와 공유 위치 ownership만 갱신하고 stale revision을 조용히 덮어쓰지 않습니다.
+- workspace write는 기본적으로 자기 slice만 갱신합니다. Portfolio의 공유 위치 변경은 승인된 shared location command 경계만 사용하고, 어떤 write도 stale revision을 조용히 덮어쓰지 않습니다.
 - Main의 다섯 값 계약을 넘어서는 편집 UI를 현재 제품에 추가하지 않습니다.
 - 외부 동작과 모바일 화면을 함께 검증합니다.
 - CSS 수정 전후 responsive media query와 파일 구조를 확인합니다.

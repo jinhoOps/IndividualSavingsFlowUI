@@ -8,7 +8,7 @@
 
 **Tech Stack:** React 19, TypeScript, browser localStorage with the existing lease/revision concurrency pattern, Vitest + Testing Library, Playwright, Vite.
 
-**Status (2026-08-10):** Phase A is current. Fresh final verification counted 633 passed unit tests and 69 passed / 60 skipped E2E tests (129 discovered). Type checks and the production build passed. The final independent controller review is recorded separately from this implementer commit.
+**Status (2026-08-10):** Phase A is current. Fresh final verification counted 633 passed unit tests and 69 passed / 60 skipped E2E tests (129 discovered). Type checks and the production build passed. Final independent controller acceptance is pending while review findings are resolved.
 
 ## Global Constraints
 
@@ -16,7 +16,8 @@
 - Work in the existing Orca-managed worktree; do not create, remove, or prune it.
 - Main remains the completed baseline and continues to own only its five monthly scalar amounts.
 - Use one committed `isf-workspace-v1` record as the only current app-data source of truth.
-- Do not read, migrate, project, or delete current or legacy Main, Simulation, Portfolio, Account Map, snapshot, or compatibility keys in Phase A; they are ignored and removed only in the approved legacy-extinction phase.
+- Do not read, migrate, project, write, or delete the five retired app keys `isf-main-v2`, `isf-simulation-compound-v1`, `isf-portfolio-allocation-v1`, `isf-account-map-v1`, and `isf-rebuild-v1` in Phase A; their exact raw bytes remain unchanged until the approved legacy-extinction phase.
+- `isf-journey-snapshot-v1` is outside that five-key preservation set: prior user approval and the [Journey Snapshot Retirement Spec](../specs/2026-08-03-journey-snapshot-retirement-design.md) require Main startup to delete this already-retired journey artifact on a best-effort basis without reading, parsing, or migrating it.
 - All app writes go through the workspace repository and increment one monotonic revision.
 - A stale tab must not overwrite a newer workspace revision.
 - All persisted amounts are non-negative integer Korean won unless an existing domain explicitly permits another exact value.
@@ -1081,7 +1082,7 @@ Use `superpowers:requesting-code-review` with the Phase-A base and head SHAs. Fi
 Add a status line with the exact fresh unit/E2E counts only after the final run.
 
 ```bash
-git add docs/ways-of-work/plan/isf-rebuild/connected-financial-planning-workspace/prd.md README.md DESIGN.md docs/superpowers/plans/2026-08-06-shared-workspace-foundation.md
+git add docs/ways-of-work/plan/isf-rebuild/connected-financial-planning-workspace/prd.md README.md DESIGN.md docs/superpowers/plans/2026-08-06-shared-workspace-foundation.md tests/app-journey.spec.ts tests/main-compat.spec.ts tests/step1.spec.ts
 git commit -m "docs(workspace): complete shared foundation"
 ```
 
@@ -1092,7 +1093,8 @@ git commit -m "docs(workspace): complete shared foundation"
 Phase A is complete only when:
 
 - all current apps load and save exclusively through `isf-workspace-v1`;
-- old keys remain ignored and untouched pending Phase D;
+- the exact raw bytes of `isf-main-v2`, `isf-simulation-compound-v1`, `isf-portfolio-allocation-v1`, `isf-account-map-v1`, and `isf-rebuild-v1` remain ignored and untouched pending Phase D;
+- the separately retired `isf-journey-snapshot-v1` remains exempt from that preservation set and is deleted on Main startup under its previously approved retirement contract;
 - stale workspace writers cannot overwrite newer revisions;
 - aggregate Portfolio behavior is unchanged;
 - shared investment locations are visible from Portfolio without implying per-location allocation editing;

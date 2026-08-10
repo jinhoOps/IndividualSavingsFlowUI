@@ -107,7 +107,8 @@ ISF는 지금의 월간 돈 흐름을 정리하고, 그 결과를 장기 전략�
 ### Shared workspace와 backup
 
 - Main, Simulation, Portfolio, 공유 금융 위치와 비어 있는 Phase B용 Account Map slice를 하나의 versioned `isf-workspace-v1` 문서에 저장한다.
-- 각 앱은 자기 slice만 읽고 쓰며, 모든 성공한 write는 workspace revision을 한 번 증가시킨다.
+- 앱 write ownership은 기본적으로 각 앱이 소유한 slice로 한정한다. Simulation과 Portfolio는 최신 Main slice를 읽기 전용으로 읽고, Portfolio만 승인된 shared location command 경계를 통해 공유 금융 위치 registry를 갱신할 수 있다. 모든 성공한 write는 workspace revision을 한 번 증가시킨다.
+- Account Map은 Phase B 전까지 readiness-only이며 workspace 제품 데이터를 읽거나 쓰지 않고 Main에 write-back하지 않는다.
 - stale revision을 기준으로 시작한 writer는 더 최신 workspace를 덮어쓰지 못한다.
 - `isf-main-v2`, `isf-simulation-compound-v1`, `isf-portfolio-allocation-v1`, `isf-account-map-v1`, `isf-rebuild-v1`은 Phase A 제품이 읽거나 변경하지 않는다. 기존 raw 값은 Phase D 전까지 그대로 남을 수 있다.
 - 백업은 현재 whole-workspace envelope만 지원한다. 모든 slice와 참조를 먼저 검증하고 유효하면 한 번의 workspace replacement로 복원하며, invalid·old-format 입력은 아무것도 바꾸지 않는다.
@@ -179,7 +180,7 @@ Main이 계산하는 요약:
 - `plannedOutflowWon = consumptionWon + monthlySavingWon + monthlyInvestmentWon`
 - `remainingWon = monthlyNetIncomeWon - plannedOutflowWon`
 
-Simulation과 Portfolio는 workspace 안의 최신 Main을 읽기 전용으로 사용하며 이 계약을 무단 확장하지 않는다. 각 상세 앱은 자기 workspace slice만 소유하고 Main에 write-back하지 않는다. 공유 금융 위치는 stable identity와 공통 metadata를 소유하며 Portfolio에는 복사본 대신 location ID만 참조할 수 있다.
+Simulation과 Portfolio는 workspace 안의 최신 Main을 읽기 전용으로 사용하며 이 계약을 무단 확장하지 않는다. 각 상세 앱의 write ownership은 자기 workspace slice가 기본이고 Main에 write-back하지 않는다. 예외적으로 Portfolio는 승인된 shared location command 경계를 통해 공유 금융 위치 registry를 갱신할 수 있다. 공유 금융 위치는 stable identity와 공통 metadata를 소유하며 Portfolio에는 복사본 대신 location ID만 참조할 수 있다. Account Map은 Phase B 전까지 readiness-only이므로 workspace 제품 데이터를 읽거나 쓰지 않는다.
 
 ## 10. UX and Design Requirements
 
@@ -209,7 +210,7 @@ Simulation과 Portfolio는 workspace 안의 최신 Main을 읽기 전용으로 �
 - [x] Portfolio는 최신 Main 투자금을 최대 10개 투자 대상과 현금에 배분한다.
 - [x] Portfolio는 금액·비율, 결과 우선 도넛·표와 초안·적용 경계를 제공한다.
 - [x] Portfolio는 Main을 수정하지 않고 Account Map은 `준비 중`으로 유지된다.
-- [x] Main, Simulation과 Portfolio는 `isf-workspace-v1`의 소유 slice만 읽고 쓴다.
+- [x] Main, Simulation과 Portfolio의 write는 기본적으로 소유 slice에 한정되고, Simulation과 Portfolio의 Main read는 읽기 전용이며, Portfolio의 공유 금융 위치 변경만 승인된 command 경계를 사용한다.
 - [x] 구 Main·Simulation·Portfolio·Account Map·rebuild 키는 새 제품에서 fallback, migration, write 또는 delete 대상으로 사용하지 않는다.
 - [x] stale workspace writer는 최신 revision을 덮어쓰지 못한다.
 - [x] Portfolio는 전체 기준 배분을 유지하면서 공유 투자 위치의 생성·이름 변경·보관과 readiness 상태를 제공한다.
