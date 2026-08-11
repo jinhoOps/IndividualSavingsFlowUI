@@ -3,7 +3,7 @@ import { Button } from '../../components/common/Button';
 import { Surface } from '../../components/common/Surface';
 import type { PortfolioAction } from '../application/portfolioReducer';
 import { materializeAllocation, normalizePortfolioName } from '../domain/allocation';
-import type { PortfolioDraft } from '../domain/model';
+import type { Classification, PortfolioDraft } from '../domain/model';
 import { formatAllocationPercent, formatPortfolioWon } from './format';
 
 export function AllocationEditor({
@@ -64,6 +64,7 @@ export function AllocationEditor({
               ? '같은 이름의 투자 대상이 이미 있습니다.'
               : null;
           const nameErrorId = `portfolio-name-error-${index}`;
+          const itemName = item.name || `투자 대상 ${index + 1}`;
           return (
             <div className="portfolio-editor__row" key={item.id}>
               <label>
@@ -77,6 +78,14 @@ export function AllocationEditor({
                 />
                 {nameError ? <span className="portfolio-editor__field-error" id={nameErrorId}>{nameError}</span> : null}
               </label>
+              <ClassificationEditor
+                id={item.id}
+                name={itemName}
+                classification={item.classification}
+                automatic={item.classificationOrigin === 'automatic'}
+                onAction={onAction}
+                now={now}
+              />
               <label>
                 <span>{draft.inputMode === 'amount' ? '금액' : '비율'}</span>
                 <input
@@ -113,6 +122,7 @@ export function AllocationEditor({
 
       <section className="portfolio-editor__cash" aria-labelledby="portfolio-cash-title">
         <h2 id="portfolio-cash-title">현금</h2>
+        <p>분류 안정</p>
         <label>
           <span>{draft.inputMode === 'amount' ? '현금 금액' : '현금 비율'}</span>
           <input
@@ -141,6 +151,63 @@ export function AllocationEditor({
       </section>
       {fieldError ? <p role="alert">{errorMessage(fieldError)}</p> : null}
     </Surface>
+  );
+}
+
+function ClassificationEditor({
+  id,
+  name,
+  classification,
+  automatic,
+  onAction,
+  now,
+}: {
+  id: string;
+  name: string;
+  classification: Classification;
+  automatic: boolean;
+  onAction: (action: PortfolioAction) => void;
+  now: () => number;
+}) {
+  const status = `${automatic ? '자동 추천' : '직접 선택'}: ${classification === 'growth' ? '성장' : '안정'}`;
+  return (
+    <fieldset className="portfolio-editor__classification">
+      <legend>{name} 분류</legend>
+      <label>
+        <input
+          type="radio"
+          name={`classification-${id}`}
+          checked={classification === 'growth'}
+          onClick={() => {
+            if (classification === 'growth') {
+              onAction({ type: 'draft-classification-changed', id, classification: 'growth', now: now() });
+            }
+          }}
+          onChange={() => onAction({ type: 'draft-classification-changed', id, classification: 'growth', now: now() })}
+        />성장
+      </label>
+      <label>
+        <input
+          type="radio"
+          name={`classification-${id}`}
+          checked={classification === 'stable'}
+          onClick={() => {
+            if (classification === 'stable') {
+              onAction({ type: 'draft-classification-changed', id, classification: 'stable', now: now() });
+            }
+          }}
+          onChange={() => onAction({ type: 'draft-classification-changed', id, classification: 'stable', now: now() })}
+        />안정
+      </label>
+      <p role="status">{status}</p>
+      {!automatic ? (
+        <Button
+          type="button"
+          variant="quiet"
+          onClick={() => onAction({ type: 'draft-classification-auto-enabled', id, now: now() })}
+        >자동 추천 사용</Button>
+      ) : null}
+    </fieldset>
   );
 }
 

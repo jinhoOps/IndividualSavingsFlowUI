@@ -41,7 +41,14 @@ const validSimulation = {
 const aggregatePlan = {
   schemaVersion: 2,
   scope: { type: 'aggregate' },
-  items: [{ id: 'asset-1', name: '미국 인덱스', shareUnits: 800_000, order: 0 }],
+  items: [{
+    id: 'asset-1',
+    name: '미국 인덱스',
+    shareUnits: 800_000,
+    order: 0,
+    classification: 'growth',
+    classificationOrigin: 'automatic',
+  }],
   cashShareUnits: 200_000,
   cashMode: 'automatic',
   syncedInvestmentWon: 200_000,

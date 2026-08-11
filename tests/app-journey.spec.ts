@@ -258,7 +258,9 @@ test('keeps each app management menu reachable and contained across viewports', 
       expect(triggerBox?.height).toBe(44);
 
       await trigger.click();
-      const menu = page.getByRole('menu', { name: '관리 메뉴' });
+      const popover = page.locator('.journey-management__popover');
+      const menu = page.getByRole('menu', { name: '관리 메뉴', exact: true });
+      await expect(popover).toBeVisible();
       await expect(menu).toBeVisible();
       const help = menu.getByRole('menuitem', { name: '앱 아이콘 안내' });
       await expect(help).toHaveAttribute('aria-expanded', 'false');
@@ -276,19 +278,19 @@ test('keeps each app management menu reachable and contained across viewports', 
       expect(guideBox!.x + guideBox!.width).toBeLessThanOrEqual(viewport.width - 16);
       await help.click();
       await expect(guide).toHaveCount(0);
-      await expect(menu.getByText(app.text)).toBeVisible();
-      const menuBox = await menu.boundingBox();
-      expect(menuBox).not.toBeNull();
-      expect(menuBox!.x).toBeGreaterThanOrEqual(16);
-      expect(menuBox!.x + menuBox!.width).toBeLessThanOrEqual(viewport.width - 16);
+      await expect(popover.getByText(app.text)).toBeVisible();
+      const popoverBox = await popover.boundingBox();
+      expect(popoverBox).not.toBeNull();
+      expect(popoverBox!.x).toBeGreaterThanOrEqual(16);
+      expect(popoverBox!.x + popoverBox!.width).toBeLessThanOrEqual(viewport.width - 16);
 
       await page.keyboard.press('Escape');
-      await expect(menu).toBeHidden();
+      await expect(popover).toBeHidden();
       await expect(trigger).toBeFocused();
 
       await trigger.click();
       await page.locator('main').click({ position: { x: 1, y: 1 } });
-      await expect(menu).toBeHidden();
+      await expect(popover).toBeHidden();
       await expect(trigger).toBeFocused();
       expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
     }

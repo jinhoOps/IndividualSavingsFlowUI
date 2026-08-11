@@ -1,12 +1,17 @@
 import {
   PORTFOLIO_SCHEMA_VERSION,
   SHARE_SCALE,
+  type AllocationResultItem,
+  type Classification,
+  type ClassificationOrigin,
   type MaterializedAllocation,
   type PortfolioDraft,
   type PortfolioItem,
   type PortfolioItemIdentity,
   type PortfolioPlan,
+  type PortfolioSortMode,
 } from './model';
+import { normalizePortfolioName, recommendClassification } from './classification';
 
 export function createCashOnlyDraft(investmentWon: number, now: number): PortfolioDraft {
   assertNonnegativeSafeInteger(investmentWon, 'invalid-investment');
@@ -23,9 +28,7 @@ export function createCashOnlyDraft(investmentWon: number, now: number): Portfol
   };
 }
 
-export function normalizePortfolioName(name: string): string {
-  return name.trim().replace(/\s+/g, ' ').toLocaleLowerCase('ko-KR');
-}
+export { normalizePortfolioName } from './classification';
 
 export function setItemAmount(
   draft: PortfolioDraft,
@@ -93,6 +96,18 @@ export function removeItem(draft: PortfolioDraft, id: string): PortfolioDraft {
   return withApplicability(next);
 }
 
+export function setItemClassification(
+  draft: PortfolioDraft,
+  id: string,
+  classification: Classification,
+  classificationOrigin: ClassificationOrigin,
+): PortfolioDraft {
+  const items = draft.items.map((item) => item.id === id
+    ? { ...item, classification, classificationOrigin }
+    : item);
+  return { ...draft, items };
+}
+
 export function syncPlanToInvestment<T extends PortfolioPlan | PortfolioDraft>(
   value: T,
   nextInvestmentWon: number,
@@ -150,6 +165,46 @@ export function sortResultItems<T extends { amountWon: number; id: string }>(ite
   return [...items].sort((left, right) => right.amountWon - left.amountWon || left.id.localeCompare(right.id));
 }
 
+export function orderedResultItems(
+  items: readonly PortfolioItem[],
+  cashShareUnits: number,
+  mode: PortfolioSortMode,
+): AllocationResultItem[] {
+  const resultItems = items.map(({ id, name, shareUnits, order }) => ({
+    id,
+    name,
+    shareUnits,
+    order,
+    isCash: false,
+  }));
+  const cash: AllocationResultItem = {
+    id: 'cash',
+    name: '현금',
+    shareUnits: cashShareUnits,
+    order: Number.MAX_SAFE_INTEGER,
+    isCash: true,
+  };
+
+  if (mode === 'input') {
+    return [...resultItems].sort((left, right) => left.order - right.order).concat(cash);
+  }
+
+  return [...resultItems, cash].sort((left, right) =>
+    right.shareUnits - left.shareUnits
+    || Number(left.isCash) - Number(right.isCash)
+    || left.order - right.order);
+}
+
+export function largestResultItem(
+  items: readonly AllocationResultItem[],
+): AllocationResultItem | null {
+  let largest: AllocationResultItem | null = null;
+  for (const item of items) {
+    if (largest === null || item.shareUnits > largest.shareUnits) largest = item;
+  }
+  return largest;
+}
+
 function rebuildItems(
   draft: PortfolioDraft,
   identity: PortfolioItemIdentity,
@@ -157,8 +212,21 @@ function rebuildItems(
 ): PortfolioDraft {
   const existing = draft.items.find((item) => item.id === identity.id);
   const baseItems = existing === undefined
-    ? [...draft.items, { ...identity, shareUnits: 0 }]
-    : draft.items.map((item) => item.id === identity.id ? { ...item, ...identity } : item);
+    ? [...draft.items, {
+      ...identity,
+      shareUnits: 0,
+      classification: recommendClassification(identity.name),
+      classificationOrigin: 'automatic' as const,
+    }]
+    : draft.items.map((item) => item.id === identity.id
+      ? {
+        ...item,
+        ...identity,
+        classification: item.classificationOrigin === 'automatic'
+          ? recommendClassification(identity.name)
+          : item.classification,
+      }
+      : item);
   if (baseItems.length > 10) throw new Error('too-many-items');
   const items = baseItems.map((item) => ({
     ...item,

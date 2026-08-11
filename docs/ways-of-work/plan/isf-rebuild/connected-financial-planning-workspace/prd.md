@@ -20,7 +20,7 @@ ISF는 지금의 월간 돈 흐름을 정리하고, 그 결과를 장기 전략�
 
 개인 재무 정보는 항목과 계좌가 늘어날수록 입력이 복잡해지고, 사용자는 정작 “지금 한 달에 얼마가 남는가”를 파악하기 어렵다. ISF는 첫 단계에서 입력 부담을 줄이고 월간 배분을 바로 이해하도록 해야 한다.
 
-동시에 저장소에는 과거 Simulation·Portfolio·Account Map 구현과 다양한 재무 기능이 남아 있다. 이 코드는 향후 기능 및 데이터 계약을 조사할 임시자산이지만 현재 제품으로 오해되거나 새 구현의 기반으로 재사용되면 제품 경계가 다시 흐려진다.
+동시에 저장소에는 Account Map 참고 구현과 현재 범위 밖의 다양한 재무 기능이 남아 있다. 이 코드는 향후 기능 및 데이터 계약을 조사할 임시자산이지만 현재 제품으로 오해되거나 새 구현의 기반으로 재사용되면 제품 경계가 다시 흐려진다.
 
 ## 4. Goal
 
@@ -95,7 +95,8 @@ ISF는 지금의 월간 돈 흐름을 정리하고, 그 결과를 장기 전략�
 - 런처는 Main, Simulation, Portfolio와 Account Map을 아이콘으로 표시한다. 현재 앱은 선택선과 접근성 상태로 구분하고 Account Map만 중립 점·도움말·접근 가능한 이름에서 `준비 중`으로 표시한다.
 - 런처와 CTA는 URL 탐색만 수행하고 별도 전달 데이터를 저장하지 않는다.
 - Simulation은 단일 workspace의 최신 Main 월 저축·투자를 읽어 장기 복리 성장과 전부 저축 기준선을 비교하고 자체 Simulation slice만 갱신한다.
-- Portfolio는 같은 workspace의 최신 Main 투자금을 읽고 전체 기준 적용 배분과 편집 초안을 소유한다.
+- Portfolio는 같은 workspace의 최신 Main 투자금을 읽고 하나의 v2 전체 기준 적용 배분과 편집 초안을 소유한다.
+- Portfolio 결과는 비율 우선 요약과 비례 목록으로 시작하며 원화 금액은 기본으로 숨긴다.
 - Portfolio의 `투자 위치`는 공유 금융 위치를 만들고 이름을 바꾸거나 보관할 수 있다. 위치별 배분은 Phase A에서 편집하지 않으며 `아직 배분하지 않음` 또는 보존된 데이터 상태만 보여준다.
 - Account Map만 준비 상태를 설명한다.
 - 준비 화면은 상세 계산·편집·독립 저장·Main write-back을 수행하지 않는다.
@@ -148,7 +149,12 @@ ISF는 지금의 월간 돈 흐름을 정리하고, 그 결과를 장기 전략�
 - 최대 10개 자유 이름 투자 대상과 현금에 현재 투자금을 금액 또는 비율로 배분한다.
 - 적용 계획 하나와 편집 초안을 Portfolio slice에 보존하고, 수정 중 값과 적용된 값을 구분한다.
 - Main 투자금이 바뀌면 기존 배분 의도를 유지할 수 있는 범위에서 다시 계산하고 사용자가 변화를 확인하도록 한다.
-- 결과는 금액과 비율을 도넛과 표로 함께 보여주며 pointer·touch·keyboard에 동등한 정보를 제공한다.
+- 결과는 `안정 N%` 핵심 요약과 투자 대상별 이름·비율·비례 막대를 먼저 보여주고, 총액과 항목별 원화 금액은 기본으로 렌더링하지 않는다.
+- 사용자는 Portfolio 관리 메뉴에서 전체 금액 표시와 비율순·입력순 정렬을 바꾸며, 이 보기 설정은 배분 schema와 분리된 Portfolio 전용 localStorage record에 저장한다.
+- 각 투자 대상은 `성장` 또는 `안정` 분류와 자동 추천·사용자 지정 출처를 소유하고, 현금은 항상 안정으로 계산한다.
+- 금·채권 관련 이름의 분류는 자동 추천일 뿐이며 사용자 지정을 덮어쓰지 않는다. `ETF`만으로는 안정을 추천하지 않는다.
+- 구 Portfolio v1 plan과 draft 저장값은 현재 workspace v2 배분으로 이관하지 않고, 읽지 않고, 삭제하지 않는다.
+- 유효한 aggregate v2 plan·draft가 없으면 최신 Main 투자금을 기준으로 현금 100%인 새 v2 draft를 시작한다.
 - 다시 설정은 aggregate Portfolio 데이터만 초기화하며 Main과 다른 앱의 데이터를 변경하지 않는다.
 - 현재 UI는 하나의 `aggregate` scope만 만들고 편집한다.
 - Portfolio plan과 draft 계약은 향후 location scope를 표현할 수 있지만 Phase A는 위치별 배분 편집 UI를 제공하지 않는다.
@@ -187,7 +193,7 @@ Main이 계산하는 요약:
 - `plannedOutflowWon = consumptionWon + monthlySavingWon + monthlyInvestmentWon`
 - `remainingWon = monthlyNetIncomeWon - plannedOutflowWon`
 
-Simulation과 Portfolio는 workspace 안의 최신 Main을 읽기 전용으로 사용하며 이 계약을 무단 확장하지 않는다. 각 상세 앱의 write ownership은 자기 workspace slice가 기본이고 Main에 write-back하지 않는다. 예외적으로 Portfolio는 승인된 shared location command 경계를 통해 공유 금융 위치 registry를 갱신할 수 있다. 공유 금융 위치는 stable identity와 공통 metadata를 소유하며 Portfolio에는 복사본 대신 location ID만 참조할 수 있다. Account Map은 Phase B 전까지 readiness-only이므로 workspace 제품 데이터를 읽거나 쓰지 않는다.
+Simulation과 Portfolio는 workspace 안의 최신 Main을 읽기 전용으로 사용하며 이 계약을 무단 확장하지 않는다. 각 상세 앱의 write ownership은 자기 workspace slice가 기본이고 Main에 write-back하지 않는다. 예외적으로 Portfolio는 승인된 shared location command 경계를 통해 공유 금융 위치 registry를 갱신할 수 있다. Portfolio는 workspace의 v2 배분 plan·draft와 별도의 보기 설정 localStorage record만 현재 제품 상태로 취급한다. 공유 금융 위치는 stable identity와 공통 metadata를 소유하며 Portfolio에는 복사본 대신 location ID만 참조할 수 있다. Account Map은 Phase B 전까지 readiness-only이므로 workspace 제품 데이터를 읽거나 쓰지 않는다.
 
 ## 10. UX and Design Requirements
 
@@ -219,7 +225,10 @@ Simulation과 Portfolio는 workspace 안의 최신 Main을 읽기 전용으로 �
 - [x] Simulation은 최초 두 단계 설정, 재방문 결과 우선 진입과 최신 Main 자동 동기화를 제공한다.
 - [x] Simulation은 0~30년, 한국식 정수 금액, pointer·touch·keyboard 그래프 탐색을 제공한다.
 - [x] Portfolio는 최신 Main 투자금을 최대 10개 투자 대상과 현금에 배분한다.
-- [x] Portfolio는 금액·비율, 결과 우선 도넛·표와 초안·적용 경계를 제공한다.
+- [x] Portfolio는 기본 금액 숨김, `안정 N%` 요약과 이름·비율·비례 막대 목록으로 결과를 먼저 제공한다.
+- [x] Portfolio의 성장·안정 자동 추천은 사용자 지정을 덮어쓰지 않고 현금을 항상 안정으로 계산한다.
+- [x] Portfolio는 v1 배분 저장값을 이관·읽기·삭제하지 않으며, v2가 없으면 최신 Main 투자금의 현금 100% draft로 시작한다.
+- [x] Portfolio 보기 설정은 v2 배분과 분리해 저장하고 저장 실패가 배분 저장 상태를 바꾸지 않는다.
 - [x] Portfolio는 Main을 수정하지 않고 Account Map은 `준비 중`으로 유지된다.
 - [x] Main, Simulation과 Portfolio의 write는 기본적으로 소유 slice에 한정되고, Simulation과 Portfolio의 Main read는 읽기 전용이며, Portfolio의 공유 금융 위치 변경만 승인된 command 경계를 사용한다.
 - [x] 구 Main·Simulation·Portfolio·Account Map·rebuild 키는 새 제품에서 fallback, migration, write 또는 delete 대상으로 사용하지 않는다.

@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { Button } from '../../components/common/Button';
 import { Surface } from '../../components/common/Surface';
 import { materializeAllocation } from '../domain/allocation';
+import { stableShareUnits } from '../domain/classification';
 import type { PortfolioDraft } from '../domain/model';
 import { validateApplicableDraft } from '../domain/validation';
 import { formatAllocationPercent, formatPortfolioWon } from './format';
@@ -10,6 +11,7 @@ import { PortfolioDialog } from './PortfolioDialog';
 export function PortfolioApplyBar({
   dirty,
   saveError = false,
+  showAmounts = false,
   draft,
   investmentWon,
   onCancel,
@@ -17,6 +19,7 @@ export function PortfolioApplyBar({
 }: {
   dirty: boolean;
   saveError?: boolean;
+  showAmounts?: boolean;
   draft: PortfolioDraft;
   investmentWon: number;
   onCancel: () => void;
@@ -48,8 +51,9 @@ export function PortfolioApplyBar({
           <h2 id="portfolio-apply-title">투자 배분 적용</h2>
           <dl>
             <div><dt>투자 대상</dt><dd>{draft.items.length}개</dd></div>
-            <div><dt>투자금</dt><dd>{formatPortfolioWon(investmentWon)}</dd></div>
-            <div><dt>현금</dt><dd>{formatAllocationPercent(allocation.cashPercentage)}</dd></div>
+            <div><dt>안정 비중</dt><dd>{formatAllocationPercent(stableShareUnits(draft) / 10_000)}</dd></div>
+            <div><dt>현금 비중</dt><dd>{formatAllocationPercent(allocation.cashPercentage)}</dd></div>
+            {showAmounts ? <div><dt>총 투자금</dt><dd>{formatPortfolioWon(investmentWon)}</dd></div> : null}
           </dl>
           {saveError ? <p role="alert">저장하지 못했습니다. 다시 시도해 주세요.</p> : null}
           <Button type="button" variant="secondary" data-dialog-initial-focus onClick={close}>확인 취소</Button>

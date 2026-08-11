@@ -9,6 +9,7 @@ import type {
   InvestmentLocationRepository,
   LocationWriteResult,
 } from '../../../src/portfolio/infrastructure/locationRepository';
+import type { PortfolioPreferencesRepository } from '../../../src/portfolio/infrastructure/portfolioPreferencesRepository';
 import { PortfolioApp } from '../../../src/portfolio/ui/PortfolioApp';
 import {
   WORKSPACE_STORAGE_KEY,
@@ -28,7 +29,10 @@ afterEach(cleanup);
 const plan: PortfolioPlan = {
   schemaVersion: 2,
   scope: { type: 'aggregate' },
-  items: [{ id: 'a', name: '인덱스', shareUnits: 600_000, order: 0 }],
+  items: [{
+    id: 'a', name: '인덱스', shareUnits: 600_000, order: 0,
+    classification: 'growth', classificationOrigin: 'automatic',
+  }],
   cashShareUnits: 400_000,
   cashMode: 'automatic',
   syncedInvestmentWon: 200_000,
@@ -40,6 +44,9 @@ const mainFound: PortfolioMainSourceRepository = {
 };
 const zeroMain: PortfolioMainSourceRepository = {
   load: () => ({ status: 'found', source: { monthlyInvestmentWon: 0, mainUpdatedAt: 1 } }),
+};
+const unavailableMain: PortfolioMainSourceRepository = {
+  load: () => ({ status: 'unavailable' }),
 };
 
 const investmentLocations: InvestmentLocationRepository = {
@@ -99,12 +106,53 @@ describe('PortfolioApp', () => {
 
   it('revisits a saved plan result-first', () => {
     render(<PortfolioApp locationRepository={emptyInvestmentLocations} mainSourceRepository={mainFound} repository={createMemoryPortfolioRepository({ applied: plan })} now={() => 2} />);
-    expect(screen.getByText('한 달 투자금을 배분합니다')).toBeVisible();
-    expect(screen.getByRole('heading', { name: /투자금/ })).toBeVisible();
-    expect(screen.getByRole('heading', { name: /투자금/ }).closest('section'))
+    expect(screen.getByText('이번 달 투자금')).toBeVisible();
+    expect(screen.getByRole('heading', { name: '안정 40%' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: '안정 40%' }).closest('section'))
       .toHaveClass('ui-surface', 'portfolio-summary');
     expect(screen.getByRole('button', { name: '배분 수정' }))
-      .toHaveClass('ui-button', 'ui-button--primary');
+      .toHaveClass('portfolio-summary__edit');
+    expect(screen.queryByText('저장됨')).not.toBeInTheDocument();
+  });
+
+  it('keeps an automatic classification in the applied plan until an explicit re-selection is applied', async () => {
+    const repository = createMemoryPortfolioRepository({ applied: plan });
+    render(<PortfolioApp mainSourceRepository={mainFound} repository={repository} now={() => 2} />);
+
+    fireEvent.click(screen.getByRole('button', { name: '배분 수정' }));
+    const classification = screen.getByRole('group', { name: '인덱스 분류' });
+    fireEvent.click(within(classification).getByRole('radio', { name: '성장' }));
+
+    expect(within(classification).getByRole('status')).toHaveTextContent('직접 선택: 성장');
+    expect(repository.applied?.items[0].classificationOrigin).toBe('automatic');
+    await waitFor(() => expect(repository.draft?.items[0].classificationOrigin).toBe('user'));
+
+    fireEvent.click(screen.getByRole('button', { name: '적용' }));
+    fireEvent.click(within(screen.getByRole('dialog', { name: '투자 배분 적용' }))
+      .getByRole('button', { name: '적용' }));
+    await waitFor(() => expect(repository.applied?.items[0].classificationOrigin).toBe('user'));
+  });
+
+  it('shows the total investment in apply confirmation only when the amount preference is enabled', () => {
+    const preferencesRepository: PortfolioPreferencesRepository = {
+      load: () => ({ showAmounts: true, sortMode: 'ratio' }),
+      save: () => ({ status: 'saved' }),
+    };
+    render(
+      <PortfolioApp
+        mainSourceRepository={mainFound}
+        repository={createMemoryPortfolioRepository({ applied: plan })}
+        preferencesRepository={preferencesRepository}
+        now={() => 2}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '배분 수정' }));
+    fireEvent.click(within(screen.getByRole('group', { name: '인덱스 분류' })).getByRole('radio', { name: '안정' }));
+    fireEvent.click(screen.getByRole('button', { name: '적용' }));
+    const dialog = screen.getByRole('dialog', { name: '투자 배분 적용' });
+    expect(within(dialog).getByText('총 투자금')).toBeVisible();
+    expect(within(dialog).getByText('200,000원')).toBeVisible();
   });
 
   it('places shared investment locations after the aggregate Portfolio task', () => {
@@ -115,7 +163,7 @@ describe('PortfolioApp', () => {
       now={() => 2}
     />);
 
-    const aggregateHeading = screen.getByRole('heading', { name: '투자금 200,000원' });
+    const aggregateHeading = screen.getByRole('heading', { name: '안정 40%' });
     const locationHeading = screen.getByRole('heading', { name: '투자 위치' });
     expect(aggregateHeading.compareDocumentPosition(locationHeading)
       & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -130,6 +178,25 @@ describe('PortfolioApp', () => {
       .toHaveAttribute('href', expect.stringContaining('?edit=investment'));
   });
 
+  it('keeps loaded amount preferences consistent in a stale Main result', () => {
+    const preferencesRepository: PortfolioPreferencesRepository = {
+      load: () => ({ showAmounts: true, sortMode: 'ratio' }),
+      save: () => ({ status: 'saved' }),
+    };
+    render(
+      <PortfolioApp
+        mainSourceRepository={unavailableMain}
+        repository={createMemoryPortfolioRepository({ applied: plan })}
+        preferencesRepository={preferencesRepository}
+        now={() => 2}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
+    expect(screen.getByRole('switch', { name: '금액 보기' })).toBeChecked();
+    expect(screen.getByRole('heading', { name: '이번 달 투자금 200,000원' })).toBeVisible();
+  });
+
   it('shows the newly applied plan when draft cleanup fails after the applied write', async () => {
     const repository = createMemoryPortfolioRepository();
     repository.failClearDraft = true;
@@ -139,7 +206,7 @@ describe('PortfolioApp', () => {
     fireEvent.click(within(screen.getByRole('dialog', { name: '투자 배분 적용' }))
       .getByRole('button', { name: '적용' }));
 
-    expect(await screen.findByRole('heading', { name: '투자금 200,000원' })).toBeVisible();
+    expect(await screen.findByRole('heading', { name: '안정 100%' })).toBeVisible();
     expect(await screen.findByRole('alert')).toHaveTextContent('배분은 적용했지만 편집 초안을 정리하지 못했습니다');
     expect(repository.applied).not.toBeNull();
   });
@@ -180,13 +247,14 @@ describe('PortfolioApp', () => {
     );
 
     await gated.started;
-    expect(screen.getByText('저장 중')).toBeVisible();
+    expect(screen.getByRole('heading', { name: '안정 70%' })).toBeVisible();
+    expect(screen.queryByText('저장 중')).not.toBeInTheDocument();
     gated.release();
-    await waitFor(() => expect(screen.getByText('저장됨')).toBeVisible());
-
-    expect(saveApplied).toHaveBeenCalledOnce();
-    const persisted = JSON.parse(storage.getItem(WORKSPACE_STORAGE_KEY) ?? '') as WorkspaceDocument;
-    expect(persisted.revision).toBe(5);
+    await waitFor(() => {
+      expect(saveApplied).toHaveBeenCalledOnce();
+      const persisted = JSON.parse(storage.getItem(WORKSPACE_STORAGE_KEY) ?? '') as WorkspaceDocument;
+      expect(persisted.revision).toBe(5);
+    });
   });
 
   it('reports an applied write failure while staying in the editor', async () => {
@@ -254,7 +322,7 @@ describe('PortfolioApp', () => {
       .getByRole('button', { name: '적용' }));
     gated.release();
 
-    expect(await screen.findByRole('heading', { name: '투자금 200,000원' })).toBeVisible();
+    expect(await screen.findByRole('heading', { name: '안정 100%' })).toBeVisible();
     const persisted = JSON.parse(storage.getItem(WORKSPACE_STORAGE_KEY) ?? '') as WorkspaceDocument;
     expect(persisted).toEqual({
       ...saved,
@@ -292,7 +360,7 @@ describe('PortfolioApp', () => {
     fireEvent.click(screen.getByRole('button', { name: '초기화' }));
 
     await waitFor(() => expect(repository.clearScope).toHaveBeenCalledWith({ type: 'aggregate' }));
-    expect(screen.getByRole('heading', { name: '투자금 200,000원' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: '안정 40%' })).toBeVisible();
     releaseClear?.();
     expect(await screen.findByRole('heading', { name: '투자 배분 설정' })).toBeVisible();
     expect(repository.applied).toBeNull();
@@ -308,7 +376,7 @@ describe('PortfolioApp', () => {
     fireEvent.click(screen.getByRole('button', { name: '초기화' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('저장하지 못했습니다');
-    expect(screen.getByRole('heading', { name: '투자금 200,000원' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: '안정 40%' })).toBeVisible();
   });
 
   it('isolates a corrupt draft and keeps the valid applied result', () => {
@@ -320,6 +388,34 @@ describe('PortfolioApp', () => {
 
     render(<PortfolioApp locationRepository={emptyInvestmentLocations} mainSourceRepository={mainFound} repository={repository} now={() => 2} />);
 
-    expect(screen.getByRole('heading', { name: '투자금 200,000원' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: '안정 40%' })).toBeVisible();
+  });
+
+  it('keeps an unavailable view-preference save out of allocation save state', () => {
+    let savedPreferences: { showAmounts: boolean; sortMode: 'ratio' | 'input' } | null = null;
+    const preferencesRepository: PortfolioPreferencesRepository = {
+      load: () => ({ showAmounts: false, sortMode: 'ratio' }),
+      save: (value) => {
+        savedPreferences = value;
+        return { status: 'unavailable' };
+      },
+    };
+
+    render(
+      <PortfolioApp
+        mainSourceRepository={mainFound}
+        repository={createMemoryPortfolioRepository({ applied: plan })}
+        preferencesRepository={preferencesRepository}
+        now={() => 2}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
+    fireEvent.click(screen.getByRole('radio', { name: '입력순' }));
+
+    expect(savedPreferences).toEqual({ showAmounts: false, sortMode: 'input' });
+    expect(screen.getByRole('radio', { name: '입력순' })).toBeChecked();
+    expect(screen.queryByText('저장됨')).not.toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 });

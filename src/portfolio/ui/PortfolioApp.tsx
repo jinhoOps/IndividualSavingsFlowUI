@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AppShell } from '../../components/common/AppShell';
-import { Button } from '../../components/common/Button';
 import { Surface } from '../../components/common/Surface';
 import { appPath } from '../../journey/routes';
 import { bootstrapPortfolio } from '../application/bootstrap';
@@ -12,7 +11,11 @@ import {
   type PortfolioState,
 } from '../application/portfolioReducer';
 import { materializeAllocation } from '../domain/allocation';
-import type { PortfolioPlan } from '../domain/model';
+import {
+  DEFAULT_PORTFOLIO_VIEW_PREFERENCES,
+  type PortfolioPlan,
+  type PortfolioViewPreferences,
+} from '../domain/model';
 import { validateApplicableDraft } from '../domain/validation';
 import {
   BrowserPortfolioMainSourceRepository,
@@ -23,6 +26,10 @@ import {
   BrowserPortfolioRepository,
   type PortfolioRepository,
 } from '../infrastructure/portfolioRepository';
+import {
+  BrowserPortfolioPreferencesRepository,
+  type PortfolioPreferencesRepository,
+} from '../infrastructure/portfolioPreferencesRepository';
 import { AllocationEditor } from './AllocationEditor';
 import { InvestmentLocations } from './InvestmentLocations';
 import { PortfolioApplyBar } from './PortfolioApplyBar';
@@ -33,11 +40,13 @@ export function PortfolioApp({
   mainSourceRepository: providedMainRepository,
   repository: providedRepository,
   locationRepository,
+  preferencesRepository: providedPreferencesRepository,
   now = Date.now,
 }: {
   mainSourceRepository?: PortfolioMainSourceRepository;
   repository?: PortfolioRepository;
   locationRepository?: InvestmentLocationRepository;
+  preferencesRepository?: PortfolioPreferencesRepository;
   now?: () => number;
 }) {
   const mainRepository = useMemo(
@@ -47,6 +56,10 @@ export function PortfolioApp({
   const repository = useMemo(
     () => providedRepository ?? new BrowserPortfolioRepository(),
     [providedRepository],
+  );
+  const preferencesRepository = useMemo(
+    () => providedPreferencesRepository ?? new BrowserPortfolioPreferencesRepository(),
+    [providedPreferencesRepository],
   );
   const initial = useMemo(
     () => bootstrapPortfolio(mainRepository.load(), repository.load(), now()),
@@ -59,6 +72,9 @@ export function PortfolioApp({
   const initialPersistenceStarted = useRef(false);
   const persistenceQueue = useRef<Promise<void>>(Promise.resolve());
   const latestOperation = useRef(0);
+  const [preferences, setPreferences] = useState<PortfolioViewPreferences>(
+    () => preferencesRepository.load(),
+  );
 
   useEffect(() => {
     if (initial.kind !== 'ready') return;
@@ -173,10 +189,21 @@ export function PortfolioApp({
     void run.then(onSettled, () => onSettled(null));
   }
 
+  function updatePreferences(next: PortfolioViewPreferences): void {
+    setPreferences(next);
+    preferencesRepository.save(next);
+  }
+
   return (
     <AppShell
       currentApp="portfolio"
-      managementMenu={<PortfolioManagementMenu onReset={reset} />}
+      managementMenu={(
+        <PortfolioManagementMenu
+          onReset={reset}
+          preferences={preferences}
+          onPreferencesChange={updatePreferences}
+        />
+      )}
     >
       <main className="portfolio-shell">
         {initial.kind === 'main-required' ? (
@@ -184,26 +211,25 @@ export function PortfolioApp({
         ) : initial.kind === 'investment-required' ? (
           <InvestmentRequired plan={initial.preservedPlan} />
         ) : initial.kind === 'stale-main' ? (
-          <StaleMain plan={initial.plan} />
+          <StaleMain plan={initial.plan} preferences={preferences} />
         ) : state === null ? (
           <RecoveryPanel message="Portfolio를 시작할 수 없습니다." />
         ) : (
           <div className="portfolio-content">
           {state.view === 'result' && state.applied !== null ? (
             <>
-              <div className="portfolio-toolbar">
-                <span role={state.saveState === 'saved' ? 'status' : 'alert'}>
+              {state.saveState === 'error' || state.saveState === 'cleanup-error' ? (
+                <p role="alert" className="portfolio-summary-error">
                   {state.saveState === 'error'
                     ? '저장하지 못했습니다. 다시 시도해 주세요.'
-                    : state.saveState === 'cleanup-error'
-                      ? '배분은 적용했지만 편집 초안을 정리하지 못했습니다.'
-                      : state.saveState === 'saving' ? '저장 중' : '저장됨'}
-                </span>
-                <Button type="button" variant="primary" onClick={() => dispatchDraft({ type: 'edit-opened' })}>배분 수정</Button>
-              </div>
+                    : '배분은 적용했지만 편집 초안을 정리하지 못했습니다.'}
+                </p>
+              ) : null}
               <PortfolioSummary
                 investmentWon={state.applied.syncedInvestmentWon}
                 allocation={materializeAllocation(state.applied, state.applied.syncedInvestmentWon)}
+                preferences={preferences}
+                onEdit={() => dispatchDraft({ type: 'edit-opened' })}
               />
             </>
           ) : (
@@ -218,6 +244,7 @@ export function PortfolioApp({
               <PortfolioApplyBar
                 dirty={state.dirty || state.applied === null}
                 saveError={state.saveState === 'error'}
+                showAmounts={preferences.showAmounts}
                 draft={state.draft}
                 investmentWon={state.draft.syncedInvestmentWon}
                 onCancel={() => dispatchDraft({ type: 'cancel-edit' })}
@@ -247,7 +274,11 @@ function InvestmentRequired({ plan }: { plan: PortfolioPlan | null }) {
   return (
     <section className="portfolio-gate" aria-labelledby="portfolio-gate-title">
       <div data-testid="portfolio-gated-content" className="portfolio-content portfolio-content--blurred" inert>
-        <PortfolioSummary investmentWon={placeholder.syncedInvestmentWon} allocation={materializeAllocation(placeholder, placeholder.syncedInvestmentWon)} />
+        <PortfolioSummary
+          investmentWon={placeholder.syncedInvestmentWon}
+          allocation={materializeAllocation(placeholder, placeholder.syncedInvestmentWon)}
+          preferences={DEFAULT_PORTFOLIO_VIEW_PREFERENCES}
+        />
       </div>
       <div className="portfolio-gate__message">
         <h1 id="portfolio-gate-title">투자금을 먼저 정해 주세요</h1>
@@ -257,7 +288,13 @@ function InvestmentRequired({ plan }: { plan: PortfolioPlan | null }) {
   );
 }
 
-function StaleMain({ plan }: { plan: PortfolioPlan }) {
+function StaleMain({
+  plan,
+  preferences,
+}: {
+  plan: PortfolioPlan;
+  preferences: PortfolioViewPreferences;
+}) {
   return (
     <div className="portfolio-content">
       <Surface as="aside" className="portfolio-recovery">
@@ -266,7 +303,11 @@ function StaleMain({ plan }: { plan: PortfolioPlan }) {
         <a href={appPath('portfolio')}>최신 Main 다시 불러오기</a>
         <a href={appPath('main')}>Main 확인하기</a>
       </Surface>
-      <PortfolioSummary investmentWon={plan.syncedInvestmentWon} allocation={materializeAllocation(plan, plan.syncedInvestmentWon)} />
+      <PortfolioSummary
+        investmentWon={plan.syncedInvestmentWon}
+        allocation={materializeAllocation(plan, plan.syncedInvestmentWon)}
+        preferences={preferences}
+      />
     </div>
   );
 }

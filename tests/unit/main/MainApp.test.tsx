@@ -164,7 +164,10 @@ function workspace(monthlyNetIncomeWon: number, revision = 1): WorkspaceDocument
       plans: [{
         schemaVersion: 2,
         scope: { type: 'location', locationId: 'loc-isa' },
-        items: [{ id: 'asset-us', name: '미국 인덱스', shareUnits: 700_000, order: 0 }],
+        items: [{
+          id: 'asset-us', name: '미국 인덱스', shareUnits: 700_000, order: 0,
+          classification: 'growth', classificationOrigin: 'automatic',
+        }],
         cashShareUnits: 300_000,
         cashMode: 'automatic',
         syncedInvestmentWon: applied.monthlyInvestmentWon,

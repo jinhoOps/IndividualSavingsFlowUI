@@ -14,7 +14,10 @@ const oldDraftKey = 'isf-portfolio-allocation-draft-v1';
 const aggregatePlan: PortfolioPlan = {
   schemaVersion: 2,
   scope: { type: 'aggregate' },
-  items: [{ id: 'a', name: '인덱스', shareUnits: 600_000, order: 0 }],
+  items: [{
+    id: 'a', name: '인덱스', shareUnits: 600_000, order: 0,
+    classification: 'growth', classificationOrigin: 'automatic',
+  }],
   cashShareUnits: 400_000,
   cashMode: 'automatic',
   syncedInvestmentWon: 200_000,
@@ -24,7 +27,10 @@ const aggregatePlan: PortfolioPlan = {
 const locationPlan: PortfolioPlan = {
   ...aggregatePlan,
   scope: { type: 'location', locationId: 'loc-isa' },
-  items: [{ id: 'loc-a', name: 'ISA 인덱스', shareUnits: 500_000, order: 0 }],
+  items: [{
+    id: 'loc-a', name: 'ISA 인덱스', shareUnits: 500_000, order: 0,
+    classification: 'growth', classificationOrigin: 'automatic',
+  }],
   cashShareUnits: 500_000,
   appliedAt: 2,
   updatedAt: 2,
@@ -188,7 +194,10 @@ describe('BrowserPortfolioRepository workspace adapter', () => {
     repository.load();
     const nextDraft = {
       ...createCashOnlyDraft(200_000, 5),
-      items: [{ id: 'new', name: '성장', shareUnits: 250_000, order: 0 }],
+      items: [{
+        id: 'new', name: '성장', shareUnits: 250_000, order: 0,
+        classification: 'growth' as const, classificationOrigin: 'automatic' as const,
+      }],
       cashShareUnits: 750_000,
     };
 
@@ -441,7 +450,10 @@ describe('BrowserPortfolioRepository workspace adapter', () => {
     const changedLocationDraft: PortfolioDraft = {
       ...createCashOnlyDraft(200_000, 6),
       scope: { type: 'location', locationId: 'loc-isa' },
-      items: [{ id: 'loc-new', name: '새 ISA 배분', shareUnits: 400_000, order: 0 }],
+      items: [{
+        id: 'loc-new', name: '새 ISA 배분', shareUnits: 400_000, order: 0,
+        classification: 'growth', classificationOrigin: 'automatic',
+      }],
       cashShareUnits: 600_000,
       updatedAt: 6,
     };
