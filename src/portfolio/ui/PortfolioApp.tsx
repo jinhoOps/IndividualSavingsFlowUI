@@ -26,6 +26,7 @@ import {
 import { AllocationEditor } from './AllocationEditor';
 import { InvestmentLocations } from './InvestmentLocations';
 import { PortfolioApplyBar } from './PortfolioApplyBar';
+import { PortfolioEditSurface } from './PortfolioEditSurface';
 import { PortfolioManagementMenu } from './PortfolioManagementMenu';
 import { PortfolioSummary } from './PortfolioSummary';
 import { PortfolioSetupFlow } from './PortfolioSetupFlow';
@@ -60,6 +61,7 @@ export function PortfolioApp({
   const initialPersistenceStarted = useRef(false);
   const persistenceQueue = useRef<Promise<void>>(Promise.resolve());
   const latestOperation = useRef(0);
+  const editTriggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (initial.kind !== 'ready') return;
@@ -203,23 +205,50 @@ export function PortfolioApp({
               onApply={apply}
               now={now}
             />
-          ) : state.view === 'result' && state.applied !== null ? (
+          ) : state.applied !== null ? (
             <>
-              <div className="portfolio-toolbar">
-                <span role={state.saveState === 'saved' ? 'status' : 'alert'}>
-                  {state.saveState === 'error'
-                    ? '저장하지 못했습니다. 다시 시도해 주세요.'
-                    : state.saveState === 'cleanup-error'
-                      ? '배분은 적용했지만 편집 초안을 정리하지 못했습니다.'
-                      : state.saveState === 'saving' ? '저장 중' : '저장됨'}
-                </span>
-                <Button type="button" variant="primary" onClick={() => dispatchDraft({ type: 'edit-opened' })}>배분 수정</Button>
+              <div
+                data-testid="portfolio-result-controls"
+                inert={state.view === 'edit' ? true : undefined}
+                aria-hidden={state.view === 'edit' ? 'true' : undefined}
+              >
+                <div className="portfolio-toolbar">
+                  <span role={state.saveState === 'saved' ? 'status' : 'alert'}>
+                    {state.saveState === 'error'
+                      ? '저장하지 못했습니다. 다시 시도해 주세요.'
+                      : state.saveState === 'cleanup-error'
+                        ? '배분은 적용했지만 편집 초안을 정리하지 못했습니다.'
+                        : state.saveState === 'saving' ? '저장 중' : '저장됨'}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="primary"
+                    onClick={(event) => {
+                      editTriggerRef.current = event.currentTarget;
+                      dispatchState({ type: 'edit-opened' });
+                    }}
+                  >배분 수정</Button>
+                </div>
+                <PortfolioSummary
+                  investmentWon={state.applied.syncedInvestmentWon}
+                  allocation={materializeAllocation(state.applied, state.applied.syncedInvestmentWon)}
+                />
+                <InvestmentLocations repository={locationRepository} />
               </div>
-              <PortfolioSummary
-                investmentWon={state.applied.syncedInvestmentWon}
-                allocation={materializeAllocation(state.applied, state.applied.syncedInvestmentWon)}
-              />
-              <InvestmentLocations repository={locationRepository} />
+              {state.view === 'edit' ? (
+                <PortfolioEditSurface
+                  draft={state.draft}
+                  investmentWon={state.draft.syncedInvestmentWon}
+                  dirty={state.dirty}
+                  saveError={state.saveState === 'error'}
+                  fieldError={state.fieldError}
+                  returnFocusRef={editTriggerRef}
+                  onAction={dispatchDraft}
+                  onCancel={() => dispatchDraft({ type: 'cancel-edit' })}
+                  onApply={apply}
+                  now={now}
+                />
+              ) : null}
             </>
           ) : (
             <>

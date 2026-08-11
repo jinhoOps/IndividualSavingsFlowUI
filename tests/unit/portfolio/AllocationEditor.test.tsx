@@ -90,8 +90,8 @@ describe('AllocationEditor', () => {
     />);
     const trigger = screen.getByRole('button', { name: '적용' });
     fireEvent.click(trigger);
-    expect(screen.getByRole('dialog', { name: '투자 배분 적용' })).toBeVisible();
-    fireEvent.click(screen.getByRole('button', { name: '확인 취소' }));
+    expect(screen.getByRole('dialog', { name: '투자 배분을 적용할까요?' })).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: '계속 수정' }));
     await waitFor(() => expect(trigger).toHaveFocus());
   });
 });

@@ -123,6 +123,29 @@ describe('PortfolioApp', () => {
       .toHaveClass('ui-button', 'ui-button--primary');
   });
 
+  it('opens applied editing in a modal surface without locations', () => {
+    render(<PortfolioApp locationRepository={investmentLocations} mainSourceRepository={mainFound} repository={createMemoryPortfolioRepository({ applied: plan })} now={() => 2} />);
+
+    fireEvent.click(screen.getByRole('button', { name: '배분 수정' }));
+
+    const dialog = screen.getByRole('dialog', { name: '투자 배분 수정' });
+    expect(within(dialog).getByRole('heading', { name: '투자 배분 수정' })).toBeVisible();
+    expect(within(dialog).queryByRole('heading', { name: '투자 위치' })).not.toBeInTheDocument();
+    expect(screen.getByTestId('portfolio-result-controls')).toHaveAttribute('inert');
+    expect(within(dialog).queryByRole('complementary', { name: '배분 변경' })).not.toBeInTheDocument();
+  });
+
+  it('shows apply actions only after the first allocation change', () => {
+    render(<PortfolioApp locationRepository={investmentLocations} mainSourceRepository={mainFound} repository={createMemoryPortfolioRepository({ applied: plan })} now={() => 2} />);
+    fireEvent.click(screen.getByRole('button', { name: '배분 수정' }));
+    expect(screen.queryByRole('complementary', { name: '배분 변경' })).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('인덱스 금액'), { target: { value: '110000' } });
+    fireEvent.blur(screen.getByLabelText('인덱스 금액'));
+
+    expect(screen.getByRole('complementary', { name: '배분 변경' })).toBeVisible();
+  });
+
   it('places shared investment locations after the aggregate Portfolio task', () => {
     render(<PortfolioApp
       mainSourceRepository={mainFound}
