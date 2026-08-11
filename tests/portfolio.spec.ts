@@ -99,6 +99,12 @@ async function seedAppliedPortfolio(page: Page): Promise<void> {
   });
 }
 
+async function enterFirstSetupAllocation(page: Page): Promise<void> {
+  await expect(page.getByRole('heading', { name: /매달 .*원을 어디에 투자할까요\?/ })).toBeVisible();
+  await page.getByRole('button', { name: '배분 시작하기' }).click();
+  await expect(page.getByRole('heading', { name: '투자 배분 설정' })).toBeVisible();
+}
+
 test('creates one allocation and revisits result-first', async ({ page }) => {
   await seedMain(page, 200_000);
   await page.addInitScript(() => {
@@ -106,6 +112,7 @@ test('creates one allocation and revisits result-first', async ({ page }) => {
     localStorage.setItem('isf-step3-snapshots-v1', '{"legacy":"snapshots"}');
   });
   await page.goto('apps/portfolio/');
+  await enterFirstSetupAllocation(page);
   const mainBefore = await page.evaluate(() => (
     JSON.parse(localStorage.getItem('isf-workspace-v1')!).main
   ));
@@ -115,9 +122,8 @@ test('creates one allocation and revisits result-first', async ({ page }) => {
   await page.getByLabel('미국 인덱스 금액').blur();
   await expect(page.getByRole('region', { name: '현금' })).toContainText('80,000원');
   await expect(page.getByRole('region', { name: '현금' })).toContainText('40%');
-  await page.getByRole('button', { name: '적용' }).click();
-  await page.getByRole('dialog', { name: '투자 배분 적용' })
-    .getByRole('button', { name: '적용' }).click();
+  await page.getByRole('button', { name: '다음' }).click();
+  await page.getByRole('button', { name: '배분 시작' }).click();
   await expect(page.getByRole('button', { name: '배분 수정' })).toBeVisible();
   await expect.poll(() => page.evaluate(() => (
     JSON.parse(localStorage.getItem('isf-workspace-v1')!).portfolio.draft
@@ -194,7 +200,7 @@ test('resumes and cancels a draft, validates manual cash, and confirms reset', a
   await page.getByRole('menuitem', { name: '투자 배분 처음부터 다시' }).click();
   await page.getByRole('dialog', { name: '투자 배분을 처음부터 다시 할까요?' })
     .getByRole('button', { name: '초기화' }).click();
-  await expect(page.getByRole('heading', { name: '투자 배분 설정' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /매달 .*원을 어디에 투자할까요\?/ })).toBeVisible();
   expect(await page.evaluate(() => {
     const workspace = JSON.parse(localStorage.getItem('isf-workspace-v1')!);
     return {
@@ -214,6 +220,7 @@ test('resumes and cancels a draft, validates manual cash, and confirms reset', a
 test('explains duplicate names and blocks confirmation until corrected', async ({ page }) => {
   await seedMain(page, 200_000);
   await page.goto('apps/portfolio/');
+  await enterFirstSetupAllocation(page);
   await page.getByRole('button', { name: '투자 대상 추가' }).click();
   await page.getByRole('button', { name: '투자 대상 추가' }).click();
   await page.getByLabel('투자 대상 이름 1').fill('US INDEX');
@@ -221,9 +228,7 @@ test('explains duplicate names and blocks confirmation until corrected', async (
 
   await expect(page.getByLabel('투자 대상 이름 1'))
     .toHaveAccessibleDescription('같은 이름의 투자 대상이 이미 있습니다.');
-  await page.getByRole('button', { name: '적용' }).click();
-  await expect(page.getByRole('dialog', { name: '투자 배분 적용' })
-    .getByRole('button', { name: '적용' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: '다음' })).toBeDisabled();
 });
 
 test('puts a Main investment increase into cash', async ({ page }) => {
@@ -301,7 +306,9 @@ test('keeps donut, table and tooltip usable across required widths', async ({ pa
 test('contains the mobile editor, apply bar, and confirmation dialog', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await seedMain(page, 200_000);
+  await seedAppliedPortfolio(page);
   await page.goto('apps/portfolio/');
+  await page.getByRole('button', { name: '배분 수정' }).click();
   await page.getByRole('button', { name: '투자 대상 추가' }).click();
 
   const rowBox = await page.locator('.portfolio-editor__row').first().boundingBox();
@@ -325,7 +332,9 @@ test('contains the mobile editor, apply bar, and confirmation dialog', async ({ 
 test('keeps the final mobile editor control above the save-error apply bar', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await seedMain(page, 200_000);
+  await seedAppliedPortfolio(page);
   await page.goto('apps/portfolio/');
+  await page.getByRole('button', { name: '배분 수정' }).click();
   await page.evaluate(() => {
     const originalSetItem = Storage.prototype.setItem;
     Storage.prototype.setItem = function setItem(key: string, value: string) {
@@ -355,6 +364,7 @@ test('uses a single editor column at 768px', async ({ page }) => {
   await page.setViewportSize({ width: 768, height: 900 });
   await seedMain(page, 200_000);
   await page.goto('apps/portfolio/');
+  await enterFirstSetupAllocation(page);
   await page.getByRole('button', { name: '투자 대상 추가' }).click();
 
   expect(await page.locator('.portfolio-editor__row').first().evaluate((element) =>
@@ -386,10 +396,11 @@ test('keeps the final animated pointer tooltip inside the viewport gutter', asyn
 
 test('creates and preserves a contained shared investment location at required widths', async ({ page }) => {
   await seedMain(page, 200_000);
+  await seedAppliedPortfolio(page);
   await page.goto('apps/portfolio/');
 
   const locationName = '해외투자12AB';
-  const aggregateTask = page.getByRole('heading', { name: '투자 배분 설정' });
+  const aggregateTask = page.getByRole('heading', { name: '투자금 200,000원' });
   const locationTask = page.getByRole('heading', { name: '투자 위치', exact: true });
   expect(await aggregateTask.evaluate((aggregate, location) => (
     Boolean(aggregate.compareDocumentPosition(location as Node) & Node.DOCUMENT_POSITION_FOLLOWING)
@@ -459,21 +470,38 @@ test('returns keyboard focus to an investment-location rename trigger after canc
 });
 
 test('links an existing non-investing shared identity without duplicating its ID', async ({ page }) => {
-  await seedMain(page, 200_000);
+  await page.addInitScript((fixture) => {
+    localStorage.setItem('isf-workspace-v1', JSON.stringify({
+      schemaVersion: 1,
+      revision: 1,
+      updatedAt: fixture.updatedAt,
+      main: { applied: fixture, setupProgress: null },
+      simulation: { draft: null },
+      portfolio: {
+        plans: [{
+          schemaVersion: 2,
+          scope: { type: 'aggregate' },
+          items: [{ id: 'index', name: '인덱스', shareUnits: 600_000, order: 0 }],
+          cashShareUnits: 400_000,
+          cashMode: 'automatic',
+          syncedInvestmentWon: 200_000,
+          appliedAt: 1,
+          updatedAt: 1,
+        }],
+        draft: null,
+      },
+      locations: [{
+        id: 'shared-toss-isa',
+        shortName: 'Toss ISA',
+        kind: 'brokerage',
+        roles: ['saving'],
+        createdAt: 1,
+        updatedAt: 1,
+      }],
+      accountMap: { applied: null, draft: null, instruments: [], flows: [] },
+    }));
+  }, mainFixture);
   await page.goto('apps/portfolio/');
-  await page.evaluate(() => {
-    const workspace = JSON.parse(localStorage.getItem('isf-workspace-v1')!);
-    workspace.locations = [{
-      id: 'shared-toss-isa',
-      shortName: 'Toss ISA',
-      kind: 'brokerage',
-      roles: ['saving'],
-      createdAt: 1,
-      updatedAt: 1,
-    }];
-    localStorage.setItem('isf-workspace-v1', JSON.stringify(workspace));
-  });
-  await page.reload();
   await page.getByLabel('짧은 이름').fill('toss isa');
 
   await page.getByRole('button', { name: '투자 위치 추가' }).click();

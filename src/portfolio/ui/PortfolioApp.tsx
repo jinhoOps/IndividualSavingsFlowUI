@@ -28,6 +28,7 @@ import { InvestmentLocations } from './InvestmentLocations';
 import { PortfolioApplyBar } from './PortfolioApplyBar';
 import { PortfolioManagementMenu } from './PortfolioManagementMenu';
 import { PortfolioSummary } from './PortfolioSummary';
+import { PortfolioSetupFlow } from './PortfolioSetupFlow';
 
 export function PortfolioApp({
   mainSourceRepository: providedMainRepository,
@@ -189,7 +190,20 @@ export function PortfolioApp({
           <RecoveryPanel message="Portfolio를 시작할 수 없습니다." />
         ) : (
           <div className="portfolio-content">
-          {state.view === 'result' && state.applied !== null ? (
+          {state.view === 'setup' && state.setupStep !== null ? (
+            <PortfolioSetupFlow
+              step={state.setupStep}
+              draft={state.draft}
+              investmentWon={state.draft.syncedInvestmentWon}
+              saveError={state.saveState === 'error'}
+              fieldError={state.fieldError}
+              onAction={dispatchDraft}
+              onPrevious={() => dispatchState({ type: 'setup-previous' })}
+              onNext={() => dispatchState({ type: 'setup-next' })}
+              onApply={apply}
+              now={now}
+            />
+          ) : state.view === 'result' && state.applied !== null ? (
             <>
               <div className="portfolio-toolbar">
                 <span role={state.saveState === 'saved' ? 'status' : 'alert'}>
@@ -205,6 +219,7 @@ export function PortfolioApp({
                 investmentWon={state.applied.syncedInvestmentWon}
                 allocation={materializeAllocation(state.applied, state.applied.syncedInvestmentWon)}
               />
+              <InvestmentLocations repository={locationRepository} />
             </>
           ) : (
             <>
@@ -225,7 +240,6 @@ export function PortfolioApp({
               />
             </>
           )}
-          <InvestmentLocations repository={locationRepository} />
           </div>
         )}
       </main>

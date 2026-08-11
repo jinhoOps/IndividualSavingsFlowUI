@@ -90,11 +90,27 @@ function firstSaveGate(): {
 }
 
 describe('PortfolioApp', () => {
-  it('opens setup on first run', () => {
-    render(<PortfolioApp locationRepository={emptyInvestmentLocations} mainSourceRepository={mainFound} repository={createMemoryPortfolioRepository()} now={() => 1} />);
+  it('shows only the welcome task on first run', () => {
+    render(<PortfolioApp locationRepository={investmentLocations} mainSourceRepository={mainFound} repository={createMemoryPortfolioRepository()} now={() => 1} />);
     expect(screen.getByTestId('app-shell')).toBeInTheDocument();
     expect(screen.getByTestId('app-shell-launcher')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: '투자 배분 설정' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: '매달 200,000원을 어디에 투자할까요?' })).toBeVisible();
+    expect(screen.getByRole('button', { name: '배분 시작하기' })).toBeVisible();
+    expect(screen.queryByRole('heading', { name: '투자 위치' })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('투자 배분 도넛')).not.toBeInTheDocument();
+  });
+
+  it('applies cash-only setup review without opening a second dialog', async () => {
+    const repository = createMemoryPortfolioRepository();
+    render(<PortfolioApp locationRepository={investmentLocations} mainSourceRepository={mainFound} repository={repository} now={() => 2} />);
+
+    fireEvent.click(screen.getByRole('button', { name: '배분 시작하기' }));
+    fireEvent.click(screen.getByRole('button', { name: '다음' }));
+    fireEvent.click(screen.getByRole('button', { name: '배분 시작' }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: '투자금 200,000원' })).toBeVisible();
+    expect(repository.applied).not.toBeNull();
   });
 
   it('revisits a saved plan result-first', () => {
@@ -135,9 +151,9 @@ describe('PortfolioApp', () => {
     repository.failClearDraft = true;
     render(<PortfolioApp locationRepository={emptyInvestmentLocations} mainSourceRepository={mainFound} repository={repository} now={() => 2} />);
 
-    fireEvent.click(screen.getByRole('button', { name: '적용' }));
-    fireEvent.click(within(screen.getByRole('dialog', { name: '투자 배분 적용' }))
-      .getByRole('button', { name: '적용' }));
+    fireEvent.click(screen.getByRole('button', { name: '배분 시작하기' }));
+    fireEvent.click(screen.getByRole('button', { name: '다음' }));
+    fireEvent.click(screen.getByRole('button', { name: '배분 시작' }));
 
     expect(await screen.findByRole('heading', { name: '투자금 200,000원' })).toBeVisible();
     expect(await screen.findByRole('alert')).toHaveTextContent('배분은 적용했지만 편집 초안을 정리하지 못했습니다');
@@ -194,11 +210,11 @@ describe('PortfolioApp', () => {
     repository.failNextWrite();
     render(<PortfolioApp locationRepository={emptyInvestmentLocations} mainSourceRepository={mainFound} repository={repository} now={() => 2} />);
 
-    fireEvent.click(screen.getByRole('button', { name: '적용' }));
-    fireEvent.click(within(screen.getByRole('dialog', { name: '투자 배분 적용' }))
-      .getByRole('button', { name: '적용' }));
+    fireEvent.click(screen.getByRole('button', { name: '배분 시작하기' }));
+    fireEvent.click(screen.getByRole('button', { name: '다음' }));
+    fireEvent.click(screen.getByRole('button', { name: '배분 시작' }));
 
-    expect(await screen.findByRole('heading', { name: '투자 배분 설정' })).toBeVisible();
+    expect(await screen.findByRole('heading', { name: '이 배분으로 시작할까요?' })).toBeVisible();
     expect(await screen.findByRole('alert')).toHaveTextContent('저장하지 못했습니다');
     expect(repository.applied).toBeNull();
   });
@@ -214,9 +230,10 @@ describe('PortfolioApp', () => {
           repository.draft = structuredClone(draft);
           resolve(result);
         };
-      }));
+    }));
     render(<PortfolioApp locationRepository={emptyInvestmentLocations} mainSourceRepository={mainFound} repository={repository} now={() => 2} />);
 
+    fireEvent.click(screen.getByRole('button', { name: '배분 시작하기' }));
     fireEvent.click(screen.getByRole('button', { name: '투자 대상 추가' }));
     await waitFor(() => expect(repository.saveDraft).toHaveBeenCalledTimes(1));
     fireEvent.change(screen.getByLabelText('투자 대상 이름 1'), { target: { value: '최신 이름' } });
@@ -247,11 +264,11 @@ describe('PortfolioApp', () => {
       now={() => 500}
     />);
 
+    fireEvent.click(screen.getByRole('button', { name: '배분 시작하기' }));
     fireEvent.click(screen.getByRole('radio', { name: '비율' }));
     await gated.started;
-    fireEvent.click(screen.getByRole('button', { name: '적용' }));
-    fireEvent.click(within(screen.getByRole('dialog', { name: '투자 배분 적용' }))
-      .getByRole('button', { name: '적용' }));
+    fireEvent.click(screen.getByRole('button', { name: '다음' }));
+    fireEvent.click(screen.getByRole('button', { name: '배분 시작' }));
     gated.release();
 
     expect(await screen.findByRole('heading', { name: '투자금 200,000원' })).toBeVisible();
@@ -294,7 +311,7 @@ describe('PortfolioApp', () => {
     await waitFor(() => expect(repository.clearScope).toHaveBeenCalledWith({ type: 'aggregate' }));
     expect(screen.getByRole('heading', { name: '투자금 200,000원' })).toBeVisible();
     releaseClear?.();
-    expect(await screen.findByRole('heading', { name: '투자 배분 설정' })).toBeVisible();
+    expect(await screen.findByRole('heading', { name: '매달 200,000원을 어디에 투자할까요?' })).toBeVisible();
     expect(repository.applied).toBeNull();
   });
 

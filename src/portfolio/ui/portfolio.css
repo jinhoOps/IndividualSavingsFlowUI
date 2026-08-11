@@ -6,6 +6,18 @@
 .portfolio-gate::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgb(249 246 240 / .35), rgb(249 246 240 / .9)); }
 .portfolio-gate__message { position: absolute; z-index: 2; inset: 25% 1rem auto; text-align: center; }
 .portfolio-summary, .portfolio-editor, .portfolio-recovery { padding: 1.5rem; }
+.portfolio-setup { width: min(100%, 48rem); margin-inline: auto; padding: 1.5rem; }
+.portfolio-setup__progress { height: .375rem; overflow: hidden; border-radius: 999px; background: #e2e8f0; }
+.portfolio-setup__progress span { display: block; height: 100%; background: var(--tone-primary); transition: width 180ms ease; }
+.portfolio-setup__status { margin: 1rem 0; color: var(--tone-accent); font-weight: 700; }
+.portfolio-setup__welcome { display: grid; gap: 1rem; min-height: 22rem; align-content: center; }
+.portfolio-setup__welcome > * { margin: 0; }
+.portfolio-setup__welcome > :first-child { color: var(--tone-primary); font-weight: 700; letter-spacing: .16em; }
+.portfolio-setup__actions { display: flex; justify-content: flex-end; gap: .75rem; margin-top: 1.5rem; }
+.portfolio-setup__review dl { display: grid; gap: .75rem; }
+.portfolio-setup__review dl > div { display: flex; justify-content: space-between; gap: 1rem; padding-block: .75rem; border-bottom: 1px solid var(--line); }
+.portfolio-setup__review dd { margin: 0; font-weight: 700; }
+.portfolio-editor--setup { padding: 0; border: 0; box-shadow: none; }
 .portfolio-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
 .portfolio-summary__hero { min-width: 0; }
 .portfolio-summary__hero > :first-child { margin-top: 0; color: var(--muted); }
@@ -77,6 +89,7 @@
 @keyframes portfolio-tooltip-in { from { opacity: 0; transform: translateY(3px) scale(.98); } }
 @media (min-width: 900px) { .portfolio-summary__content { grid-template-columns: minmax(18rem, .8fr) minmax(24rem, 1.2fr); } }
 @media (max-width: 768px) {
+  .portfolio-setup { padding: 1rem; }
   .portfolio-summary, .portfolio-editor, .portfolio-recovery { padding: 1rem; }
   .portfolio-toolbar { align-items: stretch; flex-direction: column; }
   .portfolio-toolbar .ui-button { width: 100%; }

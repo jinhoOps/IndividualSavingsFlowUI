@@ -13,6 +13,7 @@ export function AllocationEditor({
   now,
   fieldError = null,
   createId = () => crypto.randomUUID(),
+  presentation = 'standalone',
 }: {
   draft: PortfolioDraft;
   investmentWon: number;
@@ -20,6 +21,7 @@ export function AllocationEditor({
   now: () => number;
   fieldError?: string | null;
   createId?: () => string;
+  presentation?: 'standalone' | 'setup' | 'edit';
 }) {
   const allocation = materializeAllocation(draft, investmentWon);
   const [rawValues, setRawValues] = useState<Record<string, string>>({});
@@ -41,11 +43,16 @@ export function AllocationEditor({
   }
 
   return (
-    <Surface as="section" className="portfolio-editor" aria-labelledby="portfolio-editor-title">
-      <header>
+    <Surface
+      as="section"
+      className={`portfolio-editor portfolio-editor--${presentation}`}
+      aria-label={presentation === 'standalone' ? undefined : '배분 입력'}
+      aria-labelledby={presentation === 'standalone' ? 'portfolio-editor-title' : undefined}
+    >
+      {presentation === 'standalone' ? <header>
         <p>한 달 투자금을 배분합니다</p>
         <h1 id="portfolio-editor-title">투자 배분 설정</h1>
-      </header>
+      </header> : null}
       <fieldset className="portfolio-editor__mode">
         <legend>입력 방식</legend>
         <label><input type="radio" name="allocation-mode" checked={draft.inputMode === 'amount'} onChange={() => onAction({ type: 'input-mode-changed', mode: 'amount' })} />금액</label>
