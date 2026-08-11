@@ -168,8 +168,11 @@ test('creates one allocation and revisits result-first', async ({ page }) => {
   await page.getByLabel('미국 인덱스 금액').blur();
   await expect(page.getByRole('region', { name: '현금' })).toContainText('80,000원');
   await expect(page.getByRole('region', { name: '현금' })).toContainText('40%');
-  await page.getByRole('button', { name: '다음' }).click();
-  await page.getByRole('button', { name: '배분 시작' }).click();
+  await page.getByRole('button', { name: '배분 확인' }).click();
+  const review = page.getByRole('region', { name: '배분 검토' });
+  await expect(review).toContainText('120,000원');
+  await expect(review).toContainText('60%');
+  await page.getByRole('button', { name: '이대로 시작' }).click();
   await expect(page.getByRole('button', { name: '배분 수정' })).toBeVisible();
   await expect(page.getByRole('heading', { name: '안정 40%' })).toBeVisible();
   await expect.poll(() => page.evaluate(() => (
@@ -278,7 +281,7 @@ test('explains duplicate names and blocks confirmation until corrected', async (
 
   await expect(page.getByLabel('투자 대상 이름 1'))
     .toHaveAccessibleDescription('같은 이름의 투자 대상이 이미 있습니다.');
-  await expect(page.getByRole('button', { name: '다음' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: '배분 확인' })).toBeDisabled();
 });
 
 test('puts a Main investment increase into cash', async ({ page }) => {

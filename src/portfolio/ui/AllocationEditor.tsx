@@ -53,6 +53,9 @@ export function AllocationEditor({
         <p>한 달 투자금을 배분합니다</p>
         <h1 id="portfolio-editor-title">투자 배분 설정</h1>
       </header> : null}
+      {presentation === 'setup' ? (
+        <SetupAllocationSummary draft={draft} investmentWon={investmentWon} />
+      ) : null}
       <fieldset className="portfolio-editor__mode">
         <legend>입력 방식</legend>
         <label><input type="radio" name="allocation-mode" checked={draft.inputMode === 'amount'} onChange={() => onAction({ type: 'input-mode-changed', mode: 'amount' })} />금액</label>
@@ -158,6 +161,34 @@ export function AllocationEditor({
       </section>
       {fieldError ? <p role="alert">{errorMessage(fieldError)}</p> : null}
     </Surface>
+  );
+}
+
+function SetupAllocationSummary({
+  draft,
+  investmentWon,
+}: {
+  draft: PortfolioDraft;
+  investmentWon: number;
+}) {
+  const allocation = materializeAllocation(draft, investmentWon);
+  const stablePercentage = allocation.cashPercentage + allocation.items
+    .filter((item) => item.classification === 'stable')
+    .reduce((sum, item) => sum + item.percentage, 0);
+  const growthPercentage = Math.max(0, 100 - stablePercentage);
+
+  return (
+    <section className="portfolio-setup-summary" aria-label="현재 배분 요약">
+      <p>매달 {formatPortfolioWon(investmentWon)}을 나눠요</p>
+      <div className="portfolio-setup-summary__bar" aria-hidden="true">
+        <span className="portfolio-setup-summary__growth" style={{ width: `${growthPercentage}%` }} />
+        <span className="portfolio-setup-summary__stable" style={{ width: `${stablePercentage}%` }} />
+      </div>
+      <div className="portfolio-setup-summary__legend">
+        <span>성장 <strong>{formatAllocationPercent(growthPercentage)}</strong></span>
+        <span>안정 <strong>{formatAllocationPercent(stablePercentage)}</strong></span>
+      </div>
+    </section>
   );
 }
 

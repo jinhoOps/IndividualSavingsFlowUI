@@ -86,7 +86,7 @@ export function PortfolioSetupFlow(props: PortfolioSetupFlowProps) {
           disabled={props.step !== 'welcome' && !validateApplicableDraft(props.draft)}
           onClick={props.step === 'review' ? props.onApply : props.onNext}
         >
-          {props.step === 'welcome' ? '배분 시작하기' : props.step === 'review' ? '배분 시작' : '다음'}
+          {props.step === 'welcome' ? '배분 시작하기' : props.step === 'review' ? '이대로 시작' : '배분 확인'}
         </Button>
       </nav>
     </Surface>
@@ -103,14 +103,49 @@ function PortfolioSetupReview({
   headingRef: React.RefObject<HTMLHeadingElement | null>;
 }) {
   const allocation = materializeAllocation(draft, investmentWon);
+  const stablePercentage = allocation.cashPercentage + allocation.items
+    .filter((item) => item.classification === 'stable')
+    .reduce((sum, item) => sum + item.percentage, 0);
+  const growthPercentage = Math.max(0, 100 - stablePercentage);
   return (
-    <div className="portfolio-setup__review">
-      <h1 id="portfolio-setup-title" ref={headingRef} tabIndex={-1}>이 배분으로 시작할까요?</h1>
-      <dl>
-        <div><dt>투자 대상</dt><dd>{draft.items.length}개</dd></div>
-        <div><dt>투자금</dt><dd>{formatPortfolioWon(investmentWon)}</dd></div>
-        <div><dt>현금</dt><dd>{formatAllocationPercent(allocation.cashPercentage)}</dd></div>
-      </dl>
+    <div className="portfolio-setup__review" role="region" aria-label="배분 검토">
+      <h1 id="portfolio-setup-title" ref={headingRef} tabIndex={-1}>
+        성장에 {formatAllocationPercent(growthPercentage)}, 안정에 {formatAllocationPercent(stablePercentage)} 배분해요
+      </h1>
+      <p className="portfolio-setup__review-meta">매달 {formatPortfolioWon(investmentWon)} · 투자 대상 {draft.items.length}개</p>
+      <section className="portfolio-setup__strategy" aria-label="성장 안정 구성">
+        <div className="portfolio-setup-summary__bar" aria-hidden="true">
+          <span className="portfolio-setup-summary__growth" style={{ width: `${growthPercentage}%` }} />
+          <span className="portfolio-setup-summary__stable" style={{ width: `${stablePercentage}%` }} />
+        </div>
+        <div className="portfolio-setup-summary__legend">
+          <span>성장 <strong>{formatAllocationPercent(growthPercentage)}</strong></span>
+          <span>안정 <strong>{formatAllocationPercent(stablePercentage)}</strong></span>
+        </div>
+      </section>
+      <ul className="portfolio-setup-review__list">
+        {allocation.items.map((item) => {
+          const classification = item.classification === 'growth' ? '성장' : '안정';
+          return (
+            <li
+              className="portfolio-setup-review__item"
+              key={item.id}
+              aria-label={`${item.name} ${classification} ${formatPortfolioWon(item.amountWon)} ${formatAllocationPercent(item.percentage)}`}
+            >
+              <div><strong>{item.name}</strong><span>{classification}</span></div>
+              <div><strong>{formatPortfolioWon(item.amountWon)}</strong><span>{formatAllocationPercent(item.percentage)}</span></div>
+            </li>
+          );
+        })}
+        <li
+          className="portfolio-setup-review__item"
+          aria-label={`현금 안정 ${draft.cashMode === 'automatic' ? '자동 배분' : '직접 배분'} ${formatPortfolioWon(allocation.cashAmountWon)} ${formatAllocationPercent(allocation.cashPercentage)}`}
+        >
+          <div><strong>현금</strong><span>안정 · {draft.cashMode === 'automatic' ? '자동 배분' : '직접 배분'}</span></div>
+          <div><strong>{formatPortfolioWon(allocation.cashAmountWon)}</strong><span>{formatAllocationPercent(allocation.cashPercentage)}</span></div>
+        </li>
+      </ul>
+      <p className="portfolio-setup__review-note">나중에 Portfolio에서 언제든 수정할 수 있어요.</p>
     </div>
   );
 }

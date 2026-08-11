@@ -112,12 +112,34 @@ describe('PortfolioApp', () => {
     render(<PortfolioApp locationRepository={investmentLocations} mainSourceRepository={mainFound} repository={repository} now={() => 2} />);
 
     fireEvent.click(screen.getByRole('button', { name: '배분 시작하기' }));
-    fireEvent.click(screen.getByRole('button', { name: '다음' }));
-    fireEvent.click(screen.getByRole('button', { name: '배분 시작' }));
+    fireEvent.click(screen.getByRole('button', { name: '배분 확인' }));
+    fireEvent.click(screen.getByRole('button', { name: '이대로 시작' }));
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(await screen.findByRole('heading', { name: '안정 100%' })).toBeVisible();
     expect(repository.applied).not.toBeNull();
+  });
+
+  it('shows a live strategy summary during allocation and reviews every amount with its percentage', () => {
+    render(<PortfolioApp locationRepository={emptyInvestmentLocations} mainSourceRepository={mainFound} repository={createMemoryPortfolioRepository()} now={() => 2} />);
+
+    fireEvent.click(screen.getByRole('button', { name: '배분 시작하기' }));
+    fireEvent.click(screen.getByRole('button', { name: '투자 대상 추가' }));
+    fireEvent.change(screen.getByLabelText('투자 대상 이름 1'), { target: { value: '미국 인덱스' } });
+    fireEvent.change(screen.getByLabelText('미국 인덱스 금액'), { target: { value: '120000' } });
+    fireEvent.blur(screen.getByLabelText('미국 인덱스 금액'));
+
+    const liveSummary = screen.getByRole('region', { name: '현재 배분 요약' });
+    expect(liveSummary).toHaveTextContent('매달 200,000원');
+    expect(liveSummary).toHaveTextContent('성장 60%');
+    expect(liveSummary).toHaveTextContent('안정 40%');
+
+    fireEvent.click(screen.getByRole('button', { name: '배분 확인' }));
+
+    const review = screen.getByRole('region', { name: '배분 검토' });
+    expect(within(review).getByRole('heading', { name: '성장에 60%, 안정에 40% 배분해요' })).toBeVisible();
+    expect(within(review).getByRole('listitem', { name: '미국 인덱스 성장 120,000원 60%' })).toBeVisible();
+    expect(within(review).getByRole('listitem', { name: '현금 안정 자동 배분 80,000원 40%' })).toBeVisible();
   });
 
   it('revisits a saved plan result-first', () => {
@@ -245,8 +267,8 @@ describe('PortfolioApp', () => {
     render(<PortfolioApp locationRepository={emptyInvestmentLocations} mainSourceRepository={mainFound} repository={repository} now={() => 2} />);
 
     fireEvent.click(screen.getByRole('button', { name: '배분 시작하기' }));
-    fireEvent.click(screen.getByRole('button', { name: '다음' }));
-    fireEvent.click(screen.getByRole('button', { name: '배분 시작' }));
+    fireEvent.click(screen.getByRole('button', { name: '배분 확인' }));
+    fireEvent.click(screen.getByRole('button', { name: '이대로 시작' }));
 
     expect(await screen.findByRole('heading', { name: '안정 100%' })).toBeVisible();
     expect(await screen.findByRole('alert')).toHaveTextContent('배분은 적용했지만 편집 초안을 정리하지 못했습니다');
@@ -305,10 +327,10 @@ describe('PortfolioApp', () => {
     render(<PortfolioApp locationRepository={emptyInvestmentLocations} mainSourceRepository={mainFound} repository={repository} now={() => 2} />);
 
     fireEvent.click(screen.getByRole('button', { name: '배분 시작하기' }));
-    fireEvent.click(screen.getByRole('button', { name: '다음' }));
-    fireEvent.click(screen.getByRole('button', { name: '배분 시작' }));
+    fireEvent.click(screen.getByRole('button', { name: '배분 확인' }));
+    fireEvent.click(screen.getByRole('button', { name: '이대로 시작' }));
 
-    expect(await screen.findByRole('heading', { name: '이 배분으로 시작할까요?' })).toBeVisible();
+    expect(await screen.findByRole('heading', { name: '성장에 0%, 안정에 100% 배분해요' })).toBeVisible();
     expect(await screen.findByRole('alert')).toHaveTextContent('저장하지 못했습니다');
     expect(repository.applied).toBeNull();
   });
@@ -361,8 +383,8 @@ describe('PortfolioApp', () => {
     fireEvent.click(screen.getByRole('button', { name: '배분 시작하기' }));
     fireEvent.click(screen.getByRole('radio', { name: '비율' }));
     await gated.started;
-    fireEvent.click(screen.getByRole('button', { name: '다음' }));
-    fireEvent.click(screen.getByRole('button', { name: '배분 시작' }));
+    fireEvent.click(screen.getByRole('button', { name: '배분 확인' }));
+    fireEvent.click(screen.getByRole('button', { name: '이대로 시작' }));
     gated.release();
 
     expect(await screen.findByRole('heading', { name: '안정 100%' })).toBeVisible();
