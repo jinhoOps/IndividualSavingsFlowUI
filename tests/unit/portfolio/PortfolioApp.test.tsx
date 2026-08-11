@@ -158,6 +158,9 @@ describe('PortfolioApp', () => {
     const locationHeading = screen.getByRole('heading', { name: '투자 위치' });
     expect(aggregateHeading.compareDocumentPosition(locationHeading)
       & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const disclosure = screen.getByRole('group', { name: '투자 위치 1곳' });
+    expect(disclosure).not.toHaveAttribute('open');
+    fireEvent.click(screen.getByText('투자 위치 1곳'));
     expect(screen.getByText('ISA')).toBeVisible();
     expect(screen.queryByRole('button', { name: /ISA.*배분/ })).not.toBeInTheDocument();
   });

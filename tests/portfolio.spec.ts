@@ -428,10 +428,13 @@ test('creates and preserves a contained shared investment location at required w
 
   const locationName = '해외투자12AB';
   const aggregateTask = page.getByRole('heading', { name: '투자금 200,000원' });
-  const locationTask = page.getByRole('heading', { name: '투자 위치', exact: true });
+  const locationTask = page.locator('.portfolio-locations-disclosure');
   expect(await aggregateTask.evaluate((aggregate, location) => (
     Boolean(aggregate.compareDocumentPosition(location as Node) & Node.DOCUMENT_POSITION_FOLLOWING)
   ), await locationTask.elementHandle())).toBe(true);
+  const disclosure = page.getByRole('group', { name: '투자 위치 1곳' });
+  await expect(disclosure).not.toHaveAttribute('open', '');
+  await page.getByText('투자 위치 1곳', { exact: true }).click();
   await page.getByLabel('짧은 이름').fill(locationName);
   await expect(page.getByText('8/8자')).toBeVisible();
   await page.getByLabel('형태').selectOption('brokerage');
@@ -439,7 +442,7 @@ test('creates and preserves a contained shared investment location at required w
   await page.getByRole('button', { name: '투자 위치 추가' }).click();
 
   await expect(page.getByText(locationName, { exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: '아직 배분하지 않음' })).toBeDisabled();
+  await expect(page.getByRole('status', { name: '아직 배분하지 않음' })).toBeVisible();
   await expect.poll(() => page.evaluate((name) => {
     const workspace = JSON.parse(localStorage.getItem('isf-workspace-v1')!);
     return workspace.locations.find((location: { shortName: string }) => (
@@ -452,6 +455,8 @@ test('creates and preserves a contained shared investment location at required w
   });
 
   await page.reload();
+  await expect(page.getByRole('group', { name: '투자 위치 2곳' })).not.toHaveAttribute('open', '');
+  await page.getByText('투자 위치 2곳', { exact: true }).click();
   await expect(page.getByText(locationName, { exact: true })).toBeVisible();
 
   for (const viewport of [
@@ -481,6 +486,7 @@ test('returns keyboard focus to an investment-location rename trigger after canc
   await seedMain(page, 200_000);
   await seedAppliedPortfolio(page);
   await page.goto('apps/portfolio/');
+  await page.getByText('투자 위치 1곳', { exact: true }).click();
 
   const originalTrigger = page.getByRole('button', { name: 'ISA 이름 바꾸기' });
   await originalTrigger.focus();
@@ -529,6 +535,7 @@ test('links an existing non-investing shared identity without duplicating its ID
     }));
   }, mainFixture);
   await page.goto('apps/portfolio/');
+  await page.getByText('투자 위치 0곳', { exact: true }).click();
   await page.getByLabel('짧은 이름').fill('toss isa');
 
   await page.getByRole('button', { name: '투자 위치 추가' }).click();
@@ -563,8 +570,9 @@ test('confirms linked location archival with preservation as the accessible defa
   await seedMain(page, 200_000);
   await seedAppliedPortfolio(page);
   await page.goto('apps/portfolio/');
+  await page.getByText('투자 위치 1곳', { exact: true }).click();
   const archiveTrigger = page.getByRole('button', { name: 'ISA 보관하기' });
-  await expect(page.getByRole('button', { name: '배분 데이터 있음' })).toBeDisabled();
+  await expect(page.getByRole('status', { name: '배분 데이터 있음' })).toBeVisible();
   await expect(page.getByRole('button', { name: '아직 배분하지 않음' })).toHaveCount(0);
 
   await archiveTrigger.click();
@@ -622,6 +630,7 @@ test('reconciles external location changes and contains stale controls at requir
       localStorage.setItem('isf-workspace-v1', JSON.stringify(workspace));
     });
     await page.reload();
+    await page.getByText('투자 위치 1곳', { exact: true }).click();
 
     await page.getByRole('button', { name: 'ISA 이름 바꾸기' }).click();
     const renameForm = page.locator('.portfolio-locations__rename');

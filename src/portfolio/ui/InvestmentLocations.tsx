@@ -298,11 +298,13 @@ export function InvestmentLocations({
   const createShortNameCount = countDisplayCharacters(normalizeLocationDisplayName(shortName) ?? '');
 
   return (
-    <Surface
-      as="section"
-      className="portfolio-locations"
-      aria-labelledby="investment-locations-title"
-    >
+    <details className="portfolio-locations-disclosure" aria-label={`투자 위치 ${locations.length}곳`}>
+      <summary>투자 위치 {locations.length}곳</summary>
+      <Surface
+        as="section"
+        className="portfolio-locations"
+        aria-labelledby="investment-locations-title"
+      >
       <header className="portfolio-locations__header">
         <div>
           <p>공유 위치</p>
@@ -332,9 +334,13 @@ export function InvestmentLocations({
                   <strong>{location.shortName}</strong>
                   <span>{location.institution?.name ?? kindLabel(location.kind)}</span>
                 </div>
-                <Button type="button" variant="quiet" disabled>
+                <span
+                  className="portfolio-locations__status"
+                  role="status"
+                  aria-label={portfolioStatusLabel(location.portfolioStatus)}
+                >
                   {portfolioStatusLabel(location.portfolioStatus)}
-                </Button>
+                </span>
                 <div className="portfolio-locations__actions">
                   <Button
                     type="button"
@@ -567,7 +573,8 @@ export function InvestmentLocations({
           </div>
         </PortfolioDialog>
       )}
-    </Surface>
+      </Surface>
+    </details>
   );
 }
 
