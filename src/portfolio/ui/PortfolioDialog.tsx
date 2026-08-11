@@ -4,11 +4,15 @@ export function PortfolioDialog({
   labelledBy,
   onClose,
   returnFocusRef,
+  className,
+  dataPresentation,
   children,
 }: {
   labelledBy: string;
   onClose(): void;
   returnFocusRef: RefObject<HTMLElement | null>;
+  className?: string;
+  dataPresentation?: 'sheet' | 'panel';
   children: ReactNode;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -54,7 +58,8 @@ export function PortfolioDialog({
       ref={dialogRef}
       aria-modal="true"
       aria-labelledby={labelledBy}
-      className="portfolio-dialog ui-surface"
+      className={`portfolio-dialog ui-surface${className ? ` ${className}` : ''}`}
+      data-presentation={dataPresentation}
       onCancel={(event) => {
         event.preventDefault();
         onClose();

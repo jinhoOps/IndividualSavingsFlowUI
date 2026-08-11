@@ -132,11 +132,31 @@ function createRepository(
   }
 }
 
+function renderOpenLocations(repository: ReturnType<typeof createRepository>): void {
+  render(<InvestmentLocations repository={repository} />);
+  fireEvent.click(screen.getByText(`투자 위치 ${repository.list().length}곳`));
+}
+
 describe('InvestmentLocations', () => {
+  it('starts locations closed and exposes a count in the summary', () => {
+    render(<InvestmentLocations repository={createRepository([location()])} />);
+
+    const disclosure = screen.getByRole('group', { name: '투자 위치 1곳' });
+    expect(disclosure).not.toHaveAttribute('open');
+    expect(screen.queryByRole('button', { name: '아직 배분하지 않음' })).not.toBeInTheDocument();
+  });
+
+  it('renders allocation readiness as status text after opening', () => {
+    render(<InvestmentLocations repository={createRepository([location()])} />);
+    fireEvent.click(screen.getByText('투자 위치 1곳'));
+
+    expect(screen.getByRole('status', { name: '아직 배분하지 않음' })).toBeVisible();
+  });
+
   it('keeps the aggregate allocation first and explains an empty location registry', () => {
     const repository = createRepository();
 
-    render(<InvestmentLocations repository={repository} />);
+    renderOpenLocations(repository);
 
     expect(screen.getByRole('heading', { name: '투자 위치' })).toBeVisible();
     expect(screen.getByText('전체 기준 배분은 그대로 유지됩니다')).toBeVisible();
@@ -147,10 +167,10 @@ describe('InvestmentLocations', () => {
   it('shows an Account Map-created empty location without creating a Portfolio plan', () => {
     const repository = createRepository([location()]);
 
-    render(<InvestmentLocations repository={repository} />);
+    renderOpenLocations(repository);
 
     expect(screen.getByText('ISA')).toBeVisible();
-    expect(screen.getByRole('button', { name: '아직 배분하지 않음' })).toBeDisabled();
+    expect(screen.getByRole('status', { name: '아직 배분하지 않음' })).toBeVisible();
     expect(repository.create).not.toHaveBeenCalled();
   });
 
@@ -160,17 +180,17 @@ describe('InvestmentLocations', () => {
     const empty = Object.assign(location('해외'), { portfolioStatus: 'empty' as const });
     const repository = createRepository([applied, draft, empty]);
 
-    render(<InvestmentLocations repository={repository} />);
+    renderOpenLocations(repository);
 
     expect(screen.getByText('배분 데이터 있음')).toBeVisible();
     expect(screen.getByText('배분 초안 있음')).toBeVisible();
-    expect(screen.getByRole('button', { name: '아직 배분하지 않음' })).toBeDisabled();
+    expect(screen.getByRole('status', { name: '아직 배분하지 않음' })).toBeVisible();
     expect(screen.queryByRole('button', { name: /배분.*(설정|편집)/ })).not.toBeInTheDocument();
   });
 
   it('adds a location with short name, kind, optional searchable institution, and counter', async () => {
     const repository = createRepository();
-    render(<InvestmentLocations repository={repository} />);
+    renderOpenLocations(repository);
 
     fireEvent.change(screen.getByLabelText('짧은 이름'), { target: { value: '연금저축' } });
     expect(screen.getByText('4/8자')).toBeVisible();
@@ -190,7 +210,7 @@ describe('InvestmentLocations', () => {
 
   it('counts normalized location names without imposing a raw input limit', () => {
     const repository = createRepository();
-    render(<InvestmentLocations repository={repository} />);
+    renderOpenLocations(repository);
 
     const input = screen.getByLabelText('짧은 이름');
     expect(input).not.toHaveAttribute('maxlength');
@@ -210,7 +230,7 @@ describe('InvestmentLocations', () => {
       roles: ['saving'],
     };
     repository.setNextResult({ status: 'duplicate-name', existingLocation: existing });
-    render(<InvestmentLocations repository={repository} />);
+    renderOpenLocations(repository);
     fireEvent.change(screen.getByLabelText('짧은 이름'), { target: { value: ' toss   isa ' } });
 
     fireEvent.click(screen.getByRole('button', { name: '투자 위치 추가' }));
@@ -230,7 +250,7 @@ describe('InvestmentLocations', () => {
       roles: ['saving'],
     };
     repository.setNextResult({ status: 'duplicate-name', existingLocation: existing });
-    render(<InvestmentLocations repository={repository} />);
+    renderOpenLocations(repository);
     fireEvent.change(screen.getByLabelText('짧은 이름'), { target: { value: 'Toss ISA' } });
     fireEvent.click(screen.getByRole('button', { name: '투자 위치 추가' }));
     const link = await screen.findByRole('button', { name: '기존 위치 연결' });
@@ -252,7 +272,7 @@ describe('InvestmentLocations', () => {
       roles: ['saving'],
     };
     repository.setNextResult({ status: 'duplicate-name', existingLocation: existing });
-    render(<InvestmentLocations repository={repository} />);
+    renderOpenLocations(repository);
     fireEvent.change(screen.getByLabelText('짧은 이름'), { target: { value: 'Toss ISA' } });
     fireEvent.click(screen.getByRole('button', { name: '투자 위치 추가' }));
     const link = await screen.findByRole('button', { name: '기존 위치 연결' });
@@ -276,7 +296,7 @@ describe('InvestmentLocations', () => {
   ] as const)('keeps the %s error next to the add form', async (status, message) => {
     const repository = createRepository();
     repository.setNextResult({ status });
-    render(<InvestmentLocations repository={repository} />);
+    renderOpenLocations(repository);
     fireEvent.change(screen.getByLabelText('짧은 이름'), { target: { value: 'Toss ISA' } });
 
     fireEvent.click(screen.getByRole('button', { name: '투자 위치 추가' }));
@@ -287,7 +307,7 @@ describe('InvestmentLocations', () => {
 
   it('renames the shared registry value in place', async () => {
     const repository = createRepository([location()]);
-    render(<InvestmentLocations repository={repository} />);
+    renderOpenLocations(repository);
 
     fireEvent.click(screen.getByRole('button', { name: 'ISA 이름 바꾸기' }));
     const input = screen.getByLabelText('ISA 새 이름');
@@ -303,7 +323,7 @@ describe('InvestmentLocations', () => {
 
   it('returns keyboard focus to the renamed location trigger after a successful save', async () => {
     const repository = createRepository([location()]);
-    render(<InvestmentLocations repository={repository} />);
+    renderOpenLocations(repository);
 
     fireEvent.click(screen.getByRole('button', { name: 'ISA 이름 바꾸기' }));
     fireEvent.change(screen.getByLabelText('ISA 새 이름'), { target: { value: '연금 ISA' } });
@@ -315,7 +335,7 @@ describe('InvestmentLocations', () => {
 
   it('returns keyboard focus to the rename trigger after cancel', async () => {
     const repository = createRepository([location()]);
-    render(<InvestmentLocations repository={repository} />);
+    renderOpenLocations(repository);
 
     fireEvent.click(screen.getByRole('button', { name: 'ISA 이름 바꾸기' }));
     fireEvent.click(screen.getByRole('button', { name: '취소' }));
@@ -325,7 +345,7 @@ describe('InvestmentLocations', () => {
 
   it('counts a normalized rename without imposing a raw input limit', () => {
     const repository = createRepository([location()]);
-    render(<InvestmentLocations repository={repository} />);
+    renderOpenLocations(repository);
 
     fireEvent.click(screen.getByRole('button', { name: 'ISA 이름 바꾸기' }));
     const input = screen.getByLabelText('ISA 새 이름');
@@ -338,7 +358,7 @@ describe('InvestmentLocations', () => {
   it('keeps rename errors and input beside the location form', async () => {
     const repository = createRepository([location()]);
     repository.setNextResult({ status: 'duplicate-name' });
-    render(<InvestmentLocations repository={repository} />);
+    renderOpenLocations(repository);
     fireEvent.click(screen.getByRole('button', { name: 'ISA 이름 바꾸기' }));
     fireEvent.change(screen.getByLabelText('ISA 새 이름'), { target: { value: '중복 ISA' } });
 
@@ -352,7 +372,7 @@ describe('InvestmentLocations', () => {
 
   it('closes an open rename when its subscribed target disappears and focuses the section heading', async () => {
     const repository = createRepository([location()]);
-    render(<InvestmentLocations repository={repository} />);
+    renderOpenLocations(repository);
     fireEvent.click(screen.getByRole('button', { name: 'ISA 이름 바꾸기' }));
     screen.getByLabelText('ISA 새 이름').focus();
 
@@ -366,7 +386,7 @@ describe('InvestmentLocations', () => {
 
   it('reconciles an open rename form with the current subscribed registry name', async () => {
     const repository = createRepository([location()]);
-    render(<InvestmentLocations repository={repository} />);
+    renderOpenLocations(repository);
     fireEvent.click(screen.getByRole('button', { name: 'ISA 이름 바꾸기' }));
     fireEvent.change(screen.getByLabelText('ISA 새 이름'), { target: { value: '내 초안' } });
 
@@ -380,7 +400,7 @@ describe('InvestmentLocations', () => {
     const repository = createRepository([location()]);
     const pending = deferredResult();
     repository.setNextPendingResult(pending.promise);
-    render(<InvestmentLocations repository={repository} />);
+    renderOpenLocations(repository);
     fireEvent.click(screen.getByRole('button', { name: 'ISA 이름 바꾸기' }));
     fireEvent.change(screen.getByLabelText('ISA 새 이름'), { target: { value: '내 변경' } });
     fireEvent.click(screen.getByRole('button', { name: '이름 저장' }));
@@ -401,7 +421,7 @@ describe('InvestmentLocations', () => {
     const repository = createRepository([location()]);
     const pending = deferredResult();
     repository.setNextPendingResult(pending.promise);
-    render(<InvestmentLocations repository={repository} />);
+    renderOpenLocations(repository);
     fireEvent.click(screen.getByRole('button', { name: 'ISA 이름 바꾸기' }));
     fireEvent.change(screen.getByLabelText('ISA 새 이름'), { target: { value: '내 변경' } });
     fireEvent.click(screen.getByRole('button', { name: '이름 저장' }));
@@ -417,7 +437,7 @@ describe('InvestmentLocations', () => {
 
   it('confirms referenced archive disposition with preservation selected by default', async () => {
     const repository = createRepository([location()]);
-    render(<InvestmentLocations repository={repository} />);
+    renderOpenLocations(repository);
     const archiveTrigger = screen.getByRole('button', { name: 'ISA 보관하기' });
 
     fireEvent.click(archiveTrigger);
@@ -438,7 +458,7 @@ describe('InvestmentLocations', () => {
 
   it('moves focus to the location heading after direct unreferenced archive', async () => {
     const repository = createRepository([location()], { archiveReferenced: false });
-    render(<InvestmentLocations repository={repository} />);
+    renderOpenLocations(repository);
     const archiveTrigger = screen.getByRole('button', { name: 'ISA 보관하기' });
     archiveTrigger.focus();
 
@@ -456,7 +476,7 @@ describe('InvestmentLocations', () => {
     const repository = createRepository([location()], { archiveReferenced: false });
     const pending = deferredResult();
     repository.setNextPendingResult(pending.promise);
-    render(<InvestmentLocations repository={repository} />);
+    renderOpenLocations(repository);
     const archiveTrigger = screen.getByRole('button', { name: 'ISA 보관하기' });
     archiveTrigger.focus();
     fireEvent.click(archiveTrigger);
@@ -474,7 +494,7 @@ describe('InvestmentLocations', () => {
 
   it('sends explicit delete disposition and keeps archive failures in the dialog', async () => {
     const repository = createRepository([location()]);
-    render(<InvestmentLocations repository={repository} />);
+    renderOpenLocations(repository);
     fireEvent.click(screen.getByRole('button', { name: 'ISA 보관하기' }));
     const dialog = await screen.findByRole('dialog', { name: 'ISA 위치를 보관할까요?' });
     fireEvent.click(within(dialog).getByRole('radio', { name: 'Portfolio 데이터 삭제' }));
@@ -490,7 +510,7 @@ describe('InvestmentLocations', () => {
 
   it('closes an open archive after subscribed removal without focusing its detached trigger', async () => {
     const repository = createRepository([location()]);
-    render(<InvestmentLocations repository={repository} />);
+    renderOpenLocations(repository);
     fireEvent.click(screen.getByRole('button', { name: 'ISA 보관하기' }));
     expect(await screen.findByRole('dialog', { name: 'ISA 위치를 보관할까요?' })).toBeVisible();
 
@@ -505,7 +525,7 @@ describe('InvestmentLocations', () => {
 
   it('reconciles an open archive snapshot with the current subscribed registry name', async () => {
     const repository = createRepository([location()]);
-    render(<InvestmentLocations repository={repository} />);
+    renderOpenLocations(repository);
     fireEvent.click(screen.getByRole('button', { name: 'ISA 보관하기' }));
     expect(await screen.findByRole('dialog', { name: 'ISA 위치를 보관할까요?' })).toBeVisible();
 
@@ -517,7 +537,7 @@ describe('InvestmentLocations', () => {
 
   it('closes a pending archive after external role removal and local conflict settlement', async () => {
     const repository = createRepository([location()]);
-    render(<InvestmentLocations repository={repository} />);
+    renderOpenLocations(repository);
     fireEvent.click(screen.getByRole('button', { name: 'ISA 보관하기' }));
     const dialog = await screen.findByRole('dialog', { name: 'ISA 위치를 보관할까요?' });
     const pending = deferredResult();
@@ -539,7 +559,7 @@ describe('InvestmentLocations', () => {
 
   it('closes a pending explicit-delete archive after external archive and local conflict settlement', async () => {
     const repository = createRepository([location()]);
-    render(<InvestmentLocations repository={repository} />);
+    renderOpenLocations(repository);
     fireEvent.click(screen.getByRole('button', { name: 'ISA 보관하기' }));
     const dialog = await screen.findByRole('dialog', { name: 'ISA 위치를 보관할까요?' });
     fireEvent.click(within(dialog).getByRole('radio', { name: 'Portfolio 데이터 삭제' }));

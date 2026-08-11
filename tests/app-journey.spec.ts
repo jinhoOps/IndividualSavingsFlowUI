@@ -166,7 +166,7 @@ test('revisits Simulation at the result and refreshes only its Main source', asy
 test('keeps detailed Portfolio and readiness-only Account Map isolated', async ({ page }) => {
   await page.addInitScript((fixture) => localStorage.setItem('isf-workspace-v1', JSON.stringify(fixture)), appliedWorkspace);
   await page.goto('apps/portfolio/');
-  await expect(page.getByRole('heading', { name: '투자 배분 설정' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '매달 200,000원을 어디에 투자할까요?' })).toBeVisible();
   await expect(page.getByRole('link', { name: /투자 배분 \(Portfolio\).*현재 위치/ })).toBeVisible();
   await page.goto('apps/account-map/');
   await expect(page.getByRole('heading', { name: 'Account Map 준비 중' })).toBeVisible();

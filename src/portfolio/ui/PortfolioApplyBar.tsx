@@ -48,16 +48,16 @@ export function PortfolioApplyBar({
       >적용</Button>
       {open ? (
         <PortfolioDialog labelledBy="portfolio-apply-title" onClose={close} returnFocusRef={triggerRef}>
-          <h2 id="portfolio-apply-title">투자 배분 적용</h2>
-          <dl>
-            <div><dt>투자 대상</dt><dd>{draft.items.length}개</dd></div>
-            <div><dt>안정 비중</dt><dd>{formatAllocationPercent(stableShareUnits(draft) / 10_000)}</dd></div>
-            <div><dt>현금 비중</dt><dd>{formatAllocationPercent(allocation.cashPercentage)}</dd></div>
-            {showAmounts ? <div><dt>총 투자금</dt><dd>{formatPortfolioWon(investmentWon)}</dd></div> : null}
+          <h2 id="portfolio-apply-title">투자 배분을 적용할까요?</h2>
+          <dl className="portfolio-confirmation">
+            <div className="portfolio-confirmation__row"><dt>투자 대상</dt><dd>{draft.items.length}개</dd></div>
+            <div className="portfolio-confirmation__row"><dt>안정 비중</dt><dd>{formatAllocationPercent(stableShareUnits(draft) / 10_000)}</dd></div>
+            <div className="portfolio-confirmation__row"><dt>현금 비중</dt><dd>{formatAllocationPercent(allocation.cashPercentage)}</dd></div>
+            {showAmounts ? <div className="portfolio-confirmation__row"><dt>총 투자금</dt><dd>{formatPortfolioWon(investmentWon)}</dd></div> : null}
           </dl>
           {saveError ? <p role="alert">저장하지 못했습니다. 다시 시도해 주세요.</p> : null}
-          <Button type="button" variant="secondary" data-dialog-initial-focus onClick={close}>확인 취소</Button>
-          <Button type="button" variant="primary" disabled={!validateApplicableDraft(draft)} onClick={onApply}>적용</Button>
+          <Button type="button" variant="secondary" data-dialog-initial-focus onClick={close}>계속 수정</Button>
+          <Button type="button" variant="primary" disabled={!validateApplicableDraft(draft)} onClick={onApply}>배분 적용</Button>
         </PortfolioDialog>
       ) : null}
     </Surface>

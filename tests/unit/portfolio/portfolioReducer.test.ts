@@ -35,9 +35,37 @@ const readyWithPlan: Extract<PortfolioBootstrapResult, { kind: 'ready' }> = {
 };
 
 describe('portfolioReducer', () => {
-  it('opens first-run setup but revisits a saved plan result-first', () => {
-    expect(createPortfolioState(readyWithoutPlan).view).toBe('edit');
+  it('opens first-run welcome but revisits a saved plan result-first', () => {
+    expect(createPortfolioState(readyWithoutPlan)).toMatchObject({
+      view: 'setup',
+      setupStep: 'welcome',
+      dirty: false,
+    });
     expect(createPortfolioState(readyWithPlan).view).toBe('result');
+  });
+
+  it('resumes a changed first-time draft at allocation', () => {
+    const changed = portfolioReducer(createPortfolioState(readyWithoutPlan), {
+      type: 'draft-item-added',
+      item: { id: 'index', name: '인덱스', order: 0 },
+      now: 2,
+    });
+
+    const resumed = createPortfolioState({ ...readyWithoutPlan, draft: changed.draft });
+
+    expect(resumed).toMatchObject({ view: 'setup', setupStep: 'allocation', dirty: true });
+  });
+
+  it('moves through setup without changing the draft', () => {
+    const initial = createPortfolioState(readyWithoutPlan);
+    const allocation = portfolioReducer(initial, { type: 'setup-next' });
+    const review = portfolioReducer(allocation, { type: 'setup-next' });
+    const previous = portfolioReducer(review, { type: 'setup-previous' });
+
+    expect(allocation.setupStep).toBe('allocation');
+    expect(review.setupStep).toBe('review');
+    expect(previous.setupStep).toBe('allocation');
+    expect(review.draft).toEqual(initial.draft);
   });
 
   it('resumes a saved draft in editing when it differs from the applied plan', () => {
@@ -83,7 +111,8 @@ describe('portfolioReducer', () => {
     expect(reset.applied).toBeNull();
     expect(reset.draft).toEqual(createCashOnlyDraft(200_000, 3));
     expect(reset.draft.scope).toEqual({ type: 'aggregate' });
-    expect(reset.view).toBe('edit');
+    expect(reset.view).toBe('setup');
+    expect(reset.setupStep).toBe('welcome');
     expect(reset.dirty).toBe(false);
   });
 
@@ -91,6 +120,7 @@ describe('portfolioReducer', () => {
     const opened = portfolioReducer(createPortfolioState(readyWithPlan), { type: 'edit-opened' });
     const switched = portfolioReducer(opened, { type: 'input-mode-changed', mode: 'percentage' });
     expect(switched.view).toBe('edit');
+    expect(switched.setupStep).toBeNull();
     expect(switched.dirty).toBe(false);
   });
 

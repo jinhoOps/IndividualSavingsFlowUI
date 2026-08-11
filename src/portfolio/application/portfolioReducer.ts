@@ -17,8 +17,12 @@ import type {
   PortfolioPlan,
 } from '../domain/model';
 
+export type PortfolioView = 'setup' | 'result' | 'edit';
+export type PortfolioSetupStep = 'welcome' | 'allocation' | 'review';
+
 export interface PortfolioState {
-  view: 'result' | 'edit';
+  view: PortfolioView;
+  setupStep: PortfolioSetupStep | null;
   applied: PortfolioPlan | null;
   draft: PortfolioDraft;
   dirty: boolean;
@@ -28,6 +32,8 @@ export interface PortfolioState {
 
 export type PortfolioAction =
   | { type: 'edit-opened' }
+  | { type: 'setup-next' }
+  | { type: 'setup-previous' }
   | { type: 'draft-name-changed'; id: string; name: string; now: number }
   | { type: 'draft-classification-changed'; id: string; classification: Classification; now: number }
   | { type: 'draft-classification-auto-enabled'; id: string; now: number }
@@ -54,7 +60,8 @@ export function createPortfolioState(result: ReadyBootstrap): PortfolioState {
     ? !isCashOnly(result.draft)
     : !sameAllocation(result.draft, result.plan);
   return {
-    view: result.plan === null || dirty ? 'edit' : 'result',
+    view: result.plan === null ? 'setup' : dirty ? 'edit' : 'result',
+    setupStep: result.plan === null ? dirty ? 'allocation' : 'welcome' : null,
     applied: result.plan,
     draft: result.draft,
     dirty,
@@ -66,7 +73,15 @@ export function createPortfolioState(result: ReadyBootstrap): PortfolioState {
 export function portfolioReducer(state: PortfolioState, action: PortfolioAction): PortfolioState {
   switch (action.type) {
     case 'edit-opened':
-      return { ...state, view: 'edit', fieldError: null };
+      return { ...state, view: 'edit', setupStep: null, fieldError: null };
+    case 'setup-next':
+      return state.view !== 'setup' || state.setupStep === null
+        ? state
+        : { ...state, setupStep: state.setupStep === 'welcome' ? 'allocation' : 'review' };
+    case 'setup-previous':
+      return state.view !== 'setup' || state.setupStep === null
+        ? state
+        : { ...state, setupStep: state.setupStep === 'review' ? 'allocation' : 'welcome' };
     case 'input-mode-changed':
       return { ...state, draft: { ...state.draft, inputMode: action.mode }, fieldError: null };
     case 'draft-name-changed':
@@ -120,6 +135,7 @@ export function portfolioReducer(state: PortfolioState, action: PortfolioAction)
       return {
         ...state,
         view: 'result',
+        setupStep: null,
         draft: draftFromPlan(state.applied),
         dirty: false,
         fieldError: null,
@@ -135,6 +151,7 @@ export function portfolioReducer(state: PortfolioState, action: PortfolioAction)
       return {
         ...state,
         view: 'result',
+        setupStep: null,
         applied: action.plan,
         draft: draftFromPlan(action.plan),
         dirty: false,
@@ -149,7 +166,8 @@ export function portfolioReducer(state: PortfolioState, action: PortfolioAction)
       const draft = createCashOnlyDraft(state.draft.syncedInvestmentWon, action.now);
       return {
         ...state,
-        view: 'edit',
+        view: 'setup',
+        setupStep: 'welcome',
         applied: null,
         draft,
         dirty: false,

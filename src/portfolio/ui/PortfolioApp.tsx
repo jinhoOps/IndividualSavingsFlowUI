@@ -33,8 +33,10 @@ import {
 import { AllocationEditor } from './AllocationEditor';
 import { InvestmentLocations } from './InvestmentLocations';
 import { PortfolioApplyBar } from './PortfolioApplyBar';
+import { PortfolioEditSurface } from './PortfolioEditSurface';
 import { PortfolioManagementMenu } from './PortfolioManagementMenu';
 import { PortfolioSummary } from './PortfolioSummary';
+import { PortfolioSetupFlow } from './PortfolioSetupFlow';
 
 export function PortfolioApp({
   mainSourceRepository: providedMainRepository,
@@ -75,6 +77,7 @@ export function PortfolioApp({
   const [preferences, setPreferences] = useState<PortfolioViewPreferences>(
     () => preferencesRepository.load(),
   );
+  const editTriggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (initial.kind !== 'ready') return;
@@ -216,21 +219,59 @@ export function PortfolioApp({
           <RecoveryPanel message="Portfolio를 시작할 수 없습니다." />
         ) : (
           <div className="portfolio-content">
-          {state.view === 'result' && state.applied !== null ? (
+          {state.view === 'setup' && state.setupStep !== null ? (
+            <PortfolioSetupFlow
+              step={state.setupStep}
+              draft={state.draft}
+              investmentWon={state.draft.syncedInvestmentWon}
+              saveError={state.saveState === 'error'}
+              fieldError={state.fieldError}
+              onAction={dispatchDraft}
+              onPrevious={() => dispatchState({ type: 'setup-previous' })}
+              onNext={() => dispatchState({ type: 'setup-next' })}
+              onApply={apply}
+              now={now}
+            />
+          ) : state.applied !== null ? (
             <>
-              {state.saveState === 'error' || state.saveState === 'cleanup-error' ? (
-                <p role="alert" className="portfolio-summary-error">
-                  {state.saveState === 'error'
-                    ? '저장하지 못했습니다. 다시 시도해 주세요.'
-                    : '배분은 적용했지만 편집 초안을 정리하지 못했습니다.'}
-                </p>
+              <div
+                data-testid="portfolio-result-controls"
+                inert={state.view === 'edit' ? true : undefined}
+                aria-hidden={state.view === 'edit' ? 'true' : undefined}
+              >
+                {state.saveState === 'error' || state.saveState === 'cleanup-error' ? (
+                  <p role="alert" className="portfolio-summary-error">
+                    {state.saveState === 'error'
+                      ? '저장하지 못했습니다. 다시 시도해 주세요.'
+                      : '배분은 적용했지만 편집 초안을 정리하지 못했습니다.'}
+                  </p>
+                ) : null}
+                <PortfolioSummary
+                  investmentWon={state.applied.syncedInvestmentWon}
+                  allocation={materializeAllocation(state.applied, state.applied.syncedInvestmentWon)}
+                  preferences={preferences}
+                  onEdit={(event) => {
+                    editTriggerRef.current = event.currentTarget;
+                    dispatchState({ type: 'edit-opened' });
+                  }}
+                />
+                <InvestmentLocations repository={locationRepository} />
+              </div>
+              {state.view === 'edit' ? (
+                <PortfolioEditSurface
+                  draft={state.draft}
+                  investmentWon={state.draft.syncedInvestmentWon}
+                  dirty={state.dirty}
+                  saveError={state.saveState === 'error'}
+                  fieldError={state.fieldError}
+                  returnFocusRef={editTriggerRef}
+                  onAction={dispatchDraft}
+                  onCancel={() => dispatchDraft({ type: 'cancel-edit' })}
+                  onApply={apply}
+                  showAmounts={preferences.showAmounts}
+                  now={now}
+                />
               ) : null}
-              <PortfolioSummary
-                investmentWon={state.applied.syncedInvestmentWon}
-                allocation={materializeAllocation(state.applied, state.applied.syncedInvestmentWon)}
-                preferences={preferences}
-                onEdit={() => dispatchDraft({ type: 'edit-opened' })}
-              />
             </>
           ) : (
             <>
@@ -252,7 +293,6 @@ export function PortfolioApp({
               />
             </>
           )}
-          <InvestmentLocations repository={locationRepository} />
           </div>
         )}
       </main>

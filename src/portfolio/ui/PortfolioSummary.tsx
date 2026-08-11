@@ -1,4 +1,4 @@
-import { useMemo, type CSSProperties } from 'react';
+import { useMemo, type CSSProperties, type MouseEvent } from 'react';
 import { Surface } from '../../components/common/Surface';
 import { largestResultItem, orderedResultItems } from '../domain/allocation';
 import { stableShareUnits } from '../domain/classification';
@@ -23,7 +23,7 @@ export function PortfolioSummary({
   investmentWon: number;
   allocation: MaterializedAllocation;
   preferences: PortfolioViewPreferences;
-  onEdit?: () => void;
+  onEdit?: (event: MouseEvent<HTMLButtonElement>) => void;
 }) {
   const cashShareUnits = Math.round(allocation.cashPercentage * 10_000);
   const items = useMemo<DisplayResultItem[]>(() => orderedResultItems(
