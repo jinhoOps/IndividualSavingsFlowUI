@@ -25,6 +25,12 @@ export function AllocationEditor({
 }) {
   const allocation = materializeAllocation(draft, investmentWon);
   const [rawValues, setRawValues] = useState<Record<string, string>>({});
+  const [cashExpanded, setCashExpanded] = useState(false);
+  const [expandedItemId, setExpandedItemId] = useState<string | null>(() => (
+    presentation === 'setup'
+      ? draft.items.find((item) => normalizePortfolioName(item.name).length === 0)?.id ?? null
+      : null
+  ));
   const isAtLimit = draft.items.length >= 10;
   const normalizedNameCounts = draft.items.reduce<Map<string, number>>((counts, item) => {
     const normalized = normalizePortfolioName(item.name);
@@ -76,7 +82,24 @@ export function AllocationEditor({
           const nameErrorId = `portfolio-name-error-${index}`;
           const itemName = item.name || `투자 대상 ${index + 1}`;
           return (
-            <div className="portfolio-editor__row" key={item.id}>
+            <details
+              className="portfolio-editor__row"
+              key={item.id}
+              open={presentation !== 'setup' || expandedItemId === item.id}
+            >
+              {presentation === 'setup' ? (
+                <summary
+                  className="portfolio-editor__row-summary"
+                  aria-label={`${itemName} 편집, ${formatPortfolioWon(result.amountWon)}, ${formatAllocationPercent(result.percentage)}, ${item.classification === 'growth' ? '성장' : '안정'}`}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    setExpandedItemId((current) => current === item.id ? null : item.id);
+                  }}
+                >
+                  <span><strong>{itemName}</strong><small>{item.classification === 'growth' ? '성장' : '안정'} · {item.classificationOrigin === 'automatic' ? '자동 추천' : '직접 선택'}</small></span>
+                  <span><strong>{formatPortfolioWon(result.amountWon)}</strong><small>{formatAllocationPercent(result.percentage)}</small></span>
+                </summary>
+              ) : null}
               <label>
                 <span>투자 대상 이름 {index + 1}</span>
                 <input
@@ -103,7 +126,12 @@ export function AllocationEditor({
                   inputMode={draft.inputMode === 'amount' ? 'numeric' : 'decimal'}
                   value={rawValues[item.id] ?? editableValue}
                   onChange={(event) => setRawValues((current) => ({ ...current, [item.id]: event.target.value }))}
-                  onBlur={() => commitItem(item.id, editableValue)}
+                  onBlur={() => {
+                    commitItem(item.id, editableValue);
+                    if (presentation === 'setup' && normalizePortfolioName(item.name).length > 0) {
+                      setExpandedItemId(null);
+                    }
+                  }}
                 />
               </label>
               <div className="portfolio-editor__computed" aria-label={`${item.name || `투자 대상 ${index + 1}`} 계산 결과`}>
@@ -113,7 +141,7 @@ export function AllocationEditor({
               <Button type="button" variant="quiet" onClick={() => onAction({ type: 'draft-item-removed', id: item.id, now: now() })}>
                 {item.name || `투자 대상 ${index + 1}`} 삭제
               </Button>
-            </div>
+            </details>
           );
         })}
       </div>
@@ -122,18 +150,38 @@ export function AllocationEditor({
         type="button"
         variant="secondary"
         disabled={isAtLimit}
-        onClick={() => onAction({
-          type: 'draft-item-added',
-          item: { id: createId(), name: '', order: draft.items.length },
-          now: now(),
-        })}
+        onClick={() => {
+          const id = createId();
+          setExpandedItemId(id);
+          onAction({
+            type: 'draft-item-added',
+            item: { id, name: '', order: draft.items.length },
+            now: now(),
+          });
+        }}
       >투자 대상 추가</Button>
       {isAtLimit ? <p role="status">투자 대상은 최대 10개까지 추가할 수 있습니다</p> : null}
 
-      <section className="portfolio-editor__cash" aria-labelledby="portfolio-cash-title">
-        <h2 id="portfolio-cash-title">현금</h2>
-        <p>분류 안정</p>
-        <label>
+      <section
+        className="portfolio-editor__cash"
+        aria-label={presentation === 'setup' ? '현금' : undefined}
+        aria-labelledby={presentation === 'setup' ? undefined : 'portfolio-cash-title'}
+      >
+        {presentation === 'setup' ? (
+          <button
+            type="button"
+            className="portfolio-editor__cash-summary"
+            aria-expanded={cashExpanded}
+            onClick={() => setCashExpanded((current) => !current)}
+          >
+            <span><strong>현금</strong><small>안정 · {draft.cashMode === 'automatic' ? '남은 금액 자동' : '직접 배분'}</small></span>
+            <span><strong>{formatPortfolioWon(allocation.cashAmountWon)}</strong><small>{formatAllocationPercent(allocation.cashPercentage)}</small></span>
+          </button>
+        ) : (
+          <><h2 id="portfolio-cash-title">현금</h2><p>분류 안정</p></>
+        )}
+        {presentation !== 'setup' || cashExpanded ? <>
+          <label>
           <span>{draft.inputMode === 'amount' ? '현금 금액' : '현금 비율'}</span>
           <input
             aria-label={draft.inputMode === 'amount' ? '현금 금액' : '현금 비율'}
@@ -146,18 +194,19 @@ export function AllocationEditor({
               onAction({ type: 'draft-cash-changed', amountWon, now: now() });
             }}
           />
-        </label>
-        <span>{formatPortfolioWon(allocation.cashAmountWon)}</span>
-        <span>{formatAllocationPercent(allocation.cashPercentage)}</span>
-        {draft.cashMode === 'manual' ? (
-          <div>
-            <p role="status">현금 직접 배분 중</p>
-            <p>남은 투자금을 현금으로 자동 배분합니다</p>
-            <Button type="button" variant="quiet" onClick={() => onAction({ type: 'automatic-cash-enabled', now: now() })}>
-              현금 자동 배분 켜기
-            </Button>
-          </div>
-        ) : <p role="status">남은 투자금 자동 배분</p>}
+          </label>
+          <span>{formatPortfolioWon(allocation.cashAmountWon)}</span>
+          <span>{formatAllocationPercent(allocation.cashPercentage)}</span>
+          {draft.cashMode === 'manual' ? (
+            <div>
+              <p role="status">현금 직접 배분 중</p>
+              <p>남은 투자금을 현금으로 자동 배분합니다</p>
+              <Button type="button" variant="quiet" onClick={() => onAction({ type: 'automatic-cash-enabled', now: now() })}>
+                현금 자동 배분 켜기
+              </Button>
+            </div>
+          ) : <p role="status">남은 투자금 자동 배분</p>}
+        </> : null}
       </section>
       {fieldError ? <p role="alert">{errorMessage(fieldError)}</p> : null}
     </Surface>

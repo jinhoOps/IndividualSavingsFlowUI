@@ -32,6 +32,25 @@ describe('AllocationEditor', () => {
       .toHaveClass('ui-button', 'ui-button--secondary');
   });
 
+  it('keeps completed setup targets compact until the user opens one for editing', () => {
+    render(<AllocationEditor
+      draft={draft}
+      investmentWon={200_000}
+      onAction={vi.fn()}
+      now={() => 2}
+      presentation="setup"
+    />);
+
+    const editTarget = screen.getByText('미국 인덱스').closest('summary')!;
+    expect(editTarget).toHaveAccessibleName('미국 인덱스 편집, 120,000원, 60%, 성장');
+    expect(screen.getByLabelText('투자 대상 이름 1')).not.toBeVisible();
+
+    fireEvent.click(editTarget);
+
+    expect(screen.getByLabelText('투자 대상 이름 1')).toBeVisible();
+    expect(screen.getByRole('group', { name: '미국 인덱스 분류' })).toBeVisible();
+  });
+
   it('explains manual cash and offers explicit automatic action', () => {
     render(<AllocationEditor
       draft={{ ...draft, cashMode: 'manual' }}

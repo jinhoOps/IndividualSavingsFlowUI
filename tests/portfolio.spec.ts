@@ -276,8 +276,9 @@ test('explains duplicate names and blocks confirmation until corrected', async (
   await enterFirstSetupAllocation(page);
   await page.getByRole('button', { name: '투자 대상 추가' }).click();
   await page.getByRole('button', { name: '투자 대상 추가' }).click();
-  await page.getByLabel('투자 대상 이름 1').fill('US INDEX');
   await page.getByLabel('투자 대상 이름 2').fill(' us   index ');
+  await page.locator('summary[aria-label^="투자 대상 1 편집"]').click();
+  await page.getByLabel('투자 대상 이름 1').fill('US INDEX');
 
   await expect(page.getByLabel('투자 대상 이름 1'))
     .toHaveAccessibleDescription('같은 이름의 투자 대상이 이미 있습니다.');
