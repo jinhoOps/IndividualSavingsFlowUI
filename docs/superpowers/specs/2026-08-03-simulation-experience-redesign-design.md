@@ -1,5 +1,7 @@
 # Simulation 결과 중심 경험 재설계
 
+> **부분 대체:** 상시 `저장됨` indicator 계약은 [Anime.js 공통 모션 시스템 설계](2026-08-12-animejs-motion-system-design.md)가 대체한다. 저장 실패·복구와 나머지 Simulation 계약은 유지한다.
+
 ## 문서 상태
 
 - 승인일: 2026-08-03

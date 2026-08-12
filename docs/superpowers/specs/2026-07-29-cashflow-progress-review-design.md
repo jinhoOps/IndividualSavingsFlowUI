@@ -1,5 +1,7 @@
 # Cashflow Progress and Review Design
 
+> **부분 대체:** 적자 segment 재정규화와 container 내부 pressure overflow 계약은 [Anime.js 공통 모션 시스템 설계](2026-08-12-animejs-motion-system-design.md)가 대체한다. 표, tooltip, focus와 나머지 interaction 계약은 유지한다.
+
 ## Goal
 
 Main 빠른 설정의 자금 계획 표시를 두 역할로 분리한다.
