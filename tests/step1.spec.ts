@@ -3486,65 +3486,6 @@ test.describe('Main liquid overflow presentation', () => {
     await expectOldMainV2SentinelUntouched(page);
   });
 
-  // Superseded by the 2026-08-12 actual-ratio overflow contract; retained as history only.
-  test.skip('contains a maximum liquid breakout at mobile and tablet widths', async ({ page }) => {
-    for (const viewport of [
-      { width: 390, height: 844 },
-      { width: 768, height: 1024 },
-    ]) {
-      await page.setViewportSize(viewport);
-      await page.reload();
-      await page.getByText('자세히 보기', { exact: true }).click();
-      const extension = page.locator('.flow-overflow-extension').first();
-      await expect(extension).toBeVisible();
-
-      const geometry = await extension.evaluate((liquid) => {
-        const bar = liquid.parentElement!.getBoundingClientRect();
-        const overflow = liquid.getBoundingClientRect();
-        const bridge = liquid.parentElement!.querySelector('.flow-overflow-bridge')!.getBoundingClientRect();
-        return {
-          ratio: overflow.width / bar.width,
-          bridgeStartRatio: (bridge.left - bar.left) / bar.width,
-          bridgeRatio: bridge.width / bar.width,
-          seamGap: overflow.left - bridge.right,
-          totalRatio: (overflow.right - bridge.left) / bar.width,
-          documentOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
-          insideViewport: overflow.right <= document.documentElement.clientWidth,
-          sameHeight: Math.abs(overflow.height - 6) < 1,
-        };
-      });
-      expect(geometry.ratio).toBeCloseTo(0.1, 2);
-      expect(geometry.bridgeStartRatio).toBeCloseTo(0.98, 2);
-      expect(geometry.bridgeRatio).toBeCloseTo(0.02, 2);
-      expect(geometry.seamGap).toBeLessThanOrEqual(0);
-      expect(geometry.totalRatio).toBeCloseTo(0.12, 2);
-      expect(geometry.documentOverflow).toBeLessThanOrEqual(4);
-      expect(geometry.insideViewport).toBe(true);
-      expect(geometry.sameHeight).toBe(true);
-
-      await page.getByRole('button', { name: '관리 메뉴' }).click();
-      await page.getByRole('menuitem', { name: '처음부터 다시' }).click();
-      await page.getByRole('button', { name: '다시 시작' }).click();
-      await page.getByRole('button', { name: '다음' }).click();
-      await page.getByRole('button', { name: '다음' }).click();
-
-      const summary = page.locator('.flow-context-summary');
-      await expect(summary).toHaveAttribute('data-overflow', 'true');
-      const summaryGeometry = await summary.evaluate((element) => {
-        const extension = element.querySelector('.flow-overflow-extension')!.getBoundingClientRect();
-        return {
-          marginInlineEnd: Number.parseFloat(getComputedStyle(element).marginInlineEnd),
-          documentOverflow:
-            document.documentElement.scrollWidth - document.documentElement.clientWidth,
-          extensionInsideViewport: extension.right <= document.documentElement.clientWidth,
-        };
-      });
-      expect(summaryGeometry.marginInlineEnd).toBeGreaterThan(0);
-      expect(summaryGeometry.documentOverflow).toBeLessThanOrEqual(4);
-      expect(summaryGeometry.extensionInsideViewport).toBe(true);
-    }
-  });
-
   test('keeps both original bars symmetric without an overflow gutter at 100%', async ({ page }) => {
     const readGeometry = (selector: string) => page.locator(selector).evaluate((bar, currentSelector) => {
       const barRect = bar.getBoundingClientRect();

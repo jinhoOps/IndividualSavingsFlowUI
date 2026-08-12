@@ -900,7 +900,11 @@ test('reconciles external location changes and contains stale controls at requir
     for (const button of await dialog.getByRole('button').all()) {
       const box = await button.boundingBox();
       expect(box).not.toBeNull();
-      expect(box!.height).toBeGreaterThanOrEqual(44);
+      expect(await button.evaluate((element) => {
+        const style = getComputedStyle(element);
+        return { minBlockSize: style.minBlockSize, minHeight: style.minHeight };
+      })).toEqual({ minBlockSize: '44px', minHeight: '44px' });
+      expect(box!.height).toBeGreaterThanOrEqual(43.99);
     }
     expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
 

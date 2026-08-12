@@ -79,11 +79,62 @@ const VIEWPORTS = [
   { width: 1280, height: 900, label: 'desktop' },
 ] as const;
 
+const MAIN_DONUT_INITIAL = {
+  activeAnimations: 0,
+  semanticName: '소비 56.3%, 저축 9.4%, 투자 6.3%, 여윳돈 28.1%',
+  centerSemantic: '15.6%',
+  centerVisual: '15.6%',
+  segments: [
+    { id: 'consumption', dasharray: '56.25 43.75', dashoffset: '0' },
+    { id: 'saving', dasharray: '9.375 90.625', dashoffset: '-56.25' },
+    { id: 'investment', dasharray: '6.25 93.75', dashoffset: '-65.625' },
+    { id: 'remaining', dasharray: '28.125 71.875', dashoffset: '-71.875' },
+  ],
+};
+
+const MAIN_DONUT_AFTER_EDIT = {
+  activeAnimations: 0,
+  semanticName: '소비 59.4%, 저축 9.4%, 투자 6.3%, 여윳돈 25.0%',
+  centerSemantic: '15.6%',
+  centerVisual: '15.6%',
+  segments: [
+    { id: 'consumption', dasharray: '59.375 40.625', dashoffset: '0' },
+    { id: 'saving', dasharray: '9.375 90.625', dashoffset: '-59.375' },
+    { id: 'investment', dasharray: '6.25 93.75', dashoffset: '-68.75' },
+    { id: 'remaining', dasharray: '25 75', dashoffset: '-75' },
+  ],
+};
+
+const SIMULATION_24_SUMMARY = '명목 기준 24년, 현재 계획 3억 2,539만 원, 전부 저축 1억 9,993만 원, 차이 1억 2,546만 원';
+const SIMULATION_25_SUMMARY = '명목 기준 25년, 현재 계획 3억 5,315만 원, 전부 저축 2억 1,099만 원, 차이 1억 4,216만 원';
+
+const PORTFOLIO_INITIAL_ROWS = [
+  { id: 'global-index', name: '글로벌 인덱스', accessible: '50%' },
+  { id: 'bond', name: '채권', accessible: '25%' },
+  { id: 'gold', name: '금', accessible: '15%' },
+  { id: 'cash', name: '현금', accessible: '10%' },
+] as const;
+
+const PORTFOLIO_UPDATED_ROWS = [
+  { id: 'global-index', name: '글로벌 인덱스', accessible: '50%' },
+  { id: 'bond', name: '채권', accessible: '25%' },
+  { id: 'gold', name: '금', accessible: '20%' },
+  { id: 'cash', name: '현금', accessible: '5%' },
+] as const;
+
+const PORTFOLIO_INPUT_ROWS = [
+  { id: 'gold', name: '금', accessible: '20%' },
+  { id: 'global-index', name: '글로벌 인덱스', accessible: '50%' },
+  { id: 'bond', name: '채권', accessible: '25%' },
+  { id: 'cash', name: '현금', accessible: '5%' },
+] as const;
+
 for (const viewport of VIEWPORTS) {
-  test(`${viewport.label} captures final cross-app motion states without losing semantics or focus`, async ({ page }, testInfo) => {
+  test(`${viewport.label} captures cross-app motion boundaries without losing semantics or focus`, async ({ page }, testInfo) => {
     test.skip(testInfo.project.name === 'pwa-chromium', 'The preview project runs only the offline revisit gate.');
     await page.setViewportSize(viewport);
     await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await installReadinessFirstFrameProbe(page);
 
     await captureMainReview(page, testInfo.outputPath.bind(testInfo), viewport.width, MAIN, 'normal');
     await captureMainReview(page, testInfo.outputPath.bind(testInfo), viewport.width, {
@@ -101,62 +152,86 @@ for (const viewport of VIEWPORTS) {
 
     await openWithWorkspace(page, 'apps/main/', WORKSPACE);
     const mainEditTrigger = page.getByRole('button', { name: '월 소비 편집' });
+    await expectFinalMainDonut(page.locator('.cashflow-donut'), MAIN_DONUT_INITIAL);
+    await screenshot(page, testInfo.outputPath.bind(testInfo), `main-${viewport.width}-edit-before.png`);
     await mainEditTrigger.click();
     const livingInput = page.getByLabel('월평균 생활비');
     await livingInput.focus();
     await expect(livingInput).toBeFocused();
     await livingInput.fill('1100000');
     await page.getByRole('button', { name: '적용' }).click();
+    const mainTransitionStart = await readMainDonut(page.locator('.cashflow-donut'));
+    expect(mainTransitionStart.semanticName).toBe(MAIN_DONUT_AFTER_EDIT.semanticName);
+    expect(mainTransitionStart.centerSemantic).toBe(MAIN_DONUT_AFTER_EDIT.centerSemantic);
+    expect(mainTransitionStart.segments).not.toEqual(MAIN_DONUT_AFTER_EDIT.segments);
     await expect.poll(() => page.evaluate(() => (
       JSON.parse(localStorage.getItem('isf-workspace-v1')!).main.applied.monthlyLivingWon
     ))).toBe(1_100_000);
+    await expectFinalMainDonut(page.locator('.cashflow-donut'), MAIN_DONUT_AFTER_EDIT);
     await page.getByRole('button', { name: '편집기 닫기' }).click();
     await expect(mainEditTrigger).toBeFocused();
     await expect(mainEditTrigger).toContainText('190만 원');
     await expect(page.getByRole('button', { name: '남는 돈 편집' })).toContainText('80만 원');
     await expect(page.getByRole('status', { name: '저장됨' })).toHaveCount(0);
     await expectNoDocumentOverflow(page);
-    await screenshot(page, testInfo.outputPath.bind(testInfo), `main-${viewport.width}-edit-applied.png`);
+    await screenshot(page, testInfo.outputPath.bind(testInfo), `main-${viewport.width}-edit-after.png`);
 
     await openWithWorkspace(page, 'apps/simulation/', WORKSPACE);
     const graph = page.locator('.growth-chart');
     await expect(page.getByRole('heading', { name: /이대로 20년 유지하면/ })).toBeVisible();
-    const initialSemanticPath = await graph.locator('.growth-chart__semantic-path').nth(1).getAttribute('d');
+    await expectFinalSimulationPaths(graph);
+    await screenshot(page, testInfo.outputPath.bind(testInfo), `simulation-${viewport.width}-before.png`);
     const years = page.getByRole('spinbutton', { name: '기간 숫자' });
     await years.focus();
     await years.fill('25');
+    const simulationTransitionStart = await readSimulationState(graph);
+    expect(simulationTransitionStart.summary).toBe(SIMULATION_25_SUMMARY);
+    expect(simulationTransitionStart.visual).not.toEqual(simulationTransitionStart.semantic);
     await expect(years).toBeFocused();
     await expect(page.getByRole('heading', { name: /이대로 25년 유지하면/ })).toBeVisible();
-    await expect(graph.locator('.sr-only')).toContainText('명목 기준 25년');
-    expect(await graph.locator('.growth-chart__semantic-path').nth(1).getAttribute('d'))
-      .not.toBe(initialSemanticPath);
     await expectFinalSimulationPaths(graph);
     await expectNoDocumentOverflow(page);
-    await screenshot(page, testInfo.outputPath.bind(testInfo), `simulation-${viewport.width}-projection-changed.png`);
+    await screenshot(page, testInfo.outputPath.bind(testInfo), `simulation-${viewport.width}-after.png`);
 
     await openWithWorkspace(page, 'apps/portfolio/', WORKSPACE, true);
     const allocationRows = page.locator('.portfolio-summary').getByRole('listitem');
-    await expect(allocationRows).toHaveCount(4);
-    await expect(allocationRows.nth(0)).toContainText('글로벌 인덱스');
-    await expect(allocationRows.nth(0).getByLabel('50%')).toBeVisible();
-    await expect(allocationRows.nth(1).getByLabel('25%')).toBeVisible();
+    await expectFinalPortfolioRows(allocationRows, PORTFOLIO_INITIAL_ROWS);
     await expectNoDocumentOverflow(page);
-    await screenshot(page, testInfo.outputPath.bind(testInfo), `portfolio-${viewport.width}-allocation.png`);
+    await screenshot(page, testInfo.outputPath.bind(testInfo), `portfolio-${viewport.width}-allocation-before.png`);
+
+    await page.getByRole('button', { name: '배분 수정' }).click();
+    const goldAmount = page.getByLabel('금 금액', { exact: true });
+    await goldAmount.fill('40000');
+    await goldAmount.blur();
+    await page.getByRole('button', { name: '적용' }).click();
+    await installPortfolioBoundaryProbe(page, PORTFOLIO_UPDATED_ROWS);
+    await page.getByRole('dialog', { name: '투자 배분을 적용할까요?' })
+      .getByRole('button', { name: '배분 적용' }).click();
+    const allocationTransitionStart = await readProbedPortfolioBoundary(page);
+    expectPortfolioSemantics(allocationTransitionStart.rows, PORTFOLIO_UPDATED_ROWS);
+    expect(allocationTransitionStart.rows.some((row) => row.visual !== row.accessible)).toBe(true);
+    await expectFinalPortfolioRows(allocationRows, PORTFOLIO_UPDATED_ROWS);
+    await screenshot(page, testInfo.outputPath.bind(testInfo), `portfolio-${viewport.width}-allocation-after.png`);
+    await screenshot(page, testInfo.outputPath.bind(testInfo), `portfolio-${viewport.width}-sort-before.png`);
 
     await page.getByRole('button', { name: '관리 메뉴' }).click();
     const inputOrder = page.getByRole('radio', { name: '입력순' });
     await inputOrder.focus();
+    await installPortfolioBoundaryProbe(page, PORTFOLIO_INPUT_ROWS);
     await inputOrder.check();
+    const sortTransitionStart = await readProbedPortfolioBoundary(page);
+    expectPortfolioSemantics(sortTransitionStart.rows, PORTFOLIO_INPUT_ROWS);
+    expect(sortTransitionStart.rows.some((row) => !row.transformIdentity)).toBe(true);
     await expect(inputOrder).toBeFocused();
-    await expect.poll(() => allocationRows.evaluateAll((rows) => (
-      rows.map((row) => row.querySelector('h2')?.textContent?.trim())
-    ))).toEqual(['금', '글로벌 인덱스', '채권', '현금']);
-    await expectFinalPortfolioRows(allocationRows);
+    await expectFinalPortfolioRows(allocationRows, PORTFOLIO_INPUT_ROWS);
     await expectNoDocumentOverflow(page);
-    await screenshot(page, testInfo.outputPath.bind(testInfo), `portfolio-${viewport.width}-sorted.png`);
+    await screenshot(page, testInfo.outputPath.bind(testInfo), `portfolio-${viewport.width}-sort-after.png`);
 
     await openWithWorkspace(page, 'apps/account-map/', WORKSPACE);
     const readiness = page.locator('[data-readiness-motion]');
+    const readinessFirstFrame = await readProbedReadinessFirstFrame(page);
+    expect(readinessFirstFrame.heading).toBe('Account Map 준비 중');
+    expect(readinessFirstFrame.opacity < 1 || readinessFirstFrame.y !== 0).toBe(true);
     await expect(page.getByRole('heading', { name: 'Account Map 준비 중' })).toBeVisible();
     await page.getByRole('link', { name: 'Main으로 이동' }).focus();
     await expect(page.getByRole('link', { name: 'Main으로 이동' })).toBeFocused();
@@ -166,7 +241,7 @@ for (const viewport of VIEWPORTS) {
 
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await captureReducedMotionFinals(page, viewport.width);
-    await screenshot(page, testInfo.outputPath.bind(testInfo), `cross-app-${viewport.width}-reduced-motion.png`);
+    await screenshot(page, testInfo.outputPath.bind(testInfo), `account-map-${viewport.width}-reduced-motion.png`);
   });
 }
 
@@ -204,11 +279,17 @@ test('PWA offline revisit keeps all app routes and final motion state available'
       await expect(page.getByRole('heading', { name: route.heading })).toBeVisible();
       await expect(page.locator(route.motion)).toBeVisible();
       await expectNoDocumentOverflow(page);
+      if (route.path === 'apps/main/') {
+        expect(await readMainDonut(page.locator('.cashflow-donut'))).toEqual(MAIN_DONUT_INITIAL);
+      }
       if (route.path === 'apps/simulation/') {
         await expectFinalSimulationPaths(page.locator('.growth-chart'));
       }
       if (route.path === 'apps/portfolio/') {
-        await expectFinalPortfolioRows(page.locator('.portfolio-summary').getByRole('listitem'));
+        await expectFinalPortfolioRows(
+          page.locator('.portfolio-summary').getByRole('listitem'),
+          PORTFOLIO_INITIAL_ROWS,
+        );
       }
       if (route.path === 'apps/account-map/') {
         await expectFinalTransform(page.locator('[data-readiness-motion]'));
@@ -282,27 +363,52 @@ async function captureReducedMotionFinals(page: Page, width: number): Promise<vo
     ).transform).a,
     opacities: [...root.querySelectorAll<HTMLElement>('[data-assembly-content]')]
       .map((element) => Number(getComputedStyle(element).opacity)),
+    activeAnimations: root.getAnimations({ subtree: true })
+      .filter((animation) => (
+        (animation.playState === 'running' || animation.playState === 'pending')
+        && Number(animation.effect?.getComputedTiming().duration ?? 0) > 1
+      ))
+      .length,
   }));
   expect(mainState.scale).toBeCloseTo(1, 3);
   expect(mainState.opacities).toEqual(mainState.opacities.map(() => 1));
+  expect(mainState.activeAnimations).toBe(0);
 
   await openWithWorkspace(page, 'apps/simulation/', WORKSPACE);
   const years = page.getByRole('spinbutton', { name: '기간 숫자' });
   await years.fill('24');
-  await expect(page.getByRole('heading', { name: /이대로 24년 유지하면/ })).toBeVisible();
-  await expectFinalSimulationPaths(page.locator('.growth-chart'));
+  const reducedSimulationFirstRead = await readSimulationState(page.locator('.growth-chart'));
+  expect(reducedSimulationFirstRead.summary).toBe(SIMULATION_24_SUMMARY);
+  expect(reducedSimulationFirstRead.visual).toEqual(reducedSimulationFirstRead.semantic);
+  expect(reducedSimulationFirstRead.revealWidth).toBe('620');
+  expect(reducedSimulationFirstRead.activeAnimations).toBe(0);
 
   await openWithWorkspace(page, 'apps/portfolio/', WORKSPACE, true);
   await page.getByRole('button', { name: '관리 메뉴' }).click();
+  const reducedPortfolioRows = [
+    { id: 'gold', name: '금', accessible: '15%' },
+    { id: 'global-index', name: '글로벌 인덱스', accessible: '50%' },
+    { id: 'bond', name: '채권', accessible: '25%' },
+    { id: 'cash', name: '현금', accessible: '10%' },
+  ] as const;
+  await installPortfolioBoundaryProbe(page, reducedPortfolioRows);
   await page.getByRole('radio', { name: '입력순' }).check();
-  const rows = page.locator('.portfolio-summary').getByRole('listitem');
-  await expect.poll(() => rows.evaluateAll((elements) => (
-    elements.map((element) => getComputedStyle(element).transform)
-  ))).toEqual(['none', 'none', 'none', 'none']);
-  await expectFinalPortfolioRows(rows);
+  const reducedPortfolioFirstRead = await readProbedPortfolioBoundary(page);
+  expectPortfolioSemantics(reducedPortfolioFirstRead.rows, reducedPortfolioRows);
+  expect(reducedPortfolioFirstRead.rows.every((row) => (
+    row.visual === row.accessible && row.transformIdentity && row.opacity === 1
+  ))).toBe(true);
+  expect(reducedPortfolioFirstRead.activeAnimations).toBe(0);
 
   await openWithWorkspace(page, 'apps/account-map/', WORKSPACE);
-  await expectFinalTransform(page.locator('[data-readiness-motion]'));
+  const reducedReadinessFirstRead = await readProbedReadinessFirstFrame(page);
+  expect(reducedReadinessFirstRead).toEqual({
+    activeAnimations: 0,
+    heading: 'Account Map 준비 중',
+    opacity: 1,
+    x: 0,
+    y: 0,
+  });
   await expectNoDocumentOverflow(page);
   expect(width).toBeGreaterThan(0);
 }
@@ -329,14 +435,51 @@ async function expectNoDocumentOverflow(page: Page): Promise<void> {
   ))).toBe(true);
 }
 
-async function expectFinalSimulationPaths(graph: Locator): Promise<void> {
-  await expect.poll(() => graph.evaluate((element) => ({
+async function readMainDonut(donut: Locator) {
+  return donut.evaluate((element) => ({
+    activeAnimations: element.getAnimations({ subtree: true })
+      .filter((animation) => (
+        (animation.playState === 'running' || animation.playState === 'pending')
+        && Number(animation.effect?.getComputedTiming().duration ?? 0) > 1
+      ))
+      .length,
+    semanticName: element.querySelector('svg')?.getAttribute('aria-label'),
+    centerSemantic: element.querySelector('.cashflow-donut__center strong .sr-only')?.textContent,
+    centerVisual: element.querySelector('.cashflow-donut__center strong > [aria-hidden="true"]')?.textContent,
+    segments: ['consumption', 'saving', 'investment', 'remaining'].map((id) => {
+      const circle = element.querySelector(`.cashflow-donut__segment--${id}`);
+      return {
+        id,
+        dasharray: circle?.getAttribute('stroke-dasharray'),
+        dashoffset: circle?.getAttribute('stroke-dashoffset'),
+      };
+    }),
+  }));
+}
+
+async function expectFinalMainDonut(donut: Locator, expected: typeof MAIN_DONUT_INITIAL): Promise<void> {
+  await expect.poll(() => readMainDonut(donut)).toEqual(expected);
+}
+
+async function readSimulationState(graph: Locator) {
+  return graph.evaluate((element) => ({
+    activeAnimations: element.getAnimations({ subtree: true })
+      .filter((animation) => (
+        (animation.playState === 'running' || animation.playState === 'pending')
+        && Number(animation.effect?.getComputedTiming().duration ?? 0) > 1
+      ))
+      .length,
+    summary: element.querySelector('.sr-only')?.textContent?.trim(),
     semantic: [...element.querySelectorAll('.growth-chart__semantic-path')]
       .map((path) => path.getAttribute('d')),
     visual: [...element.querySelectorAll('.growth-chart__motion-path')]
       .map((path) => path.getAttribute('d')),
     revealWidth: element.querySelector('.growth-chart__reveal-clip')?.getAttribute('width'),
-  }))).toMatchObject({
+  }));
+}
+
+async function expectFinalSimulationPaths(graph: Locator): Promise<void> {
+  await expect.poll(() => readSimulationState(graph)).toMatchObject({
     visual: await graph.locator('.growth-chart__semantic-path').evaluateAll((paths) => (
       paths.map((path) => path.getAttribute('d'))
     )),
@@ -344,26 +487,155 @@ async function expectFinalSimulationPaths(graph: Locator): Promise<void> {
   });
 }
 
-async function expectFinalPortfolioRows(rows: Locator): Promise<void> {
-  await expect.poll(() => rows.evaluateAll((elements) => elements.map((row) => {
+type ExpectedPortfolioRows = ReadonlyArray<{
+  id: string;
+  name: string;
+  accessible: string;
+}>;
+
+async function readPortfolioRows(rows: Locator) {
+  const values = await rows.evaluateAll((elements) => elements.map((row) => {
     const style = getComputedStyle(row);
     const matrix = new DOMMatrixReadOnly(style.transform);
+    const fill = row.querySelector<HTMLElement>('.portfolio-allocation-row__fill');
+    const fillMatrix = new DOMMatrixReadOnly(fill === null ? 'none' : getComputedStyle(fill).transform);
     return {
+      id: row.getAttribute('data-allocation-id'),
+      name: row.querySelector('h2')?.textContent?.trim(),
       accessible: row.querySelector('strong')?.getAttribute('aria-label'),
-      settled: matrix.isIdentity && Number(style.opacity) === 1,
       visual: row.querySelector('[data-allocation-ratio-visual]')?.textContent,
+      fillScale: fillMatrix.a,
+      transformIdentity: matrix.isIdentity,
+      opacity: Number(style.opacity),
     };
-  }))).toEqual([
-    expect.objectContaining({ settled: true }),
-    expect.objectContaining({ settled: true }),
-    expect.objectContaining({ settled: true }),
-    expect.objectContaining({ settled: true }),
-  ]);
-  const values = await rows.evaluateAll((elements) => elements.map((row) => ({
-    accessible: row.querySelector('strong')?.getAttribute('aria-label'),
-    visual: row.querySelector('[data-allocation-ratio-visual]')?.textContent,
+  }));
+  const activeAnimations = await rows.first().locator('xpath=..').evaluate((element) => (
+    element.getAnimations({ subtree: true })
+      .filter((animation) => (
+        (animation.playState === 'running' || animation.playState === 'pending')
+        && Number(animation.effect?.getComputedTiming().duration ?? 0) > 1
+      ))
+      .length
+  ));
+  return { activeAnimations, rows: values };
+}
+
+function expectPortfolioSemantics(
+  actual: Awaited<ReturnType<typeof readPortfolioRows>>['rows'],
+  expected: ExpectedPortfolioRows,
+): void {
+  expect(actual.map(({ id, name, accessible }) => ({ id, name, accessible }))).toEqual(expected);
+  expect(actual.every(({ accessible }) => accessible !== null && accessible !== undefined)).toBe(true);
+}
+
+async function expectFinalPortfolioRows(
+  rows: Locator,
+  expected: ExpectedPortfolioRows,
+): Promise<void> {
+  await expect.poll(async () => {
+    const state = await readPortfolioRows(rows);
+    return state.rows.map(({ id, name, accessible, visual, transformIdentity, opacity }) => ({
+      id,
+      name,
+      accessible,
+      visual,
+      transformIdentity,
+      opacity,
+    }));
+  }).toEqual(expected.map((row) => ({
+    ...row,
+    visual: row.accessible,
+    transformIdentity: true,
+    opacity: 1,
   })));
-  expect(values.every(({ accessible, visual }) => accessible === visual)).toBe(true);
+}
+
+async function installPortfolioBoundaryProbe(
+  page: Page,
+  expected: ExpectedPortfolioRows,
+): Promise<void> {
+  await page.evaluate((expectedRows) => {
+    const stateWindow = window as typeof window & {
+      __isfPortfolioBoundary?: {
+        activeAnimations: number;
+        rows: Array<{
+          id: string | null;
+          name: string | undefined;
+          accessible: string | null | undefined;
+          visual: string | null | undefined;
+          fillScale: number;
+          transformIdentity: boolean;
+          opacity: number;
+        }>;
+      };
+    };
+    delete stateWindow.__isfPortfolioBoundary;
+    const expectedSignature = JSON.stringify(expectedRows);
+    const capture = (): boolean => {
+      const summary = document.querySelector<HTMLElement>('.portfolio-summary');
+      if (summary === null) return false;
+      const elements = [...summary.querySelectorAll<HTMLElement>('[data-allocation-id]')];
+      const semantics = elements.map((row) => ({
+        id: row.getAttribute('data-allocation-id'),
+        name: row.querySelector('h2')?.textContent?.trim(),
+        accessible: row.querySelector('strong')?.getAttribute('aria-label'),
+      }));
+      if (JSON.stringify(semantics) !== expectedSignature) return false;
+      stateWindow.__isfPortfolioBoundary = {
+        activeAnimations: summary.getAnimations({ subtree: true })
+          .filter((animation) => (
+            (animation.playState === 'running' || animation.playState === 'pending')
+            && Number(animation.effect?.getComputedTiming().duration ?? 0) > 1
+          ))
+          .length,
+        rows: elements.map((row) => {
+          const style = getComputedStyle(row);
+          const fill = row.querySelector<HTMLElement>('.portfolio-allocation-row__fill');
+          const fillMatrix = new DOMMatrixReadOnly(
+            fill === null ? 'none' : getComputedStyle(fill).transform,
+          );
+          return {
+            id: row.getAttribute('data-allocation-id'),
+            name: row.querySelector('h2')?.textContent?.trim(),
+            accessible: row.querySelector('strong')?.getAttribute('aria-label'),
+            visual: row.querySelector('[data-allocation-ratio-visual]')?.textContent,
+            fillScale: fillMatrix.a,
+            transformIdentity: new DOMMatrixReadOnly(style.transform).isIdentity,
+            opacity: Number(style.opacity),
+          };
+        }),
+      };
+      return true;
+    };
+    if (capture()) return;
+    const observer = new MutationObserver(() => {
+      if (capture()) observer.disconnect();
+    });
+    observer.observe(document, {
+      attributes: true,
+      attributeFilter: ['aria-label', 'data-allocation-id', 'data-allocation-percentage'],
+      childList: true,
+      subtree: true,
+    });
+  }, expected);
+}
+
+async function readProbedPortfolioBoundary(page: Page) {
+  await page.waitForFunction(() => '__isfPortfolioBoundary' in window);
+  return page.evaluate(() => (window as typeof window & {
+    __isfPortfolioBoundary: {
+      activeAnimations: number;
+      rows: Array<{
+        id: string | null;
+        name: string | undefined;
+        accessible: string | null | undefined;
+        visual: string | null | undefined;
+        fillScale: number;
+        transformIdentity: boolean;
+        opacity: number;
+      }>;
+    };
+  }).__isfPortfolioBoundary);
 }
 
 async function expectFinalTransform(locator: Locator): Promise<void> {
@@ -372,6 +644,53 @@ async function expectFinalTransform(locator: Locator): Promise<void> {
     const matrix = new DOMMatrixReadOnly(style.transform);
     return { opacity: Number(style.opacity), x: matrix.m41, y: matrix.m42 };
   })).toEqual({ opacity: 1, x: 0, y: 0 });
+}
+
+async function installReadinessFirstFrameProbe(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const stateWindow = window as typeof window & {
+      __isfReadinessFirstFrame?: {
+        activeAnimations: number;
+        heading: string | undefined;
+        opacity: number;
+        x: number;
+        y: number;
+      };
+    };
+    const observer = new MutationObserver(() => {
+      const root = document.querySelector<HTMLElement>('[data-readiness-motion]');
+      if (root === null) return;
+      const style = getComputedStyle(root);
+      const matrix = new DOMMatrixReadOnly(style.transform);
+      stateWindow.__isfReadinessFirstFrame = {
+        activeAnimations: root.getAnimations({ subtree: true })
+          .filter((animation) => (
+            (animation.playState === 'running' || animation.playState === 'pending')
+            && Number(animation.effect?.getComputedTiming().duration ?? 0) > 1
+          ))
+          .length,
+        heading: root.querySelector('h1')?.textContent?.trim(),
+        opacity: Number(style.opacity),
+        x: matrix.m41,
+        y: matrix.m42,
+      };
+      observer.disconnect();
+    });
+    observer.observe(document, { childList: true, subtree: true });
+  });
+}
+
+async function readProbedReadinessFirstFrame(page: Page) {
+  await page.waitForFunction(() => '__isfReadinessFirstFrame' in window);
+  return page.evaluate(() => (window as typeof window & {
+    __isfReadinessFirstFrame: {
+      activeAnimations: number;
+      heading: string | undefined;
+      opacity: number;
+      x: number;
+      y: number;
+    };
+  }).__isfReadinessFirstFrame);
 }
 
 async function screenshot(
