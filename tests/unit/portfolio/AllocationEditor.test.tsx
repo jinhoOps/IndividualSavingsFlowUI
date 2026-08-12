@@ -14,41 +14,109 @@ const draft = setItemAmount(createCashOnlyDraft(200_000, 1), {
 }, 120_000);
 
 describe('AllocationEditor', () => {
-  it('switches the whole mode and keeps both values visible', () => {
+  it('accepts only amounts and presents percentage as a calculated result', () => {
     const onAction = vi.fn<(action: PortfolioAction) => void>();
-    render(<AllocationEditor draft={draft} investmentWon={200_000} onAction={onAction} now={() => 2} />);
-    fireEvent.click(screen.getByRole('radio', { name: '비율' }));
-    expect(onAction).toHaveBeenCalledWith({ type: 'input-mode-changed', mode: 'percentage' });
+    render(<AllocationEditor draft={{ ...draft, inputMode: 'percentage' }} investmentWon={200_000} onAction={onAction} now={() => 2} />);
+    expect(screen.queryByRole('radio', { name: '금액' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('radio', { name: '비율' })).not.toBeInTheDocument();
+    expect(screen.getByLabelText('미국 인덱스 금액')).toHaveValue('120000');
     expect(screen.getByText('120,000원')).toBeVisible();
     expect(screen.getByText('60%')).toBeVisible();
   });
 
   it('uses the shared surface and secondary add action', () => {
-    render(<AllocationEditor draft={draft} investmentWon={200_000} onAction={vi.fn()} now={() => 2} />);
+    const onAction = vi.fn<(action: PortfolioAction) => void>();
+    render(<AllocationEditor draft={draft} investmentWon={200_000} onAction={onAction} now={() => 2} createId={() => 'new'} />);
 
     expect(screen.getByRole('heading', { name: '투자 배분 설정' }).closest('section'))
       .toHaveClass('ui-surface', 'portfolio-editor');
     expect(screen.getByRole('button', { name: '투자 대상 추가' }))
       .toHaveClass('ui-button', 'ui-button--secondary');
+    expect(screen.getByRole('button', { name: '투자 대상 추가' })).toBeEmptyDOMElement();
+    fireEvent.click(screen.getByRole('button', { name: '투자 대상 추가' }));
+    expect(onAction).toHaveBeenCalledWith({
+      type: 'draft-item-added', item: { id: 'new', name: '', order: 1 }, now: 2,
+    });
   });
 
-  it('keeps completed setup targets compact until the user opens one for editing', () => {
+  it('keeps completed setup targets compact and commits edits through a focused sheet', () => {
+    const onAction = vi.fn<(action: PortfolioAction) => void>();
     render(<AllocationEditor
       draft={draft}
       investmentWon={200_000}
-      onAction={vi.fn()}
+      onAction={onAction}
       now={() => 2}
       presentation="setup"
     />);
 
-    const editTarget = screen.getByText('미국 인덱스').closest('summary')!;
-    expect(editTarget).toHaveAccessibleName('미국 인덱스 편집, 120,000원, 60%, 성장');
-    expect(screen.getByLabelText('투자 대상 이름 1')).not.toBeVisible();
+    const editTarget = screen.getByRole('button', { name: '미국 인덱스 편집, 120,000원, 60%' });
+    expect(editTarget).toHaveAccessibleName('미국 인덱스 편집, 120,000원, 60%');
+    expect(editTarget).not.toHaveTextContent('성장');
+    expect(editTarget).not.toHaveTextContent('자동 추천');
+    expect(screen.queryByRole('dialog', { name: '투자 대상 수정' })).not.toBeInTheDocument();
 
     fireEvent.click(editTarget);
 
-    expect(screen.getByLabelText('투자 대상 이름 1')).toBeVisible();
-    expect(screen.getByRole('group', { name: '미국 인덱스 분류' })).toBeVisible();
+    const sheet = screen.getByRole('dialog', { name: '투자 대상 수정' });
+    expect(within(sheet).getByLabelText('투자 대상 이름')).toHaveValue('미국 인덱스');
+    expect(within(sheet).getByLabelText('금액')).toHaveValue('120000');
+    fireEvent.click(within(sheet).getByRole('button', { name: '성장, 누르면 안정으로 변경' }));
+    fireEvent.click(within(sheet).getByRole('button', { name: '완료' }));
+    expect(onAction).toHaveBeenCalledWith({
+      type: 'draft-item-committed',
+      item: { id: 'index', name: '미국 인덱스', order: 0 },
+      amountWon: 120_000,
+      classification: 'stable',
+      classificationOrigin: 'user',
+      now: 2,
+    });
+  });
+
+  it('keeps new target input local until completion', () => {
+    const onAction = vi.fn<(action: PortfolioAction) => void>();
+    render(<AllocationEditor
+      draft={createCashOnlyDraft(200_000, 1)}
+      investmentWon={200_000}
+      onAction={onAction}
+      now={() => 2}
+      createId={() => 'new-target'}
+      presentation="setup"
+    />);
+
+    fireEvent.click(screen.getByRole('button', { name: '투자 대상 추가' }));
+    const sheet = screen.getByRole('dialog', { name: '투자 대상 추가' });
+    expect(within(sheet).getByLabelText('투자 대상 이름')).toHaveFocus();
+    expect(onAction).not.toHaveBeenCalled();
+    fireEvent.change(within(sheet).getByLabelText('투자 대상 이름'), { target: { value: '미국 인덱스' } });
+    fireEvent.change(within(sheet).getByLabelText('금액'), { target: { value: '120000' } });
+    fireEvent.click(within(sheet).getByRole('button', { name: '완료' }));
+
+    expect(onAction).toHaveBeenCalledTimes(1);
+    expect(onAction).toHaveBeenCalledWith({
+      type: 'draft-item-committed',
+      item: { id: 'new-target', name: '미국 인덱스', order: 0 },
+      amountWon: 120_000,
+      classification: 'growth',
+      classificationOrigin: 'automatic',
+      now: 2,
+    });
+  });
+
+  it('cancels a pristine new target without changing the draft', () => {
+    const onAction = vi.fn<(action: PortfolioAction) => void>();
+    render(<AllocationEditor
+      draft={createCashOnlyDraft(200_000, 1)}
+      investmentWon={200_000}
+      onAction={onAction}
+      now={() => 2}
+      presentation="setup"
+    />);
+    fireEvent.click(screen.getByRole('button', { name: '투자 대상 추가' }));
+    fireEvent.click(within(screen.getByRole('dialog', { name: '투자 대상 추가' }))
+      .getByRole('button', { name: '취소' }));
+
+    expect(onAction).not.toHaveBeenCalled();
+    expect(screen.queryByRole('dialog', { name: '투자 대상 추가' })).not.toBeInTheDocument();
   });
 
   it('explains manual cash and offers explicit automatic action', () => {
