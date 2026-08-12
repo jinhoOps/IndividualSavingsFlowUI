@@ -1,17 +1,62 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
-import { useState } from 'react';
+import { StrictMode, useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createEmptyMainData, type MainData, type SetupStep } from '../../../src/main/domain/model';
 import { SetupFlow, type ValidationIssue } from '../../../src/main/ui/setup/SetupFlow';
 
-afterEach(cleanup);
+const animeMocks = vi.hoisted(() => {
+  const applyFinalStyles = (targets: unknown, parameters: Record<string, unknown>) => {
+    const elements = targets instanceof Element
+      ? [targets]
+      : Array.from(targets as Iterable<Element>);
+    for (const element of elements) {
+      if (!(element instanceof HTMLElement)) continue;
+      const opacity = parameters.opacity;
+      if (Array.isArray(opacity)) element.style.opacity = String(opacity.at(-1));
+      const y = parameters.y;
+      if (Array.isArray(y)) element.style.transform = `translateY(${String(y.at(-1))}px)`;
+      const scaleX = parameters.scaleX;
+      if (Array.isArray(scaleX)) element.style.transform = `scaleX(${String(scaleX.at(-1))})`;
+    }
+  };
+  const timeline = {
+    add: vi.fn((targets: unknown, parameters: Record<string, unknown>) => {
+      applyFinalStyles(targets, parameters);
+      return timeline;
+    }),
+  };
+  return {
+    animate: vi.fn(applyFinalStyles),
+    createTimeline: vi.fn(() => timeline),
+    createScope: vi.fn(() => ({
+      add: (setup: () => void) => setup(),
+      matches: { reducedMotion: false },
+      revert: vi.fn(),
+    })),
+    stagger: vi.fn(() => 0),
+    timeline,
+  };
+});
+
+vi.mock('animejs', () => ({
+  animate: animeMocks.animate,
+  createScope: animeMocks.createScope,
+  createTimeline: animeMocks.createTimeline,
+  stagger: animeMocks.stagger,
+}));
+
+afterEach(() => {
+  cleanup();
+  vi.clearAllMocks();
+});
 
 interface RenderFlowOptions {
   issues?: ValidationIssue[];
   initialDraft?: MainData;
   saving?: boolean;
   validationAttempt?: number;
+  motionPreset?: 'initial-assembly' | 'none';
 }
 
 function renderFlow(initialStep: SetupStep, options: RenderFlowOptions = {}) {
@@ -20,6 +65,7 @@ function renderFlow(initialStep: SetupStep, options: RenderFlowOptions = {}) {
     initialDraft = createEmptyMainData(),
     saving = false,
     validationAttempt = 0,
+    motionPreset = 'initial-assembly',
   } = options;
   const onChange = vi.fn();
   const onStepChange = vi.fn();
@@ -35,6 +81,7 @@ function renderFlow(initialStep: SetupStep, options: RenderFlowOptions = {}) {
         step={step}
         issues={issues}
         validationAttempt={validationAttempt}
+        motionPreset={motionPreset}
         saving={saving}
         onChange={(nextDraft) => {
           onChange(nextDraft);
@@ -64,6 +111,24 @@ function expectOneFormWithoutLegacyControls() {
 }
 
 describe('SetupFlow', () => {
+  it('recreates the welcome reveal after the Strict Mode cleanup', () => {
+    render(
+      <StrictMode>
+        <SetupFlow
+          draft={createEmptyMainData()}
+          step="welcome"
+          issues={[]}
+          motionPreset="initial-assembly"
+          onChange={vi.fn()}
+          onStepChange={vi.fn()}
+          onApply={vi.fn()}
+        />
+      </StrictMode>,
+    );
+
+    expect(animeMocks.animate).toHaveBeenCalledTimes(2);
+  });
+
   it('uses the shared surface, button variants, and compact flow meter', () => {
     renderFlow('housing', {
       initialDraft: { ...createEmptyMainData(), monthlyNetIncomeWon: 3_200_000 },
@@ -138,21 +203,11 @@ describe('SetupFlow', () => {
     expect(screen.queryByRole('progressbar', { name: '수입 대비 현재 계획' })).not.toBeInTheDocument();
     expect(screen.getByText('월 수입을 이렇게 나눠 쓰고 있어요')).toBeVisible();
     expect(screen.getByRole('table', { name: '월 자금 항목' })).toBeVisible();
-    expect(document.querySelector('.setup-review-transition')).not.toBeNull();
-    expect(document.querySelector('.setup-review-transition__track')).not.toBeNull();
-    fireEvent.animationEnd(document.querySelector('.setup-review-transition__track')!);
-    expect(document.querySelector('.setup-review-transition')).not.toBeNull();
-    const showAnimationEnd = new Event('animationend', { bubbles: true });
-    Object.defineProperty(showAnimationEnd, 'animationName', { value: 'setup-review-show' });
-    fireEvent(document.querySelector('.setup-review-transition')!, showAnimationEnd);
-    expect(document.querySelector('.setup-review-transition')).not.toBeNull();
-    const exitAnimationEnd = new Event('animationend', { bubbles: true });
-    Object.defineProperty(exitAnimationEnd, 'animationName', { value: 'setup-review-transition-exit' });
-    fireEvent(document.querySelector('.setup-review-transition')!, exitAnimationEnd);
-    expect(document.querySelector('.setup-review-transition')).toBeNull();
+    expect(document.querySelectorAll('.allocation-bar__visual-track')).toHaveLength(1);
+    expect(animeMocks.createTimeline).toHaveBeenCalledOnce();
     fireEvent.click(screen.getByRole('button', { name: '이전' }));
     fireEvent.click(screen.getByRole('button', { name: '다음' }));
-    expect(document.querySelector('.setup-review-transition')).not.toBeNull();
+    expect(animeMocks.createTimeline).toHaveBeenCalledOnce();
     expect(screen.queryByText(/배분/)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: '소비 상세 정보' })).toBeVisible();
     expect(screen.getByRole('button', { name: '저축 상세 정보' })).toBeVisible();

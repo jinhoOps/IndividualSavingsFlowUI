@@ -43,4 +43,15 @@ describe('animateVisualNumber', () => {
     expect(element).toHaveAttribute('aria-hidden', 'true');
     expect(anime.animate).not.toHaveBeenCalled();
   });
+
+  it('returns cleanup that cancels an active visual-number animation', () => {
+    const cancel = vi.fn();
+    anime.animate.mockReturnValueOnce({ cancel });
+    const element = document.createElement('span');
+
+    const cleanupAnimation = animateVisualNumber(element, 10, 20, String);
+    cleanupAnimation();
+
+    expect(cancel).toHaveBeenCalledOnce();
+  });
 });

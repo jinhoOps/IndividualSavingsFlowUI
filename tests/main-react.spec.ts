@@ -126,7 +126,7 @@ async function expectDashboardSummary(page: Page, amounts: {
 }) {
   const summary = page.getByRole('region', { name: '월 자금 구성 요약' });
   await expect(summary).toBeVisible();
-  await expect(summary.getByText('15.6%', { exact: true })).toBeVisible();
+  await expect(summary.locator('.cashflow-donut__center strong > [aria-hidden="true"]')).toHaveText('15.6%');
   await expect(summary.getByText('저축·투자', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: '월 실수령액 편집' })).toHaveCount(0);
   await expect(page.locator('details.allocation-details')).not.toHaveAttribute('open');
@@ -295,7 +295,7 @@ test('new user applies the v2 quick setup and refreshes into matching dashboard 
   await page.getByRole('button', { name: '다음' }).click();
 
   await expect(page.getByRole('progressbar', { name: '수입 대비 현재 계획' })).toHaveCount(0);
-  await expect(page.locator('.setup-review-transition')).toBeVisible();
+  await expect(page.locator('.allocation-bar__visual-track')).toBeVisible();
   await expect(page.getByRole('button', { name: '소비 · 180만 원 · 56.3%' })).toBeVisible();
   await expect(page.getByRole('button', { name: /저축 (상세 정보|· 30만 원 · 9\.4%)/ })).toBeVisible();
   await expect(page.getByRole('button', { name: /투자 (상세 정보|· 20만 원 · 6\.3%)/ })).toBeVisible();
@@ -308,10 +308,9 @@ test('new user applies the v2 quick setup and refreshes into matching dashboard 
   await expect.poll(() => page.evaluate(() => (
     document.documentElement.scrollWidth <= window.innerWidth
   ))).toBe(true);
-  await expect(page.locator('.setup-review-transition')).toHaveCount(0);
   await page.getByRole('button', { name: '이전' }).click();
   await page.getByRole('button', { name: '다음' }).click();
-  await expect(page.locator('.setup-review-transition')).toBeVisible();
+  await expect(page.locator('.allocation-bar__visual-track')).toHaveCSS('transform', 'matrix(1, 0, 0, 1, 0, 0)');
   await page.getByRole('button', { name: '계획 적용' }).click();
 
   await expect(page.getByRole('heading', { name: '이번 달 자금 흐름' })).toBeVisible();
@@ -367,98 +366,139 @@ test('new user applies the v2 quick setup and refreshes into matching dashboard 
   });
 });
 
-test('review transition stays contained and respects reduced motion', async ({ page }) => {
-  await page.addInitScript((fixture) => {
-    localStorage.clear();
-    localStorage.setItem('isf-workspace-v1', JSON.stringify({
-      ...fixture,
-      main: {
-        applied: null,
-        setupProgress: {
-          kind: 'initial',
-          step: 'review',
-          draft: fixture.main.applied,
-          savedAt: Date.now(),
-        },
-      },
-    }));
-  }, appliedWorkspaceV1);
-
-  for (const viewport of [
+test('review assembly captures timed deficit geometry and reduced motion', async ({ page }, testInfo) => {
+  const viewports = [
     { width: 390, height: 844 },
     { width: 768, height: 900 },
     { width: 1280, height: 900 },
-  ]) {
+  ];
+  const unclippedDeficit = {
+    ...appliedMainV2,
+    monthlyInvestmentWon: 1_260_000,
+  };
+  const clippedDeficit = {
+    ...appliedMainV2,
+    monthlyNetIncomeWon: 1_000_000,
+    monthlyHousingWon: 1_000_000,
+    monthlyLivingWon: 0,
+    monthlySavingWon: 1_000_000,
+    monthlyInvestmentWon: 1_000_000,
+  };
+
+  await page.clock.install({ time: new Date('2026-08-12T00:00:00Z') });
+  await page.goto('apps/main/');
+  await page.clock.pauseAt(new Date('2026-08-12T00:01:00Z'));
+
+  const showReview = async (draft: typeof appliedMainV2) => {
+    await page.evaluate(({ workspace, reviewDraft }) => {
+      localStorage.clear();
+      localStorage.setItem('isf-workspace-v1', JSON.stringify({
+        ...workspace,
+        main: {
+          applied: null,
+          setupProgress: {
+            kind: 'initial',
+            step: 'review',
+            draft: reviewDraft,
+            savedAt: Date.now(),
+          },
+        },
+      }));
+    }, { workspace: appliedWorkspaceV1, reviewDraft: draft });
+    await page.reload();
+    await expect(page.getByRole('heading', { name: '입력한 월 자금 계획을 확인해주세요' })).toBeVisible();
+  };
+  const pauseSubtreeAnimations = async () => {
+    await page.locator('.setup-flow-surface').evaluate((element) => {
+      for (const animation of element.getAnimations({ subtree: true })) animation.pause();
+    });
+  };
+  const capture = async (width: number, state: string) => {
+    await pauseSubtreeAnimations();
+    await page.screenshot({
+      fullPage: true,
+      path: testInfo.outputPath(`main-review-${width}-${state}.png`),
+    });
+  };
+  const readAssemblyState = async () => page.locator('.allocation-bar').evaluate((element) => {
+    const track = element.querySelector<HTMLElement>('.allocation-bar__visual-track')!;
+    const matrix = new DOMMatrixReadOnly(getComputedStyle(track).transform);
+    const opacities = Array.from(element.querySelectorAll<HTMLElement>('[data-assembly-content]'))
+      .map((content) => Number(getComputedStyle(content).opacity));
+    return { scaleX: matrix.a, opacities };
+  });
+  const expectOverflowGeometry = async (
+    draft: typeof appliedMainV2,
+    clipped: boolean,
+  ) => {
+    const geometry = await page.locator('.allocation-bar__segments').evaluate((element) => {
+      const extension = element.querySelector<HTMLElement>('.cashflow-bar__clip')!
+        .getBoundingClientRect();
+      const track = element.querySelector<HTMLElement>('.allocation-bar__visual-track')!
+        .getBoundingClientRect();
+      const base = element.getBoundingClientRect();
+      return {
+        actualOverflowRatio: (track.width - base.width) / base.width,
+        clipped: element.getAttribute('data-overflow-clipped') === 'true',
+        extensionRight: extension.right,
+        safeRight: document.documentElement.clientWidth - 16,
+        viewportWidth: window.innerWidth,
+        scrollWidth: document.documentElement.scrollWidth,
+      };
+    });
+    const deficitWon = draft.monthlyHousingWon
+      + draft.monthlyLivingWon
+      + draft.monthlySavingWon
+      + draft.monthlyInvestmentWon
+      - draft.monthlyNetIncomeWon;
+    expect(geometry.clipped).toBe(clipped);
+    expect(geometry.actualOverflowRatio).toBeCloseTo(deficitWon / draft.monthlyNetIncomeWon, 3);
+    expect(geometry.extensionRight).toBeLessThanOrEqual(geometry.safeRight + 0.01);
+    expect(geometry.scrollWidth).toBeLessThanOrEqual(geometry.viewportWidth);
+  };
+
+  for (const viewport of viewports) {
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
     await page.setViewportSize(viewport);
-    await page.goto('apps/main/');
+    await showReview(appliedMainV2);
     await expect(page.getByRole('navigation', { name: 'ISF 앱' })).toHaveCount(0);
     await expect(page.getByRole('progressbar', { name: '수입 대비 현재 계획' })).toHaveCount(0);
-    await page.locator('.allocation-bar').evaluate((element) => {
-      for (const animation of element.getAnimations({ subtree: true })) {
-        animation.pause();
-        animation.currentTime = 0;
-      }
-    });
-    const initialRevealState = await page.locator('.allocation-bar').evaluate((element) => ({
-      borderColor: getComputedStyle(element).borderColor,
-      backgroundColor: getComputedStyle(element).backgroundColor,
-      contextOpacity: getComputedStyle(element.querySelector('.allocation-bar__context')!).opacity,
-      tableOpacity: getComputedStyle(element.querySelector('.allocation-table')!).opacity,
-      finalTrackOpacity: getComputedStyle(element.querySelector('.allocation-bar__segments')!).opacity,
-      transitionOpacity: getComputedStyle(element.querySelector('.setup-review-transition')!).opacity,
-    }));
-    expect(initialRevealState).toEqual({
-      borderColor: 'rgba(0, 0, 0, 0)',
-      backgroundColor: 'rgba(0, 0, 0, 0)',
-      contextOpacity: '0',
-      tableOpacity: '0',
-      finalTrackOpacity: '0',
-      transitionOpacity: '0',
-    });
-    await expect.poll(() => page.locator('.setup-review-transition__track').evaluate((element) => {
-      const style = getComputedStyle(element);
-      return { delay: style.animationDelay, duration: style.animationDuration };
-    })).toEqual({ delay: '0.35s', duration: '0.62s' });
-    await expect.poll(() => page.locator('.setup-review-transition__accent').evaluate((element) => {
-      const style = getComputedStyle(element);
-      return { delay: style.animationDelay, duration: style.animationDuration };
-    })).toEqual({ delay: '0.35s', duration: '0.92s' });
-    await page.locator('.allocation-bar').evaluate((element) => {
-      for (const animation of element.getAnimations({ subtree: true })) {
-        animation.currentTime = 1100;
-      }
-    });
-    await expect(page.locator('.setup-review-transition')).toBeVisible();
-    const opacity = await page.locator('.setup-review-transition__accent').evaluate(
-      (element) => Number(getComputedStyle(element).opacity),
-    );
-    expect(opacity).toBeGreaterThan(0);
-    expect(opacity).toBeLessThan(1);
-    await page.locator('.allocation-bar').evaluate((element) => {
-      for (const animation of element.getAnimations({ subtree: true })) {
-        animation.play();
-      }
-    });
-    await expect(page.locator('.setup-review-transition')).toHaveCount(0);
-    await expect.poll(() => page.locator('.allocation-table').evaluate(
-      (element) => getComputedStyle(element).opacity,
-    )).toBe('1');
-    await expect.poll(() => page.locator('.allocation-bar__segments').evaluate(
-      (element) => getComputedStyle(element).opacity,
-    )).toBe('1');
-    await expect.poll(() => page.locator('.allocation-bar').evaluate(
-      (element) => getComputedStyle(element).borderColor,
-    )).not.toBe('rgba(0, 0, 0, 0)');
-    await expect(page.getByRole('table', { name: '월 자금 항목' })).toBeVisible();
-    await expect.poll(() => page.evaluate(() => (
-      document.documentElement.scrollWidth <= window.innerWidth
-    ))).toBe(true);
-  }
 
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.reload();
-  await expect(page.locator('.setup-review-transition')).toBeHidden();
-  await expect(page.getByRole('table', { name: '월 자금 항목' })).toBeVisible();
+    const start = await readAssemblyState();
+    expect(start.scaleX).toBeLessThan(0.1);
+    expect(Math.max(...start.opacities)).toBeLessThan(0.1);
+    await capture(viewport.width, 'start');
+
+    await page.clock.runFor(130);
+    const middle = await readAssemblyState();
+    expect(middle.scaleX).toBeGreaterThan(0.1);
+    expect(middle.scaleX).toBeLessThan(1);
+    expect(Math.min(...middle.opacities)).toBeLessThan(1);
+    await capture(viewport.width, 'mid');
+
+    await page.clock.runFor(1_200);
+    const final = await readAssemblyState();
+    expect(final.scaleX).toBeCloseTo(1, 3);
+    expect(final.opacities).toEqual(final.opacities.map(() => 1));
+    await capture(viewport.width, 'final');
+
+    await showReview(unclippedDeficit);
+    await page.clock.runFor(1_200);
+    await expectOverflowGeometry(unclippedDeficit, false);
+    await capture(viewport.width, 'deficit-unclipped');
+
+    await showReview(clippedDeficit);
+    await page.clock.runFor(1_200);
+    await expectOverflowGeometry(clippedDeficit, true);
+    await capture(viewport.width, 'deficit-clipped');
+
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await showReview(appliedMainV2);
+    const reduced = await readAssemblyState();
+    expect(reduced.scaleX).toBeCloseTo(1, 3);
+    expect(reduced.opacities).toEqual(reduced.opacities.map(() => 1));
+    await capture(viewport.width, 'reduced-motion');
+  }
 });
 
 test('live dashboard keeps the donut, cards, Simulation, details, and editor contained at required viewports', async ({ page }) => {
@@ -544,7 +584,7 @@ test.describe('mobile cashflow donut', () => {
     }
 
     await page.getByRole('heading', { name: '이번 달 자금 흐름' }).tap();
-    await expect(center.getByText('15.6%', { exact: true })).toBeVisible();
+    await expect(center.locator('strong > [aria-hidden="true"]')).toHaveText('15.6%');
     await expect(center.getByText('저축·투자', { exact: true })).toBeVisible();
     await expect(donut.locator('.cashflow-donut__segment--active')).toHaveCount(0);
     expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
@@ -668,7 +708,7 @@ test.describe('mobile quick setup', () => {
       '투자1,000원0.0%',
       '남는 돈319.9만 원100.0%',
     ]);
-    await expect(page.locator('.setup-review-transition')).toHaveCount(0);
+    await expect(page.locator('.allocation-bar__visual-track')).toHaveCount(1);
 
     const layout = await page.locator('.allocation-bar').evaluate((card) => {
       const cardRect = card.getBoundingClientRect();

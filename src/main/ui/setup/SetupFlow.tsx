@@ -1,4 +1,7 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { animate, createTimeline, stagger } from 'animejs';
+import { useEffect, useRef, useState, type FormEvent, type ReactNode, type RefObject } from 'react';
+import { MOTION_DISTANCE_PX, MOTION_DURATION, MOTION_EASE } from '../../../components/motion/tokens';
+import { useAnimeScope } from '../../../components/motion/useAnimeScope';
 import type { MainData, SetupStep } from '../../domain/model';
 import type { ValidationCode } from '../../domain/validation';
 import { Button } from '../common/Button';
@@ -23,7 +26,10 @@ export interface SetupFlowProps {
   onApply(): void;
   onCancel?: () => void;
   notice?: ReactNode;
+  motionPreset: SetupMotionPreset;
 }
+
+export type SetupMotionPreset = 'initial-assembly' | 'none';
 
 const steps: SetupStep[] = ['welcome', 'income', 'housing', 'living', 'saving-investment', 'review'];
 
@@ -47,8 +53,13 @@ export function SetupFlow({
   onApply,
   onCancel,
   notice,
+  motionPreset,
 }: SetupFlowProps) {
   const [incomeSubmittedEmpty, setIncomeSubmittedEmpty] = useState(false);
+  const assemblyPlayedRef = useRef(false);
+  const assemblyRootRef = useRef<HTMLElement | null>(null);
+  const welcomePlayedRef = useRef(false);
+  const welcomeElementRef = useRef<HTMLElement | null>(null);
   const stepIndex = steps.indexOf(step);
   const previousStep = steps[stepIndex - 1];
   const nextStep = steps[stepIndex + 1];
@@ -57,6 +68,74 @@ export function SetupFlow({
     || step === 'saving-investment';
   const incomeError = findIssue(issues, 'monthlyNetIncomeWon')
     ?? (incomeSubmittedEmpty ? issueMessage('income_required') : undefined);
+  const stepMotionRef = useAnimeScope<HTMLFormElement>(({ root, reducedMotion }) => {
+    if (step === 'review') return;
+
+    const elements = step === 'welcome'
+      ? root.querySelectorAll<HTMLElement>('[data-welcome-motion]')
+      : root.querySelectorAll<HTMLElement>('[data-step-motion]');
+    if (elements.length === 0) return;
+
+    const isWelcomeStrictModeReplay = step === 'welcome'
+      && welcomePlayedRef.current
+      && welcomeElementRef.current === elements[0];
+    if (
+      motionPreset === 'none'
+      || reducedMotion
+      || (step === 'welcome' && welcomePlayedRef.current && !isWelcomeStrictModeReplay)
+    ) {
+      setRevealFinalStyles(elements);
+      return;
+    }
+
+    if (step === 'welcome') {
+      welcomePlayedRef.current = true;
+      welcomeElementRef.current = elements[0];
+    }
+    setRevealInitialStyles(elements);
+    animate(elements, {
+      opacity: [0, 1],
+      y: [MOTION_DISTANCE_PX.reveal, 0],
+      duration: MOTION_DURATION.normal,
+      delay: step === 'welcome' ? stagger(40) : 0,
+      ease: MOTION_EASE.enter,
+    });
+  }, [motionPreset, step]);
+  const reviewMotionRef = useAnimeScope<HTMLElement>(({ root, reducedMotion }) => {
+    if (step !== 'review') return;
+
+    const track = root.querySelector<HTMLElement>('.allocation-bar__visual-track');
+    const segmentElements = root.querySelectorAll<HTMLElement>('.allocation-bar__visual-segment');
+    const contentElements = root.querySelectorAll<HTMLElement>('[data-assembly-content]');
+    if (track === null) return;
+
+    track.style.transformOrigin = 'left center';
+    const isStrictModeReplay = assemblyPlayedRef.current && assemblyRootRef.current === root;
+    if (
+      motionPreset === 'none'
+      || reducedMotion
+      || (assemblyPlayedRef.current && !isStrictModeReplay)
+    ) {
+      setAssemblyFinalStyles(track, segmentElements, contentElements);
+      return;
+    }
+
+    assemblyPlayedRef.current = true;
+    assemblyRootRef.current = root;
+    setAssemblyInitialStyles(track, segmentElements, contentElements);
+    createTimeline({ defaults: { ease: MOTION_EASE.enter } })
+      .add(track, { scaleX: [0, 1], duration: MOTION_DURATION.emphasis })
+      .add(segmentElements, {
+        opacity: [0, 1],
+        duration: MOTION_DURATION.normal,
+        delay: stagger(40),
+      }, '<+=80')
+      .add(contentElements, {
+        opacity: [0, 1],
+        y: [MOTION_DISTANCE_PX.reveal, 0],
+        duration: MOTION_DURATION.normal,
+      }, '<');
+  }, [motionPreset, step]);
 
   useEffect(() => {
     document.querySelector<HTMLElement>('[data-setup-heading]')?.focus();
@@ -117,24 +196,27 @@ export function SetupFlow({
         aria-busy={saving ? 'true' : undefined}
         aria-label="설정 단계"
         onSubmit={submit}
+        ref={stepMotionRef}
       >
         <fieldset className="contents" disabled={saving}>
-          {showContext ? <FlowContextSummary data={draft} /> : null}
-          {step === 'welcome' ? <WelcomeStep /> : null}
-          {step === 'income' ? (
-            <IncomeStep
-              draft={draft}
-              error={incomeError}
-              onChange={(monthlyNetIncomeWon) => {
-                setIncomeSubmittedEmpty(false);
-                onChange({ ...draft, monthlyNetIncomeWon });
-              }}
-            />
-          ) : null}
-          {step === 'housing' ? <HousingStep draft={draft} issues={issues} onChange={onChange} /> : null}
-          {step === 'living' ? <LivingStep draft={draft} issues={issues} onChange={onChange} /> : null}
-          {step === 'saving-investment' ? <SavingInvestmentStep draft={draft} issues={issues} onChange={onChange} /> : null}
-          {step === 'review' ? <ReviewStep draft={draft} /> : null}
+          <div className="grid gap-6" data-step-motion={step === 'welcome' || step === 'review' ? undefined : ''}>
+            {showContext ? <FlowContextSummary data={draft} /> : null}
+            {step === 'welcome' ? <WelcomeStep /> : null}
+            {step === 'income' ? (
+              <IncomeStep
+                draft={draft}
+                error={incomeError}
+                onChange={(monthlyNetIncomeWon) => {
+                  setIncomeSubmittedEmpty(false);
+                  onChange({ ...draft, monthlyNetIncomeWon });
+                }}
+              />
+            ) : null}
+            {step === 'housing' ? <HousingStep draft={draft} issues={issues} onChange={onChange} /> : null}
+            {step === 'living' ? <LivingStep draft={draft} issues={issues} onChange={onChange} /> : null}
+            {step === 'saving-investment' ? <SavingInvestmentStep draft={draft} issues={issues} onChange={onChange} /> : null}
+            {step === 'review' ? <ReviewStep draft={draft} reviewRef={reviewMotionRef} /> : null}
+          </div>
 
           <nav className="mt-auto flex justify-end gap-3 pt-6" aria-label="설정 이동">
             {previousStep ? (
@@ -147,7 +229,12 @@ export function SetupFlow({
                 이전
               </Button>
             ) : null}
-            <Button className="px-6 py-3 shadow-lg shadow-primary/10" type="submit" variant="primary">
+            <Button
+              className="px-6 py-3 shadow-lg shadow-primary/10"
+              data-welcome-motion={step === 'welcome' ? '' : undefined}
+              type="submit"
+              variant="primary"
+            >
               {step === 'review' ? '계획 적용' : '다음'}
             </Button>
           </nav>
@@ -165,10 +252,11 @@ function WelcomeStep() {
         className="m-0 max-w-xl text-4xl font-bold leading-tight tracking-tight text-slate-950 sm:text-5xl"
         data-setup-heading
         tabIndex={-1}
+        data-welcome-motion
       >
         한 달 돈의 흐름, 2분이면 확인할 수 있어요.
       </h1>
-      <p className="m-0 max-w-xl text-lg leading-8 text-slate-600">
+      <p className="m-0 max-w-xl text-lg leading-8 text-slate-600" data-welcome-motion>
         수입과 지출 규모를 간단히 입력하면 매달 남는 돈을 바로 확인할 수 있어요.
       </p>
     </>
@@ -260,13 +348,55 @@ function SavingInvestmentStep({
   );
 }
 
-function ReviewStep({ draft }: Pick<SetupFlowProps, 'draft'>) {
+function ReviewStep({
+  draft,
+  reviewRef,
+}: Pick<SetupFlowProps, 'draft'> & { reviewRef: RefObject<HTMLElement | null> }) {
   return (
-    <>
-      <StepHeading>입력한 월 자금 계획을 확인해주세요</StepHeading>
-      <AllocationBar data={draft} transitioning />
-    </>
+    <section className="contents" ref={reviewRef}>
+      <div data-assembly-content>
+        <StepHeading>입력한 월 자금 계획을 확인해주세요</StepHeading>
+      </div>
+      <AllocationBar data={draft} />
+    </section>
   );
+}
+
+function setRevealFinalStyles(elements: NodeListOf<HTMLElement>): void {
+  for (const element of elements) {
+    element.style.opacity = '1';
+    element.style.transform = 'translateY(0px)';
+  }
+}
+
+function setRevealInitialStyles(elements: NodeListOf<HTMLElement>): void {
+  for (const element of elements) {
+    element.style.opacity = '0';
+    element.style.transform = `translateY(${MOTION_DISTANCE_PX.reveal}px)`;
+  }
+}
+
+function setAssemblyFinalStyles(
+  track: HTMLElement,
+  segments: NodeListOf<HTMLElement>,
+  content: NodeListOf<HTMLElement>,
+): void {
+  track.style.transform = 'scaleX(1)';
+  for (const segment of segments) segment.style.opacity = '1';
+  setRevealFinalStyles(content);
+}
+
+function setAssemblyInitialStyles(
+  track: HTMLElement,
+  segments: NodeListOf<HTMLElement>,
+  content: NodeListOf<HTMLElement>,
+): void {
+  track.style.transform = 'scaleX(0)';
+  for (const segment of segments) segment.style.opacity = '0';
+  for (const element of content) {
+    element.style.opacity = '0';
+    element.style.transform = `translateY(${MOTION_DISTANCE_PX.reveal}px)`;
+  }
 }
 
 function StepHeading({ children }: { children: string }) {

@@ -1,10 +1,23 @@
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { calculateCashflow } from '../../../src/main/domain/cashflow';
 import type { MainData } from '../../../src/main/domain/model';
 import { CashflowDonutSummary } from '../../../src/main/ui/dashboard/CashflowDonutSummary';
+import { CashflowSummary } from '../../../src/main/ui/dashboard/CashflowSummary';
 
-afterEach(cleanup);
+const anime = vi.hoisted(() => ({
+  animate: vi.fn(() => ({ cancel: vi.fn() })),
+}));
+
+vi.mock('animejs', () => ({
+  animate: anime.animate,
+}));
+
+afterEach(() => {
+  cleanup();
+  vi.clearAllMocks();
+});
 
 const appliedData: MainData = {
   schemaVersion: 2,
@@ -17,11 +30,57 @@ const appliedData: MainData = {
 };
 
 describe('CashflowDonutSummary', () => {
+  it('keeps the applied card value semantic while its visual number interpolates', () => {
+    const { rerender, unmount } = render(
+      <CashflowSummary summary={calculateCashflow(appliedData)} onEdit={vi.fn()} />,
+    );
+
+    const consumption = screen.getByRole('button', { name: '월 소비 편집' });
+    const visualValue = consumption.querySelector('strong > [aria-hidden="true"]');
+    expect(visualValue).toHaveTextContent('180만 원');
+
+    const updated = {
+      ...appliedData,
+      updatedAt: 2,
+      monthlyLivingWon: 1_200_000,
+    };
+    rerender(<CashflowSummary summary={calculateCashflow(updated)} onEdit={vi.fn()} />);
+
+    expect(consumption).toHaveAccessibleDescription(expect.stringMatching(/200만 원/));
+    expect(visualValue).toHaveAttribute('aria-hidden', 'true');
+    expect(visualValue).toHaveTextContent('180만 원');
+
+    const activeAnimations = anime.animate.mock.results
+      .map((result) => result.value as { cancel: ReturnType<typeof vi.fn> });
+    expect(activeAnimations.length).toBeGreaterThan(0);
+    unmount();
+    expect(activeAnimations.every((animation) => animation.cancel.mock.calls.length === 1)).toBe(true);
+  });
+
+  it('keeps final donut semantics while SVG and visual numbers start from prior applied values', () => {
+    const { container, rerender } = render(<CashflowDonutSummary data={appliedData} />);
+    const updated = {
+      ...appliedData,
+      updatedAt: 2,
+      monthlyInvestmentWon: 400_000,
+    };
+
+    rerender(<CashflowDonutSummary data={updated} />);
+
+    expect(screen.getByRole('img', { name: /투자 12\.5%.*여윳돈 21\.9%/ })).toBeVisible();
+    expect(container.querySelector('circle.cashflow-donut__segment--investment'))
+      .toHaveAttribute('stroke-dasharray', '6.25 93.75');
+    const centerVisual = container.querySelector('.cashflow-donut__center strong > [aria-hidden="true"]');
+    expect(centerVisual).toHaveTextContent('15.6%');
+    expect(centerVisual).toHaveAttribute('aria-hidden', 'true');
+    expect(container.querySelector('.cashflow-donut__center strong > .sr-only')).toHaveTextContent('21.9%');
+  });
+
   it('renders the accessible allocation chart, savings-investment center, and legend controls', () => {
     render(<CashflowDonutSummary data={appliedData} />);
 
     expect(screen.getByRole('img', { name: /소비 56\.3%.*저축 9\.4%.*투자 6\.3%.*여윳돈 28\.1%/ })).toBeVisible();
-    expect(screen.getByText('15.6%')).toBeVisible();
+    expect(screen.getByText('15.6%', { selector: '[aria-hidden="true"]' })).toBeVisible();
     expect(screen.getByText('저축·투자')).toBeVisible();
     for (const [label, amount, percentage] of [
       ['소비', '180만 원', '56.3%'],
@@ -79,7 +138,7 @@ describe('CashflowDonutSummary', () => {
 
     fireEvent.pointerDown(screen.getByRole('button', { name: 'outside' }));
 
-    expect(within(center as HTMLElement).getByText('15.6%')).toBeVisible();
+    expect(within(center as HTMLElement).getByText('15.6%', { selector: '[aria-hidden="true"]' })).toBeVisible();
     expect(within(center as HTMLElement).getByText('저축·투자')).toBeVisible();
     expect(container.querySelector('.cashflow-donut__segment--active')).not.toBeInTheDocument();
   });
@@ -103,7 +162,7 @@ describe('CashflowDonutSummary', () => {
     }));
 
     const center = container.querySelector('.cashflow-donut__center');
-    expect(within(center as HTMLElement).getByText('15.6%')).toBeVisible();
+    expect(within(center as HTMLElement).getByText('15.6%', { selector: '[aria-hidden="true"]' })).toBeVisible();
     expect(container.querySelector('.cashflow-donut__segment--active')).not.toBeInTheDocument();
   });
 

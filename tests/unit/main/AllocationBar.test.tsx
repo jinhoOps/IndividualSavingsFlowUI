@@ -2,10 +2,11 @@ import { act, cleanup, fireEvent, render, screen, within } from '@testing-librar
 import '@testing-library/jest-dom/vitest';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { MainData } from '../../../src/main/domain/model';
-import {
-  AllocationBar,
-  createAllocationVisualSegments,
-} from '../../../src/main/ui/setup/AllocationBar';
+import { AllocationBar } from '../../../src/main/ui/setup/AllocationBar';
+
+vi.mock('animejs', () => ({
+  animate: vi.fn(() => ({ cancel: vi.fn() })),
+}));
 
 afterEach(() => {
   cleanup();
@@ -98,20 +99,25 @@ function mockBarViewport(initialClientWidth: number) {
 }
 
 describe('AllocationBar', () => {
-  it('provides the same visual segments used by the review transition', () => {
-    expect(createAllocationVisualSegments(cashflowFixture)).toEqual([
-      { id: 'consumption', visualPercentage: 56.25 },
-      { id: 'saving', visualPercentage: 9.375 },
-      { id: 'investment', visualPercentage: 6.25 },
-      { id: 'remaining', visualPercentage: 28.125 },
-    ]);
+  it('uses one intrinsic visual track with actual income percentages', () => {
+    const { container } = render(<AllocationBar data={cashflowFixture} />);
+    const track = container.querySelector('.allocation-bar__visual-track');
+    expect(track).not.toBeNull();
+    expect(container.querySelectorAll('.allocation-bar__visual-track')).toHaveLength(1);
+    expect(Array.from(track!.querySelectorAll<HTMLElement>('[data-width-percent]')).map(
+      (segment) => Number(segment.dataset.widthPercent),
+    )).toEqual([56.25, 9.375, 6.25, 28.125]);
   });
 
-  it('starts the review transition at the current planned-outflow width', () => {
-    const { container } = render(<AllocationBar data={cashflowFixture} transitioning />);
-    expect(container.querySelector('.setup-review-transition__accent')).toHaveStyle({
-      width: '71.875%',
-    });
+  it('keeps final table semantics while the visual bar starts from prior applied geometry', () => {
+    const { container, rerender } = render(<AllocationBar data={cashflowFixture} />);
+    const investment = container.querySelector<HTMLElement>('.allocation-bar__visual-segment--investment');
+    expect(investment).toHaveStyle({ width: '6.25%' });
+
+    rerender(<AllocationBar data={{ ...cashflowFixture, updatedAt: 2, monthlyInvestmentWon: 400_000 }} />);
+
+    expect(screen.getByRole('row', { name: /투자 40만 원 12\.5%/ })).toBeVisible();
+    expect(investment).toHaveStyle({ width: '6.25%' });
   });
 
   it('shows allocation labels, amounts, and income percentages in a table', () => {

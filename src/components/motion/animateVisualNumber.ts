@@ -14,7 +14,7 @@ export function animateVisualNumber(
   to: number,
   format: (value: number) => string,
   duration = MOTION_DURATION.normal,
-): void {
+): () => void {
   const previousState = visualNumberStates.get(element);
   previousState?.animation?.cancel();
 
@@ -25,7 +25,7 @@ export function animateVisualNumber(
   ) {
     element.textContent = format(to);
     visualNumberStates.set(element, { value: to });
-    return;
+    return () => undefined;
   }
 
   const state: VisualNumberState = { value: previousState?.value ?? from };
@@ -40,4 +40,9 @@ export function animateVisualNumber(
       element.textContent = format(state.value);
     },
   });
+
+  return () => {
+    state.animation?.cancel();
+    state.animation = undefined;
+  };
 }

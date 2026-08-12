@@ -1,4 +1,6 @@
+import { animate, type JSAnimation } from 'animejs';
 import { useEffect, useId, useLayoutEffect, useRef, useState, type MouseEvent, type PointerEvent } from 'react';
+import { MOTION_DURATION, MOTION_EASE } from '../../../components/motion/tokens';
 import { calculateCashflow, percentageOfIncome } from '../../domain/cashflow';
 import type { MainData } from '../../domain/model';
 import { PercentageTooltip } from '../common/PercentageTooltip';
@@ -7,7 +9,6 @@ import { formatContextWon, formatPercentage } from './FlowContextSummary';
 
 export interface AllocationBarProps {
   data: MainData;
-  transitioning?: boolean;
 }
 
 interface Allocation {
@@ -19,23 +20,21 @@ interface Allocation {
   visualPercentage: number;
 }
 
-export interface AllocationVisualSegment {
-  id: 'consumption' | 'saving' | 'investment' | 'remaining';
-  visualPercentage: number;
+type AllocationId = 'consumption' | 'saving' | 'investment' | 'remaining';
+
+interface AllocationBarMotionState {
+  consumption: number;
+  saving: number;
+  investment: number;
+  remaining: number;
+  desiredEndPercent: number;
+  visibleEndPercent: number;
+  animation?: JSAnimation;
 }
 
 const MIN_INTERACTIVE_SIZE_PX = 44;
 
-export function createAllocationVisualSegments(data: MainData): AllocationVisualSegment[] {
-  return createCashflowBarGeometry(data, { barWidthPx: 0, availableRightPx: 0 }).segments
-    .map((segment) => ({
-      id: segment.id,
-      visualPercentage: segment.widthPercent,
-    }));
-}
-
-export function AllocationBar({ data, transitioning = false }: AllocationBarProps) {
-  const [transitionVisible, setTransitionVisible] = useState(transitioning);
+export function AllocationBar({ data }: AllocationBarProps) {
   const [hoveredId, setHoveredId] = useState<string>();
   const [focusedId, setFocusedId] = useState<string>();
   const [tappedId, setTappedId] = useState<string>();
@@ -47,6 +46,8 @@ export function AllocationBar({ data, transitioning = false }: AllocationBarProp
   });
   const barRef = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const previousDataRef = useRef(data);
+  const motionStateRef = useRef<AllocationBarMotionState | undefined>(undefined);
   const isPointerFocusRef = useRef(false);
   const tooltipId = useId();
   const cashflow = calculateCashflow(data);
@@ -56,7 +57,6 @@ export function AllocationBar({ data, transitioning = false }: AllocationBarProp
     id: segment.id,
     visualPercentage: segment.widthPercent,
   }));
-  const plannedPercentage = percentageOfIncome(cashflow.plannedOutflowWon, cashflow.incomeWon) ?? 0;
   const allocation = (id: string, label: string, amountWon: number): Allocation => {
     const geometrySegment = geometry.segments.find((segment) => segment.id === id);
     return {
@@ -89,12 +89,6 @@ export function AllocationBar({ data, transitioning = false }: AllocationBarProp
       ? tapPosition ?? activePosition
       : activePosition;
 
-  useEffect(() => {
-    if (!transitionVisible) return undefined;
-    const timeout = window.setTimeout(() => setTransitionVisible(false), 1_350);
-    return () => window.clearTimeout(timeout);
-  }, [transitionVisible]);
-
   useLayoutEffect(() => {
     const bar = barRef.current;
     if (bar === null) {
@@ -126,6 +120,56 @@ export function AllocationBar({ data, transitioning = false }: AllocationBarProp
       resizeObserver?.disconnect();
       window.removeEventListener('resize', updateViewport);
     };
+  }, []);
+
+  useLayoutEffect(() => {
+    const bar = barRef.current;
+    if (bar === null) return undefined;
+
+    const targetState = createBarMotionState(geometry);
+    const previousData = previousDataRef.current;
+    const dataChanged = hasCashflowValueChange(previousData, data);
+    previousDataRef.current = data;
+
+    if (motionStateRef.current === undefined) {
+      motionStateRef.current = targetState;
+      return undefined;
+    }
+
+    const state = motionStateRef.current;
+    state.animation?.cancel();
+    if (!dataChanged || prefersReducedMotion()) {
+      assignBarMotionState(state, targetState);
+      applyBarMotionState(bar, state);
+      return undefined;
+    }
+
+    applyBarMotionState(bar, state);
+    state.animation = animate(state, {
+      consumption: targetState.consumption,
+      saving: targetState.saving,
+      investment: targetState.investment,
+      remaining: targetState.remaining,
+      desiredEndPercent: targetState.desiredEndPercent,
+      visibleEndPercent: targetState.visibleEndPercent,
+      duration: MOTION_DURATION.emphasis,
+      ease: MOTION_EASE.update,
+      onUpdate: () => applyBarMotionState(bar, state),
+    });
+
+    return undefined;
+  }, [
+    data.monthlyNetIncomeWon,
+    data.monthlyHousingWon,
+    data.monthlyLivingWon,
+    data.monthlySavingWon,
+    data.monthlyInvestmentWon,
+    geometry.desiredEndPercent,
+    geometry.visibleEndPercent,
+  ]);
+
+  useEffect(() => () => {
+    motionStateRef.current?.animation?.cancel();
   }, []);
 
   useEffect(() => {
@@ -192,9 +236,8 @@ export function AllocationBar({ data, transitioning = false }: AllocationBarProp
     <section
       className="allocation-bar"
       aria-label="월 수입 나누기"
-      data-transitioning={transitioning ? 'true' : undefined}
     >
-      <p className="allocation-bar__context">
+      <p className="allocation-bar__context" data-assembly-content>
         월 수입을 이렇게 나눠 쓰고 있어요
       </p>
       <div
@@ -206,34 +249,6 @@ export function AllocationBar({ data, transitioning = false }: AllocationBarProp
           }
         }}
       >
-        {transitionVisible ? (
-          <div
-            className="setup-review-transition"
-            aria-hidden="true"
-            onAnimationEnd={(event) => {
-              if (
-                event.target === event.currentTarget
-                && event.animationName === 'setup-review-transition-exit'
-              ) {
-                setTransitionVisible(false);
-              }
-            }}
-          >
-            <div className="setup-review-transition__track">
-              {visualSegments.map((segment) => (
-                <span
-                  className={`allocation-bar__visual-segment allocation-bar__visual-segment--${segment.id}`}
-                  key={segment.id}
-                  style={{ width: `${segment.visualPercentage}%` }}
-                />
-              ))}
-              <span
-                className="setup-review-transition__accent"
-                style={{ width: `${plannedPercentage}%` }}
-              />
-            </div>
-          </div>
-        ) : null}
         <div
           className="flow-bar allocation-bar__segments"
           data-desired-end-percent={geometry.desiredEndPercent}
@@ -270,6 +285,7 @@ export function AllocationBar({ data, transitioning = false }: AllocationBarProp
               {geometry.segments.map((segment) => (
                 <span
                   className={`allocation-bar__visual-segment allocation-bar__visual-segment--${segment.id}`}
+                  data-segment-id={segment.id}
                   data-start-percent={segment.startPercent}
                   data-width-percent={segment.widthPercent}
                   key={segment.id}
@@ -327,7 +343,7 @@ export function AllocationBar({ data, transitioning = false }: AllocationBarProp
             +{formatPercentage(geometry.overflowPercent)} 초과
           </span>
         ) : null}
-        <table className="allocation-table" aria-label="월 자금 항목">
+        <table className="allocation-table" aria-label="월 자금 항목" data-assembly-content>
           <thead>
             <tr>
               <th scope="col">종류</th>
@@ -378,7 +394,7 @@ export function AllocationBar({ data, transitioning = false }: AllocationBarProp
           value={activeAllocation ? allocationText(activeAllocation) : ''}
         />
       </div>
-      {isDeficit ? <p className="allocation-bar__deficit" role="status">수입보다 {formatContextWon(cashflow.deficitWon)} 초과</p> : null}
+      {isDeficit ? <p className="allocation-bar__deficit" data-assembly-content role="status">수입보다 {formatContextWon(cashflow.deficitWon)} 초과</p> : null}
     </section>
   );
 }
@@ -438,4 +454,56 @@ function visibleSegmentPercentage(
 function isSegmentClipped(allocation: Allocation, visibleEndPercent: number): boolean {
   return allocation.visualPercentage > 0
     && allocation.startPercent + allocation.visualPercentage > visibleEndPercent;
+}
+
+function createBarMotionState(
+  geometry: ReturnType<typeof createCashflowBarGeometry>,
+): AllocationBarMotionState {
+  const widths = new Map(geometry.segments.map((segment) => [segment.id, segment.widthPercent]));
+  return {
+    consumption: widths.get('consumption') ?? 0,
+    saving: widths.get('saving') ?? 0,
+    investment: widths.get('investment') ?? 0,
+    remaining: widths.get('remaining') ?? 0,
+    desiredEndPercent: geometry.desiredEndPercent,
+    visibleEndPercent: geometry.visibleEndPercent,
+  };
+}
+
+function applyBarMotionState(bar: HTMLDivElement, state: AllocationBarMotionState): void {
+  const clip = bar.querySelector<HTMLElement>('.cashflow-bar__clip');
+  const strip = bar.querySelector<HTMLElement>('.allocation-bar__visual-track');
+  if (clip === null || strip === null) return;
+
+  clip.style.width = `${state.visibleEndPercent}%`;
+  strip.style.width = `${relativeStripWidth(state.desiredEndPercent, state.visibleEndPercent)}%`;
+  for (const segment of strip.querySelectorAll<HTMLElement>('[data-segment-id]')) {
+    const id = segment.dataset.segmentId as AllocationId;
+    segment.style.width = `${relativeSegmentWidth(state[id], state.desiredEndPercent)}%`;
+  }
+}
+
+function assignBarMotionState(
+  state: AllocationBarMotionState,
+  target: AllocationBarMotionState,
+): void {
+  state.consumption = target.consumption;
+  state.saving = target.saving;
+  state.investment = target.investment;
+  state.remaining = target.remaining;
+  state.desiredEndPercent = target.desiredEndPercent;
+  state.visibleEndPercent = target.visibleEndPercent;
+}
+
+function hasCashflowValueChange(previous: MainData, current: MainData): boolean {
+  return previous.monthlyNetIncomeWon !== current.monthlyNetIncomeWon
+    || previous.monthlyHousingWon !== current.monthlyHousingWon
+    || previous.monthlyLivingWon !== current.monthlyLivingWon
+    || previous.monthlySavingWon !== current.monthlySavingWon
+    || previous.monthlyInvestmentWon !== current.monthlyInvestmentWon;
+}
+
+function prefersReducedMotion(): boolean {
+  return typeof window.matchMedia === 'function'
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }

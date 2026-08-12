@@ -1,4 +1,7 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { animate, type JSAnimation } from 'animejs';
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import { animateVisualNumber } from '../../../components/motion/animateVisualNumber';
+import { MOTION_DURATION, MOTION_EASE } from '../../../components/motion/tokens';
 import { calculateCashflowInsight, type DonutAllocation } from '../../domain/cashflowInsight';
 import type { MainData } from '../../domain/model';
 import { formatDashboardWon } from './CashflowSummary';
@@ -8,17 +11,103 @@ export interface CashflowDonutSummaryProps {
   data: MainData;
 }
 
+interface DonutSegmentGeometry {
+  id: DonutAllocation['id'];
+  visiblePercentage: number;
+  dashoffset: number;
+}
+
+interface DonutSegmentMotionState {
+  visiblePercentage: number;
+  dashoffset: number;
+  animation?: JSAnimation;
+}
+
 export function CashflowDonutSummary({ data }: CashflowDonutSummaryProps) {
   const [hoveredId, setHoveredId] = useState<DonutAllocation['id']>();
   const [focusedId, setFocusedId] = useState<DonutAllocation['id']>();
   const [tappedId, setTappedId] = useState<DonutAllocation['id']>();
   const sectionRef = useRef<HTMLElement>(null);
+  const circleRefs = useRef(new Map<DonutAllocation['id'], SVGCircleElement>());
+  const geometryStatesRef = useRef(new Map<DonutAllocation['id'], DonutSegmentMotionState>());
+  const geometryMountedRef = useRef(false);
   const tooltipId = useId();
   const insight = calculateCashflowInsight(data);
   const activeId = hoveredId ?? focusedId ?? tappedId;
   const activeAllocation = insight.allocations.find((allocation) => allocation.id === activeId);
   const hasIncome = data.monthlyNetIncomeWon > 0;
-  let offset = 0;
+  const segmentGeometry = createDonutSegmentGeometry(insight.allocations);
+
+  useLayoutEffect(() => {
+    if (!geometryMountedRef.current) {
+      geometryMountedRef.current = true;
+      geometryStatesRef.current = new Map(segmentGeometry.map((segment) => [
+        segment.id,
+        {
+          visiblePercentage: segment.visiblePercentage,
+          dashoffset: segment.dashoffset,
+        },
+      ]));
+      return undefined;
+    }
+
+    const reducedMotion = typeof window.matchMedia === 'function'
+      && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const currentIds = new Set(segmentGeometry.map((segment) => segment.id));
+    for (const [id, state] of geometryStatesRef.current) {
+      if (!currentIds.has(id)) {
+        state.animation?.cancel();
+        geometryStatesRef.current.delete(id);
+      }
+    }
+
+    for (const segment of segmentGeometry) {
+      const circle = circleRefs.current.get(segment.id);
+      if (circle === undefined) continue;
+      const state = geometryStatesRef.current.get(segment.id) ?? {
+        visiblePercentage: 0,
+        dashoffset: segment.dashoffset,
+      };
+      state.animation?.cancel();
+      geometryStatesRef.current.set(segment.id, state);
+
+      if (reducedMotion) {
+        state.visiblePercentage = segment.visiblePercentage;
+        state.dashoffset = segment.dashoffset;
+        setCircleGeometry(circle, state);
+        continue;
+      }
+
+      if (
+        state.visiblePercentage === segment.visiblePercentage
+        && state.dashoffset === segment.dashoffset
+      ) {
+        setCircleGeometry(circle, state);
+        continue;
+      }
+
+      setCircleGeometry(circle, state);
+      state.animation = animate(state, {
+        visiblePercentage: segment.visiblePercentage,
+        dashoffset: segment.dashoffset,
+        duration: MOTION_DURATION.emphasis,
+        ease: MOTION_EASE.update,
+        onUpdate: () => setCircleGeometry(circle, state),
+      });
+    }
+
+    return undefined;
+  }, [
+    data.monthlyNetIncomeWon,
+    data.monthlyHousingWon,
+    data.monthlyLivingWon,
+    data.monthlySavingWon,
+    data.monthlyInvestmentWon,
+  ]);
+
+  useEffect(() => () => {
+    for (const state of geometryStatesRef.current.values()) state.animation?.cancel();
+  }, []);
 
   useEffect(() => {
     if (tappedId === undefined) return undefined;
@@ -71,9 +160,7 @@ export function CashflowDonutSummary({ data }: CashflowDonutSummaryProps) {
             onPointerLeave={() => setHoveredId(undefined)}
           >
             {insight.allocations.map((allocation) => {
-              const visiblePercentage = Math.min(allocation.displayPercentage, Math.max(0, 100 - offset));
-              const dashoffset = -offset;
-              offset += visiblePercentage;
+              const geometry = segmentGeometry.find((segment) => segment.id === allocation.id)!;
               return (
                 <circle
                   aria-hidden="true"
@@ -83,9 +170,13 @@ export function CashflowDonutSummary({ data }: CashflowDonutSummaryProps) {
                   fill="none"
                   key={allocation.id}
                   pathLength="100"
+                  ref={(element) => {
+                    if (element === null) circleRefs.current.delete(allocation.id);
+                    else circleRefs.current.set(allocation.id, element);
+                  }}
                   r="40"
-                  strokeDasharray={`${visiblePercentage} ${100 - visiblePercentage}`}
-                  strokeDashoffset={dashoffset}
+                  strokeDasharray={`${geometry.visiblePercentage} ${100 - geometry.visiblePercentage}`}
+                  strokeDashoffset={geometry.dashoffset}
                   strokeWidth="14"
                   transform="rotate(-90 50 50)"
                 />
@@ -93,11 +184,19 @@ export function CashflowDonutSummary({ data }: CashflowDonutSummaryProps) {
             })}
           </svg>
           <div className="cashflow-donut__center">
-            <strong>{activeAllocation
-              ? formatPercentage(activeAllocation.percentage)
-              : insight.savingsInvestmentPercentage === null
-                ? '—'
-                : formatPercentage(insight.savingsInvestmentPercentage)}</strong>
+            <strong>
+              {activeAllocation ? formatPercentage(activeAllocation.percentage) : (
+                <>
+                  <span className="sr-only">{insight.savingsInvestmentPercentage === null
+                    ? '—'
+                    : formatPercentage(insight.savingsInvestmentPercentage)}</span>
+                  <AnimatedVisualNumber
+                    value={insight.savingsInvestmentPercentage}
+                    format={formatPercentage}
+                  />
+                </>
+              )}
+            </strong>
             <span>{activeAllocation?.label ?? '저축·투자'}</span>
             {!activeAllocation && insight.isOverIncome ? <small>소득 초과</small> : null}
           </div>
@@ -121,8 +220,12 @@ export function CashflowDonutSummary({ data }: CashflowDonutSummaryProps) {
               type="button"
             >
               <span>{allocation.label}</span>
-              <span className="cashflow-donut__legend-amount">{formatDashboardWon(allocation.amountWon)}</span>
-              <span>{formatPercentage(allocation.percentage)}</span>
+              <AnimatedVisualNumber
+                className="cashflow-donut__legend-amount"
+                value={allocation.amountWon}
+                format={formatDashboardWon}
+              />
+              <AnimatedVisualNumber value={allocation.percentage} format={formatPercentage} />
             </button>
           );
         })}
@@ -134,6 +237,65 @@ export function CashflowDonutSummary({ data }: CashflowDonutSummaryProps) {
       ) : null}
     </section>
   );
+}
+
+function AnimatedVisualNumber({
+  value,
+  format,
+  className,
+}: {
+  value: number | null;
+  format(value: number): string;
+  className?: string;
+}) {
+  const visualRef = useRef<HTMLSpanElement>(null);
+  const previousValueRef = useRef(value);
+  const rendered = value === null ? '—' : format(value);
+
+  useLayoutEffect(() => {
+    const previousValue = previousValueRef.current;
+    previousValueRef.current = value;
+    if (
+      previousValue === null
+      || value === null
+      || previousValue === value
+      || visualRef.current === null
+    ) return;
+    return animateVisualNumber(
+      visualRef.current,
+      previousValue,
+      value,
+      format,
+      MOTION_DURATION.normal,
+    );
+  }, [format, value]);
+
+  return <span aria-hidden="true" className={className} ref={visualRef}>{rendered}</span>;
+}
+
+function createDonutSegmentGeometry(allocations: DonutAllocation[]): DonutSegmentGeometry[] {
+  let offset = 0;
+  return allocations.map((allocation) => {
+    const visiblePercentage = Math.min(allocation.displayPercentage, Math.max(0, 100 - offset));
+    const segment = {
+      id: allocation.id,
+      visiblePercentage,
+      dashoffset: -offset,
+    };
+    offset += visiblePercentage;
+    return segment;
+  });
+}
+
+function setCircleGeometry(
+  circle: SVGCircleElement,
+  geometry: Pick<DonutSegmentMotionState, 'visiblePercentage' | 'dashoffset'>,
+): void {
+  circle.setAttribute(
+    'stroke-dasharray',
+    `${geometry.visiblePercentage} ${100 - geometry.visiblePercentage}`,
+  );
+  circle.setAttribute('stroke-dashoffset', String(geometry.dashoffset));
 }
 
 function formatPercentage(percentage: number): string {
