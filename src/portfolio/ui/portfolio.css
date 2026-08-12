@@ -147,10 +147,18 @@
 .portfolio-item-sheet::backdrop { animation: portfolio-item-backdrop-in 180ms ease-out both; }
 .portfolio-item-sheet__header { display: flex; min-height: 44px; align-items: center; justify-content: space-between; gap: .75rem; }
 .portfolio-item-sheet__header h2 { margin: 0; }
+.portfolio-item-sheet__remove { display: inline-grid; flex: 0 0 44px; width: 44px; min-width: 44px; height: 44px; min-height: 44px; place-items: center; padding: 0; border: 1px solid var(--line); border-radius: var(--ui-control-radius); background: var(--panel); color: var(--muted); }
+.portfolio-item-sheet__remove:hover { background: color-mix(in srgb, var(--tone-accent) 8%, var(--panel)); color: var(--text); }
+.portfolio-item-sheet__remove:focus-visible { box-shadow: var(--ui-focus-ring); }
+.portfolio-item-sheet__remove svg { width: 20px; height: 20px; }
 .portfolio-item-sheet__fields { display: grid; min-width: 0; gap: 1rem; margin-top: 1.25rem; }
 .portfolio-item-sheet__identity { display: grid; min-width: 0; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: .5rem; }
 .portfolio-item-sheet__identity label, .portfolio-item-sheet__amount { display: grid; min-width: 0; gap: .35rem; }
 .portfolio-item-sheet__identity input, .portfolio-item-sheet__amount input { width: 100%; min-width: 0; min-height: 44px; }
+.portfolio-item-sheet__quick-targets { display: flex; min-width: 0; flex-wrap: wrap; gap: .5rem; }
+.portfolio-item-sheet__quick-target { min-height: 44px; padding: .5rem .75rem; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); color: var(--muted); white-space: nowrap; }
+.portfolio-item-sheet__quick-target:hover { background: color-mix(in srgb, var(--tone-accent) 8%, var(--panel)); color: var(--text); }
+.portfolio-item-sheet__quick-target:focus-visible { box-shadow: var(--ui-focus-ring); }
 .portfolio-item-sheet__calculated { justify-self: end; color: var(--muted); font-size: .875rem; }
 .portfolio-item-sheet__actions, .portfolio-item-sheet__discard-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; margin-top: 1.5rem; }
 .portfolio-item-sheet__actions .ui-button, .portfolio-item-sheet__discard-actions .ui-button { width: 100%; min-height: 48px; }

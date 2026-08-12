@@ -4,9 +4,9 @@
 
 **Goal:** Make target deletion an accessible trash-icon action and let users fill five representative investment names from the add sheet.
 
-**Architecture:** Keep interaction local to `PortfolioItemSheet`; quick-fill buttons update existing local name/classification state and focus the amount input, while the existing `onRemove` callback remains the deletion boundary. Use a repository-owned Lucide-derived SVG asset for the trash glyph and CSS only for sizing/layout.
+**Architecture:** Keep interaction local to `PortfolioItemSheet`; quick-fill buttons update existing local name/classification state and focus the amount input, while the existing `onRemove` callback remains the deletion boundary. Use the `Trash2` component from `lucide-react` for the delete glyph and CSS only for sizing/layout.
 
-**Tech Stack:** React 19, TypeScript, CSS, Vitest, Testing Library, Playwright
+**Tech Stack:** React 19, TypeScript, CSS, Lucide React, Vitest, Testing Library, Playwright
 
 ## Global Constraints
 
@@ -23,7 +23,8 @@
 ### Task 1: Quick-fill behavior and accessible delete control
 
 **Files:**
-- Create: `public/icons/portfolio-trash.svg`
+- Modify: `package.json`
+- Modify: `package-lock.json`
 - Modify: `src/portfolio/ui/PortfolioItemSheet.tsx`
 - Modify: `src/portfolio/ui/portfolio.css`
 - Test: `tests/unit/portfolio/PortfolioItemSheet.test.tsx`
@@ -64,7 +65,7 @@ Extend the edit test with:
 expect(within(sheet).queryByRole('button', { name: 'S&P 500' })).not.toBeInTheDocument();
 const remove = within(sheet).getByRole('button', { name: '투자 대상 삭제' });
 expect(remove).not.toHaveTextContent('투자 대상 삭제');
-expect(within(remove).getByRole('img', { hidden: true })).toHaveAttribute('src', expect.stringContaining('portfolio-trash.svg'));
+expect(remove.querySelector('svg')).toBeInTheDocument();
 ```
 
 - [ ] **Step 2: Run the focused test and confirm RED**
@@ -73,12 +74,12 @@ Run: `npx vitest run tests/unit/portfolio/PortfolioItemSheet.test.tsx`
 
 Expected: FAIL because the five quick-fill buttons and trash image do not exist.
 
-- [ ] **Step 3: Add the official icon asset**
+- [ ] **Step 3: Add the icon-library dependency**
 
-Create `public/icons/portfolio-trash.svg` from Lucide `trash-2`, preserving its 24×24 outline geometry and `currentColor` strokes:
+Install Lucide React so the visible trash glyph comes from a maintained icon library rather than a handcrafted asset:
 
-```svg
-<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+```bash
+npm install lucide-react
 ```
 
 - [ ] **Step 4: Implement local quick-fill and icon behavior**
@@ -105,7 +106,7 @@ Render `.portfolio-item-sheet__quick-targets` only in add mode, use native `butt
 
 ```tsx
 <button type="button" className="portfolio-item-sheet__remove" aria-label="투자 대상 삭제" onClick={onRemove}>
-  <img src={`${import.meta.env.BASE_URL}icons/portfolio-trash.svg`} alt="" />
+  <Trash2 aria-hidden="true" size={20} strokeWidth={2} />
 </button>
 ```
 
@@ -117,7 +118,7 @@ Add flex wrapping and fixed control minimums without changing the sheet width:
 .portfolio-item-sheet__quick-targets { display: flex; flex-wrap: wrap; gap: .5rem; }
 .portfolio-item-sheet__quick-target { min-height: 44px; padding: .5rem .75rem; white-space: nowrap; }
 .portfolio-item-sheet__remove { display: inline-grid; width: 44px; min-width: 44px; height: 44px; place-items: center; padding: 0; }
-.portfolio-item-sheet__remove img { width: 20px; height: 20px; }
+.portfolio-item-sheet__remove svg { width: 20px; height: 20px; }
 ```
 
 Use existing border, radius, foreground, hover, and focus-visible tokens/patterns from `portfolio.css`; do not encode a new color system.
@@ -131,7 +132,7 @@ Expected: all `PortfolioItemSheet` tests PASS.
 - [ ] **Step 7: Commit the component increment**
 
 ```bash
-git add public/icons/portfolio-trash.svg src/portfolio/ui/PortfolioItemSheet.tsx src/portfolio/ui/portfolio.css tests/unit/portfolio/PortfolioItemSheet.test.tsx
+git add package.json package-lock.json src/portfolio/ui/PortfolioItemSheet.tsx src/portfolio/ui/portfolio.css tests/unit/portfolio/PortfolioItemSheet.test.tsx
 git commit -m "feat(portfolio): add target quick labels"
 ```
 
@@ -218,4 +219,3 @@ Confirm the investment name and amount remain dominant, the quick-fill controls 
 - [ ] **Step 3: Report evidence and residual risk**
 
 Report changed files, exact validation commands and outcomes, screenshots reviewed, and any unresolved visual or interaction risk. Do not claim completion without current command output.
-

@@ -62,6 +62,32 @@ describe('PortfolioItemSheet', () => {
     expect(within(sheet).getByRole('button', { name: '안정, 누르면 성장으로 변경' })).toBeVisible();
   });
 
+  it('quick-fills the approved target names and moves focus to the amount', () => {
+    renderSheet();
+    const sheet = screen.getByRole('dialog', { name: '투자 대상 추가' });
+    const names = ['S&P 500', '나스닥', '코스피', '미국 국채', '금 현물'];
+
+    for (const name of names) {
+      expect(within(sheet).getByRole('button', { name })).toBeVisible();
+    }
+
+    fireEvent.click(within(sheet).getByRole('button', { name: '미국 국채' }));
+
+    expect(within(sheet).getByLabelText('투자 대상 이름')).toHaveValue('미국 국채');
+    expect(within(sheet).getByRole('button', { name: '안정, 누르면 성장으로 변경' })).toBeVisible();
+    expect(within(sheet).getByLabelText('금액')).toHaveFocus();
+  });
+
+  it('preserves a user classification when quick-filling a name', () => {
+    renderSheet();
+    const sheet = screen.getByRole('dialog', { name: '투자 대상 추가' });
+    fireEvent.click(within(sheet).getByRole('button', { name: '성장, 누르면 안정으로 변경' }));
+
+    fireEvent.click(within(sheet).getByRole('button', { name: '나스닥' }));
+
+    expect(within(sheet).getByRole('button', { name: '안정, 누르면 성장으로 변경' })).toBeVisible();
+  });
+
   it.each(['취소', 'Escape', 'backdrop'] as const)('closes pristine input directly through %s', (route) => {
     const props = renderSheet();
     const sheet = screen.getByRole('dialog', { name: '투자 대상 추가' });
@@ -106,7 +132,7 @@ describe('PortfolioItemSheet', () => {
     expect(within(sheet).getByRole('button', { name: '완료' })).toBeDisabled();
   });
 
-  it('offers quiet removal only while editing', () => {
+  it('offers icon removal and no quick fills only while editing', () => {
     const onRemove = vi.fn();
     renderSheet({
       mode: 'edit',
@@ -118,7 +144,11 @@ describe('PortfolioItemSheet', () => {
     });
     const sheet = screen.getByRole('dialog', { name: '투자 대상 수정' });
 
-    fireEvent.click(within(sheet).getByRole('button', { name: '투자 대상 삭제' }));
+    expect(within(sheet).queryByRole('button', { name: 'S&P 500' })).not.toBeInTheDocument();
+    const remove = within(sheet).getByRole('button', { name: '투자 대상 삭제' });
+    expect(remove).not.toHaveTextContent('투자 대상 삭제');
+    expect(remove.querySelector('svg')).toBeInTheDocument();
+    fireEvent.click(remove);
 
     expect(onRemove).toHaveBeenCalledTimes(1);
   });

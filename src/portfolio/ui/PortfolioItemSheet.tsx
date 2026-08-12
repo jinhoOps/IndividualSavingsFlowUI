@@ -1,9 +1,12 @@
 import { useRef, useState, type RefObject } from 'react';
+import { Trash2 } from 'lucide-react';
 import { Button } from '../../components/common/Button';
 import { normalizePortfolioName, recommendClassification } from '../domain/classification';
 import type { Classification, ClassificationOrigin } from '../domain/model';
 import { formatAllocationPercent } from './format';
 import { PortfolioDialog } from './PortfolioDialog';
+
+const QUICK_TARGET_NAMES = ['S&P 500', '나스닥', '코스피', '미국 국채', '금 현물'] as const;
 
 export interface PortfolioItemSheetValue {
   name: string;
@@ -41,6 +44,7 @@ export function PortfolioItemSheet({
   const [amountTouched, setAmountTouched] = useState(false);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const nameInputRef = useRef<HTMLInputElement>(null);
+  const amountInputRef = useRef<HTMLInputElement>(null);
   const amountWon = amount.trim() === '' ? 0 : Number(amount);
   const normalizedName = normalizePortfolioName(name);
   const duplicateName = normalizedName.length > 0
@@ -62,6 +66,19 @@ export function PortfolioItemSheet({
     else onClose();
   }
 
+  function updateName(nextName: string): void {
+    setNameTouched(true);
+    setName(nextName);
+    if (classificationOrigin === 'automatic') {
+      setClassification(recommendClassification(nextName));
+    }
+  }
+
+  function quickFillName(nextName: string): void {
+    updateName(nextName);
+    amountInputRef.current?.focus();
+  }
+
   return (
     <>
       <PortfolioDialog
@@ -75,7 +92,9 @@ export function PortfolioItemSheet({
         <header className="portfolio-item-sheet__header">
           <h2 id="portfolio-item-sheet-title">{title}</h2>
           {mode === 'edit' && onRemove ? (
-            <Button type="button" variant="quiet" onClick={onRemove}>투자 대상 삭제</Button>
+            <button type="button" className="portfolio-item-sheet__remove" aria-label="투자 대상 삭제" onClick={onRemove}>
+              <Trash2 aria-hidden="true" size={20} strokeWidth={2} />
+            </button>
           ) : null}
         </header>
         <div className="portfolio-item-sheet__fields">
@@ -89,14 +108,7 @@ export function PortfolioItemSheet({
                 aria-invalid={nameTouched && nameError ? 'true' : undefined}
                 aria-describedby={nameTouched && nameError ? 'portfolio-item-name-error' : undefined}
                 value={name}
-                onChange={(event) => {
-                  const nextName = event.target.value;
-                  setNameTouched(true);
-                  setName(nextName);
-                  if (classificationOrigin === 'automatic') {
-                    setClassification(recommendClassification(nextName));
-                  }
-                }}
+                onChange={(event) => updateName(event.target.value)}
               />
               {nameTouched && nameError ? <span className="portfolio-editor__field-error" id="portfolio-item-name-error">{nameError}</span> : null}
             </label>
@@ -110,9 +122,22 @@ export function PortfolioItemSheet({
               }}
             >{classification === 'growth' ? '성장' : '안정'}</button>
           </div>
+          {mode === 'add' ? (
+            <div className="portfolio-item-sheet__quick-targets" role="group" aria-label="대표 투자 대상">
+              {QUICK_TARGET_NAMES.map((quickName) => (
+                <button
+                  key={quickName}
+                  type="button"
+                  className="portfolio-item-sheet__quick-target"
+                  onClick={() => quickFillName(quickName)}
+                >{quickName}</button>
+              ))}
+            </div>
+          ) : null}
           <label className="portfolio-item-sheet__amount">
             <span>금액</span>
             <input
+              ref={amountInputRef}
               inputMode="numeric"
               aria-label="금액"
               aria-invalid={amountTouched && amountError ? 'true' : undefined}
