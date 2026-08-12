@@ -46,8 +46,9 @@ Portfolio는 사용자에게 다음 세 가지 제품 상태를 명확히 보여
 - 대상 추가 진입은 투자 대상 목록과 같은 전체 폭 52px 블록에 `+` 아이콘만 표시해 목록 소속감과 넓은 touch target을 제공하되 accessible name `투자 대상 추가`를 유지한다.
 - `+` 또는 완성된 대상 행을 선택하면 추가·편집에 공통으로 사용하는 modal bottom sheet가 viewport 아래에서 위로 진입해 기존 목록을 덮는다. 배경 목록은 맥락으로 남지만 dimmed, `inert`, `aria-hidden` 상태로 전환한다.
 - 대상 bottom sheet에는 이름, 단일 성장·안정 segment, 원화 금액과 `취소 / 완료` action만 표시한다. 추가와 수정은 제목과 초기값만 다르고 같은 레이아웃·동작 계약을 사용한다.
-- 신규 추가 sheet에서만 이름 입력 아래에 `S&P 500`, `나스닥`, `코스피`, `미국 국채`, `금 현물` quick-fill label을 표시한다. label 선택은 이름을 채우고 이름 기반 자동 분류를 적용한 뒤 금액 입력으로 focus를 이동한다. 사용자는 채워진 이름과 분류를 계속 수정할 수 있다.
-- 기존 대상 편집 sheet의 삭제 action은 보이는 텍스트 대신 accessible name `투자 대상 삭제`를 가진 최소 44px 휴지통 아이콘 버튼으로 표시한다. 신규 추가 sheet에는 삭제 action을 표시하지 않는다.
+- 신규 추가 sheet에서만 이름 입력 아래에 `S&P 500`, `나스닥`, `코스피`, `미국 국채`, `금 현물` quick-fill 버튼을 표시한다. 버튼 선택은 이름을 채운 뒤 금액 입력으로 focus를 이동한다. 분류가 자동 상태이면 채워진 이름으로 추천을 갱신하고, 사용자가 성장·안정을 직접 지정한 상태이면 사용자 분류를 보존한다. 사용자는 채워진 이름과 분류를 계속 수정할 수 있다.
+- quick-fill 버튼은 각각 최소 44px touch target과 명확한 accessible name을 가지며 pointer·touch·keyboard에서 같은 동작을 제공한다. 390px에서는 글자를 축소하거나 한 줄에 압축하지 않고 가용 폭에 맞춰 여러 줄로 배치한다.
+- 기존 대상 편집 sheet의 삭제 action은 보이는 텍스트 대신 accessible name `투자 대상 삭제`를 가진 최소 44px 휴지통 아이콘 버튼으로 표시한다. 선택하면 별도 확인 dialog 없이 해당 항목을 현재 Portfolio draft에서 삭제하고 sheet를 닫는다. 삭제는 전체 Portfolio 적용 전까지 취소 가능한 기존 draft 계약을 따르며, 신규 추가 sheet에는 삭제 action을 표시하지 않는다.
 - backdrop 선택은 변경이 없으면 즉시 취소한다. 이름·금액·분류 중 하나라도 초기값과 달라졌으면 `입력 내용을 버릴까요?` 확인 dialog를 열며, `계속 입력 / 버리기`를 제공한다. Escape와 명시적 `취소`도 같은 변경 보호 규칙을 사용한다.
 - `완료`는 유효한 항목을 aggregate Portfolio draft에 반영하고 sheet를 아래로 닫은 뒤 추가 또는 수정된 요약 행으로 focus를 복귀한다. sheet 내부의 미완성 입력은 완료 전 aggregate draft에 반영하지 않는다.
 - 현금은 남은 투자금 자동 배분 상태로 설명하며 별도 투자 대상처럼 먼저 설정하도록 요구하지 않는다.
@@ -168,8 +169,8 @@ Portfolio는 사용자에게 다음 세 가지 제품 상태를 명확히 보여
 - 최초 진입은 투자 위치 없이 `시작 → 배분 → 검토 → 결과`를 완료한다.
 - 최초 설정 새로고침은 기존 draft 입력값을 보존한 `배분` 단계로 복원한다.
 - `+`와 기존 대상 선택은 동일한 대상 bottom sheet를 열고, 완료는 목록 요약을 추가·갱신한다.
-- 신규 추가 sheet에는 다섯 quick-fill label이 표시되고 선택 시 이름·자동 분류가 설정되며 금액 입력으로 focus가 이동한다. 편집 sheet에는 quick-fill label이 표시되지 않는다.
-- 편집 sheet의 휴지통 아이콘은 accessible name으로 식별되고 최소 44px touch target을 유지하며 기존 삭제 동작을 실행한다.
+- 신규 추가 sheet에는 다섯 quick-fill 버튼이 표시되고 선택 시 이름이 설정되며 금액 입력으로 focus가 이동한다. 자동 분류는 갱신하지만 사용자 지정 분류는 보존하고, 편집 sheet에는 quick-fill 버튼이 표시되지 않는다.
+- 편집 sheet의 휴지통 아이콘은 accessible name으로 식별되고 최소 44px touch target을 유지하며 해당 항목을 현재 draft에서 삭제한 뒤 sheet를 닫는다.
 - 변경 없는 backdrop·Escape·취소는 즉시 닫히며, 변경 후에는 폐기 확인을 거친다.
 - 결과 진입은 투자 위치를 접은 상태로 시작한다.
 - 모바일 수정은 bottom sheet, desktop 수정은 side panel에서 동작한다.
@@ -204,7 +205,8 @@ Portfolio는 사용자에게 다음 세 가지 제품 상태를 명확히 보여
 - 최초 설정은 투자 대상 0개·현금 100% 계획을 유효한 사용자 선택으로 허용한다.
 - 최초 설정의 대상 추가·수정은 공통 modal bottom sheet를 사용하고, 배경 목록은 sheet가 열린 동안 상호작용할 수 없다.
 - 변경된 대상 sheet를 backdrop, Escape 또는 `취소`로 닫으려 하면 폐기 확인 dialog가 나타나며 `계속 입력`은 값을 보존한다.
-- 신규 대상 quick-fill label은 승인된 다섯 이름만 제공하고 기존 대상 편집에는 노출되지 않는다.
-- 기존 대상 삭제는 보이는 삭제 문구 없이 휴지통 아이콘으로 제공하되 assistive technology에는 `투자 대상 삭제`로 전달된다.
+- 신규 대상 quick-fill 버튼은 승인된 다섯 이름만 제공하고 기존 대상 편집에는 노출되지 않으며, 390px에서도 축소 없이 줄바꿈된다.
+- quick-fill 선택은 자동 분류만 다시 추천하고 기존 사용자 지정 분류를 덮어쓰지 않는다.
+- 기존 대상 삭제는 보이는 삭제 문구 없이 휴지통 아이콘으로 제공하되 assistive technology에는 `투자 대상 삭제`로 전달되고, 삭제된 항목은 전체 Portfolio 적용 전 취소할 수 있다.
 - 기존 Portfolio 계산, draft/apply, Main read-only와 shared location command 계약이 유지된다.
 - 현재 Portfolio E2E와 새 상태 분리 E2E가 모두 통과한다.
