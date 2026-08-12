@@ -32,14 +32,20 @@ export function animateVisualNumber(
   element.textContent = format(state.value);
   visualNumberStates.set(element, state);
 
-  state.animation = animate(state, {
-    value: to,
-    duration,
-    ease: MOTION_EASE.update,
-    onUpdate: () => {
-      element.textContent = format(state.value);
-    },
-  });
+  try {
+    state.animation = animate(state, {
+      value: to,
+      duration,
+      ease: MOTION_EASE.update,
+      onUpdate: () => {
+        element.textContent = format(state.value);
+      },
+    });
+  } catch {
+    state.value = to;
+    state.animation = undefined;
+    element.textContent = format(to);
+  }
 
   return () => {
     state.animation?.cancel();

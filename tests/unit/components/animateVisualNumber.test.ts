@@ -54,4 +54,20 @@ describe('animateVisualNumber', () => {
 
     expect(cancel).toHaveBeenCalledOnce();
   });
+
+  it('commits the final value when animation creation fails and resumes from it', () => {
+    anime.animate.mockImplementationOnce(() => {
+      throw new Error('animation unavailable');
+    });
+    const element = document.createElement('span');
+
+    expect(() => animateVisualNumber(element, 10, 20, String)).not.toThrow();
+    expect(element).toHaveTextContent('20');
+
+    animateVisualNumber(element, 20, 30, String);
+    expect(anime.animate).toHaveBeenLastCalledWith(
+      expect.objectContaining({ value: 20 }),
+      expect.objectContaining({ value: 30 }),
+    );
+  });
 });

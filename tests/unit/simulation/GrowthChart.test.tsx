@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
+import { StrictMode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDefaultSimulationDraft } from '../../../src/simulation/domain/validation';
 import { projectCompoundGrowth } from '../../../src/simulation/domain/projection';
@@ -30,6 +31,7 @@ vi.mock('animejs', () => ({
 }));
 
 beforeEach(() => {
+  anime.animate.mockImplementation((_target: unknown, _options: unknown) => ({ cancel: vi.fn() }));
   vi.stubGlobal('matchMedia', vi.fn().mockImplementation((query: string) => ({
     matches: query === '(max-width: 767px)' && compactViewport,
     media: query,
@@ -79,6 +81,23 @@ describe('GrowthChart', () => {
         duration: 260,
       }),
     );
+  });
+
+  it('preserves the first-result reveal through StrictMode effect replay', () => {
+    render(
+      <StrictMode>
+        <GrowthChart result={result} amountMode="nominal" />
+      </StrictMode>,
+    );
+
+    const revealCalls = anime.animate.mock.calls.filter(([target]) => (
+      target instanceof Element && target.matches('.growth-chart__reveal-clip')
+    ));
+    expect(revealCalls).toHaveLength(2);
+    expect(revealCalls.map(([, options]) => options)).toEqual([
+      expect.objectContaining({ width: 620, duration: 260 }),
+      expect.objectContaining({ width: 620, duration: 260 }),
+    ]);
   });
 
   it('commits final semantic paths while the visual overlay interpolates from prior geometry', () => {
@@ -150,6 +169,72 @@ describe('GrowthChart', () => {
 
     expect(anime.createScope).not.toHaveBeenCalled();
     expect(anime.animate).not.toHaveBeenCalled();
+  });
+
+  it('continues an interrupted graph transition from the currently displayed paths', () => {
+    const { container, rerender } = render(
+      <GrowthChart result={result} amountMode="nominal" />,
+    );
+    const firstUpdate = projectCompoundGrowth({
+      ...createDefaultSimulationDraft({
+        monthlySavingsWon: 300_000,
+        monthlyInvestmentWon: 200_000,
+        mainUpdatedAt: 126,
+      }, 459),
+      years: 30,
+      expectedAnnualReturnPercent: 12,
+    });
+    anime.animate.mockClear();
+    rerender(<GrowthChart result={firstUpdate} amountMode="nominal" />);
+    const firstTransition = graphTransitionCall();
+    firstTransition.state.progress = 0.4;
+    firstTransition.options.onUpdate();
+    const interruptedPaths = motionPaths(container);
+
+    const latestUpdate = projectCompoundGrowth({
+      ...createDefaultSimulationDraft({
+        monthlySavingsWon: 300_000,
+        monthlyInvestmentWon: 200_000,
+        mainUpdatedAt: 127,
+      }, 460),
+      years: 25,
+      expectedAnnualReturnPercent: 5,
+    });
+    anime.animate.mockClear();
+    rerender(<GrowthChart result={latestUpdate} amountMode="nominal" />);
+
+    expect(motionPaths(container)).toEqual(interruptedPaths);
+    expect(graphTransitionCall().options).toEqual(expect.objectContaining({
+      progress: 1,
+      duration: 260,
+    }));
+  });
+
+  it('keeps the full prior curve shape at the start of a shorter-duration transition', () => {
+    const longResult = projectCompoundGrowth({
+      ...createDefaultSimulationDraft({
+        monthlySavingsWon: 300_000,
+        monthlyInvestmentWon: 200_000,
+        mainUpdatedAt: 128,
+      }, 461),
+      years: 30,
+    });
+    const shortResult = projectCompoundGrowth({
+      ...createDefaultSimulationDraft({
+        monthlySavingsWon: 300_000,
+        monthlyInvestmentWon: 200_000,
+        mainUpdatedAt: 129,
+      }, 462),
+      years: 10,
+    });
+    const { container, rerender } = render(
+      <GrowthChart result={longResult} amountMode="nominal" />,
+    );
+    const priorPaths = semanticPaths(container);
+
+    rerender(<GrowthChart result={shortResult} amountMode="nominal" />);
+
+    expect(motionPaths(container)).toEqual(priorPaths);
   });
 
   it('renders final graph geometry immediately without an intermediate path for reduced motion', () => {
@@ -354,7 +439,42 @@ describe('SimulationComparison', () => {
       expect.objectContaining({ value: 187.6, duration: 180 }),
     ]);
   });
+
+  it('keeps final comparison values visible when Anime cannot create an animation', () => {
+    const { container, rerender } = render(<SimulationComparison result={result} />);
+    anime.animate.mockImplementation(() => {
+      throw new Error('animation unavailable');
+    });
+    const updated = {
+      ...result,
+      advantageOverAllSavingsWon: 98_765_000,
+      principalRatioPercent: 165.2,
+    };
+
+    expect(() => rerender(<SimulationComparison result={updated} />)).not.toThrow();
+
+    expect(comparisonVisualValues(container)).toEqual(comparisonSemanticValues(container));
+  });
 });
+
+function graphTransitionCall(): {
+  state: { progress: number };
+  options: { duration: number; onComplete(): void; onUpdate(): void; progress: number };
+} {
+  const call = anime.animate.mock.calls.find(([target]) => (
+    typeof target === 'object' && target !== null && 'progress' in target
+  ));
+  if (call === undefined) throw new Error('graph transition animation was not created');
+  return {
+    state: call[0] as { progress: number },
+    options: call[1] as {
+      duration: number;
+      onComplete(): void;
+      onUpdate(): void;
+      progress: number;
+    },
+  };
+}
 
 function semanticPaths(container: HTMLElement): string[] {
   return [...container.querySelectorAll<SVGPathElement>('.growth-chart__semantic-path')]

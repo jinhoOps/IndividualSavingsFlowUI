@@ -12,7 +12,6 @@ import {
   buildChartGeometry,
   tooltipPlacement,
   type ChartGeometry,
-  type ChartGeometryPoint,
 } from './chartGeometry';
 import { formatWon } from './format';
 import { GrowthChartTooltip } from './GrowthChartTooltip';
@@ -26,7 +25,8 @@ export function GrowthChart({
 }) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const touchPointerRef = useRef<number | null>(null);
-  const previousGeometryRef = useRef<ChartGeometry | null>(null);
+  const visualGeometryRef = useRef<VisualChartGeometry | null>(null);
+  const firstRevealCompleteRef = useRef(false);
   const revealClipId = `growth-chart-reveal-${useId().replace(/:/g, '')}`;
   const compactTooltip = useCompactTooltip();
   const geometry = useMemo(
@@ -36,45 +36,65 @@ export function GrowthChart({
   const chartRef = useAnimeScope<HTMLElement>(({ root, reducedMotion }) => {
     const motionPaths = findMotionPaths(root);
     const revealClip = root.querySelector<SVGRectElement>('.growth-chart__reveal-clip');
-    const previousGeometry = previousGeometryRef.current;
-    previousGeometryRef.current = geometry;
 
     if (motionPaths === null || revealClip === null) return;
 
     const revealWidth = geometry.plot.right - geometry.plot.left;
+    const targetGeometry = visualGeometry(geometry);
+    const previousGeometry = visualGeometryRef.current;
     revealClip.setAttribute('width', String(revealWidth));
-    setMotionPaths(motionPaths, finalPaths(geometry));
 
-    if (reducedMotion) return;
+    if (reducedMotion) {
+      setVisualFrame(motionPaths, targetGeometry, visualGeometryRef);
+      firstRevealCompleteRef.current = true;
+      return;
+    }
 
-    if (previousGeometry === null) {
+    if (
+      previousGeometry === null
+      || (
+        !firstRevealCompleteRef.current
+        && pathsForVisualGeometry(previousGeometry).current === geometry.currentPlanPath
+        && pathsForVisualGeometry(previousGeometry).savings === geometry.allSavingsPath
+      )
+    ) {
+      setVisualFrame(motionPaths, targetGeometry, visualGeometryRef);
       revealClip.setAttribute('width', '0');
       try {
         animate(revealClip, {
           width: revealWidth,
           duration: MOTION_DURATION.emphasis,
           ease: MOTION_EASE.enter,
-          onComplete: () => revealClip.setAttribute('width', String(revealWidth)),
+          onComplete: () => {
+            revealClip.setAttribute('width', String(revealWidth));
+            firstRevealCompleteRef.current = true;
+          },
         });
       } catch {
         revealClip.setAttribute('width', String(revealWidth));
+        firstRevealCompleteRef.current = true;
       }
       return;
     }
 
-    const transition = createPathTransition(previousGeometry, geometry);
+    firstRevealCompleteRef.current = true;
+    const transition = createPathTransition(previousGeometry, targetGeometry);
     const state = { progress: 0 };
-    setMotionPaths(motionPaths, transition(0));
+    setVisualFrame(motionPaths, transition(0), visualGeometryRef);
     try {
       animate(state, {
         progress: 1,
         duration: MOTION_DURATION.emphasis,
         ease: MOTION_EASE.update,
-        onUpdate: () => setMotionPaths(motionPaths, transition(state.progress)),
-        onComplete: () => setMotionPaths(motionPaths, finalPaths(geometry)),
+        onUpdate: () => setVisualFrame(
+          motionPaths,
+          transition(state.progress),
+          visualGeometryRef,
+        ),
+        onComplete: () => setVisualFrame(motionPaths, targetGeometry, visualGeometryRef),
       });
     } catch {
-      setMotionPaths(motionPaths, finalPaths(geometry));
+      setVisualFrame(motionPaths, targetGeometry, visualGeometryRef);
     }
   }, [
     geometry.currentPlanAreaPath,
@@ -302,6 +322,17 @@ interface ChartPaths {
   savings: string;
 }
 
+interface VisualPathPoint {
+  x: number;
+  y: number;
+}
+
+interface VisualChartGeometry {
+  current: VisualPathPoint[];
+  savings: VisualPathPoint[];
+  bottom: number;
+}
+
 function findMotionPaths(root: HTMLElement): MotionPaths | null {
   const area = root.querySelector<SVGPathElement>('[data-motion-series="area"]');
   const current = root.querySelector<SVGPathElement>('[data-motion-series="current"]');
@@ -317,40 +348,55 @@ function setMotionPaths(paths: MotionPaths, values: ChartPaths): void {
   paths.savings.setAttribute('d', values.savings);
 }
 
-function finalPaths(geometry: ChartGeometry): ChartPaths {
+function setVisualFrame(
+  paths: MotionPaths,
+  geometry: VisualChartGeometry,
+  geometryRef: { current: VisualChartGeometry | null },
+): void {
+  geometryRef.current = geometry;
+  setMotionPaths(paths, pathsForVisualGeometry(geometry));
+}
+
+function visualGeometry(geometry: ChartGeometry): VisualChartGeometry {
   return {
-    area: geometry.currentPlanAreaPath,
-    current: geometry.currentPlanPath,
-    savings: geometry.allSavingsPath,
+    current: geometry.points.map((point) => ({ x: point.x, y: point.currentY })),
+    savings: geometry.points.map((point) => ({ x: point.x, y: point.allSavingsY })),
+    bottom: geometry.plot.bottom,
   };
+}
+
+function pathsForVisualGeometry(geometry: VisualChartGeometry): ChartPaths {
+  const current = pathForVisualPoints(geometry.current);
+  const savings = pathForVisualPoints(geometry.savings);
+  const first = geometry.current[0];
+  const last = geometry.current.at(-1);
+  const area = first === undefined || last === undefined || current === ''
+    ? ''
+    : `${current} L ${last.x} ${geometry.bottom} L ${first.x} ${geometry.bottom} Z`;
+  return { area, current, savings };
 }
 
 function createPathTransition(
-  previous: ChartGeometry,
-  next: ChartGeometry,
-): (progress: number) => ChartPaths {
-  const sourceCurrent = resample(previous.points, next.points.length, 'currentY');
-  const sourceSavings = resample(previous.points, next.points.length, 'allSavingsY');
+  previous: VisualChartGeometry,
+  next: VisualChartGeometry,
+): (progress: number) => VisualChartGeometry {
+  const pointCount = Math.max(previous.current.length, next.current.length);
+  const sourceCurrent = resample(previous.current, pointCount);
+  const sourceSavings = resample(previous.savings, pointCount);
+  const targetCurrent = resample(next.current, pointCount);
+  const targetSavings = resample(next.savings, pointCount);
 
-  return (progress) => {
-    const current = interpolatePath(sourceCurrent, next.points, 'currentY', progress);
-    const savings = interpolatePath(sourceSavings, next.points, 'allSavingsY', progress);
-    const first = interpolatePoint(sourceCurrent[0], next.points[0], 'currentY', progress);
-    const last = interpolatePoint(sourceCurrent.at(-1), next.points.at(-1), 'currentY', progress);
-    const bottom = previous.plot.bottom
-      + (next.plot.bottom - previous.plot.bottom) * progress;
-    const area = first === null || last === null || current === ''
-      ? ''
-      : `${current} L ${last.x} ${bottom} L ${first.x} ${bottom} Z`;
-    return { area, current, savings };
-  };
+  return (progress) => ({
+    current: interpolatePoints(sourceCurrent, targetCurrent, progress),
+    savings: interpolatePoints(sourceSavings, targetSavings, progress),
+    bottom: previous.bottom + (next.bottom - previous.bottom) * progress,
+  });
 }
 
 function resample(
-  points: ChartGeometryPoint[],
+  points: VisualPathPoint[],
   count: number,
-  yKey: 'currentY' | 'allSavingsY',
-): ChartGeometryPoint[] {
+): VisualPathPoint[] {
   if (count <= 0 || points.length === 0) return [];
   if (count === 1) return [points[0]];
   return Array.from({ length: count }, (_, index) => {
@@ -361,38 +407,27 @@ function resample(
     const upper = points[upperIndex];
     const progress = position - lowerIndex;
     return {
-      ...lower,
       x: lower.x + (upper.x - lower.x) * progress,
-      [yKey]: lower[yKey] + (upper[yKey] - lower[yKey]) * progress,
+      y: lower.y + (upper.y - lower.y) * progress,
     };
   });
 }
 
-function interpolatePath(
-  previous: ChartGeometryPoint[],
-  next: ChartGeometryPoint[],
-  yKey: 'currentY' | 'allSavingsY',
+function interpolatePoints(
+  previous: VisualPathPoint[],
+  next: VisualPathPoint[],
   progress: number,
-): string {
-  return next.map((point, index) => {
-    const interpolated = interpolatePoint(previous[index], point, yKey, progress);
-    return interpolated === null
-      ? ''
-      : `${index === 0 ? 'M' : 'L'} ${interpolated.x} ${interpolated.y}`;
-  }).filter(Boolean).join(' ');
+): VisualPathPoint[] {
+  return next.map((point, index) => ({
+    x: previous[index].x + (point.x - previous[index].x) * progress,
+    y: previous[index].y + (point.y - previous[index].y) * progress,
+  }));
 }
 
-function interpolatePoint(
-  previous: ChartGeometryPoint | undefined,
-  next: ChartGeometryPoint | undefined,
-  yKey: 'currentY' | 'allSavingsY',
-  progress: number,
-): { x: number; y: number } | null {
-  if (previous === undefined || next === undefined) return null;
-  return {
-    x: previous.x + (next.x - previous.x) * progress,
-    y: previous[yKey] + (next[yKey] - previous[yKey]) * progress,
-  };
+function pathForVisualPoints(points: VisualPathPoint[]): string {
+  return points.map((point, index) => (
+    `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`
+  )).join(' ');
 }
 
 function useCompactTooltip(): boolean {
