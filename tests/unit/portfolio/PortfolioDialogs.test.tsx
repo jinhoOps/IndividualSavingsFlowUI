@@ -4,11 +4,33 @@ import '@testing-library/jest-dom/vitest';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createCashOnlyDraft } from '../../../src/portfolio/domain/allocation';
 import { PortfolioApplyBar } from '../../../src/portfolio/ui/PortfolioApplyBar';
+import { PortfolioDialog } from '../../../src/portfolio/ui/PortfolioDialog';
 import { PortfolioManagementMenu } from '../../../src/portfolio/ui/PortfolioManagementMenu';
 
 afterEach(cleanup);
 
 describe('Portfolio confirmation dialogs', () => {
+  it('closes on the backdrop only when a caller opts in', () => {
+    const regularClose = vi.fn();
+    const sheetClose = vi.fn();
+    const returnFocusRef = { current: null };
+    const { rerender } = render(
+      <PortfolioDialog labelledBy="dialog-title" onClose={regularClose} returnFocusRef={returnFocusRef}>
+        <h2 id="dialog-title">일반 확인</h2>
+      </PortfolioDialog>,
+    );
+    fireEvent.click(screen.getByRole('dialog', { name: '일반 확인' }));
+    expect(regularClose).not.toHaveBeenCalled();
+
+    rerender(
+      <PortfolioDialog labelledBy="sheet-title" onClose={sheetClose} returnFocusRef={returnFocusRef} closeOnBackdrop>
+        <h2 id="sheet-title">대상 입력</h2>
+      </PortfolioDialog>,
+    );
+    fireEvent.click(screen.getByRole('dialog', { name: '대상 입력' }));
+    expect(sheetClose).toHaveBeenCalledTimes(1);
+  });
+
   it('focuses the apply cancel action, traps Tab, closes on Escape, and restores the trigger', async () => {
     render(
       <PortfolioApplyBar
