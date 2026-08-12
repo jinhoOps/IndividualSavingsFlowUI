@@ -26,7 +26,9 @@ if (manifest) {
     return collected;
   };
 
-  const report = {};
+  const report = {
+    rootHtmlBytes: statSync(resolve(distDirectory, 'index.html')).size,
+  };
   const entries = Object.entries(manifest)
     .filter(([, chunk]) => chunk.isEntry)
     .sort(([, left], [, right]) => left.name.localeCompare(right.name));

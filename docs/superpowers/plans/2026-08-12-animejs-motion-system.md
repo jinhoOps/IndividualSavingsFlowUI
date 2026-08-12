@@ -40,6 +40,7 @@
 - `tests/unit/components/useAnimeScope.test.tsx`: scope cleanup과 reduced-motion
 - `tests/unit/components/animateVisualNumber.test.ts`: 숫자 보간 format 계약
 - `tests/unit/components/useDelayedPending.test.tsx`: 즉시 busy와 지연 문구 분리
+- `tests/unit/scripts/reportViteChunks.test.ts`: root HTML과 네 JS entry baseline 분리
 - `tests/unit/main/cashflowBarGeometry.test.ts`: 실제 비율, 경계 초과와 절단 계산
 - `tests/motion-system.spec.ts`: 앱별 모션, 접근성, viewport와 캡처 검증
 - `scripts/report-vite-chunks.mjs`: Vite manifest에서 entry별 초기 chunk 크기를 출력
@@ -70,6 +71,7 @@
 - Create: `tests/unit/components/useAnimeScope.test.tsx`
 - Create: `tests/unit/components/animateVisualNumber.test.ts`
 - Create: `tests/unit/components/useDelayedPending.test.tsx`
+- Create: `tests/unit/scripts/reportViteChunks.test.ts`
 - Create: `scripts/report-vite-chunks.mjs`
 
 **Interfaces:**
@@ -84,10 +86,10 @@ Run:
 
 ```bash
 node ./node_modules/vite/bin/vite.js build --manifest
-node -e 'const fs=require("fs");const m=JSON.parse(fs.readFileSync("dist/.vite/manifest.json","utf8"));for(const [k,v] of Object.entries(m).filter(([,v])=>v.isEntry)){const p="dist/"+v.file;console.log(k,fs.statSync(p).size)}'
+node -e 'const fs=require("fs");const m=JSON.parse(fs.readFileSync("dist/.vite/manifest.json","utf8"));const r={rootHtmlBytes:fs.statSync("dist/index.html").size};for(const [,v] of Object.entries(m).filter(([,v])=>v.isEntry)){r[v.name]={entryBytes:fs.statSync("dist/"+v.file).size}}console.log(JSON.stringify(r,null,2))'
 ```
 
-Expected: build exits 0 and prints byte sizes for `main`, `mainApp`, `simulation`, `portfolio` and `accountMap`. Save the output in the implementation handoff; do not commit `dist/`.
+Expected: build exits 0 and prints `rootHtmlBytes` for the inline-redirect root `dist/index.html`, plus raw entry bytes for the four JavaScript entries `mainApp`, `simulation`, `portfolio` and `accountMap`. The root HTML is recorded separately and only the four JavaScript entry records participate in later bundle-delta comparisons. Save the output in the implementation handoff; do not commit `dist/`.
 
 - [ ] **Step 2: Install Anime.js as a production dependency**
 
@@ -171,12 +173,13 @@ Implement `scripts/report-vite-chunks.mjs` to read `dist/.vite/manifest.json`, t
 
 ```json
 {
+  "rootHtmlBytes": 0,
   "mainApp": { "entryBytes": 0, "initialBytes": 0, "files": [] },
   "simulation": { "entryBytes": 0, "initialBytes": 0, "files": [] }
 }
 ```
 
-Fail with a non-zero exit code when the manifest is missing. Do not gzip inside this script; raw bytes make before/after comparisons deterministic.
+`rootHtmlBytes` is the raw size of the HTML-only inline redirect at `dist/index.html`; the remaining records are the four JavaScript entries from the manifest. Fail with a non-zero exit code when the manifest is missing. Do not gzip inside this script; raw bytes make before/after comparisons deterministic.
 
 - [ ] **Step 7: Run foundation tests and source checks**
 
@@ -184,6 +187,7 @@ Run:
 
 ```bash
 npx vitest run tests/unit/components/useAnimeScope.test.tsx tests/unit/components/animateVisualNumber.test.ts tests/unit/components/useDelayedPending.test.tsx
+npx vitest run tests/unit/scripts/reportViteChunks.test.ts
 npm run check
 ```
 
@@ -675,7 +679,7 @@ node scripts/report-vite-chunks.mjs
 rg -n "from ['\"]animejs|from ['\"]animejs/" src
 ```
 
-Expected: build exits 0. Compare each entry's `initialBytes` with Task 1 baseline. The import scan contains only approved core/scope/timeline imports and no draggable or scroll-observer import. Record the exact delta in the handoff; investigate unexpected shared chunk growth before proceeding.
+Expected: build exits 0. Record `rootHtmlBytes` separately, and compare only the four JavaScript entries' `initialBytes` with the Task 1 baseline. The import scan contains only approved core/scope/timeline imports and no draggable or scroll-observer import. Record the exact delta in the handoff; investigate unexpected shared chunk growth before proceeding.
 
 - [ ] **Step 5: Verify PWA offline revisit**
 
