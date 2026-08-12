@@ -287,6 +287,137 @@ describe('PortfolioSummary', () => {
     );
   });
 
+  it('continues an interrupted new-row reveal from its visible opacity', () => {
+    let tops: Record<string, number> = { index: 0, bond: 100, gold: 200, cash: 300 };
+    mockRowLayout(() => tops);
+    const { rerender } = render(
+      <PortfolioSummary
+        investmentWon={800_000}
+        allocation={allocation}
+        preferences={{ showAmounts: false, sortMode: 'ratio' }}
+        onEdit={() => undefined}
+      />,
+    );
+    const edit = screen.getByRole('button', { name: '배분 수정' });
+    edit.focus();
+    tops = { index: 0, bond: 100, gold: 200, emerging: 300, cash: 400 };
+    const withNewItem: MaterializedAllocation = {
+      ...allocation,
+      items: [
+        { ...allocation.items[1], shareUnits: 400_000, amountWon: 320_000, percentage: 40 },
+        allocation.items[2],
+        allocation.items[0],
+        {
+          id: 'emerging', name: '신흥국', order: 3,
+          shareUnits: 100_000, amountWon: 80_000, percentage: 10,
+          classification: 'growth', classificationOrigin: 'user',
+        },
+      ],
+    };
+    rerender(
+      <PortfolioSummary
+        investmentWon={800_000}
+        allocation={withNewItem}
+        preferences={{ showAmounts: false, sortMode: 'ratio' }}
+        onEdit={() => undefined}
+      />,
+    );
+    const newRow = screen.getByRole('heading', { name: '신흥국' }).closest('li')!;
+    const revealCall = anime.animate.mock.calls.find(([target]) => target === newRow);
+    const revealOptions = revealCall?.[1] as { onUpdate?(): void } | undefined;
+    expect(revealOptions?.onUpdate).toEqual(expect.any(Function));
+    newRow.style.opacity = '0.4';
+    revealOptions?.onUpdate?.();
+    newRow.style.opacity = '1';
+    anime.animate.mockClear();
+    const latestAllocation: MaterializedAllocation = {
+      ...withNewItem,
+      items: withNewItem.items.map((item) => item.id === 'emerging'
+        ? { ...item, shareUnits: 150_000, amountWon: 120_000, percentage: 15 }
+        : item.id === 'index'
+          ? { ...item, shareUnits: 350_000, amountWon: 280_000, percentage: 35 }
+          : item),
+    };
+
+    rerender(
+      <PortfolioSummary
+        investmentWon={800_000}
+        allocation={latestAllocation}
+        preferences={{ showAmounts: false, sortMode: 'ratio' }}
+        onEdit={() => undefined}
+      />,
+    );
+
+    expect(newRow.querySelector('.portfolio-allocation-row__ratio')).toHaveAccessibleName('15%');
+    expect(edit).toHaveFocus();
+    expect(anime.animate).toHaveBeenCalledWith(
+      newRow,
+      expect.objectContaining({
+        opacity: [0.4, 1],
+        duration: 180,
+        ease: 'out(3)',
+      }),
+    );
+  });
+
+  it('commits an interrupted new-row reveal immediately when reduced motion activates', () => {
+    const { rerender } = render(
+      <PortfolioSummary
+        investmentWon={800_000}
+        allocation={allocation}
+        preferences={{ showAmounts: false, sortMode: 'ratio' }}
+        onEdit={() => undefined}
+      />,
+    );
+    const withNewItem: MaterializedAllocation = {
+      ...allocation,
+      items: [
+        { ...allocation.items[1], shareUnits: 400_000, amountWon: 320_000, percentage: 40 },
+        allocation.items[2],
+        allocation.items[0],
+        {
+          id: 'emerging', name: '신흥국', order: 3,
+          shareUnits: 100_000, amountWon: 80_000, percentage: 10,
+          classification: 'growth', classificationOrigin: 'user',
+        },
+      ],
+    };
+    rerender(
+      <PortfolioSummary
+        investmentWon={800_000}
+        allocation={withNewItem}
+        preferences={{ showAmounts: false, sortMode: 'ratio' }}
+        onEdit={() => undefined}
+      />,
+    );
+    const newRow = screen.getByRole('heading', { name: '신흥국' }).closest('li')!;
+    const revealCall = anime.animate.mock.calls.find(([target]) => target === newRow);
+    const revealOptions = revealCall?.[1] as { onUpdate?(): void } | undefined;
+    newRow.style.opacity = '0.35';
+    revealOptions?.onUpdate?.();
+    anime.scope.matches.reducedMotion = true;
+    anime.animate.mockClear();
+    const latestAllocation: MaterializedAllocation = {
+      ...withNewItem,
+      items: withNewItem.items.map((item) => item.id === 'emerging'
+        ? { ...item, shareUnits: 150_000, amountWon: 120_000, percentage: 15 }
+        : item),
+    };
+
+    rerender(
+      <PortfolioSummary
+        investmentWon={800_000}
+        allocation={latestAllocation}
+        preferences={{ showAmounts: false, sortMode: 'ratio' }}
+        onEdit={() => undefined}
+      />,
+    );
+
+    expect(newRow.style.opacity).toBe('');
+    expect(newRow.querySelector('[data-allocation-ratio-visual]')).toHaveTextContent('15%');
+    expect(anime.animate).not.toHaveBeenCalled();
+  });
+
   it('uses final order, ratios, and fill geometry immediately with reduced motion', () => {
     let tops: Record<string, number> = { index: 0, bond: 100, gold: 200, cash: 300 };
     mockRowLayout(() => tops);
@@ -392,6 +523,71 @@ describe('PortfolioSummary', () => {
     );
     expect(anime.animate).toHaveBeenCalledWith(
       expect.objectContaining({ value: 22.5 }),
+      expect.objectContaining({ value: 50, duration: 180 }),
+    );
+  });
+
+  it('restores the final visual ratio when amount visibility interrupts number motion', () => {
+    const { rerender } = render(
+      <PortfolioSummary
+        investmentWon={800_000}
+        allocation={allocation}
+        preferences={{ showAmounts: false, sortMode: 'ratio' }}
+        onEdit={() => undefined}
+      />,
+    );
+    rerender(
+      <PortfolioSummary
+        investmentWon={800_000}
+        allocation={changedAllocation}
+        preferences={{ showAmounts: false, sortMode: 'input' }}
+        onEdit={() => undefined}
+      />,
+    );
+    const goldRow = screen.getByRole('heading', { name: '금' }).closest('li')!;
+    const visualRatio = goldRow.querySelector<HTMLElement>('[data-allocation-ratio-visual]')!;
+    const numberCallIndex = anime.animate.mock.calls.findIndex(([, options]) => (
+      typeof options === 'object' && options !== null && 'value' in options
+    ));
+    const numberState = anime.animate.mock.calls[numberCallIndex][0] as { value: number };
+    const numberOptions = anime.animate.mock.calls[numberCallIndex][1] as { onUpdate(): void };
+    const cancel = (anime.animate.mock.results[numberCallIndex].value as { cancel(): void }).cancel;
+    numberState.value = 22.5;
+    numberOptions.onUpdate();
+    expect(visualRatio).toHaveTextContent('22.5%');
+    anime.animate.mockClear();
+
+    rerender(
+      <PortfolioSummary
+        investmentWon={800_000}
+        allocation={changedAllocation}
+        preferences={{ showAmounts: true, sortMode: 'input' }}
+        onEdit={() => undefined}
+      />,
+    );
+
+    expect(goldRow.querySelector('.portfolio-allocation-row__ratio')).toHaveAccessibleName('30%');
+    expect(visualRatio).toHaveTextContent('30%');
+    expect(cancel).toHaveBeenCalledOnce();
+    expect(anime.animate).not.toHaveBeenCalled();
+
+    anime.animate.mockClear();
+    const latestAllocation: MaterializedAllocation = {
+      ...changedAllocation,
+      items: [{
+        ...changedAllocation.items[0], shareUnits: 500_000, amountWon: 400_000, percentage: 50,
+      }, changedAllocation.items[1], changedAllocation.items[2]],
+    };
+    rerender(
+      <PortfolioSummary
+        investmentWon={800_000}
+        allocation={latestAllocation}
+        preferences={{ showAmounts: true, sortMode: 'input' }}
+        onEdit={() => undefined}
+      />,
+    );
+    expect(anime.animate).toHaveBeenCalledWith(
+      expect.objectContaining({ value: 30 }),
       expect.objectContaining({ value: 50, duration: 180 }),
     );
   });

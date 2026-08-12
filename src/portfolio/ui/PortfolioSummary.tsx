@@ -1,7 +1,10 @@
 import { animate } from 'animejs';
 import { useMemo, useRef, type CSSProperties, type MouseEvent } from 'react';
 import { Surface } from '../../components/common/Surface';
-import { animateVisualNumber } from '../../components/motion/animateVisualNumber';
+import {
+  animateVisualNumber,
+  commitVisualNumber,
+} from '../../components/motion/animateVisualNumber';
 import {
   MOTION_DISTANCE_PX,
   MOTION_DURATION,
@@ -23,6 +26,7 @@ interface DisplayResultItem extends AllocationResultItem {
 }
 
 interface AllocationRowFrame {
+  opacity: number;
   percentage: number;
   rect: DOMRect;
 }
@@ -77,7 +81,17 @@ export function PortfolioSummary({
     const currentSnapshot = { key: motionKey, rows: currentRows };
     motionSnapshotRef.current = currentSnapshot;
 
-    if (previous === null || previous.key === motionKey || reducedMotion) return;
+    if (previous === null || reducedMotion) {
+      commitFinalVisualRatios(root, currentRows);
+      if (reducedMotion) commitFinalRowMotion(root, currentSnapshot);
+      return;
+    }
+
+    if (previous.key === motionKey) {
+      commitFinalVisualRatios(root, currentRows);
+      continueInterruptedRowReveals(root, previous, currentSnapshot);
+      return;
+    }
 
     for (const row of root.querySelectorAll<HTMLElement>('[data-allocation-id]')) {
       const id = row.dataset.allocationId;
@@ -92,23 +106,29 @@ export function PortfolioSummary({
           duration: MOTION_DURATION.normal,
           ease: MOTION_EASE.enter,
           onUpdate: () => updateRowFrame(currentSnapshot, id, {
+            opacity: visualOpacity(row, 1),
             rect: row.getBoundingClientRect(),
           }),
           onComplete: () => updateRowFrame(currentSnapshot, id, {
+            opacity: 1,
             rect: row.getBoundingClientRect(),
           }),
         });
       } else {
         const deltaY = prior.rect.top - current.rect.top;
-        if (deltaY !== 0) {
+        const continuesReveal = prior.opacity < 1;
+        if (deltaY !== 0 || continuesReveal) {
           animateSafely(row, {
-            translateY: [deltaY, 0],
+            ...(deltaY === 0 ? {} : { translateY: [deltaY, 0] }),
+            ...(continuesReveal ? { opacity: [prior.opacity, 1] } : {}),
             duration: MOTION_DURATION.normal,
-            ease: MOTION_EASE.update,
+            ease: continuesReveal ? MOTION_EASE.enter : MOTION_EASE.update,
             onUpdate: () => updateRowFrame(currentSnapshot, id, {
+              opacity: visualOpacity(row, 1),
               rect: row.getBoundingClientRect(),
             }),
             onComplete: () => updateRowFrame(currentSnapshot, id, {
+              opacity: 1,
               rect: row.getBoundingClientRect(),
             }),
           });
@@ -116,7 +136,10 @@ export function PortfolioSummary({
       }
 
       const previousPercentage = prior?.percentage ?? 0;
-      if (previousPercentage === current.percentage) continue;
+      if (previousPercentage === current.percentage) {
+        commitFinalVisualRatio(row, current.percentage);
+        continue;
+      }
 
       const fill = row.querySelector<HTMLElement>('.portfolio-allocation-row__fill');
       if (fill !== null) {
@@ -235,13 +258,68 @@ function captureAllocationRows(root: HTMLElement): Map<string, AllocationRowFram
     const id = row.dataset.allocationId;
     const percentage = Number(row.dataset.allocationPercentage);
     if (id === undefined || !Number.isFinite(percentage)) continue;
-    rows.set(id, { percentage, rect: row.getBoundingClientRect() });
+    rows.set(id, {
+      opacity: visualOpacity(row, 1),
+      percentage,
+      rect: row.getBoundingClientRect(),
+    });
   }
   return rows;
 }
 
 function clampedPercentage(percentage: number): number {
   return Math.max(0, Math.min(100, percentage));
+}
+
+function commitFinalVisualRatios(
+  root: HTMLElement,
+  rows: Map<string, AllocationRowFrame>,
+): void {
+  for (const row of root.querySelectorAll<HTMLElement>('[data-allocation-id]')) {
+    const id = row.dataset.allocationId;
+    const frame = id === undefined ? undefined : rows.get(id);
+    if (frame !== undefined) commitFinalVisualRatio(row, frame.percentage);
+  }
+}
+
+function commitFinalVisualRatio(row: HTMLElement, percentage: number): void {
+  const visualRatio = row.querySelector<HTMLElement>('[data-allocation-ratio-visual]');
+  if (visualRatio !== null) {
+    commitVisualNumber(visualRatio, percentage, formatAllocationPercent);
+  }
+}
+
+function continueInterruptedRowReveals(
+  root: HTMLElement,
+  previous: AllocationMotionSnapshot,
+  current: AllocationMotionSnapshot,
+): void {
+  for (const row of root.querySelectorAll<HTMLElement>('[data-allocation-id]')) {
+    const id = row.dataset.allocationId;
+    const prior = id === undefined ? undefined : previous.rows.get(id);
+    if (id === undefined || prior === undefined || prior.opacity >= 1) continue;
+    animateSafely(row, {
+      opacity: [prior.opacity, 1],
+      duration: MOTION_DURATION.normal,
+      ease: MOTION_EASE.enter,
+      onUpdate: () => updateRowFrame(current, id, {
+        opacity: visualOpacity(row, 1),
+      }),
+      onComplete: () => updateRowFrame(current, id, { opacity: 1 }),
+    });
+  }
+}
+
+function commitFinalRowMotion(
+  root: HTMLElement,
+  snapshot: AllocationMotionSnapshot,
+): void {
+  for (const row of root.querySelectorAll<HTMLElement>('[data-allocation-id]')) {
+    row.style.removeProperty('opacity');
+    row.style.removeProperty('transform');
+    const id = row.dataset.allocationId;
+    if (id !== undefined) updateRowFrame(snapshot, id, { opacity: 1 });
+  }
 }
 
 function updateRowFrame(
@@ -261,6 +339,14 @@ function visualFillPercentage(fill: HTMLElement, fallback: number): number {
   if (scaleX === undefined) return fallback;
   const parsed = Number(scaleX);
   return Number.isFinite(parsed) ? clampedPercentage(parsed * 100) : fallback;
+}
+
+function visualOpacity(row: HTMLElement, fallback: number): number {
+  const opacity = row.style.opacity || getComputedStyle(row).opacity;
+  if (opacity.trim() === '') return fallback;
+
+  const parsed = Number(opacity);
+  return Number.isFinite(parsed) ? Math.max(0, Math.min(1, parsed)) : fallback;
 }
 
 function animateSafely(

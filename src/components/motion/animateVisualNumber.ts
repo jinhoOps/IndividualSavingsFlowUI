@@ -16,17 +16,17 @@ export function animateVisualNumber(
   duration: number = MOTION_DURATION.normal,
 ): () => void {
   const previousState = visualNumberStates.get(element);
-  previousState?.animation?.cancel();
 
   if (
     typeof window !== 'undefined' &&
     typeof window.matchMedia === 'function' &&
     window.matchMedia('(prefers-reduced-motion: reduce)').matches
   ) {
-    element.textContent = format(to);
-    visualNumberStates.set(element, { value: to });
+    commitVisualNumber(element, to, format);
     return () => undefined;
   }
+
+  previousState?.animation?.cancel();
 
   const state: VisualNumberState = { value: previousState?.value ?? from };
   element.textContent = format(state.value);
@@ -51,4 +51,14 @@ export function animateVisualNumber(
     state.animation?.cancel();
     state.animation = undefined;
   };
+}
+
+export function commitVisualNumber(
+  element: HTMLElement,
+  value: number,
+  format: (value: number) => string,
+): void {
+  visualNumberStates.get(element)?.animation?.cancel();
+  element.textContent = format(value);
+  visualNumberStates.set(element, { value });
 }

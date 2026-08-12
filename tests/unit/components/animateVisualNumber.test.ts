@@ -1,6 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import '@testing-library/jest-dom/vitest';
-import { animateVisualNumber } from '../../../src/components/motion/animateVisualNumber';
+import {
+  animateVisualNumber,
+  commitVisualNumber,
+} from '../../../src/components/motion/animateVisualNumber';
 
 const anime = vi.hoisted(() => ({
   animate: vi.fn(),
@@ -44,6 +47,19 @@ describe('animateVisualNumber', () => {
     expect(anime.animate).not.toHaveBeenCalled();
   });
 
+  it('cancels an interrupted animation once when reduced motion commits its final value', () => {
+    const cancel = vi.fn();
+    anime.animate.mockReturnValueOnce({ cancel });
+    const element = document.createElement('span');
+    animateVisualNumber(element, 10, 20, String);
+    vi.stubGlobal('matchMedia', vi.fn().mockReturnValue({ matches: true }));
+
+    animateVisualNumber(element, 20, 30, String);
+
+    expect(cancel).toHaveBeenCalledOnce();
+    expect(element).toHaveTextContent('30');
+  });
+
   it('returns cleanup that cancels an active visual-number animation', () => {
     const cancel = vi.fn();
     anime.animate.mockReturnValueOnce({ cancel });
@@ -66,6 +82,28 @@ describe('animateVisualNumber', () => {
 
     animateVisualNumber(element, 20, 30, String);
     expect(anime.animate).toHaveBeenLastCalledWith(
+      expect.objectContaining({ value: 20 }),
+      expect.objectContaining({ value: 30 }),
+    );
+  });
+
+  it('synchronously commits a final value and resets interrupted continuity', () => {
+    const cancel = vi.fn();
+    anime.animate.mockReturnValueOnce({ cancel });
+    const element = document.createElement('span');
+    animateVisualNumber(element, 10, 20, String);
+    const state = anime.animate.mock.calls[0][0] as { value: number };
+    const options = anime.animate.mock.calls[0][1] as { onUpdate(): void };
+    state.value = 15;
+    options.onUpdate();
+
+    commitVisualNumber(element, 20, String);
+
+    expect(cancel).toHaveBeenCalledOnce();
+    expect(element).toHaveTextContent('20');
+    anime.animate.mockClear();
+    animateVisualNumber(element, 20, 30, String);
+    expect(anime.animate).toHaveBeenCalledWith(
       expect.objectContaining({ value: 20 }),
       expect.objectContaining({ value: 30 }),
     );
