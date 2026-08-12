@@ -30,6 +30,8 @@ function applyFinalAnimationStyles(target: unknown, options: Record<string, unkn
   if (Array.isArray(options.opacity)) target.style.opacity = String(options.opacity.at(-1));
   if (Array.isArray(options.y)) target.style.transform = `translateY(${String(options.y.at(-1))}px)`;
   if (Array.isArray(options.x)) target.style.transform = `translateX(${String(options.x.at(-1))}px)`;
+  if (Array.isArray(options.bottom)) target.style.bottom = `${String(options.bottom.at(-1))}px`;
+  if (Array.isArray(options.right)) target.style.right = `${String(options.right.at(-1))}px`;
 }
 
 vi.mock('animejs', () => ({
@@ -159,15 +161,25 @@ describe('Portfolio confirmation dialogs', () => {
       </PortfolioDialog>,
     );
     const sheet = screen.getByRole('dialog', { name: '하단 편집' });
-    expect(animationOptionsFor(sheet)).toMatchObject({
+    const sheetOptions = animationOptionsFor(sheet);
+    expect(sheetOptions).toMatchObject({
       opacity: [0, 1],
-      y: [MOTION_DISTANCE_PX.reveal, 0],
+      bottom: [-MOTION_DISTANCE_PX.reveal, 0],
       duration: MOTION_DURATION.normal,
       ease: MOTION_EASE.enter,
+      onComplete: expect.any(Function),
     });
+    expect(sheetOptions).not.toHaveProperty('y');
+    expect(sheet.style.transform).toBe('');
+    expect(sheet.style.bottom).toBe('0px');
+
+    (sheetOptions?.onComplete as (() => void) | undefined)?.();
+    expect(sheet.style.opacity).toBe('');
+    expect(sheet.style.bottom).toBe('');
+    expect(sheet.style.transform).toBe('');
   });
 
-  it('reveals side panels horizontally and commits reduced motion immediately', () => {
+  it('reveals side panels without a fixed-position containing block and commits reduced motion immediately', () => {
     const returnFocusRef = { current: null };
     const { unmount } = render(
       <PortfolioDialog
@@ -180,12 +192,22 @@ describe('Portfolio confirmation dialogs', () => {
       </PortfolioDialog>,
     );
     const panel = screen.getByRole('dialog', { name: '측면 편집' });
-    expect(animationOptionsFor(panel)).toMatchObject({
+    const panelOptions = animationOptionsFor(panel);
+    expect(panelOptions).toMatchObject({
       opacity: [0, 1],
-      x: [MOTION_DISTANCE_PX.reveal, 0],
+      right: [-MOTION_DISTANCE_PX.reveal, 0],
       duration: MOTION_DURATION.normal,
       ease: MOTION_EASE.enter,
+      onComplete: expect.any(Function),
     });
+    expect(panelOptions).not.toHaveProperty('x');
+    expect(panel.style.transform).toBe('');
+    expect(panel.style.right).toBe('0px');
+
+    (panelOptions?.onComplete as (() => void) | undefined)?.();
+    expect(panel.style.opacity).toBe('');
+    expect(panel.style.right).toBe('');
+    expect(panel.style.transform).toBe('');
 
     unmount();
     animeMocks.animate.mockClear();
@@ -201,7 +223,9 @@ describe('Portfolio confirmation dialogs', () => {
       </PortfolioDialog>,
     );
     const reducedSheet = screen.getByRole('dialog', { name: '즉시 하단 편집' });
-    expect(reducedSheet).toHaveStyle({ opacity: '1', transform: 'translateY(0px)' });
+    expect(reducedSheet).toHaveStyle({ opacity: '1' });
+    expect(reducedSheet.style.transform).toBe('');
+    expect(reducedSheet.style.bottom).toBe('');
     expect(animationOptionsFor(reducedSheet)).toBeUndefined();
   });
 

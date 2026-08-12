@@ -22,15 +22,15 @@ export function PortfolioDialog({
 }) {
   const focusEffectGenerationRef = useRef(0);
   const dialogRef = useAnimeScope<HTMLDialogElement>(({ root, reducedMotion }) => {
-    const target = dataPresentation === undefined
+    const presentation = dataPresentation ?? 'modal';
+    const target = presentation === 'modal'
       ? root.querySelector<HTMLElement>('[data-dialog-motion]')
       : root;
     if (target === null) return;
-    const direction = dataPresentation === 'panel' ? 'horizontal' : 'vertical';
-    const distance = dataPresentation === undefined
+    const distance = presentation === 'modal'
       ? MOTION_DISTANCE_PX.subtle
       : MOTION_DISTANCE_PX.reveal;
-    revealDialog(target, direction, distance, reducedMotion);
+    revealDialog(target, presentation, distance, reducedMotion);
   }, [dataPresentation]);
 
   useEffect(() => {
@@ -96,30 +96,52 @@ export function PortfolioDialog({
 
 function revealDialog(
   target: HTMLElement,
-  direction: 'vertical' | 'horizontal',
+  presentation: 'modal' | 'sheet' | 'panel',
   distance: number,
   reducedMotion: boolean,
 ): void {
   if (reducedMotion) {
-    setDialogRevealFinalState(target, direction);
+    setDialogRevealFinalState(target, presentation);
     return;
   }
+  if (presentation !== 'modal') target.style.removeProperty('transform');
   try {
     animate(target, {
       opacity: [0, 1],
-      ...(direction === 'vertical' ? { y: [distance, 0] } : { x: [distance, 0] }),
+      ...(presentation === 'modal'
+        ? { y: [distance, 0] }
+        : presentation === 'sheet'
+          ? { bottom: [-distance, 0] }
+          : { right: [-distance, 0] }),
       duration: MOTION_DURATION.normal,
       ease: MOTION_EASE.enter,
+      ...(presentation === 'modal'
+        ? {}
+        : { onComplete: () => clearPresentedRevealStyles(target, presentation) }),
     });
   } catch {
-    setDialogRevealFinalState(target, direction);
+    setDialogRevealFinalState(target, presentation);
   }
 }
 
 function setDialogRevealFinalState(
   target: HTMLElement,
-  direction: 'vertical' | 'horizontal',
+  presentation: 'modal' | 'sheet' | 'panel',
 ): void {
   target.style.opacity = '1';
-  target.style.transform = direction === 'vertical' ? 'translateY(0px)' : 'translateX(0px)';
+  if (presentation === 'modal') {
+    target.style.transform = 'translateY(0px)';
+    return;
+  }
+  target.style.removeProperty('transform');
+  target.style.removeProperty(presentation === 'sheet' ? 'bottom' : 'right');
+}
+
+function clearPresentedRevealStyles(
+  target: HTMLElement,
+  presentation: 'sheet' | 'panel',
+): void {
+  target.style.removeProperty('opacity');
+  target.style.removeProperty('transform');
+  target.style.removeProperty(presentation === 'sheet' ? 'bottom' : 'right');
 }
