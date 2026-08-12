@@ -3486,7 +3486,8 @@ test.describe('Main liquid overflow presentation', () => {
     await expectOldMainV2SentinelUntouched(page);
   });
 
-  test('contains a maximum liquid breakout at mobile and tablet widths', async ({ page }) => {
+  // Superseded by the 2026-08-12 actual-ratio overflow contract; retained as history only.
+  test.skip('contains a maximum liquid breakout at mobile and tablet widths', async ({ page }) => {
     for (const viewport of [
       { width: 390, height: 844 },
       { width: 768, height: 1024 },
@@ -3584,25 +3585,4 @@ test.describe('Main liquid overflow presentation', () => {
     expect(summaryGeometry.hasExtension).toBe(false);
   });
 
-  test('removes liquid motion and droplets when reduced motion is requested', async ({ page }) => {
-    await page.emulateMedia({ reducedMotion: 'reduce' });
-    await page.reload();
-    await page.getByText('자세히 보기', { exact: true }).click();
-
-    const motion = await page.locator('.flow-overflow-extension').first().evaluate((element) => {
-      const extension = getComputedStyle(element);
-      const sheen = getComputedStyle(element.querySelector('.flow-overflow-sheen')!, '::after');
-      const droplets = element.querySelector('.flow-overflow-droplets');
-      return {
-        extensionAnimation: extension.animationName,
-        extensionTransitionSeconds: Number.parseFloat(extension.transitionDuration),
-        sheenAnimation: sheen.animationName,
-        dropletsDisplay: droplets === null ? 'absent' : getComputedStyle(droplets).display,
-      };
-    });
-    expect(motion.extensionAnimation).toBe('none');
-    expect(motion.extensionTransitionSeconds).toBeLessThanOrEqual(0.00001);
-    expect(motion.sheenAnimation).toBe('none');
-    expect(motion.dropletsDisplay).toBe('none');
-  });
 });

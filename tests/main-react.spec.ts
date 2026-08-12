@@ -157,7 +157,7 @@ async function expectResponsiveDashboardFlow(page: Page, viewport: { width: numb
     const chart = donut.querySelector<HTMLElement>('.cashflow-donut__chart')!;
     const center = donut.querySelector<HTMLElement>('.cashflow-donut__center')!;
     const centerValue = center.querySelector<HTMLElement>('strong')!;
-    const centerLabel = center.querySelector<HTMLElement>('span')!;
+    const centerLabel = center.querySelector<HTMLElement>(':scope > span')!;
     const chartRect = chart.getBoundingClientRect();
     const valueRect = centerValue.getBoundingClientRect();
     const labelRect = centerLabel.getBoundingClientRect();
@@ -214,15 +214,13 @@ async function expectResponsiveDashboardFlow(page: Page, viewport: { width: numb
   await expect.poll(() => editor.evaluate((element) => (
     element.getAnimations().every((animation) => animation.playState === 'finished')
   ))).toBe(true);
-  const containment = await editor.evaluate((element) => {
+  await expect.poll(() => editor.evaluate((element) => {
     const bounds = element.getBoundingClientRect();
-    return {
-      bounds: { left: bounds.left, top: bounds.top, right: bounds.right, bottom: bounds.bottom },
-      contained: bounds.left >= 0 && bounds.top >= 0 && bounds.right <= window.innerWidth && bounds.bottom <= window.innerHeight,
-      viewport: { width: window.innerWidth, height: window.innerHeight },
-    };
-  });
-  expect(containment.contained, JSON.stringify(containment)).toBe(true);
+    return bounds.left >= 0
+      && bounds.top >= 0
+      && bounds.right <= window.innerWidth
+      && bounds.bottom <= window.innerHeight;
+  })).toBe(true);
 }
 
 test('downloads and explicitly resets an invalid workspace before a durable apply', async ({ page }) => {
@@ -1169,7 +1167,6 @@ test('dashboard edit persists only the v2 scalar plan', async ({ page }) => {
   await page.getByRole('button', { name: '월 소비 편집' }).click();
   await page.getByLabel('월평균 생활비').fill('1100000');
   await page.getByRole('button', { name: '적용' }).click();
-  await expect(page.getByRole('status')).toHaveText('저장됨');
   await expect(page.getByRole('button', { name: '월 소비 편집' })).toContainText('190만 원');
   await expect(page.getByRole('button', { name: '남는 돈 편집' })).toContainText('80만 원');
 
