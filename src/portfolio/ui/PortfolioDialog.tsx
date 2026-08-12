@@ -1,4 +1,7 @@
-import { useEffect, useRef, type KeyboardEvent, type ReactNode, type RefObject } from 'react';
+import { animate } from 'animejs';
+import { useEffect, type KeyboardEvent, type ReactNode, type RefObject } from 'react';
+import { MOTION_DISTANCE_PX, MOTION_DURATION, MOTION_EASE } from '../../components/motion/tokens';
+import { useAnimeScope } from '../../components/motion/useAnimeScope';
 
 export function PortfolioDialog({
   labelledBy,
@@ -17,7 +20,17 @@ export function PortfolioDialog({
   closeOnBackdrop?: boolean;
   children: ReactNode;
 }) {
-  const dialogRef = useRef<HTMLDialogElement>(null);
+  const dialogRef = useAnimeScope<HTMLDialogElement>(({ root, reducedMotion }) => {
+    const target = dataPresentation === undefined
+      ? root.querySelector<HTMLElement>('[data-dialog-motion]')
+      : root;
+    if (target === null) return;
+    const direction = dataPresentation === 'panel' ? 'horizontal' : 'vertical';
+    const distance = dataPresentation === undefined
+      ? MOTION_DISTANCE_PX.subtle
+      : MOTION_DISTANCE_PX.reveal;
+    revealDialog(target, direction, distance, reducedMotion);
+  }, [dataPresentation]);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -62,6 +75,7 @@ export function PortfolioDialog({
       aria-labelledby={labelledBy}
       className={`portfolio-dialog ui-surface${className ? ` ${className}` : ''}`}
       data-presentation={dataPresentation}
+      style={{ animation: 'none' }}
       onCancel={(event) => {
         event.preventDefault();
         onClose();
@@ -71,7 +85,37 @@ export function PortfolioDialog({
       }}
       onKeyDown={handleKeyDown}
     >
-      {children}
+      <div data-dialog-motion>{children}</div>
     </dialog>
   );
+}
+
+function revealDialog(
+  target: HTMLElement,
+  direction: 'vertical' | 'horizontal',
+  distance: number,
+  reducedMotion: boolean,
+): void {
+  if (reducedMotion) {
+    setDialogRevealFinalState(target, direction);
+    return;
+  }
+  try {
+    animate(target, {
+      opacity: [0, 1],
+      ...(direction === 'vertical' ? { y: [distance, 0] } : { x: [distance, 0] }),
+      duration: MOTION_DURATION.normal,
+      ease: MOTION_EASE.enter,
+    });
+  } catch {
+    setDialogRevealFinalState(target, direction);
+  }
+}
+
+function setDialogRevealFinalState(
+  target: HTMLElement,
+  direction: 'vertical' | 'horizontal',
+): void {
+  target.style.opacity = '1';
+  target.style.transform = direction === 'vertical' ? 'translateY(0px)' : 'translateX(0px)';
 }

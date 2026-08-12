@@ -2,12 +2,45 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { MOTION_DISTANCE_PX, MOTION_DURATION, MOTION_EASE } from '../../../src/components/motion/tokens';
 import { createCashOnlyDraft } from '../../../src/portfolio/domain/allocation';
 import { PortfolioApplyBar } from '../../../src/portfolio/ui/PortfolioApplyBar';
 import { PortfolioDialog } from '../../../src/portfolio/ui/PortfolioDialog';
 import { PortfolioManagementMenu } from '../../../src/portfolio/ui/PortfolioManagementMenu';
 
-afterEach(cleanup);
+const animeMocks = vi.hoisted(() => {
+  const state = { reducedMotion: false };
+  return {
+    animate: vi.fn((target: unknown, options: Record<string, unknown>) => {
+      applyFinalAnimationStyles(target, options);
+      return { cancel: vi.fn() };
+    }),
+    createScope: vi.fn(() => ({
+      add: (setup: () => void) => setup(),
+      matches: { reducedMotion: state.reducedMotion },
+      revert: vi.fn(),
+    })),
+    state,
+  };
+});
+
+function applyFinalAnimationStyles(target: unknown, options: Record<string, unknown>): void {
+  if (!(target instanceof HTMLElement)) return;
+  if (Array.isArray(options.opacity)) target.style.opacity = String(options.opacity.at(-1));
+  if (Array.isArray(options.y)) target.style.transform = `translateY(${String(options.y.at(-1))}px)`;
+  if (Array.isArray(options.x)) target.style.transform = `translateX(${String(options.x.at(-1))}px)`;
+}
+
+vi.mock('animejs', () => ({
+  animate: animeMocks.animate,
+  createScope: animeMocks.createScope,
+}));
+
+afterEach(() => {
+  cleanup();
+  vi.clearAllMocks();
+  animeMocks.state.reducedMotion = false;
+});
 
 describe('Portfolio confirmation dialogs', () => {
   it('closes on the backdrop only when a caller opts in', () => {
@@ -62,6 +95,80 @@ describe('Portfolio confirmation dialogs', () => {
     await waitFor(() => expect(trigger).toHaveFocus());
   });
 
+  it('reveals centered modals and bottom sheets with normal shared motion', () => {
+    const returnFocusRef = { current: null };
+    const { rerender } = render(
+      <PortfolioDialog labelledBy="modal-title" onClose={vi.fn()} returnFocusRef={returnFocusRef}>
+        <h2 id="modal-title">중앙 확인</h2>
+      </PortfolioDialog>,
+    );
+    const modal = screen.getByRole('dialog', { name: '중앙 확인' });
+    const modalContent = modal.querySelector<HTMLElement>('[data-dialog-motion]');
+    expect(modalContent).not.toBeNull();
+    expect(animationOptionsFor(modalContent!)).toMatchObject({
+      opacity: [0, 1],
+      y: [MOTION_DISTANCE_PX.subtle, 0],
+      duration: MOTION_DURATION.normal,
+      ease: MOTION_EASE.enter,
+    });
+
+    rerender(
+      <PortfolioDialog
+        labelledBy="sheet-title"
+        onClose={vi.fn()}
+        returnFocusRef={returnFocusRef}
+        dataPresentation="sheet"
+      >
+        <h2 id="sheet-title">하단 편집</h2>
+      </PortfolioDialog>,
+    );
+    const sheet = screen.getByRole('dialog', { name: '하단 편집' });
+    expect(animationOptionsFor(sheet)).toMatchObject({
+      opacity: [0, 1],
+      y: [MOTION_DISTANCE_PX.reveal, 0],
+      duration: MOTION_DURATION.normal,
+      ease: MOTION_EASE.enter,
+    });
+  });
+
+  it('reveals side panels horizontally and commits reduced motion immediately', () => {
+    const returnFocusRef = { current: null };
+    const { unmount } = render(
+      <PortfolioDialog
+        labelledBy="panel-title"
+        onClose={vi.fn()}
+        returnFocusRef={returnFocusRef}
+        dataPresentation="panel"
+      >
+        <h2 id="panel-title">측면 편집</h2>
+      </PortfolioDialog>,
+    );
+    const panel = screen.getByRole('dialog', { name: '측면 편집' });
+    expect(animationOptionsFor(panel)).toMatchObject({
+      opacity: [0, 1],
+      x: [MOTION_DISTANCE_PX.reveal, 0],
+      duration: MOTION_DURATION.normal,
+      ease: MOTION_EASE.enter,
+    });
+
+    unmount();
+    animeMocks.animate.mockClear();
+    animeMocks.state.reducedMotion = true;
+    render(
+      <PortfolioDialog
+        labelledBy="reduced-sheet-title"
+        onClose={vi.fn()}
+        returnFocusRef={returnFocusRef}
+        dataPresentation="sheet"
+      >
+        <h2 id="reduced-sheet-title">즉시 하단 편집</h2>
+      </PortfolioDialog>,
+    );
+    const reducedSheet = screen.getByRole('dialog', { name: '즉시 하단 편집' });
+    expect(reducedSheet).toHaveStyle({ opacity: '1', transform: 'translateY(0px)' });
+    expect(animationOptionsFor(reducedSheet)).toBeUndefined();
+  });
+
   it('focuses reset cancel and restores its trigger after Escape', async () => {
     render(<PortfolioManagementMenu onReset={vi.fn()} />);
 
@@ -104,3 +211,9 @@ describe('Portfolio confirmation dialogs', () => {
     expect(screen.getByRole('menuitem', { name: '투자 배분 처음부터 다시' })).toBeVisible();
   });
 });
+
+function animationOptionsFor(target: Element): Record<string, unknown> | undefined {
+  return animeMocks.animate.mock.calls.find(([candidate]) => candidate === target)?.[1] as
+    | Record<string, unknown>
+    | undefined;
+}

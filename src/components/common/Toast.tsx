@@ -1,4 +1,7 @@
+import { animate } from 'animejs';
 import React, { useEffect } from 'react';
+import { MOTION_DISTANCE_PX, MOTION_DURATION, MOTION_EASE } from '../motion/tokens';
+import { useAnimeScope } from '../motion/useAnimeScope';
 
 interface Props {
   message: string;
@@ -8,6 +11,23 @@ interface Props {
 }
 
 export const Toast: React.FC<Props> = ({ message, type = 'success', onClose, duration = 3000 }) => {
+  const motionRef = useAnimeScope<HTMLDivElement>(({ root, reducedMotion }) => {
+    if (reducedMotion) {
+      setRevealFinalState(root);
+      return;
+    }
+    try {
+      animate(root, {
+        opacity: [0, 1],
+        y: [MOTION_DISTANCE_PX.reveal, 0],
+        duration: MOTION_DURATION.normal,
+        ease: MOTION_EASE.enter,
+      });
+    } catch {
+      setRevealFinalState(root);
+    }
+  }, []);
+
   useEffect(() => {
     const timer = setTimeout(onClose, duration);
     return () => clearTimeout(timer);
@@ -20,9 +40,20 @@ export const Toast: React.FC<Props> = ({ message, type = 'success', onClose, dur
   };
 
   return (
-    <div className={`fixed bottom-8 left-1/2 -translate-x-1/2 ${bgColors[type]} text-white px-6 py-3 rounded-full shadow-2xl z-[1000] flex items-center gap-2 animate-bounce-short`}>
-      <span className="text-sm font-bold">{message}</span>
-      <button onClick={onClose} className="hover:opacity-70">×</button>
+    <div className="pointer-events-none fixed bottom-8 left-1/2 z-[1000] -translate-x-1/2">
+      <div
+        ref={motionRef}
+        data-toast-motion
+        className={`pointer-events-auto flex items-center gap-2 rounded-full px-6 py-3 text-white shadow-2xl ${bgColors[type]}`}
+      >
+        <span className="text-sm font-bold">{message}</span>
+        <button type="button" aria-label="알림 닫기" onClick={onClose} className="hover:opacity-70">×</button>
+      </div>
     </div>
   );
 };
+
+function setRevealFinalState(target: HTMLElement): void {
+  target.style.opacity = '1';
+  target.style.transform = 'translateY(0px)';
+}

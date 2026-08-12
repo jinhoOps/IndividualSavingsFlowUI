@@ -3,14 +3,45 @@ import '@testing-library/jest-dom/vitest';
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { MOTION_DISTANCE_PX, MOTION_DURATION, MOTION_EASE } from '../../../src/components/motion/tokens';
 import type { MainData } from '../../../src/main/domain/model';
 import { SummaryDashboard, type SummaryDashboardProps } from '../../../src/main/ui/dashboard/SummaryDashboard';
+
+const animeMocks = vi.hoisted(() => {
+  const state = { reducedMotion: false };
+  return {
+    animate: vi.fn((target: unknown, options: Record<string, unknown>) => {
+      applyFinalAnimationStyles(target, options);
+      return { cancel: vi.fn() };
+    }),
+    createScope: vi.fn(() => ({
+      add: (setup: () => void) => setup(),
+      matches: { reducedMotion: state.reducedMotion },
+      revert: vi.fn(),
+    })),
+    state,
+  };
+});
+
+function applyFinalAnimationStyles(target: unknown, options: Record<string, unknown>): void {
+  if (!(target instanceof HTMLElement)) return;
+  if (Array.isArray(options.opacity)) target.style.opacity = String(options.opacity.at(-1));
+  if (Array.isArray(options.y)) target.style.transform = `translateY(${String(options.y.at(-1))}px)`;
+  if (Array.isArray(options.x)) target.style.transform = `translateX(${String(options.x.at(-1))}px)`;
+}
+
+vi.mock('animejs', () => ({
+  animate: animeMocks.animate,
+  createScope: animeMocks.createScope,
+}));
 
 afterEach(() => {
   cleanup();
   vi.useRealTimers();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
+  vi.clearAllMocks();
+  animeMocks.state.reducedMotion = false;
 });
 
 const appliedData: MainData = {
@@ -275,6 +306,35 @@ describe('SummaryDashboard', () => {
     expect(within(dialog).getByLabelText('월 투자액')).toBeVisible();
   });
 
+  it('reveals the mobile editor upward with normal motion and closes it synchronously', () => {
+    render(<DashboardHarness mobile />);
+    const opener = screen.getByRole('button', { name: '월 소비 편집' });
+    fireEvent.click(opener);
+
+    const dialog = screen.getByRole('dialog', { name: '월 자금 계획 편집' });
+    expect(dialog).toHaveAttribute('aria-modal', 'true');
+    expect(animationOptionsFor(dialog)).toMatchObject({
+      opacity: [0, 1],
+      y: [MOTION_DISTANCE_PX.reveal, 0],
+      duration: MOTION_DURATION.normal,
+      ease: MOTION_EASE.enter,
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: '편집기 닫기' }));
+    expect(screen.queryByRole('dialog', { name: '월 자금 계획 편집' })).not.toBeInTheDocument();
+    expect(opener).toHaveFocus();
+  });
+
+  it('commits the mobile editor final state before paint under reduced motion', () => {
+    animeMocks.state.reducedMotion = true;
+    render(<DashboardHarness mobile />);
+    fireEvent.click(screen.getByRole('button', { name: '월 소비 편집' }));
+    const dialog = screen.getByRole('dialog', { name: '월 자금 계획 편집' });
+
+    expect(dialog).toHaveStyle({ opacity: '1', transform: 'translateY(0px)' });
+    expect(animationOptionsFor(dialog)).toBeUndefined();
+  });
+
   it('contains edit and apply controls in one mobile modal, traps focus, and hides dashboard controls', () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     render(<DashboardHarness mobile />);
@@ -408,3 +468,9 @@ describe('SummaryDashboard', () => {
     expect(dirtyExit.defaultPrevented).toBe(true);
   });
 });
+
+function animationOptionsFor(target: Element): Record<string, unknown> | undefined {
+  return animeMocks.animate.mock.calls.find(([candidate]) => candidate === target)?.[1] as
+    | Record<string, unknown>
+    | undefined;
+}

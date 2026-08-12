@@ -258,7 +258,6 @@
   border-radius: 999px;
   background: currentColor;
   opacity: 0;
-  transition: opacity 160ms ease;
 }
 
 .journey-launcher__app-link[aria-current='page'] .journey-launcher__current-line {

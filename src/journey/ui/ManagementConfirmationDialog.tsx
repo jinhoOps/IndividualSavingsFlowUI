@@ -1,4 +1,7 @@
+import { animate } from 'animejs';
 import { useEffect, useRef, type KeyboardEvent, type RefObject } from 'react';
+import { MOTION_DISTANCE_PX, MOTION_DURATION, MOTION_EASE } from '../../components/motion/tokens';
+import { useAnimeScope } from '../../components/motion/useAnimeScope';
 import type { ManagementConfirmation } from './AppManagementMenu';
 
 export function ManagementConfirmationDialog({
@@ -18,6 +21,22 @@ export function ManagementConfirmationDialog({
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const titleId = `journey-management-dialog-${confirmation.title.replace(/\s+/g, '-')}`;
+  const motionRef = useAnimeScope<HTMLDivElement>(({ root, reducedMotion }) => {
+    if (reducedMotion) {
+      setRevealFinalState(root);
+      return;
+    }
+    try {
+      animate(root, {
+        opacity: [0, 1],
+        y: [MOTION_DISTANCE_PX.subtle, 0],
+        duration: MOTION_DURATION.normal,
+        ease: MOTION_EASE.enter,
+      });
+    } catch {
+      setRevealFinalState(root);
+    }
+  }, []);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -80,15 +99,22 @@ export function ManagementConfirmationDialog({
         if (!pending && event.target === event.currentTarget) onCancel();
       }}
     >
-      <h2 id={titleId}>{confirmation.title}</h2>
-      <p>{confirmation.description}</p>
-      {errorMessage === undefined ? null : (
-        <p className="journey-management__dialog-alert" role="alert">{errorMessage}</p>
-      )}
-      <div className="journey-management__dialog-actions">
-        <button className="ui-button ui-button--secondary" type="button" data-dialog-initial-focus disabled={pending} onClick={onCancel}>취소</button>
-        <button className="ui-button journey-management__danger" type="button" disabled={pending} onClick={onConfirm}>{confirmation.confirmLabel}</button>
+      <div ref={motionRef} data-dialog-motion>
+        <h2 id={titleId}>{confirmation.title}</h2>
+        <p>{confirmation.description}</p>
+        {errorMessage === undefined ? null : (
+          <p className="journey-management__dialog-alert" role="alert">{errorMessage}</p>
+        )}
+        <div className="journey-management__dialog-actions">
+          <button className="ui-button ui-button--secondary" type="button" data-dialog-initial-focus disabled={pending} onClick={onCancel}>취소</button>
+          <button className="ui-button journey-management__danger" type="button" disabled={pending} onClick={onConfirm}>{confirmation.confirmLabel}</button>
+        </div>
       </div>
     </dialog>
   );
+}
+
+function setRevealFinalState(target: HTMLElement): void {
+  target.style.opacity = '1';
+  target.style.transform = 'translateY(0px)';
 }

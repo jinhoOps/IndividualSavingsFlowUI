@@ -1,4 +1,7 @@
+import { animate } from 'animejs';
 import { useEffect, useId, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
+import { MOTION_DISTANCE_PX, MOTION_DURATION, MOTION_EASE } from '../../components/motion/tokens';
+import { useAnimeScope } from '../../components/motion/useAnimeScope';
 import { appPath, type JourneyApp } from '../routes';
 import { AppNavigationIcon } from './AppNavigationIcon';
 import { APP_NAV_ITEMS } from './appNavigation';
@@ -41,6 +44,26 @@ export function AppLauncher({ currentApp, managementMenu }: AppLauncherProps) {
     currentApp,
     availableWidth,
   );
+  const currentLineMotionRef = useAnimeScope<HTMLDivElement>(({ root, reducedMotion }) => {
+    const currentLine = root.querySelector<HTMLElement>(
+      '[aria-current="page"] .journey-launcher__current-line',
+    );
+    if (currentLine === null) return;
+    revealVertical(
+      currentLine,
+      MOTION_DISTANCE_PX.subtle,
+      MOTION_DURATION.fast,
+      reducedMotion,
+    );
+  }, [currentApp]);
+  const overflowMotionRef = useAnimeScope<HTMLDivElement>(({ root, reducedMotion }) => {
+    revealVertical(
+      root,
+      -MOTION_DISTANCE_PX.subtle,
+      MOTION_DURATION.fast,
+      reducedMotion,
+    );
+  }, [overflowOpen]);
 
   const cancelLongPress = () => {
     if (longPressTimerRef.current !== null) {
@@ -208,7 +231,7 @@ export function AppLauncher({ currentApp, managementMenu }: AppLauncherProps) {
   };
 
   return (
-    <div className="journey-launcher">
+    <div ref={currentLineMotionRef} className="journey-launcher">
       <nav
         ref={navigationRef}
         className="journey-launcher__navigation"
@@ -302,7 +325,13 @@ export function AppLauncher({ currentApp, managementMenu }: AppLauncherProps) {
                 <MoreIcon />
               </button>
               {overflowOpen ? (
-                <div id={overflowId} className="journey-launcher__overflow-menu" role="region" aria-label="추가 앱">
+                <div
+                  ref={overflowMotionRef}
+                  id={overflowId}
+                  className="journey-launcher__overflow-menu"
+                  role="region"
+                  aria-label="추가 앱"
+                >
                   {overflow.map((item) => {
                     const accessibleName = [
                       item.accessibleLabel,
@@ -345,6 +374,33 @@ export function AppLauncher({ currentApp, managementMenu }: AppLauncherProps) {
       </div>
     </div>
   );
+}
+
+function revealVertical(
+  target: HTMLElement,
+  distance: number,
+  duration: number,
+  reducedMotion: boolean,
+): void {
+  if (reducedMotion) {
+    setVerticalRevealFinalState(target);
+    return;
+  }
+  try {
+    animate(target, {
+      opacity: [0, 1],
+      y: [distance, 0],
+      duration,
+      ease: MOTION_EASE.enter,
+    });
+  } catch {
+    setVerticalRevealFinalState(target);
+  }
+}
+
+function setVerticalRevealFinalState(target: HTMLElement): void {
+  target.style.opacity = '1';
+  target.style.transform = 'translateY(0px)';
 }
 
 function MoreIcon() {
