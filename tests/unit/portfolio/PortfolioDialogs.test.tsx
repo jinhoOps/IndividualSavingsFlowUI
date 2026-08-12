@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
+import { StrictMode, useRef, useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MOTION_DISTANCE_PX, MOTION_DURATION, MOTION_EASE } from '../../../src/components/motion/tokens';
 import { createCashOnlyDraft } from '../../../src/portfolio/domain/allocation';
@@ -43,6 +44,41 @@ afterEach(() => {
 });
 
 describe('Portfolio confirmation dialogs', () => {
+  it('keeps dialog focus inside during Strict Mode preflight and restores it on actual close', async () => {
+    function Harness() {
+      const triggerRef = useRef<HTMLButtonElement>(null);
+      const [open, setOpen] = useState(false);
+      return (
+        <>
+          <button ref={triggerRef} type="button" onClick={() => setOpen(true)}>Strict Portfolio 열기</button>
+          {open ? (
+            <PortfolioDialog
+              labelledBy="strict-portfolio-title"
+              onClose={() => setOpen(false)}
+              returnFocusRef={triggerRef}
+            >
+              <h2 id="strict-portfolio-title">Strict Portfolio</h2>
+              <button type="button" data-dialog-initial-focus>취소</button>
+            </PortfolioDialog>
+          ) : null}
+        </>
+      );
+    }
+
+    render(<StrictMode><Harness /></StrictMode>);
+    const trigger = screen.getByRole('button', { name: 'Strict Portfolio 열기' });
+    fireEvent.click(trigger);
+    const dialog = screen.getByRole('dialog', { name: 'Strict Portfolio' });
+    const cancel = within(dialog).getByRole('button', { name: '취소' });
+    await act(async () => undefined);
+    expect(cancel).toHaveFocus();
+
+    fireEvent.keyDown(dialog, { key: 'Escape' });
+    expect(screen.queryByRole('dialog', { name: 'Strict Portfolio' })).not.toBeInTheDocument();
+    await act(async () => undefined);
+    expect(trigger).toHaveFocus();
+  });
+
   it('closes on the backdrop only when a caller opts in', () => {
     const regularClose = vi.fn();
     const sheetClose = vi.fn();

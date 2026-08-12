@@ -1,4 +1,7 @@
+import { animate } from 'animejs';
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { MOTION_DISTANCE_PX, MOTION_DURATION, MOTION_EASE } from '../../components/motion/tokens';
+import { useAnimeScope } from '../../components/motion/useAnimeScope';
 import { ManagementConfirmationDialog } from './ManagementConfirmationDialog';
 import { AppNavigationIcon } from './AppNavigationIcon';
 import { APP_NAV_ITEMS } from './appNavigation';
@@ -28,6 +31,12 @@ export function AppManagementMenu({ items }: { items: readonly AppManagementItem
   const [pending, setPending] = useState<Extract<AppManagementItem, { kind: 'action' }> | null>(null);
   const [confirmationFailed, setConfirmationFailed] = useState(false);
   const [confirmationPending, setConfirmationPending] = useState(false);
+  const popoverMotionRef = useAnimeScope<HTMLDivElement>(({ root, reducedMotion }) => {
+    revealDisclosure(root, reducedMotion);
+  }, [open]);
+  const helpMotionRef = useAnimeScope<HTMLDivElement>(({ root, reducedMotion }) => {
+    revealDisclosure(root, reducedMotion);
+  }, [helpOpen]);
 
   function closePopover(restoreFocus = true): void {
     setOpen(false);
@@ -135,7 +144,7 @@ export function AppManagementMenu({ items }: { items: readonly AppManagementItem
         <GearIcon />
       </button>
       {open ? (
-        <div id={menuId} className="journey-management__popover">
+        <div ref={popoverMotionRef} id={menuId} className="journey-management__popover">
           {splitMenuSections(items).map((section, index) => section.kind === 'control' ? (
             <div key={section.item.id} role="group" className="journey-management__control">{section.item.content}</div>
           ) : (
@@ -161,7 +170,13 @@ export function AppManagementMenu({ items }: { items: readonly AppManagementItem
             </div>
           ))}
           {helpOpen ? (
-            <div id={helpId} role="region" aria-label="앱 아이콘 안내" className="journey-management__app-help">
+            <div
+              ref={helpMotionRef}
+              id={helpId}
+              role="region"
+              aria-label="앱 아이콘 안내"
+              className="journey-management__app-help"
+            >
               {APP_NAV_ITEMS.map((item) => (
                 <div key={item.id} className="journey-management__app-help-row">
                   <AppNavigationIcon app={item.id} />
@@ -213,6 +228,28 @@ export function AppManagementMenu({ items }: { items: readonly AppManagementItem
       )}
     </div>
   );
+}
+
+function revealDisclosure(target: HTMLElement, reducedMotion: boolean): void {
+  if (reducedMotion) {
+    setDisclosureFinalState(target);
+    return;
+  }
+  try {
+    animate(target, {
+      opacity: [0, 1],
+      y: [-MOTION_DISTANCE_PX.subtle, 0],
+      duration: MOTION_DURATION.normal,
+      ease: MOTION_EASE.enter,
+    });
+  } catch {
+    setDisclosureFinalState(target);
+  }
+}
+
+function setDisclosureFinalState(target: HTMLElement): void {
+  target.style.opacity = '1';
+  target.style.transform = 'translateY(0px)';
 }
 
 type AppManagementMenuEntry = Exclude<AppManagementItem, { kind: 'control' }>;

@@ -1,5 +1,5 @@
 import { animate } from 'animejs';
-import { useEffect, type KeyboardEvent, type ReactNode, type RefObject } from 'react';
+import { useEffect, useRef, type KeyboardEvent, type ReactNode, type RefObject } from 'react';
 import { MOTION_DISTANCE_PX, MOTION_DURATION, MOTION_EASE } from '../../components/motion/tokens';
 import { useAnimeScope } from '../../components/motion/useAnimeScope';
 
@@ -20,6 +20,7 @@ export function PortfolioDialog({
   closeOnBackdrop?: boolean;
   children: ReactNode;
 }) {
+  const focusEffectGenerationRef = useRef(0);
   const dialogRef = useAnimeScope<HTMLDialogElement>(({ root, reducedMotion }) => {
     const target = dataPresentation === undefined
       ? root.querySelector<HTMLElement>('[data-dialog-motion]')
@@ -35,6 +36,7 @@ export function PortfolioDialog({
   useEffect(() => {
     const dialog = dialogRef.current;
     if (dialog === null) return;
+    const generation = ++focusEffectGenerationRef.current;
     if (!dialog.open) {
       if (typeof dialog.showModal === 'function') dialog.showModal();
       else dialog.setAttribute('open', '');
@@ -42,7 +44,9 @@ export function PortfolioDialog({
     dialog.querySelector<HTMLElement>('[data-dialog-initial-focus]')?.focus();
     return () => {
       if (dialog.open && typeof dialog.close === 'function') dialog.close();
-      queueMicrotask(() => returnFocusRef.current?.focus());
+      queueMicrotask(() => {
+        if (focusEffectGenerationRef.current === generation) returnFocusRef.current?.focus();
+      });
     };
   }, [returnFocusRef]);
 

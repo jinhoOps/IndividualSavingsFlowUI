@@ -1,6 +1,6 @@
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
-import { useRef, useState } from 'react';
+import { StrictMode, useRef, useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Toast } from '../../../src/components/common/Toast';
 import { MOTION_DISTANCE_PX, MOTION_DURATION, MOTION_EASE } from '../../../src/components/motion/tokens';
@@ -333,6 +333,44 @@ describe('AppLauncher', () => {
 });
 
 describe('shared Journey overlays', () => {
+  it('keeps confirmation focus inside during Strict Mode preflight and restores it on actual close', async () => {
+    function Harness() {
+      const triggerRef = useRef<HTMLButtonElement>(null);
+      const [open, setOpen] = useState(false);
+      return (
+        <>
+          <button ref={triggerRef} type="button" onClick={() => setOpen(true)}>Strict 확인 열기</button>
+          {open ? (
+            <ManagementConfirmationDialog
+              confirmation={{
+                title: 'Strict 확인',
+                description: 'preflight focus를 확인합니다.',
+                confirmLabel: '확인',
+              }}
+              pending={false}
+              returnFocusRef={triggerRef}
+              onCancel={() => setOpen(false)}
+              onConfirm={() => undefined}
+            />
+          ) : null}
+        </>
+      );
+    }
+
+    render(<StrictMode><Harness /></StrictMode>);
+    const trigger = screen.getByRole('button', { name: 'Strict 확인 열기' });
+    fireEvent.click(trigger);
+    const dialog = screen.getByRole('dialog', { name: 'Strict 확인' });
+    const cancel = within(dialog).getByRole('button', { name: '취소' });
+    await act(async () => undefined);
+    expect(cancel).toHaveFocus();
+
+    fireEvent.keyDown(dialog, { key: 'Escape' });
+    expect(screen.queryByRole('dialog', { name: 'Strict 확인' })).not.toBeInTheDocument();
+    await act(async () => undefined);
+    expect(trigger).toHaveFocus();
+  });
+
   it('reveals confirmation content with normal motion and removes it before returning focus', async () => {
     function Harness() {
       const triggerRef = useRef<HTMLButtonElement>(null);
