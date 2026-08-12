@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { CompoundSimulationDraft, SimulationMainSource } from '../../../src/simulation/domain/model';
@@ -23,7 +23,10 @@ import type {
 } from '../../../src/workspace/infrastructure/workspaceSaveLock';
 import { MemoryStorage } from './MemoryStorage';
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+});
 
 const source: SimulationMainSource = {
   monthlySavingsWon: 300_000,
@@ -203,6 +206,7 @@ describe('SimulationApp', () => {
   });
 
   it('queues saves so a slower earlier result cannot overwrite the latest UI state', async () => {
+    vi.useFakeTimers();
     const repository = simulationRepository();
     let settleFirst: ((result: { status: 'unavailable' }) => void) | undefined;
     let settleSecond: ((result: { status: 'saved' }) => void) | undefined;
@@ -217,20 +221,23 @@ describe('SimulationApp', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '없어요' }));
     fireEvent.click(screen.getByRole('button', { name: '결과 보기' }));
-    await waitFor(() => expect(repository.save).toHaveBeenCalledTimes(1));
+    await act(async () => undefined);
+    expect(repository.save).toHaveBeenCalledTimes(1);
     fireEvent.change(screen.getByRole('spinbutton', { name: '기간 숫자' }), {
       target: { value: '25' },
     });
     expect(repository.save).toHaveBeenCalledTimes(1);
     expect(screen.getByRole('heading', { name: /이대로 25년 유지하면/ })).toBeVisible();
-    expect(screen.getByRole('status')).toHaveTextContent('저장 중');
+    expect(screen.queryByText('저장 중')).not.toBeInTheDocument();
 
-    settleFirst?.({ status: 'unavailable' });
-    await waitFor(() => expect(repository.save).toHaveBeenCalledTimes(2));
-    expect(screen.getByRole('status')).toHaveTextContent('저장 중');
-    expect(screen.getByRole('status')).not.toHaveTextContent('자동 저장하지 못했어요');
-    settleSecond?.({ status: 'saved' });
-    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('저장됨'));
+    await act(async () => settleFirst?.({ status: 'unavailable' }));
+    expect(repository.save).toHaveBeenCalledTimes(2);
+    expect(screen.queryByText('저장 중')).not.toBeInTheDocument();
+    expect(screen.queryByText('자동 저장하지 못했어요')).not.toBeInTheDocument();
+    await act(async () => settleSecond?.({ status: 'saved' }));
+    act(() => vi.advanceTimersByTime(600));
+    expect(screen.queryByText('저장 중')).not.toBeInTheDocument();
+    expect(screen.queryByText('저장됨')).not.toBeInTheDocument();
     expect(repository.save).toHaveBeenLastCalledWith(expect.objectContaining({ years: 25 }));
   });
 

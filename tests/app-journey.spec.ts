@@ -168,9 +168,33 @@ test('keeps detailed Portfolio and readiness-only Account Map isolated', async (
   await page.goto('apps/portfolio/');
   await expect(page.getByRole('heading', { name: '매달 200,000원을 어디에 투자할까요?' })).toBeVisible();
   await expect(page.getByRole('link', { name: /투자 배분 \(Portfolio\).*현재 위치/ })).toBeVisible();
+  await page.addInitScript(() => {
+    const calls: Array<{ operation: 'get' | 'set' | 'remove'; key: string }> = [];
+    const originalGetItem = Storage.prototype.getItem;
+    const originalSetItem = Storage.prototype.setItem;
+    const originalRemoveItem = Storage.prototype.removeItem;
+    Object.defineProperty(window, '__accountMapStorageCalls', { value: calls });
+    Storage.prototype.getItem = function (key) {
+      if (this === localStorage) calls.push({ operation: 'get', key });
+      return originalGetItem.call(this, key);
+    };
+    Storage.prototype.setItem = function (key, value) {
+      if (this === localStorage) calls.push({ operation: 'set', key });
+      return originalSetItem.call(this, key, value);
+    };
+    Storage.prototype.removeItem = function (key) {
+      if (this === localStorage) calls.push({ operation: 'remove', key });
+      return originalRemoveItem.call(this, key);
+    };
+  });
   await page.goto('apps/account-map/');
   await expect(page.getByRole('heading', { name: 'Account Map 준비 중' })).toBeVisible();
   await expect(page.locator('app-header, data-hub-modal, #portfolioCreator, #accountMapCanvas')).toHaveCount(0);
+  expect(await page.evaluate(() => (
+    window as typeof window & {
+      __accountMapStorageCalls: Array<{ operation: 'get' | 'set' | 'remove'; key: string }>;
+    }
+  ).__accountMapStorageCalls)).toEqual([]);
 });
 
 test('separates app navigation and the right-aligned management tool across viewports', async ({ page }) => {
@@ -407,7 +431,9 @@ test('keeps the current app direct and exposes hidden apps through overflow', as
   await expect(navigation.getByRole('link', { name: /계좌 연결 \(Account Map\).*현재 위치/ })).toBeVisible();
   const more = navigation.getByRole('button', { name: '앱 더보기' });
   await expect(more).toBeVisible();
+  await expect(more).toHaveAttribute('aria-expanded', 'false');
   await more.click();
+  await expect(more).toHaveAttribute('aria-expanded', 'true');
   const overflow = page.getByRole('region', { name: '추가 앱' });
   const overflowBox = await overflow.boundingBox();
   expect(overflowBox).not.toBeNull();
@@ -427,6 +453,7 @@ test('keeps the current app direct and exposes hidden apps through overflow', as
   await expect(overflow).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(overflow).toHaveCount(0);
+  await expect(more).toHaveAttribute('aria-expanded', 'false');
   await expect(more).toBeFocused();
 
   await more.click();
@@ -436,6 +463,61 @@ test('keeps the current app direct and exposes hidden apps through overflow', as
   expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
 });
 
+test('commits Journey reveals before paint under reduced motion', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('apps/account-map/');
+
+  const readiness = page.locator('[data-readiness-motion]');
+  const currentLine = page.locator(
+    '[aria-current="page"] .journey-launcher__current-line',
+  );
+  await expect(readiness).toBeVisible();
+  await expect(currentLine).toBeVisible();
+  expect(await readMotionState(readiness)).toEqual({ opacity: 1, x: 0, y: 0 });
+  expect(await readMotionState(currentLine)).toEqual({ opacity: 1, x: 0, y: 0 });
+
+  await page.addStyleTag({ content: '.journey-launcher { width: 220px !important; }' });
+  const more = page.getByRole('button', { name: '앱 더보기' });
+  await more.click();
+  const overflow = page.getByRole('region', { name: '추가 앱' });
+  await expect(overflow).toBeVisible();
+  await expect(more).toHaveAttribute('aria-expanded', 'true');
+  expect(await readMotionState(overflow)).toEqual({ opacity: 1, x: 0, y: 0 });
+
+  await page.keyboard.press('Escape');
+  await expect(overflow).toHaveCount(0);
+  await expect(more).toHaveAttribute('aria-expanded', 'false');
+  await expect(more).toBeFocused();
+});
+
+test('keeps the Main mobile editor modal synchronous under reduced motion', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript((fixture) => {
+    localStorage.setItem('isf-workspace-v1', JSON.stringify(fixture));
+  }, appliedWorkspace);
+  await page.goto('apps/main/');
+
+  const opener = page.getByRole('button', { name: '월 소비 편집' });
+  await opener.click();
+  const dialog = page.getByRole('dialog', { name: '월 자금 계획 편집' });
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toHaveAttribute('aria-modal', 'true');
+  await expect(page.getByTestId('dashboard-controls')).toHaveAttribute('inert', '');
+  expect(await readMotionState(dialog)).toEqual({ opacity: 1, x: 0, y: 0 });
+  const bounds = await dialog.boundingBox();
+  expect(bounds).not.toBeNull();
+  expect(bounds!.x).toBeGreaterThanOrEqual(0);
+  expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(390);
+  expect(bounds!.y).toBeGreaterThanOrEqual(0);
+  expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(844);
+
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+  await expect(opener).toBeFocused();
+});
+
 test('legacy Simulation DOM is absent from the supported route', async ({ page }) => {
   await page.addInitScript((fixture) => {
     localStorage.setItem('isf-workspace-v1', JSON.stringify(fixture));
@@ -443,3 +525,21 @@ test('legacy Simulation DOM is absent from the supported route', async ({ page }
   await page.goto('apps/simulation/');
   await expect(page.locator('app-header, data-hub-modal, #strategyCardGroup')).toHaveCount(0);
 });
+
+async function readMotionState(locator: import('@playwright/test').Locator): Promise<{
+  opacity: number;
+  x: number;
+  y: number;
+}> {
+  return locator.evaluate((element) => {
+    const style = getComputedStyle(element);
+    const matrix = style.transform === 'none'
+      ? new DOMMatrixReadOnly()
+      : new DOMMatrixReadOnly(style.transform);
+    return {
+      opacity: Number.parseFloat(style.opacity),
+      x: matrix.m41,
+      y: matrix.m42,
+    };
+  });
+}

@@ -126,13 +126,13 @@ async function seedSourceVisualPortfolio(page: Page): Promise<void> {
       schemaVersion: 2,
       scope: { type: 'aggregate' },
       items: [{
-        id: 'global-index', name: '글로벌 인덱스', shareUnits: 500_000, order: 0,
+        id: 'global-index', name: '글로벌 인덱스', shareUnits: 500_000, order: 1,
         classification: 'growth', classificationOrigin: 'automatic',
       }, {
-        id: 'bond', name: '채권', shareUnits: 250_000, order: 1,
+        id: 'bond', name: '채권', shareUnits: 250_000, order: 2,
         classification: 'stable', classificationOrigin: 'automatic',
       }, {
-        id: 'gold', name: '금', shareUnits: 150_000, order: 2,
+        id: 'gold', name: '금', shareUnits: 150_000, order: 0,
         classification: 'stable', classificationOrigin: 'automatic',
       }],
       cashShareUnits: 100_000,
@@ -337,6 +337,9 @@ test('gates zero investment and focuses Main investment editing', async ({ page 
 test('keeps the summary-first ratio list usable across required widths', async ({ page }) => {
   await seedMain(page, 800_000);
   await seedSourceVisualPortfolio(page);
+  await page.addInitScript(() => {
+    localStorage.removeItem('isf-portfolio-view-preferences-v1');
+  });
 
   for (const viewport of [
     { width: 390, height: 844 },
@@ -406,6 +409,19 @@ test('keeps the summary-first ratio list usable across required widths', async (
     expect(fillBox).not.toBeNull();
     expect(trackBox).not.toBeNull();
     expect(fillBox!.width / trackBox!.width).toBeCloseTo(0.5, 1);
+
+    await page.getByRole('button', { name: '관리 메뉴' }).click();
+    const inputSort = page.getByRole('radio', { name: '입력순' });
+    await inputSort.focus();
+    await inputSort.check();
+    await expect(inputSort).toBeFocused();
+    await expect.poll(async () => summary.getByRole('listitem').evaluateAll((rows) => (
+      rows.map((row) => row.querySelector('h2')?.textContent)
+    ))).toEqual(['금', '글로벌 인덱스', '채권', '현금']);
+    for (const row of await summary.getByRole('listitem').all()) {
+      expect(await row.evaluate((element) => getComputedStyle(element).transform)).toBe('none');
+    }
+    expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
   }
 });
 
@@ -884,7 +900,11 @@ test('reconciles external location changes and contains stale controls at requir
     for (const button of await dialog.getByRole('button').all()) {
       const box = await button.boundingBox();
       expect(box).not.toBeNull();
-      expect(box!.height).toBeGreaterThanOrEqual(44);
+      expect(await button.evaluate((element) => {
+        const style = getComputedStyle(element);
+        return { minBlockSize: style.minBlockSize, minHeight: style.minHeight };
+      })).toEqual({ minBlockSize: '44px', minHeight: '44px' });
+      expect(box!.height).toBeGreaterThanOrEqual(43.99);
     }
     expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
 

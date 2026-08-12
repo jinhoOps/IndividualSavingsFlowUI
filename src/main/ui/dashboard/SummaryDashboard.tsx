@@ -1,4 +1,7 @@
+import { animate } from 'animejs';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { MOTION_DISTANCE_PX, MOTION_DURATION, MOTION_EASE } from '../../../components/motion/tokens';
+import { useAnimeScope } from '../../../components/motion/useAnimeScope';
 import type { MainState } from '../../application/mainReducer';
 import { calculateCashflow } from '../../domain/cashflow';
 import type { MainData } from '../../domain/model';
@@ -42,11 +45,15 @@ export function SummaryDashboard({
 }: SummaryDashboardProps) {
   const [editorOpen, setEditorOpen] = useState(false);
   const openerRef = useRef<HTMLElement | null>(null);
-  const modalRef = useRef<HTMLDivElement | null>(null);
-  const desktopEditorRef = useRef<HTMLDivElement | null>(null);
   const isMobile = useMobileEditor();
   const summary = calculateCashflow(applied);
   const mobileModalOpen = isMobile && editorOpen;
+  const modalRef = useAnimeScope<HTMLDivElement>(({ root, reducedMotion }) => {
+    revealEditor(root, 'vertical', reducedMotion);
+  }, [mobileModalOpen]);
+  const desktopEditorRef = useAnimeScope<HTMLDivElement>(({ root, reducedMotion }) => {
+    revealEditor(root, 'horizontal', reducedMotion);
+  }, [editorOpen, isMobile]);
   const saving = saveStatus === 'saving';
   const firstIssuePath = issues[0]?.path;
   const initialFocusConsumed = useRef(false);
@@ -141,7 +148,7 @@ export function SummaryDashboard({
       >
         <header className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="m-0 text-sm font-black tracking-wide text-accent" role="status">{saveStatusMessage(saveStatus)}</p>
+            <p className="m-0 text-sm font-black tracking-wide text-accent">MONTHLY FLOW</p>
             <h1 className="m-0 mt-2 text-4xl font-bold tracking-tight text-slate-950 sm:text-5xl" id="summary-dashboard-title">이번 달 자금 흐름</h1>
             <p className="mb-0 mt-3 text-lg text-slate-600">수입과 소비, 저축, 투자 뒤에 남는 돈을 확인하세요.</p>
           </div>
@@ -189,7 +196,7 @@ export function SummaryDashboard({
           <>
             <div className="fixed inset-0 z-30 bg-slate-950/45 backdrop-blur-sm" aria-hidden="true" data-testid="editor-backdrop" onClick={requestClose} />
             <div
-              className="editor-dialog fixed inset-x-0 bottom-0 z-40 max-h-[88dvh] overflow-y-auto rounded-t-3xl bg-white shadow-2xl"
+              className="fixed inset-x-0 bottom-0 z-40 max-h-[88dvh] overflow-y-auto rounded-t-3xl bg-white shadow-2xl"
               aria-labelledby="cashflow-editor-title"
               aria-modal="true"
               onKeyDown={trapModalFocus}
@@ -226,6 +233,37 @@ export function SummaryDashboard({
       ) : null}
     </main>
   );
+}
+
+function revealEditor(
+  target: HTMLElement,
+  direction: 'vertical' | 'horizontal',
+  reducedMotion: boolean,
+): void {
+  if (reducedMotion) {
+    setEditorRevealFinalState(target, direction);
+    return;
+  }
+  try {
+    animate(target, {
+      opacity: [0, 1],
+      ...(direction === 'vertical'
+        ? { y: [MOTION_DISTANCE_PX.reveal, 0] }
+        : { x: [MOTION_DISTANCE_PX.reveal, 0] }),
+      duration: MOTION_DURATION.normal,
+      ease: MOTION_EASE.enter,
+    });
+  } catch {
+    setEditorRevealFinalState(target, direction);
+  }
+}
+
+function setEditorRevealFinalState(
+  target: HTMLElement,
+  direction: 'vertical' | 'horizontal',
+): void {
+  target.style.opacity = '1';
+  target.style.transform = direction === 'vertical' ? 'translateY(0px)' : 'translateX(0px)';
 }
 
 interface ScalarEditorProps {
@@ -332,15 +370,6 @@ function useMobileEditor(): boolean {
   }, []);
 
   return mobile;
-}
-
-function saveStatusMessage(status: MainState['saveStatus']): string {
-  switch (status) {
-    case 'saving': return '저장 중';
-    case 'saved': return '저장됨';
-    case 'error': return '저장에 실패했습니다';
-    case 'idle': return '저장된 계획';
-  }
 }
 
 function findIssue(issues: ValidationResult['issues'], path: string): string | undefined {

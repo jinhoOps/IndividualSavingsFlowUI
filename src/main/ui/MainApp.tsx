@@ -447,6 +447,7 @@ export function MainApp({
           onApply={apply}
           onCancel={isRestartSetup ? cancelDraft : undefined}
           notice={setupNotice}
+          motionPreset="initial-assembly"
         />
         </main>
       </AppShell>

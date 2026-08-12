@@ -11,6 +11,8 @@ export function PortfolioEditSurface({
   investmentWon,
   dirty,
   saveError,
+  applying,
+  showSaving,
   fieldError,
   returnFocusRef,
   onAction,
@@ -23,6 +25,8 @@ export function PortfolioEditSurface({
   investmentWon: number;
   dirty: boolean;
   saveError: boolean;
+  applying: boolean;
+  showSaving: boolean;
   fieldError: string | null;
   returnFocusRef: RefObject<HTMLElement | null>;
   onAction(action: PortfolioAction): void;
@@ -51,13 +55,16 @@ export function PortfolioEditSurface({
       className="portfolio-edit-surface"
       dataPresentation={presentation}
       labelledBy="portfolio-edit-title"
-      onClose={onCancel}
+      onClose={() => {
+        if (!applying) onCancel();
+      }}
       returnFocusRef={returnFocusRef}
     >
       <header className="portfolio-edit-surface__header">
         <h2 id="portfolio-edit-title">투자 배분 수정</h2>
-        <Button type="button" variant="quiet" data-dialog-initial-focus aria-label="편집기 닫기" onClick={onCancel}>닫기</Button>
+        <Button type="button" variant="quiet" data-dialog-initial-focus aria-label="편집기 닫기" disabled={applying} onClick={onCancel}>닫기</Button>
       </header>
+      {showSaving ? <p role="status">저장 중</p> : null}
       <AllocationEditor
         draft={draft}
         investmentWon={investmentWon}
@@ -70,6 +77,7 @@ export function PortfolioEditSurface({
         <PortfolioApplyBar
           dirty
           saveError={saveError}
+          applying={applying}
           showAmounts={showAmounts}
           draft={draft}
           investmentWon={investmentWon}

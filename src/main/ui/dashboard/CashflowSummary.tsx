@@ -1,4 +1,5 @@
-import { useId } from 'react';
+import { useId, useLayoutEffect, useRef } from 'react';
+import { animateVisualNumber } from '../../../components/motion/animateVisualNumber';
 import type { CashflowSummary as CashflowTotals } from '../../domain/cashflow';
 import { Button } from '../common/Button';
 
@@ -82,9 +83,36 @@ function MetricButton({ label, valueWon, importance, children, disabled, onClick
         : 'block text-sm font-bold text-slate-500'}>{label}</span>
       <strong id={descriptionId} className={importance === 'primary'
         ? 'mt-5 block text-4xl font-black tracking-tight text-slate-950'
-        : 'mt-2 block text-2xl font-black tracking-tight text-slate-800'}>{formatDashboardWon(valueWon)}</strong>
+        : 'mt-2 block text-2xl font-black tracking-tight text-slate-800'}>
+        <AnimatedMetricValue valueWon={valueWon} />
+      </strong>
       {children ? <small id={contextId} className="mt-4 flex flex-wrap gap-2 text-sm font-bold text-slate-500">{children}</small> : null}
     </Button>
+  );
+}
+
+function AnimatedMetricValue({ valueWon }: { valueWon: number }) {
+  const visualRef = useRef<HTMLSpanElement>(null);
+  const previousValueRef = useRef(valueWon);
+  const formattedValue = formatDashboardWon(valueWon);
+
+  useLayoutEffect(() => {
+    const previousValue = previousValueRef.current;
+    previousValueRef.current = valueWon;
+    if (previousValue === valueWon || visualRef.current === null) return;
+    return animateVisualNumber(
+      visualRef.current,
+      previousValue,
+      valueWon,
+      formatDashboardWon,
+    );
+  }, [valueWon]);
+
+  return (
+    <>
+      <span className="sr-only">{formattedValue}</span>
+      <span aria-hidden="true" ref={visualRef}>{formattedValue}</span>
+    </>
   );
 }
 

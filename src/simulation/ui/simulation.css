@@ -240,6 +240,14 @@
   fill: rgb(15 118 110 / 11%);
 }
 
+.growth-chart__semantic-path {
+  opacity: 0;
+}
+
+.growth-chart__motion-layer {
+  pointer-events: none;
+}
+
 .growth-chart__current {
   fill: none;
   stroke: var(--tone-accent);
