@@ -171,3 +171,45 @@ passed
 ```
 
 The Journey browser suite continues to cover management popover/help containment and focus restoration at 390px, 768px, and 1280px. Portfolio overlay browser tests continue to cover mobile confirmation, sheet/panel isolation, 768px containment, dirty close protection, and opener focus restoration.
+
+## Task 8 integration fix
+
+Task 8 integration exposed a real Task 7 regression in the transformed Portfolio edit dialog. Fixed in code/test commit `630ba4e` (`fix(portfolio): preserve fixed apply bar during reveal`).
+
+### Root cause and fix
+
+- Anime left `translateY(0px)` or `translateX(0px)` on the sheet/panel `<dialog>`. A zero-distance transform still establishes the containing block for its fixed `.portfolio-apply-bar`, so the mobile bar was positioned against the scrolled dialog instead of the viewport. In the save-error case its top moved to `y=77` and covered the final editor controls.
+- Centered modals retain their approved 4px inner-content reveal. Presented sheets and panels retain the approved 8px reveal without transforming the dialog: sheets animate `bottom: -8px` to `0`, and panels animate `right: -8px` to `0`.
+- The completion callback removes transient opacity/offset styles. Normal setup, fallback, and reduced-motion finalization remove any dialog transform; scope reversion handles interruption. The fixed apply bar therefore remains viewport-based throughout the reveal and after every terminal path.
+
+### Integration-fix RED
+
+```text
+npx playwright test tests/portfolio.spec.ts --grep "contains the mobile editor|keeps the final mobile editor control"
+1 failed, 1 passed
+```
+
+The save-error containment assertion received a final-control bottom near `608px` while the incorrectly positioned apply bar began at `77px`.
+
+```text
+npx vitest run tests/unit/portfolio/PortfolioDialogs.test.tsx
+1 file failed; 2 failed, 5 passed
+```
+
+Both presented-dialog regression assertions found the old transform-axis animation and no completion cleanup.
+
+### Integration-fix GREEN
+
+```text
+npx vitest run tests/unit/portfolio/PortfolioDialogs.test.tsx
+1 file passed; 7 tests passed
+
+npx playwright test tests/portfolio.spec.ts --grep "contains the mobile editor|keeps the final mobile editor control"
+2 passed
+
+npm run check
+check:source and check:unit passed
+
+git diff --check
+passed
+```
