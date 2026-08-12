@@ -1,8 +1,9 @@
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { calculateCashflow } from '../../../src/main/domain/cashflow';
 import type { MainData } from '../../../src/main/domain/model';
+import { MainErrorBoundary } from '../../../src/main/ui/common/AppErrorBoundary';
 import { CashflowDonutSummary } from '../../../src/main/ui/dashboard/CashflowDonutSummary';
 import { CashflowSummary } from '../../../src/main/ui/dashboard/CashflowSummary';
 
@@ -14,8 +15,13 @@ vi.mock('animejs', () => ({
   animate: anime.animate,
 }));
 
+beforeEach(() => {
+  anime.animate.mockImplementation((_target: unknown, _options: unknown) => ({ cancel: vi.fn() }));
+});
+
 afterEach(() => {
   cleanup();
+  vi.restoreAllMocks();
   vi.clearAllMocks();
   vi.unstubAllGlobals();
 });
@@ -31,6 +37,71 @@ const appliedData: MainData = {
 };
 
 describe('CashflowDonutSummary', () => {
+  it('commits final donut geometry without the app fallback when animation creation fails', () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const { container, rerender } = render(
+      <MainErrorBoundary><CashflowDonutSummary data={appliedData} /></MainErrorBoundary>,
+    );
+    let geometryAnimationFailed = false;
+    anime.animate.mockImplementation((target: unknown) => {
+      if (
+        !geometryAnimationFailed
+        && typeof target === 'object'
+        && target !== null
+        && 'visiblePercentage' in target
+      ) {
+        geometryAnimationFailed = true;
+        throw new Error('animate failed');
+      }
+      return { cancel: vi.fn() };
+    });
+
+    rerender(
+      <MainErrorBoundary>
+        <CashflowDonutSummary data={{ ...appliedData, updatedAt: 2, monthlyInvestmentWon: 400_000 }} />
+      </MainErrorBoundary>,
+    );
+
+    expect(screen.queryByRole('heading', { name: '화면을 표시하지 못했습니다' })).not.toBeInTheDocument();
+    expect(container.querySelector('circle.cashflow-donut__segment--investment'))
+      .toHaveAttribute('stroke-dasharray', '12.5 87.5');
+    expect(container.querySelector('circle.cashflow-donut__segment--remaining'))
+      .toHaveAttribute('stroke-dasharray', '21.875 78.125');
+  });
+
+  it('commits the latest final donut geometry when cancelling prior arcs fails', () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const { container, rerender } = render(
+      <MainErrorBoundary><CashflowDonutSummary data={appliedData} /></MainErrorBoundary>,
+    );
+    rerender(
+      <MainErrorBoundary>
+        <CashflowDonutSummary data={{ ...appliedData, updatedAt: 2, monthlyInvestmentWon: 400_000 }} />
+      </MainErrorBoundary>,
+    );
+    const activeGeometryIndex = anime.animate.mock.calls.findIndex(([target]) => (
+      typeof target === 'object' && target !== null && 'visiblePercentage' in target
+    ));
+    const activeAnimation = anime.animate.mock.results[activeGeometryIndex].value as {
+      cancel: ReturnType<typeof vi.fn>;
+    };
+    activeAnimation.cancel.mockImplementationOnce(() => {
+      throw new Error('cancel failed');
+    });
+
+    rerender(
+      <MainErrorBoundary>
+        <CashflowDonutSummary data={{ ...appliedData, updatedAt: 3, monthlyInvestmentWon: 600_000 }} />
+      </MainErrorBoundary>,
+    );
+
+    expect(screen.queryByRole('heading', { name: '화면을 표시하지 못했습니다' })).not.toBeInTheDocument();
+    expect(container.querySelector('circle.cashflow-donut__segment--investment'))
+      .toHaveAttribute('stroke-dasharray', '18.75 81.25');
+    expect(container.querySelector('circle.cashflow-donut__segment--remaining'))
+      .toHaveAttribute('stroke-dasharray', '15.625 84.375');
+  });
+
   it('keeps the applied card value semantic while its visual number interpolates', () => {
     const { rerender, unmount } = render(
       <CashflowSummary summary={calculateCashflow(appliedData)} onEdit={vi.fn()} />,

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AppShell } from '../../components/common/AppShell';
 import { Surface } from '../../components/common/Surface';
+import { useDelayedPending } from '../../components/feedback/useDelayedPending';
 import { appPath } from '../../journey/routes';
 import { bootstrapPortfolio } from '../application/bootstrap';
 import {
@@ -74,10 +75,19 @@ export function PortfolioApp({
   const initialPersistenceStarted = useRef(false);
   const persistenceQueue = useRef<Promise<void>>(Promise.resolve());
   const latestOperation = useRef(0);
+  const applyOperationRef = useRef<number | null>(null);
+  const applyPendingRef = useRef(false);
+  const [applyPending, setApplyPending] = useState(false);
   const [preferences, setPreferences] = useState<PortfolioViewPreferences>(
     () => preferencesRepository.load(),
   );
   const editTriggerRef = useRef<HTMLButtonElement>(null);
+  const delayedApply = useDelayedPending(applyPending, 600);
+  const delayedAutomaticSaving = useDelayedPending(
+    state?.saveState === 'saving' && !applyPending,
+    600,
+  );
+  const showSaving = applyPending ? delayedApply : delayedAutomaticSaving;
 
   useEffect(() => {
     if (initial.kind !== 'ready') return;
@@ -102,6 +112,7 @@ export function PortfolioApp({
   }, [initial, repository]);
 
   function dispatchDraft(action: PortfolioAction): void {
+    if (applyPendingRef.current) return;
     const current = stateRef.current;
     if (current === null) return;
     const next = portfolioReducer(current, action);
@@ -125,16 +136,27 @@ export function PortfolioApp({
 
   function apply(): void {
     const current = stateRef.current;
-    if (current === null || !validateApplicableDraft(current.draft)) return;
+    if (
+      current === null
+      || applyPendingRef.current
+      || !validateApplicableDraft(current.draft)
+    ) return;
+    applyPendingRef.current = true;
+    setApplyPending(true);
     commitState(portfolioReducer(current, { type: 'apply-started' }));
     const plan = planFromDraft(current.draft, now());
     const token = nextOperationToken();
+    applyOperationRef.current = token;
     enqueuePersistence(async () => {
       const appliedResult = await repository.saveApplied(plan);
       if (appliedResult.status === 'unavailable') return 'failed' as const;
       const clearResult = await repository.clearDraft();
       return clearResult.status === 'saved' ? 'saved' as const : 'cleanup-failed' as const;
     }, (result) => {
+      if (applyOperationRef.current !== token) return;
+      applyOperationRef.current = null;
+      applyPendingRef.current = false;
+      setApplyPending(false);
       if (token !== latestOperation.current) return;
       if (result === 'failed' || result === null) {
         dispatchState({ type: 'save-failed' });
@@ -146,7 +168,7 @@ export function PortfolioApp({
   }
 
   function reset(): void {
-    if (stateRef.current === null) return;
+    if (stateRef.current === null || applyPendingRef.current) return;
     const token = beginOperation();
     enqueuePersistence(
       () => repository.clearScope({ type: 'aggregate' }),
@@ -225,6 +247,8 @@ export function PortfolioApp({
               draft={state.draft}
               investmentWon={state.draft.syncedInvestmentWon}
               saveError={state.saveState === 'error'}
+              applying={applyPending}
+              showSaving={showSaving}
               fieldError={state.fieldError}
               onAction={dispatchDraft}
               onPrevious={() => dispatchState({ type: 'setup-previous' })}
@@ -263,6 +287,8 @@ export function PortfolioApp({
                   investmentWon={state.draft.syncedInvestmentWon}
                   dirty={state.dirty}
                   saveError={state.saveState === 'error'}
+                  applying={applyPending}
+                  showSaving={showSaving}
                   fieldError={state.fieldError}
                   returnFocusRef={editTriggerRef}
                   onAction={dispatchDraft}
@@ -285,6 +311,7 @@ export function PortfolioApp({
               <PortfolioApplyBar
                 dirty={state.dirty || state.applied === null}
                 saveError={state.saveState === 'error'}
+                applying={applyPending}
                 showAmounts={preferences.showAmounts}
                 draft={state.draft}
                 investmentWon={state.draft.syncedInvestmentWon}

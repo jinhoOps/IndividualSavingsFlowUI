@@ -1,6 +1,7 @@
 import { animate, type JSAnimation } from 'animejs';
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { animateVisualNumber } from '../../../components/motion/animateVisualNumber';
+import { attemptMotion } from '../../../components/motion/attemptMotion';
 import { MOTION_DURATION, MOTION_EASE } from '../../../components/motion/tokens';
 import { calculateCashflowInsight, type DonutAllocation } from '../../domain/cashflowInsight';
 import type { MainData } from '../../domain/model';
@@ -72,8 +73,24 @@ export function CashflowDonutSummary({ data }: CashflowDonutSummaryProps) {
     const reducedMotion = typeof window.matchMedia === 'function'
       && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const targetById = new Map(segmentGeometry.map((segment) => [segment.id, segment]));
-    for (const state of geometryStatesRef.current.values()) state.animation?.cancel();
+    let cancellationSucceeded = true;
+    for (const state of geometryStatesRef.current.values()) {
+      if (!attemptMotion(() => state.animation?.cancel())) cancellationSucceeded = false;
+      state.animation = undefined;
+    }
     setVisualSegmentIds((current) => mergeDonutAllocationIds(current, targetSegmentIds));
+
+    if (!cancellationSucceeded) {
+      commitFinalDonutGeometry(
+        renderedVisualSegmentIds,
+        targetSegmentIds,
+        targetById,
+        circleRefs.current,
+        geometryStatesRef.current,
+      );
+      setVisualSegmentIds(targetSegmentIds);
+      return undefined;
+    }
 
     for (const id of renderedVisualSegmentIds) {
       const circle = circleRefs.current.get(id);
@@ -108,24 +125,40 @@ export function CashflowDonutSummary({ data }: CashflowDonutSummaryProps) {
       }
 
       setCircleGeometry(circle, state);
-      state.animation = animate(state, {
-        visiblePercentage: segment.visiblePercentage,
-        dashoffset: segment.dashoffset,
-        duration: MOTION_DURATION.emphasis,
-        ease: MOTION_EASE.update,
-        onComplete: () => {
-          if (motionGenerationRef.current !== generation) return;
-          state.visiblePercentage = segment.visiblePercentage;
-          state.dashoffset = segment.dashoffset;
-          setCircleGeometry(circle, state);
-          state.animation = undefined;
-          if (exiting) {
-            geometryStatesRef.current.delete(id);
-            setVisualSegmentIds((current) => current.filter((candidate) => candidate !== id));
-          }
-        },
-        onUpdate: () => setCircleGeometry(circle, state),
+      const animationStarted = attemptMotion(() => {
+        state.animation = animate(state, {
+          visiblePercentage: segment.visiblePercentage,
+          dashoffset: segment.dashoffset,
+          duration: MOTION_DURATION.emphasis,
+          ease: MOTION_EASE.update,
+          onComplete: () => {
+            if (motionGenerationRef.current !== generation) return;
+            commitFinalDonutSegment(id, circle, state, segment, exiting, geometryStatesRef.current);
+            if (exiting) {
+              setVisualSegmentIds((current) => current.filter((candidate) => candidate !== id));
+            }
+          },
+          onUpdate: () => {
+            if (motionGenerationRef.current === generation) setCircleGeometry(circle, state);
+          },
+        });
       });
+      if (!animationStarted) {
+        motionGenerationRef.current += 1;
+        for (const activeState of geometryStatesRef.current.values()) {
+          attemptMotion(() => activeState.animation?.cancel());
+          activeState.animation = undefined;
+        }
+        commitFinalDonutGeometry(
+          renderedVisualSegmentIds,
+          targetSegmentIds,
+          targetById,
+          circleRefs.current,
+          geometryStatesRef.current,
+        );
+        setVisualSegmentIds(targetSegmentIds);
+        return undefined;
+      }
     }
 
     if (reducedMotion) setVisualSegmentIds(targetSegmentIds);
@@ -141,7 +174,9 @@ export function CashflowDonutSummary({ data }: CashflowDonutSummaryProps) {
 
   useEffect(() => () => {
     motionGenerationRef.current += 1;
-    for (const state of geometryStatesRef.current.values()) state.animation?.cancel();
+    for (const state of geometryStatesRef.current.values()) {
+      attemptMotion(() => state.animation?.cancel());
+    }
   }, []);
 
   useEffect(() => {
@@ -345,6 +380,41 @@ function setCircleGeometry(
     `${geometry.visiblePercentage} ${100 - geometry.visiblePercentage}`,
   );
   circle.setAttribute('stroke-dashoffset', String(geometry.dashoffset));
+}
+
+function commitFinalDonutGeometry(
+  renderedIds: DonutAllocation['id'][],
+  targetIds: DonutAllocation['id'][],
+  targetById: Map<DonutAllocation['id'], DonutSegmentGeometry>,
+  circles: Map<DonutAllocation['id'], SVGCircleElement>,
+  states: Map<DonutAllocation['id'], DonutSegmentMotionState>,
+): void {
+  for (const id of mergeDonutAllocationIds(renderedIds, targetIds)) {
+    const circle = circles.get(id);
+    if (circle === undefined) continue;
+    const segment = targetById.get(id) ?? exitingDonutSegment(id);
+    const state = states.get(id) ?? {
+      visiblePercentage: segment.visiblePercentage,
+      dashoffset: segment.dashoffset,
+    };
+    states.set(id, state);
+    commitFinalDonutSegment(id, circle, state, segment, !targetById.has(id), states);
+  }
+}
+
+function commitFinalDonutSegment(
+  id: DonutAllocation['id'],
+  circle: SVGCircleElement,
+  state: DonutSegmentMotionState,
+  segment: DonutSegmentGeometry,
+  exiting: boolean,
+  states: Map<DonutAllocation['id'], DonutSegmentMotionState>,
+): void {
+  state.visiblePercentage = segment.visiblePercentage;
+  state.dashoffset = segment.dashoffset;
+  state.animation = undefined;
+  setCircleGeometry(circle, state);
+  if (exiting) states.delete(id);
 }
 
 function formatPercentage(percentage: number): string {

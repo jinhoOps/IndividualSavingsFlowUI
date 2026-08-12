@@ -16,6 +16,8 @@ export interface PortfolioSetupFlowProps {
   draft: PortfolioDraft;
   investmentWon: number;
   saveError: boolean;
+  applying: boolean;
+  showSaving: boolean;
   fieldError: string | null;
   onAction(action: PortfolioAction): void;
   onPrevious(): void;
@@ -35,7 +37,12 @@ export function PortfolioSetupFlow(props: PortfolioSetupFlowProps) {
   }, [props.step]);
 
   return (
-    <Surface as="section" className="portfolio-setup" aria-labelledby="portfolio-setup-title">
+    <Surface
+      as="section"
+      className="portfolio-setup"
+      aria-busy={props.applying ? 'true' : undefined}
+      aria-labelledby="portfolio-setup-title"
+    >
       <div className="portfolio-setup__progress" aria-hidden="true">
         <span style={{ width: `${((index + 1) / steps.length) * 100}%` }} />
       </div>
@@ -43,6 +50,7 @@ export function PortfolioSetupFlow(props: PortfolioSetupFlowProps) {
         {index + 1} / {steps.length} · {setupLabel(props.step)}
       </p>
       {props.saveError ? <p role="alert">저장하지 못했습니다. 다시 시도해 주세요.</p> : null}
+      {props.showSaving ? <p role="status">저장 중</p> : null}
 
       {props.step === 'welcome' ? (
         <div className="portfolio-setup__welcome">
@@ -78,12 +86,12 @@ export function PortfolioSetupFlow(props: PortfolioSetupFlowProps) {
 
       <nav className="portfolio-setup__actions" aria-label="설정 이동">
         {props.step !== 'welcome' ? (
-          <Button type="button" variant="secondary" onClick={props.onPrevious}>이전</Button>
+          <Button type="button" variant="secondary" disabled={props.applying} onClick={props.onPrevious}>이전</Button>
         ) : null}
         <Button
           type="button"
           variant="primary"
-          disabled={props.step !== 'welcome' && !validateApplicableDraft(props.draft)}
+          disabled={props.applying || (props.step !== 'welcome' && !validateApplicableDraft(props.draft))}
           onClick={props.step === 'review' ? props.onApply : props.onNext}
         >
           {props.step === 'welcome' ? '배분 시작하기' : props.step === 'review' ? '이대로 시작' : '배분 확인'}

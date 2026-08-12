@@ -1,8 +1,9 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { StrictMode, useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createEmptyMainData, type MainData, type SetupStep } from '../../../src/main/domain/model';
+import { MainErrorBoundary } from '../../../src/main/ui/common/AppErrorBoundary';
 import { SetupFlow, type ValidationIssue } from '../../../src/main/ui/setup/SetupFlow';
 
 const animeMocks = vi.hoisted(() => {
@@ -48,6 +49,8 @@ vi.mock('animejs', () => ({
 
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
+  vi.restoreAllMocks();
   vi.clearAllMocks();
 });
 
@@ -111,6 +114,62 @@ function expectOneFormWithoutLegacyControls() {
 }
 
 describe('SetupFlow', () => {
+  it('keeps the welcome content final when Anime reveal construction fails', () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    animeMocks.animate.mockImplementationOnce(() => {
+      throw new Error('animate failed');
+    });
+
+    render(
+      <MainErrorBoundary>
+        <SetupFlow
+          draft={createEmptyMainData()}
+          step="welcome"
+          issues={[]}
+          motionPreset="initial-assembly"
+          onChange={vi.fn()}
+          onStepChange={vi.fn()}
+          onApply={vi.fn()}
+        />
+      </MainErrorBoundary>,
+    );
+
+    expect(screen.queryByRole('heading', { name: '화면을 표시하지 못했습니다' })).not.toBeInTheDocument();
+    for (const element of document.querySelectorAll<HTMLElement>('[data-welcome-motion]')) {
+      expect(element).toHaveStyle({ opacity: '1', transform: 'translateY(0px)' });
+    }
+  });
+
+  it('keeps review assembly final when Anime timeline construction fails', () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    animeMocks.createTimeline.mockImplementationOnce(() => {
+      throw new Error('timeline failed');
+    });
+
+    render(
+      <MainErrorBoundary>
+        <SetupFlow
+          draft={{ ...createEmptyMainData(), monthlyNetIncomeWon: 3_200_000 }}
+          step="review"
+          issues={[]}
+          motionPreset="initial-assembly"
+          onChange={vi.fn()}
+          onStepChange={vi.fn()}
+          onApply={vi.fn()}
+        />
+      </MainErrorBoundary>,
+    );
+
+    expect(screen.queryByRole('heading', { name: '화면을 표시하지 못했습니다' })).not.toBeInTheDocument();
+    expect(document.querySelector('.allocation-bar__visual-track')).toHaveStyle({ transform: 'scaleX(1)' });
+    for (const segment of document.querySelectorAll<HTMLElement>('.allocation-bar__visual-segment')) {
+      expect(segment).toHaveStyle({ opacity: '1' });
+    }
+    for (const content of document.querySelectorAll<HTMLElement>('[data-assembly-content]')) {
+      expect(content).toHaveStyle({ opacity: '1', transform: 'translateY(0px)' });
+    }
+  });
+
   it('recreates the welcome reveal after the Strict Mode cleanup', () => {
     render(
       <StrictMode>
@@ -301,5 +360,34 @@ describe('SetupFlow', () => {
     fireEvent.click(screen.getByRole('button', { name: '계획 적용' }));
     expect(onApply).not.toHaveBeenCalled();
     expect(onStepChange).not.toHaveBeenCalled();
+  });
+
+  it('shows setup apply progress only after 600ms and leaves no success copy', () => {
+    vi.useFakeTimers();
+    const draft = { ...createEmptyMainData(), monthlyNetIncomeWon: 3_200_000 };
+    const props = {
+      draft,
+      step: 'review' as const,
+      issues: [],
+      motionPreset: 'none' as const,
+      onChange: vi.fn(),
+      onStepChange: vi.fn(),
+      onApply: vi.fn(),
+    };
+    const { rerender } = render(<SetupFlow {...props} />);
+
+    rerender(<SetupFlow {...props} saving />);
+    expect(screen.getByRole('form')).toHaveAttribute('aria-busy', 'true');
+    expect(screen.getByRole('button', { name: '계획 적용' })).toBeDisabled();
+    expect(screen.queryByText('저장 중')).not.toBeInTheDocument();
+
+    act(() => vi.advanceTimersByTime(599));
+    expect(screen.queryByText('저장 중')).not.toBeInTheDocument();
+    act(() => vi.advanceTimersByTime(1));
+    expect(screen.getByRole('button', { name: '저장 중' })).toBeDisabled();
+
+    rerender(<SetupFlow {...props} />);
+    expect(screen.queryByText('저장 중')).not.toBeInTheDocument();
+    expect(screen.queryByText('저장됨')).not.toBeInTheDocument();
   });
 });

@@ -110,4 +110,14 @@ describe('useAnimeScope', () => {
     expect(onSetup).toHaveBeenCalledOnce();
     expect(onSetup).toHaveBeenCalledWith(true);
   });
+
+  it('does not surface a normal scope cleanup failure during unmount', () => {
+    anime.scope.revert.mockImplementationOnce(() => {
+      throw new Error('scope revert failed');
+    });
+    const { unmount } = render(<Probe onSetup={vi.fn()} />);
+
+    expect(() => unmount()).not.toThrow();
+    expect(anime.scope.revert).toHaveBeenCalledOnce();
+  });
 });

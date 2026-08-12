@@ -133,6 +133,37 @@ describe('Portfolio confirmation dialogs', () => {
     await waitFor(() => expect(trigger).toHaveFocus());
   });
 
+  it('disables apply, cancel, and confirmation close paths while explicit apply is pending', () => {
+    const onCancel = vi.fn();
+    const onApply = vi.fn();
+    const props = {
+      dirty: true,
+      draft: createCashOnlyDraft(200_000, 1),
+      investmentWon: 200_000,
+      onCancel,
+      onApply,
+    };
+    const { rerender } = render(
+      <PortfolioApplyBar
+        {...props}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: '적용' }));
+    rerender(<PortfolioApplyBar {...props} applying />);
+
+    const bar = screen.getByRole('complementary', { name: '배분 변경' });
+    const dialog = screen.getByRole('dialog', { name: '투자 배분을 적용할까요?' });
+    expect(bar).toHaveAttribute('aria-busy', 'true');
+    expect(within(bar).getByRole('button', { name: '취소' })).toBeDisabled();
+    expect(within(bar).getByRole('button', { name: '적용' })).toBeDisabled();
+    expect(within(dialog).getByRole('button', { name: '계속 수정' })).toBeDisabled();
+    expect(within(dialog).getByRole('button', { name: '배분 적용' })).toBeDisabled();
+    fireEvent.keyDown(dialog, { key: 'Escape' });
+    expect(dialog).toBeInTheDocument();
+    expect(onCancel).not.toHaveBeenCalled();
+    expect(onApply).not.toHaveBeenCalled();
+  });
+
   it('reveals centered modals and bottom sheets with normal shared motion', () => {
     const returnFocusRef = { current: null };
     const { rerender } = render(

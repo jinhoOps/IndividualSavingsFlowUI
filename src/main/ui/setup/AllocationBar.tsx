@@ -1,5 +1,6 @@
 import { animate, type JSAnimation } from 'animejs';
 import { useEffect, useId, useLayoutEffect, useRef, useState, type MouseEvent, type PointerEvent } from 'react';
+import { attemptMotion } from '../../../components/motion/attemptMotion';
 import { MOTION_DURATION, MOTION_EASE } from '../../../components/motion/tokens';
 import { calculateCashflow, percentageOfIncome } from '../../domain/cashflow';
 import type { MainData } from '../../domain/model';
@@ -150,34 +151,42 @@ export function AllocationBar({ data }: AllocationBarProps) {
 
     const generation = ++motionGenerationRef.current;
     const state = motionStateRef.current;
-    state.animation?.cancel();
+    const cancellationSucceeded = attemptMotion(() => state.animation?.cancel());
+    state.animation = undefined;
+    if (!cancellationSucceeded) {
+      commitFinalBarMotion(state, targetState, bar, targetIds, setVisualSegmentIds);
+      return undefined;
+    }
     if (!dataChanged || prefersReducedMotion()) {
-      assignBarMotionState(state, targetState);
-      applyBarMotionState(bar, state);
-      setVisualSegmentIds(targetIds);
+      commitFinalBarMotion(state, targetState, bar, targetIds, setVisualSegmentIds);
       return undefined;
     }
 
     setVisualSegmentIds((current) => mergeAllocationIds(current, targetIds));
     applyBarMotionState(bar, state);
-    state.animation = animate(state, {
-      consumption: targetState.consumption,
-      saving: targetState.saving,
-      investment: targetState.investment,
-      remaining: targetState.remaining,
-      desiredEndPercent: targetState.desiredEndPercent,
-      visibleEndPercent: targetState.visibleEndPercent,
-      duration: MOTION_DURATION.emphasis,
-      ease: MOTION_EASE.update,
-      onComplete: () => {
-        if (motionGenerationRef.current !== generation) return;
-        assignBarMotionState(state, targetState);
-        applyBarMotionState(bar, state);
-        state.animation = undefined;
-        setVisualSegmentIds(targetIds);
-      },
-      onUpdate: () => applyBarMotionState(bar, state),
+    const animationStarted = attemptMotion(() => {
+      state.animation = animate(state, {
+        consumption: targetState.consumption,
+        saving: targetState.saving,
+        investment: targetState.investment,
+        remaining: targetState.remaining,
+        desiredEndPercent: targetState.desiredEndPercent,
+        visibleEndPercent: targetState.visibleEndPercent,
+        duration: MOTION_DURATION.emphasis,
+        ease: MOTION_EASE.update,
+        onComplete: () => {
+          if (motionGenerationRef.current !== generation) return;
+          commitFinalBarMotion(state, targetState, bar, targetIds, setVisualSegmentIds);
+        },
+        onUpdate: () => {
+          if (motionGenerationRef.current === generation) applyBarMotionState(bar, state);
+        },
+      });
     });
+    if (!animationStarted) {
+      motionGenerationRef.current += 1;
+      commitFinalBarMotion(state, targetState, bar, targetIds, setVisualSegmentIds);
+    }
 
     return undefined;
   }, [
@@ -192,7 +201,7 @@ export function AllocationBar({ data }: AllocationBarProps) {
 
   useEffect(() => () => {
     motionGenerationRef.current += 1;
-    motionStateRef.current?.animation?.cancel();
+    attemptMotion(() => motionStateRef.current?.animation?.cancel());
   }, []);
 
   useEffect(() => {
@@ -520,6 +529,19 @@ function assignBarMotionState(
   state.remaining = target.remaining;
   state.desiredEndPercent = target.desiredEndPercent;
   state.visibleEndPercent = target.visibleEndPercent;
+}
+
+function commitFinalBarMotion(
+  state: AllocationBarMotionState,
+  target: AllocationBarMotionState,
+  bar: HTMLDivElement,
+  targetIds: AllocationId[],
+  setVisualSegmentIds: (ids: AllocationId[]) => void,
+): void {
+  assignBarMotionState(state, target);
+  state.animation = undefined;
+  applyBarMotionState(bar, state);
+  setVisualSegmentIds(targetIds);
 }
 
 function hasCashflowValueChange(previous: MainData, current: MainData): boolean {

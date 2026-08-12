@@ -2,6 +2,7 @@ import { act, cleanup, fireEvent, render, screen, within } from '@testing-librar
 import '@testing-library/jest-dom/vitest';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { MainData } from '../../../src/main/domain/model';
+import { MainErrorBoundary } from '../../../src/main/ui/common/AppErrorBoundary';
 import { AllocationBar } from '../../../src/main/ui/setup/AllocationBar';
 
 const anime = vi.hoisted(() => ({
@@ -104,6 +105,56 @@ function mockBarViewport(initialClientWidth: number) {
 }
 
 describe('AllocationBar', () => {
+  it('commits final bar geometry without the app fallback when animation creation fails', () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const { container, rerender } = render(
+      <MainErrorBoundary><AllocationBar data={cashflowFixture} /></MainErrorBoundary>,
+    );
+    anime.animate.mockImplementationOnce(() => {
+      throw new Error('animate failed');
+    });
+
+    rerender(
+      <MainErrorBoundary>
+        <AllocationBar data={{ ...cashflowFixture, updatedAt: 2, monthlyInvestmentWon: 400_000 }} />
+      </MainErrorBoundary>,
+    );
+
+    expect(screen.queryByRole('heading', { name: '화면을 표시하지 못했습니다' })).not.toBeInTheDocument();
+    expect(container.querySelector('.allocation-bar__visual-segment--investment'))
+      .toHaveStyle({ width: '12.5%' });
+    expect(container.querySelector('.allocation-bar__visual-segment--remaining'))
+      .toHaveStyle({ width: '21.875%' });
+  });
+
+  it('commits the latest final bar geometry when cancelling the prior animation fails', () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const { container, rerender } = render(
+      <MainErrorBoundary><AllocationBar data={cashflowFixture} /></MainErrorBoundary>,
+    );
+    rerender(
+      <MainErrorBoundary>
+        <AllocationBar data={{ ...cashflowFixture, updatedAt: 2, monthlyInvestmentWon: 400_000 }} />
+      </MainErrorBoundary>,
+    );
+    const activeAnimation = anime.animate.mock.results.at(-1)?.value as { cancel: ReturnType<typeof vi.fn> };
+    activeAnimation.cancel.mockImplementationOnce(() => {
+      throw new Error('cancel failed');
+    });
+
+    rerender(
+      <MainErrorBoundary>
+        <AllocationBar data={{ ...cashflowFixture, updatedAt: 3, monthlyInvestmentWon: 600_000 }} />
+      </MainErrorBoundary>,
+    );
+
+    expect(screen.queryByRole('heading', { name: '화면을 표시하지 못했습니다' })).not.toBeInTheDocument();
+    expect(container.querySelector('.allocation-bar__visual-segment--investment'))
+      .toHaveStyle({ width: '18.75%' });
+    expect(container.querySelector('.allocation-bar__visual-segment--remaining'))
+      .toHaveStyle({ width: '15.625%' });
+  });
+
   it('uses one intrinsic visual track with actual income percentages', () => {
     const { container } = render(<AllocationBar data={cashflowFixture} />);
     const track = container.querySelector('.allocation-bar__visual-track');

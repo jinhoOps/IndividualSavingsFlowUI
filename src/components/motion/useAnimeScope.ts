@@ -1,5 +1,6 @@
 import { createScope } from 'animejs';
 import { useLayoutEffect, useRef, type DependencyList, type RefObject } from 'react';
+import { attemptMotion } from './attemptMotion';
 
 export interface MotionContext<T extends HTMLElement> {
   root: T;
@@ -50,7 +51,9 @@ export function useAnimeScope<T extends HTMLElement>(
       return undefined;
     }
 
-    return () => scope.revert();
+    return () => {
+      attemptMotion(() => scope.revert());
+    };
     // The caller explicitly controls when its scoped setup is recreated.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, dependencies);

@@ -1,10 +1,13 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { StrictMode } from 'react';
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
-import type { PortfolioPlan } from '../../../src/portfolio/domain/model';
+import type { PortfolioDraft, PortfolioPlan } from '../../../src/portfolio/domain/model';
 import type { PortfolioMainSourceRepository } from '../../../src/portfolio/infrastructure/mainSourceRepository';
-import { BrowserPortfolioRepository } from '../../../src/portfolio/infrastructure/portfolioRepository';
+import {
+  BrowserPortfolioRepository,
+  type PortfolioWriteResult,
+} from '../../../src/portfolio/infrastructure/portfolioRepository';
 import type {
   InvestmentLocationRepository,
   LocationWriteResult,
@@ -50,6 +53,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
   anime.scope.matches.reducedMotion = false;
   vi.clearAllMocks();
 });
@@ -125,6 +129,94 @@ function firstSaveGate(): {
 }
 
 describe('PortfolioApp', () => {
+  it('blocks duplicate setup apply synchronously and delays progress copy until 600ms', async () => {
+    vi.useFakeTimers();
+    const repository = createMemoryPortfolioRepository();
+    let settleApplied: ((result: { status: 'saved' }) => void) | undefined;
+    repository.saveApplied = vi.fn((nextPlan: PortfolioPlan) => new Promise<PortfolioWriteResult>((resolve) => {
+      settleApplied = (result) => {
+        repository.applied = structuredClone(nextPlan);
+        resolve(result);
+      };
+    }));
+    repository.clearDraft = vi.fn(async () => {
+      repository.draft = null;
+      return { status: 'saved' as const };
+    });
+    render(<PortfolioApp
+      locationRepository={emptyInvestmentLocations}
+      mainSourceRepository={mainFound}
+      repository={repository}
+      now={() => 2}
+    />);
+    fireEvent.click(screen.getByRole('button', { name: '배분 시작하기' }));
+    fireEvent.click(screen.getByRole('button', { name: '배분 확인' }));
+    const apply = screen.getByRole('button', { name: '이대로 시작' });
+
+    fireEvent.click(apply);
+    fireEvent.click(apply);
+
+    expect(apply).toBeDisabled();
+    expect(apply.closest('section')).toHaveAttribute('aria-busy', 'true');
+    expect(screen.queryByText('저장 중')).not.toBeInTheDocument();
+    await act(async () => undefined);
+    expect(repository.saveApplied).toHaveBeenCalledOnce();
+    expect(repository.clearDraft).not.toHaveBeenCalled();
+
+    act(() => vi.advanceTimersByTime(599));
+    expect(screen.queryByText('저장 중')).not.toBeInTheDocument();
+    act(() => vi.advanceTimersByTime(1));
+    expect(screen.getByText('저장 중', { selector: '[role="status"]' })).toBeVisible();
+
+    await act(async () => {
+      settleApplied?.({ status: 'saved' });
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(repository.saveApplied).toHaveBeenCalledOnce();
+    expect(repository.clearDraft).toHaveBeenCalledOnce();
+    expect(screen.getByRole('heading', { name: '안정 100%' })).toBeVisible();
+    expect(screen.queryByText('저장 중')).not.toBeInTheDocument();
+    expect(screen.queryByText('저장됨')).not.toBeInTheDocument();
+  });
+
+  it('shows slow automatic draft saving after 600ms and clears it on settlement', async () => {
+    vi.useFakeTimers();
+    const repository = createMemoryPortfolioRepository();
+    let settleDraft: ((result: { status: 'saved' }) => void) | undefined;
+    repository.saveDraft = vi.fn((nextDraft: PortfolioDraft) => new Promise<PortfolioWriteResult>((resolve) => {
+      settleDraft = (result) => {
+        repository.draft = structuredClone(nextDraft);
+        resolve(result);
+      };
+    }));
+    render(<PortfolioApp
+      locationRepository={emptyInvestmentLocations}
+      mainSourceRepository={mainFound}
+      repository={repository}
+      now={() => 2}
+    />);
+    fireEvent.click(screen.getByRole('button', { name: '배분 시작하기' }));
+    fireEvent.click(screen.getByRole('button', { name: '현금 200,000원 100%' }));
+    fireEvent.change(screen.getByLabelText('현금 금액'), { target: { value: '190000' } });
+    fireEvent.blur(screen.getByLabelText('현금 금액'));
+    await act(async () => undefined);
+
+    expect(repository.saveDraft).toHaveBeenCalledOnce();
+    expect(screen.queryByText('저장 중')).not.toBeInTheDocument();
+    act(() => vi.advanceTimersByTime(599));
+    expect(screen.queryByText('저장 중')).not.toBeInTheDocument();
+    act(() => vi.advanceTimersByTime(1));
+    expect(screen.getByText('저장 중', { selector: '[role="status"]' })).toBeVisible();
+
+    await act(async () => {
+      settleDraft?.({ status: 'saved' });
+      await Promise.resolve();
+    });
+    expect(screen.queryByText('저장 중')).not.toBeInTheDocument();
+    expect(screen.queryByText('저장됨')).not.toBeInTheDocument();
+  });
+
   it('shows only the welcome task on first run', () => {
     render(<PortfolioApp locationRepository={investmentLocations} mainSourceRepository={mainFound} repository={createMemoryPortfolioRepository()} now={() => 1} />);
     expect(screen.getByTestId('app-shell')).toBeInTheDocument();
@@ -383,17 +475,29 @@ describe('PortfolioApp', () => {
   });
 
   it('reports an applied write failure while staying in the editor', async () => {
+    vi.useFakeTimers();
     const repository = createMemoryPortfolioRepository();
     repository.failNextWrite();
+    const saveApplied = vi.spyOn(repository, 'saveApplied');
+    const clearDraft = vi.spyOn(repository, 'clearDraft');
     render(<PortfolioApp locationRepository={emptyInvestmentLocations} mainSourceRepository={mainFound} repository={repository} now={() => 2} />);
 
     fireEvent.click(screen.getByRole('button', { name: '배분 시작하기' }));
     fireEvent.click(screen.getByRole('button', { name: '배분 확인' }));
     fireEvent.click(screen.getByRole('button', { name: '이대로 시작' }));
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
 
-    expect(await screen.findByRole('heading', { name: '성장에 0%, 안정에 100% 배분해요' })).toBeVisible();
-    expect(await screen.findByRole('alert')).toHaveTextContent('저장하지 못했습니다');
+    expect(screen.getByRole('heading', { name: '성장에 0%, 안정에 100% 배분해요' })).toBeVisible();
+    expect(screen.getByRole('alert')).toHaveTextContent('저장하지 못했습니다');
     expect(repository.applied).toBeNull();
+    expect(saveApplied).toHaveBeenCalledOnce();
+    expect(clearDraft).not.toHaveBeenCalled();
+    expect(screen.queryByText('저장 중')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '이대로 시작' })).toBeEnabled();
   });
 
   it('queues draft persistence so a slower earlier save cannot win over later UI state', async () => {

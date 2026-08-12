@@ -1,5 +1,7 @@
 import { animate, createTimeline, stagger } from 'animejs';
 import { useEffect, useRef, useState, type FormEvent, type ReactNode, type RefObject } from 'react';
+import { useDelayedPending } from '../../../components/feedback/useDelayedPending';
+import { attemptMotion } from '../../../components/motion/attemptMotion';
 import { MOTION_DISTANCE_PX, MOTION_DURATION, MOTION_EASE } from '../../../components/motion/tokens';
 import { useAnimeScope } from '../../../components/motion/useAnimeScope';
 import type { MainData, SetupStep } from '../../domain/model';
@@ -56,6 +58,7 @@ export function SetupFlow({
   motionPreset,
 }: SetupFlowProps) {
   const [incomeSubmittedEmpty, setIncomeSubmittedEmpty] = useState(false);
+  const delayedSaving = useDelayedPending(saving, 600);
   const assemblyPlayedRef = useRef(false);
   const assemblyRootRef = useRef<HTMLElement | null>(null);
   const welcomePlayedRef = useRef(false);
@@ -93,13 +96,15 @@ export function SetupFlow({
       welcomeElementRef.current = elements[0];
     }
     setRevealInitialStyles(elements);
-    animate(elements, {
-      opacity: [0, 1],
-      y: [MOTION_DISTANCE_PX.reveal, 0],
-      duration: MOTION_DURATION.normal,
-      delay: step === 'welcome' ? stagger(40) : 0,
-      ease: MOTION_EASE.enter,
-    });
+    if (!attemptMotion(() => {
+      animate(elements, {
+        opacity: [0, 1],
+        y: [MOTION_DISTANCE_PX.reveal, 0],
+        duration: MOTION_DURATION.normal,
+        delay: step === 'welcome' ? stagger(40) : 0,
+        ease: MOTION_EASE.enter,
+      });
+    })) setRevealFinalStyles(elements);
   }, [motionPreset, step]);
   const reviewMotionRef = useAnimeScope<HTMLElement>(({ root, reducedMotion }) => {
     if (step !== 'review') return;
@@ -123,18 +128,20 @@ export function SetupFlow({
     assemblyPlayedRef.current = true;
     assemblyRootRef.current = root;
     setAssemblyInitialStyles(track, segmentElements, contentElements);
-    createTimeline({ defaults: { ease: MOTION_EASE.enter } })
-      .add(track, { scaleX: [0, 1], duration: MOTION_DURATION.emphasis })
-      .add(segmentElements, {
-        opacity: [0, 1],
-        duration: MOTION_DURATION.normal,
-        delay: stagger(40),
-      }, '<+=80')
-      .add(contentElements, {
-        opacity: [0, 1],
-        y: [MOTION_DISTANCE_PX.reveal, 0],
-        duration: MOTION_DURATION.normal,
-      }, '<');
+    if (!attemptMotion(() => {
+      createTimeline({ defaults: { ease: MOTION_EASE.enter } })
+        .add(track, { scaleX: [0, 1], duration: MOTION_DURATION.emphasis })
+        .add(segmentElements, {
+          opacity: [0, 1],
+          duration: MOTION_DURATION.normal,
+          delay: stagger(40),
+        }, '<+=80')
+        .add(contentElements, {
+          opacity: [0, 1],
+          y: [MOTION_DISTANCE_PX.reveal, 0],
+          duration: MOTION_DURATION.normal,
+        }, '<');
+    })) setAssemblyFinalStyles(track, segmentElements, contentElements);
   }, [motionPreset, step]);
 
   useEffect(() => {
@@ -235,7 +242,7 @@ export function SetupFlow({
               type="submit"
               variant="primary"
             >
-              {step === 'review' ? '계획 적용' : '다음'}
+              {step === 'review' ? delayedSaving ? '저장 중' : '계획 적용' : '다음'}
             </Button>
           </nav>
         </fieldset>
