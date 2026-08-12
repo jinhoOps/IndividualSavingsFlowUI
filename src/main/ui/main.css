@@ -203,27 +203,6 @@
     animation: overflow-liquid-flow var(--overflow-duration) ease-in-out infinite;
   }
 
-  .flow-overflow-droplets {
-    @apply absolute inset-0;
-  }
-
-  .flow-overflow-droplet {
-    @apply absolute block rounded-full bg-rose-600;
-    right: 0;
-    top: 4px;
-    width: 4px;
-    height: 6px;
-    animation: overflow-droplet var(--overflow-duration) cubic-bezier(.2, .7, .4, 1) infinite;
-  }
-
-  .flow-overflow-droplet:nth-child(2) {
-    right: 5px;
-    top: 5px;
-    width: 3px;
-    height: 5px;
-    animation-delay: calc(var(--overflow-duration) / 2);
-  }
-
   .flow-tooltip {
     @apply w-fit rounded-md bg-slate-950 px-2 py-1 text-xs font-bold text-white;
   }
@@ -327,19 +306,6 @@
     }
   }
 
-  @keyframes overflow-droplet {
-    0% {
-      opacity: 0;
-      transform: translateY(-1px) scale(0.72);
-    }
-    38% {
-      opacity: 0.78;
-    }
-    100% {
-      opacity: 0;
-      transform: translateY(9px) scale(0.96);
-    }
-  }
 }
 
 @media (min-width: 640px) {
@@ -371,18 +337,12 @@
   }
 
   .flow-overflow-extension,
-  .flow-overflow-sheen::after,
-  .flow-overflow-droplet,
-  .flow-overflow-droplets {
+  .flow-overflow-sheen::after {
     animation: none !important;
   }
 
   .flow-overflow-extension {
     transition-duration: 0.01ms !important;
-  }
-
-  .flow-overflow-droplets {
-    display: none;
   }
 
   .cashflow-donut__chart circle {
