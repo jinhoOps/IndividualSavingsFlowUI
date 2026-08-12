@@ -118,3 +118,56 @@ An exploratory run of two unrelated `tests/main-react.spec.ts` cases exposed exi
 - `dashboard edit persists ...` still expects the removed persistent `저장됨` status, contrary to the approved motion spec and current passing SummaryDashboard unit contract.
 
 Task 7 does not modify either the donut DOM or this legacy Main E2E assertion. The Task 7-required Journey suite and the independent Main mobile editor browser coverage pass. These stale assertions should be updated by the Main/E2E owner rather than folded into the overlay change.
+
+## Review fix round
+
+Implemented the two Important findings from `task-7-review.md` in code/test commit `86b1483` (`fix(journey): complete overlay motion contracts`).
+
+### Fixes
+
+- `AppManagementMenu` now applies the shared 180ms normal reveal to both the management popover and icon-help disclosure. Each settles from 4px above using only opacity and vertical translation. Reduced motion writes opacity 1 and zero translation before paint without starting Anime.
+- The popover/disclosure remain conditional DOM. Trigger/help `aria-expanded`, DOM removal, outside touch dismissal, and focus restoration retain their existing state lifecycle and never wait for an exit animation.
+- `ManagementConfirmationDialog` and `PortfolioDialog` now assign each focus effect setup a generation. A StrictMode preflight cleanup queues its focus return, but the immediately following setup advances the generation and invalidates that stale microtask. A real close/unmount has no successor generation, so it still restores opener focus.
+
+### Review-round RED
+
+```text
+npx vitest run tests/unit/journey/AppManagementMenu.test.tsx
+1 file failed; 2 failed, 9 passed
+```
+
+The new tests failed because neither the management popover nor help disclosure invoked shared motion or wrote a reduced-motion final state.
+
+```text
+npx vitest run tests/unit/journey/AppLauncher.test.tsx tests/unit/portfolio/PortfolioDialogs.test.tsx
+2 files failed; 2 failed, 27 passed
+```
+
+Both new StrictMode regressions failed with opener focus received instead of the dialog's initial cancel control.
+
+### Review-round GREEN and integration evidence
+
+```text
+npx vitest run tests/unit/journey/AppManagementMenu.test.tsx
+1 file passed; 11 tests passed
+
+npx vitest run tests/unit/journey/AppLauncher.test.tsx tests/unit/portfolio/PortfolioDialogs.test.tsx
+2 files passed; 29 tests passed
+
+npx vitest run tests/unit/journey/AppManagementMenu.test.tsx tests/unit/journey/AppLauncher.test.tsx tests/unit/journey/ReadinessApp.test.tsx tests/unit/main/SummaryDashboard.test.tsx tests/unit/portfolio/PortfolioDialogs.test.tsx tests/unit/portfolio/PortfolioItemSheet.test.tsx tests/unit/portfolio/PortfolioApp.test.tsx
+7 files passed; 94 tests passed
+
+npx playwright test tests/app-journey.spec.ts
+14 passed
+
+npx playwright test tests/portfolio.spec.ts --grep "contains the mobile editor|isolates applied editing|contains the focused target sheet|protects dirty mobile"
+4 passed
+
+npm run check
+check:source and check:unit passed
+
+git diff --check
+passed
+```
+
+The Journey browser suite continues to cover management popover/help containment and focus restoration at 390px, 768px, and 1280px. Portfolio overlay browser tests continue to cover mobile confirmation, sheet/panel isolation, 768px containment, dirty close protection, and opener focus restoration.
