@@ -572,6 +572,21 @@ test('protects dirty mobile target input and reuses the sheet for editing', asyn
   expect(sheetBox!.x).toBeGreaterThanOrEqual(0);
   expect(sheetBox!.x + sheetBox!.width).toBeLessThanOrEqual(390);
   expect(await sheet.evaluate((dialog) => dialog.matches(':modal'))).toBe(true);
+  const quickNames = ['S&P 500', '나스닥', '코스피', '미국 국채', '금 현물'];
+  const quickTargetY = new Set<number>();
+  for (const name of quickNames) {
+    const quickFill = sheet.getByRole('button', { name, exact: true });
+    await expect(quickFill).toBeVisible();
+    const quickFillBox = await quickFill.boundingBox();
+    expect(quickFillBox).not.toBeNull();
+    expect(quickFillBox!.height).toBeGreaterThanOrEqual(44);
+    quickTargetY.add(Math.round(quickFillBox!.y));
+  }
+  expect(quickTargetY.size).toBeGreaterThan(1);
+  await sheet.getByRole('button', { name: '미국 국채', exact: true }).click();
+  await expect(sheet.getByLabel('투자 대상 이름')).toHaveValue('미국 국채');
+  await expect(sheet.getByLabel('금액')).toBeFocused();
+  expect(await sheet.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
   await sheet.getByLabel('투자 대상 이름').fill('미국 인덱스');
 
   await page.mouse.click(10, 100);
@@ -594,10 +609,39 @@ test('protects dirty mobile target input and reuses the sheet for editing', asyn
 
   const editSheet = page.getByRole('dialog', { name: '투자 대상 수정' });
   await expect(editSheet).toHaveClass(/portfolio-item-sheet/);
+  await expect(editSheet.getByRole('button', { name: '투자 대상 삭제' })).toBeVisible();
+  await expect(editSheet.getByRole('button', { name: 'S&P 500', exact: true })).toHaveCount(0);
   await expect(editSheet.getByRole('button', { name: '취소' })).toBeVisible();
   await expect(editSheet.getByRole('button', { name: '완료' })).toBeVisible();
   expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
+  await editSheet.getByRole('button', { name: '투자 대상 삭제' }).click();
+  await expect(editSheet).not.toBeVisible();
+  await expect(page.getByRole('button', { name: '미국 인덱스 편집, 120,000원, 60%' })).toHaveCount(0);
 });
+
+for (const viewport of [
+  { width: 768, height: 900 },
+  { width: 1280, height: 900 },
+]) {
+  test(`contains target shortcuts at ${viewport.width}px`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await seedMain(page, 200_000);
+    await page.goto('apps/portfolio/');
+    await enterFirstSetupAllocation(page);
+    await page.getByRole('button', { name: '투자 대상 추가' }).click();
+
+    const sheet = page.getByRole('dialog', { name: '투자 대상 추가' });
+    for (const name of ['S&P 500', '나스닥', '코스피', '미국 국채', '금 현물']) {
+      const quickFillBox = await sheet.getByRole('button', { name, exact: true }).boundingBox();
+      expect(quickFillBox).not.toBeNull();
+      expect(quickFillBox!.height).toBeGreaterThanOrEqual(44);
+    }
+    await expect(sheet.getByRole('button', { name: '취소' })).toBeVisible();
+    await expect(sheet.getByRole('button', { name: '완료' })).toBeVisible();
+    expect(await sheet.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
+    expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
+  });
+}
 test('creates and preserves a contained shared investment location at required widths', async ({ page }) => {
   await seedMain(page, 200_000);
   await seedAppliedPortfolio(page);
