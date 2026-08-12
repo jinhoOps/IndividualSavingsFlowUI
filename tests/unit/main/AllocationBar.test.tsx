@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { MainData } from '../../../src/main/domain/model';
@@ -10,6 +10,7 @@ import {
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 const cashflowFixture: MainData = {
@@ -46,20 +47,46 @@ const adjacentSmallFixture: MainData = {
   monthlyInvestmentWon: 700_000,
 };
 
-const belowDropletFixture: MainData = {
+const actualDeficitFixture: MainData = {
   ...cashflowFixture,
-  monthlyInvestmentWon: 1_500_000,
+  monthlyInvestmentWon: 2_300_000,
 };
 
-const liquidDeficitFixture: MainData = {
-  ...cashflowFixture,
-  monthlyInvestmentWon: 2_100_000,
-};
+let resizeObserverCallback: ResizeObserverCallback | undefined;
 
-const cappedDeficitFixture: MainData = {
-  ...cashflowFixture,
-  monthlyInvestmentWon: 3_660_000,
-};
+function mockBarViewport(initialClientWidth: number) {
+  let clientWidth = initialClientWidth;
+  vi.spyOn(document.documentElement, 'clientWidth', 'get').mockImplementation(() => clientWidth);
+  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+    const isBar = this.classList.contains('allocation-bar__segments');
+    const width = isBar ? 200 : 0;
+    const left = 0;
+    return {
+      bottom: 44,
+      height: 44,
+      left,
+      right: left + width,
+      top: 0,
+      width,
+      x: left,
+      y: 0,
+      toJSON: () => ({}),
+    };
+  });
+  vi.stubGlobal('ResizeObserver', class {
+    constructor(callback: ResizeObserverCallback) {
+      resizeObserverCallback = callback;
+    }
+
+    observe() {}
+    disconnect() {}
+  });
+
+  return (nextClientWidth: number) => {
+    clientWidth = nextClientWidth;
+    act(() => resizeObserverCallback?.([], {} as ResizeObserver));
+  };
+}
 
 describe('AllocationBar', () => {
   it('provides the same visual segments used by the review transition', () => {
@@ -212,35 +239,30 @@ describe('AllocationBar', () => {
     expect(screen.getByText('수입보다 40만 원 초과')).toBeVisible();
   });
 
-  it('renders compressed liquid overflow and adds droplets only from 30%', () => {
-    const { rerender } = render(<AllocationBar data={cashflowFixture} />);
-    expect(document.querySelector('.allocation-bar__segments')).toHaveAttribute('data-overflow', 'false');
-    expect(document.querySelector('.flow-overflow-bridge')).not.toBeInTheDocument();
-    expect(document.querySelector('.flow-overflow-extension')).not.toBeInTheDocument();
+  it('preserves actual deficit geometry when the viewport has enough room', () => {
+    mockBarViewport(1_000);
+    render(<AllocationBar data={actualDeficitFixture} />);
 
-    rerender(<AllocationBar data={belowDropletFixture} />);
-    expect(document.querySelector('.allocation-bar__segments')).toHaveAttribute('data-overflow-intensity', 'active');
-    expect(document.querySelector('.flow-overflow-bridge')).toBeInTheDocument();
-    expect(document.querySelector('.flow-overflow-extension')).toHaveStyle({
-      '--overflow-length': '2.5%',
-    });
-    expect(document.querySelector('.flow-overflow-droplets')).not.toBeInTheDocument();
-
-    rerender(<AllocationBar data={liquidDeficitFixture} />);
-    expect(document.querySelector('.allocation-bar__segments')).toHaveAttribute('data-overflow-intensity', 'liquid');
-    expect(document.querySelector('.flow-overflow-extension')).toHaveStyle({
-      '--overflow-length': '6.25%',
-    });
-    expect(document.querySelectorAll('.flow-overflow-droplet')).toHaveLength(2);
+    const track = document.querySelector('.allocation-bar__segments');
+    expect(track).toHaveAttribute('data-desired-end-percent', '137.5');
+    expect(track).toHaveAttribute('data-visible-end-percent', '137.5');
+    expect(track).toHaveAttribute('data-overflow-clipped', 'false');
+    expect(screen.queryByText('+37.5% 초과')).not.toBeInTheDocument();
+    expect(screen.getByText('수입보다 120만 원 초과')).toBeVisible();
   });
 
-  it('caps visual overflow at 10% while preserving the actual 80% table value', () => {
-    render(<AllocationBar data={cappedDeficitFixture} />);
+  it('shows the actual overflow label only after a ResizeObserver update clips the strip', () => {
+    const resizeTo = mockBarViewport(1_000);
+    render(<AllocationBar data={actualDeficitFixture} />);
+    const track = document.querySelector('.allocation-bar__segments');
 
-    expect(document.querySelector('.allocation-bar__segments')).toHaveAttribute('data-overflow-intensity', 'maximum');
-    expect(document.querySelector('.flow-overflow-extension')).toHaveStyle({
-      '--overflow-length': '10%',
-    });
-    expect(screen.getByRole('row', { name: /초과 256만 원 80\.0%/ })).toBeVisible();
+    expect(screen.queryByText('+37.5% 초과')).not.toBeInTheDocument();
+    resizeTo(256);
+
+    expect(track).toHaveAttribute('data-desired-end-percent', '137.5');
+    expect(track).toHaveAttribute('data-visible-end-percent', '120');
+    expect(track).toHaveAttribute('data-overflow-clipped', 'true');
+    expect(screen.getByText('+37.5% 초과')).toBeVisible();
+    expect(screen.getByRole('row', { name: /초과 120만 원 37\.5%/ })).toBeVisible();
   });
 });

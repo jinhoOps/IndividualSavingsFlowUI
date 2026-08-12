@@ -1,9 +1,9 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type MouseEvent, type PointerEvent } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState, type MouseEvent, type PointerEvent } from 'react';
 import { calculateCashflow, percentageOfIncome } from '../../domain/cashflow';
 import type { MainData } from '../../domain/model';
 import { PercentageTooltip } from '../common/PercentageTooltip';
+import { createCashflowBarGeometry, type CashflowViewport } from './cashflowBarGeometry';
 import { formatContextWon, formatPercentage } from './FlowContextSummary';
-import { createOverflowPresentation } from './overflowPresentation';
 
 export interface AllocationBarProps {
   data: MainData;
@@ -26,23 +26,11 @@ export interface AllocationVisualSegment {
 const MIN_INTERACTIVE_SIZE_PX = 44;
 
 export function createAllocationVisualSegments(data: MainData): AllocationVisualSegment[] {
-  const cashflow = calculateCashflow(data);
-  const isDeficit = cashflow.deficitWon > 0;
-  const denominator = isDeficit ? cashflow.plannedOutflowWon : cashflow.incomeWon;
-  const segment = (
-    id: AllocationVisualSegment['id'],
-    amountWon: number,
-  ): AllocationVisualSegment => ({
-    id,
-    visualPercentage: clampPercentage(percentageOfIncome(amountWon, denominator) ?? 0),
-  });
-  const segments = [
-    segment('consumption', cashflow.consumptionWon),
-    segment('saving', cashflow.savingWon),
-    segment('investment', cashflow.investmentWon),
-  ];
-  if (!isDeficit) segments.push(segment('remaining', cashflow.remainingWon));
-  return segments;
+  return createCashflowBarGeometry(data, { barWidthPx: 0, availableRightPx: 0 }).segments
+    .map((segment) => ({
+      id: segment.id,
+      visualPercentage: segment.widthPercent,
+    }));
 }
 
 export function AllocationBar({ data, transitioning = false }: AllocationBarProps) {
@@ -52,30 +40,30 @@ export function AllocationBar({ data, transitioning = false }: AllocationBarProp
   const [tappedId, setTappedId] = useState<string>();
   const [pointerPosition, setPointerPosition] = useState<number>();
   const [tapPosition, setTapPosition] = useState<number>();
-  const [barWidth, setBarWidth] = useState(0);
+  const [viewport, setViewport] = useState<CashflowViewport>({
+    barWidthPx: 0,
+    availableRightPx: 0,
+  });
   const barRef = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const isPointerFocusRef = useRef(false);
   const tooltipId = useId();
   const cashflow = calculateCashflow(data);
   const isDeficit = cashflow.deficitWon > 0;
-  const overflow = createOverflowPresentation(cashflow.deficitWon, cashflow.incomeWon);
-  const overflowStyle = {
-    '--overflow-length': `${overflow.displayLengthPercent}%`,
-    '--overflow-duration': `${overflow.flowDurationMs}ms`,
-  } as CSSProperties;
-  const visualDenominator = isDeficit ? cashflow.plannedOutflowWon : cashflow.incomeWon;
-  const visualSegments = createAllocationVisualSegments(data);
-  const plannedPercentage = clampPercentage(
-    percentageOfIncome(cashflow.plannedOutflowWon, cashflow.incomeWon) ?? 0,
-  );
+  const geometry = createCashflowBarGeometry(data, viewport);
+  const visualSegments = geometry.segments.map((segment) => ({
+    id: segment.id,
+    visualPercentage: segment.widthPercent,
+  }));
+  const plannedPercentage = percentageOfIncome(cashflow.plannedOutflowWon, cashflow.incomeWon) ?? 0;
   const allocation = (id: string, label: string, amountWon: number): Allocation => ({
     id,
     label,
     amountWon,
     percentage: percentageOfIncome(amountWon, cashflow.incomeWon),
     visualPercentage: visualSegments.find((segment) => segment.id === id)?.visualPercentage
-      ?? clampPercentage(percentageOfIncome(amountWon, visualDenominator) ?? 0),
+      ?? percentageOfIncome(amountWon, cashflow.incomeWon)
+      ?? 0,
   });
   const allocations: Allocation[] = [
     allocation('consumption', '소비', cashflow.consumptionWon),
@@ -108,21 +96,30 @@ export function AllocationBar({ data, transitioning = false }: AllocationBarProp
       return;
     }
 
-    const updateBarWidth = () => {
-      const nextWidth = bar.getBoundingClientRect().width;
-      setBarWidth((currentWidth) => currentWidth === nextWidth ? currentWidth : nextWidth);
+    const updateViewport = () => {
+      const rect = bar.getBoundingClientRect();
+      const nextViewport = {
+        barWidthPx: rect.width,
+        availableRightPx: document.documentElement.clientWidth - 16 - rect.right,
+      };
+      setViewport((current) => (
+        current.barWidthPx === nextViewport.barWidthPx
+        && current.availableRightPx === nextViewport.availableRightPx
+          ? current
+          : nextViewport
+      ));
     };
-    updateBarWidth();
+    updateViewport();
 
     const resizeObserver = typeof ResizeObserver === 'undefined'
       ? null
-      : new ResizeObserver(updateBarWidth);
+      : new ResizeObserver(updateViewport);
     resizeObserver?.observe(bar);
-    window.addEventListener('resize', updateBarWidth);
+    window.addEventListener('resize', updateViewport);
 
     return () => {
       resizeObserver?.disconnect();
-      window.removeEventListener('resize', updateBarWidth);
+      window.removeEventListener('resize', updateViewport);
     };
   }, []);
 
@@ -235,23 +232,51 @@ export function AllocationBar({ data, transitioning = false }: AllocationBarProp
         <div
           className="flow-bar allocation-bar__segments"
           data-overflow={isDeficit ? 'true' : 'false'}
-          data-overflow-intensity={overflow.intensity}
+          data-desired-end-percent={geometry.desiredEndPercent}
+          data-visible-end-percent={geometry.visibleEndPercent}
+          data-overflow-clipped={geometry.clipped ? 'true' : 'false'}
           ref={barRef}
         >
-          <div aria-hidden="true" className="allocation-bar__visual-track">
-            {allocations.map((allocation) => {
-              return (
+          <div
+            aria-hidden="true"
+            className="cashflow-bar__clip"
+            style={{
+              borderRadius: '9999px',
+              height: '0.375rem',
+              left: 0,
+              overflow: 'hidden',
+              position: 'absolute',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              width: `${geometry.visibleEndPercent}%`,
+            }}
+          >
+            <div
+              className="cashflow-bar__strip allocation-bar__visual-track"
+              style={{
+                height: '100%',
+                left: 'auto',
+                position: 'relative',
+                right: 'auto',
+                top: 'auto',
+                transform: 'none',
+                width: `${relativeStripWidth(geometry.desiredEndPercent, geometry.visibleEndPercent)}%`,
+              }}
+            >
+              {geometry.segments.map((segment) => (
                 <span
-                  className={`allocation-bar__visual-segment allocation-bar__visual-segment--${allocation.id}`}
-                  key={allocation.id}
-                  style={{ width: `${allocation.visualPercentage}%` }}
+                  className={`allocation-bar__visual-segment allocation-bar__visual-segment--${segment.id}`}
+                  data-start-percent={segment.startPercent}
+                  data-width-percent={segment.widthPercent}
+                  key={segment.id}
+                  style={{ width: `${relativeSegmentWidth(segment.widthPercent, geometry.desiredEndPercent)}%` }}
                 />
-              );
-            })}
+              ))}
+            </div>
           </div>
           {allocations.map((allocation) => {
             const visualPercentage = allocation.visualPercentage;
-            const requiresLegendTarget = !hasIndependentTarget(visualPercentage, barWidth);
+            const requiresLegendTarget = !hasIndependentTarget(visualPercentage, viewport.barWidthPx);
             const offset = allocationOffset(allocation.id, allocations);
 
             return requiresLegendTarget ? null : (
@@ -266,23 +291,12 @@ export function AllocationBar({ data, transitioning = false }: AllocationBarProp
               />
             );
           })}
-          {overflow.intensity === 'none' ? null : (
-            <>
-              <span aria-hidden="true" className="flow-overflow-bridge">
-                <span className="flow-overflow-sheen" />
-              </span>
-              <span aria-hidden="true" className="flow-overflow-extension" style={overflowStyle}>
-                <span className="flow-overflow-sheen" />
-                {overflow.showDroplets ? (
-                  <span className="flow-overflow-droplets">
-                    <span className="flow-overflow-droplet" />
-                    <span className="flow-overflow-droplet" />
-                  </span>
-                ) : null}
-              </span>
-            </>
-          )}
         </div>
+        {geometry.clipped ? (
+          <span className="cashflow-bar__overflow-label">
+            +{formatPercentage(geometry.overflowPercent)} 초과
+          </span>
+        ) : null}
         <table className="allocation-table" aria-label="월 자금 항목">
           <thead>
             <tr>
@@ -293,7 +307,10 @@ export function AllocationBar({ data, transitioning = false }: AllocationBarProp
           </thead>
           <tbody>
             {allocations.map((allocation) => {
-              const requiresTableTarget = !hasIndependentTarget(allocation.visualPercentage, barWidth);
+              const requiresTableTarget = !hasIndependentTarget(
+                allocation.visualPercentage,
+                viewport.barWidthPx,
+              );
               return (
                 <tr key={allocation.id}>
                   <th scope="row">
@@ -373,4 +390,12 @@ function pointerPercentage(clientX: number, element: HTMLDivElement | null): num
 
 function clampPercentage(percentage: number): number {
   return Math.min(100, Math.max(0, percentage));
+}
+
+function relativeStripWidth(desiredEndPercent: number, visibleEndPercent: number): number {
+  return visibleEndPercent > 0 ? desiredEndPercent / visibleEndPercent * 100 : 0;
+}
+
+function relativeSegmentWidth(widthPercent: number, desiredEndPercent: number): number {
+  return desiredEndPercent > 0 ? widthPercent / desiredEndPercent * 100 : 0;
 }
