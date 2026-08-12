@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { useState } from 'react';
 import type { ReactNode } from 'react';
@@ -8,6 +8,7 @@ import { SummaryDashboard, type SummaryDashboardProps } from '../../../src/main/
 
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
@@ -92,6 +93,33 @@ function ValidationHarness({ mobile = false }: { mobile?: boolean }) {
   );
 }
 
+function SaveFeedbackHarness({ persist }: { persist(): Promise<void> }) {
+  const [applied, setApplied] = useState(() => clone(appliedData));
+  const [draft, setDraft] = useState(() => ({
+    ...clone(appliedData),
+    monthlyNetIncomeWon: 4_000_000,
+  }));
+  const [saveStatus, setSaveStatus] = useState<SummaryDashboardProps['saveStatus']>('saved');
+
+  return (
+    <SummaryDashboard
+      applied={applied}
+      draft={draft}
+      dirty={draft.monthlyNetIncomeWon !== applied.monthlyNetIncomeWon}
+      issues={[]}
+      saveStatus={saveStatus}
+      onDraftChange={setDraft}
+      onApply={async () => {
+        setSaveStatus('saving');
+        await persist();
+        setApplied(draft);
+        setSaveStatus('saved');
+      }}
+      onCancel={() => setDraft(clone(applied))}
+    />
+  );
+}
+
 describe('SummaryDashboard', () => {
   it('prioritizes the donut, editing cards, journey entry, and collapsed allocation details', () => {
     const journeyEntry: ReactNode = <button type="button">Simulation으로 이어가기</button>;
@@ -152,7 +180,7 @@ describe('SummaryDashboard', () => {
     render(<DashboardHarness />);
 
     expect(screen.getByRole('heading', { name: '이번 달 자금 흐름' })).toBeVisible();
-    expect(screen.getByRole('status')).toHaveTextContent('저장됨');
+    expect(screen.queryByText('저장됨')).not.toBeInTheDocument();
     expect(screen.queryByText('월 실수령액')).not.toBeInTheDocument();
     expect(screen.getByText('월 소비')).toBeVisible();
     expect(screen.getByRole('button', { name: '남는 돈 편집' })).toHaveTextContent('남는 돈');
@@ -203,6 +231,36 @@ describe('SummaryDashboard', () => {
 
     expect(screen.getByLabelText('월 실수령액')).toHaveValue('3,200,000');
     expect(screen.getByRole('button', { name: '월 소비 편집' })).toHaveTextContent('180만 원');
+  });
+
+  it('blocks an explicit apply immediately but delays progress copy and leaves no success label', async () => {
+    vi.useFakeTimers();
+    let resolvePersist: (() => void) | undefined;
+    const persist = vi.fn(() => new Promise<void>((resolve) => {
+      resolvePersist = resolve;
+    }));
+    render(<SaveFeedbackHarness persist={persist} />);
+    fireEvent.click(screen.getByRole('button', { name: '월 소비 편집' }));
+
+    fireEvent.click(screen.getByRole('button', { name: '적용' }));
+
+    expect(persist).toHaveBeenCalledOnce();
+    expect(screen.getByRole('button', { name: '적용' })).toBeDisabled();
+    expect(screen.getByRole('complementary', { name: '월 자금 계획 편집' }))
+      .toHaveAttribute('aria-busy', 'true');
+    expect(screen.queryByText(/저장 중/)).not.toBeInTheDocument();
+    expect(screen.queryByText('저장됨')).not.toBeInTheDocument();
+
+    act(() => vi.advanceTimersByTime(599));
+    expect(screen.queryByText(/저장 중/)).not.toBeInTheDocument();
+
+    act(() => vi.advanceTimersByTime(1));
+    expect(screen.getAllByText(/저장 중/).length).toBeGreaterThan(0);
+
+    await act(async () => resolvePersist?.());
+    expect(screen.getByRole('button', { name: '남는 돈 편집' })).toHaveTextContent('170만 원');
+    expect(screen.queryByText(/저장 중/)).not.toBeInTheDocument();
+    expect(screen.queryByText('저장됨')).not.toBeInTheDocument();
   });
 
   it('uses a modal dialog on mobile with the same five scalar fields', () => {

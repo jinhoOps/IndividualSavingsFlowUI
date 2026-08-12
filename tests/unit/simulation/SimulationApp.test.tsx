@@ -223,14 +223,14 @@ describe('SimulationApp', () => {
     });
     expect(repository.save).toHaveBeenCalledTimes(1);
     expect(screen.getByRole('heading', { name: /이대로 25년 유지하면/ })).toBeVisible();
-    expect(screen.getByRole('status')).toHaveTextContent('저장 중');
+    expect(screen.queryByText('저장 중')).not.toBeInTheDocument();
 
     settleFirst?.({ status: 'unavailable' });
     await waitFor(() => expect(repository.save).toHaveBeenCalledTimes(2));
-    expect(screen.getByRole('status')).toHaveTextContent('저장 중');
-    expect(screen.getByRole('status')).not.toHaveTextContent('자동 저장하지 못했어요');
+    expect(screen.queryByText('저장 중')).not.toBeInTheDocument();
+    expect(screen.queryByText('자동 저장하지 못했어요')).not.toBeInTheDocument();
     settleSecond?.({ status: 'saved' });
-    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('저장됨'));
+    await waitFor(() => expect(screen.queryByText('저장됨')).not.toBeInTheDocument());
     expect(repository.save).toHaveBeenLastCalledWith(expect.objectContaining({ years: 25 }));
   });
 

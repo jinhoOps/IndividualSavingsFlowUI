@@ -141,7 +141,7 @@ export function SummaryDashboard({
       >
         <header className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="m-0 text-sm font-black tracking-wide text-accent" role="status">{saveStatusMessage(saveStatus)}</p>
+            <p className="m-0 text-sm font-black tracking-wide text-accent">MONTHLY FLOW</p>
             <h1 className="m-0 mt-2 text-4xl font-bold tracking-tight text-slate-950 sm:text-5xl" id="summary-dashboard-title">이번 달 자금 흐름</h1>
             <p className="mb-0 mt-3 text-lg text-slate-600">수입과 소비, 저축, 투자 뒤에 남는 돈을 확인하세요.</p>
           </div>
@@ -332,15 +332,6 @@ function useMobileEditor(): boolean {
   }, []);
 
   return mobile;
-}
-
-function saveStatusMessage(status: MainState['saveStatus']): string {
-  switch (status) {
-    case 'saving': return '저장 중';
-    case 'saved': return '저장됨';
-    case 'error': return '저장에 실패했습니다';
-    case 'idle': return '저장된 계획';
-  }
 }
 
 function findIssue(issues: ValidationResult['issues'], path: string): string | undefined {
