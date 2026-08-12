@@ -40,7 +40,11 @@ export function useAnimeScope<T extends HTMLElement>(
         }
       });
     } catch {
-      scope.revert();
+      try {
+        scope.revert();
+      } catch {
+        // A partial Anime scope must not mask the consumer error or block final-state fallback.
+      }
       if (consumerFailed) throw consumerError;
       setup({ root, reducedMotion: true });
       return undefined;

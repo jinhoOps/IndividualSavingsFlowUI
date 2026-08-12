@@ -26,6 +26,7 @@ export function GrowthChart({
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const touchPointerRef = useRef<number | null>(null);
   const visualGeometryRef = useRef<VisualChartGeometry | null>(null);
+  const revealWidthRef = useRef(0);
   const firstRevealCompleteRef = useRef(false);
   const revealClipId = `growth-chart-reveal-${useId().replace(/:/g, '')}`;
   const compactTooltip = useCompactTooltip();
@@ -42,9 +43,9 @@ export function GrowthChart({
     const revealWidth = geometry.plot.right - geometry.plot.left;
     const targetGeometry = visualGeometry(geometry);
     const previousGeometry = visualGeometryRef.current;
-    revealClip.setAttribute('width', String(revealWidth));
 
     if (reducedMotion) {
+      setRevealWidth(revealClip, revealWidth, revealWidthRef);
       setVisualFrame(motionPaths, targetGeometry, visualGeometryRef);
       firstRevealCompleteRef.current = true;
       return;
@@ -59,25 +60,25 @@ export function GrowthChart({
       )
     ) {
       setVisualFrame(motionPaths, targetGeometry, visualGeometryRef);
-      revealClip.setAttribute('width', '0');
-      try {
-        animate(revealClip, {
-          width: revealWidth,
-          duration: MOTION_DURATION.emphasis,
-          ease: MOTION_EASE.enter,
-          onComplete: () => {
-            revealClip.setAttribute('width', String(revealWidth));
-            firstRevealCompleteRef.current = true;
-          },
-        });
-      } catch {
-        revealClip.setAttribute('width', String(revealWidth));
-        firstRevealCompleteRef.current = true;
-      }
+      continueReveal(
+        revealClip,
+        revealWidth,
+        revealWidthRef,
+        firstRevealCompleteRef,
+      );
       return;
     }
 
-    firstRevealCompleteRef.current = true;
+    if (firstRevealCompleteRef.current) {
+      setRevealWidth(revealClip, revealWidth, revealWidthRef);
+    } else {
+      continueReveal(
+        revealClip,
+        revealWidth,
+        revealWidthRef,
+        firstRevealCompleteRef,
+      );
+    }
     const transition = createPathTransition(previousGeometry, targetGeometry);
     const state = { progress: 0 };
     setVisualFrame(motionPaths, transition(0), visualGeometryRef);
@@ -346,6 +347,43 @@ function setMotionPaths(paths: MotionPaths, values: ChartPaths): void {
   paths.area.setAttribute('d', values.area);
   paths.current.setAttribute('d', values.current);
   paths.savings.setAttribute('d', values.savings);
+}
+
+function continueReveal(
+  clip: SVGRectElement,
+  finalWidth: number,
+  widthRef: { current: number },
+  completeRef: { current: boolean },
+): void {
+  const currentWidth = Math.max(0, Math.min(finalWidth, widthRef.current));
+  setRevealWidth(clip, currentWidth, widthRef);
+  try {
+    animate(clip, {
+      width: finalWidth,
+      duration: MOTION_DURATION.emphasis,
+      ease: MOTION_EASE.enter,
+      onUpdate: () => {
+        const renderedWidth = Number(clip.getAttribute('width'));
+        if (Number.isFinite(renderedWidth)) widthRef.current = renderedWidth;
+      },
+      onComplete: () => {
+        setRevealWidth(clip, finalWidth, widthRef);
+        completeRef.current = true;
+      },
+    });
+  } catch {
+    setRevealWidth(clip, finalWidth, widthRef);
+    completeRef.current = true;
+  }
+}
+
+function setRevealWidth(
+  clip: SVGRectElement,
+  width: number,
+  widthRef: { current: number },
+): void {
+  widthRef.current = width;
+  clip.setAttribute('width', String(width));
 }
 
 function setVisualFrame(

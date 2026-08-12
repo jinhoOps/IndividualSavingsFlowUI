@@ -13,7 +13,7 @@ export function animateVisualNumber(
   from: number,
   to: number,
   format: (value: number) => string,
-  duration = MOTION_DURATION.normal,
+  duration: number = MOTION_DURATION.normal,
 ): () => void {
   const previousState = visualNumberStates.get(element);
   previousState?.animation?.cancel();

@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef } from 'react';
 import { animateVisualNumber } from '../../components/motion/animateVisualNumber';
+import { MOTION_DURATION } from '../../components/motion/tokens';
 import type { ProjectionResult } from '../domain/model';
 import { formatWon } from './format';
 
@@ -48,7 +49,13 @@ function AnimatedComparisonValue({
       || previousValue === value
       || visualRef.current === null
     ) return;
-    return animateVisualNumber(visualRef.current, previousValue, value, format);
+    return animateVisualNumber(
+      visualRef.current,
+      previousValue,
+      value,
+      format,
+      MOTION_DURATION.emphasis,
+    );
   }, [format, value]);
 
   return (

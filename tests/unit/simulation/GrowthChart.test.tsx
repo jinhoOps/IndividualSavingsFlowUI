@@ -100,6 +100,41 @@ describe('GrowthChart', () => {
     ]);
   });
 
+  it('continues a partial first reveal while morphing to an updated projection', () => {
+    const { container, rerender } = render(
+      <GrowthChart result={result} amountMode="nominal" />,
+    );
+    const revealClip = container.querySelector<SVGRectElement>('.growth-chart__reveal-clip');
+    const initialRevealCall = anime.animate.mock.calls.find(([target]) => target === revealClip);
+    if (initialRevealCall === undefined || revealClip === null) {
+      throw new Error('first-result reveal animation was not created');
+    }
+    const initialRevealOptions = initialRevealCall[1] as { onUpdate?(): void };
+    revealClip.setAttribute('width', '186');
+    initialRevealOptions.onUpdate?.();
+
+    const updated = projectCompoundGrowth({
+      ...createDefaultSimulationDraft({
+        monthlySavingsWon: 300_000,
+        monthlyInvestmentWon: 200_000,
+        mainUpdatedAt: 130,
+      }, 463),
+      expectedAnnualReturnPercent: 14,
+    });
+    anime.animate.mockClear();
+    rerender(<GrowthChart result={updated} amountMode="nominal" />);
+
+    expect(revealClip).toHaveAttribute('width', '186');
+    expect(anime.animate).toHaveBeenCalledWith(
+      revealClip,
+      expect.objectContaining({ width: 620, duration: 260 }),
+    );
+    expect(graphTransitionCall().options).toEqual(expect.objectContaining({
+      progress: 1,
+      duration: 260,
+    }));
+  });
+
   it('commits final semantic paths while the visual overlay interpolates from prior geometry', () => {
     const { container, rerender } = render(
       <GrowthChart result={result} amountMode="nominal" />,
@@ -435,8 +470,8 @@ describe('SimulationComparison', () => {
     expect(comparisonVisualValues(container)).toEqual(initialVisualValues);
     expect(anime.animate).toHaveBeenCalledTimes(2);
     expect(anime.animate.mock.calls.map(([, options]) => options)).toEqual([
-      expect.objectContaining({ value: 123_456_000, duration: 180 }),
-      expect.objectContaining({ value: 187.6, duration: 180 }),
+      expect.objectContaining({ value: 123_456_000, duration: 260 }),
+      expect.objectContaining({ value: 187.6, duration: 260 }),
     ]);
   });
 

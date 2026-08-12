@@ -86,4 +86,28 @@ describe('useAnimeScope', () => {
 
     expect(() => render(<Probe onSetup={() => { throw setupError; }} />)).toThrow(setupError);
   });
+
+  it('keeps the consumer setup error primary when partial-scope revert also fails', () => {
+    const setupError = new Error('consumer setup failed');
+    anime.scope.revert.mockImplementationOnce(() => {
+      throw new Error('scope revert failed');
+    });
+
+    expect(() => render(<Probe onSetup={() => { throw setupError; }} />)).toThrow(setupError);
+  });
+
+  it('still commits the fallback when Anime setup and partial-scope revert both fail', () => {
+    anime.scope.add.mockImplementationOnce(() => {
+      throw new Error('Anime setup failed');
+    });
+    anime.scope.revert.mockImplementationOnce(() => {
+      throw new Error('scope revert failed');
+    });
+    const onSetup = vi.fn();
+
+    expect(() => render(<Probe onSetup={onSetup} />)).not.toThrow();
+
+    expect(onSetup).toHaveBeenCalledOnce();
+    expect(onSetup).toHaveBeenCalledWith(true);
+  });
 });
