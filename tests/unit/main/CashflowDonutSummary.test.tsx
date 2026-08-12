@@ -129,6 +129,47 @@ describe('CashflowDonutSummary', () => {
     expect(activeAnimations.every((animation) => animation.cancel.mock.calls.length === 1)).toBe(true);
   });
 
+  it('keeps final Main card values when visual-number cleanup cancellation fails', () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    let cancelFailed = false;
+    anime.animate.mockImplementation(() => ({
+      cancel: vi.fn(() => {
+        if (!cancelFailed) {
+          cancelFailed = true;
+          throw new Error('cancel failed');
+        }
+      }),
+    }));
+    const { rerender } = render(
+      <MainErrorBoundary>
+        <CashflowSummary summary={calculateCashflow(appliedData)} onEdit={vi.fn()} />
+      </MainErrorBoundary>,
+    );
+
+    rerender(
+      <MainErrorBoundary>
+        <CashflowSummary
+          summary={calculateCashflow({ ...appliedData, monthlyLivingWon: 1_200_000 })}
+          onEdit={vi.fn()}
+        />
+      </MainErrorBoundary>,
+    );
+    rerender(
+      <MainErrorBoundary>
+        <CashflowSummary
+          summary={calculateCashflow({ ...appliedData, monthlyLivingWon: 1_400_000 })}
+          onEdit={vi.fn()}
+        />
+      </MainErrorBoundary>,
+    );
+
+    expect(screen.queryByRole('heading', { name: '화면을 표시하지 못했습니다' }))
+      .not.toBeInTheDocument();
+    const consumption = screen.getByRole('button', { name: '월 소비 편집' });
+    expect(consumption).toHaveAccessibleDescription(expect.stringMatching(/220만 원/));
+    expect(consumption.querySelector('strong > [aria-hidden="true"]')).toHaveTextContent('220만 원');
+  });
+
   it('keeps final donut semantics while SVG and visual numbers start from prior applied values', () => {
     const { container, rerender } = render(<CashflowDonutSummary data={appliedData} />);
     const updated = {
@@ -146,6 +187,46 @@ describe('CashflowDonutSummary', () => {
     expect(centerVisual).toHaveTextContent('15.6%');
     expect(centerVisual).toHaveAttribute('aria-hidden', 'true');
     expect(container.querySelector('.cashflow-donut__center strong > .sr-only')).toHaveTextContent('21.9%');
+  });
+
+  it('keeps final donut values when visual-number cleanup cancellation fails', () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    anime.animate.mockImplementation((target: unknown) => ({
+      cancel: vi.fn(() => {
+        if (
+          typeof target === 'object'
+          && target !== null
+          && 'value' in target
+        ) {
+          throw new Error('cancel failed');
+        }
+      }),
+    }));
+    const { container, rerender } = render(
+      <MainErrorBoundary><CashflowDonutSummary data={appliedData} /></MainErrorBoundary>,
+    );
+    rerender(
+      <MainErrorBoundary>
+        <CashflowDonutSummary
+          data={{ ...appliedData, updatedAt: 2, monthlyInvestmentWon: 400_000 }}
+        />
+      </MainErrorBoundary>,
+    );
+    rerender(
+      <MainErrorBoundary>
+        <CashflowDonutSummary
+          data={{ ...appliedData, updatedAt: 3, monthlyInvestmentWon: 600_000 }}
+        />
+      </MainErrorBoundary>,
+    );
+
+    expect(screen.queryByRole('heading', { name: '화면을 표시하지 못했습니다' }))
+      .not.toBeInTheDocument();
+    expect(screen.getByRole('img', { name: /투자 18\.8%.*여윳돈 15\.6%/ })).toBeVisible();
+    expect(container.querySelector('.cashflow-donut__center strong > [aria-hidden="true"]'))
+      .toHaveTextContent('28.1%');
+    expect(container.querySelector('.cashflow-donut__center strong > .sr-only'))
+      .toHaveTextContent('28.1%');
   });
 
   it('shrinks a surplus remaining arc to zero before removing its visual-only circle', () => {

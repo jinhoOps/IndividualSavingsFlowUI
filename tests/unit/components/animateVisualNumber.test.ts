@@ -35,6 +35,32 @@ describe('animateVisualNumber', () => {
     );
   });
 
+  it('commits the requested final value when interrupt cancellation fails', () => {
+    const cancel = vi.fn(() => {
+      throw new Error('cancel failed');
+    });
+    anime.animate.mockReturnValueOnce({ cancel });
+    const element = document.createElement('span');
+
+    animateVisualNumber(element, 10, 20, String);
+    const firstTarget = anime.animate.mock.calls[0][0] as { value: number };
+    const firstOptions = anime.animate.mock.calls[0][1] as { onUpdate(): void };
+
+    expect(() => animateVisualNumber(element, 20, 30, String)).not.toThrow();
+    expect(element).toHaveTextContent('30');
+
+    firstTarget.value = 15;
+    firstOptions.onUpdate();
+    expect(element).toHaveTextContent('30');
+
+    anime.animate.mockClear();
+    animateVisualNumber(element, 30, 40, String);
+    expect(anime.animate).toHaveBeenCalledWith(
+      expect.objectContaining({ value: 30 }),
+      expect.objectContaining({ value: 40 }),
+    );
+  });
+
   it('immediately renders the final visual value when reduced motion is active', () => {
     vi.stubGlobal('matchMedia', vi.fn().mockReturnValue({ matches: true }));
     const element = document.createElement('span');
@@ -60,6 +86,25 @@ describe('animateVisualNumber', () => {
     expect(element).toHaveTextContent('30');
   });
 
+  it('commits the reduced-motion final value when interrupt cancellation fails', () => {
+    const cancel = vi.fn(() => {
+      throw new Error('cancel failed');
+    });
+    anime.animate.mockReturnValueOnce({ cancel });
+    const element = document.createElement('span');
+    animateVisualNumber(element, 10, 20, String);
+    const firstTarget = anime.animate.mock.calls[0][0] as { value: number };
+    const firstOptions = anime.animate.mock.calls[0][1] as { onUpdate(): void };
+    vi.stubGlobal('matchMedia', vi.fn().mockReturnValue({ matches: true }));
+
+    expect(() => animateVisualNumber(element, 20, 30, String)).not.toThrow();
+    expect(element).toHaveTextContent('30');
+
+    firstTarget.value = 15;
+    firstOptions.onUpdate();
+    expect(element).toHaveTextContent('30');
+  });
+
   it('returns cleanup that cancels an active visual-number animation', () => {
     const cancel = vi.fn();
     anime.animate.mockReturnValueOnce({ cancel });
@@ -69,6 +114,25 @@ describe('animateVisualNumber', () => {
     cleanupAnimation();
 
     expect(cancel).toHaveBeenCalledOnce();
+  });
+
+  it('keeps cleanup non-throwing when active animation cancellation fails', () => {
+    const cancel = vi.fn(() => {
+      throw new Error('cancel failed');
+    });
+    anime.animate.mockReturnValueOnce({ cancel });
+    const element = document.createElement('span');
+    const cleanupAnimation = animateVisualNumber(element, 10, 20, String);
+    const firstTarget = anime.animate.mock.calls[0][0] as { value: number };
+    const firstOptions = anime.animate.mock.calls[0][1] as { onUpdate(): void };
+
+    expect(cleanupAnimation).not.toThrow();
+    firstTarget.value = 15;
+    firstOptions.onUpdate();
+    expect(element).toHaveTextContent('20');
+
+    expect(() => animateVisualNumber(element, 20, 30, String)).not.toThrow();
+    expect(element).toHaveTextContent('30');
   });
 
   it('commits the final value when animation creation fails and resumes from it', () => {
@@ -106,6 +170,31 @@ describe('animateVisualNumber', () => {
     expect(anime.animate).toHaveBeenCalledWith(
       expect.objectContaining({ value: 20 }),
       expect.objectContaining({ value: 30 }),
+    );
+  });
+
+  it('synchronously commits a final value when cancellation fails', () => {
+    const cancel = vi.fn(() => {
+      throw new Error('cancel failed');
+    });
+    anime.animate.mockReturnValueOnce({ cancel });
+    const element = document.createElement('span');
+    animateVisualNumber(element, 10, 20, String);
+    const firstTarget = anime.animate.mock.calls[0][0] as { value: number };
+    const firstOptions = anime.animate.mock.calls[0][1] as { onUpdate(): void };
+
+    expect(() => commitVisualNumber(element, 30, String)).not.toThrow();
+    expect(element).toHaveTextContent('30');
+
+    firstTarget.value = 15;
+    firstOptions.onUpdate();
+    expect(element).toHaveTextContent('30');
+
+    anime.animate.mockClear();
+    animateVisualNumber(element, 30, 40, String);
+    expect(anime.animate).toHaveBeenCalledWith(
+      expect.objectContaining({ value: 30 }),
+      expect.objectContaining({ value: 40 }),
     );
   });
 });
