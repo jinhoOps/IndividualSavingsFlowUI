@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { StrictMode } from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import type { PortfolioPlan } from '../../../src/portfolio/domain/model';
 import type { PortfolioMainSourceRepository } from '../../../src/portfolio/infrastructure/mainSourceRepository';
 import { BrowserPortfolioRepository } from '../../../src/portfolio/infrastructure/portfolioRepository';
@@ -24,7 +24,35 @@ import type {
 import { MemoryStorage } from '../simulation/MemoryStorage';
 import { createMemoryPortfolioRepository } from './MemoryPortfolioRepository';
 
-afterEach(cleanup);
+const anime = vi.hoisted(() => {
+  const scope = {
+    add: vi.fn((callback: () => void) => callback()),
+    revert: vi.fn(),
+    matches: { reducedMotion: false },
+  };
+
+  return {
+    animate: vi.fn((_target: unknown, _options: unknown) => ({ cancel: vi.fn() })),
+    createScope: vi.fn(() => scope),
+    scope,
+  };
+});
+
+vi.mock('animejs', () => ({
+  animate: anime.animate,
+  createScope: anime.createScope,
+}));
+
+beforeEach(() => {
+  anime.animate.mockImplementation((_target: unknown, _options: unknown) => ({ cancel: vi.fn() }));
+  anime.scope.matches.reducedMotion = false;
+});
+
+afterEach(() => {
+  cleanup();
+  anime.scope.matches.reducedMotion = false;
+  vi.clearAllMocks();
+});
 
 const plan: PortfolioPlan = {
   schemaVersion: 2,
@@ -219,6 +247,34 @@ describe('PortfolioApp', () => {
     fireEvent.blur(screen.getByLabelText('인덱스 금액'));
 
     expect(screen.getByRole('complementary', { name: '배분 변경' })).toBeVisible();
+  });
+
+  it('animates only the applied result and not draft amount keystrokes', async () => {
+    const repository = createMemoryPortfolioRepository({ applied: plan });
+    render(<PortfolioApp
+      locationRepository={emptyInvestmentLocations}
+      mainSourceRepository={mainFound}
+      repository={repository}
+      now={() => 2}
+    />);
+    fireEvent.click(screen.getByRole('button', { name: '배분 수정' }));
+    anime.animate.mockClear();
+
+    fireEvent.change(screen.getByLabelText('인덱스 금액'), { target: { value: '110000' } });
+    fireEvent.blur(screen.getByLabelText('인덱스 금액'));
+
+    expect(screen.getByTestId('portfolio-result-controls')).toHaveTextContent('안정 40%');
+    expect(anime.animate).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: '적용' }));
+    fireEvent.click(within(screen.getByRole('dialog', { name: '투자 배분을 적용할까요?' }))
+      .getByRole('button', { name: '배분 적용' }));
+
+    expect(await screen.findByRole('heading', { name: '안정 45%' })).toBeVisible();
+    await waitFor(() => expect(anime.animate).toHaveBeenCalledWith(
+      expect.any(HTMLElement),
+      expect.objectContaining({ scaleX: [0.6, 0.55], duration: 180 }),
+    ));
   });
 
   it('places shared investment locations after the aggregate Portfolio task', () => {

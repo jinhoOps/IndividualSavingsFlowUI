@@ -55,7 +55,7 @@
 .portfolio-allocation-row__ratio { grid-column: 2; grid-row: 1; align-self: center; font-family: var(--font-display); font-size: 1.75rem; line-height: 1; }
 .portfolio-allocation-row__amount { grid-column: 2; grid-row: 2; color: var(--muted); text-align: right; white-space: nowrap; }
 .portfolio-allocation-row__track { grid-column: 1; grid-row: 2; align-self: center; width: 100%; height: .5rem; overflow: hidden; border-radius: 999px; background: color-mix(in srgb, var(--line) 55%, transparent); }
-.portfolio-allocation-row__fill { display: block; width: var(--allocation-width); height: 100%; border-radius: inherit; background: var(--allocation-color); }
+.portfolio-allocation-row__fill { display: block; width: 100%; height: 100%; border-radius: inherit; background: var(--allocation-color); transform: scaleX(var(--allocation-scale)); transform-origin: left center; }
 .portfolio-editor__items, .portfolio-editor__row, .portfolio-editor__cash, .portfolio-editor__classification { display: grid; gap: .75rem; }
 .portfolio-editor__mode, .portfolio-editor__computed { min-width: 0; }
 .portfolio-editor__mode { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1.5rem 0; }

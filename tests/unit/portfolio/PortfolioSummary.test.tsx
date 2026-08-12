@@ -1,11 +1,42 @@
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MaterializedAllocation } from '../../../src/portfolio/domain/model';
 import { PortfolioSummary } from '../../../src/portfolio/ui/PortfolioSummary';
 
+const anime = vi.hoisted(() => {
+  const scope = {
+    add: vi.fn((callback: () => void) => callback()),
+    revert: vi.fn(),
+    matches: { reducedMotion: false },
+  };
+
+  return {
+    animate: vi.fn((_target: unknown, _options: unknown) => ({ cancel: vi.fn() })),
+    createScope: vi.fn(() => scope),
+    scope,
+  };
+});
+
+let rowLayoutSpy: ReturnType<typeof vi.spyOn> | undefined;
+
+vi.mock('animejs', () => ({
+  animate: anime.animate,
+  createScope: anime.createScope,
+}));
+
+beforeEach(() => {
+  anime.animate.mockImplementation((_target: unknown, _options: unknown) => ({ cancel: vi.fn() }));
+  anime.scope.matches.reducedMotion = false;
+});
+
 afterEach(() => {
   cleanup();
+  anime.scope.matches.reducedMotion = false;
+  rowLayoutSpy?.mockRestore();
+  rowLayoutSpy = undefined;
+  vi.clearAllMocks();
+  vi.unstubAllGlobals();
   vi.unstubAllEnvs();
 });
 
@@ -31,6 +62,40 @@ const allocation: MaterializedAllocation = {
 function visibleRowNames(): string[] {
   return screen.getAllByRole('listitem').map((row) => within(row).getByRole('heading').textContent ?? '');
 }
+
+function allocationRect(top: number): DOMRect {
+  return {
+    x: 0,
+    y: top,
+    top,
+    right: 100,
+    bottom: top + 80,
+    left: 0,
+    width: 100,
+    height: 80,
+    toJSON: () => ({}),
+  };
+}
+
+function mockRowLayout(topById: () => Record<string, number>): void {
+  rowLayoutSpy = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function getRect(this: Element) {
+    const id = (this as HTMLElement).dataset.allocationId;
+    return allocationRect(id === undefined ? 0 : (topById()[id] ?? 0));
+  });
+}
+
+const changedAllocation: MaterializedAllocation = {
+  items: [{
+    ...allocation.items[0], shareUnits: 300_000, amountWon: 240_000, percentage: 30,
+  }, {
+    ...allocation.items[1], shareUnits: 400_000, amountWon: 320_000, percentage: 40,
+  }, {
+    ...allocation.items[2], shareUnits: 200_000, amountWon: 160_000, percentage: 20,
+  }],
+  cashAmountWon: 80_000,
+  cashPercentage: 10,
+  totalAmountWon: 800_000,
+};
 
 describe('PortfolioSummary', () => {
   it('leads with the stable ratio and hides every won amount by default', () => {
@@ -111,6 +176,149 @@ describe('PortfolioSummary', () => {
 
     expect(visibleRowNames()).toEqual(['금', '글로벌 인덱스', '채권', '현금']);
     expect(screen.getByText('글로벌 인덱스에 50%를 배분해요')).toBeVisible();
+  });
+
+  it('commits final order and accessible ratios while keyed rows and visual fills interpolate', () => {
+    let tops: Record<string, number> = { index: 0, bond: 100, gold: 200, cash: 300 };
+    mockRowLayout(() => tops);
+    const { rerender } = render(
+      <PortfolioSummary
+        investmentWon={800_000}
+        allocation={allocation}
+        preferences={{ showAmounts: false, sortMode: 'ratio' }}
+        onEdit={() => undefined}
+      />,
+    );
+    anime.animate.mockClear();
+    tops = { gold: 0, index: 100, bond: 200, cash: 300 };
+
+    rerender(
+      <PortfolioSummary
+        investmentWon={800_000}
+        allocation={changedAllocation}
+        preferences={{ showAmounts: false, sortMode: 'input' }}
+        onEdit={() => undefined}
+      />,
+    );
+
+    expect(visibleRowNames()).toEqual(['금', '글로벌 인덱스', '채권', '현금']);
+    const goldRow = screen.getAllByRole('listitem')[0];
+    const ratio = goldRow.querySelector<HTMLElement>('.portfolio-allocation-row__ratio');
+    const visualRatio = goldRow.querySelector<HTMLElement>('[data-allocation-ratio-visual]');
+    const fill = goldRow.querySelector<HTMLElement>('.portfolio-allocation-row__fill');
+    expect(ratio).toHaveAccessibleName('30%');
+    expect(visualRatio).toHaveAttribute('aria-hidden', 'true');
+    expect(visualRatio).toHaveTextContent('15%');
+    expect(fill?.style.getPropertyValue('--allocation-scale')).toBe('0.3');
+    expect(anime.animate).toHaveBeenCalledWith(
+      goldRow,
+      expect.objectContaining({
+        translateY: [200, 0],
+        duration: 180,
+        ease: 'inOut(2)',
+      }),
+    );
+    expect(anime.animate).toHaveBeenCalledWith(
+      fill,
+      expect.objectContaining({
+        scaleX: [0.15, 0.3],
+        duration: 180,
+        ease: 'inOut(2)',
+      }),
+    );
+    expect(anime.animate).toHaveBeenCalledWith(
+      expect.objectContaining({ value: 15 }),
+      expect.objectContaining({ value: 30, duration: 180 }),
+    );
+  });
+
+  it('reveals a newly applied item without moving focus', () => {
+    let tops: Record<string, number> = { index: 0, bond: 100, gold: 200, cash: 300 };
+    mockRowLayout(() => tops);
+    const { rerender } = render(
+      <PortfolioSummary
+        investmentWon={800_000}
+        allocation={allocation}
+        preferences={{ showAmounts: false, sortMode: 'ratio' }}
+        onEdit={() => undefined}
+      />,
+    );
+    const edit = screen.getByRole('button', { name: '배분 수정' });
+    edit.focus();
+    anime.animate.mockClear();
+    tops = { index: 0, bond: 100, gold: 200, emerging: 300, cash: 400 };
+    const withNewItem: MaterializedAllocation = {
+      ...allocation,
+      items: [
+        { ...allocation.items[1], shareUnits: 400_000, amountWon: 320_000, percentage: 40 },
+        allocation.items[2],
+        allocation.items[0],
+        {
+          id: 'emerging', name: '신흥국', order: 3,
+          shareUnits: 100_000, amountWon: 80_000, percentage: 10,
+          classification: 'growth', classificationOrigin: 'user',
+        },
+      ],
+    };
+
+    rerender(
+      <PortfolioSummary
+        investmentWon={800_000}
+        allocation={withNewItem}
+        preferences={{ showAmounts: false, sortMode: 'ratio' }}
+        onEdit={() => undefined}
+      />,
+    );
+
+    const newRow = screen.getByRole('heading', { name: '신흥국' }).closest('li');
+    expect(edit).toHaveFocus();
+    expect(anime.animate).toHaveBeenCalledWith(
+      newRow,
+      expect.objectContaining({
+        opacity: [0, 1],
+        translateY: [8, 0],
+        duration: 180,
+        ease: 'out(3)',
+      }),
+    );
+    expect(anime.animate).toHaveBeenCalledWith(
+      newRow?.querySelector('.portfolio-allocation-row__fill'),
+      expect.objectContaining({ scaleX: [0, 0.1], duration: 180 }),
+    );
+  });
+
+  it('uses final order, ratios, and fill geometry immediately with reduced motion', () => {
+    let tops: Record<string, number> = { index: 0, bond: 100, gold: 200, cash: 300 };
+    mockRowLayout(() => tops);
+    const { rerender } = render(
+      <PortfolioSummary
+        investmentWon={800_000}
+        allocation={allocation}
+        preferences={{ showAmounts: false, sortMode: 'ratio' }}
+        onEdit={() => undefined}
+      />,
+    );
+    anime.animate.mockClear();
+    anime.scope.matches.reducedMotion = true;
+    tops = { gold: 0, index: 100, bond: 200, cash: 300 };
+
+    rerender(
+      <PortfolioSummary
+        investmentWon={800_000}
+        allocation={changedAllocation}
+        preferences={{ showAmounts: false, sortMode: 'input' }}
+        onEdit={() => undefined}
+      />,
+    );
+
+    expect(visibleRowNames()).toEqual(['금', '글로벌 인덱스', '채권', '현금']);
+    const goldRow = screen.getAllByRole('listitem')[0];
+    expect(goldRow).not.toHaveStyle({ transform: expect.any(String) });
+    expect(goldRow.querySelector('.portfolio-allocation-row__ratio')).toHaveAccessibleName('30%');
+    expect(goldRow.querySelector('[data-allocation-ratio-visual]')).toHaveTextContent('30%');
+    expect((goldRow.querySelector('.portfolio-allocation-row__fill') as HTMLElement)
+      .style.getPropertyValue('--allocation-scale')).toBe('0.3');
+    expect(anime.animate).not.toHaveBeenCalled();
   });
 
   it('uses the first item in the current view when investments tie for the largest ratio', () => {
