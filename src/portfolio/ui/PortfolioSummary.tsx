@@ -74,7 +74,8 @@ export function PortfolioSummary({
   const summaryRef = useAnimeScope<HTMLElement>(({ root, reducedMotion }) => {
     const currentRows = captureAllocationRows(root);
     const previous = motionSnapshotRef.current;
-    motionSnapshotRef.current = { key: motionKey, rows: currentRows };
+    const currentSnapshot = { key: motionKey, rows: currentRows };
+    motionSnapshotRef.current = currentSnapshot;
 
     if (previous === null || previous.key === motionKey || reducedMotion) return;
 
@@ -90,6 +91,12 @@ export function PortfolioSummary({
           translateY: [MOTION_DISTANCE_PX.reveal, 0],
           duration: MOTION_DURATION.normal,
           ease: MOTION_EASE.enter,
+          onUpdate: () => updateRowFrame(currentSnapshot, id, {
+            rect: row.getBoundingClientRect(),
+          }),
+          onComplete: () => updateRowFrame(currentSnapshot, id, {
+            rect: row.getBoundingClientRect(),
+          }),
         });
       } else {
         const deltaY = prior.rect.top - current.rect.top;
@@ -98,6 +105,12 @@ export function PortfolioSummary({
             translateY: [deltaY, 0],
             duration: MOTION_DURATION.normal,
             ease: MOTION_EASE.update,
+            onUpdate: () => updateRowFrame(currentSnapshot, id, {
+              rect: row.getBoundingClientRect(),
+            }),
+            onComplete: () => updateRowFrame(currentSnapshot, id, {
+              rect: row.getBoundingClientRect(),
+            }),
           });
         }
       }
@@ -111,6 +124,12 @@ export function PortfolioSummary({
           scaleX: [previousPercentage / 100, current.percentage / 100],
           duration: MOTION_DURATION.normal,
           ease: MOTION_EASE.update,
+          onUpdate: () => updateRowFrame(currentSnapshot, id, {
+            percentage: visualFillPercentage(fill, current.percentage),
+          }),
+          onComplete: () => updateRowFrame(currentSnapshot, id, {
+            percentage: current.percentage,
+          }),
         });
       }
 
@@ -223,6 +242,25 @@ function captureAllocationRows(root: HTMLElement): Map<string, AllocationRowFram
 
 function clampedPercentage(percentage: number): number {
   return Math.max(0, Math.min(100, percentage));
+}
+
+function updateRowFrame(
+  snapshot: AllocationMotionSnapshot,
+  id: string,
+  update: Partial<AllocationRowFrame>,
+): void {
+  const frame = snapshot.rows.get(id);
+  if (frame === undefined) return;
+  snapshot.rows.set(id, { ...frame, ...update });
+}
+
+function visualFillPercentage(fill: HTMLElement, fallback: number): number {
+  const transform = fill.style.transform || getComputedStyle(fill).transform;
+  const scaleX = transform.match(/scaleX\(\s*([+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?)\s*\)/i)?.[1]
+    ?? transform.match(/matrix(?:3d)?\(\s*([+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?)/i)?.[1];
+  if (scaleX === undefined) return fallback;
+  const parsed = Number(scaleX);
+  return Number.isFinite(parsed) ? clampedPercentage(parsed * 100) : fallback;
 }
 
 function animateSafely(

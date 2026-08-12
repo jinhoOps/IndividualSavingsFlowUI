@@ -321,6 +321,81 @@ describe('PortfolioSummary', () => {
     expect(anime.animate).not.toHaveBeenCalled();
   });
 
+  it('continues a rapid replacement from the currently displayed row and fill', () => {
+    let tops: Record<string, number> = { index: 0, bond: 100, gold: 200, cash: 300 };
+    mockRowLayout(() => tops);
+    const { rerender } = render(
+      <PortfolioSummary
+        investmentWon={800_000}
+        allocation={allocation}
+        preferences={{ showAmounts: false, sortMode: 'ratio' }}
+        onEdit={() => undefined}
+      />,
+    );
+    tops = { gold: 0, index: 100, bond: 200, cash: 300 };
+    rerender(
+      <PortfolioSummary
+        investmentWon={800_000}
+        allocation={changedAllocation}
+        preferences={{ showAmounts: false, sortMode: 'input' }}
+        onEdit={() => undefined}
+      />,
+    );
+    const goldRow = screen.getAllByRole('listitem')[0];
+    const fill = goldRow.querySelector<HTMLElement>('.portfolio-allocation-row__fill');
+    const rowTransition = anime.animate.mock.calls.find(([target]) => target === goldRow);
+    const fillTransition = anime.animate.mock.calls.find(([target]) => target === fill);
+    const rowOptions = rowTransition?.[1] as { onUpdate?: () => void } | undefined;
+    const fillOptions = fillTransition?.[1] as { onUpdate?: () => void } | undefined;
+    expect(rowOptions?.onUpdate).toEqual(expect.any(Function));
+    expect(fillOptions?.onUpdate).toEqual(expect.any(Function));
+    tops.gold = 100;
+    fill!.style.transform = 'scaleX(0.225)';
+    rowOptions?.onUpdate?.();
+    fillOptions?.onUpdate?.();
+    const visualNumberTransition = anime.animate.mock.calls.find(([, options]) => (
+      typeof options === 'object' && options !== null && 'value' in options
+    ));
+    const visualNumberState = visualNumberTransition?.[0] as { value: number } | undefined;
+    const visualNumberOptions = visualNumberTransition?.[1] as { onUpdate?: () => void } | undefined;
+    if (visualNumberState !== undefined) visualNumberState.value = 22.5;
+    visualNumberOptions?.onUpdate?.();
+    anime.animate.mockClear();
+    tops = { gold: 0, index: 100, bond: 200, cash: 300 };
+    const latestAllocation: MaterializedAllocation = {
+      ...changedAllocation,
+      items: [{
+        ...changedAllocation.items[0], shareUnits: 500_000, amountWon: 400_000, percentage: 50,
+      }, {
+        ...changedAllocation.items[1], shareUnits: 250_000, amountWon: 200_000, percentage: 25,
+      }, {
+        ...changedAllocation.items[2], shareUnits: 150_000, amountWon: 120_000, percentage: 15,
+      }],
+    };
+
+    rerender(
+      <PortfolioSummary
+        investmentWon={800_000}
+        allocation={latestAllocation}
+        preferences={{ showAmounts: false, sortMode: 'input' }}
+        onEdit={() => undefined}
+      />,
+    );
+
+    expect(anime.animate).toHaveBeenCalledWith(
+      goldRow,
+      expect.objectContaining({ translateY: [100, 0], duration: 180 }),
+    );
+    expect(anime.animate).toHaveBeenCalledWith(
+      fill,
+      expect.objectContaining({ scaleX: [0.225, 0.5], duration: 180 }),
+    );
+    expect(anime.animate).toHaveBeenCalledWith(
+      expect.objectContaining({ value: 22.5 }),
+      expect.objectContaining({ value: 50, duration: 180 }),
+    );
+  });
+
   it('uses the first item in the current view when investments tie for the largest ratio', () => {
     const tied: MaterializedAllocation = {
       items: [{
