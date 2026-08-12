@@ -16,14 +16,35 @@ export function useAnimeScope<T extends HTMLElement>(
     const root = rootRef.current;
     if (root === null) return undefined;
 
-    const scope = createScope({
-      root,
-      mediaQueries: { reducedMotion: '(prefers-reduced-motion: reduce)' },
-    });
+    let scope: ReturnType<typeof createScope>;
+    try {
+      scope = createScope({
+        root,
+        mediaQueries: { reducedMotion: '(prefers-reduced-motion: reduce)' },
+      });
+    } catch {
+      setup({ root, reducedMotion: true });
+      return undefined;
+    }
+    let consumerFailed = false;
+    let consumerError: unknown;
 
-    scope.add(() => {
-      setup({ root, reducedMotion: scope.matches.reducedMotion === true });
-    });
+    try {
+      scope.add(() => {
+        try {
+          setup({ root, reducedMotion: scope.matches.reducedMotion === true });
+        } catch (error) {
+          consumerFailed = true;
+          consumerError = error;
+          throw error;
+        }
+      });
+    } catch {
+      scope.revert();
+      if (consumerFailed) throw consumerError;
+      setup({ root, reducedMotion: true });
+      return undefined;
+    }
 
     return () => scope.revert();
     // The caller explicitly controls when its scoped setup is recreated.

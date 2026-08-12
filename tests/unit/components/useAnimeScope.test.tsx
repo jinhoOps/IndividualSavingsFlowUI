@@ -57,4 +57,33 @@ describe('useAnimeScope', () => {
 
     expect(onSetup).toHaveBeenCalledWith(true);
   });
+
+  it('falls back to the immediate final state when scope construction is unavailable', () => {
+    anime.createScope.mockImplementationOnce(() => {
+      throw new TypeError('window.matchMedia is unavailable');
+    });
+    const onSetup = vi.fn();
+
+    expect(() => render(<Probe onSetup={onSetup} />)).not.toThrow();
+
+    expect(onSetup).toHaveBeenCalledWith(true);
+  });
+
+  it('reverts a partial Anime scope and falls back when its setup cannot initialize', () => {
+    anime.scope.add.mockImplementationOnce(() => {
+      throw new TypeError('motion setup API is unavailable');
+    });
+    const onSetup = vi.fn();
+
+    expect(() => render(<Probe onSetup={onSetup} />)).not.toThrow();
+
+    expect(anime.scope.revert).toHaveBeenCalledOnce();
+    expect(onSetup).toHaveBeenCalledWith(true);
+  });
+
+  it('does not treat a consumer setup failure as an Anime initialization failure', () => {
+    const setupError = new Error('consumer setup failed');
+
+    expect(() => render(<Probe onSetup={() => { throw setupError; }} />)).toThrow(setupError);
+  });
 });

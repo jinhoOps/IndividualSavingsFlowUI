@@ -1,11 +1,19 @@
-import { useEffect, useRef, useState } from 'react';
+import { animate } from 'animejs';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Surface } from '../../components/common/Surface';
+import { MOTION_DURATION, MOTION_EASE } from '../../components/motion/tokens';
+import { useAnimeScope } from '../../components/motion/useAnimeScope';
 import type {
   CompoundSimulationDraft,
   ProjectionPoint,
   ProjectionResult,
 } from '../domain/model';
-import { buildChartGeometry, tooltipPlacement } from './chartGeometry';
+import {
+  buildChartGeometry,
+  tooltipPlacement,
+  type ChartGeometry,
+  type ChartGeometryPoint,
+} from './chartGeometry';
 import { formatWon } from './format';
 import { GrowthChartTooltip } from './GrowthChartTooltip';
 
@@ -17,9 +25,63 @@ export function GrowthChart({
   amountMode: CompoundSimulationDraft['amountMode'];
 }) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
-  const chartRef = useRef<HTMLElement>(null);
   const touchPointerRef = useRef<number | null>(null);
+  const previousGeometryRef = useRef<ChartGeometry | null>(null);
+  const revealClipId = `growth-chart-reveal-${useId().replace(/:/g, '')}`;
   const compactTooltip = useCompactTooltip();
+  const geometry = useMemo(
+    () => buildChartGeometry(result.points, amountMode),
+    [amountMode, result.points],
+  );
+  const chartRef = useAnimeScope<HTMLElement>(({ root, reducedMotion }) => {
+    const motionPaths = findMotionPaths(root);
+    const revealClip = root.querySelector<SVGRectElement>('.growth-chart__reveal-clip');
+    const previousGeometry = previousGeometryRef.current;
+    previousGeometryRef.current = geometry;
+
+    if (motionPaths === null || revealClip === null) return;
+
+    const revealWidth = geometry.plot.right - geometry.plot.left;
+    revealClip.setAttribute('width', String(revealWidth));
+    setMotionPaths(motionPaths, finalPaths(geometry));
+
+    if (reducedMotion) return;
+
+    if (previousGeometry === null) {
+      revealClip.setAttribute('width', '0');
+      try {
+        animate(revealClip, {
+          width: revealWidth,
+          duration: MOTION_DURATION.emphasis,
+          ease: MOTION_EASE.enter,
+          onComplete: () => revealClip.setAttribute('width', String(revealWidth)),
+        });
+      } catch {
+        revealClip.setAttribute('width', String(revealWidth));
+      }
+      return;
+    }
+
+    const transition = createPathTransition(previousGeometry, geometry);
+    const state = { progress: 0 };
+    setMotionPaths(motionPaths, transition(0));
+    try {
+      animate(state, {
+        progress: 1,
+        duration: MOTION_DURATION.emphasis,
+        ease: MOTION_EASE.update,
+        onUpdate: () => setMotionPaths(motionPaths, transition(state.progress)),
+        onComplete: () => setMotionPaths(motionPaths, finalPaths(geometry)),
+      });
+    } catch {
+      setMotionPaths(motionPaths, finalPaths(geometry));
+    }
+  }, [
+    geometry.currentPlanAreaPath,
+    geometry.currentPlanPath,
+    geometry.allSavingsPath,
+  ]);
+
   useEffect(() => {
     if (activeIndex === null) return undefined;
     const dismiss = () => setActiveIndex(null);
@@ -33,7 +95,6 @@ export function GrowthChart({
       window.removeEventListener('scroll', dismiss);
     };
   }, [activeIndex]);
-  const geometry = buildChartGeometry(result.points, amountMode);
   const last = result.points.at(-1)!;
   const finalCurrent = displayed(last, 'current', amountMode);
   const finalSavings = displayed(last, 'allSavings', amountMode);
@@ -129,15 +190,59 @@ export function GrowthChart({
             if (touchPointerRef.current === event.pointerId) touchPointerRef.current = null;
           }}
         >
+          <defs>
+            <clipPath id={revealClipId}>
+              <rect
+                className="growth-chart__reveal-clip"
+                x={geometry.plot.left}
+                y={geometry.plot.top}
+                width={geometry.plot.right - geometry.plot.left}
+                height={geometry.plot.bottom - geometry.plot.top}
+              />
+            </clipPath>
+          </defs>
           {geometry.yTicks.map((tick) => (
             <g className="growth-chart__y-tick" key={tick.y}>
               <line x1={geometry.plot.left} x2={geometry.plot.right} y1={tick.y} y2={tick.y} />
               <text x={geometry.plot.left} y={tick.y}>{tick.label}</text>
             </g>
           ))}
-          <path className="growth-chart__area" d={geometry.currentPlanAreaPath} />
-          <path className="growth-chart__current" d={geometry.currentPlanPath} />
-          <path className="growth-chart__savings" d={geometry.allSavingsPath} />
+          <path
+            className="growth-chart__area growth-chart__semantic-path"
+            d={geometry.currentPlanAreaPath}
+          />
+          <path
+            className="growth-chart__current growth-chart__semantic-path"
+            d={geometry.currentPlanPath}
+          />
+          <path
+            className="growth-chart__savings growth-chart__semantic-path"
+            d={geometry.allSavingsPath}
+          />
+          <g
+            aria-hidden="true"
+            className="growth-chart__motion-layer"
+            clipPath={`url(#${revealClipId})`}
+          >
+            <path
+              aria-hidden="true"
+              className="growth-chart__area growth-chart__motion-path"
+              data-motion-series="area"
+              d={geometry.currentPlanAreaPath}
+            />
+            <path
+              aria-hidden="true"
+              className="growth-chart__current growth-chart__motion-path"
+              data-motion-series="current"
+              d={geometry.currentPlanPath}
+            />
+            <path
+              aria-hidden="true"
+              className="growth-chart__savings growth-chart__motion-path"
+              data-motion-series="savings"
+              d={geometry.allSavingsPath}
+            />
+          </g>
           {activeGeometry === null ? null : (
             <>
               <line
@@ -183,6 +288,111 @@ export function GrowthChart({
       </div>
     </Surface>
   );
+}
+
+interface MotionPaths {
+  area: SVGPathElement;
+  current: SVGPathElement;
+  savings: SVGPathElement;
+}
+
+interface ChartPaths {
+  area: string;
+  current: string;
+  savings: string;
+}
+
+function findMotionPaths(root: HTMLElement): MotionPaths | null {
+  const area = root.querySelector<SVGPathElement>('[data-motion-series="area"]');
+  const current = root.querySelector<SVGPathElement>('[data-motion-series="current"]');
+  const savings = root.querySelector<SVGPathElement>('[data-motion-series="savings"]');
+  return area === null || current === null || savings === null
+    ? null
+    : { area, current, savings };
+}
+
+function setMotionPaths(paths: MotionPaths, values: ChartPaths): void {
+  paths.area.setAttribute('d', values.area);
+  paths.current.setAttribute('d', values.current);
+  paths.savings.setAttribute('d', values.savings);
+}
+
+function finalPaths(geometry: ChartGeometry): ChartPaths {
+  return {
+    area: geometry.currentPlanAreaPath,
+    current: geometry.currentPlanPath,
+    savings: geometry.allSavingsPath,
+  };
+}
+
+function createPathTransition(
+  previous: ChartGeometry,
+  next: ChartGeometry,
+): (progress: number) => ChartPaths {
+  const sourceCurrent = resample(previous.points, next.points.length, 'currentY');
+  const sourceSavings = resample(previous.points, next.points.length, 'allSavingsY');
+
+  return (progress) => {
+    const current = interpolatePath(sourceCurrent, next.points, 'currentY', progress);
+    const savings = interpolatePath(sourceSavings, next.points, 'allSavingsY', progress);
+    const first = interpolatePoint(sourceCurrent[0], next.points[0], 'currentY', progress);
+    const last = interpolatePoint(sourceCurrent.at(-1), next.points.at(-1), 'currentY', progress);
+    const bottom = previous.plot.bottom
+      + (next.plot.bottom - previous.plot.bottom) * progress;
+    const area = first === null || last === null || current === ''
+      ? ''
+      : `${current} L ${last.x} ${bottom} L ${first.x} ${bottom} Z`;
+    return { area, current, savings };
+  };
+}
+
+function resample(
+  points: ChartGeometryPoint[],
+  count: number,
+  yKey: 'currentY' | 'allSavingsY',
+): ChartGeometryPoint[] {
+  if (count <= 0 || points.length === 0) return [];
+  if (count === 1) return [points[0]];
+  return Array.from({ length: count }, (_, index) => {
+    const position = index / (count - 1) * (points.length - 1);
+    const lowerIndex = Math.floor(position);
+    const upperIndex = Math.min(points.length - 1, Math.ceil(position));
+    const lower = points[lowerIndex];
+    const upper = points[upperIndex];
+    const progress = position - lowerIndex;
+    return {
+      ...lower,
+      x: lower.x + (upper.x - lower.x) * progress,
+      [yKey]: lower[yKey] + (upper[yKey] - lower[yKey]) * progress,
+    };
+  });
+}
+
+function interpolatePath(
+  previous: ChartGeometryPoint[],
+  next: ChartGeometryPoint[],
+  yKey: 'currentY' | 'allSavingsY',
+  progress: number,
+): string {
+  return next.map((point, index) => {
+    const interpolated = interpolatePoint(previous[index], point, yKey, progress);
+    return interpolated === null
+      ? ''
+      : `${index === 0 ? 'M' : 'L'} ${interpolated.x} ${interpolated.y}`;
+  }).filter(Boolean).join(' ');
+}
+
+function interpolatePoint(
+  previous: ChartGeometryPoint | undefined,
+  next: ChartGeometryPoint | undefined,
+  yKey: 'currentY' | 'allSavingsY',
+  progress: number,
+): { x: number; y: number } | null {
+  if (previous === undefined || next === undefined) return null;
+  return {
+    x: previous.x + (next.x - previous.x) * progress,
+    y: previous[yKey] + (next[yKey] - previous[yKey]) * progress,
+  };
 }
 
 function useCompactTooltip(): boolean {

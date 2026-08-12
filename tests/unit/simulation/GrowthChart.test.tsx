@@ -5,14 +5,34 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDefaultSimulationDraft } from '../../../src/simulation/domain/validation';
 import { projectCompoundGrowth } from '../../../src/simulation/domain/projection';
 import { GrowthChart } from '../../../src/simulation/ui/GrowthChart';
+import { SimulationComparison } from '../../../src/simulation/ui/SimulationComparison';
 import { formatWon } from '../../../src/simulation/ui/format';
 
 let compactViewport = false;
 
+const anime = vi.hoisted(() => {
+  const scope = {
+    add: vi.fn((callback: () => void) => callback()),
+    revert: vi.fn(),
+    matches: { reducedMotion: false },
+  };
+
+  return {
+    animate: vi.fn((_target: unknown, _options: unknown) => ({ cancel: vi.fn() })),
+    createScope: vi.fn(() => scope),
+    scope,
+  };
+});
+
+vi.mock('animejs', () => ({
+  animate: anime.animate,
+  createScope: anime.createScope,
+}));
+
 beforeEach(() => {
-  vi.stubGlobal('matchMedia', vi.fn().mockImplementation(() => ({
-    matches: compactViewport,
-    media: '(max-width: 767px)',
+  vi.stubGlobal('matchMedia', vi.fn().mockImplementation((query: string) => ({
+    matches: query === '(max-width: 767px)' && compactViewport,
+    media: query,
     onchange: null,
     addEventListener: vi.fn(),
     removeEventListener: vi.fn(),
@@ -24,7 +44,9 @@ beforeEach(() => {
 
 afterEach(() => {
   compactViewport = false;
+  anime.scope.matches.reducedMotion = false;
   vi.unstubAllGlobals();
+  vi.clearAllMocks();
   cleanup();
 });
 
@@ -35,6 +57,126 @@ const result = projectCompoundGrowth(createDefaultSimulationDraft({
 }, 456));
 
 describe('GrowthChart', () => {
+  it('draws the first result through a restrained 260ms visual-only reveal', () => {
+    const { container } = render(<GrowthChart result={result} amountMode="nominal" />);
+
+    const semantic = container.querySelector<SVGPathElement>(
+      '.growth-chart__semantic-path.growth-chart__current',
+    );
+    const visual = container.querySelector<SVGPathElement>(
+      '.growth-chart__motion-path.growth-chart__current',
+    );
+    const revealClip = container.querySelector<SVGRectElement>('.growth-chart__reveal-clip');
+
+    expect(semantic?.getAttribute('d')).toBeTruthy();
+    expect(visual).toHaveAttribute('aria-hidden', 'true');
+    expect(visual).toHaveAttribute('d', semantic?.getAttribute('d'));
+    expect(revealClip).toHaveAttribute('width', '0');
+    expect(anime.animate).toHaveBeenCalledWith(
+      revealClip,
+      expect.objectContaining({
+        width: 620,
+        duration: 260,
+      }),
+    );
+  });
+
+  it('commits final semantic paths while the visual overlay interpolates from prior geometry', () => {
+    const { container, rerender } = render(
+      <GrowthChart result={result} amountMode="nominal" />,
+    );
+    const previousSemanticPaths = semanticPaths(container);
+    anime.animate.mockClear();
+
+    const updatedResult = projectCompoundGrowth(createDefaultSimulationDraft({
+      monthlySavingsWon: 300_000,
+      monthlyInvestmentWon: 200_000,
+      mainUpdatedAt: 124,
+    }, 457));
+    rerender(<GrowthChart result={updatedResult} amountMode="real" />);
+
+    const finalSemanticPaths = semanticPaths(container);
+    const visualPaths = motionPaths(container);
+    expect(finalSemanticPaths).not.toEqual(previousSemanticPaths);
+    expect(visualPaths).toEqual(previousSemanticPaths);
+
+    const transitionCall = anime.animate.mock.calls.find(([target]) => (
+      typeof target === 'object' && target !== null && 'progress' in target
+    ));
+    expect(transitionCall).toBeDefined();
+    const transitionState = transitionCall?.[0] as { progress: number };
+    const transitionOptions = transitionCall?.[1] as {
+      duration: number;
+      onComplete(): void;
+      onUpdate(): void;
+      progress: number;
+    };
+    expect(transitionOptions).toEqual(expect.objectContaining({ progress: 1, duration: 260 }));
+
+    transitionState.progress = 0.5;
+    transitionOptions.onUpdate();
+    expect(motionPaths(container)).not.toEqual(previousSemanticPaths);
+    expect(motionPaths(container)).not.toEqual(finalSemanticPaths);
+
+    transitionOptions.onComplete();
+    expect(motionPaths(container)).toEqual(finalSemanticPaths);
+  });
+
+  it('does not restart graph motion for tooltip-only active year changes', () => {
+    const { container } = render(<GrowthChart result={result} amountMode="nominal" />);
+    const visualPaths = motionPaths(container);
+    anime.animate.mockClear();
+    anime.createScope.mockClear();
+
+    const explorer = screen.getByRole('application', { name: '그래프 연도 탐색' });
+    fireEvent.keyDown(explorer, { key: 'Home' });
+    fireEvent.keyDown(explorer, { key: 'ArrowRight' });
+
+    expect(screen.getByRole('status')).toHaveTextContent('1년');
+    expect(motionPaths(container)).toEqual(visualPaths);
+    expect(anime.createScope).not.toHaveBeenCalled();
+    expect(anime.animate).not.toHaveBeenCalled();
+  });
+
+  it('does not restart graph motion when an unrelated parent render recreates the result', () => {
+    const { rerender } = render(<GrowthChart result={result} amountMode="nominal" />);
+    anime.animate.mockClear();
+    anime.createScope.mockClear();
+
+    rerender(<GrowthChart
+      result={{ ...result, points: [...result.points] }}
+      amountMode="nominal"
+    />);
+
+    expect(anime.createScope).not.toHaveBeenCalled();
+    expect(anime.animate).not.toHaveBeenCalled();
+  });
+
+  it('renders final graph geometry immediately without an intermediate path for reduced motion', () => {
+    anime.scope.matches.reducedMotion = true;
+    const { container, rerender } = render(
+      <GrowthChart result={result} amountMode="nominal" />,
+    );
+
+    expect(motionPaths(container)).toEqual(semanticPaths(container));
+    expect(container.querySelector('.growth-chart__reveal-clip')).toHaveAttribute('width', '620');
+    expect(anime.animate).not.toHaveBeenCalled();
+
+    const updatedResult = projectCompoundGrowth({
+      ...createDefaultSimulationDraft({
+        monthlySavingsWon: 300_000,
+        monthlyInvestmentWon: 200_000,
+        mainUpdatedAt: 125,
+      }, 458),
+      years: 30,
+      expectedAnnualReturnPercent: 7,
+    });
+    rerender(<GrowthChart result={updatedResult} amountMode="real" />);
+
+    expect(motionPaths(container)).toEqual(semanticPaths(container));
+    expect(anime.animate).not.toHaveBeenCalled();
+  });
+
   it('defaults to detailed mode when matchMedia is unavailable', () => {
     vi.unstubAllGlobals();
     render(<GrowthChart result={result} amountMode="nominal" />);
@@ -187,6 +329,52 @@ describe('GrowthChart', () => {
     expect(screen.getByText(new RegExp(formatWon(result.finalCurrentPlanWon)))).toBeVisible();
   });
 });
+
+describe('SimulationComparison', () => {
+  it('keeps final comparison text semantic while both visual values interpolate', () => {
+    const { container, rerender } = render(<SimulationComparison result={result} />);
+    const initialVisualValues = comparisonVisualValues(container);
+    anime.animate.mockClear();
+
+    const updated = {
+      ...result,
+      advantageOverAllSavingsWon: 123_456_000,
+      principalRatioPercent: 187.6,
+    };
+    rerender(<SimulationComparison result={updated} />);
+
+    expect(comparisonSemanticValues(container)).toEqual([
+      formatWon(123_456_000),
+      '188%',
+    ]);
+    expect(comparisonVisualValues(container)).toEqual(initialVisualValues);
+    expect(anime.animate).toHaveBeenCalledTimes(2);
+    expect(anime.animate.mock.calls.map(([, options]) => options)).toEqual([
+      expect.objectContaining({ value: 123_456_000, duration: 180 }),
+      expect.objectContaining({ value: 187.6, duration: 180 }),
+    ]);
+  });
+});
+
+function semanticPaths(container: HTMLElement): string[] {
+  return [...container.querySelectorAll<SVGPathElement>('.growth-chart__semantic-path')]
+    .map((path) => path.getAttribute('d') ?? '');
+}
+
+function motionPaths(container: HTMLElement): string[] {
+  return [...container.querySelectorAll<SVGPathElement>('.growth-chart__motion-path')]
+    .map((path) => path.getAttribute('d') ?? '');
+}
+
+function comparisonSemanticValues(container: HTMLElement): string[] {
+  return [...container.querySelectorAll<HTMLElement>('.simulation-comparison__semantic-value')]
+    .map((element) => element.textContent ?? '');
+}
+
+function comparisonVisualValues(container: HTMLElement): string[] {
+  return [...container.querySelectorAll<HTMLElement>('.simulation-comparison__visual-value')]
+    .map((element) => element.textContent ?? '');
+}
 
 function pointerEvent(type: string, clientX: number): MouseEvent {
   const event = new MouseEvent(type, { bubbles: true, clientX });
