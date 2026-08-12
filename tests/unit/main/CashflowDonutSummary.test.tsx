@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { calculateCashflow } from '../../../src/main/domain/cashflow';
@@ -7,7 +7,7 @@ import { CashflowDonutSummary } from '../../../src/main/ui/dashboard/CashflowDon
 import { CashflowSummary } from '../../../src/main/ui/dashboard/CashflowSummary';
 
 const anime = vi.hoisted(() => ({
-  animate: vi.fn(() => ({ cancel: vi.fn() })),
+  animate: vi.fn((_target: unknown, _options: unknown) => ({ cancel: vi.fn() })),
 }));
 
 vi.mock('animejs', () => ({
@@ -17,6 +17,7 @@ vi.mock('animejs', () => ({
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  vi.unstubAllGlobals();
 });
 
 const appliedData: MainData = {
@@ -74,6 +75,114 @@ describe('CashflowDonutSummary', () => {
     expect(centerVisual).toHaveTextContent('15.6%');
     expect(centerVisual).toHaveAttribute('aria-hidden', 'true');
     expect(container.querySelector('.cashflow-donut__center strong > .sr-only')).toHaveTextContent('21.9%');
+  });
+
+  it('shrinks a surplus remaining arc to zero before removing its visual-only circle', () => {
+    const { container, rerender } = render(<CashflowDonutSummary data={appliedData} />);
+    rerender(<CashflowDonutSummary data={{
+      ...appliedData,
+      updatedAt: 2,
+      monthlyInvestmentWon: 1_500_000,
+    }} />);
+
+    expect(screen.getByRole('img')).not.toHaveAccessibleName(/여윳돈/);
+    expect(screen.queryByRole('button', { name: /여윳돈/ })).not.toBeInTheDocument();
+    const exitingRemaining = container.querySelector(
+      'circle.cashflow-donut__segment--remaining',
+    );
+    expect(exitingRemaining).toHaveAttribute('aria-hidden', 'true');
+    expect(exitingRemaining).toHaveAttribute('stroke-dasharray', '28.125 71.875');
+
+    const animationIndex = anime.animate.mock.calls.findIndex(([, options]) => (
+      (options as { visiblePercentage?: number }).visiblePercentage === 0
+    ));
+    const state = anime.animate.mock.calls[animationIndex][0] as {
+      dashoffset: number;
+      visiblePercentage: number;
+    };
+    const options = anime.animate.mock.calls[animationIndex][1] as {
+      dashoffset: number;
+      onComplete(): void;
+      onUpdate(): void;
+      visiblePercentage: number;
+    };
+    act(() => {
+      state.visiblePercentage = options.visiblePercentage;
+      state.dashoffset = options.dashoffset;
+      options.onUpdate();
+      options.onComplete();
+    });
+
+    expect(container.querySelector('circle.cashflow-donut__segment--remaining'))
+      .not.toBeInTheDocument();
+  });
+
+  it('grows a restored remaining arc from zero with final chart semantics immediately', () => {
+    const deficit = { ...appliedData, monthlyInvestmentWon: 1_500_000 };
+    const { container, rerender } = render(<CashflowDonutSummary data={deficit} />);
+
+    rerender(<CashflowDonutSummary data={{ ...appliedData, updatedAt: 2 }} />);
+
+    expect(screen.getByRole('img')).toHaveAccessibleName(/여윳돈 28\.1%/);
+    expect(screen.getByRole('button', { name: /여윳돈 · 90만 원 · 28\.1%/ })).toBeVisible();
+    expect(container.querySelector('circle.cashflow-donut__segment--remaining'))
+      .toHaveAttribute('stroke-dasharray', '0 100');
+  });
+
+  it('cancels an exiting arc when a newer applied update restores it', () => {
+    const { container, rerender } = render(<CashflowDonutSummary data={appliedData} />);
+    const deficit = { ...appliedData, updatedAt: 2, monthlyInvestmentWon: 1_500_000 };
+    rerender(<CashflowDonutSummary data={deficit} />);
+    const exitingIndex = anime.animate.mock.calls.findIndex(([, options]) => (
+      (options as { visiblePercentage?: number }).visiblePercentage === 0
+    ));
+    const exitingResult = anime.animate.mock.results[exitingIndex].value as {
+      cancel: ReturnType<typeof vi.fn>;
+    };
+    const exitingOptions = anime.animate.mock.calls[exitingIndex][1] as { onComplete(): void };
+
+    rerender(<CashflowDonutSummary data={{ ...appliedData, updatedAt: 3 }} />);
+    expect(exitingResult.cancel).toHaveBeenCalledOnce();
+    act(() => exitingOptions.onComplete());
+
+    expect(container.querySelector('circle.cashflow-donut__segment--remaining'))
+      .toBeInTheDocument();
+    expect(screen.getByRole('img')).toHaveAccessibleName(/여윳돈 28\.1%/);
+  });
+
+  it('removes an exiting arc synchronously under reduced motion', () => {
+    vi.stubGlobal('matchMedia', vi.fn().mockReturnValue({ matches: true }));
+    const { container, rerender } = render(<CashflowDonutSummary data={appliedData} />);
+
+    rerender(<CashflowDonutSummary data={{
+      ...appliedData,
+      updatedAt: 2,
+      monthlyInvestmentWon: 1_500_000,
+    }} />);
+
+    expect(container.querySelector('circle.cashflow-donut__segment--remaining'))
+      .not.toBeInTheDocument();
+    expect(screen.getByRole('img')).not.toHaveAccessibleName(/여윳돈/);
+    expect(anime.animate).not.toHaveBeenCalled();
+  });
+
+  it('cancels an exiting arc animation on unmount', () => {
+    const { rerender, unmount } = render(<CashflowDonutSummary data={appliedData} />);
+    rerender(<CashflowDonutSummary data={{
+      ...appliedData,
+      updatedAt: 2,
+      monthlyInvestmentWon: 1_500_000,
+    }} />);
+    const exitingIndex = anime.animate.mock.calls.findIndex(([, options]) => (
+      (options as { visiblePercentage?: number }).visiblePercentage === 0
+    ));
+    const exitingResult = anime.animate.mock.results[exitingIndex].value as {
+      cancel: ReturnType<typeof vi.fn>;
+    };
+
+    unmount();
+
+    expect(exitingResult.cancel).toHaveBeenCalledOnce();
   });
 
   it('renders the accessible allocation chart, savings-investment center, and legend controls', () => {

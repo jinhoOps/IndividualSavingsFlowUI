@@ -422,10 +422,17 @@ test('review assembly captures timed deficit geometry and reduced motion', async
   };
   const readAssemblyState = async () => page.locator('.allocation-bar').evaluate((element) => {
     const track = element.querySelector<HTMLElement>('.allocation-bar__visual-track')!;
+    const overflowLabel = element.querySelector<HTMLElement>('.cashflow-bar__overflow-label');
     const matrix = new DOMMatrixReadOnly(getComputedStyle(track).transform);
     const opacities = Array.from(element.querySelectorAll<HTMLElement>('[data-assembly-content]'))
       .map((content) => Number(getComputedStyle(content).opacity));
-    return { scaleX: matrix.a, opacities };
+    return {
+      scaleX: matrix.a,
+      opacities,
+      overflowLabelOpacity: overflowLabel === null
+        ? null
+        : Number(getComputedStyle(overflowLabel).opacity),
+    };
   });
   const expectOverflowGeometry = async (
     draft: typeof appliedMainV2,
@@ -488,7 +495,21 @@ test('review assembly captures timed deficit geometry and reduced motion', async
     await capture(viewport.width, 'deficit-unclipped');
 
     await showReview(clippedDeficit);
+    const clippedStart = await readAssemblyState();
+    expect(clippedStart.scaleX).toBeLessThan(0.1);
+    expect(clippedStart.overflowLabelOpacity ?? 1).toBeLessThan(0.1);
+    await capture(viewport.width, 'deficit-clipped-start');
+
+    await page.clock.runFor(130);
+    const clippedMiddle = await readAssemblyState();
+    expect(clippedMiddle.scaleX).toBeGreaterThan(0.1);
+    expect(clippedMiddle.scaleX).toBeLessThan(1);
+    expect(clippedMiddle.overflowLabelOpacity ?? 1).toBeLessThan(1);
+    await capture(viewport.width, 'deficit-clipped-mid');
+
     await page.clock.runFor(1_200);
+    const clippedFinal = await readAssemblyState();
+    expect(clippedFinal.overflowLabelOpacity).toBe(1);
     await expectOverflowGeometry(clippedDeficit, true);
     await capture(viewport.width, 'deficit-clipped');
 
@@ -1167,6 +1188,62 @@ test('dashboard edit persists only the v2 scalar plan', async ({ page }) => {
     'schemaVersion',
     'updatedAt',
   ]);
+});
+
+test('dashboard deficit entry keeps exiting remaining geometry until interpolation completes', async ({ page }, testInfo) => {
+  await page.clock.install({ time: new Date('2026-08-12T00:00:00Z') });
+  await page.addInitScript((fixture) => {
+    localStorage.setItem('isf-workspace-v1', JSON.stringify(fixture));
+  }, appliedWorkspaceV1);
+  await page.goto('apps/main/');
+  await page.clock.pauseAt(new Date('2026-08-12T00:01:00Z'));
+  await page.getByText('자세히 보기', { exact: true }).click();
+
+  await page.getByRole('button', { name: '월 투자 편집' }).click();
+  await page.getByLabel('월 투자액').fill('1500000');
+  await page.getByRole('button', { name: '적용' }).click();
+
+  await expect(page.locator('.cashflow-donut__chart svg')).not.toHaveAccessibleName(/여윳돈/);
+  await expect(page.getByRole('button', { name: /여윳돈 ·/ })).toHaveCount(0);
+  await expect(page.getByRole('table', { name: '월 자금 항목' }).getByRole('row', { name: /남는 돈/ }))
+    .toHaveCount(0);
+  await expect(page.getByLabel('월 수입 나누기').getByText('수입보다 40만 원 초과'))
+    .toBeVisible();
+
+  const remainingArc = page.locator('circle.cashflow-donut__segment--remaining');
+  const remainingBar = page.locator('.allocation-bar__visual-segment--remaining');
+  await expect(remainingArc).toHaveAttribute('aria-hidden', 'true');
+  await expect(remainingArc).toHaveAttribute('stroke-dasharray', '28.125 71.875');
+  await expect.poll(() => remainingBar.evaluate(
+    (element) => (element as HTMLElement).style.width,
+  )).toBe('28.125%');
+  await page.screenshot({
+    fullPage: true,
+    path: testInfo.outputPath('main-dashboard-deficit-entry-start.png'),
+  });
+
+  await page.clock.runFor(130);
+  const middle = await Promise.all([
+    remainingArc.getAttribute('stroke-dasharray'),
+    remainingBar.evaluate((element) => Number.parseFloat((element as HTMLElement).style.width)),
+  ]);
+  const middleArc = Number.parseFloat(middle[0] ?? '0');
+  expect(middleArc).toBeGreaterThan(0);
+  expect(middleArc).toBeLessThan(28.125);
+  expect(middle[1]).toBeGreaterThan(0);
+  expect(middle[1]).toBeLessThan(28.125);
+  await page.screenshot({
+    fullPage: true,
+    path: testInfo.outputPath('main-dashboard-deficit-entry-mid.png'),
+  });
+
+  await page.clock.runFor(500);
+  await expect(remainingArc).toHaveCount(0);
+  await expect(remainingBar).toHaveCount(0);
+  await page.screenshot({
+    fullPage: true,
+    path: testInfo.outputPath('main-dashboard-deficit-entry-final.png'),
+  });
 });
 
 test('월 자금 계획 편집은 편집 중인 금액의 빠른 조정만 표시한다', async ({ page }) => {

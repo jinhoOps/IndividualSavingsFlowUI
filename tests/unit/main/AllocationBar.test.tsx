@@ -4,14 +4,19 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { MainData } from '../../../src/main/domain/model';
 import { AllocationBar } from '../../../src/main/ui/setup/AllocationBar';
 
+const anime = vi.hoisted(() => ({
+  animate: vi.fn((_target: unknown, _options: unknown) => ({ cancel: vi.fn() })),
+}));
+
 vi.mock('animejs', () => ({
-  animate: vi.fn(() => ({ cancel: vi.fn() })),
+  animate: anime.animate,
 }));
 
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
+  vi.clearAllMocks();
 });
 
 const cashflowFixture: MainData = {
@@ -118,6 +123,108 @@ describe('AllocationBar', () => {
 
     expect(screen.getByRole('row', { name: /투자 40만 원 12\.5%/ })).toBeVisible();
     expect(investment).toHaveStyle({ width: '6.25%' });
+  });
+
+  it('shrinks a surplus remaining segment to zero before removing its visual-only node', () => {
+    const { container, rerender } = render(<AllocationBar data={cashflowFixture} />);
+
+    rerender(<AllocationBar data={{
+      ...cashflowFixture,
+      updatedAt: 2,
+      monthlyInvestmentWon: 1_500_000,
+    }} />);
+
+    expect(screen.queryByRole('row', { name: /남는 돈/ })).not.toBeInTheDocument();
+    const exitingRemaining = container.querySelector<HTMLElement>(
+      '.allocation-bar__visual-segment--remaining',
+    );
+    expect(exitingRemaining).toHaveStyle({ width: '28.125%' });
+    expect(exitingRemaining?.closest('[aria-hidden="true"]')).not.toBeNull();
+
+    const animationIndex = anime.animate.mock.calls.findIndex(([, options]) => (
+      (options as { remaining?: number }).remaining === 0
+    ));
+    const state = anime.animate.mock.calls[animationIndex][0] as { remaining: number };
+    const options = anime.animate.mock.calls[animationIndex][1] as {
+      onComplete(): void;
+      onUpdate(): void;
+      remaining: number;
+    };
+    act(() => {
+      state.remaining = options.remaining;
+      options.onUpdate();
+      options.onComplete();
+    });
+
+    expect(container.querySelector('.allocation-bar__visual-segment--remaining'))
+      .not.toBeInTheDocument();
+  });
+
+  it('grows a newly restored remaining segment from zero with final semantics immediately', () => {
+    const deficit = { ...cashflowFixture, monthlyInvestmentWon: 1_500_000 };
+    const { container, rerender } = render(<AllocationBar data={deficit} />);
+
+    rerender(<AllocationBar data={{ ...cashflowFixture, updatedAt: 2 }} />);
+
+    expect(screen.getByRole('row', { name: /남는 돈 90만 원 28\.1%/ })).toBeVisible();
+    expect(container.querySelector('.allocation-bar__visual-segment--remaining'))
+      .toHaveStyle({ width: '0%' });
+  });
+
+  it('cancels an exiting segment animation when a newer applied update restores it', () => {
+    const { container, rerender } = render(<AllocationBar data={cashflowFixture} />);
+    const deficit = { ...cashflowFixture, updatedAt: 2, monthlyInvestmentWon: 1_500_000 };
+    rerender(<AllocationBar data={deficit} />);
+    const exitingIndex = anime.animate.mock.calls.findIndex(([, options]) => (
+      (options as { remaining?: number }).remaining === 0
+    ));
+    const exitingResult = anime.animate.mock.results[exitingIndex].value as {
+      cancel: ReturnType<typeof vi.fn>;
+    };
+    const exitingOptions = anime.animate.mock.calls[exitingIndex][1] as { onComplete(): void };
+
+    rerender(<AllocationBar data={{ ...cashflowFixture, updatedAt: 3 }} />);
+    expect(exitingResult.cancel).toHaveBeenCalledOnce();
+    act(() => exitingOptions.onComplete());
+
+    expect(container.querySelector('.allocation-bar__visual-segment--remaining'))
+      .toBeInTheDocument();
+    expect(screen.getByRole('row', { name: /남는 돈 90만 원 28\.1%/ })).toBeVisible();
+  });
+
+  it('removes exiting visual geometry synchronously under reduced motion', () => {
+    vi.stubGlobal('matchMedia', vi.fn().mockReturnValue({ matches: true }));
+    const { container, rerender } = render(<AllocationBar data={cashflowFixture} />);
+
+    rerender(<AllocationBar data={{
+      ...cashflowFixture,
+      updatedAt: 2,
+      monthlyInvestmentWon: 1_500_000,
+    }} />);
+
+    expect(container.querySelector('.allocation-bar__visual-segment--remaining'))
+      .not.toBeInTheDocument();
+    expect(screen.queryByRole('row', { name: /남는 돈/ })).not.toBeInTheDocument();
+    expect(anime.animate).not.toHaveBeenCalled();
+  });
+
+  it('cancels an exiting segment animation on unmount', () => {
+    const { rerender, unmount } = render(<AllocationBar data={cashflowFixture} />);
+    rerender(<AllocationBar data={{
+      ...cashflowFixture,
+      updatedAt: 2,
+      monthlyInvestmentWon: 1_500_000,
+    }} />);
+    const exitingIndex = anime.animate.mock.calls.findIndex(([, options]) => (
+      (options as { remaining?: number }).remaining === 0
+    ));
+    const exitingResult = anime.animate.mock.results[exitingIndex].value as {
+      cancel: ReturnType<typeof vi.fn>;
+    };
+
+    unmount();
+
+    expect(exitingResult.cancel).toHaveBeenCalledOnce();
   });
 
   it('shows allocation labels, amounts, and income percentages in a table', () => {
@@ -277,7 +384,7 @@ describe('AllocationBar', () => {
     expect(track).toHaveAttribute('data-desired-end-percent', '137.5');
     expect(track).toHaveAttribute('data-visible-end-percent', '120');
     expect(track).toHaveAttribute('data-overflow-clipped', 'true');
-    expect(screen.getByText('+37.5% 초과')).toBeVisible();
+    expect(screen.getByText('+37.5% 초과')).toHaveAttribute('data-assembly-content');
     expect(screen.getByRole('row', { name: /초과 120만 원 37\.5%/ })).toBeVisible();
   });
 

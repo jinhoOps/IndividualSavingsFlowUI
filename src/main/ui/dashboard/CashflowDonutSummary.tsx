@@ -23,6 +23,13 @@ interface DonutSegmentMotionState {
   animation?: JSAnimation;
 }
 
+const DONUT_ALLOCATION_IDS: DonutAllocation['id'][] = [
+  'consumption',
+  'saving',
+  'investment',
+  'remaining',
+];
+
 export function CashflowDonutSummary({ data }: CashflowDonutSummaryProps) {
   const [hoveredId, setHoveredId] = useState<DonutAllocation['id']>();
   const [focusedId, setFocusedId] = useState<DonutAllocation['id']>();
@@ -37,6 +44,15 @@ export function CashflowDonutSummary({ data }: CashflowDonutSummaryProps) {
   const activeAllocation = insight.allocations.find((allocation) => allocation.id === activeId);
   const hasIncome = data.monthlyNetIncomeWon > 0;
   const segmentGeometry = createDonutSegmentGeometry(insight.allocations);
+  const targetSegmentIds = segmentGeometry.map((segment) => segment.id);
+  const [visualSegmentIds, setVisualSegmentIds] = useState<DonutAllocation['id'][]>(
+    () => targetSegmentIds,
+  );
+  const renderedVisualSegmentIds = mergeDonutAllocationIds(
+    visualSegmentIds,
+    targetSegmentIds,
+  );
+  const motionGenerationRef = useRef(0);
 
   useLayoutEffect(() => {
     if (!geometryMountedRef.current) {
@@ -48,33 +64,34 @@ export function CashflowDonutSummary({ data }: CashflowDonutSummaryProps) {
           dashoffset: segment.dashoffset,
         },
       ]));
+      setVisualSegmentIds(targetSegmentIds);
       return undefined;
     }
 
+    const generation = ++motionGenerationRef.current;
     const reducedMotion = typeof window.matchMedia === 'function'
       && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const currentIds = new Set(segmentGeometry.map((segment) => segment.id));
-    for (const [id, state] of geometryStatesRef.current) {
-      if (!currentIds.has(id)) {
-        state.animation?.cancel();
-        geometryStatesRef.current.delete(id);
-      }
-    }
+    const targetById = new Map(segmentGeometry.map((segment) => [segment.id, segment]));
+    for (const state of geometryStatesRef.current.values()) state.animation?.cancel();
+    setVisualSegmentIds((current) => mergeDonutAllocationIds(current, targetSegmentIds));
 
-    for (const segment of segmentGeometry) {
-      const circle = circleRefs.current.get(segment.id);
+    for (const id of renderedVisualSegmentIds) {
+      const circle = circleRefs.current.get(id);
       if (circle === undefined) continue;
-      const state = geometryStatesRef.current.get(segment.id) ?? {
+      const segment = targetById.get(id) ?? exitingDonutSegment(id);
+      const exiting = !targetById.has(id);
+      const state = geometryStatesRef.current.get(id) ?? {
         visiblePercentage: 0,
         dashoffset: segment.dashoffset,
       };
-      state.animation?.cancel();
-      geometryStatesRef.current.set(segment.id, state);
+      geometryStatesRef.current.set(id, state);
 
       if (reducedMotion) {
         state.visiblePercentage = segment.visiblePercentage;
         state.dashoffset = segment.dashoffset;
         setCircleGeometry(circle, state);
+        state.animation = undefined;
+        if (exiting) geometryStatesRef.current.delete(id);
         continue;
       }
 
@@ -83,6 +100,10 @@ export function CashflowDonutSummary({ data }: CashflowDonutSummaryProps) {
         && state.dashoffset === segment.dashoffset
       ) {
         setCircleGeometry(circle, state);
+        if (exiting) {
+          geometryStatesRef.current.delete(id);
+          setVisualSegmentIds((current) => current.filter((candidate) => candidate !== id));
+        }
         continue;
       }
 
@@ -92,9 +113,22 @@ export function CashflowDonutSummary({ data }: CashflowDonutSummaryProps) {
         dashoffset: segment.dashoffset,
         duration: MOTION_DURATION.emphasis,
         ease: MOTION_EASE.update,
+        onComplete: () => {
+          if (motionGenerationRef.current !== generation) return;
+          state.visiblePercentage = segment.visiblePercentage;
+          state.dashoffset = segment.dashoffset;
+          setCircleGeometry(circle, state);
+          state.animation = undefined;
+          if (exiting) {
+            geometryStatesRef.current.delete(id);
+            setVisualSegmentIds((current) => current.filter((candidate) => candidate !== id));
+          }
+        },
         onUpdate: () => setCircleGeometry(circle, state),
       });
     }
+
+    if (reducedMotion) setVisualSegmentIds(targetSegmentIds);
 
     return undefined;
   }, [
@@ -106,6 +140,7 @@ export function CashflowDonutSummary({ data }: CashflowDonutSummaryProps) {
   ]);
 
   useEffect(() => () => {
+    motionGenerationRef.current += 1;
     for (const state of geometryStatesRef.current.values()) state.animation?.cancel();
   }, []);
 
@@ -159,20 +194,21 @@ export function CashflowDonutSummary({ data }: CashflowDonutSummaryProps) {
             }}
             onPointerLeave={() => setHoveredId(undefined)}
           >
-            {insight.allocations.map((allocation) => {
-              const geometry = segmentGeometry.find((segment) => segment.id === allocation.id)!;
+            {renderedVisualSegmentIds.map((id) => {
+              const geometry = segmentGeometry.find((segment) => segment.id === id)
+                ?? exitingDonutSegment(id);
               return (
                 <circle
                   aria-hidden="true"
-                  className={`cashflow-donut__segment--${allocation.id}${activeAllocation?.id === allocation.id ? ' cashflow-donut__segment--active' : ''}`}
+                  className={`cashflow-donut__segment--${id}${activeAllocation?.id === id ? ' cashflow-donut__segment--active' : ''}`}
                   cx="50"
                   cy="50"
                   fill="none"
-                  key={allocation.id}
+                  key={id}
                   pathLength="100"
                   ref={(element) => {
-                    if (element === null) circleRefs.current.delete(allocation.id);
-                    else circleRefs.current.set(allocation.id, element);
+                    if (element === null) circleRefs.current.delete(id);
+                    else circleRefs.current.set(id, element);
                   }}
                   r="40"
                   strokeDasharray={`${geometry.visiblePercentage} ${100 - geometry.visiblePercentage}`}
@@ -285,6 +321,19 @@ function createDonutSegmentGeometry(allocations: DonutAllocation[]): DonutSegmen
     offset += visiblePercentage;
     return segment;
   });
+}
+
+function exitingDonutSegment(id: DonutAllocation['id']): DonutSegmentGeometry {
+  return { id, visiblePercentage: 0, dashoffset: -100 };
+}
+
+function mergeDonutAllocationIds(
+  previousIds: DonutAllocation['id'][],
+  currentIds: DonutAllocation['id'][],
+): DonutAllocation['id'][] {
+  return DONUT_ALLOCATION_IDS.filter((id) => (
+    previousIds.includes(id) || currentIds.includes(id)
+  ));
 }
 
 function setCircleGeometry(

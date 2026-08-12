@@ -33,6 +33,7 @@ interface AllocationBarMotionState {
 }
 
 const MIN_INTERACTIVE_SIZE_PX = 44;
+const ALLOCATION_IDS: AllocationId[] = ['consumption', 'saving', 'investment', 'remaining'];
 
 export function AllocationBar({ data }: AllocationBarProps) {
   const [hoveredId, setHoveredId] = useState<string>();
@@ -53,6 +54,15 @@ export function AllocationBar({ data }: AllocationBarProps) {
   const cashflow = calculateCashflow(data);
   const isDeficit = cashflow.deficitWon > 0;
   const geometry = createCashflowBarGeometry(data, viewport);
+  const targetVisualSegmentIds = geometry.segments.map((segment) => segment.id);
+  const [visualSegmentIds, setVisualSegmentIds] = useState<AllocationId[]>(
+    () => targetVisualSegmentIds,
+  );
+  const renderedVisualSegmentIds = mergeAllocationIds(
+    visualSegmentIds,
+    targetVisualSegmentIds,
+  );
+  const motionGenerationRef = useRef(0);
   const visualSegments = geometry.segments.map((segment) => ({
     id: segment.id,
     visualPercentage: segment.widthPercent,
@@ -127,23 +137,28 @@ export function AllocationBar({ data }: AllocationBarProps) {
     if (bar === null) return undefined;
 
     const targetState = createBarMotionState(geometry);
+    const targetIds = geometry.segments.map((segment) => segment.id);
     const previousData = previousDataRef.current;
     const dataChanged = hasCashflowValueChange(previousData, data);
     previousDataRef.current = data;
 
     if (motionStateRef.current === undefined) {
       motionStateRef.current = targetState;
+      setVisualSegmentIds(targetIds);
       return undefined;
     }
 
+    const generation = ++motionGenerationRef.current;
     const state = motionStateRef.current;
     state.animation?.cancel();
     if (!dataChanged || prefersReducedMotion()) {
       assignBarMotionState(state, targetState);
       applyBarMotionState(bar, state);
+      setVisualSegmentIds(targetIds);
       return undefined;
     }
 
+    setVisualSegmentIds((current) => mergeAllocationIds(current, targetIds));
     applyBarMotionState(bar, state);
     state.animation = animate(state, {
       consumption: targetState.consumption,
@@ -154,6 +169,13 @@ export function AllocationBar({ data }: AllocationBarProps) {
       visibleEndPercent: targetState.visibleEndPercent,
       duration: MOTION_DURATION.emphasis,
       ease: MOTION_EASE.update,
+      onComplete: () => {
+        if (motionGenerationRef.current !== generation) return;
+        assignBarMotionState(state, targetState);
+        applyBarMotionState(bar, state);
+        state.animation = undefined;
+        setVisualSegmentIds(targetIds);
+      },
       onUpdate: () => applyBarMotionState(bar, state),
     });
 
@@ -169,6 +191,7 @@ export function AllocationBar({ data }: AllocationBarProps) {
   ]);
 
   useEffect(() => () => {
+    motionGenerationRef.current += 1;
     motionStateRef.current?.animation?.cancel();
   }, []);
 
@@ -282,16 +305,20 @@ export function AllocationBar({ data }: AllocationBarProps) {
                 width: `${relativeStripWidth(geometry.desiredEndPercent, geometry.visibleEndPercent)}%`,
               }}
             >
-              {geometry.segments.map((segment) => (
-                <span
-                  className={`allocation-bar__visual-segment allocation-bar__visual-segment--${segment.id}`}
-                  data-segment-id={segment.id}
-                  data-start-percent={segment.startPercent}
-                  data-width-percent={segment.widthPercent}
-                  key={segment.id}
-                  style={{ width: `${relativeSegmentWidth(segment.widthPercent, geometry.desiredEndPercent)}%` }}
-                />
-              ))}
+              {renderedVisualSegmentIds.map((id) => {
+                const segment = geometry.segments.find((candidate) => candidate.id === id);
+                const widthPercent = segment?.widthPercent ?? 0;
+                return (
+                  <span
+                    className={`allocation-bar__visual-segment allocation-bar__visual-segment--${id}`}
+                    data-segment-id={id}
+                    data-start-percent={segment?.startPercent ?? geometry.desiredEndPercent}
+                    data-width-percent={widthPercent}
+                    key={id}
+                    style={{ width: `${relativeSegmentWidth(widthPercent, geometry.desiredEndPercent)}%` }}
+                  />
+                );
+              })}
             </div>
           </div>
           <div
@@ -339,7 +366,7 @@ export function AllocationBar({ data }: AllocationBarProps) {
           </div>
         </div>
         {geometry.clipped ? (
-          <span className="cashflow-bar__overflow-label">
+          <span className="cashflow-bar__overflow-label" data-assembly-content>
             +{formatPercentage(geometry.overflowPercent)} 초과
           </span>
         ) : null}
@@ -506,4 +533,11 @@ function hasCashflowValueChange(previous: MainData, current: MainData): boolean 
 function prefersReducedMotion(): boolean {
   return typeof window.matchMedia === 'function'
     && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+function mergeAllocationIds(
+  previousIds: AllocationId[],
+  currentIds: AllocationId[],
+): AllocationId[] {
+  return ALLOCATION_IDS.filter((id) => previousIds.includes(id) || currentIds.includes(id));
 }
