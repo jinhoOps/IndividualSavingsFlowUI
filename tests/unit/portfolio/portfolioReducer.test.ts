@@ -4,7 +4,7 @@ import {
   createPortfolioState,
   portfolioReducer,
 } from '../../../src/portfolio/application/portfolioReducer';
-import { createCashOnlyDraft } from '../../../src/portfolio/domain/allocation';
+import { createCashOnlyDraft, materializeAllocation } from '../../../src/portfolio/domain/allocation';
 import type { PortfolioPlan } from '../../../src/portfolio/domain/model';
 
 const plan: PortfolioPlan = {
@@ -138,5 +138,43 @@ describe('portfolioReducer', () => {
 
     state = portfolioReducer(state, { type: 'draft-classification-auto-enabled', id: 'a', now: 5 });
     expect(state.draft.items[0]).toMatchObject({ classification: 'stable', classificationOrigin: 'automatic' });
+  });
+
+  it('commits a complete new target in one reducer action', () => {
+    const state = createPortfolioState(readyWithoutPlan);
+    const committed = portfolioReducer(state, {
+      type: 'draft-item-committed',
+      item: { id: 'bond', name: '국채 ETF', order: 0 },
+      amountWon: 50_000,
+      classification: 'stable',
+      classificationOrigin: 'automatic',
+      now: 3,
+    });
+
+    expect(committed.draft.items).toHaveLength(1);
+    expect(committed.draft.items[0]).toMatchObject({
+      id: 'bond', name: '국채 ETF', order: 0,
+      classification: 'stable', classificationOrigin: 'automatic',
+    });
+    expect(materializeAllocation(committed.draft, 200_000).items[0].amountWon).toBe(50_000);
+  });
+
+  it('commits an existing target without changing its count or order', () => {
+    const state = createPortfolioState(readyWithPlan);
+    const committed = portfolioReducer(state, {
+      type: 'draft-item-committed',
+      item: { id: 'a', name: '미국 성장주', order: 0 },
+      amountWon: 125_000,
+      classification: 'stable',
+      classificationOrigin: 'user',
+      now: 3,
+    });
+
+    expect(committed.draft.items).toHaveLength(1);
+    expect(committed.draft.items[0]).toMatchObject({
+      id: 'a', name: '미국 성장주', order: 0,
+      classification: 'stable', classificationOrigin: 'user',
+    });
+    expect(materializeAllocation(committed.draft, 200_000).items[0].amountWon).toBe(125_000);
   });
 });

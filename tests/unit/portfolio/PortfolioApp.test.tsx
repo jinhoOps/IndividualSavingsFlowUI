@@ -125,9 +125,12 @@ describe('PortfolioApp', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '배분 시작하기' }));
     fireEvent.click(screen.getByRole('button', { name: '투자 대상 추가' }));
-    fireEvent.change(screen.getByLabelText('투자 대상 이름 1'), { target: { value: '미국 인덱스' } });
-    fireEvent.change(screen.getByLabelText('미국 인덱스 금액'), { target: { value: '120000' } });
-    fireEvent.blur(screen.getByLabelText('미국 인덱스 금액'));
+    const targetSheet = screen.getByRole('dialog', { name: '투자 대상 추가' });
+    fireEvent.change(within(targetSheet).getByLabelText('투자 대상 이름'), { target: { value: '미국 인덱스' } });
+    fireEvent.change(within(targetSheet).getByLabelText('금액'), { target: { value: '120000' } });
+    fireEvent.click(within(targetSheet).getByRole('button', { name: '완료' }));
+    expect(screen.queryByRole('dialog', { name: '투자 대상 추가' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '미국 인덱스 편집, 120,000원, 60%' })).toBeVisible();
 
     const liveSummary = screen.getByRole('region', { name: '현재 배분 요약' });
     expect(liveSummary).toHaveTextContent('매달 200,000원');
@@ -138,8 +141,10 @@ describe('PortfolioApp', () => {
 
     const review = screen.getByRole('region', { name: '배분 검토' });
     expect(within(review).getByRole('heading', { name: '성장에 60%, 안정에 40% 배분해요' })).toBeVisible();
-    expect(within(review).getByRole('listitem', { name: '미국 인덱스 성장 120,000원 60%' })).toBeVisible();
-    expect(within(review).getByRole('listitem', { name: '현금 안정 자동 배분 80,000원 40%' })).toBeVisible();
+    expect(within(review).getByRole('listitem', { name: '미국 인덱스 120,000원 60%' })).toBeVisible();
+    expect(within(review).getByRole('listitem', { name: '현금 80,000원 40%' })).toBeVisible();
+    expect(review).not.toHaveTextContent('자동 배분');
+    expect(review).not.toHaveTextContent('나중에 Portfolio에서 언제든 수정할 수 있어요.');
   });
 
   it('revisits a saved plan result-first', () => {
@@ -351,8 +356,15 @@ describe('PortfolioApp', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '배분 시작하기' }));
     fireEvent.click(screen.getByRole('button', { name: '투자 대상 추가' }));
+    let targetSheet = screen.getByRole('dialog', { name: '투자 대상 추가' });
+    fireEvent.change(within(targetSheet).getByLabelText('투자 대상 이름'), { target: { value: '초기 이름' } });
+    fireEvent.change(within(targetSheet).getByLabelText('금액'), { target: { value: '100000' } });
+    fireEvent.click(within(targetSheet).getByRole('button', { name: '완료' }));
     await waitFor(() => expect(repository.saveDraft).toHaveBeenCalledTimes(1));
-    fireEvent.change(screen.getByLabelText('투자 대상 이름 1'), { target: { value: '최신 이름' } });
+    fireEvent.click(screen.getByRole('button', { name: '초기 이름 편집, 100,000원, 50%' }));
+    targetSheet = screen.getByRole('dialog', { name: '투자 대상 수정' });
+    fireEvent.change(within(targetSheet).getByLabelText('투자 대상 이름'), { target: { value: '최신 이름' } });
+    fireEvent.click(within(targetSheet).getByRole('button', { name: '완료' }));
     expect(repository.saveDraft).toHaveBeenCalledTimes(1);
 
     settleFirst?.({ status: 'unavailable' });
@@ -381,7 +393,9 @@ describe('PortfolioApp', () => {
     />);
 
     fireEvent.click(screen.getByRole('button', { name: '배분 시작하기' }));
-    fireEvent.click(screen.getByRole('radio', { name: '비율' }));
+    fireEvent.click(screen.getByRole('button', { name: '현금 200,000원 100%' }));
+    fireEvent.change(screen.getByLabelText('현금 금액'), { target: { value: '200000' } });
+    fireEvent.blur(screen.getByLabelText('현금 금액'));
     await gated.started;
     fireEvent.click(screen.getByRole('button', { name: '배분 확인' }));
     fireEvent.click(screen.getByRole('button', { name: '이대로 시작' }));
@@ -399,7 +413,7 @@ describe('PortfolioApp', () => {
           scope: { type: 'aggregate' },
           items: [],
           cashShareUnits: 1_000_000,
-          cashMode: 'automatic',
+          cashMode: 'manual',
           syncedInvestmentWon: 200_000,
           appliedAt: 500,
           updatedAt: 500,

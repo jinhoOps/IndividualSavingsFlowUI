@@ -6,6 +6,7 @@ export function PortfolioDialog({
   returnFocusRef,
   className,
   dataPresentation,
+  closeOnBackdrop = false,
   children,
 }: {
   labelledBy: string;
@@ -13,6 +14,7 @@ export function PortfolioDialog({
   returnFocusRef: RefObject<HTMLElement | null>;
   className?: string;
   dataPresentation?: 'sheet' | 'panel';
+  closeOnBackdrop?: boolean;
   children: ReactNode;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -63,6 +65,9 @@ export function PortfolioDialog({
       onCancel={(event) => {
         event.preventDefault();
         onClose();
+      }}
+      onClick={(event) => {
+        if (closeOnBackdrop && event.target === event.currentTarget) onClose();
       }}
       onKeyDown={handleKeyDown}
     >
