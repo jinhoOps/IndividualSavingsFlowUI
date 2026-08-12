@@ -160,49 +160,6 @@
   .allocation-table__overflow-row td,
   .allocation-bar__deficit { @apply text-red-700; }
 
-  .flow-overflow-bridge,
-  .flow-overflow-extension {
-    @apply pointer-events-none absolute top-1/2 z-2 block -translate-y-1/2;
-    height: 0.375rem;
-  }
-
-  .flow-overflow-bridge {
-    left: 98%;
-    width: calc(2% + 1px);
-    border-radius: 999px 0 0 999px;
-    background: linear-gradient(
-      90deg,
-      rgb(15 118 110 / 0%),
-      rgb(225 29 72 / 76%) 72%,
-      rgb(225 29 72 / 92%)
-    );
-  }
-
-  .flow-overflow-extension {
-    --overflow-length: 0%;
-    --overflow-duration: 1400ms;
-    @apply left-full;
-    width: var(--overflow-length);
-    border-radius: 0 999px 999px 0;
-    transform-origin: left center;
-    background: linear-gradient(90deg, rgb(225 29 72 / 92%), rgb(251 146 60 / 88%));
-    box-shadow: 0 2px 10px rgb(225 29 72 / 24%);
-    transition:
-      width 450ms cubic-bezier(.2, .8, .2, 1),
-      box-shadow 450ms cubic-bezier(.2, .8, .2, 1);
-  }
-
-  .flow-overflow-sheen {
-    @apply absolute inset-0 overflow-hidden rounded-r-full;
-  }
-
-  .flow-overflow-sheen::after {
-    @apply absolute inset-y-0 w-2/5 rounded-full;
-    background: linear-gradient(90deg, transparent, rgb(255 255 255 / 48%), transparent);
-    content: "";
-    animation: overflow-liquid-flow var(--overflow-duration) ease-in-out infinite;
-  }
-
   .flow-tooltip {
     @apply w-fit rounded-md bg-slate-950 px-2 py-1 text-xs font-bold text-white;
   }
@@ -292,20 +249,6 @@
     }
   }
 
-  @keyframes overflow-liquid-flow {
-    0% {
-      opacity: 0.18;
-      transform: translateX(-70%);
-    }
-    50% {
-      opacity: 0.5;
-    }
-    100% {
-      opacity: 0.18;
-      transform: translateX(220%);
-    }
-  }
-
 }
 
 @media (min-width: 640px) {
@@ -334,15 +277,6 @@
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
-  }
-
-  .flow-overflow-extension,
-  .flow-overflow-sheen::after {
-    animation: none !important;
-  }
-
-  .flow-overflow-extension {
-    transition-duration: 0.01ms !important;
   }
 
   .cashflow-donut__chart circle {
