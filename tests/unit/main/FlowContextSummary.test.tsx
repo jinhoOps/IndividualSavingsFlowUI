@@ -250,4 +250,13 @@ describe('FlowContextSummary', () => {
     expect(track).toHaveAttribute('data-overflow-clipped', 'true');
     expect(screen.getByText('+37.5% 초과')).toBeVisible();
   });
+
+  it('does not emit legacy overflow layout attributes for a deficit', () => {
+    mockBarViewport(1_000);
+    render(<FlowContextSummary data={liquidDeficitFixture} />);
+
+    const track = screen.getByRole('progressbar');
+    expect(track.closest('.flow-context-summary')).not.toHaveAttribute('data-overflow');
+    expect(track.parentElement).not.toHaveAttribute('data-overflow');
+  });
 });

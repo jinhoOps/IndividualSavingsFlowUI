@@ -52,6 +52,15 @@ const actualDeficitFixture: MainData = {
   monthlyInvestmentWon: 2_300_000,
 };
 
+const deeplyClippedDeficitFixture: MainData = {
+  ...cashflowFixture,
+  monthlyNetIncomeWon: 1_000_000,
+  monthlyHousingWon: 1_000_000,
+  monthlyLivingWon: 0,
+  monthlySavingWon: 1_000_000,
+  monthlyInvestmentWon: 1_000_000,
+};
+
 let resizeObserverCallback: ResizeObserverCallback | undefined;
 
 function mockBarViewport(initialClientWidth: number) {
@@ -264,5 +273,21 @@ describe('AllocationBar', () => {
     expect(track).toHaveAttribute('data-overflow-clipped', 'true');
     expect(screen.getByText('+37.5% 초과')).toBeVisible();
     expect(screen.getByRole('row', { name: /초과 120만 원 37\.5%/ })).toBeVisible();
+  });
+
+  it('clips hit targets to the visible strip and routes hidden allocations to table buttons', () => {
+    mockBarViewport(256);
+    render(<AllocationBar data={deeplyClippedDeficitFixture} />);
+
+    const track = document.querySelector('.allocation-bar__segments');
+    const targetClip = track?.querySelector('.cashflow-bar__targets-clip');
+    expect(targetClip).toHaveStyle({ overflow: 'hidden', width: '120%' });
+    expect(targetClip?.querySelectorAll('.allocation-bar__segment-target')).toHaveLength(1);
+    expect(document.querySelectorAll('.allocation-bar__segment-target')).toHaveLength(1);
+    expect(track).not.toHaveAttribute('data-overflow');
+
+    const table = screen.getByRole('table', { name: '월 자금 항목' });
+    expect(within(table).getByRole('button', { name: '저축 상세 정보' })).toBeVisible();
+    expect(within(table).getByRole('button', { name: '투자 상세 정보' })).toBeVisible();
   });
 });

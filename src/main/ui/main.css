@@ -88,11 +88,6 @@
     margin-inline-end: 0;
   }
 
-  .allocation-bar__segments[data-overflow="true"],
-  .flow-context-summary[data-overflow="true"] {
-    margin-inline-end: min(10%, 2.5rem);
-  }
-
   .setup-flow-surface {
     overflow: visible;
   }

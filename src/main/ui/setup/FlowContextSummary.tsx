@@ -98,12 +98,10 @@ export function FlowContextSummary({ data }: FlowContextSummaryProps) {
   return (
     <section
       className="flow-context-summary"
-      data-overflow={isDeficit ? 'true' : 'false'}
       aria-label="현재 자금 계획 요약"
     >
       <div
         className="flow-bar-wrapper"
-        data-overflow={isDeficit ? 'true' : 'false'}
         ref={flowBarWrapperRef}
         onBlur={(event) => {
           if (!event.currentTarget.contains(event.relatedTarget)) {

@@ -15,6 +15,7 @@ interface Allocation {
   label: string;
   amountWon: number;
   percentage: number | null;
+  startPercent: number;
   visualPercentage: number;
 }
 
@@ -56,15 +57,19 @@ export function AllocationBar({ data, transitioning = false }: AllocationBarProp
     visualPercentage: segment.widthPercent,
   }));
   const plannedPercentage = percentageOfIncome(cashflow.plannedOutflowWon, cashflow.incomeWon) ?? 0;
-  const allocation = (id: string, label: string, amountWon: number): Allocation => ({
-    id,
-    label,
-    amountWon,
-    percentage: percentageOfIncome(amountWon, cashflow.incomeWon),
-    visualPercentage: visualSegments.find((segment) => segment.id === id)?.visualPercentage
-      ?? percentageOfIncome(amountWon, cashflow.incomeWon)
-      ?? 0,
-  });
+  const allocation = (id: string, label: string, amountWon: number): Allocation => {
+    const geometrySegment = geometry.segments.find((segment) => segment.id === id);
+    return {
+      id,
+      label,
+      amountWon,
+      percentage: percentageOfIncome(amountWon, cashflow.incomeWon),
+      startPercent: geometrySegment?.startPercent ?? 0,
+      visualPercentage: visualSegments.find((segment) => segment.id === id)?.visualPercentage
+        ?? percentageOfIncome(amountWon, cashflow.incomeWon)
+        ?? 0,
+    };
+  };
   const allocations: Allocation[] = [
     allocation('consumption', '소비', cashflow.consumptionWon),
     allocation('saving', '저축', cashflow.savingWon),
@@ -231,7 +236,6 @@ export function AllocationBar({ data, transitioning = false }: AllocationBarProp
         ) : null}
         <div
           className="flow-bar allocation-bar__segments"
-          data-overflow={isDeficit ? 'true' : 'false'}
           data-desired-end-percent={geometry.desiredEndPercent}
           data-visible-end-percent={geometry.visibleEndPercent}
           data-overflow-clipped={geometry.clipped ? 'true' : 'false'}
@@ -274,23 +278,49 @@ export function AllocationBar({ data, transitioning = false }: AllocationBarProp
               ))}
             </div>
           </div>
-          {allocations.map((allocation) => {
-            const visualPercentage = allocation.visualPercentage;
-            const requiresLegendTarget = !hasIndependentTarget(visualPercentage, viewport.barWidthPx);
-            const offset = allocationOffset(allocation.id, allocations);
+          <div
+            className="cashflow-bar__targets-clip"
+            style={{
+              height: '100%',
+              left: 0,
+              overflow: 'hidden',
+              position: 'absolute',
+              top: 0,
+              width: `${geometry.visibleEndPercent}%`,
+            }}
+          >
+            <div
+              className="cashflow-bar__targets"
+              style={{
+                height: '100%',
+                position: 'relative',
+                width: `${relativeStripWidth(geometry.desiredEndPercent, geometry.visibleEndPercent)}%`,
+              }}
+            >
+              {allocations.map((allocation) => {
+                const visiblePercentage = visibleSegmentPercentage(
+                  allocation,
+                  geometry.visibleEndPercent,
+                );
+                const requiresLegendTarget = !hasIndependentTarget(
+                  visiblePercentage,
+                  viewport.barWidthPx,
+                );
 
-            return requiresLegendTarget ? null : (
-              <button
-                {...triggerProps(allocation, true)}
-                className="allocation-bar__segment-target"
-                key={allocation.id}
-                style={{
-                  left: `${offset}%`,
-                  width: `${visualPercentage}%`,
-                }}
-              />
-            );
-          })}
+                return requiresLegendTarget ? null : (
+                  <button
+                    {...triggerProps(allocation, true)}
+                    className="allocation-bar__segment-target"
+                    key={allocation.id}
+                    style={{
+                      left: `${relativeSegmentPosition(allocation.startPercent, geometry.desiredEndPercent)}%`,
+                      width: `${relativeSegmentWidth(allocation.visualPercentage, geometry.desiredEndPercent)}%`,
+                    }}
+                  />
+                );
+              })}
+            </div>
+          </div>
         </div>
         {geometry.clipped ? (
           <span className="cashflow-bar__overflow-label">
@@ -307,10 +337,14 @@ export function AllocationBar({ data, transitioning = false }: AllocationBarProp
           </thead>
           <tbody>
             {allocations.map((allocation) => {
-              const requiresTableTarget = !hasIndependentTarget(
-                allocation.visualPercentage,
-                viewport.barWidthPx,
+              const visiblePercentage = visibleSegmentPercentage(
+                allocation,
+                geometry.visibleEndPercent,
               );
+              const requiresTableTarget = !hasIndependentTarget(
+                visiblePercentage,
+                viewport.barWidthPx,
+              ) || isSegmentClipped(allocation, geometry.visibleEndPercent);
               return (
                 <tr key={allocation.id}>
                   <th scope="row">
@@ -352,23 +386,9 @@ export function AllocationBar({ data, transitioning = false }: AllocationBarProp
 function allocationCenter(allocationId: string, allocations: Allocation[]): number {
   const allocation = allocations.find((candidate) => candidate.id === allocationId);
   return clampPercentage(
-    allocationOffset(allocationId, allocations)
+    (allocation?.startPercent ?? 0)
       + (allocation?.visualPercentage ?? 0) / 2,
   );
-}
-
-function allocationOffset(allocationId: string, allocations: Allocation[]): number {
-  let offset = 0;
-
-  for (const allocation of allocations) {
-    const percentage = allocation.visualPercentage;
-    if (allocation.id === allocationId) {
-      return clampPercentage(offset);
-    }
-    offset += percentage;
-  }
-
-  return 0;
 }
 
 function allocationText(allocation: Allocation): string {
@@ -398,4 +418,24 @@ function relativeStripWidth(desiredEndPercent: number, visibleEndPercent: number
 
 function relativeSegmentWidth(widthPercent: number, desiredEndPercent: number): number {
   return desiredEndPercent > 0 ? widthPercent / desiredEndPercent * 100 : 0;
+}
+
+function relativeSegmentPosition(startPercent: number, desiredEndPercent: number): number {
+  return desiredEndPercent > 0 ? startPercent / desiredEndPercent * 100 : 0;
+}
+
+function visibleSegmentPercentage(
+  allocation: Allocation,
+  visibleEndPercent: number,
+): number {
+  const visibleEnd = Math.min(
+    allocation.startPercent + allocation.visualPercentage,
+    visibleEndPercent,
+  );
+  return Math.max(0, visibleEnd - allocation.startPercent);
+}
+
+function isSegmentClipped(allocation: Allocation, visibleEndPercent: number): boolean {
+  return allocation.visualPercentage > 0
+    && allocation.startPercent + allocation.visualPercentage > visibleEndPercent;
 }
