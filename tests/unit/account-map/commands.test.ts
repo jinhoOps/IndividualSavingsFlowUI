@@ -8,18 +8,39 @@ import { createEmptyWorkspace, type WorkspaceDocument } from '../../../src/works
 describe('Account Map commands', () => {
   it.each([
     ['create-location', { type: 'create-location', location: location('new', '새계좌') }],
+    ['update-location', {
+      type: 'update-location',
+      locationId: 'checking',
+      shortName: '주계좌',
+      addRoles: ['saving'],
+    }],
     ['save-draft', { type: 'save-draft', draft: draft() }],
     ['apply-map', { type: 'apply-map', applied: validApplied() }],
     ['edit-map-node', { type: 'edit-map-node', applied: validApplied() }],
+    ['archive-location', {
+      type: 'archive-location',
+      locationId: 'savings',
+      replacementRemainderByPurpose: {},
+    }],
+    ['restore-location', {
+      type: 'restore-location',
+      locationId: 'savings',
+      restoreLinkIds: [],
+      remainderByPurpose: {},
+    }],
     ['reset-map', { type: 'reset-map' }],
   ] satisfies [string, AccountMapCommand][])('%s preserves protected slices byte-for-byte', (_name, command) => {
     const before = workspace();
     if (command.type === 'edit-map-node') before.accountMap.applied = validApplied();
+    if (command.type === 'restore-location') before.locations[1] = {
+      ...before.locations[1]!,
+      archivedAt: 10,
+    };
     const result = applyAccountMapCommand(before, command, 20);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.workspace.main).toEqual(before.main);
-    expect(result.workspace.simulation).toEqual(before.simulation);
+    expect(JSON.stringify(result.workspace.main)).toBe(JSON.stringify(before.main));
+    expect(JSON.stringify(result.workspace.simulation)).toBe(JSON.stringify(before.simulation));
     expect(JSON.stringify(result.workspace.portfolio)).toBe(JSON.stringify(before.portfolio));
   });
 
@@ -138,11 +159,143 @@ describe('Account Map commands', () => {
     const before = workspace();
     const over = { id: 'custom:telecom' as const, parentId: 'system:living' as const, name: '통신비', targetMonthlyWon: 1_100_000, createdAt: 1, updatedAt: 1 };
     before.accountMap.applied = { ...validApplied(), customPurposes: [over] };
-    before.main.applied!.monthlyLivingWon = 900_000;
+    before.main.applied = { ...main(), monthlyLivingWon: 900_000, updatedAt: 10 };
     const corrected = { ...before.accountMap.applied, customPurposes: [{ ...over, targetMonthlyWon: 1_000_000, updatedAt: 20 }], updatedAt: 20 };
     expect(applyAccountMapCommand(before, { type: 'edit-map-node', applied: corrected }, 20).ok).toBe(true);
     const worse = { ...corrected, customPurposes: [{ ...over, targetMonthlyWon: 1_200_000, updatedAt: 20 }] };
     expect(applyAccountMapCommand(before, { type: 'edit-map-node', applied: worse }, 20)).toMatchObject({ ok: false, reason: 'custom-target-capacity' });
+  });
+
+  it('keeps stale applied source after partial correction and advances it after full correction', () => {
+    const before = workspace();
+    before.main.applied = { ...main(), monthlyLivingWon: 900_000, updatedAt: 10 };
+    const stalePurpose = {
+      id: 'custom:telecom' as const,
+      parentId: 'system:living' as const,
+      name: '통신비',
+      targetMonthlyWon: 1_100_000,
+      createdAt: 1,
+      updatedAt: 1,
+    };
+    before.accountMap.applied = {
+      ...validApplied(),
+      sourceMainUpdatedAt: 1,
+      customPurposes: [stalePurpose],
+    };
+    const partialCorrection = {
+      ...before.accountMap.applied,
+      sourceMainUpdatedAt: 10,
+      customPurposes: [{ ...stalePurpose, targetMonthlyWon: 1_000_000, updatedAt: 20 }],
+      updatedAt: 20,
+    };
+
+    const partial = applyAccountMapCommand(before, {
+      type: 'edit-map-node',
+      applied: partialCorrection,
+    }, 20);
+
+    expect(partial.ok).toBe(true);
+    if (!partial.ok || partial.workspace.accountMap.applied === null) return;
+    expect(partial.workspace.accountMap.applied.sourceMainUpdatedAt).toBe(1);
+
+    const complete = applyAccountMapCommand(partial.workspace, {
+      type: 'edit-map-node',
+      applied: {
+        ...partial.workspace.accountMap.applied,
+        sourceMainUpdatedAt: 1,
+        customPurposes: [{ ...stalePurpose, targetMonthlyWon: 900_000, updatedAt: 21 }],
+        updatedAt: 21,
+      },
+    }, 21);
+
+    expect(complete.ok).toBe(true);
+    if (!complete.ok) return;
+    expect(complete.workspace.accountMap.applied?.sourceMainUpdatedAt).toBe(10);
+  });
+
+  it('keeps stale draft source after partial correction and advances it after full correction', () => {
+    const before = workspace();
+    before.main.applied = { ...main(), monthlyLivingWon: 900_000, updatedAt: 10 };
+    const stalePurpose = {
+      id: 'custom:telecom' as const,
+      parentId: 'system:living' as const,
+      name: '통신비',
+      targetMonthlyWon: 1_100_000,
+      createdAt: 1,
+      updatedAt: 1,
+    };
+    before.accountMap.draft = {
+      ...draft(),
+      sourceMainUpdatedAt: 1,
+      customPurposes: [stalePurpose],
+    };
+
+    const partial = applyAccountMapCommand(before, {
+      type: 'save-draft',
+      draft: {
+        ...before.accountMap.draft,
+        sourceMainUpdatedAt: 10,
+        customPurposes: [{ ...stalePurpose, targetMonthlyWon: 1_000_000, updatedAt: 20 }],
+        updatedAt: 20,
+      },
+    }, 20);
+
+    expect(partial.ok).toBe(true);
+    if (!partial.ok || partial.workspace.accountMap.draft === null) return;
+    expect(partial.workspace.accountMap.draft.sourceMainUpdatedAt).toBe(1);
+
+    const complete = applyAccountMapCommand(partial.workspace, {
+      type: 'save-draft',
+      draft: {
+        ...partial.workspace.accountMap.draft,
+        sourceMainUpdatedAt: 1,
+        customPurposes: [{ ...stalePurpose, targetMonthlyWon: 900_000, updatedAt: 21 }],
+        updatedAt: 21,
+      },
+    }, 21);
+
+    expect(complete.ok).toBe(true);
+    if (!complete.ok) return;
+    expect(complete.workspace.accountMap.draft?.sourceMainUpdatedAt).toBe(10);
+  });
+
+  it.each([
+    ['apply-map', (_before: WorkspaceDocument) => (
+      { type: 'apply-map', applied: validApplied() } satisfies AccountMapCommand
+    )],
+    ['archive-location', (before: WorkspaceDocument) => {
+      before.accountMap.applied = validApplied();
+      before.accountMap.draft = draft();
+      return {
+        type: 'archive-location',
+        locationId: 'savings',
+        replacementRemainderByPurpose: {},
+      } satisfies AccountMapCommand;
+    }],
+    ['restore-location', (before: WorkspaceDocument) => {
+      before.locations[1] = { ...before.locations[1]!, archivedAt: 5 };
+      before.accountMap.applied = validApplied();
+      before.accountMap.draft = draft();
+      return {
+        type: 'restore-location',
+        locationId: 'savings',
+        restoreLinkIds: [],
+        remainderByPurpose: {},
+      } satisfies AccountMapCommand;
+    }],
+  ] as const)('advances fitting applied and draft sources after %s writes', (_name, arrange) => {
+    const before = workspace();
+    before.main.applied = { ...main(), updatedAt: 10 };
+    const command = arrange(before);
+
+    const result = applyAccountMapCommand(before, command, 20);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.workspace.accountMap.applied?.sourceMainUpdatedAt).toBe(10);
+    if (_name !== 'apply-map') {
+      expect(result.workspace.accountMap.draft?.sourceMainUpdatedAt).toBe(10);
+    }
   });
 
   it('requires a replacement when editing away an active remainder', () => {
@@ -196,7 +349,7 @@ describe('Account Map commands', () => {
       .toMatchObject({ ok: false, reason: 'custom-target-capacity' });
 
     before.accountMap.draft = structuredClone(over);
-    before.main.applied!.monthlyLivingWon = 900_000;
+    before.main.applied = { ...main(), monthlyLivingWon: 900_000, updatedAt: 10 };
     expect(applyAccountMapCommand(before, { type: 'save-draft', draft: { ...over, updatedAt: 2 } }, 20).ok)
       .toBe(true);
   });

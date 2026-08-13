@@ -7,6 +7,7 @@ import {
   type PurposeId,
   type PurposeLocationLink,
 } from '../../account-map/domain/model';
+import { mainPurposeReferences } from '../../account-map/domain/reconciliation';
 import {
   parseConsumerInstrument,
   parseMonthlyFlow,
@@ -144,11 +145,18 @@ function parseApplied(
     'schemaVersion', 'sourceMainUpdatedAt', 'customPurposes', 'links',
     'layout', 'setupCompletedAt', 'updatedAt',
   ]) || value.schemaVersion !== 1
+    || main === null
     || !isTimestamp(value.sourceMainUpdatedAt)
     || (value.layout !== 'purpose' && value.layout !== 'account')
     || !isTimestamp(value.setupCompletedAt)
     || !isTimestamp(value.updatedAt)) return null;
-  const common = parsePurposeState(value.customPurposes, value.links, locations, main);
+  const common = parsePurposeState(
+    value.customPurposes,
+    value.links,
+    value.sourceMainUpdatedAt,
+    locations,
+    main,
+  );
   return common === null ? null : {
     schemaVersion: 1,
     sourceMainUpdatedAt: value.sourceMainUpdatedAt,
@@ -167,10 +175,17 @@ function parseDraft(
   if (!hasExactKeys(value, [
     'schemaVersion', 'sourceMainUpdatedAt', 'customPurposes', 'links', 'step', 'updatedAt',
   ]) || value.schemaVersion !== 1
+    || main === null
     || !isTimestamp(value.sourceMainUpdatedAt)
     || (value.step !== 'connect' && value.step !== 'review')
     || !isTimestamp(value.updatedAt)) return null;
-  const common = parsePurposeState(value.customPurposes, value.links, locations, main);
+  const common = parsePurposeState(
+    value.customPurposes,
+    value.links,
+    value.sourceMainUpdatedAt,
+    locations,
+    main,
+  );
   return common === null ? null : {
     schemaVersion: 1,
     sourceMainUpdatedAt: value.sourceMainUpdatedAt,
@@ -183,17 +198,30 @@ function parseDraft(
 function parsePurposeState(
   customValue: unknown,
   linkValue: unknown,
+  sourceMainUpdatedAt: number,
   locations: FinancialLocation[],
-  main: WorkspaceDocumentV1['main']['applied'],
+  main: NonNullable<WorkspaceDocumentV1['main']['applied']>,
 ): Pick<AccountMapApplied, 'customPurposes' | 'links'> | null {
-  if (main === null) return null;
+  if (sourceMainUpdatedAt > main.updatedAt) return null;
   const customPurposes = parseArray(customValue, parseCustomPurpose);
   const links = parseArray(linkValue, parsePurposeLink);
   if (customPurposes === null || links === null
     || !hasUniqueIds(customPurposes)
     || !hasUniqueIds(links)
-    || !validPurposeState(customPurposes, links, locations, main)) return null;
+    || !validPurposeState(customPurposes, links, locations)
+    || (sourceMainUpdatedAt === main.updatedAt
+      && !customTargetsWithinMainCapacity(customPurposes, main))) return null;
   return { customPurposes, links };
+}
+
+function customTargetsWithinMainCapacity(
+  customPurposes: CustomPurpose[],
+  main: NonNullable<WorkspaceDocumentV1['main']['applied']>,
+): boolean {
+  const references = mainPurposeReferences(main);
+  return [...outflowPurposeIds].every((parentId) => customPurposes
+    .filter((purpose) => purpose.parentId === parentId && purpose.archivedAt === undefined)
+    .reduce((sum, purpose) => sum + purpose.targetMonthlyWon, 0) <= references[parentId]);
 }
 
 function parseCustomPurpose(value: unknown): CustomPurpose | null {
@@ -276,7 +304,6 @@ function validPurposeState(
   customPurposes: CustomPurpose[],
   links: PurposeLocationLink[],
   locations: FinancialLocation[],
-  main: NonNullable<WorkspaceDocumentV1['main']['applied']>,
 ): boolean {
   const purposeIds = new Set<string>([...SYSTEM_PURPOSE_IDS, ...customPurposes.map(({ id }) => id)]);
   const locationById = new Map(locations.map((location) => [location.id, location]));

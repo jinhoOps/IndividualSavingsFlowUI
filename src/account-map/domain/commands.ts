@@ -1,3 +1,4 @@
+import type { MainData } from '../../main/domain/model';
 import type { FinancialLocation, FinancialRole, InstitutionRef } from '../../workspace/domain/financialLocation';
 import { parseFinancialLocation, PURPOSE_CAPACITY } from '../../workspace/domain/financialLocation';
 import type { WorkspaceDocument } from '../../workspace/domain/model';
@@ -73,16 +74,23 @@ export function applyAccountMapCommand(
 
   let changed: AccountMapCommandResult;
   switch (command.type) {
-    case 'save-draft':
+    case 'save-draft': {
       if (!customTargetsWithinWritableCapacity(command.draft, source.accountMap.draft, source)) {
         changed = failure('custom-target-capacity');
         break;
       }
+      const main = source.main.applied;
+      if (main === null) {
+        changed = failure('invalid-input');
+        break;
+      }
+      const draft = withCurrentMainSource(command.draft, source.accountMap.draft, main);
       changed = successCandidate(source, {
         ...source,
-        accountMap: { ...source.accountMap, draft: structuredClone(command.draft) },
+        accountMap: { ...source.accountMap, draft: structuredClone(draft) },
       });
       break;
+    }
     case 'apply-map':
       changed = validateAppliedMap(command.applied, source);
       if (!changed.ok) break;
@@ -90,7 +98,11 @@ export function applyAccountMapCommand(
         ...source,
         accountMap: {
           ...source.accountMap,
-          applied: structuredClone(command.applied),
+          applied: structuredClone(withCurrentMainSource(
+            command.applied,
+            source.accountMap.applied,
+            source.main.applied!,
+          )),
           draft: null,
         },
       });
@@ -151,7 +163,15 @@ function editMapNode(
   }
   return successCandidate(source, {
     ...candidate,
-    accountMap: { ...candidate.accountMap, applied: structuredClone(command.applied), draft: null },
+    accountMap: {
+      ...candidate.accountMap,
+      applied: structuredClone(withCurrentMainSource(
+        command.applied,
+        source.accountMap.applied,
+        source.main.applied!,
+      )),
+      draft: null,
+    },
   });
 }
 
@@ -223,6 +243,24 @@ function customTargetsWithinWritableCapacity(
       .reduce((sum, purpose) => sum + purpose.targetMonthlyWon, 0);
     return nextTotal <= currentTotal;
   });
+}
+
+function withCurrentMainSource<T extends AccountMapApplied | AccountMapDraft>(
+  candidate: T,
+  current: T | null,
+  main: MainData,
+): T {
+  const references = mainPurposeReferences(main);
+  const parentIds = ['system:housing', 'system:living', 'system:saving', 'system:investing'] as const;
+  const fitsCurrentMain = parentIds.every((parentId) => candidate.customPurposes
+    .filter((purpose) => purpose.parentId === parentId && purpose.archivedAt === undefined)
+    .reduce((sum, purpose) => sum + purpose.targetMonthlyWon, 0) <= references[parentId]);
+  return {
+    ...candidate,
+    sourceMainUpdatedAt: fitsCurrentMain
+      ? main.updatedAt
+      : current?.sourceMainUpdatedAt ?? candidate.sourceMainUpdatedAt,
+  };
 }
 
 function createLocation(
@@ -331,7 +369,11 @@ function archiveInState<T extends AccountMapApplied | AccountMapDraft>(
       ? { ...link, updatedAt: now }
       : link);
   }
-  return { ...state, links, updatedAt: now };
+  return withCurrentMainSource(
+    { ...state, links, updatedAt: now },
+    state,
+    source.main.applied!,
+  );
 }
 
 function restoreLocation(
@@ -409,7 +451,11 @@ function restoreInState<T extends AccountMapApplied | AccountMapDraft>(
       return failure('fixed-links-exceed-target');
     }
   }
-  return { ...state, links, updatedAt: now };
+  return withCurrentMainSource(
+    { ...state, links, updatedAt: now },
+    state,
+    source.main.applied!,
+  );
 }
 
 function successCandidate(

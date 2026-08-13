@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { AccountMapApplied, AccountMapDraft } from '../../../src/account-map/domain/model';
 import type { PortfolioPlan } from '../../../src/portfolio/domain/model';
 import type { WorkspaceDocument } from '../../../src/workspace/domain/model';
 import { WORKSPACE_STORAGE_KEY } from '../../../src/workspace/domain/model';
@@ -92,6 +93,42 @@ function envelope(workspace: unknown = completeWorkspace()): string {
     exportedAt: 900,
     workspace,
   });
+}
+
+function accountMapApplied(overrides: Partial<AccountMapApplied> = {}): AccountMapApplied {
+  return {
+    schemaVersion: 1,
+    sourceMainUpdatedAt: 100,
+    customPurposes: [],
+    links: [],
+    layout: 'purpose',
+    setupCompletedAt: 100,
+    updatedAt: 100,
+    ...overrides,
+  };
+}
+
+function accountMapDraft(overrides: Partial<AccountMapDraft> = {}): AccountMapDraft {
+  return {
+    schemaVersion: 1,
+    sourceMainUpdatedAt: 100,
+    customPurposes: [],
+    links: [],
+    step: 'connect',
+    updatedAt: 100,
+    ...overrides,
+  };
+}
+
+function overCapacityPurposes(): AccountMapApplied['customPurposes'] {
+  return [{
+    id: 'custom:telecom',
+    parentId: 'system:living',
+    name: '통신비',
+    targetMonthlyWon: 900_001,
+    createdAt: 10,
+    updatedAt: 10,
+  }];
 }
 
 function errorCode(operation: () => unknown): string | undefined {
@@ -266,6 +303,38 @@ describe('workspace backup', () => {
     const setItem = vi.spyOn(storage, 'setItem');
 
     expect(importWorkspaceBackup(envelope())).toEqual(completeWorkspace());
+    expect(setItem).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['an applied future Main source', {
+      applied: accountMapApplied({ sourceMainUpdatedAt: 101 }),
+    }],
+    ['an applied synchronized custom target excess', {
+      applied: accountMapApplied({ customPurposes: overCapacityPurposes() }),
+    }],
+    ['a draft future Main source', {
+      draft: accountMapDraft({ sourceMainUpdatedAt: 101 }),
+    }],
+    ['a draft synchronized custom target excess', {
+      draft: accountMapDraft({ customPurposes: overCapacityPurposes() }),
+    }],
+  ])('rejects %s without changing exact raw workspace storage', (_label, accountMapState) => {
+    const storage = new MemoryStorage();
+    const raw = JSON.stringify(completeWorkspace({ revision: 17, updatedAt: 777 }));
+    storage.setItem(WORKSPACE_STORAGE_KEY, raw);
+    const setItem = vi.spyOn(storage, 'setItem');
+    Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: storage });
+
+    const invalid = completeWorkspace({
+      accountMap: {
+        ...completeWorkspace().accountMap,
+        ...accountMapState,
+      },
+    });
+
+    expect(errorCode(() => importWorkspaceBackup(envelope(invalid)))).toBe('backup-schema');
+    expect(storage.getItem(WORKSPACE_STORAGE_KEY)).toBe(raw);
     expect(setItem).not.toHaveBeenCalled();
   });
 

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { AccountMapApplied, AccountMapDraft } from '../../../src/account-map/domain/model';
 import type { MonthlyFlow } from '../../../src/workspace/domain/accountMapContract';
 import { migrateWorkspaceV1, parseWorkspaceDocumentVersioned } from '../../../src/workspace/domain/migration';
 import type { WorkspaceDocumentV1, WorkspaceDocumentV2 } from '../../../src/workspace/domain/model';
@@ -49,6 +50,40 @@ function currentWorkspace(): WorkspaceDocumentV2 {
   return migrateWorkspaceV1(legacyWorkspace(), 200);
 }
 
+function appliedState(overrides: Partial<AccountMapApplied> = {}): AccountMapApplied {
+  return {
+    schemaVersion: 1,
+    sourceMainUpdatedAt: 100,
+    customPurposes: [],
+    links: [],
+    layout: 'purpose',
+    setupCompletedAt: 10,
+    updatedAt: 10,
+    ...overrides,
+  };
+}
+
+function draftState(overrides: Partial<AccountMapDraft> = {}): AccountMapDraft {
+  return {
+    schemaVersion: 1,
+    sourceMainUpdatedAt: 100,
+    customPurposes: [],
+    links: [],
+    step: 'connect',
+    updatedAt: 10,
+    ...overrides,
+  };
+}
+
+const overLivingCapacity = [{
+  id: 'custom:telecom' as const,
+  parentId: 'system:living' as const,
+  name: '통신비',
+  targetMonthlyWon: 900_001,
+  createdAt: 10,
+  updatedAt: 10,
+}];
+
 describe('Workspace v1 to v2 migration', () => {
   it('preserves protected slices and moves Phase A values into compatibility storage', () => {
     const legacy = legacyWorkspace();
@@ -73,6 +108,39 @@ describe('Workspace v1 to v2 migration', () => {
     expect(parseWorkspaceDocumentVersioned(legacyWorkspace())).toMatchObject({ version: 1 });
     expect(parseWorkspaceDocumentVersioned(currentWorkspace())).toMatchObject({ version: 2 });
     expect(parseWorkspaceDocumentVersioned({ ...currentWorkspace(), schemaVersion: 3 })).toBeNull();
+  });
+
+  it('rejects future Main sources and synchronized custom target excess in applied and draft state', () => {
+    const base = currentWorkspace();
+
+    expect(parseWorkspaceDocumentVersioned({
+      ...base,
+      accountMap: {
+        ...base.accountMap,
+        applied: appliedState({ sourceMainUpdatedAt: 101 }),
+      },
+    })).toBeNull();
+    expect(parseWorkspaceDocumentVersioned({
+      ...base,
+      accountMap: {
+        ...base.accountMap,
+        applied: appliedState({ customPurposes: overLivingCapacity }),
+      },
+    })).toBeNull();
+    expect(parseWorkspaceDocumentVersioned({
+      ...base,
+      accountMap: {
+        ...base.accountMap,
+        draft: draftState({ sourceMainUpdatedAt: 101 }),
+      },
+    })).toBeNull();
+    expect(parseWorkspaceDocumentVersioned({
+      ...base,
+      accountMap: {
+        ...base.accountMap,
+        draft: draftState({ customPurposes: overLivingCapacity }),
+      },
+    })).toBeNull();
   });
 
   it('rejects duplicate links, active archived references, role mismatches, and two remainders', () => {
@@ -121,24 +189,11 @@ describe('Workspace v1 to v2 migration', () => {
     })).toBeNull();
   });
 
-  it('keeps an applied custom target readable after Main decreases below it', () => {
+  it('keeps applied and draft custom targets readable after Main decreases below them', () => {
     const base = currentWorkspace();
-    const applied = {
-      schemaVersion: 1 as const,
-      sourceMainUpdatedAt: 100,
-      customPurposes: [{
-        id: 'custom:telecom' as const,
-        parentId: 'system:living' as const,
-        name: '통신비',
-        targetMonthlyWon: 1_000_000,
-        createdAt: 10,
-        updatedAt: 10,
-      }],
-      links: [],
-      layout: 'purpose' as const,
-      setupCompletedAt: 10,
-      updatedAt: 10,
-    };
+    const customPurposes = [{ ...overLivingCapacity[0]!, targetMonthlyWon: 1_000_000 }];
+    const applied = appliedState({ customPurposes });
+    const draft = draftState({ customPurposes });
 
     expect(parseWorkspaceDocumentVersioned({
       ...base,
@@ -146,7 +201,7 @@ describe('Workspace v1 to v2 migration', () => {
         ...base.main,
         applied: { ...base.main.applied!, monthlyLivingWon: 900_000, updatedAt: 110 },
       },
-      accountMap: { ...base.accountMap, applied },
+      accountMap: { ...base.accountMap, applied, draft },
     })).toMatchObject({ version: 2 });
   });
 });
