@@ -1,5 +1,4 @@
 .portfolio-shell { min-height: 100dvh; }
-.portfolio-content, .portfolio-recovery { width: min(100% - 2rem, 48rem); margin-inline: auto; }
 .portfolio-content { padding-block: 2rem 6rem; }
 .portfolio-content--blurred { filter: blur(10px); pointer-events: none; user-select: none; }
 .portfolio-gate { position: relative; min-height: 32rem; }

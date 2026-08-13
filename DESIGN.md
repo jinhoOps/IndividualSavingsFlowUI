@@ -182,6 +182,13 @@ Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계획 �
 - 권장 간격: 4px, 8px, 14px, 24px, 32px
 - 주요 카드 내부 여백: 기본 24px, 모바일에서는 정보 밀도에 맞게 축소
 
+### Reading Width
+
+- 일반 앱 본문은 공통 `48rem` 최대 읽기 폭과 viewport 좌우 `1rem` 가드레일을 사용한다.
+- viewport 가드레일은 page-level content frame 한 곳만 소유하며 outer padding과 중첩하지 않는다.
+- Main 최초·재시작 review의 조립 시각화만 `75rem` wide 예외를 사용할 수 있다.
+- launcher와 viewport overlay는 본문 읽기 폭 규격에서 제외한다.
+
 ### Information Sequence
 
 기본 정보 순서는 다음을 따릅니다.

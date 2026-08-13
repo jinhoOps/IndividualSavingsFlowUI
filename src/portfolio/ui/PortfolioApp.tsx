@@ -240,7 +240,10 @@ export function PortfolioApp({
         ) : state === null ? (
           <RecoveryPanel message="Portfolio를 시작할 수 없습니다." />
         ) : (
-          <div className="portfolio-content">
+          <div
+            className="app-content-frame portfolio-content"
+            data-testid="portfolio-page-frame"
+          >
           {state.view === 'setup' && state.setupStep !== null ? (
             <PortfolioSetupFlow
               step={state.setupStep}
@@ -340,7 +343,11 @@ function InvestmentRequired({ plan }: { plan: PortfolioPlan | null }) {
   };
   return (
     <section className="portfolio-gate" aria-labelledby="portfolio-gate-title">
-      <div data-testid="portfolio-gated-content" className="portfolio-content portfolio-content--blurred" inert>
+      <div
+        data-testid="portfolio-page-frame"
+        className="app-content-frame portfolio-content portfolio-content--blurred"
+        inert
+      >
         <PortfolioSummary
           investmentWon={placeholder.syncedInvestmentWon}
           allocation={materializeAllocation(placeholder, placeholder.syncedInvestmentWon)}
@@ -363,7 +370,10 @@ function StaleMain({
   preferences: PortfolioViewPreferences;
 }) {
   return (
-    <div className="portfolio-content">
+    <div
+      className="app-content-frame portfolio-content"
+      data-testid="portfolio-page-frame"
+    >
       <Surface as="aside" className="portfolio-recovery">
         <p role="status">이전 Main 기준</p>
         <p>최신 Main 정보를 불러오지 못했습니다.</p>
@@ -381,7 +391,11 @@ function StaleMain({
 
 function RecoveryPanel({ message }: { message: string }) {
   return (
-    <Surface as="section" className="portfolio-recovery">
+    <Surface
+      as="section"
+      className="app-content-frame portfolio-recovery"
+      data-testid="portfolio-page-frame"
+    >
       <h1>{message}</h1>
       <a href={`${appPath('main')}?edit=investment`}>Main에서 투자금 설정</a>
     </Surface>
