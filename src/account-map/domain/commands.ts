@@ -10,7 +10,7 @@ import {
   type PurposeId,
   type PurposeLocationLink,
 } from './model';
-import { recalculateRemainder, reconcilePurpose } from './reconciliation';
+import { mainPurposeReferences, recalculateRemainder, reconcilePurpose } from './reconciliation';
 
 export type AccountMapCommand =
   | { type: 'save-draft'; draft: AccountMapDraft }
@@ -19,7 +19,7 @@ export type AccountMapCommand =
   | {
       type: 'update-location';
       locationId: string;
-      institution: InstitutionRef;
+      institution?: InstitutionRef;
       shortName: string;
       addRoles: FinancialRole[];
     }
@@ -47,6 +47,7 @@ export type AccountMapCommandError =
   | 'fixed-links-exceed-target'
   | 'income-connection-required'
   | 'purpose-excess'
+  | 'custom-target-capacity'
   | 'protected-slice-changed';
 
 export type AccountMapCommandResult =
@@ -64,6 +65,10 @@ export function applyAccountMapCommand(
   let changed: AccountMapCommandResult;
   switch (command.type) {
     case 'save-draft':
+      if (!customTargetsWithinWritableCapacity(command.draft, source.accountMap.draft, source)) {
+        changed = failure('custom-target-capacity');
+        break;
+      }
       changed = successCandidate(source, {
         ...source,
         accountMap: { ...source.accountMap, draft: structuredClone(command.draft) },
@@ -124,7 +129,32 @@ function validateAppliedMap(
   if (purposeIds.some((purposeId) => (
     reconcilePurpose(purposeId, applied, source.locations, main).excessWon > 0
   ))) return failure('purpose-excess');
+  if (!customTargetsWithinWritableCapacity(applied, null, source)) {
+    return failure('custom-target-capacity');
+  }
   return { ok: true, workspace: source };
+}
+
+function customTargetsWithinWritableCapacity(
+  candidate: Pick<AccountMapApplied, 'customPurposes'>,
+  current: Pick<AccountMapDraft, 'customPurposes'> | null,
+  source: WorkspaceDocument,
+): boolean {
+  const main = source.main.applied;
+  if (main === null) return false;
+  const references = mainPurposeReferences(main);
+  const parentIds = ['system:housing', 'system:living', 'system:saving', 'system:investing'] as const;
+  return parentIds.every((parentId) => {
+    const nextTotal = candidate.customPurposes
+      .filter((purpose) => purpose.parentId === parentId && purpose.archivedAt === undefined)
+      .reduce((sum, purpose) => sum + purpose.targetMonthlyWon, 0);
+    if (nextTotal <= references[parentId]) return true;
+    if (current === null) return false;
+    const currentTotal = current.customPurposes
+      .filter((purpose) => purpose.parentId === parentId && purpose.archivedAt === undefined)
+      .reduce((sum, purpose) => sum + purpose.targetMonthlyWon, 0);
+    return nextTotal <= currentTotal;
+  });
 }
 
 function createLocation(
@@ -158,9 +188,10 @@ function updateLocation(
   if (current === undefined) return failure('location-not-found');
   if (current.archivedAt !== undefined) return failure('invalid-input');
   const roles = [...new Set([...current.roles, ...command.addRoles])];
+  const institution = command.institution ?? current.institution;
   const next = parseFinancialLocation({
     ...current,
-    institution: command.institution,
+    ...(institution === undefined ? {} : { institution }),
     shortName: command.shortName,
     roles,
     updatedAt: now,

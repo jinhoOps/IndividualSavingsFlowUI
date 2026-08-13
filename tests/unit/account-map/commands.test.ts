@@ -119,6 +119,19 @@ describe('Account Map commands', () => {
       ]),
     }, 20)).toMatchObject({ ok: false, reason: 'purpose-excess' });
   });
+
+  it('rejects a newly over-capacity custom target but permits correction after Main decreases', () => {
+    const before = workspace();
+    const over = draft();
+    over.customPurposes = [{ id: 'custom:telecom', parentId: 'system:living', name: '통신비', targetMonthlyWon: 1_100_000, createdAt: 1, updatedAt: 1 }];
+    expect(applyAccountMapCommand(before, { type: 'save-draft', draft: over }, 20))
+      .toMatchObject({ ok: false, reason: 'custom-target-capacity' });
+
+    before.accountMap.draft = structuredClone(over);
+    before.main.applied!.monthlyLivingWon = 900_000;
+    expect(applyAccountMapCommand(before, { type: 'save-draft', draft: { ...over, updatedAt: 2 } }, 20).ok)
+      .toBe(true);
+  });
 });
 
 function workspace(): WorkspaceDocument {

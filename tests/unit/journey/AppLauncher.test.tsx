@@ -27,7 +27,8 @@ describe('AppLauncher', () => {
         name: new RegExp(`${escapeRegExp(currentLabel)}.*현재 위치`),
       });
       expect(currentLink).toHaveAttribute('aria-current', 'page');
-      expect(screen.getByRole('link', { name: /계좌 연결 \(Account Map\).*준비 중/ })).toBeVisible();
+      expect(screen.getByRole('link', { name: /계좌 연결 \(Account Map\)/ })).toBeVisible();
+      expect(screen.queryByText('준비 중')).not.toBeInTheDocument();
       expect(screen.queryByText('사용 중')).not.toBeInTheDocument();
       expect(container.querySelector('details, summary')).toBeNull();
       expect(container.querySelectorAll('svg[aria-hidden="true"]')).toHaveLength(4);
@@ -91,7 +92,7 @@ describe('AppLauncher', () => {
     expect(within(menu).getAllByRole('link')).toHaveLength(2);
     expect(within(menu).getByRole('link', { name: /미래 성장 \(Simulation\)/ }))
       .toHaveAttribute('href', expect.stringContaining('/apps/simulation/'));
-    expect(within(menu).getByRole('link', { name: /계좌 연결 \(Account Map\).*준비 중/ }))
+    expect(within(menu).getByRole('link', { name: /계좌 연결 \(Account Map\)/ }))
       .toHaveAttribute('href', expect.stringContaining('/apps/account-map/'));
 
     fireEvent.keyDown(document, { key: 'Escape' });
