@@ -288,7 +288,7 @@ function validPurposeState(
     const children = activeCustom.filter((purpose) => purpose.parentId === parentId);
     if (children.length > 10) return false;
     const target = children.reduce((sum, purpose) => sum + purpose.targetMonthlyWon, 0);
-    if (!Number.isSafeInteger(target) || target > referenceFor(parentId, main)) return false;
+    if (!Number.isSafeInteger(target)) return false;
     const names = children.map(({ name }) => normalizeName(name).toLocaleLowerCase('en-US'));
     if (new Set(names).size !== names.length) return false;
   }
@@ -319,18 +319,6 @@ function requiredRole(purposeId: PurposeId, customPurposes: CustomPurpose[]): Fi
   if (root === 'system:saving') return 'saving';
   if (root === 'system:investing') return 'investing';
   return 'spending';
-}
-
-function referenceFor(
-  purposeId: OutflowPurposeId,
-  main: NonNullable<WorkspaceDocumentV1['main']['applied']>,
-): number {
-  switch (purposeId) {
-    case 'system:housing': return main.monthlyHousingWon;
-    case 'system:living': return main.monthlyLivingWon;
-    case 'system:saving': return main.monthlySavingWon;
-    case 'system:investing': return main.monthlyInvestmentWon;
-  }
 }
 
 function validLegacyReferences(

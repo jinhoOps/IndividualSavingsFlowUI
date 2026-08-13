@@ -120,4 +120,33 @@ describe('Workspace v1 to v2 migration', () => {
       },
     })).toBeNull();
   });
+
+  it('keeps an applied custom target readable after Main decreases below it', () => {
+    const base = currentWorkspace();
+    const applied = {
+      schemaVersion: 1 as const,
+      sourceMainUpdatedAt: 100,
+      customPurposes: [{
+        id: 'custom:telecom' as const,
+        parentId: 'system:living' as const,
+        name: '통신비',
+        targetMonthlyWon: 1_000_000,
+        createdAt: 10,
+        updatedAt: 10,
+      }],
+      links: [],
+      layout: 'purpose' as const,
+      setupCompletedAt: 10,
+      updatedAt: 10,
+    };
+
+    expect(parseWorkspaceDocumentVersioned({
+      ...base,
+      main: {
+        ...base.main,
+        applied: { ...base.main.applied!, monthlyLivingWon: 900_000, updatedAt: 110 },
+      },
+      accountMap: { ...base.accountMap, applied },
+    })).toMatchObject({ version: 2 });
+  });
 });

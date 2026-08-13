@@ -6,6 +6,10 @@ import { parsePortfolioDraft, parsePortfolioPlan } from '../../portfolio/domain/
 import type { CompoundSimulationDraft } from '../../simulation/domain/model';
 import { parseSimulationDraft } from '../../simulation/domain/validation';
 import {
+  institutionComparisonKey,
+  normalizeInstitutionText,
+} from '../../account-map/domain/institutions';
+import {
   parseConsumerInstrument,
   parseMonthlyFlow,
   type ConsumerInstrument,
@@ -13,7 +17,6 @@ import {
   type MonthlyFlow,
 } from './accountMapContract';
 import {
-  normalizeLocationName,
   parseFinancialLocation,
   PURPOSE_CAPACITY,
   type FinancialLocation,
@@ -211,7 +214,7 @@ function endpointResolves(
 function hasUniqueActiveLocationNames(locations: FinancialLocation[]): boolean {
   const names = locations
     .filter((location) => location.archivedAt === undefined)
-    .map((location) => normalizeLocationName(location.shortName));
+    .map((location) => `${institutionComparisonKey(location)}\u0000${normalizeInstitutionText(location.shortName)}`);
   return new Set(names).size === names.length;
 }
 
