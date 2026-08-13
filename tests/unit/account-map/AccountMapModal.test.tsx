@@ -41,6 +41,51 @@ describe('AccountMapModal', () => {
     expect(heading).toHaveFocus();
     heading.remove();
   });
+
+  it('shows suspended impact and requires a replacement remainder', () => {
+    renderModal({
+      node: { id: 'location:checking', kind: 'location', label: '생활비통장', status: 'resolved' },
+      related: [
+        { label: '생활비', amountWon: 700_000, status: 'active', linkId: 'old', purposeId: 'system:living', locationId: 'checking', remainder: true },
+        { label: '예비통장', amountWon: 300_000, status: 'active', linkId: 'next', purposeId: 'system:living', locationId: 'backup', remainder: false, replacementCandidate: true },
+      ],
+      onArchiveLocation: vi.fn(),
+    });
+    fireEvent.click(screen.getByRole('button', { name: '보관' }));
+    expect(screen.getByText('생활비 700,000원 연결이 중지됩니다')).toBeVisible();
+    expect(screen.getByRole('combobox', { name: '새 나머지 계좌' })).toBeRequired();
+  });
+
+  it('restores suspended links selectively', () => {
+    const onRestoreLocation = vi.fn(async () => true);
+    renderModal({
+      node: { id: 'location:checking', kind: 'location', label: '생활비통장', status: 'suspended' },
+      related: [{ label: '생활비', amountWon: 700_000, status: 'suspended', linkId: 'old', purposeId: 'system:living', locationId: 'checking', remainder: false }],
+      onRestoreLocation,
+    });
+    fireEvent.click(screen.getByRole('button', { name: '복원' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: /생활비/ }));
+    fireEvent.click(screen.getByRole('button', { name: '선택 복원' }));
+    expect(onRestoreLocation).toHaveBeenCalledWith('checking', ['old'], {});
+  });
+
+  it('keeps the archive selection and offers retry after a failed command', async () => {
+    const onArchiveLocation = vi.fn(async () => false);
+    renderModal({
+      node: { id: 'location:checking', kind: 'location', label: '생활비통장', status: 'resolved' },
+      related: [
+        { label: '생활비', amountWon: 700_000, status: 'active', linkId: 'old', purposeId: 'system:living', locationId: 'checking', remainder: true },
+        { label: '예비통장', amountWon: 300_000, status: 'active', linkId: 'next', purposeId: 'system:living', locationId: 'backup', replacementCandidate: true },
+      ],
+      onArchiveLocation,
+    });
+    fireEvent.click(screen.getByRole('button', { name: '보관' }));
+    fireEvent.change(screen.getByRole('combobox', { name: '새 나머지 계좌' }), { target: { value: 'next' } });
+    fireEvent.click(screen.getByRole('button', { name: '보관하기' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('선택은 유지했습니다');
+    expect(screen.getByRole('combobox', { name: '새 나머지 계좌' })).toHaveValue('next');
+    expect(screen.getByRole('button', { name: '다시 시도' })).toBeEnabled();
+  });
 });
 
 function renderModal(overrides: Partial<React.ComponentProps<typeof AccountMapModal>> = {}) {

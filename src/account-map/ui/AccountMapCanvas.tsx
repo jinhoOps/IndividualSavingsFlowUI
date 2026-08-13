@@ -23,11 +23,14 @@ export interface AccountMapCanvasProps {
   onBackground(): void;
   onLayoutChange(layout: AccountMapApplied['layout']): void;
   onModalClose?(): void;
+  onArchiveLocation?(locationId: string, replacementRemainderByPurpose: Record<string, string | null>): Promise<boolean>;
+  onRestoreLocation?(locationId: string, restoreLinkIds: string[], remainderByPurpose: Record<string, string | null>): Promise<boolean>;
 }
 
 export function AccountMapCanvas({
   applied, main, locations, interaction, viewport,
   onTransient, onBlur, onInvoke, onBackground, onLayoutChange, onModalClose = () => undefined,
+  onArchiveLocation, onRestoreLocation,
 }: AccountMapCanvasProps): JSX.Element {
   const [zoom, setZoom] = useState<MapZoom>('default');
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -76,13 +79,34 @@ export function AccountMapCanvas({
   const modalNode = interaction.modalNodeId === null
     ? undefined
     : positioned.nodes.find(({ id }) => id === interaction.modalNodeId);
-  const modalRelated = modalNode === undefined ? [] : positioned.edges
+  const directModalRelated = modalNode === undefined ? [] : positioned.edges
     .filter((edge) => edge.purposeId === modalNode.id || edge.locationId === modalNode.id)
-    .map((edge) => ({
+    .map((edge) => {
+      const sourceLink = applied.links.find(({ id }) => id === edge.id);
+      return {
       label: nodeById.get(edge.purposeId === modalNode.id ? edge.locationId : edge.purposeId)?.label ?? '연결',
       amountWon: edge.amountWon,
       status: edge.status,
-    }));
+      linkId: edge.id,
+      purposeId: edge.purposeId,
+      locationId: edge.locationId.replace(/^location:/u, ''),
+      remainder: sourceLink?.remainder ?? false,
+    }; });
+  const replacementRelated = modalNode?.kind !== 'location' ? [] : directModalRelated
+    .filter(({ remainder, status }) => remainder && status === 'active')
+    .flatMap(({ purposeId }) => positioned.edges
+      .filter((edge) => edge.purposeId === purposeId && edge.locationId !== modalNode.id && edge.status === 'active')
+      .map((edge) => ({
+        label: nodeById.get(edge.locationId)?.label ?? '다른 계좌',
+        amountWon: edge.amountWon,
+        status: edge.status,
+        linkId: edge.id,
+        purposeId: edge.purposeId,
+        locationId: edge.locationId.replace(/^location:/u, ''),
+        remainder: false,
+        replacementCandidate: true,
+      })));
+  const modalRelated = [...directModalRelated, ...replacementRelated];
 
   return (
     <section className="account-map-canvas-shell" aria-labelledby="account-map-canvas-title">
@@ -151,7 +175,7 @@ export function AccountMapCanvas({
           return <tr key={`row:${edge.id}`}>{applied.layout === 'purpose' ? <><td>{purpose.label}</td><td>{location.label}</td></> : <><td>{location.label}</td><td>{purpose.label}</td></>}<td>{formatWon(edge.amountWon)}</td><td>{edge.status === 'active' ? '연결됨' : '중지됨'}</td></tr>;
         })}</tbody>
       </table>
-      {modalNode === undefined ? null : <AccountMapModal node={modalNode} related={modalRelated} sourceElement={nodeRefs.current.get(modalNode.id) ?? null} fallbackElement={headingRef.current} reducedMotion={reducedMotion} onClose={onModalClose} />}
+      {modalNode === undefined ? null : <AccountMapModal node={modalNode} related={modalRelated} sourceElement={nodeRefs.current.get(modalNode.id) ?? null} fallbackElement={headingRef.current} reducedMotion={reducedMotion} onClose={onModalClose} onArchiveLocation={onArchiveLocation} onRestoreLocation={onRestoreLocation} />}
     </section>
   );
 }

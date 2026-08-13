@@ -48,8 +48,9 @@ export type AccountMapEvent =
   | { type: 'review-requested' }
   | { type: 'connect-requested' }
   | { type: 'setup-exited' }
-  | { type: 'setup-cancelled' }
+  | { type: 'setup-cancelled'; workspace?: WorkspaceDocument }
   | { type: 'apply-succeeded'; applied: AccountMapApplied; workspace?: WorkspaceDocument }
+  | { type: 'reset-succeeded'; workspace: WorkspaceDocument }
   | { type: 'node-hovered'; nodeId: string }
   | { type: 'node-blurred'; nodeId: string }
   | { type: 'node-invoked'; nodeId: string }
@@ -124,7 +125,7 @@ function reduceSetup(
     case 'setup-cancelled':
       return {
         ...state,
-        workspace: {
+        workspace: event.workspace ?? {
           ...state.workspace,
           accountMap: { ...state.workspace.accountMap, draft: null },
         },
@@ -157,6 +158,12 @@ function reduceMap(
   event: AccountMapEvent,
 ): AccountMapState {
   switch (event.type) {
+    case 'reset-succeeded':
+      return {
+        mode: 'setup', workspace: event.workspace, main: state.main,
+        draft: null, step: 'connect', resumed: false, mainChanged: false,
+        exitRequested: false, save: { status: 'idle' },
+      };
     case 'node-hovered':
       return { ...state, interaction: { ...state.interaction, transientNodeId: event.nodeId } };
     case 'node-blurred':
@@ -187,7 +194,12 @@ function reduceMap(
     case 'save-requested':
       return { ...state, save: { status: 'pending' } };
     case 'save-succeeded':
-      return { ...state, workspace: event.workspace, save: { status: 'idle' } };
+      return {
+        ...state,
+        workspace: event.workspace,
+        applied: event.workspace.accountMap.applied ?? state.applied,
+        save: { status: 'idle' },
+      };
     case 'save-failed':
       return { ...state, save: { status: 'failed', reason: event.reason } };
     default:

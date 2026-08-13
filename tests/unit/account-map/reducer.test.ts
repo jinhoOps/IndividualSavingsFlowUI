@@ -54,11 +54,24 @@ describe('Account Map reducer', () => {
     expect(cancelled.mode === 'setup' && cancelled).toMatchObject({ draft: null, step: 'connect', exitRequested: false });
   });
 
+  it('adopts the saved workspace revision after setup cancellation', () => {
+    const workspace = { ...createEmptyWorkspace(7), revision: 7 };
+    const cancelled = accountMapReducer(setupState(), { type: 'setup-cancelled', workspace });
+    expect(cancelled.mode === 'setup' && cancelled.workspace.revision).toBe(7);
+  });
+
   it('switches layout locally and enters map after apply succeeds', () => {
     const setup = setupState();
     const mapped = accountMapReducer(setup, { type: 'apply-succeeded', applied: applied('purpose') });
     const changed = accountMapReducer(mapped, { type: 'layout-changed', layout: 'account' });
     expect(changed.mode === 'map' && changed.applied.layout).toBe('account');
+  });
+
+  it('returns to fresh setup after a map-only reset', () => {
+    const current = mapState();
+    const workspace = createEmptyWorkspace(20);
+    const reset = accountMapReducer(current, { type: 'reset-succeeded', workspace });
+    expect(reset).toMatchObject({ mode: 'setup', draft: null, step: 'connect' });
   });
 });
 

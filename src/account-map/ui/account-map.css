@@ -91,6 +91,14 @@
 .account-map-modal__connections small { grid-column: 1 / -1; color: var(--muted); }
 .account-map-modal__edit { display: grid; gap: 14px; }
 .account-map-modal__edit label { display: grid; gap: 6px; font-weight: 700; }
+.account-map-modal__impact, .account-map-modal__restore { display: grid; gap: 10px; }
+.account-map-modal__impact > p, .account-map-modal__restore > p { margin: 0; }
+.account-map-modal__impact > p:not(:first-child) { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; color: var(--muted); }
+.account-map-modal__impact label { display: grid; gap: 6px; margin-top: 4px; font-weight: 700; }
+.account-map-modal__restore label { display: flex; min-height: 44px; align-items: center; gap: 10px; border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; }
+.account-map-modal__restore input { width: 20px; height: 20px; margin: 0; accent-color: var(--accent); }
+.account-map-modal__error { margin: 0; border-radius: 12px; background: var(--danger-soft, #fff0ed); padding: 10px 12px; color: var(--danger, #a43122); }
+.account-map-modal__archive { display: inline-flex; align-items: center; gap: 6px; }
 .account-map-modal > footer { display: flex; justify-content: flex-end; gap: 8px; border-top: 1px solid var(--line); padding: 14px 20px max(14px, env(safe-area-inset-bottom)); }
 
 @media (max-width: 900px) { .account-map-purpose-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
