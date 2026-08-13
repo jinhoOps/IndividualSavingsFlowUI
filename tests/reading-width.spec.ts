@@ -112,6 +112,77 @@ function expectReadingFrame(
   expect(Math.abs(box.x - (viewportWidth - expectedWidth) / 2)).toBeLessThan(1);
 }
 
+async function waitForReadingFrame(
+  viewportWidth: number,
+  frame: ReturnType<Page['getByTestId']>,
+): Promise<void> {
+  const expectedWidth = Math.min(viewportWidth - 32, 768);
+  await expect.poll(async () => {
+    const box = await frame.boundingBox();
+    if (!box) {
+      return Number.POSITIVE_INFINITY;
+    }
+    return Math.max(
+      Math.abs(box.width - expectedWidth),
+      Math.abs(box.x - (viewportWidth - expectedWidth) / 2),
+    );
+  }).toBeLessThan(1);
+}
+
+test('keeps the shared reading frame stable during layered CSS replacement', async ({ page }) => {
+  await page.setViewportSize({ width: 768, height: 900 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.addInitScript((workspace) => {
+    localStorage.setItem('isf-workspace-v1', JSON.stringify(workspace));
+  }, seededWorkspace);
+  await page.goto('apps/main/');
+  await expect(page.getByRole('heading', { name: '이번 달 자금 흐름' })).toBeVisible();
+
+  await page.evaluate(() => {
+    const removeBaseLayers = (
+      container: CSSStyleSheet | CSSGroupingRule,
+    ): void => {
+      for (let index = container.cssRules.length - 1; index >= 0; index -= 1) {
+        const rule = container.cssRules[index];
+        if (rule.constructor.name === 'CSSLayerBlockRule'
+          && 'name' in rule
+          && rule.name === 'base') {
+          container.deleteRule(index);
+          continue;
+        }
+        if ('cssRules' in rule && 'deleteRule' in rule) {
+          removeBaseLayers(rule as CSSGroupingRule);
+        }
+      }
+    };
+
+    for (const sheet of document.styleSheets) {
+      removeBaseLayers(sheet);
+    }
+  });
+  await page.addStyleTag({
+    content: `
+      @layer base {
+        html,
+        body,
+        #root {
+          border: 3px solid black;
+        }
+
+        body {
+          margin: 8px;
+        }
+      }
+    `,
+  });
+
+  const frame = page.getByTestId('main-dashboard-frame');
+  const frameBox = await frame.boundingBox();
+  expect(frameBox).not.toBeNull();
+  expectReadingFrame(768, frameBox!);
+  await expectNoHorizontalOverflow(page, 768);
+});
+
 async function expectNoHorizontalOverflow(page: Page, viewportWidth: number): Promise<void> {
   const widths = await page.evaluate(() => ({
     body: document.body.scrollWidth,
@@ -127,6 +198,9 @@ async function captureReadingWidth(
   name: string,
 ): Promise<void> {
   await page.evaluate(() => document.fonts.ready.then(() => undefined));
+  await page.evaluate(() => new Promise<void>((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+  }));
   await page.screenshot({ path: testInfo.outputPath(name) });
 }
 
@@ -144,9 +218,7 @@ for (const viewport of viewports) {
 
       const frame = page.getByTestId(app.frameTestId);
       await expect(frame).toHaveClass(/app-content-frame/);
-      const frameBox = await frame.boundingBox();
-      expect(frameBox).not.toBeNull();
-      expectReadingFrame(viewport.width, frameBox!);
+      await waitForReadingFrame(viewport.width, frame);
       await expectNoHorizontalOverflow(page, viewport.width);
       await captureReadingWidth(
         page,
@@ -176,6 +248,7 @@ for (const viewport of viewports) {
     await expect(link).toHaveAttribute('href', /apps\/main\/\?edit=investment$/);
     expect(await message.evaluate((element) => getComputedStyle(element).position)).toBe('absolute');
 
+    await waitForReadingFrame(viewport.width, frame);
     const frameBox = await frame.boundingBox();
     const messageBox = await message.boundingBox();
     const headingBox = await heading.boundingBox();
