@@ -5,10 +5,10 @@ import {
   type ConsumerInstrument,
   type MonthlyFlow,
 } from '../../../src/workspace/domain/accountMapContract';
-import { createEmptyWorkspace, type WorkspaceDocument } from '../../../src/workspace/domain/model';
+import { createEmptyWorkspace, type WorkspaceDocumentV1 } from '../../../src/workspace/domain/model';
 import type { FinancialLocation, FinancialRole } from '../../../src/workspace/domain/financialLocation';
 import {
-  parseWorkspaceDocument,
+  parseWorkspaceDocumentV1,
   validateWorkspaceCrossReferences,
 } from '../../../src/workspace/domain/validation';
 
@@ -124,8 +124,8 @@ const validFlow: MonthlyFlow = {
   updatedAt: 200,
 };
 
-function crossReferenceWorkspace(): WorkspaceDocument {
-  const workspace = parseWorkspaceDocument(validWorkspace());
+function crossReferenceWorkspace(): WorkspaceDocumentV1 {
+  const workspace = parseWorkspaceDocumentV1(validWorkspace());
   if (workspace === null) throw new Error('expected valid workspace fixture');
   return workspace;
 }
@@ -133,14 +133,18 @@ function crossReferenceWorkspace(): WorkspaceDocument {
 describe('Workspace validation', () => {
   it('creates an exact empty workspace at revision zero', () => {
     expect(createEmptyWorkspace(100)).toEqual({
-      schemaVersion: 1,
+      schemaVersion: 2,
       revision: 0,
       updatedAt: 100,
       main: { applied: null, setupProgress: null },
       simulation: { draft: null },
       portfolio: { plans: [], draft: null },
       locations: [],
-      accountMap: { applied: null, draft: null, instruments: [], flows: [] },
+      accountMap: {
+        applied: null,
+        draft: null,
+        legacyPhaseA: { instruments: [], flows: [] },
+      },
     });
   });
 
@@ -150,7 +154,7 @@ describe('Workspace validation', () => {
       malformedMain = { nested: malformedMain };
     }
 
-    expect(parseWorkspaceDocument({
+    expect(parseWorkspaceDocumentV1({
       ...createEmptyWorkspace(100),
       main: malformedMain,
     })).toBeNull();
@@ -158,7 +162,7 @@ describe('Workspace validation', () => {
 
   it('parses one exact current workspace and deeply reconstructs it', () => {
     const original = validWorkspace();
-    const parsed = parseWorkspaceDocument(original);
+    const parsed = parseWorkspaceDocumentV1(original);
 
     expect(parsed).toEqual(original);
     expect(parsed).not.toBe(original);
@@ -190,28 +194,28 @@ describe('Workspace validation', () => {
       accountMap: { ...workspace.accountMap, extra: true },
     })],
   ])('rejects extra keys on the %s', (_name, addExtraKey) => {
-    expect(parseWorkspaceDocument(addExtraKey(validWorkspace()))).toBeNull();
+    expect(parseWorkspaceDocumentV1(addExtraKey(validWorkspace()))).toBeNull();
   });
 
   it('rejects a symbol own key on nested applied Main data', () => {
     const workspace = validWorkspace();
     workspace.main.applied = { ...validMain, [Symbol('extra')]: true };
 
-    expect(parseWorkspaceDocument(workspace)).toBeNull();
+    expect(parseWorkspaceDocumentV1(workspace)).toBeNull();
   });
 
   it('rejects a symbol own key on nested Main setup draft data', () => {
     const workspace = validWorkspace();
     workspace.main.setupProgress.draft = { ...validMain, [Symbol('extra')]: true };
 
-    expect(parseWorkspaceDocument(workspace)).toBeNull();
+    expect(parseWorkspaceDocumentV1(workspace)).toBeNull();
   });
 
   it('rejects a symbol own key on a nested Simulation draft', () => {
     const workspace = validWorkspace();
     workspace.simulation.draft = { ...validSimulation, [Symbol('extra')]: true };
 
-    expect(parseWorkspaceDocument(workspace)).toBeNull();
+    expect(parseWorkspaceDocumentV1(workspace)).toBeNull();
   });
 
   it('rejects a symbol own key on a nested Simulation source', () => {
@@ -221,15 +225,15 @@ describe('Workspace validation', () => {
       [Symbol('extra')]: true,
     };
 
-    expect(parseWorkspaceDocument(workspace)).toBeNull();
+    expect(parseWorkspaceDocumentV1(workspace)).toBeNull();
   });
 
   it('rejects old app-only and v1 Portfolio values', () => {
-    expect(parseWorkspaceDocument(validMain)).toBeNull();
-    expect(parseWorkspaceDocument(validSimulation)).toBeNull();
+    expect(parseWorkspaceDocumentV1(validMain)).toBeNull();
+    expect(parseWorkspaceDocumentV1(validSimulation)).toBeNull();
     const workspace = validWorkspace();
     const { scope: _scope, ...validPlanV1 } = aggregatePlan;
-    expect(parseWorkspaceDocument({
+    expect(parseWorkspaceDocumentV1({
       ...workspace,
       portfolio: {
         ...workspace.portfolio,
@@ -248,7 +252,7 @@ describe('Workspace validation', () => {
       updatedAt: 301,
     });
 
-    expect(parseWorkspaceDocument(workspace)).toBeNull();
+    expect(parseWorkspaceDocumentV1(workspace)).toBeNull();
   });
 
   it('preserves existing location-scoped Portfolio references across role removal and archive', () => {
@@ -265,12 +269,12 @@ describe('Workspace validation', () => {
     const workspace = validWorkspace();
     workspace.portfolio.plans = [scopedPlan];
 
-    expect(parseWorkspaceDocument({
+    expect(parseWorkspaceDocumentV1({
       ...workspace,
       portfolio: { plans: [scopedPlan], draft: scopedDraft },
       locations: [{ ...investingLocation, roles: ['saving'] }],
     })).not.toBeNull();
-    expect(parseWorkspaceDocument({
+    expect(parseWorkspaceDocumentV1({
       ...workspace,
       portfolio: { plans: [scopedPlan], draft: scopedDraft },
       locations: [{ ...investingLocation, archivedAt: 30 }],
@@ -285,8 +289,8 @@ describe('Workspace validation', () => {
     const workspace = validWorkspace();
     workspace.portfolio.plans = [scopedPlan];
 
-    expect(parseWorkspaceDocument(workspace)).not.toBeNull();
-    expect(parseWorkspaceDocument({ ...workspace, locations: [] })).toBeNull();
+    expect(parseWorkspaceDocumentV1(workspace)).not.toBeNull();
+    expect(parseWorkspaceDocumentV1({ ...workspace, locations: [] })).toBeNull();
   });
 
   it('rejects a draft-only Portfolio scope whose location ID is missing from the registry', () => {
@@ -296,7 +300,7 @@ describe('Workspace validation', () => {
     };
     const workspace = validWorkspace();
 
-    expect(parseWorkspaceDocument({
+    expect(parseWorkspaceDocumentV1({
       ...workspace,
       portfolio: {
         plans: [],
@@ -312,7 +316,7 @@ describe('Workspace validation', () => {
       { ...investingLocation, id: 'loc-b', shortName: 'toss isa' },
     ];
 
-    expect(parseWorkspaceDocument(workspace)).toBeNull();
+    expect(parseWorkspaceDocumentV1(workspace)).toBeNull();
   });
 
   it.each(['income', 'spending', 'saving', 'investing'] as const)
@@ -321,7 +325,7 @@ describe('Workspace validation', () => {
       workspace.portfolio.plans = [];
       workspace.locations = Array.from({ length: 11 }, (_, index) => location(index, [role]));
 
-      expect(parseWorkspaceDocument(workspace)).toBeNull();
+      expect(parseWorkspaceDocumentV1(workspace)).toBeNull();
     });
 
   it.each(['income', 'spending', 'saving', 'investing'] as const)
@@ -333,7 +337,7 @@ describe('Workspace validation', () => {
         location(10, [role], 30),
       ];
 
-      expect(parseWorkspaceDocument(workspace)).not.toBeNull();
+      expect(parseWorkspaceDocumentV1(workspace)).not.toBeNull();
     });
 
   it('parses exact Account Map instrument and flow primitives as independent values', () => {
@@ -358,10 +362,10 @@ describe('Workspace validation', () => {
   });
 
   it.each([
-    ['instrument', (workspace: WorkspaceDocument) => {
+    ['instrument', (workspace: WorkspaceDocumentV1) => {
       workspace.accountMap.instruments = [{ ...validInstrument }];
     }],
-    ['flow', (workspace: WorkspaceDocument) => {
+    ['flow', (workspace: WorkspaceDocumentV1) => {
       workspace.accountMap.flows = [{
         ...validFlow,
         source: { type: 'location', id: investingLocation.id },
@@ -373,7 +377,7 @@ describe('Workspace validation', () => {
     populate(workspace);
 
     expect(validateWorkspaceCrossReferences(workspace)).toBe(true);
-    expect(parseWorkspaceDocument(workspace)).toBeNull();
+    expect(parseWorkspaceDocumentV1(workspace)).toBeNull();
   });
 
   it('rejects a missing consumer-instrument funding location independently', () => {
@@ -408,20 +412,20 @@ describe('Workspace validation', () => {
   });
 
   it.each([
-    ['location', (workspace: WorkspaceDocument) => {
+    ['location', (workspace: WorkspaceDocumentV1) => {
       workspace.locations.push({
         ...workspace.locations[0],
         shortName: 'Second',
         roles: [...workspace.locations[0].roles],
       });
     }],
-    ['instrument', (workspace: WorkspaceDocument) => {
+    ['instrument', (workspace: WorkspaceDocumentV1) => {
       workspace.accountMap.instruments = [
         { ...validInstrument },
         { ...validInstrument, shortName: '예비카드' },
       ];
     }],
-    ['flow', (workspace: WorkspaceDocument) => {
+    ['flow', (workspace: WorkspaceDocumentV1) => {
       workspace.accountMap.instruments = [{ ...validInstrument }];
       workspace.accountMap.flows = [
         { ...validFlow, source: { ...validFlow.source }, target: { ...validFlow.target } },

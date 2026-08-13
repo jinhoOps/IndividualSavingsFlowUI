@@ -139,7 +139,7 @@ function readBlob(blob: Blob): Promise<string> {
 function workspace(monthlyNetIncomeWon: number, revision = 1): WorkspaceDocument {
   const applied = data(monthlyNetIncomeWon, { updatedAt: 100 });
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     revision,
     updatedAt: 500,
     main: { applied, setupProgress: null },
@@ -181,7 +181,7 @@ function workspace(monthlyNetIncomeWon: number, revision = 1): WorkspaceDocument
       createdAt: 10,
       updatedAt: 20,
     }],
-    accountMap: { applied: null, draft: null, instruments: [], flows: [] },
+    accountMap: { applied: null, draft: null, legacyPhaseA: { instruments: [], flows: [] } },
   };
 }
 
@@ -261,7 +261,7 @@ describe('MainApp', () => {
   it('reports an actionable error when a workspace export URL cannot be created', async () => {
     const current = workspace(3_000_000, 7);
     const workspaceRepository: Pick<WorkspaceRepository, 'load' | 'replace'> = {
-      load: () => ({ status: 'found', workspace: current }),
+      load: () => ({ status: 'found', workspace: current, needsMigration: false }),
       replace: vi.fn(),
     };
     vi.spyOn(URL, 'createObjectURL').mockImplementation(() => {
@@ -357,7 +357,7 @@ describe('MainApp', () => {
       currentRevision: 8,
     }));
     const workspaceRepository: Pick<WorkspaceRepository, 'load' | 'replace'> = {
-      load: () => ({ status: 'found', workspace: current }),
+      load: () => ({ status: 'found', workspace: current, needsMigration: false }),
       replace,
     };
     render(<MainApp
@@ -398,7 +398,7 @@ describe('MainApp', () => {
       workspace: { ...candidate, revision: 8, updatedAt: 800 },
     }));
     const workspaceRepository: Pick<WorkspaceRepository, 'load' | 'replace'> = {
-      load: () => ({ status: 'found', workspace: current }),
+      load: () => ({ status: 'found', workspace: current, needsMigration: false }),
       replace,
     };
     render(<MainApp

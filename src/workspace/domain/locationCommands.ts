@@ -70,7 +70,7 @@ export function createLocation(
   if (parsedLocation === null) return invalidInput();
 
   const locations = [...currentWorkspace.locations, parsedLocation];
-  if (exceedsPurposeCapacity(currentWorkspace, locations)) {
+  if (exceedsPurposeCapacity(locations)) {
     return { ok: false, reason: 'purpose-capacity' };
   }
   return parseSuccess({ ...currentWorkspace, updatedAt: timestamp, locations }, id);
@@ -127,7 +127,7 @@ export function setLocationRoles(
   const next = parseFinancialLocation({ ...current, roles: parsedRoles, updatedAt: now });
   if (next === null) return invalidInput();
   const locations = replaceLocation(currentWorkspace.locations, next);
-  if (exceedsPurposeCapacity(currentWorkspace, locations)) {
+  if (exceedsPurposeCapacity(locations)) {
     return { ok: false, reason: 'purpose-capacity' };
   }
 
@@ -186,7 +186,7 @@ export function restoreLocation(
   const next = parseFinancialLocation({ ...active, updatedAt: now });
   if (next === null) return invalidInput();
   const locations = replaceLocation(currentWorkspace.locations, next);
-  if (exceedsPurposeCapacity(currentWorkspace, locations)) {
+  if (exceedsPurposeCapacity(locations)) {
     return { ok: false, reason: 'purpose-capacity' };
   }
   return parseSuccess({ ...currentWorkspace, updatedAt: now, locations }, locationId);
@@ -265,17 +265,11 @@ function hasActiveDuplicate(
     && normalizeLocationName(location.shortName) === normalized);
 }
 
-function exceedsPurposeCapacity(
-  workspace: WorkspaceDocument,
-  locations: FinancialLocation[],
-): boolean {
+function exceedsPurposeCapacity(locations: FinancialLocation[]): boolean {
   const active = locations.filter(({ archivedAt }) => archivedAt === undefined);
-  const activeInstrumentCount = workspace.accountMap.instruments
-    .filter(({ archivedAt }) => archivedAt === undefined).length;
   return (Object.keys(PURPOSE_CAPACITY) as FinancialRole[]).some((role) => {
     const locationCount = active.filter((location) => location.roles.includes(role)).length;
-    const count = role === 'spending' ? locationCount + activeInstrumentCount : locationCount;
-    return count > PURPOSE_CAPACITY[role];
+    return locationCount > PURPOSE_CAPACITY[role];
   });
 }
 

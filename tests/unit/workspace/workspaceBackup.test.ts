@@ -35,7 +35,7 @@ const locationPlan: PortfolioPlan = {
 
 function completeWorkspace(overrides: Partial<WorkspaceDocument> = {}): WorkspaceDocument {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     revision: 41,
     updatedAt: 500,
     main: {
@@ -80,7 +80,7 @@ function completeWorkspace(overrides: Partial<WorkspaceDocument> = {}): Workspac
       createdAt: 10,
       updatedAt: 20,
     }],
-    accountMap: { applied: null, draft: null, instruments: [], flows: [] },
+    accountMap: { applied: null, draft: null, legacyPhaseA: { instruments: [], flows: [] } },
     ...overrides,
   };
 }
@@ -127,6 +127,23 @@ describe('workspace backup', () => {
     });
     expect(importWorkspaceBackup(text)).toEqual(workspace);
     expect(importWorkspaceBackup(text)).not.toBe(workspace);
+  });
+
+  it('imports a v1 envelope through the lossless workspace migration', () => {
+    const current = completeWorkspace();
+    const legacy = {
+      ...current,
+      schemaVersion: 1,
+      accountMap: { applied: null, draft: null, instruments: [], flows: [] },
+    };
+
+    const imported = importWorkspaceBackup(envelope(legacy));
+
+    expect(imported.schemaVersion).toBe(2);
+    expect(imported.main).toEqual(legacy.main);
+    expect(imported.simulation).toEqual(legacy.simulation);
+    expect(JSON.stringify(imported.portfolio)).toBe(JSON.stringify(legacy.portfolio));
+    expect(imported.accountMap.legacyPhaseA).toEqual({ instruments: [], flows: [] });
   });
 
   it('exports no storage keys, lease metadata, or trophy state', () => {

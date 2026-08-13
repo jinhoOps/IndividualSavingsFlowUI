@@ -81,7 +81,7 @@ function mainData(overrides: Partial<MainData> = {}): MainData {
 
 function populatedWorkspace(): WorkspaceDocument {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     revision: 4,
     updatedAt: 400,
     main: { applied: mainData(), setupProgress: null },
@@ -123,7 +123,7 @@ function populatedWorkspace(): WorkspaceDocument {
       createdAt: 10,
       updatedAt: 20,
     }],
-    accountMap: { applied: null, draft: null, instruments: [], flows: [] },
+    accountMap: { applied: null, draft: null, legacyPhaseA: { instruments: [], flows: [] } },
   };
 }
 
@@ -258,11 +258,12 @@ describe('BrowserMainRepository workspace adapter', () => {
     winner.main.applied = mainData({ monthlyNetIncomeWon: 6_000_000, updatedAt: 900 });
     let durable = structuredClone(initial);
     const workspaceRepository: WorkspaceRepository = {
-      load: () => ({ status: 'found', workspace: structuredClone(initial) }),
+      load: () => ({ status: 'found', workspace: structuredClone(initial), needsMigration: false }),
       update: vi.fn(async () => {
         durable = structuredClone(winner);
         return { status: 'conflict', currentRevision: winner.revision } as const;
       }),
+      migrate: vi.fn(),
       replace: vi.fn(),
       resetInvalid: vi.fn(),
       subscribe: vi.fn(() => () => undefined),
@@ -395,8 +396,11 @@ describe('BrowserMainRepository workspace adapter', () => {
 
   it('rejects invalid applied and setup drafts before a workspace write', async () => {
     const workspaceRepository: WorkspaceRepository = {
-      load: vi.fn(() => ({ status: 'empty', workspace: createEmptyWorkspace(100) } as const)),
+      load: vi.fn(() => ({
+        status: 'empty', workspace: createEmptyWorkspace(100), needsMigration: false,
+      } as const)),
       update: vi.fn(),
+      migrate: vi.fn(),
       replace: vi.fn(),
       resetInvalid: vi.fn(),
       subscribe: vi.fn(() => () => undefined),

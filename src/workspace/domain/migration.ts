@@ -16,7 +16,7 @@ import {
 } from './accountMapContract';
 import type { FinancialLocation, FinancialRole } from './financialLocation';
 import type { WorkspaceDocumentV1, WorkspaceDocumentV2 } from './model';
-import { parseWorkspaceDocument } from './validation';
+import { parseWorkspaceDocumentV1 } from './validation';
 
 export type VersionedWorkspaceParse =
   | { version: 1; workspace: WorkspaceDocumentV1 }
@@ -81,12 +81,13 @@ function parseLegacyWorkspace(value: Record<string, unknown>): WorkspaceDocument
   const flows = parseArray(value.accountMap.flows, parseMonthlyFlow);
   if (instruments === null || flows === null) return null;
 
-  const shared = parseWorkspaceDocument({
+  const shared = parseWorkspaceDocumentV1({
     ...value,
     accountMap: { applied: null, draft: null, instruments: [], flows: [] },
   });
   if (shared === null || !validLegacyReferences(instruments, flows, shared.locations)) return null;
-  return { ...shared, accountMap: { applied: null, draft: null, instruments, flows } };
+  const preserved = structuredClone(value) as unknown as WorkspaceDocumentV1;
+  return { ...preserved, accountMap: { applied: null, draft: null, instruments, flows } };
 }
 
 function parseCurrentWorkspace(value: Record<string, unknown>): WorkspaceDocumentV2 | null {
@@ -105,7 +106,7 @@ function parseCurrentWorkspace(value: Record<string, unknown>): WorkspaceDocumen
   const flows = parseArray(value.accountMap.legacyPhaseA.flows, parseMonthlyFlow);
   if (instruments === null || flows === null) return null;
 
-  const shared = parseWorkspaceDocument({
+  const shared = parseWorkspaceDocumentV1({
     ...value,
     schemaVersion: 1,
     accountMap: { applied: null, draft: null, instruments: [], flows: [] },
@@ -121,14 +122,15 @@ function parseCurrentWorkspace(value: Record<string, unknown>): WorkspaceDocumen
   if ((value.accountMap.applied !== null && applied === null)
     || (value.accountMap.draft !== null && draft === null)) return null;
 
+  const preserved = structuredClone(value) as unknown as WorkspaceDocumentV2;
   return {
     schemaVersion: 2,
-    revision: shared.revision,
-    updatedAt: shared.updatedAt,
-    main: shared.main,
-    simulation: shared.simulation,
-    portfolio: shared.portfolio,
-    locations: shared.locations,
+    revision: preserved.revision,
+    updatedAt: preserved.updatedAt,
+    main: preserved.main,
+    simulation: preserved.simulation,
+    portfolio: preserved.portfolio,
+    locations: preserved.locations,
     accountMap: { applied, draft, legacyPhaseA: { instruments, flows } },
   };
 }

@@ -6,7 +6,8 @@ import type { AccountMapApplied, AccountMapDraft } from '../../account-map/domai
 import type { ConsumerInstrument, MonthlyFlow } from './accountMapContract';
 import type { FinancialLocation } from './financialLocation';
 
-export const WORKSPACE_SCHEMA_VERSION = 1 as const;
+export const WORKSPACE_SCHEMA_VERSION = 2 as const;
+export const LEGACY_WORKSPACE_SCHEMA_VERSION = 1 as const;
 export const WORKSPACE_STORAGE_KEY = 'isf-workspace-v1';
 
 interface WorkspaceSlices {
@@ -25,7 +26,7 @@ interface WorkspaceSlices {
 }
 
 export interface WorkspaceDocumentV1 extends WorkspaceSlices {
-  schemaVersion: typeof WORKSPACE_SCHEMA_VERSION;
+  schemaVersion: typeof LEGACY_WORKSPACE_SCHEMA_VERSION;
   revision: number;
   updatedAt: number;
   accountMap: {
@@ -50,7 +51,7 @@ export interface WorkspaceDocumentV2 extends WorkspaceSlices {
   };
 }
 
-export type WorkspaceDocument = WorkspaceDocumentV1;
+export type WorkspaceDocument = WorkspaceDocumentV2;
 
 export function createEmptyWorkspace(now: number = Date.now()): WorkspaceDocument {
   return {
@@ -61,6 +62,10 @@ export function createEmptyWorkspace(now: number = Date.now()): WorkspaceDocumen
     simulation: { draft: null },
     portfolio: { plans: [], draft: null },
     locations: [],
-    accountMap: { applied: null, draft: null, instruments: [], flows: [] },
+    accountMap: {
+      applied: null,
+      draft: null,
+      legacyPhaseA: { instruments: [], flows: [] },
+    },
   };
 }
