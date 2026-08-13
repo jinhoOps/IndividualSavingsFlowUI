@@ -145,9 +145,9 @@ ISF는 지금의 월간 돈 흐름을 정리하고, 그 결과를 장기 전략�
 
 - 현재 UI는 하나의 `aggregate` scope만 만들고 편집한다.
 - Portfolio plan과 draft 계약은 구데이터 호환성을 위해 location scope를 표현할 수 있지만 현재 UI는 location scope를 만들거나 편집하지 않는다.
-- Portfolio 결과는 투자 대상별 전체 기준 금액과 비율까지만 보여주며 계좌·기관·보관처 관리 UI를 제공하지 않는다.
+- Closure 이후 Portfolio 결과는 투자 대상별 전체 기준 금액과 비율까지만 보여주며 계좌·기관·보관처 관리 UI를 제공하지 않는다. Closure 전 위치 disclosure는 제거 예정 임시 예외다.
 - 기존 공유 금융 위치와 location-scoped plan은 자동 삭제하거나 aggregate plan으로 변환하지 않고 그대로 보존한다.
-- 계좌·기관·보관처의 생성, 이름 변경과 보관은 Phase B Account Map이 소유한다.
+- Closure 이후 계좌·기관·보관처의 생성, 이름 변경과 보관은 Phase B Account Map만 소유한다.
 - Portfolio 투자 대상과 계좌·보관처 연결은 현재 범위가 아니며 별도 승인 명세 전에는 진입점이나 연결 상태를 표시하지 않는다.
 
 ### Account Map
@@ -193,7 +193,7 @@ Main이 계산하는 요약:
 - `plannedOutflowWon = consumptionWon + monthlySavingWon + monthlyInvestmentWon`
 - `remainingWon = monthlyNetIncomeWon - plannedOutflowWon`
 
-Simulation, Portfolio와 Account Map은 workspace 안의 최신 Main을 읽기 전용으로 사용한다. Simulation과 Portfolio의 write ownership은 자기 slice로 한정한다. Account Map만 자기 slice와 공유 금융 위치 registry를 갱신하며 Main·Simulation·Portfolio를 보존한다.
+Simulation, Portfolio와 Account Map은 workspace 안의 최신 Main을 읽기 전용으로 사용한다. Closure 전 Portfolio 위치 disclosure의 registry write는 제거 예정 임시 예외다. Closure 이후 Simulation과 Portfolio의 write ownership은 자기 slice로 한정하고 Account Map만 자기 slice와 공유 금융 위치 registry를 갱신하며 Main·Simulation·Portfolio를 보존한다.
 
 ## 10. UX and Design Requirements
 

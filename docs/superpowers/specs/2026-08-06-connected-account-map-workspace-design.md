@@ -3,7 +3,7 @@
 **Status:** Approved, amended by the current Product PRD
 **Date:** 2026-08-06
 
-> **2026-08-13 ownership amendment:** Portfolio owns aggregate investment allocation only. Existing shared financial locations and location-scoped plans remain in the workspace for compatibility, but Portfolio does not list, create, rename, archive, or otherwise manage them. Phase B Account Map owns account and custody-location management. Any Portfolio-to-location connection UI requires a separate approved specification.
+> **2026-08-13 ownership amendment:** Portfolio owns aggregate investment allocation only. Before Phase B review closure, its existing location disclosure and registry write remain a removal-pending compatibility exception. After closure, Portfolio does not list, create, rename, archive, or otherwise manage locations; Phase B Account Map is the only account and custody-location manager. Existing shared locations and location-scoped plans remain in the workspace for compatibility. Any Portfolio-to-location connection UI requires a separate approved specification.
 
 ## 1. Purpose
 
@@ -36,7 +36,7 @@ The feature is delivered in stages because shared financial locations, Portfolio
 
 - Add a shared financial-location registry.
 - Extend Portfolio's domain contract to support an aggregate scope and location scopes.
-- Keep the Portfolio UI aggregate-only. Preserve existing location scopes in the domain contract without exposing location management or per-location editing.
+- Keep Portfolio allocation aggregate-only. Remove the pre-closure location-management disclosure during Phase B review closure, while preserving existing location scopes in the domain contract without per-location allocation editing.
 - Define a versioned whole-workspace backup envelope and atomic restore.
 
 ### Phase B: New Account Map Product
@@ -98,11 +98,11 @@ Portfolio owns investment allocations. It supports:
 - one aggregate `전체 기준` scope;
 - preserved scopes keyed by a shared investment-capable location ID for compatibility.
 
-The current applied Portfolio is interpreted as the aggregate scope. Portfolio does not create, list, or edit location scopes. A future connection experience requires separate approval but should not require another schema redesign.
+The current applied Portfolio is interpreted as the aggregate scope. Before Phase B review closure, the existing location-management disclosure is a removal-pending exception and still does not edit location-scoped allocations. After closure, Portfolio does not create, list, or edit locations or location scopes. A future connection experience requires separate approval but should not require another schema redesign.
 
 ### Shared Financial Location Registry
 
-The registry owns stable identities and common metadata. Phase B Account Map manages every supported role. Portfolio does not create or edit registry entries and stores no copied names or institution metadata in its own plan. Before Phase B the registry is retained as dormant compatibility data.
+The registry owns stable identities and common metadata. Before Phase B review closure, Portfolio's existing location disclosure may create or edit registry entries as a removal-pending exception. After closure, Account Map manages every supported role and Portfolio does not create or edit registry entries. Portfolio stores no copied names or institution metadata in its own plan.
 
 ### Workspace Repository
 
