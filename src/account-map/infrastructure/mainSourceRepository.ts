@@ -7,7 +7,9 @@ import {
 
 export type AccountMapMainSourceLoadResult =
   | { status: 'found'; data: MainData }
-  | { status: 'empty' | 'invalid' | 'unavailable' };
+  | { status: 'empty' }
+  | { status: 'invalid' }
+  | { status: 'unavailable' };
 
 export interface AccountMapMainSourceRepository {
   load(): AccountMapMainSourceLoadResult;
