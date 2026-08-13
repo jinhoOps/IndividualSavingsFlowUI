@@ -10,6 +10,7 @@ import { recalculateRemainder, reconcilePurpose } from '../domain/reconciliation
 import { BrowserAccountMapRepository, type AccountMapRepository, type AccountMapWriteResult } from '../infrastructure/accountMapRepository';
 import { BrowserAccountMapMainSourceRepository, type AccountMapMainSourceRepository } from '../infrastructure/mainSourceRepository';
 import { AccountMapManagementMenu } from './AccountMapManagementMenu';
+import { AccountMapCanvas } from './AccountMapCanvas';
 import { AccountMapSetup } from './AccountMapSetup';
 import './account-map.css';
 
@@ -34,7 +35,16 @@ export function AccountMapApp({ repositories }: { repositories?: AccountMapRepos
   if (state.mode === 'invalid') return <AppShell currentApp="account-map" managementMenu={management}><MessagePage title="저장된 데이터가 올바르지 않아요"><p>현재 데이터는 변경하지 않았습니다. Main 관리 메뉴에서 백업을 확인해 주세요.</p></MessagePage></AppShell>;
   if (state.mode === 'unavailable') return <AppShell currentApp="account-map" managementMenu={management}><MessagePage title="저장소를 불러오지 못했어요"><p>브라우저 저장소 사용 가능 여부를 확인한 뒤 다시 시도해 주세요.</p></MessagePage></AppShell>;
   if (state.mode === 'migrating') return <AppShell currentApp="account-map" managementMenu={management}><MessagePage title="계좌 연결을 준비하고 있어요"><p role="status">기존 데이터를 안전하게 옮기는 중입니다.</p></MessagePage></AppShell>;
-  if (state.mode === 'map') return <AppShell currentApp="account-map" managementMenu={management}><main className="account-map-page"><section className="account-map-placeholder"><p className="account-map-eyebrow">계좌 연결</p><h1>계좌 연결 지도</h1><p>목적 중심으로 연결을 확인합니다.</p></section></main></AppShell>;
+  if (state.mode === 'map') return <AppShell currentApp="account-map" managementMenu={management}><main className="account-map-page account-map-page--map"><header className="account-map-map-header"><div><p className="account-map-eyebrow">계좌 연결</p><h1>계좌 연결 지도</h1><p>Main의 월 금액은 읽기만 합니다. 노드를 한 번 누르면 연결에 집중합니다.</p></div></header><AccountMapCanvas applied={state.applied} main={state.main} locations={state.workspace.locations} interaction={state.interaction} onTransient={(nodeId) => dispatch({ type: 'node-hovered', nodeId })} onBlur={(nodeId) => dispatch({ type: 'node-blurred', nodeId })} onInvoke={(nodeId) => dispatch({ type: 'node-invoked', nodeId })} onBackground={() => dispatch({ type: 'map-background-invoked' })} onLayoutChange={(layout) => {
+    if (layout === state.applied.layout) return;
+    const applied = { ...state.applied, layout, updatedAt: Date.now() };
+    dispatch({ type: 'layout-changed', layout });
+    dispatch({ type: 'save-requested' });
+    void resolved.accountMap.save(state.workspace.revision, { type: 'apply-map', applied }).then((result) => {
+      if (result.status === 'saved') dispatch({ type: 'save-succeeded', workspace: result.workspace });
+      else dispatch({ type: 'save-failed', reason: failureReason(result) });
+    });
+  }} /></main></AppShell>;
 
   async function saveDraft(draft: AccountMapDraft): Promise<boolean> {
     if (state.mode !== 'setup') return false;
