@@ -545,14 +545,28 @@ function editLink(
     ).targetWon;
     const recalculated = recalculateRemainder(next.purposeId, selectedRemainder.id, target, links);
     if (!recalculated.ok) {
-      return failure(recalculated.reason === 'fixed-links-exceed-target'
-        ? 'fixed-links-exceed-target'
-        : 'invalid-remainder-selection');
+      if (recalculated.reason !== 'fixed-links-exceed-target') {
+        return failure('invalid-remainder-selection');
+      }
+      const beforeExcess = reconcilePurpose(
+        next.purposeId,
+        applied,
+        source.locations,
+        source.main.applied!,
+      ).excessWon;
+      const afterExcess = reconcilePurpose(
+        next.purposeId,
+        { ...applied, links },
+        source.locations,
+        source.main.applied!,
+      ).excessWon;
+      if (afterExcess >= beforeExcess) return failure('fixed-links-exceed-target');
+    } else {
+      links = recalculated.links.map((link) => link.purposeId === next.purposeId
+        && link.status === 'active'
+        ? { ...link, updatedAt: now }
+        : link);
     }
-    links = recalculated.links.map((link) => link.purposeId === next.purposeId
-      && link.status === 'active'
-      ? { ...link, updatedAt: now }
-      : link);
   }
   const candidate = { ...applied, links, updatedAt: now };
   const validated = validateEditedMap(candidate, source);
@@ -569,9 +583,29 @@ function editLink(
     ...source,
     accountMap: {
       ...source.accountMap,
-      applied: withCurrentMainSource(candidate, applied, source.main.applied!),
+      applied: withCurrentMainAndExcessSource(candidate, applied, source),
     },
   });
+}
+
+function withCurrentMainAndExcessSource(
+  candidate: AccountMapApplied,
+  current: AccountMapApplied,
+  source: WorkspaceDocument,
+): AccountMapApplied {
+  const main = source.main.applied!;
+  const normalized = withCurrentMainSource(candidate, current, main);
+  const purposeIds: PurposeId[] = [
+    ...SYSTEM_PURPOSE_IDS,
+    ...candidate.customPurposes
+      .filter(({ archivedAt }) => archivedAt === undefined)
+      .map(({ id }) => id),
+  ];
+  return purposeIds.some((purposeId) => (
+    reconcilePurpose(purposeId, candidate, source.locations, main).excessWon > 0
+  ))
+    ? { ...normalized, sourceMainUpdatedAt: current.sourceMainUpdatedAt }
+    : normalized;
 }
 
 function editCustomPurpose(

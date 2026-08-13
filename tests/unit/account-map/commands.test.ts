@@ -458,6 +458,70 @@ describe('Account Map commands', () => {
     expect(applyAccountMapCommand(before, { type: 'edit-map-node', applied: worse }, 20)).toMatchObject({ ok: false, reason: 'purpose-excess' });
   });
 
+  it('allows an edit-link partial correction when stale fixed links still exceed the latest target', () => {
+    const before = workspace();
+    before.main.applied = { ...main(), monthlyLivingWon: 500_000, updatedAt: 10 };
+    before.accountMap.applied = {
+      ...validApplied(),
+      sourceMainUpdatedAt: 1,
+      links: [
+        ...validApplied().links,
+        link('living-remainder', 'checking', 200_000, true),
+        link('living-fixed', 'savings', 800_000),
+      ],
+    };
+    before.accountMap.draft = draft();
+    const draftBefore = JSON.stringify(before.accountMap.draft);
+    const protectedBefore = {
+      main: JSON.stringify(before.main),
+      simulation: JSON.stringify(before.simulation),
+      portfolio: JSON.stringify(before.portfolio),
+    };
+
+    const result = applyAccountMapCommand(before, {
+      type: 'edit-link',
+      linkId: 'living-fixed',
+      fields: { monthlyAmountWon: 700_000 },
+    }, 20);
+
+    expect(result).toMatchObject({ ok: true });
+    if (!result.ok) return;
+    expect(result.workspace.accountMap.applied?.links.find(({ id }) => id === 'living-fixed'))
+      .toMatchObject({ monthlyAmountWon: 700_000, remainder: false });
+    expect(result.workspace.accountMap.applied?.links.find(({ id }) => id === 'living-remainder'))
+      .toMatchObject({ monthlyAmountWon: 200_000, remainder: true });
+    expect(result.workspace.accountMap.applied?.sourceMainUpdatedAt).toBe(1);
+    expect(JSON.stringify(result.workspace.accountMap.draft)).toBe(draftBefore);
+    expect(JSON.stringify(result.workspace.main)).toBe(protectedBefore.main);
+    expect(JSON.stringify(result.workspace.simulation)).toBe(protectedBefore.simulation);
+    expect(JSON.stringify(result.workspace.portfolio)).toBe(protectedBefore.portfolio);
+  });
+
+  it.each([
+    ['no improvement', 800_000],
+    ['worsening', 900_000],
+  ] as const)('rejects a stale fixed-link edit with %s', (_case, monthlyAmountWon) => {
+    const before = workspace();
+    before.main.applied = { ...main(), monthlyLivingWon: 500_000, updatedAt: 10 };
+    before.accountMap.applied = {
+      ...validApplied(),
+      sourceMainUpdatedAt: 1,
+      links: [
+        ...validApplied().links,
+        link('living-remainder', 'checking', 200_000, true),
+        link('living-fixed', 'savings', 800_000),
+      ],
+    };
+    const beforeJson = JSON.stringify(before);
+
+    expect(applyAccountMapCommand(before, {
+      type: 'edit-link',
+      linkId: 'living-fixed',
+      fields: { monthlyAmountWon },
+    }, 20)).toMatchObject({ ok: false });
+    expect(JSON.stringify(before)).toBe(beforeJson);
+  });
+
   it('allows a custom target correction but rejects a larger parent-capacity excess', () => {
     const before = workspace();
     const over = { id: 'custom:telecom' as const, parentId: 'system:living' as const, name: '통신비', targetMonthlyWon: 1_100_000, createdAt: 1, updatedAt: 1 };
