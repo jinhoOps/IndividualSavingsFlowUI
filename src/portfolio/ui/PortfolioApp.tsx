@@ -18,13 +18,11 @@ import {
   BrowserPortfolioMainSourceRepository,
   type PortfolioMainSourceRepository,
 } from '../infrastructure/mainSourceRepository';
-import type { InvestmentLocationRepository } from '../infrastructure/locationRepository';
 import {
   BrowserPortfolioRepository,
   type PortfolioRepository,
 } from '../infrastructure/portfolioRepository';
 import { AllocationEditor } from './AllocationEditor';
-import { InvestmentLocations } from './InvestmentLocations';
 import { PortfolioApplyBar } from './PortfolioApplyBar';
 import { PortfolioEditSurface } from './PortfolioEditSurface';
 import { PortfolioManagementMenu } from './PortfolioManagementMenu';
@@ -34,12 +32,10 @@ import { PortfolioSetupFlow } from './PortfolioSetupFlow';
 export function PortfolioApp({
   mainSourceRepository: providedMainRepository,
   repository: providedRepository,
-  locationRepository,
   now = Date.now,
 }: {
   mainSourceRepository?: PortfolioMainSourceRepository;
   repository?: PortfolioRepository;
-  locationRepository?: InvestmentLocationRepository;
   now?: () => number;
 }) {
   const mainRepository = useMemo(
@@ -233,7 +229,6 @@ export function PortfolioApp({
                   investmentWon={state.applied.syncedInvestmentWon}
                   allocation={materializeAllocation(state.applied, state.applied.syncedInvestmentWon)}
                 />
-                <InvestmentLocations repository={locationRepository} />
               </div>
               {state.view === 'edit' ? (
                 <PortfolioEditSurface
