@@ -101,7 +101,17 @@ export function AppLauncher({ currentApp, managementMenu }: AppLauncherProps) {
   useEffect(() => {
     const navigation = navigationRef.current;
     if (navigation === null || typeof ResizeObserver === 'undefined') return undefined;
-    const updateWidth = () => {
+    let measurementFrame: number | null = null;
+    const commitWidth = () => {
+      const firstAppLink = navigation.querySelector<HTMLElement>(
+        '.journey-launcher__app-link',
+      );
+      const firstAppLinkBox = firstAppLink?.getBoundingClientRect();
+      if (firstAppLinkBox === undefined
+        || firstAppLinkBox.width < 43.5
+        || firstAppLinkBox.height < 43.5) {
+        return;
+      }
       const nextWidth = navigation.clientWidth;
       const nextPartition = partitionAppNavigation(APP_NAV_ITEMS, currentApp, nextWidth);
       const active = document.activeElement;
@@ -125,10 +135,22 @@ export function AppLauncher({ currentApp, managementMenu }: AppLauncherProps) {
       }
       setAvailableWidth(nextWidth);
     };
+    const updateWidth = () => {
+      if (measurementFrame !== null) cancelAnimationFrame(measurementFrame);
+      measurementFrame = requestAnimationFrame(() => {
+        measurementFrame = requestAnimationFrame(() => {
+          measurementFrame = null;
+          commitWidth();
+        });
+      });
+    };
     const observer = new ResizeObserver(updateWidth);
     updateWidth();
     observer.observe(navigation);
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      if (measurementFrame !== null) cancelAnimationFrame(measurementFrame);
+    };
   }, [currentApp]);
 
   useLayoutEffect(() => {

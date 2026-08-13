@@ -256,6 +256,39 @@ test('separates app navigation and the right-aligned management tool across view
   }
 });
 
+test('keeps all app icons visible while launcher geometry is unresolved', async ({ page }) => {
+  await page.addInitScript((fixture) => {
+    localStorage.setItem('isf-workspace-v1', JSON.stringify(fixture));
+  }, appliedWorkspace);
+  await page.setViewportSize({ width: 768, height: 900 });
+  await page.goto('apps/simulation/');
+
+  const navigation = page.getByRole('navigation', { name: 'ISF 앱' });
+  const links = navigation.locator('.journey-launcher__app-link');
+  await expect(links).toHaveCount(4);
+
+  const unresolvedGeometry = await page.addStyleTag({
+    content: `
+      .journey-launcher {
+        width: 120px !important;
+      }
+
+      .journey-launcher__app-link {
+        width: 24px !important;
+        height: 24px !important;
+      }
+    `,
+  });
+
+  await expect(links).toHaveCount(4);
+  await expect(navigation.getByRole('button', { name: '앱 더보기' })).toHaveCount(0);
+
+  await unresolvedGeometry.evaluate((style) => style.remove());
+  await expect(links).toHaveCount(4);
+  await expect.poll(async () => links.first().evaluate((link) => link.getBoundingClientRect().width))
+    .toBe(44);
+});
+
 test('keeps each app management menu reachable and contained across viewports', async ({ page }) => {
   await page.addInitScript((fixture) => {
     localStorage.setItem('isf-workspace-v1', JSON.stringify(fixture));

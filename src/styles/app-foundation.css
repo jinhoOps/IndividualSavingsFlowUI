@@ -1,6 +1,16 @@
 @import url("https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Gowun+Dodum:wght@400;700&display=swap");
 @import "tailwindcss";
 
+/* Keep shell geometry stable while Vite replaces Tailwind cascade layers. */
+html,
+body,
+#root {
+  box-sizing: border-box;
+  min-width: 0;
+  margin: 0;
+  border: 0;
+}
+
 @theme {
   --color-primary: #ea5b2a;
   --color-accent: #0f766e;
