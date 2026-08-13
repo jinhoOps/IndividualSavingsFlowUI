@@ -2,12 +2,12 @@
 
 개인 재무 흐름을 입력하고 향후 장기 투자 전략과 실행 계획으로 연결할 수 있도록 준비하는 로컬 우선 웹 앱입니다.
 
-현재 상세 제품은 Main, Simulation과 Portfolio이며, Account Map은 Phase B 개발 전 준비 화면입니다. Phase A shared workspace foundation은 현재 제품입니다.
+현재 상세 제품은 Main, Simulation, Portfolio와 Account Map입니다. 네 앱은 Phase A shared workspace를 사용합니다.
 
 - **Main**: 월 실수령액, 소비, 저축, 투자와 남는 돈을 한눈에 보여주고 whole-workspace 백업을 관리하는 현재 제품 기준선입니다.
 - **Simulation**: Main의 월 저축·투자를 기준으로 장기 복리 성장과 전부 저축 기준선을 비교합니다.
-- **Portfolio**: 최신 Main 투자금을 첫 설정 흐름에서 전체 기준으로 배분하고, 이후 결과 우선 화면과 집중 편집 화면을 제공합니다. 결과에서 Account Map과 공유할 투자 위치를 관리하며 위치별 배분 편집은 제공하지 않습니다.
-- **Account Map**: 승인된 Phase B 설계에 따라 새로 개발할 앱입니다. 현재 준비 화면은 Main 또는 workspace 데이터를 읽거나 저장하지 않습니다.
+- **Portfolio**: 최신 Main 투자금을 첫 설정 흐름에서 전체 기준으로 배분하고, 이후 결과 우선 화면과 집중 편집 화면을 제공합니다.
+- **Account Map**: Main의 다섯 월 금액을 읽어 목적과 계좌·보관처의 연결을 만들고 노드 지도로 관리합니다.
 
 배포 페이지: https://jinhoops.github.io/IndividualSavingsFlowUI/
 
@@ -15,19 +15,19 @@
 
 ISF는 단순히 수입과 지출을 기록하는 도구가 아닙니다. 지금 들어오는 돈이 생활비, 저축과 투자로 어떻게 나뉘는지 이해하고, 현재 선택을 장기 계획과 실제 실행으로 연결해 가기 위한 개인 재무 플래닝 도구입니다.
 
-현재는 월간 현금흐름을 정리하는 Main, N년 후 기대 자산을 비교하는 Simulation과 최신 Main 투자금을 전체 기준으로 배분하는 Portfolio를 제공합니다. 세 앱은 하나의 versioned workspace와 공유 금융 위치를 사용합니다. 다음 Phase B에서는 이 계획을 실제 금융 위치 흐름으로 연결하는 Account Map을 승인된 명세에 따라 개발합니다.
+현재는 월간 현금흐름을 정리하는 Main, N년 후 기대 자산을 비교하는 Simulation, 최신 Main 투자금을 전체 기준으로 배분하는 Portfolio, 계획을 실제 금융 위치에 연결하는 Account Map을 제공합니다. 네 앱은 하나의 versioned workspace를 사용합니다.
 
 여기서 보여주는 미래 값은 확정된 예측이나 수익 보장이 아닙니다. 사용자가 입력한 현재 상황과 가정을 바탕으로 여러 선택지를 비교하고 더 나은 질문을 만들기 위한 계획용 시나리오입니다.
 
 ## 프로젝트 목표
 
-ISF의 Main, Simulation과 Portfolio는 다음 질문 중 현재 제품 범위에 답하고, 마지막 질문은 향후 Account Map이 담당합니다.
+ISF의 네 앱은 다음 질문에 답합니다.
 
 - 내 월 수입은 어디로 흘러가는가?
 - 생활비, 저축과 투자 비중은 현재 계획에 맞는가?
 - **Simulation**: 정한 월 저축·투자가 장기 복리로 얼마나 커지는가?
 - **Portfolio**: 선택한 전략을 어떤 투자 대상으로 배분할 것인가?
-- **향후 Account Map**: 금융 위치와 월 연결을 어떻게 관리할 것인가?
+- **Account Map**: 금융 위치와 월 연결을 어떻게 관리할 것인가?
 
 서버 계정이나 은행 연동 없이 사용자가 입력한 데이터를 브라우저 안에서 계산하고 시각화합니다.
 
@@ -53,32 +53,28 @@ Main에 적용된 계획이 있으면 `Simulation으로 이어가기`가 URL로�
 
 기간은 현재를 뜻하는 0년부터 30년까지 조정합니다. 결과는 한국식 정수 금액, 전체 폭 성장 그래프와 전부 저축 비교를 제공하며 pointer·touch·keyboard로 연도별 상세를 확인할 수 있습니다.
 
-런처는 Main, Simulation, Portfolio와 Account Map을 한 줄 아이콘으로 표시합니다. 현재 앱은 선택선으로 구분하고 Account Map만 중립 점과 도움말에서 `준비 중`임을 알립니다. 아이콘의 한글·영문 명칭은 hover, keyboard focus, 모바일 길게 누르기 또는 `?` 도움말로 확인할 수 있습니다.
+런처는 Main, Simulation, Portfolio와 Account Map을 한 줄 아이콘으로 표시합니다. 현재 앱은 선택선으로 구분합니다. 아이콘의 한글·영문 명칭은 hover, keyboard focus, 모바일 길게 누르기 또는 `?` 도움말로 확인할 수 있습니다.
 
-## Portfolio와 향후 Account Map
+## Portfolio와 Account Map
 
 ### Portfolio
 
 최신 Main 투자금을 workspace에서 읽어 최대 10개 자유 이름 투자 대상과 현금에 배분합니다. 최초에는 시작·배분·검토의 안내 흐름을 거치고, 이후에는 도넛과 표가 있는 결과로 바로 진입합니다. `배분 수정`은 모바일·태블릿에서 하단 sheet, 데스크톱에서 우측 panel로 열려 결과 보기와 편집을 확실히 구분합니다. 현재 UI는 `전체 기준` 적용 계획과 초안만 편집하며 Main을 수정하지 않습니다.
 
-결과의 닫힌 `투자 위치 N곳` 영역을 펼치면 Account Map과 공유할 안정적인 금융 위치를 만들고 이름을 바꾸거나 보관할 수 있습니다. 최초 설정과 배분 수정에는 이 관리 UI가 나오지 않으며, 빈 위치는 비대화형 상태 `아직 배분하지 않음`으로 표시됩니다. location-scoped Portfolio 계약은 저장할 수 있지만 위치별 배분 편집기는 Phase A 범위가 아닙니다. 계좌 번호, 시세, 수익률과 매수 실행도 현재 범위가 아닙니다.
-
 선택한 투자 방향을 종목·자산별 적립 금액과 비중으로 구체화합니다.
 
 ### Account Map
 
-Account Map의 독립 상태 소유권과 read contract는 [승인된 workspace 설계](docs/superpowers/specs/2026-08-06-connected-account-map-workspace-design.md)에 정의되어 있습니다. Phase B 전까지 현재 제품 경로는 readiness-only이며 Account Map applied/draft, instrument와 flow를 만들지 않습니다. 향후에도 Account Map 변경은 Main에 암묵적으로 write-back하지 않습니다.
-
-각 신규 앱의 상세 기능은 별도 승인 명세에서 정의하며, 해당 레거시 기능 목록·데이터 호환 정책·참조 제거·회귀 검증·삭제 계획을 함께 승인받아야 합니다.
+Account Map은 Main의 다섯 월 금액을 읽기 전용 기준으로 사용합니다. 최초 설정에서 수입·주거·생활비·저축·투자를 계좌·보관처에 연결하고, 이후 목적 중심 또는 계좌 중심 노드 지도에서 연결을 확인합니다. 계좌·보관처 보관·선택 복원과 지도 다시 만들기를 제공하지만 Main·Simulation·Portfolio에는 write-back하지 않습니다. 상세 계약은 [승인된 목적 노드 설계](docs/superpowers/specs/2026-08-13-account-map-purpose-node-flow-design.md)에 정의되어 있습니다.
 
 ## 공유 인프라
 
-현재 Main, Simulation과 Portfolio는 다음 Phase A 기반을 공유하며 Account Map 준비 화면은 같은 앱 shell만 사용합니다.
+현재 네 앱은 다음 기반을 공유합니다.
 
 - 네 목적지 앱 런처와 현재 위치 표시
 - 하나의 committed localStorage 기록 `isf-workspace-v1`과 앱별 typed slice adapter
 - monotonic revision과 lease를 사용한 stale-writer 차단
-- Main·Simulation·Portfolio·공유 금융 위치와 비어 있는 Account Map contract를 포함하는 whole-workspace 백업
+- Main·Simulation·Portfolio·공유 금융 위치와 Account Map 상태를 포함하는 whole-workspace 백업
 - 모든 slice와 참조를 먼저 검증한 뒤 한 번에 교체하는 atomic restore
 - URL 기반 앱 탐색과 workspace Main slice를 읽는 앱별 read-only adapter
 - PWA 매니페스트와 서비스워커
@@ -95,7 +91,7 @@ Account Map의 독립 상태 소유권과 read contract는 [승인된 workspace 
 - **한국어 금액 UX**: 사용자는 만 원·억 원 단위로 읽고 내부 계산과 저장은 원 단위를 유지합니다.
 - **시각화 중심**: 현재 Main의 월 자금 구성과 향후 앱별 시각화는 숫자의 관계를 설명해야 합니다.
 - **명시적 연결**: 앱 이동은 URL만 사용하고 Simulation과 Portfolio가 같은 workspace의 최신 Main slice를 각자의 읽기 전용 adapter로 읽습니다.
-- **책임 분리**: 준비 화면은 상세 상태를 소유하지 않으며, 향후 신규 앱의 독립 상태는 각 상세 명세에서 정의합니다.
+- **책임 분리**: 각 앱은 자신의 draft/applied 상태만 쓰고 다른 제품 slice에는 암묵적으로 write-back하지 않습니다.
 
 ## Legacy Migration Status
 
@@ -103,7 +99,7 @@ Account Map의 독립 상태 소유권과 read contract는 [승인된 workspace 
 
 레거시는 지원되는 사용자 경로나 신규 기능의 기반이 아닙니다. 각 기능을 목록화하고 현재 제품에 필요한지 판정한 뒤, 필요한 기능은 현재 책임 경계로 이관하고 불필요한 기능은 폐기 근거를 기록합니다. 사용자 동작과 구버전 저장 데이터의 호환성을 검증하고 모든 runtime·route·selector·storage·test 참조를 제거한 후 레거시 구현을 삭제합니다.
 
-Phase A는 새 제품이 구 앱 저장 키를 소비하지 않는 경계까지만 완료했습니다. `apps/account-map/**`, 이전 entry·compatibility 모듈, 관련 storage key 문자열과 legacy tests 등은 기능·데이터 계약의 임시 참고 자원으로 아직 저장소에 남아 있습니다. 이 표면을 삭제 완료로 간주하지 않습니다. Phase D에서 전체 runtime·route·selector·storage·test 참조를 다시 목록화하고 대체 또는 폐기 증거와 전체 회귀를 갖춘 뒤 제거합니다.
+Phase B에서 구 Account Map 바닐라 runtime과 entry는 지원 React 경로 및 E2E로 교체해 제거했습니다. 구 저장 키 문자열은 읽거나 변경하지 않는 호환성 경계 검증과 이력 문서에만 남습니다. 다른 레거시 표면은 Phase D에서 전체 참조와 호환성을 다시 검증한 뒤 제거합니다.
 
 ## 실행하기
 
@@ -144,7 +140,7 @@ npm run build
 
 ## 개발 구조
 
-이 저장소는 Vite 기반 정적 멀티페이지 앱입니다. 현재 Main, Simulation, Portfolio와 Account Map 준비 화면은 React·TypeScript·Tailwind CSS로 구성됩니다. 기존 Account Map 바닐라 모듈은 현재 route에 연결되지 않은 기능·데이터 계약 조사 자원으로 Phase D까지 보존합니다.
+이 저장소는 Vite 기반 정적 멀티페이지 앱입니다. 현재 Main, Simulation, Portfolio와 Account Map은 React·TypeScript·Tailwind CSS로 구성됩니다.
 
 큰 책임 경계:
 
@@ -153,7 +149,7 @@ npm run build
 - **현재 계산**: Main 월간 현금흐름, 잔액과 적자
 - **현재 시각화**: Main 요약 카드와 월 자금 구성
 - **저장과 공유**: 단일 revisioned workspace, 앱 slice adapter, 공유 금융 위치와 whole-workspace JSON
-- **앱 연결**: URL로 이동하는 Main → Simulation → Portfolio 상세 화면과 Account Map-only 준비 화면
+- **앱 연결**: URL로 이동하는 Main → Simulation → Portfolio → Account Map 상세 화면
 - **공통 UI**: 앱 런처, Main 데이터 허브, 피드백, 테마와 PWA
 
 ## 검증 기준
@@ -176,7 +172,7 @@ Main의 빠른 설정이나 대시보드를 수정했다면 focused 회귀를 �
 npx playwright test tests/main-react.spec.ts
 ```
 
-레거시 Account Map 마이그레이션 참고 회귀는 승인된 신규 Account Map 명세의 조사·호환 작업에서만 별도로 실행합니다.
+Account Map 사용자 흐름과 v1 workspace 이관 회귀는 다음 명령으로 실행합니다.
 
 ```bash
 npx playwright test tests/account-map.spec.ts --reporter=list
@@ -184,9 +180,9 @@ npx playwright test tests/account-map.spec.ts --reporter=list
 
 ## 현재 로드맵
 
-Phase A shared workspace foundation과 Main, Simulation, aggregate-first Portfolio는 현재 기준선입니다. 다음 단계는 이 기준선을 보존하며 별도 계획으로 진행합니다.
+Phase A shared workspace foundation과 Main, Simulation, aggregate-first Portfolio, Phase B Account Map은 현재 기준선입니다. 다음 단계는 이 기준선을 보존하며 별도 계획으로 진행합니다.
 
-- **Phase B**: 승인된 상세 명세와 레거시 capability inventory에 따른 신규 Account Map
+- **Phase B 완료**: 목적 중심 설정, 계좌·보관처 registry, 노드 지도와 가역적 관리가 있는 Account Map
 - **Phase C**: 현재 Main metric 영역을 대체하는 Main·Simulation·Portfolio·Account Map 연결 결과 카드
 - **Phase D**: 남아 있는 legacy runtime, compatibility path, storage key와 test의 repository-wide extinction
 - **별도 후속**: 금융 workspace·backup과 분리된 hidden trophy room

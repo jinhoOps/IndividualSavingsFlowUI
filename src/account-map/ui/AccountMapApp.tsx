@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useReducer, type JSX } from 'react';
+import { useEffect, useMemo, useReducer, useRef, type JSX } from 'react';
 import { AppShell } from '../../components/common/AppShell';
 import { appPath } from '../../journey/routes';
 import type { FinancialLocation } from '../../workspace/domain/financialLocation';
@@ -18,6 +18,7 @@ export interface AccountMapRepositories { accountMap: AccountMapRepository; main
 export function AccountMapApp({ repositories }: { repositories?: AccountMapRepositories } = {}): JSX.Element {
   const resolved = useMemo<AccountMapRepositories>(() => repositories ?? { accountMap: new BrowserAccountMapRepository(), main: new BrowserAccountMapMainSourceRepository() }, [repositories]);
   const [state, dispatch] = useReducer(accountMapReducer, undefined, () => bootstrapAccountMap(resolved.main.load(), resolved.accountMap.load()));
+  const pendingModalWorkspaceRef = useRef<WorkspaceDocument | null>(null);
 
   useEffect(() => {
     if (state.mode !== 'migrating') return;
@@ -25,7 +26,14 @@ export function AccountMapApp({ repositories }: { repositories?: AccountMapRepos
     void resolved.accountMap.migrate(state.revision).then((result) => {
       if (!active) return;
       if (result.status === 'saved') dispatch({ type: 'migration-succeeded', workspace: result.workspace });
-      else dispatch({ type: 'migration-failed', reason: failureReason(result) });
+      else if (result.status === 'conflict') {
+        const current = resolved.accountMap.load();
+        if (current.status === 'found' && !current.needsMigration) {
+          dispatch({ type: 'migration-succeeded', workspace: current.workspace });
+        } else {
+          dispatch({ type: 'migration-failed', reason: failureReason(result) });
+        }
+      } else dispatch({ type: 'migration-failed', reason: failureReason(result) });
     });
     return () => { active = false; };
   }, [resolved.accountMap, state.mode === 'migrating' ? state.revision : -1]);
@@ -55,15 +63,20 @@ export function AccountMapApp({ repositories }: { repositories?: AccountMapRepos
   if (state.mode === 'invalid') return <AppShell currentApp="account-map" managementMenu={management}><MessagePage title="저장된 데이터가 올바르지 않아요"><p>현재 데이터는 변경하지 않았습니다. Main 관리 메뉴에서 백업을 확인해 주세요.</p></MessagePage></AppShell>;
   if (state.mode === 'unavailable') return <AppShell currentApp="account-map" managementMenu={management}><MessagePage title="저장소를 불러오지 못했어요"><p>브라우저 저장소 사용 가능 여부를 확인한 뒤 다시 시도해 주세요.</p></MessagePage></AppShell>;
   if (state.mode === 'migrating') return <AppShell currentApp="account-map" managementMenu={management}><MessagePage title="계좌 연결을 준비하고 있어요"><p role="status">기존 데이터를 안전하게 옮기는 중입니다.</p></MessagePage></AppShell>;
-  if (state.mode === 'map') return <AppShell currentApp="account-map" managementMenu={management}><main className="account-map-page account-map-page--map"><header className="account-map-map-header"><div><p className="account-map-eyebrow">계좌 연결</p><h1>계좌 연결 지도</h1><p>Main의 월 금액은 읽기만 합니다. 노드를 한 번 누르면 연결에 집중합니다.</p></div></header><AccountMapCanvas applied={state.applied} main={state.main} locations={state.workspace.locations} interaction={state.interaction} onTransient={(nodeId) => dispatch({ type: 'node-hovered', nodeId })} onBlur={(nodeId) => dispatch({ type: 'node-blurred', nodeId })} onInvoke={(nodeId) => dispatch({ type: 'node-invoked', nodeId })} onBackground={() => dispatch({ type: 'map-background-invoked' })} onModalClose={() => dispatch({ type: 'modal-closed' })} onArchiveLocation={async (locationId, replacementRemainderByPurpose) => {
+  if (state.mode === 'map') return <AppShell currentApp="account-map" managementMenu={management}><main className="account-map-page account-map-page--map"><header className="account-map-map-header"><div><p className="account-map-eyebrow">계좌 연결</p><h1>계좌 연결 지도</h1><p>Main의 월 금액은 읽기만 합니다. 노드를 한 번 누르면 연결에 집중합니다.</p></div></header><AccountMapCanvas applied={state.applied} main={state.main} locations={state.workspace.locations} interaction={state.interaction} onTransient={(nodeId) => dispatch({ type: 'node-hovered', nodeId })} onBlur={(nodeId) => dispatch({ type: 'node-blurred', nodeId })} onInvoke={(nodeId) => dispatch({ type: 'node-invoked', nodeId })} onBackground={() => dispatch({ type: 'map-background-invoked' })} onModalClose={() => {
+    const pending = pendingModalWorkspaceRef.current;
+    pendingModalWorkspaceRef.current = null;
+    if (pending !== null) dispatch({ type: 'save-succeeded', workspace: pending });
+    dispatch({ type: 'modal-closed' });
+  }} onArchiveLocation={async (locationId, replacementRemainderByPurpose) => {
     const result = await resolved.accountMap.save(state.workspace.revision, { type: 'archive-location', locationId, replacementRemainderByPurpose });
     if (result.status !== 'saved') { dispatch({ type: 'save-failed', reason: failureReason(result) }); return false; }
-    dispatch({ type: 'save-succeeded', workspace: result.workspace });
+    pendingModalWorkspaceRef.current = result.workspace;
     return true;
   }} onRestoreLocation={async (locationId, restoreLinkIds, remainderByPurpose) => {
     const result = await resolved.accountMap.save(state.workspace.revision, { type: 'restore-location', locationId, restoreLinkIds, remainderByPurpose });
     if (result.status !== 'saved') { dispatch({ type: 'save-failed', reason: failureReason(result) }); return false; }
-    dispatch({ type: 'save-succeeded', workspace: result.workspace });
+    pendingModalWorkspaceRef.current = result.workspace;
     return true;
   }} onLayoutChange={(layout) => {
     if (layout === state.applied.layout) return;

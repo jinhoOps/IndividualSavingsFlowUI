@@ -163,13 +163,13 @@ test('revisits Simulation at the result and refreshes only its Main source', asy
   expect(stored.oldSimulation).toBe(oldSimulationRaw);
 });
 
-test('keeps detailed Portfolio and readiness-only Account Map isolated', async ({ page }) => {
+test('keeps detailed Portfolio and purpose-first Account Map isolated', async ({ page }) => {
   await page.addInitScript((fixture) => localStorage.setItem('isf-workspace-v1', JSON.stringify(fixture)), appliedWorkspace);
   await page.goto('apps/portfolio/');
   await expect(page.getByRole('heading', { name: '매달 200,000원을 어디에 투자할까요?' })).toBeVisible();
   await expect(page.getByRole('link', { name: /투자 배분 \(Portfolio\).*현재 위치/ })).toBeVisible();
   await page.goto('apps/account-map/');
-  await expect(page.getByRole('heading', { name: 'Account Map 준비 중' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '월 자금의 위치를 알려주세요' })).toBeVisible();
   await expect(page.locator('app-header, data-hub-modal, #portfolioCreator, #accountMapCanvas')).toHaveCount(0);
 });
 
@@ -240,7 +240,7 @@ test('keeps each app management menu reachable and contained across viewports', 
     { path: 'apps/main/', text: '백업 가져오기' },
     { path: 'apps/simulation/', text: '시뮬레이션 다시 설정' },
     { path: 'apps/portfolio/', text: '투자 배분 처음부터 다시' },
-    { path: 'apps/account-map/', text: '아직 관리할 설정이 없습니다' },
+    { path: 'apps/account-map/', text: '아직 만든 연결 지도가 없습니다' },
   ];
 
   for (const viewport of [
@@ -268,7 +268,7 @@ test('keeps each app management menu reachable and contained across viewports', 
       await expect(guide).toContainText('미래 성장 (Simulation)');
       await expect(guide).toContainText('투자 배분 (Portfolio)');
       await expect(guide).toContainText('계좌 연결 (Account Map)');
-      await expect(guide).toContainText('준비 중');
+      await expect(guide).not.toContainText('준비 중');
       expect(await menu.evaluate((node) => node.querySelector('[role="region"]'))).toBeNull();
       const guideBox = await guide.boundingBox();
       expect(guideBox).not.toBeNull();
@@ -296,6 +296,7 @@ test('keeps each app management menu reachable and contained across viewports', 
 });
 
 test('keeps Account Map usable at mobile, tablet, and desktop widths', async ({ page }) => {
+  await page.addInitScript((fixture) => localStorage.setItem('isf-workspace-v1', JSON.stringify(fixture)), appliedWorkspace);
   for (const viewport of [
     { width: 390, height: 844 },
     { width: 768, height: 900 },
@@ -305,17 +306,14 @@ test('keeps Account Map usable at mobile, tablet, and desktop widths', async ({ 
     await page.goto('apps/account-map/');
 
     const launcher = page.getByRole('navigation', { name: 'ISF 앱' });
-    const accountMapLink = page.getByRole('link', { name: /계좌 연결 \(Account Map\).*현재 위치.*준비 중/ });
-    const mainLink = page.getByRole('link', { name: 'Main으로 이동' });
+    const accountMapLink = page.getByRole('link', { name: /계좌 연결 \(Account Map\).*현재 위치/ });
     await expect(launcher).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Account Map 준비 중' })).toBeVisible();
-    await expect(mainLink).toBeVisible();
-    await expect(mainLink).toHaveAttribute('href', /\/apps\/main\/$/);
+    await expect(page.getByRole('heading', { name: '월 자금의 위치를 알려주세요' })).toBeVisible();
 
     await expect(accountMapLink).toHaveAttribute('aria-current', 'page');
 
     const visibleTargetSizes = await page.locator(
-      '.journey-launcher__app-link, .journey-readiness__content .journey-action',
+      '.journey-launcher__app-link, .account-map-purpose-card__action, .account-map-actions button',
     ).evaluateAll((elements) => elements
       .map((element) => element.getBoundingClientRect())
       .filter((rect) => rect.width > 0 && rect.height > 0)
@@ -326,13 +324,13 @@ test('keeps Account Map usable at mobile, tablet, and desktop widths', async ({ 
       expect(size.height).toBeGreaterThanOrEqual(44);
     }
 
-    for (let attempt = 0; attempt < 8 && !await mainLink.evaluate(
+    for (let attempt = 0; attempt < 8 && !await accountMapLink.evaluate(
       (element) => document.activeElement === element,
     ); attempt += 1) {
       await page.keyboard.press('Tab');
     }
-    await expect(mainLink).toBeFocused();
-    expect(await mainLink.evaluate((element) => {
+    await expect(accountMapLink).toBeFocused();
+    expect(await accountMapLink.evaluate((element) => {
       const style = getComputedStyle(element);
       return style.outlineStyle !== 'none' && Number.parseFloat(style.outlineWidth) >= 1;
     })).toBe(true);
@@ -361,7 +359,7 @@ test('explains app icons with pointer, keyboard, touch and integrated management
   await help.click();
   const panel = page.getByRole('region', { name: '앱 아이콘 안내' });
   await expect(panel).toContainText('계좌 연결 (Account Map)');
-  await expect(panel).toContainText('준비 중');
+  await expect(panel).not.toContainText('준비 중');
   const panelBox = await panel.boundingBox();
   expect(panelBox).not.toBeNull();
   expect(panelBox!.x).toBeGreaterThanOrEqual(16);

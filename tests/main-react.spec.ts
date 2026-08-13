@@ -79,6 +79,12 @@ const connectedWorkspaceV1 = {
   }],
 };
 
+const emptyAccountMapV2 = {
+  applied: null,
+  draft: null,
+  legacyPhaseA: { instruments: [], flows: [] },
+};
+
 const seededOldMainRecords = {
   'isf-main-v2': JSON.stringify({ ...appliedMainV2, monthlyNetIncomeWon: 9_900_000 }),
   'isf-main-v2-pending': '{old-pending',
@@ -343,7 +349,7 @@ test('new user applies the v2 quick setup and refreshes into matching dashboard 
     simulation: { draft: null },
     portfolio: { plans: [], draft: null },
     locations: [],
-    accountMap: { applied: null, draft: null, instruments: [], flows: [] },
+    accountMap: emptyAccountMapV2,
   });
   await expect.poll(() => page.evaluate((keys) => Object.fromEntries(
     keys.map((key) => [key, localStorage.getItem(key)]),
@@ -785,7 +791,15 @@ test('whole-workspace backup round-trips atomically in the contained mobile conf
   expect(exported).toMatchObject({
     format: 'isf-workspace-backup',
     formatVersion: 1,
-    workspace: connectedWorkspaceV1,
+    workspace: {
+      schemaVersion: 2,
+      revision: connectedWorkspaceV1.revision,
+      main: connectedWorkspaceV1.main,
+      simulation: connectedWorkspaceV1.simulation,
+      portfolio: connectedWorkspaceV1.portfolio,
+      locations: connectedWorkspaceV1.locations,
+      accountMap: emptyAccountMapV2,
+    },
   });
   for (const excluded of ['isf-main-v2', 'save-lease', 'trophy', '트로피']) {
     expect(exportedText).not.toContain(excluded);
@@ -850,7 +864,7 @@ test('whole-workspace backup round-trips atomically in the contained mobile conf
   expect(restored.simulation).toEqual(connectedWorkspaceV1.simulation);
   expect(restored.portfolio).toEqual(connectedWorkspaceV1.portfolio);
   expect(restored.locations).toEqual(connectedWorkspaceV1.locations);
-  expect(restored.accountMap).toEqual(connectedWorkspaceV1.accountMap);
+  expect(restored.accountMap).toEqual(emptyAccountMapV2);
   expect(durable.writes).toBe(1);
   expect(durable.old).toEqual(seededOldMainRecords);
 });
@@ -934,7 +948,7 @@ for (const restoreCase of [
       simulation: importedWorkspace.simulation,
       portfolio: importedWorkspace.portfolio,
       locations: importedWorkspace.locations,
-      accountMap: importedWorkspace.accountMap,
+      accountMap: emptyAccountMapV2,
     });
   });
 }

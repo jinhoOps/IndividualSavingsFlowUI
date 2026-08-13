@@ -35,6 +35,7 @@ export function AccountMapModal({ node, related, sourceElement, fallbackElement,
   const [actionError, setActionError] = useState(false);
   const [animating, setAnimating] = useState(true);
   const closingRef = useRef(false);
+  const returnToFallbackRef = useRef(false);
 
   useEffect(() => {
     const modal = modalRef.current;
@@ -71,7 +72,7 @@ export function AccountMapModal({ node, related, sourceElement, fallbackElement,
 
   function finishClose() {
     onClose();
-    const focusTarget = sourceElement?.isConnected === true ? sourceElement : fallbackElement;
+    const focusTarget = !returnToFallbackRef.current && sourceElement?.isConnected === true ? sourceElement : fallbackElement;
     if (focusTarget !== null) {
       if (focusTarget.tabIndex < 0) focusTarget.tabIndex = -1;
       focusTarget.focus();
@@ -121,7 +122,7 @@ export function AccountMapModal({ node, related, sourceElement, fallbackElement,
             if (locationId === null || onArchiveLocation === undefined) return;
             setActionError(false);
             setActionPending(true);
-            void Promise.resolve(onArchiveLocation(locationId, replacementByPurpose)).then((saved) => { if (saved) requestClose(true); else setActionError(true); }, () => setActionError(true)).finally(() => setActionPending(false));
+            void Promise.resolve(onArchiveLocation(locationId, replacementByPurpose)).then((saved) => { if (saved) { returnToFallbackRef.current = true; requestClose(true); } else setActionError(true); }, () => setActionError(true)).finally(() => setActionPending(false));
           }}>{actionError ? '다시 시도' : '보관하기'}</button></> : null}
           {mode === 'restore' ? <><button type="button" className="ui-button ui-button--secondary" onClick={() => setMode('read')}>취소</button><button type="button" className="ui-button ui-button--primary" disabled={restoreLinkIds.length === 0 || actionPending} onClick={() => {
             if (locationId === null || onRestoreLocation === undefined) return;
