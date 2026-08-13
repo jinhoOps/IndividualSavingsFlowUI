@@ -236,9 +236,9 @@ for (const viewport of [
     const frame = page.getByTestId('simulation-page-frame');
     const frameBox = await frame.boundingBox();
     if (frameBox === null) throw new Error('simulation page frame has no bounding box');
-    expect(frameBox.x).toBeGreaterThanOrEqual(16);
-    expect(frameBox.width).toBeLessThanOrEqual(768);
-    expect(Math.abs((viewport.width - frameBox.width) / 2 - frameBox.x)).toBeLessThan(1);
+    const expectedWidth = Math.min(viewport.width - 32, 768);
+    expect(Math.abs(frameBox.width - expectedWidth)).toBeLessThan(1);
+    expect(Math.abs(frameBox.x - (viewport.width - expectedWidth) / 2)).toBeLessThan(1);
     await expect(graph).toBeVisible();
     await expect(page.getByText('전부 저축보다')).toBeVisible();
     await expect(page.getByText('납입원금 대비')).toBeVisible();
