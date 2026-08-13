@@ -10,9 +10,11 @@ describe('Account Map commands', () => {
     ['create-location', { type: 'create-location', location: location('new', '새계좌') }],
     ['save-draft', { type: 'save-draft', draft: draft() }],
     ['apply-map', { type: 'apply-map', applied: validApplied() }],
+    ['edit-map-node', { type: 'edit-map-node', applied: validApplied() }],
     ['reset-map', { type: 'reset-map' }],
   ] satisfies [string, AccountMapCommand][])('%s preserves protected slices byte-for-byte', (_name, command) => {
     const before = workspace();
+    if (command.type === 'edit-map-node') before.accountMap.applied = validApplied();
     const result = applyAccountMapCommand(before, command, 20);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
@@ -91,6 +93,72 @@ describe('Account Map commands', () => {
       { id: 'next', status: 'active', remainder: false },
     ]);
     expect(JSON.stringify(result.workspace.portfolio)).toBe(JSON.stringify(before.portfolio));
+  });
+
+  it('rejects a restored excess until a remainder correction is selected', () => {
+    const before = workspace();
+    before.locations.push({ ...location('archived', '보관계좌'), archivedAt: 10 });
+    before.accountMap.applied = validApplied();
+    before.accountMap.applied.links.push(
+      { ...link('old', 'archived', 800_000), status: 'suspended', remainder: false, suspendedReason: 'location-archived' },
+      link('next', 'savings', 500_000, true),
+    );
+    expect(applyAccountMapCommand(before, {
+      type: 'restore-location', locationId: 'archived', restoreLinkIds: ['old'], remainderByPurpose: {},
+    }, 20)).toMatchObject({ ok: false, reason: 'fixed-links-exceed-target' });
+  });
+
+  it('edits a location and applied links atomically without touching protected slices', () => {
+    const before = workspace();
+    before.accountMap.applied = validApplied();
+    const edited = { ...before.accountMap.applied, links: before.accountMap.applied.links.map((item) => ({ ...item, monthlyAmountWon: 2_000_000 })), updatedAt: 20 };
+    const result = applyAccountMapCommand(before, {
+      type: 'edit-map-node', applied: edited,
+      location: { locationId: 'checking', shortName: '주계좌', institution: { id: 'hana', name: '하나은행' } },
+    }, 20);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.workspace.locations.find(({ id }) => id === 'checking')?.shortName).toBe('주계좌');
+    expect(result.workspace.main).toEqual(before.main);
+    expect(result.workspace.simulation).toEqual(before.simulation);
+    expect(result.workspace.portfolio).toEqual(before.portfolio);
+  });
+
+  it('allows an edit that reduces existing excess after Main changes', () => {
+    const before = workspace();
+    before.accountMap.applied = validApplied();
+    before.main.applied!.monthlyNetIncomeWon = 1_500_000;
+    const corrected = { ...before.accountMap.applied, links: before.accountMap.applied.links.map((item) => ({ ...item, monthlyAmountWon: 1_700_000 })), updatedAt: 20 };
+    expect(applyAccountMapCommand(before, { type: 'edit-map-node', applied: corrected }, 20).ok).toBe(true);
+    const worse = { ...corrected, links: corrected.links.map((item) => ({ ...item, monthlyAmountWon: 2_100_000 })) };
+    expect(applyAccountMapCommand(before, { type: 'edit-map-node', applied: worse }, 20)).toMatchObject({ ok: false, reason: 'purpose-excess' });
+  });
+
+  it('allows a custom target correction but rejects a larger parent-capacity excess', () => {
+    const before = workspace();
+    const over = { id: 'custom:telecom' as const, parentId: 'system:living' as const, name: '통신비', targetMonthlyWon: 1_100_000, createdAt: 1, updatedAt: 1 };
+    before.accountMap.applied = { ...validApplied(), customPurposes: [over] };
+    before.main.applied!.monthlyLivingWon = 900_000;
+    const corrected = { ...before.accountMap.applied, customPurposes: [{ ...over, targetMonthlyWon: 1_000_000, updatedAt: 20 }], updatedAt: 20 };
+    expect(applyAccountMapCommand(before, { type: 'edit-map-node', applied: corrected }, 20).ok).toBe(true);
+    const worse = { ...corrected, customPurposes: [{ ...over, targetMonthlyWon: 1_200_000, updatedAt: 20 }] };
+    expect(applyAccountMapCommand(before, { type: 'edit-map-node', applied: worse }, 20)).toMatchObject({ ok: false, reason: 'custom-target-capacity' });
+  });
+
+  it('requires a replacement when editing away an active remainder', () => {
+    const before = workspace();
+    before.accountMap.applied = validApplied();
+    before.accountMap.applied.links.push(link('next', 'savings', 300_000));
+    const edited = { ...before.accountMap.applied, links: before.accountMap.applied.links.map((item) => item.id === 'income' ? { ...item, status: 'suspended' as const, remainder: false as const, suspendedReason: 'user' as const } : item), updatedAt: 20 };
+    expect(applyAccountMapCommand(before, { type: 'edit-map-node', applied: edited }, 20)).toMatchObject({ ok: false, reason: 'income-connection-required' });
+
+    before.accountMap.applied = applied([
+      { ...link('income', 'checking', 2_000_000, true), purposeId: 'system:income' },
+      link('old', 'checking', 700_000, true),
+      link('next', 'savings', 300_000),
+    ]);
+    const noRemainder = { ...before.accountMap.applied, links: before.accountMap.applied.links.map((item) => item.id === 'old' ? { ...item, status: 'suspended' as const, remainder: false as const, suspendedReason: 'user' as const } : item), updatedAt: 20 };
+    expect(applyAccountMapCommand(before, { type: 'edit-map-node', applied: noRemainder }, 20)).toMatchObject({ ok: false, reason: 'replacement-remainder-required' });
   });
 
   it('reset clears only current Account Map state', () => {

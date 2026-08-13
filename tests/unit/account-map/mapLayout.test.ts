@@ -35,7 +35,7 @@ describe('Account Map layout', () => {
     expect(account.nodes).not.toEqual(purpose.nodes);
   });
 
-  it('contains the maximum expected mobile node density with 44px targets', () => {
+  it.each([390, 768])('contains maximum node density without overlap at %ipx', (width) => {
     const dense: AccountMapGraph = {
       nodes: Array.from({ length: 26 }, (_, index) => ({
         id: `node:${index}`,
@@ -45,8 +45,15 @@ describe('Account Map layout', () => {
       })),
       edges: [],
     };
-    const result = layoutAccountMap(dense, 'purpose', { width: 390, height: 700 }, 'detail');
+    const result = layoutAccountMap(dense, 'purpose', { width, height: 700 }, 'detail');
     expect(result.nodes.every((node) => node.height >= 44
       && node.y + node.height <= result.height)).toBe(true);
+    for (const [index, node] of result.nodes.entries()) {
+      expect(result.nodes.slice(index + 1).every((candidate) => (
+        node.x + node.width <= candidate.x || candidate.x + candidate.width <= node.x
+        || node.y + node.height <= candidate.y || candidate.y + candidate.height <= node.y
+      ))).toBe(true);
+    }
+    expect(result.height).toBeGreaterThan(700);
   });
 });

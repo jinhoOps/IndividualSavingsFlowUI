@@ -5,7 +5,7 @@ import type { FinancialLocation } from '../../workspace/domain/financialLocation
 import type { MapInteractionState } from '../application/reducer';
 import type { AccountMapApplied } from '../domain/model';
 import { buildAccountMapGraph, layoutAccountMap, type MapZoom } from './mapLayout';
-import { AccountMapModal } from './AccountMapModal';
+import { AccountMapModal, type AccountMapNodeEditInput } from './AccountMapModal';
 import { animateMapLayout } from './motion';
 
 const zooms: MapZoom[] = ['overview', 'default', 'detail'];
@@ -23,6 +23,7 @@ export interface AccountMapCanvasProps {
   onBackground(): void;
   onLayoutChange(layout: AccountMapApplied['layout']): void;
   onModalClose?(): void;
+  onSaveNodeEdit?(nodeId: string, input: AccountMapNodeEditInput): Promise<boolean>;
   onArchiveLocation?(locationId: string, replacementRemainderByPurpose: Record<string, string | null>): Promise<boolean>;
   onRestoreLocation?(locationId: string, restoreLinkIds: string[], remainderByPurpose: Record<string, string | null>): Promise<boolean>;
 }
@@ -30,7 +31,7 @@ export interface AccountMapCanvasProps {
 export function AccountMapCanvas({
   applied, main, locations, interaction, viewport,
   onTransient, onBlur, onInvoke, onBackground, onLayoutChange, onModalClose = () => undefined,
-  onArchiveLocation, onRestoreLocation,
+  onSaveNodeEdit, onArchiveLocation, onRestoreLocation,
 }: AccountMapCanvasProps): JSX.Element {
   const [zoom, setZoom] = useState<MapZoom>('default');
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -89,12 +90,12 @@ export function AccountMapCanvas({
       status: edge.status,
       linkId: edge.id,
       purposeId: edge.purposeId,
+      purposeTargetWon: nodeById.get(edge.purposeId)?.amountWon,
       locationId: edge.locationId.replace(/^location:/u, ''),
       remainder: sourceLink?.remainder ?? false,
     }; });
-  const replacementRelated = modalNode?.kind !== 'location' ? [] : directModalRelated
-    .filter(({ remainder, status }) => remainder && status === 'active')
-    .flatMap(({ purposeId }) => positioned.edges
+  const replacementRelated = modalNode?.kind !== 'location' ? [] : [...new Set(directModalRelated.map(({ purposeId }) => purposeId).filter((id): id is string => id !== undefined))]
+    .flatMap((purposeId) => positioned.edges
       .filter((edge) => edge.purposeId === purposeId && edge.locationId !== modalNode.id && edge.status === 'active')
       .map((edge) => ({
         label: nodeById.get(edge.locationId)?.label ?? '다른 계좌',
@@ -102,6 +103,7 @@ export function AccountMapCanvas({
         status: edge.status,
         linkId: edge.id,
         purposeId: edge.purposeId,
+        purposeTargetWon: nodeById.get(edge.purposeId)?.amountWon,
         locationId: edge.locationId.replace(/^location:/u, ''),
         remainder: false,
         replacementCandidate: true,
@@ -175,7 +177,7 @@ export function AccountMapCanvas({
           return <tr key={`row:${edge.id}`}>{applied.layout === 'purpose' ? <><td>{purpose.label}</td><td>{location.label}</td></> : <><td>{location.label}</td><td>{purpose.label}</td></>}<td>{formatWon(edge.amountWon)}</td><td>{edge.status === 'active' ? '연결됨' : '중지됨'}</td></tr>;
         })}</tbody>
       </table>
-      {modalNode === undefined ? null : <AccountMapModal node={modalNode} related={modalRelated} sourceElement={nodeRefs.current.get(modalNode.id) ?? null} fallbackElement={headingRef.current} reducedMotion={reducedMotion} onClose={onModalClose} onArchiveLocation={onArchiveLocation} onRestoreLocation={onRestoreLocation} />}
+      {modalNode === undefined ? null : <AccountMapModal node={modalNode} related={modalRelated} sourceElement={nodeRefs.current.get(modalNode.id) ?? null} fallbackElement={headingRef.current} reducedMotion={reducedMotion} onClose={onModalClose} onSaveEdit={onSaveNodeEdit === undefined ? undefined : (input) => onSaveNodeEdit(modalNode.id, input)} onArchiveLocation={onArchiveLocation} onRestoreLocation={onRestoreLocation} />}
     </section>
   );
 }

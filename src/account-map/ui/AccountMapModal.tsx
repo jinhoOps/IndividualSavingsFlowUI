@@ -11,6 +11,7 @@ export interface AccountMapModalRelatedItem {
   locationId?: string;
   remainder?: boolean;
   replacementCandidate?: boolean;
+  purposeTargetWon?: number;
 }
 
 export interface AccountMapModalProps {
@@ -20,17 +21,37 @@ export interface AccountMapModalProps {
   fallbackElement: HTMLElement | null;
   reducedMotion: boolean;
   onClose(): void;
+  onSaveEdit?(input: AccountMapNodeEditInput): Promise<boolean> | boolean;
   onArchiveLocation?(locationId: string, replacementRemainderByPurpose: Record<string, string | null>): Promise<boolean> | boolean;
   onRestoreLocation?(locationId: string, restoreLinkIds: string[], remainderByPurpose: Record<string, string | null>): Promise<boolean> | boolean;
 }
 
-export function AccountMapModal({ node, related, sourceElement, fallbackElement, reducedMotion, onClose, onArchiveLocation, onRestoreLocation }: AccountMapModalProps): JSX.Element {
+export interface AccountMapNodeEditInput {
+  label?: string;
+  targetMonthlyWon?: number;
+  links: Array<{ id: string; monthlyAmountWon: number; status: 'active' | 'suspended' | 'removed'; remainder: boolean }>;
+}
+
+export function AccountMapModal({ node, related, sourceElement, fallbackElement, reducedMotion, onClose, onSaveEdit, onArchiveLocation, onRestoreLocation }: AccountMapModalProps): JSX.Element {
   const titleId = useId();
   const modalRef = useRef<HTMLDivElement>(null);
   const animationRef = useRef<AnimationHandle | null>(null);
+  const directRelated = related.filter(({ replacementCandidate }) => replacementCandidate !== true);
   const [mode, setMode] = useState<'read' | 'edit' | 'archive' | 'restore'>('read');
+  const [editLabel, setEditLabel] = useState(node.label);
+  const [editTarget, setEditTarget] = useState(node.kind === 'purpose' && node.id.startsWith('custom:') ? String(node.amountWon ?? 0) : '');
+  const [editLinks, setEditLinks] = useState(() => directRelated.filter(({ linkId }) => linkId !== undefined).map((item) => ({
+    id: item.linkId!,
+    purposeId: item.purposeId,
+    label: item.label,
+    monthlyAmountWon: String(item.amountWon),
+    status: item.status as 'active' | 'suspended' | 'removed',
+    remainder: item.remainder ?? false,
+  })));
+  const [editReplacementByPurpose, setEditReplacementByPurpose] = useState<Record<string, string | null>>({});
   const [replacementByPurpose, setReplacementByPurpose] = useState<Record<string, string | null>>({});
   const [restoreLinkIds, setRestoreLinkIds] = useState<string[]>([]);
+  const [restoreRemainderByPurpose, setRestoreRemainderByPurpose] = useState<Record<string, string | null>>({});
   const [actionPending, setActionPending] = useState(false);
   const [actionError, setActionError] = useState(false);
   const [animating, setAnimating] = useState(true);
@@ -92,13 +113,32 @@ export function AccountMapModal({ node, related, sourceElement, fallbackElement,
   }
 
   const locationId = node.kind === 'location' ? node.id.replace(/^location:/u, '') : null;
-  const directRelated = related.filter(({ replacementCandidate }) => replacementCandidate !== true);
   const archiveImpacts = directRelated.filter(({ status }) => status === 'active');
   const remainderPurposes = [...new Set(archiveImpacts.filter(({ remainder }) => remainder === true).map(({ purposeId }) => purposeId).filter((id): id is string => id !== undefined))];
   const replacementMissing = remainderPurposes.some((purposeId) => {
     const candidates = related.filter((item) => item.replacementCandidate === true && item.purposeId === purposeId);
     return candidates.length > 0 && !replacementByPurpose[purposeId];
   });
+  const restoreExcessPurposes = [...new Set(directRelated.filter((item) => item.linkId !== undefined && restoreLinkIds.includes(item.linkId) && item.purposeId !== undefined).map((item) => item.purposeId!))].filter((purposeId) => {
+    const target = directRelated.find((item) => item.purposeId === purposeId)?.purposeTargetWon;
+    if (target === undefined) return false;
+    const restoring = directRelated.filter((item) => item.purposeId === purposeId && item.linkId !== undefined && restoreLinkIds.includes(item.linkId)).reduce((sum, item) => sum + item.amountWon, 0);
+    const active = related.filter((item) => item.replacementCandidate === true && item.purposeId === purposeId).reduce((sum, item) => sum + item.amountWon, 0);
+    return restoring + active > target;
+  });
+  const editRemainderPurposes = [...new Set(directRelated.filter((item) => {
+    if (item.status !== 'active' || item.remainder !== true || item.purposeId === undefined || item.linkId === undefined) return false;
+    const edited = editLinks.find(({ id }) => id === item.linkId);
+    return edited === undefined || edited.status !== 'active' || !edited.remainder;
+  }).map((item) => item.purposeId!))].filter((purposeId) => (
+    editLinks.some((item) => item.purposeId === purposeId && item.status === 'active')
+    || related.some((item) => item.replacementCandidate === true && item.purposeId === purposeId && item.status === 'active')
+  ));
+  const editReplacementMissing = editRemainderPurposes.some((purposeId) => (
+    !editLinks.some((item) => item.purposeId === purposeId && item.status === 'active' && item.remainder)
+    && !related.some((item) => item.replacementCandidate === true && item.purposeId === purposeId && item.status === 'active' && item.remainder)
+    && !editReplacementByPurpose[purposeId]
+  ));
 
   return (
     <div className="account-map-modal-backdrop" onPointerDown={(event) => { if (event.target === event.currentTarget) requestClose(); }}>
@@ -107,28 +147,51 @@ export function AccountMapModal({ node, related, sourceElement, fallbackElement,
         <div className="account-map-modal__body">
           {node.amountWon === undefined ? null : <div className="account-map-modal__amount"><span>월 기준</span><strong>{formatWon(node.amountWon)}</strong></div>}
           {mode === 'read' ? <div className="account-map-modal__connections"><h3>연결</h3>{directRelated.length === 0 ? <p>연결된 항목이 없습니다.</p> : directRelated.map((item, index) => <div key={`${item.label}:${index}`}><span>{item.label}</span><strong>{formatWon(item.amountWon)}</strong>{item.status === 'suspended' ? <small>중지됨</small> : null}</div>)}</div> : null}
-          {mode === 'edit' ? <div className="account-map-modal__edit"><p>금액과 연결 변경은 이 화면 안에서 이어집니다.</p>{directRelated.map((item, index) => <label key={`${item.label}:${index}`}>{item.label}<input inputMode="numeric" defaultValue={item.amountWon} aria-label={`${item.label} 월 금액`} /></label>)}</div> : null}
+          {mode === 'edit' ? <div className="account-map-modal__edit"><p>이름, 금액과 연결 상태를 한 번에 저장합니다.</p>{node.kind === 'location' || node.id.startsWith('custom:') ? <label>표시 이름<input value={editLabel} maxLength={node.kind === 'location' ? 8 : 24} onChange={(event) => setEditLabel(event.target.value)} /></label> : null}{node.kind === 'purpose' && node.id.startsWith('custom:') ? <label>월 목표 금액<input inputMode="numeric" value={editTarget} onChange={(event) => setEditTarget(event.target.value.replace(/\D/gu, ''))} /></label> : null}{editLinks.map((item, index) => <fieldset key={item.id} className="account-map-modal__edit-link"><legend>{item.label}</legend><label>월 금액<input inputMode="numeric" value={item.monthlyAmountWon} aria-label={`${item.label} 월 금액`} onChange={(event) => setEditLinks((current) => current.map((row, rowIndex) => rowIndex === index ? { ...row, monthlyAmountWon: event.target.value.replace(/\D/gu, '') } : row))} /></label><label>연결 상태<select aria-label={`${item.label} 연결 상태`} value={item.status} onChange={(event) => setEditLinks((current) => current.map((row, rowIndex) => rowIndex === index ? { ...row, status: event.target.value as typeof item.status, remainder: event.target.value === 'active' ? row.remainder : false } : row))}><option value="active">연결됨</option><option value="suspended">중지</option><option value="removed">연결 제거</option></select></label>{item.status === 'active' ? <label className="account-map-modal__remainder"><input type="checkbox" checked={item.remainder} onChange={(event) => setEditLinks((current) => current.map((row) => row.purposeId === item.purposeId ? { ...row, remainder: event.target.checked && row.id === item.id } : row))} />나머지 금액 자동 계산</label> : null}</fieldset>)}{editRemainderPurposes.filter((purposeId) => !editLinks.some((item) => item.purposeId === purposeId && item.status === 'active' && item.remainder) && !related.some((item) => item.replacementCandidate === true && item.purposeId === purposeId && item.status === 'active' && item.remainder)).map((purposeId) => {
+            const candidates = related.filter((item) => item.replacementCandidate === true && item.purposeId === purposeId && item.status === 'active' && item.linkId !== undefined);
+            return candidates.length === 0
+              ? <p key={`edit-remainder:${purposeId}`} className="account-map-modal__error">다른 활성 연결을 나머지로 선택해 주세요.</p>
+              : <label key={`edit-remainder:${purposeId}`}>새 나머지 연결<select required aria-label="편집 나머지 연결" value={editReplacementByPurpose[purposeId] ?? ''} onChange={(event) => setEditReplacementByPurpose((current) => ({ ...current, [purposeId]: event.target.value || null }))}><option value="">선택해 주세요</option>{candidates.map((item) => <option key={item.linkId} value={item.linkId}>{item.label}</option>)}</select></label>;
+          })}</div> : null}
           {mode === 'archive' ? <div className="account-map-modal__impact"><p>보관하면 다음 연결이 중지됩니다.</p>{archiveImpacts.map((item, index) => <p key={`${item.linkId}:${index}`}>{`${item.label} ${formatWon(item.amountWon)} 연결이 중지됩니다`}</p>)}{remainderPurposes.map((purposeId) => {
             const candidates = related.filter((item) => item.replacementCandidate === true && item.purposeId === purposeId);
             return candidates.length === 0 ? null : <label key={purposeId}>새 나머지 계좌<select required aria-label="새 나머지 계좌" value={replacementByPurpose[purposeId] ?? ''} onChange={(event) => setReplacementByPurpose((current) => ({ ...current, [purposeId]: event.target.value || null }))}><option value="">선택해 주세요</option>{candidates.map((item) => <option key={item.linkId} value={item.linkId}>{item.label}</option>)}</select></label>;
           })}</div> : null}
-          {mode === 'restore' ? <div className="account-map-modal__restore"><p>다시 연결할 항목만 선택해 주세요.</p>{directRelated.filter(({ status }) => status === 'suspended').map((item) => <label key={item.linkId}><input type="checkbox" checked={item.linkId !== undefined && restoreLinkIds.includes(item.linkId)} onChange={(event) => { if (item.linkId === undefined) return; setRestoreLinkIds((current) => event.target.checked ? [...current, item.linkId!] : current.filter((id) => id !== item.linkId)); }} />{item.label} · {formatWon(item.amountWon)}</label>)}</div> : null}
+          {mode === 'restore' ? <div className="account-map-modal__restore"><p>다시 연결할 항목만 선택해 주세요.</p>{directRelated.filter(({ status }) => status === 'suspended').map((item) => <label key={item.linkId}><input type="checkbox" checked={item.linkId !== undefined && restoreLinkIds.includes(item.linkId)} onChange={(event) => { if (item.linkId === undefined) return; setRestoreLinkIds((current) => event.target.checked ? [...current, item.linkId!] : current.filter((id) => id !== item.linkId)); }} />{item.label} · {formatWon(item.amountWon)}</label>)}{restoreExcessPurposes.map((purposeId) => {
+            const candidates = [...directRelated.filter((item) => item.purposeId === purposeId && item.linkId !== undefined && restoreLinkIds.includes(item.linkId)), ...related.filter((item) => item.replacementCandidate === true && item.purposeId === purposeId)];
+            return <label key={`restore:${purposeId}`} className="account-map-modal__restore-correction">초과 금액을 맞출 나머지 연결<select required aria-label="복원 나머지 연결" value={restoreRemainderByPurpose[purposeId] ?? ''} onChange={(event) => setRestoreRemainderByPurpose((current) => ({ ...current, [purposeId]: event.target.value || null }))}><option value="">선택해 주세요</option>{candidates.map((item) => <option key={item.linkId} value={item.linkId}>{item.label}</option>)}</select></label>;
+          })}</div> : null}
           {actionError ? <p className="account-map-modal__error" role="alert">저장하지 못했습니다. 선택은 유지했습니다. 다시 시도해 주세요.</p> : null}
         </div>
         <footer>
           {mode === 'read' ? <>{node.kind === 'location' && node.status === 'suspended' && onRestoreLocation !== undefined ? <button type="button" className="ui-button ui-button--secondary" onClick={() => setMode('restore')}>복원</button> : null}{node.kind === 'location' && node.status !== 'suspended' && onArchiveLocation !== undefined ? <button type="button" className="ui-button ui-button--secondary account-map-modal__archive" onClick={() => setMode('archive')}><TrashIcon />보관</button> : null}<button type="button" className="ui-button ui-button--primary" disabled={animating} onClick={() => setMode('edit')}>편집</button></> : null}
-          {mode === 'edit' ? <><button type="button" className="ui-button ui-button--secondary" onClick={() => setMode('read')}>취소</button><button type="button" className="ui-button ui-button--primary">저장</button></> : null}
+          {mode === 'edit' ? <><button type="button" className="ui-button ui-button--secondary" onClick={() => setMode('read')}>취소</button><button type="button" className="ui-button ui-button--primary" disabled={actionPending || editReplacementMissing || editLabel.trim() === '' || editLinks.some((item) => item.status === 'active' && (!Number.isSafeInteger(Number(item.monthlyAmountWon)) || Number(item.monthlyAmountWon) < 0))} onClick={() => {
+            if (onSaveEdit === undefined) return;
+            setActionError(false);
+            setActionPending(true);
+            void Promise.resolve(onSaveEdit({
+              ...(node.kind === 'location' || node.id.startsWith('custom:') ? { label: editLabel.trim() } : {}),
+              ...(node.kind === 'purpose' && node.id.startsWith('custom:') ? { targetMonthlyWon: Number(editTarget) } : {}),
+              links: [
+                ...editLinks.map((item) => ({ id: item.id, monthlyAmountWon: Number(item.monthlyAmountWon), status: item.status, remainder: item.remainder })),
+                ...Object.values(editReplacementByPurpose).flatMap((linkId) => {
+                  const item = related.find((candidate) => candidate.linkId === linkId);
+                  return item?.linkId === undefined ? [] : [{ id: item.linkId, monthlyAmountWon: item.amountWon, status: 'active' as const, remainder: true }];
+                }),
+              ],
+            })).then((saved) => { if (saved) requestClose(true); else setActionError(true); }, () => setActionError(true)).finally(() => setActionPending(false));
+          }}>{actionError ? '다시 시도' : '저장'}</button></> : null}
           {mode === 'archive' ? <><button type="button" className="ui-button ui-button--secondary" onClick={() => setMode('read')}>취소</button><button type="button" className="ui-button ui-button--primary" disabled={replacementMissing || actionPending} onClick={() => {
             if (locationId === null || onArchiveLocation === undefined) return;
             setActionError(false);
             setActionPending(true);
             void Promise.resolve(onArchiveLocation(locationId, replacementByPurpose)).then((saved) => { if (saved) { returnToFallbackRef.current = true; requestClose(true); } else setActionError(true); }, () => setActionError(true)).finally(() => setActionPending(false));
           }}>{actionError ? '다시 시도' : '보관하기'}</button></> : null}
-          {mode === 'restore' ? <><button type="button" className="ui-button ui-button--secondary" onClick={() => setMode('read')}>취소</button><button type="button" className="ui-button ui-button--primary" disabled={restoreLinkIds.length === 0 || actionPending} onClick={() => {
+          {mode === 'restore' ? <><button type="button" className="ui-button ui-button--secondary" onClick={() => setMode('read')}>취소</button><button type="button" className="ui-button ui-button--primary" disabled={restoreLinkIds.length === 0 || restoreExcessPurposes.some((purposeId) => !restoreRemainderByPurpose[purposeId]) || actionPending} onClick={() => {
             if (locationId === null || onRestoreLocation === undefined) return;
             setActionError(false);
             setActionPending(true);
-            void Promise.resolve(onRestoreLocation(locationId, restoreLinkIds, {})).then((saved) => { if (saved) requestClose(true); else setActionError(true); }, () => setActionError(true)).finally(() => setActionPending(false));
+            void Promise.resolve(onRestoreLocation(locationId, restoreLinkIds, restoreRemainderByPurpose)).then((saved) => { if (saved) requestClose(true); else setActionError(true); }, () => setActionError(true)).finally(() => setActionPending(false));
           }}>{actionError ? '다시 시도' : '선택 복원'}</button></> : null}
         </footer>
       </div>

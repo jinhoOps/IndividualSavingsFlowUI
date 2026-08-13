@@ -15,6 +15,15 @@ import { mainPurposeReferences, recalculateRemainder, reconcilePurpose } from '.
 export type AccountMapCommand =
   | { type: 'save-draft'; draft: AccountMapDraft }
   | { type: 'apply-map'; applied: AccountMapApplied }
+  | {
+      type: 'edit-map-node';
+      applied: AccountMapApplied;
+      location?: {
+        locationId: string;
+        institution?: InstitutionRef;
+        shortName: string;
+      };
+    }
   | { type: 'create-location'; location: FinancialLocation }
   | {
       type: 'update-location';
@@ -86,6 +95,9 @@ export function applyAccountMapCommand(
         },
       });
       break;
+    case 'edit-map-node':
+      changed = editMapNode(source, command, now);
+      break;
     case 'create-location':
       changed = createLocation(source, command.location, now);
       break;
@@ -108,6 +120,62 @@ export function applyAccountMapCommand(
   if (!changed.ok) return changed;
   if (!protectedSlicesEqual(source, changed.workspace)) return failure('protected-slice-changed');
   return changed;
+}
+
+function editMapNode(
+  source: WorkspaceDocument,
+  command: Extract<AccountMapCommand, { type: 'edit-map-node' }>,
+  now: number,
+): AccountMapCommandResult {
+  let candidate = source;
+  if (command.location !== undefined) {
+    const current = source.locations.find(({ id }) => id === command.location!.locationId);
+    if (current === undefined) return failure('location-not-found');
+    const updated = updateLocation(source, {
+      type: 'update-location',
+      locationId: current.id,
+      ...(command.location.institution === undefined ? {} : { institution: command.location.institution }),
+      shortName: command.location.shortName,
+      addRoles: [],
+    }, now);
+    if (!updated.ok) return updated;
+    candidate = updated.workspace;
+  }
+  const validated = validateEditedMap(command.applied, candidate);
+  if (!validated.ok) return validated;
+  const sourceLinks = source.accountMap.applied?.links ?? [];
+  const lostRemainderPurposes = new Set(sourceLinks.filter((link) => link.status === 'active' && link.remainder).filter((previous) => !command.applied.links.some((next) => next.id === previous.id && next.status === 'active' && next.remainder)).map(({ purposeId }) => purposeId));
+  for (const purposeId of lostRemainderPurposes) {
+    const active = command.applied.links.filter((link) => link.purposeId === purposeId && link.status === 'active');
+    if (active.length > 0 && !active.some(({ remainder }) => remainder)) return failure('replacement-remainder-required');
+  }
+  return successCandidate(source, {
+    ...candidate,
+    accountMap: { ...candidate.accountMap, applied: structuredClone(command.applied), draft: null },
+  });
+}
+
+function validateEditedMap(applied: AccountMapApplied, source: WorkspaceDocument): AccountMapCommandResult {
+  const main = source.main.applied;
+  const current = source.accountMap.applied;
+  if (main === null || current === null) return failure('invalid-input');
+  if (!applied.links.some((link) => link.purposeId === 'system:income' && link.status === 'active')) {
+    return failure('income-connection-required');
+  }
+  if (!customTargetsWithinWritableCapacity(applied, current, source)) {
+    return failure('custom-target-capacity');
+  }
+  const purposeIds = new Set<PurposeId>([
+    ...SYSTEM_PURPOSE_IDS,
+    ...current.customPurposes.map(({ id }) => id),
+    ...applied.customPurposes.map(({ id }) => id),
+  ]);
+  for (const purposeId of purposeIds) {
+    const before = reconcilePurpose(purposeId, current, source.locations, main).excessWon;
+    const after = reconcilePurpose(purposeId, applied, source.locations, main).excessWon;
+    if (after > before) return failure('purpose-excess');
+  }
+  return { ok: true, workspace: source };
 }
 
 function validateAppliedMap(
@@ -334,6 +402,12 @@ function restoreInState<T extends AccountMapApplied | AccountMapDraft>(
     links = recalculated.links.map((link) => link.purposeId === purposeId && link.status === 'active'
       ? { ...link, updatedAt: now }
       : link);
+  }
+  const restoredPurposeIds = new Set(state.links.filter((link) => selected.has(link.id)).map(({ purposeId }) => purposeId));
+  for (const purposeId of restoredPurposeIds) {
+    if (reconcilePurpose(purposeId, { ...state, links }, locations, source.main.applied!).excessWon > 0) {
+      return failure('fixed-links-exceed-target');
+    }
   }
   return { ...state, links, updatedAt: now };
 }

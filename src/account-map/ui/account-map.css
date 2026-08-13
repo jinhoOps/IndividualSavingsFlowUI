@@ -91,6 +91,10 @@
 .account-map-modal__connections small { grid-column: 1 / -1; color: var(--muted); }
 .account-map-modal__edit { display: grid; gap: 14px; }
 .account-map-modal__edit label { display: grid; gap: 6px; font-weight: 700; }
+.account-map-modal__edit-link { display: grid; gap: 10px; border: 1px solid var(--line); border-radius: 14px; padding: 12px; }
+.account-map-modal__edit-link legend { padding: 0 4px; font-weight: 700; }
+.account-map-modal__edit-link .account-map-modal__remainder { display: flex; min-height: 44px; grid-template-columns: auto 1fr; align-items: center; gap: 8px; }
+.account-map-modal__remainder input { width: 20px; height: 20px; margin: 0; }
 .account-map-modal__impact, .account-map-modal__restore { display: grid; gap: 10px; }
 .account-map-modal__impact > p, .account-map-modal__restore > p { margin: 0; }
 .account-map-modal__impact > p:not(:first-child) { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; color: var(--muted); }

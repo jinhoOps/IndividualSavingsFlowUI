@@ -11,6 +11,7 @@ import { BrowserAccountMapRepository, type AccountMapRepository, type AccountMap
 import { BrowserAccountMapMainSourceRepository, type AccountMapMainSourceRepository } from '../infrastructure/mainSourceRepository';
 import { AccountMapManagementMenu } from './AccountMapManagementMenu';
 import { AccountMapCanvas } from './AccountMapCanvas';
+import type { AccountMapNodeEditInput } from './AccountMapModal';
 import { AccountMapSetup } from './AccountMapSetup';
 import './account-map.css';
 
@@ -68,6 +69,11 @@ export function AccountMapApp({ repositories }: { repositories?: AccountMapRepos
     pendingModalWorkspaceRef.current = null;
     if (pending !== null) dispatch({ type: 'save-succeeded', workspace: pending });
     dispatch({ type: 'modal-closed' });
+  }} onSaveNodeEdit={async (nodeId, input) => {
+    const result = await saveNodeEdit(nodeId, input);
+    if (result.status !== 'saved') { dispatch({ type: 'save-failed', reason: failureReason(result) }); return false; }
+    pendingModalWorkspaceRef.current = result.workspace;
+    return true;
   }} onArchiveLocation={async (locationId, replacementRemainderByPurpose) => {
     const result = await resolved.accountMap.save(state.workspace.revision, { type: 'archive-location', locationId, replacementRemainderByPurpose });
     if (result.status !== 'saved') { dispatch({ type: 'save-failed', reason: failureReason(result) }); return false; }
@@ -154,7 +160,62 @@ export function AccountMapApp({ repositories }: { repositories?: AccountMapRepos
     dispatch({ type: 'apply-succeeded', applied, workspace: result.workspace });
   }
 
-  return <AppShell currentApp="account-map" managementMenu={management}><main className="account-map-page"><AccountMapSetup workspace={state.workspace} main={state.main} draft={state.draft} step={state.step} mainChanged={state.mainChanged} saveFailed={state.save.status === 'failed'} onCommitConnection={commitConnection} onSaveDraft={saveDraft} onReview={() => dispatch({ type: 'review-requested' })} onBack={() => dispatch({ type: 'connect-requested' })} onApply={() => void applyMap()} onExit={() => dispatch({ type: 'setup-exited' })} onCancelSetup={() => { void resolved.accountMap.reset(state.workspace.revision).then((result) => { if (result.status === 'saved') dispatch({ type: 'setup-cancelled', workspace: result.workspace }); else dispatch({ type: 'save-failed', reason: failureReason(result) }); }); }} /></main></AppShell>;
+  async function saveNodeEdit(nodeId: string, input: AccountMapNodeEditInput): Promise<AccountMapWriteResult> {
+    if (state.mode !== 'map') return { status: 'unavailable' };
+    const editById = new Map(input.links.map((item) => [item.id, item]));
+    const purposeByLinkId = new Map(state.applied.links.map((item) => [item.id, item.purposeId]));
+    const selectedRemainders = new Map<string, string>();
+    for (const item of input.links) {
+      const purposeId = purposeByLinkId.get(item.id);
+      if (purposeId !== undefined && item.status === 'active' && item.remainder) selectedRemainders.set(purposeId, item.id);
+    }
+    const customPurposes = state.applied.customPurposes.map((purpose) => purpose.id !== nodeId ? purpose : {
+      ...purpose,
+      ...(input.label === undefined ? {} : { name: input.label }),
+      ...(input.targetMonthlyWon === undefined ? {} : { targetMonthlyWon: input.targetMonthlyWon }),
+      updatedAt: Date.now(),
+    });
+    let links = state.applied.links.flatMap((current): PurposeLocationLink[] => {
+      const edit = editById.get(current.id);
+      if (edit?.status === 'removed') return [];
+      const selectedRemainder = selectedRemainders.get(current.purposeId);
+      if (edit === undefined) {
+        if (selectedRemainder === undefined || current.status === 'suspended') return [current];
+        return [{ ...current, remainder: current.id === selectedRemainder, updatedAt: Date.now() }];
+      }
+      if (edit.status === 'suspended') return [{ ...current, monthlyAmountWon: edit.monthlyAmountWon, remainder: false as const, status: 'suspended' as const, suspendedReason: 'user' as const, updatedAt: Date.now() }];
+      return [{ id: current.id, purposeId: current.purposeId, locationId: current.locationId, monthlyAmountWon: edit.monthlyAmountWon, remainder: selectedRemainder === undefined ? edit.remainder : current.id === selectedRemainder, status: 'active' as const, createdAt: current.createdAt, updatedAt: Date.now() }];
+    });
+    for (const [purposeId, remainderId] of selectedRemainders) {
+      const target = reconcilePurpose(purposeId as PurposeId, { ...state.applied, customPurposes, links }, state.workspace.locations, state.main).targetWon;
+      const recalculated = recalculateRemainder(purposeId as PurposeId, remainderId, target, links);
+      if (recalculated.ok) links = recalculated.links;
+    }
+    const applied = { ...state.applied, links, customPurposes, updatedAt: Date.now() };
+    const rawLocationId = nodeId.startsWith('location:') ? nodeId.replace(/^location:/u, '') : null;
+    const currentLocation = rawLocationId === null ? undefined : state.workspace.locations.find(({ id }) => id === rawLocationId);
+    return await resolved.accountMap.save(state.workspace.revision, {
+      type: 'edit-map-node', applied,
+      ...(currentLocation === undefined || input.label === undefined ? {} : {
+        location: {
+          locationId: currentLocation.id,
+          ...(currentLocation.institution === undefined ? {} : { institution: currentLocation.institution }),
+          shortName: input.label,
+        },
+      }),
+    });
+  }
+
+  return <AppShell currentApp="account-map" managementMenu={management}><main className="account-map-page"><AccountMapSetup workspace={state.workspace} main={state.main} draft={state.draft} step={state.step} mainChanged={state.mainChanged} saveFailed={state.save.status === 'failed'} onCommitConnection={commitConnection} onSaveDraft={saveDraft} onReview={() => void changeSetupStep('review')} onBack={() => void changeSetupStep('connect')} onApply={() => void applyMap()} onExit={() => { dispatch({ type: 'setup-exited' }); window.location.assign(appPath('main')); }} onCancelSetup={() => { void resolved.accountMap.reset(state.workspace.revision).then((result) => { if (result.status === 'saved') dispatch({ type: 'setup-cancelled', workspace: result.workspace }); else dispatch({ type: 'save-failed', reason: failureReason(result) }); }); }} /></main></AppShell>;
+
+  async function changeSetupStep(step: AccountMapDraft['step']) {
+    if (state.mode !== 'setup') return;
+    if (state.draft === null) {
+      dispatch({ type: step === 'review' ? 'review-requested' : 'connect-requested' });
+      return;
+    }
+    await saveDraft({ ...state.draft, step, updatedAt: Date.now() });
+  }
 }
 
 function MessagePage({ title, children }: { title: string; children: React.ReactNode }) { return <main className="account-map-page"><section className="account-map-message"><h1>{title}</h1>{children}</section></main>; }

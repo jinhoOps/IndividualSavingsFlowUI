@@ -55,6 +55,14 @@ function mappedWorkspace() {
   return workspace;
 }
 
+function editableWorkspace() {
+  const workspace = mappedWorkspace();
+  workspace.locations.push(location('living-backup', '보조생활비', 'kakao-bank', '카카오뱅크', ['spending']));
+  workspace.accountMap.applied!.links.find(({ id }) => id === 'living')!.monthlyAmountWon = 900_000;
+  workspace.accountMap.applied!.links.push(link('living-backup', 'system:living', 'living-backup', 100_000, false));
+  return workspace;
+}
+
 function location(id: string, shortName: string, institutionId: string, institutionName: string, roles: string[]) {
   return { id, shortName, institution: { id: institutionId, name: institutionName }, kind: 'bank', roles, createdAt: now, updatedAt: now };
 }
@@ -119,18 +127,39 @@ test('creates a purpose-first map and preserves protected product slices', async
   expect(await readProtected(page)).toEqual(before);
 });
 
+test('persists a resumed review step and exits to Main without deleting its draft', async ({ page }) => {
+  const workspace = emptyWorkspace();
+  workspace.accountMap.draft = {
+    schemaVersion: 1,
+    sourceMainUpdatedAt: now,
+    customPurposes: [],
+    links: [],
+    step: 'connect',
+    updatedAt: now,
+  };
+  await seed(page, workspace);
+  await page.goto('apps/account-map/');
+  await page.getByRole('button', { name: '검토' }).click();
+  await expect.poll(() => page.evaluate((key) => JSON.parse(localStorage.getItem(key)!).accountMap.draft.step, STORAGE_KEY)).toBe('review');
+  await page.getByRole('button', { name: '이전' }).click();
+  await expect.poll(() => page.evaluate((key) => JSON.parse(localStorage.getItem(key)!).accountMap.draft.step, STORAGE_KEY)).toBe('connect');
+  await page.getByRole('button', { name: '나가기' }).click();
+  await expect(page).toHaveURL(/\/apps\/main\/$/);
+  expect(await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!).accountMap.draft.step, STORAGE_KEY)).toBe('connect');
+});
+
 test('supports layout, semantic zoom, focus parity, second invoke, and same-modal edit', async ({ page }) => {
-  await seed(page, mappedWorkspace());
+  await seed(page, editableWorkspace());
   await page.goto('apps/account-map/');
   await expect(page.getByRole('heading', { name: '목적과 계좌의 연결' })).toBeVisible();
 
   const living = page.getByRole('button', { name: /생활비.*1,000,000원/ }).first();
   await living.hover();
-  await expect(page.locator('.account-map-edge-amount')).toHaveText('1,000,000원');
+  await expect(page.locator('.account-map-edge-amount')).toHaveText(['900,000원', '100,000원']);
   await page.locator('.account-map-canvas').click({ position: { x: 8, y: 8 } });
   await expect(living).not.toHaveClass(/is-pinned/);
   await living.focus();
-  await expect(page.locator('.account-map-edge-amount')).toHaveText('1,000,000원');
+  await expect(page.locator('.account-map-edge-amount')).toHaveText(['900,000원', '100,000원']);
   await living.click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await living.click();
@@ -138,7 +167,11 @@ test('supports layout, semantic zoom, focus parity, second invoke, and same-moda
   await expect(detail).toBeVisible();
   await detail.getByRole('button', { name: '편집' }).click();
   await expect(page.getByRole('dialog', { name: /생활비 편집/ })).toBeVisible();
-  await page.keyboard.press('Escape');
+  await page.getByRole('textbox', { name: '보조생활비 월 금액' }).fill('200000');
+  await page.getByRole('button', { name: '저장' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect.poll(() => page.evaluate((key) => JSON.parse(localStorage.getItem(key)!).accountMap.applied.links.find((item: { id: string }) => item.id === 'living-backup').monthlyAmountWon, STORAGE_KEY)).toBe(200_000);
+  await expect.poll(() => page.evaluate((key) => JSON.parse(localStorage.getItem(key)!).accountMap.applied.links.find((item: { id: string }) => item.id === 'living').monthlyAmountWon, STORAGE_KEY)).toBe(800_000);
 
   await page.getByRole('button', { name: '계좌 중심' }).click();
   await expect(page.getByRole('button', { name: '계좌 중심' })).toHaveAttribute('aria-pressed', 'true');

@@ -61,6 +61,20 @@ describe('AccountMapSetup', () => {
     expect(screen.getByText('보관된 같은 항목이 있어요.')).toBeVisible();
     expect(screen.getByRole('button', { name: '기존 항목 복원해서 연결' })).toBeVisible();
   });
+
+  it('shows a saved custom purpose as a connectable card and persists review step', async () => {
+    const setup = fixture();
+    render(<AccountMapApp repositories={setup.repositories} />);
+    fireEvent.click(screen.getByRole('button', { name: '세부 목적 추가' }));
+    fireEvent.change(screen.getByRole('textbox', { name: '목적 이름' }), { target: { value: '여행' } });
+    fireEvent.change(screen.getByRole('textbox', { name: '월 금액' }), { target: { value: '100000' } });
+    fireEvent.click(screen.getByRole('button', { name: '추가' }));
+    const customCard = await screen.findByRole('heading', { name: '여행' });
+    expect(within(customCard.closest('article')!).getByRole('button', { name: '연결' })).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: '검토' }));
+    await waitFor(() => expect(setup.current().accountMap.draft?.step).toBe('review'));
+    expect(screen.getByRole('heading', { name: '연결 검토' })).toBeVisible();
+  });
 });
 
 function fixture(withLocation = false, failSave = false, archived = false) {

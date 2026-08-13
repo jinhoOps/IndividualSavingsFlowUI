@@ -50,6 +50,10 @@ export function AccountMapSetup(props: AccountMapSetupProps): JSX.Element {
   const [activePurposeId, setActivePurposeId] = useState<PurposeId | null>(null);
   const [customOpen, setCustomOpen] = useState(false);
   const references = mainPurposeReferences(props.main);
+  const visiblePurposeIds: PurposeId[] = [
+    ...SYSTEM_PURPOSE_IDS,
+    ...(props.draft?.customPurposes.filter(({ archivedAt }) => archivedAt === undefined).map(({ id }) => id) ?? []),
+  ];
 
   if (props.step === 'review') {
     const draft = props.draft ?? emptyDraft(props.main.updatedAt);
@@ -106,13 +110,14 @@ export function AccountMapSetup(props: AccountMapSetupProps): JSX.Element {
       </header>
       {props.mainChanged ? <p className="account-map-alert" role="status"><strong>Main의 월 금액이 바뀌었어요</strong><span>입력은 보존하고 최신 금액으로 상태만 다시 계산했습니다.</span></p> : null}
       <div className="account-map-purpose-grid">
-        {SYSTEM_PURPOSE_IDS.map((purposeId) => {
+        {visiblePurposeIds.map((purposeId) => {
           const links = props.draft?.links.filter((link) => link.purposeId === purposeId && link.status === 'active') ?? [];
+          const root = rootPurpose(purposeId, props.draft);
           return (
             <article key={purposeId} className="account-map-purpose-card">
               <div className="account-map-purpose-card__top">
-                <div><p>{purposeMeta[purposeId].prompt}</p><h2>{purposeMeta[purposeId].title}</h2></div>
-                <strong>{formatWon(references[purposeId])}</strong>
+                <div><p>{purposeMeta[root].prompt}</p><h2>{titleFor(purposeId, props.draft)}</h2></div>
+                <strong>{formatWon(purposeId.startsWith('custom:') ? props.draft?.customPurposes.find(({ id }) => id === purposeId)?.targetMonthlyWon ?? 0 : references[purposeId as SystemPurposeId])}</strong>
               </div>
               {links.length > 0 ? <p className="account-map-purpose-card__status">{links.length}곳 연결됨</p> : <p className="account-map-purpose-card__status is-empty">연결 필요</p>}
               <button type="button" className="account-map-purpose-card__action" onClick={() => setActivePurposeId(purposeId)}>

@@ -99,7 +99,7 @@ export function layoutAccountMap(
   _zoom: MapZoom,
 ): PositionedGraph {
   const width = Math.max(280, viewport.width);
-  const height = Math.max(360, viewport.height);
+  const minimumHeight = Math.max(360, viewport.height);
   const direction = width <= 768 ? 'top-to-bottom' : 'left-to-right';
   const margin = width <= 480 ? 16 : 28;
   const nodeHeight = 78;
@@ -111,10 +111,28 @@ export function layoutAccountMap(
     const rightRank = nodeRank(right, layout);
     return leftRank - rightRank || left.id.localeCompare(right.id);
   });
+  const height = direction === 'top-to-bottom'
+    ? mobileContentHeight(ordered.length, width, margin, nodeWidth, nodeHeight, minimumHeight)
+    : desktopContentHeight(ordered, layout, margin, nodeHeight, minimumHeight);
   const positioned = direction === 'top-to-bottom'
     ? placeGrid(ordered, width, height, margin, nodeWidth, nodeHeight)
     : placeColumns(ordered, layout, width, height, margin, nodeWidth, nodeHeight);
   return { direction, nodes: positioned, edges: [...graph.edges], width, height };
+}
+
+function mobileContentHeight(nodeCount: number, width: number, margin: number, nodeWidth: number, nodeHeight: number, minimumHeight: number): number {
+  const columns = Math.max(1, Math.floor((width - margin * 2 + 12) / (nodeWidth + 12)));
+  const rows = Math.ceil(nodeCount / columns);
+  return Math.max(minimumHeight, margin * 2 + rows * nodeHeight + Math.max(0, rows - 1) * 12);
+}
+
+function desktopContentHeight(nodes: GraphNode[], layout: MapLayout, margin: number, nodeHeight: number, minimumHeight: number): number {
+  const leftKind = layout === 'purpose' ? 'purpose' : 'location';
+  const sideCount = Math.max(
+    nodes.filter(({ kind }) => kind === leftKind).length,
+    nodes.filter(({ kind }) => kind !== leftKind && kind !== 'status').length,
+  );
+  return Math.max(minimumHeight, margin * 2 + sideCount * nodeHeight + Math.max(0, sideCount - 1) * 12);
 }
 
 function placeGrid(nodes: GraphNode[], width: number, height: number, margin: number, nodeWidth: number, nodeHeight: number): PositionedNode[] {

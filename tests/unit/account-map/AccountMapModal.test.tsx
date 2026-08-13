@@ -19,6 +19,58 @@ describe('AccountMapModal', () => {
     expect(screen.getByRole('heading', { name: '생활비 편집' })).toBeVisible();
   });
 
+  it('submits edited link amounts instead of exposing a no-op save', async () => {
+    const onSaveEdit = vi.fn(async () => true);
+    renderModal({
+      related: [{ label: '생활비통장', amountWon: 700_000, status: 'active', linkId: 'living', purposeId: 'system:living', remainder: true }],
+      onSaveEdit,
+    });
+    fireEvent.click(screen.getByRole('button', { name: '편집' }));
+    fireEvent.change(screen.getByRole('textbox', { name: '생활비통장 월 금액' }), { target: { value: '650000' } });
+    fireEvent.click(screen.getByRole('button', { name: '저장' }));
+    expect(onSaveEdit).toHaveBeenCalledWith(expect.objectContaining({
+      links: [{ id: 'living', monthlyAmountWon: 650_000, status: 'active', remainder: true }],
+    }));
+  });
+
+  it('requires and submits a replacement when editing away a location remainder', () => {
+    const onSaveEdit = vi.fn(() => true);
+    renderModal({
+      node: { id: 'location:checking', kind: 'location', label: '생활비통장', status: 'resolved' },
+      related: [
+        { label: '생활비', amountWon: 700_000, status: 'active', linkId: 'old', purposeId: 'system:living', remainder: true },
+        { label: '예비통장', amountWon: 300_000, status: 'active', linkId: 'next', purposeId: 'system:living', replacementCandidate: true },
+      ],
+      onSaveEdit,
+    });
+    fireEvent.click(screen.getByRole('button', { name: '편집' }));
+    fireEvent.change(screen.getByRole('combobox', { name: '생활비 연결 상태' }), { target: { value: 'suspended' } });
+    expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
+    fireEvent.change(screen.getByRole('combobox', { name: '편집 나머지 연결' }), { target: { value: 'next' } });
+    fireEvent.click(screen.getByRole('button', { name: '저장' }));
+    expect(onSaveEdit).toHaveBeenCalledWith(expect.objectContaining({
+      links: expect.arrayContaining([
+        expect.objectContaining({ id: 'old', status: 'suspended', remainder: false }),
+        expect.objectContaining({ id: 'next', status: 'active', remainder: true }),
+      ]),
+    }));
+  });
+
+  it('requires an excess correction before restoring selected links', () => {
+    renderModal({
+      node: { id: 'location:checking', kind: 'location', label: '생활비통장', status: 'suspended' },
+      related: [
+        { label: '생활비', amountWon: 800_000, status: 'suspended', linkId: 'old', purposeId: 'system:living', purposeTargetWon: 1_000_000 },
+        { label: '기존통장', amountWon: 500_000, status: 'active', linkId: 'current', purposeId: 'system:living', purposeTargetWon: 1_000_000, replacementCandidate: true },
+      ],
+      onRestoreLocation: vi.fn(),
+    });
+    fireEvent.click(screen.getByRole('button', { name: '복원' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: /생활비/ }));
+    expect(screen.getByRole('combobox', { name: '복원 나머지 연결' })).toBeRequired();
+    expect(screen.getByRole('button', { name: '선택 복원' })).toBeDisabled();
+  });
+
   it('closes with Escape and restores focus to the source node', () => {
     const source = document.createElement('button');
     document.body.append(source);
