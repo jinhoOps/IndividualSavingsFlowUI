@@ -555,6 +555,7 @@ describe('MainApp', () => {
     await screen.findByRole('heading', { name: 'setup:welcome' });
 
     expect(screen.getByLabelText('setup-flow')).toHaveAttribute('data-motion-preset', 'initial-assembly');
+    expect(screen.getByTestId('main-page-frame')).toHaveClass('app-content-frame');
     expect(screen.getByTestId('app-shell')).toBeInTheDocument();
     expect(screen.queryByTestId('app-shell-launcher')).not.toBeInTheDocument();
     expect(screen.queryByRole('navigation', { name: 'ISF 앱' })).not.toBeInTheDocument();
@@ -571,6 +572,7 @@ describe('MainApp', () => {
     render(<MainApp repository={storage} />);
 
     expect(screen.getByRole('status')).toHaveTextContent('자금 계획을 불러오는 중');
+    expect(screen.getByTestId('main-page-frame')).toHaveClass('app-content-frame');
     fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
     expect(screen.getByLabelText('백업 가져오기')).toBeDisabled();
     resolveLoad?.({ status: 'empty', data: null, original: null });
@@ -748,6 +750,7 @@ describe('MainApp', () => {
     });
     render(<MainApp repository={storage} />);
     await screen.findByRole('heading', { name: '저장 복구가 필요합니다' });
+    expect(screen.getByTestId('main-page-frame')).toHaveClass('app-content-frame');
 
     fireEvent.click(screen.getByRole('button', { name: '빈 초안으로 다시 시작' }));
 

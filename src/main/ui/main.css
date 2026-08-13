@@ -84,6 +84,11 @@
     isolation: isolate;
   }
 
+  .allocation-bar__visual-stage {
+    position: relative;
+    min-width: 0;
+  }
+
   .flow-context-summary {
     margin-inline-end: 0;
   }
@@ -234,7 +239,8 @@
     @apply flex min-h-11 cursor-pointer items-center;
   }
 
-  .flow-bar-wrapper .flow-tooltip {
+  .flow-bar-wrapper .flow-tooltip,
+  .allocation-bar__visual-stage .flow-tooltip {
     @apply absolute bottom-full mb-2 -translate-x-1/2;
   }
 

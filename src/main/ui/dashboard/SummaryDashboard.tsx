@@ -139,7 +139,11 @@ export function SummaryDashboard({
   }
 
   return (
-    <main className="relative mx-auto grid min-h-dvh w-full max-w-[1200px] gap-6 px-5 py-7 sm:px-8 sm:py-10" aria-labelledby="summary-dashboard-title">
+    <main
+      className="app-content-frame relative grid min-h-dvh gap-6 py-7 sm:py-10"
+      data-testid="main-dashboard-frame"
+      aria-labelledby="summary-dashboard-title"
+    >
       <div
         className="grid min-w-0 gap-6"
         aria-hidden={mobileModalOpen ? 'true' : undefined}

@@ -105,6 +105,18 @@ function mockBarViewport(initialClientWidth: number) {
 }
 
 describe('AllocationBar', () => {
+  it('widens only the visual stage for the assembly presentation', () => {
+    const { rerender } = render(<AllocationBar data={cashflowFixture} />);
+
+    expect(screen.getByTestId('allocation-visual-stage')).not.toHaveClass('app-wide-visual');
+    expect(screen.getByRole('table', { name: '월 자금 항목' })).not.toHaveClass('app-wide-visual');
+
+    rerender(<AllocationBar data={cashflowFixture} presentation="assembly" />);
+
+    expect(screen.getByTestId('allocation-visual-stage')).toHaveClass('app-wide-visual');
+    expect(screen.getByRole('table', { name: '월 자금 항목' })).not.toHaveClass('app-wide-visual');
+  });
+
   it('commits final bar geometry without the app fallback when animation creation fails', () => {
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
     const { container, rerender } = render(
