@@ -33,7 +33,7 @@ describe('AccountMapApp', () => {
   it('shows unavailable storage without replacing user state with setup', () => {
     const accountMap: AccountMapRepository = {
       load: vi.fn(() => ({ status: 'unavailable' as const })),
-      save: vi.fn(), migrate: vi.fn(), reset: vi.fn(),
+      save: vi.fn(), saveIntent: vi.fn(), migrate: vi.fn(), reset: vi.fn(),
     };
     const main: AccountMapMainSourceRepository = { load: vi.fn(() => ({ status: 'unavailable' as const })) };
     render(<AccountMapApp repositories={{ accountMap, main }} />);
@@ -50,7 +50,7 @@ function repositories(options: { mainStatus?: 'found' | 'empty'; draftSourceUpda
   }
   const accountMap: AccountMapRepository = {
     load: vi.fn(() => ({ status: 'found' as const, workspace, needsMigration: false })),
-    save: vi.fn(), migrate: vi.fn(), reset: vi.fn(),
+    save: vi.fn(), saveIntent: vi.fn(), migrate: vi.fn(), reset: vi.fn(),
   };
   const main: AccountMapMainSourceRepository = {
     load: vi.fn(() => options.mainStatus === 'empty'

@@ -8,6 +8,7 @@ import {
   SYSTEM_PURPOSE_IDS,
   type AccountMapApplied,
   type AccountMapDraft,
+  type CustomPurpose,
   type PurposeId,
   type PurposeLocationLink,
 } from './model';
@@ -26,6 +27,26 @@ export type AccountMapCommand =
       };
     }
   | { type: 'create-location'; location: FinancialLocation }
+  | {
+      type: 'connect-location';
+      surface: 'draft' | 'applied';
+      purposeId: PurposeId;
+      locationId: string;
+      monthlyAmountWon?: number;
+    }
+  | {
+      type: 'create-and-connect-location';
+      surface: 'draft' | 'applied';
+      purposeId: PurposeId;
+      location: FinancialLocation;
+      monthlyAmountWon?: number;
+    }
+  | { type: 'archive-custom-purpose'; purposeId: CustomPurpose['id'] }
+  | {
+      type: 'restore-custom-purpose';
+      purposeId: CustomPurpose['id'];
+      targetMonthlyWon: number;
+    }
   | {
       type: 'update-location';
       locationId: string;
@@ -58,6 +79,9 @@ export type AccountMapCommandError =
   | 'income-connection-required'
   | 'purpose-excess'
   | 'custom-target-capacity'
+  | 'duplicate-link'
+  | 'target-missing'
+  | 'field-conflict'
   | 'protected-slice-changed';
 
 export type AccountMapCommandResult =
@@ -112,6 +136,18 @@ export function applyAccountMapCommand(
       break;
     case 'create-location':
       changed = createLocation(source, command.location, now);
+      break;
+    case 'connect-location':
+      changed = connectLocation(source, command, now);
+      break;
+    case 'create-and-connect-location':
+      changed = createAndConnectLocation(source, command, now);
+      break;
+    case 'archive-custom-purpose':
+      changed = archiveCustomPurpose(source, command, now);
+      break;
+    case 'restore-custom-purpose':
+      changed = restoreCustomPurpose(source, command, now);
       break;
     case 'update-location':
       changed = updateLocation(source, command, now);
@@ -285,6 +321,269 @@ function createLocation(
   return successCandidate(source, { ...source, locations });
 }
 
+function connectLocation(
+  source: WorkspaceDocument,
+  command: Extract<AccountMapCommand, { type: 'connect-location' }>,
+  now: number,
+): AccountMapCommandResult {
+  const current = source.locations.find(({ id }) => id === command.locationId);
+  if (current === undefined) return failure('location-not-found');
+  if (current.archivedAt !== undefined) return failure('invalid-input');
+  const state = source.accountMap[command.surface];
+  if (state === null) return failure('invalid-input');
+  const role = requiredRole(command.purposeId, state.customPurposes);
+  if (role === null) return failure('invalid-input');
+  if (state.links.some(({ purposeId, locationId }) => (
+    purposeId === command.purposeId && locationId === command.locationId
+  ))) return failure('duplicate-link');
+
+  const location = parseFinancialLocation({
+    ...current,
+    roles: [...new Set([...current.roles, role])],
+    updatedAt: now,
+  });
+  if (location === null) return failure('invalid-input');
+  const locations = replaceLocation(source.locations, location);
+  if (exceedsRoleCapacity(locations)) return failure('purpose-capacity');
+
+  const nextState = appendConnection(state, command.purposeId, command.locationId, command.monthlyAmountWon, locations, source, now);
+  if (isFailure(nextState)) return nextState;
+  return successCandidate(source, {
+    ...source,
+    locations,
+    accountMap: { ...source.accountMap, [command.surface]: nextState },
+  });
+}
+
+function createAndConnectLocation(
+  source: WorkspaceDocument,
+  command: Extract<AccountMapCommand, { type: 'create-and-connect-location' }>,
+  now: number,
+): AccountMapCommandResult {
+  const state = source.accountMap[command.surface];
+  if (state === null) return failure('invalid-input');
+  const role = requiredRole(command.purposeId, state.customPurposes);
+  if (role === null) return failure('invalid-input');
+  const { archivedAt: _archivedAt, ...activeInput } = command.location;
+  const location = parseFinancialLocation({
+    ...activeInput,
+    roles: [...new Set([...command.location.roles, role])],
+    updatedAt: now,
+  });
+  if (location === null || source.locations.some(({ id }) => id === location.id)) {
+    return failure('invalid-input');
+  }
+  const duplicate = findLocationDuplicate(source.locations, location);
+  if (duplicate.kind === 'active') {
+    return { ok: false, reason: 'duplicate-location-active', locationId: duplicate.location.id };
+  }
+  if (duplicate.kind === 'archived') {
+    return { ok: false, reason: 'duplicate-location-archived', locationId: duplicate.location.id };
+  }
+  const locations = [...source.locations, location];
+  if (exceedsRoleCapacity(locations)) return failure('purpose-capacity');
+
+  const nextState = appendConnection(state, command.purposeId, location.id, command.monthlyAmountWon, locations, source, now);
+  if (isFailure(nextState)) return nextState;
+  return successCandidate(source, {
+    ...source,
+    locations,
+    accountMap: { ...source.accountMap, [command.surface]: nextState },
+  });
+}
+
+function appendConnection<T extends AccountMapApplied | AccountMapDraft>(
+  state: T,
+  purposeId: PurposeId,
+  locationId: string,
+  monthlyAmountWon: number | undefined,
+  locations: FinancialLocation[],
+  source: WorkspaceDocument,
+  now: number,
+): T | Extract<AccountMapCommandResult, { ok: false }> {
+  if (monthlyAmountWon !== undefined && (!Number.isSafeInteger(monthlyAmountWon) || monthlyAmountWon < 0)) {
+    return failure('invalid-input');
+  }
+  const activeLinks = state.links.filter((link) => link.purposeId === purposeId && link.status === 'active');
+  if (activeLinks.length >= PURPOSE_CAPACITY[requiredRole(purposeId, state.customPurposes)!]) {
+    return failure('purpose-capacity');
+  }
+  const targetWon = reconcilePurpose(purposeId, state, locations, source.main.applied!).targetWon;
+  const firstConnection = activeLinks.length === 0;
+  const link: PurposeLocationLink = {
+    id: uniqueLinkId(state.links, purposeId, locationId),
+    purposeId,
+    locationId,
+    monthlyAmountWon: firstConnection ? targetWon : monthlyAmountWon ?? 0,
+    remainder: firstConnection,
+    status: 'active',
+    createdAt: now,
+    updatedAt: now,
+  };
+  let links = [...state.links, link];
+  if (!firstConnection) {
+    const remainder = activeLinks.find(({ remainder }) => remainder) ?? activeLinks[0];
+    const recalculated = recalculateRemainder(purposeId, remainder!.id, targetWon, links);
+    if (!recalculated.ok) {
+      return failure(recalculated.reason === 'fixed-links-exceed-target'
+        ? 'fixed-links-exceed-target'
+        : 'invalid-remainder-selection');
+    }
+    links = recalculated.links.map((candidate) => candidate.purposeId === purposeId
+      && candidate.status === 'active'
+      ? { ...candidate, updatedAt: now }
+      : candidate);
+  }
+  const candidate = { ...state, links, updatedAt: now };
+  const beforeExcess = reconcilePurpose(purposeId, state, locations, source.main.applied!).excessWon;
+  const afterExcess = reconcilePurpose(purposeId, candidate, locations, source.main.applied!).excessWon;
+  if (afterExcess > beforeExcess) return failure('purpose-excess');
+  return withCurrentMainSource(candidate, state, source.main.applied!);
+}
+
+function requiredRole(
+  purposeId: PurposeId,
+  customPurposes: readonly CustomPurpose[],
+): FinancialRole | null {
+  const rootPurposeId = purposeId.startsWith('custom:')
+    ? customPurposes.find((purpose) => purpose.id === purposeId && purpose.archivedAt === undefined)?.parentId
+    : purposeId;
+  if (rootPurposeId === undefined) return null;
+  if (rootPurposeId === 'system:income') return 'income';
+  if (rootPurposeId === 'system:saving') return 'saving';
+  if (rootPurposeId === 'system:investing') return 'investing';
+  return rootPurposeId === 'system:housing' || rootPurposeId === 'system:living' ? 'spending' : null;
+}
+
+function uniqueLinkId(
+  links: readonly PurposeLocationLink[],
+  purposeId: PurposeId,
+  locationId: string,
+): string {
+  const base = `link:${purposeId}:${locationId}`;
+  const ids = new Set(links.map(({ id }) => id));
+  if (!ids.has(base)) return base;
+  let suffix = 2;
+  while (ids.has(`${base}:${suffix}`)) suffix += 1;
+  return `${base}:${suffix}`;
+}
+
+function archiveCustomPurpose(
+  source: WorkspaceDocument,
+  command: Extract<AccountMapCommand, { type: 'archive-custom-purpose' }>,
+  now: number,
+): AccountMapCommandResult {
+  const states = [source.accountMap.applied, source.accountMap.draft].filter(
+    (state): state is AccountMapApplied | AccountMapDraft => state !== null,
+  );
+  const matching = states.flatMap((state) => state.customPurposes.filter(({ id }) => id === command.purposeId));
+  if (matching.length === 0 || matching.some(({ archivedAt }) => archivedAt !== undefined)) {
+    return failure('invalid-input');
+  }
+  const applied = source.accountMap.applied === null
+    ? null
+    : archivePurposeInState(source.accountMap.applied, command.purposeId, source, now);
+  const draft = source.accountMap.draft === null
+    ? null
+    : archivePurposeInState(source.accountMap.draft, command.purposeId, source, now);
+  return successCandidate(source, {
+    ...source,
+    accountMap: { ...source.accountMap, applied, draft },
+  });
+}
+
+function archivePurposeInState<T extends AccountMapApplied | AccountMapDraft>(
+  state: T,
+  purposeId: CustomPurpose['id'],
+  source: WorkspaceDocument,
+  now: number,
+): T {
+  if (!state.customPurposes.some(({ id }) => id === purposeId)) return state;
+  const customPurposes = state.customPurposes.map((purpose) => purpose.id === purposeId
+    ? { ...purpose, archivedAt: now, updatedAt: now }
+    : { ...purpose });
+  const links = state.links.map((link): PurposeLocationLink => {
+    if (link.purposeId !== purposeId || link.status !== 'active') return { ...link };
+    return {
+      ...link,
+      status: 'suspended',
+      suspendedReason: 'user',
+      remainder: false,
+      updatedAt: now,
+    };
+  });
+  return withCurrentMainSource(
+    { ...state, customPurposes, links, updatedAt: now },
+    state,
+    source.main.applied!,
+  );
+}
+
+function restoreCustomPurpose(
+  source: WorkspaceDocument,
+  command: Extract<AccountMapCommand, { type: 'restore-custom-purpose' }>,
+  now: number,
+): AccountMapCommandResult {
+  if (!Number.isSafeInteger(command.targetMonthlyWon) || command.targetMonthlyWon < 0) {
+    return failure('invalid-input');
+  }
+  const states = [source.accountMap.applied, source.accountMap.draft].filter(
+    (state): state is AccountMapApplied | AccountMapDraft => state !== null,
+  );
+  const matching = states.flatMap((state) => state.customPurposes.filter(({ id }) => id === command.purposeId));
+  if (matching.length === 0 || matching.some(({ archivedAt }) => archivedAt === undefined)) {
+    return failure('invalid-input');
+  }
+  const applied = source.accountMap.applied === null
+    ? null
+    : restorePurposeInState(source.accountMap.applied, command, source, now);
+  if (isFailure(applied)) return applied;
+  const draft = source.accountMap.draft === null
+    ? null
+    : restorePurposeInState(source.accountMap.draft, command, source, now);
+  if (isFailure(draft)) return draft;
+  return successCandidate(source, {
+    ...source,
+    accountMap: { ...source.accountMap, applied, draft },
+  });
+}
+
+function restorePurposeInState<T extends AccountMapApplied | AccountMapDraft>(
+  state: T,
+  command: Extract<AccountMapCommand, { type: 'restore-custom-purpose' }>,
+  source: WorkspaceDocument,
+  now: number,
+): T | Extract<AccountMapCommandResult, { ok: false }> {
+  const current = state.customPurposes.find(({ id }) => id === command.purposeId);
+  if (current === undefined || current.archivedAt === undefined) return state;
+  const customPurposes = state.customPurposes.map((purpose): CustomPurpose => {
+    if (purpose.id !== command.purposeId) return { ...purpose };
+    const { archivedAt: _archivedAt, ...active } = purpose;
+    return { ...active, targetMonthlyWon: command.targetMonthlyWon, updatedAt: now };
+  });
+  if (!customTargetsFitCurrentCapacity(customPurposes, source)) {
+    return failure('custom-target-capacity');
+  }
+  return withCurrentMainSource(
+    { ...state, customPurposes, updatedAt: now },
+    state,
+    source.main.applied!,
+  );
+}
+
+function customTargetsFitCurrentCapacity(
+  customPurposes: readonly CustomPurpose[],
+  source: WorkspaceDocument,
+): boolean {
+  const main = source.main.applied;
+  if (main === null) return false;
+  const references = mainPurposeReferences(main);
+  const parentIds = ['system:housing', 'system:living', 'system:saving', 'system:investing'] as const;
+  return parentIds.every((parentId) => customPurposes
+    .filter((purpose) => purpose.parentId === parentId && purpose.archivedAt === undefined)
+    .reduce((sum, purpose) => sum + purpose.targetMonthlyWon, 0) <= references[parentId]);
+}
+
 function updateLocation(
   source: WorkspaceDocument,
   command: Extract<AccountMapCommand, { type: 'update-location' }>,
@@ -294,14 +593,17 @@ function updateLocation(
   if (current === undefined) return failure('location-not-found');
   if (current.archivedAt !== undefined) return failure('invalid-input');
   const roles = [...new Set([...current.roles, ...command.addRoles])];
-  const institution = command.institution ?? current.institution;
-  const next = parseFinancialLocation({
+  const locationInput: FinancialLocation = {
     ...current,
-    ...(institution === undefined ? {} : { institution }),
     shortName: command.shortName,
     roles,
     updatedAt: now,
-  });
+  };
+  if (Object.prototype.hasOwnProperty.call(command, 'institution')) {
+    if (command.institution === undefined) delete locationInput.institution;
+    else locationInput.institution = command.institution;
+  }
+  const next = parseFinancialLocation(locationInput);
   if (next === null) return failure('invalid-input');
   if (next.archivedAt === undefined) {
     const duplicate = findLocationDuplicate(source.locations, next);

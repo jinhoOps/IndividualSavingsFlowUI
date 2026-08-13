@@ -85,6 +85,7 @@ function fixture(withLocation = false, failSave = false, archived = false) {
   const accountMap: AccountMapRepository = {
     load: vi.fn(() => ({ status: 'found' as const, workspace, needsMigration: false })),
     migrate: vi.fn(), reset: vi.fn(),
+    saveIntent: vi.fn(),
     save: vi.fn(async (revision, command) => {
       if (failSave) return { status: 'unavailable' as const };
       const result = applyAccountMapCommand(workspace, command, 20);

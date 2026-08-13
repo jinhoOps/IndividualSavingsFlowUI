@@ -6,8 +6,275 @@ import type { FinancialLocation } from '../../../src/workspace/domain/financialL
 import { createEmptyWorkspace, type WorkspaceDocument } from '../../../src/workspace/domain/model';
 
 describe('Account Map commands', () => {
+  it('connects a location by adding its required role and one link in one candidate', () => {
+    const before = workspace();
+    before.accountMap.applied = validApplied();
+    const protectedBefore = {
+      main: JSON.stringify(before.main),
+      simulation: JSON.stringify(before.simulation),
+      portfolio: JSON.stringify(before.portfolio),
+    };
+
+    const result = applyAccountMapCommand(before, {
+      type: 'connect-location',
+      surface: 'applied',
+      purposeId: 'system:investing',
+      locationId: 'savings',
+    }, 20);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.workspace.locations.find(({ id }) => id === 'savings')).toMatchObject({
+      roles: ['spending', 'saving', 'investing'],
+      shortName: '저축',
+      institution: { id: 'shinhan', name: '신한은행' },
+    });
+    expect(result.workspace.accountMap.applied?.links.filter((item) => (
+      item.purposeId === 'system:investing' && item.locationId === 'savings'
+    ))).toEqual([expect.objectContaining({
+      monthlyAmountWon: 200_000,
+      remainder: true,
+      status: 'active',
+      createdAt: 20,
+      updatedAt: 20,
+    })]);
+    expect(JSON.stringify(result.workspace.main)).toBe(protectedBefore.main);
+    expect(JSON.stringify(result.workspace.simulation)).toBe(protectedBefore.simulation);
+    expect(JSON.stringify(result.workspace.portfolio)).toBe(protectedBefore.portfolio);
+  });
+
+  it('does not partially add a role when connection capacity or duplicate validation fails', () => {
+    const capacityBefore = workspace();
+    capacityBefore.accountMap.applied = validApplied();
+    capacityBefore.locations.push(...Array.from({ length: 10 }, (_, index) => ({
+      ...location(`broker-${index}`, `투자${index}`),
+      roles: ['investing' as const],
+    })));
+    const capacityJson = JSON.stringify(capacityBefore);
+
+    expect(applyAccountMapCommand(capacityBefore, {
+      type: 'connect-location',
+      surface: 'applied',
+      purposeId: 'system:investing',
+      locationId: 'savings',
+    }, 20)).toMatchObject({ ok: false, reason: 'purpose-capacity' });
+    expect(JSON.stringify(capacityBefore)).toBe(capacityJson);
+
+    const duplicateBefore = workspace();
+    duplicateBefore.accountMap.applied = validApplied();
+    duplicateBefore.accountMap.applied.links.push({
+      ...link('existing-investing', 'savings', 0),
+      purposeId: 'system:investing',
+      status: 'suspended',
+      remainder: false,
+      suspendedReason: 'user',
+    });
+    const duplicateJson = JSON.stringify(duplicateBefore);
+
+    expect(applyAccountMapCommand(duplicateBefore, {
+      type: 'connect-location',
+      surface: 'applied',
+      purposeId: 'system:investing',
+      locationId: 'savings',
+    }, 20)).toMatchObject({ ok: false, reason: 'duplicate-link' });
+    expect(JSON.stringify(duplicateBefore)).toBe(duplicateJson);
+  });
+
+  it('recalculates the existing remainder when adding another connection', () => {
+    const before = workspace();
+    before.locations[0] = {
+      ...before.locations[0]!,
+      roles: [...before.locations[0]!.roles, 'investing'],
+    };
+    before.accountMap.applied = {
+      ...validApplied(),
+      links: [
+        ...validApplied().links,
+        { ...link('investing-remainder', 'checking', 200_000, true), purposeId: 'system:investing' },
+      ],
+    };
+
+    const result = applyAccountMapCommand(before, {
+      type: 'connect-location',
+      surface: 'applied',
+      purposeId: 'system:investing',
+      locationId: 'savings',
+      monthlyAmountWon: 50_000,
+    }, 20);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.workspace.accountMap.applied?.links.filter(({ purposeId }) => (
+      purposeId === 'system:investing'
+    )).map(({ locationId, monthlyAmountWon, remainder }) => ({
+      locationId,
+      monthlyAmountWon,
+      remainder,
+    }))).toEqual([
+      { locationId: 'checking', monthlyAmountWon: 150_000, remainder: true },
+      { locationId: 'savings', monthlyAmountWon: 50_000, remainder: false },
+    ]);
+  });
+
+  it('creates and connects a location atomically', () => {
+    const before = workspace();
+    before.accountMap.draft = draft();
+
+    const result = applyAccountMapCommand(before, {
+      type: 'create-and-connect-location',
+      surface: 'draft',
+      purposeId: 'system:saving',
+      location: location('new-saving', '새저축'),
+    }, 20);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.workspace.locations.find(({ id }) => id === 'new-saving')?.roles).toEqual([
+      'spending',
+      'saving',
+    ]);
+    expect(result.workspace.accountMap.draft?.links).toEqual([
+      expect.objectContaining({
+        purposeId: 'system:saving',
+        locationId: 'new-saving',
+        monthlyAmountWon: 300_000,
+        remainder: true,
+        status: 'active',
+      }),
+    ]);
+  });
+
+  it('archives a custom purpose and suspends its active links without changing locations or Portfolio', () => {
+    const before = workspace();
+    const custom = customPurpose('custom:telecom', 200_000);
+    before.accountMap.applied = {
+      ...validApplied(),
+      customPurposes: [custom],
+      links: [
+        ...validApplied().links,
+        { ...link('telecom', 'checking', 200_000, true), purposeId: custom.id },
+      ],
+    };
+    const locationsBefore = JSON.stringify(before.locations);
+    const portfolioBefore = JSON.stringify(before.portfolio);
+
+    const result = applyAccountMapCommand(before, {
+      type: 'archive-custom-purpose',
+      purposeId: custom.id,
+    }, 20);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.workspace.accountMap.applied?.customPurposes[0]).toMatchObject({
+      id: custom.id,
+      archivedAt: 20,
+      updatedAt: 20,
+    });
+    expect(result.workspace.accountMap.applied?.links.find(({ id }) => id === 'telecom')).toMatchObject({
+      status: 'suspended',
+      suspendedReason: 'user',
+      remainder: false,
+      updatedAt: 20,
+    });
+    expect(JSON.stringify(result.workspace.locations)).toBe(locationsBefore);
+    expect(JSON.stringify(result.workspace.portfolio)).toBe(portfolioBefore);
+  });
+
+  it('rejects a custom purpose lifecycle command when applied and draft disagree', () => {
+    const before = workspace();
+    before.accountMap.applied = {
+      ...validApplied(),
+      customPurposes: [customPurpose('custom:telecom', 200_000)],
+    };
+    before.accountMap.draft = {
+      ...draft(),
+      customPurposes: [{ ...customPurpose('custom:telecom', 200_000), archivedAt: 10 }],
+    };
+    const beforeJson = JSON.stringify(before);
+
+    expect(applyAccountMapCommand(before, {
+      type: 'archive-custom-purpose',
+      purposeId: 'custom:telecom',
+    }, 20)).toMatchObject({ ok: false, reason: 'invalid-input' });
+    expect(JSON.stringify(before)).toBe(beforeJson);
+  });
+
+  it('restores only a custom purpose and leaves its links suspended', () => {
+    const before = workspace();
+    const custom = { ...customPurpose('custom:telecom', 200_000), archivedAt: 10 };
+    before.accountMap.applied = {
+      ...validApplied(),
+      customPurposes: [custom],
+      links: [
+        ...validApplied().links,
+        {
+          ...link('telecom', 'checking', 200_000),
+          purposeId: custom.id,
+          status: 'suspended',
+          remainder: false,
+          suspendedReason: 'user',
+        },
+      ],
+    };
+
+    const result = applyAccountMapCommand(before, {
+      type: 'restore-custom-purpose',
+      purposeId: custom.id,
+      targetMonthlyWon: 200_000,
+    }, 20);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.workspace.accountMap.applied?.customPurposes[0]).toEqual({
+      ...customPurpose('custom:telecom', 200_000),
+      updatedAt: 20,
+    });
+    expect(result.workspace.accountMap.applied?.links.find(({ id }) => id === 'telecom')).toEqual(
+      before.accountMap.applied.links.find(({ id }) => id === 'telecom'),
+    );
+  });
+
+  it('atomically rejects a custom purpose restore that exceeds current parent capacity', () => {
+    const before = workspace();
+    const archived = { ...customPurpose('custom:telecom', 200_000), archivedAt: 10 };
+    const active = customPurpose('custom:food', 900_000);
+    before.accountMap.applied = {
+      ...validApplied(),
+      customPurposes: [archived, active],
+    };
+    const beforeJson = JSON.stringify(before);
+
+    expect(applyAccountMapCommand(before, {
+      type: 'restore-custom-purpose',
+      purposeId: archived.id,
+      targetMonthlyWon: 200_000,
+    }, 20)).toMatchObject({ ok: false, reason: 'custom-target-capacity' });
+    expect(JSON.stringify(before)).toBe(beforeJson);
+  });
+
   it.each([
     ['create-location', { type: 'create-location', location: location('new', '새계좌') }],
+    ['connect-location', {
+      type: 'connect-location',
+      surface: 'applied',
+      purposeId: 'system:investing',
+      locationId: 'savings',
+    }],
+    ['create-and-connect-location', {
+      type: 'create-and-connect-location',
+      surface: 'draft',
+      purposeId: 'system:saving',
+      location: location('new-saving', '새저축'),
+    }],
+    ['archive-custom-purpose', {
+      type: 'archive-custom-purpose',
+      purposeId: 'custom:telecom',
+    }],
+    ['restore-custom-purpose', {
+      type: 'restore-custom-purpose',
+      purposeId: 'custom:telecom',
+      targetMonthlyWon: 200_000,
+    }],
     ['update-location', {
       type: 'update-location',
       locationId: 'checking',
@@ -32,6 +299,20 @@ describe('Account Map commands', () => {
   ] satisfies [string, AccountMapCommand][])('%s preserves protected slices byte-for-byte', (_name, command) => {
     const before = workspace();
     if (command.type === 'edit-map-node') before.accountMap.applied = validApplied();
+    if (command.type === 'connect-location') before.accountMap.applied = validApplied();
+    if (command.type === 'create-and-connect-location') before.accountMap.draft = draft();
+    if (command.type === 'archive-custom-purpose') {
+      before.accountMap.applied = {
+        ...validApplied(),
+        customPurposes: [customPurpose('custom:telecom', 200_000)],
+      };
+    }
+    if (command.type === 'restore-custom-purpose') {
+      before.accountMap.applied = {
+        ...validApplied(),
+        customPurposes: [{ ...customPurpose('custom:telecom', 200_000), archivedAt: 10 }],
+      };
+    }
     if (command.type === 'restore-location') before.locations[1] = {
       ...before.locations[1]!,
       archivedAt: 10,
@@ -375,6 +656,17 @@ function location(id: string, shortName: string, institution?: FinancialLocation
 
 function link(id: string, locationId: string, amount: number, remainder = false): PurposeLocationLink {
   return { id, purposeId: 'system:living', locationId, monthlyAmountWon: amount, remainder, status: 'active', createdAt: 1, updatedAt: 1 };
+}
+
+function customPurpose(id: `custom:${string}`, targetMonthlyWon: number) {
+  return {
+    id,
+    parentId: 'system:living' as const,
+    name: id.endsWith('food') ? '식비' : '통신비',
+    targetMonthlyWon,
+    createdAt: 1,
+    updatedAt: 1,
+  };
 }
 
 function applied(links: PurposeLocationLink[] = []): AccountMapApplied {
