@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { useState } from 'react';
 import { AccountMapCanvas } from '../../../src/account-map/ui/AccountMapCanvas';
 import type { AccountMapApplied } from '../../../src/account-map/domain/model';
 
@@ -33,6 +34,24 @@ describe('AccountMapCanvas', () => {
     expect(screen.getByText('기본 보기')).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: '계좌 중심' }));
     expect(onLayoutChange).toHaveBeenCalledWith('account');
+  });
+
+  it('opens detail only after invoking an already pinned node', () => {
+    function InteractiveCanvas() {
+      const [interaction, setInteraction] = useState({ transientNodeId: null as string | null, pinnedNodeId: null as string | null, modalNodeId: null as string | null });
+      return canvas(interaction, {
+        onInvoke: (nodeId) => setInteraction((current) => current.pinnedNodeId === nodeId
+          ? { ...current, modalNodeId: nodeId }
+          : { transientNodeId: null, pinnedNodeId: nodeId, modalNodeId: null }),
+        onModalClose: () => setInteraction((current) => ({ ...current, modalNodeId: null })),
+      });
+    }
+    render(<InteractiveCanvas />);
+    const node = screen.getByRole('button', { name: /생활비.*1,000,000원/ });
+    fireEvent.click(node);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    fireEvent.click(node);
+    expect(screen.getByRole('dialog', { name: '생활비 상세' })).toBeVisible();
   });
 });
 

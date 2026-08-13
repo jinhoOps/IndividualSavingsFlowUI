@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useRef, useState, type JSX } from 'react';
+import { flushSync } from 'react-dom';
 import type { MainData } from '../../main/domain/model';
 import type { FinancialLocation } from '../../workspace/domain/financialLocation';
 import type { MapInteractionState } from '../application/reducer';
 import type { AccountMapApplied } from '../domain/model';
 import { buildAccountMapGraph, layoutAccountMap, type MapZoom } from './mapLayout';
+import { AccountMapModal } from './AccountMapModal';
+import { animateMapLayout } from './motion';
 
 const zooms: MapZoom[] = ['overview', 'default', 'detail'];
 const zoomLabels = { overview: '전체 보기', default: '기본 보기', detail: '상세 보기' } as const;
@@ -19,14 +22,20 @@ export interface AccountMapCanvasProps {
   onInvoke(nodeId: string): void;
   onBackground(): void;
   onLayoutChange(layout: AccountMapApplied['layout']): void;
+  onModalClose?(): void;
 }
 
 export function AccountMapCanvas({
   applied, main, locations, interaction, viewport,
-  onTransient, onBlur, onInvoke, onBackground, onLayoutChange,
+  onTransient, onBlur, onInvoke, onBackground, onLayoutChange, onModalClose = () => undefined,
 }: AccountMapCanvasProps): JSX.Element {
   const [zoom, setZoom] = useState<MapZoom>('default');
   const canvasRef = useRef<HTMLDivElement>(null);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const nodeRefs = useRef(new Map<string, HTMLButtonElement>());
+  const [layoutAnimating, setLayoutAnimating] = useState(false);
+  const reducedMotion = typeof window.matchMedia !== 'function'
+    || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const [measuredViewport, setMeasuredViewport] = useState({ width: 1040, height: 620 });
   const effectiveViewport = viewport ?? measuredViewport;
   useEffect(() => {
@@ -53,13 +62,35 @@ export function AccountMapCanvas({
     setZoom(zooms[Math.max(0, Math.min(zooms.length - 1, index + delta))]!);
   }
 
+  function changeLayout(layout: AccountMapApplied['layout']) {
+    if (layout === applied.layout || layoutAnimating) return;
+    const root = canvasRef.current;
+    if (root === null) { onLayoutChange(layout); return; }
+    setLayoutAnimating(true);
+    animateMapLayout(root, () => flushSync(() => onLayoutChange(layout)), {
+      reducedMotion,
+      onComplete: () => setLayoutAnimating(false),
+    });
+  }
+
+  const modalNode = interaction.modalNodeId === null
+    ? undefined
+    : positioned.nodes.find(({ id }) => id === interaction.modalNodeId);
+  const modalRelated = modalNode === undefined ? [] : positioned.edges
+    .filter((edge) => edge.purposeId === modalNode.id || edge.locationId === modalNode.id)
+    .map((edge) => ({
+      label: nodeById.get(edge.purposeId === modalNode.id ? edge.locationId : edge.purposeId)?.label ?? '연결',
+      amountWon: edge.amountWon,
+      status: edge.status,
+    }));
+
   return (
     <section className="account-map-canvas-shell" aria-labelledby="account-map-canvas-title">
       <header className="account-map-canvas-toolbar">
-        <div><p className="account-map-eyebrow">연결 지도</p><h2 id="account-map-canvas-title">목적과 계좌의 연결</h2></div>
+        <div><p className="account-map-eyebrow">연결 지도</p><h2 ref={headingRef} id="account-map-canvas-title" tabIndex={-1}>목적과 계좌의 연결</h2></div>
         <div className="account-map-layout-control" role="group" aria-label="지도 정렬">
-          <button type="button" aria-pressed={applied.layout === 'purpose'} onClick={() => onLayoutChange('purpose')}>목적 중심</button>
-          <button type="button" aria-pressed={applied.layout === 'account'} onClick={() => onLayoutChange('account')}>계좌 중심</button>
+          <button type="button" disabled={layoutAnimating} aria-pressed={applied.layout === 'purpose'} onClick={() => changeLayout('purpose')}>목적 중심</button>
+          <button type="button" disabled={layoutAnimating} aria-pressed={applied.layout === 'account'} onClick={() => changeLayout('account')}>계좌 중심</button>
         </div>
         <div className="account-map-zoom-control" role="group" aria-label="지도 확대 수준">
           <button type="button" aria-label="축소" disabled={zoom === 'overview'} onClick={() => changeZoom(-1)}>−</button>
@@ -97,6 +128,7 @@ export function AccountMapCanvas({
         {positioned.nodes.map((node) => {
           const dimmed = focusedId !== null && !connectedIds.has(node.id);
           return <button
+            ref={(element) => { if (element === null) nodeRefs.current.delete(node.id); else nodeRefs.current.set(node.id, element); }}
             key={node.id}
             type="button"
             className={`account-map-node account-map-node--${node.kind} is-${node.status}${dimmed ? ' is-dimmed' : ''}${interaction.pinnedNodeId === node.id ? ' is-pinned' : ''}`}
@@ -119,6 +151,7 @@ export function AccountMapCanvas({
           return <tr key={`row:${edge.id}`}>{applied.layout === 'purpose' ? <><td>{purpose.label}</td><td>{location.label}</td></> : <><td>{location.label}</td><td>{purpose.label}</td></>}<td>{formatWon(edge.amountWon)}</td><td>{edge.status === 'active' ? '연결됨' : '중지됨'}</td></tr>;
         })}</tbody>
       </table>
+      {modalNode === undefined ? null : <AccountMapModal node={modalNode} related={modalRelated} sourceElement={nodeRefs.current.get(modalNode.id) ?? null} fallbackElement={headingRef.current} reducedMotion={reducedMotion} onClose={onModalClose} />}
     </section>
   );
 }
