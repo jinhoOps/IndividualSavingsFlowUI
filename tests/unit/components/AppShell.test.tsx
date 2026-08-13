@@ -15,6 +15,13 @@ describe('AppShell', () => {
     expect(screen.getByRole('main')).toHaveTextContent('내용');
   });
 
+  it('keeps the launcher and arbitrary children outside the reading-width primitive', () => {
+    render(<AppShell currentApp="main"><main data-testid="page-content">내용</main></AppShell>);
+
+    expect(screen.getByTestId('app-shell-launcher')).not.toHaveClass('app-content-frame');
+    expect(screen.getByTestId('page-content')).not.toHaveClass('app-content-frame');
+  });
+
   it('omits the launcher and empty frame in focused flows', () => {
     render(<AppShell currentApp="main" showLauncher={false}><main>설정</main></AppShell>);
 

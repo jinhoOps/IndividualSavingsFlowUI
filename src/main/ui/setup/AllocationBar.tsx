@@ -10,6 +10,7 @@ import { formatContextWon, formatPercentage } from './FlowContextSummary';
 
 export interface AllocationBarProps {
   data: MainData;
+  presentation?: 'standard' | 'assembly';
 }
 
 interface Allocation {
@@ -33,13 +34,18 @@ interface AllocationBarMotionState {
   animation?: JSAnimation;
 }
 
+interface ActiveAllocationTarget {
+  id: string;
+  isVisualTarget: boolean;
+}
+
 const MIN_INTERACTIVE_SIZE_PX = 44;
 const ALLOCATION_IDS: AllocationId[] = ['consumption', 'saving', 'investment', 'remaining'];
 
-export function AllocationBar({ data }: AllocationBarProps) {
-  const [hoveredId, setHoveredId] = useState<string>();
-  const [focusedId, setFocusedId] = useState<string>();
-  const [tappedId, setTappedId] = useState<string>();
+export function AllocationBar({ data, presentation = 'standard' }: AllocationBarProps) {
+  const [hoveredTarget, setHoveredTarget] = useState<ActiveAllocationTarget>();
+  const [focusedTarget, setFocusedTarget] = useState<ActiveAllocationTarget>();
+  const [tappedTarget, setTappedTarget] = useState<ActiveAllocationTarget>();
   const [pointerPosition, setPointerPosition] = useState<number>();
   const [tapPosition, setTapPosition] = useState<number>();
   const [viewport, setViewport] = useState<CashflowViewport>({
@@ -47,7 +53,8 @@ export function AllocationBar({ data }: AllocationBarProps) {
     availableRightPx: 0,
   });
   const barRef = useRef<HTMLDivElement>(null);
-  const wrapperRef = useRef<HTMLDivElement>(null);
+  const visualStageRef = useRef<HTMLDivElement>(null);
+  const tableRef = useRef<HTMLTableElement>(null);
   const previousDataRef = useRef(data);
   const motionStateRef = useRef<AllocationBarMotionState | undefined>(undefined);
   const isPointerFocusRef = useRef(false);
@@ -91,12 +98,16 @@ export function AllocationBar({ data }: AllocationBarProps) {
     allocations.push(allocation('remaining', '남는 돈', cashflow.remainingWon));
   }
 
-  const activeId = hoveredId ?? focusedId ?? tappedId;
+  const activeTarget = hoveredTarget ?? focusedTarget ?? tappedTarget;
+  const activeId = activeTarget?.id;
   const activeAllocation = allocations.find((allocation) => allocation.id === activeId);
+  const visualStageClassName = presentation === 'assembly'
+    ? 'allocation-bar__visual-stage app-wide-visual'
+    : 'allocation-bar__visual-stage';
   const activePosition = activeAllocation ? allocationCenter(activeAllocation.id, allocations) : 0;
-  const tooltipPosition = activeId === hoveredId
+  const tooltipPosition = activeId === hoveredTarget?.id
     ? pointerPosition ?? activePosition
-    : activeId === tappedId
+    : activeId === tappedTarget?.id
       ? tapPosition ?? activePosition
       : activePosition;
 
@@ -205,37 +216,47 @@ export function AllocationBar({ data }: AllocationBarProps) {
   }, []);
 
   useEffect(() => {
-    if (!tappedId) {
+    if (!tappedTarget) {
       return;
     }
 
     const closeTappedTooltip = (event: globalThis.MouseEvent) => {
-      if (!wrapperRef.current?.contains(event.target as Node)) {
-        setTappedId(undefined);
+      const target = event.target as Node;
+      if (
+        !visualStageRef.current?.contains(target)
+        && !tableRef.current?.contains(target)
+      ) {
+        setTappedTarget(undefined);
       }
     };
 
     document.addEventListener('click', closeTappedTooltip);
     return () => document.removeEventListener('click', closeTappedTooltip);
-  }, [tappedId]);
+  }, [tappedTarget]);
 
   const setPointerPositionFromEvent = (event: PointerEvent<HTMLButtonElement>) => {
     setPointerPosition(pointerPercentage(event.clientX, barRef.current));
   };
 
-  const activatePointer = (allocationId: string, event?: PointerEvent<HTMLButtonElement>) => {
-    if (event) {
+  const activatePointer = (
+    allocationId: string,
+    isVisualTarget: boolean,
+    event?: PointerEvent<HTMLButtonElement>,
+  ) => {
+    if (isVisualTarget && event) {
       setPointerPositionFromEvent(event);
     } else {
       setPointerPosition(undefined);
     }
-    setHoveredId(allocationId);
+    setHoveredTarget({ id: allocationId, isVisualTarget });
   };
 
   const toggleTappedTooltip = (allocationId: string, event: MouseEvent<HTMLButtonElement>, isVisualTarget: boolean) => {
     isPointerFocusRef.current = false;
     setTapPosition(isVisualTarget && event.detail > 0 ? pointerPercentage(event.clientX, barRef.current) : undefined);
-    setTappedId((tapped) => tapped === allocationId ? undefined : allocationId);
+    setTappedTarget((tapped) => (
+      tapped?.id === allocationId ? undefined : { id: allocationId, isVisualTarget }
+    ));
   };
 
   const triggerProps = (allocation: Allocation, isVisualTarget: boolean, accessibleName = allocationText(allocation)) => {
@@ -245,20 +266,24 @@ export function AllocationBar({ data }: AllocationBarProps) {
       'aria-label': accessibleName,
       onBlur: () => {
         isPointerFocusRef.current = false;
-        setFocusedId(undefined);
+        setFocusedTarget(undefined);
       },
       onClick: (event: MouseEvent<HTMLButtonElement>) => toggleTappedTooltip(allocation.id, event, isVisualTarget),
       onFocus: () => {
         if (!isPointerFocusRef.current) {
-          setFocusedId(allocation.id);
+          setFocusedTarget({ id: allocation.id, isVisualTarget });
         }
       },
       onPointerDown: () => {
         isPointerFocusRef.current = true;
-        setFocusedId(undefined);
+        setFocusedTarget(undefined);
       },
-      onPointerEnter: (event: PointerEvent<HTMLButtonElement>) => activatePointer(allocation.id, isVisualTarget ? event : undefined),
-      onPointerLeave: () => setHoveredId(undefined),
+      onPointerEnter: (event: PointerEvent<HTMLButtonElement>) => activatePointer(
+        allocation.id,
+        isVisualTarget,
+        event,
+      ),
+      onPointerLeave: () => setHoveredTarget(undefined),
       onPointerMove: isVisualTarget ? setPointerPositionFromEvent : undefined,
       type: 'button' as const,
     };
@@ -268,18 +293,19 @@ export function AllocationBar({ data }: AllocationBarProps) {
     <section
       className="allocation-bar"
       aria-label="월 수입 나누기"
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) {
+          setTappedTarget(undefined);
+        }
+      }}
     >
       <p className="allocation-bar__context" data-assembly-content>
         월 수입을 이렇게 나눠 쓰고 있어요
       </p>
       <div
-        className="flow-bar-wrapper"
-        ref={wrapperRef}
-        onBlur={(event) => {
-          if (!event.currentTarget.contains(event.relatedTarget)) {
-            setTappedId(undefined);
-          }
-        }}
+        className={visualStageClassName}
+        data-testid="allocation-visual-stage"
+        ref={visualStageRef}
       >
         <div
           className="flow-bar allocation-bar__segments"
@@ -379,57 +405,65 @@ export function AllocationBar({ data }: AllocationBarProps) {
             +{formatPercentage(geometry.overflowPercent)} 초과
           </span>
         ) : null}
-        <table className="allocation-table" aria-label="월 자금 항목" data-assembly-content>
-          <thead>
-            <tr>
-              <th scope="col">종류</th>
-              <th scope="col">금액</th>
-              <th scope="col">수입 대비</th>
-            </tr>
-          </thead>
-          <tbody>
-            {allocations.map((allocation) => {
-              const visiblePercentage = visibleSegmentPercentage(
-                allocation,
-                geometry.visibleEndPercent,
-              );
-              const requiresTableTarget = !hasIndependentTarget(
-                visiblePercentage,
-                viewport.barWidthPx,
-              ) || isSegmentClipped(allocation, geometry.visibleEndPercent);
-              return (
-                <tr key={allocation.id}>
-                  <th scope="row">
-                    {requiresTableTarget ? (
-                      <button
-                        {...triggerProps(allocation, false, `${allocation.label} 상세 정보`)}
-                        className="allocation-table__label-target"
-                      >
-                        {allocation.label}
-                      </button>
-                    ) : allocation.label}
-                  </th>
-                  <td>{formatContextWon(allocation.amountWon)}</td>
-                  <td>{formatPercentage(allocation.percentage)}</td>
-                </tr>
-              );
-            })}
-            {isDeficit ? (
-              <tr className="allocation-table__overflow-row">
-                <th scope="row">초과</th>
-                <td>{formatContextWon(cashflow.deficitWon)}</td>
-                <td>{formatPercentage(percentageOfIncome(cashflow.deficitWon, cashflow.incomeWon))}</td>
-              </tr>
-            ) : null}
-          </tbody>
-        </table>
         <PercentageTooltip
           id={tooltipId}
           open={activeAllocation !== undefined}
-          position={{ xPercent: tooltipPosition }}
+          position={{
+            alignment: activeTarget?.isVisualTarget === false ? 'end-contained' : 'center',
+            xPercent: tooltipPosition,
+          }}
           value={activeAllocation ? allocationText(activeAllocation) : ''}
         />
       </div>
+      <table
+        className="allocation-table"
+        aria-label="월 자금 항목"
+        data-assembly-content
+        ref={tableRef}
+      >
+        <thead>
+          <tr>
+            <th scope="col">종류</th>
+            <th scope="col">금액</th>
+            <th scope="col">수입 대비</th>
+          </tr>
+        </thead>
+        <tbody>
+          {allocations.map((allocation) => {
+            const visiblePercentage = visibleSegmentPercentage(
+              allocation,
+              geometry.visibleEndPercent,
+            );
+            const requiresTableTarget = !hasIndependentTarget(
+              visiblePercentage,
+              viewport.barWidthPx,
+            ) || isSegmentClipped(allocation, geometry.visibleEndPercent);
+            return (
+              <tr key={allocation.id}>
+                <th scope="row">
+                  {requiresTableTarget ? (
+                    <button
+                      {...triggerProps(allocation, false, `${allocation.label} 상세 정보`)}
+                      className="allocation-table__label-target"
+                    >
+                      {allocation.label}
+                    </button>
+                  ) : allocation.label}
+                </th>
+                <td>{formatContextWon(allocation.amountWon)}</td>
+                <td>{formatPercentage(allocation.percentage)}</td>
+              </tr>
+            );
+          })}
+          {isDeficit ? (
+            <tr className="allocation-table__overflow-row">
+              <th scope="row">초과</th>
+              <td>{formatContextWon(cashflow.deficitWon)}</td>
+              <td>{formatPercentage(percentageOfIncome(cashflow.deficitWon, cashflow.incomeWon))}</td>
+            </tr>
+          ) : null}
+        </tbody>
+      </table>
       {isDeficit ? <p className="allocation-bar__deficit" data-assembly-content role="status">수입보다 {formatContextWon(cashflow.deficitWon)} 초과</p> : null}
     </section>
   );

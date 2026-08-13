@@ -386,7 +386,10 @@ export function MainApp({
   if (state === null) {
     return (
       <AppShell currentApp="main" managementMenu={managementMenu} statusRegion={backupStatusRegion}>
-        <main className="grid min-h-dvh place-items-center px-6">
+        <main
+          className="app-content-frame grid min-h-dvh place-items-center py-8"
+          data-testid="main-page-frame"
+        >
           <p className="text-sm font-bold text-slate-600" role="status">자금 계획을 불러오는 중입니다.</p>
         </main>
       </AppShell>
@@ -435,20 +438,23 @@ export function MainApp({
     );
     return (
       <AppShell currentApp="main" showLauncher={false} statusRegion={backupStatusRegion}>
-        <main className="mx-auto min-h-dvh w-full max-w-3xl px-5 py-8 sm:px-8 sm:py-12">
-        <SetupFlow
-          draft={state.draft}
-          step={state.setupStep}
-          issues={issues}
-          validationAttempt={validationAttempt}
-          saving={state.saveStatus === 'saving'}
-          onChange={changeDraft}
-          onStepChange={changeSetupStep}
-          onApply={apply}
-          onCancel={isRestartSetup ? cancelDraft : undefined}
-          notice={setupNotice}
-          motionPreset="initial-assembly"
-        />
+        <main
+          className="app-content-frame min-h-dvh py-8 sm:py-12"
+          data-testid="main-page-frame"
+        >
+          <SetupFlow
+            draft={state.draft}
+            step={state.setupStep}
+            issues={issues}
+            validationAttempt={validationAttempt}
+            saving={state.saveStatus === 'saving'}
+            onChange={changeDraft}
+            onStepChange={changeSetupStep}
+            onApply={apply}
+            onCancel={isRestartSetup ? cancelDraft : undefined}
+            notice={setupNotice}
+            motionPreset="initial-assembly"
+          />
         </main>
       </AppShell>
     );
@@ -510,7 +516,10 @@ function RecoveryView({
   const saving = state.saveStatus === 'saving';
 
   return (
-    <main className="grid min-h-dvh place-items-center px-5 py-10">
+    <main
+      className="app-content-frame grid min-h-dvh place-items-center py-10"
+      data-testid="main-page-frame"
+    >
       <Surface as="section" className="w-full max-w-xl border-amber-200 p-6 shadow-xl shadow-amber-950/5 sm:p-10" aria-labelledby="recovery-title">
         <p className="mb-3 text-sm font-black tracking-wide text-amber-700">안전한 데이터 복구</p>
         <h1 className="text-3xl font-black tracking-tight text-slate-950" id="recovery-title">저장 복구가 필요합니다</h1>

@@ -77,6 +77,9 @@ const mainFound: PortfolioMainSourceRepository = {
 const zeroMain: PortfolioMainSourceRepository = {
   load: () => ({ status: 'found', source: { monthlyInvestmentWon: 0, mainUpdatedAt: 1 } }),
 };
+const emptyMain: PortfolioMainSourceRepository = {
+  load: () => ({ status: 'empty' }),
+};
 const unavailableMain: PortfolioMainSourceRepository = {
   load: () => ({ status: 'unavailable' }),
 };
@@ -221,6 +224,8 @@ describe('PortfolioApp', () => {
     render(<PortfolioApp locationRepository={investmentLocations} mainSourceRepository={mainFound} repository={createMemoryPortfolioRepository()} now={() => 1} />);
     expect(screen.getByTestId('app-shell')).toBeInTheDocument();
     expect(screen.getByTestId('app-shell-launcher')).toBeInTheDocument();
+    expect(screen.getByTestId('portfolio-page-frame')).toHaveClass('app-content-frame');
+    expect(screen.getByTestId('app-shell-launcher')).not.toHaveClass('app-content-frame');
     expect(screen.getByRole('heading', { name: '매달 200,000원을 어디에 투자할까요?' })).toBeVisible();
     expect(screen.getByRole('button', { name: '배분 시작하기' })).toBeVisible();
     expect(screen.queryByRole('heading', { name: '투자 위치' })).not.toBeInTheDocument();
@@ -390,9 +395,28 @@ describe('PortfolioApp', () => {
 
   it('preserves the plan behind a zero-investment blurred gate', () => {
     render(<PortfolioApp locationRepository={emptyInvestmentLocations} mainSourceRepository={zeroMain} repository={createMemoryPortfolioRepository({ applied: plan })} now={() => 1} />);
-    expect(screen.getByTestId('portfolio-gated-content')).toHaveClass('portfolio-content--blurred');
-    expect(screen.getByRole('link', { name: 'Main에서 투자금 설정' }))
+    const frame = screen.getByTestId('portfolio-page-frame');
+    const heading = screen.getByRole('heading', { name: '투자금을 먼저 정해 주세요' });
+    const link = screen.getByRole('link', { name: 'Main에서 투자금 설정' });
+    expect(frame).toHaveClass(
+      'app-content-frame',
+    );
+    expect(frame).not.toHaveAttribute('inert');
+    expect(frame).toContainElement(heading);
+    expect(frame).toContainElement(link);
+    expect(frame.querySelectorAll('.app-content-frame')).toHaveLength(0);
+    expect(frame.querySelector('.portfolio-content--blurred')).toHaveAttribute('inert');
+    expect(screen.getByTestId('app-shell-launcher')).not.toHaveClass('app-content-frame');
+    expect(link)
       .toHaveAttribute('href', expect.stringContaining('?edit=investment'));
+  });
+
+  it('frames direct Main-required recovery apart from the launcher', () => {
+    render(<PortfolioApp mainSourceRepository={emptyMain} repository={createMemoryPortfolioRepository()} now={() => 1} />);
+
+    expect(screen.getByTestId('portfolio-page-frame')).toHaveClass('app-content-frame');
+    expect(screen.getByTestId('app-shell-launcher')).not.toHaveClass('app-content-frame');
+    expect(screen.getByRole('heading', { name: 'Main 계획에서 투자금을 먼저 설정해 주세요.' })).toBeVisible();
   });
 
   it('keeps loaded amount preferences consistent in a stale Main result', () => {
@@ -409,6 +433,8 @@ describe('PortfolioApp', () => {
       />,
     );
 
+    expect(screen.getByTestId('portfolio-page-frame')).toHaveClass('app-content-frame');
+    expect(screen.getByTestId('app-shell-launcher')).not.toHaveClass('app-content-frame');
     fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
     expect(screen.getByRole('switch', { name: '금액 보기' })).toBeChecked();
     expect(screen.getByRole('heading', { name: '이번 달 투자금 200,000원' })).toBeVisible();

@@ -201,7 +201,10 @@ async function expectResponsiveDashboardFlow(page: Page, viewport: { width: numb
   await page.getByText('자세히 보기', { exact: true }).click();
   await expect(details).toHaveAttribute('open', '');
   await expect(details.locator('.allocation-bar')).toBeVisible();
-  await expect(details.getByRole('table', { name: '월 자금 항목' })).toBeVisible();
+  await expect(details.getByTestId('allocation-visual-stage')).not.toHaveClass(/app-wide-visual/);
+  const dashboardTable = details.getByRole('table', { name: '월 자금 항목' });
+  await expect(dashboardTable).toBeVisible();
+  await expect(dashboardTable).not.toHaveClass(/app-wide-visual/);
   await expect.poll(() => page.evaluate(() => (
     document.documentElement.scrollWidth <= window.innerWidth
   ))).toBe(true);
@@ -298,7 +301,14 @@ test('new user applies the v2 quick setup and refreshes into matching dashboard 
   await expect(page.getByRole('button', { name: /저축 (상세 정보|· 30만 원 · 9\.4%)/ })).toBeVisible();
   await expect(page.getByRole('button', { name: /투자 (상세 정보|· 20만 원 · 6\.3%)/ })).toBeVisible();
   await expect(page.getByRole('button', { name: '남는 돈 · 90만 원 · 28.1%' })).toBeVisible();
+  await expect(page.getByTestId('allocation-visual-stage')).toHaveClass(/app-wide-visual/);
   const reviewTable = page.getByRole('table', { name: '월 자금 항목' });
+  await expect(reviewTable).not.toHaveClass(/app-wide-visual/);
+  const reviewWidths = await page.getByTestId('allocation-visual-stage').evaluate((stage) => ({
+    stage: stage.getBoundingClientRect().width,
+    table: stage.parentElement?.querySelector('table')?.getBoundingClientRect().width ?? 0,
+  }));
+  expect(reviewWidths.stage).toBeGreaterThan(reviewWidths.table);
   await expect(reviewTable.getByRole('row', { name: /소비.*180만 원.*56\.3%/ })).toBeVisible();
   await expect(reviewTable.getByRole('row', { name: /저축.*30만 원.*9\.4%/ })).toBeVisible();
   await expect(reviewTable.getByRole('row', { name: /투자.*20만 원.*6\.3%/ })).toBeVisible();
@@ -370,7 +380,7 @@ test('review assembly captures timed deficit geometry and reduced motion', async
     { width: 768, height: 900 },
     { width: 1280, height: 900 },
   ];
-  const unclippedDeficit = {
+  const slightDeficit = {
     ...appliedMainV2,
     monthlyInvestmentWon: 1_260_000,
   };
@@ -387,22 +397,25 @@ test('review assembly captures timed deficit geometry and reduced motion', async
   await page.goto('apps/main/');
   await page.clock.pauseAt(new Date('2026-08-12T00:01:00Z'));
 
-  const showReview = async (draft: typeof appliedMainV2) => {
-    await page.evaluate(({ workspace, reviewDraft }) => {
+  const showReview = async (
+    draft: typeof appliedMainV2,
+    kind: 'initial' | 'restart' = 'initial',
+  ) => {
+    await page.evaluate(({ workspace, reviewDraft, setupKind }) => {
       localStorage.clear();
       localStorage.setItem('isf-workspace-v1', JSON.stringify({
         ...workspace,
         main: {
-          applied: null,
+          applied: setupKind === 'restart' ? workspace.main.applied : null,
           setupProgress: {
-            kind: 'initial',
+            kind: setupKind,
             step: 'review',
             draft: reviewDraft,
             savedAt: Date.now(),
           },
         },
       }));
-    }, { workspace: appliedWorkspaceV1, reviewDraft: draft });
+    }, { workspace: appliedWorkspaceV1, reviewDraft: draft, setupKind: kind });
     await page.reload();
     await expect(page.getByRole('heading', { name: '입력한 월 자금 계획을 확인해주세요' })).toBeVisible();
   };
@@ -487,10 +500,10 @@ test('review assembly captures timed deficit geometry and reduced motion', async
     expect(final.opacities).toEqual(final.opacities.map(() => 1));
     await capture(viewport.width, 'final');
 
-    await showReview(unclippedDeficit);
+    await showReview(slightDeficit);
     await page.clock.runFor(1_200);
-    await expectOverflowGeometry(unclippedDeficit, false);
-    await capture(viewport.width, 'deficit-unclipped');
+    await expectOverflowGeometry(slightDeficit, true);
+    await capture(viewport.width, 'deficit-slight');
 
     await showReview(clippedDeficit);
     const clippedStart = await readAssemblyState();
@@ -518,6 +531,12 @@ test('review assembly captures timed deficit geometry and reduced motion', async
     expect(reduced.opacities).toEqual(reduced.opacities.map(() => 1));
     await capture(viewport.width, 'reduced-motion');
   }
+
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await showReview(appliedMainV2, 'restart');
+  await expect(page.getByTestId('allocation-visual-stage')).toHaveClass(/app-wide-visual/);
+  await expect(page.getByRole('table', { name: '월 자금 항목' })).not.toHaveClass(/app-wide-visual/);
 });
 
 test('live dashboard keeps the donut, cards, Simulation, details, and editor contained at required viewports', async ({ page }) => {

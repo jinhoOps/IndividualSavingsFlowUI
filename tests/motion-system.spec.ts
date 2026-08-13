@@ -140,7 +140,7 @@ for (const viewport of VIEWPORTS) {
     await captureMainReview(page, testInfo.outputPath.bind(testInfo), viewport.width, {
       ...MAIN,
       monthlyInvestmentWon: 1_260_000,
-    }, 'deficit-unclipped');
+    }, 'deficit-slight');
     await captureMainReview(page, testInfo.outputPath.bind(testInfo), viewport.width, {
       ...MAIN,
       monthlyNetIncomeWon: 1_000_000,
@@ -322,10 +322,43 @@ async function captureMainReview(
   });
   await expect(page.getByRole('heading', { name: '입력한 월 자금 계획을 확인해주세요' })).toBeVisible();
   const bar = page.getByLabel('월 수입 나누기');
-  await expect(bar.locator('.allocation-bar__segments')).toHaveAttribute(
-    'data-overflow-clipped',
-    phase === 'deficit-clipped' ? 'true' : 'false',
+  const segments = bar.locator('.allocation-bar__segments');
+  const geometry = await segments.evaluate((element) => {
+    const box = element.getBoundingClientRect();
+    return {
+      desiredEndPercent: Number(element.getAttribute('data-desired-end-percent')),
+      visibleEndPercent: Number(element.getAttribute('data-visible-end-percent')),
+      clipped: element.getAttribute('data-overflow-clipped') === 'true',
+      barWidth: box.width,
+      availableRight: Math.max(0, document.documentElement.clientWidth - 16 - box.right),
+    };
+  });
+  const plannedOutflowWon = draft.monthlyHousingWon
+    + draft.monthlyLivingWon
+    + draft.monthlySavingWon
+    + draft.monthlyInvestmentWon;
+  const expectedDesiredEndPercent = Math.max(
+    100,
+    plannedOutflowWon / draft.monthlyNetIncomeWon * 100,
   );
+  const expectedCapacityPercent = geometry.barWidth > 0
+    ? geometry.availableRight / geometry.barWidth * 100
+    : 0;
+  const expectedVisibleEndPercent = Math.min(
+    expectedDesiredEndPercent,
+    100 + expectedCapacityPercent,
+  );
+  const expectedClipped = expectedVisibleEndPercent < expectedDesiredEndPercent;
+  expect(geometry.desiredEndPercent).toBeCloseTo(expectedDesiredEndPercent, 3);
+  expect(geometry.visibleEndPercent).toBeCloseTo(expectedVisibleEndPercent, 3);
+  expect(geometry.clipped).toBe(expectedClipped);
+  const overflowPercent = Math.max(0, expectedDesiredEndPercent - 100);
+  if (expectedClipped) {
+    await expect(bar.locator('.cashflow-bar__overflow-label'))
+      .toHaveText(`+${overflowPercent.toFixed(1)}% 초과`);
+  } else {
+    await expect(bar.locator('.cashflow-bar__overflow-label')).toHaveCount(0);
+  }
   const consumptionPercentage = (
     (draft.monthlyHousingWon + draft.monthlyLivingWon) / draft.monthlyNetIncomeWon * 100
   ).toFixed(1);

@@ -233,6 +233,12 @@ for (const viewport of [
 
     const graph = page.getByRole('img', { name: '연도별 복리 성장 그래프' });
     const explorer = page.getByRole('application', { name: '그래프 연도 탐색' });
+    const frame = page.getByTestId('simulation-page-frame');
+    const frameBox = await frame.boundingBox();
+    if (frameBox === null) throw new Error('simulation page frame has no bounding box');
+    const expectedWidth = Math.min(viewport.width - 32, 768);
+    expect(Math.abs(frameBox.width - expectedWidth)).toBeLessThan(1);
+    expect(Math.abs(frameBox.x - (viewport.width - expectedWidth) / 2)).toBeLessThan(1);
     await expect(graph).toBeVisible();
     await expect(page.getByText('전부 저축보다')).toBeVisible();
     await expect(page.getByText('납입원금 대비')).toBeVisible();

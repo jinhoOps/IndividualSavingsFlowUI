@@ -277,11 +277,13 @@ test('keeps each app management menu reachable and contained across viewports', 
       await page.goto(app.path);
       const trigger = page.getByRole('button', { name: '관리 메뉴' });
       await expect(trigger).toBeVisible();
+      await expect(trigger).toHaveAttribute('aria-expanded', 'false');
       const triggerBox = await trigger.boundingBox();
       expect(triggerBox?.width).toBe(44);
       expect(triggerBox?.height).toBe(44);
 
       await trigger.click();
+      await expect(trigger).toHaveAttribute('aria-expanded', 'true');
       const popover = page.locator('.journey-management__popover');
       const menu = page.getByRole('menu', { name: '관리 메뉴', exact: true });
       await expect(popover).toBeVisible();
@@ -310,11 +312,14 @@ test('keeps each app management menu reachable and contained across viewports', 
 
       await page.keyboard.press('Escape');
       await expect(popover).toBeHidden();
+      await expect(trigger).toHaveAttribute('aria-expanded', 'false');
       await expect(trigger).toBeFocused();
 
       await trigger.click();
+      await expect(trigger).toHaveAttribute('aria-expanded', 'true');
       await page.locator('main').click({ position: { x: 1, y: 1 } });
       await expect(popover).toBeHidden();
+      await expect(trigger).toHaveAttribute('aria-expanded', 'false');
       await expect(trigger).toBeFocused();
       expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
     }

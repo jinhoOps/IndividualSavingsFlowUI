@@ -1,14 +1,14 @@
 .portfolio-shell { min-height: 100dvh; }
-.portfolio-content, .portfolio-recovery { width: min(100% - 2rem, 48rem); margin-inline: auto; }
 .portfolio-content { padding-block: 2rem 6rem; }
 .portfolio-content--blurred { filter: blur(10px); pointer-events: none; user-select: none; }
 .portfolio-gate { position: relative; min-height: 32rem; }
+.portfolio-gate__frame { position: relative; min-height: 32rem; }
 .portfolio-gate::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgb(249 246 240 / .35), rgb(249 246 240 / .9)); }
 .portfolio-gate__message { position: absolute; z-index: 2; inset: 25% 1rem auto; text-align: center; }
 .portfolio-editor, .portfolio-recovery { padding: 1.5rem; }
-.portfolio-summary { width: min(100%, 48rem); margin-inline: auto; overflow: visible; border: 0; border-radius: 0; background: transparent; }
-.portfolio-summary-error { width: min(100%, 48rem); margin: 0 auto 1rem; color: var(--status-error); font-weight: 700; }
-.portfolio-setup { width: min(100%, 48rem); margin-inline: auto; padding: 1.5rem; }
+.portfolio-summary { overflow: visible; border: 0; border-radius: 0; background: transparent; }
+.portfolio-summary-error { margin: 0 0 1rem; color: var(--status-error); font-weight: 700; }
+.portfolio-setup { padding: 1.5rem; }
 .portfolio-setup__progress { height: .375rem; overflow: hidden; border-radius: 999px; background: #e2e8f0; }
 .portfolio-setup__progress span { display: block; height: 100%; background: var(--tone-primary); transition: width 180ms ease; }
 .portfolio-setup__status { margin: 1rem 0; color: var(--tone-accent); font-weight: 700; }

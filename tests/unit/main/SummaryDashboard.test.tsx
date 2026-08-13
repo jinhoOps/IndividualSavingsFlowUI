@@ -168,6 +168,7 @@ describe('SummaryDashboard', () => {
       />,
     );
 
+    expect(screen.getByTestId('main-dashboard-frame')).toHaveClass('app-content-frame');
     expect(screen.queryByRole('button', { name: '월 실수령액 편집' })).not.toBeInTheDocument();
     const donut = screen.getByRole('region', { name: '월 자금 구성 요약' });
     const consumption = screen.getByRole('button', { name: '월 소비 편집' });
