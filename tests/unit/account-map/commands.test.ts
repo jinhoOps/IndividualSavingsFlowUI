@@ -266,6 +266,16 @@ describe('Account Map commands', () => {
       purposeId: 'system:saving',
       location: location('new-saving', '새저축'),
     }],
+    ['edit-link', {
+      type: 'edit-link',
+      linkId: 'living-edit',
+      fields: { monthlyAmountWon: 150_000 },
+    }],
+    ['edit-custom-purpose', {
+      type: 'edit-custom-purpose',
+      purposeId: 'custom:telecom',
+      fields: { name: '통신 요금' },
+    }],
     ['archive-custom-purpose', {
       type: 'archive-custom-purpose',
       purposeId: 'custom:telecom',
@@ -301,6 +311,18 @@ describe('Account Map commands', () => {
     if (command.type === 'edit-map-node') before.accountMap.applied = validApplied();
     if (command.type === 'connect-location') before.accountMap.applied = validApplied();
     if (command.type === 'create-and-connect-location') before.accountMap.draft = draft();
+    if (command.type === 'edit-link') {
+      before.accountMap.applied = {
+        ...validApplied(),
+        links: [...validApplied().links, link('living-edit', 'checking', 100_000)],
+      };
+    }
+    if (command.type === 'edit-custom-purpose') {
+      before.accountMap.applied = {
+        ...validApplied(),
+        customPurposes: [customPurpose('custom:telecom', 200_000)],
+      };
+    }
     if (command.type === 'archive-custom-purpose') {
       before.accountMap.applied = {
         ...validApplied(),

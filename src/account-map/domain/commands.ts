@@ -41,6 +41,24 @@ export type AccountMapCommand =
       location: FinancialLocation;
       monthlyAmountWon?: number;
     }
+  | {
+      type: 'edit-link';
+      linkId: string;
+      fields: {
+        monthlyAmountWon?: number;
+        status?: PurposeLocationLink['status'];
+        remainder?: boolean;
+      };
+    }
+  | {
+      type: 'edit-custom-purpose';
+      purposeId: CustomPurpose['id'];
+      fields: {
+        name?: string;
+        targetMonthlyWon?: number;
+        lifecycle?: 'archive' | 'restore';
+      };
+    }
   | { type: 'archive-custom-purpose'; purposeId: CustomPurpose['id'] }
   | {
       type: 'restore-custom-purpose';
@@ -142,6 +160,12 @@ export function applyAccountMapCommand(
       break;
     case 'create-and-connect-location':
       changed = createAndConnectLocation(source, command, now);
+      break;
+    case 'edit-link':
+      changed = editLink(source, command, now);
+      break;
+    case 'edit-custom-purpose':
+      changed = editCustomPurpose(source, command, now);
       break;
     case 'archive-custom-purpose':
       changed = archiveCustomPurpose(source, command, now);
@@ -466,6 +490,144 @@ function uniqueLinkId(
   let suffix = 2;
   while (ids.has(`${base}:${suffix}`)) suffix += 1;
   return `${base}:${suffix}`;
+}
+
+function editLink(
+  source: WorkspaceDocument,
+  command: Extract<AccountMapCommand, { type: 'edit-link' }>,
+  now: number,
+): AccountMapCommandResult {
+  const applied = source.accountMap.applied;
+  const current = applied?.links.find(({ id }) => id === command.linkId);
+  if (applied === null || current === undefined) return failure('invalid-input');
+  if (Object.keys(command.fields).length === 0) return failure('invalid-input');
+  const monthlyAmountWon = command.fields.monthlyAmountWon ?? current.monthlyAmountWon;
+  const status = command.fields.status ?? current.status;
+  const remainder = command.fields.remainder ?? current.remainder;
+  let next: PurposeLocationLink;
+  if (status === 'suspended') {
+    next = {
+      ...current,
+      monthlyAmountWon,
+      status: 'suspended',
+      remainder: false,
+      suspendedReason: current.status === 'suspended' ? current.suspendedReason : 'user',
+      updatedAt: now,
+    };
+  } else {
+    const { suspendedReason: _suspendedReason, ...active } = current.status === 'suspended'
+      ? current
+      : { ...current, suspendedReason: undefined };
+    next = {
+      ...active,
+      monthlyAmountWon,
+      status: 'active',
+      remainder,
+      updatedAt: now,
+    };
+  }
+
+  let links = applied.links.map((link) => link.id === current.id ? next : { ...link });
+  if (next.status === 'active' && next.remainder && command.fields.remainder === true) {
+    links = links.map((link): PurposeLocationLink => link.purposeId === next.purposeId
+      && link.status === 'active'
+      ? { ...link, remainder: link.id === next.id, updatedAt: now }
+      : link);
+  }
+  const selectedRemainder = links.find((link) => link.purposeId === next.purposeId
+    && link.status === 'active' && link.remainder);
+  if (selectedRemainder !== undefined) {
+    const target = reconcilePurpose(
+      next.purposeId,
+      { ...applied, links },
+      source.locations,
+      source.main.applied!,
+    ).targetWon;
+    const recalculated = recalculateRemainder(next.purposeId, selectedRemainder.id, target, links);
+    if (!recalculated.ok) {
+      return failure(recalculated.reason === 'fixed-links-exceed-target'
+        ? 'fixed-links-exceed-target'
+        : 'invalid-remainder-selection');
+    }
+    links = recalculated.links.map((link) => link.purposeId === next.purposeId
+      && link.status === 'active'
+      ? { ...link, updatedAt: now }
+      : link);
+  }
+  const candidate = { ...applied, links, updatedAt: now };
+  const validated = validateEditedMap(candidate, source);
+  if (!validated.ok) return validated;
+  const lostRemainder = current.status === 'active' && current.remainder
+    && !links.some((link) => link.id === current.id && link.status === 'active' && link.remainder);
+  const activeForPurpose = links.filter((link) => link.purposeId === current.purposeId
+    && link.status === 'active');
+  if (lostRemainder && activeForPurpose.length > 0
+    && !activeForPurpose.some(({ remainder: isRemainder }) => isRemainder)) {
+    return failure('replacement-remainder-required');
+  }
+  return successCandidate(source, {
+    ...source,
+    accountMap: {
+      ...source.accountMap,
+      applied: withCurrentMainSource(candidate, applied, source.main.applied!),
+    },
+  });
+}
+
+function editCustomPurpose(
+  source: WorkspaceDocument,
+  command: Extract<AccountMapCommand, { type: 'edit-custom-purpose' }>,
+  now: number,
+): AccountMapCommandResult {
+  const applied = source.accountMap.applied;
+  const current = applied?.customPurposes.find(({ id }) => id === command.purposeId);
+  if (applied === null || current === undefined || Object.keys(command.fields).length === 0) {
+    return failure('invalid-input');
+  }
+  if (command.fields.lifecycle === 'archive' && current.archivedAt !== undefined) {
+    return failure('invalid-input');
+  }
+  if (command.fields.lifecycle === 'restore' && current.archivedAt === undefined) {
+    return failure('invalid-input');
+  }
+  const purpose: CustomPurpose = {
+    ...current,
+    ...(command.fields.name === undefined ? {} : { name: command.fields.name }),
+    ...(command.fields.targetMonthlyWon === undefined
+      ? {}
+      : { targetMonthlyWon: command.fields.targetMonthlyWon }),
+    updatedAt: now,
+  };
+  if (command.fields.lifecycle === 'archive') purpose.archivedAt = now;
+  if (command.fields.lifecycle === 'restore') delete purpose.archivedAt;
+  const customPurposes = applied.customPurposes.map((candidate) => (
+    candidate.id === purpose.id ? purpose : { ...candidate }
+  ));
+  const links = command.fields.lifecycle === 'archive'
+    ? applied.links.map((link): PurposeLocationLink => link.purposeId === purpose.id
+      && link.status === 'active'
+      ? {
+          ...link,
+          status: 'suspended',
+          suspendedReason: 'user',
+          remainder: false,
+          updatedAt: now,
+        }
+      : { ...link })
+    : applied.links.map((link) => ({ ...link }));
+  const candidate = { ...applied, customPurposes, links, updatedAt: now };
+  if (command.fields.lifecycle === 'restore' && !customTargetsFitCurrentCapacity(customPurposes, source)) {
+    return failure('custom-target-capacity');
+  }
+  const validated = validateEditedMap(candidate, source);
+  if (!validated.ok) return validated;
+  return successCandidate(source, {
+    ...source,
+    accountMap: {
+      ...source.accountMap,
+      applied: withCurrentMainSource(candidate, applied, source.main.applied!),
+    },
+  });
 }
 
 function archiveCustomPurpose(

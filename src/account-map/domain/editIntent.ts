@@ -7,7 +7,6 @@ import {
   type PurposeId,
   type PurposeLocationLink,
 } from './model';
-import { recalculateRemainder, reconcilePurpose } from './reconciliation';
 
 export interface FieldEdit<T> {
   base: T;
@@ -77,62 +76,17 @@ function rebaseLinkIntent(
   );
   if (conflict !== null) return { ok: false, reason: 'field-conflict', field: conflict };
 
-  const next = applyLinkFields(current, intent.edit.next, changed);
-  let links = applied.links.map((link) => link.id === intent.id ? next : { ...link });
-  if (next.status === 'active' && next.remainder && changed.includes('remainder')) {
-    links = links.map((link): PurposeLocationLink => link.purposeId === next.purposeId
-      && link.status === 'active'
-      ? { ...link, remainder: link.id === next.id }
-      : link);
-  }
-  const remainder = links.find((link) => link.purposeId === next.purposeId
-    && link.status === 'active' && link.remainder);
-  const main = latest.main.applied;
-  if (remainder !== undefined && main !== null
-    && changed.some((field) => field === 'monthlyAmountWon' || field === 'status' || field === 'remainder')) {
-    const target = reconcilePurpose(next.purposeId, { ...applied, links }, latest.locations, main).targetWon;
-    const recalculated = recalculateRemainder(next.purposeId, remainder.id, target, links);
-    if (recalculated.ok) links = recalculated.links;
-  }
+  const fields: Extract<AccountMapCommand, { type: 'edit-link' }>['fields'] = {};
+  if (changed.includes('monthlyAmountWon')) fields.monthlyAmountWon = intent.edit.next.monthlyAmountWon;
+  if (changed.includes('status')) fields.status = intent.edit.next.status;
+  if (changed.includes('remainder')) fields.remainder = intent.edit.next.remainder;
   return {
     ok: true,
     command: {
-      type: 'edit-map-node',
-      applied: {
-        ...applied,
-        links,
-      },
+      type: 'edit-link',
+      linkId: current.id,
+      fields,
     },
-  };
-}
-
-function applyLinkFields(
-  current: PurposeLocationLink,
-  next: EditableLinkFields,
-  changed: readonly (keyof EditableLinkFields)[],
-): PurposeLocationLink {
-  const monthlyAmountWon = changed.includes('monthlyAmountWon')
-    ? next.monthlyAmountWon
-    : current.monthlyAmountWon;
-  const status = changed.includes('status') ? next.status : current.status;
-  const remainder = changed.includes('remainder') ? next.remainder : current.remainder;
-  if (status === 'suspended') {
-    return {
-      ...current,
-      monthlyAmountWon,
-      status: 'suspended',
-      remainder: false,
-      suspendedReason: current.status === 'suspended' ? current.suspendedReason : 'user',
-    };
-  }
-  const { suspendedReason: _suspendedReason, ...active } = current.status === 'suspended'
-    ? current
-    : { ...current, suspendedReason: undefined };
-  return {
-    ...active,
-    monthlyAmountWon,
-    status: 'active',
-    remainder,
   };
 }
 
@@ -181,51 +135,22 @@ function rebasePurposeIntent(
     changed,
   );
   if (conflict !== null) return { ok: false, reason: 'field-conflict', field: conflict };
-  if (changed.includes('archivedAt')) {
-    return intent.edit.next.archivedAt === undefined
-      ? {
-          ok: true,
-          command: {
-            type: 'restore-custom-purpose',
-            purposeId: current.id,
-            targetMonthlyWon: changed.includes('targetMonthlyWon')
-              ? intent.edit.next.targetMonthlyWon
-              : current.targetMonthlyWon,
-          },
-        }
-      : {
-          ok: true,
-          command: { type: 'archive-custom-purpose', purposeId: current.id },
-        };
+  const fields: Extract<AccountMapCommand, { type: 'edit-custom-purpose' }>['fields'] = {};
+  if (changed.includes('name')) fields.name = intent.edit.next.name;
+  if (changed.includes('targetMonthlyWon')) {
+    fields.targetMonthlyWon = intent.edit.next.targetMonthlyWon;
   }
-  const next = applyPurposeFields(current, intent.edit.next, changed);
+  if (changed.includes('archivedAt')) {
+    fields.lifecycle = intent.edit.next.archivedAt === undefined ? 'restore' : 'archive';
+  }
   return {
     ok: true,
     command: {
-      type: 'edit-map-node',
-      applied: {
-        ...applied,
-        customPurposes: applied.customPurposes.map((purpose) => (
-          purpose.id === intent.id ? next : { ...purpose }
-        )),
-      },
+      type: 'edit-custom-purpose',
+      purposeId: current.id,
+      fields,
     },
   };
-}
-
-function applyPurposeFields(
-  current: CustomPurpose,
-  next: EditablePurposeFields,
-  changed: readonly (keyof EditablePurposeFields)[],
-): CustomPurpose {
-  const candidate: CustomPurpose = { ...current };
-  if (changed.includes('name')) candidate.name = next.name;
-  if (changed.includes('targetMonthlyWon')) candidate.targetMonthlyWon = next.targetMonthlyWon;
-  if (changed.includes('archivedAt')) {
-    if (next.archivedAt === undefined) delete candidate.archivedAt;
-    else candidate.archivedAt = next.archivedAt;
-  }
-  return candidate;
 }
 
 function rebaseLocationIntent(
@@ -257,7 +182,7 @@ function conflictingField<Current extends object, Base extends object>(
   fields: readonly (keyof Base & string)[],
 ): string | null {
   for (const field of fields) {
-    if (hasOwn(base, field) && !fieldValueEqual(current[field as unknown as keyof Current], base[field])) {
+    if (!fieldValueEqual(current[field as unknown as keyof Current], base[field])) {
       return field;
     }
   }
@@ -279,8 +204,4 @@ function fieldValueEqual(left: unknown, right: unknown): boolean {
 function purposeExists(purposeId: PurposeId, customPurposes: readonly CustomPurpose[]): boolean {
   return (SYSTEM_PURPOSE_IDS as readonly PurposeId[]).includes(purposeId)
     || customPurposes.some(({ id, archivedAt }) => id === purposeId && archivedAt === undefined);
-}
-
-function hasOwn(value: object, key: PropertyKey): boolean {
-  return Object.prototype.hasOwnProperty.call(value, key);
 }

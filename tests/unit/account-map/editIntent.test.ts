@@ -8,7 +8,11 @@ import {
   type FieldEdit,
 } from '../../../src/account-map/domain/editIntent';
 import { applyAccountMapCommand } from '../../../src/account-map/domain/commands';
-import type { AccountMapApplied, PurposeLocationLink } from '../../../src/account-map/domain/model';
+import type {
+  AccountMapApplied,
+  AccountMapDraft,
+  PurposeLocationLink,
+} from '../../../src/account-map/domain/model';
 import type { MainData } from '../../../src/main/domain/model';
 import type { FinancialLocation } from '../../../src/workspace/domain/financialLocation';
 import { createEmptyWorkspace, type WorkspaceDocument } from '../../../src/workspace/domain/model';
@@ -39,10 +43,15 @@ describe('Account Map edit intent rebasing', () => {
     const result = rebaseAccountMapIntent(latest, { kind: 'link', id: 'living', edit });
 
     expect(result).toMatchObject({ ok: true });
-    if (!result.ok || result.command.type !== 'edit-map-node') return;
-    expect(result.command.applied.layout).toBe('account');
-    expect(result.command.applied.links.find(({ id }) => id === 'living')?.monthlyAmountWon).toBe(150_000);
-    expect(result.command.applied.links.find(({ id }) => id === 'other')?.monthlyAmountWon).toBe(300_000);
+    if (!result.ok) return;
+    const saved = applyAccountMapCommand(latest, result.command, 20);
+    expect(saved).toMatchObject({ ok: true });
+    if (!saved.ok) return;
+    expect(saved.workspace.accountMap.applied?.layout).toBe('account');
+    expect(saved.workspace.accountMap.applied?.links.find(({ id }) => id === 'living')?.monthlyAmountWon)
+      .toBe(150_000);
+    expect(saved.workspace.accountMap.applied?.links.find(({ id }) => id === 'other')?.monthlyAmountWon)
+      .toBe(300_000);
   });
 
   it('rejects a same-field link change with the conflicting field name', () => {
@@ -89,8 +98,11 @@ describe('Account Map edit intent rebasing', () => {
     });
 
     expect(result).toMatchObject({ ok: true });
-    if (!result.ok || result.command.type !== 'edit-map-node') return;
-    expect(result.command.applied.links.find(({ id }) => id === 'living')).toMatchObject({
+    if (!result.ok) return;
+    const saved = applyAccountMapCommand(latest, result.command, 20);
+    expect(saved).toMatchObject({ ok: true });
+    if (!saved.ok) return;
+    expect(saved.workspace.accountMap.applied?.links.find(({ id }) => id === 'living')).toMatchObject({
       monthlyAmountWon: 150_000,
       status: 'suspended',
       suspendedReason: 'user',
@@ -157,13 +169,17 @@ describe('Account Map edit intent rebasing', () => {
       edit: { base: purposeBase, next: { ...purposeBase, name: '통신 요금' } },
     });
     expect(purposeResult).toMatchObject({ ok: true });
-    if (purposeResult.ok && purposeResult.command.type === 'edit-map-node') {
-      expect(purposeResult.command.applied.layout).toBe('account');
-      expect(purposeResult.command.applied.customPurposes[0]).toMatchObject({
+    if (purposeResult.ok) {
+      const saved = applyAccountMapCommand(latest, purposeResult.command, 20);
+      expect(saved).toMatchObject({ ok: true });
+      if (saved.ok) {
+        expect(saved.workspace.accountMap.applied?.layout).toBe('account');
+        expect(saved.workspace.accountMap.applied?.customPurposes[0]).toMatchObject({
         name: '통신 요금',
         createdAt: 1,
-        updatedAt: 7,
-      });
+        updatedAt: 20,
+        });
+      }
     }
 
     const locationBase: EditableLocationFields = {
@@ -213,8 +229,10 @@ describe('Account Map edit intent rebasing', () => {
       },
     });
     expect(purpose).toMatchObject({ ok: true });
-    if (purpose.ok && purpose.command.type === 'edit-map-node') {
-      expect(purpose.command.applied.customPurposes[0]).toMatchObject({
+    if (purpose.ok) {
+      const saved = applyAccountMapCommand(latest, purpose.command, 20);
+      expect(saved).toMatchObject({ ok: true });
+      if (saved.ok) expect(saved.workspace.accountMap.applied?.customPurposes[0]).toMatchObject({
         name: '통신 요금',
         targetMonthlyWon: 120_000,
       });
@@ -277,8 +295,11 @@ describe('Account Map edit intent rebasing', () => {
     });
 
     expect(result).toMatchObject({ ok: true });
-    if (!result.ok || result.command.type !== 'edit-map-node') return;
-    expect(result.command.applied.links.filter(({ purposeId }) => purposeId === 'system:living')
+    if (!result.ok) return;
+    const saved = applyAccountMapCommand(latest, result.command, 20);
+    expect(saved).toMatchObject({ ok: true });
+    if (!saved.ok) return;
+    expect(saved.workspace.accountMap.applied?.links.filter(({ purposeId }) => purposeId === 'system:living')
       .map(({ id, monthlyAmountWon, remainder }) => ({ id, monthlyAmountWon, remainder }))).toEqual([
         { id: 'old-remainder', monthlyAmountWon: 700_000, remainder: false },
         { id: 'next-remainder', monthlyAmountWon: 300_000, remainder: true },
@@ -334,7 +355,11 @@ describe('Account Map edit intent rebasing', () => {
 
     expect(result).toEqual({
       ok: true,
-      command: { type: 'archive-custom-purpose', purposeId: 'custom:telecom' },
+      command: {
+        type: 'edit-custom-purpose',
+        purposeId: 'custom:telecom',
+        fields: { lifecycle: 'archive' },
+      },
     });
     if (!result.ok) return;
     const archived = applyAccountMapCommand(latest, result.command, 20);
@@ -360,21 +385,199 @@ describe('Account Map edit intent rebasing', () => {
       }],
     };
 
-    expect(rebaseAccountMapIntent(latest, {
+    const result = rebaseAccountMapIntent(latest, {
       kind: 'purpose',
       id: 'custom:telecom',
       edit: {
         base: { name: '통신비', targetMonthlyWon: 100_000, archivedAt: 10 },
         next: { name: '통신비', targetMonthlyWon: 100_000 },
       },
-    })).toEqual({
+    });
+    expect(result).toEqual({
       ok: true,
       command: {
-        type: 'restore-custom-purpose',
+        type: 'edit-custom-purpose',
         purposeId: 'custom:telecom',
-        targetMonthlyWon: 120_000,
+        fields: { lifecycle: 'restore' },
       },
     });
+    if (!result.ok) return;
+    const saved = applyAccountMapCommand(latest, result.command, 20);
+    expect(saved).toMatchObject({ ok: true });
+    if (saved.ok) {
+      expect(saved.workspace.accountMap.applied?.customPurposes[0]?.targetMonthlyWon).toBe(120_000);
+    }
+  });
+
+  it('treats an absent optional base field as undefined when latest added that field', () => {
+    const locationLatest = workspace();
+    locationLatest.locations[0] = {
+      ...locationLatest.locations[0]!,
+      institution: { id: 'shinhan', name: '신한은행' },
+    };
+    expect(rebaseAccountMapIntent(locationLatest, {
+      kind: 'location',
+      id: 'checking',
+      edit: {
+        base: { shortName: '생활비' },
+        next: {
+          shortName: '생활비',
+          institution: { id: 'hana', name: '하나은행' },
+        },
+      },
+    })).toEqual({ ok: false, reason: 'field-conflict', field: 'institution' });
+
+    const purposeLatest = workspace();
+    purposeLatest.accountMap.applied = {
+      ...applied([incomeLink()]),
+      customPurposes: [{
+        id: 'custom:telecom',
+        parentId: 'system:living',
+        name: '통신비',
+        targetMonthlyWon: 100_000,
+        archivedAt: 10,
+        createdAt: 1,
+        updatedAt: 7,
+      }],
+    };
+    expect(rebaseAccountMapIntent(purposeLatest, {
+      kind: 'purpose',
+      id: 'custom:telecom',
+      edit: {
+        base: { name: '통신비', targetMonthlyWon: 100_000 },
+        next: { name: '통신비', targetMonthlyWon: 100_000, archivedAt: 20 },
+      },
+    })).toEqual({ ok: false, reason: 'field-conflict', field: 'archivedAt' });
+  });
+
+  it.each(['link', 'purpose'] as const)('%s intent preserves an unrelated latest draft', (kind) => {
+    const latest = workspace();
+    latest.accountMap.draft = draft();
+    const draftBefore = JSON.stringify(latest.accountMap.draft);
+    latest.accountMap.applied = kind === 'link'
+      ? applied([incomeLink(), livingLink('living', 'checking', 100_000)])
+      : {
+          ...applied([incomeLink()]),
+          customPurposes: [{
+            id: 'custom:telecom',
+            parentId: 'system:living',
+            name: '통신비',
+            targetMonthlyWon: 100_000,
+            createdAt: 1,
+            updatedAt: 1,
+          }],
+        };
+    const rebased = kind === 'link'
+      ? rebaseAccountMapIntent(latest, {
+          kind: 'link',
+          id: 'living',
+          edit: {
+            base: { monthlyAmountWon: 100_000, status: 'active', remainder: false },
+            next: { monthlyAmountWon: 150_000, status: 'active', remainder: false },
+          },
+        })
+      : rebaseAccountMapIntent(latest, {
+          kind: 'purpose',
+          id: 'custom:telecom',
+          edit: {
+            base: { name: '통신비', targetMonthlyWon: 100_000 },
+            next: { name: '통신 요금', targetMonthlyWon: 100_000 },
+          },
+        });
+
+    expect(rebased).toMatchObject({ ok: true });
+    if (!rebased.ok) return;
+    expect(rebased.command.type).not.toBe('edit-map-node');
+    const saved = applyAccountMapCommand(latest, rebased.command, 20);
+    expect(saved).toMatchObject({ ok: true });
+    if (saved.ok) expect(JSON.stringify(saved.workspace.accountMap.draft)).toBe(draftBefore);
+  });
+
+  it('applies name and target together with archive lifecycle effects', () => {
+    const latest = workspace();
+    latest.accountMap.applied = {
+      ...applied([
+        incomeLink(),
+        { ...livingLink('telecom', 'checking', 100_000), purposeId: 'custom:telecom' },
+      ]),
+      customPurposes: [{
+        id: 'custom:telecom',
+        parentId: 'system:living',
+        name: '통신비',
+        targetMonthlyWon: 100_000,
+        createdAt: 1,
+        updatedAt: 1,
+      }],
+    };
+
+    const rebased = rebaseAccountMapIntent(latest, {
+      kind: 'purpose',
+      id: 'custom:telecom',
+      edit: {
+        base: { name: '통신비', targetMonthlyWon: 100_000 },
+        next: { name: '통신 요금', targetMonthlyWon: 150_000, archivedAt: 10 },
+      },
+    });
+
+    expect(rebased).toMatchObject({ ok: true });
+    if (!rebased.ok) return;
+    const saved = applyAccountMapCommand(latest, rebased.command, 20);
+    expect(saved).toMatchObject({ ok: true });
+    if (!saved.ok) return;
+    expect(saved.workspace.accountMap.applied?.customPurposes[0]).toMatchObject({
+      name: '통신 요금',
+      targetMonthlyWon: 150_000,
+      archivedAt: 20,
+    });
+    expect(saved.workspace.accountMap.applied?.links.find(({ id }) => id === 'telecom'))
+      .toMatchObject({ status: 'suspended', suspendedReason: 'user', remainder: false });
+  });
+
+  it('applies name and target together with restore while leaving links suspended', () => {
+    const latest = workspace();
+    latest.accountMap.applied = {
+      ...applied([
+        incomeLink(),
+        {
+          ...livingLink('telecom', 'checking', 100_000),
+          purposeId: 'custom:telecom',
+          status: 'suspended',
+          remainder: false,
+          suspendedReason: 'user',
+        },
+      ]),
+      customPurposes: [{
+        id: 'custom:telecom',
+        parentId: 'system:living',
+        name: '통신비',
+        targetMonthlyWon: 100_000,
+        archivedAt: 10,
+        createdAt: 1,
+        updatedAt: 1,
+      }],
+    };
+
+    const rebased = rebaseAccountMapIntent(latest, {
+      kind: 'purpose',
+      id: 'custom:telecom',
+      edit: {
+        base: { name: '통신비', targetMonthlyWon: 100_000, archivedAt: 10 },
+        next: { name: '통신 요금', targetMonthlyWon: 150_000 },
+      },
+    });
+
+    expect(rebased).toMatchObject({ ok: true });
+    if (!rebased.ok) return;
+    const saved = applyAccountMapCommand(latest, rebased.command, 20);
+    expect(saved).toMatchObject({ ok: true });
+    if (!saved.ok) return;
+    expect(saved.workspace.accountMap.applied?.customPurposes[0]).toMatchObject({
+      name: '통신 요금',
+      targetMonthlyWon: 150_000,
+    });
+    expect(saved.workspace.accountMap.applied?.customPurposes[0]).not.toHaveProperty('archivedAt');
+    expect(saved.workspace.accountMap.applied?.links.find(({ id }) => id === 'telecom'))
+      .toMatchObject({ status: 'suspended', suspendedReason: 'user', remainder: false });
   });
 });
 
@@ -425,6 +628,17 @@ function applied(links: PurposeLocationLink[]): AccountMapApplied {
     links,
     layout: 'purpose',
     setupCompletedAt: 1,
+    updatedAt: 1,
+  };
+}
+
+function draft(): AccountMapDraft {
+  return {
+    schemaVersion: 1,
+    sourceMainUpdatedAt: 1,
+    customPurposes: [],
+    links: [],
+    step: 'connect',
     updatedAt: 1,
   };
 }

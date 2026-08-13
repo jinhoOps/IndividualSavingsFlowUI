@@ -44,6 +44,15 @@ describe('Account Map repository', () => {
   it('rebases a saved intent onto latest unrelated fields and preserves protected slices', async () => {
     const workspace = connectedWorkspace();
     workspace.accountMap.applied!.layout = 'account';
+    workspace.accountMap.draft = {
+      schemaVersion: 1,
+      sourceMainUpdatedAt: 1,
+      customPurposes: [],
+      links: [],
+      step: 'review',
+      updatedAt: 7,
+    };
+    const draftBefore = JSON.stringify(workspace.accountMap.draft);
     const source = fakeWorkspaceRepository(workspace);
     const repository = new BrowserAccountMapRepository(source, () => 20);
 
@@ -61,6 +70,7 @@ describe('Account Map repository', () => {
     expect(candidate?.accountMap.applied?.layout).toBe('account');
     expect(candidate?.accountMap.applied?.links.find(({ id }) => id === 'living')?.monthlyAmountWon)
       .toBe(150_000);
+    expect(JSON.stringify(candidate?.accountMap.draft)).toBe(draftBefore);
     expect(JSON.stringify(candidate?.main)).toBe(JSON.stringify(workspace.main));
     expect(JSON.stringify(candidate?.simulation)).toBe(JSON.stringify(workspace.simulation));
     expect(JSON.stringify(candidate?.portfolio)).toBe(JSON.stringify(workspace.portfolio));
