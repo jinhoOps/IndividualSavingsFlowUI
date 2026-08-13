@@ -1,7 +1,9 @@
 # Connected Account Map Workspace Design
 
-**Status:** Approved
+**Status:** Approved, amended by the current Product PRD
 **Date:** 2026-08-06
+
+> **2026-08-13 ownership amendment:** Portfolio owns aggregate investment allocation only. Existing shared financial locations and location-scoped plans remain in the workspace for compatibility, but Portfolio does not list, create, rename, archive, or otherwise manage them. Phase B Account Map owns account and custody-location management. Any Portfolio-to-location connection UI requires a separate approved specification.
 
 ## 1. Purpose
 
@@ -21,7 +23,7 @@ The feature is delivered in stages because shared financial locations, Portfolio
 - Main remains the owner of five monthly scalar amounts.
 - Purpose groups are more important than account or institution categories in the map.
 - A real financial location may serve multiple purposes without being duplicated in storage.
-- Account Map and Portfolio share stable financial-location identities but do not overwrite each other's app-owned state.
+- Account Map owns stable financial-location identities; Portfolio may reference them only through a separately approved connection contract.
 - Existing user-entered flows are never silently redistributed after Main changes.
 - The first release is local and manual. It stores no account numbers, credentials, live balances, transactions, or institution sessions.
 - All calculations and persisted amounts use integer Korean won.
@@ -34,14 +36,14 @@ The feature is delivered in stages because shared financial locations, Portfolio
 
 - Add a shared financial-location registry.
 - Extend Portfolio's domain contract to support an aggregate scope and location scopes.
-- Keep the current Portfolio UI aggregate-first while adding a minimal location list and create/select controls. Empty investment locations are visible but do not require per-location allocation editing.
+- Keep the Portfolio UI aggregate-only. Preserve existing location scopes in the domain contract without exposing location management or per-location editing.
 - Define a versioned whole-workspace backup envelope and atomic restore.
 
 ### Phase B: New Account Map Product
 
 - Replace the readiness screen with the new React Account Map.
 - Implement first-run setup, applied map state, drafts, flows, purpose groups, semantic zoom, responsive layout, and editing.
-- Read the latest Main and shared Portfolio/location state without writing back to Main.
+- Read the latest Main and preserved Portfolio/location state without writing back to Main or Portfolio.
 
 ### Phase C: Connected Main Summary
 
@@ -94,13 +96,13 @@ Simulation continues to read the latest Main saving and investment amounts and o
 Portfolio owns investment allocations. It supports:
 
 - one aggregate `전체 기준` scope;
-- zero or more scopes keyed by a shared investment-capable location ID.
+- preserved scopes keyed by a shared investment-capable location ID for compatibility.
 
-The current applied Portfolio is interpreted as the aggregate scope. Per-location editing UI is not required in Phase A, but the domain contract must not require another schema redesign when it is added.
+The current applied Portfolio is interpreted as the aggregate scope. Portfolio does not create, list, or edit location scopes. A future connection experience requires separate approval but should not require another schema redesign.
 
 ### Shared Financial Location Registry
 
-The registry owns stable identities and common metadata. Account Map may manage every supported role. Portfolio may create or edit investment-role entries through the same repository. Neither app stores copied names or institution metadata in its own plan.
+The registry owns stable identities and common metadata. Phase B Account Map manages every supported role. Portfolio does not create or edit registry entries and stores no copied names or institution metadata in its own plan. Before Phase B the registry is retained as dormant compatibility data.
 
 ### Workspace Repository
 
@@ -125,7 +127,7 @@ Account Map owns:
 - consumer instruments and their funding references;
 - map-specific presentation selection, excluding persisted zoom and node coordinates.
 
-Account Map reads current Main totals and Portfolio/shared-location data. It does not modify Main or Portfolio allocation values.
+Account Map reads current Main totals and the shared-location registry. It does not read or modify Portfolio plans or drafts.
 
 ## 5. Shared Data Contract
 
@@ -186,12 +188,12 @@ type PortfolioScope =
   | { type: 'location'; locationId: string };
 ```
 
-- An investment-capable location created in Account Map appears in Portfolio even if its allocation is empty.
-- A location created during Portfolio setup appears in Account Map's investment group.
+- An investment-capable location created in Account Map does not appear in Portfolio until a separate connection UI is approved.
+- Portfolio setup does not create financial locations.
 - An aggregate Portfolio remains independent from location-scoped allocations.
 - Location names and institution data are resolved from the registry at read time.
-- Archiving a referenced location asks whether its location-scoped Portfolio should also be deleted. Preservation is the default.
-- Removing the `investing` role from a referenced active location uses the same confirmation and never silently orphans a location-scoped Portfolio.
+- Archiving a referenced location preserves every location-scoped Portfolio record byte-for-byte. Portfolio cleanup is outside Phase B.
+- Phase B role changes are add-only. Role removal requires a separate dependency-handling specification.
 
 ### Account Map Flow
 
@@ -479,7 +481,7 @@ There is no partial app selection, merge restore, or legacy-format import.
 - Group at capacity: block addition and explain that an entry may be archived.
 - Income manual total above Main: block apply and focus the first correction.
 - Unresolved or excess non-income flow: allow saving and show a persistent correction status.
-- Referenced location archive or investing-role removal: update the registry only after asking whether the location-scoped Portfolio should also be deleted; preserve it by default.
+- Referenced location archive: suspend Account Map links and preserve every Portfolio plan and draft byte-for-byte.
 - Missing reference from corrupted current data: do not silently delete dependent data; surface recovery and block invalid writes.
 - Repository write failure: retain the draft or edit state and offer retry.
 - Invalid whole-workspace backup: perform no writes.
@@ -540,8 +542,8 @@ Deletion is complete only when searches, build output, and browser network reque
 
 ### Integration Tests
 
-- create or rename an investment location in Account Map and observe it in Portfolio;
-- create a Portfolio location and observe it in Account Map;
+- create or rename an investment location in Account Map without changing Portfolio aggregate allocation;
+- verify Portfolio exposes no location creation, rename, archive, or listing action;
 - preserve or delete a location-scoped Portfolio during archive confirmation;
 - reset Account Map flows without altering shared registry or Portfolio;
 - read current Main changes without write-back;
@@ -577,7 +579,7 @@ Deletion is complete only when searches, build output, and browser network reque
 - Multiple income locations always total Main income through a user-selected automatic remainder.
 - Purpose groups remain the dominant visual structure at every zoom level.
 - Main increases produce unresolved amounts and decreases produce excess warnings without silent flow changes.
-- Account Map and Portfolio share stable locations in both creation directions without copying metadata.
+- Account Map owns stable locations without copying metadata into Portfolio, and Portfolio exposes no location-management action.
 - Portfolio retains an aggregate scope and can represent empty location scopes.
 - The applied map is usable by pointer, touch, and keyboard at required viewports.
 - Main shows the four approved summaries and the ASCII result behavior without duplicating the donut's scalar detail.

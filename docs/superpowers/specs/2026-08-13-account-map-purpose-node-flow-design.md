@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-13
 
-**Status:** Approved, review gaps resolved
+**Status:** Approved contract; PR review closure implementation pending
 
 **Scope:** Phase B Account Map 계좌·보관처 관리와 Main 기반 월 자금 연결
 
@@ -116,7 +116,9 @@ Parser와 backup validator는 다음 불변식을 모두 검사한다.
 - Custom purpose ID는 `custom:` 뒤에 stable opaque ID가 있으며 system ID와 충돌하지 않는다.
 - Custom purpose name은 정규화 후 1~24자다.
 - `targetMonthlyWon`, link 금액과 timestamp는 0 이상의 안전한 정수다.
-- Custom parent는 네 outflow system purpose 중 하나고 active child target 합은 parent reference 이하이다.
+- Custom parent는 네 outflow system purpose 중 하나다.
+- `sourceMainUpdatedAt === Main.updatedAt`인 applied/draft는 active child target 합이 parent reference 이하여야 한다.
+- `sourceMainUpdatedAt < Main.updatedAt`인 applied/draft는 이후 Main 감소로 생긴 기존 초과를 읽을 수 있다. 이후 write는 custom target 초과를 줄이거나 유지하는 correction만 허용하고 늘리는 변경은 거부한다.
 - 모든 link는 존재하는 system/custom purpose와 location을 참조한다.
 - archived custom purpose 또는 archived location에는 active link가 없다.
 - active link location은 purpose가 요구하는 role을 가진다.
@@ -241,9 +243,18 @@ Node modal의 상세 상태는 모든 active·suspended link를 계좌, purpose�
 - custom purpose 이름·target 수정 또는 보관
 - `취소`와 `저장`
 
+정보 밀도를 낮추기 위해 모든 action을 같은 무게의 버튼으로 나열하지 않는다.
+
+- 금액·상태·remainder는 기본 편집 영역에 표시한다.
+- `연결 추가`는 하나의 보조 icon action으로 표시하고 선택하면 modal 안에서 계좌 선택·생성 단계로 전환한다.
+- Custom purpose의 `보관` 또는 `복원`은 제목 줄의 `더보기` 메뉴에 둔다.
+- 편집, 연결 추가와 보관·복원은 같은 modal shell을 유지하며 전체 지도나 별도 페이지로 전환하지 않는다.
+- `연결 추가`의 기존 위치 목록은 필요한 role 보유 여부와 관계없이 모든 active location을 보여준다. 선택한 위치에 role이 없으면 location role 추가와 link 생성을 한 workspace command로 저장한다.
+- Role capacity, 중복 link와 purpose capacity 검증 중 하나라도 실패하면 location과 link를 모두 변경하지 않는다.
+
 연결 제거는 Account Map link만 삭제하며 location과 Portfolio data를 건드리지 않는다. 저장 실패 시 modal, 입력과 draft를 유지한다. 오류는 field에 연결하고 첫 오류로 focus를 이동한다.
 
-Custom purpose 보관은 `archivedAt`을 기록하고 관련 link를 `suspended`, `user`로 바꾼다. Parent의 direct target은 즉시 다시 계산되어 해당 금액이 parent의 unassigned로 돌아간다. 복원은 최신 parent reference 안에서 target과 link를 검증하며 excess를 만들면 correction 전까지 적용하지 않는다.
+Custom purpose 보관은 `archivedAt`을 기록하고 관련 link를 `suspended`, `user`로 바꾼다. Parent의 direct target은 즉시 다시 계산되어 해당 금액이 parent의 unassigned로 돌아간다. 복원은 custom purpose만 active로 되돌리며 suspended link는 자동 재개하지 않는다. 최신 parent reference에서 target 초과가 생기면 target correction 전까지 복원 저장을 막는다. 보관·복원 command는 Account Map slice만 변경하며 location과 Portfolio data를 보존한다.
 
 Remainder lifecycle은 원자적으로 처리한다.
 
@@ -344,7 +355,10 @@ Account Map의 field-level write set은 `workspace.locations`와 `workspace.acco
 - 모든 ID, link, purpose parent, amount와 remainder uniqueness를 먼저 검증
 - invalid·old-unknown format은 아무것도 변경하지 않음
 - 저장 실패는 draft와 modal 입력 유지
-- stale revision은 최신 상태 안내와 사용자 입력 보존
+- stale revision은 현재 raw workspace를 다시 읽어 최신 revision과 source state를 화면에 반영한다.
+- setup draft와 modal 입력은 별도 UI state로 보존하고 `최신 상태에서 다시 적용` action을 제공한다. 자동 재시도나 조용한 overwrite는 하지 않는다.
+- 다시 적용할 때 command를 최신 workspace에 재검증한다. 대상 link·purpose·location이 삭제되었거나 새 capacity/excess 충돌이 있으면 해당 field 오류를 보여주고 첫 오류로 focus를 이동한다.
+- 저장 실패와 stale 안내는 modal 또는 setup surface 안에 유지하며 사용자가 취소하기 전까지 입력을 버리지 않는다.
 - 손상 참조는 자동 삭제하지 않고 recovery 상태 표시 및 invalid write 차단
 - recovery와 migration 중에도 Main·Portfolio를 부분 write하지 않음
 
@@ -374,11 +388,15 @@ Account Map의 field-level write set은 `workspace.locations`와 `workspace.acco
 - transient·pinned·modal 상태가 pointer·keyboard·touch에서 계약대로 전이한다.
 - modal shared-element motion, focus 복귀와 reduced-motion이 동작한다.
 - 연결 편집·제거가 location과 Portfolio data를 변경하지 않는다.
+- 적용 지도 modal에서 기존 location을 새로 연결하고, 필요한 role을 link와 원자적으로 추가한다.
+- Custom purpose를 같은 modal에서 보관·복원하며 관련 link와 parent direct target을 계약대로 처리한다.
+- stale save가 최신 workspace를 다시 읽고 입력을 보존하며 명시적 재적용으로 복구된다.
 - 보관·복원이 link를 중지·선택 복구하며 Portfolio data를 변경하지 않는다.
 - reset이 Account Map map data만 지우고 registry와 모든 타 앱 slice를 보존한다.
 - Account Map 모든 write 전후 Main·Simulation·Portfolio가 deep-equal이다.
 - semantic zoom과 선형 관계 table이 390px, 768px와 desktop에서 사용 가능하다.
 - v2 backup round-trip과 invalid atomic rejection이 통과한다.
+- 최신 `origin/main`과 통합한 최종 diff가 Account Map 및 승인된 Portfolio 경계 변경만 포함한다.
 
 ## 15. Required Verification
 
@@ -387,7 +405,10 @@ Account Map의 field-level write set은 `workspace.locations`와 `workspace.acco
 - institution·별칭 normalization, active duplicate와 archived restore unit tests
 - archive·suspend·restore·representative reassignment contract tests
 - repository field-level allowlist와 stale writer tests
+- stale setup·modal 입력 보존, 최신 상태 reload와 명시적 재적용 Playwright tests
 - 생성·편집·보관·복원·reset·migration 전후 Main·Simulation·Portfolio deep-equality integration tests
+- 다른 목적에 사용 중인 기존 location을 추가 role로 재사용하는 다대다 integration tests
+- custom purpose 보관·복원과 suspended link 비자동복구 tests
 - Portfolio plans와 draft의 serialized byte-equivalence tests
 - whole-workspace v1 import, v2 round-trip와 invalid atomic restore tests
 - first-run gate, draft resume, review/apply/cancel Playwright tests
@@ -395,3 +416,4 @@ Account Map의 field-level write set은 `workspace.locations`와 `workspace.acco
 - keyboard·touch·pointer parity와 screen-reader linear table tests
 - 390px, 768px와 desktop overflow·focus·touch·map visibility visual checks
 - `npm run check`와 영향 앱 전체 E2E
+- 최신 `origin/main` 통합 후 `git diff --check`, 전체 unit, 전체 E2E와 production build
