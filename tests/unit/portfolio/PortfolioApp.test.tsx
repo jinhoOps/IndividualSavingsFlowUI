@@ -77,6 +77,9 @@ const mainFound: PortfolioMainSourceRepository = {
 const zeroMain: PortfolioMainSourceRepository = {
   load: () => ({ status: 'found', source: { monthlyInvestmentWon: 0, mainUpdatedAt: 1 } }),
 };
+const emptyMain: PortfolioMainSourceRepository = {
+  load: () => ({ status: 'empty' }),
+};
 const unavailableMain: PortfolioMainSourceRepository = {
   load: () => ({ status: 'unavailable' }),
 };
@@ -399,6 +402,14 @@ describe('PortfolioApp', () => {
     expect(screen.getByTestId('app-shell-launcher')).not.toHaveClass('app-content-frame');
     expect(screen.getByRole('link', { name: 'Main에서 투자금 설정' }))
       .toHaveAttribute('href', expect.stringContaining('?edit=investment'));
+  });
+
+  it('frames direct Main-required recovery apart from the launcher', () => {
+    render(<PortfolioApp mainSourceRepository={emptyMain} repository={createMemoryPortfolioRepository()} now={() => 1} />);
+
+    expect(screen.getByTestId('portfolio-page-frame')).toHaveClass('app-content-frame');
+    expect(screen.getByTestId('app-shell-launcher')).not.toHaveClass('app-content-frame');
+    expect(screen.getByRole('heading', { name: 'Main 계획에서 투자금을 먼저 설정해 주세요.' })).toBeVisible();
   });
 
   it('keeps loaded amount preferences consistent in a stale Main result', () => {
