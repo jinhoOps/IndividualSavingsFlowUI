@@ -4,10 +4,8 @@
 }
 
 .simulation-content,
-.simulation-recovery,
-.simulation-onboarding-step {
-  width: min(calc(100% - clamp(1.5rem, 4vw, 3rem)), 70rem);
-  margin: clamp(1.25rem, 4vw, 3.5rem) auto;
+.simulation-recovery {
+  margin-block: clamp(1.25rem, 4vw, 3.5rem);
 }
 
 .simulation-content {
@@ -18,10 +16,6 @@
 .simulation-onboarding-step,
 .simulation-recovery {
   padding: clamp(1.25rem, 5vw, 4rem);
-}
-
-.simulation-onboarding-step {
-  max-width: 56rem;
 }
 
 .simulation-eyebrow {
@@ -592,12 +586,6 @@
 
   .simulation-advanced__content {
     grid-template-columns: 1fr;
-  }
-}
-
-@media (min-width: 768px) {
-  .simulation-content {
-    padding-inline: clamp(1rem, 4vw, 3rem);
   }
 }
 
