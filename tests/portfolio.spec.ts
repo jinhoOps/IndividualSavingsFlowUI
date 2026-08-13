@@ -441,7 +441,19 @@ test('does not expose account or custody management and preserves dormant locati
   await expect(page.getByRole('button', { name: /위치|계좌|보관처/ })).toHaveCount(0);
 
   await page.getByRole('button', { name: '배분 수정' }).click();
-  await page.keyboard.press('Escape');
+  await page.getByLabel('인덱스 금액').fill('100000');
+  await page.getByLabel('인덱스 금액').blur();
+  await page.getByRole('button', { name: '적용' }).click();
+  await page.getByRole('dialog', { name: '투자 배분을 적용할까요?' })
+    .getByRole('button', { name: '배분 적용' }).click();
+  await expect(page.getByRole('button', { name: '배분 수정' })).toBeVisible();
+
+  expect(await page.evaluate(() => {
+    const workspace = JSON.parse(localStorage.getItem('isf-workspace-v1')!);
+    return workspace.portfolio.plans.find(
+      (plan: { scope: { type: string } }) => plan.scope.type === 'aggregate',
+    )?.items[0].shareUnits;
+  })).toBe(500_000);
 
   expect(await page.evaluate(() => {
     const workspace = JSON.parse(localStorage.getItem('isf-workspace-v1')!);
