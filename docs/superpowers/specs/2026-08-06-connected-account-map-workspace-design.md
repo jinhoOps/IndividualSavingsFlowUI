@@ -43,7 +43,7 @@ The feature is delivered in stages because shared financial locations, Portfolio
 
 - Replace the readiness screen with the new React Account Map.
 - Implement first-run setup, applied map state, drafts, flows, purpose groups, semantic zoom, responsive layout, and editing.
-- Read the latest Main and preserved Portfolio/location state without writing back to Main or Portfolio.
+- Read only the latest Main and shared-location registry. Preserve Portfolio plans and drafts without reading or writing them.
 
 ### Phase C: Connected Main Summary
 
@@ -117,6 +117,8 @@ The logical layers are stored in one versioned committed workspace document rath
 
 ### Account Map
 
+> **Superseded by the 2026-08-13 purpose-node specification:** consumer-instrument ownership, representative-income fields and `MonthlyFlow` persistence below are historical Phase A design only. Phase B persists `CustomPurpose` and `PurposeLocationLink`; `legacyPhaseA` is read-only compatibility data.
+
 Account Map owns:
 
 - first-run and edit drafts;
@@ -124,7 +126,7 @@ Account Map owns:
 - monthly flow amounts;
 - unresolved and excess calculations;
 - applied setup status;
-- consumer instruments and their funding references;
+- preserved Phase A consumer instruments and funding references inside read-only `legacyPhaseA` compatibility data;
 - map-specific presentation selection, excluding persisted zoom and node coordinates.
 
 Account Map reads current Main totals and the shared-location registry. It does not read or modify Portfolio plans or drafts.
@@ -166,6 +168,8 @@ Rules:
 
 ### Consumer Instrument
 
+> **Superseded for Phase B:** this type may exist only inside `legacyPhaseA`. The current Account Map does not create, edit, archive, restore, or resolve consumer instruments.
+
 ```ts
 interface ConsumerInstrument {
   id: string;
@@ -196,6 +200,8 @@ type PortfolioScope =
 - Phase B role changes are add-only. Role removal requires a separate dependency-handling specification.
 
 ### Account Map Flow
+
+> **Superseded for Phase B:** this `MonthlyFlow` model is not the current write contract. Use `PurposeLocationLink` from the approved 2026-08-13 purpose-node specification. Existing values remain only in `legacyPhaseA` and are never converted automatically.
 
 ```ts
 type FlowEndpoint =
@@ -544,7 +550,7 @@ Deletion is complete only when searches, build output, and browser network reque
 
 - create or rename an investment location in Account Map without changing Portfolio aggregate allocation;
 - verify Portfolio exposes no location creation, rename, archive, or listing action;
-- preserve or delete a location-scoped Portfolio during archive confirmation;
+- preserve every location-scoped Portfolio plan and draft byte-for-byte during Account Map archive;
 - reset Account Map flows without altering shared registry or Portfolio;
 - read current Main changes without write-back;
 - restore a valid workspace with all references intact.

@@ -4,9 +4,9 @@
 
 Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계획 경험으로 바꾸는 로컬 우선 도구입니다. 시각적 기반은 종이 같은 **ISF Pearl** 캔버스와 단색 테두리의 **flat editorial panel**입니다. 전통적인 스프레드시트의 긴장감은 줄이되 숫자의 정밀성과 신뢰감은 유지합니다.
 
-이 문서의 현재 UI 계약은 Main, Simulation, aggregate-first Portfolio와 purpose-first Account Map에 적용됩니다. Account Map 상세는 [Account Map Purpose-Node Flow Design](docs/superpowers/specs/2026-08-13-account-map-purpose-node-flow-design.md)을 따릅니다. 과거 레거시 화면의 모양이나 상호작용은 새 UI의 기준이 아닙니다.
+이 문서의 현재 UI 계약은 Main, Simulation, aggregate-first Portfolio와 purpose-first Account Map 출시 후보에 적용됩니다. Account Map 상세는 [Account Map Purpose-Node Flow Design](docs/superpowers/specs/2026-08-13-account-map-purpose-node-flow-design.md)을 따르며 review closure gate 통과 전에는 현재 지원 제품으로 승격하지 않습니다. 과거 레거시 화면의 모양이나 상호작용은 새 UI의 기준이 아닙니다.
 
-현재 delivery boundary는 명확히 나눕니다. Phase A의 단일 workspace, whole-workspace backup과 aggregate-first Portfolio, Phase B Account Map이 현재입니다. Main 연결 결과 카드는 Phase C, 나머지 legacy extinction은 Phase D입니다. Portfolio의 `투자 위치` UI와 shared location command 진입점은 제거됐으며 보존 데이터만 호환성 계약으로 남습니다.
+현재 delivery boundary는 명확히 나눕니다. Phase A의 단일 workspace, whole-workspace backup과 aggregate-first Portfolio가 현재이고 Phase B Account Map은 출시 후보입니다. Main 연결 결과 카드는 Phase C, 나머지 legacy extinction은 Phase D입니다. Portfolio의 `투자 위치` UI와 shared location command 진입점은 제거 대상이며 보존 데이터만 호환성 계약으로 남습니다.
 
 ## Experience Principles
 
@@ -38,7 +38,7 @@ Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계획 �
 - 현재 위치는 아이콘 아래 선과 `aria-current`로 표시합니다.
 - 앱 런처와 CTA는 URL 탐색만 수행하며 데이터를 전달하거나 저장하지 않습니다.
 - Simulation은 진입 시 `isf-workspace-v1`의 최신 Main 월 저축·투자를, Portfolio는 최신 Main 투자금을 각자의 읽기 전용 adapter로 읽고 write-back하지 않습니다.
-- Simulation과 Portfolio의 Main read는 읽기 전용이고 자기 slice만 갱신합니다. Account Map은 Main을 읽기 전용 기준으로 사용하며 자기 slice와 공유 금융 위치 registry만 갱신합니다. 성공한 write마다 monotonic revision을 증가시킵니다.
+- Simulation과 Portfolio의 Main read는 읽기 전용입니다. Closure 전 Portfolio 위치 disclosure의 registry write는 제거 예정인 임시 예외입니다. Closure 이후 Portfolio는 자기 slice만, Account Map은 자기 slice와 공유 금융 위치 registry만 갱신합니다. 성공한 write마다 monotonic revision을 증가시킵니다.
 
 ### Simulation
 
@@ -62,8 +62,8 @@ Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계획 �
 - 결과는 도넛과 표를 함께 사용하고 pointer·touch·keyboard에 동등한 정보를 제공합니다.
 - 투자금 0원은 기존 계획을 보존하고 Main 투자금 편집으로 안내합니다.
 - 현재 배분 편집과 결과는 항상 `전체 기준`이 우선입니다.
-- 최초 설정, 결과와 배분 수정 어디에서도 계좌·기관·보관처 또는 공유 금융 위치 관리 UI를 표시하지 않습니다.
-- 기존 location-scoped 데이터는 호환성을 위해 보존하지만 Portfolio가 이를 만들거나 편집할 수 있는 것처럼 표현하지 않습니다.
+- Closure 이후 최초 설정, 결과와 배분 수정 어디에서도 계좌·기관·보관처 또는 공유 금융 위치 관리 UI를 표시하지 않습니다. Closure 전 결과의 위치 disclosure는 제거 예정 임시 예외입니다.
+- Closure 이후 기존 location-scoped 데이터는 호환성을 위해 보존하지만 Portfolio가 이를 만들거나 편집할 수 있는 것처럼 표현하지 않습니다.
 
 ### Account Map
 
@@ -232,7 +232,7 @@ gradient와 반투명 card를 기본 스타일로 사용하지 않습니다.
 
 - 공통 header, feedback, storage와 formatting utility를 먼저 확인합니다.
 - Main 현재 데이터 소유권, URL-only 탐색과 상세 앱의 명시적인 workspace Main read 경계를 유지합니다.
-- workspace write는 자기 slice만 갱신합니다. Portfolio는 공유 금융 위치 registry를 갱신하지 않으며 어떤 write도 stale revision을 조용히 덮어쓰지 않습니다.
+- Closure 이후 workspace write는 자기 slice만 갱신하고 Portfolio는 공유 금융 위치 registry를 갱신하지 않습니다. Closure 전 Portfolio 위치 disclosure의 임시 registry write도 stale revision을 조용히 덮어쓰면 안 됩니다.
 - Main의 다섯 값 계약을 넘어서는 편집 UI를 현재 제품에 추가하지 않습니다.
 - 외부 동작과 모바일 화면을 함께 검증합니다.
 - CSS 수정 전후 responsive media query와 파일 구조를 확인합니다.

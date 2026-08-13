@@ -119,6 +119,8 @@ Parser와 backup validator는 다음 불변식을 모두 검사한다.
 - Custom parent는 네 outflow system purpose 중 하나다.
 - `sourceMainUpdatedAt === Main.updatedAt`인 applied/draft는 active child target 합이 parent reference 이하여야 한다.
 - `sourceMainUpdatedAt < Main.updatedAt`인 applied/draft는 이후 Main 감소로 생긴 기존 초과를 읽을 수 있다. 이후 write는 custom target 초과를 줄이거나 유지하는 correction만 허용하고 늘리는 변경은 거부한다.
+- `sourceMainUpdatedAt > Main.updatedAt`인 applied/draft는 미래 source를 참조하므로 invalid다.
+- 성공한 write 결과가 최신 Main의 모든 parent capacity를 만족하면 `sourceMainUpdatedAt`을 `Main.updatedAt`으로 올린다. 기존 초과가 하나라도 남으면 기존의 더 이른 `sourceMainUpdatedAt`을 유지한다. 따라서 부분 correction은 계속 읽을 수 있고 완전 correction 이후 다시 엄격한 동기화 검증을 받는다.
 - 모든 link는 존재하는 system/custom purpose와 location을 참조한다.
 - archived custom purpose 또는 archived location에는 active link가 없다.
 - active link location은 purpose가 요구하는 role을 가진다.
@@ -254,7 +256,7 @@ Node modal의 상세 상태는 모든 active·suspended link를 계좌, purpose�
 
 연결 제거는 Account Map link만 삭제하며 location과 Portfolio data를 건드리지 않는다. 저장 실패 시 modal, 입력과 draft를 유지한다. 오류는 field에 연결하고 첫 오류로 focus를 이동한다.
 
-Custom purpose 보관은 `archivedAt`을 기록하고 관련 link를 `suspended`, `user`로 바꾼다. Parent의 direct target은 즉시 다시 계산되어 해당 금액이 parent의 unassigned로 돌아간다. 복원은 custom purpose만 active로 되돌리며 suspended link는 자동 재개하지 않는다. 최신 parent reference에서 target 초과가 생기면 target correction 전까지 복원 저장을 막는다. 보관·복원 command는 Account Map slice만 변경하며 location과 Portfolio data를 보존한다.
+Custom purpose 보관은 `archivedAt`을 기록하고 관련 link를 `suspended`, `user`로 바꾼다. Parent의 direct target은 즉시 다시 계산되어 해당 금액이 parent의 unassigned로 돌아간다. 보관된 purpose는 active 지도에서 숨기되 Account Map 관리 메뉴의 `보관된 목적` 목록에 이름·parent·target을 표시한다. 목록 항목을 실행하면 같은 node modal shell이 복원 mode로 열리므로 보관 후에도 다시 진입할 수 있다. 복원은 custom purpose만 active로 되돌리며 suspended link는 자동 재개하지 않는다. 최신 parent reference에서 target 초과가 생기면 target correction 전까지 복원 저장을 막는다. 보관·복원 command는 Account Map slice만 변경하며 location과 Portfolio data를 보존한다.
 
 Remainder lifecycle은 원자적으로 처리한다.
 
@@ -357,7 +359,9 @@ Account Map의 field-level write set은 `workspace.locations`와 `workspace.acco
 - 저장 실패는 draft와 modal 입력 유지
 - stale revision은 현재 raw workspace를 다시 읽어 최신 revision과 source state를 화면에 반영한다.
 - setup draft와 modal 입력은 별도 UI state로 보존하고 `최신 상태에서 다시 적용` action을 제공한다. 자동 재시도나 조용한 overwrite는 하지 않는다.
-- 다시 적용할 때 command를 최신 workspace에 재검증한다. 대상 link·purpose·location이 삭제되었거나 새 capacity/excess 충돌이 있으면 해당 field 오류를 보여주고 첫 오류로 focus를 이동한다.
+- 보존 intent는 전체 applied/draft snapshot이 아니라 변경한 field, 해당 field의 편집 시작 값과 새 값으로 구성한다. Link 추가는 `purposeId + locationId`, custom purpose와 link 수정은 stable ID, location 수정은 location ID 단위다.
+- 다시 적용할 때 최신 workspace에서 field-scoped command를 새로 만든다. 최신 field 값이 편집 시작 값과 같으면 사용자 새 값을 적용하고, 최신 field 값도 달라졌으면 동일 field 충돌로 분류해 자동 적용하지 않는다. 다른 field의 동시 변경은 그대로 보존한다.
+- 대상 link·purpose·location 삭제, 동일 pair link 생성, 같은 field 충돌 또는 새 capacity/excess 위반은 해당 field 오류로 보여주고 첫 오류로 focus를 이동한다. 사용자는 최신 값 유지 또는 자신의 값으로 다시 편집할 수 있지만 stale 전체 state를 덮어쓸 수 없다.
 - 저장 실패와 stale 안내는 modal 또는 setup surface 안에 유지하며 사용자가 취소하기 전까지 입력을 버리지 않는다.
 - 손상 참조는 자동 삭제하지 않고 recovery 상태 표시 및 invalid write 차단
 - recovery와 migration 중에도 Main·Portfolio를 부분 write하지 않음
@@ -390,6 +394,7 @@ Account Map의 field-level write set은 `workspace.locations`와 `workspace.acco
 - 연결 편집·제거가 location과 Portfolio data를 변경하지 않는다.
 - 적용 지도 modal에서 기존 location을 새로 연결하고, 필요한 role을 link와 원자적으로 추가한다.
 - Custom purpose를 같은 modal에서 보관·복원하며 관련 link와 parent direct target을 계약대로 처리한다.
+- 보관된 custom purpose를 관리 메뉴에서 다시 찾아 복원 modal로 진입한다.
 - stale save가 최신 workspace를 다시 읽고 입력을 보존하며 명시적 재적용으로 복구된다.
 - 보관·복원이 link를 중지·선택 복구하며 Portfolio data를 변경하지 않는다.
 - reset이 Account Map map data만 지우고 registry와 모든 타 앱 slice를 보존한다.

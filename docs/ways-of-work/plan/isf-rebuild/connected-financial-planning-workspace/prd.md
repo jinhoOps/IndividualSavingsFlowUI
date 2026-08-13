@@ -4,7 +4,7 @@
 
 ISF는 지금의 월간 돈 흐름을 정리하고, 그 결과를 장기 전략과 실행 계획으로 점차 연결하는 로컬 우선 개인 재무 계획 도구다.
 
-현재 상세 제품은 **Main, Simulation, Portfolio와 Account Map**이다. Main은 월 자금 흐름을, Simulation은 장기 복리를, Portfolio는 최신 Main 투자금의 전체 기준 배분을, Account Map은 Main 기반 목적과 계좌·보관처의 월 연결을 보여준다. 네 앱은 단일 `isf-workspace-v1` 기록을 사용한다.
+현재 지원 제품은 **Main, Simulation과 Portfolio**다. Main은 월 자금 흐름을, Simulation은 장기 복리를, Portfolio는 최신 Main 투자금의 전체 기준 배분을 보여준다. **Account Map**은 Main 기반 목적과 계좌·보관처의 월 연결을 제공하는 Phase B 출시 후보이며 review closure gate를 모두 통과한 뒤 현재 지원 제품으로 승격한다. 네 앱은 단일 `isf-workspace-v1` 기록을 사용한다.
 
 ## 2. Epic
 
@@ -36,10 +36,9 @@ ISF는 지금의 월간 돈 흐름을 정리하고, 그 결과를 장기 전략�
 
 - 백테스트, 변동성·MDD, 세금 또는 수수료 계산
 - Portfolio 위치별 배분·계좌·보관처 편집, 복수 독립 계획, 시세·수익률·매수 실행
-- 금융기관 실연동, 계좌번호·잔액·거래 조회와 자동이체 실행
+- 금융기관 실연동, 계좌번호·잔액·거래·실시간 시세 조회, 자동이체 실행과 금융 자문
 - 지출 카테고리·실제 사용액·가구 예산 관리
 - 레거시 Sankey 또는 계좌별 장기 자산 projection
-- 금융기관 연결, 실시간 시세, 금융 자문
 - Phase C의 Main 연결 결과 카드와 별도 후속 작업인 hidden trophy room
 - 구 앱 저장 키나 Main 전용 백업을 새 workspace로 가져오는 migration
 
@@ -89,15 +88,15 @@ ISF는 지금의 월간 돈 흐름을 정리하고, 그 결과를 장기 전략�
 - Main·Simulation·Portfolio·공유 위치를 함께 다루는 whole-workspace JSON 내보내기와 가져오기
 - Simulation으로 이어지는 명시적 행동
 
-### Simulation, Portfolio와 Account Map journey
+### Simulation, Portfolio와 Account Map 출시 후보 journey
 
 - 런처는 Main, Simulation, Portfolio와 Account Map을 아이콘으로 표시하고 현재 앱을 선택선과 접근성 상태로 구분한다.
 - 런처와 CTA는 URL 탐색만 수행하고 별도 전달 데이터를 저장하지 않는다.
 - Simulation은 단일 workspace의 최신 Main 월 저축·투자를 읽어 장기 복리 성장과 전부 저축 기준선을 비교하고 자체 Simulation slice만 갱신한다.
 - Portfolio는 같은 workspace의 최신 Main 투자금을 읽고 전체 기준 적용 배분과 편집 초안을 소유한다.
-- Portfolio는 투자 대상별 전체 기준 금액과 비율만 다루며 계좌·기관·보관처를 만들거나 변경하지 않는다.
-- Portfolio `투자 위치` disclosure와 shared location 관리 action은 런타임에서 제거됐으며 기존 데이터만 호환성을 위해 보존한다.
-- Account Map은 최신 Main의 다섯 월 금액을 읽어 목적 중심 설정과 노드 지도를 제공하고, 자기 slice와 공유 금융 위치 registry만 갱신한다.
+- Portfolio의 배분 편집은 투자 대상별 전체 기준 금액과 비율만 다룬다. 현재 기준선에는 별도 `투자 위치` disclosure와 shared location 생성·이름 변경·보관 action이 남아 있지만 location-scoped 배분은 편집하지 않는다.
+- Portfolio 위치 UI와 registry write는 Phase B review closure에서 제거하며 기존 location과 location-scoped 데이터만 호환성을 위해 보존한다.
+- Account Map 출시 후보는 최신 Main의 다섯 월 금액을 읽어 목적 중심 설정과 노드 지도를 제공하고, 자기 slice와 공유 금융 위치 registry만 갱신한다.
 - Account Map은 Main·Simulation·Portfolio에 write-back하지 않는다.
 - Main의 기존 요약과 월 자금 구성은 유지된다. 앱별 연결 결과 카드는 Phase C 전까지 현재 UI가 아니다.
 
@@ -108,11 +107,11 @@ ISF는 지금의 월간 돈 흐름을 정리하고, 그 결과를 장기 전략�
 ### Shared workspace와 backup
 
 - Main, Simulation, Portfolio, 공유 금융 위치와 Account Map applied/draft를 하나의 versioned `isf-workspace-v1` 문서에 저장한다.
-- 앱 write ownership은 각 앱이 소유한 slice로 한정한다. Simulation과 Portfolio는 최신 Main slice를 읽기 전용으로 읽고 Portfolio는 자기 plan과 draft만 갱신한다. 모든 성공한 write는 workspace revision을 한 번 증가시킨다.
+- 목표 write ownership은 각 앱이 소유한 slice로 한정한다. Simulation과 Portfolio는 최신 Main slice를 읽기 전용으로 읽고, closure 이후 Portfolio는 자기 plan과 draft만 갱신한다. 모든 성공한 write는 workspace revision을 한 번 증가시킨다.
 - Account Map은 Main을 읽기 전용 기준으로 사용하며 `workspace.locations`와 `workspace.accountMap`만 갱신한다.
-- 공유 금융 위치 registry의 현재 관리 진입점은 Account Map이며 Portfolio는 이를 갱신하지 않는다.
+- Closure 전 현재 기준선은 Portfolio 위치 disclosure가 registry를 갱신하는 임시 예외를 가진다. Closure 이후 유일한 registry 관리 진입점은 Account Map이고 Portfolio는 이를 갱신하지 않는다.
 - stale revision을 기준으로 시작한 writer는 더 최신 workspace를 덮어쓰지 못한다.
-- `isf-main-v2`, `isf-simulation-compound-v1`, `isf-portfolio-allocation-v1`, `isf-account-map-v1`, `isf-rebuild-v1`은 Phase A 제품이 읽거나 변경하지 않는다. 기존 raw 값은 Phase D 전까지 그대로 남을 수 있다.
+- `isf-main-v2`, `isf-simulation-compound-v1`, `isf-portfolio-allocation-v1`, `isf-account-map-v1`, `isf-rebuild-v1`은 현재 workspace 제품이 읽거나 변경하지 않는다. 기존 raw 값은 Phase D 전까지 그대로 남을 수 있다.
 - 백업은 현재 whole-workspace envelope만 지원한다. 모든 slice와 참조를 먼저 검증하고 유효하면 한 번의 workspace replacement로 복원하며, invalid·old-format 입력은 아무것도 바꾸지 않는다.
 
 ### Main
@@ -223,13 +222,13 @@ Simulation, Portfolio와 Account Map은 workspace 안의 최신 Main을 읽기 �
 - [x] Simulation은 0~30년, 한국식 정수 금액, pointer·touch·keyboard 그래프 탐색을 제공한다.
 - [x] Portfolio는 최신 Main 투자금을 최대 10개 투자 대상과 현금에 배분한다.
 - [x] Portfolio는 금액·비율, 결과 우선 도넛·표와 초안·적용 경계를 제공한다.
-- [x] Portfolio는 Main을 수정하지 않으며 Account Map은 독립적인 목적·계좌 연결 제품이다.
-- [x] Main, Simulation과 Portfolio의 write는 소유 slice에 한정되고 Portfolio가 공유 금융 위치 registry를 갱신하지 않는다.
+- [x] Portfolio는 Main을 수정하지 않고 Account Map 출시 후보와 독립된 aggregate 배분만 소유한다.
+- [ ] Main, Simulation과 Portfolio의 write는 소유 slice에 한정되고 Portfolio가 공유 금융 위치 registry를 갱신하지 않는다.
 - [x] 구 Main·Simulation·Portfolio·Account Map·rebuild 키는 새 제품에서 fallback, migration, write 또는 delete 대상으로 사용하지 않는다.
 - [x] stale workspace writer는 최신 revision을 덮어쓰지 못한다.
-- [x] Portfolio는 전체 기준 배분만 제공하고 계좌·기관·보관처 관리 UI를 표시하지 않는다.
+- [ ] Portfolio는 전체 기준 배분만 제공하고 계좌·기관·보관처 관리 UI를 표시하지 않는다.
 - [x] whole-workspace 백업은 유효한 모든 slice를 한 번에 교체하고 invalid 또는 old-format 입력에는 현재 raw workspace를 유지한다.
-- [x] Account Map은 목적 중심 설정, 노드 지도와 가역적 계좌·보관처 관리를 제공하며 Main 연결 결과 카드는 Phase C 전까지 기존 UI를 유지한다.
+- [ ] Account Map 출시 후보는 목적 중심 설정, 노드 지도와 가역적 계좌·보관처 관리의 승인 계약을 모두 구현하며 Main 연결 결과 카드는 Phase C 전까지 기존 UI를 유지한다.
 
 ### Phase B review closure gate
 
@@ -240,6 +239,7 @@ Simulation, Portfolio와 Account Map은 workspace 안의 최신 Main을 읽기 �
 - [ ] 동기화된 v2 backup은 custom target capacity를 검증하고 이후 Main 감소로 생긴 기존 초과는 correction 가능하게 읽는다.
 - [ ] backup·stale·custom purpose·다대다·touch·keyboard·Portfolio 보존 회귀를 통과한다.
 - [ ] 최신 `origin/main` 통합 후 PR diff에 승인 범위 밖 역행 변경이나 conflict가 없다.
+- [ ] 위 gate를 모두 통과한 같은 변경에서 Account Map을 현재 지원 제품으로 승격하고 관련 미완료 항목을 함께 `[x]`로 바꾼다.
 
 ### Transition
 
