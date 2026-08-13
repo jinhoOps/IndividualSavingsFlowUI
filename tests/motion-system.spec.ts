@@ -140,7 +140,7 @@ for (const viewport of VIEWPORTS) {
     await captureMainReview(page, testInfo.outputPath.bind(testInfo), viewport.width, {
       ...MAIN,
       monthlyInvestmentWon: 1_260_000,
-    }, 'deficit-unclipped');
+    }, 'deficit-slight');
     await captureMainReview(page, testInfo.outputPath.bind(testInfo), viewport.width, {
       ...MAIN,
       monthlyNetIncomeWon: 1_000_000,

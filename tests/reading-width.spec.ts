@@ -190,7 +190,9 @@ async function expectClippedDeficitReview(
   state: WideReviewState,
 ): Promise<void> {
   const expectedWideWidth = Math.min(viewport.width - 32, 1200);
+  const expectedWideX = (viewport.width - expectedWideWidth) / 2;
   expect(Math.abs(state.stage.width - expectedWideWidth)).toBeLessThan(1);
+  expect(Math.abs(state.stage.x - expectedWideX)).toBeLessThan(1);
   expect(state.stage.x).toBeGreaterThanOrEqual(16);
   expect(state.stage.right).toBeLessThanOrEqual(viewport.width - 16 + 1);
   expectReadingFrame(viewport.width, state.frame);
