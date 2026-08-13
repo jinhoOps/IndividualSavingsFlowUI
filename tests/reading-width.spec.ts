@@ -65,6 +65,17 @@ const clippedDeficitMain = {
   monthlyInvestmentWon: 1_000_000,
 };
 
+const zeroInvestmentWorkspace = {
+  ...seededWorkspace,
+  main: {
+    ...seededWorkspace.main,
+    applied: {
+      ...appliedMain,
+      monthlyInvestmentWon: 0,
+    },
+  },
+};
+
 const viewports = [
   { name: 'mobile', width: 390, height: 844 },
   { name: 'tablet', width: 768, height: 900 },
@@ -146,6 +157,45 @@ for (const viewport of viewports) {
   });
 }
 
+for (const viewport of viewports) {
+  test(`contains the actionable Portfolio gate in the reading frame at ${viewport.width}px`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.addInitScript((workspace) => {
+      localStorage.setItem('isf-workspace-v1', JSON.stringify(workspace));
+    }, zeroInvestmentWorkspace);
+    await page.goto('apps/portfolio/');
+
+    const frame = page.getByTestId('portfolio-page-frame');
+    const message = frame.locator('.portfolio-gate__message');
+    const heading = message.getByRole('heading', { name: '투자금을 먼저 정해 주세요' });
+    const link = message.getByRole('link', { name: 'Main에서 투자금 설정' });
+    await expect(page.getByTestId('portfolio-page-frame')).toHaveCount(1);
+    await expect(frame).toHaveClass(/app-content-frame/);
+    await expect(heading).toBeVisible();
+    await expect(link).toHaveAttribute('href', /apps\/main\/\?edit=investment$/);
+    expect(await message.evaluate((element) => getComputedStyle(element).position)).toBe('absolute');
+
+    const frameBox = await frame.boundingBox();
+    const messageBox = await message.boundingBox();
+    const headingBox = await heading.boundingBox();
+    const linkBox = await link.boundingBox();
+    expect(frameBox).not.toBeNull();
+    expect(messageBox).not.toBeNull();
+    expect(headingBox).not.toBeNull();
+    expect(linkBox).not.toBeNull();
+    expectReadingFrame(viewport.width, frameBox!);
+    for (const box of [messageBox!, headingBox!, linkBox!]) {
+      expect(box.x).toBeGreaterThanOrEqual(frameBox!.x);
+      expect(box.x + box.width).toBeLessThanOrEqual(frameBox!.x + frameBox!.width);
+    }
+
+    await link.focus();
+    await expect(link).toBeFocused();
+    await expectNoHorizontalOverflow(page, viewport.width);
+  });
+}
+
 interface WideReviewState {
   stage: { x: number; width: number; right: number };
   frame: { x: number; width: number };
@@ -219,6 +269,63 @@ async function expectClippedDeficitReview(
   await expectNoHorizontalOverflow(page, viewport.width);
 }
 
+async function expectTooltipInsideWideStage(
+  page: Page,
+  viewportWidth: number,
+): Promise<void> {
+  const boxes = await page.evaluate(() => {
+    const stage = document.querySelector<HTMLElement>('[data-testid="allocation-visual-stage"]')!;
+    const tooltip = document.querySelector<HTMLElement>('[role="tooltip"]')!;
+    const stageBox = stage.getBoundingClientRect();
+    const tooltipBox = tooltip.getBoundingClientRect();
+    return {
+      stage: { left: stageBox.left, right: stageBox.right },
+      tooltip: { left: tooltipBox.left, right: tooltipBox.right },
+    };
+  });
+  expect(boxes.tooltip.left).toBeGreaterThanOrEqual(Math.max(16, boxes.stage.left));
+  expect(boxes.tooltip.right).toBeLessThanOrEqual(Math.min(viewportWidth - 16, boxes.stage.right));
+}
+
+async function expectClippedFallbackTooltips(
+  page: Page,
+  viewportWidth: number,
+): Promise<void> {
+  const saving = page.getByRole('button', { name: '저축 상세 정보' });
+  const investment = page.getByRole('button', { name: '투자 상세 정보' });
+
+  await saving.hover();
+  await expect(page.getByRole('tooltip')).toHaveText('저축 · 100만 원 · 100.0%');
+  await expectTooltipInsideWideStage(page, viewportWidth);
+  await page.mouse.move(0, 0);
+  await expect(page.getByRole('tooltip')).toHaveCount(0);
+
+  await investment.evaluate((button) => {
+    button.dispatchEvent(new PointerEvent('pointerdown', {
+      bubbles: true,
+      isPrimary: true,
+      pointerType: 'touch',
+    }));
+    button.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }));
+  });
+  await expect(page.getByRole('tooltip')).toHaveText('투자 · 100만 원 · 100.0%');
+  await expectTooltipInsideWideStage(page, viewportWidth);
+
+  await investment.evaluate((button) => {
+    button.dispatchEvent(new PointerEvent('pointerdown', {
+      bubbles: true,
+      isPrimary: true,
+      pointerType: 'touch',
+    }));
+    button.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }));
+  });
+  await saving.focus();
+  await page.keyboard.press('Enter');
+  await expect(saving).toBeFocused();
+  await expect(page.getByRole('tooltip')).toHaveText('저축 · 100만 원 · 100.0%');
+  await expectTooltipInsideWideStage(page, viewportWidth);
+}
+
 for (const viewport of viewports) {
   test(`keeps first and restart Main assembly widths identical at ${viewport.width}px`, async ({ page }) => {
     await page.setViewportSize(viewport);
@@ -249,6 +356,7 @@ for (const viewport of viewports) {
     await expect(page.getByTestId('allocation-visual-stage')).toHaveClass(/app-wide-visual/);
     const firstReview = await readWideReviewState(page);
     await expectClippedDeficitReview(page, viewport, firstReview);
+    await expectClippedFallbackTooltips(page, viewport.width);
 
     await page.getByRole('button', { name: '계획 적용' }).click();
     await expect(page.getByRole('heading', { name: '이번 달 자금 흐름' })).toBeVisible();

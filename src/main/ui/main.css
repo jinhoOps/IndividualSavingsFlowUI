@@ -244,6 +244,14 @@
     @apply absolute bottom-full mb-2 -translate-x-1/2;
   }
 
+  .allocation-bar__visual-stage .flow-tooltip--end-contained {
+    box-sizing: border-box;
+    max-inline-size: 100%;
+    overflow-wrap: anywhere;
+    transform: none;
+    translate: 0;
+  }
+
   .editor-dialog {
     animation: editor-in 180ms ease-out;
   }

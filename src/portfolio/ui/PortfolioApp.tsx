@@ -345,18 +345,19 @@ function InvestmentRequired({ plan }: { plan: PortfolioPlan | null }) {
     <section className="portfolio-gate" aria-labelledby="portfolio-gate-title">
       <div
         data-testid="portfolio-page-frame"
-        className="app-content-frame portfolio-content portfolio-content--blurred"
-        inert
+        className="app-content-frame portfolio-gate__frame"
       >
-        <PortfolioSummary
-          investmentWon={placeholder.syncedInvestmentWon}
-          allocation={materializeAllocation(placeholder, placeholder.syncedInvestmentWon)}
-          preferences={DEFAULT_PORTFOLIO_VIEW_PREFERENCES}
-        />
-      </div>
-      <div className="portfolio-gate__message">
-        <h1 id="portfolio-gate-title">투자금을 먼저 정해 주세요</h1>
-        <a href={`${appPath('main')}?edit=investment`}>Main에서 투자금 설정</a>
+        <div className="portfolio-content portfolio-content--blurred" inert>
+          <PortfolioSummary
+            investmentWon={placeholder.syncedInvestmentWon}
+            allocation={materializeAllocation(placeholder, placeholder.syncedInvestmentWon)}
+            preferences={DEFAULT_PORTFOLIO_VIEW_PREFERENCES}
+          />
+        </div>
+        <div className="portfolio-gate__message">
+          <h1 id="portfolio-gate-title">투자금을 먼저 정해 주세요</h1>
+          <a href={`${appPath('main')}?edit=investment`}>Main에서 투자금 설정</a>
+        </div>
       </div>
     </section>
   );

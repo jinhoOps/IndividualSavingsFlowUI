@@ -34,13 +34,18 @@ interface AllocationBarMotionState {
   animation?: JSAnimation;
 }
 
+interface ActiveAllocationTarget {
+  id: string;
+  isVisualTarget: boolean;
+}
+
 const MIN_INTERACTIVE_SIZE_PX = 44;
 const ALLOCATION_IDS: AllocationId[] = ['consumption', 'saving', 'investment', 'remaining'];
 
 export function AllocationBar({ data, presentation = 'standard' }: AllocationBarProps) {
-  const [hoveredId, setHoveredId] = useState<string>();
-  const [focusedId, setFocusedId] = useState<string>();
-  const [tappedId, setTappedId] = useState<string>();
+  const [hoveredTarget, setHoveredTarget] = useState<ActiveAllocationTarget>();
+  const [focusedTarget, setFocusedTarget] = useState<ActiveAllocationTarget>();
+  const [tappedTarget, setTappedTarget] = useState<ActiveAllocationTarget>();
   const [pointerPosition, setPointerPosition] = useState<number>();
   const [tapPosition, setTapPosition] = useState<number>();
   const [viewport, setViewport] = useState<CashflowViewport>({
@@ -93,15 +98,16 @@ export function AllocationBar({ data, presentation = 'standard' }: AllocationBar
     allocations.push(allocation('remaining', '남는 돈', cashflow.remainingWon));
   }
 
-  const activeId = hoveredId ?? focusedId ?? tappedId;
+  const activeTarget = hoveredTarget ?? focusedTarget ?? tappedTarget;
+  const activeId = activeTarget?.id;
   const activeAllocation = allocations.find((allocation) => allocation.id === activeId);
   const visualStageClassName = presentation === 'assembly'
     ? 'allocation-bar__visual-stage app-wide-visual'
     : 'allocation-bar__visual-stage';
   const activePosition = activeAllocation ? allocationCenter(activeAllocation.id, allocations) : 0;
-  const tooltipPosition = activeId === hoveredId
+  const tooltipPosition = activeId === hoveredTarget?.id
     ? pointerPosition ?? activePosition
-    : activeId === tappedId
+    : activeId === tappedTarget?.id
       ? tapPosition ?? activePosition
       : activePosition;
 
@@ -210,7 +216,7 @@ export function AllocationBar({ data, presentation = 'standard' }: AllocationBar
   }, []);
 
   useEffect(() => {
-    if (!tappedId) {
+    if (!tappedTarget) {
       return;
     }
 
@@ -220,31 +226,37 @@ export function AllocationBar({ data, presentation = 'standard' }: AllocationBar
         !visualStageRef.current?.contains(target)
         && !tableRef.current?.contains(target)
       ) {
-        setTappedId(undefined);
+        setTappedTarget(undefined);
       }
     };
 
     document.addEventListener('click', closeTappedTooltip);
     return () => document.removeEventListener('click', closeTappedTooltip);
-  }, [tappedId]);
+  }, [tappedTarget]);
 
   const setPointerPositionFromEvent = (event: PointerEvent<HTMLButtonElement>) => {
     setPointerPosition(pointerPercentage(event.clientX, barRef.current));
   };
 
-  const activatePointer = (allocationId: string, event?: PointerEvent<HTMLButtonElement>) => {
-    if (event) {
+  const activatePointer = (
+    allocationId: string,
+    isVisualTarget: boolean,
+    event?: PointerEvent<HTMLButtonElement>,
+  ) => {
+    if (isVisualTarget && event) {
       setPointerPositionFromEvent(event);
     } else {
       setPointerPosition(undefined);
     }
-    setHoveredId(allocationId);
+    setHoveredTarget({ id: allocationId, isVisualTarget });
   };
 
   const toggleTappedTooltip = (allocationId: string, event: MouseEvent<HTMLButtonElement>, isVisualTarget: boolean) => {
     isPointerFocusRef.current = false;
     setTapPosition(isVisualTarget && event.detail > 0 ? pointerPercentage(event.clientX, barRef.current) : undefined);
-    setTappedId((tapped) => tapped === allocationId ? undefined : allocationId);
+    setTappedTarget((tapped) => (
+      tapped?.id === allocationId ? undefined : { id: allocationId, isVisualTarget }
+    ));
   };
 
   const triggerProps = (allocation: Allocation, isVisualTarget: boolean, accessibleName = allocationText(allocation)) => {
@@ -254,20 +266,24 @@ export function AllocationBar({ data, presentation = 'standard' }: AllocationBar
       'aria-label': accessibleName,
       onBlur: () => {
         isPointerFocusRef.current = false;
-        setFocusedId(undefined);
+        setFocusedTarget(undefined);
       },
       onClick: (event: MouseEvent<HTMLButtonElement>) => toggleTappedTooltip(allocation.id, event, isVisualTarget),
       onFocus: () => {
         if (!isPointerFocusRef.current) {
-          setFocusedId(allocation.id);
+          setFocusedTarget({ id: allocation.id, isVisualTarget });
         }
       },
       onPointerDown: () => {
         isPointerFocusRef.current = true;
-        setFocusedId(undefined);
+        setFocusedTarget(undefined);
       },
-      onPointerEnter: (event: PointerEvent<HTMLButtonElement>) => activatePointer(allocation.id, isVisualTarget ? event : undefined),
-      onPointerLeave: () => setHoveredId(undefined),
+      onPointerEnter: (event: PointerEvent<HTMLButtonElement>) => activatePointer(
+        allocation.id,
+        isVisualTarget,
+        event,
+      ),
+      onPointerLeave: () => setHoveredTarget(undefined),
       onPointerMove: isVisualTarget ? setPointerPositionFromEvent : undefined,
       type: 'button' as const,
     };
@@ -279,7 +295,7 @@ export function AllocationBar({ data, presentation = 'standard' }: AllocationBar
       aria-label="월 수입 나누기"
       onBlur={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget)) {
-          setTappedId(undefined);
+          setTappedTarget(undefined);
         }
       }}
     >
@@ -392,7 +408,10 @@ export function AllocationBar({ data, presentation = 'standard' }: AllocationBar
         <PercentageTooltip
           id={tooltipId}
           open={activeAllocation !== undefined}
-          position={{ xPercent: tooltipPosition }}
+          position={{
+            alignment: activeTarget?.isVisualTarget === false ? 'end-contained' : 'center',
+            xPercent: tooltipPosition,
+          }}
           value={activeAllocation ? allocationText(activeAllocation) : ''}
         />
       </div>

@@ -328,8 +328,12 @@ test('shows the source-state summary first and keeps view preferences separate',
 test('gates zero investment and focuses Main investment editing', async ({ page }) => {
   await seedMain(page, 0);
   await page.goto('apps/portfolio/');
-  await expect(page.getByTestId('portfolio-page-frame')).toHaveClass(/portfolio-content--blurred/);
-  await page.getByRole('link', { name: 'Main에서 투자금 설정' }).click();
+  const frame = page.getByTestId('portfolio-page-frame');
+  await expect(frame).toHaveClass(/app-content-frame/);
+  await expect(frame.locator('.portfolio-content--blurred')).toHaveAttribute('inert');
+  const link = frame.getByRole('link', { name: 'Main에서 투자금 설정' });
+  await expect(link).toBeVisible();
+  await link.click();
   await expect(page).toHaveURL(/apps\/main\/$/);
   await expect(page.getByLabel('월 투자액')).toBeFocused();
 });

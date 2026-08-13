@@ -466,4 +466,20 @@ describe('AllocationBar', () => {
     expect(within(table).getByRole('button', { name: '저축 상세 정보' })).toBeVisible();
     expect(within(table).getByRole('button', { name: '투자 상세 정보' })).toBeVisible();
   });
+
+  it('end-aligns clipped table fallback tooltips without changing visual target alignment', () => {
+    mockBarViewport(256);
+    render(<AllocationBar data={deeplyClippedDeficitFixture} presentation="assembly" />);
+
+    const table = screen.getByRole('table', { name: '월 자금 항목' });
+    const savingFallback = within(table).getByRole('button', { name: '저축 상세 정보' });
+    fireEvent.focus(savingFallback);
+    expect(screen.getByRole('tooltip')).toHaveClass('flow-tooltip--end-contained');
+
+    fireEvent.blur(savingFallback);
+    const visualTarget = document.querySelector<HTMLButtonElement>('.allocation-bar__segment-target');
+    expect(visualTarget).not.toBeNull();
+    fireEvent.focus(visualTarget!);
+    expect(screen.getByRole('tooltip')).not.toHaveClass('flow-tooltip--end-contained');
+  });
 });

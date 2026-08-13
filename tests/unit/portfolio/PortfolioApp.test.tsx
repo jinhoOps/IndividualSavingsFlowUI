@@ -395,12 +395,19 @@ describe('PortfolioApp', () => {
 
   it('preserves the plan behind a zero-investment blurred gate', () => {
     render(<PortfolioApp locationRepository={emptyInvestmentLocations} mainSourceRepository={zeroMain} repository={createMemoryPortfolioRepository({ applied: plan })} now={() => 1} />);
-    expect(screen.getByTestId('portfolio-page-frame')).toHaveClass(
+    const frame = screen.getByTestId('portfolio-page-frame');
+    const heading = screen.getByRole('heading', { name: '투자금을 먼저 정해 주세요' });
+    const link = screen.getByRole('link', { name: 'Main에서 투자금 설정' });
+    expect(frame).toHaveClass(
       'app-content-frame',
-      'portfolio-content--blurred',
     );
+    expect(frame).not.toHaveAttribute('inert');
+    expect(frame).toContainElement(heading);
+    expect(frame).toContainElement(link);
+    expect(frame.querySelectorAll('.app-content-frame')).toHaveLength(0);
+    expect(frame.querySelector('.portfolio-content--blurred')).toHaveAttribute('inert');
     expect(screen.getByTestId('app-shell-launcher')).not.toHaveClass('app-content-frame');
-    expect(screen.getByRole('link', { name: 'Main에서 투자금 설정' }))
+    expect(link)
       .toHaveAttribute('href', expect.stringContaining('?edit=investment'));
   });
 
