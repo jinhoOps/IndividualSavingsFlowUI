@@ -132,6 +132,36 @@ describe('Account Map reducer', () => {
     expect(setup).toMatchObject({ mode: 'setup', workspace: { revision: 3 }, draft: expect.any(Object), recovery: { status: 'none' } });
   });
 
+  it('adopts a concurrently updated Main source across stale recovery paths', () => {
+    const latestMain = { ...main(), updatedAt: 20, monthlyLivingWon: 900_000 };
+    const latestMap = { ...createEmptyWorkspace(2), revision: 2 };
+    latestMap.main.applied = latestMain;
+    latestMap.accountMap.applied = applied('account');
+    const staleMap = accountMapReducer(mapState(), {
+      type: 'save-conflicted', latest: latestMap, intent: linkIntent(),
+    });
+    const reapplied = accountMapReducer(staleMap, { type: 'reapply-succeeded', workspace: latestMap });
+    expect(reapplied).toMatchObject({ mode: 'map', main: latestMain });
+
+    let modal = accountMapReducer(mapState(), { type: 'node-invoked', nodeId: 'a' });
+    modal = accountMapReducer(modal, { type: 'node-invoked', nodeId: 'a' });
+    const manual = accountMapReducer(modal, {
+      type: 'save-manual-conflicted', latest: latestMap,
+      action: 'edit-node', targets: [{ kind: 'node', id: 'a' }], reason: 'compound-edit',
+    });
+    const reviewed = accountMapReducer(manual, { type: 'review-latest' });
+    expect(reviewed).toMatchObject({ mode: 'map', main: latestMain });
+
+    const latestSetup = { ...createEmptyWorkspace(3), revision: 3 };
+    latestSetup.main.applied = latestMain;
+    latestSetup.accountMap.draft = draft();
+    const staleSetup = accountMapReducer(mapState(), {
+      type: 'save-conflicted', latest: latestSetup, intent: linkIntent(),
+    });
+    const kept = accountMapReducer(staleSetup, { type: 'latest-kept' });
+    expect(kept).toMatchObject({ mode: 'setup', main: latestMain, mainChanged: true });
+  });
+
   it('keeps the modal open while adopting latest for manual compound review', () => {
     let current = accountMapReducer(mapState(), { type: 'node-invoked', nodeId: 'a' });
     current = accountMapReducer(current, { type: 'node-invoked', nodeId: 'a' });

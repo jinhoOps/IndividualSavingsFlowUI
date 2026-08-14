@@ -19,7 +19,7 @@ export interface AccountMapModalRelatedItem {
 }
 
 export interface AccountMapModalProps {
-  node: GraphNode;
+  node: Omit<GraphNode, 'connectionCount'> & { connectionCount?: number };
   related: AccountMapModalRelatedItem[];
   sourceElement: HTMLElement | null;
   fallbackElement: HTMLElement | null;

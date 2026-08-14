@@ -77,6 +77,19 @@ describe('AccountMapSetup', () => {
     expect(screen.getByRole('heading', { name: '연결 검토' })).toBeVisible();
   });
 
+  it('traps forward and reverse Tab inside the custom-purpose dialog', () => {
+    render(<AccountMapApp repositories={fixture().repositories} />);
+    fireEvent.click(screen.getByRole('button', { name: '세부 목적 추가' }));
+    const parent = screen.getByRole('combobox', { name: '큰 목적' });
+    const cancel = screen.getByRole('button', { name: '취소' });
+    expect(parent).toHaveFocus();
+
+    fireEvent.keyDown(document, { key: 'Tab', shiftKey: true });
+    expect(cancel).toHaveFocus();
+    fireEvent.keyDown(document, { key: 'Tab' });
+    expect(parent).toHaveFocus();
+  });
+
   it('keeps setup input and focuses the described recovery action for a duplicate collision', async () => {
     const setup = staleDuplicateFixture();
     render(<AccountMapApp repositories={setup.repositories} />);

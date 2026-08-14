@@ -136,6 +136,11 @@ test('connects Main directly to the detailed Simulation', async ({ page }) => {
   )).toBeNull();
   await expect(page.getByRole('heading', { name: /이대로 20년 유지하면/ })).toBeVisible();
   await expect(page.getByText('월 저축 30만 원 · 투자 20만 원 · 연 9%')).toBeVisible();
+  await expect(page.getByText('전부 저축보다')).toBeVisible();
+  await expect(page.locator('.simulation-comparison__semantic-value')).toHaveText([
+    '1억 295만 원',
+    '215%',
+  ]);
   await expect(page.getByRole('link', { name: /미래 성장 \(Simulation\).*현재 위치/ }))
     .toHaveAttribute('aria-current', 'page');
   expect(await page.evaluate(() => localStorage.getItem('isf-simulation-compound-v1')))
@@ -150,7 +155,11 @@ test('revisits Simulation at the result and refreshes only its Main source', asy
 
   await page.goto('apps/simulation/');
   await expect(page.getByRole('heading', { name: /이대로 20년 유지하면/ })).toBeVisible();
-  await expect(page.getByText(/월 저축 30만 원 · 투자 20만 원/)).toBeVisible();
+  await expect(page.getByText('월 저축 30만 원 · 투자 20만 원 · 연 9%')).toBeVisible();
+  await expect(page.locator('.simulation-comparison__semantic-value')).toHaveText([
+    '1억 295만 원',
+    '215%',
+  ]);
   await expect(page.getByRole('heading', { name: '지금 모아둔 투자금이 있나요?' }))
     .toHaveCount(0);
 

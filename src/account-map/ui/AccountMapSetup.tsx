@@ -297,11 +297,20 @@ function CustomPurposeDialog({ main, draft, recovery, recoveryPending, onReapply
     const returnFocus = document.activeElement as HTMLElement | null;
     panelRef.current?.querySelector<HTMLElement>('select, input, button')?.focus();
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return;
-      event.preventDefault();
-      if (pendingRef.current || recoveryPendingRef.current) return;
-      if (recoveryRef.current.status !== 'none') onKeepLatestRef.current();
-      onCancelRef.current();
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        if (pendingRef.current || recoveryPendingRef.current) return;
+        if (recoveryRef.current.status !== 'none') onKeepLatestRef.current();
+        onCancelRef.current();
+        return;
+      }
+      if (event.key !== 'Tab') return;
+      const focusable = [...(panelRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled)') ?? [])];
+      if (focusable.length === 0) return;
+      const first = focusable[0]!;
+      const last = focusable[focusable.length - 1]!;
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
     };
     document.addEventListener('keydown', onKeyDown);
     return () => { document.removeEventListener('keydown', onKeyDown); returnFocus?.focus(); };

@@ -39,7 +39,12 @@ describe('AccountMapCanvas', () => {
   it('defaults to purpose layout, shows system references, and hides edge amounts before focus', () => {
     const { container } = renderCanvas();
     expect(screen.getByRole('button', { name: '목적 중심' })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByRole('button', { name: /생활비.*1,000,000원/ })).toBeVisible();
+    expect(screen.getByRole('button', {
+      name: '목적 · 생활비 · 1,000,000원 · 활성 연결 1개 · 연결 필요',
+    })).toBeVisible();
+    expect(screen.getByRole('button', {
+      name: '계좌·보관처 · 생활비통장 · 700,000원 · 활성 연결 1개 · 연결 완료',
+    })).toBeVisible();
     expect(container.querySelector('.account-map-edge-amount')).toBeNull();
     expect(screen.getByRole('table', { name: '계좌 연결 읽기 표' })).toBeInTheDocument();
   });

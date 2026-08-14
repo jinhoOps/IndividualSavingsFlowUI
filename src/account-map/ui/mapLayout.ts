@@ -12,6 +12,7 @@ export interface GraphNode {
   label: string;
   secondary?: string;
   amountWon?: number;
+  connectionCount: number;
   status: 'resolved' | 'unassigned' | 'excess' | 'suspended' | 'surplus' | 'deficit';
 }
 
@@ -45,6 +46,7 @@ export function buildAccountMapGraph(
     ...(zoom === 'overview' ? [] : activeCustom.map(({ id }) => id)),
   ];
   const locationById = new Map(locations.map((location) => [location.id, location]));
+  const activeLinks = applied.links.filter(({ status }) => status === 'active');
   const eligibleLinks = applied.links.filter((link) => zoom === 'detail' || link.status === 'active');
   const links = zoom !== 'overview' ? eligibleLinks : purposeIds.flatMap((purposeId) => {
     const candidates = eligibleLinks.filter((link) => link.purposeId === purposeId && link.status === 'active');
@@ -53,31 +55,38 @@ export function buildAccountMapGraph(
   const visibleLocationIds = new Set(links.map(({ locationId }) => locationId));
   const purposeNodes: GraphNode[] = purposeIds.map((purposeId) => {
     const result = reconcilePurpose(purposeId, applied, locations, main);
-    const count = eligibleLinks.filter((link) => link.purposeId === purposeId && link.status === 'active').length;
+    const count = activeLinks.filter((link) => link.purposeId === purposeId).length;
     return {
       id: purposeId,
       kind: 'purpose',
       label: purposeLabel(purposeId, applied),
       ...(zoom === 'overview' && count > 1 ? { secondary: `대표 계좌 · 외 ${count - 1}개` } : {}),
       amountWon: result.targetWon,
+      connectionCount: count,
       status: result.excessWon > 0 ? 'excess' : result.unassignedWon > 0 ? 'unassigned' : 'resolved',
     };
   });
   const locationNodes: GraphNode[] = locations
     .filter((location) => visibleLocationIds.has(location.id))
-    .map((location) => ({
-      id: locationNodeId(location.id),
-      kind: 'location',
-      label: location.shortName,
-      ...(location.institution === undefined ? {} : { secondary: location.institution.name }),
-      status: location.archivedAt === undefined ? 'resolved' : 'suspended',
-    }));
+    .map((location) => {
+      const connections = activeLinks.filter(({ locationId }) => locationId === location.id);
+      return {
+        id: locationNodeId(location.id),
+        kind: 'location',
+        label: location.shortName,
+        ...(location.institution === undefined ? {} : { secondary: location.institution.name }),
+        amountWon: connections.reduce((sum, { monthlyAmountWon }) => sum + monthlyAmountWon, 0),
+        connectionCount: connections.length,
+        status: location.archivedAt === undefined ? 'resolved' : 'suspended',
+      };
+    });
   const overall = overallMainState(main);
   const statusNodes: GraphNode[] = overall.remainingWon === 0 ? [] : [{
     id: 'status:overall',
     kind: 'status',
     label: overall.kind === 'deficit' ? '부족함' : '미배정',
     amountWon: overall.remainingWon,
+    connectionCount: 0,
     status: overall.kind === 'deficit' ? 'deficit' : 'surplus',
   }];
   return {

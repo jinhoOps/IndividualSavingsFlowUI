@@ -296,6 +296,12 @@ test('supports layout, semantic zoom, focus parity, second invoke, and same-moda
   await seed(page, editableWorkspace());
   await page.goto('apps/account-map/');
   await expect(page.getByRole('heading', { name: '목적과 계좌의 연결' })).toBeVisible();
+  await expect(page.getByRole('button', {
+    name: '목적 · 생활비 · 1,000,000원 · 활성 연결 2개 · 연결 완료',
+  })).toBeVisible();
+  await expect(page.getByRole('button', {
+    name: '계좌·보관처 · 생활비통장 · 900,000원 · 활성 연결 1개 · 연결 완료',
+  })).toBeVisible();
 
   const living = page.getByRole('button', { name: /생활비.*1,000,000원/ }).first();
   await living.hover();
@@ -601,6 +607,14 @@ test('creates, archives, and restores a corrected custom purpose without resumin
   for (const [name, amount] of [['여행', '400000'], ['통신비', '600000']] as const) {
     await page.getByRole('button', { name: '세부 목적 추가' }).click();
     const purposeDialog = page.getByRole('dialog', { name: '세부 목적 추가' });
+    if (name === '여행') {
+      const parent = purposeDialog.getByRole('combobox', { name: '큰 목적' });
+      await expect(parent).toBeFocused();
+      await page.keyboard.press('Shift+Tab');
+      await expect(purposeDialog.getByRole('button', { name: '취소' })).toBeFocused();
+      await page.keyboard.press('Tab');
+      await expect(parent).toBeFocused();
+    }
     await purposeDialog.getByLabel('목적 이름').fill(name);
     await purposeDialog.getByLabel('월 금액').fill(amount);
     await purposeDialog.getByRole('button', { name: '추가' }).click();
@@ -656,15 +670,15 @@ test('archives, selectively restores, and resets only Account Map', async ({ pag
   await page.goto('apps/account-map/');
   const before = await readProtected(page);
 
-  await openNode(page, /^생활비통장$/);
-  await page.getByRole('button', { name: '보관' }).click();
+  await openNode(page, /계좌·보관처 · 생활비통장 ·/);
+  await page.getByRole('button', { name: '보관', exact: true }).click();
   await expect(page.getByText('생활비 1,000,000원 연결이 중지됩니다')).toBeVisible();
   await page.getByRole('button', { name: '보관하기' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   expect(await readProtected(page)).toEqual(before);
 
   await page.getByRole('button', { name: '확대' }).click();
-  await openNode(page, /^생활비통장$/);
+  await openNode(page, /계좌·보관처 · 생활비통장 ·/);
   await page.getByRole('button', { name: '복원' }).click();
   await page.getByRole('checkbox', { name: /생활비/ }).check();
   await page.getByRole('button', { name: '선택 복원' }).click();
@@ -788,13 +802,13 @@ test('keeps all Account Map states contained with 44px action targets at support
     await page.getByRole('button', { name: '취소' }).click();
     await page.getByRole('button', { name: '닫기' }).click();
 
-    await openNode(page, /^보조생활비$/);
-    await page.getByRole('button', { name: '보관' }).click();
+    await openNode(page, /계좌·보관처 · 보조생활비 ·/);
+    await page.getByRole('button', { name: '보관', exact: true }).click();
     await expectContainedActionTargets(page, `${prefix} node archive`);
     await page.getByRole('button', { name: '보관하기' }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await page.getByRole('button', { name: '확대' }).click();
-    await openNode(page, /^보조생활비$/);
+    await openNode(page, /계좌·보관처 · 보조생활비 ·/);
     await page.getByRole('button', { name: '복원' }).click();
     await expectContainedActionTargets(page, `${prefix} node restore`);
     await page.getByRole('button', { name: '취소' }).click();

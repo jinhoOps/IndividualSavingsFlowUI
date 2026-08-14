@@ -682,7 +682,7 @@ describe('AccountMapApp', () => {
   it('keeps compound modal input for latest review and never snapshot-replays it automatically', async () => {
     const setup = staleCompoundModalRepositories();
     render(<AccountMapApp repositories={setup.repositories} />);
-    const locationNode = screen.getByRole('button', { name: '생활비통장' });
+    const locationNode = screen.getByRole('button', { name: /계좌·보관처 · 생활비통장 ·/ });
     fireEvent.click(locationNode);
     fireEvent.click(locationNode);
     fireEvent.click(screen.getByRole('button', { name: '편집' }));
@@ -710,7 +710,7 @@ describe('AccountMapApp', () => {
   it('keeps typed compound modal input when latest moved back to setup', async () => {
     const setup = staleCompoundModalRepositories(true);
     render(<AccountMapApp repositories={setup.repositories} />);
-    const locationNode = screen.getByRole('button', { name: '생활비통장' });
+    const locationNode = screen.getByRole('button', { name: /계좌·보관처 · 생활비통장 ·/ });
     fireEvent.click(locationNode);
     fireEvent.click(locationNode);
     fireEvent.click(screen.getByRole('button', { name: '편집' }));
@@ -730,7 +730,7 @@ describe('AccountMapApp', () => {
   it('keeps archive replacement input when its latest remainder target disappeared', async () => {
     const setup = staleArchiveRepositories();
     render(<AccountMapApp repositories={setup.repositories} />);
-    const locationNode = screen.getByRole('button', { name: '생활비통장' });
+    const locationNode = screen.getByRole('button', { name: /계좌·보관처 · 생활비통장 ·/ });
     fireEvent.click(locationNode);
     fireEvent.click(locationNode);
     fireEvent.click(screen.getByRole('button', { name: '보관' }));

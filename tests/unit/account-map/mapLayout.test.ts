@@ -3,10 +3,10 @@ import { layoutAccountMap, type AccountMapGraph } from '../../../src/account-map
 
 const graph: AccountMapGraph = {
   nodes: [
-    { id: 'system:income', kind: 'purpose', label: '수입', amountWon: 2_000_000, status: 'resolved' },
-    { id: 'system:living', kind: 'purpose', label: '생활비', amountWon: 1_000_000, status: 'resolved' },
-    { id: 'location:a', kind: 'location', label: '급여통장', status: 'resolved' },
-    { id: 'location:b', kind: 'location', label: '생활비통장', status: 'resolved' },
+    { id: 'system:income', kind: 'purpose', label: '수입', amountWon: 2_000_000, connectionCount: 1, status: 'resolved' },
+    { id: 'system:living', kind: 'purpose', label: '생활비', amountWon: 1_000_000, connectionCount: 1, status: 'resolved' },
+    { id: 'location:a', kind: 'location', label: '급여통장', connectionCount: 1, status: 'resolved' },
+    { id: 'location:b', kind: 'location', label: '생활비통장', connectionCount: 1, status: 'resolved' },
   ],
   edges: [
     { id: 'edge:a', purposeId: 'system:income', locationId: 'location:a', amountWon: 2_000_000, status: 'active' },
@@ -41,6 +41,7 @@ describe('Account Map layout', () => {
         id: `node:${index}`,
         kind: index < 15 ? 'purpose' as const : 'location' as const,
         label: `노드 ${index}`,
+        connectionCount: 0,
         status: 'resolved' as const,
       })),
       edges: [],

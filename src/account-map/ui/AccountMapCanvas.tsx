@@ -4,7 +4,7 @@ import type { MainData } from '../../main/domain/model';
 import type { FinancialLocation } from '../../workspace/domain/financialLocation';
 import type { MapInteractionState, RecoveryState } from '../application/reducer';
 import type { AccountMapApplied } from '../domain/model';
-import { buildAccountMapGraph, layoutAccountMap, type MapZoom } from './mapLayout';
+import { buildAccountMapGraph, layoutAccountMap, type MapZoom, type PositionedNode } from './mapLayout';
 import { AccountMapModal, type AccountMapNodeEditInput } from './AccountMapModal';
 import { animateMapLayout } from './motion';
 
@@ -183,7 +183,7 @@ export function AccountMapCanvas({
             type="button"
             className={`account-map-node account-map-node--${node.kind} is-${node.status}${dimmed ? ' is-dimmed' : ''}${interaction.pinnedNodeId === node.id ? ' is-pinned' : ''}`}
             style={{ left: node.x, top: node.y, width: node.width, height: node.height }}
-            aria-label={`${node.label}${node.amountWon === undefined ? '' : ` · ${formatWon(node.amountWon)}`}${statusLabel(node.status)}`}
+            aria-label={nodeAccessibleName(node)}
             onMouseEnter={() => onTransient(node.id)}
             onMouseLeave={() => onBlur(node.id)}
             onFocus={() => onTransient(node.id)}
@@ -213,4 +213,17 @@ function hasActiveOverlay(): boolean {
 }
 
 function statusLabel(status: string): string { return status === 'unassigned' ? ' · 연결 필요' : status === 'excess' ? ' · 초과 연결' : status === 'deficit' ? ' · 부족함' : ''; }
+function nodeAccessibleName(node: PositionedNode): string {
+  const kind = node.kind === 'purpose' ? '목적' : node.kind === 'location' ? '계좌·보관처' : '전체 상태';
+  const amount = node.amountWon === undefined ? '금액 없음' : formatWon(node.amountWon);
+  const status = {
+    resolved: '연결 완료',
+    unassigned: '연결 필요',
+    excess: '초과 연결',
+    suspended: '보관됨',
+    surplus: '미배정',
+    deficit: '부족함',
+  }[node.status];
+  return `${kind} · ${node.label} · ${amount} · 활성 연결 ${node.connectionCount}개 · ${status}`;
+}
 function formatWon(value: number): string { return `${new Intl.NumberFormat('ko-KR').format(value)}원`; }

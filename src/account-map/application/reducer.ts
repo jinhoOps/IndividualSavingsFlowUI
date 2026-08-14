@@ -320,9 +320,11 @@ function adoptRecoveryWorkspaceForReview<State extends Extract<AccountMapState, 
         recovery: { ...recovery, reason: 'target-missing' },
       };
     }
+    const main = recoveryMain(workspace, state.main);
     return {
       ...state,
       workspace,
+      main,
       applied: structuredClone(applied),
       save: { status: 'idle' },
       recovery: { status: 'none' },
@@ -337,13 +339,15 @@ function adoptRecoveryWorkspaceForReview<State extends Extract<AccountMapState, 
   }
   if (state.mode === 'setup' && applied === null) {
     const draft = workspace.accountMap.draft;
+    const main = recoveryMain(workspace, state.main);
     return {
       ...state,
       workspace,
+      main,
       draft: draft === null ? null : structuredClone(draft),
       step: draft?.step ?? 'connect',
       resumed: draft !== null,
-      mainChanged: draft !== null && draft.sourceMainUpdatedAt !== state.main.updatedAt,
+      mainChanged: draft !== null && draft.sourceMainUpdatedAt !== main.updatedAt,
       save: { status: 'idle' },
       recovery: { status: 'none' },
     };
@@ -371,11 +375,12 @@ function adoptRecoveryWorkspace<State extends Extract<AccountMapState, { mode: '
   workspace: WorkspaceDocument,
 ): AccountMapState {
   const applied = workspace.accountMap.applied;
+  const main = recoveryMain(workspace, state.main);
   if (applied !== null) {
     return {
       mode: 'map',
       workspace,
-      main: state.main,
+      main,
       applied: structuredClone(applied),
       interaction: emptyInteraction(),
       save: { status: 'idle' },
@@ -386,15 +391,19 @@ function adoptRecoveryWorkspace<State extends Extract<AccountMapState, { mode: '
   return {
     mode: 'setup',
     workspace,
-    main: state.main,
+    main,
     draft,
     step: draft?.step ?? 'connect',
     resumed: draft !== null,
-    mainChanged: draft !== null && draft.sourceMainUpdatedAt !== state.main.updatedAt,
+    mainChanged: draft !== null && draft.sourceMainUpdatedAt !== main.updatedAt,
     exitRequested: false,
     save: { status: 'idle' },
     recovery: { status: 'none' },
   };
+}
+
+function recoveryMain(workspace: WorkspaceDocument, fallback: MainData): MainData {
+  return structuredClone(workspace.main.applied ?? fallback);
 }
 
 function withDraftStep(

@@ -189,7 +189,14 @@ export function AccountMapApp({ repositories }: { repositories?: AccountMapRepos
     });
   }} />{restoringPurpose === undefined ? null : <AccountMapModal
     initialMode="restore-purpose"
-    node={{ id: restoringPurpose.id, kind: 'purpose', label: restoringPurpose.name, amountWon: restoringPurpose.targetMonthlyWon, status: 'suspended' }}
+    node={{
+      id: restoringPurpose.id,
+      kind: 'purpose',
+      label: restoringPurpose.name,
+      amountWon: restoringPurpose.targetMonthlyWon,
+      connectionCount: state.applied.links.filter(({ purposeId, status }) => purposeId === restoringPurpose.id && status === 'active').length,
+      status: 'suspended',
+    }}
     related={state.applied.links.filter(({ purposeId }) => purposeId === restoringPurpose.id).map((link) => ({
       label: state.workspace.locations.find(({ id }) => id === link.locationId)?.shortName ?? '연결',
       amountWon: link.monthlyAmountWon,
