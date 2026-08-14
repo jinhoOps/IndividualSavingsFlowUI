@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { StrictMode, useRef, useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -96,6 +96,7 @@ describe('AppLauncher', () => {
   });
 
   it('keeps the current app direct and routes hidden apps through more', async () => {
+    stubLauncherLinkGeometry();
     vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockImplementation(function (this: HTMLElement) {
       return this.classList.contains('journey-launcher__navigation') ? 140 : 0;
     });
@@ -119,7 +120,7 @@ describe('AppLauncher', () => {
     const navigation = screen.getByRole('navigation', { name: 'ISF 앱' });
     expect(within(navigation).getByRole('link', { name: /투자 배분 \(Portfolio\).*현재 위치/ }))
       .toHaveAttribute('aria-current', 'page');
-    expect(within(navigation).getAllByRole('link')).toHaveLength(2);
+    await waitFor(() => expect(within(navigation).getAllByRole('link')).toHaveLength(2));
     const more = within(navigation).getByRole('button', { name: '앱 더보기' });
     fireEvent.click(more);
     const menu = screen.getByRole('region', { name: '추가 앱' });
@@ -139,7 +140,7 @@ describe('AppLauncher', () => {
     expect(screen.queryByRole('region', { name: '추가 앱' })).not.toBeInTheDocument();
   });
 
-  it('reveals the current line and overflow with fast shared motion while state closes immediately', () => {
+  it('reveals the current line and overflow with fast shared motion while state closes immediately', async () => {
     stubLauncherWidth(140);
     const { container } = render(<AppLauncher currentApp="portfolio" />);
 
@@ -154,7 +155,7 @@ describe('AppLauncher', () => {
       ease: MOTION_EASE.enter,
     });
 
-    const more = screen.getByRole('button', { name: '앱 더보기' });
+    const more = await screen.findByRole('button', { name: '앱 더보기' });
     expect(more).toHaveAttribute('aria-expanded', 'false');
     fireEvent.click(more);
 
@@ -173,9 +174,10 @@ describe('AppLauncher', () => {
     expect(more).toHaveFocus();
   });
 
-  it('preserves app focus when a resize moves an overflow link into direct navigation', () => {
+  it('preserves app focus when a resize moves an overflow link into direct navigation', async () => {
     let width = 140;
     let resize: ResizeObserverCallback = () => undefined;
+    stubLauncherLinkGeometry();
     vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockImplementation(function (this: HTMLElement) {
       return this.classList.contains('journey-launcher__navigation') ? width : 0;
     });
@@ -190,20 +192,21 @@ describe('AppLauncher', () => {
     vi.stubGlobal('ResizeObserver', ControlledResizeObserver);
     render(<AppLauncher currentApp="account-map" />);
 
-    fireEvent.click(screen.getByRole('button', { name: '앱 더보기' }));
+    fireEvent.click(await screen.findByRole('button', { name: '앱 더보기' }));
     const hiddenSimulation = within(screen.getByRole('region', { name: '추가 앱' }))
       .getByRole('link', { name: /미래 성장 \(Simulation\)/ });
     hiddenSimulation.focus();
     width = 300;
     act(() => resize([], {} as ResizeObserver));
 
-    expect(screen.queryByRole('button', { name: '앱 더보기' })).not.toBeInTheDocument();
-    const directSimulation = screen.getByRole('link', { name: /미래 성장 \(Simulation\)/ });
-    expect(directSimulation).toHaveFocus();
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: '앱 더보기' })).not.toBeInTheDocument();
+      expect(screen.getByRole('link', { name: /미래 성장 \(Simulation\)/ })).toHaveFocus();
+    });
 
     width = 140;
     act(() => resize([], {} as ResizeObserver));
-    expect(screen.getByRole('button', { name: '앱 더보기' })).toHaveFocus();
+    await waitFor(() => expect(screen.getByRole('button', { name: '앱 더보기' })).toHaveFocus());
   });
 
   it('closes an active app tooltip when entering management tools', () => {
@@ -468,6 +471,7 @@ function animationOptionsFor(target: Element): Record<string, unknown> | undefin
 }
 
 function stubLauncherWidth(width: number): void {
+  stubLauncherLinkGeometry();
   vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockImplementation(function (this: HTMLElement) {
     return this.classList.contains('journey-launcher__navigation') ? width : 0;
   });
@@ -480,4 +484,14 @@ function stubLauncherWidth(width: number): void {
     constructor(private readonly callback: ResizeObserverCallback) {}
   }
   vi.stubGlobal('ResizeObserver', ImmediateResizeObserver);
+}
+
+function stubLauncherLinkGeometry(): void {
+  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (
+    this: HTMLElement,
+  ) {
+    return DOMRect.fromRect(this.classList.contains('journey-launcher__app-link')
+      ? { width: 44, height: 44 }
+      : undefined);
+  });
 }
