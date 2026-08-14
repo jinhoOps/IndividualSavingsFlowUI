@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
@@ -74,6 +75,53 @@ describe('generate-main-brand-icons', () => {
         expect(x + width).toBeLessThanOrEqual(409.6);
         expect(y + height).toBeLessThanOrEqual(409.6);
       }
+    }
+  });
+
+  it('emits the complete maskable brand icon set in the production manifest', () => {
+    const outputDirectory = mkdtempSync(resolve(tmpdir(), 'isf-pwa-manifest-'));
+
+    try {
+      execFileSync(process.execPath, [
+        resolve(rootDirectory, 'node_modules/vite/bin/vite.js'),
+        'build',
+        '--outDir',
+        outputDirectory,
+        '--emptyOutDir',
+      ], {
+        cwd: rootDirectory,
+        stdio: 'pipe',
+      });
+
+      const manifest = JSON.parse(readFileSync(resolve(outputDirectory, 'manifest.webmanifest'), 'utf8'));
+      expect(manifest.icons).toEqual([
+        {
+          src: 'icons/icon-192.png',
+          sizes: '192x192',
+          type: 'image/png',
+          purpose: 'any maskable',
+        },
+        {
+          src: 'icons/icon-512.png',
+          sizes: '512x512',
+          type: 'image/png',
+          purpose: 'any maskable',
+        },
+        {
+          src: 'icons/icon-192.svg',
+          sizes: '192x192',
+          type: 'image/svg+xml',
+          purpose: 'any maskable',
+        },
+        {
+          src: 'icons/icon-512.svg',
+          sizes: '512x512',
+          type: 'image/svg+xml',
+          purpose: 'any maskable',
+        },
+      ]);
+    } finally {
+      rmSync(outputDirectory, { force: true, recursive: true });
     }
   });
 });
