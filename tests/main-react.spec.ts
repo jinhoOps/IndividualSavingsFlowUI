@@ -1497,6 +1497,11 @@ test('keyboard-only user completes the full quick setup', async ({ page }) => {
   await clearBrowserStorage(page);
   await page.goto('apps/main/');
 
+  const introSkip = page.getByRole('button', { name: '화면을 눌러 건너뛰기' });
+  await expect(introSkip).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('heading', { name: '한 달 돈의 흐름, 2분이면 확인할 수 있어요.' })).toBeFocused();
+
   await page.keyboard.press('Tab');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Tab');
