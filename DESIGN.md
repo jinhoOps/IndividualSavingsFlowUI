@@ -79,7 +79,7 @@ Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계획 �
 - system purpose의 Main 기준 금액과 전체 미배정·부족 상태는 overview에 표시하고, 개별 연결 금액은 pointer·touch·keyboard 집중 상태에서 공개합니다.
 - Node modal은 금액·상태·나머지를 주요 편집으로 유지합니다. `연결 추가`는 하나의 보조 icon action, custom purpose `보관·복원`은 제목 줄 `더보기`로 압축하되 기능을 숨기거나 별도 페이지로 보내지 않습니다.
 - 다른 목적에 쓰는 active location도 선택 목록에 표시하고 필요한 role은 연결 저장과 함께 원자적으로 추가합니다.
-- stale 저장은 modal·setup 입력을 유지한 채 최신 상태를 다시 읽고 `최신 상태에서 다시 적용`으로 복구합니다. 자동 overwrite나 입력 초기화는 금지합니다.
+- 일반적인 stale conflict·collision은 modal·setup 입력을 유지한 채 최신 상태를 다시 읽고 `최신 상태에서 다시 적용`으로 복구합니다. 자동 overwrite나 입력 초기화는 금지합니다. 단, 채택한 최신 workspace의 Main이 없으면 Account Map은 recovery와 입력 replay를 포기하고 write 없이 즉시 Main-required 화면으로 전환합니다.
 - 전체·기본·상세 semantic zoom을 제공하고 임의 node 좌표나 drag edge를 저장하지 않습니다.
 - 모바일 요약은 관계도를 첫 viewport 밖으로 밀어내지 않아야 하며 Account Map은 Main에 write-back하지 않습니다.
 

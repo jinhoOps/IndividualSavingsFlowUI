@@ -61,6 +61,24 @@ describe('AccountMapApp', () => {
     expect(screen.getByRole('heading', { name: '연결 검토' })).toBeVisible();
   });
 
+  it('adopts a concurrently changed Main after migration conflict', async () => {
+    const setup = migrationConflictRepositories('changed');
+    render(<AccountMapApp repositories={setup.repositories} />);
+
+    expect(await screen.findByText('Main의 월 금액이 바뀌었어요')).toBeVisible();
+    const living = screen.getByRole('heading', { name: '생활비' }).closest('article');
+    expect(living).toHaveTextContent('1,200,000원');
+    expect(setup.migrate).toHaveBeenCalledWith(1);
+  });
+
+  it('requires Main after migration conflict adopts a workspace without Main', async () => {
+    const setup = migrationConflictRepositories('empty');
+    render(<AccountMapApp repositories={setup.repositories} />);
+
+    expect(await screen.findByRole('heading', { name: '월 자금 계획이 먼저 필요해요' })).toBeVisible();
+    expect(setup.migrate).toHaveBeenCalledWith(1);
+  });
+
   it('shows unavailable storage without replacing user state with setup', () => {
     const accountMap: AccountMapRepository = {
       load: vi.fn(() => ({ status: 'unavailable' as const })),
@@ -112,7 +130,7 @@ describe('AccountMapApp', () => {
     fireEvent.click(living);
     fireEvent.click(screen.getByRole('button', { name: '편집' }));
     fireEvent.click(screen.getByRole('button', { name: '연결 추가' }));
-    fireEvent.click(screen.getByRole('button', { name: /저축통장/ }));
+    fireEvent.click(within(screen.getByRole('dialog', { name: '생활비 연결 추가' })).getByRole('button', { name: /저축통장/ }));
     fireEvent.change(screen.getByRole('textbox', { name: /이 계좌에 둘 월 금액/ }), { target: { value: '100000' } });
     fireEvent.click(screen.getByRole('button', { name: '완료' }));
 
@@ -247,7 +265,7 @@ describe('AccountMapApp', () => {
     fireEvent.click(living);
     fireEvent.click(screen.getByRole('button', { name: '편집' }));
     fireEvent.click(screen.getByRole('button', { name: '연결 추가' }));
-    fireEvent.click(screen.getByRole('button', { name: /저축통장/ }));
+    fireEvent.click(within(screen.getByRole('dialog', { name: '생활비 연결 추가' })).getByRole('button', { name: /저축통장/ }));
     fireEvent.change(screen.getByRole('textbox', { name: /이 계좌에 둘 월 금액/ }), { target: { value: '100000' } });
     fireEvent.click(screen.getByRole('button', { name: '완료' }));
 
@@ -1012,6 +1030,32 @@ function repositories(options: { mainStatus?: 'found' | 'empty'; draftSourceUpda
       : { status: 'found' as const, data: appliedMain }),
   };
   return { accountMap, main };
+}
+
+function migrationConflictRepositories(latestMain: 'changed' | 'empty') {
+  const initial = createEmptyWorkspace(1);
+  initial.revision = 1;
+  initial.main.applied = mainData();
+  const latest = structuredClone(initial);
+  latest.revision = 2;
+  latest.updatedAt = 20;
+  latest.main.applied = latestMain === 'empty'
+    ? null
+    : { ...mainData(), updatedAt: 20, monthlyLivingWon: 1_200_000 };
+  latest.accountMap.draft = latestMain === 'empty' ? null : {
+    schemaVersion: 1, sourceMainUpdatedAt: 10, customPurposes: [], links: [], step: 'connect', updatedAt: 10,
+  };
+  const load = vi.fn()
+    .mockReturnValueOnce({ status: 'found' as const, workspace: initial, needsMigration: true })
+    .mockReturnValue({ status: 'found' as const, workspace: latest, needsMigration: false });
+  const migrate = vi.fn(async () => ({ status: 'conflict' as const, currentRevision: 2 }));
+  const accountMap: AccountMapRepository = {
+    load, migrate, save: vi.fn(), saveIntent: vi.fn(), reset: vi.fn(),
+  };
+  const main: AccountMapMainSourceRepository = {
+    load: vi.fn(() => ({ status: 'found' as const, data: mainData() })),
+  };
+  return { repositories: { accountMap, main }, migrate };
 }
 
 function atomicConnectionRepositories() {

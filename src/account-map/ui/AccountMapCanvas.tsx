@@ -112,9 +112,10 @@ export function AccountMapCanvas({
       label: nodeById.get(edge.purposeId === modalNode.id ? edge.locationId : edge.purposeId)?.label ?? '연결',
       amountWon: edge.amountWon,
       status: edge.status,
+      suspendedReason: sourceLink?.status === 'suspended' ? sourceLink.suspendedReason : undefined,
       linkId: edge.id,
       purposeId: edge.purposeId,
-      purposeTargetWon: nodeById.get(edge.purposeId)?.amountWon,
+      purposeTargetWon: nodeById.get(edge.purposeId)?.allocationTargetWon,
       locationId: edge.locationId.replace(/^location:/u, ''),
       remainder: sourceLink?.remainder ?? false,
     }; });
@@ -127,7 +128,7 @@ export function AccountMapCanvas({
         status: edge.status,
         linkId: edge.id,
         purposeId: edge.purposeId,
-        purposeTargetWon: nodeById.get(edge.purposeId)?.amountWon,
+        purposeTargetWon: nodeById.get(edge.purposeId)?.allocationTargetWon,
         locationId: edge.locationId.replace(/^location:/u, ''),
         remainder: false,
         replacementCandidate: true,
@@ -192,7 +193,7 @@ export function AccountMapCanvas({
           ><span>{node.label}</span>{node.amountWon === undefined ? null : <strong>{formatWon(node.amountWon)}</strong>}{node.secondary === undefined ? null : <small>{node.secondary}</small>}{node.status === 'unassigned' ? <small>연결 필요</small> : node.status === 'excess' ? <small>초과 연결</small> : null}</button>;
         })}
       </div>
-      <table className="sr-only account-map-linear-table" tabIndex={0} aria-label="계좌 연결 읽기 표">
+      <table className="sr-only account-map-linear-table" aria-label="계좌 연결 읽기 표">
         <thead><tr>{applied.layout === 'purpose' ? <><th>목적</th><th>계좌·보관처</th></> : <><th>계좌·보관처</th><th>목적</th></>}<th>월 금액</th><th>상태</th></tr></thead>
         <tbody>{positioned.edges.map((edge) => {
           const purpose = nodeById.get(edge.purposeId);

@@ -358,7 +358,8 @@ Account Map의 field-level write set은 `workspace.locations`와 `workspace.acco
 - invalid·old-unknown format은 아무것도 변경하지 않음
 - 저장 실패는 draft와 modal 입력 유지
 - stale revision은 현재 raw workspace를 다시 읽어 최신 revision과 source state를 화면에 반영한다.
-- setup draft와 modal 입력은 별도 UI state로 보존하고 `최신 상태에서 다시 적용` action을 제공한다. 자동 재시도나 조용한 overwrite는 하지 않는다.
+- 일반적인 conflict·collision에서는 setup draft와 modal 입력을 별도 UI state로 보존하고 `최신 상태에서 다시 적용` action을 제공한다. 자동 재시도나 조용한 overwrite는 하지 않는다.
+- 안전 예외로, 채택한 최신 workspace의 `main.applied`가 `null`이면 보존하던 recovery intent와 입력 replay를 포기하고 어떤 write도 하지 않은 채 즉시 Main-required 상태로 전환한다.
 - 보존 intent는 전체 applied/draft snapshot이 아니라 변경한 field, 해당 field의 편집 시작 값과 새 값으로 구성한다. Link 추가는 `purposeId + locationId`, custom purpose와 link 수정은 stable ID, location 수정은 location ID 단위다.
 - 다시 적용할 때 최신 workspace에서 field-scoped command를 새로 만든다. 최신 field 값이 편집 시작 값과 같으면 사용자 새 값을 적용하고, 최신 field 값도 달라졌으면 동일 field 충돌로 분류해 자동 적용하지 않는다. 다른 field의 동시 변경은 그대로 보존한다.
 - 대상 link·purpose·location 삭제, 동일 pair link 생성, 같은 field 충돌 또는 새 capacity/excess 위반은 해당 field 오류로 보여주고 첫 오류로 focus를 이동한다. 사용자는 최신 값 유지 또는 자신의 값으로 다시 편집할 수 있지만 stale 전체 state를 덮어쓸 수 없다.
@@ -395,7 +396,7 @@ Account Map의 field-level write set은 `workspace.locations`와 `workspace.acco
 - 적용 지도 modal에서 기존 location을 새로 연결하고, 필요한 role을 link와 원자적으로 추가한다.
 - Custom purpose를 같은 modal에서 보관·복원하며 관련 link와 parent direct target을 계약대로 처리한다.
 - 보관된 custom purpose를 관리 메뉴에서 다시 찾아 복원 modal로 진입한다.
-- stale save가 최신 workspace를 다시 읽고 입력을 보존하며 명시적 재적용으로 복구된다.
+- 일반적인 stale save는 최신 workspace를 다시 읽고 입력을 보존하며 명시적 재적용으로 복구되고, 최신 `main.applied`가 `null`이면 복구나 replay 없이 Main-required로 전환된다.
 - 보관·복원이 link를 중지·선택 복구하며 Portfolio data를 변경하지 않는다.
 - reset이 Account Map map data만 지우고 registry와 모든 타 앱 slice를 보존한다.
 - Account Map 모든 write 전후 Main·Simulation·Portfolio가 deep-equal이다.
@@ -410,7 +411,7 @@ Account Map의 field-level write set은 `workspace.locations`와 `workspace.acco
 - institution·별칭 normalization, active duplicate와 archived restore unit tests
 - archive·suspend·restore·representative reassignment contract tests
 - repository field-level allowlist와 stale writer tests
-- stale setup·modal 입력 보존, 최신 상태 reload와 명시적 재적용 Playwright tests
+- stale setup·modal 입력 보존, 최신 상태 reload와 명시적 재적용 및 Main-null 시 replay 금지 Playwright tests
 - 생성·편집·보관·복원·reset·migration 전후 Main·Simulation·Portfolio deep-equality integration tests
 - 다른 목적에 사용 중인 기존 location을 추가 role로 재사용하는 다대다 integration tests
 - custom purpose 보관·복원과 suspended link 비자동복구 tests

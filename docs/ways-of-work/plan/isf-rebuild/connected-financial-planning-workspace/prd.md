@@ -171,7 +171,7 @@ ISF는 지금의 월간 돈 흐름을 정리하고, 그 결과를 장기 전략�
 - 적용 지도 modal에서 금액·상태·나머지를 편집하고 보조 `연결 추가` action으로 다른 계좌·보관처를 연결한다.
 - 기존 active location은 현재 role과 관계없이 선택할 수 있고 필요한 role 추가와 link 생성을 한 revision write로 저장한다.
 - 사용자 하위 목적은 같은 modal의 보조 메뉴에서 보관·복원하며 보관된 link를 자동 재개하지 않는다.
-- stale write는 최신 workspace를 다시 읽되 setup·modal 입력을 보존하고 사용자의 명시적 재적용 전에는 쓰지 않는다.
+- 일반적인 stale conflict·collision은 최신 workspace를 다시 읽되 setup·modal 입력을 보존하고 사용자의 명시적 재적용 전에는 쓰지 않는다. 단, 채택한 최신 workspace의 `main.applied`가 `null`이면 Account Map은 복구 intent와 입력 replay를 포기하고 어떤 write도 하지 않은 채 즉시 Main-required 상태로 전환한다.
 - 지도 다시 만들기는 Account Map applied/draft만 지우고 locations와 Main·Simulation·Portfolio를 보존한다.
 
 ### Legacy transition
@@ -255,9 +255,9 @@ Simulation, Portfolio와 Account Map은 workspace 안의 최신 Main을 읽기 �
 - [x] PRD, DESIGN과 Account Map 상세 명세가 현재 제품 경계와 같은 ownership을 설명한다.
 - [x] 적용 지도에서 다른 계좌 연결과 add-only role 확장을 한 write로 완료한다.
 - [x] Custom purpose 보관·복원과 link 비자동복구를 제공한다.
-- [x] stale 충돌에서 최신 상태를 다시 읽고 사용자 입력을 보존해 명시적으로 재적용한다.
+- [x] 일반적인 stale conflict·collision에서는 최신 상태를 다시 읽고 사용자 입력을 보존해 명시적으로 재적용하며, 채택한 최신 workspace에 Main이 없으면 복구나 replay 없이 Main-required로 전환한다.
 - [x] 동기화된 v2 backup은 custom target capacity를 검증하고 이후 Main 감소로 생긴 기존 초과는 correction 가능하게 읽는다.
-- [x] backup·stale·custom purpose·다대다·touch·keyboard·Portfolio 보존 회귀를 통과한다.
+- [x] backup·stale(Main-null 안전 예외 포함)·custom purpose·다대다·touch·keyboard·Portfolio 보존 회귀를 통과한다.
 - [x] 최신 `origin/main` 통합 후 PR diff에 승인 범위 밖 역행 변경이나 conflict가 없다.
 - [x] 위 gate를 모두 통과한 같은 변경에서 Account Map을 현재 지원 제품으로 승격하고 관련 미완료 항목을 함께 `[x]`로 바꾼다.
 

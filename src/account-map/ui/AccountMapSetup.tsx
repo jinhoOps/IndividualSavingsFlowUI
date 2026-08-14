@@ -25,6 +25,12 @@ const purposeMeta = {
   'system:investing': { title: '투자', prompt: '어디에 두나요?' },
 } as const;
 
+export type AccountMapDraftSaveResult =
+  | { status: 'saved' }
+  | { status: 'recovery' }
+  | { status: 'field-error'; field: 'name' | 'amount'; message: string }
+  | { status: 'failed'; message: string };
+
 export interface AccountMapSetupProps {
   workspace: WorkspaceDocument;
   main: MainData;
@@ -43,7 +49,7 @@ export interface AccountMapSetupProps {
     monthlyAmountWon?: number;
     restoreLocation?: boolean;
   }): Promise<boolean>;
-  onSaveDraft(draft: AccountMapDraft): Promise<boolean>;
+  onSaveDraft(draft: AccountMapDraft): Promise<AccountMapDraftSaveResult>;
   onReview(): void;
   onBack(): void;
   onApply(): void;
@@ -134,7 +140,7 @@ export function AccountMapSetup(props: AccountMapSetupProps): JSX.Element {
         })}
       </div>
       <button type="button" className="account-map-add-purpose" disabled={props.recovery.status !== 'none'} onClick={() => setCustomOpen(true)}><span aria-hidden="true">＋</span> 세부 목적 추가</button>
-      {props.saveFailed && activePurposeId === null ? <SaveFailure /> : null}
+      {props.saveFailed && activePurposeId === null && !customOpen ? <SaveFailure /> : null}
       {props.recovery.status === 'none' || activePurposeId !== null || customOpen ? null : <RecoveryControls recovery={props.recovery} pending={props.recoveryPending} onReapply={props.onReapply} onKeepLatest={props.onKeepLatest} />}
       <footer className="account-map-actions">
         <button type="button" className="ui-button ui-button--quiet" disabled={props.recovery.status !== 'none'} onClick={props.onExit}>나가기</button>
@@ -169,7 +175,9 @@ export function AccountMapSetup(props: AccountMapSetupProps): JSX.Element {
           onKeepLatest={props.onKeepLatest}
           onCancel={() => setCustomOpen(false)}
           onSave={async (draft) => {
-            if (await props.onSaveDraft(draft)) setCustomOpen(false);
+            const result = await props.onSaveDraft(draft);
+            if (result.status === 'saved') setCustomOpen(false);
+            return result;
           }}
         />
       )}
@@ -275,9 +283,14 @@ function ConnectionDialog({ purposeId, workspace, main, draft, saveFailed, recov
   );
 }
 
-function CustomPurposeDialog({ main, draft, recovery, recoveryPending, onReapply, onKeepLatest, onCancel, onSave }: { main: MainData; draft: AccountMapDraft | null; recovery: RecoveryState; recoveryPending: boolean; onReapply(): Promise<boolean>; onKeepLatest(): void; onCancel(): void; onSave(draft: AccountMapDraft): Promise<void> }) {
+function CustomPurposeDialog({ main, draft, recovery, recoveryPending, onReapply, onKeepLatest, onCancel, onSave }: { main: MainData; draft: AccountMapDraft | null; recovery: RecoveryState; recoveryPending: boolean; onReapply(): Promise<boolean>; onKeepLatest(): void; onCancel(): void; onSave(draft: AccountMapDraft): Promise<AccountMapDraftSaveResult> }) {
   const titleId = useId();
+  const nameErrorId = useId();
+  const amountErrorId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
+  const nameRef = useRef<HTMLInputElement>(null);
+  const amountRef = useRef<HTMLInputElement>(null);
+  const alertRef = useRef<HTMLParagraphElement>(null);
   const onCancelRef = useRef(onCancel);
   const onKeepLatestRef = useRef(onKeepLatest);
   const recoveryRef = useRef(recovery);
@@ -291,8 +304,10 @@ function CustomPurposeDialog({ main, draft, recovery, recoveryPending, onReapply
   const [name, setName] = useState('');
   const [amount, setAmount] = useState('');
   const [pending, setPending] = useState(false);
+  const [feedback, setFeedback] = useState<Exclude<AccountMapDraftSaveResult, { status: 'saved' | 'recovery' }> | null>(null);
   pendingRef.current = pending;
   const capacity = customPurposeTargetCapacity(parentId, draft?.customPurposes ?? [], main);
+  const amountOverCapacity = Number(amount) > capacity;
   useEffect(() => {
     const returnFocus = document.activeElement as HTMLElement | null;
     panelRef.current?.querySelector<HTMLElement>('select, input, button')?.focus();
@@ -316,19 +331,53 @@ function CustomPurposeDialog({ main, draft, recovery, recoveryPending, onReapply
     return () => { document.removeEventListener('keydown', onKeyDown); returnFocus?.focus(); };
   }, []);
 
+  useEffect(() => {
+    if (feedback === null) return;
+    if (feedback.status === 'field-error') {
+      (feedback.field === 'name' ? nameRef.current : amountRef.current)?.focus();
+      return;
+    }
+    alertRef.current?.focus();
+  }, [feedback]);
+
   function requestClose() {
     if (pending || recoveryPending) return;
     if (recovery.status !== 'none') onKeepLatest();
     onCancel();
   }
 
-  return <div className="account-map-sheet-backdrop" onPointerDown={(event) => { if (event.target === event.currentTarget) requestClose(); }}><div ref={panelRef} className="account-map-sheet account-map-sheet--compact" role="dialog" aria-modal="true" aria-labelledby={titleId}><header><h2 id={titleId}>세부 목적 추가</h2></header><div className="account-map-sheet__body"><label>큰 목적<select value={parentId} onChange={(event) => setParentId(event.target.value as OutflowPurposeId)}><option value="system:housing">주거</option><option value="system:living">생활비</option><option value="system:saving">저축</option><option value="system:investing">투자</option></select></label><label>목적 이름<input value={name} maxLength={24} onChange={(event) => setName(event.target.value)} /></label><label>월 금액<input inputMode="numeric" value={amount} onChange={(event) => setAmount(event.target.value.replace(/\D/gu, ''))} /></label><p className="account-map-hint">추가 가능 {formatWon(capacity)}</p>{Number(amount) > capacity ? <p className="account-map-error">큰 목적의 월 금액을 넘을 수 없습니다.</p> : null}{recovery.status === 'none' ? null : <RecoveryControls recovery={recovery} pending={pending || recoveryPending} onReapply={onReapply} onKeepLatest={() => { onKeepLatest(); onCancel(); }} />}</div><footer><button type="button" className="ui-button ui-button--secondary" disabled={pending || recoveryPending} onClick={requestClose}>취소</button><button type="button" className="ui-button ui-button--primary" disabled={pending || recovery.status !== 'none' || name.trim() === '' || Number(amount) <= 0 || Number(amount) > capacity} onClick={() => {
-    const now = Date.now();
-    const current = draft ?? emptyDraft(main.updatedAt);
-    const next: AccountMapDraft = { ...current, customPurposes: [...current.customPurposes, { id: `custom:${createId()}`, parentId, name: name.trim(), targetMonthlyWon: Number(amount), createdAt: now, updatedAt: now }], updatedAt: now };
-    setPending(true);
-    void onSave(next).finally(() => setPending(false));
-  }}>추가</button></footer></div></div>;
+  const nameFeedback = feedback?.status === 'field-error' && feedback.field === 'name' ? feedback : null;
+  const amountFeedback = feedback?.status === 'field-error' && feedback.field === 'amount' ? feedback : null;
+  return (
+    <div className="account-map-sheet-backdrop" onPointerDown={(event) => { if (event.target === event.currentTarget) requestClose(); }}>
+      <div ref={panelRef} className="account-map-sheet account-map-sheet--compact" role="dialog" aria-modal="true" aria-labelledby={titleId}>
+        <header><h2 id={titleId}>세부 목적 추가</h2></header>
+        <div className="account-map-sheet__body">
+          <label>큰 목적<select value={parentId} onChange={(event) => { setParentId(event.target.value as OutflowPurposeId); setFeedback(null); }}><option value="system:housing">주거</option><option value="system:living">생활비</option><option value="system:saving">저축</option><option value="system:investing">투자</option></select></label>
+          <label>목적 이름<input ref={nameRef} value={name} maxLength={24} aria-invalid={nameFeedback !== null || undefined} aria-describedby={nameFeedback === null ? undefined : nameErrorId} onChange={(event) => { setName(event.target.value); setFeedback(null); }} /></label>
+          {nameFeedback === null ? null : <p id={nameErrorId} className="account-map-error" role="alert">{nameFeedback.message}</p>}
+          <label>월 금액<input ref={amountRef} inputMode="numeric" value={amount} aria-invalid={amountFeedback !== null || amountOverCapacity || undefined} aria-describedby={amountFeedback !== null ? amountErrorId : amountOverCapacity ? amountErrorId : undefined} onChange={(event) => { setAmount(event.target.value.replace(/\D/gu, '')); setFeedback(null); }} /></label>
+          <p className="account-map-hint">추가 가능 {formatWon(capacity)}</p>
+          {amountFeedback !== null ? <p id={amountErrorId} className="account-map-error" role="alert">{amountFeedback.message}</p> : amountOverCapacity ? <p id={amountErrorId} className="account-map-error">큰 목적의 월 금액을 넘을 수 없습니다.</p> : null}
+          {feedback?.status !== 'failed' ? null : <p ref={alertRef} className="account-map-error" role="alert" tabIndex={-1}>{feedback.message}</p>}
+          {recovery.status === 'none' ? null : <RecoveryControls recovery={recovery} pending={pending || recoveryPending} onReapply={onReapply} onKeepLatest={() => { onKeepLatest(); onCancel(); }} />}
+        </div>
+        <footer>
+          <button type="button" className="ui-button ui-button--secondary" disabled={pending || recoveryPending} onClick={requestClose}>취소</button>
+          <button type="button" className="ui-button ui-button--primary" disabled={pending || recovery.status !== 'none' || name.trim() === '' || Number(amount) <= 0 || amountOverCapacity} onClick={() => {
+            const now = Date.now();
+            const current = draft ?? emptyDraft(main.updatedAt);
+            const next: AccountMapDraft = { ...current, customPurposes: [...current.customPurposes, { id: `custom:${createId()}`, parentId, name: name.trim(), targetMonthlyWon: Number(amount), createdAt: now, updatedAt: now }], updatedAt: now };
+            setFeedback(null);
+            setPending(true);
+            void onSave(next).then((result) => {
+              if (result.status !== 'saved' && result.status !== 'recovery') setFeedback(result);
+            }, () => setFeedback({ status: 'failed', message: '저장하지 못했어요. 입력은 그대로 두었습니다.' })).finally(() => setPending(false));
+          }}>추가</button>
+        </footer>
+      </div>
+    </div>
+  );
 }
 
 function emptyDraft(sourceMainUpdatedAt: number): AccountMapDraft {

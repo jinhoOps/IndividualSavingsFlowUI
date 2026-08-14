@@ -10,6 +10,7 @@ export interface AccountMapModalRelatedItem {
   label: string;
   amountWon: number;
   status: 'active' | 'suspended';
+  suspendedReason?: 'location-archived' | 'user';
   linkId?: string;
   purposeId?: string;
   locationId?: string;
@@ -59,6 +60,9 @@ export function AccountMapModal({ node, related, sourceElement, fallbackElement,
   const previousModeRef = useRef<AccountMapModalMode>(initialMode);
   const animationRef = useRef<AnimationHandle | null>(null);
   const directRelated = related.filter(({ replacementCandidate }) => replacementCandidate !== true);
+  const restorableRelated = directRelated.filter(({ status, suspendedReason }) => (
+    status === 'suspended' && suspendedReason === 'location-archived'
+  ));
   const [mode, setMode] = useState<AccountMapModalMode>(initialMode);
   const [titleMenuOpen, setTitleMenuOpen] = useState(false);
   const [editLabel, setEditLabel] = useState(node.label);
@@ -206,10 +210,10 @@ export function AccountMapModal({ node, related, sourceElement, fallbackElement,
     const candidates = related.filter((item) => item.replacementCandidate === true && item.purposeId === purposeId);
     return candidates.length > 0 && !replacementByPurpose[purposeId];
   });
-  const restoreExcessPurposes = [...new Set(directRelated.filter((item) => item.linkId !== undefined && restoreLinkIds.includes(item.linkId) && item.purposeId !== undefined).map((item) => item.purposeId!))].filter((purposeId) => {
-    const target = directRelated.find((item) => item.purposeId === purposeId)?.purposeTargetWon;
+  const restoreExcessPurposes = [...new Set(restorableRelated.filter((item) => item.linkId !== undefined && restoreLinkIds.includes(item.linkId) && item.purposeId !== undefined).map((item) => item.purposeId!))].filter((purposeId) => {
+    const target = restorableRelated.find((item) => item.purposeId === purposeId)?.purposeTargetWon;
     if (target === undefined) return false;
-    const restoring = directRelated.filter((item) => item.purposeId === purposeId && item.linkId !== undefined && restoreLinkIds.includes(item.linkId)).reduce((sum, item) => sum + item.amountWon, 0);
+    const restoring = restorableRelated.filter((item) => item.purposeId === purposeId && item.linkId !== undefined && restoreLinkIds.includes(item.linkId)).reduce((sum, item) => sum + item.amountWon, 0);
     const active = related.filter((item) => item.replacementCandidate === true && item.purposeId === purposeId).reduce((sum, item) => sum + item.amountWon, 0);
     return restoring + active > target;
   });
@@ -245,8 +249,8 @@ export function AccountMapModal({ node, related, sourceElement, fallbackElement,
             const candidates = related.filter((item) => item.replacementCandidate === true && item.purposeId === purposeId);
             return candidates.length === 0 ? null : <label key={purposeId}>새 나머지 계좌<select required aria-label="새 나머지 계좌" value={replacementByPurpose[purposeId] ?? ''} onChange={(event) => setReplacementByPurpose((current) => ({ ...current, [purposeId]: event.target.value || null }))}><option value="">선택해 주세요</option>{candidates.map((item) => <option key={item.linkId} value={item.linkId}>{item.label}</option>)}</select></label>;
           }) : null}</div> : null}
-          {mode === 'restore-location' ? <div className="account-map-modal__restore"><p>다시 연결할 항목만 선택해 주세요.</p>{directRelated.filter(({ status }) => status === 'suspended').map((item) => <label key={item.linkId}><input type="checkbox" checked={item.linkId !== undefined && restoreLinkIds.includes(item.linkId)} onChange={(event) => { if (item.linkId === undefined) return; setRestoreLinkIds((current) => event.target.checked ? [...current, item.linkId!] : current.filter((id) => id !== item.linkId)); }} />{item.label} · {formatWon(item.amountWon)}</label>)}{restoreExcessPurposes.map((purposeId) => {
-            const candidates = [...directRelated.filter((item) => item.purposeId === purposeId && item.linkId !== undefined && restoreLinkIds.includes(item.linkId)), ...related.filter((item) => item.replacementCandidate === true && item.purposeId === purposeId)];
+          {mode === 'restore-location' ? <div className="account-map-modal__restore"><p>보관할 때 중지된 연결만 선택해 다시 연결할 수 있습니다. 선택하지 않으면 계좌·보관처만 복원합니다.</p>{restorableRelated.map((item) => <label key={item.linkId}><input type="checkbox" checked={item.linkId !== undefined && restoreLinkIds.includes(item.linkId)} onChange={(event) => { if (item.linkId === undefined) return; setRestoreLinkIds((current) => event.target.checked ? [...current, item.linkId!] : current.filter((id) => id !== item.linkId)); }} />{item.label} · {formatWon(item.amountWon)}</label>)}{restoreExcessPurposes.map((purposeId) => {
+            const candidates = [...restorableRelated.filter((item) => item.purposeId === purposeId && item.linkId !== undefined && restoreLinkIds.includes(item.linkId)), ...related.filter((item) => item.replacementCandidate === true && item.purposeId === purposeId)];
             return <label key={`restore:${purposeId}`} className="account-map-modal__restore-correction">초과 금액을 맞출 나머지 연결<select required aria-label="복원 나머지 연결" value={restoreRemainderByPurpose[purposeId] ?? ''} onChange={(event) => setRestoreRemainderByPurpose((current) => ({ ...current, [purposeId]: event.target.value || null }))}><option value="">선택해 주세요</option>{candidates.map((item) => <option key={item.linkId} value={item.linkId}>{item.label}</option>)}</select></label>;
           })}</div> : null}
           {mode === 'restore-purpose' ? <div className="account-map-modal__restore-purpose">
@@ -284,7 +288,7 @@ export function AccountMapModal({ node, related, sourceElement, fallbackElement,
             setActionPending(true);
             void Promise.resolve(onArchiveLocation(locationId, replacementByPurpose)).then((saved) => { if (saved) { returnToFallbackRef.current = true; requestClose(true); } else setActionError(true); }, () => setActionError(true)).finally(() => setActionPending(false));
           }}>{actionError ? '다시 시도' : '보관하기'}</button></> : null}
-          {mode === 'restore-location' ? <><button type="button" className="ui-button ui-button--secondary" disabled={actionPending || recoveryPending} onClick={() => { if (recovery.status === 'none') setMode('read'); else requestClose(); }}>취소</button><button type="button" className="ui-button ui-button--primary" disabled={recovery.status !== 'none' || restoreLinkIds.length === 0 || restoreExcessPurposes.some((purposeId) => !restoreRemainderByPurpose[purposeId]) || actionPending} onClick={() => {
+          {mode === 'restore-location' ? <><button type="button" className="ui-button ui-button--secondary" disabled={actionPending || recoveryPending} onClick={() => { if (recovery.status === 'none' && initialMode === 'read') setMode('read'); else requestClose(); }}>취소</button><button type="button" className="ui-button ui-button--primary" disabled={recovery.status !== 'none' || restoreExcessPurposes.some((purposeId) => !restoreRemainderByPurpose[purposeId]) || actionPending} onClick={() => {
             if (locationId === null || onRestoreLocation === undefined) return;
             setActionError(false);
             setActionPending(true);

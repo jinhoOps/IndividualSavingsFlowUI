@@ -1,19 +1,20 @@
 import { useEffect, useMemo, useReducer, useRef, useState, type JSX } from 'react';
 import { AppShell } from '../../components/common/AppShell';
 import { appPath } from '../../journey/routes';
+import type { MainData } from '../../main/domain/model';
 import type { FinancialLocation } from '../../workspace/domain/financialLocation';
 import type { WorkspaceDocument } from '../../workspace/domain/model';
 import { bootstrapAccountMap } from '../application/bootstrap';
 import { accountMapReducer, type ManualRecoveryAction, type ManualRecoveryTarget } from '../application/reducer';
 import { rebaseAccountMapIntent, type AccountMapEditIntent } from '../domain/editIntent';
-import type { AccountMapDraft, OutflowPurposeId, PurposeId, PurposeLocationLink } from '../domain/model';
+import type { AccountMapApplied, AccountMapDraft, OutflowPurposeId, PurposeId, PurposeLocationLink } from '../domain/model';
 import { customPurposeTargetCapacity, recalculateRemainder, reconcilePurpose } from '../domain/reconciliation';
 import { BrowserAccountMapRepository, type AccountMapRepository, type AccountMapWriteResult } from '../infrastructure/accountMapRepository';
 import { BrowserAccountMapMainSourceRepository, type AccountMapMainSourceRepository } from '../infrastructure/mainSourceRepository';
 import { AccountMapManagementMenu } from './AccountMapManagementMenu';
 import { AccountMapCanvas } from './AccountMapCanvas';
-import { AccountMapModal, type AccountMapNodeEditInput } from './AccountMapModal';
-import { AccountMapSetup } from './AccountMapSetup';
+import { AccountMapModal, type AccountMapModalRelatedItem, type AccountMapNodeEditInput } from './AccountMapModal';
+import { AccountMapSetup, type AccountMapDraftSaveResult } from './AccountMapSetup';
 import './account-map.css';
 
 export interface AccountMapRepositories { accountMap: AccountMapRepository; main: AccountMapMainSourceRepository }
@@ -24,6 +25,7 @@ export function AccountMapApp({ repositories }: { repositories?: AccountMapRepos
   const pendingModalRecoveryRef = useRef(false);
   const restoreFocusElementRef = useRef<HTMLElement | null>(null);
   const [restorePurposeId, setRestorePurposeId] = useState<`custom:${string}` | null>(null);
+  const [restoreLocationId, setRestoreLocationId] = useState<string | null>(null);
 
   useEffect(() => {
     if (state.mode !== 'migrating') return;
@@ -52,15 +54,30 @@ export function AccountMapApp({ repositories }: { repositories?: AccountMapRepos
   const restoringPurpose = state.mode === 'map' && restorePurposeId !== null
     ? state.applied.customPurposes.find(({ id }) => id === restorePurposeId && state.applied.customPurposes.some((candidate) => candidate.id === id && candidate.archivedAt !== undefined))
     : undefined;
+  const restoringLocation = (state.mode === 'map' || state.mode === 'setup') && restoreLocationId !== null
+    ? state.workspace.locations.find(({ id, archivedAt }) => id === restoreLocationId && archivedAt !== undefined)
+    : undefined;
+  const locationRestoreState = state.mode === 'map' ? state.applied : state.mode === 'setup' ? state.draft : null;
+  const restoringLocationRelated = restoringLocation === undefined || locationRestoreState === null || (state.mode !== 'map' && state.mode !== 'setup')
+    ? []
+    : buildLocationRestoreRelated(restoringLocation.id, locationRestoreState, state.workspace.locations, state.main);
   const management = <AccountMapManagementMenu
     hasMap={state.mode === 'map'}
     hasLegacy={hasLegacy}
     mutationsDisabled={(state.mode === 'map' || state.mode === 'setup') && state.recovery.status !== 'none'}
     archivedPurposes={state.mode === 'map' ? state.applied.customPurposes.filter(({ archivedAt }) => archivedAt !== undefined).map((purpose) => ({ id: purpose.id, name: purpose.name, parentName: purposeParentLabel(purpose.parentId), targetMonthlyWon: purpose.targetMonthlyWon })) : []}
+    archivedLocations={state.mode === 'map' || state.mode === 'setup' ? state.workspace.locations.filter(({ archivedAt }) => archivedAt !== undefined).map((location) => ({ id: location.id, shortName: location.shortName, institutionName: location.institution?.name ?? (location.kind === 'cash' ? '직접 보관' : '기관 없음') })) : []}
     onRestorePurpose={(purposeId) => {
       if (state.mode !== 'map' || state.recovery.status !== 'none') return;
       restoreFocusElementRef.current = document.querySelector<HTMLElement>('.journey-launcher__management-trigger');
+      setRestoreLocationId(null);
       setRestorePurposeId(purposeId);
+    }}
+    onRestoreLocation={(locationId) => {
+      if ((state.mode !== 'map' && state.mode !== 'setup') || state.recovery.status !== 'none') return;
+      restoreFocusElementRef.current = document.querySelector<HTMLElement>('.journey-launcher__management-trigger');
+      setRestorePurposeId(null);
+      setRestoreLocationId(locationId);
     }}
     onReset={async () => {
       if (state.mode !== 'map' && state.mode !== 'setup') return false;
@@ -76,11 +93,40 @@ export function AccountMapApp({ repositories }: { repositories?: AccountMapRepos
       return true;
     }}
   />;
+  const locationRestoreModal = restoringLocation === undefined || (state.mode !== 'map' && state.mode !== 'setup') ? null : <AccountMapModal
+    initialMode="restore-location"
+    node={{
+      id: `location:${restoringLocation.id}`,
+      kind: 'location',
+      label: restoringLocation.shortName,
+      amountWon: 0,
+      connectionCount: 0,
+      status: 'suspended',
+    }}
+    related={restoringLocationRelated}
+    sourceElement={null}
+    fallbackElement={restoreFocusElementRef.current}
+    reducedMotion={typeof window.matchMedia !== 'function' || window.matchMedia('(prefers-reduced-motion: reduce)').matches}
+    recovery={state.recovery}
+    recoveryPending={state.save.status === 'pending'}
+    saveFailed={state.save.status === 'failed'}
+    onReapply={reapplyIntent}
+    onKeepLatest={() => dispatch({ type: 'latest-kept' })}
+    onClose={() => {
+      const pending = pendingModalWorkspaceRef.current;
+      pendingModalWorkspaceRef.current = null;
+      const recovered = pendingModalRecoveryRef.current;
+      pendingModalRecoveryRef.current = false;
+      if (pending !== null) dispatch({ type: recovered ? 'reapply-succeeded' : 'save-succeeded', workspace: pending });
+      setRestoreLocationId(null);
+    }}
+    onRestoreLocation={restoreLocation}
+  />;
   if (state.mode === 'main-required') return <AppShell currentApp="account-map" managementMenu={management}><MessagePage title="월 자금 계획이 먼저 필요해요"><p>Main의 다섯 월 금액을 만든 뒤 계좌 연결 지도를 시작할 수 있습니다.</p><a className="ui-button ui-button--primary" href={appPath('main')}>월 자금 계획 만들기</a></MessagePage></AppShell>;
   if (state.mode === 'invalid') return <AppShell currentApp="account-map" managementMenu={management}><MessagePage title="저장된 데이터가 올바르지 않아요"><p>현재 데이터는 변경하지 않았습니다. Main 관리 메뉴에서 백업을 확인해 주세요.</p></MessagePage></AppShell>;
   if (state.mode === 'unavailable') return <AppShell currentApp="account-map" managementMenu={management}><MessagePage title="저장소를 불러오지 못했어요"><p>브라우저 저장소 사용 가능 여부를 확인한 뒤 다시 시도해 주세요.</p></MessagePage></AppShell>;
   if (state.mode === 'migrating') return <AppShell currentApp="account-map" managementMenu={management}><MessagePage title="계좌 연결을 준비하고 있어요"><p role="status">기존 데이터를 안전하게 옮기는 중입니다.</p></MessagePage></AppShell>;
-  if (state.mode === 'map') return <AppShell currentApp="account-map" managementMenu={management}><main className="account-map-page account-map-page--map"><header className="account-map-map-header"><div><p className="account-map-eyebrow">계좌 연결</p><h1>계좌 연결 지도</h1><p>Main의 월 금액은 읽기만 합니다. 노드를 한 번 누르면 연결에 집중합니다.</p></div></header><AccountMapCanvas applied={state.applied} main={state.main} locations={state.workspace.locations} interaction={state.interaction} recovery={state.recovery} recoveryPending={state.save.status === 'pending'} saveFailed={state.save.status === 'failed'} hasExternalModal={restoringPurpose !== undefined} onReapply={reapplyIntent} onKeepLatest={() => dispatch({ type: 'latest-kept' })} onTransient={(nodeId) => dispatch({ type: 'node-hovered', nodeId })} onBlur={(nodeId) => dispatch({ type: 'node-blurred', nodeId })} onInvoke={(nodeId) => dispatch({ type: 'node-invoked', nodeId })} onBackground={() => dispatch({ type: 'map-background-invoked' })} onEscape={() => dispatch({ type: 'escape-invoked' })} onModalClose={() => {
+  if (state.mode === 'map') return <AppShell currentApp="account-map" managementMenu={management}><main className="account-map-page account-map-page--map"><header className="account-map-map-header"><div><p className="account-map-eyebrow">계좌 연결</p><h1>계좌 연결 지도</h1><p>Main의 월 금액은 읽기만 합니다. 노드를 한 번 누르면 연결에 집중합니다.</p></div></header><AccountMapCanvas applied={state.applied} main={state.main} locations={state.workspace.locations} interaction={state.interaction} recovery={state.recovery} recoveryPending={state.save.status === 'pending'} saveFailed={state.save.status === 'failed'} hasExternalModal={restoringPurpose !== undefined || restoringLocation !== undefined} onReapply={reapplyIntent} onKeepLatest={() => dispatch({ type: 'latest-kept' })} onTransient={(nodeId) => dispatch({ type: 'node-hovered', nodeId })} onBlur={(nodeId) => dispatch({ type: 'node-blurred', nodeId })} onInvoke={(nodeId) => dispatch({ type: 'node-invoked', nodeId })} onBackground={() => dispatch({ type: 'map-background-invoked' })} onEscape={() => dispatch({ type: 'escape-invoked' })} onModalClose={() => {
     const pending = pendingModalWorkspaceRef.current;
     pendingModalWorkspaceRef.current = null;
     const recovered = pendingModalRecoveryRef.current;
@@ -160,24 +206,7 @@ export function AccountMapApp({ repositories }: { repositories?: AccountMapRepos
     }
     pendingModalWorkspaceRef.current = result.workspace;
     return true;
-  }} onRestoreLocation={async (locationId, restoreLinkIds, remainderByPurpose) => {
-    if (state.recovery.status !== 'none') return false;
-    const result = await resolved.accountMap.save(state.workspace.revision, { type: 'restore-location', locationId, restoreLinkIds, remainderByPurpose });
-    if (result.status !== 'saved') {
-      if (result.status === 'conflict') {
-        const restored = new Set(restoreLinkIds);
-        captureManualConflict('restore-location', [
-          { kind: 'location', id: locationId },
-          ...manualLinkTargets(restoreLinkIds, 'restorable-link'),
-          ...manualLinkTargets(Object.values(remainderByPurpose).filter((id) => id !== null && !restored.has(id)), 'link'),
-        ]);
-      }
-      else dispatch({ type: 'save-failed', reason: failureReason(result) });
-      return false;
-    }
-    pendingModalWorkspaceRef.current = result.workspace;
-    return true;
-  }} onLayoutChange={(layout) => {
+  }} onRestoreLocation={restoreLocation} onLayoutChange={(layout) => {
     if (layout === state.applied.layout || state.recovery.status !== 'none') return;
     const applied = { ...state.applied, layout, updatedAt: Date.now() };
     dispatch({ type: 'layout-changed', layout });
@@ -239,15 +268,43 @@ export function AccountMapApp({ repositories }: { repositories?: AccountMapRepos
       pendingModalWorkspaceRef.current = result.workspace;
       return true;
     }}
-  />}</main></AppShell>;
+  />}{locationRestoreModal}</main></AppShell>;
 
-  async function saveDraft(draft: AccountMapDraft): Promise<boolean> {
-    if (state.mode !== 'setup' || state.recovery.status !== 'none') return false;
+  async function saveDraft(draft: AccountMapDraft): Promise<AccountMapDraftSaveResult> {
+    if (state.mode !== 'setup' || state.recovery.status !== 'none') return { status: 'recovery' };
     dispatch({ type: 'save-requested' });
     const result = await resolved.accountMap.save(state.workspace.revision, { type: 'save-draft', draft });
-    if (result.status !== 'saved') { if (result.status === 'conflict') captureManualConflict('save-draft', []); else dispatch({ type: 'save-failed', reason: failureReason(result) }); return false; }
+    if (result.status !== 'saved') {
+      if (result.status === 'conflict') {
+        captureManualConflict('save-draft', []);
+        return { status: 'recovery' };
+      }
+      dispatch({ type: 'save-failed', reason: failureReason(result) });
+      if (result.status === 'rejected' && result.reason === 'custom-target-capacity') {
+        return { status: 'field-error', field: 'amount', message: '큰 목적의 월 금액을 넘을 수 없습니다.' };
+      }
+      return { status: 'failed', message: '저장하지 못했어요. 입력은 그대로 두었습니다.' };
+    }
     dispatch({ type: 'draft-updated', draft });
     dispatch({ type: 'save-succeeded', workspace: result.workspace });
+    return { status: 'saved' };
+  }
+
+  async function restoreLocation(locationId: string, restoreLinkIds: string[], remainderByPurpose: Record<string, string | null>): Promise<boolean> {
+    if ((state.mode !== 'map' && state.mode !== 'setup') || state.recovery.status !== 'none') return false;
+    const result = await resolved.accountMap.save(state.workspace.revision, { type: 'restore-location', locationId, restoreLinkIds, remainderByPurpose });
+    if (result.status !== 'saved') {
+      if (result.status === 'conflict') {
+        const restored = new Set(restoreLinkIds);
+        captureManualConflict('restore-location', [
+          { kind: 'location', id: locationId },
+          ...manualLinkTargets(restoreLinkIds, 'restorable-link'),
+          ...manualLinkTargets(Object.values(remainderByPurpose).filter((id) => id !== null && !restored.has(id)), 'link'),
+        ]);
+      } else dispatch({ type: 'save-failed', reason: failureReason(result) });
+      return false;
+    }
+    pendingModalWorkspaceRef.current = result.workspace;
     return true;
   }
 
@@ -400,7 +457,7 @@ export function AccountMapApp({ repositories }: { repositories?: AccountMapRepos
     return result;
   }
 
-  return <AppShell currentApp="account-map" managementMenu={management}><main className="account-map-page"><AccountMapSetup workspace={state.workspace} main={state.main} draft={state.draft} step={state.step} mainChanged={state.mainChanged} saveFailed={state.save.status === 'failed'} recoveryPending={state.save.status === 'pending'} recovery={state.recovery} onReapply={reapplyIntent} onKeepLatest={() => dispatch({ type: 'latest-kept' })} onCommitConnection={commitConnection} onSaveDraft={saveDraft} onReview={() => void changeSetupStep('review')} onBack={() => void changeSetupStep('connect')} onApply={() => void applyMap()} onExit={() => { if (state.recovery.status !== 'none') return; dispatch({ type: 'setup-exited' }); window.location.assign(appPath('main')); }} onCancelSetup={() => { if (state.recovery.status !== 'none') return; void resolved.accountMap.reset(state.workspace.revision).then((result) => { if (result.status === 'saved') dispatch({ type: 'setup-cancelled', workspace: result.workspace }); else if (result.status === 'conflict') captureManualConflict('cancel-setup', []); else dispatch({ type: 'save-failed', reason: failureReason(result) }); }); }} /></main></AppShell>;
+  return <AppShell currentApp="account-map" managementMenu={management}><main className="account-map-page"><AccountMapSetup workspace={state.workspace} main={state.main} draft={state.draft} step={state.step} mainChanged={state.mainChanged} saveFailed={state.save.status === 'failed'} recoveryPending={state.save.status === 'pending'} recovery={state.recovery} onReapply={reapplyIntent} onKeepLatest={() => dispatch({ type: 'latest-kept' })} onCommitConnection={commitConnection} onSaveDraft={saveDraft} onReview={() => void changeSetupStep('review')} onBack={() => void changeSetupStep('connect')} onApply={() => void applyMap()} onExit={() => { if (state.recovery.status !== 'none') return; dispatch({ type: 'setup-exited' }); window.location.assign(appPath('main')); }} onCancelSetup={() => { if (state.recovery.status !== 'none') return; void resolved.accountMap.reset(state.workspace.revision).then((result) => { if (result.status === 'saved') dispatch({ type: 'setup-cancelled', workspace: result.workspace }); else if (result.status === 'conflict') captureManualConflict('cancel-setup', []); else dispatch({ type: 'save-failed', reason: failureReason(result) }); }); }} />{locationRestoreModal}</main></AppShell>;
 
   async function saveIntent(expectedRevision: number, intent: AccountMapEditIntent): Promise<AccountMapWriteResult> {
     dispatch({ type: 'save-requested' });
@@ -504,4 +561,46 @@ function manualEditTargets(nodeId: string, intents: AccountMapEditIntent[], inpu
   for (const item of input.links) if (item.status === 'removed') targets.push({ kind: 'link', id: item.id });
   if (targets.length === 0) targets.push({ kind: 'node', id: nodeId });
   return targets.filter((target, index) => targets.findIndex((candidate) => candidate.kind === target.kind && candidate.id === target.id) === index);
+}
+
+function buildLocationRestoreRelated(
+  locationId: string,
+  purposeState: AccountMapApplied | AccountMapDraft,
+  locations: readonly FinancialLocation[],
+  main: MainData,
+): AccountMapModalRelatedItem[] {
+  const direct = purposeState.links.filter((link) => link.locationId === locationId).map((link) => ({
+    label: purposeLabel(link.purposeId, purposeState),
+    amountWon: link.monthlyAmountWon,
+    status: link.status,
+    ...(link.status === 'suspended' ? { suspendedReason: link.suspendedReason } : {}),
+    linkId: link.id,
+    purposeId: link.purposeId,
+    purposeTargetWon: reconcilePurpose(link.purposeId, purposeState, locations, main).targetWon,
+    locationId: link.locationId,
+    remainder: link.remainder,
+  }));
+  const purposeIds = new Set(direct.filter(({ suspendedReason }) => suspendedReason === 'location-archived').map(({ purposeId }) => purposeId));
+  const replacements = purposeState.links.filter((link) => purposeIds.has(link.purposeId)
+    && link.locationId !== locationId && link.status === 'active').map((link) => ({
+      label: locations.find(({ id }) => id === link.locationId)?.shortName ?? '다른 계좌',
+      amountWon: link.monthlyAmountWon,
+      status: link.status,
+      linkId: link.id,
+      purposeId: link.purposeId,
+      purposeTargetWon: reconcilePurpose(link.purposeId, purposeState, locations, main).targetWon,
+      locationId: link.locationId,
+      remainder: link.remainder,
+      replacementCandidate: true as const,
+    }));
+  return [...direct, ...replacements];
+}
+
+function purposeLabel(purposeId: PurposeId, state: AccountMapApplied | AccountMapDraft): string {
+  if (purposeId.startsWith('custom:')) return state.customPurposes.find(({ id }) => id === purposeId)?.name ?? '세부 목적';
+  return purposeId === 'system:income' ? '수입'
+    : purposeId === 'system:housing' ? '주거'
+      : purposeId === 'system:living' ? '생활비'
+        : purposeId === 'system:saving' ? '저축'
+          : '투자';
 }

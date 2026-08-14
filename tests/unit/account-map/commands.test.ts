@@ -610,6 +610,28 @@ describe('Account Map commands', () => {
     expect(JSON.stringify(result.workspace.portfolio)).toBe(JSON.stringify(before.portfolio));
   });
 
+  it('restores a zero-link location without resuming unrelated user-suspended links', () => {
+    const before = workspace();
+    before.locations[0] = { ...before.locations[0]!, archivedAt: 10 };
+    before.accountMap.applied = applied([
+      {
+        ...link('manual', 'checking', 200_000), purposeId: 'system:saving', status: 'suspended',
+        remainder: false, suspendedReason: 'user',
+      },
+    ]);
+
+    const result = applyAccountMapCommand(before, {
+      type: 'restore-location', locationId: 'checking', restoreLinkIds: [], remainderByPurpose: {},
+    }, 20);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.workspace.locations.find(({ id }) => id === 'checking')).not.toHaveProperty('archivedAt');
+    expect(result.workspace.accountMap.applied?.links).toContainEqual(expect.objectContaining({
+      id: 'manual', status: 'suspended', suspendedReason: 'user', remainder: false,
+    }));
+  });
+
   it('rejects a restored excess until a remainder correction is selected', () => {
     const before = workspace();
     before.locations.push({ ...location('archived', '보관계좌'), archivedAt: 10 });

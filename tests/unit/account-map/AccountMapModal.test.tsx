@@ -179,7 +179,7 @@ describe('AccountMapModal', () => {
     renderModal({
       node: { id: 'location:checking', kind: 'location', label: '생활비통장', status: 'suspended' },
       related: [
-        { label: '생활비', amountWon: 800_000, status: 'suspended', linkId: 'old', purposeId: 'system:living', purposeTargetWon: 1_000_000 },
+        { label: '생활비', amountWon: 800_000, status: 'suspended', suspendedReason: 'location-archived', linkId: 'old', purposeId: 'system:living', purposeTargetWon: 1_000_000 },
         { label: '기존통장', amountWon: 500_000, status: 'active', linkId: 'current', purposeId: 'system:living', purposeTargetWon: 1_000_000, replacementCandidate: true },
       ],
       onRestoreLocation: vi.fn(),
@@ -231,13 +231,39 @@ describe('AccountMapModal', () => {
     const onRestoreLocation = vi.fn(async () => true);
     renderModal({
       node: { id: 'location:checking', kind: 'location', label: '생활비통장', status: 'suspended' },
-      related: [{ label: '생활비', amountWon: 700_000, status: 'suspended', linkId: 'old', purposeId: 'system:living', locationId: 'checking', remainder: false }],
+      related: [{ label: '생활비', amountWon: 700_000, status: 'suspended', suspendedReason: 'location-archived', linkId: 'old', purposeId: 'system:living', locationId: 'checking', remainder: false }],
       onRestoreLocation,
     });
     fireEvent.click(screen.getByRole('button', { name: '복원' }));
     fireEvent.click(screen.getByRole('checkbox', { name: /생활비/ }));
     fireEvent.click(screen.getByRole('button', { name: '선택 복원' }));
     expect(onRestoreLocation).toHaveBeenCalledWith('checking', ['old'], {});
+  });
+
+  it('allows location-only restore and never offers user-suspended links for selection', () => {
+    const onRestoreLocation = vi.fn(async () => true);
+    renderModal({
+      initialMode: 'restore-location',
+      node: { id: 'location:vault', kind: 'location', label: '비상금함', amountWon: 0, status: 'suspended' },
+      related: [
+        {
+          label: '생활비', amountWon: 100_000, status: 'suspended', suspendedReason: 'location-archived',
+          linkId: 'archived-link', purposeId: 'system:living', locationId: 'vault', remainder: false,
+        },
+        {
+          label: '저축', amountWon: 200_000, status: 'suspended', suspendedReason: 'user',
+          linkId: 'user-link', purposeId: 'system:saving', locationId: 'vault', remainder: false,
+        },
+      ],
+      onRestoreLocation,
+    });
+
+    expect(screen.getByRole('checkbox', { name: /생활비/ })).toBeVisible();
+    expect(screen.queryByRole('checkbox', { name: /저축/ })).not.toBeInTheDocument();
+    const restore = screen.getByRole('button', { name: '선택 복원' });
+    expect(restore).toBeEnabled();
+    fireEvent.click(restore);
+    expect(onRestoreLocation).toHaveBeenCalledWith('vault', [], {});
   });
 
   it('keeps the archive selection and offers retry after a failed command', async () => {

@@ -118,20 +118,22 @@ function reduceMigrating(
     return { ...state, save: { status: 'failed', reason: event.reason } };
   }
   if (event.type !== 'migration-succeeded') return state;
+  if (event.workspace.main.applied === null) return { mode: 'main-required' };
+  const main = structuredClone(event.workspace.main.applied);
   const applied = event.workspace.accountMap.applied;
   if (applied !== null) {
     return {
-      mode: 'map', workspace: event.workspace, main: state.main,
+      mode: 'map', workspace: event.workspace, main,
       applied: structuredClone(applied), interaction: emptyInteraction(), save: { status: 'idle' },
       recovery: { status: 'none' },
     };
   }
   const draft = event.workspace.accountMap.draft;
   return {
-    mode: 'setup', workspace: event.workspace, main: state.main,
+    mode: 'setup', workspace: event.workspace, main,
     draft: draft === null ? null : structuredClone(draft),
     step: draft?.step ?? 'connect', resumed: draft !== null,
-    mainChanged: draft !== null && draft.sourceMainUpdatedAt !== state.main.updatedAt,
+    mainChanged: draft !== null && draft.sourceMainUpdatedAt !== main.updatedAt,
     exitRequested: false, save: { status: 'idle' }, recovery: { status: 'none' },
   };
 }

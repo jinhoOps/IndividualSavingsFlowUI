@@ -7,7 +7,13 @@ export interface ArchivedPurposeManagementItem {
   targetMonthlyWon: number;
 }
 
-export function AccountMapManagementMenu({ hasMap, hasLegacy = false, archivedPurposes = [], mutationsDisabled = false, onRestorePurpose = () => undefined, onReset = async () => false }: { hasMap: boolean; hasLegacy?: boolean; archivedPurposes?: readonly ArchivedPurposeManagementItem[]; mutationsDisabled?: boolean; onRestorePurpose?(purposeId: `custom:${string}`): void; onReset?(): Promise<boolean> }) {
+export interface ArchivedLocationManagementItem {
+  id: string;
+  shortName: string;
+  institutionName: string;
+}
+
+export function AccountMapManagementMenu({ hasMap, hasLegacy = false, archivedPurposes = [], archivedLocations = [], mutationsDisabled = false, onRestorePurpose = () => undefined, onRestoreLocation = () => undefined, onReset = async () => false }: { hasMap: boolean; hasLegacy?: boolean; archivedPurposes?: readonly ArchivedPurposeManagementItem[]; archivedLocations?: readonly ArchivedLocationManagementItem[]; mutationsDisabled?: boolean; onRestorePurpose?(purposeId: `custom:${string}`): void; onRestoreLocation?(locationId: string): void; onReset?(): Promise<boolean> }) {
   return <AppManagementMenu items={[
     ...(hasLegacy ? [{ kind: 'message' as const, id: 'legacy-data', text: '이전 형식 데이터가 호환용으로 보존되어 있습니다' }] : []),
     ...(archivedPurposes.length === 0 ? [] : [
@@ -20,6 +26,17 @@ export function AccountMapManagementMenu({ hasMap, hasLegacy = false, archivedPu
         onSelect: () => onRestorePurpose(purpose.id),
       })),
       { kind: 'separator' as const, id: 'archived-purpose-separator' },
+    ]),
+    ...(archivedLocations.length === 0 ? [] : [
+      { kind: 'message' as const, id: 'archived-location-count', text: `보관된 계좌·보관처 ${archivedLocations.length}개` },
+      ...archivedLocations.map((location) => ({
+        kind: 'action' as const,
+        id: `restore-location:${location.id}`,
+        label: `${location.shortName} · ${location.institutionName}`,
+        disabled: mutationsDisabled,
+        onSelect: () => onRestoreLocation(location.id),
+      })),
+      { kind: 'separator' as const, id: 'archived-location-separator' },
     ]),
     ...(hasMap ? [{
       kind: 'action' as const,

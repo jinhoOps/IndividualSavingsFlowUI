@@ -162,6 +162,33 @@ describe('Account Map reducer', () => {
     expect(kept).toMatchObject({ mode: 'setup', main: latestMain, mainChanged: true });
   });
 
+  it('adopts the migrated workspace Main and recomputes setup status from it', () => {
+    const latestMain = { ...main(), updatedAt: 20, monthlyLivingWon: 900_000 };
+    const latest = workspaceWithMain(2);
+    latest.main.applied = latestMain;
+    latest.accountMap.draft = draft();
+
+    const migrated = accountMapReducer(migratingState(), {
+      type: 'migration-succeeded', workspace: latest,
+    });
+
+    expect(migrated).toMatchObject({
+      mode: 'setup',
+      workspace: { revision: 2 },
+      main: latestMain,
+      mainChanged: true,
+    });
+  });
+
+  it('requires Main immediately when the migrated workspace no longer has one', () => {
+    const latest = workspaceWithMain(2);
+    latest.main.applied = null;
+
+    expect(accountMapReducer(migratingState(), {
+      type: 'migration-succeeded', workspace: latest,
+    })).toEqual({ mode: 'main-required' });
+  });
+
   it('requires Main when a concurrent recovery workspace removed its applied plan', () => {
     const withoutMain = { ...createEmptyWorkspace(2), revision: 2 };
 
@@ -341,6 +368,13 @@ function setupState(): AccountMapState {
   return {
     mode: 'setup', workspace, main: main(), draft: draft(), step: 'connect', resumed: false,
     mainChanged: false, exitRequested: false, save: { status: 'idle' }, recovery: { status: 'none' },
+  };
+}
+
+function migratingState(): AccountMapState {
+  const workspace = workspaceWithMain(1);
+  return {
+    mode: 'migrating', workspace, main: main(), revision: 1, save: { status: 'pending' },
   };
 }
 

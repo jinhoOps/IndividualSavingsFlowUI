@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import '@testing-library/jest-dom/vitest';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AccountMapApp } from '../../../src/account-map/ui/AccountMapApp';
+import { AccountMapSetup } from '../../../src/account-map/ui/AccountMapSetup';
 import { applyAccountMapCommand } from '../../../src/account-map/domain/commands';
 import { rebaseAccountMapIntent } from '../../../src/account-map/domain/editIntent';
 import type { AccountMapRepository, AccountMapWriteResult } from '../../../src/account-map/infrastructure/accountMapRepository';
@@ -193,6 +194,87 @@ describe('AccountMapSetup', () => {
     expect(screen.getByRole('dialog', { name: '세부 목적 추가' })).toBeVisible();
     expect(screen.getByRole('textbox', { name: '목적 이름' })).toHaveValue('여행');
   });
+
+  it('keeps a rejected custom purpose in the dialog and focuses its described field error', async () => {
+    const workspace = createEmptyWorkspace(1);
+    const appliedMain = mainData();
+    workspace.main.applied = appliedMain;
+    const onSaveDraft = vi.fn(async () => ({
+      status: 'field-error' as const,
+      field: 'name' as const,
+      message: '같은 큰 목적 안에 이미 같은 이름이 있습니다.',
+    }));
+    render(<AccountMapSetup
+      workspace={workspace}
+      main={appliedMain}
+      draft={null}
+      step="connect"
+      mainChanged={false}
+      saveFailed={false}
+      recoveryPending={false}
+      recovery={{ status: 'none' }}
+      onReapply={async () => false}
+      onKeepLatest={() => undefined}
+      onCommitConnection={async () => false}
+      onSaveDraft={onSaveDraft}
+      onReview={() => undefined}
+      onBack={() => undefined}
+      onApply={() => undefined}
+      onExit={() => undefined}
+      onCancelSetup={() => undefined}
+    />);
+    fireEvent.click(screen.getByRole('button', { name: '세부 목적 추가' }));
+    const name = screen.getByRole('textbox', { name: '목적 이름' });
+    const amount = screen.getByRole('textbox', { name: '월 금액' });
+    fireEvent.change(name, { target: { value: '여행' } });
+    fireEvent.change(amount, { target: { value: '100000' } });
+    fireEvent.click(screen.getByRole('button', { name: '추가' }));
+
+    const dialog = await screen.findByRole('dialog', { name: '세부 목적 추가' });
+    const alert = within(dialog).getByRole('alert');
+    expect(alert).toHaveTextContent('같은 큰 목적 안에 이미 같은 이름이 있습니다.');
+    expect(name).toHaveValue('여행');
+    expect(amount).toHaveValue('100000');
+    await waitFor(() => expect(name).toHaveFocus());
+    expect(name).toHaveAccessibleDescription('같은 큰 목적 안에 이미 같은 이름이 있습니다.');
+  });
+
+  it('maps an app-level capacity rejection to the described amount field', async () => {
+    const setup = fixture();
+    setup.repositories.accountMap.save = vi.fn(async () => ({
+      status: 'rejected' as const,
+      reason: 'custom-target-capacity' as const,
+    }));
+    render(<AccountMapApp repositories={setup.repositories} />);
+    fireEvent.click(screen.getByRole('button', { name: '세부 목적 추가' }));
+    fireEvent.change(screen.getByRole('textbox', { name: '목적 이름' }), { target: { value: '여행' } });
+    const amount = screen.getByRole('textbox', { name: '월 금액' });
+    fireEvent.change(amount, { target: { value: '100000' } });
+    fireEvent.click(screen.getByRole('button', { name: '추가' }));
+
+    const dialog = await screen.findByRole('dialog', { name: '세부 목적 추가' });
+    expect(within(dialog).getByRole('alert')).toHaveTextContent('큰 목적의 월 금액을 넘을 수 없습니다.');
+    await waitFor(() => expect(amount).toHaveFocus());
+    expect(amount).toHaveAccessibleDescription('큰 목적의 월 금액을 넘을 수 없습니다.');
+    expect(within(dialog).getByRole('textbox', { name: '목적 이름' })).toHaveValue('여행');
+    expect(amount).toHaveValue('100000');
+  });
+
+  it('renders a storage failure inside the custom-purpose dialog and focuses the alert', async () => {
+    const setup = fixture(false, true);
+    render(<AccountMapApp repositories={setup.repositories} />);
+    fireEvent.click(screen.getByRole('button', { name: '세부 목적 추가' }));
+    fireEvent.change(screen.getByRole('textbox', { name: '목적 이름' }), { target: { value: '여행' } });
+    fireEvent.change(screen.getByRole('textbox', { name: '월 금액' }), { target: { value: '100000' } });
+    fireEvent.click(screen.getByRole('button', { name: '추가' }));
+
+    const dialog = await screen.findByRole('dialog', { name: '세부 목적 추가' });
+    const alert = within(dialog).getByRole('alert');
+    expect(alert).toHaveTextContent('저장하지 못했어요. 입력은 그대로 두었습니다.');
+    await waitFor(() => expect(alert).toHaveFocus());
+    expect(within(dialog).getByRole('textbox', { name: '목적 이름' })).toHaveValue('여행');
+    expect(within(dialog).getByRole('textbox', { name: '월 금액' })).toHaveValue('100000');
+  });
 });
 
 function stalePendingFixture() {
@@ -261,4 +343,8 @@ function fixture(withLocation = false, failSave = false, archived = false) {
   };
   const main: AccountMapMainSourceRepository = { load: vi.fn(() => ({ status: 'found' as const, data: mainData })) };
   return { repositories: { accountMap, main }, current: (): WorkspaceDocument => workspace };
+}
+
+function mainData() {
+  return { schemaVersion: 2 as const, updatedAt: 10, monthlyNetIncomeWon: 2_000_000, monthlyHousingWon: 500_000, monthlyLivingWon: 1_000_000, monthlySavingWon: 300_000, monthlyInvestmentWon: 200_000 };
 }

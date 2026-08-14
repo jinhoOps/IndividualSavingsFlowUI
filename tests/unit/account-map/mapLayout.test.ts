@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { layoutAccountMap, type AccountMapGraph } from '../../../src/account-map/ui/mapLayout';
+import type { AccountMapApplied } from '../../../src/account-map/domain/model';
+import { buildAccountMapGraph, layoutAccountMap, type AccountMapGraph } from '../../../src/account-map/ui/mapLayout';
 
 const graph: AccountMapGraph = {
   nodes: [
@@ -15,6 +16,41 @@ const graph: AccountMapGraph = {
 };
 
 describe('Account Map layout', () => {
+  it('keeps every active registry location discoverable even when it has no links', () => {
+    const result = buildAccountMapGraph(emptyApplied(), [
+      { id: 'vault', shortName: '비상금함', kind: 'cash', roles: ['saving'], createdAt: 1, updatedAt: 1 },
+    ], main, 'default');
+
+    expect(result.nodes.find(({ id }) => id === 'location:vault')).toMatchObject({
+      kind: 'location', label: '비상금함', amountWon: 0, connectionCount: 0, status: 'resolved',
+    });
+  });
+
+  it('shows a system purpose Main reference while retaining its direct allocation target', () => {
+    const applied = emptyApplied();
+    applied.customPurposes = [{
+      id: 'custom:trip', parentId: 'system:living', name: '여행', targetMonthlyWon: 100_000,
+      createdAt: 1, updatedAt: 1,
+    }];
+    applied.links = [{
+      id: 'living', purposeId: 'system:living', locationId: 'checking', monthlyAmountWon: 900_000,
+      remainder: true, status: 'active', createdAt: 1, updatedAt: 1,
+    }];
+    const result = buildAccountMapGraph(applied, [
+      { id: 'checking', shortName: '생활비통장', kind: 'bank', roles: ['spending'], createdAt: 1, updatedAt: 1 },
+    ], main, 'default');
+
+    expect(result.nodes.find(({ id }) => id === 'system:living')).toMatchObject({
+      amountWon: 1_000_000,
+      allocationTargetWon: 900_000,
+      status: 'resolved',
+    });
+    expect(result.nodes.find(({ id }) => id === 'custom:trip')).toMatchObject({
+      amountWon: 100_000,
+      allocationTargetWon: 100_000,
+    });
+  });
+
   it.each([[390, 'top-to-bottom'], [768, 'top-to-bottom'], [1280, 'left-to-right']] as const)(
     'keeps deterministic nodes inside %ipx', (width, direction) => {
       const viewport = { width, height: 700 };
@@ -58,3 +94,25 @@ describe('Account Map layout', () => {
     expect(result.height).toBeGreaterThan(700);
   });
 });
+
+const main = {
+  schemaVersion: 2 as const,
+  updatedAt: 1,
+  monthlyNetIncomeWon: 2_000_000,
+  monthlyHousingWon: 500_000,
+  monthlyLivingWon: 1_000_000,
+  monthlySavingWon: 300_000,
+  monthlyInvestmentWon: 200_000,
+};
+
+function emptyApplied(): AccountMapApplied {
+  return {
+    schemaVersion: 1,
+    sourceMainUpdatedAt: 1,
+    customPurposes: [],
+    links: [],
+    layout: 'purpose',
+    setupCompletedAt: 1,
+    updatedAt: 1,
+  };
+}

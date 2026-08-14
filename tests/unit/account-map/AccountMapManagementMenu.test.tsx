@@ -40,6 +40,22 @@ describe('AccountMapManagementMenu', () => {
     expect(onRestorePurpose).toHaveBeenCalledWith('custom:telecom');
   });
 
+  it('lists archived registry locations even when they have no links', () => {
+    const onRestoreLocation = vi.fn();
+    render(<AccountMapManagementMenu
+      hasMap
+      archivedLocations={[
+        { id: 'vault', shortName: '비상금함', institutionName: '직접 보관' },
+      ]}
+      onRestoreLocation={onRestoreLocation}
+    />);
+
+    fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
+    expect(screen.getByText('보관된 계좌·보관처 1개')).toBeVisible();
+    fireEvent.click(screen.getByRole('menuitem', { name: '비상금함 · 직접 보관' }));
+    expect(onRestoreLocation).toHaveBeenCalledWith('vault');
+  });
+
   it('locks archived-purpose restore while recovery is active', () => {
     render(<AccountMapManagementMenu
       hasMap

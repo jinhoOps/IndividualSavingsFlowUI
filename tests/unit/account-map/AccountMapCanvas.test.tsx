@@ -49,6 +49,11 @@ describe('AccountMapCanvas', () => {
     expect(screen.getByRole('table', { name: '계좌 연결 읽기 표' })).toBeInTheDocument();
   });
 
+  it('keeps the screen-reader linear table out of the keyboard tab order', () => {
+    renderCanvas();
+    expect(screen.getByRole('table', { name: '계좌 연결 읽기 표' })).not.toHaveAttribute('tabindex');
+  });
+
   it('reveals connected edge amounts on equivalent focus and invocation', () => {
     const onTransient = vi.fn();
     const { container, rerender } = renderCanvas({ onTransient });

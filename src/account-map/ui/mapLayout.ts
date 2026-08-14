@@ -1,7 +1,7 @@
 import type { MainData } from '../../main/domain/model';
 import type { FinancialLocation } from '../../workspace/domain/financialLocation';
 import type { AccountMapApplied, PurposeId, SystemPurposeId } from '../domain/model';
-import { overallMainState, reconcilePurpose } from '../domain/reconciliation';
+import { mainPurposeReferences, overallMainState, reconcilePurpose } from '../domain/reconciliation';
 
 export type MapZoom = 'overview' | 'default' | 'detail';
 export type MapLayout = 'purpose' | 'account';
@@ -12,6 +12,7 @@ export interface GraphNode {
   label: string;
   secondary?: string;
   amountWon?: number;
+  allocationTargetWon?: number;
   connectionCount: number;
   status: 'resolved' | 'unassigned' | 'excess' | 'suspended' | 'surplus' | 'deficit';
 }
@@ -41,6 +42,7 @@ export function buildAccountMapGraph(
   zoom: MapZoom,
 ): AccountMapGraph {
   const activeCustom = applied.customPurposes.filter(({ archivedAt }) => archivedAt === undefined);
+  const references = mainPurposeReferences(main);
   const purposeIds: PurposeId[] = [
     'system:income', 'system:housing', 'system:living', 'system:saving', 'system:investing',
     ...(zoom === 'overview' ? [] : activeCustom.map(({ id }) => id)),
@@ -61,13 +63,16 @@ export function buildAccountMapGraph(
       kind: 'purpose',
       label: purposeLabel(purposeId, applied),
       ...(zoom === 'overview' && count > 1 ? { secondary: `대표 계좌 · 외 ${count - 1}개` } : {}),
-      amountWon: result.targetWon,
+      amountWon: purposeId.startsWith('system:')
+        ? references[purposeId as SystemPurposeId]
+        : result.targetWon,
+      allocationTargetWon: result.targetWon,
       connectionCount: count,
       status: result.excessWon > 0 ? 'excess' : result.unassignedWon > 0 ? 'unassigned' : 'resolved',
     };
   });
   const locationNodes: GraphNode[] = locations
-    .filter((location) => visibleLocationIds.has(location.id))
+    .filter((location) => location.archivedAt === undefined || visibleLocationIds.has(location.id))
     .map((location) => {
       const connections = activeLinks.filter(({ locationId }) => locationId === location.id);
       return {

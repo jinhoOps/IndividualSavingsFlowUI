@@ -67,6 +67,10 @@ function editableWorkspace() {
 
 function responsiveWorkspace() {
   const workspace = editableWorkspace();
+  workspace.locations.push({
+    ...location('archived-vault', '보관함', 'hana', '하나은행', ['saving']),
+    archivedAt: now,
+  });
   workspace.accountMap.applied!.links.find(({ id }) => id === 'living')!.monthlyAmountWon = 800_000;
   workspace.accountMap.applied!.customPurposes = [
     {
@@ -163,6 +167,24 @@ function link(id: string, purposeId: string, locationId: string, monthlyAmountWo
 
 async function seed(page: Page, workspace: ReturnType<typeof emptyWorkspace>) {
   await page.addInitScript(({ key, value }) => localStorage.setItem(key, JSON.stringify(value)), { key: STORAGE_KEY, value: workspace });
+}
+
+async function seedMigrationCollision(page: Page, legacy: unknown, latest: ReturnType<typeof emptyWorkspace>) {
+  await page.addInitScript(({ key, legacyWorkspace, latestWorkspace }) => {
+    localStorage.setItem(key, JSON.stringify(legacyWorkspace));
+    const originalRequest = navigator.locks.request.bind(navigator.locks);
+    let injected = false;
+    Object.defineProperty(navigator.locks, 'request', {
+      configurable: true,
+      value: (name: string, callback: (lock: Lock | null) => unknown) => {
+        if (!injected && name === 'isf-workspace-v1-save') {
+          injected = true;
+          localStorage.setItem(key, JSON.stringify(latestWorkspace));
+        }
+        return originalRequest(name, callback);
+      },
+    });
+  }, { key: STORAGE_KEY, legacyWorkspace: legacy, latestWorkspace: latest });
 }
 
 async function readProtected(page: Page) {
@@ -348,13 +370,35 @@ test('supports layout, semantic zoom, focus parity, second invoke, and same-moda
   await page.getByRole('button', { name: '축소' }).click();
   await expect(page.getByRole('button', { name: '확대' })).toBeEnabled();
   await expect(page.getByRole('table', { name: '계좌 연결 읽기 표' })).toBeAttached();
+  await expect(page.getByRole('table', { name: '계좌 연결 읽기 표' })).not.toHaveAttribute('tabindex');
+});
+
+test('shows the Main reference on a system purpose while keeping its direct links at the remainder', async ({ page }) => {
+  const workspace = responsiveWorkspace();
+  await seed(page, workspace);
+  await page.goto('apps/account-map/');
+
+  const living = page.getByRole('button', {
+    name: '목적 · 생활비 · 1,000,000원 · 활성 연결 2개 · 연결 완료',
+  });
+  await expect(living).toBeVisible();
+  await expect(page.getByRole('button', {
+    name: '목적 · 여행 · 100,000원 · 활성 연결 1개 · 연결 완료',
+  })).toBeVisible();
+  await living.focus();
+  expect(await page.locator('.account-map-edge-amount').allTextContents()).toEqual(['800,000원', '100,000원']);
+  const persisted = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!), STORAGE_KEY);
+  expect(persisted.accountMap.applied.links.find(({ id }: { id: string }) => id === 'living'))
+    .toMatchObject({ monthlyAmountWon: 800_000, remainder: true });
+  expect(persisted.accountMap.applied.links.find(({ id }: { id: string }) => id === 'living-backup'))
+    .toMatchObject({ monthlyAmountWon: 100_000, remainder: false });
 });
 
 test('gives management overlays first Escape ownership before clearing a pinned map node', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await seed(page, responsiveWorkspace());
   await page.goto('apps/account-map/');
-  const living = page.getByRole('button', { name: /생활비.*900,000원/ }).first();
+  const living = page.getByRole('button', { name: /생활비.*1,000,000원/ }).first();
 
   await living.tap();
   await expect(living).toHaveClass(/is-pinned/);
@@ -774,6 +818,77 @@ test('archives, selectively restores, and resets only Account Map', async ({ pag
   expect(stored.accountMap.applied).toBeNull();
 });
 
+test('edits and archives an active zero-link location, then restores it from management', async ({ page }) => {
+  const workspace = mappedWorkspace();
+  workspace.locations.push(location('vault', '비상금함', 'hana', '하나은행', ['saving']));
+  await seed(page, workspace);
+  await page.goto('apps/account-map/');
+  const before = await readProtected(page);
+
+  await openNode(page, /계좌·보관처 · 비상금함 · 0원 · 활성 연결 0개 · 연결 완료/);
+  await expect(page.getByText('연결된 항목이 없습니다.')).toBeVisible();
+  await page.getByRole('button', { name: '편집' }).click();
+  await page.getByRole('textbox', { name: '표시 이름' }).fill('예비자금');
+  await page.getByRole('button', { name: '저장' }).click();
+  const renamed = page.getByRole('button', { name: /계좌·보관처 · 예비자금 · 0원 · 활성 연결 0개 · 연결 완료/ });
+  await expect(renamed).toBeVisible();
+  await expect(renamed).toBeFocused();
+
+  await openNode(page, /계좌·보관처 · 예비자금 · 0원 · 활성 연결 0개 · 연결 완료/);
+  await page.getByRole('button', { name: '보관', exact: true }).click();
+  await page.getByRole('button', { name: '보관하기' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: '목적과 계좌의 연결' })).toBeFocused();
+  await expect(renamed).toHaveCount(0);
+
+  await page.getByRole('button', { name: '관리 메뉴' }).click();
+  await expect(page.getByText('보관된 계좌·보관처 1개')).toBeVisible();
+  await page.getByRole('menuitem', { name: '예비자금 · 하나은행' }).click();
+  const restore = page.getByRole('dialog', { name: '예비자금 복원' });
+  await expect(restore.getByRole('checkbox')).toHaveCount(0);
+  await expect(restore.getByRole('button', { name: '선택 복원' })).toBeEnabled();
+  await restore.getByRole('button', { name: '선택 복원' }).click();
+  await expect(page.getByRole('button', { name: /계좌·보관처 · 예비자금 · 0원 · 활성 연결 0개 · 연결 완료/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: '관리 메뉴' })).toBeFocused();
+  expect(await readProtected(page)).toEqual(before);
+});
+
+test('offers only location-archived links and leaves user-suspended links untouched', async ({ page }) => {
+  const workspace = mappedWorkspace();
+  workspace.locations.push({
+    ...location('vault', '혼합보관함', 'hana', '하나은행', ['spending', 'saving']),
+    archivedAt: now,
+  });
+  workspace.accountMap.applied!.links.push(
+    {
+      ...link('archived-housing', 'system:housing', 'vault', 100_000, false),
+      status: 'suspended', suspendedReason: 'location-archived',
+    },
+    {
+      ...link('manual-saving', 'system:saving', 'vault', 200_000, false),
+      status: 'suspended', suspendedReason: 'user',
+    },
+  );
+  await seed(page, workspace);
+  await page.goto('apps/account-map/');
+
+  await page.getByRole('button', { name: '관리 메뉴' }).click();
+  await page.getByRole('menuitem', { name: '혼합보관함 · 하나은행' }).click();
+  const restore = page.getByRole('dialog', { name: '혼합보관함 복원' });
+  await expect(restore.getByRole('checkbox', { name: /주거/ })).toBeVisible();
+  await expect(restore.getByRole('checkbox', { name: /저축/ })).toHaveCount(0);
+  await restore.getByRole('checkbox', { name: /주거/ }).check();
+  await restore.getByRole('button', { name: '선택 복원' }).click();
+  await expect(restore).toHaveCount(0);
+
+  const stored = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!), STORAGE_KEY);
+  expect(stored.locations.find(({ id }: { id: string }) => id === 'vault')).not.toHaveProperty('archivedAt');
+  expect(stored.accountMap.applied.links.find(({ id }: { id: string }) => id === 'archived-housing'))
+    .toMatchObject({ status: 'active', remainder: false });
+  expect(stored.accountMap.applied.links.find(({ id }: { id: string }) => id === 'manual-saving'))
+    .toMatchObject({ status: 'suspended', suspendedReason: 'user', remainder: false });
+});
+
 test('migrates a v1 workspace without touching its protected slices', async ({ page }) => {
   const current = mappedWorkspace();
   const legacy = {
@@ -787,6 +902,48 @@ test('migrates a v1 workspace without touching its protected slices', async ({ p
   const stored = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!), STORAGE_KEY);
   expect(stored.schemaVersion).toBe(2);
   expect({ main: stored.main, simulation: stored.simulation, portfolio: stored.portfolio }).toEqual(protectedSlices);
+});
+
+test('adopts a concurrently changed Main when migration collides', async ({ page }) => {
+  const current = mappedWorkspace();
+  const legacy = {
+    ...current,
+    schemaVersion: 1,
+    accountMap: { applied: null, draft: null, instruments: [], flows: [] },
+  };
+  const latest = emptyWorkspace();
+  latest.revision = 2;
+  latest.updatedAt = now + 1;
+  latest.main.applied = { ...main, updatedAt: now + 1, monthlyLivingWon: 1_200_000 };
+  latest.accountMap.draft = {
+    schemaVersion: 1, sourceMainUpdatedAt: now, customPurposes: [], links: [], step: 'connect', updatedAt: now,
+  };
+  await seedMigrationCollision(page, legacy, latest);
+  await page.goto('apps/account-map/');
+
+  await expect(page.getByText('Main의 월 금액이 바뀌었어요')).toBeVisible();
+  await expect(page.getByRole('heading', { name: '생활비' }).locator('../..')).toContainText('1,200,000원');
+  const stored = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!), STORAGE_KEY);
+  expect(stored).toEqual(latest);
+});
+
+test('requires Main when migration collision adopts a workspace without Main', async ({ page }) => {
+  const current = mappedWorkspace();
+  const legacy = {
+    ...current,
+    schemaVersion: 1,
+    accountMap: { applied: null, draft: null, instruments: [], flows: [] },
+  };
+  const latest = emptyWorkspace();
+  latest.revision = 2;
+  latest.updatedAt = now + 1;
+  latest.main.applied = null;
+  await seedMigrationCollision(page, legacy, latest);
+  await page.goto('apps/account-map/');
+
+  await expect(page.getByRole('heading', { name: '월 자금 계획이 먼저 필요해요' })).toBeVisible();
+  const stored = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!), STORAGE_KEY);
+  expect(stored).toEqual(latest);
 });
 
 test('completes reduced-motion node and layout motion synchronously', async ({ page }) => {
@@ -822,7 +979,7 @@ test('completes reduced-motion node and layout motion synchronously', async ({ p
   expect(layoutMotion).toEqual({ accountPressed: 'true', disabled: [false, false] });
 });
 
-test('keeps all Account Map states contained with 44px action targets at supported widths', async ({ page }) => {
+test('keeps all Account Map states contained with 44px action targets at supported widths', async ({ page }, testInfo) => {
   test.setTimeout(90_000);
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.addInitScript(({ key, workspace }) => {
@@ -853,7 +1010,15 @@ test('keeps all Account Map states contained with 44px action targets at support
     await expect(purposeRestore.getByRole('textbox', { name: '월 목표 금액' })).toBeVisible();
     await expect(purposeRestore.getByRole('button', { name: '목적 복원' })).toBeVisible();
     await expectContainedActionTargets(page, `${prefix} purpose restore`);
-    await page.getByRole('button', { name: '취소' }).click();
+    await purposeRestore.getByRole('button', { name: '취소' }).click();
+
+    await page.getByRole('button', { name: '관리 메뉴' }).click();
+    await page.getByRole('menuitem', { name: '보관함 · 하나은행' }).click();
+    const locationRestore = page.getByRole('dialog', { name: '보관함 복원' });
+    await expect(locationRestore.getByRole('button', { name: '선택 복원' })).toBeEnabled();
+    await expectContainedActionTargets(page, `${prefix} zero-link location restore`);
+    await page.screenshot({ fullPage: true, path: testInfo.outputPath(`${viewport.width}-zero-link-location-restore.png`) });
+    await locationRestore.getByRole('button', { name: '취소' }).click();
 
     await openNode(page, /여행.*100,000원/);
     const more = page.getByRole('button', { name: '여행 더보기' });
@@ -871,7 +1036,7 @@ test('keeps all Account Map states contained with 44px action targets at support
     await page.getByRole('button', { name: '취소' }).click();
     await page.getByRole('button', { name: '닫기' }).click();
 
-    await openNode(page, /생활비.*900,000원/);
+    await openNode(page, /생활비.*1,000,000원/);
     await expectContainedActionTargets(page, `${prefix} node read`);
     await page.getByRole('button', { name: '편집' }).click();
     await expectContainedActionTargets(page, `${prefix} node edit`);
@@ -901,7 +1066,29 @@ test('keeps all Account Map states contained with 44px action targets at support
     await expectContainedActionTargets(page, `${prefix} setup`);
     await page.getByRole('button', { name: '세부 목적 추가' }).click();
     await expectContainedActionTargets(page, `${prefix} custom-purpose form`);
-    await page.getByRole('button', { name: '취소' }).click();
+    const customDialog = page.getByRole('dialog', { name: '세부 목적 추가' });
+    await customDialog.getByRole('textbox', { name: '목적 이름' }).fill('여행');
+    await customDialog.getByRole('textbox', { name: '월 금액' }).fill('100000');
+    await page.evaluate((key) => {
+      const original = Storage.prototype.setItem;
+      (window as typeof window & { __accountMapOriginalSetItem?: typeof Storage.prototype.setItem }).__accountMapOriginalSetItem = original;
+      Storage.prototype.setItem = function setItem(storageKey: string, value: string) {
+        if (storageKey === key) throw new Error('forced storage failure');
+        original.call(this, storageKey, value);
+      };
+    }, STORAGE_KEY);
+    await customDialog.getByRole('button', { name: '추가' }).click();
+    const saveAlert = customDialog.getByRole('alert');
+    await expect(saveAlert).toHaveText('저장하지 못했어요. 입력은 그대로 두었습니다.');
+    await expect(saveAlert).toBeFocused();
+    await expectContainedActionTargets(page, `${prefix} custom-purpose save failure`);
+    await page.screenshot({ fullPage: true, path: testInfo.outputPath(`${viewport.width}-custom-purpose-save-failure.png`) });
+    await page.evaluate(() => {
+      const target = window as typeof window & { __accountMapOriginalSetItem?: typeof Storage.prototype.setItem };
+      if (target.__accountMapOriginalSetItem !== undefined) Storage.prototype.setItem = target.__accountMapOriginalSetItem;
+      delete target.__accountMapOriginalSetItem;
+    });
+    await customDialog.getByRole('button', { name: '취소' }).click();
     await page.getByRole('article').filter({ hasText: '수입' }).getByRole('button', { name: '연결' }).click();
     await expectContainedActionTargets(page, `${prefix} connection sheet`);
     await page.getByRole('button', { name: '새 계좌·보관처 추가' }).click();
