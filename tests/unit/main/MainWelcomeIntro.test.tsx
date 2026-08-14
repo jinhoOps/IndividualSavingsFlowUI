@@ -48,9 +48,19 @@ describe('MainWelcomeIntro', () => {
     expect(screen.getByTestId('main-welcome-intro')).toBe(section);
     expect(screen.getByRole('heading', { name: '나의 가계 흐름 시작 화면' })).toHaveClass('sr-only');
     expect(section).toHaveAttribute('aria-describedby');
-    expect(screen.getByText('월간 돈의 흐름을 차분히 살펴보세요.')).toHaveClass('sr-only');
+    expect(screen.getByText('잠시 후 설정 화면으로 이동합니다. 화면을 누르거나 건너뛰기 버튼을 선택할 수 있습니다.')).toHaveClass('sr-only');
     expect(screen.getByText('나의 가계 흐름')).toBeVisible();
     expect(section.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
+  });
+
+  it('places the minor app-name label after the brand icon', () => {
+    render(<MainWelcomeIntro onComplete={vi.fn()} />);
+
+    const icon = document.querySelector('.main-welcome-intro__visual');
+    const appName = screen.getByText('나의 가계 흐름');
+
+    expect(icon).not.toBeNull();
+    expect(icon!.compareDocumentPosition(appName) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('focuses the one 44px skip button', () => {

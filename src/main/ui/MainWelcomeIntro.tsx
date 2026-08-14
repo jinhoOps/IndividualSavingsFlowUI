@@ -115,12 +115,12 @@ export function MainWelcomeIntro({ onComplete }: MainWelcomeIntroProps): JSX.Ele
       onPointerDown={finish}
     >
       <h1 id="main-welcome-intro-title" className="sr-only">나의 가계 흐름 시작 화면</h1>
-      <p id="main-welcome-intro-description" className="sr-only">월간 돈의 흐름을 차분히 살펴보세요.</p>
+      <p id="main-welcome-intro-description" className="sr-only">잠시 후 설정 화면으로 이동합니다. 화면을 누르거나 건너뛰기 버튼을 선택할 수 있습니다.</p>
       <div className="main-welcome-intro__content">
-        <p className="main-welcome-intro__app-name">나의 가계 흐름</p>
         <div className="main-welcome-intro__visual">
           <MainBrandIcon />
         </div>
+        <p className="main-welcome-intro__app-name">나의 가계 흐름</p>
       </div>
       <button
         ref={buttonRef}
