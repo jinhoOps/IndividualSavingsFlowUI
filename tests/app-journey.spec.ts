@@ -164,7 +164,12 @@ test('revisits Simulation at the result and refreshes only its Main source', asy
 });
 
 test('keeps detailed Portfolio and purpose-first Account Map isolated', async ({ page }) => {
-  await page.addInitScript((fixture) => localStorage.setItem('isf-workspace-v1', JSON.stringify(fixture)), appliedWorkspace);
+  const supportedAccountMapWorkspace = {
+    ...appliedWorkspace,
+    schemaVersion: 2,
+    accountMap: { applied: null, draft: null, legacyPhaseA: { instruments: [], flows: [] } },
+  };
+  await page.addInitScript((fixture) => localStorage.setItem('isf-workspace-v1', JSON.stringify(fixture)), supportedAccountMapWorkspace);
   await page.goto('apps/portfolio/');
   await expect(page.getByRole('heading', { name: '매달 200,000원을 어디에 투자할까요?' })).toBeVisible();
   await expect(page.getByRole('link', { name: /투자 배분 \(Portfolio\).*현재 위치/ })).toBeVisible();
@@ -190,11 +195,29 @@ test('keeps detailed Portfolio and purpose-first Account Map isolated', async ({
   await page.goto('apps/account-map/');
   await expect(page.getByRole('heading', { name: '월 자금의 위치를 알려주세요' })).toBeVisible();
   await expect(page.locator('app-header, data-hub-modal, #portfolioCreator, #accountMapCanvas')).toHaveCount(0);
-  expect(await page.evaluate(() => (
+  const accountMapObservation = await page.evaluate(() => ({
+    calls: (
     window as typeof window & {
       __accountMapStorageCalls: Array<{ operation: 'get' | 'set' | 'remove'; key: string }>;
     }
-  ).__accountMapStorageCalls)).toEqual([]);
+    ).__accountMapStorageCalls,
+    protectedSlices: (() => {
+      const workspace = JSON.parse(localStorage.getItem('isf-workspace-v1')!);
+      return {
+        main: workspace.main,
+        simulation: workspace.simulation,
+        portfolio: workspace.portfolio,
+      };
+    })(),
+  }));
+  expect(accountMapObservation.calls.length).toBeGreaterThan(0);
+  expect([...new Set(accountMapObservation.calls.map(({ key }) => key))]).toEqual(['isf-workspace-v1']);
+  expect(accountMapObservation.calls.filter(({ operation }) => operation !== 'get')).toEqual([]);
+  expect(accountMapObservation.protectedSlices).toEqual({
+    main: supportedAccountMapWorkspace.main,
+    simulation: supportedAccountMapWorkspace.simulation,
+    portfolio: supportedAccountMapWorkspace.portfolio,
+  });
 });
 
 test('separates app navigation and the right-aligned management tool across viewports', async ({ page }) => {
@@ -499,18 +522,18 @@ test('keeps the current app direct and exposes hidden apps through overflow', as
   expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
 });
 
-test('commits Journey reveals before paint under reduced motion', async ({ page }) => {
+test('commits launcher reveals before paint on the supported Account Map under reduced motion', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('apps/account-map/');
 
-  const readiness = page.locator('[data-readiness-motion]');
+  const accountMapMessage = page.locator('.account-map-message');
   const currentLine = page.locator(
     '[aria-current="page"] .journey-launcher__current-line',
   );
-  await expect(readiness).toBeVisible();
+  await expect(accountMapMessage).toBeVisible();
+  await expect(page.getByRole('heading', { name: '월 자금 계획이 먼저 필요해요' })).toBeVisible();
   await expect(currentLine).toBeVisible();
-  expect(await readMotionState(readiness)).toEqual({ opacity: 1, x: 0, y: 0 });
   expect(await readMotionState(currentLine)).toEqual({ opacity: 1, x: 0, y: 0 });
 
   await page.addStyleTag({ content: '.journey-launcher { width: 220px !important; }' });

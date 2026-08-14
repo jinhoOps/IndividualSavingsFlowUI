@@ -112,7 +112,10 @@ function manyToManyWorkspace() {
     {
       schemaVersion: 2,
       scope: { type: 'aggregate' },
-      items: [{ id: 'asset-global', name: '글로벌 인덱스', shareUnits: 700_000, order: 0 }],
+      items: [{
+        id: 'asset-global', name: '글로벌 인덱스', shareUnits: 700_000, order: 0,
+        classification: 'growth', classificationOrigin: 'automatic',
+      }],
       cashShareUnits: 300_000,
       cashMode: 'automatic',
       syncedInvestmentWon: main.monthlyInvestmentWon,
@@ -122,7 +125,10 @@ function manyToManyWorkspace() {
     {
       schemaVersion: 2,
       scope: { type: 'location', locationId: 'brokerage' },
-      items: [{ id: 'asset-bond', name: '국채', shareUnits: 400_000, order: 0 }],
+      items: [{
+        id: 'asset-bond', name: '국채', shareUnits: 400_000, order: 0,
+        classification: 'stable', classificationOrigin: 'automatic',
+      }],
       cashShareUnits: 600_000,
       cashMode: 'automatic',
       syncedInvestmentWon: main.monthlyInvestmentWon,
@@ -133,7 +139,10 @@ function manyToManyWorkspace() {
   workspace.portfolio.draft = {
     schemaVersion: 2,
     scope: { type: 'location', locationId: 'brokerage' },
-    items: [{ id: 'asset-draft', name: '성장주', shareUnits: 550_000, order: 0 }],
+    items: [{
+      id: 'asset-draft', name: '성장주', shareUnits: 550_000, order: 0,
+      classification: 'growth', classificationOrigin: 'automatic',
+    }],
     cashShareUnits: 450_000,
     cashMode: 'automatic',
     syncedInvestmentWon: main.monthlyInvestmentWon,

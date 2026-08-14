@@ -164,7 +164,10 @@ const releaseGateWorkspaceV2 = {
     draft: {
       schemaVersion: 2 as const,
       scope: { type: 'aggregate' as const },
-      items: [{ id: 'asset-us', name: '미국 인덱스', shareUnits: 600_000, order: 0 }],
+      items: [{
+        id: 'asset-us', name: '미국 인덱스', shareUnits: 600_000, order: 0,
+        classification: 'growth' as const, classificationOrigin: 'automatic' as const,
+      }],
       cashShareUnits: 400_000,
       cashMode: 'automatic' as const,
       syncedInvestmentWon: appliedMainV2.monthlyInvestmentWon,
