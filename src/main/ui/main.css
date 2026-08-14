@@ -256,6 +256,70 @@
     animation: editor-in 180ms ease-out;
   }
 
+  .main-welcome-intro {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: grid;
+    min-height: 100dvh;
+    overflow: clip;
+    isolation: isolate;
+    place-items: center;
+    background: #f8f6f1;
+    color: #173a3a;
+    padding: 1rem;
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+
+  .main-welcome-intro__content {
+    display: grid;
+    width: min(100% - 2rem, 32rem);
+    justify-items: center;
+    gap: 1rem;
+  }
+
+  .main-welcome-intro__app-name {
+    margin: 0;
+    color: #47615d;
+    font-size: 0.875rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+  }
+
+  .main-welcome-intro__visual {
+    width: min(100%, 32rem);
+    aspect-ratio: 1;
+  }
+
+  .main-welcome-intro__visual > svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .main-welcome-intro__skip {
+    position: absolute;
+    inset-inline: 1rem;
+    bottom: max(1rem, env(safe-area-inset-bottom));
+    min-height: 44px;
+    border: 1px solid rgb(23 58 58 / 28%);
+    border-radius: 9999px;
+    background: rgb(255 255 255 / 78%);
+    color: #173a3a;
+    font: inherit;
+    font-size: 0.875rem;
+    font-weight: 700;
+  }
+
+  .main-welcome-intro__skip:hover {
+    background: #ffffff;
+  }
+
+  .main-welcome-intro__skip:focus-visible {
+    outline: 3px solid rgb(30 139 124 / 60%);
+    outline-offset: 3px;
+  }
+
   @keyframes editor-in {
     from {
       opacity: 0;
