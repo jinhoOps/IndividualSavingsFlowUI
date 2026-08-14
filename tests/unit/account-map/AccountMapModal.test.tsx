@@ -258,6 +258,29 @@ describe('AccountMapModal', () => {
     expect(onReapply).not.toHaveBeenCalled();
   });
 
+  it('restores focus before adopting settled recovery when reduced motion closes immediately', () => {
+    const source = document.createElement('button');
+    document.body.append(source);
+    const sequence: string[] = [];
+    const onKeepLatest = vi.fn(() => sequence.push(document.activeElement === source ? 'focus' : 'adopted-before-focus'));
+    const onClose = vi.fn(() => sequence.push('close'));
+    renderModal({
+      sourceElement: source,
+      reducedMotion: true,
+      recovery: { status: 'manual', latest: createEmptyWorkspace(2), action: 'edit-node', targets: [], reason: 'compound-edit' },
+      onKeepLatest,
+      onClose,
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: '닫기' }));
+
+    expect(sequence).toEqual(['focus', 'close']);
+    expect(onKeepLatest).toHaveBeenCalledTimes(1);
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(source).toHaveFocus();
+    source.remove();
+  });
+
   it('treats edit Cancel as settled recovery abandon', () => {
     const onClose = vi.fn();
     const onKeepLatest = vi.fn();

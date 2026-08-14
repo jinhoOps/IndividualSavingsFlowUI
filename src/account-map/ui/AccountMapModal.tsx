@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState, type JSX } from 'react';
+import { flushSync } from 'react-dom';
 import type { GraphNode } from './mapLayout';
 import { animateModalToNode, animateNodeToModal, type AnimationHandle } from './motion';
 import type { RecoveryState } from '../application/reducer';
@@ -64,6 +65,7 @@ export function AccountMapModal({ node, related, sourceElement, fallbackElement,
   const [actionError, setActionError] = useState(false);
   const [animating, setAnimating] = useState(true);
   const closingRef = useRef(false);
+  const adoptLatestAfterCloseRef = useRef(false);
   const returnToFallbackRef = useRef(false);
 
   useEffect(() => {
@@ -113,7 +115,21 @@ export function AccountMapModal({ node, related, sourceElement, fallbackElement,
   }, [mode, recovery.status, recovery.status === 'collision' ? collisionIdentity(recovery) : '']);
 
   function finishClose() {
+    if (adoptLatestAfterCloseRef.current) {
+      restoreFocus();
+      adoptLatestAfterCloseRef.current = false;
+      flushSync(() => {
+        onKeepLatest();
+        onClose();
+      });
+      restoreFocus();
+      return;
+    }
     onClose();
+    restoreFocus();
+  }
+
+  function restoreFocus() {
     const focusTarget = !returnToFallbackRef.current && sourceElement?.isConnected === true ? sourceElement : fallbackElement;
     if (focusTarget !== null) {
       if (focusTarget.tabIndex < 0) focusTarget.tabIndex = -1;
@@ -123,8 +139,8 @@ export function AccountMapModal({ node, related, sourceElement, fallbackElement,
 
   function requestClose(force = false) {
     if (closingRef.current || animating || ((!force) && (actionPending || recoveryPending))) return;
-    if (!force && recovery.status !== 'none') onKeepLatest();
     closingRef.current = true;
+    adoptLatestAfterCloseRef.current = !force && recovery.status !== 'none';
     setAnimating(true);
     const modal = modalRef.current;
     if (modal === null) { finishClose(); return; }
@@ -185,7 +201,7 @@ export function AccountMapModal({ node, related, sourceElement, fallbackElement,
           })}</div> : null}
           {actionError && recovery.status === 'none' ? <p className="account-map-modal__error" role="alert">저장하지 못했습니다. 선택은 유지했습니다. 다시 시도해 주세요.</p> : null}
           {saveFailed && recovery.status !== 'none' ? <p className="account-map-modal__error" role="alert">저장하지 못했습니다. 편집 중인 입력은 그대로 두었습니다.</p> : null}
-          {recovery.status === 'none' ? null : <div className="account-map-modal__error" role={recovery.status === 'collision' || recovery.status === 'manual' ? 'alert' : 'status'}><p id={recoveryDescriptionId}>{modalRecoveryMessage(recovery)}</p><div className="account-map-actions"><button ref={replayRef} type="button" className="ui-button ui-button--primary" aria-describedby={recoveryDescriptionId} disabled={recoveryPending} onClick={() => { void onReapply().then((saved) => { if (saved) requestClose(true); }); }}>{recovery.status === 'manual' ? '최신 상태에서 다시 검토' : '최신 상태에서 다시 적용'}</button><button type="button" className="ui-button ui-button--secondary" disabled={recoveryPending} onClick={() => { onKeepLatest(); requestClose(true); }}>최신 값 유지</button></div></div>}
+          {recovery.status === 'none' ? null : <div className="account-map-modal__error" role={recovery.status === 'collision' || recovery.status === 'manual' ? 'alert' : 'status'}><p id={recoveryDescriptionId}>{modalRecoveryMessage(recovery)}</p><div className="account-map-actions"><button ref={replayRef} type="button" className="ui-button ui-button--primary" aria-describedby={recoveryDescriptionId} disabled={recoveryPending} onClick={() => { void onReapply().then((saved) => { if (saved) requestClose(true); }); }}>{recovery.status === 'manual' ? '최신 상태에서 다시 검토' : '최신 상태에서 다시 적용'}</button><button type="button" className="ui-button ui-button--secondary" disabled={recoveryPending} onClick={() => requestClose()}>최신 값 유지</button></div></div>}
         </div>
         <footer>
           {mode === 'read' ? <>{node.kind === 'location' && node.status === 'suspended' && onRestoreLocation !== undefined ? <button type="button" className="ui-button ui-button--secondary" disabled={recovery.status !== 'none'} onClick={() => setMode('restore')}>복원</button> : null}{node.kind === 'location' && node.status !== 'suspended' && onArchiveLocation !== undefined ? <button type="button" className="ui-button ui-button--secondary account-map-modal__archive" disabled={recovery.status !== 'none'} onClick={() => setMode('archive')}><TrashIcon />보관</button> : null}<button type="button" className="ui-button ui-button--primary" disabled={animating || recovery.status !== 'none'} onClick={() => setMode('edit')}>편집</button></> : null}

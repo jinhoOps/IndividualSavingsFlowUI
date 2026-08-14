@@ -1,12 +1,39 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { useState } from 'react';
+import { useReducer, useState } from 'react';
 import { AccountMapCanvas } from '../../../src/account-map/ui/AccountMapCanvas';
+import { accountMapReducer, type AccountMapState } from '../../../src/account-map/application/reducer';
 import type { AccountMapApplied } from '../../../src/account-map/domain/model';
 import { createEmptyWorkspace } from '../../../src/workspace/domain/model';
 
-afterEach(cleanup);
+const controlledMotion = vi.hoisted(() => ({
+  closeComplete: null as (() => void) | null,
+  closeStarts: 0,
+}));
+
+vi.mock('../../../src/account-map/ui/motion', () => ({
+  animateNodeToModal: (_rect: DOMRect, _modal: HTMLElement, options: { onComplete(): void }) => {
+    options.onComplete();
+    return { cancel() {} };
+  },
+  animateModalToNode: (_modal: HTMLElement, _rect: DOMRect, options: { onComplete(): void }) => {
+    controlledMotion.closeStarts += 1;
+    controlledMotion.closeComplete = options.onComplete;
+    return { cancel() { controlledMotion.closeComplete = null; } };
+  },
+  animateMapLayout: (_root: HTMLElement, mutate: () => void, options: { onComplete(): void }) => {
+    mutate();
+    options.onComplete();
+    return { cancel() {} };
+  },
+}));
+
+afterEach(() => {
+  cleanup();
+  controlledMotion.closeComplete = null;
+  controlledMotion.closeStarts = 0;
+});
 
 describe('AccountMapCanvas', () => {
   it('defaults to purpose layout, shows system references, and hides edge amounts before focus', () => {
@@ -67,6 +94,65 @@ describe('AccountMapCanvas', () => {
     fireEvent.click(node);
     expect(screen.getByRole('dialog', { name: '생활비 상세' })).toBeVisible();
   });
+
+  it('finishes a settled recovery close and restores focus before the parent reducer adopts latest', () => {
+    const onKeepLatest = vi.fn();
+    const onModalClose = vi.fn();
+
+    function RecoveringCanvas() {
+      const [state, dispatch] = useReducer(accountMapReducer, initialMapState());
+      if (state.mode !== 'map') return <p>setup</p>;
+      return <>
+        {canvas(state.interaction, {
+          applied: state.applied,
+          main: state.main,
+          locations: state.workspace.locations,
+          recovery: state.recovery,
+          onInvoke: (nodeId) => dispatch({ type: 'node-invoked', nodeId }),
+          onKeepLatest: () => {
+            onKeepLatest();
+            dispatch({ type: 'latest-kept' });
+          },
+          onModalClose: () => {
+            onModalClose();
+            dispatch({ type: 'modal-closed' });
+          },
+        })}
+        <button type="button" onClick={() => {
+          const latest = structuredClone(state.workspace);
+          latest.revision = 2;
+          dispatch({
+            type: 'save-manual-conflicted', latest, action: 'edit-node',
+            targets: [{ kind: 'node', id: 'system:living' }], reason: 'compound-edit',
+          });
+        }}>simulate conflict</button>
+      </>;
+    }
+
+    render(<RecoveringCanvas />);
+    const source = screen.getByRole('button', { name: /생활비.*1,000,000원/ });
+    fireEvent.click(source);
+    fireEvent.click(source);
+    fireEvent.click(screen.getByRole('button', { name: 'simulate conflict' }));
+    const dialog = screen.getByRole('dialog', { name: '생활비 상세' });
+    fireEvent.click(screen.getByRole('button', { name: '닫기' }));
+    fireEvent.keyDown(document, { key: 'Escape' });
+    fireEvent.pointerDown(dialog.parentElement!);
+
+    expect(dialog).toBeVisible();
+    expect(controlledMotion.closeStarts).toBe(1);
+    expect(onKeepLatest).not.toHaveBeenCalled();
+    expect(onModalClose).not.toHaveBeenCalled();
+
+    const complete = controlledMotion.closeComplete;
+    expect(complete).not.toBeNull();
+    act(() => complete?.());
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(onKeepLatest).toHaveBeenCalledTimes(1);
+    expect(onModalClose).toHaveBeenCalledTimes(1);
+    expect(source).toHaveFocus();
+  });
 });
 
 const applied: AccountMapApplied = {
@@ -85,6 +171,20 @@ const locations = [
   { id: 'salary', shortName: '급여통장', institution: { id: 'kb-kookmin', name: 'KB국민은행' }, kind: 'bank' as const, roles: ['income' as const], createdAt: 1, updatedAt: 1 },
   { id: 'checking', shortName: '생활비통장', institution: { id: 'hana', name: '하나은행' }, kind: 'bank' as const, roles: ['spending' as const], createdAt: 1, updatedAt: 1 },
 ];
+
+function initialMapState(): AccountMapState {
+  const workspace = createEmptyWorkspace(1);
+  workspace.revision = 1;
+  workspace.main.applied = main;
+  workspace.locations = structuredClone(locations);
+  workspace.accountMap.applied = structuredClone(applied);
+  return {
+    mode: 'map', workspace, main, applied: structuredClone(applied),
+    interaction: { transientNodeId: null, pinnedNodeId: null, modalNodeId: null },
+    save: { status: 'idle' },
+    recovery: { status: 'none' },
+  };
+}
 
 function renderCanvas(overrides: Partial<React.ComponentProps<typeof AccountMapCanvas>> = {}) {
   return render(canvas({ transientNodeId: null, pinnedNodeId: null, modalNodeId: null }, overrides));
