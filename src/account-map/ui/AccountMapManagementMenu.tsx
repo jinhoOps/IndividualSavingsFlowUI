@@ -1,13 +1,32 @@
 import { AppManagementMenu } from '../../journey/ui/AppManagementMenu';
 
-export function AccountMapManagementMenu({ hasMap, hasLegacy = false, onReset = async () => false }: { hasMap: boolean; hasLegacy?: boolean; onReset?(): Promise<boolean> }) {
+export interface ArchivedPurposeManagementItem {
+  id: `custom:${string}`;
+  name: string;
+  parentName: string;
+  targetMonthlyWon: number;
+}
+
+export function AccountMapManagementMenu({ hasMap, hasLegacy = false, archivedPurposes = [], mutationsDisabled = false, onRestorePurpose = () => undefined, onReset = async () => false }: { hasMap: boolean; hasLegacy?: boolean; archivedPurposes?: readonly ArchivedPurposeManagementItem[]; mutationsDisabled?: boolean; onRestorePurpose?(purposeId: `custom:${string}`): void; onReset?(): Promise<boolean> }) {
   return <AppManagementMenu items={[
     ...(hasLegacy ? [{ kind: 'message' as const, id: 'legacy-data', text: '이전 형식 데이터가 호환용으로 보존되어 있습니다' }] : []),
+    ...(archivedPurposes.length === 0 ? [] : [
+      { kind: 'message' as const, id: 'archived-purpose-count', text: `보관된 목적 ${archivedPurposes.length}개` },
+      ...archivedPurposes.map((purpose) => ({
+        kind: 'action' as const,
+        id: `restore:${purpose.id}`,
+        label: `${purpose.name} · ${purpose.parentName} · ${formatWon(purpose.targetMonthlyWon)}`,
+        disabled: mutationsDisabled,
+        onSelect: () => onRestorePurpose(purpose.id),
+      })),
+      { kind: 'separator' as const, id: 'archived-purpose-separator' },
+    ]),
     ...(hasMap ? [{
       kind: 'action' as const,
       id: 'reset-map',
       label: '월 연결 다시 만들기',
       tone: 'danger' as const,
+      disabled: mutationsDisabled,
       onSelect: onReset,
       confirmation: {
         title: '월 연결을 다시 만들까요?',
@@ -18,3 +37,5 @@ export function AccountMapManagementMenu({ hasMap, hasLegacy = false, onReset = 
     }] : [{ kind: 'message' as const, id: 'account-map-status', text: '아직 만든 연결 지도가 없습니다' }]),
   ]} />;
 }
+
+function formatWon(value: number): string { return `${new Intl.NumberFormat('ko-KR').format(value)}원`; }

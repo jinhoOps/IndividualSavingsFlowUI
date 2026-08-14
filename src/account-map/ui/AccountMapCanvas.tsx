@@ -24,6 +24,9 @@ export interface AccountMapCanvasProps {
   onLayoutChange(layout: AccountMapApplied['layout']): void;
   onModalClose?(): void;
   onSaveNodeEdit?(nodeId: string, input: AccountMapNodeEditInput): Promise<boolean>;
+  onConnectLocation?(purposeId: string, locationId: string, amount?: number): Promise<boolean>;
+  onCreateAndConnectLocation?(purposeId: string, location: FinancialLocation, amount?: number): Promise<boolean>;
+  onArchivePurpose?(purposeId: `custom:${string}`): Promise<boolean>;
   onArchiveLocation?(locationId: string, replacementRemainderByPurpose: Record<string, string | null>): Promise<boolean>;
   onRestoreLocation?(locationId: string, restoreLinkIds: string[], remainderByPurpose: Record<string, string | null>): Promise<boolean>;
   recovery?: RecoveryState;
@@ -31,14 +34,15 @@ export interface AccountMapCanvasProps {
   saveFailed?: boolean;
   onReapply?(): Promise<boolean>;
   onKeepLatest?(): void;
+  hasExternalModal?: boolean;
 }
 
 export function AccountMapCanvas({
   applied, main, locations, interaction, viewport,
   onTransient, onBlur, onInvoke, onBackground, onLayoutChange, onModalClose = () => undefined,
-  onSaveNodeEdit, onArchiveLocation, onRestoreLocation,
+  onSaveNodeEdit, onConnectLocation, onCreateAndConnectLocation, onArchivePurpose, onArchiveLocation, onRestoreLocation,
   recovery = { status: 'none' }, recoveryPending = false, saveFailed = false,
-  onReapply = async () => false, onKeepLatest = () => undefined,
+  onReapply = async () => false, onKeepLatest = () => undefined, hasExternalModal = false,
 }: AccountMapCanvasProps): JSX.Element {
   const [zoom, setZoom] = useState<MapZoom>('default');
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -184,8 +188,8 @@ export function AccountMapCanvas({
           return <tr key={`row:${edge.id}`}>{applied.layout === 'purpose' ? <><td>{purpose.label}</td><td>{location.label}</td></> : <><td>{location.label}</td><td>{purpose.label}</td></>}<td>{formatWon(edge.amountWon)}</td><td>{edge.status === 'active' ? '연결됨' : '중지됨'}</td></tr>;
         })}</tbody>
       </table>
-      {modalNode === undefined && recovery.status !== 'none' ? <div className="account-map-error" role={recovery.status === 'stale' ? 'status' : 'alert'}><p id="account-map-global-recovery">{recovery.status === 'manual' && recovery.reason === 'target-missing' ? '최신 상태에서 작업 대상을 찾을 수 없습니다. 최신 값을 유지하거나 작업을 다시 확인해 주세요.' : '다른 곳에서 변경된 최신 상태를 불러왔습니다. 자동으로 다시 저장하지 않습니다.'}</p><div className="account-map-actions"><button type="button" className="ui-button ui-button--primary" aria-describedby="account-map-global-recovery" disabled={recoveryPending} onClick={() => void onReapply()}>{recovery.status === 'manual' ? '최신 상태에서 다시 검토' : '최신 상태에서 다시 적용'}</button><button type="button" className="ui-button ui-button--secondary" disabled={recoveryPending} onClick={onKeepLatest}>최신 값 유지</button></div></div> : null}
-      {modalNode === undefined ? null : <AccountMapModal node={modalNode} related={modalRelated} sourceElement={nodeRefs.current.get(modalNode.id) ?? null} fallbackElement={headingRef.current} reducedMotion={reducedMotion} recovery={recovery} recoveryPending={recoveryPending} saveFailed={saveFailed} onReapply={onReapply} onKeepLatest={onKeepLatest} onClose={onModalClose} onSaveEdit={onSaveNodeEdit === undefined ? undefined : (input) => onSaveNodeEdit(modalNode.id, input)} onArchiveLocation={onArchiveLocation} onRestoreLocation={onRestoreLocation} />}
+      {modalNode === undefined && !hasExternalModal && recovery.status !== 'none' ? <div className="account-map-error" role={recovery.status === 'stale' ? 'status' : 'alert'}><p id="account-map-global-recovery">{recovery.status === 'manual' && recovery.reason === 'target-missing' ? '최신 상태에서 작업 대상을 찾을 수 없습니다. 최신 값을 유지하거나 작업을 다시 확인해 주세요.' : '다른 곳에서 변경된 최신 상태를 불러왔습니다. 자동으로 다시 저장하지 않습니다.'}</p><div className="account-map-actions"><button type="button" className="ui-button ui-button--primary" aria-describedby="account-map-global-recovery" disabled={recoveryPending} onClick={() => void onReapply()}>{recovery.status === 'manual' ? '최신 상태에서 다시 검토' : '최신 상태에서 다시 적용'}</button><button type="button" className="ui-button ui-button--secondary" disabled={recoveryPending} onClick={onKeepLatest}>최신 값 유지</button></div></div> : null}
+      {modalNode === undefined ? null : <AccountMapModal node={modalNode} related={modalRelated} locations={[...locations]} sourceElement={nodeRefs.current.get(modalNode.id) ?? null} fallbackElement={headingRef.current} reducedMotion={reducedMotion} recovery={recovery} recoveryPending={recoveryPending} saveFailed={saveFailed} onReapply={onReapply} onKeepLatest={onKeepLatest} onClose={onModalClose} onSaveEdit={onSaveNodeEdit === undefined ? undefined : (input) => onSaveNodeEdit(modalNode.id, input)} onConnectLocation={modalNode.kind !== 'purpose' || onConnectLocation === undefined ? undefined : (locationId, amount) => onConnectLocation(modalNode.id, locationId, amount)} onCreateAndConnectLocation={modalNode.kind !== 'purpose' || onCreateAndConnectLocation === undefined ? undefined : (location, amount) => onCreateAndConnectLocation(modalNode.id, location, amount)} onArchivePurpose={onArchivePurpose} onArchiveLocation={onArchiveLocation} onRestoreLocation={onRestoreLocation} />}
     </section>
   );
 }

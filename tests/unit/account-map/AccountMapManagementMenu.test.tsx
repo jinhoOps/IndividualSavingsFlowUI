@@ -22,4 +22,32 @@ describe('AccountMapManagementMenu', () => {
     fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
     expect(screen.queryByRole('menuitem', { name: '월 연결 다시 만들기' })).not.toBeInTheDocument();
   });
+
+  it('lists archived custom purposes with count, parent, and target', () => {
+    const onRestorePurpose = vi.fn();
+    render(<AccountMapManagementMenu
+      hasMap
+      archivedPurposes={[
+        { id: 'custom:telecom', name: '통신비', parentName: '생활비', targetMonthlyWon: 200_000 },
+        { id: 'custom:rent', name: '월세', parentName: '주거', targetMonthlyWon: 500_000 },
+      ]}
+      onRestorePurpose={onRestorePurpose}
+    />);
+
+    fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
+    expect(screen.getByText('보관된 목적 2개')).toBeVisible();
+    fireEvent.click(screen.getByRole('menuitem', { name: /통신비 · 생활비 · 200,000원/ }));
+    expect(onRestorePurpose).toHaveBeenCalledWith('custom:telecom');
+  });
+
+  it('locks archived-purpose restore while recovery is active', () => {
+    render(<AccountMapManagementMenu
+      hasMap
+      mutationsDisabled
+      archivedPurposes={[{ id: 'custom:telecom', name: '통신비', parentName: '생활비', targetMonthlyWon: 200_000 }]}
+    />);
+    fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
+    expect(screen.getByRole('menuitem', { name: /통신비/ })).toBeDisabled();
+    expect(screen.getByRole('menuitem', { name: '월 연결 다시 만들기' })).toBeDisabled();
+  });
 });

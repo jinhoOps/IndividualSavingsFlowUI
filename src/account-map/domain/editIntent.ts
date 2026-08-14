@@ -96,13 +96,17 @@ function rebaseAddLinkIntent(
 ): AccountMapIntentRebaseResult {
   const state = latest.accountMap[intent.surface];
   const location = latest.locations.find(({ id }) => id === intent.locationId);
-  if (state === null
+  const initializesFreshDraft = intent.surface === 'draft'
+    && state === null
+    && latest.accountMap.applied === null
+    && !intent.purposeId.startsWith('custom:');
+  if ((!initializesFreshDraft && state === null)
     || location === undefined
     || location.archivedAt !== undefined
-    || !purposeExists(intent.purposeId, state.customPurposes)) {
+    || (!initializesFreshDraft && !purposeExists(intent.purposeId, state!.customPurposes))) {
     return { ok: false, reason: 'target-missing' };
   }
-  if (state.links.some(({ purposeId, locationId }) => (
+  if (state?.links.some(({ purposeId, locationId }) => (
     purposeId === intent.purposeId && locationId === intent.locationId
   ))) return { ok: false, reason: 'duplicate-link' };
   return {

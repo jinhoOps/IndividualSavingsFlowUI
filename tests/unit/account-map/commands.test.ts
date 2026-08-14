@@ -144,6 +144,59 @@ describe('Account Map commands', () => {
     ]);
   });
 
+  it('restores and connects an archived location in one candidate', () => {
+    const before = workspace();
+    before.locations[1] = { ...before.locations[1]!, archivedAt: 10 };
+    before.accountMap.applied = validApplied();
+    before.main.applied = { ...before.main.applied!, updatedAt: 11 };
+    const beforeJson = JSON.stringify(before);
+
+    const result = applyAccountMapCommand(before, {
+      type: 'restore-and-connect-location',
+      surface: 'applied',
+      purposeId: 'system:investing',
+      locationId: 'savings',
+    }, 20);
+
+    expect(result.ok).toBe(true);
+    expect(JSON.stringify(before)).toBe(beforeJson);
+    if (!result.ok) return;
+    expect(result.workspace.locations.find(({ id }) => id === 'savings')).toMatchObject({
+      roles: ['spending', 'saving', 'investing'],
+      updatedAt: 20,
+    });
+    expect(result.workspace.locations.find(({ id }) => id === 'savings')).not.toHaveProperty('archivedAt');
+    expect(result.workspace.accountMap.applied?.links).toContainEqual(expect.objectContaining({
+      purposeId: 'system:investing',
+      locationId: 'savings',
+      monthlyAmountWon: 200_000,
+      remainder: true,
+      status: 'active',
+    }));
+    expect(result.workspace.accountMap.applied?.sourceMainUpdatedAt).toBe(11);
+  });
+
+  it('does not partially restore when an atomic restore-and-connect candidate is rejected', () => {
+    const before = workspace();
+    before.locations[1] = { ...before.locations[1]!, archivedAt: 10 };
+    before.accountMap.applied = {
+      ...validApplied(),
+      links: [
+        ...validApplied().links,
+        { ...link('old-investing', 'savings', 200_000), purposeId: 'system:investing', status: 'suspended', remainder: false, suspendedReason: 'location-archived' },
+      ],
+    };
+    const beforeJson = JSON.stringify(before);
+
+    expect(applyAccountMapCommand(before, {
+      type: 'restore-and-connect-location',
+      surface: 'applied',
+      purposeId: 'system:investing',
+      locationId: 'savings',
+    }, 20)).toMatchObject({ ok: false, reason: 'duplicate-link' });
+    expect(JSON.stringify(before)).toBe(beforeJson);
+  });
+
   it('archives a custom purpose and suspends its active links without changing locations or Portfolio', () => {
     const before = workspace();
     const custom = customPurpose('custom:telecom', 200_000);
@@ -266,6 +319,12 @@ describe('Account Map commands', () => {
       purposeId: 'system:saving',
       location: location('new-saving', '새저축'),
     }],
+    ['restore-and-connect-location', {
+      type: 'restore-and-connect-location',
+      surface: 'applied',
+      purposeId: 'system:investing',
+      locationId: 'savings',
+    }],
     ['edit-link', {
       type: 'edit-link',
       linkId: 'living-edit',
@@ -311,6 +370,10 @@ describe('Account Map commands', () => {
     if (command.type === 'edit-map-node') before.accountMap.applied = validApplied();
     if (command.type === 'connect-location') before.accountMap.applied = validApplied();
     if (command.type === 'create-and-connect-location') before.accountMap.draft = draft();
+    if (command.type === 'restore-and-connect-location') {
+      before.accountMap.applied = validApplied();
+      before.locations[1] = { ...before.locations[1]!, archivedAt: 10 };
+    }
     if (command.type === 'edit-link') {
       before.accountMap.applied = {
         ...validApplied(),

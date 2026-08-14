@@ -42,6 +42,13 @@ export type AccountMapCommand =
       monthlyAmountWon?: number;
     }
   | {
+      type: 'restore-and-connect-location';
+      surface: 'draft' | 'applied';
+      purposeId: PurposeId;
+      locationId: string;
+      monthlyAmountWon?: number;
+    }
+  | {
       type: 'edit-link';
       linkId: string;
       fields: {
@@ -160,6 +167,9 @@ export function applyAccountMapCommand(
       break;
     case 'create-and-connect-location':
       changed = createAndConnectLocation(source, command, now);
+      break;
+    case 'restore-and-connect-location':
+      changed = restoreAndConnectLocation(source, command, now);
       break;
     case 'edit-link':
       changed = editLink(source, command, now);
@@ -353,7 +363,7 @@ function connectLocation(
   const current = source.locations.find(({ id }) => id === command.locationId);
   if (current === undefined) return failure('location-not-found');
   if (current.archivedAt !== undefined) return failure('invalid-input');
-  const state = source.accountMap[command.surface];
+  const state = connectionState(source, command.surface, now);
   if (state === null) return failure('invalid-input');
   const role = requiredRole(command.purposeId, state.customPurposes);
   if (role === null) return failure('invalid-input');
@@ -384,7 +394,7 @@ function createAndConnectLocation(
   command: Extract<AccountMapCommand, { type: 'create-and-connect-location' }>,
   now: number,
 ): AccountMapCommandResult {
-  const state = source.accountMap[command.surface];
+  const state = connectionState(source, command.surface, now);
   if (state === null) return failure('invalid-input');
   const role = requiredRole(command.purposeId, state.customPurposes);
   if (role === null) return failure('invalid-input');
@@ -414,6 +424,29 @@ function createAndConnectLocation(
     locations,
     accountMap: { ...source.accountMap, [command.surface]: nextState },
   });
+}
+
+function restoreAndConnectLocation(
+  source: WorkspaceDocument,
+  command: Extract<AccountMapCommand, { type: 'restore-and-connect-location' }>,
+  now: number,
+): AccountMapCommandResult {
+  const restored = restoreLocation(source, {
+    type: 'restore-location',
+    locationId: command.locationId,
+    restoreLinkIds: [],
+    remainderByPurpose: {},
+  }, now);
+  if (!restored.ok) return restored;
+  return connectLocation(restored.workspace, {
+    type: 'connect-location',
+    surface: command.surface,
+    purposeId: command.purposeId,
+    locationId: command.locationId,
+    ...(command.monthlyAmountWon === undefined
+      ? {}
+      : { monthlyAmountWon: command.monthlyAmountWon }),
+  }, now);
 }
 
 function appendConnection<T extends AccountMapApplied | AccountMapDraft>(
@@ -463,6 +496,24 @@ function appendConnection<T extends AccountMapApplied | AccountMapDraft>(
   const afterExcess = reconcilePurpose(purposeId, candidate, locations, source.main.applied!).excessWon;
   if (afterExcess > beforeExcess) return failure('purpose-excess');
   return withCurrentMainSource(candidate, state, source.main.applied!);
+}
+
+function connectionState(
+  source: WorkspaceDocument,
+  surface: 'draft' | 'applied',
+  now: number,
+): AccountMapApplied | AccountMapDraft | null {
+  const current = source.accountMap[surface];
+  if (current !== null) return current;
+  if (surface !== 'draft' || source.accountMap.applied !== null || source.main.applied === null) return null;
+  return {
+    schemaVersion: 1,
+    sourceMainUpdatedAt: source.main.applied.updatedAt,
+    customPurposes: [],
+    links: [],
+    step: 'connect',
+    updatedAt: now,
+  };
 }
 
 function requiredRole(

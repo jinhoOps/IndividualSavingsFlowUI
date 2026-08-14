@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useReducer, useRef, type JSX } from 'react';
+import { useEffect, useMemo, useReducer, useRef, useState, type JSX } from 'react';
 import { AppShell } from '../../components/common/AppShell';
 import { appPath } from '../../journey/routes';
 import type { FinancialLocation } from '../../workspace/domain/financialLocation';
@@ -6,13 +6,13 @@ import type { WorkspaceDocument } from '../../workspace/domain/model';
 import { bootstrapAccountMap } from '../application/bootstrap';
 import { accountMapReducer, type ManualRecoveryAction, type ManualRecoveryTarget } from '../application/reducer';
 import { rebaseAccountMapIntent, type AccountMapEditIntent } from '../domain/editIntent';
-import type { AccountMapDraft, PurposeId, PurposeLocationLink } from '../domain/model';
-import { recalculateRemainder, reconcilePurpose } from '../domain/reconciliation';
+import type { AccountMapDraft, OutflowPurposeId, PurposeId, PurposeLocationLink } from '../domain/model';
+import { customPurposeTargetCapacity, recalculateRemainder, reconcilePurpose } from '../domain/reconciliation';
 import { BrowserAccountMapRepository, type AccountMapRepository, type AccountMapWriteResult } from '../infrastructure/accountMapRepository';
 import { BrowserAccountMapMainSourceRepository, type AccountMapMainSourceRepository } from '../infrastructure/mainSourceRepository';
 import { AccountMapManagementMenu } from './AccountMapManagementMenu';
 import { AccountMapCanvas } from './AccountMapCanvas';
-import type { AccountMapNodeEditInput } from './AccountMapModal';
+import { AccountMapModal, type AccountMapNodeEditInput } from './AccountMapModal';
 import { AccountMapSetup } from './AccountMapSetup';
 import './account-map.css';
 
@@ -21,6 +21,8 @@ export function AccountMapApp({ repositories }: { repositories?: AccountMapRepos
   const resolved = useMemo<AccountMapRepositories>(() => repositories ?? { accountMap: new BrowserAccountMapRepository(), main: new BrowserAccountMapMainSourceRepository() }, [repositories]);
   const [state, dispatch] = useReducer(accountMapReducer, undefined, () => bootstrapAccountMap(resolved.main.load(), resolved.accountMap.load()));
   const pendingModalWorkspaceRef = useRef<WorkspaceDocument | null>(null);
+  const restoreFocusElementRef = useRef<HTMLElement | null>(null);
+  const [restorePurposeId, setRestorePurposeId] = useState<`custom:${string}` | null>(null);
 
   useEffect(() => {
     if (state.mode !== 'migrating') return;
@@ -46,9 +48,19 @@ export function AccountMapApp({ repositories }: { repositories?: AccountMapRepos
   const hasLegacy = stateWorkspace !== null
     && (stateWorkspace.accountMap.legacyPhaseA.instruments.length > 0
       || stateWorkspace.accountMap.legacyPhaseA.flows.length > 0);
+  const restoringPurpose = state.mode === 'map' && restorePurposeId !== null
+    ? state.applied.customPurposes.find(({ id }) => id === restorePurposeId && state.applied.customPurposes.some((candidate) => candidate.id === id && candidate.archivedAt !== undefined))
+    : undefined;
   const management = <AccountMapManagementMenu
     hasMap={state.mode === 'map'}
     hasLegacy={hasLegacy}
+    mutationsDisabled={(state.mode === 'map' || state.mode === 'setup') && state.recovery.status !== 'none'}
+    archivedPurposes={state.mode === 'map' ? state.applied.customPurposes.filter(({ archivedAt }) => archivedAt !== undefined).map((purpose) => ({ id: purpose.id, name: purpose.name, parentName: purposeParentLabel(purpose.parentId), targetMonthlyWon: purpose.targetMonthlyWon })) : []}
+    onRestorePurpose={(purposeId) => {
+      if (state.mode !== 'map' || state.recovery.status !== 'none') return;
+      restoreFocusElementRef.current = document.querySelector<HTMLElement>('.journey-launcher__management-trigger');
+      setRestorePurposeId(purposeId);
+    }}
     onReset={async () => {
       if (state.mode !== 'map' && state.mode !== 'setup') return false;
       if (state.recovery.status !== 'none') return false;
@@ -67,7 +79,7 @@ export function AccountMapApp({ repositories }: { repositories?: AccountMapRepos
   if (state.mode === 'invalid') return <AppShell currentApp="account-map" managementMenu={management}><MessagePage title="저장된 데이터가 올바르지 않아요"><p>현재 데이터는 변경하지 않았습니다. Main 관리 메뉴에서 백업을 확인해 주세요.</p></MessagePage></AppShell>;
   if (state.mode === 'unavailable') return <AppShell currentApp="account-map" managementMenu={management}><MessagePage title="저장소를 불러오지 못했어요"><p>브라우저 저장소 사용 가능 여부를 확인한 뒤 다시 시도해 주세요.</p></MessagePage></AppShell>;
   if (state.mode === 'migrating') return <AppShell currentApp="account-map" managementMenu={management}><MessagePage title="계좌 연결을 준비하고 있어요"><p role="status">기존 데이터를 안전하게 옮기는 중입니다.</p></MessagePage></AppShell>;
-  if (state.mode === 'map') return <AppShell currentApp="account-map" managementMenu={management}><main className="account-map-page account-map-page--map"><header className="account-map-map-header"><div><p className="account-map-eyebrow">계좌 연결</p><h1>계좌 연결 지도</h1><p>Main의 월 금액은 읽기만 합니다. 노드를 한 번 누르면 연결에 집중합니다.</p></div></header><AccountMapCanvas applied={state.applied} main={state.main} locations={state.workspace.locations} interaction={state.interaction} recovery={state.recovery} recoveryPending={state.save.status === 'pending'} saveFailed={state.save.status === 'failed'} onReapply={reapplyIntent} onKeepLatest={() => dispatch({ type: 'latest-kept' })} onTransient={(nodeId) => dispatch({ type: 'node-hovered', nodeId })} onBlur={(nodeId) => dispatch({ type: 'node-blurred', nodeId })} onInvoke={(nodeId) => dispatch({ type: 'node-invoked', nodeId })} onBackground={() => dispatch({ type: 'map-background-invoked' })} onModalClose={() => {
+  if (state.mode === 'map') return <AppShell currentApp="account-map" managementMenu={management}><main className="account-map-page account-map-page--map"><header className="account-map-map-header"><div><p className="account-map-eyebrow">계좌 연결</p><h1>계좌 연결 지도</h1><p>Main의 월 금액은 읽기만 합니다. 노드를 한 번 누르면 연결에 집중합니다.</p></div></header><AccountMapCanvas applied={state.applied} main={state.main} locations={state.workspace.locations} interaction={state.interaction} recovery={state.recovery} recoveryPending={state.save.status === 'pending'} saveFailed={state.save.status === 'failed'} hasExternalModal={restoringPurpose !== undefined} onReapply={reapplyIntent} onKeepLatest={() => dispatch({ type: 'latest-kept' })} onTransient={(nodeId) => dispatch({ type: 'node-hovered', nodeId })} onBlur={(nodeId) => dispatch({ type: 'node-blurred', nodeId })} onInvoke={(nodeId) => dispatch({ type: 'node-invoked', nodeId })} onBackground={() => dispatch({ type: 'map-background-invoked' })} onModalClose={() => {
     const pending = pendingModalWorkspaceRef.current;
     pendingModalWorkspaceRef.current = null;
     if (pending !== null) dispatch({ type: 'save-succeeded', workspace: pending });
@@ -77,6 +89,57 @@ export function AccountMapApp({ repositories }: { repositories?: AccountMapRepos
     const result = await saveNodeEdit(nodeId, input);
     if (result.status !== 'saved') {
       if (result.status !== 'conflict') dispatch({ type: 'save-failed', reason: failureReason(result) });
+      return false;
+    }
+    pendingModalWorkspaceRef.current = result.workspace;
+    return true;
+  }} onConnectLocation={async (purposeId, locationId, monthlyAmountWon) => {
+    if (state.recovery.status !== 'none') return false;
+    const restoresArchivedLocation = state.workspace.locations.some(({ id, archivedAt }) => (
+      id === locationId && archivedAt !== undefined
+    ));
+    const intent: AccountMapEditIntent = {
+      kind: 'add-link', surface: 'applied', purposeId: purposeId as PurposeId, locationId, base: null,
+      ...(monthlyAmountWon === undefined ? {} : { monthlyAmountWon }),
+    };
+    const result = await resolved.accountMap.save(state.workspace.revision, {
+      type: restoresArchivedLocation ? 'restore-and-connect-location' : 'connect-location',
+      surface: 'applied', purposeId: purposeId as PurposeId, locationId,
+      ...(monthlyAmountWon === undefined ? {} : { monthlyAmountWon }),
+    });
+    if (result.status !== 'saved') {
+      if (result.status === 'conflict') {
+        if (restoresArchivedLocation) captureManualConflict('connection-prerequisite', []);
+        else captureIntentConflict(intent);
+      }
+      else dispatch({ type: 'save-failed', reason: failureReason(result) });
+      return false;
+    }
+    pendingModalWorkspaceRef.current = result.workspace;
+    return true;
+  }} onCreateAndConnectLocation={async (purposeId, location, monthlyAmountWon) => {
+    if (state.recovery.status !== 'none') return false;
+    const result = await resolved.accountMap.save(state.workspace.revision, {
+      type: 'create-and-connect-location', surface: 'applied', purposeId: purposeId as PurposeId, location,
+      ...(monthlyAmountWon === undefined ? {} : { monthlyAmountWon }),
+    });
+    if (result.status !== 'saved') {
+      if (result.status === 'conflict') captureManualConflict('connection-prerequisite', []);
+      else dispatch({ type: 'save-failed', reason: failureReason(result) });
+      return false;
+    }
+    pendingModalWorkspaceRef.current = result.workspace;
+    return true;
+  }} onArchivePurpose={async (purposeId) => {
+    if (state.recovery.status !== 'none') return false;
+    const purpose = state.applied.customPurposes.find(({ id }) => id === purposeId);
+    if (purpose === undefined || purpose.archivedAt !== undefined) return false;
+    const base = { name: purpose.name, targetMonthlyWon: purpose.targetMonthlyWon, archivedAt: purpose.archivedAt };
+    const intent: AccountMapEditIntent = { kind: 'purpose', id: purpose.id, edit: { base, next: { ...base, archivedAt: Date.now() } } };
+    const result = await resolved.accountMap.save(state.workspace.revision, { type: 'archive-custom-purpose', purposeId });
+    if (result.status !== 'saved') {
+      if (result.status === 'conflict') captureIntentConflict(intent);
+      else dispatch({ type: 'save-failed', reason: failureReason(result) });
       return false;
     }
     pendingModalWorkspaceRef.current = result.workspace;
@@ -121,7 +184,50 @@ export function AccountMapApp({ repositories }: { repositories?: AccountMapRepos
       else if (result.status === 'conflict') captureManualConflict('layout-change', []);
       else dispatch({ type: 'save-failed', reason: failureReason(result) });
     });
-  }} /></main></AppShell>;
+  }} />{restoringPurpose === undefined ? null : <AccountMapModal
+    initialMode="restore-purpose"
+    node={{ id: restoringPurpose.id, kind: 'purpose', label: restoringPurpose.name, amountWon: restoringPurpose.targetMonthlyWon, status: 'suspended' }}
+    related={state.applied.links.filter(({ purposeId }) => purposeId === restoringPurpose.id).map((link) => ({
+      label: state.workspace.locations.find(({ id }) => id === link.locationId)?.shortName ?? '연결',
+      amountWon: link.monthlyAmountWon,
+      status: link.status,
+      linkId: link.id,
+      purposeId: link.purposeId,
+      locationId: link.locationId,
+      remainder: link.remainder,
+    }))}
+    sourceElement={null}
+    fallbackElement={restoreFocusElementRef.current}
+    reducedMotion={typeof window.matchMedia !== 'function' || window.matchMedia('(prefers-reduced-motion: reduce)').matches}
+    recovery={state.recovery}
+    recoveryPending={state.save.status === 'pending'}
+    saveFailed={state.save.status === 'failed'}
+    purposeParentLabel={purposeParentLabel(restoringPurpose.parentId)}
+    purposeTargetCapacityWon={customPurposeTargetCapacity(restoringPurpose.parentId, state.applied.customPurposes, state.main, restoringPurpose.id)}
+    onReapply={reapplyIntent}
+    onKeepLatest={() => dispatch({ type: 'latest-kept' })}
+    onClose={() => {
+      const pending = pendingModalWorkspaceRef.current;
+      pendingModalWorkspaceRef.current = null;
+      if (pending !== null) dispatch({ type: 'save-succeeded', workspace: pending });
+      setRestorePurposeId(null);
+    }}
+    onRestorePurpose={async (purposeId, targetMonthlyWon) => {
+      if (state.recovery.status !== 'none') return false;
+      const purpose = state.applied.customPurposes.find(({ id }) => id === purposeId);
+      if (purpose === undefined || purpose.archivedAt === undefined) return false;
+      const base = { name: purpose.name, targetMonthlyWon: purpose.targetMonthlyWon, archivedAt: purpose.archivedAt };
+      const intent: AccountMapEditIntent = { kind: 'purpose', id: purpose.id, edit: { base, next: { name: purpose.name, targetMonthlyWon, archivedAt: undefined } } };
+      const result = await resolved.accountMap.save(state.workspace.revision, { type: 'restore-custom-purpose', purposeId, targetMonthlyWon });
+      if (result.status !== 'saved') {
+        if (result.status === 'conflict') captureIntentConflict(intent);
+        else dispatch({ type: 'save-failed', reason: failureReason(result) });
+        return false;
+      }
+      pendingModalWorkspaceRef.current = result.workspace;
+      return true;
+    }}
+  />}</main></AppShell>;
 
   async function saveDraft(draft: AccountMapDraft): Promise<boolean> {
     if (state.mode !== 'setup' || state.recovery.status !== 'none') return false;
@@ -135,30 +241,7 @@ export function AccountMapApp({ repositories }: { repositories?: AccountMapRepos
 
   async function commitConnection(input: { purposeId: PurposeId; locationId: string; newLocation?: FinancialLocation; monthlyAmountWon?: number; restoreLocation?: boolean }): Promise<boolean> {
     if (state.mode !== 'setup' || state.recovery.status !== 'none') return false;
-    let workspace = state.workspace;
-    const now = Date.now();
-    const current = state.draft ?? { schemaVersion: 1, sourceMainUpdatedAt: state.main.updatedAt, customPurposes: [], links: [], step: 'connect', updatedAt: now };
     dispatch({ type: 'save-requested' });
-    if (input.restoreLocation === true) {
-      const restored = await resolved.accountMap.save(workspace.revision, { type: 'restore-location', locationId: input.locationId, restoreLinkIds: [], remainderByPurpose: {} });
-      if (restored.status !== 'saved') { if (restored.status === 'conflict') captureManualConflict('connection-prerequisite', []); else dispatch({ type: 'save-failed', reason: failureReason(restored) }); return false; }
-      workspace = restored.workspace;
-      dispatch({ type: 'save-succeeded', workspace });
-    }
-    if (input.newLocation !== undefined) {
-      const locationResult = await resolved.accountMap.save(workspace.revision, { type: 'create-location', location: input.newLocation });
-      if (locationResult.status !== 'saved') { if (locationResult.status === 'conflict') captureManualConflict('connection-prerequisite', []); else dispatch({ type: 'save-failed', reason: failureReason(locationResult) }); return false; }
-      workspace = locationResult.workspace;
-      dispatch({ type: 'save-succeeded', workspace });
-    }
-    const requiredRole = roleFor(input.purposeId, current);
-    const existing = workspace.locations.find(({ id }) => id === input.locationId);
-    if (existing !== undefined && !existing.roles.includes(requiredRole)) {
-      const updated = await resolved.accountMap.save(workspace.revision, { type: 'update-location', locationId: existing.id, ...(existing.institution === undefined ? {} : { institution: existing.institution }), shortName: existing.shortName, addRoles: [requiredRole] });
-      if (updated.status !== 'saved') { if (updated.status === 'conflict') captureManualConflict('connection-prerequisite', []); else dispatch({ type: 'save-failed', reason: failureReason(updated) }); return false; }
-      workspace = updated.workspace;
-      dispatch({ type: 'save-succeeded', workspace });
-    }
     const intent: AccountMapEditIntent = {
       kind: 'add-link',
       surface: 'draft',
@@ -167,19 +250,41 @@ export function AccountMapApp({ repositories }: { repositories?: AccountMapRepos
       base: null,
       ...(input.monthlyAmountWon === undefined ? {} : { monthlyAmountWon: input.monthlyAmountWon }),
     };
-    if (workspace.accountMap.draft === null) {
-      const initialized = await resolved.accountMap.save(workspace.revision, { type: 'save-draft', draft: current });
-      if (initialized.status === 'conflict') {
-        captureIntentConflict(intent);
-        return false;
-      }
-      if (initialized.status !== 'saved') { dispatch({ type: 'save-failed', reason: failureReason(initialized) }); return false; }
-      workspace = initialized.workspace;
-      dispatch({ type: 'save-succeeded', workspace });
+    const command = input.restoreLocation === true
+      ? {
+          type: 'restore-and-connect-location' as const,
+          surface: 'draft' as const,
+          purposeId: input.purposeId,
+          locationId: input.locationId,
+          ...(input.monthlyAmountWon === undefined ? {} : { monthlyAmountWon: input.monthlyAmountWon }),
+        }
+      : input.newLocation === undefined
+      ? {
+          type: 'connect-location' as const,
+          surface: 'draft' as const,
+          purposeId: input.purposeId,
+          locationId: input.locationId,
+          ...(input.monthlyAmountWon === undefined ? {} : { monthlyAmountWon: input.monthlyAmountWon }),
+        }
+      : {
+          type: 'create-and-connect-location' as const,
+          surface: 'draft' as const,
+          purposeId: input.purposeId,
+          location: input.newLocation,
+          ...(input.monthlyAmountWon === undefined ? {} : { monthlyAmountWon: input.monthlyAmountWon }),
+        };
+    const result = await resolved.accountMap.save(state.workspace.revision, command);
+    if (result.status === 'conflict') {
+      if (input.newLocation === undefined && input.restoreLocation !== true) captureIntentConflict(intent);
+      else captureManualConflict('connection-prerequisite', []);
+      return false;
     }
-    const draftResult = await saveIntent(workspace.revision, intent);
-    if (draftResult.status !== 'saved') return false;
-    const savedDraft = draftResult.workspace.accountMap.draft;
+    if (result.status !== 'saved') {
+      dispatch({ type: 'save-failed', reason: failureReason(result) });
+      return false;
+    }
+    dispatch({ type: 'save-succeeded', workspace: result.workspace });
+    const savedDraft = result.workspace.accountMap.draft;
     if (savedDraft !== null) dispatch({ type: 'draft-updated', draft: savedDraft });
     return true;
   }
@@ -308,41 +413,7 @@ export function AccountMapApp({ repositories }: { repositories?: AccountMapRepos
     }
     const { latest, intent } = state.recovery;
     dispatch({ type: 'reapply-requested' });
-    let replayWorkspace = latest;
-    if (intent.kind === 'add-link' && intent.surface === 'draft' && replayWorkspace.accountMap.draft === null) {
-      if (replayWorkspace.accountMap.applied !== null) {
-        dispatch({ type: 'reapply-collided', field: 'locationId', reason: 'target-missing' });
-        return false;
-      }
-      const draft: AccountMapDraft = {
-        schemaVersion: 1,
-        sourceMainUpdatedAt: state.main.updatedAt,
-        customPurposes: [], links: [], step: 'connect', updatedAt: Date.now(),
-      };
-      const previewWorkspace: WorkspaceDocument = {
-        ...replayWorkspace,
-        accountMap: { ...replayWorkspace.accountMap, draft },
-      };
-      const preview = rebaseAccountMapIntent(previewWorkspace, intent);
-      if (!preview.ok) {
-        dispatch({
-          type: 'reapply-collided',
-          field: 'field' in preview ? preview.field : recoveryFallbackField(intent),
-          reason: preview.reason,
-        });
-        return false;
-      }
-      const initialized = await resolved.accountMap.save(replayWorkspace.revision, { type: 'save-draft', draft });
-      if (initialized.status === 'saved') {
-        replayWorkspace = initialized.workspace;
-        dispatch({ type: 'recovery-latest-updated', latest: replayWorkspace });
-      }
-      else {
-        if (initialized.status === 'conflict') captureIntentConflict(intent);
-        else dispatch({ type: 'save-failed', reason: failureReason(initialized) });
-        return false;
-      }
-    }
+    const replayWorkspace = latest;
     const rebased = rebaseAccountMapIntent(replayWorkspace, intent);
     if (!rebased.ok) {
       dispatch({
@@ -395,9 +466,9 @@ export function AccountMapApp({ repositories }: { repositories?: AccountMapRepos
 }
 
 function MessagePage({ title, children }: { title: string; children: React.ReactNode }) { return <main className="account-map-page"><section className="account-map-message"><h1>{title}</h1>{children}</section></main>; }
+function purposeParentLabel(parentId: OutflowPurposeId): string { return parentId === 'system:housing' ? '주거' : parentId === 'system:living' ? '생활비' : parentId === 'system:saving' ? '저축' : '투자'; }
 function failureReason(result: Exclude<AccountMapWriteResult, { status: 'saved' }>) { return result.status === 'conflict' ? 'conflict' : result.status === 'invalid' ? 'invalid' : result.status === 'rejected' ? 'rejected' : 'unavailable'; }
 function createId() { return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`; }
-function roleFor(purposeId: PurposeId, draft: AccountMapDraft) { const root = purposeId.startsWith('custom:') ? draft.customPurposes.find(({ id }) => id === purposeId)?.parentId : purposeId; return root === 'system:income' ? 'income' as const : root === 'system:saving' ? 'saving' as const : root === 'system:investing' ? 'investing' as const : 'spending' as const; }
 function recoveryFallbackField(intent: AccountMapEditIntent): string { return intent.kind === 'add-link' ? 'locationId' : intent.kind === 'link' ? 'monthlyAmountWon' : intent.kind === 'purpose' ? 'name' : 'shortName'; }
 function manualLinkTargets(ids: Array<string | null>, kind: 'link' | 'restorable-link'): ManualRecoveryTarget[] {
   return [...new Set(ids.filter((id): id is string => id !== null))].map((id) => ({ kind, id }));

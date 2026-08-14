@@ -194,7 +194,9 @@ function stalePendingFixture() {
   load.mockReset()
     .mockReturnValueOnce(initialLoad)
     .mockReturnValue({ status: 'found' as const, workspace: latest, needsMigration: false });
-  accountMap.save = vi.fn(async () => await new Promise<AccountMapWriteResult>(() => undefined));
+  accountMap.save = vi.fn(async (revision) => revision === 1
+    ? { status: 'conflict' as const, currentRevision: 2 }
+    : await new Promise<AccountMapWriteResult>(() => undefined));
   return setup;
 }
 
@@ -212,8 +214,8 @@ function staleDuplicateFixture() {
     load: vi.fn()
       .mockReturnValueOnce({ status: 'found' as const, workspace: initial, needsMigration: false })
       .mockReturnValue({ status: 'found' as const, workspace: latest, needsMigration: false }),
-    saveIntent: vi.fn(async () => ({ status: 'conflict' as const, currentRevision: 2 })),
-    save: vi.fn(), migrate: vi.fn(), reset: vi.fn(),
+    saveIntent: vi.fn(),
+    save: vi.fn(async () => ({ status: 'conflict' as const, currentRevision: 2 })), migrate: vi.fn(), reset: vi.fn(),
   };
   const main: AccountMapMainSourceRepository = { load: vi.fn(() => ({ status: 'found' as const, data: mainData })) };
   return { repositories: { accountMap, main } };

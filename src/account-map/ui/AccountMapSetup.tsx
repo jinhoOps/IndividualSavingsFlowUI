@@ -1,9 +1,8 @@
 import { useEffect, useId, useRef, useState, type JSX } from 'react';
 import type { MainData } from '../../main/domain/model';
-import type { FinancialLocation, FinancialRole } from '../../workspace/domain/financialLocation';
+import type { FinancialLocation } from '../../workspace/domain/financialLocation';
 import type { WorkspaceDocument } from '../../workspace/domain/model';
 import type { RecoveryState } from '../application/reducer';
-import { findLocationDuplicate, INSTITUTIONS } from '../domain/institutions';
 import {
   SYSTEM_PURPOSE_IDS,
   type AccountMapDraft,
@@ -16,6 +15,7 @@ import {
   mainPurposeReferences,
   reconcilePurpose,
 } from '../domain/reconciliation';
+import { AccountMapLocationPicker } from './AccountMapLocationPicker';
 
 const purposeMeta = {
   'system:income': { title: '수입', prompt: '어디로 들어오나요?' },
@@ -202,20 +202,11 @@ function ConnectionDialog({ purposeId, workspace, main, draft, saveFailed, recov
   onKeepLatestRef.current = onKeepLatest;
   recoveryRef.current = recovery;
   recoveryPendingRef.current = recoveryPending;
-  const [mode, setMode] = useState<'choose' | 'create'>('choose');
-  const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
-  const [institutionId, setInstitutionId] = useState<string | null>(null);
-  const [customInstitution, setCustomInstitution] = useState('');
-  const [shortName, setShortName] = useState('');
-  const [amount, setAmount] = useState('');
+  const [dirty, setDirty] = useState(false);
   const [pending, setPending] = useState(false);
   pendingRef.current = pending;
   const links = draft?.links.filter((link) => link.purposeId === purposeId && link.status === 'active') ?? [];
   const linkedIds = new Set(links.map(({ locationId }) => locationId));
-  const role = roleFor(purposeId, draft);
-  const available = workspace.locations.filter((location) => location.archivedAt === undefined
-    && location.roles.includes(role) && !linkedIds.has(location.id));
-  const dirty = selectedLocationId !== null || institutionId !== null || shortName.trim() !== '' || customInstitution.trim() !== '' || amount !== '';
   dirtyRef.current = dirty;
   const additional = links.length > 0;
 
@@ -252,52 +243,33 @@ function ConnectionDialog({ purposeId, workspace, main, draft, saveFailed, recov
     } else if (!dirty || window.confirm('입력 중인 내용을 취소할까요?')) onCancel();
   }
 
-  const institution = INSTITUTIONS.find(([id]) => id === institutionId);
-  const preview = mode === 'create' && shortName.trim() !== ''
-    && (institution !== undefined || (institutionId === 'custom' && customInstitution.trim() !== ''))
-    ? createLocation(shortName, institutionId, institution, customInstitution, role)
-    : null;
-  const duplicate = preview === null ? { kind: 'none' as const } : findLocationDuplicate(workspace.locations, preview);
-  const canComplete = mode === 'choose'
-    ? selectedLocationId !== null
-    : shortName.trim() !== '' && (institution !== undefined || (institutionId === 'custom' && customInstitution.trim() !== ''));
-
   return (
     <div className="account-map-sheet-backdrop" onPointerDown={(event) => { if (event.target === event.currentTarget) requestClose(); }}>
       <div ref={panelRef} className="account-map-sheet" role="dialog" aria-modal="true" aria-labelledby={titleId}>
         <header><div><p>{purposeMeta[rootPurpose(purposeId, draft)].prompt}</p><h2 id={titleId}>{titleFor(purposeId, draft)} 연결</h2></div></header>
         <div className="account-map-sheet__body">
-          {mode === 'choose' ? (
-            <>
-              {available.length > 0 ? <div className="account-map-location-list">{available.map((location) => (
-                <button key={location.id} type="button" className={selectedLocationId === location.id ? 'is-selected' : ''} onClick={() => setSelectedLocationId(location.id)}>
-                  <strong>{location.shortName}</strong><span>{location.institution?.name ?? '기관 없음'}</span>
-                </button>
-              ))}</div> : <p className="account-map-empty-copy">바로 고를 수 있는 기존 항목이 없습니다.</p>}
-              <button type="button" className="account-map-new-location" onClick={() => { setMode('create'); setSelectedLocationId(null); }}><span aria-hidden="true">＋</span><strong>새 계좌·보관처 추가</strong></button>
-            </>
-          ) : (
-            <>
-              <fieldset><legend>기관 빠른 선택</legend><div className="account-map-institutions">{INSTITUTIONS.map(([id, name]) => <button key={id} type="button" className={institutionId === id ? 'is-selected' : ''} onClick={() => setInstitutionId(id)}>{name}</button>)}<button type="button" className={institutionId === 'custom' ? 'is-selected' : ''} onClick={() => setInstitutionId('custom')}>직접 입력</button></div></fieldset>
-              {institutionId === 'custom' ? <label>기관 이름<input value={customInstitution} onChange={(event) => setCustomInstitution(event.target.value)} /></label> : null}
-              <label>표시 이름<input value={shortName} maxLength={8} placeholder="예: 급여통장" onChange={(event) => setShortName(event.target.value)} /></label>
-              {duplicate.kind === 'none' ? null : <div className="account-map-duplicate"><p>{duplicate.kind === 'archived' ? '보관된 같은 항목이 있어요.' : '이미 같은 항목이 있어요.'}</p><button type="button" className="ui-button ui-button--secondary" disabled={pending || recovery.status !== 'none' || (additional && Number(amount) <= 0)} onClick={() => {
-                setPending(true);
-                void onComplete({ purposeId, locationId: duplicate.location.id, ...(duplicate.kind === 'archived' ? { restoreLocation: true } : {}), ...(additional ? { monthlyAmountWon: Number(amount) } : {}) }).finally(() => setPending(false));
-              }}>{duplicate.kind === 'archived' ? '기존 항목 복원해서 연결' : '기존 항목 연결'}</button></div>}
-            </>
-          )}
-          {additional ? <label>이 계좌에 둘 월 금액<input inputMode="numeric" value={amount} placeholder="0" onChange={(event) => setAmount(event.target.value.replace(/\D/gu, ''))} /><span>원</span></label> : <p className="account-map-hint">첫 연결에는 {formatWon(reconcilePurpose(purposeId, draft ?? emptyDraft(main.updatedAt), workspace.locations, main).targetWon)} 전체가 자동으로 들어갑니다.</p>}
+          {!additional ? <p className="account-map-hint">첫 연결에는 {formatWon(reconcilePurpose(purposeId, draft ?? emptyDraft(main.updatedAt), workspace.locations, main).targetWon)} 전체가 자동으로 들어갑니다.</p> : null}
+          <AccountMapLocationPicker
+            locations={workspace.locations}
+            linkedLocationIds={linkedIds}
+            amountRequired={additional}
+            disabled={pending || recoveryPending || recovery.status !== 'none'}
+            cancelDisabled={pending || recoveryPending}
+            onDirtyChange={setDirty}
+            onCancel={requestClose}
+            onSelect={(locationId, amount) => {
+              const location = workspace.locations.find(({ id }) => id === locationId);
+              setPending(true);
+              void onComplete({ purposeId, locationId, ...(location?.archivedAt === undefined ? {} : { restoreLocation: true }), ...(amount === undefined ? {} : { monthlyAmountWon: amount }) }).finally(() => setPending(false));
+            }}
+            onCreate={(newLocation, amount) => {
+              setPending(true);
+              void onComplete({ purposeId, locationId: newLocation.id, newLocation, ...(amount === undefined ? {} : { monthlyAmountWon: amount }) }).finally(() => setPending(false));
+            }}
+          />
           {saveFailed ? <SaveFailure /> : null}
           {recovery.status === 'none' ? null : <RecoveryControls recovery={recovery} pending={recoveryPending} onReapply={async () => { const saved = await onReapply(); if (saved) onCancel(); return saved; }} onKeepLatest={() => { onKeepLatest(); onCancel(); }} />}
         </div>
-        <footer><button type="button" className="ui-button ui-button--secondary" disabled={pending || recoveryPending} onClick={requestClose}>취소</button><button type="button" className="ui-button ui-button--primary" disabled={!canComplete || pending || recovery.status !== 'none' || duplicate.kind !== 'none' || (additional && Number(amount) <= 0)} onClick={() => {
-          const newLocation = mode === 'create' ? createLocation(shortName, institutionId, institution, customInstitution, role) : undefined;
-          const locationId = newLocation?.id ?? selectedLocationId;
-          if (locationId === null) return;
-          setPending(true);
-          void onComplete({ purposeId, locationId, ...(newLocation ? { newLocation } : {}), ...(additional ? { monthlyAmountWon: Number(amount) } : {}) }).finally(() => setPending(false));
-        }}>완료</button></footer>
       </div>
     </div>
   );
@@ -354,14 +326,7 @@ function emptyDraft(sourceMainUpdatedAt: number): AccountMapDraft {
   return { schemaVersion: 1, sourceMainUpdatedAt, customPurposes: [], links: [], step: 'connect', updatedAt: Date.now() };
 }
 
-function createLocation(shortName: string, institutionId: string | null, known: readonly [string, string] | undefined, customName: string, role: FinancialRole): FinancialLocation {
-  const now = Date.now();
-  const uuid = createId();
-  return { id: `location:${uuid}`, shortName: shortName.trim(), institution: known === undefined ? { id: `custom:${uuid}`, name: customName.trim() } : { id: known[0], name: known[1] }, kind: 'bank', roles: [role], createdAt: now, updatedAt: now };
-}
-
 function createId(): string { return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`; }
-function roleFor(id: PurposeId, draft: AccountMapDraft | null): FinancialRole { const root = rootPurpose(id, draft); return root === 'system:income' ? 'income' : root === 'system:saving' ? 'saving' : root === 'system:investing' ? 'investing' : 'spending'; }
 function rootPurpose(id: PurposeId, draft: AccountMapDraft | null) { return id.startsWith('custom:') ? draft?.customPurposes.find((purpose) => purpose.id === id)?.parentId ?? 'system:living' : id as keyof typeof purposeMeta; }
 function titleFor(id: PurposeId, draft: AccountMapDraft | null) { return id.startsWith('custom:') ? draft?.customPurposes.find((purpose) => purpose.id === id)?.name ?? '세부 목적' : purposeMeta[id as SystemPurposeId].title; }
 function formatWon(value: number) { return `${new Intl.NumberFormat('ko-KR').format(value)}원`; }

@@ -95,6 +95,24 @@ describe('AccountMapCanvas', () => {
     expect(screen.getByRole('dialog', { name: '생활비 상세' })).toBeVisible();
   });
 
+  it('keeps connection editing inside the node modal instead of a persistent map toolbar', () => {
+    function InteractiveCanvas() {
+      const [interaction, setInteraction] = useState({ transientNodeId: null as string | null, pinnedNodeId: null as string | null, modalNodeId: null as string | null });
+      return canvas(interaction, {
+        onInvoke: (nodeId) => setInteraction((current) => current.pinnedNodeId === nodeId
+          ? { ...current, modalNodeId: nodeId }
+          : { transientNodeId: null, pinnedNodeId: nodeId, modalNodeId: null }),
+      });
+    }
+    render(<InteractiveCanvas />);
+    expect(screen.queryByRole('button', { name: '연결 추가' })).not.toBeInTheDocument();
+    const node = screen.getByRole('button', { name: /생활비.*1,000,000원/ });
+    fireEvent.click(node);
+    fireEvent.click(node);
+    fireEvent.click(screen.getByRole('button', { name: '편집' }));
+    expect(screen.getByRole('button', { name: '연결 추가' })).toBeVisible();
+  });
+
   it('finishes a settled recovery close and restores focus before the parent reducer adopts latest', () => {
     const onKeepLatest = vi.fn();
     const onModalClose = vi.fn();

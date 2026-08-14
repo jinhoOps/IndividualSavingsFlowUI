@@ -13,6 +13,123 @@ vi.mock('../../../src/account-map/ui/motion', () => ({
 afterEach(cleanup);
 
 describe('AccountMapModal', () => {
+  it('uses one compact connection action and keeps connect content in the same dialog', () => {
+    renderModal();
+    fireEvent.click(screen.getByRole('button', { name: '편집' }));
+    const dialog = screen.getByRole('dialog', { name: '생활비 편집' });
+
+    const connect = screen.getByRole('button', { name: '연결 추가' });
+    expect(connect).toHaveClass('account-map-modal__secondary-action');
+    expect(document.querySelectorAll('.account-map-modal__secondary-action')).toHaveLength(1);
+
+    fireEvent.click(connect);
+
+    expect(screen.getByRole('dialog', { name: '생활비 연결 추가' })).toBe(dialog);
+    expect(dialog).toContainElement(document.activeElement as HTMLElement);
+    expect(screen.getByRole('button', { name: '새 계좌·보관처 추가' })).toBeVisible();
+  });
+
+  it('offers purpose archive only from a custom-purpose title menu', () => {
+    const custom = renderModal({
+      node: { id: 'custom:telecom', kind: 'purpose', label: '통신비', amountWon: 100_000, status: 'resolved' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '통신비 더보기' }));
+    expect(screen.getByRole('menuitem', { name: '목적 보관' })).toBeVisible();
+    custom.unmount();
+
+    const system = renderModal();
+    expect(screen.queryByRole('button', { name: '생활비 더보기' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('menuitem', { name: '목적 보관' })).not.toBeInTheDocument();
+    system.unmount();
+
+    renderModal({
+      node: { id: 'location:checking', kind: 'location', label: '생활비통장', status: 'resolved' },
+    });
+    expect(screen.queryByRole('button', { name: '생활비통장 더보기' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('menuitem', { name: '목적 보관' })).not.toBeInTheDocument();
+  });
+
+  it('confirms custom-purpose archive inside the same dialog shell', async () => {
+    const onArchivePurpose = vi.fn(async () => true);
+    renderModal({
+      node: { id: 'custom:telecom', kind: 'purpose', label: '통신비', amountWon: 100_000, status: 'resolved' },
+      related: [{ label: '생활비통장', amountWon: 100_000, status: 'active', linkId: 'telecom', purposeId: 'custom:telecom' }],
+      onArchivePurpose,
+    });
+    const dialog = screen.getByRole('dialog', { name: '통신비 상세' });
+
+    fireEvent.click(screen.getByRole('button', { name: '통신비 더보기' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: '목적 보관' }));
+
+    expect(screen.getByRole('dialog', { name: '통신비 보관' })).toBe(dialog);
+    expect(dialog).toContainElement(document.activeElement as HTMLElement);
+    expect(screen.getByText('생활비통장 100,000원 연결이 중지됩니다')).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: '보관하기' }));
+    expect(onArchivePurpose).toHaveBeenCalledWith('custom:telecom');
+  });
+
+  it('locks custom-purpose archive while recovery is active', () => {
+    renderModal({
+      node: { id: 'custom:telecom', kind: 'purpose', label: '통신비', amountWon: 100_000, status: 'resolved' },
+      recovery: { status: 'manual', latest: createEmptyWorkspace(2), action: 'edit-node', targets: [{ kind: 'node', id: 'custom:telecom' }], reason: 'compound-edit' },
+      onArchivePurpose: vi.fn(),
+    });
+    fireEvent.click(screen.getByRole('button', { name: '통신비 더보기' }));
+    expect(screen.getByRole('menuitem', { name: '목적 보관' })).toBeDisabled();
+  });
+
+  it('restores an archived purpose with parent context and target correction, without resuming links', async () => {
+    const onRestorePurpose = vi.fn(async () => true);
+    renderModal({
+      initialMode: 'restore-purpose',
+      node: { id: 'custom:telecom', kind: 'purpose', label: '통신비', amountWon: 200_000, status: 'suspended' },
+      related: [{ label: '생활비통장', amountWon: 200_000, status: 'suspended', linkId: 'telecom', purposeId: 'custom:telecom' }],
+      purposeParentLabel: '생활비',
+      purposeTargetCapacityWon: 150_000,
+      onRestorePurpose,
+    });
+
+    expect(screen.getByText('큰 목적 · 생활비')).toBeVisible();
+    const target = screen.getByRole('textbox', { name: '월 목표 금액' });
+    expect(target).toHaveValue('200000');
+    expect(screen.getByRole('button', { name: '목적 복원' })).toBeDisabled();
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+
+    fireEvent.change(target, { target: { value: '150000' } });
+    fireEvent.click(screen.getByRole('button', { name: '목적 복원' }));
+    expect(onRestorePurpose).toHaveBeenCalledWith('custom:telecom', 150_000);
+  });
+
+  it('lists every active unlinked location without filtering by its current roles', () => {
+    renderModal({
+      related: [{ label: '생활비통장', amountWon: 700_000, status: 'active', linkId: 'living', purposeId: 'system:living', locationId: 'checking' }],
+      locations: [
+        { id: 'checking', shortName: '생활비통장', kind: 'bank', roles: ['spending'], createdAt: 1, updatedAt: 1 },
+        { id: 'savings', shortName: '저축통장', kind: 'bank', roles: ['saving'], createdAt: 1, updatedAt: 1 },
+        { id: 'archived', shortName: '예전통장', kind: 'bank', roles: ['spending'], archivedAt: 2, createdAt: 1, updatedAt: 2 },
+      ],
+    } as never);
+    fireEvent.click(screen.getByRole('button', { name: '편집' }));
+    fireEvent.click(screen.getByRole('button', { name: '연결 추가' }));
+
+    expect(screen.getByRole('button', { name: /저축통장/ })).toBeVisible();
+    expect(screen.queryByRole('button', { name: /생활비통장/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /예전통장/ })).not.toBeInTheDocument();
+  });
+
+  it('keeps nine quick institutions and direct institution input in connect mode', () => {
+    renderModal();
+    fireEvent.click(screen.getByRole('button', { name: '편집' }));
+    fireEvent.click(screen.getByRole('button', { name: '연결 추가' }));
+    fireEvent.click(screen.getByRole('button', { name: '새 계좌·보관처 추가' }));
+
+    for (const name of ['KB국민은행', '신한은행', '하나은행', '우리은행', 'NH농협은행', 'IBK기업은행', 'KDB산업은행', '토스뱅크', '카카오뱅크']) {
+      expect(screen.getByRole('button', { name })).toBeVisible();
+    }
+    fireEvent.click(screen.getByRole('button', { name: '직접 입력' }));
+    expect(screen.getByRole('textbox', { name: '기관 이름' })).toBeVisible();
+  });
+
   it('keeps read and edit in the same modal', () => {
     renderModal();
     const dialog = screen.getByRole('dialog', { name: '생활비 상세' });
