@@ -29,7 +29,7 @@ export type RecoveryState =
     };
 
 export type ManualRecoveryAction = 'reset-map' | 'archive-location' | 'restore-location' | 'layout-change' | 'save-draft' | 'apply-map' | 'edit-node' | 'connection-prerequisite' | 'cancel-setup';
-export type ManualRecoveryTarget = { kind: 'node' | 'link' | 'location'; id: string };
+export type ManualRecoveryTarget = { kind: 'node' | 'link' | 'restorable-link' | 'location'; id: string };
 
 interface WorkspaceReadyState {
   workspace: WorkspaceDocument;
@@ -328,6 +328,13 @@ function adoptRecoveryWorkspaceForReview<State extends Extract<AccountMapState, 
       recovery: { status: 'none' },
     };
   }
+  if (state.mode === 'map' && applied === null) {
+    return {
+      ...state,
+      save: { status: 'idle' },
+      recovery: { ...recovery, reason: 'target-missing' },
+    };
+  }
   if (state.mode === 'setup' && applied === null) {
     const draft = workspace.accountMap.draft;
     return {
@@ -345,10 +352,10 @@ function adoptRecoveryWorkspaceForReview<State extends Extract<AccountMapState, 
 }
 
 function workspaceContainsManualTarget(workspace: WorkspaceDocument, action: ManualRecoveryAction, target: ManualRecoveryTarget): boolean {
-  if (target.kind === 'link') {
+  if (target.kind === 'link' || target.kind === 'restorable-link') {
     const link = workspace.accountMap.applied?.links.find(({ id }) => id === target.id);
     if (link === undefined) return false;
-    return workspace.locations.some(({ id, archivedAt }) => id === link.locationId && (action === 'restore-location' ? archivedAt !== undefined : archivedAt === undefined));
+    return workspace.locations.some(({ id, archivedAt }) => id === link.locationId && (target.kind === 'restorable-link' ? archivedAt !== undefined : archivedAt === undefined));
   }
   if (target.kind === 'location' || target.id.startsWith('location:')) {
     const id = target.id.replace(/^location:/u, '');

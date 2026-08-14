@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { useState } from 'react';
 import { AccountMapCanvas } from '../../../src/account-map/ui/AccountMapCanvas';
 import type { AccountMapApplied } from '../../../src/account-map/domain/model';
+import { createEmptyWorkspace } from '../../../src/workspace/domain/model';
 
 afterEach(cleanup);
 
@@ -34,6 +35,19 @@ describe('AccountMapCanvas', () => {
     expect(screen.getByText('기본 보기')).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: '계좌 중심' }));
     expect(onLayoutChange).toHaveBeenCalledWith('account');
+  });
+
+  it('blocks layout mutations while stale recovery is visible', () => {
+    const onLayoutChange = vi.fn();
+    renderCanvas({
+      onLayoutChange,
+      recovery: { status: 'manual', latest: createEmptyWorkspace(2), action: 'layout-change', targets: [], reason: 'compound-edit' },
+    });
+
+    const accountLayout = screen.getByRole('button', { name: '계좌 중심' });
+    expect(accountLayout).toBeDisabled();
+    fireEvent.click(accountLayout);
+    expect(onLayoutChange).not.toHaveBeenCalled();
   });
 
   it('opens detail only after invoking an already pinned node', () => {

@@ -147,6 +147,34 @@ describe('AccountMapApp', () => {
     expect(await screen.findByRole('button', { name: '최신 상태에서 다시 검토' })).toBeVisible();
     expect(screen.queryByText(/저장하지 못했습니다/)).not.toBeInTheDocument();
     expect(setup.save).toHaveBeenCalledTimes(1);
+    const purposeLayout = screen.getByRole('button', { name: '목적 중심' });
+    expect(purposeLayout).toBeDisabled();
+    fireEvent.click(purposeLayout);
+    expect(setup.save).toHaveBeenCalledTimes(1);
+  });
+
+  it('blocks setup mutation actions until a cancellation conflict is resolved', async () => {
+    const setup = staleDraftRepositories();
+    const reset = vi.fn(async () => ({ status: 'conflict' as const, currentRevision: 2 }));
+    setup.repositories.accountMap.reset = reset;
+    render(<AccountMapApp repositories={setup.repositories} />);
+
+    fireEvent.click(screen.getByRole('button', { name: '설정 취소' }));
+    expect(await screen.findByRole('button', { name: '최신 상태에서 다시 검토' })).toBeVisible();
+
+    const cancelSetup = screen.getByRole('button', { name: '설정 취소' });
+    const review = screen.getByRole('button', { name: '검토' });
+    const addPurpose = screen.getByRole('button', { name: '세부 목적 추가' });
+    expect(cancelSetup).toBeDisabled();
+    expect(review).toBeDisabled();
+    expect(addPurpose).toBeDisabled();
+    for (const connect of screen.getAllByRole('button', { name: '연결' })) expect(connect).toBeDisabled();
+    fireEvent.click(cancelSetup);
+    fireEvent.click(review);
+    fireEvent.click(addPurpose);
+    expect(reset).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('heading', { name: '월 자금의 위치를 알려주세요' })).toBeVisible();
+    expect(screen.queryByRole('dialog', { name: '세부 목적 추가' })).not.toBeInTheDocument();
   });
 
   it('shows reset conflict on the map surface without a generic management failure', async () => {
@@ -174,6 +202,31 @@ describe('AccountMapApp', () => {
     expect(screen.getByRole('dialog', { name: '세부 목적 추가' })).toBeVisible();
     expect(name).toHaveValue('여행');
     expect(screen.queryByText('저장하지 못했어요. 입력은 그대로 두었습니다.')).not.toBeInTheDocument();
+
+    const cancel = screen.getByRole('button', { name: '취소' });
+    expect(cancel).toBeDisabled();
+    fireEvent.click(cancel);
+    expect(screen.getByRole('dialog', { name: '세부 목적 추가' })).toBeVisible();
+
+    fireEvent.click(screen.getByRole('button', { name: '최신 상태에서 다시 검토' }));
+    await waitFor(() => expect(screen.queryByRole('button', { name: '최신 상태에서 다시 검토' })).not.toBeInTheDocument());
+    expect(name).toHaveValue('여행');
+    expect(cancel).toBeEnabled();
+  });
+
+  it('explicitly keeps latest and closes custom-purpose recovery without orphaning it', async () => {
+    const setup = staleDraftRepositories();
+    render(<AccountMapApp repositories={setup.repositories} />);
+    fireEvent.click(screen.getByRole('button', { name: '세부 목적 추가' }));
+    fireEvent.change(screen.getByRole('textbox', { name: '목적 이름' }), { target: { value: '여행' } });
+    fireEvent.change(screen.getByRole('textbox', { name: '월 금액' }), { target: { value: '100000' } });
+    fireEvent.click(screen.getByRole('button', { name: '추가' }));
+    await screen.findByRole('button', { name: '최신 값 유지' });
+
+    fireEvent.click(screen.getByRole('button', { name: '최신 값 유지' }));
+
+    expect(screen.queryByRole('dialog', { name: '세부 목적 추가' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '최신 상태에서 다시 검토' })).not.toBeInTheDocument();
   });
 
   it('keeps modal edits and waits for explicit replay of a stale field intent', async () => {
@@ -227,9 +280,75 @@ describe('AccountMapApp', () => {
     await waitFor(() => expect(setup.save).toHaveBeenCalledTimes(2));
     expect(setup.save.mock.calls[1]?.[0]).toBe(2);
   });
+
+  it('keeps typed compound modal input when latest moved back to setup', async () => {
+    const setup = staleCompoundModalRepositories(true);
+    render(<AccountMapApp repositories={setup.repositories} />);
+    const locationNode = screen.getByRole('button', { name: '생활비통장' });
+    fireEvent.click(locationNode);
+    fireEvent.click(locationNode);
+    fireEvent.click(screen.getByRole('button', { name: '편집' }));
+    const label = screen.getByRole('textbox', { name: '표시 이름' });
+    const amount = screen.getByRole('textbox', { name: '생활비 월 금액' });
+    fireEvent.change(label, { target: { value: '새생활비' } });
+    fireEvent.change(amount, { target: { value: '650000' } });
+    fireEvent.click(screen.getByRole('button', { name: '저장' }));
+    fireEvent.click(await screen.findByRole('button', { name: '최신 상태에서 다시 검토' }));
+
+    expect(screen.getByRole('dialog')).toBeVisible();
+    expect(label).toHaveValue('새생활비');
+    expect(amount).toHaveValue('650000');
+    expect(screen.getByText(/편집 대상이 최신 상태에 없습니다/)).toBeVisible();
+  });
+
+  it('keeps archive replacement input when its latest remainder target disappeared', async () => {
+    const setup = staleArchiveRepositories();
+    render(<AccountMapApp repositories={setup.repositories} />);
+    const locationNode = screen.getByRole('button', { name: '생활비통장' });
+    fireEvent.click(locationNode);
+    fireEvent.click(locationNode);
+    fireEvent.click(screen.getByRole('button', { name: '보관' }));
+    const replacement = screen.getByRole('combobox', { name: '새 나머지 계좌' });
+    fireEvent.change(replacement, { target: { value: 'backup-link' } });
+    fireEvent.click(screen.getByRole('button', { name: '보관하기' }));
+    fireEvent.click(await screen.findByRole('button', { name: '최신 상태에서 다시 검토' }));
+
+    expect(screen.getByRole('dialog', { name: /생활비통장 보관/ })).toBeVisible();
+    expect(replacement).toHaveValue('backup-link');
+    expect(screen.getByText(/편집 대상이 최신 상태에 없습니다/)).toBeVisible();
+  });
+
 });
 
-function staleCompoundModalRepositories() {
+function staleArchiveRepositories() {
+  const initial = createEmptyWorkspace(1);
+  initial.revision = 1;
+  initial.main.applied = mainData();
+  initial.locations = [
+    { id: 'checking', shortName: '생활비통장', institution: { id: 'kb-kookmin', name: 'KB국민은행' }, kind: 'bank', roles: ['spending'], createdAt: 1, updatedAt: 1 },
+    { id: 'backup', shortName: '비상통장', institution: { id: 'hana', name: '하나은행' }, kind: 'bank', roles: ['spending'], createdAt: 1, updatedAt: 1 },
+  ];
+  initial.accountMap.applied = {
+    schemaVersion: 1, sourceMainUpdatedAt: 10, customPurposes: [],
+    links: [
+      { id: 'living-link', purposeId: 'system:living', locationId: 'checking', monthlyAmountWon: 700_000, remainder: true, status: 'active', createdAt: 1, updatedAt: 1 },
+      { id: 'backup-link', purposeId: 'system:living', locationId: 'backup', monthlyAmountWon: 300_000, remainder: false, status: 'active', createdAt: 1, updatedAt: 1 },
+    ],
+    layout: 'purpose', setupCompletedAt: 1, updatedAt: 1,
+  };
+  const latest = structuredClone(initial);
+  latest.revision = 2;
+  latest.accountMap.applied!.links = latest.accountMap.applied!.links.filter(({ id }) => id !== 'backup-link');
+  const accountMap: AccountMapRepository = {
+    load: vi.fn().mockReturnValueOnce({ status: 'found' as const, workspace: initial, needsMigration: false }).mockReturnValue({ status: 'found' as const, workspace: latest, needsMigration: false }),
+    save: vi.fn(async () => ({ status: 'conflict' as const, currentRevision: 2 })),
+    saveIntent: vi.fn(), migrate: vi.fn(), reset: vi.fn(),
+  };
+  const main: AccountMapMainSourceRepository = { load: vi.fn(() => ({ status: 'found' as const, data: mainData() })) };
+  return { repositories: { accountMap, main } };
+}
+
+function staleCompoundModalRepositories(latestWithoutApplied = false) {
   const initial = createEmptyWorkspace(1);
   initial.revision = 1;
   initial.main.applied = mainData();
@@ -240,6 +359,10 @@ function staleCompoundModalRepositories() {
     layout: 'purpose', setupCompletedAt: 1, updatedAt: 1,
   };
   const latest: WorkspaceDocument = { ...structuredClone(initial), revision: 2, updatedAt: 2 };
+  if (latestWithoutApplied) {
+    latest.accountMap.applied = null;
+    latest.accountMap.draft = { schemaVersion: 1, sourceMainUpdatedAt: 10, customPurposes: [], links: [], step: 'connect', updatedAt: 2 };
+  }
   const load = vi.fn()
     .mockReturnValueOnce({ status: 'found' as const, workspace: initial, needsMigration: false })
     .mockImplementation(() => ({ status: 'found' as const, workspace: latest, needsMigration: false }));

@@ -169,10 +169,10 @@ describe('AccountMapModal', () => {
         { label: '첫 통장', amountWon: 300_000, status: 'active', linkId: 'first', purposeId: 'system:living', remainder: false },
         { label: '둘째 통장', amountWon: 700_000, status: 'active', linkId: 'second', purposeId: 'system:living', remainder: true },
       ],
-      recovery: linkCollisionRecovery('second', 'monthlyAmountWon'),
     });
-    render(<AccountMapModal {...props} />);
+    const { rerender } = render(<AccountMapModal {...props} />);
     fireEvent.click(screen.getByRole('button', { name: '편집' }));
+    rerender(<AccountMapModal {...props} recovery={linkCollisionRecovery('second', 'monthlyAmountWon')} />);
 
     const first = screen.getByRole('textbox', { name: '첫 통장 월 금액' });
     const second = screen.getByRole('textbox', { name: '둘째 통장 월 금액' });
@@ -217,9 +217,10 @@ describe('AccountMapModal', () => {
 
   it('keeps compound input and offers latest review without automatic replay', () => {
     const onReapply = vi.fn(async () => false);
+    const onClose = vi.fn();
     const props = modalProps({
       node: { id: 'location:checking', kind: 'location', label: '생활비통장', status: 'resolved' },
-      onReapply,
+      onReapply, onClose,
     });
     const { rerender } = render(<AccountMapModal {...props} />);
     fireEvent.click(screen.getByRole('button', { name: '편집' }));
@@ -235,6 +236,11 @@ describe('AccountMapModal', () => {
     expect(screen.queryByRole('button', { name: '최신 상태에서 다시 적용' })).not.toBeInTheDocument();
     const review = screen.getByRole('button', { name: '최신 상태에서 다시 검토' });
     expect(review).toHaveFocus();
+    expect(screen.getByRole('button', { name: '닫기' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '취소' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onClose).not.toHaveBeenCalled();
     fireEvent.click(review);
     expect(onReapply).toHaveBeenCalledTimes(1);
   });

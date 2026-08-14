@@ -100,7 +100,7 @@ export function AccountMapSetup(props: AccountMapSetupProps): JSX.Element {
         {props.saveFailed ? <SaveFailure /> : null}
         {props.recovery.status === 'none' ? null : <RecoveryControls recovery={props.recovery} pending={props.recoveryPending} onReapply={props.onReapply} onKeepLatest={props.onKeepLatest} />}
         <footer className="account-map-actions">
-          <button type="button" className="ui-button ui-button--secondary" disabled={props.recoveryPending} onClick={props.onBack}>이전</button>
+          <button type="button" className="ui-button ui-button--secondary" disabled={props.recovery.status !== 'none'} onClick={props.onBack}>이전</button>
           <button type="button" className="ui-button ui-button--primary" disabled={!canApply || props.recovery.status !== 'none'} onClick={props.onApply}>지도 만들기</button>
         </footer>
       </section>
@@ -126,20 +126,20 @@ export function AccountMapSetup(props: AccountMapSetupProps): JSX.Element {
                 <strong>{formatWon(purposeId.startsWith('custom:') ? props.draft?.customPurposes.find(({ id }) => id === purposeId)?.targetMonthlyWon ?? 0 : references[purposeId as SystemPurposeId])}</strong>
               </div>
               {links.length > 0 ? <p className="account-map-purpose-card__status">{links.length}곳 연결됨</p> : <p className="account-map-purpose-card__status is-empty">연결 필요</p>}
-              <button type="button" className="account-map-purpose-card__action" onClick={() => setActivePurposeId(purposeId)}>
+              <button type="button" className="account-map-purpose-card__action" disabled={props.recovery.status !== 'none'} onClick={() => setActivePurposeId(purposeId)}>
                 {links.length === 0 ? '연결' : '다른 계좌 연결'}
               </button>
             </article>
           );
         })}
       </div>
-      <button type="button" className="account-map-add-purpose" onClick={() => setCustomOpen(true)}><span aria-hidden="true">＋</span> 세부 목적 추가</button>
+      <button type="button" className="account-map-add-purpose" disabled={props.recovery.status !== 'none'} onClick={() => setCustomOpen(true)}><span aria-hidden="true">＋</span> 세부 목적 추가</button>
       {props.saveFailed && activePurposeId === null ? <SaveFailure /> : null}
       {props.recovery.status === 'none' || activePurposeId !== null || customOpen ? null : <RecoveryControls recovery={props.recovery} pending={props.recoveryPending} onReapply={props.onReapply} onKeepLatest={props.onKeepLatest} />}
       <footer className="account-map-actions">
-        <button type="button" className="ui-button ui-button--quiet" onClick={props.onExit}>나가기</button>
-        {props.draft !== null ? <button type="button" className="ui-button ui-button--secondary" onClick={props.onCancelSetup}>설정 취소</button> : null}
-        <button type="button" className="ui-button ui-button--primary" onClick={props.onReview}>검토</button>
+        <button type="button" className="ui-button ui-button--quiet" disabled={props.recovery.status !== 'none'} onClick={props.onExit}>나가기</button>
+        {props.draft !== null ? <button type="button" className="ui-button ui-button--secondary" disabled={props.recovery.status !== 'none'} onClick={props.onCancelSetup}>설정 취소</button> : null}
+        <button type="button" className="ui-button ui-button--primary" disabled={props.recovery.status !== 'none'} onClick={props.onReview}>검토</button>
       </footer>
       {activePurposeId === null ? null : (
         <ConnectionDialog
@@ -194,11 +194,10 @@ function ConnectionDialog({ purposeId, workspace, main, draft, saveFailed, recov
   const panelRef = useRef<HTMLDivElement>(null);
   const dirtyRef = useRef(false);
   const onCancelRef = useRef(onCancel);
-  const onKeepLatestRef = useRef(onKeepLatest);
   const recoveryRef = useRef(recovery);
   const recoveryPendingRef = useRef(recoveryPending);
+  const pendingRef = useRef(false);
   onCancelRef.current = onCancel;
-  onKeepLatestRef.current = onKeepLatest;
   recoveryRef.current = recovery;
   recoveryPendingRef.current = recoveryPending;
   const [mode, setMode] = useState<'choose' | 'create'>('choose');
@@ -208,6 +207,7 @@ function ConnectionDialog({ purposeId, workspace, main, draft, saveFailed, recov
   const [shortName, setShortName] = useState('');
   const [amount, setAmount] = useState('');
   const [pending, setPending] = useState(false);
+  pendingRef.current = pending;
   const links = draft?.links.filter((link) => link.purposeId === purposeId && link.status === 'active') ?? [];
   const linkedIds = new Set(links.map(({ locationId }) => locationId));
   const role = roleFor(purposeId, draft);
@@ -223,11 +223,8 @@ function ConnectionDialog({ purposeId, workspace, main, draft, saveFailed, recov
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault();
-        if (recoveryPendingRef.current) return;
-        if (recoveryRef.current.status !== 'none') {
-          onKeepLatestRef.current();
-          onCancelRef.current();
-        } else if (!dirtyRef.current || window.confirm('입력 중인 내용을 취소할까요?')) onCancelRef.current();
+        if (pendingRef.current || recoveryPendingRef.current || recoveryRef.current.status !== 'none') return;
+        if (!dirtyRef.current || window.confirm('입력 중인 내용을 취소할까요?')) onCancelRef.current();
         return;
       }
       if (event.key !== 'Tab') return;
@@ -243,11 +240,8 @@ function ConnectionDialog({ purposeId, workspace, main, draft, saveFailed, recov
   }, []);
 
   function requestClose() {
-    if (recoveryPending) return;
-    if (recovery.status !== 'none') {
-      onKeepLatest();
-      onCancel();
-    } else if (!dirty || window.confirm('입력 중인 내용을 취소할까요?')) onCancel();
+    if (pending || recoveryPending || recovery.status !== 'none') return;
+    if (!dirty || window.confirm('입력 중인 내용을 취소할까요?')) onCancel();
   }
 
   const institution = INSTITUTIONS.find(([id]) => id === institutionId);
@@ -289,7 +283,7 @@ function ConnectionDialog({ purposeId, workspace, main, draft, saveFailed, recov
           {saveFailed ? <SaveFailure /> : null}
           {recovery.status === 'none' ? null : <RecoveryControls recovery={recovery} pending={recoveryPending} onReapply={async () => { const saved = await onReapply(); if (saved) onCancel(); return saved; }} onKeepLatest={() => { onKeepLatest(); onCancel(); }} />}
         </div>
-        <footer><button type="button" className="ui-button ui-button--secondary" disabled={recoveryPending} onClick={requestClose}>취소</button><button type="button" className="ui-button ui-button--primary" disabled={!canComplete || pending || recovery.status !== 'none' || duplicate.kind !== 'none' || (additional && Number(amount) <= 0)} onClick={() => {
+        <footer><button type="button" className="ui-button ui-button--secondary" disabled={pending || recoveryPending || recovery.status !== 'none'} onClick={requestClose}>취소</button><button type="button" className="ui-button ui-button--primary" disabled={!canComplete || pending || recovery.status !== 'none' || duplicate.kind !== 'none' || (additional && Number(amount) <= 0)} onClick={() => {
           const newLocation = mode === 'create' ? createLocation(shortName, institutionId, institution, customInstitution, role) : undefined;
           const locationId = newLocation?.id ?? selectedLocationId;
           if (locationId === null) return;
@@ -308,7 +302,7 @@ function CustomPurposeDialog({ main, draft, recovery, recoveryPending, onReapply
   const [amount, setAmount] = useState('');
   const [pending, setPending] = useState(false);
   const capacity = customPurposeTargetCapacity(parentId, draft?.customPurposes ?? [], main);
-  return <div className="account-map-sheet-backdrop"><div className="account-map-sheet account-map-sheet--compact" role="dialog" aria-modal="true" aria-labelledby={titleId}><header><h2 id={titleId}>세부 목적 추가</h2></header><div className="account-map-sheet__body"><label>큰 목적<select value={parentId} onChange={(event) => setParentId(event.target.value as OutflowPurposeId)}><option value="system:housing">주거</option><option value="system:living">생활비</option><option value="system:saving">저축</option><option value="system:investing">투자</option></select></label><label>목적 이름<input value={name} maxLength={24} onChange={(event) => setName(event.target.value)} /></label><label>월 금액<input inputMode="numeric" value={amount} onChange={(event) => setAmount(event.target.value.replace(/\D/gu, ''))} /></label><p className="account-map-hint">추가 가능 {formatWon(capacity)}</p>{Number(amount) > capacity ? <p className="account-map-error">큰 목적의 월 금액을 넘을 수 없습니다.</p> : null}{recovery.status === 'none' ? null : <RecoveryControls recovery={recovery} pending={pending || recoveryPending} onReapply={onReapply} onKeepLatest={() => { onKeepLatest(); onCancel(); }} />}</div><footer><button type="button" className="ui-button ui-button--secondary" disabled={pending || recoveryPending} onClick={onCancel}>취소</button><button type="button" className="ui-button ui-button--primary" disabled={pending || recovery.status !== 'none' || name.trim() === '' || Number(amount) <= 0 || Number(amount) > capacity} onClick={() => {
+  return <div className="account-map-sheet-backdrop"><div className="account-map-sheet account-map-sheet--compact" role="dialog" aria-modal="true" aria-labelledby={titleId}><header><h2 id={titleId}>세부 목적 추가</h2></header><div className="account-map-sheet__body"><label>큰 목적<select value={parentId} onChange={(event) => setParentId(event.target.value as OutflowPurposeId)}><option value="system:housing">주거</option><option value="system:living">생활비</option><option value="system:saving">저축</option><option value="system:investing">투자</option></select></label><label>목적 이름<input value={name} maxLength={24} onChange={(event) => setName(event.target.value)} /></label><label>월 금액<input inputMode="numeric" value={amount} onChange={(event) => setAmount(event.target.value.replace(/\D/gu, ''))} /></label><p className="account-map-hint">추가 가능 {formatWon(capacity)}</p>{Number(amount) > capacity ? <p className="account-map-error">큰 목적의 월 금액을 넘을 수 없습니다.</p> : null}{recovery.status === 'none' ? null : <RecoveryControls recovery={recovery} pending={pending || recoveryPending} onReapply={onReapply} onKeepLatest={() => { onKeepLatest(); onCancel(); }} />}</div><footer><button type="button" className="ui-button ui-button--secondary" disabled={pending || recovery.status !== 'none'} onClick={onCancel}>취소</button><button type="button" className="ui-button ui-button--primary" disabled={pending || recovery.status !== 'none' || name.trim() === '' || Number(amount) <= 0 || Number(amount) > capacity} onClick={() => {
     const now = Date.now();
     const current = draft ?? emptyDraft(main.updatedAt);
     const next: AccountMapDraft = { ...current, customPurposes: [...current.customPurposes, { id: `custom:${createId()}`, parentId, name: name.trim(), targetMonthlyWon: Number(amount), createdAt: now, updatedAt: now }], updatedAt: now };

@@ -208,6 +208,45 @@ describe('Account Map reducer', () => {
     });
   });
 
+  it('keeps the active map modal when latest no longer has an applied map', () => {
+    let current = accountMapReducer(mapState(), { type: 'node-invoked', nodeId: 'a' });
+    current = accountMapReducer(current, { type: 'node-invoked', nodeId: 'a' });
+    const latest = createEmptyWorkspace(2);
+    latest.accountMap.draft = draft();
+    const conflicted = accountMapReducer(current, {
+      type: 'save-manual-conflicted', latest, action: 'edit-node', targets: [{ kind: 'node', id: 'a' }], reason: 'compound-edit',
+    });
+
+    const reviewed = accountMapReducer(conflicted, { type: 'review-latest' });
+
+    expect(reviewed).toMatchObject({
+      mode: 'map', workspace: { revision: 0 }, interaction: { modalNodeId: 'a' },
+      recovery: { status: 'manual', reason: 'target-missing', action: 'edit-node' },
+    });
+  });
+
+  it.each([
+    ['archive-location', { kind: 'link' as const, id: 'replacement-link' }],
+    ['restore-location', { kind: 'restorable-link' as const, id: 'restored-link' }],
+  ] as const)('keeps %s recovery when a replacement remainder target disappeared', (action, target) => {
+    const latest = createEmptyWorkspace(2);
+    latest.locations = [{
+      id: 'checking', shortName: '생활비', kind: 'bank', roles: ['spending'],
+      ...(action === 'restore-location' ? { archivedAt: 2 } : {}), createdAt: 1, updatedAt: 2,
+    }];
+    latest.accountMap.applied = applied('purpose');
+    const conflicted = accountMapReducer(mapState(), {
+      type: 'save-manual-conflicted', latest, action, targets: [{ kind: 'location', id: 'checking' }, target], reason: 'compound-edit',
+    });
+
+    const reviewed = accountMapReducer(conflicted, { type: 'review-latest' });
+
+    expect(reviewed).toMatchObject({
+      mode: 'map', workspace: { revision: 0 },
+      recovery: { status: 'manual', reason: 'target-missing', action, targets: expect.arrayContaining([target]) },
+    });
+  });
+
   it('moves setup to review, preserves draft on exit, and clears only draft on cancellation', () => {
     const initial = setupState();
     const review = accountMapReducer(initial, { type: 'review-requested' });

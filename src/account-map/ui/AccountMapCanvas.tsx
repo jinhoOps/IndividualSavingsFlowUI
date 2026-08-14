@@ -74,7 +74,7 @@ export function AccountMapCanvas({
   }
 
   function changeLayout(layout: AccountMapApplied['layout']) {
-    if (layout === applied.layout || layoutAnimating) return;
+    if (layout === applied.layout || layoutAnimating || recovery.status !== 'none') return;
     const root = canvasRef.current;
     if (root === null) { onLayoutChange(layout); return; }
     setLayoutAnimating(true);
@@ -122,8 +122,8 @@ export function AccountMapCanvas({
       <header className="account-map-canvas-toolbar">
         <div><p className="account-map-eyebrow">연결 지도</p><h2 ref={headingRef} id="account-map-canvas-title" tabIndex={-1}>목적과 계좌의 연결</h2></div>
         <div className="account-map-layout-control" role="group" aria-label="지도 정렬">
-          <button type="button" disabled={layoutAnimating} aria-pressed={applied.layout === 'purpose'} onClick={() => changeLayout('purpose')}>목적 중심</button>
-          <button type="button" disabled={layoutAnimating} aria-pressed={applied.layout === 'account'} onClick={() => changeLayout('account')}>계좌 중심</button>
+          <button type="button" disabled={layoutAnimating || recovery.status !== 'none'} aria-pressed={applied.layout === 'purpose'} onClick={() => changeLayout('purpose')}>목적 중심</button>
+          <button type="button" disabled={layoutAnimating || recovery.status !== 'none'} aria-pressed={applied.layout === 'account'} onClick={() => changeLayout('account')}>계좌 중심</button>
         </div>
         <div className="account-map-zoom-control" role="group" aria-label="지도 확대 수준">
           <button type="button" aria-label="축소" disabled={zoom === 'overview'} onClick={() => changeZoom(-1)}>−</button>

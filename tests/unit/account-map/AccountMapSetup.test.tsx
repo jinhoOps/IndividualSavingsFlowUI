@@ -95,7 +95,7 @@ describe('AccountMapSetup', () => {
     expect(screen.getByRole('dialog', { name: '수입 연결' })).toBeVisible();
   });
 
-  it('abandons stale recovery and adopts latest when the conflicted dialog is cancelled', async () => {
+  it('requires explicit latest keep instead of plain cancel for settled recovery', async () => {
     const setup = staleDuplicateFixture();
     render(<AccountMapApp repositories={setup.repositories} />);
     const incomeCard = screen.getByRole('heading', { name: '수입' }).closest('article')!;
@@ -104,13 +104,18 @@ describe('AccountMapSetup', () => {
     fireEvent.click(screen.getByRole('button', { name: '완료' }));
     await screen.findByRole('button', { name: '최신 상태에서 다시 적용' });
 
-    fireEvent.click(screen.getByRole('button', { name: '취소' }));
+    const cancel = screen.getByRole('button', { name: '취소' });
+    expect(cancel).toBeDisabled();
+    fireEvent.click(cancel);
+
+    expect(screen.getByRole('dialog', { name: '수입 연결' })).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: '최신 값 유지' }));
 
     await waitFor(() => expect(screen.queryByRole('dialog', { name: '수입 연결' })).not.toBeInTheDocument());
     expect(within(incomeCard).getByRole('button', { name: '다른 계좌 연결' })).toBeVisible();
   });
 
-  it('abandons stale recovery on Escape instead of leaking it into another dialog', async () => {
+  it('blocks Escape until settled recovery is resolved explicitly', async () => {
     const setup = staleDuplicateFixture();
     render(<AccountMapApp repositories={setup.repositories} />);
     const incomeCard = screen.getByRole('heading', { name: '수입' }).closest('article')!;
@@ -120,6 +125,9 @@ describe('AccountMapSetup', () => {
     await screen.findByRole('button', { name: '최신 상태에서 다시 적용' });
 
     fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.getByRole('dialog', { name: '수입 연결' })).toBeVisible();
+    expect(screen.getByRole('button', { name: '최신 상태에서 다시 적용' })).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: '최신 값 유지' }));
     fireEvent.click(screen.getByRole('heading', { name: '주거' }).closest('article')!.querySelector('button')!);
 
     expect(screen.getByRole('dialog', { name: '주거 연결' })).toBeVisible();
