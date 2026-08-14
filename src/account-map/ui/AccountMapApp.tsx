@@ -424,6 +424,10 @@ export function AccountMapApp({ repositories }: { repositories?: AccountMapRepos
       return false;
     }
     const { latest, intent } = state.recovery;
+    if (latest.main.applied === null) {
+      dispatch({ type: 'latest-kept' });
+      return false;
+    }
     dispatch({ type: 'reapply-requested' });
     const replayWorkspace = latest;
     const rebased = rebaseAccountMapIntent(replayWorkspace, intent);

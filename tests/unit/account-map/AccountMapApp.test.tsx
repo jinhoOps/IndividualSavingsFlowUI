@@ -635,6 +635,26 @@ describe('AccountMapApp', () => {
     expect(livingNode).toHaveFocus();
   });
 
+  it('keeps concurrent empty-Main restore without writing a stale single-field location replay', async () => {
+    const setup = staleLocationWithoutMainRepositories();
+    render(<AccountMapApp repositories={setup.repositories} />);
+    const locationNode = screen.getByRole('button', { name: /계좌·보관처 · 생활비통장 ·/ });
+    fireEvent.click(locationNode);
+    fireEvent.click(locationNode);
+    fireEvent.click(screen.getByRole('button', { name: '편집' }));
+    fireEvent.change(screen.getByRole('textbox', { name: '표시 이름' }), { target: { value: '생활통장' } });
+    fireEvent.click(screen.getByRole('button', { name: '저장' }));
+
+    const replay = await screen.findByRole('button', { name: '최신 상태에서 다시 적용' });
+    expect(setup.saveIntent).toHaveBeenCalledTimes(1);
+    expect(setup.save).not.toHaveBeenCalled();
+    fireEvent.click(replay);
+
+    expect(await screen.findByRole('heading', { name: '월 자금 계획이 먼저 필요해요' })).toBeVisible();
+    expect(setup.save).not.toHaveBeenCalled();
+    expect(JSON.stringify(setup.current())).toBe(setup.latestJson);
+  });
+
   it('adopts successful replay only after normal-motion modal close restores focus', async () => {
     appMotion.deferClose = true;
     vi.stubGlobal('matchMedia', vi.fn(() => ({
@@ -829,6 +849,44 @@ function staleModalRepositories() {
   const accountMap: AccountMapRepository = { load, save, saveIntent, migrate: vi.fn(), reset: vi.fn() };
   const main: AccountMapMainSourceRepository = { load: vi.fn(() => ({ status: 'found' as const, data: mainData() })) };
   return { repositories: { accountMap, main }, save, saveIntent };
+}
+
+function staleLocationWithoutMainRepositories() {
+  const initial = createEmptyWorkspace(1);
+  initial.revision = 1;
+  initial.main.applied = mainData();
+  initial.locations = [{
+    id: 'checking', shortName: '생활비통장', institution: { id: 'kb-kookmin', name: 'KB국민은행' },
+    kind: 'bank', roles: ['spending'], createdAt: 1, updatedAt: 1,
+  }];
+  initial.accountMap.applied = {
+    schemaVersion: 1, sourceMainUpdatedAt: 10, customPurposes: [],
+    links: [{
+      id: 'living-link', purposeId: 'system:living', locationId: 'checking', monthlyAmountWon: 1_000_000,
+      remainder: true, status: 'active', createdAt: 1, updatedAt: 1,
+    }],
+    layout: 'purpose', setupCompletedAt: 1, updatedAt: 1,
+  };
+  const latest: WorkspaceDocument = { ...structuredClone(initial), revision: 2, updatedAt: 2 };
+  latest.main.applied = null;
+  latest.accountMap.applied = null;
+  latest.accountMap.draft = null;
+  let current = structuredClone(latest);
+  const load = vi.fn()
+    .mockReturnValueOnce({ status: 'found' as const, workspace: initial, needsMigration: false })
+    .mockImplementation(() => ({ status: 'found' as const, workspace: latest, needsMigration: false }));
+  const saveIntent = vi.fn(async () => ({ status: 'conflict' as const, currentRevision: 2 }));
+  const save = vi.fn(async () => {
+    current = { ...structuredClone(latest), revision: 3, updatedAt: 3 };
+    return { status: 'saved' as const, workspace: current };
+  });
+  const accountMap: AccountMapRepository = { load, save, saveIntent, migrate: vi.fn(), reset: vi.fn() };
+  const main: AccountMapMainSourceRepository = { load: vi.fn(() => ({ status: 'found' as const, data: mainData() })) };
+  return {
+    repositories: { accountMap, main }, save, saveIntent,
+    current: () => current,
+    latestJson: JSON.stringify(latest),
+  };
 }
 
 function staleSetupRepositories() {

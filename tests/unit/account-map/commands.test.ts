@@ -472,6 +472,72 @@ describe('Account Map commands', () => {
     expect(JSON.stringify(result.workspace.portfolio)).toBe(JSON.stringify(before.portfolio));
   });
 
+  it.each([
+    ['create-location', { type: 'create-location', location: location('new', '새계좌') }],
+    ['connect-location', {
+      type: 'connect-location',
+      surface: 'applied',
+      purposeId: 'system:investing',
+      locationId: 'savings',
+    }],
+    ['create-and-connect-location', {
+      type: 'create-and-connect-location',
+      surface: 'draft',
+      purposeId: 'system:saving',
+      location: location('new-saving', '새저축'),
+    }],
+    ['restore-and-connect-location', {
+      type: 'restore-and-connect-location',
+      surface: 'applied',
+      purposeId: 'system:investing',
+      locationId: 'savings',
+    }],
+    ['edit-link', {
+      type: 'edit-link',
+      linkId: 'living-edit',
+      fields: { monthlyAmountWon: 150_000 },
+    }],
+    ['edit-custom-purpose', {
+      type: 'edit-custom-purpose',
+      purposeId: 'custom:telecom',
+      fields: { name: '통신 요금' },
+    }],
+    ['archive-custom-purpose', { type: 'archive-custom-purpose', purposeId: 'custom:telecom' }],
+    ['restore-custom-purpose', {
+      type: 'restore-custom-purpose',
+      purposeId: 'custom:telecom',
+      targetMonthlyWon: 200_000,
+    }],
+    ['update-location', {
+      type: 'update-location',
+      locationId: 'checking',
+      shortName: '주계좌',
+      addRoles: ['saving'],
+    }],
+    ['save-draft', { type: 'save-draft', draft: draft() }],
+    ['apply-map', { type: 'apply-map', applied: validApplied() }],
+    ['edit-map-node', { type: 'edit-map-node', applied: validApplied() }],
+    ['archive-location', {
+      type: 'archive-location',
+      locationId: 'savings',
+      replacementRemainderByPurpose: {},
+    }],
+    ['restore-location', {
+      type: 'restore-location',
+      locationId: 'savings',
+      restoreLinkIds: [],
+      remainderByPurpose: {},
+    }],
+    ['reset-map', { type: 'reset-map' }],
+  ] satisfies [string, AccountMapCommand][])('%s rejects mutation when persisted Main is absent', (_name, command) => {
+    const before = workspace();
+    before.main.applied = null;
+    const beforeJson = JSON.stringify(before);
+
+    expect(applyAccountMapCommand(before, command, 20)).toEqual({ ok: false, reason: 'invalid-input' });
+    expect(JSON.stringify(before)).toBe(beforeJson);
+  });
+
   it('rejects duplicate location identity and adds roles without removing existing roles', () => {
     const before = workspace();
     const duplicate = applyAccountMapCommand(before, {

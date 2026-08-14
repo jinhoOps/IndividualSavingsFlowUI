@@ -20,6 +20,7 @@ describe('Account Map repository', () => {
 
   it('returns domain rejection and storage failure explicitly', async () => {
     const workspace = createEmptyWorkspace(1);
+    workspace.main.applied = main();
     const source = fakeWorkspaceRepository(workspace);
     const repository = new BrowserAccountMapRepository(source);
     expect(await repository.save(0, {
@@ -32,6 +33,7 @@ describe('Account Map repository', () => {
 
   it('delegates migration and persists a valid command at the expected revision', async () => {
     const workspace = createEmptyWorkspace(1);
+    workspace.main.applied = main();
     const source = fakeWorkspaceRepository(workspace);
     const repository = new BrowserAccountMapRepository(source, () => 20);
 

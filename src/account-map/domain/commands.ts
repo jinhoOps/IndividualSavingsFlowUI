@@ -120,6 +120,7 @@ export function applyAccountMapCommand(
 ): AccountMapCommandResult {
   const source = parseWorkspaceDocument(workspace);
   if (source === null || !validTimestamp(now)) return failure('invalid-input');
+  if (source.main.applied === null) return failure('invalid-input');
 
   let changed: AccountMapCommandResult;
   switch (command.type) {

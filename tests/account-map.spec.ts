@@ -568,6 +568,56 @@ test('requires Main after a concurrent whole-workspace restore removes its appli
   expect(stored.accountMap.applied).toBeNull();
 });
 
+test('does not replay a single location edit after a concurrent empty-Main restore', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  const initial = editableWorkspace();
+  await seed(page, initial);
+  await page.goto('apps/account-map/');
+  const restored = structuredClone(initial);
+  restored.revision = 2;
+  restored.updatedAt = now + 1;
+  restored.main.applied = null;
+  restored.accountMap.applied = null;
+  restored.accountMap.draft = null;
+  const restoredJson = JSON.stringify(restored);
+
+  await openNode(page, /계좌·보관처 · 생활비통장 ·/);
+  await page.getByRole('button', { name: '편집' }).click();
+  await page.getByRole('textbox', { name: '표시 이름' }).fill('생활통장');
+
+  await page.evaluate(({ key, workspace }) => {
+    localStorage.setItem(key, JSON.stringify(workspace));
+    const originalSetItem = Storage.prototype.setItem;
+    Object.defineProperty(window, '__accountMapWrites', { configurable: true, value: 0, writable: true });
+    Storage.prototype.setItem = function setItem(storageKey: string, value: string) {
+      if (storageKey === key) {
+        (window as typeof window & { __accountMapWrites: number }).__accountMapWrites += 1;
+      }
+      originalSetItem.call(this, storageKey, value);
+    };
+  }, { key: STORAGE_KEY, workspace: restored });
+
+  await page.getByRole('button', { name: '저장' }).click();
+  await expect(page.getByRole('button', { name: '최신 상태에서 다시 적용' })).toBeVisible();
+  await expect(page.getByRole('textbox', { name: '표시 이름' })).toHaveValue('생활통장');
+  await page.getByRole('button', { name: '최신 상태에서 다시 적용' }).click();
+
+  await expect(page.getByRole('heading', { name: '월 자금 계획이 먼저 필요해요' })).toBeVisible();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  const persisted = await page.evaluate((key) => ({
+    raw: localStorage.getItem(key),
+    writes: (window as typeof window & { __accountMapWrites: number }).__accountMapWrites,
+  }), STORAGE_KEY);
+  expect(persisted.writes).toBe(0);
+  expect(persisted.raw).toBe(restoredJson);
+  const stored = JSON.parse(persisted.raw!);
+  expect(stored.revision).toBe(2);
+  expect(stored.locations).toEqual(restored.locations);
+  expect(stored.main).toEqual(restored.main);
+  expect(stored.simulation).toEqual(restored.simulation);
+  expect(stored.portfolio).toEqual(restored.portfolio);
+});
+
 test('connects a spending location to investing with one role-and-link revision', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await seed(page, manyToManyWorkspace());
