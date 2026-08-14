@@ -383,6 +383,56 @@ test('gives management overlays first Escape ownership before clearing a pinned 
   await expect(page.locator('.account-map-edge-amount')).toHaveCount(0);
 });
 
+test('gives a visible launcher tooltip first Escape ownership without moving focus', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await seed(page, editableWorkspace());
+  await page.goto('apps/account-map/');
+  const living = page.getByRole('button', { name: /생활비.*1,000,000원/ }).first();
+  const mainLink = page.getByRole('link', { name: '자금 흐름 (Main)' });
+
+  await living.tap();
+  await expect(living).toHaveClass(/is-pinned/);
+  expect(await page.locator('.account-map-edge-amount').allTextContents()).toEqual(['900,000원', '100,000원']);
+  await mainLink.focus();
+  await expect(mainLink).toBeFocused();
+  await expect(page.getByRole('tooltip')).toHaveText('자금 흐름 (Main)');
+
+  await page.keyboard.press('Escape');
+
+  await expect(page.getByRole('tooltip')).toHaveCount(0);
+  await expect(mainLink).toBeFocused();
+  await expect(living).toHaveClass(/is-pinned/);
+  expect(await page.locator('.account-map-edge-amount').allTextContents()).toEqual(['900,000원', '100,000원']);
+
+  await page.keyboard.press('Escape');
+
+  await expect(page.getByRole('tooltip')).toHaveCount(0);
+  await expect(mainLink).toBeFocused();
+  await expect(living).not.toHaveClass(/is-pinned/);
+  await expect(page.locator('.account-map-edge-amount')).toHaveCount(0);
+
+  await page.addStyleTag({ content: '.journey-launcher { width: 220px !important; }' });
+  const more = page.getByRole('button', { name: '앱 더보기' });
+  await expect(more).toBeVisible();
+  await living.tap();
+  await expect(living).toHaveClass(/is-pinned/);
+  await more.click();
+  await expect(page.getByRole('region', { name: '추가 앱' })).toBeVisible();
+
+  await page.keyboard.press('Escape');
+
+  await expect(page.getByRole('region', { name: '추가 앱' })).toHaveCount(0);
+  await expect(more).toBeFocused();
+  await expect(living).toHaveClass(/is-pinned/);
+  expect(await page.locator('.account-map-edge-amount').allTextContents()).toEqual(['900,000원', '100,000원']);
+
+  await page.keyboard.press('Escape');
+
+  await expect(more).toBeFocused();
+  await expect(living).not.toHaveClass(/is-pinned/);
+  await expect(page.locator('.account-map-edge-amount')).toHaveCount(0);
+});
+
 test('explicitly reapplies a stale edit without losing an unrelated concurrent change', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await seed(page, editableWorkspace());

@@ -161,6 +161,63 @@ describe('AccountMapApp', () => {
     expect(container.querySelector('.account-map-edge-amount')).toBeNull();
   });
 
+  it('gives a visible launcher tooltip first Escape ownership without moving focus', () => {
+    const setup = mapConnectionRepositories();
+    const { container } = render(<AccountMapApp repositories={setup.repositories} />);
+    const living = screen.getByRole('button', { name: /생활비 · 1,000,000원/ });
+    const mainLink = screen.getByRole('link', { name: '자금 흐름 (Main)' });
+
+    fireEvent.click(living);
+    expect(living).toHaveClass('is-pinned');
+    expect(container.querySelector('.account-map-edge-amount')).toHaveTextContent('1,000,000원');
+    mainLink.focus();
+    fireEvent.focus(mainLink);
+    expect(screen.getByRole('tooltip')).toHaveTextContent('자금 흐름 (Main)');
+
+    fireEvent.keyDown(mainLink, { key: 'Escape' });
+
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+    expect(mainLink).toHaveFocus();
+    expect(living).toHaveClass('is-pinned');
+    expect(container.querySelector('.account-map-edge-amount')).toHaveTextContent('1,000,000원');
+
+    fireEvent.keyDown(mainLink, { key: 'Escape' });
+
+    expect(mainLink).toHaveFocus();
+    expect(living).not.toHaveClass('is-pinned');
+    expect(container.querySelector('.account-map-edge-amount')).toBeNull();
+  });
+
+  it('gives map Escape ownership only to visible tooltip overlays', () => {
+    const setup = mapConnectionRepositories();
+    const { container } = render(<AccountMapApp repositories={setup.repositories} />);
+    const living = screen.getByRole('button', { name: /생활비 · 1,000,000원/ });
+    const tooltip = document.createElement('span');
+    tooltip.role = 'tooltip';
+    tooltip.textContent = '외부 도움말';
+    document.body.append(tooltip);
+
+    fireEvent.click(living);
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(living).toHaveClass('is-pinned');
+    expect(container.querySelector('.account-map-edge-amount')).toHaveTextContent('1,000,000원');
+
+    tooltip.hidden = true;
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(living).not.toHaveClass('is-pinned');
+    expect(container.querySelector('.account-map-edge-amount')).toBeNull();
+
+    fireEvent.click(living);
+    expect(living).toHaveClass('is-pinned');
+    expect(container.querySelector('.account-map-edge-amount')).toHaveTextContent('1,000,000원');
+    tooltip.hidden = false;
+    tooltip.setAttribute('aria-hidden', 'true');
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(living).not.toHaveClass('is-pinned');
+    expect(container.querySelector('.account-map-edge-amount')).toBeNull();
+    tooltip.remove();
+  });
+
   it('gives reset confirmation first Escape ownership before clearing the pinned map node', () => {
     const setup = mapConnectionRepositories();
     const { container } = render(<AccountMapApp repositories={setup.repositories} />);

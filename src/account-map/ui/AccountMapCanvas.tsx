@@ -208,7 +208,7 @@ export function AccountMapCanvas({
 }
 
 function hasActiveOverlay(): boolean {
-  return [...document.querySelectorAll<HTMLElement>('dialog[open], [role="dialog"], [role="menu"]')]
+  return [...document.querySelectorAll<HTMLElement>('dialog[open], [role="dialog"], [role="menu"], [role="tooltip"]')]
     .some((element) => element.getAttribute('aria-hidden') !== 'true' && !element.hidden);
 }
 
