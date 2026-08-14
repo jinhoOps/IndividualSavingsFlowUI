@@ -6,12 +6,19 @@ import { cloneMainData, type MainState } from './mainReducer';
 
 export type ValidationIssue = ValidationResult['issues'][number];
 
+export type MainBootstrapIntroEntryReason = 'fresh' | 'resume' | 'none';
+
+export interface MainBootstrapResult {
+  state: MainState;
+  introEntryReason: MainBootstrapIntroEntryReason;
+}
+
 export type ApplyResult =
   | { ok: true; data: MainData; summary: CashflowSummary }
   | { ok: false; kind: 'validation'; issues: ValidationIssue[] }
   | { ok: false; kind: 'storage'; error: Error };
 
-export async function bootstrapMain(repository: MainRepository): Promise<MainState> {
+export async function bootstrapMain(repository: MainRepository): Promise<MainBootstrapResult> {
   try {
     const result = await repository.load();
 
@@ -19,56 +26,71 @@ export async function bootstrapMain(repository: MainRepository): Promise<MainSta
       case 'empty': {
         const progress = repository.loadSetupProgress();
         return progress === null
-          ? setupState(createEmptyMainData(), 'welcome')
-          : setupState(progress.draft, progress.step);
+          ? { state: setupState(createEmptyMainData(), 'welcome'), introEntryReason: 'fresh' }
+          : { state: setupState(progress.draft, progress.step), introEntryReason: 'resume' };
       }
       case 'current': {
         const progress = repository.loadSetupProgress();
         if (progress?.kind === 'restart' && progress.draft.updatedAt >= result.data.updatedAt) {
-          return setupState(progress.draft, progress.step, result.data);
+          return {
+            state: setupState(progress.draft, progress.step, result.data),
+            introEntryReason: 'resume',
+          };
         }
-        return dashboardState(result.data);
+        return { state: dashboardState(result.data), introEntryReason: 'none' };
       }
       case 'recovery': {
         const progress = repository.loadSetupProgress();
         if (progress !== null && progress.savedAt > result.data.updatedAt) {
-          return setupState(progress.draft, progress.step, result.current);
+          return {
+            state: setupState(progress.draft, progress.step, result.current),
+            introEntryReason: 'resume',
+          };
         }
         return {
-          mode: 'recovery',
-          applied: result.current === null ? null : cloneMainData(result.current),
-          draft: cloneMainData(result.data),
-          setupStep: null,
-          dirty: true,
-          saveStatus: 'idle',
-          loadError: null,
+          state: {
+            mode: 'recovery',
+            applied: result.current === null ? null : cloneMainData(result.current),
+            draft: cloneMainData(result.data),
+            setupStep: null,
+            dirty: true,
+            saveStatus: 'idle',
+            loadError: null,
+          },
+          introEntryReason: 'none',
         };
       }
       case 'failed':
         return {
-          mode: 'recovery',
-          applied: null,
-          draft: createEmptyMainData(),
-          setupStep: null,
-          dirty: false,
-          saveStatus: 'idle',
-          loadError: {
-            message: result.reason,
-            original: result.original,
-            raw: result.raw,
-            source: result.source,
+          state: {
+            mode: 'recovery',
+            applied: null,
+            draft: createEmptyMainData(),
+            setupStep: null,
+            dirty: false,
+            saveStatus: 'idle',
+            loadError: {
+              message: result.reason,
+              original: result.original,
+              raw: result.raw,
+              source: result.source,
+            },
           },
+          introEntryReason: 'none',
         };
     }
   } catch (error) {
     return {
-      mode: 'recovery',
-      applied: null,
-      draft: createEmptyMainData(),
-      setupStep: null,
-      dirty: false,
-      saveStatus: 'idle',
-      loadError: { message: errorMessage(error), original: error },
+      state: {
+        mode: 'recovery',
+        applied: null,
+        draft: createEmptyMainData(),
+        setupStep: null,
+        dirty: false,
+        saveStatus: 'idle',
+        loadError: { message: errorMessage(error), original: error },
+      },
+      introEntryReason: 'none',
     };
   }
 }
