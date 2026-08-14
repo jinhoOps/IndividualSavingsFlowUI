@@ -123,6 +123,25 @@ describe('AccountMapApp', () => {
     expect(setup.saveIntent).not.toHaveBeenCalled();
   });
 
+  it('returns a successful map-connection replay to its surviving source node', async () => {
+    const setup = mapConnectionRepositories(false, true);
+    render(<AccountMapApp repositories={setup.repositories} />);
+    const living = screen.getByRole('button', { name: /생활비 · 1,000,000원/ });
+    fireEvent.click(living);
+    fireEvent.click(living);
+    fireEvent.click(screen.getByRole('button', { name: '편집' }));
+    fireEvent.click(screen.getByRole('button', { name: '연결 추가' }));
+    fireEvent.click(screen.getByRole('button', { name: /저축통장/ }));
+    fireEvent.change(screen.getByRole('textbox', { name: /이 계좌에 둘 월 금액/ }), { target: { value: '100000' } });
+    fireEvent.click(screen.getByRole('button', { name: '완료' }));
+
+    fireEvent.click(await screen.findByRole('button', { name: '최신 상태에서 다시 적용' }));
+
+    await waitFor(() => expect(setup.save).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(living).toHaveFocus();
+  });
+
   it('restores and connects an archived duplicate from the map modal with one command', async () => {
     const setup = mapConnectionRepositories(true);
     render(<AccountMapApp repositories={setup.repositories} />);
@@ -159,6 +178,65 @@ describe('AccountMapApp', () => {
     expect(screen.getByRole('heading', { name: '목적과 계좌의 연결' })).toHaveFocus();
   });
 
+  it('defers a successful archive replay until normal-motion close completes and then focuses the map heading', async () => {
+    appMotion.deferClose = true;
+    vi.stubGlobal('matchMedia', vi.fn(() => ({
+      matches: false,
+      media: '(prefers-reduced-motion: reduce)',
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })));
+    const setup = purposeLifecycleRepositories(false, true);
+    render(<AccountMapApp repositories={setup.repositories} />);
+    const telecom = screen.getByRole('button', { name: /통신비 · 200,000원/ });
+    const heading = screen.getByRole('heading', { name: '목적과 계좌의 연결' });
+    fireEvent.click(telecom);
+    fireEvent.click(telecom);
+    fireEvent.click(screen.getByRole('button', { name: '통신비 더보기' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: '목적 보관' }));
+    fireEvent.click(screen.getByRole('button', { name: '보관하기' }));
+
+    fireEvent.click(await screen.findByRole('button', { name: '최신 상태에서 다시 적용' }));
+
+    await waitFor(() => expect(setup.save).toHaveBeenCalledTimes(2));
+    expect(screen.getByRole('dialog', { name: '통신비 보관' })).toBeVisible();
+    expect(telecom).toBeVisible();
+    expect(appMotion.closeStarts).toBe(1);
+    expect(heading).not.toHaveFocus();
+
+    const complete = appMotion.closeComplete;
+    expect(complete).not.toBeNull();
+    act(() => complete?.());
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(screen.queryByRole('button', { name: /통신비 ·/ })).not.toBeInTheDocument();
+    expect(heading).toHaveFocus();
+    expect(setup.save).toHaveBeenCalledTimes(2);
+  });
+
+  it('immediately adopts a successful reduced-motion archive replay and focuses the map heading', async () => {
+    const setup = purposeLifecycleRepositories(false, true);
+    render(<AccountMapApp repositories={setup.repositories} />);
+    const telecom = screen.getByRole('button', { name: /통신비 · 200,000원/ });
+    const heading = screen.getByRole('heading', { name: '목적과 계좌의 연결' });
+    fireEvent.click(telecom);
+    fireEvent.click(telecom);
+    fireEvent.click(screen.getByRole('button', { name: '통신비 더보기' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: '목적 보관' }));
+    fireEvent.click(screen.getByRole('button', { name: '보관하기' }));
+
+    fireEvent.click(await screen.findByRole('button', { name: '최신 상태에서 다시 적용' }));
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(screen.queryByRole('button', { name: /통신비 ·/ })).not.toBeInTheDocument();
+    expect(heading).toHaveFocus();
+    expect(setup.save).toHaveBeenCalledTimes(2);
+  });
+
   it('opens archived-purpose restore from management and returns focus without resuming links', async () => {
     const setup = purposeLifecycleRepositories(true);
     render(<AccountMapApp repositories={setup.repositories} />);
@@ -187,7 +265,8 @@ describe('AccountMapApp', () => {
   it('preserves restore target and explicitly reapplies its scoped purpose intent after a conflict', async () => {
     const setup = purposeLifecycleRepositories(true, true);
     render(<AccountMapApp repositories={setup.repositories} />);
-    fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
+    const managementTrigger = screen.getByRole('button', { name: '관리 메뉴' });
+    fireEvent.click(managementTrigger);
     fireEvent.click(screen.getByRole('menuitem', { name: /통신비 · 생활비/ }));
     const target = screen.getByRole('textbox', { name: '월 목표 금액' });
     fireEvent.change(target, { target: { value: '100000' } });
@@ -204,6 +283,8 @@ describe('AccountMapApp', () => {
     expect(setup.save.mock.calls[1]).toEqual([2, {
       type: 'edit-custom-purpose', purposeId: 'custom:telecom', fields: { targetMonthlyWon: 100_000, lifecycle: 'restore' },
     }]);
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(managementTrigger).toHaveFocus();
   });
 
   it('reloads a stale setup save but waits for explicit replay before writing latest', async () => {
@@ -782,7 +863,7 @@ function atomicConnectionRepositories() {
   return { repositories: { accountMap, main }, save, saveIntent };
 }
 
-function mapConnectionRepositories(withArchivedDuplicate = false) {
+function mapConnectionRepositories(withArchivedDuplicate = false, conflictOnce = false) {
   let workspace = createEmptyWorkspace(1);
   workspace.revision = 1;
   workspace.main.applied = mainData();
@@ -800,7 +881,14 @@ function mapConnectionRepositories(withArchivedDuplicate = false) {
     ],
     layout: 'purpose', setupCompletedAt: 1, updatedAt: 1,
   };
+  const latest = structuredClone(workspace);
+  latest.revision = 2;
+  latest.updatedAt = 2;
   const save = vi.fn(async (revision, command) => {
+    if (conflictOnce && revision === 1) {
+      workspace = latest;
+      return { status: 'conflict' as const, currentRevision: 2 };
+    }
     const result = applyAccountMapCommand(workspace, command, revision + 1);
     if (!result.ok) return { status: 'rejected' as const, reason: result.reason };
     workspace = { ...result.workspace, revision: revision + 1, updatedAt: revision + 1 };
