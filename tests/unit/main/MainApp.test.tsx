@@ -23,6 +23,15 @@ import type {
 import { MainApp, setupStepForIssue } from '../../../src/main/ui/MainApp';
 import { MemoryStorage } from '../simulation/MemoryStorage';
 
+const mainAppMocks = vi.hoisted(() => ({
+  reducedMotion: false,
+  introCompletionCount: 1,
+}));
+
+vi.mock('../../../src/components/motion/useReducedMotion', () => ({
+  useReducedMotion: () => mainAppMocks.reducedMotion,
+}));
+
 vi.mock('../../../src/main/ui/setup/SetupFlow', () => ({
   SetupFlow: ({
     draft,
@@ -47,7 +56,7 @@ vi.mock('../../../src/main/ui/setup/SetupFlow', () => ({
   }) => (
     <section aria-label="setup-flow" className="setup-flow-surface" data-motion-preset={motionPreset}>
       {notice}
-      <h1 data-setup-heading tabIndex={-1}>{`setup:${step}`}</h1>
+      <h1 ref={(heading) => heading?.focus()} data-setup-heading tabIndex={-1}>{`setup:${step}`}</h1>
       <output>{draft.monthlyNetIncomeWon}</output>
       <button
         type="button"
@@ -66,9 +75,20 @@ vi.mock('../../../src/main/ui/setup/SetupFlow', () => ({
 }));
 
 vi.mock('../../../src/main/ui/MainWelcomeIntro', () => ({
-  MainWelcomeIntro: ({ onComplete }: { onComplete(): void }) => (
-    <button type="button" onClick={onComplete}>complete-brand-intro</button>
-  ),
+  MainWelcomeIntro: ({ onComplete }: { onComplete(): void }) => {
+    return (
+      <section data-testid="main-welcome-intro">
+        <button
+          type="button"
+          onClick={() => {
+            for (let attempt = 0; attempt < mainAppMocks.introCompletionCount; attempt += 1) onComplete();
+          }}
+        >
+          화면을 눌러 건너뛰기
+        </button>
+      </section>
+    );
+  },
 }));
 
 vi.mock('../../../src/main/ui/dashboard/SummaryDashboard', () => ({
@@ -110,6 +130,8 @@ vi.mock('../../../src/main/ui/dashboard/SummaryDashboard', () => ({
 }));
 
 beforeEach(() => {
+  mainAppMocks.reducedMotion = false;
+  mainAppMocks.introCompletionCount = 1;
   const storage = new MemoryStorage();
   Object.defineProperty(window, 'localStorage', { configurable: true, value: storage });
   Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: storage });
@@ -221,8 +243,8 @@ function repository(result: MainLoadResult): MainRepository {
 }
 
 async function completeBrandIntro(): Promise<void> {
-  fireEvent.click(await screen.findByRole('button', { name: 'complete-brand-intro' }));
-  await waitFor(() => expect(screen.queryByRole('button', { name: 'complete-brand-intro' })).not.toBeInTheDocument());
+  fireEvent.click(await screen.findByRole('button', { name: '화면을 눌러 건너뛰기' }));
+  await waitFor(() => expect(screen.queryByTestId('main-welcome-intro')).not.toBeInTheDocument());
 }
 
 describe('setupStepForIssue', () => {
@@ -244,7 +266,6 @@ describe('setupStepForIssue', () => {
 
 describe('MainApp', () => {
   it('saves fresh welcome progress once before the brand intro completes', async () => {
-    const emptyDraft = createEmptyMainData();
     const storage = repository({ status: 'empty', data: null, original: null });
     storage.saveSetupProgress = vi.fn(async () => undefined);
 
@@ -254,10 +275,37 @@ describe('MainApp', () => {
       </StrictMode>,
     );
 
-    expect(await screen.findByRole('button', { name: 'complete-brand-intro' })).toBeVisible();
+    expect(await screen.findByTestId('main-welcome-intro')).toBeInTheDocument();
+    expect(screen.queryByTestId('app-shell-launcher')).not.toBeInTheDocument();
     await waitFor(() => expect(storage.saveSetupProgress).toHaveBeenCalledOnce());
-    expect(storage.saveSetupProgress).toHaveBeenCalledWith('welcome', emptyDraft, 'initial');
+    expect(storage.saveSetupProgress).toHaveBeenCalledWith(
+      'welcome',
+      expect.objectContaining({ schemaVersion: 2 }),
+      'initial',
+    );
     expect(screen.queryByRole('heading', { name: 'setup:welcome' })).not.toBeInTheDocument();
+  });
+
+  it('skips mounting the intro under reduced motion and focuses only the setup heading', async () => {
+    mainAppMocks.reducedMotion = true;
+    const storage = repository({ status: 'empty', data: null, original: null });
+    storage.saveSetupProgress = vi.fn(async () => undefined);
+    const focus = vi.spyOn(HTMLElement.prototype, 'focus');
+
+    render(<MainApp repository={storage} />);
+
+    const heading = await screen.findByRole('heading', { name: 'setup:welcome' });
+    expect(screen.queryByTestId('main-welcome-intro')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '화면을 눌러 건너뛰기' })).not.toBeInTheDocument();
+    await waitFor(() => expect(storage.saveSetupProgress).toHaveBeenCalledOnce());
+    expect(storage.saveSetupProgress).toHaveBeenCalledWith(
+      'welcome',
+      expect.objectContaining({ schemaVersion: 2 }),
+      'initial',
+    );
+    await waitFor(() => expect(heading).toHaveFocus());
+    expect(focus.mock.instances).not.toHaveLength(0);
+    expect(focus.mock.instances.every((target) => target === heading)).toBe(true);
   });
 
   it.each([
@@ -286,7 +334,7 @@ describe('MainApp', () => {
     render(<MainApp repository={createRepository()} />);
 
     expect(await screen.findByRole('heading', { name: 'setup:welcome' })).toBeVisible();
-    expect(screen.queryByRole('button', { name: 'complete-brand-intro' })).not.toBeInTheDocument();
+    expect(screen.queryByTestId('main-welcome-intro')).not.toBeInTheDocument();
   });
 
   it('consumes the fresh intro entry after completion so a rerender cannot replay it', async () => {
@@ -298,8 +346,18 @@ describe('MainApp', () => {
 
     view.rerender(<MainApp repository={storage} />);
 
-    expect(screen.queryByRole('button', { name: 'complete-brand-intro' })).not.toBeInTheDocument();
+    expect(screen.queryByTestId('main-welcome-intro')).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'setup:welcome' })).toBeVisible();
+  });
+
+  it('consumes a duplicate intro completion callback without rendering welcome twice', async () => {
+    mainAppMocks.introCompletionCount = 2;
+    render(<MainApp repository={repository({ status: 'empty', data: null, original: null })} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: '화면을 눌러 건너뛰기' }));
+
+    expect(screen.queryByTestId('main-welcome-intro')).not.toBeInTheDocument();
+    expect(screen.getAllByRole('heading', { name: 'setup:welcome' })).toHaveLength(1);
   });
 
   it('shows a fresh-progress warning after the brand intro completes when saving fails', async () => {
@@ -583,10 +641,10 @@ describe('MainApp', () => {
     fireEvent.click(screen.getByRole('button', { name: '백업으로 바꾸기' }));
 
     if (_label === 'empty Main') {
-      expect(await screen.findByRole('button', { name: 'complete-brand-intro' })).toBeVisible();
+      expect(await screen.findByTestId('main-welcome-intro')).toBeVisible();
       await completeBrandIntro();
     } else {
-      expect(screen.queryByRole('button', { name: 'complete-brand-intro' })).not.toBeInTheDocument();
+      expect(screen.queryByTestId('main-welcome-intro')).not.toBeInTheDocument();
     }
     const setupHeading = await screen.findByRole('heading', { name: expectedHeading });
     expect(screen.getByText('모든 앱 데이터를 백업에서 복원했습니다.')).toBeVisible();
@@ -620,7 +678,7 @@ describe('MainApp', () => {
     fireEvent.click(screen.getByRole('menuitem', { name: '처음부터 다시' }));
     fireEvent.click(screen.getByRole('button', { name: '다시 시작' }));
 
-    expect(await screen.findByRole('button', { name: 'complete-brand-intro' })).toBeVisible();
+    expect(await screen.findByTestId('main-welcome-intro')).toBeVisible();
     await completeBrandIntro();
     expect(await screen.findByRole('heading', { name: 'setup:welcome' })).toBeVisible();
     expect(screen.getByLabelText('setup-flow')).toHaveAttribute('data-motion-preset', 'initial-assembly');
@@ -674,6 +732,7 @@ describe('MainApp', () => {
 
     expect(screen.getByRole('status')).toHaveTextContent('자금 계획을 불러오는 중');
     expect(screen.getByTestId('main-page-frame')).toHaveClass('app-content-frame');
+    expect(screen.queryByTestId('app-shell')).not.toBeInTheDocument();
     expect(screen.queryByTestId('app-shell-launcher')).not.toBeInTheDocument();
     expect(screen.queryByRole('navigation', { name: 'ISF 앱' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '관리 메뉴' })).not.toBeInTheDocument();
@@ -1009,7 +1068,7 @@ describe('MainApp', () => {
     fireEvent.click(screen.getByRole('menuitem', { name: '처음부터 다시' }));
     fireEvent.click(screen.getByRole('button', { name: '다시 시작' }));
 
-    expect(await screen.findByRole('button', { name: 'complete-brand-intro' })).toBeVisible();
+    expect(await screen.findByTestId('main-welcome-intro')).toBeVisible();
     await completeBrandIntro();
     expect(await screen.findByRole('heading', { name: 'setup:welcome' })).toBeVisible();
     expect(screen.getByLabelText('setup-flow')).toHaveAttribute('data-motion-preset', 'initial-assembly');
@@ -1137,7 +1196,7 @@ describe('MainApp', () => {
       .mockImplementationOnce(() => latestProgressGate);
     storage.save = vi.fn(async (draft: MainData) => ({ ...draft, updatedAt: 30 }));
     render(<MainApp repository={storage} />);
-    const complete = await screen.findByRole('button', { name: 'complete-brand-intro' });
+    const complete = await screen.findByRole('button', { name: '화면을 눌러 건너뛰기' });
     await waitFor(() => expect(storage.saveSetupProgress).toHaveBeenCalledOnce());
     fireEvent.click(complete);
     await screen.findByRole('heading', { name: 'setup:welcome' });

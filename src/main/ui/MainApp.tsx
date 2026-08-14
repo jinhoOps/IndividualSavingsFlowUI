@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { AppShell } from '../../components/common/AppShell';
+import { useReducedMotion } from '../../components/motion/useReducedMotion';
 import {
   applyDraft,
   bootstrapMain,
@@ -67,9 +68,11 @@ export function MainApp({
   const introEntryIdRef = useRef(0);
   const persistedFreshIntroEntryIdsRef = useRef(new Set<number>());
   const [initialEditPath] = useState<keyof MainData | undefined>(() => consumeEditIntent());
-  const shouldShowWelcomeIntro = state?.mode === 'setup'
+  const reducedMotion = useReducedMotion();
+  const showIntro = state?.mode === 'setup'
     && state.setupStep === 'welcome'
-    && (introEntry.reason === 'fresh' || introEntry.reason === 'restart');
+    && (introEntry.reason === 'fresh' || introEntry.reason === 'restart')
+    && !reducedMotion;
 
   useEffect(() => {
     let active = true;
@@ -94,7 +97,17 @@ export function MainApp({
   }, [introEntry, state]);
 
   useEffect(() => {
-    if (!restoreFocusRequestedRef.current || backupStatus?.kind !== 'success' || shouldShowWelcomeIntro) return;
+    if (
+      !reducedMotion
+      || state?.mode !== 'setup'
+      || state.setupStep !== 'welcome'
+      || (introEntry.reason !== 'fresh' && introEntry.reason !== 'restart')
+    ) return;
+    completeWelcomeIntro(introEntry.id);
+  }, [introEntry, reducedMotion, state]);
+
+  useEffect(() => {
+    if (!restoreFocusRequestedRef.current || backupStatus?.kind !== 'success' || showIntro) return;
     restoreFocusRequestedRef.current = false;
     const target = document.querySelector<HTMLElement>('[aria-label="관리 메뉴"]')
       ?? document.querySelector<HTMLElement>('[data-setup-heading]')
@@ -104,7 +117,7 @@ export function MainApp({
         '[aria-label="설정 단계"] [tabindex]:not([tabindex="-1"])',
       ].join(', '));
     target?.focus();
-  }, [backupStatus, shouldShowWelcomeIntro, state]);
+  }, [backupStatus, showIntro, state]);
 
   function setBootstrapResult(loaded: MainBootstrapResult) {
     setState(loaded.state);
@@ -434,18 +447,16 @@ export function MainApp({
 
   if (state === null) {
     return (
-      <AppShell currentApp="main" showLauncher={false}>
-        <main
-          className="app-content-frame grid min-h-dvh place-items-center py-8"
-          data-testid="main-page-frame"
-        >
-          <p className="text-sm font-bold text-slate-600" role="status">자금 계획을 불러오는 중입니다.</p>
-        </main>
-      </AppShell>
+      <main
+        className="app-content-frame grid min-h-dvh place-items-center py-8"
+        data-testid="main-page-frame"
+      >
+        <p className="text-sm font-bold text-slate-600" role="status">자금 계획을 불러오는 중입니다.</p>
+      </main>
     );
   }
 
-  if (shouldShowWelcomeIntro) {
+  if (showIntro) {
     return <MainWelcomeIntro key={introEntry.id} onComplete={() => completeWelcomeIntro(introEntry.id)} />;
   }
 

@@ -139,6 +139,7 @@ describe('MainWelcomeIntro', () => {
     const section = screen.getByRole('region', { name: '나의 가계 흐름 시작 화면' });
     expect(section.querySelector<HTMLElement>('[data-brand-background]')).toHaveStyle({ opacity: '1' });
     expect(section.querySelector<HTMLElement>('[data-brand-terminal-dot]')).toHaveStyle({ opacity: '1', transform: 'scale(1)' });
+    fireEvent.click(screen.getByRole('button', { name: '화면을 눌러 건너뛰기' }));
     expect(onComplete).toHaveBeenCalledTimes(1);
   });
 
