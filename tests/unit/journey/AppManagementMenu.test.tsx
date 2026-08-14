@@ -2,9 +2,41 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { MOTION_DISTANCE_PX, MOTION_DURATION, MOTION_EASE } from '../../../src/components/motion/tokens';
 import { AppManagementMenu, type AppManagementItem } from '../../../src/journey/ui/AppManagementMenu';
 
-afterEach(cleanup);
+const animeMocks = vi.hoisted(() => {
+  const state = { reducedMotion: false };
+  return {
+    animate: vi.fn((target: unknown, options: Record<string, unknown>) => {
+      applyFinalAnimationStyles(target, options);
+      return { cancel: vi.fn() };
+    }),
+    createScope: vi.fn(() => ({
+      add: (setup: () => void) => setup(),
+      matches: { reducedMotion: state.reducedMotion },
+      revert: vi.fn(),
+    })),
+    state,
+  };
+});
+
+function applyFinalAnimationStyles(target: unknown, options: Record<string, unknown>): void {
+  if (!(target instanceof HTMLElement)) return;
+  if (Array.isArray(options.opacity)) target.style.opacity = String(options.opacity.at(-1));
+  if (Array.isArray(options.y)) target.style.transform = `translateY(${String(options.y.at(-1))}px)`;
+}
+
+vi.mock('animejs', () => ({
+  animate: animeMocks.animate,
+  createScope: animeMocks.createScope,
+}));
+
+afterEach(() => {
+  cleanup();
+  vi.clearAllMocks();
+  animeMocks.state.reducedMotion = false;
+});
 
 function buildItems(overrides: {
   onExport?: () => void;
@@ -28,6 +60,58 @@ function buildItems(overrides: {
 }
 
 describe('AppManagementMenu', () => {
+  it('reveals the popover and icon disclosure with normal shared motion while state stays immediate', async () => {
+    render(<><AppManagementMenu items={buildItems()} /><button type="button">바깥</button></>);
+    const trigger = screen.getByRole('button', { name: '관리 메뉴' });
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+
+    fireEvent.click(trigger);
+    const popover = document.querySelector<HTMLElement>('.journey-management__popover');
+    expect(popover).not.toBeNull();
+    expect(trigger).toHaveAttribute('aria-expanded', 'true');
+    expect(animationOptionsFor(popover!)).toMatchObject({
+      opacity: [0, 1],
+      y: [-MOTION_DISTANCE_PX.subtle, 0],
+      duration: MOTION_DURATION.normal,
+      ease: MOTION_EASE.enter,
+    });
+
+    const help = screen.getByRole('menuitem', { name: '앱 아이콘 안내' });
+    fireEvent.click(help);
+    const guide = screen.getByRole('region', { name: '앱 아이콘 안내' });
+    expect(help).toHaveAttribute('aria-expanded', 'true');
+    expect(animationOptionsFor(guide)).toMatchObject({
+      opacity: [0, 1],
+      y: [-MOTION_DISTANCE_PX.subtle, 0],
+      duration: MOTION_DURATION.normal,
+      ease: MOTION_EASE.enter,
+    });
+
+    fireEvent.click(help);
+    expect(help).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('region', { name: '앱 아이콘 안내' })).not.toBeInTheDocument();
+    await waitFor(() => expect(help).toHaveFocus());
+
+    const outside = screen.getByRole('button', { name: '바깥' });
+    fireTouchPointerEvent(outside, 'pointerdown');
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('menu', { name: '관리 메뉴' })).not.toBeInTheDocument();
+    await waitFor(() => expect(trigger).toHaveFocus());
+  });
+
+  it('commits popover and icon disclosure final state before paint under reduced motion', () => {
+    animeMocks.state.reducedMotion = true;
+    render(<AppManagementMenu items={buildItems()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
+    const popover = document.querySelector<HTMLElement>('.journey-management__popover');
+    expect(popover).toHaveStyle({ opacity: '1', transform: 'translateY(0px)' });
+    fireEvent.click(screen.getByRole('menuitem', { name: '앱 아이콘 안내' }));
+    const guide = screen.getByRole('region', { name: '앱 아이콘 안내' });
+    expect(guide).toHaveStyle({ opacity: '1', transform: 'translateY(0px)' });
+    expect(animeMocks.animate).not.toHaveBeenCalled();
+  });
+
   it('shows app icon guidance inside the popover but outside the action menu', async () => {
     render(<AppManagementMenu items={buildItems()} />);
 
@@ -194,4 +278,42 @@ describe('AppManagementMenu', () => {
     expect(screen.getAllByRole('menuitem')).toHaveLength(1);
     expect(screen.getByRole('menuitem', { name: '앱 아이콘 안내' })).toBeVisible();
   });
+
+  it('keeps the popover open while interacting with a control group', () => {
+    render(
+      <AppManagementMenu
+        items={[{
+          kind: 'control',
+          id: 'view-preferences',
+          content: (
+            <fieldset>
+              <legend>보기 설정</legend>
+              <label><input type="checkbox" role="switch" />금액 보기</label>
+            </fieldset>
+          ),
+        }]}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
+    fireEvent.click(screen.getByRole('switch', { name: '금액 보기' }));
+
+    expect(screen.getByRole('group', { name: '보기 설정' })).toBeVisible();
+    expect(screen.getByRole('menu', { name: '관리 메뉴' })).toBeVisible();
+    expect(screen.getByRole('menu', { name: '관리 메뉴' }))
+      .not.toContainElement(screen.getByRole('group', { name: '보기 설정' }));
+    expect(screen.getByRole('switch', { name: '금액 보기' })).toBeChecked();
+  });
 });
+
+function animationOptionsFor(target: Element): Record<string, unknown> | undefined {
+  return animeMocks.animate.mock.calls.find(([candidate]) => candidate === target)?.[1] as
+    | Record<string, unknown>
+    | undefined;
+}
+
+function fireTouchPointerEvent(element: Element, type: string): void {
+  const event = new Event(type, { bubbles: true, cancelable: true });
+  Object.defineProperty(event, 'pointerType', { value: 'touch' });
+  fireEvent(element, event);
+}

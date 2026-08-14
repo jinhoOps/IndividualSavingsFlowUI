@@ -1,6 +1,16 @@
 @import url("https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Gowun+Dodum:wght@400;700&display=swap");
 @import "tailwindcss";
 
+/* Keep shell geometry stable while Vite replaces Tailwind cascade layers. */
+html,
+body,
+#root {
+  box-sizing: border-box;
+  min-width: 0;
+  margin: 0;
+  border: 0;
+}
+
 @theme {
   --color-primary: #ea5b2a;
   --color-accent: #0f766e;
@@ -20,6 +30,9 @@
   --ui-control-min-height: 44px;
   --ui-control-radius: 12px;
   --ui-surface-radius: 24px;
+  --ui-content-max-width: 48rem;
+  --ui-content-gutter: 1rem;
+  --ui-wide-visual-max-width: 75rem;
   --ui-control-border: 1px solid var(--color-line);
   --ui-focus-ring: 0 0 0 3px rgb(15 118 110 / 35%);
   --ui-disabled-opacity: 0.5;
@@ -93,6 +106,29 @@
     max-width: 1200px;
     margin-inline: auto;
     padding: 20px 20px 0;
+  }
+
+  .app-content-frame {
+    box-sizing: border-box;
+    width: min(
+      calc(100% - var(--ui-content-gutter) - var(--ui-content-gutter)),
+      var(--ui-content-max-width)
+    );
+    margin-inline: auto;
+  }
+
+  .app-wide-visual {
+    box-sizing: border-box;
+    width: min(
+      calc(100vw - var(--ui-content-gutter) - var(--ui-content-gutter)),
+      var(--ui-wide-visual-max-width)
+    );
+    max-width: none;
+    margin-inline-start: max(
+      calc(50% - 50vw + var(--ui-content-gutter)),
+      calc(50% - 37.5rem)
+    );
+    margin-inline-end: 0;
   }
 
   .ui-button {

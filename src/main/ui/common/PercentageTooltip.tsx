@@ -2,7 +2,10 @@ export interface PercentageTooltipProps {
   id: string;
   value: string;
   open: boolean;
-  position: { xPercent: number };
+  position: {
+    alignment?: 'center' | 'end-contained';
+    xPercent: number;
+  };
 }
 
 export function PercentageTooltip({ id, value, open, position }: PercentageTooltipProps) {
@@ -10,12 +13,16 @@ export function PercentageTooltip({ id, value, open, position }: PercentageToolt
     return null;
   }
 
+  const endContained = position.alignment === 'end-contained';
+
   return (
     <span
-      className="flow-tooltip"
+      className={`flow-tooltip${endContained ? ' flow-tooltip--end-contained' : ''}`}
       id={id}
       role="tooltip"
-      style={{ left: `${position.xPercent}%` }}
+      style={endContained
+        ? { insetInlineEnd: 0 }
+        : { left: `${position.xPercent}%` }}
     >
       {value}
     </span>

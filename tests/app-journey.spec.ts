@@ -168,9 +168,33 @@ test('keeps detailed Portfolio and purpose-first Account Map isolated', async ({
   await page.goto('apps/portfolio/');
   await expect(page.getByRole('heading', { name: '매달 200,000원을 어디에 투자할까요?' })).toBeVisible();
   await expect(page.getByRole('link', { name: /투자 배분 \(Portfolio\).*현재 위치/ })).toBeVisible();
+  await page.addInitScript(() => {
+    const calls: Array<{ operation: 'get' | 'set' | 'remove'; key: string }> = [];
+    const originalGetItem = Storage.prototype.getItem;
+    const originalSetItem = Storage.prototype.setItem;
+    const originalRemoveItem = Storage.prototype.removeItem;
+    Object.defineProperty(window, '__accountMapStorageCalls', { value: calls });
+    Storage.prototype.getItem = function (key) {
+      if (this === localStorage) calls.push({ operation: 'get', key });
+      return originalGetItem.call(this, key);
+    };
+    Storage.prototype.setItem = function (key, value) {
+      if (this === localStorage) calls.push({ operation: 'set', key });
+      return originalSetItem.call(this, key, value);
+    };
+    Storage.prototype.removeItem = function (key) {
+      if (this === localStorage) calls.push({ operation: 'remove', key });
+      return originalRemoveItem.call(this, key);
+    };
+  });
   await page.goto('apps/account-map/');
   await expect(page.getByRole('heading', { name: '월 자금의 위치를 알려주세요' })).toBeVisible();
   await expect(page.locator('app-header, data-hub-modal, #portfolioCreator, #accountMapCanvas')).toHaveCount(0);
+  expect(await page.evaluate(() => (
+    window as typeof window & {
+      __accountMapStorageCalls: Array<{ operation: 'get' | 'set' | 'remove'; key: string }>;
+    }
+  ).__accountMapStorageCalls)).toEqual([]);
 });
 
 test('separates app navigation and the right-aligned management tool across viewports', async ({ page }) => {
@@ -232,6 +256,39 @@ test('separates app navigation and the right-aligned management tool across view
   }
 });
 
+test('keeps all app icons visible while launcher geometry is unresolved', async ({ page }) => {
+  await page.addInitScript((fixture) => {
+    localStorage.setItem('isf-workspace-v1', JSON.stringify(fixture));
+  }, appliedWorkspace);
+  await page.setViewportSize({ width: 768, height: 900 });
+  await page.goto('apps/simulation/');
+
+  const navigation = page.getByRole('navigation', { name: 'ISF 앱' });
+  const links = navigation.locator('.journey-launcher__app-link');
+  await expect(links).toHaveCount(4);
+
+  const unresolvedGeometry = await page.addStyleTag({
+    content: `
+      .journey-launcher {
+        width: 120px !important;
+      }
+
+      .journey-launcher__app-link {
+        width: 24px !important;
+        height: 24px !important;
+      }
+    `,
+  });
+
+  await expect(links).toHaveCount(4);
+  await expect(navigation.getByRole('button', { name: '앱 더보기' })).toHaveCount(0);
+
+  await unresolvedGeometry.evaluate((style) => style.remove());
+  await expect(links).toHaveCount(4);
+  await expect.poll(async () => links.first().evaluate((link) => link.getBoundingClientRect().width))
+    .toBe(44);
+});
+
 test('keeps each app management menu reachable and contained across viewports', async ({ page }) => {
   await page.addInitScript((fixture) => {
     localStorage.setItem('isf-workspace-v1', JSON.stringify(fixture));
@@ -253,12 +310,16 @@ test('keeps each app management menu reachable and contained across viewports', 
       await page.goto(app.path);
       const trigger = page.getByRole('button', { name: '관리 메뉴' });
       await expect(trigger).toBeVisible();
+      await expect(trigger).toHaveAttribute('aria-expanded', 'false');
       const triggerBox = await trigger.boundingBox();
       expect(triggerBox?.width).toBe(44);
       expect(triggerBox?.height).toBe(44);
 
       await trigger.click();
-      const menu = page.getByRole('menu', { name: '관리 메뉴' });
+      await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+      const popover = page.locator('.journey-management__popover');
+      const menu = page.getByRole('menu', { name: '관리 메뉴', exact: true });
+      await expect(popover).toBeVisible();
       await expect(menu).toBeVisible();
       const help = menu.getByRole('menuitem', { name: '앱 아이콘 안내' });
       await expect(help).toHaveAttribute('aria-expanded', 'false');
@@ -276,19 +337,22 @@ test('keeps each app management menu reachable and contained across viewports', 
       expect(guideBox!.x + guideBox!.width).toBeLessThanOrEqual(viewport.width - 16);
       await help.click();
       await expect(guide).toHaveCount(0);
-      await expect(menu.getByText(app.text)).toBeVisible();
-      const menuBox = await menu.boundingBox();
-      expect(menuBox).not.toBeNull();
-      expect(menuBox!.x).toBeGreaterThanOrEqual(16);
-      expect(menuBox!.x + menuBox!.width).toBeLessThanOrEqual(viewport.width - 16);
+      await expect(popover.getByText(app.text)).toBeVisible();
+      const popoverBox = await popover.boundingBox();
+      expect(popoverBox).not.toBeNull();
+      expect(popoverBox!.x).toBeGreaterThanOrEqual(16);
+      expect(popoverBox!.x + popoverBox!.width).toBeLessThanOrEqual(viewport.width - 16);
 
       await page.keyboard.press('Escape');
-      await expect(menu).toBeHidden();
+      await expect(popover).toBeHidden();
+      await expect(trigger).toHaveAttribute('aria-expanded', 'false');
       await expect(trigger).toBeFocused();
 
       await trigger.click();
+      await expect(trigger).toHaveAttribute('aria-expanded', 'true');
       await page.locator('main').click({ position: { x: 1, y: 1 } });
-      await expect(menu).toBeHidden();
+      await expect(popover).toBeHidden();
+      await expect(trigger).toHaveAttribute('aria-expanded', 'false');
       await expect(trigger).toBeFocused();
       expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
     }
@@ -403,7 +467,9 @@ test('keeps the current app direct and exposes hidden apps through overflow', as
   await expect(navigation.getByRole('link', { name: /계좌 연결 \(Account Map\).*현재 위치/ })).toBeVisible();
   const more = navigation.getByRole('button', { name: '앱 더보기' });
   await expect(more).toBeVisible();
+  await expect(more).toHaveAttribute('aria-expanded', 'false');
   await more.click();
+  await expect(more).toHaveAttribute('aria-expanded', 'true');
   const overflow = page.getByRole('region', { name: '추가 앱' });
   const overflowBox = await overflow.boundingBox();
   expect(overflowBox).not.toBeNull();
@@ -423,6 +489,7 @@ test('keeps the current app direct and exposes hidden apps through overflow', as
   await expect(overflow).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(overflow).toHaveCount(0);
+  await expect(more).toHaveAttribute('aria-expanded', 'false');
   await expect(more).toBeFocused();
 
   await more.click();
@@ -432,6 +499,61 @@ test('keeps the current app direct and exposes hidden apps through overflow', as
   expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
 });
 
+test('commits Journey reveals before paint under reduced motion', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('apps/account-map/');
+
+  const readiness = page.locator('[data-readiness-motion]');
+  const currentLine = page.locator(
+    '[aria-current="page"] .journey-launcher__current-line',
+  );
+  await expect(readiness).toBeVisible();
+  await expect(currentLine).toBeVisible();
+  expect(await readMotionState(readiness)).toEqual({ opacity: 1, x: 0, y: 0 });
+  expect(await readMotionState(currentLine)).toEqual({ opacity: 1, x: 0, y: 0 });
+
+  await page.addStyleTag({ content: '.journey-launcher { width: 220px !important; }' });
+  const more = page.getByRole('button', { name: '앱 더보기' });
+  await more.click();
+  const overflow = page.getByRole('region', { name: '추가 앱' });
+  await expect(overflow).toBeVisible();
+  await expect(more).toHaveAttribute('aria-expanded', 'true');
+  expect(await readMotionState(overflow)).toEqual({ opacity: 1, x: 0, y: 0 });
+
+  await page.keyboard.press('Escape');
+  await expect(overflow).toHaveCount(0);
+  await expect(more).toHaveAttribute('aria-expanded', 'false');
+  await expect(more).toBeFocused();
+});
+
+test('keeps the Main mobile editor modal synchronous under reduced motion', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript((fixture) => {
+    localStorage.setItem('isf-workspace-v1', JSON.stringify(fixture));
+  }, appliedWorkspace);
+  await page.goto('apps/main/');
+
+  const opener = page.getByRole('button', { name: '월 소비 편집' });
+  await opener.click();
+  const dialog = page.getByRole('dialog', { name: '월 자금 계획 편집' });
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toHaveAttribute('aria-modal', 'true');
+  await expect(page.getByTestId('dashboard-controls')).toHaveAttribute('inert', '');
+  expect(await readMotionState(dialog)).toEqual({ opacity: 1, x: 0, y: 0 });
+  const bounds = await dialog.boundingBox();
+  expect(bounds).not.toBeNull();
+  expect(bounds!.x).toBeGreaterThanOrEqual(0);
+  expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(390);
+  expect(bounds!.y).toBeGreaterThanOrEqual(0);
+  expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(844);
+
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+  await expect(opener).toBeFocused();
+});
+
 test('legacy Simulation DOM is absent from the supported route', async ({ page }) => {
   await page.addInitScript((fixture) => {
     localStorage.setItem('isf-workspace-v1', JSON.stringify(fixture));
@@ -439,3 +561,21 @@ test('legacy Simulation DOM is absent from the supported route', async ({ page }
   await page.goto('apps/simulation/');
   await expect(page.locator('app-header, data-hub-modal, #strategyCardGroup')).toHaveCount(0);
 });
+
+async function readMotionState(locator: import('@playwright/test').Locator): Promise<{
+  opacity: number;
+  x: number;
+  y: number;
+}> {
+  return locator.evaluate((element) => {
+    const style = getComputedStyle(element);
+    const matrix = style.transform === 'none'
+      ? new DOMMatrixReadOnly()
+      : new DOMMatrixReadOnly(style.transform);
+    return {
+      opacity: Number.parseFloat(style.opacity),
+      x: matrix.m41,
+      y: matrix.m42,
+    };
+  });
+}

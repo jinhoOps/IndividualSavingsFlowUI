@@ -97,6 +97,37 @@ test('guides first run, supports boundary years and keeps Main read-only', async
   });
 });
 
+test('first result keeps final graph semantics available during its restrained reveal', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.addInitScript(() => {
+    const observedWindow = window as Window & { __growthChartRevealWidths: string[] };
+    observedWindow.__growthChartRevealWidths = [];
+    const setAttribute = Element.prototype.setAttribute;
+    Element.prototype.setAttribute = function setObservedAttribute(name, value) {
+      if (name === 'width' && this.classList.contains('growth-chart__reveal-clip')) {
+        observedWindow.__growthChartRevealWidths.push(String(value));
+      }
+      setAttribute.call(this, name, value);
+    };
+  });
+  await seedMain(page);
+  await openFirstResult(page);
+
+  const semanticPaths = page.locator('.growth-chart__semantic-path');
+  const motionPaths = page.locator('.growth-chart__motion-path');
+  await expect(semanticPaths).toHaveCount(3);
+  await expect(motionPaths).toHaveCount(3);
+  expect(await semanticPaths.evaluateAll((paths) => paths.map((path) => path.getAttribute('d'))))
+    .toEqual(await motionPaths.evaluateAll((paths) => paths.map((path) => path.getAttribute('d'))));
+  await expect(page.locator('.growth-chart__reveal-clip')).toHaveAttribute('width', '620');
+  const revealWidths = await page.evaluate(() => (
+    (window as Window & { __growthChartRevealWidths: string[] }).__growthChartRevealWidths
+  ));
+  expect(revealWidths).toContain('0');
+  expect(revealWidths.at(-1)).toBe('620');
+  await expect(page.locator('.simulation-comparison__semantic-value')).toHaveCount(2);
+});
+
 test('reloads latest Main values and resets only Simulation from its menu', async ({ page }) => {
   await seedMain(page);
   await openFirstResult(page);
@@ -202,10 +233,35 @@ for (const viewport of [
 
     const graph = page.getByRole('img', { name: '연도별 복리 성장 그래프' });
     const explorer = page.getByRole('application', { name: '그래프 연도 탐색' });
+    const frame = page.getByTestId('simulation-page-frame');
+    const frameBox = await frame.boundingBox();
+    if (frameBox === null) throw new Error('simulation page frame has no bounding box');
+    const expectedWidth = Math.min(viewport.width - 32, 768);
+    expect(Math.abs(frameBox.width - expectedWidth)).toBeLessThan(1);
+    expect(Math.abs(frameBox.x - (viewport.width - expectedWidth) / 2)).toBeLessThan(1);
     await expect(graph).toBeVisible();
     await expect(page.getByText('전부 저축보다')).toBeVisible();
     await expect(page.getByText('납입원금 대비')).toBeVisible();
     expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
+
+    const immediateMotionState = await page.locator('.growth-chart').evaluate((chart) => ({
+      semanticPaths: [...chart.querySelectorAll('.growth-chart__semantic-path')]
+        .map((path) => path.getAttribute('d')),
+      motionPaths: [...chart.querySelectorAll('.growth-chart__motion-path')]
+        .map((path) => path.getAttribute('d')),
+      revealWidth: chart.querySelector('.growth-chart__reveal-clip')?.getAttribute('width'),
+    }));
+    expect(immediateMotionState.motionPaths).toEqual(immediateMotionState.semanticPaths);
+    expect(immediateMotionState.revealWidth).toBe('620');
+
+    const comparisonState = await page.locator('.simulation-comparison dd').evaluateAll((values) => (
+      values.map((value) => ({
+        semantic: value.querySelector('.simulation-comparison__semantic-value')?.textContent,
+        visual: value.querySelector('.simulation-comparison__visual-value')?.textContent,
+      }))
+    ));
+    expect(comparisonState).toHaveLength(2);
+    expect(comparisonState.every(({ semantic, visual }) => semantic === visual)).toBe(true);
 
     const surfaceStyles = await page.locator([
       '.growth-chart',
@@ -251,7 +307,9 @@ for (const viewport of [
       pointerType: 'touch',
     });
 
-    const comparisonWraps = await page.locator('.simulation-comparison dd').evaluateAll((values) => (
+    const comparisonWraps = await page.locator(
+      '.simulation-comparison__visual-value',
+    ).evaluateAll((values) => (
       values.some((value) => {
         const range = document.createRange();
         range.selectNodeContents(value);

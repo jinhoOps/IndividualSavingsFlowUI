@@ -6,12 +6,27 @@ export type InputMode = 'amount' | 'percentage';
 export type PortfolioScope =
   | { type: 'aggregate' }
   | { type: 'location'; locationId: string };
+export type Classification = 'growth' | 'stable';
+export type ClassificationOrigin = 'automatic' | 'user';
+export type PortfolioSortMode = 'ratio' | 'input';
+
+export interface PortfolioViewPreferences {
+  showAmounts: boolean;
+  sortMode: PortfolioSortMode;
+}
+
+export const DEFAULT_PORTFOLIO_VIEW_PREFERENCES = {
+  showAmounts: false,
+  sortMode: 'ratio',
+} as const satisfies PortfolioViewPreferences;
 
 export interface PortfolioItem {
   id: string;
   name: string;
   shareUnits: number;
   order: number;
+  classification: Classification;
+  classificationOrigin: ClassificationOrigin;
 }
 
 export interface PortfolioDraft {
@@ -47,6 +62,14 @@ export interface MaterializedAllocation {
   cashAmountWon: number;
   cashPercentage: number;
   totalAmountWon: number;
+}
+
+export interface AllocationResultItem {
+  id: string;
+  name: string;
+  shareUnits: number;
+  order: number;
+  isCash: boolean;
 }
 
 export interface PortfolioItemIdentity {

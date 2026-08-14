@@ -16,6 +16,8 @@ export interface PortfolioSetupFlowProps {
   draft: PortfolioDraft;
   investmentWon: number;
   saveError: boolean;
+  applying: boolean;
+  showSaving: boolean;
   fieldError: string | null;
   onAction(action: PortfolioAction): void;
   onPrevious(): void;
@@ -35,7 +37,12 @@ export function PortfolioSetupFlow(props: PortfolioSetupFlowProps) {
   }, [props.step]);
 
   return (
-    <Surface as="section" className="portfolio-setup" aria-labelledby="portfolio-setup-title">
+    <Surface
+      as="section"
+      className="portfolio-setup"
+      aria-busy={props.applying ? 'true' : undefined}
+      aria-labelledby="portfolio-setup-title"
+    >
       <div className="portfolio-setup__progress" aria-hidden="true">
         <span style={{ width: `${((index + 1) / steps.length) * 100}%` }} />
       </div>
@@ -43,6 +50,7 @@ export function PortfolioSetupFlow(props: PortfolioSetupFlowProps) {
         {index + 1} / {steps.length} · {setupLabel(props.step)}
       </p>
       {props.saveError ? <p role="alert">저장하지 못했습니다. 다시 시도해 주세요.</p> : null}
+      {props.showSaving ? <p role="status">저장 중</p> : null}
 
       {props.step === 'welcome' ? (
         <div className="portfolio-setup__welcome">
@@ -55,7 +63,7 @@ export function PortfolioSetupFlow(props: PortfolioSetupFlowProps) {
       ) : null}
 
       {props.step === 'allocation' ? (
-        <div>
+        <div className="portfolio-setup__allocation">
           <h1 id="portfolio-setup-title" ref={headingRef} tabIndex={-1}>투자 배분 설정</h1>
           <AllocationEditor
             draft={props.draft}
@@ -78,15 +86,15 @@ export function PortfolioSetupFlow(props: PortfolioSetupFlowProps) {
 
       <nav className="portfolio-setup__actions" aria-label="설정 이동">
         {props.step !== 'welcome' ? (
-          <Button type="button" variant="secondary" onClick={props.onPrevious}>이전</Button>
+          <Button type="button" variant="secondary" disabled={props.applying} onClick={props.onPrevious}>이전</Button>
         ) : null}
         <Button
           type="button"
           variant="primary"
-          disabled={props.step !== 'welcome' && !validateApplicableDraft(props.draft)}
+          disabled={props.applying || (props.step !== 'welcome' && !validateApplicableDraft(props.draft))}
           onClick={props.step === 'review' ? props.onApply : props.onNext}
         >
-          {props.step === 'welcome' ? '배분 시작하기' : props.step === 'review' ? '배분 시작' : '다음'}
+          {props.step === 'welcome' ? '배분 시작하기' : props.step === 'review' ? '이대로 시작' : '배분 확인'}
         </Button>
       </nav>
     </Surface>
@@ -103,14 +111,47 @@ function PortfolioSetupReview({
   headingRef: React.RefObject<HTMLHeadingElement | null>;
 }) {
   const allocation = materializeAllocation(draft, investmentWon);
+  const stablePercentage = allocation.cashPercentage + allocation.items
+    .filter((item) => item.classification === 'stable')
+    .reduce((sum, item) => sum + item.percentage, 0);
+  const growthPercentage = Math.max(0, 100 - stablePercentage);
   return (
-    <div className="portfolio-setup__review">
-      <h1 id="portfolio-setup-title" ref={headingRef} tabIndex={-1}>이 배분으로 시작할까요?</h1>
-      <dl>
-        <div><dt>투자 대상</dt><dd>{draft.items.length}개</dd></div>
-        <div><dt>투자금</dt><dd>{formatPortfolioWon(investmentWon)}</dd></div>
-        <div><dt>현금</dt><dd>{formatAllocationPercent(allocation.cashPercentage)}</dd></div>
-      </dl>
+    <div className="portfolio-setup__review" role="region" aria-label="배분 검토">
+      <h1 id="portfolio-setup-title" ref={headingRef} tabIndex={-1}>
+        성장에 {formatAllocationPercent(growthPercentage)}, 안정에 {formatAllocationPercent(stablePercentage)} 배분해요
+      </h1>
+      <p className="portfolio-setup__review-meta">매달 {formatPortfolioWon(investmentWon)}</p>
+      <section className="portfolio-setup__strategy" aria-label="성장 안정 구성">
+        <div className="portfolio-setup-summary__bar" aria-hidden="true">
+          <span className="portfolio-setup-summary__growth" style={{ width: `${growthPercentage}%` }} />
+          <span className="portfolio-setup-summary__stable" style={{ width: `${stablePercentage}%` }} />
+        </div>
+        <div className="portfolio-setup-summary__legend">
+          <span>성장 <strong>{formatAllocationPercent(growthPercentage)}</strong></span>
+          <span>안정 <strong>{formatAllocationPercent(stablePercentage)}</strong></span>
+        </div>
+      </section>
+      <ul className="portfolio-setup-review__list">
+        {allocation.items.map((item) => {
+          return (
+            <li
+              className="portfolio-setup-review__item"
+              key={item.id}
+              aria-label={`${item.name} ${formatPortfolioWon(item.amountWon)} ${formatAllocationPercent(item.percentage)}`}
+            >
+              <div><strong>{item.name}</strong></div>
+              <div><strong>{formatPortfolioWon(item.amountWon)}</strong><span>{formatAllocationPercent(item.percentage)}</span></div>
+            </li>
+          );
+        })}
+        <li
+          className="portfolio-setup-review__item"
+          aria-label={`현금 ${formatPortfolioWon(allocation.cashAmountWon)} ${formatAllocationPercent(allocation.cashPercentage)}`}
+        >
+          <div><strong>현금</strong></div>
+          <div><strong>{formatPortfolioWon(allocation.cashAmountWon)}</strong><span>{formatAllocationPercent(allocation.cashPercentage)}</span></div>
+        </li>
+      </ul>
     </div>
   );
 }

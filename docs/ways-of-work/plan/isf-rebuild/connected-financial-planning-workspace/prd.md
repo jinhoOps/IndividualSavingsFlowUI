@@ -15,12 +15,13 @@ ISF는 지금의 월간 돈 흐름을 정리하고, 그 결과를 장기 전략�
 - [Account Map Purpose-Node Flow Design](../../../../superpowers/specs/2026-08-13-account-map-purpose-node-flow-design.md)
 - [Shared Workspace Foundation Plan](../../../../superpowers/plans/2026-08-06-shared-workspace-foundation.md)
 - [Journey Snapshot 폐기 설계](../../../../superpowers/specs/2026-08-03-journey-snapshot-retirement-design.md)
+- [Portfolio 투자 배분 설계](../../../../superpowers/specs/2026-08-03-portfolio-allocation-design.md)
 
 ## 3. Problem
 
 개인 재무 정보는 항목과 계좌가 늘어날수록 입력이 복잡해지고, 사용자는 정작 “지금 한 달에 얼마가 남는가”를 파악하기 어렵다. ISF는 첫 단계에서 입력 부담을 줄이고 월간 배분을 바로 이해하도록 해야 한다.
 
-동시에 저장소에는 과거 Simulation·Portfolio·Account Map 구현과 다양한 재무 기능이 남아 있다. 이 코드는 향후 기능 및 데이터 계약을 조사할 임시자산이지만 현재 제품으로 오해되거나 새 구현의 기반으로 재사용되면 제품 경계가 다시 흐려진다.
+동시에 저장소에는 Account Map 참고 구현과 현재 범위 밖의 다양한 재무 기능이 남아 있다. 이 코드는 향후 기능 및 데이터 계약을 조사할 임시자산이지만 현재 제품으로 오해되거나 새 구현의 기반으로 재사용되면 제품 경계가 다시 흐려진다.
 
 ## 4. Goal
 
@@ -93,9 +94,9 @@ ISF는 지금의 월간 돈 흐름을 정리하고, 그 결과를 장기 전략�
 - 런처는 Main, Simulation, Portfolio와 Account Map을 아이콘으로 표시하고 현재 앱을 선택선과 접근성 상태로 구분한다.
 - 런처와 CTA는 URL 탐색만 수행하고 별도 전달 데이터를 저장하지 않는다.
 - Simulation은 단일 workspace의 최신 Main 월 저축·투자를 읽어 장기 복리 성장과 전부 저축 기준선을 비교하고 자체 Simulation slice만 갱신한다.
-- Portfolio는 같은 workspace의 최신 Main 투자금을 읽고 전체 기준 적용 배분과 편집 초안을 소유한다.
-- Portfolio의 배분 편집은 투자 대상별 전체 기준 금액과 비율만 다룬다. 현재 기준선에는 별도 `투자 위치` disclosure와 shared location 생성·이름 변경·보관 action이 남아 있지만 location-scoped 배분은 편집하지 않는다.
-- Portfolio 위치 UI와 registry write는 Phase B review closure에서 제거하며 기존 location과 location-scoped 데이터만 호환성을 위해 보존한다.
+- Portfolio는 같은 workspace의 최신 Main 투자금을 읽고 하나의 v2 전체 기준 적용 배분과 편집 초안을 소유한다.
+- Portfolio 결과는 비율 우선 요약과 비례 목록으로 시작하며 원화 금액은 기본으로 숨긴다.
+- Portfolio의 배분 편집은 투자 대상별 전체 기준 금액과 비율만 다루며 계좌·기관·보관처 관리 UI를 표시하지 않는다. 기존 location과 location-scoped 데이터는 호환성을 위해 보존한다.
 - Account Map 출시 후보는 최신 Main의 다섯 월 금액을 읽어 목적 중심 설정과 노드 지도를 제공하고, 자기 slice와 공유 금융 위치 registry만 갱신한다.
 - Account Map은 Main·Simulation·Portfolio에 write-back하지 않는다.
 - Main의 기존 요약과 월 자금 구성은 유지된다. 앱별 연결 결과 카드는 Phase C 전까지 현재 UI가 아니다.
@@ -143,6 +144,17 @@ ISF는 지금의 월간 돈 흐름을 정리하고, 그 결과를 장기 전략�
 
 ### Portfolio와 계좌·보관처 경계
 
+- 진입할 때마다 Main의 최신 월 투자금을 읽되 Main 원본은 변경하지 않는다.
+- 최대 10개 자유 이름 투자 대상과 현금에 현재 투자금을 원화 금액으로 배분하고, 각 항목 비율은 전체 투자금 기준으로 자동 계산한다.
+- 적용 계획 하나와 편집 초안을 Portfolio slice에 보존하고, 수정 중 값과 적용된 값을 구분한다.
+- Main 투자금이 바뀌면 기존 배분 의도를 유지할 수 있는 범위에서 다시 계산하고 사용자가 변화를 확인하도록 한다.
+- 결과는 `안정 N%` 핵심 요약과 투자 대상별 이름·비율·비례 막대를 먼저 보여주고, 총액과 항목별 원화 금액은 기본으로 렌더링하지 않는다.
+- 사용자는 Portfolio 관리 메뉴에서 전체 금액 표시와 비율순·입력순 정렬을 바꾸며, 이 보기 설정은 배분 schema와 분리된 Portfolio 전용 localStorage record에 저장한다.
+- 각 투자 대상은 `성장` 또는 `안정` 분류와 자동 추천·사용자 지정 출처를 소유하고, 현금은 항상 안정으로 계산한다.
+- 금·채권 관련 이름의 분류는 자동 추천일 뿐이며 사용자 지정을 덮어쓰지 않는다. `ETF`만으로는 안정을 추천하지 않는다.
+- 구 Portfolio v1 plan과 draft 저장값은 현재 workspace v2 배분으로 이관하지 않고, 읽지 않고, 삭제하지 않는다.
+- 유효한 aggregate v2 plan·draft가 없으면 최신 Main 투자금을 기준으로 현금 100%인 새 v2 draft를 시작한다.
+- 다시 설정은 aggregate Portfolio 데이터만 초기화하며 Main과 다른 앱의 데이터를 변경하지 않는다.
 - 현재 UI는 하나의 `aggregate` scope만 만들고 편집한다.
 - Portfolio plan과 draft 계약은 구데이터 호환성을 위해 location scope를 표현할 수 있지만 현재 UI는 location scope를 만들거나 편집하지 않는다.
 - Closure 이후 Portfolio 결과는 투자 대상별 전체 기준 금액과 비율까지만 보여주며 계좌·기관·보관처 관리 UI를 제공하지 않는다. Closure 전 위치 disclosure는 제거 예정 임시 예외다.
@@ -193,15 +205,17 @@ Main이 계산하는 요약:
 - `plannedOutflowWon = consumptionWon + monthlySavingWon + monthlyInvestmentWon`
 - `remainingWon = monthlyNetIncomeWon - plannedOutflowWon`
 
-Simulation, Portfolio와 Account Map은 workspace 안의 최신 Main을 읽기 전용으로 사용한다. Closure 전 Portfolio 위치 disclosure의 registry write는 제거 예정 임시 예외다. Closure 이후 Simulation과 Portfolio의 write ownership은 자기 slice로 한정하고 Account Map만 자기 slice와 공유 금융 위치 registry를 갱신하며 Main·Simulation·Portfolio를 보존한다.
+Simulation, Portfolio와 Account Map은 workspace 안의 최신 Main을 읽기 전용으로 사용한다. Portfolio는 workspace의 v2 배분 plan·draft와 별도의 보기 설정 localStorage record만 현재 제품 상태로 취급한다. Simulation과 Portfolio의 write ownership은 자기 slice로 한정하고 Account Map만 자기 slice와 공유 금융 위치 registry를 갱신하며 Main·Simulation·Portfolio를 보존한다.
 
 ## 10. UX and Design Requirements
 
 - 결과와 현재 상태를 세부 입력보다 먼저 보여준다.
 - 수정 중 값과 적용된 값을 구분한다.
-- 저장, 복구, import와 연결 결과를 명시적으로 알린다.
+- 명시적 적용·백업·복구·import 결과와 저장 지연·실패·복구 필요 상태를 알린다. 정상 자동 저장 성공은 상시 상태로 반복하지 않는다.
 - 원화 단위와 음수·적자 의미를 숨기지 않는다.
 - 390px, 768px, desktop에서 가로 overflow 없이 사용할 수 있어야 한다.
+- 앱을 이동해도 런처의 위치와 공통 화면 틀이 일관되어야 한다.
+- Main 도넛과 Simulation·Portfolio 시각화의 핵심 정보는 pointer·touch·keyboard로 탐색할 수 있어야 한다.
 - 주요 터치 대상은 최소 44px을 확보한다.
 - 키보드, focus, accessible name, 상태 텍스트를 제공한다.
 - UI 세부 계약은 [DESIGN](../../../../../DESIGN.md)을 따른다.
@@ -216,12 +230,17 @@ Simulation, Portfolio와 Account Map은 workspace 안의 최신 Main을 읽기 �
 - [x] 유효한 계획을 로컬에 저장하고 다시 불러올 수 있다.
 - [x] 현재 JSON을 내보내고 검증된 JSON을 가져올 수 있다.
 - [x] Main에서 Simulation으로 명시적으로 이동할 수 있다.
+- [x] Main 월 자금 구성 도넛은 pointer·touch·keyboard로 항목을 탐색하며 모바일에서도 명칭과 상세 금액에 접근할 수 있다.
 - [x] 앱 이동은 URL만 사용하고 Main 시작은 폐기된 journey key를 읽거나 변환하지 않고 삭제한다.
+- [x] 네 앱 경로는 같은 런처 위치와 공통 화면 틀을 유지한다.
 - [x] Simulation은 Main을 변경하지 않고 장기 복리와 전부 저축 기준선을 비교한다.
 - [x] Simulation은 최초 두 단계 설정, 재방문 결과 우선 진입과 최신 Main 자동 동기화를 제공한다.
 - [x] Simulation은 0~30년, 한국식 정수 금액, pointer·touch·keyboard 그래프 탐색을 제공한다.
 - [x] Portfolio는 최신 Main 투자금을 최대 10개 투자 대상과 현금에 배분한다.
-- [x] Portfolio는 금액·비율, 결과 우선 도넛·표와 초안·적용 경계를 제공한다.
+- [x] Portfolio는 기본 금액 숨김, `안정 N%` 요약과 이름·비율·비례 막대 목록으로 결과를 먼저 제공한다.
+- [x] Portfolio의 성장·안정 자동 추천은 사용자 지정을 덮어쓰지 않고 현금을 항상 안정으로 계산한다.
+- [x] Portfolio는 v1 배분 저장값을 이관·읽기·삭제하지 않으며, v2가 없으면 최신 Main 투자금의 현금 100% draft로 시작한다.
+- [x] Portfolio 보기 설정은 v2 배분과 분리해 저장하고 저장 실패가 배분 저장 상태를 바꾸지 않는다.
 - [x] Portfolio는 Main을 수정하지 않고 Account Map 출시 후보와 독립된 aggregate 배분만 소유한다.
 - [ ] Main, Simulation과 Portfolio의 write는 소유 slice에 한정되고 Portfolio가 공유 금융 위치 registry를 갱신하지 않는다.
 - [x] 구 Main·Simulation·Portfolio·Account Map·rebuild 키는 새 제품에서 fallback, migration, write 또는 delete 대상으로 사용하지 않는다.
@@ -229,6 +248,7 @@ Simulation, Portfolio와 Account Map은 workspace 안의 최신 Main을 읽기 �
 - [ ] Portfolio는 전체 기준 배분만 제공하고 계좌·기관·보관처 관리 UI를 표시하지 않는다.
 - [x] whole-workspace 백업은 유효한 모든 slice를 한 번에 교체하고 invalid 또는 old-format 입력에는 현재 raw workspace를 유지한다.
 - [ ] Account Map 출시 후보는 목적 중심 설정, 노드 지도와 가역적 계좌·보관처 관리의 승인 계약을 모두 구현하며 Main 연결 결과 카드는 Phase C 전까지 기존 UI를 유지한다.
+- [x] Simulation과 Portfolio의 다시 설정은 해당 앱 데이터만 변경하고 Main과 다른 앱의 데이터를 보존한다.
 
 ### Phase B review closure gate
 
@@ -279,4 +299,9 @@ Phase C는 현재 Main의 metric 영역을 Main·Simulation·Portfolio·Account 
 - cross-app 브라우저 흐름: `npx playwright test tests/app-journey.spec.ts tests/main-react.spec.ts tests/simulation.spec.ts tests/portfolio.spec.ts --reporter=list`
 - 전체 브라우저 흐름: `npm run test:e2e -- --reporter=list`
 - production build: `npm run build`
+- Main 브라우저 흐름: `npx playwright test tests/main-react.spec.ts`
+- 앱 연결 흐름: `npx playwright test tests/app-journey.spec.ts`
+- Simulation 브라우저 흐름: `npx playwright test tests/simulation.spec.ts`
+- Portfolio 브라우저 흐름: `npx playwright test tests/portfolio.spec.ts`
+- Account Map 준비 상태: `npx playwright test tests/account-map.spec.ts`
 - 레거시 제거 시: runtime import, route, selector, storage key, compatibility path와 test reference 검색 및 관련 전체 회귀

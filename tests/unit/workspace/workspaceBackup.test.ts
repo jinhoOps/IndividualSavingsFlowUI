@@ -17,7 +17,10 @@ import { MemoryStorage } from '../simulation/MemoryStorage';
 const aggregatePlan: PortfolioPlan = {
   schemaVersion: 2,
   scope: { type: 'aggregate' },
-  items: [{ id: 'asset-us', name: '미국 인덱스', shareUnits: 700_000, order: 0 }],
+  items: [{
+    id: 'asset-us', name: '미국 인덱스', shareUnits: 700_000, order: 0,
+    classification: 'growth', classificationOrigin: 'automatic',
+  }],
   cashShareUnits: 300_000,
   cashMode: 'automatic',
   syncedInvestmentWon: 600_000,
@@ -28,7 +31,10 @@ const aggregatePlan: PortfolioPlan = {
 const locationPlan: PortfolioPlan = {
   ...aggregatePlan,
   scope: { type: 'location', locationId: 'loc-isa' },
-  items: [{ id: 'asset-bond', name: '국채', shareUnits: 400_000, order: 0 }],
+  items: [{
+    id: 'asset-bond', name: '국채', shareUnits: 400_000, order: 0,
+    classification: 'stable', classificationOrigin: 'automatic',
+  }],
   cashShareUnits: 600_000,
   appliedAt: 31,
   updatedAt: 31,
@@ -136,7 +142,10 @@ function phaseBReleaseWorkspace(): WorkspaceDocument {
   workspace.portfolio.draft = {
     schemaVersion: 2,
     scope: { type: 'aggregate' },
-    items: [{ id: 'asset-us', name: '미국 인덱스', shareUnits: 600_000, order: 0 }],
+    items: [{
+      id: 'asset-us', name: '미국 인덱스', shareUnits: 600_000, order: 0,
+      classification: 'growth', classificationOrigin: 'automatic',
+    }],
     cashShareUnits: 400_000,
     cashMode: 'automatic',
     syncedInvestmentWon: 600_000,

@@ -1,14 +1,48 @@
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
+import { StrictMode, useRef, useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { Toast } from '../../../src/components/common/Toast';
+import { MOTION_DISTANCE_PX, MOTION_DURATION, MOTION_EASE } from '../../../src/components/motion/tokens';
 import type { JourneyApp } from '../../../src/journey/routes';
 import { AppLauncher } from '../../../src/journey/ui/AppLauncher';
+import { ManagementConfirmationDialog } from '../../../src/journey/ui/ManagementConfirmationDialog';
+
+const animeMocks = vi.hoisted(() => {
+  const state = { reducedMotion: false };
+  return {
+    animate: vi.fn((target: unknown, options: Record<string, unknown>) => {
+      applyFinalAnimationStyles(target, options);
+      return { cancel: vi.fn() };
+    }),
+    createScope: vi.fn(() => ({
+      add: (setup: () => void) => setup(),
+      matches: { reducedMotion: state.reducedMotion },
+      revert: vi.fn(),
+    })),
+    state,
+  };
+});
+
+function applyFinalAnimationStyles(target: unknown, options: Record<string, unknown>): void {
+  if (!(target instanceof HTMLElement)) return;
+  if (Array.isArray(options.opacity)) target.style.opacity = String(options.opacity.at(-1));
+  if (Array.isArray(options.y)) target.style.transform = `translateY(${String(options.y.at(-1))}px)`;
+  if (Array.isArray(options.x)) target.style.transform = `translateX(${String(options.x.at(-1))}px)`;
+}
+
+vi.mock('animejs', () => ({
+  animate: animeMocks.animate,
+  createScope: animeMocks.createScope,
+}));
 
 afterEach(() => {
   cleanup();
   vi.useRealTimers();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
+  vi.clearAllMocks();
+  animeMocks.state.reducedMotion = false;
 });
 
 describe('AppLauncher', () => {
@@ -103,6 +137,40 @@ describe('AppLauncher', () => {
     fireEvent.click(more);
     fireEvent.pointerDown(screen.getByRole('button', { name: '바깥 행동' }));
     expect(screen.queryByRole('region', { name: '추가 앱' })).not.toBeInTheDocument();
+  });
+
+  it('reveals the current line and overflow with fast shared motion while state closes immediately', () => {
+    stubLauncherWidth(140);
+    const { container } = render(<AppLauncher currentApp="portfolio" />);
+
+    const currentLine = container.querySelector<HTMLElement>(
+      '[aria-current="page"] .journey-launcher__current-line',
+    );
+    expect(currentLine).not.toBeNull();
+    expect(animationOptionsFor(currentLine!)).toMatchObject({
+      opacity: [0, 1],
+      y: [MOTION_DISTANCE_PX.subtle, 0],
+      duration: MOTION_DURATION.fast,
+      ease: MOTION_EASE.enter,
+    });
+
+    const more = screen.getByRole('button', { name: '앱 더보기' });
+    expect(more).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(more);
+
+    const menu = screen.getByRole('region', { name: '추가 앱' });
+    expect(more).toHaveAttribute('aria-expanded', 'true');
+    expect(animationOptionsFor(menu)).toMatchObject({
+      opacity: [0, 1],
+      y: [-MOTION_DISTANCE_PX.subtle, 0],
+      duration: MOTION_DURATION.fast,
+      ease: MOTION_EASE.enter,
+    });
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByRole('region', { name: '추가 앱' })).not.toBeInTheDocument();
+    expect(more).toHaveAttribute('aria-expanded', 'false');
+    expect(more).toHaveFocus();
   });
 
   it('preserves app focus when a resize moves an overflow link into direct navigation', () => {
@@ -265,6 +333,111 @@ describe('AppLauncher', () => {
   );
 });
 
+describe('shared Journey overlays', () => {
+  it('keeps confirmation focus inside during Strict Mode preflight and restores it on actual close', async () => {
+    function Harness() {
+      const triggerRef = useRef<HTMLButtonElement>(null);
+      const [open, setOpen] = useState(false);
+      return (
+        <>
+          <button ref={triggerRef} type="button" onClick={() => setOpen(true)}>Strict 확인 열기</button>
+          {open ? (
+            <ManagementConfirmationDialog
+              confirmation={{
+                title: 'Strict 확인',
+                description: 'preflight focus를 확인합니다.',
+                confirmLabel: '확인',
+              }}
+              pending={false}
+              returnFocusRef={triggerRef}
+              onCancel={() => setOpen(false)}
+              onConfirm={() => undefined}
+            />
+          ) : null}
+        </>
+      );
+    }
+
+    render(<StrictMode><Harness /></StrictMode>);
+    const trigger = screen.getByRole('button', { name: 'Strict 확인 열기' });
+    fireEvent.click(trigger);
+    const dialog = screen.getByRole('dialog', { name: 'Strict 확인' });
+    const cancel = within(dialog).getByRole('button', { name: '취소' });
+    await act(async () => undefined);
+    expect(cancel).toHaveFocus();
+
+    fireEvent.keyDown(dialog, { key: 'Escape' });
+    expect(screen.queryByRole('dialog', { name: 'Strict 확인' })).not.toBeInTheDocument();
+    await act(async () => undefined);
+    expect(trigger).toHaveFocus();
+  });
+
+  it('reveals confirmation content with normal motion and removes it before returning focus', async () => {
+    function Harness() {
+      const triggerRef = useRef<HTMLButtonElement>(null);
+      const [open, setOpen] = useState(false);
+      return (
+        <>
+          <button ref={triggerRef} type="button" onClick={() => setOpen(true)}>초기화 열기</button>
+          {open ? (
+            <ManagementConfirmationDialog
+              confirmation={{
+                title: '처음부터 다시 할까요?',
+                description: '현재 초안을 지웁니다.',
+                confirmLabel: '초기화',
+              }}
+              pending={false}
+              returnFocusRef={triggerRef}
+              onCancel={() => setOpen(false)}
+              onConfirm={() => undefined}
+            />
+          ) : null}
+        </>
+      );
+    }
+
+    render(<Harness />);
+    const trigger = screen.getByRole('button', { name: '초기화 열기' });
+    fireEvent.click(trigger);
+    const dialog = screen.getByRole('dialog', { name: '처음부터 다시 할까요?' });
+    expect(dialog).toHaveAttribute('aria-modal', 'true');
+    const motionContent = dialog.querySelector<HTMLElement>('[data-dialog-motion]');
+    expect(motionContent).not.toBeNull();
+    expect(animationOptionsFor(motionContent!)).toMatchObject({
+      opacity: [0, 1],
+      y: [MOTION_DISTANCE_PX.subtle, 0],
+      duration: MOTION_DURATION.normal,
+      ease: MOTION_EASE.enter,
+    });
+
+    fireEvent.keyDown(dialog, { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    await act(async () => undefined);
+    expect(trigger).toHaveFocus();
+  });
+
+  it('reveals a toast without bounce and removes it on the close action immediately', () => {
+    function Harness() {
+      const [visible, setVisible] = useState(true);
+      return visible ? <Toast message="백업 완료" onClose={() => setVisible(false)} /> : null;
+    }
+
+    render(<Harness />);
+    const motionContent = screen.getByText('백업 완료').closest<HTMLElement>('[data-toast-motion]');
+    expect(motionContent).not.toBeNull();
+    expect(motionContent).not.toHaveClass('animate-bounce-short');
+    expect(animationOptionsFor(motionContent!)).toMatchObject({
+      opacity: [0, 1],
+      y: [MOTION_DISTANCE_PX.reveal, 0],
+      duration: MOTION_DURATION.normal,
+      ease: MOTION_EASE.enter,
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: '알림 닫기' }));
+    expect(screen.queryByText('백업 완료')).not.toBeInTheDocument();
+  });
+});
+
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
@@ -286,4 +459,25 @@ function dispatchObservedClick(element: Element): boolean {
   }, { once: true });
   element.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
   return preventedByLauncher;
+}
+
+function animationOptionsFor(target: Element): Record<string, unknown> | undefined {
+  return animeMocks.animate.mock.calls.find(([candidate]) => candidate === target)?.[1] as
+    | Record<string, unknown>
+    | undefined;
+}
+
+function stubLauncherWidth(width: number): void {
+  vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockImplementation(function (this: HTMLElement) {
+    return this.classList.contains('journey-launcher__navigation') ? width : 0;
+  });
+  class ImmediateResizeObserver {
+    observe(target: Element) {
+      this.callback([{ target } as ResizeObserverEntry], this as unknown as ResizeObserver);
+    }
+    unobserve() {}
+    disconnect() {}
+    constructor(private readonly callback: ResizeObserverCallback) {}
+  }
+  vi.stubGlobal('ResizeObserver', ImmediateResizeObserver);
 }

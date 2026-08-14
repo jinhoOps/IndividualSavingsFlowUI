@@ -4,13 +4,16 @@ import {
   createPortfolioState,
   portfolioReducer,
 } from '../../../src/portfolio/application/portfolioReducer';
-import { createCashOnlyDraft } from '../../../src/portfolio/domain/allocation';
+import { createCashOnlyDraft, materializeAllocation } from '../../../src/portfolio/domain/allocation';
 import type { PortfolioPlan } from '../../../src/portfolio/domain/model';
 
 const plan: PortfolioPlan = {
   schemaVersion: 2,
   scope: { type: 'aggregate' },
-  items: [{ id: 'a', name: '인덱스', shareUnits: 600_000, order: 0 }],
+  items: [{
+    id: 'a', name: '인덱스', shareUnits: 600_000, order: 0,
+    classification: 'growth', classificationOrigin: 'automatic',
+  }],
   cashShareUnits: 400_000,
   cashMode: 'automatic',
   syncedInvestmentWon: 200_000,
@@ -119,5 +122,59 @@ describe('portfolioReducer', () => {
     expect(switched.view).toBe('edit');
     expect(switched.setupStep).toBeNull();
     expect(switched.dirty).toBe(false);
+  });
+
+  it('recommends again on automatic renames but preserves a user classification until automatic is restored', () => {
+    let state = createPortfolioState(readyWithPlan);
+
+    state = portfolioReducer(state, { type: 'draft-name-changed', id: 'a', name: '국채 ETF', now: 2 });
+    expect(state.draft.items[0]).toMatchObject({ classification: 'stable', classificationOrigin: 'automatic' });
+
+    state = portfolioReducer(state, {
+      type: 'draft-classification-changed', id: 'a', classification: 'growth', now: 3,
+    });
+    state = portfolioReducer(state, { type: 'draft-name-changed', id: 'a', name: '금현물', now: 4 });
+    expect(state.draft.items[0]).toMatchObject({ classification: 'growth', classificationOrigin: 'user' });
+
+    state = portfolioReducer(state, { type: 'draft-classification-auto-enabled', id: 'a', now: 5 });
+    expect(state.draft.items[0]).toMatchObject({ classification: 'stable', classificationOrigin: 'automatic' });
+  });
+
+  it('commits a complete new target in one reducer action', () => {
+    const state = createPortfolioState(readyWithoutPlan);
+    const committed = portfolioReducer(state, {
+      type: 'draft-item-committed',
+      item: { id: 'bond', name: '국채 ETF', order: 0 },
+      amountWon: 50_000,
+      classification: 'stable',
+      classificationOrigin: 'automatic',
+      now: 3,
+    });
+
+    expect(committed.draft.items).toHaveLength(1);
+    expect(committed.draft.items[0]).toMatchObject({
+      id: 'bond', name: '국채 ETF', order: 0,
+      classification: 'stable', classificationOrigin: 'automatic',
+    });
+    expect(materializeAllocation(committed.draft, 200_000).items[0].amountWon).toBe(50_000);
+  });
+
+  it('commits an existing target without changing its count or order', () => {
+    const state = createPortfolioState(readyWithPlan);
+    const committed = portfolioReducer(state, {
+      type: 'draft-item-committed',
+      item: { id: 'a', name: '미국 성장주', order: 0 },
+      amountWon: 125_000,
+      classification: 'stable',
+      classificationOrigin: 'user',
+      now: 3,
+    });
+
+    expect(committed.draft.items).toHaveLength(1);
+    expect(committed.draft.items[0]).toMatchObject({
+      id: 'a', name: '미국 성장주', order: 0,
+      classification: 'stable', classificationOrigin: 'user',
+    });
+    expect(materializeAllocation(committed.draft, 200_000).items[0].amountWon).toBe(125_000);
   });
 });

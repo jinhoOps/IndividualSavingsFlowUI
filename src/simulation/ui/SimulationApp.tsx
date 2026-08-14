@@ -77,7 +77,11 @@ export function SimulationApp({
         managementMenu={<SimulationManagementMenu onReset={reset} />}
       >
         <main className="simulation-shell">
-          <Surface as="section" className="simulation-recovery">
+          <Surface
+            as="section"
+            className="app-content-frame simulation-recovery"
+            data-testid="simulation-page-frame"
+          >
             <h1>Main에서 월 저축·투자 금액을 먼저 정해주세요.</h1>
             <a className="ui-button ui-button--primary" href={appPath('main')}>Main에서 설정하기</a>
           </Surface>
@@ -169,7 +173,10 @@ export function SimulationApp({
       managementMenu={<SimulationManagementMenu onReset={reset} />}
     >
       <main className="simulation-shell">
-        <div className="simulation-content">
+        <div
+          className="app-content-frame simulation-content"
+          data-testid="simulation-page-frame"
+        >
         {draft === null && latestSource !== null ? (
           <SimulationOnboarding source={latestSource} now={now} onComplete={saveDraft} />
         ) : draft !== null && result !== null ? (

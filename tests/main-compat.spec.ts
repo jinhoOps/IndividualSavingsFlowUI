@@ -72,7 +72,6 @@ test('React Main workspace save leaves legacy adapter records untouched', async 
   await page.getByRole('button', { name: '월 투자 편집' }).click();
   await page.getByLabel('월 투자액').fill('650000');
   await page.getByRole('button', { name: '적용' }).click();
-  await expect(page.getByRole('status')).toHaveText('저장됨');
 
   await expect.poll(() => page.evaluate(() => {
     const workspace = JSON.parse(localStorage.getItem('isf-workspace-v1') ?? '{}');

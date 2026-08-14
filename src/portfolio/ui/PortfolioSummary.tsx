@@ -1,98 +1,362 @@
-import { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { animate } from 'animejs';
+import { useMemo, useRef, type CSSProperties, type MouseEvent } from 'react';
 import { Surface } from '../../components/common/Surface';
-import { sortResultItems } from '../domain/allocation';
-import type { MaterializedAllocation } from '../domain/model';
 import {
-  AllocationDonut,
-  type AllocationResultItem,
-  type AllocationSelection,
-} from './AllocationDonut';
-import { AllocationTable } from './AllocationTable';
+  animateVisualNumber,
+  commitVisualNumber,
+} from '../../components/motion/animateVisualNumber';
+import {
+  MOTION_DISTANCE_PX,
+  MOTION_DURATION,
+  MOTION_EASE,
+} from '../../components/motion/tokens';
+import { useAnimeScope } from '../../components/motion/useAnimeScope';
+import { largestResultItem, orderedResultItems } from '../domain/allocation';
+import { stableShareUnits } from '../domain/classification';
+import type {
+  AllocationResultItem,
+  MaterializedAllocation,
+  PortfolioViewPreferences,
+} from '../domain/model';
 import { formatAllocationPercent, formatPortfolioWon } from './format';
-import { clampTooltipPosition } from './tooltipPosition';
+
+interface DisplayResultItem extends AllocationResultItem {
+  amountWon: number;
+  percentage: number;
+}
+
+interface AllocationRowFrame {
+  opacity: number;
+  percentage: number;
+  rect: DOMRect;
+}
+
+interface AllocationMotionSnapshot {
+  key: string;
+  rows: Map<string, AllocationRowFrame>;
+}
 
 export function PortfolioSummary({
   investmentWon,
   allocation,
+  preferences,
+  onEdit,
 }: {
   investmentWon: number;
   allocation: MaterializedAllocation;
+  preferences: PortfolioViewPreferences;
+  onEdit?: (event: MouseEvent<HTMLButtonElement>) => void;
 }) {
-  const [active, setActive] = useState<AllocationSelection | null>(null);
-  const [tooltipPosition, setTooltipPosition] = useState<{ left: number; top: number } | null>(null);
-  const tooltipRef = useRef<HTMLDivElement>(null);
-  const items = useMemo<AllocationResultItem[]>(() => [
-    ...sortResultItems(allocation.items).map((item) => ({ ...item, isCash: false })),
-    {
-      id: 'cash',
-      name: '현금',
-      amountWon: allocation.cashAmountWon,
-      percentage: allocation.cashPercentage,
-      isCash: true,
-    },
-  ], [allocation]);
-  const activeItem = items.find((item) => item.id === active?.id) ?? null;
-
-  useLayoutEffect(() => {
-    if (active?.mode !== 'pointer' || tooltipRef.current === null) {
-      setTooltipPosition(null);
-      return undefined;
+  const cashShareUnits = Math.round(allocation.cashPercentage * 10_000);
+  const items = useMemo<DisplayResultItem[]>(() => orderedResultItems(
+    allocation.items,
+    cashShareUnits,
+    preferences.sortMode,
+  ).map((item) => {
+    if (item.isCash) {
+      return {
+        ...item,
+        amountWon: allocation.cashAmountWon,
+        percentage: allocation.cashPercentage,
+      };
     }
-    const update = () => {
-      const bounds = tooltipRef.current?.getBoundingClientRect();
-      const tooltip = tooltipRef.current;
-      if (bounds === undefined || tooltip === null) return;
-      const styles = window.getComputedStyle(tooltip);
-      setTooltipPosition(clampTooltipPosition(
-        active,
-        {
-          width: Number.parseFloat(styles.width) || bounds.width,
-          height: Number.parseFloat(styles.height) || bounds.height,
-        },
-        { width: window.innerWidth, height: window.innerHeight },
-      ));
+    const materialized = allocation.items.find((candidate) => candidate.id === item.id);
+    return {
+      ...item,
+      amountWon: materialized?.amountWon ?? 0,
+      percentage: materialized?.percentage ?? 0,
     };
-    update();
-    const resizeObserver = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(update);
-    resizeObserver?.observe(tooltipRef.current);
-    window.addEventListener('resize', update);
-    return () => {
-      resizeObserver?.disconnect();
-      window.removeEventListener('resize', update);
-    };
-  }, [active]);
+  }), [allocation, cashShareUnits, preferences.sortMode]);
+  const largestResult = largestResultItem(items);
+  const largest = items.find((item) => item.id === largestResult?.id) ?? items[0];
+  const stablePercent = formatAllocationPercent(stableShareUnits({
+    items: allocation.items,
+    cashShareUnits,
+  }) / 10_000);
+  const motionKey = JSON.stringify(items.map((item) => [item.id, clampedPercentage(item.percentage)]));
+  const motionSnapshotRef = useRef<AllocationMotionSnapshot | null>(null);
+  const summaryRef = useAnimeScope<HTMLElement>(({ root, reducedMotion }) => {
+    const currentRows = captureAllocationRows(root);
+    const previous = motionSnapshotRef.current;
+    const currentSnapshot = { key: motionKey, rows: currentRows };
+    motionSnapshotRef.current = currentSnapshot;
+
+    if (previous === null || reducedMotion) {
+      commitFinalVisualRatios(root, currentRows);
+      if (reducedMotion) commitFinalRowMotion(root, currentSnapshot);
+      return;
+    }
+
+    if (previous.key === motionKey) {
+      commitFinalVisualRatios(root, currentRows);
+      continueInterruptedRowReveals(root, previous, currentSnapshot);
+      return;
+    }
+
+    for (const row of root.querySelectorAll<HTMLElement>('[data-allocation-id]')) {
+      const id = row.dataset.allocationId;
+      const current = id === undefined ? undefined : currentRows.get(id);
+      if (id === undefined || current === undefined) continue;
+      const prior = previous.rows.get(id);
+
+      if (prior === undefined) {
+        animateSafely(row, {
+          opacity: [0, 1],
+          translateY: [MOTION_DISTANCE_PX.reveal, 0],
+          duration: MOTION_DURATION.normal,
+          ease: MOTION_EASE.enter,
+          onUpdate: () => updateRowFrame(currentSnapshot, id, {
+            opacity: visualOpacity(row, 1),
+            rect: row.getBoundingClientRect(),
+          }),
+          onComplete: () => updateRowFrame(currentSnapshot, id, {
+            opacity: 1,
+            rect: row.getBoundingClientRect(),
+          }),
+        });
+      } else {
+        const deltaY = prior.rect.top - current.rect.top;
+        const continuesReveal = prior.opacity < 1;
+        if (deltaY !== 0 || continuesReveal) {
+          animateSafely(row, {
+            ...(deltaY === 0 ? {} : { translateY: [deltaY, 0] }),
+            ...(continuesReveal ? { opacity: [prior.opacity, 1] } : {}),
+            duration: MOTION_DURATION.normal,
+            ease: continuesReveal ? MOTION_EASE.enter : MOTION_EASE.update,
+            onUpdate: () => updateRowFrame(currentSnapshot, id, {
+              opacity: visualOpacity(row, 1),
+              rect: row.getBoundingClientRect(),
+            }),
+            onComplete: () => updateRowFrame(currentSnapshot, id, {
+              opacity: 1,
+              rect: row.getBoundingClientRect(),
+            }),
+          });
+        }
+      }
+
+      const previousPercentage = prior?.percentage ?? 0;
+      if (previousPercentage === current.percentage) {
+        commitFinalVisualRatio(row, current.percentage);
+        continue;
+      }
+
+      const fill = row.querySelector<HTMLElement>('.portfolio-allocation-row__fill');
+      if (fill !== null) {
+        animateSafely(fill, {
+          scaleX: [previousPercentage / 100, current.percentage / 100],
+          duration: MOTION_DURATION.normal,
+          ease: MOTION_EASE.update,
+          onUpdate: () => updateRowFrame(currentSnapshot, id, {
+            percentage: visualFillPercentage(fill, current.percentage),
+          }),
+          onComplete: () => updateRowFrame(currentSnapshot, id, {
+            percentage: current.percentage,
+          }),
+        });
+      }
+
+      const visualRatio = row.querySelector<HTMLElement>('[data-allocation-ratio-visual]');
+      if (visualRatio !== null) {
+        animateVisualNumber(
+          visualRatio,
+          previousPercentage,
+          current.percentage,
+          formatAllocationPercent,
+          MOTION_DURATION.normal,
+        );
+      }
+    }
+  }, [motionKey, preferences.showAmounts]);
 
   return (
-    <Surface as="section" className="portfolio-summary" aria-labelledby="portfolio-summary-title">
-      <div className="portfolio-summary__hero">
-        <p>한 달 투자금을 배분합니다</p>
-        <h1 id="portfolio-summary-title">투자금 {formatPortfolioWon(investmentWon)}</h1>
-      </div>
-      <div className="portfolio-summary__content">
-        <AllocationDonut items={items} active={active} onActive={setActive} onClear={() => setActive(null)} />
-        <div className="portfolio-table-wrap">
-          <AllocationTable
-            items={items}
-            activeId={active?.id ?? null}
-            onActive={(id) => setActive({ id, mode: 'fixed', x: 50, y: 50 })}
-            onClear={() => setActive(null)}
-          />
+    <Surface
+      as="section"
+      ref={summaryRef}
+      className="portfolio-summary"
+      aria-labelledby="portfolio-summary-title"
+    >
+      <header className="portfolio-summary__hero">
+        <p className="portfolio-summary__eyebrow">이번 달 투자금</p>
+        <div className="portfolio-summary__headline">
+          <h1 id="portfolio-summary-title">
+            {preferences.showAmounts
+              ? `이번 달 투자금 ${formatPortfolioWon(investmentWon)}`
+              : `안정 ${stablePercent}`}
+          </h1>
+          {onEdit === undefined ? null : (
+            <button
+              type="button"
+              className="portfolio-summary__edit"
+              aria-label="배분 수정"
+              onClick={onEdit}
+            >
+              <img
+                src={`${import.meta.env.BASE_URL}icons/portfolio-edit.svg`}
+                alt=""
+                aria-hidden="true"
+              />
+            </button>
+          )}
         </div>
-      </div>
-      {active !== null && activeItem !== null ? (
-        <div
-          ref={tooltipRef}
-          role="tooltip"
-          className={`portfolio-tooltip portfolio-tooltip--${active.mode}`}
-          style={active.mode === 'pointer'
-            ? tooltipPosition ?? { left: active.x + 12, top: active.y + 12, visibility: 'hidden' }
-            : undefined}
-        >
-          <strong>{activeItem.name}</strong>
-          <span>{formatPortfolioWon(activeItem.amountWon)}</span>
-          <span>{formatAllocationPercent(activeItem.percentage)}</span>
-        </div>
-      ) : null}
+        {preferences.showAmounts ? <p className="portfolio-summary__stable">안정 {stablePercent}</p> : null}
+        {largest === undefined ? null : (
+          <p className="portfolio-summary__largest">
+            {largest.name}에 {formatAllocationPercent(largest.percentage)}를 배분해요
+          </p>
+        )}
+      </header>
+
+      <ul className="portfolio-allocation-list" aria-label="투자 배분 비율">
+        {items.map((item, index) => {
+          const percentage = clampedPercentage(item.percentage);
+          const style = {
+            '--allocation-color': item.isCash
+              ? 'var(--portfolio-cash)'
+              : `var(--portfolio-color-${index % 10})`,
+          } as CSSProperties;
+          const fillStyle = {
+            '--allocation-scale': String(percentage / 100),
+          } as CSSProperties;
+          return (
+            <li
+              key={item.id}
+              className="portfolio-allocation-row"
+              style={style}
+              data-allocation-id={item.id}
+              data-allocation-percentage={percentage}
+            >
+              <h2 className="portfolio-allocation-row__name">
+                <span className="portfolio-allocation-row__marker" aria-hidden="true" />
+                {item.name}
+              </h2>
+              <strong
+                className="portfolio-allocation-row__ratio"
+                aria-label={formatAllocationPercent(item.percentage)}
+              >
+                <span aria-hidden="true" data-allocation-ratio-visual>
+                  {formatAllocationPercent(item.percentage)}
+                </span>
+              </strong>
+              {preferences.showAmounts ? (
+                <span className="portfolio-allocation-row__amount">{formatPortfolioWon(item.amountWon)}</span>
+              ) : null}
+              <span className="portfolio-allocation-row__track" aria-hidden="true">
+                <span className="portfolio-allocation-row__fill" style={fillStyle} />
+              </span>
+            </li>
+          );
+        })}
+      </ul>
     </Surface>
   );
+}
+
+function captureAllocationRows(root: HTMLElement): Map<string, AllocationRowFrame> {
+  const rows = new Map<string, AllocationRowFrame>();
+  for (const row of root.querySelectorAll<HTMLElement>('[data-allocation-id]')) {
+    const id = row.dataset.allocationId;
+    const percentage = Number(row.dataset.allocationPercentage);
+    if (id === undefined || !Number.isFinite(percentage)) continue;
+    rows.set(id, {
+      opacity: visualOpacity(row, 1),
+      percentage,
+      rect: row.getBoundingClientRect(),
+    });
+  }
+  return rows;
+}
+
+function clampedPercentage(percentage: number): number {
+  return Math.max(0, Math.min(100, percentage));
+}
+
+function commitFinalVisualRatios(
+  root: HTMLElement,
+  rows: Map<string, AllocationRowFrame>,
+): void {
+  for (const row of root.querySelectorAll<HTMLElement>('[data-allocation-id]')) {
+    const id = row.dataset.allocationId;
+    const frame = id === undefined ? undefined : rows.get(id);
+    if (frame !== undefined) commitFinalVisualRatio(row, frame.percentage);
+  }
+}
+
+function commitFinalVisualRatio(row: HTMLElement, percentage: number): void {
+  const visualRatio = row.querySelector<HTMLElement>('[data-allocation-ratio-visual]');
+  if (visualRatio !== null) {
+    commitVisualNumber(visualRatio, percentage, formatAllocationPercent);
+  }
+}
+
+function continueInterruptedRowReveals(
+  root: HTMLElement,
+  previous: AllocationMotionSnapshot,
+  current: AllocationMotionSnapshot,
+): void {
+  for (const row of root.querySelectorAll<HTMLElement>('[data-allocation-id]')) {
+    const id = row.dataset.allocationId;
+    const prior = id === undefined ? undefined : previous.rows.get(id);
+    if (id === undefined || prior === undefined || prior.opacity >= 1) continue;
+    animateSafely(row, {
+      opacity: [prior.opacity, 1],
+      duration: MOTION_DURATION.normal,
+      ease: MOTION_EASE.enter,
+      onUpdate: () => updateRowFrame(current, id, {
+        opacity: visualOpacity(row, 1),
+      }),
+      onComplete: () => updateRowFrame(current, id, { opacity: 1 }),
+    });
+  }
+}
+
+function commitFinalRowMotion(
+  root: HTMLElement,
+  snapshot: AllocationMotionSnapshot,
+): void {
+  for (const row of root.querySelectorAll<HTMLElement>('[data-allocation-id]')) {
+    row.style.removeProperty('opacity');
+    row.style.removeProperty('transform');
+    const id = row.dataset.allocationId;
+    if (id !== undefined) updateRowFrame(snapshot, id, { opacity: 1 });
+  }
+}
+
+function updateRowFrame(
+  snapshot: AllocationMotionSnapshot,
+  id: string,
+  update: Partial<AllocationRowFrame>,
+): void {
+  const frame = snapshot.rows.get(id);
+  if (frame === undefined) return;
+  snapshot.rows.set(id, { ...frame, ...update });
+}
+
+function visualFillPercentage(fill: HTMLElement, fallback: number): number {
+  const transform = fill.style.transform || getComputedStyle(fill).transform;
+  const scaleX = transform.match(/scaleX\(\s*([+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?)\s*\)/i)?.[1]
+    ?? transform.match(/matrix(?:3d)?\(\s*([+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?)/i)?.[1];
+  if (scaleX === undefined) return fallback;
+  const parsed = Number(scaleX);
+  return Number.isFinite(parsed) ? clampedPercentage(parsed * 100) : fallback;
+}
+
+function visualOpacity(row: HTMLElement, fallback: number): number {
+  const opacity = row.style.opacity || getComputedStyle(row).opacity;
+  if (opacity.trim() === '') return fallback;
+
+  const parsed = Number(opacity);
+  return Number.isFinite(parsed) ? Math.max(0, Math.min(1, parsed)) : fallback;
+}
+
+function animateSafely(
+  target: HTMLElement,
+  options: Parameters<typeof animate>[1],
+): void {
+  try {
+    animate(target, options);
+  } catch {
+    target.style.removeProperty('opacity');
+    target.style.removeProperty('transform');
+  }
 }

@@ -1,8 +1,8 @@
-import { useEffect, useId, useRef, useState, type CSSProperties, type PointerEvent } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState, type PointerEvent } from 'react';
 import { calculateCashflow, percentageOfIncome } from '../../domain/cashflow';
 import type { MainData } from '../../domain/model';
 import { PercentageTooltip } from '../common/PercentageTooltip';
-import { createOverflowPresentation } from './overflowPresentation';
+import { createCashflowBarGeometry, type CashflowViewport } from './cashflowBarGeometry';
 
 export interface FlowContextSummaryProps {
   data: MainData;
@@ -14,16 +14,17 @@ export function FlowContextSummary({ data }: FlowContextSummaryProps) {
   const [isTapped, setIsTapped] = useState(false);
   const [pointerPosition, setPointerPosition] = useState<number>();
   const [tapPosition, setTapPosition] = useState<number>();
+  const [viewport, setViewport] = useState<CashflowViewport>({
+    barWidthPx: 0,
+    availableRightPx: 0,
+  });
+  const flowBarRef = useRef<HTMLDivElement>(null);
   const flowBarWrapperRef = useRef<HTMLDivElement>(null);
   const isPointerFocusRef = useRef(false);
   const tooltipId = useId();
   const cashflow = calculateCashflow(data);
   const isDeficit = cashflow.deficitWon > 0;
-  const overflow = createOverflowPresentation(cashflow.deficitWon, cashflow.incomeWon);
-  const overflowStyle = {
-    '--overflow-length': `${overflow.displayLengthPercent}%`,
-    '--overflow-duration': `${overflow.flowDurationMs}ms`,
-  } as CSSProperties;
+  const geometry = createCashflowBarGeometry(data, viewport);
   const plannedPercentage = percentageOfIncome(cashflow.plannedOutflowWon, cashflow.incomeWon);
   const visualPercentage = clampPercentage(plannedPercentage ?? 0);
   const formattedPercentage = formatPercentage(plannedPercentage);
@@ -35,6 +36,39 @@ export function FlowContextSummary({ data }: FlowContextSummaryProps) {
       ? pointerPosition ?? visualPercentage
       : visualPercentage;
   const unavailableCopy = '수입을 먼저 입력해주세요.';
+
+  useLayoutEffect(() => {
+    const bar = flowBarRef.current;
+    if (bar === null) {
+      return;
+    }
+
+    const updateViewport = () => {
+      const rect = bar.getBoundingClientRect();
+      const nextViewport = {
+        barWidthPx: rect.width,
+        availableRightPx: document.documentElement.clientWidth - 16 - rect.right,
+      };
+      setViewport((current) => (
+        current.barWidthPx === nextViewport.barWidthPx
+        && current.availableRightPx === nextViewport.availableRightPx
+          ? current
+          : nextViewport
+      ));
+    };
+    updateViewport();
+
+    const resizeObserver = typeof ResizeObserver === 'undefined'
+      ? null
+      : new ResizeObserver(updateViewport);
+    resizeObserver?.observe(bar);
+    window.addEventListener('resize', updateViewport);
+
+    return () => {
+      resizeObserver?.disconnect();
+      window.removeEventListener('resize', updateViewport);
+    };
+  }, []);
 
   useEffect(() => {
     if (!isTapped) {
@@ -64,13 +98,10 @@ export function FlowContextSummary({ data }: FlowContextSummaryProps) {
   return (
     <section
       className="flow-context-summary"
-      data-overflow={isDeficit ? 'true' : 'false'}
       aria-label="현재 자금 계획 요약"
     >
       <div
         className="flow-bar-wrapper"
-        data-overflow={isDeficit ? 'true' : 'false'}
-        data-overflow-intensity={overflow.intensity}
         ref={flowBarWrapperRef}
         onBlur={(event) => {
           if (!event.currentTarget.contains(event.relatedTarget)) {
@@ -86,6 +117,10 @@ export function FlowContextSummary({ data }: FlowContextSummaryProps) {
           aria-valuenow={visualPercentage}
           aria-valuetext={plannedPercentage === null ? unavailableCopy : tooltipValue}
           className="flow-bar"
+          data-desired-end-percent={geometry.desiredEndPercent}
+          data-visible-end-percent={geometry.visibleEndPercent}
+          data-overflow-clipped={geometry.clipped ? 'true' : 'false'}
+          ref={flowBarRef}
           role="progressbar"
           tabIndex={0}
           onBlur={() => {
@@ -111,26 +146,38 @@ export function FlowContextSummary({ data }: FlowContextSummaryProps) {
         >
           <div
             aria-hidden="true"
-            className="flow-bar__fill"
-            style={{ width: `${visualPercentage}%` }}
-          />
+            className="cashflow-bar__clip"
+            style={{
+              borderRadius: '9999px',
+              height: '0.375rem',
+              left: 0,
+              overflow: 'hidden',
+              position: 'absolute',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              width: `${geometry.visibleEndPercent}%`,
+            }}
+          >
+            <div
+              className="cashflow-bar__strip flow-bar__fill"
+              style={{
+                height: '100%',
+                position: 'relative',
+                top: 'auto',
+                transform: 'none',
+                width: `${relativeFillWidth(
+                  isDeficit ? geometry.desiredEndPercent : visualPercentage,
+                  geometry.visibleEndPercent,
+                )}%`,
+              }}
+            />
+          </div>
         </div>
-        {overflow.intensity === 'none' ? null : (
-          <>
-            <span aria-hidden="true" className="flow-overflow-bridge">
-              <span className="flow-overflow-sheen" />
-            </span>
-            <span aria-hidden="true" className="flow-overflow-extension" style={overflowStyle}>
-              <span className="flow-overflow-sheen" />
-              {overflow.showDroplets ? (
-                <span className="flow-overflow-droplets">
-                  <span className="flow-overflow-droplet" />
-                  <span className="flow-overflow-droplet" />
-                </span>
-              ) : null}
-            </span>
-          </>
-        )}
+        {geometry.clipped ? (
+          <span className="cashflow-bar__overflow-label">
+            +{formatPercentage(geometry.overflowPercent)} 초과
+          </span>
+        ) : null}
         <PercentageTooltip
           id={tooltipId}
           open={tooltipOpen}
@@ -154,6 +201,10 @@ function pointerPercentage(event: PointerEvent<HTMLDivElement>): number {
 
 function clampPercentage(percentage: number): number {
   return Math.min(100, Math.max(0, percentage));
+}
+
+function relativeFillWidth(fillEndPercent: number, visibleEndPercent: number): number {
+  return visibleEndPercent > 0 ? fillEndPercent / visibleEndPercent * 100 : 0;
 }
 
 export function formatContextWon(amountWon: number): string {

@@ -78,7 +78,10 @@ async function seedAppliedPortfolio(page: Page): Promise<void> {
     workspace.portfolio = { plans: [{
       schemaVersion: 2,
       scope: { type: 'aggregate' },
-      items: [{ id: 'index', name: '인덱스', shareUnits: 600_000, order: 0 }],
+      items: [{
+        id: 'index', name: '인덱스', shareUnits: 600_000, order: 0,
+        classification: 'growth', classificationOrigin: 'automatic',
+      }],
       cashShareUnits: 400_000,
       cashMode: 'automatic',
       syncedInvestmentWon: 200_000,
@@ -87,7 +90,10 @@ async function seedAppliedPortfolio(page: Page): Promise<void> {
     }, {
       schemaVersion: 2,
       scope: { type: 'location', locationId: 'loc-isa' },
-      items: [{ id: 'location-index', name: 'ISA 인덱스', shareUnits: 500_000, order: 0 }],
+      items: [{
+        id: 'location-index', name: 'ISA 인덱스', shareUnits: 500_000, order: 0,
+        classification: 'growth', classificationOrigin: 'automatic',
+      }],
       cashShareUnits: 500_000,
       cashMode: 'automatic',
       syncedInvestmentWon: 200_000,
@@ -97,6 +103,46 @@ async function seedAppliedPortfolio(page: Page): Promise<void> {
     localStorage.setItem('isf-workspace-v1', JSON.stringify(workspace));
     sessionStorage.setItem('isf-portfolio-applied-seeded', 'true');
   });
+}
+
+async function seedSourceVisualPortfolio(page: Page): Promise<void> {
+  await page.addInitScript(({ fixture }) => {
+    const stored = localStorage.getItem('isf-workspace-v1');
+    const workspace = stored === null ? {
+      schemaVersion: 1,
+      revision: 1,
+      updatedAt: fixture.updatedAt,
+      main: { applied: null, setupProgress: null },
+      simulation: { draft: null },
+      portfolio: { plans: [], draft: null },
+      locations: [],
+      accountMap: { applied: null, draft: null, instruments: [], flows: [] },
+    } : JSON.parse(stored);
+    workspace.main = {
+      applied: { ...fixture, monthlyInvestmentWon: 800_000 },
+      setupProgress: null,
+    };
+    workspace.portfolio = { plans: [{
+      schemaVersion: 2,
+      scope: { type: 'aggregate' },
+      items: [{
+        id: 'global-index', name: '글로벌 인덱스', shareUnits: 500_000, order: 1,
+        classification: 'growth', classificationOrigin: 'automatic',
+      }, {
+        id: 'bond', name: '채권', shareUnits: 250_000, order: 2,
+        classification: 'stable', classificationOrigin: 'automatic',
+      }, {
+        id: 'gold', name: '금', shareUnits: 150_000, order: 0,
+        classification: 'stable', classificationOrigin: 'automatic',
+      }],
+      cashShareUnits: 100_000,
+      cashMode: 'automatic',
+      syncedInvestmentWon: 800_000,
+      appliedAt: 1,
+      updatedAt: 1,
+    }], draft: null };
+    localStorage.setItem('isf-workspace-v1', JSON.stringify(workspace));
+  }, { fixture: mainFixture });
 }
 
 async function enterFirstSetupAllocation(page: Page): Promise<void> {
@@ -117,19 +163,26 @@ test('creates one allocation and revisits result-first', async ({ page }) => {
     JSON.parse(localStorage.getItem('isf-workspace-v1')!).main
   ));
   await page.getByRole('button', { name: '투자 대상 추가' }).click();
-  await page.getByLabel('투자 대상 이름 1').fill('미국 인덱스');
-  await page.getByLabel('미국 인덱스 금액').fill('120000');
-  await page.getByLabel('미국 인덱스 금액').blur();
+  const targetSheet = page.getByRole('dialog', { name: '투자 대상 추가' });
+  await targetSheet.getByLabel('투자 대상 이름').fill('미국 인덱스');
+  await targetSheet.getByLabel('금액').fill('120000');
+  await targetSheet.getByRole('button', { name: '완료' }).click();
   await expect(page.getByRole('region', { name: '현금' })).toContainText('80,000원');
   await expect(page.getByRole('region', { name: '현금' })).toContainText('40%');
-  await page.getByRole('button', { name: '다음' }).click();
-  await page.getByRole('button', { name: '배분 시작' }).click();
+  await page.getByRole('button', { name: '배분 확인' }).click();
+  const review = page.getByRole('region', { name: '배분 검토' });
+  await expect(review).toContainText('120,000원');
+  await expect(review).toContainText('60%');
+  await page.getByRole('button', { name: '이대로 시작' }).click();
   await expect(page.getByRole('button', { name: '배분 수정' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '안정 40%' })).toBeVisible();
   await expect.poll(() => page.evaluate(() => (
     JSON.parse(localStorage.getItem('isf-workspace-v1')!).portfolio.draft
   ))).toBeNull();
   await page.reload();
-  await expect(page.getByRole('row', { name: /미국 인덱스.*120,000원.*60%/ })).toBeVisible();
+  await expect(page.locator('.portfolio-summary').getByRole('listitem').filter({ hasText: /미국 인덱스.*60%/ }))
+    .toBeVisible();
+  await expect(page.locator('.portfolio-summary')).not.toContainText('120,000원');
   await expect(page.getByRole('link', { name: /투자 배분 \(Portfolio\).*현재 위치/ }))
     .toHaveAttribute('aria-current', 'page');
   expect(await page.evaluate(() => ({
@@ -174,7 +227,8 @@ test('resumes and cancels a draft, validates manual cash, and confirms reset', a
   await expect(page.getByLabel('인덱스 금액')).toHaveValue('100000');
 
   await page.getByRole('button', { name: '취소' }).click();
-  await expect(page.getByRole('row', { name: /인덱스.*120,000원.*60%/ })).toBeVisible();
+  await expect(page.locator('.portfolio-summary').getByRole('listitem').filter({ hasText: /인덱스.*60%/ }))
+    .toBeVisible();
   await page.getByRole('button', { name: '배분 수정' }).click();
   await page.getByLabel('인덱스 금액').fill('100000');
   await page.getByLabel('인덱스 금액').blur();
@@ -222,35 +276,74 @@ test('explains duplicate names and blocks confirmation until corrected', async (
   await page.goto('apps/portfolio/');
   await enterFirstSetupAllocation(page);
   await page.getByRole('button', { name: '투자 대상 추가' }).click();
+  let targetSheet = page.getByRole('dialog', { name: '투자 대상 추가' });
+  await targetSheet.getByLabel('투자 대상 이름').fill('US INDEX');
+  await targetSheet.getByLabel('금액').fill('50000');
+  await targetSheet.getByRole('button', { name: '완료' }).click();
   await page.getByRole('button', { name: '투자 대상 추가' }).click();
-  await page.getByLabel('투자 대상 이름 1').fill('US INDEX');
-  await page.getByLabel('투자 대상 이름 2').fill(' us   index ');
+  targetSheet = page.getByRole('dialog', { name: '투자 대상 추가' });
+  await targetSheet.getByLabel('투자 대상 이름').fill(' us   index ');
+  await targetSheet.getByLabel('금액').fill('50000');
 
-  await expect(page.getByLabel('투자 대상 이름 1'))
+  await expect(targetSheet.getByLabel('투자 대상 이름'))
     .toHaveAccessibleDescription('같은 이름의 투자 대상이 이미 있습니다.');
-  await expect(page.getByRole('button', { name: '다음' })).toBeDisabled();
+  await expect(targetSheet.getByRole('button', { name: '완료' })).toBeDisabled();
 });
 
 test('puts a Main investment increase into cash', async ({ page }) => {
   await seedMain(page, 300_000);
   await seedAppliedPortfolio(page);
   await page.goto('apps/portfolio/');
-  await expect(page.getByRole('row', { name: /인덱스.*120,000원.*40%/ })).toBeVisible();
-  await expect(page.getByRole('row', { name: /현금.*180,000원.*60%/ })).toBeVisible();
+  const summary = page.locator('.portfolio-summary');
+  await expect(page.getByRole('heading', { name: '안정 60%' })).toBeVisible();
+  await expect(summary.getByRole('listitem').filter({ hasText: /현금.*60%/ })).toBeVisible();
+  await expect(summary.getByRole('listitem').filter({ hasText: /인덱스.*40%/ })).toBeVisible();
+  await expect(summary).not.toContainText('원');
+});
+
+test('shows the source-state summary first and keeps view preferences separate', async ({ page }) => {
+  await seedMain(page, 800_000);
+  await seedSourceVisualPortfolio(page);
+  await page.goto('apps/portfolio/');
+
+  const summary = page.locator('.portfolio-summary');
+  const summaryHeading = summary.getByRole('heading', { name: '안정 50%' });
+  await expect(summaryHeading).toBeVisible();
+  await expect(summaryHeading).not.toContainText('원');
+  await expect(summary.getByText('글로벌 인덱스에 50%를 배분해요')).toBeVisible();
+  const summaryRows = summary.getByRole('listitem');
+  await expect(summaryRows).toHaveCount(4);
+  for (const row of await summaryRows.all()) {
+    await expect(row).not.toContainText('원');
+  }
+
+  await page.getByRole('button', { name: '관리 메뉴' }).click();
+  await page.getByRole('switch', { name: '금액 보기' }).check();
+  await expect(page.getByRole('heading', { name: '이번 달 투자금 800,000원' })).toBeVisible();
+  await page.getByRole('radio', { name: '입력순' }).check();
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('isf-portfolio-view-preferences-v1')))
+    .toContain('"sortMode":"input"');
 });
 
 test('gates zero investment and focuses Main investment editing', async ({ page }) => {
   await seedMain(page, 0);
   await page.goto('apps/portfolio/');
-  await expect(page.getByTestId('portfolio-gated-content')).toHaveClass(/portfolio-content--blurred/);
-  await page.getByRole('link', { name: 'Main에서 투자금 설정' }).click();
+  const frame = page.getByTestId('portfolio-page-frame');
+  await expect(frame).toHaveClass(/app-content-frame/);
+  await expect(frame.locator('.portfolio-content--blurred')).toHaveAttribute('inert');
+  const link = frame.getByRole('link', { name: 'Main에서 투자금 설정' });
+  await expect(link).toBeVisible();
+  await link.click();
   await expect(page).toHaveURL(/apps\/main\/$/);
   await expect(page.getByLabel('월 투자액')).toBeFocused();
 });
 
-test('keeps donut, table and tooltip usable across required widths', async ({ page }) => {
-  await seedMain(page, 200_000);
-  await seedAppliedPortfolio(page);
+test('keeps the summary-first ratio list usable across required widths', async ({ page }) => {
+  await seedMain(page, 800_000);
+  await seedSourceVisualPortfolio(page);
+  await page.addInitScript(() => {
+    localStorage.removeItem('isf-portfolio-view-preferences-v1');
+  });
 
   for (const viewport of [
     { width: 390, height: 844 },
@@ -260,46 +353,85 @@ test('keeps donut, table and tooltip usable across required widths', async ({ pa
     await page.setViewportSize(viewport);
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto('apps/portfolio/');
-    await expect(page.getByLabel('투자 배분 도넛')).toBeVisible();
-    await expect(page.getByRole('table')).toBeVisible();
-    await expect(page.locator('.portfolio-table-wrap')).toBeVisible();
+    const frame = page.getByTestId('portfolio-page-frame');
+    const frameBox = await frame.boundingBox();
+    expect(frameBox).not.toBeNull();
+    expect(frameBox!.x).toBeGreaterThanOrEqual(16);
+    expect(frameBox!.width).toBeLessThanOrEqual(768);
+    expect(Math.abs((viewport.width - frameBox!.width) / 2 - frameBox!.x)).toBeLessThan(1);
     const summary = page.locator('.portfolio-summary');
     await expect(summary).toHaveClass(/ui-surface/);
-    expect(await summary.evaluate((element) => getComputedStyle(element).borderRadius)).not.toBe('0px');
-    for (const control of await page.locator('.portfolio-content button:visible, .portfolio-content input:visible').all()) {
-      const box = await control.boundingBox();
-      expect(box).not.toBeNull();
-      expect(box!.height).toBeGreaterThanOrEqual(44);
+    await expect(page.getByRole('heading', { name: '안정 50%' })).toBeVisible();
+    const summaryBox = await summary.boundingBox();
+    expect(summaryBox).not.toBeNull();
+    for (const [name, ratio] of [['글로벌 인덱스', '50%'], ['채권', '25%'], ['금', '15%'], ['현금', '10%']]) {
+      const row = summary.getByRole('listitem').filter({ hasText: new RegExp(`${name}.*${ratio}`) });
+      await expect(row).toBeVisible();
+      const rowBox = await row.boundingBox();
+      expect(rowBox).not.toBeNull();
+      expect(rowBox!.x).toBeGreaterThanOrEqual(summaryBox!.x);
+      expect(rowBox!.x + rowBox!.width).toBeLessThanOrEqual(summaryBox!.x + summaryBox!.width);
+    }
+    expect(await summary.locator('.portfolio-allocation-list')
+      .evaluate((element) => getComputedStyle(element).borderRadius)).not.toBe('0px');
+    const edit = page.getByRole('button', { name: '배분 수정' });
+    const editBox = await edit.boundingBox();
+    expect(editBox).not.toBeNull();
+    expect(editBox!.width).toBeGreaterThanOrEqual(44);
+    expect(editBox!.height).toBeGreaterThanOrEqual(44);
+    const editIcon = edit.locator('img');
+    await expect(editIcon).toHaveAttribute('src', '/IndividualSavingsFlowUI/icons/portfolio-edit.svg');
+    expect(await editIcon.evaluate((image: HTMLImageElement) => image.naturalWidth)).toBeGreaterThan(0);
+    await edit.focus();
+    await expect(edit).toBeFocused();
+    expect(await edit.evaluate((element) => getComputedStyle(element).boxShadow)).not.toBe('none');
+    expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
+    expect(await summary.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+    if (viewport.width === 390) {
+      const hero = summary.locator('.portfolio-summary__hero');
+      const list = summary.locator('.portfolio-allocation-list');
+      const [heroBox, listBox] = await Promise.all([hero.boundingBox(), list.boundingBox()]);
+      expect(heroBox).not.toBeNull();
+      expect(listBox).not.toBeNull();
+      expect(listBox!.y - (heroBox!.y + heroBox!.height)).toBeGreaterThanOrEqual(24);
+      expect(await summary.evaluate((element) => getComputedStyle(element).backgroundColor))
+        .toBe('rgba(0, 0, 0, 0)');
+      expect(await list.evaluate((element) => getComputedStyle(element).backgroundColor))
+        .toBe('rgb(255, 255, 255)');
+      expect(Number.parseInt(await page.getByRole('heading', { name: '안정 50%' })
+        .evaluate((element) => getComputedStyle(element).fontWeight), 10)).toBeGreaterThanOrEqual(700);
+      const rows = summary.getByRole('listitem');
+      await expect(rows).toHaveCount(4);
+      for (const row of await rows.all()) {
+        const rowBox = await row.boundingBox();
+        expect(rowBox).not.toBeNull();
+        expect(rowBox!.height).toBeGreaterThanOrEqual(100);
+        expect(rowBox!.y + rowBox!.height).toBeLessThanOrEqual(viewport.height);
+      }
+    }
+    if (viewport.width === 1280) {
+      expect(summaryBox!.width).toBeGreaterThanOrEqual(767);
+      expect(summaryBox!.width).toBeLessThanOrEqual(768);
+    }
+    const fill = summary.locator('.portfolio-allocation-row__fill').first();
+    const track = summary.locator('.portfolio-allocation-row__track').first();
+    const [fillBox, trackBox] = await Promise.all([fill.boundingBox(), track.boundingBox()]);
+    expect(fillBox).not.toBeNull();
+    expect(trackBox).not.toBeNull();
+    expect(fillBox!.width / trackBox!.width).toBeCloseTo(0.5, 1);
+
+    await page.getByRole('button', { name: '관리 메뉴' }).click();
+    const inputSort = page.getByRole('radio', { name: '입력순' });
+    await inputSort.focus();
+    await inputSort.check();
+    await expect(inputSort).toBeFocused();
+    await expect.poll(async () => summary.getByRole('listitem').evaluateAll((rows) => (
+      rows.map((row) => row.querySelector('h2')?.textContent)
+    ))).toEqual(['금', '글로벌 인덱스', '채권', '현금']);
+    for (const row of await summary.getByRole('listitem').all()) {
+      expect(await row.evaluate((element) => getComputedStyle(element).transform)).toBe('none');
     }
     expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
-    const segment = page.getByRole('button', { name: /인덱스.*120,000원.*60%/ });
-    const donutBox = await page.getByLabel('투자 배분 도넛').boundingBox();
-    expect(donutBox).not.toBeNull();
-    await segment.dispatchEvent('pointerover', {
-      clientX: viewport.width - 1,
-      clientY: viewport.height - 1,
-      pointerType: 'mouse',
-    });
-    await expect(page.getByRole('tooltip')).toContainText('인덱스');
-    const tooltipBox = await page.getByRole('tooltip').boundingBox();
-    expect(tooltipBox).not.toBeNull();
-    const tooltipMetrics = await page.getByRole('tooltip').evaluate((element) => ({
-      style: element.getAttribute('style'),
-      offsetWidth: (element as HTMLElement).offsetWidth,
-      offsetHeight: (element as HTMLElement).offsetHeight,
-      viewport: { width: innerWidth, height: innerHeight },
-    }));
-    expect(tooltipBox!.x).toBeGreaterThanOrEqual(16);
-    expect(tooltipBox!.y).toBeGreaterThanOrEqual(16);
-    expect(tooltipBox!.x + tooltipBox!.width, JSON.stringify(tooltipMetrics)).toBeLessThanOrEqual(viewport.width - 16);
-    expect(tooltipBox!.y + tooltipBox!.height, JSON.stringify(tooltipMetrics)).toBeLessThanOrEqual(viewport.height - 16);
-    expect(await segment.evaluate((element) => parseFloat(getComputedStyle(element).transitionDuration))).toBeLessThanOrEqual(0.01);
-    expect(await page.getByRole('tooltip').evaluate((element) => parseFloat(getComputedStyle(element).animationDuration))).toBeLessThanOrEqual(0.01);
-    await segment.dispatchEvent('pointerdown', { pointerType: 'touch' });
-    await expect(page.getByRole('tooltip')).toContainText('인덱스');
-    await segment.focus();
-    await page.keyboard.press('ArrowRight');
-    await expect(page.getByRole('tooltip')).toContainText('현금');
   }
 });
 
@@ -353,6 +485,57 @@ test('isolates applied editing as a sheet or panel and restores focus', async ({
   }
 });
 
+test('reflows a long Korean target name at a 200% desktop-zoom equivalent width', async ({ page }) => {
+  await page.setViewportSize({ width: 640, height: 900 });
+  await seedMain(page, 800_000);
+  await page.addInitScript(({ fixture }) => {
+    const stored = localStorage.getItem('isf-workspace-v1');
+    const workspace = stored === null ? {
+      schemaVersion: 1,
+      revision: 1,
+      updatedAt: fixture.updatedAt,
+      main: { applied: null, setupProgress: null },
+      simulation: { draft: null },
+      portfolio: { plans: [], draft: null },
+      locations: [],
+      accountMap: { applied: null, draft: null, instruments: [], flows: [] },
+    } : JSON.parse(stored);
+    workspace.main = {
+      applied: { ...fixture, monthlyInvestmentWon: 800_000 },
+      setupProgress: null,
+    };
+    workspace.portfolio = { plans: [{
+      schemaVersion: 2,
+      scope: { type: 'aggregate' },
+      items: [{
+        id: 'long-name',
+        name: '전 세계 소형주 가치주 지수를 따르는 장기 투자 대상',
+        shareUnits: 900_000,
+        order: 0,
+        classification: 'growth',
+        classificationOrigin: 'user',
+      }],
+      cashShareUnits: 100_000,
+      cashMode: 'automatic',
+      syncedInvestmentWon: 800_000,
+      appliedAt: 1,
+      updatedAt: 1,
+    }], draft: null };
+    localStorage.setItem('isf-workspace-v1', JSON.stringify(workspace));
+  }, { fixture: mainFixture });
+  await page.goto('apps/portfolio/');
+
+  const row = page.locator('.portfolio-allocation-row').first();
+  const name = row.locator('.portfolio-allocation-row__name');
+  const ratio = row.locator('.portfolio-allocation-row__ratio');
+  const [nameBox, ratioBox] = await Promise.all([name.boundingBox(), ratio.boundingBox()]);
+  expect(nameBox).not.toBeNull();
+  expect(ratioBox).not.toBeNull();
+  expect(nameBox!.x + nameBox!.width).toBeLessThanOrEqual(ratioBox!.x);
+  expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
+  expect(await row.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+});
+
 test('keeps the final mobile editor control above the save-error apply bar', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await seedMain(page, 200_000);
@@ -387,40 +570,104 @@ test('keeps the final mobile editor control above the save-error apply bar', asy
   expect(finalControlBox!.y + finalControlBox!.height).toBeLessThanOrEqual(applyBarBox!.y);
 });
 
-test('uses a single editor column at 768px', async ({ page }) => {
+test('contains the focused target sheet at 768px', async ({ page }) => {
   await page.setViewportSize({ width: 768, height: 900 });
   await seedMain(page, 200_000);
   await page.goto('apps/portfolio/');
   await enterFirstSetupAllocation(page);
   await page.getByRole('button', { name: '투자 대상 추가' }).click();
 
-  expect(await page.locator('.portfolio-editor__row').first().evaluate((element) =>
-    getComputedStyle(element).gridTemplateColumns.split(' ').length,
-  )).toBe(1);
+  const sheet = page.getByRole('dialog', { name: '투자 대상 추가' });
+  const box = await sheet.boundingBox();
+  expect(box).not.toBeNull();
+  expect(box!.x).toBeGreaterThanOrEqual(0);
+  expect(box!.x + box!.width).toBeLessThanOrEqual(768);
+  expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
 });
 
-test('keeps the final animated pointer tooltip inside the viewport gutter', async ({ page }) => {
+test('protects dirty mobile target input and reuses the sheet for editing', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await seedAppliedPortfolio(page);
   await seedMain(page, 200_000);
   await page.goto('apps/portfolio/');
+  await enterFirstSetupAllocation(page);
+  await page.getByRole('button', { name: '투자 대상 추가' }).click();
 
-  const segment = page.getByRole('button', { name: /인덱스.*120,000원.*60%/ });
-  await segment.dispatchEvent('pointerover', { clientX: 389, clientY: 843, pointerType: 'mouse' });
-  const tooltip = page.getByRole('tooltip');
-  await expect(tooltip).toBeVisible();
-  await tooltip.evaluate(async (element) => {
-    await Promise.all(element.getAnimations().map((animation) => animation.finished.catch(() => undefined)));
-  });
+  let sheet = page.getByRole('dialog', { name: '투자 대상 추가' });
+  const sheetBox = await sheet.boundingBox();
+  expect(sheetBox).not.toBeNull();
+  expect(sheetBox!.x).toBeGreaterThanOrEqual(0);
+  expect(sheetBox!.x + sheetBox!.width).toBeLessThanOrEqual(390);
+  expect(await sheet.evaluate((dialog) => dialog.matches(':modal'))).toBe(true);
+  const quickNames = ['S&P 500', '나스닥', '코스피', '미국 국채', '금 현물'];
+  const quickTargetY = new Set<number>();
+  for (const name of quickNames) {
+    const quickFill = sheet.getByRole('button', { name, exact: true });
+    await expect(quickFill).toBeVisible();
+    const quickFillBox = await quickFill.boundingBox();
+    expect(quickFillBox).not.toBeNull();
+    expect(quickFillBox!.height).toBeGreaterThanOrEqual(44);
+    quickTargetY.add(Math.round(quickFillBox!.y));
+  }
+  expect(quickTargetY.size).toBeGreaterThan(1);
+  await sheet.getByRole('button', { name: '미국 국채', exact: true }).click();
+  await expect(sheet.getByLabel('투자 대상 이름')).toHaveValue('미국 국채');
+  await expect(sheet.getByLabel('금액')).toBeFocused();
+  expect(await sheet.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
+  await sheet.getByLabel('투자 대상 이름').fill('미국 인덱스');
 
-  const box = await tooltip.boundingBox();
-  expect(box).not.toBeNull();
-  expect(box!.x).toBeGreaterThanOrEqual(16);
-  expect(box!.y).toBeGreaterThanOrEqual(16);
-  expect(box!.x + box!.width).toBeLessThanOrEqual(374);
-  expect(box!.y + box!.height).toBeLessThanOrEqual(828);
+  await page.mouse.click(10, 100);
+  let discard = page.getByRole('dialog', { name: '입력 내용을 버릴까요?' });
+  await expect(discard).toBeVisible();
+  await discard.getByRole('button', { name: '계속 입력' }).click();
+  await expect(sheet.getByLabel('투자 대상 이름')).toHaveValue('미국 인덱스');
+
+  await page.mouse.click(10, 100);
+  discard = page.getByRole('dialog', { name: '입력 내용을 버릴까요?' });
+  await discard.getByRole('button', { name: '버리기' }).click();
+  await expect(sheet).not.toBeVisible();
+
+  await page.getByRole('button', { name: '투자 대상 추가' }).click();
+  sheet = page.getByRole('dialog', { name: '투자 대상 추가' });
+  await sheet.getByLabel('투자 대상 이름').fill('미국 인덱스');
+  await sheet.getByLabel('금액').fill('120000');
+  await sheet.getByRole('button', { name: '완료' }).click();
+  await page.getByRole('button', { name: '미국 인덱스 편집, 120,000원, 60%' }).click();
+
+  const editSheet = page.getByRole('dialog', { name: '투자 대상 수정' });
+  await expect(editSheet).toHaveClass(/portfolio-item-sheet/);
+  await expect(editSheet.getByRole('button', { name: '투자 대상 삭제' })).toBeVisible();
+  await expect(editSheet.getByRole('button', { name: 'S&P 500', exact: true })).toHaveCount(0);
+  await expect(editSheet.getByRole('button', { name: '취소' })).toBeVisible();
+  await expect(editSheet.getByRole('button', { name: '완료' })).toBeVisible();
+  expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
+  await editSheet.getByRole('button', { name: '투자 대상 삭제' }).click();
+  await expect(editSheet).not.toBeVisible();
+  await expect(page.getByRole('button', { name: '미국 인덱스 편집, 120,000원, 60%' })).toHaveCount(0);
 });
 
+for (const viewport of [
+  { width: 768, height: 900 },
+  { width: 1280, height: 900 },
+]) {
+  test(`contains target shortcuts at ${viewport.width}px`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await seedMain(page, 200_000);
+    await page.goto('apps/portfolio/');
+    await enterFirstSetupAllocation(page);
+    await page.getByRole('button', { name: '투자 대상 추가' }).click();
+
+    const sheet = page.getByRole('dialog', { name: '투자 대상 추가' });
+    for (const name of ['S&P 500', '나스닥', '코스피', '미국 국채', '금 현물']) {
+      const quickFillBox = await sheet.getByRole('button', { name, exact: true }).boundingBox();
+      expect(quickFillBox).not.toBeNull();
+      expect(quickFillBox!.height).toBeGreaterThanOrEqual(44);
+    }
+    await expect(sheet.getByRole('button', { name: '취소' })).toBeVisible();
+    await expect(sheet.getByRole('button', { name: '완료' })).toBeVisible();
+    expect(await sheet.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
+    expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
+  });
+}
 test('does not expose account or custody management and preserves dormant location data', async ({ page }) => {
   await seedMain(page, 200_000);
   await seedAppliedPortfolio(page);
@@ -435,7 +682,6 @@ test('does not expose account or custody management and preserves dormant locati
       ),
     };
   });
-
   await expect(page.getByText(/투자 위치/)).toHaveCount(0);
   await expect(page.getByText(/계좌·보관처/)).toHaveCount(0);
   await expect(page.getByRole('button', { name: /위치|계좌|보관처/ })).toHaveCount(0);

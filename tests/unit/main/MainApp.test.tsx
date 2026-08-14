@@ -33,6 +33,7 @@ vi.mock('../../../src/main/ui/setup/SetupFlow', () => ({
     onApply,
     onCancel,
     notice,
+    motionPreset,
   }: {
     draft: MainData;
     step: SetupStep;
@@ -42,8 +43,9 @@ vi.mock('../../../src/main/ui/setup/SetupFlow', () => ({
     onApply(): void;
     onCancel?: () => void;
     notice?: ReactNode;
+    motionPreset: 'initial-assembly' | 'none';
   }) => (
-    <section aria-label="setup-flow" className="setup-flow-surface">
+    <section aria-label="setup-flow" className="setup-flow-surface" data-motion-preset={motionPreset}>
       {notice}
       <h1 data-setup-heading tabIndex={-1}>{`setup:${step}`}</h1>
       <output>{draft.monthlyNetIncomeWon}</output>
@@ -164,7 +166,10 @@ function workspace(monthlyNetIncomeWon: number, revision = 1): WorkspaceDocument
       plans: [{
         schemaVersion: 2,
         scope: { type: 'location', locationId: 'loc-isa' },
-        items: [{ id: 'asset-us', name: '미국 인덱스', shareUnits: 700_000, order: 0 }],
+        items: [{
+          id: 'asset-us', name: '미국 인덱스', shareUnits: 700_000, order: 0,
+          classification: 'growth', classificationOrigin: 'automatic',
+        }],
         cashShareUnits: 300_000,
         cashMode: 'automatic',
         syncedInvestmentWon: applied.monthlyInvestmentWon,
@@ -518,6 +523,7 @@ describe('MainApp', () => {
     fireEvent.click(screen.getByRole('button', { name: '다시 시작' }));
 
     expect(await screen.findByRole('heading', { name: 'setup:welcome' })).toBeVisible();
+    expect(screen.getByLabelText('setup-flow')).toHaveAttribute('data-motion-preset', 'initial-assembly');
     expect(screen.queryByRole('navigation', { name: 'ISF 앱' })).not.toBeInTheDocument();
   });
 
@@ -548,6 +554,8 @@ describe('MainApp', () => {
 
     await screen.findByRole('heading', { name: 'setup:welcome' });
 
+    expect(screen.getByLabelText('setup-flow')).toHaveAttribute('data-motion-preset', 'initial-assembly');
+    expect(screen.getByTestId('main-page-frame')).toHaveClass('app-content-frame');
     expect(screen.getByTestId('app-shell')).toBeInTheDocument();
     expect(screen.queryByTestId('app-shell-launcher')).not.toBeInTheDocument();
     expect(screen.queryByRole('navigation', { name: 'ISF 앱' })).not.toBeInTheDocument();
@@ -564,6 +572,7 @@ describe('MainApp', () => {
     render(<MainApp repository={storage} />);
 
     expect(screen.getByRole('status')).toHaveTextContent('자금 계획을 불러오는 중');
+    expect(screen.getByTestId('main-page-frame')).toHaveClass('app-content-frame');
     fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
     expect(screen.getByLabelText('백업 가져오기')).toBeDisabled();
     resolveLoad?.({ status: 'empty', data: null, original: null });
@@ -741,6 +750,7 @@ describe('MainApp', () => {
     });
     render(<MainApp repository={storage} />);
     await screen.findByRole('heading', { name: '저장 복구가 필요합니다' });
+    expect(screen.getByTestId('main-page-frame')).toHaveClass('app-content-frame');
 
     fireEvent.click(screen.getByRole('button', { name: '빈 초안으로 다시 시작' }));
 
@@ -892,6 +902,7 @@ describe('MainApp', () => {
     fireEvent.click(screen.getByRole('button', { name: '다시 시작' }));
 
     expect(await screen.findByRole('heading', { name: 'setup:welcome' })).toBeVisible();
+    expect(screen.getByLabelText('setup-flow')).toHaveAttribute('data-motion-preset', 'initial-assembly');
     expect(screen.queryByRole('navigation', { name: 'ISF 앱' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Simulation으로 이어가기' })).not.toBeInTheDocument();
     const cancel = screen.getByRole('button', { name: '설정 취소' });
@@ -904,6 +915,15 @@ describe('MainApp', () => {
     expect(await screen.findByRole('heading', { name: 'dashboard' })).toBeVisible();
     expect(screen.getByRole('navigation', { name: 'ISF 앱' })).toBeVisible();
     expect(screen.getByRole('button', { name: 'Simulation으로 이어가기' })).toBeEnabled();
+  });
+
+  it('keeps dashboard editing out of the setup assembly journey', async () => {
+    render(<MainApp repository={repository({ status: 'current', data: data(3_000_000), original: {} })} />);
+    await screen.findByRole('heading', { name: 'dashboard' });
+
+    expect(screen.queryByLabelText('setup-flow')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'edit-draft' }));
+    expect(screen.queryByLabelText('setup-flow')).not.toBeInTheDocument();
   });
 
   it('keeps restart setup visible until a delayed progress save and queued clear both finish', async () => {

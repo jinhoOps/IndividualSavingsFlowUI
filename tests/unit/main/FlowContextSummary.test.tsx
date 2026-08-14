@@ -1,10 +1,14 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { MainData } from '../../../src/main/domain/model';
 import { FlowContextSummary } from '../../../src/main/ui/setup/FlowContextSummary';
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 const cashflowFixture: MainData = {
   schemaVersion: 2,
@@ -32,8 +36,44 @@ const deficitFixture: MainData = {
 
 const liquidDeficitFixture: MainData = {
   ...cashflowFixture,
-  monthlyInvestmentWon: 2_100_000,
+  monthlyInvestmentWon: 2_300_000,
 };
+
+let resizeObserverCallback: ResizeObserverCallback | undefined;
+
+function mockBarViewport(initialClientWidth: number) {
+  let clientWidth = initialClientWidth;
+  vi.spyOn(document.documentElement, 'clientWidth', 'get').mockImplementation(() => clientWidth);
+  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+    const isBar = this.getAttribute('role') === 'progressbar';
+    const width = isBar ? 200 : 0;
+    const left = 0;
+    return {
+      bottom: 44,
+      height: 44,
+      left,
+      right: left + width,
+      top: 0,
+      width,
+      x: left,
+      y: 0,
+      toJSON: () => ({}),
+    };
+  });
+  vi.stubGlobal('ResizeObserver', class {
+    constructor(callback: ResizeObserverCallback) {
+      resizeObserverCallback = callback;
+    }
+
+    observe() {}
+    disconnect() {}
+  });
+
+  return (nextClientWidth: number) => {
+    clientWidth = nextClientWidth;
+    act(() => resizeObserverCallback?.([], {} as ResizeObserver));
+  };
+}
 
 function setProgressbarRect(progressbar: HTMLElement) {
   Object.defineProperty(progressbar, 'getBoundingClientRect', {
@@ -185,25 +225,38 @@ describe('FlowContextSummary', () => {
     expect(screen.getByRole('status')).toHaveTextContent('수입보다 80만 원 초과');
   });
 
-  it('renders compressed liquid overflow and adds droplets only from 30%', () => {
-    const { rerender } = render(<FlowContextSummary data={cashflowFixture} />);
-    expect(screen.getByRole('progressbar').parentElement).toHaveAttribute('data-overflow', 'false');
-    expect(document.querySelector('.flow-overflow-bridge')).not.toBeInTheDocument();
-    expect(document.querySelector('.flow-overflow-extension')).not.toBeInTheDocument();
+  it('uses actual deficit geometry without a label when the overflow fits', () => {
+    mockBarViewport(1_000);
+    render(<FlowContextSummary data={liquidDeficitFixture} />);
 
-    rerender(<FlowContextSummary data={deficitFixture} />);
-    expect(screen.getByRole('progressbar').parentElement).toHaveAttribute('data-overflow-intensity', 'active');
-    expect(document.querySelector('.flow-overflow-bridge')).toBeInTheDocument();
-    expect(document.querySelector('.flow-overflow-extension')).toHaveStyle({
-      '--overflow-length': '5%',
-    });
-    expect(document.querySelector('.flow-overflow-droplets')).not.toBeInTheDocument();
+    const track = screen.getByRole('progressbar');
+    expect(track).toHaveAttribute('data-desired-end-percent', '137.5');
+    expect(track).toHaveAttribute('data-visible-end-percent', '137.5');
+    expect(track).toHaveAttribute('data-overflow-clipped', 'false');
+    expect(screen.queryByText('+37.5% 초과')).not.toBeInTheDocument();
+    expect(screen.getByText('수입보다 120만 원 초과')).toBeVisible();
+  });
 
-    rerender(<FlowContextSummary data={liquidDeficitFixture} />);
-    expect(screen.getByRole('progressbar').parentElement).toHaveAttribute('data-overflow-intensity', 'liquid');
-    expect(document.querySelector('.flow-overflow-extension')).toHaveStyle({
-      '--overflow-length': '6.25%',
-    });
-    expect(document.querySelectorAll('.flow-overflow-droplet')).toHaveLength(2);
+  it('shows the actual overflow label only after a ResizeObserver update clips the strip', () => {
+    const resizeTo = mockBarViewport(1_000);
+    render(<FlowContextSummary data={liquidDeficitFixture} />);
+    const track = screen.getByRole('progressbar');
+
+    expect(screen.queryByText('+37.5% 초과')).not.toBeInTheDocument();
+    resizeTo(256);
+
+    expect(track).toHaveAttribute('data-desired-end-percent', '137.5');
+    expect(track).toHaveAttribute('data-visible-end-percent', '120');
+    expect(track).toHaveAttribute('data-overflow-clipped', 'true');
+    expect(screen.getByText('+37.5% 초과')).toBeVisible();
+  });
+
+  it('does not emit legacy overflow layout attributes for a deficit', () => {
+    mockBarViewport(1_000);
+    render(<FlowContextSummary data={liquidDeficitFixture} />);
+
+    const track = screen.getByRole('progressbar');
+    expect(track.closest('.flow-context-summary')).not.toHaveAttribute('data-overflow');
+    expect(track.parentElement).not.toHaveAttribute('data-overflow');
   });
 });

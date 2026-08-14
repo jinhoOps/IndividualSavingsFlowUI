@@ -1,10 +1,15 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Button } from '../../components/common/Button';
 import { Surface } from '../../components/common/Surface';
 import type { PortfolioAction } from '../application/portfolioReducer';
 import { materializeAllocation, normalizePortfolioName } from '../domain/allocation';
-import type { PortfolioDraft } from '../domain/model';
+import type { Classification, PortfolioDraft } from '../domain/model';
 import { formatAllocationPercent, formatPortfolioWon } from './format';
+import { PortfolioItemSheet } from './PortfolioItemSheet';
+
+type ActiveItemSheet =
+  | { mode: 'add'; id: string }
+  | { mode: 'edit'; id: string };
 
 export function AllocationEditor({
   draft,
@@ -25,6 +30,9 @@ export function AllocationEditor({
 }) {
   const allocation = materializeAllocation(draft, investmentWon);
   const [rawValues, setRawValues] = useState<Record<string, string>>({});
+  const [cashExpanded, setCashExpanded] = useState(false);
+  const [activeItemSheet, setActiveItemSheet] = useState<ActiveItemSheet | null>(null);
+  const itemSheetReturnFocusRef = useRef<HTMLElement | null>(null);
   const isAtLimit = draft.items.length >= 10;
   const normalizedNameCounts = draft.items.reduce<Map<string, number>>((counts, item) => {
     const normalized = normalizePortfolioName(item.name);
@@ -36,9 +44,7 @@ export function AllocationEditor({
     const raw = rawValues[id];
     if (raw === undefined) return;
     const value = raw.trim() === '' ? 0 : Number(raw);
-    onAction(draft.inputMode === 'amount'
-      ? { type: 'draft-item-amount-changed', id, amountWon: value, now: now() }
-      : { type: 'draft-item-percentage-changed', id, percentage: value, now: now() });
+    onAction({ type: 'draft-item-amount-changed', id, amountWon: value, now: now() });
     setRawValues((current) => ({ ...current, [id]: String(Number.isFinite(value) ? value : fallback) }));
   }
 
@@ -53,17 +59,14 @@ export function AllocationEditor({
         <p>한 달 투자금을 배분합니다</p>
         <h1 id="portfolio-editor-title">투자 배분 설정</h1>
       </header> : null}
-      <fieldset className="portfolio-editor__mode">
-        <legend>입력 방식</legend>
-        <label><input type="radio" name="allocation-mode" checked={draft.inputMode === 'amount'} onChange={() => onAction({ type: 'input-mode-changed', mode: 'amount' })} />금액</label>
-        <label><input type="radio" name="allocation-mode" checked={draft.inputMode === 'percentage'} onChange={() => onAction({ type: 'input-mode-changed', mode: 'percentage' })} />비율</label>
-      </fieldset>
-
+      {presentation === 'setup' ? (
+        <SetupAllocationSummary draft={draft} investmentWon={investmentWon} />
+      ) : null}
       <div className="portfolio-editor__items">
         {draft.items.map((item, index) => {
           const result = allocation.items.find((candidate) => candidate.id === item.id)!;
-          const editableValue = draft.inputMode === 'amount' ? result.amountWon : result.percentage;
-          const inputLabel = `${item.name || `투자 대상 ${index + 1}`} ${draft.inputMode === 'amount' ? '금액' : '비율'}`;
+          const editableValue = result.amountWon;
+          const inputLabel = `${item.name || `투자 대상 ${index + 1}`} 금액`;
           const normalizedName = normalizePortfolioName(item.name);
           const nameError = normalizedName.length === 0
             ? '투자 대상 이름을 입력해 주세요.'
@@ -71,8 +74,30 @@ export function AllocationEditor({
               ? '같은 이름의 투자 대상이 이미 있습니다.'
               : null;
           const nameErrorId = `portfolio-name-error-${index}`;
+          const itemName = item.name || `투자 대상 ${index + 1}`;
+          if (presentation === 'setup') {
+            return (
+              <div className="portfolio-editor__row" key={item.id}>
+                <button
+                  type="button"
+                  className="portfolio-editor__row-summary"
+                  aria-label={`${itemName} 편집, ${formatPortfolioWon(result.amountWon)}, ${formatAllocationPercent(result.percentage)}`}
+                  onClick={(event) => {
+                    itemSheetReturnFocusRef.current = event.currentTarget;
+                    setActiveItemSheet({ mode: 'edit', id: item.id });
+                  }}
+                >
+                  <span><strong>{itemName}</strong></span>
+                  <span><strong>{formatPortfolioWon(result.amountWon)}</strong><small>{formatAllocationPercent(result.percentage)}</small></span>
+                </button>
+              </div>
+            );
+          }
           return (
-            <div className="portfolio-editor__row" key={item.id}>
+            <div
+              className="portfolio-editor__row"
+              key={item.id}
+            >
               <label>
                 <span>투자 대상 이름 {index + 1}</span>
                 <input
@@ -84,23 +109,39 @@ export function AllocationEditor({
                 />
                 {nameError ? <span className="portfolio-editor__field-error" id={nameErrorId}>{nameError}</span> : null}
               </label>
-              <label>
-                <span>{draft.inputMode === 'amount' ? '금액' : '비율'}</span>
+              <ClassificationEditor
+                id={item.id}
+                name={itemName}
+                classification={item.classification}
+                automatic={item.classificationOrigin === 'automatic'}
+                compact={false}
+                onAction={onAction}
+                now={now}
+              />
+              <label className="portfolio-editor__amount-field">
+                <span>금액</span>
                 <input
                   aria-label={inputLabel}
-                  inputMode={draft.inputMode === 'amount' ? 'numeric' : 'decimal'}
+                  inputMode="numeric"
                   value={rawValues[item.id] ?? editableValue}
                   onChange={(event) => setRawValues((current) => ({ ...current, [item.id]: event.target.value }))}
-                  onBlur={() => commitItem(item.id, editableValue)}
+                  onBlur={() => {
+                    commitItem(item.id, editableValue);
+                  }}
                 />
               </label>
               <div className="portfolio-editor__computed" aria-label={`${item.name || `투자 대상 ${index + 1}`} 계산 결과`}>
-                <span>{formatPortfolioWon(result.amountWon)}</span>
-                <span>{formatAllocationPercent(result.percentage)}</span>
+                <span>{formatPortfolioWon(result.amountWon)}</span><span>{formatAllocationPercent(result.percentage)}</span>
               </div>
-              <Button type="button" variant="quiet" onClick={() => onAction({ type: 'draft-item-removed', id: item.id, now: now() })}>
-                {item.name || `투자 대상 ${index + 1}`} 삭제
-              </Button>
+              <div className="portfolio-editor__row-actions">
+                <Button
+                  type="button"
+                  variant="quiet"
+                  onClick={() => onAction({ type: 'draft-item-removed', id: item.id, now: now() })}
+                >
+                  {item.name || `투자 대상 ${index + 1}`} 삭제
+                </Button>
+              </div>
             </div>
           );
         })}
@@ -109,45 +150,212 @@ export function AllocationEditor({
       <Button
         type="button"
         variant="secondary"
+        className="portfolio-editor__add"
+        aria-label="투자 대상 추가"
         disabled={isAtLimit}
-        onClick={() => onAction({
-          type: 'draft-item-added',
-          item: { id: createId(), name: '', order: draft.items.length },
-          now: now(),
-        })}
-      >투자 대상 추가</Button>
+        onClick={(event) => {
+          const id = createId();
+          if (presentation === 'setup') {
+            itemSheetReturnFocusRef.current = event.currentTarget;
+            setActiveItemSheet({ mode: 'add', id });
+          } else {
+            onAction({
+              type: 'draft-item-added',
+              item: { id, name: '', order: draft.items.length },
+              now: now(),
+            });
+          }
+        }}
+      />
       {isAtLimit ? <p role="status">투자 대상은 최대 10개까지 추가할 수 있습니다</p> : null}
 
-      <section className="portfolio-editor__cash" aria-labelledby="portfolio-cash-title">
-        <h2 id="portfolio-cash-title">현금</h2>
-        <label>
-          <span>{draft.inputMode === 'amount' ? '현금 금액' : '현금 비율'}</span>
+      <section
+        className="portfolio-editor__cash"
+        aria-label={presentation === 'setup' ? '현금' : undefined}
+        aria-labelledby={presentation === 'setup' ? undefined : 'portfolio-cash-title'}
+      >
+        {presentation === 'setup' ? (
+          <button
+            type="button"
+            className="portfolio-editor__cash-summary"
+            aria-expanded={cashExpanded}
+            onClick={() => setCashExpanded((current) => !current)}
+          >
+            <span><strong>현금</strong></span>
+            <span><strong>{formatPortfolioWon(allocation.cashAmountWon)}</strong><small>{formatAllocationPercent(allocation.cashPercentage)}</small></span>
+          </button>
+        ) : (
+          <><h2 id="portfolio-cash-title">현금</h2><p>분류 안정</p></>
+        )}
+        {presentation !== 'setup' || cashExpanded ? <>
+          <label>
+          <span>현금 금액</span>
           <input
-            aria-label={draft.inputMode === 'amount' ? '현금 금액' : '현금 비율'}
-            inputMode={draft.inputMode === 'amount' ? 'numeric' : 'decimal'}
-            value={rawValues.cash ?? (draft.inputMode === 'amount' ? allocation.cashAmountWon : allocation.cashPercentage)}
+            aria-label="현금 금액"
+            inputMode="numeric"
+            value={rawValues.cash ?? allocation.cashAmountWon}
             onChange={(event) => setRawValues((current) => ({ ...current, cash: event.target.value }))}
             onBlur={() => {
-              const value = Number(rawValues.cash ?? (draft.inputMode === 'amount' ? allocation.cashAmountWon : allocation.cashPercentage));
-              const amountWon = draft.inputMode === 'amount' ? value : Math.round(investmentWon * value / 100);
+              const amountWon = Number(rawValues.cash ?? allocation.cashAmountWon);
               onAction({ type: 'draft-cash-changed', amountWon, now: now() });
             }}
           />
-        </label>
-        <span>{formatPortfolioWon(allocation.cashAmountWon)}</span>
-        <span>{formatAllocationPercent(allocation.cashPercentage)}</span>
-        {draft.cashMode === 'manual' ? (
-          <div>
-            <p role="status">현금 직접 배분 중</p>
-            <p>남은 투자금을 현금으로 자동 배분합니다</p>
-            <Button type="button" variant="quiet" onClick={() => onAction({ type: 'automatic-cash-enabled', now: now() })}>
-              현금 자동 배분 켜기
-            </Button>
-          </div>
-        ) : <p role="status">남은 투자금 자동 배분</p>}
+          </label>
+          <span>{formatPortfolioWon(allocation.cashAmountWon)}</span>
+          <span>{formatAllocationPercent(allocation.cashPercentage)}</span>
+          {draft.cashMode === 'manual' ? (
+            <div>
+              <p role="status">현금 직접 배분 중</p>
+              <p>남은 투자금을 현금으로 자동 배분합니다</p>
+              <Button type="button" variant="quiet" onClick={() => onAction({ type: 'automatic-cash-enabled', now: now() })}>
+                현금 자동 배분 켜기
+              </Button>
+            </div>
+          ) : <p role="status">남은 투자금 자동 배분</p>}
+        </> : null}
       </section>
       {fieldError ? <p role="alert">{errorMessage(fieldError)}</p> : null}
+      {presentation === 'setup' && activeItemSheet ? (
+        <PortfolioItemSheet
+          mode={activeItemSheet.mode}
+          initialValue={itemSheetInitialValue(activeItemSheet, draft, allocation)}
+          existingNames={draft.items
+            .filter((item) => item.id !== activeItemSheet.id)
+            .map((item) => item.name)}
+          investmentWon={investmentWon}
+          returnFocusRef={itemSheetReturnFocusRef}
+          onComplete={(value) => {
+            const existing = draft.items.find((item) => item.id === activeItemSheet.id);
+            onAction({
+              type: 'draft-item-committed',
+              item: {
+                id: activeItemSheet.id,
+                name: value.name,
+                order: existing?.order ?? draft.items.length,
+              },
+              amountWon: value.amountWon,
+              classification: value.classification,
+              classificationOrigin: value.classificationOrigin,
+              now: now(),
+            });
+            setActiveItemSheet(null);
+          }}
+          onRemove={activeItemSheet.mode === 'edit' ? () => {
+            itemSheetReturnFocusRef.current = document.querySelector<HTMLElement>('.portfolio-editor__add');
+            onAction({ type: 'draft-item-removed', id: activeItemSheet.id, now: now() });
+            setActiveItemSheet(null);
+          } : undefined}
+          onClose={() => setActiveItemSheet(null)}
+        />
+      ) : null}
     </Surface>
+  );
+}
+
+function itemSheetInitialValue(
+  active: ActiveItemSheet,
+  draft: PortfolioDraft,
+  allocation: ReturnType<typeof materializeAllocation>,
+) {
+  const item = draft.items.find((candidate) => candidate.id === active.id);
+  const result = allocation.items.find((candidate) => candidate.id === active.id);
+  return item && result ? {
+    name: item.name,
+    amountWon: result.amountWon,
+    classification: item.classification,
+    classificationOrigin: item.classificationOrigin,
+  } : {
+    name: '',
+    amountWon: 0,
+    classification: 'growth' as const,
+    classificationOrigin: 'automatic' as const,
+  };
+}
+
+function SetupAllocationSummary({
+  draft,
+  investmentWon,
+}: {
+  draft: PortfolioDraft;
+  investmentWon: number;
+}) {
+  const allocation = materializeAllocation(draft, investmentWon);
+  const stablePercentage = allocation.cashPercentage + allocation.items
+    .filter((item) => item.classification === 'stable')
+    .reduce((sum, item) => sum + item.percentage, 0);
+  const growthPercentage = Math.max(0, 100 - stablePercentage);
+
+  return (
+    <section className="portfolio-setup-summary" aria-label="현재 배분 요약">
+      <p>매달 {formatPortfolioWon(investmentWon)}을 나눠요</p>
+      <div className="portfolio-setup-summary__bar" aria-hidden="true">
+        <span className="portfolio-setup-summary__growth" style={{ width: `${growthPercentage}%` }} />
+        <span className="portfolio-setup-summary__stable" style={{ width: `${stablePercentage}%` }} />
+      </div>
+      <div className="portfolio-setup-summary__legend">
+        <span>성장 <strong>{formatAllocationPercent(growthPercentage)}</strong></span>
+        <span>안정 <strong>{formatAllocationPercent(stablePercentage)}</strong></span>
+      </div>
+    </section>
+  );
+}
+
+function ClassificationEditor({
+  id,
+  name,
+  classification,
+  automatic,
+  compact,
+  onAction,
+  now,
+}: {
+  id: string;
+  name: string;
+  classification: Classification;
+  automatic: boolean;
+  compact: boolean;
+  onAction: (action: PortfolioAction) => void;
+  now: () => number;
+}) {
+  const status = `${automatic ? '자동 추천' : '직접 선택'}: ${classification === 'growth' ? '성장' : '안정'}`;
+  return (
+    <fieldset className="portfolio-editor__classification" aria-label={`${name} 분류`}>
+      <legend>{compact ? '분류' : `${name} 분류`}</legend>
+      <label>
+        <input
+          type="radio"
+          name={`classification-${id}`}
+          checked={classification === 'growth'}
+          onClick={() => {
+            if (classification === 'growth') {
+              onAction({ type: 'draft-classification-changed', id, classification: 'growth', now: now() });
+            }
+          }}
+          onChange={() => onAction({ type: 'draft-classification-changed', id, classification: 'growth', now: now() })}
+        />성장
+      </label>
+      <label>
+        <input
+          type="radio"
+          name={`classification-${id}`}
+          checked={classification === 'stable'}
+          onClick={() => {
+            if (classification === 'stable') {
+              onAction({ type: 'draft-classification-changed', id, classification: 'stable', now: now() });
+            }
+          }}
+          onChange={() => onAction({ type: 'draft-classification-changed', id, classification: 'stable', now: now() })}
+        />안정
+      </label>
+      <p role="status">{status}</p>
+      {!automatic ? (
+        <Button
+          type="button"
+          variant="quiet"
+          onClick={() => onAction({ type: 'draft-classification-auto-enabled', id, now: now() })}
+        >자동 추천 사용</Button>
+      ) : null}
+    </fieldset>
   );
 }
 
