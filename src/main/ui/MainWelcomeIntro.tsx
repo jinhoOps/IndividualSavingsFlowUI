@@ -1,5 +1,5 @@
 import { createTimeline, stagger } from 'animejs';
-import { useCallback, useEffect, useLayoutEffect, useRef, type JSX } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type JSX } from 'react';
 import { attemptMotion } from '../../components/motion/attemptMotion';
 import { MOTION_DURATION, MOTION_EASE } from '../../components/motion/tokens';
 import { useAnimeScope } from '../../components/motion/useAnimeScope';
@@ -25,6 +25,7 @@ export function MainWelcomeIntro({ onComplete }: MainWelcomeIntroProps): JSX.Ele
   const timerRef = useRef<number | undefined>(undefined);
   const keydownListenerRef = useRef<((event: KeyboardEvent) => void) | undefined>(undefined);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const [motionFinished, setMotionFinished] = useState(false);
 
   const clearPendingCompletion = useCallback(() => {
     if (timerRef.current !== undefined) {
@@ -41,6 +42,7 @@ export function MainWelcomeIntro({ onComplete }: MainWelcomeIntroProps): JSX.Ele
     if (completedRef.current || disposedRef.current) return;
     completedRef.current = true;
     clearPendingCompletion();
+    setMotionFinished(true);
     onComplete();
   }, [clearPendingCompletion, onComplete]);
 
@@ -52,7 +54,7 @@ export function MainWelcomeIntro({ onComplete }: MainWelcomeIntroProps): JSX.Ele
       return;
     }
 
-    if (reducedMotion) {
+    if (motionFinished || reducedMotion) {
       setFinalVisualStyles(elements);
       finish();
       return;
@@ -79,7 +81,7 @@ export function MainWelcomeIntro({ onComplete }: MainWelcomeIntroProps): JSX.Ele
       setFinalVisualStyles(elements);
       finish();
     }
-  }, [finish]);
+  }, [finish, motionFinished]);
 
   useLayoutEffect(() => {
     disposedRef.current = false;

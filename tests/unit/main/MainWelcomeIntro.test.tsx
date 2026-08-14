@@ -79,6 +79,19 @@ describe('MainWelcomeIntro', () => {
     expect(onComplete).toHaveBeenCalledTimes(1);
   });
 
+  it('reverts the active Anime scope immediately after a pointer skip without parent unmount', () => {
+    const onComplete = vi.fn();
+    render(<MainWelcomeIntro onComplete={onComplete} />);
+    const section = screen.getByRole('region', { name: '나의 가계 흐름 시작 화면' });
+    const button = screen.getByRole('button', { name: '화면을 눌러 건너뛰기' });
+
+    fireEvent.pointerDown(section);
+    fireEvent.click(button);
+
+    expect(animeMocks.scope.revert).toHaveBeenCalledTimes(1);
+    expect(onComplete).toHaveBeenCalledTimes(1);
+  });
+
   it('keeps the screen noninteractive except for its explicit button', () => {
     render(<MainWelcomeIntro onComplete={vi.fn()} />);
     const section = screen.getByRole('region', { name: '나의 가계 흐름 시작 화면' });
