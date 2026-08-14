@@ -164,12 +164,13 @@ export function AccountMapModal({ node, related, sourceElement, fallbackElement,
   }
 
   function requestClose(force = false) {
-    if (closingRef.current || animating || ((!force) && (actionPending || recoveryPending))) return;
+    if (closingRef.current || ((!force) && (actionPending || recoveryPending))) return;
     closingRef.current = true;
     adoptLatestAfterCloseRef.current = !force && recovery.status !== 'none';
     setAnimating(true);
     const modal = modalRef.current;
     if (modal === null) { finishClose(); return; }
+    animationRef.current?.cancel();
     const targetRect = sourceElement?.isConnected === true
       ? sourceElement.getBoundingClientRect()
       : fallbackElement?.getBoundingClientRect() ?? modal.getBoundingClientRect();

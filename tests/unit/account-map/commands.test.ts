@@ -8,6 +8,7 @@ import { createEmptyWorkspace, type WorkspaceDocument } from '../../../src/works
 describe('Account Map commands', () => {
   it('connects a location by adding its required role and one link in one candidate', () => {
     const before = workspace();
+    before.locations[1] = { ...before.locations[1]!, roles: ['spending'] };
     before.accountMap.applied = validApplied();
     const protectedBefore = {
       main: JSON.stringify(before.main),
@@ -25,7 +26,7 @@ describe('Account Map commands', () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.workspace.locations.find(({ id }) => id === 'savings')).toMatchObject({
-      roles: ['spending', 'saving', 'investing'],
+      roles: ['spending', 'investing'],
       shortName: '저축',
       institution: { id: 'shinhan', name: '신한은행' },
     });

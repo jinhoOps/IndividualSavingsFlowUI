@@ -131,6 +131,79 @@ function overCapacityPurposes(): AccountMapApplied['customPurposes'] {
   }];
 }
 
+function phaseBReleaseWorkspace(): WorkspaceDocument {
+  const workspace = completeWorkspace();
+  workspace.portfolio.draft = {
+    schemaVersion: 2,
+    scope: { type: 'aggregate' },
+    items: [{ id: 'asset-us', name: '미국 인덱스', shareUnits: 600_000, order: 0 }],
+    cashShareUnits: 400_000,
+    cashMode: 'automatic',
+    syncedInvestmentWon: 600_000,
+    updatedAt: 40,
+    inputMode: 'amount',
+    isApplicable: true,
+  };
+  workspace.accountMap.applied = accountMapApplied({
+    layout: 'account',
+    customPurposes: [{
+      id: 'custom:trip',
+      parentId: 'system:living',
+      name: '여행',
+      targetMonthlyWon: 200_000,
+      archivedAt: 35,
+      createdAt: 10,
+      updatedAt: 35,
+    }],
+    links: [
+      {
+        id: 'saving-isa',
+        purposeId: 'system:saving',
+        locationId: 'loc-isa',
+        monthlyAmountWon: 700_000,
+        remainder: true,
+        status: 'active',
+        createdAt: 10,
+        updatedAt: 30,
+      },
+      {
+        id: 'investing-isa',
+        purposeId: 'system:investing',
+        locationId: 'loc-isa',
+        monthlyAmountWon: 600_000,
+        remainder: true,
+        status: 'active',
+        createdAt: 10,
+        updatedAt: 30,
+      },
+      {
+        id: 'trip-suspended',
+        purposeId: 'custom:trip',
+        locationId: 'loc-isa',
+        monthlyAmountWon: 200_000,
+        remainder: false,
+        status: 'suspended',
+        suspendedReason: 'user',
+        createdAt: 10,
+        updatedAt: 35,
+      },
+      {
+        id: 'living-suspended',
+        purposeId: 'system:living',
+        locationId: 'loc-isa',
+        monthlyAmountWon: 100_000,
+        remainder: false,
+        status: 'suspended',
+        suspendedReason: 'user',
+        createdAt: 11,
+        updatedAt: 35,
+      },
+    ],
+    updatedAt: 35,
+  });
+  return workspace;
+}
+
 function errorCode(operation: () => unknown): string | undefined {
   try {
     operation();
@@ -145,8 +218,8 @@ describe('workspace backup', () => {
     vi.restoreAllMocks();
   });
 
-  it('round-trips every Phase-A workspace slice in the exact versioned envelope', () => {
-    const workspace = completeWorkspace();
+  it('round-trips the complete Phase-B map and Portfolio compatibility state', () => {
+    const workspace = phaseBReleaseWorkspace();
     const text = exportWorkspaceBackup(workspace, 900);
     const parsed = JSON.parse(text) as Record<string, unknown>;
 
@@ -162,8 +235,12 @@ describe('workspace backup', () => {
       exportedAt: 900,
       workspace,
     });
-    expect(importWorkspaceBackup(text)).toEqual(workspace);
-    expect(importWorkspaceBackup(text)).not.toBe(workspace);
+    const imported = importWorkspaceBackup(text);
+    expect(imported).toEqual(workspace);
+    expect(imported).not.toBe(workspace);
+    expect(JSON.stringify(imported.accountMap)).toBe(JSON.stringify(workspace.accountMap));
+    expect(JSON.stringify(imported.locations)).toBe(JSON.stringify(workspace.locations));
+    expect(JSON.stringify(imported.portfolio)).toBe(JSON.stringify(workspace.portfolio));
   });
 
   it('imports a v1 envelope through the lossless workspace migration', () => {

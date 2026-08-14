@@ -85,6 +85,91 @@ const emptyAccountMapV2 = {
   legacyPhaseA: { instruments: [], flows: [] },
 };
 
+const releaseGateAccountMapV2 = {
+  applied: {
+    schemaVersion: 1 as const,
+    sourceMainUpdatedAt: appliedMainV2.updatedAt,
+    customPurposes: [{
+      id: 'custom:trip' as const,
+      parentId: 'system:living' as const,
+      name: '여행',
+      targetMonthlyWon: 100_000,
+      archivedAt: 650,
+      createdAt: 500,
+      updatedAt: 650,
+    }],
+    links: [
+      {
+        id: 'saving-isa',
+        purposeId: 'system:saving' as const,
+        locationId: 'loc-isa',
+        monthlyAmountWon: appliedMainV2.monthlySavingWon,
+        remainder: true,
+        status: 'active' as const,
+        createdAt: 500,
+        updatedAt: 600,
+      },
+      {
+        id: 'investing-isa',
+        purposeId: 'system:investing' as const,
+        locationId: 'loc-isa',
+        monthlyAmountWon: appliedMainV2.monthlyInvestmentWon,
+        remainder: true,
+        status: 'active' as const,
+        createdAt: 500,
+        updatedAt: 600,
+      },
+      {
+        id: 'trip-suspended',
+        purposeId: 'custom:trip' as const,
+        locationId: 'loc-isa',
+        monthlyAmountWon: 100_000,
+        remainder: false,
+        status: 'suspended' as const,
+        suspendedReason: 'user' as const,
+        createdAt: 500,
+        updatedAt: 650,
+      },
+      {
+        id: 'living-suspended',
+        purposeId: 'system:living' as const,
+        locationId: 'loc-isa',
+        monthlyAmountWon: 50_000,
+        remainder: false,
+        status: 'suspended' as const,
+        suspendedReason: 'user' as const,
+        createdAt: 501,
+        updatedAt: 650,
+      },
+    ],
+    layout: 'account' as const,
+    setupCompletedAt: 500,
+    updatedAt: 650,
+  },
+  draft: null,
+  legacyPhaseA: { instruments: [], flows: [] },
+};
+
+const releaseGateWorkspaceV2 = {
+  ...connectedWorkspaceV1,
+  schemaVersion: 2 as const,
+  portfolio: {
+    ...connectedWorkspaceV1.portfolio,
+    draft: {
+      schemaVersion: 2 as const,
+      scope: { type: 'aggregate' as const },
+      items: [{ id: 'asset-us', name: '미국 인덱스', shareUnits: 600_000, order: 0 }],
+      cashShareUnits: 400_000,
+      cashMode: 'automatic' as const,
+      syncedInvestmentWon: appliedMainV2.monthlyInvestmentWon,
+      updatedAt: 650,
+      inputMode: 'amount' as const,
+      isApplicable: true,
+    },
+  },
+  accountMap: releaseGateAccountMapV2,
+};
+
 const seededOldMainRecords = {
   'isf-main-v2': JSON.stringify({ ...appliedMainV2, monthlyNetIncomeWon: 9_900_000 }),
   'isf-main-v2-pending': '{old-pending',
@@ -757,7 +842,7 @@ test.describe('mobile quick setup', () => {
   });
 });
 
-test('whole-workspace backup round-trips atomically in the contained mobile confirmation', async ({ page }) => {
+test('complete Phase-B backup round-trips atomically in the contained mobile confirmation', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.addInitScript(({ workspace, oldRecords }) => {
     if (sessionStorage.getItem('isf-backup-roundtrip-seeded') === null) {
@@ -774,7 +859,7 @@ test('whole-workspace backup round-trips atomically in the contained mobile conf
       }
       originalSetItem.call(this, key, value);
     };
-  }, { workspace: connectedWorkspaceV1, oldRecords: seededOldMainRecords });
+  }, { workspace: releaseGateWorkspaceV2, oldRecords: seededOldMainRecords });
   await page.goto('apps/main/');
 
   const trigger = page.getByRole('button', { name: '관리 메뉴' });
@@ -793,12 +878,12 @@ test('whole-workspace backup round-trips atomically in the contained mobile conf
     formatVersion: 1,
     workspace: {
       schemaVersion: 2,
-      revision: connectedWorkspaceV1.revision,
-      main: connectedWorkspaceV1.main,
-      simulation: connectedWorkspaceV1.simulation,
-      portfolio: connectedWorkspaceV1.portfolio,
-      locations: connectedWorkspaceV1.locations,
-      accountMap: emptyAccountMapV2,
+      revision: releaseGateWorkspaceV2.revision,
+      main: releaseGateWorkspaceV2.main,
+      simulation: releaseGateWorkspaceV2.simulation,
+      portfolio: releaseGateWorkspaceV2.portfolio,
+      locations: releaseGateWorkspaceV2.locations,
+      accountMap: releaseGateWorkspaceV2.accountMap,
     },
   });
   for (const excluded of ['isf-main-v2', 'save-lease', 'trophy', '트로피']) {
@@ -860,11 +945,11 @@ test('whole-workspace backup round-trips atomically in the contained mobile conf
   }));
   const restored = JSON.parse(durable.raw!);
   expect(restored.revision).toBe(11);
-  expect(restored.main).toEqual(connectedWorkspaceV1.main);
-  expect(restored.simulation).toEqual(connectedWorkspaceV1.simulation);
-  expect(restored.portfolio).toEqual(connectedWorkspaceV1.portfolio);
-  expect(restored.locations).toEqual(connectedWorkspaceV1.locations);
-  expect(restored.accountMap).toEqual(emptyAccountMapV2);
+  expect(restored.main).toEqual(releaseGateWorkspaceV2.main);
+  expect(restored.simulation).toEqual(releaseGateWorkspaceV2.simulation);
+  expect(restored.portfolio).toEqual(releaseGateWorkspaceV2.portfolio);
+  expect(restored.locations).toEqual(releaseGateWorkspaceV2.locations);
+  expect(restored.accountMap).toEqual(releaseGateWorkspaceV2.accountMap);
   expect(durable.writes).toBe(1);
   expect(durable.old).toEqual(seededOldMainRecords);
 });
@@ -984,6 +1069,34 @@ test('invalid, old, reference, duplicate, and capacity backups retain the exact 
       })),
     ],
   };
+  const futureSourceWorkspace = {
+    ...releaseGateWorkspaceV2,
+    accountMap: {
+      ...releaseGateWorkspaceV2.accountMap,
+      applied: {
+        ...releaseGateWorkspaceV2.accountMap.applied,
+        sourceMainUpdatedAt: appliedMainV2.updatedAt + 1,
+      },
+    },
+  };
+  const synchronizedCapacityWorkspace = {
+    ...releaseGateWorkspaceV2,
+    accountMap: {
+      ...releaseGateWorkspaceV2.accountMap,
+      applied: {
+        ...releaseGateWorkspaceV2.accountMap.applied,
+        customPurposes: [{
+          id: 'custom:excess',
+          parentId: 'system:living',
+          name: '초과 목적',
+          targetMonthlyWon: appliedMainV2.monthlyLivingWon + 1,
+          createdAt: 500,
+          updatedAt: 650,
+        }],
+        links: releaseGateWorkspaceV2.accountMap.applied.links.filter(({ purposeId }) => purposeId !== 'custom:trip'),
+      },
+    },
+  };
   const envelope = (workspace: unknown) => JSON.stringify({
     format: 'isf-workspace-backup',
     formatVersion: 1,
@@ -1003,6 +1116,8 @@ test('invalid, old, reference, duplicate, and capacity backups retain the exact 
     ['reference.json', envelope(referenceWorkspace), '백업의 앱 연결 정보가 올바르지 않습니다.'],
     ['duplicate.json', envelope(duplicateWorkspace), '백업의 앱 연결 정보가 올바르지 않습니다.'],
     ['capacity.json', envelope(capacityWorkspace), '백업의 앱 연결 정보가 올바르지 않습니다.'],
+    ['future-source.json', envelope(futureSourceWorkspace), '백업의 앱 데이터가 올바르지 않습니다.'],
+    ['synchronized-capacity.json', envelope(synchronizedCapacityWorkspace), '백업의 앱 데이터가 올바르지 않습니다.'],
   ] as const;
 
   for (const [name, contents, expectedMessage] of failures) {
