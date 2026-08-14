@@ -23,6 +23,8 @@ Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계획 �
 
 ### Main
 
+- 저장된 계획과 setup 진행 기록이 없는 새 시작과 `처음부터 다시`에만 기존 setup 앞의 짧은 인포그래픽 브랜드 웰컴을 표시한다. 저장된 setup 재개는 이를 건너뛰고, reduced motion에서는 interactive 인트로를 mount하지 않는다. 기존 review 조립은 Main에서 유일하게 넓은 폭을 사용하는 예외이며 세부 타이밍과 전환 계약은 [Main 브랜드 웰컴 인트로 설계](docs/superpowers/specs/2026-08-13-main-brand-welcome-intro-design.md)를 따른다.
+- 정적 브랜드 아이콘과 웰컴 인트로는 세 상승 막대와 다섯 꼭짓점의 비보장 추세선을 같은 geometry로 공유한다. 추세선은 화살표 대신 마지막 원형 점으로 끝난다.
 - 기본 화면은 월 수입, 생활비, 저축, 투자와 순현금흐름을 우선 보여줍니다.
 - Main은 다섯 월간 금액만 직접 소유하며 항목·계좌·카테고리 편집을 제공하지 않습니다.
 - dashboard 편집기를 열거나 탐색하는 것만으로 dirty 상태를 만들지 않습니다.

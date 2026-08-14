@@ -1,6 +1,6 @@
 {
   "name": "individualsavingsflowui",
-  "version": "0.11.92",
+  "version": "0.11.93",
   "description": "돈의 흐름과 미래 자산 변화를 살펴보는 개인 재무 계획 도우미",
   "main": "sw.js",
   "scripts": {
