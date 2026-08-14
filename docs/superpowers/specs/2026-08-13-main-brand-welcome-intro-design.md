@@ -1,6 +1,6 @@
 # Main 브랜드 웰컴 인트로 설계
 
-**상태:** 대화 승인
+**상태:** 대화 승인, 제품 경험 검토 반영
 **작성일:** 2026-08-13
 **대상:** Main 최초 방문과 `처음부터 다시`
 
@@ -34,12 +34,15 @@ Main을 처음 여는 순간 제품의 성격을 설명하고 ISF 브랜드를 �
 - 세 기준점은 막대와 x축 위치만 공유한다. 꺾은선의 y축 값은 막대 높이에 종속되지 않으며 다섯 점 전체가 독립적인 변동 경로를 만든다.
 - 선은 주식 차트처럼 꺾인 형태를 유지하되 stroke cap과 join은 둥글게 처리한다.
 - 마지막은 화살촉 대신 작고 선명한 원형 점으로 마감한다.
+- 모든 핵심 도형은 maskable 아이콘의 중앙 안전 영역 안에 둔다. 운영체제가 바깥 영역을 원·둥근 사각형 등으로 잘라도 기준선, 세 막대, 다섯 점 경로와 마지막 점의 의미가 남아야 한다.
 - 192px와 512px 정적 아이콘에서 선, 가상 꺾임점과 마지막 점이 뭉개지지 않아야 한다.
-- PNG와 SVG 아이콘은 같은 도형을 사용한다.
+- SVG를 단일 원본으로 사용하고 같은 원본에서 PNG 192px와 512px를 생성한다. 네 manifest asset이 같은 도형과 색을 사용해야 한다.
 
 ## 4. 인트로 장면
 
 인트로는 기존 `SetupFlow` 내부가 아니라 Main 진입 계층이 소유하는 독립 장면이다. 전체 viewport를 사용하되 safe area를 존중하고 body 가로 overflow를 만들지 않는다.
+
+bootstrap이 끝나기 전에는 Main의 현재 loading 문구만 neutral canvas 위에 표시하고 launcher나 setup surface를 먼저 노출하지 않는다. bootstrap 결과가 `fresh`이면 이 loading 상태에서 인트로로 직접 전환해 launcher 또는 setup welcome이 한 프레임 나타났다 사라지는 현상을 막는다. `resume`, dashboard와 recovery는 bootstrap 완료 후 각자의 기존 화면으로 이동한다.
 
 Anime.js 시퀀스는 다음 순서를 사용한다.
 
@@ -68,23 +71,37 @@ Anime.js 시퀀스는 다음 순서를 사용한다.
 - dashboard나 다른 앱에서 Main을 평범하게 다시 열 때
 - 인트로를 이미 완료한 동일한 최초 setup journey에서 React가 다시 렌더될 때
 
-인트로 노출 여부를 위한 새 workspace 필드, localStorage key 또는 제품 schema는 추가하지 않는다. 최초 방문은 기존 bootstrap 결과로 판별하고 `처음부터 다시`는 해당 사용자 행동이 현재 Main UI 세션에 인트로 표시를 요청한다.
+인트로 노출 여부를 위한 새 workspace 필드, localStorage key 또는 제품 schema는 추가하지 않는다. 현재 `MainState`만으로는 빈 workspace에서 새로 시작한 `welcome`과 저장된 `welcome` 진행 기록을 구분할 수 있으므로 UI는 저장하지 않는 `MainIntroEntryReason = 'fresh' | 'resume' | 'restart' | 'none'`을 소유한다. bootstrap 반환 계약은 `MainState`와 `fresh | resume | none` 진입 원인을 함께 전달하고, 현재 UI 세션의 `처음부터 다시` action만 이를 `restart`로 바꾼다.
+
+- `fresh`: Main plan과 setup progress가 모두 없는 빈 workspace. 인트로를 표시한다.
+- `resume`: `initial` 또는 `restart` setup progress를 불러온 상태. progress 단계가 `welcome`이어도 인트로를 표시하지 않는다.
+- `restart`: 현재 UI 세션에서 사용자가 `처음부터 다시`를 확정한 상태. 인트로를 표시한다.
+- `none`: dashboard, 일반 수정 또는 recovery 등 인트로 대상이 아닌 상태.
+
+이 값은 workspace에 저장하지 않는 UI 진입 메타데이터이며 `MainState`의 도메인·저장 의미를 바꾸지 않는다. `처음부터 다시`는 현재 적용 계획을 유지한 채 draft를 복사해 setup을 시작한다. 최초 설정과 동일한 것은 인트로와 setup 모션 경험이며, 적용 데이터의 존재 여부가 아니다.
+
+최초 인트로가 mount되면 기존 `setupProgress` 계약으로 `initial / welcome` 진행 기록 저장을 즉시 요청한다. 인트로 완료를 저장 완료까지 막지는 않으며, 저장 성공 후 새로고침은 `resume`으로 판별되어 인트로를 반복하지 않는다. 저장이 실패하면 기존 setup 진행 경고를 보여주고 사용자는 계속 진행할 수 있다. 이 경우 저장되지 않은 빈 workspace를 새로고침하면 인트로가 다시 보일 수 있으며, 별도 저장 키로 이를 숨기지 않는다. `처음부터 다시`도 기존 `restart / welcome` 진행 기록을 사용한다.
 
 인트로 완료 후의 목적지는 항상 기존 setup welcome이다. 최초 방문과 `처음부터 다시`는 같은 인트로를 사용하며, 이후 setup과 review는 현재 계약을 따른다.
 
+자동 종료나 skip이 시작되면 완료 경로는 먼저 현재 진입 원인을 `none`으로 소비한 뒤 인트로를 unmount하고 setup welcome을 렌더한다. 따라서 저장 응답, React 재렌더 또는 Strict Mode effect 재실행이 같은 UI 세션에서 인트로를 다시 열 수 없다.
+
 ## 6. 건너뛰기와 접근성
 
-- 인트로 화면 전체를 하나의 skip surface로 취급하며 pointer 또는 touch로 아무 곳이나 누르면 즉시 완료한다.
-- 하단 safe area 위에 낮은 시각 우선순위로 `화면을 눌러 건너뛰기`를 표시한다. 낮은 우선순위는 낮은 가독성을 뜻하지 않으며 텍스트 대비는 접근성 기준을 지킨다.
-- 키보드는 `Enter`, `Space`, `Escape`로 건너뛸 수 있다.
-- 보조 기술에는 장면의 목적과 건너뛰기 방법을 간결하게 제공한다.
+- 인트로의 비대화형 인포그래픽 SVG는 `aria-hidden="true"`로 보조 기술의 탐색 대상에서 제외한다.
+- 인트로 배경의 pointer 또는 touch 입력은 어디서 시작해도 즉시 완료하며 하단 버튼과 같은 완료 함수를 호출한다. 전체 컨테이너에 `role="button"`을 부여하지 않는다.
+- 하단 safe area 위에는 실제 `button`으로 `화면을 눌러 건너뛰기`를 표시한다. 낮은 시각 우선순위는 낮은 가독성을 뜻하지 않으며 텍스트 대비와 최소 44px hit area를 지킨다.
+- 인트로가 mount되면 하단 skip 버튼에 focus를 두어 최초 방문과 restart 확인 dialog 이후 모두 현재 화면과 조작 방법을 알 수 있게 한다.
+- 인트로가 mount된 동안에만 `Enter`, `Space`, `Escape`를 처리한다. 입력·버튼 등 별도 대화형 자식은 두지 않아 전역 shortcut과 충돌하지 않게 한다.
+- 인트로는 `<section>`과 시각적으로 숨긴 제목 `나의 가계 흐름 시작 화면`, 설명 `잠시 후 설정 화면으로 이동합니다. 화면을 누르거나 건너뛰기 버튼을 선택할 수 있습니다.`를 `aria-labelledby`와 `aria-describedby`로 연결한다.
 - 자동 종료, pointer/touch와 키보드 skip은 하나의 idempotent 완료 경로를 사용한다.
-- 완료나 unmount 시 실행 중인 Anime.js instance와 timer를 정리하고 setup welcome으로 한 번만 전환한다.
+- 완료나 unmount 시 실행 중인 Anime.js instance, keyboard listener와 timer를 정리하고 setup welcome으로 한 번만 전환한다.
+- 전환 후에는 기존 계약대로 setup welcome heading으로 focus를 이동한다.
 - 인트로 모션은 focus, pointer 또는 keyboard 입력을 막지 않는다.
 
 ## 7. Reduced motion과 실패 복구
 
-`prefers-reduced-motion: reduce`에서는 막대 상승, path drawing과 마지막 점 강조를 실행하지 않는다. 완성된 정적 아이콘을 짧게 보여준 뒤 자동 전환하며 즉시 skip도 허용한다.
+`prefers-reduced-motion: reduce`에서는 막대 상승, path drawing과 마지막 점 강조를 실행하지 않는다. 완성된 정적 아이콘을 최대 180ms 보여준 뒤 자동 전환하며 즉시 skip도 허용한다.
 
 Anime.js scope, timeline 또는 animation 생성에 실패하면 완성 프레임을 동기적으로 적용하고 setup welcome으로 전환한다. 모션 실패가 Main error boundary나 복구 화면을 유발해서는 안 된다.
 
@@ -101,17 +118,27 @@ Anime.js scope, timeline 또는 animation 생성에 실패하면 완성 프레�
 
 [Anime.js 공통 모션 시스템 설계](2026-08-12-animejs-motion-system-design.md) 5.2의 작은 welcome 제목·설명·CTA reveal은 이번 독립 인트로가 앞에 추가되더라도 유지할 수 있다. 다만 브랜드의 예외적인 큰 시작 연출은 이 문서가 소유한다.
 
-동 문서 5.3의 review 조립, 실제 비율, 초과 geometry, `처음부터 다시`와 일반 수정의 구분은 그대로 유지한다. `처음부터 다시`는 브랜드 인트로 이후 기존 setup welcome부터 동일한 initial sequence를 진행한다.
+동 문서 5.3의 review 조립, 실제 비율, 초과 geometry, `처음부터 다시`와 일반 수정의 구분은 그대로 유지한다. 최초 설정에는 적용 계획이 없고, `처음부터 다시`는 현재 적용 계획을 유지한 채 복사한 draft로 setup을 진행한다. 두 경로는 브랜드 인트로 이후 기존 setup welcome부터 동일한 모션 sequence를 사용한다.
+
+정적 아이콘 변경은 PWA asset 변경이다. SVG 원본에서 PNG를 재생성한 뒤 manifest 참조 네 개를 검증하고, 앱 버전과 service-worker cache version이 통상 release 절차로 함께 갱신되는지 확인한다. 이전 cache가 새 아이콘을 계속 제공하지 않아야 한다.
 
 ## 10. 검증과 인수 조건
 
-- [ ] 최초 빈 workspace에서 인트로가 정확히 한 번 표시된다.
+- [ ] Main plan과 setup progress가 모두 없는 최초 빈 workspace에서 인트로가 표시되고 `initial / welcome` 진행 기록 저장을 즉시 요청한다.
+- [ ] 진행 기록 저장 성공 후 welcome에서 새로고침하면 `resume`으로 복구되어 인트로가 반복되지 않는다.
+- [ ] 진행 기록 저장 실패는 setup 진행 경고로 알리고 인트로 완료와 입력을 막지 않는다. 이 상태의 새로고침에서는 재노출될 수 있다.
 - [ ] `처음부터 다시` 확정 후 동일한 인트로가 표시된다.
 - [ ] setup 재개, 일반 수정과 dashboard 재방문에는 표시되지 않는다.
 - [ ] 자동 종료와 모든 skip 입력이 기존 setup welcome으로 한 번만 연결된다.
+- [ ] 완료 경로가 진입 원인을 `none`으로 소비해 같은 UI 세션의 재렌더와 Strict Mode effect 재실행에서 인트로가 반복되지 않는다.
 - [ ] 실행 중 skip과 unmount가 Anime.js instance와 timer를 정리한다.
 - [ ] reduced motion과 Anime.js 실패에서 사용자가 인트로에 갇히지 않는다.
 - [ ] 390px, 768px와 desktop에서 아이콘, 안내문과 safe area가 잘리지 않고 가로 overflow가 없다.
 - [ ] pointer, touch, `Enter`, `Space`, `Escape`로 건너뛸 수 있다.
-- [ ] 192px와 512px의 SVG·PNG 정적 아이콘이 같은 새 브랜드 geometry를 보여준다.
+- [ ] SVG는 접근성 트리에서 제외되고 실제 하단 skip 버튼은 44px hit area, 접근 가능한 이름과 충분한 대비를 가진다.
+- [ ] setup welcome 전환 후 기존 heading이 focus를 받으며 인트로 listener가 남지 않는다.
+- [ ] bootstrap loading에서 최초 인트로로 전환할 때 launcher나 setup welcome이 먼저 나타나지 않는다.
+- [ ] 최초 방문과 restart 인트로 모두 mount 직후 실제 skip 버튼이 focus를 받는다.
+- [ ] 192px와 512px의 SVG·PNG 정적 아이콘이 같은 새 브랜드 geometry를 보여주고 maskable crop에서도 핵심 도형이 보존된다.
+- [ ] manifest asset, 앱 버전과 service-worker cache 갱신 후 설치·업데이트 환경에서 새 아이콘을 제공한다.
 - [ ] 기존 review 조립, 실제 비율·초과 표현과 상단 앱 메뉴 동작에 회귀가 없다.
