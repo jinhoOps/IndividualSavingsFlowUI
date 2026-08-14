@@ -28,7 +28,7 @@ export function bootstrapAccountMap(
     return {
       mode: 'map', workspace, main, applied: structuredClone(applied),
       interaction: { transientNodeId: null, pinnedNodeId: null, modalNodeId: null },
-      save: { status: 'idle' },
+      save: { status: 'idle' }, recovery: { status: 'none' },
     };
   }
   const draft = workspace.accountMap.draft;
@@ -39,6 +39,6 @@ export function bootstrapAccountMap(
     resumed: draft !== null,
     mainChanged: draft !== null && draft.sourceMainUpdatedAt !== main.updatedAt,
     exitRequested: false,
-    save: { status: 'idle' },
+    save: { status: 'idle' }, recovery: { status: 'none' },
   };
 }

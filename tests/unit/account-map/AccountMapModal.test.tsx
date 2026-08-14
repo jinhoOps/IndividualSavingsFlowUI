@@ -2,6 +2,8 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AccountMapModal } from '../../../src/account-map/ui/AccountMapModal';
+import type { RecoveryState } from '../../../src/account-map/application/reducer';
+import { createEmptyWorkspace } from '../../../src/workspace/domain/model';
 
 vi.mock('../../../src/account-map/ui/motion', () => ({
   animateNodeToModal: (_rect: DOMRect, _modal: HTMLElement, options: { onComplete(): void }) => { options.onComplete(); return { cancel() {} }; },
@@ -138,10 +140,153 @@ describe('AccountMapModal', () => {
     expect(screen.getByRole('combobox', { name: '새 나머지 계좌' })).toHaveValue('next');
     expect(screen.getByRole('button', { name: '다시 시도' })).toBeEnabled();
   });
+
+  it('preserves typed input and describes and focuses the first colliding modal field', () => {
+    const source = document.createElement('button');
+    document.body.append(source);
+    const props = modalProps({
+      node: { id: 'location:checking', kind: 'location', label: '생활비통장', status: 'resolved' },
+      sourceElement: source,
+    });
+    const { rerender } = render(<AccountMapModal {...props} recovery={{ status: 'none' }} />);
+    fireEvent.click(screen.getByRole('button', { name: '편집' }));
+    const nameInput = screen.getByRole('textbox', { name: '표시 이름' });
+    fireEvent.change(nameInput, { target: { value: '새 생활비' } });
+
+    rerender(<AccountMapModal {...props} recovery={collisionRecovery('shortName')} />);
+
+    expect(nameInput).toHaveValue('새 생활비');
+    expect(nameInput).toHaveFocus();
+    expect(nameInput).toHaveAccessibleDescription(/표시 이름.*최신 상태에서도 변경/);
+    expect(screen.getByRole('button', { name: '최신 상태에서 다시 적용' })).toBeVisible();
+    expect(screen.getByRole('button', { name: '최신 값 유지' })).toBeVisible();
+    source.remove();
+  });
+
+  it('describes and focuses only the colliding link input', () => {
+    const props = modalProps({
+      related: [
+        { label: '첫 통장', amountWon: 300_000, status: 'active', linkId: 'first', purposeId: 'system:living', remainder: false },
+        { label: '둘째 통장', amountWon: 700_000, status: 'active', linkId: 'second', purposeId: 'system:living', remainder: true },
+      ],
+      recovery: linkCollisionRecovery('second', 'monthlyAmountWon'),
+    });
+    render(<AccountMapModal {...props} />);
+    fireEvent.click(screen.getByRole('button', { name: '편집' }));
+
+    const first = screen.getByRole('textbox', { name: '첫 통장 월 금액' });
+    const second = screen.getByRole('textbox', { name: '둘째 통장 월 금액' });
+    expect(second).toHaveFocus();
+    expect(second).toHaveAccessibleDescription(/월 금액.*최신 상태에서도 변경/);
+    expect(first).not.toHaveAttribute('aria-describedby');
+  });
+
+  it('shows transport failure inside a recovering modal and disables recovery while pending', () => {
+    const onClose = vi.fn();
+    render(<AccountMapModal {...modalProps({
+      recovery: linkCollisionRecovery('second', 'monthlyAmountWon'),
+      recoveryPending: true,
+      saveFailed: true,
+      onClose,
+    })} />);
+    expect(screen.getByText('저장하지 못했습니다. 편집 중인 입력은 그대로 두었습니다.')).toBeVisible();
+    expect(screen.getByRole('button', { name: '최신 상태에서 다시 적용' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '최신 값 유지' })).toBeDisabled();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    fireEvent.pointerDown(document.querySelector('.account-map-modal-backdrop')!);
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('keeps normal removal available as an atomic edit', () => {
+    const onSaveEdit = vi.fn();
+    renderModal({
+      node: { id: 'location:checking', kind: 'location', label: '생활비통장', status: 'resolved' },
+      related: [
+        { label: '생활비', amountWon: 700_000, status: 'active', linkId: 'living', purposeId: 'system:living', remainder: true },
+        { label: '저축', amountWon: 300_000, status: 'active', linkId: 'saving', purposeId: 'system:saving', remainder: true },
+      ],
+      onSaveEdit,
+    });
+    fireEvent.click(screen.getByRole('button', { name: '편집' }));
+    fireEvent.change(screen.getByRole('combobox', { name: '생활비 연결 상태' }), { target: { value: 'removed' } });
+    fireEvent.click(screen.getByRole('button', { name: '저장' }));
+    expect(onSaveEdit).toHaveBeenCalledWith(expect.objectContaining({
+      links: expect.arrayContaining([expect.objectContaining({ id: 'living', status: 'removed' })]),
+    }));
+  });
+
+  it('keeps compound input and offers latest review without automatic replay', () => {
+    const onReapply = vi.fn(async () => false);
+    const props = modalProps({
+      node: { id: 'location:checking', kind: 'location', label: '생활비통장', status: 'resolved' },
+      onReapply,
+    });
+    const { rerender } = render(<AccountMapModal {...props} />);
+    fireEvent.click(screen.getByRole('button', { name: '편집' }));
+    const label = screen.getByRole('textbox', { name: '표시 이름' });
+    fireEvent.change(label, { target: { value: '새 생활비' } });
+
+    rerender(<AccountMapModal {...props} recovery={{
+      status: 'manual', latest: createEmptyWorkspace(2), targetId: 'location:checking', reason: 'compound-edit',
+    }} />);
+
+    expect(label).toHaveValue('새 생활비');
+    expect(screen.getByText(/자동으로 다시 적용하지 않습니다/)).toBeVisible();
+    expect(screen.queryByRole('button', { name: '최신 상태에서 다시 적용' })).not.toBeInTheDocument();
+    const review = screen.getByRole('button', { name: '최신 상태에서 다시 검토' });
+    expect(review).toHaveFocus();
+    fireEvent.click(review);
+    expect(onReapply).toHaveBeenCalledTimes(1);
+  });
 });
 
 function renderModal(overrides: Partial<React.ComponentProps<typeof AccountMapModal>> = {}) {
   const source = document.createElement('button');
   document.body.append(source);
-  return render(<AccountMapModal node={{ id: 'system:living', kind: 'purpose', label: '생활비', amountWon: 1_000_000, status: 'unassigned' }} related={[{ label: '생활비통장', amountWon: 700_000, status: 'active' }]} sourceElement={source} fallbackElement={null} reducedMotion onClose={() => undefined} {...overrides} />);
+  return render(<AccountMapModal {...modalProps({ sourceElement: source, ...overrides })} />);
+}
+
+function modalProps(overrides: Partial<React.ComponentProps<typeof AccountMapModal>> = {}): React.ComponentProps<typeof AccountMapModal> {
+  return {
+    node: { id: 'system:living', kind: 'purpose', label: '생활비', amountWon: 1_000_000, status: 'unassigned' },
+    related: [{ label: '생활비통장', amountWon: 700_000, status: 'active' }],
+    sourceElement: null,
+    fallbackElement: null,
+    reducedMotion: true,
+    recovery: { status: 'none' },
+    recoveryPending: false,
+    saveFailed: false,
+    onClose: () => undefined,
+    onReapply: async () => false,
+    onKeepLatest: () => undefined,
+    ...overrides,
+  };
+}
+
+function linkCollisionRecovery(id: string, field: string): RecoveryState {
+  return {
+    status: 'collision', latest: createEmptyWorkspace(2),
+    intent: {
+      kind: 'link', id,
+      edit: {
+        base: { monthlyAmountWon: 700_000, status: 'active', remainder: true },
+        next: { monthlyAmountWon: 650_000, status: 'active', remainder: true },
+      },
+    },
+    field, reason: 'field-conflict',
+  };
+}
+
+function collisionRecovery(field: string): RecoveryState {
+  return {
+    status: 'collision', latest: createEmptyWorkspace(2),
+    intent: {
+      kind: 'location', id: 'checking',
+      edit: {
+        base: { shortName: '생활비통장', institution: undefined },
+        next: { shortName: '새 생활비', institution: undefined },
+      },
+    },
+    field, reason: 'field-conflict',
+  };
 }

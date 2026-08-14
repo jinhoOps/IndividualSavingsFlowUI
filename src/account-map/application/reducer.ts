@@ -1,5 +1,6 @@
 import type { MainData } from '../../main/domain/model';
 import type { WorkspaceDocument } from '../../workspace/domain/model';
+import type { AccountMapEditIntent } from '../domain/editIntent';
 import type { AccountMapApplied, AccountMapDraft } from '../domain/model';
 
 export interface MapInteractionState {
@@ -14,6 +15,18 @@ export type SaveState =
   | { status: 'idle' }
   | { status: 'pending' }
   | { status: 'failed'; reason: AccountMapSaveFailure };
+
+export type RecoveryState =
+  | { status: 'none' }
+  | { status: 'stale'; latest: WorkspaceDocument; intent: AccountMapEditIntent }
+  | { status: 'manual'; latest: WorkspaceDocument; targetId: string; reason: 'compound-edit' | 'removal' | 'target-missing' }
+  | {
+      status: 'collision';
+      latest: WorkspaceDocument;
+      intent: AccountMapEditIntent;
+      field: string;
+      reason: string;
+    };
 
 interface WorkspaceReadyState {
   workspace: WorkspaceDocument;
@@ -33,12 +46,14 @@ export type AccountMapState =
       mainChanged: boolean;
       exitRequested: boolean;
       save: SaveState;
+      recovery: RecoveryState;
     })
   | (WorkspaceReadyState & {
       mode: 'map';
       applied: AccountMapApplied;
       interaction: MapInteractionState;
       save: SaveState;
+      recovery: RecoveryState;
     });
 
 export type AccountMapEvent =
@@ -59,7 +74,14 @@ export type AccountMapEvent =
   | { type: 'layout-changed'; layout: AccountMapApplied['layout'] }
   | { type: 'save-requested' | 'retry-requested' }
   | { type: 'save-succeeded'; workspace: WorkspaceDocument }
-  | { type: 'save-failed'; reason: AccountMapSaveFailure };
+  | { type: 'save-failed'; reason: AccountMapSaveFailure }
+  | { type: 'save-conflicted'; latest: WorkspaceDocument; intent: AccountMapEditIntent }
+  | { type: 'save-manual-conflicted'; latest: WorkspaceDocument; targetId: string; reason: 'compound-edit' | 'removal' }
+  | { type: 'reapply-requested' }
+  | { type: 'reapply-collided'; field: string; reason: string }
+  | { type: 'reapply-succeeded'; workspace: WorkspaceDocument }
+  | { type: 'review-latest' }
+  | { type: 'latest-kept' };
 
 const emptyInteraction = (): MapInteractionState => ({
   transientNodeId: null,
@@ -97,6 +119,7 @@ function reduceMigrating(
     return {
       mode: 'map', workspace: event.workspace, main: state.main,
       applied: structuredClone(applied), interaction: emptyInteraction(), save: { status: 'idle' },
+      recovery: { status: 'none' },
     };
   }
   const draft = event.workspace.accountMap.draft;
@@ -105,7 +128,7 @@ function reduceMigrating(
     draft: draft === null ? null : structuredClone(draft),
     step: draft?.step ?? 'connect', resumed: draft !== null,
     mainChanged: draft !== null && draft.sourceMainUpdatedAt !== state.main.updatedAt,
-    exitRequested: false, save: { status: 'idle' },
+    exitRequested: false, save: { status: 'idle' }, recovery: { status: 'none' },
   };
 }
 
@@ -113,6 +136,8 @@ function reduceSetup(
   state: Extract<AccountMapState, { mode: 'setup' }>,
   event: AccountMapEvent,
 ): AccountMapState {
+  const recovered = reduceRecovery(state, event);
+  if (recovered !== null) return recovered;
   switch (event.type) {
     case 'draft-updated':
       return { ...state, draft: structuredClone(event.draft), step: event.draft.step, resumed: true };
@@ -130,7 +155,7 @@ function reduceSetup(
           accountMap: { ...state.workspace.accountMap, draft: null },
         },
         draft: null, step: 'connect', resumed: false,
-        mainChanged: false, exitRequested: false, save: { status: 'idle' },
+        mainChanged: false, exitRequested: false, save: { status: 'idle' }, recovery: { status: 'none' },
       };
     case 'apply-succeeded': {
       const workspace = event.workspace ?? {
@@ -139,7 +164,7 @@ function reduceSetup(
       };
       return {
         mode: 'map', workspace, main: state.main, applied: structuredClone(event.applied),
-        interaction: emptyInteraction(), save: { status: 'idle' },
+        interaction: emptyInteraction(), save: { status: 'idle' }, recovery: { status: 'none' },
       };
     }
     case 'save-requested':
@@ -157,12 +182,14 @@ function reduceMap(
   state: Extract<AccountMapState, { mode: 'map' }>,
   event: AccountMapEvent,
 ): AccountMapState {
+  const recovered = reduceRecovery(state, event);
+  if (recovered !== null) return recovered;
   switch (event.type) {
     case 'reset-succeeded':
       return {
         mode: 'setup', workspace: event.workspace, main: state.main,
         draft: null, step: 'connect', resumed: false, mainChanged: false,
-        exitRequested: false, save: { status: 'idle' },
+        exitRequested: false, save: { status: 'idle' }, recovery: { status: 'none' },
       };
     case 'node-hovered':
       return { ...state, interaction: { ...state.interaction, transientNodeId: event.nodeId } };
@@ -184,7 +211,7 @@ function reduceMap(
       return { ...state, interaction: emptyInteraction() };
     case 'modal-closed':
     case 'modal-outside-invoked':
-      return { ...state, interaction: { ...state.interaction, modalNodeId: null } };
+      return { ...state, interaction: { ...state.interaction, modalNodeId: null }, recovery: { status: 'none' } };
     case 'escape-invoked':
       return state.interaction.modalNodeId !== null
         ? { ...state, interaction: { ...state.interaction, modalNodeId: null } }
@@ -205,6 +232,145 @@ function reduceMap(
     default:
       return state;
   }
+}
+
+function reduceRecovery<State extends Extract<AccountMapState, { mode: 'setup' | 'map' }>>(
+  state: State,
+  event: AccountMapEvent,
+): AccountMapState | null {
+  switch (event.type) {
+    case 'save-conflicted':
+      return {
+        ...state,
+        save: { status: 'idle' },
+        recovery: {
+          status: 'stale',
+          latest: structuredClone(event.latest),
+          intent: structuredClone(event.intent),
+        },
+      };
+    case 'save-manual-conflicted':
+      return {
+        ...state,
+        save: { status: 'idle' },
+        recovery: {
+          status: 'manual',
+          latest: structuredClone(event.latest),
+          targetId: event.targetId,
+          reason: event.reason,
+        },
+      };
+    case 'reapply-requested':
+      return state.recovery.status === 'none'
+        ? state
+        : { ...state, save: { status: 'pending' } };
+    case 'reapply-collided':
+      return state.recovery.status === 'none' || state.recovery.status === 'manual'
+        ? state
+        : {
+            ...state,
+            save: { status: 'idle' },
+            recovery: {
+              status: 'collision',
+              latest: state.recovery.latest,
+              intent: state.recovery.intent,
+              field: event.field,
+              reason: event.reason,
+            },
+          };
+    case 'reapply-succeeded':
+      return adoptRecoveryWorkspace(state, event.workspace);
+    case 'review-latest':
+      return state.recovery.status !== 'manual'
+        ? state
+        : adoptRecoveryWorkspaceForReview(state, state.recovery.latest);
+    case 'latest-kept':
+      return state.recovery.status === 'none'
+        ? state
+        : adoptRecoveryWorkspace(state, state.recovery.latest);
+    default:
+      return null;
+  }
+}
+
+function adoptRecoveryWorkspaceForReview<State extends Extract<AccountMapState, { mode: 'setup' | 'map' }>>(
+  state: State,
+  workspace: WorkspaceDocument,
+): AccountMapState {
+  const recovery = state.recovery;
+  if (recovery.status !== 'manual') return state;
+  const applied = workspace.accountMap.applied;
+  if (state.mode === 'map' && applied !== null) {
+    if (!workspaceContainsMapTarget(workspace, recovery.targetId)) {
+      return {
+        ...state,
+        save: { status: 'idle' },
+        recovery: { ...recovery, reason: 'target-missing' },
+      };
+    }
+    return {
+      ...state,
+      workspace,
+      applied: structuredClone(applied),
+      save: { status: 'idle' },
+      recovery: { status: 'none' },
+    };
+  }
+  if (state.mode === 'setup' && applied === null) {
+    const draft = workspace.accountMap.draft;
+    return {
+      ...state,
+      workspace,
+      draft: draft === null ? null : structuredClone(draft),
+      step: draft?.step ?? 'connect',
+      resumed: draft !== null,
+      mainChanged: draft !== null && draft.sourceMainUpdatedAt !== state.main.updatedAt,
+      save: { status: 'idle' },
+      recovery: { status: 'none' },
+    };
+  }
+  return adoptRecoveryWorkspace(state, workspace);
+}
+
+function workspaceContainsMapTarget(workspace: WorkspaceDocument, targetId: string): boolean {
+  if (targetId.startsWith('location:')) {
+    return workspace.locations.some(({ id }) => id === targetId.replace(/^location:/u, ''));
+  }
+  if (targetId.startsWith('custom:')) {
+    return workspace.accountMap.applied?.customPurposes.some(({ id }) => id === targetId) === true;
+  }
+  return workspace.accountMap.applied !== null;
+}
+
+function adoptRecoveryWorkspace<State extends Extract<AccountMapState, { mode: 'setup' | 'map' }>>(
+  state: State,
+  workspace: WorkspaceDocument,
+): AccountMapState {
+  const applied = workspace.accountMap.applied;
+  if (applied !== null) {
+    return {
+      mode: 'map',
+      workspace,
+      main: state.main,
+      applied: structuredClone(applied),
+      interaction: emptyInteraction(),
+      save: { status: 'idle' },
+      recovery: { status: 'none' },
+    };
+  }
+  const draft = workspace.accountMap.draft;
+  return {
+    mode: 'setup',
+    workspace,
+    main: state.main,
+    draft,
+    step: draft?.step ?? 'connect',
+    resumed: draft !== null,
+    mainChanged: draft !== null && draft.sourceMainUpdatedAt !== state.main.updatedAt,
+    exitRequested: false,
+    save: { status: 'idle' },
+    recovery: { status: 'none' },
+  };
 }
 
 function withDraftStep(

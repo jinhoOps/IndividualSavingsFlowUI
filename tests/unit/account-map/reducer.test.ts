@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { accountMapReducer, type AccountMapState } from '../../../src/account-map/application/reducer';
+import type { AccountMapEditIntent } from '../../../src/account-map/domain/editIntent';
 import type { AccountMapApplied, AccountMapDraft } from '../../../src/account-map/domain/model';
 import type { MainData } from '../../../src/main/domain/model';
 import { createEmptyWorkspace } from '../../../src/workspace/domain/model';
@@ -31,17 +32,144 @@ describe('Account Map reducer', () => {
     expect(state.mode === 'map' && state.interaction.pinnedNodeId).toBeNull();
   });
 
-  it('keeps UI state during pending, conflict, and retry', () => {
+  it('keeps UI state during pending, transport failure, and retry', () => {
     const pinned = accountMapReducer(mapState(), { type: 'node-invoked', nodeId: 'a' });
     const pending = accountMapReducer(pinned, { type: 'save-requested' });
     expect(pending.mode === 'map' && pending.save.status).toBe('pending');
-    const failed = accountMapReducer(pending, { type: 'save-failed', reason: 'conflict' });
+    const failed = accountMapReducer(pending, { type: 'save-failed', reason: 'unavailable' });
     expect(failed.mode === 'map' && failed).toMatchObject({
       interaction: { pinnedNodeId: 'a' },
-      save: { status: 'failed', reason: 'conflict' },
+      save: { status: 'failed', reason: 'unavailable' },
     });
     const retry = accountMapReducer(failed, { type: 'retry-requested' });
     expect(retry.mode === 'map' && retry.save.status).toBe('pending');
+  });
+
+  it('stores a stale setup intent without replacing the typed draft or current workspace', () => {
+    const current = setupState();
+    const latest = { ...createEmptyWorkspace(2), revision: 2 };
+    const conflicted = accountMapReducer(current, {
+      type: 'save-conflicted',
+      latest,
+      intent: linkIntent(),
+    });
+
+    expect(conflicted.mode === 'setup' && conflicted).toMatchObject({
+      workspace: { revision: 0 },
+      draft: current.mode === 'setup' ? current.draft : null,
+      save: { status: 'idle' },
+      recovery: { status: 'stale', latest: { revision: 2 }, intent: linkIntent() },
+    });
+  });
+
+  it('stores a stale modal intent without closing the active modal', () => {
+    let current = mapState();
+    current = accountMapReducer(current, { type: 'node-invoked', nodeId: 'a' });
+    current = accountMapReducer(current, { type: 'node-invoked', nodeId: 'a' });
+    const latest = { ...createEmptyWorkspace(2), revision: 2 };
+
+    const conflicted = accountMapReducer(current, {
+      type: 'save-conflicted',
+      latest,
+      intent: linkIntent(),
+    });
+
+    expect(conflicted.mode === 'map' && conflicted).toMatchObject({
+      workspace: { revision: 0 },
+      interaction: { modalNodeId: 'a' },
+      recovery: { status: 'stale', latest: { revision: 2 }, intent: linkIntent() },
+    });
+  });
+
+  it('retains the stale intent and exposes collision field metadata', () => {
+    const latest = { ...createEmptyWorkspace(2), revision: 2 };
+    const stale = accountMapReducer(mapState(), {
+      type: 'save-conflicted', latest, intent: linkIntent(),
+    });
+    const collided = accountMapReducer(stale, {
+      type: 'reapply-collided', field: 'monthlyAmountWon', reason: 'field-conflict',
+    });
+
+    expect(collided.mode === 'map' && collided.recovery).toEqual({
+      status: 'collision',
+      latest,
+      intent: linkIntent(),
+      field: 'monthlyAmountWon',
+      reason: 'field-conflict',
+    });
+  });
+
+  it('adopts the replayed workspace and clears recovery after reapply succeeds', () => {
+    const stale = accountMapReducer(mapState(), {
+      type: 'save-conflicted', latest: createEmptyWorkspace(2), intent: linkIntent(),
+    });
+    const saved = { ...createEmptyWorkspace(3), revision: 3 };
+    saved.accountMap.applied = applied('purpose');
+    const reapplied = accountMapReducer(stale, { type: 'reapply-succeeded', workspace: saved });
+
+    expect(reapplied.mode === 'map' && reapplied).toMatchObject({
+      workspace: { revision: 3 },
+      recovery: { status: 'none' },
+      save: { status: 'idle' },
+    });
+  });
+
+  it('adopts latest map or setup mode when the user keeps the latest value', () => {
+    const latestMap = { ...createEmptyWorkspace(2), revision: 2 };
+    latestMap.accountMap.applied = applied('account');
+    const staleSetup = accountMapReducer(setupState(), {
+      type: 'save-conflicted', latest: latestMap, intent: linkIntent(),
+    });
+    const mapped = accountMapReducer(staleSetup, { type: 'latest-kept' });
+    expect(mapped).toMatchObject({ mode: 'map', workspace: { revision: 2 }, applied: { layout: 'account' }, recovery: { status: 'none' } });
+
+    const latestSetup = { ...createEmptyWorkspace(3), revision: 3 };
+    latestSetup.accountMap.draft = draft();
+    const staleMap = accountMapReducer(mapState(), {
+      type: 'save-conflicted', latest: latestSetup, intent: linkIntent(),
+    });
+    const setup = accountMapReducer(staleMap, { type: 'latest-kept' });
+    expect(setup).toMatchObject({ mode: 'setup', workspace: { revision: 3 }, draft: expect.any(Object), recovery: { status: 'none' } });
+  });
+
+  it('keeps the modal open while adopting latest for manual compound review', () => {
+    let current = accountMapReducer(mapState(), { type: 'node-invoked', nodeId: 'a' });
+    current = accountMapReducer(current, { type: 'node-invoked', nodeId: 'a' });
+    const latest = { ...createEmptyWorkspace(2), revision: 2 };
+    latest.accountMap.applied = applied('account');
+    const conflicted = accountMapReducer(current, {
+      type: 'save-manual-conflicted', latest, targetId: 'a', reason: 'compound-edit',
+    });
+    expect(conflicted).toMatchObject({
+      mode: 'map', workspace: { revision: 0 }, interaction: { modalNodeId: 'a' },
+      recovery: { status: 'manual', latest: { revision: 2 }, targetId: 'a', reason: 'compound-edit' },
+    });
+
+    const reviewing = accountMapReducer(conflicted, { type: 'review-latest' });
+    expect(reviewing).toMatchObject({
+      mode: 'map', workspace: { revision: 2 }, applied: { layout: 'account' },
+      interaction: { modalNodeId: 'a' }, recovery: { status: 'none' },
+    });
+  });
+
+  it('keeps manual recovery and inputs when the latest workspace removed the modal target', () => {
+    let current: AccountMapState = mapState();
+    if (current.mode !== 'map') throw new Error('map state required');
+    current = { ...current, workspace: { ...current.workspace, locations: [{ id: 'checking', shortName: '생활비', kind: 'bank', roles: ['spending'], createdAt: 1, updatedAt: 1 }] } };
+    current = accountMapReducer(current, { type: 'node-invoked', nodeId: 'location:checking' });
+    current = accountMapReducer(current, { type: 'node-invoked', nodeId: 'location:checking' });
+    const latest = createEmptyWorkspace(2);
+    latest.accountMap.applied = applied('purpose');
+    const conflicted = accountMapReducer(current, {
+      type: 'save-manual-conflicted', latest, targetId: 'location:checking', reason: 'compound-edit',
+    });
+
+    const reviewed = accountMapReducer(conflicted, { type: 'review-latest' });
+
+    expect(reviewed).toMatchObject({
+      mode: 'map', workspace: { revision: 0 }, interaction: { modalNodeId: 'location:checking' },
+      recovery: { status: 'manual', reason: 'target-missing', targetId: 'location:checking' },
+    });
   });
 
   it('moves setup to review, preserves draft on exit, and clears only draft on cancellation', () => {
@@ -80,7 +208,7 @@ function mapState(): AccountMapState {
   return {
     mode: 'map', workspace, main: main(), applied: applied('purpose'),
     interaction: { transientNodeId: null, pinnedNodeId: null, modalNodeId: null },
-    save: { status: 'idle' },
+    save: { status: 'idle' }, recovery: { status: 'none' },
   };
 }
 
@@ -88,7 +216,7 @@ function setupState(): AccountMapState {
   const workspace = createEmptyWorkspace(1);
   return {
     mode: 'setup', workspace, main: main(), draft: draft(), step: 'connect', resumed: false,
-    mainChanged: false, exitRequested: false, save: { status: 'idle' },
+    mainChanged: false, exitRequested: false, save: { status: 'idle' }, recovery: { status: 'none' },
   };
 }
 
@@ -102,4 +230,15 @@ function draft(): AccountMapDraft {
 
 function applied(layout: AccountMapApplied['layout']): AccountMapApplied {
   return { schemaVersion: 1, sourceMainUpdatedAt: 10, customPurposes: [], links: [], layout, setupCompletedAt: 10, updatedAt: 10 };
+}
+
+function linkIntent(): AccountMapEditIntent {
+  return {
+    kind: 'link',
+    id: 'living',
+    edit: {
+      base: { monthlyAmountWon: 700_000, status: 'active', remainder: true },
+      next: { monthlyAmountWon: 650_000, status: 'active', remainder: true },
+    },
+  };
 }

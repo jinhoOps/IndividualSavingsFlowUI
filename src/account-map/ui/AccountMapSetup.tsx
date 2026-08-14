@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState, type JSX } from 'react';
 import type { MainData } from '../../main/domain/model';
 import type { FinancialLocation, FinancialRole } from '../../workspace/domain/financialLocation';
 import type { WorkspaceDocument } from '../../workspace/domain/model';
+import type { RecoveryState } from '../application/reducer';
 import { findLocationDuplicate, INSTITUTIONS } from '../domain/institutions';
 import {
   SYSTEM_PURPOSE_IDS,
@@ -31,6 +32,10 @@ export interface AccountMapSetupProps {
   step: AccountMapDraft['step'];
   mainChanged: boolean;
   saveFailed: boolean;
+  recoveryPending: boolean;
+  recovery: RecoveryState;
+  onReapply(): Promise<boolean>;
+  onKeepLatest(): void;
   onCommitConnection(input: {
     purposeId: PurposeId;
     locationId: string;
@@ -93,6 +98,7 @@ export function AccountMapSetup(props: AccountMapSetupProps): JSX.Element {
         </div>
         {!canApply ? <p className="account-map-hint">수입은 전체 금액을 연결하고, 초과 연결은 먼저 조정해 주세요.</p> : null}
         {props.saveFailed ? <SaveFailure /> : null}
+        {props.recovery.status === 'none' ? null : <RecoveryControls recovery={props.recovery} pending={props.recoveryPending} onReapply={props.onReapply} onKeepLatest={props.onKeepLatest} />}
         <footer className="account-map-actions">
           <button type="button" className="ui-button ui-button--secondary" onClick={props.onBack}>이전</button>
           <button type="button" className="ui-button ui-button--primary" disabled={!canApply} onClick={props.onApply}>지도 만들기</button>
@@ -141,6 +147,10 @@ export function AccountMapSetup(props: AccountMapSetupProps): JSX.Element {
           main={props.main}
           draft={props.draft}
           saveFailed={props.saveFailed}
+          recoveryPending={props.recoveryPending}
+          recovery={props.recovery}
+          onReapply={props.onReapply}
+          onKeepLatest={props.onKeepLatest}
           onCancel={() => setActivePurposeId(null)}
           onComplete={async (input) => {
             const saved = await props.onCommitConnection(input);
@@ -162,18 +172,30 @@ export function AccountMapSetup(props: AccountMapSetupProps): JSX.Element {
   );
 }
 
-function ConnectionDialog({ purposeId, workspace, main, draft, saveFailed, onCancel, onComplete }: {
+function ConnectionDialog({ purposeId, workspace, main, draft, saveFailed, recoveryPending, recovery, onReapply, onKeepLatest, onCancel, onComplete }: {
   purposeId: PurposeId;
   workspace: WorkspaceDocument;
   main: MainData;
   draft: AccountMapDraft | null;
   saveFailed: boolean;
+  recoveryPending: boolean;
+  recovery: RecoveryState;
+  onReapply(): Promise<boolean>;
+  onKeepLatest(): void;
   onCancel(): void;
   onComplete(input: { purposeId: PurposeId; locationId: string; newLocation?: FinancialLocation; monthlyAmountWon?: number; restoreLocation?: boolean }): Promise<void>;
 }) {
   const titleId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
   const dirtyRef = useRef(false);
+  const onCancelRef = useRef(onCancel);
+  const onKeepLatestRef = useRef(onKeepLatest);
+  const recoveryRef = useRef(recovery);
+  const recoveryPendingRef = useRef(recoveryPending);
+  onCancelRef.current = onCancel;
+  onKeepLatestRef.current = onKeepLatest;
+  recoveryRef.current = recovery;
+  recoveryPendingRef.current = recoveryPending;
   const [mode, setMode] = useState<'choose' | 'create'>('choose');
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
   const [institutionId, setInstitutionId] = useState<string | null>(null);
@@ -196,7 +218,11 @@ function ConnectionDialog({ purposeId, workspace, main, draft, saveFailed, onCan
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault();
-        if (!dirtyRef.current || window.confirm('입력 중인 내용을 취소할까요?')) onCancel();
+        if (recoveryPendingRef.current) return;
+        if (recoveryRef.current.status !== 'none') {
+          onKeepLatestRef.current();
+          onCancelRef.current();
+        } else if (!dirtyRef.current || window.confirm('입력 중인 내용을 취소할까요?')) onCancelRef.current();
         return;
       }
       if (event.key !== 'Tab') return;
@@ -209,10 +235,14 @@ function ConnectionDialog({ purposeId, workspace, main, draft, saveFailed, onCan
     };
     document.addEventListener('keydown', onKeyDown);
     return () => { document.removeEventListener('keydown', onKeyDown); returnFocus?.focus(); };
-  }, [onCancel]);
+  }, []);
 
   function requestClose() {
-    if (!dirty || window.confirm('입력 중인 내용을 취소할까요?')) onCancel();
+    if (recoveryPending) return;
+    if (recovery.status !== 'none') {
+      onKeepLatest();
+      onCancel();
+    } else if (!dirty || window.confirm('입력 중인 내용을 취소할까요?')) onCancel();
   }
 
   const institution = INSTITUTIONS.find(([id]) => id === institutionId);
@@ -244,7 +274,7 @@ function ConnectionDialog({ purposeId, workspace, main, draft, saveFailed, onCan
               <fieldset><legend>기관 빠른 선택</legend><div className="account-map-institutions">{INSTITUTIONS.map(([id, name]) => <button key={id} type="button" className={institutionId === id ? 'is-selected' : ''} onClick={() => setInstitutionId(id)}>{name}</button>)}<button type="button" className={institutionId === 'custom' ? 'is-selected' : ''} onClick={() => setInstitutionId('custom')}>직접 입력</button></div></fieldset>
               {institutionId === 'custom' ? <label>기관 이름<input value={customInstitution} onChange={(event) => setCustomInstitution(event.target.value)} /></label> : null}
               <label>표시 이름<input value={shortName} maxLength={8} placeholder="예: 급여통장" onChange={(event) => setShortName(event.target.value)} /></label>
-              {duplicate.kind === 'none' ? null : <div className="account-map-duplicate"><p>{duplicate.kind === 'archived' ? '보관된 같은 항목이 있어요.' : '이미 같은 항목이 있어요.'}</p><button type="button" className="ui-button ui-button--secondary" disabled={pending || (additional && Number(amount) <= 0)} onClick={() => {
+              {duplicate.kind === 'none' ? null : <div className="account-map-duplicate"><p>{duplicate.kind === 'archived' ? '보관된 같은 항목이 있어요.' : '이미 같은 항목이 있어요.'}</p><button type="button" className="ui-button ui-button--secondary" disabled={pending || recovery.status !== 'none' || (additional && Number(amount) <= 0)} onClick={() => {
                 setPending(true);
                 void onComplete({ purposeId, locationId: duplicate.location.id, ...(duplicate.kind === 'archived' ? { restoreLocation: true } : {}), ...(additional ? { monthlyAmountWon: Number(amount) } : {}) }).finally(() => setPending(false));
               }}>{duplicate.kind === 'archived' ? '기존 항목 복원해서 연결' : '기존 항목 연결'}</button></div>}
@@ -252,8 +282,9 @@ function ConnectionDialog({ purposeId, workspace, main, draft, saveFailed, onCan
           )}
           {additional ? <label>이 계좌에 둘 월 금액<input inputMode="numeric" value={amount} placeholder="0" onChange={(event) => setAmount(event.target.value.replace(/\D/gu, ''))} /><span>원</span></label> : <p className="account-map-hint">첫 연결에는 {formatWon(reconcilePurpose(purposeId, draft ?? emptyDraft(main.updatedAt), workspace.locations, main).targetWon)} 전체가 자동으로 들어갑니다.</p>}
           {saveFailed ? <SaveFailure /> : null}
+          {recovery.status === 'none' ? null : <RecoveryControls recovery={recovery} pending={recoveryPending} onReapply={async () => { const saved = await onReapply(); if (saved) onCancel(); return saved; }} onKeepLatest={() => { onKeepLatest(); onCancel(); }} />}
         </div>
-        <footer><button type="button" className="ui-button ui-button--secondary" onClick={requestClose}>취소</button><button type="button" className="ui-button ui-button--primary" disabled={!canComplete || pending || duplicate.kind !== 'none' || (additional && Number(amount) <= 0)} onClick={() => {
+        <footer><button type="button" className="ui-button ui-button--secondary" disabled={recoveryPending} onClick={requestClose}>취소</button><button type="button" className="ui-button ui-button--primary" disabled={!canComplete || pending || recovery.status !== 'none' || duplicate.kind !== 'none' || (additional && Number(amount) <= 0)} onClick={() => {
           const newLocation = mode === 'create' ? createLocation(shortName, institutionId, institution, customInstitution, role) : undefined;
           const locationId = newLocation?.id ?? selectedLocationId;
           if (locationId === null) return;
@@ -295,3 +326,31 @@ function rootPurpose(id: PurposeId, draft: AccountMapDraft | null) { return id.s
 function titleFor(id: PurposeId, draft: AccountMapDraft | null) { return id.startsWith('custom:') ? draft?.customPurposes.find((purpose) => purpose.id === id)?.name ?? '세부 목적' : purposeMeta[id as SystemPurposeId].title; }
 function formatWon(value: number) { return `${new Intl.NumberFormat('ko-KR').format(value)}원`; }
 function SaveFailure() { return <p className="account-map-error" role="alert">저장하지 못했어요. 입력은 그대로 두었습니다.</p>; }
+
+function RecoveryControls({ recovery, pending = false, onReapply, onKeepLatest }: {
+  recovery: Exclude<RecoveryState, { status: 'none' }>;
+  pending?: boolean;
+  onReapply(): Promise<boolean>;
+  onKeepLatest(): void;
+}) {
+  const descriptionId = useId();
+  const replayRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (recovery.status === 'collision' || recovery.status === 'manual') replayRef.current?.focus();
+  }, [recovery.status, recovery.status === 'collision' ? recovery.field : '']);
+  const collision = recovery.status === 'collision';
+  const manual = recovery.status === 'manual';
+  return <div className="account-map-error" role={collision || manual ? 'alert' : 'status'}>
+    <p id={descriptionId}>{collision ? recoveryMessage(recovery.reason, recovery.field) : manual ? '여러 변경을 최신 상태에 자동으로 다시 적용하지 않습니다. 입력을 검토한 뒤 다시 저장해 주세요.' : '다른 곳에서 변경된 최신 상태를 불러왔어요. 입력은 그대로 두었습니다.'}</p>
+    <div className="account-map-actions">
+      <button ref={replayRef} type="button" className="ui-button ui-button--primary" aria-describedby={descriptionId} disabled={pending} onClick={() => void onReapply()}>{manual ? '최신 상태에서 다시 검토' : '최신 상태에서 다시 적용'}</button>
+      <button type="button" className="ui-button ui-button--secondary" disabled={pending} onClick={onKeepLatest}>최신 값 유지</button>
+    </div>
+  </div>;
+}
+
+function recoveryMessage(reason: string, field: string): string {
+  if (reason === 'duplicate-link') return '최신 상태에 같은 연결이 이미 있습니다. 최신 값을 유지하거나 입력을 다시 확인해 주세요.';
+  if (reason === 'target-missing') return '편집 대상이 최신 상태에 없습니다. 최신 값을 유지하거나 입력을 다시 확인해 주세요.';
+  return `${field} 항목이 최신 상태에서도 변경되어 자동으로 적용할 수 없습니다.`;
+}

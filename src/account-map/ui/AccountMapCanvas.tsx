@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type JSX } from 'react';
 import { flushSync } from 'react-dom';
 import type { MainData } from '../../main/domain/model';
 import type { FinancialLocation } from '../../workspace/domain/financialLocation';
-import type { MapInteractionState } from '../application/reducer';
+import type { MapInteractionState, RecoveryState } from '../application/reducer';
 import type { AccountMapApplied } from '../domain/model';
 import { buildAccountMapGraph, layoutAccountMap, type MapZoom } from './mapLayout';
 import { AccountMapModal, type AccountMapNodeEditInput } from './AccountMapModal';
@@ -26,12 +26,19 @@ export interface AccountMapCanvasProps {
   onSaveNodeEdit?(nodeId: string, input: AccountMapNodeEditInput): Promise<boolean>;
   onArchiveLocation?(locationId: string, replacementRemainderByPurpose: Record<string, string | null>): Promise<boolean>;
   onRestoreLocation?(locationId: string, restoreLinkIds: string[], remainderByPurpose: Record<string, string | null>): Promise<boolean>;
+  recovery?: RecoveryState;
+  recoveryPending?: boolean;
+  saveFailed?: boolean;
+  onReapply?(): Promise<boolean>;
+  onKeepLatest?(): void;
 }
 
 export function AccountMapCanvas({
   applied, main, locations, interaction, viewport,
   onTransient, onBlur, onInvoke, onBackground, onLayoutChange, onModalClose = () => undefined,
   onSaveNodeEdit, onArchiveLocation, onRestoreLocation,
+  recovery = { status: 'none' }, recoveryPending = false, saveFailed = false,
+  onReapply = async () => false, onKeepLatest = () => undefined,
 }: AccountMapCanvasProps): JSX.Element {
   const [zoom, setZoom] = useState<MapZoom>('default');
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -177,7 +184,7 @@ export function AccountMapCanvas({
           return <tr key={`row:${edge.id}`}>{applied.layout === 'purpose' ? <><td>{purpose.label}</td><td>{location.label}</td></> : <><td>{location.label}</td><td>{purpose.label}</td></>}<td>{formatWon(edge.amountWon)}</td><td>{edge.status === 'active' ? '연결됨' : '중지됨'}</td></tr>;
         })}</tbody>
       </table>
-      {modalNode === undefined ? null : <AccountMapModal node={modalNode} related={modalRelated} sourceElement={nodeRefs.current.get(modalNode.id) ?? null} fallbackElement={headingRef.current} reducedMotion={reducedMotion} onClose={onModalClose} onSaveEdit={onSaveNodeEdit === undefined ? undefined : (input) => onSaveNodeEdit(modalNode.id, input)} onArchiveLocation={onArchiveLocation} onRestoreLocation={onRestoreLocation} />}
+      {modalNode === undefined ? null : <AccountMapModal node={modalNode} related={modalRelated} sourceElement={nodeRefs.current.get(modalNode.id) ?? null} fallbackElement={headingRef.current} reducedMotion={reducedMotion} recovery={recovery} recoveryPending={recoveryPending} saveFailed={saveFailed} onReapply={onReapply} onKeepLatest={onKeepLatest} onClose={onModalClose} onSaveEdit={onSaveNodeEdit === undefined ? undefined : (input) => onSaveNodeEdit(modalNode.id, input)} onArchiveLocation={onArchiveLocation} onRestoreLocation={onRestoreLocation} />}
     </section>
   );
 }
