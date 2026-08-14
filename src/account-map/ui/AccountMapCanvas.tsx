@@ -69,6 +69,7 @@ export function AccountMapCanvas({
     if (interaction.transientNodeId === null && interaction.pinnedNodeId === null) return;
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
+      if (event.defaultPrevented || hasActiveOverlay()) return;
       event.preventDefault();
       onEscape();
     };
@@ -204,6 +205,11 @@ export function AccountMapCanvas({
       {modalNode === undefined ? null : <AccountMapModal node={modalNode} related={modalRelated} locations={[...locations]} sourceElement={nodeRefs.current.get(modalNode.id) ?? null} fallbackElement={headingRef.current} reducedMotion={reducedMotion} recovery={recovery} recoveryPending={recoveryPending} saveFailed={saveFailed} onReapply={onReapply} onKeepLatest={onKeepLatest} onClose={onModalClose} onSaveEdit={onSaveNodeEdit === undefined ? undefined : (input) => onSaveNodeEdit(modalNode.id, input)} onConnectLocation={modalNode.kind !== 'purpose' || onConnectLocation === undefined ? undefined : (locationId, amount) => onConnectLocation(modalNode.id, locationId, amount)} onCreateAndConnectLocation={modalNode.kind !== 'purpose' || onCreateAndConnectLocation === undefined ? undefined : (location, amount) => onCreateAndConnectLocation(modalNode.id, location, amount)} onArchivePurpose={onArchivePurpose} onArchiveLocation={onArchiveLocation} onRestoreLocation={onRestoreLocation} />}
     </section>
   );
+}
+
+function hasActiveOverlay(): boolean {
+  return [...document.querySelectorAll<HTMLElement>('dialog[open], [role="dialog"], [role="menu"]')]
+    .some((element) => element.getAttribute('aria-hidden') !== 'true' && !element.hidden);
 }
 
 function statusLabel(status: string): string { return status === 'unassigned' ? ' · 연결 필요' : status === 'excess' ? ' · 초과 연결' : status === 'deficit' ? ' · 부족함' : ''; }

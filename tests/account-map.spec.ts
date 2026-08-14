@@ -65,6 +65,30 @@ function editableWorkspace() {
   return workspace;
 }
 
+function responsiveWorkspace() {
+  const workspace = editableWorkspace();
+  workspace.accountMap.applied!.links.find(({ id }) => id === 'living')!.monthlyAmountWon = 800_000;
+  workspace.accountMap.applied!.customPurposes = [
+    {
+      id: 'custom:trip', parentId: 'system:living', name: '여행', targetMonthlyWon: 100_000,
+      createdAt: now, updatedAt: now,
+    },
+    {
+      id: 'custom:gifts', parentId: 'system:living', name: '선물', targetMonthlyWon: 50_000,
+      archivedAt: now, createdAt: now, updatedAt: now,
+    },
+  ];
+  workspace.accountMap.applied!.links.push(
+    link('trip-link', 'custom:trip', 'living-backup', 100_000, true),
+    {
+      ...link('gifts-link', 'custom:gifts', 'living', 50_000, false),
+      status: 'suspended',
+      suspendedReason: 'user',
+    },
+  );
+  return workspace;
+}
+
 function manyToManyWorkspace() {
   const workspace = mappedWorkspace();
   workspace.locations.push(location('brokerage', 'ISA', 'future-bank', '미래은행', ['investing']));
@@ -309,6 +333,54 @@ test('supports layout, semantic zoom, focus parity, second invoke, and same-moda
   await page.getByRole('button', { name: '축소' }).click();
   await expect(page.getByRole('button', { name: '확대' })).toBeEnabled();
   await expect(page.getByRole('table', { name: '계좌 연결 읽기 표' })).toBeAttached();
+});
+
+test('gives management overlays first Escape ownership before clearing a pinned map node', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await seed(page, responsiveWorkspace());
+  await page.goto('apps/account-map/');
+  const living = page.getByRole('button', { name: /생활비.*900,000원/ }).first();
+
+  await living.tap();
+  await expect(living).toHaveClass(/is-pinned/);
+  await expect(page.locator('.account-map-edge-amount')).toHaveCount(2);
+  await page.getByRole('button', { name: '관리 메뉴' }).click();
+  await expect(page.getByRole('menu', { name: '관리 메뉴' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('menu', { name: '관리 메뉴' })).toHaveCount(0);
+  await expect(living).toHaveClass(/is-pinned/);
+  await expect(page.locator('.account-map-edge-amount')).toHaveCount(2);
+  await page.keyboard.press('Escape');
+  await expect(living).not.toHaveClass(/is-pinned/);
+  await expect(page.locator('.account-map-edge-amount')).toHaveCount(0);
+
+  await living.tap();
+  await expect(living).toHaveClass(/is-pinned/);
+  await page.getByRole('button', { name: '관리 메뉴' }).click();
+  await page.getByRole('menuitem', { name: '월 연결 다시 만들기' }).click();
+  const confirmation = page.getByRole('dialog', { name: '월 연결을 다시 만들까요?' });
+  await expect(confirmation).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(confirmation).toHaveCount(0);
+  await expect(living).toHaveClass(/is-pinned/);
+  await expect(page.locator('.account-map-edge-amount')).toHaveCount(2);
+  await page.keyboard.press('Escape');
+  await expect(living).not.toHaveClass(/is-pinned/);
+  await expect(page.locator('.account-map-edge-amount')).toHaveCount(0);
+
+  await living.tap();
+  await expect(living).toHaveClass(/is-pinned/);
+  await page.getByRole('button', { name: '관리 메뉴' }).click();
+  await page.getByRole('menuitem', { name: /선물 · 생활비 · 50,000원/ }).click();
+  const purposeRestore = page.getByRole('dialog', { name: '선물 복원' });
+  await expect(purposeRestore).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(purposeRestore).toHaveCount(0);
+  await expect(living).toHaveClass(/is-pinned/);
+  await expect(page.locator('.account-map-edge-amount')).toHaveCount(2);
+  await page.keyboard.press('Escape');
+  await expect(living).not.toHaveClass(/is-pinned/);
+  await expect(page.locator('.account-map-edge-amount')).toHaveCount(0);
 });
 
 test('explicitly reapplies a stale edit without losing an unrelated concurrent change', async ({ page }) => {
@@ -603,14 +675,14 @@ test('keeps all Account Map states contained with 44px action targets at support
     if (sessionStorage.getItem('account-map-responsive-seeded') !== null) return;
     localStorage.setItem(key, JSON.stringify(workspace));
     sessionStorage.setItem('account-map-responsive-seeded', 'true');
-  }, { key: STORAGE_KEY, workspace: editableWorkspace() });
+  }, { key: STORAGE_KEY, workspace: responsiveWorkspace() });
   const viewports = [{ width: 390, height: 844 }, { width: 768, height: 1024 }, { width: 1280, height: 900 }];
   for (const [index, viewport] of viewports.entries()) {
     await page.setViewportSize(viewport);
     if (index > 0) {
       await page.evaluate(({ key, workspace }) => localStorage.setItem(key, JSON.stringify(workspace)), {
         key: STORAGE_KEY,
-        workspace: editableWorkspace(),
+        workspace: responsiveWorkspace(),
       });
     }
     await page.goto('apps/account-map/');
@@ -618,10 +690,34 @@ test('keeps all Account Map states contained with 44px action targets at support
     await expectContainedActionTargets(page, `${prefix} map`);
 
     await page.getByRole('button', { name: '관리 메뉴' }).click();
+    const archivedPurpose = page.getByRole('menuitem', { name: /선물 · 생활비 · 50,000원/ });
+    await expect(archivedPurpose).toBeVisible();
     await expectContainedActionTargets(page, `${prefix} management menu`);
-    await page.keyboard.press('Escape');
+    await archivedPurpose.click();
+    const purposeRestore = page.getByRole('dialog', { name: '선물 복원' });
+    await expect(purposeRestore).toBeVisible();
+    await expect(purposeRestore.getByRole('textbox', { name: '월 목표 금액' })).toBeVisible();
+    await expect(purposeRestore.getByRole('button', { name: '목적 복원' })).toBeVisible();
+    await expectContainedActionTargets(page, `${prefix} purpose restore`);
+    await page.getByRole('button', { name: '취소' }).click();
 
-    await openNode(page, /생활비.*1,000,000원/);
+    await openNode(page, /여행.*100,000원/);
+    const more = page.getByRole('button', { name: '여행 더보기' });
+    await expect(more).toBeVisible();
+    await expectContainedActionTargets(page, `${prefix} custom-purpose read`);
+    await more.click();
+    await expect(page.getByRole('menuitem', { name: '목적 보관' })).toBeVisible();
+    await expectContainedActionTargets(page, `${prefix} custom-purpose title menu`);
+    await page.getByRole('menuitem', { name: '목적 보관' }).click();
+    const purposeArchive = page.getByRole('dialog', { name: '여행 보관' });
+    await expect(purposeArchive).toBeVisible();
+    await expect(purposeArchive.getByRole('button', { name: '취소' })).toBeVisible();
+    await expect(purposeArchive.getByRole('button', { name: '보관하기' })).toBeVisible();
+    await expectContainedActionTargets(page, `${prefix} custom-purpose archive`);
+    await page.getByRole('button', { name: '취소' }).click();
+    await page.getByRole('button', { name: '닫기' }).click();
+
+    await openNode(page, /생활비.*900,000원/);
     await expectContainedActionTargets(page, `${prefix} node read`);
     await page.getByRole('button', { name: '편집' }).click();
     await expectContainedActionTargets(page, `${prefix} node edit`);

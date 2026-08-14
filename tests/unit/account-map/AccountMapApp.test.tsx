@@ -141,6 +141,47 @@ describe('AccountMapApp', () => {
     expect(living).toHaveFocus();
   });
 
+  it('gives the management popover first Escape ownership before clearing the pinned map node', () => {
+    const setup = mapConnectionRepositories();
+    const { container } = render(<AccountMapApp repositories={setup.repositories} />);
+    const living = screen.getByRole('button', { name: /생활비 · 1,000,000원/ });
+
+    living.focus();
+    fireEvent.click(living);
+    fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
+    expect(screen.getByRole('menu', { name: '관리 메뉴' })).toBeVisible();
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByRole('menu', { name: '관리 메뉴' })).not.toBeInTheDocument();
+    expect(living).toHaveClass('is-pinned');
+    expect(container.querySelector('.account-map-edge-amount')).toHaveTextContent('1,000,000원');
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(living).not.toHaveClass('is-pinned');
+    expect(container.querySelector('.account-map-edge-amount')).toBeNull();
+  });
+
+  it('gives reset confirmation first Escape ownership before clearing the pinned map node', () => {
+    const setup = mapConnectionRepositories();
+    const { container } = render(<AccountMapApp repositories={setup.repositories} />);
+    const living = screen.getByRole('button', { name: /생활비 · 1,000,000원/ });
+
+    living.focus();
+    fireEvent.click(living);
+    fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: '월 연결 다시 만들기' }));
+    const confirmation = screen.getByRole('dialog', { name: '월 연결을 다시 만들까요?' });
+
+    fireEvent.keyDown(confirmation, { key: 'Escape' });
+    expect(screen.queryByRole('dialog', { name: '월 연결을 다시 만들까요?' })).not.toBeInTheDocument();
+    expect(living).toHaveClass('is-pinned');
+    expect(container.querySelector('.account-map-edge-amount')).toHaveTextContent('1,000,000원');
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(living).not.toHaveClass('is-pinned');
+    expect(container.querySelector('.account-map-edge-amount')).toBeNull();
+  });
+
   it('returns a successful map-connection replay to its surviving source node', async () => {
     const setup = mapConnectionRepositories(false, true);
     render(<AccountMapApp repositories={setup.repositories} />);
