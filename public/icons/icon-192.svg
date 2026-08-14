@@ -1,11 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">
-  <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#ea5b2a"/>
-      <stop offset="100%" stop-color="#1e8b7c"/>
-    </linearGradient>
-  </defs>
-  <rect width="192" height="192" rx="38" fill="url(#g)"/>
-  <path d="M56 126h80v14H56z" fill="#ffffff" opacity="0.85"/>
-  <path d="M56 96h18v30H56zM87 74h18v52H87zM118 58h18v68h-18z" fill="#ffffff"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 512 512" data-brand-colors="#ea5b2a #1e8b7c #173a3a">
+  <defs><linearGradient id="main-brand-gradient" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#ea5b2a"/><stop offset="100%" stop-color="#1e8b7c"/></linearGradient></defs>
+  <rect data-brand-background="" width="512" height="512" rx="96" fill="url(#main-brand-gradient)"/>
+  <path data-brand-baseline="" data-brand-essential-bounds="150 334 212 38" d="M150 334h212v38H150z" fill="#ffffff" opacity="0.85"/>
+  <path data-brand-bar="bar-1" data-brand-essential-bounds="150 252 48 82" d="M150 252h48v82H150z" fill="#ffffff"/>
+  <path data-brand-bar="bar-2" data-brand-essential-bounds="232 191 48 143" d="M232 191h48v143H232z" fill="#ffffff"/>
+  <path data-brand-bar="bar-3" data-brand-essential-bounds="314 146 48 188" d="M314 146h48v188H314z" fill="#ffffff"/>
+  <polyline data-brand-trend="174,236 215,264 256,204 297,216 338,132" data-brand-essential-bounds="174 132 164 132" points="174,236 215,264 256,204 297,216 338,132" fill="none" stroke="#173a3a" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle data-brand-terminal-dot="" data-brand-essential-bounds="324 118 28 28" cx="338" cy="132" r="14" fill="#173a3a"/>
 </svg>
