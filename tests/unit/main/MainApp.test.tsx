@@ -286,6 +286,27 @@ describe('MainApp', () => {
     expect(screen.queryByRole('heading', { name: 'setup:welcome' })).not.toBeInTheDocument();
   });
 
+  it('keeps the fresh intro when StrictMode replays bootstrap after welcome persistence', async () => {
+    let progress: ReturnType<MainRepository['loadSetupProgress']> = null;
+    const storage = repository({ status: 'empty', data: null, original: null });
+    storage.load = vi.fn(storage.load);
+    storage.loadSetupProgress = () => progress;
+    storage.saveSetupProgress = vi.fn(async (step, draft, kind = 'initial') => {
+      progress = { kind, step, draft: { ...draft }, savedAt: 10 };
+    });
+
+    render(
+      <StrictMode>
+        <MainApp repository={storage} />
+      </StrictMode>,
+    );
+
+    await waitFor(() => expect(storage.saveSetupProgress).toHaveBeenCalledOnce());
+    expect(screen.getAllByTestId('main-welcome-intro')).toHaveLength(1);
+    expect(screen.queryByRole('heading', { name: 'setup:welcome' })).not.toBeInTheDocument();
+    expect(storage.load).toHaveBeenCalledOnce();
+  });
+
   it('skips mounting the intro under reduced motion and focuses only the setup heading', async () => {
     mainAppMocks.reducedMotion = true;
     const storage = repository({ status: 'empty', data: null, original: null });

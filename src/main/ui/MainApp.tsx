@@ -65,6 +65,10 @@ export function MainApp({
   const importSelectionRef = useRef(0);
   const restoreFocusRequestedRef = useRef(false);
   const savingRef = useRef(false);
+  const initialBootstrapRequestRef = useRef<{
+    repository: MainRepository;
+    promise: Promise<MainBootstrapResult>;
+  } | null>(null);
   const introEntryIdRef = useRef(0);
   const persistedFreshIntroEntryIdsRef = useRef(new Set<number>());
   const [initialEditPath] = useState<keyof MainData | undefined>(() => consumeEditIntent());
@@ -76,7 +80,12 @@ export function MainApp({
 
   useEffect(() => {
     let active = true;
-    void bootstrapMain(repository).then((loaded) => {
+    let request = initialBootstrapRequestRef.current;
+    if (request === null || request.repository !== repository) {
+      request = { repository, promise: bootstrapMain(repository) };
+      initialBootstrapRequestRef.current = request;
+    }
+    void request.promise.then((loaded) => {
       if (active) setBootstrapResult(loaded);
     });
     return () => {
