@@ -5,6 +5,6 @@
   <path data-brand-bar="bar-1" data-brand-essential-bounds="150 252 48 82" d="M150 252h48v82H150z" fill="#ffffff"/>
   <path data-brand-bar="bar-2" data-brand-essential-bounds="232 191 48 143" d="M232 191h48v143H232z" fill="#ffffff"/>
   <path data-brand-bar="bar-3" data-brand-essential-bounds="314 146 48 188" d="M314 146h48v188H314z" fill="#ffffff"/>
-  <polyline data-brand-trend="174,236 215,264 256,204 297,216 338,132" data-brand-essential-bounds="174 132 164 132" points="174,236 215,264 256,204 297,216 338,132" fill="none" stroke="#173a3a" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+  <polyline data-brand-trend="174,236 215,264 256,204 297,216 338,132" data-brand-essential-bounds="167 125 178 146" points="174,236 215,264 256,204 297,216 338,132" fill="none" stroke="#173a3a" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
   <circle data-brand-terminal-dot="" data-brand-essential-bounds="324 118 28 28" cx="338" cy="132" r="14" fill="#173a3a"/>
 </svg>

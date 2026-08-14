@@ -42,11 +42,12 @@ export function trendBounds() {
   const yValues = points.map(({ y }) => y);
   const minimumX = Math.min(...xValues);
   const minimumY = Math.min(...yValues);
+  const roundStrokeAllowance = TREND_STROKE_WIDTH / 2;
   return {
-    x: minimumX,
-    y: minimumY,
-    width: Math.max(...xValues) - minimumX,
-    height: Math.max(...yValues) - minimumY,
+    x: minimumX - roundStrokeAllowance,
+    y: minimumY - roundStrokeAllowance,
+    width: Math.max(...xValues) - minimumX + roundStrokeAllowance * 2,
+    height: Math.max(...yValues) - minimumY + roundStrokeAllowance * 2,
   };
 }
 
