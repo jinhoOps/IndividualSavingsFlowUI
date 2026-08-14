@@ -308,6 +308,8 @@ function adoptRecoveryWorkspaceForReview<State extends Extract<AccountMapState, 
 ): AccountMapState {
   const recovery = state.recovery;
   if (recovery.status !== 'manual') return state;
+  if (workspace.main.applied === null) return { mode: 'main-required' };
+  const main = structuredClone(workspace.main.applied);
   const applied = workspace.accountMap.applied;
   if (state.mode === 'setup' && applied !== null) {
     return { ...state, save: { status: 'idle' }, recovery: { ...recovery, reason: 'target-missing' } };
@@ -320,7 +322,6 @@ function adoptRecoveryWorkspaceForReview<State extends Extract<AccountMapState, 
         recovery: { ...recovery, reason: 'target-missing' },
       };
     }
-    const main = recoveryMain(workspace, state.main);
     return {
       ...state,
       workspace,
@@ -339,7 +340,6 @@ function adoptRecoveryWorkspaceForReview<State extends Extract<AccountMapState, 
   }
   if (state.mode === 'setup' && applied === null) {
     const draft = workspace.accountMap.draft;
-    const main = recoveryMain(workspace, state.main);
     return {
       ...state,
       workspace,
@@ -374,8 +374,9 @@ function adoptRecoveryWorkspace<State extends Extract<AccountMapState, { mode: '
   state: State,
   workspace: WorkspaceDocument,
 ): AccountMapState {
+  if (workspace.main.applied === null) return { mode: 'main-required' };
   const applied = workspace.accountMap.applied;
-  const main = recoveryMain(workspace, state.main);
+  const main = structuredClone(workspace.main.applied);
   if (applied !== null) {
     return {
       mode: 'map',
@@ -400,10 +401,6 @@ function adoptRecoveryWorkspace<State extends Extract<AccountMapState, { mode: '
     save: { status: 'idle' },
     recovery: { status: 'none' },
   };
-}
-
-function recoveryMain(workspace: WorkspaceDocument, fallback: MainData): MainData {
-  return structuredClone(workspace.main.applied ?? fallback);
 }
 
 function withDraftStep(

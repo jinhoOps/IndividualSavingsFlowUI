@@ -47,7 +47,7 @@ describe('Account Map reducer', () => {
 
   it('stores a stale setup intent without replacing the typed draft or current workspace', () => {
     const current = setupState();
-    const latest = { ...createEmptyWorkspace(2), revision: 2 };
+    const latest = workspaceWithMain(2);
     const conflicted = accountMapReducer(current, {
       type: 'save-conflicted',
       latest,
@@ -66,7 +66,7 @@ describe('Account Map reducer', () => {
     let current = mapState();
     current = accountMapReducer(current, { type: 'node-invoked', nodeId: 'a' });
     current = accountMapReducer(current, { type: 'node-invoked', nodeId: 'a' });
-    const latest = { ...createEmptyWorkspace(2), revision: 2 };
+    const latest = workspaceWithMain(2);
 
     const conflicted = accountMapReducer(current, {
       type: 'save-conflicted',
@@ -82,7 +82,7 @@ describe('Account Map reducer', () => {
   });
 
   it('retains the stale intent and exposes collision field metadata', () => {
-    const latest = { ...createEmptyWorkspace(2), revision: 2 };
+    const latest = workspaceWithMain(2);
     const stale = accountMapReducer(mapState(), {
       type: 'save-conflicted', latest, intent: linkIntent(),
     });
@@ -101,9 +101,9 @@ describe('Account Map reducer', () => {
 
   it('adopts the replayed workspace and clears recovery after reapply succeeds', () => {
     const stale = accountMapReducer(mapState(), {
-      type: 'save-conflicted', latest: createEmptyWorkspace(2), intent: linkIntent(),
+      type: 'save-conflicted', latest: workspaceWithMain(2), intent: linkIntent(),
     });
-    const saved = { ...createEmptyWorkspace(3), revision: 3 };
+    const saved = workspaceWithMain(3);
     saved.accountMap.applied = applied('purpose');
     const reapplied = accountMapReducer(stale, { type: 'reapply-succeeded', workspace: saved });
 
@@ -115,7 +115,7 @@ describe('Account Map reducer', () => {
   });
 
   it('adopts latest map or setup mode when the user keeps the latest value', () => {
-    const latestMap = { ...createEmptyWorkspace(2), revision: 2 };
+    const latestMap = workspaceWithMain(2);
     latestMap.accountMap.applied = applied('account');
     const staleSetup = accountMapReducer(setupState(), {
       type: 'save-conflicted', latest: latestMap, intent: linkIntent(),
@@ -123,7 +123,7 @@ describe('Account Map reducer', () => {
     const mapped = accountMapReducer(staleSetup, { type: 'latest-kept' });
     expect(mapped).toMatchObject({ mode: 'map', workspace: { revision: 2 }, applied: { layout: 'account' }, recovery: { status: 'none' } });
 
-    const latestSetup = { ...createEmptyWorkspace(3), revision: 3 };
+    const latestSetup = workspaceWithMain(3);
     latestSetup.accountMap.draft = draft();
     const staleMap = accountMapReducer(mapState(), {
       type: 'save-conflicted', latest: latestSetup, intent: linkIntent(),
@@ -134,7 +134,7 @@ describe('Account Map reducer', () => {
 
   it('adopts a concurrently updated Main source across stale recovery paths', () => {
     const latestMain = { ...main(), updatedAt: 20, monthlyLivingWon: 900_000 };
-    const latestMap = { ...createEmptyWorkspace(2), revision: 2 };
+    const latestMap = workspaceWithMain(2);
     latestMap.main.applied = latestMain;
     latestMap.accountMap.applied = applied('account');
     const staleMap = accountMapReducer(mapState(), {
@@ -152,7 +152,7 @@ describe('Account Map reducer', () => {
     const reviewed = accountMapReducer(manual, { type: 'review-latest' });
     expect(reviewed).toMatchObject({ mode: 'map', main: latestMain });
 
-    const latestSetup = { ...createEmptyWorkspace(3), revision: 3 };
+    const latestSetup = workspaceWithMain(3);
     latestSetup.main.applied = latestMain;
     latestSetup.accountMap.draft = draft();
     const staleSetup = accountMapReducer(mapState(), {
@@ -162,10 +162,29 @@ describe('Account Map reducer', () => {
     expect(kept).toMatchObject({ mode: 'setup', main: latestMain, mainChanged: true });
   });
 
+  it('requires Main when a concurrent recovery workspace removed its applied plan', () => {
+    const withoutMain = { ...createEmptyWorkspace(2), revision: 2 };
+
+    const stale = accountMapReducer(mapState(), {
+      type: 'save-conflicted', latest: withoutMain, intent: linkIntent(),
+    });
+    expect(accountMapReducer(stale, { type: 'latest-kept' })).toEqual({ mode: 'main-required' });
+    expect(accountMapReducer(stale, { type: 'reapply-succeeded', workspace: withoutMain }))
+      .toEqual({ mode: 'main-required' });
+
+    let modal = accountMapReducer(mapState(), { type: 'node-invoked', nodeId: 'a' });
+    modal = accountMapReducer(modal, { type: 'node-invoked', nodeId: 'a' });
+    const manual = accountMapReducer(modal, {
+      type: 'save-manual-conflicted', latest: withoutMain,
+      action: 'edit-node', targets: [{ kind: 'node', id: 'a' }], reason: 'compound-edit',
+    });
+    expect(accountMapReducer(manual, { type: 'review-latest' })).toEqual({ mode: 'main-required' });
+  });
+
   it('keeps the modal open while adopting latest for manual compound review', () => {
     let current = accountMapReducer(mapState(), { type: 'node-invoked', nodeId: 'a' });
     current = accountMapReducer(current, { type: 'node-invoked', nodeId: 'a' });
-    const latest = { ...createEmptyWorkspace(2), revision: 2 };
+    const latest = workspaceWithMain(2);
     latest.accountMap.applied = applied('account');
     const conflicted = accountMapReducer(current, {
       type: 'save-manual-conflicted', latest, action: 'edit-node', targets: [{ kind: 'node', id: 'a' }], reason: 'compound-edit',
@@ -188,7 +207,7 @@ describe('Account Map reducer', () => {
     current = { ...current, workspace: { ...current.workspace, locations: [{ id: 'checking', shortName: '생활비', kind: 'bank', roles: ['spending'], createdAt: 1, updatedAt: 1 }] } };
     current = accountMapReducer(current, { type: 'node-invoked', nodeId: 'location:checking' });
     current = accountMapReducer(current, { type: 'node-invoked', nodeId: 'location:checking' });
-    const latest = createEmptyWorkspace(2);
+    const latest = workspaceWithMain(2);
     latest.accountMap.applied = applied('purpose');
     const conflicted = accountMapReducer(current, {
       type: 'save-manual-conflicted', latest, action: 'edit-node', targets: [{ kind: 'node', id: 'location:checking' }], reason: 'compound-edit',
@@ -204,7 +223,7 @@ describe('Account Map reducer', () => {
 
   it('keeps setup input when manual review finds that latest already has an applied map', () => {
     const current = setupState();
-    const latest = createEmptyWorkspace(2);
+    const latest = workspaceWithMain(2);
     latest.accountMap.applied = applied('purpose');
     const conflicted = accountMapReducer(current, {
       type: 'save-manual-conflicted', latest, action: 'apply-map', targets: [], reason: 'compound-edit',
@@ -220,7 +239,7 @@ describe('Account Map reducer', () => {
 
   it('keeps compound modal input when a child link disappears or its location is archived', () => {
     const current = mapState();
-    const latest = createEmptyWorkspace(2);
+    const latest = workspaceWithMain(2);
     latest.locations = [{ id: 'checking', shortName: '생활비', kind: 'bank', roles: ['spending'], archivedAt: 2, createdAt: 1, updatedAt: 2 }];
     latest.accountMap.applied = {
       ...applied('purpose'),
@@ -241,7 +260,7 @@ describe('Account Map reducer', () => {
   it('keeps the active map modal when latest no longer has an applied map', () => {
     let current = accountMapReducer(mapState(), { type: 'node-invoked', nodeId: 'a' });
     current = accountMapReducer(current, { type: 'node-invoked', nodeId: 'a' });
-    const latest = createEmptyWorkspace(2);
+    const latest = workspaceWithMain(2);
     latest.accountMap.draft = draft();
     const conflicted = accountMapReducer(current, {
       type: 'save-manual-conflicted', latest, action: 'edit-node', targets: [{ kind: 'node', id: 'a' }], reason: 'compound-edit',
@@ -259,7 +278,7 @@ describe('Account Map reducer', () => {
     ['archive-location', { kind: 'link' as const, id: 'replacement-link' }],
     ['restore-location', { kind: 'restorable-link' as const, id: 'restored-link' }],
   ] as const)('keeps %s recovery when a replacement remainder target disappeared', (action, target) => {
-    const latest = createEmptyWorkspace(2);
+    const latest = workspaceWithMain(2);
     latest.locations = [{
       id: 'checking', shortName: '생활비', kind: 'bank', roles: ['spending'],
       ...(action === 'restore-location' ? { archivedAt: 2 } : {}), createdAt: 1, updatedAt: 2,
@@ -327,6 +346,13 @@ function setupState(): AccountMapState {
 
 function main(): MainData {
   return { schemaVersion: 2, updatedAt: 10, monthlyNetIncomeWon: 2_000_000, monthlyHousingWon: 500_000, monthlyLivingWon: 1_000_000, monthlySavingWon: 300_000, monthlyInvestmentWon: 200_000 };
+}
+
+function workspaceWithMain(revision: number) {
+  const workspace = createEmptyWorkspace(revision);
+  workspace.revision = revision;
+  workspace.main.applied = main();
+  return workspace;
 }
 
 function draft(): AccountMapDraft {

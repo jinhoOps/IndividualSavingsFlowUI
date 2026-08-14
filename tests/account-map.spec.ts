@@ -539,6 +539,35 @@ test('blocks a same-field stale replay, preserves input, and focuses the conflic
     .toMatchObject({ monthlyAmountWon: 850_000, remainder: true });
 });
 
+test('requires Main after a concurrent whole-workspace restore removes its applied plan', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await seed(page, editableWorkspace());
+  await page.goto('apps/account-map/');
+  const restored = emptyWorkspace();
+  restored.revision = 2;
+  restored.updatedAt = now + 1;
+  restored.main.applied = null;
+
+  await openNode(page, /계좌·보관처 · 생활비통장 ·/);
+  await page.getByRole('button', { name: '편집' }).click();
+  await page.getByRole('textbox', { name: '표시 이름' }).fill('생활통장');
+  await page.getByRole('textbox', { name: '생활비 월 금액' }).fill('800000');
+
+  await page.evaluate(({ key, workspace }) => {
+    localStorage.setItem(key, JSON.stringify(workspace));
+  }, { key: STORAGE_KEY, workspace: restored });
+
+  await page.getByRole('button', { name: '저장' }).click();
+  await expect(page.getByRole('button', { name: '최신 상태에서 다시 검토' })).toBeVisible();
+  await page.getByRole('button', { name: '최신 상태에서 다시 검토' }).click();
+
+  await expect(page.getByRole('heading', { name: '월 자금 계획이 먼저 필요해요' })).toBeVisible();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  const stored = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!), STORAGE_KEY);
+  expect(stored.main.applied).toBeNull();
+  expect(stored.accountMap.applied).toBeNull();
+});
+
 test('connects a spending location to investing with one role-and-link revision', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await seed(page, manyToManyWorkspace());
