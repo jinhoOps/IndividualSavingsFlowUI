@@ -123,6 +123,24 @@ describe('AccountMapApp', () => {
     expect(setup.saveIntent).not.toHaveBeenCalled();
   });
 
+  it('clears a pinned node and its edge amounts with Escape while retaining keyboard focus', () => {
+    const setup = mapConnectionRepositories();
+    const { container } = render(<AccountMapApp repositories={setup.repositories} />);
+    const living = screen.getByRole('button', { name: /생활비 · 1,000,000원/ });
+
+    living.focus();
+    fireEvent.click(living);
+    expect(living).toHaveClass('is-pinned');
+    expect(container.querySelector('.account-map-edge-amount')).toHaveTextContent('1,000,000원');
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    expect(living).not.toHaveClass('is-pinned');
+    expect(container.querySelector('.account-map-edge-amount')).toBeNull();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(living).toHaveFocus();
+  });
+
   it('returns a successful map-connection replay to its surviving source node', async () => {
     const setup = mapConnectionRepositories(false, true);
     render(<AccountMapApp repositories={setup.repositories} />);

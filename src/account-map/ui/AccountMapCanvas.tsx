@@ -21,6 +21,7 @@ export interface AccountMapCanvasProps {
   onBlur(nodeId: string): void;
   onInvoke(nodeId: string): void;
   onBackground(): void;
+  onEscape(): void;
   onLayoutChange(layout: AccountMapApplied['layout']): void;
   onModalClose?(): void;
   onSaveNodeEdit?(nodeId: string, input: AccountMapNodeEditInput): Promise<boolean>;
@@ -39,7 +40,7 @@ export interface AccountMapCanvasProps {
 
 export function AccountMapCanvas({
   applied, main, locations, interaction, viewport,
-  onTransient, onBlur, onInvoke, onBackground, onLayoutChange, onModalClose = () => undefined,
+  onTransient, onBlur, onInvoke, onBackground, onEscape, onLayoutChange, onModalClose = () => undefined,
   onSaveNodeEdit, onConnectLocation, onCreateAndConnectLocation, onArchivePurpose, onArchiveLocation, onRestoreLocation,
   recovery = { status: 'none' }, recoveryPending = false, saveFailed = false,
   onReapply = async () => false, onKeepLatest = () => undefined, hasExternalModal = false,
@@ -63,6 +64,17 @@ export function AccountMapCanvas({
     observer.observe(canvas);
     return () => observer.disconnect();
   }, [viewport]);
+  useEffect(() => {
+    if (interaction.modalNodeId !== null || hasExternalModal) return;
+    if (interaction.transientNodeId === null && interaction.pinnedNodeId === null) return;
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      onEscape();
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [hasExternalModal, interaction.modalNodeId, interaction.pinnedNodeId, interaction.transientNodeId, onEscape]);
   const graph = useMemo(() => buildAccountMapGraph(applied, locations, main, zoom), [applied, locations, main, zoom]);
   const positioned = useMemo(() => layoutAccountMap(graph, applied.layout, effectiveViewport, zoom), [graph, applied.layout, effectiveViewport.width, effectiveViewport.height, zoom]);
   const nodeById = new Map(positioned.nodes.map((node) => [node.id, node]));

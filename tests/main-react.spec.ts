@@ -170,6 +170,36 @@ const releaseGateWorkspaceV2 = {
   accountMap: releaseGateAccountMapV2,
 };
 
+const invalidFutureSourceWorkspace = {
+  ...releaseGateWorkspaceV2,
+  accountMap: {
+    ...releaseGateWorkspaceV2.accountMap,
+    applied: {
+      ...releaseGateWorkspaceV2.accountMap.applied,
+      sourceMainUpdatedAt: appliedMainV2.updatedAt + 1,
+    },
+  },
+};
+
+const invalidSynchronizedCapacityWorkspace = {
+  ...releaseGateWorkspaceV2,
+  accountMap: {
+    ...releaseGateWorkspaceV2.accountMap,
+    applied: {
+      ...releaseGateWorkspaceV2.accountMap.applied,
+      customPurposes: [{
+        id: 'custom:excess',
+        parentId: 'system:living',
+        name: '초과 목적',
+        targetMonthlyWon: appliedMainV2.monthlyLivingWon + 1,
+        createdAt: 500,
+        updatedAt: 650,
+      }],
+      links: releaseGateWorkspaceV2.accountMap.applied.links.filter(({ purposeId }) => purposeId !== 'custom:trip'),
+    },
+  },
+};
+
 const seededOldMainRecords = {
   'isf-main-v2': JSON.stringify({ ...appliedMainV2, monthlyNetIncomeWon: 9_900_000 }),
   'isf-main-v2-pending': '{old-pending',
@@ -1069,34 +1099,6 @@ test('invalid, old, reference, duplicate, and capacity backups retain the exact 
       })),
     ],
   };
-  const futureSourceWorkspace = {
-    ...releaseGateWorkspaceV2,
-    accountMap: {
-      ...releaseGateWorkspaceV2.accountMap,
-      applied: {
-        ...releaseGateWorkspaceV2.accountMap.applied,
-        sourceMainUpdatedAt: appliedMainV2.updatedAt + 1,
-      },
-    },
-  };
-  const synchronizedCapacityWorkspace = {
-    ...releaseGateWorkspaceV2,
-    accountMap: {
-      ...releaseGateWorkspaceV2.accountMap,
-      applied: {
-        ...releaseGateWorkspaceV2.accountMap.applied,
-        customPurposes: [{
-          id: 'custom:excess',
-          parentId: 'system:living',
-          name: '초과 목적',
-          targetMonthlyWon: appliedMainV2.monthlyLivingWon + 1,
-          createdAt: 500,
-          updatedAt: 650,
-        }],
-        links: releaseGateWorkspaceV2.accountMap.applied.links.filter(({ purposeId }) => purposeId !== 'custom:trip'),
-      },
-    },
-  };
   const envelope = (workspace: unknown) => JSON.stringify({
     format: 'isf-workspace-backup',
     formatVersion: 1,
@@ -1116,8 +1118,6 @@ test('invalid, old, reference, duplicate, and capacity backups retain the exact 
     ['reference.json', envelope(referenceWorkspace), '백업의 앱 연결 정보가 올바르지 않습니다.'],
     ['duplicate.json', envelope(duplicateWorkspace), '백업의 앱 연결 정보가 올바르지 않습니다.'],
     ['capacity.json', envelope(capacityWorkspace), '백업의 앱 연결 정보가 올바르지 않습니다.'],
-    ['future-source.json', envelope(futureSourceWorkspace), '백업의 앱 데이터가 올바르지 않습니다.'],
-    ['synchronized-capacity.json', envelope(synchronizedCapacityWorkspace), '백업의 앱 데이터가 올바르지 않습니다.'],
   ] as const;
 
   for (const [name, contents, expectedMessage] of failures) {
@@ -1136,6 +1136,51 @@ test('invalid, old, reference, duplicate, and capacity backups retain the exact 
     await expect(page.getByRole('dialog')).toHaveCount(0);
   }
 });
+
+for (const invalidImport of [
+  { name: 'future source timestamp', filename: 'future-source.json', workspace: invalidFutureSourceWorkspace },
+  { name: 'synchronized custom-purpose excess', filename: 'synchronized-capacity.json', workspace: invalidSynchronizedCapacityWorkspace },
+] as const) {
+  test(`invalid ${invalidImport.name} import performs zero workspace writes and retains raw bytes`, async ({ page }) => {
+    await page.addInitScript((workspace) => {
+      localStorage.clear();
+      localStorage.setItem('isf-workspace-v1', JSON.stringify(workspace));
+    }, connectedWorkspaceV1);
+    await page.goto('apps/main/');
+    const raw = JSON.stringify(connectedWorkspaceV1);
+    await page.evaluate(() => {
+      const originalSetItem = Storage.prototype.setItem;
+      Object.defineProperty(window, '__invalidImportWrites', { configurable: true, value: 0, writable: true });
+      Storage.prototype.setItem = function setItem(key: string, value: string) {
+        if (key === 'isf-workspace-v1') {
+          (window as typeof window & { __invalidImportWrites: number }).__invalidImportWrites += 1;
+        }
+        originalSetItem.call(this, key, value);
+      };
+    });
+
+    await page.getByRole('button', { name: '관리 메뉴' }).click();
+    await page.getByLabel('백업 가져오기').setInputFiles({
+      name: invalidImport.filename,
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify({
+        format: 'isf-workspace-backup',
+        formatVersion: 1,
+        exportedAt: 900,
+        workspace: invalidImport.workspace,
+      })),
+    });
+
+    await expect(page.getByRole('alert')).toContainText('백업의 앱 데이터가 올바르지 않습니다.');
+    const result = await page.evaluate(() => ({
+      raw: localStorage.getItem('isf-workspace-v1'),
+      writes: (window as typeof window & { __invalidImportWrites: number }).__invalidImportWrites,
+    }));
+    expect(result.raw).toBe(raw);
+    expect(result.writes).toBe(0);
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+  });
+}
 
 test('backup import has a matching accessible name and visible keyboard focus ring', async ({ page }) => {
   await page.addInitScript((fixture) => {

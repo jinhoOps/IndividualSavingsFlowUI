@@ -65,6 +65,61 @@ function editableWorkspace() {
   return workspace;
 }
 
+function manyToManyWorkspace() {
+  const workspace = mappedWorkspace();
+  workspace.locations.push(location('brokerage', 'ISA', 'future-bank', '미래은행', ['investing']));
+  workspace.accountMap.applied!.links.push(link('investing-brokerage', 'system:investing', 'brokerage', 50_000, false));
+  workspace.simulation.draft = {
+    schemaVersion: 2,
+    source: {
+      monthlySavingsWon: main.monthlySavingWon,
+      monthlyInvestmentWon: main.monthlyInvestmentWon,
+      mainUpdatedAt: main.updatedAt,
+    },
+    initialInvestmentWon: 2_000_000,
+    years: 20,
+    expectedAnnualReturnPercent: 8,
+    baseRatePercent: 2.5,
+    inflationOffsetPercentPoints: -0.5,
+    amountMode: 'nominal',
+    updatedAt: now,
+  };
+  workspace.portfolio.plans = [
+    {
+      schemaVersion: 2,
+      scope: { type: 'aggregate' },
+      items: [{ id: 'asset-global', name: '글로벌 인덱스', shareUnits: 700_000, order: 0 }],
+      cashShareUnits: 300_000,
+      cashMode: 'automatic',
+      syncedInvestmentWon: main.monthlyInvestmentWon,
+      appliedAt: now,
+      updatedAt: now,
+    },
+    {
+      schemaVersion: 2,
+      scope: { type: 'location', locationId: 'brokerage' },
+      items: [{ id: 'asset-bond', name: '국채', shareUnits: 400_000, order: 0 }],
+      cashShareUnits: 600_000,
+      cashMode: 'automatic',
+      syncedInvestmentWon: main.monthlyInvestmentWon,
+      appliedAt: now,
+      updatedAt: now,
+    },
+  ];
+  workspace.portfolio.draft = {
+    schemaVersion: 2,
+    scope: { type: 'location', locationId: 'brokerage' },
+    items: [{ id: 'asset-draft', name: '성장주', shareUnits: 550_000, order: 0 }],
+    cashShareUnits: 450_000,
+    cashMode: 'automatic',
+    syncedInvestmentWon: main.monthlyInvestmentWon,
+    updatedAt: now,
+    inputMode: 'amount',
+    isApplicable: true,
+  };
+  return workspace;
+}
+
 function location(id: string, shortName: string, institutionId: string, institutionName: string, roles: string[]) {
   return { id, shortName, institution: { id: institutionId, name: institutionName }, kind: 'bank', roles, createdAt: now, updatedAt: now };
 }
@@ -84,11 +139,65 @@ async function readProtected(page: Page) {
   }, STORAGE_KEY);
 }
 
+async function readProtectedBytes(page: Page) {
+  return page.evaluate((key) => {
+    const workspace = JSON.parse(localStorage.getItem(key)!);
+    return {
+      main: JSON.stringify(workspace.main),
+      simulation: JSON.stringify(workspace.simulation),
+      portfolio: JSON.stringify(workspace.portfolio),
+    };
+  }, STORAGE_KEY);
+}
+
 async function openNode(page: Page, name: RegExp) {
   await page.locator('.account-map-canvas').click({ position: { x: 8, y: 8 } });
   const node = page.getByRole('button', { name }).first();
   await node.click();
   await node.click();
+}
+
+async function expectContainedActionTargets(page: Page, state: string) {
+  await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+  const audit = await page.evaluate(() => {
+    const visible = (element: Element) => {
+      const style = getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return style.visibility !== 'hidden' && style.display !== 'none' && rect.width > 0 && rect.height > 0;
+    };
+    const actions = [...document.querySelectorAll<HTMLElement>(
+      'button, a[href], input:not([type="hidden"]), select, textarea, [role="menuitem"]',
+    )].filter(visible);
+    const uniqueTargets = new Map<HTMLElement, HTMLElement>();
+    for (const action of actions) {
+      const input = action instanceof HTMLInputElement ? action : null;
+      const label = input !== null && (input.type === 'checkbox' || input.type === 'radio')
+        ? input.closest('label') ?? (input.id === '' ? null : document.querySelector<HTMLLabelElement>(`label[for="${CSS.escape(input.id)}"]`))
+        : null;
+      uniqueTargets.set(action, label ?? action);
+    }
+    const failures = [...uniqueTargets].flatMap(([action, target]) => {
+      const rect = target.getBoundingClientRect();
+      if (rect.width >= 44 && rect.height >= 44 && rect.left >= 0 && rect.right <= window.innerWidth) return [];
+      return [{
+        name: action.getAttribute('aria-label') ?? action.textContent?.trim().slice(0, 60) ?? action.tagName,
+        tag: action.tagName,
+        width: Math.round(rect.width * 10) / 10,
+        height: Math.round(rect.height * 10) / 10,
+        left: Math.round(rect.left * 10) / 10,
+        right: Math.round(rect.right * 10) / 10,
+      }];
+    });
+    return {
+      count: actions.length,
+      failures,
+      documentWidth: document.documentElement.scrollWidth,
+      viewportWidth: document.documentElement.clientWidth,
+    };
+  });
+  expect(audit.count, `${state}: visible actions`).toBeGreaterThan(0);
+  expect(audit.documentWidth, `${state}: horizontal overflow`).toBeLessThanOrEqual(audit.viewportWidth);
+  expect(audit.failures, `${state}: 44px targets or viewport containment`).toEqual([]);
 }
 
 test('requires Main without creating Account Map state', async ({ page }) => {
@@ -164,11 +273,17 @@ test('supports layout, semantic zoom, focus parity, second invoke, and same-moda
   await expect(page.locator('.account-map-edge-amount')).toHaveCount(0);
   await living.focus();
   expect(await page.locator('.account-map-edge-amount').allTextContents()).toEqual(pointerAmounts);
-  await page.keyboard.press('Escape');
-  await expect(living).not.toHaveClass(/is-pinned/);
   await living.tap();
   await expect(living).toHaveClass(/is-pinned/);
+  expect(await page.locator('.account-map-edge-amount').allTextContents()).toEqual(pointerAmounts);
   await expect(page.getByRole('dialog')).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  await expect(living).not.toHaveClass(/is-pinned/);
+  await expect(page.locator('.account-map-edge-amount')).toHaveCount(0);
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(living).toBeFocused();
+  await living.tap();
+  await expect(living).toHaveClass(/is-pinned/);
   await page.locator('.account-map-canvas').click({ position: { x: 8, y: 8 } });
   await expect(living).not.toHaveClass(/is-pinned/);
   await expect(page.locator('.account-map-edge-amount')).toHaveCount(0);
@@ -287,9 +402,9 @@ test('blocks a same-field stale replay, preserves input, and focuses the conflic
 
 test('connects a spending location to investing with one role-and-link revision', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await seed(page, mappedWorkspace());
+  await seed(page, manyToManyWorkspace());
   await page.goto('apps/account-map/');
-  const before = await readProtected(page);
+  const before = await readProtectedBytes(page);
   await page.evaluate((key) => {
     const originalSetItem = Storage.prototype.setItem;
     Object.defineProperty(window, '__accountMapWrites', { configurable: true, value: 0, writable: true });
@@ -306,6 +421,7 @@ test('connects a spending location to investing with one role-and-link revision'
   await page.getByRole('button', { name: '연결 추가' }).click();
   const connect = page.getByRole('dialog', { name: '투자 연결 추가' });
   await connect.getByRole('button', { name: /생활비통장/ }).click();
+  await connect.getByRole('textbox', { name: /이 계좌에 둘 월 금액/ }).fill('150000');
   await connect.getByRole('button', { name: '완료' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
 
@@ -319,8 +435,22 @@ test('connects a spending location to investing with one role-and-link revision'
     .toEqual(['spending', 'investing']);
   expect(stored.workspace.accountMap.applied.links.filter((item: { purposeId: string; locationId: string }) => (
     item.purposeId === 'system:investing' && item.locationId === 'living'
-  ))).toEqual([expect.objectContaining({ monthlyAmountWon: 200_000, remainder: true, status: 'active' })]);
-  expect(await readProtected(page)).toEqual(before);
+  ))).toEqual([expect.objectContaining({ monthlyAmountWon: 150_000, remainder: false, status: 'active' })]);
+  expect(stored.workspace.accountMap.applied.links.filter(({ purposeId }: { purposeId: string }) => purposeId === 'system:investing'))
+    .toHaveLength(2);
+  expect(stored.workspace.accountMap.applied.links.filter(({ purposeId }: { purposeId: string }) => purposeId === 'system:investing'))
+    .toEqual(expect.arrayContaining([
+      expect.objectContaining({ locationId: 'brokerage', monthlyAmountWon: 50_000, remainder: true }),
+      expect.objectContaining({ locationId: 'living', monthlyAmountWon: 150_000, remainder: false }),
+    ]));
+  expect(stored.workspace.accountMap.applied.links.filter(({ locationId }: { locationId: string }) => locationId === 'living'))
+    .toHaveLength(2);
+  expect(stored.workspace.accountMap.applied.links.filter(({ locationId }: { locationId: string }) => locationId === 'living'))
+    .toEqual(expect.arrayContaining([
+      expect.objectContaining({ purposeId: 'system:living' }),
+      expect.objectContaining({ purposeId: 'system:investing' }),
+    ]));
+  expect(await readProtectedBytes(page)).toEqual(before);
 });
 
 test('creates, archives, and restores a corrected custom purpose without resuming its links', async ({ page }) => {
@@ -433,33 +563,100 @@ test('migrates a v1 workspace without touching its protected slices', async ({ p
   expect({ main: stored.main, simulation: stored.simulation, portfolio: stored.portfolio }).toEqual(protectedSlices);
 });
 
-test('honors reduced motion and stays contained at supported widths', async ({ page }) => {
+test('completes reduced-motion node and layout motion synchronously', async ({ page }) => {
+  await page.clock.install();
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await seed(page, mappedWorkspace());
-  for (const viewport of [{ width: 390, height: 844 }, { width: 768, height: 1024 }, { width: 1280, height: 900 }]) {
+  await page.goto('apps/account-map/');
+  await page.clock.pauseAt(await page.evaluate(() => Date.now()));
+
+  const living = page.getByRole('button', { name: /생활비.*1,000,000원/ }).first();
+  await living.evaluate((element) => element.click());
+  await page.clock.runFor(16);
+  await living.evaluate((element) => element.click());
+  await page.clock.runFor(32);
+  const modalMotion = await page.evaluate(() => {
+    const dialog = document.querySelector<HTMLElement>('[role="dialog"]');
+    const close = dialog?.querySelector<HTMLButtonElement>('button[aria-label="닫기"]');
+    return { busy: dialog?.getAttribute('aria-busy') ?? null, closeDisabled: close?.disabled ?? null };
+  });
+  expect(modalMotion).toEqual({ busy: null, closeDisabled: false });
+
+  await page.getByRole('button', { name: '닫기' }).click();
+  const accountLayout = page.getByRole('button', { name: '계좌 중심' });
+  await accountLayout.evaluate((element) => element.click());
+  await page.clock.runFor(32);
+  const layoutMotion = await accountLayout.evaluate((element) => {
+    const controls = [...document.querySelectorAll<HTMLButtonElement>('[aria-label="지도 정렬"] button')];
+    return {
+      accountPressed: element.getAttribute('aria-pressed'),
+      disabled: controls.map((control) => control.disabled),
+    };
+  });
+  expect(layoutMotion).toEqual({ accountPressed: 'true', disabled: [false, false] });
+});
+
+test('keeps all Account Map states contained with 44px action targets at supported widths', async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.addInitScript(({ key, workspace }) => {
+    if (sessionStorage.getItem('account-map-responsive-seeded') !== null) return;
+    localStorage.setItem(key, JSON.stringify(workspace));
+    sessionStorage.setItem('account-map-responsive-seeded', 'true');
+  }, { key: STORAGE_KEY, workspace: editableWorkspace() });
+  const viewports = [{ width: 390, height: 844 }, { width: 768, height: 1024 }, { width: 1280, height: 900 }];
+  for (const [index, viewport] of viewports.entries()) {
     await page.setViewportSize(viewport);
+    if (index > 0) {
+      await page.evaluate(({ key, workspace }) => localStorage.setItem(key, JSON.stringify(workspace)), {
+        key: STORAGE_KEY,
+        workspace: editableWorkspace(),
+      });
+    }
     await page.goto('apps/account-map/');
-    const dimensions = await page.evaluate(() => ({ body: document.body.scrollWidth, viewport: document.documentElement.clientWidth }));
-    expect(dimensions.body).toBeLessThanOrEqual(dimensions.viewport);
-    const actionBoxes = await page.locator('button, a[href], input, select').evaluateAll((actions) => (
-      actions.map((button) => {
-        const { width, height } = button.getBoundingClientRect();
-        return { width, height };
-      }).filter(({ width, height }) => width > 0 && height > 0)
-    ));
-    expect(actionBoxes.length).toBeGreaterThan(4);
-    expect(actionBoxes.every(({ width, height }) => width >= 44 && height >= 44)).toBe(true);
+    const prefix = `${viewport.width}px`;
+    await expectContainedActionTargets(page, `${prefix} map`);
+
+    await page.getByRole('button', { name: '관리 메뉴' }).click();
+    await expectContainedActionTargets(page, `${prefix} management menu`);
+    await page.keyboard.press('Escape');
+
     await openNode(page, /생활비.*1,000,000원/);
-    const dialog = page.getByRole('dialog');
-    await expect(dialog).toBeVisible();
-    const motionDurations = await page.locator('.account-map-node, [role="dialog"]').evaluateAll((elements) => (
-      elements.flatMap((element) => {
-        const style = getComputedStyle(element);
-        return [style.animationDuration, style.transitionDuration];
-      }).flatMap((value) => value.split(',')).map((value) => Number.parseFloat(value))
-    ));
-    expect(motionDurations.every((duration) => duration <= 0.001)).toBe(true);
+    await expectContainedActionTargets(page, `${prefix} node read`);
+    await page.getByRole('button', { name: '편집' }).click();
+    await expectContainedActionTargets(page, `${prefix} node edit`);
+    await page.getByRole('button', { name: '연결 추가' }).click();
+    await expectContainedActionTargets(page, `${prefix} node connect`);
+    await page.getByRole('button', { name: '취소' }).click();
+    await page.getByRole('button', { name: '취소' }).click();
     await page.getByRole('button', { name: '닫기' }).click();
+
+    await openNode(page, /^보조생활비$/);
+    await page.getByRole('button', { name: '보관' }).click();
+    await expectContainedActionTargets(page, `${prefix} node archive`);
+    await page.getByRole('button', { name: '보관하기' }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
+    await page.getByRole('button', { name: '확대' }).click();
+    await openNode(page, /^보조생활비$/);
+    await page.getByRole('button', { name: '복원' }).click();
+    await expectContainedActionTargets(page, `${prefix} node restore`);
+    await page.getByRole('button', { name: '취소' }).click();
+    await page.getByRole('button', { name: '닫기' }).click();
+
+    await page.evaluate(({ key, workspace }) => localStorage.setItem(key, JSON.stringify(workspace)), {
+      key: STORAGE_KEY,
+      workspace: emptyWorkspace(),
+    });
+    await page.reload();
+    await expectContainedActionTargets(page, `${prefix} setup`);
+    await page.getByRole('button', { name: '세부 목적 추가' }).click();
+    await expectContainedActionTargets(page, `${prefix} custom-purpose form`);
+    await page.getByRole('button', { name: '취소' }).click();
+    await page.getByRole('article').filter({ hasText: '수입' }).getByRole('button', { name: '연결' }).click();
+    await expectContainedActionTargets(page, `${prefix} connection sheet`);
+    await page.getByRole('button', { name: '새 계좌·보관처 추가' }).click();
+    await expectContainedActionTargets(page, `${prefix} institution picker`);
+    await page.getByRole('button', { name: 'KB국민은행', exact: true }).click();
+    await expectContainedActionTargets(page, `${prefix} new-location form`);
   }
 });

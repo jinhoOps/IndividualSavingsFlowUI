@@ -209,5 +209,5 @@ function renderCanvas(overrides: Partial<React.ComponentProps<typeof AccountMapC
 }
 
 function canvas(interaction: React.ComponentProps<typeof AccountMapCanvas>['interaction'], overrides: Partial<React.ComponentProps<typeof AccountMapCanvas>> = {}) {
-  return <AccountMapCanvas applied={applied} main={main} locations={locations} interaction={interaction} viewport={{ width: 900, height: 600 }} onTransient={() => undefined} onBlur={() => undefined} onInvoke={() => undefined} onBackground={() => undefined} onLayoutChange={() => undefined} {...overrides} />;
+  return <AccountMapCanvas applied={applied} main={main} locations={locations} interaction={interaction} viewport={{ width: 900, height: 600 }} onTransient={() => undefined} onBlur={() => undefined} onInvoke={() => undefined} onBackground={() => undefined} onEscape={() => undefined} onLayoutChange={() => undefined} {...overrides} />;
 }
