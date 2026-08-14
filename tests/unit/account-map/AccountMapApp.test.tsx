@@ -119,6 +119,63 @@ describe('AccountMapApp', () => {
     expect(setup.save).toHaveBeenCalledTimes(1);
   });
 
+  it('keeps exact initialized revision when fresh replay later collides', async () => {
+    const setup = staleFreshSetupRepositories(false, true);
+    render(<AccountMapApp repositories={setup.repositories} />);
+    const incomeCard = screen.getByRole('heading', { name: '수입' }).closest('article')!;
+    fireEvent.click(within(incomeCard).getByRole('button', { name: '연결' }));
+    fireEvent.click(screen.getByRole('button', { name: /급여통장/ }));
+    fireEvent.click(screen.getByRole('button', { name: '완료' }));
+    fireEvent.click(await screen.findByRole('button', { name: '최신 상태에서 다시 적용' }));
+    expect(await screen.findByText(/편집 대상이 최신 상태에 없습니다/)).toBeVisible();
+
+    fireEvent.click(screen.getByRole('button', { name: '최신 값 유지' }));
+    fireEvent.click(screen.getByRole('button', { name: '세부 목적 추가' }));
+    fireEvent.change(screen.getByRole('textbox', { name: '목적 이름' }), { target: { value: '여행' } });
+    fireEvent.change(screen.getByRole('textbox', { name: '월 금액' }), { target: { value: '100000' } });
+    fireEvent.click(screen.getByRole('button', { name: '추가' }));
+
+    await waitFor(() => expect(setup.save).toHaveBeenCalledTimes(4));
+    expect(setup.save.mock.calls[3]?.[0]).toBe(3);
+  });
+
+  it('shows stale layout recovery on the map surface without auto-replaying', async () => {
+    const setup = staleLayoutRepositories();
+    render(<AccountMapApp repositories={setup.repositories} />);
+    fireEvent.click(screen.getByRole('button', { name: '계좌 중심' }));
+
+    expect(await screen.findByRole('button', { name: '최신 상태에서 다시 검토' })).toBeVisible();
+    expect(screen.queryByText(/저장하지 못했습니다/)).not.toBeInTheDocument();
+    expect(setup.save).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows reset conflict on the map surface without a generic management failure', async () => {
+    const setup = staleLayoutRepositories();
+    setup.repositories.accountMap.reset = vi.fn(async () => ({ status: 'conflict' as const, currentRevision: 2 }));
+    render(<AccountMapApp repositories={setup.repositories} />);
+    fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: '월 연결 다시 만들기' }));
+    fireEvent.click(screen.getByRole('button', { name: '다시 만들기' }));
+
+    expect(await screen.findByRole('button', { name: '최신 상태에서 다시 검토' })).toBeVisible();
+    expect(screen.queryByText('초기화하지 못했습니다. 현재 지도는 유지됩니다.')).not.toBeInTheDocument();
+  });
+
+  it('keeps custom-purpose input in its dialog after a stale draft save', async () => {
+    const setup = staleDraftRepositories();
+    render(<AccountMapApp repositories={setup.repositories} />);
+    fireEvent.click(screen.getByRole('button', { name: '세부 목적 추가' }));
+    const name = screen.getByRole('textbox', { name: '목적 이름' });
+    fireEvent.change(name, { target: { value: '여행' } });
+    fireEvent.change(screen.getByRole('textbox', { name: '월 금액' }), { target: { value: '100000' } });
+    fireEvent.click(screen.getByRole('button', { name: '추가' }));
+
+    expect(await screen.findByRole('button', { name: '최신 상태에서 다시 검토' })).toBeVisible();
+    expect(screen.getByRole('dialog', { name: '세부 목적 추가' })).toBeVisible();
+    expect(name).toHaveValue('여행');
+    expect(screen.queryByText('저장하지 못했어요. 입력은 그대로 두었습니다.')).not.toBeInTheDocument();
+  });
+
   it('keeps modal edits and waits for explicit replay of a stale field intent', async () => {
     const setup = staleModalRepositories();
     render(<AccountMapApp repositories={setup.repositories} />);
@@ -257,7 +314,7 @@ function staleSetupRepositories() {
   return { repositories: { accountMap, main }, save, saveIntent, current: () => current };
 }
 
-function staleFreshSetupRepositories(latestHasApplied = false) {
+function staleFreshSetupRepositories(latestHasApplied = false, rejectAfterInitialize = false) {
   const initial = createEmptyWorkspace(1);
   initial.revision = 1;
   initial.main.applied = mainData();
@@ -275,6 +332,7 @@ function staleFreshSetupRepositories(latestHasApplied = false) {
     .mockImplementation(() => ({ status: 'found' as const, workspace: latest, needsMigration: false }));
   const save = vi.fn(async (revision, command) => {
     if (revision === 1) return { status: 'conflict' as const, currentRevision: 2 };
+    if (revision === 3 && command.type === 'connect-location' && rejectAfterInitialize) return { status: 'rejected' as const, reason: 'target-missing' as const };
     const result = applyAccountMapCommand(current, command, revision + 1);
     if (!result.ok) return { status: 'rejected' as const, reason: result.reason };
     current = { ...result.workspace, revision: revision + 1, updatedAt: revision + 1 };
@@ -284,6 +342,33 @@ function staleFreshSetupRepositories(latestHasApplied = false) {
   const accountMap: AccountMapRepository = { load, save, saveIntent, migrate: vi.fn(), reset: vi.fn() };
   const main: AccountMapMainSourceRepository = { load: vi.fn(() => ({ status: 'found' as const, data: mainData() })) };
   return { repositories: { accountMap, main }, save, saveIntent };
+}
+
+function staleLayoutRepositories() {
+  const initial = createEmptyWorkspace(1);
+  initial.revision = 1;
+  initial.main.applied = mainData();
+  initial.accountMap.applied = { schemaVersion: 1, sourceMainUpdatedAt: 10, customPurposes: [], links: [], layout: 'purpose', setupCompletedAt: 1, updatedAt: 1 };
+  const latest = structuredClone(initial);
+  latest.revision = 2;
+  const load = vi.fn().mockReturnValueOnce({ status: 'found' as const, workspace: initial, needsMigration: false }).mockReturnValue({ status: 'found' as const, workspace: latest, needsMigration: false });
+  const save = vi.fn(async () => ({ status: 'conflict' as const, currentRevision: 2 }));
+  const accountMap: AccountMapRepository = { load, save, saveIntent: vi.fn(), migrate: vi.fn(), reset: vi.fn() };
+  const main: AccountMapMainSourceRepository = { load: vi.fn(() => ({ status: 'found' as const, data: mainData() })) };
+  return { repositories: { accountMap, main }, save };
+}
+
+function staleDraftRepositories() {
+  const initial = createEmptyWorkspace(1);
+  initial.revision = 1;
+  initial.main.applied = mainData();
+  initial.accountMap.draft = { schemaVersion: 1, sourceMainUpdatedAt: 10, customPurposes: [], links: [], step: 'connect', updatedAt: 1 };
+  const latest = structuredClone(initial);
+  latest.revision = 2;
+  const load = vi.fn().mockReturnValueOnce({ status: 'found' as const, workspace: initial, needsMigration: false }).mockReturnValue({ status: 'found' as const, workspace: latest, needsMigration: false });
+  const accountMap: AccountMapRepository = { load, save: vi.fn(async () => ({ status: 'conflict' as const, currentRevision: 2 })), saveIntent: vi.fn(), migrate: vi.fn(), reset: vi.fn() };
+  const main: AccountMapMainSourceRepository = { load: vi.fn(() => ({ status: 'found' as const, data: mainData() })) };
+  return { repositories: { accountMap, main } };
 }
 
 function stalePrerequisiteRepositories() {

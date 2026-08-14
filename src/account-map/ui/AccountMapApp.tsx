@@ -4,7 +4,7 @@ import { appPath } from '../../journey/routes';
 import type { FinancialLocation } from '../../workspace/domain/financialLocation';
 import type { WorkspaceDocument } from '../../workspace/domain/model';
 import { bootstrapAccountMap } from '../application/bootstrap';
-import { accountMapReducer } from '../application/reducer';
+import { accountMapReducer, type ManualRecoveryAction, type ManualRecoveryTarget } from '../application/reducer';
 import { rebaseAccountMapIntent, type AccountMapEditIntent } from '../domain/editIntent';
 import type { AccountMapDraft, PurposeId, PurposeLocationLink } from '../domain/model';
 import { recalculateRemainder, reconcilePurpose } from '../domain/reconciliation';
@@ -53,7 +53,8 @@ export function AccountMapApp({ repositories }: { repositories?: AccountMapRepos
       if (state.mode !== 'map' && state.mode !== 'setup') return false;
       const result = await resolved.accountMap.reset(state.workspace.revision);
       if (result.status !== 'saved') {
-        dispatch({ type: 'save-failed', reason: failureReason(result) });
+        if (result.status === 'conflict') { captureManualConflict('reset-map', []); return true; }
+        else dispatch({ type: 'save-failed', reason: failureReason(result) });
         return false;
       }
       if (state.mode === 'map') dispatch({ type: 'reset-succeeded', workspace: result.workspace });
@@ -80,12 +81,12 @@ export function AccountMapApp({ repositories }: { repositories?: AccountMapRepos
     return true;
   }} onArchiveLocation={async (locationId, replacementRemainderByPurpose) => {
     const result = await resolved.accountMap.save(state.workspace.revision, { type: 'archive-location', locationId, replacementRemainderByPurpose });
-    if (result.status !== 'saved') { dispatch({ type: 'save-failed', reason: failureReason(result) }); return false; }
+    if (result.status !== 'saved') { if (result.status === 'conflict') captureManualConflict('archive-location', [{ kind: 'location', id: locationId }]); else dispatch({ type: 'save-failed', reason: failureReason(result) }); return false; }
     pendingModalWorkspaceRef.current = result.workspace;
     return true;
   }} onRestoreLocation={async (locationId, restoreLinkIds, remainderByPurpose) => {
     const result = await resolved.accountMap.save(state.workspace.revision, { type: 'restore-location', locationId, restoreLinkIds, remainderByPurpose });
-    if (result.status !== 'saved') { dispatch({ type: 'save-failed', reason: failureReason(result) }); return false; }
+    if (result.status !== 'saved') { if (result.status === 'conflict') captureManualConflict('restore-location', [{ kind: 'location', id: locationId }, ...restoreLinkIds.map((id) => ({ kind: 'link' as const, id }))]); else dispatch({ type: 'save-failed', reason: failureReason(result) }); return false; }
     pendingModalWorkspaceRef.current = result.workspace;
     return true;
   }} onLayoutChange={(layout) => {
@@ -95,6 +96,7 @@ export function AccountMapApp({ repositories }: { repositories?: AccountMapRepos
     dispatch({ type: 'save-requested' });
     void resolved.accountMap.save(state.workspace.revision, { type: 'apply-map', applied }).then((result) => {
       if (result.status === 'saved') dispatch({ type: 'save-succeeded', workspace: result.workspace });
+      else if (result.status === 'conflict') captureManualConflict('layout-change', []);
       else dispatch({ type: 'save-failed', reason: failureReason(result) });
     });
   }} /></main></AppShell>;
@@ -103,7 +105,7 @@ export function AccountMapApp({ repositories }: { repositories?: AccountMapRepos
     if (state.mode !== 'setup') return false;
     dispatch({ type: 'save-requested' });
     const result = await resolved.accountMap.save(state.workspace.revision, { type: 'save-draft', draft });
-    if (result.status !== 'saved') { dispatch({ type: 'save-failed', reason: failureReason(result) }); return false; }
+    if (result.status !== 'saved') { if (result.status === 'conflict') captureManualConflict('save-draft', []); else dispatch({ type: 'save-failed', reason: failureReason(result) }); return false; }
     dispatch({ type: 'draft-updated', draft });
     dispatch({ type: 'save-succeeded', workspace: result.workspace });
     return true;
@@ -117,13 +119,13 @@ export function AccountMapApp({ repositories }: { repositories?: AccountMapRepos
     dispatch({ type: 'save-requested' });
     if (input.restoreLocation === true) {
       const restored = await resolved.accountMap.save(workspace.revision, { type: 'restore-location', locationId: input.locationId, restoreLinkIds: [], remainderByPurpose: {} });
-      if (restored.status !== 'saved') { if (restored.status === 'conflict') captureManualConflict(input.purposeId, 'compound-edit'); else dispatch({ type: 'save-failed', reason: failureReason(restored) }); return false; }
+      if (restored.status !== 'saved') { if (restored.status === 'conflict') captureManualConflict('connection-prerequisite', []); else dispatch({ type: 'save-failed', reason: failureReason(restored) }); return false; }
       workspace = restored.workspace;
       dispatch({ type: 'save-succeeded', workspace });
     }
     if (input.newLocation !== undefined) {
       const locationResult = await resolved.accountMap.save(workspace.revision, { type: 'create-location', location: input.newLocation });
-      if (locationResult.status !== 'saved') { if (locationResult.status === 'conflict') captureManualConflict(input.purposeId, 'compound-edit'); else dispatch({ type: 'save-failed', reason: failureReason(locationResult) }); return false; }
+      if (locationResult.status !== 'saved') { if (locationResult.status === 'conflict') captureManualConflict('connection-prerequisite', []); else dispatch({ type: 'save-failed', reason: failureReason(locationResult) }); return false; }
       workspace = locationResult.workspace;
       dispatch({ type: 'save-succeeded', workspace });
     }
@@ -131,7 +133,7 @@ export function AccountMapApp({ repositories }: { repositories?: AccountMapRepos
     const existing = workspace.locations.find(({ id }) => id === input.locationId);
     if (existing !== undefined && !existing.roles.includes(requiredRole)) {
       const updated = await resolved.accountMap.save(workspace.revision, { type: 'update-location', locationId: existing.id, ...(existing.institution === undefined ? {} : { institution: existing.institution }), shortName: existing.shortName, addRoles: [requiredRole] });
-      if (updated.status !== 'saved') { if (updated.status === 'conflict') captureManualConflict(input.purposeId, 'compound-edit'); else dispatch({ type: 'save-failed', reason: failureReason(updated) }); return false; }
+      if (updated.status !== 'saved') { if (updated.status === 'conflict') captureManualConflict('connection-prerequisite', []); else dispatch({ type: 'save-failed', reason: failureReason(updated) }); return false; }
       workspace = updated.workspace;
       dispatch({ type: 'save-succeeded', workspace });
     }
@@ -166,7 +168,7 @@ export function AccountMapApp({ repositories }: { repositories?: AccountMapRepos
     const applied = { schemaVersion: 1 as const, sourceMainUpdatedAt: state.main.updatedAt, customPurposes: state.draft.customPurposes, links: state.draft.links, layout: 'purpose' as const, setupCompletedAt: now, updatedAt: now };
     dispatch({ type: 'save-requested' });
     const result = await resolved.accountMap.save(state.workspace.revision, { type: 'apply-map', applied });
-    if (result.status !== 'saved') { dispatch({ type: 'save-failed', reason: failureReason(result) }); return; }
+    if (result.status !== 'saved') { if (result.status === 'conflict') captureManualConflict('apply-map', []); else dispatch({ type: 'save-failed', reason: failureReason(result) }); return; }
     dispatch({ type: 'apply-succeeded', applied, workspace: result.workspace });
   }
 
@@ -249,7 +251,7 @@ export function AccountMapApp({ repositories }: { repositories?: AccountMapRepos
       if (latest.status === 'found') {
         dispatch({
           type: 'save-manual-conflicted', latest: latest.workspace,
-          targetId: nodeId,
+          action: 'edit-node', targets: manualEditTargets(nodeId, intents, input),
           reason: hasUnsupportedRemoval ? 'removal' : 'compound-edit',
         });
       } else {
@@ -259,7 +261,7 @@ export function AccountMapApp({ repositories }: { repositories?: AccountMapRepos
     return result;
   }
 
-  return <AppShell currentApp="account-map" managementMenu={management}><main className="account-map-page"><AccountMapSetup workspace={state.workspace} main={state.main} draft={state.draft} step={state.step} mainChanged={state.mainChanged} saveFailed={state.save.status === 'failed'} recoveryPending={state.save.status === 'pending'} recovery={state.recovery} onReapply={reapplyIntent} onKeepLatest={() => dispatch({ type: 'latest-kept' })} onCommitConnection={commitConnection} onSaveDraft={saveDraft} onReview={() => void changeSetupStep('review')} onBack={() => void changeSetupStep('connect')} onApply={() => void applyMap()} onExit={() => { dispatch({ type: 'setup-exited' }); window.location.assign(appPath('main')); }} onCancelSetup={() => { void resolved.accountMap.reset(state.workspace.revision).then((result) => { if (result.status === 'saved') dispatch({ type: 'setup-cancelled', workspace: result.workspace }); else dispatch({ type: 'save-failed', reason: failureReason(result) }); }); }} /></main></AppShell>;
+  return <AppShell currentApp="account-map" managementMenu={management}><main className="account-map-page"><AccountMapSetup workspace={state.workspace} main={state.main} draft={state.draft} step={state.step} mainChanged={state.mainChanged} saveFailed={state.save.status === 'failed'} recoveryPending={state.save.status === 'pending'} recovery={state.recovery} onReapply={reapplyIntent} onKeepLatest={() => dispatch({ type: 'latest-kept' })} onCommitConnection={commitConnection} onSaveDraft={saveDraft} onReview={() => void changeSetupStep('review')} onBack={() => void changeSetupStep('connect')} onApply={() => void applyMap()} onExit={() => { dispatch({ type: 'setup-exited' }); window.location.assign(appPath('main')); }} onCancelSetup={() => { void resolved.accountMap.reset(state.workspace.revision).then((result) => { if (result.status === 'saved') dispatch({ type: 'setup-cancelled', workspace: result.workspace }); else if (result.status === 'conflict') captureManualConflict('cancel-setup', []); else dispatch({ type: 'save-failed', reason: failureReason(result) }); }); }} /></main></AppShell>;
 
   async function saveIntent(expectedRevision: number, intent: AccountMapEditIntent): Promise<AccountMapWriteResult> {
     dispatch({ type: 'save-requested' });
@@ -295,8 +297,24 @@ export function AccountMapApp({ repositories }: { repositories?: AccountMapRepos
         sourceMainUpdatedAt: state.main.updatedAt,
         customPurposes: [], links: [], step: 'connect', updatedAt: Date.now(),
       };
+      const previewWorkspace: WorkspaceDocument = {
+        ...replayWorkspace,
+        accountMap: { ...replayWorkspace.accountMap, draft },
+      };
+      const preview = rebaseAccountMapIntent(previewWorkspace, intent);
+      if (!preview.ok) {
+        dispatch({
+          type: 'reapply-collided',
+          field: 'field' in preview ? preview.field : recoveryFallbackField(intent),
+          reason: preview.reason,
+        });
+        return false;
+      }
       const initialized = await resolved.accountMap.save(replayWorkspace.revision, { type: 'save-draft', draft });
-      if (initialized.status === 'saved') replayWorkspace = initialized.workspace;
+      if (initialized.status === 'saved') {
+        replayWorkspace = initialized.workspace;
+        dispatch({ type: 'recovery-latest-updated', latest: replayWorkspace });
+      }
       else {
         if (initialized.status === 'conflict') captureIntentConflict(intent);
         else dispatch({ type: 'save-failed', reason: failureReason(initialized) });
@@ -323,10 +341,11 @@ export function AccountMapApp({ repositories }: { repositories?: AccountMapRepos
       else dispatch({ type: 'save-failed', reason: newer.status === 'invalid' ? 'invalid' : 'unavailable' });
       return false;
     }
-    if (result.status === 'rejected' && (result.reason === 'field-conflict' || result.reason === 'target-missing' || result.reason === 'duplicate-link')) {
-      dispatch({ type: 'reapply-collided', field: result.field ?? recoveryFallbackField(intent), reason: result.reason });
+    if (result.status === 'rejected') {
+      dispatch({ type: 'reapply-collided', latest: replayWorkspace, field: result.field ?? recoveryFallbackField(intent), reason: result.reason });
       return false;
     }
+    dispatch({ type: 'recovery-latest-updated', latest: replayWorkspace });
     dispatch({ type: 'save-failed', reason: failureReason(result) });
     return false;
   }
@@ -337,9 +356,9 @@ export function AccountMapApp({ repositories }: { repositories?: AccountMapRepos
     else dispatch({ type: 'save-failed', reason: latest.status === 'invalid' ? 'invalid' : 'unavailable' });
   }
 
-  function captureManualConflict(targetId: string, reason: 'compound-edit' | 'removal'): void {
+  function captureManualConflict(action: ManualRecoveryAction, targets: ManualRecoveryTarget[], reason: 'compound-edit' | 'removal' = 'compound-edit'): void {
     const latest = resolved.accountMap.load();
-    if (latest.status === 'found') dispatch({ type: 'save-manual-conflicted', latest: latest.workspace, targetId, reason });
+    if (latest.status === 'found') dispatch({ type: 'save-manual-conflicted', latest: latest.workspace, action, targets, reason });
     else dispatch({ type: 'save-failed', reason: latest.status === 'invalid' ? 'invalid' : 'unavailable' });
   }
 
@@ -358,3 +377,14 @@ function failureReason(result: Exclude<AccountMapWriteResult, { status: 'saved' 
 function createId() { return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`; }
 function roleFor(purposeId: PurposeId, draft: AccountMapDraft) { const root = purposeId.startsWith('custom:') ? draft.customPurposes.find(({ id }) => id === purposeId)?.parentId : purposeId; return root === 'system:income' ? 'income' as const : root === 'system:saving' ? 'saving' as const : root === 'system:investing' ? 'investing' as const : 'spending' as const; }
 function recoveryFallbackField(intent: AccountMapEditIntent): string { return intent.kind === 'add-link' ? 'locationId' : intent.kind === 'link' ? 'monthlyAmountWon' : intent.kind === 'purpose' ? 'name' : 'shortName'; }
+function manualEditTargets(nodeId: string, intents: AccountMapEditIntent[], input: AccountMapNodeEditInput): ManualRecoveryTarget[] {
+  const targets: ManualRecoveryTarget[] = [];
+  for (const intent of intents) {
+    if (intent.kind === 'link') targets.push({ kind: 'link', id: intent.id });
+    else if (intent.kind === 'purpose') targets.push({ kind: 'node', id: intent.id });
+    else if (intent.kind === 'location') targets.push({ kind: 'node', id: `location:${intent.id}` });
+  }
+  for (const item of input.links) if (item.status === 'removed') targets.push({ kind: 'link', id: item.id });
+  if (targets.length === 0) targets.push({ kind: 'node', id: nodeId });
+  return targets.filter((target, index) => targets.findIndex((candidate) => candidate.kind === target.kind && candidate.id === target.id) === index);
+}

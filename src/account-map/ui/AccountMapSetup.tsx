@@ -100,8 +100,8 @@ export function AccountMapSetup(props: AccountMapSetupProps): JSX.Element {
         {props.saveFailed ? <SaveFailure /> : null}
         {props.recovery.status === 'none' ? null : <RecoveryControls recovery={props.recovery} pending={props.recoveryPending} onReapply={props.onReapply} onKeepLatest={props.onKeepLatest} />}
         <footer className="account-map-actions">
-          <button type="button" className="ui-button ui-button--secondary" onClick={props.onBack}>이전</button>
-          <button type="button" className="ui-button ui-button--primary" disabled={!canApply} onClick={props.onApply}>지도 만들기</button>
+          <button type="button" className="ui-button ui-button--secondary" disabled={props.recoveryPending} onClick={props.onBack}>이전</button>
+          <button type="button" className="ui-button ui-button--primary" disabled={!canApply || props.recovery.status !== 'none'} onClick={props.onApply}>지도 만들기</button>
         </footer>
       </section>
     );
@@ -135,6 +135,7 @@ export function AccountMapSetup(props: AccountMapSetupProps): JSX.Element {
       </div>
       <button type="button" className="account-map-add-purpose" onClick={() => setCustomOpen(true)}><span aria-hidden="true">＋</span> 세부 목적 추가</button>
       {props.saveFailed && activePurposeId === null ? <SaveFailure /> : null}
+      {props.recovery.status === 'none' || activePurposeId !== null || customOpen ? null : <RecoveryControls recovery={props.recovery} pending={props.recoveryPending} onReapply={props.onReapply} onKeepLatest={props.onKeepLatest} />}
       <footer className="account-map-actions">
         <button type="button" className="ui-button ui-button--quiet" onClick={props.onExit}>나가기</button>
         {props.draft !== null ? <button type="button" className="ui-button ui-button--secondary" onClick={props.onCancelSetup}>설정 취소</button> : null}
@@ -162,6 +163,10 @@ export function AccountMapSetup(props: AccountMapSetupProps): JSX.Element {
         <CustomPurposeDialog
           main={props.main}
           draft={props.draft}
+          recovery={props.recovery}
+          recoveryPending={props.recoveryPending}
+          onReapply={props.onReapply}
+          onKeepLatest={props.onKeepLatest}
           onCancel={() => setCustomOpen(false)}
           onSave={async (draft) => {
             if (await props.onSaveDraft(draft)) setCustomOpen(false);
@@ -296,17 +301,19 @@ function ConnectionDialog({ purposeId, workspace, main, draft, saveFailed, recov
   );
 }
 
-function CustomPurposeDialog({ main, draft, onCancel, onSave }: { main: MainData; draft: AccountMapDraft | null; onCancel(): void; onSave(draft: AccountMapDraft): Promise<void> }) {
+function CustomPurposeDialog({ main, draft, recovery, recoveryPending, onReapply, onKeepLatest, onCancel, onSave }: { main: MainData; draft: AccountMapDraft | null; recovery: RecoveryState; recoveryPending: boolean; onReapply(): Promise<boolean>; onKeepLatest(): void; onCancel(): void; onSave(draft: AccountMapDraft): Promise<void> }) {
   const titleId = useId();
   const [parentId, setParentId] = useState<OutflowPurposeId>('system:living');
   const [name, setName] = useState('');
   const [amount, setAmount] = useState('');
+  const [pending, setPending] = useState(false);
   const capacity = customPurposeTargetCapacity(parentId, draft?.customPurposes ?? [], main);
-  return <div className="account-map-sheet-backdrop"><div className="account-map-sheet account-map-sheet--compact" role="dialog" aria-modal="true" aria-labelledby={titleId}><header><h2 id={titleId}>세부 목적 추가</h2></header><div className="account-map-sheet__body"><label>큰 목적<select value={parentId} onChange={(event) => setParentId(event.target.value as OutflowPurposeId)}><option value="system:housing">주거</option><option value="system:living">생활비</option><option value="system:saving">저축</option><option value="system:investing">투자</option></select></label><label>목적 이름<input value={name} maxLength={24} onChange={(event) => setName(event.target.value)} /></label><label>월 금액<input inputMode="numeric" value={amount} onChange={(event) => setAmount(event.target.value.replace(/\D/gu, ''))} /></label><p className="account-map-hint">추가 가능 {formatWon(capacity)}</p>{Number(amount) > capacity ? <p className="account-map-error">큰 목적의 월 금액을 넘을 수 없습니다.</p> : null}</div><footer><button type="button" className="ui-button ui-button--secondary" onClick={onCancel}>취소</button><button type="button" className="ui-button ui-button--primary" disabled={name.trim() === '' || Number(amount) <= 0 || Number(amount) > capacity} onClick={() => {
+  return <div className="account-map-sheet-backdrop"><div className="account-map-sheet account-map-sheet--compact" role="dialog" aria-modal="true" aria-labelledby={titleId}><header><h2 id={titleId}>세부 목적 추가</h2></header><div className="account-map-sheet__body"><label>큰 목적<select value={parentId} onChange={(event) => setParentId(event.target.value as OutflowPurposeId)}><option value="system:housing">주거</option><option value="system:living">생활비</option><option value="system:saving">저축</option><option value="system:investing">투자</option></select></label><label>목적 이름<input value={name} maxLength={24} onChange={(event) => setName(event.target.value)} /></label><label>월 금액<input inputMode="numeric" value={amount} onChange={(event) => setAmount(event.target.value.replace(/\D/gu, ''))} /></label><p className="account-map-hint">추가 가능 {formatWon(capacity)}</p>{Number(amount) > capacity ? <p className="account-map-error">큰 목적의 월 금액을 넘을 수 없습니다.</p> : null}{recovery.status === 'none' ? null : <RecoveryControls recovery={recovery} pending={pending || recoveryPending} onReapply={onReapply} onKeepLatest={() => { onKeepLatest(); onCancel(); }} />}</div><footer><button type="button" className="ui-button ui-button--secondary" disabled={pending || recoveryPending} onClick={onCancel}>취소</button><button type="button" className="ui-button ui-button--primary" disabled={pending || recovery.status !== 'none' || name.trim() === '' || Number(amount) <= 0 || Number(amount) > capacity} onClick={() => {
     const now = Date.now();
     const current = draft ?? emptyDraft(main.updatedAt);
     const next: AccountMapDraft = { ...current, customPurposes: [...current.customPurposes, { id: `custom:${createId()}`, parentId, name: name.trim(), targetMonthlyWon: Number(amount), createdAt: now, updatedAt: now }], updatedAt: now };
-    void onSave(next);
+    setPending(true);
+    void onSave(next).finally(() => setPending(false));
   }}>추가</button></footer></div></div>;
 }
 

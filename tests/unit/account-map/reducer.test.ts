@@ -138,11 +138,11 @@ describe('Account Map reducer', () => {
     const latest = { ...createEmptyWorkspace(2), revision: 2 };
     latest.accountMap.applied = applied('account');
     const conflicted = accountMapReducer(current, {
-      type: 'save-manual-conflicted', latest, targetId: 'a', reason: 'compound-edit',
+      type: 'save-manual-conflicted', latest, action: 'edit-node', targets: [{ kind: 'node', id: 'a' }], reason: 'compound-edit',
     });
     expect(conflicted).toMatchObject({
       mode: 'map', workspace: { revision: 0 }, interaction: { modalNodeId: 'a' },
-      recovery: { status: 'manual', latest: { revision: 2 }, targetId: 'a', reason: 'compound-edit' },
+      recovery: { status: 'manual', latest: { revision: 2 }, action: 'edit-node', targets: [{ kind: 'node', id: 'a' }], reason: 'compound-edit' },
     });
 
     const reviewing = accountMapReducer(conflicted, { type: 'review-latest' });
@@ -161,14 +161,50 @@ describe('Account Map reducer', () => {
     const latest = createEmptyWorkspace(2);
     latest.accountMap.applied = applied('purpose');
     const conflicted = accountMapReducer(current, {
-      type: 'save-manual-conflicted', latest, targetId: 'location:checking', reason: 'compound-edit',
+      type: 'save-manual-conflicted', latest, action: 'edit-node', targets: [{ kind: 'node', id: 'location:checking' }], reason: 'compound-edit',
     });
 
     const reviewed = accountMapReducer(conflicted, { type: 'review-latest' });
 
     expect(reviewed).toMatchObject({
       mode: 'map', workspace: { revision: 0 }, interaction: { modalNodeId: 'location:checking' },
-      recovery: { status: 'manual', reason: 'target-missing', targetId: 'location:checking' },
+      recovery: { status: 'manual', reason: 'target-missing', action: 'edit-node', targets: [{ kind: 'node', id: 'location:checking' }] },
+    });
+  });
+
+  it('keeps setup input when manual review finds that latest already has an applied map', () => {
+    const current = setupState();
+    const latest = createEmptyWorkspace(2);
+    latest.accountMap.applied = applied('purpose');
+    const conflicted = accountMapReducer(current, {
+      type: 'save-manual-conflicted', latest, action: 'apply-map', targets: [], reason: 'compound-edit',
+    });
+
+    const reviewed = accountMapReducer(conflicted, { type: 'review-latest' });
+
+    expect(reviewed).toMatchObject({
+      mode: 'setup', workspace: { revision: 0 }, draft: current.mode === 'setup' ? current.draft : null,
+      recovery: { status: 'manual', reason: 'target-missing', action: 'apply-map' },
+    });
+  });
+
+  it('keeps compound modal input when a child link disappears or its location is archived', () => {
+    const current = mapState();
+    const latest = createEmptyWorkspace(2);
+    latest.locations = [{ id: 'checking', shortName: '생활비', kind: 'bank', roles: ['spending'], archivedAt: 2, createdAt: 1, updatedAt: 2 }];
+    latest.accountMap.applied = {
+      ...applied('purpose'),
+      links: [{ id: 'living', purposeId: 'system:living', locationId: 'checking', monthlyAmountWon: 700_000, remainder: true, status: 'active', createdAt: 1, updatedAt: 1 }],
+    };
+    const conflicted = accountMapReducer(current, {
+      type: 'save-manual-conflicted', latest, action: 'edit-node', targets: [{ kind: 'link', id: 'living' }], reason: 'compound-edit',
+    });
+
+    const reviewed = accountMapReducer(conflicted, { type: 'review-latest' });
+
+    expect(reviewed).toMatchObject({
+      mode: 'map', workspace: { revision: 0 },
+      recovery: { status: 'manual', reason: 'target-missing', targets: [{ kind: 'link', id: 'living' }] },
     });
   });
 

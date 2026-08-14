@@ -19,7 +19,7 @@ export type SaveState =
 export type RecoveryState =
   | { status: 'none' }
   | { status: 'stale'; latest: WorkspaceDocument; intent: AccountMapEditIntent }
-  | { status: 'manual'; latest: WorkspaceDocument; targetId: string; reason: 'compound-edit' | 'removal' | 'target-missing' }
+  | { status: 'manual'; latest: WorkspaceDocument; action: ManualRecoveryAction; targets: ManualRecoveryTarget[]; reason: 'compound-edit' | 'removal' | 'target-missing' }
   | {
       status: 'collision';
       latest: WorkspaceDocument;
@@ -27,6 +27,9 @@ export type RecoveryState =
       field: string;
       reason: string;
     };
+
+export type ManualRecoveryAction = 'reset-map' | 'archive-location' | 'restore-location' | 'layout-change' | 'save-draft' | 'apply-map' | 'edit-node' | 'connection-prerequisite' | 'cancel-setup';
+export type ManualRecoveryTarget = { kind: 'node' | 'link' | 'location'; id: string };
 
 interface WorkspaceReadyState {
   workspace: WorkspaceDocument;
@@ -76,9 +79,10 @@ export type AccountMapEvent =
   | { type: 'save-succeeded'; workspace: WorkspaceDocument }
   | { type: 'save-failed'; reason: AccountMapSaveFailure }
   | { type: 'save-conflicted'; latest: WorkspaceDocument; intent: AccountMapEditIntent }
-  | { type: 'save-manual-conflicted'; latest: WorkspaceDocument; targetId: string; reason: 'compound-edit' | 'removal' }
+  | { type: 'save-manual-conflicted'; latest: WorkspaceDocument; action: ManualRecoveryAction; targets: ManualRecoveryTarget[]; reason: 'compound-edit' | 'removal' }
   | { type: 'reapply-requested' }
-  | { type: 'reapply-collided'; field: string; reason: string }
+  | { type: 'reapply-collided'; field: string; reason: string; latest?: WorkspaceDocument }
+  | { type: 'recovery-latest-updated'; latest: WorkspaceDocument }
   | { type: 'reapply-succeeded'; workspace: WorkspaceDocument }
   | { type: 'review-latest' }
   | { type: 'latest-kept' };
@@ -256,7 +260,8 @@ function reduceRecovery<State extends Extract<AccountMapState, { mode: 'setup' |
         recovery: {
           status: 'manual',
           latest: structuredClone(event.latest),
-          targetId: event.targetId,
+          action: event.action,
+          targets: structuredClone(event.targets),
           reason: event.reason,
         },
       };
@@ -272,12 +277,16 @@ function reduceRecovery<State extends Extract<AccountMapState, { mode: 'setup' |
             save: { status: 'idle' },
             recovery: {
               status: 'collision',
-              latest: state.recovery.latest,
+              latest: structuredClone(event.latest ?? state.recovery.latest),
               intent: state.recovery.intent,
               field: event.field,
               reason: event.reason,
             },
           };
+    case 'recovery-latest-updated':
+      return state.recovery.status === 'none'
+        ? state
+        : { ...state, recovery: { ...state.recovery, latest: structuredClone(event.latest) } };
     case 'reapply-succeeded':
       return adoptRecoveryWorkspace(state, event.workspace);
     case 'review-latest':
@@ -300,8 +309,11 @@ function adoptRecoveryWorkspaceForReview<State extends Extract<AccountMapState, 
   const recovery = state.recovery;
   if (recovery.status !== 'manual') return state;
   const applied = workspace.accountMap.applied;
+  if (state.mode === 'setup' && applied !== null) {
+    return { ...state, save: { status: 'idle' }, recovery: { ...recovery, reason: 'target-missing' } };
+  }
   if (state.mode === 'map' && applied !== null) {
-    if (!workspaceContainsMapTarget(workspace, recovery.targetId)) {
+    if (!recovery.targets.every((target) => workspaceContainsManualTarget(workspace, recovery.action, target))) {
       return {
         ...state,
         save: { status: 'idle' },
@@ -332,13 +344,18 @@ function adoptRecoveryWorkspaceForReview<State extends Extract<AccountMapState, 
   return adoptRecoveryWorkspace(state, workspace);
 }
 
-function workspaceContainsMapTarget(workspace: WorkspaceDocument, targetId: string): boolean {
-  if (targetId.startsWith('location:')) {
-    return workspace.locations.some(({ id }) => id === targetId.replace(/^location:/u, ''));
+function workspaceContainsManualTarget(workspace: WorkspaceDocument, action: ManualRecoveryAction, target: ManualRecoveryTarget): boolean {
+  if (target.kind === 'link') {
+    const link = workspace.accountMap.applied?.links.find(({ id }) => id === target.id);
+    if (link === undefined) return false;
+    return workspace.locations.some(({ id, archivedAt }) => id === link.locationId && (action === 'restore-location' ? archivedAt !== undefined : archivedAt === undefined));
   }
-  if (targetId.startsWith('custom:')) {
-    return workspace.accountMap.applied?.customPurposes.some(({ id }) => id === targetId) === true;
+  if (target.kind === 'location' || target.id.startsWith('location:')) {
+    const id = target.id.replace(/^location:/u, '');
+    const location = workspace.locations.find((candidate) => candidate.id === id);
+    return location !== undefined && (action === 'restore-location' ? location.archivedAt !== undefined : location.archivedAt === undefined);
   }
+  if (target.id.startsWith('custom:')) return workspace.accountMap.applied?.customPurposes.some(({ id, archivedAt }) => id === target.id && archivedAt === undefined) === true;
   return workspace.accountMap.applied !== null;
 }
 

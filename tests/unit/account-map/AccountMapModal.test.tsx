@@ -227,7 +227,7 @@ describe('AccountMapModal', () => {
     fireEvent.change(label, { target: { value: '새 생활비' } });
 
     rerender(<AccountMapModal {...props} recovery={{
-      status: 'manual', latest: createEmptyWorkspace(2), targetId: 'location:checking', reason: 'compound-edit',
+      status: 'manual', latest: createEmptyWorkspace(2), action: 'edit-node', targets: [{ kind: 'node', id: 'location:checking' }], reason: 'compound-edit',
     }} />);
 
     expect(label).toHaveValue('새 생활비');

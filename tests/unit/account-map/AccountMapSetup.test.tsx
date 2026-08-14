@@ -143,6 +143,24 @@ describe('AccountMapSetup', () => {
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(screen.getByRole('dialog', { name: '수입 연결' })).toBeVisible();
   });
+
+  it('keeps custom-purpose input mounted and blocks duplicate actions while its save is pending', () => {
+    const setup = fixture();
+    setup.repositories.accountMap.save = vi.fn(async () => await new Promise<AccountMapWriteResult>(() => undefined));
+    render(<AccountMapApp repositories={setup.repositories} />);
+    fireEvent.click(screen.getByRole('button', { name: '세부 목적 추가' }));
+    fireEvent.change(screen.getByRole('textbox', { name: '목적 이름' }), { target: { value: '여행' } });
+    fireEvent.change(screen.getByRole('textbox', { name: '월 금액' }), { target: { value: '100000' } });
+    fireEvent.click(screen.getByRole('button', { name: '추가' }));
+
+    expect(screen.getByRole('button', { name: '추가' })).toBeDisabled();
+    const cancel = screen.getByRole('button', { name: '취소' });
+    expect(cancel).toBeDisabled();
+    fireEvent.click(cancel);
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.getByRole('dialog', { name: '세부 목적 추가' })).toBeVisible();
+    expect(screen.getByRole('textbox', { name: '목적 이름' })).toHaveValue('여행');
+  });
 });
 
 function stalePendingFixture() {
