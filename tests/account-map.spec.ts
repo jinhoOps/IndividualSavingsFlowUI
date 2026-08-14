@@ -233,6 +233,14 @@ test('honors reduced motion and stays contained at supported widths', async ({ p
     await page.goto('apps/account-map/');
     const dimensions = await page.evaluate(() => ({ body: document.body.scrollWidth, viewport: document.documentElement.clientWidth }));
     expect(dimensions.body).toBeLessThanOrEqual(dimensions.viewport);
+    const controlBoxes = await page.locator('.account-map-layout-control button, .account-map-zoom-control button').evaluateAll((buttons) => (
+      buttons.map((button) => {
+        const { width, height } = button.getBoundingClientRect();
+        return { width, height };
+      })
+    ));
+    expect(controlBoxes).toHaveLength(4);
+    expect(controlBoxes.every(({ width, height }) => width >= 44 && height >= 44)).toBe(true);
     await openNode(page, /생활비.*1,000,000원/);
     await expect(page.getByRole('dialog')).toBeVisible();
     await page.getByRole('button', { name: '닫기' }).click();

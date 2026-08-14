@@ -21,6 +21,7 @@ export function AccountMapApp({ repositories }: { repositories?: AccountMapRepos
   const resolved = useMemo<AccountMapRepositories>(() => repositories ?? { accountMap: new BrowserAccountMapRepository(), main: new BrowserAccountMapMainSourceRepository() }, [repositories]);
   const [state, dispatch] = useReducer(accountMapReducer, undefined, () => bootstrapAccountMap(resolved.main.load(), resolved.accountMap.load()));
   const pendingModalWorkspaceRef = useRef<WorkspaceDocument | null>(null);
+  const pendingModalRecoveryRef = useRef(false);
   const restoreFocusElementRef = useRef<HTMLElement | null>(null);
   const [restorePurposeId, setRestorePurposeId] = useState<`custom:${string}` | null>(null);
 
@@ -82,7 +83,9 @@ export function AccountMapApp({ repositories }: { repositories?: AccountMapRepos
   if (state.mode === 'map') return <AppShell currentApp="account-map" managementMenu={management}><main className="account-map-page account-map-page--map"><header className="account-map-map-header"><div><p className="account-map-eyebrow">계좌 연결</p><h1>계좌 연결 지도</h1><p>Main의 월 금액은 읽기만 합니다. 노드를 한 번 누르면 연결에 집중합니다.</p></div></header><AccountMapCanvas applied={state.applied} main={state.main} locations={state.workspace.locations} interaction={state.interaction} recovery={state.recovery} recoveryPending={state.save.status === 'pending'} saveFailed={state.save.status === 'failed'} hasExternalModal={restoringPurpose !== undefined} onReapply={reapplyIntent} onKeepLatest={() => dispatch({ type: 'latest-kept' })} onTransient={(nodeId) => dispatch({ type: 'node-hovered', nodeId })} onBlur={(nodeId) => dispatch({ type: 'node-blurred', nodeId })} onInvoke={(nodeId) => dispatch({ type: 'node-invoked', nodeId })} onBackground={() => dispatch({ type: 'map-background-invoked' })} onModalClose={() => {
     const pending = pendingModalWorkspaceRef.current;
     pendingModalWorkspaceRef.current = null;
-    if (pending !== null) dispatch({ type: 'save-succeeded', workspace: pending });
+    const recovered = pendingModalRecoveryRef.current;
+    pendingModalRecoveryRef.current = false;
+    if (pending !== null) dispatch({ type: recovered ? 'reapply-succeeded' : 'save-succeeded', workspace: pending });
     dispatch({ type: 'modal-closed' });
   }} onSaveNodeEdit={async (nodeId, input) => {
     if (state.recovery.status !== 'none') return false;
@@ -209,7 +212,9 @@ export function AccountMapApp({ repositories }: { repositories?: AccountMapRepos
     onClose={() => {
       const pending = pendingModalWorkspaceRef.current;
       pendingModalWorkspaceRef.current = null;
-      if (pending !== null) dispatch({ type: 'save-succeeded', workspace: pending });
+      const recovered = pendingModalRecoveryRef.current;
+      pendingModalRecoveryRef.current = false;
+      if (pending !== null) dispatch({ type: recovered ? 'reapply-succeeded' : 'save-succeeded', workspace: pending });
       setRestorePurposeId(null);
     }}
     onRestorePurpose={async (purposeId, targetMonthlyWon) => {
@@ -425,6 +430,11 @@ export function AccountMapApp({ repositories }: { repositories?: AccountMapRepos
     }
     const result = await resolved.accountMap.save(replayWorkspace.revision, rebased.command);
     if (result.status === 'saved') {
+      if (state.mode === 'map' && (state.interaction.modalNodeId !== null || restorePurposeId !== null)) {
+        pendingModalWorkspaceRef.current = result.workspace;
+        pendingModalRecoveryRef.current = true;
+        return true;
+      }
       dispatch({ type: 'reapply-succeeded', workspace: result.workspace });
       return true;
     }

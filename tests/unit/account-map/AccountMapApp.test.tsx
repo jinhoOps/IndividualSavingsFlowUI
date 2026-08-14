@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AccountMapApp } from '../../../src/account-map/ui/AccountMapApp';
@@ -7,7 +7,37 @@ import type { AccountMapRepository } from '../../../src/account-map/infrastructu
 import type { AccountMapMainSourceRepository } from '../../../src/account-map/infrastructure/mainSourceRepository';
 import { createEmptyWorkspace, type WorkspaceDocument } from '../../../src/workspace/domain/model';
 
-afterEach(cleanup);
+const appMotion = vi.hoisted(() => ({
+  deferClose: false,
+  closeStarts: 0,
+  closeComplete: null as (() => void) | null,
+}));
+
+vi.mock('../../../src/account-map/ui/motion', () => ({
+  animateNodeToModal: (_rect: DOMRect, _modal: HTMLElement, options: { onComplete(): void }) => {
+    options.onComplete();
+    return { cancel() {} };
+  },
+  animateModalToNode: (_modal: HTMLElement, _rect: DOMRect, options: { onComplete(): void }) => {
+    appMotion.closeStarts += 1;
+    if (appMotion.deferClose) appMotion.closeComplete = options.onComplete;
+    else options.onComplete();
+    return { cancel() { appMotion.closeComplete = null; } };
+  },
+  animateMapLayout: (_root: HTMLElement, mutate: () => void, options: { onComplete(): void }) => {
+    mutate();
+    options.onComplete();
+    return { cancel() {} };
+  },
+}));
+
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+  appMotion.deferClose = false;
+  appMotion.closeStarts = 0;
+  appMotion.closeComplete = null;
+});
 
 describe('AccountMapApp', () => {
   it('gates setup when Main has no applied plan', () => {
@@ -404,6 +434,52 @@ describe('AccountMapApp', () => {
       type: 'edit-link', linkId: 'living-link', fields: { monthlyAmountWon: 650_000 },
     }));
     await waitFor(() => expect(screen.queryByRole('dialog', { name: /생활비 편집/ })).not.toBeInTheDocument());
+    expect(setup.save).toHaveBeenCalledTimes(1);
+    expect(livingNode).toHaveFocus();
+  });
+
+  it('adopts successful replay only after normal-motion modal close restores focus', async () => {
+    appMotion.deferClose = true;
+    vi.stubGlobal('matchMedia', vi.fn(() => ({
+      matches: false,
+      media: '(prefers-reduced-motion: reduce)',
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })));
+    const setup = staleModalRepositories();
+    render(<AccountMapApp repositories={setup.repositories} />);
+    const livingNode = screen.getByRole('button', { name: /생활비 · 1,000,000원/ });
+    fireEvent.click(livingNode);
+    fireEvent.click(livingNode);
+    fireEvent.click(screen.getByRole('button', { name: '편집' }));
+    fireEvent.change(screen.getByRole('textbox', { name: '생활비통장 월 금액' }), { target: { value: '650000' } });
+    fireEvent.click(screen.getByRole('button', { name: '저장' }));
+    const dialog = screen.getByRole('dialog', { name: /생활비 편집/ });
+
+    fireEvent.click(await screen.findByRole('button', { name: '최신 상태에서 다시 적용' }));
+
+    await waitFor(() => expect(setup.save).toHaveBeenCalledTimes(1));
+    expect(dialog).toBeVisible();
+    expect(appMotion.closeStarts).toBe(1);
+    expect(livingNode).not.toHaveFocus();
+
+    const complete = appMotion.closeComplete;
+    expect(complete).not.toBeNull();
+    act(() => complete?.());
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(livingNode).toHaveFocus();
+    expect(setup.save).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('button', { name: '최신 상태에서 다시 적용' })).not.toBeInTheDocument();
+
+    fireEvent.click(livingNode);
+    fireEvent.click(livingNode);
+    fireEvent.click(screen.getByRole('button', { name: '편집' }));
+    expect(screen.getByRole('textbox', { name: '생활비통장 월 금액' })).toHaveValue('650000');
   });
 
   it('keeps compound modal input for latest review and never snapshot-replays it automatically', async () => {

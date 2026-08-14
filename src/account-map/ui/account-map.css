@@ -54,7 +54,7 @@
 .account-map-canvas-toolbar { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 14px; border-bottom: 1px solid var(--line); padding: 16px 18px; }
 .account-map-canvas-toolbar h2, .account-map-canvas-toolbar p { margin: 0; }
 .account-map-layout-control, .account-map-zoom-control { display: flex; min-height: 44px; align-items: center; border: 1px solid var(--line); border-radius: 12px; padding: 3px; }
-.account-map-layout-control button, .account-map-zoom-control button { min-width: 44px; min-height: 36px; border: 0; border-radius: 9px; background: transparent; color: var(--muted); font-weight: 700; }
+.account-map-layout-control button, .account-map-zoom-control button { min-width: 44px; min-height: 44px; border: 0; border-radius: 9px; background: transparent; color: var(--muted); font-weight: 700; }
 .account-map-layout-control button[aria-pressed='true'] { background: var(--ink); color: var(--panel); }
 .account-map-zoom-control span { min-width: 66px; text-align: center; font-size: .8rem; }
 .account-map-canvas { position: relative; min-height: 360px; overflow: hidden; background-color: color-mix(in srgb, var(--bg) 74%, var(--panel)); background-image: radial-gradient(circle, color-mix(in srgb, var(--line-strong) 55%, transparent) 1px, transparent 1px); background-size: 20px 20px; }

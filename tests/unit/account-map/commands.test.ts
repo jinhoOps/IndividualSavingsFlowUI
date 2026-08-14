@@ -176,14 +176,75 @@ describe('Account Map commands', () => {
     expect(result.workspace.accountMap.applied?.sourceMainUpdatedAt).toBe(11);
   });
 
-  it('does not partially restore when an atomic restore-and-connect candidate is rejected', () => {
+  it('reactivates only the selected archived-location pair and preserves its identity', () => {
+    const before = workspace();
+    before.main.applied = { ...before.main.applied!, updatedAt: 11 };
+    before.locations[1] = { ...before.locations[1]!, archivedAt: 10 };
+    before.accountMap.applied = {
+      ...validApplied(),
+      links: [
+        ...validApplied().links,
+        { ...link('applied-twin', 'savings', 80_000), purposeId: 'system:investing', status: 'suspended', remainder: false, suspendedReason: 'location-archived' },
+      ],
+    };
+    before.accountMap.draft = {
+      ...draft(),
+      sourceMainUpdatedAt: 1,
+      links: [
+        { ...link('selected-pair', 'savings', 75_000), purposeId: 'system:investing', status: 'suspended', remainder: false, suspendedReason: 'location-archived', createdAt: 3, updatedAt: 10 },
+        { ...link('unrelated-pair', 'savings', 300_000), purposeId: 'system:saving', status: 'suspended', remainder: false, suspendedReason: 'location-archived', createdAt: 4, updatedAt: 10 },
+      ],
+    };
+    const protectedBefore = {
+      main: JSON.stringify(before.main),
+      simulation: JSON.stringify(before.simulation),
+      portfolio: JSON.stringify(before.portfolio),
+    };
+
+    const result = applyAccountMapCommand(before, {
+      type: 'restore-and-connect-location',
+      surface: 'draft',
+      purposeId: 'system:investing',
+      locationId: 'savings',
+    }, 20);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.workspace.accountMap.draft?.links).toContainEqual({
+      id: 'selected-pair',
+      purposeId: 'system:investing',
+      locationId: 'savings',
+      monthlyAmountWon: 200_000,
+      remainder: true,
+      status: 'active',
+      createdAt: 3,
+      updatedAt: 20,
+    });
+    expect(result.workspace.accountMap.draft?.links.find(({ id }) => id === 'unrelated-pair')).toMatchObject({
+      status: 'suspended',
+      suspendedReason: 'location-archived',
+      monthlyAmountWon: 300_000,
+      updatedAt: 10,
+    });
+    expect(result.workspace.accountMap.applied?.links.find(({ id }) => id === 'applied-twin')).toMatchObject({
+      status: 'suspended',
+      suspendedReason: 'location-archived',
+      monthlyAmountWon: 80_000,
+    });
+    expect(result.workspace.accountMap.draft?.sourceMainUpdatedAt).toBe(11);
+    expect(JSON.stringify(result.workspace.main)).toBe(protectedBefore.main);
+    expect(JSON.stringify(result.workspace.simulation)).toBe(protectedBefore.simulation);
+    expect(JSON.stringify(result.workspace.portfolio)).toBe(protectedBefore.portfolio);
+  });
+
+  it('does not resume a user-suspended pair or partially restore its location', () => {
     const before = workspace();
     before.locations[1] = { ...before.locations[1]!, archivedAt: 10 };
     before.accountMap.applied = {
       ...validApplied(),
       links: [
         ...validApplied().links,
-        { ...link('old-investing', 'savings', 200_000), purposeId: 'system:investing', status: 'suspended', remainder: false, suspendedReason: 'location-archived' },
+        { ...link('old-investing', 'savings', 200_000), purposeId: 'system:investing', status: 'suspended', remainder: false, suspendedReason: 'user' },
       ],
     };
     const beforeJson = JSON.stringify(before);

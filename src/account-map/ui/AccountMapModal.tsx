@@ -250,7 +250,7 @@ export function AccountMapModal({ node, related, sourceElement, fallbackElement,
           })}</div> : null}
           {mode === 'restore-purpose' ? <div className="account-map-modal__restore-purpose">
             {purposeParentLabel === undefined ? null : <p>큰 목적 · {purposeParentLabel}</p>}
-            <label>월 목표 금액<input data-recovery-field="targetMonthlyWon" inputMode="numeric" value={restorePurposeTarget} onChange={(event) => setRestorePurposeTarget(event.target.value.replace(/\D/gu, ''))} /></label>
+            <label>월 목표 금액<input data-recovery-field="targetMonthlyWon" aria-describedby={recovery.status === 'collision' && recovery.field === 'targetMonthlyWon' ? recoveryDescriptionId : undefined} inputMode="numeric" value={restorePurposeTarget} onChange={(event) => setRestorePurposeTarget(event.target.value.replace(/\D/gu, ''))} /></label>
             {purposeTargetCapacityWon === undefined ? null : <p className="account-map-hint">복원 가능 {formatWon(purposeTargetCapacityWon)}</p>}
             {purposeTargetCapacityWon !== undefined && Number(restorePurposeTarget) > purposeTargetCapacityWon ? <p className="account-map-modal__error">최신 큰 목적의 월 금액을 넘을 수 없습니다.</p> : null}
             {directRelated.some(({ status }) => status === 'suspended') ? <p>목적만 복원하며 중지된 연결은 자동으로 재개하지 않습니다.</p> : null}

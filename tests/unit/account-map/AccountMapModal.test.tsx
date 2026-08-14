@@ -298,6 +298,19 @@ describe('AccountMapModal', () => {
     expect(first).not.toHaveAttribute('aria-describedby');
   });
 
+  it('describes and focuses a colliding archived-purpose restore target', () => {
+    renderModal({
+      initialMode: 'restore-purpose',
+      node: { id: 'custom:telecom', kind: 'purpose', label: '통신비', amountWon: 200_000, status: 'suspended' },
+      purposeParentLabel: '생활비',
+      recovery: purposeTargetCollisionRecovery(),
+    });
+
+    const target = screen.getByRole('textbox', { name: '월 목표 금액' });
+    expect(target).toHaveFocus();
+    expect(target).toHaveAccessibleDescription(/월 목표 금액.*최신 상태에서도 변경/);
+  });
+
   it('shows transport failure inside a recovering modal and disables recovery while pending', () => {
     const onClose = vi.fn();
     render(<AccountMapModal {...modalProps({
@@ -463,5 +476,19 @@ function collisionRecovery(field: string): RecoveryState {
       },
     },
     field, reason: 'field-conflict',
+  };
+}
+
+function purposeTargetCollisionRecovery(): RecoveryState {
+  return {
+    status: 'collision', latest: createEmptyWorkspace(2),
+    intent: {
+      kind: 'purpose', id: 'custom:telecom',
+      edit: {
+        base: { name: '통신비', targetMonthlyWon: 200_000, archivedAt: 1 },
+        next: { name: '통신비', targetMonthlyWon: 150_000 },
+      },
+    },
+    field: 'targetMonthlyWon', reason: 'field-conflict',
   };
 }

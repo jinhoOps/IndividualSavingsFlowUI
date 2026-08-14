@@ -431,22 +431,49 @@ function restoreAndConnectLocation(
   command: Extract<AccountMapCommand, { type: 'restore-and-connect-location' }>,
   now: number,
 ): AccountMapCommandResult {
-  const restored = restoreLocation(source, {
-    type: 'restore-location',
-    locationId: command.locationId,
-    restoreLinkIds: [],
-    remainderByPurpose: {},
-  }, now);
-  if (!restored.ok) return restored;
-  return connectLocation(restored.workspace, {
-    type: 'connect-location',
-    surface: command.surface,
-    purposeId: command.purposeId,
-    locationId: command.locationId,
-    ...(command.monthlyAmountWon === undefined
-      ? {}
-      : { monthlyAmountWon: command.monthlyAmountWon }),
-  }, now);
+  const current = source.locations.find(({ id }) => id === command.locationId);
+  if (current === undefined) return failure('location-not-found');
+  if (current.archivedAt === undefined) return failure('invalid-input');
+  const state = connectionState(source, command.surface, now);
+  if (state === null) return failure('invalid-input');
+  const role = requiredRole(command.purposeId, state.customPurposes);
+  if (role === null) return failure('invalid-input');
+  const pair = state.links.find(({ purposeId, locationId }) => (
+    purposeId === command.purposeId && locationId === command.locationId
+  ));
+  if (pair !== undefined && (pair.status !== 'suspended'
+    || pair.suspendedReason !== 'location-archived')) return failure('duplicate-link');
+
+  const { archivedAt: _archivedAt, ...withoutArchive } = current;
+  const location = parseFinancialLocation({
+    ...withoutArchive,
+    roles: [...new Set([...current.roles, role])],
+    updatedAt: now,
+  });
+  if (location === null) return failure('invalid-input');
+  const duplicate = findLocationDuplicate(source.locations, location);
+  if (duplicate.kind === 'active') {
+    return { ok: false, reason: 'duplicate-location-active', locationId: duplicate.location.id };
+  }
+  const locations = replaceLocation(source.locations, location);
+  if (exceedsRoleCapacity(locations)) return failure('purpose-capacity');
+
+  const nextState = appendConnection(
+    state,
+    command.purposeId,
+    command.locationId,
+    command.monthlyAmountWon,
+    locations,
+    source,
+    now,
+    pair,
+  );
+  if (isFailure(nextState)) return nextState;
+  return successCandidate(source, {
+    ...source,
+    locations,
+    accountMap: { ...source.accountMap, [command.surface]: nextState },
+  });
 }
 
 function appendConnection<T extends AccountMapApplied | AccountMapDraft>(
@@ -457,6 +484,7 @@ function appendConnection<T extends AccountMapApplied | AccountMapDraft>(
   locations: FinancialLocation[],
   source: WorkspaceDocument,
   now: number,
+  pairToReactivate?: PurposeLocationLink,
 ): T | Extract<AccountMapCommandResult, { ok: false }> {
   if (monthlyAmountWon !== undefined && (!Number.isSafeInteger(monthlyAmountWon) || monthlyAmountWon < 0)) {
     return failure('invalid-input');
@@ -468,16 +496,18 @@ function appendConnection<T extends AccountMapApplied | AccountMapDraft>(
   const targetWon = reconcilePurpose(purposeId, state, locations, source.main.applied!).targetWon;
   const firstConnection = activeLinks.length === 0;
   const link: PurposeLocationLink = {
-    id: uniqueLinkId(state.links, purposeId, locationId),
+    id: pairToReactivate?.id ?? uniqueLinkId(state.links, purposeId, locationId),
     purposeId,
     locationId,
     monthlyAmountWon: firstConnection ? targetWon : monthlyAmountWon ?? 0,
     remainder: firstConnection,
     status: 'active',
-    createdAt: now,
+    createdAt: pairToReactivate?.createdAt ?? now,
     updatedAt: now,
   };
-  let links = [...state.links, link];
+  let links = pairToReactivate === undefined
+    ? [...state.links, link]
+    : state.links.map((candidate) => candidate.id === pairToReactivate.id ? link : candidate);
   if (!firstConnection) {
     const remainder = activeLinks.find(({ remainder }) => remainder) ?? activeLinks[0];
     const recalculated = recalculateRemainder(purposeId, remainder!.id, targetWon, links);
