@@ -524,7 +524,7 @@ npm run test:e2e
 git status --short
 ```
 
-Expected: source checks, new focused tests and E2E PASS. The pre-existing `tests/unit/journey/AppLauncher.test.tsx` three overflow-layout failures were observed before this work in both the parent and isolated worktree; report them with their exact command if they remain, but do not change launcher behavior or label a failing full unit suite as passing. Any new failure must be fixed before handoff.
+Expected: source checks, new focused tests, the repaired AppLauncher regression suite, full unit suite and E2E PASS. Any failure must be fixed before handoff; do not label a failing suite as passing.
 
 - [ ] **Step 4: review generated-artifact and product invariants.**
 
@@ -545,6 +545,52 @@ The first command must print equal package/manifest versions. The searches must 
 git add DESIGN.md package.json package-lock.json public/manifest.webmanifest shared/legacy/sw.js shared/core/utils.js public/icons
 git commit -m "docs: document Main brand intro"
 ```
+
+---
+
+### Task 7: AppLauncher overflow regression을 실제 폭 계약으로 복구한다
+
+**Files:**
+- Modify: `src/journey/ui/AppLauncher.tsx` only if source behavior is at fault
+- Modify: `src/journey/ui/journey.css` only if the responsive measurement contract is at fault
+- Modify: `tests/unit/journey/AppLauncher.test.tsx`
+- Modify: `tests/main-react.spec.ts` only if a browser-level launcher regression is necessary to distinguish a jsdom harness defect from product behavior
+
+**Scope:** This task is separately approved after the original plan: `tests/unit/journey/AppLauncher.test.tsx` had three pre-existing overflow-layout failures (expected current app direct plus `앱 더보기`, observed all four links direct). Preserve the DESIGN contract: current app is always direct; `더보기` appears only when width is insufficient; all four links remain direct when they fit; 44px targets, focus, keyboard and launcher motion behavior remain intact.
+
+- [ ] **Step 1: diagnose before changing behavior.**
+
+Run the focused suite and inspect its resize/measurement harness, `AppLauncher`’s current width calculation, and the existing browser launcher tests. Record whether the failure is a source measurement bug or an incomplete jsdom `ResizeObserver`/bounding-box fixture. Do not alter CSS breakpoints or force a fixed two-link layout to make a test pass.
+
+```bash
+npx vitest run tests/unit/journey/AppLauncher.test.tsx
+```
+
+- [ ] **Step 2: write one failing regression for the diagnosed width boundary.**
+
+The test must set an explicit narrow width, flush the same observer/event boundary the source uses, and assert the current application link remains direct while hidden routes move into the accessible `앱 더보기` menu. Add a companion wide-width assertion proving `더보기` disappears when all routes fit. Observe the intended RED failure before changing production code.
+
+- [ ] **Step 3: implement the smallest source or harness correction.**
+
+If source measurement is correct, repair only the deterministic test fixture so it exposes the same non-zero width/resize behavior as browsers. If source behavior is wrong, correct its measurement/update lifecycle without changing the design’s overflow policy. Keep unrelated Main intro files untouched.
+
+- [ ] **Step 4: verify and commit the isolated launcher fix.**
+
+```bash
+npx vitest run tests/unit/journey/AppLauncher.test.tsx
+npx playwright test tests/app-journey.spec.ts --grep "launcher|more" --reporter=list
+npm run check
+git diff --check
+```
+
+Commit only the diagnosed launcher implementation/test files:
+
+```bash
+git add src/journey/ui/AppLauncher.tsx src/journey/ui/journey.css tests/unit/journey/AppLauncher.test.tsx tests/app-journey.spec.ts
+git commit -m "fix(journey): stabilize launcher overflow"
+```
+
+Run Task 7 before Task 6’s full release verification.
 
 ---
 
