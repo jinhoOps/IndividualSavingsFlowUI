@@ -434,7 +434,7 @@ export function MainApp({
 
   if (state === null) {
     return (
-      <AppShell currentApp="main" managementMenu={managementMenu} statusRegion={backupStatusRegion}>
+      <AppShell currentApp="main" showLauncher={false}>
         <main
           className="app-content-frame grid min-h-dvh place-items-center py-8"
           data-testid="main-page-frame"

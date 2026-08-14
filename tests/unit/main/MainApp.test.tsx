@@ -674,8 +674,10 @@ describe('MainApp', () => {
 
     expect(screen.getByRole('status')).toHaveTextContent('자금 계획을 불러오는 중');
     expect(screen.getByTestId('main-page-frame')).toHaveClass('app-content-frame');
-    fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
-    expect(screen.getByLabelText('백업 가져오기')).toBeDisabled();
+    expect(screen.queryByTestId('app-shell-launcher')).not.toBeInTheDocument();
+    expect(screen.queryByRole('navigation', { name: 'ISF 앱' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '관리 메뉴' })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('백업 가져오기')).not.toBeInTheDocument();
     resolveLoad?.({ status: 'empty', data: null, original: null });
 
     await completeBrandIntro();
