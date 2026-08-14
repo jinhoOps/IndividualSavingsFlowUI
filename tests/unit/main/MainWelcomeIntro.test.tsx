@@ -45,6 +45,7 @@ describe('MainWelcomeIntro', () => {
     render(<MainWelcomeIntro onComplete={vi.fn()} />);
 
     const section = screen.getByRole('region', { name: '나의 가계 흐름 시작 화면' });
+    expect(screen.getByTestId('main-welcome-intro')).toBe(section);
     expect(screen.getByRole('heading', { name: '나의 가계 흐름 시작 화면' })).toHaveClass('sr-only');
     expect(section).toHaveAttribute('aria-describedby');
     expect(screen.getByText('월간 돈의 흐름을 차분히 살펴보세요.')).toHaveClass('sr-only');

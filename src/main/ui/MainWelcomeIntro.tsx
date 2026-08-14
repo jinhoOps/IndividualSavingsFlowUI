@@ -109,6 +109,7 @@ export function MainWelcomeIntro({ onComplete }: MainWelcomeIntroProps): JSX.Ele
     <section
       ref={rootRef}
       className="main-welcome-intro"
+      data-testid="main-welcome-intro"
       aria-labelledby="main-welcome-intro-title"
       aria-describedby="main-welcome-intro-description"
       onPointerDown={finish}
