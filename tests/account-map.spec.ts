@@ -373,6 +373,39 @@ test('supports layout, semantic zoom, focus parity, second invoke, and same-moda
   await expect(page.getByRole('table', { name: '계좌 연결 읽기 표' })).not.toHaveAttribute('tabindex');
 });
 
+test('keeps overview node and edge topology representative-only, then restores unlinked discovery at default zoom', async ({ page }) => {
+  const workspace = editableWorkspace();
+  workspace.locations.push(location('vault', '비상금함', 'hana', '하나은행', ['saving']));
+  await seed(page, workspace);
+  await page.goto('apps/account-map/');
+
+  await expect(page.locator('.account-map-node--location')).toHaveCount(4);
+  await expect(page.locator('.account-map-edges path')).toHaveCount(3);
+  await page.getByRole('button', { name: '축소' }).click();
+  await expect(page.getByText('전체 보기')).toBeVisible();
+  await expect(page.getByRole('button', {
+    name: '계좌·보관처 · 생활비통장 · 900,000원 · 활성 연결 1개 · 연결 완료',
+  })).toBeVisible();
+  await expect(page.getByRole('button', {
+    name: '목적 · 생활비 · 1,000,000원 · 활성 연결 2개 · 연결 완료',
+  })).toBeVisible();
+  await expect(page.getByRole('button', { name: /보조생활비/ })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /비상금함/ })).toHaveCount(0);
+  await expect(page.locator('.account-map-node--location')).toHaveCount(2);
+  await expect(page.locator('.account-map-edges path')).toHaveCount(2);
+  await expect(page.locator('.account-map-linear-table tbody tr')).toHaveCount(2);
+
+  await page.getByRole('button', { name: '확대' }).click();
+  const unlinked = page.getByRole('button', {
+    name: '계좌·보관처 · 비상금함 · 0원 · 활성 연결 0개 · 연결 완료',
+  });
+  await expect(page.getByText('기본 보기')).toBeVisible();
+  await expect(page.getByRole('button', { name: /보조생활비/ })).toBeVisible();
+  await expect(unlinked).toBeVisible();
+  await openNode(page, /계좌·보관처 · 비상금함 · 0원 · 활성 연결 0개 · 연결 완료/);
+  await expect(page.getByRole('dialog', { name: '비상금함 상세' })).toBeVisible();
+});
+
 test('shows the Main reference on a system purpose while keeping its direct links at the remainder', async ({ page }) => {
   const workspace = responsiveWorkspace();
   await seed(page, workspace);

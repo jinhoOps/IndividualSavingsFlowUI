@@ -72,7 +72,9 @@ export function buildAccountMapGraph(
     };
   });
   const locationNodes: GraphNode[] = locations
-    .filter((location) => location.archivedAt === undefined || visibleLocationIds.has(location.id))
+    .filter((location) => zoom === 'overview'
+      ? location.archivedAt === undefined && visibleLocationIds.has(location.id)
+      : location.archivedAt === undefined || visibleLocationIds.has(location.id))
     .map((location) => {
       const connections = activeLinks.filter(({ locationId }) => locationId === location.id);
       return {

@@ -16,6 +16,64 @@ const graph: AccountMapGraph = {
 };
 
 describe('Account Map layout', () => {
+  it('shows only representative locations with matching edges in overview', () => {
+    const applied = emptyApplied();
+    applied.links = [
+      {
+        id: 'living-primary', purposeId: 'system:living', locationId: 'checking', monthlyAmountWon: 700_000,
+        remainder: true, status: 'active', createdAt: 1, updatedAt: 1,
+      },
+      {
+        id: 'living-backup', purposeId: 'system:living', locationId: 'backup', monthlyAmountWon: 300_000,
+        remainder: false, status: 'active', createdAt: 1, updatedAt: 1,
+      },
+    ];
+    const result = buildAccountMapGraph(applied, [
+      { id: 'checking', shortName: '생활비통장', kind: 'bank', roles: ['spending'], createdAt: 1, updatedAt: 1 },
+      { id: 'backup', shortName: '보조생활비', kind: 'bank', roles: ['spending'], createdAt: 1, updatedAt: 1 },
+      { id: 'vault', shortName: '비상금함', kind: 'cash', roles: ['saving'], createdAt: 1, updatedAt: 1 },
+    ], main, 'overview');
+
+    expect(result.edges).toEqual([expect.objectContaining({ id: 'living-primary', locationId: 'location:checking' })]);
+    expect(result.nodes.filter(({ kind }) => kind === 'location')).toEqual([
+      expect.objectContaining({
+        id: 'location:checking', amountWon: 700_000, connectionCount: 1, status: 'resolved',
+      }),
+    ]);
+    expect(result.nodes.find(({ id }) => id === 'system:living')).toMatchObject({
+      connectionCount: 2, secondary: '대표 계좌 · 외 1개',
+    });
+  });
+
+  it('keeps every active linked and unlinked location in default and detail views', () => {
+    const applied = emptyApplied();
+    applied.links = [
+      {
+        id: 'living-primary', purposeId: 'system:living', locationId: 'checking', monthlyAmountWon: 700_000,
+        remainder: true, status: 'active', createdAt: 1, updatedAt: 1,
+      },
+      {
+        id: 'living-backup', purposeId: 'system:living', locationId: 'backup', monthlyAmountWon: 300_000,
+        remainder: false, status: 'active', createdAt: 1, updatedAt: 1,
+      },
+    ];
+    const registry = [
+      { id: 'checking', shortName: '생활비통장', kind: 'bank' as const, roles: ['spending' as const], createdAt: 1, updatedAt: 1 },
+      { id: 'backup', shortName: '보조생활비', kind: 'bank' as const, roles: ['spending' as const], createdAt: 1, updatedAt: 1 },
+      { id: 'vault', shortName: '비상금함', kind: 'cash' as const, roles: ['saving' as const], createdAt: 1, updatedAt: 1 },
+    ];
+
+    for (const zoom of ['default', 'detail'] as const) {
+      const result = buildAccountMapGraph(applied, registry, main, zoom);
+      expect(result.edges.map(({ id }) => id)).toEqual(['living-primary', 'living-backup']);
+      expect(result.nodes.filter(({ kind }) => kind === 'location')).toEqual([
+        expect.objectContaining({ id: 'location:checking', amountWon: 700_000, connectionCount: 1 }),
+        expect.objectContaining({ id: 'location:backup', amountWon: 300_000, connectionCount: 1 }),
+        expect.objectContaining({ id: 'location:vault', amountWon: 0, connectionCount: 0 }),
+      ]);
+    }
+  });
+
   it('keeps every active registry location discoverable even when it has no links', () => {
     const result = buildAccountMapGraph(emptyApplied(), [
       { id: 'vault', shortName: '비상금함', kind: 'cash', roles: ['saving'], createdAt: 1, updatedAt: 1 },

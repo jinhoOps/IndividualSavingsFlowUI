@@ -74,6 +74,39 @@ describe('AccountMapCanvas', () => {
     expect(onLayoutChange).toHaveBeenCalledWith('account');
   });
 
+  it('keeps overview DOM topology representative-only and restores an invokable unlinked location at default zoom', () => {
+    const topologyApplied = structuredClone(applied);
+    topologyApplied.links.push({
+      id: 'living-backup', purposeId: 'system:living', locationId: 'checking-backup', monthlyAmountWon: 300_000,
+      remainder: false, status: 'active', createdAt: 1, updatedAt: 1,
+    });
+    const topologyLocations = [
+      ...locations,
+      { id: 'checking-backup', shortName: '보조생활비', kind: 'bank' as const, roles: ['spending' as const], createdAt: 1, updatedAt: 1 },
+      { id: 'vault', shortName: '비상금함', kind: 'cash' as const, roles: ['saving' as const], createdAt: 1, updatedAt: 1 },
+    ];
+    const onInvoke = vi.fn();
+    const { container } = renderCanvas({ applied: topologyApplied, locations: topologyLocations, onInvoke });
+
+    fireEvent.click(screen.getByRole('button', { name: '축소' }));
+    expect(screen.getByText('전체 보기')).toBeVisible();
+    expect(screen.getByRole('button', { name: '계좌·보관처 · 생활비통장 · 700,000원 · 활성 연결 1개 · 연결 완료' })).toBeVisible();
+    expect(screen.queryByRole('button', { name: /보조생활비/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /비상금함/ })).not.toBeInTheDocument();
+    expect(container.querySelectorAll('.account-map-node--location')).toHaveLength(2);
+    expect(container.querySelectorAll('.account-map-edges path')).toHaveLength(2);
+    expect(container.querySelectorAll('.account-map-linear-table tbody tr')).toHaveLength(2);
+
+    fireEvent.click(screen.getByRole('button', { name: '확대' }));
+    const unlinked = screen.getByRole('button', {
+      name: '계좌·보관처 · 비상금함 · 0원 · 활성 연결 0개 · 연결 완료',
+    });
+    expect(screen.getByRole('button', { name: /보조생활비/ })).toBeVisible();
+    expect(unlinked).toBeVisible();
+    fireEvent.click(unlinked);
+    expect(onInvoke).toHaveBeenCalledWith('location:vault');
+  });
+
   it('blocks layout mutations while stale recovery is visible', () => {
     const onLayoutChange = vi.fn();
     renderCanvas({
