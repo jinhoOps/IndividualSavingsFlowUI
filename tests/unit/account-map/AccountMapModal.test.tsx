@@ -217,10 +217,9 @@ describe('AccountMapModal', () => {
 
   it('keeps compound input and offers latest review without automatic replay', () => {
     const onReapply = vi.fn(async () => false);
-    const onClose = vi.fn();
     const props = modalProps({
       node: { id: 'location:checking', kind: 'location', label: '생활비통장', status: 'resolved' },
-      onReapply, onClose,
+      onReapply,
     });
     const { rerender } = render(<AccountMapModal {...props} />);
     fireEvent.click(screen.getByRole('button', { name: '편집' }));
@@ -236,13 +235,43 @@ describe('AccountMapModal', () => {
     expect(screen.queryByRole('button', { name: '최신 상태에서 다시 적용' })).not.toBeInTheDocument();
     const review = screen.getByRole('button', { name: '최신 상태에서 다시 검토' });
     expect(review).toHaveFocus();
-    expect(screen.getByRole('button', { name: '닫기' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: '취소' })).toBeDisabled();
     expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
-    fireEvent.keyDown(document, { key: 'Escape' });
-    expect(onClose).not.toHaveBeenCalled();
     fireEvent.click(review);
     expect(onReapply).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(['close', 'escape', 'backdrop'] as const)('abandons settled recovery through %s without replaying', (method) => {
+    const onClose = vi.fn();
+    const onKeepLatest = vi.fn();
+    const onReapply = vi.fn(async () => false);
+    renderModal({
+      recovery: { status: 'manual', latest: createEmptyWorkspace(2), action: 'edit-node', targets: [], reason: 'compound-edit' },
+      onClose, onKeepLatest, onReapply,
+    });
+
+    if (method === 'close') fireEvent.click(screen.getByRole('button', { name: '닫기' }));
+    else if (method === 'escape') fireEvent.keyDown(document, { key: 'Escape' });
+    else fireEvent.pointerDown(screen.getByRole('dialog').parentElement!);
+
+    expect(onKeepLatest).toHaveBeenCalledTimes(1);
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onReapply).not.toHaveBeenCalled();
+  });
+
+  it('treats edit Cancel as settled recovery abandon', () => {
+    const onClose = vi.fn();
+    const onKeepLatest = vi.fn();
+    const props = modalProps({ onClose, onKeepLatest });
+    const { rerender } = render(<AccountMapModal {...props} />);
+    fireEvent.click(screen.getByRole('button', { name: '편집' }));
+    rerender(<AccountMapModal {...props} recovery={{
+      status: 'manual', latest: createEmptyWorkspace(2), action: 'edit-node', targets: [], reason: 'compound-edit',
+    }} />);
+
+    fireEvent.click(screen.getByRole('button', { name: '취소' }));
+
+    expect(onKeepLatest).toHaveBeenCalledTimes(1);
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 });
 

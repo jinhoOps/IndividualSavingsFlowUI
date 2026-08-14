@@ -203,15 +203,31 @@ describe('AccountMapApp', () => {
     expect(name).toHaveValue('여행');
     expect(screen.queryByText('저장하지 못했어요. 입력은 그대로 두었습니다.')).not.toBeInTheDocument();
 
-    const cancel = screen.getByRole('button', { name: '취소' });
-    expect(cancel).toBeDisabled();
-    fireEvent.click(cancel);
-    expect(screen.getByRole('dialog', { name: '세부 목적 추가' })).toBeVisible();
-
     fireEvent.click(screen.getByRole('button', { name: '최신 상태에서 다시 검토' }));
     await waitFor(() => expect(screen.queryByRole('button', { name: '최신 상태에서 다시 검토' })).not.toBeInTheDocument());
     expect(name).toHaveValue('여행');
-    expect(cancel).toBeEnabled();
+  });
+
+  it.each(['cancel', 'escape', 'backdrop'] as const)('abandons settled custom-purpose recovery through %s', async (method) => {
+    const setup = staleDraftRepositories();
+    render(<AccountMapApp repositories={setup.repositories} />);
+    const trigger = screen.getByRole('button', { name: '세부 목적 추가' });
+    trigger.focus();
+    fireEvent.click(trigger);
+    const name = screen.getByRole('textbox', { name: '목적 이름' });
+    fireEvent.change(name, { target: { value: '여행' } });
+    fireEvent.change(screen.getByRole('textbox', { name: '월 금액' }), { target: { value: '100000' } });
+    fireEvent.click(screen.getByRole('button', { name: '추가' }));
+    await screen.findByRole('button', { name: '최신 상태에서 다시 검토' });
+    name.focus();
+
+    if (method === 'cancel') fireEvent.click(screen.getByRole('button', { name: '취소' }));
+    else if (method === 'escape') fireEvent.keyDown(document, { key: 'Escape' });
+    else fireEvent.pointerDown(screen.getByRole('dialog', { name: '세부 목적 추가' }).parentElement!);
+
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: '세부 목적 추가' })).not.toBeInTheDocument());
+    expect(screen.queryByRole('button', { name: '최신 상태에서 다시 검토' })).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
   });
 
   it('explicitly keeps latest and closes custom-purpose recovery without orphaning it', async () => {

@@ -122,7 +122,8 @@ export function AccountMapModal({ node, related, sourceElement, fallbackElement,
   }
 
   function requestClose(force = false) {
-    if (closingRef.current || animating || ((!force) && (actionPending || recovery.status !== 'none'))) return;
+    if (closingRef.current || animating || ((!force) && (actionPending || recoveryPending))) return;
+    if (!force && recovery.status !== 'none') onKeepLatest();
     closingRef.current = true;
     setAnimating(true);
     const modal = modalRef.current;
@@ -164,7 +165,7 @@ export function AccountMapModal({ node, related, sourceElement, fallbackElement,
   return (
     <div className="account-map-modal-backdrop" onPointerDown={(event) => { if (event.target === event.currentTarget) requestClose(); }}>
       <div ref={modalRef} className="account-map-modal" role="dialog" aria-modal="true" aria-labelledby={titleId} aria-busy={animating || undefined}>
-        <header><div><p>{node.kind === 'purpose' ? '목적' : node.kind === 'location' ? '계좌·보관처' : '전체 상태'}</p><h2 id={titleId}>{mode === 'read' ? `${node.label} 상세` : mode === 'edit' ? `${node.label} 편집` : mode === 'archive' ? `${node.label} 보관` : `${node.label} 복원`}</h2></div><button type="button" className="account-map-modal__close" aria-label="닫기" disabled={animating || actionPending || recovery.status !== 'none'} onClick={() => requestClose()}>×</button></header>
+        <header><div><p>{node.kind === 'purpose' ? '목적' : node.kind === 'location' ? '계좌·보관처' : '전체 상태'}</p><h2 id={titleId}>{mode === 'read' ? `${node.label} 상세` : mode === 'edit' ? `${node.label} 편집` : mode === 'archive' ? `${node.label} 보관` : `${node.label} 복원`}</h2></div><button type="button" className="account-map-modal__close" aria-label="닫기" disabled={animating || actionPending || recoveryPending} onClick={() => requestClose()}>×</button></header>
         <div className="account-map-modal__body">
           {node.amountWon === undefined ? null : <div className="account-map-modal__amount"><span>월 기준</span><strong>{formatWon(node.amountWon)}</strong></div>}
           {mode === 'read' ? <div className="account-map-modal__connections"><h3>연결</h3>{directRelated.length === 0 ? <p>연결된 항목이 없습니다.</p> : directRelated.map((item, index) => <div key={`${item.label}:${index}`}><span>{item.label}</span><strong>{formatWon(item.amountWon)}</strong>{item.status === 'suspended' ? <small>중지됨</small> : null}</div>)}</div> : null}
@@ -188,7 +189,7 @@ export function AccountMapModal({ node, related, sourceElement, fallbackElement,
         </div>
         <footer>
           {mode === 'read' ? <>{node.kind === 'location' && node.status === 'suspended' && onRestoreLocation !== undefined ? <button type="button" className="ui-button ui-button--secondary" disabled={recovery.status !== 'none'} onClick={() => setMode('restore')}>복원</button> : null}{node.kind === 'location' && node.status !== 'suspended' && onArchiveLocation !== undefined ? <button type="button" className="ui-button ui-button--secondary account-map-modal__archive" disabled={recovery.status !== 'none'} onClick={() => setMode('archive')}><TrashIcon />보관</button> : null}<button type="button" className="ui-button ui-button--primary" disabled={animating || recovery.status !== 'none'} onClick={() => setMode('edit')}>편집</button></> : null}
-          {mode === 'edit' ? <><button type="button" className="ui-button ui-button--secondary" disabled={recovery.status !== 'none'} onClick={() => setMode('read')}>취소</button><button type="button" className="ui-button ui-button--primary" disabled={recovery.status !== 'none' || actionPending || editReplacementMissing || editLabel.trim() === '' || editLinks.some((item) => item.status === 'active' && (!Number.isSafeInteger(Number(item.monthlyAmountWon)) || Number(item.monthlyAmountWon) < 0))} onClick={() => {
+          {mode === 'edit' ? <><button type="button" className="ui-button ui-button--secondary" disabled={actionPending || recoveryPending} onClick={() => { if (recovery.status === 'none') setMode('read'); else requestClose(); }}>취소</button><button type="button" className="ui-button ui-button--primary" disabled={recovery.status !== 'none' || actionPending || editReplacementMissing || editLabel.trim() === '' || editLinks.some((item) => item.status === 'active' && (!Number.isSafeInteger(Number(item.monthlyAmountWon)) || Number(item.monthlyAmountWon) < 0))} onClick={() => {
             if (onSaveEdit === undefined) return;
             setActionError(false);
             setActionPending(true);
@@ -204,13 +205,13 @@ export function AccountMapModal({ node, related, sourceElement, fallbackElement,
               ],
             })).then((saved) => { if (saved) requestClose(true); else setActionError(true); }, () => setActionError(true)).finally(() => setActionPending(false));
           }}>{actionError && recovery.status === 'none' ? '다시 시도' : '저장'}</button></> : null}
-          {mode === 'archive' ? <><button type="button" className="ui-button ui-button--secondary" disabled={recovery.status !== 'none'} onClick={() => setMode('read')}>취소</button><button type="button" className="ui-button ui-button--primary" disabled={recovery.status !== 'none' || replacementMissing || actionPending} onClick={() => {
+          {mode === 'archive' ? <><button type="button" className="ui-button ui-button--secondary" disabled={actionPending || recoveryPending} onClick={() => { if (recovery.status === 'none') setMode('read'); else requestClose(); }}>취소</button><button type="button" className="ui-button ui-button--primary" disabled={recovery.status !== 'none' || replacementMissing || actionPending} onClick={() => {
             if (locationId === null || onArchiveLocation === undefined) return;
             setActionError(false);
             setActionPending(true);
             void Promise.resolve(onArchiveLocation(locationId, replacementByPurpose)).then((saved) => { if (saved) { returnToFallbackRef.current = true; requestClose(true); } else setActionError(true); }, () => setActionError(true)).finally(() => setActionPending(false));
           }}>{actionError ? '다시 시도' : '보관하기'}</button></> : null}
-          {mode === 'restore' ? <><button type="button" className="ui-button ui-button--secondary" disabled={recovery.status !== 'none'} onClick={() => setMode('read')}>취소</button><button type="button" className="ui-button ui-button--primary" disabled={recovery.status !== 'none' || restoreLinkIds.length === 0 || restoreExcessPurposes.some((purposeId) => !restoreRemainderByPurpose[purposeId]) || actionPending} onClick={() => {
+          {mode === 'restore' ? <><button type="button" className="ui-button ui-button--secondary" disabled={actionPending || recoveryPending} onClick={() => { if (recovery.status === 'none') setMode('read'); else requestClose(); }}>취소</button><button type="button" className="ui-button ui-button--primary" disabled={recovery.status !== 'none' || restoreLinkIds.length === 0 || restoreExcessPurposes.some((purposeId) => !restoreRemainderByPurpose[purposeId]) || actionPending} onClick={() => {
             if (locationId === null || onRestoreLocation === undefined) return;
             setActionError(false);
             setActionPending(true);

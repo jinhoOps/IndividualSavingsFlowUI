@@ -95,7 +95,7 @@ describe('AccountMapSetup', () => {
     expect(screen.getByRole('dialog', { name: '수입 연결' })).toBeVisible();
   });
 
-  it('requires explicit latest keep instead of plain cancel for settled recovery', async () => {
+  it('abandons settled recovery and adopts latest when the conflicted dialog is cancelled', async () => {
     const setup = staleDuplicateFixture();
     render(<AccountMapApp repositories={setup.repositories} />);
     const incomeCard = screen.getByRole('heading', { name: '수입' }).closest('article')!;
@@ -105,17 +105,14 @@ describe('AccountMapSetup', () => {
     await screen.findByRole('button', { name: '최신 상태에서 다시 적용' });
 
     const cancel = screen.getByRole('button', { name: '취소' });
-    expect(cancel).toBeDisabled();
+    expect(cancel).toBeEnabled();
     fireEvent.click(cancel);
-
-    expect(screen.getByRole('dialog', { name: '수입 연결' })).toBeVisible();
-    fireEvent.click(screen.getByRole('button', { name: '최신 값 유지' }));
 
     await waitFor(() => expect(screen.queryByRole('dialog', { name: '수입 연결' })).not.toBeInTheDocument());
     expect(within(incomeCard).getByRole('button', { name: '다른 계좌 연결' })).toBeVisible();
   });
 
-  it('blocks Escape until settled recovery is resolved explicitly', async () => {
+  it('abandons settled recovery on Escape without leaking it into another dialog', async () => {
     const setup = staleDuplicateFixture();
     render(<AccountMapApp repositories={setup.repositories} />);
     const incomeCard = screen.getByRole('heading', { name: '수입' }).closest('article')!;
@@ -125,13 +122,26 @@ describe('AccountMapSetup', () => {
     await screen.findByRole('button', { name: '최신 상태에서 다시 적용' });
 
     fireEvent.keyDown(document, { key: 'Escape' });
-    expect(screen.getByRole('dialog', { name: '수입 연결' })).toBeVisible();
-    expect(screen.getByRole('button', { name: '최신 상태에서 다시 적용' })).toBeVisible();
-    fireEvent.click(screen.getByRole('button', { name: '최신 값 유지' }));
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: '수입 연결' })).not.toBeInTheDocument());
     fireEvent.click(screen.getByRole('heading', { name: '주거' }).closest('article')!.querySelector('button')!);
 
     expect(screen.getByRole('dialog', { name: '주거 연결' })).toBeVisible();
     expect(screen.queryByRole('button', { name: '최신 상태에서 다시 적용' })).not.toBeInTheDocument();
+  });
+
+  it('abandons settled connection recovery from its backdrop', async () => {
+    const setup = staleDuplicateFixture();
+    render(<AccountMapApp repositories={setup.repositories} />);
+    const incomeCard = screen.getByRole('heading', { name: '수입' }).closest('article')!;
+    fireEvent.click(within(incomeCard).getByRole('button', { name: '연결' }));
+    fireEvent.click(screen.getByRole('button', { name: /급여통장/ }));
+    fireEvent.click(screen.getByRole('button', { name: '완료' }));
+    await screen.findByRole('button', { name: '최신 상태에서 다시 적용' });
+
+    fireEvent.pointerDown(screen.getByRole('dialog', { name: '수입 연결' }).parentElement!);
+
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: '수입 연결' })).not.toBeInTheDocument());
+    expect(within(incomeCard).getByRole('button', { name: '다른 계좌 연결' })).toBeVisible();
   });
 
   it('disables both recovery actions while replay is pending', async () => {
@@ -166,6 +176,7 @@ describe('AccountMapSetup', () => {
     expect(cancel).toBeDisabled();
     fireEvent.click(cancel);
     fireEvent.keyDown(document, { key: 'Escape' });
+    fireEvent.pointerDown(screen.getByRole('dialog', { name: '세부 목적 추가' }).parentElement!);
     expect(screen.getByRole('dialog', { name: '세부 목적 추가' })).toBeVisible();
     expect(screen.getByRole('textbox', { name: '목적 이름' })).toHaveValue('여행');
   });
