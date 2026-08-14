@@ -1,6 +1,6 @@
 {
   "name": "individualsavingsflowui",
-  "version": "0.11.92",
+  "version": "0.11.93",
   "description": "돈의 흐름과 미래 자산 변화를 살펴보는 개인 재무 계획 도우미",
   "main": "sw.js",
   "scripts": {
@@ -15,7 +15,8 @@
     "lint": "tsc --noEmit",
     "test:e2e": "playwright test",
     "test:unit": "vitest run",
-    "test:unit:watch": "vitest"
+    "test:unit:watch": "vitest",
+    "generate:brand-icons": "node scripts/generate-main-brand-icons.mjs"
   },
   "repository": {
     "type": "git",
@@ -40,6 +41,7 @@
     "autoprefixer": "^10.4.19",
     "jsdom": "26.1.0",
     "postcss": "^8.4.38",
+    "sharp": "^0.35.3",
     "tailwindcss": "^4.0.0-alpha.13",
     "typescript": "^5.5.2",
     "vite": "^5.3.1",

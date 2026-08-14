@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 
 const appliedMainV2 = {
@@ -236,6 +236,173 @@ async function clearBrowserStorage(page: Page, seededRecords: Record<string, str
   }, seededRecords);
 }
 
+const mainBrandIntroTimeline = {
+  barsCaptureMs: 280,
+  trendCaptureMs: 850,
+  finalCaptureMs: 1_950,
+  completeMs: 2_200,
+} as const;
+
+const mainBrandIntroViewports = [
+  { width: 390, height: 844 },
+  { width: 768, height: 900 },
+  { width: 1280, height: 900 },
+] as const;
+
+async function installFreshMainIntroStorageAndFlashProbe(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    if (sessionStorage.getItem('isf-main-brand-intro-storage-cleared') !== null) return;
+    localStorage.clear();
+    sessionStorage.setItem('isf-main-brand-intro-storage-cleared', 'true');
+
+    const leaks: string[] = [];
+    (window as typeof window & { __mainBrandIntroLeaks?: string[] }).__mainBrandIntroLeaks = leaks;
+    let introSeen = false;
+    const recordPreIntroSurface = () => {
+      if (document.querySelector('[data-testid="main-welcome-intro"]') !== null) {
+        introSeen = true;
+        return;
+      }
+      if (introSeen) return;
+      if (document.querySelector('[aria-label="ISF 앱"]') !== null) leaks.push('launcher');
+      if ([...document.querySelectorAll('h1, h2, h3')].some((heading) => (
+        heading.textContent?.includes('한 달 돈의 흐름, 2분이면 확인할 수 있어요.')
+      ))) leaks.push('setup-welcome');
+    };
+    new MutationObserver(recordPreIntroSurface).observe(document, { childList: true, subtree: true });
+  });
+}
+
+async function openFreshMainBrandIntro(page: Page): Promise<void> {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await installFreshMainIntroStorageAndFlashProbe(page);
+  await page.goto('apps/main/', { waitUntil: 'commit' });
+}
+
+async function captureMainBrandIntro(
+  page: Page,
+  testInfo: TestInfo,
+  viewport: { width: number; height: number },
+): Promise<void> {
+  const clockStart = new Date('2026-08-14T00:00:00Z');
+  await page.clock.install({ time: clockStart });
+  await page.clock.pauseAt(new Date(clockStart.getTime() + 1_000));
+  await page.setViewportSize(viewport);
+  await openFreshMainBrandIntro(page);
+
+  const intro = page.getByTestId('main-welcome-intro');
+  const skip = page.getByRole('button', { name: '화면을 눌러 건너뛰기' });
+  await expect(intro).toBeVisible();
+  await expect(skip).toBeFocused();
+  await expect(page.getByRole('navigation', { name: 'ISF 앱' })).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: '한 달 돈의 흐름, 2분이면 확인할 수 있어요.' })).toHaveCount(0);
+  expect(await page.evaluate(() => (
+    (window as typeof window & { __mainBrandIntroLeaks?: string[] }).__mainBrandIntroLeaks ?? []
+  ))).toEqual([]);
+
+  await page.clock.runFor(mainBrandIntroTimeline.barsCaptureMs);
+  const barScales = await intro.locator('[data-brand-baseline], [data-brand-bar]').evaluateAll((elements) => (
+    elements.map((element) => new DOMMatrixReadOnly(getComputedStyle(element).transform).d)
+  ));
+  expect(barScales).toHaveLength(4);
+  expect(barScales.some((scale) => scale > 0 && scale < 1)).toBe(true);
+  expect(Math.min(...barScales)).toBeLessThan(Math.max(...barScales));
+  await page.screenshot({
+    fullPage: true,
+    path: testInfo.outputPath(`main-brand-intro-${viewport.width}-bars.png`),
+  });
+
+  await page.clock.runFor(mainBrandIntroTimeline.trendCaptureMs - mainBrandIntroTimeline.barsCaptureMs);
+  const trendProgress = await intro.locator('[data-brand-trend]').evaluate((element) => {
+    const trend = element as SVGGeometryElement;
+    return {
+      fullLength: trend.getTotalLength(),
+      offset: Number.parseFloat(trend.style.strokeDashoffset),
+    };
+  });
+  expect(trendProgress.fullLength).toBeGreaterThan(0);
+  expect(trendProgress.offset).toBeGreaterThan(0);
+  expect(trendProgress.offset).toBeLessThan(trendProgress.fullLength);
+  await page.screenshot({
+    fullPage: true,
+    path: testInfo.outputPath(`main-brand-intro-${viewport.width}-trend.png`),
+  });
+
+  await page.clock.runFor(mainBrandIntroTimeline.finalCaptureMs - mainBrandIntroTimeline.trendCaptureMs);
+  const finalFrame = await intro.evaluate((root) => {
+    const trend = root.querySelector<SVGGeometryElement>('[data-brand-trend]')!;
+    const dot = root.querySelector<SVGCircleElement>('[data-brand-terminal-dot]')!;
+    const dotMatrix = new DOMMatrixReadOnly(getComputedStyle(dot).transform);
+    return {
+      trendLength: trend.getTotalLength(),
+      trendOffset: Number.parseFloat(trend.style.strokeDashoffset),
+      dotOpacity: Number(getComputedStyle(dot).opacity),
+      dotScale: dotMatrix.a,
+    };
+  });
+  expect(finalFrame.trendOffset).toBeGreaterThanOrEqual(0);
+  expect(finalFrame.trendOffset).toBeLessThan(finalFrame.trendLength * 0.005);
+  expect(finalFrame.dotOpacity).toBeCloseTo(1, 3);
+  expect(finalFrame.dotScale).toBeCloseTo(1, 3);
+  await page.screenshot({
+    fullPage: true,
+    path: testInfo.outputPath(`main-brand-intro-${viewport.width}-final.png`),
+  });
+
+  const geometry = await intro.evaluate((root) => {
+    const trend = root.querySelector<SVGPolylineElement>('[data-brand-trend]')!;
+    const dot = root.querySelector<SVGCircleElement>('[data-brand-terminal-dot]')!;
+    const skipButton = root.querySelector<HTMLButtonElement>('.main-welcome-intro__skip')!;
+    const parseBounds = (element: Element) => {
+      const [x, y, width, height] = element.getAttribute('data-brand-essential-bounds')!
+        .split(/\s+/).map(Number);
+      return { x, y, width, height };
+    };
+    const points = trend.getAttribute('data-brand-trend')!.split(/\s+/).map((point) => {
+      const [x, y] = point.split(',').map(Number);
+      return { x, y };
+    });
+    const barCenters = [...root.querySelectorAll('[data-brand-bar]')]
+      .map(parseBounds).map((bounds) => bounds.x + bounds.width / 2);
+    const introRect = root.getBoundingClientRect();
+    const skipRect = skipButton.getBoundingClientRect();
+    const computedBottom = Number.parseFloat(getComputedStyle(skipButton).bottom);
+    return {
+      points,
+      barCenters,
+      terminal: { x: Number(dot.getAttribute('cx')), y: Number(dot.getAttribute('cy')) },
+      introContained: introRect.left >= 0
+        && introRect.top >= 0
+        && introRect.right <= window.innerWidth
+        && introRect.bottom <= window.innerHeight,
+      documentContained: document.documentElement.scrollWidth <= window.innerWidth,
+      skipContained: skipRect.left >= 16
+        && skipRect.right <= window.innerWidth - 16
+        && skipRect.bottom <= window.innerHeight - computedBottom + 0.01
+        && skipRect.height >= 44,
+    };
+  });
+  expect(geometry.points).toHaveLength(5);
+  expect(geometry.barCenters).toHaveLength(3);
+  for (let index = 1; index < geometry.points.length; index += 1) {
+    expect(geometry.points[index].x).toBeGreaterThan(geometry.points[index - 1].x);
+  }
+  expect(geometry.points[0].x).toBeCloseTo(geometry.barCenters[0], 5);
+  expect(geometry.points[1].x).toBeGreaterThan(geometry.barCenters[0]);
+  expect(geometry.points[1].x).toBeLessThan(geometry.barCenters[1]);
+  expect(geometry.points[2].x).toBeCloseTo(geometry.barCenters[1], 5);
+  expect(geometry.points[3].x).toBeGreaterThan(geometry.barCenters[1]);
+  expect(geometry.points[3].x).toBeLessThan(geometry.barCenters[2]);
+  expect(geometry.points[4].x).toBeCloseTo(geometry.barCenters[2], 5);
+  for (const earlierPoint of geometry.points.slice(0, -1)) {
+    expect(earlierPoint.y).toBeGreaterThan(geometry.points[4].y);
+  }
+  expect(geometry.terminal).toEqual(geometry.points[4]);
+  expect(geometry.introContained).toBe(true);
+  expect(geometry.documentContained).toBe(true);
+  expect(geometry.skipContained).toBe(true);
+}
+
 async function pressTab(page: Page, count: number) {
   for (let index = 0; index < count; index += 1) {
     await page.keyboard.press('Tab');
@@ -389,6 +556,145 @@ test('downloads and explicitly resets an invalid workspace before a durable appl
   await expect.poll(() => page.evaluate((keys) => Object.fromEntries(
     keys.map((key) => [key, localStorage.getItem(key)]),
   ), Object.keys(seededOldMainRecords))).toEqual(seededOldMainRecords);
+});
+
+test('Main brand intro mounts for a fresh real-Vite entry under StrictMode', async ({ page }) => {
+  await openFreshMainBrandIntro(page);
+
+  await expect(page.getByTestId('main-welcome-intro')).toBeVisible();
+  await expect(page.getByRole('button', { name: '화면을 눌러 건너뛰기' })).toBeFocused();
+});
+
+for (const viewport of mainBrandIntroViewports) {
+  test(`Main brand intro captures timed phases at ${viewport.width}px and resumes without replay`, async ({ page }, testInfo) => {
+    await captureMainBrandIntro(page, testInfo, viewport);
+
+    await page.clock.runFor(
+      mainBrandIntroTimeline.completeMs - mainBrandIntroTimeline.finalCaptureMs + 20,
+    );
+    const welcome = page.getByRole('heading', { name: '한 달 돈의 흐름, 2분이면 확인할 수 있어요.' });
+    await expect(welcome).toBeVisible();
+    await expect(welcome).toBeFocused();
+    await expect(page.getByTestId('main-welcome-intro')).toHaveCount(0);
+    await expect(page.getByRole('navigation', { name: 'ISF 앱' })).toHaveCount(0);
+    await expect.poll(() => page.evaluate(() => {
+      const raw = localStorage.getItem('isf-workspace-v1');
+      return raw === null ? null : JSON.parse(raw).main.setupProgress;
+    })).toMatchObject({ kind: 'initial', step: 'welcome' });
+
+    await page.reload();
+    await expect(page.getByTestId('main-welcome-intro')).toHaveCount(0);
+    await expect(welcome).toBeVisible();
+    await expect(welcome).toBeFocused();
+  });
+}
+
+for (const route of ['background pointer', 'button', 'Enter', 'Space', 'Escape'] as const) {
+  test(`Main brand intro ${route} skip reaches setup welcome exactly once`, async ({ page }) => {
+    await openFreshMainBrandIntro(page);
+    const intro = page.getByTestId('main-welcome-intro');
+    const skip = page.getByRole('button', { name: '화면을 눌러 건너뛰기' });
+    await expect(intro).toBeVisible();
+    await expect(skip).toBeFocused();
+
+    if (route === 'background pointer') {
+      await intro.dispatchEvent('pointerdown', { pointerType: 'mouse', bubbles: true });
+    } else if (route === 'button') {
+      await skip.dispatchEvent('click');
+    } else {
+      await page.keyboard.press(route);
+    }
+
+    const welcome = page.getByRole('heading', { name: '한 달 돈의 흐름, 2분이면 확인할 수 있어요.' });
+    await expect(welcome).toHaveCount(1);
+    await expect(welcome).toBeVisible();
+    await expect(welcome).toBeFocused();
+    await expect(intro).toHaveCount(0);
+    await expect(page.getByRole('navigation', { name: 'ISF 앱' })).toHaveCount(0);
+  });
+}
+
+test('Main brand intro restart preserves the applied plan and writes restart welcome progress', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.addInitScript((workspace) => {
+    localStorage.clear();
+    localStorage.setItem('isf-workspace-v1', JSON.stringify(workspace));
+  }, appliedWorkspaceV1);
+  await page.goto('apps/main/');
+
+  await page.getByRole('button', { name: '관리 메뉴' }).click();
+  await page.getByRole('menuitem', { name: '처음부터 다시' }).click();
+  await page.getByRole('button', { name: '다시 시작' }).click();
+
+  const intro = page.getByTestId('main-welcome-intro');
+  await expect(intro).toBeVisible();
+  await expect(page.getByRole('button', { name: '화면을 눌러 건너뛰기' })).toBeFocused();
+  await expect(page.getByRole('heading', { name: '한 달 돈의 흐름, 2분이면 확인할 수 있어요.' })).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => {
+    const workspace = JSON.parse(localStorage.getItem('isf-workspace-v1')!);
+    return { applied: workspace.main.applied, progress: workspace.main.setupProgress };
+  })).toEqual({
+    applied: appliedMainV2,
+    progress: {
+      kind: 'restart',
+      step: 'welcome',
+      draft: appliedMainV2,
+      savedAt: expect.any(Number),
+    },
+  });
+
+  await page.getByRole('button', { name: '화면을 눌러 건너뛰기' }).dispatchEvent('click');
+  const welcome = page.getByRole('heading', { name: '한 달 돈의 흐름, 2분이면 확인할 수 있어요.' });
+  await expect(welcome).toBeVisible();
+  await expect(welcome).toBeFocused();
+  await expect(page.getByRole('navigation', { name: 'ISF 앱' })).toHaveCount(0);
+});
+
+test('Main brand intro reduced motion skips fresh animation and writes initial welcome progress', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await clearBrowserStorage(page);
+  await page.goto('apps/main/');
+
+  const welcome = page.getByRole('heading', { name: '한 달 돈의 흐름, 2분이면 확인할 수 있어요.' });
+  await expect(page.getByTestId('main-welcome-intro')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '화면을 눌러 건너뛰기' })).toHaveCount(0);
+  await expect(welcome).toBeVisible();
+  await expect(welcome).toBeFocused();
+  await expect.poll(() => page.evaluate(() => {
+    const raw = localStorage.getItem('isf-workspace-v1');
+    return raw === null ? null : JSON.parse(raw).main.setupProgress;
+  })).toMatchObject({ kind: 'initial', step: 'welcome' });
+});
+
+test('Main brand intro reduced motion skips restart animation and preserves the applied plan', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.addInitScript((workspace) => {
+    localStorage.clear();
+    localStorage.setItem('isf-workspace-v1', JSON.stringify(workspace));
+  }, appliedWorkspaceV1);
+  await page.goto('apps/main/');
+
+  await page.getByRole('button', { name: '관리 메뉴' }).click();
+  await page.getByRole('menuitem', { name: '처음부터 다시' }).click();
+  await page.getByRole('button', { name: '다시 시작' }).click();
+
+  const welcome = page.getByRole('heading', { name: '한 달 돈의 흐름, 2분이면 확인할 수 있어요.' });
+  await expect(page.getByTestId('main-welcome-intro')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '화면을 눌러 건너뛰기' })).toHaveCount(0);
+  await expect(welcome).toBeVisible();
+  await expect(welcome).toBeFocused();
+  await expect.poll(() => page.evaluate(() => {
+    const workspace = JSON.parse(localStorage.getItem('isf-workspace-v1')!);
+    return { applied: workspace.main.applied, progress: workspace.main.setupProgress };
+  })).toEqual({
+    applied: appliedMainV2,
+    progress: {
+      kind: 'restart',
+      step: 'welcome',
+      draft: appliedMainV2,
+      savedAt: expect.any(Number),
+    },
+  });
 });
 
 test('new user applies the v2 quick setup and refreshes into matching dashboard totals', async ({ page }) => {
@@ -1071,12 +1377,82 @@ test('complete Phase-B backup round-trips atomically in the contained mobile con
   expect(durable.old).toEqual(seededOldMainRecords);
 });
 
-for (const restoreCase of [
-  {
-    name: 'empty Main',
+test('canonical backup restores empty Main through the brand intro and preserves every non-Main slice', async ({ page }) => {
+  const importedWorkspace = {
+    ...connectedWorkspaceV1,
     main: { applied: null, setupProgress: null },
-    heading: '한 달 돈의 흐름, 2분이면 확인할 수 있어요.',
-  },
+  };
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.addInitScript((workspace) => {
+    localStorage.clear();
+    localStorage.setItem('isf-workspace-v1', JSON.stringify(workspace));
+  }, connectedWorkspaceV1);
+  await page.goto('apps/main/');
+
+  await page.getByRole('button', { name: '관리 메뉴' }).click();
+  await page.getByLabel('백업 가져오기').setInputFiles({
+    name: 'empty-main.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify({
+      format: 'isf-workspace-backup',
+      formatVersion: 1,
+      exportedAt: 900,
+      workspace: importedWorkspace,
+    })),
+  });
+  await page.getByRole('dialog').getByRole('button', { name: '백업으로 바꾸기' }).click();
+
+  await expect(page.getByTestId('main-welcome-intro')).toBeVisible();
+  await expect(page.getByRole('button', { name: '화면을 눌러 건너뛰기' })).toBeFocused();
+  await expect(page.getByRole('heading', { name: '한 달 돈의 흐름, 2분이면 확인할 수 있어요.' })).toHaveCount(0);
+  await page.getByRole('button', { name: '화면을 눌러 건너뛰기' }).dispatchEvent('click');
+
+  const heading = page.getByRole('heading', { name: '한 달 돈의 흐름, 2분이면 확인할 수 있어요.' });
+  await expect(page.getByTestId('workspace-backup-status')).toContainText('모든 앱 데이터를 백업에서 복원했습니다.');
+  await expect(page.getByRole('status').filter({ hasText: '모든 앱 데이터를 백업에서 복원했습니다.' })).toBeVisible();
+  await expect(heading).toBeVisible();
+  await expect(heading).toBeFocused();
+  await expect(page.getByRole('button', { name: '관리 메뉴' })).toHaveCount(0);
+
+  await expect.poll(() => page.evaluate(() => {
+    const raw = localStorage.getItem('isf-workspace-v1');
+    if (raw === null) return null;
+    const workspace = JSON.parse(raw);
+    const { savedAt: _savedAt, ...progress } = workspace.main.setupProgress;
+    return {
+      revision: workspace.revision,
+      main: { applied: workspace.main.applied, setupProgress: progress },
+      simulation: workspace.simulation,
+      portfolio: workspace.portfolio,
+      locations: workspace.locations,
+      accountMap: workspace.accountMap,
+    };
+  })).toEqual({
+    revision: 9,
+    main: {
+      applied: null,
+      setupProgress: {
+        kind: 'initial',
+        step: 'welcome',
+        draft: {
+          schemaVersion: 2,
+          monthlyNetIncomeWon: 0,
+          monthlyHousingWon: 0,
+          monthlyLivingWon: 0,
+          monthlySavingWon: 0,
+          monthlyInvestmentWon: 0,
+          updatedAt: 0,
+        },
+      },
+    },
+    simulation: importedWorkspace.simulation,
+    portfolio: importedWorkspace.portfolio,
+    locations: importedWorkspace.locations,
+    accountMap: emptyAccountMapV2,
+  });
+});
+
+for (const restoreCase of [
   {
     name: 'initial setup progress',
     main: {
@@ -1104,7 +1480,7 @@ for (const restoreCase of [
     heading: '그 밖의 생활비는 보통 얼마인가요?',
   },
 ] as const) {
-  test(`canonical backup restores ${restoreCase.name} with persistent status and setup focus`, async ({ page }) => {
+  test(`canonical backup restores ${restoreCase.name} directly with persistent status and setup focus`, async ({ page }) => {
     const importedWorkspace = { ...connectedWorkspaceV1, main: restoreCase.main };
     await page.addInitScript((workspace) => {
       localStorage.clear();
@@ -1125,6 +1501,8 @@ for (const restoreCase of [
     });
     await page.getByRole('dialog').getByRole('button', { name: '백업으로 바꾸기' }).click();
 
+    await expect(page.getByTestId('main-welcome-intro')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: '화면을 눌러 건너뛰기' })).toHaveCount(0);
     const heading = page.getByRole('heading', { name: restoreCase.heading });
     await expect(heading).toBeVisible();
     await expect(heading).toBeFocused();
@@ -1295,6 +1673,11 @@ test('backup import has a matching accessible name and visible keyboard focus ri
 test('keyboard-only user completes the full quick setup', async ({ page }) => {
   await clearBrowserStorage(page);
   await page.goto('apps/main/');
+
+  const introSkip = page.getByRole('button', { name: '화면을 눌러 건너뛰기' });
+  await expect(introSkip).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('heading', { name: '한 달 돈의 흐름, 2분이면 확인할 수 있어요.' })).toBeFocused();
 
   await page.keyboard.press('Tab');
   await page.keyboard.press('Enter');

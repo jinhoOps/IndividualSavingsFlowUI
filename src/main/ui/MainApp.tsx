@@ -1,6 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { AppShell } from '../../components/common/AppShell';
-import { applyDraft, bootstrapMain, type ValidationIssue } from '../application/bootstrap';
+import { useReducedMotion } from '../../components/motion/useReducedMotion';
+import {
+  applyDraft,
+  bootstrapMain,
+  type MainBootstrapIntroEntryReason,
+  type MainBootstrapResult,
+  type ValidationIssue,
+} from '../application/bootstrap';
 import { mainReducer, type MainAction, type MainState } from '../application/mainReducer';
 import { calculateCashflow } from '../domain/cashflow';
 import { createEmptyMainData, type MainData, type SetupStep } from '../domain/model';
@@ -22,12 +29,20 @@ import { Surface } from './common/Surface';
 import { formatDashboardWon } from './dashboard/CashflowSummary';
 import { SummaryDashboard } from './dashboard/SummaryDashboard';
 import { MainManagementMenu } from './MainManagementMenu';
+import { MainWelcomeIntro } from './MainWelcomeIntro';
 import { SetupFlow } from './setup/SetupFlow';
 
 export interface MainAppProps {
   repository?: MainRepository;
   workspaceRepository?: Pick<WorkspaceRepository, 'load' | 'replace'>;
   navigate?(href: string): void;
+}
+
+export type MainIntroEntryReason = MainBootstrapIntroEntryReason | 'restart';
+
+interface MainIntroEntry {
+  id: number;
+  reason: MainIntroEntryReason;
 }
 
 const browserWorkspaceRepository = new BrowserWorkspaceRepository();
@@ -45,16 +60,33 @@ export function MainApp({
   const [pendingImport, setPendingImport] = useState<WorkspaceDocument | null>(null);
   const [restorePending, setRestorePending] = useState(false);
   const [progressWarning, setProgressWarning] = useState<string | null>(null);
+  const [introEntry, setIntroEntry] = useState<MainIntroEntry>({ id: 0, reason: 'none' });
   const progressWriteTailRef = useRef<Promise<void>>(Promise.resolve());
   const importSelectionRef = useRef(0);
   const restoreFocusRequestedRef = useRef(false);
   const savingRef = useRef(false);
+  const initialBootstrapRequestRef = useRef<{
+    repository: MainRepository;
+    promise: Promise<MainBootstrapResult>;
+  } | null>(null);
+  const introEntryIdRef = useRef(0);
+  const persistedFreshIntroEntryIdsRef = useRef(new Set<number>());
   const [initialEditPath] = useState<keyof MainData | undefined>(() => consumeEditIntent());
+  const reducedMotion = useReducedMotion();
+  const showIntro = state?.mode === 'setup'
+    && state.setupStep === 'welcome'
+    && (introEntry.reason === 'fresh' || introEntry.reason === 'restart')
+    && !reducedMotion;
 
   useEffect(() => {
     let active = true;
-    void bootstrapMain(repository).then((loaded) => {
-      if (active) setState(loaded);
+    let request = initialBootstrapRequestRef.current;
+    if (request === null || request.repository !== repository) {
+      request = { repository, promise: bootstrapMain(repository) };
+      initialBootstrapRequestRef.current = request;
+    }
+    void request.promise.then((loaded) => {
+      if (active) setBootstrapResult(loaded);
     });
     return () => {
       active = false;
@@ -62,7 +94,29 @@ export function MainApp({
   }, [repository]);
 
   useEffect(() => {
-    if (!restoreFocusRequestedRef.current || backupStatus?.kind !== 'success') return;
+    if (
+      introEntry.reason !== 'fresh'
+      || state === null
+      || state.mode !== 'setup'
+      || state.setupStep !== 'welcome'
+    ) return;
+    if (persistedFreshIntroEntryIdsRef.current.has(introEntry.id)) return;
+    persistedFreshIntroEntryIdsRef.current.add(introEntry.id);
+    void persistSetupProgress('welcome', state.draft, 'initial');
+  }, [introEntry, state]);
+
+  useEffect(() => {
+    if (
+      !reducedMotion
+      || state?.mode !== 'setup'
+      || state.setupStep !== 'welcome'
+      || (introEntry.reason !== 'fresh' && introEntry.reason !== 'restart')
+    ) return;
+    completeWelcomeIntro(introEntry.id);
+  }, [introEntry, reducedMotion, state]);
+
+  useEffect(() => {
+    if (!restoreFocusRequestedRef.current || backupStatus?.kind !== 'success' || showIntro) return;
     restoreFocusRequestedRef.current = false;
     const target = document.querySelector<HTMLElement>('[aria-label="관리 메뉴"]')
       ?? document.querySelector<HTMLElement>('[data-setup-heading]')
@@ -72,7 +126,23 @@ export function MainApp({
         '[aria-label="설정 단계"] [tabindex]:not([tabindex="-1"])',
       ].join(', '));
     target?.focus();
-  }, [backupStatus, state]);
+  }, [backupStatus, showIntro, state]);
+
+  function setBootstrapResult(loaded: MainBootstrapResult) {
+    setState(loaded.state);
+    setIntroEntry(nextIntroEntry(loaded.introEntryReason));
+  }
+
+  function nextIntroEntry(reason: MainIntroEntryReason): MainIntroEntry {
+    introEntryIdRef.current += 1;
+    return { id: introEntryIdRef.current, reason };
+  }
+
+  function completeWelcomeIntro(entryId: number) {
+    setIntroEntry((current) => current.id !== entryId
+      ? current
+      : { ...current, reason: 'none' });
+  }
 
   function dispatch(action: MainAction) {
     setState((current) => current === null ? current : mainReducer(current, action));
@@ -148,6 +218,7 @@ export function MainApp({
   function restartSetup() {
     if (state === null || state.applied === null || savingRef.current) return;
     void persistSetupProgress('welcome', state.applied, 'restart');
+    setIntroEntry(nextIntroEntry('restart'));
     setIssues([]);
     dispatch({ type: 'restart-setup' });
   }
@@ -288,7 +359,7 @@ export function MainApp({
       setIssues([]);
       setProgressWarning(null);
       setPendingImport(null);
-      setState(reloaded);
+      setBootstrapResult(reloaded);
       setBackupStatus({ kind: 'success', message: '모든 앱 데이터를 백업에서 복원했습니다.' });
       return true;
     } catch {
@@ -385,15 +456,17 @@ export function MainApp({
 
   if (state === null) {
     return (
-      <AppShell currentApp="main" managementMenu={managementMenu} statusRegion={backupStatusRegion}>
-        <main
-          className="app-content-frame grid min-h-dvh place-items-center py-8"
-          data-testid="main-page-frame"
-        >
-          <p className="text-sm font-bold text-slate-600" role="status">자금 계획을 불러오는 중입니다.</p>
-        </main>
-      </AppShell>
+      <main
+        className="app-content-frame grid min-h-dvh place-items-center py-8"
+        data-testid="main-page-frame"
+      >
+        <p className="text-sm font-bold text-slate-600" role="status">자금 계획을 불러오는 중입니다.</p>
+      </main>
     );
+  }
+
+  if (showIntro) {
+    return <MainWelcomeIntro key={introEntry.id} onComplete={() => completeWelcomeIntro(introEntry.id)} />;
   }
 
   if (state.mode === 'recovery') {

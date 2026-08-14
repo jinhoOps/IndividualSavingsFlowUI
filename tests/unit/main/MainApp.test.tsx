@@ -1,8 +1,8 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
-import type { ReactNode } from 'react';
+import { StrictMode, type ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { MainData, SetupStep } from '../../../src/main/domain/model';
+import { createEmptyMainData, type MainData, type SetupStep } from '../../../src/main/domain/model';
 import {
   BrowserMainRepository,
   type MainLoadResult,
@@ -22,6 +22,15 @@ import type {
 } from '../../../src/workspace/infrastructure/workspaceSaveLock';
 import { MainApp, setupStepForIssue } from '../../../src/main/ui/MainApp';
 import { MemoryStorage } from '../simulation/MemoryStorage';
+
+const mainAppMocks = vi.hoisted(() => ({
+  reducedMotion: false,
+  introCompletionCount: 1,
+}));
+
+vi.mock('../../../src/components/motion/useReducedMotion', () => ({
+  useReducedMotion: () => mainAppMocks.reducedMotion,
+}));
 
 vi.mock('../../../src/main/ui/setup/SetupFlow', () => ({
   SetupFlow: ({
@@ -47,7 +56,7 @@ vi.mock('../../../src/main/ui/setup/SetupFlow', () => ({
   }) => (
     <section aria-label="setup-flow" className="setup-flow-surface" data-motion-preset={motionPreset}>
       {notice}
-      <h1 data-setup-heading tabIndex={-1}>{`setup:${step}`}</h1>
+      <h1 ref={(heading) => heading?.focus()} data-setup-heading tabIndex={-1}>{`setup:${step}`}</h1>
       <output>{draft.monthlyNetIncomeWon}</output>
       <button
         type="button"
@@ -63,6 +72,23 @@ vi.mock('../../../src/main/ui/setup/SetupFlow', () => ({
       {onCancel ? <button type="button" aria-label="설정 취소" onClick={onCancel}>취소</button> : null}
     </section>
   ),
+}));
+
+vi.mock('../../../src/main/ui/MainWelcomeIntro', () => ({
+  MainWelcomeIntro: ({ onComplete }: { onComplete(): void }) => {
+    return (
+      <section data-testid="main-welcome-intro">
+        <button
+          type="button"
+          onClick={() => {
+            for (let attempt = 0; attempt < mainAppMocks.introCompletionCount; attempt += 1) onComplete();
+          }}
+        >
+          화면을 눌러 건너뛰기
+        </button>
+      </section>
+    );
+  },
 }));
 
 vi.mock('../../../src/main/ui/dashboard/SummaryDashboard', () => ({
@@ -104,6 +130,8 @@ vi.mock('../../../src/main/ui/dashboard/SummaryDashboard', () => ({
 }));
 
 beforeEach(() => {
+  mainAppMocks.reducedMotion = false;
+  mainAppMocks.introCompletionCount = 1;
   const storage = new MemoryStorage();
   Object.defineProperty(window, 'localStorage', { configurable: true, value: storage });
   Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: storage });
@@ -214,6 +242,11 @@ function repository(result: MainLoadResult): MainRepository {
   };
 }
 
+async function completeBrandIntro(): Promise<void> {
+  fireEvent.click(await screen.findByRole('button', { name: '화면을 눌러 건너뛰기' }));
+  await waitFor(() => expect(screen.queryByTestId('main-welcome-intro')).not.toBeInTheDocument());
+}
+
 describe('setupStepForIssue', () => {
   it.each([
     ['monthlyNetIncomeWon', 'income'],
@@ -232,6 +265,137 @@ describe('setupStepForIssue', () => {
 });
 
 describe('MainApp', () => {
+  it('saves fresh welcome progress once before the brand intro completes', async () => {
+    const storage = repository({ status: 'empty', data: null, original: null });
+    storage.saveSetupProgress = vi.fn(async () => undefined);
+
+    render(
+      <StrictMode>
+        <MainApp repository={storage} />
+      </StrictMode>,
+    );
+
+    expect(await screen.findByTestId('main-welcome-intro')).toBeInTheDocument();
+    expect(screen.queryByTestId('app-shell-launcher')).not.toBeInTheDocument();
+    await waitFor(() => expect(storage.saveSetupProgress).toHaveBeenCalledOnce());
+    expect(storage.saveSetupProgress).toHaveBeenCalledWith(
+      'welcome',
+      expect.objectContaining({ schemaVersion: 2 }),
+      'initial',
+    );
+    expect(screen.queryByRole('heading', { name: 'setup:welcome' })).not.toBeInTheDocument();
+  });
+
+  it('keeps the fresh intro when StrictMode replays bootstrap after welcome persistence', async () => {
+    let progress: ReturnType<MainRepository['loadSetupProgress']> = null;
+    const storage = repository({ status: 'empty', data: null, original: null });
+    storage.load = vi.fn(storage.load);
+    storage.loadSetupProgress = () => progress;
+    storage.saveSetupProgress = vi.fn(async (step, draft, kind = 'initial') => {
+      progress = { kind, step, draft: { ...draft }, savedAt: 10 };
+    });
+
+    render(
+      <StrictMode>
+        <MainApp repository={storage} />
+      </StrictMode>,
+    );
+
+    await waitFor(() => expect(storage.saveSetupProgress).toHaveBeenCalledOnce());
+    expect(screen.getAllByTestId('main-welcome-intro')).toHaveLength(1);
+    expect(screen.queryByRole('heading', { name: 'setup:welcome' })).not.toBeInTheDocument();
+    expect(storage.load).toHaveBeenCalledOnce();
+  });
+
+  it('skips mounting the intro under reduced motion and focuses only the setup heading', async () => {
+    mainAppMocks.reducedMotion = true;
+    const storage = repository({ status: 'empty', data: null, original: null });
+    storage.saveSetupProgress = vi.fn(async () => undefined);
+    const focus = vi.spyOn(HTMLElement.prototype, 'focus');
+
+    render(<MainApp repository={storage} />);
+
+    const heading = await screen.findByRole('heading', { name: 'setup:welcome' });
+    expect(screen.queryByTestId('main-welcome-intro')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '화면을 눌러 건너뛰기' })).not.toBeInTheDocument();
+    await waitFor(() => expect(storage.saveSetupProgress).toHaveBeenCalledOnce());
+    expect(storage.saveSetupProgress).toHaveBeenCalledWith(
+      'welcome',
+      expect.objectContaining({ schemaVersion: 2 }),
+      'initial',
+    );
+    await waitFor(() => expect(heading).toHaveFocus());
+    expect(focus.mock.instances).not.toHaveLength(0);
+    expect(focus.mock.instances.every((target) => target === heading)).toBe(true);
+  });
+
+  it.each([
+    [
+      'initial welcome progress',
+      () => {
+        const storage = repository({ status: 'empty', data: null, original: null });
+        storage.loadSetupProgress = () => ({
+          kind: 'initial', step: 'welcome', draft: data(3_000_000), savedAt: 10,
+        });
+        return storage;
+      },
+    ],
+    [
+      'restart welcome progress',
+      () => {
+        const applied = data(3_000_000, { updatedAt: 10 });
+        const storage = repository({ status: 'current', data: applied, original: null });
+        storage.loadSetupProgress = () => ({
+          kind: 'restart', step: 'welcome', draft: data(3_000_000, { updatedAt: 10 }), savedAt: 10,
+        });
+        return storage;
+      },
+    ],
+  ])('does not mount the brand intro for persisted %s', async (_label, createRepository) => {
+    render(<MainApp repository={createRepository()} />);
+
+    expect(await screen.findByRole('heading', { name: 'setup:welcome' })).toBeVisible();
+    expect(screen.queryByTestId('main-welcome-intro')).not.toBeInTheDocument();
+  });
+
+  it('consumes the fresh intro entry after completion so a rerender cannot replay it', async () => {
+    const storage = repository({ status: 'empty', data: null, original: null });
+    const view = render(<MainApp repository={storage} />);
+
+    await completeBrandIntro();
+    expect(await screen.findByRole('heading', { name: 'setup:welcome' })).toBeVisible();
+
+    view.rerender(<MainApp repository={storage} />);
+
+    expect(screen.queryByTestId('main-welcome-intro')).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'setup:welcome' })).toBeVisible();
+  });
+
+  it('consumes a duplicate intro completion callback without rendering welcome twice', async () => {
+    mainAppMocks.introCompletionCount = 2;
+    render(<MainApp repository={repository({ status: 'empty', data: null, original: null })} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: '화면을 눌러 건너뛰기' }));
+
+    expect(screen.queryByTestId('main-welcome-intro')).not.toBeInTheDocument();
+    expect(screen.getAllByRole('heading', { name: 'setup:welcome' })).toHaveLength(1);
+  });
+
+  it('shows a fresh-progress warning after the brand intro completes when saving fails', async () => {
+    const storage = repository({ status: 'empty', data: null, original: null });
+    storage.saveSetupProgress = vi.fn(async () => {
+      throw new Error('quota');
+    });
+    render(<MainApp repository={storage} />);
+
+    await completeBrandIntro();
+
+    expect(await screen.findByRole('heading', { name: 'setup:welcome' })).toBeVisible();
+    expect(await screen.findByText(
+      '설정 진행 상황을 저장하지 못했습니다. 이 화면에서는 계속 입력할 수 있습니다.',
+    )).toBeVisible();
+  });
+
   it('exports the current whole workspace from the management menu', async () => {
     const storage = new MemoryStorage();
     const current = workspace(3_000_000, 7);
@@ -497,13 +661,26 @@ describe('MainApp', () => {
     await screen.findByRole('heading', { name: '모든 앱 데이터를 이 백업으로 바꿀까요?' });
     fireEvent.click(screen.getByRole('button', { name: '백업으로 바꾸기' }));
 
+    if (_label === 'empty Main') {
+      expect(await screen.findByTestId('main-welcome-intro')).toBeVisible();
+      await completeBrandIntro();
+    } else {
+      expect(screen.queryByTestId('main-welcome-intro')).not.toBeInTheDocument();
+    }
     const setupHeading = await screen.findByRole('heading', { name: expectedHeading });
     expect(screen.getByText('모든 앱 데이터를 백업에서 복원했습니다.')).toBeVisible();
     expect(screen.queryByRole('button', { name: '관리 메뉴' })).not.toBeInTheDocument();
     await waitFor(() => expect(setupHeading).toHaveFocus());
     const saved = JSON.parse(storage.getItem(WORKSPACE_STORAGE_KEY) ?? '') as WorkspaceDocument;
-    expect(saved.revision).toBe(8);
-    expect(saved.main).toEqual(imported.main);
+    expect(saved.revision).toBe(_label === 'empty Main' ? 9 : 8);
+    if (_label === 'empty Main') {
+      expect(saved.main).toMatchObject({
+        applied: null,
+        setupProgress: { kind: 'initial', step: 'welcome', draft: createEmptyMainData() },
+      });
+    } else {
+      expect(saved.main).toEqual(imported.main);
+    }
     expect(saved.simulation).toEqual(imported.simulation);
     expect(saved.portfolio).toEqual(imported.portfolio);
     expect(saved.locations).toEqual(imported.locations);
@@ -522,6 +699,8 @@ describe('MainApp', () => {
     fireEvent.click(screen.getByRole('menuitem', { name: '처음부터 다시' }));
     fireEvent.click(screen.getByRole('button', { name: '다시 시작' }));
 
+    expect(await screen.findByTestId('main-welcome-intro')).toBeVisible();
+    await completeBrandIntro();
     expect(await screen.findByRole('heading', { name: 'setup:welcome' })).toBeVisible();
     expect(screen.getByLabelText('setup-flow')).toHaveAttribute('data-motion-preset', 'initial-assembly');
     expect(screen.queryByRole('navigation', { name: 'ISF 앱' })).not.toBeInTheDocument();
@@ -552,6 +731,7 @@ describe('MainApp', () => {
   it('hides navigation and journey actions during first setup', async () => {
     render(<MainApp repository={repository({ status: 'empty', data: null, original: null })} />);
 
+    await completeBrandIntro();
     await screen.findByRole('heading', { name: 'setup:welcome' });
 
     expect(screen.getByLabelText('setup-flow')).toHaveAttribute('data-motion-preset', 'initial-assembly');
@@ -573,10 +753,14 @@ describe('MainApp', () => {
 
     expect(screen.getByRole('status')).toHaveTextContent('자금 계획을 불러오는 중');
     expect(screen.getByTestId('main-page-frame')).toHaveClass('app-content-frame');
-    fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
-    expect(screen.getByLabelText('백업 가져오기')).toBeDisabled();
+    expect(screen.queryByTestId('app-shell')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('app-shell-launcher')).not.toBeInTheDocument();
+    expect(screen.queryByRole('navigation', { name: 'ISF 앱' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '관리 메뉴' })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('백업 가져오기')).not.toBeInTheDocument();
     resolveLoad?.({ status: 'empty', data: null, original: null });
 
+    await completeBrandIntro();
     expect(await screen.findByRole('heading', { name: 'setup:welcome' })).toBeVisible();
   });
 
@@ -584,6 +768,7 @@ describe('MainApp', () => {
     const storage = repository({ status: 'empty', data: null, original: null });
     storage.saveSetupProgress = vi.fn();
     render(<MainApp repository={storage} />);
+    await completeBrandIntro();
     await screen.findByRole('heading', { name: 'setup:welcome' });
 
     fireEvent.click(screen.getByRole('button', { name: 'next-housing' }));
@@ -600,6 +785,7 @@ describe('MainApp', () => {
     const storage = repository({ status: 'empty', data: null, original: null });
     storage.saveSetupProgress = vi.fn();
     render(<MainApp repository={storage} />);
+    await completeBrandIntro();
     await screen.findByRole('heading', { name: 'setup:welcome' });
 
     fireEvent.click(screen.getByRole('button', { name: 'apply-setup' }));
@@ -842,6 +1028,7 @@ describe('MainApp', () => {
       .mockRejectedValueOnce(new Error('quota'))
       .mockImplementationOnce(async (draft: MainData) => ({ ...draft, updatedAt: 30 }));
     render(<MainApp repository={storage} />);
+    await completeBrandIntro();
     await screen.findByRole('heading', { name: 'setup:welcome' });
     fireEvent.click(screen.getByRole('button', { name: 'change-income' }));
 
@@ -866,6 +1053,7 @@ describe('MainApp', () => {
       throw new Error('quota');
     });
     render(<MainApp repository={storage} />);
+    await completeBrandIntro();
     await screen.findByRole('heading', { name: 'setup:welcome' });
     fireEvent.click(screen.getByRole('button', { name: 'change-income' }));
 
@@ -901,6 +1089,8 @@ describe('MainApp', () => {
     fireEvent.click(screen.getByRole('menuitem', { name: '처음부터 다시' }));
     fireEvent.click(screen.getByRole('button', { name: '다시 시작' }));
 
+    expect(await screen.findByTestId('main-welcome-intro')).toBeVisible();
+    await completeBrandIntro();
     expect(await screen.findByRole('heading', { name: 'setup:welcome' })).toBeVisible();
     expect(screen.getByLabelText('setup-flow')).toHaveAttribute('data-motion-preset', 'initial-assembly');
     expect(screen.queryByRole('navigation', { name: 'ISF 앱' })).not.toBeInTheDocument();
@@ -909,10 +1099,13 @@ describe('MainApp', () => {
     expect(cancel.closest('.setup-flow-surface')).not.toBeNull();
     expect(screen.getByText('3000000')).toBeVisible();
     expect(storage.saveSetupProgress).toHaveBeenCalledWith('welcome', applied, 'restart');
+    fireEvent.click(screen.getByRole('button', { name: 'change-income' }));
+    expect(screen.getByText('4000000')).toBeVisible();
 
     fireEvent.click(cancel);
 
     expect(await screen.findByRole('heading', { name: 'dashboard' })).toBeVisible();
+    expect(screen.getByLabelText('applied-income')).toHaveTextContent('3000000');
     expect(screen.getByRole('navigation', { name: 'ISF 앱' })).toBeVisible();
     expect(screen.getByRole('button', { name: 'Simulation으로 이어가기' })).toBeEnabled();
   });
@@ -998,6 +1191,7 @@ describe('MainApp', () => {
       throw new Error('quota');
     });
     render(<MainApp repository={storage} />);
+    await completeBrandIntro();
     await screen.findByRole('heading', { name: 'setup:welcome' });
 
     fireEvent.click(screen.getByRole('button', { name: 'change-income' }));
@@ -1009,23 +1203,34 @@ describe('MainApp', () => {
   });
 
   it('waits for the latest setup-progress write before applying the draft', async () => {
-    let releaseProgress: (() => void) | undefined;
-    const progressGate = new Promise<void>((resolve) => {
-      releaseProgress = resolve;
+    let releaseInitialProgress: (() => void) | undefined;
+    const initialProgressGate = new Promise<void>((resolve) => {
+      releaseInitialProgress = resolve;
+    });
+    let releaseLatestProgress: (() => void) | undefined;
+    const latestProgressGate = new Promise<void>((resolve) => {
+      releaseLatestProgress = resolve;
     });
     const storage = repository({ status: 'empty', data: null, original: null });
-    storage.saveSetupProgress = vi.fn(() => progressGate);
+    storage.saveSetupProgress = vi.fn()
+      .mockImplementationOnce(() => initialProgressGate)
+      .mockImplementationOnce(() => latestProgressGate);
     storage.save = vi.fn(async (draft: MainData) => ({ ...draft, updatedAt: 30 }));
     render(<MainApp repository={storage} />);
+    const complete = await screen.findByRole('button', { name: '화면을 눌러 건너뛰기' });
+    await waitFor(() => expect(storage.saveSetupProgress).toHaveBeenCalledOnce());
+    fireEvent.click(complete);
     await screen.findByRole('heading', { name: 'setup:welcome' });
 
+    releaseInitialProgress?.();
+
     fireEvent.click(screen.getByRole('button', { name: 'change-income' }));
-    await waitFor(() => expect(storage.saveSetupProgress).toHaveBeenCalledOnce());
+    await waitFor(() => expect(storage.saveSetupProgress).toHaveBeenCalledTimes(2));
     fireEvent.click(screen.getByRole('button', { name: 'apply-setup' }));
     await Promise.resolve();
 
     expect(storage.save).not.toHaveBeenCalled();
-    releaseProgress?.();
+    releaseLatestProgress?.();
     expect(await screen.findByRole('heading', { name: 'dashboard' })).toBeVisible();
     expect(storage.save).toHaveBeenCalledOnce();
   });

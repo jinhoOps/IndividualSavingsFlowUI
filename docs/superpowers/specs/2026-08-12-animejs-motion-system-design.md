@@ -92,7 +92,7 @@ Anime.js는 필요한 하위 모듈만 import한다. 일반 hover, focus, presse
 
 ### 5.3 Main 최초 조립과 처음부터 다시
 
-최초 설정과 `처음부터 다시`는 모두 적용된 계획이 없는 동일한 initial setup journey다. 따라서 welcome부터 review까지 같은 전체 모션 시퀀스를 사용한다. `처음부터 다시`를 수정 흐름으로 취급하지 않는다.
+최초 설정에는 적용된 계획이 없지만 `처음부터 다시`는 취소·복구를 위해 현재 적용 계획을 유지한 채 복사한 draft로 setup을 진행한다. 두 경로는 데이터 상태가 아니라 initial setup 경험을 공유하므로 welcome부터 review까지 같은 전체 모션 시퀀스를 사용한다. `처음부터 다시`를 일반 수정 흐름으로 취급하지 않는다. Main 진입 앞의 별도 브랜드 인트로는 [Main 브랜드 웰컴 인트로 설계](2026-08-13-main-brand-welcome-intro-design.md)를 따른다.
 
 review의 조립은 하나의 지속적인 시각 모델을 사용한다.
 
