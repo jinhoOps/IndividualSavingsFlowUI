@@ -270,7 +270,9 @@ async function captureMainBrandIntro(
   expect(geometry.points[3].x).toBeGreaterThan(geometry.barCenters[1]);
   expect(geometry.points[3].x).toBeLessThan(geometry.barCenters[2]);
   expect(geometry.points[4].x).toBeCloseTo(geometry.barCenters[2], 5);
-  expect(geometry.points[4].y).toBe(Math.min(...geometry.points.map((point) => point.y)));
+  for (const earlierPoint of geometry.points.slice(0, -1)) {
+    expect(earlierPoint.y).toBeGreaterThan(geometry.points[4].y);
+  }
   expect(geometry.terminal).toEqual(geometry.points[4]);
   expect(geometry.introContained).toBe(true);
   expect(geometry.documentContained).toBe(true);
