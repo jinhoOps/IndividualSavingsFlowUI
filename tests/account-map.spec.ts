@@ -446,33 +446,34 @@ test('explicitly reapplies a stale edit without losing an unrelated concurrent c
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await seed(page, editableWorkspace());
   await page.goto('apps/account-map/');
+  const concurrentSimulationDraft = {
+    schemaVersion: 2,
+    source: {
+      monthlySavingsWon: main.monthlySavingWon,
+      monthlyInvestmentWon: main.monthlyInvestmentWon,
+      mainUpdatedAt: main.updatedAt,
+    },
+    initialInvestmentWon: 1_000_000,
+    years: 10,
+    expectedAnnualReturnPercent: 7,
+    baseRatePercent: 2.5,
+    inflationOffsetPercentPoints: 0,
+    amountMode: 'nominal',
+    updatedAt: now + 1,
+  };
 
   await openNode(page, /생활비.*1,000,000원/);
   await page.getByRole('button', { name: '편집' }).click();
   const input = page.getByRole('textbox', { name: '보조생활비 월 금액' });
   await input.fill('200000');
 
-  await page.evaluate((key) => {
+  await page.evaluate(({ key, draft }) => {
     const workspace = JSON.parse(localStorage.getItem(key)!);
     workspace.revision += 1;
     workspace.updatedAt += 1;
-    workspace.simulation.draft = {
-      schemaVersion: 2,
-      source: {
-        monthlySavingsWon: workspace.main.applied.monthlySavingWon,
-        monthlyInvestmentWon: workspace.main.applied.monthlyInvestmentWon,
-        mainUpdatedAt: workspace.main.applied.updatedAt,
-      },
-      initialInvestmentWon: 1_000_000,
-      years: 10,
-      expectedAnnualReturnPercent: 7,
-      baseRatePercent: 2.5,
-      inflationOffsetPercentPoints: 0,
-      amountMode: 'nominal',
-      updatedAt: workspace.updatedAt,
-    };
+    workspace.simulation.draft = draft;
     localStorage.setItem(key, JSON.stringify(workspace));
-  }, STORAGE_KEY);
+  }, { key: STORAGE_KEY, draft: concurrentSimulationDraft });
 
   await page.getByRole('button', { name: '저장' }).click();
   await expect(page.getByRole('status')).toContainText('편집 중인 입력은 그대로 두었습니다.');
@@ -480,15 +481,16 @@ test('explicitly reapplies a stale edit without losing an unrelated concurrent c
   await page.getByRole('button', { name: '최신 상태에서 다시 적용' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
 
-  const stored = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!), STORAGE_KEY);
-  expect(stored.revision).toBe(3);
-  expect(stored.simulation.draft).toMatchObject({
-    initialInvestmentWon: 1_000_000,
-    years: 10,
-  });
-  expect(stored.accountMap.applied.links.find(({ id }: { id: string }) => id === 'living-backup'))
+  const stored = await page.evaluate((key) => {
+    const workspace = JSON.parse(localStorage.getItem(key)!);
+    return { workspace, simulationDraftJson: JSON.stringify(workspace.simulation.draft) };
+  }, STORAGE_KEY);
+  expect(stored.workspace.revision).toBe(3);
+  expect(stored.workspace.simulation.draft).toEqual(concurrentSimulationDraft);
+  expect(stored.simulationDraftJson).toBe(JSON.stringify(concurrentSimulationDraft));
+  expect(stored.workspace.accountMap.applied.links.find(({ id }: { id: string }) => id === 'living-backup'))
     .toMatchObject({ monthlyAmountWon: 200_000, remainder: false });
-  expect(stored.accountMap.applied.links.find(({ id }: { id: string }) => id === 'living'))
+  expect(stored.workspace.accountMap.applied.links.find(({ id }: { id: string }) => id === 'living'))
     .toMatchObject({ monthlyAmountWon: 800_000, remainder: true });
 });
 
@@ -814,4 +816,74 @@ test('keeps all Account Map states contained with 44px action targets at support
     await page.getByRole('button', { name: 'KB국민은행', exact: true }).click();
     await expectContainedActionTargets(page, `${prefix} new-location form`);
   }
+});
+
+test('wraps a 24-character custom-purpose detail title beside its actions at 390px', async ({ page }, testInfo) => {
+  const purposeName = '가'.repeat(24);
+  const workspace = responsiveWorkspace();
+  workspace.accountMap.applied!.customPurposes.find(({ id }) => id === 'custom:trip')!.name = purposeName;
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await seed(page, workspace);
+  await page.goto('apps/account-map/');
+
+  await openNode(page, new RegExp(purposeName));
+  const dialog = page.getByRole('dialog', { name: `${purposeName} 상세` });
+  const title = dialog.getByRole('heading', { name: `${purposeName} 상세` });
+  const more = dialog.getByRole('button', { name: `${purposeName} 더보기` });
+  await expect(title).toBeVisible();
+  await expect(more).toBeVisible();
+  await page.screenshot({ fullPage: true, path: testInfo.outputPath('390-long-custom-purpose-detail.png') });
+
+  const geometry = await dialog.evaluate((modal) => {
+    const header = modal.querySelector<HTMLElement>(':scope > header')!;
+    const heading = header.querySelector<HTMLElement>('h2')!;
+    const titleContainer = heading.parentElement!;
+    const actions = header.querySelector<HTMLElement>('.account-map-modal__title-actions')!;
+    const body = modal.querySelector<HTMLElement>('.account-map-modal__body')!;
+    const rect = (element: Element) => {
+      const bounds = element.getBoundingClientRect();
+      return { left: bounds.left, right: bounds.right, width: bounds.width };
+    };
+    const range = document.createRange();
+    range.selectNodeContents(heading);
+    return {
+      viewportWidth: innerWidth,
+      documentWidth: document.documentElement.scrollWidth,
+      modal: rect(modal),
+      header: rect(header),
+      titleContainer: {
+        ...rect(titleContainer),
+        minWidth: getComputedStyle(titleContainer).minWidth,
+      },
+      title: {
+        ...rect(heading),
+        clientWidth: heading.clientWidth,
+        scrollWidth: heading.scrollWidth,
+        lines: new Set([...range.getClientRects()].map(({ y }) => Math.round(y))).size,
+        overflowWrap: getComputedStyle(heading).overflowWrap,
+      },
+      actions: rect(actions),
+      body: {
+        ...rect(body),
+        clientWidth: body.clientWidth,
+        scrollWidth: body.scrollWidth,
+      },
+    };
+  });
+
+  expect(geometry.documentWidth).toBeLessThanOrEqual(geometry.viewportWidth);
+  expect(geometry.modal.left).toBeGreaterThanOrEqual(0);
+  expect(geometry.modal.right).toBeLessThanOrEqual(geometry.viewportWidth);
+  expect(geometry.header.left).toBeGreaterThanOrEqual(geometry.modal.left);
+  expect(geometry.header.right).toBeLessThanOrEqual(geometry.modal.right);
+  expect(geometry.titleContainer.minWidth).toBe('0px');
+  expect(geometry.title.overflowWrap).toBe('anywhere');
+  expect(geometry.title.lines).toBeGreaterThan(1);
+  expect(geometry.title.scrollWidth).toBeLessThanOrEqual(geometry.title.clientWidth);
+  expect(geometry.title.right).toBeLessThanOrEqual(geometry.actions.left);
+  expect(geometry.actions.right).toBeLessThanOrEqual(geometry.header.right);
+  expect(geometry.body.left).toBeGreaterThanOrEqual(geometry.modal.left);
+  expect(geometry.body.right).toBeLessThanOrEqual(geometry.modal.right);
+  expect(geometry.body.scrollWidth).toBeLessThanOrEqual(geometry.body.clientWidth);
 });
