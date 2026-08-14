@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-13
 
-**Status:** Approved contract; PR review closure implementation pending
+**Status:** Implemented; approved contract
 
 **Scope:** Phase B Account Map 계좌·보관처 관리와 Main 기반 월 자금 연결
 

@@ -2,7 +2,7 @@
 
 개인 재무 흐름을 입력하고 향후 장기 투자 전략과 실행 계획으로 연결할 수 있도록 준비하는 로컬 우선 웹 앱입니다.
 
-현재 상세 제품은 Main, Simulation, Portfolio와 Account Map입니다. 네 앱은 Phase A shared workspace를 사용합니다.
+현재 지원 제품은 Main, Simulation, Portfolio와 Account Map입니다. 네 앱은 shared workspace를 사용합니다.
 
 - **Main**: 월 실수령액, 소비, 저축, 투자와 남는 돈을 한눈에 보여주고 whole-workspace 백업을 관리하는 현재 제품 기준선입니다.
 - **Simulation**: Main의 월 저축·투자를 기준으로 장기 복리 성장과 전부 저축 기준선을 비교합니다.
