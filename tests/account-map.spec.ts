@@ -322,7 +322,7 @@ test('supports layout, semantic zoom, focus parity, second invoke, and same-moda
     name: '목적 · 생활비 · 1,000,000원 · 활성 연결 2개 · 연결 완료',
   })).toBeVisible();
   await expect(page.getByRole('button', {
-    name: '계좌·보관처 · 생활비통장 · 900,000원 · 활성 연결 1개 · 연결 완료',
+    name: '계좌·보관처 · 생활비통장 · 활성 월 연결 합계 900,000원 · 활성 연결 1개 · 연결 완료',
   })).toBeVisible();
 
   const living = page.getByRole('button', { name: /생활비.*1,000,000원/ }).first();
@@ -384,7 +384,7 @@ test('keeps overview node and edge topology representative-only, then restores u
   await page.getByRole('button', { name: '축소' }).click();
   await expect(page.getByText('전체 보기')).toBeVisible();
   await expect(page.getByRole('button', {
-    name: '계좌·보관처 · 생활비통장 · 900,000원 · 활성 연결 1개 · 연결 완료',
+    name: '계좌·보관처 · 생활비통장 · 활성 월 연결 합계 900,000원 · 활성 연결 1개 · 연결 완료',
   })).toBeVisible();
   await expect(page.getByRole('button', {
     name: '목적 · 생활비 · 1,000,000원 · 활성 연결 2개 · 연결 완료',
@@ -397,12 +397,12 @@ test('keeps overview node and edge topology representative-only, then restores u
 
   await page.getByRole('button', { name: '확대' }).click();
   const unlinked = page.getByRole('button', {
-    name: '계좌·보관처 · 비상금함 · 0원 · 활성 연결 0개 · 연결 완료',
+    name: '계좌·보관처 · 비상금함 · 활성 월 연결 합계 0원 · 활성 연결 0개 · 연결 완료',
   });
   await expect(page.getByText('기본 보기')).toBeVisible();
   await expect(page.getByRole('button', { name: /보조생활비/ })).toBeVisible();
   await expect(unlinked).toBeVisible();
-  await openNode(page, /계좌·보관처 · 비상금함 · 0원 · 활성 연결 0개 · 연결 완료/);
+  await openNode(page, /계좌·보관처 · 비상금함 · 활성 월 연결 합계 0원 · 활성 연결 0개 · 연결 완료/);
   await expect(page.getByRole('dialog', { name: '비상금함 상세' })).toBeVisible();
 });
 
@@ -858,16 +858,16 @@ test('edits and archives an active zero-link location, then restores it from man
   await page.goto('apps/account-map/');
   const before = await readProtected(page);
 
-  await openNode(page, /계좌·보관처 · 비상금함 · 0원 · 활성 연결 0개 · 연결 완료/);
+  await openNode(page, /계좌·보관처 · 비상금함 · 활성 월 연결 합계 0원 · 활성 연결 0개 · 연결 완료/);
   await expect(page.getByText('연결된 항목이 없습니다.')).toBeVisible();
   await page.getByRole('button', { name: '편집' }).click();
   await page.getByRole('textbox', { name: '표시 이름' }).fill('예비자금');
   await page.getByRole('button', { name: '저장' }).click();
-  const renamed = page.getByRole('button', { name: /계좌·보관처 · 예비자금 · 0원 · 활성 연결 0개 · 연결 완료/ });
+  const renamed = page.getByRole('button', { name: /계좌·보관처 · 예비자금 · 활성 월 연결 합계 0원 · 활성 연결 0개 · 연결 완료/ });
   await expect(renamed).toBeVisible();
   await expect(renamed).toBeFocused();
 
-  await openNode(page, /계좌·보관처 · 예비자금 · 0원 · 활성 연결 0개 · 연결 완료/);
+  await openNode(page, /계좌·보관처 · 예비자금 · 활성 월 연결 합계 0원 · 활성 연결 0개 · 연결 완료/);
   await page.getByRole('button', { name: '보관', exact: true }).click();
   await page.getByRole('button', { name: '보관하기' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -881,7 +881,7 @@ test('edits and archives an active zero-link location, then restores it from man
   await expect(restore.getByRole('checkbox')).toHaveCount(0);
   await expect(restore.getByRole('button', { name: '선택 복원' })).toBeEnabled();
   await restore.getByRole('button', { name: '선택 복원' }).click();
-  await expect(page.getByRole('button', { name: /계좌·보관처 · 예비자금 · 0원 · 활성 연결 0개 · 연결 완료/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /계좌·보관처 · 예비자금 · 활성 월 연결 합계 0원 · 활성 연결 0개 · 연결 완료/ })).toBeVisible();
   await expect(page.getByRole('button', { name: '관리 메뉴' })).toBeFocused();
   expect(await readProtected(page)).toEqual(before);
 });

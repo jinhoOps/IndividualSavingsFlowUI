@@ -131,7 +131,7 @@ describe('AccountMapModal', () => {
   });
 
   it('creates a brokerage location from direct institution input in connect mode', () => {
-    const onCreateAndConnectLocation = vi.fn(() => true);
+    const onCreateAndConnectLocation = vi.fn<NonNullable<React.ComponentProps<typeof AccountMapModal>['onCreateAndConnectLocation']>>(() => true);
     renderModal({ related: [], onCreateAndConnectLocation });
     fireEvent.click(screen.getByRole('button', { name: '편집' }));
     fireEvent.click(screen.getByRole('button', { name: '연결 추가' }));
@@ -150,7 +150,7 @@ describe('AccountMapModal', () => {
   });
 
   it('creates a cash location without institution in connect mode', () => {
-    const onCreateAndConnectLocation = vi.fn(() => true);
+    const onCreateAndConnectLocation = vi.fn<NonNullable<React.ComponentProps<typeof AccountMapModal>['onCreateAndConnectLocation']>>(() => true);
     renderModal({ related: [], onCreateAndConnectLocation });
     fireEvent.click(screen.getByRole('button', { name: '편집' }));
     fireEvent.click(screen.getByRole('button', { name: '연결 추가' }));
