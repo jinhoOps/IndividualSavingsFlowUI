@@ -286,6 +286,34 @@ describe('SetupFlow', () => {
     }
   });
 
+  it('immediately restores review assembly when timeline add throws after creation', () => {
+    animeMocks.timeline.add.mockImplementationOnce(() => {
+      throw new Error('timeline add failed');
+    });
+
+    render(
+      <SetupFlow
+        draft={{ ...createEmptyMainData(), monthlyNetIncomeWon: 3_200_000 }}
+        step="review"
+        issues={[]}
+        motionPreset="initial-assembly"
+        onChange={vi.fn()}
+        onStepChange={vi.fn()}
+        onApply={vi.fn()}
+      />,
+    );
+
+    expect(animeMocks.createTimeline).toHaveBeenCalledOnce();
+    expect(document.querySelector('.allocation-bar__visual-track')).toHaveStyle({ transform: 'scaleX(1)' });
+    for (const segment of document.querySelectorAll<HTMLElement>('.allocation-bar__visual-segment')) {
+      expect(segment).toHaveStyle({ opacity: '1' });
+    }
+    for (const content of document.querySelectorAll<HTMLElement>('[data-assembly-content]')) {
+      expect(content).toHaveStyle({ opacity: '1', transform: 'translateY(0px)' });
+    }
+    expect(animeMocks.timeline.cancel).toHaveBeenCalledOnce();
+  });
+
   it('recreates the welcome reveal after the Strict Mode cleanup', () => {
     render(
       <StrictMode>
