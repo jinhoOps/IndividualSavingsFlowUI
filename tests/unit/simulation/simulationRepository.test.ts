@@ -55,7 +55,7 @@ function serialLock() {
 
 function workspaceWithSimulation(savedDraft = draft): WorkspaceDocument {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     revision: 4,
     updatedAt: 400,
     main: {
@@ -85,7 +85,7 @@ function workspaceWithSimulation(savedDraft = draft): WorkspaceDocument {
       draft: null,
     },
     locations: [],
-    accountMap: { applied: null, draft: null, instruments: [], flows: [] },
+    accountMap: { applied: null, draft: null, legacyPhaseA: { instruments: [], flows: [] } },
   };
 }
 
@@ -197,10 +197,11 @@ describe('BrowserSimulationRepository workspace adapter', () => {
     async (status) => {
       const workspace = workspaceWithSimulation();
       const workspaceRepository: WorkspaceRepository = {
-        load: vi.fn(() => ({ status: 'found' as const, workspace: structuredClone(workspace) })),
+        load: vi.fn(() => ({ status: 'found' as const, workspace: structuredClone(workspace), needsMigration: false })),
         update: vi.fn(async () => status === 'conflict'
           ? { status: 'conflict' as const, currentRevision: 5 }
           : { status: 'unavailable' as const }),
+        migrate: vi.fn(),
         replace: vi.fn(),
         resetInvalid: vi.fn(),
         subscribe: vi.fn(() => () => undefined),
@@ -233,6 +234,7 @@ describe('BrowserSimulationRepository workspace adapter', () => {
           ? { status: 'invalid' as const, raw }
           : { status: 'unavailable' as const }),
         update,
+        migrate: vi.fn(),
         replace: vi.fn(),
         resetInvalid: vi.fn(),
         subscribe: vi.fn(() => () => undefined),

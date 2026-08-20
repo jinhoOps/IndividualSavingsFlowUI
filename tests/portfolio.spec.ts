@@ -668,269 +668,46 @@ for (const viewport of [
     expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
   });
 }
-test('creates and preserves a contained shared investment location at required widths', async ({ page }) => {
+test('does not expose account or custody management and preserves dormant location data', async ({ page }) => {
   await seedMain(page, 200_000);
   await seedAppliedPortfolio(page);
   await page.goto('apps/portfolio/');
 
-  const locationName = '해외투자12AB';
-  const aggregateTask = page.getByRole('heading', { name: '안정 40%' });
-  const locationTask = page.locator('.portfolio-locations-disclosure');
-  expect(await aggregateTask.evaluate((aggregate, location) => (
-    Boolean(aggregate.compareDocumentPosition(location as Node) & Node.DOCUMENT_POSITION_FOLLOWING)
-  ), await locationTask.elementHandle())).toBe(true);
-  const disclosure = page.getByRole('group', { name: '투자 위치 1곳' });
-  await expect(disclosure).not.toHaveAttribute('open', '');
-  await page.getByText('투자 위치 1곳', { exact: true }).click();
-  await page.getByLabel('짧은 이름').fill(locationName);
-  await expect(page.getByText('8/8자')).toBeVisible();
-  await page.getByLabel('형태').selectOption('brokerage');
-  await page.getByLabel('기관 (선택)').fill('미래에셋');
-  await page.getByRole('button', { name: '투자 위치 추가' }).click();
-
-  await expect(page.getByText(locationName, { exact: true })).toBeVisible();
-  await expect(page.getByRole('status', { name: '아직 배분하지 않음' })).toBeVisible();
-  await expect.poll(() => page.evaluate((name) => {
-    const workspace = JSON.parse(localStorage.getItem('isf-workspace-v1')!);
-    return workspace.locations.find((location: { shortName: string }) => (
-      location.shortName === name
-    ));
-  }, locationName)).toMatchObject({
-    shortName: locationName,
-    institution: { name: '미래에셋' },
-    roles: ['investing'],
-  });
-
-  await page.reload();
-  await expect(page.getByRole('group', { name: '투자 위치 2곳' })).not.toHaveAttribute('open', '');
-  await page.getByText('투자 위치 2곳', { exact: true }).click();
-  await expect(page.getByText(locationName, { exact: true })).toBeVisible();
-
-  for (const viewport of [
-    { width: 390, height: 844 },
-    { width: 768, height: 900 },
-    { width: 1280, height: 900 },
-  ]) {
-    await page.setViewportSize(viewport);
-    await expect(page.getByRole('region', { name: '투자 위치' })).toBeVisible();
-    await expect(page.getByText(locationName, { exact: true })).toBeVisible();
-    expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
-    for (const control of await page.locator(
-      '.portfolio-locations button:visible, .portfolio-locations input:visible, .portfolio-locations select:visible',
-    ).all()) {
-      const box = await control.boundingBox();
-      expect(box).not.toBeNull();
-      expect(box!.height).toBeGreaterThanOrEqual(44);
-    }
-  }
-
-  await page.getByRole('button', { name: `${locationName} 보관하기` }).click();
-  await expect(page.getByRole('button', { name: `${locationName} 보관하기` })).not.toBeVisible();
-  await expect(page.getByRole('heading', { name: '투자 위치', exact: true })).toBeFocused();
-});
-
-test('returns keyboard focus to an investment-location rename trigger after cancel and save', async ({ page }) => {
-  await seedMain(page, 200_000);
-  await seedAppliedPortfolio(page);
-  await page.goto('apps/portfolio/');
-  await page.getByText('투자 위치 1곳', { exact: true }).click();
-
-  const originalTrigger = page.getByRole('button', { name: 'ISA 이름 바꾸기' });
-  await originalTrigger.focus();
-  await page.keyboard.press('Enter');
-  await page.getByRole('button', { name: '취소' }).focus();
-  await page.keyboard.press('Enter');
-  await expect(originalTrigger).toBeFocused();
-
-  await page.keyboard.press('Enter');
-  await page.getByLabel('ISA 새 이름').fill('연금 ISA');
-  await page.getByRole('button', { name: '이름 저장' }).focus();
-  await page.keyboard.press('Enter');
-  await expect(page.getByRole('button', { name: '연금 ISA 이름 바꾸기' })).toBeFocused();
-});
-
-test('links an existing non-investing shared identity without duplicating its ID', async ({ page }) => {
-  await page.addInitScript((fixture) => {
-    localStorage.setItem('isf-workspace-v1', JSON.stringify({
-      schemaVersion: 1,
-      revision: 1,
-      updatedAt: fixture.updatedAt,
-      main: { applied: fixture, setupProgress: null },
-      simulation: { draft: null },
-      portfolio: {
-        plans: [{
-          schemaVersion: 2,
-          scope: { type: 'aggregate' },
-          items: [{
-            id: 'index', name: '인덱스', shareUnits: 600_000, order: 0,
-            classification: 'growth', classificationOrigin: 'automatic',
-          }],
-          cashShareUnits: 400_000,
-          cashMode: 'automatic',
-          syncedInvestmentWon: 200_000,
-          appliedAt: 1,
-          updatedAt: 1,
-        }],
-        draft: null,
-      },
-      locations: [{
-        id: 'shared-toss-isa',
-        shortName: 'Toss ISA',
-        kind: 'brokerage',
-        roles: ['saving'],
-        createdAt: 1,
-        updatedAt: 1,
-      }],
-      accountMap: { applied: null, draft: null, instruments: [], flows: [] },
-    }));
-  }, mainFixture);
-  await page.goto('apps/portfolio/');
-  await page.getByText('투자 위치 0곳', { exact: true }).click();
-  await page.getByLabel('짧은 이름').fill('toss isa');
-
-  await page.getByRole('button', { name: '투자 위치 추가' }).click();
-  await expect(page.getByText('Toss ISA 공유 위치를 투자 위치로 연결할 수 있습니다.'))
-    .toBeVisible();
-  const link = page.getByRole('button', { name: '기존 위치 연결' });
-  for (const viewport of [
-    { width: 390, height: 844 },
-    { width: 768, height: 900 },
-    { width: 1280, height: 900 },
-  ]) {
-    await page.setViewportSize(viewport);
-    await expect(link).toBeVisible();
-    const box = await link.boundingBox();
-    expect(box).not.toBeNull();
-    expect(box!.height).toBeGreaterThanOrEqual(44);
-    expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
-  }
-  await link.click();
-
-  await expect(page.getByText('Toss ISA', { exact: true })).toBeVisible();
-  expect(await page.evaluate(() => {
-    const workspace = JSON.parse(localStorage.getItem('isf-workspace-v1')!);
-    return workspace.locations;
-  })).toEqual([expect.objectContaining({
-    id: 'shared-toss-isa',
-    roles: ['saving', 'investing'],
-  })]);
-});
-
-test('confirms linked location archival with preservation as the accessible default', async ({ page }) => {
-  await seedMain(page, 200_000);
-  await seedAppliedPortfolio(page);
-  await page.goto('apps/portfolio/');
-  await page.getByText('투자 위치 1곳', { exact: true }).click();
-  const archiveTrigger = page.getByRole('button', { name: 'ISA 보관하기' });
-  await expect(page.getByRole('status', { name: '배분 데이터 있음' })).toBeVisible();
-  await expect(page.getByRole('button', { name: '아직 배분하지 않음' })).toHaveCount(0);
-
-  await archiveTrigger.click();
-
-  const dialog = page.getByRole('dialog', { name: 'ISA 위치를 보관할까요?' });
-  await expect(dialog.getByRole('radio', { name: 'Portfolio 데이터 유지' })).toBeChecked();
-  await expect(dialog.getByRole('button', { name: '취소' })).toBeFocused();
-  await page.keyboard.press('Escape');
-  await expect(dialog).not.toBeVisible();
-  await expect(archiveTrigger).toBeFocused();
-
-  await archiveTrigger.click();
-  await dialog.getByRole('button', { name: '보관' }).click();
-  await expect(dialog).not.toBeVisible();
-  await expect(page.getByRole('button', { name: 'ISA 보관하기' })).not.toBeVisible();
-  await expect(page.getByRole('heading', { name: '투자 위치', exact: true })).toBeFocused();
-  await expect.poll(() => page.evaluate(() => {
+  const preservedBefore = await page.evaluate(() => {
     const workspace = JSON.parse(localStorage.getItem('isf-workspace-v1')!);
     return {
-      archivedAt: workspace.locations[0]?.archivedAt,
-      scopes: workspace.portfolio.plans.map((plan: { scope: unknown }) => plan.scope),
+      locations: workspace.locations,
+      locationPlans: workspace.portfolio.plans.filter(
+        (plan: { scope: { type: string } }) => plan.scope.type === 'location',
+      ),
     };
-  })).toEqual({
-    archivedAt: expect.any(Number),
-    scopes: [
-      { type: 'aggregate' },
-      { type: 'location', locationId: 'loc-isa' },
-    ],
   });
-});
+  await expect(page.getByText(/투자 위치/)).toHaveCount(0);
+  await expect(page.getByText(/계좌·보관처/)).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /위치|계좌|보관처/ })).toHaveCount(0);
 
-test('reconciles external location changes and contains stale controls at required widths', async ({ page, context }) => {
-  await seedMain(page, 200_000);
-  await seedAppliedPortfolio(page);
-  await page.goto('apps/portfolio/');
-  const external = await context.newPage();
-  await external.goto('/');
+  await page.getByRole('button', { name: '배분 수정' }).click();
+  await page.getByLabel('인덱스 금액').fill('100000');
+  await page.getByLabel('인덱스 금액').blur();
+  await page.getByRole('button', { name: '적용' }).click();
+  await page.getByRole('dialog', { name: '투자 배분을 적용할까요?' })
+    .getByRole('button', { name: '배분 적용' }).click();
+  await expect(page.getByRole('button', { name: '배분 수정' })).toBeVisible();
 
-  for (const viewport of [
-    { width: 390, height: 844 },
-    { width: 768, height: 900 },
-    { width: 1280, height: 900 },
-  ]) {
-    await page.setViewportSize(viewport);
-    await page.evaluate(() => {
-      const workspace = JSON.parse(localStorage.getItem('isf-workspace-v1')!);
-      workspace.locations = [{
-        id: 'loc-isa',
-        shortName: 'ISA',
-        kind: 'brokerage',
-        roles: ['investing'],
-        createdAt: 1,
-        updatedAt: workspace.updatedAt + 1,
-      }];
-      localStorage.setItem('isf-workspace-v1', JSON.stringify(workspace));
-    });
-    await page.reload();
-    await page.getByText('투자 위치 1곳', { exact: true }).click();
+  expect(await page.evaluate(() => {
+    const workspace = JSON.parse(localStorage.getItem('isf-workspace-v1')!);
+    return workspace.portfolio.plans.find(
+      (plan: { scope: { type: string } }) => plan.scope.type === 'aggregate',
+    )?.items[0].shareUnits;
+  })).toBe(500_000);
 
-    await page.getByRole('button', { name: 'ISA 이름 바꾸기' }).click();
-    const renameForm = page.locator('.portfolio-locations__rename');
-    await expect(renameForm).toBeVisible();
-    const renameBox = await renameForm.boundingBox();
-    expect(renameBox).not.toBeNull();
-    expect(renameBox!.x).toBeGreaterThanOrEqual(16);
-    expect(renameBox!.x + renameBox!.width).toBeLessThanOrEqual(viewport.width - 16);
-    await external.evaluate(() => {
-      const workspace = JSON.parse(localStorage.getItem('isf-workspace-v1')!);
-      workspace.revision += 1;
-      workspace.updatedAt += 1;
-      workspace.locations[0].shortName = '외부 ISA';
-      workspace.locations[0].updatedAt += 1;
-      localStorage.setItem('isf-workspace-v1', JSON.stringify(workspace));
-    });
-    await expect(page.getByLabel('외부 ISA 새 이름')).toHaveValue('외부 ISA');
-    await renameForm.getByRole('button', { name: '취소' }).click();
-
-    await page.getByRole('button', { name: '외부 ISA 보관하기' }).click();
-    const dialog = page.getByRole('dialog', { name: '외부 ISA 위치를 보관할까요?' });
-    await expect(dialog).toBeVisible();
-    const dialogBox = await dialog.boundingBox();
-    expect(dialogBox).not.toBeNull();
-    expect(dialogBox!.x).toBeGreaterThanOrEqual(16);
-    expect(dialogBox!.x + dialogBox!.width).toBeLessThanOrEqual(viewport.width - 16);
-    for (const button of await dialog.getByRole('button').all()) {
-      const box = await button.boundingBox();
-      expect(box).not.toBeNull();
-      expect(await button.evaluate((element) => {
-        const style = getComputedStyle(element);
-        return { minBlockSize: style.minBlockSize, minHeight: style.minHeight };
-      })).toEqual({ minBlockSize: '44px', minHeight: '44px' });
-      expect(box!.height).toBeGreaterThanOrEqual(43.99);
-    }
-    expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
-
-    await external.evaluate(() => {
-      const workspace = JSON.parse(localStorage.getItem('isf-workspace-v1')!);
-      workspace.revision += 1;
-      workspace.updatedAt += 1;
-      workspace.locations[0].roles = ['saving'];
-      workspace.locations[0].updatedAt += 1;
-      localStorage.setItem('isf-workspace-v1', JSON.stringify(workspace));
-    });
-    await expect(dialog).not.toBeVisible();
-    await expect(page.getByRole('alert'))
-      .toContainText('다른 화면에서 위치가 변경되어 작업을 닫았습니다.');
-    await expect(page.getByRole('heading', { name: '투자 위치', exact: true })).toBeFocused();
-  }
-
-  await external.close();
+  expect(await page.evaluate(() => {
+    const workspace = JSON.parse(localStorage.getItem('isf-workspace-v1')!);
+    return {
+      locations: workspace.locations,
+      locationPlans: workspace.portfolio.plans.filter(
+        (plan: { scope: { type: string } }) => plan.scope.type === 'location',
+      ),
+    };
+  })).toEqual(preservedBefore);
 });

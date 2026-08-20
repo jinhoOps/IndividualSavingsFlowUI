@@ -128,7 +128,7 @@ describe('AppManagementMenu', () => {
     expect(within(guide).getByText('미래 성장 (Simulation)')).toBeVisible();
     expect(within(guide).getByText('투자 배분 (Portfolio)')).toBeVisible();
     expect(within(guide).getByText('계좌 연결 (Account Map)')).toBeVisible();
-    expect(within(guide).getByText('준비 중')).toBeVisible();
+    expect(within(guide).queryByText('준비 중')).not.toBeInTheDocument();
 
     fireEvent.click(help);
     expect(screen.queryByRole('region', { name: '앱 아이콘 안내' })).not.toBeInTheDocument();

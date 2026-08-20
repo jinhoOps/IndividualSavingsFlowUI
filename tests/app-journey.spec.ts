@@ -136,6 +136,11 @@ test('connects Main directly to the detailed Simulation', async ({ page }) => {
   )).toBeNull();
   await expect(page.getByRole('heading', { name: /이대로 20년 유지하면/ })).toBeVisible();
   await expect(page.getByText('월 저축 30만 원 · 투자 20만 원 · 연 9%')).toBeVisible();
+  await expect(page.getByText('전부 저축보다')).toBeVisible();
+  await expect(page.locator('.simulation-comparison__semantic-value')).toHaveText([
+    '1억 295만 원',
+    '215%',
+  ]);
   await expect(page.getByRole('link', { name: /미래 성장 \(Simulation\).*현재 위치/ }))
     .toHaveAttribute('aria-current', 'page');
   expect(await page.evaluate(() => localStorage.getItem('isf-simulation-compound-v1')))
@@ -150,7 +155,11 @@ test('revisits Simulation at the result and refreshes only its Main source', asy
 
   await page.goto('apps/simulation/');
   await expect(page.getByRole('heading', { name: /이대로 20년 유지하면/ })).toBeVisible();
-  await expect(page.getByText(/월 저축 30만 원 · 투자 20만 원/)).toBeVisible();
+  await expect(page.getByText('월 저축 30만 원 · 투자 20만 원 · 연 9%')).toBeVisible();
+  await expect(page.locator('.simulation-comparison__semantic-value')).toHaveText([
+    '1억 295만 원',
+    '215%',
+  ]);
   await expect(page.getByRole('heading', { name: '지금 모아둔 투자금이 있나요?' }))
     .toHaveCount(0);
 
@@ -163,8 +172,13 @@ test('revisits Simulation at the result and refreshes only its Main source', asy
   expect(stored.oldSimulation).toBe(oldSimulationRaw);
 });
 
-test('keeps detailed Portfolio and readiness-only Account Map isolated', async ({ page }) => {
-  await page.addInitScript((fixture) => localStorage.setItem('isf-workspace-v1', JSON.stringify(fixture)), appliedWorkspace);
+test('keeps detailed Portfolio and purpose-first Account Map isolated', async ({ page }) => {
+  const supportedAccountMapWorkspace = {
+    ...appliedWorkspace,
+    schemaVersion: 2,
+    accountMap: { applied: null, draft: null, legacyPhaseA: { instruments: [], flows: [] } },
+  };
+  await page.addInitScript((fixture) => localStorage.setItem('isf-workspace-v1', JSON.stringify(fixture)), supportedAccountMapWorkspace);
   await page.goto('apps/portfolio/');
   await expect(page.getByRole('heading', { name: '매달 200,000원을 어디에 투자할까요?' })).toBeVisible();
   await expect(page.getByRole('link', { name: /투자 배분 \(Portfolio\).*현재 위치/ })).toBeVisible();
@@ -188,13 +202,31 @@ test('keeps detailed Portfolio and readiness-only Account Map isolated', async (
     };
   });
   await page.goto('apps/account-map/');
-  await expect(page.getByRole('heading', { name: 'Account Map 준비 중' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '월 자금의 위치를 알려주세요' })).toBeVisible();
   await expect(page.locator('app-header, data-hub-modal, #portfolioCreator, #accountMapCanvas')).toHaveCount(0);
-  expect(await page.evaluate(() => (
+  const accountMapObservation = await page.evaluate(() => ({
+    calls: (
     window as typeof window & {
       __accountMapStorageCalls: Array<{ operation: 'get' | 'set' | 'remove'; key: string }>;
     }
-  ).__accountMapStorageCalls)).toEqual([]);
+    ).__accountMapStorageCalls,
+    protectedSlices: (() => {
+      const workspace = JSON.parse(localStorage.getItem('isf-workspace-v1')!);
+      return {
+        main: workspace.main,
+        simulation: workspace.simulation,
+        portfolio: workspace.portfolio,
+      };
+    })(),
+  }));
+  expect(accountMapObservation.calls.length).toBeGreaterThan(0);
+  expect([...new Set(accountMapObservation.calls.map(({ key }) => key))]).toEqual(['isf-workspace-v1']);
+  expect(accountMapObservation.calls.filter(({ operation }) => operation !== 'get')).toEqual([]);
+  expect(accountMapObservation.protectedSlices).toEqual({
+    main: supportedAccountMapWorkspace.main,
+    simulation: supportedAccountMapWorkspace.simulation,
+    portfolio: supportedAccountMapWorkspace.portfolio,
+  });
 });
 
 test('separates app navigation and the right-aligned management tool across viewports', async ({ page }) => {
@@ -297,7 +329,7 @@ test('keeps each app management menu reachable and contained across viewports', 
     { path: 'apps/main/', text: '백업 가져오기' },
     { path: 'apps/simulation/', text: '시뮬레이션 다시 설정' },
     { path: 'apps/portfolio/', text: '투자 배분 처음부터 다시' },
-    { path: 'apps/account-map/', text: '아직 관리할 설정이 없습니다' },
+    { path: 'apps/account-map/', text: '아직 만든 연결 지도가 없습니다' },
   ];
 
   for (const viewport of [
@@ -329,7 +361,7 @@ test('keeps each app management menu reachable and contained across viewports', 
       await expect(guide).toContainText('미래 성장 (Simulation)');
       await expect(guide).toContainText('투자 배분 (Portfolio)');
       await expect(guide).toContainText('계좌 연결 (Account Map)');
-      await expect(guide).toContainText('준비 중');
+      await expect(guide).not.toContainText('준비 중');
       expect(await menu.evaluate((node) => node.querySelector('[role="region"]'))).toBeNull();
       const guideBox = await guide.boundingBox();
       expect(guideBox).not.toBeNull();
@@ -360,6 +392,7 @@ test('keeps each app management menu reachable and contained across viewports', 
 });
 
 test('keeps Account Map usable at mobile, tablet, and desktop widths', async ({ page }) => {
+  await page.addInitScript((fixture) => localStorage.setItem('isf-workspace-v1', JSON.stringify(fixture)), appliedWorkspace);
   for (const viewport of [
     { width: 390, height: 844 },
     { width: 768, height: 900 },
@@ -369,17 +402,14 @@ test('keeps Account Map usable at mobile, tablet, and desktop widths', async ({ 
     await page.goto('apps/account-map/');
 
     const launcher = page.getByRole('navigation', { name: 'ISF 앱' });
-    const accountMapLink = page.getByRole('link', { name: /계좌 연결 \(Account Map\).*현재 위치.*준비 중/ });
-    const mainLink = page.getByRole('link', { name: 'Main으로 이동' });
+    const accountMapLink = page.getByRole('link', { name: /계좌 연결 \(Account Map\).*현재 위치/ });
     await expect(launcher).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Account Map 준비 중' })).toBeVisible();
-    await expect(mainLink).toBeVisible();
-    await expect(mainLink).toHaveAttribute('href', /\/apps\/main\/$/);
+    await expect(page.getByRole('heading', { name: '월 자금의 위치를 알려주세요' })).toBeVisible();
 
     await expect(accountMapLink).toHaveAttribute('aria-current', 'page');
 
     const visibleTargetSizes = await page.locator(
-      '.journey-launcher__app-link, .journey-readiness__content .journey-action',
+      '.journey-launcher__app-link, .account-map-purpose-card__action, .account-map-actions button',
     ).evaluateAll((elements) => elements
       .map((element) => element.getBoundingClientRect())
       .filter((rect) => rect.width > 0 && rect.height > 0)
@@ -390,13 +420,13 @@ test('keeps Account Map usable at mobile, tablet, and desktop widths', async ({ 
       expect(size.height).toBeGreaterThanOrEqual(44);
     }
 
-    for (let attempt = 0; attempt < 8 && !await mainLink.evaluate(
+    for (let attempt = 0; attempt < 8 && !await accountMapLink.evaluate(
       (element) => document.activeElement === element,
     ); attempt += 1) {
       await page.keyboard.press('Tab');
     }
-    await expect(mainLink).toBeFocused();
-    expect(await mainLink.evaluate((element) => {
+    await expect(accountMapLink).toBeFocused();
+    expect(await accountMapLink.evaluate((element) => {
       const style = getComputedStyle(element);
       return style.outlineStyle !== 'none' && Number.parseFloat(style.outlineWidth) >= 1;
     })).toBe(true);
@@ -425,7 +455,7 @@ test('explains app icons with pointer, keyboard, touch and integrated management
   await help.click();
   const panel = page.getByRole('region', { name: '앱 아이콘 안내' });
   await expect(panel).toContainText('계좌 연결 (Account Map)');
-  await expect(panel).toContainText('준비 중');
+  await expect(panel).not.toContainText('준비 중');
   const panelBox = await panel.boundingBox();
   expect(panelBox).not.toBeNull();
   expect(panelBox!.x).toBeGreaterThanOrEqual(16);
@@ -501,18 +531,18 @@ test('keeps the current app direct and exposes hidden apps through overflow', as
   expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
 });
 
-test('commits Journey reveals before paint under reduced motion', async ({ page }) => {
+test('commits launcher reveals before paint on the supported Account Map under reduced motion', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('apps/account-map/');
 
-  const readiness = page.locator('[data-readiness-motion]');
+  const accountMapMessage = page.locator('.account-map-message');
   const currentLine = page.locator(
     '[aria-current="page"] .journey-launcher__current-line',
   );
-  await expect(readiness).toBeVisible();
+  await expect(accountMapMessage).toBeVisible();
+  await expect(page.getByRole('heading', { name: '월 자금 계획이 먼저 필요해요' })).toBeVisible();
   await expect(currentLine).toBeVisible();
-  expect(await readMotionState(readiness)).toEqual({ opacity: 1, x: 0, y: 0 });
   expect(await readMotionState(currentLine)).toEqual({ opacity: 1, x: 0, y: 0 });
 
   await page.addStyleTag({ content: '.journey-launcher { width: 220px !important; }' });

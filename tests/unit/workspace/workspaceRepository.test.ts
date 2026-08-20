@@ -344,6 +344,7 @@ describe('BrowserWorkspaceRepository', () => {
     expect(repository.load()).toEqual({
       status: 'empty',
       workspace: createEmptyWorkspace(100),
+      needsMigration: false,
     });
     expect(setItem).not.toHaveBeenCalled();
   });
@@ -358,6 +359,7 @@ describe('BrowserWorkspaceRepository', () => {
     expect(repository.load()).toEqual({
       status: 'empty',
       workspace: createEmptyWorkspace(100),
+      needsMigration: false,
     });
     expect(storage.getItem('isf-main-v2')).toBe('{"main":true}');
     expect(storage.getItem('isf-simulation-compound-v1')).toBe('{"simulation":true}');
@@ -371,8 +373,37 @@ describe('BrowserWorkspaceRepository', () => {
     storage.setItem(WORKSPACE_STORAGE_KEY, raw);
     const repository = new BrowserWorkspaceRepository(storage);
 
-    expect(repository.load()).toEqual({ status: 'found', workspace });
+    expect(repository.load()).toEqual({ status: 'found', workspace, needsMigration: false });
     expect(storage.getItem(WORKSPACE_STORAGE_KEY)).toBe(raw);
+  });
+
+  it('loads v1 as migration-required and persists one protected-slice-preserving v2 write', async () => {
+    const current = createEmptyWorkspace(100);
+    const legacy = {
+      ...current,
+      schemaVersion: 1,
+      accountMap: { applied: null, draft: null, instruments: [], flows: [] },
+    };
+    const storage = new MemoryStorage();
+    storage.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify(legacy));
+    const repository = new BrowserWorkspaceRepository(storage, {
+      saveLock: createSerialLock(),
+      now: () => 200,
+    });
+
+    const loaded = repository.load();
+    expect(loaded).toMatchObject({ status: 'found', needsMigration: true });
+    if (loaded.status !== 'found') throw new Error('expected found workspace');
+    await expect(repository.migrate(loaded.workspace.revision)).resolves.toMatchObject({
+      status: 'saved',
+      workspace: { schemaVersion: 2, revision: 1 },
+    });
+
+    const saved = JSON.parse(storage.getItem(WORKSPACE_STORAGE_KEY) ?? '');
+    expect(saved.main).toEqual(legacy.main);
+    expect(saved.simulation).toEqual(legacy.simulation);
+    expect(JSON.stringify(saved.portfolio)).toBe(JSON.stringify(legacy.portfolio));
+    expect(saved.accountMap.legacyPhaseA).toEqual({ instruments: [], flows: [] });
   });
 
   it('reports invalid JSON without falling back to old keys', () => {
@@ -388,7 +419,7 @@ describe('BrowserWorkspaceRepository', () => {
 
   it('reports an invalid current schema without falling back to old keys', () => {
     const storage = new MemoryStorage();
-    const raw = JSON.stringify({ ...createEmptyWorkspace(100), schemaVersion: 2 });
+    const raw = JSON.stringify({ ...createEmptyWorkspace(100), schemaVersion: 3 });
     storage.setItem(WORKSPACE_STORAGE_KEY, raw);
     storage.setItem('isf-main-v2', JSON.stringify({ updatedAt: 10 }));
 
@@ -761,7 +792,7 @@ describe('BrowserWorkspaceRepository', () => {
     }));
     window.dispatchEvent(new StorageEvent('storage', {
       key: WORKSPACE_STORAGE_KEY,
-      newValue: JSON.stringify({ ...createEmptyWorkspace(100), schemaVersion: 2 }),
+      newValue: JSON.stringify({ ...createEmptyWorkspace(100), schemaVersion: 3 }),
     }));
     window.dispatchEvent(new StorageEvent('storage', {
       key: WORKSPACE_STORAGE_KEY,

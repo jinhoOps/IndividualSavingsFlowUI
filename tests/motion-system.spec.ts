@@ -134,7 +134,7 @@ for (const viewport of VIEWPORTS) {
     test.skip(testInfo.project.name === 'pwa-chromium', 'The preview project runs only the offline revisit gate.');
     await page.setViewportSize(viewport);
     await page.emulateMedia({ reducedMotion: 'no-preference' });
-    await installReadinessFirstFrameProbe(page);
+    await installAccountMapFirstFrameProbe(page);
 
     await captureMainReview(page, testInfo.outputPath.bind(testInfo), viewport.width, MAIN, 'normal');
     await captureMainReview(page, testInfo.outputPath.bind(testInfo), viewport.width, {
@@ -160,6 +160,10 @@ for (const viewport of VIEWPORTS) {
     await expect(livingInput).toBeFocused();
     await livingInput.fill('1100000');
     await page.getByRole('button', { name: '적용' }).click();
+    await expect.poll(async () => (await readMainDonut(page.locator('.cashflow-donut'))).semanticName)
+      .toBe(MAIN_DONUT_AFTER_EDIT.semanticName);
+    await expect.poll(async () => (await readMainDonut(page.locator('.cashflow-donut'))).centerSemantic)
+      .toBe(MAIN_DONUT_AFTER_EDIT.centerSemantic);
     const mainTransitionStart = await readMainDonut(page.locator('.cashflow-donut'));
     expect(mainTransitionStart.semanticName).toBe(MAIN_DONUT_AFTER_EDIT.semanticName);
     expect(mainTransitionStart.centerSemantic).toBe(MAIN_DONUT_AFTER_EDIT.centerSemantic);
@@ -228,16 +232,22 @@ for (const viewport of VIEWPORTS) {
     await screenshot(page, testInfo.outputPath.bind(testInfo), `portfolio-${viewport.width}-sort-after.png`);
 
     await openWithWorkspace(page, 'apps/account-map/', WORKSPACE);
-    const readiness = page.locator('[data-readiness-motion]');
-    const readinessFirstFrame = await readProbedReadinessFirstFrame(page);
-    expect(readinessFirstFrame.heading).toBe('Account Map 준비 중');
-    expect(readinessFirstFrame.opacity < 1 || readinessFirstFrame.y !== 0).toBe(true);
-    await expect(page.getByRole('heading', { name: 'Account Map 준비 중' })).toBeVisible();
-    await page.getByRole('link', { name: 'Main으로 이동' }).focus();
-    await expect(page.getByRole('link', { name: 'Main으로 이동' })).toBeFocused();
-    await expectFinalTransform(readiness);
+    const setup = page.locator('.account-map-setup');
+    const setupFirstFrame = await readProbedAccountMapFirstFrame(page);
+    expect(setupFirstFrame).toEqual({
+      activeAnimations: 0,
+      heading: '월 자금의 위치를 알려주세요',
+      opacity: 1,
+      x: 0,
+      y: 0,
+    });
+    await expect(page.getByRole('heading', { name: '월 자금의 위치를 알려주세요' })).toBeVisible();
+    const firstConnect = page.getByRole('button', { name: '연결', exact: true }).first();
+    await firstConnect.focus();
+    await expect(firstConnect).toBeFocused();
+    await expectFinalTransform(setup);
     await expectNoDocumentOverflow(page);
-    await screenshot(page, testInfo.outputPath.bind(testInfo), `account-map-${viewport.width}-readiness.png`);
+    await screenshot(page, testInfo.outputPath.bind(testInfo), `account-map-${viewport.width}-setup.png`);
 
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await captureReducedMotionFinals(page, viewport.width);
@@ -260,7 +270,7 @@ test('PWA offline revisit keeps all app routes and final motion state available'
     { path: 'apps/main/', heading: '이번 달 자금 흐름', motion: '.cashflow-donut' },
     { path: 'apps/simulation/', heading: /이대로 20년 유지하면/, motion: '.growth-chart' },
     { path: 'apps/portfolio/', heading: '안정 50%', motion: '.portfolio-summary' },
-    { path: 'apps/account-map/', heading: 'Account Map 준비 중', motion: '[data-readiness-motion]' },
+    { path: 'apps/account-map/', heading: '월 자금의 위치를 알려주세요', motion: '.account-map-setup' },
   ] as const;
 
   for (const route of routes) {
@@ -292,7 +302,7 @@ test('PWA offline revisit keeps all app routes and final motion state available'
         );
       }
       if (route.path === 'apps/account-map/') {
-        await expectFinalTransform(page.locator('[data-readiness-motion]'));
+        await expectFinalTransform(page.locator('.account-map-setup'));
       }
     }
   } finally {
@@ -434,10 +444,10 @@ async function captureReducedMotionFinals(page: Page, width: number): Promise<vo
   expect(reducedPortfolioFirstRead.activeAnimations).toBe(0);
 
   await openWithWorkspace(page, 'apps/account-map/', WORKSPACE);
-  const reducedReadinessFirstRead = await readProbedReadinessFirstFrame(page);
-  expect(reducedReadinessFirstRead).toEqual({
+  const reducedSetupFirstRead = await readProbedAccountMapFirstFrame(page);
+  expect(reducedSetupFirstRead).toEqual({
     activeAnimations: 0,
-    heading: 'Account Map 준비 중',
+    heading: '월 자금의 위치를 알려주세요',
     opacity: 1,
     x: 0,
     y: 0,
@@ -679,10 +689,10 @@ async function expectFinalTransform(locator: Locator): Promise<void> {
   })).toEqual({ opacity: 1, x: 0, y: 0 });
 }
 
-async function installReadinessFirstFrameProbe(page: Page): Promise<void> {
+async function installAccountMapFirstFrameProbe(page: Page): Promise<void> {
   await page.addInitScript(() => {
     const stateWindow = window as typeof window & {
-      __isfReadinessFirstFrame?: {
+      __isfAccountMapFirstFrame?: {
         activeAnimations: number;
         heading: string | undefined;
         opacity: number;
@@ -691,11 +701,11 @@ async function installReadinessFirstFrameProbe(page: Page): Promise<void> {
       };
     };
     const observer = new MutationObserver(() => {
-      const root = document.querySelector<HTMLElement>('[data-readiness-motion]');
+      const root = document.querySelector<HTMLElement>('.account-map-setup');
       if (root === null) return;
       const style = getComputedStyle(root);
       const matrix = new DOMMatrixReadOnly(style.transform);
-      stateWindow.__isfReadinessFirstFrame = {
+      stateWindow.__isfAccountMapFirstFrame = {
         activeAnimations: root.getAnimations({ subtree: true })
           .filter((animation) => (
             (animation.playState === 'running' || animation.playState === 'pending')
@@ -713,17 +723,17 @@ async function installReadinessFirstFrameProbe(page: Page): Promise<void> {
   });
 }
 
-async function readProbedReadinessFirstFrame(page: Page) {
-  await page.waitForFunction(() => '__isfReadinessFirstFrame' in window);
+async function readProbedAccountMapFirstFrame(page: Page) {
+  await page.waitForFunction(() => '__isfAccountMapFirstFrame' in window);
   return page.evaluate(() => (window as typeof window & {
-    __isfReadinessFirstFrame: {
+    __isfAccountMapFirstFrame: {
       activeAnimations: number;
       heading: string | undefined;
       opacity: number;
       x: number;
       y: number;
     };
-  }).__isfReadinessFirstFrame);
+  }).__isfAccountMapFirstFrame);
 }
 
 async function screenshot(

@@ -22,7 +22,6 @@ import {
   BrowserPortfolioMainSourceRepository,
   type PortfolioMainSourceRepository,
 } from '../infrastructure/mainSourceRepository';
-import type { InvestmentLocationRepository } from '../infrastructure/locationRepository';
 import {
   BrowserPortfolioRepository,
   type PortfolioRepository,
@@ -32,7 +31,6 @@ import {
   type PortfolioPreferencesRepository,
 } from '../infrastructure/portfolioPreferencesRepository';
 import { AllocationEditor } from './AllocationEditor';
-import { InvestmentLocations } from './InvestmentLocations';
 import { PortfolioApplyBar } from './PortfolioApplyBar';
 import { PortfolioEditSurface } from './PortfolioEditSurface';
 import { PortfolioManagementMenu } from './PortfolioManagementMenu';
@@ -42,13 +40,11 @@ import { PortfolioSetupFlow } from './PortfolioSetupFlow';
 export function PortfolioApp({
   mainSourceRepository: providedMainRepository,
   repository: providedRepository,
-  locationRepository,
   preferencesRepository: providedPreferencesRepository,
   now = Date.now,
 }: {
   mainSourceRepository?: PortfolioMainSourceRepository;
   repository?: PortfolioRepository;
-  locationRepository?: InvestmentLocationRepository;
   preferencesRepository?: PortfolioPreferencesRepository;
   now?: () => number;
 }) {
@@ -282,7 +278,6 @@ export function PortfolioApp({
                     dispatchState({ type: 'edit-opened' });
                   }}
                 />
-                <InvestmentLocations repository={locationRepository} />
               </div>
               {state.view === 'edit' ? (
                 <PortfolioEditSurface

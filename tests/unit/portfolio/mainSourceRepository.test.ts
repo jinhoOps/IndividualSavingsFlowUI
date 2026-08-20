@@ -53,7 +53,7 @@ describe('BrowserPortfolioMainSourceRepository', () => {
     } as unknown as WorkspaceDocument;
 
     expect(new BrowserPortfolioMainSourceRepository({
-      load: () => ({ status: 'found', workspace: malformed }),
+      load: () => ({ status: 'found', workspace: malformed, needsMigration: false }),
     }).load()).toEqual({ status: 'invalid' });
   });
 

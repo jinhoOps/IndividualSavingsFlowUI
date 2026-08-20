@@ -20,8 +20,8 @@ it.each([
   {
     app: 'account-map',
     entry: '../../src/journey/accountMap.tsx',
-    title: 'ISF UIUX | Account Map',
-    description: 'Main과 분리해 설계할 신규 Account Map 앱의 준비 상태를 안내하는 화면',
+    title: '계좌 연결 Account Map | ISF',
+    description: 'Main의 월 자금을 목적 중심 계좌 연결 지도로 확인하고 관리하는 Account Map',
   },
 ])('$app retains route metadata and loads only its new React entry', async ({ app, entry, title, description }) => {
   const html = await readFile(resolve(process.cwd(), 'apps', app, 'index.html'), 'utf8');

@@ -72,7 +72,7 @@ function serialLock() {
 
 function workspace(overrides: Partial<WorkspaceDocument['portfolio']> = {}): WorkspaceDocument {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     revision: 4,
     updatedAt: 400,
     main: {
@@ -101,7 +101,7 @@ function workspace(overrides: Partial<WorkspaceDocument['portfolio']> = {}): Wor
       createdAt: 1,
       updatedAt: 1,
     }],
-    accountMap: { applied: null, draft: null, instruments: [], flows: [] },
+    accountMap: { applied: null, draft: null, legacyPhaseA: { instruments: [], flows: [] } },
   };
 }
 
@@ -260,7 +260,7 @@ describe('BrowserPortfolioRepository workspace adapter', () => {
     let lockedCurrent = structuredClone(initiallyActive);
     lockedCurrent.locations[0] = { ...lockedCurrent.locations[0], archivedAt: 2 };
     const workspaceRepository: WorkspaceRepository = {
-      load: vi.fn(() => ({ status: 'found' as const, workspace: structuredClone(initiallyActive) })),
+      load: vi.fn(() => ({ status: 'found' as const, workspace: structuredClone(initiallyActive), needsMigration: false })),
       update: vi.fn(async (_revision, mutate) => {
         try {
           lockedCurrent = mutate(structuredClone(lockedCurrent));
@@ -269,6 +269,7 @@ describe('BrowserPortfolioRepository workspace adapter', () => {
           return { status: 'unavailable' as const };
         }
       }),
+      migrate: vi.fn(),
       replace: vi.fn(),
       resetInvalid: vi.fn(),
       subscribe: vi.fn(() => () => undefined),
@@ -310,7 +311,7 @@ describe('BrowserPortfolioRepository workspace adapter', () => {
     let lockedCurrent = structuredClone(initiallyActive);
     lockedCurrent.locations[0] = { ...lockedCurrent.locations[0], roles: ['saving'] as ('saving')[] };
     const workspaceRepository: WorkspaceRepository = {
-      load: vi.fn(() => ({ status: 'found' as const, workspace: structuredClone(initiallyActive) })),
+      load: vi.fn(() => ({ status: 'found' as const, workspace: structuredClone(initiallyActive), needsMigration: false })),
       update: vi.fn(async (_revision, mutate) => {
         try {
           lockedCurrent = mutate(structuredClone(lockedCurrent));
@@ -319,6 +320,7 @@ describe('BrowserPortfolioRepository workspace adapter', () => {
           return { status: 'unavailable' as const };
         }
       }),
+      migrate: vi.fn(),
       replace: vi.fn(),
       resetInvalid: vi.fn(),
       subscribe: vi.fn(() => () => undefined),
@@ -491,10 +493,11 @@ describe('BrowserPortfolioRepository workspace adapter', () => {
     async (status) => {
       const saved = workspace();
       const workspaceRepository: WorkspaceRepository = {
-        load: vi.fn(() => ({ status: 'found' as const, workspace: structuredClone(saved) })),
+        load: vi.fn(() => ({ status: 'found' as const, workspace: structuredClone(saved), needsMigration: false })),
         update: vi.fn(async () => status === 'conflict'
           ? { status: 'conflict' as const, currentRevision: 5 }
           : { status: 'unavailable' as const }),
+        migrate: vi.fn(),
         replace: vi.fn(),
         resetInvalid: vi.fn(),
         subscribe: vi.fn(() => () => undefined),
@@ -531,6 +534,7 @@ describe('BrowserPortfolioRepository workspace adapter', () => {
           ? { status: 'invalid' as const, raw }
           : { status: 'unavailable' as const }),
         update,
+        migrate: vi.fn(),
         replace: vi.fn(),
         resetInvalid: vi.fn(),
         subscribe: vi.fn(() => () => undefined),

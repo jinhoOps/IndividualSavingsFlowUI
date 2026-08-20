@@ -2,7 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { registerSW } from 'virtual:pwa-register';
 import { MainErrorBoundary } from '../main/ui/common/AppErrorBoundary';
-import { ReadinessApp } from './ui/ReadinessApp';
+import { AccountMapApp } from '../account-map/ui/AccountMapApp';
 import '../styles/app-foundation.css';
 import './ui/journey.css';
 
@@ -15,7 +15,7 @@ if (root === null) {
 createRoot(root).render(
   <StrictMode>
     <MainErrorBoundary>
-      <ReadinessApp />
+      <AccountMapApp />
     </MainErrorBoundary>
   </StrictMode>,
 );

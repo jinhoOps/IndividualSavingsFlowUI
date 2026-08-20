@@ -85,6 +85,130 @@ const connectedWorkspaceV1 = {
   }],
 };
 
+const emptyAccountMapV2 = {
+  applied: null,
+  draft: null,
+  legacyPhaseA: { instruments: [], flows: [] },
+};
+
+const releaseGateAccountMapV2 = {
+  applied: {
+    schemaVersion: 1 as const,
+    sourceMainUpdatedAt: appliedMainV2.updatedAt,
+    customPurposes: [{
+      id: 'custom:trip' as const,
+      parentId: 'system:living' as const,
+      name: '여행',
+      targetMonthlyWon: 100_000,
+      archivedAt: 650,
+      createdAt: 500,
+      updatedAt: 650,
+    }],
+    links: [
+      {
+        id: 'saving-isa',
+        purposeId: 'system:saving' as const,
+        locationId: 'loc-isa',
+        monthlyAmountWon: appliedMainV2.monthlySavingWon,
+        remainder: true,
+        status: 'active' as const,
+        createdAt: 500,
+        updatedAt: 600,
+      },
+      {
+        id: 'investing-isa',
+        purposeId: 'system:investing' as const,
+        locationId: 'loc-isa',
+        monthlyAmountWon: appliedMainV2.monthlyInvestmentWon,
+        remainder: true,
+        status: 'active' as const,
+        createdAt: 500,
+        updatedAt: 600,
+      },
+      {
+        id: 'trip-suspended',
+        purposeId: 'custom:trip' as const,
+        locationId: 'loc-isa',
+        monthlyAmountWon: 100_000,
+        remainder: false,
+        status: 'suspended' as const,
+        suspendedReason: 'user' as const,
+        createdAt: 500,
+        updatedAt: 650,
+      },
+      {
+        id: 'living-suspended',
+        purposeId: 'system:living' as const,
+        locationId: 'loc-isa',
+        monthlyAmountWon: 50_000,
+        remainder: false,
+        status: 'suspended' as const,
+        suspendedReason: 'user' as const,
+        createdAt: 501,
+        updatedAt: 650,
+      },
+    ],
+    layout: 'account' as const,
+    setupCompletedAt: 500,
+    updatedAt: 650,
+  },
+  draft: null,
+  legacyPhaseA: { instruments: [], flows: [] },
+};
+
+const releaseGateWorkspaceV2 = {
+  ...connectedWorkspaceV1,
+  schemaVersion: 2 as const,
+  portfolio: {
+    ...connectedWorkspaceV1.portfolio,
+    draft: {
+      schemaVersion: 2 as const,
+      scope: { type: 'aggregate' as const },
+      items: [{
+        id: 'asset-us', name: '미국 인덱스', shareUnits: 600_000, order: 0,
+        classification: 'growth' as const, classificationOrigin: 'automatic' as const,
+      }],
+      cashShareUnits: 400_000,
+      cashMode: 'automatic' as const,
+      syncedInvestmentWon: appliedMainV2.monthlyInvestmentWon,
+      updatedAt: 650,
+      inputMode: 'amount' as const,
+      isApplicable: true,
+    },
+  },
+  accountMap: releaseGateAccountMapV2,
+};
+
+const invalidFutureSourceWorkspace = {
+  ...releaseGateWorkspaceV2,
+  accountMap: {
+    ...releaseGateWorkspaceV2.accountMap,
+    applied: {
+      ...releaseGateWorkspaceV2.accountMap.applied,
+      sourceMainUpdatedAt: appliedMainV2.updatedAt + 1,
+    },
+  },
+};
+
+const invalidSynchronizedCapacityWorkspace = {
+  ...releaseGateWorkspaceV2,
+  accountMap: {
+    ...releaseGateWorkspaceV2.accountMap,
+    applied: {
+      ...releaseGateWorkspaceV2.accountMap.applied,
+      customPurposes: [{
+        id: 'custom:excess',
+        parentId: 'system:living',
+        name: '초과 목적',
+        targetMonthlyWon: appliedMainV2.monthlyLivingWon + 1,
+        createdAt: 500,
+        updatedAt: 650,
+      }],
+      links: releaseGateWorkspaceV2.accountMap.applied.links.filter(({ purposeId }) => purposeId !== 'custom:trip'),
+    },
+  },
+};
+
 const seededOldMainRecords = {
   'isf-main-v2': JSON.stringify({ ...appliedMainV2, monthlyNetIncomeWon: 9_900_000 }),
   'isf-main-v2-pending': '{old-pending',
@@ -692,7 +816,7 @@ test('new user applies the v2 quick setup and refreshes into matching dashboard 
     simulation: { draft: null },
     portfolio: { plans: [], draft: null },
     locations: [],
-    accountMap: { applied: null, draft: null, instruments: [], flows: [] },
+    accountMap: emptyAccountMapV2,
   });
   await expect.poll(() => page.evaluate((keys) => Object.fromEntries(
     keys.map((key) => [key, localStorage.getItem(key)]),
@@ -1257,7 +1381,7 @@ test.describe('mobile quick setup', () => {
   });
 });
 
-test('whole-workspace backup round-trips atomically in the contained mobile confirmation', async ({ page }) => {
+test('complete Phase-B backup round-trips atomically in the contained mobile confirmation', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.addInitScript(({ workspace, oldRecords }) => {
     if (sessionStorage.getItem('isf-backup-roundtrip-seeded') === null) {
@@ -1274,7 +1398,7 @@ test('whole-workspace backup round-trips atomically in the contained mobile conf
       }
       originalSetItem.call(this, key, value);
     };
-  }, { workspace: connectedWorkspaceV1, oldRecords: seededOldMainRecords });
+  }, { workspace: releaseGateWorkspaceV2, oldRecords: seededOldMainRecords });
   await page.goto('apps/main/');
 
   const trigger = page.getByRole('button', { name: '관리 메뉴' });
@@ -1291,7 +1415,15 @@ test('whole-workspace backup round-trips atomically in the contained mobile conf
   expect(exported).toMatchObject({
     format: 'isf-workspace-backup',
     formatVersion: 1,
-    workspace: connectedWorkspaceV1,
+    workspace: {
+      schemaVersion: 2,
+      revision: releaseGateWorkspaceV2.revision,
+      main: releaseGateWorkspaceV2.main,
+      simulation: releaseGateWorkspaceV2.simulation,
+      portfolio: releaseGateWorkspaceV2.portfolio,
+      locations: releaseGateWorkspaceV2.locations,
+      accountMap: releaseGateWorkspaceV2.accountMap,
+    },
   });
   for (const excluded of ['isf-main-v2', 'save-lease', 'trophy', '트로피']) {
     expect(exportedText).not.toContain(excluded);
@@ -1352,11 +1484,11 @@ test('whole-workspace backup round-trips atomically in the contained mobile conf
   }));
   const restored = JSON.parse(durable.raw!);
   expect(restored.revision).toBe(11);
-  expect(restored.main).toEqual(connectedWorkspaceV1.main);
-  expect(restored.simulation).toEqual(connectedWorkspaceV1.simulation);
-  expect(restored.portfolio).toEqual(connectedWorkspaceV1.portfolio);
-  expect(restored.locations).toEqual(connectedWorkspaceV1.locations);
-  expect(restored.accountMap).toEqual(connectedWorkspaceV1.accountMap);
+  expect(restored.main).toEqual(releaseGateWorkspaceV2.main);
+  expect(restored.simulation).toEqual(releaseGateWorkspaceV2.simulation);
+  expect(restored.portfolio).toEqual(releaseGateWorkspaceV2.portfolio);
+  expect(restored.locations).toEqual(releaseGateWorkspaceV2.locations);
+  expect(restored.accountMap).toEqual(releaseGateWorkspaceV2.accountMap);
   expect(durable.writes).toBe(1);
   expect(durable.old).toEqual(seededOldMainRecords);
 });
@@ -1432,7 +1564,7 @@ test('canonical backup restores empty Main through the brand intro and preserves
     simulation: importedWorkspace.simulation,
     portfolio: importedWorkspace.portfolio,
     locations: importedWorkspace.locations,
-    accountMap: importedWorkspace.accountMap,
+    accountMap: emptyAccountMapV2,
   });
 });
 
@@ -1512,7 +1644,7 @@ for (const restoreCase of [
       simulation: importedWorkspace.simulation,
       portfolio: importedWorkspace.portfolio,
       locations: importedWorkspace.locations,
-      accountMap: importedWorkspace.accountMap,
+      accountMap: emptyAccountMapV2,
     });
   });
 }
@@ -1585,6 +1717,51 @@ test('invalid, old, reference, duplicate, and capacity backups retain the exact 
     await expect(page.getByRole('dialog')).toHaveCount(0);
   }
 });
+
+for (const invalidImport of [
+  { name: 'future source timestamp', filename: 'future-source.json', workspace: invalidFutureSourceWorkspace },
+  { name: 'synchronized custom-purpose excess', filename: 'synchronized-capacity.json', workspace: invalidSynchronizedCapacityWorkspace },
+] as const) {
+  test(`invalid ${invalidImport.name} import performs zero workspace writes and retains raw bytes`, async ({ page }) => {
+    await page.addInitScript((workspace) => {
+      localStorage.clear();
+      localStorage.setItem('isf-workspace-v1', JSON.stringify(workspace));
+    }, connectedWorkspaceV1);
+    await page.goto('apps/main/');
+    const raw = JSON.stringify(connectedWorkspaceV1);
+    await page.evaluate(() => {
+      const originalSetItem = Storage.prototype.setItem;
+      Object.defineProperty(window, '__invalidImportWrites', { configurable: true, value: 0, writable: true });
+      Storage.prototype.setItem = function setItem(key: string, value: string) {
+        if (key === 'isf-workspace-v1') {
+          (window as typeof window & { __invalidImportWrites: number }).__invalidImportWrites += 1;
+        }
+        originalSetItem.call(this, key, value);
+      };
+    });
+
+    await page.getByRole('button', { name: '관리 메뉴' }).click();
+    await page.getByLabel('백업 가져오기').setInputFiles({
+      name: invalidImport.filename,
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify({
+        format: 'isf-workspace-backup',
+        formatVersion: 1,
+        exportedAt: 900,
+        workspace: invalidImport.workspace,
+      })),
+    });
+
+    await expect(page.getByRole('alert')).toContainText('백업의 앱 데이터가 올바르지 않습니다.');
+    const result = await page.evaluate(() => ({
+      raw: localStorage.getItem('isf-workspace-v1'),
+      writes: (window as typeof window & { __invalidImportWrites: number }).__invalidImportWrites,
+    }));
+    expect(result.raw).toBe(raw);
+    expect(result.writes).toBe(0);
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+  });
+}
 
 test('backup import has a matching accessible name and visible keyboard focus ring', async ({ page }) => {
   await page.addInitScript((fixture) => {

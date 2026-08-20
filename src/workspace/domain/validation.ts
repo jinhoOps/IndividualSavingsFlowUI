@@ -6,6 +6,10 @@ import { parsePortfolioDraft, parsePortfolioPlan } from '../../portfolio/domain/
 import type { CompoundSimulationDraft } from '../../simulation/domain/model';
 import { parseSimulationDraft } from '../../simulation/domain/validation';
 import {
+  institutionComparisonKey,
+  normalizeInstitutionText,
+} from '../../account-map/domain/institutions';
+import {
   parseConsumerInstrument,
   parseMonthlyFlow,
   type ConsumerInstrument,
@@ -13,13 +17,13 @@ import {
   type MonthlyFlow,
 } from './accountMapContract';
 import {
-  normalizeLocationName,
   parseFinancialLocation,
   PURPOSE_CAPACITY,
   type FinancialLocation,
   type FinancialRole,
 } from './financialLocation';
-import { WORKSPACE_SCHEMA_VERSION, type WorkspaceDocument } from './model';
+import { parseWorkspaceDocumentVersioned } from './migration';
+import type { WorkspaceDocument, WorkspaceDocumentV1 } from './model';
 
 const setupSteps = new Set<SetupStep>([
   'welcome',
@@ -40,6 +44,22 @@ export function parseWorkspaceDocument(value: unknown): WorkspaceDocument | null
 }
 
 export function validateWorkspaceDocument(value: unknown): WorkspaceDocumentValidationResult {
+  const parsed = parseWorkspaceDocumentVersioned(value);
+  return parsed?.version === 2
+    ? { status: 'valid', workspace: parsed.workspace }
+    : { status: 'schema' };
+}
+
+export function parseWorkspaceDocumentV1(value: unknown): WorkspaceDocumentV1 | null {
+  const result = validateWorkspaceDocumentV1(value);
+  return result.status === 'valid' ? result.workspace : null;
+}
+
+type WorkspaceDocumentV1ValidationResult =
+  | { status: 'valid'; workspace: WorkspaceDocumentV1 }
+  | { status: 'schema' | 'reference' };
+
+export function validateWorkspaceDocumentV1(value: unknown): WorkspaceDocumentV1ValidationResult {
   if (!hasExactKeys(value, [
     'schemaVersion',
     'revision',
@@ -50,7 +70,7 @@ export function validateWorkspaceDocument(value: unknown): WorkspaceDocumentVali
     'locations',
     'accountMap',
   ])
-    || value.schemaVersion !== WORKSPACE_SCHEMA_VERSION
+    || value.schemaVersion !== 1
     || !isNonnegativeSafeInteger(value.revision)
     || !isTimestamp(value.updatedAt)) return { status: 'schema' };
 
@@ -65,8 +85,8 @@ export function validateWorkspaceDocument(value: unknown): WorkspaceDocumentVali
     || locations === null
     || accountMap === null) return { status: 'schema' };
 
-  const workspace: WorkspaceDocument = {
-    schemaVersion: WORKSPACE_SCHEMA_VERSION,
+  const workspace: WorkspaceDocumentV1 = {
+    schemaVersion: 1,
     revision: value.revision,
     updatedAt: value.updatedAt,
     main,
@@ -83,7 +103,7 @@ export function validateWorkspaceDocument(value: unknown): WorkspaceDocumentVali
   return { status: 'valid', workspace };
 }
 
-export function validateWorkspaceCrossReferences(workspace: WorkspaceDocument): boolean {
+export function validateWorkspaceCrossReferences(workspace: WorkspaceDocumentV1): boolean {
   return hasUniqueIds(workspace.locations)
     && hasUniqueActiveLocationNames(workspace.locations)
     && withinPurposeCapacities(workspace.locations, workspace.accountMap.instruments)
@@ -95,7 +115,7 @@ export function validateWorkspaceCrossReferences(workspace: WorkspaceDocument): 
     );
 }
 
-function parseMainSlice(value: unknown): WorkspaceDocument['main'] | null {
+function parseMainSlice(value: unknown): WorkspaceDocumentV1['main'] | null {
   if (!hasExactKeys(value, ['applied', 'setupProgress'])) return null;
   const applied = value.applied === null ? null : parseAppliedMain(value.applied);
   const setupProgress = value.setupProgress === null ? null : parseSetupProgress(value.setupProgress);
@@ -128,7 +148,7 @@ function parseSetupProgress(value: unknown): SetupProgress | null {
   };
 }
 
-function parseSimulationSlice(value: unknown): WorkspaceDocument['simulation'] | null {
+function parseSimulationSlice(value: unknown): WorkspaceDocumentV1['simulation'] | null {
   if (!hasExactKeys(value, ['draft'])) return null;
   if (value.draft === null) return { draft: null };
   if (!hasOnlyStringOwnKeys(value.draft)
@@ -138,7 +158,7 @@ function parseSimulationSlice(value: unknown): WorkspaceDocument['simulation'] |
   return draft === null ? null : { draft };
 }
 
-function parsePortfolioSlice(value: unknown): WorkspaceDocument['portfolio'] | null {
+function parsePortfolioSlice(value: unknown): WorkspaceDocumentV1['portfolio'] | null {
   if (!hasExactKeys(value, ['plans', 'draft'])) return null;
   const plans = parseArray(value.plans, parsePortfolioPlan);
   const draft = value.draft === null ? null : parsePortfolioDraft(value.draft);
@@ -146,7 +166,7 @@ function parsePortfolioSlice(value: unknown): WorkspaceDocument['portfolio'] | n
   return { plans, draft };
 }
 
-function parseAccountMapSlice(value: unknown): WorkspaceDocument['accountMap'] | null {
+function parseAccountMapSlice(value: unknown): WorkspaceDocumentV1['accountMap'] | null {
   if (!hasExactKeys(value, ['applied', 'draft', 'instruments', 'flows'])
     || value.applied !== null
     || value.draft !== null) return null;
@@ -194,7 +214,7 @@ function endpointResolves(
 function hasUniqueActiveLocationNames(locations: FinancialLocation[]): boolean {
   const names = locations
     .filter((location) => location.archivedAt === undefined)
-    .map((location) => normalizeLocationName(location.shortName));
+    .map((location) => `${institutionComparisonKey(location)}\u0000${normalizeInstitutionText(location.shortName)}`);
   return new Set(names).size === names.length;
 }
 

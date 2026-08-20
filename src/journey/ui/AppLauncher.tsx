@@ -265,6 +265,7 @@ export function AppLauncher({ currentApp, managementMenu }: AppLauncherProps) {
             setOverflowOpen(false);
             overflowTriggerRef.current?.focus();
           } else {
+            if (activeTooltip !== null) event.preventDefault();
             closeAll();
           }
         }}

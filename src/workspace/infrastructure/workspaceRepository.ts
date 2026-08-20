@@ -4,6 +4,7 @@ import {
   type WorkspaceDocument,
 } from '../domain/model';
 import { parseWorkspaceDocument } from '../domain/validation';
+import { migrateWorkspaceV1, parseWorkspaceDocumentVersioned } from '../domain/migration';
 import {
   BrowserWorkspaceSaveLock,
   type WorkspaceSaveGuard,
@@ -22,8 +23,8 @@ const unavailableStorageGroup = {};
 const notificationChannels = new WeakMap<Window, Map<object, WorkspaceNotificationChannel>>();
 
 export type WorkspaceLoadResult =
-  | { status: 'found'; workspace: WorkspaceDocument }
-  | { status: 'empty'; workspace: WorkspaceDocument }
+  | { status: 'found'; workspace: WorkspaceDocument; needsMigration: boolean }
+  | { status: 'empty'; workspace: WorkspaceDocument; needsMigration: false }
   | { status: 'invalid'; raw: string }
   | { status: 'unavailable' };
 
@@ -38,6 +39,7 @@ export type WorkspaceInvalidResetResult =
 
 export interface WorkspaceRepository {
   load(): WorkspaceLoadResult;
+  migrate(expectedRevision: number): Promise<WorkspaceWriteResult>;
   update(
     expectedRevision: number,
     mutate: (current: WorkspaceDocument) => WorkspaceDocument,
@@ -87,21 +89,30 @@ export class BrowserWorkspaceRepository implements WorkspaceRepository {
     }
     if (raw === null) {
       try {
-        return { status: 'empty', workspace: createEmptyWorkspace(this.now()) };
+        return { status: 'empty', workspace: createEmptyWorkspace(this.now()), needsMigration: false };
       } catch {
         return { status: 'unavailable' };
       }
     }
     try {
-      const workspace = parseWorkspaceDocument(JSON.parse(raw));
-      return workspace === null
-        ? { status: 'invalid', raw }
-        : { status: 'found', workspace };
+      const parsed = parseWorkspaceDocumentVersioned(JSON.parse(raw));
+      if (parsed === null) return { status: 'invalid', raw };
+      return parsed.version === 1
+        ? {
+            status: 'found',
+            workspace: migrateWorkspaceV1(parsed.workspace, this.now()),
+            needsMigration: true,
+          }
+        : { status: 'found', workspace: parsed.workspace, needsMigration: false };
     } catch (error) {
       return error instanceof SyntaxError
         ? { status: 'invalid', raw }
         : { status: 'unavailable' };
     }
+  }
+
+  async migrate(expectedRevision: number): Promise<WorkspaceWriteResult> {
+    return await this.update(expectedRevision, (current) => current);
   }
 
   async update(

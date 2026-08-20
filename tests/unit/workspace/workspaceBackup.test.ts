@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { AccountMapApplied, AccountMapDraft } from '../../../src/account-map/domain/model';
 import type { PortfolioPlan } from '../../../src/portfolio/domain/model';
 import type { WorkspaceDocument } from '../../../src/workspace/domain/model';
 import { WORKSPACE_STORAGE_KEY } from '../../../src/workspace/domain/model';
@@ -41,7 +42,7 @@ const locationPlan: PortfolioPlan = {
 
 function completeWorkspace(overrides: Partial<WorkspaceDocument> = {}): WorkspaceDocument {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     revision: 41,
     updatedAt: 500,
     main: {
@@ -86,7 +87,7 @@ function completeWorkspace(overrides: Partial<WorkspaceDocument> = {}): Workspac
       createdAt: 10,
       updatedAt: 20,
     }],
-    accountMap: { applied: null, draft: null, instruments: [], flows: [] },
+    accountMap: { applied: null, draft: null, legacyPhaseA: { instruments: [], flows: [] } },
     ...overrides,
   };
 }
@@ -98,6 +99,118 @@ function envelope(workspace: unknown = completeWorkspace()): string {
     exportedAt: 900,
     workspace,
   });
+}
+
+function accountMapApplied(overrides: Partial<AccountMapApplied> = {}): AccountMapApplied {
+  return {
+    schemaVersion: 1,
+    sourceMainUpdatedAt: 100,
+    customPurposes: [],
+    links: [],
+    layout: 'purpose',
+    setupCompletedAt: 100,
+    updatedAt: 100,
+    ...overrides,
+  };
+}
+
+function accountMapDraft(overrides: Partial<AccountMapDraft> = {}): AccountMapDraft {
+  return {
+    schemaVersion: 1,
+    sourceMainUpdatedAt: 100,
+    customPurposes: [],
+    links: [],
+    step: 'connect',
+    updatedAt: 100,
+    ...overrides,
+  };
+}
+
+function overCapacityPurposes(): AccountMapApplied['customPurposes'] {
+  return [{
+    id: 'custom:telecom',
+    parentId: 'system:living',
+    name: '통신비',
+    targetMonthlyWon: 900_001,
+    createdAt: 10,
+    updatedAt: 10,
+  }];
+}
+
+function phaseBReleaseWorkspace(): WorkspaceDocument {
+  const workspace = completeWorkspace();
+  workspace.portfolio.draft = {
+    schemaVersion: 2,
+    scope: { type: 'aggregate' },
+    items: [{
+      id: 'asset-us', name: '미국 인덱스', shareUnits: 600_000, order: 0,
+      classification: 'growth', classificationOrigin: 'automatic',
+    }],
+    cashShareUnits: 400_000,
+    cashMode: 'automatic',
+    syncedInvestmentWon: 600_000,
+    updatedAt: 40,
+    inputMode: 'amount',
+    isApplicable: true,
+  };
+  workspace.accountMap.applied = accountMapApplied({
+    layout: 'account',
+    customPurposes: [{
+      id: 'custom:trip',
+      parentId: 'system:living',
+      name: '여행',
+      targetMonthlyWon: 200_000,
+      archivedAt: 35,
+      createdAt: 10,
+      updatedAt: 35,
+    }],
+    links: [
+      {
+        id: 'saving-isa',
+        purposeId: 'system:saving',
+        locationId: 'loc-isa',
+        monthlyAmountWon: 700_000,
+        remainder: true,
+        status: 'active',
+        createdAt: 10,
+        updatedAt: 30,
+      },
+      {
+        id: 'investing-isa',
+        purposeId: 'system:investing',
+        locationId: 'loc-isa',
+        monthlyAmountWon: 600_000,
+        remainder: true,
+        status: 'active',
+        createdAt: 10,
+        updatedAt: 30,
+      },
+      {
+        id: 'trip-suspended',
+        purposeId: 'custom:trip',
+        locationId: 'loc-isa',
+        monthlyAmountWon: 200_000,
+        remainder: false,
+        status: 'suspended',
+        suspendedReason: 'user',
+        createdAt: 10,
+        updatedAt: 35,
+      },
+      {
+        id: 'living-suspended',
+        purposeId: 'system:living',
+        locationId: 'loc-isa',
+        monthlyAmountWon: 100_000,
+        remainder: false,
+        status: 'suspended',
+        suspendedReason: 'user',
+        createdAt: 11,
+        updatedAt: 35,
+      },
+    ],
+    updatedAt: 35,
+  });
+  return workspace;
 }
 
 function errorCode(operation: () => unknown): string | undefined {
@@ -114,8 +227,8 @@ describe('workspace backup', () => {
     vi.restoreAllMocks();
   });
 
-  it('round-trips every Phase-A workspace slice in the exact versioned envelope', () => {
-    const workspace = completeWorkspace();
+  it('round-trips the complete Phase-B map and Portfolio compatibility state', () => {
+    const workspace = phaseBReleaseWorkspace();
     const text = exportWorkspaceBackup(workspace, 900);
     const parsed = JSON.parse(text) as Record<string, unknown>;
 
@@ -131,8 +244,29 @@ describe('workspace backup', () => {
       exportedAt: 900,
       workspace,
     });
-    expect(importWorkspaceBackup(text)).toEqual(workspace);
-    expect(importWorkspaceBackup(text)).not.toBe(workspace);
+    const imported = importWorkspaceBackup(text);
+    expect(imported).toEqual(workspace);
+    expect(imported).not.toBe(workspace);
+    expect(JSON.stringify(imported.accountMap)).toBe(JSON.stringify(workspace.accountMap));
+    expect(JSON.stringify(imported.locations)).toBe(JSON.stringify(workspace.locations));
+    expect(JSON.stringify(imported.portfolio)).toBe(JSON.stringify(workspace.portfolio));
+  });
+
+  it('imports a v1 envelope through the lossless workspace migration', () => {
+    const current = completeWorkspace();
+    const legacy = {
+      ...current,
+      schemaVersion: 1,
+      accountMap: { applied: null, draft: null, instruments: [], flows: [] },
+    };
+
+    const imported = importWorkspaceBackup(envelope(legacy));
+
+    expect(imported.schemaVersion).toBe(2);
+    expect(imported.main).toEqual(legacy.main);
+    expect(imported.simulation).toEqual(legacy.simulation);
+    expect(JSON.stringify(imported.portfolio)).toBe(JSON.stringify(legacy.portfolio));
+    expect(imported.accountMap.legacyPhaseA).toEqual({ instruments: [], flows: [] });
   });
 
   it('exports no storage keys, lease metadata, or trophy state', () => {
@@ -255,6 +389,38 @@ describe('workspace backup', () => {
     const setItem = vi.spyOn(storage, 'setItem');
 
     expect(importWorkspaceBackup(envelope())).toEqual(completeWorkspace());
+    expect(setItem).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['an applied future Main source', {
+      applied: accountMapApplied({ sourceMainUpdatedAt: 101 }),
+    }],
+    ['an applied synchronized custom target excess', {
+      applied: accountMapApplied({ customPurposes: overCapacityPurposes() }),
+    }],
+    ['a draft future Main source', {
+      draft: accountMapDraft({ sourceMainUpdatedAt: 101 }),
+    }],
+    ['a draft synchronized custom target excess', {
+      draft: accountMapDraft({ customPurposes: overCapacityPurposes() }),
+    }],
+  ])('rejects %s without changing exact raw workspace storage', (_label, accountMapState) => {
+    const storage = new MemoryStorage();
+    const raw = JSON.stringify(completeWorkspace({ revision: 17, updatedAt: 777 }));
+    storage.setItem(WORKSPACE_STORAGE_KEY, raw);
+    const setItem = vi.spyOn(storage, 'setItem');
+    Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: storage });
+
+    const invalid = completeWorkspace({
+      accountMap: {
+        ...completeWorkspace().accountMap,
+        ...accountMapState,
+      },
+    });
+
+    expect(errorCode(() => importWorkspaceBackup(envelope(invalid)))).toBe('backup-schema');
+    expect(storage.getItem(WORKSPACE_STORAGE_KEY)).toBe(raw);
     expect(setItem).not.toHaveBeenCalled();
   });
 

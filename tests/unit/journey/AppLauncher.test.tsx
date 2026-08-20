@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { StrictMode, useRef, useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -61,7 +61,8 @@ describe('AppLauncher', () => {
         name: new RegExp(`${escapeRegExp(currentLabel)}.*현재 위치`),
       });
       expect(currentLink).toHaveAttribute('aria-current', 'page');
-      expect(screen.getByRole('link', { name: /계좌 연결 \(Account Map\).*준비 중/ })).toBeVisible();
+      expect(screen.getByRole('link', { name: /계좌 연결 \(Account Map\)/ })).toBeVisible();
+      expect(screen.queryByText('준비 중')).not.toBeInTheDocument();
       expect(screen.queryByText('사용 중')).not.toBeInTheDocument();
       expect(container.querySelector('details, summary')).toBeNull();
       expect(container.querySelectorAll('svg[aria-hidden="true"]')).toHaveLength(4);
@@ -108,14 +109,14 @@ describe('AppLauncher', () => {
     const navigation = screen.getByRole('navigation', { name: 'ISF 앱' });
     expect(within(navigation).getByRole('link', { name: /투자 배분 \(Portfolio\).*현재 위치/ }))
       .toHaveAttribute('aria-current', 'page');
-    expect(within(navigation).getAllByRole('link')).toHaveLength(2);
+    await waitFor(() => expect(within(navigation).getAllByRole('link')).toHaveLength(2));
     const more = within(navigation).getByRole('button', { name: '앱 더보기' });
     fireEvent.click(more);
     const menu = screen.getByRole('region', { name: '추가 앱' });
     expect(within(menu).getAllByRole('link')).toHaveLength(2);
     expect(within(menu).getByRole('link', { name: /미래 성장 \(Simulation\)/ }))
       .toHaveAttribute('href', expect.stringContaining('/apps/simulation/'));
-    expect(within(menu).getByRole('link', { name: /계좌 연결 \(Account Map\).*준비 중/ }))
+    expect(within(menu).getByRole('link', { name: /계좌 연결 \(Account Map\)/ }))
       .toHaveAttribute('href', expect.stringContaining('/apps/account-map/'));
 
     fireEvent.keyDown(document, { key: 'Escape' });
@@ -133,7 +134,7 @@ describe('AppLauncher', () => {
       .not.toBeInTheDocument();
   });
 
-  it('reveals the current line and overflow with fast shared motion while state closes immediately', () => {
+  it('reveals the current line and overflow with fast shared motion while state closes immediately', async () => {
     const viewport = mockLauncherViewport(140);
     const { container } = render(<AppLauncher currentApp="portfolio" />);
     viewport.flushMeasurement();
@@ -149,7 +150,7 @@ describe('AppLauncher', () => {
       ease: MOTION_EASE.enter,
     });
 
-    const more = screen.getByRole('button', { name: '앱 더보기' });
+    const more = await screen.findByRole('button', { name: '앱 더보기' });
     expect(more).toHaveAttribute('aria-expanded', 'false');
     fireEvent.click(more);
 
@@ -168,23 +169,24 @@ describe('AppLauncher', () => {
     expect(more).toHaveFocus();
   });
 
-  it('preserves app focus when a resize moves an overflow link into direct navigation', () => {
+  it('preserves app focus when a resize moves an overflow link into direct navigation', async () => {
     const viewport = mockLauncherViewport(140);
     render(<AppLauncher currentApp="account-map" />);
     viewport.flushMeasurement();
 
-    fireEvent.click(screen.getByRole('button', { name: '앱 더보기' }));
+    fireEvent.click(await screen.findByRole('button', { name: '앱 더보기' }));
     const hiddenSimulation = within(screen.getByRole('region', { name: '추가 앱' }))
       .getByRole('link', { name: /미래 성장 \(Simulation\)/ });
     hiddenSimulation.focus();
     viewport.resize(300);
 
-    expect(screen.queryByRole('button', { name: '앱 더보기' })).not.toBeInTheDocument();
-    const directSimulation = screen.getByRole('link', { name: /미래 성장 \(Simulation\)/ });
-    expect(directSimulation).toHaveFocus();
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: '앱 더보기' })).not.toBeInTheDocument();
+      expect(screen.getByRole('link', { name: /미래 성장 \(Simulation\)/ })).toHaveFocus();
+    });
 
     viewport.resize(140);
-    expect(screen.getByRole('button', { name: '앱 더보기' })).toHaveFocus();
+    await waitFor(() => expect(screen.getByRole('button', { name: '앱 더보기' })).toHaveFocus());
   });
 
   it('closes an active app tooltip when entering management tools', () => {
