@@ -43,7 +43,7 @@ describe('AccountMapCanvas', () => {
       name: '목적 · 생활비 · 1,000,000원 · 활성 연결 1개 · 연결 필요',
     })).toBeVisible();
     expect(screen.getByRole('button', {
-      name: '계좌·보관처 · 생활비통장 · 700,000원 · 활성 연결 1개 · 연결 완료',
+      name: '계좌·보관처 · 생활비통장 · 활성 월 연결 합계 700,000원 · 활성 연결 1개 · 연결 완료',
     })).toBeVisible();
     expect(container.querySelector('.account-map-edge-amount')).toBeNull();
     expect(screen.getByRole('table', { name: '계좌 연결 읽기 표' })).toBeInTheDocument();
@@ -90,7 +90,7 @@ describe('AccountMapCanvas', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '축소' }));
     expect(screen.getByText('전체 보기')).toBeVisible();
-    expect(screen.getByRole('button', { name: '계좌·보관처 · 생활비통장 · 700,000원 · 활성 연결 1개 · 연결 완료' })).toBeVisible();
+    expect(screen.getByRole('button', { name: '계좌·보관처 · 생활비통장 · 활성 월 연결 합계 700,000원 · 활성 연결 1개 · 연결 완료' })).toBeVisible();
     expect(screen.queryByRole('button', { name: /보조생활비/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /비상금함/ })).not.toBeInTheDocument();
     expect(container.querySelectorAll('.account-map-node--location')).toHaveLength(2);
@@ -99,7 +99,7 @@ describe('AccountMapCanvas', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '확대' }));
     const unlinked = screen.getByRole('button', {
-      name: '계좌·보관처 · 비상금함 · 0원 · 활성 연결 0개 · 연결 완료',
+      name: '계좌·보관처 · 비상금함 · 활성 월 연결 합계 0원 · 활성 연결 0개 · 연결 완료',
     });
     expect(screen.getByRole('button', { name: /보조생활비/ })).toBeVisible();
     expect(unlinked).toBeVisible();

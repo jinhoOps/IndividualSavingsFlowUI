@@ -216,7 +216,11 @@ function hasActiveOverlay(): boolean {
 function statusLabel(status: string): string { return status === 'unassigned' ? ' · 연결 필요' : status === 'excess' ? ' · 초과 연결' : status === 'deficit' ? ' · 부족함' : ''; }
 function nodeAccessibleName(node: PositionedNode): string {
   const kind = node.kind === 'purpose' ? '목적' : node.kind === 'location' ? '계좌·보관처' : '전체 상태';
-  const amount = node.amountWon === undefined ? '금액 없음' : formatWon(node.amountWon);
+  const amount = node.amountWon === undefined
+    ? '금액 없음'
+    : node.kind === 'location' || node.kind === 'status'
+      ? `활성 월 연결 합계 ${formatWon(node.amountWon)}`
+      : formatWon(node.amountWon);
   const status = {
     resolved: '연결 완료',
     unassigned: '연결 필요',
