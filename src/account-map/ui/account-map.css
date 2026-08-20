@@ -57,7 +57,9 @@
 .account-map-layout-control button, .account-map-zoom-control button { min-width: 44px; min-height: 44px; border: 0; border-radius: 9px; background: transparent; color: var(--muted); font-weight: 700; }
 .account-map-layout-control button[aria-pressed='true'] { background: var(--ink); color: var(--panel); }
 .account-map-zoom-control span { min-width: 66px; text-align: center; font-size: .8rem; }
-.account-map-canvas { position: relative; min-height: 360px; overflow: hidden; background-color: color-mix(in srgb, var(--bg) 74%, var(--panel)); background-image: radial-gradient(circle, color-mix(in srgb, var(--line-strong) 55%, transparent) 1px, transparent 1px); background-size: 20px 20px; }
+.account-map-canvas { position: relative; min-height: 360px; overflow: hidden; background-color: color-mix(in srgb, var(--bg) 74%, var(--panel)); background-image: radial-gradient(circle, color-mix(in srgb, var(--line-strong) 55%, transparent) 1px, transparent 1px); background-size: 20px 20px; cursor: grab; touch-action: pan-y; }
+.account-map-canvas:active { cursor: grabbing; }
+.account-map-canvas__content { position: absolute; inset: 0; transform-origin: 0 0; }
 .account-map-edges { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .account-map-edges path { fill: none; stroke: color-mix(in srgb, var(--tone-accent) 34%, var(--line)); stroke-width: 2; vector-effect: non-scaling-stroke; transition: opacity 160ms ease, stroke 160ms ease, stroke-width 160ms ease; }
 .account-map-edges path.is-suspended { stroke-dasharray: 6 5; opacity: .5; }

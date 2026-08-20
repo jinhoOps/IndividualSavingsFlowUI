@@ -189,23 +189,19 @@ describe('Account Map reducer', () => {
     })).toEqual({ mode: 'main-required' });
   });
 
-  it('requires Main when a concurrent recovery workspace removed its applied plan', () => {
+  it('requires Main immediately when a concurrent recovery workspace removed its applied plan', () => {
     const withoutMain = { ...createEmptyWorkspace(2), revision: 2 };
 
-    const stale = accountMapReducer(mapState(), {
+    expect(accountMapReducer(mapState(), {
       type: 'save-conflicted', latest: withoutMain, intent: linkIntent(),
-    });
-    expect(accountMapReducer(stale, { type: 'latest-kept' })).toEqual({ mode: 'main-required' });
-    expect(accountMapReducer(stale, { type: 'reapply-succeeded', workspace: withoutMain }))
-      .toEqual({ mode: 'main-required' });
+    })).toEqual({ mode: 'main-required' });
 
     let modal = accountMapReducer(mapState(), { type: 'node-invoked', nodeId: 'a' });
     modal = accountMapReducer(modal, { type: 'node-invoked', nodeId: 'a' });
-    const manual = accountMapReducer(modal, {
+    expect(accountMapReducer(modal, {
       type: 'save-manual-conflicted', latest: withoutMain,
       action: 'edit-node', targets: [{ kind: 'node', id: 'a' }], reason: 'compound-edit',
-    });
-    expect(accountMapReducer(manual, { type: 'review-latest' })).toEqual({ mode: 'main-required' });
+    })).toEqual({ mode: 'main-required' });
   });
 
   it('keeps the modal open while adopting latest for manual compound review', () => {

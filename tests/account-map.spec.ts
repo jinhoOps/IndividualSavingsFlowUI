@@ -212,6 +212,23 @@ async function openNode(page: Page, name: RegExp) {
   await node.click();
 }
 
+async function touchDrag(page: Page, start: { x: number; y: number }, end: { x: number; y: number }) {
+  const client = await page.context().newCDPSession(page);
+  await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: start.x, y: start.y, id: 1 }] });
+  for (let step = 1; step <= 4; step += 1) {
+    await client.send('Input.dispatchTouchEvent', {
+      type: 'touchMove',
+      touchPoints: [{
+        x: start.x + ((end.x - start.x) * step) / 4,
+        y: start.y + ((end.y - start.y) * step) / 4,
+        id: 1,
+      }],
+    });
+  }
+  await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await client.detach();
+}
+
 async function expectContainedActionTargets(page: Page, state: string) {
   await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
   const audit = await page.evaluate(() => {
@@ -671,10 +688,9 @@ test('requires Main after a concurrent whole-workspace restore removes its appli
   }, { key: STORAGE_KEY, workspace: restored });
 
   await page.getByRole('button', { name: '저장' }).click();
-  await expect(page.getByRole('button', { name: '최신 상태에서 다시 검토' })).toBeVisible();
-  await page.getByRole('button', { name: '최신 상태에서 다시 검토' }).click();
-
   await expect(page.getByRole('heading', { name: '월 자금 계획이 먼저 필요해요' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '최신 상태에서 다시 검토' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '최신 상태에서 다시 적용' })).toHaveCount(0);
   await expect(page.getByRole('dialog')).toHaveCount(0);
   const stored = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!), STORAGE_KEY);
   expect(stored.main.applied).toBeNull();
@@ -711,11 +727,9 @@ test('does not replay a single location edit after a concurrent empty-Main resto
   }, { key: STORAGE_KEY, workspace: restored });
 
   await page.getByRole('button', { name: '저장' }).click();
-  await expect(page.getByRole('button', { name: '최신 상태에서 다시 적용' })).toBeVisible();
-  await expect(page.getByRole('textbox', { name: '표시 이름' })).toHaveValue('생활통장');
-  await page.getByRole('button', { name: '최신 상태에서 다시 적용' }).click();
-
   await expect(page.getByRole('heading', { name: '월 자금 계획이 먼저 필요해요' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '최신 상태에서 다시 적용' })).toHaveCount(0);
+  await expect(page.getByRole('textbox', { name: '표시 이름' })).toHaveCount(0);
   await expect(page.getByRole('dialog')).toHaveCount(0);
   const persisted = await page.evaluate((key) => ({
     raw: localStorage.getItem(key),
@@ -1068,6 +1082,19 @@ test('keeps all Account Map states contained with 44px action targets at support
     await page.goto('apps/account-map/');
     const prefix = `${viewport.width}px`;
     await expectContainedActionTargets(page, `${prefix} map`);
+    const canvasBox = await page.locator('.account-map-canvas').boundingBox();
+    expect(canvasBox).not.toBeNull();
+    const canvasContent = page.locator('.account-map-canvas__content');
+    const transformBeforePan = await canvasContent.evaluate((element) => getComputedStyle(element).transform);
+    await page.mouse.move(canvasBox!.x + 8, canvasBox!.y + 8);
+    await page.mouse.down();
+    await page.mouse.move(canvasBox!.x + 48, canvasBox!.y + 33);
+    await page.mouse.up();
+    await expect.poll(() => canvasContent.evaluate((element) => getComputedStyle(element).transform), {
+      message: `${prefix} empty-space drag pans the map`,
+    }).not.toBe(transformBeforePan);
+    await page.getByRole('button', { name: '축소' }).click();
+    await page.getByRole('button', { name: '확대' }).click();
 
     await page.getByRole('button', { name: '관리 메뉴' }).click();
     const archivedPurpose = page.getByRole('menuitem', { name: /선물 · 생활비 · 50,000원/ });
@@ -1165,6 +1192,45 @@ test('keeps all Account Map states contained with 44px action targets at support
     await page.getByRole('button', { name: 'KB국민은행', exact: true }).click();
     await expectContainedActionTargets(page, `${prefix} new-location form`);
   }
+});
+
+test('keeps pointer map pan and vertical touch page scroll in Account Map', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await seed(page, responsiveWorkspace());
+  await page.setViewportSize({ width: 390, height: 520 });
+  await page.goto('apps/account-map/');
+
+  const canvas = page.locator('.account-map-canvas');
+  const content = page.locator('.account-map-canvas__content');
+  await expect(canvas).toBeVisible();
+  await expect(canvas).toHaveCSS('touch-action', 'pan-y');
+  expect(await page.evaluate(() => document.scrollingElement?.scrollHeight ?? 0)).toBeGreaterThan(520);
+
+  const panBox = await canvas.boundingBox();
+  expect(panBox).not.toBeNull();
+  const transformBeforePan = await content.evaluate((element) => getComputedStyle(element).transform);
+  const panY = panBox!.y + 8;
+  await page.mouse.move(panBox!.x + 8, panY);
+  await page.mouse.down();
+  await page.mouse.move(panBox!.x + 92, panY);
+  await page.mouse.up();
+  await expect.poll(() => content.evaluate((element) => getComputedStyle(element).transform), {
+    message: 'horizontal pointer drag pans the map',
+  }).not.toBe(transformBeforePan);
+
+  await page.getByRole('button', { name: '축소' }).click();
+  await page.getByRole('button', { name: '확대' }).click();
+  await page.evaluate(() => window.scrollTo(0, 0));
+
+  const scrollBox = await canvas.boundingBox();
+  expect(scrollBox).not.toBeNull();
+  const startY = Math.min(scrollBox!.y + scrollBox!.height - 48, 496);
+  const endY = Math.max(scrollBox!.y + 48, startY - 180);
+  const beforeScroll = await page.evaluate(() => window.scrollY);
+  await touchDrag(page, { x: scrollBox!.x + scrollBox!.width / 2, y: startY }, { x: scrollBox!.x + scrollBox!.width / 2, y: endY });
+  await expect.poll(() => page.evaluate(() => window.scrollY), {
+    message: 'vertical touch drag on the map scrolls the page',
+  }).toBeGreaterThan(beforeScroll + 20);
 });
 
 test('wraps a 24-character custom-purpose detail title beside its actions at 390px', async ({ page }, testInfo) => {

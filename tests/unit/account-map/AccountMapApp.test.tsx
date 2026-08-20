@@ -653,7 +653,7 @@ describe('AccountMapApp', () => {
     expect(livingNode).toHaveFocus();
   });
 
-  it('keeps concurrent empty-Main restore without writing a stale single-field location replay', async () => {
+  it('requires Main immediately for a concurrent empty-Main restore without stale location replay', async () => {
     const setup = staleLocationWithoutMainRepositories();
     render(<AccountMapApp repositories={setup.repositories} />);
     const locationNode = screen.getByRole('button', { name: /계좌·보관처 · 생활비통장 ·/ });
@@ -663,13 +663,12 @@ describe('AccountMapApp', () => {
     fireEvent.change(screen.getByRole('textbox', { name: '표시 이름' }), { target: { value: '생활통장' } });
     fireEvent.click(screen.getByRole('button', { name: '저장' }));
 
-    const replay = await screen.findByRole('button', { name: '최신 상태에서 다시 적용' });
+    expect(await screen.findByRole('heading', { name: '월 자금 계획이 먼저 필요해요' })).toBeVisible();
+    expect(screen.queryByRole('button', { name: '최신 상태에서 다시 적용' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: /생활비통장 편집/ })).not.toBeInTheDocument();
     expect(setup.saveIntent).toHaveBeenCalledTimes(1);
     expect(setup.save).not.toHaveBeenCalled();
-    fireEvent.click(replay);
 
-    expect(await screen.findByRole('heading', { name: '월 자금 계획이 먼저 필요해요' })).toBeVisible();
-    expect(setup.save).not.toHaveBeenCalled();
     expect(JSON.stringify(setup.current())).toBe(setup.latestJson);
   });
 

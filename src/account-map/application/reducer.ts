@@ -246,6 +246,7 @@ function reduceRecovery<State extends Extract<AccountMapState, { mode: 'setup' |
 ): AccountMapState | null {
   switch (event.type) {
     case 'save-conflicted':
+      if (event.latest.main.applied === null) return { mode: 'main-required' };
       return {
         ...state,
         save: { status: 'idle' },
@@ -256,6 +257,7 @@ function reduceRecovery<State extends Extract<AccountMapState, { mode: 'setup' |
         },
       };
     case 'save-manual-conflicted':
+      if (event.latest.main.applied === null) return { mode: 'main-required' };
       return {
         ...state,
         save: { status: 'idle' },

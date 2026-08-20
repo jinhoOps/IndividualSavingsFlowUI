@@ -74,6 +74,61 @@ describe('AccountMapCanvas', () => {
     expect(onLayoutChange).toHaveBeenCalledWith('account');
   });
 
+  it('announces overall status amounts without active-link wording', () => {
+    renderCanvas({
+      main: { ...main, monthlyNetIncomeWon: 2_100_000 },
+    });
+    expect(screen.getByRole('button', {
+      name: '전체 상태 · 미배정 · 전체 미배정 100,000원 · 활성 연결 0개 · 미배정',
+    })).toBeVisible();
+
+    cleanup();
+    renderCanvas({
+      main: { ...main, monthlyNetIncomeWon: 1_900_000 },
+    });
+    expect(screen.getByRole('button', {
+      name: '전체 상태 · 부족함 · 전체 부족 100,000원 · 활성 연결 0개 · 부족함',
+    })).toBeVisible();
+  });
+
+  it('pans the map only after dragging empty canvas space', () => {
+    const onBackground = vi.fn();
+    const { container } = renderCanvas({ onBackground });
+    const canvasElement = container.querySelector('.account-map-canvas')!;
+    const content = container.querySelector('.account-map-canvas__content') as HTMLElement;
+
+    fireEvent(canvasElement, new MouseEvent('pointerdown', { bubbles: true, clientX: 20, clientY: 30 }));
+    fireEvent(canvasElement, new MouseEvent('pointermove', { bubbles: true, clientX: 60, clientY: 55 }));
+    fireEvent(canvasElement, new MouseEvent('pointerup', { bubbles: true, clientX: 60, clientY: 55 }));
+
+    expect(content).toHaveStyle({ transform: 'translate(40px, 25px)' });
+    expect(onBackground).not.toHaveBeenCalled();
+
+    fireEvent(canvasElement, new MouseEvent('pointerdown', { bubbles: true, clientX: 10, clientY: 10 }));
+    fireEvent(canvasElement, new MouseEvent('pointerup', { bubbles: true, clientX: 10, clientY: 10 }));
+    expect(onBackground).toHaveBeenCalledTimes(1);
+  });
+
+  it('pans horizontal touch drags without taking over vertical touch scroll intent', () => {
+    const { container } = renderCanvas();
+    const canvasElement = container.querySelector('.account-map-canvas')!;
+    const content = container.querySelector('.account-map-canvas__content') as HTMLElement;
+
+    fireEvent.touchStart(canvasElement, { touches: [{ clientX: 20, clientY: 30 }] });
+    fireEvent.touchMove(canvasElement, { touches: [{ clientX: 90, clientY: 34 }] });
+    fireEvent.touchEnd(canvasElement);
+    expect(content).toHaveStyle({ transform: 'translate(70px, 4px)' });
+
+    cleanup();
+    const { container: verticalContainer } = renderCanvas();
+    const verticalCanvas = verticalContainer.querySelector('.account-map-canvas')!;
+    const verticalContent = verticalContainer.querySelector('.account-map-canvas__content') as HTMLElement;
+    fireEvent.touchStart(verticalCanvas, { touches: [{ clientX: 20, clientY: 30 }] });
+    fireEvent.touchMove(verticalCanvas, { touches: [{ clientX: 24, clientY: 100 }] });
+    fireEvent.touchEnd(verticalCanvas);
+    expect(verticalContent).toHaveStyle({ transform: 'translate(0px, 0px)' });
+  });
+
   it('keeps overview DOM topology representative-only and restores an invokable unlinked location at default zoom', () => {
     const topologyApplied = structuredClone(applied);
     topologyApplied.links.push({

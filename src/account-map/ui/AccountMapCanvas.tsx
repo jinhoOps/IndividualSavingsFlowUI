@@ -50,6 +50,22 @@ export function AccountMapCanvas({
   const headingRef = useRef<HTMLHeadingElement>(null);
   const nodeRefs = useRef(new Map<string, HTMLButtonElement>());
   const [layoutAnimating, setLayoutAnimating] = useState(false);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const panDragRef = useRef<{
+    pointerId: number;
+    startX: number;
+    startY: number;
+    originX: number;
+    originY: number;
+    moved: boolean;
+  } | null>(null);
+  const touchPanDragRef = useRef<{
+    startX: number;
+    startY: number;
+    originX: number;
+    originY: number;
+    moved: boolean;
+  } | null>(null);
   const reducedMotion = typeof window.matchMedia !== 'function'
     || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const [measuredViewport, setMeasuredViewport] = useState({ width: 1040, height: 620 });
@@ -87,11 +103,13 @@ export function AccountMapCanvas({
 
   function changeZoom(delta: number) {
     const index = zooms.indexOf(zoom);
+    setPan({ x: 0, y: 0 });
     setZoom(zooms[Math.max(0, Math.min(zooms.length - 1, index + delta))]!);
   }
 
   function changeLayout(layout: AccountMapApplied['layout']) {
     if (layout === applied.layout || layoutAnimating || recovery.status !== 'none') return;
+    setPan({ x: 0, y: 0 });
     const root = canvasRef.current;
     if (root === null) { onLayoutChange(layout); return; }
     setLayoutAnimating(true);
@@ -135,6 +153,79 @@ export function AccountMapCanvas({
       })));
   const modalRelated = [...directModalRelated, ...replacementRelated];
 
+  function handleCanvasPointerDown(event: React.PointerEvent<HTMLDivElement>) {
+    if (event.pointerType === 'touch') return;
+    const target = event.target instanceof Element ? event.target : null;
+    if (target?.closest('.account-map-node, .account-map-edge-amount') !== null) return;
+    panDragRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      originX: pan.x,
+      originY: pan.y,
+      moved: false,
+    };
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+  }
+
+  function handleCanvasPointerMove(event: React.PointerEvent<HTMLDivElement>) {
+    const drag = panDragRef.current;
+    if (drag === null) return;
+    const deltaX = event.clientX - drag.startX;
+    const deltaY = event.clientY - drag.startY;
+    const moved = drag.moved || Math.hypot(deltaX, deltaY) >= 4;
+    panDragRef.current = { ...drag, moved };
+    if (moved) {
+      event.preventDefault();
+      setPan({ x: drag.originX + deltaX, y: drag.originY + deltaY });
+    }
+  }
+
+  function handleCanvasPointerUp(event: React.PointerEvent<HTMLDivElement>) {
+    const drag = panDragRef.current;
+    if (drag === null) return;
+    panDragRef.current = null;
+    event.currentTarget.releasePointerCapture?.(event.pointerId);
+    if (!drag.moved) onBackground();
+  }
+
+  function handleCanvasTouchStart(event: React.TouchEvent<HTMLDivElement>) {
+    if (event.touches.length !== 1) return;
+    const target = event.target instanceof Element ? event.target : null;
+    if (target?.closest('.account-map-node, .account-map-edge-amount') !== null) return;
+    const touch = event.touches[0]!;
+    touchPanDragRef.current = {
+      startX: touch.clientX,
+      startY: touch.clientY,
+      originX: pan.x,
+      originY: pan.y,
+      moved: false,
+    };
+  }
+
+  function handleCanvasTouchMove(event: React.TouchEvent<HTMLDivElement>) {
+    const drag = touchPanDragRef.current;
+    if (drag === null || event.touches.length !== 1) return;
+    const touch = event.touches[0]!;
+    const deltaX = touch.clientX - drag.startX;
+    const deltaY = touch.clientY - drag.startY;
+    const distance = Math.hypot(deltaX, deltaY);
+    if (!drag.moved && distance < 4) return;
+    if (!drag.moved && Math.abs(deltaY) > Math.abs(deltaX)) {
+      touchPanDragRef.current = null;
+      return;
+    }
+    event.preventDefault();
+    touchPanDragRef.current = { ...drag, moved: true };
+    setPan({ x: drag.originX + deltaX, y: drag.originY + deltaY });
+  }
+
+  function handleCanvasTouchEnd() {
+    const drag = touchPanDragRef.current;
+    touchPanDragRef.current = null;
+    if (drag !== null && !drag.moved) onBackground();
+  }
+
   return (
     <section className="account-map-canvas-shell" aria-labelledby="account-map-canvas-title">
       <header className="account-map-canvas-toolbar">
@@ -154,44 +245,53 @@ export function AccountMapCanvas({
         className="account-map-canvas"
         data-direction={positioned.direction}
         style={{ height: positioned.height }}
-        onPointerDown={(event) => { if (event.target === event.currentTarget) onBackground(); }}
+        onPointerDown={handleCanvasPointerDown}
+        onPointerMove={handleCanvasPointerMove}
+        onPointerUp={handleCanvasPointerUp}
+        onPointerCancel={() => { panDragRef.current = null; }}
+        onTouchStart={handleCanvasTouchStart}
+        onTouchMove={handleCanvasTouchMove}
+        onTouchEnd={handleCanvasTouchEnd}
+        onTouchCancel={() => { touchPanDragRef.current = null; }}
       >
-        <svg className="account-map-edges" viewBox={`0 0 ${positioned.width} ${positioned.height}`} preserveAspectRatio="none" aria-hidden="true">
+        <div className="account-map-canvas__content" style={{ transform: `translate(${pan.x}px, ${pan.y}px)` }}>
+          <svg className="account-map-edges" viewBox={`0 0 ${positioned.width} ${positioned.height}`} preserveAspectRatio="none" aria-hidden="true">
+            {positioned.edges.map((edge) => {
+              const purpose = nodeById.get(edge.purposeId);
+              const location = nodeById.get(edge.locationId);
+              if (purpose === undefined || location === undefined) return null;
+              const x1 = purpose.x + purpose.width / 2;
+              const y1 = purpose.y + purpose.height / 2;
+              const x2 = location.x + location.width / 2;
+              const y2 = location.y + location.height / 2;
+              const emphasized = focusedId !== null && (edge.purposeId === focusedId || edge.locationId === focusedId);
+              return <path key={edge.id} d={`M ${x1} ${y1} C ${(x1 + x2) / 2} ${y1}, ${(x1 + x2) / 2} ${y2}, ${x2} ${y2}`} className={`${edge.status === 'suspended' ? 'is-suspended' : ''}${emphasized ? ' is-focused' : ''}`} />;
+            })}
+          </svg>
           {positioned.edges.map((edge) => {
             const purpose = nodeById.get(edge.purposeId);
             const location = nodeById.get(edge.locationId);
-            if (purpose === undefined || location === undefined) return null;
-            const x1 = purpose.x + purpose.width / 2;
-            const y1 = purpose.y + purpose.height / 2;
-            const x2 = location.x + location.width / 2;
-            const y2 = location.y + location.height / 2;
-            const emphasized = focusedId !== null && (edge.purposeId === focusedId || edge.locationId === focusedId);
-            return <path key={edge.id} d={`M ${x1} ${y1} C ${(x1 + x2) / 2} ${y1}, ${(x1 + x2) / 2} ${y2}, ${x2} ${y2}`} className={`${edge.status === 'suspended' ? 'is-suspended' : ''}${emphasized ? ' is-focused' : ''}`} />;
+            const visible = focusedId !== null && (edge.purposeId === focusedId || edge.locationId === focusedId);
+            if (!visible || purpose === undefined || location === undefined) return null;
+            return <span key={`amount:${edge.id}`} className="account-map-edge-amount" style={{ left: (purpose.x + location.x + purpose.width) / 2, top: (purpose.y + location.y + purpose.height) / 2 }}>{formatWon(edge.amountWon)}</span>;
           })}
-        </svg>
-        {positioned.edges.map((edge) => {
-          const purpose = nodeById.get(edge.purposeId);
-          const location = nodeById.get(edge.locationId);
-          const visible = focusedId !== null && (edge.purposeId === focusedId || edge.locationId === focusedId);
-          if (!visible || purpose === undefined || location === undefined) return null;
-          return <span key={`amount:${edge.id}`} className="account-map-edge-amount" style={{ left: (purpose.x + location.x + purpose.width) / 2, top: (purpose.y + location.y + purpose.height) / 2 }}>{formatWon(edge.amountWon)}</span>;
-        })}
-        {positioned.nodes.map((node) => {
-          const dimmed = focusedId !== null && !connectedIds.has(node.id);
-          return <button
-            ref={(element) => { if (element === null) nodeRefs.current.delete(node.id); else nodeRefs.current.set(node.id, element); }}
-            key={node.id}
-            type="button"
-            className={`account-map-node account-map-node--${node.kind} is-${node.status}${dimmed ? ' is-dimmed' : ''}${interaction.pinnedNodeId === node.id ? ' is-pinned' : ''}`}
-            style={{ left: node.x, top: node.y, width: node.width, height: node.height }}
-            aria-label={nodeAccessibleName(node)}
-            onMouseEnter={() => onTransient(node.id)}
-            onMouseLeave={() => onBlur(node.id)}
-            onFocus={() => onTransient(node.id)}
-            onBlur={() => onBlur(node.id)}
-            onClick={() => onInvoke(node.id)}
-          ><span>{node.label}</span>{node.amountWon === undefined ? null : <strong>{formatWon(node.amountWon)}</strong>}{node.secondary === undefined ? null : <small>{node.secondary}</small>}{node.status === 'unassigned' ? <small>연결 필요</small> : node.status === 'excess' ? <small>초과 연결</small> : null}</button>;
-        })}
+          {positioned.nodes.map((node) => {
+            const dimmed = focusedId !== null && !connectedIds.has(node.id);
+            return <button
+              ref={(element) => { if (element === null) nodeRefs.current.delete(node.id); else nodeRefs.current.set(node.id, element); }}
+              key={node.id}
+              type="button"
+              className={`account-map-node account-map-node--${node.kind} is-${node.status}${dimmed ? ' is-dimmed' : ''}${interaction.pinnedNodeId === node.id ? ' is-pinned' : ''}`}
+              style={{ left: node.x, top: node.y, width: node.width, height: node.height }}
+              aria-label={nodeAccessibleName(node)}
+              onMouseEnter={() => onTransient(node.id)}
+              onMouseLeave={() => onBlur(node.id)}
+              onFocus={() => onTransient(node.id)}
+              onBlur={() => onBlur(node.id)}
+              onClick={() => onInvoke(node.id)}
+            ><span>{node.label}</span>{node.amountWon === undefined ? null : <strong>{formatWon(node.amountWon)}</strong>}{node.secondary === undefined ? null : <small>{node.secondary}</small>}{node.status === 'unassigned' ? <small>연결 필요</small> : node.status === 'excess' ? <small>초과 연결</small> : null}</button>;
+          })}
+        </div>
       </div>
       <table className="sr-only account-map-linear-table" aria-label="계좌 연결 읽기 표">
         <thead><tr>{applied.layout === 'purpose' ? <><th>목적</th><th>계좌·보관처</th></> : <><th>계좌·보관처</th><th>목적</th></>}<th>월 금액</th><th>상태</th></tr></thead>
@@ -218,9 +318,11 @@ function nodeAccessibleName(node: PositionedNode): string {
   const kind = node.kind === 'purpose' ? '목적' : node.kind === 'location' ? '계좌·보관처' : '전체 상태';
   const amount = node.amountWon === undefined
     ? '금액 없음'
-    : node.kind === 'location' || node.kind === 'status'
+    : node.kind === 'location'
       ? `활성 월 연결 합계 ${formatWon(node.amountWon)}`
-      : formatWon(node.amountWon);
+      : node.kind === 'status'
+        ? statusAmountLabel(node)
+        : formatWon(node.amountWon);
   const status = {
     resolved: '연결 완료',
     unassigned: '연결 필요',
@@ -230,5 +332,11 @@ function nodeAccessibleName(node: PositionedNode): string {
     deficit: '부족함',
   }[node.status];
   return `${kind} · ${node.label} · ${amount} · 활성 연결 ${node.connectionCount}개 · ${status}`;
+}
+
+function statusAmountLabel(node: PositionedNode): string {
+  return node.status === 'deficit'
+    ? `전체 부족 ${formatWon(Math.abs(node.amountWon ?? 0))}`
+    : `전체 미배정 ${formatWon(Math.abs(node.amountWon ?? 0))}`;
 }
 function formatWon(value: number): string { return `${new Intl.NumberFormat('ko-KR').format(value)}원`; }
