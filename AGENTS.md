@@ -18,8 +18,8 @@
 - Main과 Simulation은 완료된 현재 제품 기준선이다.
 - Main이 직접 소유하는 제품 데이터는 다섯 월간 금액이며 현재 Main UI에서 수정한다.
 - Simulation은 Main을 읽기 전용으로 사용하며 자체 복리 시뮬레이션 초안만 소유한다.
-- Portfolio는 현재 지원 제품이며 버그 수정 중이다. Account Map은 후속 작업을 준비 중인 앱이며 현재 제품 경로는 준비 화면이다.
-- 준비 화면은 상세 편집·독립 제품 저장을 소유하지 않는다. 향후 앱의 상태 소유권은 승인된 상세 명세에서 정의하고 Account Map은 Main에 암묵적으로 write-back하지 않는다.
+- Portfolio와 Account Map은 현재 지원 제품이며 버그 수정 중이다.
+- Account Map은 최신 Main 다섯 월 금액을 읽기 전용 기준으로 사용하고 `workspace.locations`와 `workspace.accountMap`만 갱신한다. Main·Simulation·Portfolio에는 write-back하지 않는다.
 - 레거시 코드는 기능과 데이터 계약 이관을 위한 임시자산이며 지원 제품 경로나 신규 기능 기반이 아니다.
 - 레거시 제거 전 동작과 데이터 계약을 목록화하고, 이관 또는 명시적 폐기 근거·호환성 검증·참조 제거·회귀 검증을 완료한다.
 - 사용자 변경과 다른 작업자의 관련 없는 변경을 보존한다.
