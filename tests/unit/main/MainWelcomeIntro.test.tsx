@@ -69,12 +69,6 @@ describe('MainWelcomeIntro', () => {
     const button = screen.getByRole('button', { name: '화면을 눌러 건너뛰기' }) as HTMLButtonElement;
     expect(button).toHaveFocus();
     expect(button.getBoundingClientRect().height || Number.parseFloat(getComputedStyle(button).minHeight)).toBeGreaterThanOrEqual(44);
-    const styles = getComputedStyle(button);
-    expect(styles.minHeight).toBe('44px');
-    expect(styles.backgroundColor).toBe('rgba(0, 0, 0, 0)');
-    expect(styles.borderTopWidth).toBe('0px');
-    expect(styles.borderRadius).toBe('0px');
-    expect(styles.textAlign).toBe('center');
     expect(screen.getAllByRole('button')).toHaveLength(1);
   });
 

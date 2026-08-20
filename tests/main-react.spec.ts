@@ -170,6 +170,29 @@ async function captureMainBrandIntro(
   const skip = page.getByRole('button', { name: '화면을 눌러 건너뛰기' });
   await expect(intro).toBeVisible();
   await expect(skip).toBeFocused();
+  const skipVisuals = await skip.evaluate((element) => {
+    const styles = getComputedStyle(element);
+    const rect = element.getBoundingClientRect();
+    return {
+      minHeight: styles.minHeight,
+      backgroundColor: styles.backgroundColor,
+      borderTopWidth: styles.borderTopWidth,
+      borderRadius: styles.borderRadius,
+      textAlign: styles.textAlign,
+      width: rect.width,
+      height: rect.height,
+    };
+  });
+  expect(skipVisuals.minHeight).toBe('44px');
+  expect(skipVisuals.backgroundColor).toBe('rgba(0, 0, 0, 0)');
+  expect(skipVisuals.borderTopWidth).toBe('0px');
+  expect(skipVisuals.borderRadius).toBe('0px');
+  expect(skipVisuals.textAlign).toBe('center');
+  expect(skipVisuals.height).toBeGreaterThanOrEqual(44);
+  expect(skipVisuals.width).toBeGreaterThanOrEqual(viewport.width - 32);
+  await skip.evaluate((element) => element.focus({ focusVisible: true }));
+  await expect(skip).toBeFocused();
+  await expect.poll(() => skip.evaluate((element) => getComputedStyle(element).outlineStyle)).toBe('solid');
   await expect(page.getByRole('navigation', { name: 'ISF 앱' })).toHaveCount(0);
   await expect(page.getByRole('heading', { name: '한 달 돈의 흐름, 2분이면 확인할 수 있어요.' })).toHaveCount(0);
   expect(await page.evaluate(() => (
