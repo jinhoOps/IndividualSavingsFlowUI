@@ -293,6 +293,42 @@ test('creates a purpose-first map and preserves protected product slices', async
   expect(await readProtected(page)).toEqual(before);
 });
 
+test('creates brokerage and cash locations from setup location kinds', async ({ page }) => {
+  await seed(page, emptyWorkspace());
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('apps/account-map/');
+
+  await page.getByRole('article').filter({ hasText: '투자' }).getByRole('button', { name: '연결' }).click();
+  const investingDialog = page.getByRole('dialog', { name: '투자 연결' });
+  await investingDialog.getByRole('button', { name: '새 계좌·보관처 추가' }).click();
+  await investingDialog.getByRole('button', { name: '증권' }).click();
+  await expect(investingDialog.getByRole('textbox', { name: '기관 이름' })).toBeVisible();
+  await investingDialog.getByRole('textbox', { name: '기관 이름' }).fill('미래증권');
+  await investingDialog.getByRole('textbox', { name: '표시 이름' }).fill('ISA');
+  await investingDialog.getByRole('button', { name: '완료' }).click();
+
+  await page.getByRole('article').filter({ hasText: '저축' }).getByRole('button', { name: '연결' }).click();
+  const savingDialog = page.getByRole('dialog', { name: '저축 연결' });
+  await savingDialog.getByRole('button', { name: '새 계좌·보관처 추가' }).click();
+  await savingDialog.getByRole('button', { name: '현금' }).click();
+  await expect(savingDialog.getByRole('textbox', { name: '기관 이름' })).toHaveCount(0);
+  await savingDialog.getByRole('textbox', { name: '표시 이름' }).fill('금현물');
+  await savingDialog.getByRole('button', { name: '완료' }).click();
+
+  await expect.poll(() => page.evaluate((key) => {
+    const workspace = JSON.parse(localStorage.getItem(key)!);
+    return workspace.locations.map((item: { shortName: string; kind: string; institution?: { name: string }; roles: string[] }) => ({
+      shortName: item.shortName,
+      kind: item.kind,
+      institutionName: item.institution?.name,
+      roles: item.roles,
+    }));
+  }, STORAGE_KEY)).toEqual([
+    { shortName: 'ISA', kind: 'brokerage', institutionName: '미래증권', roles: ['investing'] },
+    { shortName: '금현물', kind: 'cash', institutionName: undefined, roles: ['saving'] },
+  ]);
+});
+
 test('persists a resumed review step and exits to Main without deleting its draft', async ({ page }) => {
   const workspace = emptyWorkspace();
   workspace.accountMap.draft = {
