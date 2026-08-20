@@ -95,18 +95,7 @@ describe('AppLauncher', () => {
   });
 
   it('keeps the current app direct and routes hidden apps through more', async () => {
-    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockImplementation(function (this: HTMLElement) {
-      return this.classList.contains('journey-launcher__navigation') ? 140 : 0;
-    });
-    class ImmediateResizeObserver {
-      observe(target: Element) {
-        this.callback([{ target } as ResizeObserverEntry], this as unknown as ResizeObserver);
-      }
-      unobserve() {}
-      disconnect() {}
-      constructor(private readonly callback: ResizeObserverCallback) {}
-    }
-    vi.stubGlobal('ResizeObserver', ImmediateResizeObserver);
+    stubLauncherWidth(140);
 
     render(
       <>
@@ -175,6 +164,8 @@ describe('AppLauncher', () => {
   it('preserves app focus when a resize moves an overflow link into direct navigation', () => {
     let width = 140;
     let resize: ResizeObserverCallback = () => undefined;
+    stubMeasuredAppLinkBox();
+    stubImmediateAnimationFrame();
     vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockImplementation(function (this: HTMLElement) {
       return this.classList.contains('journey-launcher__navigation') ? width : 0;
     });
@@ -467,6 +458,8 @@ function animationOptionsFor(target: Element): Record<string, unknown> | undefin
 }
 
 function stubLauncherWidth(width: number): void {
+  stubMeasuredAppLinkBox();
+  stubImmediateAnimationFrame();
   vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockImplementation(function (this: HTMLElement) {
     return this.classList.contains('journey-launcher__navigation') ? width : 0;
   });
@@ -479,4 +472,45 @@ function stubLauncherWidth(width: number): void {
     constructor(private readonly callback: ResizeObserverCallback) {}
   }
   vi.stubGlobal('ResizeObserver', ImmediateResizeObserver);
+}
+
+function stubMeasuredAppLinkBox(): void {
+  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+    if (!this.classList.contains('journey-launcher__app-link')) {
+      return emptyDomRect();
+    }
+    return {
+      x: 0,
+      y: 0,
+      width: 44,
+      height: 44,
+      top: 0,
+      right: 44,
+      bottom: 44,
+      left: 0,
+      toJSON: () => ({}),
+    } as DOMRect;
+  });
+}
+
+function stubImmediateAnimationFrame(): void {
+  vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+    callback(0);
+    return 1;
+  });
+  vi.stubGlobal('cancelAnimationFrame', vi.fn());
+}
+
+function emptyDomRect(): DOMRect {
+  return {
+    x: 0,
+    y: 0,
+    width: 0,
+    height: 0,
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    toJSON: () => ({}),
+  } as DOMRect;
 }
