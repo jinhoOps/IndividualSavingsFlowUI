@@ -26,6 +26,25 @@
 - 제품 경계를 바꾸면 코드만 고치지 말고 PRD, 승인된 spec 또는 ADR도 갱신한다.
 - 최신 검증 증거 없이 완료를 주장하지 않는다.
 
+## Code Review Rules
+
+### Product boundaries
+
+- Flag changes that let Simulation, Portfolio, or Account Map write Main-owned monthly values. Main owns the five monthly amounts; other apps may read the latest Main slice only through approved boundaries.
+- Flag Account Map changes that add detailed editing, independent product storage, or implicit Main write-back before an approved detailed spec defines that ownership.
+- Flag runtime reuse of legacy code as a supported product path unless an approved spec lists the behavior, data contract, compatibility evidence, and rollback risk.
+
+### Storage and compatibility
+
+- Flag changes to workspace storage, import, export, backup, revision handling, or localStorage keys that lack focused compatibility tests or documented migration/retention reasoning.
+- Flag partial import behavior that can mutate existing workspace data before every slice and reference has passed validation.
+
+### UX, accessibility, and verification
+
+- Flag regressions against `DESIGN.md` for 390px, 768px, desktop overflow, focus order, accessible names, touch targets, or visualization visibility when the changed surface can affect UI.
+- Flag completion claims or handoffs that omit the required verification evidence for the changed surface in the Verification matrix.
+- Keep style-only comments and deterministic formatting/type failures out of AI review findings unless they create a real product, accessibility, security, or compatibility risk.
+
 문서 소유권:
 
 - 제품 범위·요구사항·인수 조건: [Product PRD](docs/ways-of-work/plan/isf-rebuild/connected-financial-planning-workspace/prd.md)
