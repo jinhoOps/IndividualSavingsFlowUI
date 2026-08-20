@@ -294,6 +294,36 @@ async function captureMainBrandIntro(
   const skip = page.getByRole('button', { name: '화면을 눌러 건너뛰기' });
   await expect(intro).toBeVisible();
   await expect(skip).toBeFocused();
+  const skipVisuals = await skip.evaluate((element) => {
+    const styles = getComputedStyle(element);
+    const rect = element.getBoundingClientRect();
+    return {
+      minHeight: styles.minHeight,
+      backgroundColor: styles.backgroundColor,
+      borderTopWidth: styles.borderTopWidth,
+      borderRadius: styles.borderRadius,
+      textAlign: styles.textAlign,
+      width: rect.width,
+      height: rect.height,
+    };
+  });
+  expect(skipVisuals.minHeight).toBe('44px');
+  expect(skipVisuals.backgroundColor).toBe('rgba(0, 0, 0, 0)');
+  expect(skipVisuals.borderTopWidth).toBe('0px');
+  expect(skipVisuals.borderRadius).toBe('0px');
+  expect(skipVisuals.textAlign).toBe('center');
+  expect(skipVisuals.height).toBeGreaterThanOrEqual(44);
+  expect(skipVisuals.width).toBeGreaterThanOrEqual(viewport.width - 32);
+  await skip.evaluate((element) => {
+    element.blur();
+    document.body.tabIndex = -1;
+    document.body.focus();
+    document.body.removeAttribute('tabindex');
+  });
+  await expect(skip).not.toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(skip).toBeFocused();
+  await expect.poll(() => skip.evaluate((element) => getComputedStyle(element).outlineStyle)).not.toBe('none');
   await expect(page.getByRole('navigation', { name: 'ISF 앱' })).toHaveCount(0);
   await expect(page.getByRole('heading', { name: '한 달 돈의 흐름, 2분이면 확인할 수 있어요.' })).toHaveCount(0);
   expect(await page.evaluate(() => (
@@ -802,6 +832,92 @@ test('new user applies the v2 quick setup and refreshes into matching dashboard 
     saving: '30만 원',
     investment: '20만 원',
   });
+});
+
+test('setup motion reaches final state in real time at required viewports', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.addInitScript((workspace) => {
+    if (sessionStorage.getItem('isf-main-real-time-motion-seeded') !== null) return;
+    localStorage.clear();
+    localStorage.setItem('isf-workspace-v1', JSON.stringify({
+      ...workspace,
+      main: {
+        applied: null,
+        setupProgress: {
+          kind: 'initial',
+          step: 'welcome',
+          draft: { ...workspace.main.applied, updatedAt: 0 },
+          savedAt: Date.now(),
+        },
+      },
+    }));
+    sessionStorage.setItem('isf-main-real-time-motion-seeded', 'true');
+  }, appliedWorkspaceV1);
+
+  for (const viewport of mainBrandIntroViewports) {
+    await page.setViewportSize(viewport);
+    await page.goto('apps/main/');
+
+    const next = page.getByRole('button', { name: '다음' });
+    await expect(next).toBeVisible();
+    await expect.poll(() => next.evaluate((element) => (
+      Number(getComputedStyle(element).opacity)
+    ))).toBe(1);
+    await expect.poll(() => next.evaluate((element) => {
+      const transform = getComputedStyle(element).transform;
+      return new DOMMatrixReadOnly(transform === 'none' ? undefined : transform).f;
+    })).toBeCloseTo(0, 3);
+
+    await page.evaluate((workspace) => {
+      localStorage.setItem('isf-workspace-v1', JSON.stringify({
+        ...workspace,
+        main: {
+          applied: null,
+          setupProgress: {
+            kind: 'initial',
+            step: 'review',
+            draft: workspace.main.applied,
+            savedAt: Date.now(),
+          },
+        },
+      }));
+    }, appliedWorkspaceV1);
+    await page.reload();
+
+    await expect.poll(() => page.locator('.setup-flow-surface').evaluate((root) => ({
+      scaleX: new DOMMatrixReadOnly(
+        getComputedStyle(root.querySelector<HTMLElement>('.allocation-bar__visual-track')!).transform,
+      ).a,
+      segmentOpacities: [...root.querySelectorAll<HTMLElement>('.allocation-bar__visual-segment')]
+        .map((element) => Number(getComputedStyle(element).opacity)),
+      contentOpacities: [...root.querySelectorAll<HTMLElement>('[data-assembly-content]')]
+        .map((element) => Number(getComputedStyle(element).opacity)),
+    }))).toEqual({
+      scaleX: 1,
+      segmentOpacities: [1, 1, 1, 1],
+      contentOpacities: [1, 1, 1],
+    });
+    await expect(page.getByRole('button', { name: '계획 적용' })).toBeVisible();
+    await expect(page.getByTestId('allocation-visual-stage')).toHaveClass(/app-wide-visual/);
+    await expect.poll(() => page.evaluate(() => (
+      document.documentElement.scrollWidth <= window.innerWidth
+    ))).toBe(true);
+
+    await page.evaluate((workspace) => {
+      localStorage.setItem('isf-workspace-v1', JSON.stringify({
+        ...workspace,
+        main: {
+          applied: null,
+          setupProgress: {
+            kind: 'initial',
+            step: 'welcome',
+            draft: { ...workspace.main.applied, updatedAt: 0 },
+            savedAt: Date.now(),
+          },
+        },
+      }));
+    }, appliedWorkspaceV1);
+  }
 });
 
 test('review assembly captures timed deficit geometry and reduced motion', async ({ page }, testInfo) => {

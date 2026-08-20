@@ -31,6 +31,23 @@ function Probe({ onSetup }: { onSetup: (reducedMotion: boolean) => void }) {
   return <div ref={root} />;
 }
 
+function CleanupHarness({
+  generation,
+  onSetup,
+  onCleanup,
+}: {
+  generation: number;
+  onSetup(): void;
+  onCleanup(): void;
+}) {
+  const root = useAnimeScope<HTMLDivElement>(() => {
+    onSetup();
+    return onCleanup;
+  }, [generation]);
+
+  return <div ref={root} />;
+}
+
 describe('useAnimeScope', () => {
   it('scopes setup to its root and reverts the scope on unmount', () => {
     const onSetup = vi.fn();
@@ -111,6 +128,26 @@ describe('useAnimeScope', () => {
     expect(onSetup).toHaveBeenCalledWith(true);
   });
 
+  it('cleans up a consumer effect captured before Anime setup fails', () => {
+    const order: string[] = [];
+    anime.scope.add.mockImplementationOnce((callback) => {
+      callback();
+      throw new Error('Anime setup failed after consumer setup');
+    });
+    anime.scope.revert.mockImplementationOnce(() => order.push('revert'));
+    const onCleanup = vi.fn(() => order.push('consumer-cleanup'));
+
+    const { unmount } = render(
+      <CleanupHarness generation={1} onSetup={vi.fn()} onCleanup={onCleanup} />,
+    );
+
+    expect(order.slice(0, 2)).toEqual(['consumer-cleanup', 'revert']);
+
+    unmount();
+
+    expect(onCleanup).toHaveBeenCalledTimes(2);
+  });
+
   it('does not surface a normal scope cleanup failure during unmount', () => {
     anime.scope.revert.mockImplementationOnce(() => {
       throw new Error('scope revert failed');
@@ -119,5 +156,38 @@ describe('useAnimeScope', () => {
 
     expect(() => unmount()).not.toThrow();
     expect(anime.scope.revert).toHaveBeenCalledOnce();
+  });
+
+  it('runs consumer cleanup before scope revert on dependency change and unmount', () => {
+    const order: string[] = [];
+    anime.scope.revert.mockImplementation(() => order.push('revert'));
+    const props = {
+      generation: 1,
+      onSetup: vi.fn(),
+      onCleanup: vi.fn(() => order.push('consumer-cleanup')),
+    };
+    const { rerender, unmount } = render(<CleanupHarness {...props} />);
+
+    rerender(<CleanupHarness {...props} generation={2} />);
+    expect(order.slice(0, 2)).toEqual(['consumer-cleanup', 'revert']);
+
+    unmount();
+
+    expect(props.onCleanup).toHaveBeenCalledTimes(2);
+  });
+
+  it('runs fallback consumer cleanup on unmount when scope construction is unavailable', () => {
+    anime.createScope.mockImplementationOnce(() => {
+      throw new TypeError('window.matchMedia is unavailable');
+    });
+    const onCleanup = vi.fn();
+
+    const { unmount } = render(
+      <CleanupHarness generation={1} onSetup={vi.fn()} onCleanup={onCleanup} />,
+    );
+
+    unmount();
+
+    expect(onCleanup).toHaveBeenCalledOnce();
   });
 });
