@@ -160,6 +160,10 @@ for (const viewport of VIEWPORTS) {
     await expect(livingInput).toBeFocused();
     await livingInput.fill('1100000');
     await page.getByRole('button', { name: '적용' }).click();
+    await expect.poll(async () => (await readMainDonut(page.locator('.cashflow-donut'))).semanticName)
+      .toBe(MAIN_DONUT_AFTER_EDIT.semanticName);
+    await expect.poll(async () => (await readMainDonut(page.locator('.cashflow-donut'))).centerSemantic)
+      .toBe(MAIN_DONUT_AFTER_EDIT.centerSemantic);
     const mainTransitionStart = await readMainDonut(page.locator('.cashflow-donut'));
     expect(mainTransitionStart.semanticName).toBe(MAIN_DONUT_AFTER_EDIT.semanticName);
     expect(mainTransitionStart.centerSemantic).toBe(MAIN_DONUT_AFTER_EDIT.centerSemantic);
