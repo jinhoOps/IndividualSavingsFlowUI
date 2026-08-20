@@ -128,6 +128,26 @@ describe('useAnimeScope', () => {
     expect(onSetup).toHaveBeenCalledWith(true);
   });
 
+  it('cleans up a consumer effect captured before Anime setup fails', () => {
+    const order: string[] = [];
+    anime.scope.add.mockImplementationOnce((callback) => {
+      callback();
+      throw new Error('Anime setup failed after consumer setup');
+    });
+    anime.scope.revert.mockImplementationOnce(() => order.push('revert'));
+    const onCleanup = vi.fn(() => order.push('consumer-cleanup'));
+
+    const { unmount } = render(
+      <CleanupHarness generation={1} onSetup={vi.fn()} onCleanup={onCleanup} />,
+    );
+
+    expect(order.slice(0, 2)).toEqual(['consumer-cleanup', 'revert']);
+
+    unmount();
+
+    expect(onCleanup).toHaveBeenCalledTimes(2);
+  });
+
   it('does not surface a normal scope cleanup failure during unmount', () => {
     anime.scope.revert.mockImplementationOnce(() => {
       throw new Error('scope revert failed');

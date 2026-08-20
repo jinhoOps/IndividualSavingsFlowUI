@@ -47,6 +47,7 @@ export function useAnimeScope<T extends HTMLElement>(
         }
       });
     } catch {
+      if (consumerCleanup !== undefined) attemptMotion(consumerCleanup);
       try {
         scope.revert();
       } catch {
