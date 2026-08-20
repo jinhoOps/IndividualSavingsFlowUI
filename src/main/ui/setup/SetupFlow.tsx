@@ -44,6 +44,25 @@ const stepLabels: Record<SetupStep, string> = {
   review: '확인',
 };
 
+const WELCOME_STAGGER_MS = 40;
+const REVIEW_OFFSET_MS = 80;
+const MAX_REVIEW_SEGMENT_COUNT = 4;
+const WELCOME_MOTION_DEADLINE_MS = MOTION_DURATION.normal
+  + (2 * WELCOME_STAGGER_MS)
+  + MOTION_DURATION.fast;
+const REVIEW_MOTION_DEADLINE_MS = MOTION_DURATION.emphasis
+  + REVIEW_OFFSET_MS
+  + MOTION_DURATION.normal
+  + ((MAX_REVIEW_SEGMENT_COUNT - 1) * WELCOME_STAGGER_MS)
+  + MOTION_DURATION.fast;
+
+interface MotionDeadline {
+  attachCancel(cancel: () => void): void;
+  complete(): void;
+  fail(): void;
+  dispose(): void;
+}
+
 export function SetupFlow({
   draft,
   step,
@@ -96,15 +115,36 @@ export function SetupFlow({
       welcomeElementRef.current = elements[0];
     }
     setRevealInitialStyles(elements);
-    if (!attemptMotion(() => {
-      animate(elements, {
+    if (step !== 'welcome') {
+      if (!attemptMotion(() => {
+        animate(elements, {
+          opacity: [0, 1],
+          y: [MOTION_DISTANCE_PX.reveal, 0],
+          duration: MOTION_DURATION.normal,
+          delay: 0,
+          ease: MOTION_EASE.enter,
+        });
+      })) setRevealFinalStyles(elements);
+      return;
+    }
+
+    const recovery = startMotionDeadline(
+      WELCOME_MOTION_DEADLINE_MS,
+      () => setRevealFinalStyles(elements),
+    );
+    const started = attemptMotion(() => {
+      const animation = animate(elements, {
         opacity: [0, 1],
         y: [MOTION_DISTANCE_PX.reveal, 0],
         duration: MOTION_DURATION.normal,
-        delay: step === 'welcome' ? stagger(40) : 0,
+        delay: stagger(WELCOME_STAGGER_MS),
         ease: MOTION_EASE.enter,
+        onComplete: recovery.complete,
       });
-    })) setRevealFinalStyles(elements);
+      recovery.attachCancel(() => animation.cancel());
+    });
+    if (!started) recovery.fail();
+    return recovery.dispose;
   }, [motionPreset, step]);
   const reviewMotionRef = useAnimeScope<HTMLElement>(({ root, reducedMotion }) => {
     if (step !== 'review') return;
@@ -128,20 +168,31 @@ export function SetupFlow({
     assemblyPlayedRef.current = true;
     assemblyRootRef.current = root;
     setAssemblyInitialStyles(track, segmentElements, contentElements);
-    if (!attemptMotion(() => {
-      createTimeline({ defaults: { ease: MOTION_EASE.enter } })
+    const recovery = startMotionDeadline(
+      REVIEW_MOTION_DEADLINE_MS,
+      () => setAssemblyFinalStyles(track, segmentElements, contentElements),
+    );
+    const started = attemptMotion(() => {
+      const timeline = createTimeline({
+        defaults: { ease: MOTION_EASE.enter },
+        onComplete: recovery.complete,
+      });
+      recovery.attachCancel(() => timeline.cancel());
+      timeline
         .add(track, { scaleX: [0, 1], duration: MOTION_DURATION.emphasis })
         .add(segmentElements, {
           opacity: [0, 1],
           duration: MOTION_DURATION.normal,
-          delay: stagger(40),
+          delay: stagger(WELCOME_STAGGER_MS),
         }, '<+=80')
         .add(contentElements, {
           opacity: [0, 1],
           y: [MOTION_DISTANCE_PX.reveal, 0],
           duration: MOTION_DURATION.normal,
         }, '<');
-    })) setAssemblyFinalStyles(track, segmentElements, contentElements);
+    });
+    if (!started) recovery.fail();
+    return recovery.dispose;
   }, [motionPreset, step]);
 
   useEffect(() => {
@@ -367,6 +418,51 @@ function ReviewStep({
       <AllocationBar data={draft} presentation="assembly" />
     </section>
   );
+}
+
+function startMotionDeadline(
+  timeoutMs: number,
+  applyFinalStyles: () => void,
+): MotionDeadline {
+  let settled = false;
+  let cancelMotion: (() => void) | undefined;
+  let timer: number | undefined = window.setTimeout(() => {
+    timer = undefined;
+    if (settled) return;
+    settled = true;
+    if (cancelMotion !== undefined) attemptMotion(cancelMotion);
+    applyFinalStyles();
+  }, timeoutMs);
+
+  const clear = () => {
+    if (timer === undefined) return;
+    window.clearTimeout(timer);
+    timer = undefined;
+  };
+  const recover = () => {
+    if (settled) return;
+    settled = true;
+    clear();
+    if (cancelMotion !== undefined) attemptMotion(cancelMotion);
+    applyFinalStyles();
+  };
+
+  return {
+    attachCancel(cancel) {
+      cancelMotion = cancel;
+    },
+    complete() {
+      if (settled) return;
+      settled = true;
+      clear();
+    },
+    fail: recover,
+    dispose() {
+      if (settled) return;
+      settled = true;
+      clear();
+    },
+  };
 }
 
 function setRevealFinalStyles(elements: NodeListOf<HTMLElement>): void {

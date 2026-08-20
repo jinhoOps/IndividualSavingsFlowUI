@@ -7,6 +7,9 @@ import { MainErrorBoundary } from '../../../src/main/ui/common/AppErrorBoundary'
 import { SetupFlow, type ValidationIssue } from '../../../src/main/ui/setup/SetupFlow';
 
 const animeMocks = vi.hoisted(() => {
+  const animation = { cancel: vi.fn() };
+  let animateOptions: Record<string, unknown> | undefined;
+  let timelineOptions: { onComplete?: () => void } | undefined;
   const applyFinalStyles = (targets: unknown, parameters: Record<string, unknown>) => {
     const elements = targets instanceof Element
       ? [targets]
@@ -22,14 +25,23 @@ const animeMocks = vi.hoisted(() => {
     }
   };
   const timeline = {
+    cancel: vi.fn(),
     add: vi.fn((targets: unknown, parameters: Record<string, unknown>) => {
       applyFinalStyles(targets, parameters);
       return timeline;
     }),
   };
   return {
-    animate: vi.fn(applyFinalStyles),
-    createTimeline: vi.fn(() => timeline),
+    animation,
+    animate: vi.fn((targets: unknown, parameters: Record<string, unknown>) => {
+      animateOptions = parameters;
+      applyFinalStyles(targets, parameters);
+      return animation;
+    }),
+    createTimeline: vi.fn((options: { onComplete?: () => void }) => {
+      timelineOptions = options;
+      return timeline;
+    }),
     createScope: vi.fn(() => ({
       add: (setup: () => void) => setup(),
       matches: { reducedMotion: false },
@@ -37,6 +49,10 @@ const animeMocks = vi.hoisted(() => {
     })),
     stagger: vi.fn(() => 0),
     timeline,
+    get animateOptions() { return animateOptions; },
+    set animateOptions(value: Record<string, unknown> | undefined) { animateOptions = value; },
+    get timelineOptions() { return timelineOptions; },
+    set timelineOptions(value: { onComplete?: () => void } | undefined) { timelineOptions = value; },
   };
 });
 
@@ -52,6 +68,8 @@ afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
   vi.clearAllMocks();
+  animeMocks.animateOptions = undefined;
+  animeMocks.timelineOptions = undefined;
 });
 
 interface RenderFlowOptions {
@@ -114,6 +132,104 @@ function expectOneFormWithoutLegacyControls() {
 }
 
 describe('SetupFlow', () => {
+  it('restores the welcome action when a created Anime reveal never advances', () => {
+    vi.useFakeTimers();
+    animeMocks.animate.mockImplementationOnce(() => animeMocks.animation);
+
+    renderFlow('welcome');
+
+    const next = screen.getByRole('button', { name: '다음' });
+    expect(next).toHaveStyle({ opacity: '0' });
+    act(() => vi.runOnlyPendingTimers());
+
+    for (const element of document.querySelectorAll<HTMLElement>('[data-welcome-motion]')) {
+      expect(element).toHaveStyle({ opacity: '1', transform: 'translateY(0px)' });
+    }
+    expect(animeMocks.animation.cancel).toHaveBeenCalledOnce();
+  });
+
+  it('does not let a stale welcome deadline overwrite the next step action', () => {
+    vi.useFakeTimers();
+    animeMocks.animate.mockImplementationOnce(() => animeMocks.animation);
+
+    renderFlow('welcome');
+    fireEvent.click(screen.getByRole('button', { name: '다음' }));
+
+    const currentNext = screen.getByRole('button', { name: '다음' });
+    currentNext.style.opacity = '0.37';
+    currentNext.style.transform = 'translateY(99px)';
+    act(() => vi.runOnlyPendingTimers());
+
+    expect(currentNext).toHaveStyle({ opacity: '0.37', transform: 'translateY(99px)' });
+  });
+
+  it('does not finalize detached welcome content after unmount', () => {
+    vi.useFakeTimers();
+    animeMocks.animate.mockImplementationOnce(() => animeMocks.animation);
+
+    const { unmount } = render(
+      <SetupFlow
+        draft={createEmptyMainData()}
+        step="welcome"
+        issues={[]}
+        motionPreset="initial-assembly"
+        onChange={vi.fn()}
+        onStepChange={vi.fn()}
+        onApply={vi.fn()}
+      />,
+    );
+    const welcome = document.querySelector<HTMLElement>('[data-welcome-motion]');
+    expect(welcome).toHaveStyle({ opacity: '0' });
+
+    unmount();
+    act(() => vi.runOnlyPendingTimers());
+
+    expect(welcome).toHaveStyle({ opacity: '0', transform: 'translateY(8px)' });
+  });
+
+  it('restores the review assembly when a created Anime timeline never advances', () => {
+    vi.useFakeTimers();
+    animeMocks.timeline.add
+      .mockImplementationOnce(() => animeMocks.timeline)
+      .mockImplementationOnce(() => animeMocks.timeline)
+      .mockImplementationOnce(() => animeMocks.timeline);
+
+    renderFlow('review', {
+      initialDraft: { ...createEmptyMainData(), monthlyNetIncomeWon: 3_200_000 },
+    });
+
+    expect(document.querySelector('.allocation-bar__visual-track')).toHaveStyle({ transform: 'scaleX(0)' });
+    for (const segment of document.querySelectorAll<HTMLElement>('.allocation-bar__visual-segment')) {
+      expect(segment).toHaveStyle({ opacity: '0' });
+    }
+    for (const content of document.querySelectorAll<HTMLElement>('[data-assembly-content]')) {
+      expect(content).toHaveStyle({ opacity: '0', transform: 'translateY(8px)' });
+    }
+
+    act(() => vi.runOnlyPendingTimers());
+
+    expect(document.querySelector('.allocation-bar__visual-track')).toHaveStyle({ transform: 'scaleX(1)' });
+    for (const segment of document.querySelectorAll<HTMLElement>('.allocation-bar__visual-segment')) {
+      expect(segment).toHaveStyle({ opacity: '1' });
+    }
+    for (const content of document.querySelectorAll<HTMLElement>('[data-assembly-content]')) {
+      expect(content).toHaveStyle({ opacity: '1', transform: 'translateY(0px)' });
+    }
+    expect(animeMocks.timeline.cancel).toHaveBeenCalledOnce();
+  });
+
+  it('leaves the review timeline uncancelled after Anime reports completion', () => {
+    vi.useFakeTimers();
+    renderFlow('review', {
+      initialDraft: { ...createEmptyMainData(), monthlyNetIncomeWon: 3_200_000 },
+    });
+
+    act(() => animeMocks.timelineOptions?.onComplete?.());
+    act(() => vi.runOnlyPendingTimers());
+
+    expect(animeMocks.timeline.cancel).not.toHaveBeenCalled();
+  });
+
   it('keeps the welcome content final when Anime reveal construction fails', () => {
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
     animeMocks.animate.mockImplementationOnce(() => {
