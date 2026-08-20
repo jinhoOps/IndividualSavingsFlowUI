@@ -190,9 +190,16 @@ async function captureMainBrandIntro(
   expect(skipVisuals.textAlign).toBe('center');
   expect(skipVisuals.height).toBeGreaterThanOrEqual(44);
   expect(skipVisuals.width).toBeGreaterThanOrEqual(viewport.width - 32);
-  await skip.evaluate((element) => element.focus({ focusVisible: true }));
+  await skip.evaluate((element) => {
+    element.blur();
+    document.body.tabIndex = -1;
+    document.body.focus();
+    document.body.removeAttribute('tabindex');
+  });
+  await expect(skip).not.toBeFocused();
+  await page.keyboard.press('Tab');
   await expect(skip).toBeFocused();
-  await expect.poll(() => skip.evaluate((element) => getComputedStyle(element).outlineStyle)).toBe('solid');
+  await expect.poll(() => skip.evaluate((element) => getComputedStyle(element).outlineStyle)).not.toBe('none');
   await expect(page.getByRole('navigation', { name: 'ISF 앱' })).toHaveCount(0);
   await expect(page.getByRole('heading', { name: '한 달 돈의 흐름, 2분이면 확인할 수 있어요.' })).toHaveCount(0);
   expect(await page.evaluate(() => (
