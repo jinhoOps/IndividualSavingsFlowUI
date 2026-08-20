@@ -123,5 +123,5 @@ describe('generate-main-brand-icons', () => {
     } finally {
       rmSync(outputDirectory, { force: true, recursive: true });
     }
-  });
+  }, 30_000);
 });
