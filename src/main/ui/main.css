@@ -302,17 +302,18 @@
     inset-inline: 1rem;
     bottom: max(1rem, env(safe-area-inset-bottom));
     min-height: 44px;
-    border: 1px solid rgb(23 58 58 / 28%);
-    border-radius: 9999px;
-    background: rgb(255 255 255 / 78%);
-    color: #173a3a;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: rgb(23 58 58 / 54%);
     font: inherit;
     font-size: 0.875rem;
-    font-weight: 700;
+    font-weight: 600;
+    text-align: center;
   }
 
   .main-welcome-intro__skip:hover {
-    background: #ffffff;
+    background: transparent;
   }
 
   .main-welcome-intro__skip:focus-visible {
