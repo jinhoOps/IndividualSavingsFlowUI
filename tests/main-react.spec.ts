@@ -703,6 +703,92 @@ test('new user applies the v2 quick setup and refreshes into matching dashboard 
   });
 });
 
+test('setup motion reaches final state in real time at required viewports', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.addInitScript((workspace) => {
+    if (sessionStorage.getItem('isf-main-real-time-motion-seeded') !== null) return;
+    localStorage.clear();
+    localStorage.setItem('isf-workspace-v1', JSON.stringify({
+      ...workspace,
+      main: {
+        applied: null,
+        setupProgress: {
+          kind: 'initial',
+          step: 'welcome',
+          draft: { ...workspace.main.applied, updatedAt: 0 },
+          savedAt: Date.now(),
+        },
+      },
+    }));
+    sessionStorage.setItem('isf-main-real-time-motion-seeded', 'true');
+  }, appliedWorkspaceV1);
+
+  for (const viewport of mainBrandIntroViewports) {
+    await page.setViewportSize(viewport);
+    await page.goto('apps/main/');
+
+    const next = page.getByRole('button', { name: '다음' });
+    await expect(next).toBeVisible();
+    await expect.poll(() => next.evaluate((element) => (
+      Number(getComputedStyle(element).opacity)
+    ))).toBe(1);
+    await expect.poll(() => next.evaluate((element) => {
+      const transform = getComputedStyle(element).transform;
+      return new DOMMatrixReadOnly(transform === 'none' ? undefined : transform).f;
+    })).toBeCloseTo(0, 3);
+
+    await page.evaluate((workspace) => {
+      localStorage.setItem('isf-workspace-v1', JSON.stringify({
+        ...workspace,
+        main: {
+          applied: null,
+          setupProgress: {
+            kind: 'initial',
+            step: 'review',
+            draft: workspace.main.applied,
+            savedAt: Date.now(),
+          },
+        },
+      }));
+    }, appliedWorkspaceV1);
+    await page.reload();
+
+    await expect.poll(() => page.locator('.setup-flow-surface').evaluate((root) => ({
+      scaleX: new DOMMatrixReadOnly(
+        getComputedStyle(root.querySelector<HTMLElement>('.allocation-bar__visual-track')!).transform,
+      ).a,
+      segmentOpacities: [...root.querySelectorAll<HTMLElement>('.allocation-bar__visual-segment')]
+        .map((element) => Number(getComputedStyle(element).opacity)),
+      contentOpacities: [...root.querySelectorAll<HTMLElement>('[data-assembly-content]')]
+        .map((element) => Number(getComputedStyle(element).opacity)),
+    }))).toEqual({
+      scaleX: 1,
+      segmentOpacities: [1, 1, 1, 1],
+      contentOpacities: [1, 1, 1],
+    });
+    await expect(page.getByRole('button', { name: '계획 적용' })).toBeVisible();
+    await expect(page.getByTestId('allocation-visual-stage')).toHaveClass(/app-wide-visual/);
+    await expect.poll(() => page.evaluate(() => (
+      document.documentElement.scrollWidth <= window.innerWidth
+    ))).toBe(true);
+
+    await page.evaluate((workspace) => {
+      localStorage.setItem('isf-workspace-v1', JSON.stringify({
+        ...workspace,
+        main: {
+          applied: null,
+          setupProgress: {
+            kind: 'initial',
+            step: 'welcome',
+            draft: { ...workspace.main.applied, updatedAt: 0 },
+            savedAt: Date.now(),
+          },
+        },
+      }));
+    }, appliedWorkspaceV1);
+  }
+});
+
 test('review assembly captures timed deficit geometry and reduced motion', async ({ page }, testInfo) => {
   const viewports = [
     { width: 390, height: 844 },
