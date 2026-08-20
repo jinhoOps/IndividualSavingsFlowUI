@@ -40,6 +40,26 @@ afterEach(() => {
 });
 
 describe('AccountMapApp', () => {
+  it('uses the shared reading-width frame without moving the launcher across Account Map states', () => {
+    const setupRender = render(<AccountMapApp repositories={repositories()} />);
+    const setupFrame = screen.getByRole('heading', { name: '월 자금의 위치를 알려주세요' }).closest('main');
+    expect(setupFrame).toHaveClass('account-map-page', 'app-content-frame');
+    expect(screen.getByTestId('app-shell-launcher')).not.toHaveClass('app-content-frame');
+    setupRender.unmount();
+
+    const mapSetup = mapConnectionRepositories();
+    const mapRender = render(<AccountMapApp repositories={mapSetup.repositories} />);
+    const mapFrame = screen.getByRole('heading', { name: '계좌 연결 지도' }).closest('main');
+    expect(mapFrame).toHaveClass('account-map-page', 'app-content-frame');
+    expect(screen.getByTestId('app-shell-launcher')).not.toHaveClass('app-content-frame');
+    mapRender.unmount();
+
+    render(<AccountMapApp repositories={repositories({ mainStatus: 'empty' })} />);
+    const gateFrame = screen.getByRole('heading', { name: '월 자금 계획이 먼저 필요해요' }).closest('main');
+    expect(gateFrame).toHaveClass('account-map-page', 'app-content-frame');
+    expect(screen.getByTestId('app-shell-launcher')).not.toHaveClass('app-content-frame');
+  });
+
   it('gates setup when Main has no applied plan', () => {
     render(<AccountMapApp repositories={repositories({ mainStatus: 'empty' })} />);
     expect(screen.getByRole('heading', { name: '월 자금 계획이 먼저 필요해요' })).toBeVisible();
