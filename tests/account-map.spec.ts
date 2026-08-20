@@ -1081,6 +1081,9 @@ test('keeps all Account Map states contained with 44px action targets at support
     }
     await page.goto('apps/account-map/');
     const prefix = `${viewport.width}px`;
+    const frame = page.locator('main.account-map-page');
+    await expect(frame).toHaveClass(/app-content-frame/);
+    await expect(page.getByTestId('app-shell-launcher')).not.toHaveClass(/app-content-frame/);
     await expectContainedActionTargets(page, `${prefix} map`);
     const canvasBox = await page.locator('.account-map-canvas').boundingBox();
     expect(canvasBox).not.toBeNull();

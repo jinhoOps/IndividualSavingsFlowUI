@@ -1,10 +1,10 @@
-.account-map-page { width: min(100%, 1120px); margin-inline: auto; padding: 28px 20px 72px; }
+.account-map-page { padding-block: 28px 72px; }
 .account-map-setup { display: grid; gap: 24px; }
 .account-map-setup__header { max-width: 680px; }
 .account-map-setup__header h1, .account-map-message h1, .account-map-placeholder h1 { margin: 4px 0 8px; font-size: clamp(1.75rem, 5vw, 2.5rem); }
 .account-map-setup__header p, .account-map-message p, .account-map-placeholder p { margin: 0; color: var(--muted); line-height: 1.65; }
 .account-map-eyebrow { color: var(--tone-accent) !important; font-size: .875rem; font-weight: 700; }
-.account-map-purpose-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+.account-map-purpose-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); gap: 12px; }
 .account-map-purpose-card { display: flex; min-width: 0; min-height: 210px; flex-direction: column; border: 1px solid var(--line); border-radius: 20px; background: var(--panel); padding: 20px; }
 .account-map-purpose-card__top { display: grid; gap: 16px; }
 .account-map-purpose-card__top p { margin: 0 0 4px; color: var(--muted); font-size: .8rem; }
@@ -123,9 +123,8 @@
 .account-map-location-picker input, .account-map-location-picker select, .account-map-modal__edit input, .account-map-modal__edit select, .account-map-modal__restore-purpose input { width: 100%; min-width: 0; }
 .account-map-location-picker__actions { position: sticky; z-index: 1; bottom: -20px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 0 -1px -20px; background: var(--panel); padding: 12px 1px 20px; }
 
-@media (max-width: 900px) { .account-map-purpose-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 600px) {
-  .account-map-page { padding: 20px 16px 56px; }
+  .account-map-page { padding-block: 20px 56px; }
   .account-map-purpose-grid { grid-template-columns: 1fr; gap: 10px; }
   .account-map-purpose-card { min-height: 0; padding: 16px; }
   .account-map-purpose-card__top { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
