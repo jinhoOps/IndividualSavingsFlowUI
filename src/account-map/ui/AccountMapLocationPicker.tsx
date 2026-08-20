@@ -27,6 +27,7 @@ export function AccountMapLocationPicker({
 }: LocationPickerProps): JSX.Element {
   const [mode, setMode] = useState<'choose' | 'create'>('choose');
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
+  const [locationKind, setLocationKind] = useState<FinancialLocation['kind']>('bank');
   const [institutionId, setInstitutionId] = useState<string | null>(null);
   const [customInstitution, setCustomInstitution] = useState('');
   const [shortName, setShortName] = useState('');
@@ -34,28 +35,40 @@ export function AccountMapLocationPicker({
   const available = locations.filter((location) => location.archivedAt === undefined
     && !linkedLocationIds.has(location.id));
   const knownInstitution = INSTITUTIONS.find(([id]) => id === institutionId);
+  const needsInstitution = locationKind !== 'cash';
+  const usesCustomInstitution = locationKind === 'brokerage' || institutionId === 'custom';
   const preview = useMemo(() => {
     if (mode !== 'create' || shortName.trim() === '') return null;
-    if (knownInstitution === undefined && (institutionId !== 'custom' || customInstitution.trim() === '')) return null;
+    if (needsInstitution && knownInstitution === undefined && (!usesCustomInstitution || customInstitution.trim() === '')) return null;
     const now = Date.now();
     const id = createId();
+    const institution = !needsInstitution
+      ? undefined
+      : knownInstitution === undefined
+        ? {
+            ...(locationKind === 'bank' ? { id: `custom:${id}` } : {}),
+            name: customInstitution.trim(),
+          }
+        : { id: knownInstitution[0], name: knownInstitution[1] };
     return {
       id: `location:${id}`,
       shortName: shortName.trim(),
-      institution: knownInstitution === undefined
-        ? { id: `custom:${id}`, name: customInstitution.trim() }
-        : { id: knownInstitution[0], name: knownInstitution[1] },
-      kind: 'bank' as const,
+      ...(institution === undefined ? {} : { institution }),
+      kind: locationKind,
       roles: [],
       createdAt: now,
       updatedAt: now,
     };
-  }, [customInstitution, institutionId, knownInstitution, mode, shortName]);
+  }, [customInstitution, knownInstitution, locationKind, mode, needsInstitution, shortName, usesCustomInstitution]);
   const duplicate = preview === null ? { kind: 'none' as const } : findLocationDuplicate(locations, preview);
   const amountWon = amount === '' ? undefined : Number(amount);
   const amountValid = !amountRequired || (amountWon !== undefined && Number.isSafeInteger(amountWon) && amountWon > 0);
   const dirty = selectedLocationId !== null || mode === 'create' || amount !== '';
   useEffect(() => onDirtyChange?.(dirty), [dirty, onDirtyChange]);
+  useEffect(() => {
+    setInstitutionId(null);
+    setCustomInstitution('');
+  }, [locationKind]);
 
   function submitExisting(locationId: string): void {
     if (disabled || !amountValid) return;
@@ -75,8 +88,9 @@ export function AccountMapLocationPicker({
         ><strong>{location.shortName}</strong><span>{location.institution?.name ?? '기관 없음'}</span></button>)}</div>}
       <button type="button" className="account-map-new-location" disabled={disabled} onClick={() => { setMode('create'); setSelectedLocationId(null); }}><span aria-hidden="true">＋</span><strong>새 계좌·보관처 추가</strong></button>
     </> : <>
-      <fieldset><legend>기관 빠른 선택</legend><div className="account-map-institutions">{INSTITUTIONS.map(([id, name]) => <button key={id} type="button" className={institutionId === id ? 'is-selected' : ''} disabled={disabled} onClick={() => setInstitutionId(id)}>{name}</button>)}<button type="button" className={institutionId === 'custom' ? 'is-selected' : ''} disabled={disabled} onClick={() => setInstitutionId('custom')}>직접 입력</button></div></fieldset>
-      {institutionId === 'custom' ? <label>기관 이름<input value={customInstitution} disabled={disabled} onChange={(event) => setCustomInstitution(event.target.value)} /></label> : null}
+      <fieldset><legend>위치 종류</legend><div className="account-map-institutions">{LOCATION_KINDS.map(([kind, label]) => <button key={kind} type="button" className={locationKind === kind ? 'is-selected' : ''} aria-pressed={locationKind === kind} disabled={disabled} onClick={() => setLocationKind(kind)}>{label}</button>)}</div></fieldset>
+      {locationKind === 'bank' ? <fieldset><legend>기관 빠른 선택</legend><div className="account-map-institutions">{INSTITUTIONS.map(([id, name]) => <button key={id} type="button" className={institutionId === id ? 'is-selected' : ''} disabled={disabled} onClick={() => setInstitutionId(id)}>{name}</button>)}<button type="button" className={institutionId === 'custom' ? 'is-selected' : ''} disabled={disabled} onClick={() => setInstitutionId('custom')}>직접 입력</button></div></fieldset> : null}
+      {usesCustomInstitution ? <label>기관 이름<input value={customInstitution} disabled={disabled} onChange={(event) => setCustomInstitution(event.target.value)} /></label> : null}
       <label>표시 이름<input value={shortName} disabled={disabled} maxLength={8} placeholder="예: 급여통장" onChange={(event) => setShortName(event.target.value)} /></label>
       {duplicate.kind === 'none' ? null : <div className="account-map-duplicate"><p>{duplicate.kind === 'archived' ? '보관된 같은 항목이 있어요.' : '이미 같은 항목이 있어요.'}</p><button type="button" className="ui-button ui-button--secondary" disabled={disabled || !amountValid} onClick={() => submitExisting(duplicate.location.id)}>{duplicate.kind === 'archived' ? '기존 항목 복원해서 연결' : '기존 항목 연결'}</button></div>}
     </>}
@@ -93,3 +107,9 @@ export function AccountMapLocationPicker({
 function createId(): string {
   return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
+
+const LOCATION_KINDS = [
+  ['bank', '은행'],
+  ['brokerage', '증권'],
+  ['cash', '현금'],
+] as const satisfies ReadonlyArray<readonly [FinancialLocation['kind'], string]>;

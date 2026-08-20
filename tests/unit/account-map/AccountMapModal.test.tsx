@@ -130,6 +130,43 @@ describe('AccountMapModal', () => {
     expect(screen.getByRole('textbox', { name: '기관 이름' })).toBeVisible();
   });
 
+  it('creates a brokerage location from direct institution input in connect mode', () => {
+    const onCreateAndConnectLocation = vi.fn(() => true);
+    renderModal({ related: [], onCreateAndConnectLocation });
+    fireEvent.click(screen.getByRole('button', { name: '편집' }));
+    fireEvent.click(screen.getByRole('button', { name: '연결 추가' }));
+    fireEvent.click(screen.getByRole('button', { name: '새 계좌·보관처 추가' }));
+
+    fireEvent.click(screen.getByRole('button', { name: '증권' }));
+    fireEvent.change(screen.getByRole('textbox', { name: '기관 이름' }), { target: { value: '미래증권' } });
+    fireEvent.change(screen.getByRole('textbox', { name: '표시 이름' }), { target: { value: 'ISA' } });
+    fireEvent.click(screen.getByRole('button', { name: '완료' }));
+
+    expect(onCreateAndConnectLocation).toHaveBeenCalledWith(expect.objectContaining({
+      shortName: 'ISA',
+      institution: { name: '미래증권' },
+      kind: 'brokerage',
+    }), undefined);
+  });
+
+  it('creates a cash location without institution in connect mode', () => {
+    const onCreateAndConnectLocation = vi.fn(() => true);
+    renderModal({ related: [], onCreateAndConnectLocation });
+    fireEvent.click(screen.getByRole('button', { name: '편집' }));
+    fireEvent.click(screen.getByRole('button', { name: '연결 추가' }));
+    fireEvent.click(screen.getByRole('button', { name: '새 계좌·보관처 추가' }));
+
+    fireEvent.click(screen.getByRole('button', { name: '현금' }));
+    fireEvent.change(screen.getByRole('textbox', { name: '표시 이름' }), { target: { value: '금현물' } });
+    fireEvent.click(screen.getByRole('button', { name: '완료' }));
+
+    expect(onCreateAndConnectLocation).toHaveBeenCalledWith(expect.objectContaining({
+      shortName: '금현물',
+      kind: 'cash',
+    }), undefined);
+    expect(onCreateAndConnectLocation.mock.calls[0]?.[0]).not.toHaveProperty('institution');
+  });
+
   it('keeps read and edit in the same modal', () => {
     renderModal();
     const dialog = screen.getByRole('dialog', { name: '생활비 상세' });

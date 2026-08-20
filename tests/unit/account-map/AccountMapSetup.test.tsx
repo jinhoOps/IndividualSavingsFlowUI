@@ -64,6 +64,49 @@ describe('AccountMapSetup', () => {
     expect(screen.getByRole('button', { name: '기존 항목 복원해서 연결' })).toBeVisible();
   });
 
+  it('creates a brokerage location from setup connection', async () => {
+    const setup = fixture();
+    render(<AccountMapApp repositories={setup.repositories} />);
+    const incomeCard = screen.getByRole('heading', { name: '수입' }).closest('article')!;
+    fireEvent.click(within(incomeCard).getByRole('button', { name: '연결' }));
+    const dialog = screen.getByRole('dialog', { name: '수입 연결' });
+    fireEvent.click(within(dialog).getByRole('button', { name: '새 계좌·보관처 추가' }));
+
+    fireEvent.click(within(dialog).getByRole('button', { name: '증권' }));
+    fireEvent.change(within(dialog).getByRole('textbox', { name: '기관 이름' }), { target: { value: '미래증권' } });
+    fireEvent.change(within(dialog).getByRole('textbox', { name: '표시 이름' }), { target: { value: 'ISA' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: '완료' }));
+
+    await waitFor(() => expect(setup.current().locations).toEqual([expect.objectContaining({
+      shortName: 'ISA',
+      institution: { name: '미래증권' },
+      kind: 'brokerage',
+      roles: ['income'],
+    })]));
+    expect(setup.current().accountMap.draft?.links[0]?.locationId).toMatch(/^location:/u);
+  });
+
+  it('creates a cash location without institution from setup connection', async () => {
+    const setup = fixture();
+    render(<AccountMapApp repositories={setup.repositories} />);
+    const incomeCard = screen.getByRole('heading', { name: '수입' }).closest('article')!;
+    fireEvent.click(within(incomeCard).getByRole('button', { name: '연결' }));
+    const dialog = screen.getByRole('dialog', { name: '수입 연결' });
+    fireEvent.click(within(dialog).getByRole('button', { name: '새 계좌·보관처 추가' }));
+
+    fireEvent.click(within(dialog).getByRole('button', { name: '현금' }));
+    expect(within(dialog).queryByRole('textbox', { name: '기관 이름' })).not.toBeInTheDocument();
+    fireEvent.change(within(dialog).getByRole('textbox', { name: '표시 이름' }), { target: { value: '금현물' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: '완료' }));
+
+    await waitFor(() => expect(setup.current().locations).toEqual([expect.objectContaining({
+      shortName: '금현물',
+      kind: 'cash',
+      roles: ['income'],
+    })]));
+    expect(setup.current().locations[0]).not.toHaveProperty('institution');
+  });
+
   it('shows a saved custom purpose as a connectable card and persists review step', async () => {
     const setup = fixture();
     render(<AccountMapApp repositories={setup.repositories} />);
