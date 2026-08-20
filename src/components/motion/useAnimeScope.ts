@@ -7,8 +7,10 @@ export interface MotionContext<T extends HTMLElement> {
   reducedMotion: boolean;
 }
 
+export type MotionCleanup = () => void;
+
 export function useAnimeScope<T extends HTMLElement>(
-  setup: (context: MotionContext<T>) => void,
+  setup: (context: MotionContext<T>) => void | MotionCleanup,
   dependencies: DependencyList,
 ): RefObject<T | null> {
   const rootRef = useRef<T>(null);
@@ -17,6 +19,7 @@ export function useAnimeScope<T extends HTMLElement>(
     const root = rootRef.current;
     if (root === null) return undefined;
 
+    let consumerCleanup: MotionCleanup | undefined;
     let scope: ReturnType<typeof createScope>;
     try {
       scope = createScope({
@@ -24,8 +27,10 @@ export function useAnimeScope<T extends HTMLElement>(
         mediaQueries: { reducedMotion: '(prefers-reduced-motion: reduce)' },
       });
     } catch {
-      setup({ root, reducedMotion: true });
-      return undefined;
+      const fallbackCleanup = setup({ root, reducedMotion: true });
+      return typeof fallbackCleanup === 'function'
+        ? () => { attemptMotion(fallbackCleanup); }
+        : undefined;
     }
     let consumerFailed = false;
     let consumerError: unknown;
@@ -33,7 +38,8 @@ export function useAnimeScope<T extends HTMLElement>(
     try {
       scope.add(() => {
         try {
-          setup({ root, reducedMotion: scope.matches.reducedMotion === true });
+          const result = setup({ root, reducedMotion: scope.matches.reducedMotion === true });
+          if (typeof result === 'function') consumerCleanup = result;
         } catch (error) {
           consumerFailed = true;
           consumerError = error;
@@ -47,11 +53,14 @@ export function useAnimeScope<T extends HTMLElement>(
         // A partial Anime scope must not mask the consumer error or block final-state fallback.
       }
       if (consumerFailed) throw consumerError;
-      setup({ root, reducedMotion: true });
-      return undefined;
+      const fallbackCleanup = setup({ root, reducedMotion: true });
+      return typeof fallbackCleanup === 'function'
+        ? () => { attemptMotion(fallbackCleanup); }
+        : undefined;
     }
 
     return () => {
+      if (consumerCleanup !== undefined) attemptMotion(consumerCleanup);
       attemptMotion(() => scope.revert());
     };
     // The caller explicitly controls when its scoped setup is recreated.
