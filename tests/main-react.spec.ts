@@ -439,6 +439,19 @@ async function pressTab(page: Page, count: number) {
   }
 }
 
+async function expectSetupActionVisuallyReady(page: Page, name: string) {
+  const action = page.getByRole('button', { name });
+  await expect(action).toBeVisible();
+  await expect.poll(() => action.evaluate((element) => {
+    const style = getComputedStyle(element);
+    const matrix = new DOMMatrixReadOnly(style.transform === 'none' ? undefined : style.transform);
+    return {
+      opacity: Number(style.opacity),
+      translateY: Math.round(matrix.f * 1000) / 1000,
+    };
+  })).toEqual({ opacity: 1, translateY: 0 });
+}
+
 async function expectDashboardSummary(page: Page, amounts: {
   consumption: string;
   remaining: string;
@@ -447,6 +460,7 @@ async function expectDashboardSummary(page: Page, amounts: {
 }) {
   const summary = page.getByRole('region', { name: '월 자금 구성 요약' });
   await expect(summary).toBeVisible();
+  await page.mouse.move(0, 0);
   await expect(summary.locator('.cashflow-donut__center strong > [aria-hidden="true"]')).toHaveText('15.6%');
   await expect(summary.getByText('저축·투자', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: '월 실수령액 편집' })).toHaveCount(0);
@@ -918,6 +932,41 @@ test('setup motion reaches final state in real time at required viewports', asyn
       }));
     }, appliedWorkspaceV1);
   }
+});
+
+test('setup action stays visible after welcome motion hands off to later steps', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await clearBrowserStorage(page);
+  await page.goto('apps/main/');
+
+  await page.getByRole('button', { name: '화면을 눌러 건너뛰기' }).dispatchEvent('click');
+  await expect(page.getByRole('heading', { name: '한 달 돈의 흐름, 2분이면 확인할 수 있어요.' })).toBeVisible();
+
+  await page.getByRole('button', { name: '다음' }).click();
+  await page.waitForTimeout(600);
+  await expectSetupActionVisuallyReady(page, '다음');
+
+  await page.getByLabel('월 실수령액').fill('3200000');
+  await page.getByRole('button', { name: '다음' }).click();
+  await page.getByLabel('월 주거 고정비').fill('800000');
+  await page.getByRole('button', { name: '다음' }).click();
+  await page.getByLabel('월평균 생활비').fill('1000000');
+  await page.getByRole('button', { name: '다음' }).click();
+  await page.getByLabel('월 저축액').fill('300000');
+  await page.getByLabel('월 투자액').fill('200000');
+  await page.getByRole('button', { name: '다음' }).click();
+
+  await expect.poll(() => page.locator('.setup-flow-surface').evaluate((root) => ({
+    trackScaleX: new DOMMatrixReadOnly(
+      getComputedStyle(root.querySelector<HTMLElement>('.allocation-bar__visual-track')!).transform,
+    ).a,
+    contentOpacities: [...root.querySelectorAll<HTMLElement>('[data-assembly-content]')]
+      .map((element) => Number(getComputedStyle(element).opacity)),
+  }))).toEqual({
+    trackScaleX: 1,
+    contentOpacities: [1, 1, 1],
+  });
+  await expectSetupActionVisuallyReady(page, '계획 적용');
 });
 
 test('review assembly captures timed deficit geometry and reduced motion', async ({ page }, testInfo) => {

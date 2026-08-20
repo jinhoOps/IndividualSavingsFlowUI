@@ -289,7 +289,6 @@ export function SetupFlow({
             ) : null}
             <Button
               className="px-6 py-3 shadow-lg shadow-primary/10"
-              data-welcome-motion={step === 'welcome' ? '' : undefined}
               type="submit"
               variant="primary"
             >

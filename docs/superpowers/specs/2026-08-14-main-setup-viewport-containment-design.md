@@ -8,7 +8,7 @@
 
 웰컴 인트로의 `화면을 눌러 건너뛰기`는 실제 44px 접근성 control이어야 하지만, 평상시에는 pill 버튼처럼 보일 필요가 없다. 같은 hit area·safe area·keyboard 동작을 유지하면서 텍스트만 보이는 낮은 시각 우선순위로 바꾼다.
 
-기존 setup의 1/6 `다음`과 6/6 돈 조립 막대는 Anime reveal이 시작되기 전 각각 투명·`scaleX(0)` 상태로 설정된다. 현재는 animation 생성의 동기 실패만 처리하고, 생성 뒤 timeline이 진행되지 않는 경우 final state로 복구하지 않는다. 이 경우 사용자는 1/6에서 진행 action을, 6/6에서 실제 돈 조립 막대를 보지 못하고 상단 초록 progress strip만 보게 된다.
+기존 setup의 1/6 welcome content와 6/6 돈 조립 막대는 Anime reveal이 시작되기 전 각각 투명·`scaleX(0)` 상태로 설정된다. 현재는 animation 생성의 동기 실패만 처리하고, 생성 뒤 timeline이 진행되지 않는 경우 final state로 복구하지 않는다. 이 경우 사용자는 1/6에서 본문 reveal을, 6/6에서 실제 돈 조립 막대를 보지 못하고 상단 초록 progress strip만 보게 된다.
 
 ## 2. 범위와 비범위
 
@@ -35,8 +35,8 @@
 
 ### Setup motion recovery
 
-- normal motion에서 기존 welcome reveal과 review assembly timing·순서를 유지한다.
-- 1/6 welcome reveal의 제목·설명·`다음`과 6/6 assembly의 heading·segment·돈 조립 막대는 각 animation의 최대 예정 시간 뒤에도 final state에 도달하지 못하면 final styles로 복구한다.
+- normal motion에서 기존 welcome reveal과 review assembly timing·순서를 유지하되, setup 진행 action은 reveal 대상에서 제외해 빠른 단계 전환 중에도 항상 시각적으로 보인다.
+- 1/6 welcome reveal의 제목·설명과 6/6 assembly의 heading·segment·돈 조립 막대는 각 animation의 최대 예정 시간 뒤에도 final state에 도달하지 못하면 final styles로 복구한다.
 - fallback deadline은 motion scope lifecycle 안에서만 존재하며, normal completion·skip·step change·unmount에서 취소한다. stale timer가 다른 step에 style을 적용해서는 안 된다.
 - `prefers-reduced-motion`과 Anime scope/timeline의 동기 생성 실패는 기존처럼 즉시 final state를 사용한다.
 - 상단 초록 progress strip, FlowContextSummary의 actual-overflow/edge-clipping, 6/6 `AllocationBar`의 `app-wide-visual` wide exception은 동작·geometry를 바꾸지 않는다.
@@ -50,8 +50,8 @@
 ## 5. 검증과 인수 조건
 
 - unit: skip control은 button semantics, 44px hit area, initial focus와 모든 skip input을 유지하고 기본 visual token은 transparent/text-only, focus-visible outline만 제공한다.
-- unit: timeline 생성은 성공하지만 completion/animation tick이 오지 않는 fixture에서 welcome `다음`과 review track·segments·content가 deadline 뒤 final styles가 된다. step change와 unmount 뒤 stale deadline은 적용되지 않는다.
-- browser: normal real-time 1/6과 filled-data 6/6에서 예정 시간 뒤 `다음`, assembly track, segments와 content가 final state인지 확인한다. 가상 clock만으로 이 계약을 증명하지 않는다.
+- unit: timeline 생성은 성공하지만 completion/animation tick이 오지 않는 fixture에서 welcome action은 즉시 visible state를 유지하고 review track·segments·content가 deadline 뒤 final styles가 된다. step change와 unmount 뒤 stale deadline은 적용되지 않는다.
+- browser: normal real-time 1/6과 filled-data 6/6에서 예정 시간 뒤 action, assembly track, segments와 content가 final state인지 확인한다. 가상 clock만으로 이 계약을 증명하지 않는다.
 - regression: existing review `app-wide-visual`, actual-overflow/large-deficit clipping, Main intro fresh/restart/reduced motion, keyboard-only setup, focused SetupFlow tests와 type check가 통과한다.
 
 ## 6. 위험과 완화

@@ -132,14 +132,16 @@ function expectOneFormWithoutLegacyControls() {
 }
 
 describe('SetupFlow', () => {
-  it('restores the welcome action when a created Anime reveal never advances', () => {
+  it('keeps the welcome action visible when a created Anime reveal never advances', () => {
     vi.useFakeTimers();
     animeMocks.animate.mockImplementationOnce(() => animeMocks.animation);
 
     renderFlow('welcome');
 
     const next = screen.getByRole('button', { name: '다음' });
-    expect(next).toHaveStyle({ opacity: '0' });
+    expect(next).not.toHaveAttribute('data-welcome-motion');
+    expect(next.style.opacity).toBe('');
+    expect(next.style.transform).toBe('');
     act(() => vi.runOnlyPendingTimers());
 
     for (const element of document.querySelectorAll<HTMLElement>('[data-welcome-motion]')) {
