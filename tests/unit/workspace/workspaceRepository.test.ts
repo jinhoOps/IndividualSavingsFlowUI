@@ -410,6 +410,7 @@ describe('BrowserWorkspaceRepository', () => {
         },
       },
       needsMigration: true,
+      simulationMigration: 'schema-upgraded',
     });
     if (loaded.status !== 'found') throw new Error('expected found workspace');
 

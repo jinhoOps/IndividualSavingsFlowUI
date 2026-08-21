@@ -45,7 +45,9 @@ export class BrowserSimulationRepository implements SimulationRepository {
       : {
           status: 'found',
           draft: structuredClone(draft),
-          migration: loaded.needsMigration ? 'schema-upgraded' : null,
+          migration: loaded.status === 'found'
+            ? (loaded.simulationMigration ?? (loaded.needsMigration ? 'schema-upgraded' : null))
+            : null,
         };
   }
 

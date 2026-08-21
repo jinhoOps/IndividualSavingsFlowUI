@@ -8,6 +8,8 @@ import {
   type PurposeLocationLink,
 } from '../../account-map/domain/model';
 import { mainPurposeReferences } from '../../account-map/domain/reconciliation';
+import type { SimulationDraftMigration } from '../../simulation/domain/model';
+import { parseStoredSimulationDraft } from '../../simulation/domain/validation';
 import {
   parseConsumerInstrument,
   parseMonthlyFlow,
@@ -20,8 +22,16 @@ import type { WorkspaceDocumentV1, WorkspaceDocumentV2 } from './model';
 import { parseWorkspaceDocumentV1 } from './validation';
 
 export type VersionedWorkspaceParse =
-  | { version: 1; workspace: WorkspaceDocumentV1; simulationMigrated: boolean }
-  | { version: 2; workspace: WorkspaceDocumentV2; simulationMigrated: boolean };
+  | {
+    version: 1;
+    workspace: WorkspaceDocumentV1;
+    simulationMigration: SimulationDraftMigration | null;
+  }
+  | {
+    version: 2;
+    workspace: WorkspaceDocumentV2;
+    simulationMigration: SimulationDraftMigration | null;
+  };
 
 const maximumTimestamp = 8_640_000_000_000_000;
 const systemPurposeIds = new Set<string>(SYSTEM_PURPOSE_IDS);
@@ -71,7 +81,7 @@ export function parseWorkspaceDocumentVersioned(value: unknown): VersionedWorksp
 
 function parseLegacyWorkspace(value: Record<string, unknown>): {
   workspace: WorkspaceDocumentV1;
-  simulationMigrated: boolean;
+  simulationMigration: SimulationDraftMigration | null;
 } | null {
   if (!hasExactKeys(value, [
     'schemaVersion', 'revision', 'updatedAt', 'main', 'simulation',
@@ -97,13 +107,13 @@ function parseLegacyWorkspace(value: Record<string, unknown>): {
       simulation: shared.simulation,
       accountMap: { applied: null, draft: null, instruments, flows },
     },
-    simulationMigrated: simulationNeedsMigration(value.simulation),
+    simulationMigration: parseSimulationMigration(value.simulation),
   };
 }
 
 function parseCurrentWorkspace(value: Record<string, unknown>): {
   workspace: WorkspaceDocumentV2;
-  simulationMigrated: boolean;
+  simulationMigration: SimulationDraftMigration | null;
 } | null {
   if (!hasExactKeys(value, [
     'schemaVersion', 'revision', 'updatedAt', 'main', 'simulation',
@@ -148,15 +158,13 @@ function parseCurrentWorkspace(value: Record<string, unknown>): {
       locations: preserved.locations,
       accountMap: { applied, draft, legacyPhaseA: { instruments, flows } },
     },
-    simulationMigrated: simulationNeedsMigration(value.simulation),
+    simulationMigration: parseSimulationMigration(value.simulation),
   };
 }
 
-function simulationNeedsMigration(value: unknown): boolean {
-  return isRecord(value)
-    && value.draft !== null
-    && isRecord(value.draft)
-    && value.draft.schemaVersion !== 3;
+function parseSimulationMigration(value: unknown): SimulationDraftMigration | null {
+  if (!isRecord(value) || value.draft === null) return null;
+  return parseStoredSimulationDraft(value.draft)?.migration ?? null;
 }
 
 function parseApplied(

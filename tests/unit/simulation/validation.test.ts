@@ -88,6 +88,14 @@ describe('Simulation draft validation', () => {
     expect(parseSimulationDraft({ ...draft, strategies: [] })).toBeNull();
   });
 
+  it('rejects a draft with a symbol own key without throwing', () => {
+    const draft = createDefaultSimulationDraft(source, 456);
+    const candidate = { ...draft, [Symbol('extra')]: true };
+
+    expect(() => parseSimulationDraft(candidate)).not.toThrow();
+    expect(parseSimulationDraft(candidate)).toBeNull();
+  });
+
   it('rejects percentages with more than two decimal places', () => {
     const draft = createDefaultSimulationDraft(source, 456);
     expect(parseSimulationDraft({

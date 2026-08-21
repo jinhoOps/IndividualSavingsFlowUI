@@ -143,10 +143,12 @@ function hasExactKeys<const Keys extends readonly string[]>(
   keys: Keys,
 ): value is Record<Keys[number], unknown> {
   if (!isRecord(value)) return false;
-  const actualKeys = Reflect.ownKeys(value).sort();
+  const actualKeys = Reflect.ownKeys(value);
+  if (actualKeys.some((key) => typeof key !== 'string')) return false;
+  actualKeys.sort();
   const expectedKeys = [...keys].sort();
   return actualKeys.length === expectedKeys.length
-    && actualKeys.every((key, index) => typeof key === 'string' && key === expectedKeys[index]);
+    && actualKeys.every((key, index) => key === expectedKeys[index]);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
