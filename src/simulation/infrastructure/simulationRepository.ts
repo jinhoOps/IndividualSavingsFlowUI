@@ -42,7 +42,11 @@ export class BrowserSimulationRepository implements SimulationRepository {
     this.draftBase = cloneDraft(draft);
     return draft === null
       ? { status: 'empty' }
-      : { status: 'found', draft: structuredClone(draft), migration: null };
+      : {
+          status: 'found',
+          draft: structuredClone(draft),
+          migration: loaded.needsMigration ? 'schema-upgraded' : null,
+        };
   }
 
   async save(draft: CompoundSimulationDraft): Promise<SimulationSaveResult> {

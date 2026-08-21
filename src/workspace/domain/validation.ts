@@ -4,7 +4,7 @@ import type { SetupProgress, SetupProgressKind } from '../../main/infrastructure
 import { scopeKey, type PortfolioDraft, type PortfolioPlan } from '../../portfolio/domain/model';
 import { parsePortfolioDraft, parsePortfolioPlan } from '../../portfolio/domain/validation';
 import type { CompoundSimulationDraft } from '../../simulation/domain/model';
-import { parseSimulationDraft } from '../../simulation/domain/validation';
+import { parseStoredSimulationDraft } from '../../simulation/domain/validation';
 import {
   institutionComparisonKey,
   normalizeInstitutionText,
@@ -154,8 +154,8 @@ function parseSimulationSlice(value: unknown): WorkspaceDocumentV1['simulation']
   if (!hasOnlyStringOwnKeys(value.draft)
     || !isRecord(value.draft)
     || !hasOnlyStringOwnKeys(value.draft.source)) return null;
-  const draft = parseSimulationDraft(value.draft);
-  return draft === null ? null : { draft };
+  const parsed = parseStoredSimulationDraft(value.draft);
+  return parsed === null ? null : { draft: parsed.draft };
 }
 
 function parsePortfolioSlice(value: unknown): WorkspaceDocumentV1['portfolio'] | null {

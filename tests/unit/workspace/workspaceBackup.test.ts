@@ -59,13 +59,14 @@ function completeWorkspace(overrides: Partial<WorkspaceDocument> = {}): Workspac
     },
     simulation: {
       draft: {
-        schemaVersion: 2,
+        schemaVersion: 3,
         source: {
           monthlySavingsWon: 700_000,
           monthlyInvestmentWon: 600_000,
           mainUpdatedAt: 100,
         },
         initialInvestmentWon: 10_000_000,
+        targetAmountWon: 100_000_000,
         years: 20,
         expectedAnnualReturnPercent: 8,
         baseRatePercent: 2.5,

@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   createDefaultSimulationDraft,
   parseSimulationDraft,
+  parseStoredSimulationDraft,
+  targetForInitialInvestment,
 } from '../../../src/simulation/domain/validation';
 
 const source = {
@@ -11,11 +13,19 @@ const source = {
 };
 
 describe('Simulation draft validation', () => {
+  it('selects the automatic target at each initial-investment boundary', () => {
+    expect(targetForInitialInvestment(79_999_999)).toBe(100_000_000);
+    expect(targetForInitialInvestment(80_000_000)).toBe(200_000_000);
+    expect(targetForInitialInvestment(199_999_999)).toBe(200_000_000);
+    expect(targetForInitialInvestment(200_000_000)).toBeNull();
+  });
+
   it('creates the approved first-run defaults', () => {
     expect(createDefaultSimulationDraft(source, 456)).toEqual({
-      schemaVersion: 2,
+      schemaVersion: 3,
       source,
       initialInvestmentWon: 0,
+      targetAmountWon: 100_000_000,
       years: 20,
       expectedAnnualReturnPercent: 9,
       baseRatePercent: 2.75,
@@ -28,6 +38,40 @@ describe('Simulation draft validation', () => {
   it('accepts a complete valid draft', () => {
     const draft = createDefaultSimulationDraft(source, 456);
     expect(parseSimulationDraft(draft)).toEqual(draft);
+  });
+
+  it('upgrades v2 drafts with their required target while preserving their validated fields', () => {
+    const v3Draft = {
+      ...createDefaultSimulationDraft(source, 456),
+      targetAmountWon: 100_000_000,
+    };
+    const { targetAmountWon: _targetAmountWon, ...v2Draft } = v3Draft;
+
+    expect(parseStoredSimulationDraft({ ...v2Draft, schemaVersion: 2 })).toEqual({
+      draft: v3Draft,
+      migration: 'schema-upgraded',
+    });
+    expect(parseStoredSimulationDraft({
+      ...v2Draft,
+      schemaVersion: 2,
+      initialInvestmentWon: 200_000_000,
+    })).toEqual({
+      draft: {
+        ...v3Draft,
+        initialInvestmentWon: 200_000_000,
+        targetAmountWon: null,
+      },
+      migration: 'schema-upgraded',
+    });
+  });
+
+  it('rejects a current target that is not greater than the initial investment', () => {
+    const draft = createDefaultSimulationDraft(source, 456);
+
+    expect(parseSimulationDraft({
+      ...draft,
+      targetAmountWon: draft.initialInvestmentWon,
+    })).toBeNull();
   });
 
   it('accepts 0 through 30 years and rejects values outside the current range', () => {

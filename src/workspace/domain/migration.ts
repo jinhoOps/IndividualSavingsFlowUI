@@ -20,8 +20,8 @@ import type { WorkspaceDocumentV1, WorkspaceDocumentV2 } from './model';
 import { parseWorkspaceDocumentV1 } from './validation';
 
 export type VersionedWorkspaceParse =
-  | { version: 1; workspace: WorkspaceDocumentV1 }
-  | { version: 2; workspace: WorkspaceDocumentV2 };
+  | { version: 1; workspace: WorkspaceDocumentV1; simulationMigrated: boolean }
+  | { version: 2; workspace: WorkspaceDocumentV2; simulationMigrated: boolean };
 
 const maximumTimestamp = 8_640_000_000_000_000;
 const systemPurposeIds = new Set<string>(SYSTEM_PURPOSE_IDS);
@@ -59,17 +59,20 @@ export function migrateWorkspaceV1(
 export function parseWorkspaceDocumentVersioned(value: unknown): VersionedWorkspaceParse | null {
   if (!isRecord(value)) return null;
   if (value.schemaVersion === 1) {
-    const workspace = parseLegacyWorkspace(value);
-    return workspace === null ? null : { version: 1, workspace };
+    const parsed = parseLegacyWorkspace(value);
+    return parsed === null ? null : { version: 1, ...parsed };
   }
   if (value.schemaVersion === 2) {
-    const workspace = parseCurrentWorkspace(value);
-    return workspace === null ? null : { version: 2, workspace };
+    const parsed = parseCurrentWorkspace(value);
+    return parsed === null ? null : { version: 2, ...parsed };
   }
   return null;
 }
 
-function parseLegacyWorkspace(value: Record<string, unknown>): WorkspaceDocumentV1 | null {
+function parseLegacyWorkspace(value: Record<string, unknown>): {
+  workspace: WorkspaceDocumentV1;
+  simulationMigrated: boolean;
+} | null {
   if (!hasExactKeys(value, [
     'schemaVersion', 'revision', 'updatedAt', 'main', 'simulation',
     'portfolio', 'locations', 'accountMap',
@@ -88,10 +91,20 @@ function parseLegacyWorkspace(value: Record<string, unknown>): WorkspaceDocument
   });
   if (shared === null || !validLegacyReferences(instruments, flows, shared.locations)) return null;
   const preserved = structuredClone(value) as unknown as WorkspaceDocumentV1;
-  return { ...preserved, accountMap: { applied: null, draft: null, instruments, flows } };
+  return {
+    workspace: {
+      ...preserved,
+      simulation: shared.simulation,
+      accountMap: { applied: null, draft: null, instruments, flows },
+    },
+    simulationMigrated: simulationNeedsMigration(value.simulation),
+  };
 }
 
-function parseCurrentWorkspace(value: Record<string, unknown>): WorkspaceDocumentV2 | null {
+function parseCurrentWorkspace(value: Record<string, unknown>): {
+  workspace: WorkspaceDocumentV2;
+  simulationMigrated: boolean;
+} | null {
   if (!hasExactKeys(value, [
     'schemaVersion', 'revision', 'updatedAt', 'main', 'simulation',
     'portfolio', 'locations', 'accountMap',
@@ -125,15 +138,25 @@ function parseCurrentWorkspace(value: Record<string, unknown>): WorkspaceDocumen
 
   const preserved = structuredClone(value) as unknown as WorkspaceDocumentV2;
   return {
-    schemaVersion: 2,
-    revision: preserved.revision,
-    updatedAt: preserved.updatedAt,
-    main: preserved.main,
-    simulation: preserved.simulation,
-    portfolio: preserved.portfolio,
-    locations: preserved.locations,
-    accountMap: { applied, draft, legacyPhaseA: { instruments, flows } },
+    workspace: {
+      schemaVersion: 2,
+      revision: preserved.revision,
+      updatedAt: preserved.updatedAt,
+      main: preserved.main,
+      simulation: shared.simulation,
+      portfolio: preserved.portfolio,
+      locations: preserved.locations,
+      accountMap: { applied, draft, legacyPhaseA: { instruments, flows } },
+    },
+    simulationMigrated: simulationNeedsMigration(value.simulation),
   };
+}
+
+function simulationNeedsMigration(value: unknown): boolean {
+  return isRecord(value)
+    && value.draft !== null
+    && isRecord(value.draft)
+    && value.draft.schemaVersion !== 3;
 }
 
 function parseApplied(

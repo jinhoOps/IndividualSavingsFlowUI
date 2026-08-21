@@ -103,7 +103,11 @@ export class BrowserWorkspaceRepository implements WorkspaceRepository {
             workspace: migrateWorkspaceV1(parsed.workspace, this.now()),
             needsMigration: true,
           }
-        : { status: 'found', workspace: parsed.workspace, needsMigration: false };
+        : {
+            status: 'found',
+            workspace: parsed.workspace,
+            needsMigration: parsed.simulationMigrated,
+          };
     } catch (error) {
       return error instanceof SyntaxError
         ? { status: 'invalid', raw }

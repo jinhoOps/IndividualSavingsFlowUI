@@ -6,13 +6,14 @@ import {
 } from '../../../src/simulation/domain/projection';
 
 const draft: CompoundSimulationDraft = {
-  schemaVersion: 2,
+  schemaVersion: 3,
   source: {
     monthlySavingsWon: 300_000,
     monthlyInvestmentWon: 200_000,
     mainUpdatedAt: 1_753_758_900_000,
   },
   initialInvestmentWon: 10_000_000,
+  targetAmountWon: 100_000_000,
   years: 10,
   expectedAnnualReturnPercent: 9,
   baseRatePercent: 2.75,

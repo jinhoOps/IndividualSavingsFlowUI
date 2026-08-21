@@ -125,6 +125,22 @@ describe('BrowserSimulationRepository workspace adapter', () => {
     expect(storage.reads).toEqual([WORKSPACE_STORAGE_KEY]);
   });
 
+  it('reports a Simulation-schema migration so the normalized slice can be persisted', () => {
+    const { targetAmountWon: _targetAmountWon, ...legacyDraft } = draft as typeof draft & {
+      targetAmountWon: number;
+    };
+    const workspace = workspaceWithSimulation(
+      { ...legacyDraft, schemaVersion: 2 } as unknown as typeof draft,
+    );
+    const storage = new TrackingStorage(new Map([[WORKSPACE_STORAGE_KEY, JSON.stringify(workspace)]]));
+
+    expect(browserRepository(storage).load()).toEqual({
+      status: 'found',
+      draft: { ...legacyDraft, schemaVersion: 3, targetAmountWon: 100_000_000 },
+      migration: 'schema-upgraded',
+    });
+  });
+
   it('saves one new workspace revision while preserving every non-Simulation slice', async () => {
     const workspace = workspaceWithSimulation();
     const oldRaw = JSON.stringify({ ...draft, years: 29 });
