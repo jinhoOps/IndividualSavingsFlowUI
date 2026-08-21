@@ -31,6 +31,7 @@
    - 목표 금액 하나만 입력한다.
    - 목표는 시작 자산보다 큰 안전한 정수 원화여야 한다.
 3. `매년 어느 정도 수익을 기대하나요?`
+   - 기간 control을 포함하는 결과 화면의 `SimulationControls`를 재사용하지 않는다. 기대수익률 preset·직접 입력과 비자문 안내만 담당하는 온보딩 전용 component를 둔다.
    - 기존 5%, 9%, 13%, 직접 입력 조작을 유지한다.
    - 기간 입력, 실시간 결과 문장, 미리보기 그래프와 계산 조건이라는 복수 주제는 이 단계에서 제거한다.
    - 결과 보기 후 기본 기간 20년의 결과 화면으로 간다.
@@ -48,13 +49,15 @@
 ### 재방문과 다시 설정
 
 - 목표가 있는 저장된 draft는 결과 화면으로 바로 진입한다.
+- 목표 미완료 draft는 결과 화면을 거치지 않는다. bootstrap은 `goal-required` 상태로 분기하고, 시작 자산·기간·수익률·금리·금액 모드를 보존한 채 목표 질문 화면만 표시한다.
 - 다시 설정은 Simulation draft만 지우고 전체 최초 설정을 다시 시작한다. 2억 원 이상 사용자는 그 과정에서 목표를 다시 정한다.
 - 목표 변경 전용 control은 이번 범위에 추가하지 않는다. 자동 1억·2억 목표도 직접 편집하지 않는다.
 
 ### 기존 저장 데이터
 
+- workspace parser는 Simulation slice를 현재 schema로 검증하기 전에 v2 이하 Simulation draft를 v3로 이관한다. 이관 실패만 workspace 손상으로 처리하며, Main·Portfolio·locations·Account Map slice는 이 과정에서 변경하지 않는다.
 - schema v2 이하 draft가 시작 자산 2억 원 미만이면 규칙에 따른 목표를 보완해 v3 draft로 저장한다.
-- 시작 자산이 2억 원 이상인 v2 이하 draft는 기간·수익률·금리·금액 모드를 보존한다. 다만 목표 미완료 상태로 복원되어 목표 질문만 한 번 거친 뒤 결과 화면에 들어간다.
+- 시작 자산이 2억 원 이상인 v2 이하 draft는 기간·수익률·금리·금액 모드를 보존한다. 다만 `targetAmountWon: null`인 목표 미완료 상태로 이관되어 목표 질문만 한 번 거친 뒤 결과 화면에 들어간다.
 - 손상된 목표나 시작 자산과 같거나 작은 목표는 유효 draft로 취급하지 않는다. 기존의 손상 draft 복구 흐름을 사용한다.
 
 ## 데이터 계약
@@ -68,7 +71,7 @@ targetAmountWon: number | null;
 - 정상 결과 draft의 `targetAmountWon`은 양의 안전 정수이고 `initialInvestmentWon`보다 크다.
 - `null`은 schema v2 이하에서 이관됐으나 2억 원 이상 사용자의 목표 질문이 아직 끝나지 않았다는 전이 상태에만 허용한다.
 - Main source, Main 저장, workspace 밖 별도 key와 다른 앱 slice는 변경하지 않는다.
-- 저장·가져오기·복원은 Simulation slice의 새 schema를 동일하게 검증하고 보존한다.
+- 저장·가져오기·복원은 workspace parser가 Simulation slice의 새 schema로 먼저 이관·검증한 뒤, 전체 workspace 계약을 검증한다. Simulation 이관은 다른 slice를 변경하지 않는다.
 
 ## 목표 도달 계산
 
