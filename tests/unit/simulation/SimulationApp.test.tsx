@@ -90,7 +90,7 @@ describe('SimulationApp', () => {
       .not.toHaveClass('app-content-frame');
     fireEvent.click(screen.getByRole('button', { name: '없어요' }));
     expect(screen.getByRole('heading', {
-      name: '얼마나 오래, 어느 정도 수익을 기대할까요?',
+      name: '매년 어느 정도 수익을 기대하나요?',
     })).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: '결과 보기' }));
 
