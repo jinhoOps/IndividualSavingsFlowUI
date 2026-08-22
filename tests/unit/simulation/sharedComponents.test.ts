@@ -6,7 +6,8 @@ const source = (file: string) => readFileSync(resolve(process.cwd(), file), 'utf
 
 const buttonFiles = [
   'src/simulation/ui/AdvancedSettings.tsx',
-  'src/simulation/ui/ScenarioSetupStep.tsx',
+  'src/simulation/ui/ExpectedReturnStep.tsx',
+  'src/simulation/ui/GoalAmountStep.tsx',
   'src/simulation/ui/SimulationControls.tsx',
   'src/simulation/ui/SimulationApp.tsx',
   'src/simulation/ui/StartingPrincipalStep.tsx',
@@ -14,8 +15,9 @@ const buttonFiles = [
 
 const surfaceFiles = [
   'src/simulation/ui/AdvancedSettings.tsx',
+  'src/simulation/ui/ExpectedReturnStep.tsx',
   'src/simulation/ui/GrowthChart.tsx',
-  'src/simulation/ui/ScenarioSetupStep.tsx',
+  'src/simulation/ui/GoalAmountStep.tsx',
   'src/simulation/ui/SimulationControls.tsx',
   'src/simulation/ui/SimulationApp.tsx',
   'src/simulation/ui/StartingPrincipalStep.tsx',

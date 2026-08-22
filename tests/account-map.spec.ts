@@ -98,7 +98,7 @@ function manyToManyWorkspace() {
   workspace.locations.push(location('brokerage', 'ISA', 'future-bank', '미래은행', ['investing']));
   workspace.accountMap.applied!.links.push(link('investing-brokerage', 'system:investing', 'brokerage', 50_000, false));
   workspace.simulation.draft = {
-    schemaVersion: 2,
+    schemaVersion: 3,
     source: {
       monthlySavingsWon: main.monthlySavingWon,
       monthlyInvestmentWon: main.monthlyInvestmentWon,
@@ -111,6 +111,7 @@ function manyToManyWorkspace() {
     inflationOffsetPercentPoints: -0.5,
     amountMode: 'nominal',
     updatedAt: now,
+    targetAmountWon: 100_000_000,
   };
   workspace.portfolio.plans = [
     {
@@ -583,7 +584,7 @@ test('explicitly reapplies a stale edit without losing an unrelated concurrent c
   await seed(page, editableWorkspace());
   await page.goto('apps/account-map/');
   const concurrentSimulationDraft = {
-    schemaVersion: 2,
+    schemaVersion: 3,
     source: {
       monthlySavingsWon: main.monthlySavingWon,
       monthlyInvestmentWon: main.monthlyInvestmentWon,
@@ -596,6 +597,7 @@ test('explicitly reapplies a stale edit without losing an unrelated concurrent c
     inflationOffsetPercentPoints: 0,
     amountMode: 'nominal',
     updatedAt: now + 1,
+    targetAmountWon: 100_000_000,
   };
 
   await openNode(page, /생활비.*1,000,000원/);

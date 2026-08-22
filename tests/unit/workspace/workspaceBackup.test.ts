@@ -59,13 +59,14 @@ function completeWorkspace(overrides: Partial<WorkspaceDocument> = {}): Workspac
     },
     simulation: {
       draft: {
-        schemaVersion: 2,
+        schemaVersion: 3,
         source: {
           monthlySavingsWon: 700_000,
           monthlyInvestmentWon: 600_000,
           mainUpdatedAt: 100,
         },
         initialInvestmentWon: 10_000_000,
+        targetAmountWon: 100_000_000,
         years: 20,
         expectedAnnualReturnPercent: 8,
         baseRatePercent: 2.5,
@@ -99,6 +100,16 @@ function envelope(workspace: unknown = completeWorkspace()): string {
     exportedAt: 900,
     workspace,
   });
+}
+
+function nestedLegacySimulationDraft(
+  schemaVersion: 1 | 2,
+  initialInvestmentWon: number,
+): Record<string, unknown> {
+  const draft = completeWorkspace().simulation.draft;
+  if (draft === null) throw new Error('expected Simulation fixture');
+  const { targetAmountWon: _targetAmountWon, ...legacy } = draft;
+  return { ...legacy, schemaVersion, initialInvestmentWon };
 }
 
 function accountMapApplied(overrides: Partial<AccountMapApplied> = {}): AccountMapApplied {
@@ -267,6 +278,67 @@ describe('workspace backup', () => {
     expect(imported.simulation).toEqual(legacy.simulation);
     expect(JSON.stringify(imported.portfolio)).toBe(JSON.stringify(legacy.portfolio));
     expect(imported.accountMap.legacyPhaseA).toEqual({ instruments: [], flows: [] });
+  });
+
+  it.each([1, 2] as const)(
+    'imports a nested Simulation v%i draft with its automatic target and preserves other slices',
+    (schemaVersion) => {
+      const workspace = completeWorkspace({
+        simulation: { draft: nestedLegacySimulationDraft(schemaVersion, 10_000_000) as never },
+      });
+
+      const imported = importWorkspaceBackup(envelope(workspace));
+
+      expect(imported.simulation.draft).toEqual({
+        ...nestedLegacySimulationDraft(schemaVersion, 10_000_000),
+        schemaVersion: 3,
+        targetAmountWon: 100_000_000,
+      });
+      expect(JSON.stringify(imported.main)).toBe(JSON.stringify(workspace.main));
+      expect(JSON.stringify(imported.portfolio)).toBe(JSON.stringify(workspace.portfolio));
+      expect(JSON.stringify(imported.locations)).toBe(JSON.stringify(workspace.locations));
+      expect(JSON.stringify(imported.accountMap)).toBe(JSON.stringify(workspace.accountMap));
+    },
+  );
+
+  it.each([1, 2] as const)(
+    'imports a high-principal nested Simulation v%i draft as goal-required',
+    (schemaVersion) => {
+      const workspace = completeWorkspace({
+        simulation: { draft: nestedLegacySimulationDraft(schemaVersion, 200_000_000) as never },
+      });
+
+      const imported = importWorkspaceBackup(envelope(workspace));
+
+      expect(imported.simulation.draft).toEqual({
+        ...nestedLegacySimulationDraft(schemaVersion, 200_000_000),
+        schemaVersion: 3,
+        targetAmountWon: null,
+      });
+    },
+  );
+
+  it('atomically rejects a malformed Simulation target without touching stored workspace data', () => {
+    const storage = new MemoryStorage();
+    const raw = JSON.stringify(completeWorkspace({ revision: 17, updatedAt: 777 }));
+    storage.setItem(WORKSPACE_STORAGE_KEY, raw);
+    const setItem = vi.spyOn(storage, 'setItem');
+    Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: storage });
+    const current = completeWorkspace();
+    if (current.simulation.draft === null) throw new Error('expected Simulation fixture');
+    const malformed = completeWorkspace({
+      simulation: {
+        draft: {
+          ...current.simulation.draft,
+          initialInvestmentWon: 200_000_000,
+          targetAmountWon: 200_000_000,
+        },
+      },
+    });
+
+    expect(errorCode(() => importWorkspaceBackup(envelope(malformed)))).toBe('backup-schema');
+    expect(storage.getItem(WORKSPACE_STORAGE_KEY)).toBe(raw);
+    expect(setItem).not.toHaveBeenCalled();
   });
 
   it('exports no storage keys, lease metadata, or trophy state', () => {

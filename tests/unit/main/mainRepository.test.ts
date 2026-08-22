@@ -87,13 +87,14 @@ function populatedWorkspace(): WorkspaceDocument {
     main: { applied: mainData(), setupProgress: null },
     simulation: {
       draft: {
-        schemaVersion: 2,
+        schemaVersion: 3,
         source: {
           monthlySavingsWon: 600_000,
           monthlyInvestmentWon: 800_000,
           mainUpdatedAt: 100,
         },
         initialInvestmentWon: 0,
+        targetAmountWon: 100_000_000,
         years: 20,
         expectedAnnualReturnPercent: 9,
         baseRatePercent: 2.75,

@@ -3,6 +3,7 @@ import {
   createEmptyWorkspace,
   type WorkspaceDocument,
 } from '../domain/model';
+import type { SimulationDraftMigration } from '../../simulation/domain/model';
 import { parseWorkspaceDocument } from '../domain/validation';
 import { migrateWorkspaceV1, parseWorkspaceDocumentVersioned } from '../domain/migration';
 import {
@@ -23,7 +24,12 @@ const unavailableStorageGroup = {};
 const notificationChannels = new WeakMap<Window, Map<object, WorkspaceNotificationChannel>>();
 
 export type WorkspaceLoadResult =
-  | { status: 'found'; workspace: WorkspaceDocument; needsMigration: boolean }
+  | {
+    status: 'found';
+    workspace: WorkspaceDocument;
+    needsMigration: boolean;
+    simulationMigration?: SimulationDraftMigration;
+  }
   | { status: 'empty'; workspace: WorkspaceDocument; needsMigration: false }
   | { status: 'invalid'; raw: string }
   | { status: 'unavailable' };
@@ -97,13 +103,20 @@ export class BrowserWorkspaceRepository implements WorkspaceRepository {
     try {
       const parsed = parseWorkspaceDocumentVersioned(JSON.parse(raw));
       if (parsed === null) return { status: 'invalid', raw };
+      const simulationMigration = parsed.simulationMigration;
       return parsed.version === 1
         ? {
             status: 'found',
             workspace: migrateWorkspaceV1(parsed.workspace, this.now()),
             needsMigration: true,
+            ...(simulationMigration === null ? {} : { simulationMigration }),
           }
-        : { status: 'found', workspace: parsed.workspace, needsMigration: false };
+        : {
+            status: 'found',
+            workspace: parsed.workspace,
+            needsMigration: simulationMigration !== null,
+            ...(simulationMigration === null ? {} : { simulationMigration }),
+          };
     } catch (error) {
       return error instanceof SyntaxError
         ? { status: 'invalid', raw }

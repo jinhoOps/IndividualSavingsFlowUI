@@ -17,7 +17,7 @@ const seededWorkspace = {
   main: { applied: appliedMain, setupProgress: null },
   simulation: {
     draft: {
-      schemaVersion: 2,
+      schemaVersion: 3,
       source: {
         monthlySavingsWon: appliedMain.monthlySavingWon,
         monthlyInvestmentWon: appliedMain.monthlyInvestmentWon,
@@ -30,6 +30,7 @@ const seededWorkspace = {
       inflationOffsetPercentPoints: -0.25,
       amountMode: 'nominal',
       updatedAt: appliedMain.updatedAt,
+      targetAmountWon: 100_000_000,
     },
   },
   portfolio: {
@@ -93,7 +94,7 @@ const apps = [
     name: 'simulation',
     path: 'apps/simulation/',
     frameTestId: 'simulation-page-frame',
-    resultHeading: /이대로 20년 유지하면/,
+    resultHeading: /1억 원을 모으려면|현재 조건으로는 30년 안에 1억 원/,
   },
   {
     name: 'portfolio',

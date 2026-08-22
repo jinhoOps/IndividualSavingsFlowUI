@@ -45,10 +45,10 @@ async function openFirstResult(page: Page) {
   await page.goto('apps/simulation/');
   await page.getByRole('button', { name: '없어요' }).click();
   await expect(page.getByRole('heading', {
-    name: '얼마나 오래, 어느 정도 수익을 기대할까요?',
+    name: '매년 어느 정도 수익을 기대하나요?',
   })).toBeVisible();
   await page.getByRole('button', { name: '결과 보기' }).click();
-  await expect(page.getByRole('heading', { name: /이대로 20년 유지하면 .*이 됩니다!/ }))
+  await expect(page.getByRole('heading', { name: /1억 원을 모으려면|현재 조건으로는 30년 안에 1억 원/ }))
     .toBeVisible();
 }
 
@@ -68,14 +68,18 @@ test('390px 시작 자산 빠른 조정은 한 줄 터치 영역을 유지한다
   expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
 });
 
-test('guides first run, supports boundary years and keeps Main read-only', async ({ page }) => {
+test('guides automatic-goal first run, supports boundary years and keeps Main read-only', async ({ page }) => {
   await seedMain(page);
   await openFirstResult(page);
 
+  const hero = page.getByRole('heading', { name: /1억 원을 모으려면|현재 조건으로는 30년 안에 1억 원/ });
+  const headline = await hero.textContent();
   await page.getByRole('spinbutton', { name: '기간 숫자' }).fill('0');
-  await expect(page.getByRole('heading', { name: /현재 시작 자산은/ })).toBeVisible();
+  await expect(page.getByRole('spinbutton', { name: '기간 숫자' })).toHaveValue('0');
+  await expect(hero).toHaveText(headline ?? '');
   await page.getByRole('spinbutton', { name: '기간 숫자' }).fill('30');
-  await expect(page.getByRole('heading', { name: /이대로 30년 유지하면/ })).toBeVisible();
+  await expect(page.getByRole('spinbutton', { name: '기간 숫자' })).toHaveValue('30');
+  await expect(hero).toHaveText(headline ?? '');
 
   await page.getByRole('button', { name: '직접 입력' }).click();
   await page.getByRole('spinbutton', { name: '연 기대수익률 직접 입력' }).fill('8.75');
@@ -90,7 +94,7 @@ test('guides first run, supports boundary years and keeps Main read-only', async
   }))).toMatchObject({
     workspace: {
       main: { applied: appliedMain },
-      simulation: { draft: { years: 30, expectedAnnualReturnPercent: 8.75 } },
+      simulation: { draft: { years: 30, expectedAnnualReturnPercent: 8.75, targetAmountWon: 100_000_000 } },
     },
     oldMain: oldMainRaw,
     oldSimulation: oldSimulationRaw,
@@ -135,7 +139,8 @@ test('reloads latest Main values and resets only Simulation from its menu', asyn
     JSON.parse(localStorage.getItem('isf-workspace-v1')!).simulation.draft?.years
   ))).toBe(20);
   await page.reload();
-  await expect(page.getByRole('heading', { name: /이대로 20년 유지하면/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /1억 원을 모으려면|현재 조건으로는 30년 안에 1억 원/ }))
+    .toBeVisible();
 
   await page.evaluate(() => {
     const workspace = JSON.parse(localStorage.getItem('isf-workspace-v1')!);
@@ -177,6 +182,54 @@ test('reloads latest Main values and resets only Simulation from its menu', asyn
     oldMain: oldMainRaw,
     oldSimulation: oldSimulationRaw,
   });
+});
+
+test('migrated v2 high-principal workspace completes the goal without changing Main', async ({ page }) => {
+  const highPrincipalV2Workspace = {
+    schemaVersion: 2,
+    revision: 1,
+    updatedAt: appliedMain.updatedAt,
+    main: { applied: appliedMain, setupProgress: null },
+    simulation: {
+      draft: {
+        schemaVersion: 2,
+        source: {
+          monthlySavingsWon: appliedMain.monthlySavingWon,
+          monthlyInvestmentWon: appliedMain.monthlyInvestmentWon,
+          mainUpdatedAt: appliedMain.updatedAt,
+        },
+        initialInvestmentWon: 200_000_000,
+        years: 17,
+        expectedAnnualReturnPercent: 5,
+        baseRatePercent: 2.75,
+        inflationOffsetPercentPoints: -0.25,
+        amountMode: 'nominal',
+        updatedAt: appliedMain.updatedAt,
+      },
+    },
+    portfolio: { plans: [], draft: null },
+    locations: [],
+    accountMap: { applied: null, draft: null, legacyPhaseA: { instruments: [], flows: [] } },
+  };
+  await page.addInitScript((fixture) => {
+    localStorage.setItem('isf-workspace-v1', JSON.stringify(fixture));
+  }, highPrincipalV2Workspace);
+  await page.goto('apps/simulation/');
+  await expect(page.getByRole('heading', { name: '다음에는 얼마를 모으고 싶나요?' })).toBeVisible();
+  await page.getByRole('textbox', { name: '목표 금액' }).fill('300000000');
+  await page.getByRole('button', { name: '결과 보기' }).click();
+  await expect(page.getByRole('heading', {
+    name: /3억 원을 모으려면|현재 조건으로는 30년 안에 3억 원/,
+  })).toBeVisible();
+
+  await expect.poll(() => page.evaluate(() => {
+    const workspace = JSON.parse(localStorage.getItem('isf-workspace-v1')!);
+    return workspace.simulation.draft?.targetAmountWon;
+  })).toBe(300_000_000);
+  expect(await page.evaluate(() => {
+    const workspace = JSON.parse(localStorage.getItem('isf-workspace-v1')!);
+    return workspace.main.applied;
+  })).toEqual(appliedMain);
 });
 
 test('keeps a failed reset dialog scrollable, contained, and focused in a short viewport', async ({ page }) => {
@@ -224,12 +277,62 @@ for (const viewport of [
   { width: 768, height: 900, label: 'tablet' },
   { width: 1280, height: 900, label: 'desktop' },
 ]) {
-  test(`${viewport.label} keeps graph, tooltip, and controls contained`, async ({ page }) => {
+  test(`${viewport.label} keeps the high-principal goal entry and result contained`, async ({ page }) => {
     await page.setViewportSize(viewport);
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await seedMain(page);
-    await openFirstResult(page);
+    await page.goto('apps/simulation/');
+    await page.getByRole('button', { name: '있어요' }).click();
+    await page.getByRole('textbox', { name: '현재 모아둔 투자금' }).fill('200000000');
+    await page.getByRole('button', { name: '다음' }).click();
+
+    const goalHeading = page.getByRole('heading', { name: '다음에는 얼마를 모으고 싶나요?' });
+    const goalInput = page.getByRole('textbox', { name: '목표 금액' });
+    await expect(goalHeading).toBeVisible();
+    await expect(goalHeading).toBeFocused();
+    await expect(goalInput).toBeVisible();
+    const goalInputBox = await goalInput.boundingBox();
+    if (goalInputBox === null) throw new Error('goal input has no bounding box');
+    expect(goalInputBox.x).toBeGreaterThanOrEqual(0);
+    expect(goalInputBox.x + goalInputBox.width).toBeLessThanOrEqual(viewport.width);
+    expect(goalInputBox.height).toBeGreaterThanOrEqual(44);
+    await goalInput.focus();
+    await expect(goalInput).toBeFocused();
+    expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
+
+    await goalInput.fill('300000000');
+    await page.getByRole('button', { name: '다음' }).click();
+    const selectedPreset = page.getByRole('button', { name: '연 기대수익률 9%' });
+    await expect(selectedPreset).toHaveAttribute('aria-pressed', 'true');
+    expect(await selectedPreset.evaluate((button) => {
+      const style = getComputedStyle(button);
+      return {
+        backgroundColor: style.backgroundColor,
+        borderColor: style.borderTopColor,
+        color: style.color,
+      };
+    })).toEqual({
+      backgroundColor: 'rgb(234, 91, 42)',
+      borderColor: 'rgb(234, 91, 42)',
+      color: 'rgb(255, 255, 255)',
+    });
+    await page.getByRole('button', { name: '결과 보기' }).click();
     await page.evaluate(() => document.fonts.ready.then(() => undefined));
+
+    const hero = page.getByRole('heading', {
+      name: /3억 원을 모으려면|현재 조건으로는 30년 안에 3억 원/,
+    });
+    const headline = await hero.textContent();
+    const heroBox = await hero.boundingBox();
+    if (heroBox === null) throw new Error('simulation hero has no bounding box');
+    expect(heroBox.y).toBeLessThan(viewport.height);
+    expect(heroBox.y + heroBox.height).toBeGreaterThan(0);
+    const years = page.getByRole('spinbutton', { name: '기간 숫자' });
+    await expect(years).toHaveValue('20');
+    await years.fill('0');
+    await expect(hero).toHaveText(headline ?? '');
+    await years.fill('30');
+    await expect(hero).toHaveText(headline ?? '');
 
     const graph = page.getByRole('img', { name: '연도별 복리 성장 그래프' });
     const explorer = page.getByRole('application', { name: '그래프 연도 탐색' });

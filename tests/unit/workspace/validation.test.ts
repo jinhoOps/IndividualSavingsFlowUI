@@ -23,13 +23,14 @@ const validMain = {
 };
 
 const validSimulation = {
-  schemaVersion: 2,
+  schemaVersion: 3,
   source: {
     monthlySavingsWon: 400_000,
     monthlyInvestmentWon: 200_000,
     mainUpdatedAt: 100,
   },
   initialInvestmentWon: 0,
+  targetAmountWon: 100_000_000,
   years: 20,
   expectedAnnualReturnPercent: 9,
   baseRatePercent: 2.75,
@@ -180,6 +181,24 @@ describe('Workspace validation', () => {
     expect(parsed?.portfolio.plans).not.toBe(original.portfolio.plans);
     expect(parsed?.portfolio.plans[0]?.items).not.toBe(original.portfolio.plans[0].items);
     expect(parsed?.locations[0]?.roles).not.toBe(original.locations[0].roles);
+  });
+
+  it('normalizes a legacy Simulation draft without changing the other workspace slices', () => {
+    const legacy = validWorkspace();
+    const { targetAmountWon: _targetAmountWon, ...legacyDraft } = legacy.simulation.draft;
+    const legacyWorkspace = {
+      ...legacy,
+      simulation: { draft: { ...legacyDraft, schemaVersion: 2 } },
+    };
+    const parsed = parseWorkspaceDocumentV1(legacyWorkspace);
+
+    expect(parsed?.simulation.draft).toEqual({
+      ...validSimulation,
+    });
+    expect(parsed?.main).toEqual(legacyWorkspace.main);
+    expect(parsed?.portfolio).toEqual(legacyWorkspace.portfolio);
+    expect(parsed?.locations).toEqual(legacyWorkspace.locations);
+    expect(parsed?.accountMap).toEqual(legacyWorkspace.accountMap);
   });
 
   it.each([

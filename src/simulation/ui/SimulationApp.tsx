@@ -49,7 +49,7 @@ export function SimulationApp({
   const [draft, setDraft] = useState<CompoundSimulationDraft | null>(
     initial.kind === 'ready'
       ? initial.draft
-      : initial.kind === 'stale-main' ? initial.draft : null,
+      : initial.kind === 'stale-main' || initial.kind === 'goal-required' ? initial.draft : null,
   );
   const [saveState, setSaveState] = useState<SimulationSaveState>(
     initial.kind !== 'main-required' && !initial.persistenceAvailable ? 'error' : 'saved',
@@ -62,6 +62,7 @@ export function SimulationApp({
     if (
       initialPersisted.current
       || runtime.kind === 'main-required'
+      || runtime.kind === 'goal-required'
       || !runtime.shouldPersist
       || draft === null
     ) return;
@@ -95,8 +96,32 @@ export function SimulationApp({
       setSaveState('error');
       return;
     }
+    if (runtime.kind === 'goal-required') {
+      completeGoal(runtime, valid);
+      return;
+    }
     setDraft(valid);
     queueSave(valid);
+  }
+
+  function completeGoal(
+    goalRuntime: Extract<ReturnType<typeof bootstrapSimulation>, { kind: 'goal-required' }>,
+    valid: CompoundSimulationDraft,
+  ): void {
+    const token = beginOperation();
+    enqueuePersistence(
+      () => repository.save(valid),
+      (result) => {
+        if (token !== latestOperation.current) return;
+        if (result?.status !== 'saved') {
+          setSaveState('error');
+          return;
+        }
+        setDraft(valid);
+        setRuntime(goalCompletionRuntime(goalRuntime, valid));
+        setSaveState('saved');
+      },
+    );
   }
 
   function reset(): Promise<boolean> {
@@ -163,7 +188,9 @@ export function SimulationApp({
     return settled;
   }
 
-  const result = draft === null ? null : projectCompoundGrowth(draft);
+  const goalRequired = draft !== null && draft.targetAmountWon === null;
+  const resultDraft = draft !== null && hasTarget(draft) ? draft : null;
+  const result = resultDraft === null ? null : projectCompoundGrowth(resultDraft);
   const resultIsFinite = result !== null && projectionIsFinite(result);
   const latestSource = runtime.kind === 'ready' ? runtime.latestMainSource : null;
 
@@ -179,7 +206,15 @@ export function SimulationApp({
         >
         {draft === null && latestSource !== null ? (
           <SimulationOnboarding source={latestSource} now={now} onComplete={saveDraft} />
-        ) : draft !== null && result !== null ? (
+        ) : goalRequired && draft !== null ? (
+          <SimulationOnboarding
+            source={draft.source}
+            initialDraft={draft}
+            goalSaveState={saveState === 'saved' ? 'idle' : saveState}
+            now={now}
+            onComplete={saveDraft}
+          />
+        ) : resultDraft !== null && result !== null ? (
           <>
             <div className="simulation-toolbar">
               <SaveIndicator state={saveState} />
@@ -197,8 +232,8 @@ export function SimulationApp({
             ) : null}
             {resultIsFinite ? (
               <>
-                <SimulationHero draft={draft} result={result} />
-                <GrowthChart result={result} amountMode={draft.amountMode} />
+                <SimulationHero draft={resultDraft} result={result} />
+                <GrowthChart result={result} amountMode={resultDraft.amountMode} />
                 <SimulationComparison result={result} />
               </>
             ) : (
@@ -206,11 +241,11 @@ export function SimulationApp({
                 계산 결과를 표시할 수 없어요. 계산 기준을 조정해주세요.
               </p>
             )}
-            <SimulationControls draft={draft} onChange={(next) => saveDraft({
+            <SimulationControls draft={resultDraft} onChange={(next) => saveDraft({
               ...next,
               updatedAt: now(),
             })} />
-            <AdvancedSettings draft={draft} onChange={(next) => saveDraft({
+            <AdvancedSettings draft={resultDraft} onChange={(next) => saveDraft({
               ...next,
               updatedAt: now(),
             })} />
@@ -222,6 +257,38 @@ export function SimulationApp({
       </main>
     </AppShell>
   );
+}
+
+function goalCompletionRuntime(
+  runtime: Extract<ReturnType<typeof bootstrapSimulation>, { kind: 'goal-required' }>,
+  draft: CompoundSimulationDraft,
+): ReturnType<typeof bootstrapSimulation> {
+  if (runtime.afterGoal.kind === 'stale-main') {
+    return {
+      kind: 'stale-main',
+      draft,
+      persistenceAvailable: runtime.persistenceAvailable,
+      shouldPersist: false,
+      durationAdjusted: runtime.durationAdjusted,
+    };
+  }
+  if (runtime.afterGoal.kind === 'main-required') {
+    return runtime.afterGoal;
+  }
+  return {
+    kind: 'ready',
+    draft,
+    latestMainSource: runtime.afterGoal.latestMainSource,
+    persistenceAvailable: runtime.persistenceAvailable,
+    shouldPersist: false,
+    durationAdjusted: runtime.durationAdjusted,
+  };
+}
+
+function hasTarget(
+  draft: CompoundSimulationDraft,
+): draft is CompoundSimulationDraft & { targetAmountWon: number } {
+  return draft.targetAmountWon !== null;
 }
 
 function projectionIsFinite(result: ReturnType<typeof projectCompoundGrowth>): boolean {

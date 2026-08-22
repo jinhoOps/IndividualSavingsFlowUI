@@ -175,13 +175,14 @@ function workspace(monthlyNetIncomeWon: number, revision = 1): WorkspaceDocument
     main: { applied, setupProgress: null },
     simulation: {
       draft: {
-        schemaVersion: 2,
+        schemaVersion: 3,
         source: {
           monthlySavingsWon: applied.monthlySavingWon,
           monthlyInvestmentWon: applied.monthlyInvestmentWon,
           mainUpdatedAt: applied.updatedAt,
         },
         initialInvestmentWon: 2_000_000,
+        targetAmountWon: 100_000_000,
         years: 20,
         expectedAnnualReturnPercent: 8,
         baseRatePercent: 2.5,

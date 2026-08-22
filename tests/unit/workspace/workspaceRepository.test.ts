@@ -377,6 +377,83 @@ describe('BrowserWorkspaceRepository', () => {
     expect(storage.getItem(WORKSPACE_STORAGE_KEY)).toBe(raw);
   });
 
+  it('migrates a v2 Simulation slice in a v2 workspace without changing other slices', async () => {
+    const legacyDraft = {
+      schemaVersion: 2,
+      source: { monthlySavingsWon: 300_000, monthlyInvestmentWon: 200_000, mainUpdatedAt: 100 },
+      initialInvestmentWon: 0,
+      years: 20,
+      expectedAnnualReturnPercent: 9,
+      baseRatePercent: 2.75,
+      inflationOffsetPercentPoints: -0.25,
+      amountMode: 'nominal',
+      updatedAt: 200,
+    };
+    const legacy = {
+      ...createEmptyWorkspace(100),
+      revision: 4,
+      simulation: { draft: legacyDraft },
+    };
+    const storage = new MemoryStorage(new Map([[WORKSPACE_STORAGE_KEY, JSON.stringify(legacy)]]));
+    const repository = new BrowserWorkspaceRepository(storage, {
+      saveLock: createSerialLock(),
+      now: () => 300,
+    });
+
+    const loaded = repository.load();
+    expect(loaded).toEqual({
+      status: 'found',
+      workspace: {
+        ...legacy,
+        simulation: {
+          draft: { ...legacyDraft, schemaVersion: 3, targetAmountWon: 100_000_000 },
+        },
+      },
+      needsMigration: true,
+      simulationMigration: 'schema-upgraded',
+    });
+    if (loaded.status !== 'found') throw new Error('expected found workspace');
+
+    await expect(repository.migrate(loaded.workspace.revision)).resolves.toMatchObject({
+      status: 'saved',
+      workspace: { revision: 5 },
+    });
+
+    const saved = JSON.parse(storage.getItem(WORKSPACE_STORAGE_KEY) ?? '');
+    expect(saved.simulation).toEqual({
+      draft: { ...legacyDraft, schemaVersion: 3, targetAmountWon: 100_000_000 },
+    });
+    expect(JSON.stringify(saved.main)).toBe(JSON.stringify(legacy.main));
+    expect(JSON.stringify(saved.portfolio)).toBe(JSON.stringify(legacy.portfolio));
+    expect(JSON.stringify(saved.locations)).toBe(JSON.stringify(legacy.locations));
+    expect(JSON.stringify(saved.accountMap)).toBe(JSON.stringify(legacy.accountMap));
+  });
+
+  it('rejects a malformed Simulation target without accepting a partial workspace', () => {
+    const malformed = {
+      ...createEmptyWorkspace(100),
+      simulation: {
+        draft: {
+          schemaVersion: 3,
+          source: { monthlySavingsWon: 300_000, monthlyInvestmentWon: 200_000, mainUpdatedAt: 100 },
+          initialInvestmentWon: 200_000_000,
+          targetAmountWon: 200_000_000,
+          years: 20,
+          expectedAnnualReturnPercent: 9,
+          baseRatePercent: 2.75,
+          inflationOffsetPercentPoints: -0.25,
+          amountMode: 'nominal',
+          updatedAt: 200,
+        },
+      },
+    };
+    const raw = JSON.stringify(malformed);
+    const storage = new MemoryStorage(new Map([[WORKSPACE_STORAGE_KEY, raw]]));
+
+    expect(new BrowserWorkspaceRepository(storage).load()).toEqual({ status: 'invalid', raw });
+    expect(storage.getItem(WORKSPACE_STORAGE_KEY)).toBe(raw);
+  });
+
   it('loads v1 as migration-required and persists one protected-slice-preserving v2 write', async () => {
     const current = createEmptyWorkspace(100);
     const legacy = {

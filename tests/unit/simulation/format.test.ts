@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatWon } from '../../../src/simulation/ui/format';
+import { formatTargetReachDuration, formatWon } from '../../../src/simulation/ui/format';
 
 describe('Simulation money formatting', () => {
   it.each([
@@ -14,5 +14,19 @@ describe('Simulation money formatting', () => {
   ])('formats %i with Korean integer units', (amount, expected) => {
     expect(formatWon(amount)).toBe(expected);
     expect(formatWon(amount)).not.toContain('.');
+  });
+});
+
+describe('Simulation target reach duration formatting', () => {
+  it.each([
+    [12, '1년'],
+    [19, '1년 7개월'],
+    [9, '9개월'],
+  ])('formats %i months without a zero-month suffix', (month, expected) => {
+    expect(formatTargetReachDuration(month)).toBe(expected);
+  });
+
+  it('rejects month zero instead of formatting it as zero months', () => {
+    expect(() => formatTargetReachDuration(0)).toThrow(RangeError);
   });
 });

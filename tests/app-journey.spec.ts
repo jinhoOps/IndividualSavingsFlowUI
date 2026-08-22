@@ -134,7 +134,8 @@ test('connects Main directly to the detailed Simulation', async ({ page }) => {
   await expect.poll(() => page.evaluate(
     () => localStorage.getItem('isf-journey-snapshot-v1'),
   )).toBeNull();
-  await expect(page.getByRole('heading', { name: /이대로 20년 유지하면/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /1억 원을 모으려면|현재 조건으로는 30년 안에 1억 원/ }))
+    .toBeVisible();
   await expect(page.getByText('월 저축 30만 원 · 투자 20만 원 · 연 9%')).toBeVisible();
   await expect(page.getByText('전부 저축보다')).toBeVisible();
   await expect(page.locator('.simulation-comparison__semantic-value')).toHaveText([
@@ -154,7 +155,8 @@ test('revisits Simulation at the result and refreshes only its Main source', asy
   }, { workspace: workspaceWithSimulationDraft, seededOldSimulation: oldSimulationRaw });
 
   await page.goto('apps/simulation/');
-  await expect(page.getByRole('heading', { name: /이대로 20년 유지하면/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /1억 원을 모으려면|현재 조건으로는 30년 안에 1억 원/ }))
+    .toBeVisible();
   await expect(page.getByText('월 저축 30만 원 · 투자 20만 원 · 연 9%')).toBeVisible();
   await expect(page.locator('.simulation-comparison__semantic-value')).toHaveText([
     '1억 295만 원',

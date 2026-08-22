@@ -1,4 +1,4 @@
-export const SIMULATION_SCHEMA_VERSION = 2 as const;
+export const SIMULATION_SCHEMA_VERSION = 3 as const;
 
 export type SimulationDraftMigration = 'schema-upgraded' | 'duration-capped';
 
@@ -12,6 +12,7 @@ export interface CompoundSimulationDraft {
   schemaVersion: typeof SIMULATION_SCHEMA_VERSION;
   source: SimulationMainSource;
   initialInvestmentWon: number;
+  targetAmountWon: number | null;
   years: number;
   expectedAnnualReturnPercent: number;
   baseRatePercent: number;

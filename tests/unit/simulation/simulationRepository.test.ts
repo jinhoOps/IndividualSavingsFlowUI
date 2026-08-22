@@ -125,6 +125,50 @@ describe('BrowserSimulationRepository workspace adapter', () => {
     expect(storage.reads).toEqual([WORKSPACE_STORAGE_KEY]);
   });
 
+  it('reports a Simulation-schema migration so the normalized slice can be persisted', () => {
+    const { targetAmountWon: _targetAmountWon, ...legacyDraft } = draft as typeof draft & {
+      targetAmountWon: number;
+    };
+    const workspace = workspaceWithSimulation(
+      { ...legacyDraft, schemaVersion: 2 } as unknown as typeof draft,
+    );
+    const storage = new TrackingStorage(new Map([[WORKSPACE_STORAGE_KEY, JSON.stringify(workspace)]]));
+
+    expect(browserRepository(storage).load()).toEqual({
+      status: 'found',
+      draft: { ...legacyDraft, schemaVersion: 3, targetAmountWon: 100_000_000 },
+      migration: 'schema-upgraded',
+    });
+  });
+
+  it('preserves the duration-capped migration reason from a v1 Simulation draft', () => {
+    const { targetAmountWon: _targetAmountWon, ...legacyDraft } = draft;
+    const currentWorkspace = workspaceWithSimulation();
+    const legacyWorkspace = {
+      ...currentWorkspace,
+      schemaVersion: 1,
+      simulation: {
+        draft: { ...legacyDraft, schemaVersion: 1, years: 31 },
+      },
+      accountMap: { applied: null, draft: null, instruments: [], flows: [] },
+    };
+    const storage = new TrackingStorage(new Map([[
+      WORKSPACE_STORAGE_KEY,
+      JSON.stringify(legacyWorkspace),
+    ]]));
+
+    expect(browserRepository(storage).load()).toEqual({
+      status: 'found',
+      draft: {
+        ...legacyDraft,
+        schemaVersion: 3,
+        targetAmountWon: 100_000_000,
+        years: 30,
+      },
+      migration: 'duration-capped',
+    });
+  });
+
   it('saves one new workspace revision while preserving every non-Simulation slice', async () => {
     const workspace = workspaceWithSimulation();
     const oldRaw = JSON.stringify({ ...draft, years: 29 });

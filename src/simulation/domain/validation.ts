@@ -9,6 +9,18 @@ const draftKeys = [
   'schemaVersion',
   'source',
   'initialInvestmentWon',
+  'targetAmountWon',
+  'years',
+  'expectedAnnualReturnPercent',
+  'baseRatePercent',
+  'inflationOffsetPercentPoints',
+  'amountMode',
+  'updatedAt',
+] as const;
+const legacyDraftKeys = [
+  'schemaVersion',
+  'source',
+  'initialInvestmentWon',
   'years',
   'expectedAnnualReturnPercent',
   'baseRatePercent',
@@ -30,6 +42,7 @@ export function createDefaultSimulationDraft(
     schemaVersion: SIMULATION_SCHEMA_VERSION,
     source,
     initialInvestmentWon: 0,
+    targetAmountWon: targetForInitialInvestment(0),
     years: 20,
     expectedAnnualReturnPercent: 9,
     baseRatePercent: 2.75,
@@ -40,10 +53,14 @@ export function createDefaultSimulationDraft(
 }
 
 export function parseSimulationDraft(value: unknown): CompoundSimulationDraft | null {
-  const parsed = parseDraftValues(value, SIMULATION_SCHEMA_VERSION, 0, 30);
-  return parsed === null ? null : {
+  if (!isRecord(value)) return null;
+  const targetAmountWon = value.targetAmountWon;
+  const parsed = parseDraftValues(value, SIMULATION_SCHEMA_VERSION, draftKeys, 0, 30);
+  if (parsed === null || !isValidTarget(parsed.initialInvestmentWon, targetAmountWon)) return null;
+  return {
     schemaVersion: SIMULATION_SCHEMA_VERSION,
     ...parsed,
+    targetAmountWon,
   };
 }
 
@@ -58,7 +75,8 @@ export function parseStoredSimulationDraft(
   const current = parseSimulationDraft(value);
   if (current !== null) return { draft: current, migration: null };
 
-  const legacy = parseDraftValues(value, 1, 1, 50);
+  const legacy = parseDraftValues(value, 1, legacyDraftKeys, 1, 50)
+    ?? parseDraftValues(value, 2, legacyDraftKeys, 0, 30);
   if (legacy === null) return null;
 
   const years = Math.min(legacy.years, 30);
@@ -66,6 +84,7 @@ export function parseStoredSimulationDraft(
     draft: {
       schemaVersion: SIMULATION_SCHEMA_VERSION,
       ...legacy,
+      targetAmountWon: targetForInitialInvestment(legacy.initialInvestmentWon),
       years,
     },
     migration: legacy.years > 30 ? 'duration-capped' : 'schema-upgraded',
@@ -75,10 +94,11 @@ export function parseStoredSimulationDraft(
 function parseDraftValues(
   value: unknown,
   schemaVersion: number,
+  keys: readonly string[],
   minimumYears: number,
   maximumYears: number,
-): Omit<CompoundSimulationDraft, 'schemaVersion'> | null {
-  if (!hasExactKeys(value, draftKeys)) return null;
+): Omit<CompoundSimulationDraft, 'schemaVersion' | 'targetAmountWon'> | null {
+  if (!hasExactKeys(value, keys)) return null;
   if (!hasExactKeys(value.source, sourceKeys)) return null;
 
   const source = value.source;
@@ -123,7 +143,9 @@ function hasExactKeys<const Keys extends readonly string[]>(
   keys: Keys,
 ): value is Record<Keys[number], unknown> {
   if (!isRecord(value)) return false;
-  const actualKeys = Object.keys(value).sort();
+  const actualKeys = Reflect.ownKeys(value);
+  if (actualKeys.some((key) => typeof key !== 'string')) return false;
+  actualKeys.sort();
   const expectedKeys = [...keys].sort();
   return actualKeys.length === expectedKeys.length
     && actualKeys.every((key, index) => key === expectedKeys[index]);
@@ -139,6 +161,21 @@ function isNonnegativeSafeInteger(value: unknown): value is number {
 
 function isPositiveSafeInteger(value: unknown): value is number {
   return Number.isSafeInteger(value) && Number(value) > 0;
+}
+
+export function targetForInitialInvestment(initialInvestmentWon: number): number | null {
+  if (initialInvestmentWon < 80_000_000) return 100_000_000;
+  if (initialInvestmentWon < 200_000_000) return 200_000_000;
+  return null;
+}
+
+function isValidTarget(
+  initialInvestmentWon: number,
+  targetAmountWon: unknown,
+): targetAmountWon is number | null {
+  return targetAmountWon === null
+    ? initialInvestmentWon >= 200_000_000
+    : isPositiveSafeInteger(targetAmountWon) && targetAmountWon > initialInvestmentWon;
 }
 
 function isTwoDecimalNumber(value: unknown): value is number {
