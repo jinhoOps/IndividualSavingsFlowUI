@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { CompoundSimulationDraft } from '../../../src/simulation/domain/model';
 import {
   annualPercentToMonthlyRate,
+  findTargetReachMonth,
   projectCompoundGrowth,
 } from '../../../src/simulation/domain/projection';
 
@@ -74,5 +75,52 @@ describe('projectCompoundGrowth', () => {
       final.currentPlanRealWon / final.contributedPrincipalRealWon * 100,
       6,
     );
+  });
+});
+
+describe('findTargetReachMonth', () => {
+  const monthlyTargetDraft: CompoundSimulationDraft = {
+    ...draft,
+    source: {
+      ...draft.source,
+      monthlySavingsWon: 50_000,
+      monthlyInvestmentWon: 0,
+    },
+    initialInvestmentWon: 10_000_000,
+    expectedAnnualReturnPercent: 0,
+    baseRatePercent: 0,
+    inflationOffsetPercentPoints: 0,
+  };
+
+  it('returns the first monthly target reach rather than a later annual graph point', () => {
+    expect(findTargetReachMonth({ ...monthlyTargetDraft, targetAmountWon: 10_600_000 })).toBe(12);
+    expect(findTargetReachMonth({ ...monthlyTargetDraft, targetAmountWon: 10_050_000 })).toBe(1);
+  });
+
+  it('uses the selected amount mode when finding the target reach month', () => {
+    expect(findTargetReachMonth({ ...draft, amountMode: 'real' }))
+      .not.toBe(findTargetReachMonth({ ...draft, amountMode: 'nominal' }));
+  });
+
+  it('returns null for targets that are unreachable within 30 years', () => {
+    expect(findTargetReachMonth({ ...draft, targetAmountWon: Number.MAX_SAFE_INTEGER }))
+      .toBeNull();
+  });
+
+  it('keeps a zero-return and zero-contribution target unreachable without changing graph points', () => {
+    const stalledDraft = {
+      ...monthlyTargetDraft,
+      source: {
+        ...monthlyTargetDraft.source,
+        monthlySavingsWon: 0,
+      },
+      targetAmountWon: 10_000_001,
+    };
+
+    expect(findTargetReachMonth(stalledDraft)).toBeNull();
+
+    const projection = projectCompoundGrowth({ ...stalledDraft, years: 10 });
+    expect(projection.points).toHaveLength(11);
+    expect(projection.points.at(-1)!.month).toBe(120);
   });
 });

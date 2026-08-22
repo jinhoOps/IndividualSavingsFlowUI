@@ -27,6 +27,14 @@ export function formatPercent(value: number): string {
   }).format(value);
 }
 
+export function formatTargetReachDuration(month: number): string {
+  const years = Math.floor(month / 12);
+  const remainingMonths = month % 12;
+  if (years === 0) return `${remainingMonths}개월`;
+  if (remainingMonths === 0) return `${years}년`;
+  return `${years}년 ${remainingMonths}개월`;
+}
+
 function formatInteger(value: number): string {
   return new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 0 }).format(value);
 }
