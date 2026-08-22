@@ -11,7 +11,7 @@ const MAIN = {
 };
 
 const SIMULATION = {
-  schemaVersion: 2 as const,
+  schemaVersion: 3 as const,
   source: {
     monthlySavingsWon: MAIN.monthlySavingWon,
     monthlyInvestmentWon: MAIN.monthlyInvestmentWon,
@@ -24,6 +24,7 @@ const SIMULATION = {
   inflationOffsetPercentPoints: -0.5,
   amountMode: 'nominal' as const,
   updatedAt: Date.UTC(2026, 7, 12, 4, 1),
+  targetAmountWon: 100_000_000,
 };
 
 const PORTFOLIO_PLAN = {
@@ -182,7 +183,9 @@ for (const viewport of VIEWPORTS) {
 
     await openWithWorkspace(page, 'apps/simulation/', WORKSPACE);
     const graph = page.locator('.growth-chart');
-    await expect(page.getByRole('heading', { name: /이대로 20년 유지하면/ })).toBeVisible();
+    await expect(page.getByRole('heading', {
+      name: /1억 원을 모으려면|현재 조건으로는 30년 안에 1억 원/,
+    })).toBeVisible();
     await expectFinalSimulationPaths(graph);
     await screenshot(page, testInfo.outputPath.bind(testInfo), `simulation-${viewport.width}-before.png`);
     const years = page.getByRole('spinbutton', { name: '기간 숫자' });
@@ -192,7 +195,9 @@ for (const viewport of VIEWPORTS) {
     expect(simulationTransitionStart.summary).toBe(SIMULATION_25_SUMMARY);
     expect(simulationTransitionStart.visual).not.toEqual(simulationTransitionStart.semantic);
     await expect(years).toBeFocused();
-    await expect(page.getByRole('heading', { name: /이대로 25년 유지하면/ })).toBeVisible();
+    await expect(page.getByRole('heading', {
+      name: /1억 원을 모으려면|현재 조건으로는 30년 안에 1억 원/,
+    })).toBeVisible();
     await expectFinalSimulationPaths(graph);
     await expectNoDocumentOverflow(page);
     await screenshot(page, testInfo.outputPath.bind(testInfo), `simulation-${viewport.width}-after.png`);

@@ -28,7 +28,7 @@ const connectedWorkspaceV1 = {
   updatedAt: 700,
   simulation: {
     draft: {
-      schemaVersion: 2 as const,
+      schemaVersion: 3 as const,
       source: {
         monthlySavingsWon: appliedMainV2.monthlySavingWon,
         monthlyInvestmentWon: appliedMainV2.monthlyInvestmentWon,
@@ -41,6 +41,7 @@ const connectedWorkspaceV1 = {
       inflationOffsetPercentPoints: -0.5,
       amountMode: 'nominal' as const,
       updatedAt: 200,
+      targetAmountWon: 100_000_000,
     },
   },
   portfolio: {
