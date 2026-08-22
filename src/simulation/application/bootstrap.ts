@@ -19,6 +19,14 @@ export type SimulationBootstrapResult =
     durationAdjusted: boolean;
   }
   | {
+    kind: 'goal-required';
+    draft: CompoundSimulationDraft;
+    latestMainSource: SimulationMainSource;
+    persistenceAvailable: boolean;
+    shouldPersist: boolean;
+    durationAdjusted: boolean;
+  }
+  | {
     kind: 'main-required';
     reason: 'empty' | 'invalid' | 'zero-contribution' | 'unavailable';
   };
@@ -32,6 +40,16 @@ export function bootstrapSimulation(
     mainResult.status === 'unavailable'
     && simulationResult.status === 'found'
   ) {
+    if (simulationResult.draft.targetAmountWon === null) {
+      return {
+        kind: 'goal-required',
+        draft: simulationResult.draft,
+        latestMainSource: simulationResult.draft.source,
+        persistenceAvailable: true,
+        shouldPersist: simulationResult.migration !== null,
+        durationAdjusted: simulationResult.migration === 'duration-capped',
+      };
+    }
     return {
       kind: 'stale-main',
       draft: simulationResult.draft,
@@ -64,6 +82,17 @@ export function bootstrapSimulation(
   const migration = simulationResult.status === 'found'
     ? simulationResult.migration
     : null;
+
+  if (draft !== null && draft.targetAmountWon === null) {
+    return {
+      kind: 'goal-required',
+      draft,
+      latestMainSource,
+      persistenceAvailable: simulationResult.status !== 'unavailable',
+      shouldPersist: sourceChanged || migration !== null,
+      durationAdjusted: migration === 'duration-capped',
+    };
+  }
 
   return {
     kind: 'ready',

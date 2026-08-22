@@ -1,5 +1,6 @@
 import type { CompoundSimulationDraft, ProjectionResult } from '../domain/model';
-import { formatPercent, formatWon } from './format';
+import { findTargetReachMonth } from '../domain/projection';
+import { formatPercent, formatTargetReachDuration, formatWon } from './format';
 
 export function SimulationHero({
   draft,
@@ -8,9 +9,14 @@ export function SimulationHero({
   draft: CompoundSimulationDraft;
   result: ProjectionResult;
 }) {
-  const resultCopy = draft.years === 0
-    ? `현재 시작 자산은 ${formatWon(result.finalCurrentPlanWon)}입니다!`
-    : `이대로 ${draft.years}년 유지하면 ${formatWon(result.finalCurrentPlanWon)}이 됩니다!`;
+  void result;
+  const targetAmountWon = draft.targetAmountWon;
+  const reachMonth = findTargetReachMonth(draft);
+  const resultCopy = targetAmountWon === null
+    ? ''
+    : reachMonth === null
+      ? `현재 조건으로는 30년 안에 ${formatWon(targetAmountWon)}에 도달하기 어려워요`
+      : `${formatWon(targetAmountWon)}을 모으려면 ${formatTargetReachDuration(reachMonth)}이 걸려요`;
 
   return (
     <header className="simulation-hero">

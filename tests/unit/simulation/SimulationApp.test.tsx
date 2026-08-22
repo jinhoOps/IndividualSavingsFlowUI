@@ -94,8 +94,47 @@ describe('SimulationApp', () => {
     })).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: '결과 보기' }));
 
-    expect(screen.getByRole('heading', { name: /이대로 20년 유지하면/ })).toBeVisible();
+    expect(screen.getByRole('heading', { name: /1억 원을 모으려면/ })).toBeVisible();
     await waitFor(() => expect(repository.save).toHaveBeenCalledOnce());
+  });
+
+  it('resumes a migrated targetless draft at goal setup and saves only after the target is completed', async () => {
+    const migrated: CompoundSimulationDraft = {
+      ...createDefaultSimulationDraft(source, 456),
+      initialInvestmentWon: 200_000_000,
+      targetAmountWon: null,
+      years: 17,
+      expectedAnnualReturnPercent: 5,
+    };
+    const repository = simulationRepository({
+      status: 'found',
+      draft: migrated,
+      migration: 'schema-upgraded',
+    });
+    render(<SimulationApp
+      mainSourceRepository={mainRepository(source)}
+      repository={repository}
+      now={() => 999}
+    />);
+
+    expect(screen.getByRole('heading', { name: '다음에는 얼마를 모으고 싶나요?' })).toBeVisible();
+    expect(screen.queryByRole('heading', { name: /을 모으려면|30년 안에/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('img', { name: '연도별 복리 성장 그래프' })).not.toBeInTheDocument();
+    expect(repository.save).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByRole('textbox', { name: '목표 금액' }), {
+      target: { value: '300000000' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '다음' }));
+    fireEvent.click(screen.getByRole('button', { name: '결과 보기' }));
+
+    expect(screen.getByRole('heading', { name: /3억 원을 모으려면/ })).toBeVisible();
+    await waitFor(() => expect(repository.save).toHaveBeenCalledWith(expect.objectContaining({
+      initialInvestmentWon: 200_000_000,
+      targetAmountWon: 300_000_000,
+      years: 17,
+      expectedAnnualReturnPercent: 5,
+    })));
   });
 
   it('revisits the result directly and persists only the latest Main source', async () => {
@@ -113,10 +152,11 @@ describe('SimulationApp', () => {
       .not.toBeInTheDocument();
     expect(screen.getByTestId('simulation-page-frame')).toHaveClass('app-content-frame');
     expect(screen.getByTestId('app-shell-launcher')).not.toHaveClass('app-content-frame');
-    expect(screen.getByRole('heading', { name: /이대로 20년 유지하면/ })).toBeVisible();
+    expect(screen.getByRole('heading', { name: /1억 원을 모으려면/ })).toBeVisible();
     await waitFor(() => expect(repository.save).toHaveBeenCalledWith(expect.objectContaining({
       source: latest,
       initialInvestmentWon: 10_000_000,
+      targetAmountWon: 100_000_000,
       years: 20,
     })));
     expect(repository.save).toHaveBeenCalledTimes(1);
@@ -130,7 +170,7 @@ describe('SimulationApp', () => {
     />);
 
     expect(screen.getByText('이전 Main 기준')).toBeVisible();
-    expect(screen.getByRole('heading', { name: /이대로 20년 유지하면/ })).toBeVisible();
+    expect(screen.getByRole('heading', { name: /1억 원을 모으려면/ })).toBeVisible();
   });
 
   it('retries a stale Main source in place and persists only the refreshed source', async () => {
@@ -150,6 +190,7 @@ describe('SimulationApp', () => {
 
     await waitFor(() => expect(repository.save).toHaveBeenCalledWith(expect.objectContaining({
       source: latest,
+      targetAmountWon: draft.targetAmountWon,
       years: draft.years,
       expectedAnnualReturnPercent: draft.expectedAnnualReturnPercent,
     })));
@@ -233,7 +274,7 @@ describe('SimulationApp', () => {
       target: { value: '25' },
     });
     expect(repository.save).toHaveBeenCalledTimes(1);
-    expect(screen.getByRole('heading', { name: /이대로 25년 유지하면/ })).toBeVisible();
+    expect(screen.getByRole('heading', { name: /1억 원을 모으려면/ })).toBeVisible();
     expect(screen.queryByText('저장 중')).not.toBeInTheDocument();
 
     await act(async () => settleFirst?.({ status: 'unavailable' }));
@@ -308,7 +349,7 @@ describe('SimulationApp', () => {
 
     const dialog = await screen.findByRole('dialog', { name: '시뮬레이션을 다시 설정할까요?' });
     expect(await within(dialog).findByRole('alert')).toHaveTextContent('시뮬레이션을 다시 설정하지 못했어요.');
-    expect(screen.getByRole('heading', { name: /이대로 20년 유지하면/ })).toBeVisible();
+    expect(screen.getByRole('heading', { name: /1억 원을 모으려면/ })).toBeVisible();
   });
 
   it('reports reset failure in the confirmation even when Main is required', async () => {

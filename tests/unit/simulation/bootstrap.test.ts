@@ -47,6 +47,28 @@ describe('bootstrapSimulation', () => {
     });
   });
 
+  it('routes a migrated high-principal draft without a target back to goal setup', () => {
+    expect(bootstrapSimulation(
+      { status: 'found', source },
+      {
+        status: 'found',
+        draft: {
+          ...draft,
+          initialInvestmentWon: 200_000_000,
+          targetAmountWon: null,
+        },
+        migration: 'schema-upgraded',
+      },
+      999,
+    )).toMatchObject({
+      kind: 'goal-required',
+      latestMainSource: source,
+      persistenceAvailable: true,
+      shouldPersist: true,
+      durationAdjusted: false,
+    });
+  });
+
   it('keeps a valid saved result when Main storage is unavailable', () => {
     expect(bootstrapSimulation(
       { status: 'unavailable' },

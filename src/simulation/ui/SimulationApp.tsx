@@ -49,7 +49,7 @@ export function SimulationApp({
   const [draft, setDraft] = useState<CompoundSimulationDraft | null>(
     initial.kind === 'ready'
       ? initial.draft
-      : initial.kind === 'stale-main' ? initial.draft : null,
+      : initial.kind === 'stale-main' || initial.kind === 'goal-required' ? initial.draft : null,
   );
   const [saveState, setSaveState] = useState<SimulationSaveState>(
     initial.kind !== 'main-required' && !initial.persistenceAvailable ? 'error' : 'saved',
@@ -62,6 +62,7 @@ export function SimulationApp({
     if (
       initialPersisted.current
       || runtime.kind === 'main-required'
+      || runtime.kind === 'goal-required'
       || !runtime.shouldPersist
       || draft === null
     ) return;
@@ -163,7 +164,9 @@ export function SimulationApp({
     return settled;
   }
 
-  const result = draft === null ? null : projectCompoundGrowth(draft);
+  const goalRequired = draft !== null && draft.targetAmountWon === null;
+  const resultDraft = draft !== null && draft.targetAmountWon !== null ? draft : null;
+  const result = resultDraft === null ? null : projectCompoundGrowth(resultDraft);
   const resultIsFinite = result !== null && projectionIsFinite(result);
   const latestSource = runtime.kind === 'ready' ? runtime.latestMainSource : null;
 
@@ -179,7 +182,14 @@ export function SimulationApp({
         >
         {draft === null && latestSource !== null ? (
           <SimulationOnboarding source={latestSource} now={now} onComplete={saveDraft} />
-        ) : draft !== null && result !== null ? (
+        ) : goalRequired && draft !== null ? (
+          <SimulationOnboarding
+            source={draft.source}
+            initialDraft={draft}
+            now={now}
+            onComplete={saveDraft}
+          />
+        ) : resultDraft !== null && result !== null ? (
           <>
             <div className="simulation-toolbar">
               <SaveIndicator state={saveState} />
@@ -197,8 +207,8 @@ export function SimulationApp({
             ) : null}
             {resultIsFinite ? (
               <>
-                <SimulationHero draft={draft} result={result} />
-                <GrowthChart result={result} amountMode={draft.amountMode} />
+                <SimulationHero draft={resultDraft} result={result} />
+                <GrowthChart result={result} amountMode={resultDraft.amountMode} />
                 <SimulationComparison result={result} />
               </>
             ) : (
@@ -206,11 +216,11 @@ export function SimulationApp({
                 계산 결과를 표시할 수 없어요. 계산 기준을 조정해주세요.
               </p>
             )}
-            <SimulationControls draft={draft} onChange={(next) => saveDraft({
+            <SimulationControls draft={resultDraft} onChange={(next) => saveDraft({
               ...next,
               updatedAt: now(),
             })} />
-            <AdvancedSettings draft={draft} onChange={(next) => saveDraft({
+            <AdvancedSettings draft={resultDraft} onChange={(next) => saveDraft({
               ...next,
               updatedAt: now(),
             })} />
