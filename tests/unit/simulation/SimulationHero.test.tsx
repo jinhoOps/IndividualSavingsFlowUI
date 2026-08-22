@@ -2,17 +2,21 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { afterEach, describe, expect, it } from 'vitest';
+import type { CompoundSimulationDraft } from '../../../src/simulation/domain/model';
 import { projectCompoundGrowth } from '../../../src/simulation/domain/projection';
 import { createDefaultSimulationDraft } from '../../../src/simulation/domain/validation';
 import { SimulationHero } from '../../../src/simulation/ui/SimulationHero';
 
 afterEach(cleanup);
 
-const draft = createDefaultSimulationDraft({
-  monthlySavingsWon: 300_000,
-  monthlyInvestmentWon: 200_000,
-  mainUpdatedAt: 123,
-}, 456);
+const draft: CompoundSimulationDraft & { targetAmountWon: number } = {
+  ...createDefaultSimulationDraft({
+    monthlySavingsWon: 300_000,
+    monthlyInvestmentWon: 200_000,
+    mainUpdatedAt: 123,
+  }, 456),
+  targetAmountWon: 100_000_000,
+};
 
 describe('SimulationHero', () => {
   it('renders the target reach duration with one nonduplicated condition line', () => {

@@ -6,17 +6,14 @@ export function SimulationHero({
   draft,
   result,
 }: {
-  draft: CompoundSimulationDraft;
+  draft: CompoundSimulationDraft & { targetAmountWon: number };
   result: ProjectionResult;
 }) {
   void result;
-  const targetAmountWon = draft.targetAmountWon;
   const reachMonth = findTargetReachMonth(draft);
-  const resultCopy = targetAmountWon === null
-    ? ''
-    : reachMonth === null
-      ? `현재 조건으로는 30년 안에 ${formatWon(targetAmountWon)}에 도달하기 어려워요`
-      : `${formatWon(targetAmountWon)}을 모으려면 ${formatTargetReachDuration(reachMonth)}이 걸려요`;
+  const resultCopy = reachMonth === null
+    ? `현재 조건으로는 30년 안에 ${formatWon(draft.targetAmountWon)}에 도달하기 어려워요`
+    : `${formatWon(draft.targetAmountWon)}을 모으려면 ${formatTargetReachDuration(reachMonth)}이 걸려요`;
 
   return (
     <header className="simulation-hero">

@@ -137,6 +137,36 @@ describe('SimulationApp', () => {
     })));
   });
 
+  it('restores stale-Main disclosure and retry after completing a target without current Main', () => {
+    const migrated: CompoundSimulationDraft = {
+      ...createDefaultSimulationDraft(source, 456),
+      initialInvestmentWon: 200_000_000,
+      targetAmountWon: null,
+    };
+    const load = vi.fn()
+      .mockReturnValueOnce({ status: 'unavailable' as const })
+      .mockReturnValueOnce({ status: 'found' as const, source });
+    render(<SimulationApp
+      mainSourceRepository={{ load }}
+      repository={simulationRepository({
+        status: 'found',
+        draft: migrated,
+        migration: 'schema-upgraded',
+      })}
+      now={() => 999}
+    />);
+
+    fireEvent.change(screen.getByRole('textbox', { name: '목표 금액' }), {
+      target: { value: '300000000' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '다음' }));
+    fireEvent.click(screen.getByRole('button', { name: '결과 보기' }));
+
+    expect(screen.getByRole('heading', { name: /3억 원을 모으려면/ })).toBeVisible();
+    expect(screen.getByText('이전 Main 기준')).toBeVisible();
+    expect(screen.getByRole('button', { name: '최신 Main 다시 불러오기' })).toBeVisible();
+  });
+
   it('revisits the result directly and persists only the latest Main source', async () => {
     const saved = { ...createDefaultSimulationDraft(source, 456), initialInvestmentWon: 10_000_000 };
     const latest = { ...source, monthlySavingsWon: 900_000, mainUpdatedAt: 999 };

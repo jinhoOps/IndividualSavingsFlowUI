@@ -69,6 +69,48 @@ describe('bootstrapSimulation', () => {
     });
   });
 
+  it.each([
+    [
+      { status: 'unavailable' as const },
+      { kind: 'stale-main' as const },
+    ],
+    [
+      { status: 'invalid' as const },
+      { kind: 'main-required' as const, reason: 'invalid' as const },
+    ],
+    [
+      { status: 'empty' as const },
+      { kind: 'main-required' as const, reason: 'empty' as const },
+    ],
+    [
+      {
+        status: 'found' as const,
+        source: { ...source, monthlySavingsWon: 0, monthlyInvestmentWon: 0 },
+      },
+      { kind: 'main-required' as const, reason: 'zero-contribution' as const },
+    ],
+  ])('keeps a targetless draft in goal setup when Main is unavailable or unusable', (
+    mainResult,
+    afterGoal,
+  ) => {
+    const targetless = {
+      ...draft,
+      initialInvestmentWon: 200_000_000,
+      targetAmountWon: null,
+    };
+
+    expect(bootstrapSimulation(
+      mainResult,
+      { status: 'found', draft: targetless, migration: 'schema-upgraded' },
+      999,
+    )).toMatchObject({
+      kind: 'goal-required',
+      draft: targetless,
+      latestMainSource: source,
+      afterGoal,
+    });
+  });
+
   it('keeps a valid saved result when Main storage is unavailable', () => {
     expect(bootstrapSimulation(
       { status: 'unavailable' },

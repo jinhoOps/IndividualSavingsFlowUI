@@ -96,6 +96,9 @@ export function SimulationApp({
       setSaveState('error');
       return;
     }
+    if (runtime.kind === 'goal-required') {
+      setRuntime(goalCompletionRuntime(runtime, valid));
+    }
     setDraft(valid);
     queueSave(valid);
   }
@@ -165,7 +168,7 @@ export function SimulationApp({
   }
 
   const goalRequired = draft !== null && draft.targetAmountWon === null;
-  const resultDraft = draft !== null && draft.targetAmountWon !== null ? draft : null;
+  const resultDraft = draft !== null && hasTarget(draft) ? draft : null;
   const result = resultDraft === null ? null : projectCompoundGrowth(resultDraft);
   const resultIsFinite = result !== null && projectionIsFinite(result);
   const latestSource = runtime.kind === 'ready' ? runtime.latestMainSource : null;
@@ -232,6 +235,38 @@ export function SimulationApp({
       </main>
     </AppShell>
   );
+}
+
+function goalCompletionRuntime(
+  runtime: Extract<ReturnType<typeof bootstrapSimulation>, { kind: 'goal-required' }>,
+  draft: CompoundSimulationDraft,
+): ReturnType<typeof bootstrapSimulation> {
+  if (runtime.afterGoal.kind === 'stale-main') {
+    return {
+      kind: 'stale-main',
+      draft,
+      persistenceAvailable: runtime.persistenceAvailable,
+      shouldPersist: false,
+      durationAdjusted: runtime.durationAdjusted,
+    };
+  }
+  if (runtime.afterGoal.kind === 'main-required') {
+    return runtime.afterGoal;
+  }
+  return {
+    kind: 'ready',
+    draft,
+    latestMainSource: runtime.afterGoal.latestMainSource,
+    persistenceAvailable: runtime.persistenceAvailable,
+    shouldPersist: false,
+    durationAdjusted: runtime.durationAdjusted,
+  };
+}
+
+function hasTarget(
+  draft: CompoundSimulationDraft,
+): draft is CompoundSimulationDraft & { targetAmountWon: number } {
+  return draft.targetAmountWon !== null;
 }
 
 function projectionIsFinite(result: ReturnType<typeof projectCompoundGrowth>): boolean {
