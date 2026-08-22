@@ -505,6 +505,7 @@
 }
 
 .simulation-controls button[aria-pressed="true"],
+.simulation-onboarding-step .simulation-preset-row button[aria-pressed="true"],
 .simulation-amount-mode button[aria-pressed="true"] {
   border-color: var(--tone-primary);
   background: var(--tone-primary);

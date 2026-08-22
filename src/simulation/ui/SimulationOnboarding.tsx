@@ -8,6 +8,7 @@ import { StartingPrincipalStep } from './StartingPrincipalStep';
 export interface SimulationOnboardingProps {
   source: SimulationMainSource;
   initialDraft?: CompoundSimulationDraft;
+  goalSaveState?: 'idle' | 'saving' | 'error';
   now(): number;
   onComplete(draft: CompoundSimulationDraft): void;
 }
@@ -15,6 +16,7 @@ export interface SimulationOnboardingProps {
 export function SimulationOnboarding({
   source,
   initialDraft,
+  goalSaveState = 'idle',
   now,
   onComplete,
 }: SimulationOnboardingProps) {
@@ -22,6 +24,7 @@ export function SimulationOnboarding({
     initialDraft?.targetAmountWon === null ? 'goal' : 'principal',
   );
   const [draft, setDraft] = useState(() => initialDraft ?? createDefaultSimulationDraft(source, now()));
+  const resumedGoal = initialDraft?.targetAmountWon === null;
 
   function continueFromPrincipal(initialInvestmentWon: number): void {
     const targetAmountWon = targetForInitialInvestment(initialInvestmentWon);
@@ -37,9 +40,16 @@ export function SimulationOnboarding({
     return (
       <GoalAmountStep
         initialInvestmentWon={draft.initialInvestmentWon}
+        completesOnSubmit={resumedGoal}
+        submissionState={resumedGoal ? goalSaveState : 'idle'}
         onContinue={(targetAmountWon) => {
-          setDraft((current) => ({ ...current, targetAmountWon }));
-          setStage('return');
+          const next = { ...draft, targetAmountWon, updatedAt: now() };
+          setDraft(next);
+          if (resumedGoal) {
+            onComplete(next);
+          } else {
+            setStage('return');
+          }
         }}
       />
     );

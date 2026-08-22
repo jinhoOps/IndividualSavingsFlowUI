@@ -68,27 +68,6 @@ test('390px 시작 자산 빠른 조정은 한 줄 터치 영역을 유지한다
   expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
 });
 
-test('390px high-principal first run asks for a goal before expected return without overflow', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await seedMain(page);
-  await page.goto('apps/simulation/');
-  await page.getByRole('button', { name: '있어요' }).click();
-  await page.getByRole('textbox', { name: '현재 모아둔 투자금' }).fill('200000000');
-  await page.getByRole('button', { name: '다음' }).click();
-
-  const goalHeading = page.getByRole('heading', { name: '다음에는 얼마를 모으고 싶나요?' });
-  await expect(goalHeading).toBeVisible();
-  await expect(goalHeading).toBeFocused();
-  await page.getByRole('textbox', { name: '목표 금액' }).fill('300000000');
-  await page.getByRole('button', { name: '다음' }).click();
-  await expect(page.getByRole('heading', { name: '매년 어느 정도 수익을 기대하나요?' })).toBeVisible();
-  await page.getByRole('button', { name: '결과 보기' }).click();
-  await expect(page.getByRole('heading', {
-    name: /3억 원을 모으려면|현재 조건으로는 30년 안에 3억 원/,
-  })).toBeVisible();
-  expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
-});
-
 test('guides automatic-goal first run, supports boundary years and keeps Main read-only', async ({ page }) => {
   await seedMain(page);
   await openFirstResult(page);
@@ -238,7 +217,6 @@ test('migrated v2 high-principal workspace completes the goal without changing M
   await page.goto('apps/simulation/');
   await expect(page.getByRole('heading', { name: '다음에는 얼마를 모으고 싶나요?' })).toBeVisible();
   await page.getByRole('textbox', { name: '목표 금액' }).fill('300000000');
-  await page.getByRole('button', { name: '다음' }).click();
   await page.getByRole('button', { name: '결과 보기' }).click();
   await expect(page.getByRole('heading', {
     name: /3억 원을 모으려면|현재 조건으로는 30년 안에 3억 원/,
@@ -299,15 +277,50 @@ for (const viewport of [
   { width: 768, height: 900, label: 'tablet' },
   { width: 1280, height: 900, label: 'desktop' },
 ]) {
-  test(`${viewport.label} keeps the goal result, graph, tooltip, and controls contained`, async ({ page }) => {
+  test(`${viewport.label} keeps the high-principal goal entry and result contained`, async ({ page }) => {
     await page.setViewportSize(viewport);
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await seedMain(page);
-    await openFirstResult(page);
+    await page.goto('apps/simulation/');
+    await page.getByRole('button', { name: '있어요' }).click();
+    await page.getByRole('textbox', { name: '현재 모아둔 투자금' }).fill('200000000');
+    await page.getByRole('button', { name: '다음' }).click();
+
+    const goalHeading = page.getByRole('heading', { name: '다음에는 얼마를 모으고 싶나요?' });
+    const goalInput = page.getByRole('textbox', { name: '목표 금액' });
+    await expect(goalHeading).toBeVisible();
+    await expect(goalHeading).toBeFocused();
+    await expect(goalInput).toBeVisible();
+    const goalInputBox = await goalInput.boundingBox();
+    if (goalInputBox === null) throw new Error('goal input has no bounding box');
+    expect(goalInputBox.x).toBeGreaterThanOrEqual(0);
+    expect(goalInputBox.x + goalInputBox.width).toBeLessThanOrEqual(viewport.width);
+    expect(goalInputBox.height).toBeGreaterThanOrEqual(44);
+    await goalInput.focus();
+    await expect(goalInput).toBeFocused();
+    expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
+
+    await goalInput.fill('300000000');
+    await page.getByRole('button', { name: '다음' }).click();
+    const selectedPreset = page.getByRole('button', { name: '연 기대수익률 9%' });
+    await expect(selectedPreset).toHaveAttribute('aria-pressed', 'true');
+    expect(await selectedPreset.evaluate((button) => {
+      const style = getComputedStyle(button);
+      return {
+        backgroundColor: style.backgroundColor,
+        borderColor: style.borderTopColor,
+        color: style.color,
+      };
+    })).toEqual({
+      backgroundColor: 'rgb(234, 91, 42)',
+      borderColor: 'rgb(234, 91, 42)',
+      color: 'rgb(255, 255, 255)',
+    });
+    await page.getByRole('button', { name: '결과 보기' }).click();
     await page.evaluate(() => document.fonts.ready.then(() => undefined));
 
     const hero = page.getByRole('heading', {
-      name: /1억 원을 모으려면|현재 조건으로는 30년 안에 1억 원/,
+      name: /3억 원을 모으려면|현재 조건으로는 30년 안에 3억 원/,
     });
     const headline = await hero.textContent();
     const heroBox = await hero.boundingBox();

@@ -26,6 +26,10 @@ describe('ExpectedReturnStep', () => {
     }));
     expect(screen.queryByRole('slider', { name: '기간' })).not.toBeInTheDocument();
     expect(screen.queryByRole('spinbutton', { name: '기간 숫자' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '연 기대수익률 9%' }))
+      .toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: '연 기대수익률 5%' }))
+      .toHaveAttribute('aria-pressed', 'false');
 
     fireEvent.click(screen.getByRole('button', { name: '직접 입력' }));
     fireEvent.click(screen.getByRole('button', { name: '기대수익률 0.25%p 올리기' }));

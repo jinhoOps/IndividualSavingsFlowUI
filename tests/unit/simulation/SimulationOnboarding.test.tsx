@@ -42,7 +42,15 @@ describe('SimulationOnboarding', () => {
       '현재 모아둔 투자금보다 큰 금액을 입력해주세요.',
     );
 
-    fireEvent.change(target, { target: { value: '250000000' } });
+    fireEvent.change(target, { target: { value: '250million' } });
+    expect(target).toHaveValue('250million');
+    expect(target).toHaveAttribute('aria-describedby', 'goal-amount-error');
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      '숫자는 쉼표를 포함한 원 단위로 입력해주세요.',
+    );
+
+    fireEvent.change(target, { target: { value: '250,000,000' } });
+    expect(target).toHaveValue('250,000,000');
     fireEvent.click(screen.getByRole('button', { name: '다음' }));
 
     expect(screen.getByRole('heading', { name: '매년 어느 정도 수익을 기대하나요?' })).toBeVisible();
@@ -106,7 +114,7 @@ describe('SimulationOnboarding', () => {
     expect(input).toHaveValue('10000000');
   });
 
-  it('resumes a migrated goal-required draft at the goal question without changing its return', () => {
+  it('completes a migrated goal-required draft directly from the goal while preserving its settings', () => {
     const onComplete = vi.fn();
     const initialDraft: CompoundSimulationDraft = {
       ...createDefaultSimulationDraft(source, 123),
@@ -114,6 +122,9 @@ describe('SimulationOnboarding', () => {
       targetAmountWon: null,
       years: 17,
       expectedAnnualReturnPercent: 5,
+      baseRatePercent: 3.25,
+      inflationOffsetPercentPoints: -0.75,
+      amountMode: 'real',
     };
     render(<SimulationOnboarding
       source={source}
@@ -126,14 +137,18 @@ describe('SimulationOnboarding', () => {
     fireEvent.change(screen.getByRole('textbox', { name: '목표 금액' }), {
       target: { value: '300000000' },
     });
-    fireEvent.click(screen.getByRole('button', { name: '다음' }));
     fireEvent.click(screen.getByRole('button', { name: '결과 보기' }));
 
+    expect(screen.queryByRole('heading', { name: '매년 어느 정도 수익을 기대하나요?' }))
+      .not.toBeInTheDocument();
     expect(onComplete).toHaveBeenCalledWith(expect.objectContaining({
       initialInvestmentWon: 200_000_000,
       targetAmountWon: 300_000_000,
       years: 17,
       expectedAnnualReturnPercent: 5,
+      baseRatePercent: 3.25,
+      inflationOffsetPercentPoints: -0.75,
+      amountMode: 'real',
       updatedAt: 456,
     }));
   });

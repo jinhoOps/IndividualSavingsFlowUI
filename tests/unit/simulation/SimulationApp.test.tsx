@@ -125,19 +125,18 @@ describe('SimulationApp', () => {
     fireEvent.change(screen.getByRole('textbox', { name: '목표 금액' }), {
       target: { value: '300000000' },
     });
-    fireEvent.click(screen.getByRole('button', { name: '다음' }));
     fireEvent.click(screen.getByRole('button', { name: '결과 보기' }));
 
-    expect(screen.getByRole('heading', { name: /3억 원을 모으려면/ })).toBeVisible();
     await waitFor(() => expect(repository.save).toHaveBeenCalledWith(expect.objectContaining({
       initialInvestmentWon: 200_000_000,
       targetAmountWon: 300_000_000,
       years: 17,
       expectedAnnualReturnPercent: 5,
     })));
+    expect(screen.getByRole('heading', { name: /3억 원을 모으려면/ })).toBeVisible();
   });
 
-  it('restores stale-Main disclosure and retry after completing a target without current Main', () => {
+  it('restores stale-Main disclosure and retry after completing a target without current Main', async () => {
     const migrated: CompoundSimulationDraft = {
       ...createDefaultSimulationDraft(source, 456),
       initialInvestmentWon: 200_000_000,
@@ -146,26 +145,88 @@ describe('SimulationApp', () => {
     const load = vi.fn()
       .mockReturnValueOnce({ status: 'unavailable' as const })
       .mockReturnValueOnce({ status: 'found' as const, source });
+    const repository = simulationRepository({
+      status: 'found',
+      draft: migrated,
+      migration: 'schema-upgraded',
+    });
     render(<SimulationApp
       mainSourceRepository={{ load }}
-      repository={simulationRepository({
-        status: 'found',
-        draft: migrated,
-        migration: 'schema-upgraded',
-      })}
+      repository={repository}
       now={() => 999}
     />);
 
     fireEvent.change(screen.getByRole('textbox', { name: '목표 금액' }), {
       target: { value: '300000000' },
     });
-    fireEvent.click(screen.getByRole('button', { name: '다음' }));
     fireEvent.click(screen.getByRole('button', { name: '결과 보기' }));
 
+    await waitFor(() => expect(repository.save).toHaveBeenCalledOnce());
     expect(screen.getByRole('heading', { name: /3억 원을 모으려면/ })).toBeVisible();
     expect(screen.getByText('이전 Main 기준')).toBeVisible();
     expect(screen.getByRole('button', { name: '최신 Main 다시 불러오기' })).toBeVisible();
   });
+
+  it.each(['empty', 'zero-contribution'] as const)(
+    'keeps a %s Main goal entry retryable until its target save succeeds',
+    async (mainState) => {
+      const zeroSource = {
+        ...source,
+        monthlySavingsWon: 0,
+        monthlyInvestmentWon: 0,
+      };
+      const draftSource = mainState === 'zero-contribution' ? zeroSource : source;
+      const migrated: CompoundSimulationDraft = {
+        ...createDefaultSimulationDraft(draftSource, 456),
+        initialInvestmentWon: 200_000_000,
+        targetAmountWon: null,
+        years: 17,
+        expectedAnnualReturnPercent: 5,
+        amountMode: 'real',
+      };
+      const repository = simulationRepository({
+        status: 'found',
+        draft: migrated,
+        migration: 'schema-upgraded',
+      });
+      repository.save = vi.fn()
+        .mockResolvedValueOnce({ status: 'unavailable' as const })
+        .mockResolvedValueOnce({ status: 'saved' as const });
+      render(<SimulationApp
+        mainSourceRepository={mainState === 'zero-contribution'
+          ? mainRepository(zeroSource)
+          : { load: () => ({ status: 'empty' }) }}
+        repository={repository}
+        now={() => 999}
+      />);
+
+      const target = screen.getByRole('textbox', { name: '목표 금액' });
+      fireEvent.change(target, { target: { value: '300000000' } });
+      fireEvent.click(screen.getByRole('button', { name: '결과 보기' }));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        '목표를 저장하지 못했어요. 다시 시도해주세요.',
+      );
+      expect(screen.getByRole('heading', { name: '다음에는 얼마를 모으고 싶나요?' })).toBeVisible();
+      expect(target).toHaveValue('300000000');
+      expect(screen.queryByRole('heading', {
+        name: 'Main에서 월 저축·투자 금액을 먼저 정해주세요.',
+      })).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: '다시 시도' }));
+
+      await waitFor(() => expect(repository.save).toHaveBeenCalledTimes(2));
+      expect(repository.save).toHaveBeenLastCalledWith(expect.objectContaining({
+        targetAmountWon: 300_000_000,
+        years: 17,
+        expectedAnnualReturnPercent: 5,
+        amountMode: 'real',
+      }));
+      expect(screen.getByRole('heading', {
+        name: 'Main에서 월 저축·투자 금액을 먼저 정해주세요.',
+      })).toBeVisible();
+    },
+  );
 
   it('revisits the result directly and persists only the latest Main source', async () => {
     const saved = { ...createDefaultSimulationDraft(source, 456), initialInvestmentWon: 10_000_000 };

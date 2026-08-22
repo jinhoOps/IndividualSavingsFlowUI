@@ -28,6 +28,9 @@ export function formatPercent(value: number): string {
 }
 
 export function formatTargetReachDuration(month: number): string {
+  if (!Number.isInteger(month) || month < 1) {
+    throw new RangeError('Target reach month must be a positive integer');
+  }
   const years = Math.floor(month / 12);
   const remainingMonths = month % 12;
   if (years === 0) return `${remainingMonths}개월`;

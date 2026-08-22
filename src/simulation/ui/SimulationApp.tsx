@@ -97,10 +97,31 @@ export function SimulationApp({
       return;
     }
     if (runtime.kind === 'goal-required') {
-      setRuntime(goalCompletionRuntime(runtime, valid));
+      completeGoal(runtime, valid);
+      return;
     }
     setDraft(valid);
     queueSave(valid);
+  }
+
+  function completeGoal(
+    goalRuntime: Extract<ReturnType<typeof bootstrapSimulation>, { kind: 'goal-required' }>,
+    valid: CompoundSimulationDraft,
+  ): void {
+    const token = beginOperation();
+    enqueuePersistence(
+      () => repository.save(valid),
+      (result) => {
+        if (token !== latestOperation.current) return;
+        if (result?.status !== 'saved') {
+          setSaveState('error');
+          return;
+        }
+        setDraft(valid);
+        setRuntime(goalCompletionRuntime(goalRuntime, valid));
+        setSaveState('saved');
+      },
+    );
   }
 
   function reset(): Promise<boolean> {
@@ -189,6 +210,7 @@ export function SimulationApp({
           <SimulationOnboarding
             source={draft.source}
             initialDraft={draft}
+            goalSaveState={saveState === 'saved' ? 'idle' : saveState}
             now={now}
             onComplete={saveDraft}
           />

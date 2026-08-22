@@ -25,4 +25,8 @@ describe('Simulation target reach duration formatting', () => {
   ])('formats %i months without a zero-month suffix', (month, expected) => {
     expect(formatTargetReachDuration(month)).toBe(expected);
   });
+
+  it('rejects month zero instead of formatting it as zero months', () => {
+    expect(() => formatTargetReachDuration(0)).toThrow(RangeError);
+  });
 });
