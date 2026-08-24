@@ -271,6 +271,7 @@ for (const viewport of viewports) {
 }
 
 interface WideReviewState {
+  review: { x: number; width: number; right: number };
   stage: { x: number; width: number; right: number };
   frame: { x: number; width: number };
   desiredEndPercent: number;
@@ -285,14 +286,17 @@ async function readWideReviewState(page: Page): Promise<WideReviewState> {
     requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
   }));
   return page.evaluate(() => {
+    const review = document.querySelector<HTMLElement>('.allocation-bar')!;
     const stage = document.querySelector<HTMLElement>('[data-testid="allocation-visual-stage"]')!;
     const frame = document.querySelector<HTMLElement>('[data-testid="main-page-frame"]')!;
     const segments = stage.querySelector<HTMLElement>('.allocation-bar__segments')!;
     const targetClip = segments.querySelector<HTMLElement>('.cashflow-bar__targets-clip')!;
+    const reviewBox = review.getBoundingClientRect();
     const stageBox = stage.getBoundingClientRect();
     const frameBox = frame.getBoundingClientRect();
     const targetClipBox = targetClip.getBoundingClientRect();
     return {
+      review: { x: reviewBox.x, width: reviewBox.width, right: reviewBox.right },
       stage: { x: stageBox.x, width: stageBox.width, right: stageBox.right },
       frame: { x: frameBox.x, width: frameBox.width },
       desiredEndPercent: Number(segments.dataset.desiredEndPercent),
@@ -315,16 +319,18 @@ async function expectClippedDeficitReview(
 ): Promise<void> {
   const expectedWideWidth = Math.min(viewport.width - 32, 1200);
   const expectedWideX = (viewport.width - expectedWideWidth) / 2;
-  expect(Math.abs(state.stage.width - expectedWideWidth)).toBeLessThan(1);
-  expect(Math.abs(state.stage.x - expectedWideX)).toBeLessThan(1);
-  expect(state.stage.x).toBeGreaterThanOrEqual(16);
-  expect(state.stage.right).toBeLessThanOrEqual(viewport.width - 16 + 1);
+  expect(Math.abs(state.review.width - expectedWideWidth)).toBeLessThan(1);
+  expect(Math.abs(state.review.x - expectedWideX)).toBeLessThan(1);
+  expect(state.review.x).toBeGreaterThanOrEqual(16);
+  expect(state.review.right).toBeLessThanOrEqual(viewport.width - 16 + 1);
+  expect(state.stage.x).toBeGreaterThanOrEqual(state.review.x);
+  expect(state.stage.right).toBeLessThanOrEqual(state.review.right);
   expectReadingFrame(viewport.width, state.frame);
 
   if (viewport.name === 'desktop') {
-    expect(state.stage.width).toBeGreaterThan(state.frame.width);
+    expect(state.review.width).toBeGreaterThan(state.frame.width);
   } else {
-    expect(Math.abs(state.stage.width - state.frame.width)).toBeLessThan(1);
+    expect(Math.abs(state.review.width - state.frame.width)).toBeLessThan(1);
   }
 
   expect(state.desiredEndPercent).toBe(300);
@@ -427,7 +433,8 @@ for (const viewport of viewports) {
     await expect(page.getByRole('heading', {
       name: '입력한 월 자금 계획을 확인해주세요',
     })).toBeVisible();
-    await expect(page.getByTestId('allocation-visual-stage')).toHaveClass(/app-wide-visual/);
+    await expect(page.locator('.allocation-bar')).toHaveClass(/app-wide-visual/);
+    await expect(page.getByTestId('allocation-visual-stage')).not.toHaveClass(/app-wide-visual/);
     const firstReview = await readWideReviewState(page);
     await expectClippedDeficitReview(page, viewport, firstReview);
     await expectClippedFallbackTooltips(page, viewport.width);
@@ -450,12 +457,15 @@ for (const viewport of viewports) {
       name: '입력한 월 자금 계획을 확인해주세요',
     })).toBeVisible();
     await expect(page.getByRole('button', { name: '설정 취소' })).toBeVisible();
-    await expect(page.getByTestId('allocation-visual-stage')).toHaveClass(/app-wide-visual/);
+    await expect(page.locator('.allocation-bar')).toHaveClass(/app-wide-visual/);
+    await expect(page.getByTestId('allocation-visual-stage')).not.toHaveClass(/app-wide-visual/);
     const restartReview = await readWideReviewState(page);
     await expectClippedDeficitReview(page, viewport, restartReview);
 
     expect(restartReview.stage.width).toBe(firstReview.stage.width);
     expect(restartReview.stage.x).toBe(firstReview.stage.x);
+    expect(restartReview.review.width).toBe(firstReview.review.width);
+    expect(restartReview.review.x).toBe(firstReview.review.x);
     expect(restartReview.desiredEndPercent).toBe(firstReview.desiredEndPercent);
     expect(restartReview.visibleEndPercent).toBe(firstReview.visibleEndPercent);
     expect(restartReview.clipped).toBe(firstReview.clipped);
