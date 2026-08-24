@@ -67,3 +67,17 @@ The 61 skips are existing conditional/audit skips, not newly introduced skips. T
 - Motion helper consolidation can alter first-visit/restart timing and reduced-motion synchronous final states. Preserve app-owned choreography and use focused motion tests before broad extraction.
 - Storage and legacy cleanup carry the highest compatibility risk. Keep `legacyPhaseA`, old keys, and explicit fixtures until each item has a documented disposition and atomic backup/import evidence.
 - Large orchestration files, especially `MainApp.tsx` and `AccountMapApp.tsx`, mix bootstrap, commands, view-model assembly, and rendering. Splitting by line count rather than responsibility would violate the approved module rules.
+
+## Task 2 shared frame browser evidence — 2026-08-24
+
+This focused browser verification ran in `/Users/jinho/orca/IndividualSavingsFlowUI/.worktrees/refactor-shared-foundation` on `codex/refactor-shared-foundation` after the shared-frame extraction commit `cb0b400de99ec5f73cdaa28ac548c60ff6e2c2c6`.
+
+| Command | Exit status | Result |
+| --- | ---: | --- |
+| `npm run test:e2e -- tests/reading-width.spec.ts tests/app-journey.spec.ts tests/main-react.spec.ts tests/simulation.spec.ts tests/portfolio.spec.ts tests/account-map.spec.ts tests/motion-system.spec.ts` | 1 | 113 passed, 3 failed, 1 skipped out of 117 tests. The single skip is the existing PWA-only offline revisit test. |
+
+The only failures exactly match three of the recorded baseline failures, all from `tests/reading-width.spec.ts:404`/the `allocation-visual-stage` assertion at 390px, 768px, and 1280px: the element still lacks the expected `app-wide-visual` class. No new failures occurred. The previously recorded `tests/main-react.spec.ts:1008` deficit-geometry failure passed in this focused re-run, so it is not a frame-extraction regression and remains a baseline-flakiness/investigation concern rather than evidence of a changed contract.
+
+The passing selected coverage supplies fresh evidence for the shared frame's unchanged responsive boundary: `app-journey` passed its Main launcher geometry/canvas cases at 390px, 768px, and 1280px; `reading-width` passed the cross-result-app reading-width cases at those three viewports; Account Map passed contained states with 44px actions, pointer/touch scroll behavior, focus parity, and the 390px long-title containment case; Simulation passed contained high-principal result/goal cases plus focus and chart semantic visibility; Portfolio passed focus restoration and the 768px focused-sheet containment case; Main passed the live dashboard required-viewport containment, focus, and visualization cases; and `motion-system` passed mobile/tablet/desktop cross-app semantic, focus, reduced-motion, overflow-clipping, and visualization checks.
+
+No source, CSS, storage, URL, or navigation changes were made while collecting this evidence. Playwright generated only ignored `test-results/` artifacts.
