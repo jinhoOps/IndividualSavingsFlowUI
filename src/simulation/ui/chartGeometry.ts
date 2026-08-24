@@ -1,7 +1,7 @@
 import type { CompoundSimulationDraft, ProjectionPoint } from '../domain/model';
 
 export interface ChartGeometryPoint {
-  year: number;
+  month: number;
   x: number;
   currentY: number;
   allSavingsY: number;
@@ -29,7 +29,7 @@ export function buildChartGeometry(
     top: 20,
     bottom: size.height - 36,
   };
-  const maxYear = Math.max(1, ...points.map((point) => point.year));
+  const maxMonth = Math.max(1, ...points.map((point) => point.month));
   const amount = (point: ProjectionPoint, series: 'current' | 'allSavings') => {
     if (amountMode === 'real') {
       return series === 'current' ? point.currentPlanRealWon : point.allSavingsRealWon;
@@ -41,8 +41,8 @@ export function buildChartGeometry(
     ...points.flatMap((point) => [amount(point, 'current'), amount(point, 'allSavings')]),
   );
   const geometryPoints = points.map((point) => ({
-    year: point.year,
-    x: plot.left + point.year / maxYear * (plot.right - plot.left),
+    month: point.month,
+    x: plot.left + point.month / maxMonth * (plot.right - plot.left),
     currentY: plot.bottom - amount(point, 'current') / maxAmount * (plot.bottom - plot.top),
     allSavingsY: plot.bottom - amount(point, 'allSavings') / maxAmount * (plot.bottom - plot.top),
     point,
@@ -55,14 +55,17 @@ export function buildChartGeometry(
     ? ''
     : `${currentPlanPath} L ${last.x} ${plot.bottom} L ${first.x} ${plot.bottom} Z`;
 
+  const isMonthlySeries = geometryPoints.length > 1
+    && geometryPoints.every((point, index) => point.month === index);
+  const tickInterval = isMonthlySeries ? 6 : 60;
   const tickPoints = geometryPoints.filter((point, index) => (
     index === 0
     || index === geometryPoints.length - 1
-    || (geometryPoints.length > 6 && point.year % 5 === 0)
+    || (geometryPoints.length > 6 && point.month % tickInterval === 0)
   ));
   const xTicks = tickPoints.map((point) => ({
     x: point.x,
-    label: point.year === 0 ? '현재' : `${point.year}년`,
+    label: formatProjectionPeriod(point.month),
   }));
   const yTicks = [0, maxAmount / 2, maxAmount].map((value) => ({
     y: plot.bottom - value / maxAmount * (plot.bottom - plot.top),
@@ -112,6 +115,16 @@ export function formatChartAxisWon(amountWon: number): string {
   if (absolute >= 10_000) return `${Math.round(amountWon / 10_000)}만`;
   if (absolute >= 1_000) return `${Math.round(amountWon / 1_000)}천`;
   return `${Math.round(amountWon)}`;
+}
+
+export function formatProjectionPeriod(month: number): string {
+  const normalizedMonth = Math.max(0, Math.round(month));
+  if (normalizedMonth === 0) return '현재';
+  if (normalizedMonth < 12) return `${normalizedMonth}개월`;
+
+  const years = Math.floor(normalizedMonth / 12);
+  const months = normalizedMonth % 12;
+  return months === 0 ? `${years}년` : `${years}년 ${months}개월`;
 }
 
 function pathFor(
