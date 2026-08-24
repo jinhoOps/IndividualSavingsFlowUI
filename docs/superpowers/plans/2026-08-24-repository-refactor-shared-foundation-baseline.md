@@ -109,7 +109,7 @@ The isolated supported-flow run supplies deterministic coverage at 390×844, 768
 
 ### Next plan inputs and unresolved verification
 
-1. `MainApp`: split bootstrap/repository effects, setup/review command boundaries, dashboard view models, and app-owned motion without changing the five Main-owned monthly values or wide-review contract. Resolve the stale `Surface` architecture test as part of an approved UI-contract decision, not as a drive-by workaround.
+1. `MainApp`: split bootstrap/repository effects, setup/review command boundaries, dashboard view models, and app-owned motion without changing the five Main-owned monthly values or wide-review contract.
 2. `AccountMapApp`: separate command/recovery orchestration from map/setup rendering; later split graph model, responsive layout, and placement while retaining Main read-only and Account Map-only writes to `workspace.locations` and `workspace.accountMap`.
 3. `PortfolioApp`: separate repository/plan commands from summary/edit surfaces; retain Portfolio slice ownership and its separation from Account Map locations.
 4. `SimulationApp`: separate onboarding/projection command and summary/chart view models; retain the Main-read-only source, compound-growth meaning, and the existing app frame.
