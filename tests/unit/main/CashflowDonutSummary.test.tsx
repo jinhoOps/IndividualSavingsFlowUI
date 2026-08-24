@@ -337,12 +337,14 @@ describe('CashflowDonutSummary', () => {
     expect(exitingResult.cancel).toHaveBeenCalledOnce();
   });
 
-  it('renders the accessible allocation chart, savings-investment center, and legend controls', () => {
-    render(<CashflowDonutSummary data={appliedData} />);
+  it('renders legend labels and percentages while keeping amounts in accessible names', () => {
+    const { container } = render(<CashflowDonutSummary data={appliedData} />);
 
     expect(screen.getByRole('img', { name: /소비 56\.3%.*저축 9\.4%.*투자 6\.3%.*여윳돈 28\.1%/ })).toBeVisible();
     expect(screen.getByText('15.6%', { selector: '[aria-hidden="true"]' })).toBeVisible();
     expect(screen.getByText('저축·투자')).toBeVisible();
+    const legend = container.querySelector('.cashflow-donut__legend');
+    expect(legend).not.toBeNull();
     for (const [label, amount, percentage] of [
       ['소비', '180만 원', '56.3%'],
       ['저축', '30만 원', '9.4%'],
@@ -350,8 +352,9 @@ describe('CashflowDonutSummary', () => {
       ['여윳돈', '90만 원', '28.1%'],
     ]) {
       expect(screen.getByRole('button', { name: `${label} · ${amount} · ${percentage}` })).toBeVisible();
+      expect(legend).not.toHaveTextContent(amount);
     }
-    expect(document.querySelectorAll('.cashflow-donut__legend-amount')).toHaveLength(4);
+    expect(document.querySelectorAll('.cashflow-donut__legend-amount')).toHaveLength(0);
   });
 
   it('shows focused allocation detail in the donut center without a tooltip overlay', () => {

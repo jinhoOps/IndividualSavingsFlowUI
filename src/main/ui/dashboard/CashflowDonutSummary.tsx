@@ -292,11 +292,6 @@ export function CashflowDonutSummary({ data }: CashflowDonutSummaryProps) {
               type="button"
             >
               <span>{allocation.label}</span>
-              <AnimatedVisualNumber
-                className="cashflow-donut__legend-amount"
-                value={allocation.amountWon}
-                format={formatDashboardWon}
-              />
               <AnimatedVisualNumber value={allocation.percentage} format={formatPercentage} />
             </button>
           );

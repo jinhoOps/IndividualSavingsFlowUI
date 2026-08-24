@@ -1210,11 +1210,11 @@ test.describe('mobile cashflow donut', () => {
         const rect = button.getBoundingClientRect();
         const label = button.querySelector('span:first-child')!.getBoundingClientRect();
         const percentage = button.querySelector('span:last-child')!.getBoundingClientRect();
-        const amount = button.querySelector<HTMLElement>('.cashflow-donut__legend-amount')!;
         return {
           height: rect.height,
           oneLine: Math.abs(label.top - percentage.top) <= 1,
-          amountDisplay: getComputedStyle(amount).display,
+          text: button.textContent ?? '',
+          accessibleName: button.getAttribute('aria-label') ?? '',
         };
       })
     ));
@@ -1223,8 +1223,10 @@ test.describe('mobile cashflow donut', () => {
     for (const item of legendLayout) {
       expect(item.height).toBeGreaterThanOrEqual(44);
       expect(item.oneLine).toBe(true);
-      expect(item.amountDisplay).toBe('none');
+      expect(item.text).not.toContain('만 원');
+      expect(item.accessibleName).toContain('만 원');
     }
+    await expect(donut.locator('.cashflow-donut__legend-amount')).toHaveCount(0);
 
     const chart = donut.getByRole('img', { name: /소비 56\.3%.*여윳돈 28\.1%/ });
     const chartBox = await chart.boundingBox();
@@ -1264,9 +1266,7 @@ test.describe('mobile cashflow donut', () => {
     expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
 
     await page.setViewportSize({ width: 768, height: 900 });
-    for (const amount of await donut.locator('.cashflow-donut__legend-amount').all()) {
-      await expect(amount).toBeVisible();
-    }
+    await expect(donut.locator('.cashflow-donut__legend-amount')).toHaveCount(0);
 
     const tabletChartBox = await chart.boundingBox();
     expect(tabletChartBox).not.toBeNull();
@@ -1291,6 +1291,7 @@ test.describe('mobile cashflow donut', () => {
     await expect(center.getByText('투자', { exact: true })).toBeVisible();
 
     await page.setViewportSize({ width: 1280, height: 900 });
+    await expect(donut.locator('.cashflow-donut__legend-amount')).toHaveCount(0);
     await saving.hover();
     await expect(center.getByText('9.4%', { exact: true })).toBeVisible();
     await expect(center.getByText('30만 원', { exact: true })).toBeVisible();
