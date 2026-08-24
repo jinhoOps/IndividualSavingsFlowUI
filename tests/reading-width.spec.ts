@@ -273,6 +273,7 @@ for (const viewport of viewports) {
 interface WideReviewState {
   review: { x: number; width: number; right: number };
   stage: { x: number; width: number; right: number };
+  table: { x: number; width: number; right: number };
   frame: { x: number; width: number };
   desiredEndPercent: number;
   visibleEndPercent: number;
@@ -288,16 +289,19 @@ async function readWideReviewState(page: Page): Promise<WideReviewState> {
   return page.evaluate(() => {
     const review = document.querySelector<HTMLElement>('.allocation-bar')!;
     const stage = document.querySelector<HTMLElement>('[data-testid="allocation-visual-stage"]')!;
+    const table = document.querySelector<HTMLElement>('.allocation-table')!;
     const frame = document.querySelector<HTMLElement>('[data-testid="main-page-frame"]')!;
     const segments = stage.querySelector<HTMLElement>('.allocation-bar__segments')!;
     const targetClip = segments.querySelector<HTMLElement>('.cashflow-bar__targets-clip')!;
     const reviewBox = review.getBoundingClientRect();
     const stageBox = stage.getBoundingClientRect();
+    const tableBox = table.getBoundingClientRect();
     const frameBox = frame.getBoundingClientRect();
     const targetClipBox = targetClip.getBoundingClientRect();
     return {
       review: { x: reviewBox.x, width: reviewBox.width, right: reviewBox.right },
       stage: { x: stageBox.x, width: stageBox.width, right: stageBox.right },
+      table: { x: tableBox.x, width: tableBox.width, right: tableBox.right },
       frame: { x: frameBox.x, width: frameBox.width },
       desiredEndPercent: Number(segments.dataset.desiredEndPercent),
       visibleEndPercent: Number(segments.dataset.visibleEndPercent),
@@ -325,6 +329,8 @@ async function expectClippedDeficitReview(
   expect(state.review.right).toBeLessThanOrEqual(viewport.width - 16 + 1);
   expect(state.stage.x).toBeGreaterThanOrEqual(state.review.x);
   expect(state.stage.right).toBeLessThanOrEqual(state.review.right);
+  expect(state.table.x).toBeGreaterThanOrEqual(state.review.x);
+  expect(state.table.right).toBeLessThanOrEqual(state.review.right);
   expectReadingFrame(viewport.width, state.frame);
 
   if (viewport.name === 'desktop') {
@@ -464,6 +470,8 @@ for (const viewport of viewports) {
 
     expect(restartReview.stage.width).toBe(firstReview.stage.width);
     expect(restartReview.stage.x).toBe(firstReview.stage.x);
+    expect(restartReview.table.width).toBe(firstReview.table.width);
+    expect(restartReview.table.x).toBe(firstReview.table.x);
     expect(restartReview.review.width).toBe(firstReview.review.width);
     expect(restartReview.review.x).toBe(firstReview.review.x);
     expect(restartReview.desiredEndPercent).toBe(firstReview.desiredEndPercent);
