@@ -14,7 +14,10 @@ export interface MpaNavigationCaching {
   }>;
 }
 
-export function createMpaNavigationCaching(base: string): MpaNavigationCaching {
+export function createMpaNavigationCaching(
+  base: string,
+  cacheVersion: string,
+): MpaNavigationCaching {
   const normalizedBase = `/${base.replace(/^\/+|\/+$/g, '')}/`;
   const escapedBase = normalizedBase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -26,7 +29,7 @@ export function createMpaNavigationCaching(base: string): MpaNavigationCaching {
       ),
       handler: 'NetworkFirst',
       options: {
-        cacheName: 'isf-app-navigation-v1',
+        cacheName: `isf-app-navigation-${cacheVersion}`,
         networkTimeoutSeconds: 3,
         expiration: {
           maxEntries: 8,

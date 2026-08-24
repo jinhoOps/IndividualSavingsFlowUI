@@ -3,11 +3,12 @@ import { createMpaNavigationCaching } from '../../../src/main/infrastructure/pwa
 
 describe('createMpaNavigationCaching', () => {
   it('keeps every app navigation on its own cached HTML route', () => {
-    const config = createMpaNavigationCaching('/IndividualSavingsFlowUI/');
+    const config = createMpaNavigationCaching('/IndividualSavingsFlowUI/', '0.11.95');
     const route = config.runtimeCaching[0];
 
     expect(config.navigateFallback).toBeNull();
     expect(route.handler).toBe('NetworkFirst');
+    expect(route.options.cacheName).toBe('isf-app-navigation-0.11.95');
     expect(route.urlPattern).toBeInstanceOf(RegExp);
     const routes = [
       ['apps/main/', true],

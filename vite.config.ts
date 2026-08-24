@@ -6,6 +6,8 @@ import { resolve } from 'path';
 import packageJson from './package.json';
 import { createMpaNavigationCaching } from './src/main/infrastructure/pwaRoutes';
 
+const navigationCacheVersion = process.env.GITHUB_SHA ?? packageJson.version;
+
 export default defineConfig({
   define: {
     __APP_VERSION__: JSON.stringify(packageJson.version),
@@ -72,7 +74,7 @@ export default defineConfig({
         ]
       },
       workbox: {
-        ...createMpaNavigationCaching('/IndividualSavingsFlowUI/'),
+        ...createMpaNavigationCaching('/IndividualSavingsFlowUI/', navigationCacheVersion),
         globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest}'],
         skipWaiting: true,
         clientsClaim: true,
