@@ -6,7 +6,6 @@ import { calculateCashflow, percentageOfIncome } from '../../domain/cashflow';
 import type { MainData } from '../../domain/model';
 import { PercentageTooltip } from '../common/PercentageTooltip';
 import { createCashflowBarGeometry, type CashflowViewport } from './cashflowBarGeometry';
-import { formatContextWon, formatPercentage } from './FlowContextSummary';
 
 export interface AllocationBarProps {
   data: MainData;
@@ -318,25 +317,12 @@ export function AllocationBar({ data, presentation = 'standard' }: AllocationBar
             aria-hidden="true"
             className="cashflow-bar__clip"
             style={{
-              borderRadius: '9999px',
-              height: '0.375rem',
-              left: 0,
-              overflow: 'hidden',
-              position: 'absolute',
-              top: '50%',
-              transform: 'translateY(-50%)',
               width: `${geometry.visibleEndPercent}%`,
             }}
           >
             <div
               className="cashflow-bar__strip allocation-bar__visual-track"
               style={{
-                height: '100%',
-                left: 'auto',
-                position: 'relative',
-                right: 'auto',
-                top: 'auto',
-                transform: 'none',
                 width: `${relativeStripWidth(geometry.desiredEndPercent, geometry.visibleEndPercent)}%`,
               }}
             >
@@ -359,19 +345,12 @@ export function AllocationBar({ data, presentation = 'standard' }: AllocationBar
           <div
             className="cashflow-bar__targets-clip"
             style={{
-              height: '100%',
-              left: 0,
-              overflow: 'hidden',
-              position: 'absolute',
-              top: 0,
               width: `${geometry.visibleEndPercent}%`,
             }}
           >
             <div
               className="cashflow-bar__targets"
               style={{
-                height: '100%',
-                position: 'relative',
                 width: `${relativeStripWidth(geometry.desiredEndPercent, geometry.visibleEndPercent)}%`,
               }}
             >
@@ -479,6 +458,23 @@ function allocationCenter(allocationId: string, allocations: Allocation[]): numb
 
 function allocationText(allocation: Allocation): string {
   return `${allocation.label} · ${formatContextWon(allocation.amountWon)} · ${formatPercentage(allocation.percentage)}`;
+}
+
+function formatContextWon(amountWon: number): string {
+  const absolute = Math.abs(amountWon);
+  if (absolute >= 10_000) {
+    const inManWon = amountWon / 10_000;
+    const formatted = Number.isInteger(inManWon)
+      ? new Intl.NumberFormat('ko-KR').format(inManWon)
+      : new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 1 }).format(inManWon);
+    return `${formatted}만 원`;
+  }
+
+  return `${new Intl.NumberFormat('ko-KR').format(amountWon)}원`;
+}
+
+function formatPercentage(percentage: number | null): string {
+  return `${(percentage ?? 0).toFixed(1)}%`;
 }
 
 function hasIndependentTarget(percentage: number, barWidth: number): boolean {

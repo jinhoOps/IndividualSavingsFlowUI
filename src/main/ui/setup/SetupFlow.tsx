@@ -10,7 +10,6 @@ import { Button } from '../common/Button';
 import { MoneyField } from '../common/MoneyField';
 import { Surface } from '../common/Surface';
 import { AllocationBar } from './AllocationBar';
-import { FlowContextSummary } from './FlowContextSummary';
 
 export interface ValidationIssue {
   path: string;
@@ -85,9 +84,6 @@ export function SetupFlow({
   const stepIndex = steps.indexOf(step);
   const previousStep = steps[stepIndex - 1];
   const nextStep = steps[stepIndex + 1];
-  const showContext = step === 'housing'
-    || step === 'living'
-    || step === 'saving-investment';
   const incomeError = findIssue(issues, 'monthlyNetIncomeWon')
     ?? (incomeSubmittedEmpty ? issueMessage('income_required') : undefined);
   const stepMotionRef = useAnimeScope<HTMLFormElement>(({ root, reducedMotion }) => {
@@ -258,7 +254,6 @@ export function SetupFlow({
       >
         <fieldset className="contents" disabled={saving}>
           <div className="grid gap-6" data-step-motion={step === 'welcome' || step === 'review' ? undefined : ''}>
-            {showContext ? <FlowContextSummary data={draft} /> : null}
             {step === 'welcome' ? <WelcomeStep /> : null}
             {step === 'income' ? (
               <IncomeStep

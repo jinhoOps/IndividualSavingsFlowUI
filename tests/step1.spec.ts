@@ -3486,11 +3486,10 @@ test.describe('Main liquid overflow presentation', () => {
     await expectOldMainV2SentinelUntouched(page);
   });
 
-  test('keeps both original bars symmetric without an overflow gutter at 100%', async ({ page }) => {
-    const readGeometry = (selector: string) => page.locator(selector).evaluate((bar, currentSelector) => {
+  test('keeps the review bar symmetric without an overflow gutter at 100%', async ({ page }) => {
+    const readGeometry = (selector: string) => page.locator(selector).evaluate((bar) => {
       const barRect = bar.getBoundingClientRect();
-      const form = bar.closest('form');
-      const parent = currentSelector === '.flow-context-summary' ? form! : bar.parentElement!;
+      const parent = bar.parentElement!;
       const parentRect = parent.getBoundingClientRect();
       const parentStyle = getComputedStyle(parent);
       const contentLeft = parentRect.left + Number.parseFloat(parentStyle.paddingLeft);
@@ -3502,16 +3501,14 @@ test.describe('Main liquid overflow presentation', () => {
         hasBridge: bar.querySelector('.flow-overflow-bridge') !== null,
         hasExtension: bar.querySelector('.flow-overflow-extension') !== null,
       };
-    }, selector);
+    });
 
     await page.getByText('자세히 보기', { exact: true }).click();
-    for (const selector of ['.allocation-bar__segments']) {
-      const geometry = await readGeometry(selector);
-      expect(Math.abs(geometry.leftGap - geometry.rightGap)).toBeLessThanOrEqual(1);
-      expect(geometry.marginInlineEnd).toBe(0);
-      expect(geometry.hasBridge).toBe(false);
-      expect(geometry.hasExtension).toBe(false);
-    }
+    const geometry = await readGeometry('.allocation-bar__segments');
+    expect(Math.abs(geometry.leftGap - geometry.rightGap)).toBeLessThanOrEqual(1);
+    expect(geometry.marginInlineEnd).toBe(0);
+    expect(geometry.hasBridge).toBe(false);
+    expect(geometry.hasExtension).toBe(false);
 
     await page.getByRole('button', { name: '관리 메뉴' }).click();
     await page.getByRole('menuitem', { name: '처음부터 다시' }).click();
@@ -3519,11 +3516,8 @@ test.describe('Main liquid overflow presentation', () => {
     await page.getByRole('button', { name: '다음' }).click();
     await page.getByRole('button', { name: '다음' }).click();
 
-    const summaryGeometry = await readGeometry('.flow-context-summary');
-    expect(Math.abs(summaryGeometry.leftGap - summaryGeometry.rightGap)).toBeLessThanOrEqual(1);
-    expect(summaryGeometry.marginInlineEnd).toBe(0);
-    expect(summaryGeometry.hasBridge).toBe(false);
-    expect(summaryGeometry.hasExtension).toBe(false);
+    await expect(page.getByRole('progressbar', { name: '수입 대비 현재 계획' })).toHaveCount(0);
+    expect(await page.locator('html').evaluate((element) => element.scrollWidth <= window.innerWidth)).toBe(true);
   });
 
 });

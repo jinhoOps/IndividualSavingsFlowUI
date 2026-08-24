@@ -775,16 +775,16 @@ test('new user applies the v2 quick setup and refreshes into matching dashboard 
 
   await page.getByLabel('월 주거 고정비').fill('800000');
   await expect(page.getByLabel('월 주거 고정비')).toHaveValue('800,000');
-  await expect(page.getByRole('progressbar', { name: '수입 대비 현재 계획' })).toHaveAttribute('aria-valuetext', '현재 계획 80만 원 · 수입의 25.0%');
+  await expect(page.getByRole('progressbar', { name: '수입 대비 현재 계획' })).toHaveCount(0);
   await page.getByRole('button', { name: '다음' }).click();
 
   await page.getByLabel('월평균 생활비').fill('1000000');
-  await expect(page.getByRole('progressbar', { name: '수입 대비 현재 계획' })).toHaveAttribute('aria-valuetext', '현재 계획 180만 원 · 수입의 56.3%');
+  await expect(page.getByRole('progressbar', { name: '수입 대비 현재 계획' })).toHaveCount(0);
   await page.getByRole('button', { name: '다음' }).click();
 
   await page.getByLabel('월 저축액').fill('300000');
   await page.getByLabel('월 투자액').fill('200000');
-  await expect(page.getByRole('progressbar', { name: '수입 대비 현재 계획' })).toHaveAttribute('aria-valuetext', '현재 계획 230만 원 · 수입의 71.9%');
+  await expect(page.getByRole('progressbar', { name: '수입 대비 현재 계획' })).toHaveCount(0);
   await page.getByRole('button', { name: '다음' }).click();
 
   await expect(page.getByRole('progressbar', { name: '수입 대비 현재 계획' })).toHaveCount(0);
@@ -1310,7 +1310,7 @@ test.describe('mobile quick setup', () => {
     hasTouch: true,
   });
 
-  test('formats money and reveals the live percentage by tap', async ({ page }) => {
+  test('formats money without adding an intermediate visualization', async ({ page }) => {
     await clearBrowserStorage(page);
     await page.goto('apps/main/');
     await page.getByRole('button', { name: '다음' }).tap();
@@ -1327,24 +1327,11 @@ test.describe('mobile quick setup', () => {
     for (const box of adjustmentBoxes) {
       expect(box!.height).toBeGreaterThanOrEqual(44);
     }
-    const meter = page.getByRole('progressbar', { name: '수입 대비 현재 계획' });
-    await expect(meter).toHaveAttribute('aria-valuetext', '현재 계획 80만 원 · 수입의 25.0%');
-    await meter.hover();
-    await expect(page.getByRole('tooltip')).toHaveText('현재 계획 80만 원 · 수입의 25.0%');
+    await expect(page.getByRole('progressbar', { name: '수입 대비 현재 계획' })).toHaveCount(0);
     await expect(page.getByText(/^월 수입 \d/)).toHaveCount(0);
 
     await page.setViewportSize({ width: 390, height: 844 });
-    const meterBox = await meter.boundingBox();
-    expect(meterBox).not.toBeNull();
-    expect(meterBox!.height).toBeGreaterThanOrEqual(44);
-    await meter.tap();
-    await expect(page.getByRole('tooltip')).toBeVisible();
-    await page.keyboard.press('Tab');
-    await expect(page.getByRole('tooltip')).toHaveCount(0);
-    await meter.tap();
-    await expect(page.getByRole('tooltip')).toBeVisible();
     await page.getByRole('heading', { name: '주거비로 매달 얼마가 나가나요?' }).tap();
-    await expect(page.getByRole('tooltip')).toHaveCount(0);
     expect(await page.locator('html').evaluate((element) => element.scrollWidth <= window.innerWidth)).toBe(true);
   });
 
@@ -1923,7 +1910,7 @@ test('interrupted setup reloads at housing with its v2 draft intact', async ({ p
 
   await expect(page.getByRole('heading', { name: '주거비로 매달 얼마가 나가나요?' })).toBeVisible();
   await expect(page.getByLabel('월 주거 고정비')).toHaveValue('800,000');
-  await expect(page.getByRole('progressbar', { name: '수입 대비 현재 계획' })).toHaveAttribute('aria-valuetext', '현재 계획 80만 원 · 수입의 25.0%');
+  await expect(page.getByRole('progressbar', { name: '수입 대비 현재 계획' })).toHaveCount(0);
   await expect(page.getByText(/^월 수입 \d/)).toHaveCount(0);
 });
 

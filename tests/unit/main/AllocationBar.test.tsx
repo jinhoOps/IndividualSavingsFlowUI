@@ -457,7 +457,8 @@ describe('AllocationBar', () => {
 
     const track = document.querySelector('.allocation-bar__segments');
     const targetClip = track?.querySelector('.cashflow-bar__targets-clip');
-    expect(targetClip).toHaveStyle({ overflow: 'hidden', width: '120%' });
+    expect(targetClip).toHaveClass('cashflow-bar__targets-clip');
+    expect(targetClip).toHaveStyle({ width: '120%' });
     expect(targetClip?.querySelectorAll('.allocation-bar__segment-target')).toHaveLength(1);
     expect(document.querySelectorAll('.allocation-bar__segment-target')).toHaveLength(1);
     expect(track).not.toHaveAttribute('data-overflow');

@@ -79,18 +79,9 @@
     margin-inline-end: 0;
   }
 
-  .flow-bar-wrapper {
-    @apply relative;
-    isolation: isolate;
-  }
-
   .allocation-bar__visual-stage {
     position: relative;
     min-width: 0;
-  }
-
-  .flow-context-summary {
-    margin-inline-end: 0;
   }
 
   .setup-flow-surface {
@@ -108,12 +99,39 @@
     content: "";
   }
 
-  .flow-bar__fill {
-    @apply absolute left-0 top-1/2 z-1 block h-1.5 -translate-y-1/2 rounded-full bg-accent transition-[width];
-  }
-
   .allocation-bar__segments::before {
     content: none;
+  }
+
+  .cashflow-bar__clip {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    height: 0.375rem;
+    overflow: hidden;
+    border-radius: 9999px;
+    transform: translateY(-50%);
+  }
+
+  .cashflow-bar__strip.allocation-bar__visual-track {
+    position: relative;
+    inset: auto;
+    display: flex;
+    height: 100%;
+    transform: none;
+  }
+
+  .cashflow-bar__targets-clip {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .cashflow-bar__targets {
+    position: relative;
+    height: 100%;
   }
 
   .allocation-bar__visual-track {
@@ -239,7 +257,6 @@
     @apply flex min-h-11 cursor-pointer items-center;
   }
 
-  .flow-bar-wrapper .flow-tooltip,
   .allocation-bar__visual-stage .flow-tooltip {
     @apply absolute bottom-full mb-2 -translate-x-1/2;
   }
