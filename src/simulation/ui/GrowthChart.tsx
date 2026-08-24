@@ -10,6 +10,7 @@ import type {
 } from '../domain/model';
 import {
   buildChartGeometry,
+  formatProjectionPeriod,
   tooltipPlacement,
   type ChartGeometry,
 } from './chartGeometry';
@@ -148,12 +149,12 @@ export function GrowthChart({
         </div>
       </div>
       <p className="sr-only">
-        {`${amountMode === 'nominal' ? '명목' : '실질'} 기준 ${last.year}년, 현재 계획 ${formatWon(finalCurrent)}, 전부 저축 ${formatWon(finalSavings)}, 차이 ${formatWon(finalCurrent - finalSavings)}`}
+        {`${amountMode === 'nominal' ? '명목' : '실질'} 기준 ${formatProjectionPeriod(last.month)}, 현재 계획 ${formatWon(finalCurrent)}, 전부 저축 ${formatWon(finalSavings)}, 차이 ${formatWon(finalCurrent - finalSavings)}`}
       </p>
       <div
         className="growth-chart__canvas"
         role="application"
-        aria-label="그래프 연도 탐색"
+        aria-label="그래프 기간 탐색"
         tabIndex={0}
         onKeyDown={(event) => {
           if (event.key === 'Escape') setActiveIndex(null);
@@ -178,7 +179,7 @@ export function GrowthChart({
         <svg
           viewBox="0 0 680 285"
           role="img"
-          aria-label="연도별 복리 성장 그래프"
+          aria-label="기간별 복리 성장 그래프"
           onPointerDown={(event) => {
             const index = indexAt(
               event.currentTarget,
@@ -284,7 +285,7 @@ export function GrowthChart({
         {active === null || activeGeometry === null || placement === null ? null : (
           <>
             <p className="sr-only" role="status">
-              {`${active.year}년, 현재 계획 총액 ${formatWon(displayed(active, 'current', amountMode))}, 전부 저축 총액 ${formatWon(displayed(active, 'allSavings', amountMode))}`}
+              {activeStatus(active, amountMode, compactTooltip)}
             </p>
             <GrowthChartTooltip
               variant={compactTooltip ? 'compact' : 'detailed'}
@@ -292,7 +293,7 @@ export function GrowthChart({
               anchorPercent={activeGeometry.x / 680 * 100}
               anchorYPercent={Math.min(activeGeometry.currentY, activeGeometry.allSavingsY) / 285 * 100}
               values={{
-                year: active.year,
+                periodLabel: formatProjectionPeriod(active.month),
                 currentPlanWon: displayed(active, 'current', amountMode),
                 allSavingsWon: displayed(active, 'allSavings', amountMode),
                 principalWon: amountMode === 'real'
@@ -496,6 +497,21 @@ function indexAt(
   const ratio = Math.max(0, Math.min(1, (viewBoxX - plot.left) / (plot.right - plot.left)));
   const index = Math.round(ratio * (points.length - 1));
   return points[index] === undefined ? null : index;
+}
+
+function activeStatus(
+  point: ProjectionPoint,
+  amountMode: CompoundSimulationDraft['amountMode'],
+  compact: boolean,
+): string {
+  const periodLabel = formatProjectionPeriod(point.month);
+  const currentPlan = formatWon(displayed(point, 'current', amountMode));
+  const principal = formatWon(amountMode === 'real'
+    ? point.contributedPrincipalRealWon
+    : point.contributedPrincipalWon);
+  if (compact) return `${periodLabel}, 현재 계획 총액 ${currentPlan}, 누적 납입원금 ${principal}`;
+
+  return `${periodLabel}, 현재 계획 총액 ${currentPlan}, 전부 저축 총액 ${formatWon(displayed(point, 'allSavings', amountMode))}, 누적 납입원금 ${principal}, 저축 잔액 ${formatWon(amountMode === 'real' ? point.savingsRealWon : point.savingsNominalWon)}, 투자 잔액 ${formatWon(amountMode === 'real' ? point.investmentRealWon : point.investmentNominalWon)}`;
 }
 
 function displayed(

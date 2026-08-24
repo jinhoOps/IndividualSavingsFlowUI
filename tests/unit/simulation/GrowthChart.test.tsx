@@ -57,6 +57,14 @@ const result = projectCompoundGrowth(createDefaultSimulationDraft({
   monthlyInvestmentWon: 200_000,
   mainUpdatedAt: 123,
 }, 456));
+const shortResult = projectCompoundGrowth({
+  ...createDefaultSimulationDraft({
+    monthlySavingsWon: 300_000,
+    monthlyInvestmentWon: 200_000,
+    mainUpdatedAt: 123,
+  }, 456),
+  years: 3,
+});
 
 describe('GrowthChart', () => {
   it('draws the first result through a restrained 260ms visual-only reveal', () => {
@@ -176,13 +184,13 @@ describe('GrowthChart', () => {
     expect(motionPaths(container)).toEqual(finalSemanticPaths);
   });
 
-  it('does not restart graph motion for tooltip-only active year changes', () => {
+  it('does not restart graph motion for tooltip-only active period changes', () => {
     const { container } = render(<GrowthChart result={result} amountMode="nominal" />);
     const visualPaths = motionPaths(container);
     anime.animate.mockClear();
     anime.createScope.mockClear();
 
-    const explorer = screen.getByRole('application', { name: '그래프 연도 탐색' });
+    const explorer = screen.getByRole('application', { name: '그래프 기간 탐색' });
     fireEvent.keyDown(explorer, { key: 'Home' });
     fireEvent.keyDown(explorer, { key: 'ArrowRight' });
 
@@ -300,7 +308,7 @@ describe('GrowthChart', () => {
   it('defaults to detailed mode when matchMedia is unavailable', () => {
     vi.unstubAllGlobals();
     render(<GrowthChart result={result} amountMode="nominal" />);
-    fireEvent.keyDown(screen.getByRole('application', { name: '그래프 연도 탐색' }), {
+    fireEvent.keyDown(screen.getByRole('application', { name: '그래프 기간 탐색' }), {
       key: 'Home',
     });
 
@@ -312,7 +320,7 @@ describe('GrowthChart', () => {
     expect(screen.getByText('현재 계획')).toBeVisible();
     expect(screen.getByText('전부 저축')).toBeVisible();
 
-    const explorer = screen.getByRole('application', { name: '그래프 연도 탐색' });
+    const explorer = screen.getByRole('application', { name: '그래프 기간 탐색' });
     explorer.focus();
     fireEvent.keyDown(explorer, { key: 'ArrowRight' });
     fireEvent.keyDown(explorer, { key: 'End' });
@@ -327,17 +335,17 @@ describe('GrowthChart', () => {
 
   it('consumes Home and End while selecting their existing boundary years', () => {
     render(<GrowthChart result={result} amountMode="nominal" />);
-    const explorer = screen.getByRole('application', { name: '그래프 연도 탐색' });
+    const explorer = screen.getByRole('application', { name: '그래프 기간 탐색' });
 
     expect(fireEvent.keyDown(explorer, { key: 'Home' })).toBe(false);
-    expect(screen.getByRole('status')).toHaveTextContent('0년');
+    expect(screen.getByRole('status')).toHaveTextContent('현재');
     expect(fireEvent.keyDown(explorer, { key: 'End' })).toBe(false);
     expect(screen.getByRole('status')).toHaveTextContent('20년');
   });
 
   it('dismisses detail with Escape or an outside pointer', () => {
     render(<GrowthChart result={result} amountMode="nominal" />);
-    const explorer = screen.getByRole('application', { name: '그래프 연도 탐색' });
+    const explorer = screen.getByRole('application', { name: '그래프 기간 탐색' });
     fireEvent.keyDown(explorer, { key: 'Home' });
     fireEvent.keyDown(explorer, { key: 'Escape' });
     expect(screen.queryByText('현재 계획 총액')).not.toBeInTheDocument();
@@ -350,13 +358,13 @@ describe('GrowthChart', () => {
   it('shows only two comparison totals in compact mode without a close button', () => {
     compactViewport = true;
     render(<GrowthChart result={result} amountMode="nominal" />);
-    fireEvent.keyDown(screen.getByRole('application', { name: '그래프 연도 탐색' }), {
+    fireEvent.keyDown(screen.getByRole('application', { name: '그래프 기간 탐색' }), {
       key: 'Home',
     });
 
     expect(screen.getByText('현재 계획 총액')).toBeVisible();
-    expect(screen.getByText('전부 저축 총액')).toBeVisible();
-    expect(screen.queryByText('누적 납입원금')).not.toBeInTheDocument();
+    expect(screen.getByText('누적 납입원금')).toBeVisible();
+    expect(screen.queryByText('전부 저축 총액')).not.toBeInTheDocument();
     expect(screen.queryByText('저축 잔액')).not.toBeInTheDocument();
     expect(screen.queryByText('투자 잔액')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '닫기' })).not.toBeInTheDocument();
@@ -364,7 +372,7 @@ describe('GrowthChart', () => {
 
   it('keeps detailed desktop values but removes the close button', () => {
     render(<GrowthChart result={result} amountMode="nominal" />);
-    fireEvent.keyDown(screen.getByRole('application', { name: '그래프 연도 탐색' }), {
+    fireEvent.keyDown(screen.getByRole('application', { name: '그래프 기간 탐색' }), {
       key: 'Home',
     });
 
@@ -373,14 +381,42 @@ describe('GrowthChart', () => {
     expect(screen.getByText('투자 잔액')).toBeVisible();
     expect(screen.queryByRole('button', { name: '닫기' })).not.toBeInTheDocument();
     expect(screen.getByRole('status')).toHaveTextContent(
-      /0년, 현재 계획 총액 .* 전부 저축 총액/,
+      /현재, 현재 계획 총액 .* 전부 저축 총액/,
     );
+  });
+
+  it('selects every short-horizon month by keyboard and touch', () => {
+    compactViewport = true;
+    const { container } = render(<GrowthChart result={shortResult} amountMode="nominal" />);
+    const explorer = screen.getByRole('application', { name: '그래프 기간 탐색' });
+
+    fireEvent.keyDown(explorer, { key: 'Home' });
+    expect(screen.getByRole('status')).toHaveTextContent('현재');
+    fireEvent.keyDown(explorer, { key: 'ArrowRight' });
+    expect(screen.getByRole('status')).toHaveTextContent('1개월');
+    fireEvent.keyDown(explorer, { key: 'End' });
+    expect(screen.getByRole('status')).toHaveTextContent('3년');
+
+    const chart = screen.getByRole('img', { name: '기간별 복리 성장 그래프' });
+    Object.defineProperty(chart, 'getBoundingClientRect', {
+      value: () => ({ left: 0, width: 680 }),
+    });
+    Object.defineProperty(chart, 'setPointerCapture', { value: vi.fn() });
+    Object.defineProperty(chart, 'releasePointerCapture', { value: vi.fn() });
+
+    fireEvent(chart, pointerEvent('pointerdown', 36));
+    fireEvent(chart, pointerEvent('pointermove', 36 + 6 / 36 * 620));
+    expect(container.querySelector('.growth-chart__tooltip > strong')).toHaveTextContent('6개월');
+    expect(screen.queryByText('전부 저축 총액')).not.toBeInTheDocument();
+    expect(screen.getByText('누적 납입원금')).toBeVisible();
+    fireEvent(chart, pointerEvent('pointerup', 36 + 6 / 36 * 620));
+    expect(container.querySelector('.growth-chart__tooltip > strong')).toHaveTextContent('6개월');
   });
 
   it('drags through touch years, keeps release selection, and closes on scroll', () => {
     compactViewport = true;
     const { container } = render(<GrowthChart result={result} amountMode="nominal" />);
-    const chart = screen.getByRole('img', { name: '연도별 복리 성장 그래프' });
+    const chart = screen.getByRole('img', { name: '기간별 복리 성장 그래프' });
     Object.defineProperty(chart, 'getBoundingClientRect', {
       value: () => ({ left: 0, width: 680 }),
     });
@@ -398,7 +434,7 @@ describe('GrowthChart', () => {
 
   it('maps the first and last plotted x positions to their exact years', () => {
     const { container } = render(<GrowthChart result={result} amountMode="nominal" />);
-    const chart = screen.getByRole('img', { name: '연도별 복리 성장 그래프' });
+    const chart = screen.getByRole('img', { name: '기간별 복리 성장 그래프' });
     Object.defineProperty(chart, 'getBoundingClientRect', {
       value: () => ({ left: 100, width: 340 }),
     });
@@ -407,7 +443,7 @@ describe('GrowthChart', () => {
       bubbles: true,
       clientX: 100 + 36 / 680 * 340,
     }));
-    expect(container.querySelector('.growth-chart__tooltip > strong')).toHaveTextContent('0년');
+    expect(container.querySelector('.growth-chart__tooltip > strong')).toHaveTextContent('현재');
     fireEvent(chart, new MouseEvent('pointerdown', {
       bubbles: true,
       clientX: 100 + 656 / 680 * 340,
@@ -417,7 +453,7 @@ describe('GrowthChart', () => {
 
   it('shows real component balances consistently in real mode', () => {
     render(<GrowthChart result={result} amountMode="real" />);
-    fireEvent.keyDown(screen.getByRole('application', { name: '그래프 연도 탐색' }), {
+    fireEvent.keyDown(screen.getByRole('application', { name: '그래프 기간 탐색' }), {
       key: 'End',
     });
     const final = result.points.at(-1)!;
@@ -428,7 +464,7 @@ describe('GrowthChart', () => {
 
   it('follows pointer with a guide, markers, and six-value card', () => {
     const { container } = render(<GrowthChart result={result} amountMode="nominal" />);
-    const chart = screen.getByRole('img', { name: '연도별 복리 성장 그래프' });
+    const chart = screen.getByRole('img', { name: '기간별 복리 성장 그래프' });
     Object.defineProperty(chart, 'getBoundingClientRect', {
       value: () => ({ left: 0, width: 680 }),
     });
