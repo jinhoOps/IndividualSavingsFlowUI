@@ -454,6 +454,7 @@ function startMotionDeadline(
       if (settled) return;
       settled = true;
       clear();
+      applyFinalStyles();
     },
     fail: recover,
     dispose() {

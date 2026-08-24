@@ -453,6 +453,23 @@ async function expectSetupActionVisuallyReady(page: Page, name: string) {
   })).toEqual({ opacity: 1, translateY: 0 });
 }
 
+async function expectReviewVisualInViewport(page: Page) {
+  const visual = page.getByTestId('allocation-visual-stage');
+  await expect(visual).toBeVisible();
+  await expect.poll(() => visual.evaluate((element) => {
+    const bounds = element.getBoundingClientRect();
+    const style = getComputedStyle(element);
+    return {
+      hasArea: bounds.width > 0 && bounds.height > 0,
+      inViewport: bounds.bottom > 0
+        && bounds.top < window.innerHeight
+        && bounds.right > 0
+        && bounds.left < window.innerWidth,
+      opacity: Number(style.opacity),
+    };
+  })).toEqual({ hasArea: true, inViewport: true, opacity: 1 });
+}
+
 async function expectDashboardSummary(page: Page, amounts: {
   consumption: string;
   remaining: string;
@@ -914,6 +931,7 @@ test('setup motion reaches final state in real time at required viewports', asyn
     });
     await expect(page.getByRole('button', { name: '계획 적용' })).toBeVisible();
     await expect(page.getByTestId('allocation-visual-stage')).toHaveClass(/app-wide-visual/);
+    await expectReviewVisualInViewport(page);
     await expect.poll(() => page.evaluate(() => (
       document.documentElement.scrollWidth <= window.innerWidth
     ))).toBe(true);
@@ -937,6 +955,7 @@ test('setup motion reaches final state in real time at required viewports', asyn
 
 test('setup action stays visible after welcome motion hands off to later steps', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.setViewportSize({ width: 390, height: 844 });
   await clearBrowserStorage(page);
   await page.goto('apps/main/');
 
@@ -967,6 +986,7 @@ test('setup action stays visible after welcome motion hands off to later steps',
     trackScaleX: 1,
     contentOpacities: [1, 1, 1],
   });
+  await expectReviewVisualInViewport(page);
   await expectSetupActionVisuallyReady(page, '계획 적용');
 });
 
@@ -1094,6 +1114,7 @@ test('review assembly captures timed deficit geometry and reduced motion', async
     const final = await readAssemblyState();
     expect(final.scaleX).toBeCloseTo(1, 3);
     expect(final.opacities).toEqual(final.opacities.map(() => 1));
+    await expectReviewVisualInViewport(page);
     await capture(viewport.width, 'final');
 
     await showReview(slightDeficit);
@@ -1125,14 +1146,19 @@ test('review assembly captures timed deficit geometry and reduced motion', async
     const reduced = await readAssemblyState();
     expect(reduced.scaleX).toBeCloseTo(1, 3);
     expect(reduced.opacities).toEqual(reduced.opacities.map(() => 1));
+    await expectReviewVisualInViewport(page);
     await capture(viewport.width, 'reduced-motion');
+
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await showReview(appliedMainV2, 'restart');
+    await page.clock.runFor(1_200);
+    const restarted = await readAssemblyState();
+    expect(restarted.scaleX).toBeCloseTo(1, 3);
+    expect(restarted.opacities).toEqual(restarted.opacities.map(() => 1));
+    await expectReviewVisualInViewport(page);
   }
 
   await page.emulateMedia({ reducedMotion: 'no-preference' });
-  await page.setViewportSize({ width: 1280, height: 900 });
-  await showReview(appliedMainV2, 'restart');
-  await expect(page.getByTestId('allocation-visual-stage')).toHaveClass(/app-wide-visual/);
-  await expect(page.getByRole('table', { name: '월 자금 항목' })).not.toHaveClass(/app-wide-visual/);
 });
 
 test('live dashboard keeps the donut, cards, Simulation, details, and editor contained at required viewports', async ({ page }) => {

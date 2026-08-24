@@ -232,6 +232,28 @@ describe('SetupFlow', () => {
     expect(animeMocks.timeline.cancel).not.toHaveBeenCalled();
   });
 
+  it('commits the review assembly final frame when Anime reports completion without applying it', () => {
+    animeMocks.timeline.add
+      .mockImplementationOnce(() => animeMocks.timeline)
+      .mockImplementationOnce(() => animeMocks.timeline)
+      .mockImplementationOnce(() => animeMocks.timeline);
+
+    renderFlow('review', {
+      initialDraft: { ...createEmptyMainData(), monthlyNetIncomeWon: 3_200_000 },
+    });
+
+    expect(document.querySelector('.allocation-bar__visual-track')).toHaveStyle({ transform: 'scaleX(0)' });
+    act(() => animeMocks.timelineOptions?.onComplete?.());
+
+    expect(document.querySelector('.allocation-bar__visual-track')).toHaveStyle({ transform: 'scaleX(1)' });
+    for (const segment of document.querySelectorAll<HTMLElement>('.allocation-bar__visual-segment')) {
+      expect(segment).toHaveStyle({ opacity: '1' });
+    }
+    for (const content of document.querySelectorAll<HTMLElement>('[data-assembly-content]')) {
+      expect(content).toHaveStyle({ opacity: '1', transform: 'translateY(0px)' });
+    }
+  });
+
   it('keeps the welcome content final when Anime reveal construction fails', () => {
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
     animeMocks.animate.mockImplementationOnce(() => {
