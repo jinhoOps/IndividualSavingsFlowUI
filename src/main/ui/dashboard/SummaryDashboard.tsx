@@ -1,5 +1,6 @@
 import { animate } from 'animejs';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { AppContentFrame } from '../../../components/common/AppContentFrame';
 import { MOTION_DISTANCE_PX, MOTION_DURATION, MOTION_EASE } from '../../../components/motion/tokens';
 import { useAnimeScope } from '../../../components/motion/useAnimeScope';
 import type { MainState } from '../../application/mainReducer';
@@ -139,8 +140,8 @@ export function SummaryDashboard({
   }
 
   return (
-    <main
-      className="app-content-frame relative grid min-h-dvh gap-6 py-7 sm:py-10"
+    <AppContentFrame
+      className="relative grid min-h-dvh gap-6 py-7 sm:py-10"
       data-testid="main-dashboard-frame"
       aria-labelledby="summary-dashboard-title"
     >
@@ -235,7 +236,7 @@ export function SummaryDashboard({
           </div>
         )
       ) : null}
-    </main>
+    </AppContentFrame>
   );
 }
 

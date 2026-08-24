@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { AppContentFrame } from '../../components/common/AppContentFrame';
 import { AppShell } from '../../components/common/AppShell';
 import { useReducedMotion } from '../../components/motion/useReducedMotion';
 import {
@@ -456,12 +457,12 @@ export function MainApp({
 
   if (state === null) {
     return (
-      <main
-        className="app-content-frame grid min-h-dvh place-items-center py-8"
+      <AppContentFrame
+        className="grid min-h-dvh place-items-center py-8"
         data-testid="main-page-frame"
       >
         <p className="text-sm font-bold text-slate-600" role="status">자금 계획을 불러오는 중입니다.</p>
-      </main>
+      </AppContentFrame>
     );
   }
 
@@ -511,8 +512,8 @@ export function MainApp({
     );
     return (
       <AppShell currentApp="main" showLauncher={false} statusRegion={backupStatusRegion}>
-        <main
-          className="app-content-frame min-h-dvh py-8 sm:py-12"
+        <AppContentFrame
+          className="min-h-dvh py-8 sm:py-12"
           data-testid="main-page-frame"
         >
           <SetupFlow
@@ -528,7 +529,7 @@ export function MainApp({
             notice={setupNotice}
             motionPreset="initial-assembly"
           />
-        </main>
+        </AppContentFrame>
       </AppShell>
     );
   }
@@ -589,8 +590,8 @@ function RecoveryView({
   const saving = state.saveStatus === 'saving';
 
   return (
-    <main
-      className="app-content-frame grid min-h-dvh place-items-center py-10"
+    <AppContentFrame
+      className="grid min-h-dvh place-items-center py-10"
       data-testid="main-page-frame"
     >
       <Surface as="section" className="w-full max-w-xl border-amber-200 p-6 shadow-xl shadow-amber-950/5 sm:p-10" aria-labelledby="recovery-title">
@@ -653,7 +654,7 @@ function RecoveryView({
           </p>
         ) : null}
       </Surface>
-    </main>
+    </AppContentFrame>
   );
 }
 
