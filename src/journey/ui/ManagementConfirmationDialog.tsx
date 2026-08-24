@@ -2,6 +2,7 @@ import { animate } from 'animejs';
 import { useEffect, useRef, type KeyboardEvent, type RefObject } from 'react';
 import { Button } from '../../components/common/Button';
 import { MOTION_DISTANCE_PX, MOTION_DURATION, MOTION_EASE } from '../../components/motion/tokens';
+import { setMotionFinalState } from '../../components/motion/setMotionFinalState';
 import { useAnimeScope } from '../../components/motion/useAnimeScope';
 import type { ManagementConfirmation } from './AppManagementMenu';
 
@@ -25,7 +26,7 @@ export function ManagementConfirmationDialog({
   const titleId = `journey-management-dialog-${confirmation.title.replace(/\s+/g, '-')}`;
   const motionRef = useAnimeScope<HTMLDivElement>(({ root, reducedMotion }) => {
     if (reducedMotion) {
-      setRevealFinalState(root);
+      setMotionFinalState(root);
       return;
     }
     try {
@@ -36,7 +37,7 @@ export function ManagementConfirmationDialog({
         ease: MOTION_EASE.enter,
       });
     } catch {
-      setRevealFinalState(root);
+      setMotionFinalState(root);
     }
   }, []);
 
@@ -117,9 +118,4 @@ export function ManagementConfirmationDialog({
       </div>
     </dialog>
   );
-}
-
-function setRevealFinalState(target: HTMLElement): void {
-  target.style.opacity = '1';
-  target.style.transform = 'translateY(0px)';
 }
