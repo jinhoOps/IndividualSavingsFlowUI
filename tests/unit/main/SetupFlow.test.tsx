@@ -165,6 +165,22 @@ describe('SetupFlow', () => {
     expect(currentNext).toHaveStyle({ opacity: '0.37', transform: 'translateY(99px)' });
   });
 
+  it('restores the previous step container before showing the review', () => {
+    animeMocks.animate.mockImplementationOnce(() => animeMocks.animation);
+
+    renderFlow('saving-investment', {
+      initialDraft: { ...createEmptyMainData(), monthlyNetIncomeWon: 3_200_000 },
+    });
+
+    const stepContent = document.querySelector<HTMLElement>('[data-step-motion]')!;
+    expect(stepContent).toHaveStyle({ opacity: '0', transform: 'translateY(8px)' });
+
+    fireEvent.click(screen.getByRole('button', { name: '다음' }));
+
+    expect(screen.getByRole('heading', { name: '입력한 월 자금 계획을 확인해주세요' })).toBeVisible();
+    expect(stepContent).toHaveStyle({ opacity: '1', transform: 'translateY(0px)' });
+  });
+
   it('does not finalize detached welcome content after unmount', () => {
     vi.useFakeTimers();
     animeMocks.animate.mockImplementationOnce(() => animeMocks.animation);

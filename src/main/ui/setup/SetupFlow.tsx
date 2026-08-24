@@ -87,7 +87,11 @@ export function SetupFlow({
   const incomeError = findIssue(issues, 'monthlyNetIncomeWon')
     ?? (incomeSubmittedEmpty ? issueMessage('income_required') : undefined);
   const stepMotionRef = useAnimeScope<HTMLFormElement>(({ root, reducedMotion }) => {
-    if (step === 'review') return;
+    const stepContent = root.querySelectorAll<HTMLElement>('[data-setup-step-content]');
+    if (step === 'review') {
+      setRevealFinalStyles(stepContent);
+      return;
+    }
 
     const elements = step === 'welcome'
       ? root.querySelectorAll<HTMLElement>('[data-welcome-motion]')
@@ -247,7 +251,11 @@ export function SetupFlow({
         ref={stepMotionRef}
       >
         <fieldset className="contents" disabled={saving}>
-          <div className="grid gap-6" data-step-motion={step === 'welcome' || step === 'review' ? undefined : ''}>
+          <div
+            className="grid gap-6"
+            data-setup-step-content
+            data-step-motion={step === 'welcome' || step === 'review' ? undefined : ''}
+          >
             {step === 'welcome' ? <WelcomeStep /> : null}
             {step === 'income' ? (
               <IncomeStep
