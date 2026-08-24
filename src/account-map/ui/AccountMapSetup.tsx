@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState, type JSX } from 'react';
+import { Button } from '../../components/common/Button';
 import type { MainData } from '../../main/domain/model';
 import type { FinancialLocation } from '../../workspace/domain/financialLocation';
 import type { WorkspaceDocument } from '../../workspace/domain/model';
@@ -106,8 +107,8 @@ export function AccountMapSetup(props: AccountMapSetupProps): JSX.Element {
         {props.saveFailed ? <SaveFailure /> : null}
         {props.recovery.status === 'none' ? null : <RecoveryControls recovery={props.recovery} pending={props.recoveryPending} onReapply={props.onReapply} onKeepLatest={props.onKeepLatest} />}
         <footer className="account-map-actions">
-          <button type="button" className="ui-button ui-button--secondary" disabled={props.recovery.status !== 'none'} onClick={props.onBack}>이전</button>
-          <button type="button" className="ui-button ui-button--primary" disabled={!canApply || props.recovery.status !== 'none'} onClick={props.onApply}>지도 만들기</button>
+          <Button variant="secondary" type="button" disabled={props.recovery.status !== 'none'} onClick={props.onBack}>이전</Button>
+          <Button variant="primary" type="button" disabled={!canApply || props.recovery.status !== 'none'} onClick={props.onApply}>지도 만들기</Button>
         </footer>
       </section>
     );
@@ -143,9 +144,9 @@ export function AccountMapSetup(props: AccountMapSetupProps): JSX.Element {
       {props.saveFailed && activePurposeId === null && !customOpen ? <SaveFailure /> : null}
       {props.recovery.status === 'none' || activePurposeId !== null || customOpen ? null : <RecoveryControls recovery={props.recovery} pending={props.recoveryPending} onReapply={props.onReapply} onKeepLatest={props.onKeepLatest} />}
       <footer className="account-map-actions">
-        <button type="button" className="ui-button ui-button--quiet" disabled={props.recovery.status !== 'none'} onClick={props.onExit}>나가기</button>
-        {props.draft !== null ? <button type="button" className="ui-button ui-button--secondary" disabled={props.recovery.status !== 'none'} onClick={props.onCancelSetup}>설정 취소</button> : null}
-        <button type="button" className="ui-button ui-button--primary" disabled={props.recovery.status !== 'none'} onClick={props.onReview}>검토</button>
+        <Button variant="quiet" type="button" disabled={props.recovery.status !== 'none'} onClick={props.onExit}>나가기</Button>
+        {props.draft !== null ? <Button variant="secondary" type="button" disabled={props.recovery.status !== 'none'} onClick={props.onCancelSetup}>설정 취소</Button> : null}
+        <Button variant="primary" type="button" disabled={props.recovery.status !== 'none'} onClick={props.onReview}>검토</Button>
       </footer>
       {activePurposeId === null ? null : (
         <ConnectionDialog
@@ -363,8 +364,8 @@ function CustomPurposeDialog({ main, draft, recovery, recoveryPending, onReapply
           {recovery.status === 'none' ? null : <RecoveryControls recovery={recovery} pending={pending || recoveryPending} onReapply={onReapply} onKeepLatest={() => { onKeepLatest(); onCancel(); }} />}
         </div>
         <footer>
-          <button type="button" className="ui-button ui-button--secondary" disabled={pending || recoveryPending} onClick={requestClose}>취소</button>
-          <button type="button" className="ui-button ui-button--primary" disabled={pending || recovery.status !== 'none' || name.trim() === '' || Number(amount) <= 0 || amountOverCapacity} onClick={() => {
+          <Button variant="secondary" type="button" disabled={pending || recoveryPending} onClick={requestClose}>취소</Button>
+          <Button variant="primary" type="button" disabled={pending || recovery.status !== 'none' || name.trim() === '' || Number(amount) <= 0 || amountOverCapacity} onClick={() => {
             const now = Date.now();
             const current = draft ?? emptyDraft(main.updatedAt);
             const next: AccountMapDraft = { ...current, customPurposes: [...current.customPurposes, { id: `custom:${createId()}`, parentId, name: name.trim(), targetMonthlyWon: Number(amount), createdAt: now, updatedAt: now }], updatedAt: now };
@@ -373,7 +374,7 @@ function CustomPurposeDialog({ main, draft, recovery, recoveryPending, onReapply
             void onSave(next).then((result) => {
               if (result.status !== 'saved' && result.status !== 'recovery') setFeedback(result);
             }, () => setFeedback({ status: 'failed', message: '저장하지 못했어요. 입력은 그대로 두었습니다.' })).finally(() => setPending(false));
-          }}>추가</button>
+          }}>추가</Button>
         </footer>
       </div>
     </div>
@@ -406,8 +407,8 @@ function RecoveryControls({ recovery, pending = false, onReapply, onKeepLatest }
   return <div className="account-map-error" role={collision || manual ? 'alert' : 'status'}>
     <p id={descriptionId}>{collision ? recoveryMessage(recovery.reason, recovery.field) : manual ? '여러 변경을 최신 상태에 자동으로 다시 적용하지 않습니다. 입력을 검토한 뒤 다시 저장해 주세요.' : '다른 곳에서 변경된 최신 상태를 불러왔어요. 입력은 그대로 두었습니다.'}</p>
     <div className="account-map-actions">
-      <button ref={replayRef} type="button" className="ui-button ui-button--primary" aria-describedby={descriptionId} disabled={pending} onClick={() => void onReapply()}>{manual ? '최신 상태에서 다시 검토' : '최신 상태에서 다시 적용'}</button>
-      <button type="button" className="ui-button ui-button--secondary" disabled={pending} onClick={onKeepLatest}>최신 값 유지</button>
+      <Button ref={replayRef} variant="primary" type="button" aria-describedby={descriptionId} disabled={pending} onClick={() => void onReapply()}>{manual ? '최신 상태에서 다시 검토' : '최신 상태에서 다시 적용'}</Button>
+      <Button variant="secondary" type="button" disabled={pending} onClick={onKeepLatest}>최신 값 유지</Button>
     </div>
   </div>;
 }

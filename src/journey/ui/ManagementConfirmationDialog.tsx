@@ -1,5 +1,6 @@
 import { animate } from 'animejs';
 import { useEffect, useRef, type KeyboardEvent, type RefObject } from 'react';
+import { Button } from '../../components/common/Button';
 import { MOTION_DISTANCE_PX, MOTION_DURATION, MOTION_EASE } from '../../components/motion/tokens';
 import { useAnimeScope } from '../../components/motion/useAnimeScope';
 import type { ManagementConfirmation } from './AppManagementMenu';
@@ -110,8 +111,8 @@ export function ManagementConfirmationDialog({
           <p className="journey-management__dialog-alert" role="alert">{errorMessage}</p>
         )}
         <div className="journey-management__dialog-actions">
-          <button className="ui-button ui-button--secondary" type="button" data-dialog-initial-focus disabled={pending} onClick={onCancel}>취소</button>
-          <button className="ui-button journey-management__danger" type="button" disabled={pending} onClick={onConfirm}>{confirmation.confirmLabel}</button>
+          <Button variant="secondary" type="button" data-dialog-initial-focus disabled={pending} onClick={onCancel}>취소</Button>
+          <Button className="journey-management__danger" type="button" disabled={pending} onClick={onConfirm}>{confirmation.confirmLabel}</Button>
         </div>
       </div>
     </dialog>
