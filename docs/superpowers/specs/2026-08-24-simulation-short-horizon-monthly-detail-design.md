@@ -82,13 +82,15 @@ desktop tooltip의 금액 구조는 유지한다.
 ### Chart geometry와 시간 표기
 
 - geometry의 x좌표는 `month / finalMonth`를 기준으로 계산해 월별·연별 point 모두 같은 시간 비율을 갖는다.
-- tooltip·screen reader·x축은 `month`를 받아 일관된 한국어 시점 문자열을 만든다.
+- `formatProjectionPeriod(month)`가 유일한 시점 표기 함수다. `0`은 `현재`, 12개월 미만은 `N개월`, 12개월의 배수는 `N년`, 나머지는 `N년 N개월`을 반환한다.
+- tooltip 제목, graph의 최종 screen reader 요약, active selection status와 x축은 모두 `formatProjectionPeriod(month)`를 사용한다. short horizon에서 `ProjectionPoint.year`를 사용자에게 직접 표시하지 않는다.
 - short horizon x축은 매월 라벨을 렌더하지 않는다. 6개월 간격, 마지막 월과 현재만 표기해 390px에서 겹침을 막는다.
 - chart path motion은 point 수가 37개로 늘거나 4년 경계에서 annual path로 바뀌어도 기존 resampling 경로를 사용해 final semantic path와 reduced-motion fallback을 보존한다.
 
 ### Tooltip
 
-- `GrowthChartTooltip`은 `variant`에 따라 compact의 보조 row를 `principalWon`, detailed의 첫 row를 `allSavingsWon`으로 선택한다.
+- `GrowthChart`은 `GrowthChartTooltip`에 원시 `year` 대신 `periodLabel`과 금액 payload를 전달한다. tooltip은 시점 계산이나 금액 재계산을 하지 않는다.
+- `GrowthChartTooltip`은 `variant`에 따라 compact의 보조 row를 `principalWon`, detailed의 첫 row를 `allSavingsWon`으로 선택한다. 같은 `variant`가 active selection status의 금액 구성을 결정한다.
 - 명목·실질 모드에서 principal은 각각 `contributedPrincipalWon`과 `contributedPrincipalRealWon`을 표시한다.
 - compact tooltip의 치수는 현재 고정값을 유지한다. label·금액은 한 줄이고 overflow하지 않아야 한다.
 
@@ -117,6 +119,7 @@ desktop tooltip의 금액 구조는 유지한다.
 - compact tooltip은 누적 납입원금을 표시하고 전부 저축 총액을 표시하지 않는다.
 - detailed tooltip은 전부 저축 총액과 기존 잔액 상세를 유지한다.
 - 3년 이하 keyboard 이동이 한 달씩 이동하고 animation/reduced-motion fallback이 point 수 변화에서도 final state를 보존한다.
+- `formatProjectionPeriod`가 tooltip·최종 요약·상태 문장·x축에서 `현재`/개월/년·개월을 일관되게 만드는지 검증한다.
 
 ### Playwright
 
@@ -143,3 +146,5 @@ desktop tooltip의 금액 구조는 유지한다.
 ## 11. 기존 문서와의 관계
 
 이 문서는 [Simulation 모바일 그래프 상호작용 설계](2026-08-05-simulation-mobile-chart-interaction-design.md)의 mobile compact 정보 구조를 `현재 계획 총액 + 누적 납입원금`으로 대체한다. 또한 [Simulation 목표 도달 요약 설계](2026-08-21-simulation-goal-milestone-design.md)의 “graph는 연 단위 결과만 표시” 비목표를 short horizon(3년 이하)에 한해 대체한다. 나머지 tooltip dismissal, Main read-only, 목표 headline의 독립 계산 계약은 유지한다.
+
+구현은 [DESIGN](../../../DESIGN.md)의 Simulation compact tooltip 문장도 이 계약으로 갱신한다. 구현 전까지는 이 문서의 상태가 `사용자 검토 대기`이므로 기존 DESIGN 계약이 현재 제품 기준이다.
