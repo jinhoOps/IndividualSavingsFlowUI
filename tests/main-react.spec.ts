@@ -793,14 +793,21 @@ test('new user applies the v2 quick setup and refreshes into matching dashboard 
   await expect(page.getByRole('button', { name: /저축 (상세 정보|· 30만 원 · 9\.4%)/ })).toBeVisible();
   await expect(page.getByRole('button', { name: /투자 (상세 정보|· 20만 원 · 6\.3%)/ })).toBeVisible();
   await expect(page.getByRole('button', { name: '남는 돈 · 90만 원 · 28.1%' })).toBeVisible();
-  await expect(page.getByTestId('allocation-visual-stage')).toHaveClass(/app-wide-visual/);
+  const reviewAllocation = page.locator('.allocation-bar');
+  await expect(reviewAllocation).toHaveClass(/app-wide-visual/);
+  await expect(page.getByTestId('allocation-visual-stage')).not.toHaveClass(/app-wide-visual/);
   const reviewTable = page.getByRole('table', { name: '월 자금 항목' });
   await expect(reviewTable).not.toHaveClass(/app-wide-visual/);
-  const reviewWidths = await page.getByTestId('allocation-visual-stage').evaluate((stage) => ({
-    stage: stage.getBoundingClientRect().width,
-    table: stage.parentElement?.querySelector('table')?.getBoundingClientRect().width ?? 0,
-  }));
-  expect(reviewWidths.stage).toBeGreaterThan(reviewWidths.table);
+  const reviewBounds = await reviewAllocation.evaluate((card) => {
+    const cardRect = card.getBoundingClientRect();
+    const stageRect = card.querySelector('.allocation-bar__visual-stage')!.getBoundingClientRect();
+    const tableRect = card.querySelector('table')!.getBoundingClientRect();
+    return {
+      stageInside: stageRect.left >= cardRect.left && stageRect.right <= cardRect.right,
+      tableInside: tableRect.left >= cardRect.left && tableRect.right <= cardRect.right,
+    };
+  });
+  expect(reviewBounds).toEqual({ stageInside: true, tableInside: true });
   await expect(reviewTable.getByRole('row', { name: /소비.*180만 원.*56\.3%/ })).toBeVisible();
   await expect(reviewTable.getByRole('row', { name: /저축.*30만 원.*9\.4%/ })).toBeVisible();
   await expect(reviewTable.getByRole('row', { name: /투자.*20만 원.*6\.3%/ })).toBeVisible();
@@ -930,7 +937,8 @@ test('setup motion reaches final state in real time at required viewports', asyn
       contentOpacities: [1, 1, 1],
     });
     await expect(page.getByRole('button', { name: '계획 적용' })).toBeVisible();
-    await expect(page.getByTestId('allocation-visual-stage')).toHaveClass(/app-wide-visual/);
+    await expect(page.locator('.allocation-bar')).toHaveClass(/app-wide-visual/);
+    await expect(page.getByTestId('allocation-visual-stage')).not.toHaveClass(/app-wide-visual/);
     await expectReviewVisualInViewport(page);
     await expect.poll(() => page.evaluate(() => (
       document.documentElement.scrollWidth <= window.innerWidth

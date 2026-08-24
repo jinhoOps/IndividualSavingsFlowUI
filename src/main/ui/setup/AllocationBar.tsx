@@ -100,9 +100,10 @@ export function AllocationBar({ data, presentation = 'standard' }: AllocationBar
   const activeTarget = hoveredTarget ?? focusedTarget ?? tappedTarget;
   const activeId = activeTarget?.id;
   const activeAllocation = allocations.find((allocation) => allocation.id === activeId);
-  const visualStageClassName = presentation === 'assembly'
-    ? 'allocation-bar__visual-stage app-wide-visual'
-    : 'allocation-bar__visual-stage';
+  const visualStageClassName = 'allocation-bar__visual-stage';
+  const allocationBarClassName = presentation === 'assembly'
+    ? 'allocation-bar app-wide-visual'
+    : 'allocation-bar';
   const activePosition = activeAllocation ? allocationCenter(activeAllocation.id, allocations) : 0;
   const tooltipPosition = activeId === hoveredTarget?.id
     ? pointerPosition ?? activePosition
@@ -290,7 +291,7 @@ export function AllocationBar({ data, presentation = 'standard' }: AllocationBar
 
   return (
     <section
-      className="allocation-bar"
+      className={allocationBarClassName}
       aria-label="월 수입 나누기"
       onBlur={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget)) {

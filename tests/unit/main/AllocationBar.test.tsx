@@ -105,15 +105,17 @@ function mockBarViewport(initialClientWidth: number) {
 }
 
 describe('AllocationBar', () => {
-  it('widens only the visual stage for the assembly presentation', () => {
+  it('widens the complete review component for the assembly presentation', () => {
     const { rerender } = render(<AllocationBar data={cashflowFixture} />);
 
+    expect(screen.getByRole('region', { name: '월 수입 나누기' })).not.toHaveClass('app-wide-visual');
     expect(screen.getByTestId('allocation-visual-stage')).not.toHaveClass('app-wide-visual');
     expect(screen.getByRole('table', { name: '월 자금 항목' })).not.toHaveClass('app-wide-visual');
 
     rerender(<AllocationBar data={cashflowFixture} presentation="assembly" />);
 
-    expect(screen.getByTestId('allocation-visual-stage')).toHaveClass('app-wide-visual');
+    expect(screen.getByRole('region', { name: '월 수입 나누기' })).toHaveClass('app-wide-visual');
+    expect(screen.getByTestId('allocation-visual-stage')).not.toHaveClass('app-wide-visual');
     expect(screen.getByRole('table', { name: '월 자금 항목' })).not.toHaveClass('app-wide-visual');
   });
 
