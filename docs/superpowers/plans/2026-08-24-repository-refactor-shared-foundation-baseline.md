@@ -81,3 +81,37 @@ The only failures exactly match three of the recorded baseline failures, all fro
 The passing selected coverage supplies fresh evidence for the shared frame's unchanged responsive boundary: `app-journey` passed its Main launcher geometry/canvas cases at 390px, 768px, and 1280px; `reading-width` passed the cross-result-app reading-width cases at those three viewports; Account Map passed contained states with 44px actions, pointer/touch scroll behavior, focus parity, and the 390px long-title containment case; Simulation passed contained high-principal result/goal cases plus focus and chart semantic visibility; Portfolio passed focus restoration and the 768px focused-sheet containment case; Main passed the live dashboard required-viewport containment, focus, and visualization cases; and `motion-system` passed mobile/tablet/desktop cross-app semantic, focus, reduced-motion, overflow-clipping, and visualization checks.
 
 No source, CSS, storage, URL, or navigation changes were made while collecting this evidence. Playwright generated only ignored `test-results/` artifacts.
+
+## Task 5 final verification and handoff — 2026-08-24
+
+This final verification ran in `/Users/jinho/orca/IndividualSavingsFlowUI/.worktrees/refactor-shared-foundation` on `codex/refactor-shared-foundation` at `51ba211` (`refactor(motion): share reveal final-state fallback`). The source commits in the shared-foundation phase are `cb0b400`, `47780c2`, `dd2a4cc`, and `51ba211`; this document records their final verification only.
+
+| Command | Exit status | Exact result | Generated-file disposition |
+| --- | ---: | --- | --- |
+| `npm run check` | 0 | `tsc --noEmit` and `tsc --noEmit -p tsconfig.unit.json` passed. | None. |
+| `npm run test:unit` | 1 | 98 test files passed, 1 failed; 1,092 tests passed, 1 failed. The failure is `tests/unit/simulation/sharedComponents.test.ts:48`: it still requires a `components/common/Surface` import in `SimulationApp.tsx`, while the current component uses `AppContentFrame`. Node emitted its expected localStorage experimental warning. | None. |
+| `npm run test:e2e -- tests/app-journey.spec.ts tests/main-react.spec.ts tests/simulation.spec.ts tests/portfolio.spec.ts tests/account-map.spec.ts tests/reading-width.spec.ts tests/motion-system.spec.ts` | 1 | 113 passed, 3 failed, 1 skipped out of 117. The failures are the known `tests/reading-width.spec.ts:404` parameterized 390px/768px/1280px Main assembly cases: `allocation-visual-stage` has `allocation-bar__visual-stage`, not the expected `app-wide-visual` class. The skipped PWA offline revisit remains intentional. | Playwright produced ignored `test-results/` output only. |
+| `npm run build` | 0 | Vite completed with 1,988 modules transformed; PWA generated `dist/sw.js` and Workbox assets. | The build changed version `0.11.94` to `0.11.95` in `package.json`, `public/manifest.webmanifest`, `shared/core/utils.js`, and `shared/legacy/sw.js`. Those four generated edits were inspected and restored before the documentation commit; `dist/` remains generated output. |
+| `git diff --check` | 0 | No whitespace errors before the documentation change and after restoring build-generated version changes. | None. |
+
+### Responsive, accessibility, and motion evidence
+
+The isolated supported-flow run supplies deterministic coverage at 390×844, 768×1024 or the suite's existing 768×900 equivalent, and 1280×900. It passed the Main launcher geometry/canvas checks at all three widths; reading-width checks for the shared result-app frame at all three widths; Account Map's all-state containment, 44px action targets, pointer/touch scroll, focus parity, and 390px long-title containment; Simulation's contained mobile/tablet/desktop entry and result, graph semantics, focus, touch drag and tooltip behavior; Portfolio's required-width summary, 44px/focus behavior, mobile sheet/panel containment and focus restoration; and Main's contained dashboard/review, visualization, keyboard flow, focus ring, and touch-target coverage.
+
+`tests/motion-system.spec.ts` passed its mobile, tablet, and desktop cross-app motion cases; those assert semantic/focus retention, overflow clipping, visual final state, and reduced-motion behavior. The supported app-journey tests also passed reduced-motion synchronous final-state checks for Account Map launcher reveals and the Main mobile editor. Thus the shared frame keeps its horizontal gutter, the launcher remains outside the reading-width primitive, supported controls retain accessible names/focus/touch behavior, and reduced motion leaves tested content in a visible final state. The three recorded reading-width failures are class-contract assertions, not overflow, focus, touch, or reduced-motion failures.
+
+### Intentional exceptions and remaining boundaries
+
+- Direct `ui-button` markup remains intentional where native link semantics, icon/action semantics, or app-specific styling must be preserved; it is not a blanket migration target.
+- `AppContentFrame` is the shared reading-width primitive; the launcher is deliberately excluded. Main review retains its approved wide-visual exception.
+- `setMotionFinalState` now centralizes only the simple opacity-plus-vertical-translate fallback used by Toast, Readiness, and destructive management confirmation. Keep the other local motion finalizers until a later plan preserves their distinct contracts: Main setup's multi-element initial/assembly styles, Main dashboard's horizontal editor fallback, Portfolio dialog's modal/sheet/panel property cleanup, Portfolio summary's numerical/card choreography, and the launcher/management-menu-specific lifecycles.
+- `legacyPhaseA`, migration/backup parsing, `purgeRetiredStorage`, legacy PWA route exclusions, `apps/main/modules` dynamic-import/fetch coverage in `tests/step1.spec.ts`, and `tests/main-compat.spec.ts` remain Phase 4 evidence. They were neither deleted nor repurposed as a supported runtime path.
+
+### Next plan inputs and unresolved verification
+
+1. `MainApp`: split bootstrap/repository effects, setup/review command boundaries, dashboard view models, and app-owned motion without changing the five Main-owned monthly values or wide-review contract. Resolve the stale `Surface` architecture test as part of an approved UI-contract decision, not as a drive-by workaround.
+2. `AccountMapApp`: separate command/recovery orchestration from map/setup rendering; later split graph model, responsive layout, and placement while retaining Main read-only and Account Map-only writes to `workspace.locations` and `workspace.accountMap`.
+3. `PortfolioApp`: separate repository/plan commands from summary/edit surfaces; retain Portfolio slice ownership and its separation from Account Map locations.
+4. `SimulationApp`: separate onboarding/projection command and summary/chart view models; retain the Main-read-only source, compound-growth meaning, and the existing app frame. Its stale `Surface` import assertion needs a focused contract update or restored intended primitive before a green unit gate can be claimed.
+
+The source/type gate is green, but the phase's unit and focused E2E gates are not fully green for the exact failures above. Do not represent the shared-foundation phase as fully verified until their owners decide and resolve the stale unit architecture assertion and the three Main assembly class-contract assertions. No storage, ownership, URL, navigation, or legacy-disposition verification was broadened in this task.
