@@ -3,6 +3,7 @@ import { useRef } from 'react';
 import type { JSX } from 'react';
 import { AppShell } from '../../components/common/AppShell';
 import { MOTION_DISTANCE_PX, MOTION_DURATION, MOTION_EASE } from '../../components/motion/tokens';
+import { setMotionFinalState } from '../../components/motion/setMotionFinalState';
 import { useAnimeScope } from '../../components/motion/useAnimeScope';
 import { appPath } from '../routes';
 import { AppManagementMenu } from './AppManagementMenu';
@@ -13,7 +14,7 @@ export function ReadinessApp(): JSX.Element {
   const contentMotionRef = useAnimeScope<HTMLElement>(({ root, reducedMotion }) => {
     const isStrictModeReplay = revealPlayedRef.current && revealElementRef.current === root;
     if (reducedMotion || (revealPlayedRef.current && !isStrictModeReplay)) {
-      setRevealFinalState(root);
+      setMotionFinalState(root);
       return;
     }
     revealPlayedRef.current = true;
@@ -26,7 +27,7 @@ export function ReadinessApp(): JSX.Element {
         ease: MOTION_EASE.enter,
       });
     } catch {
-      setRevealFinalState(root);
+      setMotionFinalState(root);
     }
   }, []);
 
@@ -49,9 +50,4 @@ export function ReadinessApp(): JSX.Element {
       </main>
     </AppShell>
   );
-}
-
-function setRevealFinalState(target: HTMLElement): void {
-  target.style.opacity = '1';
-  target.style.transform = 'translateY(0px)';
 }

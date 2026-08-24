@@ -1,6 +1,8 @@
 import { animate } from 'animejs';
 import { useEffect, useRef, type KeyboardEvent, type RefObject } from 'react';
+import { Button } from '../../components/common/Button';
 import { MOTION_DISTANCE_PX, MOTION_DURATION, MOTION_EASE } from '../../components/motion/tokens';
+import { setMotionFinalState } from '../../components/motion/setMotionFinalState';
 import { useAnimeScope } from '../../components/motion/useAnimeScope';
 import type { ManagementConfirmation } from './AppManagementMenu';
 
@@ -24,7 +26,7 @@ export function ManagementConfirmationDialog({
   const titleId = `journey-management-dialog-${confirmation.title.replace(/\s+/g, '-')}`;
   const motionRef = useAnimeScope<HTMLDivElement>(({ root, reducedMotion }) => {
     if (reducedMotion) {
-      setRevealFinalState(root);
+      setMotionFinalState(root);
       return;
     }
     try {
@@ -35,7 +37,7 @@ export function ManagementConfirmationDialog({
         ease: MOTION_EASE.enter,
       });
     } catch {
-      setRevealFinalState(root);
+      setMotionFinalState(root);
     }
   }, []);
 
@@ -110,15 +112,10 @@ export function ManagementConfirmationDialog({
           <p className="journey-management__dialog-alert" role="alert">{errorMessage}</p>
         )}
         <div className="journey-management__dialog-actions">
-          <button className="ui-button ui-button--secondary" type="button" data-dialog-initial-focus disabled={pending} onClick={onCancel}>취소</button>
-          <button className="ui-button journey-management__danger" type="button" disabled={pending} onClick={onConfirm}>{confirmation.confirmLabel}</button>
+          <Button variant="secondary" type="button" data-dialog-initial-focus disabled={pending} onClick={onCancel}>취소</Button>
+          <Button variant="bare" className="journey-management__danger" type="button" disabled={pending} onClick={onConfirm}>{confirmation.confirmLabel}</Button>
         </div>
       </div>
     </dialog>
   );
-}
-
-function setRevealFinalState(target: HTMLElement): void {
-  target.style.opacity = '1';
-  target.style.transform = 'translateY(0px)';
 }

@@ -1,6 +1,7 @@
 import { animate } from 'animejs';
 import React, { useEffect } from 'react';
 import { MOTION_DISTANCE_PX, MOTION_DURATION, MOTION_EASE } from '../motion/tokens';
+import { setMotionFinalState } from '../motion/setMotionFinalState';
 import { useAnimeScope } from '../motion/useAnimeScope';
 
 interface Props {
@@ -13,7 +14,7 @@ interface Props {
 export const Toast: React.FC<Props> = ({ message, type = 'success', onClose, duration = 3000 }) => {
   const motionRef = useAnimeScope<HTMLDivElement>(({ root, reducedMotion }) => {
     if (reducedMotion) {
-      setRevealFinalState(root);
+      setMotionFinalState(root);
       return;
     }
     try {
@@ -24,7 +25,7 @@ export const Toast: React.FC<Props> = ({ message, type = 'success', onClose, dur
         ease: MOTION_EASE.enter,
       });
     } catch {
-      setRevealFinalState(root);
+      setMotionFinalState(root);
     }
   }, []);
 
@@ -52,8 +53,3 @@ export const Toast: React.FC<Props> = ({ message, type = 'success', onClose, dur
     </div>
   );
 };
-
-function setRevealFinalState(target: HTMLElement): void {
-  target.style.opacity = '1';
-  target.style.transform = 'translateY(0px)';
-}

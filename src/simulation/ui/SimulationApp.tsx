@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { AppContentFrame } from '../../components/common/AppContentFrame';
 import { AppShell } from '../../components/common/AppShell';
 import { Button } from '../../components/common/Button';
-import { Surface } from '../../components/common/Surface';
 import { appPath } from '../../journey/routes';
 import { bootstrapSimulation } from '../application/bootstrap';
 import type { CompoundSimulationDraft } from '../domain/model';
@@ -78,14 +78,14 @@ export function SimulationApp({
         managementMenu={<SimulationManagementMenu onReset={reset} />}
       >
         <main className="simulation-shell">
-          <Surface
+          <AppContentFrame
             as="section"
-            className="app-content-frame simulation-recovery"
+            className="ui-surface simulation-recovery"
             data-testid="simulation-page-frame"
           >
             <h1>Main에서 월 저축·투자 금액을 먼저 정해주세요.</h1>
             <a className="ui-button ui-button--primary" href={appPath('main')}>Main에서 설정하기</a>
-          </Surface>
+          </AppContentFrame>
         </main>
       </AppShell>
     );
@@ -200,8 +200,9 @@ export function SimulationApp({
       managementMenu={<SimulationManagementMenu onReset={reset} />}
     >
       <main className="simulation-shell">
-        <div
-          className="app-content-frame simulation-content"
+        <AppContentFrame
+          as="div"
+          className="simulation-content"
           data-testid="simulation-page-frame"
         >
         {draft === null && latestSource !== null ? (
@@ -253,7 +254,7 @@ export function SimulationApp({
         ) : (
           <p role="alert">시뮬레이션을 시작할 수 없어요.</p>
         )}
-        </div>
+        </AppContentFrame>
       </main>
     </AppShell>
   );

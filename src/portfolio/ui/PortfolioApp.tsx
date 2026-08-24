@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { AppContentFrame } from '../../components/common/AppContentFrame';
 import { AppShell } from '../../components/common/AppShell';
 import { Surface } from '../../components/common/Surface';
 import { useDelayedPending } from '../../components/feedback/useDelayedPending';
@@ -236,8 +237,9 @@ export function PortfolioApp({
         ) : state === null ? (
           <RecoveryPanel message="Portfolio를 시작할 수 없습니다." />
         ) : (
-          <div
-            className="app-content-frame portfolio-content"
+          <AppContentFrame
+            as="div"
+            className="portfolio-content"
             data-testid="portfolio-page-frame"
           >
           {state.view === 'setup' && state.setupStep !== null ? (
@@ -318,7 +320,7 @@ export function PortfolioApp({
               />
             </>
           )}
-          </div>
+          </AppContentFrame>
         )}
       </main>
     </AppShell>
@@ -338,9 +340,10 @@ function InvestmentRequired({ plan }: { plan: PortfolioPlan | null }) {
   };
   return (
     <section className="portfolio-gate" aria-labelledby="portfolio-gate-title">
-      <div
+      <AppContentFrame
+        as="div"
         data-testid="portfolio-page-frame"
-        className="app-content-frame portfolio-gate__frame"
+        className="portfolio-gate__frame"
       >
         <div className="portfolio-content portfolio-content--blurred" inert>
           <PortfolioSummary
@@ -353,7 +356,7 @@ function InvestmentRequired({ plan }: { plan: PortfolioPlan | null }) {
           <h1 id="portfolio-gate-title">투자금을 먼저 정해 주세요</h1>
           <a href={`${appPath('main')}?edit=investment`}>Main에서 투자금 설정</a>
         </div>
-      </div>
+      </AppContentFrame>
     </section>
   );
 }
@@ -366,8 +369,9 @@ function StaleMain({
   preferences: PortfolioViewPreferences;
 }) {
   return (
-    <div
-      className="app-content-frame portfolio-content"
+    <AppContentFrame
+      as="div"
+      className="portfolio-content"
       data-testid="portfolio-page-frame"
     >
       <Surface as="aside" className="portfolio-recovery">
@@ -381,19 +385,19 @@ function StaleMain({
         allocation={materializeAllocation(plan, plan.syncedInvestmentWon)}
         preferences={preferences}
       />
-    </div>
+    </AppContentFrame>
   );
 }
 
 function RecoveryPanel({ message }: { message: string }) {
   return (
-    <Surface
+    <AppContentFrame
       as="section"
-      className="app-content-frame portfolio-recovery"
+      className="ui-surface portfolio-recovery"
       data-testid="portfolio-page-frame"
     >
       <h1>{message}</h1>
       <a href={`${appPath('main')}?edit=investment`}>Main에서 투자금 설정</a>
-    </Surface>
+    </AppContentFrame>
   );
 }

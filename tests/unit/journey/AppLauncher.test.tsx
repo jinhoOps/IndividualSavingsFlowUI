@@ -384,6 +384,9 @@ describe('shared Journey overlays', () => {
     fireEvent.click(trigger);
     const dialog = screen.getByRole('dialog', { name: '처음부터 다시 할까요?' });
     expect(dialog).toHaveAttribute('aria-modal', 'true');
+    const confirm = within(dialog).getByRole('button', { name: '초기화' });
+    expect(confirm).toHaveClass('ui-button--bare', 'journey-management__danger');
+    expect(confirm).not.toHaveClass('ui-button--secondary');
     const motionContent = dialog.querySelector<HTMLElement>('[data-dialog-motion]');
     expect(motionContent).not.toBeNull();
     expect(animationOptionsFor(motionContent!)).toMatchObject({
