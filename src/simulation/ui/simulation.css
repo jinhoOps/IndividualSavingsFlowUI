@@ -555,6 +555,28 @@
   gap: .4rem;
 }
 
+.simulation-advanced__money-field,
+.simulation-advanced__help {
+  grid-column: 1 / -1;
+}
+
+.simulation-advanced__money-input {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: .5rem;
+}
+
+.simulation-advanced__money-input input {
+  min-width: 0;
+}
+
+.simulation-advanced__money-input > span {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-weight: 700;
+}
+
 .simulation-advanced__content p {
   margin: 0;
   color: var(--muted);

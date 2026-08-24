@@ -74,6 +74,35 @@ function firstSaveGate(): {
 }
 
 describe('SimulationApp', () => {
+  it('edits the accumulated amount from calculation basis and reopens a user goal when needed', async () => {
+    const saved = {
+      ...createDefaultSimulationDraft(source, 456),
+      initialInvestmentWon: 200_000_000,
+      targetAmountWon: 300_000_000,
+    };
+    const repository = simulationRepository({
+      status: 'found',
+      draft: saved,
+      migration: null,
+    });
+    render(<SimulationApp
+      mainSourceRepository={mainRepository(source)}
+      repository={repository}
+      now={() => 999}
+    />);
+
+    fireEvent.click(screen.getByText('계산 기준'));
+    const initialAmount = screen.getByRole('textbox', { name: '현재 모아둔 돈' });
+    expect(initialAmount).toHaveValue('200,000,000');
+    fireEvent.change(initialAmount, { target: { value: '300,000,000' } });
+
+    expect(screen.getByRole('heading', { name: '다음에는 얼마를 모으고 싶나요?' })).toBeVisible();
+    await waitFor(() => expect(repository.save).toHaveBeenCalledWith(expect.objectContaining({
+      initialInvestmentWon: 300_000_000,
+      targetAmountWon: null,
+    })));
+  });
+
   it('completes two-stage onboarding before saving the first result', async () => {
     const repository = simulationRepository();
     render(<SimulationApp

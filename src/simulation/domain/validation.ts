@@ -169,6 +169,21 @@ export function targetForInitialInvestment(initialInvestmentWon: number): number
   return null;
 }
 
+export function targetForEditedInitialInvestment(
+  currentInitialInvestmentWon: number,
+  currentTargetAmountWon: number | null,
+  nextInitialInvestmentWon: number,
+): number | null {
+  const automaticTarget = targetForInitialInvestment(currentInitialInvestmentWon);
+  if (currentTargetAmountWon === automaticTarget) {
+    return targetForInitialInvestment(nextInitialInvestmentWon);
+  }
+  if (currentTargetAmountWon !== null && currentTargetAmountWon > nextInitialInvestmentWon) {
+    return currentTargetAmountWon;
+  }
+  return targetForInitialInvestment(nextInitialInvestmentWon);
+}
+
 function isValidTarget(
   initialInvestmentWon: number,
   targetAmountWon: unknown,

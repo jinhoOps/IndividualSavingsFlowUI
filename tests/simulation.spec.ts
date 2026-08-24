@@ -52,6 +52,41 @@ async function openFirstResult(page: Page) {
     .toBeVisible();
 }
 
+for (const viewport of [
+  { name: '390px', width: 390, height: 844 },
+  { name: '768px', width: 768, height: 900 },
+  { name: 'desktop', width: 1280, height: 900 },
+]) {
+  test(`${viewport.name} 계산 기준에서 기존 모아둔 돈을 수정해도 화면을 벗어나지 않는다`, async ({ page }) => {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height });
+    await seedMain(page);
+    await openFirstResult(page);
+
+    await page.getByText('계산 기준').click();
+    const initialAmount = page.getByRole('textbox', { name: '현재 모아둔 돈' });
+    await expect(initialAmount).toHaveValue('0');
+    await initialAmount.fill('12000000');
+    await expect(initialAmount).toHaveValue('12,000,000');
+    await expect.poll(() => page.evaluate(() => {
+      const workspace = JSON.parse(localStorage.getItem('isf-workspace-v1')!);
+      return {
+        initialInvestmentWon: workspace.simulation.draft?.initialInvestmentWon,
+        targetAmountWon: workspace.simulation.draft?.targetAmountWon,
+        main: workspace.main.applied,
+      };
+    })).toEqual({
+      initialInvestmentWon: 12_000_000,
+      targetAmountWon: 100_000_000,
+      main: appliedMain,
+    });
+
+    const box = await initialAmount.boundingBox();
+    expect(box).not.toBeNull();
+    expect(box!.height).toBeGreaterThanOrEqual(44);
+    expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
+  });
+}
+
 test('390px 시작 자산 빠른 조정은 한 줄 터치 영역을 유지한다', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await seedMain(page);
