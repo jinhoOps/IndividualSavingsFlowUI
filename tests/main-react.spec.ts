@@ -976,6 +976,13 @@ test('setup action stays visible after welcome motion hands off to later steps',
   await page.getByLabel('월 투자액').fill('200000');
   await page.getByRole('button', { name: '다음' }).click();
 
+  await expect(page.getByRole('heading', { name: '입력한 월 자금 계획을 확인해주세요' })).toBeVisible();
+  await expect(page.locator('.allocation-table')).toBeVisible();
+  await expect(page.locator('.setup-flow-surface').evaluate((root) => (
+    [...root.querySelectorAll<HTMLElement>('[data-assembly-content]')]
+      .map((element) => Number(getComputedStyle(element).opacity))
+  ))).resolves.toEqual([1, 1, 1]);
+
   await expect.poll(() => page.locator('.setup-flow-surface').evaluate((root) => ({
     trackScaleX: new DOMMatrixReadOnly(
       getComputedStyle(root.querySelector<HTMLElement>('.allocation-bar__visual-track')!).transform,
@@ -1100,14 +1107,14 @@ test('review assembly captures timed deficit geometry and reduced motion', async
 
     const start = await readAssemblyState();
     expect(start.scaleX).toBeLessThan(0.1);
-    expect(Math.max(...start.opacities)).toBeLessThan(0.1);
+    expect(start.opacities).toEqual(start.opacities.map(() => 1));
     await capture(viewport.width, 'start');
 
     await page.clock.runFor(130);
     const middle = await readAssemblyState();
     expect(middle.scaleX).toBeGreaterThan(0.1);
     expect(middle.scaleX).toBeLessThan(1);
-    expect(Math.min(...middle.opacities)).toBeLessThan(1);
+    expect(middle.opacities).toEqual(middle.opacities.map(() => 1));
     await capture(viewport.width, 'mid');
 
     await page.clock.runFor(1_200);
@@ -1125,14 +1132,14 @@ test('review assembly captures timed deficit geometry and reduced motion', async
     await showReview(clippedDeficit);
     const clippedStart = await readAssemblyState();
     expect(clippedStart.scaleX).toBeLessThan(0.1);
-    expect(clippedStart.overflowLabelOpacity ?? 1).toBeLessThan(0.1);
+    expect(clippedStart.overflowLabelOpacity).toBe(1);
     await capture(viewport.width, 'deficit-clipped-start');
 
     await page.clock.runFor(130);
     const clippedMiddle = await readAssemblyState();
     expect(clippedMiddle.scaleX).toBeGreaterThan(0.1);
     expect(clippedMiddle.scaleX).toBeLessThan(1);
-    expect(clippedMiddle.overflowLabelOpacity ?? 1).toBeLessThan(1);
+    expect(clippedMiddle.overflowLabelOpacity).toBe(1);
     await capture(viewport.width, 'deficit-clipped-mid');
 
     await page.clock.runFor(1_200);

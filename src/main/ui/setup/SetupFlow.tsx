@@ -147,7 +147,6 @@ export function SetupFlow({
 
     const track = root.querySelector<HTMLElement>('.allocation-bar__visual-track');
     const segmentElements = root.querySelectorAll<HTMLElement>('.allocation-bar__visual-segment');
-    const contentElements = root.querySelectorAll<HTMLElement>('[data-assembly-content]');
     if (track === null) return;
 
     track.style.transformOrigin = 'left center';
@@ -157,16 +156,16 @@ export function SetupFlow({
       || reducedMotion
       || (assemblyPlayedRef.current && !isStrictModeReplay)
     ) {
-      setAssemblyFinalStyles(track, segmentElements, contentElements);
+      setAssemblyFinalStyles(track, segmentElements);
       return;
     }
 
     assemblyPlayedRef.current = true;
     assemblyRootRef.current = root;
-    setAssemblyInitialStyles(track, segmentElements, contentElements);
+    setAssemblyInitialStyles(track, segmentElements);
     const recovery = startMotionDeadline(
       REVIEW_MOTION_DEADLINE_MS,
-      () => setAssemblyFinalStyles(track, segmentElements, contentElements),
+      () => setAssemblyFinalStyles(track, segmentElements),
     );
     const started = attemptMotion(() => {
       const timeline = createTimeline({
@@ -180,12 +179,7 @@ export function SetupFlow({
           opacity: [0, 1],
           duration: MOTION_DURATION.normal,
           delay: stagger(WELCOME_STAGGER_MS),
-        }, '<+=80')
-        .add(contentElements, {
-          opacity: [0, 1],
-          y: [MOTION_DISTANCE_PX.reveal, 0],
-          duration: MOTION_DURATION.normal,
-        }, '<');
+        }, '<+=80');
     });
     if (!started) recovery.fail();
     return recovery.dispose;
@@ -405,7 +399,7 @@ function ReviewStep({
   reviewRef,
 }: Pick<SetupFlowProps, 'draft'> & { reviewRef: RefObject<HTMLElement | null> }) {
   return (
-    <section className="contents" ref={reviewRef}>
+    <section className="grid gap-6" ref={reviewRef}>
       <div data-assembly-content>
         <StepHeading>입력한 월 자금 계획을 확인해주세요</StepHeading>
       </div>
@@ -477,24 +471,17 @@ function setRevealInitialStyles(elements: NodeListOf<HTMLElement>): void {
 function setAssemblyFinalStyles(
   track: HTMLElement,
   segments: NodeListOf<HTMLElement>,
-  content: NodeListOf<HTMLElement>,
 ): void {
   track.style.transform = 'scaleX(1)';
   for (const segment of segments) segment.style.opacity = '1';
-  setRevealFinalStyles(content);
 }
 
 function setAssemblyInitialStyles(
   track: HTMLElement,
   segments: NodeListOf<HTMLElement>,
-  content: NodeListOf<HTMLElement>,
 ): void {
   track.style.transform = 'scaleX(0)';
   for (const segment of segments) segment.style.opacity = '0';
-  for (const element of content) {
-    element.style.opacity = '0';
-    element.style.transform = `translateY(${MOTION_DISTANCE_PX.reveal}px)`;
-  }
 }
 
 function StepHeading({ children }: { children: string }) {

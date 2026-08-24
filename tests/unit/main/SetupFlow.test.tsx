@@ -205,7 +205,7 @@ describe('SetupFlow', () => {
       expect(segment).toHaveStyle({ opacity: '0' });
     }
     for (const content of document.querySelectorAll<HTMLElement>('[data-assembly-content]')) {
-      expect(content).toHaveStyle({ opacity: '0', transform: 'translateY(8px)' });
+      expect(content).not.toHaveStyle({ opacity: '0' });
     }
 
     act(() => vi.runOnlyPendingTimers());
@@ -215,7 +215,7 @@ describe('SetupFlow', () => {
       expect(segment).toHaveStyle({ opacity: '1' });
     }
     for (const content of document.querySelectorAll<HTMLElement>('[data-assembly-content]')) {
-      expect(content).toHaveStyle({ opacity: '1', transform: 'translateY(0px)' });
+      expect(content).not.toHaveStyle({ opacity: '0' });
     }
     expect(animeMocks.timeline.cancel).toHaveBeenCalledOnce();
   });
@@ -250,7 +250,7 @@ describe('SetupFlow', () => {
       expect(segment).toHaveStyle({ opacity: '1' });
     }
     for (const content of document.querySelectorAll<HTMLElement>('[data-assembly-content]')) {
-      expect(content).toHaveStyle({ opacity: '1', transform: 'translateY(0px)' });
+      expect(content).not.toHaveStyle({ opacity: '0' });
     }
   });
 
@@ -306,7 +306,7 @@ describe('SetupFlow', () => {
       expect(segment).toHaveStyle({ opacity: '1' });
     }
     for (const content of document.querySelectorAll<HTMLElement>('[data-assembly-content]')) {
-      expect(content).toHaveStyle({ opacity: '1', transform: 'translateY(0px)' });
+      expect(content).not.toHaveStyle({ opacity: '0' });
     }
   });
 
@@ -333,7 +333,7 @@ describe('SetupFlow', () => {
       expect(segment).toHaveStyle({ opacity: '1' });
     }
     for (const content of document.querySelectorAll<HTMLElement>('[data-assembly-content]')) {
-      expect(content).toHaveStyle({ opacity: '1', transform: 'translateY(0px)' });
+      expect(content).not.toHaveStyle({ opacity: '0' });
     }
     expect(animeMocks.timeline.cancel).toHaveBeenCalledOnce();
   });
