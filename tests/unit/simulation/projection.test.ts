@@ -45,6 +45,19 @@ describe('projectCompoundGrowth', () => {
     );
   });
 
+  it('samples every month through three years but keeps four years annual', () => {
+    const threeYear = projectCompoundGrowth({ ...draft, years: 3 });
+    const fourYear = projectCompoundGrowth({ ...draft, years: 4 });
+
+    expect(threeYear.points).toHaveLength(37);
+    expect(threeYear.points.map((point) => point.month)).toEqual(
+      Array.from({ length: 37 }, (_, month) => month),
+    );
+    expect(fourYear.points.map((point) => point.month)).toEqual([0, 12, 24, 36, 48]);
+    expect(threeYear.points.at(-1)?.month).toBe(36);
+    expect(fourYear.points.at(-1)?.month).toBe(48);
+  });
+
   it('uses the same starting principal in both comparison paths', () => {
     const result = projectCompoundGrowth({ ...draft, years: 1 });
 

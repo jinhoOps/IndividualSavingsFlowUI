@@ -39,6 +39,7 @@ export function findTargetReachMonth(draft: CompoundSimulationDraft): number | n
 export function projectCompoundGrowth(draft: CompoundSimulationDraft): ProjectionResult {
   const rates = createProjectionRates(draft);
   const totalMonths = draft.years * 12;
+  const includeEveryMonth = totalMonths <= 36;
   let savingsBalance = 0;
   let investmentBalance = draft.initialInvestmentWon;
   let allSavingsBalance = draft.initialInvestmentWon;
@@ -55,7 +56,7 @@ export function projectCompoundGrowth(draft: CompoundSimulationDraft): Projectio
     ));
     allSavingsBalance = advanceAllSavingsBalance(allSavingsBalance, draft, rates);
 
-    if (month % 12 === 0) appendPoint(month);
+    if (includeEveryMonth || month % 12 === 0) appendPoint(month);
   }
 
   const final = points.at(-1)!;
