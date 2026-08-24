@@ -33,3 +33,21 @@ The E2E failures are baseline concerns and must be understood before later phase
 The build has a generated version-bump side effect; future baseline/build runs should account for it. Legacy storage keys, `legacyPhaseA`, and `apps/main/modules` references remain intentionally preserved until Phase 4 compatibility and removal evidence exists.
 
 Next owner: Task 2 / Phase 1 implementer should start with the approved refactor design and this baseline document, preserve the listed exceptions, and run focused common-foundation tests before broad extraction.
+
+## Fix round 1 report
+
+Status: DONE_WITH_CONCERNS
+
+Addressed review findings in `docs/superpowers/plans/2026-08-24-repository-refactor-shared-foundation-baseline.md`:
+
+1. Added an `Execution worktree and provenance` section with the isolated path, branch, clean-status output (`## codex/refactor-shared-foundation`), full baseline HEAD `2119b7deb27c7c48b74d3f0b3028d23b4603252`, `origin/main` full SHA and subject, merge-base, and `git rev-list --left-right --count` relationship (`2 0` from baseline to origin/main).
+2. Replaced generic focused-test labels with concrete unit and app E2E paths for each inventory candidate, including `tests/{account-map,portfolio,simulation,main-react}.spec.ts` where applicable.
+3. Added reproducible file/line/title references for all four E2E failures and a concise source list for the 61 intentional skips.
+
+Verification for this fix:
+
+- `git diff --check` — PASS (no output).
+- Markdown-link scan (`rg -o '\\[[^]]+\\]\\([^)]+' docs/superpowers/plans/2026-08-24-repository-refactor-shared-foundation-baseline.md`) — PASS; no markdown links are present in the baseline document, so no relative links require resolution.
+- `git status --short` — showed only the intended baseline document before commit.
+
+The original baseline E2E concern remains unchanged: four failures and 61 intentional skips are documented and reproducible. No source or product behavior was changed.
