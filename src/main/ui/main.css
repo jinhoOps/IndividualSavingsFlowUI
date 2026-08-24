@@ -227,6 +227,8 @@
 
   .cashflow-donut__center strong { @apply text-2xl font-black text-slate-950; }
   .cashflow-donut__center span { @apply text-xs font-bold text-slate-500; }
+  .cashflow-donut__center-detail { @apply whitespace-nowrap; }
+  .cashflow-donut__center-detail > span + span::before { content: " · "; }
   .cashflow-donut__center small { @apply mt-1 text-xs font-bold text-rose-700; }
 
   .cashflow-donut__legend { @apply grid grid-cols-2 gap-2; }
@@ -250,7 +252,6 @@
   .cashflow-donut__legend-button span:last-child { @apply text-slate-500; }
   .cashflow-donut__legend-amount { @apply hidden; }
 
-  .cashflow-donut__tooltip { @apply m-0 rounded-md bg-slate-950 px-2 py-1 text-xs font-bold text-white; }
   .cashflow-donut__guidance { @apply m-0 rounded-xl bg-slate-100 px-4 py-8 text-center font-bold text-slate-600; }
 
   .allocation-details__summary {

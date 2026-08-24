@@ -354,19 +354,18 @@ describe('CashflowDonutSummary', () => {
     expect(document.querySelectorAll('.cashflow-donut__legend-amount')).toHaveLength(4);
   });
 
-  it('shows allocation detail for focus and tap', () => {
-    render(<CashflowDonutSummary data={appliedData} />);
+  it('shows focused allocation detail in the donut center without a tooltip overlay', () => {
+    const { container } = render(<CashflowDonutSummary data={appliedData} />);
     const consumption = screen.getByRole('button', { name: '소비 · 180만 원 · 56.3%' });
 
     fireEvent.focus(consumption);
-    expect(screen.getByRole('tooltip')).toHaveTextContent('소비 · 180만 원 · 56.3%');
+    const center = container.querySelector('.cashflow-donut__center');
+    expect(within(center as HTMLElement).getByText('56.3%')).toBeVisible();
+    expect(within(center as HTMLElement).getByText('소비')).toBeVisible();
+    expect(within(center as HTMLElement).getByText('180만 원')).toBeVisible();
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
     fireEvent.blur(consumption);
-    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
-
-    fireEvent.click(consumption);
-    expect(screen.getByRole('tooltip')).toHaveTextContent('소비 · 180만 원 · 56.3%');
-    fireEvent.click(consumption);
-    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+    expect(within(center as HTMLElement).getByText('저축·투자')).toBeVisible();
   });
 
   it('selects a touched ring segment and dismisses the fixed detail outside', () => {
@@ -395,7 +394,8 @@ describe('CashflowDonutSummary', () => {
       .toHaveClass('cashflow-donut__segment--active');
     expect(screen.getByRole('button', { name: '소비 · 180만 원 · 56.3%' }))
       .toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByRole('tooltip')).toHaveTextContent('소비 · 180만 원 · 56.3%');
+    expect(within(center as HTMLElement).getByText('180만 원')).toBeVisible();
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
 
     fireEvent.pointerDown(screen.getByRole('button', { name: 'outside' }));
 

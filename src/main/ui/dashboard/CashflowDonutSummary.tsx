@@ -1,5 +1,5 @@
 import { animate, type JSAnimation } from 'animejs';
-import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { animateVisualNumber } from '../../../components/motion/animateVisualNumber';
 import { attemptMotion } from '../../../components/motion/attemptMotion';
 import { MOTION_DURATION, MOTION_EASE } from '../../../components/motion/tokens';
@@ -39,7 +39,6 @@ export function CashflowDonutSummary({ data }: CashflowDonutSummaryProps) {
   const circleRefs = useRef(new Map<DonutAllocation['id'], SVGCircleElement>());
   const geometryStatesRef = useRef(new Map<DonutAllocation['id'], DonutSegmentMotionState>());
   const geometryMountedRef = useRef(false);
-  const tooltipId = useId();
   const insight = calculateCashflowInsight(data);
   const activeId = hoveredId ?? focusedId ?? tappedId;
   const activeAllocation = insight.allocations.find((allocation) => allocation.id === activeId);
@@ -207,7 +206,6 @@ export function CashflowDonutSummary({ data }: CashflowDonutSummaryProps) {
             viewBox="0 0 100 100"
             role="img"
             aria-label={insight.allocations.map((allocation) => `${allocation.label} ${formatPercentage(allocation.percentage)}`).join(', ')}
-            aria-describedby={activeAllocation ? tooltipId : undefined}
             onPointerDown={(event) => {
               const allocationId = allocationAtPointer(
                 event.currentTarget,
@@ -268,17 +266,20 @@ export function CashflowDonutSummary({ data }: CashflowDonutSummaryProps) {
                 </>
               )}
             </strong>
-            <span>{activeAllocation?.label ?? '저축·투자'}</span>
+            {activeAllocation ? (
+              <span className="cashflow-donut__center-detail">
+                <span>{activeAllocation.label}</span>
+                <span>{formatDashboardWon(activeAllocation.amountWon)}</span>
+              </span>
+            ) : <span>저축·투자</span>}
             {!activeAllocation && insight.isOverIncome ? <small>소득 초과</small> : null}
           </div>
         </div>
       ) : <p className="cashflow-donut__guidance">월소득을 입력해주세요.</p>}
       <div className="cashflow-donut__legend">
         {insight.allocations.map((allocation) => {
-          const active = activeAllocation?.id === allocation.id;
           return (
             <button
-              aria-describedby={active ? tooltipId : undefined}
               aria-label={`${allocation.label} · ${formatDashboardWon(allocation.amountWon)} · ${formatPercentage(allocation.percentage)}`}
               aria-pressed={tappedId === allocation.id}
               className={`cashflow-donut__legend-button cashflow-donut__segment--${allocation.id}`}
@@ -301,11 +302,6 @@ export function CashflowDonutSummary({ data }: CashflowDonutSummaryProps) {
           );
         })}
       </div>
-      {activeAllocation ? (
-        <p className="cashflow-donut__tooltip" id={tooltipId} role="tooltip">
-          {activeAllocation.label} · {formatDashboardWon(activeAllocation.amountWon)} · {formatPercentage(activeAllocation.percentage)}
-        </p>
-      ) : null}
     </section>
   );
 }

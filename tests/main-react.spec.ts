@@ -1244,9 +1244,8 @@ test.describe('mobile cashflow donut', () => {
       });
       await expect(center.getByText(allocation.percentage, { exact: true })).toBeVisible();
       await expect(center.getByText(allocation.label, { exact: true })).toBeVisible();
-      await expect(donut.getByRole('tooltip')).toHaveText(
-        `${allocation.label} · ${allocation.amount} · ${allocation.percentage}`,
-      );
+      await expect(center.getByText(allocation.amount, { exact: true })).toBeVisible();
+      await expect(donut.getByRole('tooltip')).toHaveCount(0);
       await expect(donut.getByRole('button', {
         name: `${allocation.label} · ${allocation.amount} · ${allocation.percentage}`,
       })).toHaveAttribute('aria-pressed', 'true');
@@ -1281,7 +1280,8 @@ test.describe('mobile cashflow donut', () => {
     await saving.focus();
     await expect(center.getByText('9.4%', { exact: true })).toBeVisible();
     await expect(center.getByText('저축', { exact: true })).toBeVisible();
-    await expect(donut.getByRole('tooltip')).toHaveText('저축 · 30만 원 · 9.4%');
+    await expect(center.getByText('30만 원', { exact: true })).toBeVisible();
+    await expect(donut.getByRole('tooltip')).toHaveCount(0);
     await expect(donut.getByRole('button', { name: '투자 · 20만 원 · 6.3%' }))
       .toHaveAttribute('aria-pressed', 'true');
     await expect(donut.locator('circle.cashflow-donut__segment--saving'))
@@ -1293,7 +1293,8 @@ test.describe('mobile cashflow donut', () => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await saving.hover();
     await expect(center.getByText('9.4%', { exact: true })).toBeVisible();
-    await expect(donut.getByRole('tooltip')).toHaveText('저축 · 30만 원 · 9.4%');
+    await expect(center.getByText('30만 원', { exact: true })).toBeVisible();
+    await expect(donut.getByRole('tooltip')).toHaveCount(0);
   });
 });
 
