@@ -112,7 +112,7 @@ export function ManagementConfirmationDialog({
         )}
         <div className="journey-management__dialog-actions">
           <Button variant="secondary" type="button" data-dialog-initial-focus disabled={pending} onClick={onCancel}>취소</Button>
-          <Button className="journey-management__danger" type="button" disabled={pending} onClick={onConfirm}>{confirmation.confirmLabel}</Button>
+          <Button variant="bare" className="journey-management__danger" type="button" disabled={pending} onClick={onConfirm}>{confirmation.confirmLabel}</Button>
         </div>
       </div>
     </dialog>

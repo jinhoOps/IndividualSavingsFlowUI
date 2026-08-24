@@ -161,6 +161,11 @@ body,
     @apply border-transparent bg-transparent text-accent hover:bg-accent/10;
   }
 
+  .ui-button--bare,
+  .ui-button--bare:hover {
+    background-color: transparent;
+  }
+
   .ui-surface {
     @apply border border-line bg-panel;
     border-radius: var(--ui-surface-radius);
