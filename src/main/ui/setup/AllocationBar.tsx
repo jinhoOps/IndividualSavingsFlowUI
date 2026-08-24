@@ -131,6 +131,15 @@ export function AllocationBar({ data, presentation = 'standard' }: AllocationBar
       ));
     };
     updateViewport();
+    let measurementFrame: number | null = null;
+    if (typeof requestAnimationFrame === 'function') {
+      measurementFrame = requestAnimationFrame(() => {
+        measurementFrame = requestAnimationFrame(() => {
+          measurementFrame = null;
+          updateViewport();
+        });
+      });
+    }
 
     const resizeObserver = typeof ResizeObserver === 'undefined'
       ? null
@@ -141,6 +150,7 @@ export function AllocationBar({ data, presentation = 'standard' }: AllocationBar
     return () => {
       resizeObserver?.disconnect();
       window.removeEventListener('resize', updateViewport);
+      if (measurementFrame !== null) cancelAnimationFrame(measurementFrame);
     };
   }, []);
 

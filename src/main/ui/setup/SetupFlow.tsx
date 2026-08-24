@@ -84,6 +84,9 @@ export function SetupFlow({
   const stepIndex = steps.indexOf(step);
   const previousStep = steps[stepIndex - 1];
   const nextStep = steps[stepIndex + 1];
+  const setupSurfaceClassName = step === 'review'
+    ? 'setup-flow-surface shadow-float app-wide-visual'
+    : 'setup-flow-surface shadow-float';
   const incomeError = findIssue(issues, 'monthlyNetIncomeWon')
     ?? (incomeSubmittedEmpty ? issueMessage('income_required') : undefined);
   const stepMotionRef = useAnimeScope<HTMLFormElement>(({ root, reducedMotion }) => {
@@ -221,7 +224,7 @@ export function SetupFlow({
   }
 
   return (
-    <Surface as="section" className="setup-flow-surface shadow-float" aria-labelledby="setup-flow-title">
+    <Surface as="section" className={setupSurfaceClassName} aria-labelledby="setup-flow-title">
       <div className="mx-6 mt-6 h-1.5 overflow-hidden rounded-full bg-slate-100 sm:mx-10">
         <div className="h-full bg-accent transition-[width]" style={{ width: `${((stepIndex + 1) / steps.length) * 100}%` }} />
       </div>
