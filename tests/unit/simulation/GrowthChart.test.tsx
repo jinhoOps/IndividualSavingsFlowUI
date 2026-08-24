@@ -325,7 +325,7 @@ describe('GrowthChart', () => {
     fireEvent.keyDown(explorer, { key: 'ArrowRight' });
     fireEvent.keyDown(explorer, { key: 'End' });
     fireEvent.keyDown(explorer, { key: 'ArrowLeft' });
-    expect(screen.queryByRole('slider', { name: '그래프 연도 상세' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('slider', { name: '그래프 기간 상세' })).not.toBeInTheDocument();
     expect(screen.getByText('19년')).toBeVisible();
     expect(screen.getByText('현재 계획 총액')).toBeVisible();
     expect(screen.getByText('누적 납입원금')).toBeVisible();

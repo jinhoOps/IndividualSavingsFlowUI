@@ -1,7 +1,7 @@
 # Simulation 단기 기간 월별 그래프 상세 설계
 
 - 작성일: 2026-08-24
-- 상태: 사용자 검토 대기
+- 상태: 구현 완료
 - 범위: Simulation 그래프의 compact tooltip 정보 우선순위와 3년 이하 월별 탐색
 - 선행 문서: [Simulation 모바일 그래프 상호작용 설계](2026-08-05-simulation-mobile-chart-interaction-design.md), [Simulation 목표 도달 요약 설계](2026-08-21-simulation-goal-milestone-design.md)
 - 제품 기준: [Product PRD](../../ways-of-work/plan/isf-rebuild/connected-financial-planning-workspace/prd.md), [DESIGN](../../../DESIGN.md)
@@ -147,4 +147,4 @@ desktop tooltip의 금액 구조는 유지한다.
 
 이 문서는 [Simulation 모바일 그래프 상호작용 설계](2026-08-05-simulation-mobile-chart-interaction-design.md)의 mobile compact 정보 구조를 `현재 계획 총액 + 누적 납입원금`으로 대체한다. 또한 [Simulation 목표 도달 요약 설계](2026-08-21-simulation-goal-milestone-design.md)의 “graph는 연 단위 결과만 표시” 비목표를 short horizon(3년 이하)에 한해 대체한다. 나머지 tooltip dismissal, Main read-only, 목표 headline의 독립 계산 계약은 유지한다.
 
-구현은 [DESIGN](../../../DESIGN.md)의 Simulation compact tooltip 문장도 이 계약으로 갱신한다. 구현 전까지는 이 문서의 상태가 `사용자 검토 대기`이므로 기존 DESIGN 계약이 현재 제품 기준이다.
+구현은 [DESIGN](../../../DESIGN.md)의 Simulation compact tooltip 문장도 이 계약으로 갱신한다. 구현 상태와 검증 결과는 이 문서와 관련 커밋에 반영한다.

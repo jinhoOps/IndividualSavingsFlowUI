@@ -148,7 +148,7 @@ describe('SimulationApp', () => {
 
     expect(screen.getByRole('heading', { name: '다음에는 얼마를 모으고 싶나요?' })).toBeVisible();
     expect(screen.queryByRole('heading', { name: /을 모으려면|30년 안에/ })).not.toBeInTheDocument();
-    expect(screen.queryByRole('img', { name: '연도별 복리 성장 그래프' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('img', { name: '기간별 복리 성장 그래프' })).not.toBeInTheDocument();
     expect(repository.save).not.toHaveBeenCalled();
 
     fireEvent.change(screen.getByRole('textbox', { name: '목표 금액' }), {
@@ -333,7 +333,7 @@ describe('SimulationApp', () => {
     expect(screen.getByRole('alert')).toHaveTextContent(
       '계산 결과를 표시할 수 없어요. 계산 기준을 조정해주세요.',
     );
-    expect(screen.queryByRole('img', { name: '연도별 복리 성장 그래프' }))
+    expect(screen.queryByRole('img', { name: '기간별 복리 성장 그래프' }))
       .not.toBeInTheDocument();
     expect(screen.getByRole('spinbutton', { name: '기간 숫자' })).toBeVisible();
     expect(screen.getByText('계산 기준')).toBeVisible();

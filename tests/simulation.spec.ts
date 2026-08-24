@@ -366,11 +366,11 @@ for (const viewport of [
     await expect(years).toHaveValue('20');
     await years.fill('0');
     await expect(hero).toHaveText(headline ?? '');
-    await years.fill('30');
+    await years.fill('3');
     await expect(hero).toHaveText(headline ?? '');
 
-    const graph = page.getByRole('img', { name: '연도별 복리 성장 그래프' });
-    const explorer = page.getByRole('application', { name: '그래프 연도 탐색' });
+    const graph = page.getByRole('img', { name: '기간별 복리 성장 그래프' });
+    const explorer = page.getByRole('application', { name: '그래프 기간 탐색' });
     const frame = page.getByTestId('simulation-page-frame');
     const frameBox = await frame.boundingBox();
     if (frameBox === null) throw new Error('simulation page frame has no bounding box');
@@ -433,6 +433,17 @@ for (const viewport of [
     });
     const tooltip = page.locator('.growth-chart__tooltip');
     await expect(tooltip).toBeVisible();
+    await expect(tooltip.locator('strong')).toHaveText('1년 6개월');
+    if (viewport.width < 768) {
+      await expect(tooltip.getByText('현재 계획 총액')).toBeVisible();
+      await expect(tooltip.getByText('누적 납입원금')).toBeVisible();
+      await expect(tooltip.getByText('전부 저축 총액')).toHaveCount(0);
+    } else {
+      await expect(tooltip.getByText('전부 저축 총액')).toBeVisible();
+      await expect(tooltip.getByText('누적 납입원금')).toBeVisible();
+      await expect(tooltip.getByText('저축 잔액')).toBeVisible();
+      await expect(tooltip.getByText('투자 잔액')).toBeVisible();
+    }
     const tooltipBox = await tooltip.boundingBox();
     if (tooltipBox === null) throw new Error('tooltip has no bounding box');
     expect(tooltipBox.x).toBeGreaterThanOrEqual(0);
@@ -460,9 +471,9 @@ for (const viewport of [
     await explorer.evaluate((element) => element.focus({ preventScroll: true }));
     await expect(explorer).toBeFocused();
     await explorer.press('Home');
-    await expect(explorer.getByRole('status')).toContainText('0년');
+    await expect(explorer.getByRole('status')).toContainText('현재');
     await explorer.press('ArrowRight');
-    await expect(explorer.getByRole('status')).toContainText('1년');
+    await expect(explorer.getByRole('status')).toContainText('1개월');
 
     const undersized = await page.locator('button:visible, input:visible').evaluateAll((controls) => (
       controls.filter((control) => control.getBoundingClientRect().height < 44).length
@@ -477,7 +488,7 @@ test('mobile keeps compact tooltip stable while dragging', async ({ page }) => {
   await openFirstResult(page);
   await page.getByRole('spinbutton', { name: '기간 숫자' }).fill('30');
 
-  const graph = page.getByRole('img', { name: '연도별 복리 성장 그래프' });
+  const graph = page.getByRole('img', { name: '기간별 복리 성장 그래프' });
   const box = await graph.boundingBox();
   if (box === null) throw new Error('graph has no bounding box');
   const firstX = box.x + 36 / 680 * box.width;
@@ -492,8 +503,8 @@ test('mobile keeps compact tooltip stable while dragging', async ({ page }) => {
   const tooltip = page.locator('.growth-chart__tooltip--compact');
   await expect(tooltip).toBeVisible();
   await expect(tooltip.getByText('현재 계획 총액')).toBeVisible();
-  await expect(tooltip.getByText('전부 저축 총액')).toBeVisible();
-  await expect(tooltip.getByText('누적 납입원금')).toHaveCount(0);
+  await expect(tooltip.getByText('누적 납입원금')).toBeVisible();
+  await expect(tooltip.getByText('전부 저축 총액')).toHaveCount(0);
   await expect(tooltip.getByRole('button')).toHaveCount(0);
   const firstSize = await tooltip.boundingBox();
   expect(firstSize?.width).toBe(192);
