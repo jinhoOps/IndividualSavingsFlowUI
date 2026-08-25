@@ -43,6 +43,14 @@ for (const viewport of [
     await expectTooltipContract(page, tooltip, 'normal');
     await expect(visualTarget).toHaveAttribute('aria-describedby', await tooltip.getAttribute('id'));
 
+    const longValue = '소비 · 1,000,000원 · 100.0% · 화면 폭이 제한될 때에도 전체 접근 가능 텍스트를 유지하는 긴 설명 · 화면 폭이 제한될 때에도 전체 접근 가능 텍스트를 유지하는 긴 설명 · 화면 폭이 제한될 때에도 전체 접근 가능 텍스트를 유지하는 긴 설명';
+    await tooltip.evaluate((element, text) => {
+      element.textContent = text;
+    }, longValue);
+    await expect(tooltip).toHaveText(longValue);
+    await expect(tooltip).toHaveAccessibleName(longValue);
+    await expectLongTooltipOverflow(tooltip);
+
     await page.mouse.move(0, 0);
     const savingFallback = page.getByRole('button', { name: '저축 상세 정보' });
     await savingFallback.focus();
@@ -58,6 +66,26 @@ for (const viewport of [
     await expect(tooltip).toHaveCount(0);
   });
 }
+
+test('keeps an open right-edge visual tooltip within the stage and viewport after resize', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.addInitScript((seed) => {
+    localStorage.clear();
+    localStorage.setItem('isf-workspace-v1', JSON.stringify(seed));
+  }, workspace);
+  await page.goto('apps/main/');
+
+  const visualTarget = page.locator('.allocation-bar__segment-target').first();
+  const targetBox = await visualTarget.boundingBox();
+  if (targetBox === null) throw new Error('Expected visual allocation target');
+  await visualTarget.click({ position: { x: targetBox.width - 1, y: 22 } });
+  const tooltip = page.getByRole('tooltip');
+  await expect(tooltip).toHaveText('소비 · 100만 원 · 100.0%');
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expectTooltipContract(page, tooltip, 'normal');
+});
 
 async function tap(target: ReturnType<Page['getByRole']>): Promise<void> {
   await target.evaluate((button) => {
@@ -79,7 +107,10 @@ async function expectTooltipContract(
     const tooltipBox = element.getBoundingClientRect();
     const stageBox = element.closest<HTMLElement>('[data-testid="allocation-visual-stage"]')!
       .getBoundingClientRect();
-    return tooltipBox.left >= stageBox.left - 1 && tooltipBox.right <= stageBox.right + 1;
+    return tooltipBox.left >= stageBox.left - 1
+      && tooltipBox.right <= stageBox.right + 1
+      && tooltipBox.left >= -1
+      && tooltipBox.right <= window.innerWidth + 1;
   })).toBe(true);
 
   const state = await tooltip.evaluate((element) => {
@@ -94,6 +125,7 @@ async function expectTooltipContract(
       tooltip: { left: tooltipBox.left, right: tooltipBox.right, height: tooltipBox.height },
       isClipped: tooltipElement.scrollWidth > tooltipElement.clientWidth,
       stage: { left: stageBox.left, right: stageBox.right },
+      viewportWidth: window.innerWidth,
       backgroundColor: style.backgroundColor,
       borderTopWidth: style.borderTopWidth,
       borderTopColor: style.borderTopColor,
@@ -111,6 +143,8 @@ async function expectTooltipContract(
   expect(state.hasEndContainedClass).toBe(alignment === 'fallback');
   expect(state.tooltip.left).toBeGreaterThanOrEqual(state.stage.left - 1);
   expect(state.tooltip.right).toBeLessThanOrEqual(state.stage.right + 1);
+  expect(state.tooltip.left).toBeGreaterThanOrEqual(-1);
+  expect(state.tooltip.right).toBeLessThanOrEqual(state.viewportWidth + 1);
   expect(state.tooltip.height).toBeLessThan(32);
   expect(state.isClipped).toBe(false);
   expect(state.backgroundColor).toBe('rgb(244, 251, 249)');
@@ -123,4 +157,22 @@ async function expectTooltipContract(
   expect(state.textOverflow).toBe('ellipsis');
   expect(state.backgroundImage).toBe('none');
   expect(state.opacity).toBe('1');
+}
+
+async function expectLongTooltipOverflow(tooltip: ReturnType<Page['getByRole']>): Promise<void> {
+  const state = await tooltip.evaluate((element) => {
+    const tooltipElement = element as HTMLElement;
+    const style = getComputedStyle(tooltipElement);
+    return {
+      fullText: tooltipElement.textContent,
+      isClipped: tooltipElement.scrollWidth > tooltipElement.clientWidth,
+      textOverflow: style.textOverflow,
+      whiteSpace: style.whiteSpace,
+    };
+  });
+
+  expect(state.fullText).toBe('소비 · 1,000,000원 · 100.0% · 화면 폭이 제한될 때에도 전체 접근 가능 텍스트를 유지하는 긴 설명 · 화면 폭이 제한될 때에도 전체 접근 가능 텍스트를 유지하는 긴 설명 · 화면 폭이 제한될 때에도 전체 접근 가능 텍스트를 유지하는 긴 설명');
+  expect(state.isClipped).toBe(true);
+  expect(state.whiteSpace).toBe('nowrap');
+  expect(state.textOverflow).toBe('ellipsis');
 }

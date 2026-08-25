@@ -17,7 +17,7 @@ export function PercentageTooltip({ id, value, open, position }: PercentageToolt
   const endContained = position.alignment === 'end-contained';
 
   useLayoutEffect(() => {
-    if (endContained) {
+    if (!open || endContained) {
       setHorizontalCorrection(0);
       return;
     }
@@ -26,17 +26,31 @@ export function PercentageTooltip({ id, value, open, position }: PercentageToolt
     const stage = tooltip?.parentElement;
     if (tooltip === null || stage == null) return;
 
-    const tooltipBounds = tooltip.getBoundingClientRect();
-    const stageBounds = stage.getBoundingClientRect();
-    const nextCorrection = tooltipBounds.left < stageBounds.left
-      ? stageBounds.left - tooltipBounds.left
-      : tooltipBounds.right > stageBounds.right
-        ? stageBounds.right - tooltipBounds.right
-        : 0;
-    setHorizontalCorrection((current) => (
-      Math.abs(current - nextCorrection) < 0.5 ? current : nextCorrection
-    ));
-  }, [endContained, position.xPercent, value]);
+    const correctHorizontalPosition = () => {
+      const tooltipBounds = tooltip.getBoundingClientRect();
+      const stageBounds = stage.getBoundingClientRect();
+      const correctionDelta = tooltipBounds.left < stageBounds.left
+        ? stageBounds.left - tooltipBounds.left
+        : tooltipBounds.right > stageBounds.right
+          ? stageBounds.right - tooltipBounds.right
+          : 0;
+      setHorizontalCorrection((current) => (
+        Math.abs(correctionDelta) < 0.5 ? current : current + correctionDelta
+      ));
+    };
+
+    correctHorizontalPosition();
+    const resizeObserver = typeof ResizeObserver === 'undefined'
+      ? null
+      : new ResizeObserver(correctHorizontalPosition);
+    resizeObserver?.observe(stage);
+    window.addEventListener('resize', correctHorizontalPosition);
+
+    return () => {
+      resizeObserver?.disconnect();
+      window.removeEventListener('resize', correctHorizontalPosition);
+    };
+  }, [endContained, open, position.xPercent, value]);
 
   if (!open) {
     return null;
