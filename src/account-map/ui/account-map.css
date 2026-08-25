@@ -51,11 +51,10 @@
 .account-map-map-header h1 { margin: 3px 0 7px; font-size: clamp(1.75rem, 5vw, 2.5rem); }
 .account-map-map-header p { margin: 0; color: var(--muted); }
 .account-map-canvas-shell { overflow: hidden; border: 1px solid var(--line); border-radius: 24px; background: var(--panel); }
-.account-map-canvas-toolbar { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 14px; border-bottom: 1px solid var(--line); padding: 16px 18px; }
+.account-map-canvas-toolbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 14px; border-bottom: 1px solid var(--line); padding: 16px 18px; }
 .account-map-canvas-toolbar h2, .account-map-canvas-toolbar p { margin: 0; }
-.account-map-layout-control, .account-map-zoom-control { display: flex; min-height: 44px; align-items: center; border: 1px solid var(--line); border-radius: 12px; padding: 3px; }
-.account-map-layout-control button, .account-map-zoom-control button { min-width: 44px; min-height: 44px; border: 0; border-radius: 9px; background: transparent; color: var(--muted); font-weight: 700; }
-.account-map-layout-control button[aria-pressed='true'] { background: var(--ink); color: var(--panel); }
+.account-map-zoom-control { display: flex; min-height: 44px; align-items: center; border: 1px solid var(--line); border-radius: 12px; padding: 3px; }
+.account-map-zoom-control button { min-width: 44px; min-height: 44px; border: 0; border-radius: 9px; background: transparent; color: var(--muted); font-weight: 700; }
 .account-map-zoom-control span { min-width: 66px; text-align: center; font-size: .8rem; }
 .account-map-canvas { position: relative; min-height: 360px; overflow: hidden; background-color: color-mix(in srgb, var(--bg) 74%, var(--panel)); background-image: radial-gradient(circle, color-mix(in srgb, var(--line-strong) 55%, transparent) 1px, transparent 1px); background-size: 20px 20px; cursor: grab; touch-action: pan-y; }
 .account-map-canvas:active { cursor: grabbing; }
@@ -147,8 +146,6 @@
   .account-map-sheet { max-height: 92dvh; }
   .account-map-canvas-toolbar { grid-template-columns: 1fr auto; }
   .account-map-canvas-toolbar > div:first-child { grid-column: 1 / -1; }
-  .account-map-layout-control button { padding-inline: 9px; font-size: .8rem; }
-  .account-map-connection-detail { right: 12px; bottom: 12px; left: 12px; width: auto; max-block-size: min(210px, calc(100% - 24px)); }
   .account-map-modal-backdrop { align-items: end; padding: 0; }
   .account-map-modal { width: 100%; max-height: 90dvh; border-radius: 24px 24px 0 0; }
 }

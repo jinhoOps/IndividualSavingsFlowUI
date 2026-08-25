@@ -1108,13 +1108,27 @@ test('keeps all Account Map states contained with 44px action targets at support
       const canvas = document.querySelector('.account-map-canvas')?.getBoundingClientRect();
       const detail = document.querySelector('.account-map-connection-detail')?.getBoundingClientRect();
       if (canvas === undefined || detail === undefined) return null;
-      return { canvas: { left: canvas.left, top: canvas.top, right: canvas.right, bottom: canvas.bottom }, detail: { left: detail.left, top: detail.top, right: detail.right, bottom: detail.bottom } };
+      const actionableIntersections = [...document.querySelectorAll<HTMLElement>('.account-map-node')]
+        .filter((node) => {
+          const style = getComputedStyle(node);
+          const rect = node.getBoundingClientRect();
+          return style.visibility !== 'hidden' && style.display !== 'none' && rect.width > 0 && rect.height > 0
+            && detail.left < rect.right && detail.right > rect.left
+            && detail.top < rect.bottom && detail.bottom > rect.top;
+        })
+        .map((node) => node.getAttribute('aria-label'));
+      return {
+        canvas: { left: canvas.left, top: canvas.top, right: canvas.right, bottom: canvas.bottom },
+        detail: { left: detail.left, top: detail.top, right: detail.right, bottom: detail.bottom },
+        actionableIntersections,
+      };
     });
     expect(detailBounds).not.toBeNull();
     expect(detailBounds!.detail.left).toBeGreaterThanOrEqual(detailBounds!.canvas.left - 1);
     expect(detailBounds!.detail.top).toBeGreaterThanOrEqual(detailBounds!.canvas.top - 1);
     expect(detailBounds!.detail.right).toBeLessThanOrEqual(detailBounds!.canvas.right + 1);
     expect(detailBounds!.detail.bottom).toBeLessThanOrEqual(detailBounds!.canvas.bottom + 1);
+    expect(detailBounds!.actionableIntersections, `${prefix} detail must not obscure actionable nodes`).toEqual([]);
     const documentWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     expect(documentWidth).toBeLessThanOrEqual(viewport.width);
     await expectContainedActionTargets(page, `${prefix} map`);

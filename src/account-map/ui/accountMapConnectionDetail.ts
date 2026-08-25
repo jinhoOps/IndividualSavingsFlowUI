@@ -1,4 +1,4 @@
-import type { PositionedGraph } from './mapLayout';
+import type { AccountMapGraph } from './mapLayout';
 
 export interface AccountMapConnectionDetailRow {
   purposeId: string;
@@ -13,7 +13,7 @@ export interface AccountMapConnectionDetail {
 }
 
 export function summarizeLocationConnectionDetail(
-  graph: PositionedGraph,
+  graph: Pick<AccountMapGraph, 'nodes' | 'edges'>,
   locationId: string,
 ): AccountMapConnectionDetail | null {
   const location = graph.nodes.find((node) => node.id === locationId);

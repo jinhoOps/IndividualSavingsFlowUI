@@ -64,6 +64,22 @@ describe('AccountMapCanvas', () => {
     expect(screen.getByRole('table', { name: '계좌 연결 읽기 표' })).not.toHaveAttribute('tabindex');
   });
 
+  it('announces the primary-income status exactly once only on the real anchored location', () => {
+    renderCanvas();
+
+    const anchoredName = screen.getByRole('button', { name: /급여통장/ }).getAttribute('aria-label') ?? '';
+    expect(anchoredName).toBe('계좌·보관처 · 급여통장 · 주 수입 계좌 · 활성 월 연결 합계 2,000,000원 · 활성 연결 1개 · 연결 완료');
+    expect(anchoredName.match(/주 수입 계좌/gu)).toHaveLength(1);
+
+    cleanup();
+    renderCanvas({
+      applied: { ...applied, links: applied.links.filter(({ purposeId }) => purposeId !== 'system:income') },
+    });
+    expect(screen.getByRole('button', {
+      name: '계좌·보관처 · 급여통장 · 활성 월 연결 합계 0원 · 활성 연결 0개 · 연결 완료',
+    })).toBeVisible();
+  });
+
   it('reveals connected edge amounts on equivalent focus and invocation', () => {
     const onTransient = vi.fn();
     const { container, rerender } = renderCanvas({ onTransient });
@@ -88,6 +104,62 @@ describe('AccountMapCanvas', () => {
     expect(within(detail).getByText('수입')).toBeVisible();
     expect(within(detail).getByText(/100%/)).toBeVisible();
     expect(controlledMotion.connectionStarts).toBe(0);
+  });
+
+  it('renders the approved empty detail copy for a zero-total location', () => {
+    render(canvas(
+      { transientNodeId: 'location:vault', pinnedNodeId: null, modalNodeId: null },
+      {
+        locations: [
+          ...locations,
+          { id: 'vault', shortName: '비상금함', kind: 'cash', roles: ['saving'], createdAt: 1, updatedAt: 1 },
+        ],
+      },
+    ));
+
+    const detail = screen.getByLabelText('비상금함 월 연결 구성');
+    expect(within(detail).getByText('활성 월 연결이 없습니다.')).toBeVisible();
+    expect(within(detail).queryByRole('list')).not.toBeInTheDocument();
+  });
+
+  it('summarizes zoom-hidden custom and repeated active links in overview detail', () => {
+    const composedApplied = structuredClone(applied);
+    composedApplied.customPurposes.push({
+      id: 'custom:trip', parentId: 'system:living', name: '여행', targetMonthlyWon: 400_000,
+      createdAt: 1, updatedAt: 1,
+    });
+    composedApplied.links.push(
+      {
+        id: 'trip-first', purposeId: 'custom:trip', locationId: 'salary', monthlyAmountWon: 100_000,
+        remainder: false, status: 'active', createdAt: 1, updatedAt: 1,
+      },
+      {
+        id: 'trip-second', purposeId: 'custom:trip', locationId: 'salary', monthlyAmountWon: 300_000,
+        remainder: true, status: 'active', createdAt: 1, updatedAt: 1,
+      },
+    );
+
+    function InteractiveCanvas() {
+      const [interaction, setInteraction] = useState({
+        transientNodeId: null as string | null,
+        pinnedNodeId: null as string | null,
+        modalNodeId: null as string | null,
+      });
+      return canvas(interaction, {
+        applied: composedApplied,
+        onTransient: (nodeId) => setInteraction((current) => ({ ...current, transientNodeId: nodeId })),
+      });
+    }
+
+    render(<InteractiveCanvas />);
+    fireEvent.click(screen.getByRole('button', { name: '축소' }));
+    fireEvent.focus(screen.getByRole('button', { name: /급여통장/ }));
+
+    const detail = screen.getByLabelText('급여통장 월 연결 구성');
+    expect(within(detail).getByText('2,400,000원')).toBeVisible();
+    expect(within(detail).getByText('여행')).toBeVisible();
+    expect(within(detail).getByText('2,000,000원 · 83%')).toBeVisible();
+    expect(within(detail).getByText('400,000원 · 17%')).toBeVisible();
   });
 
   it('pins a location with one animation before a second activation opens its existing modal', () => {
@@ -164,6 +236,35 @@ describe('AccountMapCanvas', () => {
     expect(screen.getByText('기본 보기')).toBeVisible();
     expect(screen.queryAllByRole('button', { name: /중심$/ })).toHaveLength(0);
   });
+
+  it.each(['transient', 'pinned'] as const)(
+    'clears a %s target through the background contract when semantic zoom hides it',
+    (targetKind) => {
+      const customApplied = structuredClone(applied);
+      customApplied.customPurposes.push({
+        id: 'custom:trip', parentId: 'system:living', name: '여행', targetMonthlyWon: 100_000,
+        createdAt: 1, updatedAt: 1,
+      });
+      customApplied.links.push({
+        id: 'trip', purposeId: 'custom:trip', locationId: 'checking', monthlyAmountWon: 100_000,
+        remainder: true, status: 'active', createdAt: 1, updatedAt: 1,
+      });
+      const onBackground = vi.fn();
+      renderCanvas({
+        applied: customApplied,
+        interaction: {
+          transientNodeId: targetKind === 'transient' ? 'custom:trip' : null,
+          pinnedNodeId: targetKind === 'pinned' ? 'custom:trip' : null,
+          modalNodeId: null,
+        },
+        onBackground,
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: '축소' }));
+
+      expect(onBackground).toHaveBeenCalledTimes(1);
+    },
+  );
 
   it('announces overall status amounts without active-link wording', () => {
     renderCanvas({

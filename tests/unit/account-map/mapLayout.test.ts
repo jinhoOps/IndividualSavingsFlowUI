@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { AccountMapApplied } from '../../../src/account-map/domain/model';
-import { buildAccountMapGraph, layoutAccountMap, type AccountMapGraph } from '../../../src/account-map/ui/mapLayout';
+import { buildAccountMapGraph, layoutAccountMap, type AccountMapGraph, type GraphNode } from '../../../src/account-map/ui/mapLayout';
 
 const graph: AccountMapGraph = {
   primaryIncomeLocationId: 'a',
@@ -53,7 +53,12 @@ describe('Account Map layout', () => {
   it('keeps income as a normal purpose when no active income location exists', () => {
     const applied = emptyApplied();
     applied.links = [
-      { ...activeLink('inactive-income', 'system:income', 'archived-income', 2_000_000), status: 'suspended' },
+      {
+        ...activeLink('inactive-income', 'system:income', 'archived-income', 2_000_000),
+        remainder: false,
+        status: 'suspended',
+        suspendedReason: 'user',
+      },
     ];
     const result = buildAccountMapGraph(applied, [location('archived-income', '이전 수입 통장')], main, 'overview');
 
@@ -204,12 +209,16 @@ describe('Account Map layout', () => {
   });
 
   it('only reorders ordinary location slots when their amounts change', () => {
+    const weightedNodes: GraphNode[] = [
+      ...graph.nodes,
+      {
+        id: 'location:c', kind: 'location', label: '예비 통장', amountWon: 300_000,
+        connectionCount: 1, status: 'resolved',
+      },
+    ];
     const initial: AccountMapGraph = {
       ...graph,
-      nodes: [
-        ...graph.nodes,
-        { id: 'location:c', kind: 'location', label: '예비 통장', amountWon: 300_000, connectionCount: 1, status: 'resolved' },
-      ].map((node) => node.id === 'location:a'
+      nodes: weightedNodes.map((node) => node.id === 'location:a'
         ? { ...node, isPrimaryIncome: true }
         : node.id === 'location:b' ? { ...node, amountWon: 700_000 } : node),
     };

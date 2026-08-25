@@ -93,6 +93,10 @@ export function AccountMapCanvas({
     return () => document.removeEventListener('keydown', handleEscape);
   }, [hasExternalModal, interaction.modalNodeId, interaction.pinnedNodeId, interaction.transientNodeId, onEscape]);
   const graph = useMemo(() => buildAccountMapGraph(applied, locations, main, zoom), [applied, locations, main, zoom]);
+  const activeDetailGraph = useMemo(
+    () => buildAccountMapGraph(applied, locations, main, 'default'),
+    [applied, locations, main],
+  );
   const positioned = useMemo(() => layoutAccountMap(graph, effectiveViewport, zoom), [graph, effectiveViewport.width, effectiveViewport.height, zoom]);
   const nodeById = new Map(positioned.nodes.map((node) => [node.id, node]));
   const nodeOrderById = new Map(positioned.nodes.map((node, index) => [node.id, index]));
@@ -110,14 +114,20 @@ export function AccountMapCanvas({
   const connectionDetailTargetId = focusedNode?.kind === 'location' ? focusedNode.id : null;
   const connectionDetail = connectionDetailTargetId === null
     ? null
-    : summarizeLocationConnectionDetail(positioned, connectionDetailTargetId);
+    : summarizeLocationConnectionDetail(activeDetailGraph, connectionDetailTargetId);
   const connectionDetailRows = connectionDetail === null ? [] : withDisplayedPercents(connectionDetail.rows);
   const pinnedNode = interaction.pinnedNodeId === null ? undefined : nodeById.get(interaction.pinnedNodeId);
   const pinnedLocationId = pinnedNode?.kind === 'location' ? pinnedNode.id : null;
   const previousPinnedLocationId = useRef<string | null>(pinnedLocationId);
   const connectionDetailPosition = connectionDetail === null || focusedNode === undefined
     ? null
-    : positionConnectionDetail(focusedNode, effectiveViewport, pan);
+    : positionConnectionDetail(focusedNode, positioned.nodes, positioned, pan);
+  useEffect(() => {
+    if (interaction.modalNodeId !== null) return;
+    const staleTarget = [interaction.transientNodeId, interaction.pinnedNodeId]
+      .some((targetId) => targetId !== null && !positioned.nodes.some(({ id }) => id === targetId));
+    if (staleTarget) onBackground();
+  }, [interaction.modalNodeId, interaction.pinnedNodeId, interaction.transientNodeId, onBackground, positioned]);
   useEffect(() => {
     const isNewlyPinned = previousPinnedLocationId.current !== pinnedLocationId;
     previousPinnedLocationId.current = pinnedLocationId;
@@ -256,7 +266,7 @@ export function AccountMapCanvas({
         ref={canvasRef}
         className="account-map-canvas"
         data-direction={positioned.direction}
-        style={{ height: positioned.height }}
+        style={{ height: connectionDetailPosition?.canvasHeight ?? positioned.height }}
         onPointerDown={handleCanvasPointerDown}
         onPointerMove={handleCanvasPointerMove}
         onPointerUp={handleCanvasPointerUp}
@@ -266,7 +276,11 @@ export function AccountMapCanvas({
         onTouchEnd={handleCanvasTouchEnd}
         onTouchCancel={() => { touchPanDragRef.current = null; }}
       >
-        <div className="account-map-canvas__content" style={{ transform: `translate(${pan.x}px, ${pan.y}px)` }}>
+        <div className="account-map-canvas__content" style={{
+          width: positioned.width,
+          height: positioned.height,
+          transform: `translate(${pan.x}px, ${pan.y}px)`,
+        }}>
           <svg className="account-map-edges" viewBox={`0 0 ${positioned.width} ${positioned.height}`} preserveAspectRatio="none" aria-hidden="true">
             {positioned.edges.map((edge) => {
               const purpose = nodeById.get(edge.purposeId);
@@ -308,7 +322,7 @@ export function AccountMapCanvas({
           ref={connectionDetailRef}
           className="account-map-connection-detail"
           aria-label={`${focusedNode?.label ?? '계좌'} 월 연결 구성`}
-          style={effectiveViewport.width <= 600 || connectionDetailPosition === null ? undefined : {
+          style={connectionDetailPosition === null ? undefined : {
             left: connectionDetailPosition.left,
             top: connectionDetailPosition.top,
             maxBlockSize: connectionDetailPosition.maxBlockSize,
@@ -349,6 +363,7 @@ function hasActiveOverlay(): boolean {
 function statusLabel(status: string): string { return status === 'unassigned' ? ' · 연결 필요' : status === 'excess' ? ' · 초과 연결' : status === 'deficit' ? ' · 부족함' : ''; }
 function nodeAccessibleName(node: PositionedNode): string {
   const kind = node.kind === 'purpose' ? '목적' : node.kind === 'location' ? '계좌·보관처' : '전체 상태';
+  const primaryIncome = node.kind === 'location' && node.isPrimaryIncome === true ? ' · 주 수입 계좌' : '';
   const amount = node.amountWon === undefined
     ? '금액 없음'
     : node.kind === 'location'
@@ -364,7 +379,7 @@ function nodeAccessibleName(node: PositionedNode): string {
     surplus: '미배정',
     deficit: '부족함',
   }[node.status];
-  return `${kind} · ${node.label} · ${amount} · 활성 연결 ${node.connectionCount}개 · ${status}`;
+  return `${kind} · ${node.label}${primaryIncome} · ${amount} · 활성 연결 ${node.connectionCount}개 · ${status}`;
 }
 
 function statusAmountLabel(node: PositionedNode): string {
@@ -385,12 +400,60 @@ function withDisplayedPercents<Row extends { percent: number }>(rows: readonly R
 
 function positionConnectionDetail(
   node: PositionedNode,
-  viewport: { width: number; height: number },
+  nodes: readonly PositionedNode[],
+  canvas: { width: number; height: number },
   pan: { x: number; y: number },
-): { left: number; top: number; maxBlockSize: number } {
+): { left: number; top: number; maxBlockSize: number; canvasHeight: number } {
   const inset = 16;
-  const maxInlineSize = Math.min(312, viewport.width - inset * 2);
-  const left = Math.max(inset, Math.min(node.x + pan.x + node.width + 12, viewport.width - maxInlineSize - inset));
-  const top = Math.max(inset, Math.min(node.y + pan.y, viewport.height - 196));
-  return { left, top, maxBlockSize: Math.max(120, viewport.height - top - inset) };
+  const gap = 12;
+  const detailWidth = Math.min(312, canvas.width - inset * 2);
+  const detailHeight = Math.min(220, canvas.height - inset * 2);
+  const clampLeft = (left: number) => Math.max(inset, Math.min(left, canvas.width - detailWidth - inset));
+  const clampTop = (top: number) => Math.max(inset, Math.min(top, canvas.height - detailHeight - inset));
+  const target = nodeRectangle(node, pan);
+  const nodeRectangles = nodes.map((candidate) => nodeRectangle(candidate, pan));
+  const visibleRectangles = nodeRectangles.filter((rectangle) => rectanglesOverlap(rectangle, {
+    left: 0, top: 0, right: canvas.width, bottom: canvas.height,
+  }));
+  const candidates = [
+    { left: target.right + gap, top: clampTop(target.top) },
+    { left: target.right + gap, top: target.bottom + gap },
+    { left: target.left - detailWidth - gap, top: clampTop(target.top) },
+    { left: clampLeft(target.left), top: target.bottom + gap },
+    { left: clampLeft(target.left), top: target.top - detailHeight - gap },
+  ];
+  const adjacent = candidates.find(({ left, top }) => {
+    const detail = { left, top, right: left + detailWidth, bottom: top + detailHeight };
+    return detail.left >= inset && detail.top >= inset
+      && detail.right <= canvas.width - inset && detail.bottom <= canvas.height - inset
+      && visibleRectangles.every((rectangle) => !rectanglesOverlap(detail, rectangle));
+  });
+  if (adjacent !== undefined) {
+    return { ...adjacent, maxBlockSize: detailHeight, canvasHeight: canvas.height };
+  }
+
+  const horizontallyVisible = nodeRectangles.filter(({ left, right }) => right > 0 && left < canvas.width);
+  const top = Math.max(canvas.height, ...horizontallyVisible.map(({ bottom }) => bottom)) + inset;
+  return {
+    left: clampLeft(target.left),
+    top,
+    maxBlockSize: detailHeight,
+    canvasHeight: top + detailHeight + inset,
+  };
+}
+
+interface DetailRectangle { left: number; top: number; right: number; bottom: number }
+
+function nodeRectangle(node: PositionedNode, pan: { x: number; y: number }): DetailRectangle {
+  return {
+    left: node.x + pan.x,
+    top: node.y + pan.y,
+    right: node.x + pan.x + node.width,
+    bottom: node.y + pan.y + node.height,
+  };
+}
+
+function rectanglesOverlap(left: DetailRectangle, right: DetailRectangle): boolean {
+  return left.left < right.right && left.right > right.left
+    && left.top < right.bottom && left.bottom > right.top;
 }
