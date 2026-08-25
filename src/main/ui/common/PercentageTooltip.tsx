@@ -29,14 +29,16 @@ export function PercentageTooltip({ id, value, open, position }: PercentageToolt
     const correctHorizontalPosition = () => {
       const tooltipBounds = tooltip.getBoundingClientRect();
       const stageBounds = stage.getBoundingClientRect();
-      const correctionDelta = tooltipBounds.left < stageBounds.left
-        ? stageBounds.left - tooltipBounds.left
-        : tooltipBounds.right > stageBounds.right
-          ? stageBounds.right - tooltipBounds.right
-          : 0;
-      setHorizontalCorrection((current) => (
-        Math.abs(correctionDelta) < 0.5 ? current : current + correctionDelta
-      ));
+      setHorizontalCorrection((current) => {
+        const uncorrectedLeft = tooltipBounds.left - current;
+        const uncorrectedRight = tooltipBounds.right - current;
+        const nextCorrection = uncorrectedLeft < stageBounds.left
+          ? stageBounds.left - uncorrectedLeft
+          : uncorrectedRight > stageBounds.right
+            ? stageBounds.right - uncorrectedRight
+            : 0;
+        return Math.abs(current - nextCorrection) < 0.5 ? current : nextCorrection;
+      });
     };
 
     correctHorizontalPosition();

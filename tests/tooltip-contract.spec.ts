@@ -87,6 +87,32 @@ test('keeps an open right-edge visual tooltip within the stage and viewport afte
   await expectTooltipContract(page, tooltip, 'normal');
 });
 
+test('returns an edge-corrected visual tooltip to its current interior anchor', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.addInitScript((seed) => {
+    localStorage.clear();
+    localStorage.setItem('isf-workspace-v1', JSON.stringify(seed));
+  }, workspace);
+  await page.goto('apps/main/');
+
+  const visualTarget = page.locator('.allocation-bar__segment-target').first();
+  const targetBox = await visualTarget.boundingBox();
+  if (targetBox === null) throw new Error('Expected visual allocation target');
+  await visualTarget.hover({ position: { x: targetBox.width - 1, y: 22 } });
+  const tooltip = page.getByRole('tooltip');
+  await expectTooltipContract(page, tooltip, 'normal');
+
+  await visualTarget.hover({ position: { x: targetBox.width / 2, y: 22 } });
+  await expectTooltipContract(page, tooltip, 'normal');
+  await expect.poll(async () => tooltip.evaluate((element) => {
+    const tooltipBox = element.getBoundingClientRect();
+    const stageBox = element.closest<HTMLElement>('[data-testid="allocation-visual-stage"]')!
+      .getBoundingClientRect();
+    return Math.abs((tooltipBox.left + tooltipBox.right) / 2 - (stageBox.left + stageBox.right) / 2);
+  })).toBeLessThanOrEqual(1);
+});
+
 async function tap(target: ReturnType<Page['getByRole']>): Promise<void> {
   await target.evaluate((button) => {
     button.dispatchEvent(new PointerEvent('pointerdown', {
