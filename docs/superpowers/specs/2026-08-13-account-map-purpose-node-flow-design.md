@@ -26,7 +26,7 @@ Account Map은 Main의 월간 계획을 실제 계좌·보관처와 연결하고
 - Main 기준 system purpose 자동 생성
 - system purpose의 사용자 하위 목적 생성·편집·보관
 - 목적과 계좌의 다대다 연결 및 연결별 월 금액
-- 목적 중심·계좌 중심 node map
+- 하나의 계좌 우선 node map (지도 표현은 [2026-08-25 Account Map Meaningful Layout Design](2026-08-25-account-map-meaningful-layout-design.md)이 이 문서의 해당 조항을 대체)
 
 제외 범위:
 
@@ -270,11 +270,10 @@ Remainder lifecycle은 원자적으로 처리한다.
 
 ## 8. Map Presentation and Scale
 
-완료 화면은 목록이 아닌 account·purpose node와 연결선이다. Purpose node는 파생된 시각 grouping이며 persisted transfer endpoint가 아니다. 같은 node와 link를 유지하고 배치 기준만 바꾼다.
+이 절의 지도 표현·읽기 순서 조항은 [2026-08-25 Account Map Meaningful Layout Design](2026-08-25-account-map-meaningful-layout-design.md)에 의해 대체된다. 완료 화면은 목록이 아닌 account·purpose node와 연결선인 하나의 계좌 우선 지도다. Purpose node는 파생된 시각 grouping이며 persisted transfer endpoint가 아니고, 연결은 월 계획 연결이지 실제 잔액·거래·계좌 간 이동이 아니다.
 
-- 기본: `목적 중심`
-- 보조: `계좌 중심`
-- layout 선택은 applied에 저장
+- 주 수입 계좌가 첫 슬롯에 오고 나머지 계좌와 목적은 고정된 결정적 순서를 따른다.
+- `layout: 'purpose' | 'account'` 필드는 parser·backup 호환성을 위해 읽을 수 있으나 현재 지도 선택·정렬·write 경로에는 사용하지 않는다.
 - zoom level과 node 좌표는 저장하지 않음
 
 Node 금액 의미:
@@ -290,9 +289,9 @@ Semantic zoom:
 - `기본`: 모든 active node와 핵심 연결; 최초 진입 기본값
 - `상세`: institution, custom purpose, suspended 상태와 모든 연결
 
-Desktop은 결정적 left-to-right, mobile은 top-to-bottom layout을 쓴다. purpose별 active account와 custom purpose는 각각 최대 10개다. Empty-space drag는 pan만 수행한다. `- / +` button을 기본 zoom control로 제공하며 wheel·pinch는 선택 보조다.
+Desktop은 계좌 왼쪽·목적 오른쪽의 결정적 account-first layout, mobile은 계좌부터 목적까지의 고정 top-to-bottom 순서를 쓴다. purpose별 active account와 custom purpose는 각각 최대 10개다. Empty-space drag는 pan만 수행한다. `- / +` button을 기본 zoom control로 제공하며 wheel·pinch는 선택 보조다.
 
-정확한 edge 금액은 평상시 숨기고 node 집중 상태에서 표시한다. System purpose reference와 상태 금액은 항상 표시한다.
+정확한 edge 금액은 평상시 숨기고 node 집중 상태에서 표시한다. 계좌 집중·고정 상태에서는 활성 목적별 월 연결 구성과 합계 대비 비중을 보이며, 문구로 실제 잔액·거래·계좌 간 이동이 아님을 밝힌다. System purpose reference와 상태 금액은 항상 표시한다.
 
 ## 9. Node State and Modal Motion
 
@@ -313,7 +312,7 @@ interface MapInteractionState {
 - 다른 node 실행: pinned 대상 교체
 - 빈 지도 실행 또는 `Escape`: transient·pinned 해제
 
-집중 중에는 대상, 직접 연결 node와 edge만 선명하게 표시한다. 중앙 modal은 `anime.js` shared-element 전환으로 선택 node에서 확대되고 닫을 때 현재 node 위치로 축소한다. viewport·layout 변경 후 복귀 좌표를 다시 측정한다. animation 중 중복 입력을 차단한다.
+집중 중에는 대상, 직접 연결 node와 edge만 선명하게 표시한다. 계좌 hover·focus는 월 연결 구성의 최종 정적 상태를 보이고, 첫 고정 선택에서만 비중 막대를 한 번 재생한다. 중앙 modal은 `anime.js` shared-element 전환으로 선택 node에서 확대되고 닫을 때 현재 node 위치로 축소한다. viewport 변경 후 복귀 좌표를 다시 측정한다. animation 중 중복 입력을 차단한다.
 
 Modal은 focus를 가두고 닫으면 원래 node로 focus를 돌려준다. 편집 결과 node가 지도에서 사라졌다면 map heading으로 돌려준다. `prefers-reduced-motion: reduce`에서는 즉시 전환한다.
 
@@ -376,7 +375,7 @@ Account Map의 field-level write set은 `workspace.locations`와 `workspace.acco
 - modal focus trap, `Escape`, focus 복귀와 reduced-motion 지원
 - map에 목적을 설명하는 accessible name 제공
 - map과 동기화된 screen-reader용 선형 관계 table 제공
-- table reading order는 목적 중심에서 purpose·account·amount, 계좌 중심에서 account·purpose·amount
+- table reading order는 주 수입 계좌, 나머지 계좌, 각 계좌의 purpose·amount 순서로 고정
 - node accessible name에 종류, 이름, 요약 금액, 연결 수와 상태 포함
 - pan·zoom이 page scroll을 가로채지 않고 button 대안 제공
 
@@ -389,7 +388,7 @@ Account Map의 field-level write set은 `workspace.locations`와 `workspace.acco
 - 같은 location이 여러 purpose에 연결되고 한 purpose도 여러 location을 가진다.
 - remainder 계산, per-purpose unassigned·excess와 overall remaining·deficit이 분리된다.
 - Main 변경 후 기존 link는 자동 재분배되지 않고 excess correction을 제공한다.
-- 목적 중심 기본 map과 계좌 중심 layout이 동일 node·link를 표현한다.
+- 하나의 계좌 우선 map이 동일 node·link를 표현하고 주 수입 계좌를 첫 슬롯에 둔다.
 - transient·pinned·modal 상태가 pointer·keyboard·touch에서 계약대로 전이한다.
 - modal shared-element motion, focus 복귀와 reduced-motion이 동작한다.
 - 연결 편집·제거가 location과 Portfolio data를 변경하지 않는다.
@@ -418,7 +417,7 @@ Account Map의 field-level write set은 `workspace.locations`와 `workspace.acco
 - Portfolio plans와 draft의 serialized byte-equivalence tests
 - whole-workspace v1 import, v2 round-trip와 invalid atomic restore tests
 - first-run gate, draft resume, review/apply/cancel Playwright tests
-- purpose/account layout, semantic zoom, node state machine, modal motion와 reduced-motion Playwright tests
+- account-first layout, 월 연결 구성, semantic zoom, node state machine, modal motion와 reduced-motion Playwright tests
 - keyboard·touch·pointer parity와 screen-reader linear table tests
 - 390px, 768px와 desktop overflow·focus·touch·map visibility visual checks
 - `npm run check`와 영향 앱 전체 E2E

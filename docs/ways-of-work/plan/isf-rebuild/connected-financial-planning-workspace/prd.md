@@ -97,7 +97,7 @@ ISF는 지금의 월간 돈 흐름을 정리하고, 그 결과를 장기 전략�
 - Portfolio는 같은 workspace의 최신 Main 투자금을 읽고 하나의 v2 전체 기준 적용 배분과 편집 초안을 소유한다.
 - Portfolio 결과는 비율 우선 요약과 비례 목록으로 시작하며 원화 금액은 기본으로 숨긴다.
 - Portfolio의 배분 편집은 투자 대상별 전체 기준 금액과 비율만 다루며 계좌·기관·보관처 관리 UI를 표시하지 않는다. 기존 location과 location-scoped 데이터는 호환성을 위해 보존한다.
-- Account Map은 최신 Main의 다섯 월 금액을 읽어 목적 중심 설정과 노드 지도를 제공하고, 자기 slice와 공유 금융 위치 registry만 갱신한다.
+- Account Map은 최신 Main의 다섯 월 금액을 읽어 하나의 계좌 우선 노드 지도와 월 계획 연결 구성을 제공하고, `workspace.locations`와 `workspace.accountMap`만 갱신한다.
 - Account Map은 Main·Simulation·Portfolio에 write-back하지 않는다.
 - Main의 기존 요약과 월 자금 구성은 유지된다. 앱별 연결 결과 카드는 Phase C 전까지 현재 UI가 아니다.
 
@@ -166,7 +166,8 @@ ISF는 지금의 월간 돈 흐름을 정리하고, 그 결과를 장기 전략�
 
 - Main의 수입·주거·생활비·저축·투자 월 금액을 system purpose로 결정적으로 파생한다.
 - 목적과 계좌·보관처를 다대다 link로 연결하며 최초 연결은 전체 기준 금액을 자동 할당한다.
-- 목적 중심과 계좌 중심 정렬, 전체·기본·상세 semantic zoom, hover·focus·첫 선택 집중과 두 번째 선택 상세를 제공한다.
+- 주 수입 계좌가 먼저 오는 하나의 계좌 우선 정렬과 전체·기본·상세 semantic zoom을 제공한다. hover·focus와 첫 선택은 계좌별 활성 월 계획 연결 구성과 비중을 보여 주며, 이는 실제 잔액·거래·계좌 간 이동이 아니다. 두 번째 선택은 기존 상세 modal을 연다.
+- 이전 `layout: 'purpose' | 'account'` 값은 parser·backup 호환성을 위해 읽지만 현재 지도 선택이나 write 경로에는 사용하지 않는다.
 - 계좌·보관처 보관은 영향 연결을 먼저 보여주고 중지하며, 복원은 연결별 선택을 제공한다.
 - 적용 지도 modal에서 금액·상태·나머지를 편집하고 보조 `연결 추가` action으로 다른 계좌·보관처를 연결한다.
 - 기존 active location은 현재 role과 관계없이 선택할 수 있고 필요한 role 추가와 link 생성을 한 revision write로 저장한다.
@@ -247,7 +248,7 @@ Simulation, Portfolio와 Account Map은 workspace 안의 최신 Main을 읽기 �
 - [x] stale workspace writer는 최신 revision을 덮어쓰지 못한다.
 - [x] Portfolio는 전체 기준 배분만 제공하고 계좌·기관·보관처 관리 UI를 표시하지 않는다.
 - [x] whole-workspace 백업은 유효한 모든 slice를 한 번에 교체하고 invalid 또는 old-format 입력에는 현재 raw workspace를 유지한다.
-- [x] Account Map은 목적 중심 설정, 노드 지도와 가역적 계좌·보관처 관리의 승인 계약을 모두 구현하며 Main 연결 결과 카드는 Phase C 전까지 기존 UI를 유지한다.
+- [x] Account Map은 하나의 계좌 우선 노드 지도, 월 계획 연결 구성과 가역적 계좌·보관처 관리의 승인 계약을 모두 구현하며 Main 연결 결과 카드는 Phase C 전까지 기존 UI를 유지한다.
 - [x] Simulation과 Portfolio의 다시 설정은 해당 앱 데이터만 변경하고 Main과 다른 앱의 데이터를 보존한다.
 
 ### Phase B review closure gate

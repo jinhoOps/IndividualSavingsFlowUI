@@ -28,7 +28,7 @@ export type RecoveryState =
       reason: string;
     };
 
-export type ManualRecoveryAction = 'reset-map' | 'archive-location' | 'restore-location' | 'layout-change' | 'save-draft' | 'apply-map' | 'edit-node' | 'connection-prerequisite' | 'cancel-setup';
+export type ManualRecoveryAction = 'reset-map' | 'archive-location' | 'restore-location' | 'save-draft' | 'apply-map' | 'edit-node' | 'connection-prerequisite' | 'cancel-setup';
 export type ManualRecoveryTarget = { kind: 'node' | 'link' | 'restorable-link' | 'location'; id: string };
 
 interface WorkspaceReadyState {
@@ -74,7 +74,6 @@ export type AccountMapEvent =
   | { type: 'node-invoked'; nodeId: string }
   | { type: 'map-background-invoked' }
   | { type: 'modal-closed' | 'modal-outside-invoked' | 'escape-invoked' }
-  | { type: 'layout-changed'; layout: AccountMapApplied['layout'] }
   | { type: 'save-requested' | 'retry-requested' }
   | { type: 'save-succeeded'; workspace: WorkspaceDocument }
   | { type: 'save-failed'; reason: AccountMapSaveFailure }
@@ -222,8 +221,6 @@ function reduceMap(
       return state.interaction.modalNodeId !== null
         ? { ...state, interaction: { ...state.interaction, modalNodeId: null } }
         : { ...state, interaction: emptyInteraction() };
-    case 'layout-changed':
-      return { ...state, applied: { ...state.applied, layout: event.layout } };
     case 'save-requested':
       return { ...state, save: { status: 'pending' } };
     case 'save-succeeded':

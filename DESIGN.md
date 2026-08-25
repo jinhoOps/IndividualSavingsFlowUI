@@ -4,7 +4,7 @@
 
 Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계획 경험으로 바꾸는 로컬 우선 도구입니다. 시각적 기반은 종이 같은 **ISF Pearl** 캔버스와 단색 테두리의 **flat editorial panel**입니다. 전통적인 스프레드시트의 긴장감은 줄이되 숫자의 정밀성과 신뢰감은 유지합니다.
 
-이 문서의 현재 지원 UI 계약은 Main, Simulation, aggregate-first Portfolio와 purpose-first Account Map에 적용됩니다. Account Map 상세는 [Account Map Purpose-Node Flow Design](docs/superpowers/specs/2026-08-13-account-map-purpose-node-flow-design.md)을 따릅니다. 과거 레거시 화면의 모양이나 상호작용은 새 UI의 기준이 아닙니다.
+이 문서의 현재 지원 UI 계약은 Main, Simulation, aggregate-first Portfolio와 account-first Account Map에 적용됩니다. Account Map 지도 표현은 [Account Map Meaningful Layout Design](docs/superpowers/specs/2026-08-25-account-map-meaningful-layout-design.md)을 따릅니다. 과거 레거시 화면의 모양이나 상호작용은 새 UI의 기준이 아닙니다.
 
 현재 delivery boundary는 명확히 나눕니다. Phase A의 단일 workspace, whole-workspace backup과 aggregate-first Portfolio, Phase B Account Map이 현재 지원 기준선입니다. Main 연결 결과 카드는 Phase C, 나머지 legacy extinction은 Phase D입니다. Portfolio의 `투자 위치` UI와 shared location command 진입점은 제거되었으며 보존 데이터만 호환성 계약으로 남습니다.
 
@@ -77,13 +77,14 @@ Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계획 �
 
 - 계좌·기관·보관처의 생성, 이름 변경과 보관을 Account Map이 소유합니다.
 - Portfolio 투자 대상과 계좌·보관처의 연결은 별도 승인된 상세 명세가 있을 때만 제공하며 Account Map은 Main에 write-back하지 않습니다.
-- 수입·주거·생활비·저축·투자의 purpose-first 관계도를 완료 화면의 주요 시각 요소로 사용합니다.
+- 완료 화면은 주 수입 계좌를 먼저 두는 하나의 account-first 관계도를 주요 시각 요소로 사용합니다. 목적과 계좌·보관처의 연결은 월 계획 연결이지 실제 잔액·거래·계좌 간 이동이 아닙니다.
 - 관계 유형, unresolved·excess와 선택 상태는 색상과 짧은 텍스트를 함께 사용해 색상만으로 구분하지 않습니다.
-- system purpose의 Main 기준 금액과 전체 미배정·부족 상태는 overview에 표시하고, 개별 연결 금액은 pointer·touch·keyboard 집중 상태에서 공개합니다.
+- system purpose의 Main 기준 금액과 전체 미배정·부족 상태는 overview에 표시하고, 계좌의 pointer·touch·keyboard 집중 상태에서는 활성 목적별 월 연결 구성과 비중을 정적 최종 상태로 공개합니다. 첫 선택만 비중 막대를 한 번 재생하고 reduced-motion에서는 즉시 최종 상태를 보입니다.
 - Node modal은 금액·상태·나머지를 주요 편집으로 유지합니다. `연결 추가`는 하나의 보조 icon action, custom purpose `보관·복원`은 제목 줄 `더보기`로 압축하되 기능을 숨기거나 별도 페이지로 보내지 않습니다.
 - 다른 목적에 쓰는 active location도 선택 목록에 표시하고 필요한 role은 연결 저장과 함께 원자적으로 추가합니다.
 - 일반적인 stale conflict·collision은 modal·setup 입력을 유지한 채 최신 상태를 다시 읽고 `최신 상태에서 다시 적용`으로 복구합니다. 자동 overwrite나 입력 초기화는 금지합니다. 단, 채택한 최신 workspace의 Main이 없으면 Account Map은 recovery와 입력 replay를 포기하고 write 없이 즉시 Main-required 화면으로 전환합니다.
-- 전체·기본·상세 semantic zoom을 제공하고 임의 node 좌표나 drag edge를 저장하지 않습니다.
+- 전체·기본·상세 semantic zoom을 제공하고 임의 node 좌표나 drag edge를 저장하지 않습니다. legacy `layout` 값은 parser·backup 호환성을 위해 유지하되 현재 UI의 선택이나 저장에는 사용하지 않습니다.
+- screen-reader용 선형 관계 표는 주 수입 계좌, 나머지 계좌, 각 계좌의 연결 목적 순서로 고정하며 지도와 같은 account-first 읽기 순서를 제공합니다.
 - 모바일 요약은 관계도를 첫 viewport 밖으로 밀어내지 않아야 하며 Account Map은 Main에 write-back하지 않습니다.
 
 ## Colors
@@ -233,6 +234,7 @@ gradient와 반투명 card를 기본 스타일로 사용하지 않습니다.
 - 현재 Main 월 자금 구성, Simulation 그래프와 Phase B Account Map은 의미를 잃도록 과도하게 축소하지 않습니다.
 - Portfolio의 설정과 하단 편집 sheet는 390px에서 이름·금액·비율과 action이 패널 밖으로 넘치지 않아야 합니다.
 - Phase B Account Map의 compact summary는 모바일 첫 화면에서 관계도를 밀어내지 않아야 합니다.
+- Phase B Account Map의 월 연결 구성은 390px, 768px와 desktop에서 지도 canvas 안에 머물고 가로 overflow를 만들지 않아야 합니다.
 
 ## Accessibility
 

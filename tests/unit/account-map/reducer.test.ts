@@ -21,6 +21,7 @@ describe('Account Map reducer', () => {
     state = accountMapReducer(state, { type: 'node-invoked', nodeId: 'a' });
     state = accountMapReducer(state, { type: 'map-background-invoked' });
     expect(state.mode === 'map' && state.interaction).toMatchObject({ transientNodeId: null, pinnedNodeId: null });
+    expect(state.mode === 'map' && state.applied.layout).toBe('purpose');
   });
 
   it('Escape first closes a modal, then clears the pinned node', () => {
@@ -333,13 +334,6 @@ describe('Account Map reducer', () => {
     const workspace = { ...createEmptyWorkspace(7), revision: 7 };
     const cancelled = accountMapReducer(setupState(), { type: 'setup-cancelled', workspace });
     expect(cancelled.mode === 'setup' && cancelled.workspace.revision).toBe(7);
-  });
-
-  it('switches layout locally and enters map after apply succeeds', () => {
-    const setup = setupState();
-    const mapped = accountMapReducer(setup, { type: 'apply-succeeded', applied: applied('purpose') });
-    const changed = accountMapReducer(mapped, { type: 'layout-changed', layout: 'account' });
-    expect(changed.mode === 'map' && changed.applied.layout).toBe('account');
   });
 
   it('returns to fresh setup after a map-only reset', () => {

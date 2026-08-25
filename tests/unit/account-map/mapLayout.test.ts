@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { AccountMapApplied } from '../../../src/account-map/domain/model';
-import { buildAccountMapGraph, layoutAccountMap, type AccountMapGraph } from '../../../src/account-map/ui/mapLayout';
+import { buildAccountMapGraph, layoutAccountMap, type AccountMapGraph, type GraphNode } from '../../../src/account-map/ui/mapLayout';
 
 const graph: AccountMapGraph = {
+  primaryIncomeLocationId: 'a',
   nodes: [
     { id: 'system:income', kind: 'purpose', label: '수입', amountWon: 2_000_000, connectionCount: 1, status: 'resolved' },
     { id: 'system:living', kind: 'purpose', label: '생활비', amountWon: 1_000_000, connectionCount: 1, status: 'resolved' },
@@ -16,6 +17,75 @@ const graph: AccountMapGraph = {
 };
 
 describe('Account Map layout', () => {
+  it('uses the largest active income link as the overview representative regardless of storage order', () => {
+    const applied = emptyApplied();
+    applied.links = [
+      activeLink('income-smaller', 'system:income', 'first-income', 900_000),
+      activeLink('income-larger', 'system:income', 'primary-income', 1_100_000),
+    ];
+    const locations = [location('first-income', '첫 수입 통장'), location('primary-income', '주 수입 통장')];
+
+    for (const links of [applied.links, [...applied.links].reverse()]) {
+      const result = buildAccountMapGraph({ ...applied, links }, locations, main, 'overview');
+      expect(result.primaryIncomeLocationId).toBe('primary-income');
+      expect(result.edges).toEqual([expect.objectContaining({ id: 'income-larger', locationId: 'location:primary-income' })]);
+      expect(result.nodes.find(({ id }) => id === 'location:primary-income')).toMatchObject({ isPrimaryIncome: true });
+    }
+  });
+
+  it('breaks equal income weights by normalized short name and then location ID', () => {
+    const applied = emptyApplied();
+    applied.links = [
+      activeLink('income-zeta', 'system:income', 'zeta', 1_000_000),
+      activeLink('income-alpha-beta', 'system:income', 'beta', 1_000_000),
+      activeLink('income-alpha-alpha', 'system:income', 'alpha', 1_000_000),
+    ];
+    const result = buildAccountMapGraph(applied, [
+      location('zeta', '  Zeta  '), location('beta', 'alpha'), location('alpha', ' Alpha '),
+    ], main, 'default');
+
+    expect(result.primaryIncomeLocationId).toBe('alpha');
+    expect(result.nodes.filter(({ kind }) => kind === 'location').map(({ id }) => id)).toEqual([
+      'location:alpha', 'location:beta', 'location:zeta',
+    ]);
+  });
+
+  it('keeps income as a normal purpose when no active income location exists', () => {
+    const applied = emptyApplied();
+    applied.links = [
+      {
+        ...activeLink('inactive-income', 'system:income', 'archived-income', 2_000_000),
+        remainder: false,
+        status: 'suspended',
+        suspendedReason: 'user',
+      },
+    ];
+    const result = buildAccountMapGraph(applied, [location('archived-income', '이전 수입 통장')], main, 'overview');
+
+    expect(result.primaryIncomeLocationId).toBeNull();
+    expect(result.nodes.find(({ id }) => id === 'system:income')).toMatchObject({ kind: 'purpose' });
+    expect(result.nodes.find(({ id }) => id === 'system:income')).not.toHaveProperty('isPrimaryIncome');
+  });
+
+  it.each([
+    ['missing', activeLink('missing-income', 'system:income', 'missing-income', 2_000_000), []],
+    ['archived', activeLink('archived-income', 'system:income', 'archived-income', 2_000_000), [
+      { ...location('archived-income', '이전 수입 통장'), archivedAt: 2 },
+    ]],
+    ['zero-value', activeLink('zero-income', 'system:income', 'zero-income', 0), [
+      location('zero-income', '0원 수입 통장'),
+    ]],
+  ] as const)('keeps income unanchored for a %s candidate', (_candidate, incomeLink, locations) => {
+    const applied = emptyApplied();
+    applied.links = [incomeLink];
+
+    const result = buildAccountMapGraph(applied, locations, main, 'overview');
+
+    expect(result.primaryIncomeLocationId).toBeNull();
+    expect(result.nodes.find(({ id }) => id === 'system:income')).toMatchObject({ kind: 'purpose' });
+    expect(result.nodes.some(({ isPrimaryIncome }) => isPrimaryIncome)).toBe(false);
+  });
+
   it('shows only representative locations with matching edges in overview', () => {
     const applied = emptyApplied();
     applied.links = [
@@ -112,8 +182,8 @@ describe('Account Map layout', () => {
   it.each([[390, 'top-to-bottom'], [768, 'top-to-bottom'], [1280, 'left-to-right']] as const)(
     'keeps deterministic nodes inside %ipx', (width, direction) => {
       const viewport = { width, height: 700 };
-      const first = layoutAccountMap(graph, 'purpose', viewport, 'default');
-      const second = layoutAccountMap(graph, 'purpose', viewport, 'default');
+      const first = layoutAccountMap(graph, viewport, 'default');
+      const second = layoutAccountMap(graph, viewport, 'default');
       expect(first).toEqual(second);
       expect(first.direction).toBe(direction);
       expect(first.nodes.every((node) => node.x >= 0 && node.y >= 0
@@ -121,16 +191,76 @@ describe('Account Map layout', () => {
     },
   );
 
-  it('changes ordering without changing node or edge identity', () => {
-    const purpose = layoutAccountMap(graph, 'purpose', { width: 1000, height: 600 }, 'default');
-    const account = layoutAccountMap(graph, 'account', { width: 1000, height: 600 }, 'default');
-    expect(account.nodes.map(({ id }) => id).sort()).toEqual(purpose.nodes.map(({ id }) => id).sort());
-    expect(account.edges.map(({ id }) => id)).toEqual(purpose.edges.map(({ id }) => id));
-    expect(account.nodes).not.toEqual(purpose.nodes);
+  it('places graph-selected non-first primary income location top-left on desktop', () => {
+    const applied = emptyApplied();
+    applied.links = [
+      activeLink('income-first', 'system:income', 'first-income', 900_000),
+      activeLink('income-primary', 'system:income', 'primary-income', 1_100_000),
+    ];
+    const accountGraph = buildAccountMapGraph(applied, [
+      location('first-income', '첫 수입 통장'), location('primary-income', '주 수입 통장'),
+    ], main, 'default');
+    const positioned = layoutAccountMap(accountGraph, { width: 1280, height: 900 }, 'default');
+    const primary = positioned.nodes.find(({ id }) => id === 'location:primary-income');
+
+    expect(positioned.nodes.filter(({ kind }) => kind === 'location').every(({ x }) => x < 640)).toBe(true);
+    expect(positioned.nodes.filter(({ kind }) => kind === 'purpose').every(({ x }) => x > 640)).toBe(true);
+    expect(primary).toMatchObject({ x: 28, y: 28 });
   });
+
+  it('only reorders ordinary location slots when their amounts change', () => {
+    const weightedNodes: GraphNode[] = [
+      ...graph.nodes,
+      {
+        id: 'location:c', kind: 'location', label: '예비 통장', amountWon: 300_000,
+        connectionCount: 1, status: 'resolved',
+      },
+    ];
+    const initial: AccountMapGraph = {
+      ...graph,
+      nodes: weightedNodes.map((node) => node.id === 'location:a'
+        ? { ...node, isPrimaryIncome: true }
+        : node.id === 'location:b' ? { ...node, amountWon: 700_000 } : node),
+    };
+    const changed: AccountMapGraph = {
+      ...initial,
+      nodes: initial.nodes.map((node) => node.id === 'location:b'
+        ? { ...node, amountWon: 100_000 }
+        : node.id === 'location:c' ? { ...node, amountWon: 900_000 } : node),
+    };
+
+    const before = layoutAccountMap(initial, { width: 1280, height: 900 }, 'default');
+    const after = layoutAccountMap(changed, { width: 1280, height: 900 }, 'default');
+
+    expect(before.nodes.filter(({ kind }) => kind === 'location').map(({ id }) => id)).toEqual(['location:a', 'location:b', 'location:c']);
+    expect(after.nodes.filter(({ kind }) => kind === 'location').map(({ id }) => id)).toEqual(['location:a', 'location:c', 'location:b']);
+    for (const id of ['location:b', 'location:c', 'system:income', 'system:living']) {
+      expect(after.nodes.find((node) => node.id === id)).toMatchObject(
+        expect.objectContaining({
+          width: before.nodes.find((node) => node.id === id)?.width,
+          height: before.nodes.find((node) => node.id === id)?.height,
+        }),
+      );
+    }
+    expect(after.edges).toEqual(before.edges);
+  });
+
+  it.each([[390, 844], [768, 1024]] as const)(
+    'places the primary location first with locations before purposes and no overlaps at %ipx', (width, height) => {
+      const first = layoutAccountMap(graph, { width, height }, 'default');
+      const second = layoutAccountMap(graph, { width, height }, 'default');
+      const kinds = first.nodes.map(({ kind }) => kind);
+
+      expect(first).toEqual(second);
+      expect(first.nodes[0]?.id).toBe('location:a');
+      expect(kinds.lastIndexOf('location')).toBeLessThan(kinds.indexOf('purpose'));
+      expect(nodesDoNotOverlap(first.nodes)).toBe(true);
+    },
+  );
 
   it.each([390, 768])('contains maximum node density without overlap at %ipx', (width) => {
     const dense: AccountMapGraph = {
+      primaryIncomeLocationId: null,
       nodes: Array.from({ length: 26 }, (_, index) => ({
         id: `node:${index}`,
         kind: index < 15 ? 'purpose' as const : 'location' as const,
@@ -140,7 +270,7 @@ describe('Account Map layout', () => {
       })),
       edges: [],
     };
-    const result = layoutAccountMap(dense, 'purpose', { width, height: 700 }, 'detail');
+    const result = layoutAccountMap(dense, { width, height: 700 }, 'detail');
     expect(result.nodes.every((node) => node.height >= 44
       && node.y + node.height <= result.height)).toBe(true);
     for (const [index, node] of result.nodes.entries()) {
@@ -152,6 +282,21 @@ describe('Account Map layout', () => {
     expect(result.height).toBeGreaterThan(700);
   });
 });
+
+function activeLink(id: string, purposeId: 'system:income' | 'system:living', locationId: string, monthlyAmountWon: number) {
+  return { id, purposeId, locationId, monthlyAmountWon, remainder: false, status: 'active' as const, createdAt: 1, updatedAt: 1 };
+}
+
+function location(id: string, shortName: string) {
+  return { id, shortName, kind: 'bank' as const, roles: ['saving' as const], createdAt: 1, updatedAt: 1 };
+}
+
+function nodesDoNotOverlap(nodes: readonly { x: number; y: number; width: number; height: number }[]) {
+  return nodes.every((node, index) => nodes.slice(index + 1).every((candidate) => (
+    node.x + node.width <= candidate.x || candidate.x + candidate.width <= node.x
+    || node.y + node.height <= candidate.y || candidate.y + candidate.height <= node.y
+  )));
+}
 
 const main = {
   schemaVersion: 2 as const,

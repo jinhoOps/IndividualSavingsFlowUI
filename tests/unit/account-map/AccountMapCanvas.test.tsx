@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { useReducer, useState } from 'react';
@@ -10,6 +10,9 @@ import { createEmptyWorkspace } from '../../../src/workspace/domain/model';
 const controlledMotion = vi.hoisted(() => ({
   closeComplete: null as (() => void) | null,
   closeStarts: 0,
+  connectionStarts: 0,
+  connectionCancels: 0,
+  connectionOptions: [] as { reducedMotion: boolean }[],
 }));
 
 vi.mock('../../../src/account-map/ui/motion', () => ({
@@ -22,10 +25,10 @@ vi.mock('../../../src/account-map/ui/motion', () => ({
     controlledMotion.closeComplete = options.onComplete;
     return { cancel() { controlledMotion.closeComplete = null; } };
   },
-  animateMapLayout: (_root: HTMLElement, mutate: () => void, options: { onComplete(): void }) => {
-    mutate();
-    options.onComplete();
-    return { cancel() {} };
+  animateConnectionDetail: (_root: HTMLElement, options: { reducedMotion: boolean; onComplete(): void }) => {
+    controlledMotion.connectionStarts += 1;
+    controlledMotion.connectionOptions.push({ reducedMotion: options.reducedMotion });
+    return { cancel() { controlledMotion.connectionCancels += 1; } };
   },
 }));
 
@@ -33,12 +36,19 @@ afterEach(() => {
   cleanup();
   controlledMotion.closeComplete = null;
   controlledMotion.closeStarts = 0;
+  controlledMotion.connectionStarts = 0;
+  controlledMotion.connectionCancels = 0;
+  controlledMotion.connectionOptions = [];
+  vi.unstubAllGlobals();
 });
 
 describe('AccountMapCanvas', () => {
-  it('defaults to purpose layout, shows system references, and hides edge amounts before focus', () => {
+  it('shows system references without a layout selector and hides edge amounts before focus', () => {
     const { container } = renderCanvas();
-    expect(screen.getByRole('button', { name: '목적 중심' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.queryByRole('group', { name: '지도 정렬' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '목적 중심' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '계좌 중심' })).not.toBeInTheDocument();
+    expect(screen.getByRole('group', { name: '지도 확대 수준' })).toBeVisible();
     expect(screen.getByRole('button', {
       name: '목적 · 생활비 · 1,000,000원 · 활성 연결 1개 · 연결 필요',
     })).toBeVisible();
@@ -54,6 +64,22 @@ describe('AccountMapCanvas', () => {
     expect(screen.getByRole('table', { name: '계좌 연결 읽기 표' })).not.toHaveAttribute('tabindex');
   });
 
+  it('announces the primary-income status exactly once only on the real anchored location', () => {
+    renderCanvas();
+
+    const anchoredName = screen.getByRole('button', { name: /급여통장/ }).getAttribute('aria-label') ?? '';
+    expect(anchoredName).toBe('계좌·보관처 · 급여통장 · 주 수입 계좌 · 활성 월 연결 합계 2,000,000원 · 활성 연결 1개 · 연결 완료');
+    expect(anchoredName.match(/주 수입 계좌/gu)).toHaveLength(1);
+
+    cleanup();
+    renderCanvas({
+      applied: { ...applied, links: applied.links.filter(({ purposeId }) => purposeId !== 'system:income') },
+    });
+    expect(screen.getByRole('button', {
+      name: '계좌·보관처 · 급여통장 · 활성 월 연결 합계 0원 · 활성 연결 0개 · 연결 완료',
+    })).toBeVisible();
+  });
+
   it('reveals connected edge amounts on equivalent focus and invocation', () => {
     const onTransient = vi.fn();
     const { container, rerender } = renderCanvas({ onTransient });
@@ -63,16 +89,182 @@ describe('AccountMapCanvas', () => {
     expect(container.querySelector('.account-map-edge-amount')).toHaveTextContent('700,000원');
   });
 
-  it('supports semantic zoom and account layout controls', () => {
-    const onLayoutChange = vi.fn();
-    renderCanvas({ onLayoutChange });
+  it('shows a static active-link monthly composition for a focused location without animation', () => {
+    const onTransient = vi.fn();
+    const { rerender } = renderCanvas({ onTransient });
+    const location = screen.getByRole('button', { name: /급여통장.*2,000,000원/ });
+
+    fireEvent.focus(location);
+    expect(onTransient).toHaveBeenCalledWith('location:salary');
+    rerender(canvas({ transientNodeId: 'location:salary', pinnedNodeId: null, modalNodeId: null }, { onTransient }));
+
+    expect(screen.getByText('월 연결 구성')).toBeVisible();
+    expect(screen.getByText('월 계획 연결 기준 · 실제 잔액·거래·계좌 간 이동이 아님')).toBeVisible();
+    const detail = screen.getByLabelText('급여통장 월 연결 구성');
+    expect(within(detail).getByText('수입')).toBeVisible();
+    expect(within(detail).getByText(/100%/)).toBeVisible();
+    expect(controlledMotion.connectionStarts).toBe(0);
+  });
+
+  it('renders the approved empty detail copy for a zero-total location', () => {
+    render(canvas(
+      { transientNodeId: 'location:vault', pinnedNodeId: null, modalNodeId: null },
+      {
+        locations: [
+          ...locations,
+          { id: 'vault', shortName: '비상금함', kind: 'cash', roles: ['saving'], createdAt: 1, updatedAt: 1 },
+        ],
+      },
+    ));
+
+    const detail = screen.getByLabelText('비상금함 월 연결 구성');
+    expect(within(detail).getByText('활성 월 연결이 없습니다.')).toBeVisible();
+    expect(within(detail).queryByRole('list')).not.toBeInTheDocument();
+  });
+
+  it('summarizes zoom-hidden custom and repeated active links in overview detail', () => {
+    const composedApplied = structuredClone(applied);
+    composedApplied.customPurposes.push({
+      id: 'custom:trip', parentId: 'system:living', name: '여행', targetMonthlyWon: 400_000,
+      createdAt: 1, updatedAt: 1,
+    });
+    composedApplied.links.push(
+      {
+        id: 'trip-first', purposeId: 'custom:trip', locationId: 'salary', monthlyAmountWon: 100_000,
+        remainder: false, status: 'active', createdAt: 1, updatedAt: 1,
+      },
+      {
+        id: 'trip-second', purposeId: 'custom:trip', locationId: 'salary', monthlyAmountWon: 300_000,
+        remainder: true, status: 'active', createdAt: 1, updatedAt: 1,
+      },
+    );
+
+    function InteractiveCanvas() {
+      const [interaction, setInteraction] = useState({
+        transientNodeId: null as string | null,
+        pinnedNodeId: null as string | null,
+        modalNodeId: null as string | null,
+      });
+      return canvas(interaction, {
+        applied: composedApplied,
+        onTransient: (nodeId) => setInteraction((current) => ({ ...current, transientNodeId: nodeId })),
+      });
+    }
+
+    render(<InteractiveCanvas />);
+    fireEvent.click(screen.getByRole('button', { name: '축소' }));
+    fireEvent.focus(screen.getByRole('button', { name: /급여통장/ }));
+
+    const detail = screen.getByLabelText('급여통장 월 연결 구성');
+    expect(within(detail).getByText('2,400,000원')).toBeVisible();
+    expect(within(detail).getByText('여행')).toBeVisible();
+    expect(within(detail).getByText('2,000,000원 · 83%')).toBeVisible();
+    expect(within(detail).getByText('400,000원 · 17%')).toBeVisible();
+  });
+
+  it('pins a location with one animation before a second activation opens its existing modal', () => {
+    vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: false })));
+    function InteractiveCanvas() {
+      const [interaction, setInteraction] = useState({ transientNodeId: null as string | null, pinnedNodeId: null as string | null, modalNodeId: null as string | null });
+      return canvas(interaction, {
+        onInvoke: (nodeId) => setInteraction((current) => current.pinnedNodeId === nodeId
+          ? { ...current, modalNodeId: nodeId }
+          : { transientNodeId: null, pinnedNodeId: nodeId, modalNodeId: null }),
+      });
+    }
+    render(<InteractiveCanvas />);
+    const location = screen.getByRole('button', { name: /급여통장.*2,000,000원/ });
+
+    fireEvent.click(location);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByText('월 연결 구성')).toBeVisible();
+    expect(within(screen.getByLabelText('급여통장 월 연결 구성')).getByText(/100%/)).toBeVisible();
+    expect(controlledMotion.connectionStarts).toBe(1);
+    expect(controlledMotion.connectionOptions).toEqual([{ reducedMotion: false }]);
+
+    fireEvent.click(location);
+    expect(screen.getByRole('dialog', { name: '급여통장 상세' })).toBeVisible();
+    expect(controlledMotion.connectionStarts).toBe(1);
+  });
+
+  it('passes reduced motion to the pin-only detail animation while rendering the final detail immediately', () => {
+    vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: true })));
+    function InteractiveCanvas() {
+      const [interaction, setInteraction] = useState({ transientNodeId: null as string | null, pinnedNodeId: null as string | null, modalNodeId: null as string | null });
+      return canvas(interaction, {
+        onInvoke: (nodeId) => setInteraction({ transientNodeId: null, pinnedNodeId: nodeId, modalNodeId: null }),
+      });
+    }
+    render(<InteractiveCanvas />);
+    fireEvent.click(screen.getByRole('button', { name: /급여통장.*2,000,000원/ }));
+
+    expect(within(screen.getByLabelText('급여통장 월 연결 구성')).getByText(/100%/)).toBeVisible();
+    expect(controlledMotion.connectionOptions).toEqual([{ reducedMotion: true }]);
+  });
+
+  it('cancels the pinned-location animation when transient focus replaces its rendered detail', () => {
+    vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: false })));
+    function InteractiveCanvas() {
+      const [interaction, setInteraction] = useState({ transientNodeId: null as string | null, pinnedNodeId: null as string | null, modalNodeId: null as string | null });
+      return <>
+        <button type="button" onClick={() => setInteraction({ transientNodeId: null, pinnedNodeId: 'location:salary', modalNodeId: null })}>급여통장 고정</button>
+        <button type="button" onClick={() => setInteraction((current) => ({ ...current, transientNodeId: 'location:checking' }))}>생활비통장 집중</button>
+        {canvas(interaction)}
+      </>;
+    }
+    render(<InteractiveCanvas />);
+
+    fireEvent.click(screen.getByRole('button', { name: '급여통장 고정' }));
+    expect(controlledMotion.connectionStarts).toBe(1);
+    fireEvent.click(screen.getByRole('button', { name: '생활비통장 집중' }));
+
+    expect(screen.getByLabelText('생활비통장 월 연결 구성')).toBeVisible();
+    expect(controlledMotion.connectionCancels).toBe(1);
+  });
+
+  it('keeps purpose focus on its existing relationship detail without account composition', () => {
+    render(canvas({ transientNodeId: 'system:living', pinnedNodeId: null, modalNodeId: null }));
+    expect(screen.getByText('700,000원', { selector: '.account-map-edge-amount' })).toBeVisible();
+    expect(screen.queryByText('월 연결 구성')).not.toBeInTheDocument();
+  });
+
+  it('supports semantic zoom without restoring a layout control', () => {
+    renderCanvas();
     fireEvent.click(screen.getByRole('button', { name: '축소' }));
     expect(screen.getByText('전체 보기')).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: '확대' }));
     expect(screen.getByText('기본 보기')).toBeVisible();
-    fireEvent.click(screen.getByRole('button', { name: '계좌 중심' }));
-    expect(onLayoutChange).toHaveBeenCalledWith('account');
+    expect(screen.queryAllByRole('button', { name: /중심$/ })).toHaveLength(0);
   });
+
+  it.each(['transient', 'pinned'] as const)(
+    'clears a %s target through the background contract when semantic zoom hides it',
+    (targetKind) => {
+      const customApplied = structuredClone(applied);
+      customApplied.customPurposes.push({
+        id: 'custom:trip', parentId: 'system:living', name: '여행', targetMonthlyWon: 100_000,
+        createdAt: 1, updatedAt: 1,
+      });
+      customApplied.links.push({
+        id: 'trip', purposeId: 'custom:trip', locationId: 'checking', monthlyAmountWon: 100_000,
+        remainder: true, status: 'active', createdAt: 1, updatedAt: 1,
+      });
+      const onBackground = vi.fn();
+      renderCanvas({
+        applied: customApplied,
+        interaction: {
+          transientNodeId: targetKind === 'transient' ? 'custom:trip' : null,
+          pinnedNodeId: targetKind === 'pinned' ? 'custom:trip' : null,
+          modalNodeId: null,
+        },
+        onBackground,
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: '축소' }));
+
+      expect(onBackground).toHaveBeenCalledTimes(1);
+    },
+  );
 
   it('announces overall status amounts without active-link wording', () => {
     renderCanvas({
@@ -162,17 +354,16 @@ describe('AccountMapCanvas', () => {
     expect(onInvoke).toHaveBeenCalledWith('location:vault');
   });
 
-  it('blocks layout mutations while stale recovery is visible', () => {
-    const onLayoutChange = vi.fn();
-    renderCanvas({
-      onLayoutChange,
-      recovery: { status: 'manual', latest: createEmptyWorkspace(2), action: 'layout-change', targets: [], reason: 'compound-edit' },
-    });
+  it('uses canonical account-first headers and location-then-purpose rows', () => {
+    const reversedApplied = { ...applied, links: [...applied.links].reverse(), layout: 'account' as const };
+    renderCanvas({ applied: reversedApplied });
 
-    const accountLayout = screen.getByRole('button', { name: '계좌 중심' });
-    expect(accountLayout).toBeDisabled();
-    fireEvent.click(accountLayout);
-    expect(onLayoutChange).not.toHaveBeenCalled();
+    const table = screen.getByRole('table', { name: '계좌 연결 읽기 표' });
+    expect([...table.querySelectorAll('th')].map((header) => header.textContent)).toEqual(['계좌·보관처', '목적', '월 금액', '상태']);
+    expect([...table.querySelectorAll('tbody tr')].map((row) => row.textContent)).toEqual([
+      '급여통장수입2,000,000원연결됨',
+      '생활비통장생활비700,000원연결됨',
+    ]);
   });
 
   it('opens detail only after invoking an already pinned node', () => {
@@ -307,5 +498,5 @@ function renderCanvas(overrides: Partial<React.ComponentProps<typeof AccountMapC
 }
 
 function canvas(interaction: React.ComponentProps<typeof AccountMapCanvas>['interaction'], overrides: Partial<React.ComponentProps<typeof AccountMapCanvas>> = {}) {
-  return <AccountMapCanvas applied={applied} main={main} locations={locations} interaction={interaction} viewport={{ width: 900, height: 600 }} onTransient={() => undefined} onBlur={() => undefined} onInvoke={() => undefined} onBackground={() => undefined} onEscape={() => undefined} onLayoutChange={() => undefined} {...overrides} />;
+  return <AccountMapCanvas applied={applied} main={main} locations={locations} interaction={interaction} viewport={{ width: 900, height: 600 }} onTransient={() => undefined} onBlur={() => undefined} onInvoke={() => undefined} onBackground={() => undefined} onEscape={() => undefined} {...overrides} />;
 }
