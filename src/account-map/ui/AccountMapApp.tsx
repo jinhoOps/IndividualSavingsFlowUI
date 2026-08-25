@@ -207,17 +207,7 @@ export function AccountMapApp({ repositories }: { repositories?: AccountMapRepos
     }
     pendingModalWorkspaceRef.current = result.workspace;
     return true;
-  }} onRestoreLocation={restoreLocation} onLayoutChange={(layout) => {
-    if (layout === state.applied.layout || state.recovery.status !== 'none') return;
-    const applied = { ...state.applied, layout, updatedAt: Date.now() };
-    dispatch({ type: 'layout-changed', layout });
-    dispatch({ type: 'save-requested' });
-    void resolved.accountMap.save(state.workspace.revision, { type: 'apply-map', applied }).then((result) => {
-      if (result.status === 'saved') dispatch({ type: 'save-succeeded', workspace: result.workspace });
-      else if (result.status === 'conflict') captureManualConflict('layout-change', []);
-      else dispatch({ type: 'save-failed', reason: failureReason(result) });
-    });
-  }} />{restoringPurpose === undefined ? null : <AccountMapModal
+  }} onRestoreLocation={restoreLocation} />{restoringPurpose === undefined ? null : <AccountMapModal
     initialMode="restore-purpose"
     node={{
       id: restoringPurpose.id,

@@ -24,11 +24,6 @@ vi.mock('../../../src/account-map/ui/motion', () => ({
     else options.onComplete();
     return { cancel() { appMotion.closeComplete = null; } };
   },
-  animateMapLayout: (_root: HTMLElement, mutate: () => void, options: { onComplete(): void }) => {
-    mutate();
-    options.onComplete();
-    return { cancel() {} };
-  },
 }));
 
 afterEach(() => {
@@ -548,18 +543,20 @@ describe('AccountMapApp', () => {
     expect(setup.save.mock.calls[2]?.[0]).toBe(2);
   });
 
-  it('shows stale layout recovery on the map surface without auto-replaying', async () => {
-    const setup = staleLayoutRepositories();
-    render(<AccountMapApp repositories={setup.repositories} />);
-    fireEvent.click(screen.getByRole('button', { name: '계좌 중심' }));
+  it('renders legacy layout values in the same canonical account-first order without saving', () => {
+    const purpose = mapConnectionRepositories(false, false, 'purpose');
+    const purposeRender = render(<AccountMapApp repositories={purpose.repositories} />);
+    const purposeOrder = [...purposeRender.container.querySelectorAll('.account-map-node')].map((node) => node.textContent);
+    const purposeTable = screen.getByRole('table', { name: '계좌 연결 읽기 표' });
+    expect([...purposeTable.querySelectorAll('th')].map((header) => header.textContent)).toEqual(['계좌·보관처', '목적', '월 금액', '상태']);
+    expect(purpose.save).not.toHaveBeenCalled();
+    purposeRender.unmount();
 
-    expect(await screen.findByRole('button', { name: '최신 상태에서 다시 검토' })).toBeVisible();
-    expect(screen.queryByText(/저장하지 못했습니다/)).not.toBeInTheDocument();
-    expect(setup.save).toHaveBeenCalledTimes(1);
-    const purposeLayout = screen.getByRole('button', { name: '목적 중심' });
-    expect(purposeLayout).toBeDisabled();
-    fireEvent.click(purposeLayout);
-    expect(setup.save).toHaveBeenCalledTimes(1);
+    const account = mapConnectionRepositories(false, false, 'account');
+    const accountRender = render(<AccountMapApp repositories={account.repositories} />);
+    const accountOrder = [...accountRender.container.querySelectorAll('.account-map-node')].map((node) => node.textContent);
+    expect(accountOrder).toEqual(purposeOrder);
+    expect(account.save).not.toHaveBeenCalled();
   });
 
   it('blocks setup mutation actions until a cancellation conflict is resolved', async () => {
@@ -587,7 +584,7 @@ describe('AccountMapApp', () => {
   });
 
   it('shows reset conflict on the map surface without a generic management failure', async () => {
-    const setup = staleLayoutRepositories();
+    const setup = staleMapRepositories();
     setup.repositories.accountMap.reset = vi.fn(async () => ({ status: 'conflict' as const, currentRevision: 2 }));
     render(<AccountMapApp repositories={setup.repositories} />);
     fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
@@ -997,7 +994,7 @@ function staleFreshSetupRepositories(latestHasApplied = false, rejectAfterInitia
   return { repositories: { accountMap, main }, save, saveIntent };
 }
 
-function staleLayoutRepositories() {
+function staleMapRepositories() {
   const initial = createEmptyWorkspace(1);
   initial.revision = 1;
   initial.main.applied = mainData();
@@ -1108,7 +1105,7 @@ function atomicConnectionRepositories() {
   return { repositories: { accountMap, main }, save, saveIntent };
 }
 
-function mapConnectionRepositories(withArchivedDuplicate = false, conflictOnce = false) {
+function mapConnectionRepositories(withArchivedDuplicate = false, conflictOnce = false, layout: 'purpose' | 'account' = 'purpose') {
   let workspace = createEmptyWorkspace(1);
   workspace.revision = 1;
   workspace.main.applied = mainData();
@@ -1124,7 +1121,7 @@ function mapConnectionRepositories(withArchivedDuplicate = false, conflictOnce =
       { id: 'income', purposeId: 'system:income', locationId: 'salary', monthlyAmountWon: 2_000_000, remainder: true, status: 'active', createdAt: 1, updatedAt: 1 },
       { id: 'living', purposeId: 'system:living', locationId: 'checking', monthlyAmountWon: 1_000_000, remainder: true, status: 'active', createdAt: 1, updatedAt: 1 },
     ],
-    layout: 'purpose', setupCompletedAt: 1, updatedAt: 1,
+    layout, setupCompletedAt: 1, updatedAt: 1,
   };
   const latest = structuredClone(workspace);
   latest.revision = 2;

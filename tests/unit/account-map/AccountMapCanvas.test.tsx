@@ -22,11 +22,6 @@ vi.mock('../../../src/account-map/ui/motion', () => ({
     controlledMotion.closeComplete = options.onComplete;
     return { cancel() { controlledMotion.closeComplete = null; } };
   },
-  animateMapLayout: (_root: HTMLElement, mutate: () => void, options: { onComplete(): void }) => {
-    mutate();
-    options.onComplete();
-    return { cancel() {} };
-  },
 }));
 
 afterEach(() => {
@@ -36,9 +31,12 @@ afterEach(() => {
 });
 
 describe('AccountMapCanvas', () => {
-  it('defaults to purpose layout, shows system references, and hides edge amounts before focus', () => {
+  it('shows system references without a layout selector and hides edge amounts before focus', () => {
     const { container } = renderCanvas();
-    expect(screen.getByRole('button', { name: '목적 중심' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.queryByRole('group', { name: '지도 정렬' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '목적 중심' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '계좌 중심' })).not.toBeInTheDocument();
+    expect(screen.getByRole('group', { name: '지도 확대 수준' })).toBeVisible();
     expect(screen.getByRole('button', {
       name: '목적 · 생활비 · 1,000,000원 · 활성 연결 1개 · 연결 필요',
     })).toBeVisible();
@@ -63,15 +61,13 @@ describe('AccountMapCanvas', () => {
     expect(container.querySelector('.account-map-edge-amount')).toHaveTextContent('700,000원');
   });
 
-  it('supports semantic zoom and account layout controls', () => {
-    const onLayoutChange = vi.fn();
-    renderCanvas({ onLayoutChange });
+  it('supports semantic zoom without restoring a layout control', () => {
+    renderCanvas();
     fireEvent.click(screen.getByRole('button', { name: '축소' }));
     expect(screen.getByText('전체 보기')).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: '확대' }));
     expect(screen.getByText('기본 보기')).toBeVisible();
-    fireEvent.click(screen.getByRole('button', { name: '계좌 중심' }));
-    expect(onLayoutChange).toHaveBeenCalledWith('account');
+    expect(screen.queryAllByRole('button', { name: /중심$/ })).toHaveLength(0);
   });
 
   it('announces overall status amounts without active-link wording', () => {
@@ -162,17 +158,16 @@ describe('AccountMapCanvas', () => {
     expect(onInvoke).toHaveBeenCalledWith('location:vault');
   });
 
-  it('blocks layout mutations while stale recovery is visible', () => {
-    const onLayoutChange = vi.fn();
-    renderCanvas({
-      onLayoutChange,
-      recovery: { status: 'manual', latest: createEmptyWorkspace(2), action: 'layout-change', targets: [], reason: 'compound-edit' },
-    });
+  it('uses canonical account-first headers and location-then-purpose rows', () => {
+    const reversedApplied = { ...applied, links: [...applied.links].reverse(), layout: 'account' as const };
+    renderCanvas({ applied: reversedApplied });
 
-    const accountLayout = screen.getByRole('button', { name: '계좌 중심' });
-    expect(accountLayout).toBeDisabled();
-    fireEvent.click(accountLayout);
-    expect(onLayoutChange).not.toHaveBeenCalled();
+    const table = screen.getByRole('table', { name: '계좌 연결 읽기 표' });
+    expect([...table.querySelectorAll('th')].map((header) => header.textContent)).toEqual(['계좌·보관처', '목적', '월 금액', '상태']);
+    expect([...table.querySelectorAll('tbody tr')].map((row) => row.textContent)).toEqual([
+      '급여통장수입2,000,000원연결됨',
+      '생활비통장생활비700,000원연결됨',
+    ]);
   });
 
   it('opens detail only after invoking an already pinned node', () => {
@@ -307,5 +302,5 @@ function renderCanvas(overrides: Partial<React.ComponentProps<typeof AccountMapC
 }
 
 function canvas(interaction: React.ComponentProps<typeof AccountMapCanvas>['interaction'], overrides: Partial<React.ComponentProps<typeof AccountMapCanvas>> = {}) {
-  return <AccountMapCanvas applied={applied} main={main} locations={locations} interaction={interaction} viewport={{ width: 900, height: 600 }} onTransient={() => undefined} onBlur={() => undefined} onInvoke={() => undefined} onBackground={() => undefined} onEscape={() => undefined} onLayoutChange={() => undefined} {...overrides} />;
+  return <AccountMapCanvas applied={applied} main={main} locations={locations} interaction={interaction} viewport={{ width: 900, height: 600 }} onTransient={() => undefined} onBlur={() => undefined} onInvoke={() => undefined} onBackground={() => undefined} onEscape={() => undefined} {...overrides} />;
 }

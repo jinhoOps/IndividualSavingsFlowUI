@@ -1,16 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { animate, update, createLayout } = vi.hoisted(() => {
+const { animate } = vi.hoisted(() => {
   const animate = vi.fn(() => ({ cancel: vi.fn() }));
-  const update = vi.fn(() => ({ cancel: vi.fn() }));
-  const createLayout = vi.fn(() => ({ update, revert: vi.fn() }));
-  return { animate, update, createLayout };
+  return { animate };
 });
-vi.mock('animejs', () => ({ animate, createLayout }));
+vi.mock('animejs', () => ({ animate }));
 
-import { animateMapLayout, animateModalToNode, animateNodeToModal } from '../../../src/account-map/ui/motion';
+import { animateModalToNode, animateNodeToModal } from '../../../src/account-map/ui/motion';
 
-beforeEach(() => { animate.mockClear(); createLayout.mockClear(); update.mockClear(); });
+beforeEach(() => { animate.mockClear(); });
 
 describe('Account Map motion', () => {
   it('skips Anime.js when reduced motion is requested', () => {
@@ -28,13 +26,4 @@ describe('Account Map motion', () => {
     handle.cancel();
   });
 
-  it('records and animates layout changes only when motion is allowed', () => {
-    const root = document.createElement('div');
-    const mutate = vi.fn();
-    animateMapLayout(root, mutate, { reducedMotion: false, onComplete: vi.fn() });
-    expect(createLayout).toHaveBeenCalled();
-    expect(update).toHaveBeenCalled();
-    animateMapLayout(root, mutate, { reducedMotion: true, onComplete: vi.fn() });
-    expect(mutate).toHaveBeenCalled();
-  });
 });

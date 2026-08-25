@@ -1,4 +1,4 @@
-import { animate, createLayout } from 'animejs';
+import { animate } from 'animejs';
 
 export interface MotionOptions {
   reducedMotion: boolean;
@@ -59,25 +59,6 @@ export function animateModalToNode(
     onComplete: () => finish(modal, options.onComplete),
   });
   return { cancel: () => { animation.cancel(); clearMotionStyles(modal); } };
-}
-
-export function animateMapLayout(
-  root: HTMLElement,
-  mutate: () => void,
-  options: MotionOptions,
-): AnimationHandle {
-  if (options.reducedMotion) {
-    mutate();
-    options.onComplete();
-    return noAnimation;
-  }
-  const layout = createLayout(root, { children: '.account-map-node' });
-  const animation = layout.update(() => mutate(), {
-    duration: 360,
-    ease: 'out(3)',
-    onComplete: options.onComplete,
-  });
-  return { cancel: () => { animation.cancel(); layout.revert(); } };
 }
 
 const noAnimation: AnimationHandle = { cancel() {} };
