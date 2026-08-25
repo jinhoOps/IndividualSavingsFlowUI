@@ -4,7 +4,10 @@ import type { AccountMapApplied, PurposeId, SystemPurposeId } from '../domain/mo
 import { mainPurposeReferences, overallMainState, reconcilePurpose } from '../domain/reconciliation';
 
 export type MapZoom = 'overview' | 'default' | 'detail';
-export type MapLayout = 'purpose' | 'account';
+
+const systemPurposeIds: SystemPurposeId[] = [
+  'system:income', 'system:housing', 'system:living', 'system:saving', 'system:investing',
+];
 
 export interface GraphNode {
   id: string;
@@ -13,6 +16,9 @@ export interface GraphNode {
   secondary?: string;
   amountWon?: number;
   allocationTargetWon?: number;
+  isPrimaryIncome?: boolean;
+  purposeOrder?: number;
+  customPurposeParentOrder?: number;
   connectionCount: number;
   status: 'resolved' | 'unassigned' | 'excess' | 'suspended' | 'surplus' | 'deficit';
 }
@@ -25,7 +31,11 @@ export interface GraphEdge {
   status: 'active' | 'suspended';
 }
 
-export interface AccountMapGraph { nodes: GraphNode[]; edges: GraphEdge[] }
+export interface AccountMapGraph {
+  primaryIncomeLocationId: string | null;
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+}
 export interface PositionedNode extends GraphNode { x: number; y: number; width: number; height: number }
 export interface PositionedGraph {
   direction: 'left-to-right' | 'top-to-bottom';
@@ -44,14 +54,18 @@ export function buildAccountMapGraph(
   const activeCustom = applied.customPurposes.filter(({ archivedAt }) => archivedAt === undefined);
   const references = mainPurposeReferences(main);
   const purposeIds: PurposeId[] = [
-    'system:income', 'system:housing', 'system:living', 'system:saving', 'system:investing',
+    ...systemPurposeIds,
     ...(zoom === 'overview' ? [] : activeCustom.map(({ id }) => id)),
   ];
   const locationById = new Map(locations.map((location) => [location.id, location]));
   const activeLinks = applied.links.filter(({ status }) => status === 'active');
+  const primaryIncomeLocationId = selectPrimaryIncomeLocationId(activeLinks, locationById);
   const eligibleLinks = applied.links.filter((link) => zoom === 'detail' || link.status === 'active');
   const links = zoom !== 'overview' ? eligibleLinks : purposeIds.flatMap((purposeId) => {
     const candidates = eligibleLinks.filter((link) => link.purposeId === purposeId && link.status === 'active');
+    if (purposeId === 'system:income' && primaryIncomeLocationId !== null) {
+      return candidates.filter(({ locationId }) => locationId === primaryIncomeLocationId).slice(0, 1);
+    }
     return candidates.slice(0, 1);
   });
   const visibleLocationIds = new Set(links.map(({ locationId }) => locationId));
@@ -67,6 +81,12 @@ export function buildAccountMapGraph(
         ? references[purposeId as SystemPurposeId]
         : result.targetWon,
       allocationTargetWon: result.targetWon,
+      ...(purposeId.startsWith('system:')
+        ? { purposeOrder: systemPurposeIds.indexOf(purposeId as SystemPurposeId) }
+        : {
+          purposeOrder: systemPurposeIds.length,
+          customPurposeParentOrder: systemPurposeIds.indexOf(activeCustom.find(({ id }) => id === purposeId)?.parentId ?? 'system:income'),
+        }),
       connectionCount: count,
       status: result.excessWon > 0 ? 'excess' : result.unassignedWon > 0 ? 'unassigned' : 'resolved',
     };
@@ -83,6 +103,7 @@ export function buildAccountMapGraph(
         label: location.shortName,
         ...(location.institution === undefined ? {} : { secondary: location.institution.name }),
         amountWon: connections.reduce((sum, { monthlyAmountWon }) => sum + monthlyAmountWon, 0),
+        ...(location.id === primaryIncomeLocationId ? { isPrimaryIncome: true } : {}),
         connectionCount: connections.length,
         status: location.archivedAt === undefined ? 'resolved' : 'suspended',
       };
@@ -97,7 +118,8 @@ export function buildAccountMapGraph(
     status: overall.kind === 'deficit' ? 'deficit' : 'surplus',
   }];
   return {
-    nodes: [...purposeNodes, ...locationNodes, ...statusNodes],
+    primaryIncomeLocationId,
+    nodes: [...locationNodes, ...purposeNodes, ...statusNodes].sort(compareGraphNodes),
     edges: links.map((link) => ({
       id: link.id,
       purposeId: link.purposeId,
@@ -110,7 +132,6 @@ export function buildAccountMapGraph(
 
 export function layoutAccountMap(
   graph: AccountMapGraph,
-  layout: MapLayout,
   viewport: { width: number; height: number },
   _zoom: MapZoom,
 ): PositionedGraph {
@@ -122,17 +143,13 @@ export function layoutAccountMap(
   const nodeWidth = direction === 'top-to-bottom'
     ? Math.min(184, (width - margin * 2 - 12) / (width < 540 ? 2 : 3))
     : Math.min(210, (width - margin * 3) / 2);
-  const ordered = [...graph.nodes].sort((left, right) => {
-    const leftRank = nodeRank(left, layout);
-    const rightRank = nodeRank(right, layout);
-    return leftRank - rightRank || left.id.localeCompare(right.id);
-  });
+  const ordered = [...graph.nodes].sort(compareGraphNodes);
   const height = direction === 'top-to-bottom'
     ? mobileContentHeight(ordered.length, width, margin, nodeWidth, nodeHeight, minimumHeight)
-    : desktopContentHeight(ordered, layout, margin, nodeHeight, minimumHeight);
+    : desktopContentHeight(ordered, margin, nodeHeight, minimumHeight);
   const positioned = direction === 'top-to-bottom'
     ? placeGrid(ordered, width, height, margin, nodeWidth, nodeHeight)
-    : placeColumns(ordered, layout, width, height, margin, nodeWidth, nodeHeight);
+    : placeColumns(ordered, width, height, margin, nodeWidth, nodeHeight);
   return { direction, nodes: positioned, edges: [...graph.edges], width, height };
 }
 
@@ -142,11 +159,10 @@ function mobileContentHeight(nodeCount: number, width: number, margin: number, n
   return Math.max(minimumHeight, margin * 2 + rows * nodeHeight + Math.max(0, rows - 1) * 12);
 }
 
-function desktopContentHeight(nodes: GraphNode[], layout: MapLayout, margin: number, nodeHeight: number, minimumHeight: number): number {
-  const leftKind = layout === 'purpose' ? 'purpose' : 'location';
+function desktopContentHeight(nodes: GraphNode[], margin: number, nodeHeight: number, minimumHeight: number): number {
   const sideCount = Math.max(
-    nodes.filter(({ kind }) => kind === leftKind).length,
-    nodes.filter(({ kind }) => kind !== leftKind && kind !== 'status').length,
+    nodes.filter(({ kind }) => kind === 'location').length,
+    nodes.filter(({ kind }) => kind === 'purpose').length,
   );
   return Math.max(minimumHeight, margin * 2 + sideCount * nodeHeight + Math.max(0, sideCount - 1) * 12);
 }
@@ -168,11 +184,10 @@ function placeGrid(nodes: GraphNode[], width: number, height: number, margin: nu
   }));
 }
 
-function placeColumns(nodes: GraphNode[], layout: MapLayout, width: number, height: number, margin: number, nodeWidth: number, nodeHeight: number): PositionedNode[] {
+function placeColumns(nodes: GraphNode[], width: number, height: number, margin: number, nodeWidth: number, nodeHeight: number): PositionedNode[] {
   const status = nodes.filter(({ kind }) => kind === 'status');
-  const leftKind = layout === 'purpose' ? 'purpose' : 'location';
-  const left = nodes.filter(({ kind }) => kind === leftKind);
-  const right = nodes.filter(({ kind }) => kind !== leftKind && kind !== 'status');
+  const left = nodes.filter(({ kind }) => kind === 'location');
+  const right = nodes.filter(({ kind }) => kind === 'purpose');
   return [
     ...placeSide(left, margin, height, margin, nodeWidth, nodeHeight),
     ...placeSide(right, width - margin - nodeWidth, height, margin, nodeWidth, nodeHeight),
@@ -187,10 +202,53 @@ function placeSide(nodes: GraphNode[], x: number, height: number, margin: number
   return nodes.map((node, index) => ({ ...node, x, y: margin + index * step, width: nodeWidth, height: actualHeight }));
 }
 
-function nodeRank(node: GraphNode, layout: MapLayout): number {
-  if (node.kind === 'status') return 2;
-  if (layout === 'purpose') return node.kind === 'purpose' ? 0 : 1;
-  return node.kind === 'location' ? 0 : 1;
+function selectPrimaryIncomeLocationId(
+  activeLinks: readonly AccountMapApplied['links'][number][],
+  locationById: ReadonlyMap<string, FinancialLocation>,
+): string | null {
+  const incomeAmounts = new Map<string, number>();
+  for (const link of activeLinks) {
+    const location = locationById.get(link.locationId);
+    if (link.purposeId !== 'system:income' || link.monthlyAmountWon <= 0 || location?.archivedAt !== undefined) continue;
+    incomeAmounts.set(link.locationId, (incomeAmounts.get(link.locationId) ?? 0) + link.monthlyAmountWon);
+  }
+  return [...incomeAmounts.keys()].sort((leftId, rightId) => {
+    const amountDifference = (incomeAmounts.get(rightId) ?? 0) - (incomeAmounts.get(leftId) ?? 0);
+    if (amountDifference !== 0) return amountDifference;
+    const nameDifference = normalizedName(locationById.get(leftId)?.shortName ?? '').localeCompare(normalizedName(locationById.get(rightId)?.shortName ?? ''));
+    return nameDifference || leftId.localeCompare(rightId);
+  })[0] ?? null;
+}
+
+function compareGraphNodes(left: GraphNode, right: GraphNode): number {
+  const kindRank = graphNodeKindRank(left) - graphNodeKindRank(right);
+  if (kindRank !== 0) return kindRank;
+  if (left.kind === 'location' && right.kind === 'location') {
+    if (left.isPrimaryIncome !== right.isPrimaryIncome) return left.isPrimaryIncome ? -1 : 1;
+    return (right.amountWon ?? 0) - (left.amountWon ?? 0)
+      || right.connectionCount - left.connectionCount
+      || normalizedName(left.label).localeCompare(normalizedName(right.label))
+      || left.id.localeCompare(right.id);
+  }
+  if (left.kind === 'purpose' && right.kind === 'purpose') {
+    const systemOrder = (left.purposeOrder ?? 0) - (right.purposeOrder ?? 0);
+    if (systemOrder !== 0) return systemOrder;
+    if (left.purposeOrder === systemPurposeIds.length && right.purposeOrder === systemPurposeIds.length) {
+      return (left.customPurposeParentOrder ?? 0) - (right.customPurposeParentOrder ?? 0)
+        || (right.allocationTargetWon ?? 0) - (left.allocationTargetWon ?? 0)
+        || normalizedName(left.label).localeCompare(normalizedName(right.label))
+        || left.id.localeCompare(right.id);
+    }
+  }
+  return left.id.localeCompare(right.id);
+}
+
+function graphNodeKindRank(node: GraphNode): number {
+  return node.kind === 'location' ? 0 : node.kind === 'purpose' ? 1 : 2;
+}
+
+function normalizedName(name: string): string {
+  return name.normalize('NFKC').trim().toLocaleLowerCase('ko-KR');
 }
 
 function purposeLabel(id: PurposeId, applied: AccountMapApplied): string {
