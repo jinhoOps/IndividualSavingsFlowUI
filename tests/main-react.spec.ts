@@ -470,6 +470,21 @@ async function expectReviewVisualInViewport(page: Page) {
   })).toEqual({ hasArea: true, inViewport: true, opacity: 1 });
 }
 
+async function expectReviewReadingWidth(page: Page, viewportWidth: number) {
+  const reviewSurface = page.locator('.setup-flow-surface');
+  const allocation = page.locator('.allocation-bar');
+  await expect(reviewSurface).not.toHaveClass(/app-wide-visual/);
+  await expect(allocation).toHaveClass(/app-wide-visual/);
+
+  await expect.poll(() => Promise.all([
+    reviewSurface.evaluate((element) => element.getBoundingClientRect().width),
+    allocation.evaluate((element) => element.getBoundingClientRect().width),
+  ])).toEqual([
+    Math.min(viewportWidth - 32, 48 * 16),
+    Math.min(viewportWidth - 32, 75 * 16),
+  ]);
+}
+
 async function expectDashboardSummary(page: Page, amounts: {
   consumption: string;
   remaining: string;
@@ -939,6 +954,30 @@ test('setup motion reaches final state in real time at required viewports', asyn
     await expect(page.getByRole('button', { name: '계획 적용' })).toBeVisible();
     await expect(page.locator('.allocation-bar')).toHaveClass(/app-wide-visual/);
     await expect(page.getByTestId('allocation-visual-stage')).not.toHaveClass(/app-wide-visual/);
+    await expectReviewReadingWidth(page, viewport.width);
+    await expectReviewVisualInViewport(page);
+    await expect.poll(() => page.evaluate(() => (
+      document.documentElement.scrollWidth <= window.innerWidth
+    ))).toBe(true);
+
+    await page.evaluate((workspace) => {
+      localStorage.setItem('isf-workspace-v1', JSON.stringify({
+        ...workspace,
+        main: {
+          applied: workspace.main.applied,
+          setupProgress: {
+            kind: 'restart',
+            step: 'review',
+            draft: workspace.main.applied,
+            savedAt: Date.now(),
+          },
+        },
+      }));
+    }, appliedWorkspaceV1);
+    await page.reload();
+
+    await expect(page.getByRole('button', { name: '계획 적용' })).toBeVisible();
+    await expectReviewReadingWidth(page, viewport.width);
     await expectReviewVisualInViewport(page);
     await expect.poll(() => page.evaluate(() => (
       document.documentElement.scrollWidth <= window.innerWidth

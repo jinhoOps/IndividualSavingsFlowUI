@@ -84,9 +84,7 @@ export function SetupFlow({
   const stepIndex = steps.indexOf(step);
   const previousStep = steps[stepIndex - 1];
   const nextStep = steps[stepIndex + 1];
-  const setupSurfaceClassName = step === 'review'
-    ? 'setup-flow-surface shadow-float app-wide-visual'
-    : 'setup-flow-surface shadow-float';
+  const setupSurfaceClassName = 'setup-flow-surface shadow-float';
   const incomeError = findIssue(issues, 'monthlyNetIncomeWon')
     ?? (incomeSubmittedEmpty ? issueMessage('income_required') : undefined);
   const stepMotionRef = useAnimeScope<HTMLFormElement>(({ root, reducedMotion }) => {
