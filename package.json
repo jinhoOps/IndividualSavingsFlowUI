@@ -15,6 +15,7 @@
     "check:source": "tsc --noEmit",
     "check:unit": "tsc --noEmit -p tsconfig.unit.json",
     "lint": "tsc --noEmit",
+    "postinstall": "node scripts/ensure-orca-codegraph-index.mjs",
     "test:e2e": "playwright test",
     "test:unit": "vitest run",
     "test:unit:watch": "vitest",

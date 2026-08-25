@@ -17,6 +17,7 @@
 - `.agents/skills/verify-repository-change/SKILL.md`: repository verification skill.
 - `.github/workflows/ci.yml`: deterministic CI.
 - `scripts/check-agent-harness.mjs`: harness checker.
+- `scripts/ensure-orca-codegraph-index.mjs`: one-time CodeGraph initializer for new Orca worktrees.
 - `package.json`: `check:harness` and `check:ci`.
 
 ## Removed From Scope
@@ -51,3 +52,4 @@ Expected:
 - GitHub branch protection should require the `CI` workflow if remote enforcement is desired.
 - GitHub Actions itself is the final authority for workflow syntax after push.
 - Existing Orca worktrees need normal merge or rebase from `main` to pick up these files.
+- New Orca worktrees run the existing `npm install` setup hook; its `postinstall` initializes that worktree's `.codegraph/` only when needed. Do not copy or share CodeGraph databases between worktrees.

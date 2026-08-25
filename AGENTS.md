@@ -73,9 +73,9 @@
 
 ## CodeGraph
 
-저장소에는 이미 `.codegraph/`가 있다. 이를 재사용하며 일반 작업자는 CodeGraph `init`, 재초기화, rebuild 또는 삭제를 실행하지 않는다. 일반적인 탐색은 `rg`, `rg --files`, 역할별 문서를 우선 사용하고 CodeGraph 초기화를 완료 조건으로 삼지 않는다.
+Orca가 새 작업 트리에서 실행하는 기존 `npm install`은 `postinstall`을 통해, 그 작업 트리가 Orca 환경이고 자체 `.codegraph/`가 없을 때만 `codegraph init .`을 한 번 실행한다. 각 worktree의 그래프 DB는 독립적이므로 다른 worktree의 `.codegraph/`를 복사하거나 심볼릭 링크하지 않는다.
 
-`.codegraph/`가 없거나 실제로 사용할 수 없고, 작업에 그래프 인덱스가 실질적으로 필요하며 일반 탐색으로 부족할 때만 Coordinator 또는 명시적으로 지정된 graph owner 한 명이 초기화나 rebuild를 수행할 수 있다. 다른 작업자는 임의로 복구하지 말고 Coordinator에게 알린다.
+일반 작업자는 자신의 인덱스를 재사용하며 `explore`와 필요 시 `codegraph sync . --quiet`만 사용한다. `init`, 재초기화, rebuild, 삭제는 실행하지 않는다. 자동 초기화가 누락됐고 그래프가 실제로 필요하면 Coordinator에게 알린다. 일반적인 탐색은 `rg`, `rg --files`, 역할별 문서를 우선 사용하고 CodeGraph 초기화를 완료 조건으로 삼지 않는다.
 
 ## Verification
 

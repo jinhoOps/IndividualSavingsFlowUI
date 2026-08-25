@@ -27,6 +27,7 @@ Repository files:
 - `.agents/skills/review-product-experience/SKILL.md`: existing cross-functional product review skill.
 - `.agents/skills/verify-repository-change/SKILL.md`: change-surface to verification/handoff routing.
 - `scripts/check-agent-harness.mjs`: deterministic harness shape checker.
+- `scripts/ensure-orca-codegraph-index.mjs`: initializes a per-worktree CodeGraph index only during an Orca-managed `npm install` when the index is absent.
 - `package.json`: `check:harness` and `check:ci`.
 - `.github/workflows/ci.yml`: required deterministic CI candidate.
 
@@ -59,6 +60,8 @@ Those rules are intended for Codex Cloud review, local agents, and human reviewe
 ## Orca Worktree Behavior
 
 The authoritative harness lives inside the Git repository. New Orca worktrees inherit it after normal merge/rebase from `main`. Existing worktrees pick it up through normal Git integration. No parent-level files under `/Users/jinho/orca/workspaces/IndividualSavingsFlowUI` are required.
+
+The repository's existing Orca setup command is `npm install`. Its `postinstall` hook detects `ORCA_WORKTREE_ID` and initializes `.codegraph/` only when that worktree has no index. The index stays local to the worktree; workers reuse it and never copy, link, rebuild, or delete another worktree's index.
 
 ## Verification
 
