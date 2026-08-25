@@ -43,7 +43,7 @@ afterEach(() => {
 });
 
 describe('AccountMapCanvas', () => {
-  it('shows system references without a layout selector and hides edge amounts before focus', () => {
+  it('shows purpose references without a layout selector while keeping account totals out of the map', () => {
     const { container } = renderCanvas();
     expect(screen.queryByRole('group', { name: '지도 정렬' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '목적 중심' })).not.toBeInTheDocument();
@@ -53,7 +53,7 @@ describe('AccountMapCanvas', () => {
       name: '목적 · 생활비 · 1,000,000원 · 활성 연결 1개 · 연결 필요',
     })).toBeVisible();
     expect(screen.getByRole('button', {
-      name: '계좌·보관처 · 생활비통장 · 활성 월 연결 합계 700,000원 · 활성 연결 1개 · 연결 완료',
+      name: '계좌·보관처 · 생활비통장 · 활성 연결 1개 · 연결 완료',
     })).toBeVisible();
     expect(container.querySelector('.account-map-edge-amount')).toBeNull();
     expect(screen.getByRole('table', { name: '계좌 연결 읽기 표' })).toBeInTheDocument();
@@ -68,7 +68,7 @@ describe('AccountMapCanvas', () => {
     renderCanvas();
 
     const anchoredName = screen.getByRole('button', { name: /급여통장/ }).getAttribute('aria-label') ?? '';
-    expect(anchoredName).toBe('계좌·보관처 · 급여통장 · 주 수입 계좌 · 활성 월 연결 합계 2,000,000원 · 활성 연결 1개 · 연결 완료');
+    expect(anchoredName).toBe('계좌·보관처 · 급여통장 · 주 수입 계좌 · 활성 연결 1개 · 연결 완료');
     expect(anchoredName.match(/주 수입 계좌/gu)).toHaveLength(1);
 
     cleanup();
@@ -76,7 +76,7 @@ describe('AccountMapCanvas', () => {
       applied: { ...applied, links: applied.links.filter(({ purposeId }) => purposeId !== 'system:income') },
     });
     expect(screen.getByRole('button', {
-      name: '계좌·보관처 · 급여통장 · 활성 월 연결 합계 0원 · 활성 연결 0개 · 연결 완료',
+      name: '계좌·보관처 · 급여통장 · 활성 연결 0개 · 연결 완료',
     })).toBeVisible();
   });
 
@@ -92,7 +92,8 @@ describe('AccountMapCanvas', () => {
   it('shows a static active-link monthly composition for a focused location without animation', () => {
     const onTransient = vi.fn();
     const { rerender } = renderCanvas({ onTransient });
-    const location = screen.getByRole('button', { name: /급여통장.*2,000,000원/ });
+    const location = screen.getByRole('button', { name: /급여통장.*활성 연결 1개/ });
+    expect(location).not.toHaveTextContent('2,000,000원');
 
     fireEvent.focus(location);
     expect(onTransient).toHaveBeenCalledWith('location:salary');
@@ -173,7 +174,7 @@ describe('AccountMapCanvas', () => {
       });
     }
     render(<InteractiveCanvas />);
-    const location = screen.getByRole('button', { name: /급여통장.*2,000,000원/ });
+    const location = screen.getByRole('button', { name: /급여통장.*활성 연결 1개/ });
 
     fireEvent.click(location);
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
@@ -196,7 +197,7 @@ describe('AccountMapCanvas', () => {
       });
     }
     render(<InteractiveCanvas />);
-    fireEvent.click(screen.getByRole('button', { name: /급여통장.*2,000,000원/ }));
+    fireEvent.click(screen.getByRole('button', { name: /급여통장.*활성 연결 1개/ }));
 
     expect(within(screen.getByLabelText('급여통장 월 연결 구성')).getByText(/100%/)).toBeVisible();
     expect(controlledMotion.connectionOptions).toEqual([{ reducedMotion: true }]);
@@ -337,7 +338,7 @@ describe('AccountMapCanvas', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '축소' }));
     expect(screen.getByText('전체 보기')).toBeVisible();
-    expect(screen.getByRole('button', { name: '계좌·보관처 · 생활비통장 · 활성 월 연결 합계 700,000원 · 활성 연결 1개 · 연결 완료' })).toBeVisible();
+    expect(screen.getByRole('button', { name: '계좌·보관처 · 생활비통장 · 활성 연결 1개 · 연결 완료' })).toBeVisible();
     expect(screen.queryByRole('button', { name: /보조생활비/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /비상금함/ })).not.toBeInTheDocument();
     expect(container.querySelectorAll('.account-map-node--location')).toHaveLength(2);
@@ -346,7 +347,7 @@ describe('AccountMapCanvas', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '확대' }));
     const unlinked = screen.getByRole('button', {
-      name: '계좌·보관처 · 비상금함 · 활성 월 연결 합계 0원 · 활성 연결 0개 · 연결 완료',
+      name: '계좌·보관처 · 비상금함 · 활성 연결 0개 · 연결 완료',
     });
     expect(screen.getByRole('button', { name: /보조생활비/ })).toBeVisible();
     expect(unlinked).toBeVisible();
