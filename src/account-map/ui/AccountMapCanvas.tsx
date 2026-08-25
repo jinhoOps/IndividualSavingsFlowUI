@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type JSX } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type JSX } from 'react';
 import { Button } from '../../components/common/Button';
 import type { MainData } from '../../main/domain/model';
 import type { FinancialLocation } from '../../workspace/domain/financialLocation';
@@ -6,6 +6,8 @@ import type { MapInteractionState, RecoveryState } from '../application/reducer'
 import type { AccountMapApplied } from '../domain/model';
 import { buildAccountMapGraph, layoutAccountMap, type MapZoom, type PositionedNode } from './mapLayout';
 import { AccountMapModal, type AccountMapNodeEditInput } from './AccountMapModal';
+import { summarizeLocationConnectionDetail } from './accountMapConnectionDetail';
+import { animateConnectionDetail } from './motion';
 
 const zooms: MapZoom[] = ['overview', 'default', 'detail'];
 const zoomLabels = { overview: '전체 보기', default: '기본 보기', detail: '상세 보기' } as const;
@@ -45,6 +47,7 @@ export function AccountMapCanvas({
 }: AccountMapCanvasProps): JSX.Element {
   const [zoom, setZoom] = useState<MapZoom>('default');
   const canvasRef = useRef<HTMLDivElement>(null);
+  const connectionDetailRef = useRef<HTMLElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const nodeRefs = useRef(new Map<string, HTMLButtonElement>());
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -103,6 +106,23 @@ export function AccountMapCanvas({
         return purposeDifference || left.id.localeCompare(right.id);
       }));
   const focusedId = interaction.transientNodeId ?? interaction.pinnedNodeId;
+  const focusedNode = focusedId === null ? undefined : nodeById.get(focusedId);
+  const connectionDetail = focusedNode?.kind === 'location'
+    ? summarizeLocationConnectionDetail(positioned, focusedNode.id)
+    : null;
+  const connectionDetailRows = connectionDetail === null ? [] : withDisplayedPercents(connectionDetail.rows);
+  const pinnedNode = interaction.pinnedNodeId === null ? undefined : nodeById.get(interaction.pinnedNodeId);
+  const pinnedLocationId = pinnedNode?.kind === 'location' ? pinnedNode.id : null;
+  const previousPinnedLocationId = useRef<string | null>(pinnedLocationId);
+  const connectionDetailPosition = connectionDetail === null || focusedNode === undefined
+    ? null
+    : positionConnectionDetail(focusedNode, effectiveViewport, pan);
+  useEffect(() => {
+    const isNewlyPinned = previousPinnedLocationId.current !== pinnedLocationId;
+    previousPinnedLocationId.current = pinnedLocationId;
+    if (!isNewlyPinned || pinnedLocationId === null || connectionDetailRef.current === null) return;
+    return animateConnectionDetail(connectionDetailRef.current, { reducedMotion, onComplete: () => undefined }).cancel;
+  }, [pinnedLocationId]);
   const connectedIds = new Set<string>(focusedId === null ? [] : positioned.edges.flatMap((edge) => (
     edge.purposeId === focusedId || edge.locationId === focusedId ? [edge.purposeId, edge.locationId] : []
   )));
@@ -283,6 +303,27 @@ export function AccountMapCanvas({
             ><span>{node.label}</span>{node.amountWon === undefined ? null : <strong>{formatWon(node.amountWon)}</strong>}{node.secondary === undefined ? null : <small>{node.secondary}</small>}{node.status === 'unassigned' ? <small>연결 필요</small> : node.status === 'excess' ? <small>초과 연결</small> : null}</button>;
           })}
         </div>
+        {connectionDetail === null ? null : <aside
+          ref={connectionDetailRef}
+          className="account-map-connection-detail"
+          aria-label={`${focusedNode?.label ?? '계좌'} 월 연결 구성`}
+          style={effectiveViewport.width <= 600 || connectionDetailPosition === null ? undefined : {
+            left: connectionDetailPosition.left,
+            top: connectionDetailPosition.top,
+            maxBlockSize: connectionDetailPosition.maxBlockSize,
+          }}
+        >
+          <div className="account-map-connection-detail__heading"><h3>월 연결 구성</h3><strong>{formatWon(connectionDetail.totalWon)}</strong></div>
+          <p>월 계획 연결 기준 · 실제 잔액·거래·계좌 간 이동이 아님</p>
+          {connectionDetailRows.length === 0 ? <p className="account-map-connection-detail__empty">활성 월 연결이 없습니다.</p> : <ul>{connectionDetailRows.map((row) => <li key={row.purposeId}>
+            <div><span>{row.label}</span><strong>{formatWon(row.amountWon)} · {row.displayPercent}%</strong></div>
+            <span className="account-map-connection-detail__track" aria-hidden="true"><span
+              className="account-map-connection-detail__weight"
+              data-account-map-connection-weight={row.percent / 100}
+              style={{ '--account-map-connection-weight': row.percent / 100 } as CSSProperties}
+            /></span>
+          </li>)}</ul>}
+        </aside>}
       </div>
       <table className="sr-only account-map-linear-table" aria-label="계좌 연결 읽기 표">
         <thead><tr><th>계좌·보관처</th><th>목적</th><th>월 금액</th><th>상태</th></tr></thead>
@@ -331,3 +372,24 @@ function statusAmountLabel(node: PositionedNode): string {
     : `전체 미배정 ${formatWon(Math.abs(node.amountWon ?? 0))}`;
 }
 function formatWon(value: number): string { return `${new Intl.NumberFormat('ko-KR').format(value)}원`; }
+
+function withDisplayedPercents<Row extends { percent: number }>(rows: readonly Row[]): Array<Row & { displayPercent: number }> {
+  const floors = rows.map(({ percent }) => Math.floor(percent));
+  const remaining = 100 - floors.reduce((sum, percent) => sum + percent, 0);
+  const indices = rows.map(({ percent }, index) => ({ index, remainder: percent - floors[index]! }))
+    .sort((left, right) => right.remainder - left.remainder || left.index - right.index);
+  for (let index = 0; index < remaining; index += 1) floors[indices[index]?.index ?? 0]! += 1;
+  return rows.map((row, index) => ({ ...row, displayPercent: floors[index]! }));
+}
+
+function positionConnectionDetail(
+  node: PositionedNode,
+  viewport: { width: number; height: number },
+  pan: { x: number; y: number },
+): { left: number; top: number; maxBlockSize: number } {
+  const inset = 16;
+  const maxInlineSize = Math.min(312, viewport.width - inset * 2);
+  const left = Math.max(inset, Math.min(node.x + pan.x + node.width + 12, viewport.width - maxInlineSize - inset));
+  const top = Math.max(inset, Math.min(node.y + pan.y, viewport.height - 196));
+  return { left, top, maxBlockSize: Math.max(120, viewport.height - top - inset) };
+}

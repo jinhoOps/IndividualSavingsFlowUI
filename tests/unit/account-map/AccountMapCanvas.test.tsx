@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { useReducer, useState } from 'react';
@@ -10,6 +10,8 @@ import { createEmptyWorkspace } from '../../../src/workspace/domain/model';
 const controlledMotion = vi.hoisted(() => ({
   closeComplete: null as (() => void) | null,
   closeStarts: 0,
+  connectionStarts: 0,
+  connectionOptions: [] as { reducedMotion: boolean }[],
 }));
 
 vi.mock('../../../src/account-map/ui/motion', () => ({
@@ -22,12 +24,20 @@ vi.mock('../../../src/account-map/ui/motion', () => ({
     controlledMotion.closeComplete = options.onComplete;
     return { cancel() { controlledMotion.closeComplete = null; } };
   },
+  animateConnectionDetail: (_root: HTMLElement, options: { reducedMotion: boolean; onComplete(): void }) => {
+    controlledMotion.connectionStarts += 1;
+    controlledMotion.connectionOptions.push({ reducedMotion: options.reducedMotion });
+    return { cancel() {} };
+  },
 }));
 
 afterEach(() => {
   cleanup();
   controlledMotion.closeComplete = null;
   controlledMotion.closeStarts = 0;
+  controlledMotion.connectionStarts = 0;
+  controlledMotion.connectionOptions = [];
+  vi.unstubAllGlobals();
 });
 
 describe('AccountMapCanvas', () => {
@@ -59,6 +69,69 @@ describe('AccountMapCanvas', () => {
     expect(onTransient).toHaveBeenCalledWith('system:living');
     rerender(canvas({ transientNodeId: 'system:living', pinnedNodeId: null, modalNodeId: null }, { onTransient }));
     expect(container.querySelector('.account-map-edge-amount')).toHaveTextContent('700,000원');
+  });
+
+  it('shows a static active-link monthly composition for a focused location without animation', () => {
+    const onTransient = vi.fn();
+    const { rerender } = renderCanvas({ onTransient });
+    const location = screen.getByRole('button', { name: /급여통장.*2,000,000원/ });
+
+    fireEvent.focus(location);
+    expect(onTransient).toHaveBeenCalledWith('location:salary');
+    rerender(canvas({ transientNodeId: 'location:salary', pinnedNodeId: null, modalNodeId: null }, { onTransient }));
+
+    expect(screen.getByText('월 연결 구성')).toBeVisible();
+    expect(screen.getByText('월 계획 연결 기준 · 실제 잔액·거래·계좌 간 이동이 아님')).toBeVisible();
+    const detail = screen.getByLabelText('급여통장 월 연결 구성');
+    expect(within(detail).getByText('수입')).toBeVisible();
+    expect(within(detail).getByText(/100%/)).toBeVisible();
+    expect(controlledMotion.connectionStarts).toBe(0);
+  });
+
+  it('pins a location with one animation before a second activation opens its existing modal', () => {
+    vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: false })));
+    function InteractiveCanvas() {
+      const [interaction, setInteraction] = useState({ transientNodeId: null as string | null, pinnedNodeId: null as string | null, modalNodeId: null as string | null });
+      return canvas(interaction, {
+        onInvoke: (nodeId) => setInteraction((current) => current.pinnedNodeId === nodeId
+          ? { ...current, modalNodeId: nodeId }
+          : { transientNodeId: null, pinnedNodeId: nodeId, modalNodeId: null }),
+      });
+    }
+    render(<InteractiveCanvas />);
+    const location = screen.getByRole('button', { name: /급여통장.*2,000,000원/ });
+
+    fireEvent.click(location);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByText('월 연결 구성')).toBeVisible();
+    expect(within(screen.getByLabelText('급여통장 월 연결 구성')).getByText(/100%/)).toBeVisible();
+    expect(controlledMotion.connectionStarts).toBe(1);
+    expect(controlledMotion.connectionOptions).toEqual([{ reducedMotion: false }]);
+
+    fireEvent.click(location);
+    expect(screen.getByRole('dialog', { name: '급여통장 상세' })).toBeVisible();
+    expect(controlledMotion.connectionStarts).toBe(1);
+  });
+
+  it('passes reduced motion to the pin-only detail animation while rendering the final detail immediately', () => {
+    vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: true })));
+    function InteractiveCanvas() {
+      const [interaction, setInteraction] = useState({ transientNodeId: null as string | null, pinnedNodeId: null as string | null, modalNodeId: null as string | null });
+      return canvas(interaction, {
+        onInvoke: (nodeId) => setInteraction({ transientNodeId: null, pinnedNodeId: nodeId, modalNodeId: null }),
+      });
+    }
+    render(<InteractiveCanvas />);
+    fireEvent.click(screen.getByRole('button', { name: /급여통장.*2,000,000원/ }));
+
+    expect(within(screen.getByLabelText('급여통장 월 연결 구성')).getByText(/100%/)).toBeVisible();
+    expect(controlledMotion.connectionOptions).toEqual([{ reducedMotion: true }]);
+  });
+
+  it('keeps purpose focus on its existing relationship detail without account composition', () => {
+    render(canvas({ transientNodeId: 'system:living', pinnedNodeId: null, modalNodeId: null }));
+    expect(screen.getByText('700,000원', { selector: '.account-map-edge-amount' })).toBeVisible();
+    expect(screen.queryByText('월 연결 구성')).not.toBeInTheDocument();
   });
 
   it('supports semantic zoom without restoring a layout control', () => {

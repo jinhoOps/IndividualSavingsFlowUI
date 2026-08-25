@@ -24,6 +24,7 @@ vi.mock('../../../src/account-map/ui/motion', () => ({
     else options.onComplete();
     return { cancel() { appMotion.closeComplete = null; } };
   },
+  animateConnectionDetail: () => ({ cancel() {} }),
 }));
 
 afterEach(() => {

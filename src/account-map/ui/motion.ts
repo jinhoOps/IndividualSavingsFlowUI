@@ -61,6 +61,42 @@ export function animateModalToNode(
   return { cancel: () => { animation.cancel(); clearMotionStyles(modal); } };
 }
 
+export function animateConnectionDetail(root: HTMLElement, options: MotionOptions): AnimationHandle {
+  const weights = [...root.querySelectorAll<HTMLElement>('[data-account-map-connection-weight]')];
+  if (options.reducedMotion) {
+    weights.forEach(clearConnectionDetailMotionStyles);
+    options.onComplete();
+    return noAnimation;
+  }
+  if (weights.length === 0) {
+    options.onComplete();
+    return noAnimation;
+  }
+  const animations = weights.map((weight, index) => {
+    const finalWeight = Number(weight.dataset.accountMapConnectionWeight);
+    weight.style.transformOrigin = 'left center';
+    weight.style.willChange = 'transform';
+    return animate(weight, {
+      scaleX: [0, Number.isFinite(finalWeight) ? finalWeight : 0],
+      duration: 180,
+      delay: index * 40,
+      ease: 'out(3)',
+      ...(index === weights.length - 1 ? {
+        onComplete: () => {
+          weights.forEach(clearConnectionDetailMotionStyles);
+          options.onComplete();
+        },
+      } : {}),
+    });
+  });
+  return {
+    cancel: () => {
+      animations.forEach((animation) => animation.cancel());
+      weights.forEach(clearConnectionDetailMotionStyles);
+    },
+  };
+}
+
 const noAnimation: AnimationHandle = { cancel() {} };
 function safeScale(part: number, whole: number): number { return whole > 0 ? part / whole : 1; }
 function finish(element: HTMLElement, onComplete: () => void) { clearMotionStyles(element); onComplete(); }
@@ -69,6 +105,12 @@ function clearMotionStyles(element: HTMLElement) {
   element.style.removeProperty('transform');
   element.style.removeProperty('translate');
   element.style.removeProperty('scale');
+  element.style.removeProperty('transform-origin');
+  element.style.removeProperty('will-change');
+}
+
+function clearConnectionDetailMotionStyles(element: HTMLElement) {
+  element.style.removeProperty('transform');
   element.style.removeProperty('transform-origin');
   element.style.removeProperty('will-change');
 }
