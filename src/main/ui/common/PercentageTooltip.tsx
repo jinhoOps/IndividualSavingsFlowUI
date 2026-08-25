@@ -42,15 +42,42 @@ export function PercentageTooltip({ id, value, open, position }: PercentageToolt
     };
 
     correctHorizontalPosition();
+    let frameId: number | null = null;
+    let fallbackTimer: number | null = null;
+    const cancelScheduledCorrection = () => {
+      if (frameId !== null) window.cancelAnimationFrame(frameId);
+      if (fallbackTimer !== null) window.clearTimeout(fallbackTimer);
+      frameId = null;
+      fallbackTimer = null;
+    };
+    const scheduleCorrection = () => {
+      cancelScheduledCorrection();
+
+      if (typeof window.requestAnimationFrame === 'function') {
+        frameId = window.requestAnimationFrame(() => {
+          frameId = window.requestAnimationFrame(() => {
+            frameId = null;
+            correctHorizontalPosition();
+          });
+        });
+        return;
+      }
+
+      fallbackTimer = window.setTimeout(() => {
+        fallbackTimer = null;
+        correctHorizontalPosition();
+      }, 0);
+    };
     const resizeObserver = typeof ResizeObserver === 'undefined'
       ? null
-      : new ResizeObserver(correctHorizontalPosition);
+      : new ResizeObserver(scheduleCorrection);
     resizeObserver?.observe(stage);
-    window.addEventListener('resize', correctHorizontalPosition);
+    window.addEventListener('resize', scheduleCorrection);
 
     return () => {
       resizeObserver?.disconnect();
-      window.removeEventListener('resize', correctHorizontalPosition);
+      window.removeEventListener('resize', scheduleCorrection);
+      cancelScheduledCorrection();
     };
   }, [endContained, open, position.xPercent, value]);
 
