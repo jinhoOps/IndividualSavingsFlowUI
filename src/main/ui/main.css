@@ -184,7 +184,10 @@
   .allocation-bar__deficit { @apply text-red-700; }
 
   .flow-tooltip {
-    @apply w-fit rounded-md bg-slate-950 px-2 py-1 text-xs font-bold text-white;
+    @apply box-border w-fit max-w-full overflow-hidden text-ellipsis whitespace-nowrap rounded-md border px-2 py-1 text-xs font-bold text-ink;
+    background-color: #f4fbf9;
+    border-color: rgb(15 118 110 / 0.28);
+    box-shadow: 0 6px 18px rgb(15 118 110 / 0.14);
   }
 
   .cashflow-donut {
@@ -257,15 +260,11 @@
   }
 
   .allocation-bar__visual-stage .flow-tooltip {
-    @apply absolute bottom-full mb-2 -translate-x-1/2;
+    @apply absolute bottom-full mb-2;
   }
 
   .allocation-bar__visual-stage .flow-tooltip--end-contained {
-    box-sizing: border-box;
-    max-inline-size: 100%;
-    overflow-wrap: anywhere;
     transform: none;
-    translate: 0;
   }
 
   .editor-dialog {
