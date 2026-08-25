@@ -146,6 +146,7 @@
   .account-map-sheet { max-height: 92dvh; }
   .account-map-canvas-toolbar { grid-template-columns: 1fr auto; }
   .account-map-canvas-toolbar > div:first-child { grid-column: 1 / -1; }
+  .account-map-connection-detail { width: calc(100% - 32px); }
   .account-map-modal-backdrop { align-items: end; padding: 0; }
   .account-map-modal { width: 100%; max-height: 90dvh; border-radius: 24px 24px 0 0; }
 }

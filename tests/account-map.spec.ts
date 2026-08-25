@@ -93,6 +93,13 @@ function responsiveWorkspace() {
   return workspace;
 }
 
+function archivableDetailWorkspace() {
+  const workspace = mappedWorkspace();
+  workspace.locations.push(location('archived-detail', '보관 대상 통장', 'woori', '우리은행', ['saving']));
+  workspace.accountMap.applied!.links.push(link('archived-detail-link', 'system:saving', 'archived-detail', 300_000, false));
+  return workspace;
+}
+
 function primaryIncomeWorkspace() {
   const workspace = responsiveWorkspace();
   workspace.locations.push(location('primary-income', '주수입통장', 'shinhan', '신한은행', ['income']));
@@ -1064,6 +1071,25 @@ test('completes reduced-motion node, detail, and modal motion synchronously', as
   await expect(page.getByRole('button', { name: '계좌 중심' })).toHaveCount(0);
 });
 
+test('keeps an archived location with suspended links resolvable in detail view', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await seed(page, archivableDetailWorkspace());
+  await page.goto('apps/account-map/');
+
+  await openNode(page, /계좌·보관처 · 보관 대상 통장 ·/);
+  await page.getByRole('button', { name: '보관', exact: true }).click();
+  await page.getByRole('button', { name: '보관하기' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+
+  await page.getByRole('button', { name: '확대' }).click();
+  await expect(page.getByText('상세 보기')).toBeVisible();
+  const archived = page.getByRole('button', { name: /계좌·보관처 · 보관 대상 통장 ·/ });
+  await archived.focus();
+  await archived.click();
+  await expect(archived).toHaveClass(/is-pinned/);
+  await expect(page.getByLabel('보관 대상 통장 월 연결 구성')).toContainText('활성 월 연결이 없습니다.');
+});
+
 test('keeps all Account Map states contained with 44px action targets at supported widths', async ({ page }, testInfo) => {
   test.setTimeout(90_000);
   await page.emulateMedia({ reducedMotion: 'reduce' });
@@ -1129,6 +1155,13 @@ test('keeps all Account Map states contained with 44px action targets at support
     expect(detailBounds!.detail.right).toBeLessThanOrEqual(detailBounds!.canvas.right + 1);
     expect(detailBounds!.detail.bottom).toBeLessThanOrEqual(detailBounds!.canvas.bottom + 1);
     expect(detailBounds!.actionableIntersections, `${prefix} detail must not obscure actionable nodes`).toEqual([]);
+    if (viewport.width <= 600) {
+      expect(detailBounds!.detail.left).toBeCloseTo(detailBounds!.canvas.left + 16, 0);
+      expect(detailBounds!.detail.right - detailBounds!.detail.left).toBeCloseTo(
+        detailBounds!.canvas.right - detailBounds!.canvas.left - 32,
+        0,
+      );
+    }
     const documentWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     expect(documentWidth).toBeLessThanOrEqual(viewport.width);
     await expectContainedActionTargets(page, `${prefix} map`);

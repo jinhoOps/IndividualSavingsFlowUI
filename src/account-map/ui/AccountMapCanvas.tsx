@@ -94,7 +94,7 @@ export function AccountMapCanvas({
   }, [hasExternalModal, interaction.modalNodeId, interaction.pinnedNodeId, interaction.transientNodeId, onEscape]);
   const graph = useMemo(() => buildAccountMapGraph(applied, locations, main, zoom), [applied, locations, main, zoom]);
   const activeDetailGraph = useMemo(
-    () => buildAccountMapGraph(applied, locations, main, 'default'),
+    () => buildAccountMapGraph(applied, locations, main, 'detail'),
     [applied, locations, main],
   );
   const positioned = useMemo(() => layoutAccountMap(graph, effectiveViewport, zoom), [graph, effectiveViewport.width, effectiveViewport.height, zoom]);
@@ -406,7 +406,7 @@ function positionConnectionDetail(
 ): { left: number; top: number; maxBlockSize: number; canvasHeight: number } {
   const inset = 16;
   const gap = 12;
-  const detailWidth = Math.min(312, canvas.width - inset * 2);
+  const detailWidth = canvas.width <= 600 ? canvas.width - inset * 2 : Math.min(312, canvas.width - inset * 2);
   const detailHeight = Math.min(220, canvas.height - inset * 2);
   const clampLeft = (left: number) => Math.max(inset, Math.min(left, canvas.width - detailWidth - inset));
   const clampTop = (top: number) => Math.max(inset, Math.min(top, canvas.height - detailHeight - inset));
