@@ -270,7 +270,7 @@ for (const viewport of viewports) {
   });
 }
 
-interface WideReviewState {
+interface ReviewState {
   surface: { x: number; width: number; right: number };
   review: { x: number; width: number; right: number };
   stage: { x: number; width: number; right: number };
@@ -283,7 +283,7 @@ interface WideReviewState {
   targets: Array<{ x: number; right: number }>;
 }
 
-async function readWideReviewState(page: Page): Promise<WideReviewState> {
+async function readReviewState(page: Page): Promise<ReviewState> {
   await page.evaluate(() => new Promise<void>((resolve) => {
     requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
   }));
@@ -323,29 +323,29 @@ async function readWideReviewState(page: Page): Promise<WideReviewState> {
 async function expectClippedDeficitReview(
   page: Page,
   viewport: typeof viewports[number],
-  state: WideReviewState,
+  state: ReviewState,
 ): Promise<void> {
+  const expectedReadingWidth = Math.min(viewport.width - 32, 768);
+  const expectedReadingX = (viewport.width - expectedReadingWidth) / 2;
   const expectedWideWidth = Math.min(viewport.width - 32, 1200);
   const expectedWideX = (viewport.width - expectedWideWidth) / 2;
-  expect(Math.abs(state.surface.width - expectedWideWidth)).toBeLessThan(1);
-  expect(Math.abs(state.surface.x - expectedWideX)).toBeLessThan(1);
+  expect(Math.abs(state.surface.width - expectedReadingWidth)).toBeLessThan(1);
+  expect(Math.abs(state.surface.x - expectedReadingX)).toBeLessThan(1);
   expect(state.surface.x).toBeGreaterThanOrEqual(16);
   expect(state.surface.right).toBeLessThanOrEqual(viewport.width - 16 + 1);
   expect(Math.abs(state.review.width - expectedWideWidth)).toBeLessThan(1);
   expect(Math.abs(state.review.x - expectedWideX)).toBeLessThan(1);
-  expect(state.review.x).toBeGreaterThanOrEqual(state.surface.x);
-  expect(state.review.right).toBeLessThanOrEqual(state.surface.right);
   expect(state.stage.x).toBeGreaterThanOrEqual(state.review.x);
   expect(state.stage.right).toBeLessThanOrEqual(state.review.right);
   expect(state.table.x).toBeGreaterThanOrEqual(state.review.x);
   expect(state.table.right).toBeLessThanOrEqual(state.review.right);
   expectReadingFrame(viewport.width, state.frame);
 
+  expect(Math.abs(state.surface.width - state.frame.width)).toBeLessThan(1);
+  expect(Math.abs(state.surface.x - state.frame.x)).toBeLessThan(1);
   if (viewport.name === 'desktop') {
-    expect(state.surface.width).toBeGreaterThan(state.frame.width);
     expect(state.review.width).toBeGreaterThan(state.frame.width);
   } else {
-    expect(Math.abs(state.surface.width - state.frame.width)).toBeLessThan(1);
     expect(Math.abs(state.review.width - state.frame.width)).toBeLessThan(1);
   }
 
@@ -423,7 +423,7 @@ async function expectClippedFallbackTooltips(
 }
 
 for (const viewport of viewports) {
-  test(`keeps first and restart Main assembly widths identical at ${viewport.width}px`, async ({ page }) => {
+  test(`keeps first and restart Main review frames correct at ${viewport.width}px`, async ({ page }) => {
     await page.setViewportSize(viewport);
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.addInitScript(({ workspace, deficit }) => {
@@ -449,10 +449,10 @@ for (const viewport of viewports) {
     await expect(page.getByRole('heading', {
       name: '입력한 월 자금 계획을 확인해주세요',
     })).toBeVisible();
-    await expect(page.locator('.setup-flow-surface')).toHaveClass(/app-wide-visual/);
+    await expect(page.locator('.setup-flow-surface')).not.toHaveClass(/app-wide-visual/);
     await expect(page.locator('.allocation-bar')).toHaveClass(/app-wide-visual/);
     await expect(page.getByTestId('allocation-visual-stage')).not.toHaveClass(/app-wide-visual/);
-    const firstReview = await readWideReviewState(page);
+    const firstReview = await readReviewState(page);
     await expectClippedDeficitReview(page, viewport, firstReview);
     await expectClippedFallbackTooltips(page, viewport.width);
 
@@ -474,10 +474,10 @@ for (const viewport of viewports) {
       name: '입력한 월 자금 계획을 확인해주세요',
     })).toBeVisible();
     await expect(page.getByRole('button', { name: '설정 취소' })).toBeVisible();
-    await expect(page.locator('.setup-flow-surface')).toHaveClass(/app-wide-visual/);
+    await expect(page.locator('.setup-flow-surface')).not.toHaveClass(/app-wide-visual/);
     await expect(page.locator('.allocation-bar')).toHaveClass(/app-wide-visual/);
     await expect(page.getByTestId('allocation-visual-stage')).not.toHaveClass(/app-wide-visual/);
-    const restartReview = await readWideReviewState(page);
+    const restartReview = await readReviewState(page);
     await expectClippedDeficitReview(page, viewport, restartReview);
 
     expect(restartReview.stage.width).toBe(firstReview.stage.width);
