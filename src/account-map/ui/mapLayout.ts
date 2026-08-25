@@ -209,7 +209,7 @@ function selectPrimaryIncomeLocationId(
   const incomeAmounts = new Map<string, number>();
   for (const link of activeLinks) {
     const location = locationById.get(link.locationId);
-    if (link.purposeId !== 'system:income' || link.monthlyAmountWon <= 0 || location?.archivedAt !== undefined) continue;
+    if (link.purposeId !== 'system:income' || link.monthlyAmountWon <= 0 || location === undefined || location.archivedAt !== undefined) continue;
     incomeAmounts.set(link.locationId, (incomeAmounts.get(link.locationId) ?? 0) + link.monthlyAmountWon);
   }
   return [...incomeAmounts.keys()].sort((leftId, rightId) => {

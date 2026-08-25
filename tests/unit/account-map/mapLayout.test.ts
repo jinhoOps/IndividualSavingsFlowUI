@@ -62,6 +62,25 @@ describe('Account Map layout', () => {
     expect(result.nodes.find(({ id }) => id === 'system:income')).not.toHaveProperty('isPrimaryIncome');
   });
 
+  it.each([
+    ['missing', activeLink('missing-income', 'system:income', 'missing-income', 2_000_000), []],
+    ['archived', activeLink('archived-income', 'system:income', 'archived-income', 2_000_000), [
+      { ...location('archived-income', '이전 수입 통장'), archivedAt: 2 },
+    ]],
+    ['zero-value', activeLink('zero-income', 'system:income', 'zero-income', 0), [
+      location('zero-income', '0원 수입 통장'),
+    ]],
+  ] as const)('keeps income unanchored for a %s candidate', (_candidate, incomeLink, locations) => {
+    const applied = emptyApplied();
+    applied.links = [incomeLink];
+
+    const result = buildAccountMapGraph(applied, locations, main, 'overview');
+
+    expect(result.primaryIncomeLocationId).toBeNull();
+    expect(result.nodes.find(({ id }) => id === 'system:income')).toMatchObject({ kind: 'purpose' });
+    expect(result.nodes.some(({ isPrimaryIncome }) => isPrimaryIncome)).toBe(false);
+  });
+
   it('shows only representative locations with matching edges in overview', () => {
     const applied = emptyApplied();
     applied.links = [
@@ -167,13 +186,54 @@ describe('Account Map layout', () => {
     },
   );
 
-  it('places locations left, purposes right, and the primary income location top-left on desktop', () => {
-    const positioned = layoutAccountMap(graph, { width: 1280, height: 900 }, 'default');
-    const primary = positioned.nodes.find(({ id }) => id === 'location:a');
+  it('places graph-selected non-first primary income location top-left on desktop', () => {
+    const applied = emptyApplied();
+    applied.links = [
+      activeLink('income-first', 'system:income', 'first-income', 900_000),
+      activeLink('income-primary', 'system:income', 'primary-income', 1_100_000),
+    ];
+    const accountGraph = buildAccountMapGraph(applied, [
+      location('first-income', '첫 수입 통장'), location('primary-income', '주 수입 통장'),
+    ], main, 'default');
+    const positioned = layoutAccountMap(accountGraph, { width: 1280, height: 900 }, 'default');
+    const primary = positioned.nodes.find(({ id }) => id === 'location:primary-income');
 
     expect(positioned.nodes.filter(({ kind }) => kind === 'location').every(({ x }) => x < 640)).toBe(true);
     expect(positioned.nodes.filter(({ kind }) => kind === 'purpose').every(({ x }) => x > 640)).toBe(true);
     expect(primary).toMatchObject({ x: 28, y: 28 });
+  });
+
+  it('only reorders ordinary location slots when their amounts change', () => {
+    const initial: AccountMapGraph = {
+      ...graph,
+      nodes: [
+        ...graph.nodes,
+        { id: 'location:c', kind: 'location', label: '예비 통장', amountWon: 300_000, connectionCount: 1, status: 'resolved' },
+      ].map((node) => node.id === 'location:a'
+        ? { ...node, isPrimaryIncome: true }
+        : node.id === 'location:b' ? { ...node, amountWon: 700_000 } : node),
+    };
+    const changed: AccountMapGraph = {
+      ...initial,
+      nodes: initial.nodes.map((node) => node.id === 'location:b'
+        ? { ...node, amountWon: 100_000 }
+        : node.id === 'location:c' ? { ...node, amountWon: 900_000 } : node),
+    };
+
+    const before = layoutAccountMap(initial, { width: 1280, height: 900 }, 'default');
+    const after = layoutAccountMap(changed, { width: 1280, height: 900 }, 'default');
+
+    expect(before.nodes.filter(({ kind }) => kind === 'location').map(({ id }) => id)).toEqual(['location:a', 'location:b', 'location:c']);
+    expect(after.nodes.filter(({ kind }) => kind === 'location').map(({ id }) => id)).toEqual(['location:a', 'location:c', 'location:b']);
+    for (const id of ['location:b', 'location:c', 'system:income', 'system:living']) {
+      expect(after.nodes.find((node) => node.id === id)).toMatchObject(
+        expect.objectContaining({
+          width: before.nodes.find((node) => node.id === id)?.width,
+          height: before.nodes.find((node) => node.id === id)?.height,
+        }),
+      );
+    }
+    expect(after.edges).toEqual(before.edges);
   });
 
   it.each([[390, 844], [768, 1024]] as const)(
