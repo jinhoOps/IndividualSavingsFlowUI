@@ -315,7 +315,7 @@ export function AccountMapCanvas({
               onFocus={() => onTransient(node.id)}
               onBlur={() => onBlur(node.id)}
               onClick={() => onInvoke(node.id)}
-            ><span>{node.label}</span>{node.amountWon === undefined ? null : <strong>{formatWon(node.amountWon)}</strong>}{node.secondary === undefined ? null : <small>{node.secondary}</small>}{node.status === 'unassigned' ? <small>연결 필요</small> : node.status === 'excess' ? <small>초과 연결</small> : null}</button>;
+            ><span>{node.label}</span>{node.kind === 'location' || node.amountWon === undefined ? null : <strong>{formatWon(node.amountWon)}</strong>}{node.secondary === undefined ? null : <small>{node.secondary}</small>}{node.status === 'unassigned' ? <small>연결 필요</small> : node.status === 'excess' ? <small>초과 연결</small> : null}</button>;
           })}
         </div>
         {connectionDetail === null ? null : <aside
@@ -363,14 +363,12 @@ function hasActiveOverlay(): boolean {
 function statusLabel(status: string): string { return status === 'unassigned' ? ' · 연결 필요' : status === 'excess' ? ' · 초과 연결' : status === 'deficit' ? ' · 부족함' : ''; }
 function nodeAccessibleName(node: PositionedNode): string {
   const kind = node.kind === 'purpose' ? '목적' : node.kind === 'location' ? '계좌·보관처' : '전체 상태';
-  const primaryIncome = node.kind === 'location' && node.isPrimaryIncome === true ? ' · 주 수입 계좌' : '';
+  const primaryIncome = node.kind === 'location' && node.isPrimaryIncome === true ? '주 수입 계좌' : undefined;
   const amount = node.amountWon === undefined
     ? '금액 없음'
-    : node.kind === 'location'
-      ? `활성 월 연결 합계 ${formatWon(node.amountWon)}`
-      : node.kind === 'status'
-        ? statusAmountLabel(node)
-        : formatWon(node.amountWon);
+    : node.kind === 'status'
+      ? statusAmountLabel(node)
+      : formatWon(node.amountWon);
   const status = {
     resolved: '연결 완료',
     unassigned: '연결 필요',
@@ -379,7 +377,14 @@ function nodeAccessibleName(node: PositionedNode): string {
     surplus: '미배정',
     deficit: '부족함',
   }[node.status];
-  return `${kind} · ${node.label}${primaryIncome} · ${amount} · 활성 연결 ${node.connectionCount}개 · ${status}`;
+  return [
+    kind,
+    node.label,
+    primaryIncome,
+    ...(node.kind === 'location' ? [] : [amount]),
+    `활성 연결 ${node.connectionCount}개`,
+    status,
+  ].filter((part): part is string => part !== undefined).join(' · ');
 }
 
 function statusAmountLabel(node: PositionedNode): string {
