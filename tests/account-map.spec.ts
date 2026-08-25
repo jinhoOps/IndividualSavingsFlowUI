@@ -93,6 +93,15 @@ function responsiveWorkspace() {
   return workspace;
 }
 
+function primaryIncomeWorkspace() {
+  const workspace = responsiveWorkspace();
+  workspace.locations.push(location('primary-income', '주수입통장', 'shinhan', '신한은행', ['income']));
+  workspace.accountMap.applied!.links.find(({ id }) => id === 'income')!.monthlyAmountWon = 1_200_000;
+  // Keep the larger income link second in stored order: the map must rank by amount, not storage order.
+  workspace.accountMap.applied!.links.splice(1, 0, link('primary-income', 'system:income', 'primary-income', 2_000_000, false));
+  return workspace;
+}
+
 function manyToManyWorkspace() {
   const workspace = mappedWorkspace();
   workspace.locations.push(location('brokerage', 'ISA', 'future-bank', '미래은행', ['investing']));
@@ -283,7 +292,7 @@ test('requires Main without creating Account Map state', async ({ page }) => {
   expect(await readProtected(page)).toEqual({ ...protectedSlices, main: { applied: null, setupProgress: null } });
 });
 
-test('creates a purpose-first map and preserves protected product slices', async ({ page }) => {
+test('creates an Account Map and preserves protected product slices', async ({ page }) => {
   await seed(page, emptyWorkspace());
   await page.goto('apps/account-map/');
   const before = await readProtected(page);
@@ -368,7 +377,7 @@ test('persists a resumed review step and exits to Main without deleting its draf
   expect(await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!).accountMap.draft.step, STORAGE_KEY)).toBe('connect');
 });
 
-test('supports layout, semantic zoom, focus parity, second invoke, and same-modal edit', async ({ page }) => {
+test('supports the canonical map, semantic zoom, focus parity, second invoke, and same-modal edit', async ({ page }) => {
   await seed(page, editableWorkspace());
   await page.goto('apps/account-map/');
   await expect(page.getByRole('heading', { name: '목적과 계좌의 연결' })).toBeVisible();
@@ -419,8 +428,8 @@ test('supports layout, semantic zoom, focus parity, second invoke, and same-moda
   await expect.poll(() => page.evaluate((key) => JSON.parse(localStorage.getItem(key)!).accountMap.applied.links.find((item: { id: string }) => item.id === 'living-backup').monthlyAmountWon, STORAGE_KEY)).toBe(200_000);
   await expect.poll(() => page.evaluate((key) => JSON.parse(localStorage.getItem(key)!).accountMap.applied.links.find((item: { id: string }) => item.id === 'living').monthlyAmountWon, STORAGE_KEY)).toBe(800_000);
 
-  await page.getByRole('button', { name: '계좌 중심' }).click();
-  await expect(page.getByRole('button', { name: '계좌 중심' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('button', { name: '목적 중심' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '계좌 중심' })).toHaveCount(0);
   await page.getByRole('button', { name: '축소' }).click();
   await expect(page.getByRole('button', { name: '확대' })).toBeEnabled();
   await expect(page.getByRole('table', { name: '계좌 연결 읽기 표' })).toBeAttached();
@@ -1031,7 +1040,7 @@ test('requires Main when migration collision adopts a workspace without Main', a
   expect(stored).toEqual(latest);
 });
 
-test('completes reduced-motion node and layout motion synchronously', async ({ page }) => {
+test('completes reduced-motion node, detail, and modal motion synchronously', async ({ page }) => {
   await page.clock.install();
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await seed(page, mappedWorkspace());
@@ -1051,17 +1060,8 @@ test('completes reduced-motion node and layout motion synchronously', async ({ p
   expect(modalMotion).toEqual({ busy: null, closeDisabled: false });
 
   await page.getByRole('button', { name: '닫기' }).click();
-  const accountLayout = page.getByRole('button', { name: '계좌 중심' });
-  await accountLayout.evaluate((element) => element.click());
-  await page.clock.runFor(32);
-  const layoutMotion = await accountLayout.evaluate((element) => {
-    const controls = [...document.querySelectorAll<HTMLButtonElement>('[aria-label="지도 정렬"] button')];
-    return {
-      accountPressed: element.getAttribute('aria-pressed'),
-      disabled: controls.map((control) => control.disabled),
-    };
-  });
-  expect(layoutMotion).toEqual({ accountPressed: 'true', disabled: [false, false] });
+  await expect(page.getByRole('button', { name: '목적 중심' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '계좌 중심' })).toHaveCount(0);
 });
 
 test('keeps all Account Map states contained with 44px action targets at supported widths', async ({ page }, testInfo) => {
@@ -1071,14 +1071,14 @@ test('keeps all Account Map states contained with 44px action targets at support
     if (sessionStorage.getItem('account-map-responsive-seeded') !== null) return;
     localStorage.setItem(key, JSON.stringify(workspace));
     sessionStorage.setItem('account-map-responsive-seeded', 'true');
-  }, { key: STORAGE_KEY, workspace: responsiveWorkspace() });
+  }, { key: STORAGE_KEY, workspace: primaryIncomeWorkspace() });
   const viewports = [{ width: 390, height: 844 }, { width: 768, height: 1024 }, { width: 1280, height: 900 }];
   for (const [index, viewport] of viewports.entries()) {
     await page.setViewportSize(viewport);
     if (index > 0) {
       await page.evaluate(({ key, workspace }) => localStorage.setItem(key, JSON.stringify(workspace)), {
         key: STORAGE_KEY,
-        workspace: responsiveWorkspace(),
+        workspace: primaryIncomeWorkspace(),
       });
     }
     await page.goto('apps/account-map/');
@@ -1086,6 +1086,37 @@ test('keeps all Account Map states contained with 44px action targets at support
     const frame = page.locator('main.account-map-page');
     await expect(frame).toHaveClass(/app-content-frame/);
     await expect(page.getByTestId('app-shell-launcher')).not.toHaveClass(/app-content-frame/);
+    await expect(page.getByRole('button', { name: '목적 중심' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: '계좌 중심' })).toHaveCount(0);
+
+    const primaryIncome = page.getByRole('button', { name: /계좌·보관처 · 주수입통장/ });
+    await expect(primaryIncome).toBeVisible();
+    const mapFocusOrder = await page.locator('.account-map-node').evaluateAll((nodes) => nodes.map((node) => node.getAttribute('aria-label')));
+    expect(mapFocusOrder[0]).toContain('주수입통장');
+    await expect(page.getByRole('table', { name: '계좌 연결 읽기 표' }).locator('tbody tr').first().locator('td').first()).toHaveText('주수입통장');
+
+    await primaryIncome.hover();
+    await primaryIncome.focus();
+    const connectionDetail = page.getByLabel('주수입통장 월 연결 구성');
+    await expect(connectionDetail).toBeVisible();
+    await expect(connectionDetail).toContainText('월 계획 연결 기준 · 실제 잔액·거래·계좌 간 이동이 아님');
+    await expect(connectionDetail.getByText('2,000,000원 · 100%')).toBeVisible();
+    await primaryIncome.click();
+    await expect(primaryIncome).toHaveClass(/is-pinned/);
+    await expect(connectionDetail.getByText('2,000,000원 · 100%')).toBeVisible();
+    const detailBounds = await page.evaluate(() => {
+      const canvas = document.querySelector('.account-map-canvas')?.getBoundingClientRect();
+      const detail = document.querySelector('.account-map-connection-detail')?.getBoundingClientRect();
+      if (canvas === undefined || detail === undefined) return null;
+      return { canvas: { left: canvas.left, top: canvas.top, right: canvas.right, bottom: canvas.bottom }, detail: { left: detail.left, top: detail.top, right: detail.right, bottom: detail.bottom } };
+    });
+    expect(detailBounds).not.toBeNull();
+    expect(detailBounds!.detail.left).toBeGreaterThanOrEqual(detailBounds!.canvas.left - 1);
+    expect(detailBounds!.detail.top).toBeGreaterThanOrEqual(detailBounds!.canvas.top - 1);
+    expect(detailBounds!.detail.right).toBeLessThanOrEqual(detailBounds!.canvas.right + 1);
+    expect(detailBounds!.detail.bottom).toBeLessThanOrEqual(detailBounds!.canvas.bottom + 1);
+    const documentWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+    expect(documentWidth).toBeLessThanOrEqual(viewport.width);
     await expectContainedActionTargets(page, `${prefix} map`);
     const canvasBox = await page.locator('.account-map-canvas').boundingBox();
     expect(canvasBox).not.toBeNull();
