@@ -277,7 +277,7 @@ describe('AccountMapSetup', () => {
     const alert = within(dialog).getByRole('alert');
     expect(alert).toHaveTextContent('같은 큰 목적 안에 이미 같은 이름이 있습니다.');
     expect(name).toHaveValue('여행');
-    expect(amount).toHaveValue('100000');
+    expect(amount).toHaveValue('100,000');
     await waitFor(() => expect(name).toHaveFocus());
     expect(name).toHaveAccessibleDescription('같은 큰 목적 안에 이미 같은 이름이 있습니다.');
   });
@@ -300,7 +300,7 @@ describe('AccountMapSetup', () => {
     await waitFor(() => expect(amount).toHaveFocus());
     expect(amount).toHaveAccessibleDescription('큰 목적의 월 금액을 넘을 수 없습니다.');
     expect(within(dialog).getByRole('textbox', { name: '목적 이름' })).toHaveValue('여행');
-    expect(amount).toHaveValue('100000');
+    expect(amount).toHaveValue('100,000');
   });
 
   it('renders a storage failure inside the custom-purpose dialog and focuses the alert', async () => {
@@ -316,7 +316,7 @@ describe('AccountMapSetup', () => {
     expect(alert).toHaveTextContent('저장하지 못했어요. 입력은 그대로 두었습니다.');
     await waitFor(() => expect(alert).toHaveFocus());
     expect(within(dialog).getByRole('textbox', { name: '목적 이름' })).toHaveValue('여행');
-    expect(within(dialog).getByRole('textbox', { name: '월 금액' })).toHaveValue('100000');
+    expect(within(dialog).getByRole('textbox', { name: '월 금액' })).toHaveValue('100,000');
   });
 });
 

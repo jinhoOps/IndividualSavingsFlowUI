@@ -1,12 +1,19 @@
-import { useRef, useState, type RefObject } from 'react';
+import { useLayoutEffect, useRef, useState, type RefObject } from 'react';
 import { Trash2 } from 'lucide-react';
 import { Button } from '../../components/common/Button';
+import { adjustWon, formatWonInput, normalizeMoneyEdit, parseWonInput } from '../../core/domain/moneyInput';
 import { normalizePortfolioName, recommendClassification } from '../domain/classification';
 import type { Classification, ClassificationOrigin } from '../domain/model';
 import { formatAllocationPercent } from './format';
 import { PortfolioDialog } from './PortfolioDialog';
 
 const QUICK_TARGET_NAMES = ['S&P 500', '나스닥', '코스피', '미국 국채', '금 현물'] as const;
+const QUICK_AMOUNT_ADJUSTMENTS = [
+  { label: '-50만', deltaWon: -500_000 },
+  { label: '-10만', deltaWon: -100_000 },
+  { label: '+10만', deltaWon: 100_000 },
+  { label: '+50만', deltaWon: 500_000 },
+] as const;
 
 export interface PortfolioItemSheetValue {
   name: string;
@@ -37,7 +44,7 @@ export function PortfolioItemSheet({
   onClose,
 }: PortfolioItemSheetProps) {
   const [name, setName] = useState(initialValue.name);
-  const [amount, setAmount] = useState(initialValue.amountWon > 0 ? String(initialValue.amountWon) : '');
+  const [amount, setAmount] = useState(() => formatWonInput(initialValue.amountWon));
   const [classification, setClassification] = useState(initialValue.classification);
   const [classificationOrigin, setClassificationOrigin] = useState(initialValue.classificationOrigin);
   const [nameTouched, setNameTouched] = useState(false);
@@ -45,7 +52,8 @@ export function PortfolioItemSheet({
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const nameInputRef = useRef<HTMLInputElement>(null);
   const amountInputRef = useRef<HTMLInputElement>(null);
-  const amountWon = amount.trim() === '' ? 0 : Number(amount);
+  const pendingCaretRef = useRef<number | null>(null);
+  const amountWon = parseWonInput(amount);
   const normalizedName = normalizePortfolioName(name);
   const duplicateName = normalizedName.length > 0
     && existingNames.some((candidate) => normalizePortfolioName(candidate) === normalizedName);
@@ -60,6 +68,12 @@ export function PortfolioItemSheet({
     || classification !== initialValue.classification
     || classificationOrigin !== initialValue.classificationOrigin;
   const title = mode === 'add' ? '투자 대상 추가' : '투자 대상 수정';
+
+  useLayoutEffect(() => {
+    if (pendingCaretRef.current === null || amountInputRef.current === null) return;
+    amountInputRef.current.setSelectionRange(pendingCaretRef.current, pendingCaretRef.current);
+    pendingCaretRef.current = null;
+  });
 
   function requestClose(): void {
     if (dirty) setConfirmDiscard(true);
@@ -144,8 +158,14 @@ export function PortfolioItemSheet({
               aria-describedby={amountTouched && amountError ? 'portfolio-item-amount-error' : amountError ? undefined : 'portfolio-item-calculated-percentage'}
               value={amount}
               onChange={(event) => {
+                const normalized = normalizeMoneyEdit(
+                  event.target.value,
+                  event.target.selectionStart ?? event.target.value.length,
+                  { zeroDisplay: 'zero' },
+                );
+                pendingCaretRef.current = normalized.caret;
                 setAmountTouched(true);
-                setAmount(event.target.value);
+                setAmount(normalized.displayValue);
               }}
             />
             {amountTouched && amountError ? (
@@ -154,8 +174,23 @@ export function PortfolioItemSheet({
               <span className="portfolio-item-sheet__calculated" id="portfolio-item-calculated-percentage">
                 계산 비율 {formatAllocationPercent(investmentWon > 0 ? amountWon / investmentWon * 100 : 0)}
               </span>
-            ) : null}
+              ) : null}
           </label>
+          {mode === 'add' ? (
+            <div className="portfolio-item-sheet__quick-adjustments" role="group" aria-label="빠른 조정">
+              {QUICK_AMOUNT_ADJUSTMENTS.map(({ label, deltaWon }) => (
+                <Button
+                  key={label}
+                  type="button"
+                  variant="quiet"
+                  onClick={() => {
+                    setAmountTouched(true);
+                    setAmount(formatWonInput(adjustWon(amountWon, deltaWon)));
+                  }}
+                >{label}</Button>
+              ))}
+            </div>
+          ) : null}
         </div>
         <footer className="portfolio-item-sheet__actions">
           <Button type="button" variant="secondary" onClick={requestClose}>취소</Button>

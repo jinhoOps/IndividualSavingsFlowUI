@@ -151,7 +151,9 @@ describe('AccountMapApp', () => {
     fireEvent.click(screen.getByRole('button', { name: '편집' }));
     fireEvent.click(screen.getByRole('button', { name: '연결 추가' }));
     fireEvent.click(within(screen.getByRole('dialog', { name: '생활비 연결 추가' })).getByRole('button', { name: /저축통장/ }));
-    fireEvent.change(screen.getByRole('textbox', { name: /이 계좌에 둘 월 금액/ }), { target: { value: '100000' } });
+    const monthlyAmount = screen.getByRole('textbox', { name: /이 계좌에 둘 월 금액/ });
+    fireEvent.change(monthlyAmount, { target: { value: '100000' } });
+    expect(monthlyAmount).toHaveValue('100,000');
     fireEvent.click(screen.getByRole('button', { name: '완료' }));
 
     await waitFor(() => expect(setup.save).toHaveBeenCalledTimes(1));
@@ -286,7 +288,9 @@ describe('AccountMapApp', () => {
     fireEvent.click(screen.getByRole('button', { name: '편집' }));
     fireEvent.click(screen.getByRole('button', { name: '연결 추가' }));
     fireEvent.click(within(screen.getByRole('dialog', { name: '생활비 연결 추가' })).getByRole('button', { name: /저축통장/ }));
-    fireEvent.change(screen.getByRole('textbox', { name: /이 계좌에 둘 월 금액/ }), { target: { value: '100000' } });
+    const monthlyAmount = screen.getByRole('textbox', { name: /이 계좌에 둘 월 금액/ });
+    fireEvent.change(monthlyAmount, { target: { value: '100000' } });
+    expect(monthlyAmount).toHaveValue('100,000');
     fireEvent.click(screen.getByRole('button', { name: '완료' }));
 
     fireEvent.click(await screen.findByRole('button', { name: '최신 상태에서 다시 적용' }));
@@ -404,9 +408,10 @@ describe('AccountMapApp', () => {
     await new Promise((resolve) => window.setTimeout(resolve, 0));
     expect(dialog).toContainElement(document.activeElement as HTMLElement);
     const target = screen.getByRole('textbox', { name: '월 목표 금액' });
-    expect(target).toHaveValue('200000');
+    expect(target).toHaveValue('200,000');
     expect(screen.getByRole('button', { name: '목적 복원' })).toBeDisabled();
     fireEvent.change(target, { target: { value: '100000' } });
+    expect(target).toHaveValue('100,000');
     fireEvent.click(screen.getByRole('button', { name: '목적 복원' }));
 
     await waitFor(() => expect(setup.save).toHaveBeenCalledTimes(1));
@@ -427,7 +432,7 @@ describe('AccountMapApp', () => {
     fireEvent.click(screen.getByRole('button', { name: '목적 복원' }));
 
     const replay = await screen.findByRole('button', { name: '최신 상태에서 다시 적용' });
-    expect(target).toHaveValue('100000');
+    expect(target).toHaveValue('100,000');
     expect(screen.getByRole('button', { name: '다시 시도' })).toBeDisabled();
     expect(setup.save).toHaveBeenCalledWith(1, { type: 'restore-custom-purpose', purposeId: 'custom:telecom', targetMonthlyWon: 100_000 });
 
@@ -534,7 +539,9 @@ describe('AccountMapApp', () => {
     fireEvent.click(screen.getByRole('button', { name: '최신 값 유지' }));
     fireEvent.click(screen.getByRole('button', { name: '세부 목적 추가' }));
     fireEvent.change(screen.getByRole('textbox', { name: '목적 이름' }), { target: { value: '여행' } });
-    fireEvent.change(screen.getByRole('textbox', { name: '월 금액' }), { target: { value: '100000' } });
+    const target = screen.getByRole('textbox', { name: '월 금액' });
+    fireEvent.change(target, { target: { value: '100000' } });
+    expect(target).toHaveValue('100,000');
     fireEvent.click(screen.getByRole('button', { name: '추가' }));
 
     await waitFor(() => expect(setup.save).toHaveBeenCalledTimes(3));
@@ -656,10 +663,11 @@ describe('AccountMapApp', () => {
     fireEvent.click(screen.getByRole('button', { name: '편집' }));
     const amount = screen.getByRole('textbox', { name: '생활비통장 월 금액' });
     fireEvent.change(amount, { target: { value: '650000' } });
+    expect(amount).toHaveValue('650,000');
     fireEvent.click(screen.getByRole('button', { name: '저장' }));
 
     const replay = await screen.findByRole('button', { name: '최신 상태에서 다시 적용' });
-    expect(amount).toHaveValue('650000');
+    expect(amount).toHaveValue('650,000');
     expect(setup.saveIntent).toHaveBeenCalledTimes(1);
     expect(setup.save).not.toHaveBeenCalled();
 
@@ -733,7 +741,7 @@ describe('AccountMapApp', () => {
     fireEvent.click(livingNode);
     fireEvent.click(livingNode);
     fireEvent.click(screen.getByRole('button', { name: '편집' }));
-    expect(screen.getByRole('textbox', { name: '생활비통장 월 금액' })).toHaveValue('650000');
+    expect(screen.getByRole('textbox', { name: '생활비통장 월 금액' })).toHaveValue('650,000');
   });
 
   it('keeps compound modal input for latest review and never snapshot-replays it automatically', async () => {
@@ -751,7 +759,7 @@ describe('AccountMapApp', () => {
 
     expect(await screen.findByRole('button', { name: '최신 상태에서 다시 검토' })).toBeVisible();
     expect(label).toHaveValue('새생활비');
-    expect(amount).toHaveValue('650000');
+    expect(amount).toHaveValue('650,000');
     expect(setup.save).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole('button', { name: '최신 상태에서 다시 적용' })).not.toBeInTheDocument();
 
@@ -780,7 +788,7 @@ describe('AccountMapApp', () => {
 
     expect(screen.getByRole('dialog')).toBeVisible();
     expect(label).toHaveValue('새생활비');
-    expect(amount).toHaveValue('650000');
+    expect(amount).toHaveValue('650,000');
     expect(screen.getByText(/편집 대상이 최신 상태에 없습니다/)).toBeVisible();
   });
 

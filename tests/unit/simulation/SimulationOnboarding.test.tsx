@@ -22,9 +22,11 @@ describe('SimulationOnboarding', () => {
     expect(screen.getByRole('region', { name: '지금 모아둔 투자금이 있나요?' }))
       .toHaveClass('ui-surface');
     fireEvent.click(screen.getByRole('button', { name: '있어요' }));
-    fireEvent.change(screen.getByRole('textbox', { name: '현재 모아둔 투자금' }), {
+    const initialAmount = screen.getByRole('textbox', { name: '현재 모아둔 투자금' });
+    fireEvent.change(initialAmount, {
       target: { value: '200000000' },
     });
+    expect(initialAmount).toHaveValue('200,000,000');
     fireEvent.click(screen.getByRole('button', { name: '다음' }));
 
     expect(screen.getByRole('heading', { name: '다음에는 얼마를 모으고 싶나요?' })).toBeVisible();
@@ -103,15 +105,16 @@ describe('SimulationOnboarding', () => {
     fireEvent.click(screen.getByRole('button', { name: '있어요' }));
     const input = screen.getByRole('textbox', { name: '현재 모아둔 투자금' });
     fireEvent.change(input, { target: { value: '5000000' } });
+    expect(input).toHaveValue('5,000,000');
 
     fireEvent.click(screen.getByRole('button', { name: '-1000만' }));
     expect(input).toHaveValue('0');
     fireEvent.click(screen.getByRole('button', { name: '+100만' }));
-    expect(input).toHaveValue('1000000');
+    expect(input).toHaveValue('1,000,000');
     fireEvent.click(screen.getByRole('button', { name: '+1000만' }));
-    expect(input).toHaveValue('11000000');
+    expect(input).toHaveValue('11,000,000');
     fireEvent.click(screen.getByRole('button', { name: '-100만' }));
-    expect(input).toHaveValue('10000000');
+    expect(input).toHaveValue('10,000,000');
   });
 
   it('completes a migrated goal-required draft directly from the goal while preserving its settings', () => {

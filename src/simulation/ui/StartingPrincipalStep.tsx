@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Button } from '../../components/common/Button';
 import { Surface } from '../../components/common/Surface';
+import { adjustWon, formatWonInput, normalizeMoneyEdit, parseWonInput } from '../../core/domain/moneyInput';
 
 const principalAdjustments = [
   { label: '-1000만', deltaWon: -10_000_000 },
@@ -10,9 +11,7 @@ const principalAdjustments = [
 ] as const;
 
 function adjustPrincipal(rawAmount: string, deltaWon: number): string {
-  const current = Number(rawAmount);
-  const safeCurrent = Number.isSafeInteger(current) && current >= 0 ? current : 0;
-  return String(Math.max(0, safeCurrent + deltaWon));
+  return formatWonInput(adjustWon(parseWonInput(rawAmount), deltaWon), { zeroDisplay: 'zero' });
 }
 
 export function StartingPrincipalStep({
@@ -21,12 +20,19 @@ export function StartingPrincipalStep({
   onContinue(initialInvestmentWon: number): void;
 }) {
   const headingRef = useRef<HTMLHeadingElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const pendingCaretRef = useRef<number | null>(null);
   const [hasPrincipal, setHasPrincipal] = useState(false);
   const [rawAmount, setRawAmount] = useState('');
-  const amount = Number(rawAmount);
+  const amount = parseWonInput(rawAmount);
   const validAmount = Number.isSafeInteger(amount) && amount > 0;
 
   useEffect(() => headingRef.current?.focus(), []);
+  useLayoutEffect(() => {
+    if (pendingCaretRef.current === null || inputRef.current === null) return;
+    inputRef.current.setSelectionRange(pendingCaretRef.current, pendingCaretRef.current);
+    pendingCaretRef.current = null;
+  });
 
   return (
     <Surface as="section" className="simulation-onboarding-step" aria-labelledby="principal-title">
@@ -58,12 +64,21 @@ export function StartingPrincipalStep({
         }}>
           <label htmlFor="initial-investment">현재 모아둔 투자금</label>
           <input
+            ref={inputRef}
             id="initial-investment"
             type="text"
             inputMode="numeric"
             value={rawAmount}
             aria-invalid={rawAmount.length > 0 && !validAmount}
-            onChange={(event) => setRawAmount(event.target.value.replace(/[^\d]/g, ''))}
+            onChange={(event) => {
+              const normalized = normalizeMoneyEdit(
+                event.target.value,
+                event.target.selectionStart ?? event.target.value.length,
+                { zeroDisplay: 'zero' },
+              );
+              pendingCaretRef.current = normalized.caret;
+              setRawAmount(normalized.displayValue);
+            }}
           />
           <div className="simulation-principal-adjustments">
             {principalAdjustments.map(({ label, deltaWon }) => (

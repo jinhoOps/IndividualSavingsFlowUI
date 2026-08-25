@@ -19,9 +19,24 @@ describe('AllocationEditor', () => {
     render(<AllocationEditor draft={{ ...draft, inputMode: 'percentage' }} investmentWon={200_000} onAction={onAction} now={() => 2} />);
     expect(screen.queryByRole('radio', { name: '금액' })).not.toBeInTheDocument();
     expect(screen.queryByRole('radio', { name: '비율' })).not.toBeInTheDocument();
-    expect(screen.getByLabelText('미국 인덱스 금액')).toHaveValue('120000');
+    expect(screen.getByLabelText('미국 인덱스 금액')).toHaveValue('120,000');
+    expect(screen.getByLabelText('현금 금액')).toHaveValue('80,000');
     expect(screen.getByText('120,000원')).toBeVisible();
     expect(screen.getByText('60%')).toBeVisible();
+  });
+
+  it('formats direct amounts and parses commas before the blur action', () => {
+    const onAction = vi.fn<(action: PortfolioAction) => void>();
+    render(<AllocationEditor draft={draft} investmentWon={200_000} onAction={onAction} now={() => 2} />);
+    const amount = screen.getByLabelText('미국 인덱스 금액');
+
+    fireEvent.change(amount, { target: { value: '150000' } });
+    expect(amount).toHaveValue('150,000');
+    fireEvent.blur(amount);
+
+    expect(onAction).toHaveBeenCalledWith({
+      type: 'draft-item-amount-changed', id: 'index', amountWon: 150_000, now: 2,
+    });
   });
 
   it('uses the shared surface and secondary add action', () => {
@@ -59,7 +74,7 @@ describe('AllocationEditor', () => {
 
     const sheet = screen.getByRole('dialog', { name: '투자 대상 수정' });
     expect(within(sheet).getByLabelText('투자 대상 이름')).toHaveValue('미국 인덱스');
-    expect(within(sheet).getByLabelText('금액')).toHaveValue('120000');
+    expect(within(sheet).getByLabelText('금액')).toHaveValue('120,000');
     fireEvent.click(within(sheet).getByRole('button', { name: '성장, 누르면 안정으로 변경' }));
     fireEvent.click(within(sheet).getByRole('button', { name: '완료' }));
     expect(onAction).toHaveBeenCalledWith({

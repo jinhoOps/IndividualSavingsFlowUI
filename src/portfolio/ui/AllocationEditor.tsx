@@ -1,6 +1,7 @@
-import { useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { Button } from '../../components/common/Button';
 import { Surface } from '../../components/common/Surface';
+import { formatWonInput, normalizeMoneyEdit, parseWonInput } from '../../core/domain/moneyInput';
 import type { PortfolioAction } from '../application/portfolioReducer';
 import { materializeAllocation, normalizePortfolioName } from '../domain/allocation';
 import type { Classification, PortfolioDraft } from '../domain/model';
@@ -33,6 +34,8 @@ export function AllocationEditor({
   const [cashExpanded, setCashExpanded] = useState(false);
   const [activeItemSheet, setActiveItemSheet] = useState<ActiveItemSheet | null>(null);
   const itemSheetReturnFocusRef = useRef<HTMLElement | null>(null);
+  const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const pendingCaretRef = useRef<{ id: string; caret: number } | null>(null);
   const isAtLimit = draft.items.length >= 10;
   const normalizedNameCounts = draft.items.reduce<Map<string, number>>((counts, item) => {
     const normalized = normalizePortfolioName(item.name);
@@ -40,12 +43,23 @@ export function AllocationEditor({
     return counts;
   }, new Map());
 
+  useLayoutEffect(() => {
+    if (pendingCaretRef.current === null) return;
+    const { id, caret } = pendingCaretRef.current;
+    const input = inputRefs.current[id];
+    if (input !== null && input !== undefined) input.setSelectionRange(caret, caret);
+    pendingCaretRef.current = null;
+  });
+
   function commitItem(id: string, fallback: number): void {
     const raw = rawValues[id];
     if (raw === undefined) return;
-    const value = raw.trim() === '' ? 0 : Number(raw);
+    const value = raw.trim() === '' ? 0 : parseWonInput(raw);
     onAction({ type: 'draft-item-amount-changed', id, amountWon: value, now: now() });
-    setRawValues((current) => ({ ...current, [id]: String(Number.isFinite(value) ? value : fallback) }));
+    setRawValues((current) => ({
+      ...current,
+      [id]: formatWonInput(Number.isSafeInteger(value) ? value : fallback, { zeroDisplay: 'zero' }),
+    }));
   }
 
   return (
@@ -121,10 +135,19 @@ export function AllocationEditor({
               <label className="portfolio-editor__amount-field">
                 <span>금액</span>
                 <input
+                  ref={(input) => { inputRefs.current[item.id] = input; }}
                   aria-label={inputLabel}
                   inputMode="numeric"
-                  value={rawValues[item.id] ?? editableValue}
-                  onChange={(event) => setRawValues((current) => ({ ...current, [item.id]: event.target.value }))}
+                  value={rawValues[item.id] ?? formatWonInput(editableValue, { zeroDisplay: 'zero' })}
+                  onChange={(event) => {
+                    const normalized = normalizeMoneyEdit(
+                      event.target.value,
+                      event.target.selectionStart ?? event.target.value.length,
+                      { zeroDisplay: 'zero' },
+                    );
+                    pendingCaretRef.current = { id: item.id, caret: normalized.caret };
+                    setRawValues((current) => ({ ...current, [item.id]: normalized.displayValue }));
+                  }}
                   onBlur={() => {
                     commitItem(item.id, editableValue);
                   }}
@@ -191,13 +214,23 @@ export function AllocationEditor({
           <label>
           <span>현금 금액</span>
           <input
+            ref={(input) => { inputRefs.current.cash = input; }}
             aria-label="현금 금액"
             inputMode="numeric"
-            value={rawValues.cash ?? allocation.cashAmountWon}
-            onChange={(event) => setRawValues((current) => ({ ...current, cash: event.target.value }))}
+            value={rawValues.cash ?? formatWonInput(allocation.cashAmountWon, { zeroDisplay: 'zero' })}
+            onChange={(event) => {
+              const normalized = normalizeMoneyEdit(
+                event.target.value,
+                event.target.selectionStart ?? event.target.value.length,
+                { zeroDisplay: 'zero' },
+              );
+              pendingCaretRef.current = { id: 'cash', caret: normalized.caret };
+              setRawValues((current) => ({ ...current, cash: normalized.displayValue }));
+            }}
             onBlur={() => {
-              const amountWon = Number(rawValues.cash ?? allocation.cashAmountWon);
+              const amountWon = parseWonInput(rawValues.cash ?? allocation.cashAmountWon);
               onAction({ type: 'draft-cash-changed', amountWon, now: now() });
+              setRawValues((current) => ({ ...current, cash: formatWonInput(amountWon, { zeroDisplay: 'zero' }) }));
             }}
           />
           </label>

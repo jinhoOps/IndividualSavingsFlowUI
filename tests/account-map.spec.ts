@@ -615,7 +615,7 @@ test('explicitly reapplies a stale edit without losing an unrelated concurrent c
 
   await page.getByRole('button', { name: '저장' }).click();
   await expect(page.getByRole('status')).toContainText('편집 중인 입력은 그대로 두었습니다.');
-  await expect(input).toHaveValue('200000');
+  await expect(input).toHaveValue('200,000');
   await page.getByRole('button', { name: '최신 상태에서 다시 적용' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
 
@@ -657,10 +657,10 @@ test('blocks a same-field stale replay, preserves input, and focuses the conflic
   }, STORAGE_KEY);
 
   await page.getByRole('button', { name: '저장' }).click();
-  await expect(input).toHaveValue('200000');
+  await expect(input).toHaveValue('200,000');
   await page.getByRole('button', { name: '최신 상태에서 다시 적용' }).click();
   await expect(page.getByRole('alert')).toContainText('월 금액 항목이 최신 상태에서도 변경되어');
-  await expect(input).toHaveValue('200000');
+  await expect(input).toHaveValue('200,000');
   await expect(input).toBeFocused();
 
   const stored = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!), STORAGE_KEY);

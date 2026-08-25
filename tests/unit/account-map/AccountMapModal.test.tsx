@@ -91,7 +91,7 @@ describe('AccountMapModal', () => {
 
     expect(screen.getByText('큰 목적 · 생활비')).toBeVisible();
     const target = screen.getByRole('textbox', { name: '월 목표 금액' });
-    expect(target).toHaveValue('200000');
+    expect(target).toHaveValue('200,000');
     expect(screen.getByRole('button', { name: '목적 복원' })).toBeDisabled();
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
 

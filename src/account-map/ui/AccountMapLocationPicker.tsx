@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState, type JSX } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type JSX } from 'react';
 import { Button } from '../../components/common/Button';
+import { normalizeMoneyEdit, parseWonInput } from '../../core/domain/moneyInput';
 import type { FinancialLocation } from '../../workspace/domain/financialLocation';
 import { findLocationDuplicate, INSTITUTIONS } from '../domain/institutions';
 
@@ -33,6 +34,8 @@ export function AccountMapLocationPicker({
   const [customInstitution, setCustomInstitution] = useState('');
   const [shortName, setShortName] = useState('');
   const [amount, setAmount] = useState('');
+  const amountRef = useRef<HTMLInputElement>(null);
+  const pendingCaretRef = useRef<number | null>(null);
   const available = locations.filter((location) => location.archivedAt === undefined
     && !linkedLocationIds.has(location.id));
   const knownInstitution = INSTITUTIONS.find(([id]) => id === institutionId);
@@ -62,10 +65,15 @@ export function AccountMapLocationPicker({
     };
   }, [customInstitution, knownInstitution, locationKind, mode, needsInstitution, shortName, usesCustomInstitution]);
   const duplicate = preview === null ? { kind: 'none' as const } : findLocationDuplicate(locations, preview);
-  const amountWon = amount === '' ? undefined : Number(amount);
+  const amountWon = amount === '' ? undefined : parseWonInput(amount);
   const amountValid = !amountRequired || (amountWon !== undefined && Number.isSafeInteger(amountWon) && amountWon > 0);
   const dirty = selectedLocationId !== null || mode === 'create' || amount !== '';
   useEffect(() => onDirtyChange?.(dirty), [dirty, onDirtyChange]);
+  useLayoutEffect(() => {
+    if (pendingCaretRef.current === null || amountRef.current === null) return;
+    amountRef.current.setSelectionRange(pendingCaretRef.current, pendingCaretRef.current);
+    pendingCaretRef.current = null;
+  });
   useEffect(() => {
     setInstitutionId(null);
     setCustomInstitution('');
@@ -95,7 +103,11 @@ export function AccountMapLocationPicker({
       <label>표시 이름<input value={shortName} disabled={disabled} maxLength={8} placeholder="예: 급여통장" onChange={(event) => setShortName(event.target.value)} /></label>
       {duplicate.kind === 'none' ? null : <div className="account-map-duplicate"><p>{duplicate.kind === 'archived' ? '보관된 같은 항목이 있어요.' : '이미 같은 항목이 있어요.'}</p><Button variant="secondary" type="button" disabled={disabled || !amountValid} onClick={() => submitExisting(duplicate.location.id)}>{duplicate.kind === 'archived' ? '기존 항목 복원해서 연결' : '기존 항목 연결'}</Button></div>}
     </>}
-    {amountRequired ? <label>이 계좌에 둘 월 금액<input inputMode="numeric" value={amount} disabled={disabled} placeholder="0" onChange={(event) => setAmount(event.target.value.replace(/\D/gu, ''))} /><span>원</span></label> : null}
+    {amountRequired ? <label>이 계좌에 둘 월 금액<input ref={amountRef} inputMode="numeric" value={amount} disabled={disabled} placeholder="0" onChange={(event) => {
+      const normalized = normalizeMoneyEdit(event.target.value, event.target.selectionStart ?? event.target.value.length, { zeroDisplay: 'zero' });
+      pendingCaretRef.current = normalized.caret;
+      setAmount(normalized.displayValue);
+    }} /><span>원</span></label> : null}
     <div className="account-map-location-picker__actions">
       {onCancel === undefined ? null : <Button variant="secondary" type="button" disabled={cancelDisabled} onClick={onCancel}>취소</Button>}
       {mode === 'choose'

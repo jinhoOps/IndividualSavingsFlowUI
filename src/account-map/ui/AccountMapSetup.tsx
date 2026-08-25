@@ -1,5 +1,6 @@
-import { useEffect, useId, useRef, useState, type JSX } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState, type JSX } from 'react';
 import { Button } from '../../components/common/Button';
+import { normalizeMoneyEdit, parseWonInput } from '../../core/domain/moneyInput';
 import type { MainData } from '../../main/domain/model';
 import type { FinancialLocation } from '../../workspace/domain/financialLocation';
 import type { WorkspaceDocument } from '../../workspace/domain/model';
@@ -306,9 +307,11 @@ function CustomPurposeDialog({ main, draft, recovery, recoveryPending, onReapply
   const [amount, setAmount] = useState('');
   const [pending, setPending] = useState(false);
   const [feedback, setFeedback] = useState<Exclude<AccountMapDraftSaveResult, { status: 'saved' | 'recovery' }> | null>(null);
+  const pendingAmountCaretRef = useRef<number | null>(null);
   pendingRef.current = pending;
   const capacity = customPurposeTargetCapacity(parentId, draft?.customPurposes ?? [], main);
-  const amountOverCapacity = Number(amount) > capacity;
+  const amountWon = parseWonInput(amount);
+  const amountOverCapacity = amountWon > capacity;
   useEffect(() => {
     const returnFocus = document.activeElement as HTMLElement | null;
     panelRef.current?.querySelector<HTMLElement>('select, input, button')?.focus();
@@ -341,6 +344,12 @@ function CustomPurposeDialog({ main, draft, recovery, recoveryPending, onReapply
     alertRef.current?.focus();
   }, [feedback]);
 
+  useLayoutEffect(() => {
+    if (pendingAmountCaretRef.current === null || amountRef.current === null) return;
+    amountRef.current.setSelectionRange(pendingAmountCaretRef.current, pendingAmountCaretRef.current);
+    pendingAmountCaretRef.current = null;
+  });
+
   function requestClose() {
     if (pending || recoveryPending) return;
     if (recovery.status !== 'none') onKeepLatest();
@@ -357,7 +366,12 @@ function CustomPurposeDialog({ main, draft, recovery, recoveryPending, onReapply
           <label>큰 목적<select value={parentId} onChange={(event) => { setParentId(event.target.value as OutflowPurposeId); setFeedback(null); }}><option value="system:housing">주거</option><option value="system:living">생활비</option><option value="system:saving">저축</option><option value="system:investing">투자</option></select></label>
           <label>목적 이름<input ref={nameRef} value={name} maxLength={24} aria-invalid={nameFeedback !== null || undefined} aria-describedby={nameFeedback === null ? undefined : nameErrorId} onChange={(event) => { setName(event.target.value); setFeedback(null); }} /></label>
           {nameFeedback === null ? null : <p id={nameErrorId} className="account-map-error" role="alert">{nameFeedback.message}</p>}
-          <label>월 금액<input ref={amountRef} inputMode="numeric" value={amount} aria-invalid={amountFeedback !== null || amountOverCapacity || undefined} aria-describedby={amountFeedback !== null ? amountErrorId : amountOverCapacity ? amountErrorId : undefined} onChange={(event) => { setAmount(event.target.value.replace(/\D/gu, '')); setFeedback(null); }} /></label>
+          <label>월 금액<input ref={amountRef} inputMode="numeric" value={amount} aria-invalid={amountFeedback !== null || amountOverCapacity || undefined} aria-describedby={amountFeedback !== null ? amountErrorId : amountOverCapacity ? amountErrorId : undefined} onChange={(event) => {
+            const normalized = normalizeMoneyEdit(event.target.value, event.target.selectionStart ?? event.target.value.length, { zeroDisplay: 'zero' });
+            pendingAmountCaretRef.current = normalized.caret;
+            setAmount(normalized.displayValue);
+            setFeedback(null);
+          }} /></label>
           <p className="account-map-hint">추가 가능 {formatWon(capacity)}</p>
           {amountFeedback !== null ? <p id={amountErrorId} className="account-map-error" role="alert">{amountFeedback.message}</p> : amountOverCapacity ? <p id={amountErrorId} className="account-map-error">큰 목적의 월 금액을 넘을 수 없습니다.</p> : null}
           {feedback?.status !== 'failed' ? null : <p ref={alertRef} className="account-map-error" role="alert" tabIndex={-1}>{feedback.message}</p>}
@@ -365,10 +379,10 @@ function CustomPurposeDialog({ main, draft, recovery, recoveryPending, onReapply
         </div>
         <footer>
           <Button variant="secondary" type="button" disabled={pending || recoveryPending} onClick={requestClose}>취소</Button>
-          <Button variant="primary" type="button" disabled={pending || recovery.status !== 'none' || name.trim() === '' || Number(amount) <= 0 || amountOverCapacity} onClick={() => {
+          <Button variant="primary" type="button" disabled={pending || recovery.status !== 'none' || name.trim() === '' || amountWon <= 0 || amountOverCapacity} onClick={() => {
             const now = Date.now();
             const current = draft ?? emptyDraft(main.updatedAt);
-            const next: AccountMapDraft = { ...current, customPurposes: [...current.customPurposes, { id: `custom:${createId()}`, parentId, name: name.trim(), targetMonthlyWon: Number(amount), createdAt: now, updatedAt: now }], updatedAt: now };
+            const next: AccountMapDraft = { ...current, customPurposes: [...current.customPurposes, { id: `custom:${createId()}`, parentId, name: name.trim(), targetMonthlyWon: amountWon, createdAt: now, updatedAt: now }], updatedAt: now };
             setFeedback(null);
             setPending(true);
             void onSave(next).then((result) => {

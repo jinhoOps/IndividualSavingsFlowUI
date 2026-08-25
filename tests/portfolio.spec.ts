@@ -224,7 +224,7 @@ test('resumes and cancels a draft, validates manual cash, and confirms reset', a
   ))).toBe(500_000);
   await page.reload();
   await expect(page.getByRole('heading', { name: '투자 배분 수정' })).toBeVisible();
-  await expect(page.getByLabel('인덱스 금액')).toHaveValue('100000');
+  await expect(page.getByLabel('인덱스 금액')).toHaveValue('100,000');
 
   await page.getByRole('button', { name: '취소' }).click();
   await expect(page.locator('.portfolio-summary').getByRole('listitem').filter({ hasText: /인덱스.*60%/ }))
@@ -459,6 +459,35 @@ test('contains the mobile editor, apply bar, and confirmation dialog', async ({ 
   await assertContained(page.getByRole('complementary', { name: '배분 변경' }));
   await page.getByRole('button', { name: '적용' }).click();
   await assertContained(page.getByRole('dialog', { name: '투자 배분을 적용할까요?' }));
+});
+
+test('keeps add-sheet amount adjustments ordered, touch-sized, and on one row at 390px', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await seedMain(page, 200_000);
+  await page.goto('apps/portfolio/');
+  await enterFirstSetupAllocation(page);
+  await page.getByRole('button', { name: '투자 대상 추가' }).click();
+
+  const sheet = page.getByRole('dialog', { name: '투자 대상 추가' });
+  const adjustments = sheet.getByRole('group', { name: '빠른 조정' });
+  await expect(adjustments).toBeVisible();
+  const buttons = adjustments.getByRole('button');
+  await expect(buttons).toHaveText(['-50만', '-10만', '+10만', '+50만']);
+  const boxes = await buttons.evaluateAll((elements) => elements.map((element) => {
+    const rect = element.getBoundingClientRect();
+    return { top: Math.round(rect.top), height: rect.height };
+  }));
+  expect(new Set(boxes.map(({ top }) => top)).size).toBe(1);
+  expect(boxes.every(({ height }) => height >= 44)).toBe(true);
+  expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
+
+  const amount = sheet.getByLabel('금액');
+  await amount.fill('1200000');
+  await expect(amount).toHaveValue('1,200,000');
+  await adjustments.getByRole('button', { name: '-50만' }).click();
+  await expect(amount).toHaveValue('700,000');
+  await adjustments.getByRole('button', { name: '+50만' }).click();
+  await expect(amount).toHaveValue('1,200,000');
 });
 
 test('isolates applied editing as a sheet or panel and restores focus', async ({ page }) => {

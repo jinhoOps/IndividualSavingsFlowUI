@@ -44,6 +44,7 @@ describe('PortfolioItemSheet', () => {
 
     fireEvent.change(within(sheet).getByLabelText('투자 대상 이름'), { target: { value: '미국 인덱스' } });
     fireEvent.change(within(sheet).getByLabelText('금액'), { target: { value: '120000' } });
+    expect(within(sheet).getByLabelText('금액')).toHaveValue('120,000');
     fireEvent.click(within(sheet).getByRole('button', { name: '성장, 누르면 안정으로 변경' }));
     fireEvent.click(within(sheet).getByRole('button', { name: '완료' }));
 
@@ -132,6 +133,53 @@ describe('PortfolioItemSheet', () => {
     expect(within(sheet).getByRole('button', { name: '완료' })).toBeDisabled();
   });
 
+  it('shows ordered add-only amount adjustments and keeps their values formatted', () => {
+    renderSheet({
+      initialValue: {
+        name: '미국 인덱스', amountWon: 1_200_000,
+        classification: 'growth', classificationOrigin: 'automatic',
+      },
+    });
+    const sheet = screen.getByRole('dialog', { name: '투자 대상 추가' });
+    const adjustments = within(sheet).getByRole('group', { name: '빠른 조정' });
+    expect(within(adjustments).getAllByRole('button').map((button) => button.textContent))
+      .toEqual(['-50만', '-10만', '+10만', '+50만']);
+
+    const amount = within(sheet).getByLabelText('금액');
+    expect(amount).toHaveValue('1,200,000');
+    fireEvent.click(within(adjustments).getByRole('button', { name: '-50만' }));
+    expect(amount).toHaveValue('700,000');
+    fireEvent.click(within(adjustments).getByRole('button', { name: '-10만' }));
+    expect(amount).toHaveValue('600,000');
+    fireEvent.click(within(adjustments).getByRole('button', { name: '+10만' }));
+    expect(amount).toHaveValue('700,000');
+    fireEvent.click(within(adjustments).getByRole('button', { name: '+50만' }));
+    expect(amount).toHaveValue('1,200,000');
+  });
+
+  it('clamps add-sheet amount adjustments at zero', () => {
+    renderSheet();
+    const sheet = screen.getByRole('dialog', { name: '투자 대상 추가' });
+    const amount = within(sheet).getByLabelText('금액');
+
+    fireEvent.click(within(within(sheet).getByRole('group', { name: '빠른 조정' }))
+      .getByRole('button', { name: '-50만' }));
+
+    expect(amount).toHaveValue('');
+  });
+
+  it('keeps a directly entered zero visible while retaining the empty initial state', () => {
+    renderSheet();
+    const sheet = screen.getByRole('dialog', { name: '투자 대상 추가' });
+    const amount = within(sheet).getByLabelText('금액');
+
+    expect(amount).toHaveValue('');
+    fireEvent.change(amount, { target: { value: '0' } });
+
+    expect(amount).toHaveValue('0');
+    expect(amount).toHaveAccessibleDescription('투자 대상 금액은 1,000원 이상이어야 합니다.');
+  });
+
   it('offers icon removal and no quick fills only while editing', () => {
     const onRemove = vi.fn();
     renderSheet({
@@ -145,6 +193,7 @@ describe('PortfolioItemSheet', () => {
     const sheet = screen.getByRole('dialog', { name: '투자 대상 수정' });
 
     expect(within(sheet).queryByRole('button', { name: 'S&P 500' })).not.toBeInTheDocument();
+    expect(within(sheet).queryByRole('group', { name: '빠른 조정' })).not.toBeInTheDocument();
     const remove = within(sheet).getByRole('button', { name: '투자 대상 삭제' });
     expect(remove).not.toHaveTextContent('투자 대상 삭제');
     expect(remove.querySelector('svg')).toBeInTheDocument();
