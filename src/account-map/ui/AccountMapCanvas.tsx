@@ -107,9 +107,10 @@ export function AccountMapCanvas({
       }));
   const focusedId = interaction.transientNodeId ?? interaction.pinnedNodeId;
   const focusedNode = focusedId === null ? undefined : nodeById.get(focusedId);
-  const connectionDetail = focusedNode?.kind === 'location'
-    ? summarizeLocationConnectionDetail(positioned, focusedNode.id)
-    : null;
+  const connectionDetailTargetId = focusedNode?.kind === 'location' ? focusedNode.id : null;
+  const connectionDetail = connectionDetailTargetId === null
+    ? null
+    : summarizeLocationConnectionDetail(positioned, connectionDetailTargetId);
   const connectionDetailRows = connectionDetail === null ? [] : withDisplayedPercents(connectionDetail.rows);
   const pinnedNode = interaction.pinnedNodeId === null ? undefined : nodeById.get(interaction.pinnedNodeId);
   const pinnedLocationId = pinnedNode?.kind === 'location' ? pinnedNode.id : null;
@@ -120,9 +121,9 @@ export function AccountMapCanvas({
   useEffect(() => {
     const isNewlyPinned = previousPinnedLocationId.current !== pinnedLocationId;
     previousPinnedLocationId.current = pinnedLocationId;
-    if (!isNewlyPinned || pinnedLocationId === null || connectionDetailRef.current === null) return;
+    if (!isNewlyPinned || pinnedLocationId === null || connectionDetailTargetId !== pinnedLocationId || connectionDetailRef.current === null) return;
     return animateConnectionDetail(connectionDetailRef.current, { reducedMotion, onComplete: () => undefined }).cancel;
-  }, [pinnedLocationId]);
+  }, [connectionDetailTargetId, pinnedLocationId]);
   const connectedIds = new Set<string>(focusedId === null ? [] : positioned.edges.flatMap((edge) => (
     edge.purposeId === focusedId || edge.locationId === focusedId ? [edge.purposeId, edge.locationId] : []
   )));

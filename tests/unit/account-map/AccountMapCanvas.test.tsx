@@ -11,6 +11,7 @@ const controlledMotion = vi.hoisted(() => ({
   closeComplete: null as (() => void) | null,
   closeStarts: 0,
   connectionStarts: 0,
+  connectionCancels: 0,
   connectionOptions: [] as { reducedMotion: boolean }[],
 }));
 
@@ -27,7 +28,7 @@ vi.mock('../../../src/account-map/ui/motion', () => ({
   animateConnectionDetail: (_root: HTMLElement, options: { reducedMotion: boolean; onComplete(): void }) => {
     controlledMotion.connectionStarts += 1;
     controlledMotion.connectionOptions.push({ reducedMotion: options.reducedMotion });
-    return { cancel() {} };
+    return { cancel() { controlledMotion.connectionCancels += 1; } };
   },
 }));
 
@@ -36,6 +37,7 @@ afterEach(() => {
   controlledMotion.closeComplete = null;
   controlledMotion.closeStarts = 0;
   controlledMotion.connectionStarts = 0;
+  controlledMotion.connectionCancels = 0;
   controlledMotion.connectionOptions = [];
   vi.unstubAllGlobals();
 });
@@ -126,6 +128,26 @@ describe('AccountMapCanvas', () => {
 
     expect(within(screen.getByLabelText('급여통장 월 연결 구성')).getByText(/100%/)).toBeVisible();
     expect(controlledMotion.connectionOptions).toEqual([{ reducedMotion: true }]);
+  });
+
+  it('cancels the pinned-location animation when transient focus replaces its rendered detail', () => {
+    vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: false })));
+    function InteractiveCanvas() {
+      const [interaction, setInteraction] = useState({ transientNodeId: null as string | null, pinnedNodeId: null as string | null, modalNodeId: null as string | null });
+      return <>
+        <button type="button" onClick={() => setInteraction({ transientNodeId: null, pinnedNodeId: 'location:salary', modalNodeId: null })}>급여통장 고정</button>
+        <button type="button" onClick={() => setInteraction((current) => ({ ...current, transientNodeId: 'location:checking' }))}>생활비통장 집중</button>
+        {canvas(interaction)}
+      </>;
+    }
+    render(<InteractiveCanvas />);
+
+    fireEvent.click(screen.getByRole('button', { name: '급여통장 고정' }));
+    expect(controlledMotion.connectionStarts).toBe(1);
+    fireEvent.click(screen.getByRole('button', { name: '생활비통장 집중' }));
+
+    expect(screen.getByLabelText('생활비통장 월 연결 구성')).toBeVisible();
+    expect(controlledMotion.connectionCancels).toBe(1);
   });
 
   it('keeps purpose focus on its existing relationship detail without account composition', () => {
