@@ -135,29 +135,35 @@ describe('AdvancedSettings', () => {
   it('offers accessible quick adjustments that commit their clamped next amounts', () => {
     const onCommitted = vi.fn();
     render(<ControlledAdvancedSettings
-      initialDraft={draftWithInitial(80_000_000, 200_000_000)}
+      initialDraft={draftWithInitial(200_000_000, null)}
       onCommitted={onCommitted}
     />);
 
     fireEvent.click(screen.getByText('계산 기준'));
-    for (const name of ['-1000만', '-100만', '+100만', '+1000만']) {
+    for (const name of ['-1억', '-5천만', '+5천만', '+1억']) {
       expect(screen.getByRole('button', { name })).toBeVisible();
     }
 
-    fireEvent.click(screen.getByRole('button', { name: '-1000만' }));
-    fireEvent.click(screen.getByRole('button', { name: '-100만' }));
-    fireEvent.click(screen.getByRole('button', { name: '+100만' }));
-    fireEvent.click(screen.getByRole('button', { name: '+1000만' }));
+    fireEvent.click(screen.getByRole('button', { name: '-1억' }));
+    fireEvent.click(screen.getByRole('button', { name: '-5천만' }));
+    fireEvent.click(screen.getByRole('button', { name: '+5천만' }));
+    fireEvent.click(screen.getByRole('button', { name: '+1억' }));
 
     expect(onCommitted).toHaveBeenNthCalledWith(1, expect.objectContaining({
-      initialInvestmentWon: 70_000_000,
+      initialInvestmentWon: 100_000_000,
+      targetAmountWon: 200_000_000,
+    }));
+    expect(onCommitted).toHaveBeenNthCalledWith(2, expect.objectContaining({
+      initialInvestmentWon: 50_000_000,
       targetAmountWon: 100_000_000,
     }));
-    expect(onCommitted).toHaveBeenNthCalledWith(2, expect.objectContaining({ initialInvestmentWon: 69_000_000 }));
-    expect(onCommitted).toHaveBeenNthCalledWith(3, expect.objectContaining({ initialInvestmentWon: 70_000_000 }));
-    expect(onCommitted).toHaveBeenNthCalledWith(4, expect.objectContaining({
-      initialInvestmentWon: 80_000_000,
+    expect(onCommitted).toHaveBeenNthCalledWith(3, expect.objectContaining({
+      initialInvestmentWon: 100_000_000,
       targetAmountWon: 200_000_000,
+    }));
+    expect(onCommitted).toHaveBeenNthCalledWith(4, expect.objectContaining({
+      initialInvestmentWon: 200_000_000,
+      targetAmountWon: null,
     }));
   });
 
@@ -169,15 +175,15 @@ describe('AdvancedSettings', () => {
     />);
 
     fireEvent.click(screen.getByText('계산 기준'));
-    fireEvent.click(screen.getByRole('button', { name: '-1000만' }));
+    fireEvent.click(screen.getByRole('button', { name: '-1억' }));
     expect(onCommitted).toHaveBeenLastCalledWith(expect.objectContaining({ initialInvestmentWon: 0 }));
 
     rerender(<ControlledAdvancedSettings
       key="maximum"
-      initialDraft={draftWithInitial(Number.MAX_SAFE_INTEGER - 5_000_000, null)}
+      initialDraft={draftWithInitial(Number.MAX_SAFE_INTEGER - 50_000_000, null)}
       onCommitted={onCommitted}
     />);
-    fireEvent.click(screen.getByRole('button', { name: '+1000만' }));
+    fireEvent.click(screen.getByRole('button', { name: '+1억' }));
     expect(onCommitted).toHaveBeenLastCalledWith(expect.objectContaining({
       initialInvestmentWon: Number.MAX_SAFE_INTEGER,
       targetAmountWon: null,

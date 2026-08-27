@@ -87,7 +87,7 @@ for (const viewport of [
       main: appliedMain,
     });
 
-    const adjustments = ['-1000만', '-100만', '+100만', '+1000만']
+    const adjustments = ['-1억', '-5천만', '+5천만', '+1억']
       .map((name) => page.getByRole('button', { name }));
     const adjustmentBoxes = await Promise.all(adjustments.map((button) => button.boundingBox()));
     expect(adjustmentBoxes.every((box) => box !== null && box.height >= 44)).toBe(true);
@@ -95,11 +95,16 @@ for (const viewport of [
     await adjustments[1].click();
     await adjustments[2].click();
     await adjustments[3].click();
-    await expect(initialAmount).toHaveValue('12,000,000');
     await expect.poll(() => page.evaluate(() => {
       const workspace = JSON.parse(localStorage.getItem('isf-workspace-v1')!);
-      return workspace.simulation.draft?.initialInvestmentWon;
-    })).toBe(12_000_000);
+      return {
+        initialInvestmentWon: workspace.simulation.draft?.initialInvestmentWon,
+        targetAmountWon: workspace.simulation.draft?.targetAmountWon,
+      };
+    })).toEqual({
+      initialInvestmentWon: 150_000_000,
+      targetAmountWon: 200_000_000,
+    });
 
     const box = await initialAmount.boundingBox();
     expect(box).not.toBeNull();

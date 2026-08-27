@@ -8,10 +8,10 @@ import {
 import { formatPercent } from './format';
 
 const initialInvestmentAdjustments = [
-  { label: '-1000만', deltaWon: -10_000_000 },
-  { label: '-100만', deltaWon: -1_000_000 },
-  { label: '+100만', deltaWon: 1_000_000 },
-  { label: '+1000만', deltaWon: 10_000_000 },
+  { label: '-1억', deltaWon: -100_000_000 },
+  { label: '-5천만', deltaWon: -50_000_000 },
+  { label: '+5천만', deltaWon: 50_000_000 },
+  { label: '+1억', deltaWon: 100_000_000 },
 ] as const;
 
 export function AdvancedSettings({
