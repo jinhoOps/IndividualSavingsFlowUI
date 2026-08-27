@@ -100,8 +100,41 @@ for (const viewport of [
 
     const adjustments = ['-1억', '-5천만', '+5천만', '+1억']
       .map((name) => page.getByRole('button', { name }));
-    const adjustmentBoxes = await Promise.all(adjustments.map((button) => button.boundingBox()));
+    const [inputBox, inputControlBox, adjustmentControlBox, adjustmentBoxes] = await Promise.all([
+      initialAmount.boundingBox(),
+      initialAmount.locator('xpath=..').boundingBox(),
+      page.locator('.simulation-principal-adjustments').boundingBox(),
+      Promise.all(adjustments.map((button) => button.boundingBox())),
+    ]);
+    expect(inputBox).not.toBeNull();
+    expect(inputControlBox).not.toBeNull();
+    expect(adjustmentControlBox).not.toBeNull();
+    expect(inputBox!.x).toBeGreaterThanOrEqual(inputControlBox!.x);
+    expect(inputBox!.x + inputBox!.width).toBeLessThanOrEqual(
+      inputControlBox!.x + inputControlBox!.width,
+    );
+    expect(inputControlBox!.x).toBeGreaterThanOrEqual(0);
+    expect(inputControlBox!.x + inputControlBox!.width).toBeLessThanOrEqual(viewport.width);
+    expect(adjustmentControlBox!.x).toBeGreaterThanOrEqual(0);
+    expect(adjustmentControlBox!.x + adjustmentControlBox!.width).toBeLessThanOrEqual(viewport.width);
     expect(adjustmentBoxes.every((box) => box !== null && box.height >= 44)).toBe(true);
+    expect(adjustmentBoxes.every((box) => (
+      box !== null
+      && box.x >= adjustmentControlBox!.x
+      && box.x + box.width <= adjustmentControlBox!.x + adjustmentControlBox!.width
+      && box.y >= adjustmentControlBox!.y
+      && box.y + box.height <= adjustmentControlBox!.y + adjustmentControlBox!.height
+      && box.x >= 0
+      && box.x + box.width <= viewport.width
+    ))).toBe(true);
+    expect(adjustmentBoxes.every((box, index) => adjustmentBoxes.slice(index + 1).every((other) => (
+      box === null || other === null
+        ? false
+        : box.x + box.width <= other.x
+          || other.x + other.width <= box.x
+          || box.y + box.height <= other.y
+          || other.y + other.height <= box.y
+    )))).toBe(true);
     await adjustments[0].click();
     await adjustments[1].click();
     await adjustments[2].click();
