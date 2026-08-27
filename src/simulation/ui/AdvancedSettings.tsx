@@ -93,7 +93,8 @@ export function AdvancedSettings({
                 onBlur={() => {
                   const value = parseMoneyInput(initialRaw);
                   if (value === null) {
-                    setInitialError(true);
+                    setInitialRaw(formatMoneyInput(draft.initialInvestmentWon));
+                    setInitialError(false);
                     return;
                   }
                   commitInitialInvestment(value);

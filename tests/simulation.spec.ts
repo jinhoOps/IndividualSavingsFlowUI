@@ -58,6 +58,7 @@ for (const viewport of [
   { name: 'desktop', width: 1280, height: 900 },
 ]) {
   test(`${viewport.name} 계산 기준에서 기존 모아둔 돈을 수정해도 화면을 벗어나지 않는다`, async ({ page }) => {
+    const viewportEdgeTolerance = 1;
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     await seedMain(page);
     await openFirstResult(page);
@@ -68,10 +69,10 @@ for (const viewport of [
     const headline = page.getByRole('heading', {
       name: /1억 원을 모으려면|현재 조건으로는 30년 안에 1억 원/,
     });
-    const committedHeadline = await headline.textContent();
+    const initialHeadline = await headline.textContent();
     await initialAmount.fill('12000000');
     await expect(initialAmount).toHaveValue('12000000');
-    await expect(headline).toHaveText(committedHeadline ?? '');
+    await expect(headline).toHaveText(initialHeadline ?? '');
     await initialAmount.blur();
     await expect(initialAmount).toHaveValue('12,000,000');
     await expect.poll(() => page.evaluate(() => {
@@ -87,14 +88,79 @@ for (const viewport of [
       main: appliedMain,
     });
 
+    const committedHeadline = await headline.textContent();
+    const committedWorkspace = await page.evaluate(() => localStorage.getItem('isf-workspace-v1'));
+    await initialAmount.fill('');
+    await initialAmount.blur();
+    await expect(initialAmount).toHaveValue('12,000,000');
+    await expect(initialAmount).toHaveAttribute('aria-invalid', 'false');
+    await expect(page.getByRole('alert')).toHaveCount(0);
+    await expect(headline).toHaveText(committedHeadline ?? '');
+    await expect.poll(() => page.evaluate(() => localStorage.getItem('isf-workspace-v1')))
+      .toBe(committedWorkspace);
+
     const adjustments = ['-1억', '-5천만', '+5천만', '+1억']
       .map((name) => page.getByRole('button', { name }));
-    const adjustmentBoxes = await Promise.all(adjustments.map((button) => button.boundingBox()));
+    const adjustmentControl = page.locator('.simulation-principal-adjustments');
+    await initialAmount.scrollIntoViewIfNeeded();
+    const [inputBox, inputControlBox] = await Promise.all([
+      initialAmount.boundingBox(),
+      initialAmount.locator('xpath=..').boundingBox(),
+    ]);
+    await adjustmentControl.scrollIntoViewIfNeeded();
+    const [adjustmentControlBox, adjustmentBoxes] = await Promise.all([
+      adjustmentControl.boundingBox(),
+      Promise.all(adjustments.map((button) => button.boundingBox())),
+    ]);
+    expect(inputBox).not.toBeNull();
+    expect(inputControlBox).not.toBeNull();
+    expect(adjustmentControlBox).not.toBeNull();
+    expect(inputBox!.x).toBeGreaterThanOrEqual(inputControlBox!.x);
+    expect(inputBox!.x + inputBox!.width).toBeLessThanOrEqual(
+      inputControlBox!.x + inputControlBox!.width,
+    );
+    expect(inputBox!.y).toBeGreaterThanOrEqual(inputControlBox!.y);
+    expect(inputBox!.y + inputBox!.height).toBeLessThanOrEqual(
+      inputControlBox!.y + inputControlBox!.height,
+    );
+    expect(inputControlBox!.x).toBeGreaterThanOrEqual(0);
+    expect(inputControlBox!.x + inputControlBox!.width).toBeLessThanOrEqual(
+      viewport.width + viewportEdgeTolerance,
+    );
+    expect(inputControlBox!.y).toBeGreaterThanOrEqual(0);
+    expect(inputControlBox!.y + inputControlBox!.height).toBeLessThanOrEqual(
+      viewport.height + viewportEdgeTolerance,
+    );
+    expect(adjustmentControlBox!.x).toBeGreaterThanOrEqual(0);
+    expect(adjustmentControlBox!.x + adjustmentControlBox!.width).toBeLessThanOrEqual(
+      viewport.width + viewportEdgeTolerance,
+    );
+    expect(adjustmentControlBox!.y).toBeGreaterThanOrEqual(0);
+    expect(adjustmentControlBox!.y + adjustmentControlBox!.height).toBeLessThanOrEqual(
+      viewport.height + viewportEdgeTolerance,
+    );
     expect(adjustmentBoxes.every((box) => box !== null && box.height >= 44)).toBe(true);
+    expect(adjustmentBoxes.every((box) => (
+      box !== null
+      && box.x >= adjustmentControlBox!.x
+      && box.x + box.width <= adjustmentControlBox!.x + adjustmentControlBox!.width
+      && box.y >= adjustmentControlBox!.y
+      && box.y + box.height <= adjustmentControlBox!.y + adjustmentControlBox!.height
+      && box.x >= 0
+      && box.x + box.width <= viewport.width + viewportEdgeTolerance
+      && box.y >= 0
+      && box.y + box.height <= viewport.height + viewportEdgeTolerance
+    ))).toBe(true);
+    expect(adjustmentBoxes.every((box, index) => adjustmentBoxes.slice(index + 1).every((other) => (
+      box === null || other === null
+        ? false
+        : box.x + box.width <= other.x
+          || other.x + other.width <= box.x
+          || box.y + box.height <= other.y
+          || other.y + other.height <= box.y
+    )))).toBe(true);
     await adjustments[0].click();
-    await adjustments[1].click();
-    await adjustments[2].click();
-    await adjustments[3].click();
+    await expect(initialAmount).toHaveValue('0');
     await expect.poll(() => page.evaluate(() => {
       const workspace = JSON.parse(localStorage.getItem('isf-workspace-v1')!);
       return {
@@ -102,7 +168,46 @@ for (const viewport of [
         targetAmountWon: workspace.simulation.draft?.targetAmountWon,
       };
     })).toEqual({
-      initialInvestmentWon: 150_000_000,
+      initialInvestmentWon: 0,
+      targetAmountWon: 100_000_000,
+    });
+
+    await adjustments[2].click();
+    await expect(initialAmount).toHaveValue('50,000,000');
+    await expect.poll(() => page.evaluate(() => {
+      const workspace = JSON.parse(localStorage.getItem('isf-workspace-v1')!);
+      return {
+        initialInvestmentWon: workspace.simulation.draft?.initialInvestmentWon,
+        targetAmountWon: workspace.simulation.draft?.targetAmountWon,
+      };
+    })).toEqual({
+      initialInvestmentWon: 50_000_000,
+      targetAmountWon: 100_000_000,
+    });
+
+    await adjustments[1].click();
+    await expect(initialAmount).toHaveValue('0');
+    await expect.poll(() => page.evaluate(() => {
+      const workspace = JSON.parse(localStorage.getItem('isf-workspace-v1')!);
+      return {
+        initialInvestmentWon: workspace.simulation.draft?.initialInvestmentWon,
+        targetAmountWon: workspace.simulation.draft?.targetAmountWon,
+      };
+    })).toEqual({
+      initialInvestmentWon: 0,
+      targetAmountWon: 100_000_000,
+    });
+
+    await adjustments[3].click();
+    await expect(initialAmount).toHaveValue('100,000,000');
+    await expect.poll(() => page.evaluate(() => {
+      const workspace = JSON.parse(localStorage.getItem('isf-workspace-v1')!);
+      return {
+        initialInvestmentWon: workspace.simulation.draft?.initialInvestmentWon,
+        targetAmountWon: workspace.simulation.draft?.targetAmountWon,
+      };
+    })).toEqual({
+      initialInvestmentWon: 100_000_000,
       targetAmountWon: 200_000_000,
     });
 
