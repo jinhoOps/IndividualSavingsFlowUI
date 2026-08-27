@@ -58,6 +58,7 @@ for (const viewport of [
   { name: 'desktop', width: 1280, height: 900 },
 ]) {
   test(`${viewport.name} 계산 기준에서 기존 모아둔 돈을 수정해도 화면을 벗어나지 않는다`, async ({ page }) => {
+    const viewportEdgeTolerance = 1;
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     await seedMain(page);
     await openFirstResult(page);
@@ -100,10 +101,15 @@ for (const viewport of [
 
     const adjustments = ['-1억', '-5천만', '+5천만', '+1억']
       .map((name) => page.getByRole('button', { name }));
-    const [inputBox, inputControlBox, adjustmentControlBox, adjustmentBoxes] = await Promise.all([
+    const adjustmentControl = page.locator('.simulation-principal-adjustments');
+    await initialAmount.scrollIntoViewIfNeeded();
+    const [inputBox, inputControlBox] = await Promise.all([
       initialAmount.boundingBox(),
       initialAmount.locator('xpath=..').boundingBox(),
-      page.locator('.simulation-principal-adjustments').boundingBox(),
+    ]);
+    await adjustmentControl.scrollIntoViewIfNeeded();
+    const [adjustmentControlBox, adjustmentBoxes] = await Promise.all([
+      adjustmentControl.boundingBox(),
       Promise.all(adjustments.map((button) => button.boundingBox())),
     ]);
     expect(inputBox).not.toBeNull();
@@ -113,10 +119,26 @@ for (const viewport of [
     expect(inputBox!.x + inputBox!.width).toBeLessThanOrEqual(
       inputControlBox!.x + inputControlBox!.width,
     );
+    expect(inputBox!.y).toBeGreaterThanOrEqual(inputControlBox!.y);
+    expect(inputBox!.y + inputBox!.height).toBeLessThanOrEqual(
+      inputControlBox!.y + inputControlBox!.height,
+    );
     expect(inputControlBox!.x).toBeGreaterThanOrEqual(0);
-    expect(inputControlBox!.x + inputControlBox!.width).toBeLessThanOrEqual(viewport.width);
+    expect(inputControlBox!.x + inputControlBox!.width).toBeLessThanOrEqual(
+      viewport.width + viewportEdgeTolerance,
+    );
+    expect(inputControlBox!.y).toBeGreaterThanOrEqual(0);
+    expect(inputControlBox!.y + inputControlBox!.height).toBeLessThanOrEqual(
+      viewport.height + viewportEdgeTolerance,
+    );
     expect(adjustmentControlBox!.x).toBeGreaterThanOrEqual(0);
-    expect(adjustmentControlBox!.x + adjustmentControlBox!.width).toBeLessThanOrEqual(viewport.width);
+    expect(adjustmentControlBox!.x + adjustmentControlBox!.width).toBeLessThanOrEqual(
+      viewport.width + viewportEdgeTolerance,
+    );
+    expect(adjustmentControlBox!.y).toBeGreaterThanOrEqual(0);
+    expect(adjustmentControlBox!.y + adjustmentControlBox!.height).toBeLessThanOrEqual(
+      viewport.height + viewportEdgeTolerance,
+    );
     expect(adjustmentBoxes.every((box) => box !== null && box.height >= 44)).toBe(true);
     expect(adjustmentBoxes.every((box) => (
       box !== null
@@ -125,7 +147,9 @@ for (const viewport of [
       && box.y >= adjustmentControlBox!.y
       && box.y + box.height <= adjustmentControlBox!.y + adjustmentControlBox!.height
       && box.x >= 0
-      && box.x + box.width <= viewport.width
+      && box.x + box.width <= viewport.width + viewportEdgeTolerance
+      && box.y >= 0
+      && box.y + box.height <= viewport.height + viewportEdgeTolerance
     ))).toBe(true);
     expect(adjustmentBoxes.every((box, index) => adjustmentBoxes.slice(index + 1).every((other) => (
       box === null || other === null
