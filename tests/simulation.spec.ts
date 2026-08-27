@@ -160,9 +160,7 @@ for (const viewport of [
           || other.y + other.height <= box.y
     )))).toBe(true);
     await adjustments[0].click();
-    await adjustments[1].click();
-    await adjustments[2].click();
-    await adjustments[3].click();
+    await expect(initialAmount).toHaveValue('0');
     await expect.poll(() => page.evaluate(() => {
       const workspace = JSON.parse(localStorage.getItem('isf-workspace-v1')!);
       return {
@@ -170,7 +168,46 @@ for (const viewport of [
         targetAmountWon: workspace.simulation.draft?.targetAmountWon,
       };
     })).toEqual({
-      initialInvestmentWon: 150_000_000,
+      initialInvestmentWon: 0,
+      targetAmountWon: 100_000_000,
+    });
+
+    await adjustments[2].click();
+    await expect(initialAmount).toHaveValue('50,000,000');
+    await expect.poll(() => page.evaluate(() => {
+      const workspace = JSON.parse(localStorage.getItem('isf-workspace-v1')!);
+      return {
+        initialInvestmentWon: workspace.simulation.draft?.initialInvestmentWon,
+        targetAmountWon: workspace.simulation.draft?.targetAmountWon,
+      };
+    })).toEqual({
+      initialInvestmentWon: 50_000_000,
+      targetAmountWon: 100_000_000,
+    });
+
+    await adjustments[1].click();
+    await expect(initialAmount).toHaveValue('0');
+    await expect.poll(() => page.evaluate(() => {
+      const workspace = JSON.parse(localStorage.getItem('isf-workspace-v1')!);
+      return {
+        initialInvestmentWon: workspace.simulation.draft?.initialInvestmentWon,
+        targetAmountWon: workspace.simulation.draft?.targetAmountWon,
+      };
+    })).toEqual({
+      initialInvestmentWon: 0,
+      targetAmountWon: 100_000_000,
+    });
+
+    await adjustments[3].click();
+    await expect(initialAmount).toHaveValue('100,000,000');
+    await expect.poll(() => page.evaluate(() => {
+      const workspace = JSON.parse(localStorage.getItem('isf-workspace-v1')!);
+      return {
+        initialInvestmentWon: workspace.simulation.draft?.initialInvestmentWon,
+        targetAmountWon: workspace.simulation.draft?.targetAmountWon,
+      };
+    })).toEqual({
+      initialInvestmentWon: 100_000_000,
       targetAmountWon: 200_000_000,
     });
 
