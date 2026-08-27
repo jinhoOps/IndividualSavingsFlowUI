@@ -68,10 +68,10 @@ for (const viewport of [
     const headline = page.getByRole('heading', {
       name: /1억 원을 모으려면|현재 조건으로는 30년 안에 1억 원/,
     });
-    const committedHeadline = await headline.textContent();
+    const initialHeadline = await headline.textContent();
     await initialAmount.fill('12000000');
     await expect(initialAmount).toHaveValue('12000000');
-    await expect(headline).toHaveText(committedHeadline ?? '');
+    await expect(headline).toHaveText(initialHeadline ?? '');
     await initialAmount.blur();
     await expect(initialAmount).toHaveValue('12,000,000');
     await expect.poll(() => page.evaluate(() => {
@@ -86,6 +86,17 @@ for (const viewport of [
       targetAmountWon: 100_000_000,
       main: appliedMain,
     });
+
+    const committedHeadline = await headline.textContent();
+    const committedWorkspace = await page.evaluate(() => localStorage.getItem('isf-workspace-v1'));
+    await initialAmount.fill('');
+    await initialAmount.blur();
+    await expect(initialAmount).toHaveValue('12,000,000');
+    await expect(initialAmount).toHaveAttribute('aria-invalid', 'false');
+    await expect(page.getByRole('alert')).toHaveCount(0);
+    await expect(headline).toHaveText(committedHeadline ?? '');
+    await expect.poll(() => page.evaluate(() => localStorage.getItem('isf-workspace-v1')))
+      .toBe(committedWorkspace);
 
     const adjustments = ['-1억', '-5천만', '+5천만', '+1억']
       .map((name) => page.getByRole('button', { name }));

@@ -107,7 +107,7 @@ describe('AdvancedSettings', () => {
     }));
   });
 
-  it('keeps a blank or invalid accumulated amount uncommitted and clearly invalid', () => {
+  it('restores the committed accumulated amount after a blank or invalid blur without committing', () => {
     const onChange = vi.fn();
     render(<AdvancedSettings
       draft={draftWithInitial(12_000_000)}
@@ -119,16 +119,17 @@ describe('AdvancedSettings', () => {
     fireEvent.change(input, { target: { value: '' } });
     fireEvent.blur(input);
 
-    expect(input).toHaveValue('');
-    expect(input).toHaveAttribute('aria-invalid', 'true');
-    expect(screen.getByRole('alert')).toHaveTextContent('0원 이상 안전한 정수로 입력해주세요.');
+    expect(input).toHaveValue('12,000,000');
+    expect(input).toHaveAttribute('aria-invalid', 'false');
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     expect(onChange).not.toHaveBeenCalled();
 
     fireEvent.change(input, { target: { value: '9007199254740992' } });
     fireEvent.blur(input);
 
-    expect(input).toHaveValue('9007199254740992');
-    expect(input).toHaveAttribute('aria-invalid', 'true');
+    expect(input).toHaveValue('12,000,000');
+    expect(input).toHaveAttribute('aria-invalid', 'false');
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     expect(onChange).not.toHaveBeenCalled();
   });
 
