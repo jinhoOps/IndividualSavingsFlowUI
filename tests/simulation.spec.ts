@@ -65,7 +65,14 @@ for (const viewport of [
     await page.getByText('계산 기준').click();
     const initialAmount = page.getByRole('textbox', { name: '현재 모아둔 돈' });
     await expect(initialAmount).toHaveValue('0');
+    const headline = page.getByRole('heading', {
+      name: /1억 원을 모으려면|현재 조건으로는 30년 안에 1억 원/,
+    });
+    const committedHeadline = await headline.textContent();
     await initialAmount.fill('12000000');
+    await expect(initialAmount).toHaveValue('12000000');
+    await expect(headline).toHaveText(committedHeadline ?? '');
+    await initialAmount.blur();
     await expect(initialAmount).toHaveValue('12,000,000');
     await expect.poll(() => page.evaluate(() => {
       const workspace = JSON.parse(localStorage.getItem('isf-workspace-v1')!);
@@ -78,6 +85,25 @@ for (const viewport of [
       initialInvestmentWon: 12_000_000,
       targetAmountWon: 100_000_000,
       main: appliedMain,
+    });
+
+    const adjustments = ['-1억', '-5천만', '+5천만', '+1억']
+      .map((name) => page.getByRole('button', { name }));
+    const adjustmentBoxes = await Promise.all(adjustments.map((button) => button.boundingBox()));
+    expect(adjustmentBoxes.every((box) => box !== null && box.height >= 44)).toBe(true);
+    await adjustments[0].click();
+    await adjustments[1].click();
+    await adjustments[2].click();
+    await adjustments[3].click();
+    await expect.poll(() => page.evaluate(() => {
+      const workspace = JSON.parse(localStorage.getItem('isf-workspace-v1')!);
+      return {
+        initialInvestmentWon: workspace.simulation.draft?.initialInvestmentWon,
+        targetAmountWon: workspace.simulation.draft?.targetAmountWon,
+      };
+    })).toEqual({
+      initialInvestmentWon: 150_000_000,
+      targetAmountWon: 200_000_000,
     });
 
     const box = await initialAmount.boundingBox();

@@ -74,6 +74,30 @@ function firstSaveGate(): {
 }
 
 describe('SimulationApp', () => {
+  it('keeps the committed result headline stable while an accumulated amount is being edited', () => {
+    const saved = createDefaultSimulationDraft(source, 456);
+    const repository = simulationRepository({
+      status: 'found',
+      draft: saved,
+      migration: null,
+    });
+    render(<SimulationApp
+      mainSourceRepository={mainRepository(source)}
+      repository={repository}
+      now={() => 999}
+    />);
+
+    const headline = screen.getByRole('heading', { name: /1억 원을 모으려면/ });
+    const committedHeadline = headline.textContent;
+    fireEvent.click(screen.getByText('계산 기준'));
+    const initialAmount = screen.getByRole('textbox', { name: '현재 모아둔 돈' });
+    fireEvent.change(initialAmount, { target: { value: '20000000' } });
+
+    expect(initialAmount).toHaveValue('20000000');
+    expect(headline).toHaveTextContent(committedHeadline ?? '');
+    expect(repository.save).not.toHaveBeenCalled();
+  });
+
   it('edits the accumulated amount from calculation basis and reopens a user goal when needed', async () => {
     const saved = {
       ...createDefaultSimulationDraft(source, 456),
@@ -95,6 +119,7 @@ describe('SimulationApp', () => {
     const initialAmount = screen.getByRole('textbox', { name: '현재 모아둔 돈' });
     expect(initialAmount).toHaveValue('200,000,000');
     fireEvent.change(initialAmount, { target: { value: '300,000,000' } });
+    fireEvent.blur(initialAmount);
 
     expect(screen.getByRole('heading', { name: '다음에는 얼마를 모으고 싶나요?' })).toBeVisible();
     await waitFor(() => expect(repository.save).toHaveBeenCalledWith(expect.objectContaining({

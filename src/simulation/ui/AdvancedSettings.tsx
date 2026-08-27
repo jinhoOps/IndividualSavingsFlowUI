@@ -7,6 +7,13 @@ import {
 } from '../domain/validation';
 import { formatPercent } from './format';
 
+const initialInvestmentAdjustments = [
+  { label: '-1억', deltaWon: -100_000_000 },
+  { label: '-5천만', deltaWon: -50_000_000 },
+  { label: '+5천만', deltaWon: 50_000_000 },
+  { label: '+1억', deltaWon: 100_000_000 },
+] as const;
+
 export function AdvancedSettings({
   draft,
   onChange,
@@ -36,6 +43,18 @@ export function AdvancedSettings({
     ...draft,
     ...patch,
   });
+  const commitInitialInvestment = (value: number) => {
+    setInitialRaw(formatMoneyInput(value));
+    setInitialError(false);
+    update({
+      initialInvestmentWon: value,
+      targetAmountWon: targetForEditedInitialInvestment(
+        draft.initialInvestmentWon,
+        draft.targetAmountWon,
+        value,
+      ),
+    });
+  };
 
   return (
     <Surface as="section" className="simulation-calculation-settings" aria-label="금액과 계산 기준">
@@ -67,26 +86,37 @@ export function AdvancedSettings({
                 aria-invalid={initialError}
                 aria-describedby={initialError ? 'simulation-initial-investment-error' : undefined}
                 onChange={(event) => {
-                  const normalized = event.target.value.replace(/\D/g, '');
-                  const value = normalized === '' ? 0 : Number(normalized);
-                  const valid = Number.isSafeInteger(value) && value >= 0;
-                  setInitialRaw(valid ? formatMoneyInput(value) : normalized);
-                  setInitialError(!valid);
-                  if (valid) {
-                    update({
-                      initialInvestmentWon: value,
-                      targetAmountWon: targetForEditedInitialInvestment(
-                        draft.initialInvestmentWon,
-                        draft.targetAmountWon,
-                        value,
-                      ),
-                    });
+                  const raw = event.target.value;
+                  setInitialRaw(raw);
+                  setInitialError(parseMoneyInput(raw) === null);
+                }}
+                onBlur={() => {
+                  const value = parseMoneyInput(initialRaw);
+                  if (value === null) {
+                    setInitialError(true);
+                    return;
                   }
+                  commitInitialInvestment(value);
                 }}
               />
               <span aria-hidden="true">원</span>
             </div>
           </label>
+          <div className="simulation-principal-adjustments">
+            {initialInvestmentAdjustments.map(({ label, deltaWon }) => (
+              <Button
+                key={label}
+                type="button"
+                variant="secondary"
+                onClick={() => commitInitialInvestment(adjustInitialInvestment(
+                  draft.initialInvestmentWon,
+                  deltaWon,
+                ))}
+              >
+                {label}
+              </Button>
+            ))}
+          </div>
           {initialError ? (
             <p id="simulation-initial-investment-error" role="alert">
               0원 이상 안전한 정수로 입력해주세요.
@@ -147,4 +177,15 @@ function validRate(raw: string, value: number): boolean {
 function formatMoneyInput(valueWon: number): string {
   if (!Number.isSafeInteger(valueWon) || valueWon < 0) return String(valueWon);
   return new Intl.NumberFormat('ko-KR').format(valueWon);
+}
+
+function parseMoneyInput(raw: string): number | null {
+  const digits = raw.replaceAll(',', '');
+  if (!/^\d+$/.test(digits)) return null;
+  const value = Number(digits);
+  return Number.isSafeInteger(value) && value >= 0 ? value : null;
+}
+
+function adjustInitialInvestment(value: number, deltaWon: number): number {
+  return Math.min(Number.MAX_SAFE_INTEGER, Math.max(0, value + deltaWon));
 }
