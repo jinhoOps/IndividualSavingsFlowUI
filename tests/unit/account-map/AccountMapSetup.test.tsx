@@ -121,6 +121,46 @@ describe('AccountMapSetup', () => {
     expect(screen.getByRole('heading', { name: '연결 검토' })).toBeVisible();
   });
 
+  it('shows a parent purpose only its remaining connection target after adding a custom purpose', async () => {
+    const setup = fixture();
+    render(<AccountMapApp repositories={setup.repositories} />);
+    fireEvent.click(screen.getByRole('button', { name: '세부 목적 추가' }));
+    fireEvent.change(screen.getByRole('textbox', { name: '목적 이름' }), { target: { value: '여행' } });
+    fireEvent.change(screen.getByRole('textbox', { name: '월 금액' }), { target: { value: '100000' } });
+    fireEvent.click(screen.getByRole('button', { name: '추가' }));
+    await screen.findByRole('heading', { name: '여행' });
+
+    const livingCard = screen.getByRole('heading', { name: '생활비' }).closest('article')!;
+    expect(within(livingCard).getByText('900,000원')).toBeVisible();
+  });
+
+  it('does not offer a user-suspended connection as a new location candidate', () => {
+    const setup = fixture(true);
+    setup.current().accountMap.draft = {
+      schemaVersion: 1,
+      sourceMainUpdatedAt: 10,
+      customPurposes: [],
+      links: [{
+        id: 'suspended-income',
+        purposeId: 'system:income',
+        locationId: 'salary',
+        monthlyAmountWon: 2_000_000,
+        remainder: false,
+        status: 'suspended',
+        suspendedReason: 'user',
+        createdAt: 1,
+        updatedAt: 1,
+      }],
+      step: 'connect',
+      updatedAt: 1,
+    };
+    render(<AccountMapApp repositories={setup.repositories} />);
+    const incomeCard = screen.getByRole('heading', { name: '수입' }).closest('article')!;
+    fireEvent.click(within(incomeCard).getByRole('button', { name: '연결' }));
+
+    expect(screen.queryByRole('button', { name: /급여통장/ })).not.toBeInTheDocument();
+  });
+
   it('traps forward and reverse Tab inside the custom-purpose dialog', () => {
     render(<AccountMapApp repositories={fixture().repositories} />);
     fireEvent.click(screen.getByRole('button', { name: '세부 목적 추가' }));

@@ -14,7 +14,6 @@ import {
 } from '../domain/model';
 import {
   customPurposeTargetCapacity,
-  mainPurposeReferences,
   reconcilePurpose,
 } from '../domain/reconciliation';
 import { AccountMapLocationPicker } from './AccountMapLocationPicker';
@@ -62,7 +61,6 @@ export interface AccountMapSetupProps {
 export function AccountMapSetup(props: AccountMapSetupProps): JSX.Element {
   const [activePurposeId, setActivePurposeId] = useState<PurposeId | null>(null);
   const [customOpen, setCustomOpen] = useState(false);
-  const references = mainPurposeReferences(props.main);
   const visiblePurposeIds: PurposeId[] = [
     ...SYSTEM_PURPOSE_IDS,
     ...(props.draft?.customPurposes.filter(({ archivedAt }) => archivedAt === undefined).map(({ id }) => id) ?? []),
@@ -126,12 +124,18 @@ export function AccountMapSetup(props: AccountMapSetupProps): JSX.Element {
       <div className="account-map-purpose-grid">
         {visiblePurposeIds.map((purposeId) => {
           const links = props.draft?.links.filter((link) => link.purposeId === purposeId && link.status === 'active') ?? [];
+          const targetWon = reconcilePurpose(
+            purposeId,
+            props.draft ?? emptyDraft(props.main.updatedAt),
+            props.workspace.locations,
+            props.main,
+          ).targetWon;
           const root = rootPurpose(purposeId, props.draft);
           return (
             <article key={purposeId} className="account-map-purpose-card">
               <div className="account-map-purpose-card__top">
                 <div><p>{purposeMeta[root].prompt}</p><h2>{titleFor(purposeId, props.draft)}</h2></div>
-                <strong>{formatWon(purposeId.startsWith('custom:') ? props.draft?.customPurposes.find(({ id }) => id === purposeId)?.targetMonthlyWon ?? 0 : references[purposeId as SystemPurposeId])}</strong>
+                <strong>{formatWon(targetWon)}</strong>
               </div>
               {links.length > 0 ? <p className="account-map-purpose-card__status">{links.length}곳 연결됨</p> : <p className="account-map-purpose-card__status is-empty">연결 필요</p>}
               <button type="button" className="account-map-purpose-card__action" disabled={props.recovery.status !== 'none'} onClick={() => setActivePurposeId(purposeId)}>
@@ -216,7 +220,11 @@ function ConnectionDialog({ purposeId, workspace, main, draft, saveFailed, recov
   const [pending, setPending] = useState(false);
   pendingRef.current = pending;
   const links = draft?.links.filter((link) => link.purposeId === purposeId && link.status === 'active') ?? [];
-  const linkedIds = new Set(links.map(({ locationId }) => locationId));
+  const linkedIds = new Set(
+    draft?.links
+      .filter((link) => link.purposeId === purposeId)
+      .map(({ locationId }) => locationId),
+  );
   dirtyRef.current = dirty;
   const additional = links.length > 0;
 
