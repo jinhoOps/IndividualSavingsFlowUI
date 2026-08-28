@@ -1052,7 +1052,7 @@ test('completes reduced-motion node, detail, and modal motion synchronously', as
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await seed(page, mappedWorkspace());
   await page.goto('apps/account-map/');
-  await page.clock.pauseAt(await page.evaluate(() => Date.now()));
+  await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1_000));
 
   const living = page.getByRole('button', { name: /생활비.*1,000,000원/ }).first();
   await living.evaluate((element) => element.click());
