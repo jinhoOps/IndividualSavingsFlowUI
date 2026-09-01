@@ -1,15 +1,20 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AppContentFrame } from '../../components/common/AppContentFrame';
 import { AppShell } from '../../components/common/AppShell';
 import { useReducedMotion } from '../../components/motion/useReducedMotion';
 import {
-  applyDraft,
   bootstrapMain,
   type MainBootstrapIntroEntryReason,
   type MainBootstrapResult,
-  type ValidationIssue,
 } from '../application/bootstrap';
 import { mainReducer, type MainAction, type MainState } from '../application/mainReducer';
+import {
+  resetInvalidMainWorkspace,
+  saveMainDraft,
+  setupStepForIssue,
+  type ValidationIssue,
+} from '../application/mainSetupCommands';
+import { createSetupProgressQueue } from '../application/setupProgressQueue';
 import { calculateCashflow } from '../domain/cashflow';
 import { createEmptyMainData, type MainData, type SetupStep } from '../domain/model';
 import { exportRecoveryData } from '../infrastructure/backup';
@@ -62,7 +67,6 @@ export function MainApp({
   const [restorePending, setRestorePending] = useState(false);
   const [progressWarning, setProgressWarning] = useState<string | null>(null);
   const [introEntry, setIntroEntry] = useState<MainIntroEntry>({ id: 0, reason: 'none' });
-  const progressWriteTailRef = useRef<Promise<void>>(Promise.resolve());
   const importSelectionRef = useRef(0);
   const restoreFocusRequestedRef = useRef(false);
   const savingRef = useRef(false);
@@ -73,6 +77,7 @@ export function MainApp({
   const introEntryIdRef = useRef(0);
   const persistedFreshIntroEntryIdsRef = useRef(new Set<number>());
   const [initialEditPath] = useState<keyof MainData | undefined>(() => consumeEditIntent());
+  const progressQueue = useMemo(() => createSetupProgressQueue(repository), [repository]);
   const reducedMotion = useReducedMotion();
   const showIntro = state?.mode === 'setup'
     && state.setupStep === 'welcome'
@@ -173,9 +178,9 @@ export function MainApp({
     savingRef.current = true;
     dispatch({ type: 'save-started' });
     try {
-      await progressWriteTailRef.current;
-      const result = await applyDraft(state, repository);
-      if (result.ok) {
+      await progressQueue.waitForIdle();
+      const result = await saveMainDraft(state, repository);
+      if (result.status === 'saved') {
         await clearSetupProgress();
         setIssues([]);
         setBackupStatus(null);
@@ -183,7 +188,7 @@ export function MainApp({
         return;
       }
 
-      if (result.kind === 'validation') {
+      if (result.status === 'validation-failed') {
         setIssues(result.issues);
         setValidationAttempt((attempt) => attempt + 1);
         if (state.mode === 'setup') {
@@ -196,7 +201,6 @@ export function MainApp({
         dispatch({ type: 'save-failed' });
         return;
       }
-
       dispatch({ type: 'save-failed' });
     } finally {
       savingRef.current = false;
@@ -230,7 +234,11 @@ export function MainApp({
     dispatch({ type: 'save-started' });
     try {
       if (state.mode === 'recovery' && state.loadError?.raw !== undefined) {
-        await repository.resetInvalidWorkspace(state.loadError.raw);
+        const result = await resetInvalidMainWorkspace(state.loadError.raw, repository);
+        if (result.status !== 'reset') {
+          dispatch({ type: 'save-failed' });
+          return;
+        }
       }
       setIssues([]);
       setState({
@@ -282,36 +290,25 @@ export function MainApp({
     draft: MainData,
     kind: 'initial' | 'restart',
   ): Promise<boolean> {
-    return queueProgressWrite(
-      () => repository.saveSetupProgress(step, draft, kind),
-      '설정 진행 상황을 저장하지 못했습니다. 이 화면에서는 계속 입력할 수 있습니다.',
-    );
+    return progressQueue.save(step, draft, kind).then((result) => {
+      if (result.status === 'saved') {
+        setProgressWarning(null);
+        return true;
+      }
+      setProgressWarning('설정 진행 상황을 저장하지 못했습니다. 이 화면에서는 계속 입력할 수 있습니다.');
+      return false;
+    });
   }
 
   function clearSetupProgress(): Promise<boolean> {
-    return queueProgressWrite(
-      () => repository.clearSetupProgress(),
-      '설정 진행 상황을 정리하지 못했습니다. 저장된 계획에는 영향이 없습니다.',
-    );
-  }
-
-  function queueProgressWrite(
-    operation: () => Promise<void>,
-    failureMessage: string,
-  ): Promise<boolean> {
-    const attempted = progressWriteTailRef.current.then(operation);
-    const handled = attempted.then(
-      () => {
+    return progressQueue.clear().then((result) => {
+      if (result.status === 'saved') {
         setProgressWarning(null);
         return true;
-      },
-      () => {
-        setProgressWarning(failureMessage);
-        return false;
-      },
-    );
-    progressWriteTailRef.current = handled.then(() => undefined);
-    return handled;
+      }
+      setProgressWarning('설정 진행 상황을 정리하지 못했습니다. 저장된 계획에는 영향이 없습니다.');
+      return false;
+    });
   }
 
   async function prepareWorkspaceImport(file: File) {
@@ -656,15 +653,6 @@ function RecoveryView({
       </Surface>
     </AppContentFrame>
   );
-}
-
-export function setupStepForIssue(path: string | undefined): SetupStep | null {
-  if (path === undefined) return null;
-  if (path === 'monthlyNetIncomeWon') return 'income';
-  if (path === 'monthlyHousingWon') return 'housing';
-  if (path === 'monthlyLivingWon') return 'living';
-  if (path === 'monthlySavingWon' || path === 'monthlyInvestmentWon') return 'saving-investment';
-  return null;
 }
 
 function downloadRecovery(original: unknown, raw?: string): boolean {

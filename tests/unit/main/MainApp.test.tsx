@@ -20,7 +20,7 @@ import type {
   WorkspaceSaveGuard,
   WorkspaceSaveLock,
 } from '../../../src/workspace/infrastructure/workspaceSaveLock';
-import { MainApp, setupStepForIssue } from '../../../src/main/ui/MainApp';
+import { MainApp } from '../../../src/main/ui/MainApp';
 import { MemoryStorage } from '../simulation/MemoryStorage';
 
 const mainAppMocks = vi.hoisted(() => ({
@@ -247,23 +247,6 @@ async function completeBrandIntro(): Promise<void> {
   fireEvent.click(await screen.findByRole('button', { name: '화면을 눌러 건너뛰기' }));
   await waitFor(() => expect(screen.queryByTestId('main-welcome-intro')).not.toBeInTheDocument());
 }
-
-describe('setupStepForIssue', () => {
-  it.each([
-    ['monthlyNetIncomeWon', 'income'],
-    ['monthlyHousingWon', 'housing'],
-    ['monthlyLivingWon', 'living'],
-    ['monthlySavingWon', 'saving-investment'],
-    ['monthlyInvestmentWon', 'saving-investment'],
-  ] as const)('routes %s validation to %s', (path, expected) => {
-    expect(setupStepForIssue(path)).toBe(expected);
-  });
-
-  it('does not invent a setup route for an unknown issue', () => {
-    expect(setupStepForIssue('unknown')).toBeNull();
-    expect(setupStepForIssue(undefined)).toBeNull();
-  });
-});
 
 describe('MainApp', () => {
   it('saves fresh welcome progress once before the brand intro completes', async () => {
