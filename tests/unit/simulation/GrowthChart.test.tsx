@@ -253,6 +253,66 @@ describe('GrowthChart', () => {
     }));
   });
 
+  it('ignores a stale graph transition callback after a newer geometry has started', () => {
+    const { container, rerender } = render(
+      <GrowthChart result={result} amountMode="nominal" />,
+    );
+    const firstUpdate = projectCompoundGrowth({
+      ...createDefaultSimulationDraft({
+        monthlySavingsWon: 300_000,
+        monthlyInvestmentWon: 200_000,
+        mainUpdatedAt: 131,
+      }, 464),
+      years: 30,
+      expectedAnnualReturnPercent: 12,
+    });
+    anime.animate.mockClear();
+    rerender(<GrowthChart result={firstUpdate} amountMode="nominal" />);
+    const staleTransition = graphTransitionCall();
+
+    const latestUpdate = projectCompoundGrowth({
+      ...createDefaultSimulationDraft({
+        monthlySavingsWon: 300_000,
+        monthlyInvestmentWon: 200_000,
+        mainUpdatedAt: 132,
+      }, 465),
+      years: 25,
+      expectedAnnualReturnPercent: 5,
+    });
+    anime.animate.mockClear();
+    rerender(<GrowthChart result={latestUpdate} amountMode="nominal" />);
+    const latestFrame = motionPaths(container);
+
+    staleTransition.state.progress = 1;
+    staleTransition.options.onUpdate();
+    staleTransition.options.onComplete();
+
+    expect(motionPaths(container)).toEqual(latestFrame);
+  });
+
+  it('commits final visual paths and reveal width when Anime.js cannot create an animation', () => {
+    const { container, rerender } = render(
+      <GrowthChart result={result} amountMode="nominal" />,
+    );
+    anime.animate.mockImplementation(() => {
+      throw new Error('animation unavailable');
+    });
+    const updated = projectCompoundGrowth({
+      ...createDefaultSimulationDraft({
+        monthlySavingsWon: 300_000,
+        monthlyInvestmentWon: 200_000,
+        mainUpdatedAt: 133,
+      }, 466),
+      years: 30,
+      expectedAnnualReturnPercent: 9,
+    });
+
+    expect(() => rerender(<GrowthChart result={updated} amountMode="real" />)).not.toThrow();
+
+    expect(motionPaths(container)).toEqual(semanticPaths(container));
+    expect(container.querySelector('.growth-chart__reveal-clip')).toHaveAttribute('width', '620');
+  });
+
   it('keeps the full prior curve shape at the start of a shorter-duration transition', () => {
     const longResult = projectCompoundGrowth({
       ...createDefaultSimulationDraft({
