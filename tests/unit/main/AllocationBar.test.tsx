@@ -324,6 +324,17 @@ describe('AllocationBar', () => {
     expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
   });
 
+  it('centers a visual target tooltip from its allocation geometry on focus', () => {
+    mockBarViewport(1_000);
+    render(<AllocationBar data={cashflowFixture} />);
+
+    const visualTarget = document.querySelector<HTMLButtonElement>('.allocation-bar__segment-target');
+    expect(visualTarget).not.toBeNull();
+    fireEvent.focus(visualTarget!);
+
+    expect(screen.getByRole('tooltip')).toHaveStyle({ left: '28.125%' });
+  });
+
   it('keeps a focused segment tooltip open after the pointer leaves, then closes it on blur', () => {
     render(<AllocationBar data={cashflowFixture} />);
     const consumption = screen.getByRole('button', { name: '소비 상세 정보' });

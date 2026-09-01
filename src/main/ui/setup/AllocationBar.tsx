@@ -5,23 +5,25 @@ import { MOTION_DURATION, MOTION_EASE } from '../../../components/motion/tokens'
 import type { MainData } from '../../domain/model';
 import { PercentageTooltip } from '../common/PercentageTooltip';
 import { createCashflowBarGeometry, type CashflowViewport } from './cashflowBarGeometry';
-import { buildCashflowBarModel } from './cashflowBarModel';
+import {
+  allocationCenter,
+  hasIndependentTarget,
+  isSegmentClipped,
+  pointerPercentage,
+  visibleSegmentPercentage,
+} from './cashflowBarInteraction';
+import { buildCashflowBarModel, type CashflowAllocationId, type CashflowBarAllocation } from './cashflowBarModel';
 
 export interface AllocationBarProps {
   data: MainData;
   presentation?: 'standard' | 'assembly';
 }
 
-interface Allocation {
-  id: string;
-  label: string;
-  amountWon: number;
-  percentage: number | null;
-  startPercent: number;
+interface Allocation extends CashflowBarAllocation {
   visualPercentage: number;
 }
 
-type AllocationId = 'consumption' | 'saving' | 'investment' | 'remaining';
+type AllocationId = CashflowAllocationId;
 
 interface AllocationBarMotionState {
   consumption: number;
@@ -38,7 +40,6 @@ interface ActiveAllocationTarget {
   isVisualTarget: boolean;
 }
 
-const MIN_INTERACTIVE_SIZE_PX = 44;
 const ALLOCATION_IDS: AllocationId[] = ['consumption', 'saving', 'investment', 'remaining'];
 
 export function AllocationBar({ data, presentation = 'standard' }: AllocationBarProps) {
@@ -92,7 +93,7 @@ export function AllocationBar({ data, presentation = 'standard' }: AllocationBar
   const allocationBarClassName = presentation === 'assembly'
     ? 'allocation-bar app-wide-visual'
     : 'allocation-bar';
-  const activePosition = activeAllocation ? allocationCenter(activeAllocation.id, allocations) : 0;
+  const activePosition = activeAllocation ? allocationCenter(activeAllocation) : 0;
   const tooltipPosition = activeId === hoveredTarget?.id
     ? pointerPosition ?? activePosition
     : activeId === tappedTarget?.id
@@ -233,7 +234,11 @@ export function AllocationBar({ data, presentation = 'standard' }: AllocationBar
   }, [tappedTarget]);
 
   const setPointerPositionFromEvent = (event: PointerEvent<HTMLButtonElement>) => {
-    setPointerPosition(pointerPercentage(event.clientX, barRef.current));
+    const bar = barRef.current;
+    setPointerPosition(pointerPercentage(
+      event.clientX,
+      bar?.getBoundingClientRect() ?? { left: 0, width: 0 },
+    ));
   };
 
   const activatePointer = (
@@ -251,7 +256,15 @@ export function AllocationBar({ data, presentation = 'standard' }: AllocationBar
 
   const toggleTappedTooltip = (allocationId: string, event: MouseEvent<HTMLButtonElement>, isVisualTarget: boolean) => {
     isPointerFocusRef.current = false;
-    setTapPosition(isVisualTarget && event.detail > 0 ? pointerPercentage(event.clientX, barRef.current) : undefined);
+    const bar = barRef.current;
+    setTapPosition(
+      isVisualTarget && event.detail > 0
+        ? pointerPercentage(
+          event.clientX,
+          bar?.getBoundingClientRect() ?? { left: 0, width: 0 },
+        )
+        : undefined,
+    );
     setTappedTarget((tapped) => (
       tapped?.id === allocationId ? undefined : { id: allocationId, isVisualTarget }
     ));
@@ -447,14 +460,6 @@ export function AllocationBar({ data, presentation = 'standard' }: AllocationBar
   );
 }
 
-function allocationCenter(allocationId: string, allocations: Allocation[]): number {
-  const allocation = allocations.find((candidate) => candidate.id === allocationId);
-  return clampPercentage(
-    (allocation?.startPercent ?? 0)
-      + (allocation?.visualPercentage ?? 0) / 2,
-  );
-}
-
 function allocationText(allocation: Allocation): string {
   return `${allocation.label} · ${formatContextWon(allocation.amountWon)} · ${formatPercentage(allocation.percentage)}`;
 }
@@ -476,23 +481,6 @@ function formatPercentage(percentage: number | null): string {
   return `${(percentage ?? 0).toFixed(1)}%`;
 }
 
-function hasIndependentTarget(percentage: number, barWidth: number): boolean {
-  return barWidth > 0 && barWidth * percentage / 100 >= MIN_INTERACTIVE_SIZE_PX;
-}
-
-function pointerPercentage(clientX: number, element: HTMLDivElement | null): number {
-  const rect = element?.getBoundingClientRect();
-  if (!rect || rect.width <= 0) {
-    return 0;
-  }
-
-  return clampPercentage(((clientX - rect.left) / rect.width) * 100);
-}
-
-function clampPercentage(percentage: number): number {
-  return Math.min(100, Math.max(0, percentage));
-}
-
 function relativeStripWidth(desiredEndPercent: number, visibleEndPercent: number): number {
   return visibleEndPercent > 0 ? desiredEndPercent / visibleEndPercent * 100 : 0;
 }
@@ -503,22 +491,6 @@ function relativeSegmentWidth(widthPercent: number, desiredEndPercent: number): 
 
 function relativeSegmentPosition(startPercent: number, desiredEndPercent: number): number {
   return desiredEndPercent > 0 ? startPercent / desiredEndPercent * 100 : 0;
-}
-
-function visibleSegmentPercentage(
-  allocation: Allocation,
-  visibleEndPercent: number,
-): number {
-  const visibleEnd = Math.min(
-    allocation.startPercent + allocation.visualPercentage,
-    visibleEndPercent,
-  );
-  return Math.max(0, visibleEnd - allocation.startPercent);
-}
-
-function isSegmentClipped(allocation: Allocation, visibleEndPercent: number): boolean {
-  return allocation.visualPercentage > 0
-    && allocation.startPercent + allocation.visualPercentage > visibleEndPercent;
 }
 
 function createBarMotionState(
