@@ -98,6 +98,10 @@ export function useMainBackupController({
     setPendingImport(null);
   }
 
+  function clearBackupStatus() {
+    setBackupStatus(null);
+  }
+
   async function restorePendingImport(): Promise<boolean> {
     if (pendingImport === null || operationGate.busy) return false;
     operationGate.busy = true;
@@ -155,6 +159,7 @@ export function useMainBackupController({
     restorePending,
     prepareWorkspaceImport,
     cancelWorkspaceImport,
+    clearBackupStatus,
     restorePendingImport,
     exportCurrentWorkspace,
     exportRecoveryOriginal,

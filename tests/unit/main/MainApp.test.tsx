@@ -435,6 +435,56 @@ describe('MainApp', () => {
     expect(screen.queryByText('모든 앱 데이터 백업을 내보냈습니다.')).not.toBeInTheDocument();
   });
 
+  it('clears a successful workspace backup status after applying a Main draft', async () => {
+    const current = workspace(3_000_000, 7);
+    const workspaceRepository: Pick<WorkspaceRepository, 'load' | 'replace'> = {
+      load: () => ({ status: 'found', workspace: current, needsMigration: false }),
+      replace: vi.fn(),
+    };
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:workspace-backup');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+    render(<MainApp
+      repository={repository({ status: 'current', data: current.main.applied!, original: null })}
+      workspaceRepository={workspaceRepository}
+    />);
+    await screen.findByRole('heading', { name: 'dashboard' });
+
+    fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: '백업 내보내기' }));
+    expect(await screen.findByText('모든 앱 데이터 백업을 내보냈습니다.')).toBeVisible();
+
+    fireEvent.click(screen.getByRole('button', { name: 'edit-draft' }));
+    fireEvent.click(screen.getByRole('button', { name: 'apply-dashboard' }));
+
+    await waitFor(() => expect(screen.queryByText('모든 앱 데이터 백업을 내보냈습니다.')).not.toBeInTheDocument());
+  });
+
+  it('clears a successful workspace backup status after cancelling a Main draft', async () => {
+    const current = workspace(3_000_000, 7);
+    const workspaceRepository: Pick<WorkspaceRepository, 'load' | 'replace'> = {
+      load: () => ({ status: 'found', workspace: current, needsMigration: false }),
+      replace: vi.fn(),
+    };
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:workspace-backup');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+    render(<MainApp
+      repository={repository({ status: 'current', data: current.main.applied!, original: null })}
+      workspaceRepository={workspaceRepository}
+    />);
+    await screen.findByRole('heading', { name: 'dashboard' });
+
+    fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: '백업 내보내기' }));
+    expect(await screen.findByText('모든 앱 데이터 백업을 내보냈습니다.')).toBeVisible();
+
+    fireEvent.click(screen.getByRole('button', { name: 'edit-draft' }));
+    fireEvent.click(screen.getByRole('button', { name: 'cancel-dashboard' }));
+
+    await waitFor(() => expect(screen.queryByText('모든 앱 데이터 백업을 내보냈습니다.')).not.toBeInTheDocument());
+  });
+
   it('confirms and atomically restores all slices before reloading Main', async () => {
     const storage = new MemoryStorage();
     const current = workspace(3_000_000, 7);

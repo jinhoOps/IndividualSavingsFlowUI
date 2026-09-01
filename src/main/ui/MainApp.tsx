@@ -80,6 +80,7 @@ export function MainApp({
     restorePending,
     prepareWorkspaceImport,
     cancelWorkspaceImport,
+    clearBackupStatus,
     restorePendingImport,
     exportCurrentWorkspace,
     exportRecoveryOriginal,
@@ -184,6 +185,7 @@ export function MainApp({
       if (result.status === 'saved') {
         await clearSetupProgress();
         setIssues([]);
+        clearBackupStatus();
         dispatch({ type: 'save-succeeded', data: result.data });
         return;
       }
@@ -213,6 +215,7 @@ export function MainApp({
     try {
       if (!await clearSetupProgress()) return;
       setIssues([]);
+      clearBackupStatus();
       dispatch({ type: 'cancel-draft' });
     } finally {
       operationGate.busy = false;
