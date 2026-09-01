@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-24
 
-**Status:** Proposed; implementation pending review
+**Status:** Approved; phased implementation in progress
 
 **Scope:** Main·Simulation·Portfolio·Account Map과 공통 UI/인프라의 단계적 구조 리팩터링
 
@@ -69,6 +69,12 @@
 ### Phase 3 — Visualization and motion boundaries
 
 시각화는 순수 계산과 DOM/SVG 렌더링을 분리한다.
+
+Phase 3는 다음 세 상세 명세를 Main → Simulation → Account Map 순서의 독립 구현·검증·rollback 단위로 수행한다.
+
+- [Main Visualization Boundary Refactor Design](2026-09-01-main-visualization-boundary-design.md)
+- [Simulation Chart Boundary Refactor Design](2026-09-01-simulation-chart-boundary-design.md)
+- [Account Map Visualization Boundary Refactor Design](2026-09-01-account-map-visualization-boundary-design.md)
 
 - Account Map의 `buildAccountMapGraph`와 `layoutAccountMap`을 graph model, responsive layout, node placement 단위로 나누고 순수 테스트를 유지한다.
 - Simulation의 projection/chart geometry와 `GrowthChart` 렌더링을 분리한다.
