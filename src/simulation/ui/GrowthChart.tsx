@@ -14,6 +14,7 @@ import {
   tooltipPlacement,
   type ChartGeometry,
 } from './chartGeometry';
+import { buildChartSeries, type ChartSeriesPoint } from './chartSeries';
 import { formatWon } from './format';
 import { GrowthChartTooltip } from './GrowthChartTooltip';
 
@@ -31,6 +32,10 @@ export function GrowthChart({
   const firstRevealCompleteRef = useRef(false);
   const revealClipId = `growth-chart-reveal-${useId().replace(/:/g, '')}`;
   const compactTooltip = useCompactTooltip();
+  const series = useMemo(
+    () => buildChartSeries(result.points, amountMode),
+    [amountMode, result.points],
+  );
   const geometry = useMemo(
     () => buildChartGeometry(result.points, amountMode),
     [amountMode, result.points],
@@ -117,11 +122,11 @@ export function GrowthChart({
       window.removeEventListener('scroll', dismiss);
     };
   }, [activeIndex]);
-  const last = result.points.at(-1)!;
-  const finalCurrent = displayed(last, 'current', amountMode);
-  const finalSavings = displayed(last, 'allSavings', amountMode);
+  const last = series.at(-1)!;
+  const finalCurrent = last.currentPlanWon;
+  const finalSavings = last.allSavingsWon;
   const activeGeometry = activeIndex === null ? null : geometry.points[activeIndex] ?? null;
-  const active = activeGeometry?.point ?? null;
+  const active = activeIndex === null ? null : series[activeIndex] ?? null;
   const tooltipSize = compactTooltip
     ? { width: 192, height: 112 }
     : { width: 240, height: 230 };
@@ -285,7 +290,7 @@ export function GrowthChart({
         {active === null || activeGeometry === null || placement === null ? null : (
           <>
             <p className="sr-only" role="status">
-              {activeStatus(active, amountMode, compactTooltip)}
+              {activeStatus(active, compactTooltip)}
             </p>
             <GrowthChartTooltip
               variant={compactTooltip ? 'compact' : 'detailed'}
@@ -294,15 +299,11 @@ export function GrowthChart({
               anchorYPercent={Math.min(activeGeometry.currentY, activeGeometry.allSavingsY) / 285 * 100}
               values={{
                 periodLabel: formatProjectionPeriod(active.month),
-                currentPlanWon: displayed(active, 'current', amountMode),
-                allSavingsWon: displayed(active, 'allSavings', amountMode),
-                principalWon: amountMode === 'real'
-                  ? active.contributedPrincipalRealWon
-                  : active.contributedPrincipalWon,
-                savingsWon: amountMode === 'real' ? active.savingsRealWon : active.savingsNominalWon,
-                investmentWon: amountMode === 'real'
-                  ? active.investmentRealWon
-                  : active.investmentNominalWon,
+                currentPlanWon: active.currentPlanWon,
+                allSavingsWon: active.allSavingsWon,
+                principalWon: active.principalWon,
+                savingsWon: active.savingsWon,
+                investmentWon: active.investmentWon,
               }}
             />
           </>
@@ -500,27 +501,13 @@ function indexAt(
 }
 
 function activeStatus(
-  point: ProjectionPoint,
-  amountMode: CompoundSimulationDraft['amountMode'],
+  point: ChartSeriesPoint,
   compact: boolean,
 ): string {
   const periodLabel = formatProjectionPeriod(point.month);
-  const currentPlan = formatWon(displayed(point, 'current', amountMode));
-  const principal = formatWon(amountMode === 'real'
-    ? point.contributedPrincipalRealWon
-    : point.contributedPrincipalWon);
+  const currentPlan = formatWon(point.currentPlanWon);
+  const principal = formatWon(point.principalWon);
   if (compact) return `${periodLabel}, 현재 계획 총액 ${currentPlan}, 누적 납입원금 ${principal}`;
 
-  return `${periodLabel}, 현재 계획 총액 ${currentPlan}, 전부 저축 총액 ${formatWon(displayed(point, 'allSavings', amountMode))}, 누적 납입원금 ${principal}, 저축 잔액 ${formatWon(amountMode === 'real' ? point.savingsRealWon : point.savingsNominalWon)}, 투자 잔액 ${formatWon(amountMode === 'real' ? point.investmentRealWon : point.investmentNominalWon)}`;
-}
-
-function displayed(
-  point: ProjectionPoint,
-  series: 'current' | 'allSavings',
-  mode: CompoundSimulationDraft['amountMode'],
-): number {
-  if (mode === 'real') {
-    return series === 'current' ? point.currentPlanRealWon : point.allSavingsRealWon;
-  }
-  return series === 'current' ? point.currentPlanNominalWon : point.allSavingsNominalWon;
+  return `${periodLabel}, 현재 계획 총액 ${currentPlan}, 전부 저축 총액 ${formatWon(point.allSavingsWon)}, 누적 납입원금 ${principal}, 저축 잔액 ${formatWon(point.savingsWon)}, 투자 잔액 ${formatWon(point.investmentWon)}`;
 }
