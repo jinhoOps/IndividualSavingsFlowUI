@@ -40,6 +40,15 @@ export function createPathTransition(
   previous: VisualChartGeometry,
   next: VisualChartGeometry,
 ): (progress: number) => VisualChartGeometry {
+  if (
+    previous.current.length === 0
+    || previous.savings.length === 0
+    || next.current.length === 0
+    || next.savings.length === 0
+  ) {
+    return () => next;
+  }
+
   const pointCount = Math.max(previous.current.length, next.current.length);
   const sourceCurrent = resample(previous.current, pointCount);
   const sourceSavings = resample(previous.savings, pointCount);

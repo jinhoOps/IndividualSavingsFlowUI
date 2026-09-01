@@ -19,6 +19,18 @@ const next: VisualChartGeometry = {
   bottom: 120,
 };
 
+const emptyPrevious: VisualChartGeometry = {
+  current: [],
+  savings: [],
+  bottom: 100,
+};
+
+const emptyNext: VisualChartGeometry = {
+  current: [],
+  savings: [],
+  bottom: 120,
+};
+
 describe('chart motion geometry', () => {
   it('converts final chart points into visual path geometry without changing their coordinates', () => {
     const geometry = {
@@ -56,6 +68,14 @@ describe('chart motion geometry', () => {
     expect(Object.values(pathsForVisualGeometry(frame)).every((path) => (
       path !== '' && !path.includes('NaN') && !path.includes('Infinity')
     ))).toBe(true);
+  });
+
+  it('commits the target frame when a prior visual curve is empty', () => {
+    expect(createPathTransition(emptyPrevious, next)(0)).toEqual(next);
+  });
+
+  it('commits the target frame when a target visual curve is empty', () => {
+    expect(createPathTransition(previous, emptyNext)(0)).toEqual(emptyNext);
   });
 
   it('clamps animation progress outside its supported range to a complete visual frame', () => {
