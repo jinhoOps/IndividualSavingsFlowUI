@@ -1,6 +1,6 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
-import { StrictMode, useRef, useState } from 'react';
+import { createRef, StrictMode, useRef, useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Toast } from '../../../src/components/common/Toast';
 import { MOTION_DISTANCE_PX, MOTION_DURATION, MOTION_EASE } from '../../../src/components/motion/tokens';
@@ -421,6 +421,42 @@ describe('shared Journey overlays', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '알림 닫기' }));
     expect(screen.queryByText('백업 완료')).not.toBeInTheDocument();
+  });
+
+  it('commits the visible toast state when Anime.js cannot start', () => {
+    animeMocks.animate.mockImplementationOnce(() => {
+      throw new Error('Anime.js unavailable');
+    });
+
+    render(<Toast message="백업 완료" onClose={() => undefined} />);
+    const motionContent = screen.getByText('백업 완료').closest<HTMLElement>('[data-toast-motion]');
+
+    expect(motionContent).toHaveStyle({ opacity: '1', transform: 'translateY(0px)' });
+  });
+
+  it('commits the visible confirmation state when Anime.js cannot start', () => {
+    const returnFocusRef = createRef<HTMLButtonElement>();
+    animeMocks.animate.mockImplementationOnce(() => {
+      throw new Error('Anime.js unavailable');
+    });
+
+    render(
+      <ManagementConfirmationDialog
+        confirmation={{
+          title: '초기화 확인',
+          description: '현재 초안을 지웁니다.',
+          confirmLabel: '초기화',
+        }}
+        pending={false}
+        returnFocusRef={returnFocusRef}
+        onCancel={() => undefined}
+        onConfirm={() => undefined}
+      />,
+    );
+    const motionContent = screen.getByRole('dialog', { name: '초기화 확인' })
+      .querySelector<HTMLElement>('[data-dialog-motion]');
+
+    expect(motionContent).toHaveStyle({ opacity: '1', transform: 'translateY(0px)' });
   });
 });
 

@@ -202,8 +202,10 @@ git commit -m "refactor(ui): centralize app content frame"
 - Test: `tests/unit/journey/AppLauncher.test.tsx`, `tests/unit/journey/JourneyEntryCard.test.tsx`, and the focused Account Map tests for each changed component
 
 **Interfaces:**
-- Consumes: existing `Button` signature from `src/components/common/Button.tsx`: `ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'secondary' | 'quiet' }`
+- Consumes: existing `Button` signature from `src/components/common/Button.tsx`: `ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'secondary' | 'quiet' | 'bare' }`
 - Produces: identical native button semantics and CSS classes without direct duplication of `ui-button ui-button--*` markup
+
+`bare`는 별도 공통 danger variant가 아니다. 파괴적 확인 다이얼로그에서만 투명한 배경과 앱 소유의 오류 색(`journey-management__danger`)을 결합하는 의도적 예외이며, 도메인 문구·상태·색상은 `Button`으로 옮기지 않는다.
 
 - [ ] **Step 1: Strengthen the shared primitive test**
 

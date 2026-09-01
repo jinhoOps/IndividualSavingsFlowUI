@@ -25,4 +25,17 @@ describe('AppContentFrame', () => {
       'account-map-page',
     );
   });
+
+  it('renders a div while preserving frame and native attributes', () => {
+    render(
+      <AppContentFrame as="div" className="dashboard-frame" data-testid="frame" data-state="ready">
+        내용
+      </AppContentFrame>,
+    );
+
+    const frame = screen.getByTestId('frame');
+    expect(frame.tagName).toBe('DIV');
+    expect(frame).toHaveClass('app-content-frame', 'dashboard-frame');
+    expect(frame).toHaveAttribute('data-state', 'ready');
+  });
 });
