@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-01
 
-**Status:** Proposed; awaiting written-spec review
+**Status:** Approved for implementation
 
 **Scope:** Repository-wide refactor Phase 3의 두 번째 단위로 Simulation projection 표시 모델, chart geometry, 탐색과 tooltip, Anime.js SVG 렌더링 경계를 분리한다.
 

@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-01
 
-**Status:** Proposed; awaiting written-spec review
+**Status:** Approved for implementation
 
 **Scope:** Repository-wide refactor Phase 3의 첫 단위로 Main cashflow bar와 dashboard donut의 의미 계산, geometry, 상호작용, Anime.js 렌더링 경계를 분리한다.
 

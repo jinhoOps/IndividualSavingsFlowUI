@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-01
 
-**Status:** Proposed; awaiting written-spec review
+**Status:** Approved for implementation
 
 **Scope:** Repository-wide refactor Phase 3의 세 번째 단위로 Account Map의 의미 그래프, responsive layout, node·edge/detail geometry, 상호작용과 Anime.js 렌더링 경계를 분리한다.
 
