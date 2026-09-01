@@ -7,6 +7,8 @@ import type { AccountMapApplied } from '../domain/model';
 import { buildAccountMapGraph, layoutAccountMap, type MapZoom, type PositionedNode } from './mapLayout';
 import { AccountMapModal, type AccountMapNodeEditInput } from './AccountMapModal';
 import { summarizeLocationConnectionDetail } from './accountMapConnectionDetail';
+import { positionConnectionDetail } from './accountMapDetailGeometry';
+import { buildAccountMapEdgeGeometry } from './accountMapEdgeGeometry';
 import { animateConnectionDetail } from './motion';
 
 const zooms: MapZoom[] = ['overview', 'default', 'detail'];
@@ -99,6 +101,13 @@ export function AccountMapCanvas({
   );
   const positioned = useMemo(() => layoutAccountMap(graph, effectiveViewport, zoom), [graph, effectiveViewport.width, effectiveViewport.height, zoom]);
   const nodeById = new Map(positioned.nodes.map((node) => [node.id, node]));
+  const edgeGeometryById = useMemo(() => new Map(positioned.edges.flatMap((edge) => {
+    const purpose = nodeById.get(edge.purposeId);
+    const location = nodeById.get(edge.locationId);
+    return purpose === undefined || location === undefined
+      ? []
+      : [[edge.id, buildAccountMapEdgeGeometry(purpose, location)] as const];
+  })), [positioned]);
   const nodeOrderById = new Map(positioned.nodes.map((node, index) => [node.id, index]));
   const canonicalRows = positioned.nodes
     .filter((node) => node.kind === 'location')
@@ -283,23 +292,17 @@ export function AccountMapCanvas({
         }}>
           <svg className="account-map-edges" viewBox={`0 0 ${positioned.width} ${positioned.height}`} preserveAspectRatio="none" aria-hidden="true">
             {positioned.edges.map((edge) => {
-              const purpose = nodeById.get(edge.purposeId);
-              const location = nodeById.get(edge.locationId);
-              if (purpose === undefined || location === undefined) return null;
-              const x1 = purpose.x + purpose.width / 2;
-              const y1 = purpose.y + purpose.height / 2;
-              const x2 = location.x + location.width / 2;
-              const y2 = location.y + location.height / 2;
+              const geometry = edgeGeometryById.get(edge.id);
+              if (geometry === undefined) return null;
               const emphasized = focusedId !== null && (edge.purposeId === focusedId || edge.locationId === focusedId);
-              return <path key={edge.id} d={`M ${x1} ${y1} C ${(x1 + x2) / 2} ${y1}, ${(x1 + x2) / 2} ${y2}, ${x2} ${y2}`} className={`${edge.status === 'suspended' ? 'is-suspended' : ''}${emphasized ? ' is-focused' : ''}`} />;
+              return <path key={edge.id} d={geometry.path} className={`${edge.status === 'suspended' ? 'is-suspended' : ''}${emphasized ? ' is-focused' : ''}`} />;
             })}
-          </svg>
-          {positioned.edges.map((edge) => {
-            const purpose = nodeById.get(edge.purposeId);
-            const location = nodeById.get(edge.locationId);
+            </svg>
+            {positioned.edges.map((edge) => {
+            const geometry = edgeGeometryById.get(edge.id);
             const visible = focusedId !== null && (edge.purposeId === focusedId || edge.locationId === focusedId);
-            if (!visible || purpose === undefined || location === undefined) return null;
-            return <span key={`amount:${edge.id}`} className="account-map-edge-amount" style={{ left: (purpose.x + location.x + purpose.width) / 2, top: (purpose.y + location.y + purpose.height) / 2 }}>{formatWon(edge.amountWon)}</span>;
+            if (!visible || geometry === undefined) return null;
+            return <span key={`amount:${edge.id}`} className="account-map-edge-amount" style={geometry.amountAnchor}>{formatWon(edge.amountWon)}</span>;
           })}
           {positioned.nodes.map((node) => {
             const dimmed = focusedId !== null && !connectedIds.has(node.id);
@@ -401,64 +404,4 @@ function withDisplayedPercents<Row extends { percent: number }>(rows: readonly R
     .sort((left, right) => right.remainder - left.remainder || left.index - right.index);
   for (let index = 0; index < remaining; index += 1) floors[indices[index]?.index ?? 0]! += 1;
   return rows.map((row, index) => ({ ...row, displayPercent: floors[index]! }));
-}
-
-function positionConnectionDetail(
-  node: PositionedNode,
-  nodes: readonly PositionedNode[],
-  canvas: { width: number; height: number },
-  pan: { x: number; y: number },
-): { left: number; top: number; maxBlockSize: number; canvasHeight: number } {
-  const inset = 16;
-  const gap = 12;
-  const detailWidth = canvas.width <= 600 ? canvas.width - inset * 2 : Math.min(312, canvas.width - inset * 2);
-  const detailHeight = Math.min(220, canvas.height - inset * 2);
-  const clampLeft = (left: number) => Math.max(inset, Math.min(left, canvas.width - detailWidth - inset));
-  const clampTop = (top: number) => Math.max(inset, Math.min(top, canvas.height - detailHeight - inset));
-  const target = nodeRectangle(node, pan);
-  const nodeRectangles = nodes.map((candidate) => nodeRectangle(candidate, pan));
-  const visibleRectangles = nodeRectangles.filter((rectangle) => rectanglesOverlap(rectangle, {
-    left: 0, top: 0, right: canvas.width, bottom: canvas.height,
-  }));
-  const candidates = [
-    { left: target.right + gap, top: clampTop(target.top) },
-    { left: target.right + gap, top: target.bottom + gap },
-    { left: target.left - detailWidth - gap, top: clampTop(target.top) },
-    { left: clampLeft(target.left), top: target.bottom + gap },
-    { left: clampLeft(target.left), top: target.top - detailHeight - gap },
-  ];
-  const adjacent = candidates.find(({ left, top }) => {
-    const detail = { left, top, right: left + detailWidth, bottom: top + detailHeight };
-    return detail.left >= inset && detail.top >= inset
-      && detail.right <= canvas.width - inset && detail.bottom <= canvas.height - inset
-      && visibleRectangles.every((rectangle) => !rectanglesOverlap(detail, rectangle));
-  });
-  if (adjacent !== undefined) {
-    return { ...adjacent, maxBlockSize: detailHeight, canvasHeight: canvas.height };
-  }
-
-  const horizontallyVisible = nodeRectangles.filter(({ left, right }) => right > 0 && left < canvas.width);
-  const top = Math.max(canvas.height, ...horizontallyVisible.map(({ bottom }) => bottom)) + inset;
-  return {
-    left: clampLeft(target.left),
-    top,
-    maxBlockSize: detailHeight,
-    canvasHeight: top + detailHeight + inset,
-  };
-}
-
-interface DetailRectangle { left: number; top: number; right: number; bottom: number }
-
-function nodeRectangle(node: PositionedNode, pan: { x: number; y: number }): DetailRectangle {
-  return {
-    left: node.x + pan.x,
-    top: node.y + pan.y,
-    right: node.x + pan.x + node.width,
-    bottom: node.y + pan.y + node.height,
-  };
-}
-
-function rectanglesOverlap(left: DetailRectangle, right: DetailRectangle): boolean {
-  return left.left < right.right && left.right > right.left
-    && left.top < right.bottom && left.bottom > right.top;
 }
