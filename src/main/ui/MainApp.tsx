@@ -1,26 +1,14 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { AppContentFrame } from '../../components/common/AppContentFrame';
 import { AppShell } from '../../components/common/AppShell';
 import { useReducedMotion } from '../../components/motion/useReducedMotion';
-import {
-  bootstrapMain,
-  type MainBootstrapResult,
-} from '../application/bootstrap';
-import { mainReducer, type MainAction, type MainState } from '../application/mainReducer';
+import type { MainState } from '../application/mainReducer';
 import {
   buildMainViewModel,
   shouldShowMainIntro,
-  type MainIntroEntryReason,
 } from '../application/mainViewModel';
-import {
-  resetInvalidMainWorkspace,
-  saveMainDraft,
-  setupStepForIssue,
-  type ValidationIssue,
-} from '../application/mainSetupCommands';
-import { createSetupProgressQueue } from '../application/setupProgressQueue';
 import { calculateCashflow } from '../domain/cashflow';
-import { createEmptyMainData, type MainData, type SetupStep } from '../domain/model';
+import type { MainData } from '../domain/model';
 import { BrowserMainRepository, type MainRepository } from '../infrastructure/mainRepository';
 import { appPath } from '../../journey/routes';
 import { JourneyEntryCard } from '../../journey/ui/JourneyEntryCard';
@@ -37,16 +25,12 @@ import { MainWelcomeIntro } from './MainWelcomeIntro';
 import { createMainOperationGate } from './mainOperationGate';
 import { SetupFlow } from './setup/SetupFlow';
 import { useMainBackupController } from './useMainBackupController';
+import { useMainPlanController } from './useMainPlanController';
 
 export interface MainAppProps {
   repository?: MainRepository;
   workspaceRepository?: Pick<WorkspaceRepository, 'load' | 'replace'>;
   navigate?(href: string): void;
-}
-
-interface MainIntroEntry {
-  id: number;
-  reason: MainIntroEntryReason;
 }
 
 const browserWorkspaceRepository = new BrowserWorkspaceRepository();
@@ -57,278 +41,41 @@ export function MainApp({
   workspaceRepository = browserWorkspaceRepository,
   navigate = navigateTo,
 }: MainAppProps) {
-  const [state, setState] = useState<MainState | null>(null);
-  const [issues, setIssues] = useState<ValidationIssue[]>([]);
-  const [validationAttempt, setValidationAttempt] = useState(0);
-  const [progressWarning, setProgressWarning] = useState<string | null>(null);
-  const [introEntry, setIntroEntry] = useState<MainIntroEntry>({ id: 0, reason: 'none' });
   const operationGate = useRef(createMainOperationGate()).current;
-  const initialBootstrapRequestRef = useRef<{
-    repository: MainRepository;
-    promise: Promise<MainBootstrapResult>;
-  } | null>(null);
-  const introEntryIdRef = useRef(0);
-  const persistedFreshIntroEntryIdsRef = useRef(new Set<number>());
-  const [initialEditPath] = useState<keyof MainData | undefined>(() => consumeEditIntent());
-  const progressQueue = useMemo(() => createSetupProgressQueue(repository), [repository]);
   const reducedMotion = useReducedMotion();
-  const showIntro = shouldShowMainIntro(state, introEntry.reason, reducedMotion);
-  const {
-    backupStatus,
-    pendingImport,
-    restorePending,
-    prepareWorkspaceImport,
-    cancelWorkspaceImport,
-    clearBackupStatus,
-    restorePendingImport,
-    exportCurrentWorkspace,
-    exportRecoveryOriginal,
-  } = useMainBackupController({
-    state,
+  const plan = useMainPlanController({ repository, operationGate, reducedMotion });
+  const showIntro = shouldShowMainIntro(
+    plan.state,
+    plan.introEntry.reason,
+    reducedMotion,
+  );
+  const backup = useMainBackupController({
+    state: plan.state,
     mainRepository: repository,
     workspaceRepository,
     operationGate,
     showIntro,
-    onBootstrapAccepted: acceptBackupBootstrap,
+    onBootstrapAccepted: plan.acceptBootstrapResult,
   });
-  const mainViewModel = buildMainViewModel({
-    state,
-    introReason: introEntry.reason,
+  const view = buildMainViewModel({
+    state: plan.state,
+    introReason: plan.introEntry.reason,
     reducedMotion,
-    validationIssueCount: issues.length,
-    hasProgressWarning: progressWarning !== null,
-    backupStatusKind: backupStatus?.kind ?? null,
-    hasPendingImport: pendingImport !== null,
-    restorePending,
+    validationIssueCount: plan.issues.length,
+    hasProgressWarning: plan.progressWarning !== null,
+    backupStatusKind: backup.backupStatus?.kind ?? null,
+    hasPendingImport: backup.pendingImport !== null,
+    restorePending: backup.restorePending,
   });
-
-  useEffect(() => {
-    let active = true;
-    let request = initialBootstrapRequestRef.current;
-    if (request === null || request.repository !== repository) {
-      request = { repository, promise: bootstrapMain(repository) };
-      initialBootstrapRequestRef.current = request;
-    }
-    void request.promise.then((loaded) => {
-      if (active) setBootstrapResult(loaded);
-    });
-    return () => {
-      active = false;
-    };
-  }, [repository]);
-
-  useEffect(() => {
-    if (
-      introEntry.reason !== 'fresh'
-      || state === null
-      || state.mode !== 'setup'
-      || state.setupStep !== 'welcome'
-    ) return;
-    if (persistedFreshIntroEntryIdsRef.current.has(introEntry.id)) return;
-    persistedFreshIntroEntryIdsRef.current.add(introEntry.id);
-    void persistSetupProgress('welcome', state.draft, 'initial');
-  }, [introEntry, state]);
-
-  useEffect(() => {
-    if (
-      !reducedMotion
-      || state?.mode !== 'setup'
-      || state.setupStep !== 'welcome'
-      || (introEntry.reason !== 'fresh' && introEntry.reason !== 'restart')
-    ) return;
-    completeWelcomeIntro(introEntry.id);
-  }, [introEntry, reducedMotion, state]);
-
-  function setBootstrapResult(loaded: MainBootstrapResult) {
-    setState(loaded.state);
-    setIntroEntry(nextIntroEntry(loaded.introEntryReason));
-  }
-
-  function acceptBackupBootstrap(loaded: MainBootstrapResult) {
-    setIssues([]);
-    setProgressWarning(null);
-    setBootstrapResult(loaded);
-  }
-
-  function nextIntroEntry(reason: MainIntroEntryReason): MainIntroEntry {
-    introEntryIdRef.current += 1;
-    return { id: introEntryIdRef.current, reason };
-  }
-
-  function completeWelcomeIntro(entryId: number) {
-    setIntroEntry((current) => current.id !== entryId
-      ? current
-      : { ...current, reason: 'none' });
-  }
-
-  function dispatch(action: MainAction) {
-    setState((current) => current === null ? current : mainReducer(current, action));
-  }
-
-  function changeDraft(draft: MainData) {
-    if (operationGate.busy) return;
-    if (state?.mode === 'setup' && state.setupStep !== null) {
-      void persistSetupProgress(state.setupStep, draft, state.applied === null ? 'initial' : 'restart');
-    }
-    setIssues([]);
-    dispatch({ type: 'replace-draft', draft });
-  }
-
-  function changeSetupStep(step: SetupStep) {
-    if (operationGate.busy) return;
-    if (state !== null) {
-      void persistSetupProgress(step, state.draft, state.applied === null ? 'initial' : 'restart');
-    }
-    setIssues([]);
-    dispatch({ type: 'set-setup-step', step });
-  }
-
-  async function apply() {
-    if (state === null || operationGate.busy) return;
-
-    operationGate.busy = true;
-    dispatch({ type: 'save-started' });
-    try {
-      await progressQueue.waitForIdle();
-      const result = await saveMainDraft(state, repository);
-      if (result.status === 'saved') {
-        await clearSetupProgress();
-        setIssues([]);
-        clearBackupStatus();
-        dispatch({ type: 'save-succeeded', data: result.data });
-        return;
-      }
-
-      if (result.status === 'validation-failed') {
-        setIssues(result.issues);
-        setValidationAttempt((attempt) => attempt + 1);
-        if (state.mode === 'setup') {
-          const step = setupStepForIssue(result.issues[0]?.path);
-          if (step !== null) {
-            persistSetupProgress(step, state.draft, state.applied === null ? 'initial' : 'restart');
-            dispatch({ type: 'set-setup-step', step });
-          }
-        }
-        dispatch({ type: 'save-failed' });
-        return;
-      }
-      dispatch({ type: 'save-failed' });
-    } finally {
-      operationGate.busy = false;
-    }
-  }
-
-  async function cancelDraft() {
-    if (operationGate.busy) return;
-    operationGate.busy = true;
-    try {
-      if (!await clearSetupProgress()) return;
-      setIssues([]);
-      clearBackupStatus();
-      dispatch({ type: 'cancel-draft' });
-    } finally {
-      operationGate.busy = false;
-    }
-  }
-
-  function restartSetup() {
-    if (state === null || state.applied === null || operationGate.busy) return;
-    void persistSetupProgress('welcome', state.applied, 'restart');
-    setIntroEntry(nextIntroEntry('restart'));
-    setIssues([]);
-    dispatch({ type: 'restart-setup' });
-  }
-
-  async function startEmptySetup() {
-    if (state === null || operationGate.busy) return;
-    operationGate.busy = true;
-    dispatch({ type: 'save-started' });
-    try {
-      if (state.mode === 'recovery' && state.loadError?.raw !== undefined) {
-        const result = await resetInvalidMainWorkspace(state.loadError.raw, repository);
-        if (result.status !== 'reset') {
-          dispatch({ type: 'save-failed' });
-          return;
-        }
-      }
-      setIssues([]);
-      setState({
-        mode: 'setup',
-        applied: null,
-        draft: createEmptyMainData(),
-        setupStep: 'welcome',
-        dirty: false,
-        saveStatus: 'idle',
-        loadError: null,
-      });
-    } catch {
-      dispatch({ type: 'save-failed' });
-    } finally {
-      operationGate.busy = false;
-    }
-  }
-
-  async function discardRecoveryCandidate() {
-    if (state === null || state.mode !== 'recovery' || operationGate.busy) return;
-    operationGate.busy = true;
-    const cleared = await clearSetupProgress();
-    operationGate.busy = false;
-    if (!cleared) return;
-    setIssues([]);
-    setState({
-      mode: 'setup',
-      applied: null,
-      draft: createEmptyMainData(),
-      setupStep: 'welcome',
-      dirty: false,
-      saveStatus: 'idle',
-      loadError: null,
-    });
-  }
-
-  async function returnToCurrentPlan() {
-    if (state === null || state.mode !== 'recovery' || state.applied === null || operationGate.busy) return;
-    operationGate.busy = true;
-    const cleared = await clearSetupProgress();
-    operationGate.busy = false;
-    if (!cleared) return;
-    setIssues([]);
-    dispatch({ type: 'cancel-draft' });
-  }
-
-  function persistSetupProgress(
-    step: SetupStep,
-    draft: MainData,
-    kind: 'initial' | 'restart',
-  ): Promise<boolean> {
-    return progressQueue.save(step, draft, kind).then((result) => {
-      if (result.status === 'saved') {
-        setProgressWarning(null);
-        return true;
-      }
-      setProgressWarning('설정 진행 상황을 저장하지 못했습니다. 이 화면에서는 계속 입력할 수 있습니다.');
-      return false;
-    });
-  }
-
-  function clearSetupProgress(): Promise<boolean> {
-    return progressQueue.clear().then((result) => {
-      if (result.status === 'saved') {
-        setProgressWarning(null);
-        return true;
-      }
-      setProgressWarning('설정 진행 상황을 정리하지 못했습니다. 저장된 계획에는 영향이 없습니다.');
-      return false;
-    });
-  }
+  const [initialEditPath] = useState<keyof MainData | undefined>(() => consumeEditIntent());
 
   function continueToSimulation() {
-    if (state?.applied === null || state?.applied === undefined) return;
+    if (plan.state?.applied === null || plan.state?.applied === undefined) return;
     navigate(appPath('simulation'));
   }
 
-  const journeyEntry = <JourneyEntryCard enabled={mainViewModel.management.canExport} onContinue={continueToSimulation} />;
-  const showBackupStatus = mainViewModel.showBackupStatus;
+  const journeyEntry = <JourneyEntryCard enabled={view.management.canExport} onContinue={continueToSimulation} />;
+  const showBackupStatus = view.showBackupStatus;
   const backupStatusRegion = (
     <div
       className={`mx-auto w-full max-w-6xl ${showBackupStatus ? 'px-5 pt-4 sm:px-8' : ''}`}
@@ -336,37 +83,37 @@ export function MainApp({
       aria-atomic="true"
       data-testid="workspace-backup-status"
     >
-      {showBackupStatus && backupStatus !== null ? (
+      {showBackupStatus && backup.backupStatus !== null ? (
         <p
-          className={`m-0 rounded-xl px-4 py-3 text-sm font-bold ${backupStatus.kind === 'error' ? 'bg-rose-50 text-rose-700' : 'bg-teal-50 text-teal-800'}`}
-          role={backupStatus.kind === 'error' ? 'alert' : 'status'}
+          className={`m-0 rounded-xl px-4 py-3 text-sm font-bold ${backup.backupStatus.kind === 'error' ? 'bg-rose-50 text-rose-700' : 'bg-teal-50 text-teal-800'}`}
+          role={backup.backupStatus.kind === 'error' ? 'alert' : 'status'}
         >
-          {backupStatus.message}
+          {backup.backupStatus.message}
         </p>
       ) : null}
     </div>
   );
   const managementMenu = (
     <MainManagementMenu
-      saving={mainViewModel.management.saving}
-      dirty={mainViewModel.management.dirty}
-      canExport={mainViewModel.management.canExport}
-      canImport={mainViewModel.management.canImport}
-      canRestart={mainViewModel.management.canRestart}
-      importConfirmationOpen={mainViewModel.management.importConfirmationOpen}
-      importFailureMessage={pendingImport === null || backupStatus?.kind !== 'error'
+      saving={view.management.saving}
+      dirty={view.management.dirty}
+      canExport={view.management.canExport}
+      canImport={view.management.canImport}
+      canRestart={view.management.canRestart}
+      importConfirmationOpen={view.management.importConfirmationOpen}
+      importFailureMessage={backup.pendingImport === null || backup.backupStatus?.kind !== 'error'
         ? undefined
-        : backupStatus.message}
-      onCancel={cancelDraft}
-      onRestart={restartSetup}
-      onExport={exportCurrentWorkspace}
-      onImportFile={prepareWorkspaceImport}
-      onCancelImport={cancelWorkspaceImport}
-      onConfirmImport={restorePendingImport}
+        : backup.backupStatus.message}
+      onCancel={plan.cancelDraft}
+      onRestart={plan.restartSetup}
+      onExport={backup.exportCurrentWorkspace}
+      onImportFile={backup.prepareWorkspaceImport}
+      onCancelImport={backup.cancelWorkspaceImport}
+      onConfirmImport={backup.restorePendingImport}
     />
   );
 
-  if (state === null || mainViewModel.screen === 'loading') {
+  if (plan.state === null || view.screen === 'loading') {
     return (
       <AppContentFrame
         className="grid min-h-dvh place-items-center py-8"
@@ -377,43 +124,43 @@ export function MainApp({
     );
   }
 
-  if (mainViewModel.screen === 'intro') {
-    return <MainWelcomeIntro key={introEntry.id} onComplete={() => completeWelcomeIntro(introEntry.id)} />;
+  if (view.screen === 'intro') {
+    return <MainWelcomeIntro key={plan.introEntry.id} onComplete={() => plan.completeWelcomeIntro(plan.introEntry.id)} />;
   }
 
-  if (mainViewModel.screen === 'recovery' && state.mode === 'recovery') {
-    const original = state.loadError?.original ?? state.draft;
+  if (view.screen === 'recovery' && plan.state.mode === 'recovery') {
+    const original = plan.state.loadError?.original ?? plan.state.draft;
     return (
       <AppShell currentApp="main" managementMenu={managementMenu} statusRegion={backupStatusRegion}>
         <RecoveryView
-          state={state}
-          onDownload={() => exportRecoveryOriginal(original, state.loadError?.raw)}
-          onStartEmpty={startEmptySetup}
-          onRetry={apply}
-          onDiscard={discardRecoveryCandidate}
-          onReturnCurrent={returnToCurrentPlan}
+          state={plan.state}
+          onDownload={() => backup.exportRecoveryOriginal(original, plan.state?.loadError?.raw)}
+          onStartEmpty={plan.startEmptySetup}
+          onRetry={plan.apply}
+          onDiscard={plan.discardRecoveryCandidate}
+          onReturnCurrent={plan.returnToCurrentPlan}
         />
       </AppShell>
     );
   }
 
-  if (mainViewModel.screen === 'setup' && state.mode === 'setup' && state.setupStep !== null) {
-    const isRestartSetup = state.applied !== null;
+  if (view.screen === 'setup' && plan.state.mode === 'setup' && plan.state.setupStep !== null) {
+    const isRestartSetup = plan.state.applied !== null;
     const setupNotice = (
       <>
-        {progressWarning === null ? null : (
+        {plan.progressWarning === null ? null : (
           <p className="m-0 rounded-xl bg-amber-50 px-4 py-3 text-sm font-bold text-amber-900" role="status">
-            {progressWarning}
+            {plan.progressWarning}
           </p>
         )}
-        {mainViewModel.showSetupSaveError ? (
+        {view.showSetupSaveError ? (
           <Surface className="mt-3 rounded-xl border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-800" role="alert">
             <p className="m-0">저장하지 못했습니다. 입력한 내용은 그대로 보존되어 있습니다.</p>
             <Button
               className="mt-3 rounded-full"
               variant="primary"
               type="button"
-              onClick={apply}
+              onClick={plan.apply}
             >
               저장 다시 시도
             </Button>
@@ -428,15 +175,15 @@ export function MainApp({
           data-testid="main-page-frame"
         >
           <SetupFlow
-            draft={state.draft}
-            step={state.setupStep}
-            issues={issues}
-            validationAttempt={validationAttempt}
-            saving={state.saveStatus === 'saving'}
-            onChange={changeDraft}
-            onStepChange={changeSetupStep}
-            onApply={apply}
-            onCancel={isRestartSetup ? cancelDraft : undefined}
+            draft={plan.state.draft}
+            step={plan.state.setupStep}
+            issues={plan.issues}
+            validationAttempt={plan.validationAttempt}
+            saving={plan.state.saveStatus === 'saving'}
+            onChange={plan.changeDraft}
+            onStepChange={plan.changeSetupStep}
+            onApply={plan.apply}
+            onCancel={isRestartSetup ? plan.cancelDraft : undefined}
             notice={setupNotice}
             motionPreset="initial-assembly"
           />
@@ -445,23 +192,23 @@ export function MainApp({
     );
   }
 
-  if (state.applied === null) return null;
+  if (plan.state.applied === null) return null;
 
   return (
     <AppShell currentApp="main" managementMenu={managementMenu} statusRegion={backupStatusRegion}>
       <SummaryDashboard
-        applied={state.applied}
-        draft={state.draft}
-        dirty={mainViewModel.management.dirty}
-        issues={issues}
-        validationAttempt={validationAttempt}
-        saveStatus={state.saveStatus}
-        onDraftChange={changeDraft}
-        onApply={apply}
-        onCancel={cancelDraft}
-        backupStatus={progressWarning === null
+        applied={plan.state.applied}
+        draft={plan.state.draft}
+        dirty={view.management.dirty}
+        issues={plan.issues}
+        validationAttempt={plan.validationAttempt}
+        saveStatus={plan.state.saveStatus}
+        onDraftChange={plan.changeDraft}
+        onApply={plan.apply}
+        onCancel={plan.cancelDraft}
+        backupStatus={plan.progressWarning === null
           ? null
-          : { kind: 'error', message: progressWarning }}
+          : { kind: 'error', message: plan.progressWarning }}
         journeyEntry={journeyEntry}
         initialFocusPath={initialEditPath}
       />

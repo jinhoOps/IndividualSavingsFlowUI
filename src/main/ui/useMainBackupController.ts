@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   createWorkspaceBackupExport,
   parseWorkspaceBackupCandidate,
@@ -54,6 +54,33 @@ export function useMainBackupController({
   const [restorePending, setRestorePending] = useState(false);
   const selectionGenerationRef = useRef(0);
   const restoreFocusRequestedRef = useRef(false);
+  const previousStateRef = useRef(state);
+
+  useEffect(() => {
+    const previous = previousStateRef.current;
+    previousStateRef.current = state;
+    if (
+      backupStatus === null
+      || restoreFocusRequestedRef.current
+      || previous === null
+      || state === null
+    ) return;
+
+    const appliedMainDraft = previous.saveStatus !== 'saved'
+      && state.saveStatus === 'saved';
+    const cancelledDashboardDraft = previous.mode === 'dashboard'
+      && previous.dirty
+      && state.mode === 'dashboard'
+      && !state.dirty
+      && state.saveStatus === 'idle';
+    const cancelledRestartDraft = previous.mode === 'setup'
+      && previous.applied !== null
+      && state.mode === 'dashboard'
+      && state.saveStatus === 'idle';
+    if (appliedMainDraft || cancelledDashboardDraft || cancelledRestartDraft) {
+      setBackupStatus(null);
+    }
+  }, [backupStatus, state]);
 
   useEffect(() => {
     if (!restoreFocusRequestedRef.current || backupStatus?.kind !== 'success' || showIntro) return;
@@ -68,7 +95,7 @@ export function useMainBackupController({
     target?.focus();
   }, [backupStatus, showIntro, state]);
 
-  async function prepareWorkspaceImport(file: File) {
+  const prepareWorkspaceImport = useCallback(async (file: File) => {
     if (state === null || state.mode !== 'dashboard' || operationGate.busy) return;
     const generation = selectionGenerationRef.current + 1;
     selectionGenerationRef.current = generation;
@@ -92,17 +119,17 @@ export function useMainBackupController({
       setPendingImport(null);
       setBackupStatus({ kind: 'error', message: '백업 파일을 읽지 못했습니다. 현재 데이터는 바뀌지 않았습니다.' });
     }
-  }
+  }, [operationGate, state]);
 
-  function cancelWorkspaceImport() {
+  const cancelWorkspaceImport = useCallback(() => {
     setPendingImport(null);
-  }
+  }, []);
 
-  function clearBackupStatus() {
+  const clearBackupStatus = useCallback(() => {
     setBackupStatus(null);
-  }
+  }, []);
 
-  async function restorePendingImport(): Promise<boolean> {
+  const restorePendingImport = useCallback(async (): Promise<boolean> => {
     if (pendingImport === null || operationGate.busy) return false;
     operationGate.busy = true;
     setRestorePending(true);
@@ -121,9 +148,15 @@ export function useMainBackupController({
       operationGate.busy = false;
       setRestorePending(false);
     }
-  }
+  }, [
+    mainRepository,
+    onBootstrapAccepted,
+    operationGate,
+    pendingImport,
+    workspaceRepository,
+  ]);
 
-  function exportCurrentWorkspace() {
+  const exportCurrentWorkspace = useCallback(() => {
     const result = createWorkspaceBackupExport(workspaceRepository);
     if (result.status === 'current-invalid') {
       setBackupStatus({ kind: 'error', message: '현재 저장된 workspace를 먼저 복구해야 백업할 수 있습니다.' });
@@ -141,9 +174,9 @@ export function useMainBackupController({
       return;
     }
     setBackupStatus({ kind: 'success', message: '모든 앱 데이터 백업을 내보냈습니다.' });
-  }
+  }, [workspaceRepository]);
 
-  function exportRecoveryOriginal(original: unknown, raw?: string) {
+  const exportRecoveryOriginal = useCallback((original: unknown, raw?: string) => {
     const downloaded = downloadJson(raw ?? exportRecoveryData(original), 'individual-savings-flow-recovery.json');
     setBackupStatus(downloaded
       ? { kind: 'success', message: '기존 원본 JSON을 다운로드했습니다.' }
@@ -151,7 +184,7 @@ export function useMainBackupController({
         kind: 'error',
         message: '원본 JSON을 다운로드하지 못했습니다. 브라우저 다운로드 설정을 확인하고 다시 시도해 주세요.',
       });
-  }
+  }, []);
 
   return {
     backupStatus,

@@ -1177,9 +1177,13 @@ describe('MainApp', () => {
     const first = render(<MainApp repository={storage} />);
     await screen.findByRole('heading', { name: 'setup:welcome' });
 
+    expect(screen.getByRole('button', { name: 'change-income' })).toBeEnabled();
     fireEvent.click(screen.getByRole('button', { name: 'change-income' }));
+    expect(screen.getByText('4000000')).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'setup:welcome' })).toBeVisible();
     await waitFor(() => expect(storage.saveSetupProgress).toHaveBeenCalledOnce());
     fireEvent.click(screen.getByRole('button', { name: '설정 취소' }));
+    expect(screen.getByRole('heading', { name: 'setup:welcome' })).toBeVisible();
     await Promise.resolve();
 
     expect(screen.getByRole('heading', { name: 'setup:welcome' })).toBeVisible();
