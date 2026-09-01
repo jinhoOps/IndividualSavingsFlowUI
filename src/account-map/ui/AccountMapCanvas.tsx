@@ -7,6 +7,11 @@ import type { AccountMapApplied } from '../domain/model';
 import { buildAccountMapGraph, layoutAccountMap, type MapZoom, type PositionedNode } from './mapLayout';
 import { AccountMapModal, type AccountMapNodeEditInput } from './AccountMapModal';
 import { summarizeLocationConnectionDetail } from './accountMapConnectionDetail';
+import {
+  buildAccountMapCanvasModel,
+  buildAccountMapModalRelations,
+  withDisplayedPercents,
+} from './accountMapCanvasModel';
 import { positionConnectionDetail } from './accountMapDetailGeometry';
 import { buildAccountMapEdgeGeometry } from './accountMapEdgeGeometry';
 import { animateConnectionDetail } from './motion';
@@ -100,7 +105,11 @@ export function AccountMapCanvas({
     [applied, locations, main],
   );
   const positioned = useMemo(() => layoutAccountMap(graph, effectiveViewport, zoom), [graph, effectiveViewport.width, effectiveViewport.height, zoom]);
-  const nodeById = new Map(positioned.nodes.map((node) => [node.id, node]));
+  const canvasModel = useMemo(
+    () => buildAccountMapCanvasModel(positioned, interaction),
+    [interaction, positioned],
+  );
+  const { canonicalRows, connectedIds, focusedId, focusedNode, nodeById, pinnedLocationId } = canvasModel;
   const edgeGeometryById = useMemo(() => new Map(positioned.edges.flatMap((edge) => {
     const purpose = nodeById.get(edge.purposeId);
     const location = nodeById.get(edge.locationId);
@@ -108,25 +117,11 @@ export function AccountMapCanvas({
       ? []
       : [[edge.id, buildAccountMapEdgeGeometry(purpose, location)] as const];
   })), [positioned]);
-  const nodeOrderById = new Map(positioned.nodes.map((node, index) => [node.id, index]));
-  const canonicalRows = positioned.nodes
-    .filter((node) => node.kind === 'location')
-    .flatMap((location) => positioned.edges
-      .filter((edge) => edge.locationId === location.id)
-      .sort((left, right) => {
-        const purposeDifference = (nodeOrderById.get(left.purposeId) ?? Number.MAX_SAFE_INTEGER)
-          - (nodeOrderById.get(right.purposeId) ?? Number.MAX_SAFE_INTEGER);
-        return purposeDifference || left.id.localeCompare(right.id);
-      }));
-  const focusedId = interaction.transientNodeId ?? interaction.pinnedNodeId;
-  const focusedNode = focusedId === null ? undefined : nodeById.get(focusedId);
   const connectionDetailTargetId = focusedNode?.kind === 'location' ? focusedNode.id : null;
   const connectionDetail = connectionDetailTargetId === null
     ? null
     : summarizeLocationConnectionDetail(activeDetailGraph, connectionDetailTargetId);
   const connectionDetailRows = connectionDetail === null ? [] : withDisplayedPercents(connectionDetail.rows);
-  const pinnedNode = interaction.pinnedNodeId === null ? undefined : nodeById.get(interaction.pinnedNodeId);
-  const pinnedLocationId = pinnedNode?.kind === 'location' ? pinnedNode.id : null;
   const previousPinnedLocationId = useRef<string | null>(pinnedLocationId);
   const connectionDetailPosition = connectionDetail === null || focusedNode === undefined
     ? null
@@ -143,50 +138,14 @@ export function AccountMapCanvas({
     if (!isNewlyPinned || pinnedLocationId === null || connectionDetailTargetId !== pinnedLocationId || connectionDetailRef.current === null) return;
     return animateConnectionDetail(connectionDetailRef.current, { reducedMotion, onComplete: () => undefined }).cancel;
   }, [connectionDetailTargetId, pinnedLocationId]);
-  const connectedIds = new Set<string>(focusedId === null ? [] : positioned.edges.flatMap((edge) => (
-    edge.purposeId === focusedId || edge.locationId === focusedId ? [edge.purposeId, edge.locationId] : []
-  )));
-  if (focusedId !== null) connectedIds.add(focusedId);
-
   function changeZoom(delta: number) {
     const index = zooms.indexOf(zoom);
     setPan({ x: 0, y: 0 });
     setZoom(zooms[Math.max(0, Math.min(zooms.length - 1, index + delta))]!);
   }
 
-  const modalNode = interaction.modalNodeId === null
-    ? undefined
-    : positioned.nodes.find(({ id }) => id === interaction.modalNodeId);
-  const directModalRelated = modalNode === undefined ? [] : positioned.edges
-    .filter((edge) => edge.purposeId === modalNode.id || edge.locationId === modalNode.id)
-    .map((edge) => {
-      const sourceLink = applied.links.find(({ id }) => id === edge.id);
-      return {
-      label: nodeById.get(edge.purposeId === modalNode.id ? edge.locationId : edge.purposeId)?.label ?? '연결',
-      amountWon: edge.amountWon,
-      status: edge.status,
-      suspendedReason: sourceLink?.status === 'suspended' ? sourceLink.suspendedReason : undefined,
-      linkId: edge.id,
-      purposeId: edge.purposeId,
-      purposeTargetWon: nodeById.get(edge.purposeId)?.allocationTargetWon,
-      locationId: edge.locationId.replace(/^location:/u, ''),
-      remainder: sourceLink?.remainder ?? false,
-    }; });
-  const replacementRelated = modalNode?.kind !== 'location' ? [] : [...new Set(directModalRelated.map(({ purposeId }) => purposeId).filter((id): id is string => id !== undefined))]
-    .flatMap((purposeId) => positioned.edges
-      .filter((edge) => edge.purposeId === purposeId && edge.locationId !== modalNode.id && edge.status === 'active')
-      .map((edge) => ({
-        label: nodeById.get(edge.locationId)?.label ?? '다른 계좌',
-        amountWon: edge.amountWon,
-        status: edge.status,
-        linkId: edge.id,
-        purposeId: edge.purposeId,
-        purposeTargetWon: nodeById.get(edge.purposeId)?.allocationTargetWon,
-        locationId: edge.locationId.replace(/^location:/u, ''),
-        remainder: false,
-        replacementCandidate: true,
-      })));
-  const modalRelated = [...directModalRelated, ...replacementRelated];
+  const modalNode = interaction.modalNodeId === null ? undefined : nodeById.get(interaction.modalNodeId);
+  const modalRelated = buildAccountMapModalRelations(positioned, applied, interaction.modalNodeId);
 
   function handleCanvasPointerDown(event: React.PointerEvent<HTMLDivElement>) {
     if (event.pointerType === 'touch') return;
@@ -396,12 +355,3 @@ function statusAmountLabel(node: PositionedNode): string {
     : `전체 미배정 ${formatWon(Math.abs(node.amountWon ?? 0))}`;
 }
 function formatWon(value: number): string { return `${new Intl.NumberFormat('ko-KR').format(value)}원`; }
-
-function withDisplayedPercents<Row extends { percent: number }>(rows: readonly Row[]): Array<Row & { displayPercent: number }> {
-  const floors = rows.map(({ percent }) => Math.floor(percent));
-  const remaining = 100 - floors.reduce((sum, percent) => sum + percent, 0);
-  const indices = rows.map(({ percent }, index) => ({ index, remainder: percent - floors[index]! }))
-    .sort((left, right) => right.remainder - left.remainder || left.index - right.index);
-  for (let index = 0; index < remaining; index += 1) floors[indices[index]?.index ?? 0]! += 1;
-  return rows.map((row, index) => ({ ...row, displayPercent: floors[index]! }));
-}
