@@ -116,7 +116,8 @@ infrastructure
 
 #### `mainViewModel.ts`
 
-- `MainState | null`, intro 상태, reduced-motion, validation, progress warning과 backup 상태를 입력받는다.
+- `MainState | null`, intro 상태, reduced-motion, validation count, progress-warning 존재 여부와 pending-import/restore-pending 같은 backup code·boolean을 입력받는다.
+- 사용자에게 표시할 한국어 progress/backup message 자체는 입력받지 않는다. controller가 code를 문구로 변환하고 view-model은 화면 종류와 capability만 계산한다.
 - `loading | intro | recovery | setup | dashboard` screen kind와 management capability를 계산한다.
 - callback, repository, React element와 DOM node를 포함하지 않는다.
 - cashflow 금액이나 시각화 geometry를 새로 계산하지 않는다.
@@ -135,8 +136,9 @@ infrastructure
 
 - pending import candidate, backup status와 restore-pending 상태를 소유한다.
 - browser adapter가 읽은 문자열을 application command로 전달한다.
+- File 선택마다 단조 증가하는 selection generation을 발급한다. 현재 generation의 read 완료만 pending candidate와 status를 변경할 수 있고, 이전 File의 늦은 성공·실패는 더 새로운 candidate 확인이나 restore 성공 뒤에도 무시한다.
 - 성공한 restore 결과를 plan controller의 `acceptBootstrapResult` callback으로 전달한다.
-- restore 성공 뒤 기존 우선순위의 focus target을 찾는 UI effect를 소유한다.
+- restore 성공 뒤 fresh intro가 있으면 완료를 기다린 다음 기존 우선순위의 focus target을 찾는 UI effect를 소유한다.
 - 실패 code를 현재 한국어 오류 문구로 변환하고 candidate와 기존 workspace 보존 여부를 유지한다.
 
 #### `mainBrowserFiles.ts`
@@ -148,7 +150,9 @@ infrastructure
 
 ### 5.3 Shared operation gate
 
-setup apply/cancel/recovery와 backup restore는 하나의 operation gate를 공유한다. 두 controller가 독립적인 busy flag를 만들지 않는다. 현재 `savingRef`와 동일하게 먼저 시작한 operation만 진입하고 완료 시 `finally`에서 gate를 해제한다.
+setup apply, cancel, recovery terminal action과 backup restore는 하나의 operation gate를 공유한다. recovery terminal action은 retry apply, invalid-workspace start-empty reset, discard와 current-plan return을 뜻한다. 두 controller가 독립적인 busy flag를 만들지 않는다. 현재 `savingRef`와 동일하게 먼저 시작한 terminal async operation만 gate를 획득하고 완료 시 `finally`에서 해제한다.
+
+draft 변경, setup step 변경과 restart는 busy 여부만 확인하고 progress write를 queue에 추가한다. 이 동작들은 gate를 획득하거나 write 완료까지 gate를 보유하지 않는다. apply/cancel/recovery terminal action과 restore가 queue 또는 repository 작업을 기다리는 동안만 gate가 유지된다.
 
 렌더링용 상태는 기존 `saveStatus`와 `restorePending`을 사용한다. operation gate 자체는 사용자에게 표시되는 새로운 상태가 아니다.
 
@@ -166,6 +170,8 @@ mount or repository change
 ```
 
 fresh welcome progress는 intro entry ID별 한 번만 queue에 추가한다. reduced motion에서는 intro markup을 mount하지 않고 같은 entry를 완료 상태로 전환한다. restart intro는 현재 applied를 draft로 사용하고 `kind: restart` progress를 저장한다.
+
+restore 결과가 Main 없음이면 fresh intro를 보여 준다. atomic replace가 workspace revision을 한 번 올린 뒤 fresh welcome progress 저장이 정상 흐름으로 별도 실행되어 revision을 한 번 더 올릴 수 있다. restore된 initial/restart progress는 저장된 단계에서 재개하며 intro를 다시 보여 주지 않는다. recovery의 start-empty와 discard는 fresh/restart intro를 합성하지 않고 setup welcome으로 직접 전환한다.
 
 ### 6.2 Draft and setup progress
 
@@ -197,10 +203,11 @@ File 선택
 → atomic replace
 → Main bootstrap
 → Main 상태 교체 + success status
-→ intro가 없을 때 focus 복원
+→ fresh intro가 있으면 완료 대기
+→ focus 복원
 ```
 
-parse 실패, old format, reference/schema invalid, conflict와 storage unavailable은 replace를 실행하지 않거나 성공으로 취급하지 않는다. conflict 후 자동 재시도하지 않으며 기존 workspace를 보존한다.
+parse 실패, old format, reference/schema invalid, conflict와 storage unavailable은 replace를 실행하지 않거나 성공으로 취급하지 않는다. conflict 후 자동 재시도하지 않으며 기존 workspace를 보존한다. 비동기 File read는 selection generation으로 순서를 판정해 이전 선택의 늦은 성공·실패가 최신 candidate나 더 새로운 restore success status를 덮어쓰지 못하게 한다.
 
 ## 7. Error Handling
 
@@ -210,7 +217,7 @@ parse 실패, old format, reference/schema invalid, conflict와 storage unavaila
 - controller가 result code를 기존 사용자 문구, reducer action, warning과 focus 요청에 대응시킨다.
 - 실패한 setup-progress 저장은 정상 적용 성공처럼 표시하지 않는다.
 - restore 성공 전에는 pending candidate, Main state, 다른 앱 slice를 변경하지 않는다.
-- 모든 operation gate와 restore-pending 상태는 `finally`에서 해제한다.
+- gate를 획득한 terminal async operation과 restore-pending 상태는 `finally`에서 해제한다. draft, step과 restart는 gate를 획득하지 않는다.
 
 ## 8. Testing Strategy
 
@@ -236,7 +243,12 @@ parse 실패, old format, reference/schema invalid, conflict와 storage unavaila
 - validation 단계 이동과 retry
 - recovery retry/discard/current-plan return
 - whole-workspace export/import/atomic restore
+- File A와 B의 read 완료 순서가 뒤집혀도 최신 선택 B의 candidate/status만 유지
 - restore conflict와 기존 raw 보존
+- Main 없는 workspace restore의 fresh intro, 별도 welcome progress revision 증가와 intro 완료 뒤 focus
+- initial/restart progress restore의 intro 생략과 저장 단계 재개
+- recovery start-empty/discard의 intro 없는 setup welcome 직접 전환
+- restart가 progress write만 queue에 추가하는 동안 apply/cancel/recovery/restore terminal operation만 shared gate를 획득
 - Simulation URL navigation과 edit intent 1회 소비
 
 내부 hook 호출 횟수나 private 상태 구조는 assertion하지 않는다. 실제 MainApp 렌더링과 repository boundary 결과를 검증한다.
@@ -282,6 +294,9 @@ storage schema, key, route와 backup format 변경이 감지되면 이 설계 �
 - Main의 다섯 값, setup 순서, intro 조건, draft/applied 구분과 revision/conflict 의미가 동일하다.
 - setup-progress write 순서와 apply/cancel 대기 계약이 focused test로 고정된다.
 - backup restore가 모든 slice 검증, current revision과 atomic replace 뒤에만 성공한다.
+- 이전 File read의 늦은 성공·실패가 최신 import candidate나 더 새로운 restore 성공 상태를 덮어쓰지 않는다.
+- Main 없는 workspace restore는 fresh intro와 별도 welcome progress revision을 거친 뒤 focus하며, recovery start-empty/discard는 intro 없이 setup welcome으로 전환한다.
+- draft, step과 restart는 shared gate를 획득하지 않고, apply/cancel/recovery terminal action과 restore만 gate를 획득한다.
 - 기존 Main unit과 전체 unit/E2E가 통과한다.
 - 390px, 768px와 desktop에서 overflow, focus, touch target과 visualization visibility가 유지된다.
 - Account Map, Simulation, Portfolio, Phase 3 visualization과 Phase 4 legacy 코드는 변경하지 않는다.
