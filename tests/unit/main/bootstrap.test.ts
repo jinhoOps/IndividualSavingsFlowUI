@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyDraft, bootstrapMain } from '../../../src/main/application/bootstrap';
-import type { MainState } from '../../../src/main/application/mainReducer';
+import { bootstrapMain } from '../../../src/main/application/bootstrap';
 import { createEmptyMainData, type MainData } from '../../../src/main/domain/model';
 import type {
   MainLoadResult,
@@ -244,60 +243,5 @@ describe('bootstrapMain', () => {
     await expect(bootstrapMain(repository(loaded, progress))).resolves.toMatchObject({
       introEntryReason: expected,
     });
-  });
-});
-
-describe('applyDraft', () => {
-  it('returns the persisted v2 draft and recalculates its cashflow summary after saving', async () => {
-    const draft = validData();
-    const persisted = { ...draft, updatedAt: 1_750_000_000_000 };
-    const storage = repository({ status: 'empty', data: null, original: null }, null, persisted);
-    const state: MainState = {
-      mode: 'setup', applied: null, draft, setupStep: 'review', dirty: true, saveStatus: 'idle', loadError: null,
-    };
-
-    const result = await applyDraft(state, storage);
-
-    expect(result).toMatchObject({
-      ok: true,
-      data: persisted,
-      summary: {
-        incomeWon: 3_000_000,
-        housingWon: 900_000,
-        livingWon: 700_000,
-        consumptionWon: 1_600_000,
-        savingWon: 500_000,
-        investmentWon: 400_000,
-        plannedOutflowWon: 2_500_000,
-        remainingWon: 500_000,
-        deficitWon: 0,
-      },
-    });
-    if (result.ok) expect(result.data).toBe(persisted);
-  });
-
-  it('returns validation issues without saving an invalid draft', async () => {
-    const storage = repository({ status: 'empty', data: null, original: null });
-    const state: MainState = {
-      mode: 'setup', applied: null, draft: createEmptyMainData(), setupStep: 'welcome', dirty: true,
-      saveStatus: 'idle', loadError: null,
-    };
-
-    await expect(applyDraft(state, storage)).resolves.toMatchObject({ ok: false, kind: 'validation' });
-    expect(storage.saveCalls).toEqual([]);
-  });
-
-  it('does not replace applied data when storage rejects the draft', async () => {
-    const applied = validData();
-    const draft = validData({ monthlyNetIncomeWon: 4_000_000 });
-    const storage = repository({ status: 'empty', data: null, original: null });
-    storage.save = async () => { throw new Error('quota exceeded'); };
-    const state: MainState = {
-      mode: 'dashboard', applied, draft, setupStep: null, dirty: true, saveStatus: 'idle', loadError: null,
-    };
-
-    await expect(applyDraft(state, storage)).resolves.toMatchObject({ ok: false, kind: 'storage' });
-    expect(state.applied).toBe(applied);
-    expect(state.applied?.monthlyNetIncomeWon).toBe(3_000_000);
   });
 });
