@@ -23,6 +23,7 @@ import { SummaryDashboard } from './dashboard/SummaryDashboard';
 import { MainManagementMenu } from './MainManagementMenu';
 import { MainWelcomeIntro } from './MainWelcomeIntro';
 import { createMainOperationGate } from './mainOperationGate';
+import { createMainPlanActionNotifications } from './mainPlanActionNotifications';
 import { SetupFlow } from './setup/SetupFlow';
 import { useMainBackupController } from './useMainBackupController';
 import { useMainPlanController } from './useMainPlanController';
@@ -42,8 +43,14 @@ export function MainApp({
   navigate = navigateTo,
 }: MainAppProps) {
   const operationGate = useRef(createMainOperationGate()).current;
+  const planActionNotifications = useRef(createMainPlanActionNotifications()).current;
   const reducedMotion = useReducedMotion();
-  const plan = useMainPlanController({ repository, operationGate, reducedMotion });
+  const plan = useMainPlanController({
+    repository,
+    operationGate,
+    planActionNotifications,
+    reducedMotion,
+  });
   const showIntro = shouldShowMainIntro(
     plan.state,
     plan.introEntry.reason,
@@ -54,8 +61,10 @@ export function MainApp({
     mainRepository: repository,
     workspaceRepository,
     operationGate,
+    planActionNotifications,
     showIntro,
     onBootstrapAccepted: plan.acceptBootstrapResult,
+    onValidImportCandidateSelected: plan.clearValidationIssues,
   });
   const view = buildMainViewModel({
     state: plan.state,

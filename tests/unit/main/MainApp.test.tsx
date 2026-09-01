@@ -20,6 +20,7 @@ import type {
   WorkspaceSaveGuard,
   WorkspaceSaveLock,
 } from '../../../src/workspace/infrastructure/workspaceSaveLock';
+import type { ValidationIssue } from '../../../src/main/application/mainSetupCommands';
 import { MainApp } from '../../../src/main/ui/MainApp';
 import { MemoryStorage } from '../simulation/MemoryStorage';
 
@@ -95,6 +96,7 @@ vi.mock('../../../src/main/ui/dashboard/SummaryDashboard', () => ({
   SummaryDashboard: ({
     applied,
     draft,
+    issues,
     onDraftChange,
     onApply,
     onCancel,
@@ -104,6 +106,7 @@ vi.mock('../../../src/main/ui/dashboard/SummaryDashboard', () => ({
   }: {
     applied: MainData;
     draft: MainData;
+    issues: ValidationIssue[];
     onDraftChange(draft: MainData): void;
     onApply(): void;
     onCancel(): void;
@@ -115,8 +118,14 @@ vi.mock('../../../src/main/ui/dashboard/SummaryDashboard', () => ({
       <h1>dashboard</h1>
       <output aria-label="applied-income">{applied.monthlyNetIncomeWon}</output>
       <output aria-label="draft-income">{draft.monthlyNetIncomeWon}</output>
+      {issues.length === 0 ? null : (
+        <output aria-label="validation-issue-count">{issues.length}</output>
+      )}
       <button type="button" onClick={() => onDraftChange({ ...draft, monthlyNetIncomeWon: 4_000_000 })}>
         edit-draft
+      </button>
+      <button type="button" onClick={() => onDraftChange({ ...draft, monthlyNetIncomeWon: 0 })}>
+        invalidate-draft
       </button>
       <button type="button" onClick={onApply}>apply-dashboard</button>
       <button type="button" onClick={onCancel}>cancel-dashboard</button>
@@ -483,6 +492,95 @@ describe('MainApp', () => {
     fireEvent.click(screen.getByRole('button', { name: 'cancel-dashboard' }));
 
     await waitFor(() => expect(screen.queryByText('모든 앱 데이터 백업을 내보냈습니다.')).not.toBeInTheDocument());
+  });
+
+  it('keeps a successful workspace backup status when a Main apply fails', async () => {
+    const current = workspace(3_000_000, 7);
+    const workspaceRepository: Pick<WorkspaceRepository, 'load' | 'replace'> = {
+      load: () => ({ status: 'found', workspace: current, needsMigration: false }),
+      replace: vi.fn(),
+    };
+    const mainRepository = repository({
+      status: 'current',
+      data: current.main.applied!,
+      original: null,
+    });
+    const save = vi.fn(async () => { throw new Error('save failed'); });
+    mainRepository.save = save;
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:workspace-backup');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+    render(<MainApp repository={mainRepository} workspaceRepository={workspaceRepository} />);
+    await screen.findByRole('heading', { name: 'dashboard' });
+
+    fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: '백업 내보내기' }));
+    expect(await screen.findByText('모든 앱 데이터 백업을 내보냈습니다.')).toBeVisible();
+
+    fireEvent.click(screen.getByRole('button', { name: 'edit-draft' }));
+    fireEvent.click(screen.getByRole('button', { name: 'apply-dashboard' }));
+
+    await waitFor(() => expect(save).toHaveBeenCalledOnce());
+    expect(screen.getByText('모든 앱 데이터 백업을 내보냈습니다.')).toBeVisible();
+  });
+
+  it('keeps a successful workspace backup status when cancel cleanup fails', async () => {
+    const current = workspace(3_000_000, 7);
+    const workspaceRepository: Pick<WorkspaceRepository, 'load' | 'replace'> = {
+      load: () => ({ status: 'found', workspace: current, needsMigration: false }),
+      replace: vi.fn(),
+    };
+    const mainRepository = repository({
+      status: 'current',
+      data: current.main.applied!,
+      original: null,
+    });
+    const clearSetupProgress = vi.fn(async () => { throw new Error('clear failed'); });
+    mainRepository.clearSetupProgress = clearSetupProgress;
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:workspace-backup');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+    render(<MainApp repository={mainRepository} workspaceRepository={workspaceRepository} />);
+    await screen.findByRole('heading', { name: 'dashboard' });
+
+    fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: '백업 내보내기' }));
+    expect(await screen.findByText('모든 앱 데이터 백업을 내보냈습니다.')).toBeVisible();
+
+    fireEvent.click(screen.getByRole('button', { name: 'edit-draft' }));
+    fireEvent.click(screen.getByRole('button', { name: 'cancel-dashboard' }));
+
+    await waitFor(() => expect(clearSetupProgress).toHaveBeenCalledOnce());
+    expect(screen.getByText('모든 앱 데이터 백업을 내보냈습니다.')).toBeVisible();
+  });
+
+  it('clears Main validation issues when a valid import is selected even if confirmation is cancelled', async () => {
+    const current = workspace(3_000_000, 7);
+    const imported = workspace(4_000_000, 99);
+    const workspaceRepository: Pick<WorkspaceRepository, 'load' | 'replace'> = {
+      load: () => ({ status: 'found', workspace: current, needsMigration: false }),
+      replace: vi.fn(),
+    };
+    render(<MainApp
+      repository={repository({ status: 'current', data: current.main.applied!, original: null })}
+      workspaceRepository={workspaceRepository}
+    />);
+    await screen.findByRole('heading', { name: 'dashboard' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'invalidate-draft' }));
+    fireEvent.click(screen.getByRole('button', { name: 'apply-dashboard' }));
+    expect(await screen.findByLabelText('validation-issue-count')).toHaveTextContent('1');
+
+    fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
+    fireEvent.change(screen.getByLabelText('백업 가져오기'), {
+      target: { files: [backupFile(backupEnvelope(imported))] },
+    });
+    expect(await screen.findByRole('heading', { name: '모든 앱 데이터를 이 백업으로 바꿀까요?' })).toBeVisible();
+    expect(screen.queryByLabelText('validation-issue-count')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '취소' }));
+    expect(screen.queryByLabelText('validation-issue-count')).not.toBeInTheDocument();
+    expect(workspaceRepository.replace).not.toHaveBeenCalled();
   });
 
   it('confirms and atomically restores all slices before reloading Main', async () => {

@@ -6,6 +6,7 @@ import {
 } from '../../../src/main/application/mainBackupCommands';
 import type { MainRepository } from '../../../src/main/infrastructure/mainRepository';
 import type { WorkspaceDocument } from '../../../src/workspace/domain/model';
+import * as workspaceBackup from '../../../src/workspace/infrastructure/workspaceBackup';
 import type { WorkspaceRepository } from '../../../src/workspace/infrastructure/workspaceRepository';
 
 function workspace(monthlyNetIncomeWon: number, revision = 1): WorkspaceDocument {
@@ -90,6 +91,15 @@ function repository(result: Awaited<ReturnType<MainRepository['load']>>): MainRe
 }
 
 describe('main backup commands', () => {
+  it('normalizes an unexpected import parser exception to a failed result', () => {
+    const error = new Error('parser exploded');
+    const parser = vi.spyOn(workspaceBackup, 'importWorkspaceBackup')
+      .mockImplementationOnce(() => { throw error; });
+
+    expect(parseWorkspaceBackupCandidate('{}')).toEqual({ status: 'failed', error });
+    parser.mockRestore();
+  });
+
   it('rejects every invalid candidate before a workspace write', () => {
     expect(parseWorkspaceBackupCandidate('{')).toEqual({
       status: 'candidate-invalid',
@@ -197,5 +207,19 @@ describe('main backup commands', () => {
       load: () => { throw error; },
       replace: vi.fn(),
     }, repository({ status: 'empty', data: null, original: null }))).resolves.toEqual({ status: 'failed', error });
+  });
+
+  it('normalizes an asynchronously rejected replace without bootstrapping false success', async () => {
+    const error = new Error('replace rejected later');
+    const replace = vi.fn<WorkspaceRepository['replace']>(() => Promise.reject(error));
+    const mainRepository = repository({ status: 'empty', data: null, original: null });
+    const loadMain = vi.spyOn(mainRepository, 'load');
+
+    await expect(restoreWorkspaceBackup(workspace(900), {
+      load: () => ({ status: 'found', workspace: workspace(300, 5), needsMigration: false }),
+      replace,
+    }, mainRepository)).resolves.toEqual({ status: 'failed', error });
+    expect(replace).toHaveBeenCalledWith(5, workspace(900));
+    expect(loadMain).not.toHaveBeenCalled();
   });
 });

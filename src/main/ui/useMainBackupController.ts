@@ -13,14 +13,17 @@ import type { WorkspaceDocument } from '../../workspace/domain/model';
 import type { WorkspaceRepository } from '../../workspace/infrastructure/workspaceRepository';
 import { downloadJson, readFileText } from './mainBrowserFiles';
 import type { MainOperationGate } from './mainOperationGate';
+import type { MainPlanActionNotifications } from './mainPlanActionNotifications';
 
 interface UseMainBackupControllerOptions {
   state: MainState | null;
   mainRepository: MainRepository;
   workspaceRepository: Pick<WorkspaceRepository, 'load' | 'replace'>;
   operationGate: MainOperationGate;
+  planActionNotifications: Pick<MainPlanActionNotifications, 'subscribe'>;
   showIntro: boolean;
   onBootstrapAccepted(result: MainBootstrapResult): void;
+  onValidImportCandidateSelected(): void;
 }
 
 type BackupStatus = { kind: 'success' | 'error'; message: string } | null;
@@ -46,41 +49,20 @@ export function useMainBackupController({
   mainRepository,
   workspaceRepository,
   operationGate,
+  planActionNotifications,
   showIntro,
   onBootstrapAccepted,
+  onValidImportCandidateSelected,
 }: UseMainBackupControllerOptions) {
   const [backupStatus, setBackupStatus] = useState<BackupStatus>(null);
   const [pendingImport, setPendingImport] = useState<WorkspaceDocument | null>(null);
   const [restorePending, setRestorePending] = useState(false);
   const selectionGenerationRef = useRef(0);
   const restoreFocusRequestedRef = useRef(false);
-  const previousStateRef = useRef(state);
 
   useEffect(() => {
-    const previous = previousStateRef.current;
-    previousStateRef.current = state;
-    if (
-      backupStatus === null
-      || restoreFocusRequestedRef.current
-      || previous === null
-      || state === null
-    ) return;
-
-    const appliedMainDraft = previous.saveStatus !== 'saved'
-      && state.saveStatus === 'saved';
-    const cancelledDashboardDraft = previous.mode === 'dashboard'
-      && previous.dirty
-      && state.mode === 'dashboard'
-      && !state.dirty
-      && state.saveStatus === 'idle';
-    const cancelledRestartDraft = previous.mode === 'setup'
-      && previous.applied !== null
-      && state.mode === 'dashboard'
-      && state.saveStatus === 'idle';
-    if (appliedMainDraft || cancelledDashboardDraft || cancelledRestartDraft) {
-      setBackupStatus(null);
-    }
-  }, [backupStatus, state]);
+    return planActionNotifications.subscribe(() => setBackupStatus(null));
+  }, [planActionNotifications]);
 
   useEffect(() => {
     if (!restoreFocusRequestedRef.current || backupStatus?.kind !== 'success' || showIntro) return;
@@ -103,6 +85,7 @@ export function useMainBackupController({
       const result = parseWorkspaceBackupCandidate(await readFileText(file));
       if (generation !== selectionGenerationRef.current) return;
       if (result.status === 'ready') {
+        onValidImportCandidateSelected();
         setPendingImport(result.candidate);
         setBackupStatus(null);
         return;
@@ -119,14 +102,10 @@ export function useMainBackupController({
       setPendingImport(null);
       setBackupStatus({ kind: 'error', message: '백업 파일을 읽지 못했습니다. 현재 데이터는 바뀌지 않았습니다.' });
     }
-  }, [operationGate, state]);
+  }, [onValidImportCandidateSelected, operationGate, state]);
 
   const cancelWorkspaceImport = useCallback(() => {
     setPendingImport(null);
-  }, []);
-
-  const clearBackupStatus = useCallback(() => {
-    setBackupStatus(null);
   }, []);
 
   const restorePendingImport = useCallback(async (): Promise<boolean> => {
@@ -192,7 +171,6 @@ export function useMainBackupController({
     restorePending,
     prepareWorkspaceImport,
     cancelWorkspaceImport,
-    clearBackupStatus,
     restorePendingImport,
     exportCurrentWorkspace,
     exportRecoveryOriginal,

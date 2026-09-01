@@ -15,10 +15,12 @@ import { createSetupProgressQueue } from '../application/setupProgressQueue';
 import { createEmptyMainData, type MainData, type SetupStep } from '../domain/model';
 import type { MainRepository, SetupProgressKind } from '../infrastructure/mainRepository';
 import type { MainOperationGate } from './mainOperationGate';
+import type { MainPlanActionNotifications } from './mainPlanActionNotifications';
 
 export interface UseMainPlanControllerOptions {
   repository: MainRepository;
   operationGate: MainOperationGate;
+  planActionNotifications: Pick<MainPlanActionNotifications, 'notify'>;
   reducedMotion: boolean;
 }
 
@@ -34,6 +36,7 @@ export interface MainPlanController {
   progressWarning: string | null;
   introEntry: MainIntroEntry;
   acceptBootstrapResult(result: MainBootstrapResult): void;
+  clearValidationIssues(): void;
   completeWelcomeIntro(entryId: number): void;
   changeDraft(draft: MainData): void;
   changeSetupStep(step: SetupStep): void;
@@ -53,6 +56,7 @@ const progressMessages = {
 export function useMainPlanController({
   repository,
   operationGate,
+  planActionNotifications,
   reducedMotion,
 }: UseMainPlanControllerOptions): MainPlanController {
   const [state, setState] = useState<MainState | null>(null);
@@ -84,6 +88,10 @@ export function useMainPlanController({
     setIntroEntry((current) => current.id !== entryId
       ? current
       : { ...current, reason: 'none' });
+  }, []);
+
+  const clearValidationIssues = useCallback(() => {
+    setIssues([]);
   }, []);
 
   const dispatch = useCallback((action: MainAction) => {
@@ -191,6 +199,7 @@ export function useMainPlanController({
         await clearSetupProgress();
         setIssues([]);
         dispatch({ type: 'save-succeeded', data: result.data });
+        planActionNotifications.notify('apply');
         return;
       }
 
@@ -217,6 +226,7 @@ export function useMainPlanController({
     clearSetupProgress,
     dispatch,
     operationGate,
+    planActionNotifications,
     persistSetupProgress,
     progressQueue,
     repository,
@@ -230,10 +240,11 @@ export function useMainPlanController({
       if (!await clearSetupProgress()) return;
       setIssues([]);
       dispatch({ type: 'cancel-draft' });
+      planActionNotifications.notify('cancel');
     } finally {
       operationGate.busy = false;
     }
-  }, [clearSetupProgress, dispatch, operationGate]);
+  }, [clearSetupProgress, dispatch, operationGate, planActionNotifications]);
 
   const restartSetup = useCallback(() => {
     if (state === null || state.applied === null || operationGate.busy) return;
@@ -300,6 +311,7 @@ export function useMainPlanController({
     progressWarning,
     introEntry,
     acceptBootstrapResult,
+    clearValidationIssues,
     completeWelcomeIntro,
     changeDraft,
     changeSetupStep,
