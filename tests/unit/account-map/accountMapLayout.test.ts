@@ -37,6 +37,14 @@ describe('Account Map deterministic layout', () => {
     },
   );
 
+  it('keeps the pre-extraction 28px top margin at the 768px direction breakpoint', () => {
+    const positioned = layoutAccountMap(graph, { width: 768, height: 1024 }, 'default');
+    const primary = positioned.nodes.find(({ id }) => id === 'location:a');
+
+    expect(positioned.direction).toBe('top-to-bottom');
+    expect(primary).toMatchObject({ y: 28 });
+  });
+
   it('only reorders amount-ranked ordinary locations while retaining node dimensions and copied edges', () => {
     const weightedNodes: GraphNode[] = [
       ...graph.nodes,

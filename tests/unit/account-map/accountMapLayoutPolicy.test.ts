@@ -4,7 +4,7 @@ import { createAccountMapLayoutPolicy } from '../../../src/account-map/ui/accoun
 describe('Account Map layout policy', () => {
   it.each([
     [{ width: 390, height: 844 }, 'top-to-bottom', 16],
-    [{ width: 768, height: 1024 }, 'top-to-bottom', 16],
+    [{ width: 768, height: 1024 }, 'top-to-bottom', 28],
     [{ width: 769, height: 1024 }, 'left-to-right', 28],
   ] as const)('chooses the intended responsive policy for %o', (viewport, direction, margin) => {
     const policy = createAccountMapLayoutPolicy(viewport);

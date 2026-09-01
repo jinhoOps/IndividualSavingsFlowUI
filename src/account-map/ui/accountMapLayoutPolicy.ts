@@ -14,7 +14,7 @@ export function createAccountMapLayoutPolicy(
   const width = Math.max(280, viewport.width);
   const minimumHeight = Math.max(360, viewport.height);
   const direction = width <= 768 ? 'top-to-bottom' : 'left-to-right';
-  const margin = direction === 'top-to-bottom' ? 16 : 28;
+  const margin = width <= 480 ? 16 : 28;
   const nodeHeight = 78;
   const nodeWidth = direction === 'top-to-bottom'
     ? Math.min(184, (width - margin * 2 - 12) / (width < 540 ? 2 : 3))
