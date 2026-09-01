@@ -4,10 +4,14 @@ import { AppShell } from '../../components/common/AppShell';
 import { useReducedMotion } from '../../components/motion/useReducedMotion';
 import {
   bootstrapMain,
-  type MainBootstrapIntroEntryReason,
   type MainBootstrapResult,
 } from '../application/bootstrap';
 import { mainReducer, type MainAction, type MainState } from '../application/mainReducer';
+import {
+  buildMainViewModel,
+  shouldShowMainIntro,
+  type MainIntroEntryReason,
+} from '../application/mainViewModel';
 import {
   resetInvalidMainWorkspace,
   saveMainDraft,
@@ -40,8 +44,6 @@ export interface MainAppProps {
   navigate?(href: string): void;
 }
 
-export type MainIntroEntryReason = MainBootstrapIntroEntryReason | 'restart';
-
 interface MainIntroEntry {
   id: number;
   reason: MainIntroEntryReason;
@@ -70,10 +72,7 @@ export function MainApp({
   const [initialEditPath] = useState<keyof MainData | undefined>(() => consumeEditIntent());
   const progressQueue = useMemo(() => createSetupProgressQueue(repository), [repository]);
   const reducedMotion = useReducedMotion();
-  const showIntro = state?.mode === 'setup'
-    && state.setupStep === 'welcome'
-    && (introEntry.reason === 'fresh' || introEntry.reason === 'restart')
-    && !reducedMotion;
+  const showIntro = shouldShowMainIntro(state, introEntry.reason, reducedMotion);
   const {
     backupStatus,
     pendingImport,
@@ -91,6 +90,16 @@ export function MainApp({
     operationGate,
     showIntro,
     onBootstrapAccepted: acceptBackupBootstrap,
+  });
+  const mainViewModel = buildMainViewModel({
+    state,
+    introReason: introEntry.reason,
+    reducedMotion,
+    validationIssueCount: issues.length,
+    hasProgressWarning: progressWarning !== null,
+    backupStatusKind: backupStatus?.kind ?? null,
+    hasPendingImport: pendingImport !== null,
+    restorePending,
   });
 
   useEffect(() => {
@@ -318,8 +327,8 @@ export function MainApp({
     navigate(appPath('simulation'));
   }
 
-  const journeyEntry = <JourneyEntryCard enabled={state?.applied !== null && state?.applied !== undefined} onContinue={continueToSimulation} />;
-  const showBackupStatus = pendingImport === null && backupStatus !== null;
+  const journeyEntry = <JourneyEntryCard enabled={mainViewModel.management.canExport} onContinue={continueToSimulation} />;
+  const showBackupStatus = mainViewModel.showBackupStatus;
   const backupStatusRegion = (
     <div
       className={`mx-auto w-full max-w-6xl ${showBackupStatus ? 'px-5 pt-4 sm:px-8' : ''}`}
@@ -327,7 +336,7 @@ export function MainApp({
       aria-atomic="true"
       data-testid="workspace-backup-status"
     >
-      {showBackupStatus ? (
+      {showBackupStatus && backupStatus !== null ? (
         <p
           className={`m-0 rounded-xl px-4 py-3 text-sm font-bold ${backupStatus.kind === 'error' ? 'bg-rose-50 text-rose-700' : 'bg-teal-50 text-teal-800'}`}
           role={backupStatus.kind === 'error' ? 'alert' : 'status'}
@@ -339,12 +348,12 @@ export function MainApp({
   );
   const managementMenu = (
     <MainManagementMenu
-      saving={state?.saveStatus === 'saving' || restorePending}
-      dirty={state?.dirty ?? false}
-      canExport={state?.applied !== null && state?.applied !== undefined}
-      canImport={state?.mode === 'dashboard'}
-      canRestart={state?.applied !== null && state?.applied !== undefined}
-      importConfirmationOpen={pendingImport !== null}
+      saving={mainViewModel.management.saving}
+      dirty={mainViewModel.management.dirty}
+      canExport={mainViewModel.management.canExport}
+      canImport={mainViewModel.management.canImport}
+      canRestart={mainViewModel.management.canRestart}
+      importConfirmationOpen={mainViewModel.management.importConfirmationOpen}
       importFailureMessage={pendingImport === null || backupStatus?.kind !== 'error'
         ? undefined
         : backupStatus.message}
@@ -357,7 +366,7 @@ export function MainApp({
     />
   );
 
-  if (state === null) {
+  if (state === null || mainViewModel.screen === 'loading') {
     return (
       <AppContentFrame
         className="grid min-h-dvh place-items-center py-8"
@@ -368,11 +377,11 @@ export function MainApp({
     );
   }
 
-  if (showIntro) {
+  if (mainViewModel.screen === 'intro') {
     return <MainWelcomeIntro key={introEntry.id} onComplete={() => completeWelcomeIntro(introEntry.id)} />;
   }
 
-  if (state.mode === 'recovery') {
+  if (mainViewModel.screen === 'recovery' && state.mode === 'recovery') {
     const original = state.loadError?.original ?? state.draft;
     return (
       <AppShell currentApp="main" managementMenu={managementMenu} statusRegion={backupStatusRegion}>
@@ -388,7 +397,7 @@ export function MainApp({
     );
   }
 
-  if (state.mode === 'setup' && state.setupStep !== null) {
+  if (mainViewModel.screen === 'setup' && state.mode === 'setup' && state.setupStep !== null) {
     const isRestartSetup = state.applied !== null;
     const setupNotice = (
       <>
@@ -397,7 +406,7 @@ export function MainApp({
             {progressWarning}
           </p>
         )}
-        {state.saveStatus === 'error' && issues.length === 0 ? (
+        {mainViewModel.showSetupSaveError ? (
           <Surface className="mt-3 rounded-xl border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-800" role="alert">
             <p className="m-0">저장하지 못했습니다. 입력한 내용은 그대로 보존되어 있습니다.</p>
             <Button
@@ -443,7 +452,7 @@ export function MainApp({
       <SummaryDashboard
         applied={state.applied}
         draft={state.draft}
-        dirty={state.dirty}
+        dirty={mainViewModel.management.dirty}
         issues={issues}
         validationAttempt={validationAttempt}
         saveStatus={state.saveStatus}
