@@ -107,6 +107,22 @@ describe('ReadinessApp', () => {
     expect(content).toHaveStyle({ opacity: '1', transform: 'translateY(0px)' });
     expect(animationCountFor(content!)).toBe(0);
   });
+
+  it('commits the visible readiness state when Anime.js cannot start', () => {
+    animeMocks.animate.mockImplementation((target: unknown, options: Record<string, unknown>) => {
+      if (target instanceof HTMLElement && target.matches('[data-readiness-motion]')) {
+        throw new Error('Anime.js unavailable');
+      }
+      applyFinalAnimationStyles(target, options);
+      return { cancel: vi.fn() };
+    });
+
+    render(<ReadinessApp />);
+    const content = screen.getByRole('heading', { name: 'Account Map 준비 중' })
+      .closest<HTMLElement>('[data-readiness-motion]');
+
+    expect(content).toHaveStyle({ opacity: '1', transform: 'translateY(0px)' });
+  });
 });
 
 function animationOptionsFor(target: Element): Record<string, unknown> | undefined {
