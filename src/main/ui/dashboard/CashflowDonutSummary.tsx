@@ -1,4 +1,4 @@
-import { animate, type JSAnimation } from 'animejs';
+import { animate } from 'animejs';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { animateVisualNumber } from '../../../components/motion/animateVisualNumber';
 import { attemptMotion } from '../../../components/motion/attemptMotion';
@@ -6,30 +6,21 @@ import { MOTION_DURATION, MOTION_EASE } from '../../../components/motion/tokens'
 import { calculateCashflowInsight, type DonutAllocation } from '../../domain/cashflowInsight';
 import type { MainData } from '../../domain/model';
 import { formatDashboardWon } from './CashflowSummary';
+import {
+  createDonutSegmentGeometry,
+  exitingDonutSegment,
+  mergeDonutAllocationIds,
+} from './cashflowDonutGeometry';
+import {
+  commitFinalDonutGeometry,
+  setCircleGeometry,
+  type DonutSegmentMotionState,
+} from './cashflowDonutMotion';
 import { hitTestDonutAllocation } from './donutHitTest';
 
 export interface CashflowDonutSummaryProps {
   data: MainData;
 }
-
-interface DonutSegmentGeometry {
-  id: DonutAllocation['id'];
-  visiblePercentage: number;
-  dashoffset: number;
-}
-
-interface DonutSegmentMotionState {
-  visiblePercentage: number;
-  dashoffset: number;
-  animation?: JSAnimation;
-}
-
-const DONUT_ALLOCATION_IDS: DonutAllocation['id'][] = [
-  'consumption',
-  'saving',
-  'investment',
-  'remaining',
-];
 
 export function CashflowDonutSummary({ data }: CashflowDonutSummaryProps) {
   const [hoveredId, setHoveredId] = useState<DonutAllocation['id']>();
@@ -132,7 +123,13 @@ export function CashflowDonutSummary({ data }: CashflowDonutSummaryProps) {
           ease: MOTION_EASE.update,
           onComplete: () => {
             if (motionGenerationRef.current !== generation) return;
-            commitFinalDonutSegment(id, circle, state, segment, exiting, geometryStatesRef.current);
+            commitFinalDonutGeometry(
+              [id],
+              exiting ? [] : [id],
+              targetById,
+              circleRefs.current,
+              geometryStatesRef.current,
+            );
             if (exiting) {
               setVisualSegmentIds((current) => current.filter((candidate) => candidate !== id));
             }
@@ -333,79 +330,6 @@ function AnimatedVisualNumber({
   }, [format, value]);
 
   return <span aria-hidden="true" className={className} ref={visualRef}>{rendered}</span>;
-}
-
-function createDonutSegmentGeometry(allocations: DonutAllocation[]): DonutSegmentGeometry[] {
-  let offset = 0;
-  return allocations.map((allocation) => {
-    const visiblePercentage = Math.min(allocation.displayPercentage, Math.max(0, 100 - offset));
-    const segment = {
-      id: allocation.id,
-      visiblePercentage,
-      dashoffset: -offset,
-    };
-    offset += visiblePercentage;
-    return segment;
-  });
-}
-
-function exitingDonutSegment(id: DonutAllocation['id']): DonutSegmentGeometry {
-  return { id, visiblePercentage: 0, dashoffset: -100 };
-}
-
-function mergeDonutAllocationIds(
-  previousIds: DonutAllocation['id'][],
-  currentIds: DonutAllocation['id'][],
-): DonutAllocation['id'][] {
-  return DONUT_ALLOCATION_IDS.filter((id) => (
-    previousIds.includes(id) || currentIds.includes(id)
-  ));
-}
-
-function setCircleGeometry(
-  circle: SVGCircleElement,
-  geometry: Pick<DonutSegmentMotionState, 'visiblePercentage' | 'dashoffset'>,
-): void {
-  circle.setAttribute(
-    'stroke-dasharray',
-    `${geometry.visiblePercentage} ${100 - geometry.visiblePercentage}`,
-  );
-  circle.setAttribute('stroke-dashoffset', String(geometry.dashoffset));
-}
-
-function commitFinalDonutGeometry(
-  renderedIds: DonutAllocation['id'][],
-  targetIds: DonutAllocation['id'][],
-  targetById: Map<DonutAllocation['id'], DonutSegmentGeometry>,
-  circles: Map<DonutAllocation['id'], SVGCircleElement>,
-  states: Map<DonutAllocation['id'], DonutSegmentMotionState>,
-): void {
-  for (const id of mergeDonutAllocationIds(renderedIds, targetIds)) {
-    const circle = circles.get(id);
-    if (circle === undefined) continue;
-    const segment = targetById.get(id) ?? exitingDonutSegment(id);
-    const state = states.get(id) ?? {
-      visiblePercentage: segment.visiblePercentage,
-      dashoffset: segment.dashoffset,
-    };
-    states.set(id, state);
-    commitFinalDonutSegment(id, circle, state, segment, !targetById.has(id), states);
-  }
-}
-
-function commitFinalDonutSegment(
-  id: DonutAllocation['id'],
-  circle: SVGCircleElement,
-  state: DonutSegmentMotionState,
-  segment: DonutSegmentGeometry,
-  exiting: boolean,
-  states: Map<DonutAllocation['id'], DonutSegmentMotionState>,
-): void {
-  state.visiblePercentage = segment.visiblePercentage;
-  state.dashoffset = segment.dashoffset;
-  state.animation = undefined;
-  setCircleGeometry(circle, state);
-  if (exiting) states.delete(id);
 }
 
 function formatPercentage(percentage: number): string {
