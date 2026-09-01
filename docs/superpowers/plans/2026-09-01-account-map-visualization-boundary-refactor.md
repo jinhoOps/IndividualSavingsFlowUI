@@ -235,7 +235,7 @@ export function positionConnectionDetail(
 ```ts
 expect(buildAccountMapEdgeGeometry(purpose, location)).toEqual({
   path: 'M 700 139 C 450 139, 450 339, 200 339',
-  amountAnchor: { left: 450, top: 339 },
+  amountAnchor: { left: 450, top: 239 },
 });
 ```
 
