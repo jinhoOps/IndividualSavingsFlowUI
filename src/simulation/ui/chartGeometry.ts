@@ -73,32 +73,6 @@ export function buildChartGeometry(
   };
 }
 
-export interface TooltipPlacementInput {
-  anchorX: number;
-  anchorY: number;
-  chartWidth: number;
-  tooltipWidth: number;
-  tooltipHeight: number;
-  gap?: number;
-}
-
-export function tooltipPlacement({
-  anchorX,
-  anchorY,
-  chartWidth,
-  tooltipWidth,
-  tooltipHeight,
-  gap = 12,
-}: TooltipPlacementInput): {
-  horizontal: 'left' | 'right';
-  vertical: 'above' | 'below';
-} {
-  return {
-    horizontal: anchorX + gap + tooltipWidth > chartWidth ? 'left' : 'right',
-    vertical: anchorY - gap - tooltipHeight < 0 ? 'below' : 'above',
-  };
-}
-
 export function formatChartAxisWon(amountWon: number): string {
   const absolute = Math.abs(amountWon);
   if (absolute >= 100_000_000) return `${Math.round(amountWon / 100_000_000)}억`;

@@ -3,7 +3,6 @@ import type { ProjectionPoint } from '../../../src/simulation/domain/model';
 import {
   buildChartGeometry,
   formatProjectionPeriod,
-  tooltipPlacement,
 } from '../../../src/simulation/ui/chartGeometry';
 import { buildChartSeries } from '../../../src/simulation/ui/chartSeries';
 
@@ -107,20 +106,5 @@ describe('buildChartGeometry', () => {
 
     expect(geometry.points).toEqual([]);
     expect(geometry.currentPlanPath).toBe('');
-  });
-
-  it('keeps a fixed tooltip inside horizontal and top chart edges', () => {
-    expect(tooltipPlacement({
-      anchorX: 620, anchorY: 140,
-      chartWidth: 680, tooltipWidth: 240, tooltipHeight: 112,
-    })).toEqual({ horizontal: 'left', vertical: 'above' });
-    expect(tooltipPlacement({
-      anchorX: 120, anchorY: 140,
-      chartWidth: 680, tooltipWidth: 240, tooltipHeight: 112,
-    })).toEqual({ horizontal: 'right', vertical: 'above' });
-    expect(tooltipPlacement({
-      anchorX: 120, anchorY: 40,
-      chartWidth: 680, tooltipWidth: 240, tooltipHeight: 112,
-    })).toEqual({ horizontal: 'right', vertical: 'below' });
   });
 });

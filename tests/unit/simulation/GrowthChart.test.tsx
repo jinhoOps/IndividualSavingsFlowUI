@@ -280,6 +280,36 @@ describe('GrowthChart', () => {
     expect(motionPaths(container)).toEqual(priorPaths);
   });
 
+  it('clears a selected period that no longer exists after the result shortens', () => {
+    const longResult = projectCompoundGrowth({
+      ...createDefaultSimulationDraft({
+        monthlySavingsWon: 300_000,
+        monthlyInvestmentWon: 200_000,
+        mainUpdatedAt: 128,
+      }, 461),
+      years: 3,
+    });
+    const shortResult = projectCompoundGrowth({
+      ...createDefaultSimulationDraft({
+        monthlySavingsWon: 300_000,
+        monthlyInvestmentWon: 200_000,
+        mainUpdatedAt: 129,
+      }, 462),
+      years: 1,
+    });
+    const { rerender } = render(<GrowthChart result={longResult} amountMode="nominal" />);
+    const explorer = screen.getByRole('application', { name: '그래프 기간 탐색' });
+
+    fireEvent.keyDown(explorer, { key: 'End' });
+    expect(screen.getByRole('status')).toHaveTextContent('3년');
+
+    rerender(<GrowthChart result={shortResult} amountMode="nominal" />);
+
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    fireEvent.keyDown(explorer, { key: 'ArrowRight' });
+    expect(screen.getByRole('status')).toHaveTextContent(/^현재,/);
+  });
+
   it('renders final graph geometry immediately without an intermediate path for reduced motion', () => {
     anime.scope.matches.reducedMotion = true;
     const { container, rerender } = render(

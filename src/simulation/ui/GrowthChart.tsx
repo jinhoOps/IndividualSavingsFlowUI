@@ -10,10 +10,16 @@ import type {
 import {
   buildChartGeometry,
   formatProjectionPeriod,
-  tooltipPlacement,
   type ChartGeometry,
 } from './chartGeometry';
-import { buildChartSeries, type ChartSeriesPoint } from './chartSeries';
+import {
+  indexAtClientX,
+  indexForKey,
+  tooltipPlacement,
+  type ChartKeyIntent,
+} from './chartInteraction';
+import { buildChartSeries } from './chartSeries';
+import { buildChartTooltipModel } from './chartTooltipModel';
 import { formatWon } from './format';
 import { GrowthChartTooltip } from './GrowthChartTooltip';
 
@@ -109,6 +115,12 @@ export function GrowthChart({
   ]);
 
   useEffect(() => {
+    setActiveIndex((current) => (
+      current !== null && current >= series.length ? null : current
+    ));
+  }, [series.length]);
+
+  useEffect(() => {
     if (activeIndex === null) return undefined;
     const dismiss = () => setActiveIndex(null);
     const dismissOutside = (event: PointerEvent) => {
@@ -126,6 +138,7 @@ export function GrowthChart({
   const finalSavings = last?.allSavingsWon ?? 0;
   const activeGeometry = activeIndex === null ? null : geometry.points[activeIndex] ?? null;
   const active = activeGeometry;
+  const tooltip = active === null ? null : buildChartTooltipModel(active, compactTooltip);
   const tooltipSize = compactTooltip
     ? { width: 192, height: 112 }
     : { width: 240, height: 230 };
@@ -162,21 +175,10 @@ export function GrowthChart({
         tabIndex={0}
         onKeyDown={(event) => {
           if (event.key === 'Escape') setActiveIndex(null);
-          if (event.key === 'Home') {
+          const intent = keyIntentFor(event.key);
+          if (intent !== null) {
             event.preventDefault();
-            setActiveIndex(0);
-          }
-          if (event.key === 'End') {
-            event.preventDefault();
-            setActiveIndex(series.length - 1);
-          }
-          if (event.key === 'ArrowLeft') {
-            event.preventDefault();
-            setActiveIndex((current) => Math.max(0, (current ?? 1) - 1));
-          }
-          if (event.key === 'ArrowRight') {
-            event.preventDefault();
-            setActiveIndex((current) => Math.min(series.length - 1, (current ?? -1) + 1));
+            setActiveIndex((current) => indexForKey(current, intent, series.length));
           }
         }}
       >
@@ -185,12 +187,13 @@ export function GrowthChart({
           role="img"
           aria-label="기간별 복리 성장 그래프"
           onPointerDown={(event) => {
-            const index = indexAt(
-              event.currentTarget,
-              event.clientX,
-              series,
-              geometry.plot,
-            );
+            const index = indexAtClientX({
+              clientX: event.clientX,
+              bounds: event.currentTarget.getBoundingClientRect(),
+              viewBoxWidth: 680,
+              plot: geometry.plot,
+              pointCount: series.length,
+            });
             setActiveIndex(index);
             if (event.pointerType === 'touch') {
               touchPointerRef.current = event.pointerId;
@@ -199,12 +202,13 @@ export function GrowthChart({
           }}
           onPointerMove={(event) => {
             if (event.pointerType !== 'touch' || touchPointerRef.current === event.pointerId) {
-              setActiveIndex(indexAt(
-                event.currentTarget,
-                event.clientX,
-                series,
-                geometry.plot,
-              ));
+              setActiveIndex(indexAtClientX({
+                clientX: event.clientX,
+                bounds: event.currentTarget.getBoundingClientRect(),
+                viewBoxWidth: 680,
+                plot: geometry.plot,
+                pointCount: series.length,
+              }));
             }
           }}
           onPointerUp={(event) => {
@@ -286,24 +290,17 @@ export function GrowthChart({
             <text className="growth-chart__x-tick" key={tick.x} x={tick.x} y="277">{tick.label}</text>
           ))}
         </svg>
-        {active === null || activeGeometry === null || placement === null ? null : (
+        {active === null || activeGeometry === null || tooltip === null || placement === null ? null : (
           <>
             <p className="sr-only" role="status">
-              {activeStatus(active, compactTooltip)}
+              {tooltip.status}
             </p>
             <GrowthChartTooltip
               variant={compactTooltip ? 'compact' : 'detailed'}
               placement={placement}
               anchorPercent={activeGeometry.x / 680 * 100}
               anchorYPercent={Math.min(activeGeometry.currentY, activeGeometry.allSavingsY) / 285 * 100}
-              values={{
-                periodLabel: formatProjectionPeriod(active.month),
-                currentPlanWon: active.currentPlanWon,
-                allSavingsWon: active.allSavingsWon,
-                principalWon: active.principalWon,
-                savingsWon: active.savingsWon,
-                investmentWon: active.investmentWon,
-              }}
+              values={tooltip.values}
             />
           </>
         )}
@@ -485,28 +482,10 @@ function useCompactTooltip(): boolean {
   return compact;
 }
 
-function indexAt(
-  element: SVGSVGElement,
-  clientX: number,
-  points: readonly ChartSeriesPoint[],
-  plot: { left: number; right: number },
-): number | null {
-  const bounds = element.getBoundingClientRect();
-  if (bounds.width <= 0) return null;
-  const viewBoxX = (clientX - bounds.left) / bounds.width * 680;
-  const ratio = Math.max(0, Math.min(1, (viewBoxX - plot.left) / (plot.right - plot.left)));
-  const index = Math.round(ratio * (points.length - 1));
-  return points[index] === undefined ? null : index;
-}
-
-function activeStatus(
-  point: ChartSeriesPoint,
-  compact: boolean,
-): string {
-  const periodLabel = formatProjectionPeriod(point.month);
-  const currentPlan = formatWon(point.currentPlanWon);
-  const principal = formatWon(point.principalWon);
-  if (compact) return `${periodLabel}, 현재 계획 총액 ${currentPlan}, 누적 납입원금 ${principal}`;
-
-  return `${periodLabel}, 현재 계획 총액 ${currentPlan}, 전부 저축 총액 ${formatWon(point.allSavingsWon)}, 누적 납입원금 ${principal}, 저축 잔액 ${formatWon(point.savingsWon)}, 투자 잔액 ${formatWon(point.investmentWon)}`;
+function keyIntentFor(key: string): ChartKeyIntent | null {
+  if (key === 'Home') return 'home';
+  if (key === 'End') return 'end';
+  if (key === 'ArrowLeft') return 'previous';
+  if (key === 'ArrowRight') return 'next';
+  return null;
 }
