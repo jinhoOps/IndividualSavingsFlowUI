@@ -5,7 +5,6 @@ import { MOTION_DURATION, MOTION_EASE } from '../../components/motion/tokens';
 import { useAnimeScope } from '../../components/motion/useAnimeScope';
 import type {
   CompoundSimulationDraft,
-  ProjectionPoint,
   ProjectionResult,
 } from '../domain/model';
 import {
@@ -37,8 +36,8 @@ export function GrowthChart({
     [amountMode, result.points],
   );
   const geometry = useMemo(
-    () => buildChartGeometry(result.points, amountMode),
-    [amountMode, result.points],
+    () => buildChartGeometry(series),
+    [series],
   );
   const chartRef = useAnimeScope<HTMLElement>(({ root, reducedMotion }) => {
     const motionPaths = findMotionPaths(root);
@@ -122,11 +121,11 @@ export function GrowthChart({
       window.removeEventListener('scroll', dismiss);
     };
   }, [activeIndex]);
-  const last = series.at(-1)!;
-  const finalCurrent = last.currentPlanWon;
-  const finalSavings = last.allSavingsWon;
+  const last = geometry.points.at(-1);
+  const finalCurrent = last?.currentPlanWon ?? 0;
+  const finalSavings = last?.allSavingsWon ?? 0;
   const activeGeometry = activeIndex === null ? null : geometry.points[activeIndex] ?? null;
-  const active = activeIndex === null ? null : series[activeIndex] ?? null;
+  const active = activeGeometry;
   const tooltipSize = compactTooltip
     ? { width: 192, height: 112 }
     : { width: 240, height: 230 };
@@ -154,7 +153,7 @@ export function GrowthChart({
         </div>
       </div>
       <p className="sr-only">
-        {`${amountMode === 'nominal' ? '명목' : '실질'} 기준 ${formatProjectionPeriod(last.month)}, 현재 계획 ${formatWon(finalCurrent)}, 전부 저축 ${formatWon(finalSavings)}, 차이 ${formatWon(finalCurrent - finalSavings)}`}
+        {`${amountMode === 'nominal' ? '명목' : '실질'} 기준 ${formatProjectionPeriod(last?.month ?? 0)}, 현재 계획 ${formatWon(finalCurrent)}, 전부 저축 ${formatWon(finalSavings)}, 차이 ${formatWon(finalCurrent - finalSavings)}`}
       </p>
       <div
         className="growth-chart__canvas"
@@ -169,7 +168,7 @@ export function GrowthChart({
           }
           if (event.key === 'End') {
             event.preventDefault();
-            setActiveIndex(result.points.length - 1);
+            setActiveIndex(series.length - 1);
           }
           if (event.key === 'ArrowLeft') {
             event.preventDefault();
@@ -177,7 +176,7 @@ export function GrowthChart({
           }
           if (event.key === 'ArrowRight') {
             event.preventDefault();
-            setActiveIndex((current) => Math.min(result.points.length - 1, (current ?? -1) + 1));
+            setActiveIndex((current) => Math.min(series.length - 1, (current ?? -1) + 1));
           }
         }}
       >
@@ -189,7 +188,7 @@ export function GrowthChart({
             const index = indexAt(
               event.currentTarget,
               event.clientX,
-              result.points,
+              series,
               geometry.plot,
             );
             setActiveIndex(index);
@@ -203,7 +202,7 @@ export function GrowthChart({
               setActiveIndex(indexAt(
                 event.currentTarget,
                 event.clientX,
-                result.points,
+                series,
                 geometry.plot,
               ));
             }
@@ -489,7 +488,7 @@ function useCompactTooltip(): boolean {
 function indexAt(
   element: SVGSVGElement,
   clientX: number,
-  points: ProjectionPoint[],
+  points: readonly ChartSeriesPoint[],
   plot: { left: number; right: number },
 ): number | null {
   const bounds = element.getBoundingClientRect();

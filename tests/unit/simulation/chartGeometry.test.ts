@@ -5,6 +5,7 @@ import {
   formatProjectionPeriod,
   tooltipPlacement,
 } from '../../../src/simulation/ui/chartGeometry';
+import { buildChartSeries } from '../../../src/simulation/ui/chartSeries';
 
 const points: ProjectionPoint[] = [
   {
@@ -54,7 +55,7 @@ describe('buildChartGeometry', () => {
   });
 
   it('uses every monthly point and labels a short horizon without fractional years', () => {
-    const geometry = buildChartGeometry(monthlyPoints, 'nominal');
+    const geometry = buildChartGeometry(buildChartSeries(monthlyPoints, 'nominal'));
 
     expect(geometry.points).toHaveLength(37);
     expect(geometry.points[6]?.month).toBe(6);
@@ -66,7 +67,7 @@ describe('buildChartGeometry', () => {
   });
 
   it('keeps long annual horizons on five-year month ticks', () => {
-    const geometry = buildChartGeometry(annualPoints, 'nominal');
+    const geometry = buildChartGeometry(buildChartSeries(annualPoints, 'nominal'));
 
     expect(geometry.xTicks.map((tick) => tick.label)).toEqual([
       '현재', '5년', '10년', '15년', '20년', '25년', '30년',
@@ -74,7 +75,7 @@ describe('buildChartGeometry', () => {
   });
 
   it('maps both series into one finite shared plot', () => {
-    const geometry = buildChartGeometry(points, 'nominal', { width: 680, height: 285 });
+    const geometry = buildChartGeometry(buildChartSeries(points, 'nominal'), { width: 680, height: 285 });
 
     expect(geometry.currentPlanPath).toMatch(/^M/);
     expect(geometry.allSavingsPath).toMatch(/^M/);
@@ -88,17 +89,24 @@ describe('buildChartGeometry', () => {
   });
 
   it('builds sparse integer ticks and finite zero-year geometry', () => {
-    const geometry = buildChartGeometry([points[0]], 'nominal');
+    const geometry = buildChartGeometry(buildChartSeries([points[0]], 'nominal'));
 
     expect(geometry.xTicks.map((tick) => tick.label)).toEqual(['현재']);
     expect(geometry.yTicks.every((tick) => !tick.label.includes('.'))).toBe(true);
     expect(geometry.currentPlanPath).not.toContain('NaN');
 
-    const thirtyYear = buildChartGeometry([
+    const thirtyYear = buildChartGeometry(buildChartSeries([
       points[0],
       { ...points[1], year: 30, month: 360 },
-    ], 'nominal');
+    ], 'nominal'));
     expect(thirtyYear.xTicks.at(-1)?.label).toBe('30년');
+  });
+
+  it('returns empty geometry without a path', () => {
+    const geometry = buildChartGeometry([]);
+
+    expect(geometry.points).toEqual([]);
+    expect(geometry.currentPlanPath).toBe('');
   });
 
   it('keeps a fixed tooltip inside horizontal and top chart edges', () => {

@@ -1,11 +1,9 @@
-import type { CompoundSimulationDraft, ProjectionPoint } from '../domain/model';
+import type { ChartSeriesPoint } from './chartSeries';
 
-export interface ChartGeometryPoint {
-  month: number;
+export interface ChartGeometryPoint extends ChartSeriesPoint {
   x: number;
   currentY: number;
   allSavingsY: number;
-  point: ProjectionPoint;
 }
 
 export interface ChartGeometry {
@@ -19,8 +17,7 @@ export interface ChartGeometry {
 }
 
 export function buildChartGeometry(
-  points: ProjectionPoint[],
-  amountMode: CompoundSimulationDraft['amountMode'],
+  series: readonly ChartSeriesPoint[],
   size = { width: 680, height: 285 },
 ): ChartGeometry {
   const plot = {
@@ -29,23 +26,16 @@ export function buildChartGeometry(
     top: 20,
     bottom: size.height - 36,
   };
-  const maxMonth = Math.max(1, ...points.map((point) => point.month));
-  const amount = (point: ProjectionPoint, series: 'current' | 'allSavings') => {
-    if (amountMode === 'real') {
-      return series === 'current' ? point.currentPlanRealWon : point.allSavingsRealWon;
-    }
-    return series === 'current' ? point.currentPlanNominalWon : point.allSavingsNominalWon;
-  };
+  const maxMonth = Math.max(1, ...series.map(({ month }) => month));
   const maxAmount = Math.max(
     1,
-    ...points.flatMap((point) => [amount(point, 'current'), amount(point, 'allSavings')]),
+    ...series.flatMap(({ currentPlanWon, allSavingsWon }) => [currentPlanWon, allSavingsWon]),
   );
-  const geometryPoints = points.map((point) => ({
-    month: point.month,
+  const geometryPoints = series.map((point) => ({
+    ...point,
     x: plot.left + point.month / maxMonth * (plot.right - plot.left),
-    currentY: plot.bottom - amount(point, 'current') / maxAmount * (plot.bottom - plot.top),
-    allSavingsY: plot.bottom - amount(point, 'allSavings') / maxAmount * (plot.bottom - plot.top),
-    point,
+    currentY: plot.bottom - point.currentPlanWon / maxAmount * (plot.bottom - plot.top),
+    allSavingsY: plot.bottom - point.allSavingsWon / maxAmount * (plot.bottom - plot.top),
   }));
   const currentPlanPath = pathFor(geometryPoints, 'currentY');
   const allSavingsPath = pathFor(geometryPoints, 'allSavingsY');
