@@ -2,10 +2,10 @@ import { animate, type JSAnimation } from 'animejs';
 import { useEffect, useId, useLayoutEffect, useRef, useState, type MouseEvent, type PointerEvent } from 'react';
 import { attemptMotion } from '../../../components/motion/attemptMotion';
 import { MOTION_DURATION, MOTION_EASE } from '../../../components/motion/tokens';
-import { calculateCashflow, percentageOfIncome } from '../../domain/cashflow';
 import type { MainData } from '../../domain/model';
 import { PercentageTooltip } from '../common/PercentageTooltip';
 import { createCashflowBarGeometry, type CashflowViewport } from './cashflowBarGeometry';
+import { buildCashflowBarModel } from './cashflowBarModel';
 
 export interface AllocationBarProps {
   data: MainData;
@@ -58,9 +58,9 @@ export function AllocationBar({ data, presentation = 'standard' }: AllocationBar
   const motionStateRef = useRef<AllocationBarMotionState | undefined>(undefined);
   const isPointerFocusRef = useRef(false);
   const tooltipId = useId();
-  const cashflow = calculateCashflow(data);
-  const isDeficit = cashflow.deficitWon > 0;
-  const geometry = createCashflowBarGeometry(data, viewport);
+  const model = buildCashflowBarModel(data);
+  const isDeficit = model.deficitWon > 0;
+  const geometry = createCashflowBarGeometry(model, viewport);
   const targetVisualSegmentIds = geometry.segments.map((segment) => segment.id);
   const [visualSegmentIds, setVisualSegmentIds] = useState<AllocationId[]>(
     () => targetVisualSegmentIds,
@@ -74,28 +74,16 @@ export function AllocationBar({ data, presentation = 'standard' }: AllocationBar
     id: segment.id,
     visualPercentage: segment.widthPercent,
   }));
-  const allocation = (id: string, label: string, amountWon: number): Allocation => {
+  const allocations: Allocation[] = model.allocations.map((allocation) => {
+    const { id } = allocation;
     const geometrySegment = geometry.segments.find((segment) => segment.id === id);
     return {
-      id,
-      label,
-      amountWon,
-      percentage: percentageOfIncome(amountWon, cashflow.incomeWon),
+      ...allocation,
       startPercent: geometrySegment?.startPercent ?? 0,
       visualPercentage: visualSegments.find((segment) => segment.id === id)?.visualPercentage
-        ?? percentageOfIncome(amountWon, cashflow.incomeWon)
-        ?? 0,
+        ?? allocation.widthPercent,
     };
-  };
-  const allocations: Allocation[] = [
-    allocation('consumption', '소비', cashflow.consumptionWon),
-    allocation('saving', '저축', cashflow.savingWon),
-    allocation('investment', '투자', cashflow.investmentWon),
-  ];
-
-  if (!isDeficit) {
-    allocations.push(allocation('remaining', '남는 돈', cashflow.remainingWon));
-  }
+  });
 
   const activeTarget = hoveredTarget ?? focusedTarget ?? tappedTarget;
   const activeId = activeTarget?.id;
@@ -448,13 +436,13 @@ export function AllocationBar({ data, presentation = 'standard' }: AllocationBar
           {isDeficit ? (
             <tr className="allocation-table__overflow-row">
               <th scope="row">초과</th>
-              <td>{formatContextWon(cashflow.deficitWon)}</td>
-              <td>{formatPercentage(percentageOfIncome(cashflow.deficitWon, cashflow.incomeWon))}</td>
+              <td>{formatContextWon(model.deficitWon)}</td>
+              <td>{formatPercentage(geometry.overflowPercent)}</td>
             </tr>
           ) : null}
         </tbody>
       </table>
-      {isDeficit ? <p className="allocation-bar__deficit" data-assembly-content role="status">수입보다 {formatContextWon(cashflow.deficitWon)} 초과</p> : null}
+      {isDeficit ? <p className="allocation-bar__deficit" data-assembly-content role="status">수입보다 {formatContextWon(model.deficitWon)} 초과</p> : null}
     </section>
   );
 }

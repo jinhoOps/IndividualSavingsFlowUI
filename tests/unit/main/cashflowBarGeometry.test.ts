@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { MainData } from '../../../src/main/domain/model';
 import { createCashflowBarGeometry } from '../../../src/main/ui/setup/cashflowBarGeometry';
+import { buildCashflowBarModel } from '../../../src/main/ui/setup/cashflowBarModel';
 
 const normalFixture: MainData = {
   schemaVersion: 2,
@@ -47,7 +48,7 @@ const singleConsumptionOverflowFixture: MainData = {
 
 describe('createCashflowBarGeometry', () => {
   it('fills the rest of a normal 71.875% plan with remaining income', () => {
-    expect(createCashflowBarGeometry(normalFixture, {
+    expect(createCashflowBarGeometry(buildCashflowBarModel(normalFixture), {
       barWidthPx: 400,
       availableRightPx: 0,
     })).toEqual({
@@ -65,7 +66,7 @@ describe('createCashflowBarGeometry', () => {
   });
 
   it('keeps the fixed segment order at exactly 100%', () => {
-    expect(createCashflowBarGeometry(exactFixture, {
+    expect(createCashflowBarGeometry(buildCashflowBarModel(exactFixture), {
       barWidthPx: 400,
       availableRightPx: 0,
     }).segments).toEqual([
@@ -77,7 +78,7 @@ describe('createCashflowBarGeometry', () => {
   });
 
   it('preserves actual income percentages for a 37.5% deficit when it fits', () => {
-    expect(createCashflowBarGeometry(deficitFixture, {
+    expect(createCashflowBarGeometry(buildCashflowBarModel(deficitFixture), {
       barWidthPx: 400,
       availableRightPx: 200,
     })).toEqual({
@@ -94,7 +95,7 @@ describe('createCashflowBarGeometry', () => {
   });
 
   it('clips a 200% deficit to viewport capacity without changing segment widths', () => {
-    expect(createCashflowBarGeometry(twoHundredPercentDeficitFixture, {
+    expect(createCashflowBarGeometry(buildCashflowBarModel(twoHundredPercentDeficitFixture), {
       barWidthPx: 100,
       availableRightPx: 20,
     })).toEqual({
@@ -119,22 +120,22 @@ describe('createCashflowBarGeometry', () => {
       clipped: false,
     };
 
-    expect(createCashflowBarGeometry(zeroIncomeFixture, {
+    expect(createCashflowBarGeometry(buildCashflowBarModel(zeroIncomeFixture), {
       barWidthPx: 400,
       availableRightPx: 200,
     })).toEqual(emptyGeometry);
-    expect(createCashflowBarGeometry(normalFixture, {
+    expect(createCashflowBarGeometry(buildCashflowBarModel(normalFixture), {
       barWidthPx: Number.NaN,
       availableRightPx: 200,
     })).toEqual(emptyGeometry);
-    expect(createCashflowBarGeometry(normalFixture, {
+    expect(createCashflowBarGeometry(buildCashflowBarModel(normalFixture), {
       barWidthPx: 400,
       availableRightPx: Number.POSITIVE_INFINITY,
     })).toEqual(emptyGeometry);
   });
 
   it('renders a single consumption item over 100% without an overflow segment', () => {
-    expect(createCashflowBarGeometry(singleConsumptionOverflowFixture, {
+    expect(createCashflowBarGeometry(buildCashflowBarModel(singleConsumptionOverflowFixture), {
       barWidthPx: 100,
       availableRightPx: 30,
     })).toEqual({

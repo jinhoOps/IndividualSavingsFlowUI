@@ -1,8 +1,7 @@
-import { calculateCashflow, percentageOfIncome } from '../../domain/cashflow';
-import type { MainData } from '../../domain/model';
+import type { CashflowAllocationId, CashflowBarModel } from './cashflowBarModel';
 
 export interface CashflowBarSegment {
-  id: 'consumption' | 'saving' | 'investment' | 'remaining';
+  id: CashflowAllocationId;
   startPercent: number;
   widthPercent: number;
 }
@@ -29,39 +28,21 @@ const EMPTY_GEOMETRY: CashflowBarGeometry = {
 };
 
 export function createCashflowBarGeometry(
-  data: MainData,
+  model: CashflowBarModel,
   viewport: CashflowViewport,
 ): CashflowBarGeometry {
-  const cashflow = calculateCashflow(data);
   if (
-    cashflow.incomeWon <= 0
-    || !Number.isFinite(cashflow.incomeWon)
+    model.incomeWon <= 0
+    || !Number.isFinite(model.incomeWon)
     || !Number.isFinite(viewport.barWidthPx)
     || !Number.isFinite(viewport.availableRightPx)
   ) {
     return EMPTY_GEOMETRY;
   }
 
-  let startPercent = 0;
-  const segment = (
-    id: CashflowBarSegment['id'],
-    amountWon: number,
-  ): CashflowBarSegment => {
-    const widthPercent = percentageOfIncome(amountWon, cashflow.incomeWon) ?? 0;
-    const result = { id, startPercent, widthPercent };
-    startPercent += widthPercent;
-    return result;
-  };
-  const segments = [
-    segment('consumption', cashflow.consumptionWon),
-    segment('saving', cashflow.savingWon),
-    segment('investment', cashflow.investmentWon),
-  ];
-  if (cashflow.deficitWon === 0) {
-    segments.push(segment('remaining', cashflow.remainingWon));
-  }
-
-  const overflowPercent = percentageOfIncome(cashflow.deficitWon, cashflow.incomeWon) ?? 0;
+  const overflowPercent = model.incomeWon > 0
+    ? model.deficitWon / model.incomeWon * 100
+    : 0;
   const capacityPercent = viewport.barWidthPx > 0
     ? Math.max(0, viewport.availableRightPx / viewport.barWidthPx * 100)
     : 0;
@@ -69,7 +50,11 @@ export function createCashflowBarGeometry(
   const visibleEndPercent = Math.min(desiredEndPercent, 100 + capacityPercent);
 
   return {
-    segments,
+    segments: model.allocations.map(({ id, startPercent, widthPercent }) => ({
+      id,
+      startPercent,
+      widthPercent,
+    })),
     overflowPercent,
     desiredEndPercent,
     visibleEndPercent,
