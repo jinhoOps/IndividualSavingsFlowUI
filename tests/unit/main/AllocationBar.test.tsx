@@ -218,8 +218,13 @@ describe('AllocationBar', () => {
     act(() => {
       state.remaining = options.remaining;
       options.onUpdate();
-      options.onComplete();
     });
+
+    expect(container.querySelector('.allocation-bar__visual-segment--remaining'))
+      .toBe(exitingRemaining);
+    expect(exitingRemaining).toHaveStyle({ width: '0%' });
+
+    act(() => options.onComplete());
 
     expect(container.querySelector('.allocation-bar__visual-segment--remaining'))
       .not.toBeInTheDocument();
