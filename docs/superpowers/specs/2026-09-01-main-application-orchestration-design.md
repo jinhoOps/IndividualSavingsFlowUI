@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-01
 
-**Status:** Proposed; in-chat design approved, written spec review pending
+**Status:** Approved for implementation
 
 **Scope:** Repository-wide refactor Phase 2의 첫 단위로 Main의 bootstrap, setup command, workspace backup, view-model과 UI effect 경계를 분리한다.
 
