@@ -17,15 +17,9 @@ import {
 import { createSetupProgressQueue } from '../application/setupProgressQueue';
 import { calculateCashflow } from '../domain/cashflow';
 import { createEmptyMainData, type MainData, type SetupStep } from '../domain/model';
-import { exportRecoveryData } from '../infrastructure/backup';
 import { BrowserMainRepository, type MainRepository } from '../infrastructure/mainRepository';
 import { appPath } from '../../journey/routes';
 import { JourneyEntryCard } from '../../journey/ui/JourneyEntryCard';
-import type { WorkspaceDocument } from '../../workspace/domain/model';
-import {
-  exportWorkspaceBackup,
-  importWorkspaceBackup,
-} from '../../workspace/infrastructure/workspaceBackup';
 import {
   BrowserWorkspaceRepository,
   type WorkspaceRepository,
@@ -36,7 +30,9 @@ import { formatDashboardWon } from './dashboard/CashflowSummary';
 import { SummaryDashboard } from './dashboard/SummaryDashboard';
 import { MainManagementMenu } from './MainManagementMenu';
 import { MainWelcomeIntro } from './MainWelcomeIntro';
+import { createMainOperationGate } from './mainOperationGate';
 import { SetupFlow } from './setup/SetupFlow';
+import { useMainBackupController } from './useMainBackupController';
 
 export interface MainAppProps {
   repository?: MainRepository;
@@ -62,14 +58,9 @@ export function MainApp({
   const [state, setState] = useState<MainState | null>(null);
   const [issues, setIssues] = useState<ValidationIssue[]>([]);
   const [validationAttempt, setValidationAttempt] = useState(0);
-  const [backupStatus, setBackupStatus] = useState<{ kind: 'success' | 'error'; message: string } | null>(null);
-  const [pendingImport, setPendingImport] = useState<WorkspaceDocument | null>(null);
-  const [restorePending, setRestorePending] = useState(false);
   const [progressWarning, setProgressWarning] = useState<string | null>(null);
   const [introEntry, setIntroEntry] = useState<MainIntroEntry>({ id: 0, reason: 'none' });
-  const importSelectionRef = useRef(0);
-  const restoreFocusRequestedRef = useRef(false);
-  const savingRef = useRef(false);
+  const operationGate = useRef(createMainOperationGate()).current;
   const initialBootstrapRequestRef = useRef<{
     repository: MainRepository;
     promise: Promise<MainBootstrapResult>;
@@ -83,6 +74,23 @@ export function MainApp({
     && state.setupStep === 'welcome'
     && (introEntry.reason === 'fresh' || introEntry.reason === 'restart')
     && !reducedMotion;
+  const {
+    backupStatus,
+    pendingImport,
+    restorePending,
+    prepareWorkspaceImport,
+    cancelWorkspaceImport,
+    restorePendingImport,
+    exportCurrentWorkspace,
+    exportRecoveryOriginal,
+  } = useMainBackupController({
+    state,
+    mainRepository: repository,
+    workspaceRepository,
+    operationGate,
+    showIntro,
+    onBootstrapAccepted: acceptBackupBootstrap,
+  });
 
   useEffect(() => {
     let active = true;
@@ -121,22 +129,15 @@ export function MainApp({
     completeWelcomeIntro(introEntry.id);
   }, [introEntry, reducedMotion, state]);
 
-  useEffect(() => {
-    if (!restoreFocusRequestedRef.current || backupStatus?.kind !== 'success' || showIntro) return;
-    restoreFocusRequestedRef.current = false;
-    const target = document.querySelector<HTMLElement>('[aria-label="관리 메뉴"]')
-      ?? document.querySelector<HTMLElement>('[data-setup-heading]')
-      ?? document.querySelector<HTMLElement>([
-        '[aria-label="설정 단계"] button:not(:disabled)',
-        '[aria-label="설정 단계"] input:not(:disabled)',
-        '[aria-label="설정 단계"] [tabindex]:not([tabindex="-1"])',
-      ].join(', '));
-    target?.focus();
-  }, [backupStatus, showIntro, state]);
-
   function setBootstrapResult(loaded: MainBootstrapResult) {
     setState(loaded.state);
     setIntroEntry(nextIntroEntry(loaded.introEntryReason));
+  }
+
+  function acceptBackupBootstrap(loaded: MainBootstrapResult) {
+    setIssues([]);
+    setProgressWarning(null);
+    setBootstrapResult(loaded);
   }
 
   function nextIntroEntry(reason: MainIntroEntryReason): MainIntroEntry {
@@ -155,7 +156,7 @@ export function MainApp({
   }
 
   function changeDraft(draft: MainData) {
-    if (savingRef.current) return;
+    if (operationGate.busy) return;
     if (state?.mode === 'setup' && state.setupStep !== null) {
       void persistSetupProgress(state.setupStep, draft, state.applied === null ? 'initial' : 'restart');
     }
@@ -164,7 +165,7 @@ export function MainApp({
   }
 
   function changeSetupStep(step: SetupStep) {
-    if (savingRef.current) return;
+    if (operationGate.busy) return;
     if (state !== null) {
       void persistSetupProgress(step, state.draft, state.applied === null ? 'initial' : 'restart');
     }
@@ -173,9 +174,9 @@ export function MainApp({
   }
 
   async function apply() {
-    if (state === null || savingRef.current) return;
+    if (state === null || operationGate.busy) return;
 
-    savingRef.current = true;
+    operationGate.busy = true;
     dispatch({ type: 'save-started' });
     try {
       await progressQueue.waitForIdle();
@@ -183,7 +184,6 @@ export function MainApp({
       if (result.status === 'saved') {
         await clearSetupProgress();
         setIssues([]);
-        setBackupStatus(null);
         dispatch({ type: 'save-succeeded', data: result.data });
         return;
       }
@@ -203,25 +203,24 @@ export function MainApp({
       }
       dispatch({ type: 'save-failed' });
     } finally {
-      savingRef.current = false;
+      operationGate.busy = false;
     }
   }
 
   async function cancelDraft() {
-    if (savingRef.current) return;
-    savingRef.current = true;
+    if (operationGate.busy) return;
+    operationGate.busy = true;
     try {
       if (!await clearSetupProgress()) return;
       setIssues([]);
-      setBackupStatus(null);
       dispatch({ type: 'cancel-draft' });
     } finally {
-      savingRef.current = false;
+      operationGate.busy = false;
     }
   }
 
   function restartSetup() {
-    if (state === null || state.applied === null || savingRef.current) return;
+    if (state === null || state.applied === null || operationGate.busy) return;
     void persistSetupProgress('welcome', state.applied, 'restart');
     setIntroEntry(nextIntroEntry('restart'));
     setIssues([]);
@@ -229,8 +228,8 @@ export function MainApp({
   }
 
   async function startEmptySetup() {
-    if (state === null || savingRef.current) return;
-    savingRef.current = true;
+    if (state === null || operationGate.busy) return;
+    operationGate.busy = true;
     dispatch({ type: 'save-started' });
     try {
       if (state.mode === 'recovery' && state.loadError?.raw !== undefined) {
@@ -253,15 +252,15 @@ export function MainApp({
     } catch {
       dispatch({ type: 'save-failed' });
     } finally {
-      savingRef.current = false;
+      operationGate.busy = false;
     }
   }
 
   async function discardRecoveryCandidate() {
-    if (state === null || state.mode !== 'recovery' || savingRef.current) return;
-    savingRef.current = true;
+    if (state === null || state.mode !== 'recovery' || operationGate.busy) return;
+    operationGate.busy = true;
     const cleared = await clearSetupProgress();
-    savingRef.current = false;
+    operationGate.busy = false;
     if (!cleared) return;
     setIssues([]);
     setState({
@@ -276,10 +275,10 @@ export function MainApp({
   }
 
   async function returnToCurrentPlan() {
-    if (state === null || state.mode !== 'recovery' || state.applied === null || savingRef.current) return;
-    savingRef.current = true;
+    if (state === null || state.mode !== 'recovery' || state.applied === null || operationGate.busy) return;
+    operationGate.busy = true;
     const cleared = await clearSetupProgress();
-    savingRef.current = false;
+    operationGate.busy = false;
     if (!cleared) return;
     setIssues([]);
     dispatch({ type: 'cancel-draft' });
@@ -309,103 +308,6 @@ export function MainApp({
       setProgressWarning('설정 진행 상황을 정리하지 못했습니다. 저장된 계획에는 영향이 없습니다.');
       return false;
     });
-  }
-
-  async function prepareWorkspaceImport(file: File) {
-    if (state === null || state.mode !== 'dashboard' || savingRef.current) return;
-    const selection = importSelectionRef.current + 1;
-    importSelectionRef.current = selection;
-    try {
-      const imported = importWorkspaceBackup(await readFileText(file));
-      if (selection !== importSelectionRef.current) return;
-      setIssues([]);
-      setBackupStatus(null);
-      setPendingImport(imported);
-    } catch (error) {
-      if (selection !== importSelectionRef.current) return;
-      setPendingImport(null);
-      setBackupStatus({ kind: 'error', message: importFailureMessage(error) });
-    }
-  }
-
-  async function restoreWorkspaceBackup(): Promise<boolean> {
-    if (pendingImport === null || savingRef.current) return false;
-    savingRef.current = true;
-    setRestorePending(true);
-    try {
-      const loaded = workspaceRepository.load();
-      if (loaded.status === 'invalid') {
-        return failRestore('현재 저장된 workspace를 먼저 복구해야 합니다. 현재 데이터는 바뀌지 않았습니다.');
-      }
-      if (loaded.status === 'unavailable') {
-        return failRestore('저장소를 사용할 수 없습니다. 현재 데이터는 바뀌지 않았습니다. 다시 시도해 주세요.');
-      }
-
-      const result = await workspaceRepository.replace(loaded.workspace.revision, pendingImport);
-      if (result.status === 'conflict') {
-        return failRestore('다른 탭에서 데이터가 변경되었습니다. 현재 데이터는 바뀌지 않았습니다.');
-      }
-      if (result.status === 'invalid') {
-        return failRestore('백업의 앱 데이터를 적용할 수 없습니다. 현재 데이터는 바뀌지 않았습니다.');
-      }
-      if (result.status === 'unavailable') {
-        return failRestore('백업을 저장하지 못했습니다. 현재 데이터는 바뀌지 않았습니다. 다시 시도해 주세요.');
-      }
-
-      const reloaded = await bootstrapMain(repository);
-      restoreFocusRequestedRef.current = true;
-      setIssues([]);
-      setProgressWarning(null);
-      setPendingImport(null);
-      setBootstrapResult(reloaded);
-      setBackupStatus({ kind: 'success', message: '모든 앱 데이터를 백업에서 복원했습니다.' });
-      return true;
-    } catch {
-      return failRestore('백업을 복원하지 못했습니다. 현재 데이터는 바뀌지 않았습니다. 다시 시도해 주세요.');
-    } finally {
-      savingRef.current = false;
-      setRestorePending(false);
-    }
-  }
-
-  function failRestore(message: string): false {
-    setBackupStatus({ kind: 'error', message });
-    return false;
-  }
-
-  function exportCurrentWorkspace() {
-    const loaded = workspaceRepository.load();
-    if (loaded.status === 'invalid') {
-      setBackupStatus({
-        kind: 'error',
-        message: '현재 저장된 workspace를 먼저 복구해야 백업할 수 있습니다.',
-      });
-      return;
-    }
-    if (loaded.status === 'unavailable') {
-      setBackupStatus({ kind: 'error', message: '저장소를 사용할 수 없어 백업하지 못했습니다.' });
-      return;
-    }
-    const downloaded = downloadJson(
-      exportWorkspaceBackup(loaded.workspace),
-      'individual-savings-flow-workspace.json',
-    );
-    setBackupStatus(downloaded
-      ? { kind: 'success', message: '모든 앱 데이터 백업을 내보냈습니다.' }
-      : {
-        kind: 'error',
-        message: '백업 파일을 다운로드하지 못했습니다. 브라우저 다운로드 설정을 확인하고 다시 시도해 주세요.',
-      });
-  }
-
-  function exportRecoveryOriginal(original: unknown, raw?: string) {
-    const downloaded = downloadRecovery(original, raw);
-    setBackupStatus(downloaded
-      ? { kind: 'success', message: '기존 원본 JSON을 다운로드했습니다.' }
-      : {
-        kind: 'error',
-        message: '원본 JSON을 다운로드하지 못했습니다. 브라우저 다운로드 설정을 확인하고 다시 시도해 주세요.',
-      });
   }
 
   function continueToSimulation() {
@@ -447,8 +349,8 @@ export function MainApp({
       onRestart={restartSetup}
       onExport={exportCurrentWorkspace}
       onImportFile={prepareWorkspaceImport}
-      onCancelImport={() => setPendingImport(null)}
-      onConfirmImport={restoreWorkspaceBackup}
+      onCancelImport={cancelWorkspaceImport}
+      onConfirmImport={restorePendingImport}
     />
   );
 
@@ -653,69 +555,6 @@ function RecoveryView({
       </Surface>
     </AppContentFrame>
   );
-}
-
-function downloadRecovery(original: unknown, raw?: string): boolean {
-  return downloadJson(
-    raw ?? exportRecoveryData(original),
-    'individual-savings-flow-recovery.json',
-  );
-}
-
-function downloadJson(contents: string, filename: string): boolean {
-  let url: string | null = null;
-  let anchor: HTMLAnchorElement | null = null;
-  try {
-    const blob = new Blob([contents], { type: 'application/json' });
-    url = URL.createObjectURL(blob);
-    anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = filename;
-    document.body.append(anchor);
-    anchor.click();
-    return true;
-  } catch {
-    return false;
-  } finally {
-    anchor?.remove();
-    if (url !== null) {
-      const objectUrl = url;
-      window.setTimeout(() => {
-        try {
-          URL.revokeObjectURL(objectUrl);
-        } catch {
-          // Download already settled; URL cleanup failure must not change its reported result.
-        }
-      }, 0);
-    }
-  }
-}
-
-function readFileText(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '');
-    reader.onerror = () => reject(reader.error ?? new Error('Backup file could not be read.'));
-    reader.readAsText(file);
-  });
-}
-
-function importFailureMessage(error: unknown): string {
-  if (!(error instanceof Error)) {
-    return '백업 파일을 읽지 못했습니다. 현재 데이터는 바뀌지 않았습니다.';
-  }
-  switch (error.message) {
-    case 'backup-json':
-      return '백업 JSON을 읽을 수 없습니다. 현재 데이터는 바뀌지 않았습니다.';
-    case 'backup-format':
-      return '새 전체 workspace 백업 파일만 가져올 수 있습니다. 현재 데이터는 바뀌지 않았습니다.';
-    case 'backup-reference':
-      return '백업의 앱 연결 정보가 올바르지 않습니다. 현재 데이터는 바뀌지 않았습니다.';
-    case 'backup-schema':
-      return '백업의 앱 데이터가 올바르지 않습니다. 현재 데이터는 바뀌지 않았습니다.';
-    default:
-      return '백업 파일을 읽지 못했습니다. 현재 데이터는 바뀌지 않았습니다.';
-  }
 }
 
 function navigateTo(href: string): void {
