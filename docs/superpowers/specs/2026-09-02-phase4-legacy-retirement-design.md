@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-02
 
-**Status:** Direction approved; written specification awaiting review
+**Status:** Approved
 
 **Scope:** Retire repository-wide legacy runtime, routes, storage bridges, persisted compatibility fields, and obsolete tests while preserving a one-way current migration boundary for existing workspace data and backups.
 
