@@ -72,23 +72,32 @@ export function animateConnectionDetail(root: HTMLElement, options: MotionOption
     options.onComplete();
     return noAnimation;
   }
-  const animations = weights.map((weight, index) => {
-    const finalWeight = Number(weight.dataset.accountMapConnectionWeight);
-    weight.style.transformOrigin = 'left center';
-    weight.style.willChange = 'transform';
-    return animate(weight, {
-      scaleX: [0, Number.isFinite(finalWeight) ? finalWeight : 0],
-      duration: 180,
-      delay: index * 40,
-      ease: 'out(3)',
-      ...(index === weights.length - 1 ? {
-        onComplete: () => {
-          weights.forEach(clearConnectionDetailMotionStyles);
-          options.onComplete();
-        },
-      } : {}),
+  const animations: Array<{ cancel(): void }> = [];
+  let completed = false;
+  const complete = () => {
+    if (completed) return;
+    completed = true;
+    weights.forEach(clearConnectionDetailMotionStyles);
+    options.onComplete();
+  };
+  try {
+    weights.forEach((weight, index) => {
+      const finalWeight = Number(weight.dataset.accountMapConnectionWeight);
+      weight.style.transformOrigin = 'left center';
+      weight.style.willChange = 'transform';
+      animations.push(animate(weight, {
+        scaleX: [0, Number.isFinite(finalWeight) ? finalWeight : 0],
+        duration: 180,
+        delay: index * 40,
+        ease: 'out(3)',
+        ...(index === weights.length - 1 ? { onComplete: complete } : {}),
+      }));
     });
-  });
+  } catch {
+    animations.forEach((animation) => animation.cancel());
+    complete();
+    return noAnimation;
+  }
   return {
     cancel: () => {
       animations.forEach((animation) => animation.cancel());
