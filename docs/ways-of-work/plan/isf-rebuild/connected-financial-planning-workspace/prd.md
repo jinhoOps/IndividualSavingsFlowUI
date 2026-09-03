@@ -233,7 +233,7 @@ Simulation, Portfolio와 Account Map은 workspace 안의 최신 Main을 읽기 �
 - [x] 현재 JSON을 내보내고 검증된 JSON을 가져올 수 있다.
 - [x] Main에서 Simulation으로 명시적으로 이동할 수 있다.
 - [x] Main 월 자금 구성 도넛은 pointer·touch·keyboard로 항목을 탐색하며 모바일에서도 명칭과 상세 금액에 접근할 수 있다.
-- [x] 앱 이동은 URL만 사용하고 Main 시작은 폐기된 journey key를 읽거나 변환하지 않고 삭제한다.
+- [x] 앱 이동은 URL만 사용하고 Main 시작은 폐기된 journey key를 읽거나 쓰거나 변환·삭제하지 않고 foreign record로 그대로 둔다.
 - [x] 네 앱 경로는 같은 런처 위치와 공통 화면 틀을 유지한다.
 - [x] Simulation은 Main을 변경하지 않고 장기 복리와 전부 저축 기준선을 비교한다.
 - [x] Simulation은 시작 자산·조건부 목표 금액·기대 연 수익률의 최초 설정, 재방문 결과 우선 진입과 최신 Main 자동 동기화를 제공한다. 결과 핵심 문장은 그래프 기간과 독립적인 최대 30년 목표 도달 예상 시점을 제공한다.
