@@ -132,14 +132,14 @@ function expectOneFormWithoutLegacyControls() {
 }
 
 describe('SetupFlow', () => {
-  it('keeps the review surface in the reading frame while the assembly bar stays wide', () => {
+  it('keeps the review assembly inside the reading-width setup surface', () => {
     renderFlow('review', {
       initialDraft: { ...createEmptyMainData(), monthlyNetIncomeWon: 3_200_000 },
       motionPreset: 'none',
     });
 
     expect(document.querySelector('.setup-flow-surface')).not.toHaveClass('app-wide-visual');
-    expect(screen.getByRole('region', { name: '월 수입 나누기' })).toHaveClass('app-wide-visual');
+    expect(screen.getByRole('region', { name: '월 수입 나누기' })).not.toHaveClass('app-wide-visual');
   });
 
   it('keeps the welcome action visible when a created Anime reveal never advances', () => {

@@ -32,7 +32,6 @@ body,
   --ui-surface-radius: 24px;
   --ui-content-max-width: 48rem;
   --ui-content-gutter: 1rem;
-  --ui-wide-visual-max-width: 75rem;
   --ui-control-border: 1px solid var(--color-line);
   --ui-focus-ring: 0 0 0 3px rgb(15 118 110 / 35%);
   --ui-disabled-opacity: 0.5;
@@ -115,20 +114,6 @@ body,
       var(--ui-content-max-width)
     );
     margin-inline: auto;
-  }
-
-  .app-wide-visual {
-    box-sizing: border-box;
-    width: min(
-      calc(100vw - var(--ui-content-gutter) - var(--ui-content-gutter)),
-      var(--ui-wide-visual-max-width)
-    );
-    max-width: none;
-    margin-inline-start: max(
-      calc(50% - 50vw + var(--ui-content-gutter)),
-      calc(50% - 37.5rem)
-    );
-    margin-inline-end: 0;
   }
 
   .ui-button {

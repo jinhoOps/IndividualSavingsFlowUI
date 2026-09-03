@@ -279,7 +279,7 @@ interface ReviewState {
   desiredEndPercent: number;
   visibleEndPercent: number;
   clipped: boolean;
-  targetClip: { x: number; right: number };
+  targetClip: { x: number; right: number; overflow: string };
   targets: Array<{ x: number; right: number }>;
 }
 
@@ -310,7 +310,11 @@ async function readReviewState(page: Page): Promise<ReviewState> {
       desiredEndPercent: Number(segments.dataset.desiredEndPercent),
       visibleEndPercent: Number(segments.dataset.visibleEndPercent),
       clipped: segments.dataset.overflowClipped === 'true',
-      targetClip: { x: targetClipBox.x, right: targetClipBox.right },
+      targetClip: {
+        x: targetClipBox.x,
+        right: targetClipBox.right,
+        overflow: getComputedStyle(targetClip).overflow,
+      },
       targets: Array.from(segments.querySelectorAll<HTMLElement>('.allocation-bar__segment-target'))
         .map((target) => {
           const box = target.getBoundingClientRect();
@@ -327,14 +331,13 @@ async function expectClippedDeficitReview(
 ): Promise<void> {
   const expectedReadingWidth = Math.min(viewport.width - 32, 768);
   const expectedReadingX = (viewport.width - expectedReadingWidth) / 2;
-  const expectedWideWidth = Math.min(viewport.width - 32, 1200);
-  const expectedWideX = (viewport.width - expectedWideWidth) / 2;
   expect(Math.abs(state.surface.width - expectedReadingWidth)).toBeLessThan(1);
   expect(Math.abs(state.surface.x - expectedReadingX)).toBeLessThan(1);
   expect(state.surface.x).toBeGreaterThanOrEqual(16);
   expect(state.surface.right).toBeLessThanOrEqual(viewport.width - 16 + 1);
-  expect(Math.abs(state.review.width - expectedWideWidth)).toBeLessThan(1);
-  expect(Math.abs(state.review.x - expectedWideX)).toBeLessThan(1);
+  expect(state.review.width).toBeGreaterThan(0);
+  expect(state.review.x).toBeGreaterThanOrEqual(state.surface.x);
+  expect(state.review.right).toBeLessThanOrEqual(state.surface.right);
   expect(state.stage.x).toBeGreaterThanOrEqual(state.review.x);
   expect(state.stage.right).toBeLessThanOrEqual(state.review.right);
   expect(state.table.x).toBeGreaterThanOrEqual(state.review.x);
@@ -343,11 +346,7 @@ async function expectClippedDeficitReview(
 
   expect(Math.abs(state.surface.width - state.frame.width)).toBeLessThan(1);
   expect(Math.abs(state.surface.x - state.frame.x)).toBeLessThan(1);
-  if (viewport.name === 'desktop') {
-    expect(state.review.width).toBeGreaterThan(state.frame.width);
-  } else {
-    expect(Math.abs(state.review.width - state.frame.width)).toBeLessThan(1);
-  }
+  expect(state.review.width).toBeLessThanOrEqual(state.frame.width);
 
   expect(state.desiredEndPercent).toBe(300);
   expect(state.visibleEndPercent).toBeGreaterThanOrEqual(100);
@@ -355,10 +354,13 @@ async function expectClippedDeficitReview(
   expect(state.clipped).toBe(true);
   expect(state.targetClip.x).toBeGreaterThanOrEqual(state.stage.x - 1);
   expect(state.targetClip.right).toBeLessThanOrEqual(viewport.width - 16 + 1);
+  expect(state.targetClip.overflow).toBe('hidden');
   expect(state.targets.length).toBeGreaterThan(0);
   for (const target of state.targets) {
     expect(target.x).toBeGreaterThanOrEqual(state.targetClip.x - 1);
-    expect(target.right).toBeLessThanOrEqual(state.targetClip.right + 1);
+    const visibleWidth = Math.min(target.right, state.targetClip.right)
+      - Math.max(target.x, state.targetClip.x);
+    expect(visibleWidth).toBeGreaterThanOrEqual(43);
   }
   await expect(page.getByRole('button', { name: '저축 상세 정보' })).toBeVisible();
   await expect(page.getByRole('button', { name: '투자 상세 정보' })).toBeVisible();
@@ -450,7 +452,7 @@ for (const viewport of viewports) {
       name: '입력한 월 자금 계획을 확인해주세요',
     })).toBeVisible();
     await expect(page.locator('.setup-flow-surface')).not.toHaveClass(/app-wide-visual/);
-    await expect(page.locator('.allocation-bar')).toHaveClass(/app-wide-visual/);
+    await expect(page.locator('.allocation-bar')).not.toHaveClass(/app-wide-visual/);
     await expect(page.getByTestId('allocation-visual-stage')).not.toHaveClass(/app-wide-visual/);
     const firstReview = await readReviewState(page);
     await expectClippedDeficitReview(page, viewport, firstReview);
@@ -475,7 +477,7 @@ for (const viewport of viewports) {
     })).toBeVisible();
     await expect(page.getByRole('button', { name: '설정 취소' })).toBeVisible();
     await expect(page.locator('.setup-flow-surface')).not.toHaveClass(/app-wide-visual/);
-    await expect(page.locator('.allocation-bar')).toHaveClass(/app-wide-visual/);
+    await expect(page.locator('.allocation-bar')).not.toHaveClass(/app-wide-visual/);
     await expect(page.getByTestId('allocation-visual-stage')).not.toHaveClass(/app-wide-visual/);
     const restartReview = await readReviewState(page);
     await expectClippedDeficitReview(page, viewport, restartReview);

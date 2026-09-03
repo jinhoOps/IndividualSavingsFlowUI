@@ -22,7 +22,6 @@ import { buildCashflowBarModel, type CashflowAllocationId, type CashflowBarAlloc
 
 export interface AllocationBarProps {
   data: MainData;
-  presentation?: 'standard' | 'assembly';
 }
 
 interface Allocation extends CashflowBarAllocation {
@@ -38,7 +37,7 @@ interface ActiveAllocationTarget {
 
 const ALLOCATION_IDS: AllocationId[] = ['consumption', 'saving', 'investment', 'remaining'];
 
-export function AllocationBar({ data, presentation = 'standard' }: AllocationBarProps) {
+export function AllocationBar({ data }: AllocationBarProps) {
   const [hoveredTarget, setHoveredTarget] = useState<ActiveAllocationTarget>();
   const [focusedTarget, setFocusedTarget] = useState<ActiveAllocationTarget>();
   const [tappedTarget, setTappedTarget] = useState<ActiveAllocationTarget>();
@@ -86,9 +85,6 @@ export function AllocationBar({ data, presentation = 'standard' }: AllocationBar
   const activeId = activeTarget?.id;
   const activeAllocation = allocations.find((allocation) => allocation.id === activeId);
   const visualStageClassName = 'allocation-bar__visual-stage';
-  const allocationBarClassName = presentation === 'assembly'
-    ? 'allocation-bar app-wide-visual'
-    : 'allocation-bar';
   const activePosition = activeAllocation ? allocationCenter(activeAllocation) : 0;
   const tooltipPosition = activeId === hoveredTarget?.id
     ? pointerPosition ?? activePosition
@@ -298,7 +294,7 @@ export function AllocationBar({ data, presentation = 'standard' }: AllocationBar
 
   return (
     <section
-      className={allocationBarClassName}
+      className="allocation-bar"
       aria-label="월 수입 나누기"
       onBlur={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget)) {

@@ -412,7 +412,7 @@ function ReviewStep({
       <div data-assembly-content>
         <StepHeading>입력한 월 자금 계획을 확인해주세요</StepHeading>
       </div>
-      <AllocationBar data={draft} presentation="assembly" />
+      <AllocationBar data={draft} />
     </section>
   );
 }

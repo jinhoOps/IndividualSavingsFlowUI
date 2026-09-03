@@ -105,16 +105,10 @@ function mockBarViewport(initialClientWidth: number) {
 }
 
 describe('AllocationBar', () => {
-  it('widens the complete review component for the assembly presentation', () => {
-    const { rerender } = render(<AllocationBar data={cashflowFixture} />);
+  it('keeps the complete review component inside its parent surface', () => {
+    render(<AllocationBar data={cashflowFixture} />);
 
     expect(screen.getByRole('region', { name: '월 수입 나누기' })).not.toHaveClass('app-wide-visual');
-    expect(screen.getByTestId('allocation-visual-stage')).not.toHaveClass('app-wide-visual');
-    expect(screen.getByRole('table', { name: '월 자금 항목' })).not.toHaveClass('app-wide-visual');
-
-    rerender(<AllocationBar data={cashflowFixture} presentation="assembly" />);
-
-    expect(screen.getByRole('region', { name: '월 수입 나누기' })).toHaveClass('app-wide-visual');
     expect(screen.getByTestId('allocation-visual-stage')).not.toHaveClass('app-wide-visual');
     expect(screen.getByRole('table', { name: '월 자금 항목' })).not.toHaveClass('app-wide-visual');
   });
@@ -488,7 +482,7 @@ describe('AllocationBar', () => {
 
   it('end-aligns clipped table fallback tooltips without changing visual target alignment', () => {
     mockBarViewport(256);
-    render(<AllocationBar data={deeplyClippedDeficitFixture} presentation="assembly" />);
+    render(<AllocationBar data={deeplyClippedDeficitFixture} />);
 
     const table = screen.getByRole('table', { name: '월 자금 항목' });
     const savingFallback = within(table).getByRole('button', { name: '저축 상세 정보' });

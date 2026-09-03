@@ -11,7 +11,7 @@ Main과 Simulation은 상태별·앱별 최대 폭이 달라 앱을 전환할 �
 - Main, Simulation과 Portfolio의 일반 본문을 같은 `48rem` 읽기 폭으로 인식하게 한다.
 - 390px급 화면에서 본문 좌우에 최소 `1rem` 터치 가드레일을 보장한다.
 - 넓은 화면에서도 일반 본문을 불필요하게 펼치지 않아 모바일과 desktop의 정보 구조 차이를 줄인다.
-- 넓이가 정보 전달에 직접 필요한 Main 최초 조립 장면과 `처음부터 다시` 조립 장면만 명시적인 wide 예외로 유지한다.
+- Main 최초 조립 장면과 `처음부터 다시` 조립 장면은 모션 강조를 유지하되 같은 setup 표면 안에 포함한다.
 - 상단 앱 탐색의 현재 폭, 여백, 동작과 표시 정책에는 영향을 주지 않는다.
 
 ## 비목표
@@ -33,13 +33,11 @@ Main과 Simulation은 상태별·앱별 최대 폭이 달라 앱을 전환할 �
 ```css
 --ui-content-max-width: 48rem;
 --ui-content-gutter: 1rem;
---ui-wide-visual-max-width: 75rem;
 ```
 
 공통 primitive:
 
 - `.app-content-frame`: 일반 본문의 최대 폭, viewport 가드레일과 중앙 정렬을 소유한다.
-- `.app-wide-visual`: Main 조립처럼 넓이가 정보 전달에 직접 필요한 시각화의 제한된 확장을 소유한다.
 
 Main, Simulation과 Portfolio는 일반 본문에 `.app-content-frame`을 명시적으로 적용한다. 공통 primitive는 `AppShell`이 모든 자식에 자동으로 씌우지 않는다. 이 선택으로 앱마다 loading·recovery·setup·result 상태를 빠짐없이 지정하면서 launcher와 overlay를 폭 규격 밖에 유지한다.
 
@@ -69,7 +67,7 @@ Main:
 
 - loading, recovery와 일반 dashboard 본문을 `48rem` 읽기 폭에 맞춘다.
 - setup의 입력 단계와 review 안의 일반 텍스트·control도 기본 읽기 폭을 따른다.
-- 최초 setup과 `처음부터 다시`의 조립 시각화는 아래 wide 예외를 사용한다.
+- 최초 setup과 `처음부터 다시`의 조립 시각화는 setup 표면 안에서 동일한 강조 모션을 사용한다.
 - dashboard 편집 화면은 일반 본문 폭을 유지한다.
 
 Simulation:
@@ -84,19 +82,16 @@ Portfolio:
 - 기존 앱별 폭 선언을 `.app-content-frame`으로 이관해 Main·Simulation과 같은 공통 규격을 소비한다.
 - 이번 작업 때문에 Portfolio의 정보 구조, 화면 순서 또는 상태 동작을 바꾸지 않는다.
 
-### Main 조립 wide 예외
+### Main 조립 containment
 
-Main 최초 조립 장면과 `처음부터 다시` 조립 장면은 같은 wide 예외를 사용한다. 두 진입은 사용자에게 동일한 조립 경험이어야 한다.
+Main 최초 조립 장면과 `처음부터 다시` 조립 장면은 같은 containment와 모션을 사용한다. 두 진입은 사용자에게 동일한 조립 경험이어야 한다.
 
-- setup의 텍스트, 버튼과 검토 표는 `48rem` 읽기 열 안에 유지한다.
-- 최초 setup과 `처음부터 다시`의 review에서 조립 시각화 wrapper만 `.app-wide-visual`을 사용한다.
-- `.app-wide-visual`은 `width: min(calc(100vw - 2rem), 75rem)`과 viewport 중앙 정렬을 적용한다.
-- `SetupFlow` surface 전체, 입력 단계, 일반 설명 또는 dashboard 전체를 넓히는 근거로 사용하지 않는다.
+- setup의 텍스트, 버튼, 검토 표와 `AllocationBar`는 모두 `48rem` 읽기 표면 안에 유지한다.
+- 조립 카드는 form의 사용 가능한 내부 폭을 채우되 음수 여백, viewport 기준 폭 또는 breakout primitive를 사용하지 않는다.
+- 최초 setup과 `처음부터 다시`의 review는 동일한 카드 폭과 내부 geometry를 사용한다.
 - viewport 좌우 `1rem` 가드레일은 유지한다.
 - deficit 막대는 실제 비율만큼 100% UI 밖으로 연장되고 viewport를 벗어날 때만 시각·상호작용 영역이 절단되는 기존 계약을 유지한다.
-- wide 컨테이너가 body 가로 overflow를 만들거나 상단 앱 메뉴의 stacking·popover containment에 영향을 주어서는 안 된다.
-
-현재 `48rem` setup 부모 안에서 wide wrapper를 확장할 때는 viewport 중심을 기준으로 제한된 breakout을 사용한다. 음수 여백이나 translate를 사용하더라도 `.app-wide-visual` 내부 구현으로 캡슐화하고, 앱별 CSS에서 breakout 계산을 복제하지 않는다.
+- `AllocationBar`의 border, 표와 기본 시각화 stage는 setup 표면 밖으로 나가지 않으며 내부 deficit clip이 body 가로 overflow를 만들거나 상단 앱 메뉴의 stacking·popover containment에 영향을 주어서는 안 된다.
 
 ### 여백 단일 소유권
 
@@ -137,7 +132,7 @@ AppShell
 - Main·Simulation의 앱별 본문 클래스나 명시적인 본문 wrapper만 수정한다.
 - 본문 wrapper에 launcher popover를 자를 수 있는 `overflow`, launcher 좌표계를 바꾸는 `transform`, 불필요한 stacking context를 추가하지 않는다.
 - 상단 메뉴와 본문 좌우선을 억지로 일치시키지 않는다. 메뉴는 넓은 탐색 폭, 본문은 좁은 읽기 폭이라는 독립된 목적을 유지한다.
-- `.app-content-frame`과 `.app-wide-visual`은 `.app-shell__launcher-frame`, `.journey-launcher` 또는 launcher 조상에 적용하지 않는다.
+- `.app-content-frame`은 `.app-shell__launcher-frame`, `.journey-launcher` 또는 launcher 조상에 적용하지 않는다.
 
 ## 반응형 동작
 
@@ -157,7 +152,7 @@ AppShell
 ### Desktop
 
 - 일반 본문은 중앙 정렬된 `48rem`을 넘지 않는다.
-- Main 조립 wide 예외 외에는 여유 공간을 채우기 위해 카드나 그래프를 늘리지 않는다.
+- 여유 공간을 채우기 위해 카드나 그래프를 읽기 폭 밖으로 늘리지 않는다.
 - 상단 앱 메뉴는 현재 넓은 탐색 폭을 유지한다.
 
 ## Overlay와 motion
@@ -165,7 +160,7 @@ AppShell
 - sheet, side panel, dialog, toast와 fixed apply bar는 계속 viewport를 기준으로 contain한다.
 - 본문 폭 변경으로 overlay의 fixed containing block이 바뀌어서는 안 된다.
 - 기존 Anime.js motion 대상, 방향, 거리, duration과 reduced-motion 최종 상태를 변경하지 않는다.
-- Main 조립 motion의 최초 진입과 재시작 동일성, 편집 시 subtle motion 계약을 유지한다.
+- Main 조립 motion의 최초 진입과 재시작 동일성, setup 표면 containment와 편집 시 subtle motion 계약을 유지한다.
 
 ## 접근성
 
@@ -179,7 +174,7 @@ AppShell
 ### 구조·회귀
 
 - `AppShell`, launcher frame과 journey launcher의 CSS diff가 없는지 확인한다.
-- 공통 폭·gutter·wide 값이 `app-foundation.css`에 한 번만 정의되고 앱별 CSS에 `48rem`, `1rem`, `75rem` 폭 계약이 중복되지 않는지 확인한다.
+- 공통 폭·gutter 값이 `app-foundation.css`에 한 번만 정의되고 앱별 CSS에 `48rem`, `1rem` 폭 계약이 중복되지 않는지 확인한다.
 - Main, Simulation과 Portfolio의 일반 본문이 모두 `.app-content-frame`을 소비하는지 확인한다.
 - loading, recovery, setup/onboarding, result/dashboard 등 각 앱의 모든 일반 상태가 같은 폭 계약을 사용하는지 확인한다.
 - 저장, route, schema와 데이터 소유권 관련 diff가 없는지 확인한다.
@@ -191,7 +186,7 @@ AppShell
 - Main·Simulation 일반 본문 좌우 가드레일과 `48rem` 최대 폭
 - Portfolio 기준선과 비교한 앱 전환 전후 본문 좌우선
 - body horizontal overflow 부재
-- Main 최초/재시작 조립의 동일한 wide 예외와 deficit viewport clipping
+- Main 최초/재시작 조립의 동일한 surface containment와 deficit viewport clipping
 - Simulation 그래프, 축, 비교값과 tooltip 가시성
 - focus ring과 44px touch target containment
 - sheet, dialog, toast와 fixed apply bar containment
@@ -206,7 +201,7 @@ AppShell
 ### 시각 증거
 
 - Main, Simulation과 Portfolio의 일반 결과 화면을 세 viewport에서 같은 시점으로 캡처한다.
-- Main 조립 wide 예외는 최초와 재시작에서 별도 캡처해 같은 폭·가드레일인지 비교한다.
+- Main 조립은 최초와 재시작에서 별도 캡처해 같은 표면 containment·가드레일인지 비교한다.
 - 상단 앱 메뉴가 기존 위치와 크기를 유지하는지 캡처에 함께 포함한다.
 
 ## 인수 조건
@@ -215,7 +210,7 @@ AppShell
 - Main, Simulation과 Portfolio는 `app-foundation.css`가 소유한 동일한 `.app-content-frame` 규격을 사용한다.
 - viewport 가드레일은 frame 한 곳이 소유하며 기존 outer padding과 중첩되지 않는다.
 - Portfolio와 앱을 전환할 때 일반 본문의 폭과 밀도가 같은 제품군으로 느껴진다.
-- Main 최초 조립과 재시작 조립의 시각화 wrapper만 최대 `75rem`의 동일한 `.app-wide-visual` 예외를 사용한다.
+- Main 최초 조립과 재시작 조립의 카드·표·시각화는 동일하게 setup 표면 안에 머물고 실제 deficit 표현만 viewport 경계에서 절단된다.
 - Simulation은 `48rem` 안에서도 그래프·축·비교값·tooltip의 의미와 가시성을 유지한다.
 - 상단 앱 메뉴의 DOM, CSS 폭, padding, 표시 정책, focus와 popover 동작은 변경되지 않는다.
 - 390px, 768px과 desktop에서 body overflow, overlay clipping 또는 touch-target 회귀가 없다.
@@ -226,7 +221,7 @@ AppShell
 
 - 일반 앱 본문: `48rem` 최대 읽기 폭과 viewport 좌우 `1rem` 가드레일
 - 가드레일의 단일 frame 소유권
-- Main 조립 시각화만 허용되는 `75rem` wide 예외
+- Main 조립 카드의 setup 표면 containment와 deficit 내부 표현의 viewport 절단
 - launcher와 viewport overlay가 본문 폭 규격에서 제외된다는 경계
 
 PRD의 제품 범위, 데이터 소유권과 앱 상태에는 변화가 없으므로 PRD 요구사항은 수정하지 않는다.

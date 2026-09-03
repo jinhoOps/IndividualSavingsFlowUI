@@ -510,15 +510,20 @@ async function expectReviewReadingWidth(page: Page, viewportWidth: number) {
   const reviewSurface = page.locator('.setup-flow-surface');
   const allocation = page.locator('.allocation-bar');
   await expect(reviewSurface).not.toHaveClass(/app-wide-visual/);
-  await expect(allocation).toHaveClass(/app-wide-visual/);
+  await expect(allocation).not.toHaveClass(/app-wide-visual/);
 
-  await expect.poll(() => Promise.all([
-    reviewSurface.evaluate((element) => element.getBoundingClientRect().width),
-    allocation.evaluate((element) => element.getBoundingClientRect().width),
-  ])).toEqual([
-    Math.min(viewportWidth - 32, 48 * 16),
-    Math.min(viewportWidth - 32, 75 * 16),
-  ]);
+  await expect.poll(() => reviewSurface.evaluate((surface) => {
+    const surfaceRect = surface.getBoundingClientRect();
+    const allocationRect = surface.querySelector<HTMLElement>('.allocation-bar')!.getBoundingClientRect();
+    return {
+      allocationInsideSurface: allocationRect.left >= surfaceRect.left
+        && allocationRect.right <= surfaceRect.right,
+      surfaceWidth: surfaceRect.width,
+    };
+  })).toEqual({
+    allocationInsideSurface: true,
+    surfaceWidth: Math.min(viewportWidth - 32, 48 * 16),
+  });
 }
 
 async function expectDashboardSummary(page: Page, amounts: {
@@ -864,20 +869,22 @@ test('new user applies the v2 quick setup and refreshes into matching dashboard 
   await expect(page.getByRole('button', { name: /투자 (상세 정보|· 20만 원 · 6\.3%)/ })).toBeVisible();
   await expect(page.getByRole('button', { name: '남는 돈 · 90만 원 · 28.1%' })).toBeVisible();
   const reviewAllocation = page.locator('.allocation-bar');
-  await expect(reviewAllocation).toHaveClass(/app-wide-visual/);
+  await expect(reviewAllocation).not.toHaveClass(/app-wide-visual/);
   await expect(page.getByTestId('allocation-visual-stage')).not.toHaveClass(/app-wide-visual/);
   const reviewTable = page.getByRole('table', { name: '월 자금 항목' });
   await expect(reviewTable).not.toHaveClass(/app-wide-visual/);
   const reviewBounds = await reviewAllocation.evaluate((card) => {
     const cardRect = card.getBoundingClientRect();
+    const surfaceRect = card.closest<HTMLElement>('.setup-flow-surface')!.getBoundingClientRect();
     const stageRect = card.querySelector('.allocation-bar__visual-stage')!.getBoundingClientRect();
     const tableRect = card.querySelector('table')!.getBoundingClientRect();
     return {
+      cardInsideSurface: cardRect.left >= surfaceRect.left && cardRect.right <= surfaceRect.right,
       stageInside: stageRect.left >= cardRect.left && stageRect.right <= cardRect.right,
       tableInside: tableRect.left >= cardRect.left && tableRect.right <= cardRect.right,
     };
   });
-  expect(reviewBounds).toEqual({ stageInside: true, tableInside: true });
+  expect(reviewBounds).toEqual({ cardInsideSurface: true, stageInside: true, tableInside: true });
   await expect(reviewTable.getByRole('row', { name: /소비.*180만 원.*56\.3%/ })).toBeVisible();
   await expect(reviewTable.getByRole('row', { name: /저축.*30만 원.*9\.4%/ })).toBeVisible();
   await expect(reviewTable.getByRole('row', { name: /투자.*20만 원.*6\.3%/ })).toBeVisible();
@@ -1007,7 +1014,7 @@ test('setup motion reaches final state in real time at required viewports', asyn
       contentOpacities: [1, 1, 1],
     });
     await expect(page.getByRole('button', { name: '계획 적용' })).toBeVisible();
-    await expect(page.locator('.allocation-bar')).toHaveClass(/app-wide-visual/);
+    await expect(page.locator('.allocation-bar')).not.toHaveClass(/app-wide-visual/);
     await expect(page.getByTestId('allocation-visual-stage')).not.toHaveClass(/app-wide-visual/);
     await expectReviewReadingWidth(page, viewport.width);
     await expectReviewVisualInViewport(page);
@@ -1212,10 +1219,7 @@ test('review assembly captures timed deficit geometry and reduced motion', async
         : Number(getComputedStyle(overflowLabel).opacity),
     };
   });
-  const expectOverflowGeometry = async (
-    draft: typeof appliedMainV2,
-    clipped: boolean,
-  ) => {
+  const expectOverflowGeometry = async (draft: typeof appliedMainV2) => {
     const geometry = await page.locator('.allocation-bar__segments').evaluate((element) => {
       const extension = element.querySelector<HTMLElement>('.cashflow-bar__clip')!
         .getBoundingClientRect();
@@ -1224,6 +1228,8 @@ test('review assembly captures timed deficit geometry and reduced motion', async
       const base = element.getBoundingClientRect();
       return {
         actualOverflowRatio: (track.width - base.width) / base.width,
+        baseRight: base.right,
+        baseWidth: base.width,
         clipped: element.getAttribute('data-overflow-clipped') === 'true',
         extensionRight: extension.right,
         safeRight: document.documentElement.clientWidth - 16,
@@ -1236,7 +1242,13 @@ test('review assembly captures timed deficit geometry and reduced motion', async
       + draft.monthlySavingWon
       + draft.monthlyInvestmentWon
       - draft.monthlyNetIncomeWon;
-    expect(geometry.clipped).toBe(clipped);
+    const expectedDesiredEndPercent = 100 + deficitWon / draft.monthlyNetIncomeWon * 100;
+    const availableRightPercent = (geometry.safeRight - geometry.baseRight) / geometry.baseWidth * 100;
+    const expectedVisibleEndPercent = Math.min(
+      expectedDesiredEndPercent,
+      100 + Math.max(0, availableRightPercent),
+    );
+    expect(geometry.clipped).toBe(expectedVisibleEndPercent < expectedDesiredEndPercent);
     expect(geometry.actualOverflowRatio).toBeCloseTo(deficitWon / draft.monthlyNetIncomeWon, 3);
     expect(geometry.extensionRight).toBeLessThanOrEqual(geometry.safeRight + 0.01);
     expect(geometry.scrollWidth).toBeLessThanOrEqual(geometry.viewportWidth);
@@ -1270,7 +1282,7 @@ test('review assembly captures timed deficit geometry and reduced motion', async
 
     await showReview(slightDeficit);
     await page.clock.runFor(1_200);
-    await expectOverflowGeometry(slightDeficit, true);
+    await expectOverflowGeometry(slightDeficit);
     await capture(viewport.width, 'deficit-slight');
 
     await showReview(clippedDeficit);
@@ -1289,7 +1301,7 @@ test('review assembly captures timed deficit geometry and reduced motion', async
     await page.clock.runFor(1_200);
     const clippedFinal = await readAssemblyState();
     expect(clippedFinal.overflowLabelOpacity).toBe(1);
-    await expectOverflowGeometry(clippedDeficit, true);
+    await expectOverflowGeometry(clippedDeficit);
     await capture(viewport.width, 'deficit-clipped');
 
     await page.emulateMedia({ reducedMotion: 'reduce' });
