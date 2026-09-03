@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-24
 
-**Status:** Approved; Phases 2–4 code gates complete with evidence, Task 8 final repository-wide verification pending
+**Status:** Approved; Phases 2–4 code gates and Task 8 final repository-wide verification complete with evidence
 
 **Scope:** Main·Simulation·Portfolio·Account Map과 공통 UI/인프라의 단계적 구조 리팩터링
 
@@ -99,7 +99,10 @@ Phase 0의 목록을 기준으로 다음 순서를 지킨다.
 - [x] Phase 2 application-orchestration gates are complete with their focused code and verification evidence.
 - [x] Phase 3 visualization/motion boundary gates are complete with their focused code and verification evidence.
 - [x] Phase 4 code gates are complete: strict v3 persistence, read-only v1/v2 conversion and rollback-source preservation, format-v2 backup, supported-route closure, replacement tests, and the classified runtime deletion are recorded in the Phase 4 evidence and implementation reports.
-- [ ] Task 8 independently reruns final repository-wide verification. This status records completed phase code gates and evidence only; it does not claim that final rerun.
+- [x] Task 8 independently reran final repository-wide verification: source and
+  storage reference audit, focused compatibility suites, full type/unit/E2E/
+  build matrix, responsive import/recovery QA, and final evidence are recorded
+  in [the Phase 4 disposition](../evidence/2026-09-02-phase4-legacy-test-disposition.md).
 
 ## 5. Module Rules
 

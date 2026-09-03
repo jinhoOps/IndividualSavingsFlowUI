@@ -258,8 +258,10 @@ raw bytes exactly.
   fallback. Import tests prove full validation before one replacement and zero
   mutation on invalid/reference/capacity failures.
 - Portfolio and Account Map suites pass their slice-ownership and Main
-  read-only contracts. Source writes are limited to the v3 workspace/lock
-  namespace and the separately approved Portfolio view-preference record.
+  read-only contracts. Product data writes are limited to the v3 workspace and
+  the separately approved Portfolio view-preference record. One-way migration
+  and invalid-retired recovery may use the approved retired-v1 lock namespace
+  only for coordination; they never change the retired v1 source bytes.
 - Rollback documentation describes preserved parallel source snapshots and does
   not promise cross-version merging.
 - The Phase 4 diff adds no `TODO`, `FIXME`, broad TypeScript `any`, placeholder,
