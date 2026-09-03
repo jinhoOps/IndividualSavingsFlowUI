@@ -8,7 +8,7 @@
     "build": "node scripts/bump-version.js && npm run sync-version && vite build",
     "preview": "vite preview",
     "sync-version": "node scripts/sync-version.js",
-    "version": "npm run sync-version && git add public/manifest.webmanifest shared/legacy/sw.js shared/core/utils.js",
+    "version": "npm run sync-version && git add public/manifest.webmanifest",
     "check": "npm run check:source && npm run check:unit",
     "check:harness": "node scripts/check-agent-harness.mjs",
     "check:ci": "npm run check:harness && npm run check && npm run test:unit",

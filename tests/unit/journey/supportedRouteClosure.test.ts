@@ -37,6 +37,25 @@ const forbiddenRuntimeTokens = [
   'window.ISF',
 ] as const;
 
+const retiredPaths = [
+  'apps/main/app.js',
+  'apps/main/styles.css',
+  'apps/main/modules',
+  'shared/components',
+  'shared/storage',
+  'shared/pwa',
+  'shared/core',
+  'shared/styles',
+  'shared/legacy/sw.js',
+  'src/core/storage/CompatibilityBridge.ts',
+  'src/core/storage/BackupService.ts',
+  'src/core/storage/IsfStore.ts',
+  'src/core/types/models.ts',
+  'src/core/types/money.ts',
+  'tests/unit/core/IsfStore.test.ts',
+  'tests/step1.spec.ts',
+] as const;
+
 describe('supported route closure', () => {
   it('keeps every supported Vite entry free of retired runtime contracts', async () => {
     const projectRoot = process.cwd();
@@ -49,6 +68,16 @@ describe('supported route closure', () => {
     for (const forbidden of forbiddenRuntimeTokens) {
       expect(runtime).not.toContain(forbidden);
     }
+  });
+
+  it('physically retires classified legacy paths while retaining current brand geometry', async () => {
+    const projectRoot = process.cwd();
+
+    for (const retiredPath of retiredPaths) {
+      await expect(stat(resolve(projectRoot, retiredPath))).rejects.toMatchObject({ code: 'ENOENT' });
+    }
+    await expect(stat(resolve(projectRoot, 'shared/brand/mainBrandGeometry.js')))
+      .resolves.toMatchObject({ isFile: expect.any(Function) });
   });
 });
 

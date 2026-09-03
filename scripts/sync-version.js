@@ -14,23 +14,11 @@ const version = packageJson.version;
 console.log(`[Sync-Version] Detected version: v${version}`);
 
 // 2. 동기화 대상 파일 및 패턴 정의
-const targets = [
-  {
-    path: 'public/manifest.webmanifest',
-    pattern: /"version":\s*"[^"]*"/,
-    replacement: `"version": "${version}"`
-  },
-  {
-    path: 'shared/legacy/sw.js',
-    pattern: /const APP_VERSION = "[^"]*";/,
-    replacement: `const APP_VERSION = "${version}";`
-  },
-  {
-    path: 'shared/core/utils.js',
-    pattern: /APP_VERSION:\s*\(typeof __APP_VERSION__ !== "undefined"\) \? __APP_VERSION__ : "[^"]*"/,
-    replacement: `APP_VERSION: (typeof __APP_VERSION__ !== "undefined") ? __APP_VERSION__ : "${version}"`
-  }
-];
+const targets = [{
+  path: 'public/manifest.webmanifest',
+  pattern: /"version":\s*"[^"]*"/,
+  replacement: `"version": "${version}"`,
+}];
 
 // 3. 파일 업데이트 실행
 targets.forEach(target => {
