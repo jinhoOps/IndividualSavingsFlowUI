@@ -140,6 +140,17 @@ function envelope(formatVersion: number, workspace: unknown, exportedAt = 900): 
   });
 }
 
+function deeplyNestedFormatV1Envelope(depth: number): string {
+  let nestedMain = 'null';
+  for (let index = 0; index < depth; index += 1) {
+    nestedMain = `{"nested":${nestedMain}}`;
+  }
+
+  const { main: _main, ...retiredWithoutMain } = retiredWorkspaceV2();
+  const serializedWorkspace = JSON.stringify(retiredWithoutMain);
+  return `{"format":"isf-workspace-backup","formatVersion":1,"exportedAt":900,"workspace":{"main":${nestedMain},${serializedWorkspace.slice(1)}}`;
+}
+
 function errorCode(operation: () => unknown): string | undefined {
   try {
     operation();
@@ -259,15 +270,8 @@ describe('workspace backup v2', () => {
   });
 
   it('classifies a deeply nested malformed format-v1 workspace as backup-schema', () => {
-    let deeplyNestedMain: unknown = null;
-    for (let depth = 0; depth < 20_000; depth += 1) {
-      deeplyNestedMain = { nested: deeplyNestedMain };
-    }
-
-    expect(() => importWorkspaceBackup(envelope(1, {
-      ...retiredWorkspaceV2(),
-      main: deeplyNestedMain,
-    }))).toThrow('backup-schema');
+    expect(() => importWorkspaceBackup(deeplyNestedFormatV1Envelope(20_000)))
+      .toThrow('backup-schema');
   });
 
   it('gives schema failures precedence over simultaneous reference failures', () => {
