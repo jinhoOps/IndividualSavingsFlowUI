@@ -180,6 +180,36 @@ const releaseGateWorkspaceV2 = {
   accountMap: releaseGateAccountMapV2,
 };
 
+const emptyAccountMapV3 = {
+  applied: null,
+  draft: null,
+};
+
+const connectedWorkspaceV3 = {
+  ...connectedWorkspaceV1,
+  schemaVersion: 3 as const,
+  portfolio: {
+    plans: [connectedWorkspaceV1.portfolio.plans[0]],
+    draft: null,
+  },
+  accountMap: emptyAccountMapV3,
+};
+
+const { layout: _retiredLayout, ...releaseGateAppliedV3 } = releaseGateAccountMapV2.applied;
+
+const releaseGateWorkspaceV3 = {
+  ...releaseGateWorkspaceV2,
+  schemaVersion: 3 as const,
+  portfolio: {
+    plans: [releaseGateWorkspaceV2.portfolio.plans[0]],
+    draft: releaseGateWorkspaceV2.portfolio.draft,
+  },
+  accountMap: {
+    applied: { ...releaseGateAppliedV3, schemaVersion: 2 as const },
+    draft: null,
+  },
+};
+
 const invalidFutureSourceWorkspace = {
   ...releaseGateWorkspaceV2,
   accountMap: {
@@ -1505,19 +1535,19 @@ test('complete Phase-B backup round-trips atomically in the contained mobile con
   await page.addInitScript(({ workspace, oldRecords }) => {
     if (sessionStorage.getItem('isf-backup-roundtrip-seeded') === null) {
       localStorage.clear();
-      localStorage.setItem('isf-workspace-v1', JSON.stringify(workspace));
+      localStorage.setItem('isf-workspace-v3', JSON.stringify(workspace));
       for (const [key, raw] of Object.entries(oldRecords)) localStorage.setItem(key, raw);
       sessionStorage.setItem('isf-backup-roundtrip-seeded', 'true');
     }
     const originalSetItem = Storage.prototype.setItem;
     Object.defineProperty(window, '__workspaceWrites', { configurable: true, value: 0, writable: true });
     Storage.prototype.setItem = function setItem(key: string, value: string) {
-      if (key === 'isf-workspace-v1') {
+      if (key === 'isf-workspace-v3') {
         (window as typeof window & { __workspaceWrites: number }).__workspaceWrites += 1;
       }
       originalSetItem.call(this, key, value);
     };
-  }, { workspace: releaseGateWorkspaceV2, oldRecords: seededOldMainRecords });
+  }, { workspace: releaseGateWorkspaceV3, oldRecords: seededOldMainRecords });
   await page.goto('apps/main/');
 
   const trigger = page.getByRole('button', { name: '관리 메뉴' });
@@ -1533,15 +1563,15 @@ test('complete Phase-B backup round-trips atomically in the contained mobile con
   expect(Object.keys(exported).sort()).toEqual(['exportedAt', 'format', 'formatVersion', 'workspace']);
   expect(exported).toMatchObject({
     format: 'isf-workspace-backup',
-    formatVersion: 1,
+    formatVersion: 2,
     workspace: {
-      schemaVersion: 2,
-      revision: releaseGateWorkspaceV2.revision,
-      main: releaseGateWorkspaceV2.main,
-      simulation: releaseGateWorkspaceV2.simulation,
-      portfolio: releaseGateWorkspaceV2.portfolio,
-      locations: releaseGateWorkspaceV2.locations,
-      accountMap: releaseGateWorkspaceV2.accountMap,
+      schemaVersion: 3,
+      revision: releaseGateWorkspaceV3.revision,
+      main: releaseGateWorkspaceV3.main,
+      simulation: releaseGateWorkspaceV3.simulation,
+      portfolio: releaseGateWorkspaceV3.portfolio,
+      locations: releaseGateWorkspaceV3.locations,
+      accountMap: releaseGateWorkspaceV3.accountMap,
     },
   });
   for (const excluded of ['isf-main-v2', 'save-lease', 'trophy', '트로피']) {
@@ -1549,7 +1579,7 @@ test('complete Phase-B backup round-trips atomically in the contained mobile con
   }
 
   const mutatedWorkspace = {
-    ...appliedWorkspaceV1,
+    ...connectedWorkspaceV3,
     revision: 10,
     updatedAt: 1_000,
     main: {
@@ -1559,7 +1589,7 @@ test('complete Phase-B backup round-trips atomically in the contained mobile con
   };
   const mutatedRaw = JSON.stringify(mutatedWorkspace);
   await page.evaluate((raw) => {
-    localStorage.setItem('isf-workspace-v1', raw);
+    localStorage.setItem('isf-workspace-v3', raw);
     (window as typeof window & { __workspaceWrites: number }).__workspaceWrites = 0;
   }, mutatedRaw);
   await page.reload();
@@ -1587,7 +1617,7 @@ test('complete Phase-B backup round-trips atomically in the contained mobile con
       && document.documentElement.scrollWidth <= window.innerWidth;
   });
   expect(containment).toBe(true);
-  expect(await page.evaluate(() => localStorage.getItem('isf-workspace-v1'))).toBe(mutatedRaw);
+  expect(await page.evaluate(() => localStorage.getItem('isf-workspace-v3'))).toBe(mutatedRaw);
 
   await dialog.getByRole('button', { name: '백업으로 바꾸기' }).click();
 
@@ -1595,33 +1625,33 @@ test('complete Phase-B backup round-trips atomically in the contained mobile con
   await expect(page.getByRole('status').filter({ hasText: '모든 앱 데이터를 백업에서 복원했습니다.' })).toBeVisible();
   await expect(trigger).toBeFocused();
   const durable = await page.evaluate(() => ({
-    raw: localStorage.getItem('isf-workspace-v1'),
+    raw: localStorage.getItem('isf-workspace-v3'),
     old: Object.fromEntries(Object.keys(localStorage)
-      .filter((key) => key !== 'isf-workspace-v1' && key.startsWith('isf-'))
+      .filter((key) => key !== 'isf-workspace-v3' && key.startsWith('isf-'))
       .map((key) => [key, localStorage.getItem(key)])),
     writes: (window as typeof window & { __workspaceWrites: number }).__workspaceWrites,
   }));
   const restored = JSON.parse(durable.raw!);
   expect(restored.revision).toBe(11);
-  expect(restored.main).toEqual(releaseGateWorkspaceV2.main);
-  expect(restored.simulation).toEqual(releaseGateWorkspaceV2.simulation);
-  expect(restored.portfolio).toEqual(releaseGateWorkspaceV2.portfolio);
-  expect(restored.locations).toEqual(releaseGateWorkspaceV2.locations);
-  expect(restored.accountMap).toEqual(releaseGateWorkspaceV2.accountMap);
+  expect(restored.main).toEqual(releaseGateWorkspaceV3.main);
+  expect(restored.simulation).toEqual(releaseGateWorkspaceV3.simulation);
+  expect(restored.portfolio).toEqual(releaseGateWorkspaceV3.portfolio);
+  expect(restored.locations).toEqual(releaseGateWorkspaceV3.locations);
+  expect(restored.accountMap).toEqual(releaseGateWorkspaceV3.accountMap);
   expect(durable.writes).toBe(1);
   expect(durable.old).toEqual(seededOldMainRecords);
 });
 
 test('canonical backup restores empty Main through the brand intro and preserves every non-Main slice', async ({ page }) => {
   const importedWorkspace = {
-    ...connectedWorkspaceV1,
+    ...connectedWorkspaceV3,
     main: { applied: null, setupProgress: null },
   };
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await page.addInitScript((workspace) => {
     localStorage.clear();
-    localStorage.setItem('isf-workspace-v1', JSON.stringify(workspace));
-  }, connectedWorkspaceV1);
+    localStorage.setItem('isf-workspace-v3', JSON.stringify(workspace));
+  }, connectedWorkspaceV3);
   await page.goto('apps/main/');
 
   await page.getByRole('button', { name: '관리 메뉴' }).click();
@@ -1630,7 +1660,7 @@ test('canonical backup restores empty Main through the brand intro and preserves
     mimeType: 'application/json',
     buffer: Buffer.from(JSON.stringify({
       format: 'isf-workspace-backup',
-      formatVersion: 1,
+      formatVersion: 2,
       exportedAt: 900,
       workspace: importedWorkspace,
     })),
@@ -1650,7 +1680,7 @@ test('canonical backup restores empty Main through the brand intro and preserves
   await expect(page.getByRole('button', { name: '관리 메뉴' })).toHaveCount(0);
 
   await expect.poll(() => page.evaluate(() => {
-    const raw = localStorage.getItem('isf-workspace-v1');
+    const raw = localStorage.getItem('isf-workspace-v3');
     if (raw === null) return null;
     const workspace = JSON.parse(raw);
     const { savedAt: _savedAt, ...progress } = workspace.main.setupProgress;
@@ -1683,7 +1713,7 @@ test('canonical backup restores empty Main through the brand intro and preserves
     simulation: importedWorkspace.simulation,
     portfolio: importedWorkspace.portfolio,
     locations: importedWorkspace.locations,
-    accountMap: emptyAccountMapV2,
+    accountMap: emptyAccountMapV3,
   });
 });
 
@@ -1716,11 +1746,11 @@ for (const restoreCase of [
   },
 ] as const) {
   test(`canonical backup restores ${restoreCase.name} directly with persistent status and setup focus`, async ({ page }) => {
-    const importedWorkspace = { ...connectedWorkspaceV1, main: restoreCase.main };
+    const importedWorkspace = { ...connectedWorkspaceV3, main: restoreCase.main };
     await page.addInitScript((workspace) => {
       localStorage.clear();
-      localStorage.setItem('isf-workspace-v1', JSON.stringify(workspace));
-    }, connectedWorkspaceV1);
+      localStorage.setItem('isf-workspace-v3', JSON.stringify(workspace));
+    }, connectedWorkspaceV3);
     await page.goto('apps/main/');
 
     await page.getByRole('button', { name: '관리 메뉴' }).click();
@@ -1729,7 +1759,7 @@ for (const restoreCase of [
       mimeType: 'application/json',
       buffer: Buffer.from(JSON.stringify({
         format: 'isf-workspace-backup',
-        formatVersion: 1,
+        formatVersion: 2,
         exportedAt: 900,
         workspace: importedWorkspace,
       })),
@@ -1746,7 +1776,7 @@ for (const restoreCase of [
     await expect(page.getByRole('button', { name: '관리 메뉴' })).toHaveCount(0);
 
     await expect.poll(() => page.evaluate(() => {
-      const raw = localStorage.getItem('isf-workspace-v1');
+      const raw = localStorage.getItem('isf-workspace-v3');
       if (raw === null) return null;
       const workspace = JSON.parse(raw);
       return {
@@ -1763,7 +1793,7 @@ for (const restoreCase of [
       simulation: importedWorkspace.simulation,
       portfolio: importedWorkspace.portfolio,
       locations: importedWorkspace.locations,
-      accountMap: emptyAccountMapV2,
+      accountMap: emptyAccountMapV3,
     });
   });
 }
@@ -1771,22 +1801,22 @@ for (const restoreCase of [
 test('invalid, old, reference, duplicate, and capacity backups retain the exact raw workspace', async ({ page }) => {
   await page.addInitScript(({ workspace, oldRecords }) => {
     localStorage.clear();
-    localStorage.setItem('isf-workspace-v1', JSON.stringify(workspace));
+    localStorage.setItem('isf-workspace-v3', JSON.stringify(workspace));
     for (const [key, raw] of Object.entries(oldRecords)) localStorage.setItem(key, raw);
-  }, { workspace: connectedWorkspaceV1, oldRecords: seededOldMainRecords });
+  }, { workspace: connectedWorkspaceV3, oldRecords: seededOldMainRecords });
   await page.goto('apps/main/');
-  const raw = JSON.stringify(connectedWorkspaceV1);
+  const raw = JSON.stringify(connectedWorkspaceV3);
   const trigger = page.getByRole('button', { name: '관리 메뉴' });
-  const referenceWorkspace = { ...connectedWorkspaceV1, locations: [] };
+  const referenceWorkspace = { ...releaseGateWorkspaceV3, locations: [] };
   const duplicateWorkspace = {
-    ...connectedWorkspaceV1,
+    ...connectedWorkspaceV3,
     locations: [
-      ...connectedWorkspaceV1.locations,
-      { ...connectedWorkspaceV1.locations[0], id: 'loc-duplicate', shortName: ' isa ' },
+      ...connectedWorkspaceV3.locations,
+      { ...connectedWorkspaceV3.locations[0], id: 'loc-duplicate', shortName: ' isa ' },
     ],
   };
   const capacityWorkspace = {
-    ...connectedWorkspaceV1,
+    ...connectedWorkspaceV3,
     locations: [
       ...connectedWorkspaceV1.locations,
       ...Array.from({ length: 11 }, (_, index) => ({
@@ -1801,7 +1831,7 @@ test('invalid, old, reference, duplicate, and capacity backups retain the exact 
   };
   const envelope = (workspace: unknown) => JSON.stringify({
     format: 'isf-workspace-backup',
-    formatVersion: 1,
+    formatVersion: 2,
     exportedAt: 900,
     workspace,
   });
@@ -1809,7 +1839,7 @@ test('invalid, old, reference, duplicate, and capacity backups retain the exact 
     ['malformed.json', '{bad', '백업 JSON을 읽을 수 없습니다.'],
     ['old-main.json', JSON.stringify(appliedMainV2), '새 전체 workspace 백업 파일만 가져올 수 있습니다.'],
     ['schema.json', envelope({
-      ...connectedWorkspaceV1,
+      ...connectedWorkspaceV3,
       main: {
         applied: { ...appliedMainV2, monthlyNetIncomeWon: -1 },
         setupProgress: null,
@@ -1827,9 +1857,9 @@ test('invalid, old, reference, duplicate, and capacity backups retain the exact 
       mimeType: 'application/json',
       buffer: Buffer.from(contents),
     });
-    await expect(page.getByRole('alert')).toContainText(expectedMessage);
+    await expect(page.getByRole('alert'), name).toContainText(expectedMessage);
     await expect(trigger).toBeFocused();
-    expect(await page.evaluate(() => localStorage.getItem('isf-workspace-v1'))).toBe(raw);
+    expect(await page.evaluate(() => localStorage.getItem('isf-workspace-v3'))).toBe(raw);
     expect(await page.evaluate((keys) => Object.fromEntries(
       keys.map((key) => [key, localStorage.getItem(key)]),
     ), Object.keys(seededOldMainRecords))).toEqual(seededOldMainRecords);
@@ -1844,15 +1874,15 @@ for (const invalidImport of [
   test(`invalid ${invalidImport.name} import performs zero workspace writes and retains raw bytes`, async ({ page }) => {
     await page.addInitScript((workspace) => {
       localStorage.clear();
-      localStorage.setItem('isf-workspace-v1', JSON.stringify(workspace));
-    }, connectedWorkspaceV1);
+      localStorage.setItem('isf-workspace-v3', JSON.stringify(workspace));
+    }, connectedWorkspaceV3);
     await page.goto('apps/main/');
-    const raw = JSON.stringify(connectedWorkspaceV1);
+    const raw = JSON.stringify(connectedWorkspaceV3);
     await page.evaluate(() => {
       const originalSetItem = Storage.prototype.setItem;
       Object.defineProperty(window, '__invalidImportWrites', { configurable: true, value: 0, writable: true });
       Storage.prototype.setItem = function setItem(key: string, value: string) {
-        if (key === 'isf-workspace-v1') {
+        if (key === 'isf-workspace-v3') {
           (window as typeof window & { __invalidImportWrites: number }).__invalidImportWrites += 1;
         }
         originalSetItem.call(this, key, value);
@@ -1871,9 +1901,9 @@ for (const invalidImport of [
       })),
     });
 
-    await expect(page.getByRole('alert')).toContainText('백업의 앱 데이터가 올바르지 않습니다.');
+    await expect(page.getByRole('alert')).toContainText('백업의 앱 연결 정보가 올바르지 않습니다.');
     const result = await page.evaluate(() => ({
-      raw: localStorage.getItem('isf-workspace-v1'),
+      raw: localStorage.getItem('isf-workspace-v3'),
       writes: (window as typeof window & { __invalidImportWrites: number }).__invalidImportWrites,
     }));
     expect(result.raw).toBe(raw);

@@ -241,6 +241,25 @@ function backupEnvelope(value: WorkspaceDocument): unknown {
   };
 }
 
+function retiredRecords(): Record<string, string> {
+  return {
+    'isf-workspace-v1': '{retired-workspace-source}',
+    'isf-main-v2': '{retired-main}',
+    'isf-main-v2-pending': '{retired-main-pending}',
+    'isf-journey-snapshot-v1': '{retired-journey}',
+  };
+}
+
+function seedRetiredRecords(storage: Storage): Record<string, string> {
+  const records = retiredRecords();
+  for (const [key, value] of Object.entries(records)) storage.setItem(key, value);
+  return records;
+}
+
+function readRecords(storage: Storage, keys: string[]): Record<string, string | null> {
+  return Object.fromEntries(keys.map((key) => [key, storage.getItem(key)]));
+}
+
 function repository(result: MainLoadResult): MainRepository {
   return {
     load: async () => result,
@@ -589,6 +608,7 @@ describe('MainApp', () => {
     const imported = workspace(4_000_000, 99);
     const oldRaw = '{old-main-record';
     storage.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify(current));
+    const retired = seedRetiredRecords(storage);
     storage.setItem('isf-main-v2', oldRaw);
     const workspaceRepository = new BrowserWorkspaceRepository(storage, {
       saveLock: testSerialLock(),
@@ -620,7 +640,10 @@ describe('MainApp', () => {
     expect(saved.locations).toEqual(imported.locations);
     expect(saved.accountMap).toEqual(imported.accountMap);
     expect(setItem.mock.calls.filter(([key]) => key === WORKSPACE_STORAGE_KEY)).toHaveLength(1);
-    expect(storage.getItem('isf-main-v2')).toBe(oldRaw);
+    expect(readRecords(storage, Object.keys(retired))).toEqual({
+      ...retired,
+      'isf-main-v2': oldRaw,
+    });
     await waitFor(() => expect(screen.getByRole('button', { name: '관리 메뉴' })).toHaveFocus());
   });
 
@@ -648,6 +671,106 @@ describe('MainApp', () => {
       expect(storage.getItem(WORKSPACE_STORAGE_KEY)).toBe(raw);
       expect(screen.queryByRole('heading', { name: '모든 앱 데이터를 이 백업으로 바꿀까요?' })).not.toBeInTheDocument();
     }
+  });
+
+  it('keeps current v3 and all retired bytes after every invalid current or old backup', async () => {
+    const storage = new MemoryStorage();
+    const current = workspace(3_000_000, 7);
+    const currentRaw = JSON.stringify(current);
+    storage.setItem(WORKSPACE_STORAGE_KEY, currentRaw);
+    const retired = seedRetiredRecords(storage);
+    const workspaceRepository = new BrowserWorkspaceRepository(storage, {
+      saveLock: testSerialLock(),
+    });
+    render(<MainApp
+      repository={new BrowserMainRepository(workspaceRepository)}
+      workspaceRepository={workspaceRepository}
+    />);
+    await screen.findByRole('heading', { name: 'dashboard' });
+
+    const invalidCurrent = backupEnvelope({
+      ...workspace(4_000_000, 99),
+      main: {
+        applied: data(-1),
+        setupProgress: null,
+      },
+    });
+    const invalidOld = {
+      format: 'isf-workspace-backup',
+      formatVersion: 1,
+      exportedAt: 900,
+      workspace: { schemaVersion: 1 },
+    };
+
+    for (const [name, contents] of [
+      ['invalid current', backupFile(invalidCurrent)],
+      ['invalid old', backupFile(invalidOld)],
+    ] as const) {
+      fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
+      fireEvent.change(screen.getByLabelText('백업 가져오기'), { target: { files: [contents] } });
+      expect(await screen.findByRole('alert'), name).toHaveTextContent('현재 데이터는 바뀌지 않았습니다.');
+      expect(storage.getItem(WORKSPACE_STORAGE_KEY), name).toBe(currentRaw);
+      expect(readRecords(storage, Object.keys(retired)), name).toEqual(retired);
+      expect(screen.queryByRole('heading', { name: '모든 앱 데이터를 이 백업으로 바꿀까요?' }), name).not.toBeInTheDocument();
+    }
+  });
+
+  it('keeps current v3 and all retired bytes when import confirmation is cancelled', async () => {
+    const storage = new MemoryStorage();
+    const current = workspace(3_000_000, 7);
+    const currentRaw = JSON.stringify(current);
+    storage.setItem(WORKSPACE_STORAGE_KEY, currentRaw);
+    const retired = seedRetiredRecords(storage);
+    const workspaceRepository = new BrowserWorkspaceRepository(storage, {
+      saveLock: testSerialLock(),
+    });
+    render(<MainApp
+      repository={new BrowserMainRepository(workspaceRepository)}
+      workspaceRepository={workspaceRepository}
+    />);
+    await screen.findByRole('heading', { name: 'dashboard' });
+
+    fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
+    fireEvent.change(screen.getByLabelText('백업 가져오기'), {
+      target: { files: [backupFile(backupEnvelope(workspace(4_000_000, 99)))] },
+    });
+    await screen.findByRole('heading', { name: '모든 앱 데이터를 이 백업으로 바꿀까요?' });
+    fireEvent.click(screen.getByRole('button', { name: '취소' }));
+
+    expect(storage.getItem(WORKSPACE_STORAGE_KEY)).toBe(currentRaw);
+    expect(readRecords(storage, Object.keys(retired))).toEqual(retired);
+  });
+
+  it('keeps current v3 and all retired bytes when replacement fails', async () => {
+    const storage = new MemoryStorage();
+    const current = workspace(3_000_000, 7);
+    const currentRaw = JSON.stringify(current);
+    storage.setItem(WORKSPACE_STORAGE_KEY, currentRaw);
+    const retired = seedRetiredRecords(storage);
+    const workspaceRepository = new BrowserWorkspaceRepository(storage, {
+      saveLock: testSerialLock(),
+    });
+    const setItem = vi.spyOn(storage, 'setItem').mockImplementation((key, value) => {
+      if (key === WORKSPACE_STORAGE_KEY) throw new Error('v3 write failed');
+      MemoryStorage.prototype.setItem.call(storage, key, value);
+    });
+    render(<MainApp
+      repository={new BrowserMainRepository(workspaceRepository)}
+      workspaceRepository={workspaceRepository}
+    />);
+    await screen.findByRole('heading', { name: 'dashboard' });
+
+    fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
+    fireEvent.change(screen.getByLabelText('백업 가져오기'), {
+      target: { files: [backupFile(backupEnvelope(workspace(4_000_000, 99)))] },
+    });
+    await screen.findByRole('heading', { name: '모든 앱 데이터를 이 백업으로 바꿀까요?' });
+    fireEvent.click(screen.getByRole('button', { name: '백업으로 바꾸기' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('백업을 저장하지 못했습니다. 현재 데이터는 바뀌지 않았습니다. 다시 시도해 주세요.');
+    expect(storage.getItem(WORKSPACE_STORAGE_KEY)).toBe(currentRaw);
+    expect(readRecords(storage, Object.keys(retired))).toEqual(retired);
+    expect(setItem).toHaveBeenCalledWith(WORKSPACE_STORAGE_KEY, expect.any(String));
   });
 
   it('uses the current revision token and reports a no-change replace conflict', async () => {
