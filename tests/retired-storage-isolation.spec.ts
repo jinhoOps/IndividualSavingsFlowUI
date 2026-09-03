@@ -18,7 +18,7 @@ test('React Main ignores retired standalone data and leaves each record untouche
       incomes: [{ id: 'salary', amountWon: 4_200_000 }],
       accounts: [{ id: 'salary-account', name: '급여통장' }],
     }),
-    mainV2: JSON.stringify({ schemaVersion: 2, updatedAt: 9_999_999_999_999 }),
+    mainV2: JSON.stringify(appliedMainV2),
     rebuildV1: JSON.stringify({
       modelVersion: 10,
       updatedAt: 9_999_999_999_999,
@@ -26,6 +26,7 @@ test('React Main ignores retired standalone data and leaves each record untouche
     }),
     journeyV1: null,
   };
+  expect(JSON.parse(retiredRaw.mainV2)).toEqual(appliedMainV2);
   await page.addInitScript((raw) => {
     localStorage.clear();
     sessionStorage.clear();
