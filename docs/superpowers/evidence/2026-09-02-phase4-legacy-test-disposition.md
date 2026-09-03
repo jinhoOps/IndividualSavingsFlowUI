@@ -90,3 +90,30 @@ Checked row count: 73, matching the mandated command output. The two
 non-case rows exist solely because the broad required regular expression also
 matches helper regular expressions in the legacy file; all 71 executable
 `test`/`test.skip` declarations are listed with their exact titles.
+
+## Phase 4 replacement and deletion evidence
+
+The final supported replacement tests are:
+
+- `tests/unit/workspace/workspaceRepository.test.ts` — `migrates through guarded v3 write/readback while preserving retired bytes`, `reports invalid v3 JSON without reading or falling back to retired v1`, and `keeps v3 canonical after an old tab writes a newer retired source`.
+- `tests/unit/workspace/workspaceBackup.test.ts` — `exports the current workspace in an exact format-v2 envelope` and the parameterized `imports a format-v1 retired %s workspace through the converter` cases for v1 and v2.
+- `tests/unit/workspace/retiredWorkspaceMigration.test.ts` — `converts exact v2 data field-by-field and drops every retired value` and `converts exact v1 data while dropping Phase A and location-scoped Portfolio values`.
+- `tests/retired-storage-isolation.spec.ts` — `React Main ignores retired standalone data and leaves each record untouched` and `React Main workspace save leaves retired standalone records untouched`.
+- `tests/app-journey.spec.ts` — `retired journey snapshot survives Main startup and a current edit`.
+- `tests/unit/journey/supportedRouteClosure.test.ts` — `physically retires classified legacy paths while retaining current brand geometry`.
+
+Deletion is recorded in `cb6d23d` (`refactor: delete retired legacy runtime`). It removes the classified legacy Main runtime, storage bridge, shared browser tree, old service worker, and obsolete `step1` suite. `shared/brand/mainBrandGeometry.js` is deliberately retained as the only file from that former shared browser tree; Vite PWA owns the deployed service worker.
+
+The final reference search recorded for the deletion was:
+
+```bash
+rg -n --glob '!docs/superpowers/specs/**' \
+  --glob '!docs/superpowers/plans/**' \
+  --glob '!docs/superpowers/evidence/**' \
+  "apps/main/(?:app\\.js|styles\\.css|modules/)|shared/(?:legacy|components|storage|pwa|core|styles)/|CompatibilityBridge|IsfStore|BackupService" \
+  .
+```
+
+It found 16 intentional negative-closure references confined to `tests/unit/journey/supportedRouteClosure.test.ts` and its synthetic fixture. Re-running the same search while excluding those two test locations returned no matches (the expected `rg` no-match exit status).
+
+Allowed remaining historical or migration-fixture references are confined to historical specs/plans/evidence, the retired workspace converter and its unit/backup/repository tests, browser isolation tests, and the explicit retired journey sentinel. They describe v1/v2 input or untouched foreign records; no current production route reads, writes, converts, or deletes standalone old keys or the retired journey snapshot. Task 8 owns the final repository-wide verification and is not claimed by this evidence update.

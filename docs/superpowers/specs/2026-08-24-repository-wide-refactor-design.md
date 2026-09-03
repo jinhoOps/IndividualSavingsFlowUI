@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-24
 
-**Status:** Approved; phased implementation in progress
+**Status:** Approved; Phases 2–4 code gates complete with evidence, Task 8 final repository-wide verification pending
 
 **Scope:** Main·Simulation·Portfolio·Account Map과 공통 UI/인프라의 단계적 구조 리팩터링
 
@@ -21,7 +21,7 @@
 - Account Map은 최신 Main을 읽기 전용으로 사용하고 `workspace.locations`와 `workspace.accountMap`만 갱신한다.
 - Account Map은 Main·Simulation·Portfolio에 write-back하지 않는다.
 - Portfolio는 aggregate 배분과 자기 slice를 소유하며 Account Map의 위치 관리 UI를 재사용하지 않는다.
-- 저장 키, workspace schema, revision/conflict 의미, URL과 앱 탐색 순서는 유지한다.
+- current workspace schema/key, revision/conflict 의미, URL과 앱 탐색 순서는 current contract와 호환성 evidence를 함께 갱신할 때만 변경한다.
 - 390px, 768px, desktop의 여백·overflow·focus·touch target·시각화 가시성 계약은 유지한다.
 
 ## 3. Non-goals
@@ -94,6 +94,13 @@ Phase 0의 목록을 기준으로 다음 순서를 지킨다.
 
 증거가 부족한 legacy는 제거하지 않고 “보존 이유·소유자·다음 제거 조건”을 기록한다.
 
+### Completion status (2026-09-03)
+
+- [x] Phase 2 application-orchestration gates are complete with their focused code and verification evidence.
+- [x] Phase 3 visualization/motion boundary gates are complete with their focused code and verification evidence.
+- [x] Phase 4 code gates are complete: strict v3 persistence, read-only v1/v2 conversion and rollback-source preservation, format-v2 backup, supported-route closure, replacement tests, and the classified runtime deletion are recorded in the Phase 4 evidence and implementation reports.
+- [ ] Task 8 independently reruns final repository-wide verification. This status records completed phase code gates and evidence only; it does not claim that final rerun.
+
 ## 5. Module Rules
 
 - domain 모듈은 React, DOM, 저장소를 import하지 않는다.
@@ -130,7 +137,7 @@ Phase 0의 목록을 기준으로 다음 순서를 지킨다.
 
 ## 8. Acceptance Criteria
 
-- 네 지원 앱의 제품 동작·데이터 ownership·URL·storage key가 변경되지 않는다.
+- 네 지원 앱의 제품 동작·데이터 ownership·URL과 current storage contract가 evidence-backed migration 이외의 이유로 변경되지 않는다.
 - 공통 UI/feedback/motion 계약이 단일 기준으로 사용되고 앱별 중복은 근거와 함께 제거된다.
 - 대형 조정 파일은 책임별 모듈로 나뉘며 각 모듈의 경계와 테스트가 명확하다.
 - 시각화 계산은 순수 테스트로 검증되고, 실제 렌더링은 390px·768px·desktop에서 containment와 visibility를 통과한다.

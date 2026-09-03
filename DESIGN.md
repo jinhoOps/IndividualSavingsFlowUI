@@ -6,7 +6,7 @@ Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계획 �
 
 이 문서의 현재 지원 UI 계약은 Main, Simulation, aggregate-first Portfolio와 account-first Account Map에 적용됩니다. Account Map 지도 표현은 [Account Map Meaningful Layout Design](docs/superpowers/specs/2026-08-25-account-map-meaningful-layout-design.md)을 따릅니다. 과거 레거시 화면의 모양이나 상호작용은 새 UI의 기준이 아닙니다.
 
-현재 delivery boundary는 명확히 나눕니다. Phase A의 단일 workspace, whole-workspace backup과 aggregate-first Portfolio, Phase B Account Map이 현재 지원 기준선입니다. Main 연결 결과 카드는 Phase C, 나머지 legacy extinction은 Phase D입니다. Portfolio의 `투자 위치` UI와 shared location command 진입점은 제거되었으며 보존 데이터만 호환성 계약으로 남습니다.
+현재 delivery boundary는 명확히 나눕니다. schema v3의 단일 workspace, whole-workspace backup과 aggregate-first Portfolio, account-first Account Map이 현재 지원 기준선입니다. Main 연결 결과 카드는 Phase C 범위이며, Phase 4 legacy retirement의 최종 전체 검증은 Task 8이 소유합니다. Portfolio의 `투자 위치` UI와 shared location command 진입점은 제거되었으며 보존 데이터만 migration fixture 계약으로 남습니다.
 
 ## Experience Principles
 
@@ -40,7 +40,7 @@ Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계획 �
 - 앱 런처는 `자금 흐름 (Main)`, `미래 성장 (Simulation)`, `투자 배분 (Portfolio)`, `계좌 연결 (Account Map)`을 각각 집, 상승 그래프, 분할 도넛, 펼친 통장 아이콘으로 표시합니다.
 - 현재 위치는 아이콘 아래 선과 `aria-current`로 표시합니다.
 - 앱 런처와 CTA는 URL 탐색만 수행하며 데이터를 전달하거나 저장하지 않습니다.
-- Simulation은 진입 시 `isf-workspace-v1`의 최신 Main 월 저축·투자를, Portfolio는 최신 Main 투자금을 각자의 읽기 전용 adapter로 읽고 write-back하지 않습니다.
+- Simulation과 Portfolio는 현재 `isf-workspace-v3`의 최신 Main 값을 각자의 읽기 전용 adapter로 읽고 write-back하지 않습니다. v3가 없을 때만 유효한 retired v1/v2 workspace 원본을 one-way conversion으로 읽을 수 있고, invalid v3는 v1 fallback을 허용하지 않습니다.
 - Simulation과 Portfolio의 Main read는 읽기 전용입니다. Portfolio는 자기 slice만, Account Map은 자기 slice와 공유 금융 위치 registry만 갱신합니다. 성공한 write마다 monotonic revision을 증가시킵니다.
 
 ### Simulation
@@ -71,7 +71,7 @@ Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계획 �
 - 투자금 0원은 기존 계획을 보존하고 Main 투자금 편집으로 안내합니다.
 - 현재 배분 편집과 결과는 항상 `전체 기준`이 우선입니다.
 - 최초 설정, 결과와 배분 수정 어디에서도 계좌·기관·보관처 또는 공유 금융 위치 관리 UI를 표시하지 않습니다.
-- 기존 location-scoped 데이터는 호환성을 위해 보존하지만 Portfolio가 이를 만들거나 편집할 수 있는 것처럼 표현하지 않습니다.
+- retired location-scoped Portfolio 데이터는 conversion에서 현재 state로 보존하지 않으며, Portfolio가 이를 만들거나 편집할 수 있는 것처럼 표현하지 않습니다.
 
 ### Account Map
 
@@ -83,7 +83,7 @@ Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계획 �
 - Node modal은 금액·상태·나머지를 주요 편집으로 유지합니다. `연결 추가`는 하나의 보조 icon action, custom purpose `보관·복원`은 제목 줄 `더보기`로 압축하되 기능을 숨기거나 별도 페이지로 보내지 않습니다.
 - 다른 목적에 쓰는 active location도 선택 목록에 표시하고 필요한 role은 연결 저장과 함께 원자적으로 추가합니다.
 - 일반적인 stale conflict·collision은 modal·setup 입력을 유지한 채 최신 상태를 다시 읽고 `최신 상태에서 다시 적용`으로 복구합니다. 자동 overwrite나 입력 초기화는 금지합니다. 단, 채택한 최신 workspace의 Main이 없으면 Account Map은 recovery와 입력 replay를 포기하고 write 없이 즉시 Main-required 화면으로 전환합니다.
-- 전체·기본·상세 semantic zoom을 제공하고 임의 node 좌표나 drag edge를 저장하지 않습니다. legacy `layout` 값은 parser·backup 호환성을 위해 유지하되 현재 UI의 선택이나 저장에는 사용하지 않습니다.
+- 전체·기본·상세 semantic zoom을 제공하고 임의 node 좌표나 drag edge를 저장하지 않습니다. 현재 Account Map state에는 layout preference나 legacy Phase A payload가 없으며, retired v1/v2 conversion은 이를 버립니다.
 - screen-reader용 선형 관계 표는 주 수입 계좌, 나머지 계좌, 각 계좌의 연결 목적 순서로 고정하며 지도와 같은 account-first 읽기 순서를 제공합니다.
 - 모바일 요약은 관계도를 첫 viewport 밖으로 밀어내지 않아야 하며 Account Map은 Main에 write-back하지 않습니다.
 
@@ -165,8 +165,8 @@ Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계획 �
 ### DataHubModal
 
 - Main 관리 메뉴는 current whole-workspace 백업의 진입점입니다.
-- export는 Main·Simulation·Portfolio·공유 위치와 Account Map contract를 하나의 versioned envelope로 내보냅니다.
-- import는 모든 slice와 참조를 적용 전에 검증하고 유효하면 확인 dialog 뒤 한 번에 교체합니다. invalid 또는 old-format 입력은 현재 raw workspace를 유지합니다.
+- export는 Main·Simulation·Portfolio·공유 위치와 Account Map contract를 backup format v2 envelope로 내보냅니다.
+- import는 모든 slice와 참조를 적용 전에 검증하고 유효하면 확인 dialog 뒤 한 번에 v3 workspace를 교체합니다. format v1 input은 retired v1/v2 shape을 같은 converter로 검증·변환하며, invalid input은 현재 raw workspace를 유지합니다.
 
 ### Button
 

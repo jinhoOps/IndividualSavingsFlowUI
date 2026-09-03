@@ -49,7 +49,7 @@ Main에서 다루는 주요 내용:
 
 ### Simulation
 
-Main에 적용된 계획이 있으면 `Simulation으로 이어가기`가 URL로만 이동합니다. 최초에는 시작 원금과 기간·기대수익률을 두 단계로 설정하고, 이후에는 결과로 바로 진입합니다. Simulation은 진입할 때마다 `isf-workspace-v1`의 최신 Main slice를 읽되 Simulation 설정과 Main 원본은 변경하지 않습니다.
+Main에 적용된 계획이 있으면 `Simulation으로 이어가기`가 URL로만 이동합니다. 최초에는 시작 원금과 기간·기대수익률을 두 단계로 설정하고, 이후에는 결과로 바로 진입합니다. Simulation은 진입할 때마다 현재 `isf-workspace-v3`의 최신 Main slice를 읽되 Simulation 설정과 Main 원본은 변경하지 않습니다.
 
 기간은 현재를 뜻하는 0년부터 30년까지 조정합니다. 결과는 한국식 정수 금액, 전체 폭 성장 그래프와 전부 저축 비교를 제공하며 pointer·touch·keyboard로 연도별 상세를 확인할 수 있습니다.
 
@@ -72,15 +72,15 @@ Account Map은 Main의 다섯 월 금액을 읽기 전용 기준으로 사용합
 현재 네 앱은 다음 기반을 공유합니다.
 
 - 네 목적지 앱 런처와 현재 위치 표시
-- 하나의 committed localStorage 기록 `isf-workspace-v1`과 앱별 typed slice adapter
+- 하나의 committed localStorage 기록 `isf-workspace-v3`(workspace schema v3)과 앱별 typed slice adapter
 - monotonic revision과 lease를 사용한 stale-writer 차단
 - Main·Simulation·Portfolio·공유 금융 위치와 Account Map 상태를 포함하는 whole-workspace 백업
 - 모든 slice와 참조를 먼저 검증한 뒤 한 번에 교체하는 atomic restore
 - URL 기반 앱 탐색과 workspace Main slice를 읽는 앱별 read-only adapter
-- PWA 매니페스트와 서비스워커
+- Vite PWA가 소유하는 PWA 매니페스트와 배포 서비스워커
 - 공통 디자인 토큰과 버튼·패널 스타일
 
-데이터는 기본적으로 브라우저에 저장됩니다. 현재 제품은 새 workspace만 사용하며 기존 `isf-main-v2`, `isf-simulation-compound-v1`, `isf-portfolio-allocation-v1`, `isf-account-map-v1`, `isf-rebuild-v1` 값을 읽거나 변경하지 않습니다. 구 앱 키나 Main-only 백업은 자동 migration하지 않습니다. 사용자가 current whole-workspace 백업을 직접 내보낼 때만 데이터가 브라우저 밖으로 이동합니다.
+데이터는 기본적으로 브라우저에 저장됩니다. 현재의 writable persistence는 schema v3의 `isf-workspace-v3`입니다. v3가 없을 때에만 유효한 은퇴 workspace v1/v2 원본 `isf-workspace-v1`을 읽어 같은 one-way converter로 v3 후보를 만들 수 있으며, 성공해도 원본을 변경하거나 삭제하지 않습니다. v3가 존재하지만 invalid이면 v1으로 fallback하지 않습니다. 기존 `isf-main-v2`, `isf-simulation-compound-v1`, `isf-portfolio-allocation-v1`, `isf-account-map-v1`, `isf-rebuild-v1`와 은퇴한 journey snapshot은 현재 제품이 읽거나 변경하지 않는 foreign record입니다. 현재 export는 backup format v2이고, format v1 import만 같은 converter를 거칩니다. 사용자가 current whole-workspace 백업을 직접 내보낼 때만 데이터가 브라우저 밖으로 이동합니다.
 
 ## 제품 원칙
 
@@ -99,7 +99,7 @@ Account Map은 Main의 다섯 월 금액을 읽기 전용 기준으로 사용합
 
 레거시는 지원되는 사용자 경로나 신규 기능의 기반이 아닙니다. 각 기능을 목록화하고 현재 제품에 필요한지 판정한 뒤, 필요한 기능은 현재 책임 경계로 이관하고 불필요한 기능은 폐기 근거를 기록합니다. 사용자 동작과 구버전 저장 데이터의 호환성을 검증하고 모든 runtime·route·selector·storage·test 참조를 제거한 후 레거시 구현을 삭제합니다.
 
-Phase B에서 구 Account Map 바닐라 runtime과 entry는 지원 React 경로 및 E2E로 교체해 제거했습니다. 구 저장 키 문자열은 읽거나 변경하지 않는 호환성 경계 검증과 이력 문서에만 남습니다. 다른 레거시 표면은 Phase D에서 전체 참조와 호환성을 다시 검증한 뒤 제거합니다.
+Phase 4에서 구 Main runtime, storage bridge, shared browser layer와 구 서비스워커를 삭제했습니다. `shared/brand/mainBrandGeometry.js`만 이전 shared browser tree에서 남은 파일이며 현재 Main brand icon이 사용합니다. 구 저장 키 문자열은 read-only migration/rollback 경계, 음성 참조 검사와 fixture에만 남습니다. Task 8이 최종 전체 검증을 다시 실행하기 전에는 그 완료 결과를 이 문서가 주장하지 않습니다.
 
 ## 실행하기
 
@@ -184,7 +184,7 @@ Phase A shared workspace foundation과 Main, Simulation, aggregate-first Portfol
 
 - **Phase B 완료**: 목적 중심 설정, 계좌·보관처 registry, 노드 지도와 가역적 관리가 있는 Account Map
 - **Phase C**: 현재 Main metric 영역을 대체하는 Main·Simulation·Portfolio·Account Map 연결 결과 카드
-- **Phase D**: 남아 있는 legacy runtime, compatibility path, storage key와 test의 repository-wide extinction
+- **Phase 4 코드 gate 완료**: 분류된 legacy runtime·compatibility path·test 삭제와 v1/v2 migration evidence를 기록함. Task 8이 repository-wide 최종 검증을 다시 실행함
 - **별도 후속**: 금융 workspace·backup과 분리된 hidden trophy room
 - 한국어 은행·카드 알림 텍스트 기반 지출 capture
 - 두 사람의 Main 데이터를 이용한 가구 병합 미리보기
