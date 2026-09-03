@@ -1099,6 +1099,44 @@ test('setup action stays visible after welcome motion hands off to later steps',
   await expectSetupActionVisuallyReady(page, '계획 적용');
 });
 
+test('initial setup previous keeps every returned step visible and actionable', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await clearBrowserStorage(page);
+  await page.goto('apps/main/');
+
+  await page.getByRole('button', { name: '화면을 눌러 건너뛰기' }).dispatchEvent('click');
+  await page.getByRole('button', { name: '다음' }).click();
+  await page.getByLabel('월 실수령액').fill('3200000');
+  await page.getByRole('button', { name: '다음' }).click();
+  await page.getByLabel('월 주거 고정비').fill('800000');
+  await page.getByRole('button', { name: '다음' }).click();
+  await page.getByLabel('월평균 생활비').fill('1000000');
+  await page.getByRole('button', { name: '다음' }).click();
+  await page.getByLabel('월 저축액').fill('300000');
+  await page.getByLabel('월 투자액').fill('200000');
+  await page.getByRole('button', { name: '다음' }).click();
+
+  for (const expectedHeading of [
+    '매달 저축과 투자는 얼마나 하나요?',
+    '그 밖의 생활비는 보통 얼마인가요?',
+    '주거비로 매달 얼마가 나가나요?',
+    '한 달에 실제로 들어오는 돈은 얼마인가요?',
+    '한 달 돈의 흐름, 2분이면 확인할 수 있어요.',
+  ]) {
+    await page.getByRole('button', { name: '이전' }).click();
+    const heading = page.getByRole('heading', { name: expectedHeading });
+    await expect(heading).toBeVisible();
+    await expect(heading).toBeFocused();
+    await expect(page.getByRole('button', { name: '다음' })).toBeVisible();
+    await expect.poll(() => heading.evaluate((element) => {
+      const form = element.closest('form')!;
+      const styles = getComputedStyle(form);
+      return { opacity: styles.opacity, transform: styles.transform };
+    })).toEqual({ opacity: '1', transform: 'none' });
+  }
+});
+
 test('review assembly captures timed deficit geometry and reduced motion', async ({ page }, testInfo) => {
   const viewports = [
     { width: 390, height: 844 },

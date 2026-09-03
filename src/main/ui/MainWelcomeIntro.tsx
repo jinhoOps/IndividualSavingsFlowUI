@@ -63,7 +63,7 @@ export function MainWelcomeIntro({ onComplete }: MainWelcomeIntroProps): JSX.Ele
     const trendLength = getTrendLength(elements.trend);
     setInitialVisualStyles(elements, trendLength);
     if (!attemptMotion(() => {
-      createTimeline({ defaults: { ease: MOTION_EASE.enter }, onComplete: finish })
+      createTimeline({ defaults: { ease: MOTION_EASE.enter } })
         .add(elements.background, { opacity: [0, 1], duration: 180 })
         .add([elements.baseline, ...elements.bars], {
           scaleY: [0, 1],

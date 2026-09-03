@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import '../../../src/main/ui/main.css';
@@ -116,7 +116,6 @@ describe('MainWelcomeIntro', () => {
 
     expect(animeMocks.createTimeline).toHaveBeenCalledWith({
       defaults: { ease: MOTION_EASE.enter },
-      onComplete: expect.any(Function),
     });
     expect(animeMocks.timeline.add.mock.calls).toHaveLength(5);
     const [background, backgroundOptions] = animeMocks.timeline.add.mock.calls[0]!;
@@ -140,6 +139,19 @@ describe('MainWelcomeIntro', () => {
     expect(180 + 420 + 560 + MOTION_DURATION.normal + 260).toBeLessThanOrEqual(2200);
   });
 
+  it('holds the completed brand frame until the 2.2 second automatic handoff', () => {
+    vi.useFakeTimers();
+    const onComplete = vi.fn();
+    render(<MainWelcomeIntro onComplete={onComplete} />);
+
+    expect(animeMocks.createTimeline.mock.calls[0]![0].onComplete).toBeUndefined();
+    expect(onComplete).not.toHaveBeenCalled();
+    act(() => vi.advanceTimersByTime(2_199));
+    expect(onComplete).not.toHaveBeenCalled();
+    act(() => vi.advanceTimersByTime(1));
+    expect(onComplete).toHaveBeenCalledTimes(1);
+  });
+
   it('settles and completes when Anime scope or timeline setup fails', () => {
     animeMocks.createTimeline.mockImplementationOnce(() => {
       throw new Error('timeline unavailable');
@@ -154,16 +166,14 @@ describe('MainWelcomeIntro', () => {
     expect(onComplete).toHaveBeenCalledTimes(1);
   });
 
-  it('reverts the scope and prevents late completion after unmount or an early skip', () => {
+  it('reverts the scope and prevents the automatic handoff after unmount', () => {
     vi.useFakeTimers();
     const onComplete = vi.fn();
     const removeEventListener = vi.spyOn(window, 'removeEventListener');
     const { unmount } = render(<MainWelcomeIntro onComplete={onComplete} />);
-    const onTimelineComplete = animeMocks.createTimeline.mock.calls[0]![0].onComplete!;
 
     unmount();
-    onTimelineComplete();
-    vi.runAllTimers();
+    act(() => vi.runAllTimers());
 
     expect(animeMocks.scope.revert).toHaveBeenCalled();
     expect(removeEventListener).toHaveBeenCalledWith('keydown', expect.any(Function));
