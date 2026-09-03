@@ -165,6 +165,7 @@ git commit -m "test: establish phase 4 retirement evidence"
 - Modify: `src/workspace/domain/validation.ts`
 - Delete: `src/workspace/domain/migration.ts`
 - Create: `src/workspace/infrastructure/retiredWorkspaceMigration.ts`
+- Modify: `src/workspace/infrastructure/workspaceRepository.ts`
 - Modify: `src/workspace/infrastructure/workspaceBackup.ts`
 - Rename: `tests/unit/workspace/migration.test.ts` → `tests/unit/workspace/retiredWorkspaceMigration.test.ts`
 - Modify: `tests/unit/workspace/validation.test.ts`
@@ -344,6 +345,8 @@ const applied: AccountMapApplied = {
 
 Update all named test fixtures to v3 and remove `legacyPhaseA`/`layout`. Retired shapes may remain only as inline migration fixtures in `retiredWorkspaceMigration.test.ts`.
 
+Replace the deleted domain-migration imports in `workspaceRepository.ts` with the strict v3 parser so this commit type-checks without a legacy shim. At this stage, `load()` reads only the current v3 key and reports no source migration; Task 3 adds the approved read-only v1 fallback, dual lock ordering, and rollback behavior before the branch can be integrated. Do not duplicate the converter or retain an old `migration.ts` forwarding module.
+
 - [ ] **Step 7: Run the domain and consumer tests**
 
 Run:
@@ -374,6 +377,7 @@ git add \
   src/portfolio \
   src/workspace/domain \
   src/workspace/infrastructure/retiredWorkspaceMigration.ts \
+  src/workspace/infrastructure/workspaceRepository.ts \
   src/workspace/infrastructure/workspaceBackup.ts \
   tests/unit/workspace/migration.test.ts \
   tests/unit/workspace/retiredWorkspaceMigration.test.ts \
