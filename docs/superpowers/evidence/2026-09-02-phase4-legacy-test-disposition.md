@@ -117,3 +117,156 @@ rg -n --glob '!docs/superpowers/specs/**' \
 It found 16 intentional negative-closure references confined to `tests/unit/journey/supportedRouteClosure.test.ts` and its synthetic fixture. Re-running the same search while excluding those two test locations returned no matches (the expected `rg` no-match exit status).
 
 Allowed remaining historical or migration-fixture references are confined to historical specs/plans/evidence, the retired workspace converter and its unit/backup/repository tests, browser isolation tests, and the explicit retired journey sentinel. They describe v1/v2 input or untouched foreign records; no current production route reads, writes, converts, or deletes standalone old keys or the retired journey snapshot. Task 8 owns the final repository-wide verification and is not claimed by this evidence update.
+
+## Task 8 final repository verification (2026-09-03)
+
+Final disposition: **PASS** at `6e1f641`. The worktree was clean before
+verification. The verifier made no product implementation change. The build's
+expected generated version bump from `0.11.94` to `0.11.95` was restored to the
+tracked `0.11.94` in `package.json` and `public/manifest.webmanifest` before this
+evidence-only commit.
+
+### Final reference audit
+
+```bash
+rg -n --glob '!docs/superpowers/specs/**' --glob '!docs/superpowers/plans/**' --glob '!docs/superpowers/evidence/**' \
+  "legacyPhaseA|apps/main/(?:app\.js|styles\.css|modules/)|shared/(?:legacy|components|storage|pwa|core|styles)/|CompatibilityBridge|IsfStore|BackupService|isf-journey-snapshot-v1" \
+  src apps shared scripts tests package.json public README.md DESIGN.md docs/ways-of-work
+```
+
+Result: exit 0, 37 classified lines. They consist of one current PRD negative
+contract, the three-line retired converter parser, explicit converter/format-v1
+backup/current-schema rejection fixtures, untouched journey and standalone-key
+isolation assertions, and the synthetic route-closure guard. There is no
+supported-runtime import, deleted asset path, global bridge implementation, or
+current UI selector among the matches.
+
+```bash
+rg -n "isf-workspace-v1|isf-workspace-v3|isf-workspace-v[13]-save|isf-main-v1|isf-main-v2|isf-rebuild-v1" src tests
+```
+
+Result: exit 0, 176 classified lines. Current fixtures, writes, read-back,
+storage events, and notifications use v3. Workspace v1 appears only in the
+retired-source constant/lock, named Account Map and Simulation migration tests,
+Main invalid-retired recovery, and storage-isolation tests. Standalone keys
+appear only in byte-preservation/no-read/no-write tests and the synthetic route
+closure token. No ordinary Main browser journey seeds or asserts workspace v1.
+
+The production output contains 26 files. `dist/sw.js` exists, while
+`dist/apps/main/app.js` and `dist/apps/main/styles.css` do not. The deleted-path,
+bridge, old-service-worker, standalone-key, and retired-journey scan has no
+production match. The only historical contract tokens in the shared bundle are
+the approved converter boundary: `isf-workspace-v1` three times and
+`legacyPhaseA` four times. Current `isf-workspace-v3` appears three times.
+
+### Focused high-risk verification
+
+```bash
+npx vitest run \
+  tests/unit/journey/supportedRouteClosure.test.ts \
+  tests/unit/workspace/retiredWorkspaceMigration.test.ts \
+  tests/unit/workspace/validation.test.ts \
+  tests/unit/workspace/workspaceSaveLock.test.ts \
+  tests/unit/workspace/workspaceRepository.test.ts \
+  tests/unit/workspace/workspaceBackup.test.ts \
+  tests/unit/main/mainBackupCommands.test.ts \
+  tests/unit/portfolio \
+  tests/unit/account-map
+```
+
+Result: exit 0; **44 test files and 549 tests passed**.
+
+```bash
+npx playwright test tests/retired-storage-isolation.spec.ts tests/main-react.spec.ts --reporter=list
+```
+
+Result: exit 0; **39 tests passed**: the expected 37 current Main cases and two
+retired-storage isolation cases, with no skips. This includes invalid retired-v1
+recovery, byte preservation, the 390/768/1280 intro timing captures, all skip and
+reduced-motion paths, and returning through every initial setup step with visible
+and actionable final-state content.
+
+### Full verification matrix
+
+```bash
+npm run check
+```
+
+Result: exit 0. Both `tsc --noEmit` and
+`tsc --noEmit -p tsconfig.unit.json` passed.
+
+```bash
+npm run test:unit
+```
+
+Result: exit 0; **123 test files and 1,187 tests passed** in 6.95s.
+
+```bash
+npm run test:e2e -- --reporter=list
+```
+
+Result: exit 0; **130 passed and one skipped** out of 131 in 2.2 minutes. The
+only skip is `tests/motion-system.spec.ts`'s documented normal-Chromium PWA
+offline case because that project blocks service workers; the reciprocal preview
+project owns that capability check. The former 61 legacy skips are absent.
+
+```bash
+npm run build
+```
+
+Result: exit 0; Vite transformed **2,014 modules**. Vite PWA generated
+`dist/sw.js` and `dist/workbox-fd0ffb34.js` with **31 precache entries / 717.18
+KiB**.
+
+```bash
+git diff --check
+```
+
+Result: exit 0 with no output. The canonical current-document relative-link
+check also exited 0.
+
+### Responsive Main import and recovery QA
+
+A temporary read-only Playwright QA probe was removed after execution. It ran
+nine independent cases at 390×844, 768×900, and 1280×900:
+
+- current-v3 whole-workspace import confirmation;
+- invalid current-v3 recovery;
+- invalid retired-v1 recovery.
+
+Final result: **9 passed**. At every width, the document had no horizontal
+overflow, the confirmation/recovery surface stayed inside the viewport, all
+visible actions and the file control were at least 44×44px, keyboard navigation
+showed a visible focus indicator, confirmation returned focus to `관리 메뉴`,
+and restore/recovery status remained visible. The dashboard cashflow SVG had
+non-zero geometry and full opacity before and after import. Both recovery paths
+created a durable empty v3 workspace; retired-v1 recovery preserved its original
+raw bytes exactly.
+
+### Acceptance self-review
+
+- `convertRetiredWorkspaceDocument`, workspace schema/key v3, backup format v2,
+  and current/retired lock namespaces have one consistent interface and call
+  path.
+- Exact current validators reject `legacyPhaseA`, Account Map `layout`, extra
+  fields, retired Simulation versions, and location-scoped Portfolio values
+  rather than stripping them.
+- Focused repository tests prove v1 byte preservation for successful conversion,
+  invalid source, failed/unverified v3 writes, invalid-retired reset, competing
+  v3 arrival, source mutation, and later old-tab writes.
+- Invalid v3 JSON and invalid v3 schema tests prove no retired-source read or
+  fallback. Import tests prove full validation before one replacement and zero
+  mutation on invalid/reference/capacity failures.
+- Portfolio and Account Map suites pass their slice-ownership and Main
+  read-only contracts. Source writes are limited to the v3 workspace/lock
+  namespace and the separately approved Portfolio view-preference record.
+- Rollback documentation describes preserved parallel source snapshots and does
+  not promise cross-version merging.
+- The Phase 4 diff adds no `TODO`, `FIXME`, broad TypeScript `any`, placeholder,
+  or unclassified skip. The two conditional skip statements are the documented
+  reciprocal PWA project gates.
+
+All Phase 4 design acceptance criteria now have fresh source, compatibility,
+type, unit, browser, production-build, responsive, and whitespace evidence. The
+branch is ready for the required full-range code review and subsequent integration
+decision.
