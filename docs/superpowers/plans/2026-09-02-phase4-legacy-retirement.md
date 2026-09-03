@@ -81,7 +81,6 @@ const forbiddenRuntimeTokens = [
   'CompatibilityBridge',
   'IsfStore',
   'isf-rebuild-v1',
-  'isf-journey-snapshot-v1',
   'window.ISF',
 ] as const;
 ```
