@@ -258,6 +258,18 @@ describe('workspace backup v2', () => {
     expect(storage.removeItem).not.toHaveBeenCalled();
   });
 
+  it('classifies a deeply nested malformed format-v1 workspace as backup-schema', () => {
+    let deeplyNestedMain: unknown = null;
+    for (let depth = 0; depth < 20_000; depth += 1) {
+      deeplyNestedMain = { nested: deeplyNestedMain };
+    }
+
+    expect(() => importWorkspaceBackup(envelope(1, {
+      ...retiredWorkspaceV2(),
+      main: deeplyNestedMain,
+    }))).toThrow('backup-schema');
+  });
+
   it('gives schema failures precedence over simultaneous reference failures', () => {
     const mixedFailure = {
       ...completeWorkspace(),

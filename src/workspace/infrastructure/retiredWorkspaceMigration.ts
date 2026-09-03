@@ -277,19 +277,19 @@ function retiredScopeKey(scope: RetiredPortfolioScope): string {
 
 function containsFutureTimestamp(value: unknown, migratedAt: number): boolean {
   const seen = new WeakSet<object>();
-  function visit(current: unknown): boolean {
-    if (typeof current !== 'object' || current === null) return false;
-    if (seen.has(current)) return false;
+  const pending: unknown[] = [value];
+  while (pending.length > 0) {
+    const current = pending.pop();
+    if (typeof current !== 'object' || current === null || seen.has(current)) continue;
     seen.add(current);
     for (const key of Reflect.ownKeys(current)) {
       if (typeof key !== 'string') continue;
       const nested = (current as Record<string, unknown>)[key];
       if (key.endsWith('At') && typeof nested === 'number' && nested > migratedAt) return true;
-      if (visit(nested)) return true;
+      if (typeof nested === 'object' && nested !== null) pending.push(nested);
     }
-    return false;
   }
-  return visit(value);
+  return false;
 }
 
 function parseArray<T>(value: unknown, parser: (item: unknown) => T | null): T[] | null {
