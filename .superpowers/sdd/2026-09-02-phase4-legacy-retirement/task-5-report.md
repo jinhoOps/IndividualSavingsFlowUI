@@ -178,3 +178,38 @@ No product or compatibility concern remains. The final selected command has
 one intentional project-specific PWA skip as described above. Node/Playwright
 emitted the existing `module.register()` deprecation and `NO_COLOR`/
 `FORCE_COLOR` environment warnings; neither affected command success.
+
+## Fix round 2: cited Main deficit fixture
+
+The normal current-journey test `dashboard deficit entry keeps exiting
+remaining geometry until interpolation completes` had remained in the cited
+Main verification grep with an `isf-workspace-v1` seed. It now seeds the same
+valid canonical `appliedWorkspaceV3` fixture as the other cited Main tests,
+including the current empty Account Map shape `{ applied: null, draft: null }`.
+Its real deficit/interpolation assertions, clock control, and screenshots are
+unchanged.
+
+TDD fixture red/green evidence:
+
+```text
+# Red: switched only the storage key/version and intentionally retained the
+# inherited v1 Account Map shape.
+$ npx playwright test tests/main-react.spec.ts --grep "dashboard deficit entry" --reporter=list --timeout=5000
+1 failed: timed out waiting for the current-dashboard "자세히 보기" control;
+the invalid v3 document did not render the dashboard.
+
+# Green: replaced the inherited Account Map slice with the valid v3 fixture.
+$ npx playwright test tests/main-react.spec.ts --grep "dashboard deficit entry" --reporter=list
+1 passed
+
+$ npx playwright test tests/main-react.spec.ts --grep "live dashboard keeps|keeps a compact legend|dashboard edit persists|dashboard deficit" --reporter=list
+4 passed
+
+$ npm run check
+tsc --noEmit
+tsc --noEmit -p tsconfig.unit.json
+exit 0
+
+$ git diff --check
+exit 0
+```

@@ -2040,8 +2040,8 @@ test('dashboard edit persists only the v2 scalar plan', async ({ page }) => {
 test('dashboard deficit entry keeps exiting remaining geometry until interpolation completes', async ({ page }, testInfo) => {
   await page.clock.install({ time: new Date('2026-08-12T00:00:00Z') });
   await page.addInitScript((fixture) => {
-    localStorage.setItem('isf-workspace-v1', JSON.stringify(fixture));
-  }, appliedWorkspaceV1);
+    localStorage.setItem('isf-workspace-v3', JSON.stringify(fixture));
+  }, appliedWorkspaceV3);
   await page.goto('apps/main/');
   await page.clock.pauseAt(new Date('2026-08-12T00:01:00Z'));
   await page.getByText('자세히 보기', { exact: true }).click();
