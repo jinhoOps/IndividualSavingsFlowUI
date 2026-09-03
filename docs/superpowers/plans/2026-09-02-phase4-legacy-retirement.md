@@ -613,6 +613,7 @@ git commit -m "refactor: finalize current import and retired storage isolation"
 - Modify: `tests/motion-system.spec.ts`
 - Modify: `tests/reading-width.spec.ts`
 - Modify: `tests/tooltip-contract.spec.ts`
+- Modify: `tests/main-react.spec.ts`
 - Modify: `docs/superpowers/evidence/2026-09-02-phase4-legacy-test-disposition.md`
 
 **Interfaces:**
@@ -622,11 +623,11 @@ git commit -m "refactor: finalize current import and retired storage isolation"
 
 - [ ] **Step 1: Normalize supported E2E fixtures**
 
-Update every named suite's current workspace fixtures to v3. Keep v1 only where the test title explicitly says migration, rollback, or retired isolation.
+Update every named suite's current workspace fixtures to v3. Keep `isf-workspace-v1` only where the test title explicitly says migration, rollback, or retired isolation. Ordinary current-browser fixtures must not seed or assert any standalone retired records (`isf-main-v1`, `isf-main-v2`, `isf-rebuild-v1`, `isf-simulation-compound-v1`, legacy Step 3 keys, or `isf-journey-snapshot-v1`); the dedicated named isolation suites own those negative contracts.
 
 - [ ] **Step 2: Reconcile the legacy test disposition**
 
-For each supported behavior row from Task 1, run the replacement suite and record the exact test title that owns it. Do not copy old module-level assertions into current tests. If a supported external behavior lacks coverage, add it to the owning current suite before Task 6.
+For each supported behavior row from Task 1, run the replacement suite and record the exact test title that owns it. Do not copy old module-level assertions into current tests. If a legacy-only visual behavior has no current equivalent (for example merged Sankey line-broken tooltip content), mark it `retired by approved spec; no replacement` rather than citing a superficially related current interaction. If a supported external behavior lacks coverage, add it to the owning current suite before Task 6.
 
 - [ ] **Step 3: Run the affected browser suites**
 
@@ -651,7 +652,7 @@ Expected: all selected tests pass and the retired startup key remains untouched.
 - [ ] **Step 4: Commit the consumer cleanup gate**
 
 ```bash
-git add tests/app-journey.spec.ts tests/account-map.spec.ts tests/portfolio.spec.ts tests/simulation.spec.ts tests/motion-system.spec.ts tests/reading-width.spec.ts tests/tooltip-contract.spec.ts docs/superpowers/evidence/2026-09-02-phase4-legacy-test-disposition.md
+git add tests/app-journey.spec.ts tests/account-map.spec.ts tests/portfolio.spec.ts tests/simulation.spec.ts tests/motion-system.spec.ts tests/reading-width.spec.ts tests/tooltip-contract.spec.ts tests/main-react.spec.ts docs/superpowers/evidence/2026-09-02-phase4-legacy-test-disposition.md
 git commit -m "test: move legacy coverage to supported journeys"
 ```
 
