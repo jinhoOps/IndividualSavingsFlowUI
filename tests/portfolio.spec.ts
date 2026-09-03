@@ -9,20 +9,8 @@ const mainFixture = {
   monthlySavingWon: 300_000,
   monthlyInvestmentWon: 200_000,
 };
-const oldMainRaw = JSON.stringify({ ...mainFixture, monthlyInvestmentWon: 990_000 });
-const oldPortfolioAppliedRaw = JSON.stringify({
-  schemaVersion: 1,
-  items: [{ id: 'old', name: '이전 키', shareUnits: 1_000_000, order: 0 }],
-  cashShareUnits: 0,
-  cashMode: 'automatic',
-  syncedInvestmentWon: 990_000,
-  appliedAt: 9,
-  updatedAt: 9,
-});
-const oldPortfolioDraftRaw = '{old-portfolio-draft';
-
 async function seedMain(page: Page, monthlyInvestmentWon: number): Promise<void> {
-  await page.addInitScript(({ fixture, investment, seededOldMain, seededOldApplied, seededOldDraft }) => {
+  await page.addInitScript(({ fixture, investment }) => {
     if (sessionStorage.getItem('isf-portfolio-main-seeded') !== null) return;
     const stored = localStorage.getItem('isf-workspace-v3');
     const workspace = stored === null ? {
@@ -40,16 +28,10 @@ async function seedMain(page: Page, monthlyInvestmentWon: number): Promise<void>
       setupProgress: null,
     };
     localStorage.setItem('isf-workspace-v3', JSON.stringify(workspace));
-    localStorage.setItem('isf-main-v2', seededOldMain);
-    localStorage.setItem('isf-portfolio-allocation-v1', seededOldApplied);
-    localStorage.setItem('isf-portfolio-allocation-draft-v1', seededOldDraft);
     sessionStorage.setItem('isf-portfolio-main-seeded', 'true');
   }, {
     fixture: mainFixture,
     investment: monthlyInvestmentWon,
-    seededOldMain: oldMainRaw,
-    seededOldApplied: oldPortfolioAppliedRaw,
-    seededOldDraft: oldPortfolioDraftRaw,
   });
 }
 
@@ -141,10 +123,6 @@ async function enterFirstSetupAllocation(page: Page): Promise<void> {
 
 test('creates one allocation and revisits result-first', async ({ page }) => {
   await seedMain(page, 200_000);
-  await page.addInitScript(() => {
-    localStorage.setItem('isf-step3-portfolios-v2', '{"legacy":"plans"}');
-    localStorage.setItem('isf-step3-snapshots-v1', '{"legacy":"snapshots"}');
-  });
   await page.goto('apps/portfolio/');
   await enterFirstSetupAllocation(page);
   const mainBefore = await page.evaluate(() => (
@@ -175,11 +153,6 @@ test('creates one allocation and revisits result-first', async ({ page }) => {
     .toHaveAttribute('aria-current', 'page');
   expect(await page.evaluate(() => ({
     workspace: JSON.parse(localStorage.getItem('isf-workspace-v3')!),
-    oldMain: localStorage.getItem('isf-main-v2'),
-    oldApplied: localStorage.getItem('isf-portfolio-allocation-v1'),
-    oldDraft: localStorage.getItem('isf-portfolio-allocation-draft-v1'),
-    legacyPlans: localStorage.getItem('isf-step3-portfolios-v2'),
-    legacySnapshots: localStorage.getItem('isf-step3-snapshots-v1'),
   }))).toMatchObject({
     workspace: {
       main: mainBefore,
@@ -191,11 +164,6 @@ test('creates one allocation and revisits result-first', async ({ page }) => {
         draft: null,
       },
     },
-    oldMain: oldMainRaw,
-    oldApplied: oldPortfolioAppliedRaw,
-    oldDraft: oldPortfolioDraftRaw,
-    legacyPlans: '{"legacy":"plans"}',
-    legacySnapshots: '{"legacy":"snapshots"}',
   });
 });
 
@@ -248,14 +216,10 @@ test('resumes and cancels a draft, validates manual cash, and confirms reset', a
     return {
       plans: workspace.portfolio.plans,
       draft: workspace.portfolio.draft,
-      oldApplied: localStorage.getItem('isf-portfolio-allocation-v1'),
-      oldDraft: localStorage.getItem('isf-portfolio-allocation-draft-v1'),
     };
   })).toEqual({
     plans: [],
     draft: null,
-    oldApplied: oldPortfolioAppliedRaw,
-    oldDraft: oldPortfolioDraftRaw,
   });
 });
 

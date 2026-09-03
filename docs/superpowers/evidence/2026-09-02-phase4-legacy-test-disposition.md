@@ -46,7 +46,7 @@ matches. The latter are explicitly marked as non-cases.
 | [skip] routes Account Map through shared navigation without using Portfolio | Current Account Map navigation | `tests/app-journey.spec.ts` — `separates app navigation and the right-aligned management tool across viewports` | replaced by current suite |
 | preserves restored account-flow metadata through sanitizer and Sankey | Legacy sanitizer/Sankey | — | retired by approved spec; no replacement |
 | creates a new investment item in the savings-investment tab with final confirmation | Legacy Financial Detail Modal | — | retired by approved spec; no replacement |
-| renders merged Sankey tooltip details as line-broken safe text | Current tooltip behavior | `tests/tooltip-contract.spec.ts` — `keeps pearl single-line tooltips contained for visual and clipped fallback targets at 390px` | replaced by current suite |
+| renders merged Sankey tooltip details as line-broken safe text | Legacy Sankey tooltip renderer | — | retired by approved spec; no replacement |
 | normalizes legacy allocation group paths before saving and rendering | Legacy sanitizer/group model | — | retired by approved spec; no replacement |
 | repairs income allocation totals that exceed the income amount | Legacy sanitizer | — | retired by approved spec; no replacement |
 | sanitizes household context defaults and variable actual spending only | Legacy household budget | — | retired by approved spec; no replacement |

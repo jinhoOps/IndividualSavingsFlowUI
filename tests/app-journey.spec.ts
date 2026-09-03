@@ -51,19 +51,6 @@ const appliedSimulationDraft = {
   updatedAt: previousSimulationSource.mainUpdatedAt,
 };
 
-const oldSimulationRaw = JSON.stringify({
-  ...appliedSimulationDraft,
-  source: {
-    monthlySavingsWon: 1,
-    monthlyInvestmentWon: 1,
-    mainUpdatedAt: 1,
-  },
-  initialInvestmentWon: 1,
-  years: 29,
-  expectedAnnualReturnPercent: 5,
-  updatedAt: 1,
-});
-
 const workspaceWithSimulationDraft = {
   ...appliedWorkspace,
   simulation: { draft: appliedSimulationDraft },
@@ -146,28 +133,16 @@ for (const viewport of sharedShellViewports) {
 }
 
 test('connects Main directly to the detailed Simulation', async ({ page }) => {
-  const journeySnapshotRaw = JSON.stringify({
-    monthlySavingWon: 900_000,
-    monthlyInvestmentWon: 900_000,
-  });
-  await page.addInitScript(({ workspace, seededOldSimulation, snapshot }) => {
+  await page.addInitScript((workspace) => {
     const seedMarker = 'isf-test-journey-fixture-seeded';
     if (sessionStorage.getItem(seedMarker) !== null) return;
     sessionStorage.setItem(seedMarker, 'true');
 
     localStorage.setItem('isf-workspace-v3', JSON.stringify(workspace));
-    localStorage.setItem('isf-journey-snapshot-v1', snapshot);
-    localStorage.setItem('isf-simulation-compound-v1', seededOldSimulation);
-  }, { workspace: workspaceWithSimulationDraft, seededOldSimulation: oldSimulationRaw, snapshot: journeySnapshotRaw });
+  }, workspaceWithSimulationDraft);
   await page.goto('apps/main/');
-  await expect.poll(() => page.evaluate(
-    () => localStorage.getItem('isf-journey-snapshot-v1'),
-  )).toBe(journeySnapshotRaw);
   await page.getByRole('button', { name: 'Simulation으로 이어가기' }).click();
   await expect(page).toHaveURL(/\/apps\/simulation\/$/);
-  await expect.poll(() => page.evaluate(
-    () => localStorage.getItem('isf-journey-snapshot-v1'),
-  )).toBe(journeySnapshotRaw);
   await expect(page.getByRole('heading', { name: /1억 원을 모으려면|현재 조건으로는 30년 안에 1억 원/ }))
     .toBeVisible();
   await expect(page.getByText('월 저축 30만 원 · 투자 20만 원 · 연 9%')).toBeVisible();
@@ -178,15 +153,12 @@ test('connects Main directly to the detailed Simulation', async ({ page }) => {
   ]);
   await expect(page.getByRole('link', { name: /미래 성장 \(Simulation\).*현재 위치/ }))
     .toHaveAttribute('aria-current', 'page');
-  expect(await page.evaluate(() => localStorage.getItem('isf-simulation-compound-v1')))
-    .toBe(oldSimulationRaw);
 });
 
 test('revisits Simulation at the result and refreshes only its Main source', async ({ page }) => {
-  await page.addInitScript(({ workspace, seededOldSimulation }) => {
+  await page.addInitScript((workspace) => {
     localStorage.setItem('isf-workspace-v3', JSON.stringify(workspace));
-    localStorage.setItem('isf-simulation-compound-v1', seededOldSimulation);
-  }, { workspace: workspaceWithSimulationDraft, seededOldSimulation: oldSimulationRaw });
+  }, workspaceWithSimulationDraft);
 
   await page.goto('apps/simulation/');
   await expect(page.getByRole('heading', { name: /1억 원을 모으려면|현재 조건으로는 30년 안에 1억 원/ }))
@@ -201,11 +173,9 @@ test('revisits Simulation at the result and refreshes only its Main source', asy
 
   const stored = await page.evaluate(() => ({
     workspace: JSON.parse(localStorage.getItem('isf-workspace-v3')!),
-    oldSimulation: localStorage.getItem('isf-simulation-compound-v1'),
   }));
   expect(stored.workspace.simulation.draft.source.monthlySavingsWon).toBe(300_000);
   expect(stored.workspace.simulation.draft.initialInvestmentWon).toBe(10_000_000);
-  expect(stored.oldSimulation).toBe(oldSimulationRaw);
 });
 
 test('keeps detailed Portfolio and purpose-first Account Map isolated', async ({ page }) => {

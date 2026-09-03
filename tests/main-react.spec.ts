@@ -22,6 +22,12 @@ const appliedWorkspaceV1 = {
   accountMap: { applied: null, draft: null, instruments: [], flows: [] },
 };
 
+const appliedWorkspaceV3 = {
+  ...appliedWorkspaceV1,
+  schemaVersion: 3 as const,
+  accountMap: { applied: null, draft: null },
+};
+
 const connectedWorkspaceV1 = {
   ...appliedWorkspaceV1,
   revision: 7,
@@ -1248,8 +1254,8 @@ test('review assembly captures timed deficit geometry and reduced motion', async
 test('live dashboard keeps the donut, cards, Simulation, details, and editor contained at required viewports', async ({ page }) => {
   await page.addInitScript((fixture) => {
     localStorage.clear();
-    localStorage.setItem('isf-workspace-v1', JSON.stringify(fixture));
-  }, appliedWorkspaceV1);
+    localStorage.setItem('isf-workspace-v3', JSON.stringify(fixture));
+  }, appliedWorkspaceV3);
 
   for (const viewport of [
     { width: 390, height: 844 },
@@ -1269,8 +1275,8 @@ test.describe('mobile cashflow donut', () => {
   test('keeps a compact legend and reveals touched ring details', async ({ page }) => {
     await page.addInitScript((fixture) => {
       localStorage.clear();
-      localStorage.setItem('isf-workspace-v1', JSON.stringify(fixture));
-    }, appliedWorkspaceV1);
+      localStorage.setItem('isf-workspace-v3', JSON.stringify(fixture));
+    }, appliedWorkspaceV3);
     await page.goto('apps/main/');
 
     const donut = page.getByRole('region', { name: '월 수입 배분' });
@@ -2002,10 +2008,10 @@ test('interrupted setup reloads at housing with its v2 draft intact', async ({ p
 
 test('dashboard edit persists only the v2 scalar plan', async ({ page }) => {
   await page.addInitScript((fixture) => {
-    if (localStorage.getItem('isf-workspace-v1') === null) {
-      localStorage.setItem('isf-workspace-v1', JSON.stringify(fixture));
+    if (localStorage.getItem('isf-workspace-v3') === null) {
+      localStorage.setItem('isf-workspace-v3', JSON.stringify(fixture));
     }
-  }, appliedWorkspaceV1);
+  }, appliedWorkspaceV3);
   await page.goto('apps/main/');
 
   await page.getByRole('button', { name: '월 소비 편집' }).click();
@@ -2018,7 +2024,7 @@ test('dashboard edit persists only the v2 scalar plan', async ({ page }) => {
 
   await expect(page.getByRole('button', { name: '월 소비 편집' })).toContainText('190만 원');
   await expect.poll(() => page.evaluate(() => {
-    const raw = localStorage.getItem('isf-workspace-v1');
+    const raw = localStorage.getItem('isf-workspace-v3');
     return raw === null ? null : Object.keys(JSON.parse(raw).main.applied).sort();
   })).toEqual([
     'monthlyHousingWon',

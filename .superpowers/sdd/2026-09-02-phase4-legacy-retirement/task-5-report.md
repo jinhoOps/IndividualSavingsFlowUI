@@ -2,16 +2,16 @@
 
 Date: 2026-09-03
 
-Status: complete
+Status: complete (fixture/evidence correction round 1 appended below)
 
 ## Outcome
 
-All named current browser suites now seed the canonical `isf-workspace-v3`
-document with v3-valid slices. Retired `isf-workspace-v1` remains only in
-explicitly named migration fixtures: Account Map's `migrates a v1 workspace
-without touching its protected slices`, its two migration-collision cases, and
-Simulation's `migrated v2 high-principal workspace completes the goal without
-changing Main`. The existing Task 4 sentinel,
+Task 5's normal current-browser journeys seed the canonical `isf-workspace-v3`
+document with v3-valid slices. The cited Main evidence now does the same.
+Retired `isf-workspace-v1` remains in explicitly named migration fixtures:
+Account Map's `migrates a v1 workspace without touching its protected slices`,
+its two migration-collision cases, and Simulation's `migrated v2 high-principal
+workspace completes the goal without changing Main`. The existing Task 4 sentinel,
 `retired journey snapshot survives Main startup and a current edit`, remains
 in the selected browser command and passed.
 
@@ -29,7 +29,7 @@ exact current test title. The owned current evidence is:
 
 - Main responsive layout and overflow: `live dashboard keeps the donut, cards, Simulation, details, and editor contained at required viewports` and `shares the exact reading frame across result apps at 390px`.
 - Main restart/setup: `Main brand intro restart preserves the applied plan and writes restart welcome progress`.
-- Current tooltip behavior: `keeps pearl single-line tooltips contained for visual and clipped fallback targets at 390px`.
+- Current pearl tooltip behavior is separately covered by `keeps pearl single-line tooltips contained for visual and clipped fallback targets at 390px`; it is not a replacement for the retired Sankey line-broken tooltip.
 - Account Map navigation: `keeps Account Map usable at mobile, tablet, and desktop widths` and `separates app navigation and the right-aligned management tool across viewports`.
 - Current Main draft persistence: `dashboard edit persists only the v2 scalar plan`.
 
@@ -98,6 +98,79 @@ the `pwa-chromium` project; this selected Chromium run has no PWA project.
 ## Commit
 
 - `test: move legacy coverage to supported journeys` (commit hash is recorded in the Task 5 handoff after this report is committed).
+
+## Fix round 1: retired fixture and tooltip disposition correction
+
+The initial source audit found ordinary current journeys seeding and asserting
+standalone retired records: Simulation seeded `isf-main-v2` and
+`isf-simulation-compound-v1`; Portfolio seeded those plus the retired Portfolio
+and Step 3 records; and the Main-to-Simulation journeys seeded the retired
+journey snapshot and Simulation record. These were fixture defects, not
+supported product behavior. The before-cleanup real browser command
+
+```text
+$ npx playwright test tests/simulation.spec.ts tests/portfolio.spec.ts tests/app-journey.spec.ts --reporter=list
+47 passed
+
+$ npx playwright test tests/main-react.spec.ts --grep "live dashboard keeps|keeps a compact legend|dashboard edit persists|dashboard deficit" --reporter=list
+4 passed
+```
+
+confirmed that the bad fixture condition was invisible to those current flows,
+which is precisely why it could not remain as ordinary-journey evidence.
+
+The green cleanup removes every such seed and assertion from the cited
+Simulation, Portfolio, and cross-app journeys. The only retained
+`isf-journey-snapshot-v1` use is the explicitly named Task 4 non-null sentinel,
+`retired journey snapshot survives Main startup and a current edit`.
+The cited Main tests now seed a v3 document with the valid empty v3 Account Map
+slice. The disposition row for `renders merged Sankey tooltip details as
+line-broken safe text` is now `retired by approved spec; no replacement`;
+single-line pearl tooltip coverage is no longer offered as a false equivalent.
+
+This was fixture/evidence cleanup, so no product behavior was added. A focused
+browser red/green did catch two test-fixture/assertion issues while validating
+the cleanup:
+
+- Red: changing only the cited Main key/version left its old Account Map shape
+  in the v3 seed; 3 of 4 focused Main tests failed because the invalid document
+  did not render the dashboard. Green: replacing that inherited slice with
+  `{ applied: null, draft: null }` made the same group pass 4/4.
+- Red: the post-cleanup three-suite run produced one existing Simulation desktop
+  geometry failure (`903.34375 > 901`). The initial wrapper-based correction
+  passed a focused 9/9 repeat but failed again in the full browser group; that
+  reproduction showed the parent wrapper's decorative height cannot fully
+  scroll into the desktop viewport even while its actionable number input is
+  visible. Green: the live visibility assertion now targets that actual input,
+  while the existing child-containment and shortcut-control checks remain.
+
+## Fix round 1 verification
+
+```text
+$ npx playwright test tests/simulation.spec.ts --grep "계산 기준에서 기존 모아둔 돈" --reporter=list --repeat-each=3
+9 passed
+
+$ npx playwright test tests/main-react.spec.ts --grep "live dashboard keeps|keeps a compact legend|dashboard edit persists|dashboard deficit" --reporter=list
+4 passed
+```
+
+Final correction-round verification:
+
+```text
+$ npx playwright test tests/app-journey.spec.ts tests/account-map.spec.ts tests/portfolio.spec.ts tests/simulation.spec.ts tests/motion-system.spec.ts tests/reading-width.spec.ts tests/tooltip-contract.spec.ts tests/retired-storage-isolation.spec.ts --reporter=list
+93 passed, 1 skipped, exit 0
+
+$ npm run check
+tsc --noEmit
+tsc --noEmit -p tsconfig.unit.json
+exit 0
+
+$ git diff --check
+exit 0
+```
+
+The one skip remains the existing PWA-only offline revisit case outside the
+selected Chromium project.
 
 ## Concerns
 

@@ -9,21 +9,8 @@ const appliedMain = {
   monthlySavingWon: 300_000,
   monthlyInvestmentWon: 200_000,
 };
-const oldMainRaw = JSON.stringify({ ...appliedMain, monthlySavingWon: 1_900_000 });
-const oldSimulationRaw = JSON.stringify({
-  schemaVersion: 2,
-  source: { monthlySavingsWon: 1, monthlyInvestmentWon: 1, mainUpdatedAt: 1 },
-  initialInvestmentWon: 0,
-  years: 29,
-  expectedAnnualReturnPercent: 5,
-  baseRatePercent: 2.75,
-  inflationOffsetPercentPoints: -0.25,
-  amountMode: 'nominal',
-  updatedAt: 1,
-});
-
 async function seedMain(page: Page, fixture = appliedMain) {
-  await page.addInitScript(({ value, seededOldMain, seededOldSimulation }) => {
+  await page.addInitScript((value) => {
     if (sessionStorage.getItem('isf-simulation-e2e-seeded') !== null) return;
     localStorage.setItem('isf-workspace-v3', JSON.stringify({
       schemaVersion: 3,
@@ -35,10 +22,8 @@ async function seedMain(page: Page, fixture = appliedMain) {
       locations: [],
       accountMap: { applied: null, draft: null },
     }));
-    localStorage.setItem('isf-main-v2', seededOldMain);
-    localStorage.setItem('isf-simulation-compound-v1', seededOldSimulation);
     sessionStorage.setItem('isf-simulation-e2e-seeded', 'true');
-  }, { value: fixture, seededOldMain: oldMainRaw, seededOldSimulation: oldSimulationRaw });
+  }, fixture);
 }
 
 async function openFirstResult(page: Page) {
@@ -103,9 +88,9 @@ for (const viewport of [
       .map((name) => page.getByRole('button', { name }));
     const adjustmentControl = page.locator('.simulation-principal-adjustments');
     const inputControl = initialAmount.locator('xpath=..');
-    await inputControl.scrollIntoViewIfNeeded();
+    await initialAmount.scrollIntoViewIfNeeded();
     await expect.poll(async () => {
-      const box = await inputControl.boundingBox();
+      const box = await initialAmount.boundingBox();
       return box === null ? Number.POSITIVE_INFINITY : box.y + box.height;
     }).toBeLessThanOrEqual(viewport.height + viewportEdgeTolerance);
     const [inputBox, inputControlBox] = await Promise.all([
@@ -131,10 +116,6 @@ for (const viewport of [
     expect(inputControlBox!.x).toBeGreaterThanOrEqual(0);
     expect(inputControlBox!.x + inputControlBox!.width).toBeLessThanOrEqual(
       viewport.width + viewportEdgeTolerance,
-    );
-    expect(inputControlBox!.y).toBeGreaterThanOrEqual(0);
-    expect(inputControlBox!.y + inputControlBox!.height).toBeLessThanOrEqual(
-      viewport.height + viewportEdgeTolerance,
     );
     expect(adjustmentControlBox!.x).toBeGreaterThanOrEqual(0);
     expect(adjustmentControlBox!.x + adjustmentControlBox!.width).toBeLessThanOrEqual(
@@ -260,15 +241,11 @@ test('guides automatic-goal first run, supports boundary years and keeps Main re
   await expect(page.getByText(/백테스트나 금융 자문이 아닙니다/)).toBeVisible();
   expect(await page.evaluate(() => ({
     workspace: JSON.parse(localStorage.getItem('isf-workspace-v3')!),
-    oldMain: localStorage.getItem('isf-main-v2'),
-    oldSimulation: localStorage.getItem('isf-simulation-compound-v1'),
   }))).toMatchObject({
     workspace: {
       main: { applied: appliedMain },
       simulation: { draft: { years: 30, expectedAnnualReturnPercent: 8.75, targetAmountWon: 100_000_000 } },
     },
-    oldMain: oldMainRaw,
-    oldSimulation: oldSimulationRaw,
   });
 });
 
@@ -344,14 +321,10 @@ test('reloads latest Main values and resets only Simulation from its menu', asyn
     return {
       mainSaving: workspace.main.applied.monthlySavingWon,
       simulation: workspace.simulation,
-      oldMain: localStorage.getItem('isf-main-v2'),
-      oldSimulation: localStorage.getItem('isf-simulation-compound-v1'),
     };
   })).toEqual({
     mainSaving: 900_000,
     simulation: { draft: null },
-    oldMain: oldMainRaw,
-    oldSimulation: oldSimulationRaw,
   });
 });
 
