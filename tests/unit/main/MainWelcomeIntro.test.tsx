@@ -152,6 +152,24 @@ describe('MainWelcomeIntro', () => {
     expect(onComplete).toHaveBeenCalledTimes(1);
   });
 
+  it('keeps the animation and automatic handoff anchored at mount when its callback changes', () => {
+    vi.useFakeTimers();
+    const firstOnComplete = vi.fn();
+    const latestOnComplete = vi.fn();
+    const { rerender } = render(<MainWelcomeIntro onComplete={firstOnComplete} />);
+
+    act(() => vi.advanceTimersByTime(1_000));
+    rerender(<MainWelcomeIntro onComplete={latestOnComplete} />);
+
+    expect(animeMocks.createTimeline).toHaveBeenCalledTimes(1);
+    act(() => vi.advanceTimersByTime(1_199));
+    expect(firstOnComplete).not.toHaveBeenCalled();
+    expect(latestOnComplete).not.toHaveBeenCalled();
+    act(() => vi.advanceTimersByTime(1));
+    expect(firstOnComplete).not.toHaveBeenCalled();
+    expect(latestOnComplete).toHaveBeenCalledTimes(1);
+  });
+
   it('settles and completes when Anime scope or timeline setup fails', () => {
     animeMocks.createTimeline.mockImplementationOnce(() => {
       throw new Error('timeline unavailable');
@@ -162,6 +180,7 @@ describe('MainWelcomeIntro', () => {
     const section = screen.getByRole('region', { name: '나의 가계 흐름 시작 화면' });
     expect(section.querySelector<HTMLElement>('[data-brand-background]')).toHaveStyle({ opacity: '1' });
     expect(section.querySelector<HTMLElement>('[data-brand-terminal-dot]')).toHaveStyle({ opacity: '1', transform: 'scale(1)' });
+    expect(onComplete).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByRole('button', { name: '화면을 눌러 건너뛰기' }));
     expect(onComplete).toHaveBeenCalledTimes(1);
   });

@@ -20,12 +20,17 @@ interface BrandVisualElements {
 }
 
 export function MainWelcomeIntro({ onComplete }: MainWelcomeIntroProps): JSX.Element {
+  const onCompleteRef = useRef(onComplete);
   const completedRef = useRef(false);
   const disposedRef = useRef(false);
   const timerRef = useRef<number | undefined>(undefined);
   const keydownListenerRef = useRef<((event: KeyboardEvent) => void) | undefined>(undefined);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const [motionFinished, setMotionFinished] = useState(false);
+
+  useLayoutEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
 
   const clearPendingCompletion = useCallback(() => {
     if (timerRef.current !== undefined) {
@@ -43,8 +48,8 @@ export function MainWelcomeIntro({ onComplete }: MainWelcomeIntroProps): JSX.Ele
     completedRef.current = true;
     clearPendingCompletion();
     setMotionFinished(true);
-    onComplete();
-  }, [clearPendingCompletion, onComplete]);
+    onCompleteRef.current();
+  }, [clearPendingCompletion]);
 
   const rootRef = useAnimeScope<HTMLElement>(({ root, reducedMotion }) => {
     disposedRef.current = false;

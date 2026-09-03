@@ -1130,10 +1130,14 @@ test('initial setup previous keeps every returned step visible and actionable', 
     await expect(heading).toBeFocused();
     await expect(page.getByRole('button', { name: '다음' })).toBeVisible();
     await expect.poll(() => heading.evaluate((element) => {
-      const form = element.closest('form')!;
-      const styles = getComputedStyle(form);
-      return { opacity: styles.opacity, transform: styles.transform };
-    })).toEqual({ opacity: '1', transform: 'none' });
+      const motionTarget = element.closest<HTMLElement>('[data-step-motion]')
+        ?? element.closest<HTMLElement>('[data-welcome-motion]')!;
+      const styles = getComputedStyle(motionTarget);
+      const matrix = styles.transform === 'none'
+        ? new DOMMatrixReadOnly()
+        : new DOMMatrixReadOnly(styles.transform);
+      return { opacity: styles.opacity, scaleY: matrix.d, translateY: matrix.f };
+    })).toEqual({ opacity: '1', scaleY: 1, translateY: 0 });
   }
 });
 
