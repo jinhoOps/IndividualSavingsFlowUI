@@ -16,8 +16,8 @@ matches. The latter are explicitly marked as non-cases.
 | Sankey diagram viewport height constraints | Legacy Sankey | — | retired by approved spec; no replacement |
 | UI curvatures (border-radius) align with var(--rd-sm) | Legacy renderer styling | — | retired by approved spec; no replacement |
 | Sankey view toggle height matches container spacing | Legacy Sankey | — | retired by approved spec; no replacement |
-| Phase 07 panel hierarchy is stable on desktop and mobile | Current responsive Main layout | `tests/main-react.spec.ts` | replaced by current suite |
-| Phase 07 mobile controls stay contained at 768px and 390px | Current responsive Main layout | `tests/main-react.spec.ts` | replaced by current suite |
+| Phase 07 panel hierarchy is stable on desktop and mobile | Current responsive Main layout | `tests/main-react.spec.ts` — `live dashboard keeps the donut, cards, Simulation, details, and editor contained at required viewports` | replaced by current suite |
+| Phase 07 mobile controls stay contained at 768px and 390px | Current responsive Main layout | `tests/main-react.spec.ts` — `live dashboard keeps the donut, cards, Simulation, details, and editor contained at required viewports` | replaced by current suite |
 | Phase 07 visualization tabs render nonblank SVGs after switching and resize | Legacy Sankey/network renderer | — | retired by approved spec; no replacement |
 | Phase 07 gap closure keeps reset in-place and moves rates to settings | Legacy household budget controls | — | retired by approved spec; no replacement |
 | Phase 07 rerun keeps Sankey detail metadata controls effective | Legacy Sankey | — | retired by approved spec; no replacement |
@@ -42,11 +42,11 @@ matches. The latter are explicitly marked as non-cases.
 | Phase 09 financial modal compact editing keeps only the selected item expanded on mobile | Legacy Financial Detail Modal | — | retired by approved spec; no replacement |
 | Phase 09 financial modal group board supports custom groups and drag assignment | Legacy Financial Detail Modal | — | retired by approved spec; no replacement |
 | preserves manual transfer settings in source-account network flow | Legacy account-flow network | — | retired by approved spec; no replacement |
-| [skip] shows only a lightweight Account Map entry on Main with the dedicated route | Current Account Map navigation | `tests/account-map.spec.ts`; `tests/unit/journey/AppLauncher.test.tsx` | replaced by current suite |
-| [skip] routes Account Map through shared navigation without using Portfolio | Current Account Map navigation | `tests/account-map.spec.ts`; `tests/unit/journey/AppLauncher.test.tsx` | replaced by current suite |
+| [skip] shows only a lightweight Account Map entry on Main with the dedicated route | Current Account Map navigation | `tests/app-journey.spec.ts` — `keeps Account Map usable at mobile, tablet, and desktop widths` | replaced by current suite |
+| [skip] routes Account Map through shared navigation without using Portfolio | Current Account Map navigation | `tests/app-journey.spec.ts` — `separates app navigation and the right-aligned management tool across viewports` | replaced by current suite |
 | preserves restored account-flow metadata through sanitizer and Sankey | Legacy sanitizer/Sankey | — | retired by approved spec; no replacement |
 | creates a new investment item in the savings-investment tab with final confirmation | Legacy Financial Detail Modal | — | retired by approved spec; no replacement |
-| renders merged Sankey tooltip details as line-broken safe text | Current tooltip behavior | `tests/main-react.spec.ts`; `tests/unit/journey/AppLauncher.test.tsx` | replaced by current suite |
+| renders merged Sankey tooltip details as line-broken safe text | Current tooltip behavior | `tests/tooltip-contract.spec.ts` — `keeps pearl single-line tooltips contained for visual and clipped fallback targets at 390px` | replaced by current suite |
 | normalizes legacy allocation group paths before saving and rendering | Legacy sanitizer/group model | — | retired by approved spec; no replacement |
 | repairs income allocation totals that exceed the income amount | Legacy sanitizer | — | retired by approved spec; no replacement |
 | sanitizes household context defaults and variable actual spending only | Legacy household budget | — | retired by approved spec; no replacement |
@@ -55,9 +55,9 @@ matches. The latter are explicitly marked as non-cases.
 | keeps base assumptions in the controls panel and amount editing in the detail modal | Legacy Financial Detail Modal | — | retired by approved spec; no replacement |
 | opens the same integrated modal from the detail action and summary category cards | Legacy Financial Detail Modal | — | retired by approved spec; no replacement |
 | renders ordered tabs and keeps the compact cashflow summary rail visible | Legacy renderer | — | retired by approved spec; no replacement |
-| wraps tabs and summary rail without page overflow | Current responsive width | `tests/main-react.spec.ts` | replaced by current suite |
+| wraps tabs and summary rail without page overflow | Current responsive width | `tests/main-react.spec.ts` — `live dashboard keeps the donut, cards, Simulation, details, and editor contained at required viewports` | replaced by current suite |
 | shows compact variable summaries and expands one editable average/range row | Legacy household budget | — | retired by approved spec; no replacement |
-| renders an empty variable state and avoids 390px overflow | Current responsive width | `tests/main-react.spec.ts` | replaced by current suite |
+| renders an empty variable state and avoids 390px overflow | Current responsive width | `tests/reading-width.spec.ts` — `shares the exact reading frame across result apps at 390px` | replaced by current suite |
 | shows derived automatic savings and navigates to savings in the same modal | Legacy Financial Detail Modal | — | retired by approved spec; no replacement |
 | blocks excess save until a choice is selected and applies the choice idempotently | Legacy household budget | — | retired by approved spec; no replacement |
 | Phase 10.6 compact rows open cleanly without duplicated labels or pending state | Legacy Financial Detail Modal | — | retired by approved spec; no replacement |
@@ -66,14 +66,14 @@ matches. The latter are explicitly marked as non-cases.
 | Phase 10.6 money controls enforce direct input, 10000 steppers, quick increases, and local errors | Legacy Financial Detail Modal | — | retired by approved spec; no replacement |
 | Phase 10.6 variable rows edit varianceAmount directly with exact quick buttons | Legacy household budget | — | retired by approved spec; no replacement |
 | Phase 10.6 dirty state ignores modal open, row selection, tabs, and empty add row | Legacy Financial Detail Modal | — | retired by approved spec; no replacement |
-| Phase 10.6 pending bar applies and cancels draft changes in place | Current Main draft cancel | `tests/main-react.spec.ts`; `tests/unit/main/MainApp.test.tsx` | replaced by current suite |
+| Phase 10.6 pending bar applies and cancels draft changes in place | Current Main draft cancel | `tests/main-react.spec.ts` — `dashboard edit persists only the v2 scalar plan` | replaced by current suite |
 | Phase 10.6 pending modal edits warn before page unload | Legacy Financial Detail Modal | — | retired by approved spec; no replacement |
 | Phase 10.6 add creates inline temporary rows that persist only on apply | Legacy Financial Detail Modal | — | retired by approved spec; no replacement |
 | Phase 10.6 delete keeps existing removals draft-only and discards empty temp rows immediately | Legacy Financial Detail Modal | — | retired by approved spec; no replacement |
 | Phase 10.6 close prompts only when pending changes exist for x overlay and escape | Legacy Financial Detail Modal | — | retired by approved spec; no replacement |
 | Phase 10.6 validation keeps pending bar open and expands first invalid row | Legacy Financial Detail Modal | — | retired by approved spec; no replacement |
 | Phase 10.6 mobile summary rail is four-cell and combines automatic savings | Legacy renderer | — | retired by approved spec; no replacement |
-| Phase 10.6 mobile rows preserve amount visibility and pending bar safety | Current responsive width | `tests/main-react.spec.ts` | replaced by current suite |
+| Phase 10.6 mobile rows preserve amount visibility and pending bar safety | Current responsive width | `tests/main-react.spec.ts` — `live dashboard keeps the donut, cards, Simulation, details, and editor contained at required viewports` | replaced by current suite |
 | Phase 10.6 regression preserves no-couple sanitizer persistence and Sankey contracts | Legacy sanitizer/Sankey | — | retired by approved spec; no replacement |
 | edits income destination allocations inside the modal and blocks mismatched allocation totals | Legacy Financial Detail Modal | — | retired by approved spec; no replacement |
 | persists savings maturity and one item yield while global fallback remains effective | Legacy financial-detail model | — | retired by approved spec; no replacement |
@@ -82,9 +82,9 @@ matches. The latter are explicitly marked as non-cases.
 | audits source-first cleanup markers without treating dist as source | Legacy source audit | — | retired by approved spec; no replacement |
 | protects integrated save/cancel, Sankey, sanitizer, duplicate, and responsive contracts | Legacy integrated renderer | — | retired by approved spec; no replacement |
 | keeps every financial detail tab contained on desktop, tablet, and mobile | Legacy Financial Detail Modal | — | retired by approved spec; no replacement |
-| keeps the live Main summary usable without horizontal overflow | Current Main cashflow overflow | `tests/main-react.spec.ts` | replaced by current suite |
-| focuses restart setup and restores journey navigation after cancel | Current Main setup restart/cancel | `tests/main-react.spec.ts`; `tests/unit/main/MainApp.test.tsx` | replaced by current suite |
-| keeps the review bar symmetric without an overflow gutter at 100% | Current responsive Main width | `tests/main-react.spec.ts` | replaced by current suite |
+| keeps the live Main summary usable without horizontal overflow | Current Main cashflow overflow | `tests/main-react.spec.ts` — `live dashboard keeps the donut, cards, Simulation, details, and editor contained at required viewports` | replaced by current suite |
+| focuses restart setup and restores journey navigation after cancel | Current Main setup restart/cancel | `tests/main-react.spec.ts` — `Main brand intro restart preserves the applied plan and writes restart welcome progress` | replaced by current suite |
+| keeps the review bar symmetric without an overflow gutter at 100% | Current responsive Main width | `tests/reading-width.spec.ts` — `keeps first and restart Main review frames correct at 390px` | replaced by current suite |
 
 Checked row count: 73, matching the mandated command output. The two
 non-case rows exist solely because the broad required regular expression also

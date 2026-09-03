@@ -11,14 +11,14 @@ const deficitMain = {
 };
 
 const workspace = {
-  schemaVersion: 1,
+  schemaVersion: 3,
   revision: 1,
   updatedAt: deficitMain.updatedAt,
   main: { applied: null, setupProgress: { kind: 'initial', step: 'review', draft: deficitMain, savedAt: deficitMain.updatedAt } },
   simulation: { draft: null },
   portfolio: { plans: [], draft: null },
   locations: [],
-  accountMap: { applied: null, draft: null, instruments: [], flows: [] },
+  accountMap: { applied: null, draft: null },
 };
 
 for (const viewport of [
@@ -31,7 +31,7 @@ for (const viewport of [
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.addInitScript((seed) => {
       localStorage.clear();
-      localStorage.setItem('isf-workspace-v1', JSON.stringify(seed));
+      localStorage.setItem('isf-workspace-v3', JSON.stringify(seed));
     }, workspace);
     await page.goto('apps/main/');
     await expect(page.getByRole('heading', { name: '입력한 월 자금 계획을 확인해주세요' })).toBeVisible();
@@ -72,7 +72,7 @@ test('keeps an open right-edge visual tooltip within the stage and viewport afte
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.addInitScript((seed) => {
     localStorage.clear();
-    localStorage.setItem('isf-workspace-v1', JSON.stringify(seed));
+    localStorage.setItem('isf-workspace-v3', JSON.stringify(seed));
   }, workspace);
   await page.goto('apps/main/');
 
@@ -92,7 +92,7 @@ test('returns an edge-corrected visual tooltip to its current interior anchor', 
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.addInitScript((seed) => {
     localStorage.clear();
-    localStorage.setItem('isf-workspace-v1', JSON.stringify(seed));
+    localStorage.setItem('isf-workspace-v3', JSON.stringify(seed));
   }, workspace);
   await page.goto('apps/main/');
 

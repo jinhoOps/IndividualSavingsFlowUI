@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
-const STORAGE_KEY = 'isf-workspace-v1';
+const STORAGE_KEY = 'isf-workspace-v3';
+const RETIRED_STORAGE_KEY = 'isf-workspace-v1';
 const now = Date.UTC(2026, 7, 13, 6);
 
 test.use({ hasTouch: true });
@@ -23,7 +24,7 @@ const protectedSlices = {
 
 function emptyWorkspace() {
   return {
-    schemaVersion: 2 as const,
+    schemaVersion: 3 as const,
     revision: 1,
     updatedAt: now,
     ...structuredClone(protectedSlices),
@@ -31,7 +32,6 @@ function emptyWorkspace() {
     accountMap: {
       applied: null,
       draft: null,
-      legacyPhaseA: { instruments: [], flows: [] },
     },
   };
 }
@@ -43,14 +43,13 @@ function mappedWorkspace() {
     location('living', '생활비통장', 'toss-bank', '토스뱅크', ['spending']),
   ];
   workspace.accountMap.applied = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     sourceMainUpdatedAt: now,
     customPurposes: [],
     links: [
       link('income', 'system:income', 'salary', 3_200_000, true),
       link('living', 'system:living', 'living', 1_000_000, true),
     ],
-    layout: 'purpose',
     setupCompletedAt: now,
     updatedAt: now,
   };
@@ -143,34 +142,7 @@ function manyToManyWorkspace() {
       appliedAt: now,
       updatedAt: now,
     },
-    {
-      schemaVersion: 2,
-      scope: { type: 'location', locationId: 'brokerage' },
-      items: [{
-        id: 'asset-bond', name: '국채', shareUnits: 400_000, order: 0,
-        classification: 'stable', classificationOrigin: 'automatic',
-      }],
-      cashShareUnits: 600_000,
-      cashMode: 'automatic',
-      syncedInvestmentWon: main.monthlyInvestmentWon,
-      appliedAt: now,
-      updatedAt: now,
-    },
   ];
-  workspace.portfolio.draft = {
-    schemaVersion: 2,
-    scope: { type: 'location', locationId: 'brokerage' },
-    items: [{
-      id: 'asset-draft', name: '성장주', shareUnits: 550_000, order: 0,
-      classification: 'growth', classificationOrigin: 'automatic',
-    }],
-    cashShareUnits: 450_000,
-    cashMode: 'automatic',
-    syncedInvestmentWon: main.monthlyInvestmentWon,
-    updatedAt: now,
-    inputMode: 'amount',
-    isApplicable: true,
-  };
   return workspace;
 }
 
@@ -186,9 +158,16 @@ async function seed(page: Page, workspace: ReturnType<typeof emptyWorkspace>) {
   await page.addInitScript(({ key, value }) => localStorage.setItem(key, JSON.stringify(value)), { key: STORAGE_KEY, value: workspace });
 }
 
+async function seedRetired(page: Page, workspace: unknown) {
+  await page.addInitScript(({ key, value }) => localStorage.setItem(key, JSON.stringify(value)), {
+    key: RETIRED_STORAGE_KEY,
+    value: workspace,
+  });
+}
+
 async function seedMigrationCollision(page: Page, legacy: unknown, latest: ReturnType<typeof emptyWorkspace>) {
-  await page.addInitScript(({ key, legacyWorkspace, latestWorkspace }) => {
-    localStorage.setItem(key, JSON.stringify(legacyWorkspace));
+  await page.addInitScript(({ retiredKey, currentKey, legacyWorkspace, latestWorkspace }) => {
+    localStorage.setItem(retiredKey, JSON.stringify(legacyWorkspace));
     const originalRequest = navigator.locks.request.bind(navigator.locks);
     let injected = false;
     Object.defineProperty(navigator.locks, 'request', {
@@ -196,29 +175,23 @@ async function seedMigrationCollision(page: Page, legacy: unknown, latest: Retur
       value: (name: string, callback: (lock: Lock | null) => unknown) => {
         if (!injected && name === 'isf-workspace-v1-save') {
           injected = true;
-          localStorage.setItem(key, JSON.stringify(latestWorkspace));
+          localStorage.setItem(currentKey, JSON.stringify(latestWorkspace));
         }
         return originalRequest(name, callback);
       },
     });
-  }, { key: STORAGE_KEY, legacyWorkspace: legacy, latestWorkspace: latest });
+  }, {
+    retiredKey: RETIRED_STORAGE_KEY,
+    currentKey: STORAGE_KEY,
+    legacyWorkspace: legacy,
+    latestWorkspace: latest,
+  });
 }
 
 async function readProtected(page: Page) {
   return page.evaluate((key) => {
     const workspace = JSON.parse(localStorage.getItem(key)!);
     return { main: workspace.main, simulation: workspace.simulation, portfolio: workspace.portfolio };
-  }, STORAGE_KEY);
-}
-
-async function readProtectedBytes(page: Page) {
-  return page.evaluate((key) => {
-    const workspace = JSON.parse(localStorage.getItem(key)!);
-    return {
-      main: JSON.stringify(workspace.main),
-      simulation: JSON.stringify(workspace.simulation),
-      portfolio: JSON.stringify(workspace.portfolio),
-    };
   }, STORAGE_KEY);
 }
 
@@ -767,7 +740,7 @@ test('connects a spending location to investing with one role-and-link revision'
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await seed(page, manyToManyWorkspace());
   await page.goto('apps/account-map/');
-  const before = await readProtectedBytes(page);
+  const before = await readProtected(page);
   await page.evaluate((key) => {
     const originalSetItem = Storage.prototype.setItem;
     Object.defineProperty(window, '__accountMapWrites', { configurable: true, value: 0, writable: true });
@@ -813,7 +786,7 @@ test('connects a spending location to investing with one role-and-link revision'
       expect.objectContaining({ purposeId: 'system:living' }),
       expect.objectContaining({ purposeId: 'system:investing' }),
     ]));
-  expect(await readProtectedBytes(page)).toEqual(before);
+  expect(await readProtected(page)).toEqual(before);
 });
 
 test('creates, archives, and restores a corrected custom purpose without resuming its links', async ({ page }) => {
@@ -997,11 +970,11 @@ test('migrates a v1 workspace without touching its protected slices', async ({ p
     schemaVersion: 1,
     accountMap: { applied: null, draft: null, instruments: [], flows: [] },
   };
-  await seed(page, legacy as ReturnType<typeof emptyWorkspace>);
+  await seedRetired(page, legacy);
   await page.goto('apps/account-map/');
   await expect(page.getByRole('heading', { name: '월 자금의 위치를 알려주세요' })).toBeVisible();
   const stored = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!), STORAGE_KEY);
-  expect(stored.schemaVersion).toBe(2);
+  expect(stored.schemaVersion).toBe(3);
   expect({ main: stored.main, simulation: stored.simulation, portfolio: stored.portfolio }).toEqual(protectedSlices);
 });
 

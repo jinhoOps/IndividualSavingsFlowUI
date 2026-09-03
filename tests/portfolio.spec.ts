@@ -24,22 +24,22 @@ const oldPortfolioDraftRaw = '{old-portfolio-draft';
 async function seedMain(page: Page, monthlyInvestmentWon: number): Promise<void> {
   await page.addInitScript(({ fixture, investment, seededOldMain, seededOldApplied, seededOldDraft }) => {
     if (sessionStorage.getItem('isf-portfolio-main-seeded') !== null) return;
-    const stored = localStorage.getItem('isf-workspace-v1');
+    const stored = localStorage.getItem('isf-workspace-v3');
     const workspace = stored === null ? {
-      schemaVersion: 1,
+      schemaVersion: 3,
       revision: 1,
       updatedAt: fixture.updatedAt,
       main: { applied: null, setupProgress: null },
       simulation: { draft: null },
       portfolio: { plans: [], draft: null },
       locations: [],
-      accountMap: { applied: null, draft: null, instruments: [], flows: [] },
+      accountMap: { applied: null, draft: null },
     } : JSON.parse(stored);
     workspace.main = {
       applied: { ...fixture, monthlyInvestmentWon: investment },
       setupProgress: null,
     };
-    localStorage.setItem('isf-workspace-v1', JSON.stringify(workspace));
+    localStorage.setItem('isf-workspace-v3', JSON.stringify(workspace));
     localStorage.setItem('isf-main-v2', seededOldMain);
     localStorage.setItem('isf-portfolio-allocation-v1', seededOldApplied);
     localStorage.setItem('isf-portfolio-allocation-draft-v1', seededOldDraft);
@@ -56,16 +56,16 @@ async function seedMain(page: Page, monthlyInvestmentWon: number): Promise<void>
 async function seedAppliedPortfolio(page: Page): Promise<void> {
   await page.addInitScript(() => {
     if (sessionStorage.getItem('isf-portfolio-applied-seeded') !== null) return;
-    const stored = localStorage.getItem('isf-workspace-v1');
+    const stored = localStorage.getItem('isf-workspace-v3');
     const workspace = stored === null ? {
-      schemaVersion: 1,
+      schemaVersion: 3,
       revision: 1,
       updatedAt: 1,
       main: { applied: null, setupProgress: null },
       simulation: { draft: null },
       portfolio: { plans: [], draft: null },
       locations: [],
-      accountMap: { applied: null, draft: null, instruments: [], flows: [] },
+      accountMap: { applied: null, draft: null },
     } : JSON.parse(stored);
     workspace.locations = [{
       id: 'loc-isa',
@@ -87,36 +87,24 @@ async function seedAppliedPortfolio(page: Page): Promise<void> {
       syncedInvestmentWon: 200_000,
       appliedAt: 1,
       updatedAt: 1,
-    }, {
-      schemaVersion: 2,
-      scope: { type: 'location', locationId: 'loc-isa' },
-      items: [{
-        id: 'location-index', name: 'ISA 인덱스', shareUnits: 500_000, order: 0,
-        classification: 'growth', classificationOrigin: 'automatic',
-      }],
-      cashShareUnits: 500_000,
-      cashMode: 'automatic',
-      syncedInvestmentWon: 200_000,
-      appliedAt: 1,
-      updatedAt: 1,
     }], draft: null };
-    localStorage.setItem('isf-workspace-v1', JSON.stringify(workspace));
+    localStorage.setItem('isf-workspace-v3', JSON.stringify(workspace));
     sessionStorage.setItem('isf-portfolio-applied-seeded', 'true');
   });
 }
 
 async function seedSourceVisualPortfolio(page: Page): Promise<void> {
   await page.addInitScript(({ fixture }) => {
-    const stored = localStorage.getItem('isf-workspace-v1');
+    const stored = localStorage.getItem('isf-workspace-v3');
     const workspace = stored === null ? {
-      schemaVersion: 1,
+      schemaVersion: 3,
       revision: 1,
       updatedAt: fixture.updatedAt,
       main: { applied: null, setupProgress: null },
       simulation: { draft: null },
       portfolio: { plans: [], draft: null },
       locations: [],
-      accountMap: { applied: null, draft: null, instruments: [], flows: [] },
+      accountMap: { applied: null, draft: null },
     } : JSON.parse(stored);
     workspace.main = {
       applied: { ...fixture, monthlyInvestmentWon: 800_000 },
@@ -141,7 +129,7 @@ async function seedSourceVisualPortfolio(page: Page): Promise<void> {
       appliedAt: 1,
       updatedAt: 1,
     }], draft: null };
-    localStorage.setItem('isf-workspace-v1', JSON.stringify(workspace));
+    localStorage.setItem('isf-workspace-v3', JSON.stringify(workspace));
   }, { fixture: mainFixture });
 }
 
@@ -160,7 +148,7 @@ test('creates one allocation and revisits result-first', async ({ page }) => {
   await page.goto('apps/portfolio/');
   await enterFirstSetupAllocation(page);
   const mainBefore = await page.evaluate(() => (
-    JSON.parse(localStorage.getItem('isf-workspace-v1')!).main
+    JSON.parse(localStorage.getItem('isf-workspace-v3')!).main
   ));
   await page.getByRole('button', { name: '투자 대상 추가' }).click();
   const targetSheet = page.getByRole('dialog', { name: '투자 대상 추가' });
@@ -177,7 +165,7 @@ test('creates one allocation and revisits result-first', async ({ page }) => {
   await expect(page.getByRole('button', { name: '배분 수정' })).toBeVisible();
   await expect(page.getByRole('heading', { name: '안정 40%' })).toBeVisible();
   await expect.poll(() => page.evaluate(() => (
-    JSON.parse(localStorage.getItem('isf-workspace-v1')!).portfolio.draft
+    JSON.parse(localStorage.getItem('isf-workspace-v3')!).portfolio.draft
   ))).toBeNull();
   await page.reload();
   await expect(page.locator('.portfolio-summary').getByRole('listitem').filter({ hasText: /미국 인덱스.*60%/ }))
@@ -186,7 +174,7 @@ test('creates one allocation and revisits result-first', async ({ page }) => {
   await expect(page.getByRole('link', { name: /투자 배분 \(Portfolio\).*현재 위치/ }))
     .toHaveAttribute('aria-current', 'page');
   expect(await page.evaluate(() => ({
-    workspace: JSON.parse(localStorage.getItem('isf-workspace-v1')!),
+    workspace: JSON.parse(localStorage.getItem('isf-workspace-v3')!),
     oldMain: localStorage.getItem('isf-main-v2'),
     oldApplied: localStorage.getItem('isf-portfolio-allocation-v1'),
     oldDraft: localStorage.getItem('isf-portfolio-allocation-draft-v1'),
@@ -220,7 +208,7 @@ test('resumes and cancels a draft, validates manual cash, and confirms reset', a
   await page.getByLabel('인덱스 금액').fill('100000');
   await page.getByLabel('인덱스 금액').blur();
   await expect.poll(() => page.evaluate(() => (
-    JSON.parse(localStorage.getItem('isf-workspace-v1')!).portfolio.draft?.items[0]?.shareUnits
+    JSON.parse(localStorage.getItem('isf-workspace-v3')!).portfolio.draft?.items[0]?.shareUnits
   ))).toBe(500_000);
   await page.reload();
   await expect(page.getByRole('heading', { name: '투자 배분 수정' })).toBeVisible();
@@ -256,7 +244,7 @@ test('resumes and cancels a draft, validates manual cash, and confirms reset', a
     .getByRole('button', { name: '초기화' }).click();
   await expect(page.getByRole('heading', { name: /매달 .*원을 어디에 투자할까요\?/ })).toBeVisible();
   expect(await page.evaluate(() => {
-    const workspace = JSON.parse(localStorage.getItem('isf-workspace-v1')!);
+    const workspace = JSON.parse(localStorage.getItem('isf-workspace-v3')!);
     return {
       plans: workspace.portfolio.plans,
       draft: workspace.portfolio.draft,
@@ -264,7 +252,7 @@ test('resumes and cancels a draft, validates manual cash, and confirms reset', a
       oldDraft: localStorage.getItem('isf-portfolio-allocation-draft-v1'),
     };
   })).toEqual({
-    plans: [expect.objectContaining({ scope: { type: 'location', locationId: 'loc-isa' } })],
+    plans: [],
     draft: null,
     oldApplied: oldPortfolioAppliedRaw,
     oldDraft: oldPortfolioDraftRaw,
@@ -518,16 +506,16 @@ test('reflows a long Korean target name at a 200% desktop-zoom equivalent width'
   await page.setViewportSize({ width: 640, height: 900 });
   await seedMain(page, 800_000);
   await page.addInitScript(({ fixture }) => {
-    const stored = localStorage.getItem('isf-workspace-v1');
+    const stored = localStorage.getItem('isf-workspace-v3');
     const workspace = stored === null ? {
-      schemaVersion: 1,
+      schemaVersion: 3,
       revision: 1,
       updatedAt: fixture.updatedAt,
       main: { applied: null, setupProgress: null },
       simulation: { draft: null },
       portfolio: { plans: [], draft: null },
       locations: [],
-      accountMap: { applied: null, draft: null, instruments: [], flows: [] },
+      accountMap: { applied: null, draft: null },
     } : JSON.parse(stored);
     workspace.main = {
       applied: { ...fixture, monthlyInvestmentWon: 800_000 },
@@ -550,7 +538,7 @@ test('reflows a long Korean target name at a 200% desktop-zoom equivalent width'
       appliedAt: 1,
       updatedAt: 1,
     }], draft: null };
-    localStorage.setItem('isf-workspace-v1', JSON.stringify(workspace));
+    localStorage.setItem('isf-workspace-v3', JSON.stringify(workspace));
   }, { fixture: mainFixture });
   await page.goto('apps/portfolio/');
 
@@ -574,7 +562,7 @@ test('keeps the final mobile editor control above the save-error apply bar', asy
   await page.evaluate(() => {
     const originalSetItem = Storage.prototype.setItem;
     Storage.prototype.setItem = function setItem(key: string, value: string) {
-      if (key === 'isf-workspace-v1') {
+      if (key === 'isf-workspace-v3') {
         throw new DOMException('Portfolio draft writes are blocked for this test', 'QuotaExceededError');
       }
       originalSetItem.call(this, key, value);
@@ -703,7 +691,7 @@ test('does not expose account or custody management and preserves dormant locati
   await page.goto('apps/portfolio/');
 
   const preservedBefore = await page.evaluate(() => {
-    const workspace = JSON.parse(localStorage.getItem('isf-workspace-v1')!);
+    const workspace = JSON.parse(localStorage.getItem('isf-workspace-v3')!);
     return {
       locations: workspace.locations,
       locationPlans: workspace.portfolio.plans.filter(
@@ -724,14 +712,14 @@ test('does not expose account or custody management and preserves dormant locati
   await expect(page.getByRole('button', { name: '배분 수정' })).toBeVisible();
 
   expect(await page.evaluate(() => {
-    const workspace = JSON.parse(localStorage.getItem('isf-workspace-v1')!);
+    const workspace = JSON.parse(localStorage.getItem('isf-workspace-v3')!);
     return workspace.portfolio.plans.find(
       (plan: { scope: { type: string } }) => plan.scope.type === 'aggregate',
     )?.items[0].shareUnits;
   })).toBe(500_000);
 
   expect(await page.evaluate(() => {
-    const workspace = JSON.parse(localStorage.getItem('isf-workspace-v1')!);
+    const workspace = JSON.parse(localStorage.getItem('isf-workspace-v3')!);
     return {
       locations: workspace.locations,
       locationPlans: workspace.portfolio.plans.filter(

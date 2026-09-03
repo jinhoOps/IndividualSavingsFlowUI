@@ -64,14 +64,14 @@ const PORTFOLIO_PLAN = {
 };
 
 const WORKSPACE = {
-  schemaVersion: 1 as const,
+  schemaVersion: 3 as const,
   revision: 3,
   updatedAt: Date.UTC(2026, 7, 12, 4, 2),
   main: { applied: MAIN, setupProgress: null },
   simulation: { draft: SIMULATION },
   portfolio: { plans: [PORTFOLIO_PLAN], draft: null },
   locations: [],
-  accountMap: { applied: null, draft: null, instruments: [], flows: [] },
+  accountMap: { applied: null, draft: null },
 };
 
 const VIEWPORTS = [
@@ -170,7 +170,7 @@ for (const viewport of VIEWPORTS) {
     expect(mainTransitionStart.centerSemantic).toBe(MAIN_DONUT_AFTER_EDIT.centerSemantic);
     expect(mainTransitionStart.segments).not.toEqual(MAIN_DONUT_AFTER_EDIT.segments);
     await expect.poll(() => page.evaluate(() => (
-      JSON.parse(localStorage.getItem('isf-workspace-v1')!).main.applied.monthlyLivingWon
+      JSON.parse(localStorage.getItem('isf-workspace-v3')!).main.applied.monthlyLivingWon
     ))).toBe(1_100_000);
     await expectFinalMainDonut(page.locator('.cashflow-donut'), MAIN_DONUT_AFTER_EDIT);
     await page.getByRole('button', { name: '편집기 닫기' }).click();
@@ -471,7 +471,7 @@ async function openWithWorkspace(
   await page.evaluate(({ value, clearPreference }) => {
     localStorage.clear();
     sessionStorage.clear();
-    localStorage.setItem('isf-workspace-v1', JSON.stringify(value));
+    localStorage.setItem('isf-workspace-v3', JSON.stringify(value));
     if (clearPreference) localStorage.removeItem('isf-portfolio-view-preferences-v1');
   }, { value: workspace, clearPreference: clearPortfolioPreferences });
   await page.reload();

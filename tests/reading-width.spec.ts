@@ -11,7 +11,7 @@ const appliedMain = {
 };
 
 const seededWorkspace = {
-  schemaVersion: 1,
+  schemaVersion: 3,
   revision: 3,
   updatedAt: appliedMain.updatedAt,
   main: { applied: appliedMain, setupProgress: null },
@@ -54,7 +54,7 @@ const seededWorkspace = {
     draft: null,
   },
   locations: [],
-  accountMap: { applied: null, draft: null, instruments: [], flows: [] },
+  accountMap: { applied: null, draft: null },
 };
 
 const clippedDeficitMain = {
@@ -134,7 +134,7 @@ test('keeps the shared reading frame stable during layered CSS replacement', asy
   await page.setViewportSize({ width: 768, height: 900 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.addInitScript((workspace) => {
-    localStorage.setItem('isf-workspace-v1', JSON.stringify(workspace));
+    localStorage.setItem('isf-workspace-v3', JSON.stringify(workspace));
   }, seededWorkspace);
   await page.goto('apps/main/');
   await expect(page.getByRole('heading', { name: '이번 달 자금 흐름' })).toBeVisible();
@@ -210,7 +210,7 @@ for (const viewport of viewports) {
     await page.setViewportSize(viewport);
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.addInitScript((workspace) => {
-      localStorage.setItem('isf-workspace-v1', JSON.stringify(workspace));
+      localStorage.setItem('isf-workspace-v3', JSON.stringify(workspace));
     }, seededWorkspace);
 
     for (const app of apps) {
@@ -235,7 +235,7 @@ for (const viewport of viewports) {
     await page.setViewportSize(viewport);
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.addInitScript((workspace) => {
-      localStorage.setItem('isf-workspace-v1', JSON.stringify(workspace));
+      localStorage.setItem('isf-workspace-v3', JSON.stringify(workspace));
     }, zeroInvestmentWorkspace);
     await page.goto('apps/portfolio/');
 
@@ -430,7 +430,7 @@ for (const viewport of viewports) {
       const marker = 'isf-reading-width-first-review-seeded';
       if (sessionStorage.getItem(marker) !== null) return;
       localStorage.clear();
-      localStorage.setItem('isf-workspace-v1', JSON.stringify({
+      localStorage.setItem('isf-workspace-v3', JSON.stringify({
         ...workspace,
         main: {
           applied: null,
