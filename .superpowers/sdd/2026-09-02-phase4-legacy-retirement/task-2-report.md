@@ -245,3 +245,55 @@ $ rg -n "domain/migration|WorkspaceDocumentV1|WorkspaceDocumentV2|LEGACY_WORKSPA
 ## Concerns and handoff
 
 No Task 2 blocker remains. By coordinator ruling, the existing focused `workspaceRepository.test.ts` still describes the Task 3 v1 fallback/migration behavior and was not changed or run as a Task 2 gate. Task 3 should start from the corrected plan and this strict-v3 repository interim state, then implement the read-only v1 fallback and guarded v3 creation without a compatibility shim.
+
+## Fix round 1: stack-safe retired timestamp traversal
+
+Review found that `containsFutureTimestamp` recursively traversed user-controlled format-v1 input before slice validation. A valid retired top-level shape containing a 20,000-level malformed `main` value exhausted the JavaScript call stack, leaking `RangeError: Maximum call stack size exceeded` instead of the public `backup-schema` classification.
+
+Changed files:
+
+- `src/workspace/infrastructure/retiredWorkspaceMigration.ts`
+- `tests/unit/workspace/workspaceBackup.test.ts`
+
+The traversal now uses an iterative worklist and retains the `WeakSet` repeated-reference guard. It still visits nested arrays and objects and detects numeric `*At` values later than `migratedAt`, without recursive stack growth.
+
+RED, observed before the production change:
+
+```text
+$ npx vitest run tests/unit/workspace/workspaceBackup.test.ts
+Test Files  1 failed (1)
+Tests       1 failed | 13 passed (14)
+Expected: "backup-schema"
+Received: "Maximum call stack size exceeded"
+```
+
+GREEN after the production change:
+
+```text
+$ npx vitest run tests/unit/workspace/workspaceBackup.test.ts
+Test Files  1 passed (1)
+Tests       14 passed (14)
+```
+
+Required fix verification:
+
+```text
+$ npx vitest run tests/unit/workspace/retiredWorkspaceMigration.test.ts tests/unit/workspace/workspaceBackup.test.ts
+Test Files  2 passed (2)
+Tests       27 passed (27)
+
+$ npm run check
+> npm run check:source && npm run check:unit
+> tsc --noEmit
+> tsc --noEmit -p tsconfig.unit.json
+exit 0
+
+$ git diff --check
+(no output; exit 0)
+```
+
+Fix commit:
+
+- `37efbb4 fix: bound retired timestamp traversal`
+
+No remaining concern was identified in this fix round. Data ownership, converter purity, strict v3 parsing, backup dispatch, and retired-source preservation are unchanged.
