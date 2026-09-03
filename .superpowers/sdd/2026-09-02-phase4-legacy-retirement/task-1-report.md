@@ -58,3 +58,22 @@
 - The mandated broad `rg` finds two helper regular expressions as well as 71
   executable test declarations. The evidence labels those two rows as
   non-cases to preserve both exact title coverage and the required row count.
+
+## Fix round 1 — valid retired Main-v2 startup fixture
+
+Changed `tests/retired-storage-isolation.spec.ts` only. The no-workspace
+startup fixture now serializes the complete `appliedMainV2` shape and asserts
+that parsed fixture bytes equal that complete record before navigation. The
+existing welcome/setup heading assertion and byte-for-byte retired-key poll are
+unchanged, so the test now distinguishes ignored valid standalone data from a
+validation-rejected incomplete object.
+
+- RED: `npx playwright test tests/retired-storage-isolation.spec.ts
+  --reporter=list` exited 1 before the fixture correction: the new fixture
+  assertion received `{ schemaVersion: 2, updatedAt: 9999999999999 }` and was
+  missing all five monthly values required by `appliedMainV2`; the second test
+  still passed.
+- GREEN: the same command passed after `mainV2` changed to
+  `JSON.stringify(appliedMainV2)`: 2 passed, 0 skipped.
+- `git diff --check`: passed.
+- Commit: `4d1013eb8c07a61c7c8581fe3c5571341cce6f8f` — `test: seed valid retired Main v2 isolation data`.
