@@ -5,51 +5,49 @@ import { dirname, extname, join, resolve, sep } from 'node:path';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 
-const fixtureRoot = resolve(process.cwd(), 'tests/unit/portfolio/fixtures/legacyIsolation');
+const fixtureRoot = resolve(process.cwd(), 'tests/unit/journey/fixtures/routeClosure');
+
+const supportedEntries = [
+  'index.html',
+  'apps/main/index.html',
+  'apps/simulation/index.html',
+  'apps/portfolio/index.html',
+  'apps/account-map/index.html',
+] as const;
+
+const forbiddenFiles = [
+  'apps/main/app.js',
+  'apps/main/styles.css',
+  'shared/legacy/sw.js',
+] as const;
+
+const forbiddenDirectories = [
+  'apps/main/modules',
+  'shared/components',
+  'shared/storage',
+  'shared/pwa',
+  'shared/core',
+  'shared/styles',
+] as const;
 
 const forbiddenRuntimeTokens = [
-  'apps/portfolio/app.js',
-  'apps/portfolio/modules',
-  'apps/portfolio/styles.css',
-  'src/entries/step3.ts',
-  'isf-step3-portfolios-v2',
-  'isf-step3-snapshots-v1',
-  'IsfStorageHub',
+  'CompatibilityBridge',
+  'IsfStore',
   'isf-rebuild-v1',
-  'portfolioCreator',
-  '.journey-message--error',
-  '.journey-connection',
-  '.journey-action--primary',
-];
+  'window.ISF',
+] as const;
 
-describe('Portfolio legacy isolation', () => {
-  it('keeps Portfolio and Account Map route assets free of retired runtime contracts', async () => {
+describe('supported route closure', () => {
+  it('keeps every supported Vite entry free of retired runtime contracts', async () => {
     const projectRoot = process.cwd();
-    const mainSource = resolve(process.cwd(), 'src/portfolio/infrastructure/mainSourceRepository.ts');
-    const mainValidation = resolve(process.cwd(), 'src/main/domain/validation.ts');
-    const portfolioCss = resolve(process.cwd(), 'src/portfolio/ui/portfolio.css');
-    const journeyCss = resolve(process.cwd(), 'src/journey/ui/journey.css');
+    const assets = await readSupportedRouteClosure(projectRoot);
 
-    for (const route of [
-      {
-        htmlPath: resolve(process.cwd(), 'apps/portfolio/index.html'),
-        expectedAssets: [mainSource, mainValidation, portfolioCss, journeyCss],
-      },
-      {
-        htmlPath: resolve(process.cwd(), 'apps/account-map/index.html'),
-        expectedAssets: [journeyCss],
-      },
-    ]) {
-      const assets = await readRouteAssets(projectRoot, route.htmlPath);
-      for (const expectedAsset of route.expectedAssets) {
-        expect(assets.has(expectedAsset)).toBe(true);
-      }
-      expect(findForbiddenRuntimePaths(projectRoot, assets.keys())).toEqual([]);
+    expect(assets.has(resolve(projectRoot, 'shared/brand/mainBrandGeometry.js'))).toBe(true);
+    expect(findForbiddenRuntimePaths(projectRoot, assets.keys())).toEqual([]);
 
-      const runtime = [...assets.values()].join('\n');
-      for (const forbidden of forbiddenRuntimeTokens) {
-        expect(runtime).not.toContain(forbidden);
-      }
+    const runtime = [...assets.values()].join('\n');
+    for (const forbidden of forbiddenRuntimeTokens) {
+      expect(runtime).not.toContain(forbidden);
     }
   });
 });
@@ -76,43 +74,32 @@ describe('readRuntimeGraph', () => {
 
 describe('canonical runtime path isolation', () => {
   const projectRoot = join(fixtureRoot, 'canonical');
-  const forbiddenApp = join(projectRoot, 'apps/portfolio/app.js');
+  const forbiddenApp = join(projectRoot, 'apps/main/app.js');
+  const forbiddenStylesheet = join(projectRoot, 'apps/main/styles.css');
 
-  it('detects a forbidden canonical path reached through relative imports', async () => {
-    const graph = await readRuntimeGraph(join(projectRoot, 'apps/portfolio/entry.js'));
-
-    expect(findForbiddenRuntimePaths(projectRoot, graph.keys())).toEqual([forbiddenApp]);
-  });
-
-  it('detects a forbidden canonical path resolved from an HTML module script', async () => {
-    const htmlPaths = await readHtmlScriptPaths(
-      projectRoot,
-      join(projectRoot, 'apps/portfolio/index.html'),
-    );
-
-    expect(findForbiddenRuntimePaths(projectRoot, htmlPaths)).toEqual([forbiddenApp]);
-  });
-
-  it('detects a forbidden canonical path resolved from a classic HTML script', async () => {
-    const htmlPaths = await readHtmlScriptPaths(
-      projectRoot,
-      join(projectRoot, 'apps/portfolio/classic.html'),
-    );
-
-    expect(findForbiddenRuntimePaths(projectRoot, htmlPaths)).toEqual([forbiddenApp]);
-  });
-
-  it('detects a forbidden stylesheet and selector in an HTML route closure', async () => {
-    const forbiddenStylesheet = join(projectRoot, 'apps/portfolio/styles.css');
+  it('detects forbidden Main paths reached from an HTML route closure', async () => {
     const assets = await readRouteAssets(
       projectRoot,
-      join(projectRoot, 'apps/portfolio/stylesheet.html'),
+      join(projectRoot, 'apps/main/index.html'),
     );
 
-    expect(findForbiddenRuntimePaths(projectRoot, assets.keys())).toEqual([forbiddenStylesheet]);
-    expect([...assets.values()].join('\n')).toContain('portfolioCreator');
+    expect(findForbiddenRuntimePaths(projectRoot, assets.keys())).toEqual([
+      forbiddenStylesheet,
+      forbiddenApp,
+    ]);
+    expect([...assets.values()].join('\n')).toContain('CompatibilityBridge');
   });
 });
+
+async function readSupportedRouteClosure(projectRoot: string): Promise<Map<string, string>> {
+  const assets = new Map<string, string>();
+  for (const supportedEntry of supportedEntries) {
+    for (const entry of await readRouteAssets(projectRoot, resolve(projectRoot, supportedEntry))) {
+      assets.set(...entry);
+    }
+  }
+  return assets;
+}
 
 async function readRouteAssets(projectRoot: string, htmlPath: string): Promise<Map<string, string>> {
   const assets = new Map<string, string>();
@@ -147,11 +134,6 @@ async function readRuntimeGraph(entryPath: string): Promise<Map<string, string>>
   return graph;
 }
 
-async function readHtmlScriptPaths(projectRoot: string, htmlPath: string): Promise<string[]> {
-  const paths = await readHtmlAssetPaths(projectRoot, htmlPath);
-  return paths.filter((assetPath) => extname(assetPath) !== '.css');
-}
-
 async function readHtmlAssetPaths(projectRoot: string, htmlPath: string): Promise<string[]> {
   const html = await readFile(htmlPath, 'utf8');
   const document = new DOMParser().parseFromString(html, 'text/html');
@@ -176,18 +158,14 @@ function resolveHtmlAssetPath(projectRoot: string, htmlPath: string, source: str
 }
 
 function findForbiddenRuntimePaths(projectRoot: string, runtimePaths: Iterable<string>): string[] {
-  const forbiddenFiles = new Set([
-    resolve(projectRoot, 'apps/portfolio/app.js'),
-    resolve(projectRoot, 'apps/portfolio/styles.css'),
-    resolve(projectRoot, 'src/entries/step3.ts'),
-  ]);
-  const forbiddenDirectories = [resolve(projectRoot, 'apps/portfolio/modules')];
+  const resolvedForbiddenFiles = new Set(forbiddenFiles.map((file) => resolve(projectRoot, file)));
+  const resolvedForbiddenDirectories = forbiddenDirectories.map((directory) => resolve(projectRoot, directory));
   const matches = new Set<string>();
 
   for (const runtimePath of runtimePaths) {
     const normalizedPath = resolve(runtimePath);
-    if (forbiddenFiles.has(normalizedPath)
-      || forbiddenDirectories.some((directory) => normalizedPath.startsWith(`${directory}${sep}`))) {
+    if (resolvedForbiddenFiles.has(normalizedPath)
+      || resolvedForbiddenDirectories.some((directory) => normalizedPath.startsWith(`${directory}${sep}`))) {
       matches.add(normalizedPath);
     }
   }
