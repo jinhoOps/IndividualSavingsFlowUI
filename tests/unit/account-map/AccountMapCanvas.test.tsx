@@ -356,7 +356,7 @@ describe('AccountMapCanvas', () => {
   });
 
   it('uses canonical account-first headers and location-then-purpose rows', () => {
-    const reversedApplied = { ...applied, links: [...applied.links].reverse(), layout: 'account' as const };
+    const reversedApplied = { ...applied, links: [...applied.links].reverse() };
     renderCanvas({ applied: reversedApplied });
 
     const table = screen.getByRole('table', { name: '계좌 연결 읽기 표' });
@@ -464,14 +464,14 @@ describe('AccountMapCanvas', () => {
 });
 
 const applied: AccountMapApplied = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   sourceMainUpdatedAt: 1,
   customPurposes: [],
   links: [
     { id: 'income', purposeId: 'system:income', locationId: 'salary', monthlyAmountWon: 2_000_000, remainder: true, status: 'active', createdAt: 1, updatedAt: 1 },
     { id: 'living', purposeId: 'system:living', locationId: 'checking', monthlyAmountWon: 700_000, remainder: true, status: 'active', createdAt: 1, updatedAt: 1 },
   ],
-  layout: 'purpose', setupCompletedAt: 1, updatedAt: 1,
+  setupCompletedAt: 1, updatedAt: 1,
 };
 
 const main = { schemaVersion: 2 as const, updatedAt: 1, monthlyNetIncomeWon: 2_000_000, monthlyHousingWon: 500_000, monthlyLivingWon: 1_000_000, monthlySavingWon: 300_000, monthlyInvestmentWon: 200_000 };

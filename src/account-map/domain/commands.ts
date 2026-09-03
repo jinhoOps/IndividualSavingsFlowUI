@@ -1052,7 +1052,6 @@ function protectedSlicesEqual(left: WorkspaceDocument, right: WorkspaceDocument)
   return JSON.stringify(left.main) === JSON.stringify(right.main)
     && JSON.stringify(left.simulation) === JSON.stringify(right.simulation)
     && JSON.stringify(left.portfolio) === JSON.stringify(right.portfolio)
-    && JSON.stringify(left.accountMap.legacyPhaseA) === JSON.stringify(right.accountMap.legacyPhaseA)
     && left.schemaVersion === right.schemaVersion
     && left.revision === right.revision;
 }

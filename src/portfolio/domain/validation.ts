@@ -76,17 +76,11 @@ function parseV2Common(value: Record<string, unknown>): Omit<PortfolioPlan, 'app
 }
 
 function parseScope(value: unknown): PortfolioScope | null {
-  if (!isRecord(value) || typeof value.type !== 'string') return null;
-  if (value.type === 'aggregate' && hasExactKeys(value, ['type'])) {
-    return { type: 'aggregate' };
-  }
-  if (value.type === 'location'
-    && hasExactKeys(value, ['type', 'locationId'])
-    && typeof value.locationId === 'string'
-    && value.locationId.length > 0) {
-    return { type: 'location', locationId: value.locationId };
-  }
-  return null;
+  return isRecord(value)
+    && value.type === 'aggregate'
+    && hasExactKeys(value, ['type'])
+    ? { type: 'aggregate' }
+    : null;
 }
 
 function parseItem(value: unknown): PortfolioItem | null {

@@ -191,29 +191,4 @@ describe('bootstrapPortfolio', () => {
     });
   });
 
-  it('keeps the current UI aggregate-only when storage exposes location-scoped values', () => {
-    const locationPlan = {
-      ...plan,
-      scope: { type: 'location' as const, locationId: 'loc-isa' },
-    };
-    const locationDraft = {
-      ...draftFromPlan(locationPlan),
-      updatedAt: 2,
-    };
-
-    const result = bootstrapPortfolio(
-      { status: 'found', source: { monthlyInvestmentWon: 200_000, mainUpdatedAt: 3 } },
-      {
-        applied: { status: 'found', plan: locationPlan },
-        draft: { status: 'found', draft: locationDraft },
-      },
-      4,
-    );
-
-    expect(result).toMatchObject({
-      kind: 'ready',
-      plan: null,
-      draft: { scope: { type: 'aggregate' } },
-    });
-  });
 });

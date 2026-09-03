@@ -6,6 +6,8 @@ export const SYSTEM_PURPOSE_IDS = [
   'system:investing',
 ] as const;
 
+export const ACCOUNT_MAP_APPLIED_SCHEMA_VERSION = 2 as const;
+
 export type SystemPurposeId = (typeof SYSTEM_PURPOSE_IDS)[number];
 export type OutflowPurposeId = Exclude<SystemPurposeId, 'system:income'>;
 export type PurposeId = SystemPurposeId | `custom:${string}`;
@@ -41,11 +43,10 @@ export type PurposeLocationLink =
     });
 
 export interface AccountMapApplied {
-  schemaVersion: 1;
+  schemaVersion: typeof ACCOUNT_MAP_APPLIED_SCHEMA_VERSION;
   sourceMainUpdatedAt: number;
   customPurposes: CustomPurpose[];
   links: PurposeLocationLink[];
-  layout: 'purpose' | 'account';
   setupCompletedAt: number;
   updatedAt: number;
 }

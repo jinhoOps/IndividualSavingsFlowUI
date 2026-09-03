@@ -97,7 +97,7 @@ function node(
 }
 
 const applied: AccountMapApplied = {
-  schemaVersion: 1, sourceMainUpdatedAt: 1, customPurposes: [], layout: 'account', setupCompletedAt: 1, updatedAt: 1,
+  schemaVersion: 2, sourceMainUpdatedAt: 1, customPurposes: [], setupCompletedAt: 1, updatedAt: 1,
   links: [
     { id: 'income-salary', purposeId: 'system:income', locationId: 'salary', monthlyAmountWon: 2_000_000, remainder: true, status: 'active', createdAt: 1, updatedAt: 1 },
     { id: 'living-salary', purposeId: 'system:living', locationId: 'salary', monthlyAmountWon: 400_000, remainder: true, status: 'active', createdAt: 1, updatedAt: 1 },

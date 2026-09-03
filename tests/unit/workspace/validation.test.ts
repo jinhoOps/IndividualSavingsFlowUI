@@ -1,19 +1,12 @@
 import { describe, expect, it } from 'vitest';
+import { createEmptyWorkspace } from '../../../src/workspace/domain/model';
 import {
-  parseConsumerInstrument,
-  parseMonthlyFlow,
-  type ConsumerInstrument,
-  type MonthlyFlow,
-} from '../../../src/workspace/domain/accountMapContract';
-import { createEmptyWorkspace, type WorkspaceDocumentV1 } from '../../../src/workspace/domain/model';
-import type { FinancialLocation, FinancialRole } from '../../../src/workspace/domain/financialLocation';
-import {
-  parseWorkspaceDocumentV1,
-  validateWorkspaceCrossReferences,
+  parseWorkspaceDocument,
+  validateWorkspaceDocument,
 } from '../../../src/workspace/domain/validation';
 
 const validMain = {
-  schemaVersion: 2,
+  schemaVersion: 2 as const,
   updatedAt: 100,
   monthlyNetIncomeWon: 3_000_000,
   monthlyHousingWon: 700_000,
@@ -23,7 +16,7 @@ const validMain = {
 };
 
 const validSimulation = {
-  schemaVersion: 3,
+  schemaVersion: 3 as const,
   source: {
     monthlySavingsWon: 400_000,
     monthlyInvestmentWon: 200_000,
@@ -35,23 +28,23 @@ const validSimulation = {
   expectedAnnualReturnPercent: 9,
   baseRatePercent: 2.75,
   inflationOffsetPercentPoints: -0.25,
-  amountMode: 'nominal',
+  amountMode: 'nominal' as const,
   updatedAt: 200,
 };
 
 const aggregatePlan = {
-  schemaVersion: 2,
-  scope: { type: 'aggregate' },
+  schemaVersion: 2 as const,
+  scope: { type: 'aggregate' as const },
   items: [{
     id: 'asset-1',
     name: '미국 인덱스',
     shareUnits: 800_000,
     order: 0,
-    classification: 'growth',
-    classificationOrigin: 'automatic',
+    classification: 'growth' as const,
+    classificationOrigin: 'automatic' as const,
   }],
   cashShareUnits: 200_000,
-  cashMode: 'automatic',
+  cashMode: 'automatic' as const,
   syncedInvestmentWon: 200_000,
   appliedAt: 300,
   updatedAt: 300,
@@ -60,22 +53,33 @@ const aggregatePlan = {
 const investingLocation = {
   id: 'loc-isa',
   shortName: 'ISA',
-  kind: 'brokerage',
-  roles: ['investing'],
+  kind: 'brokerage' as const,
+  roles: ['investing' as const],
   createdAt: 10,
   updatedAt: 20,
 };
 
+const investingLink = {
+  id: 'link-investing',
+  purposeId: 'system:investing' as const,
+  locationId: investingLocation.id,
+  monthlyAmountWon: 200_000,
+  remainder: true as const,
+  status: 'active' as const,
+  createdAt: 30,
+  updatedAt: 30,
+};
+
 function validWorkspace() {
   return {
-    schemaVersion: 1,
+    schemaVersion: 3 as const,
     revision: 4,
     updatedAt: 400,
     main: {
       applied: { ...validMain },
       setupProgress: {
-        kind: 'restart',
-        step: 'review',
+        kind: 'restart' as const,
+        step: 'review' as const,
         draft: { ...validMain },
         savedAt: 150,
       },
@@ -93,392 +97,184 @@ function validWorkspace() {
     },
     locations: [{ ...investingLocation, roles: [...investingLocation.roles] }],
     accountMap: {
-      applied: null,
+      applied: {
+        schemaVersion: 2 as const,
+        sourceMainUpdatedAt: 100,
+        customPurposes: [],
+        links: [{ ...investingLink }],
+        setupCompletedAt: 300,
+        updatedAt: 300,
+      },
       draft: null,
-      instruments: [] as unknown[],
-      flows: [] as unknown[],
     },
   };
 }
 
-function location(index: number, roles: FinancialRole[], archivedAt?: number): FinancialLocation {
-  return {
-    id: `loc-${index}`,
-    shortName: `L${index}`,
-    kind: 'bank',
-    roles,
-    ...(archivedAt === undefined ? {} : { archivedAt }),
-    createdAt: 10,
-    updatedAt: 20,
-  };
-}
-
-const validInstrument: ConsumerInstrument = {
-  id: 'card-1',
-  shortName: '생활비',
-  type: 'credit',
-  fundingLocationId: investingLocation.id,
-  createdAt: 100,
-  updatedAt: 200,
-};
-
-const validFlow: MonthlyFlow = {
-  id: 'flow-1',
-  source: { type: 'location', id: investingLocation.id },
-  target: { type: 'instrument', id: validInstrument.id },
-  purpose: 'spending',
-  monthlyAmountWon: 500_000,
-  createdAt: 100,
-  updatedAt: 200,
-};
-
-function crossReferenceWorkspace(): WorkspaceDocumentV1 {
-  const workspace = parseWorkspaceDocumentV1(validWorkspace());
-  if (workspace === null) throw new Error('expected valid workspace fixture');
-  return workspace;
-}
-
-describe('Workspace validation', () => {
-  it('creates an exact empty workspace at revision zero', () => {
-    expect(createEmptyWorkspace(100)).toEqual({
-      schemaVersion: 2,
+describe('Workspace v3 validation', () => {
+  it('creates and parses an exact current empty workspace', () => {
+    expect(parseWorkspaceDocument(createEmptyWorkspace(100))).toMatchObject({
+      schemaVersion: 3,
       revision: 0,
       updatedAt: 100,
-      main: { applied: null, setupProgress: null },
-      simulation: { draft: null },
-      portfolio: { plans: [], draft: null },
-      locations: [],
+      accountMap: { applied: null, draft: null },
+    });
+    expect(createEmptyWorkspace(100).accountMap).toEqual({ applied: null, draft: null });
+  });
+
+  it('deeply reconstructs the current document instead of returning caller objects', () => {
+    const original = validWorkspace();
+    const parsed = parseWorkspaceDocument(original);
+
+    expect(parsed).toEqual(original);
+    expect(parsed).not.toBe(original);
+    expect(parsed?.main.applied).not.toBe(original.main.applied);
+    expect(parsed?.main.setupProgress?.draft).not.toBe(original.main.setupProgress.draft);
+    expect(parsed?.simulation.draft?.source).not.toBe(original.simulation.draft.source);
+    expect(parsed?.portfolio.plans[0]?.items).not.toBe(original.portfolio.plans[0]?.items);
+    expect(parsed?.locations[0]?.roles).not.toBe(original.locations[0]?.roles);
+    expect(parsed?.accountMap.applied?.links).not.toBe(original.accountMap.applied.links);
+  });
+
+  it.each([
+    ['root', (workspace: ReturnType<typeof validWorkspace>) => ({ ...workspace, extra: true })],
+    ['main', (workspace: ReturnType<typeof validWorkspace>) => ({
+      ...workspace,
+      main: { ...workspace.main, extra: true },
+    })],
+    ['simulation', (workspace: ReturnType<typeof validWorkspace>) => ({
+      ...workspace,
+      simulation: { ...workspace.simulation, extra: true },
+    })],
+    ['portfolio', (workspace: ReturnType<typeof validWorkspace>) => ({
+      ...workspace,
+      portfolio: { ...workspace.portfolio, extra: true },
+    })],
+    ['account map', (workspace: ReturnType<typeof validWorkspace>) => ({
+      ...workspace,
+      accountMap: { ...workspace.accountMap, extra: true },
+    })],
+  ])('rejects an extra key on the %s slice', (_label, mutate) => {
+    expect(parseWorkspaceDocument(mutate(validWorkspace()))).toBeNull();
+  });
+
+  it('rejects retired Account Map compatibility fields instead of stripping them', () => {
+    const empty = createEmptyWorkspace(100);
+    expect(parseWorkspaceDocument({
+      ...empty,
       accountMap: {
         applied: null,
         draft: null,
         legacyPhaseA: { instruments: [], flows: [] },
       },
-    });
+    })).toBeNull();
+
+    const workspace = validWorkspace();
+    expect(parseWorkspaceDocument({
+      ...workspace,
+      accountMap: {
+        ...workspace.accountMap,
+        applied: { ...workspace.accountMap.applied, layout: 'account' },
+      },
+    })).toBeNull();
+  });
+
+  it('rejects location-scoped Portfolio state in the current contract', () => {
+    const workspace = validWorkspace();
+    expect(parseWorkspaceDocument({
+      ...workspace,
+      portfolio: {
+        plans: [{ ...aggregatePlan, scope: { type: 'location', locationId: 'loc-isa' } }],
+        draft: null,
+      },
+    })).toBeNull();
+  });
+
+  it.each([1, 2])('rejects a retired Simulation v%i draft in current state', (schemaVersion) => {
+    const workspace = validWorkspace();
+    const { targetAmountWon: _targetAmountWon, ...retiredDraft } = validSimulation;
+    expect(parseWorkspaceDocument({
+      ...workspace,
+      simulation: { draft: { ...retiredDraft, schemaVersion } },
+    })).toBeNull();
+  });
+
+  it('classifies invalid shapes as schema failures', () => {
+    const workspace = validWorkspace();
+    expect(validateWorkspaceDocument({ ...workspace, schemaVersion: 4 })).toEqual({ status: 'schema' });
+    expect(validateWorkspaceDocument({
+      ...workspace,
+      accountMap: {
+        ...workspace.accountMap,
+        applied: { ...workspace.accountMap.applied, schemaVersion: 1 },
+      },
+    })).toEqual({ status: 'schema' });
+    expect(validateWorkspaceDocument({ ...workspace, updatedAt: 8_640_000_000_000_001 }))
+      .toEqual({ status: 'schema' });
+  });
+
+  it.each([
+    ['duplicate location identifiers', (workspace: ReturnType<typeof validWorkspace>) => ({
+      ...workspace,
+      locations: [...workspace.locations, { ...workspace.locations[0], shortName: 'ISA 2' }],
+    })],
+    ['duplicate normalized active location names', (workspace: ReturnType<typeof validWorkspace>) => ({
+      ...workspace,
+      locations: [...workspace.locations, {
+        ...workspace.locations[0], id: 'loc-2', shortName: ' isa ',
+      }],
+    })],
+    ['missing link location', (workspace: ReturnType<typeof validWorkspace>) => ({
+      ...workspace,
+      locations: [],
+    })],
+    ['duplicate plan scopes', (workspace: ReturnType<typeof validWorkspace>) => ({
+      ...workspace,
+      portfolio: { plans: [...workspace.portfolio.plans, aggregatePlan], draft: null },
+    })],
+    ['future Main source', (workspace: ReturnType<typeof validWorkspace>) => ({
+      ...workspace,
+      accountMap: {
+        ...workspace.accountMap,
+        applied: { ...workspace.accountMap.applied, sourceMainUpdatedAt: 101 },
+      },
+    })],
+  ])('classifies %s as a reference failure', (_label, mutate) => {
+    expect(validateWorkspaceDocument(mutate(validWorkspace()))).toEqual({ status: 'reference' });
+  });
+
+  it('rejects duplicate Account Map identifiers and relationship pairs', () => {
+    const workspace = validWorkspace();
+    const duplicatePurpose = {
+      id: 'custom:trip' as const,
+      parentId: 'system:living' as const,
+      name: '여행',
+      targetMonthlyWon: 100_000,
+      createdAt: 10,
+      updatedAt: 10,
+    };
+    const applied = workspace.accountMap.applied;
+    expect(validateWorkspaceDocument({
+      ...workspace,
+      accountMap: {
+        applied: {
+          ...applied,
+          customPurposes: [duplicatePurpose, duplicatePurpose],
+        },
+        draft: null,
+      },
+    })).toEqual({ status: 'reference' });
+    expect(validateWorkspaceDocument({
+      ...workspace,
+      accountMap: {
+        applied: { ...applied, links: [investingLink, { ...investingLink, id: 'link-2' }] },
+        draft: null,
+      },
+    })).toEqual({ status: 'reference' });
   });
 
   it('returns null instead of overflowing on a deeply malformed Main slice', () => {
     let malformedMain: unknown = null;
-    for (let depth = 0; depth < 20_000; depth += 1) {
-      malformedMain = { nested: malformedMain };
-    }
-
-    expect(parseWorkspaceDocumentV1({
-      ...createEmptyWorkspace(100),
-      main: malformedMain,
-    })).toBeNull();
-  });
-
-  it('parses one exact current workspace and deeply reconstructs it', () => {
-    const original = validWorkspace();
-    const parsed = parseWorkspaceDocumentV1(original);
-
-    expect(parsed).toEqual(original);
-    expect(parsed).not.toBe(original);
-    expect(parsed?.main).not.toBe(original.main);
-    expect(parsed?.main.applied).not.toBe(original.main.applied);
-    expect(parsed?.main.setupProgress?.draft).not.toBe(original.main.setupProgress.draft);
-    expect(parsed?.simulation.draft?.source).not.toBe(original.simulation.draft.source);
-    expect(parsed?.portfolio.plans).not.toBe(original.portfolio.plans);
-    expect(parsed?.portfolio.plans[0]?.items).not.toBe(original.portfolio.plans[0].items);
-    expect(parsed?.locations[0]?.roles).not.toBe(original.locations[0].roles);
-  });
-
-  it('normalizes a legacy Simulation draft without changing the other workspace slices', () => {
-    const legacy = validWorkspace();
-    const { targetAmountWon: _targetAmountWon, ...legacyDraft } = legacy.simulation.draft;
-    const legacyWorkspace = {
-      ...legacy,
-      simulation: { draft: { ...legacyDraft, schemaVersion: 2 } },
-    };
-    const parsed = parseWorkspaceDocumentV1(legacyWorkspace);
-
-    expect(parsed?.simulation.draft).toEqual({
-      ...validSimulation,
-    });
-    expect(parsed?.main).toEqual(legacyWorkspace.main);
-    expect(parsed?.portfolio).toEqual(legacyWorkspace.portfolio);
-    expect(parsed?.locations).toEqual(legacyWorkspace.locations);
-    expect(parsed?.accountMap).toEqual(legacyWorkspace.accountMap);
-  });
-
-  it.each([
-    ['root', (workspace: ReturnType<typeof validWorkspace>) => ({ ...workspace, extra: true })],
-    ['main slice', (workspace: ReturnType<typeof validWorkspace>) => ({
-      ...workspace,
-      main: { ...workspace.main, extra: true },
-    })],
-    ['simulation slice', (workspace: ReturnType<typeof validWorkspace>) => ({
-      ...workspace,
-      simulation: { ...workspace.simulation, extra: true },
-    })],
-    ['portfolio slice', (workspace: ReturnType<typeof validWorkspace>) => ({
-      ...workspace,
-      portfolio: { ...workspace.portfolio, extra: true },
-    })],
-    ['account-map slice', (workspace: ReturnType<typeof validWorkspace>) => ({
-      ...workspace,
-      accountMap: { ...workspace.accountMap, extra: true },
-    })],
-  ])('rejects extra keys on the %s', (_name, addExtraKey) => {
-    expect(parseWorkspaceDocumentV1(addExtraKey(validWorkspace()))).toBeNull();
-  });
-
-  it('rejects a symbol own key on nested applied Main data', () => {
-    const workspace = validWorkspace();
-    workspace.main.applied = { ...validMain, [Symbol('extra')]: true };
-
-    expect(parseWorkspaceDocumentV1(workspace)).toBeNull();
-  });
-
-  it('rejects a symbol own key on nested Main setup draft data', () => {
-    const workspace = validWorkspace();
-    workspace.main.setupProgress.draft = { ...validMain, [Symbol('extra')]: true };
-
-    expect(parseWorkspaceDocumentV1(workspace)).toBeNull();
-  });
-
-  it('rejects a symbol own key on a nested Simulation draft', () => {
-    const workspace = validWorkspace();
-    workspace.simulation.draft = { ...validSimulation, [Symbol('extra')]: true };
-
-    expect(parseWorkspaceDocumentV1(workspace)).toBeNull();
-  });
-
-  it('rejects a symbol own key on a nested Simulation source', () => {
-    const workspace = validWorkspace();
-    workspace.simulation.draft.source = {
-      ...validSimulation.source,
-      [Symbol('extra')]: true,
-    };
-
-    expect(parseWorkspaceDocumentV1(workspace)).toBeNull();
-  });
-
-  it('rejects old app-only and v1 Portfolio values', () => {
-    expect(parseWorkspaceDocumentV1(validMain)).toBeNull();
-    expect(parseWorkspaceDocumentV1(validSimulation)).toBeNull();
-    const workspace = validWorkspace();
-    const { scope: _scope, ...validPlanV1 } = aggregatePlan;
-    expect(parseWorkspaceDocumentV1({
-      ...workspace,
-      portfolio: {
-        ...workspace.portfolio,
-        plans: [{ ...validPlanV1, schemaVersion: 1 }],
-      },
-    })).toBeNull();
-  });
-
-  it('requires unique Portfolio plan scopes', () => {
-    const workspace = validWorkspace();
-    workspace.portfolio.plans.push({
-      ...aggregatePlan,
-      items: [],
-      cashShareUnits: 1_000_000,
-      appliedAt: 301,
-      updatedAt: 301,
-    });
-
-    expect(parseWorkspaceDocumentV1(workspace)).toBeNull();
-  });
-
-  it('preserves existing location-scoped Portfolio references across role removal and archive', () => {
-    const scopedPlan = {
-      ...aggregatePlan,
-      scope: { type: 'location', locationId: investingLocation.id },
-    };
-    const { appliedAt: _appliedAt, ...scopedPlanCommon } = scopedPlan;
-    const scopedDraft = {
-      ...scopedPlanCommon,
-      inputMode: 'amount',
-      isApplicable: true,
-    };
-    const workspace = validWorkspace();
-    workspace.portfolio.plans = [scopedPlan];
-
-    expect(parseWorkspaceDocumentV1({
-      ...workspace,
-      portfolio: { plans: [scopedPlan], draft: scopedDraft },
-      locations: [{ ...investingLocation, roles: ['saving'] }],
-    })).not.toBeNull();
-    expect(parseWorkspaceDocumentV1({
-      ...workspace,
-      portfolio: { plans: [scopedPlan], draft: scopedDraft },
-      locations: [{ ...investingLocation, archivedAt: 30 }],
-    })).not.toBeNull();
-  });
-
-  it('continues to reject a missing location ID from a location-scoped Portfolio reference', () => {
-    const scopedPlan = {
-      ...aggregatePlan,
-      scope: { type: 'location', locationId: investingLocation.id },
-    };
-    const workspace = validWorkspace();
-    workspace.portfolio.plans = [scopedPlan];
-
-    expect(parseWorkspaceDocumentV1(workspace)).not.toBeNull();
-    expect(parseWorkspaceDocumentV1({ ...workspace, locations: [] })).toBeNull();
-  });
-
-  it('rejects a draft-only Portfolio scope whose location ID is missing from the registry', () => {
-    const { appliedAt: _appliedAt, ...scopedPlanCommon } = {
-      ...aggregatePlan,
-      scope: { type: 'location', locationId: 'missing-location' },
-    };
-    const workspace = validWorkspace();
-
-    expect(parseWorkspaceDocumentV1({
-      ...workspace,
-      portfolio: {
-        plans: [],
-        draft: { ...scopedPlanCommon, inputMode: 'amount', isApplicable: true },
-      },
-    })).toBeNull();
-  });
-
-  it('rejects duplicate active normalized location names', () => {
-    const workspace = validWorkspace();
-    workspace.locations = [
-      { ...investingLocation, id: 'loc-a', shortName: '  Toss   ISA ' },
-      { ...investingLocation, id: 'loc-b', shortName: 'toss isa' },
-    ];
-
-    expect(parseWorkspaceDocumentV1(workspace)).toBeNull();
-  });
-
-  it.each(['income', 'spending', 'saving', 'investing'] as const)
-    ('enforces the active %s location capacity', (role) => {
-      const workspace = validWorkspace();
-      workspace.portfolio.plans = [];
-      workspace.locations = Array.from({ length: 11 }, (_, index) => location(index, [role]));
-
-      expect(parseWorkspaceDocumentV1(workspace)).toBeNull();
-    });
-
-  it.each(['income', 'spending', 'saving', 'investing'] as const)
-    ('keeps archived %s locations valid without counting them toward capacity', (role) => {
-      const workspace = validWorkspace();
-      workspace.portfolio.plans = [];
-      workspace.locations = [
-        ...Array.from({ length: 10 }, (_, index) => location(index, [role])),
-        location(10, [role], 30),
-      ];
-
-      expect(parseWorkspaceDocumentV1(workspace)).not.toBeNull();
-    });
-
-  it('parses exact Account Map instrument and flow primitives as independent values', () => {
-    expect(parseConsumerInstrument(validInstrument)).toEqual(validInstrument);
-    expect(parseMonthlyFlow(validFlow)).toEqual(validFlow);
-    expect(parseMonthlyFlow(validFlow)?.source).not.toBe(validFlow.source);
-    expect(parseMonthlyFlow(validFlow)?.target).not.toBe(validFlow.target);
-    expect(parseConsumerInstrument({ ...validInstrument, extra: true })).toBeNull();
-    expect(parseMonthlyFlow({ ...validFlow, extra: true })).toBeNull();
-  });
-
-  it('validates resolved Account Map references before the Phase A empty-only gate', () => {
-    const workspace = crossReferenceWorkspace();
-    workspace.accountMap.instruments = [{ ...validInstrument }];
-    workspace.accountMap.flows = [{
-      ...validFlow,
-      source: { ...validFlow.source },
-      target: { ...validFlow.target },
-    }];
-
-    expect(validateWorkspaceCrossReferences(workspace)).toBe(true);
-  });
-
-  it.each([
-    ['instrument', (workspace: WorkspaceDocumentV1) => {
-      workspace.accountMap.instruments = [{ ...validInstrument }];
-    }],
-    ['flow', (workspace: WorkspaceDocumentV1) => {
-      workspace.accountMap.flows = [{
-        ...validFlow,
-        source: { type: 'location', id: investingLocation.id },
-        target: { type: 'location', id: investingLocation.id },
-      }];
-    }],
-  ] as const)('rejects a non-empty persisted Account Map %s in Phase A', (_kind, populate) => {
-    const workspace = crossReferenceWorkspace();
-    populate(workspace);
-
-    expect(validateWorkspaceCrossReferences(workspace)).toBe(true);
-    expect(parseWorkspaceDocumentV1(workspace)).toBeNull();
-  });
-
-  it('rejects a missing consumer-instrument funding location independently', () => {
-    const workspace = crossReferenceWorkspace();
-    workspace.accountMap.instruments = [{ ...validInstrument, fundingLocationId: 'missing' }];
-
-    expect(validateWorkspaceCrossReferences(workspace)).toBe(false);
-  });
-
-  it('rejects a missing flow source endpoint independently', () => {
-    const workspace = crossReferenceWorkspace();
-    workspace.accountMap.instruments = [{ ...validInstrument }];
-    workspace.accountMap.flows = [{
-      ...validFlow,
-      source: { type: 'location', id: 'missing' },
-      target: { ...validFlow.target },
-    }];
-
-    expect(validateWorkspaceCrossReferences(workspace)).toBe(false);
-  });
-
-  it('rejects a missing flow target endpoint independently', () => {
-    const workspace = crossReferenceWorkspace();
-    workspace.accountMap.instruments = [{ ...validInstrument }];
-    workspace.accountMap.flows = [{
-      ...validFlow,
-      source: { ...validFlow.source },
-      target: { type: 'instrument', id: 'missing' },
-    }];
-
-    expect(validateWorkspaceCrossReferences(workspace)).toBe(false);
-  });
-
-  it.each([
-    ['location', (workspace: WorkspaceDocumentV1) => {
-      workspace.locations.push({
-        ...workspace.locations[0],
-        shortName: 'Second',
-        roles: [...workspace.locations[0].roles],
-      });
-    }],
-    ['instrument', (workspace: WorkspaceDocumentV1) => {
-      workspace.accountMap.instruments = [
-        { ...validInstrument },
-        { ...validInstrument, shortName: '예비카드' },
-      ];
-    }],
-    ['flow', (workspace: WorkspaceDocumentV1) => {
-      workspace.accountMap.instruments = [{ ...validInstrument }];
-      workspace.accountMap.flows = [
-        { ...validFlow, source: { ...validFlow.source }, target: { ...validFlow.target } },
-        { ...validFlow, source: { ...validFlow.source }, target: { ...validFlow.target } },
-      ];
-    }],
-  ] as const)('rejects a duplicate %s ID independently', (_kind, addDuplicate) => {
-    const workspace = crossReferenceWorkspace();
-    addDuplicate(workspace);
-
-    expect(validateWorkspaceCrossReferences(workspace)).toBe(false);
-  });
-
-  it('counts active instruments with active spending locations for combined capacity', () => {
-    const workspace = crossReferenceWorkspace();
-    workspace.locations.push(...Array.from(
-      { length: 9 },
-      (_, index) => location(index + 20, ['spending']),
-    ));
-    workspace.accountMap.instruments = [{ ...validInstrument }];
-    expect(validateWorkspaceCrossReferences(workspace)).toBe(true);
-
-    workspace.accountMap.instruments.push({
-      ...validInstrument,
-      id: 'card-2',
-      shortName: '예비카드',
-    });
-    expect(validateWorkspaceCrossReferences(workspace)).toBe(false);
+    for (let depth = 0; depth < 20_000; depth += 1) malformedMain = { nested: malformedMain };
+    expect(parseWorkspaceDocument({ ...createEmptyWorkspace(100), main: malformedMain })).toBeNull();
   });
 });

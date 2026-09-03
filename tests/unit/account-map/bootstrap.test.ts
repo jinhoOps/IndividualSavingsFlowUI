@@ -63,5 +63,5 @@ function draft(sourceMainUpdatedAt: number): AccountMapDraft {
 }
 
 function applied(): AccountMapApplied {
-  return { schemaVersion: 1, sourceMainUpdatedAt: 10, customPurposes: [], links: [], layout: 'purpose', setupCompletedAt: 10, updatedAt: 10 };
+  return { schemaVersion: 2, sourceMainUpdatedAt: 10, customPurposes: [], links: [], setupCompletedAt: 10, updatedAt: 10 };
 }

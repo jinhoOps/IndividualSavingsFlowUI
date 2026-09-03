@@ -544,22 +544,6 @@ describe('AccountMapApp', () => {
     expect(setup.save.mock.calls[2]?.[0]).toBe(2);
   });
 
-  it('renders legacy layout values in the same canonical account-first order without saving', () => {
-    const purpose = mapConnectionRepositories(false, false, 'purpose');
-    const purposeRender = render(<AccountMapApp repositories={purpose.repositories} />);
-    const purposeOrder = [...purposeRender.container.querySelectorAll('.account-map-node')].map((node) => node.textContent);
-    const purposeTable = screen.getByRole('table', { name: '계좌 연결 읽기 표' });
-    expect([...purposeTable.querySelectorAll('th')].map((header) => header.textContent)).toEqual(['계좌·보관처', '목적', '월 금액', '상태']);
-    expect(purpose.save).not.toHaveBeenCalled();
-    purposeRender.unmount();
-
-    const account = mapConnectionRepositories(false, false, 'account');
-    const accountRender = render(<AccountMapApp repositories={account.repositories} />);
-    const accountOrder = [...accountRender.container.querySelectorAll('.account-map-node')].map((node) => node.textContent);
-    expect(accountOrder).toEqual(purposeOrder);
-    expect(account.save).not.toHaveBeenCalled();
-  });
-
   it('blocks setup mutation actions until a cancellation conflict is resolved', async () => {
     const setup = staleDraftRepositories();
     const reset = vi.fn(async () => ({ status: 'conflict' as const, currentRevision: 2 }));
@@ -818,12 +802,12 @@ function staleArchiveRepositories() {
     { id: 'backup', shortName: '비상통장', institution: { id: 'hana', name: '하나은행' }, kind: 'bank', roles: ['spending'], createdAt: 1, updatedAt: 1 },
   ];
   initial.accountMap.applied = {
-    schemaVersion: 1, sourceMainUpdatedAt: 10, customPurposes: [],
+    schemaVersion: 2, sourceMainUpdatedAt: 10, customPurposes: [],
     links: [
       { id: 'living-link', purposeId: 'system:living', locationId: 'checking', monthlyAmountWon: 700_000, remainder: true, status: 'active', createdAt: 1, updatedAt: 1 },
       { id: 'backup-link', purposeId: 'system:living', locationId: 'backup', monthlyAmountWon: 300_000, remainder: false, status: 'active', createdAt: 1, updatedAt: 1 },
     ],
-    layout: 'purpose', setupCompletedAt: 1, updatedAt: 1,
+    setupCompletedAt: 1, updatedAt: 1,
   };
   const latest = structuredClone(initial);
   latest.revision = 2;
@@ -843,9 +827,9 @@ function staleCompoundModalRepositories(latestWithoutApplied = false) {
   initial.main.applied = mainData();
   initial.locations = [{ id: 'checking', shortName: '생활비통장', institution: { id: 'kb-kookmin', name: 'KB국민은행' }, kind: 'bank', roles: ['spending'], createdAt: 1, updatedAt: 1 }];
   initial.accountMap.applied = {
-    schemaVersion: 1, sourceMainUpdatedAt: 10, customPurposes: [],
+    schemaVersion: 2, sourceMainUpdatedAt: 10, customPurposes: [],
     links: [{ id: 'living-link', purposeId: 'system:living', locationId: 'checking', monthlyAmountWon: 700_000, remainder: true, status: 'active', createdAt: 1, updatedAt: 1 }],
-    layout: 'purpose', setupCompletedAt: 1, updatedAt: 1,
+    setupCompletedAt: 1, updatedAt: 1,
   };
   const latest: WorkspaceDocument = { ...structuredClone(initial), revision: 2, updatedAt: 2 };
   if (latestWithoutApplied) {
@@ -872,9 +856,9 @@ function staleModalRepositories() {
   initial.main.applied = mainData();
   initial.locations = [{ id: 'checking', shortName: '생활비통장', institution: { id: 'kb-kookmin', name: 'KB국민은행' }, kind: 'bank', roles: ['spending'], createdAt: 1, updatedAt: 1 }];
   initial.accountMap.applied = {
-    schemaVersion: 1, sourceMainUpdatedAt: 10, customPurposes: [],
+    schemaVersion: 2, sourceMainUpdatedAt: 10, customPurposes: [],
     links: [{ id: 'living-link', purposeId: 'system:living', locationId: 'checking', monthlyAmountWon: 700_000, remainder: true, status: 'active', createdAt: 1, updatedAt: 1 }],
-    layout: 'purpose', setupCompletedAt: 1, updatedAt: 1,
+    setupCompletedAt: 1, updatedAt: 1,
   };
   const latest: WorkspaceDocument = { ...structuredClone(initial), revision: 2, updatedAt: 2 };
   const load = vi.fn()
@@ -903,12 +887,12 @@ function staleLocationWithoutMainRepositories() {
     kind: 'bank', roles: ['spending'], createdAt: 1, updatedAt: 1,
   }];
   initial.accountMap.applied = {
-    schemaVersion: 1, sourceMainUpdatedAt: 10, customPurposes: [],
+    schemaVersion: 2, sourceMainUpdatedAt: 10, customPurposes: [],
     links: [{
       id: 'living-link', purposeId: 'system:living', locationId: 'checking', monthlyAmountWon: 1_000_000,
       remainder: true, status: 'active', createdAt: 1, updatedAt: 1,
     }],
-    layout: 'purpose', setupCompletedAt: 1, updatedAt: 1,
+    setupCompletedAt: 1, updatedAt: 1,
   };
   const latest: WorkspaceDocument = { ...structuredClone(initial), revision: 2, updatedAt: 2 };
   latest.main.applied = null;
@@ -975,7 +959,7 @@ function staleFreshSetupRepositories(latestHasApplied = false, rejectAfterInitia
   }];
   const latest: WorkspaceDocument = { ...structuredClone(initial), revision: 2, updatedAt: 2 };
   if (latestHasApplied) latest.accountMap.applied = {
-    schemaVersion: 1, sourceMainUpdatedAt: 10, customPurposes: [], links: [], layout: 'purpose', setupCompletedAt: 2, updatedAt: 2,
+    schemaVersion: 2, sourceMainUpdatedAt: 10, customPurposes: [], links: [], setupCompletedAt: 2, updatedAt: 2,
   };
   let current = latest;
   const load = vi.fn()
@@ -999,7 +983,7 @@ function staleMapRepositories() {
   const initial = createEmptyWorkspace(1);
   initial.revision = 1;
   initial.main.applied = mainData();
-  initial.accountMap.applied = { schemaVersion: 1, sourceMainUpdatedAt: 10, customPurposes: [], links: [], layout: 'purpose', setupCompletedAt: 1, updatedAt: 1 };
+  initial.accountMap.applied = { schemaVersion: 2, sourceMainUpdatedAt: 10, customPurposes: [], links: [], setupCompletedAt: 1, updatedAt: 1 };
   const latest = structuredClone(initial);
   latest.revision = 2;
   const load = vi.fn().mockReturnValueOnce({ status: 'found' as const, workspace: initial, needsMigration: false }).mockReturnValue({ status: 'found' as const, workspace: latest, needsMigration: false });
@@ -1106,7 +1090,7 @@ function atomicConnectionRepositories() {
   return { repositories: { accountMap, main }, save, saveIntent };
 }
 
-function mapConnectionRepositories(withArchivedDuplicate = false, conflictOnce = false, layout: 'purpose' | 'account' = 'purpose') {
+function mapConnectionRepositories(withArchivedDuplicate = false, conflictOnce = false) {
   let workspace = createEmptyWorkspace(1);
   workspace.revision = 1;
   workspace.main.applied = mainData();
@@ -1117,12 +1101,12 @@ function mapConnectionRepositories(withArchivedDuplicate = false, conflictOnce =
     ...(withArchivedDuplicate ? [{ id: 'archived-vault', shortName: '복원통장', institution: { id: 'shinhan', name: '신한은행' }, kind: 'bank' as const, roles: ['spending' as const], archivedAt: 2, createdAt: 1, updatedAt: 2 }] : []),
   ];
   workspace.accountMap.applied = {
-    schemaVersion: 1, sourceMainUpdatedAt: 10, customPurposes: [],
+    schemaVersion: 2, sourceMainUpdatedAt: 10, customPurposes: [],
     links: [
       { id: 'income', purposeId: 'system:income', locationId: 'salary', monthlyAmountWon: 2_000_000, remainder: true, status: 'active', createdAt: 1, updatedAt: 1 },
       { id: 'living', purposeId: 'system:living', locationId: 'checking', monthlyAmountWon: 1_000_000, remainder: true, status: 'active', createdAt: 1, updatedAt: 1 },
     ],
-    layout, setupCompletedAt: 1, updatedAt: 1,
+    setupCompletedAt: 1, updatedAt: 1,
   };
   const latest = structuredClone(workspace);
   latest.revision = 2;
@@ -1155,7 +1139,7 @@ function purposeLifecycleRepositories(archived: boolean, conflictOnce = false) {
     { id: 'checking', shortName: '생활비통장', kind: 'bank', roles: ['spending'], createdAt: 1, updatedAt: 1 },
   ];
   workspace.accountMap.applied = {
-    schemaVersion: 1, sourceMainUpdatedAt: 10,
+    schemaVersion: 2, sourceMainUpdatedAt: 10,
     customPurposes: [
       { id: 'custom:food', parentId: 'system:living', name: '식비', targetMonthlyWon: archived ? 900_000 : 800_000, createdAt: 1, updatedAt: 1 },
       { id: 'custom:telecom', parentId: 'system:living', name: '통신비', targetMonthlyWon: 200_000, ...(archived ? { archivedAt: 2 } : {}), createdAt: 1, updatedAt: archived ? 2 : 1 },
@@ -1166,7 +1150,7 @@ function purposeLifecycleRepositories(archived: boolean, conflictOnce = false) {
         ? { id: 'telecom', purposeId: 'custom:telecom', locationId: 'checking', monthlyAmountWon: 200_000, remainder: false, status: 'suspended', suspendedReason: 'user', createdAt: 1, updatedAt: 2 }
         : { id: 'telecom', purposeId: 'custom:telecom', locationId: 'checking', monthlyAmountWon: 200_000, remainder: true, status: 'active', createdAt: 1, updatedAt: 1 },
     ],
-    layout: 'purpose', setupCompletedAt: 1, updatedAt: archived ? 2 : 1,
+    setupCompletedAt: 1, updatedAt: archived ? 2 : 1,
   };
   const initial = workspace;
   const latest = structuredClone(workspace);

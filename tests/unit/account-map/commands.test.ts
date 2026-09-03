@@ -898,13 +898,12 @@ describe('Account Map commands', () => {
     const before = workspace();
     before.accountMap.applied = applied();
     before.accountMap.draft = draft();
-    const legacy = before.accountMap.legacyPhaseA;
 
     const result = applyAccountMapCommand(before, { type: 'reset-map' }, 20);
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.workspace.accountMap).toEqual({ applied: null, draft: null, legacyPhaseA: legacy });
+    expect(result.workspace.accountMap).toEqual({ applied: null, draft: null });
     expect(result.workspace.locations).toEqual(before.locations);
   });
 
@@ -969,7 +968,7 @@ function customPurpose(id: `custom:${string}`, targetMonthlyWon: number) {
 }
 
 function applied(links: PurposeLocationLink[] = []): AccountMapApplied {
-  return { schemaVersion: 1, sourceMainUpdatedAt: 1, customPurposes: [], links, layout: 'purpose', setupCompletedAt: 1, updatedAt: 1 };
+  return { schemaVersion: 2, sourceMainUpdatedAt: 1, customPurposes: [], links, setupCompletedAt: 1, updatedAt: 1 };
 }
 
 function validApplied(): AccountMapApplied {

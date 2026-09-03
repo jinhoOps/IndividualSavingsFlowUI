@@ -1,4 +1,3 @@
-import { scopeKey } from '../../portfolio/domain/model';
 import {
   countDisplayCharacters,
   normalizeLocationName,
@@ -18,12 +17,11 @@ export type LocationCommandError =
   | 'name-too-long'
   | 'purpose-capacity'
   | 'location-not-found'
-  | 'portfolio-reference'
   | 'invalid-input';
 
 export type LocationCommandResult =
   | { ok: true; workspace: WorkspaceDocument; location: FinancialLocation }
-  | { ok: false; reason: LocationCommandError; referencedScopes?: string[] };
+  | { ok: false; reason: LocationCommandError };
 
 export interface LocationCommandDependencies {
   createId(): string;
@@ -36,8 +34,6 @@ export interface CreateLocationInput {
   kind: FinancialLocationKind;
   roles: FinancialRole[];
 }
-
-export type PortfolioReferenceDisposition = 'preserve' | 'delete';
 
 export function createLocation(
   workspace: WorkspaceDocument,
@@ -105,25 +101,17 @@ export function setLocationRoles(
   workspace: WorkspaceDocument,
   locationId: string,
   roles: FinancialRole[],
-  disposition?: PortfolioReferenceDisposition,
   now: number = Date.now(),
 ): LocationCommandResult {
   const currentWorkspace = parseWorkspaceDocument(workspace);
   const parsedRoles = parseRoles(roles);
   if (currentWorkspace === null
     || !isLocationId(locationId)
-    || !isDisposition(disposition)
     || !isTimestamp(now)
     || 'ok' in parsedRoles) return invalidInput();
 
   const current = currentWorkspace.locations.find(({ id }) => id === locationId);
   if (current === undefined) return { ok: false, reason: 'location-not-found' };
-  const removesInvesting = current.roles.includes('investing') && !parsedRoles.includes('investing');
-  const references = referencedScopeKeys(currentWorkspace, locationId);
-  if (removesInvesting && references.length > 0 && disposition === undefined) {
-    return portfolioReferenceError(references);
-  }
-
   const next = parseFinancialLocation({ ...current, roles: parsedRoles, updatedAt: now });
   if (next === null) return invalidInput();
   const locations = replaceLocation(currentWorkspace.locations, next);
@@ -131,39 +119,26 @@ export function setLocationRoles(
     return { ok: false, reason: 'purpose-capacity' };
   }
 
-  const portfolio = removesInvesting && disposition === 'delete'
-    ? withoutLocationPortfolio(currentWorkspace, locationId)
-    : currentWorkspace.portfolio;
-  return parseSuccess({ ...currentWorkspace, updatedAt: now, locations, portfolio }, locationId);
+  return parseSuccess({ ...currentWorkspace, updatedAt: now, locations }, locationId);
 }
 
 export function archiveLocation(
   workspace: WorkspaceDocument,
   locationId: string,
-  disposition?: PortfolioReferenceDisposition,
   now: number = Date.now(),
 ): LocationCommandResult {
   const currentWorkspace = parseWorkspaceDocument(workspace);
   if (currentWorkspace === null
     || !isLocationId(locationId)
-    || !isDisposition(disposition)
     || !isTimestamp(now)) return invalidInput();
 
   const current = currentWorkspace.locations.find(({ id }) => id === locationId);
   if (current === undefined) return { ok: false, reason: 'location-not-found' };
 
-  const references = referencedScopeKeys(currentWorkspace, locationId);
-  if (references.length > 0 && disposition === undefined) {
-    return portfolioReferenceError(references);
-  }
-
   const next = parseFinancialLocation({ ...current, archivedAt: now, updatedAt: now });
   if (next === null) return invalidInput();
   const locations = replaceLocation(currentWorkspace.locations, next);
-  const portfolio = disposition === 'delete'
-    ? withoutLocationPortfolio(currentWorkspace, locationId)
-    : currentWorkspace.portfolio;
-  return parseSuccess({ ...currentWorkspace, updatedAt: now, locations, portfolio }, locationId);
+  return parseSuccess({ ...currentWorkspace, updatedAt: now, locations }, locationId);
 }
 
 export function restoreLocation(
@@ -280,39 +255,6 @@ function replaceLocation(
   return locations.map((location) => location.id === next.id ? next : location);
 }
 
-function referencedScopeKeys(workspace: WorkspaceDocument, locationId: string): string[] {
-  const keys = workspace.portfolio.plans
-    .filter(({ scope }) => scope.type === 'location' && scope.locationId === locationId)
-    .map(({ scope }) => scopeKey(scope));
-  const draft = workspace.portfolio.draft;
-  if (draft?.scope.type === 'location' && draft.scope.locationId === locationId) {
-    keys.push(scopeKey(draft.scope));
-  }
-  return [...new Set(keys)];
-}
-
-function portfolioReferenceError(referencedScopes: string[]): LocationCommandResult {
-  return {
-    ok: false,
-    reason: 'portfolio-reference',
-    referencedScopes,
-  };
-}
-
-function withoutLocationPortfolio(
-  workspace: WorkspaceDocument,
-  locationId: string,
-): WorkspaceDocument['portfolio'] {
-  const plans = workspace.portfolio.plans.filter(
-    ({ scope }) => scope.type !== 'location' || scope.locationId !== locationId,
-  );
-  const draft = workspace.portfolio.draft?.scope.type === 'location'
-    && workspace.portfolio.draft.scope.locationId === locationId
-    ? null
-    : workspace.portfolio.draft;
-  return { plans, draft };
-}
-
 function parseSuccess(
   candidate: WorkspaceDocument,
   locationId: string,
@@ -325,10 +267,6 @@ function parseSuccess(
 
 function invalidInput(): LocationCommandFailure {
   return { ok: false, reason: 'invalid-input' };
-}
-
-function isDisposition(value: unknown): value is PortfolioReferenceDisposition | undefined {
-  return value === undefined || value === 'preserve' || value === 'delete';
 }
 
 function isLocationId(value: unknown): value is string {

@@ -3,7 +3,6 @@ import {
   type WorkspaceLoadResult,
   type WorkspaceRepository,
 } from '../../workspace/infrastructure/workspaceRepository';
-import type { FinancialLocation } from '../../workspace/domain/financialLocation';
 import {
   scopeKey,
   type PortfolioDraft,
@@ -56,10 +55,8 @@ export class BrowserPortfolioRepository implements PortfolioRepository {
       structuredClone(plan),
     ]));
     this.draftBase = cloneDraft(loaded.workspace.portfolio.draft);
-    const aggregatePlan = loaded.workspace.portfolio.plans.find(isAggregate);
-    const aggregateDraft = loaded.workspace.portfolio.draft?.scope.type === 'aggregate'
-      ? loaded.workspace.portfolio.draft
-      : null;
+    const aggregatePlan = loaded.workspace.portfolio.plans[0];
+    const aggregateDraft = loaded.workspace.portfolio.draft;
     return {
       applied: aggregatePlan === undefined
         ? { status: 'empty' }
@@ -84,10 +81,6 @@ export class BrowserPortfolioRepository implements PortfolioRepository {
       result = await this.workspaceRepository.update(
         loaded.workspace.revision,
         (current) => {
-          if (findPlan(current.portfolio.plans, key) === null
-            && !canCreateLocationScopedValue(parsed.scope, current.locations)) {
-            throw new Error('Cannot create Portfolio data for an inactive investing location');
-          }
           return {
             ...current,
             portfolio: {
@@ -122,10 +115,6 @@ export class BrowserPortfolioRepository implements PortfolioRepository {
       result = await this.workspaceRepository.update(
         loaded.workspace.revision,
         (current) => {
-          if (current.portfolio.draft === null
-            && !canCreateLocationScopedValue(parsed.scope, current.locations)) {
-            throw new Error('Cannot create Portfolio data for an inactive investing location');
-          }
           return {
             ...current,
             portfolio: { ...current.portfolio, draft: structuredClone(parsed) },
@@ -226,21 +215,6 @@ function findPlan(plans: PortfolioPlan[], key: string): PortfolioPlan | null {
 
 function draftForScope(draft: PortfolioDraft | null, key: string): PortfolioDraft | null {
   return draft !== null && scopeKey(draft.scope) === key ? draft : null;
-}
-
-function isAggregate(plan: PortfolioPlan): boolean {
-  return plan.scope.type === 'aggregate';
-}
-
-function canCreateLocationScopedValue(
-  scope: PortfolioScope,
-  locations: FinancialLocation[],
-): boolean {
-  return scope.type === 'aggregate' || locations.some((location) => (
-    location.id === scope.locationId
-    && location.archivedAt === undefined
-    && location.roles.includes('investing')
-  ));
 }
 
 function cloneDraft(draft: PortfolioDraft | null): PortfolioDraft | null {

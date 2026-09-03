@@ -55,7 +55,7 @@ function serialLock() {
 
 function workspaceWithSimulation(savedDraft = draft): WorkspaceDocument {
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     revision: 4,
     updatedAt: 400,
     main: {
@@ -85,7 +85,7 @@ function workspaceWithSimulation(savedDraft = draft): WorkspaceDocument {
       draft: null,
     },
     locations: [],
-    accountMap: { applied: null, draft: null, legacyPhaseA: { instruments: [], flows: [] } },
+    accountMap: { applied: null, draft: null },
   };
 }
 
@@ -125,7 +125,7 @@ describe('BrowserSimulationRepository workspace adapter', () => {
     expect(storage.reads).toEqual([WORKSPACE_STORAGE_KEY]);
   });
 
-  it('reports a Simulation-schema migration so the normalized slice can be persisted', () => {
+  it('rejects a legacy Simulation draft inside the strict current workspace key', () => {
     const { targetAmountWon: _targetAmountWon, ...legacyDraft } = draft as typeof draft & {
       targetAmountWon: number;
     };
@@ -134,14 +134,11 @@ describe('BrowserSimulationRepository workspace adapter', () => {
     );
     const storage = new TrackingStorage(new Map([[WORKSPACE_STORAGE_KEY, JSON.stringify(workspace)]]));
 
-    expect(browserRepository(storage).load()).toEqual({
-      status: 'found',
-      draft: { ...legacyDraft, schemaVersion: 3, targetAmountWon: 100_000_000 },
-      migration: 'schema-upgraded',
-    });
+    expect(browserRepository(storage).load()).toEqual({ status: 'invalid' });
+    expect(storage.writes).toEqual([]);
   });
 
-  it('preserves the duration-capped migration reason from a v1 Simulation draft', () => {
+  it('rejects a retired workspace document inside the strict current workspace key', () => {
     const { targetAmountWon: _targetAmountWon, ...legacyDraft } = draft;
     const currentWorkspace = workspaceWithSimulation();
     const legacyWorkspace = {
@@ -157,16 +154,8 @@ describe('BrowserSimulationRepository workspace adapter', () => {
       JSON.stringify(legacyWorkspace),
     ]]));
 
-    expect(browserRepository(storage).load()).toEqual({
-      status: 'found',
-      draft: {
-        ...legacyDraft,
-        schemaVersion: 3,
-        targetAmountWon: 100_000_000,
-        years: 30,
-      },
-      migration: 'duration-capped',
-    });
+    expect(browserRepository(storage).load()).toEqual({ status: 'invalid' });
+    expect(storage.writes).toEqual([]);
   });
 
   it('saves one new workspace revision while preserving every non-Simulation slice', async () => {

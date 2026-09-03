@@ -25,7 +25,6 @@ describe('Account Map edit intent rebasing', () => {
       livingLink('living', 'checking', 100_000),
       livingLink('other', 'savings', 250_000),
     ]);
-    latest.accountMap.applied.layout = 'account';
     latest.accountMap.applied.links[2] = {
       ...latest.accountMap.applied.links[2]!,
       monthlyAmountWon: 300_000,
@@ -47,7 +46,6 @@ describe('Account Map edit intent rebasing', () => {
     const saved = applyAccountMapCommand(latest, result.command, 20);
     expect(saved).toMatchObject({ ok: true });
     if (!saved.ok) return;
-    expect(saved.workspace.accountMap.applied?.layout).toBe('account');
     expect(saved.workspace.accountMap.applied?.links.find(({ id }) => id === 'living')?.monthlyAmountWon)
       .toBe(150_000);
     expect(saved.workspace.accountMap.applied?.links.find(({ id }) => id === 'other')?.monthlyAmountWon)
@@ -157,7 +155,6 @@ describe('Account Map edit intent rebasing', () => {
         createdAt: 1,
         updatedAt: 7,
       }],
-      layout: 'account',
     };
     const purposeBase: EditablePurposeFields = {
       name: '통신비',
@@ -173,7 +170,6 @@ describe('Account Map edit intent rebasing', () => {
       const saved = applyAccountMapCommand(latest, purposeResult.command, 20);
       expect(saved).toMatchObject({ ok: true });
       if (saved.ok) {
-        expect(saved.workspace.accountMap.applied?.layout).toBe('account');
         expect(saved.workspace.accountMap.applied?.customPurposes[0]).toMatchObject({
         name: '통신 요금',
         createdAt: 1,
@@ -622,11 +618,10 @@ function location(
 
 function applied(links: PurposeLocationLink[]): AccountMapApplied {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     sourceMainUpdatedAt: 1,
     customPurposes: [],
     links,
-    layout: 'purpose',
     setupCompletedAt: 1,
     updatedAt: 1,
   };

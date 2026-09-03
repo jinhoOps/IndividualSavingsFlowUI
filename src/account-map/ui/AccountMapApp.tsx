@@ -46,12 +46,6 @@ export function AccountMapApp({ repositories }: { repositories?: AccountMapRepos
     return () => { active = false; };
   }, [resolved.accountMap, state.mode === 'migrating' ? state.revision : -1]);
 
-  const stateWorkspace = state.mode === 'setup' || state.mode === 'map' || state.mode === 'migrating'
-    ? state.workspace
-    : null;
-  const hasLegacy = stateWorkspace !== null
-    && (stateWorkspace.accountMap.legacyPhaseA.instruments.length > 0
-      || stateWorkspace.accountMap.legacyPhaseA.flows.length > 0);
   const restoringPurpose = state.mode === 'map' && restorePurposeId !== null
     ? state.applied.customPurposes.find(({ id }) => id === restorePurposeId && state.applied.customPurposes.some((candidate) => candidate.id === id && candidate.archivedAt !== undefined))
     : undefined;
@@ -64,7 +58,6 @@ export function AccountMapApp({ repositories }: { repositories?: AccountMapRepos
     : buildLocationRestoreRelated(restoringLocation.id, locationRestoreState, state.workspace.locations, state.main);
   const management = <AccountMapManagementMenu
     hasMap={state.mode === 'map'}
-    hasLegacy={hasLegacy}
     mutationsDisabled={(state.mode === 'map' || state.mode === 'setup') && state.recovery.status !== 'none'}
     archivedPurposes={state.mode === 'map' ? state.applied.customPurposes.filter(({ archivedAt }) => archivedAt !== undefined).map((purpose) => ({ id: purpose.id, name: purpose.name, parentName: purposeParentLabel(purpose.parentId), targetMonthlyWon: purpose.targetMonthlyWon })) : []}
     archivedLocations={state.mode === 'map' || state.mode === 'setup' ? state.workspace.locations.filter(({ archivedAt }) => archivedAt !== undefined).map((location) => ({ id: location.id, shortName: location.shortName, institutionName: location.institution?.name ?? (location.kind === 'cash' ? '직접 보관' : '기관 없음') })) : []}
@@ -352,7 +345,7 @@ export function AccountMapApp({ repositories }: { repositories?: AccountMapRepos
   async function applyMap() {
     if (state.mode !== 'setup' || state.draft === null || state.recovery.status !== 'none') return;
     const now = Date.now();
-    const applied = { schemaVersion: 1 as const, sourceMainUpdatedAt: state.main.updatedAt, customPurposes: state.draft.customPurposes, links: state.draft.links, layout: 'purpose' as const, setupCompletedAt: now, updatedAt: now };
+    const applied: AccountMapApplied = { schemaVersion: 2, sourceMainUpdatedAt: state.main.updatedAt, customPurposes: state.draft.customPurposes, links: state.draft.links, setupCompletedAt: now, updatedAt: now };
     dispatch({ type: 'save-requested' });
     const result = await resolved.accountMap.save(state.workspace.revision, { type: 'apply-map', applied });
     if (result.status !== 'saved') { if (result.status === 'conflict') captureManualConflict('apply-map', []); else dispatch({ type: 'save-failed', reason: failureReason(result) }); return; }

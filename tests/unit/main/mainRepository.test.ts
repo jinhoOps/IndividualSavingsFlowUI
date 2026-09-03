@@ -81,7 +81,7 @@ function mainData(overrides: Partial<MainData> = {}): MainData {
 
 function populatedWorkspace(): WorkspaceDocument {
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     revision: 4,
     updatedAt: 400,
     main: { applied: mainData(), setupProgress: null },
@@ -127,7 +127,7 @@ function populatedWorkspace(): WorkspaceDocument {
       createdAt: 10,
       updatedAt: 20,
     }],
-    accountMap: { applied: null, draft: null, legacyPhaseA: { instruments: [], flows: [] } },
+    accountMap: { applied: null, draft: null },
   };
 }
 

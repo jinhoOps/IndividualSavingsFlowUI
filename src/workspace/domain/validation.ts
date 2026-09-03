@@ -1,29 +1,35 @@
 import type { MainData, SetupStep } from '../../main/domain/model';
 import { isMainDataShape, validateMainData, validateMainDraft } from '../../main/domain/validation';
 import type { SetupProgress, SetupProgressKind } from '../../main/infrastructure/mainRepository';
-import { scopeKey, type PortfolioDraft, type PortfolioPlan } from '../../portfolio/domain/model';
-import { parsePortfolioDraft, parsePortfolioPlan } from '../../portfolio/domain/validation';
-import type { CompoundSimulationDraft } from '../../simulation/domain/model';
-import { parseStoredSimulationDraft } from '../../simulation/domain/validation';
+import {
+  ACCOUNT_MAP_APPLIED_SCHEMA_VERSION,
+  SYSTEM_PURPOSE_IDS,
+  type AccountMapApplied,
+  type AccountMapDraft,
+  type CustomPurpose,
+  type OutflowPurposeId,
+  type PurposeId,
+  type PurposeLocationLink,
+} from '../../account-map/domain/model';
 import {
   institutionComparisonKey,
   normalizeInstitutionText,
 } from '../../account-map/domain/institutions';
-import {
-  parseConsumerInstrument,
-  parseMonthlyFlow,
-  type ConsumerInstrument,
-  type FlowEndpoint,
-  type MonthlyFlow,
-} from './accountMapContract';
+import { mainPurposeReferences } from '../../account-map/domain/reconciliation';
+import type { CompoundSimulationDraft } from '../../simulation/domain/model';
+import { parseSimulationDraft } from '../../simulation/domain/validation';
+import { scopeKey, type PortfolioDraft, type PortfolioPlan } from '../../portfolio/domain/model';
+import { parsePortfolioDraft, parsePortfolioPlan } from '../../portfolio/domain/validation';
 import {
   parseFinancialLocation,
   PURPOSE_CAPACITY,
   type FinancialLocation,
   type FinancialRole,
 } from './financialLocation';
-import { parseWorkspaceDocumentVersioned } from './migration';
-import type { WorkspaceDocument, WorkspaceDocumentV1 } from './model';
+import {
+  WORKSPACE_SCHEMA_VERSION,
+  type WorkspaceDocument,
+} from './model';
 
 const setupSteps = new Set<SetupStep>([
   'welcome',
@@ -32,6 +38,13 @@ const setupSteps = new Set<SetupStep>([
   'living',
   'saving-investment',
   'review',
+]);
+const systemPurposeIds = new Set<string>(SYSTEM_PURPOSE_IDS);
+const outflowPurposeIds = new Set<OutflowPurposeId>([
+  'system:housing',
+  'system:living',
+  'system:saving',
+  'system:investing',
 ]);
 
 export type WorkspaceDocumentValidationResult =
@@ -44,22 +57,13 @@ export function parseWorkspaceDocument(value: unknown): WorkspaceDocument | null
 }
 
 export function validateWorkspaceDocument(value: unknown): WorkspaceDocumentValidationResult {
-  const parsed = parseWorkspaceDocumentVersioned(value);
-  return parsed?.version === 2
-    ? { status: 'valid', workspace: parsed.workspace }
-    : { status: 'schema' };
+  const workspace = parseWorkspaceShape(value);
+  if (workspace === null) return { status: 'schema' };
+  if (!validateWorkspaceReferences(workspace)) return { status: 'reference' };
+  return { status: 'valid', workspace };
 }
 
-export function parseWorkspaceDocumentV1(value: unknown): WorkspaceDocumentV1 | null {
-  const result = validateWorkspaceDocumentV1(value);
-  return result.status === 'valid' ? result.workspace : null;
-}
-
-type WorkspaceDocumentV1ValidationResult =
-  | { status: 'valid'; workspace: WorkspaceDocumentV1 }
-  | { status: 'schema' | 'reference' };
-
-export function validateWorkspaceDocumentV1(value: unknown): WorkspaceDocumentV1ValidationResult {
+function parseWorkspaceShape(value: unknown): WorkspaceDocument | null {
   if (!hasExactKeys(value, [
     'schemaVersion',
     'revision',
@@ -70,9 +74,9 @@ export function validateWorkspaceDocumentV1(value: unknown): WorkspaceDocumentV1
     'locations',
     'accountMap',
   ])
-    || value.schemaVersion !== 1
+    || value.schemaVersion !== WORKSPACE_SCHEMA_VERSION
     || !isNonnegativeSafeInteger(value.revision)
-    || !isTimestamp(value.updatedAt)) return { status: 'schema' };
+    || !isTimestamp(value.updatedAt)) return null;
 
   const main = parseMainSlice(value.main);
   const simulation = parseSimulationSlice(value.simulation);
@@ -83,10 +87,10 @@ export function validateWorkspaceDocumentV1(value: unknown): WorkspaceDocumentV1
     || simulation === null
     || portfolio === null
     || locations === null
-    || accountMap === null) return { status: 'schema' };
+    || accountMap === null) return null;
 
-  const workspace: WorkspaceDocumentV1 = {
-    schemaVersion: 1,
+  return {
+    schemaVersion: WORKSPACE_SCHEMA_VERSION,
     revision: value.revision,
     updatedAt: value.updatedAt,
     main,
@@ -95,27 +99,9 @@ export function validateWorkspaceDocumentV1(value: unknown): WorkspaceDocumentV1
     locations,
     accountMap,
   };
-  if (accountMap.instruments.length > 0 || accountMap.flows.length > 0) {
-    return { status: 'schema' };
-  }
-  if (!validateWorkspaceCrossReferences(workspace)) return { status: 'reference' };
-
-  return { status: 'valid', workspace };
 }
 
-export function validateWorkspaceCrossReferences(workspace: WorkspaceDocumentV1): boolean {
-  return hasUniqueIds(workspace.locations)
-    && hasUniqueActiveLocationNames(workspace.locations)
-    && withinPurposeCapacities(workspace.locations, workspace.accountMap.instruments)
-    && hasValidPortfolioReferences(workspace.portfolio, workspace.locations)
-    && hasValidAccountMapReferences(
-      workspace.accountMap.instruments,
-      workspace.accountMap.flows,
-      workspace.locations,
-    );
-}
-
-function parseMainSlice(value: unknown): WorkspaceDocumentV1['main'] | null {
+function parseMainSlice(value: unknown): WorkspaceDocument['main'] | null {
   if (!hasExactKeys(value, ['applied', 'setupProgress'])) return null;
   const applied = value.applied === null ? null : parseAppliedMain(value.applied);
   const setupProgress = value.setupProgress === null ? null : parseSetupProgress(value.setupProgress);
@@ -148,17 +134,14 @@ function parseSetupProgress(value: unknown): SetupProgress | null {
   };
 }
 
-function parseSimulationSlice(value: unknown): WorkspaceDocumentV1['simulation'] | null {
+function parseSimulationSlice(value: unknown): WorkspaceDocument['simulation'] | null {
   if (!hasExactKeys(value, ['draft'])) return null;
   if (value.draft === null) return { draft: null };
-  if (!hasOnlyStringOwnKeys(value.draft)
-    || !isRecord(value.draft)
-    || !hasOnlyStringOwnKeys(value.draft.source)) return null;
-  const parsed = parseStoredSimulationDraft(value.draft);
-  return parsed === null ? null : { draft: parsed.draft };
+  const draft = parseSimulationDraft(value.draft);
+  return draft === null ? null : { draft };
 }
 
-function parsePortfolioSlice(value: unknown): WorkspaceDocumentV1['portfolio'] | null {
+function parsePortfolioSlice(value: unknown): WorkspaceDocument['portfolio'] | null {
   if (!hasExactKeys(value, ['plans', 'draft'])) return null;
   const plans = parseArray(value.plans, parsePortfolioPlan);
   const draft = value.draft === null ? null : parsePortfolioDraft(value.draft);
@@ -166,70 +149,236 @@ function parsePortfolioSlice(value: unknown): WorkspaceDocumentV1['portfolio'] |
   return { plans, draft };
 }
 
-function parseAccountMapSlice(value: unknown): WorkspaceDocumentV1['accountMap'] | null {
-  if (!hasExactKeys(value, ['applied', 'draft', 'instruments', 'flows'])
-    || value.applied !== null
-    || value.draft !== null) return null;
-  const instruments = parseArray(value.instruments, parseConsumerInstrument);
-  const flows = parseArray(value.flows, parseMonthlyFlow);
-  if (instruments === null || flows === null) return null;
-  return { applied: null, draft: null, instruments, flows };
+function parseAccountMapSlice(value: unknown): WorkspaceDocument['accountMap'] | null {
+  if (!hasExactKeys(value, ['applied', 'draft'])) return null;
+  const applied = value.applied === null ? null : parseAccountMapApplied(value.applied);
+  const draft = value.draft === null ? null : parseAccountMapDraft(value.draft);
+  if ((value.applied !== null && applied === null)
+    || (value.draft !== null && draft === null)) return null;
+  return { applied, draft };
 }
 
-function hasValidPortfolioReferences(
-  portfolio: { plans: PortfolioPlan[]; draft: PortfolioDraft | null },
-  locations: FinancialLocation[],
-): boolean {
-  const scopeKeys = portfolio.plans.map(({ scope }) => scopeKey(scope));
-  if (new Set(scopeKeys).size !== scopeKeys.length) return false;
-
-  const locationIds = new Set(locations.map((location) => location.id));
-  return [...portfolio.plans, ...(portfolio.draft === null ? [] : [portfolio.draft])]
-    .every(({ scope }) => scope.type === 'aggregate' || locationIds.has(scope.locationId));
+function parseAccountMapApplied(value: unknown): AccountMapApplied | null {
+  if (!hasExactKeys(value, [
+    'schemaVersion', 'sourceMainUpdatedAt', 'customPurposes', 'links',
+    'setupCompletedAt', 'updatedAt',
+  ])
+    || value.schemaVersion !== ACCOUNT_MAP_APPLIED_SCHEMA_VERSION
+    || !isTimestamp(value.sourceMainUpdatedAt)
+    || !isTimestamp(value.setupCompletedAt)
+    || !isTimestamp(value.updatedAt)) return null;
+  const common = parsePurposeState(value.customPurposes, value.links);
+  return common === null ? null : {
+    schemaVersion: ACCOUNT_MAP_APPLIED_SCHEMA_VERSION,
+    sourceMainUpdatedAt: value.sourceMainUpdatedAt,
+    ...common,
+    setupCompletedAt: value.setupCompletedAt,
+    updatedAt: value.updatedAt,
+  };
 }
 
-function hasValidAccountMapReferences(
-  instruments: ConsumerInstrument[],
-  flows: MonthlyFlow[],
-  locations: FinancialLocation[],
-): boolean {
-  if (!hasUniqueIds(instruments) || !hasUniqueIds(flows)) return false;
-  const locationIds = new Set(locations.map((location) => location.id));
-  const instrumentIds = new Set(instruments.map((instrument) => instrument.id));
-  if (instruments.some((instrument) => !locationIds.has(instrument.fundingLocationId))) return false;
-  return flows.every((flow) => endpointResolves(flow.source, locationIds, instrumentIds)
-    && endpointResolves(flow.target, locationIds, instrumentIds));
+function parseAccountMapDraft(value: unknown): AccountMapDraft | null {
+  if (!hasExactKeys(value, [
+    'schemaVersion', 'sourceMainUpdatedAt', 'customPurposes', 'links', 'step', 'updatedAt',
+  ])
+    || value.schemaVersion !== 1
+    || !isTimestamp(value.sourceMainUpdatedAt)
+    || (value.step !== 'connect' && value.step !== 'review')
+    || !isTimestamp(value.updatedAt)) return null;
+  const common = parsePurposeState(value.customPurposes, value.links);
+  return common === null ? null : {
+    schemaVersion: 1,
+    sourceMainUpdatedAt: value.sourceMainUpdatedAt,
+    ...common,
+    step: value.step,
+    updatedAt: value.updatedAt,
+  };
 }
 
-function endpointResolves(
-  endpoint: FlowEndpoint,
-  locationIds: Set<string>,
-  instrumentIds: Set<string>,
+function parsePurposeState(
+  customValue: unknown,
+  linkValue: unknown,
+): Pick<AccountMapApplied, 'customPurposes' | 'links'> | null {
+  const customPurposes = parseArray(customValue, parseCustomPurpose);
+  const links = parseArray(linkValue, parsePurposeLink);
+  return customPurposes === null || links === null ? null : { customPurposes, links };
+}
+
+function parseCustomPurpose(value: unknown): CustomPurpose | null {
+  const hasArchivedAt = isRecord(value) && Object.hasOwn(value, 'archivedAt');
+  const keys = hasArchivedAt
+    ? ['id', 'parentId', 'name', 'targetMonthlyWon', 'archivedAt', 'createdAt', 'updatedAt'] as const
+    : ['id', 'parentId', 'name', 'targetMonthlyWon', 'createdAt', 'updatedAt'] as const;
+  if (!hasExactKeys(value, keys)
+    || typeof value.id !== 'string'
+    || !value.id.startsWith('custom:')
+    || value.id.length === 'custom:'.length
+    || typeof value.parentId !== 'string'
+    || !outflowPurposeIds.has(value.parentId as OutflowPurposeId)
+    || typeof value.name !== 'string'
+    || normalizeName(value.name).length < 1
+    || Array.from(normalizeName(value.name)).length > 24
+    || !isNonnegativeSafeInteger(value.targetMonthlyWon)
+    || !isTimestamp(value.createdAt)
+    || !isTimestamp(value.updatedAt)
+    || (hasArchivedAt && !isTimestamp(value.archivedAt))) return null;
+  return {
+    id: value.id as CustomPurpose['id'],
+    parentId: value.parentId as OutflowPurposeId,
+    name: normalizeName(value.name),
+    targetMonthlyWon: value.targetMonthlyWon,
+    ...(hasArchivedAt ? { archivedAt: value.archivedAt as number } : {}),
+    createdAt: value.createdAt,
+    updatedAt: value.updatedAt,
+  };
+}
+
+function parsePurposeLink(value: unknown): PurposeLocationLink | null {
+  const active = hasExactKeys(value, [
+    'id', 'purposeId', 'locationId', 'monthlyAmountWon', 'remainder',
+    'status', 'createdAt', 'updatedAt',
+  ]);
+  const suspended = hasExactKeys(value, [
+    'id', 'purposeId', 'locationId', 'monthlyAmountWon', 'remainder',
+    'status', 'suspendedReason', 'createdAt', 'updatedAt',
+  ]);
+  if ((!active && !suspended)
+    || typeof value.id !== 'string' || value.id.length === 0
+    || typeof value.purposeId !== 'string' || !isPurposeId(value.purposeId)
+    || typeof value.locationId !== 'string' || value.locationId.length === 0
+    || !isNonnegativeSafeInteger(value.monthlyAmountWon)
+    || typeof value.remainder !== 'boolean'
+    || !isTimestamp(value.createdAt)
+    || !isTimestamp(value.updatedAt)) return null;
+  if (active && value.status === 'active') {
+    return {
+      id: value.id,
+      purposeId: value.purposeId,
+      locationId: value.locationId,
+      monthlyAmountWon: value.monthlyAmountWon,
+      remainder: value.remainder,
+      status: 'active',
+      createdAt: value.createdAt,
+      updatedAt: value.updatedAt,
+    };
+  }
+  if (suspended && value.status === 'suspended'
+    && value.remainder === false
+    && (value.suspendedReason === 'location-archived' || value.suspendedReason === 'user')) {
+    return {
+      id: value.id,
+      purposeId: value.purposeId,
+      locationId: value.locationId,
+      monthlyAmountWon: value.monthlyAmountWon,
+      remainder: false,
+      status: 'suspended',
+      suspendedReason: value.suspendedReason,
+      createdAt: value.createdAt,
+      updatedAt: value.updatedAt,
+    };
+  }
+  return null;
+}
+
+function validateWorkspaceReferences(workspace: WorkspaceDocument): boolean {
+  return hasUniqueIds(workspace.locations)
+    && hasUniqueActiveLocationNames(workspace.locations)
+    && withinLocationCapacities(workspace.locations)
+    && hasUniquePortfolioScopes(workspace.portfolio.plans)
+    && validatePurposeState(workspace.accountMap.applied, workspace)
+    && validatePurposeState(workspace.accountMap.draft, workspace);
+}
+
+function validatePurposeState(
+  state: AccountMapApplied | AccountMapDraft | null,
+  workspace: WorkspaceDocument,
 ): boolean {
-  return endpoint.type === 'location'
-    ? locationIds.has(endpoint.id)
-    : instrumentIds.has(endpoint.id);
+  if (state === null) return true;
+  const main = workspace.main.applied;
+  if (main === null
+    || state.sourceMainUpdatedAt > main.updatedAt
+    || !hasUniqueIds(state.customPurposes)
+    || !hasUniqueIds(state.links)) return false;
+
+  const pairKeys = state.links.map((link) => `${link.purposeId}\u0000${link.locationId}`);
+  if (new Set(pairKeys).size !== pairKeys.length) return false;
+
+  const activeCustom = state.customPurposes.filter(({ archivedAt }) => archivedAt === undefined);
+  for (const parentId of outflowPurposeIds) {
+    const children = activeCustom.filter((purpose) => purpose.parentId === parentId);
+    const target = children.reduce((sum, purpose) => sum + purpose.targetMonthlyWon, 0);
+    const names = children.map(({ name }) => normalizeName(name).toLocaleLowerCase('en-US'));
+    if (children.length > 10
+      || !Number.isSafeInteger(target)
+      || new Set(names).size !== names.length) return false;
+  }
+  if (state.sourceMainUpdatedAt === main.updatedAt && !customTargetsWithinMain(state, main)) {
+    return false;
+  }
+
+  const purposeIds = new Set<string>([
+    ...SYSTEM_PURPOSE_IDS,
+    ...state.customPurposes.map(({ id }) => id),
+  ]);
+  const locationById = new Map(workspace.locations.map((location) => [location.id, location]));
+  for (const link of state.links) {
+    if (!purposeIds.has(link.purposeId)) return false;
+    const location = locationById.get(link.locationId);
+    const custom = state.customPurposes.find(({ id }) => id === link.purposeId);
+    if (location === undefined) return false;
+    if (link.status === 'active') {
+      if (location.archivedAt !== undefined || custom?.archivedAt !== undefined) return false;
+      if (!location.roles.includes(requiredRole(link.purposeId, state.customPurposes))) return false;
+    }
+  }
+  for (const purposeId of purposeIds) {
+    const active = state.links.filter((link) => (
+      link.purposeId === purposeId && link.status === 'active'
+    ));
+    if (active.length > 10 || active.filter(({ remainder }) => remainder).length > 1) return false;
+  }
+  return true;
+}
+
+function customTargetsWithinMain(
+  state: Pick<AccountMapApplied, 'customPurposes'>,
+  main: MainData,
+): boolean {
+  const references = mainPurposeReferences(main);
+  return [...outflowPurposeIds].every((parentId) => state.customPurposes
+    .filter((purpose) => purpose.parentId === parentId && purpose.archivedAt === undefined)
+    .reduce((sum, purpose) => sum + purpose.targetMonthlyWon, 0) <= references[parentId]);
+}
+
+function requiredRole(purposeId: PurposeId, customPurposes: CustomPurpose[]): FinancialRole {
+  const root = systemPurposeIds.has(purposeId)
+    ? purposeId as typeof SYSTEM_PURPOSE_IDS[number]
+    : customPurposes.find(({ id }) => id === purposeId)?.parentId;
+  if (root === 'system:income') return 'income';
+  if (root === 'system:saving') return 'saving';
+  if (root === 'system:investing') return 'investing';
+  return 'spending';
+}
+
+function hasUniquePortfolioScopes(plans: PortfolioPlan[]): boolean {
+  const scopeKeys = plans.map(({ scope }) => scopeKey(scope));
+  return new Set(scopeKeys).size === scopeKeys.length;
 }
 
 function hasUniqueActiveLocationNames(locations: FinancialLocation[]): boolean {
   const names = locations
     .filter((location) => location.archivedAt === undefined)
-    .map((location) => `${institutionComparisonKey(location)}\u0000${normalizeInstitutionText(location.shortName)}`);
+    .map((location) => (
+      `${institutionComparisonKey(location)}\u0000${normalizeInstitutionText(location.shortName)}`
+    ));
   return new Set(names).size === names.length;
 }
 
-function withinPurposeCapacities(
-  locations: FinancialLocation[],
-  instruments: ConsumerInstrument[],
-): boolean {
+function withinLocationCapacities(locations: FinancialLocation[]): boolean {
   const activeLocations = locations.filter((location) => location.archivedAt === undefined);
-  const activeInstrumentCount = instruments
-    .filter((instrument) => instrument.archivedAt === undefined).length;
-  return (Object.keys(PURPOSE_CAPACITY) as FinancialRole[]).every((role) => {
-    const locationCount = activeLocations.filter((location) => location.roles.includes(role)).length;
-    const count = role === 'spending' ? locationCount + activeInstrumentCount : locationCount;
-    return count <= PURPOSE_CAPACITY[role];
-  });
+  return (Object.keys(PURPOSE_CAPACITY) as FinancialRole[]).every((role) => (
+    activeLocations.filter((location) => location.roles.includes(role)).length <= PURPOSE_CAPACITY[role]
+  ));
 }
 
 function parseArray<T>(value: unknown, parser: (item: unknown) => T | null): T[] | null {
@@ -240,6 +389,14 @@ function parseArray<T>(value: unknown, parser: (item: unknown) => T | null): T[]
 
 function hasUniqueIds(values: { id: string }[]): boolean {
   return new Set(values.map(({ id }) => id)).size === values.length;
+}
+
+function isPurposeId(value: string): value is PurposeId {
+  return systemPurposeIds.has(value) || (value.startsWith('custom:') && value.length > 7);
+}
+
+function normalizeName(value: string): string {
+  return value.normalize('NFC').trim().replace(/\s+/gu, ' ');
 }
 
 function hasExactKeys<const Keys extends readonly string[]>(

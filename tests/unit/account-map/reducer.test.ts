@@ -21,7 +21,6 @@ describe('Account Map reducer', () => {
     state = accountMapReducer(state, { type: 'node-invoked', nodeId: 'a' });
     state = accountMapReducer(state, { type: 'map-background-invoked' });
     expect(state.mode === 'map' && state.interaction).toMatchObject({ transientNodeId: null, pinnedNodeId: null });
-    expect(state.mode === 'map' && state.applied.layout).toBe('purpose');
   });
 
   it('Escape first closes a modal, then clears the pinned node', () => {
@@ -105,7 +104,7 @@ describe('Account Map reducer', () => {
       type: 'save-conflicted', latest: workspaceWithMain(2), intent: linkIntent(),
     });
     const saved = workspaceWithMain(3);
-    saved.accountMap.applied = applied('purpose');
+    saved.accountMap.applied = applied();
     const reapplied = accountMapReducer(stale, { type: 'reapply-succeeded', workspace: saved });
 
     expect(reapplied.mode === 'map' && reapplied).toMatchObject({
@@ -117,12 +116,12 @@ describe('Account Map reducer', () => {
 
   it('adopts latest map or setup mode when the user keeps the latest value', () => {
     const latestMap = workspaceWithMain(2);
-    latestMap.accountMap.applied = applied('account');
+    latestMap.accountMap.applied = applied();
     const staleSetup = accountMapReducer(setupState(), {
       type: 'save-conflicted', latest: latestMap, intent: linkIntent(),
     });
     const mapped = accountMapReducer(staleSetup, { type: 'latest-kept' });
-    expect(mapped).toMatchObject({ mode: 'map', workspace: { revision: 2 }, applied: { layout: 'account' }, recovery: { status: 'none' } });
+    expect(mapped).toMatchObject({ mode: 'map', workspace: { revision: 2 }, recovery: { status: 'none' } });
 
     const latestSetup = workspaceWithMain(3);
     latestSetup.accountMap.draft = draft();
@@ -137,7 +136,7 @@ describe('Account Map reducer', () => {
     const latestMain = { ...main(), updatedAt: 20, monthlyLivingWon: 900_000 };
     const latestMap = workspaceWithMain(2);
     latestMap.main.applied = latestMain;
-    latestMap.accountMap.applied = applied('account');
+    latestMap.accountMap.applied = applied();
     const staleMap = accountMapReducer(mapState(), {
       type: 'save-conflicted', latest: latestMap, intent: linkIntent(),
     });
@@ -209,7 +208,7 @@ describe('Account Map reducer', () => {
     let current = accountMapReducer(mapState(), { type: 'node-invoked', nodeId: 'a' });
     current = accountMapReducer(current, { type: 'node-invoked', nodeId: 'a' });
     const latest = workspaceWithMain(2);
-    latest.accountMap.applied = applied('account');
+    latest.accountMap.applied = applied();
     const conflicted = accountMapReducer(current, {
       type: 'save-manual-conflicted', latest, action: 'edit-node', targets: [{ kind: 'node', id: 'a' }], reason: 'compound-edit',
     });
@@ -220,7 +219,7 @@ describe('Account Map reducer', () => {
 
     const reviewing = accountMapReducer(conflicted, { type: 'review-latest' });
     expect(reviewing).toMatchObject({
-      mode: 'map', workspace: { revision: 2 }, applied: { layout: 'account' },
+      mode: 'map', workspace: { revision: 2 },
       interaction: { modalNodeId: 'a' }, recovery: { status: 'none' },
     });
   });
@@ -232,7 +231,7 @@ describe('Account Map reducer', () => {
     current = accountMapReducer(current, { type: 'node-invoked', nodeId: 'location:checking' });
     current = accountMapReducer(current, { type: 'node-invoked', nodeId: 'location:checking' });
     const latest = workspaceWithMain(2);
-    latest.accountMap.applied = applied('purpose');
+    latest.accountMap.applied = applied();
     const conflicted = accountMapReducer(current, {
       type: 'save-manual-conflicted', latest, action: 'edit-node', targets: [{ kind: 'node', id: 'location:checking' }], reason: 'compound-edit',
     });
@@ -248,7 +247,7 @@ describe('Account Map reducer', () => {
   it('keeps setup input when manual review finds that latest already has an applied map', () => {
     const current = setupState();
     const latest = workspaceWithMain(2);
-    latest.accountMap.applied = applied('purpose');
+    latest.accountMap.applied = applied();
     const conflicted = accountMapReducer(current, {
       type: 'save-manual-conflicted', latest, action: 'apply-map', targets: [], reason: 'compound-edit',
     });
@@ -266,7 +265,7 @@ describe('Account Map reducer', () => {
     const latest = workspaceWithMain(2);
     latest.locations = [{ id: 'checking', shortName: '생활비', kind: 'bank', roles: ['spending'], archivedAt: 2, createdAt: 1, updatedAt: 2 }];
     latest.accountMap.applied = {
-      ...applied('purpose'),
+      ...applied(),
       links: [{ id: 'living', purposeId: 'system:living', locationId: 'checking', monthlyAmountWon: 700_000, remainder: true, status: 'active', createdAt: 1, updatedAt: 1 }],
     };
     const conflicted = accountMapReducer(current, {
@@ -307,7 +306,7 @@ describe('Account Map reducer', () => {
       id: 'checking', shortName: '생활비', kind: 'bank', roles: ['spending'],
       ...(action === 'restore-location' ? { archivedAt: 2 } : {}), createdAt: 1, updatedAt: 2,
     }];
-    latest.accountMap.applied = applied('purpose');
+    latest.accountMap.applied = applied();
     const conflicted = accountMapReducer(mapState(), {
       type: 'save-manual-conflicted', latest, action, targets: [{ kind: 'location', id: 'checking' }, target], reason: 'compound-edit',
     });
@@ -347,7 +346,7 @@ describe('Account Map reducer', () => {
 function mapState(): AccountMapState {
   const workspace = createEmptyWorkspace(1);
   return {
-    mode: 'map', workspace, main: main(), applied: applied('purpose'),
+    mode: 'map', workspace, main: main(), applied: applied(),
     interaction: { transientNodeId: null, pinnedNodeId: null, modalNodeId: null },
     save: { status: 'idle' }, recovery: { status: 'none' },
   };
@@ -383,8 +382,8 @@ function draft(): AccountMapDraft {
   return { schemaVersion: 1, sourceMainUpdatedAt: 10, customPurposes: [], links: [], step: 'connect', updatedAt: 10 };
 }
 
-function applied(layout: AccountMapApplied['layout']): AccountMapApplied {
-  return { schemaVersion: 1, sourceMainUpdatedAt: 10, customPurposes: [], links: [], layout, setupCompletedAt: 10, updatedAt: 10 };
+function applied(): AccountMapApplied {
+  return { schemaVersion: 2, sourceMainUpdatedAt: 10, customPurposes: [], links: [], setupCompletedAt: 10, updatedAt: 10 };
 }
 
 function linkIntent(): AccountMapEditIntent {

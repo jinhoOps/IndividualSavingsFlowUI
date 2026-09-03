@@ -178,7 +178,7 @@ function readBlob(blob: Blob): Promise<string> {
 function workspace(monthlyNetIncomeWon: number, revision = 1): WorkspaceDocument {
   const applied = data(monthlyNetIncomeWon, { updatedAt: 100 });
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     revision,
     updatedAt: 500,
     main: { applied, setupProgress: null },
@@ -203,7 +203,7 @@ function workspace(monthlyNetIncomeWon: number, revision = 1): WorkspaceDocument
     portfolio: {
       plans: [{
         schemaVersion: 2,
-        scope: { type: 'location', locationId: 'loc-isa' },
+        scope: { type: 'aggregate' },
         items: [{
           id: 'asset-us', name: '미국 인덱스', shareUnits: 700_000, order: 0,
           classification: 'growth', classificationOrigin: 'automatic',
@@ -224,7 +224,7 @@ function workspace(monthlyNetIncomeWon: number, revision = 1): WorkspaceDocument
       createdAt: 10,
       updatedAt: 20,
     }],
-    accountMap: { applied: null, draft: null, legacyPhaseA: { instruments: [], flows: [] } },
+    accountMap: { applied: null, draft: null },
   };
 }
 
@@ -235,7 +235,7 @@ function backupFile(value: unknown): File {
 function backupEnvelope(value: WorkspaceDocument): unknown {
   return {
     format: 'isf-workspace-backup',
-    formatVersion: 1,
+    formatVersion: 2,
     exportedAt: 900,
     workspace: value,
   };
@@ -414,7 +414,7 @@ describe('MainApp', () => {
     const parsed = JSON.parse(await readBlob(blob as Blob));
     expect(parsed).toMatchObject({
       format: 'isf-workspace-backup',
-      formatVersion: 1,
+      formatVersion: 2,
       workspace: current,
     });
     expect(Object.keys(parsed).sort()).toEqual(['exportedAt', 'format', 'formatVersion', 'workspace']);

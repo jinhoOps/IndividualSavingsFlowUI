@@ -13,9 +13,8 @@ export interface ArchivedLocationManagementItem {
   institutionName: string;
 }
 
-export function AccountMapManagementMenu({ hasMap, hasLegacy = false, archivedPurposes = [], archivedLocations = [], mutationsDisabled = false, onRestorePurpose = () => undefined, onRestoreLocation = () => undefined, onReset = async () => false }: { hasMap: boolean; hasLegacy?: boolean; archivedPurposes?: readonly ArchivedPurposeManagementItem[]; archivedLocations?: readonly ArchivedLocationManagementItem[]; mutationsDisabled?: boolean; onRestorePurpose?(purposeId: `custom:${string}`): void; onRestoreLocation?(locationId: string): void; onReset?(): Promise<boolean> }) {
+export function AccountMapManagementMenu({ hasMap, archivedPurposes = [], archivedLocations = [], mutationsDisabled = false, onRestorePurpose = () => undefined, onRestoreLocation = () => undefined, onReset = async () => false }: { hasMap: boolean; archivedPurposes?: readonly ArchivedPurposeManagementItem[]; archivedLocations?: readonly ArchivedLocationManagementItem[]; mutationsDisabled?: boolean; onRestorePurpose?(purposeId: `custom:${string}`): void; onRestoreLocation?(locationId: string): void; onReset?(): Promise<boolean> }) {
   return <AppManagementMenu items={[
-    ...(hasLegacy ? [{ kind: 'message' as const, id: 'legacy-data', text: '이전 형식 데이터가 호환용으로 보존되어 있습니다' }] : []),
     ...(archivedPurposes.length === 0 ? [] : [
       { kind: 'message' as const, id: 'archived-purpose-count', text: `보관된 목적 ${archivedPurposes.length}개` },
       ...archivedPurposes.map((purpose) => ({

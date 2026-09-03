@@ -5,7 +5,6 @@ import {
 } from '../domain/model';
 import type { SimulationDraftMigration } from '../../simulation/domain/model';
 import { parseWorkspaceDocument } from '../domain/validation';
-import { migrateWorkspaceV1, parseWorkspaceDocumentVersioned } from '../domain/migration';
 import {
   BrowserWorkspaceSaveLock,
   type WorkspaceSaveGuard,
@@ -101,22 +100,9 @@ export class BrowserWorkspaceRepository implements WorkspaceRepository {
       }
     }
     try {
-      const parsed = parseWorkspaceDocumentVersioned(JSON.parse(raw));
+      const parsed = parseWorkspaceDocument(JSON.parse(raw));
       if (parsed === null) return { status: 'invalid', raw };
-      const simulationMigration = parsed.simulationMigration;
-      return parsed.version === 1
-        ? {
-            status: 'found',
-            workspace: migrateWorkspaceV1(parsed.workspace, this.now()),
-            needsMigration: true,
-            ...(simulationMigration === null ? {} : { simulationMigration }),
-          }
-        : {
-            status: 'found',
-            workspace: parsed.workspace,
-            needsMigration: simulationMigration !== null,
-            ...(simulationMigration === null ? {} : { simulationMigration }),
-          };
+      return { status: 'found', workspace: parsed, needsMigration: false };
     } catch (error) {
       return error instanceof SyntaxError
         ? { status: 'invalid', raw }

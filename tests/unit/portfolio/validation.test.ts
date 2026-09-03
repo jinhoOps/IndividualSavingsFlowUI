@@ -59,15 +59,15 @@ describe('Portfolio validation', () => {
     expect(normalizePortfolioName('  US   INDEX ')).toBe('us index');
   });
 
-  it('accepts aggregate and non-empty location scopes in schema v2', () => {
+  it('accepts only the exact aggregate scope in schema v2', () => {
     expect(parsePortfolioPlan({ ...validPlanV2, scope: { type: 'aggregate' } })).not.toBeNull();
     expect(parsePortfolioPlan({
       ...validPlanV2,
       scope: { type: 'location', locationId: 'loc-isa' },
-    })).not.toBeNull();
+    })).toBeNull();
   });
 
-  it('rejects schema v1 and empty location scope IDs', () => {
+  it('rejects schema v1 and every location scope', () => {
     expect(parsePortfolioPlan(validPlanV1)).toBeNull();
     expect(parsePortfolioPlan({
       ...validPlanV2,

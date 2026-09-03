@@ -20,7 +20,7 @@ function workspace(monthlyNetIncomeWon: number, revision = 1): WorkspaceDocument
     monthlyInvestmentWon: 400_000,
   };
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     revision,
     updatedAt: 500,
     main: { applied, setupProgress: null },
@@ -45,7 +45,7 @@ function workspace(monthlyNetIncomeWon: number, revision = 1): WorkspaceDocument
     portfolio: {
       plans: [{
         schemaVersion: 2,
-        scope: { type: 'location', locationId: 'loc-isa' },
+        scope: { type: 'aggregate' },
         items: [{
           id: 'asset-us', name: '미국 인덱스', shareUnits: 700_000, order: 0,
           classification: 'growth', classificationOrigin: 'automatic',
@@ -66,14 +66,14 @@ function workspace(monthlyNetIncomeWon: number, revision = 1): WorkspaceDocument
       createdAt: 10,
       updatedAt: 20,
     }],
-    accountMap: { applied: null, draft: null, legacyPhaseA: { instruments: [], flows: [] } },
+    accountMap: { applied: null, draft: null },
   };
 }
 
 function backupEnvelope(value: WorkspaceDocument): string {
   return JSON.stringify({
     format: 'isf-workspace-backup',
-    formatVersion: 1,
+    formatVersion: 2,
     exportedAt: 900,
     workspace: value,
   });
@@ -109,16 +109,20 @@ describe('main backup commands', () => {
       status: 'candidate-invalid',
       reason: 'format',
     });
+    const duplicateLocationWorkspace = workspace(900);
     expect(parseWorkspaceBackupCandidate(backupEnvelope({
-      ...workspace(900),
-      locations: [],
+      ...duplicateLocationWorkspace,
+      locations: [
+        ...duplicateLocationWorkspace.locations,
+        { ...duplicateLocationWorkspace.locations[0]!, shortName: '연금' },
+      ],
     }))).toEqual({ status: 'candidate-invalid', reason: 'reference' });
     expect(parseWorkspaceBackupCandidate(backupEnvelope({
       ...workspace(900),
       accountMap: {
         applied: null,
         draft: null,
-        legacyPhaseA: { instruments: [{ id: 'broken' }], flows: [] },
+        extra: true,
       },
     } as unknown as WorkspaceDocument))).toEqual({ status: 'candidate-invalid', reason: 'schema' });
   });

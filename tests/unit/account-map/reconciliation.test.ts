@@ -168,11 +168,10 @@ function appliedState(
   customPurposes: AccountMapApplied['customPurposes'] = [],
 ): AccountMapApplied {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     sourceMainUpdatedAt: 1,
     customPurposes,
     links,
-    layout: 'purpose',
     setupCompletedAt: 1,
     updatedAt: 1,
   };

@@ -3,9 +3,7 @@ export const SHARE_SCALE = 1_000_000 as const;
 
 export type CashMode = 'automatic' | 'manual';
 export type InputMode = 'amount' | 'percentage';
-export type PortfolioScope =
-  | { type: 'aggregate' }
-  | { type: 'location'; locationId: string };
+export type PortfolioScope = { type: 'aggregate' };
 export type Classification = 'growth' | 'stable';
 export type ClassificationOrigin = 'automatic' | 'user';
 export type PortfolioSortMode = 'ratio' | 'input';
@@ -78,6 +76,6 @@ export interface PortfolioItemIdentity {
   order: number;
 }
 
-export function scopeKey(scope: PortfolioScope): string {
-  return scope.type === 'aggregate' ? 'aggregate' : `location:${scope.locationId}`;
+export function scopeKey(_scope: PortfolioScope): 'aggregate' {
+  return 'aggregate';
 }
