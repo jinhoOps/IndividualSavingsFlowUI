@@ -270,7 +270,7 @@ Simulation, Portfolio와 Account Map은 workspace 안의 최신 Main을 읽기 �
 - [x] Account Map과 shared workspace의 승인된 기능 명세와 단계별 disposition이 있다.
 - [x] Portfolio의 기존 `투자 위치` UI와 shared location command 진입점을 제거하고 보존 데이터 회귀를 입증한다.
 - [x] Phase B Account Map 상세 명세에서 계좌·보관처 관리와 Portfolio 비연결 경계를 승인한다.
-- [x] Phase 4의 분류된 legacy runtime 삭제는 v1/v2 conversion·raw source preservation·reference search evidence와 함께 기록되어 있다. Task 8의 최종 전체 검증은 아직 이 PRD가 완료로 주장하지 않는다.
+- [x] Phase 4의 분류된 legacy runtime 삭제와 Task 8의 최종 전체 검증은 v1/v2 conversion·raw source preservation·reference search·type/unit/E2E/build·반응형 QA [evidence](../../../../superpowers/evidence/2026-09-02-phase4-legacy-test-disposition.md)와 함께 기록되어 있다.
 
 ## 12. Future Product Direction
 
@@ -281,7 +281,7 @@ Simulation, Portfolio와 Account Map은 workspace 안의 최신 Main을 읽기 �
 3. 선택한 방향을 매달 무엇에 투자할 것인가? — Portfolio
 4. 실제 금융 위치와 월 연결을 어떻게 단순하게 관리할 것인가? — Phase B Account Map
 
-Phase C는 현재 Main의 metric 영역을 Main·Simulation·Portfolio·Account Map 연결 결과 카드로 바꾼다. Phase 4는 대체 증거와 전체 참조 검색을 거쳐 분류된 legacy runtime과 테스트를 제거했고, standalone old keys와 retired journey snapshot은 foreign record로 남긴다. Task 8은 이 상태의 최종 전체 검증을 다시 실행한다. hidden trophy room은 금융 workspace와 backup에서 분리된 별도 후속 설계다.
+Phase C는 현재 Main의 metric 영역을 Main·Simulation·Portfolio·Account Map 연결 결과 카드로 바꾼다. Phase 4는 대체 증거와 전체 참조 검색을 거쳐 분류된 legacy runtime과 테스트를 제거했고, standalone old keys와 retired journey snapshot은 foreign record로 남긴다. Task 8의 [최종 전체 검증](../../../../superpowers/evidence/2026-09-02-phase4-legacy-test-disposition.md)은 이 상태를 통과로 기록했다. hidden trophy room은 금융 workspace와 backup에서 분리된 별도 후속 설계다.
 
 지출 capture, 가구 병합, 과거 비교와 주거 구매력은 발견 단계의 후보다. 별도 문제 검증과 PRD 승인 전에는 구현 범위나 완료 요구사항으로 취급하지 않는다.
 

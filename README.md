@@ -49,7 +49,7 @@ Main에서 다루는 주요 내용:
 
 ### Simulation
 
-Main에 적용된 계획이 있으면 `Simulation으로 이어가기`가 URL로만 이동합니다. 최초에는 시작 원금과 기간·기대수익률을 두 단계로 설정하고, 이후에는 결과로 바로 진입합니다. Simulation은 진입할 때마다 현재 `isf-workspace-v3`의 최신 Main slice를 읽되 Simulation 설정과 Main 원본은 변경하지 않습니다.
+Main에 적용된 계획이 있으면 `Simulation으로 이어가기`가 URL로만 이동합니다. 최초에는 시작 자산, 시작 자산이 2억 원 이상일 때의 조건부 목표 금액, 예상 연 수익률을 한 가지씩 설정하고, 이후에는 결과로 바로 진입합니다. Simulation은 진입할 때마다 현재 `isf-workspace-v3`의 최신 Main slice를 읽되 Simulation 설정과 Main 원본은 변경하지 않습니다.
 
 기간은 현재를 뜻하는 0년부터 30년까지 조정합니다. 결과는 한국식 정수 금액, 전체 폭 성장 그래프와 전부 저축 비교를 제공하며 pointer·touch·keyboard로 연도별 상세를 확인할 수 있습니다.
 
@@ -65,7 +65,7 @@ Main에 적용된 계획이 있으면 `Simulation으로 이어가기`가 URL로�
 
 ### Account Map
 
-Account Map은 Main의 다섯 월 금액을 읽기 전용 기준으로 사용합니다. 최초 설정에서 수입·주거·생활비·저축·투자를 계좌·보관처에 연결하고, 이후 목적 중심 또는 계좌 중심 노드 지도에서 연결을 확인합니다. 계좌·보관처 보관·선택 복원과 지도 다시 만들기를 제공하지만 Main·Simulation·Portfolio에는 write-back하지 않습니다. 상세 계약은 [승인된 목적 노드 설계](docs/superpowers/specs/2026-08-13-account-map-purpose-node-flow-design.md)에 정의되어 있습니다.
+Account Map은 Main의 다섯 월 금액을 읽기 전용 기준으로 사용합니다. 최초 설정에서 수입·주거·생활비·저축·투자를 계좌·보관처에 연결하고, 이후 하나의 계좌 우선 노드 지도에서 월 계획 연결을 확인합니다. 계좌·보관처 보관·선택 복원과 지도 다시 만들기를 제공하지만 Main·Simulation·Portfolio에는 write-back하지 않습니다. 상세 계약은 [승인된 의미 기반 배치 설계](docs/superpowers/specs/2026-08-25-account-map-meaningful-layout-design.md)에 정의되어 있습니다.
 
 ## 공유 인프라
 
@@ -99,7 +99,7 @@ Account Map은 Main의 다섯 월 금액을 읽기 전용 기준으로 사용합
 
 레거시는 지원되는 사용자 경로나 신규 기능의 기반이 아닙니다. 각 기능을 목록화하고 현재 제품에 필요한지 판정한 뒤, 필요한 기능은 현재 책임 경계로 이관하고 불필요한 기능은 폐기 근거를 기록합니다. 사용자 동작과 구버전 저장 데이터의 호환성을 검증하고 모든 runtime·route·selector·storage·test 참조를 제거한 후 레거시 구현을 삭제합니다.
 
-Phase 4에서 구 Main runtime, storage bridge, shared browser layer와 구 서비스워커를 삭제했습니다. `shared/brand/mainBrandGeometry.js`만 이전 shared browser tree에서 남은 파일이며 현재 Main brand icon이 사용합니다. 구 저장 키 문자열은 read-only migration/rollback 경계, 음성 참조 검사와 fixture에만 남습니다. Task 8이 최종 전체 검증을 다시 실행하기 전에는 그 완료 결과를 이 문서가 주장하지 않습니다.
+Phase 4에서 구 Main runtime, storage bridge, shared browser layer와 구 서비스워커를 삭제했습니다. `shared/brand/mainBrandGeometry.js`만 이전 shared browser tree에서 남은 파일이며 현재 Main brand icon이 사용합니다. 구 저장 키 문자열은 read-only migration/rollback 경계, 음성 참조 검사와 fixture에만 남습니다. Task 8의 최종 전체 검증은 통과했고, 정확한 명령·참조 감사·반응형 QA 결과는 [Phase 4 disposition](docs/superpowers/evidence/2026-09-02-phase4-legacy-test-disposition.md)에 기록되어 있습니다.
 
 ## 실행하기
 
@@ -182,9 +182,9 @@ npx playwright test tests/account-map.spec.ts --reporter=list
 
 Phase A shared workspace foundation과 Main, Simulation, aggregate-first Portfolio, Phase B Account Map은 현재 기준선입니다. 다음 단계는 이 기준선을 보존하며 별도 계획으로 진행합니다.
 
-- **Phase B 완료**: 목적 중심 설정, 계좌·보관처 registry, 노드 지도와 가역적 관리가 있는 Account Map
+- **Phase B 완료**: 계좌 우선 설정, 계좌·보관처 registry, 노드 지도와 가역적 관리가 있는 Account Map
 - **Phase C**: 현재 Main metric 영역을 대체하는 Main·Simulation·Portfolio·Account Map 연결 결과 카드
-- **Phase 4 코드 gate 완료**: 분류된 legacy runtime·compatibility path·test 삭제와 v1/v2 migration evidence를 기록함. Task 8이 repository-wide 최종 검증을 다시 실행함
+- **Phase 4 완료**: 분류된 legacy runtime·compatibility path·test 삭제, v1/v2 migration evidence와 [repository-wide 최종 검증](docs/superpowers/evidence/2026-09-02-phase4-legacy-test-disposition.md)을 기록함
 - **별도 후속**: 금융 workspace·backup과 분리된 hidden trophy room
 - 한국어 은행·카드 알림 텍스트 기반 지출 capture
 - 두 사람의 Main 데이터를 이용한 가구 병합 미리보기

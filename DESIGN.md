@@ -6,7 +6,7 @@ Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계획 �
 
 이 문서의 현재 지원 UI 계약은 Main, Simulation, aggregate-first Portfolio와 account-first Account Map에 적용됩니다. Account Map 지도 표현은 [Account Map Meaningful Layout Design](docs/superpowers/specs/2026-08-25-account-map-meaningful-layout-design.md)을 따릅니다. 과거 레거시 화면의 모양이나 상호작용은 새 UI의 기준이 아닙니다.
 
-현재 delivery boundary는 명확히 나눕니다. schema v3의 단일 workspace, whole-workspace backup과 aggregate-first Portfolio, account-first Account Map이 현재 지원 기준선입니다. Main 연결 결과 카드는 Phase C 범위이며, Phase 4 legacy retirement의 최종 전체 검증은 Task 8이 소유합니다. Portfolio의 `투자 위치` UI와 shared location command 진입점은 제거되었으며 보존 데이터만 migration fixture 계약으로 남습니다.
+현재 delivery boundary는 명확히 나눕니다. schema v3의 단일 workspace, whole-workspace backup과 aggregate-first Portfolio, account-first Account Map이 현재 지원 기준선입니다. Main 연결 결과 카드는 Phase C 범위이며, Phase 4 legacy retirement의 [최종 전체 검증](docs/superpowers/evidence/2026-09-02-phase4-legacy-test-disposition.md)은 통과로 기록되어 있습니다. Portfolio의 `투자 위치` UI와 shared location command 진입점은 제거되었으며 보존 데이터만 migration fixture 계약으로 남습니다.
 
 ## Experience Principles
 
