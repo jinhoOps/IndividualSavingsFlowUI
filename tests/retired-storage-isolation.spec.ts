@@ -53,24 +53,25 @@ test('React Main workspace save leaves retired standalone records untouched', as
     rebuildV1: JSON.stringify({ modelVersion: 10, updatedAt: 10, monthlyInvest: 123_000 }),
     journeyV1: null,
   };
-  await page.addInitScript(({ workspace, raw }) => {
+  const retiredWorkspaceRaw = JSON.stringify({
+    schemaVersion: 1,
+    revision: 1,
+    updatedAt: appliedMainV2.updatedAt,
+    main: { applied: appliedMainV2, setupProgress: null },
+    simulation: { draft: null },
+    portfolio: { plans: [], draft: null },
+    locations: [],
+    accountMap: { applied: null, draft: null, instruments: [], flows: [] },
+  });
+  await page.addInitScript(({ workspaceRaw, raw }) => {
     localStorage.clear();
     sessionStorage.clear();
-    localStorage.setItem('isf-workspace-v1', JSON.stringify(workspace));
+    localStorage.setItem('isf-workspace-v1', workspaceRaw);
     localStorage.setItem('isf-main-v2', raw.mainV2);
     localStorage.setItem('isf-main-v1', raw.mainV1);
     localStorage.setItem('isf-rebuild-v1', raw.rebuildV1);
   }, {
-    workspace: {
-      schemaVersion: 1,
-      revision: 1,
-      updatedAt: appliedMainV2.updatedAt,
-      main: { applied: appliedMainV2, setupProgress: null },
-      simulation: { draft: null },
-      portfolio: { plans: [], draft: null },
-      locations: [],
-      accountMap: { applied: null, draft: null, instruments: [], flows: [] },
-    },
+    workspaceRaw: retiredWorkspaceRaw,
     raw: retiredRaw,
   });
   await page.goto('apps/main/');
@@ -80,13 +81,14 @@ test('React Main workspace save leaves retired standalone records untouched', as
   await page.getByRole('button', { name: '적용' }).click();
 
   await expect.poll(() => page.evaluate(() => {
-    const workspace = JSON.parse(localStorage.getItem('isf-workspace-v1') ?? '{}');
+    const workspace = JSON.parse(localStorage.getItem('isf-workspace-v3') ?? '{}');
     return workspace.main?.applied?.monthlyInvestmentWon;
   })).toEqual(650_000);
   await expect.poll(() => page.evaluate(() => ({
+    workspaceV1: localStorage.getItem('isf-workspace-v1'),
     mainV1: localStorage.getItem('isf-main-v1'),
     mainV2: localStorage.getItem('isf-main-v2'),
     rebuildV1: localStorage.getItem('isf-rebuild-v1'),
     journeyV1: localStorage.getItem('isf-journey-snapshot-v1'),
-  }))).toEqual(retiredRaw);
+  }))).toEqual({ workspaceV1: retiredWorkspaceRaw, ...retiredRaw });
 });

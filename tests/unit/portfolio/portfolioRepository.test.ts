@@ -2,7 +2,11 @@ import { describe, expect, it, vi } from 'vitest';
 import { createCashOnlyDraft } from '../../../src/portfolio/domain/allocation';
 import type { PortfolioPlan, PortfolioScope } from '../../../src/portfolio/domain/model';
 import { BrowserPortfolioRepository } from '../../../src/portfolio/infrastructure/portfolioRepository';
-import { WORKSPACE_STORAGE_KEY, type WorkspaceDocument } from '../../../src/workspace/domain/model';
+import {
+  RETIRED_WORKSPACE_STORAGE_KEY,
+  WORKSPACE_STORAGE_KEY,
+  type WorkspaceDocument,
+} from '../../../src/workspace/domain/model';
 import {
   BrowserWorkspaceRepository,
   type WorkspaceRepository,
@@ -100,7 +104,7 @@ describe('BrowserPortfolioRepository workspace adapter', () => {
       applied: { status: 'empty' },
       draft: { status: 'empty' },
     });
-    expect(storage.reads).toEqual([WORKSPACE_STORAGE_KEY]);
+    expect(storage.reads).toEqual([WORKSPACE_STORAGE_KEY, RETIRED_WORKSPACE_STORAGE_KEY]);
     expect(storage.writes).toEqual([]);
     expect(storage.getItem(oldAppliedKey)).toBe(oldApplied);
     expect(storage.getItem(oldDraftKey)).toBe(oldDraft);

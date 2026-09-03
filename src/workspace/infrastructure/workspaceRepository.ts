@@ -1,4 +1,5 @@
 import {
+  RETIRED_WORKSPACE_STORAGE_KEY,
   WORKSPACE_STORAGE_KEY,
   createEmptyWorkspace,
   type WorkspaceDocument,
@@ -7,10 +8,13 @@ import type { SimulationDraftMigration } from '../../simulation/domain/model';
 import { parseWorkspaceDocument } from '../domain/validation';
 import {
   BrowserWorkspaceSaveLock,
+  CURRENT_WORKSPACE_SAVE_LOCK_NAMESPACE,
+  RETIRED_WORKSPACE_SAVE_LOCK_NAMESPACE,
   type WorkspaceSaveGuard,
   type WorkspaceSaveLeaseOptions,
   type WorkspaceSaveLock,
 } from './workspaceSaveLock';
+import { convertRetiredWorkspaceDocument } from './retiredWorkspaceMigration';
 
 type WorkspaceListener = (workspace: WorkspaceDocument) => void;
 
@@ -60,6 +64,7 @@ export interface WorkspaceRepository {
 export interface BrowserWorkspaceRepositoryOptions {
   now?: () => number;
   saveLock?: WorkspaceSaveLock;
+  retiredSaveLock?: WorkspaceSaveLock;
   saveLeaseOptions?: WorkspaceSaveLeaseOptions;
   eventTarget?: Window;
 }
@@ -67,6 +72,7 @@ export interface BrowserWorkspaceRepositoryOptions {
 export class BrowserWorkspaceRepository implements WorkspaceRepository {
   private readonly now: () => number;
   private readonly saveLock: WorkspaceSaveLock;
+  private readonly retiredSaveLock: WorkspaceSaveLock;
   private readonly eventTarget: Window;
   private readonly notificationStorageGroup: object;
 
@@ -76,7 +82,15 @@ export class BrowserWorkspaceRepository implements WorkspaceRepository {
   ) {
     this.now = options.now ?? Date.now;
     this.saveLock = options.saveLock
-      ?? new BrowserWorkspaceSaveLock(storageOverride, options.saveLeaseOptions);
+      ?? new BrowserWorkspaceSaveLock(storageOverride, {
+        ...options.saveLeaseOptions,
+        namespace: CURRENT_WORKSPACE_SAVE_LOCK_NAMESPACE,
+      });
+    this.retiredSaveLock = options.retiredSaveLock
+      ?? new BrowserWorkspaceSaveLock(storageOverride, {
+        ...options.saveLeaseOptions,
+        namespace: RETIRED_WORKSPACE_SAVE_LOCK_NAMESPACE,
+      });
     this.eventTarget = options.eventTarget ?? window;
     this.notificationStorageGroup = resolveStorageGroup(storageOverride);
   }
@@ -86,26 +100,41 @@ export class BrowserWorkspaceRepository implements WorkspaceRepository {
   }
 
   load(): WorkspaceLoadResult {
-    let raw: string | null;
+    let currentRaw: string | null;
     try {
-      raw = this.storage.getItem(WORKSPACE_STORAGE_KEY);
+      currentRaw = this.storage.getItem(WORKSPACE_STORAGE_KEY);
     } catch {
       return { status: 'unavailable' };
     }
-    if (raw === null) {
-      try {
-        return { status: 'empty', workspace: createEmptyWorkspace(this.now()), needsMigration: false };
-      } catch {
-        return { status: 'unavailable' };
-      }
-    }
+    if (currentRaw !== null) return this.parseCurrentRaw(currentRaw);
+
+    let retiredRaw: string | null;
     try {
-      const parsed = parseWorkspaceDocument(JSON.parse(raw));
-      if (parsed === null) return { status: 'invalid', raw };
-      return { status: 'found', workspace: parsed, needsMigration: false };
+      retiredRaw = this.storage.getItem(RETIRED_WORKSPACE_STORAGE_KEY);
+    } catch {
+      return { status: 'unavailable' };
+    }
+    if (retiredRaw === null) return this.createEmptyLoadResult();
+
+    try {
+      const converted = convertRetiredWorkspaceDocument(JSON.parse(retiredRaw), this.now());
+      if (converted.status === 'invalid') return { status: 'invalid', raw: retiredRaw };
+      if (converted.simulationMigration === null) {
+        return {
+          status: 'found',
+          workspace: converted.workspace,
+          needsMigration: true,
+        };
+      }
+      return {
+        status: 'found',
+        workspace: converted.workspace,
+        needsMigration: true,
+        simulationMigration: converted.simulationMigration,
+      };
     } catch (error) {
       return error instanceof SyntaxError
-        ? { status: 'invalid', raw }
+        ? { status: 'invalid', raw: retiredRaw }
         : { status: 'unavailable' };
     }
   }
@@ -119,6 +148,34 @@ export class BrowserWorkspaceRepository implements WorkspaceRepository {
     mutate: (current: WorkspaceDocument) => WorkspaceDocument,
   ): Promise<WorkspaceWriteResult> {
     try {
+      const useRetiredLock = this.shouldUseRetiredLock();
+      if (useRetiredLock === null) return { status: 'unavailable' };
+      if (useRetiredLock) {
+        return await this.retiredSaveLock.runExclusive(async (retiredGuard) => {
+          const snapshot = this.load();
+          if (snapshot.status === 'invalid' || snapshot.status === 'unavailable') {
+            return { status: snapshot.status };
+          }
+          if (snapshot.status === 'empty') return { status: 'unavailable' };
+
+          return await this.saveLock.runExclusive(async (currentGuard) => {
+            const current = this.loadCurrentOnly();
+            if (current.status === 'unavailable') return { status: 'unavailable' };
+            if (current.status === 'invalid') return { status: 'invalid' };
+            if (current.status === 'empty' && !snapshot.needsMigration) {
+              return { status: 'unavailable' };
+            }
+            const loaded = current.status === 'empty' ? snapshot : current;
+            const guard: WorkspaceSaveGuard = {
+              assertOwned: () => {
+                retiredGuard.assertOwned();
+                currentGuard.assertOwned();
+              },
+            };
+            return this.updateLocked(expectedRevision, mutate, guard, loaded);
+          });
+        });
+      }
       return await this.saveLock.runExclusive(async (guard) => (
         this.updateLocked(expectedRevision, mutate, guard)
       ));
@@ -156,8 +213,9 @@ export class BrowserWorkspaceRepository implements WorkspaceRepository {
     expectedRevision: number,
     mutate: (current: WorkspaceDocument) => WorkspaceDocument,
     guard: WorkspaceSaveGuard,
+    loadedOverride?: WorkspaceLoadResult,
   ): WorkspaceWriteResult {
-    const loaded = this.load();
+    const loaded = loadedOverride ?? this.loadCurrentOnly();
     if (loaded.status === 'invalid' || loaded.status === 'unavailable') {
       return { status: loaded.status };
     }
@@ -267,6 +325,45 @@ export class BrowserWorkspaceRepository implements WorkspaceRepository {
       return this.storage.getItem(WORKSPACE_STORAGE_KEY);
     } catch {
       return null;
+    }
+  }
+
+  private shouldUseRetiredLock(): boolean | null {
+    try {
+      if (this.storage.getItem(WORKSPACE_STORAGE_KEY) !== null) return false;
+      return this.storage.getItem(RETIRED_WORKSPACE_STORAGE_KEY) !== null;
+    } catch {
+      return null;
+    }
+  }
+
+  private loadCurrentOnly(): WorkspaceLoadResult {
+    let raw: string | null;
+    try {
+      raw = this.storage.getItem(WORKSPACE_STORAGE_KEY);
+    } catch {
+      return { status: 'unavailable' };
+    }
+    return raw === null ? this.createEmptyLoadResult() : this.parseCurrentRaw(raw);
+  }
+
+  private parseCurrentRaw(raw: string): WorkspaceLoadResult {
+    try {
+      const parsed = parseWorkspaceDocument(JSON.parse(raw));
+      if (parsed === null) return { status: 'invalid', raw };
+      return { status: 'found', workspace: parsed, needsMigration: false };
+    } catch (error) {
+      return error instanceof SyntaxError
+        ? { status: 'invalid', raw }
+        : { status: 'unavailable' };
+    }
+  }
+
+  private createEmptyLoadResult(): WorkspaceLoadResult {
+    try {
+      return { status: 'empty', workspace: createEmptyWorkspace(this.now()), needsMigration: false };
+    } catch {
+      return { status: 'unavailable' };
     }
   }
 }

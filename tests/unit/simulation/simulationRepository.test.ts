@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { createDefaultSimulationDraft } from '../../../src/simulation/domain/validation';
 import { BrowserSimulationRepository } from '../../../src/simulation/infrastructure/simulationRepository';
 import {
+  RETIRED_WORKSPACE_STORAGE_KEY,
   WORKSPACE_STORAGE_KEY,
   type WorkspaceDocument,
 } from '../../../src/workspace/domain/model';
@@ -104,7 +105,7 @@ describe('BrowserSimulationRepository workspace adapter', () => {
 
     expect(repository.load()).toEqual({ status: 'empty' });
 
-    expect(storage.reads).toEqual([WORKSPACE_STORAGE_KEY]);
+    expect(storage.reads).toEqual([WORKSPACE_STORAGE_KEY, RETIRED_WORKSPACE_STORAGE_KEY]);
     expect(storage.writes).toEqual([]);
     expect(storage.getItem(oldSimulationKey)).toBe(oldRaw);
   });

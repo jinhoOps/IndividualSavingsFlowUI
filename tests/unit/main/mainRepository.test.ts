@@ -4,7 +4,12 @@ import {
   BrowserMainRepository,
   isMainDataShape,
 } from '../../../src/main/infrastructure/mainRepository';
-import { createEmptyWorkspace, WORKSPACE_STORAGE_KEY, type WorkspaceDocument } from '../../../src/workspace/domain/model';
+import {
+  createEmptyWorkspace,
+  RETIRED_WORKSPACE_STORAGE_KEY,
+  WORKSPACE_STORAGE_KEY,
+  type WorkspaceDocument,
+} from '../../../src/workspace/domain/model';
 import {
   BrowserWorkspaceRepository,
   type WorkspaceRepository,
@@ -167,7 +172,7 @@ describe('BrowserMainRepository workspace adapter', () => {
 
     await expect(mainRepository.load()).resolves.toEqual({ status: 'empty', data: null, original: null });
 
-    expect(storage.reads).toEqual([WORKSPACE_STORAGE_KEY]);
+    expect(storage.reads).toEqual([WORKSPACE_STORAGE_KEY, RETIRED_WORKSPACE_STORAGE_KEY]);
     expect(storage.writes).toEqual([]);
     for (const [key, raw] of before) expect(storage.getItem(key)).toBe(raw);
   });

@@ -1,8 +1,21 @@
-const WORKSPACE_SAVE_LOCK_NAME = 'isf-workspace-v1-save';
-const WORKSPACE_SAVE_LEASE_PREFIX = 'isf-workspace-v1-save-lease:';
 const DEFAULT_LEASE_DURATION_MS = 10_000;
 const DEFAULT_ACQUIRE_TIMEOUT_MS = 2_000;
 const DEFAULT_RETRY_DELAY_MS = 25;
+
+export interface WorkspaceSaveLockNamespace {
+  lockName: string;
+  leasePrefix: string;
+}
+
+export const CURRENT_WORKSPACE_SAVE_LOCK_NAMESPACE = {
+  lockName: 'isf-workspace-v3-save',
+  leasePrefix: 'isf-workspace-v3-save-lease:',
+} satisfies WorkspaceSaveLockNamespace;
+
+export const RETIRED_WORKSPACE_SAVE_LOCK_NAMESPACE = {
+  lockName: 'isf-workspace-v1-save',
+  leasePrefix: 'isf-workspace-v1-save-lease:',
+} satisfies WorkspaceSaveLockNamespace;
 
 export interface WorkspaceSaveGuard {
   assertOwned(): void;
@@ -13,6 +26,7 @@ export interface WorkspaceSaveLock {
 }
 
 export interface WorkspaceSaveLeaseOptions {
+  namespace?: WorkspaceSaveLockNamespace;
   createOwnerToken?: () => string;
   now?: () => number;
   wait?: (delayMs: number) => Promise<void>;
@@ -39,6 +53,7 @@ export class BrowserWorkspaceSaveLock implements WorkspaceSaveLock {
   private readonly leaseDurationMs: number;
   private readonly acquireTimeoutMs: number;
   private readonly retryDelayMs: number;
+  private readonly namespace: WorkspaceSaveLockNamespace;
   private readonly owner: string;
   private localTail = Promise.resolve();
 
@@ -46,6 +61,7 @@ export class BrowserWorkspaceSaveLock implements WorkspaceSaveLock {
     private readonly storageOverride?: Storage,
     options: WorkspaceSaveLeaseOptions = {},
   ) {
+    this.namespace = options.namespace ?? CURRENT_WORKSPACE_SAVE_LOCK_NAMESPACE;
     this.createOwnerToken = options.createOwnerToken ?? createLeaseOwnerToken;
     this.now = options.now ?? Date.now;
     this.wait = options.wait ?? waitFor;
@@ -64,7 +80,7 @@ export class BrowserWorkspaceSaveLock implements WorkspaceSaveLock {
   async runExclusive<T>(task: (guard: WorkspaceSaveGuard) => Promise<T>): Promise<T> {
     if (typeof navigator !== 'undefined' && navigator.locks !== undefined) {
       return await navigator.locks.request(
-        WORKSPACE_SAVE_LOCK_NAME,
+        this.namespace.lockName,
         () => task({ assertOwned: () => undefined }),
       );
     }
@@ -80,7 +96,7 @@ export class BrowserWorkspaceSaveLock implements WorkspaceSaveLock {
   private async runFallbackExclusive<T>(
     task: (guard: WorkspaceSaveGuard) => Promise<T>,
   ): Promise<T> {
-    const key = workspaceSaveLeaseKey(this.owner);
+    const key = workspaceSaveLeaseKey(this.namespace, this.owner);
     const ticket = await this.acquireBakeryTurn(this.owner, key);
     const guard = { assertOwned: () => this.renewAndAssertOwned(this.owner, key, ticket) };
     try {
@@ -179,7 +195,7 @@ export class BrowserWorkspaceSaveLock implements WorkspaceSaveLock {
 
   private hasBakeryTurn(owner: string, key: string, ticket: number, now: number): boolean {
     return !this.readActiveLeases(now).some((contender) => {
-      if (workspaceSaveLeaseKey(contender.owner) === key) return false;
+      if (workspaceSaveLeaseKey(this.namespace, contender.owner) === key) return false;
       if (contender.choosing) return true;
       return contender.ticket < ticket
         || (contender.ticket === ticket && contender.owner < owner);
@@ -191,10 +207,10 @@ export class BrowserWorkspaceSaveLock implements WorkspaceSaveLock {
     const length = this.storage.length;
     for (let index = 0; index < length; index += 1) {
       const key = this.storage.key(index);
-      if (key === null || !key.startsWith(WORKSPACE_SAVE_LEASE_PREFIX)) continue;
+      if (key === null || !key.startsWith(this.namespace.leasePrefix)) continue;
       const lease = readWorkspaceSaveLease(this.storage.getItem(key));
       if (lease === null
-        || key !== workspaceSaveLeaseKey(lease.owner)
+        || key !== workspaceSaveLeaseKey(this.namespace, lease.owner)
         || lease.expiresAt <= now
         || (!lease.choosing && lease.ticket === 0)) {
         continue;
@@ -263,8 +279,8 @@ export class BrowserWorkspaceSaveLock implements WorkspaceSaveLock {
   }
 }
 
-function workspaceSaveLeaseKey(owner: string): string {
-  return `${WORKSPACE_SAVE_LEASE_PREFIX}${encodeURIComponent(owner)}`;
+function workspaceSaveLeaseKey(namespace: WorkspaceSaveLockNamespace, owner: string): string {
+  return `${namespace.leasePrefix}${encodeURIComponent(owner)}`;
 }
 
 function readWorkspaceSaveLease(raw: string | null): WorkspaceSaveLease | null {
