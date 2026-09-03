@@ -648,6 +648,24 @@ test('downloads and explicitly resets an invalid workspace before a durable appl
 
   await page.getByRole('button', { name: '빈 초안으로 다시 시작' }).click();
   await expect(page.getByRole('heading', { name: '한 달 돈의 흐름, 2분이면 확인할 수 있어요.' })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => {
+    const currentRaw = localStorage.getItem('isf-workspace-v3');
+    return {
+      retiredRaw: localStorage.getItem('isf-workspace-v1'),
+      current: currentRaw === null ? null : JSON.parse(currentRaw),
+    };
+  })).toEqual({
+    retiredRaw: invalidRaw,
+    current: expect.objectContaining({
+      schemaVersion: 3,
+      revision: 1,
+      main: { applied: null, setupProgress: null },
+      simulation: { draft: null },
+      portfolio: { plans: [], draft: null },
+      locations: [],
+      accountMap: { applied: null, draft: null },
+    }),
+  });
   await page.getByRole('button', { name: '다음' }).click();
   await page.getByLabel('월 실수령액').fill('3200000');
   await page.getByRole('button', { name: '다음' }).click();
@@ -664,8 +682,9 @@ test('downloads and explicitly resets an invalid workspace before a durable appl
   await page.reload();
   await expect(page.getByRole('heading', { name: '이번 달 자금 흐름' })).toBeVisible();
   await expect.poll(() => page.evaluate(() => (
-    JSON.parse(localStorage.getItem('isf-workspace-v1')!).main.applied.monthlyNetIncomeWon
+    JSON.parse(localStorage.getItem('isf-workspace-v3')!).main.applied.monthlyNetIncomeWon
   ))).toBe(3_200_000);
+  expect(await page.evaluate(() => localStorage.getItem('isf-workspace-v1'))).toBe(invalidRaw);
   await expect.poll(() => page.evaluate((keys) => Object.fromEntries(
     keys.map((key) => [key, localStorage.getItem(key)]),
   ), Object.keys(seededOldMainRecords))).toEqual(seededOldMainRecords);

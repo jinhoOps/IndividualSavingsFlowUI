@@ -193,8 +193,51 @@ export class BrowserWorkspaceRepository implements WorkspaceRepository {
 
   async resetInvalid(expectedRaw: string): Promise<WorkspaceInvalidResetResult> {
     try {
+      const useRetiredLock = this.shouldUseRetiredLock();
+      if (useRetiredLock === null) return { status: 'unavailable' };
+      if (useRetiredLock) {
+        return await this.retiredSaveLock.runExclusive(async (retiredGuard) => {
+          let retiredRaw: string | null;
+          try {
+            retiredGuard.assertOwned();
+            retiredRaw = this.storage.getItem(RETIRED_WORKSPACE_STORAGE_KEY);
+          } catch {
+            return { status: 'unavailable' };
+          }
+          if (retiredRaw !== expectedRaw) return { status: 'changed' };
+
+          try {
+            const converted = convertRetiredWorkspaceDocument(JSON.parse(retiredRaw), this.now());
+            if (converted.status !== 'invalid') return { status: 'changed' };
+          } catch (error) {
+            if (!(error instanceof SyntaxError)) return { status: 'unavailable' };
+          }
+
+          return await this.saveLock.runExclusive(async (currentGuard) => {
+            const guard: WorkspaceSaveGuard = {
+              assertOwned: () => {
+                retiredGuard.assertOwned();
+                currentGuard.assertOwned();
+              },
+            };
+            try {
+              guard.assertOwned();
+              if (this.storage.getItem(WORKSPACE_STORAGE_KEY) !== null) {
+                return { status: 'changed' };
+              }
+              guard.assertOwned();
+              if (this.storage.getItem(RETIRED_WORKSPACE_STORAGE_KEY) !== expectedRaw) {
+                return { status: 'changed' };
+              }
+            } catch {
+              return { status: 'unavailable' };
+            }
+            return this.commitEmptyReset(guard, null);
+          });
+        });
+      }
       return await this.saveLock.runExclusive(async (guard) => (
-        this.resetInvalidLocked(expectedRaw, guard)
+        this.resetCurrentInvalidLocked(expectedRaw, guard)
       ));
     } catch {
       return { status: 'unavailable' };
@@ -232,34 +275,17 @@ export class BrowserWorkspaceRepository implements WorkspaceRepository {
     });
     if (next === null) return { status: 'invalid' };
 
-    const serialized = JSON.stringify(next);
-    let previousRaw: string | null | undefined;
-    try {
-      previousRaw = this.storage.getItem(WORKSPACE_STORAGE_KEY);
-      guard.assertOwned();
-      this.storage.setItem(WORKSPACE_STORAGE_KEY, serialized);
-      const verifiedRaw = this.storage.getItem(WORKSPACE_STORAGE_KEY);
-      if (verifiedRaw !== serialized) {
-        this.restorePreviousRaw(guard, previousRaw, verifiedRaw);
-        return { status: 'unavailable' };
-      }
-    } catch {
-      if (previousRaw !== undefined) {
-        this.restorePreviousRaw(guard, previousRaw, this.readCurrentRawSafely());
-      }
-      return { status: 'unavailable' };
-    }
-
-    publishToWorkspaceChannel(this.eventTarget, this.notificationStorageGroup, next);
-    return { status: 'saved', workspace: next };
+    const writeResult = this.writeVerifiedWorkspace(next, guard);
+    return writeResult.status === 'saved' ? writeResult : { status: 'unavailable' };
   }
 
-  private resetInvalidLocked(
+  private resetCurrentInvalidLocked(
     expectedRaw: string,
     guard: WorkspaceSaveGuard,
   ): WorkspaceInvalidResetResult {
     let observedRaw: string;
     try {
+      guard.assertOwned();
       const currentRaw = this.storage.getItem(WORKSPACE_STORAGE_KEY);
       if (currentRaw !== expectedRaw) return { status: 'changed' };
       try {
@@ -274,27 +300,48 @@ export class BrowserWorkspaceRepository implements WorkspaceRepository {
       return { status: 'unavailable' };
     }
 
+    return this.commitEmptyReset(guard, observedRaw);
+  }
+
+  private commitEmptyReset(
+    guard: WorkspaceSaveGuard,
+    expectedPreviousRaw: string | null,
+  ): WorkspaceInvalidResetResult {
     const next = parseWorkspaceDocument({
       ...createEmptyWorkspace(this.now()),
       revision: 1,
     });
     if (next === null) return { status: 'unavailable' };
+
+    return this.writeVerifiedWorkspace(next, guard, expectedPreviousRaw);
+  }
+
+  private writeVerifiedWorkspace(
+    next: WorkspaceDocument,
+    guard: WorkspaceSaveGuard,
+    expectedPreviousRaw?: string | null,
+  ): WorkspaceInvalidResetResult {
     const serialized = JSON.stringify(next);
+    let previousRaw: string | null | undefined;
 
     try {
       guard.assertOwned();
-      if (this.storage.getItem(WORKSPACE_STORAGE_KEY) !== observedRaw) {
+      previousRaw = this.storage.getItem(WORKSPACE_STORAGE_KEY);
+      if (expectedPreviousRaw !== undefined && previousRaw !== expectedPreviousRaw) {
         return { status: 'changed' };
       }
       guard.assertOwned();
       this.storage.setItem(WORKSPACE_STORAGE_KEY, serialized);
+      guard.assertOwned();
       const verifiedRaw = this.storage.getItem(WORKSPACE_STORAGE_KEY);
       if (verifiedRaw !== serialized) {
-        this.restorePreviousRaw(guard, observedRaw, verifiedRaw);
+        this.restorePreviousRaw(guard, previousRaw, verifiedRaw);
         return { status: 'unavailable' };
       }
     } catch {
-      this.restorePreviousRaw(guard, observedRaw, this.readCurrentRawSafely());
+      if (previousRaw !== undefined) {
+        this.restorePreviousRaw(guard, previousRaw, this.readCurrentRawSafely(guard));
+      }
       return { status: 'unavailable' };
     }
 
@@ -313,6 +360,7 @@ export class BrowserWorkspaceRepository implements WorkspaceRepository {
       if (this.storage.getItem(WORKSPACE_STORAGE_KEY) !== observedRaw) return;
       guard.assertOwned();
       if (this.storage.getItem(WORKSPACE_STORAGE_KEY) !== observedRaw) return;
+      guard.assertOwned();
       if (previousRaw === null) this.storage.removeItem(WORKSPACE_STORAGE_KEY);
       else this.storage.setItem(WORKSPACE_STORAGE_KEY, previousRaw);
     } catch {
@@ -320,8 +368,9 @@ export class BrowserWorkspaceRepository implements WorkspaceRepository {
     }
   }
 
-  private readCurrentRawSafely(): string | null {
+  private readCurrentRawSafely(guard: WorkspaceSaveGuard): string | null {
     try {
+      guard.assertOwned();
       return this.storage.getItem(WORKSPACE_STORAGE_KEY);
     } catch {
       return null;

@@ -660,6 +660,110 @@ describe('BrowserWorkspaceRepository', () => {
     expect(storage.getItem(WORKSPACE_STORAGE_KEY)).toBeNull();
   });
 
+  it('resets an exact invalid retired raw into v3 without mutating the retired source', async () => {
+    const invalidRaw = '{malformed-retired-workspace';
+    const storage = new MemoryStorage(new Map([
+      [RETIRED_WORKSPACE_STORAGE_KEY, invalidRaw],
+    ]));
+    const setItem = vi.spyOn(storage, 'setItem');
+    const removeItem = vi.spyOn(storage, 'removeItem');
+    const repository = new BrowserWorkspaceRepository(storage, {
+      saveLock: createSerialLock(),
+      retiredSaveLock: createSerialLock(),
+      now: () => 200,
+    });
+
+    await expect(repository.resetInvalid(invalidRaw)).resolves.toEqual({
+      status: 'saved',
+      workspace: { ...createEmptyWorkspace(200), revision: 1 },
+    });
+
+    expect(JSON.parse(storage.getItem(WORKSPACE_STORAGE_KEY) ?? '')).toEqual({
+      ...createEmptyWorkspace(200),
+      revision: 1,
+    });
+    expect(storage.getItem(RETIRED_WORKSPACE_STORAGE_KEY)).toBe(invalidRaw);
+    expect(setItem).not.toHaveBeenCalledWith(RETIRED_WORKSPACE_STORAGE_KEY, expect.any(String));
+    expect(removeItem).not.toHaveBeenCalledWith(RETIRED_WORKSPACE_STORAGE_KEY);
+  });
+
+  it('preserves an invalid retired source when a valid v3 winner appears before current lock work', async () => {
+    const events: string[] = [];
+    const invalidRaw = '{malformed-retired-workspace';
+    const winner = { ...createEmptyWorkspace(300), revision: 7 };
+    const winnerRaw = JSON.stringify(winner);
+    const storage = new MemoryStorage(new Map([
+      [RETIRED_WORKSPACE_STORAGE_KEY, invalidRaw],
+    ]));
+    const repository = new BrowserWorkspaceRepository(storage, {
+      retiredSaveLock: createRecordingLock('retired', events),
+      saveLock: createRecordingLock('current', events, () => {
+        storage.setItem(WORKSPACE_STORAGE_KEY, winnerRaw);
+      }),
+      now: () => 400,
+    });
+
+    await expect(repository.resetInvalid(invalidRaw)).resolves.toEqual({ status: 'changed' });
+    expect(storage.getItem(WORKSPACE_STORAGE_KEY)).toBe(winnerRaw);
+    expect(storage.getItem(RETIRED_WORKSPACE_STORAGE_KEY)).toBe(invalidRaw);
+    expect(events).toEqual([
+      'retired:enter',
+      'current:enter',
+      'current:exit',
+      'retired:exit',
+    ]);
+  });
+
+  it('does not reset when the invalid retired raw changes under the retired lock', async () => {
+    const events: string[] = [];
+    const expectedRaw = '{first-invalid-retired-workspace';
+    const winnerRaw = '{winner-invalid-retired-workspace';
+    const storage = new MemoryStorage(new Map([
+      [RETIRED_WORKSPACE_STORAGE_KEY, expectedRaw],
+    ]));
+    const repository = new BrowserWorkspaceRepository(storage, {
+      retiredSaveLock: createRecordingLock('retired', events),
+      saveLock: createRecordingLock('current', events, () => {
+        storage.setItem(RETIRED_WORKSPACE_STORAGE_KEY, winnerRaw);
+      }),
+      now: () => 400,
+    });
+
+    await expect(repository.resetInvalid(expectedRaw)).resolves.toEqual({ status: 'changed' });
+    expect(storage.getItem(WORKSPACE_STORAGE_KEY)).toBeNull();
+    expect(storage.getItem(RETIRED_WORKSPACE_STORAGE_KEY)).toBe(winnerRaw);
+    expect(events).toEqual([
+      'retired:enter',
+      'current:enter',
+      'current:exit',
+      'retired:exit',
+    ]);
+  });
+
+  it('removes an unverified v3 reset write without changing invalid retired bytes', async () => {
+    const invalidRaw = '{malformed-retired-workspace';
+    const values = new Map<string, string>([
+      [RETIRED_WORKSPACE_STORAGE_KEY, invalidRaw],
+    ]);
+    let corruptNextCurrentWrite = true;
+    const storage = new HookedStorage(values, (key, _value, commit) => {
+      commit();
+      if (key === WORKSPACE_STORAGE_KEY && corruptNextCurrentWrite) {
+        corruptNextCurrentWrite = false;
+        values.set(key, '{partial-v3');
+      }
+    });
+    const repository = new BrowserWorkspaceRepository(storage, {
+      saveLock: createSerialLock(),
+      retiredSaveLock: createSerialLock(),
+      now: () => 200,
+    });
+
+    await expect(repository.resetInvalid(invalidRaw)).resolves.toEqual({ status: 'unavailable' });
+    expect(storage.getItem(RETIRED_WORKSPACE_STORAGE_KEY)).toBe(invalidRaw);
+    expect(storage.getItem(WORKSPACE_STORAGE_KEY)).toBeNull();
+  });
+
   it('resets one exact invalid raw to a committed empty workspace under the save lock', async () => {
     const invalidRaw = '{malformed-workspace';
     const retiredRaw = JSON.stringify(retiredWorkspace(2), null, 2);
@@ -669,6 +773,7 @@ describe('BrowserWorkspaceRepository', () => {
     storage.setItem('isf-main-v2', '{old-main');
     storage.setItem('isf-rebuild-v1', '{old-rebuild');
     const setItem = vi.spyOn(storage, 'setItem');
+    const getItem = vi.spyOn(storage, 'getItem');
     const repository = new BrowserWorkspaceRepository(storage, {
       saveLock: createSerialLock(),
       now: () => 200,
@@ -680,6 +785,7 @@ describe('BrowserWorkspaceRepository', () => {
     });
 
     expect(setItem.mock.calls.filter(([key]) => key === WORKSPACE_STORAGE_KEY)).toHaveLength(1);
+    expect(getItem).not.toHaveBeenCalledWith(RETIRED_WORKSPACE_STORAGE_KEY);
     expect(storage.getItem(RETIRED_WORKSPACE_STORAGE_KEY)).toBe(retiredRaw);
     expect(storage.getItem('isf-main-v2')).toBe('{old-main');
     expect(storage.getItem('isf-rebuild-v1')).toBe('{old-rebuild');

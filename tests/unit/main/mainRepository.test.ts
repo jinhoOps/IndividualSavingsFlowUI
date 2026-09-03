@@ -372,10 +372,10 @@ describe('BrowserMainRepository workspace adapter', () => {
     expect(storage.getItem(WORKSPACE_STORAGE_KEY)).toBe(raw);
   });
 
-  it('explicitly resets only the exact invalid workspace raw and leaves old keys untouched', async () => {
+  it('explicitly resets an exact invalid retired workspace into v3 and leaves old keys untouched', async () => {
     const raw = '{malformed-workspace';
     const storage = new MemoryStorage(new Map(oldRecords));
-    storage.seed(WORKSPACE_STORAGE_KEY, raw);
+    storage.seed(RETIRED_WORKSPACE_STORAGE_KEY, raw);
     storage.resetLog();
     const { mainRepository } = browserRepositories(storage, 700, 800);
     await expect(mainRepository.load()).resolves.toMatchObject({ status: 'failed', raw });
@@ -385,6 +385,7 @@ describe('BrowserMainRepository workspace adapter', () => {
     await expect(mainRepository.load()).resolves.toEqual({ status: 'empty', data: null, original: null });
     const reset = JSON.parse(storage.getItem(WORKSPACE_STORAGE_KEY) ?? '') as WorkspaceDocument;
     expect(reset).toEqual({ ...createEmptyWorkspace(800), revision: 1 });
+    expect(storage.getItem(RETIRED_WORKSPACE_STORAGE_KEY)).toBe(raw);
     expect(storage.reads.filter((key) => oldRecords.has(key))).toEqual([]);
     expect(storage.writes.filter((key) => oldRecords.has(key))).toEqual([]);
     for (const [key, oldRaw] of oldRecords) expect(storage.getItem(key)).toBe(oldRaw);
