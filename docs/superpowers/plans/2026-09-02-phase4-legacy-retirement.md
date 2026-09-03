@@ -165,7 +165,7 @@ git commit -m "test: establish phase 4 retirement evidence"
 - Modify: `src/workspace/domain/model.ts`
 - Modify: `src/workspace/domain/validation.ts`
 - Delete: `src/workspace/domain/migration.ts`
-- Create: `src/workspace/domain/retiredWorkspaceMigration.ts`
+- Create: `src/workspace/infrastructure/retiredWorkspaceMigration.ts`
 - Modify: `src/workspace/infrastructure/workspaceBackup.ts`
 - Rename: `tests/unit/workspace/migration.test.ts` → `tests/unit/workspace/retiredWorkspaceMigration.test.ts`
 - Modify: `tests/unit/workspace/validation.test.ts`
@@ -374,6 +374,7 @@ git add \
   src/account-map \
   src/portfolio \
   src/workspace/domain \
+  src/workspace/infrastructure/retiredWorkspaceMigration.ts \
   src/workspace/infrastructure/workspaceBackup.ts \
   tests/unit/workspace/migration.test.ts \
   tests/unit/workspace/retiredWorkspaceMigration.test.ts \
