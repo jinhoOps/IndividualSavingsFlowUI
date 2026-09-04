@@ -328,7 +328,7 @@ describe('Account Map reducer', () => {
     const exited = accountMapReducer(review, { type: 'setup-exited' });
     expect(exited.mode === 'setup' && exited).toMatchObject({ exitRequested: true, draft: expect.any(Object) });
     const cancelled = accountMapReducer(exited, { type: 'setup-cancelled' });
-    expect(cancelled.mode === 'setup' && cancelled).toMatchObject({ draft: null, step: 'connect', exitRequested: false });
+    expect(cancelled.mode === 'setup' && cancelled).toMatchObject({ draft: null, step: 'basis', exitRequested: false });
   });
 
   it('adopts the saved workspace revision after setup cancellation', () => {
@@ -341,7 +341,7 @@ describe('Account Map reducer', () => {
     const current = mapState();
     const workspace = createEmptyWorkspace(20);
     const reset = accountMapReducer(current, { type: 'reset-succeeded', workspace });
-    expect(reset).toMatchObject({ mode: 'setup', draft: null, step: 'connect' });
+    expect(reset).toMatchObject({ mode: 'setup', draft: null, step: 'basis' });
   });
 
   it('derives and clears map-level Main confirmation only from refreshed workspaces', () => {
@@ -374,7 +374,7 @@ function mapState(): AccountMapState {
 function setupState(): AccountMapState {
   const workspace = createEmptyWorkspace(1);
   return {
-    mode: 'setup', workspace, main: main(), draft: draft(), step: 'connect', resumed: false,
+    mode: 'setup', workspace, main: main(), draft: draft(), step: 'locations', resumed: false,
     mainChanged: false, exitRequested: false, save: { status: 'idle' }, recovery: { status: 'none' },
   };
 }

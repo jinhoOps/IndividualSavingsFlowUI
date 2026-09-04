@@ -25,6 +25,15 @@ vi.mock('../../../src/account-map/ui/motion', () => ({
     return { cancel() { appMotion.closeComplete = null; } };
   },
   animateConnectionDetail: () => ({ cancel() {} }),
+  animateSetupStep: (root: HTMLElement) => {
+    root.style.opacity = '1';
+    root.style.transform = 'translateY(0px)';
+    return { cancel() { root.style.opacity = '1'; root.style.transform = 'translateY(0px)'; } };
+  },
+  setSetupStepFinalState: (root: HTMLElement) => {
+    root.style.opacity = '1';
+    root.style.transform = 'translateY(0px)';
+  },
 }));
 
 afterEach(() => {
@@ -40,10 +49,15 @@ function openMapNodeForEdit(node: HTMLElement): void {
   fireEvent.click(screen.getByRole('button', { name: '선택한 항목 편집' }));
 }
 
+async function openSetupLocations(): Promise<void> {
+  fireEvent.click(screen.getByRole('button', { name: '이 금액으로 계속' }));
+  await screen.findByRole('heading', { name: '돈이 머무는 곳을 연결해요' });
+}
+
 describe('AccountMapApp', () => {
   it('uses the shared reading-width frame without moving the launcher across Account Map states', () => {
     const setupRender = render(<AccountMapApp repositories={repositories()} />);
-    const setupFrame = screen.getByRole('heading', { name: '월 자금의 위치를 알려주세요' }).closest('main');
+    const setupFrame = screen.getByRole('heading', { name: '월 자금 기준 확인' }).closest('main');
     expect(setupFrame).toHaveClass('account-map-page', 'app-content-frame');
     expect(screen.getByTestId('app-shell-launcher')).not.toHaveClass('app-content-frame');
     setupRender.unmount();
@@ -67,10 +81,12 @@ describe('AccountMapApp', () => {
     expect(screen.getByRole('link', { name: '월 자금 계획 만들기' })).toBeVisible();
   });
 
-  it('uses purpose-first copy without source or destination terminology', () => {
+  it('introduces the Main basis before purpose locations without source or destination jargon', async () => {
     render(<AccountMapApp repositories={repositories()} />);
-    expect(screen.getByRole('heading', { name: '월 자금의 위치를 알려주세요' })).toBeVisible();
-    expect(screen.getByRole('heading', { name: '수입' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: '월 자금 기준 확인' })).toBeVisible();
+    expect(screen.getByText('들어오는 돈')).toBeVisible();
+    await openSetupLocations();
+    expect(screen.getByRole('heading', { name: '돈이 머무는 곳을 연결해요' })).toBeVisible();
     expect(screen.getAllByRole('button', { name: '연결' })).toHaveLength(5);
     expect(screen.queryByText(/source|destination|출발|도착/i)).not.toBeInTheDocument();
   });
@@ -79,7 +95,7 @@ describe('AccountMapApp', () => {
     const setup = repositories({ draftSourceUpdatedAt: 5 });
     render(<AccountMapApp repositories={setup} />);
     expect(screen.getByText('Main의 월 금액이 바뀌었어요')).toBeVisible();
-    expect(screen.getByRole('heading', { name: '연결 검토' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: '월 흐름을 검토해요' })).toBeVisible();
   });
 
   it('adopts a concurrently changed Main after migration conflict', async () => {
@@ -113,13 +129,14 @@ describe('AccountMapApp', () => {
   it('connects an existing location and adds its required role with one command', async () => {
     const setup = atomicConnectionRepositories();
     render(<AccountMapApp repositories={setup.repositories} />);
+    await openSetupLocations();
     const livingCard = screen.getByRole('heading', { name: '생활비' }).closest('article')!;
     fireEvent.click(within(livingCard).getByRole('button', { name: '연결' }));
     fireEvent.click(screen.getByRole('button', { name: /급여통장/ }));
     fireEvent.click(screen.getByRole('button', { name: '완료' }));
 
-    await waitFor(() => expect(setup.save).toHaveBeenCalledTimes(1));
-    expect(setup.save).toHaveBeenCalledWith(1, {
+    await waitFor(() => expect(setup.save).toHaveBeenCalledTimes(2));
+    expect(setup.save).toHaveBeenLastCalledWith(2, {
       type: 'connect-location', surface: 'draft', purposeId: 'system:living', locationId: 'salary',
     });
     expect(setup.saveIntent).not.toHaveBeenCalled();
@@ -128,6 +145,7 @@ describe('AccountMapApp', () => {
   it('creates and connects a new location with one command', async () => {
     const setup = atomicConnectionRepositories();
     render(<AccountMapApp repositories={setup.repositories} />);
+    await openSetupLocations();
     const savingCard = screen.getByRole('heading', { name: '저축' }).closest('article')!;
     fireEvent.click(within(savingCard).getByRole('button', { name: '연결' }));
     fireEvent.click(screen.getByRole('button', { name: '새 계좌·보관처 추가' }));
@@ -135,8 +153,8 @@ describe('AccountMapApp', () => {
     fireEvent.change(screen.getByRole('textbox', { name: '표시 이름' }), { target: { value: '저축통장' } });
     fireEvent.click(screen.getByRole('button', { name: '완료' }));
 
-    await waitFor(() => expect(setup.save).toHaveBeenCalledTimes(1));
-    expect(setup.save.mock.calls[0]?.[1]).toMatchObject({
+    await waitFor(() => expect(setup.save).toHaveBeenCalledTimes(2));
+    expect(setup.save.mock.calls[1]?.[1]).toMatchObject({
       type: 'create-and-connect-location', surface: 'draft', purposeId: 'system:saving',
       location: { shortName: '저축통장', roles: [] },
     });
@@ -480,12 +498,14 @@ describe('AccountMapApp', () => {
       type: 'connect-location', purposeId: 'system:income', locationId: 'salary',
     })));
     expect(screen.queryByRole('dialog', { name: '수입 연결' })).not.toBeInTheDocument();
-    expect(within(incomeCard).getByRole('button', { name: '다른 계좌 연결' })).toBeVisible();
+    const refreshedIncomeCard = screen.getByRole('heading', { name: '수입' }).closest('article')!;
+    expect(within(refreshedIncomeCard).getByRole('button', { name: '다른 계좌 연결' })).toBeVisible();
   });
 
   it('recovers the first stale setup connection explicitly without replacing its input', async () => {
     const setup = staleFreshSetupRepositories();
     render(<AccountMapApp repositories={setup.repositories} />);
+    await openSetupLocations();
     const incomeCard = screen.getByRole('heading', { name: '수입' }).closest('article')!;
     fireEvent.click(within(incomeCard).getByRole('button', { name: '연결' }));
     const selected = screen.getByRole('button', { name: /급여통장/ });
@@ -495,13 +515,13 @@ describe('AccountMapApp', () => {
     const replay = await screen.findByRole('button', { name: '최신 상태에서 다시 적용' });
     expect(screen.getByRole('dialog', { name: '수입 연결' })).toBeVisible();
     expect(selected).toHaveClass('is-selected');
-    expect(setup.save).toHaveBeenCalledTimes(1);
+    expect(setup.save).toHaveBeenCalledTimes(2);
     expect(setup.saveIntent).not.toHaveBeenCalled();
 
     fireEvent.click(replay);
 
-    await waitFor(() => expect(setup.save).toHaveBeenCalledTimes(2));
-    expect(setup.save.mock.calls[1]).toEqual([2, expect.objectContaining({
+    await waitFor(() => expect(setup.save).toHaveBeenCalledTimes(3));
+    expect(setup.save.mock.calls[2]).toEqual([2, expect.objectContaining({
       type: 'connect-location', purposeId: 'system:income', locationId: 'salary',
     })]);
     expect(screen.queryByRole('dialog', { name: '수입 연결' })).not.toBeInTheDocument();
@@ -510,6 +530,7 @@ describe('AccountMapApp', () => {
   it('does not initialize a hidden draft when fresh replay finds a latest applied map', async () => {
     const setup = staleFreshSetupRepositories(true);
     render(<AccountMapApp repositories={setup.repositories} />);
+    await openSetupLocations();
     const incomeCard = screen.getByRole('heading', { name: '수입' }).closest('article')!;
     fireEvent.click(within(incomeCard).getByRole('button', { name: '연결' }));
     fireEvent.click(screen.getByRole('button', { name: /급여통장/ }));
@@ -517,7 +538,7 @@ describe('AccountMapApp', () => {
     fireEvent.click(await screen.findByRole('button', { name: '최신 상태에서 다시 적용' }));
 
     expect(await screen.findByText(/편집 대상이 최신 상태에 없습니다/)).toBeVisible();
-    expect(setup.save).toHaveBeenCalledTimes(1);
+    expect(setup.save).toHaveBeenCalledTimes(2);
   });
 
   it('routes stale connection prerequisites to manual review instead of generic failure', async () => {
@@ -542,6 +563,7 @@ describe('AccountMapApp', () => {
   it('keeps exact initialized revision when fresh replay later collides', async () => {
     const setup = staleFreshSetupRepositories(false, true);
     render(<AccountMapApp repositories={setup.repositories} />);
+    await openSetupLocations();
     const incomeCard = screen.getByRole('heading', { name: '수입' }).closest('article')!;
     fireEvent.click(within(incomeCard).getByRole('button', { name: '연결' }));
     fireEvent.click(screen.getByRole('button', { name: /급여통장/ }));
@@ -557,8 +579,8 @@ describe('AccountMapApp', () => {
     expect(target).toHaveValue('100,000');
     fireEvent.click(screen.getByRole('button', { name: '추가' }));
 
-    await waitFor(() => expect(setup.save).toHaveBeenCalledTimes(3));
-    expect(setup.save.mock.calls[2]?.[0]).toBe(2);
+    await waitFor(() => expect(setup.save).toHaveBeenCalledTimes(4));
+    expect(setup.save.mock.calls[3]?.[0]).toBe(2);
   });
 
   it('blocks setup mutation actions until a cancellation conflict is resolved', async () => {
@@ -571,7 +593,7 @@ describe('AccountMapApp', () => {
     expect(await screen.findByRole('button', { name: '최신 상태에서 다시 검토' })).toBeVisible();
 
     const cancelSetup = screen.getByRole('button', { name: '설정 취소' });
-    const review = screen.getByRole('button', { name: '검토' });
+    const review = screen.getByRole('button', { name: '다음' });
     const addPurpose = screen.getByRole('button', { name: '세부 목적 추가' });
     expect(cancelSetup).toBeDisabled();
     expect(review).toBeDisabled();
@@ -581,7 +603,7 @@ describe('AccountMapApp', () => {
     fireEvent.click(review);
     fireEvent.click(addPurpose);
     expect(reset).toHaveBeenCalledTimes(1);
-    expect(screen.getByRole('heading', { name: '월 자금의 위치를 알려주세요' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: '돈이 머무는 곳을 연결해요' })).toBeVisible();
     expect(screen.queryByRole('dialog', { name: '세부 목적 추가' })).not.toBeInTheDocument();
   });
 
@@ -968,16 +990,31 @@ function staleFreshSetupRepositories(latestHasApplied = false, rejectAfterInitia
     kind: 'bank', roles: ['income'], createdAt: 1, updatedAt: 1,
   }];
   const latest: WorkspaceDocument = { ...structuredClone(initial), revision: 2, updatedAt: 2 };
+  latest.accountMap.draft = {
+    schemaVersion: 2,
+    sourceMainUpdatedAt: 10,
+    customPurposes: [],
+    links: [],
+    transfers: [],
+    step: 'locations',
+    updatedAt: 2,
+  };
   if (latestHasApplied) latest.accountMap.applied = {
     schemaVersion: 2, sourceMainUpdatedAt: 10, customPurposes: [], links: [], setupCompletedAt: 2, updatedAt: 2,
   };
+  if (latestHasApplied) latest.accountMap.draft = null;
   let current = latest;
+  let locationConnectionAttempts = 0;
   const load = vi.fn()
     .mockReturnValueOnce({ status: 'found' as const, workspace: initial, needsMigration: false })
     .mockImplementation(() => ({ status: 'found' as const, workspace: latest, needsMigration: false }));
   const save = vi.fn(async (revision, command) => {
-    if (revision === 1) return { status: 'conflict' as const, currentRevision: 2 };
-    if (revision === 2 && command.type === 'connect-location' && rejectAfterInitialize) return { status: 'rejected' as const, reason: 'target-missing' as const };
+    if (revision === 1 && command.type === 'save-draft') return { status: 'saved' as const, workspace: latest };
+    if (revision === 2 && command.type === 'connect-location') {
+      locationConnectionAttempts += 1;
+      if (locationConnectionAttempts === 1) return { status: 'conflict' as const, currentRevision: 2 };
+      if (rejectAfterInitialize) return { status: 'rejected' as const, reason: 'target-missing' as const };
+    }
     const result = applyAccountMapCommand(current, command, revision + 1);
     if (!result.ok) return { status: 'rejected' as const, reason: result.reason };
     current = { ...result.workspace, revision: revision + 1, updatedAt: revision + 1 };
@@ -1033,7 +1070,7 @@ function stalePrerequisiteRepositories() {
 }
 
 function repositories(options: { mainStatus?: 'found' | 'empty'; draftSourceUpdatedAt?: number } = {}) {
-  const workspace = createEmptyWorkspace(1);
+  let workspace = createEmptyWorkspace(1);
   const appliedMain = mainData();
   workspace.main.applied = appliedMain;
   if (options.draftSourceUpdatedAt !== undefined) {
@@ -1041,7 +1078,12 @@ function repositories(options: { mainStatus?: 'found' | 'empty'; draftSourceUpda
   }
   const accountMap: AccountMapRepository = {
     load: vi.fn(() => ({ status: 'found' as const, workspace, needsMigration: false })),
-    save: vi.fn(), saveIntent: vi.fn(), migrate: vi.fn(), reset: vi.fn(),
+    save: vi.fn(async (revision, command) => {
+      const result = applyAccountMapCommand(workspace, command, revision + 1);
+      if (!result.ok) return { status: 'rejected' as const, reason: result.reason };
+      workspace = { ...result.workspace, revision: revision + 1, updatedAt: revision + 1 };
+      return { status: 'saved' as const, workspace };
+    }), saveIntent: vi.fn(), migrate: vi.fn(), reset: vi.fn(),
   };
   const main: AccountMapMainSourceRepository = {
     load: vi.fn(() => options.mainStatus === 'empty'

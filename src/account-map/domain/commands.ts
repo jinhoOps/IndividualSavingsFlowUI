@@ -15,7 +15,9 @@ import { findLocationDuplicate } from './institutions';
 import {
   SYSTEM_PURPOSE_IDS,
   type AccountMapApplied,
+  type AccountMapAppliedV3,
   type AccountMapDraft,
+  type AccountMapDraftV2,
   type CustomPurpose,
   type PurposeId,
   type PurposeLocationLink,
@@ -24,8 +26,8 @@ import { mainPurposeReferences, recalculateRemainder, reconcilePurpose } from '.
 
 export type AccountMapCommand =
   | AccountFlowCommand
-  | { type: 'save-draft'; draft: AccountMapDraft }
-  | { type: 'apply-map'; applied: AccountMapApplied }
+  | { type: 'save-draft'; draft: AccountMapDraft | AccountMapDraftV2 }
+  | { type: 'apply-map'; applied: AccountMapApplied | AccountMapAppliedV3 }
   | {
       type: 'edit-map-node';
       applied: AccountMapApplied;
@@ -153,8 +155,22 @@ export function applyAccountMapCommand(
   const parsed = parseWorkspaceDocument(workspace);
   if (parsed === null || !validTimestamp(now)) return failure('invalid-input');
   if (isAccountFlowCommand(command)) return applyAccountFlowCommand(parsed, command, now);
+  if (command.type === 'save-draft' && command.draft.schemaVersion === 2) {
+    return saveGuidedDraft(parsed, command.draft);
+  }
+  if (command.type === 'apply-map' && command.applied.schemaVersion === 3) {
+    return applyGuidedMap(parsed, command.applied);
+  }
+  if (isPurposeConnectionCommand(command)
+    && parsed.accountMap.applied === null
+    && parsed.accountMap.draft?.schemaVersion === 2) {
+    return applyGuidedPurposeConnection(parsed, command, now);
+  }
   if (isTransferAwareLocationLifecycle(command) && hasTransferAwareState(parsed)) {
     return applyTransferAwareLocationCommand(parsed, command, now);
+  }
+  if (parsed.accountMap.applied?.schemaVersion === 3 && isGuidedAppliedLegacyCommand(command)) {
+    return applyGuidedAppliedLegacyCommand(parsed, command, now);
   }
   if (command.type === 'update-location-details') {
     const updated = updateLocationDetails(parsed, command.locationId, {
@@ -175,6 +191,10 @@ export function applyAccountMapCommand(
   let changed: AccountMapCommandResult;
   switch (command.type) {
     case 'save-draft': {
+      if (command.draft.schemaVersion !== 1) {
+        changed = failure('invalid-input');
+        break;
+      }
       if (!customTargetsWithinWritableCapacity(command.draft, source.accountMap.draft, source)) {
         changed = failure('custom-target-capacity');
         break;
@@ -192,6 +212,10 @@ export function applyAccountMapCommand(
       break;
     }
     case 'apply-map':
+      if (command.applied.schemaVersion !== 2) {
+        changed = failure('invalid-input');
+        break;
+      }
       changed = validateAppliedMap(command.applied, source);
       if (!changed.ok) break;
       changed = successCandidate(source, {
@@ -260,6 +284,184 @@ function isAccountFlowCommand(command: AccountMapCommand): command is AccountFlo
     || command.type === 'edit-transfer'
     || command.type === 'remove-transfer'
     || command.type === 'confirm-current-main';
+}
+
+type PurposeConnectionCommand = Extract<AccountMapCommand,
+  { type: 'connect-location' | 'create-and-connect-location' | 'restore-and-connect-location' }>;
+
+function isPurposeConnectionCommand(command: AccountMapCommand): command is PurposeConnectionCommand {
+  return command.type === 'connect-location'
+    || command.type === 'create-and-connect-location'
+    || command.type === 'restore-and-connect-location';
+}
+
+function saveGuidedDraft(
+  source: WorkspaceDocument,
+  draft: AccountMapDraftV2,
+): AccountMapCommandResult {
+  const main = source.main.applied;
+  if (main === null) return failure('invalid-input');
+  if (!customTargetsWithinWritableCapacity(draft, source.accountMap.draft, source)) {
+    return failure('custom-target-capacity');
+  }
+  const candidate: WorkspaceDocument = {
+    ...source,
+    accountMap: {
+      ...source.accountMap,
+      draft: structuredClone(withCurrentMainSource(draft, source.accountMap.draft?.schemaVersion === 2 ? source.accountMap.draft : null, main)),
+    },
+  };
+  return successWorkspaceCandidate(source, candidate);
+}
+
+function applyGuidedMap(
+  source: WorkspaceDocument,
+  applied: AccountMapAppliedV3,
+): AccountMapCommandResult {
+  const main = source.main.applied;
+  if (main === null) return failure('invalid-input');
+  const income = reconcilePurpose('system:income', applied, source.locations, main);
+  const hasIncomeLink = applied.links.some((link) => link.purposeId === 'system:income' && link.status === 'active');
+  if (!hasIncomeLink || income.activeAllocatedWon !== income.targetWon) return failure('income-connection-required');
+  const purposeIds: PurposeId[] = [
+    ...SYSTEM_PURPOSE_IDS,
+    ...applied.customPurposes.filter((purpose) => purpose.archivedAt === undefined).map((purpose) => purpose.id),
+  ];
+  if (purposeIds.some((purposeId) => reconcilePurpose(purposeId, applied, source.locations, main).excessWon > 0)) {
+    return failure('purpose-excess');
+  }
+  if (!customTargetsWithinWritableCapacity(applied, null, source)) return failure('custom-target-capacity');
+  const candidate: WorkspaceDocument = {
+    ...source,
+    accountMap: {
+      ...source.accountMap,
+      applied: structuredClone(withCurrentMainSource(applied, source.accountMap.applied?.schemaVersion === 3 ? source.accountMap.applied : null, main)),
+      draft: null,
+    },
+  };
+  return successWorkspaceCandidate(source, candidate);
+}
+
+/**
+ * A locations-step connection after the guided draft has been upgraded must
+ * retain its transfer records. The existing purpose-link command remains the
+ * authority; this adapter changes only the v2 envelope around its result.
+ */
+function applyGuidedPurposeConnection(
+  source: WorkspaceDocument,
+  command: PurposeConnectionCommand,
+  now: number,
+): AccountMapCommandResult {
+  const draft = source.accountMap.draft;
+  if (draft?.schemaVersion !== 2) return failure('invalid-input');
+  const legacyDraft: AccountMapDraft = {
+    schemaVersion: 1,
+    sourceMainUpdatedAt: draft.sourceMainUpdatedAt,
+    customPurposes: structuredClone(draft.customPurposes),
+    links: structuredClone(draft.links),
+    step: draft.step === 'review' ? 'review' : 'connect',
+    updatedAt: draft.updatedAt,
+  };
+  const legacySource: WorkspaceDocument = {
+    ...source,
+    accountMap: { applied: null, draft: legacyDraft },
+  };
+  const legacyResult = applyAccountMapCommand(legacySource, command, now);
+  if (!legacyResult.ok) return legacyResult;
+  const legacySavedDraft = legacyResult.workspace.accountMap.draft;
+  if (legacySavedDraft?.schemaVersion !== 1) return failure('invalid-input');
+  const candidate: WorkspaceDocument = {
+    ...source,
+    locations: structuredClone(legacyResult.workspace.locations),
+    accountMap: {
+      ...source.accountMap,
+      draft: {
+        ...draft,
+        sourceMainUpdatedAt: legacySavedDraft.sourceMainUpdatedAt,
+        customPurposes: structuredClone(legacySavedDraft.customPurposes),
+        links: structuredClone(legacySavedDraft.links),
+        updatedAt: legacySavedDraft.updatedAt,
+      },
+    },
+  };
+  return successWorkspaceCandidate(source, candidate);
+}
+
+/**
+ * The existing map surface still owns purpose and location management while
+ * Task 8 replaces its canvas. Reuse that command validation through a v2
+ * view, then restore the v3 transfer envelope unchanged. This keeps a map
+ * completed by the guided flow editable without making the legacy commands
+ * responsible for transfer calculations.
+ */
+function applyGuidedAppliedLegacyCommand(
+  source: WorkspaceDocument,
+  command: AccountMapCommand,
+  now: number,
+): AccountMapCommandResult {
+  const applied = source.accountMap.applied;
+  if (applied?.schemaVersion !== 3 || source.accountMap.draft?.schemaVersion === 2) {
+    return failure('invalid-input');
+  }
+  const legacySource: WorkspaceDocument = {
+    ...source,
+    accountMap: {
+      ...source.accountMap,
+      applied: {
+        schemaVersion: 2,
+        sourceMainUpdatedAt: applied.sourceMainUpdatedAt,
+        customPurposes: structuredClone(applied.customPurposes),
+        links: structuredClone(applied.links),
+        setupCompletedAt: applied.setupCompletedAt,
+        updatedAt: applied.updatedAt,
+      },
+    },
+  };
+  const legacyResult = applyAccountMapCommand(legacySource, command, now);
+  if (!legacyResult.ok) return legacyResult;
+  const legacyApplied = legacyResult.workspace.accountMap.applied;
+  if (legacyApplied !== null && legacyApplied.schemaVersion !== 2) return failure('invalid-input');
+  const candidate: WorkspaceDocument = {
+    ...source,
+    locations: structuredClone(legacyResult.workspace.locations),
+    accountMap: {
+      applied: legacyApplied === null
+        ? null
+        : {
+            schemaVersion: 3,
+            sourceMainUpdatedAt: legacyApplied.sourceMainUpdatedAt,
+            customPurposes: structuredClone(legacyApplied.customPurposes),
+            links: structuredClone(legacyApplied.links),
+            transfers: structuredClone(applied.transfers),
+            setupCompletedAt: legacyApplied.setupCompletedAt,
+            updatedAt: legacyApplied.updatedAt,
+          },
+      draft: legacyResult.workspace.accountMap.draft === null
+        ? null
+        : structuredClone(legacyResult.workspace.accountMap.draft),
+    },
+  };
+  return successWorkspaceCandidate(source, candidate);
+}
+
+function isGuidedAppliedLegacyCommand(command: AccountMapCommand): boolean {
+  switch (command.type) {
+    case 'create-location':
+    case 'edit-map-node':
+    case 'edit-link':
+    case 'edit-custom-purpose':
+    case 'archive-custom-purpose':
+    case 'restore-custom-purpose':
+    case 'update-location':
+    case 'reset-map':
+      return true;
+    case 'connect-location':
+    case 'create-and-connect-location':
+    case 'restore-and-connect-location':
+      return command.surface === 'applied';
+    default:
+      return false;
+  }
 }
 
 function isTransferAwareLocationLifecycle(
@@ -365,9 +567,9 @@ function validateAppliedMap(
 }
 
 function customTargetsWithinWritableCapacity(
-  candidate: Pick<AccountMapApplied, 'customPurposes'>,
-  current: Pick<AccountMapDraft, 'customPurposes'> | null,
-  source: LegacyAccountMapWorkspace,
+  candidate: Pick<AccountMapApplied | AccountMapAppliedV3 | AccountMapDraft | AccountMapDraftV2, 'customPurposes'>,
+  current: Pick<AccountMapApplied | AccountMapAppliedV3 | AccountMapDraft | AccountMapDraftV2, 'customPurposes'> | null,
+  source: Pick<WorkspaceDocument, 'main'>,
 ): boolean {
   const main = source.main.applied;
   if (main === null) return false;
@@ -386,7 +588,7 @@ function customTargetsWithinWritableCapacity(
   });
 }
 
-function withCurrentMainSource<T extends AccountMapApplied | AccountMapDraft>(
+function withCurrentMainSource<T extends AccountMapApplied | AccountMapAppliedV3 | AccountMapDraft | AccountMapDraftV2>(
   candidate: T,
   current: T | null,
   main: MainData,
@@ -1110,6 +1312,13 @@ function restoreInState<T extends AccountMapApplied | AccountMapDraft>(
 
 function successCandidate(
   source: LegacyAccountMapWorkspace,
+  candidate: WorkspaceDocument,
+): AccountMapCommandResult {
+  return successWorkspaceCandidate(source, candidate);
+}
+
+function successWorkspaceCandidate(
+  source: WorkspaceDocument,
   candidate: WorkspaceDocument,
 ): AccountMapCommandResult {
   const parsed = parseWorkspaceDocument(candidate);

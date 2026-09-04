@@ -208,7 +208,7 @@ test('keeps detailed Portfolio and purpose-first Account Map isolated', async ({
     };
   });
   await page.goto('apps/account-map/');
-  await expect(page.getByRole('heading', { name: '월 자금의 위치를 알려주세요' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '월 자금 기준 확인' })).toBeVisible();
   await expect(page.locator('app-header, data-hub-modal, #portfolioCreator, #accountMapCanvas')).toHaveCount(0);
   const accountMapObservation = await page.evaluate(() => ({
     calls: (
@@ -410,12 +410,12 @@ test('keeps Account Map usable at mobile, tablet, and desktop widths', async ({ 
     const launcher = page.getByRole('navigation', { name: 'ISF 앱' });
     const accountMapLink = page.getByRole('link', { name: /계좌 연결 \(Account Map\).*현재 위치/ });
     await expect(launcher).toBeVisible();
-    await expect(page.getByRole('heading', { name: '월 자금의 위치를 알려주세요' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '월 자금 기준 확인' })).toBeVisible();
 
     await expect(accountMapLink).toHaveAttribute('aria-current', 'page');
 
     const visibleTargetSizes = await page.locator(
-      '.journey-launcher__app-link, .account-map-purpose-card__action, .account-map-actions button',
+      '.journey-launcher__app-link, .account-map-setup button, .account-map-actions button',
     ).evaluateAll((elements) => elements
       .map((element) => element.getBoundingClientRect())
       .filter((rect) => rect.width > 0 && rect.height > 0)

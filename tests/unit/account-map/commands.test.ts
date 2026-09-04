@@ -13,18 +13,43 @@ import type { FinancialLocation } from '../../../src/workspace/domain/financialL
 import { createEmptyWorkspace, type WorkspaceDocument } from '../../../src/workspace/domain/model';
 
 describe('Account Map commands', () => {
-  it('rejects a transfer-aware applied-v3 record without mutating its source workspace', () => {
+  it('keeps v3 transfers when existing map location management updates an applied map', () => {
     const before = workspace();
     before.accountMap.applied = transferAwareApplied();
     const sourceRaw = JSON.stringify(before);
 
-    expect(applyAccountMapCommand(before, {
+    const result = applyAccountMapCommand(before, {
       type: 'update-location',
       locationId: 'checking',
       shortName: '주계좌',
       addRoles: [],
-    }, 20)).toEqual({ ok: false, reason: 'invalid-input' });
+    }, 20);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok || result.workspace.accountMap.applied?.schemaVersion !== 3) return;
+    expect(result.workspace.locations.find(({ id }) => id === 'checking')).toMatchObject({ shortName: '주계좌' });
+    expect(result.workspace.accountMap.applied.transfers).toEqual(transferAwareApplied().transfers);
     expect(JSON.stringify(before)).toBe(sourceRaw);
+  });
+
+  it('keeps v3 transfers when existing map purpose connections update an applied map', () => {
+    const before = workspace();
+    before.accountMap.applied = transferAwareApplied();
+    before.locations[1] = { ...before.locations[1]!, roles: ['spending'] };
+
+    const result = applyAccountMapCommand(before, {
+      type: 'connect-location',
+      surface: 'applied',
+      purposeId: 'system:investing',
+      locationId: 'savings',
+    }, 20);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok || result.workspace.accountMap.applied?.schemaVersion !== 3) return;
+    expect(result.workspace.accountMap.applied.links).toContainEqual(expect.objectContaining({
+      purposeId: 'system:investing', locationId: 'savings', monthlyAmountWon: 200_000,
+    }));
+    expect(result.workspace.accountMap.applied.transfers).toEqual(transferAwareApplied().transfers);
   });
 
   it('rejects a transfer-aware draft-v2 record without mutating its source workspace', () => {

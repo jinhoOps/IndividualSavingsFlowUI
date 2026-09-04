@@ -7,8 +7,12 @@ import type { FinancialLocation } from '../../workspace/domain/financialLocation
 import type { WorkspaceDocument } from '../../workspace/domain/model';
 import { bootstrapAccountMap } from '../application/bootstrap';
 import { accountMapReducer, type ManualRecoveryAction, type ManualRecoveryTarget } from '../application/reducer';
+import { projectAccountMapSetup } from '../application/setupProjection';
 import { rebaseAccountMapIntent, type AccountMapEditIntent } from '../domain/editIntent';
-import type { AccountMapApplied, AccountMapDraft, OutflowPurposeId, PurposeId, PurposeLocationLink } from '../domain/model';
+import type { AccountMapApplied, AccountMapAppliedV3, AccountMapDraft, AccountMapDraftV2, AccountMapSetupStep, OutflowPurposeId, PurposeId, PurposeLocationLink } from '../domain/model';
+import type { AccountTransferEditorValue } from './AccountTransferEditor';
+import type { MainPlanEditTarget } from './setup/AccountMapBasisStep';
+import { projectAccountMapDraftForView } from '../domain/accountMapVersioning';
 import { customPurposeTargetCapacity, recalculateRemainder, reconcilePurpose } from '../domain/reconciliation';
 import { BrowserAccountMapRepository, type AccountMapRepository, type AccountMapWriteResult } from '../infrastructure/accountMapRepository';
 import { BrowserAccountMapMainSourceRepository, type AccountMapMainSourceRepository } from '../infrastructure/mainSourceRepository';
@@ -20,7 +24,11 @@ import { AccountMapSetup, type AccountMapDraftSaveResult } from './AccountMapSet
 import './account-map.css';
 
 export interface AccountMapRepositories { accountMap: AccountMapRepository; main: AccountMapMainSourceRepository }
-export function AccountMapApp({ repositories }: { repositories?: AccountMapRepositories } = {}): JSX.Element {
+export interface AccountMapAppProps {
+  repositories?: AccountMapRepositories;
+  onRequestMainEdit?(target: MainPlanEditTarget): void;
+}
+export function AccountMapApp({ repositories, onRequestMainEdit }: AccountMapAppProps = {}): JSX.Element {
   const resolved = useMemo<AccountMapRepositories>(() => repositories ?? { accountMap: new BrowserAccountMapRepository(), main: new BrowserAccountMapMainSourceRepository() }, [repositories]);
   const [state, dispatch] = useReducer(accountMapReducer, undefined, () => bootstrapAccountMap(resolved.main.load(), resolved.accountMap.load()));
   const pendingModalWorkspaceRef = useRef<WorkspaceDocument | null>(null);
@@ -28,6 +36,9 @@ export function AccountMapApp({ repositories }: { repositories?: AccountMapRepos
   const restoreFocusElementRef = useRef<HTMLElement | null>(null);
   const [restorePurposeId, setRestorePurposeId] = useState<`custom:${string}` | null>(null);
   const [restoreLocationId, setRestoreLocationId] = useState<string | null>(null);
+  const setupProjection = useMemo(() => state.mode !== 'setup'
+    ? null
+    : projectAccountMapSetup(state.main, state.workspace.locations, state.draft), [state]);
 
   useEffect(() => {
     if (state.mode !== 'migrating') return;
@@ -255,7 +266,7 @@ export function AccountMapApp({ repositories }: { repositories?: AccountMapRepos
     }}
   />}{locationRestoreModal}</AppContentFrame></AppShell>;
 
-  async function saveDraft(draft: AccountMapDraft): Promise<AccountMapDraftSaveResult> {
+  async function saveDraft(draft: AccountMapDraftV2): Promise<AccountMapDraftSaveResult> {
     if (state.mode !== 'setup' || state.recovery.status !== 'none') return { status: 'recovery' };
     dispatch({ type: 'save-requested' });
     const result = await resolved.accountMap.save(state.workspace.revision, { type: 'save-draft', draft });
@@ -339,18 +350,67 @@ export function AccountMapApp({ repositories }: { repositories?: AccountMapRepos
     }
     dispatch({ type: 'save-succeeded', workspace: result.workspace });
     const savedDraft = result.workspace.accountMap.draft;
-    if (savedDraft?.schemaVersion === 1) dispatch({ type: 'draft-updated', draft: savedDraft });
+    if (savedDraft !== null) dispatch({ type: 'draft-updated', draft: savedDraft });
     return true;
   }
 
   async function applyMap() {
     if (state.mode !== 'setup' || state.draft === null || state.recovery.status !== 'none') return;
     const now = Date.now();
-    const applied: AccountMapApplied = { schemaVersion: 2, sourceMainUpdatedAt: state.main.updatedAt, customPurposes: state.draft.customPurposes, links: state.draft.links, setupCompletedAt: now, updatedAt: now };
+    const draft = projectAccountMapDraftForView(state.draft);
+    const applied: AccountMapAppliedV3 = { schemaVersion: 3, sourceMainUpdatedAt: state.main.updatedAt, customPurposes: draft.customPurposes, links: draft.links, transfers: draft.transfers, setupCompletedAt: now, updatedAt: now };
     dispatch({ type: 'save-requested' });
     const result = await resolved.accountMap.save(state.workspace.revision, { type: 'apply-map', applied });
     if (result.status !== 'saved') { if (result.status === 'conflict') captureManualConflict('apply-map', []); else dispatch({ type: 'save-failed', reason: failureReason(result) }); return; }
-    dispatch({ type: 'apply-succeeded', applied, workspace: result.workspace });
+    dispatch({ type: 'apply-succeeded', applied: {
+      schemaVersion: 2,
+      sourceMainUpdatedAt: applied.sourceMainUpdatedAt,
+      customPurposes: structuredClone(applied.customPurposes),
+      links: structuredClone(applied.links),
+      setupCompletedAt: applied.setupCompletedAt,
+      updatedAt: applied.updatedAt,
+    }, workspace: result.workspace });
+  }
+
+  async function addTransfer(value: AccountTransferEditorValue & { id: string }): Promise<boolean> {
+    if (state.mode !== 'setup' || state.recovery.status !== 'none') return false;
+    dispatch({ type: 'save-requested' });
+    const result = await resolved.accountMap.save(state.workspace.revision, {
+      type: 'add-transfer',
+      surface: 'draft',
+      transfer: value,
+    });
+    if (result.status !== 'saved') {
+      if (result.status === 'conflict') captureManualConflict('edit-transfer', []);
+      else dispatch({ type: 'save-failed', reason: failureReason(result) });
+      return false;
+    }
+    dispatch({ type: 'save-succeeded', workspace: result.workspace });
+    if (result.workspace.accountMap.draft !== null) {
+      dispatch({ type: 'draft-updated', draft: result.workspace.accountMap.draft });
+    }
+    return true;
+  }
+
+  async function editTransfer(id: string, value: AccountTransferEditorValue): Promise<boolean> {
+    if (state.mode !== 'setup' || state.recovery.status !== 'none') return false;
+    dispatch({ type: 'save-requested' });
+    const result = await resolved.accountMap.save(state.workspace.revision, {
+      type: 'edit-transfer',
+      surface: 'draft',
+      transferId: id,
+      fields: value,
+    });
+    if (result.status !== 'saved') {
+      if (result.status === 'conflict') captureManualConflict('edit-transfer', [{ kind: 'transfer', id }]);
+      else dispatch({ type: 'save-failed', reason: failureReason(result) });
+      return false;
+    }
+    dispatch({ type: 'save-succeeded', workspace: result.workspace });
+    if (result.workspace.accountMap.draft !== null) {
+      dispatch({ type: 'draft-updated', draft: result.workspace.accountMap.draft });
+    }
+    return true;
   }
 
   async function saveNodeEdit(nodeId: string, input: AccountMapNodeEditInput): Promise<AccountMapWriteResult> {
@@ -479,7 +539,7 @@ export function AccountMapApp({ repositories }: { repositories?: AccountMapRepos
     return result;
   }
 
-  return <AppShell currentApp="account-map" managementMenu={management}><AppContentFrame className="account-map-page"><AccountMapSetup workspace={state.workspace} main={state.main} draft={state.draft} step={state.step} mainChanged={state.mainChanged} saveFailed={state.save.status === 'failed'} recoveryPending={state.save.status === 'pending'} recovery={state.recovery} onReapply={reapplyIntent} onKeepLatest={() => dispatch({ type: 'latest-kept' })} onCommitConnection={commitConnection} onSaveDraft={saveDraft} onReview={() => void changeSetupStep('review')} onBack={() => void changeSetupStep('connect')} onApply={() => void applyMap()} onExit={() => { if (state.recovery.status !== 'none') return; dispatch({ type: 'setup-exited' }); window.location.assign(appPath('main')); }} onCancelSetup={() => { if (state.recovery.status !== 'none') return; void resolved.accountMap.reset(state.workspace.revision).then((result) => { if (result.status === 'saved') dispatch({ type: 'setup-cancelled', workspace: result.workspace }); else if (result.status === 'conflict') captureManualConflict('cancel-setup', []); else dispatch({ type: 'save-failed', reason: failureReason(result) }); }); }} />{locationRestoreModal}</AppContentFrame></AppShell>;
+  return <AppShell currentApp="account-map" managementMenu={management}><AppContentFrame className="account-map-page"><AccountMapSetup workspace={state.workspace} main={state.main} draft={state.draft} step={state.step} calculation={setupProjection!.calculation} suggestions={setupProjection!.suggestions} review={setupProjection!.review} canApply={setupProjection!.canApply} mainChanged={state.mainChanged} saveFailed={state.save.status === 'failed'} recoveryPending={state.save.status === 'pending'} recovery={state.recovery} onReapply={reapplyIntent} onKeepLatest={() => dispatch({ type: 'latest-kept' })} onRequestMainEdit={(target) => { onRequestMainEdit?.(target); }} onCommitConnection={commitConnection} onSaveDraft={saveDraft} onAddTransfer={addTransfer} onEditTransfer={editTransfer} onApply={() => void applyMap()} onExit={() => { if (state.recovery.status !== 'none') return; dispatch({ type: 'setup-exited' }); window.location.assign(appPath('main')); }} onCancelSetup={() => { if (state.recovery.status !== 'none') return; void resolved.accountMap.reset(state.workspace.revision).then((result) => { if (result.status === 'saved') dispatch({ type: 'setup-cancelled', workspace: result.workspace }); else if (result.status === 'conflict') captureManualConflict('cancel-setup', []); else dispatch({ type: 'save-failed', reason: failureReason(result) }); }); }} />{locationRestoreModal}</AppContentFrame></AppShell>;
 
   async function saveIntent(expectedRevision: number, intent: AccountMapEditIntent): Promise<AccountMapWriteResult> {
     dispatch({ type: 'save-requested' });
@@ -555,14 +615,6 @@ export function AccountMapApp({ repositories }: { repositories?: AccountMapRepos
     else dispatch({ type: 'save-failed', reason: latest.status === 'invalid' ? 'invalid' : 'unavailable' });
   }
 
-  async function changeSetupStep(step: AccountMapDraft['step']) {
-    if (state.mode !== 'setup' || state.recovery.status !== 'none') return;
-    if (state.draft === null) {
-      dispatch({ type: step === 'review' ? 'review-requested' : 'connect-requested' });
-      return;
-    }
-    await saveDraft({ ...state.draft, step, updatedAt: Date.now() });
-  }
 }
 
 function isCompleteLocationDetails(value: FinancialLocationFieldsValue): boolean {
@@ -591,7 +643,7 @@ function manualEditTargets(nodeId: string, intents: AccountMapEditIntent[], inpu
 
 function buildLocationRestoreRelated(
   locationId: string,
-  purposeState: AccountMapApplied | AccountMapDraft,
+  purposeState: AccountMapApplied | AccountMapDraft | AccountMapDraftV2,
   locations: readonly FinancialLocation[],
   main: MainData,
 ): AccountMapModalRelatedItem[] {
@@ -622,7 +674,7 @@ function buildLocationRestoreRelated(
   return [...direct, ...replacements];
 }
 
-function purposeLabel(purposeId: PurposeId, state: AccountMapApplied | AccountMapDraft): string {
+function purposeLabel(purposeId: PurposeId, state: AccountMapApplied | AccountMapDraft | AccountMapDraftV2): string {
   if (purposeId.startsWith('custom:')) return state.customPurposes.find(({ id }) => id === purposeId)?.name ?? '세부 목적';
   return purposeId === 'system:income' ? '수입'
     : purposeId === 'system:housing' ? '주거'

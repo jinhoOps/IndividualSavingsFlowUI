@@ -241,15 +241,15 @@ for (const viewport of VIEWPORTS) {
     const setupFirstFrame = await readProbedAccountMapFirstFrame(page);
     expect(setupFirstFrame).toEqual({
       activeAnimations: 0,
-      heading: '월 자금의 위치를 알려주세요',
+      heading: '월 자금 기준 확인',
       opacity: 1,
       x: 0,
       y: 0,
     });
-    await expect(page.getByRole('heading', { name: '월 자금의 위치를 알려주세요' })).toBeVisible();
-    const firstConnect = page.getByRole('button', { name: '연결', exact: true }).first();
-    await firstConnect.focus();
-    await expect(firstConnect).toBeFocused();
+    await expect(page.getByRole('heading', { name: '월 자금 기준 확인' })).toBeVisible();
+    const basisContinue = page.getByRole('button', { name: '이 금액으로 계속' });
+    await basisContinue.focus();
+    await expect(basisContinue).toBeFocused();
     await expectFinalTransform(setup);
     await expectNoDocumentOverflow(page);
     await screenshot(page, testInfo.outputPath.bind(testInfo), `account-map-${viewport.width}-setup.png`);
@@ -275,7 +275,7 @@ test('PWA offline revisit keeps all app routes and final motion state available'
     { path: 'apps/main/', heading: '이번 달 자금 흐름', motion: '.cashflow-donut' },
     { path: 'apps/simulation/', heading: /이대로 20년 유지하면/, motion: '.growth-chart' },
     { path: 'apps/portfolio/', heading: '안정 50%', motion: '.portfolio-summary' },
-    { path: 'apps/account-map/', heading: '월 자금의 위치를 알려주세요', motion: '.account-map-setup' },
+    { path: 'apps/account-map/', heading: '월 자금 기준 확인', motion: '.account-map-setup' },
   ] as const;
 
   for (const route of routes) {
@@ -452,7 +452,7 @@ async function captureReducedMotionFinals(page: Page, width: number): Promise<vo
   const reducedSetupFirstRead = await readProbedAccountMapFirstFrame(page);
   expect(reducedSetupFirstRead).toEqual({
     activeAnimations: 0,
-    heading: '월 자금의 위치를 알려주세요',
+    heading: '월 자금 기준 확인',
     opacity: 1,
     x: 0,
     y: 0,

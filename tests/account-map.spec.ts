@@ -272,11 +272,55 @@ test('requires Main without creating Account Map state', async ({ page }) => {
   expect(await readProtected(page)).toEqual({ ...protectedSlices, main: { applied: null, setupProgress: null } });
 });
 
+test('guides the centered four-step setup without horizontal overflow at supported widths', async ({ page }) => {
+  await page.addInitScript(({ key, workspace }) => localStorage.setItem(key, JSON.stringify(workspace)), {
+    key: STORAGE_KEY,
+    workspace: emptyWorkspace(),
+  });
+  for (const viewport of [
+    { width: 390, height: 844 },
+    { width: 768, height: 900 },
+    { width: 1280, height: 900 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await page.goto('apps/account-map/');
+    const setup = page.locator('.account-map-setup');
+    await expect(page.getByRole('heading', { name: '월 자금 기준 확인' })).toBeVisible();
+    await expect(setup).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    const bounds = await setup.boundingBox();
+    expect(bounds).not.toBeNull();
+    const expectedWidth = Math.min(viewport.width - 32, 768);
+    expect(bounds!.width).toBeCloseTo(expectedWidth, 0);
+    expect(bounds!.x).toBeCloseTo((viewport.width - expectedWidth) / 2, 0);
+    const actionSizes = await setup.getByRole('button').evaluateAll((buttons) => buttons.map((button) => {
+      const rect = button.getBoundingClientRect();
+      return { width: rect.width, height: rect.height };
+    }));
+    for (const size of actionSizes) {
+      expect(size.width).toBeGreaterThanOrEqual(43.9);
+      expect(size.height).toBeGreaterThanOrEqual(43.9);
+    }
+
+    await page.getByRole('button', { name: '이 금액으로 계속' }).click();
+    await expect(page.getByRole('heading', { name: '돈이 머무는 곳을 연결해요' })).toBeVisible();
+    await page.getByRole('button', { name: '이전' }).click();
+    await expect(page.getByRole('heading', { name: '월 자금 기준 확인' })).toBeVisible();
+    await expect.poll(() => setup.evaluate((element) => {
+      const style = getComputedStyle(element);
+      const transform = new DOMMatrixReadOnly(style.transform);
+      return { opacity: Number(style.opacity), x: transform.m41, y: transform.m42 };
+    })).toEqual({ opacity: 1, x: 0, y: 0 });
+  }
+});
+
 test('creates an Account Map and preserves protected product slices', async ({ page }) => {
   await seed(page, emptyWorkspace());
   await page.goto('apps/account-map/');
   const before = await readProtected(page);
 
+  await page.getByRole('button', { name: '이 금액으로 계속' }).click();
+  await expect(page.getByRole('heading', { name: '돈이 머무는 곳을 연결해요' })).toBeVisible();
   await page.getByRole('article').filter({ hasText: '수입' }).getByRole('button', { name: '연결' }).click();
   await page.getByRole('button', { name: '새 계좌·보관처 추가' }).click();
   const dialog = page.getByRole('dialog', { name: '수입 연결' });
@@ -293,8 +337,10 @@ test('creates an Account Map and preserves protected product slices', async ({ p
   await purposeDialog.getByLabel('월 금액').fill('100000');
   await purposeDialog.getByRole('button', { name: '추가' }).click();
 
-  await page.getByRole('button', { name: '검토' }).click();
-  await expect(page.getByRole('heading', { name: '연결 검토' })).toBeVisible();
+  await page.getByRole('button', { name: '다음' }).click();
+  await expect(page.getByRole('heading', { name: '계좌 사이 흐름을 정해요' })).toBeVisible();
+  await page.getByRole('button', { name: '다음' }).click();
+  await expect(page.getByRole('heading', { name: '월 흐름을 검토해요' })).toBeVisible();
   await page.getByRole('button', { name: '지도 만들기' }).click();
   await expect(page.getByRole('heading', { name: '계좌 연결 지도' })).toBeVisible();
   expect(await readProtected(page)).toEqual(before);
@@ -888,7 +934,7 @@ test('archives, selectively restores, and resets only Account Map', async ({ pag
   await page.getByRole('button', { name: '관리 메뉴' }).click();
   await page.getByRole('menuitem', { name: '월 연결 다시 만들기' }).click();
   await page.getByRole('button', { name: '다시 만들기' }).click();
-  await expect(page.getByRole('heading', { name: '월 자금의 위치를 알려주세요' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '월 자금 기준 확인' })).toBeVisible();
   expect(await readProtected(page)).toEqual(before);
   const stored = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!), STORAGE_KEY);
   expect(stored.locations).toHaveLength(2);
@@ -975,7 +1021,7 @@ test('migrates a v1 workspace without touching its protected slices', async ({ p
   };
   await seedRetired(page, legacy);
   await page.goto('apps/account-map/');
-  await expect(page.getByRole('heading', { name: '월 자금의 위치를 알려주세요' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '월 자금 기준 확인' })).toBeVisible();
   const stored = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!), STORAGE_KEY);
   expect(stored.schemaVersion).toBe(3);
   expect({ main: stored.main, simulation: stored.simulation, portfolio: stored.portfolio }).toEqual(protectedSlices);

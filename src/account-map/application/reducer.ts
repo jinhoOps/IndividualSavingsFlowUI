@@ -2,10 +2,12 @@ import type { MainData } from '../../main/domain/model';
 import type { WorkspaceDocument } from '../../workspace/domain/model';
 import type { AccountMapEditIntent } from '../domain/editIntent';
 import { mapNeedsMainConfirmation } from '../domain/accountFlowCommands';
-import { projectAccountMapAppliedForView } from '../domain/accountMapVersioning';
+import { projectAccountMapAppliedForView, projectAccountMapDraftForView } from '../domain/accountMapVersioning';
 import type {
   AccountMapApplied,
   AccountMapDraft,
+  AccountMapDraftV2,
+  AccountMapSetupStep,
   StoredAccountMapApplied,
   StoredAccountMapDraft,
 } from '../domain/model';
@@ -50,8 +52,8 @@ export type AccountMapState =
   | (WorkspaceReadyState & { mode: 'migrating'; revision: number; save: SaveState })
   | (WorkspaceReadyState & {
       mode: 'setup';
-      draft: AccountMapDraft | null;
-      step: AccountMapDraft['step'];
+      draft: StoredAccountMapDraft | null;
+      step: AccountMapSetupStep;
       resumed: boolean;
       mainChanged: boolean;
       exitRequested: boolean;
@@ -70,7 +72,7 @@ export type AccountMapState =
 export type AccountMapEvent =
   | { type: 'migration-succeeded'; workspace: WorkspaceDocument }
   | { type: 'migration-failed'; reason: AccountMapSaveFailure }
-  | { type: 'draft-updated'; draft: AccountMapDraft }
+  | { type: 'draft-updated'; draft: StoredAccountMapDraft }
   | { type: 'review-requested' }
   | { type: 'connect-requested' }
   | { type: 'setup-exited' }
@@ -147,11 +149,11 @@ function reduceMigrating(
       recovery: { status: 'none' },
     };
   }
-  const draft = legacyDraftForCurrentUi(event.workspace.accountMap.draft);
+  const draft = guidedDraftForCurrentUi(event.workspace.accountMap.draft);
   return {
     mode: 'setup', workspace: event.workspace, main,
     draft: draft === null ? null : structuredClone(draft),
-    step: draft?.step ?? 'connect', resumed: draft !== null,
+    step: draft?.step ?? 'basis', resumed: draft !== null,
     mainChanged: draft !== null && draft.sourceMainUpdatedAt !== main.updatedAt,
     exitRequested: false, save: { status: 'idle' }, recovery: { status: 'none' },
   };
@@ -164,12 +166,14 @@ function reduceSetup(
   const recovered = reduceRecovery(state, event);
   if (recovered !== null) return recovered;
   switch (event.type) {
-    case 'draft-updated':
-      return { ...state, draft: structuredClone(event.draft), step: event.draft.step, resumed: true };
+    case 'draft-updated': {
+      const draft = projectAccountMapDraftForView(event.draft);
+      return { ...state, draft: structuredClone(draft), step: draft.step, resumed: true };
+    }
     case 'review-requested':
       return { ...state, step: 'review', draft: withDraftStep(state, 'review') };
     case 'connect-requested':
-      return { ...state, step: 'connect', draft: withDraftStep(state, 'connect') };
+      return { ...state, step: 'locations', draft: withDraftStep(state, 'locations') };
     case 'setup-exited':
       return { ...state, exitRequested: true };
     case 'setup-cancelled':
@@ -179,7 +183,7 @@ function reduceSetup(
           ...state.workspace,
           accountMap: { ...state.workspace.accountMap, draft: null },
         },
-        draft: null, step: 'connect', resumed: false,
+        draft: null, step: 'basis', resumed: false,
         mainChanged: false, exitRequested: false, save: { status: 'idle' }, recovery: { status: 'none' },
       };
     case 'apply-succeeded': {
@@ -214,7 +218,7 @@ function reduceMap(
     case 'reset-succeeded':
       return {
         mode: 'setup', workspace: event.workspace, main: state.main,
-        draft: null, step: 'connect', resumed: false, mainChanged: false,
+        draft: null, step: 'basis', resumed: false, mainChanged: false,
         exitRequested: false, save: { status: 'idle' }, recovery: { status: 'none' },
       };
     case 'node-hovered':
@@ -377,13 +381,13 @@ function adoptRecoveryWorkspaceForReview<State extends Extract<AccountMapState, 
     };
   }
   if (state.mode === 'setup' && applied === null) {
-    const draft = legacyDraftForCurrentUi(workspace.accountMap.draft);
+    const draft = guidedDraftForCurrentUi(workspace.accountMap.draft);
     return {
       ...state,
       workspace,
       main,
       draft: draft === null ? null : structuredClone(draft),
-      step: draft?.step ?? 'connect',
+      step: draft?.step ?? 'basis',
       resumed: draft !== null,
       mainChanged: draft !== null && draft.sourceMainUpdatedAt !== main.updatedAt,
       save: { status: 'idle' },
@@ -433,13 +437,13 @@ function adoptRecoveryWorkspace<State extends Extract<AccountMapState, { mode: '
       recovery: { status: 'none' },
     };
   }
-  const draft = legacyDraftForCurrentUi(workspace.accountMap.draft);
+  const draft = guidedDraftForCurrentUi(workspace.accountMap.draft);
   return {
     mode: 'setup',
     workspace,
     main,
     draft,
-    step: draft?.step ?? 'connect',
+    step: draft?.step ?? 'basis',
     resumed: draft !== null,
     mainChanged: draft !== null && draft.sourceMainUpdatedAt !== main.updatedAt,
     exitRequested: false,
@@ -450,9 +454,9 @@ function adoptRecoveryWorkspace<State extends Extract<AccountMapState, { mode: '
 
 function withDraftStep(
   state: Extract<AccountMapState, { mode: 'setup' }>,
-  step: AccountMapDraft['step'],
-): AccountMapDraft | null {
-  return state.draft === null ? null : { ...state.draft, step };
+  step: AccountMapSetupStep,
+): AccountMapDraftV2 | null {
+  return state.draft === null ? null : { ...projectAccountMapDraftForView(state.draft), step };
 }
 
 function needsMainConfirmation(workspace: WorkspaceDocument, main: MainData): boolean {
@@ -488,4 +492,10 @@ function legacyDraftForCurrentUi(
     step: value.step === 'review' ? 'review' : 'connect',
     updatedAt: value.updatedAt,
   };
+}
+
+function guidedDraftForCurrentUi(
+  value: StoredAccountMapDraft | null,
+): AccountMapDraftV2 | null {
+  return value === null ? null : projectAccountMapDraftForView(value);
 }

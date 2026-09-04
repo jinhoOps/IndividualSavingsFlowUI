@@ -4,11 +4,12 @@ import type { AccountMapState } from './reducer';
 import type {
   AccountMapApplied,
   AccountMapDraft,
+  AccountMapDraftV2,
   StoredAccountMapApplied,
   StoredAccountMapDraft,
 } from '../domain/model';
 import { mapNeedsMainConfirmation } from '../domain/accountFlowCommands';
-import { projectAccountMapAppliedForView } from '../domain/accountMapVersioning';
+import { projectAccountMapAppliedForView, projectAccountMapDraftForView } from '../domain/accountMapVersioning';
 
 export function bootstrapAccountMap(
   mainResult: AccountMapMainSourceLoadResult,
@@ -42,11 +43,11 @@ export function bootstrapAccountMap(
       save: { status: 'idle' }, recovery: { status: 'none' },
     };
   }
-  const draft = legacyDraftForCurrentUi(workspace.accountMap.draft);
+  const draft = guidedDraftForCurrentUi(workspace.accountMap.draft);
   return {
     mode: 'setup', workspace, main,
     draft: draft === null ? null : structuredClone(draft),
-    step: draft?.step ?? 'connect',
+    step: draft?.step ?? 'basis',
     resumed: draft !== null,
     mainChanged: draft !== null && draft.sourceMainUpdatedAt !== main.updatedAt,
     exitRequested: false,
@@ -82,4 +83,10 @@ export function legacyDraftForCurrentUi(
     step: value.step === 'review' ? 'review' : 'connect',
     updatedAt: value.updatedAt,
   };
+}
+
+export function guidedDraftForCurrentUi(
+  value: StoredAccountMapDraft | null,
+): AccountMapDraftV2 | null {
+  return value === null ? null : projectAccountMapDraftForView(value);
 }

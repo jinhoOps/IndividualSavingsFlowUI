@@ -1,4 +1,5 @@
 import { animate } from 'animejs';
+import { MOTION_DISTANCE_PX, MOTION_DURATION, MOTION_EASE } from '../../components/motion/tokens';
 
 export interface MotionOptions {
   reducedMotion: boolean;
@@ -6,6 +7,57 @@ export interface MotionOptions {
 }
 
 export interface AnimationHandle { cancel(): void }
+
+export function setSetupStepFinalState(root: HTMLElement): void {
+  root.style.opacity = '1';
+  root.style.transform = 'translateY(0px)';
+  root.style.removeProperty('will-change');
+}
+
+/**
+ * Setup steps must never depend on a completed animation to become readable.
+ * The returned cancellation path intentionally reaches the same final state.
+ */
+export function animateSetupStep(
+  root: HTMLElement,
+  direction: 'forward' | 'backward',
+  reducedMotion: boolean,
+): AnimationHandle {
+  resetSetupStepStartState(root);
+  if (reducedMotion) {
+    setSetupStepFinalState(root);
+    return noAnimation;
+  }
+
+  const distance = direction === 'backward' ? -MOTION_DISTANCE_PX.reveal : MOTION_DISTANCE_PX.reveal;
+  let animation: { cancel(): void } | null = null;
+  try {
+    root.style.opacity = '0';
+    root.style.transform = `translateY(${distance}px)`;
+    root.style.willChange = 'transform, opacity';
+    animation = animate(root, {
+      opacity: [0, 1],
+      translateY: [distance, 0],
+      duration: MOTION_DURATION.normal,
+      ease: MOTION_EASE.enter,
+      onComplete: () => setSetupStepFinalState(root),
+    });
+  } catch {
+    setSetupStepFinalState(root);
+    return noAnimation;
+  }
+  return {
+    cancel: () => {
+      try {
+        animation?.cancel();
+      } catch {
+        // A cancelled Anime.js instance must not strand the setup surface.
+      } finally {
+        setSetupStepFinalState(root);
+      }
+    },
+  };
+}
 
 export function animateNodeToModal(
   nodeRect: DOMRect,
@@ -122,4 +174,11 @@ function clearConnectionDetailMotionStyles(element: HTMLElement) {
   element.style.removeProperty('transform');
   element.style.removeProperty('transform-origin');
   element.style.removeProperty('will-change');
+}
+
+function resetSetupStepStartState(root: HTMLElement): void {
+  root.style.removeProperty('opacity');
+  root.style.removeProperty('transform');
+  root.style.removeProperty('translate');
+  root.style.removeProperty('will-change');
 }
