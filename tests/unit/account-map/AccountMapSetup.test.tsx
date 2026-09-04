@@ -146,6 +146,29 @@ describe('AccountMapSetup', () => {
     await waitFor(() => expect(trigger).toHaveFocus());
   });
 
+  it('keeps Tab and Shift+Tab on the modal while a custom-purpose save is unresolved', async () => {
+    const setup = repositories();
+    render(<AccountMapApp repositories={setup.repositories} />);
+    fireEvent.click(screen.getByRole('button', { name: '이 금액으로 계속' }));
+    await screen.findByRole('heading', { name: '돈이 머무는 곳을 연결해요' });
+    vi.mocked(setup.accountMap.save).mockImplementation(async () => await new Promise(() => undefined));
+    fireEvent.click(screen.getByRole('button', { name: '세부 목적 추가' }));
+    fireEvent.change(screen.getByRole('textbox', { name: '목적 이름' }), { target: { value: '여행' } });
+    fireEvent.change(screen.getByRole('textbox', { name: '월 금액' }), { target: { value: '100000' } });
+    fireEvent.click(screen.getByRole('button', { name: '추가' }));
+
+    const dialog = screen.getByRole('dialog', { name: '세부 목적 추가' });
+    await waitFor(() => expect(dialog).toHaveAttribute('aria-busy', 'true'));
+    const tab = new KeyboardEvent('keydown', { bubbles: true, cancelable: true, key: 'Tab' });
+    document.dispatchEvent(tab);
+    expect(tab.defaultPrevented).toBe(true);
+    expect(dialog).toHaveFocus();
+    const reverseTab = new KeyboardEvent('keydown', { bubbles: true, cancelable: true, key: 'Tab', shiftKey: true });
+    document.dispatchEvent(reverseTab);
+    expect(reverseTab.defaultPrevented).toBe(true);
+    expect(dialog).toHaveFocus();
+  });
+
   it('keeps a suggestion ephemeral until its explicit acceptance creates a normal transfer', async () => {
     const setup = repositories('transfers');
     render(<AccountMapApp repositories={setup.repositories} />);

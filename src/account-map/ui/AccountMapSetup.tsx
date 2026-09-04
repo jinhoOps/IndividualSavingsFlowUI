@@ -243,7 +243,11 @@ function CustomPurposeDialog({ main, draft, disabled, onCancel, onSave }: {
       }
       if (event.key !== 'Tab') return;
       const focusable = [...(panelRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled)') ?? [])];
-      if (focusable.length === 0) return;
+      if (focusable.length === 0) {
+        event.preventDefault();
+        panelRef.current?.focus();
+        return;
+      }
       const first = focusable[0]!;
       const last = focusable[focusable.length - 1]!;
       if (event.shiftKey && document.activeElement === first) {
@@ -260,6 +264,10 @@ function CustomPurposeDialog({ main, draft, disabled, onCancel, onSave }: {
       returnFocusRef.current?.focus();
     };
   }, []);
+
+  useEffect(() => {
+    if (pending) panelRef.current?.focus();
+  }, [pending]);
 
   async function submit(): Promise<void> {
     if (!valid || pending || disabled) return;
@@ -291,7 +299,7 @@ function CustomPurposeDialog({ main, draft, disabled, onCancel, onSave }: {
   return <div className="account-map-sheet-backdrop" onPointerDown={(event) => {
     if (event.target === event.currentTarget && !pending) onCancel();
   }}>
-    <section ref={panelRef} className="account-map-sheet account-map-sheet--compact" role="dialog" aria-modal="true" aria-label="세부 목적 추가">
+    <section ref={panelRef} className="account-map-sheet account-map-sheet--compact" role="dialog" aria-modal="true" aria-label="세부 목적 추가" aria-busy={pending || undefined} tabIndex={pending ? -1 : undefined}>
       <header><h2>세부 목적 추가</h2></header>
       <div className="account-map-sheet__body">
         <label>큰 목적<select value={parentId} disabled={disabled || pending} onChange={(event) => { setParentId(event.target.value as OutflowPurposeId); setFeedback(null); }}><option value="system:housing">주거</option><option value="system:living">생활비</option><option value="system:saving">저축</option><option value="system:investing">투자</option></select></label>
