@@ -1,11 +1,67 @@
 import { describe, expect, it } from 'vitest';
 import { applyAccountMapCommand, type AccountMapCommand } from '../../../src/account-map/domain/commands';
-import type { AccountMapApplied, AccountMapDraft, PurposeLocationLink } from '../../../src/account-map/domain/model';
+import type {
+  AccountMapApplied,
+  AccountMapAppliedV3,
+  AccountMapDraft,
+  AccountMapDraftV2,
+  AccountTransferLink,
+  PurposeLocationLink,
+} from '../../../src/account-map/domain/model';
 import type { MainData } from '../../../src/main/domain/model';
 import type { FinancialLocation } from '../../../src/workspace/domain/financialLocation';
 import { createEmptyWorkspace, type WorkspaceDocument } from '../../../src/workspace/domain/model';
 
 describe('Account Map commands', () => {
+  it('rejects a transfer-aware applied-v3 record without mutating its source workspace', () => {
+    const before = workspace();
+    before.accountMap.applied = transferAwareApplied();
+    const sourceRaw = JSON.stringify(before);
+
+    expect(applyAccountMapCommand(before, {
+      type: 'update-location',
+      locationId: 'checking',
+      shortName: '주계좌',
+      addRoles: [],
+    }, 20)).toEqual({ ok: false, reason: 'invalid-input' });
+    expect(JSON.stringify(before)).toBe(sourceRaw);
+  });
+
+  it('rejects a transfer-aware draft-v2 record without mutating its source workspace', () => {
+    const before = workspace();
+    before.accountMap.draft = transferAwareDraft();
+    const sourceRaw = JSON.stringify(before);
+
+    expect(applyAccountMapCommand(before, {
+      type: 'save-draft',
+      draft: draft(),
+    }, 20)).toEqual({ ok: false, reason: 'invalid-input' });
+    expect(JSON.stringify(before)).toBe(sourceRaw);
+  });
+
+  it('keeps the legacy applied-v2 and draft-v1 command path writable', () => {
+    const before = workspace();
+    before.accountMap.applied = validApplied();
+    before.accountMap.draft = draft();
+    const sourceRaw = JSON.stringify(before);
+
+    const result = applyAccountMapCommand(before, {
+      type: 'save-draft',
+      draft: { ...draft(), updatedAt: 20 },
+    }, 20);
+
+    expect(result).toMatchObject({
+      ok: true,
+      workspace: {
+        accountMap: {
+          applied: { schemaVersion: 2 },
+          draft: { schemaVersion: 1, updatedAt: 20 },
+        },
+      },
+    });
+    expect(JSON.stringify(before)).toBe(sourceRaw);
+  });
+
   it('connects a location by adding its required role and one link in one candidate', () => {
     const before = workspace();
     before.locations[1] = { ...before.locations[1]!, roles: ['spending'] };
@@ -977,4 +1033,33 @@ function validApplied(): AccountMapApplied {
 
 function draft(): AccountMapDraft {
   return { schemaVersion: 1, sourceMainUpdatedAt: 1, customPurposes: [], links: [], step: 'connect', updatedAt: 1 };
+}
+
+function transferAwareApplied(): AccountMapAppliedV3 {
+  return {
+    ...validApplied(),
+    schemaVersion: 3,
+    transfers: [transfer('checking', 'savings')],
+  };
+}
+
+function transferAwareDraft(): AccountMapDraftV2 {
+  return {
+    ...draft(),
+    schemaVersion: 2,
+    transfers: [transfer('checking', 'savings')],
+    step: 'transfers',
+  };
+}
+
+function transfer(sourceLocationId: string, targetLocationId: string): AccountTransferLink {
+  return {
+    id: `${sourceLocationId}-to-${targetLocationId}`,
+    sourceLocationId,
+    targetLocationId,
+    allocation: { kind: 'fixed', monthlyAmountWon: 100_000 },
+    status: 'active',
+    createdAt: 1,
+    updatedAt: 1,
+  };
 }
