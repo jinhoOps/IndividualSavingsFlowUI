@@ -108,7 +108,7 @@ When exactly one active location receives all active `system:income` allocation,
 
 When there are multiple income locations, ambiguous destinations, or an existing user-declared transfer path, Account Map asks the user to choose the source, target, and amount. It does not guess based on location order, display name, institution, or amount rank.
 
-No remainder transfer is created automatically. The user explicitly adds it and chooses its destination.
+No sweep transfer is created automatically. The user explicitly adds it and chooses its destination.
 
 ## 6. Domain Contract
 
@@ -130,7 +130,7 @@ Add an Account Map-owned contract equivalent to:
 ```ts
 type AccountTransferAllocation =
   | { kind: 'fixed'; monthlyAmountWon: number }
-  | { kind: 'remainder' };
+  | { kind: 'sweep' };
 
 type AccountTransferLink = {
   id: string;
@@ -144,18 +144,21 @@ type AccountTransferLink = {
 };
 ```
 
-The final implementation may encode the active/suspended states as a discriminated union to make `suspendedReason` exact, matching current `PurposeLocationLink` conventions.
+The final implementation may encode the active/suspended states as a discriminated union to make `suspendedReason` exact, matching current `PurposeLocationLink` conventions. `sweep` deliberately differs from the existing `PurposeLocationLink.remainder`: a purpose remainder allocates the unassigned part of one purpose target, while a transfer sweep routes the nonnegative amount left at one account after local allocations and fixed outgoing transfers. The user-facing copy remains `남은 금액 전부`.
 
 ### 6.3 Versioning
 
 - Increment `AccountMapApplied` from schema version 2 to 3 and add `transfers`.
 - Increment `AccountMapDraft` from schema version 1 to 2, add `transfers`, and represent the new guided steps.
-- Keep workspace schema version 3 and the `isf-workspace-v3` key because the top-level workspace shape and ownership do not change; the Account Map sub-slice carries its own schema version.
-- Accept current Account Map applied v2 and draft v1 as migration inputs.
-- Merely loading or viewing v2 data performs no write.
-- The first confirmed flow save converts the affected Account Map state atomically while preserving locations, purpose links, custom purposes, Main, Simulation, and Portfolio.
+- Increment the canonical workspace from schema version 3 to 4 and write only `isf-workspace-v4`. The schema and key numbers remain aligned.
+- Preserve `isf-workspace-v3` byte-for-byte as the read-only migration and deployment-rollback source. A v4 repository reads v3 only when v4 is absent, converts it in memory, and never writes, deletes, or normalizes v3.
+- When both v4 and v3 are absent, retain the existing supported retired v1/v2 conversion path and convert its result in memory to v4 without mutating the retired source.
+- Accept Account Map applied v2 or v3 and draft v1 or v2 inside workspace v4. Converting the workspace envelope does not silently convert the Account Map sub-slice.
+- Merely loading, viewing, or migrating the workspace envelope performs no Account Map sub-slice write.
+- The first user-confirmed flow save converts the affected Account Map state atomically while preserving locations, purpose links, custom purposes, Main, Simulation, and Portfolio.
+- Advance whole-workspace backup to format version 3 for workspace v4. Format v2 workspace-v3 backups and the already-supported format v1 inputs remain read-only import sources and are converted before one atomic v4 replacement.
 
-The implementation must document the backward-deployment risk: an older binary cannot understand Account Map v3 after a new transfer has been stored. Release evidence must include a tested v3-to-v2 recovery projection that preserves locations, custom purposes, and purpose links while explicitly discarding only the new transfer links. This projection is recovery evidence, not a current runtime fallback or dual-write path.
+If a v4 record exists, it is canonical and an invalid v4 record must not fall back to v3 or v1. A rolled-back v3 deployment continues to see its untouched v3 record; returning to the v4 deployment reveals the preserved v4 record. Already-open v3 writers cannot overwrite v4, and already-open v4 writers must coordinate the initial v3 snapshot with the v3 save-lock before committing through the v4 save-lock. The PWA reload remains the normal deployment-generation boundary.
 
 ## 7. Calculation Model
 
@@ -167,7 +170,7 @@ Active transfer links form a directed acyclic graph. Process accounts in determi
 available before routing
   = external income allocated here
   + active inbound fixed transfers
-  + active inbound remainder transfers
+  + active inbound sweep transfers
 
 planned local allocation
   = active housing, living, saving, investing, and custom-purpose allocations here
@@ -178,9 +181,9 @@ remainder before sweep
   - active outbound fixed transfers
 ```
 
-If the account has one active remainder transfer, route `max(remainder before sweep, 0)` to its target. Otherwise retain that nonnegative amount as `planned unassigned at this account`. A negative remainder becomes a visible account shortfall. Fixed and remainder transfers are internal routing and must not change the workspace-wide Main totals.
+If the account has one active sweep transfer, route `max(remainder before sweep, 0)` to its target. Otherwise retain that nonnegative amount as `planned unassigned at this account`. A negative remainder becomes a visible account shortfall. Fixed and sweep transfers are internal routing and must not change the workspace-wide Main totals.
 
-A remainder amount is an estimate from the monthly plan. Its UI label is `계획상 남은 금액` or `남은 금액 전부`, accompanied where needed by `실제 잔액·거래와 다를 수 있음`. If the plan yields zero, the rule remains visible as a rule rather than disappearing.
+A sweep amount is an estimate from the monthly plan. Its UI label is `계획상 남은 금액` or `남은 금액 전부`, accompanied where needed by `실제 잔액·거래와 다를 수 있음`. If the plan yields zero, the rule remains visible as a rule rather than disappearing.
 
 ### 7.1 Structural validation
 
@@ -189,7 +192,7 @@ Block applying a graph that contains:
 - a self-transfer
 - two active transfers with the same source and target
 - any active directed cycle
-- more than one active remainder transfer from the same source
+- more than one active sweep transfer from the same source
 - a missing or archived source or target
 - an invalid fixed amount
 
@@ -207,7 +210,7 @@ Replace the five-card auto-fit setup with one centered, responsive, step-based s
    - Reuse existing valid locations and the shared financial-location fields.
 3. **Confirm account flows**
    - Present safe fixed-transfer suggestions.
-   - Let the user accept, edit, remove, or add fixed and remainder transfers.
+   - Let the user accept, edit, remove, or add fixed and sweep transfers.
 4. **Review the whole flow**
    - Render the same graph model used by the completed screen.
    - Show structural errors and financial warnings before apply.
@@ -237,6 +240,8 @@ Account Map visually retains its current screen while a Main-owned editor opens 
 - Trap focus inside the editor, support Escape and browser Back as close actions, and restore focus to the invoking Main amount or edit button.
 - Saving or cancelling closes with the reverse motion. Reduced motion renders both endpoints immediately.
 
+Opening the overlay pushes one same-URL history entry carrying an Account Map Main-editor marker. In-app close, Escape, successful save, and browser Back all converge on the marked entry's `popstate` close path so they cannot leave a stale history entry. If the draft is dirty, Back or Escape asks before discarding; declining immediately restores the marker and keeps the overlay and input intact. The overlay never nests another marked entry and removes its listener on unmount.
+
 ### 9.3 Refresh after Main save
 
 After Main saves, the overlay host closes and asks Account Map to reload the current workspace revision. Account Map then:
@@ -244,11 +249,11 @@ After Main saves, the overlay host closes and asks Account Map to reload the cur
 - adopts the latest Main source and workspace revision
 - preserves stored locations, purpose links, and account transfers
 - recalculates all derived amounts
-- marks affected transfer assumptions as `확인 필요`
+- derives one map-level `확인 필요` state from `applied.sourceMainUpdatedAt !== main.updatedAt`
 - does not rewrite any Account Map data until the user confirms it
 - announces `Main 기준이 바뀌었어요. 흐름을 확인해 주세요.`
 
-If Main save fails or conflicts, keep the overlay and its input visible. Account Map remains inert until the user resolves or cancels the editor.
+If Main save fails or conflicts, keep the overlay and its input visible. Account Map remains inert until the user resolves or cancels the editor. Confirming the refreshed basis runs an explicit `confirm-current-main` Account Map command: it recalculates each existing purpose-location remainder against the latest Main target, rejects when fixed purpose allocations exceed that target, leaves all account transfer records unchanged, and then advances `sourceMainUpdatedAt`. This is the only operation that clears the map-level `확인 필요` state.
 
 ## 10. Completed Map and Layout
 
@@ -279,12 +284,12 @@ The first pointer, touch, or keyboard selection of an account pins the complete 
 - dims unrelated nodes and edges
 - reveals amounts only on related edges
 - labels fixed transfers with their amount
-- labels remainder transfers `남은 금액 전부` and shows a planned estimate separately
+- labels sweep transfers `남은 금액 전부` and shows a planned estimate separately
 - opens a compact detail surface grouping incoming flow, local allocations, and outgoing flow
 
 Do not use the old second-activation-to-edit discovery rule. The pinned detail contains explicit `계좌 정보 편집`, `연결 추가`, and `흐름 편집` actions. Background activation and Escape clear the pinned state. Pointer hover and keyboard focus expose equivalent information without requiring animation.
 
-A purpose selection focuses the accounts and transfers that supply or terminate that purpose. A transfer-edge selection focuses its source, target, amount rule, and directly dependent remainder result.
+A purpose selection focuses the accounts and transfers that supply or terminate that purpose. A transfer-edge selection focuses its source, target, amount rule, and directly dependent sweep result.
 
 ## 11. Editing and Shared UI
 
@@ -307,7 +312,7 @@ Extract a controlled `FormattedMoneyInput` based on the existing core money pars
 
 ### 11.3 Flow editing
 
-An account-flow editor owns source, target, allocation kind, fixed amount, and status. A transfer may be added from a selected account or selected edge. Structural validation is shown before save. Single-edge field edits use rebasing where safe; deletion, topology changes, or compound edits require explicit latest-state review on conflict.
+An account-flow editor owns source, target, allocation kind, fixed amount, and status. A transfer may be added from a selected account or selected edge. Structural validation is shown before save. Single-edge field edits use rebasing where safe; deletion, topology changes, or compound edits require explicit latest-state review on conflict. The domain and persistence layers call the `남은 금액 전부` allocation a `sweep`; `remainder` remains reserved for purpose-location allocation.
 
 ## 12. Motion
 
@@ -374,18 +379,19 @@ Update in the implementation change:
 
 ## 17. Acceptance Criteria
 
-- A user can represent one-to-many and many-to-many planned account transfers, including salary account to living and brokerage accounts and living account remainder to brokerage.
+- A user can represent one-to-many and many-to-many planned account transfers, including salary account to living and brokerage accounts and a living-account sweep to brokerage.
 - Main supplies only its five read-only monthly references; ambiguous account paths always require confirmation.
 - One unambiguous income location may produce reviewable fixed-transfer suggestions, but suggestions are never persisted automatically.
 - Account nodes never show a total that sums income and outflow purpose links into one denominator.
 - Default view shows the entire account-transfer topology without requiring hover or touch.
 - First touch/focus/click shows the selected account's reachable upstream and downstream flow, related amounts, and explicit edit actions.
-- A remainder rule remains visible at a zero planned estimate and never claims to be an actual balance.
-- The graph rejects self-links, duplicate active pairs, cycles, missing/archived endpoints, and multiple active remainder destinations from one source.
+- A sweep rule remains visible at a zero planned estimate and never claims to be an actual balance.
+- The graph rejects self-links, duplicate active pairs, cycles, missing/archived endpoints, and multiple active sweep destinations from one source.
 - Financial shortages and Main deficit are visible warnings rather than storage corruption.
 - Account kind, institution, and display name are editable through the same controlled fields used for creation.
 - Main editing appears over a blurred, inert Account Map, uses Main-owned persistence, and returns to a refreshed Account Map without silent transfer mutation.
-- Existing Account Map v2 data loads without a write and converts atomically only after the user confirms a new flow save.
+- Workspace v3 remains an untouched rollback source, workspace v4 becomes canonical atomically, and existing Account Map v2 data converts only after the user confirms a new flow save.
+- A Main change produces one derived map-level confirmation state; confirming recalculates only purpose remainders and never mutates fixed or sweep account transfers.
 - Main, Simulation, and Portfolio remain unchanged by every Account Map command.
 - 390px, 768px, and desktop layouts contain the graph, focused detail, account/flow editors, and Main overlay.
 - Pointer, touch, keyboard, screen-reader table, reduced motion, and Anime.js failure paths expose equivalent final information.
@@ -395,11 +401,12 @@ Update in the implementation change:
 ### Domain and storage
 
 - Unit tests for single-source suggestions, no-suggestion ambiguity, aggregation by destination, and same-account omission.
-- Unit tests for deterministic topological calculation, fixed transfers, remainder after fixed and local allocations, zero remainder, account shortfall, multiple sources, multiple destinations, and custom-purpose sinks.
-- Validation tests for self-link, duplicate pair, cycle, multiple remainder, missing endpoint, archived endpoint, and invalid amount.
+- Unit tests for deterministic topological calculation, fixed transfers, sweep after fixed and local allocations, zero sweep, account shortfall, multiple sources, multiple destinations, and custom-purpose sinks.
+- Validation tests for self-link, duplicate pair, cycle, multiple sweep, missing endpoint, archived endpoint, and invalid amount.
 - Migration tests for applied v2 to v3 and draft v1 to v2 with no write on read.
-- Recovery-projection tests showing exactly which v3 fields are retained and that only transfer links are intentionally unavailable to Account Map v2.
-- Workspace import/export, reference validation, revision, save-lock, and stale/collision tests.
+- Workspace v3-to-v4 conversion, source preservation, v4 canonical precedence, invalid-v4 no-fallback, dual-lock, and already-open cross-generation writer tests.
+- Backup format-v3 export and format-v2/format-v1 import conversion tests.
+- Workspace import/export, reference validation, revision, save-lock, map-level Main confirmation, and stale/collision tests.
 - Deep-equality assertions that Account Map writes preserve Main, Simulation, and Portfolio.
 
 ### Components and motion
