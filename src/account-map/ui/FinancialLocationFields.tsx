@@ -68,6 +68,10 @@ export function FinancialLocationFields({
       : undefined;
   const nameError =
     showValidation && missingName ? "표시 이름을 입력해 주세요." : undefined;
+  const shortNameDescribedBy = mergeDescribedBy(
+    shortNameInputProps?.["aria-describedby"],
+    nameError === undefined ? undefined : nameErrorId,
+  );
 
   function update(next: Partial<FinancialLocationFieldsValue>): void {
     onChange({ ...value, ...next });
@@ -181,7 +185,7 @@ export function FinancialLocationFields({
           maxLength={8}
           placeholder="예: 급여통장"
           aria-invalid={nameError === undefined ? undefined : "true"}
-          aria-describedby={nameError === undefined ? undefined : nameErrorId}
+          aria-describedby={shortNameDescribedBy}
           onChange={(event) => update({ shortName: event.target.value })}
         />
       </label>
@@ -192,4 +196,12 @@ export function FinancialLocationFields({
       )}
     </div>
   );
+}
+
+function mergeDescribedBy(
+  ...values: Array<string | undefined>
+): string | undefined {
+  const ids = [...new Set(values.flatMap((value) => value?.split(/\s+/u) ?? []))]
+    .filter((id) => id !== "");
+  return ids.length === 0 ? undefined : ids.join(" ");
 }

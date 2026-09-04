@@ -773,6 +773,44 @@ describe("AccountMapModal", () => {
     source.remove();
   });
 
+  it("keeps both field validation and recovery guidance on a stored location name conflict", () => {
+    const props = modalProps({
+      node: {
+        id: "location:checking",
+        kind: "location",
+        label: "생활비통장",
+        status: "resolved",
+      },
+      locations: [
+        {
+          id: "checking",
+          shortName: "생활비통장",
+          kind: "bank",
+          institution: { id: "hana", name: "하나은행" },
+          roles: ["spending"],
+          createdAt: 1,
+          updatedAt: 1,
+        },
+      ],
+    });
+    const { rerender } = render(
+      <AccountMapModal {...props} recovery={{ status: "none" }} />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "편집" }));
+    const nameInput = screen.getByRole("textbox", { name: "표시 이름" });
+    fireEvent.change(nameInput, { target: { value: "" } });
+
+    rerender(
+      <AccountMapModal {...props} recovery={collisionRecovery("shortName")} />,
+    );
+
+    expect(nameInput).toHaveFocus();
+    expect(nameInput).toHaveAccessibleDescription(
+      /최신 상태에서도 변경.*표시 이름을 입력해 주세요/,
+    );
+    expect(nameInput.getAttribute("aria-describedby")?.split(" ")).toHaveLength(2);
+  });
+
   it("describes and focuses only the colliding link input", () => {
     const props = modalProps({
       related: [
