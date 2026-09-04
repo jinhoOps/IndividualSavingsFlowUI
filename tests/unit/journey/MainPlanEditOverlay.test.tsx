@@ -1,0 +1,56 @@
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import '@testing-library/jest-dom/vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { MainData } from '../../../src/main/domain/model';
+import type { MainRepository } from '../../../src/main/infrastructure/mainRepository';
+import { MainPlanEditOverlay } from '../../../src/journey/ui/MainPlanEditOverlay';
+import { mainPlanOverlayHistoryToken } from '../../../src/journey/ui/mainPlanOverlayHistory';
+
+afterEach(() => {
+  cleanup();
+  window.history.replaceState(null, '', '/account-map');
+});
+
+const plan: MainData = {
+  schemaVersion: 2, updatedAt: 1, monthlyNetIncomeWon: 3_200_000, monthlyHousingWon: 800_000,
+  monthlyLivingWon: 1_000_000, monthlySavingWon: 300_000, monthlyInvestmentWon: 200_000,
+};
+
+describe('MainPlanEditOverlay', () => {
+  it('keeps a dirty editor open when Back discard is declined, then restores invoking focus after an accepted close', async () => {
+    const repository: MainRepository = {
+      load: vi.fn(async () => ({ status: 'current' as const, data: plan, original: plan })),
+      save: vi.fn(async (data: MainData) => data), saveSetupProgress: vi.fn(async () => undefined),
+      loadSetupProgress: vi.fn(() => null), clearSetupProgress: vi.fn(async () => undefined), resetInvalidWorkspace: vi.fn(async () => undefined),
+    };
+    const invokingButton = document.createElement('button');
+    invokingButton.textContent = 'Main 금액 수정';
+    document.body.append(invokingButton);
+    const onActivated = vi.fn();
+    const onClosed = vi.fn();
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    render(<MainPlanEditOverlay repository={repository} target="living" returnFocusElement={invokingButton} onActivated={onActivated} onClosed={onClosed} />);
+
+    const dialog = await screen.findByRole('dialog', { name: '월 자금 계획 편집' });
+    expect(onActivated).toHaveBeenCalledOnce();
+    fireEvent.change(screen.getByLabelText('월평균 생활비'), { target: { value: '1200000' } });
+    const apply = screen.getByRole('button', { name: '적용' });
+    apply.focus();
+    fireEvent.keyDown(apply, { key: 'Tab' });
+    expect(screen.getByRole('button', { name: '편집기 닫기' })).toHaveFocus();
+    // Browser Back has already selected the unmarked entry before popstate fires.
+    window.history.replaceState(null, '', '/account-map');
+    window.dispatchEvent(new PopStateEvent('popstate'));
+    expect(confirm).toHaveBeenCalledOnce();
+    expect(dialog).toBeVisible();
+
+    confirm.mockReturnValue(true);
+    fireEvent.keyDown(window, { key: 'Escape' });
+    window.history.replaceState(null, '', '/account-map');
+    window.dispatchEvent(new PopStateEvent('popstate'));
+    await waitFor(() => expect(onClosed).toHaveBeenCalledWith({ status: 'cancelled' }));
+    expect(mainPlanOverlayHistoryToken(window.history.state)).toBeNull();
+    expect(invokingButton).toHaveFocus();
+    invokingButton.remove();
+  });
+});

@@ -152,6 +152,13 @@ function SaveFeedbackHarness({ persist }: { persist(): Promise<void> }) {
 }
 
 describe('SummaryDashboard', () => {
+  it('presents the shared editor’s canonical fields and adjustments on the dashboard', () => {
+    render(<DashboardHarness />);
+    fireEvent.click(screen.getByRole('button', { name: '월 소비 편집' }));
+    expect(screen.getByLabelText('월 실수령액')).toHaveValue('3,200,000');
+    expect(screen.getAllByRole('button', { name: '+50만' })).toHaveLength(5);
+  });
+
   it('prioritizes the donut, editing cards, journey entry, and collapsed allocation details', () => {
     const journeyEntry: ReactNode = <button type="button">Simulation으로 이어가기</button>;
     render(
