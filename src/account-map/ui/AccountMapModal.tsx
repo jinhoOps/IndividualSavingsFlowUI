@@ -6,7 +6,6 @@ import {
   parseWonInput,
 } from "../../core/domain/moneyInput";
 import { FormattedMoneyInput } from "../../components/common/FormattedMoneyInput";
-import type { GraphNode } from "./mapLayout";
 import {
   animateModalToNode,
   animateNodeToModal,
@@ -32,10 +31,21 @@ export interface AccountMapModalRelatedItem {
   remainder?: boolean;
   replacementCandidate?: boolean;
   purposeTargetWon?: number;
+  relationKind?: "purpose-link" | "transfer";
+  transferId?: string;
+}
+
+export interface AccountMapModalNode {
+  id: string;
+  kind: "purpose" | "location";
+  label: string;
+  amountWon?: number;
+  connectionCount?: number;
+  status: string;
 }
 
 export interface AccountMapModalProps {
-  node: Omit<GraphNode, "connectionCount"> & { connectionCount?: number };
+  node: AccountMapModalNode;
   related: AccountMapModalRelatedItem[];
   sourceElement: HTMLElement | null;
   fallbackElement: HTMLElement | null;
@@ -72,7 +82,10 @@ export interface AccountMapModalProps {
     locationId: string,
     restoreLinkIds: string[],
     remainderByPurpose: Record<string, string | null>,
+    restoreTransferIds?: string[],
   ): Promise<boolean> | boolean;
+  /** Account-flow detail uses this modal for location fields, not link rewriting. */
+  locationOnly?: boolean;
 }
 
 export type AccountMapModalMode =
@@ -119,6 +132,7 @@ export function AccountMapModal({
   onRestorePurpose,
   onArchiveLocation,
   onRestoreLocation,
+  locationOnly = false,
 }: AccountMapModalProps): JSX.Element {
   const titleId = useId();
   const recoveryDescriptionId = useId();
@@ -130,8 +144,11 @@ export function AccountMapModal({
     ({ replacementCandidate }) => replacementCandidate !== true,
   );
   const restorableRelated = directRelated.filter(
-    ({ status, suspendedReason }) =>
-      status === "suspended" && suspendedReason === "location-archived",
+    ({ relationKind, status, suspendedReason, linkId }) =>
+      relationKind !== "transfer"
+      && linkId !== undefined
+      && status === "suspended"
+      && suspendedReason === "location-archived",
   );
   const [mode, setMode] = useState<AccountMapModalMode>(initialMode);
   const [titleMenuOpen, setTitleMenuOpen] = useState(false);
@@ -154,7 +171,7 @@ export function AccountMapModal({
       : "",
   );
   const [editLinks, setEditLinks] = useState(() =>
-    directRelated
+    (locationOnly ? [] : directRelated)
       .filter(({ linkId }) => linkId !== undefined)
       .map((item) => ({
         id: item.linkId!,
@@ -174,6 +191,7 @@ export function AccountMapModal({
     Record<string, string | null>
   >({});
   const [restoreLinkIds, setRestoreLinkIds] = useState<string[]>([]);
+  const [restoreTransferIds, setRestoreTransferIds] = useState<string[]>([]);
   const [restoreRemainderByPurpose, setRestoreRemainderByPurpose] = useState<
     Record<string, string | null>
   >({});
@@ -360,6 +378,9 @@ export function AccountMapModal({
     node.kind === "location" ? node.id.replace(/^location:/u, "") : null;
   const archiveImpacts = directRelated.filter(
     ({ status }) => status === "active",
+  );
+  const restorableTransfers = directRelated.filter(
+    (item) => item.relationKind === "transfer" && item.status === "suspended" && item.suspendedReason === "location-archived",
   );
   const remainderPurposes = [
     ...new Set(
@@ -847,7 +868,7 @@ export function AccountMapModal({
               <p>보관하면 다음 연결이 중지됩니다.</p>
               {archiveImpacts.map((item, index) => (
                 <p
-                  key={`${item.linkId}:${index}`}
+                  key={`${item.linkId ?? item.transferId ?? item.label}:${index}`}
                 >{`${item.label} ${formatWon(item.amountWon)} 연결이 중지됩니다`}</p>
               ))}
               {mode === "archive-location"
@@ -910,6 +931,17 @@ export function AccountMapModal({
                   {item.label} · {formatWon(item.amountWon)}
                 </label>
               ))}
+              {restorableTransfers.length === 0 ? null : <><p>계좌 흐름은 선택한 항목만 다시 연결합니다.</p>{restorableTransfers.map((item) => <label key={item.transferId}>
+                <input
+                  type="checkbox"
+                  checked={item.transferId !== undefined && restoreTransferIds.includes(item.transferId)}
+                  onChange={(event) => {
+                    if (item.transferId === undefined) return;
+                    setRestoreTransferIds((current) => event.target.checked ? [...current, item.transferId!] : current.filter((id) => id !== item.transferId));
+                  }}
+                />
+                {item.label}
+              </label>)}</>}
               {restoreExcessPurposes.map((purposeId) => {
                 const candidates = [
                   ...restorableRelated.filter(
@@ -1253,13 +1285,13 @@ export function AccountMapModal({
                     return;
                   setActionError(false);
                   setActionPending(true);
-                  void Promise.resolve(
-                    onRestoreLocation(
-                      locationId,
-                      restoreLinkIds,
-                      restoreRemainderByPurpose,
-                    ),
-                  )
+                  // Keep the long-standing three-argument contract for link-only
+                  // restores. The transfer selection is deliberately opt-in so an
+                  // older caller cannot mistake an empty list for a new mutation.
+                  const restore = restoreTransferIds.length === 0
+                    ? onRestoreLocation(locationId, restoreLinkIds, restoreRemainderByPurpose)
+                    : onRestoreLocation(locationId, restoreLinkIds, restoreRemainderByPurpose, restoreTransferIds);
+                  void Promise.resolve(restore)
                     .then(
                       (saved) => {
                         if (saved) requestClose(true);

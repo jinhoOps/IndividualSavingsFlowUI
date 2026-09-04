@@ -158,6 +158,40 @@ export function animateConnectionDetail(root: HTMLElement, options: MotionOption
   };
 }
 
+/** A focused flow is present before motion begins and remains visible on every exit path. */
+export function animateFocusedFlow(root: HTMLElement, reducedMotion: boolean): AnimationHandle {
+  const elements = [...root.querySelectorAll<HTMLElement>('[data-account-flow-edge], [data-account-flow-edge-amount]')];
+  const finish = () => elements.forEach(clearFocusedFlowMotionStyles);
+  if (reducedMotion || elements.length === 0) {
+    finish();
+    return noAnimation;
+  }
+  const animations: Array<{ cancel(): void }> = [];
+  try {
+    elements.forEach((element, index) => {
+      element.style.opacity = '0';
+      element.style.willChange = 'opacity';
+      animations.push(animate(element, {
+        opacity: [0, 1],
+        duration: MOTION_DURATION.normal,
+        delay: index * 24,
+        ease: MOTION_EASE.enter,
+        ...(index === elements.length - 1 ? { onComplete: finish } : {}),
+      }));
+    });
+  } catch {
+    animations.forEach((animation) => { try { animation.cancel(); } catch { /* Final state wins. */ } });
+    finish();
+    return noAnimation;
+  }
+  return {
+    cancel: () => {
+      animations.forEach((animation) => { try { animation.cancel(); } catch { /* Final state wins. */ } });
+      finish();
+    },
+  };
+}
+
 const noAnimation: AnimationHandle = { cancel() {} };
 function safeScale(part: number, whole: number): number { return whole > 0 ? part / whole : 1; }
 function finish(element: HTMLElement, onComplete: () => void) { clearMotionStyles(element); onComplete(); }
@@ -173,6 +207,12 @@ function clearMotionStyles(element: HTMLElement) {
 function clearConnectionDetailMotionStyles(element: HTMLElement) {
   element.style.removeProperty('transform');
   element.style.removeProperty('transform-origin');
+  element.style.removeProperty('will-change');
+}
+
+function clearFocusedFlowMotionStyles(element: HTMLElement) {
+  element.style.removeProperty('opacity');
+  element.style.removeProperty('stroke-dashoffset');
   element.style.removeProperty('will-change');
 }
 

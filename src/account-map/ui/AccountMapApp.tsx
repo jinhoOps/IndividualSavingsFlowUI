@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useReducer, useRef, useState, type JSX } from 'react';
+import { useEffect, useMemo, useReducer, useRef, useState, type JSX, type KeyboardEvent } from 'react';
 import { AppContentFrame } from '../../components/common/AppContentFrame';
 import { AppShell } from '../../components/common/AppShell';
 import { appPath } from '../../journey/routes';
@@ -9,18 +9,18 @@ import { bootstrapAccountMap } from '../application/bootstrap';
 import { accountMapReducer, type ManualRecoveryAction, type ManualRecoveryTarget } from '../application/reducer';
 import { projectAccountMapSetup } from '../application/setupProjection';
 import { rebaseAccountMapIntent, type AccountMapEditIntent } from '../domain/editIntent';
-import type { AccountMapApplied, AccountMapAppliedV3, AccountMapDraft, AccountMapDraftV2, AccountMapSetupStep, OutflowPurposeId, PurposeId, PurposeLocationLink } from '../domain/model';
+import type { AccountMapApplied, AccountMapAppliedV3, AccountMapDraft, AccountMapDraftV2, AccountMapSetupStep, OutflowPurposeId, PurposeId } from '../domain/model';
 import type { AccountTransferEditorValue } from './AccountTransferEditor';
 import type { AccountMapTransferSaveResult } from './setup/AccountMapTransfersStep';
 import type { MainPlanEditTarget } from './setup/AccountMapBasisStep';
-import { projectAccountMapDraftForView } from '../domain/accountMapVersioning';
-import { customPurposeTargetCapacity, recalculateRemainder, reconcilePurpose } from '../domain/reconciliation';
+import { projectAccountMapAppliedForView, projectAccountMapDraftForView } from '../domain/accountMapVersioning';
+import { customPurposeTargetCapacity, reconcilePurpose } from '../domain/reconciliation';
 import { BrowserAccountMapRepository, type AccountMapRepository, type AccountMapWriteResult } from '../infrastructure/accountMapRepository';
 import { BrowserAccountMapMainSourceRepository, type AccountMapMainSourceRepository } from '../infrastructure/mainSourceRepository';
 import { AccountMapManagementMenu } from './AccountMapManagementMenu';
 import { AccountMapCanvas } from './AccountMapCanvas';
+import { AccountTransferEditor } from './AccountTransferEditor';
 import { AccountMapModal, type AccountMapModalRelatedItem, type AccountMapNodeEditInput } from './AccountMapModal';
-import type { FinancialLocationFieldsValue } from './FinancialLocationFields';
 import { AccountMapSetup, type AccountMapDraftSaveResult } from './AccountMapSetup';
 import './account-map.css';
 
@@ -37,6 +37,8 @@ export function AccountMapApp({ repositories, onRequestMainEdit }: AccountMapApp
   const restoreFocusElementRef = useRef<HTMLElement | null>(null);
   const [restorePurposeId, setRestorePurposeId] = useState<`custom:${string}` | null>(null);
   const [restoreLocationId, setRestoreLocationId] = useState<string | null>(null);
+  const [flowLocationEditorId, setFlowLocationEditorId] = useState<string | null>(null);
+  const [flowTransferEditor, setFlowTransferEditor] = useState<{ mode: 'add'; sourceLocationId: string } | { mode: 'edit'; transferId: string } | null>(null);
   const setupProjection = useMemo(() => state.mode !== 'setup'
     ? null
     : projectAccountMapSetup(state.main, state.workspace.locations, state.draft), [state]);
@@ -65,7 +67,9 @@ export function AccountMapApp({ repositories, onRequestMainEdit }: AccountMapApp
   const restoringLocation = (state.mode === 'map' || state.mode === 'setup') && restoreLocationId !== null
     ? state.workspace.locations.find(({ id, archivedAt }) => id === restoreLocationId && archivedAt !== undefined)
     : undefined;
-  const locationRestoreState = state.mode === 'map' ? state.applied : state.mode === 'setup' ? state.draft : null;
+  const locationRestoreState = state.mode === 'map'
+    ? projectAccountMapAppliedForView(state.workspace.accountMap.applied ?? state.applied)
+    : state.mode === 'setup' ? state.draft : null;
   const restoringLocationRelated = restoringLocation === undefined || locationRestoreState === null || (state.mode !== 'map' && state.mode !== 'setup')
     ? []
     : buildLocationRestoreRelated(restoringLocation.id, locationRestoreState, state.workspace.locations, state.main);
@@ -133,140 +137,14 @@ export function AccountMapApp({ repositories, onRequestMainEdit }: AccountMapApp
   if (state.mode === 'invalid') return <AppShell currentApp="account-map" managementMenu={management}><MessagePage title="저장된 데이터가 올바르지 않아요"><p>현재 데이터는 변경하지 않았습니다. Main 관리 메뉴에서 백업을 확인해 주세요.</p></MessagePage></AppShell>;
   if (state.mode === 'unavailable') return <AppShell currentApp="account-map" managementMenu={management}><MessagePage title="저장소를 불러오지 못했어요"><p>브라우저 저장소 사용 가능 여부를 확인한 뒤 다시 시도해 주세요.</p></MessagePage></AppShell>;
   if (state.mode === 'migrating') return <AppShell currentApp="account-map" managementMenu={management}><MessagePage title="계좌 연결을 준비하고 있어요"><p role="status">기존 데이터를 안전하게 옮기는 중입니다.</p></MessagePage></AppShell>;
-  if (state.mode === 'map') return <AppShell currentApp="account-map" managementMenu={management}><AppContentFrame className="account-map-page account-map-page--map"><header className="account-map-map-header"><div><p className="account-map-eyebrow">계좌 연결</p><h1>계좌 연결 지도</h1><p>Main의 월 금액은 읽기만 합니다. 노드를 한 번 누르면 연결에 집중합니다.</p></div></header><AccountMapCanvas applied={state.applied} main={state.main} locations={state.workspace.locations} interaction={state.interaction} recovery={state.recovery} recoveryPending={state.save.status === 'pending'} saveFailed={state.save.status === 'failed'} hasExternalModal={restoringPurpose !== undefined || restoringLocation !== undefined} onReapply={reapplyIntent} onKeepLatest={() => dispatch({ type: 'latest-kept' })} onTransient={(nodeId) => dispatch({ type: 'node-hovered', nodeId })} onBlur={(nodeId) => dispatch({ type: 'node-blurred', nodeId })} onInvoke={(nodeId) => dispatch({ type: 'node-invoked', nodeId })} onEditRequest={(nodeId) => dispatch({ type: 'node-edit-requested', nodeId })} onBackground={() => dispatch({ type: 'map-background-invoked' })} onEscape={() => dispatch({ type: 'escape-invoked' })} onModalClose={() => {
-    const pending = pendingModalWorkspaceRef.current;
-    pendingModalWorkspaceRef.current = null;
-    const recovered = pendingModalRecoveryRef.current;
-    pendingModalRecoveryRef.current = false;
-    if (pending !== null) dispatch({ type: recovered ? 'reapply-succeeded' : 'save-succeeded', workspace: pending });
-    dispatch({ type: 'modal-closed' });
-  }} onSaveNodeEdit={async (nodeId, input) => {
-    if (state.recovery.status !== 'none') return false;
-    const result = await saveNodeEdit(nodeId, input);
-    if (result.status !== 'saved') {
-      if (result.status !== 'conflict') dispatch({ type: 'save-failed', reason: failureReason(result) });
-      return false;
-    }
-    pendingModalWorkspaceRef.current = result.workspace;
-    return true;
-  }} onConnectLocation={async (purposeId, locationId, monthlyAmountWon) => {
-    if (state.recovery.status !== 'none') return false;
-    const restoresArchivedLocation = state.workspace.locations.some(({ id, archivedAt }) => (
-      id === locationId && archivedAt !== undefined
-    ));
-    const intent: AccountMapEditIntent = {
-      kind: 'add-link', surface: 'applied', purposeId: purposeId as PurposeId, locationId, base: null,
-      ...(monthlyAmountWon === undefined ? {} : { monthlyAmountWon }),
-    };
-    const result = await resolved.accountMap.save(state.workspace.revision, {
-      type: restoresArchivedLocation ? 'restore-and-connect-location' : 'connect-location',
-      surface: 'applied', purposeId: purposeId as PurposeId, locationId,
-      ...(monthlyAmountWon === undefined ? {} : { monthlyAmountWon }),
-    });
-    if (result.status !== 'saved') {
-      if (result.status === 'conflict') {
-        if (restoresArchivedLocation) captureManualConflict('connection-prerequisite', []);
-        else captureIntentConflict(intent);
-      }
-      else dispatch({ type: 'save-failed', reason: failureReason(result) });
-      return false;
-    }
-    pendingModalWorkspaceRef.current = result.workspace;
-    return true;
-  }} onCreateAndConnectLocation={async (purposeId, location, monthlyAmountWon) => {
-    if (state.recovery.status !== 'none') return false;
-    const result = await resolved.accountMap.save(state.workspace.revision, {
-      type: 'create-and-connect-location', surface: 'applied', purposeId: purposeId as PurposeId, location,
-      ...(monthlyAmountWon === undefined ? {} : { monthlyAmountWon }),
-    });
-    if (result.status !== 'saved') {
-      if (result.status === 'conflict') captureManualConflict('connection-prerequisite', []);
-      else dispatch({ type: 'save-failed', reason: failureReason(result) });
-      return false;
-    }
-    pendingModalWorkspaceRef.current = result.workspace;
-    return true;
-  }} onArchivePurpose={async (purposeId) => {
-    if (state.recovery.status !== 'none') return false;
-    const purpose = state.applied.customPurposes.find(({ id }) => id === purposeId);
-    if (purpose === undefined || purpose.archivedAt !== undefined) return false;
-    const base = { name: purpose.name, targetMonthlyWon: purpose.targetMonthlyWon, archivedAt: purpose.archivedAt };
-    const intent: AccountMapEditIntent = { kind: 'purpose', id: purpose.id, edit: { base, next: { ...base, archivedAt: Date.now() } } };
-    const result = await resolved.accountMap.save(state.workspace.revision, { type: 'archive-custom-purpose', purposeId });
-    if (result.status !== 'saved') {
-      if (result.status === 'conflict') captureIntentConflict(intent);
-      else dispatch({ type: 'save-failed', reason: failureReason(result) });
-      return false;
-    }
-    pendingModalWorkspaceRef.current = result.workspace;
-    return true;
-  }} onArchiveLocation={async (locationId, replacementRemainderByPurpose) => {
-    if (state.recovery.status !== 'none') return false;
-    const result = await resolved.accountMap.save(state.workspace.revision, { type: 'archive-location', locationId, replacementRemainderByPurpose });
-    if (result.status !== 'saved') {
-      if (result.status === 'conflict') captureManualConflict('archive-location', [
-        { kind: 'location', id: locationId },
-        ...manualLinkTargets(Object.values(replacementRemainderByPurpose), 'link'),
-      ]);
-      else dispatch({ type: 'save-failed', reason: failureReason(result) });
-      return false;
-    }
-    pendingModalWorkspaceRef.current = result.workspace;
-    return true;
-  }} onRestoreLocation={restoreLocation} />{restoringPurpose === undefined ? null : <AccountMapModal
-    initialMode="restore-purpose"
-    node={{
-      id: restoringPurpose.id,
-      kind: 'purpose',
-      label: restoringPurpose.name,
-      amountWon: restoringPurpose.targetMonthlyWon,
-      connectionCount: state.applied.links.filter(({ purposeId, status }) => purposeId === restoringPurpose.id && status === 'active').length,
-      status: 'suspended',
-    }}
-    related={state.applied.links.filter(({ purposeId }) => purposeId === restoringPurpose.id).map((link) => ({
-      label: state.workspace.locations.find(({ id }) => id === link.locationId)?.shortName ?? '연결',
-      amountWon: link.monthlyAmountWon,
-      status: link.status,
-      linkId: link.id,
-      purposeId: link.purposeId,
-      locationId: link.locationId,
-      remainder: link.remainder,
-    }))}
-    sourceElement={null}
-    fallbackElement={restoreFocusElementRef.current}
-    reducedMotion={typeof window.matchMedia !== 'function' || window.matchMedia('(prefers-reduced-motion: reduce)').matches}
-    recovery={state.recovery}
-    recoveryPending={state.save.status === 'pending'}
-    saveFailed={state.save.status === 'failed'}
-    purposeParentLabel={purposeParentLabel(restoringPurpose.parentId)}
-    purposeTargetCapacityWon={customPurposeTargetCapacity(restoringPurpose.parentId, state.applied.customPurposes, state.main, restoringPurpose.id)}
-    onReapply={reapplyIntent}
-    onKeepLatest={() => dispatch({ type: 'latest-kept' })}
-    onClose={() => {
-      const pending = pendingModalWorkspaceRef.current;
-      pendingModalWorkspaceRef.current = null;
-      const recovered = pendingModalRecoveryRef.current;
-      pendingModalRecoveryRef.current = false;
-      if (pending !== null) dispatch({ type: recovered ? 'reapply-succeeded' : 'save-succeeded', workspace: pending });
-      setRestorePurposeId(null);
-    }}
-    onRestorePurpose={async (purposeId, targetMonthlyWon) => {
-      if (state.recovery.status !== 'none') return false;
-      const purpose = state.applied.customPurposes.find(({ id }) => id === purposeId);
-      if (purpose === undefined || purpose.archivedAt === undefined) return false;
-      const base = { name: purpose.name, targetMonthlyWon: purpose.targetMonthlyWon, archivedAt: purpose.archivedAt };
-      const intent: AccountMapEditIntent = { kind: 'purpose', id: purpose.id, edit: { base, next: { name: purpose.name, targetMonthlyWon, archivedAt: undefined } } };
-      const result = await resolved.accountMap.save(state.workspace.revision, { type: 'restore-custom-purpose', purposeId, targetMonthlyWon });
-      if (result.status !== 'saved') {
-        if (result.status === 'conflict') captureIntentConflict(intent);
-        else dispatch({ type: 'save-failed', reason: failureReason(result) });
-        return false;
-      }
-      pendingModalWorkspaceRef.current = result.workspace;
-      return true;
-    }}
-  />}{locationRestoreModal}</AppContentFrame></AppShell>;
-
+  if (state.mode === 'map') {
+    const flowApplied = projectAccountMapAppliedForView(state.workspace.accountMap.applied ?? state.applied);
+    const editingLocation = flowLocationEditorId === null ? undefined : state.workspace.locations.find(({ id }) => id === flowLocationEditorId);
+    const editingTransfer = flowTransferEditor?.mode === 'edit'
+      ? flowApplied.transfers.find(({ id }) => id === flowTransferEditor.transferId) ?? {}
+      : {};
+    return <AppShell currentApp="account-map" managementMenu={management}><AppContentFrame className="account-map-page account-map-page--map"><header className="account-map-map-header"><div><p className="account-map-eyebrow">계좌 연결</p><h1>계좌별 월 계획 흐름</h1><p>Main의 월 금액은 읽기만 합니다. 계좌를 한 번 누르면 연결 흐름을 확인하고, 편집은 명시적인 버튼으로 시작합니다.</p></div></header><AccountMapCanvas applied={flowApplied} main={state.main} locations={state.workspace.locations} interaction={state.interaction} hasExternalModal={restoringPurpose !== undefined || restoringLocation !== undefined || editingLocation !== undefined || flowTransferEditor !== null} onTransient={(nodeId) => dispatch({ type: 'node-hovered', nodeId })} onBlur={(nodeId) => dispatch({ type: 'node-blurred', nodeId })} onInvoke={(nodeId) => dispatch({ type: 'node-invoked', nodeId })} onBackground={() => dispatch({ type: 'map-background-invoked' })} onEscape={() => dispatch({ type: 'escape-invoked' })} onEditLocation={setFlowLocationEditorId} onAddTransfer={(sourceLocationId) => setFlowTransferEditor({ mode: 'add', sourceLocationId })} onEditTransfer={(transferId) => setFlowTransferEditor({ mode: 'edit', transferId })} />{editingLocation === undefined ? null : <AccountMapModal locationOnly locations={state.workspace.locations} node={{ id: `location:${editingLocation.id}`, kind: 'location', label: editingLocation.shortName, amountWon: 0, connectionCount: 0, status: 'resolved' }} related={buildFlowLocationRelated(editingLocation.id, flowApplied, state.workspace.locations)} sourceElement={null} fallbackElement={null} reducedMotion={typeof window.matchMedia !== 'function' || window.matchMedia('(prefers-reduced-motion: reduce)').matches} recovery={state.recovery} recoveryPending={state.save.status === 'pending'} saveFailed={state.save.status === 'failed'} onReapply={reapplyIntent} onKeepLatest={() => dispatch({ type: 'latest-kept' })} onClose={() => { const pending = pendingModalWorkspaceRef.current; pendingModalWorkspaceRef.current = null; if (pending !== null) dispatch({ type: 'save-succeeded', workspace: pending }); setFlowLocationEditorId(null); }} onSaveEdit={async (input) => { const result = await saveFlowLocationEdit(editingLocation.id, input); if (result.status !== 'saved') return false; pendingModalWorkspaceRef.current = result.workspace; return true; }} onArchiveLocation={archiveFlowLocation} />}{flowTransferEditor === null ? null : <FlowTransferDialog key={flowTransferEditor.mode === 'add' ? `add:${flowTransferEditor.sourceLocationId}` : `edit:${flowTransferEditor.transferId}`} locations={state.workspace.locations} initialValue={flowTransferEditor.mode === 'add' ? { sourceLocationId: flowTransferEditor.sourceLocationId } : editingTransfer} onClose={() => setFlowTransferEditor(null)} onSave={async (value) => { const saved = await saveFlowTransfer(flowTransferEditor, value); if (saved) setFlowTransferEditor(null); return saved; }} />}{locationRestoreModal}{restoringPurpose === undefined ? null : <AccountMapModal initialMode="restore-purpose" node={{ id: restoringPurpose.id, kind: 'purpose', label: restoringPurpose.name, amountWon: restoringPurpose.targetMonthlyWon, connectionCount: state.applied.links.filter(({ purposeId, status }) => purposeId === restoringPurpose.id && status === 'active').length, status: 'suspended' }} related={state.applied.links.filter(({ purposeId }) => purposeId === restoringPurpose.id).map((link) => ({ label: state.workspace.locations.find(({ id }) => id === link.locationId)?.shortName ?? '연결', amountWon: link.monthlyAmountWon, status: link.status, linkId: link.id, purposeId: link.purposeId, locationId: link.locationId, remainder: link.remainder }))} sourceElement={null} fallbackElement={restoreFocusElementRef.current} reducedMotion={typeof window.matchMedia !== 'function' || window.matchMedia('(prefers-reduced-motion: reduce)').matches} recovery={state.recovery} recoveryPending={state.save.status === 'pending'} saveFailed={state.save.status === 'failed'} purposeParentLabel={purposeParentLabel(restoringPurpose.parentId)} purposeTargetCapacityWon={customPurposeTargetCapacity(restoringPurpose.parentId, state.applied.customPurposes, state.main, restoringPurpose.id)} onReapply={reapplyIntent} onKeepLatest={() => dispatch({ type: 'latest-kept' })} onClose={() => setRestorePurposeId(null)} onRestorePurpose={async (purposeId, targetMonthlyWon) => { if (state.recovery.status !== 'none') return false; const result = await resolved.accountMap.save(state.workspace.revision, { type: 'restore-custom-purpose', purposeId, targetMonthlyWon }); if (result.status !== 'saved') { if (result.status === 'conflict') captureIntentConflict({ kind: 'purpose', id: purposeId, edit: { base: { name: restoringPurpose.name, targetMonthlyWon: restoringPurpose.targetMonthlyWon, archivedAt: restoringPurpose.archivedAt }, next: { name: restoringPurpose.name, targetMonthlyWon, archivedAt: undefined } } }); else dispatch({ type: 'save-failed', reason: failureReason(result) }); return false; } pendingModalWorkspaceRef.current = result.workspace; return true; }} />}</AppContentFrame></AppShell>;
+  }
   async function saveDraft(draft: AccountMapDraftV2): Promise<AccountMapDraftSaveResult> {
     if (state.mode !== 'setup' || state.recovery.status !== 'none') return { status: 'recovery' };
     dispatch({ type: 'save-requested' });
@@ -287,9 +165,9 @@ export function AccountMapApp({ repositories, onRequestMainEdit }: AccountMapApp
     return { status: 'saved' };
   }
 
-  async function restoreLocation(locationId: string, restoreLinkIds: string[], remainderByPurpose: Record<string, string | null>): Promise<boolean> {
+  async function restoreLocation(locationId: string, restoreLinkIds: string[], remainderByPurpose: Record<string, string | null>, restoreTransferIds: string[] = []): Promise<boolean> {
     if ((state.mode !== 'map' && state.mode !== 'setup') || state.recovery.status !== 'none') return false;
-    const result = await resolved.accountMap.save(state.workspace.revision, { type: 'restore-location', locationId, restoreLinkIds, remainderByPurpose });
+    const result = await resolved.accountMap.save(state.workspace.revision, { type: 'restore-location', locationId, restoreLinkIds, restoreTransferIds, remainderByPurpose });
     if (result.status !== 'saved') {
       if (result.status === 'conflict') {
         const restored = new Set(restoreLinkIds);
@@ -449,148 +327,66 @@ export function AccountMapApp({ repositories, onRequestMainEdit }: AccountMapApp
     return { status: 'saved' };
   }
 
-  async function saveNodeEdit(nodeId: string, input: AccountMapNodeEditInput): Promise<AccountMapWriteResult> {
-    if (state.mode !== 'map' || state.recovery.status !== 'none') return { status: 'unavailable' };
-    const editById = new Map(input.links.map((item) => [item.id, item]));
-    const purposeByLinkId = new Map(state.applied.links.map((item) => [item.id, item.purposeId]));
-    const intents: AccountMapEditIntent[] = [];
-    const currentPurpose = nodeId.startsWith('custom:')
-      ? state.applied.customPurposes.find(({ id }) => id === nodeId)
-      : undefined;
-    if (currentPurpose !== undefined) {
-      const base = { name: currentPurpose.name, targetMonthlyWon: currentPurpose.targetMonthlyWon, archivedAt: currentPurpose.archivedAt };
-      const next = { ...base, ...(input.label === undefined ? {} : { name: input.label }), ...(input.targetMonthlyWon === undefined ? {} : { targetMonthlyWon: input.targetMonthlyWon }) };
-      if (JSON.stringify(base) !== JSON.stringify(next)) intents.push({ kind: 'purpose', id: currentPurpose.id, edit: { base, next } });
+  async function saveFlowTransfer(
+    editor: NonNullable<typeof flowTransferEditor>,
+    value: AccountTransferEditorValue,
+  ): Promise<boolean> {
+    if (state.mode !== 'map' || state.recovery.status !== 'none') return false;
+    dispatch({ type: 'save-requested' });
+    const command = editor.mode === 'add'
+      ? { type: 'add-transfer' as const, surface: 'applied' as const, transfer: { ...value, id: createId() } }
+      : { type: 'edit-transfer' as const, surface: 'applied' as const, transferId: editor.transferId, fields: value };
+    const result = await resolved.accountMap.save(state.workspace.revision, command);
+    if (result.status === 'saved') {
+      dispatch({ type: 'transfer-save-succeeded', workspace: result.workspace });
+      return true;
     }
-    const rawLocationId = nodeId.startsWith('location:') ? nodeId.replace(/^location:/u, '') : null;
-    const currentLocation = rawLocationId === null ? undefined : state.workspace.locations.find(({ id }) => id === rawLocationId);
-    const locationDetails = input.locationDetails;
-    const locationStructureChanged = currentLocation !== undefined
-      && locationDetails !== undefined
-      && (currentLocation.kind !== locationDetails.kind
-        || currentLocation.institution?.id !== locationDetails.institution?.id
-        || currentLocation.institution?.name !== locationDetails.institution?.name);
-    const hasLinkEdit = input.links.some((edit) => {
-      const current = state.applied.links.find(({ id }) => id === edit.id);
-      return current !== undefined && (edit.status === 'removed'
-        || current.monthlyAmountWon !== edit.monthlyAmountWon
-        || current.status !== edit.status
-        || current.remainder !== edit.remainder);
-    });
-    if (currentLocation !== undefined
-      && locationDetails !== undefined
-      && isCompleteLocationDetails(locationDetails)
-      && locationStructureChanged
-      && !hasLinkEdit) {
-      dispatch({ type: 'save-requested' });
-      const result = await resolved.accountMap.save(state.workspace.revision, {
-        type: 'update-location-details',
-        locationId: currentLocation.id,
-        shortName: locationDetails.shortName,
-        kind: locationDetails.kind,
-        ...(locationDetails.institution === undefined ? {} : { institution: locationDetails.institution }),
-      });
-      if (result.status === 'conflict') {
-        const latest = resolved.accountMap.load();
-        if (latest.status === 'found') {
-          dispatch({
-            type: 'save-manual-conflicted', latest: latest.workspace,
-            action: 'edit-node', targets: [{ kind: 'node', id: nodeId }], reason: 'compound-edit',
-          });
-        } else dispatch({ type: 'save-failed', reason: latest.status === 'invalid' ? 'invalid' : 'unavailable' });
-      }
-      return result;
-    }
-    if (currentLocation !== undefined && input.label !== undefined && input.label !== currentLocation.shortName) {
-      intents.push({
-        kind: 'location', id: currentLocation.id,
-        edit: {
-          base: { shortName: currentLocation.shortName, institution: currentLocation.institution },
-          next: { shortName: input.label, institution: currentLocation.institution },
-        },
-      });
-    }
-    let hasUnsupportedRemoval = false;
-    for (const edit of input.links) {
-      const current = state.applied.links.find(({ id }) => id === edit.id);
-      if (current === undefined) continue;
-      if (edit.status === 'removed') { hasUnsupportedRemoval = true; continue; }
-      const base = { monthlyAmountWon: current.monthlyAmountWon, status: current.status, remainder: current.remainder };
-      const next = { monthlyAmountWon: edit.monthlyAmountWon, status: edit.status, remainder: edit.remainder };
-      if (JSON.stringify(base) !== JSON.stringify(next)) intents.push({ kind: 'link', id: current.id, edit: { base, next } });
-    }
-    if (!hasUnsupportedRemoval && intents.length === 1) {
-      return await saveIntent(state.workspace.revision, intents[0]!);
-    }
-    const selectedRemainders = new Map<string, string>();
-    for (const item of input.links) {
-      const purposeId = purposeByLinkId.get(item.id);
-      if (purposeId !== undefined && item.status === 'active' && item.remainder) selectedRemainders.set(purposeId, item.id);
-    }
-    const customPurposes = state.applied.customPurposes.map((purpose) => purpose.id !== nodeId ? purpose : {
-      ...purpose,
-      ...(input.label === undefined ? {} : { name: input.label }),
-      ...(input.targetMonthlyWon === undefined ? {} : { targetMonthlyWon: input.targetMonthlyWon }),
-      updatedAt: Date.now(),
-    });
-    let links = state.applied.links.flatMap((current): PurposeLocationLink[] => {
-      const edit = editById.get(current.id);
-      if (edit?.status === 'removed') return [];
-      const selectedRemainder = selectedRemainders.get(current.purposeId);
-      if (edit === undefined) {
-        if (selectedRemainder === undefined || current.status === 'suspended') return [current];
-        return [{ ...current, remainder: current.id === selectedRemainder, updatedAt: Date.now() }];
-      }
-      if (edit.status === 'suspended') return [{ ...current, monthlyAmountWon: edit.monthlyAmountWon, remainder: false as const, status: 'suspended' as const, suspendedReason: 'user' as const, updatedAt: Date.now() }];
-      return [{ id: current.id, purposeId: current.purposeId, locationId: current.locationId, monthlyAmountWon: edit.monthlyAmountWon, remainder: selectedRemainder === undefined ? edit.remainder : current.id === selectedRemainder, status: 'active' as const, createdAt: current.createdAt, updatedAt: Date.now() }];
-    });
-    for (const [purposeId, remainderId] of selectedRemainders) {
-      const target = reconcilePurpose(purposeId as PurposeId, { ...state.applied, customPurposes, links }, state.workspace.locations, state.main).targetWon;
-      const recalculated = recalculateRemainder(purposeId as PurposeId, remainderId, target, links);
-      if (recalculated.ok) links = recalculated.links;
-    }
-    const applied = { ...state.applied, links, customPurposes, updatedAt: Date.now() };
-    const result = await resolved.accountMap.save(state.workspace.revision, {
-      type: 'edit-map-node', applied,
-      ...(currentLocation === undefined || input.label === undefined ? {} : {
-        location: {
-          locationId: currentLocation.id,
-          ...(currentLocation.institution === undefined ? {} : { institution: currentLocation.institution }),
-          shortName: input.label,
-        },
-      }),
-    });
     if (result.status === 'conflict') {
-      const latest = resolved.accountMap.load();
-      if (latest.status === 'found') {
-        dispatch({
-          type: 'save-manual-conflicted', latest: latest.workspace,
-          action: 'edit-node', targets: manualEditTargets(nodeId, intents, input),
-          reason: hasUnsupportedRemoval ? 'removal' : 'compound-edit',
-        });
-      } else {
-        dispatch({ type: 'save-failed', reason: latest.status === 'invalid' ? 'invalid' : 'unavailable' });
-      }
+      if (editor.mode === 'edit') captureTransferManualConflict('edit-transfer', editor.transferId, 'compound-edit');
+      else captureManualConflict('edit-transfer', []);
+    } else {
+      dispatch({ type: 'save-failed', reason: failureReason(result) });
     }
+    return false;
+  }
+
+  async function saveFlowLocationEdit(locationId: string, input: AccountMapNodeEditInput): Promise<AccountMapWriteResult> {
+    if (state.mode !== 'map' || state.recovery.status !== 'none') return { status: 'unavailable' };
+    const location = state.workspace.locations.find(({ id }) => id === locationId);
+    if (location === undefined) return { status: 'unavailable' };
+    const details = input.locationDetails ?? {
+      shortName: input.label ?? location.shortName,
+      kind: location.kind,
+      ...(location.institution === undefined ? {} : { institution: location.institution }),
+    };
+    dispatch({ type: 'save-requested' });
+    const result = await resolved.accountMap.save(state.workspace.revision, {
+      type: 'update-location-details', locationId,
+      shortName: details.shortName,
+      kind: details.kind,
+      ...(details.institution === undefined ? {} : { institution: details.institution }),
+    });
+    if (result.status === 'saved') return result;
+    if (result.status === 'conflict') captureManualConflict('edit-node', [{ kind: 'location', id: locationId }]);
+    else dispatch({ type: 'save-failed', reason: failureReason(result) });
     return result;
   }
+
+  async function archiveFlowLocation(locationId: string, replacementRemainderByPurpose: Record<string, string | null>): Promise<boolean> {
+    if (state.mode !== 'map' || state.recovery.status !== 'none') return false;
+    const result = await resolved.accountMap.save(state.workspace.revision, { type: 'archive-location', locationId, replacementRemainderByPurpose });
+    if (result.status === 'saved') {
+      pendingModalWorkspaceRef.current = result.workspace;
+      return true;
+    }
+    if (result.status === 'conflict') captureManualConflict('archive-location', [{ kind: 'location', id: locationId }]);
+    else dispatch({ type: 'save-failed', reason: failureReason(result) });
+    return false;
+  }
+
 
   return <AppShell currentApp="account-map" managementMenu={management}><AppContentFrame className="account-map-page"><AccountMapSetup workspace={state.workspace} main={state.main} draft={state.draft} step={state.step} calculation={setupProjection!.calculation} suggestions={setupProjection!.suggestions} review={setupProjection!.review} canApply={setupProjection!.canApply} mainChanged={state.mainChanged} saveFailed={state.save.status === 'failed'} recoveryPending={state.save.status === 'pending'} recovery={state.recovery} onReapply={reapplyIntent} onKeepLatest={() => dispatch({ type: 'latest-kept' })} onRequestMainEdit={(target) => { onRequestMainEdit?.(target); }} onCommitConnection={commitConnection} onSaveDraft={saveDraft} onAddTransfer={addTransfer} onEditTransfer={editTransfer} onRemoveTransfer={removeTransfer} onApply={() => void applyMap()} onExit={() => { if (state.recovery.status !== 'none') return; dispatch({ type: 'setup-exited' }); window.location.assign(appPath('main')); }} onCancelSetup={() => { if (state.recovery.status !== 'none') return; void resolved.accountMap.reset(state.workspace.revision).then((result) => { if (result.status === 'saved') dispatch({ type: 'setup-cancelled', workspace: result.workspace }); else if (result.status === 'conflict') captureManualConflict('cancel-setup', []); else dispatch({ type: 'save-failed', reason: failureReason(result) }); }); }} />{locationRestoreModal}</AppContentFrame></AppShell>;
 
-  async function saveIntent(expectedRevision: number, intent: AccountMapEditIntent): Promise<AccountMapWriteResult> {
-    dispatch({ type: 'save-requested' });
-    const result = await resolved.accountMap.saveIntent(expectedRevision, intent);
-    if (result.status === 'saved') {
-      dispatch({ type: 'save-succeeded', workspace: result.workspace });
-      return result;
-    }
-    if (result.status === 'conflict') {
-      captureIntentConflict(intent);
-      return result;
-    }
-    dispatch({ type: 'save-failed', reason: failureReason(result) });
-    return result;
-  }
 
   async function reapplyIntent(): Promise<boolean> {
     if ((state.mode !== 'setup' && state.mode !== 'map') || state.recovery.status === 'none') return false;
@@ -659,8 +455,33 @@ export function AccountMapApp({ repositories, onRequestMainEdit }: AccountMapApp
 
 }
 
-function isCompleteLocationDetails(value: FinancialLocationFieldsValue): boolean {
-  return value.kind === 'cash' || (value.institution?.name.trim() ?? '') !== '';
+function FlowTransferDialog({
+  locations,
+  initialValue,
+  onClose,
+  onSave,
+}: {
+  locations: readonly FinancialLocation[];
+  initialValue: Partial<AccountTransferEditorValue>;
+  onClose(): void;
+  onSave(value: AccountTransferEditorValue): Promise<boolean>;
+}): JSX.Element {
+  const [saveFailed, setSaveFailed] = useState(false);
+  const dialogRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    dialogRef.current?.querySelector<HTMLElement>('button, select, input, [tabindex]:not([tabindex="-1"])')?.focus();
+  }, []);
+  const trapFocus = (event: KeyboardEvent<HTMLElement>) => {
+    if (event.key === 'Escape') { event.preventDefault(); onClose(); return; }
+    if (event.key !== 'Tab') return;
+    const focusable = [...(dialogRef.current?.querySelectorAll<HTMLElement>('button:not([disabled]), select:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])') ?? [])];
+    if (focusable.length === 0) return;
+    const first = focusable[0]!;
+    const last = focusable[focusable.length - 1]!;
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+  };
+  return <div className="account-map-modal-backdrop"><section ref={dialogRef} className="account-map-modal account-flow-editor-modal" role="dialog" aria-modal="true" aria-label="계좌 흐름 편집" onKeyDown={trapFocus}><header><div><p>월 계획 흐름</p><h2>계좌 흐름 편집</h2></div><button type="button" className="account-map-modal__close" aria-label="닫기" onClick={onClose}>×</button></header><div className="account-map-modal__body"><AccountTransferEditor locations={locations} initialValue={initialValue} onCancel={onClose} onSave={(value) => { setSaveFailed(false); void onSave(value).then((saved) => { if (!saved) setSaveFailed(true); }, () => setSaveFailed(true)); }} />{saveFailed ? <p role="alert" className="account-map-modal__error">현재 흐름을 저장하지 못했습니다. 구조와 최신 상태를 확인한 뒤 다시 시도해 주세요.</p> : null}</div></section></div>;
 }
 
 function MessagePage({ title, children }: { title: string; children: React.ReactNode }) { return <AppContentFrame className="account-map-page"><section className="account-map-message"><h1>{title}</h1>{children}</section></AppContentFrame>; }
@@ -692,21 +513,30 @@ function recoveryFallbackField(intent: AccountMapEditIntent): string { return in
 function manualLinkTargets(ids: Array<string | null>, kind: 'link' | 'restorable-link'): ManualRecoveryTarget[] {
   return [...new Set(ids.filter((id): id is string => id !== null))].map((id) => ({ kind, id }));
 }
-function manualEditTargets(nodeId: string, intents: AccountMapEditIntent[], input: AccountMapNodeEditInput): ManualRecoveryTarget[] {
-  const targets: ManualRecoveryTarget[] = [];
-  for (const intent of intents) {
-    if (intent.kind === 'link') targets.push({ kind: 'link', id: intent.id });
-    else if (intent.kind === 'purpose') targets.push({ kind: 'node', id: intent.id });
-    else if (intent.kind === 'location') targets.push({ kind: 'node', id: `location:${intent.id}` });
-  }
-  for (const item of input.links) if (item.status === 'removed') targets.push({ kind: 'link', id: item.id });
-  if (targets.length === 0) targets.push({ kind: 'node', id: nodeId });
-  return targets.filter((target, index) => targets.findIndex((candidate) => candidate.kind === target.kind && candidate.id === target.id) === index);
+function buildFlowLocationRelated(
+  locationId: string,
+  applied: AccountMapAppliedV3,
+  locations: readonly FinancialLocation[],
+): AccountMapModalRelatedItem[] {
+  const purposeItems = applied.links.filter((link) => link.locationId === locationId).map((link) => ({
+    label: purposeLabel(link.purposeId, applied), amountWon: link.monthlyAmountWon, status: link.status,
+    ...(link.status === 'suspended' ? { suspendedReason: link.suspendedReason } : {}),
+    linkId: link.id, purposeId: link.purposeId, locationId: link.locationId, remainder: link.remainder,
+  }));
+  const transferItems = applied.transfers.filter((transfer) => transfer.sourceLocationId === locationId || transfer.targetLocationId === locationId).map((transfer) => ({
+    label: `${locations.find(({ id }) => id === transfer.sourceLocationId)?.shortName ?? '계좌'} → ${locations.find(({ id }) => id === transfer.targetLocationId)?.shortName ?? '계좌'} · ${transfer.allocation.kind === 'sweep' ? '남은 금액 전부' : '고정 금액'}`,
+    amountWon: transfer.allocation.kind === 'fixed' ? transfer.allocation.monthlyAmountWon : 0,
+    status: transfer.status,
+    ...(transfer.status === 'suspended' ? { suspendedReason: transfer.suspendedReason } : {}),
+    transferId: transfer.id,
+    relationKind: 'transfer' as const,
+  }));
+  return [...purposeItems, ...transferItems];
 }
 
 function buildLocationRestoreRelated(
   locationId: string,
-  purposeState: AccountMapApplied | AccountMapDraft | AccountMapDraftV2,
+  purposeState: AccountMapApplied | AccountMapAppliedV3 | AccountMapDraft | AccountMapDraftV2,
   locations: readonly FinancialLocation[],
   main: MainData,
 ): AccountMapModalRelatedItem[] {
@@ -734,10 +564,20 @@ function buildLocationRestoreRelated(
       remainder: link.remainder,
       replacementCandidate: true as const,
     }));
-  return [...direct, ...replacements];
+  const transfers = 'transfers' in purposeState ? purposeState.transfers
+    .filter((transfer) => transfer.sourceLocationId === locationId || transfer.targetLocationId === locationId)
+    .map((transfer) => ({
+      label: `${locations.find(({ id }) => id === transfer.sourceLocationId)?.shortName ?? '계좌'} → ${locations.find(({ id }) => id === transfer.targetLocationId)?.shortName ?? '계좌'} · ${transfer.allocation.kind === 'sweep' ? '남은 금액 전부' : '고정 금액'}`,
+      amountWon: transfer.allocation.kind === 'fixed' ? transfer.allocation.monthlyAmountWon : 0,
+      status: transfer.status,
+      ...(transfer.status === 'suspended' ? { suspendedReason: transfer.suspendedReason } : {}),
+      relationKind: 'transfer' as const,
+      transferId: transfer.id,
+    })) : [];
+  return [...direct, ...replacements, ...transfers];
 }
 
-function purposeLabel(purposeId: PurposeId, state: AccountMapApplied | AccountMapDraft | AccountMapDraftV2): string {
+function purposeLabel(purposeId: PurposeId, state: AccountMapApplied | AccountMapAppliedV3 | AccountMapDraft | AccountMapDraftV2): string {
   if (purposeId.startsWith('custom:')) return state.customPurposes.find(({ id }) => id === purposeId)?.name ?? '세부 목적';
   return purposeId === 'system:income' ? '수입'
     : purposeId === 'system:housing' ? '주거'

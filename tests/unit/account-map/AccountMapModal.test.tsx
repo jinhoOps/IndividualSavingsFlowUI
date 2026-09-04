@@ -693,6 +693,28 @@ describe("AccountMapModal", () => {
     expect(onRestoreLocation).toHaveBeenCalledWith("vault", [], {});
   });
 
+  it("keeps incident account flows suspended until the user explicitly selects them for restore", () => {
+    const onRestoreLocation = vi.fn(async () => true);
+    renderModal({
+      initialMode: "restore-location",
+      node: { id: "location:vault", kind: "location", label: "비상금함", amountWon: 0, status: "suspended" },
+      related: [{
+        label: "비상금함 → 증권계좌 · 정해진 금액",
+        amountWon: 200_000,
+        status: "suspended",
+        suspendedReason: "location-archived",
+        relationKind: "transfer",
+        transferId: "vault-brokerage",
+      }],
+      onRestoreLocation,
+    });
+
+    expect(screen.getByText("계좌 흐름은 선택한 항목만 다시 연결합니다.")).toBeVisible();
+    fireEvent.click(screen.getByRole("checkbox", { name: /비상금함 → 증권계좌/ }));
+    fireEvent.click(screen.getByRole("button", { name: "선택 복원" }));
+    expect(onRestoreLocation).toHaveBeenCalledWith("vault", [], {}, ["vault-brokerage"]);
+  });
+
   it("keeps the archive selection and offers retry after a failed command", async () => {
     const onArchiveLocation = vi.fn(async () => false);
     renderModal({

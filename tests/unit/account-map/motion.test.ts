@@ -9,6 +9,7 @@ const { animate } = vi.hoisted(() => {
 vi.mock('animejs', () => ({ animate }));
 
 import {
+  animateFocusedFlow,
   animateConnectionDetail,
   animateModalToNode,
   animateNodeToModal,
@@ -22,6 +23,38 @@ beforeEach(() => {
 });
 
 describe('Account Map motion', () => {
+  it('restores focused-flow paths and labels when Anime.js synchronously throws', () => {
+    const root = document.createElement('div');
+    root.innerHTML = '<path data-account-flow-edge></path><span data-account-flow-edge-amount></span>';
+    animate.mockImplementation(() => { throw new Error('Anime.js unavailable'); });
+
+    const handle = animateFocusedFlow(root, false);
+
+    expect(root.querySelector<HTMLElement>('[data-account-flow-edge]')?.style.opacity).toBe('');
+    expect(root.querySelector<HTMLElement>('[data-account-flow-edge-amount]')?.style.opacity).toBe('');
+    expect(() => handle.cancel()).not.toThrow();
+  });
+
+  it('renders focused flow synchronously for reduced motion and restores it if cancellation throws', () => {
+    const reducedRoot = document.createElement('div');
+    reducedRoot.innerHTML = '<path data-account-flow-edge></path><span data-account-flow-edge-amount></span>';
+    animateFocusedFlow(reducedRoot, true);
+    expect(animate).not.toHaveBeenCalled();
+    expect(reducedRoot.querySelector<HTMLElement>('[data-account-flow-edge]')?.style.opacity).toBe('');
+
+    const animatedRoot = document.createElement('div');
+    animatedRoot.innerHTML = '<path data-account-flow-edge></path><span data-account-flow-edge-amount></span>';
+    animate.mockImplementation((target) => {
+      if (target instanceof HTMLElement) target.style.opacity = '0';
+      return { cancel: () => { throw new Error('cancel failed'); } };
+    });
+    const handle = animateFocusedFlow(animatedRoot, false);
+    expect(() => handle.cancel()).not.toThrow();
+    expect([...animatedRoot.querySelectorAll<HTMLElement>('[data-account-flow-edge], [data-account-flow-edge-amount]')]
+      .map((element) => ({ opacity: element.style.opacity, willChange: element.style.willChange })))
+      .toEqual([{ opacity: '', willChange: '' }, { opacity: '', willChange: '' }]);
+  });
+
   it('skips Anime.js when reduced motion is requested', () => {
     const modal = document.createElement('div');
     const detail = document.createElement('div');
