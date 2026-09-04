@@ -132,6 +132,12 @@
 .account-map-location-picker > fieldset legend { margin-bottom: 8px; font-weight: 700; }
 .account-map-location-picker > label, .account-map-modal__restore-purpose label { position: relative; display: grid; min-width: 0; gap: 7px; font-weight: 700; }
 .account-map-location-picker > label > span { position: absolute; right: 12px; bottom: 12px; color: var(--muted); font-size: .875rem; }
+.financial-location-fields, .account-transfer-editor { display: grid; min-width: 0; gap: 14px; }
+.financial-location-fields > fieldset, .account-transfer-editor > fieldset { min-width: 0; margin: 0; border: 0; padding: 0; }
+.financial-location-fields legend, .account-transfer-editor legend { margin-bottom: 8px; font-weight: 700; }
+.financial-location-fields label, .account-transfer-editor > label, .account-map-location-picker__amount { display: grid; min-width: 0; gap: 7px; font-weight: 700; }
+.formatted-money-input { display: grid; min-width: 0; gap: 8px; }
+.formatted-money-input__adjustments, .account-transfer-editor__actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .account-map-location-picker input, .account-map-location-picker select, .account-map-modal__edit input, .account-map-modal__edit select, .account-map-modal__restore-purpose input { width: 100%; min-width: 0; }
 .account-map-location-picker__actions { position: sticky; z-index: 1; bottom: -20px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 0 -1px -20px; background: var(--panel); padding: 12px 1px 20px; }
 

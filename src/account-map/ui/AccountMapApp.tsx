@@ -15,6 +15,7 @@ import { BrowserAccountMapMainSourceRepository, type AccountMapMainSourceReposit
 import { AccountMapManagementMenu } from './AccountMapManagementMenu';
 import { AccountMapCanvas } from './AccountMapCanvas';
 import { AccountMapModal, type AccountMapModalRelatedItem, type AccountMapNodeEditInput } from './AccountMapModal';
+import type { FinancialLocationFieldsValue } from './FinancialLocationFields';
 import { AccountMapSetup, type AccountMapDraftSaveResult } from './AccountMapSetup';
 import './account-map.css';
 
@@ -367,6 +368,43 @@ export function AccountMapApp({ repositories }: { repositories?: AccountMapRepos
     }
     const rawLocationId = nodeId.startsWith('location:') ? nodeId.replace(/^location:/u, '') : null;
     const currentLocation = rawLocationId === null ? undefined : state.workspace.locations.find(({ id }) => id === rawLocationId);
+    const locationDetails = input.locationDetails;
+    const locationStructureChanged = currentLocation !== undefined
+      && locationDetails !== undefined
+      && (currentLocation.kind !== locationDetails.kind
+        || currentLocation.institution?.id !== locationDetails.institution?.id
+        || currentLocation.institution?.name !== locationDetails.institution?.name);
+    const hasLinkEdit = input.links.some((edit) => {
+      const current = state.applied.links.find(({ id }) => id === edit.id);
+      return current !== undefined && (edit.status === 'removed'
+        || current.monthlyAmountWon !== edit.monthlyAmountWon
+        || current.status !== edit.status
+        || current.remainder !== edit.remainder);
+    });
+    if (currentLocation !== undefined
+      && locationDetails !== undefined
+      && isCompleteLocationDetails(locationDetails)
+      && locationStructureChanged
+      && !hasLinkEdit) {
+      dispatch({ type: 'save-requested' });
+      const result = await resolved.accountMap.save(state.workspace.revision, {
+        type: 'update-location-details',
+        locationId: currentLocation.id,
+        shortName: locationDetails.shortName,
+        kind: locationDetails.kind,
+        ...(locationDetails.institution === undefined ? {} : { institution: locationDetails.institution }),
+      });
+      if (result.status === 'conflict') {
+        const latest = resolved.accountMap.load();
+        if (latest.status === 'found') {
+          dispatch({
+            type: 'save-manual-conflicted', latest: latest.workspace,
+            action: 'edit-node', targets: [{ kind: 'node', id: nodeId }], reason: 'compound-edit',
+          });
+        } else dispatch({ type: 'save-failed', reason: latest.status === 'invalid' ? 'invalid' : 'unavailable' });
+      }
+      return result;
+    }
     if (currentLocation !== undefined && input.label !== undefined && input.label !== currentLocation.shortName) {
       intents.push({
         kind: 'location', id: currentLocation.id,
@@ -525,6 +563,10 @@ export function AccountMapApp({ repositories }: { repositories?: AccountMapRepos
     }
     await saveDraft({ ...state.draft, step, updatedAt: Date.now() });
   }
+}
+
+function isCompleteLocationDetails(value: FinancialLocationFieldsValue): boolean {
+  return value.kind === 'cash' || (value.institution?.name.trim() ?? '') !== '';
 }
 
 function MessagePage({ title, children }: { title: string; children: React.ReactNode }) { return <AppContentFrame className="account-map-page"><section className="account-map-message"><h1>{title}</h1>{children}</section></AppContentFrame>; }

@@ -163,6 +163,24 @@ describe('AccountMapApp', () => {
     expect(setup.saveIntent).not.toHaveBeenCalled();
   });
 
+  it('saves a location kind, institution, and name through one detail command', async () => {
+    const setup = mapConnectionRepositories(false, false, true);
+    render(<AccountMapApp repositories={setup.repositories} />);
+    const location = screen.getByRole('button', { name: /계좌·보관처 · 생활비통장 ·/ });
+    openMapNodeForEdit(location);
+    fireEvent.click(screen.getByRole('button', { name: '편집' }));
+    fireEvent.click(screen.getByRole('button', { name: '증권' }));
+    fireEvent.change(screen.getByRole('textbox', { name: '기관 이름' }), { target: { value: '미래증권' } });
+    fireEvent.change(screen.getByRole('textbox', { name: '표시 이름' }), { target: { value: 'ISA' } });
+    fireEvent.click(screen.getByRole('button', { name: '저장' }));
+
+    await waitFor(() => expect(setup.save).toHaveBeenCalledWith(1, {
+      type: 'update-location-details', locationId: 'checking', shortName: 'ISA', kind: 'brokerage',
+      institution: { name: '미래증권' },
+    }));
+    expect(setup.saveIntent).not.toHaveBeenCalled();
+  });
+
   it('clears a pinned node and its edge amounts with Escape while retaining keyboard focus', () => {
     const setup = mapConnectionRepositories();
     const { container } = render(<AccountMapApp repositories={setup.repositories} />);
@@ -1082,14 +1100,14 @@ function atomicConnectionRepositories() {
   return { repositories: { accountMap, main }, save, saveIntent };
 }
 
-function mapConnectionRepositories(withArchivedDuplicate = false, conflictOnce = false) {
+function mapConnectionRepositories(withArchivedDuplicate = false, conflictOnce = false, withInstitutions = false) {
   let workspace = createEmptyWorkspace(1);
   workspace.revision = 1;
   workspace.main.applied = mainData();
   workspace.locations = [
-    { id: 'salary', shortName: '급여통장', kind: 'bank', roles: ['income'], createdAt: 1, updatedAt: 1 },
-    { id: 'checking', shortName: '생활비통장', kind: 'bank', roles: ['spending'], createdAt: 1, updatedAt: 1 },
-    { id: 'savings', shortName: '저축통장', kind: 'bank', roles: ['saving'], createdAt: 1, updatedAt: 1 },
+    { id: 'salary', shortName: '급여통장', ...(withInstitutions ? { institution: { id: 'kb-kookmin', name: 'KB국민은행' } } : {}), kind: 'bank', roles: ['income'], createdAt: 1, updatedAt: 1 },
+    { id: 'checking', shortName: '생활비통장', ...(withInstitutions ? { institution: { id: 'hana', name: '하나은행' } } : {}), kind: 'bank', roles: ['spending'], createdAt: 1, updatedAt: 1 },
+    { id: 'savings', shortName: '저축통장', ...(withInstitutions ? { institution: { id: 'shinhan', name: '신한은행' } } : {}), kind: 'bank', roles: ['saving'], createdAt: 1, updatedAt: 1 },
     ...(withArchivedDuplicate ? [{ id: 'archived-vault', shortName: '복원통장', institution: { id: 'shinhan', name: '신한은행' }, kind: 'bank' as const, roles: ['spending' as const], archivedAt: 2, createdAt: 1, updatedAt: 2 }] : []),
   ];
   workspace.accountMap.applied = {
