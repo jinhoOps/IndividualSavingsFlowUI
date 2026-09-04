@@ -125,6 +125,27 @@ describe('AccountMapSetup', () => {
     expect(setup.current().main.applied?.monthlyLivingWon).toBe(1_000_000);
   });
 
+  it('traps reverse and forward Tab in the custom-purpose dialog and restores its trigger focus', async () => {
+    render(<AccountMapApp repositories={repositories().repositories} />);
+    fireEvent.click(screen.getByRole('button', { name: '이 금액으로 계속' }));
+    await screen.findByRole('heading', { name: '돈이 머무는 곳을 연결해요' });
+    const trigger = screen.getByRole('button', { name: '세부 목적 추가' });
+
+    trigger.focus();
+    fireEvent.click(trigger);
+    const parent = screen.getByRole('combobox', { name: '큰 목적' });
+    const cancel = screen.getByRole('button', { name: '취소' });
+    expect(parent).toHaveFocus();
+
+    fireEvent.keyDown(document, { key: 'Tab', shiftKey: true });
+    expect(cancel).toHaveFocus();
+    fireEvent.keyDown(document, { key: 'Tab' });
+    expect(parent).toHaveFocus();
+
+    fireEvent.click(cancel);
+    await waitFor(() => expect(trigger).toHaveFocus());
+  });
+
   it('keeps a suggestion ephemeral until its explicit acceptance creates a normal transfer', async () => {
     const setup = repositories('transfers');
     render(<AccountMapApp repositories={setup.repositories} />);

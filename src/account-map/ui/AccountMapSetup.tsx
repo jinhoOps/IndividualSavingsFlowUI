@@ -220,10 +220,14 @@ function CustomPurposeDialog({ main, draft, disabled, onCancel, onSave }: {
 }): JSX.Element {
   const panelRef = useRef<HTMLElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
+  const onCancelRef = useRef(onCancel);
+  const pendingRef = useRef(false);
+  onCancelRef.current = onCancel;
   const [parentId, setParentId] = useState<OutflowPurposeId>('system:living');
   const [name, setName] = useState('');
   const [amountWon, setAmountWon] = useState(0);
   const [pending, setPending] = useState(false);
+  pendingRef.current = pending;
   const [feedback, setFeedback] = useState<Exclude<AccountMapDraftSaveResult, { status: 'saved' | 'recovery' }> | null>(null);
   const capacity = customPurposeTargetCapacity(parentId, draft.customPurposes, main);
   const valid = name.trim() !== '' && amountWon > 0 && amountWon <= capacity;
@@ -232,16 +236,30 @@ function CustomPurposeDialog({ main, draft, disabled, onCancel, onSave }: {
     if (returnFocusRef.current === null) returnFocusRef.current = document.activeElement as HTMLElement | null;
     panelRef.current?.querySelector<HTMLElement>('select, input, button')?.focus();
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape' || pending) return;
-      event.preventDefault();
-      onCancel();
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        if (!pendingRef.current) onCancelRef.current();
+        return;
+      }
+      if (event.key !== 'Tab') return;
+      const focusable = [...(panelRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled)') ?? [])];
+      if (focusable.length === 0) return;
+      const first = focusable[0]!;
+      const last = focusable[focusable.length - 1]!;
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
     };
     document.addEventListener('keydown', onKeyDown);
     return () => {
       document.removeEventListener('keydown', onKeyDown);
       returnFocusRef.current?.focus();
     };
-  }, [onCancel, pending]);
+  }, []);
 
   async function submit(): Promise<void> {
     if (!valid || pending || disabled) return;

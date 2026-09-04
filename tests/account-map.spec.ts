@@ -866,12 +866,20 @@ test('creates, archives, and restores a corrected custom purpose without resumin
   await incomeDialog.getByRole('button', { name: '완료' }).click();
 
   for (const [name, amount] of [['여행', '400000'], ['통신비', '600000']] as const) {
-    await page.getByRole('button', { name: '세부 목적 추가' }).click();
+    const purposeTrigger = page.getByRole('button', { name: '세부 목적 추가' });
+    await purposeTrigger.click();
     const purposeDialog = page.getByRole('dialog', { name: '세부 목적 추가' });
     if (name === '여행') {
       const parent = purposeDialog.getByRole('combobox', { name: '큰 목적' });
       await expect(parent).toBeFocused();
       await expect(purposeDialog.getByRole('button', { name: '취소' })).toBeVisible();
+      await page.keyboard.press('Shift+Tab');
+      await expect(purposeDialog.getByRole('button', { name: '취소' })).toBeFocused();
+      await page.keyboard.press('Tab');
+      await expect(parent).toBeFocused();
+      await purposeDialog.getByRole('button', { name: '취소' }).click();
+      await expect(purposeTrigger).toBeFocused();
+      await purposeTrigger.click();
     }
     await purposeDialog.getByLabel('목적 이름').fill(name);
     await purposeDialog.getByLabel('월 금액').fill(amount);
