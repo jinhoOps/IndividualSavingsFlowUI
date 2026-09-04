@@ -199,7 +199,7 @@ async function openNode(page: Page, name: RegExp) {
   await page.locator('.account-map-canvas').click({ position: { x: 8, y: 8 } });
   const node = page.getByRole('button', { name }).first();
   await node.click();
-  await node.click();
+  await page.getByRole('button', { name: '선택한 항목 편집' }).click();
 }
 
 async function touchDrag(page: Page, start: { x: number; y: number }, end: { x: number; y: number }) {
@@ -357,7 +357,7 @@ test('persists a resumed review step and exits to Main without deleting its draf
   expect(await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!).accountMap.draft.step, STORAGE_KEY)).toBe('connect');
 });
 
-test('supports the canonical map, semantic zoom, focus parity, second invoke, and same-modal edit', async ({ page }) => {
+test('supports the canonical map, semantic zoom, focus parity, explicit edit, and same-modal edit', async ({ page }) => {
   await seed(page, editableWorkspace());
   await page.goto('apps/account-map/');
   await expect(page.getByRole('heading', { name: '목적과 계좌의 연결' })).toBeVisible();
@@ -394,10 +394,13 @@ test('supports the canonical map, semantic zoom, focus parity, second invoke, an
   await living.tap();
   await expect(living).toHaveClass(/is-pinned/);
   await living.tap();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await page.getByRole('button', { name: '선택한 항목 편집' }).click();
   await expect(page.getByRole('dialog', { name: /생활비 상세/ })).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await living.tap();
+  await page.getByRole('button', { name: '선택한 항목 편집' }).click();
   const detail = page.getByRole('dialog', { name: /생활비 상세/ });
   await expect(detail).toBeVisible();
   await detail.getByRole('button', { name: '편집' }).click();

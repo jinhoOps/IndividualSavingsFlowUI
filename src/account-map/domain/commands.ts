@@ -3,6 +3,14 @@ import type { FinancialLocation, FinancialRole, InstitutionRef } from '../../wor
 import { parseFinancialLocation, PURPOSE_CAPACITY } from '../../workspace/domain/financialLocation';
 import type { WorkspaceDocument } from '../../workspace/domain/model';
 import { parseWorkspaceDocument } from '../../workspace/domain/validation';
+import { updateLocationDetails } from '../../workspace/domain/locationCommands';
+import {
+  applyAccountFlowCommand,
+  applyTransferAwareLocationCommand,
+  type AccountFlowCommand,
+  type AccountFlowCommandError,
+  type TransferAwareLocationCommand,
+} from './accountFlowCommands';
 import { findLocationDuplicate } from './institutions';
 import {
   SYSTEM_PURPOSE_IDS,
@@ -15,6 +23,7 @@ import {
 import { mainPurposeReferences, recalculateRemainder, reconcilePurpose } from './reconciliation';
 
 export type AccountMapCommand =
+  | AccountFlowCommand
   | { type: 'save-draft'; draft: AccountMapDraft }
   | { type: 'apply-map'; applied: AccountMapApplied }
   | {
@@ -80,6 +89,13 @@ export type AccountMapCommand =
       addRoles: FinancialRole[];
     }
   | {
+      type: 'update-location-details';
+      locationId: string;
+      shortName: string;
+      kind: FinancialLocation['kind'];
+      institution?: InstitutionRef;
+    }
+  | {
       type: 'archive-location';
       locationId: string;
       replacementRemainderByPurpose: Record<string, string | null>;
@@ -88,11 +104,13 @@ export type AccountMapCommand =
       type: 'restore-location';
       locationId: string;
       restoreLinkIds: string[];
+      restoreTransferIds?: string[];
       remainderByPurpose: Record<string, string | null>;
     }
   | { type: 'reset-map' };
 
 export type AccountMapCommandError =
+  | AccountFlowCommandError
   | 'invalid-input'
   | 'location-not-found'
   | 'duplicate-location-active'
@@ -107,6 +125,7 @@ export type AccountMapCommandError =
   | 'duplicate-link'
   | 'target-missing'
   | 'field-conflict'
+  | 'manual-recovery'
   | 'protected-slice-changed';
 
 export type AccountMapCommandResult =
@@ -132,8 +151,25 @@ export function applyAccountMapCommand(
   now: number = Date.now(),
 ): AccountMapCommandResult {
   const parsed = parseWorkspaceDocument(workspace);
-  const source = parsed === null ? null : asLegacyAccountMapWorkspace(parsed);
-  if (source === null || !validTimestamp(now)) return failure('invalid-input');
+  if (parsed === null || !validTimestamp(now)) return failure('invalid-input');
+  if (isAccountFlowCommand(command)) return applyAccountFlowCommand(parsed, command, now);
+  if (isTransferAwareLocationLifecycle(command) && hasTransferAwareState(parsed)) {
+    return applyTransferAwareLocationCommand(parsed, command, now);
+  }
+  if (command.type === 'update-location-details') {
+    const updated = updateLocationDetails(parsed, command.locationId, {
+      shortName: command.shortName,
+      kind: command.kind,
+      ...(Object.prototype.hasOwnProperty.call(command, 'institution') ? { institution: command.institution } : {}),
+    }, now);
+    if (!updated.ok) return failure(updated.reason === 'location-not-found' ? 'location-not-found' : 'invalid-input');
+    const candidate = parseWorkspaceDocument(updated.workspace);
+    return candidate === null || !protectedSlicesEqual(parsed, candidate)
+      ? failure('invalid-input')
+      : { ok: true, workspace: candidate };
+  }
+  const source = asLegacyAccountMapWorkspace(parsed);
+  if (source === null) return failure('invalid-input');
   if (source.main.applied === null) return failure('invalid-input');
 
   let changed: AccountMapCommandResult;
@@ -217,6 +253,24 @@ export function applyAccountMapCommand(
   if (!changed.ok) return changed;
   if (!protectedSlicesEqual(source, changed.workspace)) return failure('protected-slice-changed');
   return changed;
+}
+
+function isAccountFlowCommand(command: AccountMapCommand): command is AccountFlowCommand {
+  return command.type === 'add-transfer'
+    || command.type === 'edit-transfer'
+    || command.type === 'remove-transfer'
+    || command.type === 'confirm-current-main';
+}
+
+function isTransferAwareLocationLifecycle(
+  command: AccountMapCommand,
+): command is TransferAwareLocationCommand {
+  return command.type === 'archive-location' || command.type === 'restore-location';
+}
+
+function hasTransferAwareState(workspace: WorkspaceDocument): boolean {
+  return workspace.accountMap.applied?.schemaVersion === 3
+    || workspace.accountMap.draft?.schemaVersion === 2;
 }
 
 function editMapNode(

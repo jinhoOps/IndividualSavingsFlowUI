@@ -99,6 +99,28 @@ describe('Account Map repository', () => {
     });
     expect(source.replace).not.toHaveBeenCalled();
   });
+
+  it('persists a transfer command only after the selected Account Map sub-slice is upgraded', async () => {
+    const workspace = connectedWorkspace();
+    workspace.locations.push({
+      id: 'brokerage', shortName: '증권', institution: { name: '미래' }, kind: 'brokerage', roles: ['investing'], createdAt: 1, updatedAt: 1,
+    });
+    const source = fakeWorkspaceRepository(workspace);
+    const repository = new BrowserAccountMapRepository(source, () => 20);
+
+    const result = await repository.save(0, {
+      type: 'add-transfer', surface: 'applied',
+      transfer: {
+        id: 'salary-to-brokerage', sourceLocationId: 'checking', targetLocationId: 'brokerage',
+        allocation: { kind: 'fixed', monthlyAmountWon: 200_000 },
+      },
+    });
+
+    expect(result).toMatchObject({ status: 'saved' });
+    expect(source.replace).toHaveBeenCalledWith(0, expect.objectContaining({
+      accountMap: { applied: expect.objectContaining({ schemaVersion: 3 }), draft: null },
+    }));
+  });
 });
 
 function connectedWorkspace(): WorkspaceDocument {

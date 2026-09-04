@@ -39,6 +39,38 @@ describe('Account Map commands', () => {
     expect(JSON.stringify(before)).toBe(sourceRaw);
   });
 
+  it('archives every incident purpose and transfer link, then restores no transfer unless selected', () => {
+    const before = workspace();
+    before.accountMap.applied = {
+      ...transferAwareApplied(),
+      links: [{ ...link('living', 'checking', 1_000_000, true) }],
+      transfers: [{
+        id: 'salary-to-checking', sourceLocationId: 'savings', targetLocationId: 'checking',
+        allocation: { kind: 'fixed', monthlyAmountWon: 100_000 }, status: 'active', createdAt: 1, updatedAt: 1,
+      }, {
+        id: 'user-paused', sourceLocationId: 'checking', targetLocationId: 'savings',
+        allocation: { kind: 'fixed', monthlyAmountWon: 50_000 }, status: 'suspended', suspendedReason: 'user', createdAt: 1, updatedAt: 1,
+      }],
+    };
+
+    const archived = applyAccountMapCommand(before, {
+      type: 'archive-location', locationId: 'checking', replacementRemainderByPurpose: {},
+    }, 20);
+    expect(archived.ok).toBe(true);
+    if (!archived.ok || archived.workspace.accountMap.applied?.schemaVersion !== 3) return;
+    expect(archived.workspace.accountMap.applied.links[0]).toMatchObject({ status: 'suspended', suspendedReason: 'location-archived' });
+    expect(archived.workspace.accountMap.applied.transfers[0]).toMatchObject({ status: 'suspended', suspendedReason: 'location-archived' });
+    expect(archived.workspace.accountMap.applied.transfers[1]).toMatchObject({ status: 'suspended', suspendedReason: 'user' });
+
+    const restored = applyAccountMapCommand(archived.workspace, {
+      type: 'restore-location', locationId: 'checking', restoreLinkIds: ['living'], remainderByPurpose: { 'system:living': 'living' },
+    }, 30);
+    expect(restored.ok).toBe(true);
+    if (!restored.ok || restored.workspace.accountMap.applied?.schemaVersion !== 3) return;
+    expect(restored.workspace.accountMap.applied.links[0]).toMatchObject({ status: 'active' });
+    expect(restored.workspace.accountMap.applied.transfers[0]).toMatchObject({ status: 'suspended', suspendedReason: 'location-archived' });
+  });
+
   it('keeps the legacy applied-v2 and draft-v1 command path writable', () => {
     const before = workspace();
     before.accountMap.applied = validApplied();

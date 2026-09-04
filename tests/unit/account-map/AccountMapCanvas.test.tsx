@@ -163,14 +163,13 @@ describe('AccountMapCanvas', () => {
     expect(within(detail).getByText('400,000원 · 17%')).toBeVisible();
   });
 
-  it('pins a location with one animation before a second activation opens its existing modal', () => {
+  it('pins a location with one animation and opens its modal only from an explicit edit request', () => {
     vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: false })));
     function InteractiveCanvas() {
       const [interaction, setInteraction] = useState({ transientNodeId: null as string | null, pinnedNodeId: null as string | null, modalNodeId: null as string | null });
       return canvas(interaction, {
-        onInvoke: (nodeId) => setInteraction((current) => current.pinnedNodeId === nodeId
-          ? { ...current, modalNodeId: nodeId }
-          : { transientNodeId: null, pinnedNodeId: nodeId, modalNodeId: null }),
+        onInvoke: (nodeId) => setInteraction({ transientNodeId: null, pinnedNodeId: nodeId, modalNodeId: null }),
+        onEditRequest: (nodeId) => setInteraction((current) => ({ ...current, modalNodeId: nodeId })),
       });
     }
     render(<InteractiveCanvas />);
@@ -184,6 +183,8 @@ describe('AccountMapCanvas', () => {
     expect(controlledMotion.connectionOptions).toEqual([{ reducedMotion: false }]);
 
     fireEvent.click(location);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '선택한 항목 편집' }));
     expect(screen.getByRole('dialog', { name: '급여통장 상세' })).toBeVisible();
     expect(controlledMotion.connectionStarts).toBe(1);
   });
@@ -367,13 +368,12 @@ describe('AccountMapCanvas', () => {
     ]);
   });
 
-  it('opens detail only after invoking an already pinned node', () => {
+  it('keeps repeated node invocation pinned and opens detail only from an explicit edit request', () => {
     function InteractiveCanvas() {
       const [interaction, setInteraction] = useState({ transientNodeId: null as string | null, pinnedNodeId: null as string | null, modalNodeId: null as string | null });
       return canvas(interaction, {
-        onInvoke: (nodeId) => setInteraction((current) => current.pinnedNodeId === nodeId
-          ? { ...current, modalNodeId: nodeId }
-          : { transientNodeId: null, pinnedNodeId: nodeId, modalNodeId: null }),
+        onInvoke: (nodeId) => setInteraction({ transientNodeId: null, pinnedNodeId: nodeId, modalNodeId: null }),
+        onEditRequest: (nodeId) => setInteraction((current) => ({ ...current, modalNodeId: nodeId })),
         onModalClose: () => setInteraction((current) => ({ ...current, modalNodeId: null })),
       });
     }
@@ -382,6 +382,8 @@ describe('AccountMapCanvas', () => {
     fireEvent.click(node);
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     fireEvent.click(node);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '선택한 항목 편집' }));
     expect(screen.getByRole('dialog', { name: '생활비 상세' })).toBeVisible();
   });
 
@@ -389,16 +391,15 @@ describe('AccountMapCanvas', () => {
     function InteractiveCanvas() {
       const [interaction, setInteraction] = useState({ transientNodeId: null as string | null, pinnedNodeId: null as string | null, modalNodeId: null as string | null });
       return canvas(interaction, {
-        onInvoke: (nodeId) => setInteraction((current) => current.pinnedNodeId === nodeId
-          ? { ...current, modalNodeId: nodeId }
-          : { transientNodeId: null, pinnedNodeId: nodeId, modalNodeId: null }),
+        onInvoke: (nodeId) => setInteraction({ transientNodeId: null, pinnedNodeId: nodeId, modalNodeId: null }),
+        onEditRequest: (nodeId) => setInteraction((current) => ({ ...current, modalNodeId: nodeId })),
       });
     }
     render(<InteractiveCanvas />);
     expect(screen.queryByRole('button', { name: '연결 추가' })).not.toBeInTheDocument();
     const node = screen.getByRole('button', { name: /생활비.*1,000,000원/ });
     fireEvent.click(node);
-    fireEvent.click(node);
+    fireEvent.click(screen.getByRole('button', { name: '선택한 항목 편집' }));
     fireEvent.click(screen.getByRole('button', { name: '편집' }));
     expect(screen.getByRole('button', { name: '연결 추가' })).toBeVisible();
   });
@@ -417,6 +418,7 @@ describe('AccountMapCanvas', () => {
           locations: state.workspace.locations,
           recovery: state.recovery,
           onInvoke: (nodeId) => dispatch({ type: 'node-invoked', nodeId }),
+          onEditRequest: (nodeId) => dispatch({ type: 'node-edit-requested', nodeId }),
           onKeepLatest: () => {
             onKeepLatest();
             dispatch({ type: 'latest-kept' });
@@ -440,7 +442,7 @@ describe('AccountMapCanvas', () => {
     render(<RecoveringCanvas />);
     const source = screen.getByRole('button', { name: /생활비.*1,000,000원/ });
     fireEvent.click(source);
-    fireEvent.click(source);
+    fireEvent.click(screen.getByRole('button', { name: '선택한 항목 편집' }));
     fireEvent.click(screen.getByRole('button', { name: 'simulate conflict' }));
     const dialog = screen.getByRole('dialog', { name: '생활비 상세' });
     fireEvent.click(screen.getByRole('button', { name: '닫기' }));
@@ -489,6 +491,7 @@ function initialMapState(): AccountMapState {
   return {
     mode: 'map', workspace, main, applied: structuredClone(applied),
     interaction: { transientNodeId: null, pinnedNodeId: null, modalNodeId: null },
+    mainConfirmationRequired: false,
     save: { status: 'idle' },
     recovery: { status: 'none' },
   };

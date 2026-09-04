@@ -36,6 +36,18 @@ describe('Account Map bootstrap', () => {
       });
   });
 
+  it('derives Main confirmation from a transfer-aware applied record without persisting a projection', () => {
+    const workspace = foundWorkspace().workspace;
+    workspace.accountMap.applied = {
+      ...applied(), schemaVersion: 3, sourceMainUpdatedAt: 10, transfers: [],
+    };
+    const before = structuredClone(workspace.accountMap.applied);
+
+    expect(bootstrapAccountMap(foundMain(20), { status: 'found', workspace, needsMigration: false }))
+      .toMatchObject({ mode: 'map', mainConfirmationRequired: true });
+    expect(workspace.accountMap.applied).toEqual(before);
+  });
+
   it.each(['invalid', 'unavailable'] as const)('maps %s workspace state', (status) => {
     const workspaceResult = status === 'invalid'
       ? { status: 'invalid' as const, raw: 'bad' }

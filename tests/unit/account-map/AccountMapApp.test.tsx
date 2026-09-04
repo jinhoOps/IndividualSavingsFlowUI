@@ -35,6 +35,11 @@ afterEach(() => {
   appMotion.closeComplete = null;
 });
 
+function openMapNodeForEdit(node: HTMLElement): void {
+  fireEvent.click(node);
+  fireEvent.click(screen.getByRole('button', { name: '선택한 항목 편집' }));
+}
+
 describe('AccountMapApp', () => {
   it('uses the shared reading-width frame without moving the launcher across Account Map states', () => {
     const setupRender = render(<AccountMapApp repositories={repositories()} />);
@@ -142,8 +147,7 @@ describe('AccountMapApp', () => {
     const setup = mapConnectionRepositories();
     render(<AccountMapApp repositories={setup.repositories} />);
     const living = screen.getByRole('button', { name: /생활비 · 1,000,000원/ });
-    fireEvent.click(living);
-    fireEvent.click(living);
+    openMapNodeForEdit(living);
     fireEvent.click(screen.getByRole('button', { name: '편집' }));
     fireEvent.click(screen.getByRole('button', { name: '연결 추가' }));
     fireEvent.click(within(screen.getByRole('dialog', { name: '생활비 연결 추가' })).getByRole('button', { name: /저축통장/ }));
@@ -279,8 +283,7 @@ describe('AccountMapApp', () => {
     const setup = mapConnectionRepositories(false, true);
     render(<AccountMapApp repositories={setup.repositories} />);
     const living = screen.getByRole('button', { name: /생활비 · 1,000,000원/ });
-    fireEvent.click(living);
-    fireEvent.click(living);
+    openMapNodeForEdit(living);
     fireEvent.click(screen.getByRole('button', { name: '편집' }));
     fireEvent.click(screen.getByRole('button', { name: '연결 추가' }));
     fireEvent.click(within(screen.getByRole('dialog', { name: '생활비 연결 추가' })).getByRole('button', { name: /저축통장/ }));
@@ -300,8 +303,7 @@ describe('AccountMapApp', () => {
     const setup = mapConnectionRepositories(true);
     render(<AccountMapApp repositories={setup.repositories} />);
     const living = screen.getByRole('button', { name: /생활비 · 1,000,000원/ });
-    fireEvent.click(living);
-    fireEvent.click(living);
+    openMapNodeForEdit(living);
     fireEvent.click(screen.getByRole('button', { name: '편집' }));
     fireEvent.click(screen.getByRole('button', { name: '연결 추가' }));
     fireEvent.click(screen.getByRole('button', { name: '새 계좌·보관처 추가' }));
@@ -320,8 +322,7 @@ describe('AccountMapApp', () => {
     const setup = purposeLifecycleRepositories(false);
     render(<AccountMapApp repositories={setup.repositories} />);
     const telecom = screen.getByRole('button', { name: /통신비 · 200,000원/ });
-    fireEvent.click(telecom);
-    fireEvent.click(telecom);
+    openMapNodeForEdit(telecom);
     fireEvent.click(screen.getByRole('button', { name: '통신비 더보기' }));
     fireEvent.click(screen.getByRole('menuitem', { name: '목적 보관' }));
     fireEvent.click(screen.getByRole('button', { name: '보관하기' }));
@@ -348,8 +349,7 @@ describe('AccountMapApp', () => {
     render(<AccountMapApp repositories={setup.repositories} />);
     const telecom = screen.getByRole('button', { name: /통신비 · 200,000원/ });
     const heading = screen.getByRole('heading', { name: '목적과 계좌의 연결' });
-    fireEvent.click(telecom);
-    fireEvent.click(telecom);
+    openMapNodeForEdit(telecom);
     fireEvent.click(screen.getByRole('button', { name: '통신비 더보기' }));
     fireEvent.click(screen.getByRole('menuitem', { name: '목적 보관' }));
     fireEvent.click(screen.getByRole('button', { name: '보관하기' }));
@@ -377,8 +377,7 @@ describe('AccountMapApp', () => {
     render(<AccountMapApp repositories={setup.repositories} />);
     const telecom = screen.getByRole('button', { name: /통신비 · 200,000원/ });
     const heading = screen.getByRole('heading', { name: '목적과 계좌의 연결' });
-    fireEvent.click(telecom);
-    fireEvent.click(telecom);
+    openMapNodeForEdit(telecom);
     fireEvent.click(screen.getByRole('button', { name: '통신비 더보기' }));
     fireEvent.click(screen.getByRole('menuitem', { name: '목적 보관' }));
     fireEvent.click(screen.getByRole('button', { name: '보관하기' }));
@@ -640,8 +639,7 @@ describe('AccountMapApp', () => {
     const setup = staleModalRepositories();
     render(<AccountMapApp repositories={setup.repositories} />);
     const livingNode = screen.getByRole('button', { name: /생활비 · 1,000,000원/ });
-    fireEvent.click(livingNode);
-    fireEvent.click(livingNode);
+    openMapNodeForEdit(livingNode);
     fireEvent.click(screen.getByRole('button', { name: '편집' }));
     const amount = screen.getByRole('textbox', { name: '생활비통장 월 금액' });
     fireEvent.change(amount, { target: { value: '650000' } });
@@ -667,8 +665,7 @@ describe('AccountMapApp', () => {
     const setup = staleLocationWithoutMainRepositories();
     render(<AccountMapApp repositories={setup.repositories} />);
     const locationNode = screen.getByRole('button', { name: /계좌·보관처 · 생활비통장 ·/ });
-    fireEvent.click(locationNode);
-    fireEvent.click(locationNode);
+    openMapNodeForEdit(locationNode);
     fireEvent.click(screen.getByRole('button', { name: '편집' }));
     fireEvent.change(screen.getByRole('textbox', { name: '표시 이름' }), { target: { value: '생활통장' } });
     fireEvent.click(screen.getByRole('button', { name: '저장' }));
@@ -697,8 +694,7 @@ describe('AccountMapApp', () => {
     const setup = staleModalRepositories();
     render(<AccountMapApp repositories={setup.repositories} />);
     const livingNode = screen.getByRole('button', { name: /생활비 · 1,000,000원/ });
-    fireEvent.click(livingNode);
-    fireEvent.click(livingNode);
+    openMapNodeForEdit(livingNode);
     fireEvent.click(screen.getByRole('button', { name: '편집' }));
     fireEvent.change(screen.getByRole('textbox', { name: '생활비통장 월 금액' }), { target: { value: '650000' } });
     fireEvent.click(screen.getByRole('button', { name: '저장' }));
@@ -720,8 +716,7 @@ describe('AccountMapApp', () => {
     expect(setup.save).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole('button', { name: '최신 상태에서 다시 적용' })).not.toBeInTheDocument();
 
-    fireEvent.click(livingNode);
-    fireEvent.click(livingNode);
+    openMapNodeForEdit(livingNode);
     fireEvent.click(screen.getByRole('button', { name: '편집' }));
     expect(screen.getByRole('textbox', { name: '생활비통장 월 금액' })).toHaveValue('650,000');
   });
@@ -730,8 +725,7 @@ describe('AccountMapApp', () => {
     const setup = staleCompoundModalRepositories();
     render(<AccountMapApp repositories={setup.repositories} />);
     const locationNode = screen.getByRole('button', { name: /계좌·보관처 · 생활비통장 ·/ });
-    fireEvent.click(locationNode);
-    fireEvent.click(locationNode);
+    openMapNodeForEdit(locationNode);
     fireEvent.click(screen.getByRole('button', { name: '편집' }));
     const label = screen.getByRole('textbox', { name: '표시 이름' });
     const amount = screen.getByRole('textbox', { name: '생활비 월 금액' });
@@ -758,8 +752,7 @@ describe('AccountMapApp', () => {
     const setup = staleCompoundModalRepositories(true);
     render(<AccountMapApp repositories={setup.repositories} />);
     const locationNode = screen.getByRole('button', { name: /계좌·보관처 · 생활비통장 ·/ });
-    fireEvent.click(locationNode);
-    fireEvent.click(locationNode);
+    openMapNodeForEdit(locationNode);
     fireEvent.click(screen.getByRole('button', { name: '편집' }));
     const label = screen.getByRole('textbox', { name: '표시 이름' });
     const amount = screen.getByRole('textbox', { name: '생활비 월 금액' });
@@ -778,8 +771,7 @@ describe('AccountMapApp', () => {
     const setup = staleArchiveRepositories();
     render(<AccountMapApp repositories={setup.repositories} />);
     const locationNode = screen.getByRole('button', { name: /계좌·보관처 · 생활비통장 ·/ });
-    fireEvent.click(locationNode);
-    fireEvent.click(locationNode);
+    openMapNodeForEdit(locationNode);
     fireEvent.click(screen.getByRole('button', { name: '보관' }));
     const replacement = screen.getByRole('combobox', { name: '새 나머지 계좌' });
     fireEvent.change(replacement, { target: { value: 'backup-link' } });

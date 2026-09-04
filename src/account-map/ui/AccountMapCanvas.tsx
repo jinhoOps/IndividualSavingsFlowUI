@@ -28,6 +28,7 @@ export interface AccountMapCanvasProps {
   onTransient(nodeId: string): void;
   onBlur(nodeId: string): void;
   onInvoke(nodeId: string): void;
+  onEditRequest?(nodeId: string): void;
   onBackground(): void;
   onEscape(): void;
   onModalClose?(): void;
@@ -47,7 +48,7 @@ export interface AccountMapCanvasProps {
 
 export function AccountMapCanvas({
   applied, main, locations, interaction, viewport,
-  onTransient, onBlur, onInvoke, onBackground, onEscape, onModalClose = () => undefined,
+  onTransient, onBlur, onInvoke, onEditRequest, onBackground, onEscape, onModalClose = () => undefined,
   onSaveNodeEdit, onConnectLocation, onCreateAndConnectLocation, onArchivePurpose, onArchiveLocation, onRestoreLocation,
   recovery = { status: 'none' }, recoveryPending = false, saveFailed = false,
   onReapply = async () => false, onKeepLatest = () => undefined, hasExternalModal = false,
@@ -224,10 +225,13 @@ export function AccountMapCanvas({
     <section className="account-map-canvas-shell" aria-labelledby="account-map-canvas-title">
       <header className="account-map-canvas-toolbar">
         <div><p className="account-map-eyebrow">연결 지도</p><h2 ref={headingRef} id="account-map-canvas-title" tabIndex={-1}>목적과 계좌의 연결</h2></div>
-        <div className="account-map-zoom-control" role="group" aria-label="지도 확대 수준">
-          <button type="button" aria-label="축소" disabled={zoom === 'overview'} onClick={() => changeZoom(-1)}>−</button>
-          <span>{zoomLabels[zoom]}</span>
-          <button type="button" aria-label="확대" disabled={zoom === 'detail'} onClick={() => changeZoom(1)}>＋</button>
+        <div className="account-map-canvas-toolbar__controls">
+          {interaction.modalNodeId !== null || interaction.pinnedNodeId === null || onEditRequest === undefined ? null : <Button variant="secondary" type="button" onClick={() => onEditRequest(interaction.pinnedNodeId!)}>선택한 항목 편집</Button>}
+          <div className="account-map-zoom-control" role="group" aria-label="지도 확대 수준">
+            <button type="button" aria-label="축소" disabled={zoom === 'overview'} onClick={() => changeZoom(-1)}>−</button>
+            <span>{zoomLabels[zoom]}</span>
+            <button type="button" aria-label="확대" disabled={zoom === 'detail'} onClick={() => changeZoom(1)}>＋</button>
+          </div>
         </div>
       </header>
       <div

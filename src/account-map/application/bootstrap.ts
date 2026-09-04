@@ -7,6 +7,8 @@ import type {
   StoredAccountMapApplied,
   StoredAccountMapDraft,
 } from '../domain/model';
+import { mapNeedsMainConfirmation } from '../domain/accountFlowCommands';
+import { projectAccountMapAppliedForView } from '../domain/accountMapVersioning';
 
 export function bootstrapAccountMap(
   mainResult: AccountMapMainSourceLoadResult,
@@ -34,6 +36,9 @@ export function bootstrapAccountMap(
     return {
       mode: 'map', workspace, main, applied: structuredClone(applied),
       interaction: { transientNodeId: null, pinnedNodeId: null, modalNodeId: null },
+      mainConfirmationRequired: mapNeedsMainConfirmation(
+        projectAccountMapAppliedForView(workspace.accountMap.applied!), main,
+      ),
       save: { status: 'idle' }, recovery: { status: 'none' },
     };
   }

@@ -53,6 +53,7 @@
 .account-map-canvas-shell { overflow: hidden; border: 1px solid var(--line); border-radius: 24px; background: var(--panel); }
 .account-map-canvas-toolbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 14px; border-bottom: 1px solid var(--line); padding: 16px 18px; }
 .account-map-canvas-toolbar h2, .account-map-canvas-toolbar p { margin: 0; }
+.account-map-canvas-toolbar__controls { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
 .account-map-zoom-control { display: flex; min-height: 44px; align-items: center; border: 1px solid var(--line); border-radius: 12px; padding: 3px; }
 .account-map-zoom-control button { min-width: 44px; min-height: 44px; border: 0; border-radius: 9px; background: transparent; color: var(--muted); font-weight: 700; }
 .account-map-zoom-control span { min-width: 66px; text-align: center; font-size: .8rem; }

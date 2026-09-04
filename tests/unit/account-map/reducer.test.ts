@@ -6,11 +6,13 @@ import type { MainData } from '../../../src/main/domain/model';
 import { createEmptyWorkspace } from '../../../src/workspace/domain/model';
 
 describe('Account Map reducer', () => {
-  it('pins before opening the same node modal', () => {
+  it('pins a node on invocation and opens editing only through an explicit request', () => {
     const hovered = accountMapReducer(mapState(), { type: 'node-hovered', nodeId: 'system:living' });
     const pinned = accountMapReducer(hovered, { type: 'node-invoked', nodeId: 'system:living' });
     expect(pinned.mode === 'map' && pinned.interaction).toMatchObject({ pinnedNodeId: 'system:living', modalNodeId: null });
-    const opened = accountMapReducer(pinned, { type: 'node-invoked', nodeId: 'system:living' });
+    const again = accountMapReducer(pinned, { type: 'node-invoked', nodeId: 'system:living' });
+    expect(again.mode === 'map' && again.interaction.modalNodeId).toBeNull();
+    const opened = accountMapReducer(again, { type: 'node-edit-requested', nodeId: 'system:living' });
     expect(opened.mode === 'map' && opened.interaction.modalNodeId).toBe('system:living');
   });
 
@@ -25,7 +27,7 @@ describe('Account Map reducer', () => {
 
   it('Escape first closes a modal, then clears the pinned node', () => {
     let state = accountMapReducer(mapState(), { type: 'node-invoked', nodeId: 'a' });
-    state = accountMapReducer(state, { type: 'node-invoked', nodeId: 'a' });
+    state = accountMapReducer(state, { type: 'node-edit-requested', nodeId: 'a' });
     state = accountMapReducer(state, { type: 'escape-invoked' });
     expect(state.mode === 'map' && state.interaction).toMatchObject({ modalNodeId: null, pinnedNodeId: 'a' });
     state = accountMapReducer(state, { type: 'escape-invoked' });
@@ -65,7 +67,7 @@ describe('Account Map reducer', () => {
   it('stores a stale modal intent without closing the active modal', () => {
     let current = mapState();
     current = accountMapReducer(current, { type: 'node-invoked', nodeId: 'a' });
-    current = accountMapReducer(current, { type: 'node-invoked', nodeId: 'a' });
+    current = accountMapReducer(current, { type: 'node-edit-requested', nodeId: 'a' });
     const latest = workspaceWithMain(2);
 
     const conflicted = accountMapReducer(current, {
@@ -144,7 +146,7 @@ describe('Account Map reducer', () => {
     expect(reapplied).toMatchObject({ mode: 'map', main: latestMain });
 
     let modal = accountMapReducer(mapState(), { type: 'node-invoked', nodeId: 'a' });
-    modal = accountMapReducer(modal, { type: 'node-invoked', nodeId: 'a' });
+    modal = accountMapReducer(modal, { type: 'node-edit-requested', nodeId: 'a' });
     const manual = accountMapReducer(modal, {
       type: 'save-manual-conflicted', latest: latestMap,
       action: 'edit-node', targets: [{ kind: 'node', id: 'a' }], reason: 'compound-edit',
@@ -197,7 +199,7 @@ describe('Account Map reducer', () => {
     })).toEqual({ mode: 'main-required' });
 
     let modal = accountMapReducer(mapState(), { type: 'node-invoked', nodeId: 'a' });
-    modal = accountMapReducer(modal, { type: 'node-invoked', nodeId: 'a' });
+    modal = accountMapReducer(modal, { type: 'node-edit-requested', nodeId: 'a' });
     expect(accountMapReducer(modal, {
       type: 'save-manual-conflicted', latest: withoutMain,
       action: 'edit-node', targets: [{ kind: 'node', id: 'a' }], reason: 'compound-edit',
@@ -206,7 +208,7 @@ describe('Account Map reducer', () => {
 
   it('keeps the modal open while adopting latest for manual compound review', () => {
     let current = accountMapReducer(mapState(), { type: 'node-invoked', nodeId: 'a' });
-    current = accountMapReducer(current, { type: 'node-invoked', nodeId: 'a' });
+    current = accountMapReducer(current, { type: 'node-edit-requested', nodeId: 'a' });
     const latest = workspaceWithMain(2);
     latest.accountMap.applied = applied();
     const conflicted = accountMapReducer(current, {
@@ -229,7 +231,7 @@ describe('Account Map reducer', () => {
     if (current.mode !== 'map') throw new Error('map state required');
     current = { ...current, workspace: { ...current.workspace, locations: [{ id: 'checking', shortName: '생활비', kind: 'bank', roles: ['spending'], createdAt: 1, updatedAt: 1 }] } };
     current = accountMapReducer(current, { type: 'node-invoked', nodeId: 'location:checking' });
-    current = accountMapReducer(current, { type: 'node-invoked', nodeId: 'location:checking' });
+    current = accountMapReducer(current, { type: 'node-edit-requested', nodeId: 'location:checking' });
     const latest = workspaceWithMain(2);
     latest.accountMap.applied = applied();
     const conflicted = accountMapReducer(current, {
@@ -282,7 +284,7 @@ describe('Account Map reducer', () => {
 
   it('keeps the active map modal when latest no longer has an applied map', () => {
     let current = accountMapReducer(mapState(), { type: 'node-invoked', nodeId: 'a' });
-    current = accountMapReducer(current, { type: 'node-invoked', nodeId: 'a' });
+    current = accountMapReducer(current, { type: 'node-edit-requested', nodeId: 'a' });
     const latest = workspaceWithMain(2);
     latest.accountMap.draft = draft();
     const conflicted = accountMapReducer(current, {
@@ -341,6 +343,22 @@ describe('Account Map reducer', () => {
     const reset = accountMapReducer(current, { type: 'reset-succeeded', workspace });
     expect(reset).toMatchObject({ mode: 'setup', draft: null, step: 'connect' });
   });
+
+  it('derives and clears map-level Main confirmation only from refreshed workspaces', () => {
+    const stale = workspaceWithMain(2);
+    stale.main.applied = { ...main(), updatedAt: 20 };
+    stale.accountMap.applied = {
+      schemaVersion: 3, sourceMainUpdatedAt: 10, customPurposes: [], links: [], transfers: [], setupCompletedAt: 10, updatedAt: 10,
+    };
+    const refreshed = accountMapReducer(mapState(), { type: 'external-workspace-refreshed', workspace: stale });
+    expect(refreshed).toMatchObject({ mode: 'map', mainConfirmationRequired: true, workspace: { revision: 2 } });
+
+    const confirmed = structuredClone(stale);
+    if (confirmed.accountMap.applied?.schemaVersion !== 3) throw new Error('v3 map required');
+    confirmed.accountMap.applied.sourceMainUpdatedAt = 20;
+    const cleared = accountMapReducer(refreshed, { type: 'main-confirmation-succeeded', workspace: confirmed });
+    expect(cleared).toMatchObject({ mode: 'map', mainConfirmationRequired: false });
+  });
 });
 
 function mapState(): AccountMapState {
@@ -348,6 +366,7 @@ function mapState(): AccountMapState {
   return {
     mode: 'map', workspace, main: main(), applied: applied(),
     interaction: { transientNodeId: null, pinnedNodeId: null, modalNodeId: null },
+    mainConfirmationRequired: false,
     save: { status: 'idle' }, recovery: { status: 'none' },
   };
 }
