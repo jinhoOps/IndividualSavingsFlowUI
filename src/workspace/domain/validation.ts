@@ -27,8 +27,9 @@ import {
   type FinancialRole,
 } from './financialLocation';
 import {
-  WORKSPACE_SCHEMA_VERSION,
+  WORKSPACE_V3_SCHEMA_VERSION,
   type WorkspaceDocument,
+  type WorkspaceDocumentV3,
 } from './model';
 
 const setupSteps = new Set<SetupStep>([
@@ -52,18 +53,26 @@ export type WorkspaceDocumentValidationResult =
   | { status: 'schema' | 'reference' };
 
 export function parseWorkspaceDocument(value: unknown): WorkspaceDocument | null {
-  const result = validateWorkspaceDocument(value);
+  return parseWorkspaceV3Document(value);
+}
+
+export function parseWorkspaceV3Document(value: unknown): WorkspaceDocumentV3 | null {
+  const result = validateWorkspaceV3Document(value);
   return result.status === 'valid' ? result.workspace : null;
 }
 
 export function validateWorkspaceDocument(value: unknown): WorkspaceDocumentValidationResult {
-  const workspace = parseWorkspaceShape(value);
+  return validateWorkspaceV3Document(value);
+}
+
+export function validateWorkspaceV3Document(value: unknown): WorkspaceDocumentValidationResult {
+  const workspace = parseWorkspaceV3Shape(value);
   if (workspace === null) return { status: 'schema' };
   if (!validateWorkspaceReferences(workspace)) return { status: 'reference' };
   return { status: 'valid', workspace };
 }
 
-function parseWorkspaceShape(value: unknown): WorkspaceDocument | null {
+function parseWorkspaceV3Shape(value: unknown): WorkspaceDocumentV3 | null {
   if (!hasExactKeys(value, [
     'schemaVersion',
     'revision',
@@ -74,7 +83,7 @@ function parseWorkspaceShape(value: unknown): WorkspaceDocument | null {
     'locations',
     'accountMap',
   ])
-    || value.schemaVersion !== WORKSPACE_SCHEMA_VERSION
+    || value.schemaVersion !== WORKSPACE_V3_SCHEMA_VERSION
     || !isNonnegativeSafeInteger(value.revision)
     || !isTimestamp(value.updatedAt)) return null;
 
@@ -90,7 +99,7 @@ function parseWorkspaceShape(value: unknown): WorkspaceDocument | null {
     || accountMap === null) return null;
 
   return {
-    schemaVersion: WORKSPACE_SCHEMA_VERSION,
+    schemaVersion: WORKSPACE_V3_SCHEMA_VERSION,
     revision: value.revision,
     updatedAt: value.updatedAt,
     main,

@@ -14,14 +14,24 @@ import {
   parseFinancialLocation,
   type FinancialLocation,
 } from '../domain/financialLocation';
-import type { WorkspaceDocument } from '../domain/model';
+import type { WorkspaceDocument, WorkspaceDocumentV4 } from '../domain/model';
 import { parseWorkspaceDocument, validateWorkspaceDocument } from '../domain/validation';
+import { convertWorkspaceV3Document } from './workspaceV3Migration';
 
 export type RetiredWorkspaceConversionResult =
   | {
       status: 'converted';
       sourceVersion: 1 | 2;
       workspace: WorkspaceDocument;
+      simulationMigration: SimulationDraftMigration | null;
+    }
+  | { status: 'invalid'; reason: 'schema' | 'reference' };
+
+export type RetiredWorkspaceV4ConversionResult =
+  | {
+      status: 'converted';
+      sourceVersion: 1 | 2;
+      workspace: WorkspaceDocumentV4;
       simulationMigration: SimulationDraftMigration | null;
     }
   | { status: 'invalid'; reason: 'schema' | 'reference' };
@@ -107,6 +117,29 @@ export function convertRetiredWorkspaceDocument(
     sourceVersion: value.schemaVersion,
     workspace,
     simulationMigration: simulation.migration,
+  };
+}
+
+/**
+ * Retired v1/v2 conversion remains a read-only source path. This composition
+ * deliberately leaves the current v3 repository contract unchanged until the
+ * atomic repository cutover.
+ */
+export function convertRetiredWorkspaceToV4(
+  value: unknown,
+  migratedAt: number,
+): RetiredWorkspaceV4ConversionResult {
+  const retired = convertRetiredWorkspaceDocument(value, migratedAt);
+  if (retired.status !== 'converted') return retired;
+
+  const v4 = convertWorkspaceV3Document(retired.workspace, migratedAt);
+  if (v4.status !== 'converted') return v4;
+
+  return {
+    status: 'converted',
+    sourceVersion: retired.sourceVersion,
+    workspace: v4.workspace,
+    simulationMigration: retired.simulationMigration,
   };
 }
 
