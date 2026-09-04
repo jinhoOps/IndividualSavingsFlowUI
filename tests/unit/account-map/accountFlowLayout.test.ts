@@ -71,7 +71,20 @@ describe('layoutAccountFlow', () => {
       'income:external',
       ...Array.from({ length: 28 }, (_, index) => `account:${index}`),
     ]);
+    const accountsByRank = layout.nodes
+      .filter((item) => item.kind === 'account')
+      .slice()
+      .sort((left, right) => left.rank - right.rank);
+    expect(accountsByRank.every((item, index) => {
+      const previous = accountsByRank[index - 1];
+      return previous === undefined || item.y !== previous.y || item.x > previous.x;
+    })).toBe(true);
     expect(layout.edges.every(({ points }) => points.length === 4)).toBe(true);
+    const wrapped = layout.edges.find(({ id }) => id === 'transfer:4');
+    const source = node(layout, 'account:4');
+    const target = node(layout, 'account:5');
+    expect(wrapped?.points[0]).toEqual({ x: source.x + source.width / 2, y: source.y + source.height });
+    expect(wrapped?.points.at(-1)).toEqual({ x: target.x + target.width / 2, y: target.y });
   });
 });
 

@@ -13,6 +13,7 @@ export type PositionedAccountFlowNode = AccountFlowNode & {
   width: number;
   height: number;
   rank: number;
+  lane: number;
 };
 
 export type RoutedAccountFlowEdge = AccountFlowEdge & {
@@ -204,7 +205,7 @@ function placeDesktop(ranks: ReadonlyMap<number, readonly AccountFlowNode[]>, vi
   const nodes: PositionedAccountFlowNode[] = [];
   for (const [laneIndex, lane] of lanes.entries()) {
     for (const [rankIndex, rank] of lane.ranks.entries()) {
-      const column = laneIndex % 2 === 0 ? rankIndex : columnCount - 1 - rankIndex;
+      const column = rankIndex;
       for (const [index, node] of (ranks.get(rank) ?? []).entries()) {
         nodes.push({
           ...node,
@@ -213,6 +214,7 @@ function placeDesktop(ranks: ReadonlyMap<number, readonly AccountFlowNode[]>, vi
           width: nodeWidth,
           height: nodeHeight,
           rank,
+          lane: laneIndex,
         });
       }
     }
@@ -237,7 +239,7 @@ function placeMobile(ranks: ReadonlyMap<number, readonly AccountFlowNode[]>, vie
   const height = Math.max(viewport.height, contentHeight);
   let y = margin;
   const nodes: PositionedAccountFlowNode[] = [];
-  for (const block of blocks) {
+  for (const [lane, block] of blocks.entries()) {
     const contentWidth = block.columns * block.nodeWidth + (block.columns - 1) * gap;
     const xStart = Math.max(margin, (width - contentWidth) / 2);
     for (const [index, node] of block.nodes.entries()) {
@@ -250,6 +252,7 @@ function placeMobile(ranks: ReadonlyMap<number, readonly AccountFlowNode[]>, vie
         width: block.nodeWidth,
         height: nodeHeight,
         rank: block.rank,
+        lane,
       });
     }
     y += block.rows * nodeHeight + Math.max(0, block.rows - 1) * gap + gap * 2;
@@ -272,7 +275,7 @@ function routeEdge(
   const sourceCenterY = source.y + source.height / 2;
   const targetCenterY = target.y + target.height / 2;
   if (direction === 'left-to-right') {
-    if (target.y > source.y + source.height / 2 && Math.abs(targetCenterX - sourceCenterX) < 0.01) {
+    if (target.lane > source.lane) {
       const sourceY = source.y + source.height;
       const targetY = target.y;
       const middleY = (sourceY + targetY) / 2;
