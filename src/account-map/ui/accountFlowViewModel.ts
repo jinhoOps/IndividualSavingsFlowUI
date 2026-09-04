@@ -1,4 +1,5 @@
 import {
+  accountFlowReadingOrder,
   accountNodeId,
   purposeNodeId,
   type AccountFlowEdge,
@@ -80,7 +81,7 @@ export function buildAccountFlowViewModel(
       : [],
     detailGroups: buildDetailGroups(graph, selection, selectionState, nodeById),
     tableRows: buildCanonicalTableRows(graph, nodeById),
-    focusOrder: sortIds(graph.nodes.map(({ id }) => id)),
+    focusOrder: accountFlowReadingOrder(graph),
   };
 }
 
@@ -98,13 +99,14 @@ function accountReachability(graph: AccountFlowGraph, selectedAccountId: string)
   const downstream = traverse(selectedAccountId, transferEdges, 'downstream');
   const nodeIds = new Set([...upstream.nodeIds, ...downstream.nodeIds]);
   const edgeIds = new Set([...upstream.edgeIds, ...downstream.edgeIds]);
+  const terminalAccountIds = new Set([selectedAccountId, ...downstream.nodeIds]);
 
   for (const edge of graph.edges) {
     if (edge.kind === 'external-income' && nodeIds.has(edge.targetId)) {
       nodeIds.add(edge.sourceId);
       edgeIds.add(edge.id);
     }
-    if ((edge.kind === 'purpose' || edge.kind === 'warning') && edge.sourceId === selectedAccountId) {
+    if ((edge.kind === 'purpose' || edge.kind === 'warning') && terminalAccountIds.has(edge.sourceId)) {
       nodeIds.add(edge.targetId);
       edgeIds.add(edge.id);
     }

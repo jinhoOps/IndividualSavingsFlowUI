@@ -1,4 +1,4 @@
-import type { AccountFlowEdge, AccountFlowGraph, AccountFlowNode } from './accountFlowGraph';
+import { accountFlowReadingOrder, type AccountFlowEdge, type AccountFlowGraph, type AccountFlowNode } from './accountFlowGraph';
 
 export type AccountFlowZoom = 'overview' | 'default' | 'detail';
 
@@ -69,7 +69,7 @@ export function layoutAccountFlow(
     height: geometry.height,
     nodes: geometry.nodes,
     edges,
-    focusOrder: geometry.nodes.map(({ id }) => id),
+    focusOrder: accountFlowReadingOrder(graph),
   };
 }
 
@@ -185,7 +185,7 @@ function placeDesktop(ranks: ReadonlyMap<number, readonly AccountFlowNode[]>, vi
   const availableWidth = Math.max(1, viewport.width - margin * 2);
   const rankGap = rankKeys.length <= 1 ? 0 : Math.min(
     gap,
-    Math.max(4, (availableWidth - rankKeys.length * 44) / (rankKeys.length - 1)),
+    Math.max(0, (availableWidth - rankKeys.length * 44) / (rankKeys.length - 1)),
   );
   const nodeWidth = Math.min(
     desktopNodeWidth,

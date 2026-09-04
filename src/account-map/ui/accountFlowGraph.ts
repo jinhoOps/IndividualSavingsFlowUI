@@ -228,6 +228,33 @@ export function buildAccountFlowGraph(
   };
 }
 
+/**
+ * One deterministic reading order shared by canvas controls and the accessible
+ * view-model focus contract. Accounts follow the calculator's directed
+ * topology; purpose and warning terminals follow only after the account route.
+ */
+export function accountFlowReadingOrder(graph: AccountFlowGraph): string[] {
+  const nodeById: ReadonlyMap<string, AccountFlowNode> = new Map(graph.nodes.map((node) => [node.id, node]));
+  const accountIds = new Set(
+    graph.nodes.filter((node) => node.kind === 'account').map(({ id }) => id),
+  );
+  const ordered: string[] = [];
+  const append = (id: string) => {
+    if (nodeById.has(id) && !ordered.includes(id)) ordered.push(id);
+  };
+
+  for (const node of graph.nodes.filter((node) => node.kind === 'external-income').sort(compareNodes)) append(node.id);
+  for (const locationId of graph.topologicalOrder) append(accountNodeId(locationId));
+  for (const id of [...accountIds].filter((id) => !ordered.includes(id)).sort((left, right) => compareNodes(nodeById.get(left)!, nodeById.get(right)!))) append(id);
+  for (const node of graph.nodes
+    .filter((node) => node.kind === 'purpose' || node.kind === 'warning')
+    .sort(compareTerminalNodes)) {
+    append(node.id);
+  }
+  for (const node of graph.nodes.slice().sort(compareNodes)) append(node.id);
+  return ordered;
+}
+
 export function accountNodeId(locationId: string): `account:${string}` {
   return `account:${locationId}`;
 }
@@ -278,6 +305,12 @@ function compareNodes(left: AccountFlowNode, right: AccountFlowNode): number {
   return nodeKindRank(left) - nodeKindRank(right) || compareById(left, right);
 }
 
+function compareTerminalNodes(left: AccountFlowNode, right: AccountFlowNode): number {
+  const kindRank = nodeKindRank(left) - nodeKindRank(right);
+  if (kindRank !== 0) return kindRank;
+  return normalizedLabel(left.label).localeCompare(normalizedLabel(right.label)) || compareById(left, right);
+}
+
 function nodeKindRank(node: AccountFlowNode): number {
   if (node.kind === 'external-income') return 0;
   if (node.kind === 'account') return 1;
@@ -287,4 +320,8 @@ function nodeKindRank(node: AccountFlowNode): number {
 
 function compareById(left: { id: string }, right: { id: string }): number {
   return left.id.localeCompare(right.id);
+}
+
+function normalizedLabel(value: string): string {
+  return value.normalize('NFKC').trim().toLocaleLowerCase('ko-KR');
 }

@@ -51,12 +51,13 @@ describe('layoutAccountFlow', () => {
     expect(amountChanged.edges.filter(({ kind }) => kind === 'fixed').map(({ strokeWidth }) => strokeWidth)).toEqual(
       first.edges.filter(({ kind }) => kind === 'fixed').map(({ strokeWidth }) => strokeWidth),
     );
-    expect(first.focusOrder).toEqual(first.nodes.map(({ id }) => id));
-    expect(first.focusOrder.indexOf('account:salary')).toBeLessThan(first.focusOrder.indexOf('account:living'));
+    expect(first.focusOrder.slice(0, 4)).toEqual([
+      'income:external', 'account:salary', 'account:living', 'account:brokerage',
+    ]);
   });
 
   it('fits a dense desktop transfer topology inside the default viewport without changing its node sizes by amount', () => {
-    const graph = denseTransferGraph(12);
+    const graph = denseTransferGraph(26);
 
     const layout = layoutAccountFlow(graph, { width: 1280, height: 900 }, 'default');
 

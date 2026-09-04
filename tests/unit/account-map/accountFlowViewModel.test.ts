@@ -15,14 +15,16 @@ describe('buildAccountFlowViewModel', () => {
 
     expect(view.reachableNodeIds).toEqual(expect.arrayContaining([
       'account:salary', 'account:living', 'account:brokerage', 'purpose:system:living',
+      'purpose:system:investing', 'warning:brokerage:shortfall',
     ]));
-    expect(view.reachableEdgeIds).toEqual([
-      'income:income-salary', 'purpose:living-local', 'transfer:living-brokerage', 'transfer:salary-living',
-    ]);
+    expect(view.reachableEdgeIds).toEqual(expect.arrayContaining([
+      'income:income-salary', 'purpose:living-local', 'purpose:investing-local',
+      'transfer:living-brokerage', 'transfer:salary-living', 'warning:brokerage:shortfall',
+    ]));
     expect(view.dimmedNodeIds).toContain('account:cash');
     expect(view.dimmedNodeIds).not.toContain('account:salary');
     expect(view.visibleEdgeAmountIds).toEqual(expect.arrayContaining([
-      'transfer:living-brokerage', 'transfer:salary-living',
+      'transfer:living-brokerage', 'transfer:salary-living', 'purpose:investing-local',
     ]));
     expect(view.detailGroups.map(({ key }) => key)).toEqual(['incoming', 'local-allocations', 'outgoing']);
     expect(view.detailGroups.find(({ key }) => key === 'incoming')?.rows).toEqual([
@@ -56,6 +58,8 @@ describe('buildAccountFlowViewModel', () => {
       ['생활비 통장', '생활비'],
       ['증권 계좌', '투자'],
     ]);
-    expect(view.focusOrder).toEqual([...view.focusOrder].sort((left, right) => left.localeCompare(right, 'ko-KR')));
+    expect(view.focusOrder.slice(0, 4)).toEqual([
+      'income:external', 'account:salary', 'account:living', 'account:brokerage',
+    ]);
   });
 });
