@@ -338,7 +338,7 @@ export function AccountMapApp({ repositories }: { repositories?: AccountMapRepos
     }
     dispatch({ type: 'save-succeeded', workspace: result.workspace });
     const savedDraft = result.workspace.accountMap.draft;
-    if (savedDraft !== null) dispatch({ type: 'draft-updated', draft: savedDraft });
+    if (savedDraft?.schemaVersion === 1) dispatch({ type: 'draft-updated', draft: savedDraft });
     return true;
   }
 

@@ -775,7 +775,7 @@ describe('Account Map commands', () => {
     }, 20);
 
     expect(partial.ok).toBe(true);
-    if (!partial.ok || partial.workspace.accountMap.applied === null) return;
+    if (!partial.ok || partial.workspace.accountMap.applied?.schemaVersion !== 2) return;
     expect(partial.workspace.accountMap.applied.sourceMainUpdatedAt).toBe(1);
 
     const complete = applyAccountMapCommand(partial.workspace, {
@@ -821,7 +821,7 @@ describe('Account Map commands', () => {
     }, 20);
 
     expect(partial.ok).toBe(true);
-    if (!partial.ok || partial.workspace.accountMap.draft === null) return;
+    if (!partial.ok || partial.workspace.accountMap.draft?.schemaVersion !== 1) return;
     expect(partial.workspace.accountMap.draft.sourceMainUpdatedAt).toBe(1);
 
     const complete = applyAccountMapCommand(partial.workspace, {

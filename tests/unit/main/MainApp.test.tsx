@@ -178,7 +178,7 @@ function readBlob(blob: Blob): Promise<string> {
 function workspace(monthlyNetIncomeWon: number, revision = 1): WorkspaceDocument {
   const applied = data(monthlyNetIncomeWon, { updatedAt: 100 });
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     revision,
     updatedAt: 500,
     main: { applied, setupProgress: null },
@@ -235,7 +235,7 @@ function backupFile(value: unknown): File {
 function backupEnvelope(value: WorkspaceDocument): unknown {
   return {
     format: 'isf-workspace-backup',
-    formatVersion: 2,
+    formatVersion: 3,
     exportedAt: 900,
     workspace: value,
   };
@@ -433,7 +433,7 @@ describe('MainApp', () => {
     const parsed = JSON.parse(await readBlob(blob as Blob));
     expect(parsed).toMatchObject({
       format: 'isf-workspace-backup',
-      formatVersion: 2,
+      formatVersion: 3,
       workspace: current,
     });
     expect(Object.keys(parsed).sort()).toEqual(['exportedAt', 'format', 'formatVersion', 'workspace']);

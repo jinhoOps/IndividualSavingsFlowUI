@@ -14,15 +14,15 @@ import {
   parseFinancialLocation,
   type FinancialLocation,
 } from '../domain/financialLocation';
-import type { WorkspaceDocument, WorkspaceDocumentV4 } from '../domain/model';
-import { parseWorkspaceDocument, validateWorkspaceDocument } from '../domain/validation';
+import type { WorkspaceDocumentV3, WorkspaceDocumentV4 } from '../domain/model';
+import { parseWorkspaceV3Document, validateWorkspaceV3Document } from '../domain/validation';
 import { convertWorkspaceV3Document } from './workspaceV3Migration';
 
 export type RetiredWorkspaceConversionResult =
   | {
       status: 'converted';
       sourceVersion: 1 | 2;
-      workspace: WorkspaceDocument;
+      workspace: WorkspaceDocumentV3;
       simulationMigration: SimulationDraftMigration | null;
     }
   | { status: 'invalid'; reason: 'schema' | 'reference' };
@@ -107,9 +107,9 @@ export function convertRetiredWorkspaceDocument(
       ? { applied: null, draft: null }
       : { applied: accountMap.applied, draft: accountMap.draft },
   };
-  const workspace = parseWorkspaceDocument(candidate);
+  const workspace = parseWorkspaceV3Document(candidate);
   if (workspace === null) {
-    const current = validateWorkspaceDocument(candidate);
+    const current = validateWorkspaceV3Document(candidate);
     return invalid(current.status === 'reference' ? 'reference' : 'schema');
   }
   return {
@@ -121,9 +121,9 @@ export function convertRetiredWorkspaceDocument(
 }
 
 /**
- * Retired v1/v2 conversion remains a read-only source path. This composition
- * deliberately leaves the current v3 repository contract unchanged until the
- * atomic repository cutover.
+ * Retired v1/v2 conversion remains a read-only source path. The v4 repository
+ * composes this conversion with the exact v3-to-v4 envelope conversion without
+ * changing the retired source bytes.
  */
 export function convertRetiredWorkspaceToV4(
   value: unknown,
@@ -144,7 +144,7 @@ export function convertRetiredWorkspaceToV4(
 }
 
 function parseRetiredSimulationSlice(value: unknown): {
-  draft: WorkspaceDocument['simulation']['draft'];
+  draft: WorkspaceDocumentV3['simulation']['draft'];
   migration: SimulationDraftMigration | null;
 } | null {
   if (!hasExactKeys(value, ['draft'])) return null;

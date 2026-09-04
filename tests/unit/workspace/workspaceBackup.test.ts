@@ -8,7 +8,7 @@ import {
 
 function completeWorkspace(overrides: Partial<WorkspaceDocument> = {}): WorkspaceDocument {
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     revision: 41,
     updatedAt: 500,
     main: {
@@ -160,7 +160,7 @@ function errorCode(operation: () => unknown): string | undefined {
   }
 }
 
-describe('workspace backup v2', () => {
+describe('workspace backup v3', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
   });
@@ -169,11 +169,11 @@ describe('workspace backup v2', () => {
     vi.unstubAllGlobals();
   });
 
-  it('exports the current workspace in an exact format-v2 envelope', () => {
+  it('exports the current workspace in an exact format-v3 envelope', () => {
     const workspace = createEmptyWorkspace(100);
     expect(JSON.parse(exportWorkspaceBackup(workspace, 200))).toEqual({
       format: 'isf-workspace-backup',
-      formatVersion: 2,
+      formatVersion: 3,
       exportedAt: 200,
       workspace,
     });
@@ -196,7 +196,7 @@ describe('workspace backup v2', () => {
     const imported = importWorkspaceBackup(envelope(1, retired));
 
     expect(imported).toMatchObject({
-      schemaVersion: 3,
+      schemaVersion: 4,
       updatedAt: 900,
       main: retired.main,
       portfolio: { plans: [completeWorkspace().portfolio.plans[0]], draft: null },
@@ -210,7 +210,12 @@ describe('workspace backup v2', () => {
     }
   });
 
-  it('rejects every non-v3 workspace in a format-v2 envelope', () => {
+  it('converts a v3 workspace from a format-v2 envelope', () => {
+    const v3 = { ...completeWorkspace(), schemaVersion: 3 };
+    expect(importWorkspaceBackup(envelope(2, v3))).toMatchObject({ schemaVersion: 4 });
+  });
+
+  it('rejects retired source envelopes in the v2 conversion branch', () => {
     expect(() => importWorkspaceBackup(envelope(2, retiredWorkspaceV2())))
       .toThrow('backup-schema');
     expect(() => importWorkspaceBackup(envelope(2, retiredWorkspaceV1())))
@@ -229,8 +234,8 @@ describe('workspace backup v2', () => {
 
     expect(errorCode(() => exportWorkspaceBackup(invalidSchema, 900))).toBe('backup-schema');
     expect(errorCode(() => exportWorkspaceBackup(invalidReference, 900))).toBe('backup-reference');
-    expect(errorCode(() => importWorkspaceBackup(envelope(2, invalidSchema)))).toBe('backup-schema');
-    expect(errorCode(() => importWorkspaceBackup(envelope(2, invalidReference))))
+    expect(errorCode(() => importWorkspaceBackup(envelope(3, invalidSchema)))).toBe('backup-schema');
+    expect(errorCode(() => importWorkspaceBackup(envelope(3, invalidReference))))
       .toBe('backup-reference');
     expect(errorCode(() => importWorkspaceBackup(envelope(1, {
       ...retiredWorkspaceV2(),
@@ -242,19 +247,19 @@ describe('workspace backup v2', () => {
     ['malformed JSON', '{bad', 'backup-json'],
     ['wrong format', JSON.stringify({
       format: 'main-backup',
-      formatVersion: 2,
+      formatVersion: 3,
       exportedAt: 900,
       workspace: completeWorkspace(),
     }), 'backup-format'],
-    ['unknown version', envelope(3, completeWorkspace()), 'backup-format'],
+    ['unknown version', envelope(4, completeWorkspace()), 'backup-format'],
     ['extra envelope key', JSON.stringify({
       format: 'isf-workspace-backup',
-      formatVersion: 2,
+      formatVersion: 3,
       exportedAt: 900,
       workspace: completeWorkspace(),
       extra: true,
     }), 'backup-format'],
-    ['invalid exported timestamp', envelope(2, completeWorkspace(), -1), 'backup-schema'],
+    ['invalid exported timestamp', envelope(3, completeWorkspace(), -1), 'backup-schema'],
   ])('rejects %s with %s', (_label, text, expected) => {
     expect(errorCode(() => importWorkspaceBackup(text))).toBe(expected);
   });
@@ -263,8 +268,8 @@ describe('workspace backup v2', () => {
     const storage = { setItem: vi.fn(), removeItem: vi.fn() };
     vi.stubGlobal('localStorage', storage);
 
-    expect(importWorkspaceBackup(envelope(2, completeWorkspace()))).toEqual(completeWorkspace());
-    expect(importWorkspaceBackup(envelope(1, retiredWorkspaceV2())).schemaVersion).toBe(3);
+    expect(importWorkspaceBackup(envelope(3, completeWorkspace()))).toEqual(completeWorkspace());
+    expect(importWorkspaceBackup(envelope(1, retiredWorkspaceV2())).schemaVersion).toBe(4);
     expect(storage.setItem).not.toHaveBeenCalled();
     expect(storage.removeItem).not.toHaveBeenCalled();
   });
@@ -285,7 +290,7 @@ describe('workspace backup v2', () => {
     } as WorkspaceDocument;
 
     expect(errorCode(() => exportWorkspaceBackup(mixedFailure, 900))).toBe('backup-schema');
-    expect(errorCode(() => importWorkspaceBackup(envelope(2, mixedFailure))))
+    expect(errorCode(() => importWorkspaceBackup(envelope(3, mixedFailure))))
       .toBe('backup-schema');
   });
 });

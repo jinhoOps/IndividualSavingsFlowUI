@@ -1,4 +1,4 @@
-import type { WorkspaceDocument, WorkspaceDocumentV4 } from '../domain/model';
+import type { WorkspaceDocumentV3, WorkspaceDocumentV4 } from '../domain/model';
 import { validateWorkspaceV3Document } from '../domain/validation';
 
 export type WorkspaceV4SourceConversionResult =
@@ -33,7 +33,7 @@ export function convertWorkspaceV3Document(
   };
 }
 
-function toWorkspaceV4(source: WorkspaceDocument, migratedAt: number): WorkspaceDocumentV4 {
+function toWorkspaceV4(source: WorkspaceDocumentV3, migratedAt: number): WorkspaceDocumentV4 {
   return {
     ...structuredClone(source),
     schemaVersion: 4,

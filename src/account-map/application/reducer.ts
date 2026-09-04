@@ -1,7 +1,12 @@
 import type { MainData } from '../../main/domain/model';
 import type { WorkspaceDocument } from '../../workspace/domain/model';
 import type { AccountMapEditIntent } from '../domain/editIntent';
-import type { AccountMapApplied, AccountMapDraft } from '../domain/model';
+import type {
+  AccountMapApplied,
+  AccountMapDraft,
+  StoredAccountMapApplied,
+  StoredAccountMapDraft,
+} from '../domain/model';
 
 export interface MapInteractionState {
   transientNodeId: string | null;
@@ -119,7 +124,7 @@ function reduceMigrating(
   if (event.type !== 'migration-succeeded') return state;
   if (event.workspace.main.applied === null) return { mode: 'main-required' };
   const main = structuredClone(event.workspace.main.applied);
-  const applied = event.workspace.accountMap.applied;
+  const applied = legacyAppliedForCurrentUi(event.workspace.accountMap.applied);
   if (applied !== null) {
     return {
       mode: 'map', workspace: event.workspace, main,
@@ -127,7 +132,7 @@ function reduceMigrating(
       recovery: { status: 'none' },
     };
   }
-  const draft = event.workspace.accountMap.draft;
+  const draft = legacyDraftForCurrentUi(event.workspace.accountMap.draft);
   return {
     mode: 'setup', workspace: event.workspace, main,
     draft: draft === null ? null : structuredClone(draft),
@@ -227,7 +232,7 @@ function reduceMap(
       return {
         ...state,
         workspace: event.workspace,
-        applied: event.workspace.accountMap.applied ?? state.applied,
+        applied: legacyAppliedForCurrentUi(event.workspace.accountMap.applied) ?? state.applied,
         save: { status: 'idle' },
       };
     case 'save-failed':
@@ -311,7 +316,7 @@ function adoptRecoveryWorkspaceForReview<State extends Extract<AccountMapState, 
   if (recovery.status !== 'manual') return state;
   if (workspace.main.applied === null) return { mode: 'main-required' };
   const main = structuredClone(workspace.main.applied);
-  const applied = workspace.accountMap.applied;
+  const applied = legacyAppliedForCurrentUi(workspace.accountMap.applied);
   if (state.mode === 'setup' && applied !== null) {
     return { ...state, save: { status: 'idle' }, recovery: { ...recovery, reason: 'target-missing' } };
   }
@@ -340,7 +345,7 @@ function adoptRecoveryWorkspaceForReview<State extends Extract<AccountMapState, 
     };
   }
   if (state.mode === 'setup' && applied === null) {
-    const draft = workspace.accountMap.draft;
+    const draft = legacyDraftForCurrentUi(workspace.accountMap.draft);
     return {
       ...state,
       workspace,
@@ -376,7 +381,7 @@ function adoptRecoveryWorkspace<State extends Extract<AccountMapState, { mode: '
   workspace: WorkspaceDocument,
 ): AccountMapState {
   if (workspace.main.applied === null) return { mode: 'main-required' };
-  const applied = workspace.accountMap.applied;
+  const applied = legacyAppliedForCurrentUi(workspace.accountMap.applied);
   const main = structuredClone(workspace.main.applied);
   if (applied !== null) {
     return {
@@ -389,7 +394,7 @@ function adoptRecoveryWorkspace<State extends Extract<AccountMapState, { mode: '
       recovery: { status: 'none' },
     };
   }
-  const draft = workspace.accountMap.draft;
+  const draft = legacyDraftForCurrentUi(workspace.accountMap.draft);
   return {
     mode: 'setup',
     workspace,
@@ -409,4 +414,34 @@ function withDraftStep(
   step: AccountMapDraft['step'],
 ): AccountMapDraft | null {
   return state.draft === null ? null : { ...state.draft, step };
+}
+
+function legacyAppliedForCurrentUi(
+  value: StoredAccountMapApplied | null,
+): AccountMapApplied | null {
+  if (value === null) return null;
+  if (value.schemaVersion === 2) return structuredClone(value);
+  return {
+    schemaVersion: 2,
+    sourceMainUpdatedAt: value.sourceMainUpdatedAt,
+    customPurposes: structuredClone(value.customPurposes),
+    links: structuredClone(value.links),
+    setupCompletedAt: value.setupCompletedAt,
+    updatedAt: value.updatedAt,
+  };
+}
+
+function legacyDraftForCurrentUi(
+  value: StoredAccountMapDraft | null,
+): AccountMapDraft | null {
+  if (value === null) return null;
+  if (value.schemaVersion === 1) return structuredClone(value);
+  return {
+    schemaVersion: 1,
+    sourceMainUpdatedAt: value.sourceMainUpdatedAt,
+    customPurposes: structuredClone(value.customPurposes),
+    links: structuredClone(value.links),
+    step: value.step === 'review' ? 'review' : 'connect',
+    updatedAt: value.updatedAt,
+  };
 }

@@ -113,12 +113,26 @@ export type AccountMapCommandResult =
   | { ok: true; workspace: WorkspaceDocument }
   | { ok: false; reason: AccountMapCommandError; locationId?: string };
 
+/**
+ * The existing Account Map command set edits only the historical purpose-link
+ * contract. v4 may also persist transfer-aware records, which are rendered
+ * through projections until their dedicated commands arrive; this boundary
+ * must not down-convert those stored records on an unrelated edit.
+ */
+type LegacyAccountMapWorkspace = Omit<WorkspaceDocument, 'accountMap'> & {
+  accountMap: {
+    applied: AccountMapApplied | null;
+    draft: AccountMapDraft | null;
+  };
+};
+
 export function applyAccountMapCommand(
   workspace: WorkspaceDocument,
   command: AccountMapCommand,
   now: number = Date.now(),
 ): AccountMapCommandResult {
-  const source = parseWorkspaceDocument(workspace);
+  const parsed = parseWorkspaceDocument(workspace);
+  const source = parsed === null ? null : asLegacyAccountMapWorkspace(parsed);
   if (source === null || !validTimestamp(now)) return failure('invalid-input');
   if (source.main.applied === null) return failure('invalid-input');
 
@@ -206,7 +220,7 @@ export function applyAccountMapCommand(
 }
 
 function editMapNode(
-  source: WorkspaceDocument,
+  source: LegacyAccountMapWorkspace,
   command: Extract<AccountMapCommand, { type: 'edit-map-node' }>,
   now: number,
 ): AccountMapCommandResult {
@@ -222,7 +236,9 @@ function editMapNode(
       addRoles: [],
     }, now);
     if (!updated.ok) return updated;
-    candidate = updated.workspace;
+    const legacyUpdated = asLegacyAccountMapWorkspace(updated.workspace);
+    if (legacyUpdated === null) return failure('invalid-input');
+    candidate = legacyUpdated;
   }
   const validated = validateEditedMap(command.applied, candidate);
   if (!validated.ok) return validated;
@@ -246,7 +262,7 @@ function editMapNode(
   });
 }
 
-function validateEditedMap(applied: AccountMapApplied, source: WorkspaceDocument): AccountMapCommandResult {
+function validateEditedMap(applied: AccountMapApplied, source: LegacyAccountMapWorkspace): AccountMapCommandResult {
   const main = source.main.applied;
   const current = source.accountMap.applied;
   if (main === null || current === null) return failure('invalid-input');
@@ -271,7 +287,7 @@ function validateEditedMap(applied: AccountMapApplied, source: WorkspaceDocument
 
 function validateAppliedMap(
   applied: AccountMapApplied,
-  source: WorkspaceDocument,
+  source: LegacyAccountMapWorkspace,
 ): AccountMapCommandResult {
   const main = source.main.applied;
   if (main === null) return failure('invalid-input');
@@ -297,7 +313,7 @@ function validateAppliedMap(
 function customTargetsWithinWritableCapacity(
   candidate: Pick<AccountMapApplied, 'customPurposes'>,
   current: Pick<AccountMapDraft, 'customPurposes'> | null,
-  source: WorkspaceDocument,
+  source: LegacyAccountMapWorkspace,
 ): boolean {
   const main = source.main.applied;
   if (main === null) return false;
@@ -335,7 +351,7 @@ function withCurrentMainSource<T extends AccountMapApplied | AccountMapDraft>(
 }
 
 function createLocation(
-  source: WorkspaceDocument,
+  source: LegacyAccountMapWorkspace,
   input: FinancialLocation,
   now: number,
 ): AccountMapCommandResult {
@@ -357,7 +373,7 @@ function createLocation(
 }
 
 function connectLocation(
-  source: WorkspaceDocument,
+  source: LegacyAccountMapWorkspace,
   command: Extract<AccountMapCommand, { type: 'connect-location' }>,
   now: number,
 ): AccountMapCommandResult {
@@ -391,7 +407,7 @@ function connectLocation(
 }
 
 function createAndConnectLocation(
-  source: WorkspaceDocument,
+  source: LegacyAccountMapWorkspace,
   command: Extract<AccountMapCommand, { type: 'create-and-connect-location' }>,
   now: number,
 ): AccountMapCommandResult {
@@ -428,7 +444,7 @@ function createAndConnectLocation(
 }
 
 function restoreAndConnectLocation(
-  source: WorkspaceDocument,
+  source: LegacyAccountMapWorkspace,
   command: Extract<AccountMapCommand, { type: 'restore-and-connect-location' }>,
   now: number,
 ): AccountMapCommandResult {
@@ -483,7 +499,7 @@ function appendConnection<T extends AccountMapApplied | AccountMapDraft>(
   locationId: string,
   monthlyAmountWon: number | undefined,
   locations: FinancialLocation[],
-  source: WorkspaceDocument,
+  source: LegacyAccountMapWorkspace,
   now: number,
   pairToReactivate?: PurposeLocationLink,
 ): T | Extract<AccountMapCommandResult, { ok: false }> {
@@ -530,7 +546,7 @@ function appendConnection<T extends AccountMapApplied | AccountMapDraft>(
 }
 
 function connectionState(
-  source: WorkspaceDocument,
+  source: LegacyAccountMapWorkspace,
   surface: 'draft' | 'applied',
   now: number,
 ): AccountMapApplied | AccountMapDraft | null {
@@ -575,7 +591,7 @@ function uniqueLinkId(
 }
 
 function editLink(
-  source: WorkspaceDocument,
+  source: LegacyAccountMapWorkspace,
   command: Extract<AccountMapCommand, { type: 'edit-link' }>,
   now: number,
 ): AccountMapCommandResult {
@@ -673,7 +689,7 @@ function editLink(
 function withCurrentMainAndExcessSource(
   candidate: AccountMapApplied,
   current: AccountMapApplied,
-  source: WorkspaceDocument,
+  source: LegacyAccountMapWorkspace,
 ): AccountMapApplied {
   const main = source.main.applied!;
   const normalized = withCurrentMainSource(candidate, current, main);
@@ -691,7 +707,7 @@ function withCurrentMainAndExcessSource(
 }
 
 function editCustomPurpose(
-  source: WorkspaceDocument,
+  source: LegacyAccountMapWorkspace,
   command: Extract<AccountMapCommand, { type: 'edit-custom-purpose' }>,
   now: number,
 ): AccountMapCommandResult {
@@ -747,7 +763,7 @@ function editCustomPurpose(
 }
 
 function archiveCustomPurpose(
-  source: WorkspaceDocument,
+  source: LegacyAccountMapWorkspace,
   command: Extract<AccountMapCommand, { type: 'archive-custom-purpose' }>,
   now: number,
 ): AccountMapCommandResult {
@@ -773,7 +789,7 @@ function archiveCustomPurpose(
 function archivePurposeInState<T extends AccountMapApplied | AccountMapDraft>(
   state: T,
   purposeId: CustomPurpose['id'],
-  source: WorkspaceDocument,
+  source: LegacyAccountMapWorkspace,
   now: number,
 ): T {
   if (!state.customPurposes.some(({ id }) => id === purposeId)) return state;
@@ -798,7 +814,7 @@ function archivePurposeInState<T extends AccountMapApplied | AccountMapDraft>(
 }
 
 function restoreCustomPurpose(
-  source: WorkspaceDocument,
+  source: LegacyAccountMapWorkspace,
   command: Extract<AccountMapCommand, { type: 'restore-custom-purpose' }>,
   now: number,
 ): AccountMapCommandResult {
@@ -829,7 +845,7 @@ function restoreCustomPurpose(
 function restorePurposeInState<T extends AccountMapApplied | AccountMapDraft>(
   state: T,
   command: Extract<AccountMapCommand, { type: 'restore-custom-purpose' }>,
-  source: WorkspaceDocument,
+  source: LegacyAccountMapWorkspace,
   now: number,
 ): T | Extract<AccountMapCommandResult, { ok: false }> {
   const current = state.customPurposes.find(({ id }) => id === command.purposeId);
@@ -851,7 +867,7 @@ function restorePurposeInState<T extends AccountMapApplied | AccountMapDraft>(
 
 function customTargetsFitCurrentCapacity(
   customPurposes: readonly CustomPurpose[],
-  source: WorkspaceDocument,
+  source: LegacyAccountMapWorkspace,
 ): boolean {
   const main = source.main.applied;
   if (main === null) return false;
@@ -863,7 +879,7 @@ function customTargetsFitCurrentCapacity(
 }
 
 function updateLocation(
-  source: WorkspaceDocument,
+  source: LegacyAccountMapWorkspace,
   command: Extract<AccountMapCommand, { type: 'update-location' }>,
   now: number,
 ): AccountMapCommandResult {
@@ -895,7 +911,7 @@ function updateLocation(
 }
 
 function archiveLocation(
-  source: WorkspaceDocument,
+  source: LegacyAccountMapWorkspace,
   command: Extract<AccountMapCommand, { type: 'archive-location' }>,
   now: number,
 ): AccountMapCommandResult {
@@ -924,7 +940,7 @@ function archiveInState<T extends AccountMapApplied | AccountMapDraft>(
   state: T,
   command: Extract<AccountMapCommand, { type: 'archive-location' }>,
   locations: FinancialLocation[],
-  source: WorkspaceDocument,
+  source: LegacyAccountMapWorkspace,
   now: number,
 ): T | Extract<AccountMapCommandResult, { ok: false }> {
   const affectedPurposes = new Set(
@@ -957,7 +973,7 @@ function archiveInState<T extends AccountMapApplied | AccountMapDraft>(
 }
 
 function restoreLocation(
-  source: WorkspaceDocument,
+  source: LegacyAccountMapWorkspace,
   command: Extract<AccountMapCommand, { type: 'restore-location' }>,
   now: number,
 ): AccountMapCommandResult {
@@ -1001,7 +1017,7 @@ function restoreInState<T extends AccountMapApplied | AccountMapDraft>(
   command: Extract<AccountMapCommand, { type: 'restore-location' }>,
   selected: Set<string>,
   locations: FinancialLocation[],
-  source: WorkspaceDocument,
+  source: LegacyAccountMapWorkspace,
   now: number,
 ): T | Extract<AccountMapCommandResult, { ok: false }> {
   const eligible = new Set(state.links.filter((link) => link.locationId === command.locationId
@@ -1039,7 +1055,7 @@ function restoreInState<T extends AccountMapApplied | AccountMapDraft>(
 }
 
 function successCandidate(
-  source: WorkspaceDocument,
+  source: LegacyAccountMapWorkspace,
   candidate: WorkspaceDocument,
 ): AccountMapCommandResult {
   const parsed = parseWorkspaceDocument(candidate);
@@ -1054,6 +1070,15 @@ function protectedSlicesEqual(left: WorkspaceDocument, right: WorkspaceDocument)
     && JSON.stringify(left.portfolio) === JSON.stringify(right.portfolio)
     && left.schemaVersion === right.schemaVersion
     && left.revision === right.revision;
+}
+
+function asLegacyAccountMapWorkspace(
+  workspace: WorkspaceDocument,
+): LegacyAccountMapWorkspace | null {
+  const { applied, draft } = workspace.accountMap;
+  if ((applied !== null && applied.schemaVersion !== 2)
+    || (draft !== null && draft.schemaVersion !== 1)) return null;
+  return workspace as LegacyAccountMapWorkspace;
 }
 
 function exceedsRoleCapacity(locations: FinancialLocation[]): boolean {

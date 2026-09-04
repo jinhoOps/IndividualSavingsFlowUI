@@ -11,12 +11,12 @@ import type {
 import type { FinancialLocation } from './financialLocation';
 
 export const WORKSPACE_V3_SCHEMA_VERSION = 3 as const;
-export const WORKSPACE_SCHEMA_VERSION = WORKSPACE_V3_SCHEMA_VERSION;
-export const WORKSPACE_STORAGE_KEY = 'isf-workspace-v3';
-export const RETIRED_WORKSPACE_STORAGE_KEY = 'isf-workspace-v1';
 export const WORKSPACE_V4_SCHEMA_VERSION = 4 as const;
+export const WORKSPACE_SCHEMA_VERSION = WORKSPACE_V4_SCHEMA_VERSION;
 export const WORKSPACE_V4_STORAGE_KEY = 'isf-workspace-v4';
+export const WORKSPACE_STORAGE_KEY = WORKSPACE_V4_STORAGE_KEY;
 export const PREVIOUS_WORKSPACE_STORAGE_KEY = 'isf-workspace-v3';
+export const RETIRED_WORKSPACE_STORAGE_KEY = 'isf-workspace-v1';
 
 export interface WorkspaceSlices {
   main: {
@@ -43,13 +43,6 @@ export interface WorkspaceDocumentV3 extends WorkspaceSlices {
   };
 }
 
-/** The active v3 alias remains in place until the atomic repository cutover. */
-export type WorkspaceDocument = WorkspaceDocumentV3;
-
-/**
- * The next workspace generation is intentionally additive until the repository
- * cutover. `WorkspaceDocument` remains the active v3 contract in this task.
- */
 export interface WorkspaceDocumentV4 extends WorkspaceSlices {
   schemaVersion: typeof WORKSPACE_V4_SCHEMA_VERSION;
   revision: number;
@@ -59,6 +52,9 @@ export interface WorkspaceDocumentV4 extends WorkspaceSlices {
     draft: StoredAccountMapDraft | null;
   };
 }
+
+/** The only writable workspace envelope after the v4 repository cutover. */
+export type WorkspaceDocument = WorkspaceDocumentV4;
 
 export function createEmptyWorkspace(now: number = Date.now()): WorkspaceDocument {
   return {

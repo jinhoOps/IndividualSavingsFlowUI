@@ -1,6 +1,12 @@
 import type { WorkspaceLoadResult } from '../../workspace/infrastructure/workspaceRepository';
 import type { AccountMapMainSourceLoadResult } from '../infrastructure/mainSourceRepository';
 import type { AccountMapState } from './reducer';
+import type {
+  AccountMapApplied,
+  AccountMapDraft,
+  StoredAccountMapApplied,
+  StoredAccountMapDraft,
+} from '../domain/model';
 
 export function bootstrapAccountMap(
   mainResult: AccountMapMainSourceLoadResult,
@@ -23,7 +29,7 @@ export function bootstrapAccountMap(
       revision: workspace.revision, save: { status: 'pending' },
     };
   }
-  const applied = workspace.accountMap.applied;
+  const applied = legacyAppliedForCurrentUi(workspace.accountMap.applied);
   if (applied !== null) {
     return {
       mode: 'map', workspace, main, applied: structuredClone(applied),
@@ -31,7 +37,7 @@ export function bootstrapAccountMap(
       save: { status: 'idle' }, recovery: { status: 'none' },
     };
   }
-  const draft = workspace.accountMap.draft;
+  const draft = legacyDraftForCurrentUi(workspace.accountMap.draft);
   return {
     mode: 'setup', workspace, main,
     draft: draft === null ? null : structuredClone(draft),
@@ -40,5 +46,35 @@ export function bootstrapAccountMap(
     mainChanged: draft !== null && draft.sourceMainUpdatedAt !== main.updatedAt,
     exitRequested: false,
     save: { status: 'idle' }, recovery: { status: 'none' },
+  };
+}
+
+export function legacyAppliedForCurrentUi(
+  value: StoredAccountMapApplied | null,
+): AccountMapApplied | null {
+  if (value === null) return null;
+  if (value.schemaVersion === 2) return structuredClone(value);
+  return {
+    schemaVersion: 2,
+    sourceMainUpdatedAt: value.sourceMainUpdatedAt,
+    customPurposes: structuredClone(value.customPurposes),
+    links: structuredClone(value.links),
+    setupCompletedAt: value.setupCompletedAt,
+    updatedAt: value.updatedAt,
+  };
+}
+
+export function legacyDraftForCurrentUi(
+  value: StoredAccountMapDraft | null,
+): AccountMapDraft | null {
+  if (value === null) return null;
+  if (value.schemaVersion === 1) return structuredClone(value);
+  return {
+    schemaVersion: 1,
+    sourceMainUpdatedAt: value.sourceMainUpdatedAt,
+    customPurposes: structuredClone(value.customPurposes),
+    links: structuredClone(value.links),
+    step: value.step === 'review' ? 'review' : 'connect',
+    updatedAt: value.updatedAt,
   };
 }

@@ -20,7 +20,7 @@ function workspace(monthlyNetIncomeWon: number, revision = 1): WorkspaceDocument
     monthlyInvestmentWon: 400_000,
   };
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     revision,
     updatedAt: 500,
     main: { applied, setupProgress: null },
@@ -73,7 +73,7 @@ function workspace(monthlyNetIncomeWon: number, revision = 1): WorkspaceDocument
 function backupEnvelope(value: WorkspaceDocument): string {
   return JSON.stringify({
     format: 'isf-workspace-backup',
-    formatVersion: 2,
+    formatVersion: 3,
     exportedAt: 900,
     workspace: value,
   });

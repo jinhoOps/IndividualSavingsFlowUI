@@ -6,6 +6,7 @@ import {
 } from '../../../src/main/infrastructure/mainRepository';
 import {
   createEmptyWorkspace,
+  PREVIOUS_WORKSPACE_STORAGE_KEY,
   RETIRED_WORKSPACE_STORAGE_KEY,
   WORKSPACE_STORAGE_KEY,
   type WorkspaceDocument,
@@ -86,7 +87,7 @@ function mainData(overrides: Partial<MainData> = {}): MainData {
 
 function populatedWorkspace(): WorkspaceDocument {
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     revision: 4,
     updatedAt: 400,
     main: { applied: mainData(), setupProgress: null },
@@ -172,7 +173,11 @@ describe('BrowserMainRepository workspace adapter', () => {
 
     await expect(mainRepository.load()).resolves.toEqual({ status: 'empty', data: null, original: null });
 
-    expect(storage.reads).toEqual([WORKSPACE_STORAGE_KEY, RETIRED_WORKSPACE_STORAGE_KEY]);
+    expect(storage.reads).toEqual([
+      WORKSPACE_STORAGE_KEY,
+      PREVIOUS_WORKSPACE_STORAGE_KEY,
+      RETIRED_WORKSPACE_STORAGE_KEY,
+    ]);
     expect(storage.writes).toEqual([]);
     for (const [key, raw] of before) expect(storage.getItem(key)).toBe(raw);
   });
