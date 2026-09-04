@@ -62,10 +62,16 @@ describe('layoutAccountFlow', () => {
     const layout = layoutAccountFlow(graph, { width: 1280, height: 900 }, 'default');
 
     expect(layout.width).toBe(1280);
-    expect(layout.isSemanticallyCompacted).toBe(true);
     expect(layout.nodes.every((item) => item.x >= 0 && item.x + item.width <= 1280)).toBe(true);
+    expect(layout.nodes.every((item) => item.width >= 44 && item.height >= 44)).toBe(true);
     expect(new Set(layout.nodes.map(({ width }) => width))).toHaveLength(1);
     expect(nodesDoNotOverlap(layout.nodes)).toBe(true);
+    expect(node(layout, 'account:5').y).toBeGreaterThan(node(layout, 'account:4').y);
+    expect(layout.focusOrder).toEqual([
+      'income:external',
+      ...Array.from({ length: 28 }, (_, index) => `account:${index}`),
+    ]);
+    expect(layout.edges.every(({ points }) => points.length === 4)).toBe(true);
   });
 });
 

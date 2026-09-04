@@ -24,8 +24,6 @@ export type RoutedAccountFlowEdge = AccountFlowEdge & {
 export interface AccountFlowLayout {
   direction: 'left-to-right' | 'top-to-bottom';
   zoom: AccountFlowZoom;
-  /** Long chains compact labels/cards but never omit a transfer from default zoom. */
-  isSemanticallyCompacted: boolean;
   width: number;
   height: number;
   nodes: readonly PositionedAccountFlowNode[];
@@ -67,7 +65,6 @@ export function layoutAccountFlow(
   return {
     direction,
     zoom,
-    isSemanticallyCompacted: geometry.isSemanticallyCompacted,
     width: geometry.width,
     height: geometry.height,
     nodes: geometry.nodes,
@@ -184,37 +181,44 @@ function barycenter(
 
 function placeDesktop(ranks: ReadonlyMap<number, readonly AccountFlowNode[]>, viewport: AccountFlowViewport): Geometry {
   const rankKeys = [...ranks.keys()].sort((left, right) => left - right);
-  const rankCount = Math.max(1, rankKeys.length);
-  const largestRank = Math.max(1, ...[...ranks.values()].map((nodes) => nodes.length));
+  const rankCount = rankKeys.length;
   const availableWidth = Math.max(1, viewport.width - margin * 2);
-  const isSemanticallyCompacted = availableWidth < rankCount * 44;
-  const rankGap = rankCount <= 1 || isSemanticallyCompacted ? 0 : Math.min(
-    gap,
-    Math.max(0, (availableWidth - rankCount * 44) / (rankCount - 1)),
+  const columnCount = Math.max(1, Math.min(
+    Math.max(1, rankCount),
+    Math.floor((availableWidth + gap) / (desktopNodeWidth + gap)),
+  ));
+  const nodeWidth = Math.min(
+    desktopNodeWidth,
+    Math.max(44, (availableWidth - gap * (columnCount - 1)) / columnCount),
   );
-  const nodeWidth = isSemanticallyCompacted
-    // Preserve a deterministic non-zero cell gap after compacting so adjacent
-    // ranks remain separately targetable and floating point rounding cannot
-    // turn touching cells into an overlap.
-    ? Math.max(0, availableWidth / rankCount - 0.01)
-    : Math.min(
-      desktopNodeWidth,
-      Math.max(44, (availableWidth - rankGap * (rankCount - 1)) / rankCount),
-    );
   const width = viewport.width;
-  const height = Math.max(viewport.height, margin * 2 + largestRank * nodeHeight + Math.max(0, largestRank - 1) * gap);
-  const stepX = rankKeys.length <= 1
+  const stepX = columnCount <= 1
     ? 0
-    : (width - margin * 2 - nodeWidth) / (rankKeys.length - 1);
-  const nodes = rankKeys.flatMap((rank) => (ranks.get(rank) ?? []).map((node, index): PositionedAccountFlowNode => ({
-    ...node,
-    x: margin + rankKeys.indexOf(rank) * stepX,
-    y: margin + index * (nodeHeight + gap),
-    width: nodeWidth,
-    height: nodeHeight,
-    rank,
-  })));
-  return { width, height, nodes, isSemanticallyCompacted };
+    : (width - margin * 2 - nodeWidth) / (columnCount - 1);
+  const lanes = chunkRanks(rankKeys, columnCount, ranks);
+  const height = Math.max(
+    viewport.height,
+    margin * 2 + lanes.reduce((total, lane) => total + lane.height, 0) + Math.max(0, lanes.length - 1) * gap,
+  );
+  let laneY = margin;
+  const nodes: PositionedAccountFlowNode[] = [];
+  for (const [laneIndex, lane] of lanes.entries()) {
+    for (const [rankIndex, rank] of lane.ranks.entries()) {
+      const column = laneIndex % 2 === 0 ? rankIndex : columnCount - 1 - rankIndex;
+      for (const [index, node] of (ranks.get(rank) ?? []).entries()) {
+        nodes.push({
+          ...node,
+          x: margin + column * stepX,
+          y: laneY + index * (nodeHeight + gap),
+          width: nodeWidth,
+          height: nodeHeight,
+          rank,
+        });
+      }
+    }
+    laneY += lane.height + gap;
+  }
+  return { width, height, nodes };
 }
 
 function placeMobile(ranks: ReadonlyMap<number, readonly AccountFlowNode[]>, viewport: AccountFlowViewport): Geometry {
@@ -254,7 +258,6 @@ function placeMobile(ranks: ReadonlyMap<number, readonly AccountFlowNode[]>, vie
     width,
     height,
     nodes,
-    isSemanticallyCompacted: blocks.some((block) => block.nodeWidth < 44),
   };
 }
 
@@ -264,11 +267,27 @@ function routeEdge(
   target: PositionedAccountFlowNode,
   direction: AccountFlowLayout['direction'],
 ): RoutedAccountFlowEdge {
+  const sourceCenterX = source.x + source.width / 2;
+  const targetCenterX = target.x + target.width / 2;
+  const sourceCenterY = source.y + source.height / 2;
+  const targetCenterY = target.y + target.height / 2;
   if (direction === 'left-to-right') {
+    if (target.y > source.y + source.height / 2 && Math.abs(targetCenterX - sourceCenterX) < 0.01) {
+      const sourceY = source.y + source.height;
+      const targetY = target.y;
+      const middleY = (sourceY + targetY) / 2;
+      return { ...edge, points: [{ x: sourceCenterX, y: sourceY }, { x: sourceCenterX, y: middleY }, { x: targetCenterX, y: middleY }, { x: targetCenterX, y: targetY }], strokeWidth: 2 };
+    }
+    if (target.x < source.x) {
+      const sourceX = source.x;
+      const targetX = target.x + target.width;
+      const middleX = (sourceX + targetX) / 2;
+      return { ...edge, points: [{ x: sourceX, y: sourceCenterY }, { x: middleX, y: sourceCenterY }, { x: middleX, y: targetCenterY }, { x: targetX, y: targetCenterY }], strokeWidth: 2 };
+    }
     const sourceX = source.x + source.width;
     const targetX = target.x;
-    const sourceY = source.y + source.height / 2;
-    const targetY = target.y + target.height / 2;
+    const sourceY = sourceCenterY;
+    const targetY = targetCenterY;
     const middleX = (sourceX + targetX) / 2;
     return { ...edge, points: [{ x: sourceX, y: sourceY }, { x: middleX, y: sourceY }, { x: middleX, y: targetY }, { x: targetX, y: targetY }], strokeWidth: 2 };
   }
@@ -300,9 +319,25 @@ function compareById(left: { id: string }, right: { id: string }): number {
   return left.id.localeCompare(right.id);
 }
 
+function chunkRanks(
+  rankKeys: readonly number[],
+  columnCount: number,
+  ranks: ReadonlyMap<number, readonly AccountFlowNode[]>,
+): Array<{ ranks: readonly number[]; height: number }> {
+  const result: Array<{ ranks: readonly number[]; height: number }> = [];
+  for (let start = 0; start < rankKeys.length; start += columnCount) {
+    const laneRanks = rankKeys.slice(start, start + columnCount);
+    const maximumNodes = Math.max(1, ...laneRanks.map((rank) => (ranks.get(rank) ?? []).length));
+    result.push({
+      ranks: laneRanks,
+      height: maximumNodes * nodeHeight + Math.max(0, maximumNodes - 1) * gap,
+    });
+  }
+  return result;
+}
+
 interface Geometry {
   width: number;
   height: number;
   nodes: PositionedAccountFlowNode[];
-  isSemanticallyCompacted: boolean;
 }
