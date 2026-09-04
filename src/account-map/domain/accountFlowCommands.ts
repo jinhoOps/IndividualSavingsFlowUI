@@ -8,6 +8,7 @@ import {
   projectAccountMapDraftForView,
 } from './accountMapVersioning';
 import type {
+  AccountMapApplied,
   AccountMapAppliedV3,
   AccountMapDraftV2,
   AccountTransferAllocation,
@@ -99,7 +100,7 @@ export function applyAccountFlowCommand(
 }
 
 export function mapNeedsMainConfirmation(
-  applied: Pick<AccountMapAppliedV3, 'sourceMainUpdatedAt'>,
+  applied: Pick<StoredAccountMapApplied, 'sourceMainUpdatedAt'>,
   main: Pick<MainData, 'updatedAt'>,
 ): boolean {
   return applied.sourceMainUpdatedAt !== main.updatedAt;
@@ -234,11 +235,23 @@ function saveTransferState(
 function confirmCurrentMain(source: WorkspaceDocument, now: number): AccountFlowCommandResult {
   const main = source.main.applied;
   const current = source.accountMap.applied;
-  if (main === null || current === null || current.schemaVersion !== 3) return fail('invalid-input');
+  if (main === null || current === null) return fail('invalid-input');
   if (!mapNeedsMainConfirmation(current, main)) return success(source, source);
 
   const links = recalculatePurposeRemainders(current.links, current, source.locations, main, now);
   if (links === null) return fail('purpose-fixed-excess');
+  if (current.schemaVersion === 2) {
+    const applied: AccountMapApplied = {
+      ...current,
+      sourceMainUpdatedAt: main.updatedAt,
+      links,
+      updatedAt: now,
+    };
+    return success(source, {
+      ...source,
+      accountMap: { ...source.accountMap, applied },
+    });
+  }
   const applied: AccountMapAppliedV3 = {
     ...current,
     sourceMainUpdatedAt: main.updatedAt,
@@ -256,7 +269,7 @@ function confirmCurrentMain(source: WorkspaceDocument, now: number): AccountFlow
 
 function recalculatePurposeRemainders(
   original: readonly PurposeLocationLink[],
-  state: AccountMapAppliedV3,
+  state: Pick<StoredAccountMapApplied, 'customPurposes' | 'links'>,
   locations: readonly FinancialLocation[],
   main: MainData,
   now: number,

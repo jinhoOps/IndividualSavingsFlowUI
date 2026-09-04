@@ -118,6 +118,28 @@ describe('Account flow commands', () => {
     expect(mapNeedsMainConfirmation(applied, workspace.main.applied)).toBe(false);
   });
 
+  it('confirms a stale applied-v2 map without promoting it to the transfer contract', () => {
+    const workspace = workspaceWithLegacyApplied();
+    workspace.main.applied = main(30, 800_000);
+    workspace.accountMap.applied!.links = [
+      purposeLink('living-fixed', 'living', 200_000, false),
+      purposeLink('living-remainder', 'living-two', 800_000, true),
+    ];
+
+    const result = applyAccountFlowCommand(workspace, { type: 'confirm-current-main' }, 40);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok || result.workspace.accountMap.applied === null) return;
+    expect(result.workspace.accountMap.applied).toMatchObject({
+      schemaVersion: 2,
+      sourceMainUpdatedAt: 30,
+      updatedAt: 40,
+    });
+    expect(result.workspace.accountMap.applied.links.find(({ id }) => id === 'living-remainder'))
+      .toMatchObject({ monthlyAmountWon: 600_000 });
+    expect('transfers' in result.workspace.accountMap.applied).toBe(false);
+  });
+
   it('rejects a changed Main basis that leaves fixed purpose allocations above the target without writes', () => {
     const workspace = workspaceWithAppliedV3();
     workspace.main.applied = main(30, 100_000);

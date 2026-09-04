@@ -38,6 +38,20 @@ describe('Account flow edit intent', () => {
     })).toEqual({ ok: false, reason: 'manual-recovery', action: 'edit-transfer' });
   });
 
+  it('requires manual latest-state review when a fixed amount and status both change', () => {
+    expect(rebaseAccountFlowEditIntent(workspaceWithTransfer(), {
+      kind: 'transfer', surface: 'applied', id: 'salary-to-living',
+      edit: {
+        base: fixedTransferFields(),
+        next: {
+          ...fixedTransferFields(),
+          allocation: { kind: 'fixed', monthlyAmountWon: 700_000 },
+          status: 'suspended',
+        },
+      },
+    })).toEqual({ ok: false, reason: 'manual-recovery', action: 'edit-transfer' });
+  });
+
   it('requires manual latest-state review for transfer removal', () => {
     expect(rebaseAccountFlowEditIntent(workspaceWithTransfer(), {
       kind: 'remove-transfer', surface: 'applied', id: 'salary-to-living', base: fixedTransferFields(),

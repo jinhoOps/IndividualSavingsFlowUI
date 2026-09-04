@@ -55,7 +55,7 @@ export function rebaseAccountFlowEditIntent(
   if (current === undefined) return { ok: false, reason: 'target-missing' };
 
   const changed = changedFields(intent.edit.base, intent.edit.next);
-  if (changed.length === 0) return { ok: false, reason: 'manual-recovery', action: 'edit-transfer' };
+  if (changed.length !== 1) return { ok: false, reason: 'manual-recovery', action: 'edit-transfer' };
   if (changed.some((field) => field === 'sourceLocationId' || field === 'targetLocationId')) {
     return { ok: false, reason: 'manual-recovery', action: 'edit-transfer' };
   }
