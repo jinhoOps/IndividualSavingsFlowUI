@@ -57,12 +57,14 @@ describe('layoutAccountFlow', () => {
   });
 
   it('fits a dense desktop transfer topology inside the default viewport without changing its node sizes by amount', () => {
-    const graph = denseTransferGraph(26);
+    const graph = denseTransferGraph(28);
 
     const layout = layoutAccountFlow(graph, { width: 1280, height: 900 }, 'default');
 
     expect(layout.width).toBe(1280);
+    expect(layout.isSemanticallyCompacted).toBe(true);
     expect(layout.nodes.every((item) => item.x >= 0 && item.x + item.width <= 1280)).toBe(true);
+    expect(new Set(layout.nodes.map(({ width }) => width))).toHaveLength(1);
     expect(nodesDoNotOverlap(layout.nodes)).toBe(true);
   });
 });

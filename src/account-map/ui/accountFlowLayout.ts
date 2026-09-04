@@ -24,6 +24,8 @@ export type RoutedAccountFlowEdge = AccountFlowEdge & {
 export interface AccountFlowLayout {
   direction: 'left-to-right' | 'top-to-bottom';
   zoom: AccountFlowZoom;
+  /** Long chains compact labels/cards but never omit a transfer from default zoom. */
+  isSemanticallyCompacted: boolean;
   width: number;
   height: number;
   nodes: readonly PositionedAccountFlowNode[];
@@ -65,6 +67,7 @@ export function layoutAccountFlow(
   return {
     direction,
     zoom,
+    isSemanticallyCompacted: geometry.isSemanticallyCompacted,
     width: geometry.width,
     height: geometry.height,
     nodes: geometry.nodes,
@@ -181,18 +184,24 @@ function barycenter(
 
 function placeDesktop(ranks: ReadonlyMap<number, readonly AccountFlowNode[]>, viewport: AccountFlowViewport): Geometry {
   const rankKeys = [...ranks.keys()].sort((left, right) => left - right);
+  const rankCount = Math.max(1, rankKeys.length);
   const largestRank = Math.max(1, ...[...ranks.values()].map((nodes) => nodes.length));
   const availableWidth = Math.max(1, viewport.width - margin * 2);
-  const rankGap = rankKeys.length <= 1 ? 0 : Math.min(
+  const isSemanticallyCompacted = availableWidth < rankCount * 44;
+  const rankGap = rankCount <= 1 || isSemanticallyCompacted ? 0 : Math.min(
     gap,
-    Math.max(0, (availableWidth - rankKeys.length * 44) / (rankKeys.length - 1)),
+    Math.max(0, (availableWidth - rankCount * 44) / (rankCount - 1)),
   );
-  const nodeWidth = Math.min(
-    desktopNodeWidth,
-    Math.max(44, (availableWidth - rankGap * (rankKeys.length - 1)) / rankKeys.length),
-  );
-  const contentWidth = margin * 2 + rankKeys.length * nodeWidth + Math.max(0, rankKeys.length - 1) * rankGap;
-  const width = Math.max(viewport.width, contentWidth);
+  const nodeWidth = isSemanticallyCompacted
+    // Preserve a deterministic non-zero cell gap after compacting so adjacent
+    // ranks remain separately targetable and floating point rounding cannot
+    // turn touching cells into an overlap.
+    ? Math.max(0, availableWidth / rankCount - 0.01)
+    : Math.min(
+      desktopNodeWidth,
+      Math.max(44, (availableWidth - rankGap * (rankCount - 1)) / rankCount),
+    );
+  const width = viewport.width;
   const height = Math.max(viewport.height, margin * 2 + largestRank * nodeHeight + Math.max(0, largestRank - 1) * gap);
   const stepX = rankKeys.length <= 1
     ? 0
@@ -205,7 +214,7 @@ function placeDesktop(ranks: ReadonlyMap<number, readonly AccountFlowNode[]>, vi
     height: nodeHeight,
     rank,
   })));
-  return { width, height, nodes };
+  return { width, height, nodes, isSemanticallyCompacted };
 }
 
 function placeMobile(ranks: ReadonlyMap<number, readonly AccountFlowNode[]>, viewport: AccountFlowViewport): Geometry {
@@ -241,7 +250,12 @@ function placeMobile(ranks: ReadonlyMap<number, readonly AccountFlowNode[]>, vie
     }
     y += block.rows * nodeHeight + Math.max(0, block.rows - 1) * gap + gap * 2;
   }
-  return { width, height, nodes };
+  return {
+    width,
+    height,
+    nodes,
+    isSemanticallyCompacted: blocks.some((block) => block.nodeWidth < 44),
+  };
 }
 
 function routeEdge(
@@ -290,4 +304,5 @@ interface Geometry {
   width: number;
   height: number;
   nodes: PositionedAccountFlowNode[];
+  isSemanticallyCompacted: boolean;
 }
