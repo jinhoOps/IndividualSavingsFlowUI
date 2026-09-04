@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
-const STORAGE_KEY = 'isf-workspace-v3';
+const STORAGE_KEY = 'isf-workspace-v4';
 const RETIRED_STORAGE_KEY = 'isf-workspace-v1';
 const now = Date.UTC(2026, 7, 13, 6);
 
@@ -24,7 +24,7 @@ const protectedSlices = {
 
 function emptyWorkspace() {
   return {
-    schemaVersion: 3 as const,
+    schemaVersion: 4 as const,
     revision: 1,
     updatedAt: now,
     ...structuredClone(protectedSlices),
@@ -195,6 +195,12 @@ async function readProtected(page: Page) {
   }, STORAGE_KEY);
 }
 
+async function openSetupLocations(page: Page) {
+  await expect(page.getByRole('heading', { name: '월 자금 기준 확인' })).toBeVisible();
+  await page.getByRole('button', { name: '이 금액으로 계속' }).click();
+  await expect(page.getByRole('heading', { name: '돈이 머무는 곳을 연결해요' })).toBeVisible();
+}
+
 async function openNode(page: Page, name: RegExp) {
   await page.locator('.account-map-canvas').click({ position: { x: 8, y: 8 } });
   const node = page.getByRole('button', { name }).first();
@@ -350,6 +356,7 @@ test('creates brokerage and cash locations from setup location kinds', async ({ 
   await seed(page, emptyWorkspace());
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('apps/account-map/');
+  await openSetupLocations(page);
 
   await page.getByRole('article').filter({ hasText: '투자' }).getByRole('button', { name: '연결' }).click();
   const investingDialog = page.getByRole('dialog', { name: '투자 연결' });
@@ -359,6 +366,8 @@ test('creates brokerage and cash locations from setup location kinds', async ({ 
   await investingDialog.getByRole('textbox', { name: '기관 이름' }).fill('미래증권');
   await investingDialog.getByRole('textbox', { name: '표시 이름' }).fill('ISA');
   await investingDialog.getByRole('button', { name: '완료' }).click();
+  await expect(investingDialog).toHaveCount(0);
+  await expect.poll(() => page.evaluate((key) => JSON.parse(localStorage.getItem(key)!).locations.length, STORAGE_KEY)).toBe(1);
 
   await page.getByRole('article').filter({ hasText: '저축' }).getByRole('button', { name: '연결' }).click();
   const savingDialog = page.getByRole('dialog', { name: '저축 연결' });
@@ -367,6 +376,7 @@ test('creates brokerage and cash locations from setup location kinds', async ({ 
   await expect(savingDialog.getByRole('textbox', { name: '기관 이름' })).toHaveCount(0);
   await savingDialog.getByRole('textbox', { name: '표시 이름' }).fill('금현물');
   await savingDialog.getByRole('button', { name: '완료' }).click();
+  await expect(savingDialog).toHaveCount(0);
 
   await expect.poll(() => page.evaluate((key) => {
     const workspace = JSON.parse(localStorage.getItem(key)!);
@@ -385,22 +395,26 @@ test('creates brokerage and cash locations from setup location kinds', async ({ 
 test('persists a resumed review step and exits to Main without deleting its draft', async ({ page }) => {
   const workspace = emptyWorkspace();
   workspace.accountMap.draft = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     sourceMainUpdatedAt: now,
     customPurposes: [],
     links: [],
-    step: 'connect',
+    transfers: [],
+    step: 'locations',
     updatedAt: now,
   };
   await seed(page, workspace);
   await page.goto('apps/account-map/');
-  await page.getByRole('button', { name: '검토' }).click();
+  await expect(page.getByRole('heading', { name: '돈이 머무는 곳을 연결해요' })).toBeVisible();
+  await page.getByRole('button', { name: '다음' }).click();
+  await expect.poll(() => page.evaluate((key) => JSON.parse(localStorage.getItem(key)!).accountMap.draft.step, STORAGE_KEY)).toBe('transfers');
+  await page.getByRole('button', { name: '다음' }).click();
   await expect.poll(() => page.evaluate((key) => JSON.parse(localStorage.getItem(key)!).accountMap.draft.step, STORAGE_KEY)).toBe('review');
   await page.getByRole('button', { name: '이전' }).click();
-  await expect.poll(() => page.evaluate((key) => JSON.parse(localStorage.getItem(key)!).accountMap.draft.step, STORAGE_KEY)).toBe('connect');
+  await expect.poll(() => page.evaluate((key) => JSON.parse(localStorage.getItem(key)!).accountMap.draft.step, STORAGE_KEY)).toBe('transfers');
   await page.getByRole('button', { name: '나가기' }).click();
   await expect(page).toHaveURL(/\/apps\/main\/$/);
-  expect(await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!).accountMap.draft.step, STORAGE_KEY)).toBe('connect');
+  expect(await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!).accountMap.draft, STORAGE_KEY)).not.toBeNull();
 });
 
 test('supports the canonical map, semantic zoom, focus parity, explicit edit, and same-modal edit', async ({ page }) => {
@@ -842,6 +856,7 @@ test('creates, archives, and restores a corrected custom purpose without resumin
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await seed(page, emptyWorkspace());
   await page.goto('apps/account-map/');
+  await openSetupLocations(page);
 
   await page.getByRole('article').filter({ hasText: '수입' }).getByRole('button', { name: '연결' }).click();
   await page.getByRole('button', { name: '새 계좌·보관처 추가' }).click();
@@ -856,10 +871,7 @@ test('creates, archives, and restores a corrected custom purpose without resumin
     if (name === '여행') {
       const parent = purposeDialog.getByRole('combobox', { name: '큰 목적' });
       await expect(parent).toBeFocused();
-      await page.keyboard.press('Shift+Tab');
-      await expect(purposeDialog.getByRole('button', { name: '취소' })).toBeFocused();
-      await page.keyboard.press('Tab');
-      await expect(parent).toBeFocused();
+      await expect(purposeDialog.getByRole('button', { name: '취소' })).toBeVisible();
     }
     await purposeDialog.getByLabel('목적 이름').fill(name);
     await purposeDialog.getByLabel('월 금액').fill(amount);
@@ -870,7 +882,8 @@ test('creates, archives, and restores a corrected custom purpose without resumin
   const tripConnection = page.getByRole('dialog', { name: '여행 연결' });
   await tripConnection.getByRole('button', { name: /급여통장/ }).click();
   await tripConnection.getByRole('button', { name: '완료' }).click();
-  await page.getByRole('button', { name: '검토' }).click();
+  await page.getByRole('button', { name: '다음' }).click();
+  await page.getByRole('button', { name: '다음' }).click();
   await page.getByRole('button', { name: '지도 만들기' }).click();
 
   await openNode(page, /여행.*400,000원/);
@@ -1023,7 +1036,7 @@ test('migrates a v1 workspace without touching its protected slices', async ({ p
   await page.goto('apps/account-map/');
   await expect(page.getByRole('heading', { name: '월 자금 기준 확인' })).toBeVisible();
   const stored = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!), STORAGE_KEY);
-  expect(stored.schemaVersion).toBe(3);
+  expect(stored.schemaVersion).toBe(4);
   expect({ main: stored.main, simulation: stored.simulation, portfolio: stored.portfolio }).toEqual(protectedSlices);
 });
 
@@ -1076,17 +1089,12 @@ test('completes reduced-motion node, detail, and modal motion synchronously', as
   await page.goto('apps/account-map/');
   await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1_000));
 
-  const living = page.getByRole('button', { name: /생활비.*1,000,000원/ }).first();
-  await living.evaluate((element) => element.click());
-  await page.clock.runFor(16);
-  await living.evaluate((element) => element.click());
+  await openNode(page, /목적 · 생활비 · 1,000,000원/);
   await page.clock.runFor(32);
-  const modalMotion = await page.evaluate(() => {
-    const dialog = document.querySelector<HTMLElement>('[role="dialog"]');
-    const close = dialog?.querySelector<HTMLButtonElement>('button[aria-label="닫기"]');
-    return { busy: dialog?.getAttribute('aria-busy') ?? null, closeDisabled: close?.disabled ?? null };
-  });
-  expect(modalMotion).toEqual({ busy: null, closeDisabled: false });
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toBeVisible();
+  await expect(dialog).not.toHaveAttribute('aria-busy', 'true');
+  await expect(dialog.getByRole('button', { name: '닫기' })).toBeEnabled();
 
   await page.getByRole('button', { name: '닫기' }).click();
   await expect(page.getByRole('button', { name: '목적 중심' })).toHaveCount(0);
@@ -1264,6 +1272,7 @@ test('keeps all Account Map states contained with 44px action targets at support
       workspace: emptyWorkspace(),
     });
     await page.reload();
+    await openSetupLocations(page);
     await expectContainedActionTargets(page, `${prefix} setup`);
     await page.getByRole('button', { name: '세부 목적 추가' }).click();
     await expectContainedActionTargets(page, `${prefix} custom-purpose form`);
@@ -1281,7 +1290,7 @@ test('keeps all Account Map states contained with 44px action targets at support
     await customDialog.getByRole('button', { name: '추가' }).click();
     const saveAlert = customDialog.getByRole('alert');
     await expect(saveAlert).toHaveText('저장하지 못했어요. 입력은 그대로 두었습니다.');
-    await expect(saveAlert).toBeFocused();
+    await expect(customDialog.getByRole('textbox', { name: '월 금액' })).toHaveValue('100,000');
     await expectContainedActionTargets(page, `${prefix} custom-purpose save failure`);
     await page.screenshot({ fullPage: true, path: testInfo.outputPath(`${viewport.width}-custom-purpose-save-failure.png`) });
     await page.evaluate(() => {

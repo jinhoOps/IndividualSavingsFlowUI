@@ -41,6 +41,7 @@
 .account-map-transfer-suggestions li, .account-map-transfer-list li { display: grid; min-width: 0; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 8px 14px; border-top: 1px solid var(--line); padding-top: 10px; }
 .account-map-transfer-suggestions li span, .account-map-transfer-list li span { overflow-wrap: anywhere; }
 .account-map-transfer-suggestions li strong, .account-map-transfer-list li strong { font-family: var(--font-display); white-space: nowrap; }
+.account-map-transfer-list li > div { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
 .account-map-transfer-list > div { display: flex; min-width: 0; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
 .account-map-review-flow li { display: grid; min-width: 0; gap: 4px; border-top: 1px solid var(--line); padding-top: 10px; }
 .account-map-review-flow li span { color: var(--muted); overflow-wrap: anywhere; }

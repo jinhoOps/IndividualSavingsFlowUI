@@ -11,6 +11,7 @@ import { projectAccountMapSetup } from '../application/setupProjection';
 import { rebaseAccountMapIntent, type AccountMapEditIntent } from '../domain/editIntent';
 import type { AccountMapApplied, AccountMapAppliedV3, AccountMapDraft, AccountMapDraftV2, AccountMapSetupStep, OutflowPurposeId, PurposeId, PurposeLocationLink } from '../domain/model';
 import type { AccountTransferEditorValue } from './AccountTransferEditor';
+import type { AccountMapTransferSaveResult } from './setup/AccountMapTransfersStep';
 import type { MainPlanEditTarget } from './setup/AccountMapBasisStep';
 import { projectAccountMapDraftForView } from '../domain/accountMapVersioning';
 import { customPurposeTargetCapacity, recalculateRemainder, reconcilePurpose } from '../domain/reconciliation';
@@ -372,8 +373,8 @@ export function AccountMapApp({ repositories, onRequestMainEdit }: AccountMapApp
     }, workspace: result.workspace });
   }
 
-  async function addTransfer(value: AccountTransferEditorValue & { id: string }): Promise<boolean> {
-    if (state.mode !== 'setup' || state.recovery.status !== 'none') return false;
+  async function addTransfer(value: AccountTransferEditorValue & { id: string }): Promise<AccountMapTransferSaveResult> {
+    if (state.mode !== 'setup' || state.recovery.status !== 'none') return { status: 'recovery' };
     dispatch({ type: 'save-requested' });
     const result = await resolved.accountMap.save(state.workspace.revision, {
       type: 'add-transfer',
@@ -381,19 +382,24 @@ export function AccountMapApp({ repositories, onRequestMainEdit }: AccountMapApp
       transfer: value,
     });
     if (result.status !== 'saved') {
-      if (result.status === 'conflict') captureManualConflict('edit-transfer', []);
+      if (result.status === 'conflict') {
+        captureManualConflict('edit-transfer', []);
+        return { status: 'recovery' };
+      }
+      const failure = transferSaveFailure(result);
+      if (failure.status === 'validation') dispatch({ type: 'save-succeeded', workspace: state.workspace });
       else dispatch({ type: 'save-failed', reason: failureReason(result) });
-      return false;
+      return failure;
     }
     dispatch({ type: 'save-succeeded', workspace: result.workspace });
     if (result.workspace.accountMap.draft !== null) {
       dispatch({ type: 'draft-updated', draft: result.workspace.accountMap.draft });
     }
-    return true;
+    return { status: 'saved' };
   }
 
-  async function editTransfer(id: string, value: AccountTransferEditorValue): Promise<boolean> {
-    if (state.mode !== 'setup' || state.recovery.status !== 'none') return false;
+  async function editTransfer(id: string, value: AccountTransferEditorValue): Promise<AccountMapTransferSaveResult> {
+    if (state.mode !== 'setup' || state.recovery.status !== 'none') return { status: 'recovery' };
     dispatch({ type: 'save-requested' });
     const result = await resolved.accountMap.save(state.workspace.revision, {
       type: 'edit-transfer',
@@ -402,15 +408,45 @@ export function AccountMapApp({ repositories, onRequestMainEdit }: AccountMapApp
       fields: value,
     });
     if (result.status !== 'saved') {
-      if (result.status === 'conflict') captureManualConflict('edit-transfer', [{ kind: 'transfer', id }]);
+      if (result.status === 'conflict') {
+        captureManualConflict('edit-transfer', [{ kind: 'transfer', id }]);
+        return { status: 'recovery' };
+      }
+      const failure = transferSaveFailure(result);
+      if (failure.status === 'validation') dispatch({ type: 'save-succeeded', workspace: state.workspace });
       else dispatch({ type: 'save-failed', reason: failureReason(result) });
-      return false;
+      return failure;
     }
     dispatch({ type: 'save-succeeded', workspace: result.workspace });
     if (result.workspace.accountMap.draft !== null) {
       dispatch({ type: 'draft-updated', draft: result.workspace.accountMap.draft });
     }
-    return true;
+    return { status: 'saved' };
+  }
+
+  async function removeTransfer(id: string): Promise<AccountMapTransferSaveResult> {
+    if (state.mode !== 'setup' || state.recovery.status !== 'none') return { status: 'recovery' };
+    dispatch({ type: 'save-requested' });
+    const result = await resolved.accountMap.save(state.workspace.revision, {
+      type: 'remove-transfer',
+      surface: 'draft',
+      transferId: id,
+    });
+    if (result.status !== 'saved') {
+      if (result.status === 'conflict') {
+        captureTransferManualConflict('remove-transfer', id, 'removal');
+        return { status: 'recovery' };
+      }
+      const failure = transferSaveFailure(result);
+      if (failure.status === 'validation') dispatch({ type: 'save-succeeded', workspace: state.workspace });
+      else dispatch({ type: 'save-failed', reason: failureReason(result) });
+      return failure;
+    }
+    dispatch({ type: 'save-succeeded', workspace: result.workspace });
+    if (result.workspace.accountMap.draft !== null) {
+      dispatch({ type: 'draft-updated', draft: result.workspace.accountMap.draft });
+    }
+    return { status: 'saved' };
   }
 
   async function saveNodeEdit(nodeId: string, input: AccountMapNodeEditInput): Promise<AccountMapWriteResult> {
@@ -539,7 +575,7 @@ export function AccountMapApp({ repositories, onRequestMainEdit }: AccountMapApp
     return result;
   }
 
-  return <AppShell currentApp="account-map" managementMenu={management}><AppContentFrame className="account-map-page"><AccountMapSetup workspace={state.workspace} main={state.main} draft={state.draft} step={state.step} calculation={setupProjection!.calculation} suggestions={setupProjection!.suggestions} review={setupProjection!.review} canApply={setupProjection!.canApply} mainChanged={state.mainChanged} saveFailed={state.save.status === 'failed'} recoveryPending={state.save.status === 'pending'} recovery={state.recovery} onReapply={reapplyIntent} onKeepLatest={() => dispatch({ type: 'latest-kept' })} onRequestMainEdit={(target) => { onRequestMainEdit?.(target); }} onCommitConnection={commitConnection} onSaveDraft={saveDraft} onAddTransfer={addTransfer} onEditTransfer={editTransfer} onApply={() => void applyMap()} onExit={() => { if (state.recovery.status !== 'none') return; dispatch({ type: 'setup-exited' }); window.location.assign(appPath('main')); }} onCancelSetup={() => { if (state.recovery.status !== 'none') return; void resolved.accountMap.reset(state.workspace.revision).then((result) => { if (result.status === 'saved') dispatch({ type: 'setup-cancelled', workspace: result.workspace }); else if (result.status === 'conflict') captureManualConflict('cancel-setup', []); else dispatch({ type: 'save-failed', reason: failureReason(result) }); }); }} />{locationRestoreModal}</AppContentFrame></AppShell>;
+  return <AppShell currentApp="account-map" managementMenu={management}><AppContentFrame className="account-map-page"><AccountMapSetup workspace={state.workspace} main={state.main} draft={state.draft} step={state.step} calculation={setupProjection!.calculation} suggestions={setupProjection!.suggestions} review={setupProjection!.review} canApply={setupProjection!.canApply} mainChanged={state.mainChanged} saveFailed={state.save.status === 'failed'} recoveryPending={state.save.status === 'pending'} recovery={state.recovery} onReapply={reapplyIntent} onKeepLatest={() => dispatch({ type: 'latest-kept' })} onRequestMainEdit={(target) => { onRequestMainEdit?.(target); }} onCommitConnection={commitConnection} onSaveDraft={saveDraft} onAddTransfer={addTransfer} onEditTransfer={editTransfer} onRemoveTransfer={removeTransfer} onApply={() => void applyMap()} onExit={() => { if (state.recovery.status !== 'none') return; dispatch({ type: 'setup-exited' }); window.location.assign(appPath('main')); }} onCancelSetup={() => { if (state.recovery.status !== 'none') return; void resolved.accountMap.reset(state.workspace.revision).then((result) => { if (result.status === 'saved') dispatch({ type: 'setup-cancelled', workspace: result.workspace }); else if (result.status === 'conflict') captureManualConflict('cancel-setup', []); else dispatch({ type: 'save-failed', reason: failureReason(result) }); }); }} />{locationRestoreModal}</AppContentFrame></AppShell>;
 
   async function saveIntent(expectedRevision: number, intent: AccountMapEditIntent): Promise<AccountMapWriteResult> {
     dispatch({ type: 'save-requested' });
@@ -615,6 +651,12 @@ export function AccountMapApp({ repositories, onRequestMainEdit }: AccountMapApp
     else dispatch({ type: 'save-failed', reason: latest.status === 'invalid' ? 'invalid' : 'unavailable' });
   }
 
+  function captureTransferManualConflict(action: 'edit-transfer' | 'remove-transfer', transferId: string, reason: 'compound-edit' | 'removal'): void {
+    const latest = resolved.accountMap.load();
+    if (latest.status === 'found') dispatch({ type: 'transfer-manual-conflicted', latest: latest.workspace, action, transferId, reason });
+    else dispatch({ type: 'save-failed', reason: latest.status === 'invalid' ? 'invalid' : 'unavailable' });
+  }
+
 }
 
 function isCompleteLocationDetails(value: FinancialLocationFieldsValue): boolean {
@@ -624,6 +666,27 @@ function isCompleteLocationDetails(value: FinancialLocationFieldsValue): boolean
 function MessagePage({ title, children }: { title: string; children: React.ReactNode }) { return <AppContentFrame className="account-map-page"><section className="account-map-message"><h1>{title}</h1>{children}</section></AppContentFrame>; }
 function purposeParentLabel(parentId: OutflowPurposeId): string { return parentId === 'system:housing' ? '주거' : parentId === 'system:living' ? '생활비' : parentId === 'system:saving' ? '저축' : '투자'; }
 function failureReason(result: Exclude<AccountMapWriteResult, { status: 'saved' }>) { return result.status === 'conflict' ? 'conflict' : result.status === 'invalid' ? 'invalid' : result.status === 'rejected' ? 'rejected' : 'unavailable'; }
+function transferSaveFailure(result: Exclude<AccountMapWriteResult, { status: 'saved' | 'conflict' }>): AccountMapTransferSaveResult {
+  if (result.status !== 'rejected') return { status: 'failed' };
+  switch (result.reason) {
+    case 'duplicate-transfer':
+      return { status: 'validation', message: '같은 두 계좌 사이에는 활성 흐름을 하나만 둘 수 있어요.' };
+    case 'cycle':
+      return { status: 'validation', message: '계좌 흐름이 순환해요. 한 방향으로 흐르도록 출발·도착을 바꿔 주세요.' };
+    case 'multiple-sweeps':
+      return { status: 'validation', message: '한 계좌에서 남은 금액 전부 흐름은 하나만 둘 수 있어요.' };
+    case 'self-transfer':
+      return { status: 'validation', message: '같은 계좌로 보낼 수 없어요.' };
+    case 'endpoint-archived':
+      return { status: 'validation', message: '보관된 계좌는 흐름의 출발·도착으로 사용할 수 없어요.' };
+    case 'endpoint-not-found':
+      return { status: 'validation', message: '선택한 계좌를 찾을 수 없어요. 다시 선택해 주세요.' };
+    case 'invalid-amount':
+      return { status: 'validation', message: '정해진 금액은 0원보다 큰 정수로 입력해 주세요.' };
+    default:
+      return { status: 'failed' };
+  }
+}
 function createId() { return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`; }
 function recoveryFallbackField(intent: AccountMapEditIntent): string { return intent.kind === 'add-link' ? 'locationId' : intent.kind === 'link' ? 'monthlyAmountWon' : intent.kind === 'purpose' ? 'name' : 'shortName'; }
 function manualLinkTargets(ids: Array<string | null>, kind: 'link' | 'restorable-link'): ManualRecoveryTarget[] {

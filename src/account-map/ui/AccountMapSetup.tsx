@@ -22,7 +22,7 @@ import { animateSetupStep, setSetupStepFinalState } from './motion';
 import { AccountMapBasisStep, type MainPlanEditTarget } from './setup/AccountMapBasisStep';
 import { AccountMapLocationsStep } from './setup/AccountMapLocationsStep';
 import { AccountMapReviewStep } from './setup/AccountMapReviewStep';
-import { AccountMapTransfersStep } from './setup/AccountMapTransfersStep';
+import { AccountMapTransfersStep, type AccountMapTransferSaveResult } from './setup/AccountMapTransfersStep';
 import type { AccountTransferEditorValue } from './AccountTransferEditor';
 
 export type AccountMapDraftSaveResult =
@@ -56,8 +56,9 @@ export interface AccountMapSetupProps {
     restoreLocation?: boolean;
   }): Promise<boolean>;
   onSaveDraft(draft: AccountMapDraftV2): Promise<AccountMapDraftSaveResult>;
-  onAddTransfer(value: AccountTransferEditorValue & { id: string }): Promise<boolean>;
-  onEditTransfer(id: string, value: AccountTransferEditorValue): Promise<boolean>;
+  onAddTransfer(value: AccountTransferEditorValue & { id: string }): Promise<AccountMapTransferSaveResult>;
+  onEditTransfer(id: string, value: AccountTransferEditorValue): Promise<AccountMapTransferSaveResult>;
+  onRemoveTransfer(id: string): Promise<AccountMapTransferSaveResult>;
   onApply(): void;
   onExit(): void;
   onCancelSetup(): void;
@@ -71,6 +72,7 @@ const STEPS: readonly AccountMapSetupStep[] = ['basis', 'locations', 'transfers'
  */
 export function AccountMapSetup(props: AccountMapSetupProps): JSX.Element {
   const [customOpen, setCustomOpen] = useState(false);
+  const renderedStepRef = useRef<AccountMapSetupStep>(props.step);
   const draft = useMemo(() => props.draft === null
     ? emptyGuidedDraft(props.main.updatedAt)
     : projectAccountMapDraftForView(props.draft), [props.draft, props.main.updatedAt]);
@@ -80,6 +82,12 @@ export function AccountMapSetup(props: AccountMapSetupProps): JSX.Element {
   const nextStep = currentIndex < STEPS.length - 1 ? STEPS[currentIndex + 1] : undefined;
   const mutationsDisabled = props.recovery.status !== 'none' || props.recoveryPending;
   const stepRootRef = useAnimeScope<HTMLElement>(({ root, reducedMotion }) => {
+    const changedStep = renderedStepRef.current !== currentStep;
+    renderedStepRef.current = currentStep;
+    if (!changedStep) {
+      setSetupStepFinalState(root);
+      return;
+    }
     const animation = animateSetupStep(root, 'forward', reducedMotion);
     return () => {
       animation.cancel();
@@ -127,6 +135,7 @@ export function AccountMapSetup(props: AccountMapSetupProps): JSX.Element {
         disabled={mutationsDisabled}
         onAddTransfer={props.onAddTransfer}
         onEditTransfer={props.onEditTransfer}
+        onRemoveTransfer={props.onRemoveTransfer}
       />;
     }
     return <AccountMapReviewStep

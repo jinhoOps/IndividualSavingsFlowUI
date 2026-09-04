@@ -11,9 +11,14 @@ export interface AccountMapTransfersStepProps {
   calculation: AccountFlowCalculation;
   suggestions: readonly AccountTransferSuggestion[];
   disabled?: boolean;
-  onAddTransfer(value: AccountTransferEditorValue & { id: string }): Promise<boolean>;
-  onEditTransfer(id: string, value: AccountTransferEditorValue): Promise<boolean>;
+  onAddTransfer(value: AccountTransferEditorValue & { id: string }): Promise<AccountMapTransferSaveResult>;
+  onEditTransfer(id: string, value: AccountTransferEditorValue): Promise<AccountMapTransferSaveResult>;
+  onRemoveTransfer(id: string): Promise<AccountMapTransferSaveResult>;
 }
+
+export type AccountMapTransferSaveResult =
+  | { status: 'saved' | 'recovery' | 'failed' }
+  | { status: 'validation'; message: string };
 
 /** Suggestions are intentionally only UI proposals until this component asks for a normal add-transfer command. */
 export function AccountMapTransfersStep({
@@ -24,8 +29,10 @@ export function AccountMapTransfersStep({
   disabled = false,
   onAddTransfer,
   onEditTransfer,
+  onRemoveTransfer,
 }: AccountMapTransfersStepProps): JSX.Element {
   const [editor, setEditor] = useState<'add' | string | null>(null);
+  const [feedback, setFeedback] = useState<string | null>(null);
   const activeTransfers = draft.transfers.filter((transfer) => transfer.status === 'active');
   const editing = editor === null || editor === 'add'
     ? undefined
@@ -33,14 +40,24 @@ export function AccountMapTransfersStep({
   const locationName = (locationId: string): string => locations.find((location) => location.id === locationId)?.shortName ?? '알 수 없는 계좌';
 
   async function saveNew(value: AccountTransferEditorValue): Promise<void> {
-    const saved = await onAddTransfer({ ...value, id: `transfer:${createId()}` });
-    if (saved) setEditor(null);
+    setFeedback(null);
+    const result = await onAddTransfer({ ...value, id: `transfer:${createId()}` });
+    if (result.status === 'saved') setEditor(null);
+    else if (result.status === 'validation') setFeedback(result.message);
   }
 
   async function saveEdit(value: AccountTransferEditorValue): Promise<void> {
     if (editing === undefined) return;
-    const saved = await onEditTransfer(editing.id, value);
-    if (saved) setEditor(null);
+    setFeedback(null);
+    const result = await onEditTransfer(editing.id, value);
+    if (result.status === 'saved') setEditor(null);
+    else if (result.status === 'validation') setFeedback(result.message);
+  }
+
+  async function removeTransfer(id: string): Promise<void> {
+    setFeedback(null);
+    const result = await onRemoveTransfer(id);
+    if (result.status === 'validation') setFeedback(result.message);
   }
 
   return (
@@ -50,6 +67,7 @@ export function AccountMapTransfersStep({
         <h1 id="account-map-setup-title">계좌 사이 흐름을 정해요</h1>
         <p>아래 제안은 아직 저장되지 않았어요. 확인한 흐름만 월 계획으로 추가합니다.</p>
       </header>
+      {feedback === null ? null : <p className="account-map-error" role="alert">{feedback}</p>}
       <section className="account-map-transfer-suggestions" aria-labelledby="account-map-transfer-suggestions-title">
         <h2 id="account-map-transfer-suggestions-title">확인할 제안</h2>
         {suggestions.length === 0 ? <p className="account-map-hint">자동으로 확정할 수 있는 흐름이 없습니다. 필요하면 직접 추가해 주세요.</p> : (
@@ -61,8 +79,7 @@ export function AccountMapTransfersStep({
                 <button
                   type="button"
                   disabled={disabled}
-                  onClick={() => void onAddTransfer({
-                    id: `transfer:${createId()}`,
+                  onClick={() => void saveNew({
                     sourceLocationId: suggestion.sourceLocationId,
                     targetLocationId: suggestion.targetLocationId,
                     allocation: suggestion.allocation,
@@ -83,7 +100,10 @@ export function AccountMapTransfersStep({
               return <li key={transfer.id}>
                 <span>{locationName(transfer.sourceLocationId)} → {locationName(transfer.targetLocationId)}</span>
                 <strong>{transfer.allocation.kind === 'sweep' ? '남은 금액 전부' : formatWon(calculated?.amountWon ?? transfer.allocation.monthlyAmountWon)}</strong>
-                <button type="button" disabled={disabled} onClick={() => setEditor(transfer.id)}>수정</button>
+                <div>
+                  <button type="button" disabled={disabled} onClick={() => setEditor(transfer.id)}>수정</button>
+                  <button type="button" disabled={disabled} onClick={() => void removeTransfer(transfer.id)}>삭제</button>
+                </div>
               </li>;
             })}
           </ul>
