@@ -5,6 +5,8 @@ export type AccountFlowZoom = 'overview' | 'default' | 'detail';
 export interface AccountFlowViewport {
   width: number;
   height: number;
+  /** Browser width selects the reading direction; width is the available canvas space. */
+  screenWidth?: number;
 }
 
 export type PositionedAccountFlowNode = AccountFlowNode & {
@@ -47,7 +49,7 @@ export function layoutAccountFlow(
   viewport: AccountFlowViewport,
   zoom: AccountFlowZoom,
 ): AccountFlowLayout {
-  const direction = viewport.width <= 768 ? 'top-to-bottom' : 'left-to-right';
+  const direction = (viewport.screenWidth ?? viewport.width) <= 768 ? 'top-to-bottom' : 'left-to-right';
   const ranked = rankNodes(graph);
   const orderedRanks = reduceCrossings(graph, ranked);
   const geometry = direction === 'left-to-right'

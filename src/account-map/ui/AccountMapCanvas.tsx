@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type JSX } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState, type JSX } from 'react';
 import type { MainData } from '../../main/domain/model';
 import type { FinancialLocation } from '../../workspace/domain/financialLocation';
 import type { MapInteractionState } from '../application/reducer';
@@ -6,7 +6,7 @@ import { calculateAccountFlow, type AccountFlowCalculation } from '../domain/acc
 import type { AccountMapApplied, AccountMapAppliedV3, PurposeId } from '../domain/model';
 import { AccountFlowDetail } from './AccountFlowDetail';
 import { buildAccountFlowGraph, type AccountFlowEdge } from './accountFlowGraph';
-import { layoutAccountFlow, type AccountFlowZoom, type PositionedAccountFlowNode, type RoutedAccountFlowEdge } from './accountFlowLayout';
+import { layoutAccountFlow, type AccountFlowViewport, type AccountFlowZoom, type PositionedAccountFlowNode, type RoutedAccountFlowEdge } from './accountFlowLayout';
 import { buildAccountFlowViewModel, type AccountFlowSelection, type AccountFlowViewModel } from './accountFlowViewModel';
 import { animateFocusedFlow } from './motion';
 
@@ -19,7 +19,7 @@ export interface AccountMapCanvasProps {
   main: MainData;
   locations: readonly FinancialLocation[];
   interaction: MapInteractionState;
-  viewport?: { width: number; height: number };
+  viewport?: AccountFlowViewport;
   calculation?: AccountFlowCalculation;
   onTransient(nodeId: string): void;
   onBlur(nodeId: string): void;
@@ -42,28 +42,33 @@ export function AccountMapCanvas({
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const canvasRef = useRef<HTMLDivElement>(null);
   const previousPinnedId = useRef<string | null>(interaction.pinnedNodeId);
-  const [measuredViewport, setMeasuredViewport] = useState({ width: 1040, height: 620 });
+  const [measuredViewport, setMeasuredViewport] = useState<AccountFlowViewport>({ width: 1040, height: 620, screenWidth: window.innerWidth });
   const effectiveViewport = viewport ?? measuredViewport;
   const reducedMotion = typeof window.matchMedia !== 'function'
     || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const panDragRef = useRef<{ pointerId: number; x: number; y: number; originX: number; originY: number; moved: boolean } | null>(null);
+  const panDragRef = useRef<{ pointerId: number; touch: boolean; x: number; y: number; originX: number; originY: number; moved: boolean } | null>(null);
 
   useEffect(() => {
     if (viewport !== undefined || typeof ResizeObserver === 'undefined') return;
     const canvas = canvasRef.current;
     if (canvas === null) return;
-    const update = (width: number) => setMeasuredViewport({ width: Math.max(280, width), height: width <= 768 ? 700 : 620 });
+    const update = (width: number) => setMeasuredViewport({ width: Math.max(280, width), height: window.innerWidth <= 768 ? 700 : 620, screenWidth: window.innerWidth });
     update(canvas.clientWidth);
     const observer = new ResizeObserver((entries) => update(entries[0]?.contentRect.width ?? canvas.clientWidth));
     observer.observe(canvas);
-    return () => observer.disconnect();
+    const onResize = () => update(canvas.clientWidth);
+    window.addEventListener('resize', onResize);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', onResize);
+    };
   }, [viewport]);
 
   const calculation = useMemo(() => suppliedCalculation ?? calculateAccountFlow({
     main, locations, links: applied.links, transfers: applied.schemaVersion === 3 ? applied.transfers : [],
   }), [applied, locations, main, suppliedCalculation]);
   const graph = useMemo(() => buildAccountFlowGraph(calculation, applied, locations, main), [applied, calculation, locations, main]);
-  const positioned = useMemo(() => layoutAccountFlow(graph, effectiveViewport, zoom), [effectiveViewport.height, effectiveViewport.width, graph, zoom]);
+  const positioned = useMemo(() => layoutAccountFlow(graph, effectiveViewport, zoom), [effectiveViewport.height, effectiveViewport.width, effectiveViewport.screenWidth, graph, zoom]);
   const activeId = interaction.transientNodeId ?? interaction.pinnedNodeId;
   const selection = selectionForId(activeId);
   const viewModel = useMemo(() => buildAccountFlowViewModel(graph, selection), [graph, selection]);
@@ -93,26 +98,27 @@ export function AccountMapCanvas({
     setZoom(zooms[Math.max(0, Math.min(zooms.length - 1, index + delta))]!);
   }
   function startPan(event: React.PointerEvent<HTMLDivElement>) {
-    if (event.pointerType === 'touch' || targetIsFlowControl(event.target)) return;
-    panDragRef.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, originX: pan.x, originY: pan.y, moved: false };
-    event.currentTarget.setPointerCapture?.(event.pointerId);
+    if (targetIsFlowControl(event.target)) return;
+    const touch = event.pointerType === 'touch';
+    panDragRef.current = { pointerId: event.pointerId, touch, x: event.clientX, y: event.clientY, originX: pan.x, originY: pan.y, moved: false };
+    if (!touch) event.currentTarget.setPointerCapture?.(event.pointerId);
   }
   function movePan(event: React.PointerEvent<HTMLDivElement>) {
     const drag = panDragRef.current;
-    if (drag === null) return;
+    if (drag === null || drag.pointerId !== event.pointerId) return;
     const dx = event.clientX - drag.x;
     const dy = event.clientY - drag.y;
     const moved = drag.moved || Math.hypot(dx, dy) >= 4;
     panDragRef.current = { ...drag, moved };
-    if (!moved) return;
+    if (!moved || drag.touch) return;
     event.preventDefault();
     setPan({ x: drag.originX + dx, y: drag.originY + dy });
   }
   function endPan(event: React.PointerEvent<HTMLDivElement>) {
     const drag = panDragRef.current;
+    if (drag === null || drag.pointerId !== event.pointerId) return;
     panDragRef.current = null;
-    if (drag === null) return;
-    event.currentTarget.releasePointerCapture?.(event.pointerId);
+    if (!drag.touch) event.currentTarget.releasePointerCapture?.(event.pointerId);
     if (!drag.moved) onBackground();
   }
 
@@ -144,20 +150,35 @@ function FlowCanvasContent({ positioned, viewModel, pinnedId, activeId, pan, onT
   const dimmedNodes = new Set(viewModel.dimmedNodeIds);
   const dimmedEdges = new Set(viewModel.dimmedEdgeIds);
   const visibleAmounts = new Set(viewModel.visibleEdgeAmountIds);
+  const nodeById = new Map<string, PositionedAccountFlowNode>(positioned.nodes.map((node) => [node.id, node]));
+  const focusIndex = new Map(positioned.focusOrder.map((id, index) => [id, index]));
   return <div className="account-map-canvas__content" style={{ width: positioned.width, height: positioned.height, transform: `translate(${pan.x}px, ${pan.y}px)` }}>
-    <svg className="account-map-edges account-flow-edges" viewBox={`0 0 ${positioned.width} ${positioned.height}`} preserveAspectRatio="none"><defs><marker id="account-flow-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="strokeWidth"><path d="M 0 0 L 8 4 L 0 8 z" /></marker></defs>{positioned.edges.map((edge) => <FlowEdge key={edge.id} edge={edge} dimmed={dimmedEdges.has(edge.id)} focused={activeId !== null && viewModel.reachableEdgeIds.includes(edge.id)} onTransient={onTransient} onBlur={onBlur} onInvoke={onInvoke} />)}</svg>
+    <svg className="account-map-edges account-flow-edges" aria-hidden="true"><defs><marker id="account-flow-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="strokeWidth"><path d="M 0 0 L 8 4 L 0 8 z" /></marker></defs></svg>
     {positioned.edges.filter((edge) => visibleAmounts.has(edge.id)).map((edge) => <span key={`amount:${edge.id}`} data-account-flow-edge-amount className="account-map-edge-amount account-flow-edge-amount" style={edgeAmountPosition(edge)}>{edge.kind === 'sweep' ? `남은 금액 전부 · 계획상 ${formatWon(edge.amountWon)}` : formatWon(edge.amountWon)}</span>)}
-    {positioned.nodes.map((node) => <FlowNode key={node.id} node={node} dimmed={dimmedNodes.has(node.id)} pinned={pinnedId === node.id} onTransient={onTransient} onBlur={onBlur} onInvoke={onInvoke} />)}
+    {positioned.focusOrder.map((id) => {
+      const node = nodeById.get(id)!;
+      const outgoing = positioned.edges.filter((edge) => edge.sourceId === id)
+        .sort((left, right) => (focusIndex.get(left.targetId) ?? 0) - (focusIndex.get(right.targetId) ?? 0) || left.id.localeCompare(right.id));
+      return <Fragment key={id}>
+        <FlowNode node={node} dimmed={dimmedNodes.has(id)} pinned={pinnedId === id} onTransient={onTransient} onBlur={onBlur} onInvoke={onInvoke} />
+        <svg className="account-map-edges account-flow-edges" viewBox={`0 0 ${positioned.width} ${positioned.height}`} preserveAspectRatio="none">
+          {outgoing.map((edge) => <FlowEdge key={edge.id} edge={edge} directionLabel={`${node.label} → ${nodeById.get(edge.targetId)?.label ?? edge.targetId}`} dimmed={dimmedEdges.has(edge.id)} focused={activeId !== null && viewModel.reachableEdgeIds.includes(edge.id)} onTransient={onTransient} onBlur={onBlur} onInvoke={onInvoke} />)}
+        </svg>
+      </Fragment>;
+    })}
   </div>;
 }
 
-function FlowEdge({ edge, dimmed, focused, onTransient, onBlur, onInvoke }: { edge: RoutedAccountFlowEdge; dimmed: boolean; focused: boolean; onTransient(nodeId: string): void; onBlur(nodeId: string): void; onInvoke(nodeId: string): void }): JSX.Element {
+function FlowEdge({ edge, directionLabel, dimmed, focused, onTransient, onBlur, onInvoke }: { edge: RoutedAccountFlowEdge; directionLabel: string; dimmed: boolean; focused: boolean; onTransient(nodeId: string): void; onBlur(nodeId: string): void; onInvoke(nodeId: string): void }): JSX.Element {
   const interactive = edge.kind === 'fixed' || edge.kind === 'sweep';
-  return <path d={edgePath(edge)} data-account-flow-edge markerEnd={interactive ? 'url(#account-flow-arrow)' : undefined} className={`account-flow-edge account-flow-edge--${edge.kind}${edge.status === 'suspended' ? ' is-suspended' : ''}${dimmed ? ' is-dimmed' : ''}${focused ? ' is-focused' : ''}`} {...(interactive ? { role: 'button', tabIndex: 0, 'aria-label': transferAccessibleName(edge), onFocus: () => onTransient(edge.id), onBlur: () => onBlur(edge.id), onPointerEnter: () => onTransient(edge.id), onPointerLeave: () => onBlur(edge.id), onClick: () => onInvoke(edge.id), onKeyDown: (event: React.KeyboardEvent<SVGPathElement>) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onInvoke(edge.id); } } } : { 'aria-hidden': true })} />;
+  return <g className="account-flow-edge-control">
+    <path d={edgePath(edge)} data-account-flow-edge aria-hidden="true" markerEnd={interactive ? 'url(#account-flow-arrow)' : undefined} className={`account-flow-edge account-flow-edge--${edge.kind}${edge.status === 'suspended' ? ' is-suspended' : ''}${dimmed ? ' is-dimmed' : ''}${focused ? ' is-focused' : ''}`} />
+    {!interactive ? null : <path d={edgePath(edge)} data-account-flow-edge-hit className="account-flow-edge-hit" role="button" tabIndex={0} aria-label={`${directionLabel}, ${transferAccessibleName(edge)}`} onFocus={() => onTransient(edge.id)} onBlur={() => onBlur(edge.id)} onPointerEnter={(event) => { if (event.pointerType !== 'touch') onTransient(edge.id); }} onPointerLeave={() => onBlur(edge.id)} onClick={() => onInvoke(edge.id)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onInvoke(edge.id); } }} />}
+  </g>;
 }
 
 function FlowNode({ node, dimmed, pinned, onTransient, onBlur, onInvoke }: { node: PositionedAccountFlowNode; dimmed: boolean; pinned: boolean; onTransient(nodeId: string): void; onBlur(nodeId: string): void; onInvoke(nodeId: string): void }): JSX.Element {
-  return <button type="button" className={`account-map-node account-flow-node account-flow-node--${node.kind}${dimmed ? ' is-dimmed' : ''}${pinned ? ' is-pinned' : ''} is-${node.status}`} style={{ left: node.x, top: node.y, width: node.width, height: node.height }} aria-label={nodeAccessibleName(node)} onMouseEnter={() => onTransient(node.id)} onMouseLeave={() => onBlur(node.id)} onFocus={() => onTransient(node.id)} onBlur={() => onBlur(node.id)} onClick={() => onInvoke(node.id)}><span>{node.label}</span>{node.kind === 'purpose' || node.kind === 'warning' ? <strong>{formatWon(node.amountWon)}</strong> : null}{node.kind === 'account' ? <small>{node.status === 'shortfall' ? '계획상 부족' : node.status === 'unassigned' ? '계획상 미배정' : '월 계획 계좌'}</small> : null}</button>;
+  return <button type="button" className={`account-map-node account-flow-node account-flow-node--${node.kind}${dimmed ? ' is-dimmed' : ''}${pinned ? ' is-pinned' : ''} is-${node.status}`} style={{ left: node.x, top: node.y, width: node.width, height: node.height }} aria-label={nodeAccessibleName(node)} onPointerEnter={(event) => { if (event.pointerType !== 'touch') onTransient(node.id); }} onPointerLeave={() => onBlur(node.id)} onFocus={() => onTransient(node.id)} onBlur={() => onBlur(node.id)} onClick={() => onInvoke(node.id)}><span>{node.label}</span>{node.kind === 'purpose' || node.kind === 'warning' ? <strong>{formatWon(node.amountWon)}</strong> : null}{node.kind === 'account' ? <small>{node.status === 'shortfall' ? '계획상 부족' : node.status === 'unassigned' ? '계획상 미배정' : '월 계획 계좌'}</small> : null}</button>;
 }
 
 function FlowLinearTable({ rows }: { rows: AccountFlowViewModel['tableRows'] }): JSX.Element {
@@ -187,5 +208,5 @@ function nodeAccessibleName(node: PositionedAccountFlowNode): string {
 }
 function transferAccessibleName(edge: Extract<AccountFlowEdge, { kind: 'fixed' | 'sweep' }>): string { return `${edge.ruleLabel} 계좌 흐름, ${edge.status === 'active' ? '연결됨' : '중지됨'}. 선택하면 흐름을 자세히 봅니다.`; }
 function tableRule(kind: AccountFlowViewModel['tableRows'][number]['kind'], amountWon: number): string { if (kind === 'sweep') return `남은 금액 전부 · 계획상 ${formatWon(amountWon)}`; if (kind === 'fixed') return `고정 금액 · ${formatWon(amountWon)}`; return formatWon(amountWon); }
-function targetIsFlowControl(target: EventTarget | null): boolean { return target instanceof Element && target.closest('.account-flow-node, [data-account-flow-edge], .account-flow-detail') !== null; }
+function targetIsFlowControl(target: EventTarget | null): boolean { return target instanceof Element && target.closest('.account-flow-node, [data-account-flow-edge-hit], .account-flow-detail') !== null; }
 function formatWon(value: number): string { return `${new Intl.NumberFormat('ko-KR').format(value)}원`; }

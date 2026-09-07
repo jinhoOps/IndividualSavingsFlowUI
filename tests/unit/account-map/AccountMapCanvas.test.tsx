@@ -22,6 +22,59 @@ afterEach(() => {
 });
 
 describe('AccountMapCanvas', () => {
+  it('orders keyboard controls from income through source accounts and their outgoing transfers', () => {
+    renderCanvas();
+    const controls = [...document.querySelectorAll('.account-map-canvas__content [tabindex="0"], .account-map-canvas__content button')];
+    expect(controls.slice(0, 5).map((control) => control.getAttribute('aria-label'))).toEqual([
+      '외부 수입. 선택하면 연결 흐름을 자세히 봅니다.',
+      expect.stringContaining('계좌 급여 통장'),
+      expect.stringContaining('급여 통장 → 생활비 통장'),
+      expect.stringContaining('계좌 생활비 통장'),
+      expect.stringContaining('생활비 통장 → 증권 계좌'),
+    ]);
+    expect(document.querySelectorAll('[data-account-flow-edge-hit]')).toHaveLength(2);
+  });
+
+  it('clears selection on a touch background tap without intercepting a scroll gesture', () => {
+    vi.stubGlobal('PointerEvent', class extends MouseEvent {
+      pointerId: number;
+      pointerType: string;
+      constructor(type: string, init: PointerEventInit = {}) {
+        super(type, init);
+        this.pointerId = init.pointerId ?? 1;
+        this.pointerType = init.pointerType ?? 'touch';
+      }
+    });
+    render(<InteractiveCanvas />);
+    fireEvent.click(screen.getByRole('button', { name: /계좌 급여 통장/ }));
+    const canvas = document.querySelector<HTMLElement>('.account-flow-canvas')!;
+    fireEvent.pointerDown(canvas, { pointerType: 'touch', pointerId: 1, clientX: 5, clientY: 5 });
+    fireEvent.pointerMove(canvas, { pointerType: 'touch', pointerId: 1, clientX: 5, clientY: 50 });
+    fireEvent.pointerUp(canvas, { pointerType: 'touch', pointerId: 1, clientX: 5, clientY: 50 });
+    expect(screen.getByLabelText('급여 통장 월 계획 흐름')).toBeVisible();
+    expect(document.querySelector('.account-map-canvas__content')).toHaveStyle({ transform: 'translate(0px, 0px)' });
+    fireEvent.pointerDown(canvas, { pointerType: 'touch', pointerId: 2, clientX: 5, clientY: 5 });
+    fireEvent.pointerUp(canvas, { pointerType: 'touch', pointerId: 2, clientX: 5, clientY: 5 });
+    expect(screen.queryByLabelText('급여 통장 월 계획 흐름')).not.toBeInTheDocument();
+  });
+
+  it('uses desktop flow direction inside the shared narrow content frame', () => {
+    vi.stubGlobal('innerWidth', 1280);
+    vi.stubGlobal('ResizeObserver', class {
+      constructor(private callback: ResizeObserverCallback) {}
+      observe(target: Element) {
+        this.callback([{ target, contentRect: { width: 768 } } as ResizeObserverEntry], this as unknown as ResizeObserver);
+      }
+      disconnect() {}
+    });
+    const fixture = salaryLivingBrokerageFixture();
+    render(<AccountMapCanvas applied={fixture.applied} main={fixture.main} locations={fixture.locations}
+      interaction={{ transientNodeId: null, pinnedNodeId: null, modalNodeId: null }}
+      onTransient={() => undefined} onBlur={() => undefined} onInvoke={() => undefined}
+      onBackground={() => undefined} onEscape={() => undefined} />);
+    expect(document.querySelector('.account-flow-canvas')).toHaveAttribute('data-direction', 'left-to-right');
+  });
+
   it('renders every planned transfer in deterministic table order without a mixed account total or default edge amounts', () => {
     renderCanvas();
 
