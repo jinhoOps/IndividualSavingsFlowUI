@@ -143,6 +143,18 @@ describe('AccountMapCanvas', () => {
     fireEvent.pointerUp(canvas, { pointerId: 1, clientX: 5, clientY: 5 });
     expect(screen.queryByLabelText('급여 통장 월 계획 흐름')).not.toBeInTheDocument();
   });
+
+  it('does not reopen an escaped preview when removing the card exposes the same hovered node', () => {
+    render(<InteractiveCanvas />);
+    const node = screen.getByRole('button', { name: /계좌 생활비 통장/ });
+    fireEvent.click(node);
+    fireEvent.keyDown(document, { key: 'Escape' });
+    fireEvent.pointerEnter(node);
+    expect(screen.queryByLabelText('생활비 통장 월 계획 흐름')).not.toBeInTheDocument();
+    fireEvent.pointerLeave(node);
+    fireEvent.pointerEnter(node);
+    expect(screen.getByLabelText('생활비 통장 월 계획 흐름')).toHaveTextContent('미리 보기');
+  });
 });
 
 function InteractiveCanvas({

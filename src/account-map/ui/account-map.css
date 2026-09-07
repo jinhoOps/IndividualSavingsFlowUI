@@ -118,6 +118,7 @@
 .account-flow-node--warning { border-style: dashed; }
 .account-flow-edge-amount { max-width: calc(100% - 32px); overflow: hidden; text-overflow: ellipsis; }
 .account-flow-detail { position: absolute; z-index: 6; top: 16px; right: 16px; display: grid; width: min(332px, calc(100% - 32px)); max-height: calc(100% - 32px); gap: 12px; overflow: auto; border: 1px solid var(--line); border-radius: 18px; background: var(--panel); box-shadow: var(--shadow-float); padding: 14px; color: var(--ink); }
+.account-flow-detail.is-transient { pointer-events: none; }
 .account-flow-detail header, .account-flow-detail header > div, .account-flow-detail footer, .account-flow-detail section, .account-flow-detail li > div { display: grid; min-width: 0; gap: 5px; }
 .account-flow-detail header { grid-template-columns: minmax(0, 1fr) auto; align-items: start; }
 .account-flow-detail header > span { border: 1px solid var(--line); border-radius: 999px; padding: 3px 7px; color: var(--muted); font-size: .72rem; }

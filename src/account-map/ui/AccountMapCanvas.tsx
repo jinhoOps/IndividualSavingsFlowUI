@@ -42,6 +42,7 @@ export function AccountMapCanvas({
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const canvasRef = useRef<HTMLDivElement>(null);
   const previousPinnedId = useRef<string | null>(interaction.pinnedNodeId);
+  const dismissedPreviewId = useRef<string | null>(null);
   const [measuredViewport, setMeasuredViewport] = useState<AccountFlowViewport>({ width: 1040, height: 620, screenWidth: window.innerWidth });
   const effectiveViewport = viewport ?? measuredViewport;
   const reducedMotion = typeof window.matchMedia !== 'function'
@@ -79,6 +80,7 @@ export function AccountMapCanvas({
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key !== 'Escape' || event.defaultPrevented) return;
       event.preventDefault();
+      dismissedPreviewId.current = activeId;
       onEscape();
     };
     document.addEventListener('keydown', handleEscape);
@@ -119,7 +121,10 @@ export function AccountMapCanvas({
     if (drag === null || drag.pointerId !== event.pointerId) return;
     panDragRef.current = null;
     if (!drag.touch) event.currentTarget.releasePointerCapture?.(event.pointerId);
-    if (!drag.moved) onBackground();
+    if (!drag.moved) {
+      dismissedPreviewId.current = activeId;
+      onBackground();
+    }
   }
 
   const selectedAccountId = selectedAccountLocationId(activeId, graph.edges);
@@ -130,7 +135,10 @@ export function AccountMapCanvas({
       <div className="account-map-canvas-toolbar__controls"><div className="account-map-zoom-control" role="group" aria-label="지도 확대 수준"><button type="button" aria-label="축소" disabled={zoom === 'overview'} onClick={() => changeZoom(-1)}>−</button><span>{zoomLabels[zoom]}</span><button type="button" aria-label="확대" disabled={zoom === 'detail'} onClick={() => changeZoom(1)}>＋</button></div></div>
     </header>
     <div ref={canvasRef} className="account-map-canvas account-flow-canvas" data-direction={positioned.direction} style={{ height: positioned.height }} onPointerDown={startPan} onPointerMove={movePan} onPointerUp={endPan} onPointerCancel={() => { panDragRef.current = null; }}>
-      <FlowCanvasContent positioned={positioned} viewModel={viewModel} pinnedId={interaction.pinnedNodeId} activeId={activeId} pan={pan} onTransient={onTransient} onBlur={onBlur} onInvoke={onInvoke} />
+      <FlowCanvasContent positioned={positioned} viewModel={viewModel} pinnedId={interaction.pinnedNodeId} activeId={activeId} pan={pan}
+        onTransient={(id) => { if (dismissedPreviewId.current !== id) { dismissedPreviewId.current = null; onTransient(id); } }}
+        onBlur={(id) => { if (dismissedPreviewId.current === id) dismissedPreviewId.current = null; onBlur(id); }}
+        onInvoke={(id) => { dismissedPreviewId.current = null; onInvoke(id); }} />
       {activeId === null ? null : <AccountFlowDetail className={pinned ? 'is-pinned' : 'is-transient'} accountLabel={accountLabel} groups={viewModel.detailGroups} interactive={pinned} onEditLocation={selectedAccountId === null ? undefined : () => onEditLocation?.(selectedAccountId)} onAddTransfer={selectedAccountId === null ? undefined : () => onAddTransfer?.(selectedAccountId)} onEditTransfer={onEditTransfer} />}
     </div>
     <FlowLinearTable rows={viewModel.tableRows} />

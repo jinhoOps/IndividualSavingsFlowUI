@@ -657,6 +657,9 @@ function FlowTransferDialog({
   useEffect(() => {
     if (feedback !== null && !pending) dialogRef.current?.querySelector<HTMLElement>('select')?.focus();
   }, [feedback, pending]);
+  useEffect(() => {
+    if (pending) dialogRef.current?.focus();
+  }, [pending]);
   async function submit(action: () => Promise<AccountMapTransferSaveResult>): Promise<void> {
     if (pendingRef.current || recovery.status !== 'none') return;
     pendingRef.current = true;
@@ -679,13 +682,13 @@ function FlowTransferDialog({
     if (event.key === 'Escape') { event.preventDefault(); if (!pendingRef.current) onClose(); return; }
     if (event.key !== 'Tab') return;
     const focusable = [...(dialogRef.current?.querySelectorAll<HTMLElement>('button:not([disabled]), select:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])') ?? [])];
-    if (focusable.length === 0) return;
+    if (focusable.length === 0) { event.preventDefault(); dialogRef.current?.focus(); return; }
     const first = focusable[0]!;
     const last = focusable[focusable.length - 1]!;
     if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
     else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
   };
-  return <div className="account-map-modal-backdrop"><section ref={dialogRef} className="account-map-modal account-flow-editor-modal" role="dialog" aria-modal="true" aria-label="계좌 흐름 편집" aria-busy={pending || undefined} onKeyDown={trapFocus}>
+  return <div className="account-map-modal-backdrop"><section ref={dialogRef} tabIndex={-1} className="account-map-modal account-flow-editor-modal" role="dialog" aria-modal="true" aria-label="계좌 흐름 편집" aria-busy={pending || undefined} onKeyDown={trapFocus}>
     <header><div><p>월 계획 흐름</p><h2>계좌 흐름 편집</h2></div><button type="button" className="account-map-modal__close" aria-label="닫기" disabled={pending} onClick={onClose}>×</button></header>
     <div className="account-map-modal__body">
       <AccountTransferEditor locations={locations} initialValue={initialValue} disabled={pending || recovery.status !== 'none'} errorDescriptionId={feedback === null ? undefined : feedbackId} onCancel={onClose} onSave={(value) => void submit(() => onSave(value))} />

@@ -338,6 +338,9 @@ describe('AccountMapApp completed flow map', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: '저장' }));
     expect(within(dialog).getByRole('button', { name: '저장' })).toBeDisabled();
     expect(within(dialog).getByRole('button', { name: '흐름 삭제' })).toBeDisabled();
+    expect(dialog).toHaveFocus();
+    expect(fireEvent.keyDown(dialog, { key: 'Tab' })).toBe(false);
+    expect(fireEvent.keyDown(dialog, { key: 'Tab', shiftKey: true })).toBe(false);
     expect(within(dialog).getByRole('button', { name: '닫기' })).toBeDisabled();
     fireEvent.keyDown(dialog, { key: 'Escape' });
     expect(dialog).toBeInTheDocument();
