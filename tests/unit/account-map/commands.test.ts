@@ -287,7 +287,7 @@ describe('Account Map commands', () => {
       remainder: true,
       status: 'active',
     }));
-    expect(result.workspace.accountMap.applied?.sourceMainUpdatedAt).toBe(11);
+    expect(result.workspace.accountMap.applied?.sourceMainUpdatedAt).toBe(1);
   });
 
   it('reactivates only the selected archived-location pair and preserves its identity', () => {
@@ -859,7 +859,7 @@ describe('Account Map commands', () => {
     expect(applyAccountMapCommand(before, { type: 'edit-map-node', applied: worse }, 20)).toMatchObject({ ok: false, reason: 'custom-target-capacity' });
   });
 
-  it('keeps stale applied source after partial correction and advances it after full correction', () => {
+  it('keeps applied Main confirmation pending after both partial and full correction', () => {
     const before = workspace();
     before.main.applied = { ...main(), monthlyLivingWon: 900_000, updatedAt: 10 };
     const stalePurpose = {
@@ -903,7 +903,8 @@ describe('Account Map commands', () => {
 
     expect(complete.ok).toBe(true);
     if (!complete.ok) return;
-    expect(complete.workspace.accountMap.applied?.sourceMainUpdatedAt).toBe(10);
+    expect(complete.workspace.accountMap.applied?.sourceMainUpdatedAt).toBe(1);
+    expect(complete.workspace.accountMap.applied?.customPurposes[0]?.targetMonthlyWon).toBe(900_000);
   });
 
   it('keeps stale draft source after partial correction and advances it after full correction', () => {
@@ -976,7 +977,7 @@ describe('Account Map commands', () => {
         remainderByPurpose: {},
       } satisfies AccountMapCommand;
     }],
-  ] as const)('advances fitting applied and draft sources after %s writes', (_name, arrange) => {
+  ] as const)('acknowledges only new maps and fitting drafts after %s writes', (_name, arrange) => {
     const before = workspace();
     before.main.applied = { ...main(), updatedAt: 10 };
     const command = arrange(before);
@@ -985,7 +986,7 @@ describe('Account Map commands', () => {
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.workspace.accountMap.applied?.sourceMainUpdatedAt).toBe(10);
+    expect(result.workspace.accountMap.applied?.sourceMainUpdatedAt).toBe(_name === 'apply-map' ? 10 : 1);
     if (_name !== 'apply-map') {
       expect(result.workspace.accountMap.draft?.sourceMainUpdatedAt).toBe(10);
     }

@@ -595,6 +595,11 @@ function withCurrentMainSource<T extends AccountMapApplied | AccountMapAppliedV3
   current: T | null,
   main: MainData,
 ): T {
+  // Editing an existing applied map is not confirmation of its Main basis,
+  // including readable v2 maps that have not yet saved an account flow.
+  if (current !== null && 'setupCompletedAt' in current) {
+    return { ...candidate, sourceMainUpdatedAt: current.sourceMainUpdatedAt };
+  }
   const references = mainPurposeReferences(main);
   const parentIds = ['system:housing', 'system:living', 'system:saving', 'system:investing'] as const;
   const fitsCurrentMain = parentIds.every((parentId) => candidate.customPurposes

@@ -20,6 +20,49 @@ vi.mock('../../../src/account-map/ui/motion', () => ({
 afterEach(cleanup);
 
 describe('AccountMapApp completed flow map', () => {
+  it('suspends and resumes a purpose allocation through the real completed editor', async () => {
+    const setup = flowRepositories();
+    const before = protectedSlices(setup.current());
+    render(<AccountMapApp repositories={setup.repositories} />);
+    fireEvent.click(screen.getByRole('button', { name: '생활비 배정 관리' }));
+    let dialog = screen.getByRole('dialog', { name: '생활비 편집' });
+    fireEvent.change(within(dialog).getByRole('combobox', { name: '생활비 통장 연결 상태' }), { target: { value: 'suspended' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: '저장' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(setup.current().accountMap.applied!.links.find(({ id }) => id === 'living-local')).toMatchObject({ status: 'suspended', suspendedReason: 'user' });
+    fireEvent.click(screen.getByRole('button', { name: '생활비 배정 관리' }));
+    dialog = screen.getByRole('dialog', { name: '생활비 편집' });
+    fireEvent.change(within(dialog).getByRole('combobox', { name: '생활비 통장 연결 상태' }), { target: { value: 'active' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: '저장' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    const resumed = setup.current().accountMap.applied!.links.find(({ id }) => id === 'living-local');
+    expect(resumed).toMatchObject({ status: 'active', monthlyAmountWon: 900_000 });
+    expect(resumed).not.toHaveProperty('suspendedReason');
+    expect(protectedSlices(setup.current())).toEqual(before);
+  });
+
+  it.each(['최신 상태에서 다시 검토', '최신 값 유지'])('unlocks completed map reset after a conflict with %s', async (recoveryAction) => {
+    const setup = flowRepositories();
+    const before = structuredClone(setup.current());
+    render(<AccountMapApp repositories={setup.repositories} />);
+    fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: '월 연결 다시 만들기' }));
+    setup.current().revision = 2;
+    fireEvent.click(within(screen.getByRole('dialog', { name: '월 연결을 다시 만들까요?' })).getByRole('button', { name: '다시 만들기' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(setup.current().accountMap).toEqual(before.accountMap);
+    fireEvent.click(await screen.findByRole('button', { name: recoveryAction }));
+    expect(setup.current().revision).toBe(2);
+    expect(screen.getByRole('button', { name: '생활비 배정 관리' })).toBeEnabled();
+    fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: '월 연결 다시 만들기' }));
+    fireEvent.click(within(screen.getByRole('dialog', { name: '월 연결을 다시 만들까요?' })).getByRole('button', { name: '다시 만들기' }));
+    await waitFor(() => expect(setup.current().accountMap).toEqual({ applied: null, draft: null }));
+    expect(setup.current().revision).toBe(3);
+    expect(protectedSlices(setup.current())).toEqual(protectedSlices(before));
+    expect(setup.current().locations).toEqual(before.locations);
+  });
+
   it('renders an applied flow and only opens account detail on first activation', () => {
     render(<AccountMapApp repositories={flowRepositories().repositories} />);
 
@@ -157,8 +200,14 @@ describe('AccountMapApp completed flow map', () => {
     expect(protectedSlices(setup.current())).toEqual(before);
   });
 
-  it('repairs fixed purpose excess after a lower Main value and then explicitly confirms Main', async () => {
+  it.each([2, 3] as const)('repairs v%s fixed purpose excess after a lower Main value and then explicitly confirms Main', async (schemaVersion) => {
     const setup = flowRepositories({ ...salaryLivingBrokerageFixture().main, updatedAt: 30, monthlyLivingWon: 800_000 });
+    if (schemaVersion === 2) {
+      const applied = setup.current().accountMap.applied;
+      if (applied?.schemaVersion !== 3) throw new Error('expected flow fixture');
+      const { transfers: _transfers, ...legacy } = applied;
+      setup.current().accountMap.applied = { ...legacy, schemaVersion: 2 };
+    }
     const before = protectedSlices(setup.current());
     render(<AccountMapApp repositories={setup.repositories} />);
     fireEvent.click(screen.getByRole('button', { name: '현재 Main 기준으로 확인' }));
@@ -322,7 +371,7 @@ function flowRepositories(currentMain = salaryLivingBrokerageFixture().main): { 
   });
   const accountMap: AccountMapRepository = {
     load: vi.fn(() => ({ status: 'found' as const, workspace, needsMigration: false })),
-    save, saveIntent: vi.fn(), migrate: vi.fn(), reset: vi.fn(),
+    save, saveIntent: vi.fn(), migrate: vi.fn(), reset: (revision) => save(revision, { type: 'reset-map' }),
   };
   const main: AccountMapMainSourceRepository = { load: vi.fn(() => ({ status: 'found' as const, data: currentMain })) };
   return { repositories: { accountMap, main }, save, current: () => workspace };
