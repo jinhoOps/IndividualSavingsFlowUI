@@ -58,7 +58,8 @@ export class AccountWorkspaceCache {
     recoveryDrafts: Record<string, RecoveryDraft>,
   ): boolean {
     try {
-      this.storage?.setItem(this.key, JSON.stringify({
+      if (this.storage === undefined) return false;
+      this.storage.setItem(this.key, JSON.stringify({
         version: 1, snapshot, pending, recoveryDrafts,
       } satisfies AccountCache));
       return true;

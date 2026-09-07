@@ -151,6 +151,15 @@ describe('account workspace session', () => {
     expect(session.cacheFailed).toBe(true);
   });
 
+  it('reports recovery-cache failure when browser storage is unavailable', async () => {
+    const {remote} = fixture();
+    const session = new AccountWorkspaceSession(remote, 'project:no-storage', {userId: 'user-a'});
+
+    await session.refresh();
+
+    expect(session.cacheFailed).toBe(true);
+  });
+
   it('treats a concurrent initialization as an existing server workspace, not a saved import', async () => {
     localStorage.clear();
     const remote: WorkspaceRemote = {
@@ -189,6 +198,7 @@ describe('account workspace session', () => {
 
     session.recordRecoveryDraft('main-editor', null);
     expect(session.readRecoveryDraft('main-editor')).toBeNull();
+    expect(session.localEdits).toBe(false);
   });
 
   it('clears only a Main recovery draft covered by a committed Main payload', async () => {
@@ -310,5 +320,85 @@ describe('account workspace session', () => {
 
     expect(session.pending).toBeNull();
     expect(session.readRecoveryDraft(INVALID_PENDING_RECOVERY_KEY)).toEqual(malformed);
+  });
+
+  it('lets Account Map replace its pending conflict with a validated fresh-revision rebase', async () => {
+    localStorage.clear();
+    const {session, setCurrent, calls} = fixture();
+    await session.refresh();
+    const accountMap = session.scope('account-map');
+    const initial = session.snapshot!;
+    setCurrent({...createEmptyWorkspace(1000), revision: 2});
+
+    await expect(accountMap.replace(0, initial)).resolves.toEqual({status: 'conflict', currentRevision: 2});
+    await expect(accountMap.replace(2, session.snapshot!)).resolves.toMatchObject({status: 'saved'});
+
+    expect(calls).toHaveLength(2);
+    expect(calls[1]?.operation).toBe('save_account_map');
+    expect(calls[1]?.id).not.toBe(calls[0]?.id);
+  });
+
+  it('immediately adopts Main-null refreshes for Account Map and drops only its recovery records', async () => {
+    localStorage.clear();
+    const {session, setCurrent, calls} = fixture();
+    await session.refresh();
+    session.scope('account-map');
+    session.recordRecoveryDraft('account-map-draft', {id: 'draft'});
+    session.recordRecoveryDraft('main', {id: 'keep'});
+    setCurrent({...createEmptyWorkspace(1000), revision: 1});
+
+    await expect(session.refresh()).resolves.toBe('ready');
+
+    expect(session.snapshot?.revision).toBe(1);
+    expect(session.snapshot?.main.applied).toBeNull();
+    expect(session.readRecoveryDraft('account-map-draft')).toBeNull();
+    expect(session.readRecoveryDraft('main')).toEqual({id: 'keep'});
+    expect(session.externalRevision).toBe(1);
+    expect(calls).toHaveLength(0);
+  });
+
+  it('expires PGRST301 writes and ignores a late rejected write after disposal', async () => {
+    localStorage.clear();
+    const {session, remote} = fixture();
+    await session.refresh();
+    remote.write = async () => {throw Object.assign(new Error('expired'), {code: 'PGRST301'});};
+    await expect(session.scope('main').update(0, workspace => workspace)).resolves.toEqual({status: 'unavailable'});
+    expect(session.status).toBe('expired');
+
+    localStorage.clear();
+    const second = fixture();
+    await second.session.refresh();
+    let reject!: (reason: unknown) => void;
+    second.remote.write = () => new Promise((_resolve, rejectWrite) => {reject = rejectWrite;});
+    const write = second.session.scope('main').update(0, workspace => workspace);
+    second.session.dispose();
+    reject(new Error('late network error'));
+    await expect(write).resolves.toEqual({status: 'unavailable'});
+    expect(second.session.status).toBe('saving');
+  });
+
+  it('keeps a valid cached snapshot ready after a server rejects an invalid candidate', async () => {
+    localStorage.clear();
+    const {session, remote} = fixture();
+    await session.refresh();
+    remote.write = async () => ({status: 'invalid'});
+
+    await expect(session.scope('main').update(0, workspace => workspace)).resolves.toEqual({status: 'invalid'});
+
+    expect(session.status).toBe('ready');
+    expect(session.pending).toBeNull();
+    expect(session.snapshot?.revision).toBe(0);
+  });
+
+  it('clears recovery drafts from disposed memory while leaving the account cache intact', async () => {
+    localStorage.clear();
+    const {session, remote} = fixture();
+    await session.refresh();
+    session.recordRecoveryDraft('main', {amount: 1});
+    session.dispose();
+
+    expect(session.recoveryDrafts).toEqual({});
+    const restored = new AccountWorkspaceSession(remote, 'project:user-a', {userId: 'user-a', storage: localStorage});
+    expect(restored.readRecoveryDraft('main')).toEqual({amount: 1});
   });
 });

@@ -37,6 +37,7 @@ export class AccountWorkspaceSession {
   private busy = false;
   private editGeneration = 0;
   private refreshGeneration = 0;
+  private accountMapScopeUsed = false;
   private incoming: WorkspaceDocument | null = null;
   private readonly cache: AccountWorkspaceCache;
   private readonly listeners = new Set<() => void>();
@@ -62,6 +63,7 @@ export class AccountWorkspaceSession {
     if (value === null) {
       if (!Object.hasOwn(this.recoveryDrafts, key)) return;
       delete this.recoveryDrafts[key];
+      this.localEdits = this.hasRecoveryDrafts();
     }
     else {
       const baseRevision = this.snapshot?.revision ?? 0;
@@ -77,7 +79,7 @@ export class AccountWorkspaceSession {
       if (previous?.baseRevision === baseRevision && sameJson(previous.value, next)) return;
       this.recoveryDrafts[key] = {baseRevision, value: next};
     }
-    this.localEdits = this.localEdits || this.hasRecoveryDrafts();
+    if (value !== null) this.localEdits = true;
     this.persist();
     this.emit();
   }
@@ -113,6 +115,16 @@ export class AccountWorkspaceSession {
           this.status = remoteSchemaVersion(row) !== 3 ? 'unsupported' : 'invalid';
         } else {
           if (oldRevision !== undefined && decoded.revision > oldRevision
+            && this.accountMapScopeUsed && decoded.main.applied === null) {
+            this.snapshot = decoded;
+            this.incoming = null;
+            if (this.pending?.operation === 'save_account_map') this.pending = null;
+            this.discardAccountMapRecoveryDrafts();
+            this.externalRevision++;
+            this.rawRemote = null;
+            this.status = 'ready';
+            this.persist();
+          } else if (oldRevision !== undefined && decoded.revision > oldRevision
             && (this.localEdits || this.hasRecoveryDrafts()) && !this.pending) {
             if (!this.incoming || decoded.revision > this.incoming.revision) this.externalRevision++;
             this.incoming = decoded;
@@ -135,6 +147,7 @@ export class AccountWorkspaceSession {
     return this.status;
   }
   scope(scope: WorkspaceScope): WorkspaceRepository {
+    if (scope === 'account-map') this.accountMapScopeUsed = true;
     const existing = this.scopes.get(scope);
     if (existing) return existing;
     const port: WorkspaceRepository = {
@@ -156,7 +169,12 @@ export class AccountWorkspaceSession {
     return port;
   }
   private save(scope: WorkspaceScope, revision: number, candidate: WorkspaceDocument): Promise<WorkspaceWriteResult> {
-    if (this.disposed || !this.snapshot || this.busy || this.status !== 'ready' || this.pending) return Promise.resolve({status: 'unavailable'});
+    const rebasingAccountMapConflict = scope === 'account-map'
+      && this.status === 'conflict'
+      && this.pending?.operation === 'save_account_map';
+    if (this.disposed || !this.snapshot || this.busy
+      || (this.status !== 'ready' && !rebasingAccountMapConflict)
+      || (this.pending !== null && !rebasingAccountMapConflict)) return Promise.resolve({status: 'unavailable'});
     if (revision !== this.snapshot.revision) return Promise.resolve({status: 'conflict', currentRevision: this.snapshot.revision});
     const validated = parseWorkspaceDocument(candidate);
     if (!validated || Object.keys(workspacePayload(this.snapshot)).some(key =>
@@ -226,7 +244,11 @@ export class AccountWorkspaceSession {
     try {
       const result = await this.remote.write(pending.operation, pending.expectedRevision, structuredClone(pending.payload), pending.mutationId);
       if (this.disposed) return {status: 'unavailable'};
-      if (result.status === 'invalid') {this.status = 'invalid'; return {status: 'invalid'};}
+      if (result.status === 'invalid') {
+        this.pending = null;
+        this.status = this.snapshot !== null && this.rawRemote === null ? 'ready' : 'invalid';
+        return {status: 'invalid'};
+      }
       if (!this.adopt(result.workspace)) {this.status = 'uncertain'; return {status: 'unavailable'};}
       if (result.status === 'exists') {
         this.initializationExists = true;
@@ -238,7 +260,10 @@ export class AccountWorkspaceSession {
       if (result.status === 'conflict') {
         this.status = 'conflict';
         if (pending.operation === 'save_account_map' && this.snapshot!.main.applied === null) {
-          this.pending = null; this.localEdits = false; this.externalRevision++;
+          this.pending = null;
+          this.discardAccountMapRecoveryDrafts();
+          this.externalRevision++;
+          this.status = 'ready';
         }
         return {status: 'conflict', currentRevision: this.snapshot!.revision};
       }
@@ -247,7 +272,11 @@ export class AccountWorkspaceSession {
       if (this.editGeneration === editGeneration) this.localEdits = this.hasRecoveryDrafts();
       return {status: 'saved', workspace: structuredClone(this.snapshot!)};
     } catch (error) {
-      this.status = (error as {code?: string})?.code === '42501' || (error as {status?: number})?.status === 401 ? 'expired' : 'uncertain';
+      if (this.disposed) return {status: 'unavailable'};
+      const code = (error as {code?: string})?.code;
+      this.status = code === 'PGRST301' || code === '42501' || (error as {status?: number})?.status === 401
+        ? 'expired'
+        : 'uncertain';
       return {status: 'unavailable'};
     } finally {
       this.busy = false;
@@ -258,7 +287,7 @@ export class AccountWorkspaceSession {
     this.disposed = true;
     if (clearCache) this.cache.clear();
     this.refreshGeneration++;
-    this.snapshot = null; this.pending = null; this.rawRemote = null; this.listeners.clear();
+    this.snapshot = null; this.pending = null; this.recoveryDrafts = {}; this.rawRemote = null; this.listeners.clear();
   }
 
   private clearCoveredRecoveryDrafts(pending: PendingWorkspaceWrite): void {
@@ -273,6 +302,13 @@ export class AccountWorkspaceSession {
       && portfolioRecoveryIsCovered(this.recoveryDrafts.portfolio?.value, pending.payload)) {
       delete this.recoveryDrafts.portfolio;
     }
+  }
+
+  private discardAccountMapRecoveryDrafts(): void {
+    for (const key of Object.keys(this.recoveryDrafts)) {
+      if (key === 'account-map' || key.startsWith('account-map-')) delete this.recoveryDrafts[key];
+    }
+    this.localEdits = this.hasRecoveryDrafts();
   }
 }
 
