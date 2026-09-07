@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { MainData } from '../../../src/main/domain/model';
@@ -17,6 +17,44 @@ const plan: MainData = {
 };
 
 describe('MainPlanEditOverlay', () => {
+  it('preserves the overlay history marker when Back occurs during a pending save that fails', async () => {
+    let rejectSave!: (reason: Error) => void;
+    const pendingSave = new Promise<MainData>((_resolve, reject) => { rejectSave = reject; });
+    const repository: MainRepository = {
+      load: async () => ({ status: 'current', data: plan, original: plan }),
+      save: () => pendingSave, saveSetupProgress: async () => undefined,
+      loadSetupProgress: () => null, clearSetupProgress: async () => undefined, resetInvalidWorkspace: async () => undefined,
+    };
+    const onClosed = vi.fn();
+    render(<MainPlanEditOverlay repository={repository} target="living" returnFocusElement={null} onActivated={() => undefined} onClosed={onClosed} />);
+    const input = await screen.findByLabelText('월평균 생활비');
+    fireEvent.change(input, { target: { value: '1200000' } });
+    const token = mainPlanOverlayHistoryToken(window.history.state);
+    fireEvent.click(screen.getByRole('button', { name: '적용' }));
+    await waitFor(() => expect(input).toBeDisabled());
+    act(() => {
+      window.history.replaceState(null, '', '/account-map');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    });
+    expect(mainPlanOverlayHistoryToken(window.history.state)).toBe(token);
+    await act(async () => { rejectSave(new Error('storage failed')); });
+    expect(input).toHaveValue('1,200,000');
+    expect(screen.getAllByRole('alert')[0]).toHaveTextContent('저장하지 못했습니다');
+    expect(onClosed).not.toHaveBeenCalled();
+  });
+
+  it('keeps a named keyboard-dismissable dialog when loading Main fails', async () => {
+    const repository: MainRepository = {
+      load: async () => { throw new Error('storage unavailable'); },
+      save: async (data) => data, saveSetupProgress: async () => undefined,
+      loadSetupProgress: () => null, clearSetupProgress: async () => undefined, resetInvalidWorkspace: async () => undefined,
+    };
+    render(<MainPlanEditOverlay repository={repository} target="living" returnFocusElement={null} onActivated={() => undefined} onClosed={() => undefined} />);
+    await screen.findByRole('alert');
+    expect(screen.getByRole('dialog', { name: '월 자금 계획 편집' })).toBeVisible();
+    expect(screen.getByRole('button', { name: '편집기 닫기' })).toBeEnabled();
+  });
+
   it('keeps a dirty editor open when Back discard is declined, then restores invoking focus after an accepted close', async () => {
     const repository: MainRepository = {
       load: vi.fn(async () => ({ status: 'current' as const, data: plan, original: plan })),

@@ -1,6 +1,7 @@
 import { animate } from 'animejs';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApplyBar } from '../../main/ui/editor/ApplyBar';
+import { Button } from '../../components/common/Button';
 import { MainPlanEditor } from '../../main/ui/dashboard/MainPlanEditor';
 import { useMainPlanEditorController } from '../../main/ui/useMainPlanEditorController';
 import type { MainRepository } from '../../main/infrastructure/mainRepository';
@@ -117,7 +118,10 @@ export function MainPlanEditOverlay({
   const closeAfterHistoryPop = useCallback(() => {
     if (closing) return;
     const current = editorRef.current;
-    if (current.saving) return;
+    if (current.saving) {
+      tokenRef.current = ensureMainPlanOverlayHistoryMarker(tokenRef.current ?? undefined);
+      return;
+    }
     if (current.dirty && !closeAlreadyConfirmedRef.current && !window.confirm('저장하지 않은 변경사항을 버릴까요?')) {
       tokenRef.current = ensureMainPlanOverlayHistoryMarker(tokenRef.current ?? undefined);
       return;
@@ -217,11 +221,15 @@ export function MainPlanEditOverlay({
         className="main-plan-overlay__sheet"
         role="dialog"
         aria-modal="true"
-        aria-labelledby="cashflow-editor-title"
+        aria-labelledby={editor.status === 'ready' ? 'cashflow-editor-title' : undefined}
+        aria-label={editor.status === 'ready' ? undefined : '월 자금 계획 편집'}
         aria-busy={editor.status === 'loading' || editor.saving ? 'true' : undefined}
         tabIndex={-1}
         onKeyDown={trapFocus}
       >
+        {editor.status === 'ready' ? null : (
+          <Button type="button" variant="secondary" aria-label="편집기 닫기" onClick={() => requestHistoryClose({ status: 'cancelled' })}>닫기</Button>
+        )}
         {editor.status === 'loading' ? <p className="main-plan-overlay__loading" role="status">Main 월 자금 계획을 불러오는 중입니다.</p> : null}
         {editor.status === 'error' ? <p className="main-plan-overlay__error" role="alert">{editor.error}</p> : null}
         {editor.status !== 'ready' || editor.draft === null ? null : (
