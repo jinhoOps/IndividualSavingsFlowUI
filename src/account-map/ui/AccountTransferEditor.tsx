@@ -17,6 +17,7 @@ export interface AccountTransferEditorProps {
   disabled?: boolean;
   initialValue?: Partial<AccountTransferEditorValue>;
   onCancel?(): void;
+  errorDescriptionId?: string;
 }
 
 /** A local transfer form. It emits a complete UI-valid value but never saves it. */
@@ -26,6 +27,7 @@ export function AccountTransferEditor({
   disabled = false,
   initialValue,
   onCancel,
+  errorDescriptionId,
 }: AccountTransferEditorProps): JSX.Element {
   const [sourceLocationId, setSourceLocationId] = useState(
     initialValue?.sourceLocationId ?? "",
@@ -69,6 +71,7 @@ export function AccountTransferEditor({
         보내는 계좌
         <select
           value={sourceLocationId}
+          aria-describedby={errorDescriptionId}
           disabled={disabled}
           onChange={(event) => setSourceLocationId(event.target.value)}
         >
@@ -84,6 +87,7 @@ export function AccountTransferEditor({
         받는 계좌
         <select
           value={targetLocationId}
+          aria-describedby={errorDescriptionId}
           disabled={disabled}
           onChange={(event) => setTargetLocationId(event.target.value)}
         >
@@ -127,6 +131,7 @@ export function AccountTransferEditor({
             zeroDisplay="zero"
             disabled={disabled}
             aria-label="월 이체 금액"
+            aria-describedby={errorDescriptionId}
             aria-invalid={fixedAmountInvalid ? "true" : undefined}
           />
         </label>

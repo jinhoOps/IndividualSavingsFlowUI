@@ -190,19 +190,19 @@ function emptyGuidedDraft(sourceMainUpdatedAt: number): AccountMapDraftV2 {
   };
 }
 
-function RecoveryControls({ recovery, pending = false, onReapply, onKeepLatest }: {
+export function RecoveryControls({ recovery, pending = false, onReapply, onKeepLatest }: {
   recovery: Exclude<RecoveryState, { status: 'none' }>;
   pending?: boolean;
   onReapply(): Promise<boolean>;
   onKeepLatest(): void;
 }): JSX.Element {
   const manual = recovery.status === 'manual';
-  const targetMissing = recovery.status === 'collision' && recovery.reason === 'target-missing';
+  const targetMissing = (recovery.status === 'collision' || manual) && recovery.reason === 'target-missing';
   return <div className="account-map-error" role={manual || recovery.status === 'collision' ? 'alert' : 'status'}>
-    <p>{manual
+    <p>{targetMissing
+      ? '편집 대상이 최신 상태에 없습니다. 최신 값을 유지한 뒤 현재 흐름을 확인해 주세요.'
+      : manual
       ? '여러 변경을 최신 상태에 자동으로 다시 적용하지 않습니다. 입력을 검토한 뒤 다시 저장해 주세요.'
-      : targetMissing
-        ? '편집 대상이 최신 상태에 없습니다. 현재 흐름을 확인한 뒤 다시 연결해 주세요.'
         : '다른 곳에서 변경된 최신 상태를 불러왔어요. 입력은 그대로 두었습니다.'}</p>
     <div className="account-map-setup__actions">
       <Button variant="primary" type="button" disabled={pending} onClick={() => void onReapply()}>{manual ? '최신 상태에서 다시 검토' : '최신 상태에서 다시 적용'}</Button>
@@ -211,12 +211,13 @@ function RecoveryControls({ recovery, pending = false, onReapply, onKeepLatest }
   </div>;
 }
 
-function CustomPurposeDialog({ main, draft, disabled, onCancel, onSave }: {
+export function CustomPurposeDialog({ main, draft, disabled, onCancel, onSave, recoveryContent }: {
   main: MainData;
   draft: AccountMapDraftV2;
   disabled: boolean;
   onCancel(): void;
   onSave(draft: AccountMapDraftV2): Promise<AccountMapDraftSaveResult>;
+  recoveryContent?: React.ReactNode;
 }): JSX.Element {
   const panelRef = useRef<HTMLElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
@@ -308,6 +309,7 @@ function CustomPurposeDialog({ main, draft, disabled, onCancel, onSave }: {
         <p className="account-map-hint">추가 가능 {formatWon(capacity)}</p>
         {amountWon > capacity ? <p className="account-map-error" role="alert">큰 목적의 월 금액을 넘을 수 없습니다.</p> : null}
         {feedback === null ? null : <p className="account-map-error" role="alert">{feedback.message}</p>}
+        {recoveryContent}
       </div>
       <footer><Button variant="secondary" type="button" disabled={pending} onClick={onCancel}>취소</Button><Button variant="primary" type="button" disabled={!valid || disabled || pending} onClick={() => void submit()}>추가</Button></footer>
     </section>

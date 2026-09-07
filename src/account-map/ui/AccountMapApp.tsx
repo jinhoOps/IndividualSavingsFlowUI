@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useReducer, useRef, useState, type JSX, type KeyboardEvent } from 'react';
+import { useEffect, useId, useMemo, useReducer, useRef, useState, type JSX, type KeyboardEvent } from 'react';
 import { AppContentFrame } from '../../components/common/AppContentFrame';
 import { AppShell } from '../../components/common/AppShell';
 import { Button } from '../../components/common/Button';
@@ -7,22 +7,23 @@ import type { MainData } from '../../main/domain/model';
 import type { FinancialLocation } from '../../workspace/domain/financialLocation';
 import type { WorkspaceDocument } from '../../workspace/domain/model';
 import { bootstrapAccountMap } from '../application/bootstrap';
-import { accountMapReducer, type ManualRecoveryAction, type ManualRecoveryTarget } from '../application/reducer';
+import { accountMapReducer, type ManualRecoveryAction, type ManualRecoveryTarget, type RecoveryState } from '../application/reducer';
 import { projectAccountMapSetup } from '../application/setupProjection';
 import { rebaseAccountMapIntent, type AccountMapEditIntent } from '../domain/editIntent';
 import type { AccountMapApplied, AccountMapAppliedV3, AccountMapDraft, AccountMapDraftV2, AccountMapSetupStep, OutflowPurposeId, PurposeId } from '../domain/model';
+import { SYSTEM_PURPOSE_IDS } from '../domain/model';
 import type { AccountTransferEditorValue } from './AccountTransferEditor';
 import type { AccountMapTransferSaveResult } from './setup/AccountMapTransfersStep';
 import type { MainPlanEditTarget } from './setup/AccountMapBasisStep';
 import { projectAccountMapAppliedForView, projectAccountMapDraftForView } from '../domain/accountMapVersioning';
-import { customPurposeTargetCapacity, reconcilePurpose } from '../domain/reconciliation';
+import { customPurposeTargetCapacity, recalculateRemainder, reconcilePurpose } from '../domain/reconciliation';
 import { BrowserAccountMapRepository, type AccountMapRepository, type AccountMapWriteResult } from '../infrastructure/accountMapRepository';
 import { BrowserAccountMapMainSourceRepository, type AccountMapMainSourceRepository } from '../infrastructure/mainSourceRepository';
 import { AccountMapManagementMenu } from './AccountMapManagementMenu';
 import { AccountMapCanvas } from './AccountMapCanvas';
 import { AccountTransferEditor } from './AccountTransferEditor';
 import { AccountMapModal, type AccountMapModalRelatedItem, type AccountMapNodeEditInput } from './AccountMapModal';
-import { AccountMapSetup, type AccountMapDraftSaveResult } from './AccountMapSetup';
+import { AccountMapSetup, CustomPurposeDialog, RecoveryControls, type AccountMapDraftSaveResult } from './AccountMapSetup';
 import './account-map.css';
 
 export interface AccountMapRepositories { accountMap: AccountMapRepository; main: AccountMapMainSourceRepository }
@@ -41,6 +42,9 @@ export function AccountMapApp({ repositories, onRequestMainEdit, refreshSignal }
   const [restorePurposeId, setRestorePurposeId] = useState<`custom:${string}` | null>(null);
   const [restoreLocationId, setRestoreLocationId] = useState<string | null>(null);
   const [flowLocationEditorId, setFlowLocationEditorId] = useState<string | null>(null);
+  const [purposeEditorId, setPurposeEditorId] = useState<PurposeId | null>(null);
+  const [addingPurpose, setAddingPurpose] = useState(false);
+  const [purposeError, setPurposeError] = useState<string | null>(null);
   const [flowTransferEditor, setFlowTransferEditor] = useState<{ mode: 'add'; sourceLocationId: string } | { mode: 'edit'; transferId: string } | null>(null);
   const handledRefreshSignal = useRef<number | undefined>(refreshSignal);
   const setupProjection = useMemo(() => state.mode !== 'setup'
@@ -165,7 +169,73 @@ export function AccountMapApp({ repositories, onRequestMainEdit, refreshSignal }
     const editingTransfer = flowTransferEditor?.mode === 'edit'
       ? flowApplied.transfers.find(({ id }) => id === flowTransferEditor.transferId) ?? {}
       : {};
-    return <AppShell currentApp="account-map" managementMenu={management}><AppContentFrame className="account-map-page account-map-page--map"><header className="account-map-map-header"><div><p className="account-map-eyebrow">계좌 연결</p><h1>계좌별 월 계획 흐름</h1><p>Main의 월 금액은 읽기만 합니다. 계좌를 한 번 누르면 연결 흐름을 확인하고, 편집은 명시적인 버튼으로 시작합니다.</p></div></header>{mapMainConfirmationNotice}<AccountMapCanvas applied={flowApplied} main={state.main} locations={state.workspace.locations} interaction={state.interaction} hasExternalModal={restoringPurpose !== undefined || restoringLocation !== undefined || editingLocation !== undefined || flowTransferEditor !== null} onTransient={(nodeId) => dispatch({ type: 'node-hovered', nodeId })} onBlur={(nodeId) => dispatch({ type: 'node-blurred', nodeId })} onInvoke={(nodeId) => dispatch({ type: 'node-invoked', nodeId })} onBackground={() => dispatch({ type: 'map-background-invoked' })} onEscape={() => dispatch({ type: 'escape-invoked' })} onEditLocation={setFlowLocationEditorId} onAddTransfer={(sourceLocationId) => setFlowTransferEditor({ mode: 'add', sourceLocationId })} onEditTransfer={(transferId) => setFlowTransferEditor({ mode: 'edit', transferId })} />{editingLocation === undefined ? null : <AccountMapModal locationOnly locations={state.workspace.locations} node={{ id: `location:${editingLocation.id}`, kind: 'location', label: editingLocation.shortName, amountWon: 0, connectionCount: 0, status: 'resolved' }} related={buildFlowLocationRelated(editingLocation.id, flowApplied, state.workspace.locations)} sourceElement={null} fallbackElement={null} reducedMotion={typeof window.matchMedia !== 'function' || window.matchMedia('(prefers-reduced-motion: reduce)').matches} recovery={state.recovery} recoveryPending={state.save.status === 'pending'} saveFailed={state.save.status === 'failed'} onReapply={reapplyIntent} onKeepLatest={() => dispatch({ type: 'latest-kept' })} onClose={() => { const pending = pendingModalWorkspaceRef.current; pendingModalWorkspaceRef.current = null; if (pending !== null) dispatch({ type: 'save-succeeded', workspace: pending }); setFlowLocationEditorId(null); }} onSaveEdit={async (input) => { const result = await saveFlowLocationEdit(editingLocation.id, input); if (result.status !== 'saved') return false; pendingModalWorkspaceRef.current = result.workspace; return true; }} onArchiveLocation={archiveFlowLocation} />}{flowTransferEditor === null ? null : <FlowTransferDialog key={flowTransferEditor.mode === 'add' ? `add:${flowTransferEditor.sourceLocationId}` : `edit:${flowTransferEditor.transferId}`} locations={state.workspace.locations} initialValue={flowTransferEditor.mode === 'add' ? { sourceLocationId: flowTransferEditor.sourceLocationId } : editingTransfer} onClose={() => setFlowTransferEditor(null)} onSave={async (value) => { const saved = await saveFlowTransfer(flowTransferEditor, value); if (saved) setFlowTransferEditor(null); return saved; }} />}{locationRestoreModal}{restoringPurpose === undefined ? null : <AccountMapModal initialMode="restore-purpose" node={{ id: restoringPurpose.id, kind: 'purpose', label: restoringPurpose.name, amountWon: restoringPurpose.targetMonthlyWon, connectionCount: state.applied.links.filter(({ purposeId, status }) => purposeId === restoringPurpose.id && status === 'active').length, status: 'suspended' }} related={state.applied.links.filter(({ purposeId }) => purposeId === restoringPurpose.id).map((link) => ({ label: state.workspace.locations.find(({ id }) => id === link.locationId)?.shortName ?? '연결', amountWon: link.monthlyAmountWon, status: link.status, linkId: link.id, purposeId: link.purposeId, locationId: link.locationId, remainder: link.remainder }))} sourceElement={null} fallbackElement={restoreFocusElementRef.current} reducedMotion={typeof window.matchMedia !== 'function' || window.matchMedia('(prefers-reduced-motion: reduce)').matches} recovery={state.recovery} recoveryPending={state.save.status === 'pending'} saveFailed={state.save.status === 'failed'} purposeParentLabel={purposeParentLabel(restoringPurpose.parentId)} purposeTargetCapacityWon={customPurposeTargetCapacity(restoringPurpose.parentId, state.applied.customPurposes, state.main, restoringPurpose.id)} onReapply={reapplyIntent} onKeepLatest={() => dispatch({ type: 'latest-kept' })} onClose={() => setRestorePurposeId(null)} onRestorePurpose={async (purposeId, targetMonthlyWon) => { if (state.recovery.status !== 'none') return false; const result = await resolved.accountMap.save(state.workspace.revision, { type: 'restore-custom-purpose', purposeId, targetMonthlyWon }); if (result.status !== 'saved') { if (result.status === 'conflict') captureIntentConflict({ kind: 'purpose', id: purposeId, edit: { base: { name: restoringPurpose.name, targetMonthlyWon: restoringPurpose.targetMonthlyWon, archivedAt: restoringPurpose.archivedAt }, next: { name: restoringPurpose.name, targetMonthlyWon, archivedAt: undefined } } }); else dispatch({ type: 'save-failed', reason: failureReason(result) }); return false; } pendingModalWorkspaceRef.current = result.workspace; return true; }} />}</AppContentFrame></AppShell>;
+    const managedPurposeIds: PurposeId[] = [...SYSTEM_PURPOSE_IDS, ...flowApplied.customPurposes.filter(({ archivedAt }) => archivedAt === undefined).map(({ id }) => id)];
+    const editingPurpose = purposeEditorId === null ? null : {
+      id: purposeEditorId, label: purposeLabel(purposeEditorId, flowApplied),
+      target: reconcilePurpose(purposeEditorId, flowApplied, state.workspace.locations, state.main).targetWon,
+      custom: flowApplied.customPurposes.find(({ id }) => id === purposeEditorId),
+    };
+    const purposeRelated = editingPurpose === null ? [] : flowApplied.links.filter(({ purposeId }) => purposeId === editingPurpose.id).map((link) => ({
+      label: state.workspace.locations.find(({ id }) => id === link.locationId)?.shortName ?? '계좌',
+      amountWon: link.monthlyAmountWon, status: link.status,
+      ...(link.status === 'suspended' ? { suspendedReason: link.suspendedReason } : {}),
+      linkId: link.id, purposeId: link.purposeId, locationId: link.locationId, remainder: link.remainder,
+    }));
+    return <AppShell currentApp="account-map" managementMenu={management}><AppContentFrame className="account-map-page account-map-page--map"><header className="account-map-map-header"><div><p className="account-map-eyebrow">계좌 연결</p><h1>계좌별 월 계획 흐름</h1><p>Main의 월 금액은 읽기만 합니다. 계좌를 한 번 누르면 연결 흐름을 확인하고, 편집은 명시적인 버튼으로 시작합니다.</p></div></header>{mapMainConfirmationNotice}<AccountMapCanvas applied={flowApplied} main={state.main} locations={state.workspace.locations} interaction={state.interaction} hasExternalModal={restoringPurpose !== undefined || restoringLocation !== undefined || editingLocation !== undefined || flowTransferEditor !== null || editingPurpose !== null || addingPurpose} onTransient={(nodeId) => dispatch({ type: 'node-hovered', nodeId })} onBlur={(nodeId) => dispatch({ type: 'node-blurred', nodeId })} onInvoke={(nodeId) => dispatch({ type: 'node-invoked', nodeId })} onBackground={() => dispatch({ type: 'map-background-invoked' })} onEscape={() => dispatch({ type: 'escape-invoked' })} onEditLocation={setFlowLocationEditorId} onAddTransfer={(sourceLocationId) => setFlowTransferEditor({ mode: 'add', sourceLocationId })} onEditTransfer={(transferId) => setFlowTransferEditor({ mode: 'edit', transferId })} />{editingLocation === undefined ? null : <AccountMapModal locationOnly locations={state.workspace.locations} node={{ id: `location:${editingLocation.id}`, kind: 'location', label: editingLocation.shortName, amountWon: 0, connectionCount: 0, status: 'resolved' }} related={buildFlowLocationRelated(editingLocation.id, flowApplied, state.workspace.locations)} sourceElement={null} fallbackElement={null} reducedMotion={typeof window.matchMedia !== 'function' || window.matchMedia('(prefers-reduced-motion: reduce)').matches} recovery={state.recovery} recoveryPending={state.save.status === 'pending'} saveFailed={state.save.status === 'failed'} onReapply={reapplyIntent} onKeepLatest={() => dispatch({ type: 'latest-kept' })} onClose={() => { const pending = pendingModalWorkspaceRef.current; pendingModalWorkspaceRef.current = null; if (pending !== null) dispatch({ type: 'save-succeeded', workspace: pending }); setFlowLocationEditorId(null); }} onSaveEdit={async (input) => { const result = await saveFlowLocationEdit(editingLocation.id, input); if (result.status !== 'saved') return false; pendingModalWorkspaceRef.current = result.workspace; return true; }} onArchiveLocation={archiveFlowLocation} />}{flowTransferEditor === null ? null : <FlowTransferDialog
+      key={flowTransferEditor.mode === 'add' ? `add:${flowTransferEditor.sourceLocationId}` : `edit:${flowTransferEditor.transferId}`}
+      locations={state.workspace.locations}
+      initialValue={flowTransferEditor.mode === 'add' ? { sourceLocationId: flowTransferEditor.sourceLocationId } : editingTransfer}
+      recovery={state.recovery}
+      onReviewLatest={reapplyIntent}
+      onKeepLatest={() => { dispatch({ type: 'latest-kept' }); setFlowTransferEditor(null); }}
+      onClose={() => { if (state.recovery.status !== 'none') dispatch({ type: 'latest-kept' }); setFlowTransferEditor(null); }}
+      onSave={(value) => saveFlowTransfer(flowTransferEditor, value)}
+      onRemove={flowTransferEditor.mode === 'edit' ? () => removeTransfer(flowTransferEditor.transferId) : undefined}
+    />}
+    <section className="account-map-purpose-management" aria-label="목적·계좌 배정 관리">
+      <h2>목적·계좌 배정 관리</h2>
+      <p>목적별 월 배정을 조정하거나 새 계좌·보관처를 연결합니다. Main 금액은 바뀌지 않습니다.</p>
+      <div className="account-map-actions">{managedPurposeIds.map((id) => <Button key={id} type="button" variant="secondary" disabled={state.recovery.status !== 'none' || state.save.status === 'pending'} onClick={(event) => { restoreFocusElementRef.current = event.currentTarget; setPurposeError(null); setPurposeEditorId(id); }}>{purposeLabel(id, flowApplied)} 배정 관리</Button>)}
+      <Button type="button" variant="secondary" disabled={state.recovery.status !== 'none' || state.save.status === 'pending'} onClick={() => setAddingPurpose(true)}>세부 목적 추가</Button></div>
+    </section>
+    <section className="account-map-purpose-management" aria-label="전체 계좌 흐름 관리">
+      <h2>전체 계좌 흐름 관리</h2>
+      <div className="account-map-actions">{flowApplied.transfers.map((transfer) => {
+        const label = `${state.workspace.locations.find(({ id }) => id === transfer.sourceLocationId)?.shortName ?? '계좌'} → ${state.workspace.locations.find(({ id }) => id === transfer.targetLocationId)?.shortName ?? '계좌'}`;
+        return <Button key={transfer.id} type="button" variant="secondary" aria-label={`${label} 흐름 관리`} disabled={state.recovery.status !== 'none' || state.save.status === 'pending'} onClick={() => setFlowTransferEditor({ mode: 'edit', transferId: transfer.id })}>{label} · {transfer.status === 'active' ? '연결됨' : '중지'}</Button>;
+      })}</div>
+    </section>
+    {editingPurpose === null ? null : <AccountMapModal
+      key={editingPurpose.id} initialMode="edit"
+      node={{ id: editingPurpose.id, kind: 'purpose', label: editingPurpose.label, amountWon: editingPurpose.target, status: 'resolved' }}
+      related={purposeRelated} locations={state.workspace.locations}
+      sourceElement={null} fallbackElement={restoreFocusElementRef.current} reducedMotion={typeof window.matchMedia !== 'function' || window.matchMedia('(prefers-reduced-motion: reduce)').matches}
+      recovery={state.recovery} recoveryPending={state.save.status === 'pending'} saveFailed={state.save.status === 'failed'} saveErrorMessage={purposeError ?? undefined}
+      onReapply={reapplyIntent} onKeepLatest={() => dispatch({ type: 'latest-kept' })} onClose={closePurposeEditor}
+      onSaveEdit={(input) => savePurposeEdit(editingPurpose.id, input)}
+      onConnectLocation={(locationId, monthlyAmountWon) => commitConnection({ purposeId: editingPurpose.id, locationId, monthlyAmountWon, restoreLocation: state.workspace.locations.find(({ id }) => id === locationId)?.archivedAt !== undefined })}
+      onCreateAndConnectLocation={(newLocation, monthlyAmountWon) => commitConnection({ purposeId: editingPurpose.id, locationId: newLocation.id, newLocation, monthlyAmountWon })}
+      purposeParentLabel={editingPurpose.custom === undefined ? undefined : purposeParentLabel(editingPurpose.custom.parentId)}
+      purposeTargetCapacityWon={editingPurpose.custom === undefined ? undefined : customPurposeTargetCapacity(editingPurpose.custom.parentId, flowApplied.customPurposes, state.main, editingPurpose.custom.id)}
+      onArchivePurpose={async (purposeId) => {
+        if (state.recovery.status !== 'none' || state.save.status === 'pending') return false;
+        dispatch({ type: 'save-requested' });
+        const result = await resolved.accountMap.save(state.workspace.revision, { type: 'archive-custom-purpose', purposeId });
+        if (result.status === 'saved') { pendingModalWorkspaceRef.current = result.workspace; return true; }
+        if (result.status === 'conflict') captureManualConflict('edit-node', [{ kind: 'node', id: purposeId }]);
+        else dispatch({ type: 'save-failed', reason: failureReason(result) });
+        return false;
+      }}
+    />}
+    {addingPurpose ? <CustomPurposeDialog main={state.main} draft={{ schemaVersion: 2, sourceMainUpdatedAt: flowApplied.sourceMainUpdatedAt, customPurposes: flowApplied.customPurposes, links: flowApplied.links, transfers: flowApplied.transfers, step: 'locations', updatedAt: flowApplied.updatedAt }}
+      disabled={state.recovery.status !== 'none' || state.save.status === 'pending'}
+      recoveryContent={state.recovery.status === 'none' ? undefined : <RecoveryControls recovery={state.recovery} onReapply={reapplyIntent} onKeepLatest={() => { dispatch({ type: 'latest-kept' }); closePurposeEditor(); }} />}
+      onCancel={() => { if (state.recovery.status !== 'none') dispatch({ type: 'latest-kept' }); closePurposeEditor(); }}
+      onSave={async (draft) => {
+        const saved = await savePurposeMap({ ...state.applied, customPurposes: draft.customPurposes, updatedAt: draft.updatedAt }, []);
+        return saved ? { status: 'saved' } : { status: 'failed', message: '저장하지 못했습니다. 최신 상태와 목적 금액을 확인해 주세요.' };
+      }} /> : null}
+    {locationRestoreModal}{restoringPurpose === undefined ? null : <AccountMapModal initialMode="restore-purpose" node={{ id: restoringPurpose.id, kind: 'purpose', label: restoringPurpose.name, amountWon: restoringPurpose.targetMonthlyWon, connectionCount: state.applied.links.filter(({ purposeId, status }) => purposeId === restoringPurpose.id && status === 'active').length, status: 'suspended' }} related={state.applied.links.filter(({ purposeId }) => purposeId === restoringPurpose.id).map((link) => ({ label: state.workspace.locations.find(({ id }) => id === link.locationId)?.shortName ?? '연결', amountWon: link.monthlyAmountWon, status: link.status, linkId: link.id, purposeId: link.purposeId, locationId: link.locationId, remainder: link.remainder }))} sourceElement={null} fallbackElement={restoreFocusElementRef.current} reducedMotion={typeof window.matchMedia !== 'function' || window.matchMedia('(prefers-reduced-motion: reduce)').matches} recovery={state.recovery} recoveryPending={state.save.status === 'pending'} saveFailed={state.save.status === 'failed'} purposeParentLabel={purposeParentLabel(restoringPurpose.parentId)} purposeTargetCapacityWon={customPurposeTargetCapacity(restoringPurpose.parentId, state.applied.customPurposes, state.main, restoringPurpose.id)} onReapply={reapplyIntent} onKeepLatest={() => dispatch({ type: 'latest-kept' })} onClose={() => { closePurposeEditor(); setRestorePurposeId(null); }} onRestorePurpose={async (purposeId, targetMonthlyWon) => { if (state.recovery.status !== 'none') return false; const result = await resolved.accountMap.save(state.workspace.revision, { type: 'restore-custom-purpose', purposeId, targetMonthlyWon }); if (result.status !== 'saved') { if (result.status === 'conflict') captureIntentConflict({ kind: 'purpose', id: purposeId, edit: { base: { name: restoringPurpose.name, targetMonthlyWon: restoringPurpose.targetMonthlyWon, archivedAt: restoringPurpose.archivedAt }, next: { name: restoringPurpose.name, targetMonthlyWon, archivedAt: undefined } } }); else dispatch({ type: 'save-failed', reason: failureReason(result) }); return false; } pendingModalWorkspaceRef.current = result.workspace; return true; }} />}</AppContentFrame></AppShell>;
   }
   async function saveDraft(draft: AccountMapDraftV2): Promise<AccountMapDraftSaveResult> {
     if (state.mode !== 'setup' || state.recovery.status !== 'none') return { status: 'recovery' };
@@ -206,11 +276,12 @@ export function AccountMapApp({ repositories, onRequestMainEdit, refreshSignal }
   }
 
   async function commitConnection(input: { purposeId: PurposeId; locationId: string; newLocation?: FinancialLocation; monthlyAmountWon?: number; restoreLocation?: boolean }): Promise<boolean> {
-    if (state.mode !== 'setup' || state.recovery.status !== 'none') return false;
+    if ((state.mode !== 'setup' && state.mode !== 'map') || state.recovery.status !== 'none' || state.save.status === 'pending') return false;
+    const surface = state.mode === 'setup' ? 'draft' as const : 'applied' as const;
     dispatch({ type: 'save-requested' });
     const intent: AccountMapEditIntent = {
       kind: 'add-link',
-      surface: 'draft',
+      surface,
       purposeId: input.purposeId,
       locationId: input.locationId,
       base: null,
@@ -219,7 +290,7 @@ export function AccountMapApp({ repositories, onRequestMainEdit, refreshSignal }
     const command = input.restoreLocation === true
       ? {
           type: 'restore-and-connect-location' as const,
-          surface: 'draft' as const,
+          surface,
           purposeId: input.purposeId,
           locationId: input.locationId,
           ...(input.monthlyAmountWon === undefined ? {} : { monthlyAmountWon: input.monthlyAmountWon }),
@@ -227,14 +298,14 @@ export function AccountMapApp({ repositories, onRequestMainEdit, refreshSignal }
       : input.newLocation === undefined
       ? {
           type: 'connect-location' as const,
-          surface: 'draft' as const,
+          surface,
           purposeId: input.purposeId,
           locationId: input.locationId,
           ...(input.monthlyAmountWon === undefined ? {} : { monthlyAmountWon: input.monthlyAmountWon }),
         }
       : {
           type: 'create-and-connect-location' as const,
-          surface: 'draft' as const,
+          surface,
           purposeId: input.purposeId,
           location: input.newLocation,
           ...(input.monthlyAmountWon === undefined ? {} : { monthlyAmountWon: input.monthlyAmountWon }),
@@ -248,6 +319,10 @@ export function AccountMapApp({ repositories, onRequestMainEdit, refreshSignal }
     if (result.status !== 'saved') {
       dispatch({ type: 'save-failed', reason: failureReason(result) });
       return false;
+    }
+    if (state.mode === 'map') {
+      pendingModalWorkspaceRef.current = result.workspace;
+      return true;
     }
     dispatch({ type: 'save-succeeded', workspace: result.workspace });
     const savedDraft = result.workspace.accountMap.draft;
@@ -325,11 +400,11 @@ export function AccountMapApp({ repositories, onRequestMainEdit, refreshSignal }
   }
 
   async function removeTransfer(id: string): Promise<AccountMapTransferSaveResult> {
-    if (state.mode !== 'setup' || state.recovery.status !== 'none') return { status: 'recovery' };
+    if ((state.mode !== 'setup' && state.mode !== 'map') || state.recovery.status !== 'none' || state.save.status === 'pending') return { status: 'recovery' };
     dispatch({ type: 'save-requested' });
     const result = await resolved.accountMap.save(state.workspace.revision, {
       type: 'remove-transfer',
-      surface: 'draft',
+      surface: state.mode === 'map' ? 'applied' : 'draft',
       transferId: id,
     });
     if (result.status !== 'saved') {
@@ -352,8 +427,8 @@ export function AccountMapApp({ repositories, onRequestMainEdit, refreshSignal }
   async function saveFlowTransfer(
     editor: NonNullable<typeof flowTransferEditor>,
     value: AccountTransferEditorValue,
-  ): Promise<boolean> {
-    if (state.mode !== 'map' || state.recovery.status !== 'none') return false;
+  ): Promise<AccountMapTransferSaveResult> {
+    if (state.mode !== 'map' || state.recovery.status !== 'none' || state.save.status === 'pending') return { status: 'recovery' };
     dispatch({ type: 'save-requested' });
     const command = editor.mode === 'add'
       ? { type: 'add-transfer' as const, surface: 'applied' as const, transfer: { ...value, id: createId() } }
@@ -361,15 +436,69 @@ export function AccountMapApp({ repositories, onRequestMainEdit, refreshSignal }
     const result = await resolved.accountMap.save(state.workspace.revision, command);
     if (result.status === 'saved') {
       dispatch({ type: 'transfer-save-succeeded', workspace: result.workspace });
-      return true;
+      return { status: 'saved' };
     }
     if (result.status === 'conflict') {
       if (editor.mode === 'edit') captureTransferManualConflict('edit-transfer', editor.transferId, 'compound-edit');
       else captureManualConflict('edit-transfer', []);
-    } else {
+      return { status: 'recovery' };
+    }
+    dispatch({ type: 'save-failed', reason: failureReason(result) });
+    return transferSaveFailure(result);
+  }
+
+  async function savePurposeEdit(purposeId: PurposeId, input: AccountMapNodeEditInput): Promise<boolean> {
+    if (state.mode !== 'map' || state.recovery.status !== 'none' || state.save.status === 'pending') return false;
+    const applied = structuredClone(state.applied);
+    const now = Date.now();
+    const edits = new Map(input.links.map((link) => [link.id, link]));
+    applied.links = applied.links.flatMap((link) => {
+      const edit = edits.get(link.id);
+      if (edit === undefined) return [link];
+      if (edit.status === 'removed') return [];
+      const base = { ...link, monthlyAmountWon: edit.monthlyAmountWon, updatedAt: now };
+      return [edit.status === 'active'
+        ? { ...base, status: 'active' as const, remainder: edit.remainder }
+        : { ...base, status: 'suspended' as const, remainder: false as const, suspendedReason: 'user' as const }];
+    });
+    applied.customPurposes = applied.customPurposes.map((purpose) => purpose.id !== purposeId ? purpose : {
+      ...purpose, name: input.label ?? purpose.name, targetMonthlyWon: input.targetMonthlyWon ?? purpose.targetMonthlyWon, updatedAt: now,
+    });
+    const remainder = applied.links.find((link) => link.purposeId === purposeId && link.status === 'active' && link.remainder);
+    if (remainder !== undefined) {
+      const result = recalculateRemainder(purposeId, remainder.id, reconcilePurpose(purposeId, applied, state.workspace.locations, state.main).targetWon, applied.links);
+      if (!result.ok) { setPurposeError('목적의 고정 배정이 Main 기준을 넘습니다. 고정 금액을 줄인 뒤 다시 저장해 주세요.'); return false; }
+      applied.links = result.links;
+    }
+    applied.updatedAt = now;
+    return savePurposeMap(applied, [{ kind: 'node', id: purposeId }, ...manualLinkTargets(input.links.map(({ id }) => id), 'link')]);
+  }
+
+  async function savePurposeMap(applied: AccountMapApplied, targets: ManualRecoveryTarget[]): Promise<boolean> {
+    if (state.mode !== 'map' || state.recovery.status !== 'none' || state.save.status === 'pending') return false;
+    setPurposeError(null);
+    dispatch({ type: 'save-requested' });
+    const result = await resolved.accountMap.save(state.workspace.revision, { type: 'edit-map-node', applied });
+    if (result.status === 'saved') { pendingModalWorkspaceRef.current = result.workspace; return true; }
+    if (result.status === 'conflict') captureManualConflict('edit-node', targets);
+    else {
       dispatch({ type: 'save-failed', reason: failureReason(result) });
+      setPurposeError(result.status === 'rejected'
+        ? '목적의 고정 배정·세부 목적 합계가 기준 금액을 넘지 않는지, 수입 연결과 나머지 배정 계좌가 남아 있는지 확인해 주세요.'
+        : '저장소에 접근하지 못했습니다. 입력을 유지했습니다. 다시 저장해 주세요.');
     }
     return false;
+  }
+
+  function closePurposeEditor(): void {
+    const pending = pendingModalWorkspaceRef.current;
+    pendingModalWorkspaceRef.current = null;
+    const recovered = pendingModalRecoveryRef.current;
+    pendingModalRecoveryRef.current = false;
+    if (pending !== null) dispatch({ type: recovered ? 'reapply-succeeded' : 'save-succeeded', workspace: pending });
+    setPurposeEditorId(null);
+    setAddingPurpose(false);
+    setPurposeError(null);
   }
 
   async function confirmCurrentMain(): Promise<void> {
@@ -445,7 +574,7 @@ export function AccountMapApp({ repositories, onRequestMainEdit, refreshSignal }
     }
     const result = await resolved.accountMap.save(replayWorkspace.revision, rebased.command);
     if (result.status === 'saved') {
-      if (state.mode === 'map' && (state.interaction.modalNodeId !== null || restorePurposeId !== null)) {
+      if (state.mode === 'map' && (state.interaction.modalNodeId !== null || restorePurposeId !== null || purposeEditorId !== null)) {
         pendingModalWorkspaceRef.current = result.workspace;
         pendingModalRecoveryRef.current = true;
         return true;
@@ -491,21 +620,59 @@ export function AccountMapApp({ repositories, onRequestMainEdit, refreshSignal }
 function FlowTransferDialog({
   locations,
   initialValue,
+  recovery,
+  onReviewLatest,
+  onKeepLatest,
   onClose,
   onSave,
+  onRemove,
 }: {
   locations: readonly FinancialLocation[];
   initialValue: Partial<AccountTransferEditorValue>;
+  recovery: RecoveryState;
+  onReviewLatest(): Promise<boolean>;
+  onKeepLatest(): void;
   onClose(): void;
-  onSave(value: AccountTransferEditorValue): Promise<boolean>;
+  onSave(value: AccountTransferEditorValue): Promise<AccountMapTransferSaveResult>;
+  onRemove?(): Promise<AccountMapTransferSaveResult>;
 }): JSX.Element {
-  const [saveFailed, setSaveFailed] = useState(false);
+  const [feedback, setFeedback] = useState<string | null>(null);
+  const feedbackId = useId();
+  const [pending, setPending] = useState(false);
+  const pendingRef = useRef(false);
   const dialogRef = useRef<HTMLElement>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
   useEffect(() => {
+    returnFocusRef.current = document.activeElement as HTMLElement | null;
     dialogRef.current?.querySelector<HTMLElement>('button, select, input, [tabindex]:not([tabindex="-1"])')?.focus();
+    return () => returnFocusRef.current?.focus();
   }, []);
+  useEffect(() => {
+    if (recovery.status !== 'none') dialogRef.current?.querySelector<HTMLElement>('.account-map-error button')?.focus();
+  }, [recovery.status]);
+  useEffect(() => {
+    if (feedback !== null && !pending) dialogRef.current?.querySelector<HTMLElement>('select')?.focus();
+  }, [feedback, pending]);
+  async function submit(action: () => Promise<AccountMapTransferSaveResult>): Promise<void> {
+    if (pendingRef.current || recovery.status !== 'none') return;
+    pendingRef.current = true;
+    setPending(true);
+    setFeedback(null);
+    try {
+      const result = await action();
+      if (result.status === 'saved') onClose();
+      else if (result.status === 'validation') {
+        setFeedback(result.message);
+      } else if (result.status === 'failed') setFeedback('저장하지 못했습니다. 입력을 유지했습니다. 다시 시도해 주세요.');
+    } catch {
+      setFeedback('저장소에 접근하지 못했습니다. 입력을 유지했습니다. 다시 시도해 주세요.');
+    } finally {
+      pendingRef.current = false;
+      setPending(false);
+    }
+  }
   const trapFocus = (event: KeyboardEvent<HTMLElement>) => {
-    if (event.key === 'Escape') { event.preventDefault(); onClose(); return; }
+    if (event.key === 'Escape') { event.preventDefault(); if (!pendingRef.current) onClose(); return; }
     if (event.key !== 'Tab') return;
     const focusable = [...(dialogRef.current?.querySelectorAll<HTMLElement>('button:not([disabled]), select:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])') ?? [])];
     if (focusable.length === 0) return;
@@ -514,7 +681,15 @@ function FlowTransferDialog({
     if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
     else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
   };
-  return <div className="account-map-modal-backdrop"><section ref={dialogRef} className="account-map-modal account-flow-editor-modal" role="dialog" aria-modal="true" aria-label="계좌 흐름 편집" onKeyDown={trapFocus}><header><div><p>월 계획 흐름</p><h2>계좌 흐름 편집</h2></div><button type="button" className="account-map-modal__close" aria-label="닫기" onClick={onClose}>×</button></header><div className="account-map-modal__body"><AccountTransferEditor locations={locations} initialValue={initialValue} onCancel={onClose} onSave={(value) => { setSaveFailed(false); void onSave(value).then((saved) => { if (!saved) setSaveFailed(true); }, () => setSaveFailed(true)); }} />{saveFailed ? <p role="alert" className="account-map-modal__error">현재 흐름을 저장하지 못했습니다. 구조와 최신 상태를 확인한 뒤 다시 시도해 주세요.</p> : null}</div></section></div>;
+  return <div className="account-map-modal-backdrop"><section ref={dialogRef} className="account-map-modal account-flow-editor-modal" role="dialog" aria-modal="true" aria-label="계좌 흐름 편집" aria-busy={pending || undefined} onKeyDown={trapFocus}>
+    <header><div><p>월 계획 흐름</p><h2>계좌 흐름 편집</h2></div><button type="button" className="account-map-modal__close" aria-label="닫기" disabled={pending} onClick={onClose}>×</button></header>
+    <div className="account-map-modal__body">
+      <AccountTransferEditor locations={locations} initialValue={initialValue} disabled={pending || recovery.status !== 'none'} errorDescriptionId={feedback === null ? undefined : feedbackId} onCancel={onClose} onSave={(value) => void submit(() => onSave(value))} />
+      {onRemove === undefined ? null : <Button type="button" variant="secondary" disabled={pending || recovery.status !== 'none'} onClick={() => void submit(onRemove)}>흐름 삭제</Button>}
+      {feedback === null ? null : <p id={feedbackId} role="alert" className="account-map-modal__error">{feedback}</p>}
+      {recovery.status === 'none' ? null : <RecoveryControls recovery={recovery} pending={pending} onReapply={onReviewLatest} onKeepLatest={onKeepLatest} />}
+    </div>
+  </section></div>;
 }
 
 function MessagePage({ title, children }: { title: string; children: React.ReactNode }) { return <AppContentFrame className="account-map-page"><section className="account-map-message"><h1>{title}</h1>{children}</section></AppContentFrame>; }

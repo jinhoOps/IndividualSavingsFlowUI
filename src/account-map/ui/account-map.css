@@ -46,6 +46,9 @@
 .account-map-review-flow li { display: grid; min-width: 0; gap: 4px; border-top: 1px solid var(--line); padding-top: 10px; }
 .account-map-review-flow li span { color: var(--muted); overflow-wrap: anywhere; }
 .account-map-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; border-top: 1px solid var(--line); padding-top: 18px; }
+.account-map-purpose-management { min-width: 0; padding-block: 20px; }
+.account-map-purpose-management .account-map-actions { position: static; justify-content: flex-start; }
+.account-map-purpose-management .ui-button { min-height: 44px; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
 .account-map-add-purpose, .account-map-new-location { display: flex; min-height: 64px; align-items: center; justify-content: center; gap: 8px; border: 1px dashed var(--line-strong); border-radius: 18px; background: color-mix(in srgb, var(--panel) 75%, transparent); color: var(--tone-accent); font-weight: 700; }
 .account-map-alert { display: grid; gap: 3px; margin: 0; border-left: 3px solid var(--tone-primary); background: color-mix(in srgb, var(--tone-primary) 7%, var(--panel)); padding: 12px 14px; }
 .account-map-alert span { color: var(--muted); font-size: .875rem; }
@@ -101,7 +104,10 @@
 .account-map-node small { color: var(--muted); font-size: .7rem; }
 .account-flow-canvas { cursor: default; }
 .account-flow-edges marker path { fill: var(--tone-accent); stroke: none; }
-.account-flow-edge--fixed, .account-flow-edge--sweep { pointer-events: stroke; cursor: pointer; stroke: var(--tone-accent) !important; }
+.account-flow-edge--fixed, .account-flow-edge--sweep { stroke: var(--tone-accent) !important; }
+.account-map-edges .account-flow-edge-hit { stroke: transparent; stroke-width: 44; stroke-linecap: round; pointer-events: stroke; cursor: pointer; transition: none; }
+.account-flow-edge-hit:focus-visible { outline: none; }
+.account-flow-edge-control:focus-within .account-flow-edge { stroke-width: 4; }
 .account-flow-edge--sweep { stroke-dasharray: 9 5; }
 .account-flow-edge--purpose { stroke-dasharray: 2 5; }
 .account-flow-edge--warning { stroke: var(--status-error, #a43122) !important; stroke-dasharray: 4 4; }

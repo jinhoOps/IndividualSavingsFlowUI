@@ -7,8 +7,23 @@ import type { AccountMapAppliedV3, AccountTransferLink } from '../../../src/acco
 import type { MainData } from '../../../src/main/domain/model';
 import type { FinancialLocation } from '../../../src/workspace/domain/financialLocation';
 import { createEmptyWorkspace } from '../../../src/workspace/domain/model';
+import { applyAccountMapCommand } from '../../../src/account-map/domain/commands';
+import { salaryLivingBrokerageFixture } from './accountFlowTestSupport';
 
 describe('Account flow commands', () => {
+  it('preserves the unconfirmed Main basis across purpose allocation edits', () => {
+    const fixture = salaryLivingBrokerageFixture();
+    const workspace = createEmptyWorkspace(1);
+    workspace.main.applied = { ...fixture.main, monthlyLivingWon: 800_000, updatedAt: 30 };
+    workspace.locations = fixture.locations.map((location) => ({ ...location, roles: location.id === 'salary' ? ['income'] : location.id === 'living' ? ['spending'] : ['investing'] }));
+    workspace.accountMap.applied = fixture.applied;
+    const result = applyAccountMapCommand(workspace, { type: 'edit-link', linkId: 'living-local', fields: { monthlyAmountWon: 800_000 } }, 40);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.workspace.accountMap.applied).toMatchObject({ sourceMainUpdatedAt: 10, transfers: fixture.applied.transfers });
+    expect(result.workspace.main).toEqual(workspace.main);
+    expect(result.workspace.accountMap.applied!.links.find(({ id }) => id === 'living-local')!.monthlyAmountWon).toBe(800_000);
+  });
   it('upgrades only the selected applied sub-slice when adding a transfer', () => {
     const workspace = workspaceWithLegacyApplied();
     const untouched = {

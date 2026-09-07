@@ -429,7 +429,9 @@ function applyGuidedAppliedLegacyCommand(
         ? null
         : {
             schemaVersion: 3,
-            sourceMainUpdatedAt: legacyApplied.sourceMainUpdatedAt,
+            // Purpose edits must not acknowledge the v3 flow's Main basis.
+            // Only confirm-current-main advances this explicit confirmation.
+            sourceMainUpdatedAt: applied.sourceMainUpdatedAt,
             customPurposes: structuredClone(legacyApplied.customPurposes),
             links: structuredClone(legacyApplied.links),
             transfers: structuredClone(applied.transfers),

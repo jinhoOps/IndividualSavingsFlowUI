@@ -53,6 +53,7 @@ export interface AccountMapModalProps {
   recovery: RecoveryState;
   recoveryPending: boolean;
   saveFailed: boolean;
+  saveErrorMessage?: string;
   onClose(): void;
   onReapply(): Promise<boolean>;
   onKeepLatest(): void;
@@ -118,6 +119,7 @@ export function AccountMapModal({
   recovery,
   recoveryPending,
   saveFailed,
+  saveErrorMessage,
   onClose,
   onReapply,
   onKeepLatest,
@@ -297,7 +299,9 @@ export function AccountMapModal({
       restoreFocus();
       return;
     }
-    onClose();
+    // A successful close also clears the parent's pending state. Commit that
+    // render before focusing its previously disabled management trigger.
+    flushSync(() => onClose());
     restoreFocus();
   }
 
@@ -1023,7 +1027,7 @@ export function AccountMapModal({
           ) : null}
           {actionError && recovery.status === "none" ? (
             <p className="account-map-modal__error" role="alert">
-              저장하지 못했습니다. 선택은 유지했습니다. 다시 시도해 주세요.
+              {saveErrorMessage ?? '저장하지 못했습니다. 선택은 유지했습니다. 다시 시도해 주세요.'}
             </p>
           ) : null}
           {saveFailed && recovery.status !== "none" ? (

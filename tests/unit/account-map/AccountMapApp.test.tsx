@@ -117,6 +117,185 @@ describe('AccountMapApp completed flow map', () => {
     expect(screen.getByText('확인 필요')).toBeVisible();
     expect(setup.current()).toEqual(before);
   });
+
+  it('reviews latest after a completed transfer conflict, retains input and retries on the new revision', async () => {
+    const setup = flowRepositories();
+    render(<AccountMapApp repositories={setup.repositories} />);
+    openSalaryDetail();
+    fireEvent.click(within(screen.getByLabelText('급여 통장 월 계획 흐름')).getByRole('button', { name: '흐름 편집' }));
+    const dialog = screen.getByRole('dialog', { name: '계좌 흐름 편집' });
+    fireEvent.change(within(dialog).getByRole('textbox', { name: '월 이체 금액' }), { target: { value: '950000' } });
+    setup.current().revision = 2;
+    fireEvent.click(within(dialog).getByRole('button', { name: '저장' }));
+    await waitFor(() => expect(within(dialog).getByRole('button', { name: '최신 상태에서 다시 검토' })).toBeVisible());
+    expect(within(dialog).getByRole('textbox', { name: '월 이체 금액' })).toHaveValue('950,000');
+    fireEvent.click(within(dialog).getByRole('button', { name: '최신 상태에서 다시 검토' }));
+    expect(setup.current().revision).toBe(2);
+    fireEvent.click(within(dialog).getByRole('button', { name: '저장' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(setup.current().accountMap.applied).toMatchObject({ transfers: expect.arrayContaining([
+      expect.objectContaining({ id: 'salary-living', allocation: { kind: 'fixed', monthlyAmountWon: 950_000 } }),
+    ]) });
+    expect(setup.current().revision).toBe(3);
+  });
+
+  it('deletes a completed transfer only after explicit latest-state review on conflict', async () => {
+    const setup = flowRepositories();
+    const before = protectedSlices(setup.current());
+    render(<AccountMapApp repositories={setup.repositories} />);
+    openSalaryDetail();
+    fireEvent.click(within(screen.getByLabelText('급여 통장 월 계획 흐름')).getByRole('button', { name: '흐름 편집' }));
+    const dialog = screen.getByRole('dialog', { name: '계좌 흐름 편집' });
+    setup.current().revision = 2;
+    fireEvent.click(within(dialog).getByRole('button', { name: '흐름 삭제' }));
+    await waitFor(() => expect(within(dialog).getByRole('button', { name: '최신 상태에서 다시 검토' })).toBeVisible());
+    fireEvent.click(within(dialog).getByRole('button', { name: '최신 상태에서 다시 검토' }));
+    expect(setup.current().accountMap.applied).toMatchObject({ transfers: expect.arrayContaining([expect.objectContaining({ id: 'salary-living' })]) });
+    fireEvent.click(within(dialog).getByRole('button', { name: '흐름 삭제' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(setup.current().accountMap.applied).toMatchObject({ transfers: [expect.objectContaining({ id: 'living-brokerage' })] });
+    expect(protectedSlices(setup.current())).toEqual(before);
+  });
+
+  it('repairs fixed purpose excess after a lower Main value and then explicitly confirms Main', async () => {
+    const setup = flowRepositories({ ...salaryLivingBrokerageFixture().main, updatedAt: 30, monthlyLivingWon: 800_000 });
+    const before = protectedSlices(setup.current());
+    render(<AccountMapApp repositories={setup.repositories} />);
+    fireEvent.click(screen.getByRole('button', { name: '현재 Main 기준으로 확인' }));
+    await waitFor(() => expect(screen.getByRole('alert')).toBeVisible());
+    fireEvent.click(screen.getByRole('button', { name: '생활비 배정 관리' }));
+    const dialog = screen.getByRole('dialog', { name: '생활비 편집' });
+    fireEvent.change(within(dialog).getByRole('textbox', { name: '생활비 통장 월 금액' }), { target: { value: '800000' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: '저장' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(screen.getByText('확인 필요')).toBeVisible();
+    expect(setup.current().accountMap.applied).toMatchObject({ sourceMainUpdatedAt: 10, links: expect.arrayContaining([
+      expect.objectContaining({ id: 'living-local', monthlyAmountWon: 800_000 }),
+    ]) });
+    fireEvent.click(screen.getByRole('button', { name: '현재 Main 기준으로 확인' }));
+    await waitFor(() => expect(screen.queryByText('확인 필요')).not.toBeInTheDocument());
+    expect(protectedSlices(setup.current())).toEqual(before);
+  });
+
+  it('keeps suspended transfers reachable and resumes them through the completed flow editor', async () => {
+    const setup = flowRepositories();
+    const applied = setup.current().accountMap.applied;
+    if (applied?.schemaVersion !== 3) throw new Error('expected flow fixture');
+    applied.transfers[0] = { ...applied.transfers[0]!, status: 'suspended', suspendedReason: 'user' };
+    render(<AccountMapApp repositories={setup.repositories} />);
+    fireEvent.click(screen.getByRole('button', { name: '급여 통장 → 생활비 통장 흐름 관리' }));
+    const dialog = screen.getByRole('dialog', { name: '계좌 흐름 편집' });
+    fireEvent.change(within(dialog).getByRole('combobox', { name: '연결 상태' }), { target: { value: 'active' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: '저장' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(setup.current().accountMap.applied).toMatchObject({ transfers: expect.arrayContaining([expect.objectContaining({ id: 'salary-living', status: 'active' })]) });
+  });
+
+  it('adds a custom purpose and a new cash location from completed allocation management', async () => {
+    const setup = flowRepositories();
+    const before = protectedSlices(setup.current());
+    render(<AccountMapApp repositories={setup.repositories} />);
+    fireEvent.click(screen.getByRole('button', { name: '생활비 배정 관리' }));
+    const allocation = screen.getByRole('dialog', { name: '생활비 편집' });
+    fireEvent.change(within(allocation).getByRole('textbox', { name: '생활비 통장 월 금액' }), { target: { value: '800000' } });
+    fireEvent.click(within(allocation).getByRole('button', { name: '저장' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: '세부 목적 추가' }));
+    const create = screen.getByRole('dialog', { name: '세부 목적 추가' });
+    fireEvent.change(within(create).getByRole('textbox', { name: '목적 이름' }), { target: { value: '교통비' } });
+    fireEvent.change(within(create).getByRole('textbox', { name: '월 금액' }), { target: { value: '100000' } });
+    fireEvent.click(within(create).getByRole('button', { name: '추가' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: '교통비 배정 관리' }));
+    const dialog = screen.getByRole('dialog', { name: '교통비 편집' });
+    fireEvent.click(within(dialog).getByRole('button', { name: '연결 추가' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: /새 계좌·보관처 추가/ }));
+    fireEvent.click(within(dialog).getByRole('button', { name: '현금' }));
+    fireEvent.change(within(dialog).getByRole('textbox', { name: '표시 이름' }), { target: { value: '교통 지갑' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: '완료' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(setup.current().locations).toEqual(expect.arrayContaining([expect.objectContaining({ shortName: '교통 지갑', kind: 'cash' })]));
+    const purpose = setup.current().accountMap.applied!.customPurposes.find(({ name }) => name === '교통비');
+    expect(setup.current().accountMap.applied!.links).toEqual(expect.arrayContaining([expect.objectContaining({ purposeId: purpose!.id, monthlyAmountWon: 100_000 })]));
+    fireEvent.click(screen.getByRole('button', { name: '교통비 배정 관리' }));
+    const edit = screen.getByRole('dialog', { name: '교통비 편집' });
+    fireEvent.change(within(edit).getByRole('textbox', { name: '표시 이름' }), { target: { value: '대중교통' } });
+    fireEvent.change(within(edit).getByRole('textbox', { name: '월 목표 금액' }), { target: { value: '90000' } });
+    fireEvent.change(within(edit).getByRole('textbox', { name: '교통 지갑 월 금액' }), { target: { value: '90000' } });
+    fireEvent.click(within(edit).getByRole('button', { name: '저장' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(setup.current().accountMap.applied!.customPurposes).toEqual(expect.arrayContaining([expect.objectContaining({ id: purpose!.id, name: '대중교통', targetMonthlyWon: 90_000 })]));
+    expect(protectedSlices(setup.current())).toEqual(before);
+  });
+
+  it('keeps the latest transfer after a conflict without replaying the local input', async () => {
+    const setup = flowRepositories();
+    render(<AccountMapApp repositories={setup.repositories} />);
+    fireEvent.click(screen.getByRole('button', { name: '급여 통장 → 생활비 통장 흐름 관리' }));
+    const dialog = screen.getByRole('dialog', { name: '계좌 흐름 편집' });
+    fireEvent.change(within(dialog).getByRole('textbox', { name: '월 이체 금액' }), { target: { value: '950000' } });
+    setup.current().revision = 2;
+    fireEvent.click(within(dialog).getByRole('button', { name: '저장' }));
+    fireEvent.click(await within(dialog).findByRole('button', { name: '최신 값 유지' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(setup.current().revision).toBe(2);
+    expect(setup.current().accountMap.applied).toMatchObject({ transfers: expect.arrayContaining([expect.objectContaining({ id: 'salary-living', allocation: { kind: 'fixed', monthlyAmountWon: 900_000 } })]) });
+    fireEvent.click(screen.getByRole('button', { name: '급여 통장 → 생활비 통장 흐름 관리' }));
+    expect(screen.getByRole('textbox', { name: '월 이체 금액' })).toHaveValue('900,000');
+  });
+
+  it('immediately makes a restored custom purpose reachable without reloading the map', async () => {
+    const setup = flowRepositories();
+    setup.current().accountMap.applied!.customPurposes = [{ id: 'custom:transport', parentId: 'system:living', name: '교통비', targetMonthlyWon: 100_000, archivedAt: 10, createdAt: 1, updatedAt: 10 }];
+    setup.current().accountMap.applied!.links.find(({ id }) => id === 'living-local')!.monthlyAmountWon = 800_000;
+    render(<AccountMapApp repositories={setup.repositories} />);
+    fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: /교통비 · 생활비/ }));
+    const dialog = screen.getByRole('dialog', { name: '교통비 복원' });
+    fireEvent.click(within(dialog).getByRole('button', { name: '목적 복원' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(screen.getByRole('button', { name: '교통비 배정 관리' })).toBeVisible();
+  });
+
+  it('explains structural rejection, preserves the source and allows correcting the transfer', async () => {
+    const setup = flowRepositories();
+    const before = structuredClone(setup.current());
+    render(<AccountMapApp repositories={setup.repositories} />);
+    openSalaryDetail();
+    fireEvent.click(within(screen.getByLabelText('급여 통장 월 계획 흐름')).getByRole('button', { name: '연결 추가' }));
+    const dialog = screen.getByRole('dialog', { name: '계좌 흐름 편집' });
+    fireEvent.change(within(dialog).getByRole('combobox', { name: '받는 계좌' }), { target: { value: 'living' } });
+    fireEvent.change(within(dialog).getByRole('textbox', { name: '월 이체 금액' }), { target: { value: '110000' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: '저장' }));
+    await waitFor(() => expect(within(dialog).getByRole('alert')).toHaveTextContent('같은 두 계좌'));
+    expect(setup.current()).toEqual(before);
+    expect(within(dialog).getByRole('textbox', { name: '월 이체 금액' })).toHaveValue('110,000');
+    fireEvent.change(within(dialog).getByRole('combobox', { name: '받는 계좌' }), { target: { value: 'brokerage' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: '저장' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(setup.current().accountMap.applied).toMatchObject({ transfers: expect.arrayContaining([expect.objectContaining({ sourceLocationId: 'salary', targetLocationId: 'brokerage' })]) });
+  });
+
+  it('disables editing, deletion and dismissal while a completed transfer write is pending', async () => {
+    const setup = flowRepositories();
+    const originalSave = setup.repositories.accountMap.save;
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => { release = resolve; });
+    setup.repositories.accountMap.save = async (revision, command) => { await held; return originalSave(revision, command); };
+    render(<AccountMapApp repositories={setup.repositories} />);
+    fireEvent.click(screen.getByRole('button', { name: '급여 통장 → 생활비 통장 흐름 관리' }));
+    const dialog = screen.getByRole('dialog', { name: '계좌 흐름 편집' });
+    fireEvent.change(within(dialog).getByRole('textbox', { name: '월 이체 금액' }), { target: { value: '950000' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: '저장' }));
+    expect(within(dialog).getByRole('button', { name: '저장' })).toBeDisabled();
+    expect(within(dialog).getByRole('button', { name: '흐름 삭제' })).toBeDisabled();
+    expect(within(dialog).getByRole('button', { name: '닫기' })).toBeDisabled();
+    fireEvent.keyDown(dialog, { key: 'Escape' });
+    expect(dialog).toBeInTheDocument();
+    release();
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(setup.current().revision).toBe(2);
+  });
 });
 
 function openSalaryDetail(): void {
@@ -135,6 +314,7 @@ function flowRepositories(currentMain = salaryLivingBrokerageFixture().main): { 
   }));
   workspace.accountMap.applied = fixture.applied;
   const save = vi.fn(async (revision: number, command: Parameters<AccountMapRepository['save']>[1]) => {
+    if (revision !== workspace.revision) return { status: 'conflict' as const, currentRevision: workspace.revision };
     const applied = applyAccountMapCommand(workspace, command, 20 + revision);
     if (!applied.ok) return { status: 'rejected' as const, reason: applied.reason };
     workspace = { ...applied.workspace, revision: revision + 1 };

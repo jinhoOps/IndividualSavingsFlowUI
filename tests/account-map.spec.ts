@@ -3,6 +3,72 @@ import { expect, test, type Page } from '@playwright/test';
 const storageKey = 'isf-workspace-v4';
 const now = Date.UTC(2026, 8, 5, 6);
 test.use({ hasTouch: true });
+
+test('repairs completed purpose allocations and explicitly confirms Main at supported widths', async ({ page }) => {
+  const value = staleWorkspace();
+  value.main.applied = { ...main, monthlyLivingWon: 800_000 };
+  await seed(page, value);
+  for (const viewport of [{ width: 390, height: 844 }, { width: 768, height: 900 }, { width: 1280, height: 900 }]) {
+    await page.setViewportSize(viewport);
+    await page.goto('apps/account-map/');
+    const before = await storedProtectedSlices(page);
+    await page.getByRole('button', { name: '현재 Main 기준으로 확인' }).click();
+    await expect(page.getByRole('alert')).toContainText('현재 Main 기준으로 확인하지 못했습니다.');
+    const trigger = page.getByRole('button', { name: '생활비 배정 관리' });
+    await trigger.click();
+    const dialog = page.getByRole('dialog', { name: '생활비 편집' });
+    await expect(dialog).toBeVisible();
+    const box = await dialog.boundingBox();
+    expect(box!.x).toBeGreaterThanOrEqual(0);
+    expect(box!.x + box!.width).toBeLessThanOrEqual(viewport.width);
+    expect(box!.y + box!.height).toBeLessThanOrEqual(viewport.height + 1);
+    await dialog.getByRole('textbox', { name: '생활비통장 월 금액' }).fill('800000');
+    await dialog.getByRole('button', { name: '저장' }).click();
+    await expect(dialog).not.toBeVisible();
+    await expect(trigger).toBeFocused();
+    await expect(page.getByText('확인 필요', { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: '현재 Main 기준으로 확인' }).click();
+    await expect(page.getByText('확인 필요', { exact: true })).not.toBeVisible();
+    expect(await storedProtectedSlices(page)).toEqual(before);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    const applied = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!).accountMap.applied, storageKey);
+    expect(applied.links.find((item: { id: string }) => item.id === 'living').monthlyAmountWon).toBe(800_000);
+    expect(applied.transfers).toEqual(value.accountMap.applied!.transfers);
+  }
+});
+
+test('retains completed transfer input on conflict, reviews latest, and deletes only on explicit retry', async ({ page }) => {
+  await seed(page, workspace());
+  await page.goto('apps/account-map/');
+  await page.getByRole('button', { name: '급여통장 → 생활비통장 흐름 관리' }).click();
+  const dialog = page.getByRole('dialog', { name: '계좌 흐름 편집' });
+  await dialog.getByRole('textbox', { name: '월 이체 금액' }).fill('950000');
+  await page.evaluate((key) => {
+    const latest = JSON.parse(localStorage.getItem(key)!);
+    latest.revision += 1;
+    localStorage.setItem(key, JSON.stringify(latest));
+  }, storageKey);
+  await dialog.getByRole('button', { name: '저장' }).click();
+  await expect(dialog.getByRole('button', { name: '최신 상태에서 다시 검토' })).toBeVisible();
+  await expect(dialog.getByRole('textbox', { name: '월 이체 금액' })).toHaveValue('950,000');
+  await dialog.getByRole('button', { name: '최신 상태에서 다시 검토' }).click();
+  await dialog.getByRole('button', { name: '저장' }).click();
+  await expect(dialog).not.toBeVisible();
+  await page.getByRole('button', { name: '급여통장 → 생활비통장 흐름 관리' }).click();
+  await expect(dialog.getByRole('textbox', { name: '월 이체 금액' })).toHaveValue('950,000');
+  await page.evaluate((key) => {
+    const latest = JSON.parse(localStorage.getItem(key)!);
+    latest.revision += 1;
+    localStorage.setItem(key, JSON.stringify(latest));
+  }, storageKey);
+  await dialog.getByRole('button', { name: '흐름 삭제' }).click();
+  await dialog.getByRole('button', { name: '최신 상태에서 다시 검토' }).click();
+  const stillPresent = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!).accountMap.applied.transfers.some((item: { id: string }) => item.id === 'salary-living'), storageKey);
+  expect(stillPresent).toBe(true);
+  await dialog.getByRole('button', { name: '흐름 삭제' }).click();
+  await expect(dialog).not.toBeVisible();
+  await expect(page.getByRole('button', { name: '급여통장 → 생활비통장 흐름 관리' })).not.toBeVisible();
+});
 const main = {
   schemaVersion: 2 as const,
   updatedAt: now,
@@ -103,13 +169,14 @@ test('keeps the V3 completed flow map contained, touch-sized, and readable at su
     await expect(table).toContainText('고정 금액 · 1,000,000원');
     await expect(table).toContainText('남은 금액 전부 · 계획상 0원');
     await expect(page.locator('[data-account-flow-edge-amount]')).toHaveCount(0);
+    await expect(page.locator('.account-flow-canvas')).toHaveAttribute('data-direction', viewport.width <= 768 ? 'top-to-bottom' : 'left-to-right');
     const salary = page.getByRole('button', { name: /계좌 급여통장/ });
     const salaryBox = await salary.boundingBox();
     expect(salaryBox?.width).toBeGreaterThanOrEqual(44);
     expect(salaryBox?.height).toBeGreaterThanOrEqual(44);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 
-    await salary.click();
+    await salary.tap();
     const detail = page.getByLabel('급여통장 월 계획 흐름');
     await expect(detail).toBeVisible();
     expect(await page.locator('[data-account-flow-edge-amount]').count()).toBeGreaterThan(0);
@@ -121,12 +188,41 @@ test('keeps the V3 completed flow map contained, touch-sized, and readable at su
     expect(detailBox!.y).toBeGreaterThanOrEqual(canvasBox!.y);
     expect(detailBox!.y + detailBox!.height).toBeLessThanOrEqual(canvasBox!.y + canvasBox!.height);
 
-    await page.getByRole('button', { name: /계좌 생활비통장/ }).click();
+    await page.locator('.account-flow-canvas').tap({ position: { x: 5, y: 5 } });
+    await expect(detail).toHaveCount(0);
+    await page.getByRole('button', { name: /계좌 생활비통장/ }).tap();
     const livingDetail = page.getByLabel('생활비통장 월 계획 흐름');
     await expect(livingDetail).toContainText('들어오는 흐름');
     await expect(livingDetail).toContainText('다른 계좌로 보내는 흐름');
     await expect(livingDetail).toContainText('남은 금액 전부 · 계획상 0원');
+    await page.locator('.account-flow-canvas').tap({ position: { x: 5, y: 5 } });
+    await expect(livingDetail).toHaveCount(0);
   }
+});
+
+test('offers canonical keyboard order and a wide invisible transfer hit area', async ({ page }) => {
+  await seed(page, workspace());
+  await page.goto('apps/account-map/');
+  const income = page.getByRole('button', { name: '외부 수입. 선택하면 연결 흐름을 자세히 봅니다.' });
+  await income.focus();
+  await page.keyboard.press('Tab');
+  await expect(page.getByRole('button', { name: /계좌 급여통장/ })).toBeFocused();
+  await page.keyboard.press('Tab');
+  const edge = page.getByRole('button', { name: /급여통장 → 생활비통장, 고정 금액/ });
+  await expect(edge).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page.getByLabel('급여통장 월 계획 흐름')).toContainText('고정됨');
+  await page.keyboard.press('Escape');
+  await page.locator('.account-flow-canvas').scrollIntoViewIfNeeded();
+  const hit = await edge.evaluate((element) => {
+    const path = element as SVGPathElement;
+    const midpoint = path.getPointAtLength(path.getTotalLength() / 2);
+    const screen = new DOMPoint(midpoint.x, midpoint.y + 15).matrixTransform(path.getScreenCTM()!);
+    return { x: screen.x, y: screen.y, stroke: getComputedStyle(path).strokeWidth };
+  });
+  expect(hit.stroke).toBe('44px');
+  await page.touchscreen.tap(hit.x, hit.y);
+  await expect(page.getByLabel('급여통장 월 계획 흐름')).toContainText('고정됨');
 });
 
 test('uses hover, keyboard pinning, and explicit actions for the account and typed transfer editors', async ({ page }) => {
