@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-04
 
-**Status:** Approved design; implementation pending
+**Status:** Implemented and verified on 2026-09-07. Final execution evidence is recorded in the [implementation plan](../plans/2026-09-04-account-map-planned-account-flow.md).
 
 **Scope:** Replace the current purpose-to-location explanation map with a Main-assisted, explicitly confirmed monthly account-flow graph. Add planned many-to-many transfers between accounts, a remainder-routing rule, touch-first flow inspection, reusable financial-location editing, and a Main-owned edit overlay that visually remains inside Account Map without transferring Main ownership.
 
@@ -14,7 +14,7 @@ This design supersedes the presentation and relationship semantics in:
 - the map, interaction, setup, and editing clauses of [Account Map Purpose-Node Flow Design](2026-08-13-account-map-purpose-node-flow-design.md)
 - the Account Map clauses in [Connected Account Map Workspace Design](2026-08-06-connected-account-map-workspace-design.md) where they describe purpose-to-location links as the only supported relationship
 
-Until this design is implemented and its documentation changes ship, the current Product PRD and `DESIGN.md` remain the description of the running product. Implementation must update both documents in the same change that enables planned account-to-account transfers.
+The Product PRD and `DESIGN.md` have been updated in the same implementation to describe planned account-to-account transfers and the Main-owned edit overlay. They remain the canonical product and UI contracts.
 
 Main continues to own and write only its five monthly amounts. Account Map continues to read Main and may write only `workspace.locations` and `workspace.accountMap`. Simulation and Portfolio remain unchanged and read-only from Account Map's perspective.
 

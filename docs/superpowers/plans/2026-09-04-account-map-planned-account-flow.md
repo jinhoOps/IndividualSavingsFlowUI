@@ -10,6 +10,21 @@
 
 **Spec:** [Account Map Planned Account Flow Design](../specs/2026-09-04-account-map-planned-account-flow-design.md)
 
+## Execution Outcome — 2026-09-07
+
+Tasks 1–11 are implemented. The task checklists below retain the original execution procedure; this outcome records the completed implementation and final merge gate.
+
+- Final reviewed implementation: `e3eca19`, including completed-map purpose/account management, transfer resume/delete, explicit conflict recovery, v2/v3 Main confirmation preservation, and pending-save focus/history protection.
+- Independent final code review: PASS, with no outstanding Critical or Important findings. The review findings were fixed before integration.
+- Browser follow-up fixed desktop direction inside the shared 48rem frame, touch dismissal, canonical keyboard order, invisible 44px transfer hit regions, readable mobile management controls, and first-click/Escape preview interception. The reproduced click/Escape regression passed three consecutive browser runs after correction.
+- `npm run check:ci`: PASS — harness, source/unit TypeScript checks, 133 unit files / 1,225 tests.
+- `ISF_E2E_PORT=5768 npx playwright test --reporter=dot`: PASS — 116 passed / 1 intentional skip. The normal Chromium project blocks service workers, so its dedicated PWA offline-revisit case is conditional rather than exercised here.
+- `npx vite build`: PASS, including generated service worker. The direct production build avoids an additional release-version increment from the npm build lifecycle.
+- `git diff --check`: PASS. Changed canonical Markdown documents and this spec/plan had 38 relative links checked with no missing targets.
+- UI evidence: actual 390px, 768px, and 1280px browser captures inspected; document widths stayed within their viewports. Focus, overlay containment, touch controls, and visible visualization were covered by browser regressions.
+- Earlier combined runs exposed a Main backup-dialog timing timeout and a Simulation scroll-position assertion; both passed isolated reruns without unrelated product changes, and the final complete run passed. Account Map failures were reproduced and corrected rather than waived.
+- Integration decision: approved for local fast-forward merge into `main`; remote push and worktree removal are not part of this final-review request.
+
 ## Global Constraints
 
 - Main owns monthlyNetIncomeWon, monthlyHousingWon, monthlyLivingWon, monthlySavingWon, and monthlyInvestmentWon. Account Map may read them but may write only workspace.locations and workspace.accountMap.
