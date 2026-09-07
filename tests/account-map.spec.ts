@@ -31,6 +31,11 @@ test('repairs completed purpose allocations and explicitly confirms Main at supp
     await expect(page.getByText('확인 필요', { exact: true })).not.toBeVisible();
     expect(await storedProtectedSlices(page)).toEqual(before);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    if (viewport.width === 390) {
+      const management = await page.getByRole('button', { name: '생활비 배정 관리' }).boundingBox();
+      expect(management!.width).toBeGreaterThanOrEqual(140);
+      expect(management!.height).toBeLessThan(100);
+    }
     const applied = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!).accountMap.applied, storageKey);
     expect(applied.links.find((item: { id: string }) => item.id === 'living').monthlyAmountWon).toBe(800_000);
     expect(applied.transfers).toEqual(value.accountMap.applied!.transfers);

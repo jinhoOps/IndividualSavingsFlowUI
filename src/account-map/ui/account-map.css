@@ -196,6 +196,7 @@
   .account-map-setup__actions .ui-button { min-width: 0; }
   .account-map-actions { position: sticky; z-index: 5; bottom: 0; background: var(--bg); padding-bottom: max(8px, env(safe-area-inset-bottom)); }
   .account-map-actions .ui-button { flex: 1; }
+  .account-map-purpose-management .account-map-actions .ui-button { flex: 1 1 9rem; }
   .account-map-institutions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .account-map-sheet { max-height: 92dvh; }
   .account-map-canvas-toolbar { grid-template-columns: 1fr auto; }

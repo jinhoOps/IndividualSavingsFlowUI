@@ -71,7 +71,7 @@ describe('MainPlanEditOverlay', () => {
 
     const dialog = await screen.findByRole('dialog', { name: '월 자금 계획 편집' });
     expect(onActivated).toHaveBeenCalledOnce();
-    fireEvent.change(screen.getByLabelText('월평균 생활비'), { target: { value: '1200000' } });
+    fireEvent.change(await screen.findByLabelText('월평균 생활비'), { target: { value: '1200000' } });
     const apply = screen.getByRole('button', { name: '적용' });
     apply.focus();
     fireEvent.keyDown(apply, { key: 'Tab' });
