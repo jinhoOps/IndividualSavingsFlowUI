@@ -1,6 +1,21 @@
-import { useEffect, useRef, useState } from 'react';
+import { useContext, useEffect, useRef, useState } from 'react';
+import {
+  AccountDraftContext,
+  useAccountRecovery,
+  useInitialRecovery,
+} from '../../auth/AccountDraftContext';
 import { Button } from '../../components/common/Button';
 import { Surface } from '../../components/common/Surface';
+
+interface GoalRecoveryDraft {
+  rawAmount: string;
+}
+
+function parseGoalRecoveryDraft(value: unknown): GoalRecoveryDraft | null {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return null;
+  const draft = value as Record<string, unknown>;
+  return typeof draft.rawAmount === 'string' ? { rawAmount: draft.rawAmount } : null;
+}
 
 export function GoalAmountStep({
   initialInvestmentWon,
@@ -13,8 +28,11 @@ export function GoalAmountStep({
   completesOnSubmit?: boolean;
   submissionState?: 'idle' | 'saving' | 'error';
 }) {
+  const session = useContext(AccountDraftContext);
+  const recovered = useInitialRecovery('simulation-onboarding-goal', parseGoalRecoveryDraft);
   const headingRef = useRef<HTMLHeadingElement>(null);
-  const [rawAmount, setRawAmount] = useState('');
+  const [rawAmount, setRawAmount] = useState(() => recovered?.rawAmount ?? '');
+  const [dirty, setDirty] = useState(false);
   const acceptedFormat = /^\d+$|^\d{1,3}(?:,\d{3})+$/.test(rawAmount);
   const targetAmountWon = acceptedFormat ? Number(rawAmount.replaceAll(',', '')) : Number.NaN;
   const validAmount = acceptedFormat && Number.isSafeInteger(targetAmountWon)
@@ -22,6 +40,8 @@ export function GoalAmountStep({
   const showFormatError = rawAmount.length > 0 && !acceptedFormat;
   const showRangeError = rawAmount.length > 0 && acceptedFormat && !validAmount;
   const showError = showFormatError || showRangeError;
+
+  useAccountRecovery('simulation-onboarding-goal', { rawAmount }, dirty, dirty);
 
   useEffect(() => headingRef.current?.focus(), []);
 
@@ -33,7 +53,11 @@ export function GoalAmountStep({
       </h1>
       <form onSubmit={(event) => {
         event.preventDefault();
-        if (validAmount) onContinue(targetAmountWon);
+        if (validAmount) {
+          session?.recordRecoveryDraft('simulation-onboarding-goal', null);
+          setDirty(false);
+          onContinue(targetAmountWon);
+        }
       }}>
         <label htmlFor="goal-amount">목표 금액</label>
         <input
@@ -43,7 +67,10 @@ export function GoalAmountStep({
           value={rawAmount}
           aria-invalid={showError}
           aria-describedby={showError ? 'goal-amount-error' : undefined}
-          onChange={(event) => setRawAmount(event.target.value)}
+          onChange={(event) => {
+            setRawAmount(event.target.value);
+            setDirty(true);
+          }}
         />
         {showError ? (
           <p id="goal-amount-error" role="alert">

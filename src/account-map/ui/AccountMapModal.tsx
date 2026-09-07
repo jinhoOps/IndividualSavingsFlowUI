@@ -1,6 +1,7 @@
-import { useEffect, useId, useRef, useState, type JSX } from 'react';
+import { useContext, useEffect, useId, useRef, useState, type JSX } from 'react';
 import { flushSync } from 'react-dom';
 import { Button } from '../../components/common/Button';
+import { AccountDraftContext, useAccountRecovery, useInitialRecovery } from '../../auth/AccountDraftContext';
 import { formatWonInput, normalizeMoneyEdit, parseWonInput } from '../../core/domain/moneyInput';
 import type { GraphNode } from './mapLayout';
 import { animateModalToNode, animateNodeToModal, type AnimationHandle } from './motion';
@@ -62,21 +63,22 @@ export function AccountMapModal({ node, related, sourceElement, fallbackElement,
   const previousModeRef = useRef<AccountMapModalMode>(initialMode);
   const animationRef = useRef<AnimationHandle | null>(null);
   const directRelated = related.filter(({ replacementCandidate }) => replacementCandidate !== true);
+  const recoveryKey = `account-map-node:${node.id}`;
+  const defaultEditLinks = directRelated.filter(({ linkId }) => linkId !== undefined).map((item) => ({
+    id: item.linkId!, purposeId: item.purposeId, label: item.label,
+    monthlyAmountWon: formatWonInput(item.amountWon, { zeroDisplay: 'zero' }),
+    status: item.status as 'active' | 'suspended' | 'removed', remainder: item.remainder ?? false,
+  }));
+  const recovered = useInitialRecovery(recoveryKey, (value) => parseModalRecovery(value, node.id, defaultEditLinks));
+  const session = useContext(AccountDraftContext);
   const restorableRelated = directRelated.filter(({ status, suspendedReason }) => (
     status === 'suspended' && suspendedReason === 'location-archived'
   ));
   const [mode, setMode] = useState<AccountMapModalMode>(initialMode);
   const [titleMenuOpen, setTitleMenuOpen] = useState(false);
-  const [editLabel, setEditLabel] = useState(node.label);
-  const [editTarget, setEditTarget] = useState(node.kind === 'purpose' && node.id.startsWith('custom:') ? formatWonInput(node.amountWon ?? 0, { zeroDisplay: 'zero' }) : '');
-  const [editLinks, setEditLinks] = useState(() => directRelated.filter(({ linkId }) => linkId !== undefined).map((item) => ({
-    id: item.linkId!,
-    purposeId: item.purposeId,
-    label: item.label,
-    monthlyAmountWon: formatWonInput(item.amountWon, { zeroDisplay: 'zero' }),
-    status: item.status as 'active' | 'suspended' | 'removed',
-    remainder: item.remainder ?? false,
-  })));
+  const [editLabel, setEditLabel] = useState(recovered?.editLabel ?? node.label);
+  const [editTarget, setEditTarget] = useState(recovered?.editTarget ?? (node.kind === 'purpose' && node.id.startsWith('custom:') ? formatWonInput(node.amountWon ?? 0, { zeroDisplay: 'zero' }) : ''));
+  const [editLinks, setEditLinks] = useState(recovered?.editLinks ?? defaultEditLinks);
   const [editReplacementByPurpose, setEditReplacementByPurpose] = useState<Record<string, string | null>>({});
   const [replacementByPurpose, setReplacementByPurpose] = useState<Record<string, string | null>>({});
   const [restoreLinkIds, setRestoreLinkIds] = useState<string[]>([]);
@@ -88,6 +90,16 @@ export function AccountMapModal({ node, related, sourceElement, fallbackElement,
   const closingRef = useRef(false);
   const adoptLatestAfterCloseRef = useRef(false);
   const returnToFallbackRef = useRef(false);
+  const modalDraftDirty = mode !== 'read' && (
+    editLabel !== node.label
+    || editTarget !== (node.kind === 'purpose' && node.id.startsWith('custom:') ? formatWonInput(node.amountWon ?? 0, { zeroDisplay: 'zero' }) : '')
+    || editLinks.some((item, index) => item.monthlyAmountWon !== defaultEditLinks[index]?.monthlyAmountWon
+      || item.status !== defaultEditLinks[index]?.status || item.remainder !== defaultEditLinks[index]?.remainder)
+  );
+  useAccountRecovery(recoveryKey, {
+    nodeId: node.id, editLabel, editTarget,
+    editLinks: editLinks.map(({ id, monthlyAmountWon, status, remainder }) => ({ id, monthlyAmountWon, status, remainder })),
+  }, modalDraftDirty, mode === 'edit');
 
   useEffect(() => {
     const modal = modalRef.current;
@@ -171,6 +183,7 @@ export function AccountMapModal({ node, related, sourceElement, fallbackElement,
 
   function requestClose(force = false) {
     if (closingRef.current || ((!force) && (actionPending || recoveryPending))) return;
+    session?.recordRecoveryDraft(recoveryKey, null);
     closingRef.current = true;
     adoptLatestAfterCloseRef.current = !force && recovery.status !== 'none';
     setAnimating(true);
@@ -246,7 +259,7 @@ export function AccountMapModal({ node, related, sourceElement, fallbackElement,
               ? <p key={`edit-remainder:${purposeId}`} className="account-map-modal__error">다른 활성 연결을 나머지로 선택해 주세요.</p>
               : <label key={`edit-remainder:${purposeId}`}>새 나머지 연결<select required aria-label="편집 나머지 연결" value={editReplacementByPurpose[purposeId] ?? ''} onChange={(event) => setEditReplacementByPurpose((current) => ({ ...current, [purposeId]: event.target.value || null }))}><option value="">선택해 주세요</option>{candidates.map((item) => <option key={item.linkId} value={item.linkId}>{item.label}</option>)}</select></label>;
           })}</div> : null}
-          {mode === 'connect' ? <div className="account-map-modal__connect"><AccountMapLocationPicker locations={locations} linkedLocationIds={new Set(directRelated.map(({ locationId: id }) => id).filter((id): id is string => id !== undefined))} amountRequired={directRelated.some(({ status }) => status === 'active')} disabled={recovery.status !== 'none' || actionPending || recoveryPending} cancelDisabled={actionPending || recoveryPending} onCancel={() => { if (recovery.status === 'none') setMode('edit'); else requestClose(); }} onSelect={(id, amount) => commitConnection(onConnectLocation === undefined ? undefined : () => onConnectLocation(id, amount))} onCreate={(location, amount) => commitConnection(onCreateAndConnectLocation === undefined ? undefined : () => onCreateAndConnectLocation(location, amount))} /></div> : null}
+          {mode === 'connect' ? <div className="account-map-modal__connect"><AccountMapLocationPicker locations={locations} linkedLocationIds={new Set(directRelated.map(({ locationId: id }) => id).filter((id): id is string => id !== undefined))} amountRequired={directRelated.some(({ status }) => status === 'active')} disabled={recovery.status !== 'none' || actionPending || recoveryPending} cancelDisabled={actionPending || recoveryPending} recoveryScope={node.kind === 'purpose' ? node.id : undefined} onCancel={() => { if (recovery.status === 'none') setMode('edit'); else requestClose(); }} onSelect={(id, amount) => commitConnection(onConnectLocation === undefined ? undefined : () => onConnectLocation(id, amount))} onCreate={(location, amount) => commitConnection(onCreateAndConnectLocation === undefined ? undefined : () => onCreateAndConnectLocation(location, amount))} /></div> : null}
           {mode === 'archive-location' || mode === 'archive-purpose' ? <div className="account-map-modal__impact"><p>보관하면 다음 연결이 중지됩니다.</p>{archiveImpacts.map((item, index) => <p key={`${item.linkId}:${index}`}>{`${item.label} ${formatWon(item.amountWon)} 연결이 중지됩니다`}</p>)}{mode === 'archive-location' ? remainderPurposes.map((purposeId) => {
             const candidates = related.filter((item) => item.replacementCandidate === true && item.purposeId === purposeId);
             return candidates.length === 0 ? null : <label key={purposeId}>새 나머지 계좌<select required aria-label="새 나머지 계좌" value={replacementByPurpose[purposeId] ?? ''} onChange={(event) => setReplacementByPurpose((current) => ({ ...current, [purposeId]: event.target.value || null }))}><option value="">선택해 주세요</option>{candidates.map((item) => <option key={item.linkId} value={item.linkId}>{item.label}</option>)}</select></label>;
@@ -268,7 +281,7 @@ export function AccountMapModal({ node, related, sourceElement, fallbackElement,
         </div>
         <footer>
           {mode === 'read' ? <>{node.kind === 'location' && node.status === 'suspended' && onRestoreLocation !== undefined ? <Button variant="secondary" type="button" disabled={recovery.status !== 'none'} onClick={() => setMode('restore-location')}>복원</Button> : null}{node.kind === 'location' && node.status !== 'suspended' && onArchiveLocation !== undefined ? <Button variant="secondary" className="account-map-modal__archive" type="button" disabled={recovery.status !== 'none'} onClick={() => setMode('archive-location')}><TrashIcon />보관</Button> : null}<Button variant="primary" type="button" disabled={animating || recovery.status !== 'none'} onClick={() => setMode('edit')}>편집</Button></> : null}
-          {mode === 'edit' ? <><Button variant="secondary" type="button" disabled={actionPending || recoveryPending} onClick={() => { if (recovery.status === 'none') setMode('read'); else requestClose(); }}>취소</Button><Button variant="primary" type="button" disabled={recovery.status !== 'none' || actionPending || editReplacementMissing || editLabel.trim() === '' || editLinks.some((item) => item.status === 'active' && !Number.isSafeInteger(parseWonInput(item.monthlyAmountWon)))} onClick={() => {
+          {mode === 'edit' ? <><Button variant="secondary" type="button" disabled={actionPending || recoveryPending} onClick={() => { if (recovery.status === 'none') { session?.recordRecoveryDraft(recoveryKey, null); setMode('read'); } else requestClose(); }}>취소</Button><Button variant="primary" type="button" disabled={recovery.status !== 'none' || actionPending || editReplacementMissing || editLabel.trim() === '' || editLinks.some((item) => item.status === 'active' && !Number.isSafeInteger(parseWonInput(item.monthlyAmountWon)))} onClick={() => {
             if (onSaveEdit === undefined) return;
             setActionError(false);
             setActionPending(true);
@@ -340,6 +353,46 @@ function collisionIdentity(recovery: Extract<RecoveryState, { status: 'collision
     ? `${recovery.intent.purposeId}:${recovery.intent.locationId}`
     : recovery.intent.id;
   return `${recovery.field}:${recovery.intent.kind}:${target}`;
+}
+
+function parseModalRecovery(
+  value: unknown,
+  nodeId: string,
+  defaults: Array<{
+    id: string;
+    purposeId?: string;
+    label: string;
+    monthlyAmountWon: string;
+    status: 'active' | 'suspended' | 'removed';
+    remainder: boolean;
+  }>,
+): {
+  editLabel: string;
+  editTarget: string;
+  editLinks: typeof defaults;
+} | null {
+  if (typeof value !== 'object' || value === null) return null;
+  const draft = value as Record<string, unknown>;
+  if (draft.nodeId !== nodeId || typeof draft.editLabel !== 'string' || typeof draft.editTarget !== 'string'
+    || !Array.isArray(draft.editLinks)) return null;
+  const saved = new Map<string, { monthlyAmountWon: string; status: 'active' | 'suspended' | 'removed'; remainder: boolean }>();
+  for (const item of draft.editLinks) {
+    if (typeof item !== 'object' || item === null) continue;
+    const link = item as Record<string, unknown>;
+    if (typeof link.id !== 'string' || typeof link.monthlyAmountWon !== 'string'
+      || (link.status !== 'active' && link.status !== 'suspended' && link.status !== 'removed')
+      || typeof link.remainder !== 'boolean') continue;
+    saved.set(link.id, {
+      monthlyAmountWon: link.monthlyAmountWon,
+      status: link.status,
+      remainder: link.remainder,
+    });
+  }
+  return {
+    editLabel: draft.editLabel,
+    editTarget: draft.editTarget,
+    editLinks: defaults.map((item) => ({ ...item, ...saved.get(item.id) })),
+  };
 }
 
 function TrashIcon(): JSX.Element {

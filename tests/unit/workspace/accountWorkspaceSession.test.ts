@@ -40,6 +40,22 @@ function fixture() {
 }
 
 describe('account workspace session', () => {
+  it('locks without losing recovery and ignores a pending write response after automatic sign-out', async () => {
+    localStorage.clear();
+    const {session, remote} = fixture();
+    await session.refresh();
+    session.recordRecoveryDraft('main', {typed: '1300000'});
+    let finish!: (result: RemoteCommit) => void;
+    remote.write = () => new Promise(resolve => {finish = resolve;});
+    const saving = session.scope('main').update(0, w => w);
+    session.lock();
+    finish({status: 'saved', workspace: row({...createEmptyWorkspace(), revision: 1})});
+    await saving;
+    expect(session.status).toBe('expired');
+    expect(session.readRecoveryDraft('main')).toEqual({typed: '1300000'});
+    expect(session.scope('main').load()).toEqual({status: 'unavailable'});
+    expect(await session.refresh()).toBe('expired');
+  });
   it('waits for server hydration and rejects another account or an unsupported schema', async () => {
     localStorage.clear();
     const {session} = fixture();

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AppContentFrame } from '../../components/common/AppContentFrame';
 import { AppShell } from '../../components/common/AppShell';
 import { Surface } from '../../components/common/Surface';
@@ -18,7 +18,8 @@ import {
   type PortfolioPlan,
   type PortfolioViewPreferences,
 } from '../domain/model';
-import { validateApplicableDraft } from '../domain/validation';
+import { parsePortfolioDraft, validateApplicableDraft } from '../domain/validation';
+import {AccountDraftContext, useAccountRecovery, useInitialRecovery} from '../../auth/AccountDraftContext';
 import {
   BrowserPortfolioMainSourceRepository,
   type PortfolioMainSourceRepository,
@@ -26,6 +27,7 @@ import {
 import {
   BrowserPortfolioRepository,
   type PortfolioRepository,
+  type PortfolioWriteResult,
 } from '../infrastructure/portfolioRepository';
 import {
   BrowserPortfolioPreferencesRepository,
@@ -49,6 +51,8 @@ export function PortfolioApp({
   preferencesRepository?: PortfolioPreferencesRepository;
   now?: () => number;
 }) {
+  const accountSession = useContext(AccountDraftContext);
+  const autosaveDebounceMs = accountSession === null ? 0 : 500;
   const mainRepository = useMemo(
     () => providedMainRepository ?? new BrowserPortfolioMainSourceRepository(),
     [providedMainRepository],
@@ -65,12 +69,22 @@ export function PortfolioApp({
     () => bootstrapPortfolio(mainRepository.load(), repository.load(), now()),
     [mainRepository, repository, now],
   );
-  const [state, setState] = useState<PortfolioState | null>(
-    initial.kind === 'ready' ? createPortfolioState(initial) : null,
-  );
+  const recovered = useInitialRecovery('portfolio', parsePortfolioDraft);
+  const [state, setState] = useState<PortfolioState | null>(() => {
+    if (initial.kind !== 'ready') return null;
+    const normal = createPortfolioState(initial);
+    return recovered ? {...normal, draft: recovered, dirty: true, view: normal.applied ? 'edit' : 'setup', saveState: 'error'} : normal;
+  });
+  useAccountRecovery('portfolio', state?.draft, state?.saveState !== 'saved' && state?.dirty === true, state !== null);
   const stateRef = useRef(state);
-  const initialPersistenceStarted = useRef(false);
+  const initialPersistenceStarted = useRef(recovered !== null);
   const persistenceQueue = useRef<Promise<void>>(Promise.resolve());
+  const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const bufferedAutosave = useRef<{
+    operation: () => Promise<PortfolioWriteResult>;
+    onSettled: (result: PortfolioWriteResult | null) => void;
+  } | null>(null);
+  const mounted = useRef(false);
   const latestOperation = useRef(0);
   const applyOperationRef = useRef<number | null>(null);
   const applyPendingRef = useRef(false);
@@ -85,6 +99,19 @@ export function PortfolioApp({
     600,
   );
   const showSaving = applyPending ? delayedApply : delayedAutomaticSaving;
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      void Promise.resolve().then(() => {
+        if (mounted.current || autosaveTimer.current === null) return;
+        clearTimeout(autosaveTimer.current);
+        autosaveTimer.current = null;
+        bufferedAutosave.current = null;
+      });
+    };
+  }, []);
 
   useEffect(() => {
     if (initial.kind !== 'ready') return;
@@ -116,19 +143,23 @@ export function PortfolioApp({
     commitState(next);
     if (next.draft === current.draft) return;
     const token = beginOperation();
-    enqueuePersistence(
-      action.type === 'cancel-edit'
-        ? () => repository.clearDraft()
-        : () => repository.saveDraft(next.draft),
-      (result) => {
-        if (token !== latestOperation.current) return;
-        dispatchState(result?.status === 'saved'
-          ? { type: 'save-succeeded' }
-          : action.type === 'cancel-edit'
-            ? { type: 'draft-cleanup-failed' }
-            : { type: 'save-failed' });
-      },
-    );
+    const operation = action.type === 'cancel-edit'
+      ? () => repository.clearDraft()
+      : () => repository.saveDraft(next.draft);
+    const onSettled = (result: PortfolioWriteResult | null) => {
+      if (token !== latestOperation.current) return;
+      dispatchState(result?.status === 'saved'
+        ? { type: 'save-succeeded' }
+        : action.type === 'cancel-edit'
+          ? { type: 'draft-cleanup-failed' }
+          : { type: 'save-failed' });
+    };
+    if (action.type === 'cancel-edit') {
+      flushAutosave();
+      enqueuePersistence(operation, onSettled);
+    } else {
+      queueAutosave(operation, onSettled);
+    }
   }
 
   function apply(): void {
@@ -138,6 +169,7 @@ export function PortfolioApp({
       || applyPendingRef.current
       || !validateApplicableDraft(current.draft)
     ) return;
+    flushAutosave();
     applyPendingRef.current = true;
     setApplyPending(true);
     commitState(portfolioReducer(current, { type: 'apply-started' }));
@@ -166,6 +198,7 @@ export function PortfolioApp({
 
   function reset(): void {
     if (stateRef.current === null || applyPendingRef.current) return;
+    flushAutosave();
     const token = beginOperation();
     enqueuePersistence(
       () => repository.clearScope({ type: 'aggregate' }),
@@ -206,9 +239,40 @@ export function PortfolioApp({
     operation: () => Promise<T>,
     onSettled: (result: T | null) => void,
   ): void {
-    const run = persistenceQueue.current.then(operation, operation);
+    const run = persistenceQueue.current.then(
+      () => mounted.current ? operation() : null,
+      () => mounted.current ? operation() : null,
+    );
     persistenceQueue.current = run.then(() => undefined, () => undefined);
-    void run.then(onSettled, () => onSettled(null));
+    void run.then(
+      (result) => { if (mounted.current) onSettled(result); },
+      () => { if (mounted.current) onSettled(null); },
+    );
+  }
+
+  function queueAutosave(
+    operation: () => Promise<PortfolioWriteResult>,
+    onSettled: (result: PortfolioWriteResult | null) => void,
+  ): void {
+    if (autosaveDebounceMs <= 0) {
+      enqueuePersistence(operation, onSettled);
+      return;
+    }
+    bufferedAutosave.current = { operation, onSettled };
+    if (autosaveTimer.current !== null) clearTimeout(autosaveTimer.current);
+    autosaveTimer.current = setTimeout(flushAutosave, autosaveDebounceMs);
+  }
+
+  function flushAutosave(): void {
+    if (autosaveTimer.current !== null) {
+      clearTimeout(autosaveTimer.current);
+      autosaveTimer.current = null;
+    }
+    const buffered = bufferedAutosave.current;
+    bufferedAutosave.current = null;
+    if (buffered !== null && mounted.current) {
+      enqueuePersistence(buffered.operation, buffered.onSettled);
+    }
   }
 
   function updatePreferences(next: PortfolioViewPreferences): void {

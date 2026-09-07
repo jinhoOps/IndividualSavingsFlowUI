@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
   bootstrapMain,
   type MainBootstrapResult,
@@ -16,6 +16,8 @@ import { createEmptyMainData, type MainData, type SetupStep } from '../domain/mo
 import type { MainRepository, SetupProgressKind } from '../infrastructure/mainRepository';
 import type { MainOperationGate } from './mainOperationGate';
 import type { MainPlanActionNotifications } from './mainPlanActionNotifications';
+import {AccountDraftContext, useAccountRecovery, useInitialRecovery} from '../../auth/AccountDraftContext';
+import {isMainDataShape} from '../domain/validation';
 
 export interface UseMainPlanControllerOptions {
   repository: MainRepository;
@@ -59,7 +61,11 @@ export function useMainPlanController({
   planActionNotifications,
   reducedMotion,
 }: UseMainPlanControllerOptions): MainPlanController {
+  const accountSession = useContext(AccountDraftContext);
   const [state, setState] = useState<MainState | null>(null);
+  const recovered = useInitialRecovery('main', value => isMainDataShape(value) ? value : null);
+  const recoveryAccepted = useRef(false);
+  useAccountRecovery('main', state?.draft, state?.dirty === true, state !== null);
   const [issues, setIssues] = useState<ValidationIssue[]>([]);
   const [validationAttempt, setValidationAttempt] = useState(0);
   const [progressWarning, setProgressWarning] = useState<string | null>(null);
@@ -70,7 +76,25 @@ export function useMainPlanController({
   } | null>(null);
   const introEntryIdRef = useRef(0);
   const persistedFreshIntroEntryIdsRef = useRef(new Set<number>());
-  const progressQueue = useMemo(() => createSetupProgressQueue(repository), [repository]);
+  const progressQueue = useMemo(
+    () => createSetupProgressQueue(repository, { debounceMs: accountSession === null ? 0 : 500 }),
+    [accountSession, repository],
+  );
+  const activeProgressQueueRef = useRef(progressQueue);
+  const progressQueueMountedRef = useRef(false);
+
+  useEffect(() => {
+    progressQueueMountedRef.current = true;
+    activeProgressQueueRef.current = progressQueue;
+    return () => {
+      progressQueueMountedRef.current = false;
+      void Promise.resolve().then(() => {
+        if (!progressQueueMountedRef.current && activeProgressQueueRef.current === progressQueue) {
+          progressQueue.cancel();
+        }
+      });
+    };
+  }, [progressQueue]);
 
   const nextIntroEntry = useCallback((reason: MainIntroEntryReason): MainIntroEntry => {
     introEntryIdRef.current += 1;
@@ -80,9 +104,15 @@ export function useMainPlanController({
   const acceptBootstrapResult = useCallback((result: MainBootstrapResult) => {
     setIssues([]);
     setProgressWarning(null);
-    setState(result.state);
-    setIntroEntry(nextIntroEntry(result.introEntryReason));
-  }, [nextIntroEntry]);
+    if (!recoveryAccepted.current && recovered && result.state) {
+      recoveryAccepted.current = true;
+      setState({...result.state, draft: recovered, dirty: true, saveStatus: 'idle'});
+      setIntroEntry(nextIntroEntry('none'));
+    } else {
+      setState(result.state);
+      setIntroEntry(nextIntroEntry(result.introEntryReason));
+    }
+  }, [nextIntroEntry, recovered]);
 
   const completeWelcomeIntro = useCallback((entryId: number) => {
     setIntroEntry((current) => current.id !== entryId

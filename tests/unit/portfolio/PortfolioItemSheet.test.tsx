@@ -3,6 +3,8 @@ import { cleanup, fireEvent, render, screen, within } from '@testing-library/rea
 import '@testing-library/jest-dom/vitest';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createRef } from 'react';
+import { AccountDraftContext } from '../../../src/auth/AccountDraftContext';
+import type { AccountWorkspaceSession } from '../../../src/workspace/infrastructure/accountWorkspaceSession';
 import { PortfolioItemSheet } from '../../../src/portfolio/ui/PortfolioItemSheet';
 
 afterEach(cleanup);
@@ -13,11 +15,12 @@ const blankItem = {
   classificationOrigin: 'automatic' as const,
 };
 
-function renderSheet(overrides: Partial<React.ComponentProps<typeof PortfolioItemSheet>> = {}) {
+function renderSheet(overrides: Partial<React.ComponentProps<typeof PortfolioItemSheet>> & { session?: AccountWorkspaceSession } = {}) {
   const trigger = document.createElement('button');
   document.body.append(trigger);
   const returnFocusRef = createRef<HTMLElement>();
   returnFocusRef.current = trigger;
+  const { session, ...overridesWithoutSession } = overrides;
   const props: React.ComponentProps<typeof PortfolioItemSheet> = {
     mode: 'add',
     initialValue: blankItem,
@@ -26,13 +29,33 @@ function renderSheet(overrides: Partial<React.ComponentProps<typeof PortfolioIte
     returnFocusRef,
     onComplete: vi.fn(),
     onClose: vi.fn(),
-    ...overrides,
+    ...overridesWithoutSession,
   };
-  render(<PortfolioItemSheet {...props} />);
+  render(
+    <AccountDraftContext.Provider value={session ?? null}>
+      <PortfolioItemSheet {...props} />
+    </AccountDraftContext.Provider>,
+  );
   return props;
 }
 
 describe('PortfolioItemSheet', () => {
+  it('restores unsaved raw item input without completing it on mount', () => {
+    const session = recoverySession({
+      'portfolio-item:add': {
+        name: '  임시 ETF  ', amount: '12,34',
+        classification: 'stable', classificationOrigin: 'user',
+      },
+    });
+    const props = renderSheet({ session });
+    const sheet = screen.getByRole('dialog', { name: '투자 대상 추가' });
+
+    expect(within(sheet).getByLabelText('투자 대상 이름')).toHaveValue('  임시 ETF  ');
+    expect(within(sheet).getByLabelText('금액')).toHaveValue('12,34');
+    expect(within(sheet).getByRole('button', { name: '안정, 누르면 성장으로 변경' })).toBeVisible();
+    expect(props.onComplete).not.toHaveBeenCalled();
+  });
+
   it('focuses amount-only target entry and completes one valid local value', () => {
     const props = renderSheet();
     const sheet = screen.getByRole('dialog', { name: '투자 대상 추가' });
@@ -202,3 +225,10 @@ describe('PortfolioItemSheet', () => {
     expect(onRemove).toHaveBeenCalledTimes(1);
   });
 });
+
+function recoverySession(drafts: Record<string, unknown>): AccountWorkspaceSession {
+  return {
+    readRecoveryDraft: vi.fn((key: string) => drafts[key] ?? null),
+    recordRecoveryDraft: vi.fn((key: string, value: unknown) => { drafts[key] = value; }),
+  } as unknown as AccountWorkspaceSession;
+}

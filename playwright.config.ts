@@ -32,13 +32,25 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
+      testIgnore: ['**/unit/**', '**/step2.spec.ts', '**/account-workspace.spec.ts'],
       use: { ...devices['Desktop Chrome'] },
     },
+    {
+      name: 'cloud',
+      testMatch: '**/account-workspace.spec.ts',
+      use: {...devices['Desktop Chrome'], baseURL: `http://127.0.0.1:${e2ePort + 1}/IndividualSavingsFlowUI/`},
+    },
   ],
-  webServer: {
-    command: `node ./node_modules/vite/bin/vite.js --host 127.0.0.1 --port ${e2ePort}`,
+  webServer: [{
+    command: `node ./node_modules/vite/bin/vite.js --config tests/support/legacy.vite.config.ts --host 127.0.0.1 --port ${e2ePort}`,
     url: `${e2eOrigin}/IndividualSavingsFlowUI/apps/main/index.html`,
-    reuseExistingServer: true,
+    reuseExistingServer: false,
     timeout: 120000,
-  },
+  }, {
+    command: `node ./node_modules/vite/bin/vite.js --host 127.0.0.1 --port ${e2ePort + 1}`,
+    url: `http://127.0.0.1:${e2ePort + 1}/IndividualSavingsFlowUI/apps/main/`,
+    env: {VITE_SUPABASE_URL: 'https://isf-test.supabase.co', VITE_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_test_fixture'},
+    reuseExistingServer: false,
+    timeout: 120000,
+  }],
 });

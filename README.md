@@ -1,6 +1,6 @@
 # IndividualSavings Flow UIUX
 
-개인 재무 흐름을 입력하고 향후 장기 투자 전략과 실행 계획으로 연결할 수 있도록 준비하는 로컬 우선 웹 앱입니다.
+개인 재무 흐름을 입력하고 장기 투자 전략과 실행 계획으로 연결하는 정적 웹 앱입니다. 이 브랜치는 Google 로그인과 Supabase 계정별 저장을 구현하며, 운영 적용 전 설정은 [계정 저장 운영 안내](docs/supabase-account-setup.md)를 따릅니다.
 
 현재 지원 제품은 Main, Simulation, Portfolio와 Account Map입니다. 네 앱은 shared workspace를 사용합니다.
 
@@ -29,7 +29,7 @@ ISF의 네 앱은 다음 질문에 답합니다.
 - **Portfolio**: 선택한 전략을 어떤 투자 대상으로 배분할 것인가?
 - **Account Map**: 금융 위치와 월 연결을 어떻게 관리할 것인가?
 
-서버 계정이나 은행 연동 없이 사용자가 입력한 데이터를 브라우저 안에서 계산하고 시각화합니다.
+사용자가 입력한 데이터를 브라우저 안에서 계산하고 시각화하며, Google 계정의 workspace를 Supabase에 저장합니다. 별도 앱 서버나 은행 연동은 없습니다.
 
 ## 현재 제품
 
@@ -49,7 +49,7 @@ Main에서 다루는 주요 내용:
 
 ### Simulation
 
-Main에 적용된 계획이 있으면 `Simulation으로 이어가기`가 URL로만 이동합니다. 최초에는 시작 자산, 시작 자산이 2억 원 이상일 때의 조건부 목표 금액, 예상 연 수익률을 한 가지씩 설정하고, 이후에는 결과로 바로 진입합니다. Simulation은 진입할 때마다 현재 `isf-workspace-v3`의 최신 Main slice를 읽되 Simulation 설정과 Main 원본은 변경하지 않습니다.
+Main에 적용된 계획이 있으면 `Simulation으로 이어가기`가 URL로만 이동합니다. 최초에는 시작 자산, 시작 자산이 2억 원 이상일 때의 조건부 목표 금액, 예상 연 수익률을 한 가지씩 설정하고, 이후에는 결과로 바로 진입합니다. Simulation은 진입할 때마다 계정 workspace의 최신 Main slice를 읽되 Main 원본은 변경하지 않습니다.
 
 기간은 현재를 뜻하는 0년부터 30년까지 조정합니다. 결과는 한국식 정수 금액, 전체 폭 성장 그래프와 전부 저축 비교를 제공하며 pointer·touch·keyboard로 연도별 상세를 확인할 수 있습니다.
 
@@ -72,22 +72,24 @@ Account Map은 Main의 다섯 월 금액을 읽기 전용 기준으로 사용합
 현재 네 앱은 다음 기반을 공유합니다.
 
 - 네 목적지 앱 런처와 현재 위치 표시
-- 하나의 committed localStorage 기록 `isf-workspace-v3`(workspace schema v3)과 앱별 typed slice adapter
-- monotonic revision과 lease를 사용한 stale-writer 차단
+- 계정당 하나의 Supabase JSONB workspace(schema v3)와 앱별 typed slice adapter
+- RLS 계정 격리, 서버 revision 검사와 mutation receipt를 사용한 동시 저장·중복 재시도 보호
 - Main·Simulation·Portfolio·공유 금융 위치와 Account Map 상태를 포함하는 whole-workspace 백업
 - 모든 slice와 참조를 먼저 검증한 뒤 한 번에 교체하는 atomic restore
 - URL 기반 앱 탐색과 workspace Main slice를 읽는 앱별 read-only adapter
 - Vite PWA가 소유하는 PWA 매니페스트와 배포 서비스워커
 - 공통 디자인 토큰과 버튼·패널 스타일
 
-데이터는 기본적으로 브라우저에 저장됩니다. 현재의 writable persistence는 schema v3의 `isf-workspace-v3`입니다. v3가 없을 때에만 유효한 은퇴 workspace v1/v2 원본 `isf-workspace-v1`을 읽어 같은 one-way converter로 v3 후보를 만들 수 있으며, 성공해도 원본을 변경하거나 삭제하지 않습니다. v3가 존재하지만 invalid이면 v1으로 fallback하지 않습니다. 기존 `isf-main-v2`, `isf-simulation-compound-v1`, `isf-portfolio-allocation-v1`, `isf-account-map-v1`, `isf-rebuild-v1`와 은퇴한 journey snapshot은 현재 제품이 읽거나 변경하지 않는 foreign record입니다. 현재 export는 backup format v2이고, format v1 import만 같은 converter를 거칩니다. 사용자가 current whole-workspace 백업을 직접 내보낼 때만 데이터가 브라우저 밖으로 이동합니다.
+금융 데이터 원본은 로그인한 계정의 서버 workspace입니다. 브라우저에는 계정별 마지막 snapshot과 미전송 입력을 복구용으로 보관합니다. 오프라인 재방문은 읽기 전용이며, 열린 화면은 focus·online 복귀 또는 visible 상태의 30초 조회로 최신화합니다. 다른 기기가 먼저 저장했으면 입력을 유지하고 명시적으로 재적용합니다. Portfolio의 금액 표시·정렬 같은 보기 설정은 금융 workspace와 별개의 브라우저 설정입니다.
+
+기존 `isf-workspace-v3`는 명시적 가져오기 후보로만 읽고 변경·삭제하지 않습니다. v3가 없을 때만 유효한 retired v1/v2 원본 `isf-workspace-v1`을 기존 converter로 읽으며 invalid v3에서 fallback하지 않습니다. 기존 standalone 앱 키와 은퇴한 journey snapshot은 읽거나 변경하지 않는 foreign record입니다. 정상 export는 서버 확정 데이터의 backup format v2이며 format v1 import도 유지합니다. 미전송 입력은 일반 백업과 구분한 복구 파일로 제공합니다.
 
 ## 제품 원칙
 
 - **요약 먼저**: 기본 화면은 입력 폼보다 현재 상태와 다음 행동을 먼저 보여줍니다.
 - **작고 명확한 입력 계약**: Main은 다섯 월간 금액만 직접 소유합니다.
 - **명시적 저장**: 큰 편집은 적용 전까지 draft로 유지합니다.
-- **로컬 우선**: 서버 계정 없이 브라우저 저장소와 백업으로 동작합니다.
+- **계정별 원본**: 서버 저장 확정 후 성공을 표시하고, 로컬 원본과 미전송 입력은 구분해 보존합니다.
 - **한국어 금액 UX**: 사용자는 만 원·억 원 단위로 읽고 내부 계산과 저장은 원 단위를 유지합니다.
 - **시각화 중심**: 현재 Main의 월 자금 구성과 향후 앱별 시각화는 숫자의 관계를 설명해야 합니다.
 - **명시적 연결**: 앱 이동은 URL만 사용하고 Simulation과 Portfolio가 같은 workspace의 최신 Main slice를 각자의 읽기 전용 adapter로 읽습니다.
@@ -105,7 +107,7 @@ Phase 4에서 구 Main runtime, storage bridge, shared browser layer와 구 서�
 
 필요 조건:
 
-- Node.js 20 이상 권장
+- Node.js 22 이상 권장
 - npm
 
 설치:
@@ -115,6 +117,8 @@ npm install
 ```
 
 개발 서버:
+
+`.env.example`을 참고해 `.env.local`에 Supabase URL과 공개 publishable key를 설정합니다. DB 비밀번호·service-role/secret key는 넣지 않습니다. Google provider와 callback 등록은 [운영 안내](docs/supabase-account-setup.md)를 따릅니다. 연결 설정이 없으면 제품 대신 설정 오류를 표시하며 production build도 실패합니다.
 
 ```bash
 npm run dev
@@ -178,10 +182,15 @@ Account Map 사용자 흐름과 v1 workspace 이관 회귀는 다음 명령으�
 npx playwright test tests/account-map.spec.ts --reporter=list
 ```
 
+계정 흐름은 `npx playwright test --project=cloud`, 기존 로컬 데이터 호환성과 제품 회귀는 테스트 전용 entry의 `--project=chromium`으로 검증합니다. 인증 우회는 production entry에 없습니다. DB 권한·트랜잭션 검증은 Docker 실행 후 `node scripts/test-workspace-db.mjs`로 수행하며 운영 DB에는 접속하지 않습니다.
+
+Node 25 이상에서 실험적 Web Storage가 jsdom과 충돌하면 단위 테스트에 `NODE_OPTIONS=--no-experimental-webstorage`를 지정합니다.
+
 ## 현재 로드맵
 
 Phase A shared workspace foundation과 Main, Simulation, aggregate-first Portfolio, Phase B Account Map은 현재 기준선입니다. 다음 단계는 이 기준선을 보존하며 별도 계획으로 진행합니다.
 
+- **계정 저장 구현**: 정적 배포를 유지하는 [Google 로그인·Supabase 계정별 workspace 저장](docs/superpowers/specs/2026-09-07-supabase-account-workspace-design.md). 운영 DB migration·Google 실제 왕복·Pages 배포는 [운영 안내](docs/supabase-account-setup.md)의 별도 rollout 항목입니다.
 - **Phase B 완료**: 계좌 우선 설정, 계좌·보관처 registry, 노드 지도와 가역적 관리가 있는 Account Map
 - **Phase C**: 현재 Main metric 영역을 대체하는 Main·Simulation·Portfolio·Account Map 연결 결과 카드
 - **Phase 4 완료**: 분류된 legacy runtime·compatibility path·test 삭제, v1/v2 migration evidence와 [repository-wide 최종 검증](docs/superpowers/evidence/2026-09-02-phase4-legacy-test-disposition.md)을 기록함

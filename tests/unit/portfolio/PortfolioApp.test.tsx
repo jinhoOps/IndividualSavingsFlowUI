@@ -10,6 +10,8 @@ import {
 } from '../../../src/portfolio/infrastructure/portfolioRepository';
 import type { PortfolioPreferencesRepository } from '../../../src/portfolio/infrastructure/portfolioPreferencesRepository';
 import { PortfolioApp } from '../../../src/portfolio/ui/PortfolioApp';
+import { AccountDraftContext } from '../../../src/auth/AccountDraftContext';
+import type { AccountWorkspaceSession } from '../../../src/workspace/infrastructure/accountWorkspaceSession';
 import {
   WORKSPACE_STORAGE_KEY,
   createEmptyWorkspace,
@@ -107,6 +109,35 @@ function firstSaveGate(): {
 }
 
 describe('PortfolioApp', () => {
+  it('coalesces cloud draft autosaves after a 500ms quiet period', async () => {
+    vi.useFakeTimers();
+    const repository = createMemoryPortfolioRepository({ applied: plan });
+    const saveDraft = vi.spyOn(repository, 'saveDraft');
+    const session = {
+      readRecoveryDraft: () => null,
+      recordRecoveryDraft: vi.fn(),
+    } as unknown as AccountWorkspaceSession;
+    render(
+      <AccountDraftContext.Provider value={session}>
+        <PortfolioApp mainSourceRepository={mainFound} repository={repository} now={() => 2} />
+      </AccountDraftContext.Provider>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '배분 수정' }));
+    const amount = screen.getByLabelText('인덱스 금액');
+    fireEvent.change(amount, { target: { value: '110000' } });
+    fireEvent.change(amount, { target: { value: '120000' } });
+    fireEvent.blur(amount);
+    await act(async () => { await Promise.resolve(); });
+    expect(saveDraft).not.toHaveBeenCalled();
+
+    await act(async () => { await vi.advanceTimersByTimeAsync(500); });
+    expect(saveDraft).toHaveBeenCalledTimes(1);
+    expect(saveDraft).toHaveBeenLastCalledWith(expect.objectContaining({
+      items: [expect.objectContaining({ shareUnits: 600_000 })],
+    }));
+  });
+
   it('blocks duplicate setup apply synchronously and delays progress copy until 600ms', async () => {
     vi.useFakeTimers();
     const repository = createMemoryPortfolioRepository();

@@ -1,5 +1,7 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState, type JSX } from 'react';
+import { useContext, useEffect, useId, useLayoutEffect, useRef, useState, type JSX } from 'react';
 import { Button } from '../../components/common/Button';
+import { AccountDraftContext, useAccountRecovery, useInitialRecovery } from '../../auth/AccountDraftContext';
+import type { AccountWorkspaceSession } from '../../workspace/infrastructure/accountWorkspaceSession';
 import { normalizeMoneyEdit, parseWonInput } from '../../core/domain/moneyInput';
 import type { MainData } from '../../main/domain/model';
 import type { FinancialLocation } from '../../workspace/domain/financialLocation';
@@ -211,11 +213,14 @@ function ConnectionDialog({ purposeId, workspace, main, draft, saveFailed, recov
   const onKeepLatestRef = useRef(onKeepLatest);
   const recoveryRef = useRef(recovery);
   const recoveryPendingRef = useRef(recoveryPending);
+  const session = useContext(AccountDraftContext);
+  const sessionRef = useRef(session);
   const pendingRef = useRef(false);
   onCancelRef.current = onCancel;
   onKeepLatestRef.current = onKeepLatest;
   recoveryRef.current = recovery;
   recoveryPendingRef.current = recoveryPending;
+  sessionRef.current = session;
   const [dirty, setDirty] = useState(false);
   const [pending, setPending] = useState(false);
   pendingRef.current = pending;
@@ -237,8 +242,8 @@ function ConnectionDialog({ purposeId, workspace, main, draft, saveFailed, recov
         if (pendingRef.current || recoveryPendingRef.current) return;
         if (recoveryRef.current.status !== 'none') {
           onKeepLatestRef.current();
-          onCancelRef.current();
-        } else if (!dirtyRef.current || window.confirm('입력 중인 내용을 취소할까요?')) onCancelRef.current();
+          discard();
+        } else if (!dirtyRef.current || window.confirm('입력 중인 내용을 취소할까요?')) discard();
         return;
       }
       if (event.key !== 'Tab') return;
@@ -257,8 +262,13 @@ function ConnectionDialog({ purposeId, workspace, main, draft, saveFailed, recov
     if (pending || recoveryPending) return;
     if (recovery.status !== 'none') {
       onKeepLatest();
-      onCancel();
-    } else if (!dirty || window.confirm('입력 중인 내용을 취소할까요?')) onCancel();
+      discard();
+    } else if (!dirty || window.confirm('입력 중인 내용을 취소할까요?')) discard();
+  }
+
+  function discard() {
+    sessionRef.current?.recordRecoveryDraft(`account-map-picker:${purposeId}`, null);
+    onCancelRef.current();
   }
 
   return (
@@ -274,6 +284,7 @@ function ConnectionDialog({ purposeId, workspace, main, draft, saveFailed, recov
             disabled={pending || recoveryPending || recovery.status !== 'none'}
             cancelDisabled={pending || recoveryPending}
             onDirtyChange={setDirty}
+            recoveryScope={purposeId}
             onCancel={requestClose}
             onSelect={(locationId, amount) => {
               const location = workspace.locations.find(({ id }) => id === locationId);
@@ -286,7 +297,7 @@ function ConnectionDialog({ purposeId, workspace, main, draft, saveFailed, recov
             }}
           />
           {saveFailed ? <SaveFailure /> : null}
-          {recovery.status === 'none' ? null : <RecoveryControls recovery={recovery} pending={recoveryPending} onReapply={async () => { const saved = await onReapply(); if (saved) onCancel(); return saved; }} onKeepLatest={() => { onKeepLatest(); onCancel(); }} />}
+          {recovery.status === 'none' ? null : <RecoveryControls recovery={recovery} pending={recoveryPending} onReapply={async () => { const saved = await onReapply(); if (saved) discard(); return saved; }} onKeepLatest={() => { onKeepLatest(); discard(); }} />}
         </div>
       </div>
     </div>
@@ -305,14 +316,19 @@ function CustomPurposeDialog({ main, draft, recovery, recoveryPending, onReapply
   const onKeepLatestRef = useRef(onKeepLatest);
   const recoveryRef = useRef(recovery);
   const recoveryPendingRef = useRef(recoveryPending);
+  const sessionRef = useRef<AccountWorkspaceSession | null>(null);
   const pendingRef = useRef(false);
+  const recoveryKey = 'account-map-custom-purpose';
+  const recovered = useInitialRecovery(recoveryKey, parseCustomPurposeRecovery);
+  const session = useContext(AccountDraftContext);
+  sessionRef.current = session;
   onCancelRef.current = onCancel;
   onKeepLatestRef.current = onKeepLatest;
   recoveryRef.current = recovery;
   recoveryPendingRef.current = recoveryPending;
-  const [parentId, setParentId] = useState<OutflowPurposeId>('system:living');
-  const [name, setName] = useState('');
-  const [amount, setAmount] = useState('');
+  const [parentId, setParentId] = useState<OutflowPurposeId>(recovered?.parentId ?? 'system:living');
+  const [name, setName] = useState(recovered?.name ?? '');
+  const [amount, setAmount] = useState(recovered?.amount ?? '');
   const [pending, setPending] = useState(false);
   const [feedback, setFeedback] = useState<Exclude<AccountMapDraftSaveResult, { status: 'saved' | 'recovery' }> | null>(null);
   const pendingAmountCaretRef = useRef<number | null>(null);
@@ -320,6 +336,8 @@ function CustomPurposeDialog({ main, draft, recovery, recoveryPending, onReapply
   const capacity = customPurposeTargetCapacity(parentId, draft?.customPurposes ?? [], main);
   const amountWon = parseWonInput(amount);
   const amountOverCapacity = amountWon > capacity;
+  const dirty = parentId !== 'system:living' || name !== '' || amount !== '';
+  useAccountRecovery(recoveryKey, { parentId, name, amount }, dirty);
   useEffect(() => {
     const returnFocus = document.activeElement as HTMLElement | null;
     panelRef.current?.querySelector<HTMLElement>('select, input, button')?.focus();
@@ -328,7 +346,7 @@ function CustomPurposeDialog({ main, draft, recovery, recoveryPending, onReapply
         event.preventDefault();
         if (pendingRef.current || recoveryPendingRef.current) return;
         if (recoveryRef.current.status !== 'none') onKeepLatestRef.current();
-        onCancelRef.current();
+        discard();
         return;
       }
       if (event.key !== 'Tab') return;
@@ -361,7 +379,12 @@ function CustomPurposeDialog({ main, draft, recovery, recoveryPending, onReapply
   function requestClose() {
     if (pending || recoveryPending) return;
     if (recovery.status !== 'none') onKeepLatest();
-    onCancel();
+    discard();
+  }
+
+  function discard() {
+    sessionRef.current?.recordRecoveryDraft(recoveryKey, null);
+    onCancelRef.current();
   }
 
   const nameFeedback = feedback?.status === 'field-error' && feedback.field === 'name' ? feedback : null;
@@ -383,7 +406,7 @@ function CustomPurposeDialog({ main, draft, recovery, recoveryPending, onReapply
           <p className="account-map-hint">추가 가능 {formatWon(capacity)}</p>
           {amountFeedback !== null ? <p id={amountErrorId} className="account-map-error" role="alert">{amountFeedback.message}</p> : amountOverCapacity ? <p id={amountErrorId} className="account-map-error">큰 목적의 월 금액을 넘을 수 없습니다.</p> : null}
           {feedback?.status !== 'failed' ? null : <p ref={alertRef} className="account-map-error" role="alert" tabIndex={-1}>{feedback.message}</p>}
-          {recovery.status === 'none' ? null : <RecoveryControls recovery={recovery} pending={pending || recoveryPending} onReapply={onReapply} onKeepLatest={() => { onKeepLatest(); onCancel(); }} />}
+          {recovery.status === 'none' ? null : <RecoveryControls recovery={recovery} pending={pending || recoveryPending} onReapply={async () => { const saved = await onReapply(); if (saved) session?.recordRecoveryDraft(recoveryKey, null); return saved; }} onKeepLatest={() => { onKeepLatest(); discard(); }} />}
         </div>
         <footer>
           <Button variant="secondary" type="button" disabled={pending || recoveryPending} onClick={requestClose}>취소</Button>
@@ -394,7 +417,8 @@ function CustomPurposeDialog({ main, draft, recovery, recoveryPending, onReapply
             setFeedback(null);
             setPending(true);
             void onSave(next).then((result) => {
-              if (result.status !== 'saved' && result.status !== 'recovery') setFeedback(result);
+              if (result.status === 'saved') session?.recordRecoveryDraft(recoveryKey, null);
+              else if (result.status !== 'recovery') setFeedback(result);
             }, () => setFeedback({ status: 'failed', message: '저장하지 못했어요. 입력은 그대로 두었습니다.' })).finally(() => setPending(false));
           }}>추가</Button>
         </footer>
@@ -405,6 +429,19 @@ function CustomPurposeDialog({ main, draft, recovery, recoveryPending, onReapply
 
 function emptyDraft(sourceMainUpdatedAt: number): AccountMapDraft {
   return { schemaVersion: 1, sourceMainUpdatedAt, customPurposes: [], links: [], step: 'connect', updatedAt: Date.now() };
+}
+
+function parseCustomPurposeRecovery(value: unknown): {
+  parentId: OutflowPurposeId;
+  name: string;
+  amount: string;
+} | null {
+  if (typeof value !== 'object' || value === null) return null;
+  const draft = value as Record<string, unknown>;
+  if ((draft.parentId !== 'system:housing' && draft.parentId !== 'system:living'
+    && draft.parentId !== 'system:saving' && draft.parentId !== 'system:investing')
+    || typeof draft.name !== 'string' || typeof draft.amount !== 'string') return null;
+  return { parentId: draft.parentId, name: draft.name, amount: draft.amount };
 }
 
 function createId(): string { return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`; }

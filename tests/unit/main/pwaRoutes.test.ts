@@ -19,6 +19,9 @@ describe('createMpaNavigationCaching', () => {
       ['apps/portfolio/index.html', true],
       ['apps/account-map/', true],
       ['apps/account-map/index.html', true],
+      ['apps/auth/callback/', false],
+      ['apps/auth/callback/?code=private-code', false],
+      ['apps/auth/callback/index.html?error=access_denied', false],
       ['apps/legacy/', false],
       ['apps/legacy/index.html', false],
       ['', false],
@@ -28,5 +31,7 @@ describe('createMpaNavigationCaching', () => {
     for (const [path, expected] of routes) {
       expect(route.urlPattern.test(`https://example.com/IndividualSavingsFlowUI/${path}`)).toBe(expected);
     }
+    expect(route.urlPattern.test('https://project.supabase.co/auth/v1/token?grant_type=pkce')).toBe(false);
+    expect(route.urlPattern.test('https://project.supabase.co/rest/v1/user_workspaces')).toBe(false);
   });
 });

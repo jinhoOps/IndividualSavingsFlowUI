@@ -5,6 +5,7 @@ import tailwindcss from '@tailwindcss/vite';
 import { resolve } from 'path';
 import packageJson from './package.json';
 import { createMpaNavigationCaching } from './src/main/infrastructure/pwaRoutes';
+import { readSupabaseConfig } from './src/auth/config';
 
 const navigationCacheVersion = process.env.GITHUB_SHA ?? packageJson.version;
 
@@ -13,6 +14,9 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(packageJson.version),
   },
   plugins: [
+    {name: 'require-account-build-config', configResolved(config) {
+      if (config.command === 'build') readSupabaseConfig(config.env);
+    }},
     react(),
     tailwindcss(),
     VitePWA({
@@ -93,6 +97,7 @@ export default defineConfig({
         simulation: resolve(__dirname, 'apps/simulation/index.html'),
         portfolio: resolve(__dirname, 'apps/portfolio/index.html'),
         accountMap: resolve(__dirname, 'apps/account-map/index.html'),
+        authCallback: resolve(__dirname, 'apps/auth/callback/index.html'),
 	
       },
     },

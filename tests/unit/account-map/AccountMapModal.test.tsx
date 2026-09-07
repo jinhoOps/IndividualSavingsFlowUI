@@ -1,6 +1,8 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { AccountDraftContext } from '../../../src/auth/AccountDraftContext';
+import type { AccountWorkspaceSession } from '../../../src/workspace/infrastructure/accountWorkspaceSession';
 import { AccountMapModal } from '../../../src/account-map/ui/AccountMapModal';
 import type { RecoveryState } from '../../../src/account-map/application/reducer';
 import { createEmptyWorkspace } from '../../../src/workspace/domain/model';
@@ -13,6 +15,30 @@ vi.mock('../../../src/account-map/ui/motion', () => ({
 afterEach(cleanup);
 
 describe('AccountMapModal', () => {
+  it('restores only matching link fields when reopening the same node without saving', () => {
+    const session = recoverySession({
+      'account-map-node:system:living': {
+        nodeId: 'system:living', editLabel: '생활비', editTarget: '',
+        editLinks: [{ id: 'living-link', monthlyAmountWon: '12,34', status: 'suspended', remainder: false }],
+      },
+    });
+    const onSaveEdit = vi.fn();
+    const props = modalProps({
+      related: [{ label: '생활비통장', amountWon: 700_000, status: 'active', linkId: 'living-link', purposeId: 'system:living' }],
+      onSaveEdit,
+    });
+    render(
+      <AccountDraftContext.Provider value={session}>
+        <AccountMapModal {...props} />
+      </AccountDraftContext.Provider>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: '편집' }));
+
+    expect(screen.getByRole('textbox', { name: '생활비통장 월 금액' })).toHaveValue('12,34');
+    expect(screen.getByRole('combobox', { name: '생활비통장 연결 상태' })).toHaveValue('suspended');
+    expect(onSaveEdit).not.toHaveBeenCalled();
+  });
+
   it('uses one compact connection action and keeps connect content in the same dialog', () => {
     renderModal();
     fireEvent.click(screen.getByRole('button', { name: '편집' }));
@@ -495,6 +521,13 @@ function renderModal(overrides: Partial<React.ComponentProps<typeof AccountMapMo
   const source = document.createElement('button');
   document.body.append(source);
   return render(<AccountMapModal {...modalProps({ sourceElement: source, ...overrides })} />);
+}
+
+function recoverySession(drafts: Record<string, unknown>): AccountWorkspaceSession {
+  return {
+    readRecoveryDraft: vi.fn((key: string) => drafts[key] ?? null),
+    recordRecoveryDraft: vi.fn((key: string, value: unknown) => { drafts[key] = value; }),
+  } as unknown as AccountWorkspaceSession;
 }
 
 function modalProps(overrides: Partial<React.ComponentProps<typeof AccountMapModal>> = {}): React.ComponentProps<typeof AccountMapModal> {

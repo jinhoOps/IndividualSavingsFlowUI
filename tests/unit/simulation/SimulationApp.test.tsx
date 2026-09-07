@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
+import { StrictMode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { CompoundSimulationDraft, SimulationMainSource } from '../../../src/simulation/domain/model';
 import { createDefaultSimulationDraft } from '../../../src/simulation/domain/validation';
@@ -11,6 +12,8 @@ import type {
 } from '../../../src/simulation/infrastructure/simulationRepository';
 import { BrowserSimulationRepository } from '../../../src/simulation/infrastructure/simulationRepository';
 import { SimulationApp } from '../../../src/simulation/ui/SimulationApp';
+import { AccountDraftContext } from '../../../src/auth/AccountDraftContext';
+import type { AccountWorkspaceSession } from '../../../src/workspace/infrastructure/accountWorkspaceSession';
 import {
   WORKSPACE_STORAGE_KEY,
   createEmptyWorkspace,
@@ -74,6 +77,51 @@ function firstSaveGate(): {
 }
 
 describe('SimulationApp', () => {
+  it('coalesces cloud autosaves after a 500ms quiet period', async () => {
+    vi.useFakeTimers();
+    const saved = createDefaultSimulationDraft(source, 456);
+    const repository = simulationRepository({ status: 'found', draft: saved, migration: null });
+    const session = {
+      readRecoveryDraft: () => null,
+      recordRecoveryDraft: vi.fn(),
+    } as unknown as AccountWorkspaceSession;
+    render(
+      <AccountDraftContext.Provider value={session}>
+        <SimulationApp mainSourceRepository={mainRepository(source)} repository={repository} now={() => 999} />
+      </AccountDraftContext.Provider>,
+    );
+
+    const years = screen.getByRole('spinbutton', { name: '기간 숫자' });
+    fireEvent.change(years, { target: { value: '21' } });
+    fireEvent.change(years, { target: { value: '22' } });
+    expect(repository.save).not.toHaveBeenCalled();
+
+    await act(async () => { await vi.advanceTimersByTimeAsync(500); });
+    expect(repository.save).toHaveBeenCalledTimes(1);
+    expect(repository.save).toHaveBeenLastCalledWith(expect.objectContaining({ years: 22 }));
+  });
+
+  it('keeps a cloud initial migration autosave through StrictMode replay', async () => {
+    vi.useFakeTimers();
+    const migrated = createDefaultSimulationDraft(source, 456);
+    const repository = simulationRepository({ status: 'found', draft: migrated, migration: 'schema-upgraded' });
+    const session = {
+      readRecoveryDraft: () => null,
+      recordRecoveryDraft: vi.fn(),
+    } as unknown as AccountWorkspaceSession;
+
+    render(
+      <StrictMode>
+        <AccountDraftContext.Provider value={session}>
+          <SimulationApp mainSourceRepository={mainRepository(source)} repository={repository} now={() => 999} />
+        </AccountDraftContext.Provider>
+      </StrictMode>,
+    );
+
+    await act(async () => { await vi.advanceTimersByTimeAsync(500); });
+    expect(repository.save).toHaveBeenCalledTimes(1);
+  });
+
   it('keeps the committed result headline stable while an accumulated amount is being edited', () => {
     const saved = createDefaultSimulationDraft(source, 456);
     const repository = simulationRepository({

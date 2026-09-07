@@ -1,0 +1,15 @@
+.account-gate { min-height: 100dvh; display: grid; align-content: center; padding: 1rem; background: var(--color-bg, #f8f6f1); }
+.account-panel { box-sizing: border-box; width: min(100% - 2rem, 48rem); margin: 1rem auto; padding: 1.5rem; border: 1px solid #d6d3ce; background: #fff; color: #292524; overflow-wrap: anywhere; }
+.account-gate .account-panel { width: min(100%, 34rem); }
+.account-panel h1 { font-size: clamp(1.5rem, 5vw, 2rem); line-height: 1.4; }
+.account-panel h2 { font-size: 1.1rem; }
+.account-panel p { line-height: 1.6; }
+.account-brand { color: #0f766e; font-weight: 700; }
+.account-panel button, .account-toolbar button, .account-panel a { min-height: 44px; padding: .65rem 1rem; border: 1px solid #9ca3af; border-radius: .5rem; background: white; color: #292524; font: inherit; cursor: pointer; margin: .25rem .4rem .25rem 0; max-width: 100%; }
+.account-panel button:focus-visible, .account-toolbar button:focus-visible { outline: 3px solid #0f766e; outline-offset: 3px; }
+.account-panel button:disabled { opacity: .5; cursor: wait; }
+.account-gate button:first-of-type { background: #0f766e; color: white; border-color: #0f766e; }
+.account-toolbar { max-width: 48rem; margin: 0 auto; padding: .4rem 1rem; display: flex; gap: 1rem; align-items: center; justify-content: flex-end; }
+.account-feedback { border-color: #a16207; }
+.account-product { border: 0; margin: 0; padding: 0; min-width: 0; }
+@media (max-width: 390px) { .account-panel {padding: 1rem;} }

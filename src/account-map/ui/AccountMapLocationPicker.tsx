@@ -1,5 +1,6 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type JSX } from 'react';
+import { useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type JSX } from 'react';
 import { Button } from '../../components/common/Button';
+import { AccountDraftContext, useAccountRecovery, useInitialRecovery } from '../../auth/AccountDraftContext';
 import { normalizeMoneyEdit, parseWonInput } from '../../core/domain/moneyInput';
 import type { FinancialLocation } from '../../workspace/domain/financialLocation';
 import { findLocationDuplicate, INSTITUTIONS } from '../domain/institutions';
@@ -14,6 +15,7 @@ export interface LocationPickerProps {
   cancelDisabled?: boolean;
   onCancel?(): void;
   onDirtyChange?(dirty: boolean): void;
+  recoveryScope?: string;
 }
 
 export function AccountMapLocationPicker({
@@ -26,16 +28,21 @@ export function AccountMapLocationPicker({
   cancelDisabled = false,
   onCancel,
   onDirtyChange,
+  recoveryScope,
 }: LocationPickerProps): JSX.Element {
-  const [mode, setMode] = useState<'choose' | 'create'>('choose');
-  const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
-  const [locationKind, setLocationKind] = useState<FinancialLocation['kind']>('bank');
-  const [institutionId, setInstitutionId] = useState<string | null>(null);
-  const [customInstitution, setCustomInstitution] = useState('');
-  const [shortName, setShortName] = useState('');
-  const [amount, setAmount] = useState('');
+  const recoveryKey = recoveryScope === undefined ? '' : `account-map-picker:${recoveryScope}`;
+  const recovered = useInitialRecovery(recoveryKey, parsePickerRecovery);
+  const session = useContext(AccountDraftContext);
+  const [mode, setMode] = useState<'choose' | 'create'>(recovered?.mode ?? 'choose');
+  const [selectedLocationId, setSelectedLocationId] = useState<string | null>(recovered?.selectedLocationId ?? null);
+  const [locationKind, setLocationKind] = useState<FinancialLocation['kind']>(recovered?.locationKind ?? 'bank');
+  const [institutionId, setInstitutionId] = useState<string | null>(recovered?.institutionId ?? null);
+  const [customInstitution, setCustomInstitution] = useState(recovered?.customInstitution ?? '');
+  const [shortName, setShortName] = useState(recovered?.shortName ?? '');
+  const [amount, setAmount] = useState(recovered?.amount ?? '');
   const amountRef = useRef<HTMLInputElement>(null);
   const pendingCaretRef = useRef<number | null>(null);
+  const initialKindRef = useRef(true);
   const available = locations.filter((location) => location.archivedAt === undefined
     && !linkedLocationIds.has(location.id));
   const knownInstitution = INSTITUTIONS.find(([id]) => id === institutionId);
@@ -69,19 +76,32 @@ export function AccountMapLocationPicker({
   const amountValid = !amountRequired || (amountWon !== undefined && Number.isSafeInteger(amountWon) && amountWon > 0);
   const dirty = selectedLocationId !== null || mode === 'create' || amount !== '';
   useEffect(() => onDirtyChange?.(dirty), [dirty, onDirtyChange]);
+  useAccountRecovery(recoveryKey, {
+    mode, selectedLocationId, locationKind, institutionId, customInstitution, shortName, amount,
+  }, dirty, recoveryScope !== undefined);
   useLayoutEffect(() => {
     if (pendingCaretRef.current === null || amountRef.current === null) return;
     amountRef.current.setSelectionRange(pendingCaretRef.current, pendingCaretRef.current);
     pendingCaretRef.current = null;
   });
   useEffect(() => {
+    if (initialKindRef.current) {
+      initialKindRef.current = false;
+      return;
+    }
     setInstitutionId(null);
     setCustomInstitution('');
   }, [locationKind]);
 
   function submitExisting(locationId: string): void {
     if (disabled || !amountValid) return;
+    session?.recordRecoveryDraft(recoveryKey, null);
     onSelect(locationId, amountWon);
+  }
+
+  function cancel(): void {
+    session?.recordRecoveryDraft(recoveryKey, null);
+    onCancel?.();
   }
 
   return <div className="account-map-location-picker">
@@ -109,12 +129,39 @@ export function AccountMapLocationPicker({
       setAmount(normalized.displayValue);
     }} /><span>원</span></label> : null}
     <div className="account-map-location-picker__actions">
-      {onCancel === undefined ? null : <Button variant="secondary" type="button" disabled={cancelDisabled} onClick={onCancel}>취소</Button>}
+      {onCancel === undefined ? null : <Button variant="secondary" type="button" disabled={cancelDisabled} onClick={cancel}>취소</Button>}
       {mode === 'choose'
         ? <Button variant="primary" type="button" disabled={disabled || selectedLocationId === null || !amountValid} onClick={() => { if (selectedLocationId !== null) submitExisting(selectedLocationId); }}>완료</Button>
-        : <Button variant="primary" type="button" disabled={disabled || preview === null || duplicate.kind !== 'none' || !amountValid} onClick={() => { if (preview !== null) onCreate(preview, amountWon); }}>완료</Button>}
+        : <Button variant="primary" type="button" disabled={disabled || preview === null || duplicate.kind !== 'none' || !amountValid} onClick={() => { if (preview !== null) { session?.recordRecoveryDraft(recoveryKey, null); onCreate(preview, amountWon); } }}>완료</Button>}
     </div>
   </div>;
+}
+
+function parsePickerRecovery(value: unknown): {
+  mode: 'choose' | 'create';
+  selectedLocationId: string | null;
+  locationKind: FinancialLocation['kind'];
+  institutionId: string | null;
+  customInstitution: string;
+  shortName: string;
+  amount: string;
+} | null {
+  if (typeof value !== 'object' || value === null) return null;
+  const draft = value as Record<string, unknown>;
+  if ((draft.mode !== 'choose' && draft.mode !== 'create')
+    || (draft.selectedLocationId !== null && typeof draft.selectedLocationId !== 'string')
+    || (draft.locationKind !== 'bank' && draft.locationKind !== 'brokerage' && draft.locationKind !== 'cash')
+    || (draft.institutionId !== null && typeof draft.institutionId !== 'string')
+    || typeof draft.customInstitution !== 'string' || typeof draft.shortName !== 'string' || typeof draft.amount !== 'string') return null;
+  return {
+    mode: draft.mode,
+    selectedLocationId: draft.selectedLocationId,
+    locationKind: draft.locationKind,
+    institutionId: draft.institutionId,
+    customInstitution: draft.customInstitution,
+    shortName: draft.shortName,
+    amount: draft.amount,
+  };
 }
 
 function createId(): string {

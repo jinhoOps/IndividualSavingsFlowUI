@@ -91,6 +91,7 @@ describe('generate-main-brand-icons', () => {
       ], {
         cwd: rootDirectory,
         stdio: 'pipe',
+        env: {...process.env, VITE_SUPABASE_URL: 'https://isf-test.supabase.co', VITE_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_build_fixture'},
       });
 
       const manifest = JSON.parse(readFileSync(resolve(outputDirectory, 'manifest.webmanifest'), 'utf8'));

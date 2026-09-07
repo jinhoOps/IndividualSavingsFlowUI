@@ -1,10 +1,13 @@
 // @vitest-environment jsdom
+import { StrictMode } from 'react';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { CompoundSimulationDraft, SimulationMainSource } from '../../../src/simulation/domain/model';
 import { createDefaultSimulationDraft } from '../../../src/simulation/domain/validation';
 import { SimulationOnboarding } from '../../../src/simulation/ui/SimulationOnboarding';
+import { AccountDraftContext } from '../../../src/auth/AccountDraftContext';
+import type { AccountWorkspaceSession } from '../../../src/workspace/infrastructure/accountWorkspaceSession';
 
 afterEach(cleanup);
 
@@ -154,5 +157,133 @@ describe('SimulationOnboarding', () => {
       amountMode: 'real',
       updatedAt: 456,
     }));
+  });
+
+  it('restores an unsubmitted principal input without completing or saving on mount', () => {
+    const onComplete = vi.fn();
+    const recordRecoveryDraft = vi.fn();
+    const session = {
+      readRecoveryDraft: (key: string) => key === 'simulation-onboarding-principal'
+        ? {hasPrincipal: true, rawAmount: '250million'}
+        : null,
+      recordRecoveryDraft,
+    } as unknown as AccountWorkspaceSession;
+
+    render(
+      <StrictMode>
+        <AccountDraftContext.Provider value={session}>
+          <SimulationOnboarding source={source} now={() => 456} onComplete={onComplete} />
+        </AccountDraftContext.Provider>
+      </StrictMode>,
+    );
+
+    expect(screen.getByRole('textbox', {name: '현재 모아둔 투자금'})).toHaveValue('250million');
+    expect(onComplete).not.toHaveBeenCalled();
+    expect(recordRecoveryDraft).not.toHaveBeenCalled();
+  });
+
+  it('restores an unsubmitted goal input without completing or saving on mount', () => {
+    const onComplete = vi.fn();
+    const recordRecoveryDraft = vi.fn();
+    const initialDraft: CompoundSimulationDraft = {
+      ...createDefaultSimulationDraft(source, 123),
+      initialInvestmentWon: 200_000_000,
+      targetAmountWon: null,
+    };
+    const session = {
+      readRecoveryDraft: (key: string) => key === 'simulation-onboarding-goal'
+        ? {rawAmount: '250million'}
+        : null,
+      recordRecoveryDraft,
+    } as unknown as AccountWorkspaceSession;
+
+    render(
+      <AccountDraftContext.Provider value={session}>
+        <SimulationOnboarding
+          source={source}
+          initialDraft={initialDraft}
+          now={() => 456}
+          onComplete={onComplete}
+        />
+      </AccountDraftContext.Provider>,
+    );
+
+    expect(screen.getByRole('textbox', {name: '목표 금액'})).toHaveValue('250million');
+    expect(onComplete).not.toHaveBeenCalled();
+    expect(recordRecoveryDraft).not.toHaveBeenCalled();
+  });
+
+  it('restores a typed return-stage draft without completing or saving on mount', () => {
+    const onComplete = vi.fn();
+    const recordRecoveryDraft = vi.fn();
+    const draft = createDefaultSimulationDraft(source, 123);
+    const session = {
+      readRecoveryDraft: (key: string) => key === 'simulation-onboarding'
+        ? {stage: 'return', draft}
+        : null,
+      recordRecoveryDraft,
+    } as unknown as AccountWorkspaceSession;
+
+    render(
+      <AccountDraftContext.Provider value={session}>
+        <SimulationOnboarding source={source} now={() => 456} onComplete={onComplete} />
+      </AccountDraftContext.Provider>,
+    );
+
+    expect(screen.getByRole('heading', {name: '매년 어느 정도 수익을 기대하나요?'})).toBeVisible();
+    expect(onComplete).not.toHaveBeenCalled();
+    expect(recordRecoveryDraft).not.toHaveBeenCalled();
+  });
+
+  it('clears the parent recovery record only after an explicit final completion', () => {
+    const onComplete = vi.fn();
+    const recordRecoveryDraft = vi.fn();
+    const session = {
+      readRecoveryDraft: () => null,
+      recordRecoveryDraft,
+    } as unknown as AccountWorkspaceSession;
+
+    render(
+      <AccountDraftContext.Provider value={session}>
+        <SimulationOnboarding source={source} now={() => 456} onComplete={onComplete} />
+      </AccountDraftContext.Provider>,
+    );
+
+    fireEvent.click(screen.getByRole('button', {name: '없어요'}));
+    fireEvent.click(screen.getByRole('button', {name: '결과 보기'}));
+
+    expect(onComplete).toHaveBeenCalledTimes(1);
+    expect(recordRecoveryDraft).toHaveBeenCalledWith('simulation-onboarding', null);
+    expect(recordRecoveryDraft).toHaveBeenCalledWith('simulation-onboarding-return', null);
+  });
+
+  it('restores an invalid custom return input without completing or saving on mount', () => {
+    const onComplete = vi.fn();
+    const recordRecoveryDraft = vi.fn();
+    const draft = createDefaultSimulationDraft(source, 123);
+    const session = {
+      readRecoveryDraft: (key: string) => {
+        if (key === 'simulation-onboarding') return {stage: 'return', draft};
+        if (key === 'simulation-onboarding-return') {
+          return {customReturn: true, returnRaw: '30.123', returnError: true};
+        }
+        return null;
+      },
+      recordRecoveryDraft,
+    } as unknown as AccountWorkspaceSession;
+
+    render(
+      <StrictMode>
+        <AccountDraftContext.Provider value={session}>
+          <SimulationOnboarding source={source} now={() => 456} onComplete={onComplete} />
+        </AccountDraftContext.Provider>
+      </StrictMode>,
+    );
+
+    expect(screen.getByRole('spinbutton', {name: '연 기대수익률 직접 입력'})).toHaveValue(30.123);
+    expect(screen.getByRole('alert')).toHaveTextContent('0~30 사이, 소수점 둘째 자리까지 입력해주세요.');
+    expect(screen.getByRole('button', {name: '결과 보기'})).toBeDisabled();
+    expect(onComplete).not.toHaveBeenCalled();
+    expect(recordRecoveryDraft).not.toHaveBeenCalled();
   });
 });

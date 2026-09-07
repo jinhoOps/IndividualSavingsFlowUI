@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { AppContentFrame } from '../../components/common/AppContentFrame';
 import { AppShell } from '../../components/common/AppShell';
 import { useReducedMotion } from '../../components/motion/useReducedMotion';
@@ -34,14 +34,14 @@ export interface MainAppProps {
   navigate?(href: string): void;
 }
 
-const browserWorkspaceRepository = new BrowserWorkspaceRepository();
-const browserRepository = new BrowserMainRepository(browserWorkspaceRepository);
-
 export function MainApp({
-  repository = browserRepository,
-  workspaceRepository = browserWorkspaceRepository,
+  repository: providedRepository,
+  workspaceRepository: providedWorkspaceRepository,
   navigate = navigateTo,
 }: MainAppProps) {
+  const localWorkspace = useMemo(() => providedWorkspaceRepository ? null : new BrowserWorkspaceRepository(), [providedWorkspaceRepository]);
+  const workspaceRepository = providedWorkspaceRepository ?? localWorkspace!;
+  const repository = useMemo(() => providedRepository ?? new BrowserMainRepository(localWorkspace!), [providedRepository, localWorkspace]);
   const operationGate = useRef(createMainOperationGate()).current;
   const planActionNotifications = useRef(createMainPlanActionNotifications()).current;
   const reducedMotion = useReducedMotion();

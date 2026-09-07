@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AppContentFrame } from '../../components/common/AppContentFrame';
 import { AppShell } from '../../components/common/AppShell';
 import { Button } from '../../components/common/Button';
@@ -23,6 +23,7 @@ import { SimulationControls } from './SimulationControls';
 import { SimulationHero } from './SimulationHero';
 import { SimulationManagementMenu } from './SimulationManagementMenu';
 import { SimulationOnboarding } from './SimulationOnboarding';
+import {AccountDraftContext, useAccountRecovery, useInitialRecovery} from '../../auth/AccountDraftContext';
 
 export function SimulationApp({
   mainSourceRepository: providedMainRepository,
@@ -33,6 +34,8 @@ export function SimulationApp({
   repository?: SimulationRepository;
   now?: () => number;
 }) {
+  const accountSession = useContext(AccountDraftContext);
+  const autosaveDebounceMs = accountSession === null ? 0 : 500;
   const mainRepository = useMemo(
     () => providedMainRepository ?? new BrowserMainSourceRepository(),
     [providedMainRepository],
@@ -46,17 +49,35 @@ export function SimulationApp({
     [mainRepository, repository, now],
   );
   const [runtime, setRuntime] = useState(initial);
+  const recovered = useInitialRecovery('simulation', parseSimulationDraft);
   const [draft, setDraft] = useState<CompoundSimulationDraft | null>(
-    initial.kind === 'ready'
+    recovered ?? (initial.kind === 'ready'
       ? initial.draft
-      : initial.kind === 'stale-main' || initial.kind === 'goal-required' ? initial.draft : null,
+      : initial.kind === 'stale-main' || initial.kind === 'goal-required' ? initial.draft : null),
   );
   const [saveState, setSaveState] = useState<SimulationSaveState>(
-    initial.kind !== 'main-required' && !initial.persistenceAvailable ? 'error' : 'saved',
+    recovered || (initial.kind !== 'main-required' && !initial.persistenceAvailable) ? 'error' : 'saved',
   );
-  const initialPersisted = useRef(false);
+  const initialPersisted = useRef(recovered !== null);
+  useAccountRecovery('simulation', draft, saveState !== 'saved' && draft !== null);
   const persistenceQueue = useRef<Promise<void>>(Promise.resolve());
+  const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const bufferedAutosave = useRef<{draft: CompoundSimulationDraft; token: number} | null>(null);
+  const mounted = useRef(false);
   const latestOperation = useRef(0);
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      void Promise.resolve().then(() => {
+        if (mounted.current || autosaveTimer.current === null) return;
+        clearTimeout(autosaveTimer.current);
+        autosaveTimer.current = null;
+        bufferedAutosave.current = null;
+      });
+    };
+  }, []);
 
   useEffect(() => {
     if (
@@ -108,6 +129,7 @@ export function SimulationApp({
     goalRuntime: Extract<ReturnType<typeof bootstrapSimulation>, { kind: 'goal-required' }>,
     valid: CompoundSimulationDraft,
   ): void {
+    flushAutosave();
     const token = beginOperation();
     enqueuePersistence(
       () => repository.save(valid),
@@ -125,6 +147,7 @@ export function SimulationApp({
   }
 
   function reset(): Promise<boolean> {
+    flushAutosave();
     const token = beginOperation();
     return enqueuePersistence(
       () => repository.clear(),
@@ -161,6 +184,27 @@ export function SimulationApp({
 
   function queueSave(next: CompoundSimulationDraft): void {
     const token = beginOperation();
+    if (autosaveDebounceMs > 0) {
+      bufferedAutosave.current = {draft: next, token};
+      if (autosaveTimer.current !== null) clearTimeout(autosaveTimer.current);
+      autosaveTimer.current = setTimeout(flushAutosave, autosaveDebounceMs);
+      return;
+    }
+    sendAutosave(next, token);
+  }
+
+  function flushAutosave(): void {
+    if (autosaveTimer.current !== null) {
+      clearTimeout(autosaveTimer.current);
+      autosaveTimer.current = null;
+    }
+    const buffered = bufferedAutosave.current;
+    bufferedAutosave.current = null;
+    if (buffered !== null) sendAutosave(buffered.draft, buffered.token);
+  }
+
+  function sendAutosave(next: CompoundSimulationDraft, token: number): void {
+    if (!mounted.current) return;
     enqueuePersistence(
       () => repository.save(next),
       (result) => {
@@ -181,10 +225,15 @@ export function SimulationApp({
     operation: () => Promise<T>,
     onSettled: (result: T | null) => void,
   ): Promise<T | null> {
-    const run = persistenceQueue.current.then(operation, operation);
+    const run = persistenceQueue.current.then(
+      () => mounted.current ? operation() : null,
+      () => mounted.current ? operation() : null,
+    );
     const settled = run.then((result) => result, () => null);
     persistenceQueue.current = settled.then(() => undefined);
-    void settled.then(onSettled);
+    void settled.then((result) => {
+      if (mounted.current) onSettled(result);
+    });
     return settled;
   }
 

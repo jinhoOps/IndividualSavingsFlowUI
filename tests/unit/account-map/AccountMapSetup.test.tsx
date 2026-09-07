@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { AccountDraftContext } from '../../../src/auth/AccountDraftContext';
 import { AccountMapApp } from '../../../src/account-map/ui/AccountMapApp';
 import { AccountMapSetup } from '../../../src/account-map/ui/AccountMapSetup';
 import { applyAccountMapCommand } from '../../../src/account-map/domain/commands';
@@ -8,10 +9,51 @@ import { rebaseAccountMapIntent } from '../../../src/account-map/domain/editInte
 import type { AccountMapRepository, AccountMapWriteResult } from '../../../src/account-map/infrastructure/accountMapRepository';
 import type { AccountMapMainSourceRepository } from '../../../src/account-map/infrastructure/mainSourceRepository';
 import { createEmptyWorkspace, type WorkspaceDocument } from '../../../src/workspace/domain/model';
+import type { AccountWorkspaceSession } from '../../../src/workspace/infrastructure/accountWorkspaceSession';
 
 afterEach(cleanup);
 
 describe('AccountMapSetup', () => {
+  it('restores raw custom-purpose input without saving it on mount', () => {
+    const workspace = createEmptyWorkspace(1);
+    const main = mainData();
+    workspace.main.applied = main;
+    const onSaveDraft = vi.fn(async () => ({ status: 'saved' as const }));
+    const session = recoverySession({
+      'account-map-custom-purpose': { parentId: 'system:saving', name: '  여행  ', amount: '12,34' },
+    });
+
+    render(
+      <AccountDraftContext.Provider value={session}>
+        <AccountMapSetup
+          workspace={workspace}
+          main={main}
+          draft={null}
+          step="connect"
+          mainChanged={false}
+          saveFailed={false}
+          recoveryPending={false}
+          recovery={{ status: 'none' }}
+          onReapply={async () => false}
+          onKeepLatest={() => undefined}
+          onCommitConnection={async () => false}
+          onSaveDraft={onSaveDraft}
+          onReview={() => undefined}
+          onBack={() => undefined}
+          onApply={() => undefined}
+          onExit={() => undefined}
+          onCancelSetup={() => undefined}
+        />
+      </AccountDraftContext.Provider>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: '세부 목적 추가' }));
+
+    expect(screen.getByRole('combobox', { name: '큰 목적' })).toHaveValue('system:saving');
+    expect(screen.getByRole('textbox', { name: '목적 이름' })).toHaveValue('  여행  ');
+    expect(screen.getByRole('textbox', { name: '월 금액' })).toHaveValue('12,34');
+    expect(onSaveDraft).not.toHaveBeenCalled();
+  });
+
   it('opens a focused account overlay with nine quick institutions and direct input', () => {
     render(<AccountMapApp repositories={fixture().repositories} />);
     const incomeCard = screen.getByRole('heading', { name: '수입' }).closest('article')!;
@@ -430,4 +472,11 @@ function fixture(withLocation = false, failSave = false, archived = false) {
 
 function mainData() {
   return { schemaVersion: 2 as const, updatedAt: 10, monthlyNetIncomeWon: 2_000_000, monthlyHousingWon: 500_000, monthlyLivingWon: 1_000_000, monthlySavingWon: 300_000, monthlyInvestmentWon: 200_000 };
+}
+
+function recoverySession(drafts: Record<string, unknown>): AccountWorkspaceSession {
+  return {
+    readRecoveryDraft: vi.fn((key: string) => drafts[key] ?? null),
+    recordRecoveryDraft: vi.fn((key: string, value: unknown) => { drafts[key] = value; }),
+  } as unknown as AccountWorkspaceSession;
 }

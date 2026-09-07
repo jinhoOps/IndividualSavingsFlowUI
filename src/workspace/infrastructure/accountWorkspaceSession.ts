@@ -34,6 +34,7 @@ export class AccountWorkspaceSession {
   externalRevision = 0;
   localEdits = false;
   private disposed = false;
+  private locked = false;
   private busy = false;
   private editGeneration = 0;
   private refreshGeneration = 0;
@@ -99,7 +100,7 @@ export class AccountWorkspaceSession {
     return true;
   }
   async refresh(): Promise<AccountWorkspaceStatus> {
-    if (this.disposed || this.busy) return this.status;
+    if (this.disposed || this.locked || this.busy) return this.status;
     const generation = ++this.refreshGeneration;
     try {
       const row = await this.remote.read();
@@ -151,7 +152,7 @@ export class AccountWorkspaceSession {
     const existing = this.scopes.get(scope);
     if (existing) return existing;
     const port: WorkspaceRepository = {
-      load: () => this.snapshot && !this.disposed
+      load: () => this.snapshot && !this.disposed && !this.locked
         ? {status: 'found', workspace: structuredClone(this.snapshot), needsMigration: false}
         : {status: 'unavailable'},
       update: (revision, mutate) => {
@@ -243,7 +244,7 @@ export class AccountWorkspaceSession {
     const editGeneration = this.editGeneration;
     try {
       const result = await this.remote.write(pending.operation, pending.expectedRevision, structuredClone(pending.payload), pending.mutationId);
-      if (this.disposed) return {status: 'unavailable'};
+      if (this.disposed || this.locked) return {status: 'unavailable'};
       if (result.status === 'invalid') {
         this.pending = null;
         this.status = this.snapshot !== null && this.rawRemote === null ? 'ready' : 'invalid';
@@ -272,7 +273,7 @@ export class AccountWorkspaceSession {
       if (this.editGeneration === editGeneration) this.localEdits = this.hasRecoveryDrafts();
       return {status: 'saved', workspace: structuredClone(this.snapshot!)};
     } catch (error) {
-      if (this.disposed) return {status: 'unavailable'};
+      if (this.disposed || this.locked) return {status: 'unavailable'};
       const code = (error as {code?: string})?.code;
       this.status = code === 'PGRST301' || code === '42501' || (error as {status?: number})?.status === 401
         ? 'expired'
@@ -282,6 +283,10 @@ export class AccountWorkspaceSession {
       this.busy = false;
       if (!this.disposed) {this.persist(); this.emit();}
     }
+  }
+  lock(): void {
+    this.locked = true; this.refreshGeneration++; this.status = 'expired';
+    this.persist(); this.emit();
   }
   dispose(clearCache = false): void {
     this.disposed = true;

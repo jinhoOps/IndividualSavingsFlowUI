@@ -1,9 +1,45 @@
-import { useEffect, useRef, useState } from 'react';
+import { useContext, useEffect, useRef, useState } from 'react';
+import {
+  AccountDraftContext,
+  useAccountRecovery,
+  useInitialRecovery,
+} from '../../auth/AccountDraftContext';
 import { Button } from '../../components/common/Button';
 import { Surface } from '../../components/common/Surface';
 import type { CompoundSimulationDraft } from '../domain/model';
 
 const RETURN_PRESETS = [5, 9, 13] as const;
+
+interface ReturnRecoveryDraft {
+  customReturn: boolean;
+  returnRaw: string;
+  returnError: boolean;
+}
+
+function isValidReturnRaw(raw: string): boolean {
+  const value = Number(raw);
+  return /^(?:\d+)(?:\.\d{0,2})?$/.test(raw)
+    && Number.isFinite(value) && value >= 0 && value <= 30;
+}
+
+function parseReturnRecoveryDraft(value: unknown): ReturnRecoveryDraft | null {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return null;
+  const draft = value as Record<string, unknown>;
+  if (
+    typeof draft.customReturn !== 'boolean'
+    || typeof draft.returnRaw !== 'string'
+    || typeof draft.returnError !== 'boolean'
+    || draft.returnRaw.length > 32
+    || draft.returnError === isValidReturnRaw(draft.returnRaw)
+  ) {
+    return null;
+  }
+  return {
+    customReturn: draft.customReturn,
+    returnRaw: draft.returnRaw,
+    returnError: draft.returnError,
+  };
+}
 
 export function ExpectedReturnStep({
   draft,
@@ -14,15 +50,31 @@ export function ExpectedReturnStep({
   onChange(next: CompoundSimulationDraft): void;
   onComplete(): void;
 }) {
+  const session = useContext(AccountDraftContext);
+  const recovered = useInitialRecovery('simulation-onboarding-return', parseReturnRecoveryDraft);
   const headingRef = useRef<HTMLHeadingElement>(null);
-  const [returnRaw, setReturnRaw] = useState(String(draft.expectedAnnualReturnPercent));
-  const [returnError, setReturnError] = useState(false);
+  const previousExpectedReturnRef = useRef(draft.expectedAnnualReturnPercent);
+  const [returnRaw, setReturnRaw] = useState(
+    () => recovered?.returnRaw ?? String(draft.expectedAnnualReturnPercent),
+  );
+  const [returnError, setReturnError] = useState(() => recovered?.returnError ?? false);
   const [customReturn, setCustomReturn] = useState(
-    !RETURN_PRESETS.includes(draft.expectedAnnualReturnPercent as 5 | 9 | 13),
+    () => recovered?.customReturn
+      ?? !RETURN_PRESETS.includes(draft.expectedAnnualReturnPercent as 5 | 9 | 13),
+  );
+  const [dirty, setDirty] = useState(false);
+
+  useAccountRecovery(
+    'simulation-onboarding-return',
+    { customReturn, returnRaw, returnError },
+    dirty,
+    dirty,
   );
 
   useEffect(() => headingRef.current?.focus(), []);
   useEffect(() => {
+    if (previousExpectedReturnRef.current === draft.expectedAnnualReturnPercent) return;
+    previousExpectedReturnRef.current = draft.expectedAnnualReturnPercent;
     setReturnRaw(String(draft.expectedAnnualReturnPercent));
     if (!RETURN_PRESETS.includes(draft.expectedAnnualReturnPercent as 5 | 9 | 13)) {
       setCustomReturn(true);
@@ -33,6 +85,7 @@ export function ExpectedReturnStep({
     const next = Math.max(0, Math.min(30, Math.round(value * 100) / 100));
     setReturnRaw(String(next));
     setReturnError(false);
+    setDirty(true);
     onChange({ ...draft, expectedAnnualReturnPercent: next });
   }
 
@@ -64,9 +117,10 @@ export function ExpectedReturnStep({
             type="button"
             variant="secondary"
             aria-pressed={customReturn}
-            onClick={() => {
-              setCustomReturn(true);
-              setReturnError(false);
+              onClick={() => {
+                setCustomReturn(true);
+                setReturnError(false);
+                setDirty(true);
             }}
           >
             직접 입력
@@ -98,10 +152,10 @@ export function ExpectedReturnStep({
                 onChange={(event) => {
                   const raw = event.target.value;
                   const value = Number(raw);
-                  const valid = /^(?:\d+)(?:\.\d{0,2})?$/.test(raw)
-                    && Number.isFinite(value) && value >= 0 && value <= 30;
+                  const valid = isValidReturnRaw(raw);
                   setReturnRaw(raw);
                   setReturnError(!valid);
+                  setDirty(true);
                   if (valid) onChange({ ...draft, expectedAnnualReturnPercent: value });
                 }}
               />
@@ -127,7 +181,16 @@ export function ExpectedReturnStep({
       <p className="simulation-preset-note">
         수익률 선택값은 상품 추천이나 과거 성과가 아닌 계산 가정입니다.
       </p>
-      <Button type="button" variant="primary" onClick={onComplete}>
+      <Button
+        type="button"
+        variant="primary"
+        disabled={returnError}
+        onClick={() => {
+          session?.recordRecoveryDraft('simulation-onboarding-return', null);
+          setDirty(false);
+          onComplete();
+        }}
+      >
         결과 보기
       </Button>
     </Surface>

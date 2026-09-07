@@ -2,9 +2,9 @@
 
 ## 1. Product
 
-ISF는 지금의 월간 돈 흐름을 정리하고, 그 결과를 장기 전략과 실행 계획으로 점차 연결하는 로컬 우선 개인 재무 계획 도구다.
+ISF는 지금의 월간 돈 흐름을 정리하고, 그 결과를 장기 전략과 실행 계획으로 점차 연결하는 개인 재무 계획 도구다. 정적 웹에서 Google 로그인과 Supabase 계정별 저장을 사용한다.
 
-현재 지원 제품은 **Main, Simulation, Portfolio와 Account Map**이다. Main은 월 자금 흐름을, Simulation은 장기 복리를, Portfolio는 최신 Main 투자금의 전체 기준 배분을 보여준다. Account Map은 Main 기반 목적과 계좌·보관처의 월 연결을 제공한다. 네 앱은 workspace schema v3의 단일 `isf-workspace-v3` 기록을 사용한다.
+현재 지원 제품은 **Main, Simulation, Portfolio와 Account Map**이다. Main은 월 자금 흐름을, Simulation은 장기 복리를, Portfolio는 최신 Main 투자금의 전체 기준 배분을 보여준다. Account Map은 Main 기반 목적과 계좌·보관처의 월 연결을 제공한다. 네 앱은 계정당 하나의 schema v3 workspace를 사용한다. 이 브랜치의 계정 저장 구현과 운영 rollout 상태는 [운영 안내](../../../../../docs/supabase-account-setup.md)로 구분한다.
 
 ## 2. Epic
 
@@ -185,7 +185,9 @@ ISF는 지금의 월간 돈 흐름을 정리하고, 그 결과를 장기 전략�
 
 ## 9. Data Contract
 
-현재 제품의 저장 boundary는 workspace schema v3의 `isf-workspace-v3` 하나다. 여기에는 Main applied/setup progress, Simulation draft, aggregate-only Portfolio plans/draft, 공유 금융 위치와 Account Map applied/draft가 들어간다. current Account Map state에는 `legacyPhaseA`나 `layout`이 없다. 유효한 retired v1/v2 `isf-workspace-v1`은 v3가 없을 때만 read-only conversion/rollback source이며 성공한 conversion도 원본을 변경하거나 삭제하지 않는다.
+현재 제품의 저장 boundary는 Supabase `public.user_workspaces`의 계정당 한 행이며 workspace schema v3를 유지한다. 여기에는 Main applied/setup progress, Simulation draft, aggregate-only Portfolio plans/draft, 공유 금융 위치와 Account Map applied/draft가 들어간다. current Account Map state에는 `legacyPhaseA`나 `layout`이 없다. RLS가 본인 행 조회를 제한하고 소유 slice별 RPC만 서버 revision 검사 후 저장한다. 전체 복원만 검증된 다섯 slice를 원자적으로 교체한다.
+
+기존 `isf-workspace-v3`는 사용자 선택에 따른 read-only 이전 후보다. 유효한 retired v1/v2 `isf-workspace-v1`은 v3가 없을 때만 conversion source이며 invalid v3에서는 fallback하지 않는다. 이전 성공 후에도 원본과 foreign record를 변경·삭제하지 않는다. 계정별 캐시·미전송 draft는 별도 namespace이며 서버 확정 상태로 표시하지 않는다. 로그인 전 제품을 mount하지 않고 오프라인은 같은 계정 캐시의 읽기 전용 재방문만 허용한다. 계약 상세는 [계정 저장 설계](../../../../superpowers/specs/2026-09-07-supabase-account-workspace-design.md)를 따른다.
 
 `MainData`의 제품 필드는 다음과 같다.
 
@@ -229,7 +231,7 @@ Simulation, Portfolio와 Account Map은 workspace 안의 최신 Main을 읽기 �
 - [x] Main은 다섯 월간 값으로 새 계획을 만들고 다시 수정할 수 있다.
 - [x] setup draft를 저장하고 재개할 수 있다.
 - [x] 소비·저축·투자·남는 돈 또는 적자가 동일한 데이터에서 계산된다.
-- [x] 유효한 계획을 로컬에 저장하고 다시 불러올 수 있다.
+- [x] 유효한 계획을 계정 workspace에 저장하고 다시 불러오는 앱·DB 계약과 로컬 데이터 호환성을 검증한다. 실제 Google provider/운영 배포는 별도 rollout gate다.
 - [x] 현재 JSON을 내보내고 검증된 JSON을 가져올 수 있다.
 - [x] Main에서 Simulation으로 명시적으로 이동할 수 있다.
 - [x] Main 월 자금 구성 도넛은 pointer·touch·keyboard로 항목을 탐색하며 모바일에서도 명칭과 상세 금액에 접근할 수 있다.
@@ -272,7 +274,17 @@ Simulation, Portfolio와 Account Map은 workspace 안의 최신 Main을 읽기 �
 - [x] Phase B Account Map 상세 명세에서 계좌·보관처 관리와 Portfolio 비연결 경계를 승인한다.
 - [x] Phase 4의 분류된 legacy runtime 삭제와 Task 8의 최종 전체 검증은 v1/v2 conversion·raw source preservation·reference search·type/unit/E2E/build·반응형 QA [evidence](../../../../superpowers/evidence/2026-09-02-phase4-legacy-test-disposition.md)와 함께 기록되어 있다.
 
+### 계정 저장 rollout gate
+
+2026-09-07 승인된 [설계](../../../../superpowers/specs/2026-09-07-supabase-account-workspace-design.md)에 따라 로그인 후 편집·저장, 계정당 workspace 하나를 구현한다. mock 인증 E2E와 실제 로컬 PostgreSQL 검증은 Google provider 실제 왕복이나 운영 적용 증거를 대신하지 않는다.
+
+- [ ] 운영 DB 사전 권한/버전 확인과 migration 적용
+- [ ] Google provider, 정확한 callback allowlist와 공개 build 환경변수 등록
+- [ ] 실제 Google 왕복, 운영 base 직접 진입·새로고침, 두 기기와 다중 탭 검증 후 배포
+
 ## 12. Future Product Direction
+
+### 앱 확장 방향
 
 제품 비전은 다음 질문을 차례로 연결하는 것이다.
 

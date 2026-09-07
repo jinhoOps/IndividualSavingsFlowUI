@@ -1,5 +1,6 @@
-import { useLayoutEffect, useRef, useState, type RefObject } from 'react';
+import { useContext, useLayoutEffect, useRef, useState, type RefObject } from 'react';
 import { Trash2 } from 'lucide-react';
+import { AccountDraftContext, useAccountRecovery, useInitialRecovery } from '../../auth/AccountDraftContext';
 import { Button } from '../../components/common/Button';
 import { adjustWon, formatWonInput, normalizeMoneyEdit, parseWonInput } from '../../core/domain/moneyInput';
 import { normalizePortfolioName, recommendClassification } from '../domain/classification';
@@ -43,10 +44,13 @@ export function PortfolioItemSheet({
   onRemove,
   onClose,
 }: PortfolioItemSheetProps) {
-  const [name, setName] = useState(initialValue.name);
-  const [amount, setAmount] = useState(() => formatWonInput(initialValue.amountWon));
-  const [classification, setClassification] = useState(initialValue.classification);
-  const [classificationOrigin, setClassificationOrigin] = useState(initialValue.classificationOrigin);
+  const recoveryKey = mode === 'add' ? 'portfolio-item:add' : `portfolio-item:edit:${initialValue.name}`;
+  const recovered = useInitialRecovery(recoveryKey, parseItemRecovery);
+  const session = useContext(AccountDraftContext);
+  const [name, setName] = useState(recovered?.name ?? initialValue.name);
+  const [amount, setAmount] = useState(() => recovered?.amount ?? formatWonInput(initialValue.amountWon));
+  const [classification, setClassification] = useState(recovered?.classification ?? initialValue.classification);
+  const [classificationOrigin, setClassificationOrigin] = useState(recovered?.classificationOrigin ?? initialValue.classificationOrigin);
   const [nameTouched, setNameTouched] = useState(false);
   const [amountTouched, setAmountTouched] = useState(false);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
@@ -64,10 +68,11 @@ export function PortfolioItemSheet({
     ? '투자 대상 금액은 1,000원 이상이어야 합니다.'
     : amountWon > investmentWon ? '월 투자금을 초과할 수 없습니다.' : null;
   const dirty = name !== initialValue.name
-    || amountWon !== initialValue.amountWon
+    || amount !== formatWonInput(initialValue.amountWon)
     || classification !== initialValue.classification
     || classificationOrigin !== initialValue.classificationOrigin;
   const title = mode === 'add' ? '투자 대상 추가' : '투자 대상 수정';
+  useAccountRecovery(recoveryKey, { name, amount, classification, classificationOrigin }, dirty);
 
   useLayoutEffect(() => {
     if (pendingCaretRef.current === null || amountInputRef.current === null) return;
@@ -77,7 +82,10 @@ export function PortfolioItemSheet({
 
   function requestClose(): void {
     if (dirty) setConfirmDiscard(true);
-    else onClose();
+    else {
+      session?.recordRecoveryDraft(recoveryKey, null);
+      onClose();
+    }
   }
 
   function updateName(nextName: string): void {
@@ -106,7 +114,10 @@ export function PortfolioItemSheet({
         <header className="portfolio-item-sheet__header">
           <h2 id="portfolio-item-sheet-title">{title}</h2>
           {mode === 'edit' && onRemove ? (
-            <button type="button" className="portfolio-item-sheet__remove" aria-label="투자 대상 삭제" onClick={onRemove}>
+            <button type="button" className="portfolio-item-sheet__remove" aria-label="투자 대상 삭제" onClick={() => {
+              session?.recordRecoveryDraft(recoveryKey, null);
+              onRemove();
+            }}>
               <Trash2 aria-hidden="true" size={20} strokeWidth={2} />
             </button>
           ) : null}
@@ -198,7 +209,10 @@ export function PortfolioItemSheet({
             type="button"
             variant="primary"
             disabled={nameError !== null || amountError !== null}
-            onClick={() => onComplete({ name: name.trim(), amountWon, classification, classificationOrigin })}
+            onClick={() => {
+              session?.recordRecoveryDraft(recoveryKey, null);
+              onComplete({ name: name.trim(), amountWon, classification, classificationOrigin });
+            }}
           >완료</Button>
         </footer>
       </PortfolioDialog>
@@ -212,10 +226,32 @@ export function PortfolioItemSheet({
           <p>완료하지 않은 변경 내용이 사라집니다.</p>
           <div className="portfolio-item-sheet__discard-actions">
             <Button type="button" variant="secondary" data-dialog-initial-focus onClick={() => setConfirmDiscard(false)}>계속 입력</Button>
-            <Button type="button" variant="primary" onClick={onClose}>버리기</Button>
+            <Button type="button" variant="primary" onClick={() => {
+              session?.recordRecoveryDraft(recoveryKey, null);
+              onClose();
+            }}>버리기</Button>
           </div>
         </PortfolioDialog>
       ) : null}
     </>
   );
+}
+
+function parseItemRecovery(value: unknown): {
+  name: string;
+  amount: string;
+  classification: Classification;
+  classificationOrigin: ClassificationOrigin;
+} | null {
+  if (typeof value !== 'object' || value === null) return null;
+  const draft = value as Record<string, unknown>;
+  if (typeof draft.name !== 'string' || typeof draft.amount !== 'string') return null;
+  if ((draft.classification !== 'growth' && draft.classification !== 'stable')
+    || (draft.classificationOrigin !== 'automatic' && draft.classificationOrigin !== 'user')) return null;
+  return {
+    name: draft.name,
+    amount: draft.amount,
+    classification: draft.classification,
+    classificationOrigin: draft.classificationOrigin,
+  };
 }

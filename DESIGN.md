@@ -2,7 +2,7 @@
 
 ## Overview
 
-Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계획 경험으로 바꾸는 로컬 우선 도구입니다. 시각적 기반은 종이 같은 **ISF Pearl** 캔버스와 단색 테두리의 **flat editorial panel**입니다. 전통적인 스프레드시트의 긴장감은 줄이되 숫자의 정밀성과 신뢰감은 유지합니다.
+Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계정별 계획 경험으로 바꾸는 도구입니다. 시각적 기반은 종이 같은 **ISF Pearl** 캔버스와 단색 테두리의 **flat editorial panel**입니다. 전통적인 스프레드시트의 긴장감은 줄이되 숫자의 정밀성과 신뢰감은 유지합니다.
 
 이 문서의 현재 지원 UI 계약은 Main, Simulation, aggregate-first Portfolio와 account-first Account Map에 적용됩니다. Account Map 지도 표현은 [Account Map Meaningful Layout Design](docs/superpowers/specs/2026-08-25-account-map-meaningful-layout-design.md)을 따릅니다. 과거 레거시 화면의 모양이나 상호작용은 새 UI의 기준이 아닙니다.
 
@@ -17,9 +17,18 @@ Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계획 �
 5. **Consistent Model**: 요약과 월 자금 구성은 동일한 정규화 데이터에서 만들어집니다.
 6. **Safe Constraints**: 유효하지 않은 금액, 초과 배분과 저장 실패는 조용히 무시하지 않습니다.
 7. **Progressive Disclosure**: 개요는 관계와 결과를 보여주고 민감하거나 복잡한 세부정보는 선택 후 공개합니다.
-8. **Local-first Trust**: 한 workspace의 저장 위치, whole-workspace import/export와 앱별 소유 slice를 사용자가 이해할 수 있어야 합니다.
+8. **Account Storage Trust**: 계정의 서버 확정 계획과 브라우저 원본·미전송 입력, whole-workspace import/export와 앱별 소유 slice를 명확히 구분합니다.
 
 ## Product-Specific Interaction Contracts
+
+### Account access and recovery
+
+- 로그인과 서버 조회가 끝나기 전에는 금융 화면을 표시하거나 빈 계획을 자동 생성하지 않습니다. Google 로그인 후 계정의 계획이 없을 때만 기존 브라우저 가져오기/새 시작을 직접 선택합니다.
+- 내 계정에서 계정 식별 정보, 마지막 저장 시각, 서버 확정 백업과 별도의 미전송 복구 파일을 제공합니다. 정상 자동 저장은 상시 성공 배너로 알리지 않습니다.
+- 충돌 때 현재 입력을 보존하고 최신 계획 채택 또는 명시적 재적용을 제공합니다. 전체 복원은 대상 계정·현재/복원 요약을 확인하며 충돌 후에도 재확인합니다. Account Map의 Main-null 예외는 유지합니다.
+- 오프라인에는 마지막 계정 계획을 읽기 전용으로 표시하고 만료 세션에서는 화면을 잠급니다. 재로그인 후 복구 입력을 자동 서버 저장하지 않습니다.
+- 로그아웃 시 미전송 입력이 있으면 복구 파일 보관 또는 명시적 폐기를 선택합니다. 일반 백업에 미전송 입력이 포함된 것처럼 표시하지 않습니다.
+- 로그인·이전·계정 메뉴·충돌 안내는 390px, 768px와 desktop에서 overflow 없이 표시하고 조작 영역 44px, 키보드 focus와 접근 가능한 이름을 유지합니다. 전체 교체·폐기 확인은 브라우저 기본 확인창을 사용합니다.
 
 ### Main
 
