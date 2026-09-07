@@ -20,7 +20,7 @@ vi.mock('../../../src/account-map/ui/motion', () => ({
 afterEach(cleanup);
 
 describe('AccountMapApp completed flow map', () => {
-  it('renders a V3 applied flow and only opens account detail on first activation', () => {
+  it('renders an applied flow and only opens account detail on first activation', () => {
     render(<AccountMapApp repositories={flowRepositories().repositories} />);
 
     expect(screen.getAllByRole('heading', { name: '계좌별 월 계획 흐름' })).toHaveLength(2);
@@ -84,18 +84,51 @@ describe('AccountMapApp completed flow map', () => {
     expect(within(dialog).getByRole('button', { name: '편집' })).toBeVisible();
     expect(within(dialog).queryByRole('button', { name: '연결 추가' })).not.toBeInTheDocument();
   });
+
+  it('confirms the refreshed Main basis through the explicit stale-map action without changing transfers', async () => {
+    const refreshedMain = { ...salaryLivingBrokerageFixture().main, updatedAt: 30 };
+    const setup = flowRepositories(refreshedMain);
+    const appliedBefore = setup.current().accountMap.applied;
+    if (appliedBefore?.schemaVersion !== 3) throw new Error('expected account-flow fixture');
+    const transfersBefore = structuredClone(appliedBefore.transfers);
+    render(<AccountMapApp repositories={setup.repositories} />);
+
+    const notice = screen.getByRole('status');
+    expect(notice).toHaveTextContent('확인 필요');
+    fireEvent.click(within(notice).getByRole('button', { name: '현재 Main 기준으로 확인' }));
+
+    await waitFor(() => expect(setup.save).toHaveBeenCalledWith(1, { type: 'confirm-current-main' }));
+    await waitFor(() => expect(screen.queryByText('확인 필요')).not.toBeInTheDocument());
+    const appliedAfter = setup.current().accountMap.applied;
+    expect(appliedAfter).toMatchObject({ sourceMainUpdatedAt: 30 });
+    if (appliedAfter?.schemaVersion !== 3) throw new Error('expected account-flow fixture');
+    expect(appliedAfter.transfers).toEqual(transfersBefore);
+  });
+
+  it('keeps the stale map unchanged and explains a rejected Main confirmation', async () => {
+    const refreshedMain = { ...salaryLivingBrokerageFixture().main, updatedAt: 30, monthlyLivingWon: 800_000 };
+    const setup = flowRepositories(refreshedMain);
+    const before = structuredClone(setup.current());
+    render(<AccountMapApp repositories={setup.repositories} />);
+
+    fireEvent.click(screen.getByRole('button', { name: '현재 Main 기준으로 확인' }));
+
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('현재 Main 기준으로 확인하지 못했습니다.'));
+    expect(screen.getByText('확인 필요')).toBeVisible();
+    expect(setup.current()).toEqual(before);
+  });
 });
 
 function openSalaryDetail(): void {
   fireEvent.click(screen.getByRole('button', { name: /계좌 급여 통장/ }));
 }
 
-function flowRepositories(): { repositories: { accountMap: AccountMapRepository; main: AccountMapMainSourceRepository }; save: ReturnType<typeof vi.fn>; current(): WorkspaceDocument } {
+function flowRepositories(currentMain = salaryLivingBrokerageFixture().main): { repositories: { accountMap: AccountMapRepository; main: AccountMapMainSourceRepository }; save: ReturnType<typeof vi.fn>; current(): WorkspaceDocument } {
   const fixture = salaryLivingBrokerageFixture();
   let workspace = createEmptyWorkspace(1);
   workspace.revision = 1;
   workspace.updatedAt = 10;
-  workspace.main.applied = fixture.main;
+  workspace.main.applied = currentMain;
   workspace.locations = fixture.locations.map((location) => ({
     ...location,
     roles: location.id === 'salary' ? ['income'] : location.id === 'living' ? ['spending'] : ['investing'],
@@ -111,7 +144,7 @@ function flowRepositories(): { repositories: { accountMap: AccountMapRepository;
     load: vi.fn(() => ({ status: 'found' as const, workspace, needsMigration: false })),
     save, saveIntent: vi.fn(), migrate: vi.fn(), reset: vi.fn(),
   };
-  const main: AccountMapMainSourceRepository = { load: vi.fn(() => ({ status: 'found' as const, data: fixture.main })) };
+  const main: AccountMapMainSourceRepository = { load: vi.fn(() => ({ status: 'found' as const, data: currentMain })) };
   return { repositories: { accountMap, main }, save, current: () => workspace };
 }
 

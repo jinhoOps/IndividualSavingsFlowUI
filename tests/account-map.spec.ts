@@ -38,6 +38,7 @@ function workspace(withMain = true) {
         ],
         transfers: [
           transfer('salary-living', 'salary', 'living', { kind: 'fixed', monthlyAmountWon: 900_000 }),
+          transfer('salary-brokerage', 'salary', 'brokerage', { kind: 'fixed', monthlyAmountWon: 1_000_000 }),
           transfer('living-brokerage', 'living', 'brokerage', { kind: 'sweep' }),
         ],
         setupCompletedAt: now,
@@ -71,6 +72,13 @@ async function storedProtectedSlices(page: Page) {
   }, storageKey);
 }
 
+function staleWorkspace() {
+  const value = workspace();
+  if (value.accountMap.applied === null) throw new Error('completed map fixture required');
+  value.accountMap.applied.sourceMainUpdatedAt = now - 1;
+  return value;
+}
+
 test('requires a Main basis without creating Account Map state', async ({ page }) => {
   const value = workspace(false);
   await seed(page, value);
@@ -87,7 +95,13 @@ test('keeps the V3 completed flow map contained, touch-sized, and readable at su
     await page.goto('apps/account-map/');
 
     await expect(page.getByRole('heading', { name: '계좌별 월 계획 흐름' }).first()).toBeVisible();
-    await expect(page.getByRole('table', { name: '계좌 흐름 읽기 표' })).toContainText('급여통장');
+    const table = page.getByRole('table', { name: '계좌 흐름 읽기 표' });
+    await expect(table).toContainText('급여통장');
+    await expect(table).toContainText('생활비통장');
+    await expect(table).toContainText('증권계좌');
+    await expect(table).toContainText('고정 금액 · 900,000원');
+    await expect(table).toContainText('고정 금액 · 1,000,000원');
+    await expect(table).toContainText('남은 금액 전부 · 계획상 0원');
     await expect(page.locator('[data-account-flow-edge-amount]')).toHaveCount(0);
     const salary = page.getByRole('button', { name: /계좌 급여통장/ });
     const salaryBox = await salary.boundingBox();
@@ -106,29 +120,37 @@ test('keeps the V3 completed flow map contained, touch-sized, and readable at su
     expect(detailBox!.x + detailBox!.width).toBeLessThanOrEqual(canvasBox!.x + canvasBox!.width);
     expect(detailBox!.y).toBeGreaterThanOrEqual(canvasBox!.y);
     expect(detailBox!.y + detailBox!.height).toBeLessThanOrEqual(canvasBox!.y + canvasBox!.height);
+
+    await page.getByRole('button', { name: /계좌 생활비통장/ }).click();
+    const livingDetail = page.getByLabel('생활비통장 월 계획 흐름');
+    await expect(livingDetail).toContainText('들어오는 흐름');
+    await expect(livingDetail).toContainText('다른 계좌로 보내는 흐름');
+    await expect(livingDetail).toContainText('남은 금액 전부 · 계획상 0원');
   }
 });
 
-test('uses first activation for pinning, then explicit actions for the account and typed transfer editors', async ({ page }) => {
+test('uses hover, keyboard pinning, and explicit actions for the account and typed transfer editors', async ({ page }) => {
   const value = workspace();
   const before = { main: value.main, simulation: value.simulation, portfolio: value.portfolio };
   await seed(page, value);
   await page.goto('apps/account-map/');
 
   const salary = page.getByRole('button', { name: /계좌 급여통장/ });
+  await salary.hover();
+  await expect(page.getByLabel('급여통장 월 계획 흐름')).toContainText('미리 보기');
   await salary.focus();
   await expect(page.getByLabel('급여통장 월 계획 흐름')).toContainText('미리 보기');
   await expect(page.getByRole('button', { name: '계좌 정보 편집' })).toHaveCount(0);
-  await salary.click();
+  await page.keyboard.press('Enter');
   const detail = page.getByLabel('급여통장 월 계획 흐름');
+  await expect(detail).toContainText('다른 계좌로 보내는 흐름');
   await detail.getByRole('button', { name: '계좌 정보 편집' }).click();
   await expect(page.getByRole('dialog', { name: '급여통장 상세' })).toBeVisible();
   await page.getByRole('button', { name: '닫기' }).click();
 
-  await detail.getByRole('button', { name: '연결 추가' }).click();
+  await detail.getByRole('button', { name: '흐름 편집' }).first().click();
   const editor = page.getByRole('dialog', { name: '계좌 흐름 편집' });
   await expect(editor.getByRole('button', { name: '닫기' })).toBeFocused();
-  await editor.getByRole('combobox', { name: '받는 계좌' }).selectOption('brokerage');
   await editor.getByRole('textbox', { name: '월 이체 금액' }).fill('110000');
   await editor.getByRole('button', { name: '저장' }).click();
   await expect(editor).toHaveCount(0);
@@ -136,7 +158,7 @@ test('uses first activation for pinning, then explicit actions for the account a
   expect(await storedProtectedSlices(page)).toEqual(before);
   const transfers = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!).accountMap.applied.transfers, storageKey);
   expect(transfers).toEqual(expect.arrayContaining([
-    expect.objectContaining({ sourceLocationId: 'salary', targetLocationId: 'brokerage', allocation: { kind: 'fixed', monthlyAmountWon: 110_000 } }),
+    expect.objectContaining({ id: 'salary-brokerage', sourceLocationId: 'salary', targetLocationId: 'brokerage', allocation: { kind: 'fixed', monthlyAmountWon: 110_000 } }),
   ]));
 });
 
@@ -149,4 +171,69 @@ test('clears a pinned flow from Escape and does not convert an edge or account s
   await expect(page.getByText('월 계획 기준이며 실제 잔액·거래와 다를 수 있습니다.').first()).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.getByLabel('생활비통장 월 계획 흐름')).toHaveCount(0);
+});
+
+test('keeps Account Map mounted while the Main overlay saves, handles dirty dismissal, and confirms the refreshed basis without changing transfers', async ({ page }) => {
+  const value = staleWorkspace();
+  const transfersBefore = structuredClone(value.accountMap.applied?.transfers);
+  await seed(page, value);
+  await page.goto('apps/account-map/');
+
+  const editMain = page.getByRole('button', { name: 'Main 금액 수정' });
+  await expect(page.getByRole('status')).toContainText('확인 필요');
+  await editMain.click();
+  const overlay = page.getByRole('dialog', { name: '월 자금 계획 편집' });
+  await expect(overlay).toBeVisible();
+  await expect(page.getByTestId('account-map-journey-background')).toHaveAttribute('inert', '');
+  await expect(overlay.getByLabel('월 실수령액')).toBeFocused();
+  await overlay.getByLabel('월평균 생활비').fill('1100000');
+
+  page.once('dialog', (dialog) => dialog.dismiss());
+  await page.keyboard.press('Escape');
+  await expect(overlay).toBeVisible();
+  await expect(overlay.getByLabel('월평균 생활비')).toHaveValue('1,100,000');
+
+  page.once('dialog', (dialog) => dialog.accept());
+  await page.goBack();
+  await expect(overlay).toHaveCount(0);
+  await expect(editMain).toBeFocused();
+
+  await editMain.click();
+  const savingOverlay = page.getByRole('dialog', { name: '월 자금 계획 편집' });
+  await savingOverlay.getByLabel('월평균 생활비').fill('1100000');
+  await savingOverlay.getByRole('button', { name: '적용' }).click();
+  await expect(savingOverlay).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: '계좌별 월 계획 흐름' }).first()).toBeVisible();
+  await expect(page.getByRole('status')).toContainText('확인 필요');
+
+  await page.getByRole('button', { name: '현재 Main 기준으로 확인' }).click();
+  await expect(page.getByRole('button', { name: '현재 Main 기준으로 확인' })).toHaveCount(0);
+  const stored = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!), storageKey);
+  expect(stored.accountMap.applied.sourceMainUpdatedAt).toBe(stored.main.applied.updatedAt);
+  expect(stored.accountMap.applied.transfers).toEqual(transfersBefore);
+});
+
+test('keeps the Main overlay draft visible when its save fails', async ({ page }) => {
+  const value = staleWorkspace();
+  const mainBefore = structuredClone(value.main);
+  const transfersBefore = structuredClone(value.accountMap.applied?.transfers);
+  await seed(page, value);
+  await page.goto('apps/account-map/');
+  await page.evaluate((key) => {
+    const originalSetItem = Storage.prototype.setItem;
+    Storage.prototype.setItem = function setItem(storageKey, raw) {
+      if (storageKey === key) throw new DOMException('blocked Main save', 'QuotaExceededError');
+      return originalSetItem.call(this, storageKey, raw);
+    };
+  }, storageKey);
+
+  await page.getByRole('button', { name: 'Main 금액 수정' }).click();
+  const overlay = page.getByRole('dialog', { name: '월 자금 계획 편집' });
+  await overlay.getByLabel('월평균 생활비').fill('1100000');
+  await overlay.getByRole('button', { name: '적용' }).click();
+  await expect(overlay.getByRole('alert').first()).toContainText('저장하지 못했습니다. 초안은 그대로 보존되어 있습니다.');
+  await expect(overlay.getByLabel('월평균 생활비')).toHaveValue('1,100,000');
+  const stored = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!), storageKey);
+  expect(stored.main).toEqual(mainBefore);
+  expect(stored.accountMap.applied.transfers).toEqual(transfersBefore);
 });

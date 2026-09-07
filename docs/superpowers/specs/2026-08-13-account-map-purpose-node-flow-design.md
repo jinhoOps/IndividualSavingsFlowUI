@@ -6,6 +6,8 @@
 
 **Scope:** Phase B Account Map 계좌·보관처 관리와 Main 기반 월 자금 연결
 
+> **Historical design record:** the supported Account Map is now defined by [Account Map Planned Account Flow Design](2026-09-04-account-map-planned-account-flow-design.md). This document preserves the decision history and is not retroactively rewritten.
+
 ## 1. Authority and Product Boundary
 
 이 문서는 Phase B Account Map의 상세 명세다. 다음 기존 계약을 명시적으로 대체한다.

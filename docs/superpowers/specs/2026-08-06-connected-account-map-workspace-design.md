@@ -3,6 +3,8 @@
 **Status:** Approved, amended by the current Product PRD
 **Date:** 2026-08-06
 
+> **Historical design record:** the supported Account Map is now defined by [Account Map Planned Account Flow Design](2026-09-04-account-map-planned-account-flow-design.md). This document preserves the decision history and is not retroactively rewritten.
+
 > **2026-08-13 ownership amendment:** Portfolio owns aggregate investment allocation only. Before Phase B review closure, its existing location disclosure and registry write remain a removal-pending compatibility exception. After closure, Portfolio does not list, create, rename, archive, or otherwise manage locations; Phase B Account Map is the only account and custody-location manager. Existing shared locations and location-scoped plans remain in the workspace for compatibility. Any Portfolio-to-location connection UI requires a separate approved specification.
 
 ## 1. Purpose

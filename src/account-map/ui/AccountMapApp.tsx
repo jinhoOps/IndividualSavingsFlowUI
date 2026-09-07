@@ -150,7 +150,9 @@ export function AccountMapApp({ repositories, onRequestMainEdit, refreshSignal }
     <div className="account-map-alert" role="status">
       <strong>확인 필요</strong>
       <span>Main 기준이 바뀌었어요. 흐름을 확인해 주세요.</span>
+      <Button type="button" variant="primary" disabled={state.save.status === 'pending'} onClick={() => void confirmCurrentMain()}>현재 Main 기준으로 확인</Button>
       <Button type="button" variant="secondary" onClick={() => onRequestMainEdit?.('income')}>Main 금액 수정</Button>
+      {state.save.status === 'failed' ? <p role="alert">현재 Main 기준으로 확인하지 못했습니다. Main 금액과 목적별 고정 배정을 확인한 뒤 다시 시도해 주세요.</p> : null}
     </div>
   ) : null;
   if (state.mode === 'main-required') return <AppShell currentApp="account-map" managementMenu={management}><MessagePage title="월 자금 계획이 먼저 필요해요"><p>Main의 다섯 월 금액을 만든 뒤 계좌 연결 지도를 시작할 수 있습니다.</p><a className="ui-button ui-button--primary" href={appPath('main')}>월 자금 계획 만들기</a></MessagePage></AppShell>;
@@ -368,6 +370,17 @@ export function AccountMapApp({ repositories, onRequestMainEdit, refreshSignal }
       dispatch({ type: 'save-failed', reason: failureReason(result) });
     }
     return false;
+  }
+
+  async function confirmCurrentMain(): Promise<void> {
+    if (state.mode !== 'map' || !state.mainConfirmationRequired || state.recovery.status !== 'none') return;
+    dispatch({ type: 'save-requested' });
+    const result = await resolved.accountMap.save(state.workspace.revision, { type: 'confirm-current-main' });
+    if (result.status === 'saved') {
+      dispatch({ type: 'main-confirmation-succeeded', workspace: result.workspace });
+      return;
+    }
+    dispatch({ type: 'main-confirmation-failed', reason: failureReason(result) });
   }
 
   async function saveFlowLocationEdit(locationId: string, input: AccountMapNodeEditInput): Promise<AccountMapWriteResult> {

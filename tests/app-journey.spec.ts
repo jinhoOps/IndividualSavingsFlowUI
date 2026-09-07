@@ -65,9 +65,9 @@ const sharedShellViewports = [
 test('retired journey snapshot survives Main startup and a current edit', async ({ page }) => {
   const sentinel = '{"retired":"keep-this-byte-for-byte"}';
   await page.addInitScript(({ workspace, snapshot }) => {
-    localStorage.setItem('isf-workspace-v3', JSON.stringify(workspace));
+    localStorage.setItem('isf-workspace-v4', JSON.stringify(workspace));
     localStorage.setItem('isf-journey-snapshot-v1', snapshot);
-  }, { workspace: appliedWorkspaceV3, snapshot: sentinel });
+  }, { workspace: appliedWorkspace, snapshot: sentinel });
 
   await page.goto('apps/main/');
   await expect.poll(() => page.evaluate(
@@ -81,6 +81,71 @@ test('retired journey snapshot survives Main startup and a current edit', async 
   await expect.poll(() => page.evaluate(
     () => localStorage.getItem('isf-journey-snapshot-v1'),
   )).toBe(sentinel);
+});
+
+test('reads workspace v3 without a write, then migrates only the authorized Main save while preserving v3 bytes', async ({ page }) => {
+  const v3Raw = JSON.stringify(appliedWorkspaceV3);
+  await page.addInitScript((raw) => localStorage.setItem('isf-workspace-v3', raw), v3Raw);
+
+  await page.goto('apps/main/');
+  await expect(page.getByRole('button', { name: '월 소비 편집' })).toContainText('180만 원');
+  expect(await page.evaluate(() => ({
+    v3: localStorage.getItem('isf-workspace-v3'),
+    v4: localStorage.getItem('isf-workspace-v4'),
+  }))).toEqual({ v3: v3Raw, v4: null });
+
+  await page.getByRole('button', { name: '월 소비 편집' }).click();
+  await page.getByLabel('월평균 생활비').fill('1100000');
+  await page.getByRole('button', { name: '적용' }).click();
+
+  await expect(page.getByRole('button', { name: '월 소비 편집' })).toContainText('190만 원');
+  expect(await page.evaluate(() => ({
+    v3: localStorage.getItem('isf-workspace-v3'),
+    v4: JSON.parse(localStorage.getItem('isf-workspace-v4')!),
+  }))).toEqual({
+    v3: v3Raw,
+    v4: expect.objectContaining({
+      schemaVersion: 4,
+      main: expect.objectContaining({
+        applied: expect.objectContaining({ monthlyLivingWon: 1_100_000 }),
+      }),
+    }),
+  });
+});
+
+test('prefers a valid workspace v4 over a conflicting v3 and never falls back from invalid v4', async ({ page }) => {
+  const v3 = {
+    ...appliedWorkspaceV3,
+    main: { applied: { ...appliedMain, monthlyLivingWon: 600_000 }, setupProgress: null },
+  };
+  const v4 = {
+    ...appliedWorkspace,
+    main: { applied: { ...appliedMain, monthlyLivingWon: 1_100_000 }, setupProgress: null },
+  };
+  const v3Raw = JSON.stringify(v3);
+  await page.addInitScript(({ current, previous }) => {
+    if (sessionStorage.getItem('isf-v4-precedence-seeded') !== null) return;
+    sessionStorage.setItem('isf-v4-precedence-seeded', 'true');
+    localStorage.setItem('isf-workspace-v4', JSON.stringify(current));
+    localStorage.setItem('isf-workspace-v3', previous);
+  }, { current: v4, previous: v3Raw });
+
+  await page.goto('apps/main/');
+  await page.getByRole('button', { name: '월 소비 편집' }).click();
+  await expect(page.getByLabel('월평균 생활비')).toHaveValue('1,100,000');
+  await page.getByRole('button', { name: '취소' }).click();
+
+  const invalidV4 = '{invalid-v4';
+  await page.evaluate(({ current, previous }) => {
+    localStorage.setItem('isf-workspace-v4', current);
+    localStorage.setItem('isf-workspace-v3', previous);
+  }, { current: invalidV4, previous: v3Raw });
+  await page.reload();
+  await expect(page.getByRole('heading', { name: '저장 복구가 필요합니다' })).toBeVisible();
+  expect(await page.evaluate(() => ({
+    v4: localStorage.getItem('isf-workspace-v4'),
+    v3: localStorage.getItem('isf-workspace-v3'),
+  }))).toEqual({ v4: invalidV4, v3: v3Raw });
 });
 
 for (const viewport of sharedShellViewports) {
