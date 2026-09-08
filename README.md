@@ -101,6 +101,8 @@ Account Map은 Main의 다섯 월 금액을 읽기 전용 기준으로 사용합
 
 Phase 4에서 구 Main runtime, storage bridge, shared browser layer와 구 서비스워커를 삭제했습니다. `shared/brand/mainBrandGeometry.js`만 이전 shared browser tree에서 남은 파일이며 현재 Main brand icon이 사용합니다. 구 저장 키 문자열은 read-only migration/rollback 경계, 음성 참조 검사와 fixture에만 남습니다. Task 8의 최종 전체 검증은 통과했고, 정확한 명령·참조 감사·반응형 QA 결과는 [Phase 4 disposition](docs/superpowers/evidence/2026-09-02-phase4-legacy-test-disposition.md)에 기록되어 있습니다.
 
+후속 정리에서는 미사용 글로벌 CSS, 예전 시세 생성·문서 변환 스크립트와 검사 출력물을 제거했습니다. 삭제 근거와 현재 저장 호환성 보존 범위는 [잔여 자산 정리 기록](docs/superpowers/plans/2026-09-08-entry-focus-and-legacy-residue.md)에 정리합니다.
+
 ## 실행하기
 
 필요 조건:

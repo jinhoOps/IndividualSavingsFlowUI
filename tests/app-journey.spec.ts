@@ -62,6 +62,46 @@ const sharedShellViewports = [
   { width: 1280, height: 900, launcherX: 72, launcherWidth: 1136 },
 ] as const;
 
+for (const viewport of sharedShellViewports) {
+  for (const app of ['main', 'simulation', 'portfolio'] as const) {
+    test(`${app} setup entry keeps heading focus without a selection outline at ${viewport.width}px`, async ({ page }) => {
+      await page.setViewportSize(viewport);
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      if (app !== 'main') {
+        await page.addInitScript((workspace) => {
+          localStorage.setItem('isf-workspace-v4', JSON.stringify(workspace));
+        }, appliedWorkspace);
+      }
+
+      await page.goto(`apps/${app}/`);
+      const heading = page.getByRole('heading', { level: 1 });
+      await expect(heading).toBeFocused();
+      await expect(heading).toHaveCSS('outline-style', 'none');
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+
+      await page.keyboard.press('Tab');
+      const firstAction = page.getByRole('button', {
+        name: app === 'main' ? '다음' : app === 'simulation' ? '있어요' : '배분 시작하기',
+        exact: true,
+      });
+      await expect(firstAction).toBeFocused();
+      expect(await firstAction.evaluate((element) => {
+        const style = getComputedStyle(element);
+        return style.outlineStyle !== 'none' || style.boxShadow !== 'none';
+      })).toBe(true);
+      const box = await firstAction.boundingBox();
+      expect(box!.height).toBeGreaterThanOrEqual(44);
+      expect(box!.width).toBeGreaterThanOrEqual(44);
+
+      if (app !== 'simulation') {
+        await page.keyboard.press('Enter');
+        await expect(heading).toBeFocused();
+        await expect(heading).toHaveCSS('outline-style', 'none');
+      }
+    });
+  }
+}
+
 test('retired journey snapshot survives Main startup and a current edit', async ({ page }) => {
   const sentinel = '{"retired":"keep-this-byte-for-byte"}';
   await page.addInitScript(({ workspace, snapshot }) => {

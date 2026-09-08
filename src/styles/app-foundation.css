@@ -91,6 +91,11 @@ body,
   h3 {
     font-family: var(--font-display);
   }
+
+  /* Step headings receive focus for announcements, without looking selected. */
+  h1[tabindex="-1"]:focus {
+    outline: none;
+  }
 }
 
 @layer components {
