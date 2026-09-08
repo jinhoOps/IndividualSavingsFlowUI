@@ -59,7 +59,7 @@ Google Console의 authorized redirect URI는 `https://fqongmuyfmxjqmefekbg.supab
 
 사용자는 Google 설정·동의 절차가 준비되기 전 `okho04@gmail.com`으로 계정 저장을 사용할 수 있도록 요청했다. 로그인 화면과 세션 만료 후 재인증 화면에 이메일·비밀번호 폼을 Google 로그인과 함께 제공한다. 폼은 `supabase.auth.signInWithPassword({ email, password })`로 실제 Supabase 세션을 발급받는다. Google callback을 흉내 내거나 가짜 JWT·로컬 로그인 표시를 만들지 않으며, 기존 세션 복원·workspace 검증·사용자 전환·RLS를 그대로 거친다. [공식 비밀번호 로그인 문서](https://supabase.com/docs/guides/auth/passwords)
 
-앱은 회원가입 UI나 계정 자동 생성을 제공하지 않는다. 운영자가 대상 이메일의 기존 사용자 유무를 확인하고, 신규 사용자라면 관리자 API의 `createUser`에 `email_confirm: true`를 지정해 준비한다. 기존 사용자라면 `auth.users.id`를 보존해 비밀번호를 설정하며 삭제·재생성하지 않는다. 관리자 권한은 이 사전 준비에만 사용하고 정적 앱에는 공개 publishable key만 제공한다. 실제 비밀번호는 사용자가 입력하며 소스·문서·브라우저 저장소·빌드 환경변수에 저장하지 않는다. [관리자 계정 생성 문서](https://supabase.com/docs/reference/javascript/auth-admin-createuser)
+앱은 회원가입 UI나 계정 자동 생성을 제공하지 않는다. 운영자가 대상 이메일의 기존 사용자 유무를 확인하고, 신규 사용자라면 관리자 API의 `createUser`에 `email_confirm: true`를 지정해 준비하는 것을 기본으로 한다. 2026-09-08 사용자가 DB 직접 적용을 승인한 작업에서는 관리자 API 키 없이 DB 자격증명만 제공되어, 현재 Auth schema와 기존 사용자 부재를 확인한 일회성 SQL 준비 후 실제 Auth API 로그인을 검증했다. 이 예외의 점검·결과는 [운영 안내](../../supabase-account-setup.md)에 기록한다. 기존 사용자라면 `auth.users.id`를 보존해 비밀번호를 설정하며 삭제·재생성하지 않는다. 관리자 권한은 이 사전 준비에만 사용하고 정적 앱에는 공개 publishable key만 제공한다. 실제 비밀번호는 사용자가 입력하며 소스·문서·브라우저 저장소·빌드 환경변수에 저장하지 않는다. [관리자 계정 생성 문서](https://supabase.com/docs/reference/javascript/auth-admin-createuser)
 
 임시 비밀번호로 발급된 세션도 같은 `auth.users.id`와 workspace 한 행을 사용한다. Google 전환은 동일한 확인된 이메일의 자동 identity linking을 사용하되 실제 로그인 전후 UID와 기존 workspace 유지 여부를 확인한다. Google 전환 검증 후에는 임시 비밀번호를 교체한다. 폼을 숨기는 것만으로 서버의 비밀번호 인증이 폐기되었다고 간주하지 않는다. [Identity linking 문서](https://supabase.com/docs/guides/auth/auth-identity-linking)
 
@@ -87,6 +87,8 @@ DB 저장 위치만 바뀌므로 workspace schema v3와 backup format v2를 유�
 `user_workspaces`에 RLS를 활성화하고 authenticated 사용자의 SELECT만 `(select auth.uid()) = user_id` 조건으로 허용한다. anon에게 행 접근이나 RPC 실행 권한을 주지 않는다. authenticated의 직접 INSERT/UPDATE/DELETE도 회수한다. 이 설계의 계정 격리는 클라이언트 filter가 아닌 DB에서 강제한다. [RLS 문서](https://supabase.com/docs/guides/database/postgres/row-level-security)
 
 write는 아래 좁은 RPC로만 노출한다. 일반 DML을 회수했으므로 write RPC는 `SECURITY DEFINER`가 필요하다. 전용 NOLOGIN 역할에 필요한 테이블 권한만 주고 함수 소유자로 사용하며, RLS가 적용되는 소유 역할의 정책도 명시한다. 함수는 빈 `search_path`, fully qualified 객체명, NULL이 아닌 `auth.uid()` 검사와 해당 UID 조건을 모두 적용한다. PUBLIC/anon의 EXECUTE를 회수하고 허용 함수만 authenticated에 부여한다. validator/helper는 private schema에 둔다. definer 함수의 명시적 소유권 검사는 RLS 우회 여부와 관계없이 필수다. [함수 보안 문서](https://supabase.com/docs/guides/database/functions)
+
+2026-09-08 운영 호환성 보강: hosted `postgres`는 관리되는 `auth` schema의 USAGE를 전용 역할에 재부여할 grant option이 없다. [추가 migration](../../../supabase/migrations/202609080001_workspace_request_identity.sql)은 RPC 내부와 전용 역할 RLS에서 `auth.uid()`와 동일한 검증된 request JWT의 `sub`를 읽는 `private.request_uid()`를 사용한다. helper는 SECURITY INVOKER이며 UID 입력 인자를 받지 않는다. 일반 authenticated SELECT 정책은 `auth.uid()`를 유지한다. `auth` 접근·상위 역할 상속·BYPASSRLS를 추가하지 않으며, 브라우저가 전달한 이메일이나 payload를 사용자 식별자로 신뢰하지 않는다. [서버 request 설정 안내](https://supabase.com/docs/guides/api/securing-your-api)
 
 | RPC | 입력 | 허용 변화 |
 | --- | --- | --- |
@@ -171,7 +173,7 @@ Supabase 장애 중에도 기존 브라우저 원본과 다운로드한 백업�
 
 브라우저 빌드에는 `VITE_SUPABASE_URL`과 `VITE_SUPABASE_PUBLISHABLE_KEY`만 주입한다. 대상 URL은 `https://fqongmuyfmxjqmefekbg.supabase.co`이다. publishable key는 공개 클라이언트용이며 데이터 권한은 JWT와 RLS/RPC로 제한한다. DB 비밀번호, postgres 연결 문자열의 인증정보, service-role/secret key는 정적 산출물에 포함하지 않는다. [API key 문서](https://supabase.com/docs/guides/getting-started/api-keys)
 
-Google Client ID/Secret은 Supabase provider 설정에 등록한다. DB 연결 정보는 운영자의 migration 실행에만 사용한다. 대화로 전달된 비밀번호 후보를 문서·소스·로그에 복사하지 않는다. 실제 DB 비밀번호였다면 적용 전에 교체한다.
+Google Client ID/Secret은 Supabase provider 설정에 등록한다. DB 연결 정보는 신뢰할 수 있는 운영 환경의 migration·승인된 계정 준비에만 사용한다. 대화로 전달된 비밀번호를 문서·소스·로그에 복사하지 않는다. 2026-09-08 사용자는 전달한 DB 비밀번호로 이번 적용을 승인했으며 적용 후 교체하기로 했다.
 
 [Pages workflow](../../../.github/workflows/deploy.yml)의 build 단계에 공개 환경변수를 연결한다. 누락/오타 시 로컬 모드로 조용히 fallback하지 않고 설정 오류로 실패시킨다. 운영 프로젝트와 별도의 테스트 프로젝트 또는 로컬 Supabase를 사용해 fixture가 운영 데이터를 변경하지 않도록 한다.
 

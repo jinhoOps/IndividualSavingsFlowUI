@@ -15,7 +15,7 @@ const quote = value => `'${JSON.stringify(value).replaceAll("'", "''")}'::jsonb`
 const userA = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
 const userB = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
 const userC = 'cccccccc-cccc-cccc-cccc-cccccccccccc';
-const asUser = (statement, user = userA, role = 'authenticated') => `set role ${role}; set request.jwt.claim.sub = '${user}'; ${statement}`;
+const asUser = (statement, user = userA, role = 'authenticated') => `set role ${role}; set request.jwt.claims = '${JSON.stringify({ ...(user ? { sub: user } : {}), role })}'; ${statement}`;
 const call = (name, payload, revision, mutation = randomUUID(), user = userA) => asUser(`select public.${name}(p_payload => ${quote(payload)}, p_mutation_id => '${mutation}'::uuid${revision === undefined ? '' : `, p_expected_revision => ${revision}`});`, user);
 const rpc = (...args) => JSON.parse(sql(call(...args)));
 let vite;
@@ -25,20 +25,46 @@ try {
     try { docker(['exec', container, 'pg_isready', '-h', '127.0.0.1', '-U', 'postgres']); break; }
     catch { await new Promise(resolve => setTimeout(resolve, 100)); }
   }
-  sql(`create role anon nologin; create role authenticated nologin; create schema auth;
+  sql(`create role anon nologin; create role authenticated nologin; create role service_role nologin bypassrls; create schema auth;
     create table auth.users(id uuid primary key); create function auth.uid() returns uuid language sql stable as
-    $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
+    $$ select coalesce(nullif(current_setting('request.jwt.claim.sub', true), ''),
+      (nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'sub'))::uuid $$;
     grant usage on schema auth to authenticated, anon; grant execute on function auth.uid() to authenticated, anon;
     insert into auth.users values ('${userA}'), ('${userB}'), ('${userC}');
     create role migration_admin nologin createrole createdb;
     grant create on database postgres to migration_admin;
     grant all on schema public to migration_admin with grant option;
-    grant usage on schema auth to migration_admin with grant option;
-    grant execute on function auth.uid() to migration_admin with grant option;
+    -- Hosted postgres can use auth but cannot grant its schema to custom roles.
+    grant usage on schema auth to migration_admin;
+    grant execute on function auth.uid() to migration_admin;
+    alter default privileges for role migration_admin grant execute on functions to anon, authenticated, service_role;
     grant references on auth.users to migration_admin;`);
   const migrations = await readdir(new URL('../supabase/migrations/', import.meta.url)).catch(() => []);
   for (const file of migrations.filter(f => f.endsWith('.sql')).sort()) sql(`set role migration_admin; ${await readFile(new URL(`../supabase/migrations/${file}`, import.meta.url), 'utf8')}`);
   assert.equal(sql("select to_regclass('public.user_workspaces') is not null"), 't', 'workspace persistence migration must create storage');
+  assert.equal(sql("select has_schema_privilege('migration_admin','auth','USAGE WITH GRANT OPTION')"), 'f', 'reproduce hosted migration administrator permissions');
+  assert.equal(sql("select has_schema_privilege('workspace_rpc_owner','auth','USAGE')"), 'f', 'RPCs must not depend on inaccessible managed auth schema');
+  assert.throws(() => sql('set role workspace_rpc_owner; select auth.uid()'), /permission denied for schema auth/);
+  for (const { sub, claims, expected } of [
+    { claims: `{"sub":"${userA}"}`, expected: userA },
+    { sub: userB, claims: `{"sub":"${userA}"}`, expected: userB },
+    { sub: '', claims: `{"sub":"${userA}"}`, expected: userA },
+    { expected: 'missing' },
+    { sub: '', claims: '', expected: 'missing' },
+    { claims: '{}', expected: 'missing' },
+    { claims: '{"sub":null}', expected: 'missing' },
+  ]) {
+    const settings = `${sub === undefined ? '' : `set request.jwt.claim.sub = '${sub}';`}
+      ${claims === undefined ? '' : `set request.jwt.claims = '${claims}';`}`;
+    assert.equal(sql(`set role workspace_rpc_owner; ${settings} select coalesce(private.request_uid()::text,'missing')`), expected, 'trusted request UID follows Supabase claim precedence and missing-value behavior');
+  }
+  for (const claims of ['invalid-json', '{"sub":"invalid-uuid"}', '{"sub":""}']) {
+    assert.throws(() => sql(`set role workspace_rpc_owner; set request.jwt.claims = '${claims}'; select private.request_uid()`), /invalid input syntax/, 'malformed claims must not become a valid identity');
+  }
+  assert.equal(sql("select prosecdef from pg_proc where oid='private.request_uid()'::regprocedure"), 'f', 'request identity reader must not elevate privileges');
+  for (const role of ['anon', 'authenticated', 'service_role']) {
+    assert.equal(sql(`select has_function_privilege('${role}','private.request_uid()','EXECUTE')`), 'f', 'only the RPC owner may call the private request identity reader');
+  }
   vite = await createServer({ server: { middlewareMode: true }, appType: 'custom', logLevel: 'error' });
   const { parseWorkspaceDocument } = await vite.ssrLoadModule('/src/workspace/domain/validation.ts');
   for (const fixture of fixtures) {
@@ -58,7 +84,7 @@ try {
   for (const command of ["select * from public.user_workspaces", "select public.initialize_workspace('{}', gen_random_uuid())"]) {
     assert.throws(() => sql(asUser(command, '', 'anon')), /permission denied/);
   }
-  for (const command of ['delete from public.user_workspaces', 'update public.user_workspaces set revision=2', "insert into public.user_workspaces(user_id,payload) values (auth.uid(),'{}')", 'select * from private.workspace_mutations', "select private.normalize_workspace('{}')"]) {
+  for (const command of ['delete from public.user_workspaces', 'update public.user_workspaces set revision=2', "insert into public.user_workspaces(user_id,payload) values (auth.uid(),'{}')", 'select * from private.workspace_mutations', "select private.normalize_workspace('{}')", 'select private.request_uid()']) {
     assert.throws(() => sql(asUser(command)), /permission denied/);
   }
   assert.throws(() => sql(asUser("select public.initialize_workspace('{}', gen_random_uuid())", '')), /authentication required/);
