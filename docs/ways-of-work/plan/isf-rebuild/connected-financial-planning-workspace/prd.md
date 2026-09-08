@@ -65,6 +65,10 @@ ISF는 지금의 월간 돈 흐름을 정리하고, 그 결과를 장기 전략�
 
 ## 7. Current User Experience
 
+### 계정 로그인
+
+Google 로그인으로 계정의 workspace를 연다. 2026-09-08 사용자 요청으로 Google 설정 전 사용할 임시 이메일·비밀번호 로그인을 함께 제공하며, 세션 만료 후 재인증에서도 두 경로를 제공한다. 임시 로그인의 실제 계정 사전 준비와 운영 검증은 [운영 안내](../../../../../docs/supabase-account-setup.md)를 따른다. 로그인과 workspace 조회·검증이 끝나기 전에는 금융 화면을 표시하지 않는다.
+
 ### Main quick setup
 
 사용자는 다음 다섯 값을 입력한다.
@@ -104,6 +108,14 @@ ISF는 지금의 월간 돈 흐름을 정리하고, 그 결과를 장기 전략�
 ## 8. Functional Requirements
 
 세부 단계와 검증 gate는 [Shared Workspace Foundation Plan](../../../../superpowers/plans/2026-08-06-shared-workspace-foundation.md)을 따른다.
+
+### 계정 인증 — 2026-09-08 임시 로그인 추가 승인
+
+- Google 로그인과 임시 이메일·비밀번호 폼을 로그인·만료 세션 재인증 화면에 함께 제공한다. 비밀번호 경로는 실제 Supabase `signInWithPassword`를 사용하며 Google 인증 결과나 JWT를 흉내 내지 않는다.
+- 두 인증 경로는 이메일 문자열 대신 동일한 `auth.users.id`와 계정별 RLS·workspace 저장 계약을 사용한다. 기존 앱별 데이터 소유권과 whole-workspace 백업 형식은 바꾸지 않는다.
+- 앱에는 회원가입이나 계정 자동 생성을 추가하지 않는다. 임시 대상 `okho04@gmail.com`은 운영자가 이메일 확인 완료 계정으로 사전 준비하고, 기존 사용자가 있으면 UID를 유지해 비밀번호를 설정한다.
+- 실제 비밀번호는 사용자 입력으로만 전달하고 소스·문서·브라우저 저장소·공개 빌드 변수에 저장하지 않는다. 실패하면 금융 화면을 열지 않고 오류와 재시도를 제공한다.
+- Google 전환 때 같은 확인된 이메일로 로그인해 전환 전후 UID와 기존 workspace 유지 여부를 실제로 확인한다. 임시 계정을 삭제·재생성하지 않는다.
 
 ### Shared workspace와 backup
 
@@ -276,11 +288,13 @@ Simulation, Portfolio와 Account Map은 workspace 안의 최신 Main을 읽기 �
 
 ### 계정 저장 rollout gate
 
-2026-09-07 승인된 [설계](../../../../superpowers/specs/2026-09-07-supabase-account-workspace-design.md)에 따라 로그인 후 편집·저장, 계정당 workspace 하나를 구현한다. mock 인증 E2E와 실제 로컬 PostgreSQL 검증은 Google provider 실제 왕복이나 운영 적용 증거를 대신하지 않는다.
+2026-09-07 승인된 [설계](../../../../superpowers/specs/2026-09-07-supabase-account-workspace-design.md)에 따라 로그인 후 편집·저장, 계정당 workspace 하나를 구현한다. 2026-09-08 승인된 임시 이메일·비밀번호 경로는 같은 계약에 포함한다. mock 인증 E2E와 실제 로컬 PostgreSQL 검증은 실제 임시 계정 로그인·Google provider 왕복이나 운영 적용 증거를 대신하지 않는다. 2026-09-07 검증 기록은 당시 범위의 증거로 유지한다.
 
 - [ ] 운영 DB 사전 권한/버전 확인과 migration 적용
+- [ ] 임시 계정 사전 준비, 실제 비밀번호 로그인·만료 후 재인증과 두 브라우저 계정 저장 확인
 - [ ] Google provider, 정확한 callback allowlist와 공개 build 환경변수 등록
-- [ ] 실제 Google 왕복, 운영 base 직접 진입·새로고침, 두 기기와 다중 탭 검증 후 배포
+- [ ] 실제 Google 왕복과 임시 로그인 전후 동일 UID·workspace 유지 확인
+- [ ] 사용할 인증 경로의 실제 로그인, 운영 base 직접 진입·새로고침, 두 기기와 다중 탭 검증 후 배포
 
 ## 12. Future Product Direction
 

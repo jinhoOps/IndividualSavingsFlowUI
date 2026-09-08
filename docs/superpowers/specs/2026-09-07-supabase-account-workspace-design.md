@@ -2,10 +2,11 @@
 
 상태: 구현 승인 및 로컬 구현 — 2026-09-07 사용자가 이 설계에 따른 개발과 커밋을 요청했다. 운영 DB 적용·Google 실제 왕복·배포는 아직 미수행이며 [운영 안내](../../supabase-account-setup.md)의 rollout gate로 구분한다.
 작성일: 2026-09-07
+추가 승인: 2026-09-08 — Google 설정을 기다리는 동안 사용할 임시 이메일·비밀번호 로그인. 기존 계정별 저장·권한 계약을 유지하며 실제 계정 준비는 운영 작업으로 구분한다.
 
 ## 1. 목표와 범위
 
-Google로 로그인한 사용자가 어느 브라우저·기기에서도 같은 재무 계획과 저장된 초안을 읽고 수정한다. Vite의 정적 다중 페이지 웹과 GitHub Pages 배포를 유지하고 Supabase Auth, Data API와 PostgreSQL을 사용한다. 별도 애플리케이션 서버나 Edge Function은 초기 범위에 필요하지 않다.
+Google로 로그인한 사용자가 어느 브라우저·기기에서도 같은 재무 계획과 저장된 초안을 읽고 수정한다. 2026-09-08 추가 승인으로 Google 설정 전에는 3.1절의 임시 이메일·비밀번호 경로를 사용할 수 있다. Vite의 정적 다중 페이지 웹과 GitHub Pages 배포를 유지하고 Supabase Auth, Data API와 PostgreSQL을 사용한다. 별도 애플리케이션 서버나 Edge Function은 초기 범위에 필요하지 않다.
 
 기본 제안은 **로그인 후 편집·저장, 계정당 workspace 하나, 서버 저장 확정 후 성공 표시**다. 비로그인 로컬 편집의 상시 지원, 여러 독립 계획, 공동 편집, 금융기관 연동은 범위 밖이다. 네트워크가 끊기면 마지막 확인 데이터를 읽고 작성 중 입력을 복구할 수 있지만, 오프라인 편집을 자동 병합하는 기능은 제공하지 않는다.
 
@@ -31,6 +32,7 @@ Google로 로그인한 사용자가 어느 브라우저·기기에서도 같은 
 flowchart LR
   Pages[정적 HTML · JS / GitHub Pages] --> Auth[Supabase Auth]
   Auth <--> Google[Google 로그인]
+  Password[임시 이메일 · 비밀번호 로그인] --> Auth
   Pages --> Gate[세션 확인 · Workspace 로딩]
   Gate --> Apps[Main · Simulation · Portfolio · Account Map]
   Apps --> Repo[공통 Workspace repository]
@@ -45,13 +47,21 @@ flowchart LR
 권장 흐름은 PKCE다. 로그인 시작 브라우저가 verifier를 보관하고, callback entry에서 `exchangeCodeForSession`을 한 번 수행한다. 자동 URL 세션 처리와 명시적 교환을 동시에 실행하지 않는다. 동일 origin과 브라우저 저장 문맥에서 왕복하며, verifier 유실·만료·사용된 code는 로그인 재시도로 안내한다. [공식 PKCE 문서](https://supabase.com/docs/guides/auth/sessions/pkce-flow)
 
 1. 공통 gate에서 세션 복원 완료 전에는 금융 화면과 writable repository를 mount하지 않는다.
-2. 비로그인이면 Google 로그인과 기존 데이터 이전 안내를 표시한다.
+2. 비로그인이면 Google 로그인, 임시 이메일·비밀번호 로그인과 기존 데이터 이전 안내를 표시한다.
 3. 실제 정적 파일 `apps/auth/callback/index.html`을 Vite entry로 추가한다. 배포 base를 포함한 `/IndividualSavingsFlowUI/apps/auth/callback/`에서 새로고침도 동작해야 한다.
 4. code 교환 후 URL의 code/error를 제거하고, 허용된 네 앱 중 로그인 전 목적지로 돌아간다. return path는 allowlist로 제한한다.
 5. 원격 workspace를 읽고 검증한다. 데이터가 없음과 읽기 실패를 구분하며, 실패를 빈 계획으로 처리하지 않는다.
 6. 유효한 서버 snapshot을 주입한 다음 제품 UI를 mount한다.
 
 Google Console의 authorized redirect URI는 `https://fqongmuyfmxjqmefekbg.supabase.co/auth/v1/callback`이다. Supabase의 Site URL 및 redirect allowlist에는 실제 배포 origin/base와 앱 callback URL을 등록한다. 이 두 callback은 역할이 다르다. 운영 origin은 현재 배포 설정을 확인해 확정하고 localhost는 개발용 URL로 명시한다. 운영 URL에 광범위 wildcard를 사용하지 않는다. [Redirect URL 문서](https://supabase.com/docs/guides/auth/redirect-urls)
+
+### 3.1. 임시 이메일·비밀번호 로그인 — 2026-09-08 추가 승인
+
+사용자는 Google 설정·동의 절차가 준비되기 전 `okho04@gmail.com`으로 계정 저장을 사용할 수 있도록 요청했다. 로그인 화면과 세션 만료 후 재인증 화면에 이메일·비밀번호 폼을 Google 로그인과 함께 제공한다. 폼은 `supabase.auth.signInWithPassword({ email, password })`로 실제 Supabase 세션을 발급받는다. Google callback을 흉내 내거나 가짜 JWT·로컬 로그인 표시를 만들지 않으며, 기존 세션 복원·workspace 검증·사용자 전환·RLS를 그대로 거친다. [공식 비밀번호 로그인 문서](https://supabase.com/docs/guides/auth/passwords)
+
+앱은 회원가입 UI나 계정 자동 생성을 제공하지 않는다. 운영자가 대상 이메일의 기존 사용자 유무를 확인하고, 신규 사용자라면 관리자 API의 `createUser`에 `email_confirm: true`를 지정해 준비한다. 기존 사용자라면 `auth.users.id`를 보존해 비밀번호를 설정하며 삭제·재생성하지 않는다. 관리자 권한은 이 사전 준비에만 사용하고 정적 앱에는 공개 publishable key만 제공한다. 실제 비밀번호는 사용자가 입력하며 소스·문서·브라우저 저장소·빌드 환경변수에 저장하지 않는다. [관리자 계정 생성 문서](https://supabase.com/docs/reference/javascript/auth-admin-createuser)
+
+임시 비밀번호로 발급된 세션도 같은 `auth.users.id`와 workspace 한 행을 사용한다. Google 전환은 동일한 확인된 이메일의 자동 identity linking을 사용하되 실제 로그인 전후 UID와 기존 workspace 유지 여부를 확인한다. Google 전환 검증 후에는 임시 비밀번호를 교체한다. 폼을 숨기는 것만으로 서버의 비밀번호 인증이 폐기되었다고 간주하지 않는다. [Identity linking 문서](https://supabase.com/docs/guides/auth/auth-identity-linking)
 
 ## 4. 데이터 모델
 
@@ -181,6 +191,7 @@ Google Client ID/Secret은 Supabase provider 설정에 등록한다. DB 연결 �
 - 사용자 A/B와 anon으로 직접 REST/RPC를 호출해 타인 행 조회/쓰기, 직접 DML, UID 위조와 미인증 호출이 거부된다.
 - 같은 revision에서 두 독립 클라이언트가 쓰면 하나만 commit한다. mutation 중복/응답 유실/동시 재시도는 revision을 두 번 올리지 않는다.
 - 첫 로그인 두 기기 동시 생성, 계정 전환 중 지연 응답, 다중 탭 로그아웃, 세션 만료/재로그인 후 A 데이터가 B 화면·캐시에 노출되지 않는다.
+- 임시 이메일·비밀번호 로그인과 만료 세션 재인증은 실제 SDK의 비밀번호 인증 경로를 사용한다. 실패·요청 중 중복 제출·비밀번호 미보관과 390px·768px·desktop 접근성을 검증한다. 실제 대상 계정 로그인과 이후 Google 전환 전후 UID·workspace 유지 확인은 운영 검증으로 남긴다.
 - 유효/손상 v3, retired v1/v2, foreign keys 보존, format v1/v2, invalid reference, 부분 import 실패가 기존 원본/서버를 변경하지 않는다.
 - Main·Simulation·Portfolio·Account Map 각각 소유 slice 외에는 변경하지 않는다. Account Map 두 slice는 함께 commit하며 최신 Main-null 안전 예외를 유지한다.
 - 네트워크 차단/timeout/commit 이후 응답 유실/캐시 quota 실패에서 저장 성공을 오표시하지 않고 입력을 복구한다.
@@ -191,6 +202,6 @@ Google Client ID/Secret은 Supabase provider 설정에 등록한다. DB 연결 �
 
 ## 12. 현재 설계의 검증 범위와 남은 설정
 
-현재 코드·PRD·README·DESIGN 및 Supabase 공식 문서를 대조한 계약이다. 운영 Supabase 프로젝트를 조회·변경하거나 제공된 DB 인증정보로 접속하지 않았다. 운영 provider/RLS/테이블 설정이 완료되어 있다는 주장은 하지 않는다. SQL 권한·validator parity는 일회용 PostgreSQL 17 컨테이너에서 검증하고, Auth/Data HTTP 경계를 mock한 E2E와 구분한다.
+현재 코드·PRD·README·DESIGN 및 Supabase 공식 문서를 대조한 계약이다. 2026-09-07 로컬 검증 기록은 당시 범위의 증거로 유지한다. 2026-09-08에는 공개 Auth 설정만 읽기 전용으로 확인했으며 Email은 활성화, Google은 비활성화 상태였다. 실제 임시 계정은 아직 생성하지 않았고 운영 DB migration·RLS·테이블 상태도 확인하지 않았다. SQL 권한·validator parity는 일회용 PostgreSQL 17 컨테이너에서 검증하고, Auth/Data HTTP 경계를 mock한 E2E와 구분한다.
 
-운영자가 완료할 작업은 DB 사전 확인/migration, Google OAuth Client ID/Secret 등록, 공개 build 변수 설정과 실제 provider 왕복 검증이다. 정확한 URL과 순서는 [운영 안내](../../supabase-account-setup.md)를 따른다. 제품은 로그인 필수이며 비로그인 상시 편집을 선택하면 guest/cloud 전환 규칙을 별도 승인해야 한다.
+운영자가 완료할 작업은 DB 사전 확인/migration, 임시 계정 사전 준비·실제 비밀번호 로그인 확인, 공개 build 변수 설정이며 Google 전환 시 OAuth Client ID/Secret 등록·실제 provider 왕복과 UID 유지 검증을 수행한다. 정확한 URL과 순서는 [운영 안내](../../supabase-account-setup.md)를 따른다. 제품은 로그인 필수이며 비로그인 상시 편집을 선택하면 guest/cloud 전환 규칙을 별도 승인해야 한다.

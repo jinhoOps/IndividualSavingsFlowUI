@@ -26,7 +26,7 @@ function fakeServer() {
   const operations: string[] = [];
   const row = (user: string, workspace: WorkspaceDocument) => ({user_id: user, schema_version: 3,
     revision: workspace.revision, payload: workspacePayload(workspace), updated_at: new Date(workspace.updatedAt).toISOString(), created_at: new Date(1000).toISOString()});
-  async function attach(context: BrowserContext, user: string | null) {
+  async function attach(context: BrowserContext, user: string | null, passwordAccount?: {id: string; email: string; password: string}) {
     if (user) await context.addInitScript(({user}) => {
       const key = 'sb-isf-test-auth-token';
       if (sessionStorage.getItem('test-auth-initialized')) return;
@@ -36,6 +36,16 @@ function fakeServer() {
     }, {user});
     await context.route('https://isf-test.supabase.co/**', async route => {
       const url = new URL(route.request().url());
+      if (url.pathname === '/auth/v1/token' && url.searchParams.get('grant_type') === 'password') {
+        const credentials = route.request().postDataJSON();
+        if (!passwordAccount || credentials.email !== passwordAccount.email || credentials.password !== passwordAccount.password) {
+          await route.fulfill({status: 400, json: {code: 'invalid_credentials', msg: 'Invalid login credentials'}}); return;
+        }
+        user = passwordAccount.id;
+        await route.fulfill({json: {access_token: 'test-access-token', refresh_token: 'test-refresh-token', token_type: 'bearer', expires_in: 3600,
+          user: {id: user, aud: 'authenticated', role: 'authenticated', email: passwordAccount.email,
+            app_metadata: {provider: 'email', providers: ['email']}, user_metadata: {}, created_at: '2026-09-08T00:00:00Z'}}}); return;
+      }
       if (url.pathname.startsWith('/auth/')) {
         await route.fulfill({status: 200, contentType: 'application/json', body: JSON.stringify({id: user})}); return;
       }
@@ -67,20 +77,75 @@ function fakeServer() {
 }
 
 for (const width of [390, 768, 1280]) {
-  test(`Google sign-in and first plan choice remain usable at ${width}px`, async ({page, context}) => {
+  test(`password and Google sign-in remain usable at ${width}px`, async ({page, context}) => {
     const server = fakeServer();
     await server.attach(context, null);
     await page.setViewportSize({width, height: 900});
     await page.goto('apps/main/');
     const google = page.getByRole('button', {name: 'Google로 계속하기'});
     await expect(google).toBeVisible();
-    await google.focus(); await expect(google).toBeFocused();
+    const email = page.getByLabel('이메일', {exact: true});
+    const password = page.getByLabel('비밀번호', {exact: true});
+    const submit = page.getByRole('button', {name: '이메일로 로그인'});
+    await email.focus(); await expect(email).toBeFocused();
+    await page.keyboard.press('Tab'); await expect(password).toBeFocused();
+    await page.keyboard.press('Tab'); await expect(submit).toBeFocused();
+    await page.keyboard.press('Tab'); await expect(google).toBeFocused();
+    for (const control of [email, password, submit]) expect((await control.boundingBox())!.height).toBeGreaterThanOrEqual(44);
     expect((await google.boundingBox())!.height).toBeGreaterThanOrEqual(44);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await expect(page.getByTestId('app-shell')).toHaveCount(0);
     await page.screenshot({path: `test-results/cloud-login-${width}.png`, fullPage: true});
   });
 }
+
+test('password login rejects wrong credentials and loads the same account workspace after success and reload', async ({page, context}) => {
+  const server = fakeServer(); server.rows.set(userA, plan());
+  const password = 'fixture-password-for-auth-test';
+  await server.attach(context, null, {id: userA, email: 'okho04@gmail.com', password});
+  await page.goto('apps/main/');
+  await page.getByLabel('이메일', {exact: true}).fill('okho04@gmail.com');
+  await page.getByLabel('비밀번호', {exact: true}).fill('wrong-password');
+  await page.getByRole('button', {name: '이메일로 로그인'}).click();
+  await expect(page.getByRole('alert')).toBeVisible();
+  await expect(page.getByLabel('비밀번호', {exact: true})).toHaveValue('');
+  await expect(page.getByRole('button', {name: '월 소비 편집'})).toHaveCount(0);
+  expect(server.operations).toEqual([]);
+  await page.getByLabel('비밀번호', {exact: true}).fill(password);
+  await page.getByLabel('비밀번호', {exact: true}).press('Enter');
+  await expect(page.getByRole('button', {name: '월 소비 편집'})).toBeVisible();
+  await page.getByRole('button', {name: '월 소비 편집'}).click();
+  await page.getByLabel('월평균 생활비').fill('1100000');
+  await page.getByRole('button', {name: '적용', exact: true}).click();
+  await expect(page.getByRole('button', {name: '월 소비 편집'})).toContainText('190만 원');
+  await page.reload();
+  await expect(page.getByRole('button', {name: '월 소비 편집'})).toContainText('190만 원');
+  expect(server.rows.get(userA)?.main.applied?.monthlyLivingWon).toBe(1100000);
+  expect(await page.evaluate(() => JSON.stringify({...localStorage}) + JSON.stringify({...sessionStorage}))).not.toContain(password);
+  expect(page.url()).not.toContain(password);
+});
+
+test('password reauthentication restores unsent input without automatically saving it', async ({page, context}) => {
+  const server = fakeServer(); server.rows.set(userA, plan());
+  await server.attach(context, userA, {id: userA, email: 'a@example.com', password: 'fixture-reauth-password'});
+  await page.goto('apps/main/');
+  await page.getByRole('button', {name: '월 소비 편집'}).click();
+  await page.getByLabel('월평균 생활비').fill('1700000');
+  await page.evaluate(() => {
+    const channel = new BroadcastChannel('sb-isf-test-auth-token');
+    channel.postMessage({event: 'SIGNED_OUT', session: null}); channel.close();
+  });
+  await expect(page.getByRole('heading', {name: '계획을 계속 보려면 다시 로그인해주세요.'})).toBeVisible();
+  await expect(page.getByLabel('이메일', {exact: true})).toHaveValue('a@example.com');
+  await expect(page.getByTestId('app-shell')).toHaveCount(0);
+  await page.getByLabel('비밀번호', {exact: true}).fill('fixture-reauth-password');
+  await page.getByRole('button', {name: '이메일로 로그인'}).click();
+  await expect(page.getByRole('button', {name: '월 소비 편집'})).toBeVisible();
+  await page.getByRole('button', {name: '월 소비 편집'}).click();
+  await expect(page.getByLabel('월평균 생활비')).toHaveValue('1,700,000');
+  expect(server.rows.get(userA)?.main.applied?.monthlyLivingWon).toBe(1000000);
+  expect(server.operations).toEqual([]);
+});
 
 test('imports this browser only after explicit choice and preserves its original', async ({page, context}) => {
   const server = fakeServer(); await server.attach(context, userA);

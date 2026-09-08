@@ -12,4 +12,10 @@
 .account-toolbar { max-width: 48rem; margin: 0 auto; padding: .4rem 1rem; display: flex; gap: 1rem; align-items: center; justify-content: flex-end; }
 .account-feedback { border-color: #a16207; }
 .account-product { border: 0; margin: 0; padding: 0; min-width: 0; }
+.account-sign-in { display: grid; gap: .75rem; margin-block: 1rem; }
+.account-sign-in p { margin: 0; }
+.account-sign-in label { display: grid; gap: .4rem; min-width: 0; }
+.account-sign-in input { box-sizing: border-box; width: 100%; min-height: 44px; padding: .65rem .75rem; border: 1px solid #9ca3af; border-radius: .5rem; font: inherit; color: #292524; background: white; }
+.account-sign-in input:focus-visible { outline: 3px solid #0f766e; outline-offset: 3px; }
+.account-sign-in button { margin: .25rem 0; }
 @media (max-width: 390px) { .account-panel {padding: 1rem;} }

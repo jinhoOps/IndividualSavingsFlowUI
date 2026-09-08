@@ -1,6 +1,8 @@
 # Supabase 계정 저장 운영 안내
 
-이 브랜치는 정적 앱·migration·로컬 검증을 구현한다. 운영 Supabase 프로젝트 변경, 실제 Google 로그인 왕복, Pages 배포는 아직 수행하지 않았다. 데이터 계약은 [승인 설계](superpowers/specs/2026-09-07-supabase-account-workspace-design.md), 개발 순서는 [실행 계획](superpowers/plans/2026-09-07-supabase-account-workspace.md)을 따른다.
+이 브랜치는 정적 앱·migration·로컬 검증을 구현하며, 2026-09-08 사용자 요청으로 임시 이메일·비밀번호 로그인 경로를 추가한다. 운영 Supabase 프로젝트 변경, 실제 임시 계정 생성·로그인, Google 로그인 왕복과 Pages 배포는 아직 수행하지 않았다. 데이터 계약은 [승인 설계](superpowers/specs/2026-09-07-supabase-account-workspace-design.md), 기존 계정 저장 개발 순서는 [실행 계획](superpowers/plans/2026-09-07-supabase-account-workspace.md)을 따른다. [2026-09-07 검증 기록](superpowers/evidence/2026-09-07-supabase-account-workspace.md)은 당시 구현의 증거이며 이후 임시 로그인 구현·운영 검증의 증거로 사용하지 않는다.
+
+2026-09-08 공개 `/auth/v1/settings`의 읽기 전용 확인 결과는 `email=true`, `google=false`, `disable_signup=false`, `mailer_autoconfirm=false`다. Email은 활성화되어 있으나 확인 절차가 필요한 상태다. 별도 `user_workspaces?select=user_id&limit=0` 조회는 HTTP 404 / `PGRST205`(schema cache에 테이블 없음)를 반환했으므로 migration 적용 상태도 확인해야 한다. 현재 연결된 관리자 도구·환경 인증정보·관리자 브라우저 세션은 없어 계정 생성과 DB 적용은 수행하지 않았다.
 
 ## 1. 비밀정보와 DB 사전 확인
 
@@ -22,7 +24,20 @@ select to_regprocedure('pg_catalog.sha256(bytea)');
 
 이 migration은 기존 브라우저 원본을 읽거나 지우지 않는다. 계정별 workspace는 최초 사용자 선택 전까지 생성하지 않는다. 성공 receipt는 최소 7일 보관하며 현재 자동 정리는 없다. 보관량을 관찰한 뒤 오래된 receipt만 정리하는 운영 작업을 별도로 등록한다.
 
-## 2. Google와 Supabase Auth
+## 2. 임시 로그인과 Google 전환
+
+### 2.1. 임시 이메일·비밀번호 로그인 — 2026-09-08 승인
+
+Google 설정 전 운영 대상 계정은 `okho04@gmail.com`이다. 앱의 로그인 화면과 세션 만료 후 재로그인 화면에서 이메일·비밀번호 폼을 사용한다. 폼은 실제 `signInWithPassword` 세션을 발급받으며 기존 `auth.users.id`·RLS·workspace 저장 계약을 따른다. Google 인증을 완료한 것으로 표시하거나 회원가입·계정 자동 생성을 수행하지 않는다. [Supabase 비밀번호 로그인 안내](https://supabase.com/docs/guides/auth/passwords)
+
+운영자는 다음 순서로 계정을 준비한다.
+
+1. 관리자 권한으로 대상 이메일의 기존 사용자를 확인한다. 기존 사용자가 있으면 해당 UID와 workspace를 보존하며 비밀번호를 설정한다. 사용자를 삭제·재생성하지 않는다.
+2. 신규 사용자일 때만 관리자 `auth.admin.createUser`에 대상 이메일, 비밀번호와 `email_confirm: true`를 지정한다. 기존 계정의 비밀번호 설정에는 `auth.admin.updateUserById`를 사용한다. 이 작업은 신뢰할 수 있는 관리자 환경에서 수행하고 관리자 키를 정적 앱에 넣지 않는다. [createUser](https://supabase.com/docs/reference/javascript/auth-admin-createuser), [updateUserById](https://supabase.com/docs/reference/javascript/auth-admin-updateuserbyid)
+3. 임시 비밀번호는 사용자 요청에 따라 `admin`을 포함한 입력하기 쉬운 긴 조합으로 준비한다. 실제 값은 문서·소스·공개 빌드 변수·브라우저 저장소에 기록하지 않고 로그인 폼에서 직접 입력한다. 전역 이메일 확인 설정을 끄거나 공개 회원가입을 추가할 필요는 없다.
+4. 1절의 DB 사전 확인·migration 적용 후 실제 비밀번호 로그인, 같은 계정의 두 브라우저 조회·저장과 로그아웃·만료 후 재로그인을 확인한다. 계정 생성만으로 workspace 행을 만들지 않으며 최초 가져오기/새 시작은 사용자 선택을 유지한다.
+
+### 2.2. Google 설정과 계정 유지
 
 [Supabase 공식 Google 로그인 안내](https://supabase.com/docs/guides/auth/social-login/auth-google)에 따라 Google Web OAuth Client를 만들고 Client ID/Secret을 Supabase Google provider 설정에 등록한다. Client Secret은 브라우저 환경변수가 아니다.
 
@@ -35,6 +50,8 @@ select to_regprocedure('pg_catalog.sha256(bytea)');
 | 개발용 redirect allowlist | `http://localhost:5173/IndividualSavingsFlowUI/apps/auth/callback/` |
 
 별도 개발 포트를 사용하면 그 정확한 URL만 추가한다. Google callback과 앱 callback을 혼동하지 않으며 운영 wildcard는 사용하지 않는다. PKCE verifier가 저장된 동일 브라우저/origin에서 왕복해야 한다.
+
+임시 로그인에서 Google로 전환할 때는 동일한 확인된 이메일을 사용한다. Supabase의 자동 identity linking으로 기존 계정 연결이 예상되지만, 실제 Google 로그인 전후 `auth.users.id`와 기존 workspace가 같은지 확인해야 전환 완료로 판단한다. 기존 사용자나 workspace를 지우고 다시 만들지 않는다. Google 전환 검증 후 임시 비밀번호를 교체한다. 로그인 폼 제거만으로 서버의 비밀번호 인증이 없어졌다고 간주하지 않는다. [Supabase identity linking 안내](https://supabase.com/docs/guides/auth/auth-identity-linking)
 
 ## 3. 정적 빌드 환경변수
 
@@ -59,14 +76,15 @@ node scripts/test-account-pwa.mjs
 
 DB 스크립트는 Docker의 일회용 PostgreSQL 17 컨테이너만 사용하고 종료 시 해당 컨테이너를 정리한다. 운영 연결 문자열을 받지 않는다. TypeScript/SQL의 동일한 123개 fixture와 RLS·동시성·중복 receipt·rollback·계정 삭제 cascade를 검증한다. PWA 스크립트는 일회용 정적 production build를 16437 포트에서 띄워 실제 서비스워커의 캐시 제외와 오프라인 Main을 검증한다. 최종 결과와 제한은 [검증 기록](superpowers/evidence/2026-09-07-supabase-account-workspace.md)에 있다.
 
-E2E의 `cloud` 프로젝트는 실제 production entry와 Supabase SDK를 사용하되 HTTP 경계를 테스트 서버 fixture로 대체한다. `chromium`은 기존 제품 계산/UI/로컬 원본 호환성을 검증하는 테스트 전용 entry다. production에 인증 우회 설정은 없다. Node 25 이상에서 jsdom 저장소와 충돌하면 단위 테스트 앞에 `NODE_OPTIONS=--no-experimental-webstorage`를 지정한다.
+E2E의 `cloud` 프로젝트는 실제 production entry와 Supabase SDK를 사용하되 HTTP 경계를 테스트 서버 fixture로 대체한다. `chromium`은 기존 제품 계산/UI/로컬 원본 호환성을 검증하는 테스트 전용 entry다. production에 인증 우회 설정은 없다. Node 25 이상에서 jsdom 저장소와 충돌하면 단위 테스트 앞에 `NODE_OPTIONS=--no-experimental-webstorage`를 지정한다. 이후 추가된 임시 로그인과 최종 전체 회귀 결과는 [2026-09-08 검증 기록](superpowers/evidence/2026-09-08-temporary-password-login.md)을 따른다.
 
 ## 5. 운영 rollout 확인
 
 다음 담당자는 프로젝트 운영자다. 1절부터 시작해 아래를 완료한 뒤 배포를 승인한다.
 
 - 테스트 계정 두 개와 anon으로 실제 REST/RPC의 본인 행 조회, 타인 접근 차단, 직접 쓰기 금지를 확인한다.
-- Google 실제 왕복, verifier 유실/재시도, callback 직접 새로고침과 네 앱의 배포 base를 확인한다.
+- 임시 경로는 사전 준비한 대상 계정으로 실제 비밀번호 로그인·오류·세션 만료 후 재로그인을 확인한다. 이 결과를 Google 실제 왕복 검증으로 기록하지 않는다.
+- Google 전환 시 실제 왕복, verifier 유실/재시도, callback 직접 새로고침과 네 앱의 배포 base, 임시 로그인과 동일 UID·workspace 유지를 확인한다.
 - 두 브라우저에서 같은 계정 저장·충돌·재시도·30초/focus 갱신, 다른 계정 격리와 다중 탭 로그아웃을 확인한다.
 - 기존 데이터는 자동 업로드하지 않는다. 처음 가져오기/새 시작을 선택하고, 서버가 이미 있으면 백업 후 전체 교체를 명시적으로 확인한다.
 - 장애 시 계정 편집을 중지하고 서버 백업·미전송 복구 파일을 제공한다. 기존 로컬 writable 배포로 무조건 되돌려 두 원본을 만들지 않는다.

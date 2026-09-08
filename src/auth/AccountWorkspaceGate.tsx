@@ -10,6 +10,7 @@ import './account.css';
 import {AccountDraftContext} from './AccountDraftContext';
 import {importWorkspaceBackup} from '../workspace/infrastructure/workspaceBackup';
 import {accountCacheKeys, accountCachePrefix, accountRecoveryRecords, getAccountTabId, hasAccountRecovery} from './accountTab';
+import {AccountSignIn} from './AccountSignIn';
 
 interface AccountRuntime {user: Session['user']; workspace: AccountWorkspaceSession; generation: number}
 export function AccountWorkspaceGate({children, client: suppliedClient, config: suppliedConfig}: {
@@ -217,14 +218,20 @@ export function AccountWorkspaceGate({children, client: suppliedClient, config: 
   if (authState === 'loading') return <GatePage title="계정의 계획을 불러오고 있어요." busy />;
   if (authState === 'error') return <GatePage title="로그인 상태를 확인하지 못했습니다."><button onClick={() => setStartup(value => value + 1)}>다시 시도</button></GatePage>;
   if (authState === 'signed-out' || !runtime) return <GatePage title="어디서든 같은 나의 계획">
-    <p>Google 계정으로 로그인하고 자금 흐름, 투자 배분과 계좌 연결을 이어서 관리하세요.</p>
-    <button onClick={() => void login()}>Google로 계속하기</button>
+    <p>내 계정으로 로그인하고 자금 흐름, 투자 배분과 계좌 연결을 이어서 관리하세요.</p>
+    <AccountSignIn client={configured.client} onStart={() => {explicitLogout.current = false; setNotice('');}} onGoogleLogin={login} />
     <p>기존 브라우저 계획은 로그인 후 직접 선택해서 가져올 수 있어요.</p>
     {notice && <p role="alert">{notice}</p>}
   </GatePage>;
   const workspace = runtime.workspace;
   const status = workspace.status;
-  if (status === 'expired') return <GatePage title="계획을 계속 보려면 다시 로그인해주세요."><button onClick={() => void login()}>Google로 다시 로그인</button><p>{workspace.cacheFailed ? '이 브라우저에 복구 기록을 보관하지 못했습니다. 로그인 전에 복구 파일을 다운로드해주세요.' : '아직 보내지 못한 입력은 이 계정의 복구 기록으로 보관합니다.'}</p><button onClick={downloadRecovery}>미전송 입력 복구 파일</button></GatePage>;
+  if (status === 'expired') return <GatePage title="계획을 계속 보려면 다시 로그인해주세요.">
+    <p>{workspace.cacheFailed ? '이 브라우저에 복구 기록을 보관하지 못했습니다. 로그인 전에 복구 파일을 다운로드해주세요.' : '아직 보내지 못한 입력은 이 계정의 복구 기록으로 보관합니다.'}</p>
+    <button onClick={downloadRecovery}>미전송 입력 복구 파일</button>
+    <AccountSignIn client={configured.client} email={runtime.user.email} reauthenticate
+      onStart={() => {explicitLogout.current = false; setNotice('');}} onGoogleLogin={login} />
+    {notice && <p role="alert">{notice}</p>}
+  </GatePage>;
   if (!workspace.snapshot && (status === 'empty' || status === 'saving' || status === 'uncertain')) return <GatePage title="계정에서 사용할 계획을 선택해주세요." busy={status === 'saving'}>
     <p>{runtime.user.email}</p>
     {hasAccountRecovery(accountStorage(), accountCachePrefix(configured.config, runtime.user.id)) && <button onClick={downloadRecovery}>미전송 입력 복구 파일</button>}

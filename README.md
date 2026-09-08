@@ -1,6 +1,6 @@
 # IndividualSavings Flow UIUX
 
-개인 재무 흐름을 입력하고 장기 투자 전략과 실행 계획으로 연결하는 정적 웹 앱입니다. 이 브랜치는 Google 로그인과 Supabase 계정별 저장을 구현하며, 운영 적용 전 설정은 [계정 저장 운영 안내](docs/supabase-account-setup.md)를 따릅니다.
+개인 재무 흐름을 입력하고 장기 투자 전략과 실행 계획으로 연결하는 정적 웹 앱입니다. 이 브랜치는 Google 로그인과 Supabase 계정별 저장을 구현합니다. 2026-09-08 사용자 요청으로 Google 설정 전에도 사용할 수 있는 임시 이메일·비밀번호 로그인 경로를 추가합니다. 운영 적용 전 설정과 실제 계정 준비 상태는 [계정 저장 운영 안내](docs/supabase-account-setup.md)를 따릅니다.
 
 현재 지원 제품은 Main, Simulation, Portfolio와 Account Map입니다. 네 앱은 shared workspace를 사용합니다.
 
@@ -29,7 +29,7 @@ ISF의 네 앱은 다음 질문에 답합니다.
 - **Portfolio**: 선택한 전략을 어떤 투자 대상으로 배분할 것인가?
 - **Account Map**: 금융 위치와 월 연결을 어떻게 관리할 것인가?
 
-사용자가 입력한 데이터를 브라우저 안에서 계산하고 시각화하며, Google 계정의 workspace를 Supabase에 저장합니다. 별도 앱 서버나 은행 연동은 없습니다.
+사용자가 입력한 데이터를 브라우저 안에서 계산하고 시각화하며, 로그인한 Supabase 계정의 workspace를 저장합니다. Google과 임시 이메일·비밀번호 로그인은 같은 사용자 ID와 저장 계약을 사용합니다. 별도 앱 서버나 은행 연동은 없습니다.
 
 ## 현재 제품
 
@@ -118,7 +118,7 @@ npm install
 
 개발 서버:
 
-`.env.example`을 참고해 `.env.local`에 Supabase URL과 공개 publishable key를 설정합니다. DB 비밀번호·service-role/secret key는 넣지 않습니다. Google provider와 callback 등록은 [운영 안내](docs/supabase-account-setup.md)를 따릅니다. 연결 설정이 없으면 제품 대신 설정 오류를 표시하며 production build도 실패합니다.
+`.env.example`을 참고해 `.env.local`에 Supabase URL과 공개 publishable key를 설정합니다. DB 비밀번호·service-role/secret key는 넣지 않습니다. 임시 이메일·비밀번호 로그인은 관리자가 사전 준비한 계정으로 사용하며, 회원가입이나 계정 자동 생성은 제공하지 않습니다. 임시 계정 준비와 Google provider·callback 등록은 [운영 안내](docs/supabase-account-setup.md)를 따릅니다. 로그인 비밀번호는 화면에서 입력하고 소스·환경변수·정적 빌드에 넣지 않습니다. 연결 설정이 없으면 제품 대신 설정 오류를 표시하며 production build도 실패합니다.
 
 ```bash
 npm run dev
@@ -190,7 +190,7 @@ Node 25 이상에서 실험적 Web Storage가 jsdom과 충돌하면 단위 테�
 
 Phase A shared workspace foundation과 Main, Simulation, aggregate-first Portfolio, Phase B Account Map은 현재 기준선입니다. 다음 단계는 이 기준선을 보존하며 별도 계획으로 진행합니다.
 
-- **계정 저장 구현**: 정적 배포를 유지하는 [Google 로그인·Supabase 계정별 workspace 저장](docs/superpowers/specs/2026-09-07-supabase-account-workspace-design.md). 운영 DB migration·Google 실제 왕복·Pages 배포는 [운영 안내](docs/supabase-account-setup.md)의 별도 rollout 항목입니다.
+- **계정 저장 구현**: 정적 배포를 유지하는 [Google 로그인·Supabase 계정별 workspace 저장](docs/superpowers/specs/2026-09-07-supabase-account-workspace-design.md)과 2026-09-08 승인된 임시 이메일·비밀번호 로그인. 실제 임시 계정 준비·운영 DB migration·Google 실제 왕복·Pages 배포는 [운영 안내](docs/supabase-account-setup.md)의 별도 rollout 항목입니다.
 - **Phase B 완료**: 계좌 우선 설정, 계좌·보관처 registry, 노드 지도와 가역적 관리가 있는 Account Map
 - **Phase C**: 현재 Main metric 영역을 대체하는 Main·Simulation·Portfolio·Account Map 연결 결과 카드
 - **Phase 4 완료**: 분류된 legacy runtime·compatibility path·test 삭제, v1/v2 migration evidence와 [repository-wide 최종 검증](docs/superpowers/evidence/2026-09-02-phase4-legacy-test-disposition.md)을 기록함
