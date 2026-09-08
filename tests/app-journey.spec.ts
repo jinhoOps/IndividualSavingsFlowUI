@@ -723,3 +723,43 @@ async function readMotionState(locator: import('@playwright/test').Locator): Pro
     };
   });
 }
+
+// Brand orange is decorative; small action labels must remain readable in every app.
+test('primary action labels meet text contrast in resting and hover states across apps', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.addInitScript((workspace) => {
+    localStorage.setItem('isf-workspace-v4', JSON.stringify(workspace));
+  }, workspaceWithSimulationDraft);
+
+  for (const app of ['main', 'simulation', 'portfolio', 'account-map']) {
+    await page.goto(`apps/${app}/`);
+    await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible();
+    const actions = page.locator('.ui-button--primary, .simulation-controls button[aria-pressed="true"], .simulation-amount-mode button[aria-pressed="true"]');
+    expect(await actions.count()).toBeGreaterThan(0);
+    for (const action of await actions.all()) {
+      await expect(action).toBeVisible();
+      for (const state of ['resting', 'hover']) {
+        if (state === 'hover') await action.hover();
+        const contrast = await action.evaluate((element) => {
+          const rgba = (value: string) => value.match(/[\d.]+/g)!.map(Number);
+          const composite = (front: number[], back: number[]) => {
+            const alpha = front[3] ?? 1;
+            return front.slice(0, 3).map((channel, index) => channel * alpha + back[index] * (1 - alpha));
+          };
+          const ancestors: Element[] = [];
+          for (let node: Element | null = element; node !== null; node = node.parentElement) ancestors.unshift(node);
+          let background = [255, 255, 255];
+          for (const node of ancestors) background = composite(rgba(getComputedStyle(node).backgroundColor), background);
+          const foreground = composite(rgba(getComputedStyle(element).color), background);
+          const luminance = (color: number[]) => color.map((value) => {
+            const channel = value / 255;
+            return channel <= .04045 ? channel / 12.92 : ((channel + .055) / 1.055) ** 2.4;
+          }).reduce((total, channel, index) => total + channel * [.2126, .7152, .0722][index], 0);
+          const values = [luminance(foreground), luminance(background)].sort((a, b) => b - a);
+          return (values[0] + .05) / (values[1] + .05);
+        });
+        expect.soft(contrast, `${app} ${state} primary action contrast`).toBeGreaterThanOrEqual(4.5);
+      }
+    }
+  }
+});

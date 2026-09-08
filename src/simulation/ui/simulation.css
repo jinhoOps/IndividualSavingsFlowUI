@@ -5,22 +5,22 @@
 
 .simulation-content,
 .simulation-recovery {
-  margin-block: clamp(1.25rem, 4vw, 3.5rem);
+  margin-block: var(--ui-page-space);
 }
 
 .simulation-content {
   display: grid;
-  gap: clamp(1.5rem, 4vw, 3rem);
+  gap: 1.5rem;
 }
 
 .simulation-onboarding-step,
 .simulation-recovery {
-  padding: clamp(1.25rem, 5vw, 4rem);
+  padding: clamp(1.25rem, 3vw, 2rem);
 }
 
 .simulation-eyebrow {
   margin: 0 0 .5rem;
-  color: var(--tone-primary);
+  color: var(--tone-action);
   font-weight: 700;
 }
 
@@ -29,11 +29,13 @@
 .simulation-hero h1 {
   margin: 0;
   text-wrap: balance;
+  word-break: keep-all;
 }
 
 .simulation-onboarding-step h1 {
   max-width: 19ch;
-  font-size: clamp(1.8rem, 5vw, 3.35rem);
+  font-size: var(--ui-title-size);
+  font-weight: 700;
   line-height: 1.25;
 }
 
@@ -105,6 +107,17 @@
   color: var(--muted);
 }
 
+.simulation-toolbar:empty {
+  display: none;
+}
+
+.simulation-recovery h1 {
+  margin-bottom: 1.5rem;
+  font-size: var(--ui-title-size);
+  font-weight: 700;
+  line-height: 1.35;
+}
+
 .simulation-save-indicator {
   display: inline-flex;
   align-items: center;
@@ -143,12 +156,13 @@
 .simulation-hero {
   display: grid;
   gap: .75rem;
-  padding-block: clamp(.5rem, 2vw, 1.5rem);
+  padding-block: .5rem;
 }
 
 .simulation-hero h1 {
   max-width: 24ch;
-  font-size: clamp(2rem, 6vw, 4.75rem);
+  font-size: var(--ui-result-size);
+  font-weight: 700;
   line-height: 1.18;
   letter-spacing: -.04em;
   word-break: keep-all;
@@ -266,11 +280,7 @@
 .growth-chart__x-tick {
   fill: var(--muted);
   font-family: var(--font-body);
-  font-size: 11px;
-}
-
-.growth-chart__x-tick {
-  text-anchor: middle;
+  font-size: var(--growth-axis-font-size, 13px);
 }
 
 .growth-chart__guide {
@@ -349,7 +359,7 @@
 }
 
 .growth-chart__tooltip > strong {
-  color: var(--tone-primary);
+  color: var(--tone-action);
   white-space: nowrap;
 }
 
@@ -457,7 +467,7 @@
 .simulation-controls {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: clamp(1.5rem, 4vw, 3rem);
+  gap: 1.5rem;
   padding: clamp(1rem, 3vw, 2rem);
 }
 
@@ -482,7 +492,7 @@
 
 .simulation-duration-control input[type="range"] {
   padding-inline: 0;
-  accent-color: var(--tone-primary);
+  accent-color: var(--tone-action);
 }
 
 .simulation-number-field {
@@ -507,8 +517,8 @@
 .simulation-controls button[aria-pressed="true"],
 .simulation-onboarding-step .simulation-preset-row button[aria-pressed="true"],
 .simulation-amount-mode button[aria-pressed="true"] {
-  border-color: var(--tone-primary);
-  background: var(--tone-primary);
+  border-color: var(--tone-action);
+  background: var(--tone-action);
   color: white;
 }
 
@@ -592,7 +602,7 @@
   }
 
   .simulation-hero h1 {
-    font-size: clamp(2rem, 10vw, 3rem);
+    font-size: var(--ui-result-size);
   }
 
   .growth-chart svg {

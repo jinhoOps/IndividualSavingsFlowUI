@@ -136,6 +136,7 @@ export function AccountMapModal({
   onRestoreLocation,
   locationOnly = false,
 }: AccountMapModalProps): JSX.Element {
+  const directLocationEdit = locationOnly && initialMode === "edit";
   const titleId = useId();
   const recoveryDescriptionId = useId();
   const modalRef = useRef<HTMLDivElement>(null);
@@ -569,7 +570,7 @@ export function AccountMapModal({
           </div>
         </header>
         <div className="account-map-modal__body">
-          {node.amountWon === undefined ? null : (
+          {locationOnly || node.amountWon === undefined ? null : (
             <div className="account-map-modal__amount">
               <span>월 기준</span>
               <strong>{formatWon(node.amountWon)}</strong>
@@ -593,7 +594,7 @@ export function AccountMapModal({
           ) : null}
           {mode === "edit" ? (
             <div className="account-map-modal__edit">
-              <p>이름, 금액과 연결 상태를 한 번에 저장합니다.</p>
+              <p>{locationOnly ? '계좌·보관처의 이름, 종류와 기관을 수정합니다.' : '이름, 금액과 연결 상태를 한 번에 저장합니다.'}</p>
               {node.kind === "purpose" ? (
                 <button
                   type="button"
@@ -1079,6 +1080,21 @@ export function AccountMapModal({
           )}
         </div>
         <footer>
+          {(mode === "read" || (mode === "edit" && directLocationEdit)) &&
+          node.kind === "location" &&
+          node.status !== "suspended" &&
+          onArchiveLocation !== undefined ? (
+            <Button
+              variant="secondary"
+              className="account-map-modal__archive"
+              type="button"
+              disabled={actionPending || recoveryPending || recovery.status !== "none"}
+              onClick={() => setMode("archive-location")}
+            >
+              <TrashIcon />
+              보관
+            </Button>
+          ) : null}
           {mode === "read" ? (
             <>
               {node.kind === "location" &&
@@ -1091,20 +1107,6 @@ export function AccountMapModal({
                   onClick={() => setMode("restore-location")}
                 >
                   복원
-                </Button>
-              ) : null}
-              {node.kind === "location" &&
-              node.status !== "suspended" &&
-              onArchiveLocation !== undefined ? (
-                <Button
-                  variant="secondary"
-                  className="account-map-modal__archive"
-                  type="button"
-                  disabled={recovery.status !== "none"}
-                  onClick={() => setMode("archive-location")}
-                >
-                  <TrashIcon />
-                  보관
                 </Button>
               ) : null}
               <Button
@@ -1124,7 +1126,7 @@ export function AccountMapModal({
                 type="button"
                 disabled={actionPending || recoveryPending}
                 onClick={() => {
-                  if (recovery.status === "none") setMode("read");
+                  if (recovery.status === "none" && !directLocationEdit) setMode("read");
                   else requestClose();
                 }}
               >
@@ -1222,7 +1224,7 @@ export function AccountMapModal({
                 type="button"
                 disabled={actionPending || recoveryPending}
                 onClick={() => {
-                  if (recovery.status === "none") setMode("read");
+                  if (recovery.status === "none") setMode(directLocationEdit ? "edit" : "read");
                   else requestClose();
                 }}
               >

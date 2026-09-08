@@ -1,5 +1,5 @@
 import { animate } from 'animejs';
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Surface } from '../../components/common/Surface';
 import { MOTION_DURATION, MOTION_EASE } from '../../components/motion/tokens';
 import { useAnimeScope } from '../../components/motion/useAnimeScope';
@@ -41,6 +41,7 @@ export function GrowthChart({
   amountMode: CompoundSimulationDraft['amountMode'];
 }) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
   const touchPointerRef = useRef<number | null>(null);
   const visualGeometryRef = useRef<VisualChartGeometry | null>(null);
   const revealWidthRef = useRef(0);
@@ -142,6 +143,27 @@ export function GrowthChart({
     geometry.allSavingsPath,
   ]);
 
+  useLayoutEffect(() => {
+    const svg = svgRef.current;
+    if (svg === null) return;
+    const sizeAxisText = () => {
+      const transform = svg.getScreenCTM?.();
+      if (transform == null) return;
+      const scale = Math.hypot(transform.a, transform.b);
+      // The fixed viewBox scales paths and text together. Counter-scale only
+      // typography so axis labels retain a readable size on every viewport.
+      if (scale > 0) svg.style.setProperty('--growth-axis-font-size', `${13 / scale}px`);
+    };
+    sizeAxisText();
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', sizeAxisText);
+      return () => window.removeEventListener('resize', sizeAxisText);
+    }
+    const observer = new ResizeObserver(sizeAxisText);
+    observer.observe(svg);
+    return () => observer.disconnect();
+  }, []);
+
   useEffect(() => {
     setActiveIndex((current) => (
       current !== null && current >= series.length ? null : current
@@ -211,6 +233,7 @@ export function GrowthChart({
         }}
       >
         <svg
+          ref={svgRef}
           viewBox="0 0 680 285"
           role="img"
           aria-label="기간별 복리 성장 그래프"
@@ -314,8 +337,14 @@ export function GrowthChart({
               <circle className="growth-chart__marker" cx={activeGeometry.x} cy={activeGeometry.allSavingsY} r="4" />
             </>
           )}
-          {geometry.xTicks.map((tick) => (
-            <text className="growth-chart__x-tick" key={tick.x} x={tick.x} y="277">{tick.label}</text>
+          {geometry.xTicks.map((tick, index) => (
+            <text
+              className="growth-chart__x-tick"
+              key={tick.x}
+              x={tick.x}
+              y="277"
+              textAnchor={index === 0 ? 'start' : index === geometry.xTicks.length - 1 ? 'end' : 'middle'}
+            >{tick.label}</text>
           ))}
         </svg>
         {active === null || activeGeometry === null || tooltip === null || placement === null ? null : (

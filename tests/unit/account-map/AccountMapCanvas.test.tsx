@@ -101,7 +101,7 @@ describe('AccountMapCanvas', () => {
     fireEvent.click(within(detail).getByRole('button', { name: '연결 추가' }));
     fireEvent.click(within(detail).getByRole('button', { name: '흐름 편집' }));
 
-    expect(onEditLocation).toHaveBeenCalledWith('salary');
+    expect(onEditLocation).toHaveBeenCalledWith('salary', within(detail).getByRole('button', { name: '계좌 정보 편집' }));
     expect(onAddTransfer).toHaveBeenCalledWith('salary');
     expect(onEditTransfer).toHaveBeenCalledWith('salary-living');
     expect(motion.starts).toBe(1);

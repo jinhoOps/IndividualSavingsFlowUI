@@ -131,7 +131,7 @@ export function SummaryDashboard({
 
   return (
     <AppContentFrame
-      className="relative grid min-h-dvh gap-6 py-7 sm:py-10"
+      className="main-dashboard"
       data-testid="main-dashboard-frame"
       aria-labelledby="summary-dashboard-title"
     >
@@ -141,12 +141,10 @@ export function SummaryDashboard({
         data-testid="dashboard-controls"
         inert={mobileModalOpen || undefined}
       >
-        <header className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="m-0 text-sm font-black tracking-wide text-accent">MONTHLY FLOW</p>
-            <h1 className="m-0 mt-2 text-4xl font-bold tracking-tight text-slate-950 sm:text-5xl" id="summary-dashboard-title">이번 달 자금 흐름</h1>
-            <p className="mb-0 mt-3 text-lg text-slate-600">수입과 소비, 저축, 투자 뒤에 남는 돈을 확인하세요.</p>
-          </div>
+        <header className="main-dashboard__header">
+          <p className="main-eyebrow">자금 흐름</p>
+          <h1 className="main-page-title" id="summary-dashboard-title">이번 달 자금 흐름</h1>
+          <p className="main-dashboard__description">수입과 소비, 저축, 투자 뒤에 남는 돈을 확인하세요.</p>
         </header>
 
         {backupStatus === null ? null : (
@@ -158,7 +156,7 @@ export function SummaryDashboard({
           </p>
         )}
 
-        <Surface as="section" className="min-w-0 bg-white/85 p-5 shadow-float sm:p-7" aria-label="월 자금 구성 요약">
+        <Surface as="section" className="main-dashboard__summary" aria-label="월 자금 구성 요약">
           <CashflowDonutSummary data={applied} />
         </Surface>
 
@@ -168,7 +166,7 @@ export function SummaryDashboard({
 
         <details className="allocation-details">
           <summary className="allocation-details__summary">자세히 보기</summary>
-          <Surface as="section" className="mt-4 min-w-0 bg-white/85 p-5 shadow-float sm:p-7" aria-labelledby="cashflow-allocation-title">
+          <Surface as="section" className="mt-4 min-w-0 p-5 sm:p-6" aria-labelledby="cashflow-allocation-title">
             <h2 className="m-0 text-2xl font-bold text-slate-950" id="cashflow-allocation-title">월 자금 구성</h2>
             <div className="mt-5">
               <AllocationBar data={applied} />

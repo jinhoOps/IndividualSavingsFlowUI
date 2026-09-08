@@ -456,8 +456,8 @@ for (const viewport of [
         color: style.color,
       };
     })).toEqual({
-      backgroundColor: 'rgb(234, 91, 42)',
-      borderColor: 'rgb(234, 91, 42)',
+      backgroundColor: 'rgb(194, 65, 22)',
+      borderColor: 'rgb(194, 65, 22)',
       color: 'rgb(255, 255, 255)',
     });
     await page.getByRole('button', { name: '결과 보기' }).click();

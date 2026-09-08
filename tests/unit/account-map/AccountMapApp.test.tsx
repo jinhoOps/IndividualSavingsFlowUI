@@ -20,12 +20,44 @@ vi.mock('../../../src/account-map/ui/motion', () => ({
 afterEach(cleanup);
 
 describe('AccountMapApp completed flow map', () => {
+  it.each(['close', 'cancel', 'escape', 'save'] as const)('returns focus to the account edit action after %s', async (action) => {
+    const setup = flowRepositories();
+    render(<AccountMapApp repositories={setup.repositories} />);
+    openSalaryDetail();
+    const trigger = within(screen.getByLabelText('급여 통장 월 계획 흐름')).getByRole('button', { name: '계좌 정보 편집' });
+    trigger.focus();
+    fireEvent.click(trigger);
+    const dialog = screen.getByRole('dialog', { name: '급여 통장 편집' });
+    if (action === 'save') {
+      fireEvent.click(within(dialog).getByRole('button', { name: 'KB국민은행' }));
+      fireEvent.change(within(dialog).getByRole('textbox', { name: '표시 이름' }), { target: { value: '주 수입 통장' } });
+      fireEvent.click(within(dialog).getByRole('button', { name: '저장' }));
+    } else if (action === 'escape') {
+      fireEvent.keyDown(dialog, { key: 'Escape' });
+    } else {
+      fireEvent.click(within(dialog).getByRole('button', { name: action === 'cancel' ? '취소' : '닫기' }));
+    }
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(trigger).toHaveFocus();
+  });
+
+  it.each(['invalid', 'unavailable'] as const)('offers a recovery destination when the workspace is %s', (status) => {
+    const setup = flowRepositories();
+    setup.repositories.accountMap.load = () => status === 'invalid' ? { status, raw: 'invalid workspace' } : { status };
+    render(<AccountMapApp repositories={setup.repositories} />);
+    const main = screen.getByRole('main');
+    expect(within(main).getByRole('link', { name: status === 'invalid' ? '자금 흐름에서 복구하기' : '다시 불러오기' }))
+      .toHaveAttribute('href', status === 'invalid' ? '/apps/main/' : '/apps/account-map/');
+    expect(setup.save).not.toHaveBeenCalled();
+  });
+
   it('suspends and resumes a purpose allocation through the real completed editor', async () => {
     const setup = flowRepositories();
     const before = protectedSlices(setup.current());
     render(<AccountMapApp repositories={setup.repositories} />);
     fireEvent.click(screen.getByRole('button', { name: '생활비 배정 관리' }));
     let dialog = screen.getByRole('dialog', { name: '생활비 편집' });
+    expect(within(dialog).getByText('월 기준')).toBeVisible();
     fireEvent.change(within(dialog).getByRole('combobox', { name: '생활비 통장 연결 상태' }), { target: { value: 'suspended' } });
     fireEvent.click(within(dialog).getByRole('button', { name: '저장' }));
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
@@ -66,7 +98,8 @@ describe('AccountMapApp completed flow map', () => {
   it('renders an applied flow and only opens account detail on first activation', () => {
     render(<AccountMapApp repositories={flowRepositories().repositories} />);
 
-    expect(screen.getAllByRole('heading', { name: '계좌별 월 계획 흐름' })).toHaveLength(2);
+    expect(screen.getByRole('heading', { name: '계좌별 월 계획 흐름', level: 1 })).toBeVisible();
+    expect(screen.getByRole('region', { name: '전체 연결 지도' })).toBeVisible();
     expect(screen.queryByLabelText('급여 통장 월 계획 흐름')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /계좌 급여 통장/ }));
 
@@ -123,8 +156,14 @@ describe('AccountMapApp completed flow map', () => {
     openSalaryDetail();
     fireEvent.click(within(screen.getByLabelText('급여 통장 월 계획 흐름')).getByRole('button', { name: '계좌 정보 편집' }));
 
-    const dialog = screen.getByRole('dialog', { name: '급여 통장 상세' });
-    expect(within(dialog).getByRole('button', { name: '편집' })).toBeVisible();
+    const dialog = screen.getByRole('dialog', { name: '급여 통장 편집' });
+    expect(within(dialog).getByRole('textbox', { name: '표시 이름' })).toHaveValue('급여 통장');
+    expect(within(dialog).queryByText('월 기준')).not.toBeInTheDocument();
+    expect(within(dialog).getByText('계좌·보관처의 이름, 종류와 기관을 수정합니다.')).toBeVisible();
+    fireEvent.click(within(dialog).getByRole('button', { name: '보관' }));
+    expect(screen.getByRole('dialog', { name: '급여 통장 보관' })).toBeVisible();
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: '취소' }));
+    expect(within(dialog).getByRole('textbox', { name: '표시 이름' })).toHaveValue('급여 통장');
     expect(within(dialog).queryByRole('button', { name: '연결 추가' })).not.toBeInTheDocument();
   });
 

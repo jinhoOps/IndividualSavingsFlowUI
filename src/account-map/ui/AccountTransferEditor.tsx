@@ -1,4 +1,4 @@
-import { useState, type JSX } from "react";
+import { useId, useState, type JSX } from "react";
 import { Button } from "../../components/common/Button";
 import { FormattedMoneyInput } from "../../components/common/FormattedMoneyInput";
 import type { AccountTransferAllocation } from "../domain/model";
@@ -29,6 +29,7 @@ export function AccountTransferEditor({
   onCancel,
   errorDescriptionId,
 }: AccountTransferEditorProps): JSX.Element {
+  const amountHintId = useId();
   const [sourceLocationId, setSourceLocationId] = useState(
     initialValue?.sourceLocationId ?? "",
   );
@@ -131,9 +132,10 @@ export function AccountTransferEditor({
             zeroDisplay="zero"
             disabled={disabled}
             aria-label="월 이체 금액"
-            aria-describedby={errorDescriptionId}
+            aria-describedby={[amountHintId, errorDescriptionId].filter(Boolean).join(" ")}
             aria-invalid={fixedAmountInvalid ? "true" : undefined}
           />
+          <span id={amountHintId} className="account-transfer-editor__hint">1원 이상의 정해진 금액을 입력해 주세요.</span>
         </label>
       ) : null}
       <label>

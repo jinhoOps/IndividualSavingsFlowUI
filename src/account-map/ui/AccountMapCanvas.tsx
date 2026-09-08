@@ -26,7 +26,7 @@ export interface AccountMapCanvasProps {
   onInvoke(nodeId: string): void;
   onBackground(): void;
   onEscape(): void;
-  onEditLocation?(locationId: string): void;
+  onEditLocation?(locationId: string, trigger: HTMLElement): void;
   onAddTransfer?(sourceLocationId: string): void;
   onEditTransfer?(transferId: string): void;
   hasExternalModal?: boolean;
@@ -131,7 +131,7 @@ export function AccountMapCanvas({
   const accountLabel = selectedAccountId === null ? undefined : graph.nodes.find((node) => node.id === `account:${selectedAccountId}`)?.label;
   return <section className="account-map-canvas-shell" aria-labelledby="account-map-canvas-title">
     <header className="account-map-canvas-toolbar">
-      <div><p className="account-map-eyebrow">계획 흐름</p><h2 id="account-map-canvas-title">계좌별 월 계획 흐름</h2><p className="account-map-canvas-toolbar__help">월 계획 기준이며 실제 잔액·거래와 다를 수 있습니다.</p></div>
+      <div><p className="account-map-eyebrow">계획 흐름</p><h2 id="account-map-canvas-title">전체 연결 지도</h2><p className="account-map-canvas-toolbar__help">월 계획 기준이며 실제 잔액·거래와 다를 수 있습니다.</p></div>
       <div className="account-map-canvas-toolbar__controls"><div className="account-map-zoom-control" role="group" aria-label="지도 확대 수준"><button type="button" aria-label="축소" disabled={zoom === 'overview'} onClick={() => changeZoom(-1)}>−</button><span>{zoomLabels[zoom]}</span><button type="button" aria-label="확대" disabled={zoom === 'detail'} onClick={() => changeZoom(1)}>＋</button></div></div>
     </header>
     <div ref={canvasRef} className="account-map-canvas account-flow-canvas" data-direction={positioned.direction} style={{ height: positioned.height }} onPointerDown={startPan} onPointerMove={movePan} onPointerUp={endPan} onPointerCancel={() => { panDragRef.current = null; }}>
@@ -139,7 +139,7 @@ export function AccountMapCanvas({
         onTransient={(id) => { if (dismissedPreviewId.current !== id) { dismissedPreviewId.current = null; onTransient(id); } }}
         onBlur={(id) => { if (dismissedPreviewId.current === id) dismissedPreviewId.current = null; onBlur(id); }}
         onInvoke={(id) => { dismissedPreviewId.current = null; onInvoke(id); }} />
-      {activeId === null ? null : <AccountFlowDetail className={pinned ? 'is-pinned' : 'is-transient'} accountLabel={accountLabel} groups={viewModel.detailGroups} interactive={pinned} onEditLocation={selectedAccountId === null ? undefined : () => onEditLocation?.(selectedAccountId)} onAddTransfer={selectedAccountId === null ? undefined : () => onAddTransfer?.(selectedAccountId)} onEditTransfer={onEditTransfer} />}
+      {activeId === null ? null : <AccountFlowDetail className={pinned ? 'is-pinned' : 'is-transient'} accountLabel={accountLabel} groups={viewModel.detailGroups} interactive={pinned} onEditLocation={selectedAccountId === null ? undefined : (trigger) => onEditLocation?.(selectedAccountId, trigger)} onAddTransfer={selectedAccountId === null ? undefined : () => onAddTransfer?.(selectedAccountId)} onEditTransfer={onEditTransfer} />}
     </div>
     <FlowLinearTable rows={viewModel.tableRows} />
   </section>;

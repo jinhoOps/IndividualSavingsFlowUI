@@ -84,6 +84,7 @@ describe("AccountTransferEditor", () => {
     });
 
     expect(screen.getByRole("textbox", { name: "월 이체 금액" })).toBeVisible();
+    expect(screen.getByRole("textbox", { name: "월 이체 금액" })).toHaveAccessibleDescription("1원 이상의 정해진 금액을 입력해 주세요.");
     expect(screen.getByRole("button", { name: "저장" })).toBeDisabled();
     fireEvent.change(screen.getByRole("textbox", { name: "월 이체 금액" }), {
       target: { value: "500000", selectionStart: 6 },

@@ -428,7 +428,7 @@
 }
 
 .journey-launcher__overflow-link small {
-  color: var(--tone-primary);
+  color: var(--tone-action);
   font-size: 0.68rem;
   white-space: nowrap;
 }

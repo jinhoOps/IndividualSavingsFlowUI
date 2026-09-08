@@ -84,7 +84,7 @@ export function SetupFlow({
   const stepIndex = steps.indexOf(step);
   const previousStep = steps[stepIndex - 1];
   const nextStep = steps[stepIndex + 1];
-  const setupSurfaceClassName = 'setup-flow-surface shadow-float';
+  const setupSurfaceClassName = 'setup-flow-surface';
   const incomeError = findIssue(issues, 'monthlyNetIncomeWon')
     ?? (incomeSubmittedEmpty ? issueMessage('income_required') : undefined);
   const stepMotionRef = useAnimeScope<HTMLFormElement>(({ root, reducedMotion }) => {
@@ -302,9 +302,9 @@ export function SetupFlow({
 function WelcomeStep() {
   return (
     <>
-      <p className="m-0 text-sm font-black tracking-[0.18em] text-primary">MONTHLY FLOW</p>
+      <p className="main-eyebrow">자금 흐름</p>
       <h1
-        className="m-0 max-w-xl text-4xl font-bold leading-tight tracking-tight text-slate-950 sm:text-5xl"
+        className="main-page-title max-w-xl"
         data-setup-heading
         tabIndex={-1}
         data-welcome-motion

@@ -4,6 +4,34 @@ const storageKey = 'isf-workspace-v4';
 const now = Date.UTC(2026, 8, 5, 6);
 test.use({ hasTouch: true });
 
+test('returns focus to the selected account action after closing and saving its editor', async ({ page }) => {
+  await seed(page, workspace());
+  for (const viewport of [{ width: 390, height: 844 }, { width: 768, height: 900 }, { width: 1280, height: 900 }]) {
+    await page.setViewportSize(viewport);
+    await page.goto('apps/account-map/');
+    await page.getByRole('button', { name: /계좌 급여통장/ }).tap();
+    const detail = page.getByLabel('급여통장 월 계획 흐름');
+    const trigger = detail.getByRole('button', { name: '계좌 정보 편집' });
+    await trigger.tap();
+    const dialog = page.getByRole('dialog', { name: '급여통장 편집' });
+    await expect(dialog.getByRole('textbox', { name: '표시 이름' })).toHaveValue('급여통장');
+    await page.keyboard.press('Escape');
+    await expect(dialog).not.toBeVisible();
+    await expect(trigger).toBeFocused();
+
+    await trigger.press('Enter');
+    await page.getByRole('dialog').getByRole('button', { name: '취소', exact: true }).click();
+    await expect(page.getByRole('dialog')).not.toBeVisible();
+    await expect(trigger).toBeFocused();
+    await trigger.press('Enter');
+    await page.getByRole('dialog').getByRole('textbox', { name: '표시 이름' }).fill('주 수입 통장');
+    await page.getByRole('dialog').getByRole('button', { name: '저장', exact: true }).click();
+    await expect(page.getByRole('dialog')).not.toBeVisible();
+    await expect(page.getByLabel('주 수입 통장 월 계획 흐름').getByRole('button', { name: '계좌 정보 편집' })).toBeFocused();
+    expect(await storedProtectedSlices(page)).toEqual({ main: workspace().main, simulation: workspace().simulation, portfolio: workspace().portfolio });
+  }
+});
+
 test('repairs completed purpose allocations and explicitly confirms Main at supported widths', async ({ page }) => {
   const value = staleWorkspace();
   value.main.applied = { ...main, monthlyLivingWon: 800_000 };
@@ -246,7 +274,7 @@ test('uses hover, keyboard pinning, and explicit actions for the account and typ
   const detail = page.getByLabel('급여통장 월 계획 흐름');
   await expect(detail).toContainText('다른 계좌로 보내는 흐름');
   await detail.getByRole('button', { name: '계좌 정보 편집' }).click();
-  await expect(page.getByRole('dialog', { name: '급여통장 상세' })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: '급여통장 편집' })).toBeVisible();
   await page.getByRole('button', { name: '닫기' }).click();
 
   await detail.getByRole('button', { name: '흐름 편집' }).first().click();
