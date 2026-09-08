@@ -288,10 +288,11 @@ Simulation, Portfolio와 Account Map은 workspace 안의 최신 Main을 읽기 �
 
 ### 계정 저장 rollout gate
 
-2026-09-07 승인된 [설계](../../../../superpowers/specs/2026-09-07-supabase-account-workspace-design.md)에 따라 로그인 후 편집·저장, 계정당 workspace 하나를 구현한다. 2026-09-08 승인된 임시 이메일·비밀번호 경로는 같은 계약에 포함한다. mock 인증 E2E와 실제 로컬 PostgreSQL 검증은 실제 임시 계정 로그인·Google provider 왕복이나 운영 적용 증거를 대신하지 않는다. 2026-09-07 검증 기록은 당시 범위의 증거로 유지한다.
+2026-09-07 승인된 [설계](../../../../superpowers/specs/2026-09-07-supabase-account-workspace-design.md)에 따라 로그인 후 편집·저장, 계정당 workspace 하나를 구현한다. 2026-09-08 승인된 임시 이메일·비밀번호 경로는 같은 계약에 포함한다. 사용자가 직접 적용을 승인한 뒤 운영 DB migration·실제 계정 준비와 두 브라우저 저장 검증을 완료했다. 결과와 제한은 [운영 적용 기록](../../../../superpowers/evidence/2026-09-08-supabase-live-setup.md)을 따른다. mock 인증 E2E와 실제 로컬 PostgreSQL 검증은 실제 임시 계정 로그인·Google provider 왕복이나 운영 적용 증거를 대신하지 않는다. 2026-09-07 검증 기록은 당시 범위의 증거로 유지한다.
 
-- [ ] 운영 DB 사전 권한/버전 확인과 migration 적용
-- [ ] 임시 계정 사전 준비, 실제 비밀번호 로그인·만료 후 재인증과 두 브라우저 계정 저장 확인
+- [x] 운영 DB 사전 권한/버전 확인과 migration 적용, 실제 REST/RPC 권한·revision 검증
+- [x] 임시 계정 사전 준비·실제 비밀번호 로그인·로그아웃, 독립된 두 브라우저 계정 저장·focus 최신화·새로고침 확인
+- [ ] 실제 운영 세션 만료 후 재인증 확인(mock E2E와 구분)
 - [ ] Google provider, 정확한 callback allowlist와 공개 build 환경변수 등록
 - [ ] 실제 Google 왕복과 임시 로그인 전후 동일 UID·workspace 유지 확인
 - [ ] 사용할 인증 경로의 실제 로그인, 운영 base 직접 진입·새로고침, 두 기기와 다중 탭 검증 후 배포

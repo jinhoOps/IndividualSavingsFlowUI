@@ -1,14 +1,16 @@
 # Supabase 계정 저장 운영 안내
 
-이 브랜치는 정적 앱·migration·로컬 검증을 구현하며, 2026-09-08 사용자 요청으로 임시 이메일·비밀번호 로그인 경로를 추가한다. 운영 Supabase 프로젝트 변경, 실제 임시 계정 생성·로그인, Google 로그인 왕복과 Pages 배포는 아직 수행하지 않았다. 데이터 계약은 [승인 설계](superpowers/specs/2026-09-07-supabase-account-workspace-design.md), 기존 계정 저장 개발 순서는 [실행 계획](superpowers/plans/2026-09-07-supabase-account-workspace.md)을 따른다. [2026-09-07 검증 기록](superpowers/evidence/2026-09-07-supabase-account-workspace.md)은 당시 구현의 증거이며 이후 임시 로그인 구현·운영 검증의 증거로 사용하지 않는다.
+2026-09-08 사용자 요청에 따라 정적 앱의 임시 이메일·비밀번호 로그인 구현에 이어 운영 Supabase 프로젝트에 세 DB migration을 적용하고 `okho04@gmail.com` 계정을 준비했다. 실제 비밀번호 로그인, 저장 RPC·충돌·권한 격리와 같은 계정의 두 브라우저 저장·갱신을 확인했다. Google 로그인 왕복과 Pages 배포는 아직 수행하지 않았다. 최신 상태와 정확한 검증 범위는 [운영 적용 기록](superpowers/evidence/2026-09-08-supabase-live-setup.md)을 따른다.
 
-2026-09-08 공개 `/auth/v1/settings`의 읽기 전용 확인 결과는 `email=true`, `google=false`, `disable_signup=false`, `mailer_autoconfirm=false`다. Email은 활성화되어 있으나 확인 절차가 필요한 상태다. 별도 `user_workspaces?select=user_id&limit=0` 조회는 HTTP 404 / `PGRST205`(schema cache에 테이블 없음)를 반환했으므로 migration 적용 상태도 확인해야 한다. 현재 연결된 관리자 도구·환경 인증정보·관리자 브라우저 세션은 없어 계정 생성과 DB 적용은 수행하지 않았다.
+데이터 계약은 [승인 설계](superpowers/specs/2026-09-07-supabase-account-workspace-design.md), 기존 계정 저장 개발 순서는 [실행 계획](superpowers/plans/2026-09-07-supabase-account-workspace.md)을 따른다. [2026-09-07 검증 기록](superpowers/evidence/2026-09-07-supabase-account-workspace.md)과 [임시 로그인 구현 기록](superpowers/evidence/2026-09-08-temporary-password-login.md)은 각각 당시 범위의 증거로 유지한다.
+
+2026-09-08 공개 `/auth/v1/settings`의 읽기 전용 확인 결과는 `email=true`, `google=false`, `disable_signup=false`, `mailer_autoconfirm=false`였다. 전역 이메일 확인 설정을 바꾸지 않고 대상 계정만 확인 완료 상태로 준비했다. 적용 전 workspace 조회의 HTTP 404 / `PGRST205`는 테이블 생성 후 해소됐으며, 실제 인증 세션의 본인 행 조회는 HTTP 200과 빈 결과를 반환했다. 최초 가져오기/새 시작 전까지 대상 계정의 금융 workspace는 생성하지 않는다.
 
 ## 1. 비밀정보와 DB 사전 확인
 
-대화에 입력한 문자열이 실제 DB 비밀번호였다면 먼저 교체한다. DB 비밀번호·연결 문자열 인증정보·service-role/secret key는 소스, `.env`의 `VITE_*`, GitHub 공개 변수나 정적 빌드에 넣지 않는다.
+사용자는 2026-09-08 전달한 DB 비밀번호로 직접 운영 적용하는 것을 승인했고 이후 교체할 예정이다. 실제 값은 문서·소스·환경변수 파일에 기록하지 않았으며 운영자는 적용 후 교체한다. DB 비밀번호·연결 문자열 인증정보·service-role/secret key는 `VITE_*`, GitHub 공개 변수나 정적 빌드에 넣지 않는다.
 
-운영자는 프로젝트 백업 후 SQL Editor의 migration 실행 역할로 아래 읽기 전용 확인을 수행한다. 로컬 검증은 PostgreSQL 17과 `CREATEROLE`을 가진 비-superuser migration 역할에서 수행했다. 다른 버전·권한에서는 먼저 동일 검증을 재현한다.
+후속 운영 변경 전에는 프로젝트 백업과 아래 읽기 전용 확인을 수행한다. 이번 적용 전 점검에서는 제품 테이블과 기존 migration 이력이 없었으며 PostgreSQL 17.6, `CREATEROLE`을 가진 비-superuser `postgres` 역할, 필요한 ICU collation과 hash 함수를 확인했다. 다른 버전·권한에서는 먼저 동일 검증을 재현한다.
 
 ```sql
 show server_version;
@@ -17,10 +19,15 @@ select collname from pg_collation where collname = 'en-US-x-icu';
 select to_regprocedure('pg_catalog.sha256(bytea)');
 ```
 
+이번 작업 환경은 direct DB의 IPv6 경로에 연결할 수 없어 서울 리전의 session pooler를 사용했다. 호스트는 `aws-0-ap-northeast-2.pooler.supabase.com`, 포트는 `5432`, database는 `postgres`, user는 `postgres.fqongmuyfmxjqmefekbg`다. [Supabase 공식 Root CA](https://supabase-downloads.s3-ap-southeast-1.amazonaws.com/prod/ssl/prod-ca-2021.crt)를 신뢰하도록 설정하고 인증서·호스트명 검증을 유지했다. TLS 검증을 끄거나 프로젝트 SSL 정책을 낮추지 않는다. 다른 프로젝트는 Dashboard에 표시된 해당 프로젝트의 pooler 주소를 사용한다. [연결 방식 안내](https://supabase.com/docs/guides/database/connecting-to-postgres), [SSL 안내](https://supabase.com/docs/guides/platform/ssl-enforcement)
+
 전용 `NOLOGIN` 함수 역할 생성·소유권 이전 권한, ICU collation과 hash 함수 존재를 확인한다. 그다음 아래 migration을 순서대로 적용한다. 적용 권한 오류를 해결하려고 authenticated/anon의 테이블 쓰기나 private schema 접근을 열지 않는다.
 
 1. [workspace validation](../supabase/migrations/202609070001_workspace_validation.sql)
 2. [account workspaces](../supabase/migrations/202609070002_account_workspaces.sql)
+3. [hosted request identity compatibility](../supabase/migrations/202609080001_workspace_request_identity.sql)
+
+세 번째 migration은 hosted `postgres`가 관리형 `auth` schema의 `USAGE`를 전용 함수 역할에 위임할 수 없는 환경을 지원한다. 전용 역할은 PostgREST가 인증한 요청 claim에서 UID를 읽으며, authenticated의 본인 행 SELECT는 기존 `auth.uid()` 정책을 유지한다. anon/authenticated에게 private helper 실행이나 직접 테이블 쓰기를 허용하지 않는다.
 
 이 migration은 기존 브라우저 원본을 읽거나 지우지 않는다. 계정별 workspace는 최초 사용자 선택 전까지 생성하지 않는다. 성공 receipt는 최소 7일 보관하며 현재 자동 정리는 없다. 보관량을 관찰한 뒤 오래된 receipt만 정리하는 운영 작업을 별도로 등록한다.
 
@@ -30,12 +37,16 @@ select to_regprocedure('pg_catalog.sha256(bytea)');
 
 Google 설정 전 운영 대상 계정은 `okho04@gmail.com`이다. 앱의 로그인 화면과 세션 만료 후 재로그인 화면에서 이메일·비밀번호 폼을 사용한다. 폼은 실제 `signInWithPassword` 세션을 발급받으며 기존 `auth.users.id`·RLS·workspace 저장 계약을 따른다. Google 인증을 완료한 것으로 표시하거나 회원가입·계정 자동 생성을 수행하지 않는다. [Supabase 비밀번호 로그인 안내](https://supabase.com/docs/guides/auth/passwords)
 
-운영자는 다음 순서로 계정을 준비한다.
+대상 계정은 실제 Supabase Auth 사용자로 생성됐고 비밀번호 로그인과 사용자 조회가 성공했다. Google provider identity나 임의 JWT를 만들지 않았다. 사용자의 금융 데이터는 작성하지 않았다.
+
+후속 계정 준비의 기본 경로는 다음 관리자 API다.
 
 1. 관리자 권한으로 대상 이메일의 기존 사용자를 확인한다. 기존 사용자가 있으면 해당 UID와 workspace를 보존하며 비밀번호를 설정한다. 사용자를 삭제·재생성하지 않는다.
 2. 신규 사용자일 때만 관리자 `auth.admin.createUser`에 대상 이메일, 비밀번호와 `email_confirm: true`를 지정한다. 기존 계정의 비밀번호 설정에는 `auth.admin.updateUserById`를 사용한다. 이 작업은 신뢰할 수 있는 관리자 환경에서 수행하고 관리자 키를 정적 앱에 넣지 않는다. [createUser](https://supabase.com/docs/reference/javascript/auth-admin-createuser), [updateUserById](https://supabase.com/docs/reference/javascript/auth-admin-updateuserbyid)
 3. 임시 비밀번호는 사용자 요청에 따라 `admin`을 포함한 입력하기 쉬운 긴 조합으로 준비한다. 실제 값은 문서·소스·공개 빌드 변수·브라우저 저장소에 기록하지 않고 로그인 폼에서 직접 입력한다. 전역 이메일 확인 설정을 끄거나 공개 회원가입을 추가할 필요는 없다.
 4. 1절의 DB 사전 확인·migration 적용 후 실제 비밀번호 로그인, 같은 계정의 두 브라우저 조회·저장과 로그아웃·만료 후 재로그인을 확인한다. 계정 생성만으로 workspace 행을 만들지 않으며 최초 가져오기/새 시작은 사용자 선택을 유지한다.
+
+이번 운영 적용은 사용자가 제공한 DB 권한만 있고 Auth Admin API용 secret/service-role key가 없어, 현재 `auth.users`·`auth.identities` 컬럼과 생성 컬럼·trigger·기존 이메일 유무를 먼저 확인한 일회성 transaction으로 계정을 준비했다. 확인한 Auth schema migration은 `20260625000000`이며 bcrypt 비밀번호 hash와 email identity를 저장했다. 평문 비밀번호는 바인딩된 작업 입력으로만 사용했고 파일에 남기지 않았다. 이 경로는 버전 의존적인 운영 예외이며 일반적인 계정 생성 API나 앱 runtime으로 재사용하지 않는다. 기존 계정을 삭제·재생성하거나 전역 이메일 확인을 끄지 않았다. [운영 적용 기록](superpowers/evidence/2026-09-08-supabase-live-setup.md), [Auth identity 모델](https://supabase.com/docs/guides/auth/identities)
 
 ### 2.2. Google 설정과 계정 유지
 
@@ -80,13 +91,17 @@ E2E의 `cloud` 프로젝트는 실제 production entry와 Supabase SDK를 사용
 
 ## 5. 운영 rollout 확인
 
-다음 담당자는 프로젝트 운영자다. 1절부터 시작해 아래를 완료한 뒤 배포를 승인한다.
+운영 DB와 임시 계정 사전 준비는 적용했다. 다음은 실제 프로젝트에서 확인한 범위이며, Google 전환과 Pages 배포의 다음 담당자는 프로젝트 운영자다.
 
-- 테스트 계정 두 개와 anon으로 실제 REST/RPC의 본인 행 조회, 타인 접근 차단, 직접 쓰기 금지를 확인한다.
-- 임시 경로는 사전 준비한 대상 계정으로 실제 비밀번호 로그인·오류·세션 만료 후 재로그인을 확인한다. 이 결과를 Google 실제 왕복 검증으로 기록하지 않는다.
-- Google 전환 시 실제 왕복, verifier 유실/재시도, callback 직접 새로고침과 네 앱의 배포 base, 임시 로그인과 동일 UID·workspace 유지를 확인한다.
-- 두 브라우저에서 같은 계정 저장·충돌·재시도·30초/focus 갱신, 다른 계정 격리와 다중 탭 로그아웃을 확인한다.
-- 기존 데이터는 자동 업로드하지 않는다. 처음 가져오기/새 시작을 선택하고, 서버가 이미 있으면 백업 후 전체 교체를 명시적으로 확인한다.
-- 장애 시 계정 편집을 중지하고 서버 백업·미전송 복구 파일을 제공한다. 기존 로컬 writable 배포로 무조건 되돌려 두 원본을 만들지 않는다.
+- [x] 운영 DB 사전 점검, 세 migration 적용과 원본 hash/이력 일치.
+- [x] 실제 두 사용자 세션과 anon으로 본인 행 조회, 타인 행 비노출, 직접 INSERT/UPDATE/DELETE 및 익명 RPC 금지.
+- [x] 여섯 저장 RPC, stale revision 충돌, 같은 mutation 재시도, 동시 저장의 한 건 성공·한 건 충돌과 invalid rollback.
+- [x] 두 독립 Chromium 브라우저 문맥의 같은 테스트 계정으로 실제 앱 저장·focus 갱신·reload 및 네 제품 진입.
+- [x] 실제 대상 계정의 비밀번호 폼 로그인, 최초 계획 선택·이메일 표시와 로그아웃. 대상 계정의 금융 workspace는 아직 없으며 테스트 계정·workspace·receipt는 정리 완료.
+- [ ] 실제 원격 세션 만료 후 재인증, 30초 polling과 다중 탭 로그아웃의 운영 배포 검증. 해당 흐름의 로컬 fixture E2E와 실제 원격 검증을 혼동하지 않는다.
+- [ ] Google provider 설정·실제 왕복, verifier 유실/재시도, callback 직접 새로고침과 임시 로그인 전후 동일 UID·workspace 유지.
+- [ ] GitHub Pages 공개 변수 등록·배포와 운영 URL에서 네 앱의 base 직접 진입·새로고침.
+
+기존 데이터는 자동 업로드하지 않는다. 처음 가져오기/새 시작을 선택하고, 서버가 이미 있으면 백업 후 전체 교체를 명시적으로 확인한다. 장애 시 계정 편집을 중지하고 서버 백업·미전송 복구 파일을 제공한다. 기존 로컬 writable 배포로 무조건 되돌려 두 원본을 만들지 않는다.
 
 정상 백업에는 서버 확정 workspace만 포함한다. 계정별 미전송 복구 기록은 탭별로 분리해 다른 탭의 조회가 덮어쓰지 않도록 하며, logout은 해당 계정의 모든 탭 기록을 명시적 확인 후 지운다. 원래의 비계정 브라우저 이전 원본은 남긴다.

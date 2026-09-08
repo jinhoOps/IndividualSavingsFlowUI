@@ -1,8 +1,8 @@
 # Supabase 계정별 Workspace 저장 설계
 
-상태: 구현 승인 및 로컬 구현 — 2026-09-07 사용자가 이 설계에 따른 개발과 커밋을 요청했다. 운영 DB 적용·Google 실제 왕복·배포는 아직 미수행이며 [운영 안내](../../supabase-account-setup.md)의 rollout gate로 구분한다.
+상태: 구현 및 운영 DB 적용 완료 — 2026-09-07 사용자가 이 설계에 따른 개발과 커밋을 요청했고, 2026-09-08 Supabase 직접 적용을 승인했다. 실제 임시 계정 로그인·두 브라우저 저장과 계정 격리를 검증했다. Google 실제 왕복·Pages 배포는 아직 미수행이며 [운영 안내](../../supabase-account-setup.md)의 rollout gate로 구분한다.
 작성일: 2026-09-07
-추가 승인: 2026-09-08 — Google 설정을 기다리는 동안 사용할 임시 이메일·비밀번호 로그인. 기존 계정별 저장·권한 계약을 유지하며 실제 계정 준비는 운영 작업으로 구분한다.
+추가 승인: 2026-09-08 — Google 설정을 기다리는 동안 사용할 임시 이메일·비밀번호 로그인과 Supabase 직접 적용. 기존 계정별 저장·권한 계약을 유지하며 실제 계정 준비·검증 결과는 [운영 적용 기록](../evidence/2026-09-08-supabase-live-setup.md)에 구분한다.
 
 ## 1. 목표와 범위
 
@@ -175,7 +175,7 @@ Supabase 장애 중에도 기존 브라우저 원본과 다운로드한 백업�
 
 Google Client ID/Secret은 Supabase provider 설정에 등록한다. DB 연결 정보는 신뢰할 수 있는 운영 환경의 migration·승인된 계정 준비에만 사용한다. 대화로 전달된 비밀번호를 문서·소스·로그에 복사하지 않는다. 2026-09-08 사용자는 전달한 DB 비밀번호로 이번 적용을 승인했으며 적용 후 교체하기로 했다.
 
-[Pages workflow](../../../.github/workflows/deploy.yml)의 build 단계에 공개 환경변수를 연결한다. 누락/오타 시 로컬 모드로 조용히 fallback하지 않고 설정 오류로 실패시킨다. 운영 프로젝트와 별도의 테스트 프로젝트 또는 로컬 Supabase를 사용해 fixture가 운영 데이터를 변경하지 않도록 한다.
+[Pages workflow](../../../.github/workflows/deploy.yml)의 build 단계에 공개 환경변수를 연결한다. 누락/오타 시 로컬 모드로 조용히 fallback하지 않고 설정 오류로 실패시킨다. 일반 회귀 검증은 운영 프로젝트와 별도의 테스트 프로젝트 또는 로컬 Supabase를 사용한다. 2026-09-08 승인된 실제 운영 연결 smoke는 새 일회성 검증 계정에만 fixture를 확정 저장하고 종료 시 계정·workspace·receipt를 정리했다. 실제 사용자의 금융 계획은 확정 생성·변경하지 않았다.
 
 서비스워커는 HTML/JS/CSS 등 정적 shell만 캐시한다. Supabase Auth/Data API 요청·응답과 code가 포함된 callback navigation은 runtime cache에서 제외한다. callback HTML의 정적 shell precache 여부와 무관하게 인증 URL/토큰 응답을 저장하지 않도록 네트워크 검증한다. callback에서 code를 제거하기 전 분석·오류 도구에 전체 URL을 전달하지 않는다. 인증 토큰과 금융 payload는 console/원격 로그에 기록하지 않는다.
 
@@ -204,6 +204,6 @@ Google Client ID/Secret은 Supabase provider 설정에 등록한다. DB 연결 �
 
 ## 12. 현재 설계의 검증 범위와 남은 설정
 
-현재 코드·PRD·README·DESIGN 및 Supabase 공식 문서를 대조한 계약이다. 2026-09-07 로컬 검증 기록은 당시 범위의 증거로 유지한다. 2026-09-08에는 공개 Auth 설정만 읽기 전용으로 확인했으며 Email은 활성화, Google은 비활성화 상태였다. 실제 임시 계정은 아직 생성하지 않았고 운영 DB migration·RLS·테이블 상태도 확인하지 않았다. SQL 권한·validator parity는 일회용 PostgreSQL 17 컨테이너에서 검증하고, Auth/Data HTTP 경계를 mock한 E2E와 구분한다.
+현재 코드·PRD·README·DESIGN 및 Supabase 공식 문서를 대조한 계약이다. 2026-09-07 로컬 검증 기록은 당시 범위의 증거로 유지한다. 2026-09-08에는 운영 DB migration·RLS와 임시 계정 준비·실제 비밀번호 로그인을 완료했다. 실제 Supabase의 validator 123개, 여섯 RPC·계정 격리·동시성 및 두 브라우저의 저장·focus 갱신·새로고침을 확인했다. 결과는 [운영 적용 기록](../evidence/2026-09-08-supabase-live-setup.md)에 있으며 일회용 PostgreSQL 17 검증 및 Auth/Data HTTP 경계를 mock한 E2E와 구분한다. Google provider는 비활성화 상태다.
 
-운영자가 완료할 작업은 DB 사전 확인/migration, 임시 계정 사전 준비·실제 비밀번호 로그인 확인, 공개 build 변수 설정이며 Google 전환 시 OAuth Client ID/Secret 등록·실제 provider 왕복과 UID 유지 검증을 수행한다. 정확한 URL과 순서는 [운영 안내](../../supabase-account-setup.md)를 따른다. 제품은 로그인 필수이며 비로그인 상시 편집을 선택하면 guest/cloud 전환 규칙을 별도 승인해야 한다.
+운영자가 완료할 후속 작업은 실제 세션 만료·재인증과 배포 환경 검증, Pages 공개 build 변수 설정·배포이며 Google 전환 시 OAuth Client ID/Secret 등록·실제 provider 왕복과 UID 유지 검증을 수행한다. 정확한 URL과 순서는 [운영 안내](../../supabase-account-setup.md)를 따른다. 제품은 로그인 필수이며 비로그인 상시 편집을 선택하면 guest/cloud 전환 규칙을 별도 승인해야 한다.

@@ -1,6 +1,6 @@
 # IndividualSavings Flow UIUX
 
-개인 재무 흐름을 입력하고 장기 투자 전략과 실행 계획으로 연결하는 정적 웹 앱입니다. 이 브랜치는 Google 로그인과 Supabase 계정별 저장을 구현합니다. 2026-09-08 사용자 요청으로 Google 설정 전에도 사용할 수 있는 임시 이메일·비밀번호 로그인 경로를 추가합니다. 운영 적용 전 설정과 실제 계정 준비 상태는 [계정 저장 운영 안내](docs/supabase-account-setup.md)를 따릅니다.
+개인 재무 흐름을 입력하고 장기 투자 전략과 실행 계획으로 연결하는 정적 웹 앱입니다. 이 브랜치는 Google 로그인과 Supabase 계정별 저장을 구현합니다. 2026-09-08 사용자 요청으로 운영 DB 적용과 임시 이메일·비밀번호 계정 준비를 완료하고, 실제 로그인·두 브라우저 저장을 검증했습니다. Google provider 설정과 이 변경의 Pages 배포는 아직 수행하지 않았습니다. 현재 상태와 후속 설정은 [계정 저장 운영 안내](docs/supabase-account-setup.md)를 따릅니다.
 
 현재 지원 제품은 Main, Simulation, Portfolio와 Account Map입니다. 네 앱은 shared workspace를 사용합니다.
 
