@@ -82,8 +82,8 @@ assert.equal(after.revision, before.revision);
 
 **Files:** 운영 검증 기록과 runbook. 실제 DB 작업은 root 단독 수행.
 
-- [ ] TLS 검증 연결로 기존 migration hash·사용자 행·schema·검증 가능 여부를 점검한다. payload나 credentials를 로그에 출력하지 않는다.
-- [ ] 검증된 202609080002 SQL만 transaction으로 적용하고 history·schema reload·행/receipt/before-image 보존을 확인한다.
-- [ ] 새 테스트 계정과 두 브라우저로 v4 transfer 저장/reload·Main overlay·CAS·RLS·old RPC 차단을 검증하고 테스트 데이터만 정리한다.
-- [ ] main이 새로 움직였으면 다시 통합·검증한다. 검증된 branch를 clean local main에 fast-forward/명시적 merge하고 결과 tree를 확인한다.
-- [ ] 운영·Git 결과와 남은 Google/Pages 범위, 검증 명령·결과를 기록해 인계한다.
+- [x] TLS 검증 연결로 기존 migration hash·사용자 행·schema·검증 가능 여부를 점검한다. payload나 credentials를 로그에 출력하지 않는다.
+- [x] 검증된 202609080002 SQL만 transaction으로 적용하고 history·schema reload·행/receipt/before-image 보존을 확인한다.
+- [x] 새 테스트 계정과 두 브라우저로 v4 transfer 저장/reload·Main overlay·CAS·RLS·old RPC 차단을 검증하고 테스트 데이터만 정리한다.
+- [x] main이 새로 움직였으면 다시 통합·검증한다. 검증된 branch를 clean local main에 fast-forward/명시적 merge하고 결과 tree를 확인한다.
+- [x] 운영·Git 결과와 남은 Google/Pages 범위, 검증 명령·결과를 기록해 인계한다.

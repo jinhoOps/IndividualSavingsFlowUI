@@ -289,6 +289,8 @@ Simulation, Portfolio와 Account Map은 workspace 안의 최신 Main을 읽기 �
 
 최신 main의 workspace v4·Account Map 계획 이체·Main overlay와의 통합은 [v4 통합 설계](../../../../superpowers/specs/2026-09-08-supabase-workspace-v4-integration-design.md)를 따른다. v4 필수 RPC와 세대가 분리된 계정 캐시를 사용하며 구 요청의 자동 재전송을 금지한다. 최초 v3 운영 적용 증거와 이후 v4 업그레이드 증거는 구분한다.
 
+2026-09-08 최신 main UI까지 통합한 v4 코드를 운영 DB에 적용하고 실제 fixed/sweep·Main overlay·두 브라우저 동기화를 검증한 뒤 로컬 main에 병합했다. 코드·운영·최종 회귀 증거와 비차단 후속 사항은 [v4 통합 기록](../../../../superpowers/evidence/2026-09-08-supabase-workspace-v4-integration.md)을 따른다. Git push·Pages 배포·Google provider 설정은 이 작업에 포함하지 않았다.
+
 2026-09-07 승인된 [설계](../../../../superpowers/specs/2026-09-07-supabase-account-workspace-design.md)에 따라 로그인 후 편집·저장, 계정당 workspace 하나를 구현한다. 2026-09-08 승인된 임시 이메일·비밀번호 경로는 같은 계약에 포함한다. 사용자가 직접 적용을 승인한 뒤 운영 DB migration·실제 계정 준비와 두 브라우저 저장 검증을 완료했다. 결과와 제한은 [운영 적용 기록](../../../../superpowers/evidence/2026-09-08-supabase-live-setup.md)을 따른다. mock 인증 E2E와 실제 로컬 PostgreSQL 검증은 실제 임시 계정 로그인·Google provider 왕복이나 운영 적용 증거를 대신하지 않는다. 2026-09-07 검증 기록은 당시 범위의 증거로 유지한다.
 
 - [x] 운영 DB 사전 권한/버전 확인과 migration 적용, 실제 REST/RPC 권한·revision 검증

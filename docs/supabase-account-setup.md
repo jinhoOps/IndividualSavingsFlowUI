@@ -1,6 +1,6 @@
 # Supabase 계정 저장 운영 안내
 
-2026-09-08 사용자 요청에 따라 정적 앱의 임시 이메일·비밀번호 로그인 구현에 이어 운영 Supabase 프로젝트에 세 DB migration을 적용하고 `okho04@gmail.com` 계정을 준비했다. 실제 비밀번호 로그인, 저장 RPC·충돌·권한 격리와 같은 계정의 두 브라우저 저장·갱신을 확인했다. Google 로그인 왕복과 Pages 배포는 아직 수행하지 않았다. 최신 상태와 정확한 검증 범위는 [운영 적용 기록](superpowers/evidence/2026-09-08-supabase-live-setup.md)을 따른다.
+2026-09-08 사용자 요청에 따라 정적 앱의 임시 이메일·비밀번호 로그인과 `okho04@gmail.com` 계정을 준비하고, 운영 Supabase 프로젝트에 workspace v4까지 네 DB migration을 적용했다. 최신 main UI와 통합한 코드의 실제 로그인·저장·충돌·권한 격리, 계획 이체와 Main overlay의 두 브라우저 저장·갱신을 확인하고 로컬 main에 병합했다. Google 로그인 왕복·Git push·Pages 배포는 수행하지 않았다. 최신 상태와 정확한 검증 범위는 [v4 통합 기록](superpowers/evidence/2026-09-08-supabase-workspace-v4-integration.md)을 따른다.
 
 데이터 계약은 [승인 설계](superpowers/specs/2026-09-07-supabase-account-workspace-design.md), 기존 계정 저장 개발 순서는 [실행 계획](superpowers/plans/2026-09-07-supabase-account-workspace.md)을 따른다. [2026-09-07 검증 기록](superpowers/evidence/2026-09-07-supabase-account-workspace.md)과 [임시 로그인 구현 기록](superpowers/evidence/2026-09-08-temporary-password-login.md)은 각각 당시 범위의 증거로 유지한다.
 
@@ -94,13 +94,14 @@ node scripts/test-account-pwa.mjs
 
 DB 스크립트는 Docker의 일회용 PostgreSQL 17 컨테이너만 사용하고 종료 시 해당 컨테이너를 정리한다. 운영 연결 문자열을 받지 않는다. TypeScript/SQL의 동일한 170개 fixture와 v3→v4 원자적 이전·구 RPC 차단·RLS·동시성·중복 receipt·rollback·계정 삭제 cascade를 검증한다. PWA 스크립트는 일회용 정적 production build를 16437 포트에서 띄워 실제 서비스워커의 캐시 제외와 오프라인 Main을 검증한다. 현재 결과와 제한은 [v4 통합 기록](superpowers/evidence/2026-09-08-supabase-workspace-v4-integration.md)을 따른다.
 
-E2E의 `cloud` 프로젝트는 실제 production entry와 Supabase SDK를 사용하되 HTTP 경계를 테스트 서버 fixture로 대체한다. `chromium`은 기존 제품 계산/UI/로컬 원본 호환성을 검증하는 테스트 전용 entry다. production에 인증 우회 설정은 없다. Node 25 이상에서 jsdom 저장소와 충돌하면 단위 테스트 앞에 `NODE_OPTIONS=--no-experimental-webstorage`를 지정한다. 이후 추가된 임시 로그인과 최종 전체 회귀 결과는 [2026-09-08 검증 기록](superpowers/evidence/2026-09-08-temporary-password-login.md)을 따른다.
+E2E의 `cloud` 프로젝트는 실제 production entry와 Supabase SDK를 사용하되 HTTP 경계를 테스트 서버 fixture로 대체한다. `chromium`은 기존 제품 계산/UI/로컬 원본 호환성을 검증하는 테스트 전용 entry다. production에 인증 우회 설정은 없다. Node 25 이상에서 jsdom 저장소와 충돌하면 단위 테스트 앞에 `NODE_OPTIONS=--no-experimental-webstorage`를 지정한다. 임시 로그인 당시 기록과 최종 v4 전체 회귀 결과는 구분하며, 최신 결과는 [v4 통합 기록](superpowers/evidence/2026-09-08-supabase-workspace-v4-integration.md)을 따른다.
 
 ## 5. 운영 rollout 확인
 
 운영 DB와 임시 계정 사전 준비는 적용했다. 다음은 실제 프로젝트에서 확인한 범위이며, Google 전환과 Pages 배포의 다음 담당자는 프로젝트 운영자다.
 
-- [x] 운영 DB 사전 점검, 세 migration 적용과 원본 hash/이력 일치.
+- [x] 운영 DB 사전 점검, v4까지 네 migration 적용과 원본 hash/이력 일치.
+- [x] v4 required protocol·구 RPC 차단, fixed/sweep 저장·reload와 Journey Main-only 저장 및 두 브라우저 동기화.
 - [x] 실제 두 사용자 세션과 anon으로 본인 행 조회, 타인 행 비노출, 직접 INSERT/UPDATE/DELETE 및 익명 RPC 금지.
 - [x] 여섯 저장 RPC, stale revision 충돌, 같은 mutation 재시도, 동시 저장의 한 건 성공·한 건 충돌과 invalid rollback.
 - [x] 두 독립 Chromium 브라우저 문맥의 같은 테스트 계정으로 실제 앱 저장·focus 갱신·reload 및 네 제품 진입.
