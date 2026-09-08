@@ -1,4 +1,4 @@
-.account-map-page { padding-block: 28px 72px; }
+.account-map-page { padding-block: var(--ui-page-space) 72px; }
 .account-map-setup {
   display: grid;
   /* AppContentFrame owns the viewport's 1rem guardrails and 48rem reading width. */
@@ -9,7 +9,7 @@
   margin-inline: auto;
 }
 .account-map-setup__header { max-width: 680px; }
-.account-map-setup__header h1, .account-map-message h1, .account-map-placeholder h1 { margin: 4px 0 8px; font-size: clamp(1.75rem, 5vw, 2.5rem); }
+.account-map-setup__header h1, .account-map-message h1, .account-map-placeholder h1 { margin: 4px 0 8px; font-size: var(--ui-title-size); font-weight: 700; line-height: 1.35; word-break: keep-all; }
 .account-map-setup__header p, .account-map-message p, .account-map-placeholder p { margin: 0; color: var(--muted); line-height: 1.65; }
 .account-map-eyebrow { color: var(--tone-accent) !important; font-size: .875rem; font-weight: 700; }
 .account-map-setup__progress { height: 6px; overflow: hidden; border-radius: 999px; background: color-mix(in srgb, var(--tone-accent) 14%, var(--line)); }
@@ -17,7 +17,7 @@
 .account-map-setup-step { display: grid; min-width: 0; gap: 24px; }
 .account-map-setup-step > header { display: grid; min-width: 0; gap: 8px; }
 .account-map-setup-step > header h1, .account-map-setup-step > header p { margin: 0; }
-.account-map-setup-step > header h1 { font-size: clamp(1.75rem, 5vw, 2.5rem); }
+.account-map-setup-step > header h1 { font-size: var(--ui-title-size); font-weight: 700; line-height: 1.35; word-break: keep-all; }
 .account-map-setup-step > header > p:not(.account-map-eyebrow) { color: var(--muted); line-height: 1.65; }
 .account-map-setup__footer, .account-map-setup__actions { display: flex; min-width: 0; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
 .account-map-setup__footer { border-top: 1px solid var(--line); padding-top: 18px; }
@@ -46,6 +46,8 @@
 .account-map-review-flow li { display: grid; min-width: 0; gap: 4px; border-top: 1px solid var(--line); padding-top: 10px; }
 .account-map-review-flow li span { color: var(--muted); overflow-wrap: anywhere; }
 .account-map-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; border-top: 1px solid var(--line); padding-top: 18px; }
+.account-map-purpose-management h2 { margin: 0 0 .5rem; font-size: 1.125rem; font-weight: 700; }
+.account-transfer-editor__hint { margin: 0; color: var(--muted); font-size: .875rem; line-height: 1.5; }
 .account-map-purpose-management { min-width: 0; padding-block: 20px; }
 .account-map-purpose-management .account-map-actions { position: static; justify-content: flex-start; }
 .account-map-purpose-management .ui-button { min-height: 44px; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
@@ -82,11 +84,13 @@
 .account-map-message, .account-map-placeholder { display: grid; justify-items: start; max-width: 680px; gap: 16px; margin-top: 8vh; border: 1px solid var(--line); border-radius: 24px; background: var(--panel); padding: clamp(24px, 6vw, 48px); }
 .account-map-message a { text-decoration: none; }
 .account-map-page--map { display: grid; gap: 20px; }
-.account-map-map-header h1 { margin: 3px 0 7px; font-size: clamp(1.75rem, 5vw, 2.5rem); }
+.account-map-map-header h1 { margin: 3px 0 7px; font-size: var(--ui-title-size); font-weight: 700; line-height: 1.35; word-break: keep-all; }
 .account-map-map-header p { margin: 0; color: var(--muted); }
 .account-map-canvas-shell { overflow: hidden; border: 1px solid var(--line); border-radius: 24px; background: var(--panel); }
 .account-map-canvas-toolbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 14px; border-bottom: 1px solid var(--line); padding: 16px 18px; }
 .account-map-canvas-toolbar h2, .account-map-canvas-toolbar p { margin: 0; }
+.account-map-canvas-toolbar h2 { font-size: 1.125rem; font-weight: 700; }
+.account-map-canvas-toolbar p { color: var(--muted); font-size: .875rem; }
 .account-map-canvas-toolbar__controls { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
 .account-map-zoom-control { display: flex; min-height: 44px; align-items: center; border: 1px solid var(--line); border-radius: 12px; padding: 3px; }
 .account-map-zoom-control button { min-width: 44px; min-height: 44px; border: 0; border-radius: 9px; background: transparent; color: var(--muted); font-weight: 700; }
@@ -140,7 +144,7 @@
 .account-map-modal > header > div:first-child { min-width: 0; }
 .account-map-modal > header p, .account-map-modal > header h2 { margin: 0; }
 .account-map-modal > header p { color: var(--muted); font-size: .8rem; }
-.account-map-modal > header h2 { overflow-wrap: anywhere; }
+.account-map-modal > header h2 { overflow-wrap: anywhere; font-size: 1.25rem; font-weight: 700; }
 .account-map-modal__title-actions { display: flex; align-items: center; gap: 4px; }
 .account-map-modal__title-menu { position: relative; }
 .account-map-modal__more, .account-map-modal__secondary-action { display: inline-grid; width: 44px; min-width: 44px; height: 44px; min-height: 44px; place-items: center; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: var(--tone-accent); }
@@ -178,6 +182,10 @@
 .account-map-location-picker > label > span { position: absolute; right: 12px; bottom: 12px; color: var(--muted); font-size: .875rem; }
 .financial-location-fields, .account-transfer-editor { display: grid; min-width: 0; gap: 14px; }
 .financial-location-fields > fieldset, .account-transfer-editor > fieldset { min-width: 0; margin: 0; border: 0; padding: 0; }
+.account-transfer-editor > fieldset { display: grid; gap: .5rem; }
+.account-transfer-editor > fieldset label { display: flex; align-items: center; gap: .75rem; min-height: var(--ui-control-min-height); padding: .5rem .75rem; border: 1px solid var(--line); border-radius: var(--ui-control-radius); cursor: pointer; }
+.account-transfer-editor > fieldset label:has(input:checked) { border-color: var(--tone-accent); background: color-mix(in srgb, var(--tone-accent) 6%, var(--panel)); }
+.account-transfer-editor input[type="radio"] { flex: 0 0 1.125rem; width: 1.125rem; height: 1.125rem; min-height: 0; margin: 0; padding: 0; accent-color: var(--tone-accent); }
 .financial-location-fields legend, .account-transfer-editor legend { margin-bottom: 8px; font-weight: 700; }
 .financial-location-fields label, .account-transfer-editor > label, .account-map-location-picker__amount { display: grid; min-width: 0; gap: 7px; font-weight: 700; }
 .formatted-money-input { display: grid; min-width: 0; gap: 8px; }
@@ -186,7 +194,7 @@
 .account-map-location-picker__actions { position: sticky; z-index: 1; bottom: -20px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 0 -1px -20px; background: var(--panel); padding: 12px 1px 20px; }
 
 @media (max-width: 600px) {
-  .account-map-page { padding-block: 20px 56px; }
+  .account-map-page { padding-block: var(--ui-page-space) 56px; }
   .account-map-setup { gap: 20px; }
   .account-map-setup__footer { position: sticky; z-index: 5; bottom: 0; background: var(--bg); padding-bottom: max(8px, env(safe-area-inset-bottom)); }
   .account-map-setup__footer > div { display: grid; flex: 1 1 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); }

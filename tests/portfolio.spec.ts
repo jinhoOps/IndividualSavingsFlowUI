@@ -357,7 +357,8 @@ test('keeps the summary-first ratio list usable across required widths', async (
       for (const row of await rows.all()) {
         const rowBox = await row.boundingBox();
         expect(rowBox).not.toBeNull();
-        expect(rowBox!.height).toBeGreaterThanOrEqual(100);
+        // Compact rows preserve a usable target while showing the full allocation.
+        expect(rowBox!.height).toBeGreaterThanOrEqual(44);
         expect(rowBox!.y + rowBox!.height).toBeLessThanOrEqual(viewport.height);
       }
     }

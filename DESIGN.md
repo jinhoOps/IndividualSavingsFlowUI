@@ -17,7 +17,8 @@ Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계정별
 5. **Consistent Model**: 요약과 월 자금 구성은 동일한 정규화 데이터에서 만들어집니다.
 6. **Safe Constraints**: 유효하지 않은 금액, 초과 배분과 저장 실패는 조용히 무시하지 않습니다.
 7. **Progressive Disclosure**: 개요는 관계와 결과를 보여주고 민감하거나 복잡한 세부정보는 선택 후 공개합니다.
-8. **Account Storage Trust**: 계정의 서버 확정 계획과 브라우저 원본·미전송 입력, whole-workspace import/export와 앱별 소유 slice를 명확히 구분합니다.
+8. **Calm Hierarchy**: 같은 정보를 여러 카드 테두리와 제목으로 반복하지 않고, 여백은 결과와 다음 행동을 함께 읽을 수 있도록 사용합니다.
+9. **Account Storage Trust**: 계정의 서버 확정 계획과 브라우저 원본·미전송 입력, whole-workspace import/export와 앱별 소유 slice를 명확히 구분합니다.
 
 ## Product-Specific Interaction Contracts
 
@@ -61,6 +62,7 @@ Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계정별
 - 기간은 0~30년 슬라이더와 숫자 입력을 함께 제공하고 직접 기대수익률은 ±0.25%p 조작을 제공합니다.
 - 그래프는 기본 상태를 절제하고 pointer·keyboard 탐색에서는 선택 기간과 현재 계획·전부 저축·납입원금·저축·투자 잔액을 상세 카드로 보여줍니다. 3년 이하는 현재부터 매월, 4~30년은 현재와 연말 point를 제공합니다.
 - 767px 이하 touch 탐색은 누른 채 기간을 이동하고 손을 뗀 뒤 선택을 유지합니다. 고정 크기 compact tooltip은 기간·현재 계획 총액·누적 납입원금만 한 줄로 보여주며 그래프 밖 touch나 scroll에서 닫힙니다.
+- 그래프 축 레이블은 SVG 축소 비율과 무관하게 실제 화면에서 최소 12px로 읽혀야 하며, 양 끝 기간 레이블이 잘리지 않아야 합니다.
 - 그래프 tooltip은 닫기 버튼을 두지 않으며 `Escape`와 그래프 밖 pointer로 닫힙니다.
 - 한국식 정수 금액은 tooltip과 비교 영역에서 임의 글자 단위로 줄바꿈하거나 잘라내지 않습니다.
 - 명목·실질은 항상 보이고 기준금리, 물가와 면책은 `계산 기준`에서 점진적으로 공개합니다.
@@ -91,6 +93,7 @@ Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계정별
 - 완료 화면은 주 수입 계좌를 먼저 두는 하나의 account-first 계획 흐름 관계도를 주요 시각 요소로 사용합니다. 목적과 계좌·보관처의 배정, 계좌 간 고정 이체와 `남은 금액 전부` 규칙은 실제 잔액·거래·계좌 간 실행 이체가 아닙니다.
 - 기본 상태는 전체 계좌 토폴로지, 목적 기준 금액과 계획상 부족·미배정을 보여줍니다. 관계 유형, rule, excess와 선택 상태는 색상과 짧은 텍스트를 함께 사용해 색상만으로 구분하지 않습니다. zero sweep도 숨기지 않습니다.
 - 계좌의 첫 pointer·touch·keyboard 선택은 도달 가능한 상·하류 흐름과 목적, 고정 금액 또는 sweep 규칙을 정적 최종 상태로 공개하고 `계좌 정보 편집`·`연결 추가`·`흐름 편집`을 명시한다. 두 번째 선택을 요구하지 않으며 reduced-motion에서는 즉시 최종 상태를 보입니다.
+- `계좌 정보 편집`은 선택한 계좌의 편집 양식을 바로 열며, 닫기·취소·저장 뒤에는 진입 버튼으로 focus를 돌려줍니다. 계좌 보관은 편집 맥락에서도 접근할 수 있고 영향을 먼저 확인합니다.
 - 자기 이체, 중복 active source/target, cycle, 없는/보관된 endpoint, 한 출발 계좌의 복수 sweep은 적용 전에 차단합니다. 계획상 부족은 경고이며 저장 corruption이 아닙니다.
 - Account Map에서 Main 금액 수정을 요청하면 같은 URL의 journey overlay가 Main 소유 editor를 mounted map 위에 표시한다. 배경 map은 blur·`inert`가 되고, overlay는 labelled modal, focus trap, Escape/Back close와 trigger focus 복원을 제공한다. dirty Escape/Back은 discard 확인을 거치고, 실패·conflict에서는 input을 유지한다.
 - 성공한 Main 저장 뒤 Map은 최신 workspace를 다시 읽고, `sourceMainUpdatedAt !== main.updatedAt`이면 하나의 `확인 필요` 상태를 announcement로 표시한다. `현재 Main 기준으로 확인`은 명시 command로 purpose remainder만 재계산하고 fixed/sweep transfer를 바꾸지 않는다. fixed purpose allocation 초과면 오류를 설명하고 write하지 않는다.
@@ -101,14 +104,18 @@ Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계정별
 
 ### Brand and Accent
 
-- **ISF Sunset / Primary** (`var(--tone-primary)`, `#ea5b2a`): 주요 CTA, 선택과 활성 상태
-- **ISF Deep Sea / Accent** (`var(--tone-accent)`, `#1e8b7c`): 긍정 상태, 수입과 보조 강조
+- **ISF Sunset / Primary** (`var(--tone-primary)`, `#ea5b2a`): 시각화와 장식용 강조
+- **ISF Sunset / Action** (`var(--tone-action)`, `#c24116`): 흰색 레이블의 주요 CTA와 작은 강조 텍스트
+- **Action Hover** (`var(--tone-action-hover)`, `#a93612`): 주요 CTA의 hover 상태
+- **ISF Deep Sea / Accent** (`var(--tone-accent)`, `#0f766e`): 긍정 상태, 수입과 보조 강조
 
 ### Surface and Background
 
-- **ISF Pearl / Canvas** (`var(--bg)`, `#f9f6f0`): 앱 기본 배경
+- **ISF Pearl / Canvas** (`var(--bg)`, `#f8f6f1`): 앱 기본 배경
 - **Flat Panel** (`var(--panel)`, `#ffffff`): 카드, 입력 그룹과 주요 콘텐츠 표면
 - **Line** (`var(--line)`): 패널 경계와 구조 구분
+
+일반 텍스트와 버튼 레이블은 배경 대비 4.5:1 이상을 유지하고 hover·focus 상태도 확인합니다. 밝은 브랜드 색상을 작은 글자의 색이나 흰색 버튼 레이블의 배경으로 직접 사용하지 않습니다.
 
 상태 색상은 텍스트, 아이콘 또는 레이블과 함께 사용합니다. 색상만으로 오류·경고·성공을 전달하지 않습니다.
 
@@ -123,11 +130,14 @@ Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계정별
 
 | Token | Size | Weight | Use |
 |---|---:|---:|---|
-| Display | 32px | Bold | 화면 제목과 큰 요약 수치 |
+| Display | 28–40px | Bold | 설정·복구·결과 화면 제목 |
+| Result Statement | 32–48px | Bold | Simulation의 핵심 결과 문장 |
 | Title Large | 24px | Bold | 주요 카드 제목 |
 | Title Medium | 18px | Bold | modal 및 하위 섹션 제목 |
 | Body | 16px | Regular | 기본 본문과 입력 |
 | Caption | 14px | Regular | 보조 설명, 단위와 상태 |
+
+제목 크기는 공통 `--ui-title-size`, 핵심 결과 문장은 `--ui-result-size`를 사용합니다. 설정·복구 제목도 명시적인 크기·굵기·줄 높이를 가지며 브라우저 기본 스타일에 의존하지 않습니다. 한글 제목은 어절을 유지하고 균형 있게 줄바꿈합니다.
 
 임의의 글꼴 조합을 추가하지 않습니다. 숫자 강조에서도 의미 계층을 유지합니다.
 
@@ -152,6 +162,12 @@ Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계정별
 - 관리 popover는 viewport 좌우 16px 안에 머물고, Escape 또는 바깥 pointer 입력으로 닫힌 뒤 톱니 버튼으로 focus를 돌려보냅니다. 파괴적 행동은 별도 확인 dialog와 내부 focus 관리를 거칩니다.
 - 툴팁, `더보기`, 관리 메뉴는 Escape 또는 바깥 pointer 입력으로 닫히고 소유 trigger로 focus를 돌려보냅니다. 두 popover는 동시에 열리지 않으며 `prefers-reduced-motion`에서는 전환 효과를 제거합니다.
 - 런처 링크는 URL 탐색만 수행하며 앱 간 데이터 연결 상태를 소유하거나 표시하지 않습니다.
+
+### Recovery and Empty States
+
+- 진행을 막는 상태에는 원인과 구체적인 다음 행동을 함께 제공합니다. 보존된 계획이 있으면 이를 명확히 설명합니다.
+- 다른 앱에서 해결해야 하는 경우 목적지를 설명하는 공통 버튼 형태의 직접 이동 링크를 제공합니다. 주요 행동은 44px 이상의 선택 영역을 유지합니다.
+- 사용자 안내에는 내부 controller·slice·write 같은 구현 용어 대신 현재 화면의 한글 목적과 수행할 행동을 사용합니다.
 
 ### Main Cashflow Editor
 
@@ -224,7 +240,7 @@ Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계정별
 | Flat Panel | 흰색 배경, 단색 border | 카드, 입력 그룹, 그래프 영역 |
 | Floating | 제한된 shadow와 높은 z-index | modal, contextual Pending Bar, toast |
 
-gradient와 반투명 card를 기본 스타일로 사용하지 않습니다.
+gradient와 반투명 card를 기본 스타일로 사용하지 않습니다. 일반 요약 카드에는 floating shadow를 사용하지 않고, 하나의 시각화를 겹친 카드 테두리로 감싸지 않습니다. Main 수치 편집에는 눈에 보이는 편집 단서를 제공합니다.
 
 ## Responsive Behavior
 
@@ -236,6 +252,9 @@ gradient와 반투명 card를 기본 스타일로 사용하지 않습니다.
 
 ### Contracts
 
+- 앱 본문의 상단 간격은 공통 `--ui-page-space`를 사용하고, 일반 섹션 간격은 24px을 기본으로 합니다. launcher와 overlay의 폭·좌표는 별도 계약을 유지합니다.
+- 모바일에서 상단·목록 여백을 desktop보다 늘리지 않습니다. 핵심 결과와 다음 행동까지의 읽기 거리를 줄이되 긴 금액, 44px target과 시각화 크기를 보존합니다.
+- 같은 제목과 설명을 연속된 표면에서 반복하지 않습니다.
 - 390px에서 body의 예기치 않은 가로 overflow가 없어야 합니다.
 - 390px에서 Simulation 그래프와 비교값은 보이고 tooltip은 viewport 안에 머물러야 합니다.
 - 보이는 주요 버튼과 입력은 최소 44px touch target을 가져야 합니다.

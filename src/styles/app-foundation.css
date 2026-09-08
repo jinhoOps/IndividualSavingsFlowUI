@@ -13,6 +13,7 @@ body,
 
 @theme {
   --color-primary: #ea5b2a;
+  --color-action: #c24116;
   --color-accent: #0f766e;
   --color-canvas: #f8f6f1;
   --color-panel: #ffffff;
@@ -32,6 +33,9 @@ body,
   --ui-surface-radius: 24px;
   --ui-content-max-width: 48rem;
   --ui-content-gutter: 1rem;
+  --ui-page-space: clamp(1.5rem, 3vw, 2rem);
+  --ui-title-size: clamp(1.75rem, 4vw, 2.5rem);
+  --ui-result-size: clamp(2rem, 4.5vw, 3rem);
   --ui-control-border: 1px solid var(--color-line);
   --ui-focus-ring: 0 0 0 3px rgb(15 118 110 / 35%);
   --ui-disabled-opacity: 0.5;
@@ -42,6 +46,8 @@ body,
   --line: var(--color-line);
   --line-strong: var(--color-line-strong);
   --tone-primary: var(--color-primary);
+  --tone-action: var(--color-action);
+  --tone-action-hover: #a93612;
   --tone-accent: var(--color-accent);
   --status-success: #18794e;
   --status-error: #be123c;
@@ -140,7 +146,14 @@ body,
   }
 
   .ui-button--primary {
-    @apply border-primary bg-primary text-white hover:bg-primary/90;
+    border-color: var(--tone-action);
+    background: var(--tone-action);
+    color: #fff;
+  }
+
+  .ui-button--primary:hover {
+    border-color: var(--tone-action-hover);
+    background: var(--tone-action-hover);
   }
 
   .ui-button--secondary {

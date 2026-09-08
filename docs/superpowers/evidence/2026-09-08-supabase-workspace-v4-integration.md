@@ -1,6 +1,6 @@
 # Supabase workspace v4 통합 검증
 
-상태: 최신 main 통합 검증 중. 운영 v4 migration 적용과 로컬 main 병합은 아직 수행하지 않았다.
+상태: 최신 main `e548d5d` 통합 검증 완료. 운영 v4 migration 적용과 로컬 main 병합은 아직 수행하지 않았다.
 
 ## 기준과 범위
 
@@ -8,7 +8,18 @@
 
 최신 main의 workspace v4, Account Map applied3/draft2 계획 이체와 Journey Main overlay를 유지한다. 기존 SQL 세 개는 수정하지 않고 추가 migration 하나로 DB protocol을 전환한다. 브라우저 v3/v1 원본과 사용자의 package-lock 변경은 보존한다.
 
-## 현재 검증 증거
+## 최종 통합 검증
+
+- `NODE_OPTIONS=--no-experimental-webstorage npm run check:ci`: harness·source/unit 타입 검사, 140개 파일·1,317개 테스트 통과.
+- `npm run test:e2e -- --reporter=list`: 160개 통과, 1개 skip. skip은 일반 E2E가 service worker를 차단하기 때문에 실행하지 않는 기존 PWA 전용 사례이며 성공 수에 포함하지 않았다. cloud 30개는 모두 통과했다.
+- `node scripts/test-workspace-db.mjs`: 170 fixture와 전체 PostgreSQL 이전·RLS·RPC·동시성 회귀 재실행 통과.
+- `npx vite build`: production build와 callback 산출물 생성 통과. 버전 bump 없음.
+- `node scripts/test-account-pwa.mjs`: 별도 실제 production 서비스워커 30 shell cache entry, Auth/Data/code URL 제외, 인증된 오프라인 Main 읽기 전용 통과.
+- 최신 main의 직접 계좌 편집·focus 복원·금액 설명·시각 계층과 계정 복구 기능을 함께 보존했다. 최종 cloud overlay 390/768/1280px screenshot을 직접 확인했고, E2E의 overflow·containment·focus·44px target 검증이 통과했다.
+- 변경 문서 12개의 상대 링크 92개, staged/worktree `git diff --check`, 빌드 credential scan 통과. 원래 사용자 package-lock 전체 JSON이 통합 index와 정확히 일치함을 확인한 뒤 이번 작업의 임시 stash만 정리했다. 기존 사용자 stash 세 개는 보존했다.
+- 독립 검토에서 Critical/Important 미해결 없음. Minor 후속 항목은 아래에 기록했다.
+
+## 개발 중 검증 증거
 
 - `node scripts/test-workspace-db.mjs`: 170 shared TS/SQL fixture, v3 payload/revision/timestamps/receipt 그대로 보존, before-image 접근 격리, 초기 손상·중간 실패 rollback, v4 required RPC·CAS·동시성·RLS·중복 재시도 통과.
 - protocol/cache TDD: 새 테스트 9개 실패 확인 후 정상화. Main-null overlay refresh/conflict 2개와 재인증 첫 조회 1개 실패 확인 후 정상화.
@@ -28,3 +39,7 @@
 TLS 인증서·호스트명 검증을 유지한 session pooler 연결로 기존 migration 3개 source hash 일치, 테이블 소유자 `postgres`, 강제 RLS·기존 schema 제약과 v3 validation을 확인했다. 이 시점 workspace 0개·receipt 0개였다. 실제 적용 직전 transaction 안에서 다시 점검한다. 사용자 금융 데이터를 출력하거나 생성하지 않았다.
 
 운영 적용과 새 일회성 계정의 실제 Auth/REST/두 브라우저 v4 검증은 아직 미수행이다. 테스트 종료 시 정확한 테스트 UID/email의 계정과 종속 행만 정리하고 실제 대상 계정은 보존한다.
+
+## 비차단 후속 항목
+
+Account Map 충돌 안내를 연 뒤 추가 polling으로 session이 더 새 revision을 알게 된 경우, `최신 값 유지` 직후 화면은 잠시 충돌 당시 snapshot을 표시할 수 있다. CAS는 오래된 덮어쓰기를 계속 차단하며 Main overlay 저장이나 다음 refresh에서 갱신된다. 독립 리뷰의 Minor 후속 사항으로 남긴다. 다음 담당자는 Account Map/계정 session 개발자이며, 충돌 종료 시 이미 알려진 session snapshot으로 UI를 갱신하는 범위를 검토한다.

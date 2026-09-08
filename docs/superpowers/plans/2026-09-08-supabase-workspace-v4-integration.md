@@ -1,6 +1,6 @@
 # Supabase Workspace v4 Integration Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** 최신 main의 workspace v4·Account Map을 계정 저장에 통합하고 운영 DB 적용 후 로컬 main에 병합한다.
 **Architecture:** 새 SQL migration이 기존 v3 행을 보존하며 v4 protocol로 전환한다. 계정 session은 v4 repository와 별도 세대 캐시를 제공하고 Journey가 Main/Account Map scope를 분리한다.
@@ -22,10 +22,10 @@
 **Files:** merge의 9개 충돌 파일, PRD/README/DESIGN, `src/journey/accountMap.tsx`.
 **Interfaces:** main v4 도메인·repository·Journey를 유지하며 기존 Auth gate를 연결할 위치를 보존한다.
 
-- [ ] `git status`, main/feature SHA와 user lock diff를 기록한다. 필요 시 package-lock 한 파일만 복구 가능한 stash에 보존한다.
-- [ ] `git merge --no-commit main`으로 현 feature 브랜치에 main을 가져온다. Account Map UI는 최신 main을 기준으로 두고 계정 복구 기능을 Task 4에서 다시 연결한다.
-- [ ] PRD는 v4 기능+계정 저장을 함께 기술한다. 최신 기능 삭제로 충돌을 해결하지 않는다.
-- [ ] `npm run check`로 통합 시점 오류를 기록한다. 정상화 전 main branch를 변경하거나 merge commit을 만들지 않는다.
+- [x] `git status`, main/feature SHA와 user lock diff를 기록한다. 필요 시 package-lock 한 파일만 복구 가능한 stash에 보존한다.
+- [x] `git merge --no-commit main`으로 현 feature 브랜치에 main을 가져온다. Account Map UI는 최신 main을 기준으로 두고 계정 복구 기능을 Task 4에서 다시 연결한다.
+- [x] PRD는 v4 기능+계정 저장을 함께 기술한다. 최신 기능 삭제로 충돌을 해결하지 않는다.
+- [x] `npm run check`로 통합 시점 오류를 기록한다. 정상화 전 main branch를 변경하거나 merge commit을 만들지 않는다.
 
 ### Task 2: v4 SQL migration과 회귀
 
@@ -63,20 +63,20 @@ assert.equal(after.revision, before.revision);
 **Files:** `src/auth/productRepositories.ts`, `src/journey/accountMap.tsx`, `src/journey/ui/AccountMapJourney.tsx`, `MainPlanEditOverlay.tsx`, `src/account-map/ui/AccountMapSetup.tsx`, `AccountMapModal.tsx`, `AccountMapLocationPicker.tsx`, `AccountTransferEditor.tsx`; 관련 unit/E2E tests와 `tests/support/legacy.vite.config.ts`.
 **Interfaces:** Journey에 `mainRepository: new BrowserMainRepository(session.scope('main'))`와 Account Map scope를 별도 주입한다.
 
-- [ ] cloud Journey의 Main overlay 저장이 `save_main`만 호출하고 로컬 workspace를 쓰지 않는 테스트를 작성한다.
-- [ ] transfer/location/setup/overlay의 미전송 입력이 새로고침·만료 후 복구되고 임의 자동 저장되지 않는 테스트를 작성한다.
-- [ ] 최신 main UI를 유지하며 AccountDraftContext를 연결하고 복구 값의 형태를 검증한다. Account Map Main-null은 replay를 폐기한다.
-- [ ] focused unit/cloud E2E 및 390px·768px·1280px에서 overlay containment·focus·44px targets를 확인한다.
+- [x] cloud Journey의 Main overlay 저장이 `save_main`만 호출하고 로컬 workspace를 쓰지 않는 테스트를 작성한다.
+- [x] transfer/location/setup/overlay의 미전송 입력이 새로고침·만료 후 복구되고 임의 자동 저장되지 않는 테스트를 작성한다.
+- [x] 최신 main UI를 유지하며 AccountDraftContext를 연결하고 복구 값의 형태를 검증한다. Account Map Main-null은 replay를 폐기한다.
+- [x] focused unit/cloud E2E 및 390px·768px·1280px에서 overlay containment·focus·44px targets를 확인한다.
 
 ### Task 5: 통합 검증·리뷰·커밋
 
 **Files:** 관련 docs, evidence, plan 체크리스트; 필요 시 통합 실패에 해당하는 파일만 수정.
 
-- [ ] `NODE_OPTIONS=--no-experimental-webstorage npm run check:ci`.
-- [ ] `npm run test:e2e -- --reporter=list`, `node scripts/test-workspace-db.mjs`.
-- [ ] `npx vite build`, `node scripts/test-account-pwa.mjs`.
-- [ ] 전체 통합 diff를 독립 리뷰하고 기능·데이터·보안 blocker를 해결한다.
-- [ ] 상대 링크·`git diff --check`·비밀정보 제외를 확인하고 지정 author로 merge 및 통합 변경을 커밋한다. 사용자 lock diff는 제외·복원한다.
+- [x] `NODE_OPTIONS=--no-experimental-webstorage npm run check:ci`.
+- [x] `npm run test:e2e -- --reporter=list`, `node scripts/test-workspace-db.mjs`.
+- [x] `npx vite build`, `node scripts/test-account-pwa.mjs`.
+- [x] 전체 통합 diff를 독립 리뷰하고 기능·데이터·보안 blocker를 해결한다.
+- [x] 상대 링크·`git diff --check`·비밀정보 제외를 확인하고 지정 author로 merge 및 통합 변경을 커밋한다. 사용자 lock diff는 제외·복원한다.
 
 ### Task 6: 실제 DB 전환과 main 병합
 

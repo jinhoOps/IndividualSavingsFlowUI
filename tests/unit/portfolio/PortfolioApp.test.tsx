@@ -138,6 +138,17 @@ describe('PortfolioApp', () => {
     }));
   });
 
+  it.each(['invalid', 'unavailable'] as const)('offers the correct recovery route when Main is %s', (status) => {
+    const repository = createMemoryPortfolioRepository();
+    render(<PortfolioApp mainSourceRepository={{ load: () => ({ status }) }} repository={repository} now={() => 1} />);
+    const recovery = screen.getByTestId('portfolio-page-frame');
+    expect(within(recovery).getByRole('link', { name: status === 'invalid' ? '자금 흐름에서 복구하기' : '다시 불러오기' }))
+      .toHaveAttribute('href', status === 'invalid' ? '/apps/main/' : '/apps/portfolio/');
+    expect(within(recovery).queryByRole('link', { name: 'Main에서 투자금 설정' })).not.toBeInTheDocument();
+    expect(repository.applied).toBeNull();
+    expect(repository.draft).toBeNull();
+  });
+
   it('blocks duplicate setup apply synchronously and delays progress copy until 600ms', async () => {
     vi.useFakeTimers();
     const repository = createMemoryPortfolioRepository();

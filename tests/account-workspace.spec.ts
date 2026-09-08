@@ -361,7 +361,6 @@ test('Account Map reviews latest state on a cloud location conflict and preserve
   const node = page.getByRole('button', {name: /계좌 생활비통장/});
   await node.click();
   await page.getByRole('button', {name: '계좌 정보 편집', exact: true}).click();
-  await page.getByRole('button', {name: '편집', exact: true}).click();
   await page.getByRole('textbox', {name: '표시 이름'}).fill('생활통장');
   const newer = mappedPlan(); newer.revision = 1; newer.main.applied!.monthlyNetIncomeWon = 4000000;
   server.rows.set(userA, newer);
@@ -418,7 +417,6 @@ test('Account Map immediately drops replay on a refreshed Main-null cloud snapsh
   const node = page.getByRole('button', {name: /계좌 생활비통장/});
   await node.click();
   await page.getByRole('button', {name: '계좌 정보 편집', exact: true}).click();
-  await page.getByRole('button', {name: '편집', exact: true}).click();
   await page.getByRole('textbox', {name: '표시 이름'}).fill('생활통장');
   server.rows.set(userA, {...createEmptyWorkspace(), revision: 2});
   await page.evaluate(() => window.dispatchEvent(new Event('focus')));
@@ -564,7 +562,6 @@ test('cloud v4 location edit recovers its fields on reload without changing the 
       await page.getByRole('button', {name: /계좌 생활비통장/}).click();
     }
     await page.getByRole('button', {name: '계좌 정보 편집', exact: true}).click();
-    await page.getByRole('button', {name: '편집', exact: true}).click();
   };
   await page.goto('apps/account-map/'); await openLocation();
   await page.getByRole('textbox', {name: '표시 이름'}).fill('수정 중 계좌');

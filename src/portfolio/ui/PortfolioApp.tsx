@@ -293,13 +293,13 @@ export function PortfolioApp({
     >
       <main className="portfolio-shell">
         {initial.kind === 'main-required' ? (
-          <RecoveryPanel message="Main 계획에서 투자금을 먼저 설정해 주세요." />
+          <RecoveryPanel reason={initial.reason} />
         ) : initial.kind === 'investment-required' ? (
           <InvestmentRequired plan={initial.preservedPlan} />
         ) : initial.kind === 'stale-main' ? (
           <StaleMain plan={initial.plan} preferences={preferences} />
         ) : state === null ? (
-          <RecoveryPanel message="Portfolio를 시작할 수 없습니다." />
+          <RecoveryPanel reason="unavailable" />
         ) : (
           <AppContentFrame
             as="div"
@@ -418,7 +418,7 @@ function InvestmentRequired({ plan }: { plan: PortfolioPlan | null }) {
         </div>
         <div className="portfolio-gate__message">
           <h1 id="portfolio-gate-title">투자금을 먼저 정해 주세요</h1>
-          <a href={`${appPath('main')}?edit=investment`}>Main에서 투자금 설정</a>
+          <a className="ui-button ui-button--primary" href={`${appPath('main')}?edit=investment`}>Main에서 투자금 설정</a>
         </div>
       </AppContentFrame>
     </section>
@@ -441,8 +441,10 @@ function StaleMain({
       <Surface as="aside" className="portfolio-recovery">
         <p role="status">이전 Main 기준</p>
         <p>최신 Main 정보를 불러오지 못했습니다.</p>
-        <a href={appPath('portfolio')}>최신 Main 다시 불러오기</a>
-        <a href={appPath('main')}>Main 확인하기</a>
+        <div className="portfolio-recovery__actions">
+          <a className="ui-button ui-button--primary" href={appPath('portfolio')}>최신 Main 다시 불러오기</a>
+          <a className="ui-button ui-button--secondary" href={appPath('main')}>Main 확인하기</a>
+        </div>
       </Surface>
       <PortfolioSummary
         investmentWon={plan.syncedInvestmentWon}
@@ -453,15 +455,34 @@ function StaleMain({
   );
 }
 
-function RecoveryPanel({ message }: { message: string }) {
+function RecoveryPanel({ reason }: { reason: 'empty' | 'invalid' | 'unavailable' }) {
+  const recovery = reason === 'empty' ? {
+    title: 'Main 계획에서 투자금을 먼저 설정해 주세요.',
+    description: '자금 흐름에서 월 투자금을 정하면 배분을 시작할 수 있어요.',
+    href: `${appPath('main')}?edit=investment`,
+    action: 'Main에서 투자금 설정',
+  } : reason === 'invalid' ? {
+    title: '저장된 데이터를 확인해 주세요',
+    description: '현재 데이터는 변경하지 않았어요. 자금 흐름에서 백업으로 복구할 수 있어요.',
+    href: appPath('main'),
+    action: '자금 흐름에서 복구하기',
+  } : {
+    title: '저장소를 불러오지 못했어요',
+    description: '브라우저 저장소를 사용할 수 있는지 확인한 뒤 다시 불러와 주세요.',
+    href: appPath('portfolio'),
+    action: '다시 불러오기',
+  };
   return (
     <AppContentFrame
       as="section"
       className="ui-surface portfolio-recovery"
       data-testid="portfolio-page-frame"
     >
-      <h1>{message}</h1>
-      <a href={`${appPath('main')}?edit=investment`}>Main에서 투자금 설정</a>
+      <h1>{recovery.title}</h1>
+      <p>{recovery.description}</p>
+      <div className="portfolio-recovery__actions">
+        <a className="ui-button ui-button--primary" href={recovery.href}>{recovery.action}</a>
+      </div>
     </AppContentFrame>
   );
 }
