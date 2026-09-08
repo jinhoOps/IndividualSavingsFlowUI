@@ -1,4 +1,5 @@
 import { useRef } from 'react';
+import { AccountProductBoundary } from '../../auth/AccountManagementContext';
 import { AppManagementMenu, type AppManagementItem } from '../../journey/ui/AppManagementMenu';
 import { ManagementConfirmationDialog } from '../../journey/ui/ManagementConfirmationDialog';
 
@@ -75,6 +76,7 @@ export function MainManagementMenu({
     <>
       <AppManagementMenu items={items} />
       {!importConfirmationOpen ? null : (
+        <AccountProductBoundary>
         <ManagementConfirmationDialog
           confirmation={{
             title: '모든 앱 데이터를 이 백업으로 바꿀까요?',
@@ -89,6 +91,7 @@ export function MainManagementMenu({
             void onConfirmImport();
           }}
         />
+        </AccountProductBoundary>
       )}
     </>
   );

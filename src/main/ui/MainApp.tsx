@@ -1,4 +1,5 @@
-import { useMemo, useRef, useState } from 'react';
+import { useContext, useMemo, useRef, useState } from 'react';
+import { AccountManagementContext } from '../../auth/AccountManagementContext';
 import { AppContentFrame } from '../../components/common/AppContentFrame';
 import { AppShell } from '../../components/common/AppShell';
 import { useReducedMotion } from '../../components/motion/useReducedMotion';
@@ -39,6 +40,7 @@ export function MainApp({
   workspaceRepository: providedWorkspaceRepository,
   navigate = navigateTo,
 }: MainAppProps) {
+  const account = useContext(AccountManagementContext);
   const localWorkspace = useMemo(() => providedWorkspaceRepository ? null : new BrowserWorkspaceRepository(), [providedWorkspaceRepository]);
   const workspaceRepository = providedWorkspaceRepository ?? localWorkspace!;
   const repository = useMemo(() => providedRepository ?? new BrowserMainRepository(localWorkspace!), [providedRepository, localWorkspace]);
@@ -134,7 +136,8 @@ export function MainApp({
   }
 
   if (view.screen === 'intro') {
-    return <MainWelcomeIntro key={plan.introEntry.id} onComplete={() => plan.completeWelcomeIntro(plan.introEntry.id)} />;
+    const intro = <MainWelcomeIntro key={plan.introEntry.id} onComplete={() => plan.completeWelcomeIntro(plan.introEntry.id)} />;
+    return account === null ? intro : <AppShell currentApp="main" managementMenu={managementMenu}>{intro}</AppShell>;
   }
 
   if (view.screen === 'recovery' && plan.state.mode === 'recovery') {
@@ -178,7 +181,7 @@ export function MainApp({
       </>
     );
     return (
-      <AppShell currentApp="main" showLauncher={false} statusRegion={backupStatusRegion}>
+      <AppShell currentApp="main" showLauncher={account !== null} managementMenu={managementMenu} statusRegion={backupStatusRegion}>
         <AppContentFrame
           className="min-h-dvh py-8 sm:py-12"
           data-testid="main-page-frame"

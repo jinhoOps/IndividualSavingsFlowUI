@@ -11,6 +11,8 @@ import {AccountDraftContext} from './AccountDraftContext';
 import {importWorkspaceBackup} from '../workspace/infrastructure/workspaceBackup';
 import {accountCacheKeys, accountCachePrefix, accountRecoveryRecords, getAccountTabId, hasAccountRecovery} from './accountTab';
 import {AccountSignIn} from './AccountSignIn';
+import {AccountManagementContext} from './AccountManagementContext';
+import type {AppManagementItem} from '../journey/ui/AppManagementMenu';
 
 interface AccountRuntime {user: Session['user']; workspace: AccountWorkspaceSession; generation: number}
 export function AccountWorkspaceGate({children, client: suppliedClient, config: suppliedConfig}: {
@@ -26,7 +28,6 @@ export function AccountWorkspaceGate({children, client: suppliedClient, config: 
   const [authState, setAuthState] = useState<'loading' | 'signed-out' | 'error' | 'ready'>('loading');
   const [runtime, setRuntime] = useState<AccountRuntime | null>(null);
   const [, render] = useState(0);
-  const [menu, setMenu] = useState(false);
   const [notice, setNotice] = useState('');
   const [appGeneration, setAppGeneration] = useState(0);
   const [startup, setStartup] = useState(0);
@@ -107,7 +108,7 @@ export function AccountWorkspaceGate({children, client: suppliedClient, config: 
     const channel = typeof BroadcastChannel === 'function' ? new BroadcastChannel('isf-account-workspace') : null;
     const clearSignedOut = () => {
       explicitLogout.current = true;
-      workspace.dispose(true); active.current = null; setRuntime(null); setAuthState('signed-out'); setMenu(false);
+      workspace.dispose(true); active.current = null; setRuntime(null); setAuthState('signed-out');
     };
     if (channel) channel.onmessage = event => {
       if (event.data?.userId !== runtime.user.id) return;
@@ -179,7 +180,7 @@ export function AccountWorkspaceGate({children, client: suppliedClient, config: 
       const channel = new BroadcastChannel('isf-account-workspace');
       channel.postMessage({userId: runtime.user.id, logout: true}); channel.close();
     }
-    runtime.workspace.dispose(true); active.current = null; setRuntime(null); setAuthState('signed-out'); setMenu(false);
+    runtime.workspace.dispose(true); active.current = null; setRuntime(null); setAuthState('signed-out');
   }
   function downloadRecovery() {
     if (!runtime || !configured) return;
@@ -194,7 +195,7 @@ export function AccountWorkspaceGate({children, client: suppliedClient, config: 
     const revision = workspace.snapshot!.revision;
     if (!window.confirm(`${runtime.user.email ?? '현재 계정'}의 모든 계획을 이 브라우저 계획으로 교체합니다.\n현재: ${workspaceSummary(workspace.snapshot!)}\n가져오기: ${workspaceSummary(localCandidate)}\n계속할까요?`)) return;
     const result = await workspace.scope('restore').replace(revision, localCandidate);
-    if (result.status === 'saved') {setMenu(false); setAppGeneration(value => value + 1);}
+    if (result.status === 'saved') {setAppGeneration(value => value + 1);}
   }
   async function retry(reapply = false) {
     if (!runtime) return;
@@ -262,21 +263,17 @@ export function AccountWorkspaceGate({children, client: suppliedClient, config: 
     {notice && <p role="alert">{notice}</p>}
     <button onClick={() => void workspace.refresh()}>다시 불러오기</button><button onClick={() => void logout()}>로그아웃</button>
   </GatePage>;
-  return <>
-    <div className="account-toolbar">
-      <button aria-expanded={menu} aria-controls="account-menu" onClick={() => setMenu(value => !value)}>내 계정</button>
-      {status === 'offline' && <span role="status">오프라인 · 마지막 저장 계획</span>}
-    </div>
-    {menu && <section id="account-menu" className="account-panel" aria-label="계정 관리">
-      <h2>{runtime.user.email ?? '내 계정'}</h2>
-      <p>마지막 저장: {new Date(workspace.snapshot.updatedAt).toLocaleString('ko-KR')}</p>
-      <button onClick={() => downloadWorkspace(workspace.snapshot!)}>현재 계정 계획 백업</button>
-      {(workspace.pending || workspace.localEdits) && <p>현재 계정 백업에는 미전송 입력이 포함되지 않습니다. 필요한 입력은 별도 복구 파일로 보관해주세요.</p>}
-      {localCandidate && <button disabled={status !== 'ready'} onClick={() => void restoreLocal()}>브라우저 계획으로 전체 교체</button>}
-      {(workspace.pending || workspace.localEdits || hasAccountRecovery(accountStorage(), accountCachePrefix(configured.config, runtime.user.id))) && <button onClick={downloadRecovery}>미전송 입력 복구 파일</button>}
-      <button onClick={() => void logout()}>이 브라우저에서 로그아웃</button>
-      <button onClick={() => setMenu(false)}>닫기</button>
-    </section>}
+  const accountItems: AppManagementItem[] = [
+    {kind: 'message', id: 'account-email', text: runtime.user.email ?? '내 계정'},
+    {kind: 'message', id: 'account-saved', text: `마지막 저장: ${new Date(workspace.snapshot.updatedAt).toLocaleString('ko-KR')}`},
+    {kind: 'action', id: 'account-backup', label: '현재 계정 계획 백업', onSelect: () => downloadWorkspace(workspace.snapshot!)},
+  ];
+  if (workspace.pending || workspace.localEdits) accountItems.push({kind: 'message', id: 'account-unsent', text: '계정 백업에는 미전송 입력이 포함되지 않습니다. 필요한 입력은 복구 파일로 보관해주세요.'});
+  if (localCandidate) accountItems.push({kind: 'action', id: 'account-replace', label: '브라우저 계획으로 전체 교체', disabled: status !== 'ready', onSelect: () => restoreLocal()});
+  if (workspace.pending || workspace.localEdits || hasAccountRecovery(accountStorage(), accountCachePrefix(configured.config, runtime.user.id))) accountItems.push({kind: 'action', id: 'account-recovery', label: '미전송 입력 복구 파일', onSelect: downloadRecovery});
+  accountItems.push({kind: 'action', id: 'account-logout', label: '이 브라우저에서 로그아웃', onSelect: () => logout()});
+  return <AccountManagementContext.Provider value={{items: accountItems, readOnly: status === 'offline'}}>
+    {status === 'offline' && <div className="account-offline" role="status">오프라인 · 마지막 저장 계획</div>}
     {(status === 'uncertain' || status === 'conflict' || notice || workspace.cacheFailed) && <section className="account-panel account-feedback" role="status">
       <p>{status === 'conflict' ? '다른 기기에서 변경되었습니다. 작성 중 입력은 보존되어 있습니다.' : status === 'uncertain' ? '저장 결과를 확인하지 못했습니다. 아직 다른 기기에 반영되지 않았을 수 있습니다.' : notice || '계정 저장은 유지되지만 이 브라우저에 복구 기록을 보관하지 못했습니다.'}</p>
       {status === 'uncertain' && <button onClick={() => void retry()}>저장 결과 다시 확인</button>}
@@ -289,10 +286,10 @@ export function AccountWorkspaceGate({children, client: suppliedClient, config: 
     </section>}
     <fieldset key={`${runtime.user.id}:${runtime.generation}:${appGeneration}`}
       onInputCapture={() => workspace.markEdited()} onChangeCapture={() => workspace.markEdited()}
-      disabled={status === 'offline'} className="account-product">
+      className="account-product">
       <AccountDraftContext.Provider value={workspace}>{children(workspace)}</AccountDraftContext.Provider>
     </fieldset>
-  </>;
+  </AccountManagementContext.Provider>;
 }
 
 function accountStorage(): Storage | undefined {

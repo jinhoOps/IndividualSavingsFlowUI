@@ -1,6 +1,7 @@
 import {expect, test, type BrowserContext} from '@playwright/test';
 import {createEmptyWorkspace, type WorkspaceDocument} from '../src/workspace/domain/model';
 import {workspacePayload} from '../src/workspace/infrastructure/workspaceRemote';
+import {exportWorkspaceBackup} from '../src/workspace/infrastructure/workspaceBackup';
 
 const userA = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const userB = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
@@ -239,12 +240,70 @@ test('all four authenticated product entries fit mobile and use the account work
     for (const app of ['main', 'simulation', 'portfolio', 'account-map']) {
       await page.goto(`apps/${app}/`);
       await expect(page.getByTestId('app-shell')).toBeVisible();
-      await expect(page.getByRole('button', {name: '내 계정', exact: true})).toBeVisible();
+      await expect(page.getByRole('button', {name: '내 계정', exact: true})).toHaveCount(0);
+      const settings = page.getByRole('button', {name: '관리 메뉴', exact: true});
+      await settings.click();
+      await expect(page.getByRole('menuitem', {name: '이 브라우저에서 로그아웃'})).toBeVisible();
+      const popover = page.locator('.journey-management__popover');
+      const bounds = await popover.boundingBox();
+      expect(bounds!.x).toBeGreaterThanOrEqual(0);
+      expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width + 1);
+      expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(901);
+      for (const control of await popover.getByRole('menuitem').all()) {
+        expect((await control.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+      }
+      await page.screenshot({path: `test-results/account-settings-${app}-${width}.png`, fullPage: true});
+      await page.keyboard.press('Escape');
+      await expect(settings).toBeFocused();
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
       await page.screenshot({path: `test-results/cloud-${app}-${width}.png`, fullPage: true});
     }
   }
   expect(server.operations.every(op => ['save_portfolio', 'save_simulation', 'save_account_map'].includes(op))).toBe(true);
+});
+
+test('account actions stay inside settings and remain usable offline while edits are locked', async ({page, context}) => {
+  const server = fakeServer(); server.rows.set(userA, plan()); await server.attach(context, userA);
+  await page.setViewportSize({width: 390, height: 700});
+  await page.goto('apps/main/');
+  await expect(page.getByRole('button', {name: '내 계정', exact: true})).toHaveCount(0);
+  await expect(page.getByRole('menuitem', {name: '현재 계정 계획 백업'})).toHaveCount(0);
+  server.setFailRead(true);
+  await page.evaluate(() => window.dispatchEvent(new Event('offline')));
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+  await expect(page.getByRole('button', {name: '월 소비 편집'})).toBeDisabled();
+  const settings = page.getByRole('button', {name: '관리 메뉴', exact: true});
+  await expect(settings).toBeEnabled(); await settings.click();
+  await expect(page.getByRole('menuitem', {name: '처음부터 다시', exact: true})).toBeDisabled();
+  await expect(page.getByLabel('백업 가져오기', {exact: true})).toBeDisabled();
+  await expect(page.getByRole('group', {name: '계정', exact: true})).toContainText('a@example.com');
+  const download = page.waitForEvent('download');
+  await page.getByRole('menuitem', {name: '현재 계정 계획 백업'}).click();
+  expect((await download).suggestedFilename()).toContain('.json');
+  await settings.click();
+  await page.getByRole('menuitem', {name: '이 브라우저에서 로그아웃'}).click();
+  await expect(page.getByRole('button', {name: '이메일로 로그인'})).toBeVisible();
+  expect(server.operations).toEqual([]);
+});
+
+test('settings remain available in authenticated Main setup', async ({page, context}) => {
+  const server = fakeServer(); server.rows.set(userA, createEmptyWorkspace(1000)); await server.attach(context, userA);
+  await page.goto('apps/main/');
+  await page.getByRole('button', {name: '관리 메뉴', exact: true}).click();
+  await expect(page.getByRole('menuitem', {name: '이 브라우저에서 로그아웃'})).toBeVisible();
+});
+
+test('open backup import confirmation becomes read-only offline', async ({page, context}) => {
+  const server = fakeServer(); server.rows.set(userA, plan()); await server.attach(context, userA);
+  await page.goto('apps/main/');
+  await page.getByRole('button', {name: '관리 메뉴', exact: true}).click();
+  await page.getByLabel('백업 가져오기', {exact: true}).setInputFiles({name: 'backup.json', mimeType: 'application/json', buffer: Buffer.from(exportWorkspaceBackup(plan(4000000)))});
+  const confirm = page.getByRole('button', {name: '백업으로 바꾸기', exact: true});
+  await expect(confirm).toBeEnabled();
+  server.setFailRead(true);
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+  await expect(confirm).toBeDisabled();
+  expect(server.operations).toEqual([]);
 });
 
 test('read failure offers recovery rather than a new workspace', async ({page, context}) => {
@@ -305,8 +364,8 @@ test('local logout clears both tabs and account caches but preserves the migrati
   const second = await context.newPage();
   await page.goto('apps/main/'); await second.goto('apps/main/');
   await expect(second.getByRole('button', {name: '월 소비 편집'})).toBeVisible();
-  await page.getByRole('button', {name: '내 계정', exact: true}).click();
-  await page.getByRole('button', {name: '이 브라우저에서 로그아웃'}).click();
+  await page.getByRole('button', {name: '관리 메뉴', exact: true}).click();
+  await page.getByRole('menuitem', {name: '이 브라우저에서 로그아웃'}).click();
   await expect(page.getByRole('button', {name: 'Google로 계속하기'})).toBeVisible();
   await expect(second.getByRole('button', {name: 'Google로 계속하기'})).toBeVisible();
   expect(await page.evaluate(() => Object.keys(localStorage).some(key => /^isf-account-workspace-v[12]:/.test(key)))).toBe(false);
@@ -479,6 +538,13 @@ test('cloud overlay recovery survives reload and reauthentication without auto-s
   await page.getByRole('button', {name: 'Main 금액 수정', exact: true}).click();
   const overlay = page.getByRole('dialog', {name: '월 자금 계획 편집'});
   await overlay.getByLabel('월평균 생활비').fill('1700000');
+  server.setFailRead(true);
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+  await expect(overlay.getByLabel('월평균 생활비')).toBeDisabled();
+  server.setFailRead(false);
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+  await expect(overlay.getByLabel('월평균 생활비')).toBeEnabled();
+  await expect(overlay.getByLabel('월평균 생활비')).toHaveValue('1,700,000');
   await page.reload();
   await page.getByRole('button', {name: 'Main 금액 수정', exact: true}).click();
   await expect(overlay.getByLabel('월평균 생활비')).toHaveValue('1,700,000');
@@ -587,9 +653,9 @@ test('a later tab can export closed-tab recovery without applying it to the acco
   const later = await context.newPage();
   await later.goto('apps/main/');
   await expect(later.getByText('다른 탭 또는 이전 방문의 미전송 기록이 있습니다.', {exact: false})).toBeVisible();
-  await later.getByRole('button', {name: '내 계정', exact: true}).click();
+  await later.getByRole('button', {name: '관리 메뉴', exact: true}).click();
   const download = later.waitForEvent('download');
-  await later.getByRole('button', {name: '미전송 입력 복구 파일'}).click();
+  await later.getByRole('menuitem', {name: '미전송 입력 복구 파일'}).click();
   const stream = await (await download).createReadStream();
   const chunks = [];
   for await (const chunk of stream!) chunks.push(chunk);

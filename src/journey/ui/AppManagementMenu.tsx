@@ -1,5 +1,6 @@
 import { animate } from 'animejs';
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { useContext, useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { AccountManagementContext, AccountProductBoundary } from '../../auth/AccountManagementContext';
 import { MOTION_DISTANCE_PX, MOTION_DURATION, MOTION_EASE } from '../../components/motion/tokens';
 import { useAnimeScope } from '../../components/motion/useAnimeScope';
 import { ManagementConfirmationDialog } from './ManagementConfirmationDialog';
@@ -21,6 +22,7 @@ export type AppManagementItem =
   | { kind: 'control'; id: string; content: ReactNode };
 
 export function AppManagementMenu({ items }: { items: readonly AppManagementItem[] }) {
+  const account = useContext(AccountManagementContext);
   const menuId = useId();
   const helpId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -79,19 +81,19 @@ export function AppManagementMenu({ items }: { items: readonly AppManagementItem
     window.setTimeout(() => triggerRef.current?.focus(), 0);
   }
 
-  function renderMenuItem(item: Exclude<AppManagementItem, { kind: 'control' }>): ReactNode {
+  function renderMenuItem(item: Exclude<AppManagementItem, { kind: 'control' }>, readOnly = false): ReactNode {
     if (item.kind === 'separator') return <hr key={item.id} role="separator" />;
     if (item.kind === 'message') return <p key={item.id} className="journey-management__message">{item.text}</p>;
     if (item.kind === 'file') {
       return (
-        <label key={item.id} className="journey-management__row" role="menuitem" aria-disabled={item.disabled || undefined}>
+        <label key={item.id} className="journey-management__row" role="menuitem" aria-disabled={item.disabled || readOnly || undefined}>
           {item.label}
           <input
             className="sr-only"
             type="file"
             accept={item.accept}
             aria-label={item.label}
-            disabled={item.disabled}
+            disabled={item.disabled || readOnly}
             onChange={(event) => {
               const file = event.currentTarget.files?.[0];
               if (file !== undefined) {
@@ -110,7 +112,7 @@ export function AppManagementMenu({ items }: { items: readonly AppManagementItem
         type="button"
         role="menuitem"
         className={`journey-management__row${item.tone === 'danger' ? ' journey-management__danger' : ''}`}
-        disabled={item.disabled}
+        disabled={item.disabled || readOnly}
         onClick={() => chooseAction(item)}
       >
         {item.label}
@@ -146,7 +148,7 @@ export function AppManagementMenu({ items }: { items: readonly AppManagementItem
       {open ? (
         <div ref={popoverMotionRef} id={menuId} className="journey-management__popover">
           {splitMenuSections(items).map((section, index) => section.kind === 'control' ? (
-            <div key={section.item.id} role="group" className="journey-management__control">{section.item.content}</div>
+            <div key={section.item.id} role="group" className="journey-management__control"><AccountProductBoundary>{section.item.content}</AccountProductBoundary></div>
           ) : (
             <div key={`menu-${index}`} role="menu" aria-label={section.includesHelp ? '관리 메뉴' : '관리 메뉴 행동'}>
               {section.includesHelp ? (
@@ -166,9 +168,16 @@ export function AppManagementMenu({ items }: { items: readonly AppManagementItem
                   <ChevronIcon expanded={helpOpen} />
                 </button>
               ) : null}
-              {section.items.map(renderMenuItem)}
+              {section.items.map(item => renderMenuItem(item, account?.readOnly))}
             </div>
           ))}
+          {account === null ? null : <div role="group" aria-label="계정">
+            <hr />
+            <p className="journey-management__message">계정</p>
+            <div role="menu" aria-label="계정 메뉴">
+              {account.items.map(item => item.kind === 'control' ? <div key={item.id}>{item.content}</div> : renderMenuItem(item))}
+            </div>
+          </div>}
           {helpOpen ? (
             <div
               ref={helpMotionRef}
@@ -189,6 +198,7 @@ export function AppManagementMenu({ items }: { items: readonly AppManagementItem
         </div>
       ) : null}
       {pending?.confirmation === undefined ? null : (
+        <AccountProductBoundary>
         <ManagementConfirmationDialog
           confirmation={pending.confirmation}
           pending={confirmationPending}
@@ -225,6 +235,7 @@ export function AppManagementMenu({ items }: { items: readonly AppManagementItem
             }
           }}
         />
+        </AccountProductBoundary>
       )}
     </div>
   );

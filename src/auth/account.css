@@ -5,11 +5,11 @@
 .account-panel h2 { font-size: 1.1rem; }
 .account-panel p { line-height: 1.6; }
 .account-brand { color: #0f766e; font-weight: 700; }
-.account-panel button, .account-toolbar button, .account-panel a { min-height: 44px; padding: .65rem 1rem; border: 1px solid #9ca3af; border-radius: .5rem; background: white; color: #292524; font: inherit; cursor: pointer; margin: .25rem .4rem .25rem 0; max-width: 100%; }
-.account-panel button:focus-visible, .account-toolbar button:focus-visible { outline: 3px solid #0f766e; outline-offset: 3px; }
+.account-panel button, .account-panel a { min-height: 44px; padding: .65rem 1rem; border: 1px solid #9ca3af; border-radius: .5rem; background: white; color: #292524; font: inherit; cursor: pointer; margin: .25rem .4rem .25rem 0; max-width: 100%; }
+.account-panel button:focus-visible { outline: 3px solid #0f766e; outline-offset: 3px; }
 .account-panel button:disabled { opacity: .5; cursor: wait; }
 .account-gate button:first-of-type { background: #0f766e; color: white; border-color: #0f766e; }
-.account-toolbar { max-width: 48rem; margin: 0 auto; padding: .4rem 1rem; display: flex; gap: 1rem; align-items: center; justify-content: flex-end; }
+.account-offline { max-width: 48rem; margin: 0 auto; padding: .4rem 1rem; text-align: right; }
 .account-feedback { border-color: #a16207; }
 .account-product { border: 0; margin: 0; padding: 0; min-width: 0; }
 .account-sign-in { display: grid; gap: .75rem; margin-block: 1rem; }
@@ -19,3 +19,8 @@
 .account-sign-in input:focus-visible { outline: 3px solid #0f766e; outline-offset: 3px; }
 .account-sign-in button { margin: .25rem 0; }
 @media (max-width: 390px) { .account-panel {padding: 1rem;} }
+.account-product .main-welcome-intro {
+  position: relative;
+  min-height: calc(100dvh - 96px);
+  z-index: auto;
+}

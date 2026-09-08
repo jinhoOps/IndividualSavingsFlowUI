@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import type { JourneyApp } from '../../journey/routes';
 import { AppLauncher } from '../../journey/ui/AppLauncher';
+import { AccountProductBoundary } from '../../auth/AccountManagementContext';
 
 export interface AppShellProps {
   currentApp: JourneyApp;
@@ -25,7 +26,7 @@ export function AppShell({
         </div>
       ) : null}
       {statusRegion}
-      {children}
+      <AccountProductBoundary>{children}</AccountProductBoundary>
     </div>
   );
 }

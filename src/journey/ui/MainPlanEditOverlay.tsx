@@ -12,6 +12,7 @@ import {
   hasCurrentMainPlanOverlayMarker,
 } from './mainPlanOverlayHistory';
 import type { MainPlanEditTarget } from '../../account-map/ui/setup/AccountMapBasisStep';
+import { AccountProductBoundary } from '../../auth/AccountManagementContext';
 
 export type MainPlanOverlayCloseResult = { status: 'saved' } | { status: 'cancelled' };
 
@@ -217,6 +218,7 @@ export function MainPlanEditOverlay({
 
   const saveStatus = editor.saving ? 'saving' : editor.error === null ? 'idle' : 'error';
   return (
+    <AccountProductBoundary>
     <div className="main-plan-overlay" data-closing={closing ? 'true' : undefined}>
       <button className="main-plan-overlay__backdrop" type="button" aria-label="Main 편집기 닫기" tabIndex={-1} onClick={() => requestHistoryClose({ status: 'cancelled' })} />
       <div
@@ -251,6 +253,7 @@ export function MainPlanEditOverlay({
         )}
       </div>
     </div>
+    </AccountProductBoundary>
   );
 }
 
