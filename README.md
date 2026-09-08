@@ -1,6 +1,6 @@
 # IndividualSavings Flow UIUX
 
-개인 재무 흐름을 입력하고 장기 투자 전략과 실행 계획으로 연결하는 정적 웹 앱입니다. 현재 코드는 Google 로그인과 Supabase 계정별 저장을 구현합니다. 2026-09-08 최신 main 기능과 workspace v4를 통합해 운영 DB에 적용하고, 실제 임시 로그인·두 브라우저 저장을 검증한 뒤 로컬 main에 병합했습니다. Google provider 설정·원격 push·이 변경의 Pages 배포는 수행하지 않았습니다. 현재 상태와 후속 설정은 [계정 저장 운영 안내](docs/supabase-account-setup.md)를 따릅니다.
+개인 재무 흐름을 입력하고 장기 투자 전략과 실행 계획으로 연결하는 정적 웹 앱입니다. 2026-09-08 최신 main 기능과 Supabase workspace v4를 통합하고 원격 main push·Pages 배포를 완료했습니다. 공개 사이트의 실제 임시 이메일 로그인·계정 저장·두 브라우저 동기화를 검증했습니다. Google provider 설정은 아직 미완료입니다. [배포 기록](docs/superpowers/evidence/2026-09-08-supabase-pages-deployment.md)과 [계정 저장 운영 안내](docs/supabase-account-setup.md)를 따릅니다.
 
 현재 지원 제품은 Main, Simulation, Portfolio와 Account Map입니다. 네 앱은 shared workspace를 사용합니다.
 

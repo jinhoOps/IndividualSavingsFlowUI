@@ -1,5 +1,7 @@
 # Supabase 계정 저장 운영 안내
 
+최신 상태: 2026-09-08 후속 사용자 요청으로 원격 main push와 Pages 배포를 완료했다. 공개 사이트의 실제 이메일 로그인·Supabase 저장·두 브라우저 동기화가 통과했다. 아래 최초 통합 당시의 미배포 상태와 구분하며 최신 증거는 [Pages 배포 기록](superpowers/evidence/2026-09-08-supabase-pages-deployment.md)을 따른다. Google provider는 아직 미설정이므로 임시 이메일 로그인을 사용한다.
+
 2026-09-08 사용자 요청에 따라 정적 앱의 임시 이메일·비밀번호 로그인과 `okho04@gmail.com` 계정을 준비하고, 운영 Supabase 프로젝트에 workspace v4까지 네 DB migration을 적용했다. 최신 main UI와 통합한 코드의 실제 로그인·저장·충돌·권한 격리, 계획 이체와 Main overlay의 두 브라우저 저장·갱신을 확인하고 로컬 main에 병합했다. Google 로그인 왕복·Git push·Pages 배포는 수행하지 않았다. 최신 상태와 정확한 검증 범위는 [v4 통합 기록](superpowers/evidence/2026-09-08-supabase-workspace-v4-integration.md)을 따른다.
 
 데이터 계약은 [승인 설계](superpowers/specs/2026-09-07-supabase-account-workspace-design.md), 기존 계정 저장 개발 순서는 [실행 계획](superpowers/plans/2026-09-07-supabase-account-workspace.md)을 따른다. [2026-09-07 검증 기록](superpowers/evidence/2026-09-07-supabase-account-workspace.md)과 [임시 로그인 구현 기록](superpowers/evidence/2026-09-08-temporary-password-login.md)은 각각 당시 범위의 증거로 유지한다.
@@ -108,7 +110,7 @@ E2E의 `cloud` 프로젝트는 실제 production entry와 Supabase SDK를 사용
 - [x] 실제 대상 계정의 비밀번호 폼 로그인, 최초 계획 선택·이메일 표시와 로그아웃. 대상 계정의 금융 workspace는 아직 없으며 테스트 계정·workspace·receipt는 정리 완료.
 - [ ] 실제 원격 세션 만료 후 재인증, 30초 polling과 다중 탭 로그아웃의 운영 배포 검증. 해당 흐름의 로컬 fixture E2E와 실제 원격 검증을 혼동하지 않는다.
 - [ ] Google provider 설정·실제 왕복, verifier 유실/재시도, callback 직접 새로고침과 임시 로그인 전후 동일 UID·workspace 유지.
-- [ ] GitHub Pages 공개 변수 등록·배포와 운영 URL에서 네 앱의 base 직접 진입·새로고침.
+- [x] GitHub Pages 공개 변수 등록·배포와 운영 URL에서 네 앱의 base 직접 진입·새로고침.
 
 기존 데이터는 자동 업로드하지 않는다. 처음 가져오기/새 시작을 선택하고, 서버가 이미 있으면 백업 후 전체 교체를 명시적으로 확인한다. 장애 시 계정 편집을 중지하고 서버 백업·미전송 복구 파일을 제공한다. 기존 로컬 writable 배포로 무조건 되돌려 두 원본을 만들지 않는다.
 

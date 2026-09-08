@@ -287,6 +287,8 @@ Simulation, Portfolio와 Account Map은 workspace 안의 최신 Main을 읽기 �
 
 ### 계정 저장 rollout gate
 
+2026-09-08 후속 사용자 요청에 따른 원격 main push·Pages 배포와 공개 사이트의 실제 이메일 로그인·계정 저장·두 브라우저 동기화는 완료했다. [Pages 배포 기록](../../../../superpowers/evidence/2026-09-08-supabase-pages-deployment.md)을 따른다. Google 설정·실제 왕복과 별도 운영 세션 만료 검증은 남아 있다.
+
 최신 main의 workspace v4·Account Map 계획 이체·Main overlay와의 통합은 [v4 통합 설계](../../../../superpowers/specs/2026-09-08-supabase-workspace-v4-integration-design.md)를 따른다. v4 필수 RPC와 세대가 분리된 계정 캐시를 사용하며 구 요청의 자동 재전송을 금지한다. 최초 v3 운영 적용 증거와 이후 v4 업그레이드 증거는 구분한다.
 
 2026-09-08 최신 main UI까지 통합한 v4 코드를 운영 DB에 적용하고 실제 fixed/sweep·Main overlay·두 브라우저 동기화를 검증한 뒤 로컬 main에 병합했다. 코드·운영·최종 회귀 증거와 비차단 후속 사항은 [v4 통합 기록](../../../../superpowers/evidence/2026-09-08-supabase-workspace-v4-integration.md)을 따른다. Git push·Pages 배포·Google provider 설정은 이 작업에 포함하지 않았다.
