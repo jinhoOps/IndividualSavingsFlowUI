@@ -6,6 +6,8 @@
 
 **Scope:** Replace the purpose/account layout toggle with one deterministic, account-first map that lets a user find the primary monthly income account first and inspect an account's purpose-linked monthly composition only when needed.
 
+> **Historical design record:** the supported Account Map is now defined by [Account Map Planned Account Flow Design](2026-09-04-account-map-planned-account-flow-design.md). This document preserves the decision history and is not retroactively rewritten.
+
 ## 1. Authority and Boundary
 
 This design supersedes only the map-presentation, layout-selection, linear-table reading-order, and related acceptance clauses in [Account Map Purpose-Node Flow Design](2026-08-13-account-map-purpose-node-flow-design.md). It does not change the persisted `AccountMapAppliedV1`/`AccountMapDraftV1` data contract, the `PurposeLocationLink` meaning, Main ownership, Account Map's `workspace.locations` and `workspace.accountMap` write set, editing modal, archive/restore, or semantic zoom contract unless explicitly stated below.

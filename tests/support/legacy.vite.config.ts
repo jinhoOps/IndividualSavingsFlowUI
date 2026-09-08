@@ -8,7 +8,7 @@ const entries: Record<string, {app: string; component: string; styles: string[]}
   '/src/main/main.tsx': {app: '../main/ui/MainApp', component: 'MainApp', styles: ['../main/ui/main.css']},
   '/src/simulation/main.tsx': {app: '../simulation/ui/SimulationApp', component: 'SimulationApp', styles: ['../simulation/ui/simulation.css', '../journey/ui/journey.css']},
   '/src/portfolio/main.tsx': {app: '../portfolio/ui/PortfolioApp', component: 'PortfolioApp', styles: ['../portfolio/ui/portfolio.css']},
-  '/src/journey/accountMap.tsx': {app: '../account-map/ui/AccountMapApp', component: 'AccountMapApp', styles: ['../journey/ui/journey.css']},
+  '/src/journey/accountMap.tsx': {app: '../journey/ui/AccountMapJourney', component: 'AccountMapJourney', styles: ['../journey/ui/journey.css']},
 };
 export default mergeConfig(productionConfig, defineConfig({plugins: [{
   name: 'local-repository-compatibility-fixture', enforce: 'pre',

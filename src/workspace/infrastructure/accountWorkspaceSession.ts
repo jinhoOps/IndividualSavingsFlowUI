@@ -113,13 +113,15 @@ export class AccountWorkspaceSession {
         const decoded = workspaceFromRow(row, this.options.userId);
         if (!decoded) {
           this.rawRemote = cloneRemote(row);
-          this.status = remoteSchemaVersion(row) !== 3 ? 'unsupported' : 'invalid';
+          this.status = remoteSchemaVersion(row) !== 4 ? 'unsupported' : 'invalid';
         } else {
-          if (oldRevision !== undefined && decoded.revision > oldRevision
-            && this.accountMapScopeUsed && decoded.main.applied === null) {
+          if ((oldRevision === undefined || decoded.revision > oldRevision)
+            && (this.accountMapScopeUsed || this.isAccountMapWrite(this.pending)
+              || Object.keys(this.recoveryDrafts).some(isAccountMapRecoveryKey))
+            && decoded.main.applied === null) {
             this.snapshot = decoded;
             this.incoming = null;
-            if (this.pending?.operation === 'save_account_map') this.pending = null;
+            if (this.isAccountMapWrite(this.pending)) this.pending = null;
             this.discardAccountMapRecoveryDrafts();
             this.externalRevision++;
             this.rawRemote = null;
@@ -183,7 +185,8 @@ export class AccountWorkspaceSession {
       return Promise.resolve({status: 'invalid'});
     }
     const payload = Object.fromEntries(keys[scope].map(key => [key, validated[key]]));
-    this.pending = {operation: operations[scope], expectedRevision: revision, payload, mutationId: this.id()};
+    this.pending = {operation: operations[scope], expectedRevision: revision, payload, mutationId: this.id(),
+      ...(this.accountMapScopeUsed && scope === 'main' ? {context: 'account-map' as const} : {})};
     return this.sendPending();
   }
   async initialize(candidate: WorkspaceDocument): Promise<WorkspaceWriteResult> {
@@ -221,7 +224,8 @@ export class AccountWorkspaceSession {
       this.emit();
       return Promise.resolve({status: 'invalid'});
     }
-    if (this.pending.operation === 'save_account_map' && this.snapshot.main.applied === null) {
+    if (this.isAccountMapWrite(this.pending) && this.snapshot.main.applied === null) {
+      this.discardAccountMapRecoveryDrafts();
       this.discardPending();
       return Promise.resolve({status: 'invalid'});
     }
@@ -260,7 +264,7 @@ export class AccountWorkspaceSession {
       }
       if (result.status === 'conflict') {
         this.status = 'conflict';
-        if (pending.operation === 'save_account_map' && this.snapshot!.main.applied === null) {
+        if (this.isAccountMapWrite(pending) && this.snapshot!.main.applied === null) {
           this.pending = null;
           this.discardAccountMapRecoveryDrafts();
           this.externalRevision++;
@@ -311,10 +315,19 @@ export class AccountWorkspaceSession {
 
   private discardAccountMapRecoveryDrafts(): void {
     for (const key of Object.keys(this.recoveryDrafts)) {
-      if (key === 'account-map' || key.startsWith('account-map-')) delete this.recoveryDrafts[key];
+      if (isAccountMapRecoveryKey(key)) delete this.recoveryDrafts[key];
     }
     this.localEdits = this.hasRecoveryDrafts();
   }
+
+  private isAccountMapWrite(pending: PendingWorkspaceWrite | null): boolean {
+    return pending?.operation === 'save_account_map'
+      || ((this.accountMapScopeUsed || pending?.context === 'account-map') && pending?.operation === 'save_main');
+  }
+}
+
+function isAccountMapRecoveryKey(key: string): boolean {
+  return key === 'account-map' || key.startsWith('account-map-');
 }
 
 function cloneRemote(value: unknown): unknown {
@@ -328,7 +341,7 @@ function remoteSchemaVersion(value: unknown): unknown {
 function remoteRevision(value: unknown, userId: string): number | null {
   if (typeof value !== 'object' || value === null) return null;
   const row = value as Record<string, unknown>;
-  if (row.user_id !== userId || row.schema_version !== 3) return null;
+  if (row.user_id !== userId || row.schema_version !== 4) return null;
   const rawRevision = row.revision;
   const revision = typeof rawRevision === 'string' && /^\d+$/.test(rawRevision)
     ? Number(rawRevision)

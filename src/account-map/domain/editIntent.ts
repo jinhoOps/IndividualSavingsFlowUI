@@ -2,6 +2,10 @@ import type { FinancialLocation } from '../../workspace/domain/financialLocation
 import type { WorkspaceDocument } from '../../workspace/domain/model';
 import type { AccountMapCommand } from './commands';
 import {
+  rebaseAccountFlowEditIntent,
+  type AccountFlowEditIntent,
+} from './accountFlowEditIntent';
+import {
   SYSTEM_PURPOSE_IDS,
   type CustomPurpose,
   type PurposeId,
@@ -34,12 +38,14 @@ export type AccountMapEditIntent =
       monthlyAmountWon?: number;
     }
   | { kind: 'purpose'; id: CustomPurpose['id']; edit: FieldEdit<EditablePurposeFields> }
-  | { kind: 'location'; id: string; edit: FieldEdit<EditableLocationFields> };
+  | { kind: 'location'; id: string; edit: FieldEdit<EditableLocationFields> }
+  | AccountFlowEditIntent;
 
 export type AccountMapIntentRebaseResult =
   | { ok: true; command: AccountMapCommand }
   | { ok: false; reason: 'target-missing' | 'duplicate-link' }
-  | { ok: false; reason: 'field-conflict'; field: string };
+  | { ok: false; reason: 'field-conflict'; field: string }
+  | { ok: false; reason: 'manual-recovery'; action: 'edit-transfer' | 'remove-transfer' };
 
 export function rebaseAccountMapIntent(
   latest: WorkspaceDocument,
@@ -54,6 +60,9 @@ export function rebaseAccountMapIntent(
       return rebasePurposeIntent(latest, intent);
     case 'location':
       return rebaseLocationIntent(latest, intent);
+    case 'transfer':
+    case 'remove-transfer':
+      return rebaseAccountFlowEditIntent(latest, intent);
   }
 }
 

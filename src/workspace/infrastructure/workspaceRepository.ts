@@ -1,4 +1,5 @@
 import {
+  PREVIOUS_WORKSPACE_STORAGE_KEY,
   RETIRED_WORKSPACE_STORAGE_KEY,
   WORKSPACE_STORAGE_KEY,
   createEmptyWorkspace,
@@ -9,12 +10,14 @@ import { parseWorkspaceDocument } from '../domain/validation';
 import {
   BrowserWorkspaceSaveLock,
   CURRENT_WORKSPACE_SAVE_LOCK_NAMESPACE,
+  PREVIOUS_WORKSPACE_SAVE_LOCK_NAMESPACE,
   RETIRED_WORKSPACE_SAVE_LOCK_NAMESPACE,
   type WorkspaceSaveGuard,
   type WorkspaceSaveLeaseOptions,
   type WorkspaceSaveLock,
 } from './workspaceSaveLock';
-import { convertRetiredWorkspaceDocument } from './retiredWorkspaceMigration';
+import { convertRetiredWorkspaceToV4 } from './retiredWorkspaceMigration';
+import { convertWorkspaceV3Document } from './workspaceV3Migration';
 
 type WorkspaceListener = (workspace: WorkspaceDocument) => void;
 
@@ -64,6 +67,7 @@ export interface WorkspaceRepository {
 export interface BrowserWorkspaceRepositoryOptions {
   now?: () => number;
   saveLock?: WorkspaceSaveLock;
+  previousSaveLock?: WorkspaceSaveLock;
   retiredSaveLock?: WorkspaceSaveLock;
   saveLeaseOptions?: WorkspaceSaveLeaseOptions;
   eventTarget?: Window;
@@ -72,6 +76,7 @@ export interface BrowserWorkspaceRepositoryOptions {
 export class BrowserWorkspaceRepository implements WorkspaceRepository {
   private readonly now: () => number;
   private readonly saveLock: WorkspaceSaveLock;
+  private readonly previousSaveLock: WorkspaceSaveLock;
   private readonly retiredSaveLock: WorkspaceSaveLock;
   private readonly eventTarget: Window;
   private readonly notificationStorageGroup: object;
@@ -85,6 +90,11 @@ export class BrowserWorkspaceRepository implements WorkspaceRepository {
       ?? new BrowserWorkspaceSaveLock(storageOverride, {
         ...options.saveLeaseOptions,
         namespace: CURRENT_WORKSPACE_SAVE_LOCK_NAMESPACE,
+      });
+    this.previousSaveLock = options.previousSaveLock
+      ?? new BrowserWorkspaceSaveLock(storageOverride, {
+        ...options.saveLeaseOptions,
+        namespace: PREVIOUS_WORKSPACE_SAVE_LOCK_NAMESPACE,
       });
     this.retiredSaveLock = options.retiredSaveLock
       ?? new BrowserWorkspaceSaveLock(storageOverride, {
@@ -100,43 +110,14 @@ export class BrowserWorkspaceRepository implements WorkspaceRepository {
   }
 
   load(): WorkspaceLoadResult {
-    let currentRaw: string | null;
-    try {
-      currentRaw = this.storage.getItem(WORKSPACE_STORAGE_KEY);
-    } catch {
-      return { status: 'unavailable' };
-    }
-    if (currentRaw !== null) return this.parseCurrentRaw(currentRaw);
+    const current = this.loadCurrentOnly();
+    if (current.status !== 'empty') return current;
 
-    let retiredRaw: string | null;
-    try {
-      retiredRaw = this.storage.getItem(RETIRED_WORKSPACE_STORAGE_KEY);
-    } catch {
-      return { status: 'unavailable' };
-    }
-    if (retiredRaw === null) return this.createEmptyLoadResult();
+    const previous = this.loadPreviousOnly();
+    if (previous.status !== 'empty') return previous;
 
-    try {
-      const converted = convertRetiredWorkspaceDocument(JSON.parse(retiredRaw), this.now());
-      if (converted.status === 'invalid') return { status: 'invalid', raw: retiredRaw };
-      if (converted.simulationMigration === null) {
-        return {
-          status: 'found',
-          workspace: converted.workspace,
-          needsMigration: true,
-        };
-      }
-      return {
-        status: 'found',
-        workspace: converted.workspace,
-        needsMigration: true,
-        simulationMigration: converted.simulationMigration,
-      };
-    } catch (error) {
-      return error instanceof SyntaxError
-        ? { status: 'invalid', raw: retiredRaw }
-        : { status: 'unavailable' };
-    }
+    const retired = this.loadRetiredOnly();
+    return retired.status === 'empty' ? this.createEmptyLoadResult() : retired;
   }
 
   async migrate(expectedRevision: number): Promise<WorkspaceWriteResult> {
@@ -148,36 +129,12 @@ export class BrowserWorkspaceRepository implements WorkspaceRepository {
     mutate: (current: WorkspaceDocument) => WorkspaceDocument,
   ): Promise<WorkspaceWriteResult> {
     try {
-      const useRetiredLock = this.shouldUseRetiredLock();
-      if (useRetiredLock === null) return { status: 'unavailable' };
-      if (useRetiredLock) {
-        return await this.retiredSaveLock.runExclusive(async (retiredGuard) => {
-          const snapshot = this.load();
-          if (snapshot.status === 'invalid' || snapshot.status === 'unavailable') {
-            return { status: snapshot.status };
-          }
-          if (snapshot.status === 'empty') return { status: 'unavailable' };
-
-          return await this.saveLock.runExclusive(async (currentGuard) => {
-            const current = this.loadCurrentOnly();
-            if (current.status === 'unavailable') return { status: 'unavailable' };
-            if (current.status === 'invalid') return { status: 'invalid' };
-            if (current.status === 'empty' && !snapshot.needsMigration) {
-              return { status: 'unavailable' };
-            }
-            const loaded = current.status === 'empty' ? snapshot : current;
-            const guard: WorkspaceSaveGuard = {
-              assertOwned: () => {
-                retiredGuard.assertOwned();
-                currentGuard.assertOwned();
-              },
-            };
-            return this.updateLocked(expectedRevision, mutate, guard, loaded);
-          });
-        });
-      }
+      const source = this.detectSource();
+      if (source === 'unavailable') return { status: 'unavailable' };
+      if (source === 'v3') return await this.updateFromPrevious(expectedRevision, mutate);
+      if (source === 'retired') return await this.updateFromRetired(expectedRevision, mutate);
       return await this.saveLock.runExclusive(async (guard) => (
-        this.updateLocked(expectedRevision, mutate, guard)
+        this.updateV4OrEmptyLocked(expectedRevision, mutate, guard)
       ));
     } catch {
       return { status: 'unavailable' };
@@ -193,52 +150,14 @@ export class BrowserWorkspaceRepository implements WorkspaceRepository {
 
   async resetInvalid(expectedRaw: string): Promise<WorkspaceInvalidResetResult> {
     try {
-      const useRetiredLock = this.shouldUseRetiredLock();
-      if (useRetiredLock === null) return { status: 'unavailable' };
-      if (useRetiredLock) {
-        return await this.retiredSaveLock.runExclusive(async (retiredGuard) => {
-          let retiredRaw: string | null;
-          try {
-            retiredGuard.assertOwned();
-            retiredRaw = this.storage.getItem(RETIRED_WORKSPACE_STORAGE_KEY);
-          } catch {
-            return { status: 'unavailable' };
-          }
-          if (retiredRaw !== expectedRaw) return { status: 'changed' };
-
-          try {
-            const converted = convertRetiredWorkspaceDocument(JSON.parse(retiredRaw), this.now());
-            if (converted.status !== 'invalid') return { status: 'changed' };
-          } catch (error) {
-            if (!(error instanceof SyntaxError)) return { status: 'unavailable' };
-          }
-
-          return await this.saveLock.runExclusive(async (currentGuard) => {
-            const guard: WorkspaceSaveGuard = {
-              assertOwned: () => {
-                retiredGuard.assertOwned();
-                currentGuard.assertOwned();
-              },
-            };
-            try {
-              guard.assertOwned();
-              if (this.storage.getItem(WORKSPACE_STORAGE_KEY) !== null) {
-                return { status: 'changed' };
-              }
-              guard.assertOwned();
-              if (this.storage.getItem(RETIRED_WORKSPACE_STORAGE_KEY) !== expectedRaw) {
-                return { status: 'changed' };
-              }
-            } catch {
-              return { status: 'unavailable' };
-            }
-            return this.commitEmptyReset(guard, null);
-          });
-        });
-      }
-      return await this.saveLock.runExclusive(async (guard) => (
+      const source = this.detectSource();
+      if (source === 'unavailable') return { status: 'unavailable' };
+      if (source === 'v4') return await this.saveLock.runExclusive(async (guard) => (
         this.resetCurrentInvalidLocked(expectedRaw, guard)
       ));
+      if (source === 'v3') return await this.resetPreviousInvalid(expectedRaw);
+      if (source === 'retired') return await this.resetRetiredInvalid(expectedRaw);
+      return { status: 'changed' };
     } catch {
       return { status: 'unavailable' };
     }
@@ -250,6 +169,54 @@ export class BrowserWorkspaceRepository implements WorkspaceRepository {
       this.notificationStorageGroup,
       listener,
     );
+  }
+
+  private async updateV4OrEmptyLocked(
+    expectedRevision: number,
+    mutate: (current: WorkspaceDocument) => WorkspaceDocument,
+    guard: WorkspaceSaveGuard,
+  ): Promise<WorkspaceWriteResult> {
+    const current = this.loadCurrentOnly();
+    if (current.status !== 'empty') return this.updateLocked(expectedRevision, mutate, guard, current);
+    const source = this.detectSource();
+    if (source !== 'empty' && source !== 'v4') return { status: 'unavailable' };
+    return this.updateLocked(expectedRevision, mutate, guard, current);
+  }
+
+  private async updateFromPrevious(
+    expectedRevision: number,
+    mutate: (current: WorkspaceDocument) => WorkspaceDocument,
+  ): Promise<WorkspaceWriteResult> {
+    return await this.previousSaveLock.runExclusive(async (previousGuard) => (
+      await this.saveLock.runExclusive(async (currentGuard) => {
+        const guard = combineGuards(previousGuard, currentGuard);
+        const current = this.loadCurrentOnly();
+        if (current.status === 'invalid' || current.status === 'unavailable') return { status: current.status };
+        if (current.status === 'found') return this.updateLocked(expectedRevision, mutate, currentGuard, current);
+        const previous = this.loadPreviousOnly();
+        if (previous.status === 'invalid' || previous.status === 'unavailable') return { status: previous.status };
+        if (previous.status === 'empty') return { status: 'unavailable' };
+        return this.updateLocked(expectedRevision, mutate, guard, previous);
+      })
+    ));
+  }
+
+  private async updateFromRetired(
+    expectedRevision: number,
+    mutate: (current: WorkspaceDocument) => WorkspaceDocument,
+  ): Promise<WorkspaceWriteResult> {
+    return await this.retiredSaveLock.runExclusive(async (retiredGuard) => (
+      await this.saveLock.runExclusive(async (currentGuard) => {
+        const guard = combineGuards(retiredGuard, currentGuard);
+        const current = this.loadCurrentOnly();
+        if (current.status === 'invalid' || current.status === 'unavailable') return { status: current.status };
+        if (current.status === 'found') return this.updateLocked(expectedRevision, mutate, currentGuard, current);
+        const retired = this.loadRetiredOnly();
+        if (retired.status === 'invalid' || retired.status === 'unavailable') return { status: retired.status };
+        if (retired.status === 'empty') return { status: 'unavailable' };
+        return this.updateLocked(expectedRevision, mutate, guard, retired);
+      })
+    ));
   }
 
   private updateLocked(
@@ -301,6 +268,52 @@ export class BrowserWorkspaceRepository implements WorkspaceRepository {
     }
 
     return this.commitEmptyReset(guard, observedRaw);
+  }
+
+  private async resetPreviousInvalid(expectedRaw: string): Promise<WorkspaceInvalidResetResult> {
+    return await this.previousSaveLock.runExclusive(async (previousGuard) => {
+      const previous = this.loadPreviousOnly();
+      if (previous.status !== 'invalid') return previous.status === 'unavailable'
+        ? { status: 'unavailable' }
+        : { status: 'changed' };
+      if (previous.raw !== expectedRaw) return { status: 'changed' };
+      return await this.saveLock.runExclusive(async (currentGuard) => {
+        const guard = combineGuards(previousGuard, currentGuard);
+        try {
+          guard.assertOwned();
+          if (this.storage.getItem(WORKSPACE_STORAGE_KEY) !== null
+            || this.storage.getItem(PREVIOUS_WORKSPACE_STORAGE_KEY) !== expectedRaw) {
+            return { status: 'changed' };
+          }
+        } catch {
+          return { status: 'unavailable' };
+        }
+        return this.commitEmptyReset(guard, null);
+      });
+    });
+  }
+
+  private async resetRetiredInvalid(expectedRaw: string): Promise<WorkspaceInvalidResetResult> {
+    return await this.retiredSaveLock.runExclusive(async (retiredGuard) => {
+      const retired = this.loadRetiredOnly();
+      if (retired.status !== 'invalid') return retired.status === 'unavailable'
+        ? { status: 'unavailable' }
+        : { status: 'changed' };
+      if (retired.raw !== expectedRaw) return { status: 'changed' };
+      return await this.saveLock.runExclusive(async (currentGuard) => {
+        const guard = combineGuards(retiredGuard, currentGuard);
+        try {
+          guard.assertOwned();
+          if (this.storage.getItem(WORKSPACE_STORAGE_KEY) !== null
+            || this.storage.getItem(RETIRED_WORKSPACE_STORAGE_KEY) !== expectedRaw) {
+            return { status: 'changed' };
+          }
+        } catch {
+          return { status: 'unavailable' };
+        }
+        return this.commitEmptyReset(guard, null);
+      });
+    });
   }
 
   private commitEmptyReset(
@@ -377,12 +390,14 @@ export class BrowserWorkspaceRepository implements WorkspaceRepository {
     }
   }
 
-  private shouldUseRetiredLock(): boolean | null {
+  private detectSource(): 'v4' | 'v3' | 'retired' | 'empty' | 'unavailable' {
     try {
-      if (this.storage.getItem(WORKSPACE_STORAGE_KEY) !== null) return false;
-      return this.storage.getItem(RETIRED_WORKSPACE_STORAGE_KEY) !== null;
+      if (this.storage.getItem(WORKSPACE_STORAGE_KEY) !== null) return 'v4';
+      if (this.storage.getItem(PREVIOUS_WORKSPACE_STORAGE_KEY) !== null) return 'v3';
+      if (this.storage.getItem(RETIRED_WORKSPACE_STORAGE_KEY) !== null) return 'retired';
+      return 'empty';
     } catch {
-      return null;
+      return 'unavailable';
     }
   }
 
@@ -394,6 +409,52 @@ export class BrowserWorkspaceRepository implements WorkspaceRepository {
       return { status: 'unavailable' };
     }
     return raw === null ? this.createEmptyLoadResult() : this.parseCurrentRaw(raw);
+  }
+
+  private loadPreviousOnly(): WorkspaceLoadResult {
+    let raw: string | null;
+    try {
+      raw = this.storage.getItem(PREVIOUS_WORKSPACE_STORAGE_KEY);
+    } catch {
+      return { status: 'unavailable' };
+    }
+    if (raw === null) return this.createEmptyLoadResult();
+    try {
+      const converted = convertWorkspaceV3Document(JSON.parse(raw), this.now());
+      if (converted.status === 'invalid') return { status: 'invalid', raw };
+      return {
+        status: 'found',
+        workspace: converted.workspace,
+        needsMigration: true,
+      };
+    } catch (error) {
+      return error instanceof SyntaxError ? { status: 'invalid', raw } : { status: 'unavailable' };
+    }
+  }
+
+  private loadRetiredOnly(): WorkspaceLoadResult {
+    let raw: string | null;
+    try {
+      raw = this.storage.getItem(RETIRED_WORKSPACE_STORAGE_KEY);
+    } catch {
+      return { status: 'unavailable' };
+    }
+    if (raw === null) return this.createEmptyLoadResult();
+    try {
+      const converted = convertRetiredWorkspaceToV4(JSON.parse(raw), this.now());
+      if (converted.status === 'invalid') return { status: 'invalid', raw };
+      if (converted.simulationMigration === null) {
+        return { status: 'found', workspace: converted.workspace, needsMigration: true };
+      }
+      return {
+        status: 'found',
+        workspace: converted.workspace,
+        needsMigration: true,
+        simulationMigration: converted.simulationMigration,
+      };
+    } catch (error) {
+      return error instanceof SyntaxError ? { status: 'invalid', raw } : { status: 'unavailable' };
+    }
   }
 
   private parseCurrentRaw(raw: string): WorkspaceLoadResult {
@@ -415,6 +476,14 @@ export class BrowserWorkspaceRepository implements WorkspaceRepository {
       return { status: 'unavailable' };
     }
   }
+}
+
+function combineGuards(...guards: readonly WorkspaceSaveGuard[]): WorkspaceSaveGuard {
+  return {
+    assertOwned: () => {
+      for (const guard of guards) guard.assertOwned();
+    },
+  };
 }
 
 function monotonicTimestamp(current: number, now: number): number {

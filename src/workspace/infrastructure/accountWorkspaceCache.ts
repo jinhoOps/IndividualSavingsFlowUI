@@ -1,5 +1,5 @@
 import type { WorkspaceDocument } from '../domain/model';
-import { parseWorkspaceDocument } from '../domain/validation';
+import { parseWorkspaceDocument, validateWorkspaceV3Document } from '../domain/validation';
 import type { WorkspaceOperation, WorkspacePayload } from './workspaceRemote';
 
 export type CacheStorage = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
@@ -8,6 +8,8 @@ export interface PendingWorkspaceWrite {
   expectedRevision: number | null;
   payload: Partial<WorkspacePayload>;
   mutationId: string;
+  /** Persist the host of Main overlay writes across reload/reauthentication. */
+  context?: 'account-map';
 }
 
 export interface RecoveryDraft {
@@ -16,6 +18,8 @@ export interface RecoveryDraft {
 }
 
 export const INVALID_PENDING_RECOVERY_KEY = '__invalid-pending-write__';
+export const LEGACY_CACHE_RECOVERY_KEY = '__legacy-v3-cache__';
+export const INVALID_CACHE_RECOVERY_KEY = '__invalid-current-cache__';
 
 const operationPayloadKeys: Record<WorkspaceOperation, readonly (keyof WorkspacePayload)[]> = {
   initialize_workspace: ['main', 'simulation', 'portfolio', 'locations', 'accountMap'],
@@ -26,31 +30,64 @@ const operationPayloadKeys: Record<WorkspaceOperation, readonly (keyof Workspace
   restore_workspace: ['main', 'simulation', 'portfolio', 'locations', 'accountMap'],
 };
 export interface AccountCache {
-  version: 1;
+  version: 2;
   snapshot: WorkspaceDocument | null;
   pending: PendingWorkspaceWrite | null;
   recoveryDrafts: Record<string, RecoveryDraft>;
 }
 export class AccountWorkspaceCache {
   readonly key: string;
+  private readonly legacyKey: string;
   constructor(namespace: string, private readonly storage?: CacheStorage) {
-    this.key = `isf-account-workspace-v1:${namespace}`;
+    this.key = `isf-account-workspace-v2:${namespace}`;
+    this.legacyKey = `isf-account-workspace-v1:${namespace}`;
   }
   read(): AccountCache | null {
+    let raw: string | null | undefined;
     try {
-      const raw = this.storage?.getItem(this.key);
-      if (!raw) return null;
+      raw = this.storage?.getItem(this.key);
+      if (raw === null || raw === undefined) return this.readLegacy();
       const data = JSON.parse(raw) as AccountCache;
-      if (data.version !== 1) return null;
+      if (data.version !== 2) return this.invalidCurrent(raw);
       const snapshot = data.snapshot === null ? null : parseWorkspaceDocument(data.snapshot);
-      if (data.snapshot !== null && snapshot === null) return null;
+      if (data.snapshot !== null && snapshot === null) return this.invalidCurrent(raw);
       const recoveryDrafts = parseRecoveryDrafts(data.recoveryDrafts);
       const pending = isPendingWorkspaceWrite(data.pending) ? data.pending : null;
       if (data.pending !== null && pending === null) {
         recoveryDrafts[INVALID_PENDING_RECOVERY_KEY] = {baseRevision: 0, value: data.pending};
       }
-      return {version: 1, snapshot, pending, recoveryDrafts};
-    } catch { return null; }
+      return {version: 2, snapshot, pending, recoveryDrafts};
+    } catch { return typeof raw === 'string' ? this.invalidCurrent(raw) : null; }
+  }
+  private invalidCurrent(raw: string): AccountCache {
+    // A successful server refresh will replace this mutable cache. Preserve
+    // undecodable unsent data inside its recovery envelope before that write.
+    return {version: 2, snapshot: null, pending: null, recoveryDrafts: {
+      [INVALID_CACHE_RECOVERY_KEY]: {baseRevision: 0, value: {key: this.key, raw}},
+    }};
+  }
+  private readLegacy(): AccountCache | null {
+    const raw = this.storage?.getItem(this.legacyKey);
+    if (raw === null || raw === undefined) return null;
+    let snapshot: WorkspaceDocument | null = null;
+    let needsRecovery = true;
+    try {
+      const data: unknown = JSON.parse(raw);
+      if (isRecord(data) && data.version === 1) {
+        const validated = validateWorkspaceV3Document(data.snapshot);
+        if (validated.status === 'valid') {
+          // A cached server confirmation keeps its original timestamp and
+          // subslice generations. Only its envelope is converted in memory.
+          snapshot = parseWorkspaceDocument({...validated.workspace, schemaVersion: 4});
+        }
+        needsRecovery = (data.snapshot !== null && snapshot === null)
+          || data.pending != null || (isRecord(data.recoveryDrafts) && Object.keys(data.recoveryDrafts).length > 0)
+          || (data.recoveryDrafts != null && !isRecord(data.recoveryDrafts));
+      }
+    } catch { /* Preserve the exact old record as downloadable recovery. */ }
+    return {version: 2, snapshot, pending: null, recoveryDrafts: needsRecovery
+      ? {[LEGACY_CACHE_RECOVERY_KEY]: {baseRevision: snapshot?.revision ?? 0, value: {key: this.legacyKey, raw}}}
+      : {}};
   }
   save(
     snapshot: WorkspaceDocument | null,
@@ -60,12 +97,16 @@ export class AccountWorkspaceCache {
     try {
       if (this.storage === undefined) return false;
       this.storage.setItem(this.key, JSON.stringify({
-        version: 1, snapshot, pending, recoveryDrafts,
+        version: 2, snapshot, pending, recoveryDrafts,
       } satisfies AccountCache));
       return true;
     } catch { return false; }
   }
-  clear(): void { try {this.storage?.removeItem(this.key);} catch { /* Session memory is still revoked. */ } }
+  clear(): void {
+    for (const key of [this.key, this.legacyKey]) {
+      try {this.storage?.removeItem(key);} catch { /* Session memory is still revoked. */ }
+    }
+  }
 }
 
 function isPendingWorkspaceWrite(value: unknown): value is PendingWorkspaceWrite {
@@ -75,6 +116,8 @@ function isPendingWorkspaceWrite(value: unknown): value is PendingWorkspaceWrite
     || !isUuid(value.mutationId)
     || !isRecord(value.payload)) return false;
   const operation = value.operation as WorkspaceOperation;
+  if (value.context !== undefined && (value.context !== 'account-map'
+    || (operation !== 'save_main' && operation !== 'save_account_map'))) return false;
   const expectedRevision = value.expectedRevision;
   if (operation === 'initialize_workspace') {
     if (expectedRevision !== null) return false;

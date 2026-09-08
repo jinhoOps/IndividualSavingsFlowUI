@@ -7,6 +7,7 @@ import {
   renameLocation,
   restoreLocation,
   setLocationRoles,
+  updateLocationDetails,
 } from '../../../src/workspace/domain/locationCommands';
 import { createEmptyWorkspace, type WorkspaceDocument } from '../../../src/workspace/domain/model';
 
@@ -69,7 +70,7 @@ describe('Shared location commands', () => {
         createdAt: 500,
         updatedAt: 500,
       },
-      workspace: { schemaVersion: 3, updatedAt: 500 },
+      workspace: { schemaVersion: 4, updatedAt: 500 },
     });
   });
 
@@ -134,6 +135,54 @@ describe('Shared location commands', () => {
     if (!result.ok) throw new Error('expected rename to succeed');
     expect(result.location).toMatchObject({ id: current.id, shortName: 'New ISA', updatedAt: 500 });
     expect(result.workspace.portfolio).toEqual(workspace.portfolio);
+  });
+
+  it('updates location name, kind, and institution atomically while preserving roles and Account Map links', () => {
+    const current = { ...location('location-isa', 'ISA', ['investing']), institution: { name: '기존증권' } };
+    const workspace = workspaceWith([current]);
+    workspace.main.applied = { schemaVersion: 2, updatedAt: 100, monthlyNetIncomeWon: 2_000_000, monthlyHousingWon: 500_000, monthlyLivingWon: 1_000_000, monthlySavingWon: 300_000, monthlyInvestmentWon: 200_000 };
+    workspace.accountMap.applied = {
+      schemaVersion: 3, sourceMainUpdatedAt: 100, customPurposes: [],
+      links: [{ id: 'investing', purposeId: 'system:investing', locationId: current.id, monthlyAmountWon: 200_000, remainder: true, status: 'active', createdAt: 100, updatedAt: 100 }],
+      transfers: [], setupCompletedAt: 100, updatedAt: 100,
+    };
+    const links = structuredClone(workspace.accountMap);
+
+    const result = updateLocationDetails(workspace, current.id, {
+      shortName: ' 연금 계좌 ', kind: 'bank', institution: { name: '새은행' },
+    }, 500);
+
+    expect(result).toMatchObject({ ok: true, location: {
+      id: current.id, shortName: '연금 계좌', kind: 'bank', institution: { name: '새은행' }, roles: ['investing'], updatedAt: 500,
+    } });
+    if (!result.ok) return;
+    expect(result.workspace.accountMap).toEqual(links);
+  });
+
+  it('clears institution for cash and rejects incomplete bank or brokerage details without a write', () => {
+    const current = { ...location('location-cash', '현금', ['saving']), institution: { name: '이전기관' } };
+    const workspace = workspaceWith([current]);
+    const cash = updateLocationDetails(workspace, current.id, { shortName: '비상금', kind: 'cash' }, 500);
+    expect(cash).toMatchObject({ ok: true, location: { kind: 'cash', shortName: '비상금' } });
+    if (cash.ok) expect(cash.location).not.toHaveProperty('institution');
+
+    const before = structuredClone(workspace);
+    expect(updateLocationDetails(workspace, current.id, { shortName: '비상금', kind: 'bank' }, 500))
+      .toEqual({ ok: false, reason: 'invalid-input' });
+    expect(workspace).toEqual(before);
+  });
+
+  it('rejects an active duplicate name and institution combination without changing either location', () => {
+    const workspace = workspaceWith([
+      { ...location('one', '생활비', ['spending']), institution: { name: '하나은행' } },
+      { ...location('two', '여유자금', ['saving']), institution: { name: '국민은행' } },
+    ]);
+    const before = structuredClone(workspace);
+
+    expect(updateLocationDetails(workspace, 'two', {
+      shortName: ' 생활비 ', kind: 'bank', institution: { name: '하나은행' },
+    }, 500)).toEqual({ ok: false, reason: 'duplicate-name' });
+    expect(workspace).toEqual(before);
   });
 
   it('archives a location without changing the aggregate Portfolio slice', () => {

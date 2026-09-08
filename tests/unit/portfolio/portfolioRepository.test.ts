@@ -3,6 +3,7 @@ import { createCashOnlyDraft } from '../../../src/portfolio/domain/allocation';
 import type { PortfolioPlan, PortfolioScope } from '../../../src/portfolio/domain/model';
 import { BrowserPortfolioRepository } from '../../../src/portfolio/infrastructure/portfolioRepository';
 import {
+  PREVIOUS_WORKSPACE_STORAGE_KEY,
   RETIRED_WORKSPACE_STORAGE_KEY,
   WORKSPACE_STORAGE_KEY,
   type WorkspaceDocument,
@@ -54,7 +55,7 @@ function serialLock() {
 
 function workspace(overrides: Partial<WorkspaceDocument['portfolio']> = {}): WorkspaceDocument {
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     revision: 4,
     updatedAt: 400,
     main: {
@@ -104,7 +105,11 @@ describe('BrowserPortfolioRepository workspace adapter', () => {
       applied: { status: 'empty' },
       draft: { status: 'empty' },
     });
-    expect(storage.reads).toEqual([WORKSPACE_STORAGE_KEY, RETIRED_WORKSPACE_STORAGE_KEY]);
+    expect(storage.reads).toEqual([
+      WORKSPACE_STORAGE_KEY,
+      PREVIOUS_WORKSPACE_STORAGE_KEY,
+      RETIRED_WORKSPACE_STORAGE_KEY,
+    ]);
     expect(storage.writes).toEqual([]);
     expect(storage.getItem(oldAppliedKey)).toBe(oldApplied);
     expect(storage.getItem(oldDraftKey)).toBe(oldDraft);

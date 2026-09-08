@@ -249,6 +249,65 @@
   margin-top: 1.5rem;
 }
 
+.main-plan-overlay {
+  position: fixed;
+  z-index: 90;
+  inset: 0;
+  display: grid;
+  align-items: end;
+  justify-items: stretch;
+  overflow: clip;
+}
+
+.main-plan-overlay__backdrop {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  min-height: 100%;
+  border: 0;
+  background: rgb(15 23 42 / 48%);
+  backdrop-filter: blur(2px);
+  cursor: default;
+}
+
+.main-plan-overlay__sheet {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-block-size: min(88dvh, 52rem);
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-bottom: 0;
+  border-radius: 1.5rem 1.5rem 0 0;
+  background: var(--panel);
+  box-shadow: 0 -1rem 3rem rgb(15 23 42 / 28%);
+  color: var(--ink);
+}
+
+.main-plan-overlay__loading,
+.main-plan-overlay__error {
+  margin: 0;
+  padding: 1.5rem;
+  font-weight: 700;
+}
+
+.main-plan-overlay__error {
+  color: var(--status-error);
+}
+
+@media (min-width: 768px) {
+  .main-plan-overlay {
+    padding: 1rem;
+  }
+
+  .main-plan-overlay__sheet {
+    width: min(48rem, calc(100vw - 2rem));
+    max-block-size: calc(100dvh - 2rem);
+    border-bottom: 1px solid var(--line);
+    border-radius: var(--ui-surface-radius);
+  }
+}
+
 .journey-launcher__current-line {
   position: absolute;
   right: 11px;

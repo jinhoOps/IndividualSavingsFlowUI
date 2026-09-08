@@ -10,7 +10,13 @@ import {
   type OutflowPurposeId,
   type PurposeId,
   type PurposeLocationLink,
+  type StoredAccountMapApplied,
+  type StoredAccountMapDraft,
 } from '../../account-map/domain/model';
+import {
+  parseStoredAccountMapApplied,
+  parseStoredAccountMapDraft,
+} from '../../account-map/domain/accountMapVersioning';
 import {
   institutionComparisonKey,
   normalizeInstitutionText,
@@ -27,8 +33,11 @@ import {
   type FinancialRole,
 } from './financialLocation';
 import {
-  WORKSPACE_SCHEMA_VERSION,
+  WORKSPACE_V3_SCHEMA_VERSION,
+  WORKSPACE_V4_SCHEMA_VERSION,
   type WorkspaceDocument,
+  type WorkspaceDocumentV3,
+  type WorkspaceDocumentV4,
 } from './model';
 
 const setupSteps = new Set<SetupStep>([
@@ -47,23 +56,49 @@ const outflowPurposeIds = new Set<OutflowPurposeId>([
   'system:investing',
 ]);
 
-export type WorkspaceDocumentValidationResult =
-  | { status: 'valid'; workspace: WorkspaceDocument }
+type VersionedWorkspaceDocument = WorkspaceDocumentV3 | WorkspaceDocumentV4;
+
+export type WorkspaceDocumentValidationResult<T extends VersionedWorkspaceDocument = WorkspaceDocument> =
+  | { status: 'valid'; workspace: T }
   | { status: 'schema' | 'reference' };
 
 export function parseWorkspaceDocument(value: unknown): WorkspaceDocument | null {
-  const result = validateWorkspaceDocument(value);
+  return parseWorkspaceV4Document(value);
+}
+
+export function parseWorkspaceV3Document(value: unknown): WorkspaceDocumentV3 | null {
+  const result = validateWorkspaceV3Document(value);
+  return result.status === 'valid' ? result.workspace : null;
+}
+
+export function parseWorkspaceV4Document(value: unknown): WorkspaceDocumentV4 | null {
+  const result = validateWorkspaceV4Document(value);
   return result.status === 'valid' ? result.workspace : null;
 }
 
 export function validateWorkspaceDocument(value: unknown): WorkspaceDocumentValidationResult {
-  const workspace = parseWorkspaceShape(value);
+  return validateWorkspaceV4Document(value);
+}
+
+export function validateWorkspaceV3Document(
+  value: unknown,
+): WorkspaceDocumentValidationResult<WorkspaceDocumentV3> {
+  const workspace = parseWorkspaceV3Shape(value);
   if (workspace === null) return { status: 'schema' };
   if (!validateWorkspaceReferences(workspace)) return { status: 'reference' };
   return { status: 'valid', workspace };
 }
 
-function parseWorkspaceShape(value: unknown): WorkspaceDocument | null {
+export function validateWorkspaceV4Document(
+  value: unknown,
+): WorkspaceDocumentValidationResult<WorkspaceDocumentV4> {
+  const workspace = parseWorkspaceV4Shape(value);
+  if (workspace === null) return { status: 'schema' };
+  if (!validateWorkspaceReferences(workspace)) return { status: 'reference' };
+  return { status: 'valid', workspace };
+}
+
+function parseWorkspaceV3Shape(value: unknown): WorkspaceDocumentV3 | null {
   if (!hasExactKeys(value, [
     'schemaVersion',
     'revision',
@@ -74,7 +109,7 @@ function parseWorkspaceShape(value: unknown): WorkspaceDocument | null {
     'locations',
     'accountMap',
   ])
-    || value.schemaVersion !== WORKSPACE_SCHEMA_VERSION
+    || value.schemaVersion !== WORKSPACE_V3_SCHEMA_VERSION
     || !isNonnegativeSafeInteger(value.revision)
     || !isTimestamp(value.updatedAt)) return null;
 
@@ -82,7 +117,7 @@ function parseWorkspaceShape(value: unknown): WorkspaceDocument | null {
   const simulation = parseSimulationSlice(value.simulation);
   const portfolio = parsePortfolioSlice(value.portfolio);
   const locations = parseArray(value.locations, parseFinancialLocation);
-  const accountMap = parseAccountMapSlice(value.accountMap);
+  const accountMap = parseAccountMapV3Slice(value.accountMap);
   if (main === null
     || simulation === null
     || portfolio === null
@@ -90,7 +125,45 @@ function parseWorkspaceShape(value: unknown): WorkspaceDocument | null {
     || accountMap === null) return null;
 
   return {
-    schemaVersion: WORKSPACE_SCHEMA_VERSION,
+    schemaVersion: WORKSPACE_V3_SCHEMA_VERSION,
+    revision: value.revision,
+    updatedAt: value.updatedAt,
+    main,
+    simulation,
+    portfolio,
+    locations,
+    accountMap,
+  };
+}
+
+function parseWorkspaceV4Shape(value: unknown): WorkspaceDocumentV4 | null {
+  if (!hasExactKeys(value, [
+    'schemaVersion',
+    'revision',
+    'updatedAt',
+    'main',
+    'simulation',
+    'portfolio',
+    'locations',
+    'accountMap',
+  ])
+    || value.schemaVersion !== WORKSPACE_V4_SCHEMA_VERSION
+    || !isNonnegativeSafeInteger(value.revision)
+    || !isTimestamp(value.updatedAt)) return null;
+
+  const main = parseMainSlice(value.main);
+  const simulation = parseSimulationSlice(value.simulation);
+  const portfolio = parsePortfolioSlice(value.portfolio);
+  const locations = parseArray(value.locations, parseFinancialLocation);
+  const accountMap = locations === null ? null : parseAccountMapV4Slice(value.accountMap, locations);
+  if (main === null
+    || simulation === null
+    || portfolio === null
+    || locations === null
+    || accountMap === null) return null;
+
+  return {
+    schemaVersion: WORKSPACE_V4_SCHEMA_VERSION,
     revision: value.revision,
     updatedAt: value.updatedAt,
     main,
@@ -149,10 +222,26 @@ function parsePortfolioSlice(value: unknown): WorkspaceDocument['portfolio'] | n
   return { plans, draft };
 }
 
-function parseAccountMapSlice(value: unknown): WorkspaceDocument['accountMap'] | null {
+function parseAccountMapV3Slice(value: unknown): WorkspaceDocumentV3['accountMap'] | null {
   if (!hasExactKeys(value, ['applied', 'draft'])) return null;
   const applied = value.applied === null ? null : parseAccountMapApplied(value.applied);
   const draft = value.draft === null ? null : parseAccountMapDraft(value.draft);
+  if ((value.applied !== null && applied === null)
+    || (value.draft !== null && draft === null)) return null;
+  return { applied, draft };
+}
+
+function parseAccountMapV4Slice(
+  value: unknown,
+  locations: readonly FinancialLocation[],
+): WorkspaceDocumentV4['accountMap'] | null {
+  if (!hasExactKeys(value, ['applied', 'draft'])) return null;
+  const applied = value.applied === null
+    ? null
+    : parseStoredAccountMapApplied(value.applied, locations);
+  const draft = value.draft === null
+    ? null
+    : parseStoredAccountMapDraft(value.draft, locations);
   if ((value.applied !== null && applied === null)
     || (value.draft !== null && draft === null)) return null;
   return { applied, draft };
@@ -280,7 +369,7 @@ function parsePurposeLink(value: unknown): PurposeLocationLink | null {
   return null;
 }
 
-function validateWorkspaceReferences(workspace: WorkspaceDocument): boolean {
+function validateWorkspaceReferences(workspace: VersionedWorkspaceDocument): boolean {
   return hasUniqueIds(workspace.locations)
     && hasUniqueActiveLocationNames(workspace.locations)
     && withinLocationCapacities(workspace.locations)
@@ -290,8 +379,8 @@ function validateWorkspaceReferences(workspace: WorkspaceDocument): boolean {
 }
 
 function validatePurposeState(
-  state: AccountMapApplied | AccountMapDraft | null,
-  workspace: WorkspaceDocument,
+  state: StoredAccountMapApplied | StoredAccountMapDraft | null,
+  workspace: VersionedWorkspaceDocument,
 ): boolean {
   if (state === null) return true;
   const main = workspace.main.applied;
@@ -341,7 +430,7 @@ function validatePurposeState(
 }
 
 function customTargetsWithinMain(
-  state: Pick<AccountMapApplied, 'customPurposes'>,
+  state: Pick<StoredAccountMapApplied, 'customPurposes'>,
   main: MainData,
 ): boolean {
   const references = mainPurposeReferences(main);

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   RETIRED_WORKSPACE_STORAGE_KEY,
+  PREVIOUS_WORKSPACE_STORAGE_KEY,
   WORKSPACE_STORAGE_KEY,
   createEmptyWorkspace,
   type WorkspaceDocument,
@@ -350,6 +351,123 @@ describe('BrowserWorkspaceRepository', () => {
     expect(setItem).not.toHaveBeenCalled();
   });
 
+  it('prefers a valid v4 record over the v3 rollback source without touching either raw value', () => {
+    const v4 = { ...createEmptyWorkspace(100), revision: 7 };
+    const v3 = { ...v4, schemaVersion: 3, revision: 99 };
+    const v4Raw = JSON.stringify(v4, null, 2);
+    const v3Raw = JSON.stringify(v3, null, 2);
+    const storage = new MemoryStorage(new Map([
+      [WORKSPACE_STORAGE_KEY, v4Raw],
+      [PREVIOUS_WORKSPACE_STORAGE_KEY, v3Raw],
+    ]));
+    const repository = new BrowserWorkspaceRepository(storage, { now: () => 500 });
+
+    expect(repository.load()).toEqual({ status: 'found', workspace: v4, needsMigration: false });
+    expect(storage.getItem(WORKSPACE_STORAGE_KEY)).toBe(v4Raw);
+    expect(storage.getItem(PREVIOUS_WORKSPACE_STORAGE_KEY)).toBe(v3Raw);
+  });
+
+  it('surfaces an invalid v4 record without falling back to a valid v3 rollback source', () => {
+    const v3 = { ...createEmptyWorkspace(100), schemaVersion: 3 };
+    const invalidV4Raw = '{invalid-v4';
+    const v3Raw = JSON.stringify(v3, null, 2);
+    const storage = new MemoryStorage(new Map([
+      [WORKSPACE_STORAGE_KEY, invalidV4Raw],
+      [PREVIOUS_WORKSPACE_STORAGE_KEY, v3Raw],
+    ]));
+    const repository = new BrowserWorkspaceRepository(storage, { now: () => 500 });
+
+    expect(repository.load()).toEqual({ status: 'invalid', raw: invalidV4Raw });
+    expect(storage.getItem(PREVIOUS_WORKSPACE_STORAGE_KEY)).toBe(v3Raw);
+  });
+
+  it('uses the v3 rollback source before the retired v1/v2 source when v4 is absent', () => {
+    const v3 = { ...createEmptyWorkspace(100), schemaVersion: 3 as const, revision: 7 };
+    const v3Raw = JSON.stringify(v3, null, 2);
+    const retiredRaw = JSON.stringify(retiredWorkspace(2), null, 2);
+    const storage = new MemoryStorage(new Map([
+      [PREVIOUS_WORKSPACE_STORAGE_KEY, v3Raw],
+      [RETIRED_WORKSPACE_STORAGE_KEY, retiredRaw],
+    ]));
+    const repository = new BrowserWorkspaceRepository(storage, { now: () => 500 });
+
+    expect(repository.load()).toMatchObject({
+      status: 'found',
+      needsMigration: true,
+      workspace: { schemaVersion: 4, revision: 7 },
+    });
+    expect(storage.getItem(PREVIOUS_WORKSPACE_STORAGE_KEY)).toBe(v3Raw);
+    expect(storage.getItem(RETIRED_WORKSPACE_STORAGE_KEY)).toBe(retiredRaw);
+    expect(storage.getItem(WORKSPACE_STORAGE_KEY)).toBeNull();
+  });
+
+  it('converts a v3 rollback source under source and destination locks without changing its bytes', async () => {
+    const source = { ...createEmptyWorkspace(100), schemaVersion: 3 as const, revision: 4 };
+    const sourceRaw = JSON.stringify(source, null, 2);
+    const events: string[] = [];
+    const storage = new MemoryStorage(new Map([[PREVIOUS_WORKSPACE_STORAGE_KEY, sourceRaw]]));
+    const repository = new BrowserWorkspaceRepository(storage, {
+      previousSaveLock: createRecordingLock('v3', events),
+      saveLock: createRecordingLock('v4', events),
+      now: () => 500,
+    });
+
+    const loaded = repository.load();
+    expect(loaded).toMatchObject({ status: 'found', needsMigration: true, workspace: { schemaVersion: 4 } });
+    const result = await repository.migrate(4);
+
+    expect(result).toMatchObject({ status: 'saved', workspace: { schemaVersion: 4, revision: 5 } });
+    expect(events).toEqual(['v3:enter', 'v4:enter', 'v4:exit', 'v3:exit']);
+    expect(storage.getItem(PREVIOUS_WORKSPACE_STORAGE_KEY)).toBe(sourceRaw);
+    expect(JSON.parse(storage.getItem(WORKSPACE_STORAGE_KEY) ?? '')).toMatchObject({ schemaVersion: 4, revision: 5 });
+  });
+
+  it('re-reads a v3 writer update under the v3 source lock before committing v4', async () => {
+    const original = { ...createEmptyWorkspace(100), schemaVersion: 3 as const, revision: 4 };
+    const latest = { ...original, revision: 5, updatedAt: 450 };
+    const latestRaw = JSON.stringify(latest, null, 2);
+    const events: string[] = [];
+    const storage = new MemoryStorage(new Map([
+      [PREVIOUS_WORKSPACE_STORAGE_KEY, JSON.stringify(original, null, 2)],
+    ]));
+    const repository = new BrowserWorkspaceRepository(storage, {
+      previousSaveLock: createRecordingLock('v3', events, () => {
+        storage.setItem(PREVIOUS_WORKSPACE_STORAGE_KEY, latestRaw);
+      }),
+      saveLock: createRecordingLock('v4', events),
+      now: () => 500,
+    });
+
+    await expect(repository.migrate(5)).resolves.toMatchObject({
+      status: 'saved', workspace: { schemaVersion: 4, revision: 6 },
+    });
+    expect(events).toEqual(['v3:enter', 'v4:enter', 'v4:exit', 'v3:exit']);
+    expect(storage.getItem(PREVIOUS_WORKSPACE_STORAGE_KEY)).toBe(latestRaw);
+  });
+
+  it('rolls back an unverified v4 conversion without changing the v3 source bytes', async () => {
+    const source = { ...createEmptyWorkspace(100), schemaVersion: 3 as const, revision: 4 };
+    const sourceRaw = JSON.stringify(source, null, 2);
+    const values = new Map<string, string>([[PREVIOUS_WORKSPACE_STORAGE_KEY, sourceRaw]]);
+    let corruptNextV4Write = true;
+    const storage = new HookedStorage(values, (key, _value, commit) => {
+      commit();
+      if (key === WORKSPACE_STORAGE_KEY && corruptNextV4Write) {
+        corruptNextV4Write = false;
+        values.set(key, '{partial-v4');
+      }
+    });
+    const repository = new BrowserWorkspaceRepository(storage, {
+      previousSaveLock: createSerialLock(),
+      saveLock: createSerialLock(),
+      now: () => 500,
+    });
+
+    await expect(repository.migrate(4)).resolves.toEqual({ status: 'unavailable' });
+    expect(storage.getItem(PREVIOUS_WORKSPACE_STORAGE_KEY)).toBe(sourceRaw);
+    expect(storage.getItem(WORKSPACE_STORAGE_KEY)).toBeNull();
+  });
+
   it('ignores populated old keys when the current workspace key is absent', () => {
     const storage = new MemoryStorage();
     storage.setItem('isf-main-v2', '{"main":true}');
@@ -410,7 +528,7 @@ describe('BrowserWorkspaceRepository', () => {
         status: 'found',
         needsMigration: true,
         workspace: {
-          schemaVersion: 3,
+          schemaVersion: 4,
           revision: 4,
           updatedAt: 500,
           main: source.main,
@@ -440,7 +558,7 @@ describe('BrowserWorkspaceRepository', () => {
 
     expect(result).toMatchObject({
       status: 'saved',
-      workspace: { schemaVersion: 3, revision: 5, updatedAt: 501 },
+      workspace: { schemaVersion: 4, revision: 5, updatedAt: 501 },
     });
     expect(storage.getItem(RETIRED_WORKSPACE_STORAGE_KEY)).toBe(sourceRaw);
     expect(storage.getItem(WORKSPACE_STORAGE_KEY)).toBe(JSON.stringify(
@@ -1327,7 +1445,7 @@ function leaseOptions(owner: string, clock: ControlledLeaseClock) {
 }
 
 function leaseStorageKey(owner: string): string {
-  return `isf-workspace-v3-save-lease:${encodeURIComponent(owner)}`;
+  return `isf-workspace-v4-save-lease:${encodeURIComponent(owner)}`;
 }
 
 function activeLeaseRecord(owner: string, expiresAt: number, ticket = 1): string {

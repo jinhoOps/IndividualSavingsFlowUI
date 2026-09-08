@@ -4,6 +4,8 @@
 
 데이터 계약은 [승인 설계](superpowers/specs/2026-09-07-supabase-account-workspace-design.md), 기존 계정 저장 개발 순서는 [실행 계획](superpowers/plans/2026-09-07-supabase-account-workspace.md)을 따른다. [2026-09-07 검증 기록](superpowers/evidence/2026-09-07-supabase-account-workspace.md)과 [임시 로그인 구현 기록](superpowers/evidence/2026-09-08-temporary-password-login.md)은 각각 당시 범위의 증거로 유지한다.
 
+최신 main과 통합하는 현재 계약은 [workspace v4 통합 설계](superpowers/specs/2026-09-08-supabase-workspace-v4-integration-design.md)다. 최초 v3 적용 이후의 v4 migration·앱 검증과 실제 운영 상태는 [v4 통합 기록](superpowers/evidence/2026-09-08-supabase-workspace-v4-integration.md)에 별도로 기록한다.
+
 2026-09-08 공개 `/auth/v1/settings`의 읽기 전용 확인 결과는 `email=true`, `google=false`, `disable_signup=false`, `mailer_autoconfirm=false`였다. 전역 이메일 확인 설정을 바꾸지 않고 대상 계정만 확인 완료 상태로 준비했다. 적용 전 workspace 조회의 HTTP 404 / `PGRST205`는 테이블 생성 후 해소됐으며, 실제 인증 세션의 본인 행 조회는 HTTP 200과 빈 결과를 반환했다. 최초 가져오기/새 시작 전까지 대상 계정의 금융 workspace는 생성하지 않는다.
 
 ## 1. 비밀정보와 DB 사전 확인
@@ -26,10 +28,15 @@ select to_regprocedure('pg_catalog.sha256(bytea)');
 1. [workspace validation](../supabase/migrations/202609070001_workspace_validation.sql)
 2. [account workspaces](../supabase/migrations/202609070002_account_workspaces.sql)
 3. [hosted request identity compatibility](../supabase/migrations/202609080001_workspace_request_identity.sql)
+4. [workspace v4 protocol cutover](../supabase/migrations/202609080002_workspace_v4.sql)
 
 세 번째 migration은 hosted `postgres`가 관리형 `auth` schema의 `USAGE`를 전용 함수 역할에 위임할 수 없는 환경을 지원한다. 전용 역할은 PostgREST가 인증한 요청 claim에서 UID를 읽으며, authenticated의 본인 행 SELECT는 기존 `auth.uid()` 정책을 유지한다. anon/authenticated에게 private helper 실행이나 직접 테이블 쓰기를 허용하지 않는다.
 
 이 migration은 기존 브라우저 원본을 읽거나 지우지 않는다. 계정별 workspace는 최초 사용자 선택 전까지 생성하지 않는다. 성공 receipt는 최소 7일 보관하며 현재 자동 정리는 없다. 보관량을 관찰한 뒤 오래된 receipt만 정리하는 운영 작업을 별도로 등록한다.
+
+네 번째 migration은 v3 행 전체를 검증하고 정확한 before-image를 `private.workspace_schema_backups`에 보관한 뒤 `schema_version`만 4로 바꾼다. payload·revision·timestamps·receipt는 유지한다. 테이블 소유 운영자와 기존 제약 이름을 먼저 확인하며 손상된 행 또는 중간 실패는 전부 rollback한다. before-image는 강제 RLS와 계정 삭제 cascade를 사용하고 클라이언트·service_role·RPC 역할에는 접근을 주지 않는다. 안정화 후 별도 운영 판단 전에는 자동 삭제하거나 복원하지 않는다.
+
+v4 앱은 여섯 RPC 모두 필수 `p_schema_version: 4`로 호출한다. 구 signature는 제거하므로 v3 앱의 쓰기는 차단된다. 새 앱과 DB를 같은 rollout에서 맞추고, 장애 때 구 writable 앱으로 되돌리지 않는다. 새 계정 캐시 `isf-account-workspace-v2`는 구 v1 캐시의 미전송 요청을 자동 replay하지 않으며 복구 원문과 기존 브라우저 원본을 보존한다. 명시적 로그아웃만 같은 계정의 두 캐시 세대를 지운다.
 
 ## 2. 임시 로그인과 Google 전환
 
@@ -85,7 +92,7 @@ node scripts/test-workspace-db.mjs
 node scripts/test-account-pwa.mjs
 ```
 
-DB 스크립트는 Docker의 일회용 PostgreSQL 17 컨테이너만 사용하고 종료 시 해당 컨테이너를 정리한다. 운영 연결 문자열을 받지 않는다. TypeScript/SQL의 동일한 123개 fixture와 RLS·동시성·중복 receipt·rollback·계정 삭제 cascade를 검증한다. PWA 스크립트는 일회용 정적 production build를 16437 포트에서 띄워 실제 서비스워커의 캐시 제외와 오프라인 Main을 검증한다. 최종 결과와 제한은 [검증 기록](superpowers/evidence/2026-09-07-supabase-account-workspace.md)에 있다.
+DB 스크립트는 Docker의 일회용 PostgreSQL 17 컨테이너만 사용하고 종료 시 해당 컨테이너를 정리한다. 운영 연결 문자열을 받지 않는다. TypeScript/SQL의 동일한 170개 fixture와 v3→v4 원자적 이전·구 RPC 차단·RLS·동시성·중복 receipt·rollback·계정 삭제 cascade를 검증한다. PWA 스크립트는 일회용 정적 production build를 16437 포트에서 띄워 실제 서비스워커의 캐시 제외와 오프라인 Main을 검증한다. 현재 결과와 제한은 [v4 통합 기록](superpowers/evidence/2026-09-08-supabase-workspace-v4-integration.md)을 따른다.
 
 E2E의 `cloud` 프로젝트는 실제 production entry와 Supabase SDK를 사용하되 HTTP 경계를 테스트 서버 fixture로 대체한다. `chromium`은 기존 제품 계산/UI/로컬 원본 호환성을 검증하는 테스트 전용 entry다. production에 인증 우회 설정은 없다. Node 25 이상에서 jsdom 저장소와 충돌하면 단위 테스트 앞에 `NODE_OPTIONS=--no-experimental-webstorage`를 지정한다. 이후 추가된 임시 로그인과 최종 전체 회귀 결과는 [2026-09-08 검증 기록](superpowers/evidence/2026-09-08-temporary-password-login.md)을 따른다.
 

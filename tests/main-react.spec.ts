@@ -22,9 +22,9 @@ const appliedWorkspaceV1 = {
   accountMap: { applied: null, draft: null, instruments: [], flows: [] },
 };
 
-const appliedWorkspaceV3 = {
+const appliedWorkspaceV4 = {
   ...appliedWorkspaceV1,
-  schemaVersion: 3 as const,
+  schemaVersion: 4 as const,
   accountMap: { applied: null, draft: null },
 };
 
@@ -186,26 +186,26 @@ const releaseGateWorkspaceV2 = {
   accountMap: releaseGateAccountMapV2,
 };
 
-const emptyAccountMapV3 = {
+const emptyAccountMapV4 = {
   applied: null,
   draft: null,
 };
 
-const connectedWorkspaceV3 = {
+const connectedWorkspaceV4 = {
   ...connectedWorkspaceV1,
-  schemaVersion: 3 as const,
+  schemaVersion: 4 as const,
   portfolio: {
     plans: [connectedWorkspaceV1.portfolio.plans[0]],
     draft: null,
   },
-  accountMap: emptyAccountMapV3,
+  accountMap: emptyAccountMapV4,
 };
 
 const { layout: _retiredLayout, ...releaseGateAppliedV3 } = releaseGateAccountMapV2.applied;
 
-const releaseGateWorkspaceV3 = {
+const releaseGateWorkspaceV4 = {
   ...releaseGateWorkspaceV2,
-  schemaVersion: 3 as const,
+  schemaVersion: 4 as const,
   portfolio: {
     plans: [releaseGateWorkspaceV2.portfolio.plans[0]],
     draft: releaseGateWorkspaceV2.portfolio.draft,
@@ -654,7 +654,7 @@ test('downloads and explicitly resets an invalid workspace before a durable appl
   await page.getByRole('button', { name: '빈 초안으로 다시 시작' }).click();
   await expect(page.getByRole('heading', { name: '한 달 돈의 흐름, 2분이면 확인할 수 있어요.' })).toBeVisible();
   await expect.poll(() => page.evaluate(() => {
-    const currentRaw = localStorage.getItem('isf-workspace-v3');
+    const currentRaw = localStorage.getItem('isf-workspace-v4');
     return {
       retiredRaw: localStorage.getItem('isf-workspace-v1'),
       current: currentRaw === null ? null : JSON.parse(currentRaw),
@@ -662,7 +662,7 @@ test('downloads and explicitly resets an invalid workspace before a durable appl
   })).toEqual({
     retiredRaw: invalidRaw,
     current: expect.objectContaining({
-      schemaVersion: 3,
+      schemaVersion: 4,
       revision: 1,
       main: { applied: null, setupProgress: null },
       simulation: { draft: null },
@@ -687,7 +687,7 @@ test('downloads and explicitly resets an invalid workspace before a durable appl
   await page.reload();
   await expect(page.getByRole('heading', { name: '이번 달 자금 흐름' })).toBeVisible();
   await expect.poll(() => page.evaluate(() => (
-    JSON.parse(localStorage.getItem('isf-workspace-v3')!).main.applied.monthlyNetIncomeWon
+    JSON.parse(localStorage.getItem('isf-workspace-v4')!).main.applied.monthlyNetIncomeWon
   ))).toBe(3_200_000);
   expect(await page.evaluate(() => localStorage.getItem('isf-workspace-v1'))).toBe(invalidRaw);
   await expect.poll(() => page.evaluate((keys) => Object.fromEntries(
@@ -715,7 +715,7 @@ for (const viewport of mainBrandIntroViewports) {
     await expect(page.getByTestId('main-welcome-intro')).toHaveCount(0);
     await expect(page.getByRole('navigation', { name: 'ISF 앱' })).toHaveCount(0);
     await expect.poll(() => page.evaluate(() => {
-      const raw = localStorage.getItem('isf-workspace-v3');
+      const raw = localStorage.getItem('isf-workspace-v4');
       return raw === null ? null : JSON.parse(raw).main.setupProgress;
     })).toMatchObject({ kind: 'initial', step: 'welcome' });
 
@@ -755,8 +755,8 @@ test('Main brand intro restart preserves the applied plan and writes restart wel
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await page.addInitScript((workspace) => {
     localStorage.clear();
-    localStorage.setItem('isf-workspace-v3', JSON.stringify(workspace));
-  }, appliedWorkspaceV3);
+    localStorage.setItem('isf-workspace-v4', JSON.stringify(workspace));
+  }, appliedWorkspaceV4);
   await page.goto('apps/main/');
 
   await page.getByRole('button', { name: '관리 메뉴' }).click();
@@ -768,7 +768,7 @@ test('Main brand intro restart preserves the applied plan and writes restart wel
   await expect(page.getByRole('button', { name: '화면을 눌러 건너뛰기' })).toBeFocused();
   await expect(page.getByRole('heading', { name: '한 달 돈의 흐름, 2분이면 확인할 수 있어요.' })).toHaveCount(0);
   await expect.poll(() => page.evaluate(() => {
-    const workspace = JSON.parse(localStorage.getItem('isf-workspace-v3')!);
+    const workspace = JSON.parse(localStorage.getItem('isf-workspace-v4')!);
     return { applied: workspace.main.applied, progress: workspace.main.setupProgress };
   })).toEqual({
     applied: appliedMainV2,
@@ -798,7 +798,7 @@ test('Main brand intro reduced motion skips fresh animation and writes initial w
   await expect(welcome).toBeVisible();
   await expect(welcome).toBeFocused();
   await expect.poll(() => page.evaluate(() => {
-    const raw = localStorage.getItem('isf-workspace-v3');
+    const raw = localStorage.getItem('isf-workspace-v4');
     return raw === null ? null : JSON.parse(raw).main.setupProgress;
   })).toMatchObject({ kind: 'initial', step: 'welcome' });
 });
@@ -807,8 +807,8 @@ test('Main brand intro reduced motion skips restart animation and preserves the 
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.addInitScript((workspace) => {
     localStorage.clear();
-    localStorage.setItem('isf-workspace-v3', JSON.stringify(workspace));
-  }, appliedWorkspaceV3);
+    localStorage.setItem('isf-workspace-v4', JSON.stringify(workspace));
+  }, appliedWorkspaceV4);
   await page.goto('apps/main/');
 
   await page.getByRole('button', { name: '관리 메뉴' }).click();
@@ -821,7 +821,7 @@ test('Main brand intro reduced motion skips restart animation and preserves the 
   await expect(welcome).toBeVisible();
   await expect(welcome).toBeFocused();
   await expect.poll(() => page.evaluate(() => {
-    const workspace = JSON.parse(localStorage.getItem('isf-workspace-v3')!);
+    const workspace = JSON.parse(localStorage.getItem('isf-workspace-v4')!);
     return { applied: workspace.main.applied, progress: workspace.main.setupProgress };
   })).toEqual({
     applied: appliedMainV2,
@@ -907,7 +907,7 @@ test('new user applies the v2 quick setup and refreshes into matching dashboard 
   });
 
   await expect.poll(() => page.evaluate(() => {
-    const raw = localStorage.getItem('isf-workspace-v3');
+    const raw = localStorage.getItem('isf-workspace-v4');
     if (raw === null) return null;
     const workspace = JSON.parse(raw);
     const { updatedAt: _updatedAt, ...stored } = workspace.main.applied;
@@ -932,7 +932,7 @@ test('new user applies the v2 quick setup and refreshes into matching dashboard 
     simulation: { draft: null },
     portfolio: { plans: [], draft: null },
     locations: [],
-    accountMap: emptyAccountMapV3,
+    accountMap: emptyAccountMapV4,
   });
   await expect.poll(() => page.evaluate((keys) => Object.fromEntries(
     keys.map((key) => [key, localStorage.getItem(key)]),
@@ -955,7 +955,7 @@ test('setup motion reaches final state in real time at required viewports', asyn
   await page.addInitScript((workspace) => {
     if (sessionStorage.getItem('isf-main-real-time-motion-seeded') !== null) return;
     localStorage.clear();
-    localStorage.setItem('isf-workspace-v3', JSON.stringify({
+    localStorage.setItem('isf-workspace-v4', JSON.stringify({
       ...workspace,
       main: {
         applied: null,
@@ -968,7 +968,7 @@ test('setup motion reaches final state in real time at required viewports', asyn
       },
     }));
     sessionStorage.setItem('isf-main-real-time-motion-seeded', 'true');
-  }, appliedWorkspaceV3);
+  }, appliedWorkspaceV4);
 
   for (const viewport of mainBrandIntroViewports) {
     await page.setViewportSize(viewport);
@@ -985,7 +985,7 @@ test('setup motion reaches final state in real time at required viewports', asyn
     })).toBeCloseTo(0, 3);
 
     await page.evaluate((workspace) => {
-      localStorage.setItem('isf-workspace-v3', JSON.stringify({
+      localStorage.setItem('isf-workspace-v4', JSON.stringify({
         ...workspace,
         main: {
           applied: null,
@@ -997,7 +997,7 @@ test('setup motion reaches final state in real time at required viewports', asyn
           },
         },
       }));
-    }, appliedWorkspaceV3);
+    }, appliedWorkspaceV4);
     await page.reload();
 
     await expect.poll(() => page.locator('.setup-flow-surface').evaluate((root) => ({
@@ -1023,7 +1023,7 @@ test('setup motion reaches final state in real time at required viewports', asyn
     ))).toBe(true);
 
     await page.evaluate((workspace) => {
-      localStorage.setItem('isf-workspace-v3', JSON.stringify({
+      localStorage.setItem('isf-workspace-v4', JSON.stringify({
         ...workspace,
         main: {
           applied: workspace.main.applied,
@@ -1035,7 +1035,7 @@ test('setup motion reaches final state in real time at required viewports', asyn
           },
         },
       }));
-    }, appliedWorkspaceV3);
+    }, appliedWorkspaceV4);
     await page.reload();
 
     await expect(page.getByRole('button', { name: '계획 적용' })).toBeVisible();
@@ -1046,7 +1046,7 @@ test('setup motion reaches final state in real time at required viewports', asyn
     ))).toBe(true);
 
     await page.evaluate((workspace) => {
-      localStorage.setItem('isf-workspace-v3', JSON.stringify({
+      localStorage.setItem('isf-workspace-v4', JSON.stringify({
         ...workspace,
         main: {
           applied: null,
@@ -1058,7 +1058,7 @@ test('setup motion reaches final state in real time at required viewports', asyn
           },
         },
       }));
-    }, appliedWorkspaceV3);
+    }, appliedWorkspaceV4);
   }
 });
 
@@ -1177,7 +1177,7 @@ test('review assembly captures timed deficit geometry and reduced motion', async
   ) => {
     await page.evaluate(({ workspace, reviewDraft, setupKind }) => {
       localStorage.clear();
-      localStorage.setItem('isf-workspace-v3', JSON.stringify({
+      localStorage.setItem('isf-workspace-v4', JSON.stringify({
         ...workspace,
         main: {
           applied: setupKind === 'restart' ? workspace.main.applied : null,
@@ -1189,7 +1189,7 @@ test('review assembly captures timed deficit geometry and reduced motion', async
           },
         },
       }));
-    }, { workspace: appliedWorkspaceV3, reviewDraft: draft, setupKind: kind });
+    }, { workspace: appliedWorkspaceV4, reviewDraft: draft, setupKind: kind });
     await page.reload();
     await expect(page.getByRole('heading', { name: '입력한 월 자금 계획을 확인해주세요' })).toBeVisible();
   };
@@ -1327,8 +1327,8 @@ test('review assembly captures timed deficit geometry and reduced motion', async
 test('live dashboard keeps the donut, cards, Simulation, details, and editor contained at required viewports', async ({ page }) => {
   await page.addInitScript((fixture) => {
     localStorage.clear();
-    localStorage.setItem('isf-workspace-v3', JSON.stringify(fixture));
-  }, appliedWorkspaceV3);
+    localStorage.setItem('isf-workspace-v4', JSON.stringify(fixture));
+  }, appliedWorkspaceV4);
 
   for (const viewport of [
     { width: 390, height: 844 },
@@ -1348,8 +1348,8 @@ test.describe('mobile cashflow donut', () => {
   test('keeps a compact legend and reveals touched ring details', async ({ page }) => {
     await page.addInitScript((fixture) => {
       localStorage.clear();
-      localStorage.setItem('isf-workspace-v3', JSON.stringify(fixture));
-    }, appliedWorkspaceV3);
+      localStorage.setItem('isf-workspace-v4', JSON.stringify(fixture));
+    }, appliedWorkspaceV4);
     await page.goto('apps/main/');
 
     const donut = page.getByRole('region', { name: '월 수입 배분' });
@@ -1450,8 +1450,8 @@ test.describe('mobile cashflow donut', () => {
 test('live dashboard removes donut circle transitions when reduced motion is requested', async ({ page }) => {
   await page.addInitScript((fixture) => {
     localStorage.clear();
-    localStorage.setItem('isf-workspace-v3', JSON.stringify(fixture));
-  }, appliedWorkspaceV3);
+    localStorage.setItem('isf-workspace-v4', JSON.stringify(fixture));
+  }, appliedWorkspaceV4);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('apps/main/');
   await page.emulateMedia({ reducedMotion: 'reduce' });
@@ -1614,19 +1614,19 @@ test('complete Phase-B backup round-trips atomically in the contained mobile con
   await page.addInitScript(({ workspace, oldRecords }) => {
     if (sessionStorage.getItem('isf-backup-roundtrip-seeded') === null) {
       localStorage.clear();
-      localStorage.setItem('isf-workspace-v3', JSON.stringify(workspace));
+      localStorage.setItem('isf-workspace-v4', JSON.stringify(workspace));
       for (const [key, raw] of Object.entries(oldRecords)) localStorage.setItem(key, raw);
       sessionStorage.setItem('isf-backup-roundtrip-seeded', 'true');
     }
     const originalSetItem = Storage.prototype.setItem;
     Object.defineProperty(window, '__workspaceWrites', { configurable: true, value: 0, writable: true });
     Storage.prototype.setItem = function setItem(key: string, value: string) {
-      if (key === 'isf-workspace-v3') {
+      if (key === 'isf-workspace-v4') {
         (window as typeof window & { __workspaceWrites: number }).__workspaceWrites += 1;
       }
       originalSetItem.call(this, key, value);
     };
-  }, { workspace: releaseGateWorkspaceV3, oldRecords: seededOldMainRecords });
+  }, { workspace: releaseGateWorkspaceV4, oldRecords: seededOldMainRecords });
   await page.goto('apps/main/');
 
   const trigger = page.getByRole('button', { name: '관리 메뉴' });
@@ -1642,15 +1642,15 @@ test('complete Phase-B backup round-trips atomically in the contained mobile con
   expect(Object.keys(exported).sort()).toEqual(['exportedAt', 'format', 'formatVersion', 'workspace']);
   expect(exported).toMatchObject({
     format: 'isf-workspace-backup',
-    formatVersion: 2,
+    formatVersion: 3,
     workspace: {
-      schemaVersion: 3,
-      revision: releaseGateWorkspaceV3.revision,
-      main: releaseGateWorkspaceV3.main,
-      simulation: releaseGateWorkspaceV3.simulation,
-      portfolio: releaseGateWorkspaceV3.portfolio,
-      locations: releaseGateWorkspaceV3.locations,
-      accountMap: releaseGateWorkspaceV3.accountMap,
+      schemaVersion: 4,
+      revision: releaseGateWorkspaceV4.revision,
+      main: releaseGateWorkspaceV4.main,
+      simulation: releaseGateWorkspaceV4.simulation,
+      portfolio: releaseGateWorkspaceV4.portfolio,
+      locations: releaseGateWorkspaceV4.locations,
+      accountMap: releaseGateWorkspaceV4.accountMap,
     },
   });
   for (const excluded of ['isf-main-v2', 'save-lease', 'trophy', '트로피']) {
@@ -1658,7 +1658,7 @@ test('complete Phase-B backup round-trips atomically in the contained mobile con
   }
 
   const mutatedWorkspace = {
-    ...connectedWorkspaceV3,
+    ...connectedWorkspaceV4,
     revision: 10,
     updatedAt: 1_000,
     main: {
@@ -1668,7 +1668,7 @@ test('complete Phase-B backup round-trips atomically in the contained mobile con
   };
   const mutatedRaw = JSON.stringify(mutatedWorkspace);
   await page.evaluate((raw) => {
-    localStorage.setItem('isf-workspace-v3', raw);
+    localStorage.setItem('isf-workspace-v4', raw);
     (window as typeof window & { __workspaceWrites: number }).__workspaceWrites = 0;
   }, mutatedRaw);
   await page.reload();
@@ -1696,7 +1696,7 @@ test('complete Phase-B backup round-trips atomically in the contained mobile con
       && document.documentElement.scrollWidth <= window.innerWidth;
   });
   expect(containment).toBe(true);
-  expect(await page.evaluate(() => localStorage.getItem('isf-workspace-v3'))).toBe(mutatedRaw);
+  expect(await page.evaluate(() => localStorage.getItem('isf-workspace-v4'))).toBe(mutatedRaw);
 
   await dialog.getByRole('button', { name: '백업으로 바꾸기' }).click();
 
@@ -1704,33 +1704,68 @@ test('complete Phase-B backup round-trips atomically in the contained mobile con
   await expect(page.getByRole('status').filter({ hasText: '모든 앱 데이터를 백업에서 복원했습니다.' })).toBeVisible();
   await expect(trigger).toBeFocused();
   const durable = await page.evaluate(() => ({
-    raw: localStorage.getItem('isf-workspace-v3'),
+    raw: localStorage.getItem('isf-workspace-v4'),
     old: Object.fromEntries(Object.keys(localStorage)
-      .filter((key) => key !== 'isf-workspace-v3' && key.startsWith('isf-'))
+      .filter((key) => key !== 'isf-workspace-v4' && key.startsWith('isf-'))
       .map((key) => [key, localStorage.getItem(key)])),
     writes: (window as typeof window & { __workspaceWrites: number }).__workspaceWrites,
   }));
   const restored = JSON.parse(durable.raw!);
   expect(restored.revision).toBe(11);
-  expect(restored.main).toEqual(releaseGateWorkspaceV3.main);
-  expect(restored.simulation).toEqual(releaseGateWorkspaceV3.simulation);
-  expect(restored.portfolio).toEqual(releaseGateWorkspaceV3.portfolio);
-  expect(restored.locations).toEqual(releaseGateWorkspaceV3.locations);
-  expect(restored.accountMap).toEqual(releaseGateWorkspaceV3.accountMap);
+  expect(restored.main).toEqual(releaseGateWorkspaceV4.main);
+  expect(restored.simulation).toEqual(releaseGateWorkspaceV4.simulation);
+  expect(restored.portfolio).toEqual(releaseGateWorkspaceV4.portfolio);
+  expect(restored.locations).toEqual(releaseGateWorkspaceV4.locations);
+  expect(restored.accountMap).toEqual(releaseGateWorkspaceV4.accountMap);
   expect(durable.writes).toBe(1);
   expect(durable.old).toEqual(seededOldMainRecords);
 });
 
+test('imports a format-v2 backup with workspace v3 as a canonical v4 workspace', async ({ page }) => {
+  const v3BackupWorkspace = {
+    ...appliedWorkspaceV4,
+    schemaVersion: 3 as const,
+    main: {
+      applied: { ...appliedMainV2, monthlyNetIncomeWon: 4_100_000 },
+      setupProgress: null,
+    },
+  };
+  await page.addInitScript((workspace) => {
+    localStorage.clear();
+    localStorage.setItem('isf-workspace-v4', JSON.stringify(workspace));
+  }, appliedWorkspaceV4);
+  await page.goto('apps/main/');
+
+  await page.getByRole('button', { name: '관리 메뉴' }).click();
+  await page.getByLabel('백업 가져오기').setInputFiles({
+    name: 'workspace-v3-format-v2.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify({
+      format: 'isf-workspace-backup',
+      formatVersion: 2,
+      exportedAt: 900,
+      workspace: v3BackupWorkspace,
+    })),
+  });
+  await page.getByRole('dialog').getByRole('button', { name: '백업으로 바꾸기' }).click();
+  await expect(page.getByRole('status').filter({ hasText: '모든 앱 데이터를 백업에서 복원했습니다.' })).toBeVisible();
+
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('isf-workspace-v4')!))).toMatchObject({
+    schemaVersion: 4,
+    main: { applied: { monthlyNetIncomeWon: 4_100_000 } },
+  });
+});
+
 test('canonical backup restores empty Main through the brand intro and preserves every non-Main slice', async ({ page }) => {
   const importedWorkspace = {
-    ...connectedWorkspaceV3,
+    ...connectedWorkspaceV4,
     main: { applied: null, setupProgress: null },
   };
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await page.addInitScript((workspace) => {
     localStorage.clear();
-    localStorage.setItem('isf-workspace-v3', JSON.stringify(workspace));
-  }, connectedWorkspaceV3);
+    localStorage.setItem('isf-workspace-v4', JSON.stringify(workspace));
+  }, connectedWorkspaceV4);
   await page.goto('apps/main/');
 
   await page.getByRole('button', { name: '관리 메뉴' }).click();
@@ -1739,7 +1774,7 @@ test('canonical backup restores empty Main through the brand intro and preserves
     mimeType: 'application/json',
     buffer: Buffer.from(JSON.stringify({
       format: 'isf-workspace-backup',
-      formatVersion: 2,
+      formatVersion: 3,
       exportedAt: 900,
       workspace: importedWorkspace,
     })),
@@ -1759,7 +1794,7 @@ test('canonical backup restores empty Main through the brand intro and preserves
   await expect(page.getByRole('button', { name: '관리 메뉴' })).toHaveCount(0);
 
   await expect.poll(() => page.evaluate(() => {
-    const raw = localStorage.getItem('isf-workspace-v3');
+    const raw = localStorage.getItem('isf-workspace-v4');
     if (raw === null) return null;
     const workspace = JSON.parse(raw);
     const { savedAt: _savedAt, ...progress } = workspace.main.setupProgress;
@@ -1792,7 +1827,7 @@ test('canonical backup restores empty Main through the brand intro and preserves
     simulation: importedWorkspace.simulation,
     portfolio: importedWorkspace.portfolio,
     locations: importedWorkspace.locations,
-    accountMap: emptyAccountMapV3,
+    accountMap: emptyAccountMapV4,
   });
 });
 
@@ -1825,11 +1860,11 @@ for (const restoreCase of [
   },
 ] as const) {
   test(`canonical backup restores ${restoreCase.name} directly with persistent status and setup focus`, async ({ page }) => {
-    const importedWorkspace = { ...connectedWorkspaceV3, main: restoreCase.main };
+    const importedWorkspace = { ...connectedWorkspaceV4, main: restoreCase.main };
     await page.addInitScript((workspace) => {
       localStorage.clear();
-      localStorage.setItem('isf-workspace-v3', JSON.stringify(workspace));
-    }, connectedWorkspaceV3);
+      localStorage.setItem('isf-workspace-v4', JSON.stringify(workspace));
+    }, connectedWorkspaceV4);
     await page.goto('apps/main/');
 
     await page.getByRole('button', { name: '관리 메뉴' }).click();
@@ -1838,7 +1873,7 @@ for (const restoreCase of [
       mimeType: 'application/json',
       buffer: Buffer.from(JSON.stringify({
         format: 'isf-workspace-backup',
-        formatVersion: 2,
+        formatVersion: 3,
         exportedAt: 900,
         workspace: importedWorkspace,
       })),
@@ -1855,7 +1890,7 @@ for (const restoreCase of [
     await expect(page.getByRole('button', { name: '관리 메뉴' })).toHaveCount(0);
 
     await expect.poll(() => page.evaluate(() => {
-      const raw = localStorage.getItem('isf-workspace-v3');
+      const raw = localStorage.getItem('isf-workspace-v4');
       if (raw === null) return null;
       const workspace = JSON.parse(raw);
       return {
@@ -1872,7 +1907,7 @@ for (const restoreCase of [
       simulation: importedWorkspace.simulation,
       portfolio: importedWorkspace.portfolio,
       locations: importedWorkspace.locations,
-      accountMap: emptyAccountMapV3,
+      accountMap: emptyAccountMapV4,
     });
   });
 }
@@ -1880,22 +1915,22 @@ for (const restoreCase of [
 test('invalid, old, reference, duplicate, and capacity backups retain the exact raw workspace', async ({ page }) => {
   await page.addInitScript(({ workspace, oldRecords }) => {
     localStorage.clear();
-    localStorage.setItem('isf-workspace-v3', JSON.stringify(workspace));
+    localStorage.setItem('isf-workspace-v4', JSON.stringify(workspace));
     for (const [key, raw] of Object.entries(oldRecords)) localStorage.setItem(key, raw);
-  }, { workspace: connectedWorkspaceV3, oldRecords: seededOldMainRecords });
+  }, { workspace: connectedWorkspaceV4, oldRecords: seededOldMainRecords });
   await page.goto('apps/main/');
-  const raw = JSON.stringify(connectedWorkspaceV3);
+  const raw = JSON.stringify(connectedWorkspaceV4);
   const trigger = page.getByRole('button', { name: '관리 메뉴' });
-  const referenceWorkspace = { ...releaseGateWorkspaceV3, locations: [] };
+  const referenceWorkspace = { ...releaseGateWorkspaceV4, locations: [] };
   const duplicateWorkspace = {
-    ...connectedWorkspaceV3,
+    ...connectedWorkspaceV4,
     locations: [
-      ...connectedWorkspaceV3.locations,
-      { ...connectedWorkspaceV3.locations[0], id: 'loc-duplicate', shortName: ' isa ' },
+      ...connectedWorkspaceV4.locations,
+      { ...connectedWorkspaceV4.locations[0], id: 'loc-duplicate', shortName: ' isa ' },
     ],
   };
   const capacityWorkspace = {
-    ...connectedWorkspaceV3,
+    ...connectedWorkspaceV4,
     locations: [
       ...connectedWorkspaceV1.locations,
       ...Array.from({ length: 11 }, (_, index) => ({
@@ -1910,7 +1945,7 @@ test('invalid, old, reference, duplicate, and capacity backups retain the exact 
   };
   const envelope = (workspace: unknown) => JSON.stringify({
     format: 'isf-workspace-backup',
-    formatVersion: 2,
+    formatVersion: 3,
     exportedAt: 900,
     workspace,
   });
@@ -1918,7 +1953,7 @@ test('invalid, old, reference, duplicate, and capacity backups retain the exact 
     ['malformed.json', '{bad', '백업 JSON을 읽을 수 없습니다.'],
     ['old-main.json', JSON.stringify(appliedMainV2), '새 전체 workspace 백업 파일만 가져올 수 있습니다.'],
     ['schema.json', envelope({
-      ...connectedWorkspaceV3,
+      ...connectedWorkspaceV4,
       main: {
         applied: { ...appliedMainV2, monthlyNetIncomeWon: -1 },
         setupProgress: null,
@@ -1938,7 +1973,7 @@ test('invalid, old, reference, duplicate, and capacity backups retain the exact 
     });
     await expect(page.getByRole('alert'), name).toContainText(expectedMessage);
     await expect(trigger).toBeFocused();
-    expect(await page.evaluate(() => localStorage.getItem('isf-workspace-v3'))).toBe(raw);
+    expect(await page.evaluate(() => localStorage.getItem('isf-workspace-v4'))).toBe(raw);
     expect(await page.evaluate((keys) => Object.fromEntries(
       keys.map((key) => [key, localStorage.getItem(key)]),
     ), Object.keys(seededOldMainRecords))).toEqual(seededOldMainRecords);
@@ -1953,15 +1988,15 @@ for (const invalidImport of [
   test(`invalid ${invalidImport.name} import performs zero workspace writes and retains raw bytes`, async ({ page }) => {
     await page.addInitScript((workspace) => {
       localStorage.clear();
-      localStorage.setItem('isf-workspace-v3', JSON.stringify(workspace));
-    }, connectedWorkspaceV3);
+      localStorage.setItem('isf-workspace-v4', JSON.stringify(workspace));
+    }, connectedWorkspaceV4);
     await page.goto('apps/main/');
-    const raw = JSON.stringify(connectedWorkspaceV3);
+    const raw = JSON.stringify(connectedWorkspaceV4);
     await page.evaluate(() => {
       const originalSetItem = Storage.prototype.setItem;
       Object.defineProperty(window, '__invalidImportWrites', { configurable: true, value: 0, writable: true });
       Storage.prototype.setItem = function setItem(key: string, value: string) {
-        if (key === 'isf-workspace-v3') {
+        if (key === 'isf-workspace-v4') {
           (window as typeof window & { __invalidImportWrites: number }).__invalidImportWrites += 1;
         }
         originalSetItem.call(this, key, value);
@@ -1982,7 +2017,7 @@ for (const invalidImport of [
 
     await expect(page.getByRole('alert')).toContainText('백업의 앱 연결 정보가 올바르지 않습니다.');
     const result = await page.evaluate(() => ({
-      raw: localStorage.getItem('isf-workspace-v3'),
+      raw: localStorage.getItem('isf-workspace-v4'),
       writes: (window as typeof window & { __invalidImportWrites: number }).__invalidImportWrites,
     }));
     expect(result.raw).toBe(raw);
@@ -1993,8 +2028,8 @@ for (const invalidImport of [
 
 test('backup import has a matching accessible name and visible keyboard focus ring', async ({ page }) => {
   await page.addInitScript((fixture) => {
-    localStorage.setItem('isf-workspace-v3', JSON.stringify(fixture));
-  }, appliedWorkspaceV3);
+    localStorage.setItem('isf-workspace-v4', JSON.stringify(fixture));
+  }, appliedWorkspaceV4);
   await page.goto('apps/main/');
 
   const trigger = page.getByRole('button', { name: '관리 메뉴' });
@@ -2059,7 +2094,7 @@ test('interrupted setup reloads at housing with its v2 draft intact', async ({ p
   await page.getByLabel('월 주거 고정비').fill('800000');
 
   await expect.poll(() => page.evaluate(() => {
-    const raw = localStorage.getItem('isf-workspace-v3');
+    const raw = localStorage.getItem('isf-workspace-v4');
     return raw === null ? null : JSON.parse(raw).main.setupProgress;
   })).toMatchObject({
     kind: 'initial',
@@ -2081,10 +2116,10 @@ test('interrupted setup reloads at housing with its v2 draft intact', async ({ p
 
 test('dashboard edit persists only the v2 scalar plan', async ({ page }) => {
   await page.addInitScript((fixture) => {
-    if (localStorage.getItem('isf-workspace-v3') === null) {
-      localStorage.setItem('isf-workspace-v3', JSON.stringify(fixture));
+    if (localStorage.getItem('isf-workspace-v4') === null) {
+      localStorage.setItem('isf-workspace-v4', JSON.stringify(fixture));
     }
-  }, appliedWorkspaceV3);
+  }, appliedWorkspaceV4);
   await page.goto('apps/main/');
 
   await page.getByRole('button', { name: '월 소비 편집' }).click();
@@ -2097,7 +2132,7 @@ test('dashboard edit persists only the v2 scalar plan', async ({ page }) => {
 
   await expect(page.getByRole('button', { name: '월 소비 편집' })).toContainText('190만 원');
   await expect.poll(() => page.evaluate(() => {
-    const raw = localStorage.getItem('isf-workspace-v3');
+    const raw = localStorage.getItem('isf-workspace-v4');
     return raw === null ? null : Object.keys(JSON.parse(raw).main.applied).sort();
   })).toEqual([
     'monthlyHousingWon',
@@ -2113,8 +2148,8 @@ test('dashboard edit persists only the v2 scalar plan', async ({ page }) => {
 test('dashboard deficit entry keeps exiting remaining geometry until interpolation completes', async ({ page }, testInfo) => {
   await page.clock.install({ time: new Date('2026-08-12T00:00:00Z') });
   await page.addInitScript((fixture) => {
-    localStorage.setItem('isf-workspace-v3', JSON.stringify(fixture));
-  }, appliedWorkspaceV3);
+    localStorage.setItem('isf-workspace-v4', JSON.stringify(fixture));
+  }, appliedWorkspaceV4);
   await page.goto('apps/main/');
   await page.clock.pauseAt(new Date('2026-08-12T00:01:00Z'));
   await page.getByText('자세히 보기', { exact: true }).click();
@@ -2168,8 +2203,8 @@ test('dashboard deficit entry keeps exiting remaining geometry until interpolati
 
 test('월 자금 계획 편집은 편집 중인 금액의 빠른 조정만 표시한다', async ({ page }) => {
   await page.addInitScript((fixture) => {
-    localStorage.setItem('isf-workspace-v3', JSON.stringify(fixture));
-  }, appliedWorkspaceV3);
+    localStorage.setItem('isf-workspace-v4', JSON.stringify(fixture));
+  }, appliedWorkspaceV4);
   await page.goto('apps/main/');
   await page.getByRole('button', { name: '월 소비 편집' }).click();
 

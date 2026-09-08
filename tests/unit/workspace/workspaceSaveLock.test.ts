@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   BrowserWorkspaceSaveLock,
+  PREVIOUS_WORKSPACE_SAVE_LOCK_NAMESPACE,
   RETIRED_WORKSPACE_SAVE_LOCK_NAMESPACE,
 } from '../../../src/workspace/infrastructure/workspaceSaveLock';
 
@@ -41,7 +42,7 @@ describe('BrowserWorkspaceSaveLock namespaces', () => {
     vi.unstubAllGlobals();
   });
 
-  it('uses the current v3 namespace for Web Locks and fallback leases by default', async () => {
+  it('uses the canonical v4 namespace for Web Locks and fallback leases by default', async () => {
     const requestedNames: string[] = [];
     vi.stubGlobal('navigator', {
       locks: {
@@ -53,7 +54,7 @@ describe('BrowserWorkspaceSaveLock namespaces', () => {
     });
     await new BrowserWorkspaceSaveLock().runExclusive(async () => undefined);
 
-    expect(requestedNames).toEqual(['isf-workspace-v3-save']);
+    expect(requestedNames).toEqual(['isf-workspace-v4-save']);
 
     vi.stubGlobal('navigator', {});
     const storage = new MemoryStorage();
@@ -64,10 +65,29 @@ describe('BrowserWorkspaceSaveLock namespaces', () => {
     }).runExclusive(async () => undefined);
 
     expect([...storage.keys()]).toContainEqual(
+      expect.stringMatching(/^isf-workspace-v4-save-lease:/),
+    );
+    expect([...storage.keys()]).not.toContainEqual(
+      expect.stringMatching(/^isf-workspace-v3-save-lease:/),
+    );
+  });
+
+  it('keeps v3 and retired namespaces available only when a conversion path injects them', async () => {
+    const storage = new MemoryStorage();
+    vi.stubGlobal('navigator', {});
+
+    await new BrowserWorkspaceSaveLock(storage, {
+      namespace: PREVIOUS_WORKSPACE_SAVE_LOCK_NAMESPACE,
+      createOwnerToken: () => 'v3-source-tab',
+      now: () => 100,
+      yieldAfterClaim: async () => undefined,
+    }).runExclusive(async () => undefined);
+
+    expect([...storage.keys()]).toContainEqual(
       expect.stringMatching(/^isf-workspace-v3-save-lease:/),
     );
     expect([...storage.keys()]).not.toContainEqual(
-      expect.stringMatching(/^isf-workspace-v1-save-lease:/),
+      expect.stringMatching(/^isf-workspace-v4-save-lease:/),
     );
   });
 

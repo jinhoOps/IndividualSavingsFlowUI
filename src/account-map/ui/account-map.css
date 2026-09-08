@@ -1,21 +1,55 @@
 .account-map-page { padding-block: 28px 72px; }
-.account-map-setup { display: grid; gap: 24px; }
+.account-map-setup {
+  display: grid;
+  /* AppContentFrame owns the viewport's 1rem guardrails and 48rem reading width. */
+  width: min(100%, 48rem);
+  max-width: 100%;
+  min-width: 0;
+  gap: 24px;
+  margin-inline: auto;
+}
 .account-map-setup__header { max-width: 680px; }
 .account-map-setup__header h1, .account-map-message h1, .account-map-placeholder h1 { margin: 4px 0 8px; font-size: clamp(1.75rem, 5vw, 2.5rem); }
 .account-map-setup__header p, .account-map-message p, .account-map-placeholder p { margin: 0; color: var(--muted); line-height: 1.65; }
 .account-map-eyebrow { color: var(--tone-accent) !important; font-size: .875rem; font-weight: 700; }
-.account-map-purpose-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); gap: 12px; }
-.account-map-purpose-card { display: flex; min-width: 0; min-height: 210px; flex-direction: column; border: 1px solid var(--line); border-radius: 20px; background: var(--panel); padding: 20px; }
-.account-map-purpose-card__top { display: grid; gap: 16px; }
-.account-map-purpose-card__top p { margin: 0 0 4px; color: var(--muted); font-size: .8rem; }
-.account-map-purpose-card h2 { margin: 0; font-size: 1.25rem; }
-.account-map-purpose-card strong { overflow-wrap: anywhere; font-family: var(--font-display); font-size: 1.1rem; }
-.account-map-purpose-card__status { margin: auto 0 12px; color: var(--tone-accent); font-size: .875rem; }
-.account-map-purpose-card__status.is-empty { color: var(--muted); }
-.account-map-purpose-card__action { min-height: 44px; border: 1px solid var(--line-strong); border-radius: 12px; background: var(--panel); color: var(--ink); font-weight: 700; }
-.account-map-purpose-card__action:hover, .account-map-purpose-card__action:focus-visible { border-color: var(--tone-accent); color: var(--tone-accent); }
+.account-map-setup__progress { height: 6px; overflow: hidden; border-radius: 999px; background: color-mix(in srgb, var(--tone-accent) 14%, var(--line)); }
+.account-map-setup__progress span { display: block; height: 100%; border-radius: inherit; background: var(--tone-accent); transition: width 180ms ease; }
+.account-map-setup-step { display: grid; min-width: 0; gap: 24px; }
+.account-map-setup-step > header { display: grid; min-width: 0; gap: 8px; }
+.account-map-setup-step > header h1, .account-map-setup-step > header p { margin: 0; }
+.account-map-setup-step > header h1 { font-size: clamp(1.75rem, 5vw, 2.5rem); }
+.account-map-setup-step > header > p:not(.account-map-eyebrow) { color: var(--muted); line-height: 1.65; }
+.account-map-setup__footer, .account-map-setup__actions { display: flex; min-width: 0; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.account-map-setup__footer { border-top: 1px solid var(--line); padding-top: 18px; }
+.account-map-setup__footer > div, .account-map-setup__actions > div { display: flex; min-width: 0; flex-wrap: wrap; gap: 8px; }
+.account-map-setup__actions { justify-content: flex-end; }
+.account-map-basis-step__groups, .account-map-locations-step__list, .account-map-transfer-suggestions, .account-map-transfer-list, .account-map-review-flow { display: grid; min-width: 0; gap: 12px; }
+.account-map-basis-step__groups > section, .account-map-transfer-suggestions, .account-map-transfer-list, .account-map-review-flow, .account-map-setup-inline-editor { min-width: 0; border: 1px solid var(--line); border-radius: 18px; background: var(--panel); padding: 18px; }
+.account-map-basis-step__groups h2, .account-map-transfer-suggestions h2, .account-map-transfer-list h2, .account-map-review-flow h2, .account-map-setup-inline-editor h2, .account-map-setup-inline-editor p { margin: 0; }
+.account-map-basis-step__groups > section { display: grid; gap: 8px; }
+.account-map-basis-step__amount { display: grid; min-width: 0; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 12px; border-top: 1px solid var(--line); padding-top: 8px; }
+.account-map-basis-step__amount strong { overflow-wrap: anywhere; font-family: var(--font-display); white-space: nowrap; }
+.account-map-basis-step__amount button, .account-map-location-row button, .account-map-transfer-suggestions button, .account-map-transfer-list button { min-height: 44px; border: 1px solid var(--line-strong); border-radius: 12px; background: var(--panel); color: var(--ink); padding: 8px 12px; font-weight: 700; }
+.account-map-basis-step__amount button:hover, .account-map-basis-step__amount button:focus-visible, .account-map-location-row button:hover, .account-map-location-row button:focus-visible, .account-map-transfer-suggestions button:hover, .account-map-transfer-suggestions button:focus-visible, .account-map-transfer-list button:hover, .account-map-transfer-list button:focus-visible { border-color: var(--tone-accent); color: var(--tone-accent); }
+.account-map-location-row { display: grid; min-width: 0; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 8px 16px; border: 1px solid var(--line); border-radius: 16px; background: var(--panel); padding: 14px 16px; }
+.account-map-location-row > div { min-width: 0; }
+.account-map-location-row p, .account-map-location-row h2, .account-map-location-row small { margin: 0; }
+.account-map-location-row p, .account-map-location-row small { color: var(--muted); font-size: .875rem; }
+.account-map-location-row strong { overflow-wrap: anywhere; font-family: var(--font-display); white-space: nowrap; }
+.account-map-setup-inline-editor { display: grid; gap: 16px; }
+.account-map-transfer-suggestions ul, .account-map-transfer-list ul, .account-map-review-flow ul { display: grid; min-width: 0; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.account-map-transfer-suggestions li, .account-map-transfer-list li { display: grid; min-width: 0; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 8px 14px; border-top: 1px solid var(--line); padding-top: 10px; }
+.account-map-transfer-suggestions li span, .account-map-transfer-list li span { overflow-wrap: anywhere; }
+.account-map-transfer-suggestions li strong, .account-map-transfer-list li strong { font-family: var(--font-display); white-space: nowrap; }
+.account-map-transfer-list li > div { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.account-map-transfer-list > div { display: flex; min-width: 0; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.account-map-review-flow li { display: grid; min-width: 0; gap: 4px; border-top: 1px solid var(--line); padding-top: 10px; }
+.account-map-review-flow li span { color: var(--muted); overflow-wrap: anywhere; }
+.account-map-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; border-top: 1px solid var(--line); padding-top: 18px; }
+.account-map-purpose-management { min-width: 0; padding-block: 20px; }
+.account-map-purpose-management .account-map-actions { position: static; justify-content: flex-start; }
+.account-map-purpose-management .ui-button { min-height: 44px; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
 .account-map-add-purpose, .account-map-new-location { display: flex; min-height: 64px; align-items: center; justify-content: center; gap: 8px; border: 1px dashed var(--line-strong); border-radius: 18px; background: color-mix(in srgb, var(--panel) 75%, transparent); color: var(--tone-accent); font-weight: 700; }
-.account-map-actions { display: flex; justify-content: flex-end; gap: 8px; border-top: 1px solid var(--line); padding-top: 18px; }
 .account-map-alert { display: grid; gap: 3px; margin: 0; border-left: 3px solid var(--tone-primary); background: color-mix(in srgb, var(--tone-primary) 7%, var(--panel)); padding: 12px 14px; }
 .account-map-alert span { color: var(--muted); font-size: .875rem; }
 .account-map-error { margin: 0; color: var(--status-error); font-weight: 700; }
@@ -53,6 +87,7 @@
 .account-map-canvas-shell { overflow: hidden; border: 1px solid var(--line); border-radius: 24px; background: var(--panel); }
 .account-map-canvas-toolbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 14px; border-bottom: 1px solid var(--line); padding: 16px 18px; }
 .account-map-canvas-toolbar h2, .account-map-canvas-toolbar p { margin: 0; }
+.account-map-canvas-toolbar__controls { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
 .account-map-zoom-control { display: flex; min-height: 44px; align-items: center; border: 1px solid var(--line); border-radius: 12px; padding: 3px; }
 .account-map-zoom-control button { min-width: 44px; min-height: 44px; border: 0; border-radius: 9px; background: transparent; color: var(--muted); font-weight: 700; }
 .account-map-zoom-control span { min-width: 66px; text-align: center; font-size: .8rem; }
@@ -67,26 +102,36 @@
 .account-map-node span, .account-map-node strong, .account-map-node small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .account-map-node strong { font-family: var(--font-display); font-size: .88rem; }
 .account-map-node small { color: var(--muted); font-size: .7rem; }
-.account-map-node--purpose { border-color: color-mix(in srgb, var(--tone-primary) 54%, var(--line)); }
-.account-map-node--location { border-color: color-mix(in srgb, var(--tone-accent) 52%, var(--line)); }
-.account-map-node--status.is-deficit { border-color: var(--status-error); color: var(--status-error); }
-.account-map-node.is-unassigned { border-style: dashed; }
-.account-map-node.is-excess { border-color: var(--status-error); }
-.account-map-node.is-dimmed { opacity: .25; }
-.account-map-node.is-pinned { z-index: 3; border-color: var(--tone-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--tone-accent) 18%, transparent); transform: scale(1.035); }
-.account-map-edge-amount { position: absolute; z-index: 4; transform: translate(-50%, -50%); border: 1px solid var(--line); border-radius: 999px; background: var(--panel); padding: 3px 7px; font-size: .72rem; font-weight: 700; white-space: nowrap; }
-.account-map-connection-detail { position: absolute; z-index: 5; display: grid; width: min(312px, calc(100% - 32px)); gap: 10px; overflow: auto; border: 1px solid var(--line); border-radius: 16px; background: var(--panel); box-shadow: var(--shadow-float); color: var(--ink); padding: 14px; pointer-events: none; }
-.account-map-connection-detail__heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
-.account-map-connection-detail h3, .account-map-connection-detail p { margin: 0; }
-.account-map-connection-detail h3 { font-size: .9rem; }
-.account-map-connection-detail > p { color: var(--muted); font-size: .75rem; line-height: 1.45; }
-.account-map-connection-detail__empty { border-top: 1px solid var(--line); padding-top: 10px; }
-.account-map-connection-detail ul { display: grid; gap: 9px; margin: 0; padding: 0; list-style: none; }
-.account-map-connection-detail li { display: grid; gap: 5px; }
-.account-map-connection-detail li > div { display: flex; justify-content: space-between; gap: 10px; font-size: .78rem; }
-.account-map-connection-detail li > div strong { text-align: right; white-space: nowrap; }
-.account-map-connection-detail__track { display: block; height: 5px; overflow: hidden; border-radius: 999px; background: color-mix(in srgb, var(--tone-accent) 15%, var(--line)); }
-.account-map-connection-detail__weight { display: block; width: 100%; height: 100%; transform: scaleX(var(--account-map-connection-weight)); transform-origin: left center; border-radius: inherit; background: var(--tone-accent); }
+.account-flow-canvas { cursor: default; }
+.account-flow-edges marker path { fill: var(--tone-accent); stroke: none; }
+.account-flow-edge--fixed, .account-flow-edge--sweep { stroke: var(--tone-accent) !important; }
+.account-map-edges .account-flow-edge-hit { stroke: transparent; stroke-width: 44; stroke-linecap: round; pointer-events: stroke; cursor: pointer; transition: none; }
+.account-flow-edge-hit:focus-visible { outline: none; }
+.account-flow-edge-control:focus-within .account-flow-edge { stroke-width: 4; }
+.account-flow-edge--sweep { stroke-dasharray: 9 5; }
+.account-flow-edge--purpose { stroke-dasharray: 2 5; }
+.account-flow-edge--warning { stroke: var(--status-error, #a43122) !important; stroke-dasharray: 4 4; }
+.account-flow-edge.is-dimmed { opacity: .18; }
+.account-flow-edge.is-focused { stroke-width: 3; }
+.account-flow-edge:focus-visible { outline: none; stroke-width: 4; }
+.account-flow-node--external-income { border-style: double; }
+.account-flow-node--warning { border-style: dashed; }
+.account-flow-edge-amount { max-width: calc(100% - 32px); overflow: hidden; text-overflow: ellipsis; }
+.account-flow-detail { position: absolute; z-index: 6; top: 16px; right: 16px; display: grid; width: min(332px, calc(100% - 32px)); max-height: calc(100% - 32px); gap: 12px; overflow: auto; border: 1px solid var(--line); border-radius: 18px; background: var(--panel); box-shadow: var(--shadow-float); padding: 14px; color: var(--ink); }
+.account-flow-detail.is-transient { pointer-events: none; }
+.account-flow-detail header, .account-flow-detail header > div, .account-flow-detail footer, .account-flow-detail section, .account-flow-detail li > div { display: grid; min-width: 0; gap: 5px; }
+.account-flow-detail header { grid-template-columns: minmax(0, 1fr) auto; align-items: start; }
+.account-flow-detail header > span { border: 1px solid var(--line); border-radius: 999px; padding: 3px 7px; color: var(--muted); font-size: .72rem; }
+.account-flow-detail h3, .account-flow-detail h4, .account-flow-detail p { margin: 0; }
+.account-flow-detail h3 { font-size: 1rem; }
+.account-flow-detail h4 { font-size: .82rem; }
+.account-flow-detail header p, .account-flow-detail__notice, .account-flow-detail small { color: var(--muted); font-size: .76rem; line-height: 1.45; }
+.account-flow-detail ul { display: grid; gap: 7px; margin: 0; padding: 0; list-style: none; }
+.account-flow-detail li { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; border-top: 1px solid var(--line); padding-top: 8px; }
+.account-flow-detail li span, .account-flow-detail li strong { overflow-wrap: anywhere; }
+.account-flow-detail li strong { font-family: var(--font-display); font-size: .86rem; }
+.account-flow-detail footer { grid-template-columns: repeat(2, minmax(0, 1fr)); border-top: 1px solid var(--line); padding-top: 12px; }
+.account-flow-detail .ui-button { min-width: 0; min-height: 44px; }
 .account-map-linear-table { table-layout: fixed; }
 .account-map-linear-table:focus { outline: 3px solid color-mix(in srgb, var(--tone-accent) 40%, transparent); }
 .account-map-modal-backdrop { position: fixed; z-index: 80; inset: 0; display: grid; place-items: center; background: rgb(16 34 32 / 45%); padding: 16px; }
@@ -131,22 +176,34 @@
 .account-map-location-picker > fieldset legend { margin-bottom: 8px; font-weight: 700; }
 .account-map-location-picker > label, .account-map-modal__restore-purpose label { position: relative; display: grid; min-width: 0; gap: 7px; font-weight: 700; }
 .account-map-location-picker > label > span { position: absolute; right: 12px; bottom: 12px; color: var(--muted); font-size: .875rem; }
+.financial-location-fields, .account-transfer-editor { display: grid; min-width: 0; gap: 14px; }
+.financial-location-fields > fieldset, .account-transfer-editor > fieldset { min-width: 0; margin: 0; border: 0; padding: 0; }
+.financial-location-fields legend, .account-transfer-editor legend { margin-bottom: 8px; font-weight: 700; }
+.financial-location-fields label, .account-transfer-editor > label, .account-map-location-picker__amount { display: grid; min-width: 0; gap: 7px; font-weight: 700; }
+.formatted-money-input { display: grid; min-width: 0; gap: 8px; }
+.formatted-money-input__adjustments, .account-transfer-editor__actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .account-map-location-picker input, .account-map-location-picker select, .account-map-modal__edit input, .account-map-modal__edit select, .account-map-modal__restore-purpose input { width: 100%; min-width: 0; }
 .account-map-location-picker__actions { position: sticky; z-index: 1; bottom: -20px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 0 -1px -20px; background: var(--panel); padding: 12px 1px 20px; }
 
 @media (max-width: 600px) {
   .account-map-page { padding-block: 20px 56px; }
-  .account-map-purpose-grid { grid-template-columns: 1fr; gap: 10px; }
-  .account-map-purpose-card { min-height: 0; padding: 16px; }
-  .account-map-purpose-card__top { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
-  .account-map-purpose-card__status { margin: 12px 0; }
+  .account-map-setup { gap: 20px; }
+  .account-map-setup__footer { position: sticky; z-index: 5; bottom: 0; background: var(--bg); padding-bottom: max(8px, env(safe-area-inset-bottom)); }
+  .account-map-setup__footer > div { display: grid; flex: 1 1 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .account-map-setup__footer .ui-button { min-width: 0; }
+  .account-map-basis-step__amount, .account-map-location-row, .account-map-transfer-suggestions li, .account-map-transfer-list li { grid-template-columns: minmax(0, 1fr) auto; }
+  .account-map-basis-step__amount button, .account-map-location-row button, .account-map-transfer-suggestions li button, .account-map-transfer-list li button { grid-column: 1 / -1; width: 100%; }
+  .account-map-setup__actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .account-map-setup__actions .ui-button { min-width: 0; }
   .account-map-actions { position: sticky; z-index: 5; bottom: 0; background: var(--bg); padding-bottom: max(8px, env(safe-area-inset-bottom)); }
   .account-map-actions .ui-button { flex: 1; }
+  .account-map-purpose-management .account-map-actions .ui-button { flex: 1 1 9rem; }
   .account-map-institutions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .account-map-sheet { max-height: 92dvh; }
   .account-map-canvas-toolbar { grid-template-columns: 1fr auto; }
   .account-map-canvas-toolbar > div:first-child { grid-column: 1 / -1; }
-  .account-map-connection-detail { width: calc(100% - 32px); }
+  .account-flow-detail { top: auto; right: 16px; bottom: 16px; left: 16px; width: auto; max-height: min(52%, 360px); }
+  .account-flow-detail footer { position: sticky; bottom: -14px; background: var(--panel); padding-bottom: 2px; }
   .account-map-modal-backdrop { align-items: end; padding: 0; }
   .account-map-modal { width: 100%; max-height: 90dvh; border-radius: 24px 24px 0 0; }
 }
@@ -167,7 +224,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .account-map-node, .account-map-edges path, .account-map-connection-detail__weight { transition: none; }
+  .account-map-node, .account-map-edges path, .account-flow-edge { transition: none; }
 }
 
 @media (min-width: 769px) { .account-map-sheet-backdrop { align-items: center; padding: 24px; } .account-map-sheet { border-radius: 26px; } }

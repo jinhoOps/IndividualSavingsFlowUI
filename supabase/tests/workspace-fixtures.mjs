@@ -83,4 +83,58 @@ function objectShapes(value, path = []) {
   for (const [key, child] of Object.entries(value)) objectShapes(child, [...path, key]);
 }
 objectShapes(full);
+
+export const flow = structuredClone(full);
+flow.locations.push(
+  { id: 'income', shortName: '급여', kind: 'cash', roles: ['income'], createdAt: 100, updatedAt: 100 },
+  { id: 'living', shortName: '생활', kind: 'cash', roles: ['spending'], createdAt: 100, updatedAt: 100 },
+);
+flow.accountMap.applied = { ...flow.accountMap.applied, schemaVersion: 3, transfers: [
+  { id: 'salary-living', sourceLocationId: 'income', targetLocationId: 'living', allocation: { kind: 'fixed', monthlyAmountWon: 100 }, status: 'active', createdAt: 100, updatedAt: 100 },
+  { id: 'living-bank', sourceLocationId: 'living', targetLocationId: 'bank', allocation: { kind: 'sweep' }, status: 'active', createdAt: 100, updatedAt: 100 },
+] };
+function flowVariant(name, valid, change = () => {}) {
+  const payload = structuredClone(flow); change(payload); fixtures.push({ name, valid, payload });
+}
+flowVariant('v4 fixed and sweep', true);
+flowVariant('v4 zero fixed transfer', true, p => p.accountMap.applied.transfers[0].allocation.monthlyAmountWon = 0);
+flowVariant('v4 safe integer fixed deficit', true, p => p.accountMap.applied.transfers[0].allocation.monthlyAmountWon = Number.MAX_SAFE_INTEGER);
+for (const amount of [-1, 0.5, 9007199254740992, null, '1']) {
+  flowVariant(`v4 invalid fixed ${amount}`, false, p => p.accountMap.applied.transfers[0].allocation.monthlyAmountWon = amount);
+}
+for (const step of ['basis', 'locations', 'transfers', 'review', 'connect', null]) {
+  flowVariant(`v4 draft step ${step}`, step !== 'connect' && step !== null, p => {
+    const { setupCompletedAt, ...state } = p.accountMap.applied;
+    p.accountMap.draft = { ...state, schemaVersion: 2, step };
+  });
+}
+flowVariant('v4 legacy draft with flow applied', true, p => {
+  const { setupCompletedAt, ...state } = full.accountMap.applied;
+  p.accountMap.draft = { ...state, schemaVersion: 1, step: 'connect' };
+});
+flowVariant('v4 duplicate transfer id across suspended', false, p => p.accountMap.applied.transfers.push({ ...p.accountMap.applied.transfers[0], status: 'suspended', suspendedReason: 'user' }));
+flowVariant('v4 duplicate active pair', false, p => p.accountMap.applied.transfers.push({ ...p.accountMap.applied.transfers[0], id: 'duplicate' }));
+flowVariant('v4 suspended duplicate pair permitted', true, p => p.accountMap.applied.transfers.push({ ...p.accountMap.applied.transfers[0], id: 'suspended', status: 'suspended', suspendedReason: 'user' }));
+flowVariant('v4 active self transfer', false, p => p.accountMap.applied.transfers[0].targetLocationId = 'income');
+flowVariant('v4 suspended self transfer', false, p => Object.assign(p.accountMap.applied.transfers[0], { targetLocationId: 'income', status: 'suspended', suspendedReason: 'user' }));
+flowVariant('v4 active missing endpoint', false, p => p.accountMap.applied.transfers[0].sourceLocationId = 'missing');
+flowVariant('v4 suspended missing endpoint', false, p => Object.assign(p.accountMap.applied.transfers[0], { sourceLocationId: 'missing', status: 'suspended', suspendedReason: 'user' }));
+flowVariant('v4 active archived endpoint', false, p => p.locations[1].archivedAt = 100);
+flowVariant('v4 suspended archived endpoint', true, p => { p.locations[1].archivedAt = 100; Object.assign(p.accountMap.applied.transfers[0], { status: 'suspended', suspendedReason: 'location-archived' }); });
+flowVariant('v4 suspended sweep', true, p => Object.assign(p.accountMap.applied.transfers[1], { status: 'suspended', suspendedReason: 'user' }));
+flowVariant('v4 duplicate sweep source', false, p => p.accountMap.applied.transfers.push({ ...p.accountMap.applied.transfers[1], id: 'sweep-2', targetLocationId: 'income' }));
+flowVariant('v4 active directed cycle', false, p => p.accountMap.applied.transfers.push({ ...p.accountMap.applied.transfers[0], id: 'return', sourceLocationId: 'bank', targetLocationId: 'income' }));
+flowVariant('v4 suspended breaks cycle', true, p => p.accountMap.applied.transfers.push({ ...p.accountMap.applied.transfers[0], id: 'return', sourceLocationId: 'bank', targetLocationId: 'income', status: 'suspended', suspendedReason: 'user' }));
+flowVariant('v4 sweep forbids amount', false, p => p.accountMap.applied.transfers[1].allocation.monthlyAmountWon = 0);
+flowVariant('v4 active forbids suspended reason', false, p => p.accountMap.applied.transfers[0].suspendedReason = 'user');
+flowVariant('v4 transfer timestamp ceiling', false, p => p.accountMap.applied.transfers[0].updatedAt = 8640000000000001);
+flowVariant('v4 preserves decomposed custom name', true, p => p.accountMap.applied.customPurposes[0].name = ' e\u0301  여행 ');
+flowVariant('v4 NFC equivalent custom names collide', false, p => {
+  p.accountMap.applied.customPurposes[0].name = 'e\u0301';
+  p.accountMap.applied.customPurposes.push({ ...p.accountMap.applied.customPurposes[0], id: 'custom:other', name: 'é' });
+});
+for (const key of Object.keys(flow.accountMap.applied.transfers[0])) {
+  flowVariant(`v4 transfer null ${key}`, false, p => p.accountMap.applied.transfers[0][key] = null);
+  flowVariant(`v4 transfer missing ${key}`, false, p => delete p.accountMap.applied.transfers[0][key]);
+}
 export { fixtures };

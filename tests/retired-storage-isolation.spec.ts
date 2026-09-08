@@ -46,7 +46,7 @@ test('React Main ignores retired standalone data and leaves each record untouche
   }))).toEqual(retiredRaw);
 });
 
-test('React Main workspace save leaves retired standalone records untouched', async ({ page }) => {
+test('React Main workspace save writes v4 while leaving retired standalone records untouched', async ({ page }) => {
   const retiredRaw = {
     mainV2: JSON.stringify(appliedMainV2),
     mainV1: JSON.stringify({ schemaVersion: 1, updatedAt: 10 }),
@@ -81,7 +81,7 @@ test('React Main workspace save leaves retired standalone records untouched', as
   await page.getByRole('button', { name: '적용' }).click();
 
   await expect.poll(() => page.evaluate(() => {
-    const workspace = JSON.parse(localStorage.getItem('isf-workspace-v3') ?? '{}');
+    const workspace = JSON.parse(localStorage.getItem('isf-workspace-v4') ?? '{}');
     return workspace.main?.applied?.monthlyInvestmentWon;
   })).toEqual(650_000);
   await expect.poll(() => page.evaluate(() => ({

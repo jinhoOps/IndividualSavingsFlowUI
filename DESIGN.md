@@ -4,9 +4,9 @@
 
 Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계정별 계획 경험으로 바꾸는 도구입니다. 시각적 기반은 종이 같은 **ISF Pearl** 캔버스와 단색 테두리의 **flat editorial panel**입니다. 전통적인 스프레드시트의 긴장감은 줄이되 숫자의 정밀성과 신뢰감은 유지합니다.
 
-이 문서의 현재 지원 UI 계약은 Main, Simulation, aggregate-first Portfolio와 account-first Account Map에 적용됩니다. Account Map 지도 표현은 [Account Map Meaningful Layout Design](docs/superpowers/specs/2026-08-25-account-map-meaningful-layout-design.md)을 따릅니다. 과거 레거시 화면의 모양이나 상호작용은 새 UI의 기준이 아닙니다.
+이 문서의 현재 지원 UI 계약은 Main, Simulation, aggregate-first Portfolio와 account-first Account Map에 적용됩니다. Account Map 지도·계좌 흐름·Main overlay 표현은 [Account Map Planned Account Flow Design](docs/superpowers/specs/2026-09-04-account-map-planned-account-flow-design.md)을 따릅니다. 과거 레거시 화면과 superseded Account Map design의 모양이나 상호작용은 새 UI의 기준이 아닙니다.
 
-현재 delivery boundary는 명확히 나눕니다. schema v3의 단일 workspace, whole-workspace backup과 aggregate-first Portfolio, account-first Account Map이 현재 지원 기준선입니다. Main 연결 결과 카드는 Phase C 범위이며, Phase 4 legacy retirement의 [최종 전체 검증](docs/superpowers/evidence/2026-09-02-phase4-legacy-test-disposition.md)은 통과로 기록되어 있습니다. Portfolio의 `투자 위치` UI와 shared location command 진입점은 제거되었으며 보존 데이터만 migration fixture 계약으로 남습니다.
+현재 delivery boundary는 명확히 나눕니다. schema v4의 단일 workspace, whole-workspace backup과 aggregate-first Portfolio, account-first Account Map이 현재 지원 기준선입니다. v3는 read-only migration/rollback source다. Main 연결 결과 카드는 Phase C 범위이며, Phase 4 legacy retirement의 [최종 전체 검증](docs/superpowers/evidence/2026-09-02-phase4-legacy-test-disposition.md)은 통과로 기록되어 있습니다. Portfolio의 `투자 위치` UI와 shared location command 진입점은 제거되었으며 보존 데이터만 migration fixture 계약으로 남습니다.
 
 ## Experience Principles
 
@@ -51,7 +51,7 @@ Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계정별
 - 앱 런처는 `자금 흐름 (Main)`, `미래 성장 (Simulation)`, `투자 배분 (Portfolio)`, `계좌 연결 (Account Map)`을 각각 집, 상승 그래프, 분할 도넛, 펼친 통장 아이콘으로 표시합니다.
 - 현재 위치는 아이콘 아래 선과 `aria-current`로 표시합니다.
 - 앱 런처와 CTA는 URL 탐색만 수행하며 데이터를 전달하거나 저장하지 않습니다.
-- Simulation과 Portfolio는 현재 `isf-workspace-v3`의 최신 Main 값을 각자의 읽기 전용 adapter로 읽고 write-back하지 않습니다. v3가 없을 때만 유효한 retired v1/v2 workspace 원본을 one-way conversion으로 읽을 수 있고, invalid v3는 v1 fallback을 허용하지 않습니다.
+- Simulation과 Portfolio는 현재 `isf-workspace-v4`의 최신 Main 값을 각자의 읽기 전용 adapter로 읽고 write-back하지 않습니다. v4가 없을 때만 v3을 one-way conversion 후보로 읽고, v3도 없을 때에만 retired v1/v2 workspace 원본을 읽습니다. invalid v4는 v3/v1 fallback을 허용하지 않습니다.
 - Simulation과 Portfolio의 Main read는 읽기 전용입니다. Portfolio는 자기 slice만, Account Map은 자기 slice와 공유 금융 위치 registry만 갱신합니다. 성공한 write마다 monotonic revision을 증가시킵니다.
 
 ### Simulation
@@ -87,16 +87,15 @@ Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계정별
 ### Account Map
 
 - 계좌·기관·보관처의 생성, 이름 변경과 보관을 Account Map이 소유합니다.
-- Portfolio 투자 대상과 계좌·보관처의 연결은 별도 승인된 상세 명세가 있을 때만 제공하며 Account Map은 Main에 write-back하지 않습니다.
-- 완료 화면은 주 수입 계좌를 먼저 두는 하나의 account-first 관계도를 주요 시각 요소로 사용합니다. 목적과 계좌·보관처의 연결은 월 계획 연결이지 실제 잔액·거래·계좌 간 이동이 아닙니다.
-- 관계 유형, unresolved·excess와 선택 상태는 색상과 짧은 텍스트를 함께 사용해 색상만으로 구분하지 않습니다.
-- system purpose의 Main 기준 금액과 전체 미배정·부족 상태는 overview에 표시하고, 계좌의 pointer·touch·keyboard 집중 상태에서는 활성 목적별 월 연결 구성과 비중을 정적 최종 상태로 공개합니다. 첫 선택만 비중 막대를 한 번 재생하고 reduced-motion에서는 즉시 최종 상태를 보입니다.
-- Node modal은 금액·상태·나머지를 주요 편집으로 유지합니다. `연결 추가`는 하나의 보조 icon action, custom purpose `보관·복원`은 제목 줄 `더보기`로 압축하되 기능을 숨기거나 별도 페이지로 보내지 않습니다.
-- 다른 목적에 쓰는 active location도 선택 목록에 표시하고 필요한 role은 연결 저장과 함께 원자적으로 추가합니다.
-- 일반적인 stale conflict·collision은 modal·setup 입력을 유지한 채 최신 상태를 다시 읽고 `최신 상태에서 다시 적용`으로 복구합니다. 자동 overwrite나 입력 초기화는 금지합니다. 단, 채택한 최신 workspace의 Main이 없으면 Account Map은 recovery와 입력 replay를 포기하고 write 없이 즉시 Main-required 화면으로 전환합니다.
-- 전체·기본·상세 semantic zoom을 제공하고 임의 node 좌표나 drag edge를 저장하지 않습니다. 현재 Account Map state에는 layout preference나 legacy Phase A payload가 없으며, retired v1/v2 conversion은 이를 버립니다.
-- screen-reader용 선형 관계 표는 주 수입 계좌, 나머지 계좌, 각 계좌의 연결 목적 순서로 고정하며 지도와 같은 account-first 읽기 순서를 제공합니다.
-- 모바일 요약은 관계도를 첫 viewport 밖으로 밀어내지 않아야 하며 Account Map은 Main에 write-back하지 않습니다.
+- Portfolio 투자 대상과 계좌·보관처의 연결은 별도 승인된 상세 명세가 있을 때만 제공하며, Account Map command는 Main에 write-back하지 않습니다.
+- 완료 화면은 주 수입 계좌를 먼저 두는 하나의 account-first 계획 흐름 관계도를 주요 시각 요소로 사용합니다. 목적과 계좌·보관처의 배정, 계좌 간 고정 이체와 `남은 금액 전부` 규칙은 실제 잔액·거래·계좌 간 실행 이체가 아닙니다.
+- 기본 상태는 전체 계좌 토폴로지, 목적 기준 금액과 계획상 부족·미배정을 보여줍니다. 관계 유형, rule, excess와 선택 상태는 색상과 짧은 텍스트를 함께 사용해 색상만으로 구분하지 않습니다. zero sweep도 숨기지 않습니다.
+- 계좌의 첫 pointer·touch·keyboard 선택은 도달 가능한 상·하류 흐름과 목적, 고정 금액 또는 sweep 규칙을 정적 최종 상태로 공개하고 `계좌 정보 편집`·`연결 추가`·`흐름 편집`을 명시한다. 두 번째 선택을 요구하지 않으며 reduced-motion에서는 즉시 최종 상태를 보입니다.
+- 자기 이체, 중복 active source/target, cycle, 없는/보관된 endpoint, 한 출발 계좌의 복수 sweep은 적용 전에 차단합니다. 계획상 부족은 경고이며 저장 corruption이 아닙니다.
+- Account Map에서 Main 금액 수정을 요청하면 같은 URL의 journey overlay가 Main 소유 editor를 mounted map 위에 표시한다. 배경 map은 blur·`inert`가 되고, overlay는 labelled modal, focus trap, Escape/Back close와 trigger focus 복원을 제공한다. dirty Escape/Back은 discard 확인을 거치고, 실패·conflict에서는 input을 유지한다.
+- 성공한 Main 저장 뒤 Map은 최신 workspace를 다시 읽고, `sourceMainUpdatedAt !== main.updatedAt`이면 하나의 `확인 필요` 상태를 announcement로 표시한다. `현재 Main 기준으로 확인`은 명시 command로 purpose remainder만 재계산하고 fixed/sweep transfer를 바꾸지 않는다. fixed purpose allocation 초과면 오류를 설명하고 write하지 않는다.
+- 계좌·보관처 보관은 영향을 먼저 보여주고 purpose·transfer 관계를 중지하며, 복원은 관계별 선택을 제공한다. stale conflict·collision은 입력을 유지한 명시 재적용을 요구한다. Main이 없으면 replay 없이 Main-required로 전환한다.
+- screen-reader용 선형 표는 Main anchor, 계좌와 ordered transfer, 목적 anchor를 포함해 지도와 같은 결정적 reading order를 제공합니다. 모바일 요약은 관계도를 첫 viewport 밖으로 밀어내지 않아야 합니다.
 
 ## Colors
 
@@ -176,8 +175,8 @@ Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계정별
 ### DataHubModal
 
 - Main 관리 메뉴는 current whole-workspace 백업의 진입점입니다.
-- export는 Main·Simulation·Portfolio·공유 위치와 Account Map contract를 backup format v2 envelope로 내보냅니다.
-- import는 모든 slice와 참조를 적용 전에 검증하고 유효하면 확인 dialog 뒤 한 번에 v3 workspace를 교체합니다. format v1 input은 retired v1/v2 shape을 같은 converter로 검증·변환하며, invalid input은 현재 raw workspace를 유지합니다.
+- export는 Main·Simulation·Portfolio·공유 위치와 Account Map contract를 backup format v3 envelope로 내보냅니다.
+- import는 모든 slice와 참조를 적용 전에 검증하고 유효하면 확인 dialog 뒤 한 번에 v4 workspace를 교체합니다. format v2의 v3와 format v1 retired input은 같은 read-only converter로 검증·변환하며, invalid input은 현재 raw workspace를 유지합니다.
 
 ### Button
 
@@ -242,17 +241,17 @@ gradient와 반투명 card를 기본 스타일로 사용하지 않습니다.
 - 보이는 주요 버튼과 입력은 최소 44px touch target을 가져야 합니다.
 - modal 콘텐츠는 viewport 안에서 스크롤되고 footer 또는 Pending Bar가 가려지지 않아야 합니다.
 - 다중 열 control은 768px 이하에서 단일 열 또는 읽을 수 있는 compact layout으로 전환합니다.
-- 현재 Main 월 자금 구성, Simulation 그래프와 Phase B Account Map은 의미를 잃도록 과도하게 축소하지 않습니다.
+- 현재 Main 월 자금 구성, Simulation 그래프와 Account Map 전체 흐름 지도는 의미를 잃도록 과도하게 축소하지 않습니다.
 - Portfolio의 설정과 하단 편집 sheet는 390px에서 이름·금액·비율과 action이 패널 밖으로 넘치지 않아야 합니다.
-- Phase B Account Map의 compact summary는 모바일 첫 화면에서 관계도를 밀어내지 않아야 합니다.
-- Phase B Account Map의 월 연결 구성은 390px, 768px와 desktop에서 지도 canvas 안에 머물고 가로 overflow를 만들지 않아야 합니다.
+- Account Map의 compact summary와 `확인 필요` notice는 모바일 첫 화면에서 전체 흐름 지도를 밀어내지 않아야 합니다.
+- Account Map의 월 계획 흐름, focused detail, account/flow editor와 Main overlay는 390px, 768px와 desktop에서 viewport/canvas 안에 머물고 가로 overflow를 만들지 않아야 합니다.
 
 ## Accessibility
 
 - 모든 입력은 label 또는 동등한 accessible name을 가져야 합니다.
-- modal은 올바른 role, 제목 연결과 focus 관리가 필요합니다.
+- modal은 올바른 role, 제목 연결, focus trap과 close 뒤 trigger focus 복원이 필요합니다. Main overlay는 map background를 inert accessibility tree 밖으로 둡니다.
 - field 오류와 stale 재적용 충돌은 첫 관련 control에 focus를 이동하고 오류 설명을 해당 control과 연결합니다.
-- 그래프는 사용자 목적을 설명하는 accessible name과 텍스트 대안을 제공합니다.
+- 그래프는 source, target, rule/amount와 state를 설명하는 accessible name 및 전체 흐름을 읽을 수 있는 텍스트 표를 제공합니다.
 - 키보드로 주요 선택, 저장, 취소와 닫기를 수행할 수 있어야 합니다.
 - 오류와 상태는 색상 외의 텍스트 또는 아이콘으로도 전달합니다.
 

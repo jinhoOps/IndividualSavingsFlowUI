@@ -11,7 +11,7 @@ const appliedMain = {
 };
 
 const appliedWorkspace = {
-  schemaVersion: 3,
+  schemaVersion: 4,
   revision: 1,
   updatedAt: appliedMain.updatedAt,
   main: { applied: appliedMain, setupProgress: null },
@@ -62,12 +62,52 @@ const sharedShellViewports = [
   { width: 1280, height: 900, launcherX: 72, launcherWidth: 1136 },
 ] as const;
 
+for (const viewport of sharedShellViewports) {
+  for (const app of ['main', 'simulation', 'portfolio'] as const) {
+    test(`${app} setup entry keeps heading focus without a selection outline at ${viewport.width}px`, async ({ page }) => {
+      await page.setViewportSize(viewport);
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      if (app !== 'main') {
+        await page.addInitScript((workspace) => {
+          localStorage.setItem('isf-workspace-v4', JSON.stringify(workspace));
+        }, appliedWorkspace);
+      }
+
+      await page.goto(`apps/${app}/`);
+      const heading = page.getByRole('heading', { level: 1 });
+      await expect(heading).toBeFocused();
+      await expect(heading).toHaveCSS('outline-style', 'none');
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+
+      await page.keyboard.press('Tab');
+      const firstAction = page.getByRole('button', {
+        name: app === 'main' ? '다음' : app === 'simulation' ? '있어요' : '배분 시작하기',
+        exact: true,
+      });
+      await expect(firstAction).toBeFocused();
+      expect(await firstAction.evaluate((element) => {
+        const style = getComputedStyle(element);
+        return style.outlineStyle !== 'none' || style.boxShadow !== 'none';
+      })).toBe(true);
+      const box = await firstAction.boundingBox();
+      expect(box!.height).toBeGreaterThanOrEqual(44);
+      expect(box!.width).toBeGreaterThanOrEqual(44);
+
+      if (app !== 'simulation') {
+        await page.keyboard.press('Enter');
+        await expect(heading).toBeFocused();
+        await expect(heading).toHaveCSS('outline-style', 'none');
+      }
+    });
+  }
+}
+
 test('retired journey snapshot survives Main startup and a current edit', async ({ page }) => {
   const sentinel = '{"retired":"keep-this-byte-for-byte"}';
   await page.addInitScript(({ workspace, snapshot }) => {
-    localStorage.setItem('isf-workspace-v3', JSON.stringify(workspace));
+    localStorage.setItem('isf-workspace-v4', JSON.stringify(workspace));
     localStorage.setItem('isf-journey-snapshot-v1', snapshot);
-  }, { workspace: appliedWorkspaceV3, snapshot: sentinel });
+  }, { workspace: appliedWorkspace, snapshot: sentinel });
 
   await page.goto('apps/main/');
   await expect.poll(() => page.evaluate(
@@ -83,11 +123,76 @@ test('retired journey snapshot survives Main startup and a current edit', async 
   )).toBe(sentinel);
 });
 
+test('reads workspace v3 without a write, then migrates only the authorized Main save while preserving v3 bytes', async ({ page }) => {
+  const v3Raw = JSON.stringify(appliedWorkspaceV3);
+  await page.addInitScript((raw) => localStorage.setItem('isf-workspace-v3', raw), v3Raw);
+
+  await page.goto('apps/main/');
+  await expect(page.getByRole('button', { name: '월 소비 편집' })).toContainText('180만 원');
+  expect(await page.evaluate(() => ({
+    v3: localStorage.getItem('isf-workspace-v3'),
+    v4: localStorage.getItem('isf-workspace-v4'),
+  }))).toEqual({ v3: v3Raw, v4: null });
+
+  await page.getByRole('button', { name: '월 소비 편집' }).click();
+  await page.getByLabel('월평균 생활비').fill('1100000');
+  await page.getByRole('button', { name: '적용' }).click();
+
+  await expect(page.getByRole('button', { name: '월 소비 편집' })).toContainText('190만 원');
+  expect(await page.evaluate(() => ({
+    v3: localStorage.getItem('isf-workspace-v3'),
+    v4: JSON.parse(localStorage.getItem('isf-workspace-v4')!),
+  }))).toEqual({
+    v3: v3Raw,
+    v4: expect.objectContaining({
+      schemaVersion: 4,
+      main: expect.objectContaining({
+        applied: expect.objectContaining({ monthlyLivingWon: 1_100_000 }),
+      }),
+    }),
+  });
+});
+
+test('prefers a valid workspace v4 over a conflicting v3 and never falls back from invalid v4', async ({ page }) => {
+  const v3 = {
+    ...appliedWorkspaceV3,
+    main: { applied: { ...appliedMain, monthlyLivingWon: 600_000 }, setupProgress: null },
+  };
+  const v4 = {
+    ...appliedWorkspace,
+    main: { applied: { ...appliedMain, monthlyLivingWon: 1_100_000 }, setupProgress: null },
+  };
+  const v3Raw = JSON.stringify(v3);
+  await page.addInitScript(({ current, previous }) => {
+    if (sessionStorage.getItem('isf-v4-precedence-seeded') !== null) return;
+    sessionStorage.setItem('isf-v4-precedence-seeded', 'true');
+    localStorage.setItem('isf-workspace-v4', JSON.stringify(current));
+    localStorage.setItem('isf-workspace-v3', previous);
+  }, { current: v4, previous: v3Raw });
+
+  await page.goto('apps/main/');
+  await page.getByRole('button', { name: '월 소비 편집' }).click();
+  await expect(page.getByLabel('월평균 생활비')).toHaveValue('1,100,000');
+  await page.getByRole('button', { name: '취소' }).click();
+
+  const invalidV4 = '{invalid-v4';
+  await page.evaluate(({ current, previous }) => {
+    localStorage.setItem('isf-workspace-v4', current);
+    localStorage.setItem('isf-workspace-v3', previous);
+  }, { current: invalidV4, previous: v3Raw });
+  await page.reload();
+  await expect(page.getByRole('heading', { name: '저장 복구가 필요합니다' })).toBeVisible();
+  expect(await page.evaluate(() => ({
+    v4: localStorage.getItem('isf-workspace-v4'),
+    v3: localStorage.getItem('isf-workspace-v3'),
+  }))).toEqual({ v4: invalidV4, v3: v3Raw });
+});
+
 for (const viewport of sharedShellViewports) {
   test(`shares Main launcher geometry and canvas at ${viewport.width}px`, async ({ page }) => {
     await page.setViewportSize(viewport);
     await page.addInitScript((fixture) => {
-      localStorage.setItem('isf-workspace-v3', JSON.stringify(fixture));
+      localStorage.setItem('isf-workspace-v4', JSON.stringify(fixture));
     }, appliedWorkspace);
 
     const routes = [
@@ -138,7 +243,7 @@ test('connects Main directly to the detailed Simulation', async ({ page }) => {
     if (sessionStorage.getItem(seedMarker) !== null) return;
     sessionStorage.setItem(seedMarker, 'true');
 
-    localStorage.setItem('isf-workspace-v3', JSON.stringify(workspace));
+    localStorage.setItem('isf-workspace-v4', JSON.stringify(workspace));
   }, workspaceWithSimulationDraft);
   await page.goto('apps/main/');
   await page.getByRole('button', { name: 'Simulation으로 이어가기' }).click();
@@ -157,7 +262,7 @@ test('connects Main directly to the detailed Simulation', async ({ page }) => {
 
 test('revisits Simulation at the result and refreshes only its Main source', async ({ page }) => {
   await page.addInitScript((workspace) => {
-    localStorage.setItem('isf-workspace-v3', JSON.stringify(workspace));
+    localStorage.setItem('isf-workspace-v4', JSON.stringify(workspace));
   }, workspaceWithSimulationDraft);
 
   await page.goto('apps/simulation/');
@@ -172,7 +277,7 @@ test('revisits Simulation at the result and refreshes only its Main source', asy
     .toHaveCount(0);
 
   const stored = await page.evaluate(() => ({
-    workspace: JSON.parse(localStorage.getItem('isf-workspace-v3')!),
+    workspace: JSON.parse(localStorage.getItem('isf-workspace-v4')!),
   }));
   expect(stored.workspace.simulation.draft.source.monthlySavingsWon).toBe(300_000);
   expect(stored.workspace.simulation.draft.initialInvestmentWon).toBe(10_000_000);
@@ -181,10 +286,10 @@ test('revisits Simulation at the result and refreshes only its Main source', asy
 test('keeps detailed Portfolio and purpose-first Account Map isolated', async ({ page }) => {
   const supportedAccountMapWorkspace = {
     ...appliedWorkspace,
-    schemaVersion: 3,
+    schemaVersion: 4,
     accountMap: { applied: null, draft: null },
   };
-  await page.addInitScript((fixture) => localStorage.setItem('isf-workspace-v3', JSON.stringify(fixture)), supportedAccountMapWorkspace);
+  await page.addInitScript((fixture) => localStorage.setItem('isf-workspace-v4', JSON.stringify(fixture)), supportedAccountMapWorkspace);
   await page.goto('apps/portfolio/');
   await expect(page.getByRole('heading', { name: '매달 200,000원을 어디에 투자할까요?' })).toBeVisible();
   await expect(page.getByRole('link', { name: /투자 배분 \(Portfolio\).*현재 위치/ })).toBeVisible();
@@ -208,7 +313,7 @@ test('keeps detailed Portfolio and purpose-first Account Map isolated', async ({
     };
   });
   await page.goto('apps/account-map/');
-  await expect(page.getByRole('heading', { name: '월 자금의 위치를 알려주세요' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '월 자금 기준 확인' })).toBeVisible();
   await expect(page.locator('app-header, data-hub-modal, #portfolioCreator, #accountMapCanvas')).toHaveCount(0);
   const accountMapObservation = await page.evaluate(() => ({
     calls: (
@@ -217,7 +322,7 @@ test('keeps detailed Portfolio and purpose-first Account Map isolated', async ({
     }
     ).__accountMapStorageCalls,
     protectedSlices: (() => {
-      const workspace = JSON.parse(localStorage.getItem('isf-workspace-v3')!);
+      const workspace = JSON.parse(localStorage.getItem('isf-workspace-v4')!);
       return {
         main: workspace.main,
         simulation: workspace.simulation,
@@ -226,7 +331,7 @@ test('keeps detailed Portfolio and purpose-first Account Map isolated', async ({
     })(),
   }));
   expect(accountMapObservation.calls.length).toBeGreaterThan(0);
-  expect([...new Set(accountMapObservation.calls.map(({ key }) => key))]).toEqual(['isf-workspace-v3']);
+  expect([...new Set(accountMapObservation.calls.map(({ key }) => key))]).toEqual(['isf-workspace-v4']);
   expect(accountMapObservation.calls.filter(({ operation }) => operation !== 'get')).toEqual([]);
   expect(accountMapObservation.protectedSlices).toEqual({
     main: supportedAccountMapWorkspace.main,
@@ -237,7 +342,7 @@ test('keeps detailed Portfolio and purpose-first Account Map isolated', async ({
 
 test('separates app navigation and the right-aligned management tool across viewports', async ({ page }) => {
   await page.addInitScript((fixture) => {
-    localStorage.setItem('isf-workspace-v3', JSON.stringify(fixture));
+    localStorage.setItem('isf-workspace-v4', JSON.stringify(fixture));
   }, appliedWorkspace);
   for (const viewport of [
     { width: 390, height: 844 },
@@ -296,7 +401,7 @@ test('separates app navigation and the right-aligned management tool across view
 
 test('keeps all app icons visible while launcher geometry is unresolved', async ({ page }) => {
   await page.addInitScript((fixture) => {
-    localStorage.setItem('isf-workspace-v3', JSON.stringify(fixture));
+    localStorage.setItem('isf-workspace-v4', JSON.stringify(fixture));
   }, appliedWorkspace);
   await page.setViewportSize({ width: 768, height: 900 });
   await page.goto('apps/simulation/');
@@ -329,7 +434,7 @@ test('keeps all app icons visible while launcher geometry is unresolved', async 
 
 test('keeps each app management menu reachable and contained across viewports', async ({ page }) => {
   await page.addInitScript((fixture) => {
-    localStorage.setItem('isf-workspace-v3', JSON.stringify(fixture));
+    localStorage.setItem('isf-workspace-v4', JSON.stringify(fixture));
   }, appliedWorkspace);
   const apps = [
     { path: 'apps/main/', text: '백업 가져오기' },
@@ -398,7 +503,7 @@ test('keeps each app management menu reachable and contained across viewports', 
 });
 
 test('keeps Account Map usable at mobile, tablet, and desktop widths', async ({ page }) => {
-  await page.addInitScript((fixture) => localStorage.setItem('isf-workspace-v3', JSON.stringify(fixture)), appliedWorkspace);
+  await page.addInitScript((fixture) => localStorage.setItem('isf-workspace-v4', JSON.stringify(fixture)), appliedWorkspace);
   for (const viewport of [
     { width: 390, height: 844 },
     { width: 768, height: 900 },
@@ -410,20 +515,21 @@ test('keeps Account Map usable at mobile, tablet, and desktop widths', async ({ 
     const launcher = page.getByRole('navigation', { name: 'ISF 앱' });
     const accountMapLink = page.getByRole('link', { name: /계좌 연결 \(Account Map\).*현재 위치/ });
     await expect(launcher).toBeVisible();
-    await expect(page.getByRole('heading', { name: '월 자금의 위치를 알려주세요' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '월 자금 기준 확인' })).toBeVisible();
 
     await expect(accountMapLink).toHaveAttribute('aria-current', 'page');
 
     const visibleTargetSizes = await page.locator(
-      '.journey-launcher__app-link, .account-map-purpose-card__action, .account-map-actions button',
+      '.journey-launcher__app-link, .account-map-setup button, .account-map-actions button',
     ).evaluateAll((elements) => elements
       .map((element) => element.getBoundingClientRect())
       .filter((rect) => rect.width > 0 && rect.height > 0)
       .map((rect) => ({ width: rect.width, height: rect.height })));
     expect(visibleTargetSizes.length).toBeGreaterThan(0);
     for (const size of visibleTargetSizes) {
-      expect(size.width).toBeGreaterThanOrEqual(44);
-      expect(size.height).toBeGreaterThanOrEqual(44);
+      // CSS pixel layout can report 43.999… for the 44px minimum at fractional device scale.
+      expect(size.width).toBeGreaterThanOrEqual(43.9);
+      expect(size.height).toBeGreaterThanOrEqual(43.9);
     }
 
     for (let attempt = 0; attempt < 8 && !await accountMapLink.evaluate(
@@ -442,7 +548,7 @@ test('keeps Account Map usable at mobile, tablet, and desktop widths', async ({ 
 });
 
 test('explains app icons with pointer, keyboard, touch and integrated management help', async ({ page }) => {
-  await page.addInitScript((fixture) => localStorage.setItem('isf-workspace-v3', JSON.stringify(fixture)), appliedWorkspace);
+  await page.addInitScript((fixture) => localStorage.setItem('isf-workspace-v4', JSON.stringify(fixture)), appliedWorkspace);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('apps/simulation/');
 
@@ -496,7 +602,7 @@ test('explains app icons with pointer, keyboard, touch and integrated management
 });
 
 test('keeps the current app direct and exposes hidden apps through overflow', async ({ page }) => {
-  await page.addInitScript((fixture) => localStorage.setItem('isf-workspace-v3', JSON.stringify(fixture)), appliedWorkspace);
+  await page.addInitScript((fixture) => localStorage.setItem('isf-workspace-v4', JSON.stringify(fixture)), appliedWorkspace);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('apps/account-map/');
   await page.addStyleTag({ content: '.journey-launcher { width: 220px !important; }' });
@@ -569,7 +675,7 @@ test('keeps the Main mobile editor modal synchronous under reduced motion', asyn
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.addInitScript((fixture) => {
-    localStorage.setItem('isf-workspace-v3', JSON.stringify(fixture));
+    localStorage.setItem('isf-workspace-v4', JSON.stringify(fixture));
   }, appliedWorkspace);
   await page.goto('apps/main/');
 
@@ -594,7 +700,7 @@ test('keeps the Main mobile editor modal synchronous under reduced motion', asyn
 
 test('legacy Simulation DOM is absent from the supported route', async ({ page }) => {
   await page.addInitScript((fixture) => {
-    localStorage.setItem('isf-workspace-v3', JSON.stringify(fixture));
+    localStorage.setItem('isf-workspace-v4', JSON.stringify(fixture));
   }, appliedWorkspace);
   await page.goto('apps/simulation/');
   await expect(page.locator('app-header, data-hub-modal, #strategyCardGroup')).toHaveCount(0);

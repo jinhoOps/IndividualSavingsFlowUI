@@ -35,7 +35,7 @@ try {
       user: {id: user, email: 'pwa@example.com', app_metadata: {}, user_metadata: {}, aud: 'authenticated'}}));
     sessionStorage.setItem('pwa-auth-seeded', '1');
   }, user);
-  await context.route('https://isf-test.supabase.co/**', route => !online ? route.abort('internetdisconnected') : route.fulfill({json: [{user_id: user, schema_version: 3, revision: 0, created_at: new Date(1000).toISOString(), updated_at: new Date(1000).toISOString(), payload: {
+  await context.route('https://isf-test.supabase.co/**', route => !online ? route.abort('internetdisconnected') : route.fulfill({json: [{user_id: user, schema_version: 4, revision: 0, created_at: new Date(1000).toISOString(), updated_at: new Date(1000).toISOString(), payload: {
     main: {applied: {schemaVersion: 2, updatedAt: 1000, monthlyNetIncomeWon: 3200000, monthlyHousingWon: 800000, monthlyLivingWon: 1000000, monthlySavingWon: 300000, monthlyInvestmentWon: 200000}, setupProgress: null},
     simulation: {draft: null}, portfolio: {plans: [], draft: null}, locations: [], accountMap: {applied: null, draft: null},
   }}]}));

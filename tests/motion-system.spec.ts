@@ -64,7 +64,7 @@ const PORTFOLIO_PLAN = {
 };
 
 const WORKSPACE = {
-  schemaVersion: 3 as const,
+  schemaVersion: 4 as const,
   revision: 3,
   updatedAt: Date.UTC(2026, 7, 12, 4, 2),
   main: { applied: MAIN, setupProgress: null },
@@ -170,7 +170,7 @@ for (const viewport of VIEWPORTS) {
     expect(mainTransitionStart.centerSemantic).toBe(MAIN_DONUT_AFTER_EDIT.centerSemantic);
     expect(mainTransitionStart.segments).not.toEqual(MAIN_DONUT_AFTER_EDIT.segments);
     await expect.poll(() => page.evaluate(() => (
-      JSON.parse(localStorage.getItem('isf-workspace-v3')!).main.applied.monthlyLivingWon
+      JSON.parse(localStorage.getItem('isf-workspace-v4')!).main.applied.monthlyLivingWon
     ))).toBe(1_100_000);
     await expectFinalMainDonut(page.locator('.cashflow-donut'), MAIN_DONUT_AFTER_EDIT);
     await page.getByRole('button', { name: '편집기 닫기' }).click();
@@ -241,15 +241,15 @@ for (const viewport of VIEWPORTS) {
     const setupFirstFrame = await readProbedAccountMapFirstFrame(page);
     expect(setupFirstFrame).toEqual({
       activeAnimations: 0,
-      heading: '월 자금의 위치를 알려주세요',
+      heading: '월 자금 기준 확인',
       opacity: 1,
       x: 0,
       y: 0,
     });
-    await expect(page.getByRole('heading', { name: '월 자금의 위치를 알려주세요' })).toBeVisible();
-    const firstConnect = page.getByRole('button', { name: '연결', exact: true }).first();
-    await firstConnect.focus();
-    await expect(firstConnect).toBeFocused();
+    await expect(page.getByRole('heading', { name: '월 자금 기준 확인' })).toBeVisible();
+    const basisContinue = page.getByRole('button', { name: '이 금액으로 계속' });
+    await basisContinue.focus();
+    await expect(basisContinue).toBeFocused();
     await expectFinalTransform(setup);
     await expectNoDocumentOverflow(page);
     await screenshot(page, testInfo.outputPath.bind(testInfo), `account-map-${viewport.width}-setup.png`);
@@ -273,9 +273,9 @@ test('PWA offline revisit keeps all app routes and final motion state available'
 
   const routes = [
     { path: 'apps/main/', heading: '이번 달 자금 흐름', motion: '.cashflow-donut' },
-    { path: 'apps/simulation/', heading: /이대로 20년 유지하면/, motion: '.growth-chart' },
+    { path: 'apps/simulation/', heading: /1억 원을 모으려면/, motion: '.growth-chart' },
     { path: 'apps/portfolio/', heading: '안정 50%', motion: '.portfolio-summary' },
-    { path: 'apps/account-map/', heading: '월 자금의 위치를 알려주세요', motion: '.account-map-setup' },
+    { path: 'apps/account-map/', heading: '월 자금 기준 확인', motion: '.account-map-setup' },
   ] as const;
 
   for (const route of routes) {
@@ -452,7 +452,7 @@ async function captureReducedMotionFinals(page: Page, width: number): Promise<vo
   const reducedSetupFirstRead = await readProbedAccountMapFirstFrame(page);
   expect(reducedSetupFirstRead).toEqual({
     activeAnimations: 0,
-    heading: '월 자금의 위치를 알려주세요',
+    heading: '월 자금 기준 확인',
     opacity: 1,
     x: 0,
     y: 0,
@@ -471,7 +471,7 @@ async function openWithWorkspace(
   await page.evaluate(({ value, clearPreference }) => {
     localStorage.clear();
     sessionStorage.clear();
-    localStorage.setItem('isf-workspace-v3', JSON.stringify(value));
+    localStorage.setItem('isf-workspace-v4', JSON.stringify(value));
     if (clearPreference) localStorage.removeItem('isf-portfolio-view-preferences-v1');
   }, { value: workspace, clearPreference: clearPortfolioPreferences });
   await page.reload();

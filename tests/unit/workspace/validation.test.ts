@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createEmptyWorkspace } from '../../../src/workspace/domain/model';
 import {
   parseWorkspaceDocument,
+  parseWorkspaceV3Document,
   validateWorkspaceDocument,
 } from '../../../src/workspace/domain/validation';
 
@@ -72,7 +73,7 @@ const investingLink = {
 
 function validWorkspace() {
   return {
-    schemaVersion: 3 as const,
+    schemaVersion: 4 as const,
     revision: 4,
     updatedAt: 400,
     main: {
@@ -110,10 +111,10 @@ function validWorkspace() {
   };
 }
 
-describe('Workspace v3 validation', () => {
+describe('Workspace v4 validation', () => {
   it('creates and parses an exact current empty workspace', () => {
     expect(parseWorkspaceDocument(createEmptyWorkspace(100))).toMatchObject({
-      schemaVersion: 3,
+      schemaVersion: 4,
       revision: 0,
       updatedAt: 100,
       accountMap: { applied: null, draft: null },
@@ -200,7 +201,7 @@ describe('Workspace v3 validation', () => {
 
   it('classifies invalid shapes as schema failures', () => {
     const workspace = validWorkspace();
-    expect(validateWorkspaceDocument({ ...workspace, schemaVersion: 4 })).toEqual({ status: 'schema' });
+    expect(validateWorkspaceDocument({ ...workspace, schemaVersion: 3 })).toEqual({ status: 'schema' });
     expect(validateWorkspaceDocument({
       ...workspace,
       accountMap: {
@@ -262,19 +263,26 @@ describe('Workspace v3 validation', () => {
         },
         draft: null,
       },
-    })).toEqual({ status: 'reference' });
+    })).toEqual({ status: 'schema' });
     expect(validateWorkspaceDocument({
       ...workspace,
       accountMap: {
         applied: { ...applied, links: [investingLink, { ...investingLink, id: 'link-2' }] },
         draft: null,
       },
-    })).toEqual({ status: 'reference' });
+    })).toEqual({ status: 'schema' });
   });
 
   it('returns null instead of overflowing on a deeply malformed Main slice', () => {
     let malformedMain: unknown = null;
     for (let depth = 0; depth < 20_000; depth += 1) malformedMain = { nested: malformedMain };
     expect(parseWorkspaceDocument({ ...createEmptyWorkspace(100), main: malformedMain })).toBeNull();
+  });
+
+  it('keeps exact v3 parsing read-only instead of accepting a v3 envelope as current', () => {
+    const v3 = { ...validWorkspace(), schemaVersion: 3 as const };
+
+    expect(parseWorkspaceDocument(v3)).toBeNull();
+    expect(parseWorkspaceV3Document(v3)).toEqual(v3);
   });
 });

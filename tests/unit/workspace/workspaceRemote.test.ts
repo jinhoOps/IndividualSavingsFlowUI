@@ -16,6 +16,11 @@ function fixture(response = {data: {status: 'saved'}, error: null as unknown, st
   return {remote: createWorkspaceRemote(client as unknown as SupabaseClient, 'a'), session, headers, rpc};
 }
 describe('workspace remote account-bound requests', () => {
+  it.each(['initialize_workspace', 'save_main', 'save_simulation', 'save_portfolio', 'save_account_map', 'restore_workspace'] as const)('declares the required v4 protocol for %s', async operation => {
+    const {remote, rpc} = fixture();
+    await remote.write(operation, operation === 'initialize_workspace' ? null : 0, {}, 'mutation');
+    expect(rpc).toHaveBeenCalledWith(operation, expect.objectContaining({p_schema_version: 4}));
+  });
   it('does not send an old account payload with a new account session', async () => {
     const {remote, session, rpc} = fixture();
     session.user.id = 'b'; session.access_token = 'token-b';

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  convertRetiredWorkspaceToV4,
   convertRetiredWorkspaceDocument,
 } from '../../../src/workspace/infrastructure/retiredWorkspaceMigration';
 
@@ -246,6 +247,19 @@ describe('retired workspace conversion', () => {
         accountMap: { applied: null, draft: null },
       },
     });
+  });
+
+  it.each([retiredV1, retiredV2])('converts a retired source into v4 without changing its bytes', (createSource) => {
+    const source = createSource();
+    const original = structuredClone(source);
+
+    const result = convertRetiredWorkspaceToV4(source, 500);
+
+    expect(result).toMatchObject({
+      status: 'converted',
+      workspace: { schemaVersion: 4, updatedAt: 500 },
+    });
+    expect(source).toEqual(original);
   });
 
   it('preserves an aggregate draft while dropping location-scoped plans', () => {

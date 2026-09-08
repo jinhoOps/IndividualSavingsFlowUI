@@ -15,7 +15,7 @@ class MemoryStorage {
 const localStorage = new MemoryStorage();
 
 function row(workspace = createEmptyWorkspace(1000), user = 'user-a') {
-  return {user_id: user, schema_version: 3, revision: workspace.revision,
+  return {user_id: user, schema_version: 4, revision: workspace.revision,
     payload: workspacePayload(workspace), created_at: new Date(1000).toISOString(),
     updated_at: new Date(workspace.updatedAt).toISOString()};
 }
@@ -64,7 +64,8 @@ describe('account workspace session', () => {
     expect(session.scope('main').load().status).toBe('found');
     expect(workspaceFromRow({...row(), user_id: 'user-b'}, 'user-a')).toBeNull();
     expect(workspaceFromRow({...row(), revision: '9007199254740992'}, 'user-a')).toBeNull();
-    expect(workspaceFromRow({...row(), schema_version: 4}, 'user-a')).toBeNull();
+    expect(workspaceFromRow({...row(), schema_version: 3}, 'user-a')).toBeNull();
+    expect(workspaceFromRow({...row(), schema_version: 5}, 'user-a')).toBeNull();
   });
 
   it('only sends the owned slice, preserving local legacy records', async () => {
@@ -310,7 +311,7 @@ describe('account workspace session', () => {
     localStorage.clear();
     const cached = createEmptyWorkspace(1000);
     localStorage.setItem('isf-account-workspace-v1:project:legacy', JSON.stringify({
-      version: 1, snapshot: cached, pending: null,
+      version: 1, snapshot: {...cached, schemaVersion: 3}, pending: null,
     }));
     const session = new AccountWorkspaceSession({
       read: async () => {throw new Error('offline');},
@@ -326,8 +327,8 @@ describe('account workspace session', () => {
     localStorage.clear();
     const malformed = {operation: 'save_main', expectedRevision: 0,
       payload: {simulation: {draft: null}}, mutationId: '00000000-0000-4000-8000-000000000003'};
-    localStorage.setItem('isf-account-workspace-v1:project:broken', JSON.stringify({
-      version: 1, snapshot: createEmptyWorkspace(1000), pending: malformed,
+    localStorage.setItem('isf-account-workspace-v2:project:broken', JSON.stringify({
+      version: 2, snapshot: createEmptyWorkspace(1000), pending: malformed,
     }));
     const session = new AccountWorkspaceSession({
       read: async () => null,
@@ -371,6 +372,50 @@ describe('account workspace session', () => {
     expect(session.readRecoveryDraft('main')).toEqual({id: 'keep'});
     expect(session.externalRevision).toBe(1);
     expect(calls).toHaveLength(0);
+  });
+
+  it.each(['refresh', 'conflict'] as const)('abandons an Account Map overlay Main write after Main is removed via %s', async mode => {
+    localStorage.clear();
+    const {session, remote, setCurrent, calls} = fixture();
+    const main = {schemaVersion: 2 as const, updatedAt: 1, monthlyNetIncomeWon: 4_000_000,
+      monthlyHousingWon: 900_000, monthlyLivingWon: 1_000_000, monthlySavingWon: 500_000, monthlyInvestmentWon: 600_000};
+    setCurrent({...createEmptyWorkspace(1000), main: {applied: main, setupProgress: null}});
+    await session.refresh();
+    session.scope('account-map');
+    session.recordRecoveryDraft('account-map-main', {...main, monthlyNetIncomeWon: 5_000_000});
+    setCurrent({...createEmptyWorkspace(1000), revision: 1});
+    if (mode === 'refresh') remote.write = async () => {throw new Error('offline');};
+    await session.scope('main').update(0, workspace => ({...workspace,
+      main: {...workspace.main, applied: {...main, monthlyNetIncomeWon: 5_000_000}}}));
+    if (mode === 'refresh') {
+      expect(session.pending?.operation).toBe('save_main');
+      await session.refresh();
+    }
+    expect(session.snapshot?.main.applied).toBeNull();
+    expect(session.status).toBe('ready');
+    expect(session.pending).toBeNull();
+    expect(session.readRecoveryDraft('account-map-main')).toBeNull();
+    expect(session.externalRevision).toBe(1);
+    await expect(session.reapply()).resolves.toEqual({status: 'unavailable'});
+    expect(calls).toHaveLength(mode === 'conflict' ? 1 : 0);
+  });
+
+  it('abandons a cached overlay write on the first authenticated refresh before any UI scope mounts', async () => {
+    localStorage.clear();
+    const {session, remote, setCurrent} = fixture();
+    const main = {schemaVersion: 2 as const, updatedAt: 1, monthlyNetIncomeWon: 4_000_000,
+      monthlyHousingWon: 900_000, monthlyLivingWon: 1_000_000, monthlySavingWon: 500_000, monthlyInvestmentWon: 600_000};
+    setCurrent({...createEmptyWorkspace(1000), main: {applied: main, setupProgress: null}});
+    await session.refresh();
+    session.scope('account-map');
+    remote.write = async () => {throw new Error('response lost');};
+    await session.scope('main').update(0, workspace => workspace);
+    session.dispose();
+    setCurrent({...createEmptyWorkspace(1000), revision: 1});
+    const reauthenticated = new AccountWorkspaceSession(remote, 'project:user-a', {userId: 'user-a', storage: localStorage});
+    await expect(reauthenticated.refresh()).resolves.toBe('ready');
+    expect(reauthenticated.pending).toBeNull();
+    await expect(reauthenticated.retry()).resolves.toEqual({status: 'unavailable'});
   });
 
   it('expires PGRST301 writes and ignores a late rejected write after disposal', async () => {

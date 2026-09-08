@@ -1,10 +1,11 @@
 import type { WorkspaceDocument } from '../domain/model';
 import { validateWorkspaceDocument } from '../domain/validation';
-import { convertRetiredWorkspaceDocument } from './retiredWorkspaceMigration';
+import { convertRetiredWorkspaceToV4 } from './retiredWorkspaceMigration';
+import { convertWorkspaceV3Document } from './workspaceV3Migration';
 
 export interface WorkspaceBackupEnvelope {
   format: 'isf-workspace-backup';
-  formatVersion: 2;
+  formatVersion: 3;
   exportedAt: number;
   workspace: WorkspaceDocument;
 }
@@ -20,7 +21,7 @@ export function exportWorkspaceBackup(
   if (!isTimestamp(now)) throw new Error('backup-schema');
   return JSON.stringify({
     format: 'isf-workspace-backup',
-    formatVersion: 2,
+    formatVersion: 3,
     exportedAt: now,
     workspace: current.workspace,
   } satisfies WorkspaceBackupEnvelope);
@@ -39,15 +40,22 @@ export function importWorkspaceBackup(text: string): WorkspaceDocument {
     throw new Error('backup-format');
   }
   if (!isTimestamp(value.exportedAt)) throw new Error('backup-schema');
-  if (value.formatVersion === 2) {
+  if (value.formatVersion === 3) {
     const current = validateWorkspaceDocument(value.workspace);
     if (current.status !== 'valid') {
       throw new Error(current.status === 'reference' ? 'backup-reference' : 'backup-schema');
     }
     return current.workspace;
   }
+  if (value.formatVersion === 2) {
+    const previous = convertWorkspaceV3Document(value.workspace, value.exportedAt);
+    if (previous.status === 'invalid') {
+      throw new Error(previous.reason === 'reference' ? 'backup-reference' : 'backup-schema');
+    }
+    return previous.workspace;
+  }
   if (value.formatVersion === 1) {
-    const retired = convertRetiredWorkspaceDocument(value.workspace, value.exportedAt);
+    const retired = convertRetiredWorkspaceToV4(value.workspace, value.exportedAt);
     if (retired.status === 'invalid') {
       throw new Error(retired.reason === 'reference' ? 'backup-reference' : 'backup-schema');
     }

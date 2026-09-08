@@ -1,16 +1,60 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+type AnimateStub = (target: unknown, options: { onComplete?(): void }) => { cancel(): void };
+
 const { animate } = vi.hoisted(() => {
-  const animate = vi.fn(() => ({ cancel: vi.fn() }));
+  const animate = vi.fn<AnimateStub>(() => ({ cancel: vi.fn() }));
   return { animate };
 });
 vi.mock('animejs', () => ({ animate }));
 
-import { animateConnectionDetail, animateModalToNode, animateNodeToModal } from '../../../src/account-map/ui/motion';
+import {
+  animateFocusedFlow,
+  animateConnectionDetail,
+  animateModalToNode,
+  animateNodeToModal,
+  animateSetupStep,
+  setSetupStepFinalState,
+} from '../../../src/account-map/ui/motion';
 
-beforeEach(() => { animate.mockClear(); });
+beforeEach(() => {
+  animate.mockReset();
+  animate.mockImplementation(() => ({ cancel: vi.fn() }));
+});
 
 describe('Account Map motion', () => {
+  it('restores focused-flow paths and labels when Anime.js synchronously throws', () => {
+    const root = document.createElement('div');
+    root.innerHTML = '<path data-account-flow-edge></path><span data-account-flow-edge-amount></span>';
+    animate.mockImplementation(() => { throw new Error('Anime.js unavailable'); });
+
+    const handle = animateFocusedFlow(root, false);
+
+    expect(root.querySelector<HTMLElement>('[data-account-flow-edge]')?.style.opacity).toBe('');
+    expect(root.querySelector<HTMLElement>('[data-account-flow-edge-amount]')?.style.opacity).toBe('');
+    expect(() => handle.cancel()).not.toThrow();
+  });
+
+  it('renders focused flow synchronously for reduced motion and restores it if cancellation throws', () => {
+    const reducedRoot = document.createElement('div');
+    reducedRoot.innerHTML = '<path data-account-flow-edge></path><span data-account-flow-edge-amount></span>';
+    animateFocusedFlow(reducedRoot, true);
+    expect(animate).not.toHaveBeenCalled();
+    expect(reducedRoot.querySelector<HTMLElement>('[data-account-flow-edge]')?.style.opacity).toBe('');
+
+    const animatedRoot = document.createElement('div');
+    animatedRoot.innerHTML = '<path data-account-flow-edge></path><span data-account-flow-edge-amount></span>';
+    animate.mockImplementation((target) => {
+      if (target instanceof HTMLElement) target.style.opacity = '0';
+      return { cancel: () => { throw new Error('cancel failed'); } };
+    });
+    const handle = animateFocusedFlow(animatedRoot, false);
+    expect(() => handle.cancel()).not.toThrow();
+    expect([...animatedRoot.querySelectorAll<HTMLElement>('[data-account-flow-edge], [data-account-flow-edge-amount]')]
+      .map((element) => ({ opacity: element.style.opacity, willChange: element.style.willChange })))
+      .toEqual([{ opacity: '', willChange: '' }, { opacity: '', willChange: '' }]);
+  });
+
   it('skips Anime.js when reduced motion is requested', () => {
     const modal = document.createElement('div');
     const detail = document.createElement('div');
@@ -86,4 +130,55 @@ describe('Account Map motion', () => {
     handle.cancel();
   });
 
+  it('settles setup content after a normal Anime.js completion', () => {
+    const root = document.createElement('section');
+    animate.mockImplementation((_target, options: { onComplete?(): void }) => {
+      options.onComplete?.();
+      return { cancel: vi.fn() };
+    });
+
+    animateSetupStep(root, 'forward', false);
+
+    expect(animate).toHaveBeenCalledWith(root, expect.objectContaining({
+      opacity: [0, 1],
+      translateY: expect.any(Array),
+    }));
+    expectSetupFinalState(root);
+  });
+
+  it('settles setup content without Anime.js for reduced motion', () => {
+    const root = document.createElement('section');
+    root.style.opacity = '0';
+    root.style.transform = 'translateY(12px)';
+
+    animateSetupStep(root, 'forward', true);
+
+    expect(animate).not.toHaveBeenCalled();
+    expectSetupFinalState(root);
+  });
+
+  it('settles setup content when Anime.js throws or cancellation throws', () => {
+    const unavailableRoot = document.createElement('section');
+    animate.mockImplementation(() => { throw new Error('Anime.js unavailable'); });
+
+    const unavailable = animateSetupStep(unavailableRoot, 'forward', false);
+
+    expect(() => unavailable.cancel()).not.toThrow();
+    expectSetupFinalState(unavailableRoot);
+
+    const cancelledRoot = document.createElement('section');
+    animate.mockImplementation(() => ({ cancel: () => { throw new Error('cancel failed'); } }));
+    const cancelled = animateSetupStep(cancelledRoot, 'backward', false);
+
+    expect(() => cancelled.cancel()).not.toThrow();
+    expectSetupFinalState(cancelledRoot);
+    setSetupStepFinalState(cancelledRoot);
+    expectSetupFinalState(cancelledRoot);
+  });
+
 });
+
+function expectSetupFinalState(root: HTMLElement): void {
+  expect(root.style.opacity).toBe('1');
+  expect(root.style.transform).toBe('translateY(0px)');
+}

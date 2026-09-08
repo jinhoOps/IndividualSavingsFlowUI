@@ -1,7 +1,16 @@
 import type { MainData } from '../../main/domain/model';
 import type { WorkspaceDocument } from '../../workspace/domain/model';
 import type { AccountMapEditIntent } from '../domain/editIntent';
-import type { AccountMapApplied, AccountMapDraft } from '../domain/model';
+import { mapNeedsMainConfirmation } from '../domain/accountFlowCommands';
+import { projectAccountMapAppliedForView, projectAccountMapDraftForView } from '../domain/accountMapVersioning';
+import type {
+  AccountMapApplied,
+  AccountMapDraft,
+  AccountMapDraftV2,
+  AccountMapSetupStep,
+  StoredAccountMapApplied,
+  StoredAccountMapDraft,
+} from '../domain/model';
 
 export interface MapInteractionState {
   transientNodeId: string | null;
@@ -28,8 +37,8 @@ export type RecoveryState =
       reason: string;
     };
 
-export type ManualRecoveryAction = 'reset-map' | 'archive-location' | 'restore-location' | 'save-draft' | 'apply-map' | 'edit-node' | 'connection-prerequisite' | 'cancel-setup';
-export type ManualRecoveryTarget = { kind: 'node' | 'link' | 'restorable-link' | 'location'; id: string };
+export type ManualRecoveryAction = 'reset-map' | 'archive-location' | 'restore-location' | 'save-draft' | 'apply-map' | 'edit-node' | 'connection-prerequisite' | 'cancel-setup' | 'edit-transfer' | 'remove-transfer';
+export type ManualRecoveryTarget = { kind: 'node' | 'link' | 'restorable-link' | 'location' | 'transfer'; id: string };
 
 interface WorkspaceReadyState {
   workspace: WorkspaceDocument;
@@ -43,8 +52,8 @@ export type AccountMapState =
   | (WorkspaceReadyState & { mode: 'migrating'; revision: number; save: SaveState })
   | (WorkspaceReadyState & {
       mode: 'setup';
-      draft: AccountMapDraft | null;
-      step: AccountMapDraft['step'];
+      draft: StoredAccountMapDraft | null;
+      step: AccountMapSetupStep;
       resumed: boolean;
       mainChanged: boolean;
       exitRequested: boolean;
@@ -55,6 +64,7 @@ export type AccountMapState =
       mode: 'map';
       applied: AccountMapApplied;
       interaction: MapInteractionState;
+      mainConfirmationRequired: boolean;
       save: SaveState;
       recovery: RecoveryState;
     });
@@ -62,7 +72,7 @@ export type AccountMapState =
 export type AccountMapEvent =
   | { type: 'migration-succeeded'; workspace: WorkspaceDocument }
   | { type: 'migration-failed'; reason: AccountMapSaveFailure }
-  | { type: 'draft-updated'; draft: AccountMapDraft }
+  | { type: 'draft-updated'; draft: StoredAccountMapDraft }
   | { type: 'review-requested' }
   | { type: 'connect-requested' }
   | { type: 'setup-exited' }
@@ -72,19 +82,25 @@ export type AccountMapEvent =
   | { type: 'node-hovered'; nodeId: string }
   | { type: 'node-blurred'; nodeId: string }
   | { type: 'node-invoked'; nodeId: string }
+  | { type: 'node-edit-requested'; nodeId: string }
   | { type: 'map-background-invoked' }
   | { type: 'modal-closed' | 'modal-outside-invoked' | 'escape-invoked' }
   | { type: 'save-requested' | 'retry-requested' }
   | { type: 'save-succeeded'; workspace: WorkspaceDocument }
+  | { type: 'transfer-save-succeeded'; workspace: WorkspaceDocument }
+  | { type: 'main-confirmation-succeeded'; workspace: WorkspaceDocument }
   | { type: 'save-failed'; reason: AccountMapSaveFailure }
+  | { type: 'main-confirmation-failed'; reason: AccountMapSaveFailure }
   | { type: 'save-conflicted'; latest: WorkspaceDocument; intent: AccountMapEditIntent }
   | { type: 'save-manual-conflicted'; latest: WorkspaceDocument; action: ManualRecoveryAction; targets: ManualRecoveryTarget[]; reason: 'compound-edit' | 'removal' }
+  | { type: 'transfer-manual-conflicted'; latest: WorkspaceDocument; action: 'edit-transfer' | 'remove-transfer'; transferId: string; reason: 'compound-edit' | 'removal' }
   | { type: 'reapply-requested' }
   | { type: 'reapply-collided'; field: string; reason: string; latest?: WorkspaceDocument }
   | { type: 'recovery-latest-updated'; latest: WorkspaceDocument }
   | { type: 'reapply-succeeded'; workspace: WorkspaceDocument }
   | { type: 'review-latest' }
-  | { type: 'latest-kept' };
+  | { type: 'latest-kept' }
+  | { type: 'external-workspace-refreshed'; workspace: WorkspaceDocument };
 
 const emptyInteraction = (): MapInteractionState => ({
   transientNodeId: null,
@@ -100,6 +116,11 @@ export function accountMapReducer(state: AccountMapState, event: AccountMapEvent
     if (state.mode === 'invalid' || state.mode === 'unavailable') {
       return { ...state, retryRequested: true };
     }
+    return state;
+  }
+
+  if (event.type === 'external-workspace-refreshed') {
+    if (state.mode === 'setup' || state.mode === 'map') return adoptRecoveryWorkspace(state, event.workspace);
     return state;
   }
 
@@ -119,19 +140,20 @@ function reduceMigrating(
   if (event.type !== 'migration-succeeded') return state;
   if (event.workspace.main.applied === null) return { mode: 'main-required' };
   const main = structuredClone(event.workspace.main.applied);
-  const applied = event.workspace.accountMap.applied;
+  const applied = legacyAppliedForCurrentUi(event.workspace.accountMap.applied);
   if (applied !== null) {
     return {
       mode: 'map', workspace: event.workspace, main,
       applied: structuredClone(applied), interaction: emptyInteraction(), save: { status: 'idle' },
+      mainConfirmationRequired: needsMainConfirmation(event.workspace, main),
       recovery: { status: 'none' },
     };
   }
-  const draft = event.workspace.accountMap.draft;
+  const draft = guidedDraftForCurrentUi(event.workspace.accountMap.draft);
   return {
     mode: 'setup', workspace: event.workspace, main,
     draft: draft === null ? null : structuredClone(draft),
-    step: draft?.step ?? 'connect', resumed: draft !== null,
+    step: draft?.step ?? 'basis', resumed: draft !== null,
     mainChanged: draft !== null && draft.sourceMainUpdatedAt !== main.updatedAt,
     exitRequested: false, save: { status: 'idle' }, recovery: { status: 'none' },
   };
@@ -144,12 +166,14 @@ function reduceSetup(
   const recovered = reduceRecovery(state, event);
   if (recovered !== null) return recovered;
   switch (event.type) {
-    case 'draft-updated':
-      return { ...state, draft: structuredClone(event.draft), step: event.draft.step, resumed: true };
+    case 'draft-updated': {
+      const draft = projectAccountMapDraftForView(event.draft);
+      return { ...state, draft: structuredClone(draft), step: draft.step, resumed: true };
+    }
     case 'review-requested':
       return { ...state, step: 'review', draft: withDraftStep(state, 'review') };
     case 'connect-requested':
-      return { ...state, step: 'connect', draft: withDraftStep(state, 'connect') };
+      return { ...state, step: 'locations', draft: withDraftStep(state, 'locations') };
     case 'setup-exited':
       return { ...state, exitRequested: true };
     case 'setup-cancelled':
@@ -159,7 +183,7 @@ function reduceSetup(
           ...state.workspace,
           accountMap: { ...state.workspace.accountMap, draft: null },
         },
-        draft: null, step: 'connect', resumed: false,
+        draft: null, step: 'basis', resumed: false,
         mainChanged: false, exitRequested: false, save: { status: 'idle' }, recovery: { status: 'none' },
       };
     case 'apply-succeeded': {
@@ -170,6 +194,7 @@ function reduceSetup(
       return {
         mode: 'map', workspace, main: state.main, applied: structuredClone(event.applied),
         interaction: emptyInteraction(), save: { status: 'idle' }, recovery: { status: 'none' },
+        mainConfirmationRequired: needsMainConfirmation(workspace, state.main),
       };
     }
     case 'save-requested':
@@ -193,7 +218,7 @@ function reduceMap(
     case 'reset-succeeded':
       return {
         mode: 'setup', workspace: event.workspace, main: state.main,
-        draft: null, step: 'connect', resumed: false, mainChanged: false,
+        draft: null, step: 'basis', resumed: false, mainChanged: false,
         exitRequested: false, save: { status: 'idle' }, recovery: { status: 'none' },
       };
     case 'node-hovered':
@@ -203,15 +228,15 @@ function reduceMap(
         ? state
         : { ...state, interaction: { ...state.interaction, transientNodeId: null } };
     case 'node-invoked':
-      return state.interaction.pinnedNodeId === event.nodeId
-        ? {
-            ...state,
-            interaction: { transientNodeId: null, pinnedNodeId: event.nodeId, modalNodeId: event.nodeId },
-          }
-        : {
-            ...state,
-            interaction: { transientNodeId: null, pinnedNodeId: event.nodeId, modalNodeId: null },
-          };
+      return {
+        ...state,
+        interaction: { transientNodeId: null, pinnedNodeId: event.nodeId, modalNodeId: null },
+      };
+    case 'node-edit-requested':
+      return {
+        ...state,
+        interaction: { transientNodeId: null, pinnedNodeId: event.nodeId, modalNodeId: event.nodeId },
+      };
     case 'map-background-invoked':
       return { ...state, interaction: emptyInteraction() };
     case 'modal-closed':
@@ -224,13 +249,18 @@ function reduceMap(
     case 'save-requested':
       return { ...state, save: { status: 'pending' } };
     case 'save-succeeded':
+    case 'transfer-save-succeeded':
+    case 'main-confirmation-succeeded':
       return {
         ...state,
         workspace: event.workspace,
-        applied: event.workspace.accountMap.applied ?? state.applied,
+        applied: legacyAppliedForCurrentUi(event.workspace.accountMap.applied) ?? state.applied,
+        main: event.workspace.main.applied === null ? state.main : structuredClone(event.workspace.main.applied),
+        mainConfirmationRequired: needsMainConfirmation(event.workspace, event.workspace.main.applied ?? state.main),
         save: { status: 'idle' },
       };
     case 'save-failed':
+    case 'main-confirmation-failed':
       return { ...state, save: { status: 'failed', reason: event.reason } };
     default:
       return state;
@@ -264,6 +294,16 @@ function reduceRecovery<State extends Extract<AccountMapState, { mode: 'setup' |
           action: event.action,
           targets: structuredClone(event.targets),
           reason: event.reason,
+        },
+      };
+    case 'transfer-manual-conflicted':
+      if (event.latest.main.applied === null) return { mode: 'main-required' };
+      return {
+        ...state,
+        save: { status: 'idle' },
+        recovery: {
+          status: 'manual', latest: structuredClone(event.latest), action: event.action,
+          targets: [{ kind: 'transfer', id: event.transferId }], reason: event.reason,
         },
       };
     case 'reapply-requested':
@@ -311,7 +351,7 @@ function adoptRecoveryWorkspaceForReview<State extends Extract<AccountMapState, 
   if (recovery.status !== 'manual') return state;
   if (workspace.main.applied === null) return { mode: 'main-required' };
   const main = structuredClone(workspace.main.applied);
-  const applied = workspace.accountMap.applied;
+  const applied = legacyAppliedForCurrentUi(workspace.accountMap.applied);
   if (state.mode === 'setup' && applied !== null) {
     return { ...state, save: { status: 'idle' }, recovery: { ...recovery, reason: 'target-missing' } };
   }
@@ -328,6 +368,7 @@ function adoptRecoveryWorkspaceForReview<State extends Extract<AccountMapState, 
       workspace,
       main,
       applied: structuredClone(applied),
+      mainConfirmationRequired: needsMainConfirmation(workspace, main),
       save: { status: 'idle' },
       recovery: { status: 'none' },
     };
@@ -340,13 +381,13 @@ function adoptRecoveryWorkspaceForReview<State extends Extract<AccountMapState, 
     };
   }
   if (state.mode === 'setup' && applied === null) {
-    const draft = workspace.accountMap.draft;
+    const draft = guidedDraftForCurrentUi(workspace.accountMap.draft);
     return {
       ...state,
       workspace,
       main,
       draft: draft === null ? null : structuredClone(draft),
-      step: draft?.step ?? 'connect',
+      step: draft?.step ?? 'basis',
       resumed: draft !== null,
       mainChanged: draft !== null && draft.sourceMainUpdatedAt !== main.updatedAt,
       save: { status: 'idle' },
@@ -357,6 +398,12 @@ function adoptRecoveryWorkspaceForReview<State extends Extract<AccountMapState, 
 }
 
 function workspaceContainsManualTarget(workspace: WorkspaceDocument, action: ManualRecoveryAction, target: ManualRecoveryTarget): boolean {
+  if (target.kind === 'transfer') {
+    const transfer = workspace.accountMap.applied?.schemaVersion === 3
+      ? workspace.accountMap.applied.transfers.find(({ id }) => id === target.id)
+      : undefined;
+    return transfer !== undefined;
+  }
   if (target.kind === 'link' || target.kind === 'restorable-link') {
     const link = workspace.accountMap.applied?.links.find(({ id }) => id === target.id);
     if (link === undefined) return false;
@@ -376,7 +423,7 @@ function adoptRecoveryWorkspace<State extends Extract<AccountMapState, { mode: '
   workspace: WorkspaceDocument,
 ): AccountMapState {
   if (workspace.main.applied === null) return { mode: 'main-required' };
-  const applied = workspace.accountMap.applied;
+  const applied = legacyAppliedForCurrentUi(workspace.accountMap.applied);
   const main = structuredClone(workspace.main.applied);
   if (applied !== null) {
     return {
@@ -385,17 +432,18 @@ function adoptRecoveryWorkspace<State extends Extract<AccountMapState, { mode: '
       main,
       applied: structuredClone(applied),
       interaction: emptyInteraction(),
+      mainConfirmationRequired: needsMainConfirmation(workspace, main),
       save: { status: 'idle' },
       recovery: { status: 'none' },
     };
   }
-  const draft = workspace.accountMap.draft;
+  const draft = guidedDraftForCurrentUi(workspace.accountMap.draft);
   return {
     mode: 'setup',
     workspace,
     main,
     draft,
-    step: draft?.step ?? 'connect',
+    step: draft?.step ?? 'basis',
     resumed: draft !== null,
     mainChanged: draft !== null && draft.sourceMainUpdatedAt !== main.updatedAt,
     exitRequested: false,
@@ -406,7 +454,48 @@ function adoptRecoveryWorkspace<State extends Extract<AccountMapState, { mode: '
 
 function withDraftStep(
   state: Extract<AccountMapState, { mode: 'setup' }>,
-  step: AccountMapDraft['step'],
+  step: AccountMapSetupStep,
+): AccountMapDraftV2 | null {
+  return state.draft === null ? null : { ...projectAccountMapDraftForView(state.draft), step };
+}
+
+function needsMainConfirmation(workspace: WorkspaceDocument, main: MainData): boolean {
+  const applied = workspace.accountMap.applied;
+  return applied !== null && mapNeedsMainConfirmation(projectAccountMapAppliedForView(applied), main);
+}
+
+function legacyAppliedForCurrentUi(
+  value: StoredAccountMapApplied | null,
+): AccountMapApplied | null {
+  if (value === null) return null;
+  if (value.schemaVersion === 2) return structuredClone(value);
+  return {
+    schemaVersion: 2,
+    sourceMainUpdatedAt: value.sourceMainUpdatedAt,
+    customPurposes: structuredClone(value.customPurposes),
+    links: structuredClone(value.links),
+    setupCompletedAt: value.setupCompletedAt,
+    updatedAt: value.updatedAt,
+  };
+}
+
+function legacyDraftForCurrentUi(
+  value: StoredAccountMapDraft | null,
 ): AccountMapDraft | null {
-  return state.draft === null ? null : { ...state.draft, step };
+  if (value === null) return null;
+  if (value.schemaVersion === 1) return structuredClone(value);
+  return {
+    schemaVersion: 1,
+    sourceMainUpdatedAt: value.sourceMainUpdatedAt,
+    customPurposes: structuredClone(value.customPurposes),
+    links: structuredClone(value.links),
+    step: value.step === 'review' ? 'review' : 'connect',
+    updatedAt: value.updatedAt,
+  };
+}
+
+function guidedDraftForCurrentUi(
+  value: StoredAccountMapDraft | null,
+): AccountMapDraftV2 | null {
+  return value === null ? null : projectAccountMapDraftForView(value);
 }

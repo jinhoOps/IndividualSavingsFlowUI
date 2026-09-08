@@ -35,13 +35,14 @@ const importMessages = {
   schema: '백업의 앱 데이터가 올바르지 않습니다. 현재 데이터는 바뀌지 않았습니다.',
 } satisfies Record<WorkspaceImportFailureReason, string>;
 
+const unknownRestoreMessage = '복원 결과를 확인하지 못했습니다. 최신 저장 상태와 복구 안내를 확인해 주세요.';
 const restoreMessages = {
   conflict: '다른 탭에서 데이터가 변경되었습니다. 현재 데이터는 바뀌지 않았습니다.',
   'current-invalid': '현재 저장된 workspace를 먼저 복구해야 합니다. 현재 데이터는 바뀌지 않았습니다.',
   'candidate-invalid': '백업의 앱 데이터를 적용할 수 없습니다. 현재 데이터는 바뀌지 않았습니다.',
   'unavailable-load': '저장소를 사용할 수 없습니다. 현재 데이터는 바뀌지 않았습니다. 다시 시도해 주세요.',
-  'unavailable-replace': '백업을 저장하지 못했습니다. 현재 데이터는 바뀌지 않았습니다. 다시 시도해 주세요.',
-  failed: '백업을 복원하지 못했습니다. 현재 데이터는 바뀌지 않았습니다. 다시 시도해 주세요.',
+  'unavailable-replace': unknownRestoreMessage,
+  failed: unknownRestoreMessage,
 } as const;
 
 export function useMainBackupController({

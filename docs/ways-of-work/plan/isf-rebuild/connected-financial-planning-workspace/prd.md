@@ -4,7 +4,7 @@
 
 ISF는 지금의 월간 돈 흐름을 정리하고, 그 결과를 장기 전략과 실행 계획으로 점차 연결하는 개인 재무 계획 도구다. 정적 웹에서 Google 로그인과 Supabase 계정별 저장을 사용한다.
 
-현재 지원 제품은 **Main, Simulation, Portfolio와 Account Map**이다. Main은 월 자금 흐름을, Simulation은 장기 복리를, Portfolio는 최신 Main 투자금의 전체 기준 배분을 보여준다. Account Map은 Main 기반 목적과 계좌·보관처의 월 연결을 제공한다. 네 앱은 계정당 하나의 schema v3 workspace를 사용한다. 이 브랜치의 계정 저장 구현과 운영 rollout 상태는 [운영 안내](../../../../../docs/supabase-account-setup.md)로 구분한다.
+현재 지원 제품은 **Main, Simulation, Portfolio와 Account Map**이다. Main은 월 자금 흐름을, Simulation은 장기 복리를, Portfolio는 최신 Main 투자금의 전체 기준 배분을 보여준다. Account Map은 Main 기반 목적과 계좌 간 고정·남은 금액 전부 계획 흐름을 제공한다. 네 앱은 계정당 하나의 schema v4 workspace를 사용한다. 이 브랜치의 계정 저장 구현과 운영 rollout 상태는 [운영 안내](../../../../../docs/supabase-account-setup.md)로 구분한다.
 
 ## 2. Epic
 
@@ -13,6 +13,7 @@ ISF는 지금의 월간 돈 흐름을 정리하고, 그 결과를 장기 전략�
 - [Design Contract](../../../../../DESIGN.md)
 - [Connected Account Map Workspace Design](../../../../superpowers/specs/2026-08-06-connected-account-map-workspace-design.md)
 - [Account Map Purpose-Node Flow Design](../../../../superpowers/specs/2026-08-13-account-map-purpose-node-flow-design.md)
+- [Account Map Planned Account Flow Design](../../../../superpowers/specs/2026-09-04-account-map-planned-account-flow-design.md) — 현재 Account Map 계약
 - [Shared Workspace Foundation Plan](../../../../superpowers/plans/2026-08-06-shared-workspace-foundation.md)
 - [Journey Snapshot 폐기 설계](../../../../superpowers/specs/2026-08-03-journey-snapshot-retirement-design.md)
 - [Portfolio 투자 배분 설계](../../../../superpowers/specs/2026-08-03-portfolio-allocation-design.md)
@@ -38,6 +39,7 @@ ISF는 지금의 월간 돈 흐름을 정리하고, 그 결과를 장기 전략�
 - 백테스트, 변동성·MDD, 세금 또는 수수료 계산
 - Portfolio 위치별 배분·계좌·보관처 편집, 복수 독립 계획, 시세·수익률·매수 실행
 - 금융기관 실연동, 계좌번호·잔액·거래·실시간 시세 조회, 자동이체 실행과 금융 자문
+- 은행 이체 실행, 실제 잔액·거래의 추론 또는 월 계획 흐름을 실제 자금 이동으로 표현하는 일
 - 지출 카테고리·실제 사용액·가구 예산 관리
 - 레거시 Sankey 또는 계좌별 장기 자산 projection
 - Phase C의 Main 연결 결과 카드와 별도 후속 작업인 hidden trophy room
@@ -101,8 +103,8 @@ Google 로그인으로 계정의 workspace를 연다. 2026-09-08 사용자 요�
 - Portfolio는 같은 workspace의 최신 Main 투자금을 읽고 하나의 aggregate-only 적용 배분과 편집 초안을 소유한다.
 - Portfolio 결과는 비율 우선 요약과 비례 목록으로 시작하며 원화 금액은 기본으로 숨긴다.
 - Portfolio의 배분 편집은 투자 대상별 전체 기준 금액과 비율만 다루며 계좌·기관·보관처 관리 UI를 표시하지 않는다. current workspace locations는 Account Map이 소유하고, retired location-scoped Portfolio data는 현재 상태로 이관하지 않는다.
-- Account Map은 최신 Main의 다섯 월 금액을 읽어 하나의 계좌 우선 노드 지도와 월 계획 연결 구성을 제공하고, `workspace.locations`와 `workspace.accountMap`만 갱신한다.
-- Account Map은 Main·Simulation·Portfolio에 write-back하지 않는다.
+- Account Map은 최신 Main의 다섯 월 금액을 읽어 계좌 간 고정·`남은 금액 전부` 월 계획 흐름과 목적 배정을 같은 계좌 우선 지도에서 제공하고, `workspace.locations`와 `workspace.accountMap`만 갱신한다. 이 흐름은 실제 잔액·거래·자동이체가 아니다.
+- Account Map은 Main·Simulation·Portfolio에 write-back하지 않는다. Main 수정은 Account Map 위에 열리는 Main 소유 편집기로만 저장한다.
 - Main의 기존 요약과 월 자금 구성은 유지된다. 앱별 연결 결과 카드는 Phase C 전까지 현재 UI가 아니다.
 
 ## 8. Functional Requirements
@@ -119,14 +121,14 @@ Google 로그인으로 계정의 workspace를 연다. 2026-09-08 사용자 요�
 
 ### Shared workspace와 backup
 
-- Main, Simulation, Portfolio, 공유 금융 위치와 Account Map applied/draft를 schema v3의 하나의 `isf-workspace-v3` 문서에 저장한다.
+- Main, Simulation, Portfolio, 공유 금융 위치와 Account Map applied/draft를 schema v4의 계정별 Supabase workspace 한 행에 저장한다.
 - write ownership은 각 앱이 소유한 slice로 한정한다. Simulation과 Portfolio는 최신 Main slice를 읽기 전용으로 읽고 Portfolio는 자기 plan과 draft만 갱신한다. 모든 성공한 write는 workspace revision을 한 번 증가시킨다.
 - Account Map은 Main을 읽기 전용 기준으로 사용하며 `workspace.locations`와 `workspace.accountMap`만 갱신한다.
 - 공유 금융 위치 registry의 유일한 관리 진입점은 Account Map이며 Portfolio는 이를 갱신하지 않는다.
 - stale revision을 기준으로 시작한 writer는 더 최신 workspace를 덮어쓰지 못한다.
-- v3가 없을 때에만 유효한 retired workspace v1/v2 원본 `isf-workspace-v1`을 read-only로 읽어 one-way conversion한다. 성공해도 원본을 변경하거나 삭제하지 않으며, 존재하지만 invalid인 v3는 v1 fallback을 허용하지 않는다.
+- v4가 없을 때만 v3 `isf-workspace-v3`을 read-only rollback source로 읽어 v4 후보로 변환한다. 읽기만으로는 어느 원본도 쓰거나 삭제하지 않고, 명시 저장만 v4를 원자적으로 만든다. v3도 없을 때에만 유효한 retired workspace v1/v2 원본 `isf-workspace-v1`을 같은 방식으로 읽는다. 존재하지만 invalid인 v4는 v3/v1 fallback을 허용하지 않는다.
 - `isf-main-v2`, `isf-simulation-compound-v1`, `isf-portfolio-allocation-v1`, `isf-account-map-v1`, `isf-rebuild-v1`과 retired journey snapshot은 현재 workspace 제품이 읽거나 변경하지 않는 foreign record다.
-- 현재 백업 export는 format v2 whole-workspace envelope다. format v2는 strict v3만 받아들이고, format v1 import는 같은 retired converter를 거친다. 모든 slice와 참조를 먼저 검증하고 유효하면 한 번의 v3 workspace replacement로 복원하며 invalid 입력은 아무것도 바꾸지 않는다.
+- 현재 백업 export는 format v3 whole-workspace envelope다. format v3는 strict v4를 내보내며, format v2의 v3와 format v1의 retired v1/v2 input은 읽기 전용 converter를 거쳐 v4로 검증한다. 모든 slice와 참조를 먼저 검증하고 유효하면 한 번의 v4 workspace replacement로 복원하며 invalid 입력은 아무것도 바꾸지 않는다.
 
 ### Main
 
@@ -134,14 +136,14 @@ Google 로그인으로 계정의 workspace를 연다. 2026-09-08 사용자 요�
 - 주거비와 생활비를 소비로 합산하고 총 유출과 잔액 또는 적자를 계산한다.
 - 유효하지 않은 적용은 차단하되 불완전한 setup draft는 재개할 수 있다.
 - 현재 값과 적용 값의 관계를 사용자에게 명확히 보여준다.
-- 현재 v3 workspace가 없을 때만 유효한 retired workspace v1/v2 원본을 read-only conversion 후보로 읽는다. standalone 구 저장 키와 retired journey snapshot은 fallback으로 읽지 않고 foreign record로 그대로 둔다.
+- 현재 v4 workspace가 없을 때만 v3을 read-only conversion 후보로 읽고, v3도 없을 때에만 유효한 retired workspace v1/v2 원본을 읽는다. standalone 구 저장 키와 retired journey snapshot은 fallback으로 읽지 않고 foreign record로 그대로 둔다.
 - whole-workspace JSON import는 envelope, 모든 slice와 참조 검증을 통과해야 한다.
 
 ### Journey
 
 - 앱 간 이동은 사용자의 런처 링크 또는 CTA 행동으로 시작한다.
 - 앱 이동은 URL 탐색만 수행하고 Simulation과 Portfolio는 workspace의 최신 Main slice를 각자의 읽기 전용 adapter로 직접 읽는다.
-- Account Map은 Main을 암묵적으로 수정하지 않는다.
+- Account Map은 Main을 암묵적으로 수정하지 않는다. Main 수정 요청은 journey overlay가 Main controller와 repository로 처리하고, 저장 뒤 Account Map은 최신 revision을 다시 읽는다.
 
 ### Simulation
 
@@ -178,15 +180,11 @@ Google 로그인으로 계정의 workspace를 연다. 2026-09-08 사용자 요�
 ### Account Map
 
 - Main의 수입·주거·생활비·저축·투자 월 금액을 system purpose로 결정적으로 파생한다.
-- 목적과 계좌·보관처를 다대다 link로 연결하며 최초 연결은 전체 기준 금액을 자동 할당한다.
-- 주 수입 계좌가 먼저 오는 하나의 계좌 우선 정렬과 전체·기본·상세 semantic zoom을 제공한다. hover·focus와 첫 선택은 계좌별 활성 월 계획 연결 구성과 비중을 보여 주며, 이는 실제 잔액·거래·계좌 간 이동이 아니다. 두 번째 선택은 기존 상세 modal을 연다.
-- current Account Map state에는 layout preference나 legacy Phase A payload가 없다. retired v1/v2 conversion은 이전 `layout: 'purpose' | 'account'`와 Phase A payload를 현재 state로 이관하지 않는다.
-- 계좌·보관처 보관은 영향 연결을 먼저 보여주고 중지하며, 복원은 연결별 선택을 제공한다.
-- 적용 지도 modal에서 금액·상태·나머지를 편집하고 보조 `연결 추가` action으로 다른 계좌·보관처를 연결한다.
-- 기존 active location은 현재 role과 관계없이 선택할 수 있고 필요한 role 추가와 link 생성을 한 revision write로 저장한다.
-- 사용자 하위 목적은 같은 modal의 보조 메뉴에서 보관·복원하며 보관된 link를 자동 재개하지 않는다.
-- 일반적인 stale conflict·collision은 최신 workspace를 다시 읽되 setup·modal 입력을 보존하고 사용자의 명시적 재적용 전에는 쓰지 않는다. 단, 채택한 최신 workspace의 `main.applied`가 `null`이면 Account Map은 복구 intent와 입력 replay를 포기하고 어떤 write도 하지 않은 채 즉시 Main-required 상태로 전환한다.
-- 지도 다시 만들기는 Account Map applied/draft만 지우고 locations와 Main·Simulation·Portfolio를 보존한다.
+- 목적과 계좌·보관처를 다대다 link로 연결하고, 계좌 간에는 여러 고정 이체와 출발 계좌당 하나의 `남은 금액 전부`(sweep) 계획 흐름을 저장한다. 이체의 순서·금액 규칙은 명시적으로 선택하며 실제 이체를 실행하지 않는다.
+- 지도는 전체 토폴로지를 기본으로 보여주고 주 수입 계좌를 앞세운 결정적 순서를 사용한다. 첫 pointer·touch·keyboard 선택은 연결된 상·하류와 고정/잔여 규칙, 계획상 잔여 금액 및 명시적 `계좌 정보 편집`·`연결 추가`·`흐름 편집` action을 보여준다. 두 번째 선택을 요구하지 않는다.
+- 자기 이체, 중복 active pair, cycle, 없는/보관된 endpoint와 한 출발 계좌의 복수 sweep은 저장하지 않는다. 계획상 부족·미배정·Main 적자는 경고로 표시하되 저장 구조 오류로 취급하지 않는다.
+- Main overlay 저장 뒤 `sourceMainUpdatedAt !== main.updatedAt`이면 한 개의 `확인 필요` 상태를 표시한다. 사용자가 `현재 Main 기준으로 확인`을 명시하면 목적별 remainder만 다시 계산하고, fixed/sweep account transfer는 바꾸지 않은 채 최신 Main 기준 시각을 기록한다. 목적 fixed allocation 초과면 오류를 알리고 어떤 write도 하지 않는다.
+- 계좌·보관처 보관은 영향을 먼저 보여주고 purpose와 transfer 관계를 중지하며, 복원은 관계별 선택을 제공한다. 지도 다시 만들기는 Account Map applied/draft만 지우고 locations와 Main·Simulation·Portfolio를 보존한다.
 
 ### Legacy transition
 
@@ -197,9 +195,9 @@ Google 로그인으로 계정의 workspace를 연다. 2026-09-08 사용자 요�
 
 ## 9. Data Contract
 
-현재 제품의 저장 boundary는 Supabase `public.user_workspaces`의 계정당 한 행이며 workspace schema v3를 유지한다. 여기에는 Main applied/setup progress, Simulation draft, aggregate-only Portfolio plans/draft, 공유 금융 위치와 Account Map applied/draft가 들어간다. current Account Map state에는 `legacyPhaseA`나 `layout`이 없다. RLS가 본인 행 조회를 제한하고 소유 slice별 RPC만 서버 revision 검사 후 저장한다. 전체 복원만 검증된 다섯 slice를 원자적으로 교체한다.
+현재 제품의 저장 boundary는 Supabase `public.user_workspaces`의 계정당 한 행이며 workspace schema v4를 사용한다. 여기에는 Main applied/setup progress, Simulation draft, aggregate-only Portfolio plans/draft, 공유 금융 위치와 Account Map applied/draft(목적 link와 account transfer 포함)가 들어간다. current Account Map state에는 `legacyPhaseA`나 `layout`이 없다. RLS가 본인 행 조회를 제한하고 소유 slice별 RPC만 서버 revision 검사 후 저장한다. 전체 복원만 검증된 다섯 slice를 원자적으로 교체한다.
 
-기존 `isf-workspace-v3`는 사용자 선택에 따른 read-only 이전 후보다. 유효한 retired v1/v2 `isf-workspace-v1`은 v3가 없을 때만 conversion source이며 invalid v3에서는 fallback하지 않는다. 이전 성공 후에도 원본과 foreign record를 변경·삭제하지 않는다. 계정별 캐시·미전송 draft는 별도 namespace이며 서버 확정 상태로 표시하지 않는다. 로그인 전 제품을 mount하지 않고 오프라인은 같은 계정 캐시의 읽기 전용 재방문만 허용한다. 계약 상세는 [계정 저장 설계](../../../../superpowers/specs/2026-09-07-supabase-account-workspace-design.md)를 따른다.
+기존 브라우저 `isf-workspace-v4`는 사용자 선택에 따른 read-only 이전 후보다. v4가 없을 때만 v3를, 둘 다 없을 때만 유효한 retired v1/v2 `isf-workspace-v1`을 v4로 변환해 읽으며 invalid 최신 원본에서는 fallback하지 않는다. 이전 성공 후에도 원본과 foreign record를 변경·삭제하지 않는다. 계정별 캐시·미전송 draft는 별도 namespace이며 서버 확정 상태로 표시하지 않는다. 로그인 전 제품을 mount하지 않고 오프라인은 같은 계정 캐시의 읽기 전용 재방문만 허용한다. 계약 상세는 [계정 저장 설계](../../../../superpowers/specs/2026-09-07-supabase-account-workspace-design.md)를 따른다.
 
 `MainData`의 제품 필드는 다음과 같다.
 
@@ -262,8 +260,9 @@ Simulation, Portfolio와 Account Map은 workspace 안의 최신 Main을 읽기 �
 - [x] 구 Main·Simulation·Portfolio·Account Map·rebuild 키는 새 제품에서 fallback, migration, write 또는 delete 대상으로 사용하지 않는다.
 - [x] stale workspace writer는 최신 revision을 덮어쓰지 못한다.
 - [x] Portfolio는 전체 기준 배분만 제공하고 계좌·기관·보관처 관리 UI를 표시하지 않는다.
-- [x] whole-workspace 백업은 format v2를 export하고 format v1 import를 같은 converter로 검증하며, 유효한 모든 slice만 한 번에 교체하고 invalid 입력에는 현재 raw workspace를 유지한다.
-- [x] Account Map은 하나의 계좌 우선 노드 지도, 월 계획 연결 구성과 가역적 계좌·보관처 관리의 승인 계약을 모두 구현하며 Main 연결 결과 카드는 Phase C 전까지 기존 UI를 유지한다.
+- [x] whole-workspace 백업은 format v3를 export하고 format v2/v3/v1 import를 원자적으로 검증·변환하며, invalid 입력에는 현재 raw workspace를 유지한다.
+- [x] Account Map은 하나의 계좌 우선 노드 지도, 목적 배정과 계좌 간 고정/sweep 월 계획 흐름, 가역적 계좌·보관처 관리의 승인 계약을 모두 구현하며 Main 연결 결과 카드는 Phase C 전까지 기존 UI를 유지한다.
+- [x] Account Map Main overlay는 map을 mounted·inert 상태로 유지하고 Main 소유 저장·취소·dirty 확인·Back/Escape·실패 input 보존·focus 복원을 제공한다. 저장 뒤에는 명시적 Main-basis 확인만 stale 상태를 해제하고 transfer를 변경하지 않는다.
 - [x] Simulation과 Portfolio의 다시 설정은 해당 앱 데이터만 변경하고 Main과 다른 앱의 데이터를 보존한다.
 
 ### Phase B review closure gate
@@ -272,7 +271,7 @@ Simulation, Portfolio와 Account Map은 workspace 안의 최신 Main을 읽기 �
 - [x] 적용 지도에서 다른 계좌 연결과 add-only role 확장을 한 write로 완료한다.
 - [x] Custom purpose 보관·복원과 link 비자동복구를 제공한다.
 - [x] 일반적인 stale conflict·collision에서는 최신 상태를 다시 읽고 사용자 입력을 보존해 명시적으로 재적용하며, 채택한 최신 workspace에 Main이 없으면 복구나 replay 없이 Main-required로 전환한다.
-- [x] 동기화된 v3 backup은 custom target capacity를 검증하고 이후 Main 감소로 생긴 기존 초과는 correction 가능하게 읽는다.
+- [x] 동기화된 v4 backup은 custom target capacity를 검증하고 이후 Main 감소로 생긴 기존 초과는 correction 가능하게 읽는다.
 - [x] backup·stale(Main-null 안전 예외 포함)·custom purpose·다대다·touch·keyboard·Portfolio 보존 회귀를 통과한다.
 - [x] 최신 `origin/main` 통합 후 PR diff에 승인 범위 밖 역행 변경이나 conflict가 없다.
 - [x] 위 gate를 모두 통과한 같은 변경에서 Account Map을 현재 지원 제품으로 승격하고 관련 미완료 항목을 함께 `[x]`로 바꾼다.
@@ -287,6 +286,8 @@ Simulation, Portfolio와 Account Map은 workspace 안의 최신 Main을 읽기 �
 - [x] Phase 4의 분류된 legacy runtime 삭제와 Task 8의 최종 전체 검증은 v1/v2 conversion·raw source preservation·reference search·type/unit/E2E/build·반응형 QA [evidence](../../../../superpowers/evidence/2026-09-02-phase4-legacy-test-disposition.md)와 함께 기록되어 있다.
 
 ### 계정 저장 rollout gate
+
+최신 main의 workspace v4·Account Map 계획 이체·Main overlay와의 통합은 [v4 통합 설계](../../../../superpowers/specs/2026-09-08-supabase-workspace-v4-integration-design.md)를 따른다. v4 필수 RPC와 세대가 분리된 계정 캐시를 사용하며 구 요청의 자동 재전송을 금지한다. 최초 v3 운영 적용 증거와 이후 v4 업그레이드 증거는 구분한다.
 
 2026-09-07 승인된 [설계](../../../../superpowers/specs/2026-09-07-supabase-account-workspace-design.md)에 따라 로그인 후 편집·저장, 계정당 workspace 하나를 구현한다. 2026-09-08 승인된 임시 이메일·비밀번호 경로는 같은 계약에 포함한다. 사용자가 직접 적용을 승인한 뒤 운영 DB migration·실제 계정 준비와 두 브라우저 저장 검증을 완료했다. 결과와 제한은 [운영 적용 기록](../../../../superpowers/evidence/2026-09-08-supabase-live-setup.md)을 따른다. mock 인증 E2E와 실제 로컬 PostgreSQL 검증은 실제 임시 계정 로그인·Google provider 왕복이나 운영 적용 증거를 대신하지 않는다. 2026-09-07 검증 기록은 당시 범위의 증거로 유지한다.
 
@@ -306,7 +307,7 @@ Simulation, Portfolio와 Account Map은 workspace 안의 최신 Main을 읽기 �
 1. 지금 내 돈은 한 달에 어떻게 나뉘는가? — Main
 2. 이 투자 여력을 오래 유지하면 어떤 차이가 생기는가? — Simulation
 3. 선택한 방향을 매달 무엇에 투자할 것인가? — Portfolio
-4. 실제 금융 위치와 월 연결을 어떻게 단순하게 관리할 것인가? — Phase B Account Map
+4. 실제 금융 위치와 계좌 간 월 계획 흐름을 어떻게 단순하게 관리할 것인가? — Account Map
 
 Phase C는 현재 Main의 metric 영역을 Main·Simulation·Portfolio·Account Map 연결 결과 카드로 바꾼다. Phase 4는 대체 증거와 전체 참조 검색을 거쳐 분류된 legacy runtime과 테스트를 제거했고, standalone old keys와 retired journey snapshot은 foreign record로 남긴다. Task 8의 [최종 전체 검증](../../../../superpowers/evidence/2026-09-02-phase4-legacy-test-disposition.md)은 이 상태를 통과로 기록했다. hidden trophy room은 금융 workspace와 backup에서 분리된 별도 후속 설계다.
 

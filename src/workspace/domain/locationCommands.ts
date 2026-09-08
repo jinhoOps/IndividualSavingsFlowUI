@@ -35,6 +35,12 @@ export interface CreateLocationInput {
   roles: FinancialRole[];
 }
 
+export interface UpdateLocationDetailsInput {
+  shortName: string;
+  kind: FinancialLocationKind;
+  institution?: InstitutionRef;
+}
+
 export function createLocation(
   workspace: WorkspaceDocument,
   input: CreateLocationInput,
@@ -93,6 +99,42 @@ export function renameLocation(
 
   const next = parseFinancialLocation({ ...current, shortName: name, updatedAt: now });
   if (next === null) return invalidInput();
+  const locations = replaceLocation(currentWorkspace.locations, next);
+  return parseSuccess({ ...currentWorkspace, updatedAt: now, locations }, locationId);
+}
+
+/**
+ * Updates the presentation details as one validated record. Roles and Account
+ * Map relationships intentionally remain outside this command: detail edits
+ * must not change the money-routing meaning of an existing location.
+ */
+export function updateLocationDetails(
+  workspace: WorkspaceDocument,
+  locationId: string,
+  input: UpdateLocationDetailsInput,
+  now: number = Date.now(),
+): LocationCommandResult {
+  const currentWorkspace = parseWorkspaceDocument(workspace);
+  if (currentWorkspace === null || !isLocationId(locationId) || !isTimestamp(now)) return invalidInput();
+  const current = currentWorkspace.locations.find(({ id }) => id === locationId);
+  if (current === undefined) return { ok: false, reason: 'location-not-found' };
+  const name = validateDisplayName(input.shortName);
+  if (typeof name !== 'string' || !isFinancialLocationKind(input.kind)) return invalidInput();
+  if ((input.kind === 'bank' || input.kind === 'brokerage') && input.institution === undefined) {
+    return invalidInput();
+  }
+  const next = parseFinancialLocation({
+    ...current,
+    shortName: name,
+    kind: input.kind,
+    ...(input.kind === 'cash' ? {} : input.institution === undefined ? {} : { institution: input.institution }),
+    updatedAt: now,
+  });
+  if (next === null) return invalidInput();
+  if (input.kind === 'cash') delete next.institution;
+  if (next.archivedAt === undefined && hasActiveDetailsDuplicate(currentWorkspace.locations, next)) {
+    return { ok: false, reason: 'duplicate-name' };
+  }
   const locations = replaceLocation(currentWorkspace.locations, next);
   return parseSuccess({ ...currentWorkspace, updatedAt: now, locations }, locationId);
 }
@@ -240,6 +282,24 @@ function hasActiveDuplicate(
     && normalizeLocationName(location.shortName) === normalized);
 }
 
+function hasActiveDetailsDuplicate(
+  locations: FinancialLocation[],
+  candidate: FinancialLocation,
+): boolean {
+  const candidateInstitution = institutionKey(candidate.institution);
+  const candidateName = normalizeLocationName(candidate.shortName);
+  return locations.some((location) => location.id !== candidate.id
+    && location.archivedAt === undefined
+    && normalizeLocationName(location.shortName) === candidateName
+    && institutionKey(location.institution) === candidateInstitution);
+}
+
+function institutionKey(institution: InstitutionRef | undefined): string {
+  if (institution === undefined) return 'none';
+  if (institution.id !== undefined) return `id:${institution.id}`;
+  return `name:${normalizeLocationName(institution.name)}`;
+}
+
 function exceedsPurposeCapacity(locations: FinancialLocation[]): boolean {
   const active = locations.filter(({ archivedAt }) => archivedAt === undefined);
   return (Object.keys(PURPOSE_CAPACITY) as FinancialRole[]).some((role) => {
@@ -271,6 +331,10 @@ function invalidInput(): LocationCommandFailure {
 
 function isLocationId(value: unknown): value is string {
   return typeof value === 'string' && value.length > 0;
+}
+
+function isFinancialLocationKind(value: unknown): value is FinancialLocationKind {
+  return value === 'bank' || value === 'brokerage' || value === 'cash';
 }
 
 function isTimestamp(value: unknown): value is number {

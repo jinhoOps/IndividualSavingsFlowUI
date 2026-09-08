@@ -19,3 +19,9 @@ export function portfolioRepositories(session: AccountWorkspaceSession) {
 export function accountMapRepositories(session: AccountWorkspaceSession) {
   return {repositories: {accountMap: new BrowserAccountMapRepository(session.scope('account-map')), main: new BrowserAccountMapMainSourceRepository(session.scope('account-map'))}};
 }
+export function accountMapJourneyRepositories(session: AccountWorkspaceSession) {
+  return {
+    ...accountMapRepositories(session),
+    mainRepository: new BrowserMainRepository(session.scope('main')),
+  };
+}

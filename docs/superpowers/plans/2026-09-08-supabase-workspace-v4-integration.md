@@ -32,10 +32,10 @@
 **Files:** create `supabase/migrations/202609080002_workspace_v4.sql`; modify `supabase/tests/workspace-fixtures.mjs`, `scripts/test-workspace-db.mjs`.
 **Interfaces:** 여섯 RPC 입력에 required `p_schema_version: 4`; 결과는 기존 saved/exists/conflict/invalid와 row metadata를 유지한다. Active validator는 `private.normalize_workspace_v4(jsonb)`다.
 
-- [ ] v4 applied3/draft2 fixed/sweep·suspended·cycle·archived·duplicate·zero·safe-integer·NFC fixture를 추가하고 기존 DB의 실패를 확인한다.
-- [ ] fixture runner가 v3 행·receipt를 먼저 만든 뒤 새 migration을 적용해 payload/revision/timestamp 동일성과 before-image 보존을 검증하게 한다.
-- [ ] before-image 테이블, v4 정규화, metadata-only 업그레이드, schema 제약/기본값, required-version RPC를 한 추가 migration에 구현한다.
-- [ ] 아래 계약을 실제 PostgreSQL에서 검증한다.
+- [x] v4 applied3/draft2 fixed/sweep·suspended·cycle·archived·duplicate·zero·safe-integer·NFC fixture를 추가하고 기존 DB의 실패를 확인한다.
+- [x] fixture runner가 v3 행·receipt를 먼저 만든 뒤 새 migration을 적용해 payload/revision/timestamp 동일성과 before-image 보존을 검증하게 한다.
+- [x] before-image 테이블, v4 정규화, metadata-only 업그레이드, schema 제약/기본값, required-version RPC를 한 추가 migration에 구현한다.
+- [x] 아래 계약을 실제 PostgreSQL에서 검증한다.
 
 ```js
 assert.equal(rpc('save_account_map', v4Payload, revision, mutation, 4).status, 'saved');
@@ -45,18 +45,18 @@ assert.deepEqual(after.payload, before.payload);
 assert.equal(after.revision, before.revision);
 ```
 
-- [ ] `node scripts/test-workspace-db.mjs` 전체 및 독립 SQL 리뷰를 통과한다. 원격 DB는 root의 Task 6 이전에 수정하지 않는다.
+- [x] `node scripts/test-workspace-db.mjs` 전체 및 독립 SQL 리뷰를 통과한다. 원격 DB는 root의 Task 6 이전에 수정하지 않는다.
 
 ### Task 3: 원격 v4·캐시 세대·이전 호환
 
 **Files:** `src/workspace/infrastructure/workspaceRemote.ts`, `accountWorkspaceSession.ts`, `accountWorkspaceCache.ts`, `src/auth/accountTab.ts`, `AccountWorkspaceGate.tsx`; 관련 workspace/auth unit tests와 cloud fixture.
 **Interfaces:** `workspaceFromRow`는 schema4만 채택; transport는 required version4; 새 cache prefix와 구 기록 복구는 UID·project·tab 격리 유지.
 
-- [ ] v4 row hydration, v3/future row 거절과 전송 `p_schema_version: 4` 테스트를 먼저 작성한다.
-- [ ] v3 캐시의 pending을 v4로 재전송하지 않고 보존/다운로드하는 테스트, invalid 새 캐시의 구 캐시 fallback 금지, logout의 양쪽 세대 제거를 작성한다.
-- [ ] decoder/session의 version3 가정을 current v4 계약으로 변경하고 cache namespace를 분리한다. 원격 v3에 자동 initialize/restore하지 않는다.
-- [ ] 최신 브라우저 v4/v3/v1 이전과 backup v3/v2/v1 roundtrip을 검증한다.
-- [ ] `npm run check`와 focused workspace/auth 단위 테스트를 통과한다.
+- [x] v4 row hydration, v3/future row 거절과 전송 `p_schema_version: 4` 테스트를 먼저 작성한다.
+- [x] v3 캐시의 pending을 v4로 재전송하지 않고 보존/다운로드하는 테스트, invalid 새 캐시의 구 캐시 fallback 금지, logout의 양쪽 세대 제거를 작성한다.
+- [x] decoder/session의 version3 가정을 current v4 계약으로 변경하고 cache namespace를 분리한다. 원격 v3에 자동 initialize/restore하지 않는다.
+- [x] 최신 브라우저 v4/v3/v1 이전과 backup v3/v2/v1 roundtrip을 검증한다.
+- [x] `npm run check`와 focused workspace/auth 단위 테스트를 통과한다.
 
 ### Task 4: 최신 Account Map Journey 계정 연결
 
