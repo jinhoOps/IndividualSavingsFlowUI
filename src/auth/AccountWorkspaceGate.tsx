@@ -218,10 +218,10 @@ export function AccountWorkspaceGate({children, client: suppliedClient, config: 
   if (!configured) return <GatePage title="계정 저장 연결 설정이 필요합니다."><p>배포 관리자에게 연결 설정을 요청해주세요.</p></GatePage>;
   if (authState === 'loading') return <GatePage title="계정의 계획을 불러오고 있어요." busy />;
   if (authState === 'error') return <GatePage title="로그인 상태를 확인하지 못했습니다."><button onClick={() => setStartup(value => value + 1)}>다시 시도</button></GatePage>;
-  if (authState === 'signed-out' || !runtime) return <GatePage title="어디서든 같은 나의 계획">
-    <p>내 계정으로 로그인하고 자금 흐름, 투자 배분과 계좌 연결을 이어서 관리하세요.</p>
+  if (authState === 'signed-out' || !runtime) return <GatePage title="로그인">
+    <p>Google 계정 또는 이메일로 로그인하세요.</p>
     <AccountSignIn client={configured.client} onStart={() => {explicitLogout.current = false; setNotice('');}} onGoogleLogin={login} />
-    <p>기존 브라우저 계획은 로그인 후 직접 선택해서 가져올 수 있어요.</p>
+    <p>로그인 후 기존 브라우저 데이터를 가져올 수 있습니다.</p>
     {notice && <p role="alert">{notice}</p>}
   </GatePage>;
   const workspace = runtime.workspace;
