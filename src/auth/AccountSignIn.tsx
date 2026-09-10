@@ -42,8 +42,11 @@ export function AccountSignIn({client, onStart, onGoogleLogin, email: initialEma
   }
 
   return <>
-    <form className="account-sign-in" aria-label="임시 이메일 로그인" aria-busy={busy} onSubmit={event => void signIn(event)}>
-      <p>Google 로그인 준비 중에는 이메일과 비밀번호로 로그인할 수 있어요.</p>
+    <button className="account-google-sign-in" type="button" disabled={busy} onClick={() => void signInWithGoogle()}>
+      {reauthenticate ? 'Google로 다시 로그인' : 'Google로 계속하기'}
+    </button>
+    <form className="account-sign-in" aria-label="이메일 로그인" aria-busy={busy} onSubmit={event => void signIn(event)}>
+      <p>기존 이메일 계정으로도 로그인할 수 있어요.</p>
       <label>이메일<input type="email" name="email" autoComplete="username" autoCapitalize="none" spellCheck={false}
         required value={email} disabled={busy} onChange={event => setEmail(event.target.value)} /></label>
       <label>비밀번호<input type="password" name="password" autoComplete="current-password"
@@ -51,8 +54,5 @@ export function AccountSignIn({client, onStart, onGoogleLogin, email: initialEma
       <button type="submit" disabled={busy}>{busy ? '로그인 중…' : '이메일로 로그인'}</button>
       {error && <p role="alert">{error}</p>}
     </form>
-    <button type="button" disabled={busy} onClick={() => void signInWithGoogle()}>
-      {reauthenticate ? 'Google로 다시 로그인' : 'Google로 계속하기'}
-    </button>
   </>;
 }

@@ -96,10 +96,10 @@ for (const width of [390, 768, 1280]) {
     const email = page.getByLabel('이메일', {exact: true});
     const password = page.getByLabel('비밀번호', {exact: true});
     const submit = page.getByRole('button', {name: '이메일로 로그인'});
-    await email.focus(); await expect(email).toBeFocused();
+    await google.focus(); await expect(google).toBeFocused();
+    await page.keyboard.press('Tab'); await expect(email).toBeFocused();
     await page.keyboard.press('Tab'); await expect(password).toBeFocused();
     await page.keyboard.press('Tab'); await expect(submit).toBeFocused();
-    await page.keyboard.press('Tab'); await expect(google).toBeFocused();
     for (const control of [email, password, submit]) expect((await control.boundingBox())!.height).toBeGreaterThanOrEqual(44);
     expect((await google.boundingBox())!.height).toBeGreaterThanOrEqual(44);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);

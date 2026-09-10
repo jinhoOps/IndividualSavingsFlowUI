@@ -2,7 +2,7 @@
 
 2026-09-10: 사용자 후속 요청에 따라 지출 도우미와 workspace v5를 운영에 적용하고 Pages 배포·실제 계정 검증을 완료했다. 기존 v4 데이터와 저장 이력의 정확한 보존, 답변 기억·두 브라우저 재개·합계 덮어쓰기를 확인했다. [v5 운영 기록](superpowers/evidence/2026-09-10-expense-assistant-production-rollout.md)과 [적용 절차](#workspace-v5-지출-도우미-운영-적용)를 따른다.
 
-운영 확인 기록: 2026-09-08 후속 사용자 요청으로 원격 main push와 Pages 배포를 완료했다. 공개 사이트의 실제 이메일 로그인·Supabase 저장·두 브라우저 동기화가 통과했다. 아래 최초 통합 당시의 미배포 상태와 구분하며 최신 증거는 [Pages 배포 기록](superpowers/evidence/2026-09-08-supabase-pages-deployment.md)을 따른다. Google provider는 아직 미설정이므로 임시 이메일 로그인을 사용한다.
+운영 확인 기록: 2026-09-08 후속 사용자 요청으로 원격 main push와 Pages 배포를 완료했다. 공개 사이트의 실제 이메일 로그인·Supabase 저장·두 브라우저 동기화가 통과했다. 아래 최초 통합 당시의 미배포 상태와 구분하며 최신 증거는 [Pages 배포 기록](superpowers/evidence/2026-09-08-supabase-pages-deployment.md)을 따른다. 2026-09-10 Google provider와 정확한 callback allowlist를 등록하고, Google 테스트 사용자 `okho04@gmail.com`의 공개 사이트 실제 로그인과 동일 UID·workspace 보존을 확인했다. 현재 Google OAuth는 테스트 모드이며 일반 사용자 공개는 미완료다. [Google 연결 기록](superpowers/evidence/2026-09-10-google-oauth-linking.md)을 따른다.
 
 2026-09-08 사용자 요청에 따라 정적 앱의 임시 이메일·비밀번호 로그인과 `okho04@gmail.com` 계정을 준비하고, 운영 Supabase 프로젝트에 workspace v4까지 네 DB migration을 적용했다. 최신 main UI와 통합한 코드의 실제 로그인·저장·충돌·권한 격리, 계획 이체와 Main overlay의 두 브라우저 저장·갱신을 확인하고 로컬 main에 병합했다. Google 로그인 왕복·Git push·Pages 배포는 수행하지 않았다. 최신 상태와 정확한 검증 범위는 [v4 통합 기록](superpowers/evidence/2026-09-08-supabase-workspace-v4-integration.md)을 따른다.
 
@@ -61,6 +61,8 @@ Google 설정 전 운영 대상 계정은 `okho04@gmail.com`이다. 앱의 로�
 
 ### 2.2. Google 설정과 계정 유지
 
+2026-09-10 Google Cloud 프로젝트 `isf-jinhoops`의 Web OAuth 클라이언트를 운영 Supabase에 연결했다. 로그인·재인증 화면은 Google 진입점을 먼저 제공하고 기존 이메일 로그인은 유지한다. Google 테스트 사용자에는 `okho04@gmail.com` 한 명을 등록했다. Google 콘솔의 앱 게시가 브랜딩 설정 미완료로 비활성화되어 있으므로, 이를 전체 Google 사용자 공개 완료로 간주하지 않는다. 동의 화면에는 현재 Supabase 프로젝트 도메인이 표시된다.
+
 [Supabase 공식 Google 로그인 안내](https://supabase.com/docs/guides/auth/social-login/auth-google)에 따라 Google Web OAuth Client를 만들고 Client ID/Secret을 Supabase Google provider 설정에 등록한다. Client Secret은 브라우저 환경변수가 아니다.
 
 | 설정 위치 | 값 |
@@ -73,7 +75,7 @@ Google 설정 전 운영 대상 계정은 `okho04@gmail.com`이다. 앱의 로�
 
 별도 개발 포트를 사용하면 그 정확한 URL만 추가한다. Google callback과 앱 callback을 혼동하지 않으며 운영 wildcard는 사용하지 않는다. PKCE verifier가 저장된 동일 브라우저/origin에서 왕복해야 한다.
 
-임시 로그인에서 Google로 전환할 때는 동일한 확인된 이메일을 사용한다. Supabase의 자동 identity linking으로 기존 계정 연결이 예상되지만, 실제 Google 로그인 전후 `auth.users.id`와 기존 workspace가 같은지 확인해야 전환 완료로 판단한다. 기존 사용자나 workspace를 지우고 다시 만들지 않는다. Google 전환 검증 후 임시 비밀번호를 교체한다. 로그인 폼 제거만으로 서버의 비밀번호 인증이 없어졌다고 간주하지 않는다. [Supabase identity linking 안내](https://supabase.com/docs/guides/auth/auth-identity-linking)
+임시 로그인에서 Google로 전환할 때는 동일한 확인된 이메일을 사용한다. Supabase의 자동 identity linking으로 기존 계정 연결이 예상되지만, 실제 Google 로그인 전후 `auth.users.id`와 기존 workspace가 같은지 확인해야 전환 완료로 판단한다. 기존 사용자나 workspace를 지우고 다시 만들지 않는다. Google 전환 검증 후 임시 비밀번호 교체를 운영 후속 작업으로 수행한다. 2026-09-10 연결 작업에서는 기존 비밀번호를 조회·변경하지 않았다. 로그인 폼 제거만으로 서버의 비밀번호 인증이 없어졌다고 간주하지 않는다. [Supabase identity linking 안내](https://supabase.com/docs/guides/auth/auth-identity-linking)
 
 ## 3. 정적 빌드 환경변수
 
@@ -102,16 +104,18 @@ E2E의 `cloud` 프로젝트는 실제 production entry와 Supabase SDK를 사용
 
 ## 5. 운영 rollout 확인
 
-운영 DB와 임시 계정 사전 준비는 적용했다. 다음은 실제 프로젝트에서 확인한 범위이며, Google 전환과 Pages 배포의 다음 담당자는 프로젝트 운영자다.
+운영 DB·계정 준비와 Pages 배포는 적용했다. 2026-09-10 Google 테스트 계정의 실제 연결도 확인했다. 아래 이력과 남은 운영 항목을 구분하며, 일반 사용자용 Google 공개 설정과 임시 비밀번호 교체의 다음 담당자는 프로젝트 운영자다.
 
 - [x] 운영 DB 사전 점검, v4까지 네 migration 적용과 원본 hash/이력 일치.
 - [x] v4 required protocol·구 RPC 차단, fixed/sweep 저장·reload와 Journey Main-only 저장 및 두 브라우저 동기화.
 - [x] 실제 두 사용자 세션과 anon으로 본인 행 조회, 타인 행 비노출, 직접 INSERT/UPDATE/DELETE 및 익명 RPC 금지.
 - [x] 여섯 저장 RPC, stale revision 충돌, 같은 mutation 재시도, 동시 저장의 한 건 성공·한 건 충돌과 invalid rollback.
 - [x] 두 독립 Chromium 브라우저 문맥의 같은 테스트 계정으로 실제 앱 저장·focus 갱신·reload 및 네 제품 진입.
-- [x] 실제 대상 계정의 비밀번호 폼 로그인, 최초 계획 선택·이메일 표시와 로그아웃. 대상 계정의 금융 workspace는 아직 없으며 테스트 계정·workspace·receipt는 정리 완료.
+- [x] 실제 대상 계정의 비밀번호 폼 로그인, 최초 계획 선택·이메일 표시와 로그아웃. 2026-09-08 당시 대상 계정의 금융 workspace는 없었고 테스트 계정·workspace·receipt는 정리했다. 2026-09-10 Google 연결에서는 이후 사용자가 저장한 workspace를 보존했다.
 - [ ] 실제 원격 세션 만료 후 재인증, 30초 polling과 다중 탭 로그아웃의 운영 배포 검증. 해당 흐름의 로컬 fixture E2E와 실제 원격 검증을 혼동하지 않는다.
-- [ ] Google provider 설정·실제 왕복, verifier 유실/재시도, callback 직접 새로고침과 임시 로그인 전후 동일 UID·workspace 유지.
+- [x] Google provider 설정·정확한 callback allowlist와 등록한 테스트 계정의 실제 왕복, 이메일 로그인 전후 동일 UID·workspace 유지.
+- [ ] 일반 Google 사용자 공개를 위한 브랜딩 설정 완료·앱 게시와 임시 비밀번호 교체.
+- [ ] 실제 운영 OAuth verifier 유실/재시도 검증. 정상 왕복과 오류 경로의 검증 범위를 구분한다.
 - [x] GitHub Pages 공개 변수 등록·배포와 운영 URL에서 네 앱의 base 직접 진입·새로고침.
 
 기존 데이터는 자동 업로드하지 않는다. 처음 가져오기/새 시작을 선택하고, 서버가 이미 있으면 백업 후 전체 교체를 명시적으로 확인한다. 장애 시 계정 편집을 중지하고 서버 백업·미전송 복구 파일을 제공한다. 기존 로컬 writable 배포로 무조건 되돌려 두 원본을 만들지 않는다.

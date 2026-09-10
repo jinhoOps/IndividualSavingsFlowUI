@@ -1,6 +1,6 @@
 # IndividualSavings Flow UIUX
 
-개인 재무 흐름을 입력하고 장기 투자 전략과 실행 계획으로 연결하는 정적 웹 앱입니다. 2026-09-08 최신 main 기능과 Supabase workspace v4를 통합하고 원격 main push·Pages 배포를 완료했습니다. 2026-09-10 지출 도우미·workspace v5도 운영 DB에 적용하고 Pages 배포와 실제 계정 저장을 검증했습니다. 공개 사이트의 실제 임시 이메일 로그인·계정 저장·두 브라우저 동기화를 검증했습니다. Google provider 설정은 아직 미완료입니다. [최신 배포 기록](docs/superpowers/evidence/2026-09-10-expense-assistant-production-rollout.md)과 [계정 저장 운영 안내](docs/supabase-account-setup.md)를 따릅니다.
+개인 재무 흐름을 입력하고 장기 투자 전략과 실행 계획으로 연결하는 정적 웹 앱입니다. 2026-09-08 최신 main 기능과 Supabase workspace v4를 통합하고 원격 main push·Pages 배포를 완료했습니다. 2026-09-10 지출 도우미·workspace v5도 운영 DB에 적용하고 Pages 배포와 실제 계정 저장을 검증했습니다. 공개 사이트의 실제 임시 이메일 로그인·계정 저장·두 브라우저 동기화를 검증했습니다. 2026-09-10 Google 테스트 계정의 실제 로그인과 기존 계정·데이터 보존을 확인했습니다. Google OAuth는 테스트 모드이며 일반 사용자 공개는 아직 미완료입니다. [Google 연결 기록](docs/superpowers/evidence/2026-09-10-google-oauth-linking.md)을 참고하세요. [최신 배포 기록](docs/superpowers/evidence/2026-09-10-expense-assistant-production-rollout.md)과 [계정 저장 운영 안내](docs/supabase-account-setup.md)를 따릅니다.
 
 현재 지원 제품은 Main, Simulation, Portfolio와 Account Map입니다. 네 앱은 shared workspace를 사용합니다.
 
@@ -196,7 +196,7 @@ Node 25 이상에서 실험적 Web Storage가 jsdom과 충돌하면 단위 테�
 
 Phase A shared workspace foundation과 Main, Simulation, aggregate-first Portfolio, planned account-flow Account Map은 현재 기준선입니다. 다음 단계는 이 기준선을 보존하며 별도 계획으로 진행합니다.
 
-- **계정 저장 구현**: 정적 배포를 유지하는 [Google 로그인·Supabase 계정별 workspace 저장](docs/superpowers/specs/2026-09-07-supabase-account-workspace-design.md)과 2026-09-08 승인된 임시 이메일·비밀번호 로그인. 실제 임시 계정 준비·운영 DB migration·Google 실제 왕복·Pages 배포는 [운영 안내](docs/supabase-account-setup.md)의 별도 rollout 항목입니다.
+- **계정 저장 구현**: 정적 배포를 유지하는 [Google 로그인·Supabase 계정별 workspace 저장](docs/superpowers/specs/2026-09-07-supabase-account-workspace-design.md)과 2026-09-08 승인된 임시 이메일·비밀번호 로그인. 운영 DB·Pages 배포와 등록한 Google 테스트 계정의 실제 왕복은 검증했습니다. 일반 Google 사용자 공개와 남은 운영 검증은 [운영 안내](docs/supabase-account-setup.md)의 별도 rollout 항목입니다.
 - **Phase B 완료**: 계좌 우선 설정, 계좌·보관처 registry, 노드 지도와 가역적 관리가 있는 Account Map
 - **Phase C**: 현재 Main metric 영역을 대체하는 Main·Simulation·Portfolio·Account Map 연결 결과 카드
 - **Phase 4 완료**: 분류된 legacy runtime·compatibility path·test 삭제, v1/v2 migration evidence와 [repository-wide 최종 검증](docs/superpowers/evidence/2026-09-02-phase4-legacy-test-disposition.md)을 기록함

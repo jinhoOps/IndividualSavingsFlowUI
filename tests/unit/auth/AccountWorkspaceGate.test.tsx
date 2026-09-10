@@ -25,7 +25,7 @@ describe('account workspace gate', () => {
     render(<AccountWorkspaceGate config={config} client={supplied}>{() => <p>Financial data</p>}</AccountWorkspaceGate>);
     fireEvent.change(await screen.findByLabelText('이메일'), {target: {value: 'a@example.com'}});
     fireEvent.change(screen.getByLabelText('비밀번호'), {target: {value: 'fixture-password'}});
-    fireEvent.submit(screen.getByRole('form', {name: '임시 이메일 로그인'}));
+    fireEvent.submit(screen.getByRole('form', {name: '이메일 로그인'}));
     expect(await screen.findByRole('alert')).toBeTruthy();
     expect((screen.getByLabelText('비밀번호') as HTMLInputElement).value).toBe('');
     expect(screen.queryByText('Financial data')).toBeNull();
@@ -40,7 +40,7 @@ describe('account workspace gate', () => {
     render(<AccountWorkspaceGate config={config} client={supplied}>{() => <p>Financial data</p>}</AccountWorkspaceGate>);
     fireEvent.change(await screen.findByLabelText('이메일'), {target: {value: 'a@example.com'}});
     fireEvent.change(screen.getByLabelText('비밀번호'), {target: {value: 'fixture-password'}});
-    const form = screen.getByRole('form', {name: '임시 이메일 로그인'});
+    const form = screen.getByRole('form', {name: '이메일 로그인'});
     fireEvent.submit(form); fireEvent.submit(form);
     expect(signIn).toHaveBeenCalledTimes(1);
     expect((screen.getByRole('button', {name: 'Google로 계속하기'}) as HTMLButtonElement).disabled).toBe(true);

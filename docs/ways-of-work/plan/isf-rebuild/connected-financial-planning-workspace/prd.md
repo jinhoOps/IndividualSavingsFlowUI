@@ -69,7 +69,7 @@ ISF는 지금의 월간 돈 흐름을 정리하고, 그 결과를 장기 전략�
 
 ### 계정 로그인
 
-Google 로그인으로 계정의 workspace를 연다. 2026-09-08 사용자 요청으로 Google 설정 전 사용할 임시 이메일·비밀번호 로그인을 함께 제공하며, 세션 만료 후 재인증에서도 두 경로를 제공한다. 임시 로그인의 실제 계정 사전 준비와 운영 검증은 [운영 안내](../../../../../docs/supabase-account-setup.md)를 따른다. 로그인과 workspace 조회·검증이 끝나기 전에는 금융 화면을 표시하지 않는다.
+Google 로그인으로 계정의 workspace를 연다. 2026-09-10 등록한 Google 테스트 계정의 실제 연결과 기존 UID·workspace 보존을 확인했다. 로그인·재인증 화면은 Google 버튼을 먼저 제공하고, 2026-09-08 승인된 이메일·비밀번호 경로도 유지한다. 일반 Google 사용자 공개는 브랜딩 설정·앱 게시 후속 범위다. 임시 로그인의 실제 계정 사전 준비와 운영 검증은 [운영 안내](../../../../../docs/supabase-account-setup.md)를 따른다. 로그인과 workspace 조회·검증이 끝나기 전에는 금융 화면을 표시하지 않는다.
 
 ### Main quick setup
 
@@ -113,7 +113,7 @@ Google 로그인으로 계정의 workspace를 연다. 2026-09-08 사용자 요�
 
 ### 계정 인증 — 2026-09-08 임시 로그인 추가 승인
 
-- Google 로그인과 임시 이메일·비밀번호 폼을 로그인·만료 세션 재인증 화면에 함께 제공한다. 비밀번호 경로는 실제 Supabase `signInWithPassword`를 사용하며 Google 인증 결과나 JWT를 흉내 내지 않는다.
+- Google 버튼을 로그인·만료 세션 재인증 화면의 첫 진입점으로 제공하고 기존 이메일·비밀번호 폼을 유지한다. 비밀번호 경로는 실제 Supabase `signInWithPassword`를 사용하며 Google 인증 결과나 JWT를 흉내 내지 않는다.
 - 두 인증 경로는 이메일 문자열 대신 동일한 `auth.users.id`와 계정별 RLS·workspace 저장 계약을 사용한다. 기존 앱별 데이터 소유권과 whole-workspace 백업 형식은 바꾸지 않는다.
 - 앱에는 회원가입이나 계정 자동 생성을 추가하지 않는다. 임시 대상 `okho04@gmail.com`은 운영자가 이메일 확인 완료 계정으로 사전 준비하고, 기존 사용자가 있으면 UID를 유지해 비밀번호를 설정한다.
 - 실제 비밀번호는 사용자 입력으로만 전달하고 소스·문서·브라우저 저장소·공개 빌드 변수에 저장하지 않는다. 실패하면 금융 화면을 열지 않고 오류와 재시도를 제공한다.
@@ -290,7 +290,7 @@ Simulation, Portfolio와 Account Map은 workspace 안의 최신 Main을 읽기 �
 
 ### 계정 저장 rollout gate
 
-2026-09-08 후속 사용자 요청에 따른 원격 main push·Pages 배포와 공개 사이트의 실제 이메일 로그인·계정 저장·두 브라우저 동기화는 완료했다. [Pages 배포 기록](../../../../superpowers/evidence/2026-09-08-supabase-pages-deployment.md)을 따른다. Google 설정·실제 왕복과 별도 운영 세션 만료 검증은 남아 있다.
+2026-09-08 후속 사용자 요청에 따른 원격 main push·Pages 배포와 공개 사이트의 실제 이메일 로그인·계정 저장·두 브라우저 동기화는 완료했다. [Pages 배포 기록](../../../../superpowers/evidence/2026-09-08-supabase-pages-deployment.md)을 따른다. 2026-09-10 Google 설정과 등록한 테스트 계정의 실제 왕복·기존 UID 및 workspace 보존을 확인했다. 일반 Google 사용자 공개와 별도 운영 세션 만료 검증은 남아 있다. [Google 연결 기록](../../../../superpowers/evidence/2026-09-10-google-oauth-linking.md)을 따른다.
 
 최신 main의 workspace v4·Account Map 계획 이체·Main overlay와의 통합은 [v4 통합 설계](../../../../superpowers/specs/2026-09-08-supabase-workspace-v4-integration-design.md)를 따른다. v4 필수 RPC와 세대가 분리된 계정 캐시를 사용하며 구 요청의 자동 재전송을 금지한다. 최초 v3 운영 적용 증거와 이후 v4 업그레이드 증거는 구분한다.
 
@@ -301,8 +301,9 @@ Simulation, Portfolio와 Account Map은 workspace 안의 최신 Main을 읽기 �
 - [x] 운영 DB 사전 권한/버전 확인과 migration 적용, 실제 REST/RPC 권한·revision 검증
 - [x] 임시 계정 사전 준비·실제 비밀번호 로그인·로그아웃, 독립된 두 브라우저 계정 저장·focus 최신화·새로고침 확인
 - [ ] 실제 운영 세션 만료 후 재인증 확인(mock E2E와 구분)
-- [ ] Google provider, 정확한 callback allowlist와 공개 build 환경변수 등록
-- [ ] 실제 Google 왕복과 임시 로그인 전후 동일 UID·workspace 유지 확인
+- [x] Google provider, 정확한 callback allowlist와 공개 build 환경변수 등록
+- [x] 등록한 Google 테스트 계정의 실제 왕복과 이메일 로그인 전후 동일 UID·workspace 유지 확인
+- [ ] 일반 Google 사용자 공개를 위한 브랜딩 설정·앱 게시와 임시 비밀번호 교체
 - [ ] 사용할 인증 경로의 실제 로그인, 운영 base 직접 진입·새로고침, 두 기기와 다중 탭 검증 후 배포
 
 2026-09-10 지출 도우미와 workspace v5를 운영에 적용했다. v4 before-image를 보관하고 답변을 null로 추가하며 기존 다섯 금액·다른 slice·revision·시각·receipt의 정확한 보존을 확인했다. 모든 RPC는 protocol 5를 요구한다. Pages 배포와 실제 계정의 중간 답변 저장·두 브라우저 재개·합계 덮어쓰기·직접 금액 수정 후 답변 재사용을 검증했다. [v5 운영 기록](../../../../superpowers/evidence/2026-09-10-expense-assistant-production-rollout.md)을 따르며 앞의 v4 증거와 구분한다.

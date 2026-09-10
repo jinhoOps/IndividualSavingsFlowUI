@@ -18,6 +18,8 @@
 .account-sign-in input { box-sizing: border-box; width: 100%; min-height: 44px; padding: .65rem .75rem; border: 1px solid #9ca3af; border-radius: .5rem; font: inherit; color: #292524; background: white; }
 .account-sign-in input:focus-visible { outline: 3px solid #0f766e; outline-offset: 3px; }
 .account-sign-in button { margin: .25rem 0; }
+.account-gate .account-google-sign-in { width: 100%; margin-inline: 0; background: #0f766e; color: white; border-color: #0f766e; }
+.account-gate .account-sign-in button { background: white; color: #292524; border-color: #9ca3af; }
 @media (max-width: 390px) { .account-panel {padding: 1rem;} }
 .account-product .main-welcome-intro {
   position: relative;
